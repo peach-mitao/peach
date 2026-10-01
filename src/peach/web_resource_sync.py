@@ -5,7 +5,8 @@
 
 用户在网盘客户端里删掉一个目录，本机看到的是三样东西：账本里一批指向不存在文件的
 行、盘上留下的空壳目录、这些行生成过的缓存。一次检查把三样一起报出来，一次执行
-一起清掉（ADR-0036）。
+一起清掉（ADR-0036）。指向不存在文件的行分两档：带个人记录的标「已消失」留着，
+其余的永久删除（ADR-0087）。
 
 `source_is_online` 也在这里：判断某个来源的根挂载没挂载，只有对账要问这件事。
 `w_purge_missing` 是按目录的那个入口，服务详情页上「这个目录我刚整理过」，
@@ -27,6 +28,7 @@ from .catalog_rules import dir_expr, normalise_code_key, photo_set_title
 from .config import LOCATION_ROOT_DECLARATIONS
 from .jobs import BackgroundJob
 from .media import normalized_path
+from .personal_records import VANISHED, mark_vanished, record_holders
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 
 
@@ -149,11 +151,12 @@ def vanished_asset_rows(
     contract: ResourceSyncContract, location: str, *,
     unreadable_dirs: set[str] | None = None,
 ) -> list:
-    """这个来源上文件已经不在的行，回收站里的也算。
+    """这个来源上文件已经不在的行，回收站里的也算，已标「已消失」的不算。
 
     问的是「账本这一行指的东西还在不在」，与这一行是否在回收站无关：文件已经在网盘那边
     删掉了，回收站里那一行同样指不到任何东西。2026-09-16 本机 647 行回收站里有 469 行
-    属于这种，它们会被每一轮长跑批处理重新领一次。
+    属于这种，它们会被每一轮长跑批处理重新领一次。已消失的行早就知道文件不在，它们
+    留着是为了个人记录，归孤儿记录列表处理，不再进每一轮的候选。
 
     调用方必须先确认这个来源在线（`source_is_online`）：盘没挂上时目录读不到，
     每一条都会被判成文件没了。
@@ -163,7 +166,8 @@ def vanished_asset_rows(
     with contract.read_connection() as connection:
         rows = connection.execute(
             "SELECT id,path,snapshot_path,disposal FROM asset "
-            "WHERE path IS NOT NULL AND location=? ORDER BY id", (location,),
+            "WHERE path IS NOT NULL AND location=? AND COALESCE(disposal,'')<>? ORDER BY id",
+            (location, VANISHED),
         ).fetchall()
     missing, _unreadable = _missing_resource_ids(rows, unreadable_dirs)
     gone = set(missing)
@@ -246,32 +250,50 @@ def _empty_directories(roots: Sequence[Path], unreadable_dirs: set[str]) -> list
     return found
 
 
+def _keeps_records(contract: ResourceSyncContract, rows: Sequence) -> set[int]:
+    """文件已不在盘上的这些行里，要标「已消失」而不删的：在库、且带个人记录。
+
+    回收站里的行是用户自己丢的，带不带记录都照旧永久删除（ADR-0087 第四条）。
+    """
+    in_library = [int(row["id"]) for row in rows if row["disposal"] is None]
+    if not in_library:
+        return set()
+    with contract.read_connection() as connection:
+        return record_holders(connection, in_library)
+
+
 def _scan_sources(
     contract: ResourceSyncContract,
     progress: Callable[[dict], None] | None = None,
 ) -> dict:
-    """只读核对每个在线来源：文件已不在盘上的行、空文件夹、读不了的目录。"""
+    """只读核对每个在线来源：文件已不在盘上的行（分删除与标已消失两档）、空文件夹、读不了的目录。"""
     with contract.read_connection() as connection:
         totals = {row[0]: int(row[1]) for row in connection.execute(
-            "SELECT location,count(*) FROM asset WHERE path IS NOT NULL GROUP BY location")}
+            "SELECT location,count(*) FROM asset WHERE path IS NOT NULL "
+            "AND COALESCE(disposal,'')<>? GROUP BY location", (VANISHED,))}
     vanished_ids: list[int] = []
+    keep_ids: set[int] = set()
     empty_dirs: dict[str, list[str]] = {}
     sources = []
     for location in configured_resource_locations():
         online = source_is_online(location)
         source = {"location": location, "online": online, "total": totals.get(location, 0),
-                  "missing": 0, "empty": 0, "unreadable": 0}
+                  "missing": 0, "vanish": 0, "empty": 0, "unreadable": 0}
         if online:
             unreadable: set[str] = set()
             gone = vanished_asset_rows(contract, location, unreadable_dirs=unreadable)
             empties = _empty_directories(_source_roots(location), unreadable)
             vanished_ids.extend(int(row["id"]) for row in gone)
+            keep = _keeps_records(contract, gone)
+            keep_ids.update(keep)
             empty_dirs[location] = [os.fspath(path) for path in empties]
-            source.update(missing=len(gone), empty=len(empties), unreadable=len(unreadable))
+            source.update(missing=len(gone), vanish=len(keep), empty=len(empties),
+                          unreadable=len(unreadable))
         sources.append(source)
         if progress is not None:
             progress(source)
-    return {"sources": sources, "vanished_ids": vanished_ids, "empty_dirs": empty_dirs}
+    return {"sources": sources, "vanished_ids": vanished_ids, "keep_ids": keep_ids,
+            "empty_dirs": empty_dirs}
 
 
 def _cache_file(path: Path, kind: str, output: list[tuple[str, Path, int]]) -> None:
@@ -300,7 +322,37 @@ def _managed_cache_root(contract: ResourceSyncContract, root: Path | None) -> bo
     return resolved != data_root and resolved.is_relative_to(data_root)
 
 
-def _resource_orphan_plan(contract: ResourceSyncContract, excluded_ids: Sequence[int] = ()) -> dict:
+def _cache_owners(
+    contract: ResourceSyncContract, excluded_ids: Sequence[int] = (),
+    retired_ids: Sequence[int] = (),
+) -> tuple[set[int], set[str], set[Path]]:
+    """缓存还有主人的三把键：按 id 认的、按番号认的、快照路径。
+
+    `excluded_ids` 是这一轮要永久删除的行，它们的缓存全都不算有主。`retired_ids` 是这一轮
+    要标「已消失」的行，已经标过的也一样：快照与封面留给孤儿记录列表认片（ADR-0087），
+    按 id 生成的转码、分片、时间轴与海报帧对一个读不到的文件没有用处，照孤儿清掉。
+    """
+    with contract.read_connection() as connection:
+        rows = connection.execute(
+            "SELECT id,code,snapshot_path,disposal FROM asset WHERE COALESCE(disposal,'')!='trash'",
+        ).fetchall()
+    excluded = {int(item) for item in excluded_ids}
+    retired = {int(item) for item in retired_ids}
+    rows = [row for row in rows if int(row["id"]) not in excluded]
+    active_ids = {int(row["id"]) for row in rows
+                  if row["disposal"] is None and int(row["id"]) not in retired}
+    active_codes = {normalise_code_key(row["code"]) for row in rows if row["code"]}
+    active_codes.discard("")
+    translate = contract.snapshot_root is not None
+    active_snapshots = {normalized_path(row["snapshot_path"]) if translate else Path(row["snapshot_path"])
+                        for row in rows if row["snapshot_path"]}
+    return active_ids, active_codes, active_snapshots
+
+
+def _resource_orphan_plan(
+    contract: ResourceSyncContract, excluded_ids: Sequence[int] = (),
+    retired_ids: Sequence[int] = (),
+) -> dict:
     """Find only reproducible generated files that no active asset still owns.
 
     Review CSVs, provider evidence, logos and entity portraits are deliberately outside this
@@ -309,21 +361,7 @@ def _resource_orphan_plan(contract: ResourceSyncContract, excluded_ids: Sequence
     if not contract.resource_cleanup_enabled:
         return {"files": [], "dirs": set(), "summary": {},
                 "total_files": 0, "total_bytes": 0}
-    with contract.read_connection() as connection:
-        rows = connection.execute(
-            "SELECT id,code,snapshot_path FROM asset WHERE COALESCE(disposal,'')!='trash'",
-        ).fetchall()
-    excluded = {int(item) for item in excluded_ids}
-    rows = [row for row in rows if int(row["id"]) not in excluded]
-    active_ids = {int(row["id"]) for row in rows}
-    active_codes = {normalise_code_key(row["code"]) for row in rows if row["code"]}
-    active_codes.discard("")
-    active_snapshots = set()
-    for row in rows:
-        raw = row["snapshot_path"]
-        if raw:
-            active_snapshots.add(normalized_path(raw)
-                                 if contract.snapshot_root is not None else Path(raw))
+    active_ids, active_codes, active_snapshots = _cache_owners(contract, excluded_ids, retired_ids)
 
     files: list[tuple[str, Path, int]] = []
     cleanup_dirs: set[Path] = set()
@@ -475,11 +513,16 @@ def _run_resource_scan(contract: ResourceSyncContract, scan_id: str) -> None:
 
 
 def _scan_result(contract: ResourceSyncContract, scan: dict) -> dict:
-    caches = _resource_orphan_plan(contract, scan["vanished_ids"])
+    keep = scan["keep_ids"]
+    caches = _resource_orphan_plan(
+        contract, [asset_id for asset_id in scan["vanished_ids"] if asset_id not in keep], keep)
     sources = scan["sources"]
+    missing = len(scan["vanished_ids"])
     return {
         "ok": True, "sources": sources,
-        "missing": len(scan["vanished_ids"]),
+        "missing": missing,
+        # `missing` 拆成两档：执行时永久删除的，和带个人记录、只标「已消失」的。
+        "purge": missing - len(keep), "vanish": len(keep),
         "empty": sum(source["empty"] for source in sources),
         "unreadable": sum(source["unreadable"] for source in sources),
         "cache": {"files": caches["total_files"], "bytes": caches["total_bytes"],
@@ -531,7 +574,7 @@ def _rows_by_id(contract: ResourceSyncContract, asset_ids: Sequence[int]) -> lis
             batch = list(asset_ids[offset:offset + 400])
             marks = ",".join("?" for _item in batch)
             rows.extend(connection.execute(
-                "SELECT id,location,path,snapshot_path FROM asset "
+                "SELECT id,location,path,snapshot_path,disposal FROM asset "
                 f"WHERE id IN ({marks}) AND path IS NOT NULL", batch,
             ).fetchall())
     return rows
@@ -576,11 +619,27 @@ def _remove_empty_directories(paths: Sequence[Path], roots: Sequence[Path]) -> t
     return removed, errors
 
 
-def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None):
-    """永久删除这一轮检查报出的失效记录与空文件夹，再清孤儿缓存。
+def _mark_record_holders(contract: ResourceSyncContract, rows: Sequence) -> tuple[list[int], list]:
+    """复核过的失效行里，在库且带个人记录的标「已消失」；返回标了的 id 与剩下要删的行。
 
-    文件已不在盘上的行不进回收站、直接删（用户原话「网盘同步删除了的都直接删」）。
-    删之前逐条复核，删不掉的进 `blocked`；这一步不可撤销，所以只认检查给的候选集合。
+    有没有记录在执行这一刻重新问：检查之后用户可能刚给某一部点了喜欢。
+    """
+    in_library = [int(row["id"]) for row in rows if row["disposal"] is None]
+    if not in_library:
+        return [], list(rows)
+    contract.cache_bust()
+    with contract.write_transaction() as connection:
+        marked = mark_vanished(connection, record_holders(connection, in_library), time.time())
+    kept = set(marked)
+    return marked, [row for row in rows if int(row["id"]) not in kept]
+
+
+def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None):
+    """处理这一轮检查报出的失效记录与空文件夹，再清孤儿缓存。
+
+    文件已不在盘上的行不进回收站：在库且带个人记录的标「已消失」，记录留着等接回
+    （ADR-0087）；其余的连回收站里的一起直接删（ADR-0080）。删之前逐条复核，删不掉的进
+    `blocked`；删除这一档不可撤销，所以只认检查给的候选集合。
     """
     if not configured_resource_locations():
         raise ValueError("请先在配置页添加媒体文件夹")
@@ -598,7 +657,8 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
     state = _completed_scan(contract, scan_id)
     report = progress or (lambda **_fields: None)
     report(checked=0, total=None, message="正在逐条复核失效记录")
-    confirmed = _recheck_vanished(contract, state["vanished_ids"])
+    marked, confirmed = _mark_record_holders(
+        contract, _recheck_vanished(contract, state["vanished_ids"]))
     purge = {"purged": 0, "blocked": [], "empty_dirs_removed": 0}
     if confirmed:
         report(checked=0, total=None, message=f"正在永久删除 {len(confirmed)} 条失效记录")
@@ -623,7 +683,8 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
     contract.resource_scan.update(scan_id, applied_at=time.time())
     return {
         "ok": True, "sources": state["result"]["sources"],
-        "purged": int(purge["purged"]), "blocked": blocked, "blocked_count": len(blocked),
+        "purged": int(purge["purged"]), "vanished": len(marked),
+        "blocked": blocked, "blocked_count": len(blocked),
         "dirs_removed": dirs_removed + int(purge.get("empty_dirs_removed") or 0),
         "dir_errors": dir_errors, "unreadable": int(state["result"].get("unreadable") or 0),
         **cleanup,
@@ -631,10 +692,12 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
 
 
 def w_purge_missing(contract: ResourceSyncContract, body):
-    """按目录对账：文件已经在磁盘上删掉的，账本行移入回收站。
+    """按目录对账：文件已经在磁盘上删掉的在库行，带个人记录的标「已消失」，其余移入回收站。
 
     这条路径服务的是「我在资源管理器里整理网盘目录」——删掉的就是不要的，所以
-    不进复核；账本记录仍先进入回收站，源文件恢复后还能还原。
+    不进复核；两档都撤得回来：回执里的 8 秒撤销走 `/api/batch` 的 `restore`，
+    它对回收站与已消失的行都清掉 `disposal`。已经在回收站或已消失的行不再碰，
+    撤销因此只还原这一趟改的行。
 
     真正危险的不是删得太干净，而是把「盘没挂上」误判成「文件没了」：R: 掉线时
     整条来源 2,552 行都会看起来像被删。所以先做来源级在线判定，整源不在线就
@@ -661,7 +724,7 @@ def w_purge_missing(contract: ResourceSyncContract, body):
         directory = path[: len(path) - len(name) - 1]
         rows = connection.execute(
             f"SELECT id,path,name FROM asset WHERE location=? "
-            f"AND {dir_expr('')}=?",
+            f"AND {dir_expr('')}=? AND disposal IS NULL",
             (location, directory),
         ).fetchall()
 
@@ -674,20 +737,24 @@ def w_purge_missing(contract: ResourceSyncContract, body):
     ]
     if not missing:
         return {"ok": True, "directory": photo_set_title(directory),
-                "checked": len(rows), "removed": 0, "unreadable": unreadable,
-                "items": []}
+                "checked": len(rows), "removed": 0, "trashed": 0, "vanished": 0,
+                "unreadable": unreadable, "items": []}
 
     contract.cache_bust()
     ids = [item["id"] for item in missing]
     with contract.write_transaction() as connection:
         stamp = time.time()
+        kept = set(mark_vanished(connection, record_holders(connection, ids), stamp))
         connection.executemany(
-            "UPDATE asset SET disposal='trash',feedback_at=? WHERE id=?",
-            [(stamp, asset_id) for asset_id in ids],
+            "UPDATE asset SET disposal='trash',feedback_at=? WHERE id=? AND disposal IS NULL",
+            [(stamp, asset_id) for asset_id in ids if asset_id not in kept],
         )
     contract.cache_bust()
+    for item in missing:
+        item["disposal"] = VANISHED if item["id"] in kept else "trash"
     return {
         "ok": True, "directory": photo_set_title(directory),
-        "checked": len(rows), "removed": len(missing), "unreadable": unreadable,
-        "items": missing,
+        "checked": len(rows), "removed": len(missing),
+        "trashed": len(missing) - len(kept), "vanished": len(kept),
+        "unreadable": unreadable, "items": missing,
     }

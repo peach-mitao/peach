@@ -414,7 +414,7 @@ def q_entity_photos(contract: WebContract, args):
         scoped = ("FROM asset_entity ae CROSS JOIN asset a ON a.id=ae.asset_id "
                   "WHERE " + scope_predicate(kind, "ae.entity_id") +
                   " AND a.medium='image' AND a.name IS NOT NULL "
-                  "AND (a.disposal IS NULL OR a.disposal<>'trash') ")
+                  "AND a.disposal IS NULL ")
         sets = [{
             "id": item["id"],
             "kind": "dir",
@@ -473,14 +473,14 @@ def q_photo_set(contract: WebContract, args):
         total = c.execute(
             f"SELECT count(*) FROM asset a WHERE a.medium='image' AND a.name IS NOT NULL "
             f"AND {PHOTO_DIR}=? AND a.location=? "
-            "AND (a.disposal IS NULL OR a.disposal<>'trash')", par,
+            "AND a.disposal IS NULL", par,
         ).fetchone()[0]
         items = [{"id": item["id"], "name": item["name"], "size": item["size"] or 0,
                   "location": item["location"]}
                  for item in c.execute(
                      f"SELECT a.id,a.name,a.size,a.location FROM asset a WHERE a.medium='image' "
                      f"AND a.name IS NOT NULL AND {PHOTO_DIR}=? AND a.location=? "
-                     "AND (a.disposal IS NULL OR a.disposal<>'trash') "
+                     "AND a.disposal IS NULL "
                      f"ORDER BY {order} LIMIT ? OFFSET ?",
                      (*par, limit, offset),
                  )]

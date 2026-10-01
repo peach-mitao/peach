@@ -1611,11 +1611,11 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             if retrying:
                 placeholders = ','.join('?' * len(chosen_ids))
                 query = (f"SELECT asset.*, {multi} FROM asset WHERE id IN ({placeholders}) AND medium='video' "
-                         "AND (disposal IS NULL OR disposal<>'trash') ORDER BY id")
+                         "AND disposal IS NULL ORDER BY id")
                 parameters = chosen_ids
             else:
                 query = (f"SELECT asset.*, {multi} FROM asset "
-                         "WHERE medium='video' AND (disposal IS NULL OR disposal<>'trash') ORDER BY id")
+                         "WHERE medium='video' AND disposal IS NULL ORDER BY id")
                 parameters = []
             with closing(sqlite3.connect(db_path, timeout=30)) as connection:
                 connection.row_factory = sqlite3.Row

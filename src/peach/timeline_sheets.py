@@ -194,7 +194,7 @@ def pending(db_path: Path | str, interval: int, *, limit: int = 0) -> list[tuple
     # 回收站里的不做：那一批等着被删，为它们各抽一百帧是白花的时间和磁盘。
     sql = ("SELECT id, path, duration FROM asset WHERE medium='video' "
            f"AND location IN ({placeholders}) AND duration >= ? "
-           "AND (disposal IS NULL OR disposal <> 'trash') "
+           "AND disposal IS NULL "
            "ORDER BY (last_played IS NULL), last_played DESC, id")
     parameters: tuple = (*LOCAL_LOCATIONS, float(interval) * 2)
     if limit:

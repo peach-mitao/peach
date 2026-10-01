@@ -1,8 +1,8 @@
-/* 资源同步的数据契约：按馆藏记录逐条查找本地磁盘与网盘上的文件（ADR-0080）。
+/* 资源同步的数据契约：按馆藏记录逐条查找本地磁盘与网盘上的文件（ADR-0080、ADR-0087）。
  *
  * 一次检查、一次执行。检查逐来源报文件已不在盘上的记录、空文件夹与读不了的目录，另报孤儿
- * 缓存；执行只认这次检查的候选，逐条复核后永久删除失效记录（含回收站里的），再自底向上删
- * 空文件夹、清孤儿缓存。
+ * 缓存；文件已不在盘上的记录分两档：带个人记录的标为已消失、记录留着，其余永久删除（含回收站
+ * 里的）。执行只认这次检查的候选，逐条复核后处理两档，再自底向上删空文件夹、清孤儿缓存。
  *
  * 两趟后台任务两个键。扫描那一条端点同时负责启动与读状态（`status_only`），执行那一条
  * GET 读快照、POST 起任务；两边都按 `running` 开关轮询，闲着不问。
@@ -25,6 +25,8 @@ export interface ResourceSource {
   online: boolean;
   total: number;
   missing: number;
+  /** `missing` 里带个人记录、执行时标为已消失的条数。 */
+  vanish?: number;
   empty: number;
   unreadable: number;
 }
@@ -36,6 +38,9 @@ export interface ResourceScanState {
   completed_sources?: number;
   total_sources?: number;
   missing?: number;
+  /** `missing` 拆成两档：永久删除的，和带个人记录、标为已消失的。 */
+  purge?: number;
+  vanish?: number;
   empty?: number;
   unreadable?: number;
   cache?: { files: number; bytes: number };
@@ -52,6 +57,7 @@ export interface ResourceApplyState {
   job_id?: string;
   message?: string;
   purged?: number;
+  vanished?: number;
   blocked?: BlockedRecord[];
   dirs_removed?: number;
   dir_errors?: number;
@@ -70,8 +76,8 @@ export const startResourceScan = () =>
 export const fetchResourceApply = (signal?: AbortSignal) =>
   apiGet<ResourceApplyState>(RESOURCE_APPLY_URL, signal);
 
-/** 永久删除这次检查找出的失效记录与空文件夹，并清理闲置缓存。真实 ledger 写入、不可撤销，
- *  调用方必须先过危险档的确认弹层。 */
+/** 处理这次检查找出的失效记录（永久删除或标为已消失）与空文件夹，并清理闲置缓存。真实 ledger
+ *  写入，永久删除那一档不可撤销，调用方必须先过危险档的确认弹层。 */
 export const startResourceApply = (scanId: string) =>
   apiSend<ResourceApplyState>(RESOURCE_APPLY_URL,
     { confirm: true, clean_cache: true, scan_id: scanId, background: true });
@@ -107,19 +113,33 @@ export const scanLine = (state: ResourceScanState) => (state.total_sources
   ? `已扫描 ${state.completed_sources || 0}/${state.total_sources} 个来源`
   : '正在扫描来源');
 
+/** 永久删除那一档的条数：`missing` 减去标为已消失的。 */
+export const purgeCount = (scan: ResourceScanState) =>
+  scan.purge ?? Number(scan.missing || 0) - Number(scan.vanish || 0);
+
+/** 标为已消失那一档的那一句；没有这一档时是空串。 */
+const vanishText = (scan: ResourceScanState) => (scan.vanish
+  ? `${count(scan.vanish)} 条带个人记录的标为已消失，记录留着，可在孤儿记录里接到新文件或彻底删除。`
+  : '');
+
+/** 不可撤销那一句：有标为已消失那一档时，只说删除的这几样。 */
+const irreversible = (scan: ResourceScanState) => (scan.vanish ? '这几样不可撤销。' : '这一步不可撤销。');
+
 /** 结果面板里那一句清理内容。 */
 export const applyPlanText = (scan: ResourceScanState) =>
-  `将永久删除文件已不在盘上的 ${count(scan.missing)} 条记录和 ${count(scan.empty)} 个空文件夹，`
-  + `并清理 ${count(scan.cache?.files)} 个闲置缓存。这一步不可撤销。`;
+  `将永久删除文件已不在盘上的 ${count(purgeCount(scan))} 条记录和 ${count(scan.empty)} 个空文件夹，`
+  + `并清理 ${count(scan.cache?.files)} 个闲置缓存。${irreversible(scan)}${vanishText(scan)}`;
 
 /** 确认弹层的正文：比结果面板多说回收站里的也算、来源根目录保留。 */
 export const applyConfirmText = (scan: ResourceScanState) =>
-  `将永久删除文件已不在盘上的 ${count(scan.missing)} 条记录（含回收站里的）、${count(scan.empty)} 个空文件夹，`
-  + `并清理 ${count(scan.cache?.files)} 个闲置缓存。来源根目录保留。这一步不可撤销。`;
+  `将永久删除文件已不在盘上的 ${count(purgeCount(scan))} 条记录（含回收站里的）、${count(scan.empty)} 个空文件夹，`
+  + `并清理 ${count(scan.cache?.files)} 个闲置缓存。来源根目录保留。${irreversible(scan)}${vanishText(scan)}`;
 
 /** 一个来源那张读数卡的脚注。 */
 export const sourceMeta = (source: ResourceSource) => (source.online
-  ? [`找不到文件 · 共 ${count(source.total)} 项`, source.empty ? `空文件夹 ${count(source.empty)} 个` : '',
+  ? [`找不到文件 · 共 ${count(source.total)} 项`,
+    source.vanish ? `${count(source.vanish)} 项带个人记录` : '',
+    source.empty ? `空文件夹 ${count(source.empty)} 个` : '',
     source.unreadable ? `${count(source.unreadable)} 个目录读取失败，已跳过` : ''].filter(Boolean).join(' · ')
   : `馆藏中有 ${count(source.total)} 项`);
 
@@ -128,7 +148,8 @@ export function applyLeftovers(out: ResourceApplyState) {
   const blocked = out.blocked ?? [];
   const dirErrors = Number(out.dir_errors || 0);
   const cacheBlocked = out.cache_blocked ?? [];
-  const done = Number(out.purged || 0) + Number(out.dirs_removed || 0) + Number(out.cache_removed || 0);
+  const done = Number(out.purged || 0) + Number(out.vanished || 0) + Number(out.dirs_removed || 0)
+    + Number(out.cache_removed || 0);
   const left = blocked.length + dirErrors + cacheBlocked.length;
   const names = blocked.slice(0, 3).map((item) => `「${item.name}」`).join('、') + (blocked.length > 3 ? ' 等' : '');
   const rest = [
@@ -143,6 +164,7 @@ export function applyLeftovers(out: ResourceApplyState) {
 export const applyText = (out: ResourceApplyState, formatSize: (bytes: number) => string) => {
   const { rest } = applyLeftovers(out);
   const summary = `已永久删除 ${count(out.purged)} 条失效记录和 ${count(out.dirs_removed)} 个空文件夹，`
-    + `清理 ${count(out.cache_removed)} 个缓存，释放 ${formatSize(out.bytes_reclaimed || 0)}。`;
+    + `清理 ${count(out.cache_removed)} 个缓存，释放 ${formatSize(out.bytes_reclaimed || 0)}。`
+    + (out.vanished ? `${count(out.vanished)} 条带个人记录的已标为已消失，可在孤儿记录里处理。` : '');
   return rest ? `${summary}${rest}，重新检查后可再试。` : summary;
 };

@@ -62,7 +62,7 @@ def _existing_video_ids(connection, ids: list[int]) -> list[int]:
     found = {
         int(row[0]) for row in connection.execute(
             f"SELECT id FROM asset WHERE id IN ({marks}) AND medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             ids,
         )
     }

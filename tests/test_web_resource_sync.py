@@ -30,7 +30,8 @@ def finish_scan(contract) -> dict:
 
 
 class PurgeMissingTests(unittest.TestCase):
-    """对账：磁盘上已删掉的文件，账本行要么进回收站（按目录），要么直接删（整库）。
+    """对账：磁盘上已删掉的文件，账本行要么进回收站（按目录），要么直接删（整库）；
+    带个人记录的两条路径都只标已消失。
 
     整库那条不可恢复，所以测试重点全在「什么时候**不该**删」。
     """
@@ -119,20 +120,24 @@ class PurgeMissingTests(unittest.TestCase):
         self.assertEqual(result["error"], "source offline")
         self.assertEqual(self.ids(), [1, 2, 3, 4])
 
-    def test_missing_files_move_to_trash_without_losing_metadata(self):
+    def disposals(self):
+        con = sqlite3.connect(self.db_path)
+        try:
+            return dict(con.execute("SELECT id,disposal FROM asset ORDER BY id").fetchall())
+        finally:
+            con.close()
+
+    def test_missing_files_with_records_vanish_and_the_rest_move_to_trash(self):
         result = self._run()
         self.assertTrue(result["ok"])
         self.assertEqual(result["checked"], 3)
-        self.assertEqual(result["removed"], 2)
-        self.assertEqual(sorted(x["id"] for x in result["items"]), [2, 3])
-        # 另一个目录的 4 必须原样留下；缺失项先进入回收站，恢复源文件后仍可还原。
-        self.assertEqual(self.ids(), [1, 2, 3, 4])
+        self.assertEqual((result["removed"], result["trashed"], result["vanished"]), (2, 1, 1))
+        self.assertEqual({x["id"]: x["disposal"] for x in result["items"]},
+                         {2: "vanished", 3: "trash"})
+        # 另一个目录的 4 必须原样留下；002 带喜欢记录，标已消失；003 没有记录，进回收站。
+        self.assertEqual(self.disposals(), {1: None, 2: "vanished", 3: "trash", 4: None})
         con = sqlite3.connect(self.db_path)
         try:
-            self.assertEqual(
-                con.execute("SELECT disposal FROM asset WHERE id=2").fetchone()[0], "trash")
-            self.assertEqual(
-                con.execute("SELECT disposal FROM asset WHERE id=3").fetchone()[0], "trash")
             # 元数据等到清空回收站才随账本行一起删。
             self.assertEqual(
                 [r[0] for r in con.execute("SELECT asset_id FROM asset_tag")], [2, 4])
@@ -140,6 +145,17 @@ class PurgeMissingTests(unittest.TestCase):
                 [r[0] for r in con.execute("SELECT asset_id FROM asset_preference")], [2, 4])
         finally:
             con.close()
+
+    def test_purge_undo_restores_both_tiers_and_leaves_earlier_disposals_alone(self):
+        """回执的撤销走 batch restore：两档都还原；这一趟之前就进回收站的行不在名单里。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute("INSERT INTO asset(id,location,path,name,medium,size,disposal) "
+                               "VALUES(5,'115',?,'005.jpg','image',10,'trash')",
+                               (self.LEDGER_DIR + chr(92) + "005.jpg",))
+        result = self._run()
+        self.assertEqual(sorted(x["id"] for x in result["items"]), [2, 3])
+        web_batch.w_batch(self.contract, {"operation": "restore", "ids": [x["id"] for x in result["items"]]})
+        self.assertEqual(self.disposals(), {1: None, 2: None, 3: None, 4: None, 5: "trash"})
 
     def test_full_sync_scans_all_online_assets_and_cleans_only_rebuildable_caches(self):
         roots = {}
@@ -171,6 +187,8 @@ class PurgeMissingTests(unittest.TestCase):
         con = sqlite3.connect(self.db_path)
         con.execute("UPDATE asset SET code='HEY-002',snapshot_path=? WHERE id=2",
                     (str(cache_files[0]),))
+        # 这一条只看删除那一档：002 不带个人记录。
+        con.execute("DELETE FROM asset_preference WHERE asset_id=2")
         con.commit();con.close()
         self.contract.snapshot_root = roots["snapshots"]
         self.contract.poster_root = roots["posters"]
@@ -197,6 +215,42 @@ class PurgeMissingTests(unittest.TestCase):
         self.assertTrue(kept.is_file(), "账本里还在的片子，它那套时间轴图不算孤儿")
         self.assertTrue(evidence.is_file(), "候选证据不属于可删除缓存")
         self.assertEqual(self.ids(), [1, 4])
+
+    def test_full_sync_marks_record_holders_vanished_and_keeps_their_snapshot_and_cover(self):
+        roots = {name: self.root / name for name in ("snapshots", "covers", "transcodes")}
+        for root in roots.values():
+            root.mkdir()
+        snapshot, cover = roots["snapshots"] / "2.jpg", roots["covers"] / "hey-002.jpg"
+        transcode = roots["transcodes"] / "2-10-20.mp4"
+        for path in (snapshot, cover, transcode):
+            path.write_bytes(b"cache")
+        con = sqlite3.connect(self.db_path)
+        con.execute("UPDATE asset SET code='HEY-002',snapshot_path=? WHERE id=2", (str(snapshot),))
+        con.commit();con.close()
+        self.contract.snapshot_root = roots["snapshots"]
+        self.contract.cover_root = roots["covers"]
+        self.contract.transcode_root = roots["transcodes"]
+        self.contract.resource_cleanup_enabled = True
+
+        with self._synced():
+            scan = finish_scan(self.contract)
+            self.assertEqual((scan["missing"], scan["purge"], scan["vanish"]), (2, 1, 1))
+            source = next(row for row in scan["sources"] if row["location"] == "115")
+            self.assertEqual((source["missing"], source["vanish"]), (2, 1))
+            self.assertEqual(scan["cache"]["files"], 1)
+            result = rm_sync.w_resource_sync_apply(
+                self.contract, {"confirm": True, "clean_cache": True, "scan_id": scan["scan_id"]})
+            again = rm_sync.w_resource_sync_scan(self.contract)
+
+        self.assertEqual((result["purged"], result["vanished"]), (1, 1))
+        self.assertEqual(self.disposals(), {1: None, 2: "vanished", 4: None})
+        # 快照与封面留给孤儿记录列表认片；按 id 生成的转码对读不到的文件没有用处。
+        self.assertTrue(snapshot.is_file())
+        self.assertTrue(cover.is_file())
+        self.assertFalse(transcode.exists())
+        # 已消失的行不再进下一轮的候选，也不计入来源总数。
+        self.assertEqual((again["missing"], again["vanish"]), (0, 0))
+        self.assertEqual(next(row for row in again["sources"] if row["location"] == "115")["total"], 2)
 
     def test_full_sync_lists_each_directory_once_instead_of_stating_every_file(self):
         real_scandir = os.scandir
@@ -228,8 +282,8 @@ class PurgeMissingTests(unittest.TestCase):
             scan = finish_scan(self.contract)
             result = rm_sync.w_resource_sync_apply(
                 self.contract, {'confirm': True, 'clean_cache': False, 'scan_id': scan['scan_id']})
-        self.assertEqual(result['purged'], 3)
-        self.assertEqual(self.ids(), [1, 4])
+        self.assertEqual((result['purged'], result['vanished']), (2, 1))
+        self.assertEqual(self.ids(), [1, 2, 4])
 
     def test_local_only_configuration_has_resource_check(self):
         with mock.patch.object(rm_sync, 'LOCATION_ROOT_DECLARATIONS', {'local': ('R:\\',)}):
@@ -286,8 +340,8 @@ class PurgeMissingTests(unittest.TestCase):
                 "confirm": True, "clean_cache": False, "scan_id": status["scan_id"],
             })
 
-        self.assertEqual(result["purged"], 2)
-        self.assertEqual(self.ids(), [1, 4])
+        self.assertEqual((result["purged"], result["vanished"]), (1, 1))
+        self.assertEqual(self.ids(), [1, 2, 4])
 
     def test_full_sync_keeps_a_cover_shared_by_an_active_asset(self):
         covers = self.root / "covers"
@@ -384,7 +438,8 @@ class PurgeMissingTests(unittest.TestCase):
 
 
 class ResourceSyncCleanupTests(unittest.TestCase):
-    """一次检查、一次执行：失效记录、空文件夹与孤儿缓存一起清，失效记录直接永久删除。
+    """一次检查、一次执行：失效记录、空文件夹与孤儿缓存一起清。失效记录带个人记录的标已消失，
+    其余直接永久删除。
 
     路径全是临时目录里的真路径，不经 `_translate`：执行那一步真的删行、删目录，
     删除那一侧（`web_batch`）看到的路径必须和检查那一侧是同一个。
@@ -507,6 +562,31 @@ class ResourceSyncCleanupTests(unittest.TestCase):
         self.assertEqual(run.status, "succeeded", "删账本行这件事要在任务中心留下记录")
         self.assertEqual((run.result_summary["purged"], run.result_summary["dirs_removed"],
                           run.result_summary["cache_removed"]), (2, 4, 1))
+
+    def test_recycle_bin_rows_are_purged_even_when_they_carry_records(self):
+        """回收站是用户自己丢的：带不带个人记录，文件不在了都照旧永久删除。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute(
+                "INSERT INTO asset_preference(profile_id,asset_id,liked,reason,updated_at) "
+                "VALUES('default',3,1,'','2026-01-01')")
+        with self.clouddrive():
+            scan = finish_scan(self.contract)
+            self.assertEqual((scan["purge"], scan["vanish"]), (2, 0))
+            result = self.apply(scan)
+        self.assertEqual((result["purged"], result["vanished"]), (2, 0))
+        self.assertEqual(self.ids(), [1, 4, 5])
+
+    def test_a_record_added_after_the_check_still_saves_its_row(self):
+        """有没有记录在执行那一刻重新问：检查之后刚点的喜欢也算。"""
+        with self.clouddrive():
+            scan = finish_scan(self.contract)
+            self.assertEqual(scan["vanish"], 0)
+            with self.contract.write_transaction() as connection:
+                connection.execute(
+                    "INSERT INTO watch_queue(profile_id,asset_id,added_at) VALUES('default',2,'2026-01-01')")
+            result = self.apply(scan)
+        self.assertEqual((result["purged"], result["vanished"]), (1, 1))
+        self.assertEqual(self.ids(), [1, 2, 4, 5])
 
     def test_a_file_back_on_disk_since_the_check_keeps_its_row(self):
         scan = finish_scan(self.contract)

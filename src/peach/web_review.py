@@ -143,7 +143,7 @@ def _creator_previews(connection, creators: list[str], *, include_unpictured: bo
         "LEFT JOIN asset_entity ae ON ae.asset_id=a.id AND ae.role='creator' "
         "LEFT JOIN entity e ON e.id=ae.entity_id AND e.kind='creator' "
         "LEFT JOIN entity_alias alias ON alias.entity_id=e.id "
-        "WHERE a.medium='video' AND (a.disposal IS NULL OR a.disposal<>'trash') "
+        "WHERE a.medium='video' AND a.disposal IS NULL "
         + ("" if include_unpictured else "AND a.snapshot_path IS NOT NULL ")
         + f"AND (e.canonical_name IN ({marks}) OR alias.alias IN ({marks}) OR a.creator IN ({marks})) "
         "ORDER BY a.id",
@@ -172,7 +172,7 @@ def _attach_review_asset_context(connection, rows: list[dict]) -> None:
         sql = (
             "SELECT id,name,code,snapshot_path,field_owners,mutation_revision "
             "FROM asset WHERE medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash') AND (code IN (" + marks + ")"
+            "AND disposal IS NULL AND (code IN (" + marks + ")"
         )
         params: list[object] = list(codes)
         if any(code.upper().startswith("FC2") for code in codes):
@@ -191,7 +191,7 @@ def _attach_review_asset_context(connection, rows: list[dict]) -> None:
             "SELECT ae.entity_id,a.id,a.name,a.code,a.snapshot_path,a.field_owners,"
             "a.mutation_revision FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
             f"WHERE ae.entity_id IN ({marks}) AND a.medium='video' "
-            "AND (a.disposal IS NULL OR a.disposal<>'trash') "
+            "AND a.disposal IS NULL "
             "ORDER BY (a.snapshot_path IS NULL),a.id",
             entity_ids,
         ):

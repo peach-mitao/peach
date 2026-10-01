@@ -141,10 +141,11 @@ AGENCY_SEARCH_CLAUSE = (
 )
 
 
-#: 「这条资源在普通馆藏里看得见」的判据：是视频，且不在回收站。列表、搜索和补全
+#: 「这条资源在普通馆藏里看得见」的判据：是视频，且在库——不在回收站，也没有标「已消失」
+#: （`disposal` 为空，ADR-0087）。列表、搜索和补全
 #: 共用这一份。各写各的后果是补全会补出回收站里的作品——那一条点开是已经删掉的片，
 #: 而列表本身从来不显示它，所以只会在补全这一个表面上露出来。
-VISIBLE_CATALOG_ASSET = "a.medium='video' AND (a.disposal IS NULL OR a.disposal <> 'trash')"
+VISIBLE_CATALOG_ASSET = "a.medium='video' AND a.disposal IS NULL"
 
 
 def region_filter(value, trash: bool) -> tuple[list[str], list[str]]:
@@ -544,7 +545,7 @@ def _edition_rows(contract: WebContract, codes) -> list[dict]:
         rows = [dict(row) for row in connection.execute(
             "SELECT id,name,code,size,duration FROM asset "
             f"WHERE medium='video' AND code IN ({placeholders}) "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             raw_codes,
         )]
         if not rows:
@@ -620,7 +621,7 @@ def q_editions(contract: WebContract, args):
     with contract.read_connection() as connection:
         seed = connection.execute(
             "SELECT id,code FROM asset WHERE id=? AND medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             (asset_id,),
         ).fetchone()
     if not seed or not seed["code"]:
@@ -646,7 +647,7 @@ def _multipart_rows(contract: WebContract, codes) -> list[dict]:
         rows = [dict(row) for row in connection.execute(
             "SELECT id,name,code,size,duration FROM asset "
             f"WHERE medium='video' AND code IN ({placeholders}) "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             raw_codes,
         )]
     return rows                           # 裸名首卷没有标记，由 ordered_multipart_items 定夺
@@ -690,7 +691,7 @@ def q_parts(contract: WebContract, args):
     with contract.read_connection() as connection:
         seed = connection.execute(
             "SELECT id,code FROM asset WHERE id=? AND medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             (asset_id,),
         ).fetchone()
     if not seed or not seed["code"]:
@@ -993,6 +994,8 @@ JAV_ASSET_PREDICATE = (
     "WHERE jav_ae.asset_id=a.id AND jav_e.kind IN ('performer','studio','series')))"
 )
 JAV_ASSET_CLAUSE = "AND " + JAV_ASSET_PREDICATE + " "
+#: 筛选项、侧栏读数与顶部三层排掉标「已消失」的行；回收站里的照旧算（`q_facets`、`q_tops`）。
+PRESENT_ASSET_CLAUSE = "AND COALESCE(a.disposal,'')<>'vanished' "
 
 
 #: 首页的状态筛选（新鲜 / 看过 / 已标记 / 稍后看）。作品列表、顶部三层和筛选面板
@@ -1036,7 +1039,7 @@ def q_tops(contract: WebContract, n=28, jav=False, seed="", state="", page=0):
     续页要是再回到那一段就会把同一个人给两次，所以那一段归第一页独占，续页从它的
     末尾往后按数量数下去。库里六百多位女优，一排给到头才是「滚到底还能接着滚」。"""
     with contract.read_connection() as c:
-        scope = (JAV_ASSET_CLAUSE if jav else "") + state_clause(state)
+        scope = PRESENT_ASSET_CLAUSE + (JAV_ASSET_CLAUSE if jav else "") + state_clause(state)
         base = (
             "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) n,"
             "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
@@ -1104,9 +1107,11 @@ def q_facets(
 
     首页不带 scope，维持全库口径；实体资料页按规范实体收窄，详情页按单个作品收窄。
     筛选项必须来自和作品列表相同的规范关系，不能让前端拿全库 facets 猜当前页面。
+    回收站里的作品照旧算进筛选项；标「已消失」的不算，它们不在任何列表里（ADR-0087）。
     """
     with contract.read_connection() as c:
-        scope = (JAV_ASSET_CLAUSE if jav else "") + state_clause(state)
+        scope = (PRESENT_ASSET_CLAUSE + (JAV_ASSET_CLAUSE if jav else "")
+                 + state_clause(state))
         scope_params: list[object] = []
         if filters and filters.get("library") and asset_id is None:
             library_clause, library_params = media_libraries.predicate(settings_file.active(), filters["library"])
@@ -1187,7 +1192,7 @@ def q_facets(
             "THEN 1 ELSE 0 END) flagged, "
             "SUM(EXISTS(SELECT 1 FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
             "WHERE ae.asset_id=a.id AND e.kind='creator')) attributed "
-            "FROM asset a WHERE a.medium='video' AND (a.disposal IS NULL OR a.disposal<>'trash') "
+            "FROM asset a WHERE a.medium='video' AND a.disposal IS NULL "
             + scope, scope_params).fetchone()
         out["stats"] = dict(st)
         saved = [dict(row) for row in c.execute(

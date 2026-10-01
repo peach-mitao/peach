@@ -1,6 +1,7 @@
 /* 数据管理页上的「资源同步」：按馆藏记录逐条查找本地磁盘与网盘上的文件，列出文件已不在的
- * 记录、空文件夹和不再被引用的缓存，确认后一起清掉（ADR-0080）。失效记录是永久删除，
- * 不进回收站，所以执行键是危险档，确认框把「不可撤销」写明。
+ * 记录、空文件夹和不再被引用的缓存，确认后一起清掉（ADR-0080）。失效记录分两档：带个人记录的
+ * 标为已消失、记录留着（ADR-0087），其余永久删除、不进回收站，所以执行键是危险档，确认框写明
+ * 哪一档不可撤销。
  *
  * 扫描与清理是两趟后台任务，都走 `useBackgroundJob`。扫描的结论就是那趟任务的终态，所以
  * 结果区画的是当前快照：上一趟扫出来的东西还等着清。那一趟清过之后（`applied`）读数就不是
@@ -23,7 +24,7 @@ import { busyProps } from '../settings/use-action';
 import { TRASH_KEY } from './data-cleanup';
 import {
   applyConfirmText, applyLeftovers, applyPlanText, applyText, fetchResourceApply, fetchResourceScan, hasChanges,
-  RESOURCE_APPLY_KEY, RESOURCE_SCAN_KEY, scanLine, SOURCE_LABELS, sourceMeta, startResourceApply, startResourceScan,
+  purgeCount, RESOURCE_APPLY_KEY, RESOURCE_SCAN_KEY, scanLine, SOURCE_LABELS, sourceMeta, startResourceApply, startResourceScan,
   type ResourceApplyState, type ResourceScanState,
 } from './resource-sync';
 
@@ -58,7 +59,10 @@ function ScanResult({ scan }: { scan: ResourceScanState }) {
       </div>
       <div className={RESULT_ROW}>
         <article className={plainStatClass()}>
-          <PlainStat label="待永久删除" figure={`${count(scan.missing)} 项`} meta="文件已不在盘上，含回收站" />
+          <PlainStat label="待永久删除" figure={`${count(purgeCount(scan))} 项`} meta="文件已不在盘上，含回收站" />
+        </article>
+        <article className={plainStatClass()}>
+          <PlainStat label="将标为已消失" figure={`${count(scan.vanish)} 项`} meta="带个人记录，记录留着" />
         </article>
         <article className={plainStatClass()}>
           <PlainStat label="空文件夹" figure={`${count(scan.empty)} 个`} meta="保留来源根目录" />

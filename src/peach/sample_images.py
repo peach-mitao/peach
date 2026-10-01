@@ -331,7 +331,7 @@ def pending(connection: sqlite3.Connection, has_cover: Callable[[str], bool], mi
     found: list[str] = []
     for row in connection.execute(
             "SELECT code,max(id) AS newest FROM asset WHERE code IS NOT NULL AND code<>''"
-            " AND (disposal IS NULL OR disposal<>'trash') GROUP BY code ORDER BY newest DESC"):
+            " AND disposal IS NULL GROUP BY code ORDER BY newest DESC"):
         key = code_key(row[0])
         if not key or key in done or key in found or not has_cover(key):
             continue

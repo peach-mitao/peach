@@ -653,6 +653,40 @@ class WebDataTests(unittest.TestCase):
         self.assertEqual(live["total"], 1)
         self.assertEqual(live["bytes"], 100, "体积口径必须跟着同一条筛选走")
 
+    def test_vanished_rows_stay_out_of_lists_search_stats_and_feed_landing(self):
+        """标「已消失」的行文件不在盘上：列表、搜索、补全、统计与 Feed 落地都不认它。"""
+        from peach import feeds
+
+        def seen():
+            stats = rm_web.q_stats(self.contract)
+            groups = rm_web.q_suggest(self.contract, "two")["groups"]
+            with self.contract.read_connection() as connection:
+                landed = feeds.in_library(connection, "XYZ-002")
+            return {
+                "items": sorted(row["id"] for row in rm_web.q_items(self.contract, {"limit": "10"})["items"]),
+                "search": [row["id"] for row in rm_web.q_items(self.contract, {"q": "two", "limit": "10"})["items"]],
+                "suggest": [item["id"] for group in groups if group["kind"] == "asset" for item in group["items"]],
+                "videos": stats["attribution"]["videos"],
+                "by_loc": sorted(row["k"] for row in stats["by_loc"]),
+                "facet_creators": [row["n"] for row in rm_web.q_facets(self.contract)["creators"]],
+                "landed": landed,
+            }
+
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE asset SET code='XYZ-002' WHERE id=2")
+            connection.commit()
+        before = seen()
+        self.assertEqual((before["items"], before["search"], before["suggest"]), ([1, 2], [2], [2]))
+        self.assertEqual((before["videos"], before["by_loc"], before["landed"]), (2, ["115", "local"], True))
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE asset SET disposal='vanished' WHERE id=2")
+            connection.commit()
+        self.contract.cache_bust()
+        after = seen()
+        self.assertEqual((after["items"], after["search"], after["suggest"]), ([1], [], []))
+        self.assertEqual((after["videos"], after["by_loc"], after["landed"]), (1, ["local"], False))
+        self.assertEqual(sum(after["facet_creators"]), sum(before["facet_creators"]) - 1)
+
     def test_legacy_length_tags_are_hidden_in_favor_of_numeric_minutes(self):
         con = sqlite3.connect(self.db_path)
         con.execute(

@@ -103,7 +103,7 @@ def _codes_matching(connection, codes: list[str], columns: str) -> list:
         likes = "".join(" OR upper(code) LIKE '%'||upper(?)||'%'" for _key in sorted(chunk))
         for row in connection.execute(
                 f"SELECT {columns} FROM asset WHERE medium='video' "
-                f"AND (disposal IS NULL OR disposal<>'trash') "
+                f"AND disposal IS NULL "
                 f"AND (upper(trim(code)) IN ({marks}){likes}) ORDER BY id",
                 [*wanted, *sorted(chunk)]):
             key = normalise_code_key(str(row["code"] or ""))
@@ -1150,7 +1150,7 @@ def _landing_scope(connection, group: dict, candidate: dict,
     if group.get('asset_path'):
         assets = connection.execute(
             "SELECT id FROM asset WHERE id=? AND path=? AND medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             (group.get('asset_id'), group['asset_path']),
         ).fetchall()
     else:

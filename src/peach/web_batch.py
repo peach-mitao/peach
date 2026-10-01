@@ -21,6 +21,7 @@ from typing import Sequence
 from .catalog_rules import duration_clusters, is_jav_code, normalise_code_key
 from .config import LOCATION_ROOT_DECLARATIONS
 from .field_owners import USER_MANUAL, write_owned_fields
+from .personal_records import VANISHED
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 from .regions import normalize_region
 from .task_runs import TaskRunHandle
@@ -483,6 +484,8 @@ def _remove_empty_ancestors(parent: Path, source_roots: Sequence[Path]) -> list[
 def purge_vanished_rows(contract: WebContract, rows) -> dict:
     """永久删除文件已不在盘上的这些行，连同引用与派生产物；返回 `_finish_purge` 的回执。
 
+    带个人记录的在库行到不了这里：资源同步先把它们标「已消失」（ADR-0087）。
+
     `missing_only`：到了删的这一刻文件又在了（复核之后网盘才同步回来），这一行整条
     跳过进 `blocked`，媒体文件一个字节都不碰。这一批要删的只是账本行。
     """
@@ -619,10 +622,15 @@ def _batch_region_value(body) -> str | None:
     return value or None
 
 
+#: 还原与永久删除只对这两档成立：回收站里的，和文件已不在盘上、带着个人记录的
+#: （`vanished`，ADR-0087）。还原是清掉 `disposal`，永久删除走 `purge_assets`。
+DISPOSED = frozenset({"trash", VANISHED})
+
+
 def _reject_ineligible_targets(operation: str, rows) -> None:
     """选中集合与操作对不上就拒绝整批，不做部分生效。"""
-    if operation in {"restore", "delete"} and any(row["disposal"] != "trash" for row in rows):
-        raise ValueError("restore/delete is only allowed for recycle-bin assets")
+    if operation in {"restore", "delete"} and any(row["disposal"] not in DISPOSED for row in rows):
+        raise ValueError("restore/delete is only allowed for recycle-bin or vanished assets")
     if operation in {"dismiss-junk", "reconsider-junk"} and any(
             row["location"] not in {"local", "115", "pikpak"}
             or row["disposal"] is not None for row in rows):
@@ -793,7 +801,7 @@ def q_duplicates(contract: WebContract, args):
         rows = connection.execute(
             "SELECT id,code,location,path,name,size,duration,hash,disposal "
             "FROM asset WHERE medium='video' AND code IS NOT NULL AND code<>'' "
-            "AND (disposal IS NULL OR disposal<>'trash')"
+            "AND disposal IS NULL"
         ).fetchall()
 
     grouped: dict[str, list[dict]] = {}

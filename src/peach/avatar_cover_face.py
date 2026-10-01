@@ -54,7 +54,7 @@ def single_performer_works(connection, entity_id: int) -> list[tuple[int, str]]:
     return [(int(asset_id), str(code)) for asset_id, code in connection.execute(
         "SELECT a.id,a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
         "WHERE ae.entity_id=? AND ae.role='performer' AND coalesce(a.code,'')<>'' "
-        "AND (a.disposal IS NULL OR a.disposal<>'trash') "
+        "AND a.disposal IS NULL "
         "AND NOT EXISTS(SELECT 1 FROM asset_entity other WHERE other.asset_id=a.id "
         "AND other.role='performer' AND other.entity_id<>ae.entity_id) "
         "ORDER BY a.id", (int(entity_id),))]
