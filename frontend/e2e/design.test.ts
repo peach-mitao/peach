@@ -5895,4 +5895,181 @@ describe('设计决定', () => {
       await opened.close();
     }
   });
+
+  /* ── 侧栏岛（`frontend/src/react/sidebar/sidebar.css`） ── */
+
+  /** 打开首页等侧栏的分组画出来。聚合照演示库真取，只保证时长那一组在（演示库的短片可能凑不出总时长）。 */
+  async function openSidebar(viewport: Viewport): Promise<Visit> {
+    const opened = await visit(browser, '/', viewport);
+    await opened.page.route((url) => url.pathname === '/api/facets', async (route) => {
+      const real = await (await route.fetch()).json() as { stats?: Record<string, unknown> };
+      await route.fulfill({ json: { ...real, stats: { ...real.stats, duration: real.stats?.duration || 540 } } });
+    });
+    await opened.page.reload({ waitUntil: 'load' });
+    await opened.page.locator('#drawer [data-sidebar-group="时长"]').waitFor({ state: 'attached', timeout: 15_000 });
+    await settle(opened.page);
+    return { ...opened, close: async () => {
+      await opened.page.unrouteAll({ behavior: 'ignoreErrors' });
+      await opened.close();
+    } };
+  }
+
+  it('侧栏当前项自己不铺底，由挂在抽屉上的那块玻璃标出；悬停时玻璃跟过去，离开这一列回到当前项', { timeout: 60_000 }, async () => {
+    const opened = await openSidebar(DESKTOP);
+    try {
+      const { page } = opened;
+      const read = (key: string) => page.evaluate((target) => {
+        const glide = document.querySelector<HTMLElement>('[data-sidebar-glide]')!;
+        const button = document.querySelector<HTMLElement>(`#drawer [data-sidebar-nav] [data-nav="${target}"]`)!;
+        const box = (node: Element) => {
+          const rect = node.getBoundingClientRect();
+          return [rect.left, rect.top, rect.width, rect.height].map(Math.round);
+        };
+        const style = getComputedStyle(button);
+        return {
+          glide: box(glide), button: box(button), parent: glide.parentElement?.id,
+          layer: getComputedStyle(glide).zIndex, radius: getComputedStyle(glide).borderRadius,
+          fill: [style.backgroundColor, style.backgroundImage, style.boxShadow], color: style.color,
+        };
+      }, key);
+      const current = await read('');
+      assert.equal(current.parent, 'drawer', '玻璃没有挂在抽屉上，纵滚时会被滚动层切掉');
+      assert.deepEqual([current.layer, current.radius], ['-1', '10px'], '玻璃要压在字底下、圆角照按钮的 10px');
+      assert.deepEqual(current.glide, current.button, '玻璃没有垫在当前项下面');
+      assert.deepEqual(current.fill, ['rgba(0, 0, 0, 0)', 'none', 'none'], '当前项自己铺了底，静止时就是两层底叠着');
+      assert.equal(current.color, await tokenColor(page, '#drawer', '--glass-text'), '当前项的字色不是玻璃上的字色');
+      const idle = await read('studios');
+      assert.equal(idle.color, await tokenColor(page, '#drawer', '--color-text-secondary'), '未选中项的字色不是次要文字色');
+
+      await page.locator('#drawer [data-sidebar-nav] [data-nav="studios"]').hover();
+      const hovered = await read('studios');
+      assert.deepEqual(hovered.glide, hovered.button, '悬停时玻璃没有跟到指着的那一项');
+      assert.deepEqual(hovered.fill, ['rgba(0, 0, 0, 0)', 'none', 'none'], '悬停的那一项自己铺了底');
+      await page.mouse.move(900, 420);
+      const back = await read('');
+      assert.deepEqual(back.glide, back.button, '指针离开这一列之后玻璃没有回到当前项');
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('侧栏标题行：切换器 32px 圆标识、收起键 20px 高，与导航首项相隔 12px；分组箭头展开时转 90°；收起后只剩 60px 宽的图标列', { timeout: 60_000 }, async () => {
+    const opened = await openSidebar(DESKTOP);
+    try {
+      const { page } = opened;
+      const head = await page.evaluate(() => {
+        const drawer = document.querySelector('#drawer')!;
+        const rect = (selector: string) => drawer.querySelector(selector)!.getBoundingClientRect();
+        const mark = drawer.querySelector('#brandHome .mark')!;
+        const rotation = (group: Element) => {
+          const matrix = new DOMMatrix(getComputedStyle(group.querySelector(':scope > [data-sidebar-toggle] svg')!).transform);
+          return Math.round(Math.atan2(matrix.b, matrix.a) * 180 / Math.PI);
+        };
+        const groups = [...drawer.querySelectorAll<HTMLDetailsElement>('[data-sidebar-group]')];
+        return {
+          gap: Math.round(rect('[data-sidebar-nav]').top - rect('[data-sidebar-head]').bottom),
+          mark: [Math.round(rect('#brandHome .mark').width), Math.round(rect('#brandHome .mark').height), getComputedStyle(mark).borderRadius],
+          toggle: Math.round(rect('#filterBtn').height),
+          open: groups.filter((group) => group.open).map(rotation),
+          closed: groups.filter((group) => !group.open).map(rotation),
+        };
+      });
+      assert.equal(head.gap, 12, '切换器与导航首项挨得太近，两块底色读起来像压在一起');
+      assert.deepEqual(head.mark, [32, 32, '50%'], '切换器的标识不是 32px 的圆');
+      assert.equal(head.toggle, 20, '收起键不是 20px 高');
+      assert.ok(head.open.length && head.closed.length, `首页的分组没有一开一合可比：${JSON.stringify(head)}`);
+      assert.ok(head.open.every((angle) => angle === 90), `展开的分组箭头没有转到 90°：${head.open}`);
+      assert.ok(head.closed.every((angle) => angle === 0), `收着的分组箭头没有回到 0°：${head.closed}`);
+
+      await page.locator('#filterBtn').click();
+      await page.waitForFunction(() => Math.round(document.querySelector('#drawer')!.getBoundingClientRect().width) === 60,
+        undefined, { timeout: 5_000 });
+      const rail = await page.evaluate(() => {
+        const drawer = document.querySelector('#drawer')!;
+        const toggle = drawer.querySelector('#filterBtn')!.getBoundingClientRect();
+        return {
+          toggle: [Math.round(toggle.width), Math.round(toggle.height)],
+          groups: [...new Set([...drawer.querySelectorAll('[data-sidebar-group]')].map((group) => getComputedStyle(group).display))],
+          labels: [...new Set([...drawer.querySelectorAll('[data-sidebar-nav] button span')].map((span) => getComputedStyle(span).maxWidth))],
+        };
+      });
+      assert.deepEqual(rail, { toggle: [36, 20], groups: ['none'], labels: ['0px'] }, '收起的窄栏不是一列图标');
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('时长拉条：已选段是 accent 渐变，两端读数常显、推到端点也不越出轨道，刚动过的那枚压在上面', { timeout: 60_000 }, async () => {
+    const opened = await openSidebar(DESKTOP);
+    try {
+      const { page } = opened;
+      await page.locator('#drawer [data-sidebar-group="时长"] > [data-sidebar-toggle]').click();
+      await page.locator('#drawer [data-sidebar-group="时长"] [data-sidebar-collapse]:not([inert])').waitFor({ timeout: 5_000 });
+      const read = () => page.evaluate(() => {
+        const range = document.querySelector('#durationRange')!;
+        const bounds = range.getBoundingClientRect();
+        return {
+          fill: getComputedStyle(range.querySelector('[data-sidebar-range-fill]')!).backgroundImage,
+          tips: [...range.querySelectorAll<HTMLElement>('[data-sidebar-range-tip]')].map((tip) => {
+            const box = tip.getBoundingClientRect();
+            return {
+              end: tip.dataset.rangeEnd, text: tip.textContent, layer: getComputedStyle(tip).zIndex,
+              visible: getComputedStyle(tip).visibility === 'visible' && box.width > 0,
+              inside: box.left >= bounds.left - 1 && box.right <= bounds.right + 1,
+            };
+          }),
+        };
+      });
+      const resting = await read();
+      const accent = await tokenColor(page, '#drawer', '--color-accent-400');
+      assert.ok(resting.fill.startsWith('linear-gradient(90deg') && resting.fill.includes(accent),
+        `已选段不是从 accent-400 起的横向渐变：${resting.fill}`);
+      assert.deepEqual(resting.tips, [
+        { end: 'min', text: '0 分钟', layer: '1', visible: true, inside: true },
+        { end: 'max', text: '不限', layer: '2', visible: true, inside: true },
+      ], '两端读数要常显、贴着轨道两端不越界，没动过时右端那枚在上');
+
+      await page.locator('#durMin').focus();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => document.querySelector('[data-sidebar-range-tip][data-range-end="min"]')?.hasAttribute('data-range-active'),
+        undefined, { timeout: 5_000 });
+      const moved = await read();
+      assert.deepEqual(moved.tips.map((tip) => [tip.end, tip.layer, tip.inside]), [['min', '2', true], ['max', '1', true]],
+        '刚动过的那一端没有压到上面');
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('手机侧栏：抽屉开着时遮罩外壳隐形、暗色画在 ::before 上，层级低于抽屉；收起时遮罩退出渲染树', { timeout: 60_000 }, async () => {
+    const opened = await openSidebar(MOBILE);
+    try {
+      const { page } = opened;
+      const scrim = () => page.evaluate(() => {
+        const node = document.querySelector('#scrim')!, drawer = document.querySelector('#drawer')!;
+        const before = getComputedStyle(node, '::before');
+        return {
+          display: getComputedStyle(node).display, visibility: getComputedStyle(node).visibility,
+          dim: [before.visibility, before.backgroundColor],
+          layers: [Number(getComputedStyle(node).zIndex), Number(getComputedStyle(drawer).zIndex)],
+          fill: getComputedStyle(drawer).getPropertyValue('--glass-fill'),
+        };
+      });
+      assert.equal((await scrim()).display, 'none', '抽屉收着时遮罩还在渲染树里，iOS 的 Safari 会拿它给状态栏取色');
+      await page.locator('#filterBtn').tap();
+      await page.waitForFunction(() => document.querySelector('#drawer')?.classList.contains('open'));
+      const shown = await scrim();
+      assert.deepEqual([shown.display, shown.visibility], ['block', 'hidden'], '遮罩外壳没有隐形，iOS 的 Safari 会拿它给状态栏取色');
+      assert.equal(shown.dim[0], 'visible', '遮罩的暗色没有画在 ::before 上');
+      assert.notEqual(shown.dim[1], 'rgba(0, 0, 0, 0)', '遮罩的 ::before 是透明的，压不暗身后的页面');
+      assert.ok(shown.layers[0] < shown.layers[1], `遮罩压在抽屉上面，抽屉里就点不动了：${shown.layers}`);
+      assert.ok(shown.fill.replace(/\s/g, '').includes('86%'), `窄屏抽屉的填充没有加厚到 86%：${shown.fill}`);
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
 });

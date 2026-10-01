@@ -95,7 +95,7 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 - 壳在启动时写一份骨架（`sidebar-skeleton.ts`，与岛画的导航同一份顺序与按下态），随后 `loadSidebar(sidebarHost())` 装载岛，之后 `sidebarApi()` 同步可取，契约在 `sidebar/sidebar-api.ts`。岛接上时调 `attached`，壳把品牌与开合键挪进标题行；覆盖式滚动条仍由壳挂在 `#drawerScroll` 上。
 - 内容由壳推：`paintSidebar(patch)` 合并 `content`、`filters`、`latest` 后调 `render`。目录与资料页的聚合在 `buildBars` 里换成 `{kind:'catalog'}`，关注页与关注详情的内容标签由 `renderFollowDrawer` 推 `{kind:'follow'}`；就地改筛选时 `applyFilterStateInPlace` 只推 `filters`，`refreshFacetCounts` 只推 `latest`。点下去的动作回到壳的 `navTo`、`commitContextFilter` 与关注页的筛选。
 - 导航顺序读 `appSettings` 这一份 store 的 `sidebarOrder`：拖动排序先落 store 再写 `/api/settings`，设置面板改顺序也写同一份 store，岛按通知当场重排。按下态换了由壳的 `paintNav` 调 `navChanged`。
-- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；岛里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`。
+- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；岛里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design.test.ts` 读计算值。
 
 ### 产物缓存
 
