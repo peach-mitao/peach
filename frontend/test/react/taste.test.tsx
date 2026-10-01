@@ -74,7 +74,6 @@ const legacyProps = () => ({
   onSignal: vi.fn<(kind: string, name: string) => void>(),
   navigate: vi.fn<(route: string) => void>(),
   toast: vi.fn<(message: string) => void>(),
-  avatarInner: (name: string) => `<b>${name.slice(0, 1)}</b>`,
   onboarding: false,
 });
 

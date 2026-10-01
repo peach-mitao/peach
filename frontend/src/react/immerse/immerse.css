@@ -4,7 +4,7 @@
  * 左下角。手机才让舞台重新铺满视口。
  *
  * 选择器全用 `data-*`，与遗留层同名的类一条不写（`test/legacy-class-names.test.ts`）。例外两类：
- * `video-js` 是 Video.js 的组件契约；头像圆框里那一层由壳的 `avatarInner` 拼，首字母挂的 `ini`
+ * `video-js` 是 Video.js 的组件契约；头像圆框里那一层由 `card-art` 的 `avatarInner` 拼，首字母挂的 `ini`
  * 不是岛挂的，按 `[class~=…]` 认，权重与类选择器相同。
  *
  * 本文件按来源的先后排：动作键圆钮在前，沉浸层在后，窄屏最后；同权重时后写的胜出，这个顺序是

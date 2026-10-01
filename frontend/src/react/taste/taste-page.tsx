@@ -23,6 +23,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Popover, Tab, TabPanel, Tabs } from 'react-aria-components';
 import { MenuDialog as Dialog } from '../components/menu-dialog';
 
+import { avatarInner } from '@peach/card-art';
 import { fmtSize, siteMarkUrl } from '@peach/legacy/core';
 import { confirmModal } from '@peach/legacy/ui';
 
@@ -122,11 +123,10 @@ interface RankListProps {
   visual: 'entity' | 'domain' | 'creator' | 'none';
   empty: string;
   onSignal: TasteProps['onSignal'];
-  avatarInner: TasteProps['avatarInner'];
 }
 
 /** 一榜名次。点得动的那些是按钮，其余是行——馆藏里没有对应条目时点进去只会是一张空页。 */
-function RankList({ rows, kind, visual, empty, onSignal, avatarInner }: RankListProps) {
+function RankList({ rows, kind, visual, empty, onSignal }: RankListProps) {
   if (!rows.length) {
     return <EmptyState shell="plain" icon={RiSearchLine} title="暂无足够证据">{empty}</EmptyState>;
   }
@@ -187,11 +187,11 @@ function RankList({ rows, kind, visual, empty, onSignal, avatarInner }: RankList
 
 /** 一侧证据的维度面板。页签走 React Aria，切的是同一块地方的几层名次。 */
 function DimensionPanels(
-  { label, panels, onSignal, avatarInner }:
+  { label, panels, onSignal }:
   {
     label: string;
-    panels: { id: string; name: string; props: Omit<RankListProps, 'onSignal' | 'avatarInner'> }[];
-  } & Pick<TasteProps, 'onSignal' | 'avatarInner'>,
+    panels: { id: string; name: string; props: Omit<RankListProps, 'onSignal'> }[];
+  } & Pick<TasteProps, 'onSignal'>,
 ) {
   return (
     /* 旧 `.insightpanel`：一张 16px 的填充卡，页签是卡内顶上那条分段控件。 */
@@ -203,7 +203,7 @@ function DimensionPanels(
       </div>
       {panels.map((panel) => (
         <TabPanel key={panel.id} id={panel.id} className="px-4 pt-3.5 pb-4">
-          <RankList {...panel.props} onSignal={onSignal} avatarInner={avatarInner} />
+          <RankList {...panel.props} onSignal={onSignal} />
         </TabPanel>
       ))}
     </Tabs>
@@ -386,7 +386,7 @@ function SourceList(
 }
 
 export function TastePage(props: TasteProps) {
-  const { onSignal, navigate, toast, avatarInner, onboarding } = props;
+  const { onSignal, navigate, toast, onboarding } = props;
   const [range, setRange] = useState(DEFAULT_WINDOW);
   const [evidence, setEvidence] = useState('browser');
   const file = useRef<HTMLInputElement>(null);
@@ -520,7 +520,7 @@ export function TastePage(props: TasteProps) {
             words={{ unit: '口味网站访问', series: '访问', cellUnit: '次访问' }} tone={4}
             empty="还没有可用于分析的口味网站访问记录。" />
           <CreatorSankey flows={data.creator_flows} />
-          <DimensionPanels label="浏览器口味维度" onSignal={onSignal} avatarInner={avatarInner}
+          <DimensionPanels label="浏览器口味维度" onSignal={onSignal}
             panels={[
               { id: 'tags', name: '标签', props: { rows: rank.browser_tags || [], kind: 'tag', visual: 'none', empty: '暂无足够证据' } },
               { id: 'creators', name: '创作者', props: { rows: rank.browser_creators || [], kind: 'creator', visual: 'creator', empty: '暂无创作者证据' } },
@@ -550,7 +550,7 @@ export function TastePage(props: TasteProps) {
               <CoverageMetric term="有身份" value={identified} rest={coverage.unidentified || 0} />
             </div>
           </section>
-          <DimensionPanels label="Peach 口味维度" onSignal={onSignal} avatarInner={avatarInner}
+          <DimensionPanels label="Peach 口味维度" onSignal={onSignal}
             panels={[
               { id: 'tags', name: '标签', props: { rows: rank.peach_tags || [], kind: 'tag', visual: 'none', empty: '暂无足够证据' } },
               { id: 'creators', name: '创作者', props: { rows: rank.peach_creators || [], kind: 'creator', visual: 'creator', empty: '暂无创作者证据' } },

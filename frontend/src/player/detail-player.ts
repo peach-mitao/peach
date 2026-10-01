@@ -6,6 +6,7 @@
  *   展开回舞台时接到新的媒体框上，实例本身不重建。
  * - `mountPlayer` 是舞台播放区与沉浸模式每一格的入口：插氛围光画布与统计角标，按作品或关注条目
  *   给片源、海报与上报，返回拆掉这一个播放器的函数。 */
+import { detailPosterUrl } from '@peach/card-art';
 import { api, esc, fmtClock, fmtSize, icon, realDuration } from '@peach/legacy/core';
 
 import {
@@ -91,7 +92,7 @@ export async function mountDetailPlayer(
     controls: true, preload: 'metadata', language: 'zh-CN', responsive: true,
     /* video.js 只认 options 里的海报，不读 video 元素上的 poster 属性；不传，开播前那层本地
        封面就在挂载那一刻被丢掉。 */
-    poster: options.poster || host.posterUrl(item),
+    poster: options.poster || detailPosterUrl(item, host.settings().javImage),
     controlBar: {
       pictureInPictureToggle: true, currentTimeDisplay: true, timeDivider: true,
       durationDisplay: true, remainingTimeDisplay: false,
@@ -336,7 +337,7 @@ export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions
       mediaPromise: (api(`/follow-qualities?id=${encodeURIComponent(item.id)}`) as Promise<MediaFacts | null>).catch(() => null),
     };
   } else {
-    const poster = host.posterUrl(item);
+    const poster = detailPosterUrl(item, host.settings().javImage);
     if (poster) video.poster = poster;
     video.addEventListener('play', () => {
       void (api('/api/play', { method: 'POST', body: JSON.stringify({ id: item.id }) }) as Promise<unknown>).catch(() => {});

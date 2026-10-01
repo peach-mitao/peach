@@ -4,6 +4,8 @@
  * 做的判断。Geist 的弹层与 Fieldset 操作条都是这个方向。 */
 import { useRef } from 'react';
 
+import { avatarInner } from '@peach/card-art';
+
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Chip } from '@/components/base/badges/chip';
@@ -41,12 +43,6 @@ export interface CardHandlers {
   onReveal(id: number): void;
   revealing: number;
   revealNote: string;
-  avatarInner(
-    name: string,
-    entity: { id: number; has_image: boolean; image_version?: string; avatar_focus?: unknown } | null,
-    representativeAssetId: number | null,
-    kind: string,
-  ): string;
   toast(message: string): void;
 }
 
@@ -100,7 +96,7 @@ export function ReviewCard(props: ReviewCardProps) {
       ? <EntityHead kind={subjectKind} name={subjectName}
           works={Number(row.video_count || row.videos || 0)}
           openEntity={handlers.openEntity}
-          avatar={handlers.avatarInner(subjectName,
+          avatar={avatarInner(subjectName,
             row.entity_id
               ? { id: row.entity_id, has_image: !!row.has_image, image_version: row.image_version, avatar_focus: row.avatar_focus }
               : null,

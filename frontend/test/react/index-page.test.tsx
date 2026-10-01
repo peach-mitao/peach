@@ -7,11 +7,18 @@ import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { act, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { refitNativeImages } from '@peach/card-art';
+
 import { indexKey, indexRoute, type IndexProps, type IndexRoute } from '../../src/react/index/index-data';
 import { IndexPage } from '../../src/react/index/index-page';
 import { onlineAuthorsKey, onlineTagsKey } from '../../src/react/follow/online-vocab';
 import { queryClient } from '../../src/react/query';
 import { buttonNamed, click, mount, pending, settle, type } from './render';
+
+/* 重量已加载完的图走 `card-art` 那一份；量出来的几何由 `test/card-art/` 守，这里只看什么时候量。 */
+vi.mock('@peach/card-art', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@peach/card-art')>(), refitNativeImages: vi.fn(),
+}));
 
 afterEach(() => { queryClient.clear() });
 notifyManager.setScheduler((notify) => notify());
@@ -42,7 +49,7 @@ function props(route: Partial<IndexRoute> = {}, patch: Partial<IndexProps> = {})
     route: vi.fn(), savePreference: vi.fn(), exitSelectMode: vi.fn(),
     personAvatar: vi.fn(() => ({ html: '<span class="ini">A</span>', face: '' })),
     authorAvatar: vi.fn(() => '<span class="ini">B</span>'),
-    refitImages: vi.fn(), tagLabel: (value: string) => value,
+    tagLabel: (value: string) => value,
     openEntity: vi.fn(), showTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     configurable: true, ...patch,
   };
@@ -88,15 +95,15 @@ describe('名册', () => {
     expect(given.openEntity).toHaveBeenCalledWith('performer', '甲');
   });
 
-  it('换版式写回偏好、按圆框取头像，并让遗留层重量已经加载完的图', async () => {
+  it('换版式写回偏好、按圆框取头像，并把已经加载完的图重量一遍', async () => {
     seed(indexKey('performers', ''), [person('甲')]);
     const given = props();
     const host = await open(given);
-    vi.mocked(given.refitImages).mockClear();
+    vi.mocked(refitNativeImages).mockClear();
     await click(host.querySelector('[data-index-layout] input[value="compact"]'));
     expect(given.savePreference).toHaveBeenCalledWith({ layout: 'compact' });
     expect(given.personAvatar).toHaveBeenLastCalledWith(expect.objectContaining({ k: '甲' }), 'performer', false);
-    expect(given.refitImages).toHaveBeenCalledTimes(1);
+    expect(refitNativeImages).toHaveBeenCalledTimes(1);
   });
 
   it('「载入更多」取下一页：路上按灰并报忙，到手后没有下一页就收起', async () => {

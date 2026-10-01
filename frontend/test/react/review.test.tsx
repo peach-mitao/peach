@@ -79,7 +79,6 @@ const shellProps = (over: Partial<Props> = {}): Props => ({
   openItem: vi.fn(),
   openEntity: vi.fn(),
   revealSource: vi.fn(async () => ''),
-  avatarInner: () => '',
   toast: vi.fn(),
   readOnly: false,
   readOnlyMessage: '本机当前只能浏览',

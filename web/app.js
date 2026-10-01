@@ -19,7 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
-import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
+import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
@@ -982,7 +982,6 @@ const stageHost={
     settings:()=>appSettings,saveSettings:()=>saveSettings(),
     toast:(text,options)=>toast({text},options),
     loadSourceStatus:()=>loadSourceStatus(),offlineReason:key=>offlineReason(key),
-    posterUrl:it=>detailPosterUrl(it,appSettings.javImage),
   },
   sourceOffline:key=>sourceOffline(key),
   /* 小窗里的「展开」：同一个播放器搬回这一条的详情，地址与来处照点卡片进来的那一条走。 */
@@ -1841,7 +1840,7 @@ async function openTaste(push=true){
      就又多出一处会和那张表不一致的知识。 */
   await ui.mountIsland('taste',$('#stats'),{
     onSignal:openTasteSignal,navigate:path=>{route(path);restoreRoute()},
-    toast:actionReceipt,avatarInner,
+    toast:actionReceipt,
     onboarding:claimSetupEntry(),
   },{isCurrent:()=>surfaceCurrent(surface)});
   window.scrollTo({top:0,behavior:'smooth'});
@@ -2010,7 +2009,7 @@ async function openReview(push=true){
     openItem:id=>void openItem(id),
     openEntity:(kind,name)=>void openEntity(kind,name),
     revealSource:revealForIsland,
-    avatarInner,toast:actionReceipt,
+    toast:actionReceipt,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,
@@ -2404,7 +2403,7 @@ async function openFollowManage(push=true,workspace=''){
       if(patch.layout!==undefined)appSettings.followLayout=patch.layout;
       saveSettings();
     },
-    toast:actionReceipt,openFollow:()=>void openFollow(),cloudDownload:openCloudDownload,avatarInner,
+    toast:actionReceipt,openFollow:()=>void openFollow(),cloudDownload:openCloudDownload,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,
@@ -2558,7 +2557,7 @@ async function openIndex(kind,push=true){
     route:(next,{replace=false}={})=>route(indexPath(next),replace),
     savePreference:({layout})=>{appSettings.peopleLayout=layout;saveSettings()},
     exitSelectMode:()=>setSelectMode(false,false),
-    personAvatar,authorAvatar:onlineAuthorRingHtml,refitImages:refitNativeImages,tagLabel,
+    personAvatar,authorAvatar:onlineAuthorRingHtml,tagLabel,
     openEntity:(entityKind,name)=>openEntity(entityKind,name),
     showTags:showIndexTags,openFollowAuthor:openFollowAuthorFromIndex,openFollowTag:openFollowTagFromIndex,
     configurable:!!runtimeConfigurable,

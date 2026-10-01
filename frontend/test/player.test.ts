@@ -26,12 +26,11 @@ function stubFetch(reply: (url: string) => unknown): FetchCall[] {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const host = (seekSeconds = 10): PlayerHost => ({
-  settings: () => ({ ambientMode: false, theaterMode: false, seekSeconds, miniplayer: true, detailAutoplay: false }),
+  settings: () => ({ ambientMode: false, theaterMode: false, seekSeconds, miniplayer: true, detailAutoplay: false, javImage: 'cover' }),
   saveSettings: () => {},
   toast: () => {},
   loadSourceStatus: async () => ({}),
   offlineReason: () => '',
-  posterUrl: () => '',
   stage: () => null,
 });
 

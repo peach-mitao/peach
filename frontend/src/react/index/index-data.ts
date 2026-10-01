@@ -114,8 +114,6 @@ export interface IndexProps extends IndexRoute {
   personAvatar(item: IndexPerson, entityKind: string, big: boolean): PersonAvatar;
   /** 在线创作者一格的头像：主页头像优先、归档兜底，都取不到落回首字母。 */
   authorAvatar(author: OnlineAuthor): string;
-  /** 版式换了、框的大小变了：让遗留层把已经加载完的图重新量一遍。 */
-  refitImages(root: Element): void;
   tagLabel(tag: string): string;
   /** 打开资料页。 */
   openEntity(entityKind: string, name: string): void;

@@ -3167,9 +3167,9 @@ class WebUiSourceTests(unittest.TestCase):
         # 交出去的都是导航、查表或回执：页面不持有它们的状态，也不自己跳转。
         self.assertPageContains("onSignal:openTasteSignal")
         self.assertPageContains("navigate:path=>{route(path);restoreRoute()}")
-        self.assertPageContains("toast:actionReceipt,avatarInner")
         # 「这一次是从设置完成页进来的」是一次性的：地址栏那一位进门就擦掉，取值走内存变量。
-        self.assertPageContains("onboarding:claimSetupEntry()")
+        # 圆标由 React 档直接用 `card-art` 那一份拼，壳不再递。
+        self.assertCode("toast:actionReceipt,onboarding:claimSetupEntry(),")
         self.assertPageContains("{isCurrent:()=>surfaceCurrent(surface)}")
         # 四条端点、缓存、轮询与所有正文标记都归 React 子树，遗留层一条都不留。
         for gone in ("/api/taste", "TASTE_CACHE_KEY", "peach-taste-job", "wireTasteProgress",
