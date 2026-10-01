@@ -118,24 +118,60 @@ def save_settings(service: DownloadService, body: dict, declared_roots) -> dict:
     return settings_payload(service, declared_roots)
 
 
-def check_clouddrive(service: DownloadService, body: dict) -> dict:
-    """「检查」按页面上此刻填的值查，没带的字段取已保存的。只读，不提交也不取消。
-
-    页面带来的地址是空串时探测本机端口；报告里的 `address` 由页面填回表单，不在这里保存。
-    """
-    from .downloads_clouddrive import check
+def _check_inputs(service: DownloadService, body) -> tuple[dict, str, str]:
     body = body if isinstance(body, dict) else {}
     address = clean_address(body["clouddrive_address"] if "clouddrive_address" in body
                             else service.config.clouddrive_address)
     token = str(body.get("token") or "").strip() or _values(
         service.credentials, CLOUDDRIVE_CREDENTIAL).get("token", "")
-    raw_target = str(body.get("target") or service.config.targets.get("115", "")).strip()
+    return body, address, token
+
+
+def _hints(service: DownloadService, body: dict):
+    """推建议值用的前缀表与声明根取推送发现那份，和落地换算同一个口径。
+
+    PikPak 算在用：本机存着 PikPak 登录令牌，或页面说用户已在账号框里填了账号。
+    """
+    from .downloads_clouddrive import Hints
+    landing = service.landing
+    push = getattr(landing, "push_discovery", None)
+    prefixes = tuple(getattr(getattr(push, "config", None), "prefixes", ()) or ())
+    pikpak_root = str(body["pikpak_root"] if "pikpak_root" in body else service.config.pikpak_root)
+    try:
+        logged_in = "refresh_token" in service.credentials.describe(PIKPAK_CREDENTIAL)["fields"]
+    except CredentialError:
+        logged_in = False
+    return Hints(prefixes=prefixes, declared_roots=dict(landing.declared_roots or {}),
+                 pikpak_root=pikpak_root.strip(),
+                 pikpak_account=body.get("pikpak_account") is True or logged_in)
+
+
+def check_clouddrive(service: DownloadService, body: dict) -> dict:
+    """「检查」按页面上此刻填的值查，没带的字段取已保存的。只读，不提交、不取消、不建目录。
+
+    页面带来的地址是空串时探测本机端口；目标目录或 PikPak 根是空串时按推送发现推建议值。
+    报告里的 `address` 与 `suggested_*` 由页面填回表单，不在这里保存。
+    """
+    from .downloads_clouddrive import check, empty_report
+    body, address, token = _check_inputs(service, body)
+    raw_target = str(body.get("target") if "target" in body
+                     else service.config.targets.get("115", "")).strip()
     target = normalise_target(raw_target) if raw_target else ""
     try:
-        return check(address, token, target)
+        return check(address, token, target, hints=_hints(service, body))
     except DownloadError as error:
-        return {"ok": False, "address": address, "permissions": [], "missing": [], "root": "",
-                "folder": None, "quota": None, "problems": [error.detail]}
+        return empty_report(address, [error.detail])
+
+
+def create_clouddrive_folder(service: DownloadService, body: dict) -> dict:
+    """「新建这个目录」：用户点了才在 CloudDrive2 里建，建好后回对这个目录的检查报告。"""
+    from .downloads_clouddrive import create_folder
+    body, address, token = _check_inputs(service, body)
+    path = normalise_target(str(body.get("path") or ""))
+    try:
+        return create_folder(address, token, path, hints=_hints(service, body))
+    except DownloadError as error:
+        raise ValueError(error.detail) from None
 
 
 def pikpak_login(service: DownloadService, body: dict, declared_roots, *, transport=None) -> dict:

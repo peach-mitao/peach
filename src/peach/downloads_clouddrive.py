@@ -4,18 +4,24 @@ Peach 不另申请 115 应用，复用 CloudDrive2 已有的 115open 授权：�
 会顶掉第一次。CloudDrive2 的 API 令牌由用户在设置页填一次，存本机 `CredentialStore`，
 只放进 gRPC 的 `authorization` 元数据，不进 URL、日志与 ledger。
 
-用到的七个方法见 `downloads_clouddrive.proto`。流程参照 JavBoss
+用到的八个方法见 `downloads_clouddrive.proto`。流程参照 JavBoss
 `internal/clouddrive/client.go` 与 `internal/service/download.go`：提交前确认目标目录
 `canOfflineDownload` 并查配额，提交时让 CloudDrive2 10 秒后自己看一眼目录，之后按 infohash
 在目录的离线列表里对账；列表里找不到时看目录里有没有那个文件。
 
 每个任务扣一条 115 离线配额（年费会员每月 1500 条、月费 200 条，月底清零）。提交前先查
 目录里是否已有同一 infohash 的离线任务，有就接管，不再扣。
+
+115 目标目录留空时，「检查」从推送发现的云端路径前缀里推一个：对每条前缀调
+`FindFileByPath`，CloudDrive2 回的 `CloudAPI.name` 是 115 那一类的才算 115 前缀，候选是
+`<前缀>/云下载`。判据取 CloudDrive2 自报的云盘类型，不看前缀名字；`FindFileByPath` 只要
+「列目录」权限，查目标目录本来就要它，不另要挂载点或云盘列表的权限。PikPak 根目录对应的
+媒体文件夹同理：前缀是 PikPak 云盘根、对应的本机根是已声明的 PikPak 来源，就推它。
 """
 from __future__ import annotations
 
 import posixpath
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 import grpc
@@ -26,6 +32,7 @@ from .downloads import (
     DONE, ERROR, MISSING, RUNNING, DownloadError, DownloadTask, Magnet, RemoteStatus,
     classify_remote_message, magnet_info_hash,
 )
+from .push_discovery import CloudPrefix, normalise_prefix
 
 SERVICE = "/clouddrive.CloudDriveFileSrv/"
 #: 单次调用的上限。离线列表要强制刷新，115 那一侧偶尔要几秒。
@@ -44,10 +51,18 @@ OFFLINE_PERMISSIONS = {
     "allow_modify_offline_downloads": "取消离线任务",
 }
 
+#: CloudDrive2 自报的云盘类型（`CloudDriveFile.CloudAPI.name`），比对不分大小写。115 开放平台
+#: 授权是 `115open`，cookie 或扫码登录的是 `115`。
+CLOUDS_115 = frozenset({"115", "115open"})
+CLOUDS_PIKPAK = frozenset({"pikpak"})
+#: 115 目标目录留空时，在 115 前缀下建议的文件夹名。
+SUGGESTED_FOLDER = "云下载"
+
 _METHODS = {
     "GetSystemInfo": (empty_pb2.Empty, pb.CloudDriveSystemInfo),
     "GetApiTokenInfo": (pb.StringValue, pb.TokenInfo),
     "FindFileByPath": (pb.FindFileByPathRequest, pb.CloudDriveFile),
+    "CreateFolder": (pb.CreateFolderRequest, pb.CreateFolderResult),
     "AddOfflineFiles": (pb.AddOfflineFileRequest, pb.FileOperationResult),
     "RemoveOfflineFiles": (pb.RemoveOfflineFilesRequest, pb.FileOperationResult),
     "ListOfflineFilesByPath": (pb.FileRequest, pb.OfflineFileListResult),
@@ -127,7 +142,7 @@ class Folder:
 
 
 class CloudDriveClient:
-    """要令牌的那六个方法的薄封装。"""
+    """要令牌的那七个方法的薄封装。"""
 
     def __init__(self, address: str, token: str, *, timeout: float = CALL_TIMEOUT):
         if not token:
@@ -190,6 +205,16 @@ class CloudDriveClient:
         return list(result.offlineFiles)
 
     # -- 写
+
+    def create_folder(self, path: str) -> None:
+        """在父目录下建一层。父目录要已经存在；令牌要有「新建文件夹」权限。"""
+        parent, name = split_remote(path)
+        created = self.call("CreateFolder", pb.CreateFolderRequest(parentPath=parent, folderName=name),
+                            "新建目录")
+        if created.result.success or created.folderCreated.fullPathName or created.folderCreated.name:
+            return
+        reason = created.result.errorMessage or "没有给出原因"
+        raise DownloadError("rejected", f"CloudDrive2 没有新建 {path}：{reason}")
 
     def add(self, magnet: str, path: str) -> None:
         result = self.call("AddOfflineFiles", pb.AddOfflineFileRequest(
@@ -280,25 +305,53 @@ class CloudDriveProvider:
             client.remove(client.folder(task.target), task.info_hash or "")
 
 
-def check(address: str, token: str, target: str, *,
+@dataclass(frozen=True)
+class Hints:
+    """「检查」推建议值用的本机配置：推送发现的前缀表、已声明的媒体根、表单上的 PikPak 根。
+
+    `pikpak_account` 为假时用户没在用 PikPak，PikPak 根那一段整段不查也不报。
+    """
+    prefixes: tuple[CloudPrefix, ...] = ()
+    declared_roots: dict = field(default_factory=dict)
+    pikpak_root: str = ""
+    pikpak_account: bool = False
+
+
+def empty_report(address: str, problems: list[str] | None = None) -> dict:
+    """「检查」报告的形状。每一项各自报，一项失败不挡住其余几项。"""
+    return {"ok": not problems, "address": address, "permissions": [], "missing": [], "root": "",
+            "folder": None, "quota": None, "suggested_target": None, "suggested_pikpak_root": "",
+            "problems": list(problems or ())}
+
+
+def check(address: str, token: str, target: str, *, hints: Hints = Hints(),
           local_addresses: tuple[str, ...] = LOCAL_ADDRESSES) -> dict:
     """设置页的「检查」：令牌有没有离线权限、目标目录能不能离线、115 还剩多少配额。
 
     地址留空时先按 `local_addresses` 的顺序探测，报告的 `address` 是实际查的那个，页面把它
-    填回表单，用户保存后才落盘。只读：不提交、不取消。令牌一关过不去时 `ok` 为假；之后的
-    目录与配额各自报进 `problems`。
+    填回表单，用户保存后才落盘。目标目录与 PikPak 根留空时同样只给建议值（`suggested_*`），
+    由页面填回。只读：不提交、不取消、不建目录。令牌一关过不去时 `ok` 为假；之后的目录与
+    配额各自报进 `problems`。
     """
-    report: dict = {"ok": True, "address": address or discover(local_addresses), "permissions": [],
-                    "missing": [], "root": "", "folder": None, "quota": None, "problems": []}
+    report = empty_report(address or discover(local_addresses))
     try:
-        _inspect(report, CloudDriveClient(report["address"], token), target)
+        _inspect(report, CloudDriveClient(report["address"], token), target, hints)
     except DownloadError as error:
         report["ok"] = False
         report["problems"].append(error.detail)
     return report
 
 
-def _inspect(report: dict, client: CloudDriveClient, target: str) -> None:
+def create_folder(address: str, token: str, path: str, *, hints: Hints = Hints(),
+                  local_addresses: tuple[str, ...] = LOCAL_ADDRESSES) -> dict:
+    """用户点「新建这个目录」时才调。建好之后按这个目录再检查一遍，报告交给页面。"""
+    address = address or discover(local_addresses)
+    with CloudDriveClient(address, token) as client:
+        client.create_folder(path)
+    return check(address, token, path, hints=hints, local_addresses=local_addresses)
+
+
+def _inspect(report: dict, client: CloudDriveClient, target: str, hints: Hints) -> None:
     with client:
         info = client.token_info()
         permissions = info.permissions
@@ -308,19 +361,97 @@ def _inspect(report: dict, client: CloudDriveClient, target: str) -> None:
             report["permissions"].append({"name": name, "label": label, "granted": granted})
             if not granted:
                 report["missing"].append(label)
+        probe = _PrefixProbe(client, hints.prefixes)
+        _inspect_target(report, client, probe, target, hints)
+        if hints.pikpak_account and not hints.pikpak_root:
+            try:
+                _suggest_pikpak_root(report, probe, hints)
+            except DownloadError as error:
+                report["problems"].append(error.detail)
+
+
+def _inspect_target(report: dict, client: CloudDriveClient, probe: "_PrefixProbe", target: str,
+                    hints: Hints) -> None:
+    try:
         if not target:
-            report["problems"].append("还没有填 115 目标目录")
+            target = _suggest_target(report, client, probe, hints)
+            if not target:
+                return
+        folder = client.folder(target)
+    except DownloadError as error:
+        report["problems"].append(error.detail)
+        return
+    report["folder"] = {"path": folder.path, "can_offline": folder.can_offline,
+                        "cloud": folder.cloud_name}
+    try:
+        quota = client.quota(folder)
+    except DownloadError as error:
+        report["problems"].append(error.detail)
+        return
+    report["quota"] = {"total": quota.total, "used": quota.used, "left": quota.left}
+
+
+class _PrefixProbe:
+    """每条推送前缀在 CloudDrive2 里是什么，一次检查里只问一遍。"""
+
+    def __init__(self, client: CloudDriveClient, prefixes: tuple[CloudPrefix, ...]):
+        self.client = client
+        self.prefixes = tuple(CloudPrefix(normalise_prefix(entry.prefix), entry.root)
+                              for entry in prefixes)
+        self.found: dict[str, pb.CloudDriveFile | None] = {}
+
+    def lookup(self, prefix: str) -> pb.CloudDriveFile | None:
+        if prefix not in self.found:
+            self.found[prefix] = self.client.find(prefix, "查推送发现的云端路径前缀")
+        return self.found[prefix]
+
+    def of_cloud(self, clouds: frozenset[str]) -> list[tuple[CloudPrefix, pb.CloudDriveFile]]:
+        hits = []
+        for entry in self.prefixes:
+            found = self.lookup(entry.prefix)
+            if found is not None and found.isDirectory \
+                    and (found.CloudAPI.name or "").strip().casefold() in clouds:
+                hits.append((entry, found))
+        return hits
+
+
+def _roots(hints: Hints, location: str) -> dict[str, str]:
+    return {str(root).casefold(): str(root) for root in hints.declared_roots.get(location, ())}
+
+
+def _suggest_target(report: dict, client: CloudDriveClient, probe: _PrefixProbe,
+                    hints: Hints) -> str:
+    """推一个 115 目标目录。目录存在才返回它，接着查离线与配额；不存在只报建议值。"""
+    declared = _roots(hints, "115")
+    hits = sorted(probe.of_cloud(CLOUDS_115),
+                  key=lambda hit: (hit[0].root.casefold() not in declared, len(hit[0].prefix)))
+    if not hits:
+        known = "、".join(entry.prefix for entry in probe.prefixes)
+        report["problems"].append(
+            f"还没有填 115 目标目录，「推送发现」登记的前缀（{known}）里也没有 115 网盘上的。"
+            "在「推送发现」卡里加上 CloudDrive2 里 115 的挂载根，再点检查；也可以直接填目标目录"
+            if known else
+            "还没有填 115 目标目录，「推送发现」里也没有登记云端路径前缀。在「推送发现」卡里登记 "
+            "CloudDrive2 里 115 的挂载根和它对应的媒体文件夹，再点检查；也可以直接填目标目录")
+        return ""
+    candidate = f"{hits[0][0].prefix}/{SUGGESTED_FOLDER}"
+    found = client.find(candidate)
+    exists = found is not None and found.isDirectory
+    report["suggested_target"] = {"path": candidate, "exists": exists}
+    return candidate if exists else ""
+
+
+def _suggest_pikpak_root(report: dict, probe: _PrefixProbe, hints: Hints) -> None:
+    """PikPak 根目录对应的媒体文件夹：前缀必须就是 PikPak 云盘根，子目录前缀对不上根。"""
+    declared = _roots(hints, "pikpak")
+    if not declared:
+        return
+    for entry, found in probe.of_cloud(CLOUDS_PIKPAK):
+        cloud_path = found.CloudAPI.path if found.CloudAPI.HasField("path") else ""
+        at_root = found.isCloudRoot or (bool(cloud_path) and normalise_prefix(cloud_path) == entry.prefix)
+        if at_root and entry.root.casefold() in declared:
+            report["suggested_pikpak_root"] = declared[entry.root.casefold()]
             return
-        try:
-            folder = client.folder(target)
-        except DownloadError as error:
-            report["problems"].append(error.detail)
-            return
-        report["folder"] = {"path": folder.path, "can_offline": folder.can_offline,
-                            "cloud": folder.cloud_name}
-        try:
-            quota = client.quota(folder)
-        except DownloadError as error:
-            report["problems"].append(error.detail)
-            return
-        report["quota"] = {"total": quota.total, "used": quota.used, "left": quota.left}
+    report["problems"].append(
+        "还没有选 PikPak 根目录对应的媒体文件夹，「推送发现」里也没有 PikPak 云盘根那条前缀可以推。"
+        "在下拉框里直接选，或在「推送发现」卡里登记 PikPak 的挂载根")

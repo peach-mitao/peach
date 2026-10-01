@@ -269,12 +269,25 @@ def save_downloads(request: Request, body: dict = Body(...), _args=Depends(requi
 
 @router.post("/api/configuration/downloads/check")
 def check_downloads(request: Request, body: dict = Body(default={}), _args=Depends(require_auth)):
-    """调 CloudDrive2 的 `GetApiTokenInfo` 等只读接口：离线权限、目标目录、115 剩余配额。"""
+    """调 CloudDrive2 的 `GetApiTokenInfo` 等只读接口：离线权限、目标目录、115 剩余配额，
+    目标目录与 PikPak 根留空时按推送发现推建议值。"""
     local_only(request)
     same_origin(request)
     service, _roots = _downloads(request)
     try:
         return web_downloads.check_clouddrive(service, body)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/downloads/folder")
+def create_download_folder(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    """调 CloudDrive2 的 `CreateFolder` 建 115 目标目录。只在用户点「新建这个目录」时发。"""
+    local_only(request)
+    same_origin(request)
+    service, _roots = _downloads(request)
+    try:
+        return web_downloads.create_clouddrive_folder(service, body)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

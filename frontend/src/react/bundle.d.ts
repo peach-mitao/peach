@@ -141,6 +141,10 @@ export interface DownloadCheckReport {
   root: string;
   folder: { path: string; can_offline: boolean; cloud: string } | null;
   quota: { total: number; used: number; left: number } | null;
+  /** 115 目标目录留空时按推送发现推的目录；`exists` 为假时 CloudDrive2 里还没有它。 */
+  suggested_target: { path: string; exists: boolean } | null;
+  /** PikPak 根目录对应的媒体文件夹留空时按推送发现推的声明根，推不出时为空串。 */
+  suggested_pikpak_root: string;
   problems: string[];
 }
 
