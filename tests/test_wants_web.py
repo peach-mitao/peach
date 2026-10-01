@@ -162,6 +162,7 @@ class FollowEntryTests(WantWebFixture):
         self.assertEqual((want["origin"], want["follow_item_id"], want["follow_provider"]),
                          ("follow", 9, "rule34video"))
         self.assertEqual(self.get(follow="9")["want"]["id"], want["id"])
+        self.assertEqual([row["id"] for row in self.get(follow="abc")["items"]], [want["id"]])
         self.post("/api/follow/status", {"item": 9, "to": "ignored"})
         self.assertIsNone(self.get(follow="9")["want"])
 
