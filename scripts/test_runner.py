@@ -68,7 +68,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
               "test_subtitles.py", "test_transcodes.py"),
     "sync": ("test_sync*.py", "test_platform.py", "test_mount.py", "test_tray.py", "test_log_retention.py",
              "test_mdns.py", "test_netwatch.py", "test_certs.py",
-             "test_review_mirror.py"),
+             "test_review_mirror.py", "test_runtime_prepare.py"),
     "metadata": ("test_scraping_access.py", "test_browser_transport.py", "test_metadata*.py", "test_genre_taxonomy.py",
                  "test_fc2*.py",
                  "test_community_catalog.py",
@@ -103,7 +103,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                 "test_scan.py", "test_record_rehome.py", "test_wants.py", "test_push_discovery.py", "test_media_probe.py", "test_subtitles.py", "test_onboarding.py", "test_configuration_sources.py", "test_folder_picker.py", "test_ledger_backups.py", "test_clear_camera_filename_codes.py",
                 "test_agent_worktree.py", "test_test_evidence.py", "test_dependency_policy.py",
                 "test_version_bump.py", "test_changelog.py", "test_release_due.py",
-                "test_restart_windows_tray.py", "test_deploy_windows_tray.py",
+                "test_restart_windows_tray.py", "test_deploy_windows_tray.py", "test_runtime_prepare.py",
                 "test_buildinfo.py", "test_versioning.py",
                 "test_windows_update.py", "test_release_updates.py", "test_automatic_updates.py", "test_standalone_update.py", "test_certs.py", "test_config.py",
                 "test_fsutil.py", "test_desktop_settings.py", "test_desktop_installer.py",
@@ -165,6 +165,10 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/tray.py": ("sync", "tooling"),
     # 托盘子服务与隧道的 cloudflared 共用这份 Job Object；两边的测试都要跑到。
     "src/peach/process_job.py": ("tooling", "sync"),
+    # 托盘重启的实现由 `test_restart_windows_tray.py` 验，模块名推不出来。
+    "src/peach/windows_restart.py": ("tooling",),
+    # 托盘「重启服务」按路径拉起这个脚本（`--source --force`），托盘测试也要跑到。
+    "scripts/restart_windows_tray.py": ("tooling", "sync"),
     "src/peach/jav_poster_crop.py": ("metadata", "web"),
     # genre 词表按名字只推得出 metadata。复核队列与 API 那两处的用例拿「词表没收的词」
     # 当素材：词表一收那个词，`test_web_review.py`（catalog）与 `test_fastapi_api.py`

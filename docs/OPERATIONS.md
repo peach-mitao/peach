@@ -339,6 +339,13 @@ curl -s --noproxy '*' -o /dev/null -w '%{http_code}\n' https://peach.local/healt
 - 托盘把自己拉起的子服务放进 kill-on-close Job：托盘被 `Stop-Process -Force` 之类强杀时，整棵 `serve` 子树一起退出，不会留下孤儿进程继续占着 80/443 跑旧代码。托盘每轮健康检查发现端口没响应会补拉；看到健康但不归自己的服务只记 warning，不接管。启动与补拉记录在 `<数据根>/logs/tray.log`。
 - `--swap-from <暂存包>` 在旧托盘退出后、新托盘启动前顺手换掉二进制，这是整个换包过程中唯一一个目标文件没有被进程占用的时机。换生产二进制请用 `deploy_windows_tray.py`，不要单独调用它。
 - 找不到打包托盘的窗口时，命令自动改走源码托盘：`find_source_tray_windows()` 按同一窗口类名加「命令行含 `peach.tray`」认出源码托盘，`restart_source_tray()` 照原命令行（含 `--show`／数据根）在托盘退出后重新启动，不换包也不备份。`--source` 显式跳过打包入口。
+- 重启自动准备运行环境（ADR-0091），不用手工补依赖、跑迁移：
+  - **任务闸门**：开工前只读查本机 `task_run` 里还在跑的行。追更任务（`followup_key` 非空）和定时任务重启后会续跑，放行；手动、CLI 等续跑不了的任务在跑时拒绝重启，`--force` 越过。进程已死的行只列出，不拦。
+  - **依赖**：源码部署（有 `uv.lock` 与 `.venv`、能找到 uv）在旧托盘和子服务退净之后、新托盘启动之前跑 `uv sync --locked --all-extras --inexact --no-install-project`，已一致时不动。同步前还有别的进程在用项目 venv（例如 8099 调试 serve）就拒绝重启并报出 PID：Windows 上被加载的 `.pyd` 换不掉。
+  - **迁移**：新托盘在第一次拉起子服务之前，对本机写者的账本跑 `peach migrate upgrade --yes`，`migrate` 自己先留 `ledger.pre-migrate-<时间>.db`。读者、账本不存在、首次设置未完成时不迁移。
+  - **就绪**：子服务起来后托盘再问 `/healthz?ready=1`，账本结构与迁移不一致等未就绪项写进日志和启动通知。
+  - 新托盘把这几步写进 `<数据根>/state/runtime-prepare.json`，命令读回来一起报告。stdout 是一行 JSON，`ok` 为 false 时退出码 1：被闸门拒绝、依赖同步失败、迁移失败或服务未就绪都算。
+- 托盘菜单的「重启服务」：依赖一致时只重启子服务，在子服务停着时迁移；依赖与 `uv.lock` 不一致时分离地拉起 `restart_windows_tray.py --source --force` 整体重启托盘，输出追加在 `<数据根>/logs/tray-restart.out.log`。脚本拒绝或没起来时通知写明原因，退回只重启子服务。
 
 #### 源码环境改字
 

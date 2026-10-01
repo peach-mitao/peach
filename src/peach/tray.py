@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import json
 import logging
 import os
 import re
@@ -18,7 +19,7 @@ import httpx
 import pystray
 from PIL import Image
 
-from . import ledger_backups, log_retention, onboarding, settings_file
+from . import ledger_backups, log_retention, onboarding, runtime_prepare, settings_file
 from .appid import MACOS_LAUNCH_AGENT_LABEL
 from .certs import ensure_certificate
 from .distribution import standalone
@@ -87,6 +88,17 @@ TRAY_SOURCES = (
     "src/peach/settings_file.py",
     "pyproject.toml",
 )
+
+
+#: `/healthz?ready=1` 各项检查给人看的名字（`peach.health.readiness`）。
+READINESS_LABELS = {
+    "configured": "未初始化", "web": "页面文件缺失", "database": "账本打不开",
+    "schema": "账本结构与迁移不一致",
+}
+
+#: 托盘拉起的整托盘重启脚本最多等多久。脚本停旧托盘、同步依赖、起新托盘各有期限，
+#: 本托盘还活着地等过这么久，说明脚本卡在停托盘之前，菜单动作锁要放开。
+TRAY_RESTART_WAIT = 300.0
 
 
 def tray_restart_required(changed_paths: tuple[str, ...]) -> bool:
@@ -357,10 +369,40 @@ class ServiceManager:
                 process.kill()
                 process.wait(timeout=3)
 
-    def restart(self) -> bool:
+    def restart(self, prepare: Callable[[], object] | None = None) -> bool:
+        """停掉自己的子服务，`prepare` 在它们都停着时执行（迁移），再拉起来等就绪。"""
         self.stop_owned()
+        if prepare is not None:
+            prepare()
         self.start_missing()
         return self.wait_until_ready()
+
+    def readiness_problems(self) -> list[str]:
+        """逐个问 `/healthz?ready=1`，返回没就绪的那几条；全就绪返回空列表。
+
+        只有 API 服务报 `ready`：80 口的跳转服务忽略这个参数、只回 `ok`，没有 `ready`
+        字段的回应不算数。`healthy()` 看的是 `ok`，账本结构落后时服务照样回 `ok`，
+        所以这里另问一遍，校验方式与健康检查相同（项目 CA）。
+        """
+        problems: list[str] = []
+        for spec in self.specs:
+            try:
+                response = self._health_get(
+                    f"{spec.health_url}?ready=1", timeout=3.0, verify=spec.verify,
+                    trust_env=False,
+                )
+                payload = response.json()
+            except (httpx.HTTPError, OSError, ValueError, AttributeError) as exc:
+                problems.append(f"{spec.name.upper()} 就绪检查无响应（{exc}）")
+                continue
+            if not isinstance(payload, dict) or "ready" not in payload:
+                continue
+            if payload.get("ready") is not True:
+                checks = payload.get("checks") or {}
+                failed = [READINESS_LABELS.get(key, key) for key, ok in checks.items() if not ok]
+                detail = "、".join(failed) or f"状态码 {response.status_code}"
+                problems.append(f"{spec.name.upper()} 未就绪：{detail}")
+        return problems
 
     @staticmethod
     def _current_ledger_plan() -> SyncPlan:
@@ -492,6 +534,89 @@ def _peach_executable() -> Path:
     if candidate.is_file():
         return candidate
     raise FileNotFoundError(f"{_EXECUTABLE} is missing; reinstall the editable project")
+
+
+def spawn_tray_restart(
+    log_path: Path, *, popen: Callable[..., subprocess.Popen] = subprocess.Popen,
+    root: Path = PROJECT_ROOT,
+) -> subprocess.Popen:
+    """从托盘里分离地拉起 `restart_windows_tray.py --source --force`。
+
+    脚本要比本托盘活得久：它给本托盘发停止消息，等本托盘与子服务退净后同步依赖，再起
+    新托盘。所以不挂进子服务那个 kill-on-close Job。`--force`：点「重启服务」本来就要停
+    子服务，任务闸门在这条路上不拦。输出追加进 `log_path`，脚本没走到停托盘那一步就退出
+    时，托盘从最后一行读出原因。
+    """
+    python = root / ".venv" / _BIN_DIR / ("python.exe" if os.name == "nt" else "python")
+    script = root / "scripts" / "restart_windows_tray.py"
+    for required in (python, script):
+        if not required.is_file():
+            raise FileNotFoundError(f"整托盘重启缺少 {required}")
+    environment = os.environ.copy()
+    environment["PYTHONIOENCODING"] = "utf-8"
+    flags = 0
+    if os.name == "nt":
+        flags = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+                 | subprocess.CREATE_NEW_PROCESS_GROUP)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("ab") as output:
+        return popen(
+            [str(python), "-X", "utf8", str(script), "--source", "--force"],
+            cwd=str(root), stdin=subprocess.DEVNULL, stdout=output,
+            stderr=subprocess.STDOUT, shell=False, env=environment, creationflags=flags,
+        )
+
+
+def last_reported_message(log_path: Path) -> str | None:
+    """重启脚本最后一行输出里的 `message`；不是 JSON 就原样返回那一行。"""
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in reversed(lines):
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            return str(json.loads(text).get("message") or text)
+        except (ValueError, AttributeError):
+            return text[-runtime_prepare.OUTPUT_TAIL:]
+    return None
+
+
+@dataclass(frozen=True)
+class TrayPreparation:
+    """托盘那一侧的运行环境准备（ADR-0091），由 `main()` 装配后交给 `PeachTray`。
+
+    不注入就什么都不做：测试里的托盘不会去碰真实账本，macOS 菜单栏也不走这里。
+    `dependencies` 只读核对（`check()`），`migrations` 在子服务停着时真跑（`apply()`）。
+    """
+
+    dependencies: object
+    migrations: object
+    state_dir: Path
+    restart_log: Path
+    spawn_restart: Callable[[], subprocess.Popen]
+
+
+def tray_preparation(config, manager: "ServiceManager") -> TrayPreparation:
+    database = config.directory("database") / "ledger.db"
+    state = config.directory("state")
+    restart_log = config.directory("logs") / "tray-restart.out.log"
+    shared = config.shared_root / "database" / "ledger.db"
+    return TrayPreparation(
+        dependencies=runtime_prepare.Dependencies(PROJECT_ROOT),
+        migrations=runtime_prepare.Migrations(
+            database, peach=_peach_executable,
+            writer=lambda: runtime_prepare.ledger_writer(
+                replication_enabled=bool(config.replication.enabled) and not standalone(),
+                db=database, shared_db=shared, state_dir=state),
+            environ=manager.child_environment,
+        ),
+        state_dir=state,
+        restart_log=restart_log,
+        spawn_restart=lambda: spawn_tray_restart(restart_log),
+    )
 
 
 def build_macos_service_specs(
@@ -846,10 +971,12 @@ class PeachTray:
         gate: "SetupGate | None" = None,
         silent: bool = False,
         show_browser: bool = False,
+        preparation: TrayPreparation | None = None,
     ) -> None:
         self.manager = manager
         self.silent = silent
         self.show_browser = show_browser
+        self.preparation = preparation
         self.gate = gate or SetupGate(manager, settings_file.active(), waiting=False)
         self.versions = versions or VersionManager()
         self.windows_updates = windows_updates or WindowsUpdateInstaller(
@@ -895,19 +1022,104 @@ class PeachTray:
         # 等待首次设置时打开的是引导服务的表单，不是那个还没有人在监听的 `.local`。
         self.gate.open()
 
+    # -- 运行环境准备（ADR-0091）------------------------------------------
+
+    def _check_dependencies(self) -> "runtime_prepare.Step | None":
+        if self.preparation is None:
+            return None
+        step = self.preparation.dependencies.check()
+        if step.problem:
+            LOGGER.warning("依赖：%s", step.message)
+        return step
+
+    def _migrate(self) -> "runtime_prepare.Step | None":
+        """子服务停着时把账本迁到当前结构。首次设置没走完时还没有正式账本，不迁。"""
+        if self.preparation is None or self.gate.waiting:
+            return None
+        step = self.preparation.migrations.apply()
+        (LOGGER.error if step.failed else LOGGER.info)("迁移：%s", step.message)
+        return step
+
+    def _readiness(self) -> "runtime_prepare.Step | None":
+        if self.preparation is None or self.gate.waiting:
+            return None
+        problems = self.manager.readiness_problems()
+        if problems:
+            LOGGER.error("就绪检查：%s", "；".join(problems))
+            return runtime_prepare.Step("readiness", "failed", "；".join(problems))
+        return runtime_prepare.Step("readiness", "current", "服务已就绪")
+
+    def _record(self, steps: list) -> list[str]:
+        """落一份准备记录，返回要告诉人的那几条。"""
+        steps = [step for step in steps if step is not None]
+        if self.preparation is not None:
+            try:
+                runtime_prepare.record(self.preparation.state_dir, steps)
+            except OSError:
+                LOGGER.warning("运行环境准备记录写不进去", exc_info=True)
+        return [step.message + ("；点托盘「重启服务」会整体重启托盘并同步依赖"
+                                if step.state == "stale" else "")
+                for step in steps if step.problem]
+
+    def _restart_whole_tray(self, tray_icon, reason) -> bool:
+        """依赖要换就整托盘重启：本进程加载着 venv 里的 `.pyd`，活着的托盘里同步不了。
+
+        返回 True 表示交给了重启脚本（它会停掉本托盘，或者迟迟没有结果）；False 表示
+        脚本没起来或拒绝了这次重启，调用方照常只重启子服务。
+        """
+        tray_icon.notify(f"{reason.message}，正在整体重启托盘以同步依赖…", "Peach")
+        try:
+            process = self.preparation.spawn_restart()
+        except OSError as exc:
+            LOGGER.error("整托盘重启没能启动：%s", exc)
+            tray_icon.notify(f"整体重启托盘没能启动（{exc}），只重启子服务。", "Peach")
+            return False
+        try:
+            process.wait(timeout=TRAY_RESTART_WAIT)
+        except subprocess.TimeoutExpired:
+            tray_icon.notify("整体重启托盘还没有结果，详情见 tray-restart.out.log。", "Peach")
+            return True
+        # 走到这里说明脚本已经退出、本托盘却还活着：重启被拒，或在停托盘之前就失败了。
+        message = (last_reported_message(self.preparation.restart_log)
+                   or f"退出码 {process.returncode}")
+        LOGGER.error("整托盘重启没有完成：%s", message)
+        tray_icon.notify(f"整体重启托盘没有完成：{message}。只重启子服务。", "Peach")
+        return False
+
+    def _restart_services(self, tray_icon) -> tuple[bool | None, list[str]]:
+        """停子服务、迁移、再拉起并检查就绪。返回 (是否恢复, 要告诉人的问题)。
+
+        依赖与锁文件不一致时先交给整托盘重启，交出去了就返回 (None, [])。
+        """
+        dependencies = self._check_dependencies()
+        if (dependencies is not None and dependencies.state == "stale"
+                and self._restart_whole_tray(tray_icon, dependencies)):
+            return None, []
+        migrated: list = []
+        prepare = (lambda: migrated.append(self._migrate())) if self.preparation else None
+        ready = self.manager.restart(prepare=prepare)
+        readiness = [self._readiness()] if ready else []
+        return ready, self._record([dependencies, *migrated, *readiness])
+
     def restart(self, icon=None, _item=None) -> None:
         if not self._action_lock.acquire(blocking=False):
             return
+        tray_icon = icon or self.icon
 
         def work() -> None:
             try:
-                ready = self.manager.restart()
+                ready, problems = self._restart_services(tray_icon)
+                if ready is None:
+                    return
                 if self._stop_event.is_set():
                     self.manager.stop_owned()
                     return
-                (icon or self.icon).update_menu()
+                tray_icon.update_menu()
                 if not ready:
-                    (icon or self.icon).notify("服务未能在 20 秒内恢复，请查看日志。", "Peach")
+                    tray_icon.notify("；".join(["服务未能在 20 秒内恢复，请查看日志", *problems])
+                                     + "。", "Peach")
+                elif problems:
+                    tray_icon.notify("服务已重启，但" + "；".join(problems), "Peach")
             finally:
                 self._action_lock.release()
 
@@ -1023,10 +1235,14 @@ class PeachTray:
                     tray_icon.stop()
                     return
 
-                ready = self.manager.restart()
+                ready, problems = self._restart_services(tray_icon)
+                if ready is None:
+                    return
                 if ready:
                     self.windows_updates.clear_pending()
                 suffix = "服务已重启。" if ready else "服务未能恢复，请查看日志。"
+                if problems:
+                    suffix += "但" + "；".join(problems) + "。"
                 tray_icon.update_menu()
                 tray_icon.notify(f"{prepared.message}{suffix}", "Peach 开发进度")
             finally:
@@ -1108,6 +1324,9 @@ class PeachTray:
             icon.notify(self._startup_warning, "Peach")
 
     def run(self) -> None:
+        # 迁移排在第一次拉起子服务之前：服务查到还没建的表就是 500。依赖只读核对，
+        # 托盘自己已经加载着这个 venv，换不了包。
+        startup = [self._check_dependencies(), self._migrate()]
         self.manager.start_missing()
         # 上一次更新留下的备份与暂存构建在这里清退：替换助手结束时托盘已经不在，
         # 只有下一次启动能确认「新托盘已经活下来、旧备份可以少留一份」。
@@ -1128,8 +1347,14 @@ class PeachTray:
                 self._startup_warning = "首次设置服务没能启动，请查看日志。"
         elif not self.manager.wait_until_ready():
             self._startup_warning = "Peach 只启动了部分服务，请查看托盘状态和日志。"
-        elif self.show_browser:
-            self.gate.open()
+        else:
+            startup.append(self._readiness())
+            if self.show_browser:
+                self.gate.open()
+        problems = self._record(startup)
+        if problems:
+            self._startup_warning = "；".join(
+                part for part in (self._startup_warning, *problems) if part)
         threading.Thread(target=self._monitor, name="PeachHealth", daemon=True).start()
         logging.getLogger(__name__).info("托盘启动完成：%s", self.manager.status())
         try:
@@ -1442,7 +1667,8 @@ def main(argv: list[str] | None = None) -> int:
             manager.start_missing()
             run_macos_menu_bar(manager, gate, silent=args.silent, show_browser=args.show)
         else:
-            PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show).run()
+            PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show,
+                      preparation=tray_preparation(config, manager)).run()
     except Exception as exc:
         show_message("Peach 启动失败", str(exc), error=True)
         return 1
