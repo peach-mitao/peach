@@ -38,7 +38,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 6. **口味证据持续刷新**：ledger 已实时记录搜索、播放、高潮、喜欢/理由、不合口味和稍后看；浏览器历史现可用 SQLite 一致性副本增量进入私有源库，并生成不含 URL/标题的 creator/tag candidate 与聚合报告。旧 2026-08-13 原始包已确认不在 Windows 外置盘；仍需在 Mac 开启 iCloud Safari、完成首次导入，并把两端每周刷新装成系统计划任务。AI 结论不得直接改真相字段。
 7. **扫描与采集任务的参数标定**：无进展预警的 120 秒与单项动作预算（资料 90 秒、封面 240 秒）目前按最坏请求时长取的保守值；等一轮真实任务记录各阶段实测耗时后标定，同时确定完整问题文件的保留周期。
 
-## 尚未实现（67 项）
+## 尚未实现（65 项）
 
 1. AI Provider 的真实调用、能力协商、Credential Manager 凭据和候选审核 UI。
 2. 剩余单一创作者风格板复核、无标签内容补标。
@@ -95,19 +95,10 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 35. **单个拉丁字母的搜索补全要等近 3 秒**：输入 `a` 这类单字母约 2.8 秒，其他输入在真实账本上 190–250ms。2026-09-26 在账本只读副本上用 cProfile 量过，耗时集中在 `web_entity._suggest_agency_rows` 的逐行计数。优化后分组、排序与 `total` 语义不变，补临时库上的排序与计数测试。
 36. **女优所属与官网链接主机对不上的复核清单**：minnano-av 的所属会过时，官网链接却还指着旧事务所（2026-09-26 查 Cruse Group 时发现神宫寺已转 ARM）。只能出人工清单、不能自动判错：prestige-av.com 是片商给专属女优开的页，lightpro.jp 下挂着几个子品牌，主机与所属不一致很常见。清单列女优、所属、链接主机与出演期间，进 `peach-data/review/`。
 
-第 40–70 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
+第 42–70 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
 
-40. **「想要」清单**：按番号或关注条目登记「这部我想要」，覆盖 Feed 番号壳、关注条目和库外番号；它是第 41–43 条下载与第 1 条「寻找更好版本」来源发现的共同前置。
-    - SakuraMedia：「关注女优」只是持续知道她的作品，「想要」才表达要这一部；想要与屏蔽互斥。新片（发售 90 天内）持续查资源，老片查满 3 次无果标「暂时放弃」，可手动重置（`src/service/catalog/movie_subscription_search_state_service.py`）。
-    - OpenAver 0.15.8–0.15.10：加入时把封面存一份本地；作品入库后扫描自动对账、移出清单并通知（`core/wishlist_reconcile.py`）；满 14 天、30 天各提示一次，未发售的不催。
-    - Javdex `docs/PLAYLIST_AGENT_IMPORT_DESIGN.md`：导入外部网页清单时番号唯一命中就复用，多条命中再读详情页消歧，消不掉交人选。
-41. **云下载：磁力或链接直接提交到 115 与 PikPak 离线下载**：不占本机带宽与磁盘，完成后文件出现在已挂载的网盘目录，由推送发现（CloudDrive2 文件变更通知 → `POST /api/inbox/clouddrive` → `scan.ingest_path`）接手入库，不拉回本地，轮询只兜底。不进本机流量与磁盘预算；成本是 115 的离线配额与失败率。
-    - 通道只走 CloudDrive2 gRPC（官方 proto `https://www.clouddrive2.com/api/clouddrive.proto` 1.1.0）：`GetApiTokenInfo` 校验令牌的离线权限、`FindFileByPath` 确认目标目录 `canOfflineDownload`、`GetOfflineQuotaInfo` 提交前查余量、`AddOfflineFiles` 提交、`ListOfflineFilesByPath` 查状态、`RemoveOfflineFiles` 取消。复用 CloudDrive2 已有的 115open 授权，Peach 不另申请 115 应用：一个应用最多授权两次，第三次会顶掉第一次。CloudDrive2 的 API 令牌由用户在设置页填一次，存本机 `follow_secrets.CredentialStore`（`peach-data/secrets/`），不列为可同步字段，不进 URL、日志与 ledger；用户 2026-10-01 已同意这样存。参照 JavBoss `internal/clouddrive/client.go` 与 `internal/service/download.go`（提交后 10 秒查一次，按 infohash 对账，任务列表找不到就看目录里有没有文件）。
-    - 配额与失败（用户 2026-10-01 接受按条扣配额与拦截失败率）：每个任务扣一条 115 离线配额，年费会员每月 1500 条、月费 200 条，月底清零，非会员需另买（`https://115.com/115115/T416290.html`）；「重新下载」再扣一条。115 自 2018 年起对违规内容的离线任务自动拦截（`50038`），这类失败不重试、infohash 拉黑。冷门资源可能拖几天，等待上限可配。
-    - PikPak 直连：CloudDrive2 v0.7.13 起移除了 PikPak 离线，只剩 WebDAV 挂载，所以 Peach 直接调 PikPak 的非官方 API，先查 PyPI `PikPakAPI` 能否复用（许可证与维护状态未核对）。账号密码只用来换 token，refresh token 存本机 `CredentialStore`，密码是否一并保存以便过期后自动重登由用户选；登录触发人机验证时给出验证页让用户在浏览器里完成，Peach 不自动过验证。接口是非官方的，随时可能失效，失效时报错并退回「复制磁力」。免费与会员的离线条数上限未取得，接入前查清。完成的文件同样落在 `A:` 挂载目录，由推送发现接手。上线时 README 常见问题「不保存网盘账号」一句要同批改。
-    - 任务每次提交留一条永久记录（SakuraMedia `DownloadSubmissionRecord`），幂等键是小写 40 位 infohash，同一 infohash 已有任务就接管、不重复提交。入口三处：「想要」清单、作品页与关注条目、用户粘贴的磁力。浏览器侧可参照 JavBoss `browser-extension/content/magnet-download.js` 与用户脚本「115+」（Greasy Fork 495474）在网页的磁力旁加「送进 Peach」按钮。
 42. **本地下载：走用户自己的 BT 客户端与直链**：BT 通过用户本机下载器的 Web API 提交，Peach 不实现 BT 协议：qBittorrent 用 `/api/v2/auth/login`、`torrents/add`（`urls`、`savepath`、`category`／`tags`）、`torrents/info?hashes=`、`torrents/delete`；Transmission 用 `torrent-add`、`torrent-get`、`torrent-remove`，首个请求回 409 后带 `X-Transmission-Session-Id` 重发。保存路径必须落在某个本地来源根之内，watchdog 才看得到。关注来源附件（FANBOX、Patreon、Gofile 等）的直链由 Peach 自己下载。写新文件、不碰已有文件；占本机流量与磁盘，复用 `jobs.py` 的计费来源与磁盘闸门，预算见「待执行的操作」第 12 条。长下载用第 57 条的续传与停滞看门狗。
-    - 第 41、42 条共用一个状态机：候选 → 已选定 → 已提交 → 远端进行中 → 远端完成 → 已落地 → 已入库，旁支失败、已取消、停滞。失败分九类：配置与认证、配额耗尽、资源被拒、链接无效、无源或停滞（qB `metaDL`／`stalledDL`）、重复、落地未见（定向触发 `ingest_path`）、内容不符、瞬时网络；只有最后一类自动重试。错误码与 `retryable` 标志参照 SakuraMedia `src/plugins/provider_protocol.py`。下载任务表是运行状态、不是真相字段，建表仍走迁移。
+    - 复用云下载的任务表、状态机与九类失败分类（`src/peach/downloads.py`，ADR-0089），只有瞬时网络自动重试；qB `metaDL`／`stalledDL` 归「无源或停滞」，落地未见时定向触发 `ingest_path`。
 43. **资源搜索与候选筛选**：Torznab 是协议不是平台，基于 Newznab 扩展（`https://torznab.github.io/spec-1.3-draft/`）；Jackett、Prowlarr 是把它翻译成各站请求的代理，Sonarr／Radarr 是客户端。Peach 作客户端接用户自己配置的 Prowlarr／Jackett，不内置站点定义：先 `t=caps`，再 `t=search&q=<番号>&cat=6000`，解析 `item` 的 `title`、`size`、`pubDate` 与 `torznab:attr` 的 `seeders`、`peers`、`magneturl`、`infohash`；磁力可能在 `magneturl`、`link` 或 `guid` 任一处，按内容判断（SakuraMedia `src/service/transfers/downloads/clients/torznab.py`，FC2 番号只搜纯数字，部分索引器失败不算整体失败）。
     - Jackett 与 Prowlarr 都内置 `sukebeinyaasi`、`onejav`、`freejavtorrent`（公开）与 `clearjav-api`（私有，只收官方片商作品）的定义。sukebei 没有清晰度分类，Jackett 把它整站映射成 6000，4K 只能在 `q` 里加关键词，再从标题解析；索引器名单里没有专收 4K 的公开源。
     - 第二路是作品页磁力：JavBus 从详情页脚本取 `gid`、`uc` 后请求 `ajax/uncledatoolsbyajax.php`（带 Referer），每行有名称、大小、日期与「高清」「字幕」标记（garage `garage_jav/javbus.go`、Atlas `services/jav-utils.ts` 的 `parseMagnets`）；JavDB 是 `#magnets-content` 下的列表，标签里有 `4K`、`字幕`。Atlas 只真正解析 JavBus 一家，其余「磁力搜索」是首页跳转链接，不做聚合。
@@ -132,7 +123,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 61. **r18.dev dump 本地镜像**（需新 ADR）：Javinizer-Go `internal/r18devdump/` 与 AMMDS 都导入 r18.dev dump 建本地库，有码链首站零请求，在线结果反过来校验它。dump 大小未取得（`https://r18.dev/dumps/latest` 回 307），先定磁盘预算与更新频率。
 62. **智能列表与只读查询**：保存一组组合筛选，结果随馆藏自动更新；另给高级入口跑只读 SQL（只读连接，写不进去）。JAV_MovieManager 直接执行用户 SQL，读写不分，这一点不照搬。
 63. **可选遥测，默认关闭**：开启后只上报版本号与平台，上报内容在设置页逐字列出、可随时关。SakuraMedia 默认开启并上报实例 ID、插件、CPU、内存、媒体数与总字节（`src/service/system/telemetry_service.py`），javm 写死上报地址，两者都不照搬。默认关闭时看 GitHub Releases 下载计数。
-64. **来源开关旁写明来源性质**：设置页每个来源的开关旁标一类：用户自己的账号、公开页面、归档站（Kemono、Coomer 转载付费内容）、伪装客户端（第 29 条 JavDB App 通道）、用户自配索引器（第 43 条）。默认开关保持各来源现状，用户一眼看得出每一类拿的是什么。和第 29、41–43 条同批做。
+64. **来源开关旁写明来源性质**：设置页每个来源的开关旁标一类：用户自己的账号、公开页面、归档站（Kemono、Coomer 转载付费内容）、伪装客户端（第 29 条 JavDB App 通道）、用户自配索引器（第 43 条）。默认开关保持各来源现状，用户一眼看得出每一类拿的是什么。和第 29、42、43 条同批做。
 65. **javinfo.dev 作可选来源**：用户自带 API key 才启用。`/movie` 每千次 0.80 美元，只收成功响应；前五家来自自建目录库、毫秒级（`docs/providers`）；FC2 与无码只经 missav、sextb 两个流媒体源，没有 FC2 专门来源。接入前用新账号送的 0.02 美元（约 25 次 `/movie`）对一组已复核番号跑对照，比字段准确率与速度。归档的 legacy 仓库没有许可证，只借思路不借代码，且 r18 旧 API 已失效，没有 Peach 缺的解析器。
 66. **小文件打包**（低）：SakuraMedia v0.9.0 把影片图片与时间轴缩略图打进 `assets.zip`、`thumbnails.zip`（`ZIP_STORED`，`src/common/image_store.py` 包条目优先、单文件兜底），为的是文件数与备份速度，不影响扫描与采集速度。`peach-data` 下 `sources/` 约 9 万、`generated/` 约 6 万个文件；收益在 Syncthing 图片同步与备份。要求能解包回原样，和第 32 条一起设计。
 67. **站点互联**（观察）：AMMDS v1.6.80 让好友站点当只读数据源。单人自用时只对自己的几台机器有意义，Windows 写、Mac 读的复制已覆盖；出现第二个使用者再议。
@@ -140,7 +131,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 69. **PWA**：加 manifest 与 Service Worker，手机、平板可安装到主屏、全屏播放。
 70. **原生客户端**（远期）：SakuraMedia 用 Flutter 出 Windows、macOS、iOS、Android 客户端。维护成本高，PWA 不够用时再议。
 
-合计：**74 项开放需求**，其中 7 项已有骨架，67 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
+合计：**72 项开放需求**，其中 7 项已有骨架，65 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
 
 ## 待执行的操作（44 项）
 
