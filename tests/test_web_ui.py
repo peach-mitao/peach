@@ -1613,7 +1613,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("hasImage:!!(ref&&ref.has_image)")
         # 索引页（`/api/index`）：实体图看 has_image、代表作头像看 has_avatar，kind
         # 跟着这一页的身份走——创作者的图写成 `performer-<id>.img` 是读不到的。
-        self.assertPageContains("ref?{id:ref,has_image:x.has_image}:null,")
+        self.assertPageContains("ref?{id:ref,has_image:x.has_image,image_version:x.image_version}:null,")
         self.assertPageContains(
             "x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',")
         # 口味榜（`/api/taste`）归 React 档，判据仍是同一对：引用给 `avatarInner()`，
@@ -4617,7 +4617,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 圆框越小越需要取景：一张 3762×2535 的封面塞进 44px 的圆里，几何居中给出的是
         # 封面正中那块版式，脸在不在里面全看运气。按人脸框放大由 e2e 设计用例量。
         self.assertPageContains(
-            "{id:x.id,hasImage:x.has_image,rep:x.has_avatar?x.rep:null,")
+            "{id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,")
 
     def test_a_company_cell_is_square_because_it_holds_a_mark_not_a_face(self):
         """3:4 是给脸留的形状，方标铺进去左右各被 `object-fit:cover` 裁掉四分之一。

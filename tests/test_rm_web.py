@@ -96,7 +96,9 @@ class WebDataTests(unittest.TestCase):
         (self.avatars / f"{entity_image_key('creator', 12)}.img").write_bytes(b"image")
         row = rm_web.q_items(self.contract, {"limit": "10"})["items"][0]
         ref = {"id": 12, "name": "Canonical Creator", "has_image": True,
+               "image_version": self.contract.entity_image_version("creator", 12),
                "avatar_focus": None}
+        self.assertTrue(ref["image_version"])
         self.assertEqual(row["creator_entity"], ref)
         self.assertEqual(row["creator"], ref["name"])
         self.assertEqual(rm_web.q_item(self.contract, row["id"])["entity_refs"]["creator"][0], ref)

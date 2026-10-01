@@ -440,9 +440,9 @@ def entity_ref(contract: WebContract, kind: str, entity_id, name: str) -> dict:
     不去问盘。
     """
     has_image = contract.has_entity_image(kind, entity_id)
-    ref = {"id": entity_id, "name": name, "has_image": has_image,
-           "image_version": contract.entity_image_version(kind, entity_id)}
+    ref = {"id": entity_id, "name": name, "has_image": has_image}
     if has_image:
+        ref["image_version"] = contract.entity_image_version(kind, entity_id)
         ref["avatar_focus"] = contract.avatar_focus(kind, entity_id)
     return ref
 
