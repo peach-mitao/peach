@@ -46,6 +46,7 @@ import { StatsPage } from './stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from './taste/taste';
 import { TastePage } from './taste/taste-page';
 
+export { configureImmerse } from './immerse/immerse-island';
 export { configureSettingsPanel } from './settings-panel/settings-panel';
 export { configureStage } from './stage/stage';
 export { mountToaster, showToast } from './toaster';

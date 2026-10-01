@@ -268,26 +268,6 @@
   <button data-follow-batch="save" hidden><svg viewBox="0 0 24 24"><use href="#i-bookmark-plus"/></svg>保存到账本</button><button data-follow-batch="seen" hidden><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>标记已看</button><button data-follow-batch="ignored" hidden><svg viewBox="0 0 24 24"><use href="#i-eye-off"/></svg>忽略</button>
   <button id="batchClear"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg>取消</button></div>
 
-<div class="tok" id="tok" hidden>
-  <div class="tokstage">
-    <div class="toktrack" id="tokTrack"></div>
-    <div class="tokbtns">
-      <div class="tokaction"><button class="media-circle" id="tokDislike" title="标为不喜欢" aria-label="标为不喜欢"><svg viewBox="0 0 24 24"><use href="#i-thumbs-down"/></svg></button><span class="toklabel">不喜欢</span></div>
-      <div class="tokaction"><button class="media-circle" id="tokSeen" title="标为看过" aria-label="标为看过"><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg></button><span class="toklabel" id="tokSeenLabel">看过</span></div>
-      <div class="tokaction"><button class="media-circle" id="tokO" title="记一次高潮" aria-label="记一次高潮"><svg viewBox="0 0 24 24"><use href="#i-heart"/></svg></button><span class="toklabel">高潮 <b id="tokOn">0</b></span></div>
-    </div>
-  </div>
-  <div class="tokloading" id="tokLoader" role="status" aria-live="polite" hidden><span id="tokLoadingText">加载中…</span></div>
-  <div class="tokhint mono">滚轮 / ↑↓ 切换 · Esc 退出 · 横竖屏混流</div>
-  <button class="tokclose" id="tokClose" title="关闭" aria-label="关闭"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
-  <div class="tokbar" id="tokBar"><i id="tokProg"></i></div>
-  <div class="tokui">
-    <div class="tokauthor"><button type="button" class="tokavatar" id="tokAvatar" aria-label="打开资料"></button><a href="#" id="tokWho"></a><span id="tokMeta"></span></div>
-    <button type="button" class="toktitle" id="tokTitle"></button>
-  </div>
-</div>
-
-
 <div id="toasts"></div>
 
 <!-- video.js（676KB）首屏用不上，与 Swiper 同一口径：由 app.js 的 ensureVideojs()
