@@ -1,9 +1,11 @@
 # OpenAver 相似探索算法证据
 
 - 来源：<https://github.com/slive777/OpenAver>
-- 固定 revision：`dca4c0c368ea0c2db9cf15e48977de2fc75e7077`
-- 取得日期：2026-08-31
+- 固定 revision：`8cc17e50453d9f69a81f5fee1a072df80f7aab73`（v0.16.13，2026-10-01 核对）
+- 首次取证：2026-08-31，revision `dca4c0c368ea0c2db9cf15e48977de2fc75e7077`（0.15.6）
 - 许可证：MIT
+
+`core/similar/` 与 `core/cf_transport.py` 在这两个 revision 之间没有提交，下文结论对两者都成立；v0.16.13 的 README 仍写规则式相似排序（tag IDF 加系列、片商、女优）。
 
 ## 已取得
 

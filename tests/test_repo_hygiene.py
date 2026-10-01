@@ -303,7 +303,8 @@ _GITHUB_OWNER = re.compile(r"github\.com[:/]+([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z
 COORDINATE_EXEMPT_FILES = frozenset({"tests/test_repo_hygiene.py"})
 
 #: 第三方代码与构建产物的措辞不由本仓库决定，压缩后的它们也没有可读的行。
-COORDINATE_EXEMPT_PREFIXES = ("web/vendor/", "web/dist/")
+#: 上游 README 快照逐字节锁在 `docs/reference-sources.json` 的 sha256 上，示例地址属于上游。
+COORDINATE_EXEMPT_PREFIXES = ("web/vendor/", "web/dist/", "docs/reference-snapshots/upstream/")
 
 
 def _live_strings(path: pathlib.Path) -> list[tuple[int, str]]:

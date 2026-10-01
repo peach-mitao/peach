@@ -237,12 +237,12 @@
       "name": "OpenAver 相似探索算法证据",
       "url": "https://github.com/slive777/OpenAver",
       "snapshot": "docs/reference-snapshots/openaver-related-ranking.md",
-      "checked_on": "2026-08-31",
-      "sha256": "5db4200a5d3c19b7bb105376e6f8fab760302940f0059b8d00d50bb2dbdf2690",
+      "checked_on": "2026-10-01",
+      "sha256": "3495931929fc2d3e74984a1d79cdab558d916ca92cea4e1e5232aa072e6d42b9",
       "git": {
         "repository": "https://github.com/slive777/OpenAver.git",
         "ref": "refs/heads/main",
-        "revision": "dca4c0c368ea0c2db9cf15e48977de2fc75e7077"
+        "revision": "8cc17e50453d9f69a81f5fee1a072df80f7aab73"
       },
       "role": "相关推荐使用 Tag IDF 与结构化共同点的固定算法参考；Peach 独立增加 MMR、多样性和稳定破同分。",
       "consumers": [
@@ -425,12 +425,12 @@
       "name": "OpenAver 说明",
       "url": "https://raw.githubusercontent.com/slive777/OpenAver/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-openaver.md",
-      "checked_on": "2026-09-26",
-      "sha256": "b3ed679a14afa9483ac83c7aa8d907c7e1bf588a7439c445dac810f8952f2cfe",
+      "checked_on": "2026-10-01",
+      "sha256": "80e5994003e81daeb4f86634f50fadcbebab0a436c75e2b827e402dcadec6efc",
       "git": {
         "repository": "https://github.com/slive777/OpenAver.git",
         "ref": "refs/heads/main",
-        "revision": "7ebc659c3806a870e1edfa26beedfecfd0508580"
+        "revision": "8cc17e50453d9f69a81f5fee1a072df80f7aab73"
       },
       "role": "同类本地影片管理器的 README 信息结构：页头几条粗体承诺、规格速览表、截图表与常见问题。Peach 只借结构，不复制文案、截图、功能承诺与免责声明条款。",
       "consumers": [
@@ -529,6 +529,340 @@
         "frontend/src/react/stats/",
         "frontend/src/react/taste/charts.tsx",
         "tests/test_frontend_build.py"
+      ]
+    },
+    {
+      "id": "readme-sakuramediabe",
+      "name": "SakuraMedia 后端说明",
+      "url": "https://raw.githubusercontent.com/tinypinglite/sakuramediabe/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-sakuramediabe.md",
+      "checked_on": "2026-10-01",
+      "sha256": "28a7ae73a1b718e68a8e61f367dc27ba226f7c14a8724a9468a08ff5c56655cc",
+      "git": {
+        "repository": "https://github.com/tinypinglite/sakuramediabe.git",
+        "ref": "refs/heads/main",
+        "revision": "9c6a31915c9a364c9d6717798575daf9445916bd"
+      },
+      "role": "SakuraMedia 后端（GPL-3.0）只作行为与算法边界证据，不引入代码：字幕同目录纯番号配对、封套左右分割点的对称判据（Peach 不采用对称判据，见 jav_poster_crop）、「想要」与关注分开、记录比文件重要、被并实体留指针，以及待办第 27、28、43、47、51、63、66 条引用的推荐权重、Torznab 客户端、自动下载判据、时刻合集、遥测与图片打包。",
+      "consumers": [
+        "docs/REUSE.md",
+        "docs/PRODUCT_BACKLOG.md",
+        "src/peach/jav_poster_crop.py",
+        "src/peach/wants.py"
+      ]
+    },
+    {
+      "id": "readme-sakuramedia",
+      "name": "SakuraMedia 客户端说明",
+      "url": "https://raw.githubusercontent.com/tinypinglite/sakuramedia/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-sakuramedia.md",
+      "checked_on": "2026-10-01",
+      "sha256": "0b6732ee5d468e5f2ed658f606375a983f89c4ab8fa1048c78cae04aa7664159",
+      "git": {
+        "repository": "https://github.com/tinypinglite/sakuramedia.git",
+        "ref": "refs/heads/main",
+        "revision": "a10fcef89b247ce66dd2fe5e3612dcab6ab92519"
+      },
+      "role": "SakuraMedia 的 Flutter 客户端只作行为证据：诊断提示的「原因、修法、跳转」三元组（待办第 26 条）、先看画面再选片（第 49 条）与多端原生客户端（第 70 条）。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-neoavdc",
+      "name": "NeoAVDC 说明",
+      "url": "https://raw.githubusercontent.com/haoo999/NeoAVDC/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-neoavdc.md",
+      "checked_on": "2026-10-01",
+      "sha256": "eb3239931d39a26f81ba24f8a2289c9d92b9c0d1a83454e38626fe87025f5337",
+      "git": {
+        "repository": "https://github.com/haoo999/NeoAVDC.git",
+        "ref": "refs/heads/main",
+        "revision": "651048c70d6586d18196275f53062c495be7c5f0"
+      },
+      "role": "NeoAVDC（MIT）的番号解析、字幕扩展名、HTTP 正文解码与封套折痕位置只作参照；Peach 的番号规则、字幕配对与正封取景各有自己的判据。待办第 25 条（NFO 与目录收纳）、第 59 条（番号清洗语料）引用它。",
+      "consumers": [
+        "docs/REUSE.md",
+        "docs/PRODUCT_BACKLOG.md",
+        "src/peach/catalog_rules.py",
+        "src/peach/http.py",
+        "src/peach/jav_poster_crop.py"
+      ]
+    },
+    {
+      "id": "readme-javboss",
+      "name": "JavBoss 说明",
+      "url": "https://raw.githubusercontent.com/Solr159/JavBoss/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javboss.md",
+      "checked_on": "2026-10-01",
+      "sha256": "80ec2d2adb6b9cb395c7d1b7a0d611b4c9d172ba25427f6468d0664c59449781",
+      "git": {
+        "repository": "https://github.com/Solr159/JavBoss.git",
+        "ref": "refs/heads/main",
+        "revision": "e45775481eb8d74ae74acf7f093a2a954b2eed88"
+      },
+      "role": "JavBoss（GPL-3.0）只作流程证据：CloudDrive2 gRPC 离线下载的提交、轮询与 infohash 对账（ADR-0089），NFO 里 `javboss` 类型的番号字段，以及待办第 58 条的来源缺陷台账。Peach 不复制代码，只提交到已挂载的网盘目录、不拉回本地。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md",
+        "src/peach/downloads.py",
+        "src/peach/downloads_clouddrive.py",
+        "src/peach/library_nfo.py"
+      ]
+    },
+    {
+      "id": "readme-javdex",
+      "name": "Javdex 说明",
+      "url": "https://raw.githubusercontent.com/JavdexLabs/Javdex/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javdex.md",
+      "checked_on": "2026-10-01",
+      "sha256": "13e58bf88c32f1400a72e1aa7dc01788fb078ba81dd0119fa7f24883502752ac",
+      "git": {
+        "repository": "https://github.com/JavdexLabs/Javdex.git",
+        "ref": "refs/heads/main",
+        "revision": "004dc15d303dde90eb2829ca01d4f092b9f0ed2d"
+      },
+      "role": "Javdex（MIT）只作产品行为证据：局域网六位配对码、隐私模式（待办第 52 条）、外部清单导入的消歧规则与四种 NFO 兼容样例。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javm",
+      "name": "javm 说明",
+      "url": "https://raw.githubusercontent.com/ddmoyu/javm/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javm.md",
+      "checked_on": "2026-10-01",
+      "sha256": "8cf83e21fb47410dee9906b876a7856723c2157063573f8c0f77c0960e9e5b84",
+      "git": {
+        "repository": "https://github.com/ddmoyu/javm.git",
+        "ref": "refs/heads/main",
+        "revision": "dd0e6b62b263258b6e78106c72017b3b470b4097"
+      },
+      "role": "javm（MIT）只作行为证据：库健康计数（待办第 26 条）、字段级跨源融合与广告片识别。它写死的遥测地址与流媒体截流不照搬（第 63 条）。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-mdcz",
+      "name": "mdcz 说明",
+      "url": "https://raw.githubusercontent.com/ShotHeadman/mdcz/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-mdcz.md",
+      "checked_on": "2026-10-01",
+      "sha256": "74da8d55b72b4bbe9a73fe996af91d1ae418be2cdbf2931595340964df3ff2b9",
+      "git": {
+        "repository": "https://github.com/ShotHeadman/mdcz.git",
+        "ref": "refs/heads/main",
+        "revision": "fde3d2802bc05787375a72f154bf57c2c396cf88"
+      },
+      "role": "mdcz（GPL-3.0，可并入 AGPL）的 DMM 失败分类、来源测试录制回放、无码官方站解析与字段聚合策略，对应待办第 44、45、54、55 条。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javinizer-go",
+      "name": "Javinizer-Go 说明",
+      "url": "https://raw.githubusercontent.com/javinizer/javinizer-go/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javinizer-go.md",
+      "checked_on": "2026-10-01",
+      "sha256": "66359b9357354938625752b233b2222cfb0b4f4cddfc5bd9c94c47715c334de0",
+      "git": {
+        "repository": "https://github.com/javinizer/javinizer-go.git",
+        "ref": "refs/heads/main",
+        "revision": "47ebab11d113e3d536f6ef6c744a4926da6cf29e"
+      },
+      "role": "Javinizer-Go（MIT）最新版：DMM cid 前缀表、女优身份冲突四动作、无码官方站、头像裁剪记源图指纹、续传与停滞看门狗、r18.dev dump 本地镜像，对应待办第 44、50、54、56、57、61 条。历史快照与封面层引用的旧 revision 见 docs/REUSE.md，运行时调用路径已关（ADR-0044）。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md",
+        "docs/REUSE.md"
+      ]
+    },
+    {
+      "id": "readme-ammds-doc",
+      "name": "AMMDS 文档仓说明",
+      "url": "https://raw.githubusercontent.com/QYG2297248353/AMMDS-DOC/master/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-ammds-doc.md",
+      "checked_on": "2026-10-01",
+      "sha256": "b2f280b7370b69b7dfdb7c48a98b7bacd6a31ba3f9e3123790d670e4282083d0",
+      "git": {
+        "repository": "https://github.com/QYG2297248353/AMMDS-DOC.git",
+        "ref": "refs/heads/master",
+        "revision": "177ccfceecd2902114a1b18a5818a09a19fe2f86"
+      },
+      "role": "AMMDS 的 API 文档与版本说明只作行为证据：独立 API key 与统一信封（待办第 27 条）、番号规则覆盖（第 44 条）、r18.dev dump 导入（第 61 条）、站点互联（第 67 条）与漫画库（第 68 条）。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-ammds-docker",
+      "name": "AMMDS 部署仓说明",
+      "url": "https://raw.githubusercontent.com/QYG2297248353/AMMDS-Docker/master/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-ammds-docker.md",
+      "checked_on": "2026-10-01",
+      "sha256": "410f8402f50f7db6ca1323a1ff94f2c346e2ee1ebbb42e48ee1af1c31f5fadf0",
+      "git": {
+        "repository": "https://github.com/QYG2297248353/AMMDS-Docker.git",
+        "ref": "refs/heads/master",
+        "revision": "a9a82ea4ebd8b87aa8c4aecf53acc1e5736bb595"
+      },
+      "role": "AMMDS 的部署形态与版本号参照，配合文档仓核对待办第 27、44、61、67、68 条所引的版本。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javranking-extension",
+      "name": "javranking-extension 说明",
+      "url": "https://raw.githubusercontent.com/aizhimou/javranking-extension/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javranking-extension.md",
+      "checked_on": "2026-10-01",
+      "sha256": "f0619216f0c1d1da87e1068543627d9a3a1dec2978c774245d5d75f6b0ed7b26",
+      "git": {
+        "repository": "https://github.com/aizhimou/javranking-extension.git",
+        "ref": "refs/heads/main",
+        "revision": "206ec971b618e4a4e946604b6d333dc9222e616f"
+      },
+      "role": "javranking 扩展（MIT）读的公开静态榜单索引：版本清单与 search-index.json 的取法与规模，对应待办第 48 条。索引数据的许可条款未取得，只读引用并标明来源。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-cuelume",
+      "name": "Cuelume 说明",
+      "url": "https://raw.githubusercontent.com/danielwh2/cuelume/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-cuelume.md",
+      "checked_on": "2026-10-01",
+      "sha256": "038c6dc5d02f298a627bce3728350343b5730532642cc0c7f8e1f458d628a976",
+      "git": {
+        "repository": "https://github.com/danielwh2/cuelume.git",
+        "ref": "refs/heads/main",
+        "revision": "caf15480081da9432a4a982446ce44c9daf3a288"
+      },
+      "role": "Cuelume（MIT，npm 0.2.4）的接口与音效清单，待办第 60 条的候选依赖；README 的迁移段写的是 0.3，引入时按 npm 实际版本精确钉住。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-jav-moviemanager",
+      "name": "JAV_MovieManager 说明",
+      "url": "https://raw.githubusercontent.com/4evergaeul/JAV_MovieManager/main/Readme.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-jav-moviemanager.md",
+      "checked_on": "2026-10-01",
+      "sha256": "241592d7da5114c67b09ed6537405747ba59aeb829ba1186164a6ae04f002b22",
+      "git": {
+        "repository": "https://github.com/4evergaeul/JAV_MovieManager.git",
+        "ref": "refs/heads/main",
+        "revision": "2ea646cc35a5f237c0724785ad741ededbae75b3"
+      },
+      "role": "JAV_MovieManager（GPL-3.0）只作行为证据：女优按体型属性筛选（待办第 53 条）；它直接执行用户 SQL、读写不分，第 62 条只借保存筛选的形状。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-nassav",
+      "name": "NASSAV 说明",
+      "url": "https://raw.githubusercontent.com/Satoing/NASSAV/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-nassav.md",
+      "checked_on": "2026-10-01",
+      "sha256": "e2b92b90ca88f56c67e8c794df8c412db00b35979b58056bc9838648de4edd9f",
+      "git": {
+        "repository": "https://github.com/Satoing/NASSAV.git",
+        "ref": "refs/heads/main",
+        "revision": "0c5ff7fe11d77cae5d4367776bce92e1b687c6ae"
+      },
+      "role": "NASSAV（MIT）的下载器按权重回退与 sqlite 去重只作调度形状参照；数据源是未授权转载站，整体不采用。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-garage",
+      "name": "garage 说明",
+      "url": "https://raw.githubusercontent.com/gsxhnd/garage/master/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-garage.md",
+      "checked_on": "2026-10-01",
+      "sha256": "cf78c6eccea456a08c6dce6e1cd6675b258ae0ecebc43e8032345caf19a864a1",
+      "git": {
+        "repository": "https://github.com/gsxhnd/garage.git",
+        "ref": "refs/heads/master",
+        "revision": "915e477f640f0501b682f68052ba7097716f42ef"
+      },
+      "role": "garage 的 `garage_jav/javbus.go` 是 JavBus 作品页磁力取法（gid、uc 与 ajax 接口）的协议证据，对应待办第 43 条。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-atlas",
+      "name": "Atlas 说明",
+      "url": "https://raw.githubusercontent.com/Zoroaaa/Atlas/v3/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-atlas.md",
+      "checked_on": "2026-10-01",
+      "sha256": "44a599c2a576bf83d28920608f5a77caa13036a3954cae813af4b088eed3bcb7",
+      "git": {
+        "repository": "https://github.com/Zoroaaa/Atlas.git",
+        "ref": "refs/heads/v3",
+        "revision": "fc4b2ae5cb6636ee8bc0f1e762be78a2e090f3f3"
+      },
+      "role": "Atlas 的 `services/jav-utils.ts` `parseMagnets` 只解析 JavBus 一家，作待办第 43 条磁力取法的第二份证据；其余「磁力搜索」只是跳转链接。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javinfo-cli",
+      "name": "javinfo 命令行说明",
+      "url": "https://raw.githubusercontent.com/javinfo/cli/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-cli.md",
+      "checked_on": "2026-10-01",
+      "sha256": "7361839d302a1314adb1388bc5e200029ebde511f799e500a2031ba7b95bd8b1",
+      "git": {
+        "repository": "https://github.com/javinfo/cli.git",
+        "ref": "refs/heads/main",
+        "revision": "6db9d837ac044c9c1dc04fe4a9552659f0f5cf12"
+      },
+      "role": "javinfo.dev API 的调用方式与计费口径，待办第 65 条「可选来源」的依据；用户自带 API key 才启用。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javinfo-mcp",
+      "name": "javinfo MCP 说明",
+      "url": "https://raw.githubusercontent.com/javinfo/mcp/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-mcp.md",
+      "checked_on": "2026-10-01",
+      "sha256": "8be98ee47bd3de73d7a8c8bca0f4682c3b5f5f70cb7f800ae8b8ca520a7f2d8d",
+      "git": {
+        "repository": "https://github.com/javinfo/mcp.git",
+        "ref": "refs/heads/main",
+        "revision": "55bda1d7b33a6a5f0695f9dc5d93b05903b6b243"
+      },
+      "role": "javinfo.dev 的 MCP 封装，与命令行仓同属待办第 65 条的证据；只看端点与字段，不引入。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
+      ]
+    },
+    {
+      "id": "readme-javinfo-legacy",
+      "name": "javinfo 归档仓说明",
+      "url": "https://raw.githubusercontent.com/javinfo/legacy/main/README.md",
+      "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-legacy.md",
+      "checked_on": "2026-10-01",
+      "sha256": "7b4c17d8cb1ab26c4c8bd806543cacb979de883089281633a92a4651f3621c37",
+      "git": {
+        "repository": "https://github.com/javinfo/legacy.git",
+        "ref": "refs/heads/main",
+        "revision": "d9e3ed31520b6afb6ad3ad5abd90b8f17a955e60"
+      },
+      "role": "javinfo 的归档仓没有许可证，只借思路不借代码；它依赖的 r18 旧 API 已失效，没有 Peach 缺的解析器（待办第 65 条）。",
+      "consumers": [
+        "docs/PRODUCT_BACKLOG.md"
       ]
     }
   ]
