@@ -622,6 +622,9 @@ def _reject_ineligible_targets(operation: str, rows) -> None:
     """选中集合与操作对不上就拒绝整批，不做部分生效。"""
     if operation in {"restore", "delete"} and any(row["disposal"] not in DISPOSED for row in rows):
         raise ValueError("restore/delete is only allowed for recycle-bin or vanished assets")
+    # 已消失的行文件不在盘上：进回收站再还原就成了在库，只能在孤儿记录里接回或彻底删除。
+    if operation == "dispose" and any(row["disposal"] == VANISHED for row in rows):
+        raise ValueError("vanished assets cannot be moved to the recycle bin")
     if operation in {"dismiss-junk", "reconsider-junk"} and any(
             row["location"] not in {"local", "115", "pikpak"}
             or row["disposal"] is not None for row in rows):

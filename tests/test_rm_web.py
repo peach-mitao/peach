@@ -812,6 +812,17 @@ class WebDataTests(unittest.TestCase):
         )["feedback"])
         self.assertEqual(self.row()["disposal"], "trash")
 
+    def test_a_vanished_asset_refuses_the_recycle_bin_toggle_and_stays_vanished(self):
+        """已消失的行切进回收站再切出来就成了在库：单条切换与批量移入回收站都拒绝。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute("UPDATE asset SET disposal='vanished' WHERE id=1")
+        with self.assertRaisesRegex(ValueError, "vanished"):
+            rm_web.w_feedback(self.contract, {"id": 1, "kind": "dispose"})
+        self.assertEqual(self.row()["disposal"], "vanished")
+        with self.assertRaisesRegex(ValueError, "vanished"):
+            rm_web.w_batch(self.contract, {"ids": [1, 2], "operation": "dispose"})
+        self.assertEqual((self.row()["disposal"], self.row(2)["disposal"]), ("vanished", None))
+
     def test_a_star_writes_twenty_points_and_taking_it_back_writes_null(self):
         """评分这一列是 0–100，五颗星走 20 的倍数；撤销回 NULL，不是 0。
 
