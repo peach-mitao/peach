@@ -99,6 +99,8 @@ export interface FollowDetailActions {
   /** 操作回执；给了 `undo` 就带一颗撤销键。失败走 `failure`。 */
   toast(message: string, options?: { undo?: () => Promise<void> }): void;
   failure(action: string, error: unknown): void;
+  /** 云下载：带着标题去活动页的云下载段，用户贴磁力交给 115 或 PikPak。 */
+  cloudDownload(item: FollowDetailItem): void;
 }
 
 export interface FollowDetailProps {

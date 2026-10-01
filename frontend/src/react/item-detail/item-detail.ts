@@ -275,6 +275,8 @@ export interface ItemDetailActions {
   openTag(tag: string): void;
   /** 加入播放列表那一屏（壳的表单弹层：舞台是 `showModal()` 开的原生 dialog，弹层要进同一层）。 */
   addToPlaylist(item: DetailItem): void;
+  /** 云下载：带着番号与标题去活动页的云下载段，用户贴磁力交给 115 或 PikPak。 */
+  cloudDownload(item: DetailItem): void;
   /** 保存 Mix 那一屏：壳弹表单，确认时调 `save(name)`；存好了壳转去那份播放列表并给撤销。 */
   saveMix(options: { title: string; count: number; save(name: string): Promise<PlaylistPayload> }): void;
   /** 编辑播放列表：去播放列表页。 */

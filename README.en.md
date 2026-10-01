@@ -64,6 +64,7 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".
 - **New releases**: subscribe on a performer page or by name in follow management, including performers not yet in your library. Peach checks for new titles regularly. Follow creators across sites such as FANBOX, Patreon and Kemono; the same work on different sites appears as one card.
+- **Cloud download**: paste a magnet link and hand it to 115 or PikPak for offline download; the finished file joins your library on its own. Video pages and followed items have the same entry.
 - **Statistics**: which drive holds what, how much you have watched and which tags dominate, on one page.
 - **Appearance**: light or dark, accent color and sidebar order are all yours to set.
 - **Any screen**: works in the browser on desktop, tablet and phone.
@@ -109,7 +110,8 @@ LAN access, access passwords, updates and uninstalling are covered in [Operation
   - Existing titles, performers, studios and posters show up right away.
 - **Which cloud drives are supported?**
   - 115 and PikPak, mounted as local drives with CloudDrive2.
-  - Peach reads them like ordinary folders and does not store your cloud account.
+  - For playback, Peach reads them like ordinary folders and does not store your cloud account.
+  - For cloud download, the CloudDrive2 API token and the PikPak sign-in token are kept in this computer's credential file; your PikPak password is saved only if you tick "Save password".
 - **How do I watch on my phone?**
   - Choose "devices on the same network" during first-run setup.
   - Connect your phone to the same network and open the address shown on the setup page.

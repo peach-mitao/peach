@@ -1,7 +1,8 @@
 /* 活动页：任务中心那张表的唯一界面。
  *
  * 这一屏要回答三个问题，顺序就是它们的紧迫程度：现在有什么在跑、有哪一轮被挡下了、
- * 刚跑完的那些怎么样。三段共用 `/api/tasks` 一次请求的结果。
+ * 刚跑完的那些怎么样。三段共用 `/api/tasks` 一次请求的结果。末尾的「云下载」段是网盘离线
+ * 任务，取数与轮询都在 `downloads-panel.tsx` 里，和这三段互不牵连。
  *
  * 轮询交给 Query 的 `refetchInterval`：间隔按上一次拿到的内容算，有东西在跑两秒一次，
  * 全是终态十秒一次。它是后台刷新，不写 `aria-busy`——页面上的内容一直是完整的，写了
@@ -27,6 +28,7 @@ import { Note } from '../components/note';
 import { Page } from '../components/page';
 import { Progress } from '../components/progress';
 import { busyProps } from '../settings/use-action';
+import { DownloadsPanel } from './downloads-panel';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldRoutine, followupDetail, groupFollowups, isActive,
   isRoutine, mergeFinished, momentText, pollInterval, statusLabel, summaryText, TASKS_KEY, TRIGGER_LABELS, type TaskRunPayload,
@@ -156,7 +158,7 @@ function RunList({ live = false, children }: { live?: boolean; children: ReactNo
   );
 }
 
-export function ActivityPage(_props: ActivityProps) {
+export function ActivityPage({ prefill }: ActivityProps) {
   const tasks = useQuery({
     queryKey: TASKS_KEY,
     queryFn: ({ signal }) => fetchTasks(signal),
@@ -257,6 +259,8 @@ export function ActivityPage(_props: ActivityProps) {
                 </Section>
               : null}
           </>}
+      {/* 离线下载跑在网盘那头，自己一张表、自己轮询；任务中心为空时它照样在。 */}
+      <Section title="云下载"><DownloadsPanel prefill={prefill} /></Section>
     </Page>
   );
 }

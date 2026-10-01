@@ -23,6 +23,7 @@ import { Note } from '../components/note';
 import { queryClient } from '../query';
 import { CloudDriveGuide } from './clouddrive-guide';
 import { CONFIGURATION_KEY, fetchConfiguration } from './configuration';
+import { DownloadSettings } from './download-settings';
 import { LibraryIconPicker } from './library-icon-picker';
 import { PushDiscoveryForm } from './push-discovery-settings';
 import {
@@ -78,6 +79,7 @@ export function MediaSettings({ data, receipt }: ConfigurationGroupProps) {
       {data.push_discovery
         ? <PushDiscoveryForm initial={data.push_discovery} receipt={receipt} />
         : null}
+      {data.downloads ? <DownloadSettings initial={data.downloads} receipt={receipt} /> : null}
     </div>
   );
 }

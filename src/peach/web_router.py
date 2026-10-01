@@ -46,6 +46,7 @@ from .web_entity import (
     w_entity_alias,
     w_entity_name,
 )
+from .web_downloads import q_downloads, w_download_cancel, w_download_submit
 from .web_feeds import (
     q_feed_check,
     q_feed_discoveries,
@@ -305,6 +306,7 @@ def _post_empty_trash(contract, _body):
 
 GET_HANDLERS = {
     "/api/tasks": q_tasks,
+    "/api/downloads": q_downloads,
     "/api/library-processing": q_library_processing,
     "/api/library-processing/issues": q_library_processing_issues,
     "/api/thumbnail-jobs": q_thumbnail_jobs,
@@ -358,6 +360,8 @@ GET_HANDLERS = {
 }
 
 POST_HANDLERS = {
+    "/api/downloads": w_download_submit,
+    "/api/downloads/cancel": w_download_cancel,
     "/api/library-processing": w_library_processing,
     "/api/thumbnail-jobs": w_thumbnail_jobs,
     "/api/scraping/settings": w_scraping_settings,

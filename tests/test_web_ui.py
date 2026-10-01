@@ -6034,7 +6034,7 @@ class WebUiSourceTests(unittest.TestCase):
                          "openActivity(push)")
         self.assertPageContains("async function openActivity(push=true)")
         self.assertPageContains(
-            "await ui.mountIsland('activity',$('#stats'),{},"
+            "await ui.mountIsland('activity',$('#stats'),prefill?{prefill}:{},"
             "{isCurrent:()=>surfaceCurrent(surface)})")
         self.assertPageContains("['activity','活动','history'],")
         self.assertPageContains("quality:'quality',activity:'activity'}")

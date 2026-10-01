@@ -11,6 +11,7 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path
 
+from .fsutil import atomic_write_text
 from .platform import root_online
 
 
@@ -133,6 +134,15 @@ class CredentialStore:
             "shared_fields": sorted(name for name in shared if name not in local),
             "world_readable": self._world_readable(path) if path.is_file() else None,
         }
+
+    def save(self, provider: str, values: dict[str, str]) -> None:
+        """整份覆盖写本机这一份。只写本机：共享副本由声明了可同步字段的调用方另写。
+
+        先写同目录的临时文件再替换，写到一半断电不会留下半截 JSON；POSIX 上收紧到 0600。
+        """
+        payload = {str(key): str(value) for key, value in values.items() if value not in (None, "")}
+        atomic_write_text(self.path_for(provider),
+                          json.dumps(payload, ensure_ascii=False, indent=2) + "\n", mode=0o600)
 
     def clear(self, provider: str) -> dict[str, object]:
         """撤销一份凭据：本机和共享副本一起删。

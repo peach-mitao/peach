@@ -45,6 +45,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                 "test_avatar_face.py",
                 "test_brand_marks.py", "test_studio_icon_variants.py",
                 "test_push_discovery.py", "test_media_probe.py",
+                "test_downloads*.py", "test_web_downloads.py",
                 "test_review_csv.py", "test_related.py",
                 "test_search_suggest.py", "test_subtitles.py",
                 "test_task_runs.py", "test_followups.py", "test_task_center_integration.py",
@@ -270,6 +271,8 @@ AUTO_SCOPE_PREFIXES: tuple[tuple[str, str | tuple[str, ...]], ...] = (
     # 「它不是 asset」，看得住这条的是目录域那批测试。
     ("src/peach/feeds.py", "catalog"),
     ("src/peach/feed_followup.py", "catalog"),
+    # 云下载的任务模型、两个客户端与生成的 protobuf 代码，测试都是 `test_downloads*.py`。
+    ("src/peach/downloads", "catalog"),
     ("src/peach/follow", "follow"),
     ("src/peach/fanbox.py", "follow"),
     ("src/peach/web_follow.py", "follow"),

@@ -190,7 +190,11 @@ describe('unmountIsland', () => {
   });
 
   it('容器上挂没挂着，遗留层问得出来', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => tasks })));
+    // 活动页里的云下载段另取 `/api/downloads`，给它一份空表。
+    const downloads = { available: true, providers: [], tasks: [] };
+    vi.stubGlobal('fetch', vi.fn(async (input: string) => ({
+      ok: true, status: 200, json: async () => (input.startsWith('/api/downloads') ? downloads : tasks),
+    })));
     const el = container();
     expect(islandMounted(el)).toBe(false);
     // 取数还没回来也算挂着：这段时间里再挂一次会把在途那次作废，白等一趟。

@@ -60,7 +60,9 @@ from .previews import (
     cover_thumb_root,
     entity_thumb_root,
 )
+from .follow_secrets import credential_store_for
 from .push_discovery import PushDiscoveryService
+from .web_downloads import build_download_service
 from .sample_images import SampleCache
 from .sample_images import cache_root as sample_cache_root
 from .providers import OpenCodeGoClient, default_registry
@@ -253,6 +255,13 @@ def create_app(
         ffprobe=resolver.ffprobe,
         after_ingest=contract.cache_bust,
     )
+    # 云下载：远端完成后的文件由推送发现登记，这里只对账与兜底定向登记。凭据只在本机。
+    downloads = build_download_service(
+        database=database, state_root=settings.follow_state_root,
+        credentials=credential_store_for(settings.secrets_root,
+                                         shared_root=contract.follow_shared_root),
+        push_discovery=push_discovery, available=_writer(sync))
+    contract.downloads = downloads
     contract.follow_scheduler = follow_scheduler
     # 订阅源拉取（ADR-0042）用同一个调度实现，只换 job id、状态文件与默认间隔。
     # 默认 6 小时：一位女优的 JavDB 演员页一天更新几条，比这更密只是把 JavDB 的配额
@@ -307,6 +316,7 @@ def create_app(
         feed_scheduler.start()
         automatic_updates.start()
         push_discovery.start()
+        downloads.start()
         warmup = asyncio.create_task(warm_startup_entries())
         aggregate_warmup = asyncio.create_task(_warm_ledger_aggregates(settings, contract))
         if mdns is not None:
@@ -324,6 +334,7 @@ def create_app(
             feed_scheduler.stop()
             automatic_updates.stop()
             push_discovery.stop()
+            downloads.stop()
             # 死链检查和资源对账的后台线程是 daemon，本来挡不住进程退出；这里显式收
             # 一下，免得在途的那一轮在解释器拆卸期间还继续查库、往没人读的状态里写。
             contract.stop_background_jobs()
@@ -365,6 +376,7 @@ def create_app(
     app.state.follow_scheduler = follow_scheduler
     app.state.automatic_updates = automatic_updates
     app.state.push_discovery = push_discovery
+    app.state.downloads = downloads
     app.state.stream_sessions = StreamSessionRegistry()
     app.state.sync = sync
     app.state.tunnel = tunnel_manager

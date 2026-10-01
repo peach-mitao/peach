@@ -107,6 +107,89 @@ export interface AutomaticUpdateState {
   mode: string; interval_hours: number; available: boolean; download_available: boolean; error?: string;
 }
 
+/** 云下载的两条渠道：115 经 CloudDrive2，PikPak 直连。 */
+export type DownloadProviderKey = '115' | 'pikpak';
+
+export interface DownloadConfig {
+  clouddrive_address: string;
+  targets: Partial<Record<DownloadProviderKey, string>>;
+  /** PikPak 根目录在账本里对应的声明根，空串表示还没选。 */
+  pikpak_root: string;
+  wait_hours: number;
+}
+
+/** 设置页的云下载块。凭据只报存没存过，不回值。 */
+export interface DownloadSettingsState {
+  available: boolean;
+  config: DownloadConfig;
+  token_set: boolean;
+  pikpak: { logged_in: boolean; username: string; remember: boolean };
+  pikpak_roots: string[];
+  providers: { key: DownloadProviderKey; label: string }[];
+  max_wait_hours: number;
+}
+
+/** 「检查」的结果：每一项各自报，一项失败不挡住其余几项。 */
+export interface DownloadCheckReport {
+  ok: boolean;
+  /** 实际查的 CloudDrive2 地址。表单留空时是探测到的本机地址，探测不到时为空串。 */
+  address: string;
+  permissions: { name: string; label: string; granted: boolean }[];
+  missing: string[];
+  root: string;
+  folder: { path: string; can_offline: boolean; cloud: string } | null;
+  quota: { total: number; used: number; left: number } | null;
+  problems: string[];
+}
+
+export interface PikPakLoginResult {
+  ok: boolean;
+  /** 要人机验证时给验证页地址，用户在浏览器里完成后再登录一次。 */
+  captcha_url?: string;
+  message?: string;
+  settings: DownloadSettingsState;
+}
+
+export interface DownloadTask {
+  id: number;
+  info_hash: string | null;
+  provider: DownloadProviderKey;
+  provider_label: string;
+  source_uri: string;
+  display_name: string;
+  target: string;
+  code: string | null;
+  title: string | null;
+  origin: string | null;
+  state: string;
+  state_label: string;
+  failure: string | null;
+  failure_label: string | null;
+  failure_detail: string | null;
+  progress: number | null;
+  remote_name: string | null;
+  ledger_path: string | null;
+  asset_id: number | null;
+  submitted_at: string | null;
+  updated_at: string;
+  finished_at: string | null;
+  blocked: boolean;
+  cancellable: boolean;
+  resubmittable: boolean;
+}
+
+export interface DownloadsSnapshot {
+  available: boolean;
+  providers: { key: DownloadProviderKey; label: string; configured: boolean; target: string }[];
+  tasks: DownloadTask[];
+}
+
+export interface DownloadSubmitResult {
+  ok: boolean;
+  outcome: 'submitted' | 'adopted' | 'adopted_remote' | 'refused' | 'failed';
+  task: DownloadTask;
+}
+
 export interface ReleaseState {
   current_version: string;
   latest_version: string | null;
@@ -139,6 +222,7 @@ export interface ConfigurationData {
   peach_proxy?: PeachProxyState;
   entry_links?: EntryLinksState;
   push_discovery?: PushDiscoveryState;
+  downloads?: DownloadSettingsState;
   updates?: ReleaseState;
   update_job?: UpdateJob;
   automatic_updates?: AutomaticUpdateState;
@@ -191,7 +275,8 @@ export interface ReactPage<P> {
 }
 
 /** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。 */
-export type ActivityProps = Record<string, never>;
+/** 作品页与关注条目的「云下载」键带进来的番号、标题与来处（`asset:12`、`follow:34`）。 */
+export interface ActivityProps { prefill?: { code?: string; title?: string; origin?: string } }
 
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */
 export interface QualityGoalsProps {
