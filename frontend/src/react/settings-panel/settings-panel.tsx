@@ -287,7 +287,8 @@ const savingHtml = () => `${spinnerHtml('保存中')}<span>正在保存…</span
 const errorText = (error: unknown, fallback: string) => (error instanceof Error && error.message) || fallback;
 
 function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost; view: View }) {
-  const version = useSyncExternalStore(current.store.subscribe, current.store.version);
+  /* 订阅只为重画：读的是活对象 `store.value`，版本号本身不用。 */
+  useSyncExternalStore(current.store.subscribe, current.store.version);
   const settings = current.store.value;
   const panel = useRef<HTMLElement | null>(null);
   const card = useRef<HTMLDivElement | null>(null);
@@ -363,7 +364,7 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
             <ToggleRow id="homeGlowSetting" title="侧栏光晕" checked={settings.homeGlow.on}
               description="左栏玻璃面上那三枚慢慢漂动的光，其余玻璃面跟着取前两枚的颜色。配色在下面或左栏底部那枚配色钮上挑，强调色在配色钮上挑；这里还调强度、颗粒、漂移速度、柔化、大小和每一枚光晕的颜色。浅色主题按同一组颜色淡一档显示。"
               onToggle={(on) => { settings.homeGlow.on = on; save(); current.changed('glow') }} />
-            <GlowSettings host={current} version={version} />
+            <GlowSettings host={current} />
             <section data-sidebar-setting="" aria-labelledby="sidebarOrderTitle">
               <span><b id="sidebarOrderTitle">左侧导航</b>
                 <small>直接拖动排序；可隐藏入口，也可从具体页面列表重新添加。窄栏和筛选抽屉会保持一致。</small></span>

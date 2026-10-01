@@ -3913,9 +3913,11 @@ class WebUiSourceTests(unittest.TestCase):
                         "el.style.removeProperty('--glass-tint-b');return}")
         self.assertCode("el.style.setProperty('--glass-tint-a',glow.spot1.color);")
         # 这一档的圆球与钮上那颗点画的是当前主题下真在漂的那两色，不拿别的颜色顶。
+        balls = (Path(__file__).resolve().parents[1]
+                 / "frontend/src/react/components/glow-preset-grid.css").read_text(encoding="utf-8")
+        self.assertIn("[data-glow-ball][data-glow-native]{--glow-chip:conic-gradient"
+                      "(from -90deg,var(--glass-native-a) 0 50%,var(--glass-native-b) 50% 100%)}", balls)
         css = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".board-glow-ball[data-glow-native]{--glow-chip:conic-gradient"
-                      "(from -90deg,var(--glass-native-a) 0 50%,var(--glass-native-b) 50% 100%)}", css)
         self.assertIn(".board-glow-toggle[data-glow-native] .board-glow-mark-glow{", css)
         # 设置面板里这一档只留漂移速度：其余几条管不着任何东西，留着就是按了不动的控件。
         # 点这一档后真正看得见的拉条由 `frontend/e2e/design.test.ts` 数。
@@ -3948,8 +3950,10 @@ class WebUiSourceTests(unittest.TestCase):
         # 具体度接回来，否则焦点环和链接只在手动选深色时跟着强调色走。
         self.assertIn("@media(prefers-color-scheme:dark){:root:not([data-theme])"
                       "{--tungsten:var(--color-border-focus-ring)}}", css)
-        self.assertIn(".board-glow-ball[data-accent-ball]{--glow-chip:radial-gradient"
-                      "(circle closest-side,var(--color-accent-400),var(--color-accent-600))}", css,
+        self.assertIn("[data-glow-ball][data-accent-ball]{--glow-chip:radial-gradient"
+                      "(circle closest-side,var(--color-accent-400),var(--color-accent-600))}",
+                      (Path(__file__).resolve().parents[1]
+                       / "frontend/src/react/components/glow-preset-grid.css").read_text(encoding="utf-8"),
                       "圆球拿的就是这一档真会写上去的两级")
         # 开关、勾选框、滑轨填充与主操作键也是同一个意思。漏掉任何一个，换了强调色的页面
         # 上就会剩下几枚蓝件，读起来像是没换干净。
@@ -3968,25 +3972,14 @@ class WebUiSourceTests(unittest.TestCase):
         """强调色存一个档名，换光晕预设时跟着换，单点那一排又能把它覆盖掉。
 
         一档配色就是一副面：光晕暖着、按钮还是蓝的，读起来是两套皮叠在一起。但搭配是
-        建议不是绑定，所以那一排强调色单独点得动，点完只改强调色、不动光晕。
+        建议不是绑定，所以那一排强调色单独点得动，点完只改强调色、不动光晕。换预设、单点与
+        「重置」各写什么由 `frontend/test/react/glow-picker.test.tsx` 点出来看。
         """
         self.assertPageContains("const DEFAULT_ACCENT='blue';")
         self.assertPageContains("const normalizeAccent=value=>ACCENTS.some(([key])=>key===value)"
                                 "?value:DEFAULT_ACCENT;")
         self.assertPageContains("const glowAccent=key=>(HOME_GLOW_PRESETS.find(([name])=>name===key)"
                                 "||[])[3]||DEFAULT_ACCENT;")
-        self.assertCode("function applyAccent(){glowRoot.dataset.accent=appSettings.accent}")
-        # 换预设：光晕、玻璃色相与强调色一起走。
-        self.assertCode("appSettings.accent=glowAccent(key);")
-        # 单点强调色：只写这一个。
-        self.assertCode("appSettings.accent=normalizeAccent(chip.dataset.accent);")
-        self.assertCode("saveSettings();applyAccent();syncGlowChrome();")
-        # 「重置」把两者一起收回默认。
-        self.assertCode("appSettings.accent=DEFAULT_ACCENT;")
-        self.assertPageContains('<div class="board-glow-grid" data-accent-grid role="group" '
-                                'aria-label="强调色"></div>')
-        self.assertPageContains('class="board-glow-chip" data-accent="${key}"')
-        self.assertPageContains('data-accent-ball="${key}"')
 
     def test_home_glow_interpolates_in_oklab_with_a_declared_fallback(self):
         """oklab 插值由 @supports 开启，认不出它的引擎退回 sRGB 而不是整层消失。"""
@@ -4037,18 +4030,15 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("['custom','自定义']")
 
     def test_home_glow_data_lives_in_a_module_app_js_only_imports(self):
-        """预设、色板、规范化和那一次绘制都在 `web/js/home-glow.js`，app.js 只 import。
+        """预设、色板、规范化和那一次绘制都在 `web/js/home-glow.js`，app.js 一样都不留。
 
         React 壳要的就是这一份：留在 app.js 里，迁移时同一张预设表、同一套色板和同一段
         规范化会被抄进组件再各自演化，而两份色板差一枚颜色是看不出来的。
         所以那个模块不认识 `appSettings`、`$`、`saveSettings`，`paintHomeGlow` 只写传进来的
-        那枚元素；侧栏那枚配色钮和它的弹层留在 app.js，设置面板的光晕参数区在 `settings-panel`
-        岛里经 `@peach/legacy/home-glow` 读同一个模块。
+        那枚元素；什么时候写、写到哪一层由 `frontend/src/appearance/glow.ts` 定，配色卡与设置
+        面板的光晕参数区都经 `@peach/legacy/home-glow` 读同一个模块，壳只调 `@peach/appearance`。
         """
-        self.assertIn("import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, "
-                      "HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, "
-                      "glowPalette, isNativeGlass, normalizeAccent, paintGlassFaces, paintHomeGlow } "
-                      "from './js/home-glow.js';", self.app_js)
+        self.assertNotIn("./js/home-glow.js", self.app_js, "光晕经 `/dist/peach-ui.js` 的应用层进来")
         for moved in ("const HOME_GLOW_PRESETS=[", "const GLOW_SWATCHES=[", "const ACCENTS=[",
                       "const GLOW_SPOT_LABELS=[", "const DEFAULT_HOME_GLOW=",
                       "function normalizeHomeGlow(", "function paintHomeGlow(",
@@ -4059,7 +4049,6 @@ class WebUiSourceTests(unittest.TestCase):
         code = "\n".join(re.sub(r"/\*.*?\*/", "", self.glow_js, flags=re.S).splitlines())
         for forbidden in ("appSettings", "saveSettings(", "document.", "peach-ui.js"):
             self.assertNotIn(forbidden, code, "这一份不认识页面，只认参数")
-        self.assertIn("paintHomeGlow(glowField,appSettings.homeGlow)", self.app_js)
 
     def test_home_glow_normalisation_replaces_a_retired_preset_wholesale(self):
         """存着的档名已经不在清单里时，连它那三枚颜色一起换成默认那一档。
@@ -4138,12 +4127,10 @@ class WebUiSourceTests(unittest.TestCase):
 
         每一步都写变量加 saveSettings() 的量过：一次 60 步拖动是 1320 次 setProperty
         和 60 次 localStorage 写入，全在主线程上。设置面板那一侧「拖动只报 glowFrame、松手才落盘」
-        与「面板 DOM 只建一次」由 `frontend/test/react/settings-panel.test.tsx` 守；壳这边把
-        glowFrame 排成一帧重画。
+        与「面板 DOM 只建一次」由 `frontend/test/react/settings-panel.test.tsx` 守；壳把
+        glowFrame 交给 `applyHomeGlow`，一帧只排一次重画由 `frontend/test/appearance/glow.test.ts` 守。
         """
         self.assertPageContains("glowFrame:()=>applyHomeGlow(),")
-        self.assertCode("glowFrame=requestAnimationFrame(()=>{glowFrame=0;"
-                        "paintHomeGlow(glowField,appSettings.homeGlow)});")
         self.assertCode("if(written.get(name)===value)return;")
 
     def test_home_glow_variables_are_written_off_the_root(self):
@@ -4151,11 +4138,11 @@ class WebUiSourceTests(unittest.TestCase):
 
         自定义属性是继承的：写在根上，整棵树都要重算样式。2026-09-16 在首页量过，
         写一次变量再强制布局，写在 <html> 上是每帧 12.7–16.6ms，写到一枚没有子节点的
-        元素上是 0.09ms；16.7ms 的帧预算装不下前者，拖动必掉帧。
+        元素上是 0.09ms；16.7ms 的帧预算装不下前者，拖动必掉帧。写到 `.glowlayer` 上由
+        `frontend/test/appearance/glow.test.ts` 读那一层的变量。
         """
         css = stylesheet_source()
         self.assertPageContains('<div class="glowlayer" aria-hidden="true"></div>')
-        self.assertCode("const glowField=document.querySelector('.glowlayer');")
         self.assertCode("el.style.setProperty(name,value);")
         self.assertIn(".glowlayer{--ambient-opacity:calc(var(--glow-strength) * var(--glow-theme-scale));", css)
         self.assertNotIn("body::before{", css, "光晕不再挂在 body 的伪元素上")
@@ -4205,14 +4192,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn(".board-glow-mark-glow{left:0;top:0;background:var(--glow-swatch,var(--ink))}", css)
         self.assertIn(".board-glow-mark-accent{left:0;bottom:0;z-index:1;", css)
         self.assertIn(".board-glow-toggle[data-glow-off] .board-glow-mark-glow{display:none}", css)
-        self.assertPageContains('<header class="board-glow-head" data-glow-presets><span>光晕</span>')
-        self.assertPageContains('class="board-glow-reset" data-glow-preset-reset>重置</button>')
-        self.assertPageContains('<p class="board-glow-head board-glow-sub"><span>强调色</span></p>')
-        self.assertPageContains('<footer><button type="button" class="geist-button primary" data-glow-detail>详细设置</button></footer>')
+        # 卡里两组球、标题、「重置」与「详细设置」由 `frontend/test/react/glow-picker.test.tsx`
+        # 渲染出来看，选中那一档自己报 aria-pressed；壳只管把卡锚在钮上。
         self.assertCode("const glowFloating=wireAnchoredMenu(boardFoot,glowButton,glowPicker);")
-        # 选中那一档自己报出来，不靠一圈环让人猜。
-        self.assertPageContains('aria-pressed="${key===current}"')
-        css = stylesheet_source() + (Path(__file__).resolve().parents[1]
+        css =stylesheet_source() + (Path(__file__).resolve().parents[1]
                                      / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".board-glow-toggle{position:relative;display:grid;place-items:center;"
                       "width:36px;height:36px;flex:none;\n  padding:0;border:0;border-radius:8px;"
@@ -4239,22 +4222,17 @@ class WebUiSourceTests(unittest.TestCase):
         那一组球和它的「重置」换的是一层现在不画的东西：点下去屏幕上没有任何反应，卡
         的上半张却还被它占着。整组连同标题一起收起来，卡就只说当前还管用的那一件事。
         开关在设置面板里、卡在侧栏底部，两处同时看得见，所以开关那一下要当场同步侧栏，
-        不能等下一次刷新。
+        不能等下一次刷新：卡和钮都订阅同一份 store，收起哪几块、钮上那枚点报什么由
+        `frontend/test/react/glow-picker.test.tsx` 点开关看。
         """
-        self.assertCode("glowButton.style.setProperty('--glow-swatch',"
-                        "glow.on?glow.spot1.color:'var(--color-accent-500)');")
-        self.assertCode("glowButton.toggleAttribute('data-glow-native',"
-                        "glow.on&&isNativeGlass(glow.preset));")
-        self.assertCode("glowButton.toggleAttribute('data-glow-off',!glow.on);")
-        self.assertCode("glowPicker.querySelectorAll('[data-glow-presets],[data-glow-grid]')"
-                        ".forEach(node=>node.hidden=!glow.on);")
-        # 设置面板那枚开关报 `glow`，壳的 `settingsEffects.glow` 当场把侧栏一起对齐。
-        self.assertPageContains("glow:()=>{applyHomeGlow();applyGlassFaces();syncGlowSidebar()},")
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        # 类名里写死的 display 压得过 [hidden] 那条 UA 规则，收起来要自己说一遍。
-        self.assertIn(".board-glow-head[hidden],.board-glow-grid[hidden]{display:none}", board)
+        root = Path(__file__).resolve().parents[1] / "frontend/src/react"
+        card = (root / "glow-picker/glow-picker.css").read_text(encoding="utf-8")
+        # 写死的 display 压得过 [hidden] 那条 UA 规则，收起来要自己说一遍。
+        self.assertIn("[data-glow-grid][hidden]{display:none}",
+                      (root / "components/glow-preset-grid.css").read_text(encoding="utf-8"))
+        self.assertIn("[data-glow-head][hidden]{display:none}", card)
         # 收起之后「强调色」成了卡里第一样东西，它那 12px 的上间距一起归零。
-        self.assertIn(".board-glow-grid[hidden]+.board-glow-sub{margin-top:0}", board)
+        self.assertIn("[data-glow-grid][hidden]+[data-glow-sub]{margin-top:0}", card)
 
 
     def test_source_icons_are_visible_in_detail_and_list_badges(self):

@@ -2,9 +2,8 @@
  * 右侧等宽读数」，颜色行点开在自己下方弹一张色板。
  * 取证见 docs/reference-snapshots/feralui-studio-boardui-accent-measured.md。
  *
- * 预设色块在这一屏和侧栏底部那枚配色钮上各有一份，是同一组色块、同一份写入：那一格由壳画、
- * 由壳接（`host.renderGlowGrid` / `host.wireGlowGrid`），两处读的都是 `appSettings.homeGlow`，
- * 点哪一边另一边当场对齐。当前档名、预设色块和五条参数同属「配色」这一组。
+ * 预设色块在这一屏和侧栏底部那张配色卡上是同一组色块、同一份写入（`GlowPresetGrid`），两处读的都是
+ * 壳那一份 store，点哪一边另一边当场对齐。当前档名、预设色块和五条参数同属「配色」这一组。
  *
  * 「玻璃原色」那一档没有三枚光晕：那一层整个算作 0，面上漂的是每块玻璃自带的两团反光。强度、
  * 颗粒、柔化、大小和三枚颜色于是全都管不着任何东西，这一档把它们收起来，换一句说明颜色由明暗
@@ -17,6 +16,7 @@ import {
   normalizeHomeGlow,
 } from '@peach/legacy/home-glow';
 
+import { GlowPresetGrid } from '../components/glow-preset-grid';
 import type { HomeGlow, SettingsPanelHost } from './settings-panel-api';
 import { Icon } from './icon';
 import { DialRow } from './legacy-controls';
@@ -28,19 +28,6 @@ const FIELDS: readonly [Field, string, number][] = [
   ['strength', '强度', 100], ['noise', '颗粒', 60], ['speed', '漂移速度', 300], ['soften', '柔化', 100], ['size', '大小', 100],
 ];
 
-
-/** 预设那一格。整格由壳重画：「自定义」那一格会出现或消失，焦点落在哪一枚由壳接回。 */
-function PresetGrid({ host, version }: { host: SettingsPanelHost; version: number }) {
-  const grid = useRef<HTMLDivElement | null>(null);
-  const wired = useRef(false);
-  useLayoutEffect(() => {
-    const node = grid.current;
-    if (!node) return;
-    if (!wired.current) { host.wireGlowGrid(node); wired.current = true }
-    host.renderGlowGrid(node);
-  }, [host, version]);
-  return <div className="board-glow-grid" data-glow-grid="" role="group" aria-label="光晕配色" ref={grid} />;
-}
 
 function StopRow({ host, spot, index, glow }: { host: SettingsPanelHost; spot: Spot; index: number; glow: HomeGlow }) {
   const label = GLOW_SPOT_LABELS[index];
@@ -93,14 +80,14 @@ function StopRow({ host, spot, index, glow }: { host: SettingsPanelHost; spot: S
   );
 }
 
-export function GlowSettings({ host, version }: { host: SettingsPanelHost; version: number }) {
+export function GlowSettings({ host }: { host: SettingsPanelHost }) {
   const glow = host.store.value.homeGlow;
   const native = isNativeGlass(glow.preset);
   return (
     <section data-glow-setting="" id="homeGlowControls" aria-label="侧栏光晕参数" hidden={!glow.on}>
       <section data-glow-group=""><h4>配色</h4>
         <p data-glow-current="">当前配色<b data-glow-preset-name="">{glowPresetName(glow.preset)}</b></p>
-        <PresetGrid host={host} version={version} />
+        <GlowPresetGrid store={host.store} label="光晕配色" />
         <p data-glow-native-note="" hidden={!native}>这一档用每块玻璃自带的反光，颜色跟着明暗主题走。</p>
         <div data-glow-fields="">
           {/* 拖动中只改参数、只排一帧重画；落盘留给松手那一下。其余玻璃面跟着走的只有速度，

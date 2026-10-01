@@ -16,8 +16,6 @@ export {
   defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
 } from './sort-preferences';
 export * from './appearance';
-export { createSettingsStore } from './settings-store';
-export { boundedPreference } from './number-setting';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
@@ -289,6 +287,14 @@ export function loadBatchDock(host: ReactBundle.BatchDockHost): Promise<ReactBun
   return batchDock;
 }
 export const batchDockApi = (): ReactBundle.BatchDockApi | null => batchDockReady;
+
+/* 侧栏配色卡岛（`react/glow-picker/`）：侧栏底部那枚配色钮点开的那张卡。卡的外壳由壳建、由壳锚定与
+ * 开合，壳启动时装载、把内容画进去；钮上那两枚小圆壳当场就画（`wireGlowButton`），不等这一份。 */
+let glowPicker: Promise<void> | null = null;
+export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> {
+  glowPicker ??= import('@peach/react').then((bundle) => bundle.configureGlowPicker(host));
+  return glowPicker;
+}
 
 /* 壳的播放快捷键用到的播放器件（`frontend/src/player/`）：控件点击、切换播放与快进快退都不带模块
  * 状态。详情播放器、宿主与右键菜单带状态，只在舞台岛那一份产物里用。 */

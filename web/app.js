@@ -11,8 +11,8 @@ import { matchRoute, routeLabel } from './js/routes.js';
 import { initMiddleTruncate } from './js/middle-truncate.js';
 import { tagLabel } from './js/tags.js';
 import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js';
-import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowPalette, isNativeGlass, normalizeAccent, paintGlassFaces, paintHomeGlow } from './js/home-glow.js';
 import { appSettingsStore, applySyncedSettings, allowedSetting, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
+import { applyAccent, applyGlassFaces, applyHomeGlow, paintHomeGlowNow, wireGlowButton, loadGlowPicker } from './dist/peach-ui.js';
 import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio, gridLayout, javLayout, photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout } from './dist/peach-ui.js';
 import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
@@ -503,76 +503,9 @@ wireUiSounds();
    这里在模块体里同步再写一次，之后换主题都从那一份出。 */
 applyTheme();
 watchSystemTheme();
-/* 光晕怎么算、怎么写都在 `./js/home-glow.js`：那一份不认识 appSettings，React 壳直接
-   import 同一个文件。这里只负责把当前设置和 `.glowlayer` 那枚空 div 递进去。
-   写的对象是那枚 div 而不是 <html>：自定义属性是继承的，写在根上整棵树都要重算样式，
-   实测每帧 15ms 上下，拖动时帧预算当场就超；量法和数字记在 web/css/01-base.css 那条规则
-   上面。
-   一帧只写一次。指针拖动一秒能发上百个 pointermove，每一个都同步写变量的话，写进去的
-   中间那几十份没有任何一帧画得出来，代价却照付。排进 requestAnimationFrame 之后，写的
-   就是这一帧真正要画的那一份。 */
-const glowField=document.querySelector('.glowlayer');
-let glowFrame=0;
-function applyHomeGlow(){
-  if(glowFrame)return;
-  glowFrame=requestAnimationFrame(()=>{glowFrame=0;paintHomeGlow(glowField,appSettings.homeGlow)});
-}
-/* 其余玻璃面（搜索框、顶栏图标钮、筛选浮层、设置卡的分区导航、媒体库与配色弹层、窄栏、
-   选择工具条）分散在整棵树上，没有共同的宿主，它们那两团反光的色相只能写在根上。
-   写一次根就是整棵树重算样式，所以这一条只接换档、点颜色和开关那几下；拖强度那条拉条
-   走的是上面的 applyHomeGlow()，一次都不碰根。
-   强调色同理：一次点选写一个属性，换来的是整页的按钮、焦点环和链接跟着走。 */
-const glowRoot=document.documentElement;
-function applyGlassFaces(){paintGlassFaces(glowRoot,appSettings.homeGlow)}
-function applyAccent(){glowRoot.dataset.accent=appSettings.accent}
-paintHomeGlow(glowField,appSettings.homeGlow);
-applyGlassFaces();applyAccent();
-/* 光晕预设色块在侧栏底部那枚配色钮和设置面板（`frontend/src/react/settings-panel/`）上各有
-   一份，是同一组色块、同一份写入：两处读的都是 `appSettings.homeGlow`，都由下面这两个函数
-   画和接，点哪一边另一边当场对齐。 */
-/* 预设色块照 feralui 的预设 chip 做：三枚光晕色等分一圈 conic-gradient，再叠 BoardUI 那
-   三层白色高光。「玻璃原色」那一格的球不带颜色：它画的是当前主题下玻璃自带的那两团
-   反光，两个主题各一套，值只有样式表里一份，所以这里交出一个标记、由 CSS 去取。 */
-const glowSpotColors=glow=>HOME_GLOW_SPOTS.map(key=>glow[key].color);
-const glowChipHtml=(key,label,colors,chosen)=>`<button type="button" class="board-glow-chip" data-glow-preset="${key}"
-  aria-pressed="${key===chosen}" title="${esc(label)}" aria-label="${esc(label)}"><span class="board-glow-ball"
-  aria-hidden="true" ${isNativeGlass(key)?'data-glow-native':`style="--glow-chip:${glowChipFill(colors)}"`}></span></button>`;
-const glowChipsHtml=()=>{
-  const glow=appSettings.homeGlow;
-  const chips=HOME_GLOW_PRESETS.map(([key,label,palette])=>
-    glowChipHtml(key,label,HOME_GLOW_SPOTS.map(spot=>palette[spot].color),glow.preset));
-  /* 「自定义」只有在用户真手调过颜色之后才占一格：没调过时那一格里是一份和默认档
-     一模一样的球，点它什么也不会变，读起来却像还有一档没试过。 */
-  if(glow.preset==='custom')chips.push(glowChipHtml('custom','自定义',glowSpotColors(glow),'custom'));
-  return chips.join('');
-};
-/* 整格重画：「自定义」那一格会出现或消失。焦点正落在某一枚上时，画完落回同一档那一枚——
-   键盘选完一档，焦点不该掉回页面开头。 */
-function renderGlowPresetGrid(grid){
-  const focused=grid.contains(document.activeElement)?document.activeElement.dataset.glowPreset:'';
-  grid.innerHTML=glowChipsHtml();
-  if(focused)grid.querySelector(`[data-glow-preset="${focused}"]`)?.focus();
-}
-/* 换一档光晕连强调色一起换：一档配色就是一副面，光晕暖着、按钮还是蓝的，读起来是两套
-   皮叠在一起。侧栏卡下面那一排强调色可以单独点，点完只改强调色、不动光晕——先给一套
-   搭配好的，要拆开也拆得开。
-   一个监听接整格：那一排球会因为「自定义」出现或消失而重画，逐枚绑事件的话，重画之后
-   绑的是上一批已经不在文档里的按钮。 */
-function wireGlowPresetGrid(grid){
-  grid.addEventListener('click',event=>{
-    const chip=event.target.closest?.('[data-glow-preset]');
-    if(!chip)return;
-    const glow=appSettings.homeGlow,key=chip.dataset.glowPreset;
-    if(key==='custom')return;
-    glow.preset=key;Object.assign(glow,glowPalette(key));
-    appSettings.accent=glowAccent(key);
-    saveSettings();applyHomeGlow();applyGlassFaces();applyAccent();syncGlowChrome();
-  });
-}
-/* 侧栏那枚配色钮由壳尾的装配段接上；接上之前这里是个空函数，首页第一帧就改光晕也不会炸。
-   设置面板读的是同一份 `appSettings.homeGlow`，经 store 通知自己跟上。 */
-let syncGlowSidebar=()=>{};
-function syncGlowChrome(){syncGlowSidebar()}
+/* 光晕、玻璃面与强调色写到页面上（`frontend/src/appearance/glow.ts`），第一帧之前同步写一次。
+   侧栏那枚配色钮、它的配色卡与设置面板都订阅同一份 store，点哪一处改的配色另两处当场跟上。 */
+paintHomeGlowNow();applyGlassFaces();applyAccent();
 /* 设置面板归 React 岛（`frontend/src/react/settings-panel/`）。岛只改 `appSettings` 的字段并落盘，
    改完用效果名告诉这里跟着做什么：重画网格、重取目录、换主题、重排侧栏都还是壳的事。 */
 const settingsEffects={
@@ -581,7 +514,7 @@ const settingsEffects={
      发出：捕获阶段排在这里前面，那时开关还没关掉，最后一声还能响出来。 */
   uiSounds:()=>{setUiSoundsEnabled(appSettings.uiSounds);if(appSettings.uiSounds)playUiSound('toggle-on')},
   glowFrame:()=>applyHomeGlow(),
-  glow:()=>{applyHomeGlow();applyGlassFaces();syncGlowSidebar()},
+  glow:()=>{applyHomeGlow();applyGlassFaces()},
   batchSize:()=>{if(location.pathname==='/')loadCatalog()},
   defaultSort:()=>{
     state.sort=appSettings.defaultSort;
@@ -3078,7 +3011,6 @@ const settingsHost=()=>({
   videoLayout:()=>cardLayout(),setVideoLayout,
   censored:censorOn,setCensored,
   highContrast:()=>document.documentElement.classList.contains('board-high-contrast'),setHighContrast,
-  renderGlowGrid:renderGlowPresetGrid,wireGlowGrid:wireGlowPresetGrid,
   receipt:message=>actionReceipt(message),
   failure:actionFailure,
   syncRemote:remote=>applySyncedSettings(remote,effect=>settingsEffects[effect]?.()),
@@ -4154,63 +4086,22 @@ boardFoot.querySelector('.board-foot-actions').append(document.querySelector('#s
 document.querySelector('#drawer').append(boardFoot);
 boardFoot.querySelectorAll('[data-board-theme]').forEach(button=>button.onclick=()=>{if(button.getAttribute('aria-pressed')==='true')return;transitionTheme(button,()=>{appSettings.theme=button.dataset.boardTheme;saveSettings();applyTheme()})});
 applyTheme();
-/* 侧栏的光晕配色弹层照 boardui.com 右下角那枚「Accent color」：钮上不画字形，画的就是
-   它管的那两样——左上一枚光晕色的圆、右下一枚强调色的圆叠在它上面，卡里两组球各取一枚；
-   点开是一张 248px 的卡，头部一行标题加「重置」文字键，主体是两组 6 列圆球——上面一组
-   光晕、下面一组强调色，底部一枚全宽主按钮通到详细设置。光晕那一组球和设置里「配色」
-   那一组是同一份（`glowChipsHtml`）；强调色那一组换成 BoardUI 自己那颗 radial-gradient
-   的球。卡的材质与媒体库选择弹层同一条规则。
-   实测见 docs/reference-snapshots/feralui-studio-boardui-accent-measured.md。 */
-/* 强调色那一排同样不带颜色：球拿的就是这一档真会写上去的 400 与 600 两级。 */
-const accentChipHtml=([key,label],current)=>`<button type="button" class="board-glow-chip" data-accent="${key}"
-  aria-pressed="${key===current}" title="${esc(label)}" aria-label="${esc(label)}"><span class="board-glow-ball"
-  aria-hidden="true" data-accent-ball="${key}"></span></button>`;
+/* 侧栏的光晕配色卡照 boardui.com 右下角那枚「Accent color」：钮上不画字形，画的就是它管的那两样——
+   左上一枚光晕色的圆、右下一枚强调色的圆叠在它上面（`appearance/glow.ts` 的 `paintGlowButton`）。
+   卡的外壳在这里建、由 `wireAnchoredMenu` 锚定与开合，材质与媒体库选择弹层同一条规则；卡里的内容归
+   `glow-picker` 岛（`frontend/src/react/glow-picker/`）。 */
 const glowPicker=document.createElement('div');
 glowPicker.className='popmenu board-glow-menu';glowPicker.id='boardGlowMenu';glowPicker.hidden=true;
 glowPicker.setAttribute('popover','manual');glowPicker.setAttribute('role','dialog');
 glowPicker.setAttribute('aria-label','配色');
-glowPicker.innerHTML=`<header class="board-glow-head" data-glow-presets><span>光晕</span><button type="button" class="board-glow-reset" data-glow-preset-reset>重置</button></header>
-  <div class="board-glow-grid" data-glow-grid role="group" aria-label="光晕"></div>
-  <p class="board-glow-head board-glow-sub"><span>强调色</span></p>
-  <div class="board-glow-grid" data-accent-grid role="group" aria-label="强调色"></div>
-  <footer><button type="button" class="geist-button primary" data-glow-detail>详细设置</button></footer>`;
 document.body.append(glowPicker);
 const glowButton=boardFoot.querySelector('#boardGlowBtn');
 const glowFloating=wireAnchoredMenu(boardFoot,glowButton,glowPicker);
-/* 光晕关掉之后这张卡上只剩强调色可挑：上面那一组球和它的「重置」换的是一层现在不画的
-   东西，点下去屏幕上没有任何反应，而它们还占着卡的上半张。整组收起来，卡就只说当前还
-   管用的那一件事。钮上那枚点同时改口说强调色——BoardUI 原版那颗点本来就是强调色，光晕
-   开着时它说的是第一枚光晕，关着时那一枚收起、只剩强调色那一枚。 */
-syncGlowSidebar=()=>{
-  const glow=appSettings.homeGlow;
-  glowButton.style.setProperty('--glow-swatch',glow.on?glow.spot1.color:'var(--color-accent-500)');
-  glowButton.toggleAttribute('data-glow-native',glow.on&&isNativeGlass(glow.preset));
-  glowButton.toggleAttribute('data-glow-off',!glow.on);
-  glowPicker.querySelectorAll('[data-glow-presets],[data-glow-grid]').forEach(node=>node.hidden=!glow.on);
-  renderGlowPresetGrid(glowPicker.querySelector('[data-glow-grid]'));
-  glowPicker.querySelector('[data-accent-grid]').innerHTML=
-    ACCENTS.map(accent=>accentChipHtml(accent,appSettings.accent)).join('');
-};
-wireGlowPresetGrid(glowPicker.querySelector('[data-glow-grid]'));
-glowPicker.querySelector('[data-accent-grid]').addEventListener('click',event=>{
-  const chip=event.target.closest?.('[data-accent]');
-  if(!chip)return;
-  appSettings.accent=normalizeAccent(chip.dataset.accent);
-  saveSettings();applyAccent();syncGlowChrome();
-});
-/* 这里重置的是配色，不是整份光晕：标题就写着「光晕」和「强调色」，把强度和颗粒一起
-   清掉会让人以为按错了键。整份恢复默认在详细设置那一屏。 */
-glowPicker.querySelector('[data-glow-preset-reset]').onclick=()=>{
-  const glow=appSettings.homeGlow;
-  glow.preset=DEFAULT_HOME_GLOW.preset;Object.assign(glow,glowPalette(glow.preset));
-  appSettings.accent=DEFAULT_ACCENT;
-  saveSettings();applyHomeGlow();applyGlassFaces();applyAccent();syncGlowChrome();
-};
-glowPicker.querySelector('[data-glow-detail]').onclick=()=>{
+wireGlowButton(glowButton);
+void loadGlowPicker({root:glowPicker,store:settingsStore,openDetails:()=>{
   glowFloating.setOpen(false);openDrawer(false);
   void openSettings('界面').then(panel=>panel.reveal('#homeGlowControls'));
-};
-syncGlowSidebar();
+}});
 /* 品牌（媒体库选择）与开合键是壳里浮层的锚点，挪进侧栏标题行那个空槽：骨架画好时一次，侧栏岛接手
    换掉骨架时（`attached`）再一次。手机上抽屉收着时开合键回到顶栏原位，抽屉整块不可聚焦。 */
 function placeBrand(){

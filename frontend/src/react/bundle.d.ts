@@ -20,6 +20,7 @@ import type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 import type { SidebarApi, SidebarHost } from './sidebar/sidebar-api';
 import type { ManageHeaderApi, ManageHeaderHost } from './manage-header/manage-header-api';
 import type { BatchDockApi, BatchDockHost } from './batch-dock/batch-dock-api';
+import type { GlowPickerHost } from './glow-picker/glow-picker-api';
 
 export type { IndexProps };
 export type { CatalogGridProps };
@@ -552,6 +553,11 @@ export type {
 
 /** 接上壳给的宿主，拿回批量条岛的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次。 */
 export declare function configureBatchDock(host: BatchDockHost): BatchDockApi;
+
+export type { GlowPickerHost } from './glow-picker/glow-picker-api';
+
+/** 接上壳给的宿主，当场画好侧栏配色卡的内容（`glow-picker/glow-picker-island.tsx`）。只调一次。 */
+export declare function configureGlowPicker(host: GlowPickerHost): void;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;

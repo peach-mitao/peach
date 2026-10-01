@@ -28,6 +28,8 @@ export interface PanelSettings {
   theme: string;
   uiSounds: boolean;
   homeGlow: HomeGlow;
+  /** 预设格选一档时连强调色一起换（`@peach/appearance` 的 `chooseGlowPreset`）。 */
+  accent: string;
   sidebarOrder: string[];
   batchSize: number;
   defaultSort: string;
@@ -79,9 +81,6 @@ export interface SettingsPanelHost {
   setCensored(on: boolean): void;
   highContrast(): boolean;
   setHighContrast(on: boolean): void;
-  /** 光晕预设那一格和侧栏配色卡是同一组色块、同一份写入，由壳画、由壳接。 */
-  renderGlowGrid(grid: HTMLElement): void;
-  wireGlowGrid(grid: HTMLElement): void;
   receipt(message: string): void;
   failure(message: string, error: unknown): void;
   /** 账本上的那份与本地缓存对账（壳里的 `applySyncedSettings`），启动时壳自己也走这一条。 */

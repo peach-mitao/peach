@@ -4702,15 +4702,15 @@ describe('设计决定', () => {
           key: (node as HTMLElement).dataset.glowPreset,
           label: node.getAttribute('aria-label'),
           pressed: node.getAttribute('aria-pressed'),
-          ball: getComputedStyle(node.querySelector('.board-glow-ball')!).backgroundImage,
+          ball: getComputedStyle(node.querySelector('[data-glow-ball]')!).backgroundImage,
         })));
       const inSettings = await chips('#homeGlowControls');
       assert.ok(inSettings.length >= 2, '设置里没有预设色块');
       assert.deepEqual(inSettings, await chips('#boardGlowMenu'), '设置里的预设色块和侧栏配色卡不是同一组');
-      const size = await grid.locator('.board-glow-ball').first().evaluate((node) => node.getBoundingClientRect().width);
+      const size = await grid.locator('[data-glow-ball]').first().evaluate((node) => node.getBoundingClientRect().width);
       assert.equal(size, 28, '设置里的色块和侧栏那一枚不是同一副尺寸');
       /* 设置这一行有整块设置那么宽：列数跟着可用宽度走，每格就是一枚球，挨着排满再换行，
-         间距与侧栏那条 `.board-glow-grid` 同一个值；侧栏那张卡仍是六列。 */
+         间距与侧栏那条 `[data-glow-grid]` 同一个值；侧栏那张卡仍是六列。 */
       const gridStyle = (root: string) => opened.page.locator(`${root} [data-glow-grid]`).evaluate((node) => {
         const style = getComputedStyle(node);
         return { tracks: style.gridTemplateColumns, gap: style.columnGap, inline: style.paddingLeft };

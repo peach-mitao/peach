@@ -32,7 +32,7 @@ it('React 样式产物的类名不和旧样式表同名', () => {
       .flatMap((name) => [...classNames(read('css', name))]),
   ]);
   /* 这两枚是两边约好的名字，同名正是契约：`.peach-react` 让旧样式表把 React 子树排除在
-     全局焦点环之外；`.dark` 是 `web/app.js` 的 `applyTheme` 挂在 <html> 上的主题标记，旧
+     全局焦点环之外；`.dark` 是 `src/appearance/theme.ts` 的 `applyTheme` 挂在 <html> 上的主题标记，旧
      样式表按它给浅色单独换面，React 侧 Tailwind 的 dark 变体读的也是它。 */
   const agreed = new Set(['peach-react', 'dark']);
   /* `video-js` 与 `vjs-*` 是 Video.js 的组件契约：类由它自己的组件挂上，播放器样式

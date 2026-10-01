@@ -17,3 +17,8 @@ export {
   photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout,
 } from './layout';
 export type { GridLayout } from './layout';
+export {
+  ACCENT_CHOICES, applyAccent, applyGlassFaces, applyHomeGlow, chooseAccent, chooseGlowPreset, glowChips, paintGlowButton,
+  paintHomeGlowNow, resetGlowColors, wireGlowButton,
+} from './glow';
+export type { GlowChip, GlowSettings } from './glow';

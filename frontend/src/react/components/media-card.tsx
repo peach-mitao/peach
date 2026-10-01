@@ -27,7 +27,7 @@ import { spinnerHtml } from '@peach/legacy/ui';
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
 import { ArtSlot } from './art-slot';
 
-/** 大图卡片的容器比例，同遗留层 `COVER_FRONT_RATIO`：正封宽高比 0.667～0.749，0.75 比最宽
+/** 大图卡片的容器比例，同 `appearance/layout.ts` 的 `COVER_FRONT_RATIO`：正封宽高比 0.667～0.749，0.75 比最宽
  *  的那张还宽，一张都不用从左边切。 */
 export const COVER_FRONT_RATIO = 0.75;
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
