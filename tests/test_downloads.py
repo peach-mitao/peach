@@ -10,10 +10,12 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path, PureWindowsPath
 
 from peach import downloads as dl
 from peach import push_discovery as push
+from peach import wants
 from peach.follow_secrets import CredentialStore
 from peach.repository import LedgerDatabase
 from support.ledger import fresh_ledger
@@ -291,6 +293,25 @@ class LandingTests(_Deployment):
             connection.close()
         self.assertEqual(paths, [self.ledger("云下载", "ABC-123", "ABC-123.mp4")])
         self.assertEqual(task.asset_id is not None, True)
+
+    def test_a_wishlist_download_that_lands_marks_the_want_acquired(self):
+        with closing(sqlite3.connect(self.db)) as connection:
+            want_id = wants.add_code(connection, "ABC-123")["id"]
+            connection.commit()
+        task_id = self.submit(code="ABC-123", origin=f"wishlist:{want_id}")["task"]["id"]
+        self.provider.statuses = [dl.RemoteStatus(dl.DONE, "r1", "ABC-123", 1.0)]
+        self.tick(10)
+        folder = self.cloud / "云下载" / "ABC-123"
+        folder.mkdir()
+        (folder / "ABC-123.mp4").write_bytes(b"0" * 8)
+        self.tick(dl.LANDING_GRACE)
+        task = self.service.store.get(task_id)
+        self.assertEqual((task.state, task.origin), (dl.INGESTED, f"wishlist:{want_id}"))
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.row_factory = sqlite3.Row
+            want = wants.get(connection, want_id)
+        self.assertEqual((want["state"], want["acquired_asset_id"], want["acquired_source"]),
+                         (wants.ACQUIRED, task.asset_id, wants.AUTO_SOURCE))
 
     def test_a_file_already_registered_by_the_push_channel_is_not_registered_twice(self):
         task_id = self.finish()
