@@ -1,4 +1,5 @@
 import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
+import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
 import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
 import { faceFrame } from './js/face-frame.js';
 import { searchMorphFrames } from './js/search-morph.js';
@@ -19,9 +20,9 @@ import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAUL
 import { javImageKind, normalizeJavLayout, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages, nativeImageFit, faceSourceScale, entitySkeletonHtml } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
-  attachOverlayScrollbar, breadcrumbHtml, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
+  attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
   fitSkeleton, formModal, iconSwapHtml, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
-  dissolveValue, popBadges, revealSkeleton, revealTexts, setIconSwap, swapText,
+  dissolveValue, popBadges, revealSkeleton, revealTexts, setIconSwap,
   boardTabsHtml, moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml, searchInputHtml,
   SKELETON_REVEAL_DELAY, setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
   wireOverlayScrollbars, wireScrollers, configurationSkeletonHtml, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
@@ -1163,24 +1164,22 @@ function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true}={}
 /* 换「JAV 默认封面」时，开着的作品详情把海报位跟同一张图一起换。 */
 function repaintDetailPoster(){stageApi()?.repaintPoster()}
 let selectMode=false,lastSelectedId=null,followLastSelectedId=null,selectSurface='';
+//: 最近一次推给批量条岛的那份；岛还没装载时先记着，接上那一刻补推。
+let batchDockProps={count:0,context:'catalog',junkDismissed:false};
+//: 回收站这一次进页以来最近一次读数（`paintCatalogCount` 写，页头说明行读）；还没读到或不在回收站时是 null。
+let trashCount=null;
 const currentSelectSurface=()=>location.pathname==='/follow'?'follow':location.pathname==='/junk-files'?'junk':'catalog';
 function paintSelection(){
   // 卡片网格、垃圾队列与关注页的选中态归 React：每次推一份新的集合，卡片按引用比较才看得出变了。
   gridIslandHosts().forEach(host=>updateIsland(host,{selected:new Set(selected),selectMode}));
   pushFollowFeed({selected:new Set(followSelected),selectMode});
+  /* 底部浮条归批量条岛（`react/batch-dock/`）：壳推计数与语境，每种语境列哪几颗键由岛按语境定。 */
   const followPage=location.pathname==='/follow',junkPage=location.pathname==='/junk-files';
   const picked=followPage?followSelected:selected;
-  $('#batchbar').hidden=!picked.size;$('#batchCount').textContent=`已选 ${picked.size} 项`;
-  $('#batchbar').querySelectorAll('[data-batch]').forEach(button=>button.hidden=followPage||junkPage);
-  $('#batchbar').querySelectorAll('[data-follow-batch]').forEach(button=>button.hidden=!followPage);
-  $('#batchbar').querySelectorAll('[data-trash-only]').forEach(button=>button.hidden=followPage||junkPage||state.state!=='trash');
-  $('#batchbar').querySelectorAll('[data-batch="like"],[data-batch="seen"],[data-batch="later"],[data-batch="dispose"],[data-batch-region]').forEach(button=>button.hidden=followPage||junkPage||state.state==='trash');
-  const junkView=junkRoute(location.search).view;
-  $('#batchbar').querySelectorAll('[data-junk-batch]').forEach(button=>{
-    const operation=button.dataset.junkBatch;
-    button.hidden=!junkPage||(operation==='dismiss-junk'&&junkView==='dismissed')
-      ||(operation==='reconsider-junk'&&junkView!=='dismissed');
-  });
+  batchDockProps={count:picked.size,context:followPage?'follow':junkPage?'junk':state.state==='trash'?'trash':'catalog',
+    junkDismissed:junkRoute(location.search).view==='dismissed'};
+  /* 浮条宿主在 `#main` 外面，玻璃贴图的观察器看不到它长出来，画完补扫一遍。 */
+  if(batchDockApi()){batchDockApi().render(batchDockProps);syncGlassOptics()}
 }
 /* 标签页的多选归 React 页面自己记：键在壳里，所以开关一变就推给正挂着的那一页，关掉时
    页面随之清空所选。别的页面上没有挂着的索引页，`updateIsland` 是空操作。 */
@@ -1201,11 +1200,12 @@ function toggleFollowSelection(id,range=false){
   followLastSelectedId=selectRange(followSelected,visibleFollowIds(),followLastSelectedId,id,range);setSelectMode(true);paintSelection();
 }
 $('#selectMode').onclick=()=>setSelectMode(!selectMode,!selectMode?false:true);
-$('#batchClear').onclick=()=>setSelectMode(false,true);
-$('#batchbar').querySelectorAll('[data-batch]').forEach(button=>button.onclick=async()=>{
+/* 批量条上的键回到这几条流程（`BATCH_RUNNERS` 按键的分组分派）：确认弹层、写接口、回执与撤销都在这里，
+   忙态挂在岛交回来的那颗键上。 */
+async function runCatalogBatch(operation,button){
   const labels={like:'喜欢',seen:'标为看过',later:'加入稍后看',dispose:'移入回收站',restore:'还原',delete:'彻底删除'};
   const titles={like:'喜欢所选项目',seen:'标记为已看',later:'加入稍后看',dispose:'移入回收站',restore:'还原所选项目',delete:'永久删除所选项目'};
-  const operation=button.dataset.batch,ids=[...selected];if(!ids.length)return;
+  const ids=[...selected];if(!ids.length)return;
   return confirmModal({title:titles[operation],body:`将处理选中的 ${ids.length} 项。${operation==='delete'?'文件和馆藏记录会永久删除，无法恢复。':operation==='dispose'?'馆藏记录可在回收站还原。':''}`,confirmLabel:titles[operation],danger:operation==='delete',onConfirm:async()=>{
   setActionBusy(button);
   try{const r=await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation})});
@@ -1220,14 +1220,14 @@ $('#batchbar').querySelectorAll('[data-batch]').forEach(button=>button.onclick=a
   catch(error){setActionBusy(button,false);throw error}
   finally{setActionBusy(button,false);paintSelection()}
   }});
-});
+}
 /* 产地是选中这一批的共同判断，不是逐条编辑，所以入口和「喜欢」「看过」并列在选择栏。
    药丸做单选：筛选面板里的产地已经是这个样子，弹层里换一套控件只会让人重新认一遍。
    「撤回判定」和那四类并列——加了「进入某状态」就得有「退出」，否则判错的片只能改成
    另一个错的产地，回不到未判定。 */
 const REGION_CHOICES=[['jp','日本'],['kr','韩国'],['cn','国产'],['west','欧美'],
   ['other','其他'],['none','撤回判定']];
-$('#batchbar').querySelector('[data-batch-region]').onclick=async()=>{
+async function pickBatchRegion(){
   const ids=[...selected];if(!ids.length)return;
   const modal=formModal({
     title:'判定产地',
@@ -1254,9 +1254,9 @@ $('#batchbar').querySelector('[data-batch-region]').onclick=async()=>{
   setSelectMode(false,true);await reloadCurrentSurface();
   actionReceipt(result.region==='none'
     ? `已撤回 ${ids.length} 项的产地判定` : `已判为${result.label}：${ids.length} 项`);
-};
-$('#batchbar').querySelectorAll('[data-follow-batch]').forEach(button=>button.onclick=async()=>{
-  const action=button.dataset.followBatch,items=[...followSelected];if(!items.length)return;
+}
+async function runFollowBatch(action,button){
+  const items=[...followSelected];if(!items.length)return;
   const labels={save:'保存到账本',seen:'标记已看',ignored:'忽略'};
   const titles={save:'保存所选作品',seen:'标记为已看',ignored:'忽略所选作品'};
   return confirmModal({title:titles[action],body:`将处理选中的 ${items.length} 项关注作品。`,confirmLabel:titles[action],danger:false,onConfirm:async()=>{
@@ -1269,9 +1269,9 @@ $('#batchbar').querySelectorAll('[data-follow-batch]').forEach(button=>button.on
   }catch(error){setActionBusy(button,false);throw error}
   finally{setActionBusy(button,false);paintSelection()}
   }});
-});
-$('#batchbar').querySelectorAll('[data-junk-batch]').forEach(button=>button.onclick=async()=>{
-  const operation=button.dataset.junkBatch,ids=[...selected];if(!ids.length)return;
+}
+async function runJunkBatch(operation,button){
+  const ids=[...selected];if(!ids.length)return;
   const labels={'dismiss-junk':'不是垃圾','reconsider-junk':'重新判断',dispose:'移入回收站'};
   const titles={'dismiss-junk':'标记为非垃圾','reconsider-junk':'重新检查文件',dispose:'移入回收站'};
   return confirmModal({title:titles[operation],body:`将处理选中的 ${ids.length} 个文件。`,confirmLabel:titles[operation],danger:false,onConfirm:async()=>{
@@ -1288,7 +1288,14 @@ $('#batchbar').querySelectorAll('[data-junk-batch]').forEach(button=>button.oncl
   }catch(error){setActionBusy(button,false);throw error}
   finally{setActionBusy(button,false);paintSelection()}
   }});
-});
+}
+const BATCH_RUNNERS={batch:runCatalogBatch,region:pickBatchRegion,follow:runFollowBatch,junk:runJunkBatch,
+  clear:()=>setSelectMode(false,true)};
+/* 批量条岛在壳启动时接上 `body` 末尾的宿主；包回来之前就选中的，接上那一刻补推手上那份。 */
+function mountBatchDock(){
+  loadBatchDock({root:$('[data-batch-dock]'),run:(group,operation,button)=>{void BATCH_RUNNERS[group]?.(operation,button)}})
+    .then(dock=>{dock.render(batchDockProps);syncGlassOptics()}).catch(()=>{});
+}
 
 /* 密度：大图为主，密集为辅 */
 const TILES={big:'336px',dense:'168px'};   /* 168px 模块单位 */
@@ -2237,17 +2244,15 @@ async function buildBars(){
 /* 排序和换批都属于当前列表，放在筛选条下排，不占用全局导航。目录网格每接一页报一次总数与
    显示的卡数（竖屏带与 Mix 不算），读数由岛按位错峰写出来。 */
 function paintCatalogCount(nextTotal,n){
-  total=nextTotal;buildManageBar();
-  const trash=state.state==='trash';
-  /* 「清空回收站」和左边的计数说的是同一批文件，挂在说明行右端。它自己占一行时，
-     标题和网格之间会空出一条只放一个按钮的带子。 */
-  if(trash)paintManageLede(`${total.toLocaleString()} 个符合 · 显示 ${n}`,
-    total?`<button class="batchaction danger" id="emptyTrash" type="button" title="永久删除回收站内容">清空回收站</button>`:'');
+  total=nextTotal;
+  /* 回收站的读数写在页头的说明行里（右端挂「清空回收站」），由页头岛画。 */
+  if(state.state==='trash')trashCount={total,shown:n};
+  buildManageBar();
   paintCatalogFilter({count:{total,shown:n}});
-  const emptyTrash=$('#emptyTrash');
-  if(emptyTrash)emptyTrash.onclick=async(e)=>{
-    return confirmModal({title:'清空回收站',body:'回收站中的全部文件和馆藏记录将永久删除，无法恢复。',confirmLabel:'清空回收站',danger:true,onConfirm:async()=>{
-
+}
+/* 页头说明行右端那颗「清空回收站」。 */
+function emptyTrash(){
+  return confirmModal({title:'清空回收站',body:'回收站中的全部文件和馆藏记录将永久删除，无法恢复。',confirmLabel:'清空回收站',danger:true,onConfirm:async()=>{
     try{
       const r=await api('/api/trash/empty',{method:'POST'});
       /* 删不掉的文件（占用中、网盘离线）会连同账本行一起留在回收站，必须说出来，
@@ -2257,7 +2262,6 @@ function paintCatalogCount(nextTotal,n){
       actionReceipt(`已永久删除 ${r.purged} 项`);
     }finally{await loadCatalog()}
   }});
-  };
 }
 
 /* ── 组合筛选：多个标签同时生效 ── */
@@ -2317,7 +2321,7 @@ function showManagementBody({manage=true,placeholder=''}={}){
   $('#stats').hidden=false;$('#index').hidden=true;clearCatalogGrid();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
   if(manage)buildManageBar();
-  else{$('#managebar').hidden=true;$('#manageTitle').hidden=true;syncNavigation()}
+  else{paintManageHeader('');syncNavigation()}
   if(!placeholder)return;
   /* 屏幕上已经是同一张骨架就别重画：innerHTML 换新节点会把 shimmer 从头放一遍，
      整页刷新看到的就是同一段动画闪两次。 */
@@ -2648,7 +2652,6 @@ async function openDataCleanup(push=true){
   if(push)route('/data-cleanup');
   const surface=claimSurface('/data-cleanup');
   showManagementBody({placeholder:managementPlaceholder('/data-cleanup')});
-  paintManageLede();
   const ui=await import('/dist/peach-ui.js');
   if(!surfaceCurrent(surface))return;
   /* 重复文件报数据管理的身份，`openManage('duplicates')` 找不到它自己的 section。 */
@@ -2665,7 +2668,6 @@ async function openDuplicates(push=true){
   if(push)route('/duplicates');
   const surface=claimSurface('/duplicates');
   showManagementBody({placeholder:managementPlaceholder('/duplicates')});
-  paintManageLede();
   const ui=await import('/dist/peach-ui.js');
   if(!surfaceCurrent(surface))return;
   const props={openItem,failure:actionFailure,toast:(message,{undo}={})=>actionReceipt(message,{undo})};
@@ -2769,7 +2771,7 @@ async function openScraping(push=true){
   if(push)route('/scraping');
   const surface=claimSurface('/scraping');
   /* 占位取共用那一份：这里另写一张时，整页刷新会先画深链启动那张、再画这一张，
-     同一段 shimmer 连放两遍。标题由 paintManageTitle 按 MANAGE_CRUMB_PAGES 认，
+     同一段 shimmer 连放两遍。标题由页头岛按 `MANAGE_CRUMB_PAGES`（`frontend/src/manage-header.ts`）认，
      不在这里再赋一次值。 */
   showManagementBody({placeholder:managementPlaceholder('/scraping')});
   const ui=await import('/dist/peach-ui.js');
@@ -3813,8 +3815,7 @@ function manageSection(){
   return hit?.route.section||(state.state==='ads'?'cleanup':'');
 }
 function buildManageBar(){
-  const current=manageSection(),bar=$('#managebar');
-  bar.hidden=!current;
+  const current=manageSection();
   probeConfigurable();
   // 管理区是行政界面，不该顶着首页的人物/厂牌横条和标签筛选。
   // 隐藏 tagbar 的同时同步 count 栏的吸顶偏移：它默认按「顶栏+筛选条」留位，
@@ -3822,101 +3823,52 @@ function buildManageBar(){
   if(current)hideDiscoveryBars();
   $('#count').classList.toggle('no-tagbar',!!current);
   syncNavigation();     // 顶层高亮跟随管理区；否则从首页进来时仍停在「首页」上
-  paintManageTitle();
-  if(!current)return;
-  const entry=MANAGE_SECTIONS.find(([k])=>k===current);
-  bar.classList.remove('is-open');
-  bar.innerHTML=`<button class="managebar-toggle" type="button" aria-expanded="false" aria-controls="managebar-menu">
-      <span class="managebar-current">${icon(entry[2])}<span>管理 · ${entry[1]}</span></span>${icon('chevron-down')}
-    </button><div class="managebar-menu" id="managebar-menu">${manageMenuSections().map(([k,label,ic])=>
-      `<button data-manage="${k}" aria-pressed="${k===current}">${icon(ic)}<span>${label}</span></button>`).join('')}</div>`;
-  const toggle=bar.querySelector('.managebar-toggle');
-  toggle.onclick=()=>{const open=bar.classList.toggle('is-open');toggle.setAttribute('aria-expanded',String(open))};
-  toggle.onkeydown=event=>{if(event.key==='Escape'){bar.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');toggle.focus()}};
-  bar.querySelectorAll('[data-manage]').forEach(b=>b.onclick=()=>openManage(b.dataset.manage));
+  /* 回收站读数只在这一次进页里有效：离开回收站就忘掉，下次进来说明行先铺同形占位，
+     读数到了再落；同页重画（筛选、判完一批、翻页）沿用手上这份，不再铺占位。 */
+  if(current!=='trash')trashCount=null;
+  paintManageHeader(current);
 }
-/* 管理区分页共用同一个标题元素。回收站和垃圾文件走首页网格路径，
-   本来就没有标题层；统计/复核/重复各自内嵌 h2 又导致字号不一致。 */
-/* 数据管理五张卡对应的子页（vercel.com/geist/breadcrumbs：有上一级页面的
-   子页才画面包屑）。人工复核、回收站、高清版虽也保留侧栏直达入口，
-   层级上仍从数据管理进；资源同步是 hub 上的就地操作，没有独立页面。 */
+/* 页头（管理条、面包屑、页面标题与回收站说明行）归页头岛（`react/manage-header/`）。壳推当前管理区、
+   菜单项与回收站读数；岛接上之前宿主里是同一份结构的骨架（`manageHeaderSkeletonHtml`）。 */
 //: 上一次页面标题说的是哪一页。空串表示此刻没有管理区标题（首页、目录这些）。
 let lastManagePageLabel='';
-const MANAGE_CRUMB_PAGES={
-  '/junk-files':'垃圾文件',
-  '/duplicates':'重复文件',
-  '/review':'人工复核',
-  '/trash':'回收站',
-  '/quality-goals':'高清版',
-  '/scraping':'来源和凭证',
-};
-//: 数据管理这一支里正文是 812px 窄列的页面，标题与面包屑要跟着居中。
-const CENTERED_CLEANUP_PAGES=new Set(['/data-cleanup','/scraping']);
-function paintManageTitle(){
-  const current=manageSection(),el=$('#manageTitle');
-  if(!el)return;
-  document.body.classList.toggle('insight-layout',current==='stats'||current==='taste');
-  /* 812px 居中跟着正文走，不跟着 section 走。数据管理 hub（.cleanuppage）和采集来源
-     （.scraping-page）的正文都是这个宽度的窄列，标题不居中就比正文左出去一截；同一个
-     section 下的垃圾文件、重复文件正文是全宽网格，跟着居中反而对不齐。所以判据是
-     「这条路径的正文是不是窄列」，列在下面这张表里。 */
-  document.body.classList.toggle('cleanup-layout',CENTERED_CLEANUP_PAGES.has(decodeURIComponent(location.pathname)));
-  document.body.classList.toggle('follow-manage-layout',decodeURIComponent(location.pathname)==='/follow-manage');
-  document.body.classList.toggle('configuration-layout',current==='configuration');
-  const entry=MANAGE_SECTIONS.find(([k])=>k===current);
-  el.hidden=!entry;
-  // 数据管理之下按路径再分一层（MANAGE_CRUMB_PAGES）：垃圾文件/重复文件的
-  // 标题用页面自己的名字，「数据管理」让给 breadcrumb 的上一级。
-  const pageLabel=current==='cleanup'?MANAGE_CRUMB_PAGES[decodeURIComponent(location.pathname)]:null;
-  if(entry)el.textContent=pageLabel||entry[1];
-  paintManageCrumb();
-  /* 回收站的说明行由目录计数写（paintCatalogCount）。读数到之前先铺同形占位，计数栏不在
-     落地那一下才冒出来把网格往下推；已经写着读数的（同页重画）原样留着。 */
-  if(current==='trash'){if(!$('#manageLede [data-lede-text]'))paintTrashLedeSkeleton()}
-  else paintManageLede();
-  /* 换了页才揭示一遍。同一页里的每一次重画（筛选、判完一批、翻页）走的也是这个函数，
-     不比一下标题的话，页面标题会跟着每一次取数再飘一次。
-     统计页正文里那几块节标题归 React 那一档（ADR-0031），这一批不动 React 子树；
-     这里放的是统计、复核、数据管理共用的那一块页面标题。 */
-  const label=el.hidden?'':el.textContent;
+//: 骨架阶段上一次写进宿主的那段 HTML：同样的内容不重写，正在揭示的标题不被换掉。
+let manageHeaderSkeleton='';
+const manageHeaderRoot=()=>$('[data-manage-header]');
+function manageHeaderProps(section){
+  return {section,path:decodeURIComponent(location.pathname),sections:MANAGE_SECTIONS,
+    menu:section?manageMenuSections():[],trash:trashCount};
+}
+function paintManageHeader(section=manageSection()){
+  const props=manageHeaderProps(section),header=manageHeaderApi();
+  if(header)header.render(props);
+  else{
+    const html=manageHeaderSkeletonHtml(props);
+    if(html!==manageHeaderSkeleton){manageHeaderSkeleton=html;manageHeaderRoot().innerHTML=html}
+  }
+  /* 换了页才揭示一遍。同一页里的每一次重画（筛选、判完一批、翻页）走的也是这里，
+     不比一下标题的话，页面标题会跟着每一次取数再飘一次。骨架阶段与岛接手之后是同一处。 */
+  const label=manageHeaderView(props)?.title||'';
   if(label===lastManagePageLabel)return;
   lastManagePageLabel=label;
-  if(label)revealTexts(document,'#manageTitle:not([hidden]),#manageLede:not([hidden])');
+  if(label)revealTexts(manageHeaderRoot(),'[data-manage-title],[data-manage-lede]');
 }
-function paintManageCrumb(){
-  const el=$('#manageCrumb');if(!el)return;
-  const label=MANAGE_CRUMB_PAGES[decodeURIComponent(location.pathname)];
-  el.hidden=!label;
-  if(!label)return;
-  el.innerHTML=breadcrumbHtml([{label:'数据管理',href:'/data-cleanup'},{label,current:true}]);
-  /* href 是给「新标签页打开」和右键菜单用的，普通左键必须走路由：这里没有
-     全局锚点拦截，不接就是整页重载，SPA 的返回表面和已读位置全部丢掉。 */
-  el.querySelectorAll('a[href]').forEach(a=>a.onclick=event=>{
-    if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
-    event.preventDefault();openDataCleanup();
+/* 壳启动时铺骨架并装载页头岛。骨架上的点击在岛接上之前由这里接：页签走 `openManage`，面包屑左键走路由
+   （带修饰键或中键时照链接自己的 href 走），「清空回收站」走同一条流程。 */
+function mountManageHeader(){
+  const root=manageHeaderRoot();
+  root.addEventListener('click',event=>{
+    if(manageHeaderApi())return;
+    const tab=event.target.closest?.('[data-manage]');
+    if(tab){openManage(tab.dataset.manage);return}
+    if(event.target.closest?.('[data-manage-crumb] a[href]')){
+      if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
+      event.preventDefault();openDataCleanup();return;
+    }
+    if(event.target.closest?.('[data-empty-trash]'))emptyTrash();
   });
-}
-/* 说明行可以在右端挂一个属于本页的动作（回收站的「清空回收站」）。左文右动作是
-   一行，不是两行；没有动作时它仍是一段纯文本。 */
-function paintManageLede(text='',actionsHtml=''){
-  const el=$('#manageLede');if(!el)return;
-  el.hidden=!text&&!actionsHtml;
-  el.classList.toggle('pagelede-actions',!!actionsHtml);
-  /* 说明行的文字那一格留在原地：它每次重画说的都是同一件事的新读数，整格重建就没有
-     起点可走，换态只好硬切。右端的动作仍整块重写——它换的是有没有这个按钮。 */
-  const keep=el.querySelector('[data-lede-text]');
-  el.querySelectorAll(':scope>:not([data-lede-text])').forEach(node=>node.remove());
-  if(text){
-    const slot=keep||el.appendChild(Object.assign(document.createElement('span'),{}));
-    slot.setAttribute('data-lede-text','');
-    swapText(slot,text);
-  }else if(keep)keep.remove();
-  if(actionsHtml)el.insertAdjacentHTML('beforeend',actionsHtml);
-}
-function paintTrashLedeSkeleton(){
-  const el=$('#manageLede');if(!el)return;
-  el.hidden=false;el.classList.add('pagelede-actions');
-  el.innerHTML='<span class="skeleton trash-lede-skeleton" aria-hidden="true"></span><span class="skeleton trash-lede-skeleton" aria-hidden="true"></span>';
+  loadManageHeader({root,openManage,openDataCleanup:()=>openDataCleanup(),emptyTrash})
+    .then(()=>paintManageHeader()).catch(()=>{});
 }
 function paintListTitle(){
   const el=$('#listTitle');if(!el)return;
@@ -4777,6 +4729,8 @@ window.addEventListener('popstate',restoreRoute);
 entityShapesReady=loadEntityShapes();
 renderInitialSurfaceLoading();
 mountSidebar();
+mountManageHeader();
+mountBatchDock();
 buildManageBar();
 /* 那两个聚合查询喂的是首页顶部三条横条。深链进管理页或索引页时横条一开始就收着，
    结果没人看，却排在这一页自己的数据前面。 */
@@ -4832,7 +4786,6 @@ function decorate(){
       configurationRequestedSection='';
     }
   }
-  document.querySelectorAll('#managebar [data-manage]').forEach(button=>{if(button.getAttribute('aria-pressed')==='true')button.setAttribute('aria-current','page');else button.removeAttribute('aria-current')});
 }
 const boardBrand=document.querySelector('#brandHome');
 boardBrand.setAttribute('aria-label','Peach 首页');
@@ -4979,7 +4932,6 @@ document.addEventListener('board:sidebar',placeBrand);
 addEventListener('resize',placeBrand);
 decorate();
 new MutationObserver(decorate).observe(document.querySelector('#stats'),{childList:true,subtree:true});
-new MutationObserver(decorate).observe(document.querySelector('#managebar'),{childList:true});
 
 let floatingScheduled=false;
 function updateFloating(){
@@ -5050,7 +5002,7 @@ if(/Chrome|Chromium|Edg\//.test(navigator.userAgent)){
     /* 设置面板左栏那块 `[data-glass-pane]` 挂在 `<body>` 上、不在 `#main` 里，下面那个
        观察器看不到它；岛第一次画出面板时经 `syncGlassOptics` 叫这里再扫一遍。面板收着时
        宽高是零，`draw` 直接返回，等 `ResizeObserver` 在它露出来那一帧再画一次贴图。 */
-    document.querySelectorAll('.board-filter-frame,.top>.ib,[data-sidebar-drawer],.selectiondock,.reviewcontrols,.reviewgroupbar,[data-glass-pane]').forEach(attach);
+    document.querySelectorAll('.board-filter-frame,.top>.ib,[data-sidebar-drawer],.reviewcontrols,.reviewgroupbar,[data-glass-pane]').forEach(attach);
   };
   syncGlassOptics=sync;
   new MutationObserver(sync).observe(document.querySelector('#main'),{childList:true,subtree:true});sync();

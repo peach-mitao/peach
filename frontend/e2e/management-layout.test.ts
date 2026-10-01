@@ -197,11 +197,11 @@ describe('管理页面容器与骨架', () => {
     it(`回收站网格与标题、汇总栏同宽（${viewport.name}）`, { timeout: 60_000 }, async () => {
       const opened = await visit(browser, '/trash', viewport);
       try {
-        await opened.page.locator('#manageLede').waitFor();
+        await opened.page.locator('[data-manage-lede] [data-lede-text]').waitFor();
         await settle(opened.page);
-        const title = await box(opened.page.locator('#manageTitle'));
+        const title = await box(opened.page.locator('[data-manage-title]'));
         const grid = await box(opened.page.locator('#grid'));
-        const lede = await box(opened.page.locator('#manageLede'));
+        const lede = await box(opened.page.locator('[data-manage-lede]'));
         aligned(title, grid, ['x', 'width']);
         aligned(title, lede, ['x', 'width']);
         assert.deepEqual(opened.problems, []);

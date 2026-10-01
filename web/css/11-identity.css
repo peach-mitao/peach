@@ -2,11 +2,10 @@
    在侧栏里一路点过去就是三种大小；间距由各自的版式决定，字形不再各拍各的。 */
 /* 行高 1.25 取自 2026-09-04 实测的 Geist Heading 32（32px/40px/600）。字距那一档
    不照抄：Geist 的 -0.04em 是给拉丁字母调的，压在中文标题上会把字挤成一团。 */
-.pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2{
+.pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{
   font-size:var(--fs-3xl);line-height:1.25;letter-spacing:-.01em;font-weight:600}
-.listtitle,.managetitle,.follow>.pagetitle{margin:0 0 20px}
-.managetitle:has(+.pagelede:not([hidden])){margin-bottom:8px}
-.listtitle[hidden],.managetitle[hidden]{display:none}
+.listtitle,.follow>.pagetitle{margin:0 0 20px}
+.listtitle[hidden]{display:none}
 
 /* 「未归属」和实体名一样是个入口，只是它指向一个集合而不是一个人，样式同源。 */
 .entitylink,.unownedlink{border:0;background:none;padding:0;color:var(--tungsten);cursor:pointer;text-decoration:none}

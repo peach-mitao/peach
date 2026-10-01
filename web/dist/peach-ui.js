@@ -70,7 +70,7 @@ function d() {
 }
 var f = /* @__PURE__ */ new Map();
 function p(e) {
-	let t = ".managebar-menu,.board-local-nav:not([data-section-nav])", n = [...e.querySelectorAll(t)];
+	let t = ".board-local-nav:not([data-section-nav])", n = [...e.querySelectorAll(t)];
 	e instanceof HTMLElement && e.matches(t) && n.push(e), n.forEach((e) => {
 		if (e.hasAttribute("data-board-tabs")) return;
 		e.dataset.boardTabs = "true";

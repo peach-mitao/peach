@@ -3005,12 +3005,6 @@ class FollowWebSourceTests(unittest.TestCase):
         """
         page = self.page
         self.assertNotIn("faside", page)
-        # 标题与说明跟内容列同宽，否则标题悬空在更宽的位置上。
-        self.assertPageContains(
-            ".follow-manage-layout .managetitle,.follow-manage-layout .pagelede{width:min(812px,100%)")
-        self.assertPageContains(
-            "document.body.classList.toggle('follow-manage-layout',"
-            "decodeURIComponent(location.pathname)==='/follow-manage')")
         # React 那一侧同宽：`Page` 是这一族页面共用的那一层。
         self.assertReactContains("follow-manage/follow-manage-page.tsx", "<Page>")
         # 凭据在「来源和凭证」那一栏里，每个站一行。
@@ -3433,12 +3427,11 @@ class FollowWebSourceTests(unittest.TestCase):
         self.assertPageContains("const selected=new Set(),followSelected=new Set();")
         self.assertPageContains("function toggleFollowSelection(id,range=false)")
         self.assertPageContains("path==='/tags'||path==='/follow'")
-        self.assertPageContains('data-follow-batch="save"')
         self.assertPageContains("const body=action==='save'?{items}:{items,to:action};")
 
     def test_ignore_actions_do_not_reuse_the_close_icon(self):
         self.assertPageContains('<symbol id="i-eye-off"')
-        self.assertPageContains('data-follow-batch="ignored" hidden><svg viewBox="0 0 24 24"><use href="#i-eye-off"')
+        # 批量条上「忽略」的字形由 `frontend/test/react/batch-dock.test.tsx` 断言。
         # 设置面板侧栏排序那一行的「隐藏」也是 eye-off，不借关闭的叉。
         self.assertIn('<Icon name="eye-off" /></button>', self.read_react("settings-panel/sidebar-order.tsx"))
 

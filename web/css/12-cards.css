@@ -1,34 +1,5 @@
 /* ── 主区：满屏，大图 ── */
 main{position:relative;z-index:1;padding:14px 16px 90px}
-/* 管理区二级导航：统计 / 垃圾文件 / 回收站 / 人工复核 共用一条 */
-.managebar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 16px;
-  padding:6px;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground);width:max-content;max-width:100%}
-.managebar[hidden]{display:none}
-.managebar .managebar-toggle{display:none}
-.managebar-menu{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.managebar button{display:inline-flex;align-items:center;gap:7px;min-height:40px;border:0;border-radius:var(--control-radius);
-  background:transparent;color:var(--muted);padding:0 14px;cursor:pointer;font-size:var(--fs-sm);white-space:nowrap}
-.managebar button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round}
-.managebar button:hover{color:var(--ink)}
-.managebar button[aria-pressed="true"]{background:var(--hover);color:var(--ink)}
-.managebar{margin-left:auto;margin-right:auto}
-.insight-layout .managetitle,.insight-layout .pagelede{width:min(1100px,100%);margin-left:auto;margin-right:auto}
-.cleanup-layout .geist-breadcrumb,.cleanup-layout .managetitle,.cleanup-layout .pagelede,
-.follow-manage-layout .managetitle,.follow-manage-layout .pagelede{width:min(812px,100%);margin-left:auto;margin-right:auto}
-/* Geist Breadcrumbs（vercel.com/geist/breadcrumbs 实测）：nav > ol > li，
-   上一级与分隔符 --muted、当前页 --ink 且带 aria-current，hover 同样升亮；
-   分隔符是 16px chevron、钉在 --muted 上不随当前项提亮，最后一项隐藏；
-   项与项、字与分隔符都留 6px。 */
-.geist-breadcrumb{margin:0 0 6px}
-.geist-breadcrumb[hidden]{display:none}
-.geist-breadcrumb ol{display:flex;align-items:center;gap:6px;margin:0;padding:0;list-style:none}
-.geist-breadcrumb li{display:flex;align-items:center;gap:6px;font-size:var(--fs-md);line-height:20px;color:var(--muted);transition:color .2s ease}
-.geist-breadcrumb li[aria-current]{color:var(--ink)}
-.geist-breadcrumb a{color:inherit;text-decoration:none}
-.geist-breadcrumb li:not([aria-current]):hover{color:var(--ink)}
-.geist-breadcrumb li svg{width:16px;height:16px;flex:none;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.geist-breadcrumb li:last-child svg{display:none}
 .count{position:sticky;top:calc(var(--topH) + var(--filterH));z-index:60;
   min-height:var(--sortH);color:var(--ink-2);margin:0 -16px 16px;padding:8px 16px;
   display:flex;align-items:center;gap:10px;flex-wrap:nowrap;
@@ -98,12 +69,6 @@ body.refreshing #batchAction svg{
   flex:0 0 auto;white-space:nowrap}
 .count .sorts button:hover{color:var(--ink)}
 .count .sorts button[aria-pressed="true"]{background:var(--picked);color:var(--ink)}
-/* 这一排里的批量键是强调档，面色连同悬停归 `board.css` 一处：那一层按这条工具带的形状
-   重排过它们，在这里再写一份，算出来生效的仍是那一层。 */
-/* 形状按类写，不按 id：换一批键挂在 id 上的话每多一页就要在这里补一个选择器，而漏掉的
-   那一页不是报错——是图标算出 0×0，按钮变成一块纯色方块。 */
-.count .sorts .batchaction{font-weight:600;width:36px;padding:0;display:inline-grid;place-items:center}
-.count .sorts .batchaction svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 /* 壳自己画进 `#grid` 的那几屏（骨架、垃圾文件队列）是一叠卡：每一段卡合成一个 `.grid`，
    `#grid` 本身只是这叠卡的容器，自己不排网格。目录、回收站与资料页的作品卡由 `catalog-grid`
    island 自己排，版面写在 `frontend/src/react/components/media-card.css`。 */

@@ -1,7 +1,6 @@
 /* 配置页（/configuration）的外壳：分组小标题排在一条 812px 窄列里，与数据管理 hub 同宽。
    分区本身是 React 子树（`frontend/src/react/settings/`），样式归 `peach-react.css`。
    `.configfieldset` 几条只给配置骨架用。 */
-.configuration-layout .managetitle,.configuration-layout .pagelede{width:min(812px,100%);margin-left:auto;margin-right:auto}
 .configpage{width:min(812px,100%);margin:0 auto;display:grid;gap:20px}
 .configgroup{margin:16px 0 0;font-size:var(--fs-2xl);line-height:1.3;font-weight:600}
 .configgroup:first-child{margin-top:0}

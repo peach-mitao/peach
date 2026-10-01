@@ -1744,10 +1744,19 @@ describe('设计决定', () => {
         const rect = element.getBoundingClientRect();
         return [Math.round(rect.top), Math.round(rect.height)];
       };
-      const lede = document.querySelector<HTMLElement>('#manageLede');
+      const lede = document.querySelector<HTMLElement>('[data-manage-lede]');
       const card = document.querySelector('#grid .catalog-skeleton .skeletoncard')
         || document.querySelector('#grid [data-media-card][data-variant="resource"]');
-      return { lede: lede && !lede.hidden ? box(lede) : null, card: box(card) };
+      /* 读数与「清空回收站」各自的竖直中线：两者说的是同一批文件，同在说明行一行里。 */
+      const middle = (element: Element | null | undefined) => {
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return Math.round(rect.top + rect.height / 2);
+      };
+      return { lede: box(lede), card: box(card),
+        cells: [...lede?.querySelectorAll<HTMLElement>('[data-trash-lede-skeleton]') ?? []].map((cell) => cell.dataset.trashLedeSkeleton),
+        text: lede?.querySelector('[data-lede-text]')?.textContent ?? null,
+        row: [middle(lede?.querySelector('[data-lede-text]')), middle(lede?.querySelector('[data-empty-trash]'))] };
     });
     try {
       const release = await holdApi(page);
@@ -1759,14 +1768,42 @@ describe('设计决定', () => {
       await settle(page);
       const landed = await measure();
       assert.ok(waiting.lede, '回收站骨架期间没有计数栏，读数到了才冒出来把网格往下推');
+      assert.deepEqual([waiting.cells, waiting.text], [['text', 'action'], null], `骨架期间说明行不是两格占位：${JSON.stringify(waiting)}`);
+      assert.match(landed.text ?? '', /个符合 · 显示 \d+/, `读数没有落进说明行：${JSON.stringify(landed)}`);
+      assert.deepEqual(landed.cells, [], '读数落地后占位还在');
+      const [textMiddle, buttonMiddle] = landed.row;
+      assert.ok(textMiddle != null && buttonMiddle != null && Math.abs(textMiddle - buttonMiddle) <= 1,
+        `读数和清空键没并在说明行同一行：${JSON.stringify(landed.row)}`);
       assert.deepEqual(waiting.lede, landed.lede, `计数栏落地时位置或高度跳了：${JSON.stringify({ waiting, landed })}`);
       assert.deepEqual(waiting.card, landed.card, `回收站首张卡落地时位置或高度跳了：${JSON.stringify({ waiting, landed })}`);
+      /* 同一页重画（前进后退回到同一条 /trash）：读数接口还在路上时说明行留着上一次的读数，不再铺占位。 */
+      await page.evaluate(() => {
+        const flags = window as unknown as { trashLedeFlashed?: boolean };
+        flags.trashLedeFlashed = false;
+        new MutationObserver(() => {
+          if (document.querySelector('[data-trash-lede-skeleton]')) flags.trashLedeFlashed = true;
+        }).observe(document.querySelector('[data-manage-header]')!, { childList: true, subtree: true });
+      });
+      const again = await holdApi(page);
+      const reread = page.waitForRequest((request) => {
+        const url = new URL(request.url());
+        return url.pathname === '/api/items' && url.searchParams.get('state') === 'trash';
+      }, { timeout: 15_000 });
+      await page.evaluate(() => dispatchEvent(new PopStateEvent('popstate')));
+      await reread;
+      const holding = await measure();
+      again();
+      await page.locator('#grid [data-media-card][data-variant="resource"]').first().waitFor({ timeout: 15_000 });
+      await settle(page);
+      assert.deepEqual([holding.cells, holding.text], [[], landed.text], `同页重画时说明行回到了占位：${JSON.stringify(holding)}`);
+      assert.equal(await page.evaluate(() => (window as unknown as { trashLedeFlashed?: boolean }).trashLedeFlashed), false,
+        '同页重画期间说明行闪回了占位');
       const surfaces = await page.evaluate(() => {
         const root = document.documentElement;
         const before = root.dataset.theme;
         const read = (theme: string) => {
           root.dataset.theme = theme;
-          return [getComputedStyle(document.querySelector('#manageLede')!).backgroundColor,
+          return [getComputedStyle(document.querySelector('[data-manage-lede]')!).backgroundColor,
             getComputedStyle(document.body).backgroundColor];
         };
         const result = { light: read('light'), dark: read('dark') };
@@ -1777,6 +1814,45 @@ describe('设计决定', () => {
       for (const [theme, [lede, ground]] of Object.entries(surfaces)) {
         assert.notEqual(lede, ground, `${theme} 主题下回收站计数栏和页面同一个底色：${lede}`);
       }
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('管理区页头：面包屑当前项升到 --ink、上一级与分隔符钉在 --muted，按下的页签蓝字配一条同宽蓝线', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/duplicates', DESKTOP);
+    try {
+      const { page } = opened;
+      await page.locator('[data-manage-crumb] [aria-current="true"]').waitFor({ timeout: 15_000 });
+      await page.locator('[data-manage-indicator][data-ready]').waitFor({ timeout: 15_000 });
+      await settle(page);
+      /* 指示线落位走一条弹簧过渡：等它停在按下那一枚底下再读；停不下来由下面的断言报出偏差。 */
+      await page.waitForFunction(() => {
+        const a = document.querySelector('[data-manage][aria-pressed="true"]')!.getBoundingClientRect();
+        const b = document.querySelector('[data-manage-indicator]')!.getBoundingClientRect();
+        return Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5;
+      }, null, { timeout: 5_000 }).catch(() => undefined);
+      const [ink, muted, accent] = await Promise.all(['--ink', '--muted', '--tungsten'].map((token) => tokenColor(page, 'body', token)));
+      const read = await page.evaluate(() => {
+        const items = [...document.querySelectorAll<HTMLElement>('[data-manage-crumb] li')];
+        const pressed = document.querySelector<HTMLElement>('[data-manage][aria-pressed="true"]')!;
+        const line = document.querySelector<HTMLElement>('[data-manage-indicator]')!;
+        const [a, b] = [pressed.getBoundingClientRect(), line.getBoundingClientRect()];
+        return {
+          colors: items.map((item) => getComputedStyle(item).color),
+          separators: items.map((item) => item.querySelector('svg') ? getComputedStyle(item.querySelector('svg')!).stroke : null),
+          gap: getComputedStyle(document.querySelector('[data-manage-crumb] ol')!).columnGap,
+          tab: getComputedStyle(pressed).color,
+          line: getComputedStyle(line).backgroundColor,
+          under: [Math.round(b.left - a.left), Math.round(b.width - a.width), Math.round(a.bottom - b.bottom)],
+        };
+      });
+      assert.deepEqual(read.colors, [muted, ink], '上一级不是 --muted，或当前项没升到 --ink');
+      assert.deepEqual(read.separators, [muted, null], '分隔符跟着当前项提亮了，或最后一项也带了分隔符');
+      assert.equal(read.gap, '6px');
+      assert.deepEqual([read.tab, read.line], [accent, accent], '按下的页签不是蓝字配蓝线');
+      assert.deepEqual(read.under, [0, 0, 0], `指示线没压在按下那一枚底下、同宽：${JSON.stringify(read.under)}`);
+      assert.deepEqual(opened.problems.filter((line) => !line.includes('/api/links/check')), []);
     } finally {
       await opened.close();
     }
@@ -1887,12 +1963,14 @@ describe('设计决定', () => {
           opened.page.locator('#postSetupTutorial .post-setup-notification'),
         ]);
         await settle(opened.page);
-        /* 批量条平时不在 DOM 里，放出来再在它中心点取最上层元素。放出和量取在同一次同步执行
-           里做完：重画网格的 paintSelection 能在空当里把它收回去。窄屏上它横跨整行，一定落在
-           教程卡上；宽屏上两者不在同一处，这一条只在窄屏量。 */
+        /* 批量条只在有选中项时才画：Ctrl 点两张卡进多选，再在浮条中心点取最上层元素。窄屏上它
+           横跨整行，一定落在教程卡上；宽屏上两者不在同一处，这一条只在窄屏量。 */
+        const cards = opened.page.locator('#grid [data-media-card][data-id]');
+        for (const at of [0, 1]) await cards.nth(at).click({ modifiers: ['Control'], position: { x: 20, y: 20 } });
+        await opened.page.locator('[data-batch-dock] [data-selection-dock]').waitFor({ timeout: 10_000 });
+        await settle(opened.page);
         const probe = await opened.page.evaluate(() => {
-          const dock = document.getElementById('batchbar')!;
-          dock.hidden = false;
+          const dock = document.querySelector('[data-batch-dock] [data-selection-dock]')!;
           const tutorial = document.querySelector('#postSetupTutorial .post-setup-notification')!;
           const card = tutorial.getBoundingClientRect();
           const box = dock.getBoundingClientRect();
@@ -2127,7 +2205,7 @@ describe('设计决定', () => {
         const face = (selector: string) =>
           getComputedStyle(document.querySelector(selector)!).backgroundColor;
         return {
-          title: span('#manageTitle'),
+          title: span('[data-manage-title]'),
           summary: span('#count [data-collection-summary]'),
           filters: span('#count [data-junk-filters-frame]'),
           grid: span('#grid'),
@@ -4679,7 +4757,7 @@ describe('设计决定', () => {
       for (const text of ['媒体修复', '订阅源']) {
         assert.equal(await page.locator('#stats').getByText(text, { exact: true }).count(), 0, `配置页上还有「${text}」`);
       }
-      const entry = page.locator('#managebar [data-manage="configuration"]');
+      const entry = page.locator('[data-manage-bar] [data-manage="configuration"]');
       await entry.waitFor({ state: 'attached', timeout: 10_000 });
       assert.equal(await entry.getAttribute('aria-pressed'), 'true', '管理菜单里的「配置」没有标成当前页');
       assert.deepEqual(opened.problems, []);

@@ -241,11 +241,9 @@
   <section class="feednew" id="feedNew" aria-label="未入库的新作" hidden></section>
   <div id="combo"></div>
   <section class="index" id="index" hidden></section>
-  <nav class="managebar" id="managebar" hidden></nav>
   <h2 class="disp listtitle" id="listTitle" hidden></h2>
-  <nav class="geist-breadcrumb" id="manageCrumb" aria-label="Breadcrumb" hidden></nav>
-  <h2 class="disp managetitle" id="manageTitle" hidden></h2>
-  <p class="pagelede mono" id="manageLede" hidden></p>
+  <!-- 管理条、面包屑、标题与说明行归 manage-header 岛（`frontend/src/react/manage-header/`）。 -->
+  <div data-manage-header></div>
   <section class="stats" id="stats" hidden></section>
   <div class="count mono" id="count" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="gridstack" id="grid"></div>
@@ -262,12 +260,8 @@
      写在这枚没有子节点的空 div 上，失效范围就只剩它和它那两枚伪元素。
      怎么画仍然只在 web/css/01-base.css 一份。 -->
 <aside id="drawer" data-sidebar-drawer><div class="glowlayer" aria-hidden="true"></div><div id="drawerScroll" data-sidebar-scroll></div></aside>
-<div class="batchbar selectiondock" id="batchbar" role="group" aria-label="所选项目操作" hidden><span class="selectiondockcount" id="batchCount">已选 0 项</span>
-  <button data-batch="like"><svg viewBox="0 0 24 24"><use href="#i-thumbs-up"/></svg>喜欢</button><button data-batch="seen"><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>看过</button><button data-batch="later"><svg viewBox="0 0 24 24"><use href="#i-bookmark-plus"/></svg>稍后看</button><button data-batch-region><svg viewBox="0 0 24 24"><use href="#i-globe"/></svg>判定产地</button>
-  <button class="danger" data-batch="dispose"><svg viewBox="0 0 24 24"><use href="#i-trash"/></svg>移入回收站</button><button data-trash-only data-batch="restore"><svg viewBox="0 0 24 24"><use href="#i-rotate-ccw"/></svg>还原</button><button class="danger" data-trash-only data-batch="delete"><svg viewBox="0 0 24 24"><use href="#i-trash"/></svg>彻底删除</button>
-  <button data-junk-batch="dismiss-junk" hidden><svg viewBox="0 0 24 24"><use href="#i-check"/></svg>不是垃圾</button><button data-junk-batch="reconsider-junk" hidden><svg viewBox="0 0 24 24"><use href="#i-rotate-ccw"/></svg>重新判断</button><button class="danger" data-junk-batch="dispose" hidden><svg viewBox="0 0 24 24"><use href="#i-trash"/></svg>移入回收站</button>
-  <button data-follow-batch="save" hidden><svg viewBox="0 0 24 24"><use href="#i-bookmark-plus"/></svg>保存到账本</button><button data-follow-batch="seen" hidden><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>标记已看</button><button data-follow-batch="ignored" hidden><svg viewBox="0 0 24 24"><use href="#i-eye-off"/></svg>忽略</button>
-  <button id="batchClear"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg>取消</button></div>
+<!-- 批量条归 batch-dock 岛（`frontend/src/react/batch-dock/`），选中集与写操作留在壳里。 -->
+<div data-batch-dock></div>
 
 <div id="toasts"></div>
 
