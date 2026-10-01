@@ -47088,6 +47088,7 @@ function kI({ source: e }) {
 		"javten",
 		"fc2ppvdb",
 		"avwikidb",
+		"minnano-av",
 		"github"
 	].includes(e);
 	return /* @__PURE__ */ (0, R.jsx)("img", {

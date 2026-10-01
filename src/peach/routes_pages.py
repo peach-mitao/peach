@@ -797,8 +797,8 @@ def agentation_bundle(request: Request, args: dict[str, str] = Depends(require_a
 @router.api_route("/site-icon/{name}", methods=["GET", "HEAD"])
 def bundled_site_icon(request: Request, name: str,
                       args: dict[str, str] = Depends(require_asset_auth)):
-    """随应用提供的来源标识，文件名只认已登记的四个来源。"""
-    if name not in {"javten.png", "fc2ppvdb.png", "avwikidb.png", "github.png"}:
+    """随应用提供的来源标识，文件名只认已登记的五个来源。"""
+    if name not in {"javten.png", "fc2ppvdb.png", "avwikidb.png", "minnano-av.png", "github.png"}:
         return PlainTextResponse("missing", status_code=404)
     path = PROJECT_ROOT / "resources" / "site-marks" / name
     if not path.is_file():

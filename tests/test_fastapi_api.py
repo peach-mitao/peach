@@ -891,7 +891,7 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_bundled_site_icons_require_auth_and_validate_names(self):
         from peach.config import PROJECT_ROOT
         self.assertEqual((await self.client.get('/site-icon/github.png')).status_code, 401)
-        for name in ('javten', 'fc2ppvdb', 'avwikidb', 'github'):
+        for name in ('javten', 'fc2ppvdb', 'avwikidb', 'minnano-av', 'github'):
             response = await self.client.get(f'/site-icon/{name}.png?t=secret')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers['content-type'], 'image/png')
