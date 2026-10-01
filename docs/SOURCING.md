@@ -1270,6 +1270,8 @@ AV 厂牌 Logo 的来源是厂牌自己的社交账号头像：社交头像天�
   - 人物图与头像：`has_entity_image()`／`has_avatar()` 判定，下发为 `has_image` 与 `has_avatar`。端点用 `web_catalog` 的
     `entity_ref()` 和 `attach_avatar_availability()`（批量取，不逐行 N+1）挂标志。页面只有 `web/app.js` 的 `entityFaceImg()` 一处拼
     这两个地址，各取图位经 `avatarInner()` 共用它；缺席的 `has_image` 按「没图」处理，否则忘挂标志的端点会悄悄退回无条件出图。
+  - 人物图随 `has_image` 一起下发 `image_version`（`entity_image_version()`，实体图修改时间的十六进制纳秒），`entityFaceImg()`
+    拼成 `&v=`。换头像原地覆盖同一个文件，地址不带版本时同一页里浏览器复用内存里那张旧图，要刷新才看得到新的。
   - 存盘文件名只有一份规则：标识走 `previews.logo_key`，人物图走 `previews.entity_image_key`（kind 是名字的一部分，认得的种类见
     `previews.ENTITY_IMAGE_KINDS`；`.ct`、`.provenance.json`、`.face.json` 是边车，不算图）。
   - 头像按需生成，所以 `has_avatar` = 已裁好的 `<id>.jpg` **或**印相还在盘上（`has_snapshot`）；生成中途的 `<id>.<格>.tmp.jpg`
