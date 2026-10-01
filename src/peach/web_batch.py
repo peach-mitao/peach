@@ -670,7 +670,10 @@ def w_batch(contract: WebContract, body):
                     [now, *valid_ids],
                 )
             elif operation == "delete":
-                purge_outcome = purge_assets(connection, found)
+                # 已消失的行文件本来就不在了，只删账本行；文件又回到盘上的那几条留着，
+                # 下一轮扫描会把它们接回在库。选中里有一条已消失的，整批都按这条口径删。
+                purge_outcome = purge_assets(
+                    connection, found, missing_only=any(row["disposal"] == VANISHED for row in found))
             elif operation == "dismiss-junk":
                 connection.executemany(
                     "INSERT INTO review_decision(category,item_key,status,note,updated_at) "

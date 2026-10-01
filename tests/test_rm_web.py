@@ -983,7 +983,7 @@ class WebDataTests(unittest.TestCase):
             "/api/taste/refresh",
             "/api/links/prune", "/api/resource-sync/apply",
             "/api/follow/tags", "/api/follow/authors",
-            "/api/taste", "/api/settings", "/api/links", "/api/organize",
+            "/api/taste", "/api/settings", "/api/links", "/api/organize", "/api/orphan-records",
             "/api/feeds", "/api/feeds/check", "/api/feeds/discoveries", "/api/feeds/lookup",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
@@ -995,7 +995,7 @@ class WebDataTests(unittest.TestCase):
             "/api/preference", "/api/quality-goal", "/api/item-tag", "/api/batch",
             "/api/search-history", "/api/trash/empty",
             "/api/review/decision", "/api/review/genre",
-            "/api/purge-missing",
+            "/api/purge-missing", "/api/orphan-records/attach",
             "/api/links/check", "/api/links/prune",
             "/api/resource-sync/scan", "/api/resource-sync/apply",
             "/api/follow/check", "/api/follow/status", "/api/follow/media/hide",

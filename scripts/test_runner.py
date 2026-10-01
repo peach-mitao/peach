@@ -52,6 +52,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                 "test_jav_code_domain.py",
                 "test_taste_history.py", "test_web_ui.py", "test_web_js.py",
                 "test_web_perf.py", "test_web_resource_sync.py", "test_record_rehome.py",
+                "test_web_orphan_records.py",
                 "test_web_review.py", "test_web_settings.py"),
     # 任务中心的两个文件跟着 `test_jobs.py` 走：`jobs.py` 与 `task_runs.py` 是同一条
     # 接线的两端，改哪一端都要两边一起验。
@@ -207,6 +208,7 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     # 个人记录的判据与搬运（ADR-0087）：资源同步与列表在 catalog，扫描登记与撤回脚本在 tooling。
     "src/peach/personal_records.py": ("catalog", "tooling"),
     "src/peach/record_rehome.py": ("catalog", "tooling"),
+    "src/peach/web_orphan_records.py": ("catalog", "web"),
     # 入口页共用件的测试住在首启与配置来源那两份 tooling 测试里。
     "src/peach/web_entry.py": ("catalog", "tooling", "web"),
     # 这几份文档有测试在读它们的正文：改文档也要跑到那条测试。
