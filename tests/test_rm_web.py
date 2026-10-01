@@ -996,8 +996,10 @@ class WebDataTests(unittest.TestCase):
             "/api/follow/tags", "/api/follow/authors",
             "/api/taste", "/api/settings", "/api/links", "/api/organize", "/api/orphan-records",
             "/api/feeds", "/api/feeds/check", "/api/feeds/discoveries", "/api/feeds/lookup",
+            "/api/downloads",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
+            "/api/downloads", "/api/downloads/cancel",
             "/api/library-processing", "/api/thumbnail-jobs", "/api/media-repair",
             "/api/scraping/settings", "/api/scraping/check", "/api/scraping/cover",
             "/api/scraping/amane-bridge/check", "/api/scraping/amane-bridge/rebuild",

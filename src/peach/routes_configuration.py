@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse
 from filelock import FileLock, Timeout
 
 from . import (access, distribution, entry_links, folder_picker, media_libraries, onboarding,
-               push_discovery, settings_file, media_configuration, tunnel)
+               push_discovery, settings_file, media_configuration, tunnel, web_downloads)
 from .routes_auth import require_auth, same_origin
 from .web_entry import runtime_fact_entries
 from . import release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall
@@ -186,6 +186,7 @@ def read_configuration(request: Request, _args=Depends(require_auth)):
     result["automatic_updates"] = request.app.state.automatic_updates.snapshot()
     # 这一路已经过了 `local_only`，密钥可以给出来：用户要把它抄进 CloudDrive2。
     result["push_discovery"] = push_discovery_payload(request)
+    result["downloads"] = web_downloads.settings_payload(*_downloads(request))
     if result["automatic_updates"].get("result"):
         result["updates"] = result["automatic_updates"]["result"]
     return result
@@ -246,6 +247,55 @@ def rotate_push_discovery_secret(request: Request, _args=Depends(require_auth)):
         return push_discovery_payload(request, request.app.state.push_discovery.rotate_secret())
     except (ValueError, OSError) as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+def _downloads(request: Request):
+    """云下载服务与声明根。声明根取推送发现那份，两边对「哪些是 PikPak 根」口径一致。"""
+    return (request.app.state.downloads,
+            getattr(request.app.state.push_discovery, "declared_roots", {}))
+
+
+@router.post("/api/configuration/downloads")
+def save_downloads(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    """地址、目标目录、等待上限与 CloudDrive2 令牌。令牌只写本机凭据文件。"""
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    try:
+        return web_downloads.save_settings(service, body, roots)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/downloads/check")
+def check_downloads(request: Request, body: dict = Body(default={}), _args=Depends(require_auth)):
+    """调 CloudDrive2 的 `GetApiTokenInfo` 等只读接口：离线权限、目标目录、115 剩余配额。"""
+    local_only(request)
+    same_origin(request)
+    service, _roots = _downloads(request)
+    try:
+        return web_downloads.check_clouddrive(service, body)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/downloads/pikpak/login")
+def login_pikpak(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    try:
+        return web_downloads.pikpak_login(service, body, roots)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/downloads/pikpak/logout")
+def logout_pikpak(request: Request, _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    return web_downloads.pikpak_logout(service, roots)
 
 
 @router.post("/api/configuration/startup")

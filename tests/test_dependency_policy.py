@@ -67,6 +67,8 @@ class DependencyPolicyTests(unittest.TestCase):
             "cv2": "opencv-python-headless",
             "fastapi": "fastapi",
             "filelock": "filelock",
+            "google": "protobuf",
+            "grpc": "grpcio",
             "httpx": "httpx",
             "itsdangerous": "itsdangerous",
             "numpy": "numpy",

@@ -204,6 +204,9 @@ class WebContract:
         #: 订阅源的定时拉取（ADR-0042）。与追更共用 `follow_scheduler` 那一个实现，
         #: 只是各占一个 job id 与一份状态文件；由 `api` 在装配时接上。
         self.feed_scheduler = None
+        #: 云下载（`downloads.DownloadService`），由 `api` 在装配时接上；没接上时
+        #: `/api/downloads` 回「云下载没有启用」。
+        self.downloads = None
         #: 批量修 MP4 头要的两件东西，由 `api` 在装配时接上：它们属于播放链路，
         #: 建在 app 那一侧，契约这边只留接口。没接上时修复端点会说清楚。
         self.header_repairs = None

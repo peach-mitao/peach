@@ -661,6 +661,16 @@ class PushDiscoveryService:
             return False
         return self.queue.submit(location, path, time.monotonic())
 
+    def ingest_now(self, location: str, path: str) -> bool:
+        """定向登记一条路径，不经去抖队列，开关关着也照样登记。
+
+        云下载对账时用：远端已经完成、文件就在挂载目录里，推送发现那一侧却没送来通知
+        （没开、没配会员，或通知丢了）。文件不在返回假。
+        """
+        if ignored(PureWindowsPath(path).name):
+            return False
+        return self._ingest(location, path)
+
     def submit_cloud(self, cloud_path: str) -> str:
         """webhook 收到一条云端路径：映射成账本路径再进队列，返回那条账本路径。"""
         if not self.config.cloud:
