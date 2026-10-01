@@ -27,7 +27,7 @@
 
 https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 
-> **18+** For adults managing their own adult-content collections. The repository contains no media or site data. When Peach connects to outside sites it uses your own accounts and access rights, and it does not get around paywalls, bot checks or other access controls.
+> **18+** For adults managing their own adult-content collections. The repository contains no media or site data. When Peach connects to outside sites it uses your own accounts and access rights.
 
 - **Already-organized videos just work**: scanning reads the NFO files and posters that already sit next to your videos, so nothing needs to be scraped again.
 - **Your files stay put**: scanning is read-only and files stay where they are. Renaming or moving only happens when you start it, with a preview first and an undo afterwards.
