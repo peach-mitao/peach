@@ -533,6 +533,9 @@ Instagram 的独立用户登录会话未取得，自动适配器不进正式依�
 
 - `entity(kind, normalized_name)` 的唯一约束冲突通常不是 bug，而是同一人新旧艺名的信号。合并走
   `peach.entities.merge_entity`：保留作品多的一侧，迁移关系、别名、外部引用、链接和搜索词，旧称全留作别名。
+- 被并入的 id 在 `entity_redirect` 留一条墓碑指向保留的一侧，链式合并写入时压平成一跳；关注源、Feed 订阅与
+  发现关联随合并改指。按 id 取数的入口（`/entity-image`、换头像、Feed 发现、复核候选）经
+  `entities.resolve_entity_id` 先认活实体、再认墓碑；目标实体被删时触发器删掉指向它的墓碑。
 - `entity_external_ref` 每个 provider 只留一条，同源的第二条被丢弃并报告，不静默覆盖。
 - creator 与 performer 跨类重复不用「作品多的一侧」规则。只有两边非空作品集合完全相同，并且 performer 别名
   精确命中 creator 名、或 creator 名由 performer 本名与账号别名组成时，才自动归并。

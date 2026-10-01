@@ -300,6 +300,7 @@ def _follow_entity(contract, body) -> dict:
     if not isinstance(entity_id, int) or not isinstance(enabled, bool):
         raise ValueError("entity_id must be an integer and enabled must be a boolean")
     with contract.database.write_transaction() as connection:
+        entity_id = entities.resolve_entity_id(connection, entity_id) or entity_id
         row = connection.execute(
             "SELECT canonical_name FROM entity WHERE id=? AND kind='performer'",
             (entity_id,)).fetchone()
@@ -471,7 +472,8 @@ def q_feed_discoveries(contract, args) -> dict:
     if entity_id:
         where.append("EXISTS (SELECT 1 FROM feed_discovery_entity de"
                      " WHERE de.discovery_id=d.id AND de.entity_id=?)")
-        params.append(int(entity_id))
+        with contract.database.read_connection() as connection:
+            params.append(entities.resolve_entity_id(connection, int(entity_id)) or int(entity_id))
     hidden = web_settings.hidden_compilations(contract.database)
     with contract.database.read_connection() as connection:
         feeds.register_functions(connection, hidden)

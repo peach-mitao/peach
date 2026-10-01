@@ -252,10 +252,18 @@ def merge_entity(
     `entity_external_ref` 的引用整批跟着走，同一个站点下的多条也一样（0032）：一位女优
     在 javdb 有两个演员页是常事，两边挂的作品不同，丢掉一条就少一个能点进去的页面。
     `UPDATE OR IGNORE` 与 `dropped_refs` 留作安全网，迁不动的条数在返回值里报告。
+
+    source 的 id 留一条墓碑指向 target（0040 `entity_redirect`），指向 source 的墓碑一并
+    改指 target，链条始终只有一跳；`resolve_entity_id` 按它把旧 id 解析到 target。
     """
+    if source_id == target_id:
+        raise ValueError("实体不能并入自己")
+    if connection.execute("SELECT 1 FROM entity WHERE id=?", (target_id,)).fetchone() is None:
+        raise ValueError(f"合并目标实体 {target_id} 不存在")
     stamp = now or datetime.now(timezone.utc).isoformat()
     moved = {"assets": 0, "aliases": 0, "refs": 0, "links": 0, "terms": 0,
-             "dropped_refs": 0, "memberships": 0, "members": 0, "labels": 0, "profiles": 0}
+             "dropped_refs": 0, "memberships": 0, "members": 0, "labels": 0, "profiles": 0,
+             "follows": 0, "feeds": 0, "discoveries": 0, "redirects": 0}
 
     # 被并入的名字本身留作别名，否则按旧名搜索会落空。
     connection.execute(
@@ -345,9 +353,46 @@ def merge_entity(
     moved["profiles"] = connection.execute("SELECT changes()").fetchone()[0]
     connection.execute("DELETE FROM performer_profile WHERE entity_id=?", (source_id,))
 
+    # 关注与订阅绑在人身上（0018、0034）。表上声明的 SET NULL / CASCADE 在不开外键的连接上
+    # 不执行，不搬就悬空，合并后的 `foreign_key_check` 跟着不为 0。
+    connection.execute(
+        "UPDATE follow_source SET entity_id=? WHERE entity_id=?", (target_id, source_id))
+    moved["follows"] = connection.execute("SELECT changes()").fetchone()[0]
+    connection.execute(
+        "UPDATE feed_source SET entity_id=? WHERE entity_id=?", (target_id, source_id))
+    moved["feeds"] = connection.execute("SELECT changes()").fetchone()[0]
+    connection.execute(
+        "INSERT OR IGNORE INTO feed_discovery_entity(discovery_id,entity_id)"
+        " SELECT discovery_id,? FROM feed_discovery_entity WHERE entity_id=?",
+        (target_id, source_id))
+    moved["discoveries"] = connection.execute("SELECT changes()").fetchone()[0]
+    connection.execute("DELETE FROM feed_discovery_entity WHERE entity_id=?", (source_id,))
+
+    # 墓碑先写、先压平，再删 source：删 source 时触发器会清掉仍指向它的墓碑。
+    connection.execute(
+        "UPDATE entity_redirect SET target_id=? WHERE target_id=?", (target_id, source_id))
+    moved["redirects"] = connection.execute("SELECT changes()").fetchone()[0]
+    connection.execute(
+        "INSERT OR REPLACE INTO entity_redirect(old_id,target_id,source,merged_at)"
+        " VALUES(?,?,?,?)", (source_id, target_id, alias_source, stamp))
+
     connection.execute("UPDATE entity SET updated_at=? WHERE id=?", (stamp, target_id))
     connection.execute("DELETE FROM entity WHERE id=?", (source_id,))
     return moved
+
+
+def resolve_entity_id(connection: Connection, entity_id: int) -> int | None:
+    """把一个实体 id 解析成现在的实体：活实体原样返回，并入过的按墓碑给目标，都不是给 None。
+
+    先查活实体：`entity.id` 会复用，墓碑的 id 可能已经是另一条新实体。目标被删时墓碑由
+    触发器清掉；连接不开外键时的悬空行在这里也按「查不到」处理。
+    """
+    row = connection.execute(
+        "SELECT id,0 AS hop FROM entity WHERE id=?"
+        " UNION ALL SELECT r.target_id,1 FROM entity_redirect r"
+        " JOIN entity t ON t.id=r.target_id WHERE r.old_id=? ORDER BY hop LIMIT 1",
+        (int(entity_id), int(entity_id))).fetchone()
+    return int(row[0]) if row else None
 
 
 def _ref_is_free(connection: Connection, entity_id: int, provider: str,

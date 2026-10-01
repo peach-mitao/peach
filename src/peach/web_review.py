@@ -19,7 +19,7 @@ from urllib.parse import quote
 from .avatar_provider import install_entity_avatar
 from .catalog_rules import is_korean_mib_code, normalise_code_key
 from .code_creators import collect
-from .entities import normalize_entity_name, resolve_entity
+from .entities import normalize_entity_name, resolve_entity, resolve_entity_id
 from .field_owners import (
     EXPECTED_REVISION_FIELD,
     owner_label,
@@ -569,17 +569,29 @@ def _drop_shop_side_dissent(rows: list[dict]) -> list[dict]:
 
 
 def _use_canonical_entity_names(connection, rows: list[dict]) -> None:
-    """把候选行的显示名换成账本规范名，来源写法留在 `source_name`。"""
+    """把候选行的显示名换成账本规范名，来源写法留在 `source_name`。
+
+    候选 CSV 里的 `entity_id` 是出候选那一刻的 id；那条实体后来并入了别人，就按合并墓碑
+    换成现在那一条，名字、头像与批准落地都跟着它走。
+    """
     ids = [int(row["entity_id"]) for row in rows
            if str(row.get("entity_id") or "").strip().isdigit()]
     if not ids:
         return
     marks = ",".join("?" * len(ids))
-    canonical = {row["id"]: row["canonical_name"] for row in connection.execute(
+    current = {row["id"]: (row["id"], row["canonical_name"]) for row in connection.execute(
         f"SELECT id,canonical_name FROM entity WHERE id IN ({marks})", ids)}
+    merged = [entity_id for entity_id in ids if entity_id not in current]
+    if merged:
+        marks = ",".join("?" * len(merged))
+        current.update({row["old_id"]: (row["id"], row["canonical_name"]) for row in connection.execute(
+            "SELECT r.old_id,t.id,t.canonical_name FROM entity_redirect r"
+            f" JOIN entity t ON t.id=r.target_id WHERE r.old_id IN ({marks})", merged)})
     for row in rows:
         raw = str(row.get("entity_id") or "").strip()
-        name = canonical.get(int(raw)) if raw.isdigit() else None
+        target, name = current.get(int(raw), (None, None)) if raw.isdigit() else (None, None)
+        if target is not None:
+            row["entity_id"] = str(target)
         shown = str(row.get("current_name") or "").strip()
         if name and name != shown:
             row["source_name"] = shown
@@ -756,11 +768,13 @@ def _install_performer_avatar(contract: ReviewContract, entity_id: str) -> int:
         raise ValueError("缓存对象与候选记录的哈希不一致，拒绝装载")
     content_type = str(candidate.get("mime_type") or "").strip() or "image/jpeg"
     with contract.read_connection() as connection:
+        # 候选出来之后实体并入了别人：图装到现在那一条名下，不写成没人读的孤立文件。
+        target = resolve_entity_id(connection, int(entity_id)) or int(entity_id)
         kind_row = connection.execute(
-            "SELECT kind FROM entity WHERE id=?", (int(entity_id),)).fetchone()
+            "SELECT kind FROM entity WHERE id=?", (target,)).fetchone()
     kind = (kind_row[0] if kind_row and kind_row[0] in {"performer", "creator"}
             else "performer")
-    install_entity_avatar(contract.avatar_root, kind, int(entity_id), body, content_type, {
+    install_entity_avatar(contract.avatar_root, kind, target, body, content_type, {
         "source": "performer avatar review",
         "provider": candidate.get("provider") or "",
         "source_url": candidate.get("source_url") or "",
