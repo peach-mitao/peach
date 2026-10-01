@@ -273,7 +273,8 @@ export interface ReactPage<P> {
 }
 
 /** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。 */
-export type ActivityProps = Record<string, never>;
+/** 作品页与关注条目的「云下载」键带进来的番号、标题与来处（`asset:12`、`follow:34`）。 */
+export interface ActivityProps { prefill?: { code?: string; title?: string; origin?: string } }
 
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */
 export interface QualityGoalsProps {

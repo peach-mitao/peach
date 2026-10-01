@@ -371,6 +371,8 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
               title="隐藏这张图" {...busyAttrs(`hide:${selected.index}`)} onClick={() => write.hide(selected.index)}
               dangerouslySetInnerHTML={{ __html: icon('image-off') }} />
           ) : null}
+          <button type="button" data-follow-cloud-download="" aria-label="云下载" title="云下载 · 贴磁力交给 115 或 PikPak 离线下载"
+            onClick={() => actions.cloudDownload(item)} dangerouslySetInnerHTML={{ __html: icon('cloud-download') }} />
           {src ? (
             <a data-follow-download="" href={`${src}${src.includes('?') ? '&' : '?'}download=1`} download=""
               aria-label="下载到本地" title="下载到本地" dangerouslySetInnerHTML={{ __html: icon('download') }} />

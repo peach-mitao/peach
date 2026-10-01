@@ -45,7 +45,7 @@ type ActionMocks = { [K in keyof FollowDetailActions]: Mock<FollowDetailActions[
 function actions(): ActionMocks {
   return {
     close: vi.fn(), openItem: vi.fn(), openTag: vi.fn(), present: vi.fn(), mountPlayer: vi.fn(() => vi.fn()),
-    toast: vi.fn(), failure: vi.fn(),
+    toast: vi.fn(), failure: vi.fn(), cloudDownload: vi.fn(),
   };
 }
 
@@ -145,6 +145,17 @@ describe('写操作', () => {
     expect(save).toHaveLength(1);
     expect(save[0]!.getAttribute('aria-label')).toBe('已保存');
     expect(given.toast).toHaveBeenCalledWith('已保存到账本');
+  });
+
+  it('云下载键不发请求，把这一条交给壳去活动页', async () => {
+    const fetcher = serve();
+    const { host, actions: given } = await show(data(item(9)));
+    const button = host.querySelector('[data-follow-cloud-download]');
+    expect(button?.getAttribute('aria-label')).toBe('云下载');
+    expect(button?.querySelector('use')?.getAttribute('href')).toBe('#i-cloud-download');
+    await click(button);
+    expect(posts(fetcher)).toEqual([]);
+    expect(given.cloudDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }));
   });
 
   it('标记已看：键按下、多一枚「恢复未看」；回执的撤销写回原状态', async () => {
