@@ -1,6 +1,18 @@
 # Peach 产品待办
 
-最后核验：2026-09-21。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+最后核验：2026-10-02。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+
+## 优先级
+
+数字不带前缀的指「尚未实现」的编号，「骨架 N」指「已有骨架、尚未完成」的编号，「操作 N」指「待执行的操作」的编号；箭头是先后顺序。
+
+1. 上线与开发流程：上线自动化（重启时补依赖、跑迁移、任务闸门，进行中）；操作 29（`test_runner` 分出「记录无效」退出码，集成锁与全量锁互斥）；测试入口发现锁文件变化自动同步依赖；提交时由 commit-msg 钩子校验 trailer；全量锁被占时排队等待。
+2. 想要 → 找到 → 下载 → 入库闭环：43 → 42 与 57 → 64 → 骨架 1（寻找更好版本）。
+3. 诊断链：46 → 21 → 26。
+4. 元数据来源：44 → 操作 36（日文字形例外表）→ 54 → 29 → 65 → 61。
+5. CI：23（Windows job 先量 Defender 排除）。
+6. 等用户拍板的批次：要授权写账本或改生产入口的操作 3、4、5、8、14、19、24、42；要用户复核或拍板的操作 2、9、17、18、27、32、33、34、37。
+7. 其余按区块顺序。
 
 ## BoardUI 正式前端迁移
 
@@ -19,7 +31,7 @@
 实施顺序按下列依赖关系（候选实现与生产验收分开）：
 
 - 运行与一致性：HTTP 只跳转 HTTPS；业务与调度由单一应用拥有；成功提交后失效缓存；缓存有界；可更新图片可复验；列表参数有上下界。
-- 数据与查询：标签、实体筛选从关系索引驱动；随机排序有唯一次序；重复索引与外键启用先做副本验证；补固定规模基准。
+- 数据与查询：随机排序的唯一次序按需再做；重复索引与外键启用先做副本验证；补固定规模基准。
 - 安装与诊断：「非 editable 安装的跨平台验收」「健康检查生产验收」「全新安装的自动门槛」「`peach doctor` 与分级 `/healthz`」「性能基准」按依赖实施，覆盖最小源码安装、wheel 资源、仓库外启动、就绪检查。独立桌面制品及操作系统 VM 验收按「制品与更新渠道」和「全新安装的自动门槛」推进。
 - 抓取可复现性：按 [ADR-0024](adr/0024-mark-manifest-not-bundled-bytes.md) 落地来源配置与清单。
   `/scraping` 已有定点高清封面、FC2 Cookie 粘贴／文件导入和封面来源网络配置；剩余来源还要接入
@@ -28,17 +40,17 @@
 - 后续结构：显式 API 模型、前端构建与高频页面迁移、候选分页、任务持久化按垂直功能实施；不为 AppContext 或文件尺寸单独做全仓搬迁。
 - Linux 首版候选为 headless、预挂载媒体与独立 wheel。外部容器用了替身依赖，其结果不能证明锁定依赖可用，也不算 Linux 正式支持；优先级低于 Windows/macOS。
 
-shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益再决定。真实 ledger 迁移、双机复制取消和系统级安装另有明确授权边界。
+真实 ledger 迁移、双机复制取消和系统级安装另有明确授权边界。
 
 1. **寻找更好版本**：已能逐条标记「高清 / 无水印 / 完整版」等目标；还缺相似内容匹配（第 51 条）、候选去重、来源发现（第 43 条）和人工替换确认。替换完成后旧版的个人记录与目标按 ADR-0087 接到新版上，目标标「已替换」关闭。
-2. **现代自适应播放**：Video.js、Range、统计面板和 115/PikPak 原生 MP4 的按需 HLS 清单已上线；还缺自适应码率、多路清单、快速首帧和来源层大块预取。
-3. **在线追更**：`src/peach/follow_providers.py` 登记的十一个来源已上线（发现更新、跨站重复判定、`/follow` 与 `/follow-manage` 两页、writer 自动轮询、在线资产就地播放）。还缺两件：下载落地，关注来源附件的直链下载归第 42 条的本地下载通道，凭据、流量与磁盘预算见「待执行的操作」第 12 条；SimpCity 多图楼层的图片轮播：`SimpCityConnector` 只把图片地址存进 `extra["images"]`，没投影成 `media_items`，归档站（`KemonoConnector._media_items`）与 f95zone（`f95_attachment_media_items`）已经投影。
+2. **现代自适应播放**：Video.js、Range、统计面板和 115/PikPak 原生 MP4 的按需 HLS 清单已上线；还缺自适应码率、多路清单、快速首帧和来源层大块预取；做完后补 HLS 首帧、seek、自适应码率与双端视觉验收。
+3. **在线追更**：`src/peach/follow_providers.py` 登记的 12 个来源已上线（发现更新、跨站重复判定、`/follow` 与 `/follow-manage` 两页、writer 自动轮询、在线资产就地播放），关注条目的磁力可交云下载（ADR-0089）。还缺两件：关注来源附件的直链下载，归第 42 条的本地下载通道，流量与磁盘预算见「待执行的操作」第 12 条；SimpCity 多图楼层的图片轮播：`SimpCityConnector` 只把图片地址存进 `extra["images"]`，没投影成 `media_items`，归档站（`KemonoConnector._media_items`）与 f95zone（`f95_attachment_media_items`）已经投影。
 4. **首尾帧出处与不完整候选**：已有受限 FFmpeg 首尾抽帧、Windows 内置 OCR、证据帧缓存、来源/Full version 候选和 `/review`；仍需决定全库批次范围，并把用户批准后的不完整版判断接到更好版本目标。
-5. **厂牌 Logo 补齐与持续校验**：14 个已确认社交 handle 已有内容缓存、provenance、精确/感知哈希、质量与重复门槛及健康报告；仍有 72 个厂牌没有可信 handle，必须继续从官网/公开来源取证，不能猜账号。
+5. **厂牌 Logo 补齐与持续校验**：14 个已确认社交 handle 已有内容缓存、provenance、精确/感知哈希、质量与重复门槛及健康报告。仍有 32 家厂牌没有标识，合计 87 部作品（`peach-data/review/logo-coverage-20260924.csv`），缺的是官网链接而不是日文别名：MGStage 名录 402 条只对上账本 45 家，宽松判据翻出的疑似配对逐条看全是假的；FANZA 厂牌一览 839 家只补出 `Baltan`→`バルタン` 一条，且详情页没有标识图。下一步按「待执行的操作」第 21 条的厂牌官网扫描补链接，不能猜账号。
 6. **口味证据持续刷新**：ledger 已实时记录搜索、播放、高潮、喜欢/理由、不合口味和稍后看；浏览器历史现可用 SQLite 一致性副本增量进入私有源库，并生成不含 URL/标题的 creator/tag candidate 与聚合报告。旧 2026-08-13 原始包已确认不在 Windows 外置盘；仍需在 Mac 开启 iCloud Safari、完成首次导入，并把两端每周刷新装成系统计划任务。AI 结论不得直接改真相字段。
 7. **扫描与采集任务的参数标定**：无进展预警的 120 秒与单项动作预算（资料 90 秒、封面 240 秒）目前按最坏请求时长取的保守值；等一轮真实任务记录各阶段实测耗时后标定，同时确定完整问题文件的保留周期。
 
-## 尚未实现（65 项）
+## 尚未实现（63 项）
 
 1. AI Provider 的真实调用、能力协商、Credential Manager 凭据和候选审核 UI。
 2. 剩余单一创作者风格板复核、无标签内容补标。
@@ -46,21 +58,22 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 4. PikPak 计费抽样与下载边缘质量核验。
 5. 复用 CommunityScrapers 一类公开刮削规则做元数据导入：只当只读规则语料，不重新引入 Stash 运行时依赖（ADR-0021）。
 6. 把常跑批处理折进 `peach` CLI：`probe`、`sheets`、`scrape_codes`、`fetch_jav_covers`、`taste_history`、`traffic_watch` 现在各是一个脚本入口，参数、限流与健康报告口径不统一。
-7. 开源通用化的发布准备（ADR-0023 第 4 阶段）：清扫 `docs/` 与 `.claude/skills/` 里的局域网地址、主机名、账号名、备份文件名与个人目录，把只对一台机器成立的运行态移出仓库，并把 `tests/test_repo_hygiene.py` 的个人字面量门槛从 `src/peach/` 扩到文档与技能。许可证、贡献与安全说明、issue/PR 模板在仓库里；设置层、来源挂载点 ID 与可整体关闭的复制功能在 Windows 生效，macOS 待跑 `peach init --from-existing --mount local=<落点>`。
-   - 本文件待清的位置：操作 11 的局域网主机名 `peach-writer.local`、操作 29 的本机同步步骤，以及操作 17、30、33–42 引用的仓库外 `attic/` 路径和操作 27、28、43–45 引用的本机 `peach-data/` 复核产物。
+7. 开源通用化的发布准备（ADR-0023 第 4 阶段）：把只对一台机器成立的运行态移出仓库；`tests/test_repo_hygiene.py` 的机器坐标门槛已扫全树。许可证、贡献与安全说明、issue/PR 模板在仓库里；设置层、来源挂载点 ID 与可整体关闭的复制功能在 Windows 生效，macOS 待跑 `peach init --from-existing --mount local=<落点>`。
+   - 本文件待清的位置：「待执行的操作」里引用的仓库外 `attic/` 路径与本机 `peach-data/` 复核产物。
    - 公开分发：待项目相对稳定，安装、升级、数据迁移及跨平台回归稳定后，同批推进 PyPI 包发布和 WinGet 登记；现阶段仅记录计划，不上传或登记。发布前确认发行名，调整禁止上传标记，完善自动构建、版本发布与两端安装验收。
    - 发行名与 WinGet 应用 ID 未定案也未注册，发布前确认并复核可用性；产品显示名继续使用 Peach。
 8. 女优高清头像的写入侧：`scripts/audit_performer_portraits.py` 出候选与实测证据，资料页上人可以逐个换掉任何一张（图库同名候选、用过的图、本机文件、https 地址），`scripts/fill_portrait_gaps.py` 把图库里只命中一张的批量装上、其余产对照表。仍缺换源那一轮（在位的封面裁片挡住更好的源），以及实体合并后孤立头像的 relink（如 `8022 <- 8168`：只有旧 ID 的 provenance 名唯一命中当前实体、当前目标又不存在时才算候选，不覆盖、不删除旧文件）。relink 按 ADR-0088 的合并墓碑（`entity_redirect`）查表。
-9. 文件名与网盘目录整理：按模板的那一路已落地（ADR-0039）：数据管理页的「整理」与 `scripts/organize_media.py` 共用 `peach.organize`，预览出计划 CSV、执行前 SQLite backup、逐条 rename 并同步账本 path/name、失败回滚、事后完整性与外键检查，只动视频、只在同卷内、目标已存在整行跳过，批次可整批退回。仍缺三件：`scripts/clean_names.py`（域名噪声）与 `scripts/flatten_release_dirs.py`（冗余目录层）两条专门形态仍只出 dry-run CSV；旁挂封面与字幕不跟着主文件改名；真实库上还没执行过任何一批（2026-09-22 只读预览：115 会改 1484、跳过 8627，PikPak 会改 167、跳过 10436，`local` 因外置盘未挂载整批跳过）。
+9. 文件名与网盘目录整理：按模板的那一路已落地（ADR-0039）：数据管理页的「整理」与 `scripts/organize_media.py` 共用 `peach.organize`，预览出计划 CSV、执行前 SQLite backup、逐条 rename 并同步账本 path/name、失败回滚、事后完整性与外键检查，只动视频、只在同卷内、目标已存在整行跳过，批次可整批退回。`scripts/clean_names.py`（域名噪声）与 `scripts/flatten_release_dirs.py`（冗余目录层）两条专门形态默认出 dry-run CSV，带 `--apply --backup` 才落盘，真实批次见「待执行的操作」第 3 条。仍缺三件：
+   - 旁挂封面与字幕不跟着主文件改名。
+   - 真实库上还没执行过任何一批（2026-09-22 只读预览：115 会改 1484、跳过 8627，PikPak 会改 167、跳过 10436，`local` 因外置盘未挂载整批跳过）。
+   - 按演员归档的模板变量：目录模板可按演员名归档（NeoAVDC v0.0.4 的演员目录命名与按演员归档开关）。
 10. 来源与默认值通用化（ADR-0023 第 5 阶段候选）：`peach init` 的问答已按本机路径只声明 `local`，非交互路径写出的 `DEFAULT_LOCATION_ROOTS`（`R:\media`、`B:/`、`A:/`）仍是维护者的示例盘符。剩两件事：来源用「本地 / 远端挂载」类型字段代替代码里按 `local`/`115`/`pikpak` 名字点名（`web_resource_sync.py` 的 SQL、`media.py` 的 HLS 规则）；复制功能支持 win↔win、mac↔mac 与任意一台当写者，目前只验证过 Windows 写者 + macOS 读者。
 11. 非 editable 安装的跨平台验收：wheel 资源与 Windows 基础依赖、仓库外 CLI 冒烟已就绪，仍需取得 macOS、Python 3.12 消费任务结果。
 12. 健康检查生产验收：`db` 区分 missing、empty、available、unavailable，`?ready=1` 检查 schema 校验和；待部署后用项目 CA 验证 HTTPS 与损坏／未初始化状态。
 13. 界面国际化：界面目前只有中文，先补英文。
 14. 制品与更新渠道：剩余 macOS 独立包、代码签名、独立测试包的自动更新、局域网配对和更完整的配置管理。已有的部分是 Windows 独立测试包（免安装 zip 与当前用户安装包两种）、首次引导与本机配置表单、按构建身份自行重建的打包托盘、由 `release_tag.py` 在发布点独家发出的版本号与标签（每个版本号对应一份制品并在 `CHANGELOG.md` 有一节），以及退出程序后完整解压新版、数据目录保持独立的测试包更新。关闭判据见 ADR-0012「1.0 门槛」第 8 项。
 15. 「第一个小时」教程与故障排查文档：init → 声明来源根 → scan → 打开页面 → 手机信任 CA → 托盘/菜单栏自启动，每一步写清失败表现与对应的排查动作；截图用一套小的 SFW 演示数据集生成，不取自真实馆藏。演示数据集由 `scripts/demo_dataset.py` 生成，用法见 [docs/README_MAINTENANCE.md](README_MAINTENANCE.md)「演示数据集」；教程正文与截图仍待做。
-16. 项目网站：一页说明是什么、截图、安装入口与文档链接。
 17. 口味导入引导：`/taste` 上传（Takeout ZIP、browserexport 兼容文件）与 `scripts/taste_history.py` 直读本机浏览器库两条路都能用，首次设置和口味页也有简短指南，但没有面向陌生人的完整文档。需要一页「各浏览器怎么导出、多台设备怎么各自刷新」教程，把脚本折进 `peach` CLI（见「把常跑批处理折进 `peach` CLI」一条），并写明定时刷新的安装方式。
-18. README 瘦身：把「依赖维护」「开发」两节移到 `CONTRIBUTING.md`，「目录」并入 [docs/ARCHITECTURE.md](ARCHITECTURE.md)，「主要页面」「关注与候选」压成一张表；README 只留是什么、边界、前置条件、安装、下载、文档入口与许可证。中英两份同步。
 19. 局域网访问：HTTP 导航与 HTTPS 单一业务入口的候选代码已就绪，待生产部署验证。配对仍需一次性配对码或 HTTPS 地址二维码，减少设备首次访问时手输口令；现有口令生成、取用与非回环无口令拒绝启动不重复实现。配对码参照 Javdex `docs/LAN_WEB.md`（MIT）：新设备领一个六位码，桌面端核对后批准，可记住设备、逐台撤销。
 20. 全新安装的自动门槛：现有 `Test` 装的是 `-e ".[build,vision,maintenance-115,naming]"` 全套可选依赖、开着 pip 缓存、只跑单元测试，证明不了「陌生用户按 README 装完能用」。补三条互相独立的冒烟：① minimal source：全新 venv、`--no-cache-dir` 只装默认依赖、`peach init`（连跑两次验幂等）、`migrate status`、**离开仓库根目录**再 `peach serve`，请求 `/healthz`、`/`、`/api/items`，覆盖 3.12／3.14 × Windows／macOS 以及无 FFmpeg／OpenSSL／Node 的机器；② wheel：`python -m build` 后在不 checkout 源码的 job 里装 `dist/*.whl` 走同一套流程，它通过才能去掉 README 的 `-e` 硬要求（依赖「非 editable 安装的跨平台验收」）；③ artifact-only：只下载刚构建的制品、不 checkout 源码地跑起来（依赖「制品与更新渠道」）。消费方一律不许 checkout：工作目录会替制品补上漏掉的文件，那是假通过。失败场景也要覆盖：数据根不可写、端口被占、账本损坏、未配置媒体目录、无 FFmpeg、非回环监听但无口令、两个 writer 同时起。
 21. `peach doctor` 与分级 `/healthz`：`doctor`（另带 `--json`）逐项报版本、数据根可写性、配置文件合法性、数据库能否打开、schema 版本与待执行迁移、FFmpeg／ffprobe／OpenSSL 路径、挂载点可达性、端口占用、是否处在「局域网暴露但无口令」状态、后台任务最近一次失败；输出脱敏，不带口令、cookie、站点凭据和完整媒体路径。`/healthz` 相应从布尔改成分项状态（`database`／`schema`／`configured`／`ffmpeg`／`media_mounts`／`security`），与「健康检查生产验收」一起做。
@@ -84,6 +97,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
     - 热度用正值的 P95 归一，参考值写死为一次 P99 实测防历史漂移，重算只更新分数变了的行。榜单信号按名次衰减（窗口 100），日、周、月榜权重 1.0、0.7、0.4。
     - 每条推荐落 `reason_codes` 与 `signal_scores`，整表快照替换，界面能说「因为你关注了她」。
     Peach 的口味画像是连续信号，比它「关注了 / 没关注」的二值强，作为 Peach 自己的一项保留。Peach 没有热度与榜单数据，先只用相似度、口味画像、关注、新鲜度四项；榜单接第 48 条。
+    - 推荐时刻（第 47 条的时刻）每片至多 3 条，按画面、相似作品、热门三路并行取（SakuraMedia）。
 29. **JavDB 官方 App 私有 API 作为元数据来源，做成默认关闭、用户自己开启的来源**：2026-09-11 探测已取得（`attic/evidence/20260911-javdb-api-probe/`）：签名是 `md5(时间戳 + 固定密钥)`，搜索与详情不需要账号，详情一次给出标题、原题、简介、片商、发行商、导演、系列、演员（含头像 URL）、标签、预览图、时长、评分、评论数、磁力数、是否有中字，图片走 `tp.spfcas.com`。它比 javdb.com 的 HTML 抓取稳定，也不受网页端的限速规则约束。OpenAver 0.15.1 与 JavBoss（2026-09-25，#347）都已接入。它伪装成官方 App，开关旁写明这一点，按 `metadata_policy.py` 定级为 community；开关旁的性质标注见第 64 条。
 30. **内封字幕轨**：外挂 sidecar 已随 `asset_subtitle` 落库并挂进播放器，内封的字幕流则完全没登记：`scripts/probe.py` 只探 `v:0` 一路，`transcodes.py` 挑流时只认 video 与 audio。要支持得给探测加 `-select_streams s` 一路、把语言与编码写进同一张表（`pairing` 加一档 `embedded`），播放侧转 WebVTT 需要 FFmpeg 子进程抽流，与外挂那条纯 Python 路径不同，按需求出现再做。
 31. **创作者昵称撞番号形态，判据待定**：`catalog_rules` 的番号提取已按 `CODE_BODY_STOPWORDS`、`_QUALITY_HEAD`、`REPOST_SITE_LABELS` 三层名单剥噪声，剩下的一类没有名单能覆盖：「昵称 + 数字」和厂牌番号完全同形。2026-09-12 在本机账本 26265 条 video 上只读盘点，`sumwall95 long sex video_18.mp4` → `SUMWALL-095` 19 条、`marie 2409a.mp4` 这类「角色名 + YYMM + 卷号」约 80 条、`dao01(1).mp4` → `DAO-001`、`wen66s.mp4` → `WEN-066`、`UWFr85dczsVeysGg.mp4` → `UWFR-085` 各若干。它们全部住在 `A:\创作者\`、`B:\云下载\` 和 `R:\Media\` 下，`is_jav_asset` 的发行证据门槛拦住了它们进 JAV 视图，但 `asset.code` 这一列仍然是个假值。逐个昵称进名单不收敛，可选判据是「所在目录已被判定为创作者」，这需要把目录级判定接进解析层，接口边界未定，先不做。
@@ -92,10 +106,9 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
     起因是换头像功能把取到的每一张图都留在候选缓存里，盘上只增不减；但入口本身要按上面整张清单做，不是只清头像。
 33. **闲置时段跑后台任务**：判定用户此刻没在用 Peach，把不赶时间的活挪到那段时间自己跑，用户回来就让出资源。现在这类任务都要手点一下才动，媒体修复是第一个（`src/peach/web_media_repair.py`），抽帧、九宫格补齐、封面重探、probe 补时长都是同一类。要定的是闲不闲怎么判（最近一次播放与请求的间隔、是否有别的长跑任务在占盘）、哪些任务愿意进这个队列、抢占之后怎么记断点，以及计费来源要不要单独设闸。
 34. **社区来源一家答上就丢掉其余几家的失败**：`library_processing._ask_community` 有一家给了资料就返回，冷却、403、超时的那几家不再被记起；`community_catalog._pictures` 里图片下载失败也静默跳过。结果是 `.scraping.json` 里 `verified_by` 为空的封面永远不知道还有谁没问到。2026-09-25 查 CWPBD／SMBD 六张宽封套时发现，但那六张 javdb 给的是剧照不是封套，补问反而会因两源不同图被 `_unverified` 拒收（ADR-0030／0032）。要改的是印证规则本身：两源给的不是同一张图时该取哪张、还是都不取，属于新 ADR。
-35. **单个拉丁字母的搜索补全要等近 3 秒**：输入 `a` 这类单字母约 2.8 秒，其他输入在真实账本上 190–250ms。2026-09-26 在账本只读副本上用 cProfile 量过，耗时集中在 `web_entity._suggest_agency_rows` 的逐行计数。优化后分组、排序与 `total` 语义不变，补临时库上的排序与计数测试。
 36. **女优所属与官网链接主机对不上的复核清单**：minnano-av 的所属会过时，官网链接却还指着旧事务所（2026-09-26 查 Cruse Group 时发现神宫寺已转 ARM）。只能出人工清单、不能自动判错：prestige-av.com 是片商给专属女优开的页，lightpro.jp 下挂着几个子品牌，主机与所属不一致很常见。清单列女优、所属、链接主机与出演期间，进 `peach-data/review/`。
 
-第 42–70 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
+第 42–71 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
 
 42. **本地下载：走用户自己的 BT 客户端与直链**：BT 通过用户本机下载器的 Web API 提交，Peach 不实现 BT 协议：qBittorrent 用 `/api/v2/auth/login`、`torrents/add`（`urls`、`savepath`、`category`／`tags`）、`torrents/info?hashes=`、`torrents/delete`；Transmission 用 `torrent-add`、`torrent-get`、`torrent-remove`，首个请求回 409 后带 `X-Transmission-Session-Id` 重发。保存路径必须落在某个本地来源根之内，watchdog 才看得到。关注来源附件（FANBOX、Patreon、Gofile 等）的直链由 Peach 自己下载。写新文件、不碰已有文件；占本机流量与磁盘，复用 `jobs.py` 的计费来源与磁盘闸门，预算见「待执行的操作」第 12 条。长下载用第 57 条的续传与停滞看门狗。
     - 复用云下载的任务表、状态机与九类失败分类（`src/peach/downloads.py`，ADR-0089），只有瞬时网络自动重试；qB `metaDL`／`stalledDL` 归「无源或停滞」，落地未见时定向触发 `ingest_path`。
@@ -107,18 +120,20 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 45. **来源测试录制回放**：mdcz v0.16.0 的做法（`docs/testing-fixtures.md`）：每个番号一份 manifest，图片按 sha256 内容寻址、不进 Git，缺 blob 用同尺寸同字节数的生成图顶上；Cookie、CSRF、token 替换成固定值；回放缺一条交互就判失败，不回落公网。`sources/library-metadata/*.json` 的快照可当录制源，先拿 DMM 与 javbus 两个解析器试。
 46. **挂载可达性探测**：参照 OpenAver `core/source_reachability.py`：正常 600 秒、异常 60 秒探一次，连续两次失败才报，提示里写来源名；分开报「没有权限读取」与「不存在」（0.16.12），扫描跳过 `#recycle`、`@eaDir`、`@*` 这类 NAS 系统目录。结果给第 26 条诊断页与托盘状态用。
 47. **时刻、合集与片段导出**：「记一次高潮」已写 `activity_event.position_seconds`，推广成通用的「时刻」（时间点 + 一帧缩略图 + 可选备注），加时刻合集页；SakuraMedia 分播放列表、时刻、切片三层，各自成合集（`src/model/collections/`）。片段导出用 FFmpeg 拷流、不重编码，切点落在关键帧上，文件放 `peach-data`。时刻随个人记录按 ADR-0087 接到新版本。
+    - 推荐时刻每片至多 3 条，与第 28 条的推荐分同批做。
 48. **上榜标记**：javranking-extension 的公开静态索引（先拉不到 200 B 的版本清单，变了才拉 1.26 MB `search-index.json`；schemaVersion 2，1769 部，JavDB TOP250、2020–2025 年榜、JavLibrary TOP250）每周读一次，给馆藏标「上榜」并喂给第 28 条。索引没有许可条款（未取得），只读引用并在界面标明来源；按来源存成候选标签。
 49. **播放器画面条**：播放器已有进度条悬停预览（`frontend/src/player/controls.ts` 的 `mountPlayerSeekPreview`）；参照 SakuraMedia「先看画面再决定看什么」（`wiki/guide/watch-from-a-frame.md`），把已有抽帧做成播放器旁可滚动的一列缩略图，点即跳转。
 50. **女优身份冲突的四个动作**：Javinizer-Go v1.6.0（`a2ddd00`）把女优身份与逐片署名拆开：刮削只写署名、不写身份，解析不出的身份先隔离；冲突用 keep、adopt-canonical、adopt-alias、reassign 四个固定动作解决，`scrape.collision_policy` 可设无人值守的 auto_keep／auto_alias。`/review` 的女优冲突用这套动作词表，合并留 ADR-0088 的墓碑。
 51. **画面向量**：给抽帧算图像嵌入，服务「寻找更好版本」的跨编码相似匹配、不同编码的重复片、给没署名的作品认人、「更多像这一帧的」。SakuraMedia 用 SigLIP2 + Qdrant；Peach 用 SQLite 扩展 `sqlite-vec`，不多起服务，与头像匹配的人脸向量共用设施。模型几百 MB 到 1 GB 多，全库约 8 万资产的嵌入要分批跑，进第 33 条的闲置队列。先拿第 1 条验证收益。
 52. **隐私模式**：一键遮封面与头像、关预览（Javdex）。
 53. **女优体型筛选**：`performer_profile` 已有身高三围，女优列表加按年龄、身高、罩杯筛选（JAV_MovieManager）。
+    - 作品加「发行时年龄」字段（发行日减生日）与按它筛选（OpenAver 0.16.1）。
 54. **无码官方站**：caribbeancom、tokyohot（Javinizer-Go，MIT）与 h0930、h4610（mdcz，GPL-3.0），放在无码链的 1pondo 之后，每站独立解析器与测试。
 55. **字段策略两条**：简介取最长；落选的封面与剧照连同来源留作备选，供 `/review` 换图（mdcz `scrape/fieldAggregation.ts` 的 `FIELD_STRATEGIES` 与 `imageAlternatives`）。进 `metadata_policy.py`（ADR-0038）。
 56. **头像裁剪记源图指纹**：从封面裁女优头像时记源图指纹，源图换了就拒绝复用旧裁剪框（Javinizer-Go PR #251，`internal/downloader/poster_identity.go`）。
 57. **长下载续传与停滞看门狗**：大文件与长流用 Range + If-Range 续传，原响应没有强 ETag 或 Last-Modified 就拒绝拼接；固定期限换成「多久没有进度」的看门狗（Javinizer-Go v1.6.1，`b9b73640`）。第 42 条与头像、封面下载共用。
 58. **来源缺陷台账**：逐站记数据缺陷（字段缺失、错配、图片规格），写进 `docs/SOURCING.md`（JavBoss `source_quality.md`）。
-59. **番号清洗语料**：NeoAVDC `number/parseNumber.ts` 先整段剥发布组域名（`hhd800.comcwp-119`）再剥分辨率，另有 `PREFIX_BLACKLIST`；把它的脏文件名样例并进 `catalog_rules` 的番号测试。
+59. **番号清洗语料**：NeoAVDC `number/parseNumber.ts` 先整段剥发布组域名再剥分辨率，另有 `PREFIX_BLACKLIST`；`hhd800.com` 那类样例已在 `tests/test_jav_code_domain.py`，补 NeoAVDC 剩下的脏文件名样例进 `catalog_rules` 的番号测试。
 60. **结果提示音**：Cuelume（MIT，npm 0.2.4，零依赖、Web Audio 现场合成）只给长任务完成与失败配音，点击、输入、悬停不响；默认关，设置面板加开关与音量，偏好存 Peach 设置。按依赖策略精确钉版本并登记 Dependabot。
 61. **r18.dev dump 本地镜像**（需新 ADR）：Javinizer-Go `internal/r18devdump/` 与 AMMDS 都导入 r18.dev dump 建本地库，有码链首站零请求，在线结果反过来校验它。dump 大小未取得（`https://r18.dev/dumps/latest` 回 307），先定磁盘预算与更新频率。
 62. **智能列表与只读查询**：保存一组组合筛选，结果随馆藏自动更新；另给高级入口跑只读 SQL（只读连接，写不进去）。JAV_MovieManager 直接执行用户 SQL，读写不分，这一点不照搬。
@@ -130,10 +145,11 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 68. **漫画与同人本**（低）：一站式馆藏的下一类媒介。需要阅读器、来源与元数据模型（AMMDS v1.6.80 已加漫画库）；Peach 已有图片与写真类资产，在其上扩展。
 69. **PWA**：加 manifest 与 Service Worker，手机、平板可安装到主屏、全屏播放。
 70. **原生客户端**（远期）：SakuraMedia 用 Flutter 出 Windows、macOS、iOS、Android 客户端。维护成本高，PWA 不够用时再议。
+71. **「已拥有」标记的浏览器扩展**（低）：在 javdb、javbus、javlibrary 页面上给馆藏已有的番号标「已拥有」（JavBoss `content/jav-ownership.js`，凭 API 令牌查询）。Peach 侧要一个只读的按番号查询接口与独立令牌，和第 27 条的开放 API 同批设计。
 
-合计：**72 项开放需求**，其中 7 项已有骨架，65 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
+合计：**70 项开放需求**，其中 7 项已有骨架，63 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
 
-## 待执行的操作（44 项）
+## 待执行的操作（42 项）
 
 需要另行授权、外部条件或人工判断才能做的具体操作与复核批次，比上面的需求细一层；做完就删，不在这里留痕。待办只放这一处：[docs/STATUS.md](STATUS.md) 每次会话开头都要读，队列不该常驻在那种入口文件里。
 
@@ -148,58 +164,53 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 9. 在 `/review` 人工处理 JAV 日文系列名、现有创作者标签、FC2、Javinizer、Logo 和头像候选；未经批准不写真相字段。
 10. 将 Windows writer 的最新副本同步到共享传输点，再让 Mac reader 拉取；同步前后核对迁移版本、计数、完整性与 writer 身份。
 11. 在 Mac Finder 以 `smb://peach-writer.local/peach-sync` 连接一次并保存钥匙串记录，再重启菜单栏进程，核对自动挂载、reader 锁定、HTTPS 与 mDNS。
-12. 在实现下载器前先确定媒体凭据、流量与磁盘预算。
+12. 在实现本地下载（BT 与直链）前先确定本机流量与磁盘预算；云下载的网盘成本已由用户 2026-10-01 接受（ADR-0089）。
 13. Windows writer 运行 PikPak 夜跑前重算 probe/抽帧队列，并按 `peach-batch-jobs` 设置流量与系统盘闸门。
-14. 补做 HLS 首帧、seek、自适应码率与双端视觉验收。
-15. 外置盘挂载后先只读盘点 `R:\Media\<名字>\P\...` 图片规模；扫描写真 ledger，需另行授权。
-16. 重做品味分析页的视觉再决定是否合入：`agent/codex/taste-analysis`（cd3effe）功能可用但版式不过关，以该分支 `taste_history.py` 的分析逻辑为底。
-17. 决定 `attic/instances/20260828-taste-preview` 的去留：含 122 MB 账本副本（按真相源快照对待，删除需另行确认）与 153 MB `sources`；28 个预览日志可随时清。
-18. 另行授权后跑 `scripts/normalize_link_hosts.py --apply --backup <落点>`，把 296 条 twitter 写法收成 x.com（290 改写、6 删除），随后重启托盘并在真实浏览器验收 `/link-mark` 的清晰度与边缘。
-19. 用户复核 `directory-links-<日期>.csv` 后用 `install_entity_links.py` 装入社媒链接；`conflict` 且账本旧号「疑似失效」的行由用户决定换号，随后可对账本现有全部 X 链接跑同样的验活。
-20. 用户复核 `studio-names-<日期>.csv` 的 26 条厂牌改名后另行授权；3 条不一致按「一个账本名混了两家」处理，5 条 404 未取得，改用搜索查找要先有一个能用的搜索出口。
-21. 厂牌标识规则：logo 文件一律不透明方图（位图 `images.bake_square`、矢量 `images.bake_square_vector`），产物再过 `images.refit_plate` 摆到圆形图位里看得全的位置，页面三处一律 cover。另行授权后跑一次 `normalize_studio_logos.py --apply --backup <落点>`，2026-09-08 dry-run 报 52 张待改：46 张重新摆位（自带大留白的裁掉、顶到边的补到外接圆）、4 张 SVG 包方底（DarkRoomVR、TeamSkeetXReislin、TeenFidelity、VirtualTaboo，前两张白字标配深底）、HEYZO 从备份原图重烤改配深底、pikpak 重补方。
-22. 把 javdatabase 的 idol 页接进社媒／官网候选：183 页缓存里 139 页带 X 链接、138 页带另一个官方站，由番号定位、不必离线比名。复用 `peach.social_links` 的判据与 `install_entity_links.py` 的 `FIELDS`，排掉四个整站广告主机。
-24. 给账本厂牌补日文别名走不通（2026-09-22 量过），缺的是链接不是别名：
-    - 名录 402 条只对上账本 45 家。剩下 357 条对不上，是因为账本里本就没有那些厂牌：MGStage 是素人／企划平台，账本那 96 家未对上的多数是 FANZA 系（MOODYZ 135 部、Idea Pocket 122 部、S1 88 部）。宽松判据（子串加 0.8 编辑距离）翻出的 11 个疑似配对逐条看全是假的（`kawaii`↔`hawaii`、`PREMIUM`↔`KMP PREMIUM`、`Hunter`↔`ladyhunter`）。
-    - FANZA 厂牌一览 `mono/dvd/-/maker/=/keyword=<音>/` 共 44 页 839 家（要 `age_check_done=1` 且走代理，直连回「お住まいの地域からご利用になれません」），对上账本 44 家，能补的日文写法只有 `Baltan`→`バルタン` 一条 2 部；`VRパラダイス`↔`こあらVR` 是日文折成空罗马字形撞出来的假匹配。FANZA 厂牌详情页没有标识图，只有作品封面。
-    - 真正的缺口是 48 家无图厂牌合计 165 部作品，它们一条 official／catalog 链接都没有，按第 25 条走厂牌官网补。
-25. 其他厂牌官网的厂标与演员资料广度扫描（SOD、FALENO、Attackers、S1、Moodyz 等），排在第 22 条 javdatabase idol 页接入之后。
-26. 用 javtiful 的 `/ja/actress/<slug>` 补演员的罗马字↔日文配对：315 页约 7560 位，切语言前缀就出日文名。厂牌名不随语言切换，这条只服务演员别名。
-27. 37 位演员在 javdb 上只有日文名（`同形`），另有 5 位未取得，中文名要换来源：javtiful 的 `/ja/actress/<slug>`（第 26 条）或 javdatabase 的 idol 页。复核产物 `peach-data/review/javdb-cn-names-20260904.csv` 逐行带 verdict 和证据，可直接筛。
-28. macOS 标识 `io.github.longmeidao.peach.*` 在 Mac 上生效：代码已在 master（`src/peach/appid.py` 是唯一来源，`install_macos_agent.py` 与 `setup_macos_port80.sh` 会自己清掉遗留标签），命令与四项核对见 [docs/OPERATIONS.md](OPERATIONS.md)「桌面入口与发布」。放进第 30 条的维护窗口一起做；两台机器都跑过之后删掉 `peach.appid` 里的遗留标签表和用到它的分支。这是换生产入口，执行前须当场授权。
-29. `peach-data/review/composite-names-20260904.csv` 里还剩 28 条 creator 规范名带括号，括号里是读音或罗马音（`Egami(えがみ)`、`永地(eichi)`、`猫屋(NEKOYA)`），决定不拆，因为它们不像艺名那样各自独立，是同一个名字的注音。同一份 CSV 里 575 条 tag 是角色的作品出处消歧，10 条 series 括号里是厂牌或载体消歧（拆了会把三个 `AV DEBUT` 撞成一个），都不要动。剩下真正待判的只有 performer 规范名 `Mana(23)` 一条：数字是去重后缀还是名字的一部分要看源站。
-30. Mac 追上 master 的一组操作，按顺序做完再重启菜单栏。做完之前不要重启：master 上的 `peach serve --host 0.0.0.0` 没有口令会拒绝启动，reader 会直接消失。① `git pull` 到 master；② `pip uninstall -y peach-app && pip install -e ".[macos]"`；③ 先把 Windows 的 `peach-data/secrets/auth-token` 复制到 Mac 数据根的同一路径，因为 reader 取 writer 复核结果发的是自己的口令，两边必须是同一份，而 `--from-existing` 找不到文件会自己生成一份不同的；④ `peach init --from-existing --mount local=<落点>`；⑤ 重启菜单栏，核对 `/healthz`、`/review` 能读到 writer，手机与 Mac 浏览器各登录一次。第 28 条的标签改名可以放进同一个维护窗口。
-31. 事务所改名复核：Wish/GIRFY、LiStarPRO/GRANZPRO 缺可核验官网；LIGHT 与 ELTRA/EST 存在分流，不能整体合并；Prime Agency/GG 有歧义，Cruse Group 官网证书链未取得。原始请求与逐条结论位于顶层 `attic/reviews/20260906-portrait-agency/agency-review.csv`。只对取得证据且获用户批准的记录执行合并。
+14. 外置盘挂载后先只读盘点 `R:\Media\<名字>\P\...` 图片规模；扫描写真 ledger，需另行授权。
+15. 重做品味分析页的视觉再决定是否合入：提交 `cd3effe` 功能可用但版式不过关，以该提交里 `taste_history.py` 的分析逻辑为底。
+16. 在真实浏览器验收 `/link-mark` 的清晰度与边缘（账本里的 twitter 写法已收成 x.com）。
+17. 用户复核 `directory-links-<日期>.csv` 后用 `install_entity_links.py` 装入社媒链接；`conflict` 且账本旧号「疑似失效」的行由用户决定换号，随后可对账本现有全部 X 链接跑同样的验活。
+18. `studio-names-<日期>.csv` 的厂牌改名已执行，剩 3 条不一致按「一个账本名混了两家」处理，5 条 404 未取得，改用搜索查找要先有一个能用的搜索出口。
+19. 厂牌标识规则：logo 文件一律不透明方图（位图 `images.bake_square`、矢量 `images.bake_square_vector`），产物再过 `images.refit_plate` 摆到圆形图位里看得全的位置，页面三处一律 cover。另行授权后跑一次 `normalize_studio_logos.py --apply --backup <落点>`，2026-09-08 dry-run 报 52 张待改：46 张重新摆位（自带大留白的裁掉、顶到边的补到外接圆）、4 张 SVG 包方底（DarkRoomVR、TeamSkeetXReislin、TeenFidelity、VirtualTaboo，前两张白字标配深底）、HEYZO 从备份原图重烤改配深底、pikpak 重补方。
+20. 把 javdatabase 的 idol 页接进社媒／官网候选：183 页缓存里 139 页带 X 链接、138 页带另一个官方站，由番号定位、不必离线比名。复用 `peach.social_links` 的判据与 `install_entity_links.py` 的 `FIELDS`，排掉四个整站广告主机。
+21. 其他厂牌官网的厂标与演员资料广度扫描（SOD、FALENO、Attackers、S1、Moodyz 等），排在第 20 条 javdatabase idol 页接入之后。
+22. 用 javtiful 的 `/ja/actress/<slug>` 补演员的罗马字↔日文配对：315 页约 7560 位，切语言前缀就出日文名。厂牌名不随语言切换，这条只服务演员别名。
+23. 37 位演员在 javdb 上只有日文名（`同形`），另有 5 位未取得，中文名要换来源：javtiful 的 `/ja/actress/<slug>`（第 22 条）或 javdatabase 的 idol 页。复核产物 `peach-data/review/javdb-cn-names-20260904.csv` 逐行带 verdict 和证据，可直接筛。
+24. macOS 标识 `io.github.longmeidao.peach.*` 在 Mac 上生效：代码已在 master（`src/peach/appid.py` 是唯一来源，`install_macos_agent.py` 与 `setup_macos_port80.sh` 会自己清掉遗留标签），命令与四项核对见 [docs/OPERATIONS.md](OPERATIONS.md)「桌面入口与发布」。放进第 26 条的维护窗口一起做；两台机器都跑过之后删掉 `peach.appid` 里的遗留标签表和用到它的分支。这是换生产入口，执行前须当场授权。
+25. `peach-data/review/composite-names-20260904.csv` 里还剩 28 条 creator 规范名带括号，括号里是读音或罗马音（`Egami(えがみ)`、`永地(eichi)`、`猫屋(NEKOYA)`），决定不拆，因为它们不像艺名那样各自独立，是同一个名字的注音。同一份 CSV 里 575 条 tag 是角色的作品出处消歧，10 条 series 括号里是厂牌或载体消歧（拆了会把三个 `AV DEBUT` 撞成一个），都不要动。
+26. Mac 追上 master 的一组操作，按顺序做完再重启菜单栏。做完之前不要重启：master 上的 `peach serve --host 0.0.0.0` 没有口令会拒绝启动，reader 会直接消失。① `git pull` 到 master；② `pip uninstall -y peach-app && pip install -e ".[macos]"`；③ 先把 Windows 的 `peach-data/secrets/auth-token` 复制到 Mac 数据根的同一路径，因为 reader 取 writer 复核结果发的是自己的口令，两边必须是同一份，而 `--from-existing` 找不到文件会自己生成一份不同的；④ `peach init --from-existing --mount local=<落点>`；⑤ 重启菜单栏，核对 `/healthz`、`/review` 能读到 writer，手机与 Mac 浏览器各登录一次。第 24 条的标签改名可以放进同一个维护窗口。
+27. 事务所改名复核：Wish/GIRFY、LiStarPRO/GRANZPRO 缺可核验官网；LIGHT 与 ELTRA/EST 存在分流，不能整体合并；Prime Agency/GG 有歧义，Cruse Group 官网证书链未取得。原始请求与逐条结论位于顶层 `attic/reviews/20260906-portrait-agency/agency-review.csv`。只对取得证据且获用户批准的记录执行合并。
     2026-09-06 核对 wish-promotion.jp 已是其他内容站，不能作为现官网。15 条现官网链接使用共用 Chrome UA 重查，13 条返回 200；Cruse Group 证书链与 Prime Agency TLS 连接仍未取得。
-32. `install_entity_links.py` 的可达性门槛按「非 200 就跳过」执行，而同文件的 `is_gone()` 明确写着 403／5xx／连接错误不能当「页面没了」。首批 703 条里 137 条因此没装，其中 31 条 twitter.com、23 条 t-powers.co.jp。把跳过分成「确证没了」和「这次没取到」两档：后者留进待复查队列，配合 `rediscover_entity_links.py` 对 t-powers／nax-pro／mines-pro 这些已经搬家的域名上溯找新锚，再装一次。
-33. 托盘自重建会被测试记录门槛卡住。机制已确认：托盘在主检出跑全量，`integrate` 的 `integration.lock` 与全量的 `full-suite.lock` 互不排斥，任何一次集成都会改掉正在验证的树，`scripts/test_runner.py` 随即因验证前后内容或依赖快照不一致判记录无效、退出码 1，托盘把它当测试失败处理：不打包、不换 EXE、同一 HEAD 不再重试。要做三件事：集成前等主检出里正在跑的全量结束（或让两把锁互斥）；把「记录无效」和「用例失败」在退出码或输出上分开，让托盘对前者重试而不是放弃；托盘日志只写 stderr、不写文件，给托盘补一份 `logs/tray.log`，否则托盘连同子服务一起消失时查不到原因。
-34. 封面来源头像逐条复核：37 张仍来自 `cover-fallback`，其中 3 人在图库里本来就有人像，资料页上一点就能换掉；完整初始清单位于 `attic/reviews/20260906-portrait-agency/remaining-cover-avatars.csv`。41 张被封面覆盖的 Gfriends 人像已从备份恢复，包括日向真凛，恢复记录见同目录 `cover-restore-result.json`。采集器将封面保留为未验证候选，安装函数拒绝把整张封面写成人物头像；补头像后继在这批人的作品换上新封面时截封面上的脸替换它们（`cover-face`），还没轮到的仍待逐条换。DMM 女优一览页已排除为换源候选：头像只有 125×125，且同批图 Gfriends 已收在最后一档（2026-09-11 实测，结论与取证位置见 [docs/SOURCING.md](SOURCING.md)）。
-35. 2026-09-07 首要原则审查（覆盖整个 `peach-app`）的剩余清理项，完整报告与判断依据在顶层 `attic/reviews/20260907-first-principles/review.md`。下面每条独立，可单独派工作树：
+28. `install_entity_links.py` 的 `prune` 已按 `is_gone()` 分「确证没了」与「取不到但不算证据」两档，安装路径的 `check_links` 仍按「非 200 就跳过」执行。首批 703 条里 137 条因此没装，其中 31 条 twitter.com、23 条 t-powers.co.jp。安装路径照 `prune` 分两档：后者留进待复查队列，配合 `rediscover_entity_links.py` 对 t-powers／nax-pro／mines-pro 这些已经搬家的域名上溯找新锚，再装一次。
+29. 托盘自重建会被测试记录门槛卡住。机制已确认：托盘在主检出跑全量，`integrate` 的 `integration.lock` 与全量的 `full-suite.lock` 互不排斥，任何一次集成都会改掉正在验证的树，`scripts/test_runner.py` 随即因验证前后内容或依赖快照不一致判记录无效、退出码 1，托盘把它当测试失败处理：不打包、不换 EXE、同一 HEAD 不再重试。要做两件事：集成前等主检出里正在跑的全量结束（或让两把锁互斥）；`scripts/test_runner.py` 把「记录无效」和「用例失败」分成不同退出码（现在两种情况都返回 1），让托盘对前者重试而不是放弃。
+30. 封面来源头像逐条复核：37 张仍来自 `cover-fallback`，其中 3 人在图库里本来就有人像，资料页上一点就能换掉；完整初始清单位于 `attic/reviews/20260906-portrait-agency/remaining-cover-avatars.csv`。41 张被封面覆盖的 Gfriends 人像已从备份恢复，包括日向真凛，恢复记录见同目录 `cover-restore-result.json`。采集器将封面保留为未验证候选，安装函数拒绝把整张封面写成人物头像；补头像后继在这批人的作品换上新封面时截封面上的脸替换它们（`cover-face`），还没轮到的仍待逐条换。DMM 女优一览页已排除为换源候选：头像只有 125×125，且同批图 Gfriends 已收在最后一档（2026-09-11 实测，结论与取证位置见 [docs/SOURCING.md](SOURCING.md)）。
+31. 2026-09-07 首要原则审查（覆盖整个 `peach-app`）的剩余清理项，完整报告与判断依据在顶层 `attic/reviews/20260907-first-principles/review.md`。下面每条独立，可单独派工作树：
     - follow：`connector_headers` 形参、`blocked_reason` 基类钩子、`FollowCandidate.version` 输入字段只有测试在用；`KemonoConnector.HOSTS`／`SubscribeStarConnector.HOSTS` 与登记表 `url_hosts` 是同一份主机表的第二份；Rule34Video 自带的探测循环可并入 `enrich()`；425／429 进 `_send` 的可重试集后两段手写重试可删。
     - follow 弱假设：六处「读时修旧行」兼容层（`archive_file_url`、`_legacy_history_end`、`_f95_has_resource`、`split_posts`、`author_display_text` 修正、`f95_attachment_media_items`）换成一次带备份的迁移，需 ledger 写授权。ETag／304 机制保留：2026-09-08 只读核查，45 条来源 `etag` 全空、从未回过 304，但 f95zone 有 7 条存下 `last_modified`，条件头有站点在回。
     - Web：`serve --no-ledger-sync`／`--ledger-sync-seconds` 处理代码已删、参数还在，托盘五处与 [docs/OPERATIONS.md](OPERATIONS.md) 仍在传。这一项必须和托盘重建同批做，旧 EXE 拉起新代码的窗口期会被 argparse 拒收；四个域 Protocol（`LinkContract`、`PlaylistContract`、`ResourceSyncContract`、`ReviewContract`）换成直接用 `WebContract`，`ContractConformanceTests` 随之删；来源在线判定、回环判定各有三份，各留一份；`_read_answers`／`_validate` 里「只发 media_dirs」的旧表单分支生产不可达，只靠测试活着；access `legacy` 模式的 `tok` cookie 只被接受不被升级，定截止日删接受分支。
-    - 桌面：换 EXE 两条路径（`replace_windows_tray.py` + `windows_update` 内联备份，与 `windows_restart.swap_tray_binary`）留校验更强的后者；`test_runner.py` 把「记录无效」与「用例失败」分成不同退出码（第 33 条的根因）；`sync.py` 的 `PUSH_INTERVAL_SECONDS`／`push_if_needed`／`interval` 生产只传 0；`scripts/manage_tray_startup.ps1` 已由 `desktop_startup.py` 接管（同时改 ADR-0011 与 [docs/OPERATIONS.md](OPERATIONS.md)）；三张「哪些路径算运行时」清单合成一处。
-    - 领域层：`catalog_rules` 里站名交替串、TLD 列表各写两份；`transcodes.requires_conversion`／`browser_path` 是同一段缓存逻辑；`code_variants` 在 `jav_cover_fetch` 与 `catalog_rules` 各一份；`library_processing` 是第三条 r18 请求路径且跨模块拿私有 `_fetch`。
-    - scripts：`audit_creator_attributions.py`（查的 `legacy:asset` 已无写入者）、`apply_metadata_tags.py`（绕过 `/review`）、`creator_tags.py --apply-review`（与 `web_review` 判据不同的第二条写路，`--export-review` 要留）建议删；7 处绕开 `scripting.open_for_write`、5 处自拼只读 URI、5 处手写线性重试要接上共享实现；`audit_video_endcards.py`、`audit_fc2_similarity.py`、`localize_series_names.py`、`find_ads.py` 还会用但文档没登记，归到 `peach-batch-jobs` 或 [docs/SOURCING.md](SOURCING.md)。
+    - 桌面：换 EXE 两条路径（`replace_windows_tray.py` + `windows_update` 内联备份，与 `windows_restart.swap_tray_binary`）留校验更强的后者；`sync.py` 的 `PUSH_INTERVAL_SECONDS`／`push_if_needed`／`interval` 生产只传 0；`scripts/manage_tray_startup.ps1` 已由 `desktop_startup.py` 接管（同时改 ADR-0011 与 [docs/OPERATIONS.md](OPERATIONS.md)）；三张「哪些路径算运行时」清单合成一处。
+    - 领域层：`catalog_rules` 里站名交替串、TLD 列表各写两份；`transcodes.requires_conversion`／`browser_path` 是同一段缓存逻辑；`library_processing` 是第三条 r18 请求路径且跨模块拿私有 `_fetch`。
+    - scripts：`audit_creator_attributions.py`（查的 `legacy:asset` 已无写入者）、`apply_metadata_tags.py`（绕过 `/review`）、`creator_tags.py --apply-review`（与 `web_review` 判据不同的第二条写路，`--export-review` 要留）建议删；7 处绕开 `scripting.open_for_write`、5 处自拼只读 URI、5 处手写线性重试要接上共享实现；`audit_video_endcards.py`、`audit_fc2_similarity.py`、`localize_series_names.py` 还会用但文档没登记，归到 `peach-batch-jobs` 或 [docs/SOURCING.md](SOURCING.md)。
     - tests：约 5 200 条源码文本断言，4 593 条在 `test_web_ui.py`（近 90 天 20% 的提交都在改它），`test_follow_web.py` 的关注管理页部分已换成 vitest 与 e2e，全文件剩 354 条；棘轮 `test_source_assertion_ratchet.py` 只许减少，换法见 [docs/TESTING.md](TESTING.md)「写什么测试」；页面断言设施两处各写一份；`test_fastapi_api.BASE_SCHEMA` 手写 22 张表，与 `migrations/*.sql` 的漂移未取得；31 个文件手写 `CREATE TABLE`，`tests/support/ledger.py` 有 22 个在用。方向是触碰时迁到 `test_web_js.py` 与 `fresh_ledger()`，不整体重写；`check_copy_final_state.py` 的词表不拦「过去／此前」。
-    - 前端：11 处 `await import('/dist/peach-ui.js')` 与文件顶部静态 import 并存（`test_frontend_build.py` 与 `test_web_ui.py` 钉住了这种写法，要同改）；`wireNavigationDrag` 与 `ui-components.wireDragReorder` 双实现；`.fnote` 在 21 与 22 号 CSS 互相覆盖。
-    - 文档：同一条规则最多写在 19 个文件里（测试入口）；`CLAUDE.md` 正文与 AGENTS、worktree 技能重复；本文件的操作 28 与 30 同题，另有一节评审记录。
-36. 归一后要用户判的 10 张厂牌标识：AttractiveLLC ×3、C-more_Entertainment ×3、Bambi_Promotion ×2、Deep_s、Tameike_Goro。补到内容外接圆这条规则在「设计上就出血到边」的标识上会把内容推离边缘，逐张判词在 `peach-data/review/refit-review-20260908.csv`，原图在 `peach-data/archive/logos-pre-refit-20260908/`，对比页 `build/logo_compare.html` 的第一节。占宽和圆外损失都分不开 C-more（0.98／0.97）与 MARRION（0.95／0.94），所以没加窄化条件，先由用户定还原哪几张，再按定下来的形状写判据和测试。
-37. 补底到 64 的 7 张还没写入：`normalize_studio_logos.py --apply` 要用户自己跑（DorcelClub.img、Flower 三张、LINX.img、HEYZO.icon、Prestige.icon，逐张前后见对比页第三节）。
-38. 头像去水印的人工复核与执行：`scripts/scrub_avatar_watermarks.py` 已跑完 620 张的检出，候选在
+    - 前端：11 处 `await import('/dist/peach-ui.js')` 与文件顶部静态 import 并存（`test_frontend_build.py` 与 `test_web_ui.py` 钉住了这种写法，要同改）。
+    - 文档：同一条规则最多写在 19 个文件里（测试入口）。
+32. 归一后要用户判的 10 张厂牌标识：AttractiveLLC ×3、C-more_Entertainment ×3、Bambi_Promotion ×2、Deep_s、Tameike_Goro。补到内容外接圆这条规则在「设计上就出血到边」的标识上会把内容推离边缘，逐张判词在 `peach-data/review/refit-review-20260908.csv`，原图在 `peach-data/archive/logos-pre-refit-20260908/`，对比页 `build/logo_compare.html` 的第一节。占宽和圆外损失都分不开 C-more（0.98／0.97）与 MARRION（0.95／0.94），所以没加窄化条件，先由用户定还原哪几张，再按定下来的形状写判据和测试。
+33. 补底到 64 的 7 张还没写入：`normalize_studio_logos.py --apply` 要用户自己跑（DorcelClub.img、Flower 三张、LINX.img、HEYZO.icon、Prestige.icon，逐张前后见对比页第三节）。
+34. 头像去水印的人工复核与执行：`scripts/scrub_avatar_watermarks.py` 已跑完 620 张的检出，候选在
     `peach-data/generated/watermark-candidates.csv`，左右对照的标注图在同目录 `watermark-review/`。
     23 张待处理（16 张纯裁切、1 张裁切加修补、6 张只能修补），看图确认后带 `--apply` 执行；检出器
     抓不到半透明水印（`NUBILES.NET`、`MATTIEDOLL.DEVIANTART.COM` 那几张），漏的往 `--marks` 的 CSV
-    里补 `file,x,y,w,h`。另有 14 张检出超过 4 处被判为画面文字放过，它们是第 34 项那批封面误装，
+    里补 `file,x,y,w,h`。另有 14 张检出超过 4 处被判为画面文字放过，它们是第 30 项那批封面误装，
     去水印不适用，要的是换源。
-39. `/link-mark` 的「成品图标原样用」通道有 21 与 36 号同一个毛病，只是资产不同：站点给的 apple-touch-icon 是照方角设计的，四边一圈高光裁成圆之后沿圆周露白。`site_icons.py` 对 ≥96 px 的设计图只做等比缩放，那圈高光是人家设计的一部分、抠不掉。涉及 8 个主机共 149 条链接：t-powers.co.jp 59、blog.livedoor.jp 49、bambi.ne.jp 16、mines-pro.jp 15、life-promotion.com 5、mgstage.com 3、moodyz.com 1、adult.contents.fc2.com 1。可走的路子是把 `images.refit_plate` 那套摆位判据接到这条通道上（36 号定下来的形状同样适用），或者对这一类直接退回字形合成。常见社媒已经改走内联品牌标记，不在此列。
-40. 女优名字的日文字形例外表：Atlas（MIT，`attic/tools/20260911-参考项目/Atlas/backend/src/services/actress-name-map.ts`）
+35. `/link-mark` 的「成品图标原样用」通道有 19 与 32 号同一个毛病，只是资产不同：站点给的 apple-touch-icon 是照方角设计的，四边一圈高光裁成圆之后沿圆周露白。`site_icons.py` 对 ≥96 px 的设计图只做等比缩放，那圈高光是人家设计的一部分、抠不掉。涉及 8 个主机共 149 条链接：t-powers.co.jp 59、blog.livedoor.jp 49、bambi.ne.jp 16、mines-pro.jp 15、life-promotion.com 5、mgstage.com 3、moodyz.com 1、adult.contents.fc2.com 1。可走的路子是把 `images.refit_plate` 那套摆位判据接到这条通道上（32 号定下来的形状同样适用），或者对这一类直接退回字形合成。常见社媒已经改走内联品牌标记，不在此列。
+36. 女优名字的日文字形例外表：Atlas（MIT，`attic/tools/20260911-参考项目/Atlas/backend/src/services/actress-name-map.ts`）
     对照 minnano-av 三个榜单实测出一批 OpenCC `cn→jp` 处理不了或会转错的字：`々`（佐佐木→佐々木）、篠／筱、
     庄／荘、里／裏、怜／憐、凛／凜、條／条、澤／沢。`peach.social_links.name_key` 目前不做简繁与日文字形转换，
     搜 javdb 与 minnano-av 时只搜规范名会漏（`三上悠亚` 对 `三上悠亜`）。把这份例外表做成 `name_key` 生成
     日文键的显式例外加测试，优先级「显式例外 → OpenCC → 原文透传」；一名多人的消歧仍按现有「需人工消歧」规则。
-41. 逐对判定 `115` 来源的 11 对路径大小写重复：2026-09-12 只读盘点，成因与 `local` 那次不同，是 `.MP4` 与 `.mp4`、`MIDE-950-C` 与 `mide-950-C` 这类扩展名与目录名的大小写，且多数两侧都挂着标签与快照（例如 `86263` 有 5 条标签、`28608` 有 6 条）。不能像 `local` 那样机械地保旧删新，要一对一看哪侧的标签与快照更全，合并后再删另一侧。
-42. 图库同名多张、却没有可比封面人脸的女优：两家目录的两张不同照片彼此过线且占多数时已按 ADR-0062 装上，小图也作证、只有小图时装小图（ADR-0066）。仍装不上的是名下只有同一张照片的两份、或只有一张提得出脸的；可选的参照是片商或事务所资料页人像、单人作品的九宫格抽帧。
-43. 接入 avwikidb（`https://avwikidb.com/`）作为「截图 → 女优」候选来源。官方截图本身已按番号落库、在女优页照片档展示（ADR-0068，直取 DMM 与 MGS，不经 avwikidb）；剩下的是把逐张标注接到样张上，让多人作品的样张只进出场那位的照片档。2026-09-24 只读核实，作品页 `/work/{番号}/` 服务端渲染，`__NEXT_DATA__` 里 `movie.sampleImageActors` 按截图序号给 FANZA 女优 ID，FANZA 截图原图 `pics.dmm.co.jp/digital/video/{cid}/{cid}jp-N.jpg` 与缩略 `awsimgsrc.dmm.co.jp/pics_dig/…?f=webp&w=600` 都无签名可外链；标注是人工逐步补的，4 部样本覆盖六到八成，每张最多标一人，MGS 作品只给站内 `/mgsimg/` 代理路径（不用，走现有 MGS 抓取）。女优页 `/actor/{FANZA id}/` 的增量是 `alias[].fanzaAvActressId`（同一人多个 FANZA 旧 ID）、事务所与其官方页、社媒账号、逐字段来源核对记录；头像与作品元数据与现有 DMM 来源同源，无增量。带查询串的地址（分页、筛选）被 Cloudflare Turnstile 拦，只读无参数页；robots 禁 `/api/`，不接。结论只进候选。
-44. 前端测试里一条时序抖动，复跑就绿，但每次撞上都要重跑整轮 `auto`：vitest `islands.test.ts` 的 `beforeAll(import('@peach/react'))` 偶尔超过 10 秒（`peach-react.js` 已到 2.3 MB，首次导入的时间窗口在变紧，2026-09-28 撞一次）。要么拆包、要么给首次导入单独的超时。
-45. r18 英文写法建出的实体还剩两位素人女优的日文名未取得：8645 `Mana(23)`（413INST-168，标题 `まな`，年龄后缀的日文写法没有原文，`まな` 又常见，不猜）与 8629 `* Kuchiku`（POW-040，r18dev 原文 `Kuchiku * Reverse Bunny`，与标题 `べりさ` 对不上）。DMM 商品页的演员栏已空、演员页 404，取得原文后再改名，英文留作别名。`PREMIUM BEST`、`1VS1`、`NOZOMI` 是厂牌或官方自己的拉丁写法，保留。
+37. 逐对判定 `115` 来源的 11 对路径大小写重复：2026-09-12 只读盘点，成因与 `local` 那次不同，是 `.MP4` 与 `.mp4`、`MIDE-950-C` 与 `mide-950-C` 这类扩展名与目录名的大小写，且多数两侧都挂着标签与快照（例如 `86263` 有 5 条标签、`28608` 有 6 条）。不能像 `local` 那样机械地保旧删新，要一对一看哪侧的标签与快照更全，合并后再删另一侧。
+38. 图库同名多张、却没有可比封面人脸的女优：两家目录的两张不同照片彼此过线且占多数时已按 ADR-0062 装上，小图也作证、只有小图时装小图（ADR-0066）。仍装不上的是名下只有同一张照片的两份、或只有一张提得出脸的；可选的参照是片商或事务所资料页人像、单人作品的九宫格抽帧。
+39. 接入 avwikidb（`https://avwikidb.com/`）作为「截图 → 女优」候选来源。官方截图本身已按番号落库、在女优页照片档展示（ADR-0068，直取 DMM 与 MGS，不经 avwikidb）；剩下的是把逐张标注接到样张上，让多人作品的样张只进出场那位的照片档。2026-09-24 只读核实，作品页 `/work/{番号}/` 服务端渲染，`movie.sampleImageActors` 按截图序号给 FANZA 女优 ID；接入时读 Next.js 的 `_next/data/<buildId>/…json`（buildId 缓存、失效后重取，mdcz `avwikidb.ts`），不解析页面里的 `__NEXT_DATA__`。FANZA 截图原图 `pics.dmm.co.jp/digital/video/{cid}/{cid}jp-N.jpg` 与缩略 `awsimgsrc.dmm.co.jp/pics_dig/…?f=webp&w=600` 都无签名可外链；标注是人工逐步补的，4 部样本覆盖六到八成，每张最多标一人，MGS 作品只给站内 `/mgsimg/` 代理路径（不用，走现有 MGS 抓取）。女优页 `/actor/{FANZA id}/` 的增量是 `alias[].fanzaAvActressId`（同一人多个 FANZA 旧 ID）、事务所与其官方页、社媒账号、逐字段来源核对记录；头像与作品元数据与现有 DMM 来源同源，无增量。带查询串的地址（分页、筛选）被 Cloudflare Turnstile 拦，只读无参数页；robots 禁 `/api/`，不接。结论只进候选。
+40. 前端测试里一条时序抖动，复跑就绿，但每次撞上都要重跑整轮 `auto`：vitest `islands.test.ts` 的 `beforeAll(import('@peach/react'))` 偶尔超过 10 秒（`peach-react.js` 已到 2.3 MB，首次导入的时间窗口在变紧，2026-09-28 撞一次）。要么拆包、要么给首次导入单独的超时。
+41. r18 英文写法建出的实体还剩两位素人女优的日文名未取得：8645 `Mana(23)`（413INST-168，标题 `まな`，年龄后缀的日文写法没有原文，`まな` 又常见，不猜）与 8629 `* Kuchiku`（POW-040，r18dev 原文 `Kuchiku * Reverse Bunny`，与标题 `べりさ` 对不上）。DMM 商品页的演员栏已空、演员页 404，取得原文后再改名，英文留作别名。`PREMIUM BEST`、`1VS1`、`NOZOMI` 是厂牌或官方自己的拉丁写法，保留。
+42. 合并转址回填：2026-10-01 只读盘点出 127 对 ADR-0088 之前的旧合并，126 对可按 ADR-0088 补 `entity_redirect`，1 对目标已不在、链条也接不上；孤立实体图 47 张，其中 19 张可按回填对跳到活实体。盘点脚本在仓库外 `attic/tools/20261001-entity-redirect-backfill/inventory_merge_redirects.py`（`mode=ro`、只打标准输出）。写账本需另行授权，按 `peach-ledger-write` 先备份。

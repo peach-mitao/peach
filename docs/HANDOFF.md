@@ -11,7 +11,7 @@
 - 截图与视觉验收的画面保护：SFW 模式（设置面板「安全」组，`#censorSetting`，localStorage `peach-censor`）默认关闭、不在导航栏。只在截图要交给会审查内容的模型（自动视觉审查或外发工具）时开启，用完关掉；普通个人浏览一律不遮挡。
 - 卡片实体链接必须由同一个 `{kind,name}` 结构生成，不许先独立选显示名、再按别的字段推断类型；账本 `size` 为空或 0 时显示「大小未知」，不伪装成 `0 MB`。
 - 排除竖屏是首页取景而不是全局过滤器：`exclude_vertical` 进搜索或实体列表会让按名字搜竖屏视频返回 0 结果，`test_only_the_default_home_list_drops_portrait_videos` 守这条线。
-- 竖屏条整行占位并且必须插在行边界上，由 `SHORTS_ROW_OFFSET` 控制插在第几行之后，不额外拉一批视频补上一行余位。
+- 竖屏带整行占位，插在本页新增那几行的某个行边界上（`frontend/src/react/catalog-grid/catalog-grid.ts` 的 `shortsBoundaries`），首尾各留至少一行，不额外拉视频补余位。
 - 关注卡片、标题和 Mix 集合行都先打开站内详情层，可播放媒体走 `/follow-stream`，关闭详情必须停止播放；外部来源页只作详情侧栏的次要入口。
 - HLS 分片必须切在真实关键帧上，关键帧表由 `peach.mp4index.keyframe_seconds` 直接读 MP4 的 `moov/stss`；禁止用 `ffprobe -skip_frame nokey`，那会把整个文件解复用一遍，在挂载网盘上等于把片子重拉一遍，读不出关键帧就回退标准 Range。
 - 分片用 `-copyts -muxdelay 0 -muxpreload 0` 保持时间戳连续，不用 `-avoid_negative_ts make_zero`（每段都自称从 0 秒开始，拖动进度条会跳错位置）；缓存写在 `stream_root/<asset>/<size>-<mtime>-<秒数>/<index>.ts` 并按最后访问时间淘汰，FFmpeg 并发闸门默认 CPU 核数一半。
@@ -53,7 +53,7 @@
 - 复核结论写入带证据和来源的 CSV 或其他持久产物；真实 ledger 写入须另满足授权与备份门槛，执行后对账。
 - 结论被修正时所有派生产物必须重建，只改说明文字不够：过期的删除清单比没有清单更危险。
 - 直接证据：视觉逐条任务在聊天里说「已保存」但 `asset_tag` 的 `source='vision'` 为 0，根本没有写入步骤；`disposal-candidates.csv` 在 `BNST033` 修正后未重建，把真实 3.2 GB 正片列为待删。
-- 解析用的固定件必须是抓回来的那份 HTML，不能照记忆重画：那样只能证明代码和记忆一致，会出现测试全绿而线上一个字段都没采到（实例见 [docs/SOURCING.md](SOURCING.md)）。
+- 解析固定件只用抓回来的那份 HTML，判据与实例见 [docs/SOURCING.md](SOURCING.md)「缓存与重试」。
 - Claude 的 `.claude/settings.json` 配了 Stop、StopFailure、SessionEnd hook，用 `${CLAUDE_PROJECT_DIR}/.venv/Scripts/python.exe` 调 `scripts/job_status.py --write --hook-event`：只记脱敏生命周期摘要，从 ledger 与产物重算数字后原子写入 `peach-data/state/job-status.md`，不复制 prompt、response 或凭据。
 - 那份产物不进 Git，[docs/STATUS.md](STATUS.md) 只留一行指针；只有主检出的会话写这份状态，隔离工作树里的不写。强制杀进程或断电时 hook 不运行，下次调用会补上。
 
@@ -96,20 +96,11 @@
 
 失败值、磁盘闸门、限流、续跑、流量与进程规则统一见
 `.claude/skills/peach-batch-jobs/SKILL.md`；当前批次数量与运行进度只写 `peach-data/state/job-status.md`。
-
-- 采集脚本的整页 HTML 缓存与限速集中在 `peach.page_cache.Site`：判据改一行就要重跑，缓存在手才能让重跑读离线数据、不再打外站。
-- 传输错误由 `Site` 自己退让重试，采集脚本不必各写一遍；HTTP 状态码不重试，404 重试三次仍是 404，白花三倍流量。
+采集脚本的整页缓存、限速与传输重试集中在 `peach.page_cache.Site`，判据见 [docs/SOURCING.md](SOURCING.md)「缓存与重试」。
 
 ## 身份、来源与标识采集
 
-判据细节、实测反例、判词含义和不能走的路见 [docs/SOURCING.md](SOURCING.md)，这里只留边界。
-
-- 采集脚本一律只产出复核 CSV；写 `entity.canonical_name`、`asset.studio`、`entity_link` 或头像字节都是另一次授权。
-- 规范名优先用有出处的简体中文通行名，旧艺名、罗马字、假名和繁体名降为别名；`no_avatar` 只表示没取得合格图片，不阻止已核实姓名落库。
-- 实体合并不可逆：走 `peach.entities.merge_entity`，先备份，合并后 `PRAGMA foreign_key_check` 应为 0；人工合并当场授权，两站名字栏列成同一人的由补别名后继自动合（ADR-0064）。
-- 「这一页只有一位女优」「这个 handle 存在」「站上没有」都不是证据：精确回配优先于任何唯一性推断，二手结论要自己请求一次才算取证，查不到就写「未取得」。
-- 名字与厂牌名都由站点给出，不由罗马音或 slug 推定；一律跨来源同证，单页 404 只说明那一页取不到。
-- Cloudflare 拦的站由本机浏览器过验证（ADR-0065），不伪造指纹、不接解题服务。
+采集只出复核 CSV、规范名与别名、实体合并、取证判据与 Cloudflare 站的取页边界都在 [docs/SOURCING.md](SOURCING.md)「采集判据」「命名与身份合并」等节，这里不另写。
 
 ## 流量与代理诊断工具
 
@@ -121,29 +112,22 @@
 
 - 真实 ledger 是写入者本机 `peach-data/database/ledger.db`（WAL），正常浏览会合法写入播放与行为字段；平台绝对路径以 [docs/STATUS.md](STATUS.md) 为准。
 - 测试必须使用临时 SQLite、媒体和全部缓存根，不得写真实 ledger 或 `generated`；FastAPI 测试须显式传入 snapshots、posters、photo-thumbs、transcodes、stream-segments、按 asset 生成的头像与 covers。
-- 可重建缓存的删除边界由当前数据库路径拥有，生产库只可清理同一 `peach-data` 下的缓存，边界外一律跳过：一次漏配曾在清空回收站的测试里删掉真实 JAV 封面。
-- 已应用的迁移文件不得修改，任何后续变更必须新增版本；真实迁移与缓存删除的操作序列见 [docs/OPERATIONS.md](OPERATIONS.md)。
+- 可重建缓存的删除边界、已应用迁移不可改写与真实迁移的操作序列见 [docs/OPERATIONS.md](OPERATIONS.md)「迁移、备份与运维脚本」。
 - 外键 `ON DELETE` 是安全网不是删除路径：运行时连接不开 `PRAGMA foreign_keys`，物理删除仍走 `ASSET_REFERENCE_TABLES` 与 `web_playlists` 的显式 DELETE；重建被别人引用的父表要在迁移首行写 `-- peach:foreign_keys=off`，改名那步开 `PRAGMA legacy_alter_table=ON`，判据见 `0025`。
 - 外置盘目标只保存 `media`，代码、运行数据、venv 和 worktree 在两台机器各自的内置盘；`peach-data` 不进入仓库，也不整体交给文件同步，分通道边界见 ADR-0017。
 
 ## 运行与部署
 
-CloudDrive 见 [docs/CLOUDDRIVE.md](CLOUDDRIVE.md)，部署见 [docs/OPERATIONS.md](OPERATIONS.md)。
+CloudDrive 见 [docs/CLOUDDRIVE.md](CLOUDDRIVE.md)；部署、托盘重启、双机同步、版本与更新、网络与进程边界、验证口径见 [docs/OPERATIONS.md](OPERATIONS.md)。
 
-- 源码部署由项目 venv 持有服务，刷新入口 `scripts/restart_windows_tray.py`。独立测试包自带运行环境，数据在用户目录；配置更改由托盘消费标记并重启子服务。
-- 「同步开发进度」（GitHub）和「同步 Ledger」（SMB 共享）是两条独立通道，任一方不可达都不该拖住另一方；服务只观察角色不自动复制。
 - 两台机器可同时跑服务，但同时写入会很快冲突转只读；「接管 Ledger 写入」的短路与拒绝条件见 OPERATIONS。
-- `src/peach/__init__.py::__version__` 是版本唯一来源；自动更新只做 `merge --ff-only`，不 stash、不 rebase、不 `--force`，工作区脏或两边分叉就原样报出来交给人，因为并行工作树和主检出共用同一个对象库。
-- 本机坐标在 `<数据根>/config.toml`（环境变量 > 它 > 内建默认），`src/peach/` 不写死本机字面量或家庭 IP。`[media.mounts]` 按 `asset.location` 给本机落点，Windows 上整表为空；`replication.enabled` 默认关，关掉即整套复制组件不装配。首启问答与扫描是 `peach.onboarding`／`peach.scan` 的纯逻辑，CLI 与托盘设置页共用。
-- `.local` 用本机 CA 而不是 Let's Encrypt，证书与私钥留在本机 `peach-data/secrets` 且按设计不跨机共享；FastAPI 是唯一 Web server，探测本机服务必须绕过系统代理，否则代理会替服务回 503。
-- 网盘目录整理后经「管理 → 资源同步」显式对账，不做后台静默删除；确认后逐条复核，永久删除源文件缺失的 asset（含回收站）与空文件夹。垃圾文件候选先进回收站。
-- 长任务只停止自己拥有且命令行匹配的 Python/FFmpeg 进程树，禁止全机终止 FFmpeg；转码只写缓存，永不改写原媒体。
-- 验证分开报告：静态/单元/API、桌面浏览器、390×844 手机、生产服务是否已重启。
+- 网盘目录整理后的对账、两档清理与孤儿记录见 OPERATIONS「资源同步」。
 
 ## 当前架构真相
 
 - Ledger 拥有真相和行为；服务运行期媒体只从文件系统解析，Stash 只剩账本里的溯源数据（ADR-0021、`STASH.md`）。
-- 规范女优、厂牌、标签、创作者进入 `entity`、`entity_external_ref`、`asset_entity`；扁平 `asset_tag` 和 creator/studio 字段只是兼容投影。
+- 规范女优、厂牌、标签、创作者进入 `entity`、`entity_external_ref`、`asset_entity`；扁平 `asset_tag` 和 creator/studio 字段只是兼容投影。按实体 id 取数先过 `entities.resolve_entity_id`：合并留下的墓碑把旧 id 指到目标（ADR-0088）。
+- `asset.disposal` 只有三个值：空是在库，`trash` 是用户丢进回收站，`vanished` 是文件已不在盘上但带着个人记录；判在库时两者都排除（ADR-0087）。
 - FastAPI 与前端保持单体部署，在线来源和 AI 只通过显式适配器进入；AI runtime 与推理 API 的协议边界见 ADR-0003。
 - 前端按 ADR-0031 走 strangler 迁移：新页面进 `frontend/src/react/`（React + Tailwind + BoardUI 源码），逐页替换，不做整站重写；分发阶段见 ADR-0023。
 - 页面与交互的已定型行为写 [docs/REUSE.md](REUSE.md)，由 API 与测试守住；版本号、像素值、批量大小与性能测量是实现快照，留在测试或参考快照，本文件不抄。
@@ -153,6 +137,7 @@ CloudDrive 见 [docs/CLOUDDRIVE.md](CLOUDDRIVE.md)，部署见 [docs/OPERATIONS.
 - 追更连接器、凭据、变体和跨站归组以 ADR-0019 为准；关注页顶部标签筛选与卡片只用来源明确标记为 `general` 的内容标签，详情页与在线索引保留全部来源标签并按类型着色，未知类型不猜成 `general`。
 - FANBOX 正文统一经过 `peach.fanbox.normalize_fanbox_post`，边界见 [docs/REUSE.md](REUSE.md)「必须复用的成熟实现」。
 - FANBOX Cookie 与 Gofile token 都是本机可选凭据，只进各自站点的请求头，不进 URL、证据、ledger 公开投影或浏览器 JSON；只允许公开 JSON，不解机器人质询、不执行网页脚本、不读付费内容。
+- 云下载的 CloudDrive2 令牌与 PikPak refresh token 存本机 `CredentialStore`，不列为可同步字段，不进 URL、日志与 ledger（ADR-0089）。
 - Gofile 把 contents API 限给 Premium：`error-notPremium` 按套餐限制报告，不误报成 token 无效；没取得文件列表时保留分享页，不得声称已取得视频。
 - 同一篇 FANBOX 可含多个 Gofile 文件夹：作品级仍是一个来源合集，媒体保留文件夹 id 与正文标签并在详情队列内分段，不拆作品也不压平混排。
 - 自动追更用 APScheduler，只在 ledger writer 启动，频率存 `peach-data/state/follow-schedule.json`，默认每小时且启动后等满一个间隔，不要改成启动即抓；单实例、与手动检查互斥见 [docs/REUSE.md](REUSE.md)「必须复用的成熟实现」，reader 只显示不可用状态。

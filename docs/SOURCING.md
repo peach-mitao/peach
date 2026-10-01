@@ -70,14 +70,11 @@ Seesaa 是托管平台，下面这些 Wiki 由各自的维护者编辑，不能�
 | --- | --- |
 | [素人系総合 Wiki](https://seesaawiki.jp/w/sougouwiki/) | 厂牌作品表、合集名单、名义与人物页链接、日期、图片及跨平台线索；已接入脚本 |
 | [このAV女優の名前教えてwiki](https://seesaawiki.jp/av_neme/) | DMM、MGS、S-Cute、舞ワイフ 的出演名义核验；不用表格，系列页与月份归档页一部一个 `h5` 小节（「品番\| 系列名」加「名前(女優名)」）；300MIUM 可查，FC2-PPV 与 MIB 查不到；已接入脚本（`av_neme`） |
-| [AV女優大辞典wiki](https://av-help.memo.wiki/) | 女优与出演作品索引 |
 | [AV女優の名前特定wiki](https://seesaawiki.jp/av_name/) | FANZA 素人与 FANZAビデオ 一个品番一页（键值表），MGS 挂在厂牌页 `h5` 小节里且只列最新约 1100 件；300MIUM、FKOS 可查，FC2-PPV、476MLA 与 MIB 查不到；已接入脚本（`av_name`） |
-| [AV女優パーフェクトWiki](https://seesaawiki.jp/av_video/) | 作品、厂牌、系列索引及出演者线索 |
-| [シロウトTV・ナンパTV](https://seesaawiki.jp/pre_shiro/) | MGS 相关作品的出演名义核验 |
-| [人妻系まとめ](https://hitoduma-matome.memo.wiki/)／[素人AV女優名鑑](https://shiroutoav.memo.wiki/) | 特定类别人物与作品线索 |
-| [VR作品](https://seesaawiki.jp/vr_video/)／[成人映画](https://seesaawiki.jp/nikkatsu/)／[NHpedia](https://seesaawiki.jp/nhpedia/) | VR、成人电影、跨性别演员等分领域索引 |
 
-表内入口取页于 2026-09-06，两个已接入的认人 Wiki 于 2026-09-24 复测。平台上其余的 Wiki 与视频作品资料无关。
+表内入口取页于 2026-09-06，两个已接入的认人 Wiki 于 2026-09-24 复测。未接入的同类 Wiki（AV女優大辞典、AV女優パーフェクト、
+シロウトTV・ナンパTV、人妻系まとめ、素人AV女優名鑑，以及 VR、成人映画、NHpedia 等分领域索引）只作人工查证线索；平台上其余的
+Wiki 与视频作品资料无关。
 
 ## K-MIB 官网作品与演员
 
@@ -143,6 +140,9 @@ Seesaa 是托管平台，下面这些 Wiki 由各自的维护者编辑，不能�
   `metadata_routes.MAKER_EVIDENCE` 里、或账本厂牌与路径写着这家时才问它；有一家认了就不再问 `makers`。
   `makers` 按 amane 自带的片商表路由，前缀不在表里时桥内零 HTTP，只花一次子进程（约 0.8 秒）。
 - **国产、欧美归 `other`，一家都不问。** 认得出的停在这里，认不出的仍按有码问。里番没有判据，不单列。
+
+候选来源（未接入，等实际缺口出现再接）：sokmil、kingdom.vc、km-produce、fantia（要 Cookie）、jav321、javlibrary，
+出自 2026-10-01 对 Javinizer-Go、mdcz、AMMDS 等元数据引擎的调研（ADR-0092）。
 
 ### 什么时候停
 
@@ -322,6 +322,9 @@ minnano-av 也在 Cloudflare 后面，但对 HTTP 客户端是间歇拦截：202
 `resync_performer_agency.py` 都经 `SourceTransport` 取 minnano-av，共用同一份冷却与固定状态。2026-10-01 实测：
 临时 profile 的 Chrome 取检索页，跟到资料页 `actress695633.html`，资料表解析正常。
 
+候选备援（未接入）：OpenAver 0.16.13 拔掉 minnano-av 后按 xcity → 维基 → graphis 逐字段合并女优资料；只作 minnano-av
+取不到时的补位，不替换它，因为它是目前唯一能从名字走到事务所名册的入口（调研见 ADR-0092）。
+
 ### JavArchive
 
 - 作品地址里夹着站内文章号和标题（`/926949-FC2-PPV-4137487-…-pn.html`），拼不出来，所以先问
@@ -361,6 +364,7 @@ minnano-av 也在 Cloudflare 后面，但对 HTTP 客户端是间歇拦截：202
 - **FC2PPV-DB 的女优栏**按片中人整理、写日文原名，优先级排在 fc2cmadb 之后、javdb 之前。
 - 演员栏上镜像排在 javdb 前面（`metadata_policy.FIELD_SOURCE_PRIORITY`）：javdb 那一侧常是转载站起的称呼
   （英文昵称或中文译名），镜像写的是原名。
+- 一家写 `Xちゃん`、另一家写 `X` 算两家一致，按 `X` 自动落库，条件与留痕见 ADR-0086。
 - 账本里已有的演员社区来源换不动。两边不一的由 `scripts/fc2_cast_review.py` 列进
   `generated/fc2-cast-candidates.csv`，在复核页「资料字段」里逐条批。
 - 评论区那条线走 `scripts/fetch_fc2_metadata.py`，另有等价标记与合集判定。
@@ -584,6 +588,7 @@ Instagram 的独立用户登录会话未取得，自动适配器不进正式依�
 - 番号只补给目录里的视频。发行目录里还混着论坛文宣、下载器广告和封面图（`Tokyo-Hot n0780-HD` 里有两张）。
   番号写到它们头上有两个后果：库里它们冒充这部片的文件；垃圾复核又因为「自己带真番号」判定目录证据不成立，
   把它们挡在队列外。写入走 `field_owners` 署名 `script:code-creators`，用户改过的格子不再被覆盖。
+- 发行目录里的推广短片由 `scripts/find_ads.py` 按五条判据记分、只出 CSV 交人处置；javm 的 `find_ad_videos` 按关键词识别，可作对照（ADR-0092）。
 - 画质前缀（`HD`／`FHD`／`4K`／`1080P`）和版本后缀（`-C`／`-CH`／`-UC`／`-SUB`）不是番号的一部分，提取器先剥
   这两层再匹配。界面把版本语义投影成「中字」「无码」「无码破解」，原始 `name`／`code` 留给文件操作。缺连字符
   的紧凑 code 只有同时具备片商、发行日或 performer／studio／series 实体证据才恢复。
@@ -1055,8 +1060,8 @@ AV 厂牌 Logo 的来源是厂牌自己的社交账号头像：社交头像天�
 - **归一成空串必须当不可比。** 纯日文名折掉非 ASCII 后都是空串，不排掉的话整份名录会全部对成同一家。前缀候选比前三路弱，判据要
   写进复核件：`きらきらワイフ` 撞上的 `kira*kira` 是另一家真实厂牌。
 - **名录对不上账本，多数是账本里没有那家，不是缺日文别名。** 按子串加编辑距离放宽重算也只翻出假配对。MGStage 是素人／企划
-  平台，没对上的多是 FANZA 系（MOODYZ、S1 等），要另找入口。补日文别名能抬高同一份名录的覆盖面，待办见
-  [docs/PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md)「待执行的操作」第 24 条。
+  平台，没对上的多是 FANZA 系（MOODYZ、S1 等），要另找入口。无标识厂牌缺的是官网链接，待办见
+  [docs/PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md)「已有骨架」第 5 条。
 
 **展会名录 jae.tokyo**（人工指定来源，Japan Adult Expo 的参展厂牌名录）：三届各带一套片商自己交的 logo，页面结构每届不同。
 
@@ -1173,11 +1178,8 @@ AV 厂牌 Logo 的来源是厂牌自己的社交账号头像：社交头像天�
   主机、哪一份和 sha256。`/link-mark` 本来就按主机（`cache_key` 也按主机），不受这条约束。
 - **可达性探测要扛住 TLS 抖动。** `install_entity_links.resolves` 对传输层异常重试三次，状态码一次成局。`site_logos.logo_images`
   丢掉 `data:` 懒加载占位图，它顶着标识的 class，取字节又打不开。
-- **Instagram 头像的地址发现与字节下载分开验证。** 资料页可能给多个尺寸，小图 URL 改参失败不能证明高清版不存在；嵌入页和
-  资料页都可能混有观看者或推荐账号，必须按目标账号关联字段取。`--avatars` 读本机 `peach-data/state/agency-avatars.json`，
-  是人工地址输入，不是通用解析器。成熟解析器、Cookie GUI 与签名地址刷新按 [ADR-0024](adr/0024-mark-manifest-not-bundled-bytes.md)
-  实施，1000×1000 原图与验证边界见 [抓取审计](SCRAPING_AUDIT.md)。没做跨账号 POC 时只记「地址发现未取得」，不写成平台像素
-  上限；公司号与艺人号仍要分开。
+- **Instagram 头像**：`--avatars` 读本机 `peach-data/state/agency-avatars.json`，是人工地址输入，不是通用解析器；地址发现与
+  字节下载分开验证，取图边界见 [抓取审计](SCRAPING_AUDIT.md) 与 [ADR-0024](adr/0024-mark-manifest-not-bundled-bytes.md)。
 - **字标补白**：方标一个都没做成、却取回过短边 ≥ `MIN_SHORT_EDGE` 的宽扁字标时，用 `peach.images.bake_square` 烤成方图装上，判词
   `字标补白`，`content_aspect` 照记。同一份方图再出一行 `logo`（判词 `ok`）装进 `<safe>.logo.img`，否则大位会回落到 `<safe>.img`
   （BangBus 页顶上就会挂母品牌 BANGBROS）。人工指定的 logo 来源做成时优先；留第一份而不是最大的一份，因为 `best_mark` 的遍历
@@ -1189,9 +1191,7 @@ AV 厂牌 Logo 的来源是厂牌自己的社交账号头像：社交头像天�
   不透明的 jpg 的 `content_aspect` 一律是 0。复核件的 `studio` 列从 `LOGO_SOURCE_NAMES` 取。
 - **已装的方标太小要再问一趟。** `studio_icons.py` 把小位短边不到 64 实像素的厂牌一并收进目标（`INSTALLED_SHORT_EDGE`、
   `small_installed_marks`），量的是小位真会取到的那一份（`<safe>.icon.img` 优先，没有才用 `<safe>.img`）。写盘另有
-  `_shorter_than_installed` 守卫，只可能换上更大的，问不到就在复核件上留判词。已知几家：DorcelClub 缺的是一条 `official` 链接，
-  补上就能取回站上的方标；Wanz Factory 与 HEYZO 更大的方标**未取得**（官网只有小 favicon，header 是横向字标）；Prestige 官网
-  header 的 SVG（`/_nuxt/img/logo.*.svg`）可给大位用，小位仍是字标。
+  `_shorter_than_installed` 守卫，只可能换上更大的，问不到就在复核件上留判词。
 
 ### 判词
 
@@ -1303,6 +1303,8 @@ Feed 只回答一个问题：**最近出了哪些番号**。它不下载、不�
     本身为空。
   - **它按发行日排，所以「还没发行的作品」会先出现**。空壳的发行日可以晚于今天，这不是脏数据。
   - 账本里已经有 `entity_external_ref` 的 `javdb` id（`entry_links.provider_ids`），订阅不必让用户手抄地址。
+  - 订阅从人物页开关进，也可在关注管理「订阅源」页签按女优名订阅：服务端到 JavDB 演员搜索取演员卡，用户在卡上点选，
+    页面只送演员 id，地址由服务端现拼；账本里没有这位就新建 `performer` 实体（ADR-0083）。
   - 限流照库内采集：主机间隔 3 秒、403 就整源停下，冷却判据在 `scraping_access`，见「javdb、AVBase 与 JavBus 的限流与封禁」。
     不要因为 Feed 是后台任务就另开一套。
   - **加 `?sort_type=4` 拿到的页面一条作品都解不出**，同一轮里不带参数的请求仍是完整页。所以演员页伪 Feed 一律用不带查询串的地址。
@@ -1313,19 +1315,9 @@ Feed 只回答一个问题：**最近出了哪些番号**。它不下载、不�
 
 ### 已核实不可用
 
-| 来源 | 地址 | 结果 |
-| --- | --- | --- |
-| FANZA / DMM | `/rss/-/digital-videoa/` | 404；`/rss/` 与新作列表页都 302 到年龄确认页 |
-| MGStage | `/rss/mgs.xml`、`/feed/` | 都 404，首页不声明任何 feed |
-| 一本道 / 10musume / カリビアンコム / パコパコママ | `/rss/movies.xml`、`dyn/phpauto/movie_lists/list_newest_30.json` | 全 404；首页不声明 feed。`dyn/phpauto/movie_details` 仍然可用（`peach.sources.onepondo`），**但同族没有新作列表路径** |
-| Tokyo-Hot | `/product/rss/` | 404，首页不声明 feed |
-| RSSHub 公共实例 | `rsshub.app/javdb/...`、`rsshub.app/javbus/...` | 403，公共实例整站挡在 Cloudflare 后面。自建实例没有验证，不作为 Peach 的前置条件 |
-| javlibrary | `/cn/rss.xml` | 403（被 Cloudflare 拦，不绕） |
-| JavBus | `/rss` | 302 到 `driver-verify` 人机验证页 |
-| AVBase | `/rss.xml` | 404，首页不声明 feed |
-| javtrailers | `/rss` | 404 |
-| OneJAV | `/rss` | 500 |
-| 色花堂 | `forum.php?mod=rss&fid=36` | 200 但只有 1.8 KB 的 HTML，不是 feed |
+FANZA／DMM、MGStage、一本道同族、Tokyo-Hot、AVBase、javtrailers、OneJAV 的 feed 地址回 404 或 500、首页不声明 feed（一本道同族
+`movie_details` 仍可用，但没有新作列表路径）；FANZA 302 到年龄确认页，JavBus 302 到人机验证页；RSSHub 公共实例与 javlibrary 回
+403（Cloudflare，不绕）；色花堂回的是 HTML。逐站地址与原始结果在上面那份取证目录里。
 
 **DUGA 是反例**：`https://duga.jp/news.xml` 是唯一由首页 `<link rel="alternate">` 正经声明的 RSS，`pubDate` 齐全，看起来完全可用。
 但条目标题一个番号都不带，番号只能从链接里取，而链接里那个是 DUGA 的站内商品号（`ppv/doc-2376`）。它长得和厂牌番号一模一样，
