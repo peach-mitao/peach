@@ -23,7 +23,7 @@ import { queryClient } from '../query';
 import {
   CAST_SHOWN, EDITION_TONE, FEEDBACK_URL, ITEM_TAG_URL, PLAYLIST_URL, PREFERENCE_URL, QUALITY_GOAL_URL,
   RELATED_URL, WATCH_LATER_URL, chooseItem, clampRating, detailTags, feedbackReceipt, fetchItem, fetchQueue,
-  hasTag, identityGroups, itemKey, mediaGate, movedOrder, nextRating, partLabel, partLabelHtml, pickerSections, playlistQueue,
+  hasTag, identityGroups, isVanished, itemKey, mediaGate, movedOrder, nextRating, partLabel, partLabelHtml, pickerSections, playlistQueue,
   queueCopy, queueKey, ratingStars, ratingText, realWatched, recentTags, relatedKey, rememberTag, sameOrder,
   withPartLabel, withTag, withoutTag,
   type DetailEntityRef, type DetailItem, type DetailQueue, type DetailTag, type ItemDetailActions,
@@ -198,9 +198,13 @@ function Queue({ queue, itemId, helpers, actions }: {
       {queue.items.map((row) => {
         const edition = queue.kind === 'editions' && row.edition_label
           ? <i className={`javedition ${EDITION_TONE[row.edition_label] || 'censored'}`} data-queue-edition="">{row.edition_label}</i> : null;
+        // 已消失的条目照旧列在播放列表里、能移出，但文件不在盘上，这一行不能点开去播放。
+        const gone = queue.kind === 'playlist' && isVanished(row);
         return (
           <MixQueueRow key={row.id} current={row.id === itemId} data-queue-item={row.id} row={{ 'data-queue-row': row.id }}
-            onClick={() => actions.openQueueItem(ref, row.id)}
+            disabled={gone} title={gone ? '文件已不在盘上，不能播放' : undefined}
+            {...(gone ? { 'data-queue-vanished': '' } : {})}
+            onClick={() => { if (!gone) actions.openQueueItem(ref, row.id) }}
             pic={<><Html html={helpers.queueThumbHtml(row)} /><i className="mono" data-mix-item-duration="">{fmtDur(row.duration)}</i></>}
             lead={<Html html={helpers.queueAvatarHtml(row)} />}
             after={queue.kind === 'playlist' ? (
@@ -211,7 +215,8 @@ function Queue({ queue, itemId, helpers, actions }: {
               </span>
             ) : null}>
             <span data-queue-head="">{edition}<b data-middle-truncate="">{helpers.displayName(row)}</b></span>
-            <span data-truncate-end="">{queue.kind === 'parts' ? partLabel(row.part_label) : helpers.mixLabel(row)}</span>
+            <span data-truncate-end="">{gone ? '已消失 · 文件已不在盘上'
+              : queue.kind === 'parts' ? partLabel(row.part_label) : helpers.mixLabel(row)}</span>
           </MixQueueRow>
         );
       })}

@@ -93,6 +93,14 @@ describe('停在队列哪一条', () => {
     expect(chooseItem(queue('playlist', []), null)).toBeNull();
   });
 
+  it('播放列表跳过已消失的条目：续播位置或点的是它，退到第一条能播的', () => {
+    const items = [row(1, { disposal: 'vanished' }), row(2), row(3)];
+    expect(chooseItem(queue('playlist', [], { items, currentAssetId: 1 }), null)).toBe(2);
+    expect(chooseItem(queue('playlist', [], { items }), 1)).toBe(2);
+    expect(chooseItem(queue('playlist', [], { items, currentAssetId: 3 }), null)).toBe(3);
+    expect(chooseItem(queue('playlist', [], { items: [row(1, { disposal: 'vanished' })] }), null)).toBeNull();
+  });
+
   it('卷标只从分卷队列补进标题，别的队列不动这一条', () => {
     const parts = queue('parts', [1, 2], { items: [row(1, { part_label: '1' }), row(2, { part_label: '2' })] });
     expect(withPartLabel(item(2), parts).part_label).toBe('2');
@@ -233,6 +241,21 @@ describe('交给壳的', () => {
     expect(host.querySelector('[data-queue-item="1"]')?.getAttribute('aria-current')).toBe('true');
     await click(host.querySelector('[data-queue-item="3"]'));
     expect(done.openQueueItem).toHaveBeenCalledWith({ kind: 'mix', seedId: 1, playlistId: undefined }, 3);
+  });
+
+  it('播放列表里已消失的那一行标出来、点不开', async () => {
+    serve();
+    queryClient.setQueryData(queueKey({ kind: 'playlist', playlistId: 7 }), queue('playlist', [], {
+      playlistId: 7, items: [row(2), row(3, { disposal: 'vanished' })],
+    }));
+    const { host, actions: done } = await show(item(2), { queue: { kind: 'playlist', playlistId: 7 } });
+    const gone = host.querySelector<HTMLButtonElement>('[data-queue-item="3"]');
+    expect(gone?.disabled).toBe(true);
+    expect(gone?.hasAttribute('data-queue-vanished')).toBe(true);
+    expect(gone?.textContent).toContain('已消失 · 文件已不在盘上');
+    expect(host.querySelector<HTMLButtonElement>('[data-queue-item="2"]')?.disabled).toBe(false);
+    await click(gone);
+    expect(done.openQueueItem).not.toHaveBeenCalled();
   });
 });
 

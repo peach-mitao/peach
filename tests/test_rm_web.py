@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
-from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_stats
+from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_playlists, web_stats
 from peach import web_contract as rm_web
 from peach.previews import entity_image_key, logo_key
 from support.ledger import fresh_ledger
@@ -1861,6 +1861,25 @@ class WebDataTests(unittest.TestCase):
         self.assertEqual(ids(dir="asc"), [1, 2, 4])
         # 不给方向时按列的默认方向走，与显式 desc 同解。
         self.assertEqual(ids(), [2, 1, 4])
+
+    def test_a_vanished_playlist_entry_stays_listed_but_is_not_the_resume_point(self):
+        """文件已不在盘上的条目照旧列出，续播位置落在它上面时退到第一条能播的。"""
+        created = rm_web.w_playlist(self.contract, {
+            "action": "create", "name": "周末", "asset_ids": [1, 2],
+        })["playlist"]
+        self.assertEqual(created["current_asset_id"], 1)
+
+        def vanish(asset_id):
+            with closing(sqlite3.connect(self.db_path)) as con, con:
+                con.execute("UPDATE asset SET disposal='vanished' WHERE id=?", (asset_id,))
+
+        vanish(1)
+        page = web_playlists.q_playlist(self.contract, {"id": created["id"]})
+        self.assertEqual([(item["id"], item["disposal"]) for item in page["items"]],
+                         [(1, "vanished"), (2, None)])
+        self.assertEqual(page["current_asset_id"], 2)
+        vanish(2)
+        self.assertIsNone(web_playlists.q_playlist(self.contract, {"id": created["id"]})["current_asset_id"])
 
     def test_persistent_playlist_can_save_mix_reorder_resume_and_edit(self):
         created = rm_web.w_playlist(self.contract, {

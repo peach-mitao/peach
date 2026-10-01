@@ -144,6 +144,17 @@ class LabelMakerTests(unittest.TestCase):
         items = rm_web.q_items(self.contract, {"studio": "K M Produce"})
         self.assertEqual(sorted(item["id"] for item in items["items"]), [1, 2])
 
+    def test_vanished_works_drop_out_of_the_counts_and_trashed_ones_stay(self):
+        """已消失的作品文件不在盘上，不进资料页和名册的作品数；回收站里的照旧算。"""
+        self.apply()
+        self.con.execute("UPDATE asset SET disposal='vanished' WHERE id=1")
+        self.con.execute("UPDATE asset SET disposal='trash' WHERE id=2")
+        self.con.commit()
+        page = rm_web.q_entity(self.contract, {"kind": "studio", "name": "K M Produce"})
+        self.assertEqual([(label["k"], label["n"]) for label in page["labels"]],
+                         [("BAZOOKA", 0), ("S級素人", 0)])
+        self.assertEqual(page["asset_count"], 1)
+
     def test_a_maker_with_no_works_of_its_own_counts_every_layer_below(self):
         """妄想族 → K M Produce → BAZOOKA：妄想族自己一部片都没挂，合计是三层的并集。"""
         self.apply(self.rows + [{"label": "K M Produce", "maker": "妄想族", "evidence": "x"}])
