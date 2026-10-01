@@ -44,6 +44,7 @@ export interface RankRow {
   peach_items?: number;
   entity_id?: number | null;
   has_image?: boolean;
+  image_version?: string;
   avatar_focus?: unknown;
   has_avatar?: boolean;
   representative_asset_id?: number | null;

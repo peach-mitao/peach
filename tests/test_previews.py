@@ -245,7 +245,7 @@ class EntityImageAvailabilityTests(unittest.TestCase):
         """目录还没建（新机器、干净数据目录）时全部退回首字母，不是报错。"""
         root = Path(self.tmp.name).resolve()
         contract = WebContract(root / "ledger.db", avatar_root=root / "nowhere")
-        self.assertEqual(contract.avatar_root_index().entity_images, frozenset())
+        self.assertEqual(dict(contract.avatar_root_index().entity_images), {})
         self.assertFalse(contract.has_entity_image("performer", 11))
 
     def test_a_newly_installed_image_shows_up_after_the_cache_bust(self):
@@ -268,6 +268,24 @@ class EntityImageAvailabilityTests(unittest.TestCase):
         self.assertTrue(self.assertAgrees("creator", 12))
         self.assertEqual(
             (self.avatars / f"{entity_image_key('creator', 12)}.img").read_bytes(), b"x")
+
+    def test_replacing_an_image_in_place_changes_its_version(self):
+        """换头像原地覆盖同一个文件。页面把版本拼进 `/entity-image` 的地址，版本不变的话
+        同一页里浏览器直接复用内存里那张旧图，要刷新才看得到新的。"""
+        self.assertEqual(self.contract.entity_image_version("performer", 11), "")
+        install_entity_avatar(self.avatars, "performer", 11, b"old", "image/jpeg",
+                              {"source": "test"}, probe_face=False)
+        self.contract.cache_bust()
+        first = self.contract.entity_image_version("performer", 11)
+        self.assertTrue(first)
+        path = self.avatars / f"{entity_image_key('performer', 11)}.img"
+        install_entity_avatar(self.avatars, "performer", 11, b"new", "image/jpeg",
+                              {"source": "test"}, probe_face=False)
+        # 文件系统的时间粒度可能粗到两次写入落在同一刻，这里把第二次的修改时间推后一秒。
+        stamp = path.stat().st_mtime_ns + 1_000_000_000
+        os.utime(path, ns=(stamp, stamp))
+        self.contract.cache_bust()
+        self.assertNotEqual(self.contract.entity_image_version("performer", 11), first)
 
 
 class AvatarAvailabilityTests(unittest.TestCase):

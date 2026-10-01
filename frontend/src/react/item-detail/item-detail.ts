@@ -23,6 +23,7 @@ export interface DetailEntityRef {
   id: number | null;
   name: string;
   has_image?: boolean;
+  image_version?: string;
   avatar_focus?: unknown;
   has_logo?: boolean;
   /** 厂牌是某家片商旗下的 label 时（ADR-0049），从近到远的上级片商链。 */

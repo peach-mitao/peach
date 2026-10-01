@@ -156,7 +156,7 @@ function RankList({ rows, kind, visual, empty, onSignal, avatarInner }: RankList
                 ? <EntityAvatar html={avatarInner(
                     row.name,
                     row.entity_id
-                      ? { id: row.entity_id, has_image: !!row.has_image, avatar_focus: row.avatar_focus }
+                      ? { id: row.entity_id, has_image: !!row.has_image, image_version: row.image_version, avatar_focus: row.avatar_focus }
                       : null,
                     row.has_avatar ? row.representative_asset_id ?? null : null,
                     visual === 'creator' ? 'creator' : kind || 'performer',

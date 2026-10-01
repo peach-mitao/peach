@@ -117,6 +117,7 @@ export interface ReviewRow {
   asset_mutation_revision?: number | null;
   entity_id?: number;
   has_image?: boolean;
+  image_version?: string;
   avatar_focus?: unknown;
   avatar_url?: string;
   video_count?: number;

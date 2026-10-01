@@ -87,10 +87,14 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   }
   const view: EntityView = company && rosterView === 'people' && roster.length ? 'people' : mediaNow.media;
 
+  /* 换过几次头像。资料卡与作品网格都把图拼进了自己的状态（网格只在代次变时才按新的第一页
+     重建），重取到新数据还不够，得换键重建，新图地址里的版本才落得到页面上。 */
+  const [avatarEpoch, setAvatarEpoch] = useState(0);
+
   /* ── 作品 ── */
   const itemsQuery = itemsOptions(props);
   const items = useQuery(itemsQuery);
-  const itemsRevision = useRevision(JSON.stringify(itemsQuery.queryKey));
+  const itemsRevision = useRevision(JSON.stringify([itemsQuery.queryKey, avatarEpoch]));
   /* 直达或刷新资料页时 URL 没有 `jav=1`：以第一页作品的真实 `is_jav` 恢复女优／厂牌语境，版式开关
      不是只在从 JAV 首页点进来时才偶然存在。只看进页那一份，页内换筛选不改语境。 */
   const [javPage] = useState(() => (kind === 'performer' || kind === 'studio')
@@ -142,7 +146,6 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   /* ── 写操作 ── */
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false }, []);
-  const [portraitEpoch, setPortraitEpoch] = useState(0);
   const refreshEntity = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: entityKey(kind, name) });
     await queryClient.invalidateQueries({ queryKey: ['entity-items', kind, name] });
@@ -208,13 +211,14 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
       })();
     },
     feedAction: postFeedAction,
-    /* 圆框角上那个加号：头像索引在服务端已经换过，重取资料、整块资料卡重建才读得到新图。 */
+    /* 圆框角上那个加号：头像索引在服务端已经换过。资料与作品列表一起重取（作品卡署名里也是
+       这张脸），回来后资料卡与作品网格都按新数据重建。 */
     avatarPicked: () => {
-      void queryClient.refetchQueries({ queryKey: entityKey(kind, name) }).then(() => {
-        if (alive.current) setPortraitEpoch((epoch) => epoch + 1);
+      void refreshEntity().then(() => {
+        if (alive.current) setAvatarEpoch((epoch) => epoch + 1);
       });
     },
-  }), [actions, alias, entity, entityId, follow, helpers, kind, name, rename]);
+  }), [actions, alias, entity, entityId, follow, helpers, kind, name, refreshEntity, rename]);
   const heroHelpers = useMemo<EntityHeroHelpers>(() => ({
     portraitImg: () => helpers.portraitImg(kind, entity),
     costarImg: helpers.costarImg,
@@ -311,7 +315,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
 
   return (
     <>
-      <EntityHeroPage key={portraitEpoch} kind={kind} name={name} entity={entity} feedNew={feed.data ?? null}
+      <EntityHeroPage key={avatarEpoch} kind={kind} name={name} entity={entity} feedNew={feed.data ?? null}
         feedHost={entityId ? hosts.feed : null} jav={javPage} actions={heroActions} helpers={heroHelpers} />
       {createPortal(
         <EntityFilterPage kind={kind} name={name} view={view} views={views} state={filters.state || ''}

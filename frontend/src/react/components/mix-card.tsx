@@ -23,6 +23,7 @@ export interface MixCardFace {
   id: number;
   name: string;
   has_image?: boolean;
+  image_version?: string;
   avatar_focus?: unknown;
 }
 

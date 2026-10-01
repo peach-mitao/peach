@@ -33,6 +33,7 @@ export interface EntityPageData extends EntityHeroData {
   related_performers?: (HeroCostar & IndexPerson)[];
   labels?: IndexPerson[];
   has_image?: boolean;
+  image_version?: string;
   has_avatar?: boolean;
   has_logo?: boolean;
   representative_asset_id?: number | null;

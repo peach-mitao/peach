@@ -37,6 +37,10 @@ interface Plan {
   photos?: (query: URLSearchParams) => unknown;
   set?: (query: URLSearchParams) => unknown;
   feed?: unknown;
+  /** 每一次取资料现算一份，盖过 `entity`：写回前后服务端给的不一样时用。 */
+  entityFor?: () => Record<string, unknown>;
+  /** 换头像写回落地时调一下。 */
+  picked?: () => void;
   /** `/api/feeds/check` 的回话，按次序一问一个；问完了就一直是最后那个。 */
   checks?: string[];
 }
@@ -52,12 +56,21 @@ function serve(plan: Plan = {}) {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
       writes.push({ url: url.pathname, body });
       if (url.pathname === '/api/entity-alias') return reply({ added: !body.remove, alias: body.alias });
+      if (url.pathname === '/api/avatar-pick') {
+        plan.picked?.();
+        return reply({ ok: true });
+      }
       if (url.pathname === '/api/entity-name') {
         return reply({ changed: true, canonical_name: body.canonical, previous_name: body.name });
       }
       return reply({ ok: true });
     }
-    if (url.pathname === '/api/entity') return reply(plan.entity ?? entity());
+    if (url.pathname === '/api/avatar-choices') {
+      return reply({ kind: 'performer', entity_id: 7001, names: [NAME], matched_names: [NAME], index_age_hours: 1,
+        index_stale: false, choices: [{ ref: 'gfriends:a.jpg', source: 'gfriends', label: 'a', width: 0, height: 0,
+          detail: '', found_by: '', current: false, crop: false, bases: [], focus: null, cast: 0 }] });
+    }
+    if (url.pathname === '/api/entity') return reply(plan.entityFor?.() ?? plan.entity ?? entity());
     if (url.pathname === '/api/items') return reply(plan.items ? plan.items(query) : items([1, 2, 3]));
     if (url.pathname === '/api/photos') return reply(plan.photos ? plan.photos(query) : photos(0));
     if (url.pathname === '/api/photo-set') return reply(plan.set ? plan.set(query) : photos(2, { id: 9, title: '图集' }));
@@ -308,6 +321,31 @@ describe('写操作', () => {
     expect(page.writes).toEqual([{ url: '/api/entity-alias', body: { kind: 'performer', name: NAME, alias: 'しのだゆう' } }]);
     expect(page.calls('/api/entity')).toHaveLength(entityBefore + 1);
     expect(page.calls('/api/items')).toHaveLength(itemsBefore + 1);
+  });
+
+  it('换完头像：资料卡与作品网格都按重取回来的数据重建，图地址换成新版本', async () => {
+    let version = 'old';
+    const page = await open({
+      entityFor: () => entity({ image_version: version }),
+      items: () => (version === 'old' ? items([1, 2, 3]) : items([4, 5, 6])),
+      picked: () => { version = 'new' },
+    }, {
+      helpers: {
+        ...shellProps().helpers,
+        portraitImg: (_kind, data) => `<img data-test-portrait src="/entity-image?v=${String(data.image_version)}">`,
+      },
+    });
+    const portrait = () => page.props.hosts.filter.ownerDocument.querySelector('[data-test-portrait]')?.getAttribute('src');
+    expect(portrait()).toBe('/entity-image?v=old');
+    expect(cards(page.props)).toEqual(['1', '2', '3']);
+    await click(document.querySelector(`button[aria-label="更换${NAME}的头像"]`));
+    await settle();
+    await click(document.querySelector('[data-avatar-choice]'));
+    await settle();
+    expect(page.writes.map((one) => one.url)).toEqual(['/api/avatar-pick']);
+    expect(portrait()).toBe('/entity-image?v=new');
+    // 网格把第一页当初值存进自己的状态：只重取不换键，卡片（连同署名里她的脸）停在旧的那一份。
+    expect(cards(page.props)).toEqual(['4', '5', '6']);
   });
 
   it('换统称：先问，写回成功才去新名字那一页；回执的撤销是另一次写回，再回到原名', async () => {

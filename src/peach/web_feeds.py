@@ -238,6 +238,7 @@ def q_feeds(contract, args) -> dict:
         for row in rows:
             ref = web_catalog.entity_ref(contract, "performer", row["entity_id"], row["name"])
             row["has_image"] = ref["has_image"]
+            row["image_version"] = ref.get("image_version", "")
             row["avatar_focus"] = ref.get("avatar_focus")
         pending = connection.execute(
             "SELECT count(*) FROM feed_discovery d WHERE d.ignored_at IS NULL"
