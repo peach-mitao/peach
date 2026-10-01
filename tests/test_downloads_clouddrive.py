@@ -1,10 +1,12 @@
 """115 云下载经 CloudDrive2 gRPC：起一个进程内的假服务端，走真实的序列化与元数据。
 
-假服务端只实现那六个方法，状态放在内存里。断言落在「Peach 发出去的是什么」上：令牌只在
-`authorization` 元数据里，提交前先查目录与配额，已有同一 infohash 的任务就不再提交。
+假服务端只实现那七个方法，状态放在内存里。断言落在「Peach 发出去的是什么」上：令牌只在
+`authorization` 元数据里，提交前先查目录与配额，已有同一 infohash 的任务就不再提交，
+地址留空时只用不带令牌的 `GetSystemInfo` 探测。
 """
 from __future__ import annotations
 
+import socket
 import unittest
 from concurrent import futures
 
@@ -34,6 +36,11 @@ class FakeCloudDrive:
         self.calls.append((name, request, header))
         if header != f"Bearer {TOKEN}":
             context.abort(grpc.StatusCode.UNAUTHENTICATED, "bad token")
+
+    def GetSystemInfo(self, request, context):
+        header = dict(context.invocation_metadata()).get("authorization", "")
+        self.calls.append(("GetSystemInfo", request, header))
+        return pb.CloudDriveSystemInfo(IsLogin=True, UserName="u1", SystemReady=True)
 
     def GetApiTokenInfo(self, request, context):
         self._auth("GetApiTokenInfo", request, context)
@@ -73,22 +80,33 @@ class FakeCloudDrive:
         return self.quota
 
 
+def closed_address() -> str:
+    """本机一个刚放开、没人在听的端口。"""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    return f"http://127.0.0.1:{port}"
+
+
 class _Server(unittest.TestCase):
     def setUp(self):
         self.fake = FakeCloudDrive()
+        self.server, self.address = self.serve(self.fake)
+        self.provider = cd.CloudDriveProvider(self.address, TOKEN)
+
+    def serve(self, fake: FakeCloudDrive) -> tuple[grpc.Server, str]:
         handlers = {
             name: grpc.unary_unary_rpc_method_handler(
-                getattr(self.fake, name), request_deserializer=request.FromString,
+                getattr(fake, name), request_deserializer=request.FromString,
                 response_serializer=response.SerializeToString)
             for name, (request, response) in cd._METHODS.items()}
-        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
-        self.server.add_generic_rpc_handlers(
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+        server.add_generic_rpc_handlers(
             (grpc.method_handlers_generic_handler("clouddrive.CloudDriveFileSrv", handlers),))
-        port = self.server.add_insecure_port("127.0.0.1:0")
-        self.server.start()
-        self.addCleanup(self.server.stop, None)
-        self.address = f"http://127.0.0.1:{port}"
-        self.provider = cd.CloudDriveProvider(self.address, TOKEN)
+        port = server.add_insecure_port("127.0.0.1:0")
+        server.start()
+        self.addCleanup(server.stop, None)
+        return server, f"http://127.0.0.1:{port}"
 
     def methods(self) -> list[str]:
         return [name for name, _request, _header in self.fake.calls]
@@ -188,12 +206,42 @@ class CheckTests(_Server):
         self.assertEqual(report["folder"], {"path": TARGET, "can_offline": True, "cloud": "115open"})
         self.assertEqual(report["quota"], {"total": 1500, "used": 3, "left": 1497})
         self.assertEqual(report["problems"], [])
+        self.assertEqual(report["address"], self.address)
         self.assertNotIn("AddOfflineFiles", self.methods())
+        self.assertNotIn("GetSystemInfo", self.methods())
 
     def test_without_a_token_nothing_is_called(self):
-        with self.assertRaises(dl.DownloadError):
-            cd.check(self.address, "", TARGET)
+        report = cd.check(self.address, "", TARGET)
+        self.assertFalse(report["ok"])
+        self.assertIn("API 令牌", report["problems"][0])
         self.assertEqual(self.fake.calls, [])
+
+    def test_a_blank_address_takes_the_first_local_address_that_answers(self):
+        second = FakeCloudDrive()
+        _server, second_address = self.serve(second)
+        report = cd.check("", TOKEN, TARGET, local_addresses=(self.address, second_address))
+        self.assertEqual((report["ok"], report["address"]), (True, self.address))
+        self.assertEqual(self.methods()[0], "GetSystemInfo")
+        self.assertEqual(self.fake.calls[0][2], "")
+        self.assertEqual(second.calls, [])
+
+    def test_a_blank_address_falls_through_to_the_second_local_address(self):
+        report = cd.check("", TOKEN, TARGET, local_addresses=(closed_address(), self.address))
+        self.assertEqual(report["address"], self.address)
+        self.assertEqual(report["quota"], {"total": 1500, "used": 3, "left": 1497})
+
+    def test_a_blank_address_without_a_token_still_finds_the_address(self):
+        report = cd.check("", "", TARGET, local_addresses=(self.address,))
+        self.assertEqual((report["ok"], report["address"]), (False, self.address))
+        self.assertEqual(self.methods(), ["GetSystemInfo"])
+
+    def test_no_local_address_answering_lists_every_address_tried(self):
+        tried = (closed_address(), closed_address())
+        with self.assertRaises(dl.DownloadError) as caught:
+            cd.check("", TOKEN, TARGET, local_addresses=tried)
+        self.assertEqual(caught.exception.failure, "network")
+        for address in tried:
+            self.assertIn(address, caught.exception.detail)
 
     def test_addresses_turn_into_grpc_targets(self):
         self.assertEqual(cd.channel_target("http://127.0.0.1"), ("127.0.0.1:19798", False))

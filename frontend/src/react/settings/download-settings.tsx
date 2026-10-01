@@ -51,6 +51,7 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
   const [token, setToken] = useState('');
   const [hours, setHours] = useState(String(state.config.wait_hours));
   const [report, setReport] = useState<DownloadCheckReport | null>(null);
+  const [detected, setDetected] = useState('');
   const [failure, setFailure] = useState('');
   const action = useAction();
   const target = (key: '115' | 'pikpak') => config.targets[key] ?? '';
@@ -71,10 +72,17 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
       }, (cause) => setFailure(errorMessage(cause)));
   };
 
+  // 地址留空时服务端探测本机端口，探测到的地址填回表单；用户点「保存配置」才落盘。
   const check = () => {
+    const blank = !config.clouddrive_address.trim();
     const body = { clouddrive_address: config.clouddrive_address, token, target: target('115') };
     void action.run('check', (signal) => apiSend<DownloadCheckReport>(CHECK_URL, body, 'POST', signal),
-      (next) => { setReport(next); setFailure(''); }, (cause) => setFailure(errorMessage(cause)));
+      (next) => {
+        if (blank && next.address) setConfig((current) => ({ ...current, clouddrive_address: next.address }));
+        setReport(next);
+        setDetected(blank ? next.address : '');
+        setFailure('');
+      }, (cause) => setFailure(errorMessage(cause)));
   };
 
   return (
@@ -82,7 +90,7 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
       <Stack>
         <Help>把磁力交给 115 或 PikPak 离线下载，文件落在已挂载的网盘目录，再由推送发现登记入库，不经过这台电脑。
           115 每个任务扣一条离线配额（年费会员每月 1500 条、月费 200 条），被判违规的资源不重试。</Help>
-        <Input label="CloudDrive2 地址" placeholder="http://127.0.0.1:19798" autoComplete="off" maxLength={200}
+        <Input label="CloudDrive2 地址" placeholder="留空自动探测本机 19798 / 29798" autoComplete="off" maxLength={200}
           value={config.clouddrive_address} isDisabled={!state.available}
           onChange={(value) => setConfig({ ...config, clouddrive_address: value })} />
         <Input label="CloudDrive2 API 令牌" type="password" autoComplete="off" maxLength={400}
@@ -111,7 +119,7 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
           hint={`远端超过这么久还没下完就标为停滞，多半是没有人做种。1 到 ${state.max_wait_hours} 小时。`}
           value={hours} isDisabled={!state.available} onChange={setHours} />
       </Stack>
-      {report ? <CheckReport report={report} /> : null}
+      {report ? <CheckReport report={report} detected={detected} /> : null}
       {failure || action.error ? <Stack divided><ErrorText>{failure || action.error}</ErrorText></Stack> : null}
       <Footer status={state.available ? undefined : '云下载只在账本写入端可用。'}>
         <Button onClick={check} disabled={!state.available} {...busyProps(action.busy === 'check')}>检查</Button>
@@ -121,10 +129,11 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
   );
 }
 
-function CheckReport({ report }: { report: DownloadCheckReport }) {
+function CheckReport({ report, detected }: { report: DownloadCheckReport; detected: string }) {
   return (
     <Stack divided>
       <FactList>
+        {detected ? <Fact term="CloudDrive2 地址">{`探测到 ${detected}，保存配置后生效`}</Fact> : null}
         {report.permissions.length ? (
           <Fact term="离线权限">
             {report.missing.length ? `缺少：${report.missing.join('、')}` : '齐全'}

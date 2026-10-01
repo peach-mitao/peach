@@ -48392,7 +48392,7 @@ function vge({ initial: e, receipt: t }) {
 	})] });
 }
 function yge({ state: e, settle: t, receipt: n }) {
-	let [r, i] = (0, R.useState)(e.config), [a, o] = (0, R.useState)(""), [s, c] = (0, R.useState)(String(e.config.wait_hours)), [l, u] = (0, R.useState)(null), [d, f] = (0, R.useState)(""), p = ra(), m = (e) => r.targets[e] ?? "", h = (e, t) => i({
+	let [r, i] = (0, R.useState)(e.config), [a, o] = (0, R.useState)(""), [s, c] = (0, R.useState)(String(e.config.wait_hours)), [l, u] = (0, R.useState)(null), [d, f] = (0, R.useState)(""), [p, m] = (0, R.useState)(""), h = ra(), g = (e) => r.targets[e] ?? "", _ = (e, t) => i({
 		...r,
 		targets: {
 			...r.targets,
@@ -48408,16 +48408,16 @@ function yge({ state: e, settle: t, receipt: n }) {
 				wait_hours: s,
 				token: a
 			};
-			p.run("save", (e) => G(mge, l, "POST", e), (e) => {
-				t(e), i(e.config), c(String(e.config.wait_hours)), o(""), f(""), n("已保存配置");
-			}, (e) => f(U(e)));
+			h.run("save", (e) => G(mge, l, "POST", e), (e) => {
+				t(e), i(e.config), c(String(e.config.wait_hours)), o(""), m(""), n("已保存配置");
+			}, (e) => m(U(e)));
 		},
 		children: [
 			/* @__PURE__ */ (0, z.jsxs)(Oy, { children: [
 				/* @__PURE__ */ (0, z.jsx)(Ay, { children: "把磁力交给 115 或 PikPak 离线下载，文件落在已挂载的网盘目录，再由推送发现登记入库，不经过这台电脑。 115 每个任务扣一条离线配额（年费会员每月 1500 条、月费 200 条），被判违规的资源不重试。" }),
 				/* @__PURE__ */ (0, z.jsx)(my, {
 					label: "CloudDrive2 地址",
-					placeholder: "http://127.0.0.1:19798",
+					placeholder: "留空自动探测本机 19798 / 29798",
 					autoComplete: "off",
 					maxLength: 200,
 					value: r.clouddrive_address,
@@ -48444,9 +48444,9 @@ function yge({ state: e, settle: t, receipt: n }) {
 					autoComplete: "off",
 					maxLength: 300,
 					hint: "CloudDrive2 挂载树里的路径。这个目录要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。",
-					value: m("115"),
+					value: g("115"),
 					isDisabled: !e.available,
-					onChange: (e) => h("115", e)
+					onChange: (e) => _("115", e)
 				}),
 				/* @__PURE__ */ (0, z.jsx)(my, {
 					label: "PikPak 目标目录",
@@ -48454,9 +48454,9 @@ function yge({ state: e, settle: t, receipt: n }) {
 					autoComplete: "off",
 					maxLength: 300,
 					hint: "PikPak 网盘里的路径，目录要已经存在。",
-					value: m("pikpak"),
+					value: g("pikpak"),
 					isDisabled: !e.available,
-					onChange: (e) => h("pikpak", e)
+					onChange: (e) => _("pikpak", e)
 				}),
 				/* @__PURE__ */ (0, z.jsxs)("div", {
 					className: "flex flex-col gap-1",
@@ -48486,41 +48486,51 @@ function yge({ state: e, settle: t, receipt: n }) {
 					onChange: c
 				})
 			] }),
-			l ? /* @__PURE__ */ (0, z.jsx)(bge, { report: l }) : null,
-			d || p.error ? /* @__PURE__ */ (0, z.jsx)(Oy, {
+			l ? /* @__PURE__ */ (0, z.jsx)(bge, {
+				report: l,
+				detected: d
+			}) : null,
+			p || h.error ? /* @__PURE__ */ (0, z.jsx)(Oy, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, z.jsx)(jy, { children: d || p.error })
+				children: /* @__PURE__ */ (0, z.jsx)(jy, { children: p || h.error })
 			}) : null,
 			/* @__PURE__ */ (0, z.jsxs)(ky, {
 				status: e.available ? void 0 : "云下载只在账本写入端可用。",
 				children: [/* @__PURE__ */ (0, z.jsx)(H, {
 					onClick: () => {
-						let e = {
+						let e = !r.clouddrive_address.trim(), t = {
 							clouddrive_address: r.clouddrive_address,
 							token: a,
-							target: m("115")
+							target: g("115")
 						};
-						p.run("check", (t) => G(hge, e, "POST", t), (e) => {
-							u(e), f("");
-						}, (e) => f(U(e)));
+						h.run("check", (e) => G(hge, t, "POST", e), (t) => {
+							e && t.address && i((e) => ({
+								...e,
+								clouddrive_address: t.address
+							})), u(t), f(e ? t.address : ""), m("");
+						}, (e) => m(U(e)));
 					},
 					disabled: !e.available,
-					...q(p.busy === "check"),
+					...q(h.busy === "check"),
 					children: "检查"
 				}), /* @__PURE__ */ (0, z.jsx)(H, {
 					type: "submit",
 					disabled: !e.available,
-					...q(p.busy === "save"),
+					...q(h.busy === "save"),
 					children: "保存配置"
 				})]
 			})
 		]
 	});
 }
-function bge({ report: e }) {
+function bge({ report: e, detected: t }) {
 	return /* @__PURE__ */ (0, z.jsxs)(Oy, {
 		divided: !0,
 		children: [/* @__PURE__ */ (0, z.jsxs)(Py, { children: [
+			t ? /* @__PURE__ */ (0, z.jsx)(Fy, {
+				term: "CloudDrive2 地址",
+				children: `探测到 ${t}，保存配置后生效`
+			}) : null,
 			e.permissions.length ? /* @__PURE__ */ (0, z.jsx)(Fy, {
 				term: "离线权限",
 				children: e.missing.length ? `缺少：${e.missing.join("、")}` : "齐全"

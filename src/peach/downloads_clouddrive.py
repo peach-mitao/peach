@@ -4,7 +4,7 @@ Peach 不另申请 115 应用，复用 CloudDrive2 已有的 115open 授权：�
 会顶掉第一次。CloudDrive2 的 API 令牌由用户在设置页填一次，存本机 `CredentialStore`，
 只放进 gRPC 的 `authorization` 元数据，不进 URL、日志与 ledger。
 
-用到的六个方法见 `downloads_clouddrive.proto`。流程参照 JavBoss
+用到的七个方法见 `downloads_clouddrive.proto`。流程参照 JavBoss
 `internal/clouddrive/client.go` 与 `internal/service/download.go`：提交前确认目标目录
 `canOfflineDownload` 并查配额，提交时让 CloudDrive2 10 秒后自己看一眼目录，之后按 infohash
 在目录的离线列表里对账；列表里找不到时看目录里有没有那个文件。
@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import grpc
+from google.protobuf import empty_pb2
 
 from . import downloads_clouddrive_pb2 as pb
 from .downloads import (
@@ -31,6 +32,10 @@ SERVICE = "/clouddrive.CloudDriveFileSrv/"
 CALL_TIMEOUT = 30.0
 #: 提交后让 CloudDrive2 自己隔多久去目标目录看一眼。
 CHECK_FOLDER_AFTER_SECS = 10
+#: 地址留空时「检查」依次试的本机地址：独立版默认 19798，Windows 桌面版有用 29798 的。
+LOCAL_ADDRESSES = ("http://127.0.0.1:19798", "http://127.0.0.1:29798")
+#: 探测一个地址的上限。本机端口没人听时立刻被拒，这个上限只兜住听着却不应答的情况。
+PROBE_TIMEOUT = 3.0
 
 #: 「检查」要报的三项离线权限。取消要用到第三项，缺它只是不能取消。
 OFFLINE_PERMISSIONS = {
@@ -40,6 +45,7 @@ OFFLINE_PERMISSIONS = {
 }
 
 _METHODS = {
+    "GetSystemInfo": (empty_pb2.Empty, pb.CloudDriveSystemInfo),
     "GetApiTokenInfo": (pb.StringValue, pb.TokenInfo),
     "FindFileByPath": (pb.FindFileByPathRequest, pb.CloudDriveFile),
     "AddOfflineFiles": (pb.AddOfflineFileRequest, pb.FileOperationResult),
@@ -62,6 +68,36 @@ def channel_target(address: str) -> tuple[str, bool]:
     port = parts.port or (443 if parts.scheme == "https" else 19798)
     host = parts.hostname if ":" not in parts.hostname else f"[{parts.hostname}]"
     return f"{host}:{port}", parts.scheme == "https"
+
+
+def open_channel(address: str) -> grpc.Channel:
+    target, secure = channel_target(address)
+    return (grpc.secure_channel(target, grpc.ssl_channel_credentials())
+            if secure else grpc.insecure_channel(target))
+
+
+def answers(address: str, *, timeout: float = PROBE_TIMEOUT) -> bool:
+    """不带令牌调 `GetSystemInfo`，正常应答才算这个地址上有 CloudDrive2。"""
+    request_type, response_type = _METHODS["GetSystemInfo"]
+    with open_channel(address) as channel:
+        stub = channel.unary_unary(
+            SERVICE + "GetSystemInfo", request_serializer=request_type.SerializeToString,
+            response_deserializer=response_type.FromString)
+        try:
+            stub(request_type(), timeout=timeout)
+        except grpc.RpcError:
+            return False
+    return True
+
+
+def discover(addresses: tuple[str, ...] = LOCAL_ADDRESSES) -> str:
+    """按顺序试，返回第一个应答的地址；都不应答时报错并原样列出试过的地址。"""
+    for address in addresses:
+        if answers(address):
+            return address
+    tried = "、".join(addresses)
+    raise DownloadError("network", f"没有填 CloudDrive2 地址，本机 {tried} 都没有应答。"
+                                   "确认 CloudDrive2 已启动，或在地址栏填上它的实际地址")
 
 
 def _translate(error: grpc.RpcError, action: str) -> DownloadError:
@@ -91,19 +127,14 @@ class Folder:
 
 
 class CloudDriveClient:
-    """六个方法的薄封装。`channel` 由测试注入，指向进程内的假服务端。"""
+    """要令牌的那六个方法的薄封装。"""
 
-    def __init__(self, address: str, token: str, *, channel: grpc.Channel | None = None,
-                 timeout: float = CALL_TIMEOUT):
+    def __init__(self, address: str, token: str, *, timeout: float = CALL_TIMEOUT):
         if not token:
             raise DownloadError("config", "还没有填 CloudDrive2 的 API 令牌")
         self.token = token
         self.timeout = timeout
-        if channel is None:
-            target, secure = channel_target(address)
-            channel = (grpc.secure_channel(target, grpc.ssl_channel_credentials())
-                       if secure else grpc.insecure_channel(target))
-        self.channel = channel
+        self.channel = open_channel(address)
 
     def close(self) -> None:
         self.channel.close()
@@ -202,16 +233,14 @@ class CloudDriveProvider:
 
     key = "115"
 
-    def __init__(self, address: str, token: str, *, channel_factory=None):
+    def __init__(self, address: str, token: str):
         self.address = address
         self.token = token
-        self.channel_factory = channel_factory
 
     def client(self) -> CloudDriveClient:
         if not self.address:
-            raise DownloadError("config", "还没有填 CloudDrive2 地址")
-        channel = self.channel_factory() if self.channel_factory else None
-        return CloudDriveClient(self.address, self.token, channel=channel)
+            raise DownloadError("config", "还没有填 CloudDrive2 地址，先在设置页「检查」探测本机端口后保存")
+        return CloudDriveClient(self.address, self.token)
 
     def submit(self, magnet: Magnet, target: str) -> RemoteStatus:
         with self.client() as client:
@@ -251,15 +280,26 @@ class CloudDriveProvider:
             client.remove(client.folder(task.target), task.info_hash or "")
 
 
-def check(address: str, token: str, target: str, *, channel_factory=None) -> dict:
+def check(address: str, token: str, target: str, *,
+          local_addresses: tuple[str, ...] = LOCAL_ADDRESSES) -> dict:
     """设置页的「检查」：令牌有没有离线权限、目标目录能不能离线、115 还剩多少配额。
 
-    只读：不提交、不取消。每一项各自报，一项失败不挡住其余几项。
+    地址留空时先按 `local_addresses` 的顺序探测，报告的 `address` 是实际查的那个，页面把它
+    填回表单，用户保存后才落盘。只读：不提交、不取消。令牌一关过不去时 `ok` 为假；之后的
+    目录与配额各自报进 `problems`。
     """
-    provider = CloudDriveProvider(address, token, channel_factory=channel_factory)
-    report: dict = {"ok": True, "permissions": [], "missing": [], "root": "", "folder": None,
-                    "quota": None, "problems": []}
-    with provider.client() as client:
+    report: dict = {"ok": True, "address": address or discover(local_addresses), "permissions": [],
+                    "missing": [], "root": "", "folder": None, "quota": None, "problems": []}
+    try:
+        _inspect(report, CloudDriveClient(report["address"], token), target)
+    except DownloadError as error:
+        report["ok"] = False
+        report["problems"].append(error.detail)
+    return report
+
+
+def _inspect(report: dict, client: CloudDriveClient, target: str) -> None:
+    with client:
         info = client.token_info()
         permissions = info.permissions
         report["root"] = info.rootDir
@@ -270,18 +310,17 @@ def check(address: str, token: str, target: str, *, channel_factory=None) -> dic
                 report["missing"].append(label)
         if not target:
             report["problems"].append("还没有填 115 目标目录")
-            return report
+            return
         try:
             folder = client.folder(target)
         except DownloadError as error:
             report["problems"].append(error.detail)
-            return report
+            return
         report["folder"] = {"path": folder.path, "can_offline": folder.can_offline,
                             "cloud": folder.cloud_name}
         try:
             quota = client.quota(folder)
         except DownloadError as error:
             report["problems"].append(error.detail)
-            return report
+            return
         report["quota"] = {"total": quota.total, "used": quota.used, "left": quota.left}
-    return report

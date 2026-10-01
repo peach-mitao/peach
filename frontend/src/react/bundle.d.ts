@@ -132,6 +132,8 @@ export interface DownloadSettingsState {
 /** 「检查」的结果：每一项各自报，一项失败不挡住其余几项。 */
 export interface DownloadCheckReport {
   ok: boolean;
+  /** 实际查的 CloudDrive2 地址。表单留空时是探测到的本机地址，探测不到时为空串。 */
+  address: string;
   permissions: { name: string; label: string; granted: boolean }[];
   missing: string[];
   root: string;

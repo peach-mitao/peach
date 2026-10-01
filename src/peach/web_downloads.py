@@ -119,10 +119,14 @@ def save_settings(service: DownloadService, body: dict, declared_roots) -> dict:
 
 
 def check_clouddrive(service: DownloadService, body: dict) -> dict:
-    """「检查」按页面上此刻填的值查，没填的取已保存的。只读，不提交也不取消。"""
+    """「检查」按页面上此刻填的值查，没带的字段取已保存的。只读，不提交也不取消。
+
+    页面带来的地址是空串时探测本机端口；报告里的 `address` 由页面填回表单，不在这里保存。
+    """
     from .downloads_clouddrive import check
     body = body if isinstance(body, dict) else {}
-    address = clean_address(body.get("clouddrive_address") or service.config.clouddrive_address)
+    address = clean_address(body["clouddrive_address"] if "clouddrive_address" in body
+                            else service.config.clouddrive_address)
     token = str(body.get("token") or "").strip() or _values(
         service.credentials, CLOUDDRIVE_CREDENTIAL).get("token", "")
     raw_target = str(body.get("target") or service.config.targets.get("115", "")).strip()
@@ -130,8 +134,8 @@ def check_clouddrive(service: DownloadService, body: dict) -> dict:
     try:
         return check(address, token, target)
     except DownloadError as error:
-        return {"ok": False, "permissions": [], "missing": [], "root": "", "folder": None,
-                "quota": None, "problems": [error.detail]}
+        return {"ok": False, "address": address, "permissions": [], "missing": [], "root": "",
+                "folder": None, "quota": None, "problems": [error.detail]}
 
 
 def pikpak_login(service: DownloadService, body: dict, declared_roots, *, transport=None) -> dict:
