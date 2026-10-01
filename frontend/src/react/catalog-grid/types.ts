@@ -21,6 +21,8 @@ export interface MediaItem {
   play_count?: number | null;
   leave_ratio?: number | null;
   has_cover?: boolean;
+  /** 封面文件的内容版本，拼进封面地址的 `&v=`。 */
+  cover_version?: string;
   has_thumb?: boolean;
   has_local_poster?: boolean;
   follow_thumb_url?: string;

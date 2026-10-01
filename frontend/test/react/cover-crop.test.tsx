@@ -16,11 +16,13 @@ notifyManager.setScheduler((notify) => notify());
 
 type Call = [string, RequestInit];
 
+const SAVED_BOX = { x0: 420, y0: 0, x1: 800, y1: 540, method: 'manual', px: [800, 540] };
+
 function server() {
   const calls: Call[] = [];
   const fetched = vi.fn(async (input: string, init?: RequestInit) => {
     calls.push([input, init || {}]);
-    return { ok: true, status: 200, json: async () => ({ ok: true, code: 'ABW-232' }) };
+    return { ok: true, status: 200, json: async () => ({ ok: true, code: 'ABW-232', poster_box: SAVED_BOX }) };
   });
   vi.stubGlobal('fetch', fetched);
   return calls;
@@ -69,7 +71,8 @@ it('没有生效的框时默认框满高贴右缘，按正封比例取宽', asyn
   expect(calls[0]?.[0]).toContain('/api/cover-crop');
   // 540×0.704≈380，从右缘量回去就是 420；纵向一个像素都不裁。
   expect(sentBox(calls)).toEqual({ x0: 420, y0: 0, x1: 800, y1: 540 });
-  expect(saved).toHaveBeenCalledTimes(1);
+  // 宿主拿到的是写端点回的那个框：背后网格就地换上它，不必重取。
+  expect(saved).toHaveBeenCalledExactlyOnceWith(SAVED_BOX);
 });
 
 it('已经有框就摆在那个框上，人改的是现状不是从头来过', async () => {

@@ -1161,6 +1161,8 @@ def avatar_choice(request: Request, kind: str = "performer", id: int = 0,
         cache.store(str(origin.get("upstream_url") or ""), body, inspected)
     result = Response(b"" if request.method == "HEAD" else body,
                       media_type=inspected.mime_type)
+    # 封面会原地替换，可以缓存这么久是因为它的地址带着 `v`（`Choice.version`）：封面一换，
+    # 页面要的就是另一个地址。
     result.headers["Cache-Control"] = f"private, max-age={AVATAR_CACHE_SECONDS}"
     return result
 
@@ -1199,12 +1201,14 @@ async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_a
     entity_id = current_entity_id(state, entity_id)
     kind = _picker_kind(str(payload.get("kind") or "performer"))
     ref, url = str(payload.get("ref") or ""), str(payload.get("url") or "")
+    version = payload.get("version")
     try:
         if ref:
             with state.read_connection() as connection:
                 body, origin = avatar_picker.resolve(
                     ref, connection, providers_root, entity_id,
-                    request.app.state.http_transport, _picker_artwork(request))
+                    request.app.state.http_transport, _picker_artwork(request),
+                    version=version if isinstance(version, str) else None)
         elif url:
             if not avatar_picker.allowed_source(url):
                 return JSONResponse(

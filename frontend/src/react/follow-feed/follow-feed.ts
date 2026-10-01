@@ -235,9 +235,13 @@ export interface FollowItemHit {
   aliases: unknown[];
 }
 
-/** 在这座岛已缓存的每一版列表里找一条（详情先扫这里）。来源与别名取那一版最后一页的，同 `mergedPage`。 */
+/** 在这座岛已缓存的每一版列表里找一条（详情先扫这里）。来源与别名取那一版最后一页的，同 `mergedPage`。
+ *  新取的那一版先找：上一代次的列表还留在缓存里，同一条在那里是标记、保存之前的样子。 */
 export function findFollowItem(id: number): FollowItemHit | null {
-  for (const [, data] of queryClient.getQueriesData<InfiniteData<FollowPage>>({ queryKey: ['follow-feed'] })) {
+  const versions = queryClient.getQueryCache().findAll({ queryKey: ['follow-feed'] })
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt);
+  for (const version of versions) {
+    const data = version.state.data as InfiniteData<FollowPage> | undefined;
     if (!Array.isArray(data?.pages) || !data.pages.length) continue;
     const last = data.pages[data.pages.length - 1]!;
     for (const page of data.pages) {

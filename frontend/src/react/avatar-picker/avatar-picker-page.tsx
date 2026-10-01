@@ -30,7 +30,7 @@ import { CropFrame } from '../crop/crop-frame';
 import { queryClient } from '../query';
 import { busyProps } from '../settings/use-action';
 import {
-  avatarChoicesKey, baseLabel, choiceDetail, choiceFrame, choiceImageUrl, cropNote,
+  avatarChoicesKey, baseLabel, baseVersion, choiceDetail, choiceFrame, choiceImageUrl, cropNote,
   fetchAvatarChoices, fetchCodeCover, framesItself, indexNote, pickerNote, sendAvatarPick, sharedCast,
   type AvatarChoice, type AvatarSubmission,
 } from './avatar-picker';
@@ -145,7 +145,7 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
       {cropping ? (
         <CropStep kind={kind} entityId={entityId} choice={cropping} busy={submit.isPending}
           back={() => setCropping(null)}
-          confirm={(ref, crop) => { if (!submit.isPending) submit.mutate({ ref, crop }) }} />
+          confirm={(ref, crop, version) => { if (!submit.isPending) submit.mutate({ ref, crop, version }) }} />
       ) : (
       <>
       {/* 候选网格是这一屏唯一会滚的层：头部和底下那排操作再长也不动。上下各留 16px：
@@ -173,7 +173,8 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
                   else submit.mutate({ ref: choice.ref });
                 }}
                 className="relative flex cursor-pointer flex-col gap-1 overflow-hidden rounded-2lg border border-separator-border bg-background-secondary-default pb-1 text-center text-caption-1-regular text-text-secondary outline-none hover:border-border-button-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring aria-selected:border-border-focus-ring aria-selected:bg-background-tertiary-default aria-selected:text-text-primary aria-disabled:cursor-progress aria-disabled:opacity-60">
-                <ChoiceImage src={choiceImageUrl(kind, entityId, choice.ref)} choice={choice} />
+                <ChoiceImage src={choiceImageUrl(kind, entityId, choice.ref, baseVersion(choice, choice.ref))}
+                  choice={choice} />
                 <span className="truncate px-1">{choice.label}</span>
                 {choice.current
                   ? <span className="absolute top-1 left-1"><Chip variant="caption" color="gray">在用</Chip></span>
@@ -262,13 +263,14 @@ function ChoiceImage({ src, choice }: { src: string; choice: AvatarChoice }) {
  *  裁在哪由 CSS 说了算，人在这里框的那一块就不作数了。 */
 function CropStep({ kind, entityId, choice, busy, back, confirm }: {
   kind: string; entityId: number; choice: AvatarChoice; busy: boolean;
-  back(): void; confirm(ref: string, crop: CropBox): void;
+  back(): void; confirm(ref: string, crop: CropBox, version: string): void;
 }) {
   const bases = choice.bases.length ? choice.bases : [choice.ref];
   const [base, setBase] = useState(bases[0]);
   const [size, setSize] = useState<CropSize | null>(null);
   const [box, setBox] = useState<CropBox | null>(null);
-  const src = choiceImageUrl(kind, entityId, base);
+  const version = baseVersion(choice, base);
+  const src = choiceImageUrl(kind, entityId, base, version);
   const frame = useOverlayScrollbar<HTMLDivElement>();
   /* 换底图就是换一张图，上一张的框一个数都不留：同一组坐标落在另一张图上是一块
      错位的区域，而错位在屏幕上和「本来就框在这儿」看不出区别。 */
@@ -317,7 +319,7 @@ function CropStep({ kind, entityId, choice, busy, back, confirm }: {
         <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
           <Button variant="secondary" onClick={back} {...busyProps(busy)}>回候选</Button>
           <Button disabled={!box || !size} {...busyProps(busy)}
-            onClick={() => { if (box && !busy) confirm(base, box) }}>用这一块</Button>
+            onClick={() => { if (box && !busy) confirm(base, box, version) }}>用这一块</Button>
         </div>
       </div>
     </>

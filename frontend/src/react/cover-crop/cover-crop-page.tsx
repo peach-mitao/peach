@@ -73,7 +73,7 @@ function CropBody({ code, coverUrl, box: saved, onSaved, close }: CoverCropProps
 
   const submit = useMutation({
     mutationFn: (next: CropBox | null) => sendCoverCrop(code, next),
-    onSuccess: () => { close(); onSaved() },
+    onSuccess: (result) => { close(); onSaved(result.poster_box) },
   });
 
   /* 进来时先摆在当前生效的那个框上：人要改的是「现在这样」，从头开始框等于先把

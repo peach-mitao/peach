@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sqlite3
 import tempfile
@@ -412,6 +413,28 @@ class AssetArtworkTests(PickerFixture):
         self.assertEqual(origin["asset_code"], "ABW-232")
         frame, _ = avatar_picker.resolve("asset:11:cell4", self.connection,
                                          self.providers, 7792, None, self.artwork)
+        self.assertEqual(frame, self.cell.read_bytes())
+
+    def test_a_box_drawn_on_a_cover_that_was_since_replaced_is_refused(self):
+        """补高清会原地换掉封面：旧图上框的那组坐标落在新图上是另一块地方。"""
+        self.add_asset(11, "ABW-232")
+        listed = avatar_picker.choices(self.connection, self.providers, self.avatars,
+                                       "performer", 7792, cover_root=self.covers)
+        drawn_on = next(one for one in listed["choices"] if one["source"] == "asset")["version"]
+        self.assertTrue(drawn_on, "封面那一格要带版本，预览地址靠它换新")
+        body, _ = avatar_picker.resolve("asset:11:cover", self.connection, self.providers,
+                                        7792, None, self.artwork, version=drawn_on)
+        self.assertEqual(body, self.cover.read_bytes())
+
+        self.cover.write_bytes(picture(800, 520, "green"))
+        later = self.cover.stat().st_mtime_ns + 1_000_000_000
+        os.utime(self.cover, ns=(later, later))
+        with self.assertRaisesRegex(avatar_picker.PickerError, "刚换过"):
+            avatar_picker.resolve("asset:11:cover", self.connection, self.providers,
+                                  7792, None, self.artwork, version=drawn_on)
+        # 九宫格那几格从视频抽帧，不随封面变，带着旧版本照样取得到。
+        frame, _ = avatar_picker.resolve("asset:11:cell4", self.connection, self.providers,
+                                         7792, None, self.artwork, version=drawn_on)
         self.assertEqual(frame, self.cell.read_bytes())
 
     def test_a_work_that_is_not_hers_is_refused_even_though_the_file_is_there(self):

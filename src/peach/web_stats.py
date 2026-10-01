@@ -455,6 +455,7 @@ def q_quality_goals(contract: WebContract, args):
         row["cost"] = COST.get(row["location"], "metered")
         row["has_thumb"] = contract.has_snapshot(row["snapshot_path"])
         row["has_cover"] = contract.has_cover(row.get("code"))
+        row["cover_version"] = contract.cover_version(row.get("code"))
         row.pop("snapshot_path", None)
     return {"total": total, "items": rows, "offset": offset,
             "has_more": offset + len(rows) < total}

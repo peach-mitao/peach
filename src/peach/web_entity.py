@@ -107,6 +107,7 @@ def label_layer(contract: WebContract, c, kind: str, entity_id: int) -> tuple[di
         "ORDER BY n DESC,e.canonical_name", (entity_id,))]
     for ref in ([maker] if maker else []) + labels:
         ref["has_logo"] = contract.has_logo(ref["name"])
+        ref["logo_version"] = contract.logo_version(ref["name"])
     for label in labels:
         label["has_image"] = contract.has_entity_image("studio", label["id"])
         label["image_version"] = contract.entity_image_version("studio", label["id"])
@@ -269,6 +270,7 @@ def q_entity(contract: WebContract, args):
     # 必然 404 的那一跳。标识按名字落盘，厂牌和事务所是同一个仓、同一条取图链。
     if kind in ("studio", "agency"):
         d["has_logo"] = contract.has_logo(d["canonical_name"])
+        d["logo_version"] = contract.logo_version(d["canonical_name"])
     # 大位那条链的后两环同样要随资料下发：实体图取不到就直接从代表作头像起步，两样
     # 都取不到就一个 `<img>` 都不出。判定在库连接之外做，它读的是目录索引。
     d["has_image"] = contract.has_entity_image(kind, d["id"])
@@ -392,6 +394,7 @@ def entity_code_sets(contract: WebContract, c, kind: str, entity_id: int) -> lis
         "title": f"{key} {works[key]['title']}".strip(), "n": count,
         "release_date": works[key]["release"], "site": site,
         "site_label": sample_images.site_label(site), "has_cover": contract.has_cover(key),
+        "cover_version": contract.cover_version(key),
     } for key, (count, site) in sample_images.counts(c, works).items()]
     sets.sort(key=lambda item: item["code"])
     sets.sort(key=lambda item: item["release_date"], reverse=True)
@@ -602,6 +605,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
         if entity_kind in ("studio", "agency"):
             for row in rows:
                 row["has_logo"] = contract.has_logo(row["k"])
+                row["logo_version"] = contract.logo_version(row["k"])
     result = {"kind": kind, "items": rows, "has_more": has_more}
     if kind == "tags":
         result["categories"] = category_counts
@@ -815,6 +819,7 @@ def _suggest_work_card(contract: WebContract, row) -> dict | None:
     card = {"id": row["id"], "code": code, "has_cover": has_cover, "has_thumb": has_thumb}
     if has_cover:
         card["cover_frame"] = contract.cover_frame(code)
+        card["cover_version"] = contract.cover_version(code)
         card["poster_box"] = contract.poster_box(code)
     return card
 
@@ -970,6 +975,7 @@ def q_suggest(contract: WebContract, q: str, limit: int = SUGGEST_GROUP_LIMIT,
             item["image_version"] = contract.entity_image_version(kind, item["entity_id"])
             if kind == "studio":
                 item["has_logo"] = contract.has_logo(item["value"])
+                item["logo_version"] = contract.logo_version(item["value"])
     return {"q": query, "groups": [
         {"kind": kind, "label": label, "total": totals.get(kind, 0), "items": buckets[kind]}
         for kind, label in SUGGEST_GROUPS if buckets.get(kind)

@@ -4,6 +4,8 @@
  * 数据管理页那张「高清版」卡片要的是同一个真相的 `total`，它随那一页迁到 React 时读
  * 下面这个 `QUALITY_GOALS_KEY`，而不是另发一次请求——同一个真相取两次，两处显示的数
  * 就可能对不上。 */
+import { coverUrl } from '@peach/card-art';
+
 import { apiGet } from '../../api';
 import { queryClient } from '../query';
 
@@ -24,6 +26,7 @@ export interface QualityGoal {
   cost: string;
   has_thumb: boolean;
   has_cover: boolean;
+  cover_version?: string;
 }
 
 export interface QualityGoalsData {
@@ -50,5 +53,5 @@ export async function prefetchQualityGoals(signal: AbortSignal): Promise<void> {
 
 /** 封面优先用番号封面，没有就退回第 4 张海报。两者都取不到时由卡片把 img 摘掉。 */
 export const previewUrl = (item: QualityGoal): string => item.has_cover
-  ? `/cover?code=${encodeURIComponent(item.code ?? '')}`
+  ? coverUrl(item)
   : `/poster?id=${item.id}&c=4`;

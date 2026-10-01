@@ -77,6 +77,8 @@ export interface EntityPageActions {
   painted(view: 'people' | 'videos' | 'photos'): void;
   /** 名字对不上任何一位（`/api/entity` 回 `{error}`）：壳把整块换成空态。 */
   missing(): void;
+  /** 换过头像：壳丢掉自己缓存着的那几排头像（顶部三条），下次画时按新版本号重取。 */
+  avatarChanged(): void;
 }
 
 /** 仍由遗留层拼的 HTML 与接线。 */

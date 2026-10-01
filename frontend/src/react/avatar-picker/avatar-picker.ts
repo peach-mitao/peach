@@ -32,6 +32,9 @@ export interface AvatarChoice {
   /** 这部作品有几位演员；0 是不知道。多于一位时 `focus` 不围着封面上那张脸，
    *  那多半是领衔的另一位。 */
   cast: number;
+  /** 封面那张底图的版本。封面会原地替换，预览地址带上它才不显示旧图，交框时回递它，
+   *  服务端才认得出框是在哪一张上画的。别的底图不会原地变，是空串。 */
+  version: string;
 }
 
 export interface AvatarChoices {
@@ -50,8 +53,13 @@ export const avatarChoicesKey = (kind: string, id: number) => ['avatar-choices',
 
 const query = (kind: string, id: number) => `?kind=${encodeURIComponent(kind)}&id=${id}`;
 
-export const choiceImageUrl = (kind: string, id: number, ref: string) =>
-  `${AVATAR_CHOICE_IMAGE_URL}${query(kind, id)}&ref=${encodeURIComponent(ref)}`;
+export const choiceImageUrl = (kind: string, id: number, ref: string, version = '') =>
+  `${AVATAR_CHOICE_IMAGE_URL}${query(kind, id)}&ref=${encodeURIComponent(ref)}`
+  + (version ? `&v=${encodeURIComponent(version)}` : '');
+
+/** 底图 `ref` 的版本：只有封面那一张有，九宫格那几格是空串。 */
+export const baseVersion = (choice: AvatarChoice, ref: string): string =>
+  ref.startsWith('cover:') || ref.endsWith(':cover') ? choice.version : '';
 
 export const fetchAvatarChoices = (kind: string, id: number, signal?: AbortSignal) =>
   apiGet<AvatarChoices>(AVATAR_CHOICES_URL + query(kind, id), signal);
@@ -77,7 +85,7 @@ export interface AvatarCrop { x0: number; y0: number; x1: number; y1: number }
 
 /** 四条路交上去的东西不同，落点是同一个端点。`crop` 是其中三条共用的可选工序。 */
 export type AvatarSubmission =
-  | { ref: string; crop?: AvatarCrop }
+  | { ref: string; crop?: AvatarCrop; version?: string }
   | { url: string; crop?: AvatarCrop }
   | { file: File };
 

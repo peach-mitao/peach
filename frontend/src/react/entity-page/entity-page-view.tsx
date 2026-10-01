@@ -212,8 +212,9 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     },
     feedAction: postFeedAction,
     /* 圆框角上那个加号：头像索引在服务端已经换过。资料与作品列表一起重取（作品卡署名里也是
-       这张脸），回来后资料卡与作品网格都按新数据重建。 */
+       这张脸），回来后资料卡与作品网格都按新数据重建；壳缓存着的顶部三条也一并作废。 */
     avatarPicked: () => {
+      actions.avatarChanged();
       void refreshEntity().then(() => {
         if (alive.current) setAvatarEpoch((epoch) => epoch + 1);
       });

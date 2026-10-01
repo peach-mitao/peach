@@ -30,6 +30,7 @@ const choice = (over: Partial<AvatarChoice> = {}): AvatarChoice => ({
   bases: [],
   focus: null,
   cast: 0,
+  version: '',
   ...over,
 });
 
@@ -260,11 +261,11 @@ it('封面格子在取景区里取一块 3:4，图库人像照旧铺满', async 
   });
 });
 
-it('按番号取来的封面直接进框选，默认框就是脸那一块', async () => {
+it('按番号取来的封面直接进框选，默认框就是脸那一块，交框时说明框的是哪一版封面', async () => {
   const code = choice({
     ref: 'cover:ABW-999', source: 'code', label: 'ABW-999', crop: true,
     width: 800, height: 540, bases: ['cover:ABW-999'],
-    focus: { x0: 592, y0: 114, x1: 688, y1: 210 },
+    focus: { x0: 592, y0: 114, x1: 688, y1: 210 }, version: '18f3a',
   });
   const calls: Call[] = [];
   vi.stubGlobal('fetch', vi.fn(async (input: string, init?: RequestInit) => {
@@ -284,12 +285,15 @@ it('按番号取来的封面直接进框选，默认框就是脸那一块', asyn
   expect(body(calls, 1)).toEqual({ code: 'abw-999' });
   expect(dialog()?.textContent).toContain('框出头像那一块');
   expect([...document.querySelectorAll('[data-crop-base]')]).toHaveLength(0);
+  // 封面会原地替换：底图地址带着版本，换过的封面是另一个地址，不会复用旧图。
+  expect(document.querySelector('[role="dialog"] img')?.getAttribute('src'))
+    .toBe('/avatar-choice?kind=performer&id=7792&ref=cover%3AABW-999&v=18f3a');
   await reportSize(800, 540);
   await click(buttonNamed('用这一块'));
   await settle();
   expect(body(calls, 2)).toEqual({
     kind: 'performer', id: 7792, ref: 'cover:ABW-999',
-    crop: { x0: 592, y0: 114, x1: 688, y1: 210 },
+    crop: { x0: 592, y0: 114, x1: 688, y1: 210 }, version: '18f3a',
   });
 });
 
@@ -334,7 +338,7 @@ it('作品画面先框一块再装，方框是正方形的', async () => {
   expect(body(calls, 1)).toEqual({
     kind: 'performer', id: 7792, ref: 'asset:11:cover',
     // 头像是圆的，框只能是正方形：短边 540 居中。
-    crop: { x0: 130, y0: 0, x1: 670, y1: 540 },
+    crop: { x0: 130, y0: 0, x1: 670, y1: 540 }, version: '',
   });
   expect(picked).toHaveBeenCalledOnce();
 });

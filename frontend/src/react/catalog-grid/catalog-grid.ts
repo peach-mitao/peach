@@ -215,14 +215,19 @@ export function splitSections(tiles: readonly Tile[], cuts: readonly ShortsCut[]
 /** 每一版已缓存的目录与作品区里的同一张卡换上 `patch`（详情里评分、反馈、稍后看之后）。
  *  只改字段不增删卡：详情不知道每一版筛着哪一档，移出与否等下次取数。 */
 export function replaceCatalogItem(id: number, patch: Partial<MediaItem>): void {
+  patchCatalogItems((item) => item.id === id, patch);
+}
+
+/** 同上，换的是 `match` 认出来的每一张：一个番号的几段、几个版本共用同一张封面。 */
+export function patchCatalogItems(match: (item: MediaItem) => boolean, patch: Partial<MediaItem>): void {
   queryClient.setQueriesData<InfiniteData<GridPage>>({
     queryKey: ['catalog-grid'], predicate: (query) => Array.isArray((query.state.data as InfiniteData<GridPage>)?.pages),
   }, (data) => {
-    if (!data || !data.pages.some((page) => page.items.some((item) => item.id === id))) return data;
+    if (!data || !data.pages.some((page) => page.items.some(match))) return data;
     return {
       ...data,
-      pages: data.pages.map((page) => (page.items.some((item) => item.id === id)
-        ? { ...page, items: page.items.map((item) => (item.id === id ? { ...item, ...patch } : item)) } : page)),
+      pages: data.pages.map((page) => (page.items.some(match)
+        ? { ...page, items: page.items.map((item) => (match(item) ? { ...item, ...patch } : item)) } : page)),
     };
   });
 }
