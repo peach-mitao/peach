@@ -48,7 +48,7 @@ const COOKIE_METHODS = [['paste', '粘贴 Cookie'], ['file', '导入文件']] as
    需要代理才通的来源更是常年空着。取不到时把 `<img>` 摘掉，不留破图。 */
 function SiteMark({ source }: { source: string }) {
   // 这几站的公开图标随静态资源提供，验证页和离线回放不影响来源身份。
-  const bundled = ['javten', 'fc2ppvdb', 'avwikidb', 'github'].includes(source);
+  const bundled = ['javten', 'fc2ppvdb', 'avwikidb', 'minnano-av', 'github'].includes(source);
   return (
     <img src={bundled ? `/site-icon/${source}.png` : siteMarkUrl({ source })} alt="" width={16} height={16} loading="lazy"
       onError={(event) => event.currentTarget.remove()}
