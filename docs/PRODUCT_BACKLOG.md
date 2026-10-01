@@ -30,7 +30,7 @@
 
 shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益再决定。真实 ledger 迁移、双机复制取消和系统级安装另有明确授权边界。
 
-1. **寻找更好版本**：已能逐条标记「高清 / 无水印 / 完整版」等目标；还缺相似内容匹配（第 51 条）、候选去重、来源发现（第 43 条）和人工替换确认。替换完成后旧版的个人记录要接到新版上，目标本身标为「已替换」后关闭（第 38 条）。
+1. **寻找更好版本**：已能逐条标记「高清 / 无水印 / 完整版」等目标；还缺相似内容匹配（第 51 条）、候选去重、来源发现（第 43 条）和人工替换确认。替换完成后旧版的个人记录与目标按 ADR-0087 接到新版上，目标标「已替换」关闭。
 2. **现代自适应播放**：Video.js、Range、统计面板和 115/PikPak 原生 MP4 的按需 HLS 清单已上线；还缺自适应码率、多路清单、快速首帧和来源层大块预取。
 3. **在线追更**：`src/peach/follow_providers.py` 登记的十一个来源已上线（发现更新、跨站重复判定、`/follow` 与 `/follow-manage` 两页、writer 自动轮询、在线资产就地播放）。还缺两件：下载落地，关注来源附件的直链下载归第 42 条的本地下载通道，凭据、流量与磁盘预算见「待执行的操作」第 12 条；SimpCity 多图楼层的图片轮播：`SimpCityConnector` 只把图片地址存进 `extra["images"]`，没投影成 `media_items`，归档站（`KemonoConnector._media_items`）与 f95zone（`f95_attachment_media_items`）已经投影。
 4. **首尾帧出处与不完整候选**：已有受限 FFmpeg 首尾抽帧、Windows 内置 OCR、证据帧缓存、来源/Full version 候选和 `/review`；仍需决定全库批次范围，并把用户批准后的不完整版判断接到更好版本目标。
@@ -38,7 +38,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 6. **口味证据持续刷新**：ledger 已实时记录搜索、播放、高潮、喜欢/理由、不合口味和稍后看；浏览器历史现可用 SQLite 一致性副本增量进入私有源库，并生成不含 URL/标题的 creator/tag candidate 与聚合报告。旧 2026-08-13 原始包已确认不在 Windows 外置盘；仍需在 Mac 开启 iCloud Safari、完成首次导入，并把两端每周刷新装成系统计划任务。AI 结论不得直接改真相字段。
 7. **扫描与采集任务的参数标定**：无进展预警的 120 秒与单项动作预算（资料 90 秒、封面 240 秒）目前按最坏请求时长取的保守值；等一轮真实任务记录各阶段实测耗时后标定，同时确定完整问题文件的保留周期。
 
-## 尚未实现（70 项）
+## 尚未实现（67 项）
 
 1. AI Provider 的真实调用、能力协商、Credential Manager 凭据和候选审核 UI。
 2. 剩余单一创作者风格板复核、无标签内容补标。
@@ -50,7 +50,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
    - 本文件待清的位置：操作 11 的局域网主机名 `peach-writer.local`、操作 29 的本机同步步骤，以及操作 17、30、33–42 引用的仓库外 `attic/` 路径和操作 27、28、43–45 引用的本机 `peach-data/` 复核产物。
    - 公开分发：待项目相对稳定，安装、升级、数据迁移及跨平台回归稳定后，同批推进 PyPI 包发布和 WinGet 登记；现阶段仅记录计划，不上传或登记。发布前确认发行名，调整禁止上传标记，完善自动构建、版本发布与两端安装验收。
    - 发行名与 WinGet 应用 ID 未定案也未注册，发布前确认并复核可用性；产品显示名继续使用 Peach。
-8. 女优高清头像的写入侧：`scripts/audit_performer_portraits.py` 出候选与实测证据，资料页上人可以逐个换掉任何一张（图库同名候选、用过的图、本机文件、https 地址），`scripts/fill_portrait_gaps.py` 把图库里只命中一张的批量装上、其余产对照表。仍缺换源那一轮（在位的封面裁片挡住更好的源），以及实体合并后孤立头像的 relink（如 `8022 <- 8168`：只有旧 ID 的 provenance 名唯一命中当前实体、当前目标又不存在时才算候选，不覆盖、不删除旧文件）。第 39 条的合并墓碑落地后，relink 改成按墓碑查表。
+8. 女优高清头像的写入侧：`scripts/audit_performer_portraits.py` 出候选与实测证据，资料页上人可以逐个换掉任何一张（图库同名候选、用过的图、本机文件、https 地址），`scripts/fill_portrait_gaps.py` 把图库里只命中一张的批量装上、其余产对照表。仍缺换源那一轮（在位的封面裁片挡住更好的源），以及实体合并后孤立头像的 relink（如 `8022 <- 8168`：只有旧 ID 的 provenance 名唯一命中当前实体、当前目标又不存在时才算候选，不覆盖、不删除旧文件）。relink 按 ADR-0088 的合并墓碑（`entity_redirect`）查表。
 9. 文件名与网盘目录整理：按模板的那一路已落地（ADR-0039）：数据管理页的「整理」与 `scripts/organize_media.py` 共用 `peach.organize`，预览出计划 CSV、执行前 SQLite backup、逐条 rename 并同步账本 path/name、失败回滚、事后完整性与外键检查，只动视频、只在同卷内、目标已存在整行跳过，批次可整批退回。仍缺三件：`scripts/clean_names.py`（域名噪声）与 `scripts/flatten_release_dirs.py`（冗余目录层）两条专门形态仍只出 dry-run CSV；旁挂封面与字幕不跟着主文件改名；真实库上还没执行过任何一批（2026-09-22 只读预览：115 会改 1484、跳过 8627，PikPak 会改 167、跳过 10436，`local` 因外置盘未挂载整批跳过）。
 10. 来源与默认值通用化（ADR-0023 第 5 阶段候选）：`peach init` 的问答已按本机路径只声明 `local`，非交互路径写出的 `DEFAULT_LOCATION_ROOTS`（`R:\media`、`B:/`、`A:/`）仍是维护者的示例盘符。剩两件事：来源用「本地 / 远端挂载」类型字段代替代码里按 `local`/`115`/`pikpak` 名字点名（`web_resource_sync.py` 的 SQL、`media.py` 的 HLS 规则）；复制功能支持 win↔win、mac↔mac 与任意一台当写者，目前只验证过 Windows 写者 + macOS 读者。
 11. 非 editable 安装的跨平台验收：wheel 资源与 Windows 基础依赖、仓库外 CLI 冒烟已就绪，仍需取得 macOS、Python 3.12 消费任务结果。
@@ -95,14 +95,8 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 35. **单个拉丁字母的搜索补全要等近 3 秒**：输入 `a` 这类单字母约 2.8 秒，其他输入在真实账本上 190–250ms。2026-09-26 在账本只读副本上用 cProfile 量过，耗时集中在 `web_entity._suggest_agency_rows` 的逐行计数。优化后分组、排序与 `total` 语义不变，补临时库上的排序与计数测试。
 36. **女优所属与官网链接主机对不上的复核清单**：minnano-av 的所属会过时，官网链接却还指着旧事务所（2026-09-26 查 Cruse Group 时发现神宫寺已转 ARM）。只能出人工清单、不能自动判错：prestige-av.com 是片商给专属女优开的页，lightpro.jp 下挂着几个子品牌，主机与所属不一致很常见。清单列女优、所属、链接主机与出演期间，进 `peach-data/review/`。
 
-第 37–70 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
+第 40–70 条来自 2026-10-01 对 SakuraMedia、OpenAver、JavBoss、Javdex、javm、mdcz、Javinizer-Go、AMMDS、javranking、Cuelume 等 16 个项目最新版的调研；最新代码浅克隆在仓库外 `attic/tools/20261001-参考项目/`，下文路径相对各项目根。
 
-37. **minnano-av 被间歇拦截时改走本机浏览器**（优先）：OpenAver 0.16.10 写明 minnano-av 自 2026-09-26 起被 Cloudflare 封锁、已经拔掉。本机 `secrets/scraping-minnano-av.cooldown.json` 记着连续 7 次拦截（`via: http`），而 2026-10-01 02:22 仍有一页成功落盘，属于间歇拦截。`performer_alias_followup.MinnanoPages` 只用 `HttpxTransport`；冷却触发时改用 `peach.browser_transport`（ADR-0065）取一页验证，通过就让这个站固定走浏览器。补别名、补女优资料、社媒与入口链接共 13 个模块依赖它。OpenAver 的 xcity → 维基 → graphis 逐字段合并只作备援：minnano-av 是唯一能从名字走到事务所名册的入口，不替换。
-38. **个人记录不随文件消失**（优先，按 ADR-0087 实现）：`asset_preference`、`watch_queue`、`playlist_item`、`asset_quality_goal`、`activity_event`（含高潮的 `position_seconds`）、`asset_tag_preference` 对 `asset` 一律 `ON DELETE CASCADE`，资源同步对盘上已消失的文件 `purge_assets`，喜欢、打分、观看历史、播放列表位置、稍后看随之永久删除。SakuraMedia 的原则相反：记录比文件重要，时刻对媒体 `SET NULL` 并快照番号（`src/start/migrations/versions/20260918_01_preserve_media_points.py`）。
-    - 带个人记录的消失行不删，`asset.disposal` 标 `vanished`，列表、搜索、统计、推荐都当它不在库；不带个人记录的照 ADR-0080 删除。详情页「同步删除」同样分两档，8 秒撤销对两档都有效。
-    - 扫描登记新文件时：同路径的 `vanished` 行直接复活；番号（`normalise_code_key`）对上就把五张表的记录搬到新行再删旧行，同番号多个新版本时选时长最接近的，分不出留给人选；无番号的创作者视频按「创作者 + 文件名主干 + 时长」匹配。`asset_quality_goal` 搬到新行并标「已替换」关闭。搬运按 ADR-0052 记批次，可整批撤回。
-    - 资源同步检查报告分开报「将删除」与「将标已消失」两档；数据管理页给孤儿记录列表，可手动接到某个文件或彻底删除。19 个引用 `disposal` 的模块逐个核对在库判据，补测试守住 `vanished` 不出现在列表、搜索与统计里。
-39. **实体合并留墓碑**：`entities.merge_entity` 并入后直接删除 source，旧 ID 解析不到新实体，第 8 条的孤立头像就是这个症状。参照 SakuraMedia 2026-09-29 的 `merged_into`，在被并实体上留指向目标的墓碑（或一张 `entity_redirect`），旧 ID 的页面、头像文件与外部引用按墓碑跳转。需一次迁移。
 40. **「想要」清单**：按番号或关注条目登记「这部我想要」，覆盖 Feed 番号壳、关注条目和库外番号；它是第 41–43 条下载与第 1 条「寻找更好版本」来源发现的共同前置。
     - SakuraMedia：「关注女优」只是持续知道她的作品，「想要」才表达要这一部；想要与屏蔽互斥。新片（发售 90 天内）持续查资源，老片查满 3 次无果标「暂时放弃」，可手动重置（`src/service/catalog/movie_subscription_search_state_service.py`）。
     - OpenAver 0.15.8–0.15.10：加入时把封面存一份本地；作品入库后扫描自动对账、移出清单并通知（`core/wishlist_reconcile.py`）；满 14 天、30 天各提示一次，未发售的不催。
@@ -121,10 +115,10 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 44. **DMM cid 前缀表与失败分类**：Javinizer-Go 从 r18.dev dump 生成了 24279 行「系列 → DMM cid 前缀」表（`content_id_prefixes.go`，MIT），`START-575 → 1start00575` 这类数字前缀 cid 不必再搜索；`sources/dmm.py` 注释写着它们「只有搜索答得出」，`jav_cover_fetch.py` 有几条手写映射。表随版本发布，查不到再搜索；AMMDS v1.6.71 的规则覆盖（正则、前缀、后缀、包含，`{brand}`、`{num2}`～`{num8}` 占位）作用户补丁层。不在本机自学前缀：OpenAver 0.15.3 本机自学的 53 条里 21 条是错的且无声。另移植 mdcz `crawler/sites/dmm/failureClassifier.ts`（GPL-3.0，可并入 AGPL）的分类：地区封锁、登录墙、未渲染的 Next.js 空壳、404 各成一个契约 reason，空壳判据也用于浏览器取页。
 45. **来源测试录制回放**：mdcz v0.16.0 的做法（`docs/testing-fixtures.md`）：每个番号一份 manifest，图片按 sha256 内容寻址、不进 Git，缺 blob 用同尺寸同字节数的生成图顶上；Cookie、CSRF、token 替换成固定值；回放缺一条交互就判失败，不回落公网。`sources/library-metadata/*.json` 的快照可当录制源，先拿 DMM 与 javbus 两个解析器试。
 46. **挂载可达性探测**：参照 OpenAver `core/source_reachability.py`：正常 600 秒、异常 60 秒探一次，连续两次失败才报，提示里写来源名；分开报「没有权限读取」与「不存在」（0.16.12），扫描跳过 `#recycle`、`@eaDir`、`@*` 这类 NAS 系统目录。结果给第 26 条诊断页与托盘状态用。
-47. **时刻、合集与片段导出**：「记一次高潮」已写 `activity_event.position_seconds`，推广成通用的「时刻」（时间点 + 一帧缩略图 + 可选备注），加时刻合集页；SakuraMedia 分播放列表、时刻、切片三层，各自成合集（`src/model/collections/`）。片段导出用 FFmpeg 拷流、不重编码，切点落在关键帧上，文件放 `peach-data`。依赖第 38 条，否则时刻活不过文件替换。
+47. **时刻、合集与片段导出**：「记一次高潮」已写 `activity_event.position_seconds`，推广成通用的「时刻」（时间点 + 一帧缩略图 + 可选备注），加时刻合集页；SakuraMedia 分播放列表、时刻、切片三层，各自成合集（`src/model/collections/`）。片段导出用 FFmpeg 拷流、不重编码，切点落在关键帧上，文件放 `peach-data`。时刻随个人记录按 ADR-0087 接到新版本。
 48. **上榜标记**：javranking-extension 的公开静态索引（先拉不到 200 B 的版本清单，变了才拉 1.26 MB `search-index.json`；schemaVersion 2，1769 部，JavDB TOP250、2020–2025 年榜、JavLibrary TOP250）每周读一次，给馆藏标「上榜」并喂给第 28 条。索引没有许可条款（未取得），只读引用并在界面标明来源；按来源存成候选标签。
 49. **播放器画面条**：播放器已有进度条悬停预览（`frontend/src/player/controls.ts` 的 `mountPlayerSeekPreview`）；参照 SakuraMedia「先看画面再决定看什么」（`wiki/guide/watch-from-a-frame.md`），把已有抽帧做成播放器旁可滚动的一列缩略图，点即跳转。
-50. **女优身份冲突的四个动作**：Javinizer-Go v1.6.0（`a2ddd00`）把女优身份与逐片署名拆开：刮削只写署名、不写身份，解析不出的身份先隔离；冲突用 keep、adopt-canonical、adopt-alias、reassign 四个固定动作解决，`scrape.collision_policy` 可设无人值守的 auto_keep／auto_alias。`/review` 的女优冲突用这套动作词表；依赖第 39 条。
+50. **女优身份冲突的四个动作**：Javinizer-Go v1.6.0（`a2ddd00`）把女优身份与逐片署名拆开：刮削只写署名、不写身份，解析不出的身份先隔离；冲突用 keep、adopt-canonical、adopt-alias、reassign 四个固定动作解决，`scrape.collision_policy` 可设无人值守的 auto_keep／auto_alias。`/review` 的女优冲突用这套动作词表，合并留 ADR-0088 的墓碑。
 51. **画面向量**：给抽帧算图像嵌入，服务「寻找更好版本」的跨编码相似匹配、不同编码的重复片、给没署名的作品认人、「更多像这一帧的」。SakuraMedia 用 SigLIP2 + Qdrant；Peach 用 SQLite 扩展 `sqlite-vec`，不多起服务，与头像匹配的人脸向量共用设施。模型几百 MB 到 1 GB 多，全库约 8 万资产的嵌入要分批跑，进第 33 条的闲置队列。先拿第 1 条验证收益。
 52. **隐私模式**：一键遮封面与头像、关预览（Javdex）。
 53. **女优体型筛选**：`performer_profile` 已有身高三围，女优列表加按年龄、身高、罩杯筛选（JAV_MovieManager）。
@@ -146,7 +140,7 @@ shuffle_key 会改变随机浏览的顺序语义，先测关系筛选的收益�
 69. **PWA**：加 manifest 与 Service Worker，手机、平板可安装到主屏、全屏播放。
 70. **原生客户端**（远期）：SakuraMedia 用 Flutter 出 Windows、macOS、iOS、Android 客户端。维护成本高，PWA 不够用时再议。
 
-合计：**77 项开放需求**，其中 7 项已有骨架，70 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
+合计：**74 项开放需求**，其中 7 项已有骨架，67 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
 
 ## 待执行的操作（44 项）
 
