@@ -184,6 +184,7 @@ class WebContract:
         self.followups = FollowupRunner(self)
         self.follow_job = self._job("PeachFollowCheckJob", "follow-check")
         self.feed_job = self._job("PeachFeedCheckJob", "feed-check")
+        self.want_job = self._job("PeachWantScrapeJob", "want-scrape")
         self.follow_resolve_job = self._job("PeachFollowResolveJob", "follow-resolve")
         self.taste_refresh_job = self._job("PeachTasteRefreshJob", "taste-refresh")
         self.link_prune_job = self._job("PeachLinkPruneJob", "link-prune")
@@ -321,6 +322,7 @@ class WebContract:
         self.resource_apply_job.stop()
         self.link_check.stop()
         self.feed_job.stop()
+        self.want_job.stop()
         self.followups.stop()
 
     def cache_bust(self):

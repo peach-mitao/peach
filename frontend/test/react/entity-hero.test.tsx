@@ -288,6 +288,26 @@ describe('新作那一行', () => {
     expect(feedHost.querySelector('[data-feed-id]')).toBeNull();
     expect(feedHost.hidden).toBe(true);
   });
+
+  it('想要是开关：同一颗键在想要与取消想要之间换，卡片不收也不变淡', async () => {
+    const feedHost = document.createElement('section');
+    document.body.append(feedHost);
+    const acts = actions();
+    const html = '<div class="feednewrow"><div data-feed-id="13">'
+      + '<button data-feed-action="want" aria-pressed="false" title="想要">想要</button></div></div>';
+    await open(props({ feedHost, actions: acts, feedNew: { items: [{ id: 13 }], html } }));
+    const key = () => feedHost.querySelector<HTMLElement>('[data-feed-id="13"] button')!;
+    await click(key());
+    await settle();
+    expect(acts.feedAction).toHaveBeenLastCalledWith(13, 'want');
+    expect([key().dataset.feedAction, key().getAttribute('aria-pressed'), key().title]).toEqual(['unwant', 'true', '取消想要']);
+    await click(key());
+    await settle();
+    expect(acts.feedAction).toHaveBeenLastCalledWith(13, 'unwant');
+    expect([key().dataset.feedAction, key().getAttribute('aria-pressed'), key().title]).toEqual(['want', 'false', '想要']);
+    expect(feedHost.querySelector('[data-feed-id="13"]')?.classList.contains('isread')).toBe(false);
+    expect(feedHost.hidden).toBe(false);
+  });
 });
 
 describe('「+N」浮层', () => {

@@ -16,8 +16,9 @@ from urllib.parse import quote
 
 from . import (
     entities, entry_links, feed_followup, feeds, javdb, performer_alias_followup as alias,
-    performer_profile_followup, web_catalog, web_settings,
+    performer_profile_followup, wants, web_catalog, web_settings, web_wants,
 )
+from .catalog_rules import normalise_code_key
 from .jobs import TaskRunConflict
 from .http import HttpRequest, public_https_url
 
@@ -205,6 +206,8 @@ def w_feed_check(contract, body) -> dict:
             result = _execute_check(contract, body, job_id)
             contract.feed_job.update(job_id, **result, status="complete",
                                      current=None, completed_at=time.time())
+            # 「想要」里取不到资料或封面的，跟着每一轮拉取再试（隔 `web_wants.RETRY_AFTER`）。
+            web_wants.start_scrape(contract, trigger="scheduled" if body.get("automatic") else "manual")
         finally:
             finished.set()
 
@@ -486,6 +489,7 @@ def q_feed_discoveries(contract, args) -> dict:
             " LIMIT ?", (*params, limit + 1)).fetchall()
         studios = {name: _studio_name(connection, name)
                    for name in {row["studio"] for row in rows[:limit]} if name}
+        wanted = wants.wanted_keys(connection, (normalise_code_key(row["code"]) for row in rows[:limit]))
     more = len(rows) > limit
     # 最近一轮取新作资料里封面断在连接上的部数。只看最近这一轮：换了线路之后下一轮取到，
     # 提示就该跟着消失，而不是让一次旧故障一直挂在页面上。
@@ -507,6 +511,7 @@ def q_feed_discoveries(contract, args) -> dict:
         "source_name": row["source_name"],
         "read": bool(row["read_at"]),
         "ignored": bool(row["ignored_at"]),
+        "wanted": normalise_code_key(row["code"]) in wanted,
         "scrape_error": row["scrape_error"],
     } for row in rows[:limit]]}
 
@@ -542,17 +547,36 @@ def _studio_name(connection, name: str) -> str:
 ACTIONS = {"read": ("read_at", True), "unread": ("read_at", False),
            "ignore": ("ignored_at", True), "unignore": ("ignored_at", False)}
 
+#: 「想要」与取消想要：写的是 `want_item`，不是壳上的列。忽略与想要互斥，两边都由 `wants` 收口。
+WANT_ACTIONS = ("want", "unwant")
+
+
+def _want(connection, action: str, ids: list[int]) -> int:
+    if action == "want":
+        return sum(int(wants.add_feed(connection, value)["created"]) for value in ids)
+    marks = ",".join("?" for _ in ids)
+    codes = [row[0] for row in connection.execute(
+        f"SELECT code FROM feed_discovery WHERE id IN ({marks})", ids)]
+    return wants.drop_codes(connection, codes)
+
 
 def w_feed_discovery(contract, body) -> dict:
-    """把一条或几条新作标成已读/未读、忽略/取消忽略。幂等。"""
+    """把一条或几条新作标成已读/未读、忽略/取消忽略、想要/取消想要。幂等。"""
     action = str(body.get("action") or "")
-    if action not in ACTIONS:
+    if action not in ACTIONS and action not in WANT_ACTIONS:
         raise ValueError(f"unknown feed discovery action: {action}")
     raw = body.get("ids")
     ids = [value for value in (raw if isinstance(raw, list) else [raw])
            if type(value) is int]
     if not ids:
         raise ValueError("ids must be a nonempty list of feed discovery ids")
+    if action in WANT_ACTIONS:
+        with contract.database.write_transaction() as connection:
+            affected = _want(connection, action, ids)
+        contract.cache_bust()
+        if action == "want":
+            web_wants.start_scrape(contract)
+        return {"ok": True, "action": action, "affected": affected}
     column, setting = ACTIONS[action]
     value = feeds.stamp() if setting else None
     marks = ",".join("?" for _ in ids)
@@ -560,5 +584,7 @@ def w_feed_discovery(contract, body) -> dict:
         cursor = connection.execute(
             f"UPDATE feed_discovery SET {column}=? WHERE id IN ({marks})",
             (value, *ids))
+        if action == "ignore":
+            _want(connection, "unwant", ids)
     contract.cache_bust()
     return {"ok": True, "action": action, "affected": int(cursor.rowcount or 0)}

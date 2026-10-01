@@ -3834,7 +3834,7 @@ class WebUiSourceTests(unittest.TestCase):
         一样打得开。已经在这一页上时也走同一条路——壳接住这次点击，换地址、重挂岛。
         关注页空态里的那条链接由 `follow-feed` 岛画（`follow-feed.test.tsx`）。
         """
-        self.assertPageContains("const FOLLOW_MANAGE_TABS=['list','add','feeds','source'];")
+        self.assertPageContains("const FOLLOW_MANAGE_TABS=['list','add','feeds','wants','source'];")
         self.assertPageContains("if(params.tab&&params.tab!=='list')search.set('tab',params.tab)")
         self.assertPageContains("""a[href="/follow-manage?tab=add"]""")
         self.assertPageContains("void openFollowManage(true,'add')")

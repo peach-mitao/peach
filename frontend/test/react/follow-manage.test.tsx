@@ -144,6 +144,7 @@ const shellProps = (over: Partial<Props> = {}): Props => ({
   savePreference: vi.fn(),
   toast: vi.fn(),
   openFollow: vi.fn(),
+  cloudDownload: vi.fn(),
   readOnly: false, readOnlyMessage: '', writerUrl: '',
   // 遗留层那条回落链的形状：先垫首字母，有图再叠一张。
   avatarInner: vi.fn((name: string, entity: { id: number; has_image: boolean } | null) =>
@@ -590,7 +591,7 @@ it('一条来源都没有时空态给出添加关注的去处', async () => {
 it('各栏按做事的先后排，缺凭据的数挂在最后一栏上', async () => {
   const { host } = await open({ creds: { root: 'C:\\creds', providers: [credential({ provider: 'fanbox' })] } });
   expect([...host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent))
-    .toEqual(['关注列表', '添加关注', 'JAV 订阅源', '来源和凭证（1）']);
+    .toEqual(['关注列表', '添加关注', 'JAV 订阅源', '想要', '来源和凭证（1）']);
 });
 
 const FEEDS: FeedsData = {

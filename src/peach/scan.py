@@ -6,6 +6,7 @@
 文件消失、带着个人记录的行由资源同步标 `disposal='vanished'`（ADR-0087）。登记时把它们接回：
 同一路径的文件回来了，upsert 清掉那一行的 `disposal`；新登记的行由 `record_rehome.reattach`
 按番号或「创作者 + 文件名主干 + 时长」找它的旧行，把记录搬过来、删掉旧行，记一个可撤回的批次。
+接着由 `wants.reconcile` 按番号对一遍「想要」清单，命中的标「已入库」，同样记可撤回的批次。
 
 两条不变量都在这里守：
 
@@ -37,7 +38,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 
-from . import record_rehome, subtitles
+from . import record_rehome, subtitles, wants
 from .platform import is_windows_path, resolve_location, resolve_root
 
 VIDEO = {".mp4", ".m4v", ".mkv", ".avi", ".wmv", ".mov", ".ts", ".flv", ".rmvb", ".mpg",
@@ -200,6 +201,8 @@ class IngestResult:
     new: bool = False
     #: 新行接回了几条已消失作品的个人记录（`record_rehome`）。
     reattached: int = 0
+    #: 新行让几条「想要」标了已入库（`wants.reconcile`）。
+    acquired: int = 0
 
 
 def _directory_stats(directory: Path) -> dict[str, tuple[int, str]]:
@@ -287,11 +290,12 @@ def ingest_path(
             (location, str(ledger_path))).fetchone()
         new = first_seen == now
         reattached = len(record_rehome.reattach(connection, [asset_id] if new else [], now=now))
+        acquired = len(wants.reconcile(connection, [asset_id] if new else []))
         connection.commit()
     finally:
         connection.close()
     return IngestResult(location, str(ledger_path), True, stat.st_size, tracks,
-                        asset_id=asset_id, new=new, reattached=reattached)
+                        asset_id=asset_id, new=new, reattached=reattached, acquired=acquired)
 
 
 @dataclass(frozen=True)
@@ -312,6 +316,8 @@ class ScanResult:
     new_ids: tuple[int, ...] = ()
     #: 本次接回了几条已消失作品的个人记录。
     reattached: int = 0
+    #: 本次让几条「想要」标了已入库。
+    acquired: int = 0
 
     def summary(self) -> str:
         return (f"✓ {self.location}: {self.files:,} 文件 / "
@@ -425,13 +431,14 @@ def scan_location(
         new_ids = tuple(row[0] for row in connection.execute(
             "SELECT id FROM asset WHERE location=? AND first_seen=? ORDER BY id", (location, now)))
         reattached = len(record_rehome.reattach(connection, new_ids, now=now))
+        acquired = len(wants.reconcile(connection, new_ids))
         connection.commit()
-        gone = connection.execute(
+        gone =connection.execute(
             "SELECT COUNT(*) FROM asset WHERE location=? AND last_seen<?",
             (location, now)).fetchone()[0]
     finally:
         connection.close()
     result = ScanResult(location, root, files, total, time.time() - started, gone,
-                        tracks, orphans, skipped, new_ids, reattached)
+                        tracks, orphans, skipped, new_ids, reattached, acquired)
     report(result.summary())
     return result

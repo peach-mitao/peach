@@ -1,6 +1,6 @@
 /* 首页那一行新作（`feed-new` 岛）：取哪一份、画进哪儿、卡收完怎么报给壳、换代次重取。
  *
- * 卡片上那两颗键的去留与资料页那一行同一个组件，在 `entity-hero.test.tsx` 量；骨架交接与离开目录页
+ * 卡片上那三颗键的去留与资料页那一行同一个组件，在 `entity-hero.test.tsx` 量；骨架交接与离开目录页
  * 收起要真浏览器，在 `frontend/e2e/home-loading.test.ts` 与 `feed-cover.test.ts` 里量。 */
 import { act, useState } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';

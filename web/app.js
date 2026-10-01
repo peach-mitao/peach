@@ -2399,6 +2399,7 @@ function feedNewCardHtml(item){
   return `<article class="card feednewcard${item.read?' isread':''}" data-feed-id="${item.id}">
     ${open}<div class="pic" style="--card-ratio:${COVER_FRONT_RATIO}">${cover}
       <div class="hovertools feednewtools">
+        <button type="button" data-feed-action="${item.wanted?'unwant':'want'}" aria-pressed="${!!item.wanted}" title="${item.wanted?'取消想要':'想要'}" aria-label="想要 ${esc(item.code)}">${icon('star')}</button>
         <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${esc(item.code)}">${icon('x')}</button>
         <button type="button" data-feed-action="read" title="标为已看过" aria-label="标为已看过 ${esc(item.code)}">${icon('check')}</button></div></div>
     <div class="meta"><div class="mtext"><span class="t">${heading}</span>
@@ -3065,7 +3066,7 @@ function followWorkMark([key,label,,icon,focus]){
    地址栏归这里写，偏好存在 appSettings 里，实时状态在 island 手里——三样东西各只有
    一份。哪几项该进地址栏由 island 说：它把默认值传成空串，这里就不写进去，分享出去的
    地址不会挂一串和默认完全一样的参数。 */
-const FOLLOW_MANAGE_TABS=['list','add','feeds','source'];
+const FOLLOW_MANAGE_TABS=['list','add','feeds','wants','source'];
 /* 这两样偏好只有骨架和挂载这两个读者，值都在 appSettings 里。 */
 function followListLayout(){return appSettings.followLayout==='table'?'table':'default'}
 function followListPageSize(){return Number(appSettings.followPageSize)||20}
@@ -3107,7 +3108,7 @@ async function openFollowManage(push=true,workspace=''){
       if(patch.layout!==undefined)appSettings.followLayout=patch.layout;
       saveSettings();
     },
-    toast:actionReceipt,openFollow:()=>void openFollow(),avatarInner,
+    toast:actionReceipt,openFollow:()=>void openFollow(),cloudDownload:openCloudDownload,avatarInner,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,
