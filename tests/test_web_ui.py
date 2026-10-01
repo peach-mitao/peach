@@ -1181,9 +1181,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("<summary aria-expanded={open} aria-controls={id} onClick={toggle}", section)
         # 原生三角去掉了，所以这一枚字形是唯一的线索，不能连它一起去掉。
         self.assertIn("list-none", section)
-        # 侧栏分组折叠还在旧壳里，转的角度与方向跟这一枚对齐。
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".board-section-toggle[aria-expanded=true] svg{transform:rotate(90deg)}", board)
+        # 侧栏分组的那一枚转角归侧栏岛，由 e2e `design.test.ts` 读计算值。
 
     def test_a_spinner_announces_the_work_and_not_the_button_it_sits_in(self):
         """`spinnerHtml()` 的名字说正在做什么，不复读按钮自己的名字。
@@ -3135,7 +3133,7 @@ class WebUiSourceTests(unittest.TestCase):
         board = (Path(__file__).resolve().parents[1] / 'web/board.css').read_text(encoding='utf-8')
         self.assertIn('.top .search.search.search{--glass-optic:blur(22px)}', board)
         snapshot = board.split('html[data-theme-snapshot] :is(', 1)[1].split('}', 1)[0]
-        for surface in ('.board-library-menu', '.board-filter-frame', '.search', '.drawer'):
+        for surface in ('.board-library-menu', '.board-filter-frame', '.search'):
             self.assertIn(surface, snapshot)
         self.assertIn('background-color:var(--ground)!important', snapshot)
         self.assertIn('backdrop-filter:none!important', snapshot)
@@ -4958,11 +4956,10 @@ class WebUiSourceTests(unittest.TestCase):
                       self.read_react("settings-panel/sidebar-order.tsx"))
         self.assertPageLacks("$('#searchMenu').hidden=true")
 
-    def test_board_batch_three_aligns_ranks_buttons_and_the_sidebar_switcher(self):
+    def test_board_batch_three_aligns_ranks_and_buttons(self):
         """管理页标题四种布局都对齐 1120；
         主按钮与 Board 按钮同一副 36px 盒子；批量条隐藏键真的隐藏、回收站键用 error 渐变；
-        复核页宽度与内容列同宽、分类栏留在原地；通知的状态圆用 lucide circle-alert；
-        侧栏切换器是 32px 圆标识加名字加箭头，悬停外描一圈线，收起键只有 20px 高。
+        复核页宽度与内容列同宽、分类栏留在原地；通知的状态圆用 lucide circle-alert。
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".geist-fieldset-footer>a,.geist-fieldset-footer>button).primary{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);", board)
@@ -4973,10 +4970,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 这一颗只是不在上面那份尺寸名单里，面色跟站内每一颗危险键同一份，见
         # `test_the_danger_tier_has_one_face_and_crossfades_into_its_hover`。
         self.assertIn("height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium)}", board)
-        self.assertIn(".board-sidebar-head #brandHome::before{content:'';position:absolute;inset:-5px -6px;border:2px solid var(--color-border-button-default);border-radius:999px;", board)
-        self.assertIn(".board-sidebar-head #brandHome .mark{width:32px;height:32px;border-radius:50%;background:var(--color-background-tertiary-default)}", board)
-        self.assertIn(".drawer .board-sidebar-head #filterBtn{width:20px;height:20px;padding:0;background:none;box-shadow:none}", board)
-        self.assertIn(".drawer:not(.open) .board-sidebar-head #filterBtn{width:36px;height:20px}", board)
+        # 侧栏切换器与收起键归侧栏岛的样式表，由 e2e `design.test.ts` 读计算值。
         self.assertPageContains('<symbol id="i-circle-alert" viewBox="0 0 24 24">')
 
     def test_the_library_icon_choices_exist_on_the_server_and_in_the_sprite(self):
@@ -5015,7 +5009,7 @@ class WebUiSourceTests(unittest.TestCase):
         证据切换与版式切换是同一枚分段滑块。
 
         随之对齐的还有：排序行里的分段控件与排序键同高（30px）；管理页标题只在 812px
-        窄列页面居中，别处与面包屑同一条左边线；侧栏收起键 36px、10px 圆角；详情页门挡
+        窄列页面居中，别处与面包屑同一条左边线；详情页门挡
         铺满播放器格、只圆左上角；首页女优与厂牌两排同一枚 34px 灰 Pill；沉浸模式的
         随机流不进脱盘来源的片子。
         """
@@ -5036,7 +5030,6 @@ class WebUiSourceTests(unittest.TestCase):
         # test_the_two_bodies_of_evidence_switch_as_a_segmented_control。
         self.assertIn(".insightpanel>header h3,.insightcopy>span{margin:0;font:var(--board-heading);color:var(--color-text-primary)}", board)
         self.assertIn("body :is(#manageTitle,#manageCrumb,#manageLede){max-width:var(--board-content);width:100%;margin-left:auto;margin-right:auto}", board)
-        self.assertIn(".drawer .board-sidebar-head #filterBtn{border-radius:0;color:var(--color-text-secondary);", board)
         # 门挡铺满播放器格、没图的身份头像画首字盘：作品详情岛，`frontend/e2e/design.test.ts` 量。
         # 头像条：女优是竖排人像格（48px 圆头像在上、名字在下），厂牌是 40px 的灰 Pill（28px 圆标识在左）。
         # 这一份给关注页骨架与人物页同台艺人；首页那两排归 `catalog-filter` 岛。
@@ -5773,13 +5766,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("state:'trash',q:''};clearSearchField();")
         self.assertPageContains("/api/trash/empty")
         self.assertPageContains("r.blocked&&r.blocked.length")
-
-    def test_mobile_scrim_shell_is_skipped_by_ios_status_bar_tinting(self):
-        """窄屏侧栏遮罩铺满视口、底色半透明，iOS 26 的 Safari 会把它当压暗层给状态栏取色。暗色画在 ::before 上，
-        遮罩外壳 visibility:hidden，Safari 跳过这层沿用顶栏的颜色，一开侧栏状态栏不整块变暗。"""
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn("  .scrim.scrim.on{top:0;z-index:101;background:none;visibility:hidden}\n"
-                      "  .scrim.scrim.on::before{content:'';position:absolute;inset:0;background:#0007;visibility:visible}\n", board)
 
     def test_card_hover_hides_source_and_duration_and_missing_size_is_explicit(self):
         self.assertPageContains('.card:hover .badge,.card:hover .dur{opacity:0}')
@@ -6552,7 +6538,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 选中那枚的填充只有一处，就是那块玻璃自己。
         self.assertNotIn('.board-filter-frame #tagbar .pill[data-state][aria-pressed="true"]{'
                          'background:var(--picked)', board)
-        self.assertIn(".viewglide.viewglide,[data-view-glide][data-view-glide],.drawer.drawer>.navglide{"
+        self.assertIn(".viewglide.viewglide,[data-view-glide][data-view-glide]{"
                       "position:absolute;left:0;top:0;z-index:0;pointer-events:none;", board)
         self.assertIn("backdrop-filter:var(--glass-pick);", board)
         # 位移和形变各占一个独立属性：一条属性上只放得下一段动画，而这两下的时间
@@ -6676,13 +6662,11 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("--spring-press:linear(0,0.1659,", board)
         self.assertIn(",1.0066,1.084,1.0861,1.069,", board)
         self.assertIn("--spring-press-ms:208}", board)
-        self.assertIn(".dnav button,.pill,.sorts button{"
+        self.assertIn(".pill,.sorts button{"
                       "transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press)}", board)
-        # 窄栏自己带一段填充过渡，`transition` 是整份覆盖，漏掉它悬停的渐变就没了。
-        self.assertIn(".edge button{transition:scale calc(var(--spring-press-ms) * 1ms) "
-                      "var(--spring-press),background .12s}", board)
-        self.assertIn(".dnav button:active,.pill:active,.sorts button:active,.edge button:active{"
+        self.assertIn(".pill:active,.sorts button:active{"
                       "scale:.96;transition:scale .06s ease-out}", board)
+        # 侧栏导航与时长手柄的同一套按压归侧栏岛，由 e2e `design.test.ts` 读计算值。
         self.assertIn(":is(.followauthors,.followworks,.relatedpeople) .av:active,"
                       ":is(.followauthors,.followworks) .brandpill:active"
                       "{scale:.96;transition:scale .06s ease-out}", board)
@@ -7433,15 +7417,6 @@ class WebUiSourceTests(unittest.TestCase):
         ui = (Path(__file__).resolve().parents[1] / "web/js/ui-components.js").read_text(encoding="utf-8")
         self.assertIn("menu.style.left=Math.max(16,Math.min(anchor.right+8,innerWidth-width-16))+'px';", ui)
         self.assertNotIn("Math.max(anchor.right,mount.getBoundingClientRect().right)", ui)
-
-    def test_the_sidebar_switcher_clears_the_first_nav_row(self):
-        """切换器和导航首项之间留 12px。
-
-        切换器展开时自己带一圈 2px 描边，首项又会抬起 hover 底：留 4px 的话这两块底色
-        是挨着的，读起来像切换器压在第一项上。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".drawer .dnav{margin-top:12px;gap:4px}", board)
 
     def test_a_wide_glyph_gets_a_wide_slot_instead_of_being_shrunk_to_fit(self):
         """1.4:1 的字形锁死方形槽位只能按宽缩，画出来就比满格的邻座矮一截。
@@ -8336,7 +8311,7 @@ class BoardStyleIsolationTests(unittest.TestCase):
         rules = re.findall(r'([^{}]+)\{([^{}]*)\}', css)
         centering = [selector for selector, body in rules
                      if 'display:inline-grid' in body and 'place-items:center' in body]
-        self.assertTrue(any('#drawerClose' in selector for selector in centering))
+        self.assertTrue(any('.srctools button' in selector for selector in centering))
         self.assertFalse(any('.ib,' in selector or '.sidebaraddmenu button' in selector
                              for selector in centering))
 
