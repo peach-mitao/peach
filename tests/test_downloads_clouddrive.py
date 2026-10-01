@@ -197,7 +197,7 @@ class CheckTests(_Server):
 
     def test_addresses_turn_into_grpc_targets(self):
         self.assertEqual(cd.channel_target("http://127.0.0.1"), ("127.0.0.1:19798", False))
-        self.assertEqual(cd.channel_target("https://nas.local:8443"), ("nas.local:8443", True))
+        self.assertEqual(cd.channel_target("https://192.0.2.10:8443"), ("192.0.2.10:8443", True))
         self.assertEqual(cd.split_remote("/115/云下载/"), ("/115", "云下载"))
 
 

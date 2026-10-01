@@ -34,6 +34,7 @@ from .downloads import (
     DONE, ERROR, MISSING, RUNNING, DownloadError, DownloadTask, Magnet, RemoteStatus,
     magnet_info_hash,
 )
+from .user_agent import USER_AGENT
 
 USER_HOST = "https://user.mypikpak.com"
 API_HOST = "https://api-drive.mypikpak.com"
@@ -48,8 +49,8 @@ SALTS = (
     "9hFCW2R1", "sHKHpe2i96", "p7c5E6AcXQ/IJUuAEC9W6", "", "aRv9hjc9P+Pbn+u3krN6",
     "BzStcgE8qVdqjEH16l4", "SqgeZvL5j9zoHP95xWHt", "zVof5yaJkPe3VFpadPof",
 )
-BROWSER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                 "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+#: 对外请求共用的那一份桌面 Chrome UA（`user_agent.py`）。
+BROWSER_AGENT = USER_AGENT
 TIMEOUT = 20.0
 PHASES = "PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_COMPLETE,PHASE_TYPE_PENDING"
 #: 过期前这么多秒就提前刷新。access token 有效期 7200 秒。
