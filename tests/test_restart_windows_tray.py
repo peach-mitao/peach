@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from peach import windows_restart
+from peach import runtime_prepare, windows_restart
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -330,7 +330,156 @@ class RestartWindowsTrayTests(unittest.TestCase):
         self.assertEqual(start.call_count, 2)
 
 
+class Preparation:
+    """记下准备步骤与停、起托盘的先后。"""
+
+    def __init__(self, events, *, refusal=None, ready=True, note="已按 uv.lock 同步依赖"):
+        self.events, self.refusal, self.ready, self.note = events, refusal, ready, note
+
+    def before_stop(self, tray_pid):
+        self.events.append(("check", tray_pid))
+        return self.refusal
+
+    def while_stopped(self):
+        self.events.append("sync")
+        return self.ready, self.note
+
+
+class RestartPreparationTests(unittest.TestCase):
+    BOOTSTRAP = RestartWindowsTrayTests.BOOTSTRAP
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name).resolve()
+        self.pythonw = root / ".venv" / "Scripts" / "pythonw.exe"
+        self.service = self.pythonw.with_name("peach.exe")
+        self.pythonw.parent.mkdir(parents=True)
+        self.pythonw.write_bytes(b"shim")
+        self.service.write_bytes(b"service")
+        self.argv = [str(self.pythonw), "-c", self.BOOTSTRAP, "--silent"]
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def restart(self, preparation, events):
+        windows = iter((
+            (windows_restart.TrayWindow(10, 20),),
+            (windows_restart.TrayWindow(30, 40),),
+        ))
+        launched = mock.Mock()
+        launched.poll.return_value = None
+        return windows_restart.restart_source_tray(
+            find_windows=lambda: next(windows),
+            stop_window=lambda _handle: events.append("stop") or True,
+            alive=lambda _pid: False,
+            command_lines=lambda: {10: subprocess.list2cmdline(self.argv)},
+            start=lambda argv: events.append("start") or launched,
+            services=lambda tray_pid, _executable: (51, 52) if tray_pid == 30 else (),
+            sleep=lambda _seconds: None,
+            prepare=preparation,
+        )
+
+    def test_dependencies_are_synced_after_the_old_tray_stops_and_before_the_new_starts(self):
+        events = []
+        result = self.restart(Preparation(events), events)
+        self.assertTrue(result.ok, result.message)
+        self.assertEqual(events, [("check", 10), "stop", "sync", "start"])
+        self.assertEqual(result.preparation, "已按 uv.lock 同步依赖")
+
+    def test_a_refusal_stops_nothing(self):
+        events = []
+        result = self.restart(Preparation(events, refusal="拒绝重启：PID 48420 还在用项目 venv"),
+                              events)
+        self.assertFalse(result.ok)
+        self.assertIn("48420", result.message)
+        self.assertEqual(events, [("check", 10)])
+
+    def test_a_failed_sync_still_brings_the_tray_back_and_says_so(self):
+        events = []
+        result = self.restart(Preparation(events, ready=False, note="uv sync 失败"), events)
+        self.assertEqual(events[-1], "start")
+        self.assertFalse(result.ok)
+        self.assertEqual(result.new_tray_pid, 30)
+        self.assertIn("uv sync 失败", result.message)
+
+
+class VenvHolderTests(unittest.TestCase):
+    def test_only_venv_processes_outside_the_tray_and_this_script_hold_the_venv(self):
+        venv = Path(tempfile.gettempdir()).resolve() / "peach-app" / ".venv"
+        scripts = venv / "Scripts"
+        base = str(Path(tempfile.gettempdir()).resolve() / "python" / "python.exe")
+        paths = {
+            1: str(scripts / "python.exe"), 2: base,           # 本脚本：启动器与解释器
+            10: str(scripts / "pythonw.exe"), 11: base,        # 旧托盘：启动器与解释器
+            12: str(scripts / "peach.exe"), 13: base,          # 旧托盘的子服务
+            20: str(scripts / "python.exe"), 21: base,         # 别人起的调试服务
+            30: base,                                          # 别的 venv 外进程
+            40: str(venv.parent / ".venv-other" / "python.exe"),
+        }
+        parents = {2: 1, 1: 11, 11: 10, 10: 5, 12: 11, 13: 12, 21: 20, 20: 6}
+        holders = windows_restart.venv_holders(
+            venv, (11,), own_pid=2, snapshot=lambda: (paths, parents))
+        self.assertEqual(holders, (20,))
+
+
 class RestartEntryTests(unittest.TestCase):
+    def setUp(self):
+        # 入口默认读真实账本的任务表与数据根下的启动记录；这里换成空闸门与给定记录。
+        # 入口用 `from … import` 绑定名字，所以补丁打在来源模块上、并且先于 `load_entry()`。
+        self.gate = runtime_prepare.TaskGate()
+        self.startup = None
+        for name, replacement in (
+            ("task_gate", lambda *_args, **_kwargs: self.gate),
+            ("read_record", lambda *_args, **_kwargs: self.startup),
+        ):
+            patcher = mock.patch.object(runtime_prepare, name, side_effect=replacement)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_entry(self, argv, result):
+        entry = load_entry()
+        with (
+            mock.patch.object(entry, "find_tray_windows", return_value=()),
+            mock.patch.object(entry, "restart_source_tray", return_value=result) as restart,
+            contextlib.redirect_stdout(io.StringIO()) as printed,
+        ):
+            code = entry.main(argv)
+        return code, json.loads(printed.getvalue()), restart
+
+    def test_tasks_that_cannot_resume_refuse_the_restart(self):
+        blocking = runtime_prepare.ActiveRun(3, "library-processing", "manual", "running", 100, None)
+        self.gate = runtime_prepare.TaskGate(blocking=(blocking,))
+        code, printed, restart = self.run_entry([], windows_restart.RestartResult(True, "ok"))
+        self.assertEqual(code, 1)
+        restart.assert_not_called()
+        self.assertFalse(printed["ok"])
+        self.assertEqual(printed["tasks"]["blocking"][0]["task_key"], "library-processing")
+
+    def test_force_restarts_past_the_gate_and_still_lists_the_tasks(self):
+        blocking = runtime_prepare.ActiveRun(3, "media-repair", "manual", "running", 100, None)
+        self.gate = runtime_prepare.TaskGate(blocking=(blocking,))
+        code, printed, restart = self.run_entry(
+            ["--force"], windows_restart.RestartResult(True, "源码托盘已重启"))
+        self.assertEqual(code, 0)
+        restart.assert_called_once()
+        self.assertIsNotNone(restart.call_args.kwargs["prepare"])
+        self.assertEqual(printed["tasks"]["blocking"][0]["task_key"], "media-repair")
+
+    def test_a_new_tray_whose_startup_preparation_failed_fails_the_restart(self):
+        self.startup = {"pid": 30, "ok": False, "steps": [
+            {"name": "migrations", "state": "failed", "message": "migrate status 失败：locked"}]}
+        code, printed, _restart = self.run_entry(
+            [], windows_restart.RestartResult(True, "源码托盘已重启", new_tray_pid=30))
+        self.assertEqual(code, 1)
+        self.assertFalse(printed["ok"])
+        self.assertIn("locked", printed["message"])
+
+    def test_a_missing_startup_record_is_named_not_assumed(self):
+        code, printed, _restart = self.run_entry(
+            [], windows_restart.RestartResult(True, "源码托盘已重启", new_tray_pid=30))
+        self.assertEqual(code, 0)
+        self.assertIn("未取得新托盘的启动准备记录", printed["message"])
+
     def test_the_entry_hands_the_package_to_swap_and_prints_the_outcome(self):
         entry = load_entry()
         finished = windows_restart.RestartResult(True, "重启完成", backup="C:/dist/backup.exe")

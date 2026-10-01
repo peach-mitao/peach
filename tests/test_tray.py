@@ -2,10 +2,12 @@ import contextlib
 import importlib.util
 import inspect
 import io
+import json
 import logging
 import os
 import plistlib
 import re
+import subprocess
 import sys
 import tempfile
 import threading
@@ -25,7 +27,7 @@ def load_script(name: str):
     return module
 
 
-from peach import appid, onboarding, settings_file
+from peach import appid, onboarding, runtime_prepare, settings_file
 from peach import tray as tray_module
 from peach.config import SECRETS_DIR
 from peach.tray import (
@@ -1338,6 +1340,218 @@ class TrayLogFileTests(unittest.TestCase):
         self.assertNotIn("HTTP Request", text)
         self.assertIn("连接被拒绝", text)
         self.assertIn("拉起 http 服务", text)
+
+
+class ReadyResponse:
+    def __init__(self, status_code, payload):
+        self.status_code, self.payload = status_code, payload
+
+    def json(self):
+        return self.payload
+
+
+class FakeStep:
+    """给出固定结果的依赖核对或迁移，顺手记下被调用的时刻。"""
+
+    def __init__(self, events, label, step):
+        self.events, self.label, self.step = events, label, step
+
+    def check(self):
+        self.events.append(self.label)
+        return self.step
+
+    apply = check
+
+
+class TrayPreparationTests(unittest.TestCase):
+    """依赖、迁移与就绪检查在托盘里的落点（ADR-0091）。"""
+
+    CURRENT = runtime_prepare.Step("dependencies", "current", "项目 venv 与 uv.lock 一致")
+    STALE = runtime_prepare.Step("dependencies", "stale",
+                                 "项目 venv 与 uv.lock 不一致，要装 1 个包：grpcio==1.84.0")
+    APPLIED = runtime_prepare.Step("migrations", "applied", "已执行迁移 0042，迁移前备份 x.db")
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.events: list = []
+        self.spawned: list = []
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def preparation(self, dependencies=CURRENT, migration=APPLIED, process=None):
+        def spawn():
+            self.spawned.append(True)
+            if process is None:
+                raise OSError("python.exe missing")
+            return process
+
+        return tray_module.TrayPreparation(
+            dependencies=FakeStep(self.events, "deps", dependencies),
+            migrations=FakeStep(self.events, "migrate", migration),
+            state_dir=self.root / "state",
+            restart_log=self.root / "logs" / "tray-restart.out.log",
+            spawn_restart=spawn,
+        )
+
+    def manager(self, *, ready=True, problems=()):
+        manager = Mock()
+        manager.specs = ()
+        manager.start_missing.side_effect = lambda: self.events.append("start")
+        manager.wait_until_ready.return_value = ready
+        manager.readiness_problems.return_value = list(problems)
+
+        def restart(prepare=None):
+            self.events.append("stop")
+            if prepare is not None:
+                prepare()
+            self.events.append("start")
+            return ready
+
+        manager.restart.side_effect = restart
+        return manager
+
+    def tray(self, manager, preparation):
+        gate = Mock()
+        gate.waiting = False
+        snapshot = VersionSnapshot("0.37.0", "master", "abc12345", False, True, "origin/master")
+        updates = FakeUpdates()
+        updates.sweep_artifacts = lambda: None
+        with patch("peach.tray.pystray.Icon", return_value=Mock()):
+            return PeachTray(manager, FakeVersions(snapshot), updates, gate,
+                             preparation=preparation)
+
+    def run_tray(self, tray):
+        with (
+            patch("peach.tray.ledger_backups.prune"),
+            patch("peach.tray.sweep_onefile_extractions"),
+            patch.object(tray, "_monitor"),
+        ):
+            tray.run()
+
+    def press_restart(self, tray):
+        icon = Mock()
+        tray.restart(icon)
+        self.assertTrue(tray._action_lock.acquire(timeout=5))
+        tray._action_lock.release()
+        return icon
+
+    def test_startup_migrates_before_the_first_service_starts(self):
+        tray = self.tray(self.manager(), self.preparation())
+        self.run_tray(tray)
+        self.assertEqual(self.events[:3], ["deps", "migrate", "start"])
+        recorded = runtime_prepare.read_record(self.root / "state", pid=os.getpid())
+        self.assertTrue(recorded["ok"])
+        self.assertEqual([step["name"] for step in recorded["steps"]],
+                         ["dependencies", "migrations", "readiness"])
+        self.assertIsNone(tray._startup_warning)
+
+    def test_startup_reports_a_failed_migration_and_an_unready_schema(self):
+        failed = runtime_prepare.Step("migrations", "failed", "migrate status 失败：database is locked")
+        manager = self.manager(problems=["HTTPS 未就绪：账本结构与迁移不一致"])
+        tray = self.tray(manager, self.preparation(migration=failed))
+        self.run_tray(tray)
+        self.assertIn("database is locked", tray._startup_warning)
+        self.assertIn("账本结构与迁移不一致", tray._startup_warning)
+        self.assertFalse(runtime_prepare.read_record(self.root / "state", pid=os.getpid())["ok"])
+
+    def test_restart_migrates_while_the_services_are_stopped(self):
+        tray = self.tray(self.manager(), self.preparation())
+        icon = self.press_restart(tray)
+        self.assertEqual(self.events, ["deps", "stop", "migrate", "start"])
+        self.assertEqual(self.spawned, [])
+        icon.notify.assert_not_called()
+
+    def test_stale_dependencies_hand_the_restart_to_a_whole_tray_restart(self):
+        process = Mock()
+        process.wait.side_effect = subprocess.TimeoutExpired("restart", 1)
+        manager = self.manager()
+        tray = self.tray(manager, self.preparation(dependencies=self.STALE, process=process))
+        icon = self.press_restart(tray)
+        self.assertEqual(self.spawned, [True])
+        manager.restart.assert_not_called()
+        self.assertIn("整体重启托盘", icon.notify.call_args_list[0].args[0])
+
+    def test_a_refused_whole_tray_restart_falls_back_to_the_services(self):
+        log = self.root / "logs" / "tray-restart.out.log"
+        log.parent.mkdir(parents=True)
+        log.write_text(json.dumps({"ok": False, "message": "拒绝重启：PID 48420 还在用项目 venv"},
+                                  ensure_ascii=False) + "\n", encoding="utf-8")
+        process = Mock()
+        process.wait.return_value = 1
+        manager = self.manager()
+        tray = self.tray(manager, self.preparation(dependencies=self.STALE, process=process))
+        icon = self.press_restart(tray)
+        manager.restart.assert_called_once()
+        messages = " ".join(call.args[0] for call in icon.notify.call_args_list)
+        self.assertIn("48420", messages)
+        # 依赖仍不一致，重启子服务之后也要再说一遍。
+        self.assertIn("grpcio", icon.notify.call_args_list[-1].args[0])
+
+    def test_without_a_preparation_the_tray_only_restarts_services(self):
+        manager = self.manager()
+        tray = self.tray(manager, None)
+        self.press_restart(tray)
+        self.assertEqual(self.events, ["stop", "start"])
+        manager.readiness_problems.assert_not_called()
+
+    def test_service_restart_runs_the_preparation_between_stop_and_start(self):
+        order = []
+        process = Mock()
+        process.poll.return_value = None
+        process.terminate.side_effect = lambda: order.append("stop")
+        process.wait.return_value = 0
+        spec = ServiceSpec("https", "https://local/healthz", ("peach", "serve"), True)
+        manager = ServiceManager((spec,), popen=lambda *_a, **_k: order.append("start") or process,
+                                 log_dir=self.root / "logs",
+                                 health_get=Mock(side_effect=OSError("down")))
+        with patch("peach.tray.assign_to_job"), patch("peach.tray.create_kill_on_close_job"):
+            manager.start_missing()
+            order.clear()
+            with patch.object(manager, "wait_until_ready", return_value=True):
+                manager.restart(prepare=lambda: order.append("prepare"))
+        self.assertEqual(order, ["stop", "prepare", "start"])
+
+    def test_readiness_is_read_from_the_api_service_only(self):
+        asked = []
+
+        def get(url, **kwargs):
+            asked.append((url, kwargs["verify"]))
+            if url.startswith("http://"):
+                return ReadyResponse(200, {"ok": True, "service": "peach-redirect"})
+            return ReadyResponse(503, {"ready": False, "checks": {
+                "configured": True, "web": True, "database": True, "schema": False}})
+
+        specs = (ServiceSpec("http", "http://127.0.0.1/healthz", ("peach",), True),
+                 ServiceSpec("https", "https://10.0.0.2/healthz", ("peach",), "ca.crt"))
+        manager = ServiceManager(specs, health_get=get, log_dir=self.root)
+        self.assertEqual(manager.readiness_problems(), ["HTTPS 未就绪：账本结构与迁移不一致"])
+        self.assertEqual(asked, [("http://127.0.0.1/healthz?ready=1", True),
+                                 ("https://10.0.0.2/healthz?ready=1", "ca.crt")])
+
+    def test_the_whole_tray_restart_is_detached_and_logged(self):
+        python = self.root / ".venv" / tray_module._BIN_DIR / (
+            "python.exe" if os.name == "nt" else "python")
+        script = self.root / "scripts" / "restart_windows_tray.py"
+        log = self.root / "logs" / "tray-restart.out.log"
+        with self.assertRaises(FileNotFoundError):
+            tray_module.spawn_tray_restart(log, popen=Mock(), root=self.root)
+        for path in (python, script):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"")
+        seen = {}
+
+        def popen(argv, **kwargs):
+            seen.update(argv=argv, **kwargs)
+            return Mock()
+
+        tray_module.spawn_tray_restart(log, popen=popen, root=self.root)
+        self.assertEqual(seen["argv"][-3:], [str(script), "--source", "--force"])
+        self.assertEqual(seen["env"]["PYTHONIOENCODING"], "utf-8")
+        self.assertTrue(seen["stdout"].closed)
+        if os.name == "nt":
+            self.assertTrue(seen["creationflags"] & subprocess.DETACHED_PROCESS)
 
 
 if __name__ == "__main__":
