@@ -36,8 +36,8 @@ it('React 样式产物的类名不和旧样式表同名', () => {
      样式表按它给浅色单独换面，React 侧 Tailwind 的 dark 变体读的也是它。 */
   const agreed = new Set(['peach-react', 'dark']);
   /* `video-js` 与 `vjs-*` 是 Video.js 的组件契约：类由它自己的组件挂上，播放器样式
-     （`src/player/player.css`）只能按这些类写；沉浸模式的 `/tok` 仍在旧样式表里给同一批类
-     另写一套，两边选中的是同一种元素，同名正是契约。 */
+     （`src/player/player.css`、沉浸岛的 `immerse.css`）只能按这些类写；旧样式表里的同名规则选中的
+     是同一种元素，同名正是契约。 */
   const videojs = (name: string) => name === 'video-js' || name.startsWith('vjs-');
   const shared = [...classNames(read('dist', 'peach-react.css'))]
     .filter((name) => !agreed.has(name) && !videojs(name) && legacy.has(name));

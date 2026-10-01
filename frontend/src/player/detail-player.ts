@@ -4,15 +4,17 @@
  *   ready 之后挂设置菜单、拖动预览、Media Session、转圈与字幕。
  * - `attachPlayerChrome` 把统计面板、加载速度角标与氛围光接到一块媒体框上。播放器进小窗时摘下，
  *   展开回舞台时接到新的媒体框上，实例本身不重建。
- * - `mountPlayer` 是舞台播放区的入口：插氛围光画布与统计角标，按作品或关注条目给片源、海报与
- *   上报，返回拆掉这一个播放器的函数。 */
+ * - `mountPlayer` 是舞台播放区与沉浸模式每一格的入口：插氛围光画布与统计角标，按作品或关注条目
+ *   给片源、海报与上报，返回拆掉这一个播放器的函数。 */
 import { api, esc, fmtClock, fmtSize, icon, realDuration } from '@peach/legacy/core';
 
 import {
   mountPlayerAmbient, mountPlayerMediaSession, mountPlayerQualityControl, mountPlayerSeekPreview,
   mountPlayerSpinner, mountPlayerSubtitles,
 } from './controls';
+import { disposePlayer } from './dispose';
 import { playerHost } from './host';
+import { mountImmersePlayer, type ImmersePlayerOptions } from './immerse-player';
 import { wirePlayerContextMenu } from './menu';
 import { detailPlayer, setDetailPlayer } from './registry';
 import {
@@ -291,19 +293,6 @@ export function attachPlayerChrome(player: VjsPlayer, frame: HTMLElement): () =>
   return detach;
 }
 
-/** 拆掉一个播放器：先 pause，再同步调一次 `onpause` 让观看上报停表并把最后一段冲出去（`pause`
- *  事件是排队派发的，等它来时句柄已经摘了），然后摘掉上报句柄，销毁时不会再替这条片子记账。 */
-export function disposePlayer(player: VjsPlayer | null): void {
-  if (!player || player.isDisposed()) return;
-  const video = player.el()?.querySelector('video');
-  try { player.pause() } catch { /* 已拆 */ }
-  if (video) {
-    try { video.onpause?.(new Event('pause')) } catch { /* 上报失败不挡拆除 */ }
-    video.onplay = null; video.ontimeupdate = null; video.onpause = null; video.onended = null;
-  }
-  try { player.dispose() } catch { /* 已拆 */ }
-}
-
 /** 关注条目里的一份媒体（组里的第几条视频）。 */
 export interface PlayerMedia { index: number; media_type?: string; size?: number | null }
 
@@ -330,8 +319,10 @@ export interface MountPlayerOptions {
  *    记一次播放，离开位置与真实观看由 `wireTelemetry` 随播放写回侧栏。
  *  - 关注（`follow`）：片源是 `/follow-stream`，清晰度与字节数（`/follow-qualities`）跟默认片源并行
  *    解析——它要回源抓详情、再 HEAD 一次正片，不能挡住播放器挂载。
+ *  - 沉浸模式的一格（`immerse`）：裸 Video.js、这一格自己的流会话，见 `immerse-player.ts`。
  *  返回的清理在舞台卸下这块媒体区时调：换一份媒体只拆这一个播放器；被小窗接走的只摘读数。 */
-export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions): () => void {
+export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions | ImmersePlayerOptions): () => void {
+  if (options.kind === 'immerse') return mountImmersePlayer(video, options);
   const { kind, item, media = null, handedOff, onPlayer } = options;
   const host = playerHost();
   const frame = options.chrome === false ? null : video.parentElement;

@@ -1,4 +1,4 @@
-/* 播放器模块（`src/player/`）里不依赖 Video.js 的几块：片源判据、流会话取消、观看上报、
+/* 播放器模块（`src/player/`）里不依赖真 Video.js 的几块：片源判据、流会话取消、沉浸模式的每一格、观看上报、
  * 加载读数、画中画的 Media Session 与外挂字幕。挂上真 Video.js 的那一面在 `e2e/stage.test.ts`。 */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +8,7 @@ import { averageBitrate, bufferedAhead, fmtLoadRate, pushPlayerStat } from '../s
 import {
   cancelDetailStream, detailStreamSource, detailStreamSession, directStreamSource, playableStreamSource,
 } from '../src/player/stream';
+import { mountPlayer } from '../src/player/detail-player';
 import { wireTelemetry } from '../src/player/telemetry';
 import type { VjsPlayer } from '../src/player/types';
 
@@ -101,6 +102,60 @@ describe('观看上报', () => {
     expect(body).toMatchObject({ id: 11, ended: true, duration: 0 });
     expect(onEnded).toHaveBeenCalledOnce();
     ratio.remove();
+  });
+});
+
+describe('沉浸模式的每一格', () => {
+  /** 一个记账的 Video.js：记下挂了什么片源、`error` 一次性监听由用例触发。 */
+  function fakeVideojs() {
+    const made: { sources: unknown[]; disposed: boolean; error?: () => void }[] = [];
+    const factory = vi.fn((video: HTMLVideoElement) => {
+      const record: (typeof made)[number] = { sources: [], disposed: false };
+      made.push(record);
+      const shell = document.createElement('div');
+      shell.append(video);
+      return {
+        src: (source: unknown) => { record.sources.push(source) },
+        one: (_event: string, handler: () => void) => { record.error = handler },
+        el: () => shell,
+        isDisposed: () => record.disposed,
+        pause: () => {},
+        dispose: () => { record.disposed = true },
+      } as unknown as VjsPlayer;
+    });
+    vi.stubGlobal('videojs', factory);
+    return { factory, made };
+  }
+
+  it('片源按 stream-plan 交给裸播放器，分片出错退回直读；拆这一格时按会话取消并拆播放器', async () => {
+    const calls = stubFetch((url) => (url.startsWith('/api/stream-plan')
+      ? { protocol: 'hls', src: '/stream/hls/8/index.m3u8' } : { cancelled: 1 }));
+    const { factory, made } = fakeVideojs();
+    const video = document.createElement('video');
+    const onLoaded = vi.fn();
+    const dispose = mountPlayer(video, { kind: 'immerse', item: { id: 8 }, session: 'imm-1', onLoaded });
+    await flush(); await flush();
+    expect(factory).toHaveBeenCalledWith(video, expect.objectContaining({ controls: false, controlBar: false }));
+    expect(made[0]!.sources).toEqual([{ src: '/stream/hls/8/index.m3u8', type: 'application/vnd.apple.mpegurl' }]);
+    expect(onLoaded).toHaveBeenCalledOnce();
+    made[0]!.error!();
+    expect(made[0]!.sources.at(-1)).toEqual({ src: '/stream?id=8&session=imm-1', type: 'video/mp4' });
+    dispose();
+    dispose();
+    expect(made[0]!.disposed).toBe(true);
+    const cancels = calls.filter((call) => call.url.startsWith('/api/stream-cancel'));
+    expect(cancels.map((call) => call.url)).toEqual(['/api/stream-cancel?session=imm-1']);
+  });
+
+  it('片源还没解析出来就拆掉：不再挂播放器，也不回调', async () => {
+    stubFetch(() => ({ protocol: 'direct', src: '/stream?id=9' }));
+    const { factory } = fakeVideojs();
+    const onLoaded = vi.fn();
+    const dispose = mountPlayer(document.createElement('video'), { kind: 'immerse', item: { id: 9 }, session: 'imm-2', onLoaded });
+    dispose();
+    await flush(); await flush();
+    expect(factory).not.toHaveBeenCalled();
+    expect(onLoaded).not.toHaveBeenCalled();
   });
 });
 

@@ -428,10 +428,9 @@ class WebUiSourceTests(unittest.TestCase):
     # 强调色 --tungsten 的合法去处。选择器只要含其中任一片段，规则体就可以用蓝。
     TUNGSTEN_ALLOWED_SELECTORS = (
         ":focus",              # 焦点环：:focus / :focus-visible / :focus-within
-        ".geist-progress", ".watchprogress", ".vjs-play-progress", ".vjs-progress-holder",
-        ".tokbar",  # 进度与数据
+        ".geist-progress", ".watchprogress", ".vjs-play-progress", ".vjs-progress-holder",  # 进度与数据
         ".ptoggle:checked",  # Toggle 开态：Geist Toggle 实测轨道 rgb(0,112,243)
-        ".entitylink", ".flink", ".tokauthor>a", ".taste-history-guide-content a",  # 真正的链接
+        ".entitylink", ".flink", ".taste-history-guide-content a",  # 真正的链接
     )
 
     def test_tungsten_is_reserved_for_focus_links_progress_and_toggle(self):
@@ -846,10 +845,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertNotIn("border:", card, "卡片不自带描边")
 
     # 选中态允许高对比反相的两处：都压在媒体画面上，画面本身会把 --hover 那层
-    # 7% 白吃掉，读不出按没按。
+    # 7% 白吃掉，读不出按没按。沉浸模式动作列的反相同一个理由，样式在沉浸岛的
+    # `immerse.css`，由 `frontend/e2e/design.test.ts` 读计算值。
     INVERTED_PRESSED_ALLOWED = (
         ".hovertools .laterbtn",   # 卡片悬停浮层「稍后看」
-        ".tokbtns button",         # 沉浸页右侧竖排动作
         ".followimagedots button",  # 图集页码点
     )
 
@@ -1164,7 +1163,8 @@ class WebUiSourceTests(unittest.TestCase):
                      flags=re.S)
         pressed = sorted(chunk.rsplit("}", 1)[-1].strip()
                          for chunk in css.split("{scale:.96")[:-1])
-        self.assertEqual(pressed, [".tokbtns button:active"],
+        # 沉浸态动作列的 .96 在沉浸岛的 `immerse.css`，由 `frontend/e2e/design.test.ts` 量。
+        self.assertEqual(pressed, [],
                          "按下缩放只给手指直接拨的控件，表单按钮那一族不动")
         # 描边那一档连边一起变灰；不描边的动作按钮只换填充和字色。
         ringed = ("{background:var(--sunk);border-color:var(--line-soft);"
@@ -1435,16 +1435,6 @@ class WebUiSourceTests(unittest.TestCase):
             self.assertIn(token, rule, f"{selector} 没使用 {token}")
         self.assertNotRegex(css, r"transition:\s*all(?:[; }])")
 
-    def test_close_actions_share_geist_control_geometry(self):
-        css = stylesheet_source()
-        # 播放列表那几个弹层没有自己的关闭键：它们穿 Geist Modal，退出走操作条左端的
-        # 取消、Escape 和点遮罩，右上角不摆叉。舞台的关闭键、队列头按钮与设置面板关闭键
-        # （24×24 整圆、padding 0）的几何由 `frontend/e2e/design.test.ts` 读计算样式。
-        media_close = css[css.index(".media-circle{"):]
-        media_close = media_close[:media_close.index("}")]
-        self.assertIn("border-radius:50%", media_close,
-                      "全屏媒体关闭钮属于圆形媒体操作，不沿用普通 Dialog 关闭钮")
-
     def test_an_open_collapse_stops_cropping_what_is_inside_it(self):
         """展开着不动时那道裁边摘掉：高度过渡需要它，展开完就只剩副作用。
 
@@ -1526,7 +1516,8 @@ class WebUiSourceTests(unittest.TestCase):
         # 表状态的通知三档取音：默认按 warn 分成功与失败，部分来源失败这类提醒是警告。
         self.assertPageContains("playUiSound(sound||(alert?'error':'success'));")
         self.assertPageContains("{warn:!!failed,timeout:failed?8000:6000,sound:failed?'warning':'success',")
-        self.assertPageContains("toast({text:'当前筛选下没有可直接播放的内容'},{sound:'warning'})")
+        # 沉浸片单为空的提醒由岛交给壳的 warn，警告音在壳这边发。
+        self.assertPageContains("warn:message=>toast({text:message},{sound:'warning'}),")
         self.assertPageContains("if(menu.hidden)playUiSound('whoosh');")
         self.assertEqual(self.page.count("playUiSound('pop');"), 2, "formModal 与 confirmModal 各响一声")
         self.assertIn("},{capture:true});", sounds)
@@ -1730,10 +1721,9 @@ class WebUiSourceTests(unittest.TestCase):
                  / "frontend/src/react/taste/taste-page.tsx").read_text(encoding="utf-8")
         self.assertIn("{ id: row.entity_id, has_image: !!row.has_image,", taste)
         self.assertIn("row.has_avatar ? row.representative_asset_id ?? null : null,", taste)
-        # 沉浸模式署名圈读 `/api/item` 的 entity_refs，标志随引用一起来；代表作那一侧
-        # 读 REP，入表时已经按 has_avatar 筛过。
-        self.assertPageContains(
-            "const ownerRef=ownerKind?(full.entity_refs?.[ownerKind]?.[0]||null):null;")
+        # 沉浸模式署名圈读 `/api/item` 的 entity_refs（`immerse.ts` 的 `ownerOf`，
+        # `frontend/test/react/immerse.test.tsx`），标志随引用一起来；代表作那一侧读 REP，
+        # 入表时已经按 has_avatar 筛过。
         self.assertPageContains(
             "tops.performers.forEach(x=>{if(x.rep&&x.has_avatar)REP[x.k]=x.rep});")
 
@@ -2084,7 +2074,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 作品详情侧栏各键的回执与撤销在岛里：`frontend/test/react/item-detail.test.tsx`。
         self.assertPageContains("toast:(message,{undo}={})=>actionReceipt(message,{undo}),")
         self.assertPageContains("actionReceipt(r.watch_later?'已加入稍后看':'已移出稍后看'")
-        self.assertPageContains("if(kind==='o')await post('o-undo')")
+        # 沉浸模式动作键的回执与撤销在沉浸岛里：`frontend/test/react/immerse.test.tsx`。
 
     def test_toast_callers_declare_whether_they_pass_text_or_html(self):
         """回执里的标签名来自账本，含 `<` 时不能被当成标签插进 DOM。
@@ -2136,18 +2126,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("await mapLimit(ids, 6, (id: number) => markItem(id, to))", source_list)
         self.assertIn("setProblem(`批量更新 ${result.failed.length}/${result.ids.length} 项未完成`)",
                       source_list)
-
-    def test_immerse_stream_does_not_pretend_to_paginate_a_random_sample(self):
-        """`sort=rand` 在服务端是未加种子的 `RANDOM()`，偏移量在它上面没有意义。
-
-        每续取一次把一个 `tokOffset` 加 60、再传给从不使用这个参数的
-        `fetchTok(off)` 的话，读代码的人会以为这条流是翻页来的。
-        """
-        self.assertPageLacks("tokOffset")
-        self.assertPageContains("async function fetchTok()")
-        self.assertPageContains("const more=await fetchTok()")
-        # 去重靠调用点的 seen 集合。
-        self.assertPageContains("const seen=new Set(tokList.map(x=>x.id))")
 
     def test_no_gutter_is_reserved_because_nothing_disappears_when_scrolling_locks(self):
         """设置面板给 body 加 overflow:hidden 时，整页不再横向跳。
@@ -2370,7 +2348,7 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_missing_person_identity_uses_unassigned_on_cards_and_players(self):
         self.assertPageContains(":{kind:'',name:'未归属'});")
-        self.assertPageContains("const ownerName=cast.length?cast[0]:(full.creator||'未归属');")
+        # 沉浸模式作者那行的兜底归沉浸岛：`frontend/test/react/immerse.test.tsx` 的 ownerOf 用例。
         self.assertPageLacks("it.creator||it.code")
         self.assertPageLacks("full.creator||it.code")
 
@@ -2388,7 +2366,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("function openUnowned(){")
         self.assertPageContains("resetHomeState();state.owner='none';")
         self.assertPageContains("openUnowned:()=>openUnowned(),")
-        self.assertPageContains("else openUnowned()};")
+        # 沉浸模式里没有署名人的作者行点开也落到这里：`frontend/test/react/immerse.test.tsx`。
         self.assertPageLacks("else if(it.code){state.q=it.code",
                              "拿番号去搜只能搜回这一条自己，那不是「同类」")
 
@@ -2981,20 +2959,9 @@ class WebUiSourceTests(unittest.TestCase):
         # 两边的 Video.js 读的都是原生 video 元素，沉浸模式拉不到播放器脚本时还是裸 video，
         # 所以快捷键只认 video 元素，两边共用一条实现。
         self.assertPageContains("function activeVideo()")
-        self.assertPageContains("if(!$('#tok').hidden)return tokVideo()")
         # 详情与小窗里那一个由舞台岛给（`stage-player.ts` 的 `activeStageVideo`）。
         self.assertPageContains("seekVideoBy(video,appSettings.seekSeconds*(e.key==='ArrowRight'?1:-1))")
         self.assertPageContains("toggleVideoPlayback(video)")
-
-    def test_immerse_click_toggles_playback_and_mobile_double_tap_seeks(self):
-        self.assertPageContains("function toggleVideoPlayback(video)")
-        self.assertPageContains("$('#tokTrack').onclick=()=>{")
-        self.assertPageContains("if(Date.now()<tokIgnoreClickUntil)return")
-        self.assertPageContains("const TOK_DOUBLE_TAP_MS=280")
-        self.assertPageContains("const side=clientX<window.innerWidth/2?-1:1")
-        self.assertPageContains("seekVideoBy(video,appSettings.seekSeconds*side)")
-        self.assertPageContains("handleTokTap(end.clientX)")
-        self.assertPageContains("touch-action:manipulation;cursor:pointer")
 
     def test_space_does_not_also_scroll_the_page(self):
         self.assertCode("if(e.key===' '||e.key==='k'||e.key==='K'){\n      e.preventDefault();")
@@ -3003,50 +2970,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("function isTypingTarget(el)")
         self.assertPageContains("el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable")
         self.assertPageContains("if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return")
-
-    def test_seek_clamps_without_comparing_against_nan_duration(self):
-        # duration 在元数据到位前是 NaN，Math.min(NaN,x) 会把 currentTime 写成 NaN。
-        self.assertPageContains(
-            "Number.isFinite(total)?Math.max(0,Math.min(total,target)):Math.max(0,target)")
-
-    def test_immerse_mode_names_the_whole_cast(self):
-        self.assertPageContains("const cast=full.performers||[]")
-        self.assertPageContains("cast.slice(0,3).join('、')")
-        self.assertPageContains("$('#tokAvatar').innerHTML=avatarInner(ownerName,ownerRef,REP[ownerName],ownerKind||'performer')")
-
-    def test_immerse_desktop_matches_the_youtube_shorts_layout_hierarchy(self):
-        self.assertPageContains('class="tokstage"')
-        self.assertPageContains('.tokstage{position:absolute;left:50%;top:50%;width:min(56.25vh,calc(100vw - 240px));aspect-ratio:9/16')
-        self.assertPageContains('.toktrack{position:absolute;inset:0;overflow:hidden;border-radius:var(--floating-radius);background:#000')
-        self.assertPageContains('.tokbtns{position:absolute;left:calc(100% + 12px);bottom:8px;width:72px')
-        self.assertPageContains('class="media-circle" id="tokDislike"')
-        self.assertPageContains('.media-circle{box-sizing:border-box;width:48px;height:48px;padding:0;border:0;border-radius:50%;')
-        self.assertPageContains('.tokui{position:absolute;left:20px;bottom:20px;width:min(520px,calc(50% - 28.125vh - 36px))')
-        self.assertPageContains('<div class="tokauthor"><button type="button" class="tokavatar"')
-        self.assertPageContains('<button type="button" class="toktitle" id="tokTitle"></button>')
-
-    def test_immerse_mobile_returns_to_a_full_viewport_player(self):
-        self.assertPageContains('.tokstage,.tokstage.wide{inset:0;width:100%;height:100%;aspect-ratio:auto;transform:none}')
-        self.assertPageContains('.toktrack{border-radius:0;box-shadow:none}')
-        self.assertPageContains('.tokbtns{left:auto;right:max(8px,env(safe-area-inset-right));bottom:92px;width:56px')
-
-    def test_immerse_centres_landscape_video_while_keeping_actions_inside(self):
-        self.assertPageContains("v.videoWidth&&v.videoHeight?v.videoWidth>=v.videoHeight:!!tokItemWide(it)")
-        self.assertPageContains("$('#tok .tokstage').classList.toggle('wide',wide)")
-        self.assertPageContains("$('#tok').classList.toggle('tok-wide',wide)")
-        self.assertPageContains('.tokstage.wide{left:50%;right:auto;width:min(64vw,177.778vh);aspect-ratio:16/9;transform:translate(-50%,-50%)}')
-        self.assertPageContains('.tokstage.wide .tokbtns{left:auto;right:12px;bottom:18px}')
-        self.assertPageContains('.tok.tok-wide .tokui{width:min(500px,calc(36vw - 56px))}')
-
-    def test_immerse_cancels_each_stream_when_switching_closing_or_leaving(self):
-        self.assertPageContains('const slide={el,video,player:null,session:newStreamSession(),disposed:false}')
-        self.assertPageContains('playableStreamSource(it,slide.session)')
-        self.assertPageContains('slide.disposed=true;tokSlides.delete(slide);cancelStreamSession(slide.session)')
-        self.assertPageContains('disposeTokSlide(old)')
-        self.assertPageContains('[...tokSlides].forEach(disposeTokSlide)')
-        self.assertPageContains('disposeTokSlide(incoming)')
-        self.assertPageContains("addEventListener('pagehide',()=>{")
-        self.assertPageContains('tokSlides.forEach(slide=>cancelStreamSession(slide.session))')
 
     def test_nothing_a_surface_starts_outlives_the_surface(self):
         """离开一个表面时，它开的东西必须跟着结束。
@@ -3357,21 +3280,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertNotIn(".vjs-volume-tooltip", board_css)
         # 提示本身的配色与字号由 `frontend/e2e/design.test.ts` 读计算样式。
 
-    def test_immerse_mode_has_loading_state_and_full_viewport_cover(self):
-        self.assertPageContains('id="tokLoader"')
-        self.assertPageContains("$('#tokLoader').insertAdjacentHTML('afterbegin',spinnerHtml('媒体加载中'))")
-        self.assertPageLacks('class="tokspinner"')
-        self.assertPageContains("function setTokLoading(on,label='加载中…',it=null)")
-        self.assertPageContains("function waitTokReady(video,timeout=15000)")
-        self.assertPageContains("width:100%;height:100%;object-fit:cover;background:#000")
-        # cover 只是基线；片源与视口比例差得多时切到 contain 完整显示。
-        # 判据本身由 test_immersive_fit_compares_source_against_the_viewport 覆盖，
-        # 这里只确认沉浸模式仍然接着那条规则走。
-        self.assertPageContains(".toktrack video.contain{object-fit:contain}")
-        self.assertPageContains("function applyTokFit(v)")
-        self.assertPageContains("v.addEventListener('loadedmetadata',fit,{once:true})")
+    def test_immerse_entry_button_carries_the_play_glyph(self):
+        # 顶栏入口留在壳里；沉浸模式本身（加载提示、铺满判定）归沉浸岛，
+        # 行为见 `frontend/test/react/immerse.test.tsx` 与 `frontend/e2e/immerse.test.ts`。
         self.assertPageContains("<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><use href=\"#i-play\"/>")
-        self.assertPageContains("await tokShow()")
 
     def test_tag_geometry_uses_shared_tokens(self):
         # 整圆现在只有一个来源。之前 999px / 99px / 9999px 三种写法并存，
@@ -3833,8 +3745,10 @@ class WebUiSourceTests(unittest.TestCase):
     # test_web_js.test_route_patterns_match_what_the_table_says_and_nothing_else。
 
     def test_immersive_mode_keeps_the_current_clip_in_the_url(self):
-        """竖划切片也过 route()：刷新之后落回同一条片子，而不是重新抽一批。"""
-        self.assertPageContains("route('/immerse?id='+it.id,true);")
+        """竖划切片也过 route()：刷新之后落回同一条片子，而不是重新抽一批。
+
+        换条时写地址、刷新落回同一条由 `frontend/e2e/immerse.test.ts` 在浏览器里走一遍。
+        """
         self.assertRoute('/immerse', "openTok(immerseStartId(),push)")
         self.assertPageContains("function immerseStartId(){")
 
@@ -4027,31 +3941,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 三档都必须在既有刻度里，新增字号前先证明现有 8 档都不合适。
         self.assertPageContains("--fs-xl:20px; --fs-2xl:24px; --fs-3xl:32px;")
 
-    def test_immersive_progress_bar_is_reachable_and_draggable(self):
-        """4px 高、贴在屏幕最下沿、只能点不能拖——鼠标难瑞，手机几乎摸不到。"""
-        self.assertPageContains(".tokbar{position:absolute;left:0;right:0;bottom:0;height:20px")
-        self.assertPageContains("touch-action:none")
-        self.assertPageContains(".tokbar:hover::before,.tokbar:hover i,")
-        self.assertPageContains("function tokWireScrub(bar,prog,video,duration)")
-        self.assertPageContains("bar.setPointerCapture(e.pointerId)")
-        # 拖动中只画进度，松手才 seek：每帧 seek 会让远程源一直重新缓冲。
-        self.assertPageContains("if(scrubbing)prog.style.width=")
-        # 手机上任何位置横划都能拖进度，竖划仍然切片。
-        self.assertPageContains("tokTouch.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';")
-        self.assertPageContains("{passive:false}")
-
-    def test_immersive_title_opens_the_detail_page(self):
-        """沉浸模式里只看得到文件名，标题要能点进详情页。
-
-        标题不可点的话，想看标签、相关推荐或改东西得先退出再去列表里把它找回来，
-        而旁边的创作者一直是可点的。
-        """
-        self.assertPageContains('<button type="button" class="toktitle" id="tokTitle">')
-        self.assertPageContains(
-            "$('#tokTitle').onclick=()=>{const id=it.id;$('#tokClose').click();openItem(id)};")
-        # `.tokui` 整层 pointer-events:none，不把标题放行就是个点不到的按钮。
-        self.assertPageContains("cursor:pointer;pointer-events:auto;")
-
     def test_surface_navigation_clears_stale_panels_and_ignores_late_responses(self):
         """跨页面请求返回较慢时，旧统计/复核响应不能覆盖当前页面。"""
         self.assertPageContains("const claimSurface=path=>{")
@@ -4066,9 +3955,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 「换一批」在管理区的行为写在路由表的 refresh 上，不再每页一条分支。
         self.assertPageContains("if(hit?.route.refresh==='reopen'){await hit.route.open(hit.params,false);return}")
         self.assertRoute('/review', "refresh:'reopen'")
-
-    def test_immersive_close_restores_the_home_surface(self):
-        self.assertPageContains("document.body.style.overflow='';openHome()")
 
     def test_empty_states_keep_title_description_and_spacing_together(self):
         self.assertPageContains('export function emptyStateHtml(iconName,title,description')
@@ -4321,7 +4207,6 @@ class WebUiSourceTests(unittest.TestCase):
                          "导航分支只能留一份 navTo")
         self.assertPageContains("if(k===''){openHome();return}")
         self.assertPageContains("$('#brandHome').onclick=e=>{e.preventDefault();openHome(true)};")
-        self.assertPageContains("document.body.style.overflow='';openHome()")
         self.assertPageLacks("clearTokTap();route('/');")
         self.assertCode("state.state=k}\n  route(homePath());")
 
@@ -5297,7 +5182,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn(":is(.followauthors,.followworks,.relatedpeople) .av .ring{width:48px;height:48px;", board)
         self.assertIn(":is(.followauthors,.followworks) .brandpill .mk{width:28px;height:28px;", board)
         self.assertIn(":is(.followauthors,.followworks,.relatedpeople) .av .nm{display:block;max-width:100%;font:var(--board-caption);", board)
-        self.assertPageContains("const list=d.items.filter(x=>x.cost!=='metered' && x.duration && !sourceOffline(x.location));")
+        # 沉浸片单滤掉按量计费、无时长与离线来源的条目：沉浸岛的 playable，`frontend/test/react/immerse.test.tsx`。
 
     def test_the_select_menu_keeps_a_touch_target_on_phones(self):
         """窄屏下下拉菜单的每一行到 44px。
@@ -5780,9 +5665,8 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains(".javedition.subtitle{color:var(--ink-2)}")
         self.assertPageContains(".javedition.uncensored{color:var(--meter)}")
         self.assertPageContains(".javedition.cracked{color:var(--drop)}")
-        # 作品详情的标题与队列行由壳交给详情岛的这两个函数画。
+        # 作品详情的标题与队列行、沉浸模式的标题由壳交给岛的这两个函数画。
         self.assertPageContains("titleHtml:it=>javTitleHtml(it),")
-        self.assertPageContains("$('#tokTitle').textContent=javDisplayName(it)")
         self.assertPageContains("displayName:it=>javDisplayName(it),")
 
     def test_remote_hover_previews_do_not_stream_full_media(self):
@@ -6521,12 +6405,11 @@ class WebUiSourceTests(unittest.TestCase):
             # 小窗信息栏、播放器右键菜单、统计面板与队列的尾部省略在 `stage.css` / `player.css`，
             # 标题、来源和标签都是语义文本，不在这份遗留样式表里。顶栏搜索下拉栏里的行
             # 归 `search.css`，截断的是词、人名和番号，同样是语义文本。设置面板侧栏排序那一行的
-            # 页面名在 `settings-panel.css`，也是语义文本。
+            # 页面名在 `settings-panel.css`，也是语义文本。沉浸模式的标题在 `immerse.css`，同理。
             ".pickrowtext b",
             ".tastesummary>small",
             ".gselectfield>span",
             ".tg",
-            ".tokui .toktitle",
             "body[data-density=\"dense\"] .card .meta .t",
         }
         css_without_comments = re.sub(r"/\*.*?\*/", "", self.css, flags=re.S)
@@ -8580,19 +8463,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 由 `photo-lightbox.test.tsx` 与 e2e 钉住；首屏页面不许直接挂它。
         self.assertPageLacks('<script src="/vendor/swiper', "灯箱才用得上，不进首屏")
 
-    def test_sprite_icons_declare_stroke_and_no_fill(self):
-        """Lucide 描边图标缺 `fill:none;stroke:currentColor` 就被按默认的
-        fill:black/stroke:none 画成黑块——深色底上等于看不见，`i-x` 这种纯开放
-        路径则整个消失（关闭按钮上「没有 x」就是这么来的）。
-        """
-        self.assertPageContains(
-            ".media-circle svg{display:block;width:24px;height:24px;flex:none;stroke:currentColor;fill:none")
-
-    def test_photo_navigation_reuses_one_overlay_button_treatment(self):
-        self.assertPageContains(
-            ".media-circle{box-sizing:border-box;width:48px;height:48px;padding:0;border:0;border-radius:50%;")
-        self.assertPageContains('class="media-circle" id="tokDislike"')
-
     def test_the_review_skeleton_is_built_from_the_real_page_containers(self):
         """骨架用最终容器的类名，分栏和列宽就都由页面自己那套规则给。
 
@@ -8610,34 +8480,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("body .review-skeleton .reviewbulktoolbar{position:static;border-radius:16px;", board)
         # 占位卡和到货的卡圆角同一档，不然读完数据整片网格会跳一下。
         self.assertIn(".review-skeleton .skeletoncard{border:0;border-radius:16px;", board)
-
-    def test_immersive_fit_compares_source_against_the_viewport(self):
-        """竖屏沉浸模式看横屏视频必须完整显示。
-
-        旧判据只看「片源是不是竖屏」：竖屏片源 contain、横屏一律 cover。于是
-        16:9 进 9:19.5 的竖屏视口照样 cover，按高度放大到两边各裁掉一大半，
-        也就是「看不全」。判据必须同时看视口比例。
-        """
-        self.assertPageContains("const source=v.videoWidth/v.videoHeight")
-        self.assertPageContains("track.clientWidth/track.clientHeight")
-        self.assertPageContains("const mismatch=source>box?source/box:box/source")
-        self.assertPageContains("v.classList.toggle('contain',mismatch>TOK_FIT_TOLERANCE)")
-        self.assertPageContains(".toktrack video.contain{object-fit:contain}")
-        # 旧判据不能残留：它正是「横屏一律铺满」的来源。
-        self.assertPageLacks("v.videoWidth<v.videoHeight")
-        self.assertPageLacks(".toktrack video.portrait")
-
-    def test_immersive_fit_tolerance_stays_tight_enough_to_not_crop_shorts(self):
-        """容差放宽会顺手把竖屏短片改成 cover——那是没人要求的回退。
-
-        9:16 片源在 9:19.5 手机上比例差 1.22；容差必须小于它，这类片源才继续
-        完整显示。原代码对竖屏用 contain 是有意的选择，不该被这次修复带走。
-        """
-        self.assertPageContains("const TOK_FIT_TOLERANCE=1.05")
-
-    def test_immersive_fit_is_recomputed_when_the_viewport_changes(self):
-        # 视口比例随旋转和窗口尺寸变；只在 loadedmetadata 算一次，转屏后就错。
-        self.assertPageContains("$('#tokTrack').querySelectorAll('video').forEach(tokFitOne)")
 
     def test_source_tools_never_take_a_path_from_the_client(self):
         """定位和对账都只发 asset id，路径由服务端查。

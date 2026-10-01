@@ -100,7 +100,7 @@
 }
 
 /* ── 圆钮 ──
- * 关闭与翻页同一副媒体圆钮的几何（`08-photos.css` 的 `.media-circle`）：图标居中，玻璃压在图上。
+ * 关闭与翻页同一副媒体圆钮的几何（沉浸岛 `immerse.css` 的 `[data-immerse-circle]`）：图标居中，玻璃压在图上。
  * 翻页键再换成 Board 的控件面，36px 圆角方钮。控件面读 `web/board.css` 根上的别名（`--surface`、
  * `--line`、`--ink-2`、`--hover`、`--inset`）：React 容器按 BoardUI 上游原文重新声明了同名的
  * `--color-*`，直接读会拿到另一套值。 */

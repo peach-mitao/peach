@@ -1,5 +1,5 @@
 import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, sidebarSectionHtml, wireSidebarGroups, transitionTheme } from './dist/peach-ui.js';
-import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtDur, fmtSize, foldName, icon, isCatalogPath, realDuration, seededRank} from './js/core.js';
+import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
 import { faceFrame } from './js/face-frame.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
@@ -17,7 +17,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, syncSidebarSurface, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { javImageKind, normalizeJavLayout, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages, nativeImageFit, faceSourceScale, entitySkeletonHtml } from './dist/peach-ui.js';
-import { cancelStreamSession, clickPlayerControl, directStreamSource, ensureVideojs, fmtSpeed, loadStage, newStreamSession, playableStreamSource, stageApi, streamSpeedBits, wireTelemetry as playerWireTelemetry } from './dist/peach-ui.js';
+import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, breadcrumbHtml, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
   fitSkeleton, formModal, iconSwapHtml, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
@@ -231,7 +231,6 @@ const reviewSkeletonHtml=(label='正在读取复核队列')=>`<div class="review
   <section class="reviewsection"><div class="reviewlist">${
     '<div class="skeletoncard" aria-hidden="true"><i></i><b></b><em></em></div>'.repeat(6)}</div></section></div>`;
 $('#loadSentinel').innerHTML=loadingDotsHtml('继续载入中…');
-$('#tokLoader').insertAdjacentHTML('afterbegin',spinnerHtml('媒体加载中'));
 /* 网格还没挂上 island 时，壳把骨架写进 `#grid > .grid`。卡片都归 island：目录与回收站是
    `catalog-grid`，垃圾文件是 `junk-queue`。同形骨架复用节点，只有骨架交给内容才淡入。 */
 const setGridCards=html=>revealSkeleton($('#grid'),()=>{$('#grid').innerHTML=`<div class="grid">${html}</div>`});
@@ -4753,264 +4752,32 @@ async function closeItemDetail(){
   else{buildBars();if(location.pathname==='/playlists')openPlaylists(false)}
 }
 
-/* 沉浸模式的观看上报（`frontend/src/player/telemetry.ts`）：放完接着放下一条。 */
-function wireTelemetry(it,v,sel){
-  playerWireTelemetry(it,v,{...sel,onEnded:()=>{if(!$('#tok').hidden)tokNext(1)}});
-}
-
-/* ── 短片全屏 ── */
-let tokList=[],tokIdx=0,tokSwitching=false,tokNetTimer=null,tokLoadHideTimer=null,tokLoadingLabel='加载中…';
-/* 沉浸模式的每一格：外层 `.tokslide` 负责上下滑动，里面的 video 交给 Video.js。
-   片源和详情同一个判据（`playableStreamSource`），要转码分片的片子只有 Video.js 播得了。
-   每格一个流会话，切走、关闭、离开页面时按会话取消。当前格用变量持有，不按 id 查：
-   Video.js 挂载后会把 video 的 id 挪到外包的 div 上。 */
-let tokCurrent=null;
-const tokSlides=new Set();
-const tokVideo=()=>tokCurrent?.video||null;
-function createTokSlide(track,offset=0){
-  const el=document.createElement('div');el.className='tokslide';
-  if(offset)el.style.transform=`translateY(${offset}%)`;
-  // `video-js` 类要写在挂载前的 video 上，Video.js 才会把它带到外包 div 上。
-  const video=document.createElement('video');video.className='video-js';video.playsInline=true;video.preload='auto';
-  el.appendChild(video);track.appendChild(el);
-  const slide={el,video,player:null,session:newStreamSession(),disposed:false};
-  tokSlides.add(slide);return slide;
-}
-async function loadTokSlide(slide,it){
-  const [source,vjs]=await Promise.all([
-    playableStreamSource(it,slide.session),ensureVideojs().catch(()=>null)]);
-  if(slide.disposed)return;
-  const direct=directStreamSource(it,slide.session);
-  const segmented=String(source.type||'').includes('mpegurl');
-  // 播放器脚本拉不到时退回原生 video；原生元素播不了分片，只能直读。
-  if(!vjs){slide.video.src=(segmented?direct:source).src;return}
-  // 只留媒体本身：进度条、加载提示和动作键都由沉浸模式自己画。
-  slide.player=vjs(slide.video,{controls:false,preload:'auto',
-    posterImage:false,titleBar:false,textTrackDisplay:false,loadingSpinner:false,
-    bigPlayButton:false,controlBar:false,errorDisplay:false,textTrackSettings:false});
-  // 分片出错退回直读，和详情播放器同一个兜底。
-  if(segmented)slide.player.one('error',()=>{if(!slide.disposed)slide.player.src(direct)});
-  slide.player.src(source);
-}
-function disposeTokSlide(slide){
-  if(!slide||slide.disposed)return;
-  slide.disposed=true;tokSlides.delete(slide);cancelStreamSession(slide.session);
-  if(slide.player&&!slide.player.isDisposed())slide.player.dispose();
-  else{slide.video.pause();slide.video.removeAttribute('src');slide.video.load()}
-  slide.el.remove();
-  if(tokCurrent===slide)tokCurrent=null;
-}
-/* 沉浸模式 = 滚动刷新的连续流，横屏竖屏都进（不是「短片模式」）。
-   队列滚到尾自动续取下一页，形成无限流。 */
-let tokLoading=false;
-/* 没有 offset 参数：`sort=rand` 在服务端是未加种子的 `RANDOM()`（web_contract.py），
-   每次请求都是一次全新的随机抽样，翻页偏移在它上面没有意义——带上去只会随机跳过
-   若干行。续取靠的是调用点那个 `seen` 集合去重，不是偏移量。 */
-async function fetchTok(){
-  const p=new URLSearchParams(Object.entries(state).filter(([,v])=>v));
-  p.delete('orient');                        // 不限画幅
-  p.set('sort','rand');                      // ⚠️ 随机，不是顺序播前 60 个
-  p.set('limit',60); p.set('offset',0); p.set('thumb','');
-  const d=await api('/api/items?'+p);
-  // 脱盘来源的片子拉不到流，进了队列就是一条黑屏加载中；详情页有门挡着，这里只能在入口筛掉。
-  const list=d.items.filter(x=>x.cost!=='metered' && x.duration && !sourceOffline(x.location));
-  for(let i=list.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[list[i],list[j]]=[list[j],list[i]]}
-  return list;
-}
-function updateTokLoading(it){
-  const text=$('#tokLoadingText');if(!text)return;
-  const speed=it?streamSpeedBits(it.id):0;
-  text.textContent=speed?`${tokLoadingLabel} · ${fmtSpeed(speed)}`:tokLoadingLabel;
-}
-function setTokLoading(on,label='加载中…',it=null){
-  const loader=$('#tokLoader');if(!loader)return;
-  if(tokLoadHideTimer){clearTimeout(tokLoadHideTimer);tokLoadHideTimer=null}
-  if(!on){loader.hidden=true;if(tokNetTimer){clearInterval(tokNetTimer);tokNetTimer=null}return}
-  tokLoadingLabel=label;loader.hidden=false;updateTokLoading(it);
-  if(tokNetTimer)clearInterval(tokNetTimer);
-  tokNetTimer=setInterval(()=>updateTokLoading(tokList[tokIdx]),500);
-}
-function waitTokReady(video,timeout=15000){
-  if(video.readyState>=3)return Promise.resolve();
-  return new Promise(resolve=>{
-    let finished=false;
-    const done=()=>{if(finished)return;finished=true;
-      ['loadeddata','canplay','error'].forEach(event=>video.removeEventListener(event,done));resolve()};
-    ['loadeddata','canplay','error'].forEach(event=>video.addEventListener(event,done,{once:true}));
-    setTimeout(done,timeout);
-  });
-}
-/* 沉浸模式默认 cover 铺满，但那只在片源和视口比例接近时才成立。
-   旧判据是「片源是不是竖屏」：于是 16:9 的横屏进竖屏视口照样 cover，按高度放大到
-   两边各裁掉一大半——就是「竖屏沉浸模式看横屏视频看不全」。
-   判据改成两者比例差多少。容差取得很紧（1.05）是刻意的：原代码对竖屏片源用
-   contain，是「不裁掉正在看的画面」的有意选择，只有横屏那一格判错了。放宽到
-   1.25 会顺手把 9:16 片源在 9:19.5 手机上改成 cover、裁掉约 18% 高度——那是
-   没人要求的回退。现在只有比例几乎一致时才 cover（省掉取整产生的 1px 黑边），
-   其余一律完整显示。
-   视口比例会随旋转和窗口尺寸改变，所以必须跟着重算，不能只在 loadedmetadata 算一次。 */
-const TOK_FIT_TOLERANCE=1.05;
-function tokFitOne(v){
-  if(!v||!v.videoWidth||!v.videoHeight)return;
-  const track=v.closest('.toktrack');
-  const box=(track&&track.clientWidth&&track.clientHeight)
-    ? track.clientWidth/track.clientHeight
-    : window.innerWidth/window.innerHeight;
-  if(!box||!isFinite(box))return;
-  const source=v.videoWidth/v.videoHeight;
-  const mismatch=source>box?source/box:box/source;
-  v.classList.toggle('contain',mismatch>TOK_FIT_TOLERANCE);
-}
-/* 舞台形状（竖 9:16／横 16:9）只在一条片子真正出画时换。新片预加载时旧片还在屏上，
-   形状提前翻过去，旧片就被塞进另一种比例的框里。换完形状，框里每条片子的铺满判定重算。 */
-const tokItemWide=it=>it?.width>0&&it?.height>0?it.width>=it.height:null;
-const tokVideoWide=(v,it)=>v.videoWidth&&v.videoHeight?v.videoWidth>=v.videoHeight:!!tokItemWide(it);
-function setTokStage(wide){
-  $('#tok .tokstage').classList.toggle('wide',wide);
-  $('#tok').classList.toggle('tok-wide',wide);
-  $('#tokTrack').querySelectorAll('video').forEach(tokFitOne);
-}
-function applyTokFit(v){
-  v.classList.remove('contain');
-  const fit=()=>tokFitOne(v);
-  if(v.readyState>=1)fit();
-  else v.addEventListener('loadedmetadata',fit,{once:true});
-}
-// 旋转手机或改窗口大小后，同一条视频的铺满／完整显示判定可能翻转。
-addEventListener('resize',()=>{
-  if($('#tok').hidden)return;
-  $('#tokTrack').querySelectorAll('video').forEach(tokFitOne);
-});
-async function openTok(startId,push=true){
+/* ── 沉浸模式（`frontend/src/react/immerse/`）──
+   全屏连播、每一格的播放器、手势与动作键都归沉浸岛；壳只留路由入口、地址栏与首页筛选。
+   岛所在的 React 包第一次打开沉浸模式时才装载，之前 `immerseApi()` 是 null：那时它必然没开。 */
+const immerseHost={
+  filters:()=>state,
+  seekSeconds:()=>appSettings.seekSeconds,
+  sourceOffline:key=>sourceOffline(key),
+  displayName:it=>javDisplayName(it),
+  avatarHtml:(name,ref,kind)=>avatarInner(name,ref,REP[name],kind),
+  /* 每换一条用 replace 写地址：每划一下都往历史里塞一条，后退键就废了。 */
+  route:id=>route('/immerse?id='+id,true),
+  closed:()=>openHome(),
+  openItem:id=>void openItem(id),
+  openEntity:(kind,name)=>openEntity(kind,name),
+  openUnowned:()=>openUnowned(),
+  cache:it=>{CACHE[it.id]=it},
+  toast:(message,{undo}={})=>actionReceipt(message,{undo}),
+  warn:message=>toast({text:message},{sound:'warning'}),
+  failure:(action,error)=>actionFailure(action,error),
+};
+const immerseOpen=()=>!!immerseApi()?.isOpen();
+/* 小窗开着时打开沉浸模式先关小窗：两个播放器不同时出声。 */
+async function openTok(startId=null,push=true){
   if(push)route('/immerse');
   stageApi()?.closeMiniplayer();
-  $('#tok').hidden=false;$('#tok').classList.add('tok-idle');
-  document.body.style.overflow='hidden';setTokLoading(true,'加载内容…');
-  try{
-    tokList=await fetchTok();
-    if(startId&&!tokList.some(x=>x.id===startId)){
-      const selectedItem=await api('/api/item?id='+startId);
-      if(selectedItem.id)tokList=[selectedItem,...tokList.filter(x=>x.id!==startId)];
-    }
-    if(!tokList.length){$('#tokClose').click();toast({text:'当前筛选下没有可直接播放的内容'},{sound:'warning'});return}
-    tokIdx=Math.max(0,tokList.findIndex(x=>x.id===startId));
-    await tokShow();
-  }catch(_e){setTokLoading(false);$('#tokClose').click()}
-}
-async function tokShow(dir){
-  const it=tokList[tokIdx];if(!it||tokSwitching)return;
-  /* 当前这一条也过一遍 route()：竖划十条之后刷新页面，落回来的该是同一条片子，
-     而不是重新抽一批。用 replace——每划一下都往历史里塞一条，后退键就废了。 */
-  route('/immerse?id='+it.id,true);
-  tokSwitching=true;setTokLoading(true,dir?'切换中…':'加载中…',it);
-  let incoming=null;
-  try{
-    const full=await api('/api/item?id='+it.id);
-    const track=$('#tokTrack'),old=tokCurrent,slide=!!(dir&&old);
-    if(!slide)disposeTokSlide(old);
-    incoming=createTokSlide(track,slide?(dir>0?100:-100):0);
-    const v=incoming.video;applyTokFit(v);
-    await loadTokSlide(incoming,it);
-    await waitTokReady(v);
-    if(incoming.disposed)return;
-    setTokStage(tokVideoWide(v,it));
-    if(slide){
-      const next=incoming;
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        old.el.style.transform=`translateY(${dir>0?-100:100}%)`;next.el.style.transform=''}));
-      await new Promise(resolve=>setTimeout(resolve,210));
-      // 动画帧没跑到（页面在后台）也要落位，否则新片停在屏幕外。
-      disposeTokSlide(old);next.el.style.transform='';
-    }
-    tokCurrent=incoming;incoming=null;
-    $('#tok').classList.remove('tok-idle');
-    if(location.pathname==='/'){
-      const url=new URL(location.href),query=new URLSearchParams();
-      for(const key of ['q','loc','creator','studio','tag','len','dur_min','dur_max','orient','state','sort','dir']){
-        const value=state[key];if(value&&!(key==='loc'&&value==='local,115')&&!(key==='sort'&&value==='daily'))query.set(key,value)
-      }
-      url.search=query.toString();history.replaceState({},'',url.pathname+(url.search||''));
-    }
-    v.play().catch(()=>{});
-    $('#tokTitle').textContent=javDisplayName(it);
-    // 标题进详情页。沉浸模式里只看得到文件名，想看标签、相关推荐或改东西
-    // 都得先退出再去列表里把它找回来。路径和旁边的创作者链接一致：先关，再开。
-    $('#tokTitle').onclick=()=>{const id=it.id;$('#tokClose').click();openItem(id)};
-    // 共演作品在沉浸模式也要念全出镜者；点击仍进第一位的资料页。
-    const cast=full.performers||[];
-    const who=cast.length
-      ? cast.slice(0,3).join('、')+(cast.length>3?` 等 ${cast.length} 人`:'')
-      : (full.creator||'未归属');
-    const ownerKind=cast.length?'performer':(full.creator?'creator':'');
-    const ownerName=cast.length?cast[0]:(full.creator||'未归属');
-    const ownerRef=ownerKind?(full.entity_refs?.[ownerKind]?.[0]||null):null;
-    $('#tokAvatar').innerHTML=avatarInner(ownerName,ownerRef,REP[ownerName],ownerKind||'performer');
-    $('#tokWho').textContent=who;
-    const openTokOwner=e=>{e.preventDefault();
-      $('#tokClose').click();
-      if(full.performers&&full.performers[0])openEntity('performer',full.performers[0]);
-      else if(full.creator)openEntity('creator',full.creator);
-      else openUnowned()};
-    $('#tokWho').onclick=openTokOwner;
-    $('#tokAvatar').onclick=openTokOwner;
-    $('#tokMeta').textContent=`· ${fmtDur(it.duration)} · ${it.ctx_orient||''} · ${tokIdx+1}/${tokList.length}`;
-    // 进度条
-    const bar=$('#tokBar'), prog=$('#tokProg');
-    const upd=()=>{const d=realDuration(v.duration)||realDuration(it.duration);
-      if(d)prog.style.width=(v.currentTime/d*100).toFixed(2)+'%'};
-    v.addEventListener('timeupdate',upd);
-    // 拖动而不只是点。pointer 一套同时盖鼠标和触控，捕获指针后手滑出进度条
-    // 也不会断。拖动中只画进度，松手才 seek——每帧都 seek 会让远程源一直重新缓冲。
-    tokWireScrub(bar,prog,v,()=>realDuration(v.duration)||realDuration(it.duration));
-    $('#tokDislike').setAttribute('aria-pressed',full.feedback==='dislike');
-    $('#tokSeen').setAttribute('aria-pressed',full.feedback==='seen');
-    $('#tokSeenLabel').textContent=full.feedback==='seen'?'已看':'看过';
-    $('#tokOn').textContent=full.o_count||0;
-    api('/api/play',{method:'POST',body:JSON.stringify({id:it.id})});
-    wireTelemetry(it,v,{});
-    setTokLoading(false);
-  }catch(_e){
-    disposeTokSlide(incoming);
-    setTokLoading(false)
-  }finally{tokSwitching=false}
-}
-/* 进度条拖动。抽成函数是因为每次切片都要重新绑一次，而监听器必须能被覆盖。 */
-function tokWireScrub(bar,prog,video,duration){
-  const ratio=event=>{const r=bar.getBoundingClientRect();
-    return Math.min(1,Math.max(0,(event.clientX-r.left)/r.width))};
-  let scrubbing=false;
-  bar.onpointerdown=e=>{
-    const d=duration(); if(!d)return;
-    scrubbing=true;bar.classList.add('scrubbing');bar.setPointerCapture(e.pointerId);
-    prog.style.width=(ratio(e)*100).toFixed(2)+'%';
-    e.preventDefault();
-  };
-  bar.onpointermove=e=>{if(scrubbing)prog.style.width=(ratio(e)*100).toFixed(2)+'%'};
-  const finish=e=>{
-    if(!scrubbing)return;
-    scrubbing=false;bar.classList.remove('scrubbing');
-    const d=duration(); if(d)video.currentTime=d*ratio(e);
-  };
-  bar.onpointerup=finish;
-  bar.onpointercancel=e=>{scrubbing=false;bar.classList.remove('scrubbing')};
-  // 没拖动的单击走同一条路：pointerdown 已经画了进度，pointerup 落地。
-  bar.onclick=null;
-}
-async function tokNext(d){
-  if(tokSwitching)return;
-  tokIdx=tokIdx+d;
-  setTokLoading(true,'切换中…',tokList[tokIdx]);
-  // 滚到尾部就续取下一页 —— 无限流
-  if(tokIdx>=tokList.length-3 && !tokLoading){
-    tokLoading=true;
-    const more=await fetchTok();   // 每次都是新的随机抽样
-    if(more.length){const seen=new Set(tokList.map(x=>x.id));
-      tokList=tokList.concat(more.filter(x=>!seen.has(x.id)))}
-    tokLoading=false;
-  }
-  if(tokIdx>=tokList.length)tokIdx=0;
-  if(tokIdx<0)tokIdx=tokList.length-1;
-  await tokShow(d);
+  await (await loadImmerse(immerseHost)).open(startId);
 }
 $('#immerseBtn').onclick=()=>openTok();
 
@@ -5074,133 +4841,23 @@ document.addEventListener('pointerdown',event=>{
   if(!event.target.closest('.search'))hideSearchMenu();
 },true);
 $('#brandHome').onclick=e=>{e.preventDefault();openHome(true)};
-$('#tokClose').onclick=()=>{setTokLoading(false);clearTokTap();$('#tok').hidden=true;
-  [...tokSlides].forEach(disposeTokSlide);setTokStage(false);
-  tokSwitching=false;document.body.style.overflow='';openHome()};
-addEventListener('pagehide',()=>{
-  tokSlides.forEach(slide=>cancelStreamSession(slide.session));
-});
-let wl=0;
-$('#tok').addEventListener('wheel',e=>{const n=Date.now();if(n-wl<260)return;wl=n;tokNext(e.deltaY>0?1:-1)},{passive:true});
-/* 手机上竖划切片、横划拖进度。横划在哪儿起手都行——屏幕最下沿那条
-   进度条在手机上几乎摸不到。方向一旦定下就不再改，否则斜着划会又切片又跳进度。
-   位移按屏宽换算成时长的相对量，所以从任何位置起手都是「往右 = 往后」。 */
-const TOK_DOUBLE_TAP_MS=280;
-let tokTouch=null,tokTapTimer=null,tokLastTap=null,tokIgnoreClickUntil=0;
-function clearTokTap(){
-  if(tokTapTimer)clearTimeout(tokTapTimer);
-  tokTapTimer=null;tokLastTap=null;
-}
-function toggleVideoPlayback(video){
-  if(!video)return;
-  if(video.paused)video.play().catch(()=>{});else video.pause();
-}
-function handleTokTap(clientX){
-  const video=tokVideo();if(!video)return;
-  const side=clientX<window.innerWidth/2?-1:1;
-  const now=Date.now();
-  if(tokLastTap&&tokLastTap.side===side&&now-tokLastTap.at<=TOK_DOUBLE_TAP_MS){
-    clearTokTap();
-    seekVideoBy(video,appSettings.seekSeconds*side);
-    return;
-  }
-  // 两次点在不同半区时，第一下仍是一次完整的单击；立即兑现后再等当前点击。
-  if(tokTapTimer){clearTimeout(tokTapTimer);tokTapTimer=null;toggleVideoPlayback(video)}
-  tokLastTap={side,at:now};
-  tokTapTimer=setTimeout(()=>{
-    tokTapTimer=null;tokLastTap=null;
-    if(!$('#tok').hidden)toggleVideoPlayback(tokVideo());
-  },TOK_DOUBLE_TAP_MS);
-}
-$('#tokTrack').onclick=()=>{
-  // 触屏的合成 click 会紧跟 touchend；那一下已经由单击/双击判定接管，不能再切一次。
-  if(Date.now()<tokIgnoreClickUntil)return;
-  toggleVideoPlayback(tokVideo());
-};
-$('#tok').addEventListener('touchstart',e=>{
-  if(e.touches.length!==1||!e.target.closest('.toktrack')){tokTouch=null;return}
-  const v=tokVideo();
-  tokTouch={x:e.touches[0].clientX,y:e.touches[0].clientY,axis:'',
-    from:v?v.currentTime||0:0};
-},{passive:true});
-$('#tok').addEventListener('touchmove',e=>{
-  if(!tokTouch||e.touches.length!==1)return;
-  const dx=e.touches[0].clientX-tokTouch.x,dy=e.touches[0].clientY-tokTouch.y;
-  if(!tokTouch.axis){
-    if(Math.abs(dx)<12&&Math.abs(dy)<12)return;
-    tokTouch.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
-    if(tokTouch.axis==='x')$('#tokBar').classList.add('scrubbing');
-  }
-  if(tokTouch.axis!=='x')return;
-  const v=tokVideo(),d=v&&(v.duration||0);
-  if(!d)return;
-  e.preventDefault();                       // 横划归进度，不交给页面滚动
-  tokTouch.to=Math.min(d,Math.max(0,tokTouch.from+dx/window.innerWidth*d));
-  $('#tokProg').style.width=(tokTouch.to/d*100).toFixed(2)+'%';
-},{passive:false});
-$('#tok').addEventListener('touchend',e=>{
-  if(!tokTouch)return;
-  const touch=tokTouch;tokTouch=null;
-  tokIgnoreClickUntil=Date.now()+700;
-  $('#tokBar').classList.remove('scrubbing');
-  if(touch.axis==='x'){
-    const v=tokVideo();
-    if(v&&touch.to!=null)v.currentTime=touch.to;
-    return;
-  }
-  const end=e.changedTouches[0],dx=end.clientX-touch.x,dy=touch.y-end.clientY;
-  if(Math.abs(dy)>60){clearTokTap();tokNext(dy>0?1:-1);return}
-  if(Math.abs(dx)<=14&&Math.abs(dy)<=14){
-    e.preventDefault();
-    handleTokTap(end.clientX);
-  }
-},{passive:false});
-$('#tok').addEventListener('touchcancel',()=>{
-  tokTouch=null;$('#tokBar').classList.remove('scrubbing');
-},{passive:true});
-[['#tokDislike','dislike'],['#tokSeen','seen'],['#tokO','o']].forEach(([s,kind])=>{
-  $(s).onclick=async()=>{const it=tokList[tokIdx],button=$(s),before=it.feedback||null;
-    const paint=r=>{Object.assign(it,{feedback:r.feedback,o_count:r.o_count});
-      if(tokList[tokIdx]?.id!==it.id)return;
-      $('#tokDislike').setAttribute('aria-pressed',r.feedback==='dislike');
-      $('#tokSeen').setAttribute('aria-pressed',r.feedback==='seen');
-      $('#tokSeenLabel').textContent=r.feedback==='seen'?'已看':'看过';
-      $('#tokOn').textContent=r.o_count||0};
-    const post=async value=>{const r=await api('/api/feedback',{method:'POST',
-      body:JSON.stringify({id:it.id,kind:value})});paint(r);return r};
-    setActionBusy(button);
-    try{const r=await post(kind);
-      actionReceipt(kind==='o'?'已记录一次高潮':r.feedback===kind?
-        (kind==='seen'?'已标记看过':'已标记不合口味'):
-        (kind==='seen'?'已取消看过':'已取消不合口味'),{undo:async()=>{
-          if(kind==='o')await post('o-undo');
-          else{if(r.feedback)await post(r.feedback);if(before)await post(before)}
-        }});
-      if(kind==='dislike'&&r.feedback==='dislike')setTimeout(()=>tokNext(1),260)
-    }catch(error){actionFailure('更新反馈',error)}finally{setActionBusy(button,false)}}});
-
 /* 当前该响应播放快捷键的 video：沉浸模式优先，其次舞台（详情里的，没开详情就是小窗里的），都没开
-   就返回 null。直接操作原生元素而不是 Video.js 实例：两边的 Video.js 读的都是这个元素，
-   沉浸模式在播放器脚本拉不到时还是裸 video，一条实现全盖住。 */
+   就返回 null。切换播放与快进快退在 `frontend/src/player/playback.ts`，沉浸岛的单击、双击也用它。 */
 function activeVideo(){
-  if(!$('#tok').hidden)return tokVideo();
+  if(immerseOpen())return immerseApi().activeVideo();
   return stageApi()?.activeVideo()||null;
 }
 function isTypingTarget(el){
   return !!el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable);
 }
-function seekVideoBy(video,seconds){
-  const total=video.duration;
-  const target=(video.currentTime||0)+seconds;
-  // duration 在元数据到位前是 NaN，此时只夹下界，不要拿 NaN 去比上界。
-  video.currentTime=Number.isFinite(total)?Math.max(0,Math.min(total,target)):Math.max(0,target);
-}
+/* 沉浸模式的上下切片由沉浸岛自己接（同样避开输入态与修饰键）；Escape 留在这条阶梯里：设置面板与
+   搜索菜单先收。 */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     const settings=settingsPanelApi();
     if(settings?.isOpen()){settings.close();return}
     if(!$('#searchMenu').hidden){hideSearchMenu();return}
-    if(!$('#tok').hidden){$('#tokClose').click();return}
+    if(immerseOpen()){immerseApi().close();return}
     /* 详情开着：Escape 归舞台。焦点在浮窗里时舞台自己已经收了这一下；里层弹层（标签搜索框、右键
        菜单）先收掉的会 `preventDefault`，那一下只关弹层。焦点落在浮窗外（body）时在这里转给舞台。 */
     if(stageOpen()){if(!e.defaultPrevented){e.preventDefault();stageApi().requestClose()}return}
@@ -5237,8 +4894,6 @@ document.addEventListener('keydown',e=>{
     if(e.key==='f'||e.key==='F'){e.preventDefault();clickPlayerControl(video,'.vjs-fullscreen-control');return}
     if(e.key==='i'||e.key==='I'){e.preventDefault();stageApi()?.toggleMiniplayer();return}
   }
-  // 沉浸模式：纵向切片、横向快进退，和竖屏短视频的手势方向保持一致。
-  if(!$('#tok').hidden){if(e.key==='ArrowDown')tokNext(1);if(e.key==='ArrowUp')tokNext(-1)}
 });
 
 /* ── 列表栏 ⟳ = 换一批（不是重载页面）──
@@ -5247,7 +4902,7 @@ document.addEventListener('keydown',e=>{
    自动刷新只在首页空闲态执行，不打断播放、搜索、选择或其他页面。 */
 async function refreshAll(automatic=false){
   if(automatic&&(document.hidden||!isCatalogPath(decodeURIComponent(location.pathname))||
-      stageOpen()||!$('#tok').hidden||selectMode||selected.size||document.activeElement===$('#q')))return false;
+      stageOpen()||immerseOpen()||selectMode||selected.size||document.activeElement===$('#q')))return false;
   if(!$('#stats').hidden){
     /* 管理区的换批行为写在路由表的 `refresh` 上：`reopen` 重开自己，
        `skip` 不参与（追更页重画要联网，只能由它自己的按钮触发），
@@ -5323,7 +4978,7 @@ function openTrash(push){
   state={...state,creator:'',studio:'',tag:'',orient:'',state:'trash',q:''};clearSearchField();
   showHomeSurfaces();buildEdge();buildBars();loadCatalog();
 }
-/* 沉浸模式当前这一条写在 `?id=`（见 tokShow），刷新和后退都该回到同一条片子。 */
+/* 沉浸模式当前这一条写在 `?id=`（沉浸岛每换一条经 `immerseHost.route` 写一次），刷新和后退都该回到同一条片子。 */
 function immerseStartId(){
   const id=new URLSearchParams(location.search).get('id');
   return /^\d+$/.test(id||'')?Number(id):undefined;

@@ -239,9 +239,17 @@ export function loadSettingsPanel(host: ReactBundle.SettingsPanelHost): Promise<
 }
 export const settingsPanelApi = (): ReactBundle.SettingsPanelApi | null => settingsPanelReady;
 
-/* 沉浸模式用到的那几样播放器件（`frontend/src/player/`）：片源、流会话、上报与控件点击都不带模块
+/* 沉浸岛（`react/immerse/`）：全屏连播、每一格的播放器、手势与动作键都在 `@peach/react` 里，壳只拿
+ * 命令式入口。第一次打开沉浸模式时才装载 React 包、接上宿主；之后 `immerseApi()` 同步可取，包还没
+ * 装载时是 null——那时沉浸模式必然没开。 */
+let immerse: Promise<ReactBundle.ImmerseApi> | null = null;
+let immerseReady: ReactBundle.ImmerseApi | null = null;
+export function loadImmerse(host: ReactBundle.ImmerseHost): Promise<ReactBundle.ImmerseApi> {
+  immerse ??= import('@peach/react').then((bundle) => { immerseReady = bundle.configureImmerse(host); return immerseReady });
+  return immerse;
+}
+export const immerseApi = (): ReactBundle.ImmerseApi | null => immerseReady;
+
+/* 壳的播放快捷键用到的播放器件（`frontend/src/player/`）：控件点击、切换播放与快进快退都不带模块
  * 状态。详情播放器、宿主与右键菜单带状态，只在舞台岛那一份产物里用。 */
-export {
-  cancelStreamSession, clickPlayerControl, directStreamSource, ensureVideojs, fmtSpeed, newStreamSession,
-  playableStreamSource, streamSpeedBits, wireTelemetry,
-} from './player';
+export { clickPlayerControl, seekVideoBy, toggleVideoPlayback } from './player';
