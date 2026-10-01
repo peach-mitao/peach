@@ -1,0 +1,305 @@
+/* 卡片、头像与封面那几段 HTML：取哪张图、回落到哪张、取景数据贴在哪一环。 */
+import { describe, expect, it } from 'vitest';
+
+import {
+  avatarInner, cardArtwork, cardIdentity, coverImage, detailPosterUrl, entityAvatar, entityFaceImg, faceBoxAttrs,
+  faceOrigin, facePos, javArtwork, mixFace, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
+} from '../../src/card-art/markup';
+import { rememberRepresentatives, representativeOf } from '../../src/card-art/representatives';
+
+const parse = (html: string): HTMLImageElement | null => {
+  const box = document.createElement('div');
+  box.innerHTML = html;
+  return box.querySelector('img');
+};
+
+const FOCUS = { axis: 'y', pct: 12, box: { cx: 0.44, cy: 0.22, faceW: 67, imgW: 640, imgH: 960 } };
+
+describe('entityFaceImg：实体图优先，取不到退代表作头像', () => {
+  it('两样都取不到就一个 <img> 都不出', () => {
+    expect(entityFaceImg({ id: 3, hasImage: false })).toBe('');
+    expect(entityFaceImg({})).toBe('');
+  });
+
+  it('服务端没说有实体图就不拼 /entity-image，只出代表作头像', () => {
+    const img = parse(entityFaceImg({ id: 3, hasImage: false, rep: 41 }))!;
+    expect(img.getAttribute('src')).toBe('/avatar?id=41');
+    expect(img.dataset.fallbacks).toBeUndefined();
+    expect(img.dataset.drop).toBe('self');
+  });
+
+  it('实体图在前，代表作头像排进兜底链；最后一环把图摘掉', () => {
+    const img = parse(entityFaceImg({ kind: 'creator', id: 3, hasImage: true, rep: 41 }))!;
+    expect(img.getAttribute('src')).toBe('/entity-image?kind=creator&id=3');
+    expect(img.dataset.fallbacks).toBe('/avatar?id=41');
+    expect(img.dataset.drop).toBe('self');
+  });
+
+  it('一屏几十格的位置取派生件', () => {
+    expect(parse(entityFaceImg({ id: 3, hasImage: true, thumb: true }))!.getAttribute('src'))
+      .toBe('/entity-image?kind=performer&id=3&thumb=1');
+  });
+
+  it('换过图的实体地址带上版本，没给版本的地址不变', () => {
+    const img = parse(entityFaceImg({ id: 3, hasImage: true, version: 'a b', rep: 41, thumb: true }))!;
+    expect(img.getAttribute('src')).toBe('/entity-image?kind=performer&id=3&thumb=1&v=a%20b');
+    // 代表作头像是另一张图，不跟实体图的版本走。
+    expect(img.dataset.fallbacks).toBe('/avatar?id=41');
+    expect(parse(entityFaceImg({ id: 3, hasImage: true, version: '' }))!.getAttribute('src'))
+      .toBe('/entity-image?kind=performer&id=3');
+    // 没有实体图时版本也不出现在任何一环。
+    expect(parse(entityFaceImg({ id: 3, hasImage: false, version: '7', rep: 41 }))!.getAttribute('src'))
+      .toBe('/avatar?id=41');
+  });
+
+  it('懒加载、异步解码；大位可以要求立刻取', () => {
+    const lazy = parse(entityFaceImg({ id: 3, hasImage: true }))!;
+    expect(lazy.getAttribute('loading')).toBe('lazy');
+    expect(lazy.getAttribute('decoding')).toBe('async');
+    expect(parse(entityFaceImg({ id: 3, hasImage: true, lazy: false }))!.hasAttribute('loading')).toBe(false);
+  });
+
+  it('厂牌走自己的标识，实体图和代表作排在它后面，都不取景', () => {
+    const img = parse(entityFaceImg({ kind: 'studio', id: 3, hasImage: true, rep: 41, logo: 'S1 NO.1', logoVariant: 'icon', focus: FOCUS }))!;
+    expect(img.getAttribute('src')).toBe('/logo?studio=S1%20NO.1&variant=icon');
+    expect(img.dataset.fallbacks).toBe('/entity-image?kind=studio&id=3|/avatar?id=41');
+    expect(img.hasAttribute('style')).toBe(false);
+    expect(img.dataset.facebox).toBeUndefined();
+    expect('dropStyle' in img.dataset).toBe(false);
+  });
+
+  it('不指定变体就是资料页大位要的字标', () => {
+    expect(parse(entityFaceImg({ kind: 'studio', logo: 'S1' }))!.getAttribute('src')).toBe('/logo?studio=S1&variant=logo');
+  });
+
+  it('事务所没有标识文件，退到官网的站点圆标', () => {
+    expect(parse(entityFaceImg({ kind: 'agency', mark: 9 }))!.getAttribute('src')).toBe('/link-mark?id=9');
+  });
+
+  it('只给 focus 也会挪：挪和放大一起贴在实体图那一环，回落时整组撤掉', () => {
+    const img = parse(entityFaceImg({ id: 3, hasImage: true, rep: 41, focus: FOCUS }))!;
+    expect(img.style.objectPosition).toBe('50% 12%');
+    expect(img.dataset.facebox).toBe('0.44 0.22 67 640 960');
+    expect('dropStyle' in img.dataset).toBe(true);
+  });
+
+  it('只有代表作头像时不贴取景：那是另一张照片', () => {
+    const img = parse(entityFaceImg({ id: 3, hasImage: false, rep: 41, focus: FOCUS }))!;
+    expect(img.hasAttribute('style')).toBe(false);
+    expect(img.dataset.facebox).toBeUndefined();
+  });
+
+  it('调用方给的 style 优先于按 focus 算的那一份', () => {
+    const img = parse(entityFaceImg({ id: 3, hasImage: true, focus: FOCUS, style: ' style="object-position:10% 20%"' }))!;
+    expect(img.style.objectPosition).toBe('10% 20%');
+  });
+});
+
+describe('avatarInner：首字母垫底，再叠真实图', () => {
+  it('引用缺 has_image 按没图处理', () => {
+    const html = avatarInner('三上悠亜', { id: 3 }, null);
+    expect(html).toBe('<span class="ini">三</span>');
+  });
+
+  it('名字转义，空名字垫问号', () => {
+    expect(avatarInner('<b>', null, null)).toBe('<span class="ini">&lt;</span>');
+    expect(avatarInner('', null, null)).toBe('<span class="ini">?</span>');
+  });
+
+  it('取景不传就从引用上取；传 null 明确不取景', () => {
+    const ref = { id: 3, has_image: true, avatar_focus: FOCUS };
+    expect(parse(avatarInner('A', ref, null))!.dataset.facebox).toBe('0.44 0.22 67 640 960');
+    const company = parse(avatarInner('A', ref, null, 'studio', null, '', 'icon', null))!;
+    expect(company.dataset.facebox).toBeUndefined();
+    expect(company.hasAttribute('style')).toBe(false);
+  });
+
+  it('kind 跟着身份走：创作者的图不写成 performer', () => {
+    expect(parse(avatarInner('A', { id: 3, has_image: true }, null, 'creator'))!.getAttribute('src'))
+      .toBe('/entity-image?kind=creator&id=3');
+  });
+
+  it('引用上的 image_version 跟着拼进实体图地址', () => {
+    expect(parse(avatarInner('A', { id: 3, has_image: true, image_version: '1727800000' }, null))!.getAttribute('src'))
+      .toBe('/entity-image?kind=performer&id=3&v=1727800000');
+  });
+});
+
+describe('人脸取景的换算', () => {
+  it('按检出的轴挪；没检出返回空串维持几何居中', () => {
+    expect(faceOrigin({ axis: 'x', pct: 30 })).toBe('30% 50%');
+    expect(faceOrigin({ axis: 'y', pct: 0 })).toBe('50% 0%');
+    expect(faceOrigin(null)).toBe('');
+    expect(facePos({ axis: 'x', pct: 30 })).toBe(' style="object-position:30% 50%"');
+    expect(facePos(undefined)).toBe('');
+  });
+
+  it('脸框五个数挤一个属性，非数字进不了属性', () => {
+    expect(faceBoxAttrs(FOCUS)).toBe(' data-facebox="0.44 0.22 67 640 960"');
+    expect(faceBoxAttrs({ box: { cx: '"x', cy: 0, faceW: 1, imgW: 1, imgH: 1 } })).toBe(' data-facebox="NaN 0 1 1 1"');
+    expect(faceBoxAttrs({ axis: 'x', pct: 3 })).toBe('');
+  });
+});
+
+describe('coverImage：官方封面', () => {
+  it('人脸纵向夹在 5%–60%，正封框六个数按顺序送到元素上', () => {
+    const img = parse(coverImage({
+      code: 'SSIS-001', cover_frame: { cx: 0.81, cy: 0.9 },
+      poster_box: { x0: 421, y0: 0, x1: 800, y1: 538, px: [800, 538] },
+    }, 'big'))!;
+    expect(img.getAttribute('src')).toBe('/cover?code=SSIS-001&thumb=1');
+    expect(img.className).toBe('poster cover front');
+    expect(img.dataset.cx).toBe('0.81');
+    expect(img.dataset.cy).toBe('0.6');
+    expect(img.dataset.posterbox).toBe('421 800 538 0 800 538');
+    expect(img.getAttribute('loading')).toBe('lazy');
+    expect(img.dataset.drop).toBe('self');
+  });
+
+  it('小图看整张；没检出人脸就不带锚点', () => {
+    const img = parse(coverImage({ code: 'A B' }, 'small', true))!;
+    expect(img.className).toBe('poster cover whole');
+    expect(img.getAttribute('src')).toBe('/cover?code=A%20B&thumb=1');
+    expect(img.getAttribute('loading')).toBe('eager');
+    expect(img.dataset.cx).toBeUndefined();
+    expect(img.dataset.cy).toBe(undefined);
+  });
+});
+
+const JAV = {
+  id: 5, code: 'SSIS-001', is_jav: true, has_cover: true, has_thumb: true,
+  cover_frame: { cx: 0.7, cy: 0.3 }, poster_box: { x0: 421, y0: 0, x1: 800, y1: 538, px: [800, 538] },
+};
+
+describe('javArtwork：番号作品两种来源都挂在元素上', () => {
+  it('偏好封套：官方封面加换图属性', () => {
+    const art = javArtwork(JAV, 'big', false, 'cover');
+    expect(art.kind).toBe('cover');
+    const img = parse(art.html)!;
+    expect(img.dataset.javImage).toBe('5');
+    expect(img.dataset.javCover).toBe('/cover?code=SSIS-001&thumb=1');
+    expect(img.dataset.javThumb).toBe('/poster?id=5&c=4');
+    expect(img.dataset.javImageLayout).toBe('big');
+    expect(img.classList.contains('cover')).toBe(true);
+  });
+
+  it('偏好预览图：取景数据照样跟着元素走，切回封面时找得到框', () => {
+    const art = javArtwork(JAV, 'small', true, 'thumbnail');
+    expect(art.kind).toBe('thumb');
+    const img = parse(art.html)!;
+    expect(img.getAttribute('src')).toBe('/poster?id=5&c=4');
+    expect(img.className).toBe('poster');
+    expect(img.dataset.cx).toBe('0.7');
+    expect(img.dataset.posterbox).toBe('421 800 538 0 800 538');
+    expect(img.getAttribute('loading')).toBe('eager');
+  });
+
+  it('两种都没有就是空的', () => {
+    expect(javArtwork({ ...JAV, has_cover: false, has_thumb: false }, 'big', false, 'cover')).toEqual({ kind: '', html: '' });
+  });
+});
+
+describe('cardArtwork 与队列小图', () => {
+  it('关注来源用来源自己的缩略图，地址转义、不带来源页', () => {
+    const img = parse(cardArtwork({ id: 1, follow_thumb_url: 'https://x/a?b=1&c="2"' }, 'big', false, 'cover').html)!;
+    expect(img.getAttribute('src')).toBe('https://x/a?b=1&c="2"');
+    expect(img.getAttribute('referrerpolicy')).toBe('no-referrer');
+  });
+
+  it('其余取本地预览格；没有就是空的', () => {
+    expect(cardArtwork({ id: 1, has_local_poster: true }, 'big', false, 'cover').html)
+      .toBe('<img class="poster" src="/poster?id=1&c=4" alt="" loading="lazy">');
+    expect(cardArtwork({ id: 1 }, 'big', false, 'cover').kind).toBe('');
+  });
+
+  it('Mix 叠卡最上面那张立刻取，其余懒加载', () => {
+    expect(parse(mixFace({ id: 1, has_thumb: true }, 'big', true, 'cover').html)!.getAttribute('loading')).toBe('eager');
+    expect(parse(mixFace({ id: 1, has_thumb: true }, 'big', false, 'cover').html)!.getAttribute('loading')).toBe('lazy');
+    expect(mixFace({ id: 1 }, 'big', true, 'cover').kind).toBe('');
+  });
+
+  it('队列一行没有图时写「无预览」占住那一格；番号作品按小图取', () => {
+    expect(queueThumbHtml({ id: 1 }, 'cover')).toBe('<span class="nopic">无预览</span>');
+    expect(parse(queueThumbHtml(JAV, 'cover'))!.className).toBe('poster cover whole');
+  });
+});
+
+describe('detailPosterUrl：详情开场的海报位', () => {
+  it('其它媒体退到本地预览格，没有就空串', () => {
+    expect(detailPosterUrl({ id: 2, has_thumb: true }, 'cover')).toBe('/poster?id=2&c=4');
+    expect(detailPosterUrl({ id: 2 }, 'cover')).toBe('');
+  });
+
+  it('番号作品跟随「JAV 默认封面」：封套取原件，预览图取预览格', () => {
+    expect(detailPosterUrl(JAV, 'cover')).toBe('/cover?code=SSIS-001');
+    expect(detailPosterUrl(JAV, 'thumbnail')).toBe('/poster?id=5&c=4');
+  });
+});
+
+describe('卡片署名的身份推导', () => {
+  it('番号作品的规范女优压过旧投影里的 creator 文本', () => {
+    const identity = cardIdentity({ is_jav: true, creator: 'Yua Mikami', performers: ['三上悠亜'] });
+    expect(identity).toMatchObject({ kind: 'performer', name: '三上悠亜', coStarred: false });
+  });
+
+  it('非番号作品先认创作者；共演不成立', () => {
+    expect(cardIdentity({ creator: 'cc', performers: ['a', 'b'] })).toMatchObject({ kind: 'creator', name: 'cc', coStarred: false });
+  });
+
+  it('没有署名人是「未归属」', () => {
+    expect(cardIdentity({})).toMatchObject({ kind: '', name: '未归属' });
+  });
+
+  it('共演只写第一位再给总人数', () => {
+    expect(cardIdentity({ performers: ['a', 'b'], performer_total: 7 })).toMatchObject({ coStarred: true, total: 7 });
+    expect(cardIdentity({ performers: ['a', 'b'] }).total).toBe(2);
+  });
+
+  it('队列行的头像不可点：整行就是按钮，里面只出 <span>；共演最多叠五张', () => {
+    const single = queueAvatarHtml({ performers: ['a'], performer_entities: [{ id: 3, has_image: true }] });
+    expect(single).toBe(`<span class="mav">${avatarInner('a', { id: 3, has_image: true }, undefined)}</span>`);
+    const stack = document.createElement('div');
+    stack.innerHTML = queueAvatarHtml({ performers: ['a', 'b', 'c', 'd', 'e', 'f'] });
+    expect(stack.querySelectorAll('.mavstack>span.mav')).toHaveLength(5);
+    expect(stack.querySelector('button')).toBeNull();
+  });
+
+  it('创作者那一格取 creator_entity 的图', () => {
+    const html = queueAvatarHtml({ creator: 'cc', creator_entity: { id: 8, has_image: true } });
+    expect(parse(html)!.getAttribute('src')).toBe('/entity-image?kind=creator&id=8');
+  });
+});
+
+describe('称谓与 Mix 署名', () => {
+  it('「女优」只用于番号发行物', () => {
+    expect(performerLabel({ is_jav: true })).toBe('女优');
+    expect(performerLabel({ is_jav: false })).toBe('艺人');
+    expect(performerLabel(null)).toBe('艺人');
+  });
+
+  it('番号作品先认女优，其余先认创作者，再依次退到厂牌、番号、首个标签', () => {
+    const label = (tag: string) => `#${tag}`;
+    expect(mixLabel({ is_jav: true, creator: 'x', performers: ['p'] }, label)).toBe('p');
+    expect(mixLabel({ creator: 'x', performers: ['p'] }, label)).toBe('x');
+    expect(mixLabel({ studio: 's', code: 'c' }, label)).toBe('s');
+    expect(mixLabel({ code: 'c' }, label)).toBe('c');
+    expect(mixLabel({ tags: ['t'] }, label)).toBe('#t');
+    expect(mixLabel({}, () => '')).toBe('为你推荐');
+  });
+});
+
+describe('代表作表', () => {
+  it('只收真能取到头像的代表作', () => {
+    rememberRepresentatives([{ k: 'has', rep: 11, has_avatar: true }, { k: 'none', rep: 12, has_avatar: false }, { k: 'zero', rep: 0, has_avatar: true }]);
+    expect(representativeOf('has')).toBe(11);
+    expect(representativeOf('none')).toBeUndefined();
+    expect(representativeOf('zero')).toBeUndefined();
+    expect(representativeOf('constructor')).toBeUndefined();
+  });
+
+  it('卡片署名有身份时才退代表作；没有署名人按女优那一档出首字母', () => {
+    rememberRepresentatives([{ k: 'rep', rep: 21, has_avatar: true }]);
+    expect(parse(entityAvatar('rep', null, 'performer'))!.getAttribute('src')).toBe('/avatar?id=21');
+    expect(entityAvatar('rep', null, '')).toBe('<span class="ini">r</span>');
+  });
+});

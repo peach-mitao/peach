@@ -1518,12 +1518,6 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_co_starred_cards_keep_one_name_and_the_total(self):
         # 多人合集保留头像提示，但文字只写第一位和总人数，避免名称折成多行。
-        self.assertPageContains("const coStarred=performers.length>1&&!primaryCreator")
-        self.assertPageContains('<div class="mavstack">')
-        self.assertPageContains("performers.slice(0,5)")
-        self.assertPageContains("data-entity-kind=\"performer\" data-entity-name=\"${esc(nm)}\"")
-        self.assertPageContains("data-entity-name=\"${esc(performer)}\"")
-        self.assertPageContains("等 ${performerTotal} 人")
         self.assertPageContains(".mavstack .mav+.mav{margin-left:-22px}")
         self.assertPageContains(".mavstack .mav:nth-child(n+6){display:none}")
 
@@ -1550,34 +1544,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains('gap:3px;margin:-4px;padding:4px;height:calc(var(--card-meta-block) + 8px);overflow:hidden;')
         self.assertPageContains('body[data-density="dense"] .card .meta .s{height:1.35em;min-height:0;flex-wrap:nowrap;overflow:hidden;white-space:nowrap}')
         self.assertPageLacks("jav-small")
-
-    def test_every_face_slot_builds_its_image_through_one_helper(self):
-        # 顶栏圆头像、卡片署名、共演者、资料页大位共用 entityFaceImg；
-        # `/entity-image` 和 `/avatar` 两个地址只在这一个函数里拼。
-        self.assertPageContains(
-            "function entityFaceImg({kind='performer',id=null,hasImage=false,version='',rep=null,")
-        self.assertPageContains("const useEntity=!!(id&&hasImage);")
-        # `thumb` 那一档也只在这里拼：索引页一屏几十格取派生件，资料页大位取原件。
-        self.assertCode(
-            "const entitySrc=useEntity?"
-            "`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`\n"
-            "    +(version?`&v=${encodeURIComponent(version)}`:''):'';")
-        self.assertPageContains("const avatarSrc=rep?`/avatar?id=${rep}`:'';")
-        self.assertCode(
-            "const src=useLogo?`/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`\n"
-            "    :(entitySrc||avatarSrc||(mark?`/link-mark?id=${mark}`:''));")
-        # 一环都取不到就一个 `<img>` 都不出，首字母垫底直接露出来。
-        self.assertPageContains("if(!src)return '';")
-        # kind 参数化后，创作者复核卡片也能走同一条链；默认仍是 performer，
-        # 既有调用点不受影响。标识变体同理默认 icon：小圆框和窄格子是多数。
-        self.assertCode(
-            "function avatarInner(name,ref,repId,kind='performer',markId=null,logoName='',"
-            "logoVariant='icon',focus=undefined,thumb=false)")
-        # 兜底链声明在模板里，行为归 image-fallback 那条委托监听。
-        self.assertCode("const fallbacks=useLogo?[entitySrc,avatarSrc].filter(Boolean)\n"
-                        "    :(useEntity&&avatarSrc?[avatarSrc]:[]);")
-        self.assertPageContains(
-            "imageFallbackAttrs({dropStyle:(dropStyle||!!faceBox||!!framedStyle)&&framed,")
 
     def test_no_face_image_is_emitted_before_the_server_says_it_can_be_fetched(self):
         """先问再出图：没有可用性标志兜住的 `/entity-image`／`/avatar` 一处都不许有。
@@ -1608,9 +1574,8 @@ class WebUiSourceTests(unittest.TestCase):
         「地址附近有没有判据」的扫描扫不到它们：引用里没有 `has_image` 就等于无条件
         出图。`/performers` 桌面视口滚三屏实测 77 个取图请求里 5 个是这样的 404。
         """
-        # 缺席按「没图」处理。宽容缺席会让下一个忘了挂标志的端点悄悄退回旧行为，
-        # 而这种退化在页面上看不出来——图照样显示，代价全在 404 里。
-        self.assertPageContains("hasImage:!!(ref&&ref.has_image)")
+        # 缺席按「没图」处理（`frontend/test/card-art/markup.test.ts`）。宽容缺席会让下一个
+        # 忘了挂标志的端点悄悄退回旧行为，而这种退化在页面上看不出来——图照样显示，代价全在 404 里。
         # 索引页（`/api/index`）：实体图看 has_image、代表作头像看 has_avatar，kind
         # 跟着这一页的身份走——创作者的图写成 `performer-<id>.img` 是读不到的。
         self.assertPageContains("ref?{id:ref,has_image:x.has_image,image_version:x.image_version}:null,")
@@ -1623,10 +1588,8 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("{ id: row.entity_id, has_image: !!row.has_image,", taste)
         self.assertIn("row.has_avatar ? row.representative_asset_id ?? null : null,", taste)
         # 沉浸模式署名圈读 `/api/item` 的 entity_refs（`immerse.ts` 的 `ownerOf`，
-        # `frontend/test/react/immerse.test.tsx`），标志随引用一起来；代表作那一侧读 REP，
-        # 入表时已经按 has_avatar 筛过。
-        self.assertPageContains(
-            "tops.performers.forEach(x=>{if(x.rep&&x.has_avatar)REP[x.k]=x.rep});")
+        # `frontend/test/react/immerse.test.tsx`），标志随引用一起来；代表作那一侧读
+        # `card-art/representatives.ts` 的代表作表，入表时已经按 has_avatar 筛过。
 
     def test_face_fallback_chains_end_by_removing_the_broken_image(self):
         """还是取不到图的 <img> 必须被摘掉，不能只停在「不再重试」。
@@ -1636,9 +1599,8 @@ class WebUiSourceTests(unittest.TestCase):
         仍然匹配，首字母垫底永远回不来；浏览器还会把 alt 当内容画出来——资料页上
         就是整个艺人名横在头像圈里溢出（loliburin 实测 /entity-image 与 /avatar 双 404）。
         """
-        # 收场动作只有这一处实现，默认就是把 <img> 拿掉。
-        self.assertPageContains("drop = 'self'")
-        self.assertPageContains("image.remove();")
+        # 收场动作只有 `card-art/image-fallback.ts` 一处实现，默认就是把 <img> 拿掉：
+        # `frontend/test/card-art/image-fallback.test.ts`。
         self.assertPageLacks("this.onerror=null;this.src='/avatar?id=")
 
     def test_image_fallbacks_are_declarative_data_not_inline_handlers(self):
@@ -1648,27 +1610,18 @@ class WebUiSourceTests(unittest.TestCase):
         只是这张图从此不再回退；同一条链在 app.js 里还有四种写法。
         """
         self.assertPageLacks(' onerror="', "模板里不能再出现内联 onerror 属性")
-        self.assertPageContains("export function wireImageFallbacks(root)")
         self.assertPageContains("wireImageFallbacks(document.body)")
-        # `error` 不冒泡，只有捕获阶段的监听能接住后代 <img>。
-        self.assertCode("advanceImageFallback(event.target);\n  }, true);")
-        # `data-drop` 是这套机制的开关：没有它的 <img> 一概不动——页面上另有一批
-        # 靠 CSS 或父节点兜底的图（厂牌 `.mk`），把它们删掉反而是错的。
-        self.assertPageContains("if (!image || !image.dataset || !image.dataset.drop) return '';")
-        for attribute in ('data-drop="', "data-fallbacks=", "data-initial=", "data-drop-class="):
-            self.assertPageContains(attribute)
+        # 捕获阶段的委托监听与「没有 `data-drop` 的 <img> 一概不动」由
+        # `frontend/test/card-art/image-fallback.test.ts` 跑真元素验收；页面上另有一批
+        # 靠 CSS 或父节点兜底的图（厂牌 `.mk`），把它们删掉反而是错的。壳自己拼的图也走同一套声明。
+        self.assertPageContains('data-drop="')
 
     def test_entity_hero_avatar_frames_the_detected_face(self):
         # 资料页圆框按检出的人脸取景；换回落图时必须先摘掉内联 object-position——
         # 回落图是另一张照片，脸不在同一位置。
-        self.assertPageContains("function facePos(f)")
         self.assertPageContains(
             "style:company?'':facePos(d.avatar_focus),focus:company?null:d.avatar_focus,")
-        # 取景是按实体图算出来的，所以内联 style 和 data-drop-style 只贴给第一环。
-        self.assertPageContains("${framed?framedStyle:''}")
-        self.assertPageContains(
-            "imageFallbackAttrs({dropStyle:(dropStyle||!!faceBox||!!framedStyle)&&framed,")
-        self.assertPageContains("if ('dropStyle' in image.dataset) image.removeAttribute('style');")
+        # 取景只贴给第一环、回落时撤掉：`frontend/test/card-art/markup.test.ts`。
 
     def test_every_avatar_slot_hands_the_face_box_to_the_page(self):
         """三处圆头像都要拿到脸框，倍数在页面上按各自的框算。
@@ -1682,24 +1635,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("focus:company?null:d.avatar_focus,")
         self.assertPageContains("style:facePos(x.avatar_focus),focus:x.avatar_focus}")
         self.assertPageContains("company&&big?'large':'ring',company?null:x.avatar_focus,true);")
-        self.assertPageContains("logo:logoName,logoVariant,focus:hint,thumb}")
-        # 五个数挤一个属性，回落时只要摘一样东西。
-        self.assertPageContains(
-            "data-facebox=\"${[b.cx,b.cy,b.faceW,b.imgW,b.imgH].map(Number).join(' ')}\"")
-        self.assertPageContains("else if(img.dataset.facebox)avatarFrame(img);")
-
-    def test_a_slot_that_only_has_the_focus_still_gets_the_shift(self):
-        """给了取景就一定挪。`style` 是另一个参数，漏掉它不报错也不掉图。
-
-        挪和放大是同一份 sidecar 的两半，换算只有 `facePos` 这一份，所以它落在出图
-        这一处：调用点给了 `focus` 就够。漏掉挪那一半的后果在页面上和「这个人没算过
-        取景」一模一样——图照出，只是几何居中，而人脸落在画面顶上的（`focus.pct`
-        为 0）正好被裁掉脑袋。
-        """
-        self.assertPageContains("const framedStyle=style||facePos(focus);")
-        # 挪出来的内联 style 也必须能撤：回落那张是另一张照片，脸不在同一位置。
-        self.assertPageContains(
-            "imageFallbackAttrs({dropStyle:(dropStyle||!!faceBox||!!framedStyle)&&framed,")
+        # 脸框写成哪条属性、页面上怎么按框放大：`frontend/test/card-art/` 的 markup 与 framing。
 
     def test_a_slot_that_only_has_the_ref_still_gets_the_focus(self):
         """取景不传就从 ref 上取：它和 `has_image` 出自服务端同一份下发。
@@ -1708,26 +1644,8 @@ class WebUiSourceTests(unittest.TestCase):
         顶栏、口味榜、播放列表、复核卡片全是几何居中。公司那一格要的是「明确不取景」，
         传 `null` 压过默认。
         """
-        self.assertPageContains("const hint=focus===undefined?(ref&&ref.avatar_focus)||null:focus;")
         # 详情页的出镜者格子不走 avatarInner，壳交给详情岛的那一格自己把取景递进去。
         self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),")
-
-    def test_an_unlaid_out_frame_is_waited_for_instead_of_measured_as_zero(self):
-        """图加载完时框还没布局，`load` 不会再来第二次。
-
-        面板隐藏、`display:none` 的页签、缓存直出都会撞上这一刻：框是 0×0，算出来
-        的倍数只能是 1，放大于是静默地永不生效。资料页实测复现过——框已经 160×160、
-        图也 complete，style 里却只有平移。这类失效在页面上和「这张图不需要放大」
-        长得一模一样，所以必须由代码等，不能指望肉眼发现。
-        """
-        self.assertPageContains("if(!(rect.width>0&&rect.height>0)){")
-        self.assertPageContains("const watch=new ResizeObserver(()=>{")
-        self.assertPageContains("watch.disconnect();")
-
-    def test_a_fallback_image_never_inherits_the_previous_faces_box(self):
-        # 回落图是另一张照片，脸不在同一位置、尺寸也不是那个尺寸。留着脸框，下一次
-        # load 就会拿上一张的脸给这一张算放大倍数，页面上是一张明显错位的图。
-        self.assertPageContains("delete image.dataset.facebox;")
 
     def test_entity_link_favicons_do_not_leak_the_page_url_to_the_linked_site(self):
         # 外链的 favicon 是向对方站点发出的真实请求。锚点上的 rel="noreferrer" 只管
@@ -2089,7 +2007,6 @@ class WebUiSourceTests(unittest.TestCase):
         """
         # 断言的是判据与两个称谓，不是 performerLabel 写成箭头函数还是 function。
         self.assertPageContains("performerLabel(it)")
-        self.assertPageContains("it&&it.is_jav?'女优':'艺人'")
 
     def test_narrow_top_bar_keeps_the_actions_on_the_right(self):
         """窄屏下搜索框绝对定位后脱离了流，动作按钮会挤在品牌名右侧、右半条留空。"""
@@ -2132,8 +2049,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains(
             '.poster.cover.front[data-frame="sleeve"]{object-position:100%',
             "没有折痕数据的封套贴最右边缘")
-        self.assertPageContains("r>=1.65?'still':r>1.2?'sleeve':'front'",
-                                "16:9 官方剧照不能当成双页封套裁到最右侧")
         # 判据是 `jav` 不是 `useCover`：缺封面的卡片也要拉长，用 16:9 预览图上下留黑边，
         # 否则一行里高矮混排会把网格撕成锯齿状。
         self.assertPageLacks("useCover&&layout==='big'")
@@ -2149,33 +2064,12 @@ class WebUiSourceTests(unittest.TestCase):
         留白，交给模糊背景。几何换算是纯函数，`frontend/test/jav-artwork.test.ts`
         按数值验收；这里守的是「框有没有送到元素上、算出来的值有没有写回去」这条链路。
         """
-        self.assertPageContains("const pb=it.poster_box;")
-        # 六个数一条属性：框的四条边加源图宽高。手工框四边都可能动，少送一个就错位。
-        self.assertPageContains(
-            "[pb.x0,(pb.px||[])[0],(pb.px||[])[1],pb.y0,pb.x1,pb.y1].map(Number).join(' ')")
-        self.assertPageContains(' data-posterbox="')
-        # 换回官方封面时换的是同一个 <img>，框必须跟着元素走，不能只贴在封面那份 HTML 上。
-        self.assertPageContains('/ data-(?:c[xy]|posterbox)="[^"]*"/g')
-        self.assertPageContains("posterPanel(img,car);")
-        self.assertPageContains("const frame=panelFrame({x0,y0,x1,y1,px:[imgW,imgH]},ratio);")
-        self.assertPageContains(
-            "`${frame.clip.top}% ${frame.clip.right}% ${frame.clip.bottom}% ${frame.clip.left}%`")
-        self.assertPageContains("img.style.setProperty('--panel-left',`${frame.left}%`);")
-        # 手工框可以横着切一刀，纵向那两个轴要跟着一起送到元素上。
-        self.assertPageContains("img.style.setProperty('--panel-top',`${frame.top}%`);")
-        self.assertPageContains("img.style.setProperty('--panel-height',`${frame.height}%`);")
+        # 框送到元素上、按源图换算、没框不写，由 `frontend/test/card-art/` 的 markup 与
+        # framing 跑真元素验收。手工框可以横着切一刀，纵向那两个轴要跟着一起送到元素上。
         self.assertPageContains(
             ".poster.cover.front.panel{inset:var(--panel-top,0%) auto auto var(--panel-left,0%)",
             "正封的位置靠元素自身定位，不是 object-position")
         self.assertPageContains("clip-path:inset(var(--panel-clip,0 0 0 0))")
-        # 竖版正封本身就是正封，没有可切的；封套与 16:9 居中拼图有框就按框取景，
-        # 16:9 剧照拿不到框，走自己那条 object-position。
-        self.assertPageContains("if(img.dataset.frame==='front')return;")
-        # 没有框就一个字都不写，CSS 里那份贴右缘的回退照旧生效。
-        self.assertPageContains("if(!frame)return;")
-        # 框按那一版源图算：等比缩小的派生档照用，封面被另一张换掉之后它描述的是另一张图。
-        self.assertPageContains(
-            "if(!faceSourceScale(img.naturalWidth,img.naturalHeight,imgW,imgH))return;")
 
     def test_narrow_front_cover_fills_the_gap_with_a_blurred_backdrop(self):
         """正封窄于卡片时两侧的留白垫同一张封面的模糊放大版，不留黑边也不露封底。
@@ -2184,9 +2078,6 @@ class WebUiSourceTests(unittest.TestCase):
         铺不到留白处。换成预览图时它必须跟着撤，`removeAttribute('style')` 够不着
         另一个元素上的自定义属性，所以 `syncJavImages` 里单写了一句。
         """
-        self.assertPageContains(
-            "img.closest('.pic,[data-media-pic]')?.style.setProperty('--cover-blur',\n"
-            "    `url(\"${img.dataset.thumbSrc||img.currentSrc||img.src}\")`);")
         self.assertPageContains(
             ".pic::before{content:\"\";position:absolute;inset:-8%;pointer-events:none;")
         self.assertPageContains("background:var(--cover-blur,none) center/cover no-repeat;"
@@ -2201,54 +2092,21 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertPageContains(
             '.poster.cover.front[data-frame="still"]{object-position:var(--cover-x,50%)')
-        self.assertPageContains('f.cx!=null?` data-cx="${f.cx}"`')
         # 没检出的那些居中，不能因为多了一个轴就把它们裁到边上去。
         self.assertPageContains("--cover-x,50%")
-
-    def test_the_detected_face_lands_in_the_middle_of_the_visible_window(self):
-        """`object-position` 的百分比是两侧对齐比例，不是「这个点落到正中」。
-
-        人脸中心原样当锚点，只保证脸还在画面里：cx=0.81 会算出 81%，脸贴着窗口右缘，
-        图片最右边那一截永远露不出来。可见窗口占图片 w 时，锚点得取
-        (face - w/2) / (1 - w)，这样 0.81 会顶到 100%，右缘才进画面。
-        w 由容器和图片两个比例决定，所以只能在图片加载后算。
-        """
-        self.assertPageContains("(face-visible/2)/(1-visible)")
-        self.assertPageContains("if(face==null||!(visible>0&&visible<1))return;",
-                                "整幅可见的那个轴不裁，锚点在那里是死值")
-        self.assertPageContains("center('--cover-x',coverFace(img,'cx'),car/r);")
-        self.assertPageContains("center('--cover-y',coverFace(img,'cy'),r/car);")
-        # 容器比例只有 `--card-ratio` 知道；按 layout 再算一遍迟早和它分叉。
-        self.assertPageContains("getComputedStyle(img).getPropertyValue('--card-ratio')")
 
     def test_image_hooks_are_delegated_because_inline_handlers_cannot_see_the_module(self):
         """内联 `onload="…"` 属性求值在全局作用域里。
 
         `index.html` 用 `type="module"` 加载 app.js，模块里的函数不在全局作用域，
         内联属性调它只会每张图报一次 ReferenceError，取景静默退回写死的锚点。
-        `load` 不冒泡，所以只能在 document 上用捕获阶段收口。
+        `load` 不冒泡，所以只能在 document 上用捕获阶段收口：`installCardArt`，
+        `frontend/test/card-art/framing.test.ts`。
         """
         self.assertPageContains('<script type="module" src="/app.js"></script>')
-        self.assertPageContains("document.addEventListener('load',event=>{")
-        self.assertPageContains(
-            "if(img.classList.contains('cover')){coverAnchor(img);upgradeCover(img)}")
-        self.assertPageContains("else if(img.dataset.facebox)avatarFrame(img);")
-        self.assertPageContains("  fitNativeImage(img);")
         self.assertPageLacks('onload="', "模块作用域的函数在内联属性里取不到")
 
-    def test_card_avatar_and_name_open_the_same_entity(self):
-        """同一张卡上的头像和名字必须指向同一个身份。
-
-        头像先看 performer、名字先看 creator 的话，碰上同名的 creator/performer
-        重复实体（账本里 35 组）就会一个跳 /performers/x、另一个跳 /creators/x。
-        """
-        self.assertPageContains("const avatarKind=identity.kind;")
-        self.assertPageContains("const avatarName=identity.name;")
-        self.assertPageContains("const avatarRef=avatarKind==='performer'?performerRef:it.creator_entity;")
-        self.assertPageContains("const inner=avatarInner(avatarName,avatarRef,")
-
     def test_missing_person_identity_uses_unassigned_on_cards_and_players(self):
-        self.assertPageContains(":{kind:'',name:'未归属'});")
         # 沉浸模式作者那行的兜底归沉浸岛：`frontend/test/react/immerse.test.tsx` 的 ownerOf 用例。
         self.assertPageLacks("it.creator||it.code")
         self.assertPageLacks("full.creator||it.code")
@@ -2261,8 +2119,6 @@ class WebUiSourceTests(unittest.TestCase):
         """
         # 详情页和女优组同一个槽位、同一种版式，不是另起一行说明：`frontend/test/react/item-detail.test.tsx`。
         # 卡片：署名位上的「未归属」也点得开。
-        self.assertPageContains(':linked?`<button class="who unownedlink" type="button" data-open-unowned>'
-                                '${esc(who)}</button>`')
         # 三个表面共用一个落点，筛选写在 state.owner 上。
         self.assertPageContains("function openUnowned(){")
         self.assertPageContains("resetHomeState();state.owner='none';")
@@ -2328,11 +2184,10 @@ class WebUiSourceTests(unittest.TestCase):
 
         队列行整行本身就是 `<button>`，里面嵌不了按钮，署名只能出文字；它和按钮共用
         `.who` 的强调色，看着能点，点下去落到卡片本身、打开的是视频详情。
-        「未归属」不在此列——它有自己的集合可去，出的是 `.who.unownedlink` 按钮。
         """
         self.assertPageContains(".meta span.who{color:var(--ink-2);cursor:default}")
         # 作品详情身份格同一条判据（没入口的不给手形）：`frontend/e2e/design.test.ts`。
-        self.assertPageContains(".entitylink,.unownedlink{border:0;background:none;padding:0;"
+        self.assertPageContains(".entitylink{border:0;background:none;padding:0;"
                                 "color:var(--tungsten);cursor:pointer;text-decoration:none}")
 
     def test_random_is_the_default_and_each_home_visit_gets_a_fresh_batch(self):
@@ -2840,7 +2695,7 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_links_only_use_underlines_on_hover(self):
         """文字链接允许悬停下划线，默认状态保持清爽。"""
-        self.assertPageContains(".entitylink:hover,.unownedlink:hover{color:var(--ink);text-decoration:none}")
+        self.assertPageContains(".entitylink:hover{color:var(--ink);text-decoration:none}")
         self.assertPageContains(".mav.entitylink:hover{text-decoration:none}")
         for selector, declarations in re.findall(r'([^{}]+)\{([^{}]*)\}', stylesheet_source()):
             if "text-decoration:underline" in declarations:
@@ -2911,21 +2766,6 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_detail_uses_pinned_videojs_and_authoritative_duration(self):
         self.assertPageContains('/vendor/videojs/8.24.1/video-js.min.css')
-
-    def test_detail_opens_with_the_local_cover_before_the_video_loads(self):
-        """详情开场先把本地封面挂上海报位。
-
-        video.js 按需加载，流源又是一趟解析往返：这中间画面不该是黑的。移除
-        交给播放器自己：挂载前是 `<video>` 的原生 poster，挂载后是 video.js 的
-        海报层，开播即收，详情侧不另写一套收尾逻辑。
-        """
-        self.assertPageContains("function detailPosterUrl(it){")
-
-    def test_detail_poster_follows_the_jav_image_preference(self):
-        body = self.app_js.split('function detailPosterUrl(it){', 1)[1].split('\n}', 1)[0]
-        self.assertIn("javImageKind(it,appSettings.javImage)==='cover'", body)
-        self.assertIn("`/cover?code=${encodeURIComponent(it.code||'')}`", body)
-        self.assertIn("/poster?id=${it.id}&c=4", body)
 
     def test_changing_the_jav_image_preference_repaints_the_open_detail(self):
         cover_body = self.app_js.split("  javImage:()=>{", 1)[1].split('  },', 1)[0]
@@ -4566,11 +4406,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("agency:'agencies'")
         self.assertPageContains("agencies:'agency'")
 
-    def test_portrait_pixels_do_not_size_the_face_frame(self):
-        # 索引页拿到的是等比缩过的派生件，先换算比例再判；比例为 0 才退回几何居中。
-        self.assertPageContains("const scale=faceSourceScale(img.naturalWidth,img.naturalHeight,imgW,imgH);")
-        self.assertPageContains("img.style.objectPosition='50% 50%';")
-
     def test_the_agency_page_gets_the_same_loading_skeleton(self):
         self.assertPageContains("performers|creators|studios|agencies")
 
@@ -4579,8 +4414,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertCode("const company=kind==='studio'||kind==='agency';")
         self.assertCode("rep:company||!d.has_avatar?null:d.representative_asset_id,")
         self.assertCode("mark:kind==='agency'?d.mark_link_id:null,")
-        # 取图链最后一环是官网那条链接的站点圆标。
-        self.assertPageContains("mark?`/link-mark?id=${mark}`")
+        # 取图链最后一环是官网那条链接的站点圆标：`frontend/test/card-art/markup.test.ts`。
 
     def test_the_index_cell_takes_the_derived_entity_image(self):
         """一屏几十格取的是缩好的那一份，不是资料页大位那张原件。
@@ -4590,21 +4424,8 @@ class WebUiSourceTests(unittest.TestCase):
         """
         # 末位的 true 就是「取派生件」；索引页与资料页名册的格子都经 personRingHtml 出图。
         self.assertPageContains("company&&big?'large':'ring',company?null:x.avatar_focus,true);")
-        # 解码离开主线程：几十张图同时落地时，同步解码把滚动和点击一起压住。
-        self.assertPageContains(
-            "`<img src=\"${src}\" alt=\"${alt}\"${lazy?' loading=\"lazy\"':''} decoding=\"async\"")
-
-    def test_the_index_face_frame_rescales_to_the_image_it_actually_got(self):
-        """边车记的是原件像素，索引页手上是派生件。
-
-        取景的几何在等比缩放下不变，唯独「放到多大就开始虚」那一条问的是真有多少像素；
-        拿原件的数去套派生件，算出来的倍数正好把一张图放糊。
-        """
-        self.assertPageContains(
-            "const scale=faceSourceScale(img.naturalWidth,img.naturalHeight,imgW,imgH);")
-        self.assertCode(
-            "  const frame=faceFrame({cx,cy,faceW:faceW*scale,imgW:imgW*scale,imgH:imgH*scale},\n"
-            "    {w:rect.width,h:rect.height},window.devicePixelRatio||1);")
+        # 派生件地址与异步解码由 `frontend/test/card-art/markup.test.ts` 验：几十张图同时落地时，
+        # 同步解码把滚动和点击一起压住。
 
     def test_the_agency_roster_reuses_the_people_index_cell_and_layout(self):
         """名册和艺人索引摆的是同一格人，取图链只有一份。
@@ -4653,21 +4474,14 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_the_studio_index_wears_the_same_logo_the_profile_does(self):
         """538 个标识在盘上，索引页却格格首字母的话，这一屏读不出是哪些牌子。"""
-        self.assertPageContains("const useLogo=!!logo;")
-        self.assertPageContains(
-            "const src=useLogo?`/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`")
         # 变体由调用点决定：小圆框和窄格子要方形图标，索引页那格要 large。
-        self.assertPageContains("logo:logoName,logoVariant,focus:hint,thumb}")
         self.assertPageContains("company&&big?'large':'ring',company?null:x.avatar_focus,true);")
-        # 取不到标识就退回实体图、再退到头像，和资料页大位同一条链。
-        self.assertPageContains("const fallbacks=useLogo?[entitySrc,avatarSrc].filter(Boolean)")
+        # 取不到标识就退回实体图、再退到头像，标识不取景：`frontend/test/card-art/markup.test.ts`。
         # 公司这一格不退到代表作截图，和它自己的资料页同一条判据。
         self.assertPageContains("const company=kind==='studio'||kind==='agency';")
         # 索引页那格由服务端的 has_logo 决定走不走这一环。
         self.assertPageContains(
             "x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',")
-        # 标识不是人脸，取景和摘取景那套只贴给实体图。
-        self.assertPageContains("const framed=useEntity&&!useLogo;")
 
     def test_the_big_studio_slots_ask_for_the_sharpest_file_on_disk(self):
         """索引页的厂牌大格和资料页大位都要 `large`。
@@ -4687,17 +4501,8 @@ class WebUiSourceTests(unittest.TestCase):
         `large` 已经先挑过最清晰的一份，剩下的是本来就没有大图的厂牌——Ienergy 只有
         112 px。把它拉满 180 px 的格子只是把糊放大给人看。
         """
-        self.assertPageContains("function fitNativeImage(img){")
-        self.assertPageContains("const box=img.closest('[data-fit-native]');")
-        self.assertPageContains("if(!box||!img.naturalWidth)return;")
-        self.assertPageContains(
-            "box.style.setProperty('--markw',small?width+'px':'100%');")
-        # 只比框小一点点的照旧铺满：按原尺寸摆只会在四周留一圈七八像素的生硬窄边。
-        self.assertPageContains("nativeImageFit(img.naturalWidth,img.naturalHeight,box.clientWidth,box.clientHeight,window.devicePixelRatio||1)")
-        self.assertPageContains("box.dataset.nativeSmall=String(small);")
-        self.assertPageContains("if(ring.dataset.nativeSmall==='true')return;")
-        self.assertPageContains(
-            "box.style.setProperty('--markbg',small?`url(\"${src}\")`:'none');")
+        # 量尺寸、写 `--markw` 与模糊底的那一步在 `card-art/framing.ts`，由
+        # `frontend/test/card-art/framing.test.ts` 验；只比框小一点点的照旧铺满（`native-image.test.ts`）。
         # 用到它的容器自己声明意图，JS 只负责量。名册那一格（`index-people.tsx`）与资料卡
         # 大位（entity-hero island）都在 React 里，同一个属性、同一组变量。
         # 名册格写着 width:100% 和 object-fit:cover，选择器压不过它就白改。
@@ -4978,12 +4783,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 名字菜单的选中底色与勾归 entity-hero island，由 e2e 设计用例读计算样式。
         self.assertPageContains(".entitytitle{justify-content:center}")
 
-    def test_jav_cards_prefer_the_canonical_performer_over_legacy_creator_text(self):
-        self.assertPageContains("const primaryCreator=it.is_jav&&performer?'':it.creator")
-        self.assertPageContains("const identity=primaryCreator?{kind:'creator',name:primaryCreator}")
-        self.assertPageContains("const coStarred=performers.length>1&&!primaryCreator")
-        self.assertPageContains("return (it.is_jav&&performer?performer:it.creator)||performer")
-
     def test_jav_detail_keeps_official_tags_visually_neutral(self):
         # 「日文标题优先」这条已经改成拿真输入跑真函数验收，见
         # test_web_js.test_official_title_prefers_the_japanese_one。
@@ -5214,8 +5013,6 @@ class WebUiSourceTests(unittest.TestCase):
         翻动本身是 React 的 `useStackFlip`，卡片网格、播放列表与关注页共用一份，时序与门槛见
         `frontend/test/react/use-stack-flip.test.tsx`。
         """
-        self.assertPageContains("const load=eager?'eager':'lazy';")
-        self.assertCode('''loading="${eager?'eager':'lazy'}"''')
         self.assertPageContains("const mixRelatedCache=new Map();")
         # 作品详情岛取 Mix 队列也走壳的这一份缓存。
         self.assertPageContains("mixRelated:seedId=>mixRelated(seedId),")
@@ -5346,10 +5143,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("displayName:it=>javDisplayName(it),")
 
     def test_remote_hover_previews_do_not_stream_full_media(self):
-        self.assertPageContains("if(it.location!=='local')")
-        self.assertPageContains("el.dataset.hoverMode=it.location==='local'?'video':'frames'")
-        self.assertPageContains("function releaseHoverPreviews(root=document,except=null)")
-        self.assertPageContains("releaseHoverPreviews(document,el)")
         self.assertPageContains("window.addEventListener('pagehide',()=>releaseHoverPreviews())")
         self.assertPageContains("if(document.hidden)releaseHoverPreviews()")
 
@@ -5363,29 +5156,12 @@ class WebUiSourceTests(unittest.TestCase):
         几何和本地视频的 `.hv` 逐字一致：不透明黑底加 contain。大图版式的容器是 0.75
         竖比例，16:9 的接触印相格子于是居中、上下留黑，这就是那一版式的预览外观。
         """
-        self.assertPageContains("layer.className='hvframes';layer.alt=''")
-        self.assertPageContains("pic.appendChild(layer)")
         self.assertPageLacks("pic.querySelector('.poster:not(.cover)')")
-        self.assertPageContains("if(!it.has_thumb)return;")
-        self.assertPageContains("if(layer){layer.remove();layer=null}i=4")
-        # 卡片被重画过时旧元素上的 `_stopHover` 跟着旧 DOM 走了，只靠回调收不到
-        # 留在画面上的扫视图，所以 release 还要按类名兜一遍。
-        self.assertPageContains("root.querySelectorAll('img.hvframes')")
+        # 叠层的挂与撤、卡片重画后按类名兜底收掉：`frontend/test/card-art/hover.test.ts`。
         css = stylesheet_source()
         self.assertIn("img.hvframes{position:absolute;inset:0;width:100%;height:100%;"
                       "object-fit:contain;", css)
         self.assertIn("background:#000;display:block}", css)
-
-    def test_the_next_frame_is_loaded_before_it_is_shown(self):
-        """下一格先拉到手再换上去，没拉到就停在当前这格。
-
-        直接把 src 指过去，图片在解码完成前是空的：网盘那边一格要几百毫秒，
-        430 毫秒一跳的节奏下，看到的是一连串黑白闪烁。慢的时候少跳一格，比跳
-        过去闪一下好。取图失败也要把闸放开，否则一次 404 之后这张卡再也不动。
-        """
-        self.assertPageContains("if(!layer||loading)return;")
-        self.assertPageContains("pre.onload=()=>{if(layer){layer.src=pre.src;i=next}loading=false}")
-        self.assertPageContains("pre.onerror=()=>{loading=false}")
 
     def test_detail_close_returns_to_the_collection_that_opened_it(self):
         self.assertPageContains("detailReturnPath='/'")
@@ -5600,8 +5376,6 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_compact_card_title_is_one_line_and_identity_kind_matches_name(self):
         self.assertPageContains('body[data-density="dense"] .card .meta .t{display:block;max-width:100%;min-height:1.35em;overflow:hidden;')
-        self.assertPageContains("performer?{kind:'performer',name:performer}")
-        self.assertPageContains(":{kind:'',name:'未归属'});")
         self.assertPageLacks("it.studio?{kind:'studio',name:it.studio}")
         self.assertPageLacks("const whoKind=it.creator?'creator':(it.studio?'studio':'')")
 
@@ -5680,10 +5454,9 @@ class WebUiSourceTests(unittest.TestCase):
         # 开关变化经宿主的 `setCensored` 写回 localStorage 并撤掉正在飞的悬停预览。
         self.assertIn("onToggle={(on) => current.setCensored(on)}", panel)
         self.assertPageContains("if(on)releaseHoverPreviews()")
-        # 悬停预览三条启动路径（长按轮播、悬停起播、定时器到点）都要被拦。
-        self.assertIn("if(selectMode||censorOn())return;armLong()", self.page)
-        self.assertIn("if(selectMode||censorOn()||window.__scrolling)return;", self.page)
-        self.assertIn("if(window.__scrolling||censorOn())return;", self.page)
+        # 悬停预览三条启动路径（扫视轮播、悬停起播、定时器到点）都要被拦：
+        # `frontend/test/card-art/hover.test.ts`。壳把这个开关交给悬停模块，每次现读。
+        self.assertCode("configureHoverPreview({selecting:()=>selectMode,censored:()=>censorOn(),")
 
     def test_management_surfaces_are_narrow_and_geist_semantics_hold(self):
         """语义色、状态徽章与导航激活重算对齐 Geist 实测。
@@ -7361,15 +7134,10 @@ class WebUiSourceTests(unittest.TestCase):
         # `frontend/e2e/design.test.ts` 按计算值量。
         self.assertPageContains(".javedition.censored{color:var(--muted)}")
 
-    def test_queue_thumbnails_fall_back_to_the_jav_cover(self):
-        """没抽过帧的条目在队列里退回番号封套，而不是一个纯黑块。"""
-        self.assertPageContains("queueThumbHtml:it=>mixFacePoster(it,'small'),")
-
     def test_jav_image_preference_reaches_cards_mix_and_settings(self):
         # 设置面板那一格改完落盘由 `frontend/e2e/settings-panel.test.ts` 守。
         self.assertPageContains("Object.assign(appSettings,normalizeJavPreferences(appSettings));")
         self.assertPageContains("syncJavImages(document,appSettings.javImage);")
-        self.assertPageContains("? javArtwork(it,jav?layout:'small',eager)")
 
     def test_jav_cover_source_and_size_are_independent_settings(self):
         """封面来源与封面大小是两格各管各的：改来源不动大小，改大小不动来源。两格都在
@@ -7395,20 +7163,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 那一侧用的是同一个字段：`frontend/test/react/item-detail.test.tsx`。
         self.assertPageContains(".javedition.partlabel{color:var(--muted);margin-left:6px}")
 
-    def test_queue_rows_carry_the_same_signature_block_as_the_cards(self):
-        """队列行和「接着看」并排出现在同一屏，署名层必须是同一套 DOM。
-
-        身份推导也必须共用：各算各的迟早会在同名 creator/performer 上分叉，
-        同一条作品在两处指向两个实体。队列整行是一个 <button>，所以头像层
-        必须走不可点分支——嵌套 <button> 会被浏览器就地拆散。
-        """
-        self.assertPageContains("function cardIdentity(it,linked=true)")
-        self.assertPageContains("queueAvatarHtml:it=>cardIdentity(it,false).avatar,")
-        self.assertPageContains(
-            "? `<button class=\"${cls} entitylink\" ${attrs}>${inner}</button>`")
-        self.assertPageContains(": `<span class=\"${cls}\">${inner}</span>`")
-        # 署名层在队列行里的排法在 `stage.css`。
-
     def test_a_cold_deep_link_fills_the_catalog_below_the_detail(self):
         """深链冷启动时列表一次请求都没发过，排序条底下于是是一整屏空白。
 
@@ -7427,8 +7181,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 设置面板里排序与方向那一对（随机时方向收起）由 `frontend/e2e/settings-panel.test.ts` 守。
         self.assertPageContains("['rating','评分']")
         self.assertPageContains('boundedPreference(+appSettings.hoverDelaySeconds,0,60,5)')
-        self.assertPageContains('if(!appSettings.hoverDelaySeconds)return;')
-        self.assertPageContains("if(appSettings.hoverDelaySeconds)setHoverState(el,'longhover',true)")
 
     def test_group_collapse_is_a_setting_and_defaults_to_on(self):
         """合并分卷与版本可以关掉，关掉后同番号的每一卷／每一版各占一张卡。
@@ -7916,13 +7668,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks('.igrid[data-layout="compact"]',
                              "紧凑就是基础样式那一屏，不该再写一份")
 
-    def test_the_big_people_layout_frames_the_detected_face(self):
-        # 3:4 竖幅按几何居中会把脸切掉。换算只有 faceOrigin 一份：资料页写进 img 的
-        # style，名册那一格（React `PeopleGrid`）交给圆框上的 --face，由 `entity-body.test.tsx` 钉住。
-        self.assertPageContains("function faceOrigin(f){")
-        self.assertCode("  const origin=faceOrigin(f);\n"
-                        "  return origin?` style=\"object-position:${origin}\"`:'';")
-
     def test_swiper_stays_out_of_the_first_paint(self):
         # 灯箱归 React（`frontend/src/react/photo-lightbox/`），打开时才按需取 Swiper，
         # 由 `photo-lightbox.test.tsx` 与 e2e 钉住；首屏页面不许直接挂它。
@@ -8091,8 +7836,8 @@ class CoverSleeveThresholdTests(unittest.TestCase):
         source = (root / "src" / "peach" / "jav_poster_crop.py").read_text(encoding="utf-8")
         low = float(re.search(r"^SLEEVE_RATIO_MIN = ([\d.]+)", source, re.M).group(1))
         high = float(re.search(r"^SLEEVE_RATIO_MAX = ([\d.]+)", source, re.M).group(1))
-        page = (root / "web" / "app.js").read_text(encoding="utf-8")
-        anchor = re.search(r"r>=([\d.]+)\?'still':r>([\d.]+)\?'sleeve'", page)
+        page = (root / "frontend" / "src" / "card-art" / "framing.ts").read_text(encoding="utf-8")
+        anchor = re.search(r"r\s*>=\s*([\d.]+)\s*\?\s*'still'\s*:\s*r\s*>\s*([\d.]+)\s*\?\s*'sleeve'", page)
         self.assertIsNotNone(anchor, "coverAnchor 的封套判定不见了")
         self.assertEqual((low, high), (float(anchor.group(2)), float(anchor.group(1))))
         self.assertLess(low, high)

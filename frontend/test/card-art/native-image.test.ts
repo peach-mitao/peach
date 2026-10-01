@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nativeImageFit, faceSourceScale } from '../src/native-image';
+import { nativeImageFit, faceSourceScale } from '../../src/card-art/native-image';
 
 it('544×724 的旧人像不能使用 2184×1468 封面的焦点', () => {
   expect(faceSourceScale(544, 724, 2184, 1468)).toBe(0);

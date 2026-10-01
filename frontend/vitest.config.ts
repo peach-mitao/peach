@@ -18,6 +18,8 @@ export default mergeConfig(base, defineConfig({
       '@peach/legacy/home-glow': fileURLToPath(new URL('../web/js/home-glow.js', import.meta.url)),
       // 测试里 island 直接拿到 React 子树的源码入口，不经过 web/dist 产物。
       '@peach/react': source('react/entry.tsx'),
+      // React 子树按 `@peach/card-art` 取卡片图片助手，产物里是 peach-ui.js；测试里两边都落到同一份源码。
+      '@peach/card-art': source('card-art/index.ts'),
       '@/registry': source('react/evilcharts/registry'),
       '@/lib/utils': source('react/charts/cn.ts'),
       '@': source('react/boardui'),

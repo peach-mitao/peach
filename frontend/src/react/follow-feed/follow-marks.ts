@@ -1,7 +1,7 @@
 /* 关注页卡片、两排与详情共用的署名、头像、来源图标和标题前后那几处字样。
  *
  * 都是拼好的 HTML 串，卡片与详情用 `dangerouslySetInnerHTML` 摆进去。图取不到时的回落由壳的
- * `wireImageFallbacks()` 委托监听按 `data-drop` 系列属性接手（`web/js/image-fallback.js`），
+ * `wireImageFallbacks()` 委托监听按 `data-drop` 系列属性接手（`frontend/src/card-art/image-fallback.ts`），
  * 这里只写属性。创作者名、首字母与头像的取舍和关注管理页是同一份（`follow-manage.ts`）。
  *
  * 站点图标、版本字样与另见徽章按 `data-follow-*` 认，样式在 `follow-feed.css`。创作者圆框仍挂

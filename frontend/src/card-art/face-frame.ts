@@ -46,19 +46,24 @@ export const FACE_CEILING = 0.6;
  *
  *  `faceW` 是脸框宽的**源图像素**，不是归一化值：无损上限问的就是「有多少像素可用」，
  *  归一化值除得出比例却除不出像素，换算要在拿得到原图尺寸的那一侧做。 */
-export function hasFaceBox(face) {
+export interface FaceBox { cx: number; cy: number; faceW: number; imgW: number; imgH: number }
+
+/** 框的 CSS 像素尺寸。 */
+export interface FrameSize { w: number; h: number }
+
+export function hasFaceBox(face: Partial<FaceBox> | null | undefined): face is FaceBox {
   if (!face) return false;
   // 脸心可以是 0：脸贴着左边缘或顶边的图确实存在，那不是缺数据。
   return Number.isFinite(face.cx) && Number.isFinite(face.cy)
-    && face.faceW > 0 && face.imgW > 0 && face.imgH > 0;
+    && Number(face.faceW) > 0 && Number(face.imgW) > 0 && Number(face.imgH) > 0;
 }
 
 /** 放大多少倍。`frame` 是框的 CSS 像素尺寸，`dpr` 是设备像素比。
  *
  *  推着它往上的有两样：脸要够大（`wanted`），脸还要摆得正（`centred`）；
  *  压着它的有两样：脸放完不许超过构图上限，源图剩下的像素不许被上采样。 */
-export function faceZoom(face, frame, dpr = 1,
-                         target = FACE_TARGET, ceiling = FACE_CEILING) {
+export function faceZoom(face: Partial<FaceBox> | null | undefined, frame: FrameSize | null | undefined, dpr = 1,
+                         target = FACE_TARGET, ceiling = FACE_CEILING): number {
   if (!hasFaceBox(face) || !(frame && frame.w > 0 && frame.h > 0)) return 1;
   const ratio = dpr > 0 ? dpr : 1;
   // cover 的基础缩放：图缩到刚好盖住框，紧的那一边说话。
@@ -86,10 +91,12 @@ export function faceZoom(face, frame, dpr = 1,
  *  给百分比而不是像素：索引页大图版式的框宽跟着列宽走，视口一变就得跟着变，
  *  百分比让 CSS 自己跟随。`zoom` 按加载时的框尺寸算一次就够——框变大只会让
  *  放大倍数偏保守，不会突然越过无损上限。 */
-export function faceFrame(face, frame, dpr = 1,
-                          target = FACE_TARGET, ceiling = FACE_CEILING) {
+export function faceFrame(face: Partial<FaceBox> | null | undefined, frame: FrameSize | null | undefined, dpr = 1,
+                          target = FACE_TARGET, ceiling = FACE_CEILING):
+  { zoom: number; width: number; height: number; left: number; top: number } | null {
   const zoom = faceZoom(face, frame, dpr, target, ceiling);
-  if (zoom <= 1 || !hasFaceBox(face)) return null;
+  // 倍数大于 1 就说明框量得到尺寸；这里再判一次只是给类型收窄。
+  if (zoom <= 1 || !hasFaceBox(face) || !frame) return null;
   const scale = Math.max(frame.w / face.imgW, frame.h / face.imgH) * zoom;
   const width = face.imgW * scale;
   const height = face.imgH * scale;
@@ -97,7 +104,7 @@ export function faceFrame(face, frame, dpr = 1,
   // 这个区间不会是空的。
   const left = Math.min(0, Math.max(frame.w - width, frame.w / 2 - face.cx * width));
   const top = Math.min(0, Math.max(frame.h - height, frame.h / 2 - face.cy * height));
-  const pct = (value, span) => Math.round(value / span * 1e4) / 100;
+  const pct = (value: number, span: number) => Math.round(value / span * 1e4) / 100;
   return {
     zoom: Math.round(zoom * 1000) / 1000,
     width: pct(width, frame.w), height: pct(height, frame.h),

@@ -121,7 +121,7 @@ def face_box(face: object, px: object) -> dict | None:
     """sidecar 的 `face` 那一半，换算成绝对像素交给页面。
 
     脸心归一化、脸框归一化、源图像素三样缺一不可：少了源图像素就只剩比例，
-    答不了「放大到几倍开始糊」。页面按 `web/js/face-frame.js` 的字段名取用。
+    答不了「放大到几倍开始糊」。页面按 `frontend/src/card-art/face-frame.ts` 的字段名取用。
     """
     if not isinstance(face, dict) or not isinstance(px, (list, tuple)) or len(px) != 2:
         return None

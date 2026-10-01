@@ -1,13 +1,11 @@
 import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
 import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
-import { faceFrame } from './js/face-frame.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
 import { MEDIA_SOURCE_ICONS } from './js/media-source-icons.js';
 import { boardPageSkeleton, detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
-import { imageFallbackAttrs, wireImageFallbacks } from './js/image-fallback.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
 import { matchRoute, routeLabel } from './js/routes.js';
 import { initMiddleTruncate } from './js/middle-truncate.js';
@@ -17,14 +15,15 @@ import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, HOME_G
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
-import { javImageKind, normalizeJavLayout, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages, nativeImageFit, faceSourceScale, entitySkeletonHtml } from './dist/peach-ui.js';
+import { javImageKind, normalizeJavLayout, normalizeJavPreferences, relayoutJavImages, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
+import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityAvatar, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml, refitNativeImages, reframeCovers, releaseHover, releaseHoverPreviews, rememberRepresentatives, representativeOf, setHoverState, upgradeCover, wireHover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
   fitSkeleton, formModal, iconSwapHtml, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
   dissolveValue, popBadges, revealSkeleton, revealTexts, setIconSwap,
   boardTabsHtml, moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml, searchInputHtml,
-  SKELETON_REVEAL_DELAY, setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
+  setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
   wireOverlayScrollbars, wireScrollers, configurationSkeletonHtml, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
   postSetupTutorialMarker, setPostSetupTutorialMarker, postSetupTutorialCollapsed, setPostSetupTutorialCollapsed,
   postSetupTutorialSkipped, setPostSetupTutorialSkipped, postSetupTutorialSignature,
@@ -1117,7 +1116,6 @@ const cloneBarsContext=context=>context&&context.type==='entity'
   ? {...context,filters:{...context.filters}}:context;
 const activeFilterState=()=>barsContext.type==='home'?state:barsContext.filters;
 $('#q').value=state.q;rememberSearchValue();
-const REP={};   // 创作者/厂牌 → 代表作 id，用来做圆头像（裁接触印相中心格，不另造图）
 /* `activeQueue` 是此刻开着的队列（`{kind, seedId|playlistId}`），只用来判「是不是同一个队列里换
    一条」；队列的条目归详情岛。`pendingQueueRoute` 是队列地址的前缀：停在哪一条要等岛定下来，
    画出来那一刻（`present`）才推。 */
@@ -1134,7 +1132,7 @@ const stageHost={
     settings:()=>appSettings,saveSettings:()=>saveSettings(),
     toast:(text,options)=>toast({text},options),
     loadSourceStatus:()=>loadSourceStatus(),offlineReason:key=>offlineReason(key),
-    posterUrl:it=>detailPosterUrl(it),
+    posterUrl:it=>detailPosterUrl(it,appSettings.javImage),
   },
   sourceOffline:key=>sourceOffline(key),
   /* 小窗里的「展开」：同一个播放器搬回这一条的详情，地址与来处照点卡片进来的那一条走。 */
@@ -1320,434 +1318,17 @@ $('#density').onclick=()=>{if(photoViewActive()){
   localStorage.setItem('density',density);applyDensity()};
 applyDensity();
 
-/* ── 悬停预览：只有本地文件拉真视频。
-   115 / PikPak 等远端源只扫本地接触印相，避免页面移除后继续下载或填满缓存。 ── */
-/* 卡片有两种：壳拼的 `.card`，和 React 网格里的 `[data-media-card]`／`[data-mix-card]`。 */
-const HOVER_CARDS='.card,[data-media-card],[data-mix-card]';
-function releaseHoverPreviews(root=document,except=null){
-  if(!root||!root.querySelectorAll)return;
-  root.querySelectorAll(HOVER_CARDS).forEach(card=>{
-    if(card!==except&&card._stopHover)card._stopHover()});
-  root.querySelectorAll('video.hv').forEach(v=>{
-    if(v.closest(HOVER_CARDS)===except)return;
-    if(v._hop)clearInterval(v._hop);v.pause();v.removeAttribute('src');v.load();v.remove()});
-  // 远端源那一层和视频同样要兜一遍：卡片被重画过的话，旧元素上的 `_stopHover`
-  // 已经跟着旧 DOM 走了，只靠上面那轮回调收不到它留在画面上的扫视图。
-  root.querySelectorAll('img.hvframes').forEach(im=>{
-    if(im.closest(HOVER_CARDS)===except)return;
-    im.removeAttribute('src');im.remove()});
-}
-/* 悬停态写在卡上的 `data-previewing`／`data-longhover`：卡的类名归 React 管，壳不往上加。 */
-function setHoverState(el,name,on){if(on)el.dataset[name]='';else delete el.dataset[name]}
-function wireHover(el,it){
-  const pic=el.querySelector('[data-media-pic]'); if(!pic)return;
-  el.dataset.hoverMode=it.location==='local'?'video':'frames';
-  let longTimer=null;
-  const armLong=()=>{clearTimeout(longTimer);if(!appSettings.hoverDelaySeconds)return;setHoverState(el,'previewing',true);longTimer=setTimeout(()=>{if(appSettings.hoverDelaySeconds)setHoverState(el,'longhover',true)},appSettings.hoverDelaySeconds*1000)};
-  const clearLong=()=>{clearTimeout(longTimer);setHoverState(el,'previewing',false);setHoverState(el,'longhover',false)};
-  if(it.location!=='local'){        // 远端源：只在接触印相的格子间扫视，零网络流量
-    /* 扫视图是叠在画面之上新建的一层，不改任何已有 `<img>` 的 src。JAV 大图和小图
-       版式里画面就是封面本身（`.poster.cover`），改它的 src 等于把封面当场换掉；
-       按类名把封面排掉又等于这两种版式整个没有悬停预览，连 `data-longhover` 都不进，
-       快退快进那三颗也跟着永远不出现。叠一层对三种版式是同一条路。
-       这一层用 contain 加黑底：大图版式的容器是 0.75 的竖比例，16:9 的接触印相格子
-       在里面居中、上下留黑，和本地视频的 `.hv` 同一个口径。 */
-    if(!it.has_thumb)return;        // 没有接触印相就没有可扫的格子
-    let t=null,i=4,layer=null,loading=false;
-    el.addEventListener('mouseenter',()=>{
-      if(selectMode||censorOn())return;armLong();
-      if(!layer){
-        layer=document.createElement('img');
-        layer.className='hvframes';layer.alt='';
-        layer.src=`/poster?id=${it.id}&c=${i}`;
-        pic.appendChild(layer);
-      }
-      clearInterval(t);
-      t=setInterval(()=>{
-        if(!layer||loading)return;
-        const next=(i+1)%9, pre=new Image(); loading=true;
-        pre.onload=()=>{if(layer){layer.src=pre.src;i=next}loading=false};
-        pre.onerror=()=>{loading=false};
-        pre.src=`/poster?id=${it.id}&c=${next}`;
-      },430);
-    });
-    const stop=()=>{clearLong();clearInterval(t);t=null;
-      if(layer){layer.remove();layer=null}i=4};
-    el._stopHover=stop;el.addEventListener('mouseleave',stop);
-    return;
-  }
-  let timer=null,v=null;
-  el.addEventListener('mouseenter',()=>{
-    if(selectMode||censorOn()||window.__scrolling)return;   // 多选、遮挡或滚动中不启动预览
-    timer=setTimeout(()=>{
-      if(window.__scrolling||censorOn())return;
-      releaseHoverPreviews(document,el);   // 同一时间只保留一个本地视频预览
-      v=document.createElement('video');
-      v.className='hv'; v.muted=true; v.playsInline=true; v.loop=true; v.preload='metadata';
-      v.src='/stream?id='+it.id;
-      // 分段跳跃：每段放 1.4 秒就跳到下一段，扫完全片，而不是从一个点连续播
-      const SEG=[0.08,0.22,0.36,0.50,0.64,0.78,0.90]; let si=0, hop=null;
-      const seek=()=>{try{v.currentTime=(v.duration||0)*SEG[si]}catch(e){}};
-      v.addEventListener('loadedmetadata',()=>{
-        seek(); v.classList.add('on');v.dataset.playing='';armLong();
-        hop=setInterval(()=>{si=(si+1)%SEG.length;seek()},1400);
-        v._hop=hop;
-      },{once:true});
-      pic.appendChild(v); v.play().catch(()=>{});
-    },340);                         // 340ms 防抖，鼠标划过不触发
-  });
-  const stop=()=>{
-    clearLong();
-    clearTimeout(timer);timer=null;
-    if(v){if(v._hop)clearInterval(v._hop);v.pause();v.removeAttribute('src');v.load();v.remove();v=null}
-  };
-  el._stopHover=stop;el.addEventListener('mouseleave',stop);
-}
+/* 卡片图片、人脸取景与悬停预览在 `frontend/src/card-art/`。起不起预览的判据归壳：取值函数
+   每次现读，悬停延时在计时器里还会再读一次。 */
+configureHoverPreview({
+  selecting:()=>selectMode,
+  censored:()=>censorOn(),
+  delaySeconds:()=>appSettings.hoverDelaySeconds,
+});
 window.addEventListener('pagehide',()=>releaseHoverPreviews());
 document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseHoverPreviews()});
+installCardArt();
 
-/* 实体那张脸：规范实体图优先，取不到退到代表作头像，两样都取不到就一个 `<img>`
-   都不出。四个位置（顶栏圆头像、卡片署名、共演者、资料页大位）共用这一份。
-
-   无条件出图、等 404 再把图摘掉的代价是：一个作品详情页 9 个这样的 404（1 个厂牌
-   实体图、4 个人物实体图、4 个头像），首页手机视口 2 个；`/entity-image` 与
-   `/avatar` 的 404 都不带缓存头，每次重绘再打一整轮。`hasImage` 由 `/api/tops`、
-   `/api/items`、`/api/item`、`/api/entity` 随资料下发，判据和取图同一个函数。
-
-   `rep` 这一侧不带标志：调用方传进来的就该是「取得到的代表作」（顶栏在入 REP 表时
-   已经筛过）。`/avatar` 是按需生成的，还没裁过但印相还在也算取得到——那条点一下就
-   有的路不能一起关掉。
-
-   兜底链最后一环必须真的把 `<img>` 拿掉（`data-drop="self"`）：留着取不到图的
-   `<img>`，`:has(img)` 仍然匹配，首字母垫底回不来，浏览器还会把 alt 画出来。 */
-/* `thumb` 要的是实体图缩到长边 640 的那一份。开给一屏几十格的位置用：实体图是给
-   资料页大位存的照片，本库 727 张均 221 KB，索引页一屏 120 格铺进 150 px 的格子就是
-   十几 MB，而屏幕上用得着的只有其中百分之几的像素。资料页仍取原件——那里就是要看清。 */
-/* `version` 是服务端随 `has_image` 下发的 `image_version`。换头像原地覆盖同一个文件，
-   地址不跟着变的话，同一页里浏览器直接复用内存里那张旧图，要刷新才看得到新的。 */
-function entityFaceImg({kind='performer',id=null,hasImage=false,version='',rep=null,mark=null,logo='',
-                        logoVariant='logo',alt='',lazy=true,style='',dropStyle=false,
-                        focus=null,thumb=false}={}){
-  const useEntity=!!(id&&hasImage);
-  const entitySrc=useEntity?`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`
-    +(version?`&v=${encodeURIComponent(version)}`:''):'';
-  // `rep` 由服务端的 has_avatar 决定有没有值，没有就不出这一环。
-  const avatarSrc=rep?`/avatar?id=${rep}`:'';
-  /* 公司的门面是它自己的标识，不是作品截图——那是某部片的画面，说的是别人的事。
-     厂牌走 `/logo`：`logo` 只在调用方问过 `has_logo` 时才有值。变体跟着位置走，
-     大位要字标、小位要方形图标。事务所没有标识文件，走官网那条链接的站点圆标 `mark`。 */
-  const useLogo=!!logo;
-  const src=useLogo?`/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`
-    :(entitySrc||avatarSrc||(mark?`/link-mark?id=${mark}`:''));
-  if(!src)return '';
-  const fallbacks=useLogo?[entitySrc,avatarSrc].filter(Boolean)
-    :(useEntity&&avatarSrc?[avatarSrc]:[]);
-  // 人脸取景是按实体图算出来的，回落图是另一张照片，脸不在同一位置：只贴给第一环。
-  const framed=useEntity&&!useLogo;
-  const faceBox=framed?faceBoxAttrs(focus):'';
-  /* 挪和放大是同一份 sidecar 的两半，这里替调用点把挪那一半补上：给了 `focus` 却
-     没给 `style` 的，按同一个换算自己算。分开传时漏掉 `style` 不会报错也看不出来
-     ——图照样出，只是几何居中，脸落在画面顶上的那些正好被裁掉脑袋。 */
-  const framedStyle=style||facePos(focus);
-  /* 贴了脸框就一定要能撤 style：放大是 avatarFrame 写进 img 内联 style 的，回落时
-     不撤，那几个百分比会按上一张图的尺寸套在这一张上。调用点不必记得开这个开关——
-     忘了开的代价是页面上一张明显错位的图，而它只在回落发生时才现形。 */
-  /* `decoding="async"` 让解码离开主线程：一屏几十张图同时落地时，同步解码把滚动
-     和点击一起压住，而这些图一张都不参与首屏的排版——框的尺寸由 CSS 定死。 */
-  return `<img src="${src}" alt="${alt}"${lazy?' loading="lazy"':''} decoding="async"${framed?framedStyle:''} `+
-    `${faceBox}${imageFallbackAttrs({dropStyle:(dropStyle||!!faceBox||!!framedStyle)&&framed,
-                                     fallbacks})}>`;
-}
-/* 头像内层：先垫首字母，再叠真实图。
-
-   `has_image` 缺席按「没图」处理，和 entityFaceImg 的默认值一致：每一个调用点的
-   ref 都由服务端带着标志下发（卡片署名、索引页、口味榜、复核卡片、沉浸模式），
-   宽容缺席只会让下一个忘了挂标志的端点悄悄退回「无条件出图、等 404 再摘」。
-
-   取景反过来：不传就从 ref 上取。它和 `has_image` 出自同一份下发，分开传的代价是
-   七个调用点要各记一次，而漏掉不报错也不掉图，只是几何居中——这种错只有对着页面
-   一个个看才发现得了。公司那一格要的是「明确不取景」，传 `null` 覆盖掉。 */
-function avatarInner(name,ref,repId,kind='performer',markId=null,logoName='',logoVariant='icon',
-                     focus=undefined,thumb=false){
-  // 这一层大多是小圆框和窄格子，厂牌标识在那里要方形图标而不是横着的字标；索引页的
-  // 厂牌大格是同一个模板里的例外，由调用方点名要 `large`。
-  const hint=focus===undefined?(ref&&ref.avatar_focus)||null:focus;
-  return `<span class="ini">${esc((name||'?').slice(0,1))}</span>`+
-    entityFaceImg({kind,id:ref&&ref.id,hasImage:!!(ref&&ref.has_image),version:ref&&ref.image_version,rep:repId,mark:markId,
-                   logo:logoName,logoVariant,focus:hint,thumb});
-}
-/* 人脸取景：资料页圆框按检出的人脸中心取景（/api/entity 的 avatar_focus）。
-   没检出或没算过返回空串维持几何居中；换回落图时必须撤掉——那是另一张照片，
-   脸不在同一位置，见资料卡大位那张图的 `data-drop-style`。 */
-/* 换算只有这一份。资料页把它写进 img 的 style；索引页大图版式要把它交给圆框上的
-   CSS 变量——那里的 img 由共用的 avatarInner 拼，版式能改的容器只有圆框。 */
-function faceOrigin(f){
-  return f&&f.axis==='x'?`${f.pct}% 50%`
-    :f&&f.axis==='y'?`50% ${f.pct}%`
-    :'';
-}
-function facePos(f){
-  const origin=faceOrigin(f);
-  return origin?` style="object-position:${origin}"`:'';
-}
-/* 人脸放大：把脸框的像素尺寸交给页面，倍数在图加载后按框的真实尺寸算。
-
-   只挪解决不了「脸太小」——cover 的缩放由框和图的比例定死，脸在图里占多少，在框里
-   就占多少。539 张里有 29 张是全身站姿照，脸落在画面上半截的一小块里，挪到正中依旧
-   是一颗认不出是谁的头。放大倍数由 `web/js/face-frame.js` 夹在「够看清」「不上采样」
-   「不切头」三条之间，服务端算不了：它不知道这个框有多大、这块屏幕几倍像素。
-
-   属性而不是 style：倍数得等图和框都落地才算得出来，和封面的 `data-cx`／`coverAnchor`
-   同一条路。缺 `box` 的 sidecar（补字段之前算的）不贴属性，那些图照旧只挪不放大。
-
-   五个数挤在一个属性里，是为了让回落只需要摘一样东西：脸框只描述第一环那张实体图，
-   换到 `/avatar` 那张就整个作废，见 image-fallback.js 的 advanceImageFallback。 */
-function faceBoxAttrs(f){
-  const b=f&&f.box;
-  if(!b)return '';
-  return ` data-facebox="${[b.cx,b.cy,b.faceW,b.imgW,b.imgH].map(Number).join(' ')}"`;
-}
-/* 圆框里那张图按人脸取景。放大靠改 img 自己的尺寸和偏移，不用 transform：
-   `object-position` 只能在 cover 裁掉的那部分里挪，方图根本没得挪，而 transform
-   缩放会连圆框的描边一起放大。元素撑到「图按 cover 缩放再乘倍数」那么大，再用负偏移
-   把脸心拉到框心，圆框的 `overflow:hidden` 负责裁——和不放大时是同一套几何。 */
-function avatarFrame(img){
-  const ring=img.parentElement;
-  if(!ring)return;
-  ['position','right','bottom','left','top','width','height','max-width','max-height']
-    .forEach(name=>img.style.removeProperty(name));
-  // 取景完才露面（`09-skeleton.css`）：本函数同步写完样式，先标上；只有等框布局那条路撤掉。
-  img.dataset.faceFramed='';
-  if(ring.dataset.nativeSmall==='true')return;
-  const rect=ring.getBoundingClientRect();
-  /* 图加载完时框还没布局，是真会发生的一整类情况：面板隐藏、`display:none` 的页签、
-     缓存直出。那一刻框是 0×0，算出来的倍数只能是 1，而 `load` 不会再来第二次——
-     放大于是静默地永不生效，页面上看不出和「这张图不需要放大」有任何区别。
-     实测在资料页复现过：框已经 160×160、图也 complete，style 里却只有平移。
-     等到框拿到尺寸再算一次，等不到就维持不放大。 */
-  if(!(rect.width>0&&rect.height>0)){
-    if(typeof ResizeObserver!=='function')return;
-    // 框是 0×0 时本来也看不见；等它量到尺寸、取完景再露面。
-    delete img.dataset.faceFramed;
-    const watch=new ResizeObserver(()=>{
-      const now=ring.getBoundingClientRect();
-      if(!(now.width>0&&now.height>0))return;
-      watch.disconnect();
-      avatarFrame(img);
-    });
-    watch.observe(ring);
-    return;
-  }
-  const [cx,cy,faceW,imgW,imgH]=String(img.dataset.facebox).split(' ').map(Number);
-  /* 索引页取的是实体图的派生件，边车记的是原件像素：等比缩过的仍是同一张图，按比例
-     换算就对得上。脸心是归一化的，不跟着缩；脸框和图的像素一起乘，`faceZoom` 里那条
-     无损上限才问得到手上这张真有多少像素。比例为 0 是换成了别的图，那时退回几何居中。 */
-  const scale=faceSourceScale(img.naturalWidth,img.naturalHeight,imgW,imgH);
-  if(!scale){
-    img.style.objectPosition='50% 50%';
-    return;
-  }
-  const frame=faceFrame({cx,cy,faceW:faceW*scale,imgW:imgW*scale,imgH:imgH*scale},
-    {w:rect.width,h:rect.height},window.devicePixelRatio||1);
-  // 放不大就一个字都不写：留下的是 CSS 里那份几何，`object-position` 照旧生效。
-  if(!frame)return;
-  const s=img.style;
-  // `inset:0` 定了 right/bottom，和这里的 left+width 过约束；显式撤掉，不靠浏览器取舍。
-  s.position='absolute';s.right='auto';s.bottom='auto';
-  s.left=`${frame.left}%`;s.top=`${frame.top}%`;
-  s.width=`${frame.width}%`;s.height=`${frame.height}%`;
-  /* 宽常常超过框宽。React 岛的 Tailwind 预检给每张 img `max-width:100%`，会把宽夹回框宽、
-     高照样放大，脸偏到左边、右侧露出底色；内联撤掉，图落在哪个容器里都不用再各补一条。 */
-  s.maxWidth='none';s.maxHeight='none';
-}
-/* 官方封面有三种形态，实测过：整张封套约 1.48（左侧是剧照拼贴，右侧才是正封），
-   竖版正封约 0.70（本身就是正封，没有左半边可裁），16:9 官方剧照约 1.78（整幅
-   都是画面，没有「正封那一块」可推）。所以取景不能写死「取右边」，得等图片加载后
-   按它自己的宽高比分流——服务端没存这个比例，也不该为此再存一份。
-   剧照必须自成一档：把 1.78 归进 front 就会按写死的 50% 取横向中段，人偏在一侧
-   就整个被切掉，而大图容器比所有封面都竖、纵向锚点在那里根本不生效。 */
-function coverAnchor(img){
-  const r=img.naturalWidth/img.naturalHeight;
-  if(!r)return;
-  const code=new URL(img.currentSrc||img.src,location.href).searchParams.get('code')||'';
-  // FC2 封面是整幅画面，横向取景跟随人脸；宽高比不代表有 DVD 正封。
-  img.dataset.frame=/^FC2(?:-PPV)?-/i.test(code)||r>=1.65?'still':r>1.2?'sleeve':'front';
-  /* `object-position` 的百分比说的是「图片上这个点对齐可见窗口的同一个百分比位置」，
-     不是「这个点落到窗口正中」。所以人脸中心原样当锚点只能保证脸还在画面里：0.81
-     那种偏右的脸会贴着窗口右缘，图片右边还剩一截永远露不出来。可见窗口占图片 w 时，
-     让人脸落到正中的锚点是 (face - w/2) / (1 - w)。夹回 0–1 是因为脸离图片边缘不足
-     半个窗口时窗口已经顶到边，再往外推只会把图片外面推进来。 */
-  const car=coverRatio(img);
-  const center=(name,face,visible)=>{
-    // 只给被裁的那个轴算。`object-fit:cover` 一次只裁一个轴，另一个轴整幅可见
-    // （visible>=1），那里的 object-position 是死值，算了也不生效。
-    if(face==null||!(visible>0&&visible<1))return;
-    const pct=Math.min(1,Math.max(0,(face-visible/2)/(1-visible)));
-    img.style.setProperty(name,`${Math.round(pct*100)}%`);
-  };
-  center('--cover-x',coverFace(img,'cx'),car/r);
-  center('--cover-y',coverFace(img,'cy'),r/car);
-  posterPanel(img,car);
-  /* 小图版式整张放进卡片（`.whole`）：FC2 那种方图、竖版正封放进横卡片，两侧同样留出
-     两条，垫模糊底而不是黑边。比例差不到 2% 的那一丝留白看不出来，不必多解一张图。 */
-  if((img.classList.contains('whole')||img.dataset.frame==='front')&&Math.abs(r/car-1)>.02)coverBackdrop(img);
-}
-/* 只把折痕右边那块正封摆进卡片，封底一个像素都不露。折痕位置在 `data-posterbox` 里，
-   换算要的容器比例只有页面知道，两边在这里才凑齐。整张封套和「剧照 | 正封 | 剧照」
-   的 16:9 拼图才有正封可切；没有框（本机 1516 张封面里 771 张判定为不裁，永远拿不到）
-   就一个字都不写，CSS 里那份贴右缘或按人脸的回退照旧生效。 */
-/* 正封的宽高比先验，与 `jav_poster_crop.PANEL_ASPECT` 同一个数。没有边车的封套
-   按正封宽度取景，贴右缘时 0.75 的卡片比正封宽，会带进一条书脊。 */
-const PANEL_ASPECT=0.704;
-function posterPanel(img,ratio){
-  if(img.dataset.frame==='front')return;
-  let [x0,imgW,imgH,y0,x1,y1]=String(img.dataset.posterbox||'').split(' ').map(Number);
-  /* 没有框的双页封套按先验从右缘量回去，与服务端折痕找不到时的比例框一致。 */
-  if(!img.dataset.posterbox&&img.dataset.frame==='sleeve'){
-    imgW=img.naturalWidth;imgH=img.naturalHeight;
-    x0=Math.round(imgW-PANEL_ASPECT*imgH);y0=0;x1=imgW;y1=imgH;
-  }
-  /* 框是按那一版源图的像素算的，而封面会被更大的那张原子替换。尺寸对不上就说明
-     框描述的是另一张图，落在这张上是一块错位的区域——而错位在页面上和「本来就该
-     这么取景」看不出区别，所以宁可退回回退值。 */
-  // 卡片先取的是等比缩小的派生档，框的百分比在等比缩放下不变，所以认缩小，不认别的图。
-  if(!faceSourceScale(img.naturalWidth,img.naturalHeight,imgW,imgH))return;
-  const frame=panelFrame({x0,y0,x1,y1,px:[imgW,imgH]},ratio);
-  if(!frame)return;
-  img.classList.add('panel');
-  img.style.setProperty('--panel-clip',
-    `${frame.clip.top}% ${frame.clip.right}% ${frame.clip.bottom}% ${frame.clip.left}%`);
-  img.style.setProperty('--panel-left',`${frame.left}%`);
-  img.style.setProperty('--panel-top',`${frame.top}%`);
-  img.style.setProperty('--panel-height',`${frame.height}%`);
-  coverBackdrop(img);
-}
-/* 封面比卡片窄或宽时留出的那两条，垫同一张封面的模糊放大版。挂在卡片上而不是图片上：
-   正封那时已经被 `clip-path` 切成一块，铺不到留白处。糊成一片的底用不着原件的像素，
-   换回原件之后这一层仍取派生档。 */
-function coverBackdrop(img){
-  img.closest('.pic,[data-media-pic]')?.style.setProperty('--cover-blur',
-    `url("${img.dataset.thumbSrc||img.currentSrc||img.src}")`);
-}
-/* 卡片先取封面的派生档（`/cover?thumb=1`）：高清原件一张解码 38 MB，一页几十张挤爆
-   解码缓存，来回滚动时滚走的被清掉、滚回来现解，那一段是空白。取景落定之后量这张图在
-   屏幕上铺开多大：一个源像素要占不止一个设备像素，就是派生档不够清楚，换回原件。
-   单列、大图这些真用得上像素的地方照旧是原件，多列时屏幕本来就放不下那么多像素。 */
-function upgradeCover(img){
-  if(!/[?&]thumb=1(&|$)/.test(img.src)||!img.naturalWidth)return;
-  const {width,height}=img.getBoundingClientRect();
-  const pick=getComputedStyle(img).objectFit==='contain'?Math.min:Math.max;
-  const scale=pick(width/img.naturalWidth,height/img.naturalHeight)*(window.devicePixelRatio||1);
-  if(!(scale>1.01))return;
-  img.dataset.thumbSrc=img.src;
-  img.src=img.src.replace(/[?&]thumb=1(?=&|$)/,'');
-}
-/* 容器比例只有 `.pic` 的 `--card-ratio` 知道：竖屏开关、JAV 大图和普通卡片各写一个
-   值，在这里按 layout 重算迟早会和它分叉。自定义属性会继承，直接从图片上读；
-   `aspect-ratio` 允许 `16/9` 这种写法，所以两种形式都得认。 */
-function coverRatio(img){
-  const parts=getComputedStyle(img).getPropertyValue('--card-ratio').trim().split('/').map(Number);
-  const r=parts.length===2?parts[0]/parts[1]:parts[0];
-  return Number.isFinite(r)&&r>0?r:16/9;
-}
-function coverFace(img,axis){
-  const face=parseFloat(img.dataset[axis]);
-  return Number.isFinite(face)?face:null;
-}
-/* 封面是模板字符串拼出来的，没法逐张挂监听；内联 `onload` 属性只能调全局函数，而
-   app.js 以 `type="module"` 加载，取景函数在那里取不到——页面会每张图报一次
-   ReferenceError，封面全部按回落取景。`load` 不冒泡，但捕获阶段照样收得到。 */
-document.addEventListener('load',event=>{
-  const img=event.target;
-  if(!(img instanceof HTMLImageElement))return;
-  settleImage(img);
-  fitNativeImage(img);
-  if(img.classList.contains('cover')){coverAnchor(img);upgradeCover(img)}
-  // 头像走同一条路，理由也同一个：倍数要等图和框都落地才算得出来。
-  else if(img.dataset.facebox)avatarFrame(img);
-},true);
-/* 封面与头像的加载态，和换头像那一格同一形态：图还在路上时框上铺一层微光，到手后
-   微光淡出并糊掉（`09-skeleton.css` 的 `.imgwait`）。图是模板字符串拼进来的，逐张挂
-   监听做不到，所以在插进页面时看一眼：已经 `complete` 的（缓存里直接解码的那种）
-   什么都不标，页面每次重绘都不会闪一下微光。标上之后 `load` 一定会来——图已经挂在
-   文档上，捕获阶段的监听收得到；取不到图的 `error` 同样收尾，不让微光盖住首字母。
-   收尾后类名一并摘掉：没到门槛就到手的直接摘，淡出过的等淡出完再摘，封面上平时不留
-   那层 `::after`。React 索引页的头像框（`[data-person-ring]`）与资料卡的大位、同台艺人
-   （`[data-entity-portrait]`、`[data-hero-ring]`）里那张图同样由遗留层拼，插进页面时照样
-   被这里看见。 */
-const PENDING_IMAGES='.pic>img.poster,[data-media-art]>img,.ring>img,[data-tier-ring]>img,[data-person-ring]>img,[data-entity-portrait]>img,[data-hero-ring]>img';
-const pendingSince=new WeakMap();
-function watchPendingImages(node){
-  const found=node.matches(PENDING_IMAGES)?[node]:node.querySelectorAll(PENDING_IMAGES);
-  for(const img of found){
-    if(!img.complete){
-      img.parentElement.classList.add('imgwait');pendingSince.set(img.parentElement,performance.now());
-    }
-  }
-}
-function settleImage(img){
-  const box=img.parentElement;
-  if(!box?.classList.contains('imgwait'))return;
-  if(performance.now()-pendingSince.get(box)<SKELETON_REVEAL_DELAY){box.classList.remove('imgwait');return}
-  box.classList.replace('imgwait','imgdone');
-  let timer=null;
-  const drop=event=>{
-    if(event&&(event.target!==box||event.pseudoElement!=='::after'))return;
-    box.removeEventListener('transitionend',drop);clearTimeout(timer);box.classList.remove('imgdone');
-  };
-  box.addEventListener('transitionend',drop);
-  // 兜底：面板藏在后台或动效归零时 `transitionend` 不会来。
-  timer=setTimeout(drop,1000);
-}
-/* 缓存图插进页面的第一帧就画出来了，`load` 却排在下一个任务里：不在这里先取景，那一帧
-   要么藏着（`09-skeleton.css`），要么是几何居中。观察回调是微任务，赶在绘制之前。
-   不限于 `PENDING_IMAGES` 那几种框：带脸框的头像散在各页，哪里的都一样要先取景。 */
-function frameCachedImages(node){
-  const framed='img.cover,img[data-facebox]';
-  const found=node.matches(framed)?[node]:node.querySelectorAll(framed);
-  for(const img of found){
-    if(!(img.complete&&img.naturalWidth))continue;
-    if(img.classList.contains('cover'))coverAnchor(img);
-    else{fitNativeImage(img);avatarFrame(img)}
-  }
-}
-new MutationObserver(records=>{
-  for(const record of records)for(const node of record.addedNodes)
-    if(node.nodeType===Node.ELEMENT_NODE){watchPendingImages(node);frameCachedImages(node)}
-}).observe(document.body,{childList:true,subtree:true});
-// 挂在 document 上，比 body 上那条兜底链先收到：图被摘掉之前框还找得到。兜底链里还有
-// 下一张时微光留着，换上的那张到手才收。
-document.addEventListener('error',event=>{
-  const img=event.target;
-  if(img instanceof HTMLImageElement&&!img.dataset.fallbacks)settleImage(img);
-},true);
-/* 图比框还小时不再拉伸：原尺寸居中摆，空出来的一圈拿同一张图放大模糊补底。
-
-   厂牌标识实测从 42 px 到 1378 px 都有。`/logo?variant=large` 已经先挑过这个厂牌
-   最清晰的一份，剩下的是本来就没有大图的厂牌——把 112 px 的那张拉满 180 px 的格子
-   只是把糊放大给人看，而摆在原尺寸上，它至少是清楚的。
-
-   度量只能在 `load` 之后做：图没加载完时 `naturalWidth` 读到的是 0。换过回落图后
-   `load` 会再来一次，这里读的 `currentSrc` 也就跟着是当前真正显示的那张。 */
-// 允许适度放大；明显过小的图片才按源尺寸补底。
-function fitNativeImage(img){
-  const box=img.closest('[data-fit-native]');
-  if(!box||!img.naturalWidth)return;
-  // 版式切换会改变框的大小，每次按屏幕像素密度重新判断。
-  const {small,width,height}=nativeImageFit(img.naturalWidth,img.naturalHeight,box.clientWidth,box.clientHeight,window.devicePixelRatio||1);
-  box.dataset.nativeSmall=String(small);
-  box.style.setProperty('--markw',small?width+'px':'100%');
-  box.style.setProperty('--markh',small?height+'px':'100%');
-  const src=(img.currentSrc||img.src).replace(/"/g,'%22');
-  box.style.setProperty('--markbg',small?`url("${src}")`:'none');
-}
-/* 已经加载完的图不会再发 `load`，容器换了尺寸就得自己重量一遍。 */
-function refitNativeImages(root){
-  (root||document).querySelectorAll('[data-fit-native] img').forEach(img=>{
-    fitNativeImage(img);
-    if(img.dataset.facebox)avatarFrame(img);
-  });
-}
 let coverRecheck=0;
 window.addEventListener('resize',()=>{
   refitNativeImages($('#index'));
@@ -1764,96 +1345,6 @@ window.addEventListener('resize',()=>{
    最大 5.6%。
    取 0.72 会让 10 张被切掉最多 3.8%，取 0.76 同样一张不切但留白到每边中位 3.7%。 */
 const COVER_FRONT_RATIO=0.75;
-function coverImage(it,layout,eager){
-  const src=`/cover?code=${encodeURIComponent(it.code||'')}&thumb=1`;
-  // 人脸位置原样交给页面，锚点由 `coverAnchor` 在加载后算：哪个轴被裁、要推多远，
-  // 只有同时拿到图片和容器的比例才知道。人物在画面里的位置差别很大，写死的锚点会把
-  // 一部分作品裁掉下巴或整个切出画外；取不到人脸就退回固定取景。
-  const f=it.cover_frame||{};
-  // 纵向夹在 5%–60%：脸不会长在图片下半截，落在那儿是检出跑偏而不是构图。
-  const face=[f.cx!=null?` data-cx="${f.cx}"`:'',
-    f.cy!=null?` data-cy="${Math.min(0.6,Math.max(0.05,f.cy))}"`:''].join('');
-  /* 正封那一块的取景框，源图像素坐标加源图尺寸，由 `posterAnchor` 在加载后换算成
-     百分比。`map(Number)` 既是校验也是转义：进到属性里的一定是数字。 */
-  const pb=it.poster_box;
-  const box=pb?` data-posterbox="${[pb.x0,(pb.px||[])[0],(pb.px||[])[1],pb.y0,pb.x1,pb.y1].map(Number).join(' ')}"`:'';
-  // 小图看整张（含剧照拼贴），大图只取右侧正封。
-  return `<img class="poster cover ${layout==='small'?'whole':'front'}" src="${src}"
-    alt="" loading="${eager?'eager':'lazy'}"${face}${box} data-drop="self">`;
-}
-function javArtwork(it,layout,eager=false){
-  const kind=javImageKind(it,appSettings.javImage);
-  if(!kind)return '<span class="nopic">无预览</span>';
-  const cover=it.has_cover&&it.code?`/cover?code=${encodeURIComponent(it.code)}&thumb=1`:'';
-  const thumb=(it.has_thumb||it.has_local_poster)?`/poster?id=${it.id}&c=4`:'';
-  const coverHtml=coverImage(it,layout==='big'?'big':'small',eager);
-  // 取景数据要跟着元素走：换回官方封面时 `syncJavImages` 换的是同一个 <img>，
-  // 只贴在封面那份 HTML 上的话，从预览图切回来就取不到框。
-  const frame=(coverHtml.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g)||[]).join('');
-  const image=kind==='cover'?coverHtml
-    :`<img class="poster" src="${thumb}" alt="" loading="${eager?'eager':'lazy'}"${frame}>`;
-  return image.replace('<img ',`<img data-jav-image="${it.id}" data-jav-cover="${esc(cover)}" data-jav-thumb="${esc(thumb)}" data-jav-image-layout="${layout}" `);
-}
-/* 详情开场给播放器的海报位：video.js 的脚本还在下载、流源还没接上时，画面先给本地
-   封面，不留一块黑。选哪张与卡片同一份判据，番号作品跟随「JAV 默认封面」设置——
-   官方封套或预览图；其它媒体退到本地预览格。返回空串表示这条没有可用的本地图，
-   播放器照旧从黑场开始。 */
-function detailPosterUrl(it){
-  const thumb=(it.has_thumb||it.has_local_poster)?`/poster?id=${it.id}&c=4`:'';
-  if(!it.is_jav)return thumb;
-  return javImageKind(it,appSettings.javImage)==='cover'
-    ?`/cover?code=${encodeURIComponent(it.code||'')}`:thumb;
-}
-/* 卡片署名。版次队列要和「接着看」长得一样，就必须用同一份身份推导——各算各的
-   迟早会在同名 creator/performer 那 35 组上分叉，同一条作品在两处指向两个实体。
-   `linked=false` 给队列用：整行本身就是一个 <button>，里面再嵌 <button> 会被
-   浏览器就地拆散，头像和标题会被甩到行外面去。 */
-function cardIdentity(it,linked=true){
-  const link=(cls,attrs,inner)=>linked
-    ? `<button class="${cls} entitylink" ${attrs}>${inner}</button>`
-    : `<span class="${cls}">${inner}</span>`;
-  const performers=it.performers||[];
-  const performerRefs=it.performer_entities||[];
-  const performerTotal=it.performer_total||performers.length;
-  const performer=performers[0]||'';
-  const performerRef=performerRefs[0];
-  // 番号旧投影常把女优罗马字同时塞进 `asset.creator`。规范 performer 实体已经
-  // 本地化时，不能再让旧扁平字段抢走卡片署名和链接；非番号创作者作品仍优先 creator。
-  const primaryCreator=it.is_jav&&performer?'':it.creator;
-  const identity=primaryCreator?{kind:'creator',name:primaryCreator}
-    :(performer?{kind:'performer',name:performer}
-      :{kind:'',name:'未归属'});
-  const who=identity.name,whoKind=identity.kind;
-  // 共演作品用头像提示多人，但文字只保留第一位，再给总人数。两个长名字加元数据
-  // 会在普通卡片里折成三行；「第一位 + 等 N 人」仍能说明身份与规模。
-  const coStarred=performers.length>1&&!primaryCreator;
-  const avatar=coStarred
-    ? `<div class="mavstack">${performers.slice(0,5)
-        .map((nm,i)=>link('mav',`data-entity-kind="performer" data-entity-name="${esc(nm)}" title="打开${esc(performerLabel(it))}页：${esc(nm)}"`,avatarInner(nm,performerRefs[i],REP[nm])))
-        .join('')}</div>`
-    : (()=>{
-        /* 头像和名字必须落到同一个身份。各自挑 kind（头像先看 performer、名字先看
-           creator）时，同名的 creator/performer 重复实体（账本里有 35 组）会一个跳
-           `/performers/x`、另一个跳 `/creators/x`，同一张卡上两个入口去两个地方。 */
-        const avatarKind=identity.kind;
-        const avatarName=identity.name;
-        const avatarRef=avatarKind==='performer'?performerRef:it.creator_entity;
-        const inner=avatarInner(avatarName,avatarRef,
-          avatarKind?REP[avatarName]:null,avatarKind||'performer');
-        return avatarKind
-          ? link('mav',`data-entity-kind="${avatarKind}" data-entity-name="${esc(avatarName)}" title="打开${avatarKind==='performer'?esc(performerLabel(it)):'资料'}页"`,inner)
-          : `<span class="mav">${inner}</span>`;
-      })();
-  const whoHtml=coStarred
-    ? link('who',`data-entity-kind="performer" data-entity-name="${esc(performer)}"`,esc(performer))
-      +`<span class="whomore">等 ${performerTotal} 人</span>`
-    : (whoKind?link('who',`data-entity-kind="${whoKind}" data-entity-name="${esc(who)}"`,esc(who))
-      /* 没有署名人的那批是馆藏里的一类，不是一句读完就没用的说明：这里点得开，
-         和女优名、厂牌名一样。队列行整行本身是 <button>，嵌不了按钮，仍出文字。 */
-      :linked?`<button class="who unownedlink" type="button" data-open-unowned>${esc(who)}</button>`
-        :`<span class="who">${esc(who)}</span>`);
-  return {avatar,whoHtml};
-}
 function openResourceCard(id,anchor=null){
   const item=CACHE[id];
   if(!item||!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
@@ -1861,23 +1352,6 @@ function openResourceCard(id,anchor=null){
     window.open('/photo?id='+id,'_blank','noopener');return
   }
   toggleSelection(id);
-}
-function mixLabel(it){
-  const performer=(it.performers||[])[0];
-  return (it.is_jav&&performer?performer:it.creator)||performer||it.studio||it.code||tagLabel((it.tags||[])[0])||'为你推荐';
-}
-/* 播放队列每一行的小图。取图的判据同网格里 Mix 卡的画面（`catalog-grid` 的 `mixFace`）：
-   番号作品走封套链，其余取本地预览格，同一条在两处长得一样。 */
-function mixFacePoster(it,layout,eager){
-  const jav=cardLayoutActive()&&!!it.is_jav;
-  /* 翻动的那几张必须 eager：它们是悬浮时才插进一个 hidden 容器的，
-     lazy 图在没有布局盒时根本不会发请求，一翻就是黑屏。 */
-  const load=eager?'eager':'lazy';
-  return it.is_jav
-    ? javArtwork(it,jav?layout:'small',eager)
-    : (it.has_thumb||it.has_local_poster
-      ? `<img class="poster" src="/poster?id=${it.id}&c=4" alt="" loading="${load}">`
-      : `<span class="nopic">无预览</span>`);
 }
 /* 相关作品每个 seed 只取一次：悬浮翻动和点开后的队列用的是同一份，
    悬浮过再点开 Mix 不会再发一次请求。 */
@@ -1901,14 +1375,14 @@ const withTagToggled=(value,tag)=>{const cur=tagList(value);const index=cur.inde
    比较，每次推新对象进去就是整屏重画。 */
 const gridHelpers={
   coverHtml:(it,layout,eager)=>coverImage(it,layout,eager),
-  relayoutArt:(root,layout)=>relayoutJavImages(root,layout).forEach(img=>{coverAnchor(img);upgradeCover(img)}),
+  relayoutArt:(root,layout)=>reframeCovers(relayoutJavImages(root,layout)),
   badgeHtml:(location,cost)=>srcBadge(location,cost),
   titleHtml:(it,raw)=>javTitleHtml(it,raw),
   displayName:(it,raw)=>javDisplayName(it,raw),
-  avatarHtml:(name,ref,kind)=>avatarInner(name,ref,kind?REP[name]:null,kind||'performer'),
+  avatarHtml:(name,ref,kind)=>entityAvatar(name,ref,kind),
   tagLabel:tag=>tagLabel(tag),
   wireHover:(el,it)=>wireHover(el,it),
-  releaseHover:el=>{el._stopHover?.();releaseHoverPreviews(el)},
+  releaseHover:el=>releaseHover(el),
 };
 /* 打开一张作品卡：小窗开着时普通视频卡直接在小窗里换片，分卷／版次组各进自己的队列，
    其余打开详情。 */
@@ -2210,12 +1684,10 @@ async function buildBars(){
   if(context.type==='home')facets=facetData;
   const topTags=facetData.tags||[];
 
-  /* 顶部三层：女优圆头像 / 厂牌 / 内容标签。
-     REP 表只收真能取到头像的代表作：卡片署名圈回落时读的就是它，取不到的进了表
-     就是一个必然 404 的 `<img>`。`has_avatar` 说的是「已经裁好或印相还在」，不是
-     「目录里有没有那张 jpg」——`/avatar` 按需生成，还没抓过的那条路留着。 */
-  tops.performers.forEach(x=>{if(x.rep&&x.has_avatar)REP[x.k]=x.rep});
-  tops.studios.forEach(x=>{if(x.rep&&x.has_avatar)REP[x.k]=x.rep});
+  /* 顶部三层：女优圆头像 / 厂牌 / 内容标签。代表作表只收真能取到头像的那些，筛法见
+     `frontend/src/card-art/representatives.ts`。 */
+  rememberRepresentatives(tops.performers);
+  rememberRepresentatives(tops.studios);
   // 「两排都空」现在只剩全库真的一个人都没有这一种：窄集合已经由 loadTops 退回全库口径。
   const emptyHome=context.type==='home'&&!javActive()&&!state.state&&!state.q&&!facetData.locations.some(row=>row.n>0);
   catalogTopsPages={context,performers:0,studios:0};
@@ -2638,7 +2110,7 @@ async function openPlaylists(push=true){
   if(!surfaceCurrent(surface))return;
   const props={
     openPlaylist:(id,resume)=>openPlaylist(id,resume,true),openEntity,
-    faceAvatar:face=>avatarInner(face.name,face,REP[face.name],face.kind),
+    faceAvatar:face=>avatarInner(face.name,face,representativeOf(face.name),face.kind),
     canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
     toast:(message,{undo}={})=>actionReceipt(message,{undo}),revision:playlistsRevision,
   };
@@ -3276,9 +2748,6 @@ async function openIndex(kind,push=true){
   syncNavigation();scheduleStickySurfaces();
 }
 
-/* 「女优」只用于番号发行物。素人、创作者自制和网红内容里的出镜者是艺人，
-   套上 JAV 的行业称谓既不准确也会和创作者身份混淆。判据由后端 `is_jav` 给。 */
-function performerLabel(it){return it&&it.is_jav?'女优':'艺人'}
 let entityRequestSeq=0,entityJavLayout=false;
 /* 资料页整页归 React（`entity-page`，ADR-0031 第 11d 步）：资料卡、筛选浮层、新作那一行与正文是
    同一座岛，`/api/entity`、作品、照片与新作都由岛按查询键取（`frontend/src/react/entity-page/`）。
@@ -4358,9 +3827,9 @@ const itemDetailHelpers={
   performerLabel:it=>performerLabel(it),
   // 和顶栏圆头像同一条判据：没装实体图就不出 `<img>`，取不到就是首字母垫底。
   faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),
-  queueThumbHtml:it=>mixFacePoster(it,'small'),
-  queueAvatarHtml:it=>cardIdentity(it,false).avatar,
-  mixLabel:it=>mixLabel(it),
+  queueThumbHtml:it=>queueThumbHtml(it,appSettings.javImage),
+  queueAvatarHtml:it=>queueAvatarHtml(it),
+  mixLabel:it=>mixLabel(it,tagLabel),
   tagLabel:tag=>tagLabel(tag),
   isDurationTag:tag=>DURATION_TAGS.has(tag),
   tagCandidates:()=>(facets&&facets.tags)||[],
@@ -4480,7 +3949,7 @@ const immerseHost={
   seekSeconds:()=>appSettings.seekSeconds,
   sourceOffline:key=>sourceOffline(key),
   displayName:it=>javDisplayName(it),
-  avatarHtml:(name,ref,kind)=>avatarInner(name,ref,REP[name],kind),
+  avatarHtml:(name,ref,kind)=>avatarInner(name,ref,representativeOf(name),kind),
   /* 每换一条用 replace 写地址：每划一下都往历史里塞一条，后退键就废了。 */
   route:id=>route('/immerse?id='+id,true),
   closed:()=>openHome(),
