@@ -1,4 +1,4 @@
-import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
+import { loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
 import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
 import { searchMorphFrames } from './js/search-morph.js';
@@ -11,17 +11,20 @@ import { matchRoute, routeLabel } from './js/routes.js';
 import { initMiddleTruncate } from './js/middle-truncate.js';
 import { tagLabel } from './js/tags.js';
 import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js';
-import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, HOME_GLOW_CHOICES, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowPalette, isNativeGlass, normalizeAccent, normalizeHomeGlow, paintGlassFaces, paintHomeGlow } from './js/home-glow.js';
+import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowPalette, isNativeGlass, normalizeAccent, paintGlassFaces, paintHomeGlow } from './js/home-glow.js';
+import { appSettingsStore, applySyncedSettings, allowedSetting, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
+import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio, gridLayout, javLayout, photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout } from './dist/peach-ui.js';
+import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
-import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
-import { javImageKind, normalizeJavLayout, normalizeJavPreferences, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
+import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
+import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
-  fitSkeleton, formModal, iconSwapHtml, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
-  dissolveValue, popBadges, revealSkeleton, revealTexts, setIconSwap,
+  fitSkeleton, formModal, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
+  dissolveValue, popBadges, revealSkeleton, revealTexts,
   boardTabsHtml, moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml, searchInputHtml,
   setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
   wireOverlayScrollbars, wireScrollers, configurationSkeletonHtml, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
@@ -485,107 +488,21 @@ async function loadSourceStatus(){
    和 `state`，两者都是模块级 `const`/`let`，在声明行之前处于 TDZ。函数声明会提升，
    所以上面这一行调用照样成立。 */
 const DURATION_TAGS=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
-const SETTINGS_KEY='peach.settings.v1';
-const SORTS=[['seed','随机'],['rating','评分'],['o','高潮计数'],['plays','观看次数'],['dur','时长'],
-             ['size','体积'],['new','入库时间'],['played','观看时间']];
-const JAV_RELEASE_SORT=['release','发行时间'];
-const SORT_KEYS=[...SORTS,JAV_RELEASE_SORT].map(([key])=>key);
-/* 方向词按列各自定义：同一个 desc 在时间列上是「从新到旧」，在时长上是「从长到短」，
-   写成通用的「降序」等于让界面解释 SQL。数组是 [desc,asc]，在表里就等于这一列可翻转。 */
-const SORT_DIR_WORDS={rating:['从高到低','从低到高'],o:['从多到少','从少到多'],
-  plays:['从多到少','从少到多'],dur:['从长到短','从短到长'],size:['从大到小','从小到大'],
-  new:['从新到旧','从旧到新'],played:['从近到远','从远到近'],release:['从新到旧','从旧到新']};
-/* 旧键沿用：地址栏、书签和设置里存着把方向写进键名的值。方向现在单独由 `dir` 表达，
-   两个时长键收敛成一个 dur；认不出旧键的后果不是报错，是静默换成另一种排序。 */
-const SORT_ALIASES={big:['size','desc'],short:['dur','asc'],long:['dur','desc']};
-/* 词表可换：关注页排的是在线更新，列不一样（热度那一列只有它有），但「点未选中项换列、
-   点选中项翻方向」和箭头怎么画两页完全相同。传表进来，那三枚函数就不必各写一份。 */
-const sortDirWord=(key,dir,words=SORT_DIR_WORDS)=>(words[key]||[])[dir==='asc'?1:0]||'';
-const defaultSortDir=(key,words=SORT_DIR_WORDS)=>words[key]?'desc':'';
-/* 主题三档，键名与 <html> 上的 data-theme 同一套写法：web/css/01-base.css 的色板
-   已经按 `prefers-color-scheme` 和 `[data-theme]` 两条路径写好，这里只负责选哪一条。
-   跟随系统是默认档，选它等于不写属性。 */
-const THEME_CHOICES=['system','light','dark'];
-const JAV_LAYOUTS=[['big','大图','maximize'],['small','小图','layout-grid']];
-/* 图片墙是等宽网格，改的是列数。默认小图——一套图几十上百张，先看得见全貌，挑中
-   哪一张再点开看大的。 */
-const PHOTO_SIZES=[['big','大图','maximize'],['small','小图','layout-grid']];
-const PHOTO_LAYOUTS=[['fixed','固定比例','layout-grid'],['masonry','瀑布流','columns-2']];
-/* 显示器用于跟随系统主题和详情页的画面分辨率。 */
-const THEME_OPTIONS=[['system','跟随系统','monitor'],['light','浅色','sun'],['dark','深色','moon']];
-const DEFAULT_SETTINGS={batchSize:60,defaultSort:'seed',sortDefaultsVersion:3,hoverDelaySeconds:5,seekSeconds:10,searchHistoryLimit:10,relatedLimit:20,javLayout:'big',homeLayout:'small',javImage:'cover',followLayout:'default',peopleLayout:'big',photoSize:'small',ambientMode:true,miniplayer:true,theaterMode:false,theme:'system',groupCollapse:true,sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],homeGlow:DEFAULT_HOME_GLOW,accent:DEFAULT_ACCENT};
-let appSettings={...DEFAULT_SETTINGS};
-try{appSettings={...DEFAULT_SETTINGS,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')}}catch(_e){}
-appSettings.followInitialDays=[0,7,30,90].includes(+appSettings.followInitialDays)?+appSettings.followInitialDays:30;
-const allowedSetting=(value,allowed,fallback)=>allowed.includes(value)?value:fallback;
-delete appSettings.rotateMinutes;
-/* 迁移只碰默认值本身：把界面上已经不存在的键换成当前键，用户主动选过的排序不动。
-   不迁移的话 allowedSetting 会把它静默打回随机。 */
-let sortDefaultsMigrated=false;
-if((+appSettings.sortDefaultsVersion||0)<2&&appSettings.defaultSort==='new'){
-  appSettings.defaultSort='seed';sortDefaultsMigrated=true
-}
-if((+appSettings.sortDefaultsVersion||0)<3&&SORT_ALIASES[appSettings.defaultSort]){
-  appSettings.defaultSort=SORT_ALIASES[appSettings.defaultSort][0];sortDefaultsMigrated=true
-}
-appSettings.sortDefaultsVersion=3;
-appSettings.batchSize=boundedPreference(+appSettings.batchSize,1,200,60);
-appSettings.defaultSort=allowedSetting(appSettings.defaultSort,SORT_KEYS,'seed');
-appSettings.hoverDelaySeconds=boundedPreference(+appSettings.hoverDelaySeconds,0,60,5);
-appSettings.seekSeconds=boundedPreference(+appSettings.seekSeconds,1,300,10);
-delete appSettings.loginDays;
-appSettings.ambientMode=appSettings.ambientMode!==false;
-appSettings.theaterMode=appSettings.theaterMode===true;
-appSettings.groupCollapse=appSettings.groupCollapse!==false;
-appSettings.detailAutoplay=appSettings.detailAutoplay!==false;
-appSettings.miniplayer=appSettings.miniplayer!==false;
-appSettings.uiSounds=appSettings.uiSounds!==false;
-appSettings.feedAutoScroll=appSettings.feedAutoScroll!==false;
-/* 新作那一行收不收合集由服务端按账本里的设置筛（列表、未读数、补封面同一份），这里只是
-   镜像：开关的真相在 `/api/settings`。默认收起大合集与切片、单人合集照列。 */
-const FEED_COMPILATION_KEYS=['feedHideGroupCompilations','feedHideSoloCompilations','feedHideExcerpts'];
-appSettings.feedHideGroupCompilations=appSettings.feedHideGroupCompilations!==false;
-appSettings.feedHideSoloCompilations=appSettings.feedHideSoloCompilations===true;
-appSettings.feedHideExcerpts=appSettings.feedHideExcerpts!==false;
-appSettings.searchHistoryLimit=boundedPreference(+appSettings.searchHistoryLimit,0,50,10);
-appSettings.relatedLimit=boundedPreference(+appSettings.relatedLimit,0,60,20);
-const METADATA_REFRESH_DAYS=[0,7,30,90];
-appSettings.metadataRefreshDays=allowedSetting(+appSettings.metadataRefreshDays,METADATA_REFRESH_DAYS,30);
-Object.assign(appSettings,normalizeJavPreferences(appSettings));
-appSettings.theme=allowedSetting(appSettings.theme,THEME_CHOICES,'system');
-appSettings.homeGlow=normalizeHomeGlow(appSettings.homeGlow);
-appSettings.accent=normalizeAccent(appSettings.accent);
-appSettings.sidebarOrder=normalizeSidebarOrder(appSettings.sidebarOrder);
+/* 界面偏好的出厂值、启动归一化与那一份 store 在 `frontend/src/appearance/settings.ts`：模块在 peach-ui.js
+   里，第一次取 store 时从 localStorage 读回、归一化好。壳里六十来处读写都直接改这个对象的字段，改完
+   `saveSettings()` 落盘，同一下通知开着的设置面板与侧栏岛跟上。 */
+const settingsStore=appSettingsStore();
+const appSettings=settingsStore.value;
+const saveSettings=()=>settingsStore.save();
 document.documentElement.style.setProperty('--hover-delay',`${appSettings.hoverDelaySeconds}s`);
 /* 音效跟着偏好走。点击与开关那两声由 document 上的一对监听统一发；回执、菜单和弹层
    在各自的入口自己响。 */
 setUiSoundsEnabled(appSettings.uiSounds);
 wireUiSounds();
-/* 这份对象的读写都在壳里原地改字段；落盘走 store，同一下通知开着的设置面板跟上
-   （`frontend/src/settings-store.ts`）。 */
-const settingsStore=createSettingsStore(SETTINGS_KEY,appSettings);
-const saveSettings=()=>settingsStore.save();
-if(sortDefaultsMigrated)saveSettings();
-/* 主题只写属性，不写颜色：两套色板都在 web/css/01-base.css，选跟随系统就把属性摘掉，
-   交还给 `prefers-color-scheme`。React 子树里的 BoardUI 源码把深色 token 挂在 `.dark` 上，
-   所以同一次调用按实际深浅给 <html> 加减 `dark` 类，跟随系统时也算上系统那一档。
-   地址栏色块跟着同一次调用走——两枚 meta 各代表一档，
-   选中的那枚开到 `all`、另一枚关成 `not all`，否则手机上的地址栏还留在系统那一档。
-   `index.html` 的首屏内联脚本做的是同三件事，它只负责第一帧，之后都从这里出。 */
-const prefersDark=matchMedia('(prefers-color-scheme: dark)');
-function applyTheme(choice=appSettings.theme){
-  const root=document.documentElement;
-  if(choice==='system')delete root.dataset.theme;else root.dataset.theme=choice;
-  const dark=choice==='dark'||(choice==='system'&&prefersDark.matches);
-  root.classList.toggle('dark',dark);
-  document.querySelectorAll('[data-board-theme]').forEach(button=>button.setAttribute('aria-pressed',String((button.dataset.boardTheme==='dark')===dark)));
-  document.querySelector('.board-theme-toggle')?.classList.toggle('is-dark',dark);
-  document.querySelectorAll('meta[data-theme-color]').forEach(meta=>{
-    meta.media=(meta.dataset.themeColor==='dark')===dark?'all':'not all';
-  });
-}
+/* 主题写到 <html> 上（`frontend/src/appearance/theme.ts`）。`index.html` 的首屏内联脚本只负责第一帧，
+   这里在模块体里同步再写一次，之后换主题都从那一份出。 */
 applyTheme();
-prefersDark.addEventListener('change',()=>{if(appSettings.theme==='system')applyTheme()});
+watchSystemTheme();
 /* 光晕怎么算、怎么写都在 `./js/home-glow.js`：那一份不认识 appSettings，React 壳直接
    import 同一个文件。这里只负责把当前设置和 `.glowlayer` 那枚空 div 递进去。
    写的对象是那枚 div 而不是 <html>：自定义属性是继承的，写在根上整棵树都要重算样式，
@@ -1294,27 +1211,11 @@ function mountBatchDock(){
     .then(dock=>{dock.render(batchDockProps);syncGlassOptics()}).catch(()=>{});
 }
 
-/* 密度：大图为主，密集为辅 */
-const TILES={big:'336px',dense:'168px'};   /* 168px 模块单位 */
-let density=localStorage.getItem('density')||'big';
-/* 顶栏这颗键和筛选框里的版式开关问同一件事「现在是哪种排法」，所以字形也取同一份
-   映射（PHOTO_SIZES 的第三位），按下去跟着换成当前状态的图标。 */
-function syncDensityIcon(size){
-  const button=$('#density');if(!button)return;
-  const [big,small]=PHOTO_SIZES;
-  if(!button.querySelector('[data-icon-swap]')){
-    button.innerHTML=iconSwapHtml(big[2],small[2],size===small[0]?'b':'a');
-  }else setIconSwap(button,size===small[0]?'b':'a');
-  button.setAttribute('aria-label',size==='big'?'切换为小图':'切换为大图')}
-function applyDensity(){document.documentElement.style.setProperty('--tile',TILES[density]);
-  document.body.dataset.density=density;
-  $('#density').setAttribute('aria-pressed',density==='dense');
-  $('#density').title='当前：'+(density==='big'?'大图':'密集');
-  syncDensityIcon(density==='big'?'big':'small')}
+/* 密度：大图为主，密集为辅（`frontend/src/appearance/density.ts`）。顶栏那颗键停在照片墙上时管照片的
+   大小，这一条判据读的是壳的视图状态，所以点击留在这里。 */
 $('#density').onclick=()=>{if(photoViewActive()){
     setPhotoSize(photoSize()==='big'?'small':'big');return}
-  density=density==='big'?'dense':'big';
-  localStorage.setItem('density',density);applyDensity()};
+  toggleDensity()};
 applyDensity();
 
 /* 卡片图片、人脸取景与悬停预览在 `frontend/src/card-art/`。起不起预览的判据归壳：取值函数
@@ -1337,13 +1238,6 @@ window.addEventListener('resize',()=>{
   coverRecheck=setTimeout(()=>$('#index').querySelectorAll('img.cover').forEach(img=>{
     if(img.complete)upgradeCover(img)}),200);
 },{passive:true});
-/* 大图卡片的容器比例。本机 1014 张封面实测，683 张判定有正封，正封自己的宽高比
-   从 0.667 到 0.749 都有，中位数 0.704、99% 分位 0.725——一行卡片必须等高，容器
-   只能取一个数，所以它对不上其中大多数。0.75 比最宽的那张还宽：683 张一张都不用
-   从左边切，全部居中摆，两侧留白交给 `--cover-blur` 那层模糊背景，每边中位 3.1%、
-   最大 5.6%。
-   取 0.72 会让 10 张被切掉最多 3.8%，取 0.76 同样一张不切但留白到每边中位 3.7%。 */
-const COVER_FRONT_RATIO=0.75;
 function openResourceCard(id,anchor=null){
   const item=CACHE[id];
   if(!item||!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
@@ -2424,8 +2318,7 @@ const followFeedActions={
   openManage:()=>openFollowManage(),
   toggleSelection:(id,range)=>toggleFollowSelection(id,range),
   setImagesOnly:on=>{appSettings.followImagesOnly=!!on;saveSettings();syncPhotoWalls()},
-  setPhotoLayout:layout=>{
-    appSettings.photoLayout=allowedSetting(layout,['fixed','masonry'],'masonry');saveSettings();syncPhotoWalls()},
+  setPhotoLayout:layout=>{storePhotoLayout(layout);syncPhotoWalls()},
   canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   failure:(action,error)=>actionFailure(action,error),
@@ -2832,8 +2725,7 @@ function entityPageActions(kind,name){
     reshuffleVideos:()=>{
       state.seed=rollSeed();routeEntityPage(kind,name,{...live(),sort:'seed'});return String(state.seed)},
     setJavLayout:value=>{setJavLayout(value);pushEntityPage({javLayout:javLayout()})},
-    setPhotoLayout:value=>{
-      appSettings.photoLayout=allowedSetting(value,['fixed','masonry'],'masonry');saveSettings();syncPhotoWalls()},
+    setPhotoLayout:value=>{storePhotoLayout(value);syncPhotoWalls()},
     openEntity:(target,to)=>void openEntity(target,to),
     javContext:on=>{entityJavLayout=!!on},
     painted:view=>{
@@ -2858,10 +2750,6 @@ function entityPageProps(kind,name,filters,media,hosts){
     canLoadMore:entityBodyCanLoadMore,
     card:entityCard,helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
-function photoSize(){
-  return allowedSetting(appSettings.photoSize,PHOTO_SIZES.map(([key])=>key),'small');
-}
-function photoLayout(){return allowedSetting(appSettings.photoLayout,['fixed','masonry'],'masonry')}
 /* 资料页与关注页那面墙都由岛异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
    资料页的视图由岛每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
 function photoViewActive(){
@@ -2879,17 +2767,12 @@ function syncPhotoWalls(){
 }
 /* 顶栏那枚大小图键：停在照片墙上时管照片的大小，别处管卡片密度。 */
 function syncDensityControl(){
-  if(photoViewActive()){
-    $('#density').setAttribute('aria-pressed',String(photoSize()==='small'));
-    $('#density').title='当前：'+(photoSize()==='big'?'大图':'小图');
-    syncDensityIcon(photoSize());
-  }else applyDensity();
+  if(photoViewActive())paintPhotoSizeButton(photoSize());else applyDensity();
 }
 /* 换大小一次请求都不发，也不重拼这面墙：列数是 CSS 的事，重画只会把已经取回的缩略图
    丢掉再要一遍，还把人滚到的位置带走。 */
 function setPhotoSize(value){
-  appSettings.photoSize=allowedSetting(value,PHOTO_SIZES.map(([key])=>key),'small');
-  saveSettings();
+  storePhotoSize(value);
   syncPhotoWalls();
 }
 
@@ -3198,7 +3081,7 @@ const settingsHost=()=>({
   renderGlowGrid:renderGlowPresetGrid,wireGlowGrid:wireGlowPresetGrid,
   receipt:message=>actionReceipt(message),
   failure:actionFailure,
-  syncRemote:remote=>applySyncedSettings(remote),
+  syncRemote:remote=>applySyncedSettings(remote,effect=>settingsEffects[effect]?.()),
   openConfiguration:()=>void openConfiguration(true),
   attached:()=>syncGlassOptics(),
   /* 「这台电脑」那一格的判据：服务由托盘管、已完成配置、请求来自本机三条同时成立。 */
@@ -3247,30 +3130,7 @@ function mountSidebar(){
 async function loadSyncedSettings(){
   let remote=null;
   try{remote=await api('/api/settings')}catch(_e){return}
-  applySyncedSettings(remote);
-}
-/* 账本那一份落进本地缓存。设置面板每次打开都重取一次再交到这里，开着的面板与侧栏岛都经 store 通知
-   跟上：侧栏顺序变了，岛当场按新顺序重排。 */
-function applySyncedSettings(remote){
-  const initial=remote&&remote.followInitialDays;
-  if([0,7,30,90].includes(initial)){appSettings.followInitialDays=initial;saveSettings()}
-  const days=remote&&remote.metadataRefreshDays;
-  if(METADATA_REFRESH_DAYS.includes(days)&&days!==appSettings.metadataRefreshDays){
-    appSettings.metadataRefreshDays=days;saveSettings();
-  }
-  for(const key of FEED_COMPILATION_KEYS){
-    if(typeof remote?.[key]!=='boolean'||remote[key]===appSettings[key])continue;
-    appSettings[key]=remote[key];saveSettings();
-  }
-  /* 账本里还没有条数时，这台设备本地改过的那个数替所有访问端先定下来，只送这一次。 */
-  const limit=remote&&remote.searchHistoryLimit;
-  if(Number.isInteger(limit)&&limit>=0&&limit<=50){
-    if(limit!==appSettings.searchHistoryLimit)applySearchHistoryLimit(limit);
-  }else if(remote&&remote.searchHistoryLimit===null&&appSettings.searchHistoryLimit!==DEFAULT_SETTINGS.searchHistoryLimit)postSearchHistoryLimit();
-  const order=Array.isArray(remote&&remote.sidebarOrder)?remote.sidebarOrder:null;
-  if(!order||!order.length||order.join(',')===appSettings.sidebarOrder.join(','))return;
-  appSettings.sidebarOrder=order;
-  saveSettings();
+  applySyncedSettings(remote,effect=>settingsEffects[effect]?.());
 }
 /* 当前在哪个管理区。路由表里的 `section` 是唯一判据；垃圾文件那一屏没有自己的
    身份，它是数据管理的一部分，`state.state` 才是判据（`/junk-files` 从启动那一刻
@@ -3367,33 +3227,19 @@ function sortOptions(jav=javActive()){
   const ordered=SORTS.filter(([key])=>key!=='seed');
   return jav?[JAV_RELEASE_SORT,...ordered]:ordered;
 }
-/* 点未选中项＝换列并用该列的默认方向；点选中项＝翻方向。随机没有方向，重复点它
-   什么都不做——换一批是它旁边那枚按钮的事。 */
-function nextSortState(key,current,dir,words=SORT_DIR_WORDS){
-  if(key!==current)return{sort:key,dir:defaultSortDir(key,words)};
-  if(!words[key])return null;
-  return{sort:key,dir:dir==='asc'?'desc':'asc'};
-}
-function javLayout(){
-  return normalizeJavLayout(appSettings.javLayout);
-}
-/* 首页与 JAV 视图分别保存版式。大图统一作品卡与 Mix 的画面框，预览图完整居中并留黑边。 */
+/* 首页与 JAV 视图分别保存版式（`frontend/src/appearance/layout.ts`）。在哪一边读路由与目录状态，归壳。
+   大图统一作品卡与 Mix 的画面框，预览图完整居中并留黑边。 */
 function homeLayoutActive(){
   return decodeURIComponent(location.pathname)==='/'&&state.jav!=='1';
 }
-function cardLayoutActive(){return javActive()||homeLayoutActive()}
-function cardLayout(){
-  return homeLayoutActive()?normalizeJavLayout(appSettings.homeLayout):javLayout();
-}
+function cardLayout(){return cardLayoutFor(homeLayoutActive())}
 function setHomeLayout(value){
-  appSettings.homeLayout=normalizeJavLayout(value);
-  saveSettings();
+  storeHomeLayout(value);
   syncVideoLayoutSetting();
   if(!$('#grid').hidden)repaintCatalogGrid();
 }
 function setJavLayout(value){
-  appSettings.javLayout=normalizeJavLayout(value);
-  saveSettings();
+  storeJavLayout(value);
   syncVideoLayoutSetting();
   // 只重画卡片，不重新请求：版式是纯展示层的事。资料页保留已经载入的分页。
   repaintCatalogGrid();
@@ -3404,8 +3250,7 @@ function syncVideoLayoutSetting(){
   if(catalogFilterProps)paintCatalogFilter({layout:catalogLayoutProp()});
 }
 function setVideoLayout(value){
-  appSettings.homeLayout=appSettings.javLayout=normalizeJavLayout(value);
-  saveSettings();
+  storeVideoLayout(value);
   syncVideoLayoutSetting();
   repaintCatalogGrid();
 }
@@ -3611,23 +3456,18 @@ function paintGridIsland(name,propsFor,surface,options={}){
   });
   return settled;
 }
-/* 一屏卡片的版式。只在真变了的时候换新对象：卡片按引用比较，版式对象每次都新建的话，
-   选一张卡也会让整屏每一张都重画一遍。 */
-let catalogLayoutValue=null;
+/* 一屏卡片的版式（`gridLayout`，真变了才换新对象）。壳递进去的是路由与目录状态那三条判据。 */
 function catalogGridLayout(){
-  const next={active:cardLayoutActive(),size:cardLayout(),portrait:state.orient==='竖屏',javImage:appSettings.javImage};
-  if(!catalogLayoutValue||Object.keys(next).some(key=>next[key]!==catalogLayoutValue[key]))catalogLayoutValue=next;
-  return catalogLayoutValue;
+  const home=homeLayoutActive();
+  return gridLayout({active:javActive()||home,home,portrait:state.orient==='竖屏'});
 }
-/* 作品网格的骨架与真卡共享比例：显式竖屏为 9:16，大图为 3:4，其余为 16:9。 */
+/* 作品网格的骨架与真卡共享比例（`cardRatio`）。 */
 function catalogSkeletonHtml(label='正在读取作品'){
   return pageSkeletonHtml(label,{cards:true,className:'catalog-skeleton postercard-skeleton',cardRatio:catalogCardRatio()});
 }
 function catalogCardRatio(){
   if(!state)return 16/9;
-  const layout=catalogGridLayout();
-  if(layout.portrait)return 9/16;
-  return layout.active&&layout.size==='big'?COVER_FRONT_RATIO:16/9;
+  return cardRatio(catalogGridLayout());
 }
 /* 挂着卡片网格的几处：目录 `#grid`、资料页作品区、作品详情（接着看那一排在它里面，版式、
    快进秒数与选择态同名递进去）。 */
@@ -3720,13 +3560,6 @@ function junkQueueProps(){
    提交与打开都回这里走路由。残影（`clearSearchField`）、窄屏开合、失焦与外点收起也还在壳里，
    收起一律经岛交出来的 `close()`。 */
 let searchControl=null;
-function applySearchHistoryLimit(limit){
-  appSettings.searchHistoryLimit=boundedPreference(limit,0,50,10);saveSettings();
-  updateIsland($('#searchMenu'),{historyLimit:appSettings.searchHistoryLimit});
-}
-function postSearchHistoryLimit(){
-  return api('/api/settings',{method:'POST',body:JSON.stringify({searchHistoryLimit:appSettings.searchHistoryLimit})}).catch(()=>{});
-}
 function hideSearchMenu(){searchControl?.close()}
 /* 小图和卡片同一套取景：正封按 `--card-ratio` 从封套里切出来，番号作品跟随
    「JAV 默认封面」设置。两样都没有的画一块「无预览」，格子不塌。 */

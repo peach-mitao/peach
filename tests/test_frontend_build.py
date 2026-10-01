@@ -217,9 +217,9 @@ class ReactBundleTests(unittest.TestCase):
     def test_the_dark_class_follows_the_theme_in_both_places(self):
         """BoardUI 的深色 token 挂在 `.dark` 上；首帧脚本和 applyTheme() 都要按实际深浅加减它。"""
         index = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-        app_js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        theme = (ROOT / "frontend" / "src" / "appearance" / "theme.ts").read_text(encoding="utf-8")
         self.assertIn("classList.toggle('dark',", index)
-        self.assertIn("root.classList.toggle('dark',dark)", app_js)
+        self.assertIn("root.classList.toggle('dark', dark)", theme)
 
 
 class BoardUiUpstreamTests(unittest.TestCase):

@@ -12,7 +12,10 @@
  *
  * 容器由遗留层拥有：它会在别的页面进入时直接 `innerHTML=`。因此 `mountIsland` 每次
  * 都先自我卸载，`unmountIsland` 也不假设 DOM 还在原处。 */
-export { preferredDirection } from './sort-preferences';
+export {
+  defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
+} from './sort-preferences';
+export * from './appearance';
 export { createSettingsStore } from './settings-store';
 export { boundedPreference } from './number-setting';
 export { initBoardControls, syncBoardRange } from './board-controls';

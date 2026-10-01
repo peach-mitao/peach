@@ -17,7 +17,8 @@
       "@peach/legacy/core": ["../legacy/core.d.ts"],
       "@peach/legacy/ui": ["../legacy/ui.d.ts"],
       "@peach/legacy/home-glow": ["../legacy/home-glow.d.ts"],
-      "@peach/card-art": ["../card-art/index.ts"]
+      "@peach/card-art": ["../card-art/index.ts"],
+      "@peach/appearance": ["../appearance/index.ts"]
     }
   },
   "include": ["./", "../../test/react"],

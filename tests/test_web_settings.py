@@ -257,9 +257,9 @@ class ContractRegistrationTests(unittest.TestCase):
         import re
 
         root = Path(__file__).resolve().parents[1]
-        page = (root / "web" / "app.js").read_text(encoding="utf-8")
+        settings = (root / "frontend/src/appearance/settings.ts").read_text(encoding="utf-8")
         panel = (root / "frontend/src/react/settings-panel/settings-panel.tsx").read_text(encoding="utf-8")
-        for source, pattern in ((page, r"const METADATA_REFRESH_DAYS=\[(.*?)\];"),
+        for source, pattern in ((settings, r"const METADATA_REFRESH_DAYS: readonly number\[\] = \[(.*?)\];"),
                                 (panel, r"const METADATA_REFRESH_DAYS = \[(.*?)\];")):
             raw = re.search(pattern, source).group(1)
             self.assertEqual(tuple(int(item) for item in raw.split(",")),
@@ -270,7 +270,7 @@ class ContractRegistrationTests(unittest.TestCase):
                          sorted(web_settings.METADATA_REFRESH_DAYS))
         # 选中的值要写进账本（服务端按它决定要不要出网），启动时再用账本那份纠正本地镜像。
         self.assertIn("save.mutate({ metadataRefreshDays: settings.metadataRefreshDays }", panel)
-        self.assertIn("const days=remote&&remote.metadataRefreshDays;", page)
+        self.assertIn("const days = remote && remote.metadataRefreshDays;", settings)
 
     def test_initial_history_choices_are_in_settings_and_match_the_server(self):
         import re

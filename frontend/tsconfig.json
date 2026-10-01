@@ -25,7 +25,8 @@
       "@peach/legacy/ui": ["./src/legacy/ui.d.ts"],
       "@peach/legacy/home-glow": ["./src/legacy/home-glow.d.ts"],
       "@peach/react": ["./src/react/bundle.d.ts"],
-      "@peach/card-art": ["./src/card-art/index.ts"]
+      "@peach/card-art": ["./src/card-art/index.ts"],
+      "@peach/appearance": ["./src/appearance/index.ts"]
     }
   },
   "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
