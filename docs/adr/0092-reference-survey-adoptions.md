@@ -49,7 +49,7 @@ javranking、Cuelume 等 16 个项目的最新版做了一轮调研，最新代�
 | 结果提示音 | Cuelume | 60 |
 | r18.dev dump 本地镜像 | Javinizer-Go、AMMDS | 61 |
 | 来源开关旁写明来源性质 | 本轮综合 | 64 |
-| 站点互联（观察）、漫画与同人本（低） | AMMDS | 67、68 |
+| 站点互联、漫画与同人本（调研不采纳，待办保留为观察与低优先级） | AMMDS | 67、68 |
 | PWA、原生客户端（远期） | SakuraMedia | 69、70 |
 | 系统诊断页 | SakuraMedia、javm、OpenAver | 26 |
 | 开放 API 与按文件哈希查找（osHash 指纹） | AMMDS、OpenAver、SakuraMedia | 27 |
