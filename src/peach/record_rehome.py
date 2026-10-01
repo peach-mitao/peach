@@ -11,9 +11,11 @@
 同一 `(location, path)` 的文件回来了不归这里管：扫描的 upsert 直接清掉那一行的 `disposal`。
 
 搬运把五张表的行改指新行，新行已有同一键的记录时以新行为准；`asset_quality_goal` 搬到新行
-后置 `wanted=0` 并记 `replaced_at` 关闭，不当作新行的待找目标。搬完删旧行。每次搬运在
+后置 `wanted=0` 并记 `replaced_at` 关闭，不当作新行的待找目标。旧行自己的四列个人记录并进
+新行：评分新行为空才取旧的，高潮与播放次数相加，最近播放取较晚的。搬完删旧行。每次搬运在
 `record_rehome` 记一行，批次号 `<source>@<id>`（ADR-0052），存旧行整行、它在各引用表里的
-全部行与改指过的键，`revert` 按快照重建旧行并把搬走的改回去。
+全部行、改指过的键与新行四列在接回前的值，`revert` 按快照重建旧行、把搬走的改回去、新行四列
+还原成接回前的值。
 
 调用方负责事务：这里的函数都只在给定连接上写，不提交。
 """
@@ -25,10 +27,11 @@ import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from contextlib import closing
+from datetime import datetime
 from pathlib import PureWindowsPath
 
 from .catalog_rules import normalise_code_key, release_code_from_filename
-from .personal_records import ASSET_REFERENCE_TABLES, VANISHED
+from .personal_records import ASSET_RECORD_COLUMNS, ASSET_REFERENCE_TABLES, VANISHED
 
 #: 登记时自动接回记的来源。
 AUTO_SOURCE = "auto:vanished-reattach"
@@ -45,6 +48,8 @@ MOVED_TABLES: dict[str, tuple[str, ...]] = {
 }
 #: 寻找更好版本的目标：搬到新行后关闭。
 GOAL_TABLE, GOAL_KEYS = "asset_quality_goal", ("profile_id",)
+#: `moved_json` 里记新行四列个人记录原值的那一项。
+ROW_RECORDS = "asset_row"
 
 #: 无番号的创作者视频：时长差在这几秒之内算同一部。
 DURATION_TOLERANCE = 2.0
@@ -161,6 +166,36 @@ def _move_rows(connection, table: str, keys: tuple[str, ...], old_id: int, new_i
     return moved
 
 
+def _epoch(value) -> float:
+    """`last_played` 多数是 epoch 秒，早年导入的行可能是 ISO 时间；认不出的当最早。"""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return float("-inf")
+
+
+def _fold_row_records(connection, old_id: int, new_id: int) -> dict:
+    """把旧行上四列个人记录并进新行，返回新行这四列在接回前的值，供撤回还原。
+
+    评分新行为空才取旧行的；高潮与播放次数相加；最近播放取两者中较晚的。
+    """
+    columns = ",".join(ASSET_RECORD_COLUMNS)
+    old = _rows(connection, f"SELECT {columns} FROM asset WHERE id=?", (old_id,))[0]
+    new = _rows(connection, f"SELECT {columns} FROM asset WHERE id=?", (new_id,))[0]
+    merged = {"rating": new["rating"] if new["rating"] is not None else old["rating"]}
+    for column in ("o_count", "play_count"):
+        both = (old[column], new[column])
+        merged[column] = None if both == (None, None) else sum(int(value or 0) for value in both)
+    played = [value for value in (old["last_played"], new["last_played"]) if value is not None]
+    merged["last_played"] = max(played, key=_epoch) if played else None
+    connection.execute(f"UPDATE asset SET {','.join(f'{column}=?' for column in ASSET_RECORD_COLUMNS)} "
+                       "WHERE id=?", (*[merged[column] for column in ASSET_RECORD_COLUMNS], new_id))
+    return new
+
+
 def _snapshot(connection, old_id: int) -> dict:
     return {
         "asset": _rows(connection, "SELECT * FROM asset WHERE id=?", (old_id,))[0],
@@ -182,8 +217,9 @@ def move(connection, old_id: int, new_id: int, *, source: str, rule: str,
     if target is None or target[0] is not None or old_id == new_id:
         raise ValueError("只能接到在库的另一行")
     snapshot = _snapshot(connection, old_id)
-    moved = {table: _move_rows(connection, table, keys, old_id, new_id)
-             for table, keys in MOVED_TABLES.items()}
+    moved: dict = {table: _move_rows(connection, table, keys, old_id, new_id)
+                   for table, keys in MOVED_TABLES.items()}
+    moved[ROW_RECORDS] = _fold_row_records(connection, old_id, new_id)
     moved[GOAL_TABLE] = _move_rows(connection, GOAL_TABLE, GOAL_KEYS, old_id, new_id)
     connection.executemany(
         f"UPDATE {GOAL_TABLE} SET wanted=0,replaced_at=? WHERE asset_id=? AND profile_id=?",
@@ -268,6 +304,10 @@ def revert_one(connection, rehome_id: int, *, now: str | None = None) -> None:
             if playlist[column] == old["id"]:
                 connection.execute(f"UPDATE playlist SET {column}=? WHERE id=? AND {column}=?",
                                    (old["id"], playlist["id"], new_id))
+    if before := moved.get(ROW_RECORDS):
+        connection.execute(
+            f"UPDATE asset SET {','.join(f'{column}=?' for column in ASSET_RECORD_COLUMNS)} WHERE id=?",
+            (*[before[column] for column in ASSET_RECORD_COLUMNS], new_id))
     connection.execute("UPDATE record_rehome SET reverted_at=? WHERE id=?",
                        (now or time.strftime("%Y-%m-%d %H:%M:%S"), rehome_id))
 

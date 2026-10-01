@@ -146,6 +146,14 @@ class PurgeMissingTests(unittest.TestCase):
         finally:
             con.close()
 
+    def test_a_row_only_rated_counts_as_carrying_records(self):
+        """行上的评分也是个人记录：只打过分、六张表里什么都没有的行同样标已消失。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute("UPDATE asset SET rating=3 WHERE id=3")
+        result = self._run()
+        self.assertEqual((result["trashed"], result["vanished"]), (0, 2))
+        self.assertEqual(self.disposals(), {1: None, 2: "vanished", 3: "vanished", 4: None})
+
     def test_purge_undo_restores_both_tiers_and_leaves_earlier_disposals_alone(self):
         """回执的撤销走 batch restore：两档都还原；这一趟之前就进回收站的行不在名单里。"""
         with self.contract.write_transaction() as connection:

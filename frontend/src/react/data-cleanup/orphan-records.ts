@@ -1,7 +1,7 @@
 /* 孤儿记录的数据契约：文件已不在盘上、带着个人记录的作品（ADR-0087）。
  *
- * 一个读端点、一个写端点。列表带每条在六张表里的记录数与在库候选；接回把记录搬到选中的
- * 文件、删掉旧行，记一个可整批撤回的批次。彻底删除走批量接口的 `delete`。 */
+ * 一个读端点、一个写端点。列表带每条在六张表里的记录数、行上的评分与次数和在库候选；
+ * 接回把记录搬到选中的文件、删掉旧行，记一个可整批撤回的批次。彻底删除走批量接口的 `delete`。 */
 import { apiGet, apiSend } from '../../api';
 import { BATCH_URL } from '../duplicates/duplicates';
 
@@ -27,8 +27,8 @@ export interface OrphanRecord {
   size: number | null;
   vanished_at: number | null;
   has_thumb: boolean;
-  /** 六张表各有几条；没有的表不出现。 */
-  records: Partial<Record<RecordTable, number>>;
+  /** 六张表各有几条，加上行上的评分、高潮与播放次数；`last_played` 记过就是 1。没有的不出现。 */
+  records: Partial<Record<RecordKey, number>>;
   candidates: OrphanCandidate[];
 }
 
@@ -36,6 +36,11 @@ export interface OrphanRecordsData { total: number; items: OrphanRecord[] }
 
 export type RecordTable = 'asset_preference' | 'watch_queue' | 'playlist_item'
   | 'asset_quality_goal' | 'activity_event' | 'asset_tag_preference';
+
+/** 行上自己的四列个人记录。 */
+export type RowRecord = 'rating' | 'o_count' | 'play_count' | 'last_played';
+
+export type RecordKey = RecordTable | RowRecord;
 
 /** 六张表在这一块里的名字，顺序就是显示顺序。 */
 export const RECORD_LABELS: ReadonlyArray<readonly [RecordTable, string]> = [
@@ -59,11 +64,21 @@ export const attachOrphan = (id: number, target: number) =>
 export const purgeOrphan = (id: number) =>
   apiSend<{ ok: boolean; purged: number; blocked: unknown[] }>(BATCH_URL, { ids: [id], operation: 'delete' });
 
-/** 一条带的记录，按表名排成一句：「喜欢与理由 1 · 观看历史 3」。 */
-export const recordsText = (records: OrphanRecord['records']) => RECORD_LABELS
-  .filter(([table]) => records[table])
-  .map(([table, label]) => `${label} ${Number(records[table]).toLocaleString()}`)
-  .join(' · ');
+/** 行上四列的写法：分值与次数照写；只记过最近播放、没有播放次数时写「播放过」。 */
+const rowRecordsText = (records: OrphanRecord['records']) => [
+  records.rating ? `评分 ${records.rating}` : '',
+  records.play_count ? `播放 ${Number(records.play_count).toLocaleString()} 次`
+    : records.last_played ? '播放过' : '',
+  records.o_count ? `高潮 ${Number(records.o_count).toLocaleString()} 次` : '',
+];
+
+/** 一条带的记录排成一句：「喜欢与理由 1 · 观看历史 3 · 评分 4 · 播放 2 次」。 */
+export const recordsText = (records: OrphanRecord['records']) => [
+  ...RECORD_LABELS
+    .filter(([table]) => records[table])
+    .map(([table, label]) => `${label} ${Number(records[table]).toLocaleString()}`),
+  ...rowRecordsText(records),
+].filter(Boolean).join(' · ');
 
 const minutes = (seconds: number | null) => (seconds ? `${Math.round(seconds / 60)} 分钟` : '');
 

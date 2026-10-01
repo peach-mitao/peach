@@ -408,7 +408,7 @@ describe('孤儿记录', () => {
     items: [
       {
         id: 7, name: 'ABC-123.mp4', code: 'ABC-123', location: 'local', duration: 3600, size: 10,
-        vanished_at: 200, has_thumb: true, records: { asset_preference: 1, activity_event: 3 },
+        vanished_at: 200, has_thumb: true, records: { asset_preference: 1, activity_event: 3, rating: 4, play_count: 2 },
         candidates: [
           { id: 9, location: 'local', name: 'ABC-123.mkv', duration: 3590, size: 20 },
           { id: 10, location: 'local', name: 'abc-123.mp4', duration: 1800, size: 5 },
@@ -416,7 +416,7 @@ describe('孤儿记录', () => {
       },
       {
         id: 12, name: '海边.mp4', code: '', location: 'local', duration: 600, size: 10,
-        vanished_at: 100, has_thumb: false, records: { watch_queue: 1 }, candidates: [],
+        vanished_at: 100, has_thumb: false, records: { watch_queue: 1, last_played: 1 }, candidates: [],
       },
     ],
   };
@@ -433,10 +433,10 @@ describe('孤儿记录', () => {
     await settle();
     const rows = [...host.querySelectorAll('[aria-label="文件已消失的作品"] tbody tr')];
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.textContent).toContain('喜欢与理由 1 · 观看历史 3');
+    expect(rows[0]!.textContent).toContain('喜欢与理由 1 · 观看历史 3 · 评分 4 · 播放 2 次');
     expect(rows[0]!.textContent).toContain('ABC-123.mkv · 60 分钟');
     expect(rows[0]!.querySelector('img')?.getAttribute('src')).toBe('/thumb?id=7&c=4');
-    expect(rows[1]!.textContent).toContain('稍后看 1');
+    expect(rows[1]!.textContent).toContain('稍后看 1 · 播放过');
     expect(rows[1]!.textContent).toContain('没有番号或文件名对得上的文件');
     expect(buttonNamed('接到这个文件', rows[1]!)).toBeFalsy();
     expect(buttonNamed('彻底删除', rows[1]!)).toBeTruthy();
@@ -467,7 +467,7 @@ describe('孤儿记录', () => {
   it('彻底删除是危险确认，正文写明不可撤销，确认了才发批量删除', async () => {
     const { seen, posts } = await purgeSecond(true);
     expect(seen[0]!.danger).toBe(true);
-    expect(seen[0]!.body).toBe('将删除「海边.mp4」这一条和它带的记录（稍后看 1）。此操作不可撤销。');
+    expect(seen[0]!.body).toBe('将删除「海边.mp4」这一条和它带的记录（稍后看 1 · 播放过）。此操作不可撤销。');
     expect(posts).toEqual([{ ids: [12], operation: 'delete' }]);
   });
 

@@ -14,7 +14,7 @@ import unittest
 from contextlib import closing, redirect_stdout
 from pathlib import Path
 
-from peach import record_rehome, scan
+from peach import personal_records, record_rehome, scan
 from peach.migrations import upgrade
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -221,6 +221,49 @@ class RecordRehomeTests(unittest.TestCase):
             snapshot = json.loads(connection.execute(
                 "SELECT snapshot_json FROM record_rehome WHERE id=?", (batch,)).fetchone()[0])
         self.assertEqual(snapshot["asset"]["rating"], 4, "行上的打分留在快照里")
+
+    def test_each_of_the_four_row_columns_alone_counts_as_records(self):
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.executemany(
+                "INSERT INTO asset(id,location,path,name,medium,size,rating,o_count,play_count,last_played) "
+                "VALUES(?,'local',?,'x.mp4','video',10,?,?,?,?)",
+                [(1, "R:\\media\\1.mp4", 3, None, 0, None), (2, "R:\\media\\2.mp4", None, 2, 0, None),
+                 (3, "R:\\media\\3.mp4", None, None, 5, None), (4, "R:\\media\\4.mp4", None, None, 0, 1700.0),
+                 (5, "R:\\media\\5.mp4", None, 0, 0, None)])
+            self.assertEqual(personal_records.record_holders(connection, [1, 2, 3, 4, 5]), {1, 2, 3, 4})
+            self.assertEqual(personal_records.record_counts(connection, [1, 2, 3, 4, 5]), {
+                1: {"rating": 3}, 2: {"o_count": 2}, 3: {"play_count": 5}, 4: {"last_played": 1}, 5: {}})
+
+    def row_records(self, asset_id):
+        """行上四列；`last_played` 是 TEXT 列，写进去的 epoch 秒读回来是文本。"""
+        return self.query("SELECT rating,o_count,play_count,last_played FROM asset WHERE id=?", (asset_id,))[0]
+
+    def test_row_records_fold_into_the_new_row_and_revert_restores_both(self):
+        self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.execute("UPDATE asset SET o_count=2,play_count=3,last_played=1000.0 WHERE id=7")
+            connection.execute(
+                "INSERT INTO asset(id,location,path,name,medium,size,rating,o_count,play_count,last_played) "
+                "VALUES(9,'local','R:\\media\\ABC-123.mkv','ABC-123.mkv','video',10,5,NULL,1,2000.0)")
+            batch = record_rehome.move(connection, 7, 9, source=record_rehome.MANUAL_SOURCE, rule="manual")
+            connection.commit()
+        self.assertEqual(self.row_records(9), (5, 2, 4, "2000.0"),
+                         "评分新行有就留新行的；次数相加；最近播放取较晚的")
+        with closing(sqlite3.connect(self.db)) as connection:
+            record_rehome.revert_one(connection, batch)
+            connection.commit()
+        self.assertEqual(self.row_records(9), (5, None, 1, "2000.0"), "新行还原成接回前的值")
+        self.assertEqual(self.row_records(7), (4, 2, 3, "1000.0"), "旧行按快照重建")
+
+    def test_an_unrated_new_row_takes_the_old_rating_and_the_later_play(self):
+        self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.execute("UPDATE asset SET play_count=2,last_played=3000.0 WHERE id=7")
+            connection.execute("INSERT INTO asset(id,location,path,name,medium,size,last_played) "
+                               "VALUES(9,'local','R:\\media\\ABC-123.mkv','ABC-123.mkv','video',10,1000.0)")
+            record_rehome.move(connection, 7, 9, source=record_rehome.MANUAL_SOURCE, rule="manual")
+            connection.commit()
+        self.assertEqual(self.row_records(9), (4, None, 2, "3000.0"))
 
     def test_move_only_takes_a_vanished_row_onto_an_in_library_row(self):
         self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
