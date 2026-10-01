@@ -16,7 +16,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { javImageKind, normalizeJavLayout, normalizeJavPreferences, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
-import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
+import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
@@ -1208,11 +1208,11 @@ async function runCatalogBatch(operation,button){
   try{const r=await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation})});
     if(r.blocked&&r.blocked.length)throw new Error(`已永久删除 ${r.purged} 项；${r.blocked.length} 项未能删除，仍在回收站：\n`
       +r.blocked.slice(0,5).map(x=>`${x.path}（${x.reason}）`).join('\n'));
-    setSelectMode(false,true);await reloadCurrentSurface();
+    setSelectMode(false,true);await reloadAfterWrite();
     const inverse=operation==='dispose'?'restore':operation==='restore'?'dispose':null;
     actionReceipt(`已${labels[operation]} ${ids.length} 项`,{undo:inverse?async()=>{
       await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation:inverse})});
-      await reloadCurrentSurface();
+      await reloadAfterWrite();
     }:null})}
   catch(error){setActionBusy(button,false);throw error}
   finally{setActionBusy(button,false);paintSelection()}
@@ -1248,7 +1248,7 @@ async function pickBatchRegion(){
   });
   const {confirmed,result}=await modal.done;
   if(!confirmed)return;
-  setSelectMode(false,true);await reloadCurrentSurface();
+  setSelectMode(false,true);await reloadAfterWrite();
   actionReceipt(result.region==='none'
     ? `已撤回 ${ids.length} 项的产地判定` : `已判为${result.label}：${ids.length} 项`);
 }
@@ -1633,7 +1633,7 @@ function tierPerformer(x){
    `has_logo` 由 `/api/tops` 下发，判据和取图同一个函数。 */
 function tierStudio(x){
   return {name:x.k,fallback:x.k.slice(0,2),
-    logo:x.has_logo?`/logo?studio=${encodeURIComponent(x.k)}&variant=icon`:''};
+    logo:x.has_logo?logoUrl(x.k,'icon',x.logo_version):''};
 }
 /* 首屏时这一块要等两个聚合查询，约一秒。铺上骨架就必须有一次真的绘制来顶掉它，哪怕取回的
    数据跟上一次一模一样。只在还没画过时铺：导航到已经有内容的页面留着旧内容等新内容，那不是
@@ -2624,7 +2624,7 @@ function peopleIndexLayout(){
 function personRingHtml(x,kind,big){
   const ref=x.entity_id||x.id;
   const company=kind==='studio'||kind==='agency';
-  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version}:null,
+  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version}:null,
     x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',
     company&&big?'large':'ring',company?null:x.avatar_focus,true);
 }
@@ -2799,7 +2799,7 @@ const entityPageHelpers={
     return d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
       rep:company||!d.has_avatar?null:d.representative_asset_id,
       mark:kind==='agency'?d.mark_link_id:null,
-      logo:company&&d.has_logo?d.canonical_name:'',logoVariant:'large',
+      logo:company&&d.has_logo?d.canonical_name:'',logoVersion:d.logo_version,logoVariant:'large',
       alt:esc(d.canonical_name),lazy:false,
       style:company?'':facePos(d.avatar_focus),focus:company?null:d.avatar_focus,
       dropStyle:true}):''},
@@ -2843,6 +2843,8 @@ function entityPageActions(kind,name){
     missing:()=>queueMicrotask(()=>{
       if(!entityPageCurrent())return;
       unmountIsland($('#index'));showEntityMissing(kind)}),
+    // 顶栏那排头像有 30 秒会话缓存，回首页时取到的还是换之前的版本号，看到的就是旧图。
+    avatarChanged:()=>{barsDataCache=null;barsDataPromise=null},
   };
 }
 /* 卡片网格原样要的那几样与展示设置随挂载带上现值，之后由各自的开关经 `updateIsland` 推最新值。 */
@@ -3413,6 +3415,14 @@ function toggleJavMode(){
   state.state='';state.orient='';
   route(state.jav==='1'?'/?jav=1':'/');
   showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
+}
+/* 批量写完：当前页重取，顶部三条与侧栏计数也按新账本重算。那两样有 30 秒会话缓存
+   （`getBarsData`），不清掉的话一批作品进了回收站，侧栏的数和上面那排头像要等半分钟才跟上。
+   要不要画、画哪一份由 `buildBars` 自己按当前页判断。Mix 的相关作品同理：进了回收站的
+   那几部还会在翻页和队列里出现。 */
+async function reloadAfterWrite(){
+  barsDataCache=null;barsDataPromise=null;mixRelatedCache.clear();
+  await Promise.all([reloadCurrentSurface(),buildBars()]);
 }
 /* 批量操作后回到刚才那一页，而不是首页列表。
    实体资料页、索引页和管理区各有自己的取数路径，`loadCatalog()` 只会重建首页网格，

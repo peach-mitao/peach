@@ -1578,7 +1578,8 @@ class WebUiSourceTests(unittest.TestCase):
         # 忘了挂标志的端点悄悄退回旧行为，而这种退化在页面上看不出来——图照样显示，代价全在 404 里。
         # 索引页（`/api/index`）：实体图看 has_image、代表作头像看 has_avatar，kind
         # 跟着这一页的身份走——创作者的图写成 `performer-<id>.img` 是读不到的。
-        self.assertPageContains("ref?{id:ref,has_image:x.has_image,image_version:x.image_version}:null,")
+        self.assertPageContains(
+            "ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version}:null,")
         self.assertPageContains(
             "x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',")
         # 口味榜（`/api/taste`）归 React 档，判据仍是同一对：引用给 `avatarInner()`，
@@ -4465,9 +4466,9 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertPageContains("company&&big?'large':'ring',company?null:x.avatar_focus,true);")
         self.assertPageContains(
-            "logo:company&&d.has_logo?d.canonical_name:'',logoVariant:'large',")
+            "logo:company&&d.has_logo?d.canonical_name:'',logoVersion:d.logo_version,logoVariant:'large',")
         # 小位仍要方形小标：卡片角标和顶栏那排只有二十来像素，取原图只是白下载。
-        self.assertPageContains("&variant=icon`:''")
+        self.assertPageContains("logo:x.has_logo?logoUrl(x.k,'icon',x.logo_version):''")
 
     def test_a_mark_smaller_than_its_frame_is_not_blown_up(self):
         """图比框还小就不拉伸：原尺寸居中，空出来的一圈用同一张图放大模糊补底。
@@ -5309,10 +5310,17 @@ class WebUiSourceTests(unittest.TestCase):
         它没有别的症状——那个位置只是永远空着，而 DevTools 的 Name 列只显示路径
         末段，一整排 `logo` 看起来都像裸路径，肉眼分不出真裸的那一个。所以逐处扫
         `src`：厂牌标识的地址必须带上 studio，也必须带上 variant（哪个位置要哪份图
-        是另一条契约，见 `test_studio_icon_variants`）。
+        是另一条契约，见 `test_studio_icon_variants`）。壳里经 `logoUrl(厂牌, 变体, 版本)`
+        拼地址的那几处逐个查前两个参数；`logoUrl` 自己拼出的形态由
+        `frontend/test/card-art/markup.test.ts` 验。
         """
         marks = re.findall(r'(?:src="|logo:[^`\n]*`)(/logo[^"`]*)', self.page)
-        self.assertTrue(marks, "页面里应当仍有厂牌标识取图位")
+        calls = re.findall(r"logoUrl\(([^,()]*),\s*([^,()]*)", self.page)
+        self.assertTrue(marks or calls, "页面里应当仍有厂牌标识取图位")
+        for studio, variant in calls:
+            with self.subTest(call=f"logoUrl({studio},{variant}"):
+                self.assertTrue(studio.strip(), "logoUrl 没给厂牌，这个请求必然 404")
+                self.assertTrue(variant.strip(), "logoUrl 缺 variant")
         for url in marks:
             with self.subTest(url=url):
                 self.assertTrue(

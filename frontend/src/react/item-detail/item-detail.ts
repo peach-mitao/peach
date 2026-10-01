@@ -27,6 +27,8 @@ export interface DetailEntityRef {
   image_version?: string;
   avatar_focus?: unknown;
   has_logo?: boolean;
+  /** 标识文件的内容版本，拼进 `/logo` 地址的 `&v=`。 */
+  logo_version?: string;
   /** 厂牌是某家片商旗下的 label 时（ADR-0049），从近到远的上级片商链。 */
   makers?: DetailEntityRef[];
 }
@@ -53,6 +55,7 @@ export interface DetailItem extends Omit<CardFields, 'tags'> {
   better_version?: boolean | number;
   better_version_reason?: string;
   has_studio_logo?: boolean;
+  studio_logo_version?: string;
   poster_box?: { x0: number; y0: number; x1: number; y1: number; px: number[] } | null;
   part_label?: string;
   tags?: DetailTag[];
@@ -170,10 +173,12 @@ export function withPartLabel(item: DetailItem, queue: DetailQueue | null): Deta
 export async function prefetchItemDetail(props: ItemDetailProps, signal: AbortSignal): Promise<void> {
   const { queue: ref, actions } = props;
   let queue: DetailQueue | null = null;
+  let seeded = false;
   if (ref) {
     const key = queueKey(ref);
     try {
       const cached = ref.fresh ? undefined : queryClient.getQueryData<DetailQueue>(key);
+      seeded = !cached && ref.kind === 'mix';
       queue = cached || await queryClient.fetchQuery({ queryKey: key, queryFn: () => fetchQueue(ref, props.helpers, signal), staleTime: 0 });
     } catch (error) {
       if (signal.aborted) throw error;
@@ -189,9 +194,12 @@ export async function prefetchItemDetail(props: ItemDetailProps, signal: AbortSi
     return;
   }
   let item: DetailItem;
+  /* 重开同一条也重取：缓存里那份是上一次打开时的，这期间封面、评分、标签都可能在别处改过，
+     而挂载不重取（`query.ts`）。只有 Mix 的种子不重取，取队列那一步刚把它写进缓存。 */
+  const cachedItem = seeded && id === queue?.seedId ? queryClient.getQueryData<DetailItem>(itemKey(id)) : undefined;
   try {
-    item = queryClient.getQueryData<DetailItem>(itemKey(id))
-      || await queryClient.fetchQuery({ queryKey: itemKey(id), queryFn: () => fetchItem(id, signal) });
+    item = cachedItem
+      || await queryClient.fetchQuery({ queryKey: itemKey(id), queryFn: () => fetchItem(id, signal), staleTime: 0 });
   } catch (error) {
     if (error instanceof ItemGone) { actions.redirect({ kind: 'gone' }); return }
     throw error;
@@ -338,7 +346,8 @@ export function identityGroups(item: DetailItem): IdentityGroups {
   const cast = performers.filter(fresh);
   const studioRef = refs.studio?.[0];
   const studioFallback: DetailEntityRef[] = studioRef || !item.studio
-    ? [] : [{ id: null, name: item.studio, has_logo: !!item.has_studio_logo }];
+    ? [] : [{ id: null, name: item.studio, has_logo: !!item.has_studio_logo,
+      ...(item.studio_logo_version ? { logo_version: item.studio_logo_version } : {}) }];
   const studios = [...(refs.studio || []), ...studioFallback].filter(fresh);
   const makers = studios.flatMap((ref) => ref.makers || []).filter(fresh);
   const creators = (refs.creator || []).filter(fresh);

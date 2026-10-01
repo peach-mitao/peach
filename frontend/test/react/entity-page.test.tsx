@@ -126,7 +126,7 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
     actions: {
       route: vi.fn(), toggleTag: vi.fn(), clearFilter: vi.fn(), clearAll: vi.fn(), setSort: vi.fn(),
       reshuffleVideos: vi.fn(() => '77'), setJavLayout: vi.fn(), setPhotoLayout: vi.fn(), openEntity: vi.fn(),
-      javContext: vi.fn(), painted: vi.fn(), missing: vi.fn(),
+      javContext: vi.fn(), painted: vi.fn(), missing: vi.fn(), avatarChanged: vi.fn(),
     },
     ...patch,
   };
@@ -346,6 +346,8 @@ describe('写操作', () => {
     expect(portrait()).toBe('/entity-image?v=new');
     // 网格把第一页当初值存进自己的状态：只重取不换键，卡片（连同署名里她的脸）停在旧的那一份。
     expect(cards(page.props)).toEqual(['4', '5', '6']);
+    // 首页顶栏那排头像是壳缓存着的，也得告诉它作废。
+    expect(page.props.actions.avatarChanged).toHaveBeenCalledOnce();
   });
 
   it('换统称：先问，写回成功才去新名字那一页；回执的撤销是另一次写回，再回到原名', async () => {

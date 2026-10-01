@@ -326,7 +326,7 @@ class LogoAvailabilityTests(unittest.TestCase):
         root = Path(self.tmp.name).resolve()
         contract = WebContract(root / "ledger.db", logo_root=root / "nowhere",
                                marks_root=root / "marks")
-        self.assertEqual(contract.logo_index(), frozenset())
+        self.assertEqual(dict(contract.logo_index()), {})
         self.assertFalse(contract.has_logo("Fitch"))
 
     def test_bundled_marks_cover_a_clean_data_directory(self):
@@ -373,7 +373,7 @@ class PageSourceTests(unittest.TestCase):
 
     def test_every_small_surface_asks_for_the_icon(self):
         for snippet in (
-            '/logo?studio=${encodeURIComponent(x.k)}&variant=icon',
+            "logoUrl(x.k,'icon',x.logo_version)",
         ):
             # 壳里的小位只剩这一处厂牌标识，作品详情出演区的厂牌格画在 React 岛里，由
             # `frontend/test/react/item-detail.test.tsx` 钉住；网盘来源角标走 `MEDIA_SOURCE_ICONS` 那份站标，

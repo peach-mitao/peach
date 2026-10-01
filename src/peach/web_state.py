@@ -354,11 +354,11 @@ class WebContract:
         return path if path.is_file() else None
 
     def cover_index(self) -> dict[str, dict]:
-        """封面目录扫一遍的索引：casefold(归一番号) → 两份取景提示。
+        """封面目录扫一遍的索引：casefold(归一番号) → 两份取景提示加封面版本。
 
-        值的形状是 `{"frame": 人脸中心或 None, "poster": 正封框或 None}`。两份
-        边车各描述一件事，一次目录扫描一起收齐：`.face.json` 说脸在哪，
-        `.poster.json` 说正封那一块在哪。
+        值的形状是 `{"frame": 人脸中心或 None, "poster": 正封框或 None, "version": 修改时间}`。
+        两份边车各描述一件事，一次目录扫描一起收齐：`.face.json` 说脸在哪，
+        `.poster.json` 说正封那一块在哪。版本见 `cover_version`。
 
         卡片列表逐行问「有封面吗」「取景是多少」，一页 60 行就是 120+ 次 stat 加
         读文件；封面目录一次 scandir 就覆盖全部番号，结果走 `cached()` 的 TTL。
@@ -383,6 +383,7 @@ class WebContract:
                         "frame": self._cover_focus(stem + ".face.json"),
                         "poster": self._poster_box(
                             stem + jav_poster_crop.SIDECAR_SUFFIX),
+                        "version": f"{entry.stat().st_mtime_ns:x}",
                     }
         except OSError:
             return {}
@@ -424,8 +425,16 @@ class WebContract:
         # 大小写不敏感，改走索引不能顺手把这层容错丢了。
         return bool(key) and key.casefold() in self.cover_index()
 
-    def logo_index(self) -> frozenset[str]:
-        """厂牌标识目录扫一遍的索引：已装标识的 casefold(落盘名) 集合。
+    def cover_version(self, code: str | None) -> str:
+        """这个番号封面的版本，页面拼进 `/cover` 的 `v=`；没有封面是空串。
+
+        补高清、重探都把封面原地换成新图而地址不变，同一页里浏览器直接复用内存里那张
+        旧图。判据与 `has_cover` 是同一份索引。
+        """
+        return (self._cover_entry(code) or {}).get("version", "")
+
+    def logo_index(self) -> Mapping[str, str]:
+        """厂牌标识目录扫一遍的索引：已装标识的 casefold(落盘名) → 版本。
 
         页面据此决定「输出 `<img>` 还是直接首字母垫底」。没有这份索引就只能每个厂牌
         都先发一次 `/logo`、靠 404 把图换掉：首页顶栏一次渲染 30 个厂牌里 21 个是
@@ -440,15 +449,19 @@ class WebContract:
         return self.cached("logo-index", self._scan_logo_root,
                            version=path_version(self.logo_root))
 
-    def _scan_logo_root(self) -> frozenset[str]:
+    def _scan_logo_root(self) -> Mapping[str, str]:
         """一次目录扫描收齐已装标识，并入随仓库分发的那批（ADR-0026）。
 
         内置那批不进这份索引的话，`/logo` 取得回图而页面判「没图」，厂牌位永远停在
         首字母——两边判据不一致的后果不是报错，是安静地少显示一批图。
 
         本机目录不存在时仍然保留内置那批：干净数据目录正是内置资源要顶上的场景。
+
+        版本是这个厂牌几份变体里最新的修改时间：复核批准是原地替换，地址不带版本时同一页
+        里看到的还是旧标识。内置那批随版本分发、不在本机替换，版本是空串。
         """
-        keys: set[str] = set(brand_marks.installed_stems(LOGO_VARIANTS, self.marks_root))
+        keys: dict[str, str] = dict.fromkeys(
+            brand_marks.installed_stems(LOGO_VARIANTS, self.marks_root), "")
         try:
             with os.scandir(self.logo_root) as entries:
                 for entry in entries:
@@ -462,15 +475,22 @@ class WebContract:
                             stem = stem[:-len(variant) - 1]
                             break
                     if stem:
-                        keys.add(stem)
+                        mtime = entry.stat().st_mtime_ns
+                        if mtime > int(keys.get(stem) or "0", 16):
+                            keys[stem] = f"{mtime:x}"
         except OSError:
-            return frozenset(keys)
-        return frozenset(keys)
+            return keys
+        return keys
 
     def has_logo(self, studio: str | None) -> bool:
         """这个厂牌是否已装标识。空名字一律为假——`/logo` 也拒绝空 studio。"""
         key = logo_key(studio or "")
         return bool(key) and key.casefold() in self.logo_index()
+
+    def logo_version(self, studio: str | None) -> str:
+        """这个厂牌标识的版本，页面拼进 `/logo` 的 `v=`；没装或是内置的那批是空串。"""
+        key = logo_key(studio or "")
+        return self.logo_index().get(key.casefold(), "") if key else ""
 
     def avatar_root_index(self) -> AvatarRootIndex:
         """头像目录扫一遍的索引：已装的实体图，加已经裁好的头像。

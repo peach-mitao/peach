@@ -137,11 +137,11 @@ describe('停在队列哪一条', () => {
 describe('身份与标签', () => {
   it('同名只出一次；只有扁平厂牌时带上它的标识可用性；厂牌与系列不算归属', () => {
     const groups = identityGroups(item(1, {
-      performers: ['A'], studio: 'S', has_studio_logo: true,
+      performers: ['A'], studio: 'S', has_studio_logo: true, studio_logo_version: '9a',
       entity_refs: { performer: [{ id: 1, name: 'A' }, { id: 2, name: 'a' }], series: [{ id: 3, name: 'A' }] },
     }));
     expect(groups.cast.map((ref) => ref.name)).toEqual(['A']);
-    expect(groups.studios).toEqual([{ id: null, name: 'S', has_logo: true }]);
+    expect(groups.studios).toEqual([{ id: null, name: 'S', has_logo: true, logo_version: '9a' }]);
     expect(groups.series).toEqual([]);
     expect(identityGroups(item(2, { performers: [], studio: 'S', creator: '' })).unowned).toBe(true);
     expect(identityGroups(item(3, { performers: [], creator: '某人' })).unowned).toBe(false);
@@ -208,6 +208,17 @@ describe('首屏取数', () => {
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/item?id=2']);
     await prefetchItemDetail(props({ id: 2, queue: { kind: 'parts', seedId: 1, fresh: true } }), signal);
     expect(fetcher.mock.calls.map(([url]) => url)).toContain('/api/parts?id=1');
+  });
+
+  it('重开同一条也重取：缓存里那份是上次打开时的；Mix 的种子刚随队列取过，不取第二遍', async () => {
+    const fetcher = serve(undefined, { '/api/item?id=1': item(1, { rating: 100 }) });
+    queryClient.setQueryData(itemKey(1), item(1, { rating: 20 }));
+    await prefetchItemDetail(props({ id: 1 }), signal);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/item?id=1']);
+    expect(queryClient.getQueryData<DetailItem>(itemKey(1))?.rating).toBe(100);
+    fetcher.mockClear();
+    await prefetchItemDetail(props({ id: 1, queue: { kind: 'mix', seedId: 1, fresh: true } }), signal);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/item?id=1']);
   });
 });
 

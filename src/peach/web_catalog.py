@@ -400,6 +400,7 @@ def q_items(contract: WebContract, args):
         attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()))
         if r["has_cover"]:
             r["cover_frame"] = contract.cover_frame(r.get("code"))
+            r["cover_version"] = contract.cover_version(r.get("code"))
             # 竖版位置要的是一个框，不是锚点：横版封套里正封那一块由离线脚本算好
             # 写在边车里，没算过或本来就不该裁就是 null，版式退回整张封面。
             r["poster_box"] = contract.poster_box(r.get("code"))
@@ -734,7 +735,8 @@ def label_makers(contract: WebContract, c, aid) -> dict[int, dict]:
             "ORDER BY up.label_id,up.depth", (aid,)):
         makers = chains.setdefault(label_id, {"makers": []})["makers"]
         if all(maker["id"] != maker_id for maker in makers):
-            makers.append({"id": maker_id, "name": name, "has_logo": contract.has_logo(name)})
+            makers.append({"id": maker_id, "name": name, "has_logo": contract.has_logo(name),
+                           "logo_version": contract.logo_version(name)})
     return chains
 
 
@@ -842,13 +844,16 @@ def q_item(contract: WebContract, aid):
     # 详情开场把本地封面挂到播放器海报位，选哪张跟着「JAV 默认封面」设置走：
     # 不知道封套在不在盘上，这条详情就只能永远落在预览图那一档。
     d["has_cover"] = contract.has_cover(d.get("code"))
+    d["cover_version"] = contract.cover_version(d.get("code"))
     # 身份格的厂牌位和顶栏小圆片同一条判据：没装标识就不输出 `<img>`。规范厂牌走
     # `entity_refs`，非规范的那条只有扁平 `studio` 字段，两边都要有标志，否则
     # 后者会从「本来能取到图」退化成永远首字母。
     for ref in d["entity_refs"]["studio"]:
         ref["has_logo"] = contract.has_logo(ref["name"])
+        ref["logo_version"] = contract.logo_version(ref["name"])
         ref.update(makers.get(ref["id"], {}))
     d["has_studio_logo"] = contract.has_logo(d.get("studio"))
+    d["studio_logo_version"] = contract.logo_version(d.get("studio"))
     # 「女优」是番号发行物的行业称谓；creator clip 即使长得像番号也仍是普通内容。
     attach_jav_display_fields(
         d, [tag["k"] for tag in d["tags"]],
@@ -951,6 +956,7 @@ def q_related(contract: WebContract, aid, limit=24):
         )
         if d["has_cover"]:
             d["cover_frame"] = contract.cover_frame(d.get("code"))
+            d["cover_version"] = contract.cover_version(d.get("code"))
             d["poster_box"] = contract.poster_box(d.get("code"))
         d.pop("release_date", None)
         d.pop("snapshot_path", None)
@@ -1080,6 +1086,7 @@ def q_tops(contract: WebContract, n=28, jav=False, seed="", state="", page=0):
     # 判定在库连接之外做，它读的是目录索引而不是账本。
     for studio in out["studios"]:
         studio["has_logo"] = contract.has_logo(studio["k"])
+        studio["logo_version"] = contract.logo_version(studio["k"])
     # 女优那排同理，只是它有两级图：规范实体图优先，取不到才回落到代表作头像。
     # 两级都要标志，否则第一级空着的那些人会各打一个必然 404 的请求再回落。
     # 取景与索引页同一份 sidecar、同一个换算。这排圆框只有 64 px，框越小，同一张图

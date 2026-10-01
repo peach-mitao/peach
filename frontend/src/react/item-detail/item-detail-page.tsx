@@ -10,12 +10,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
-import { entityFaceImg, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml } from '@peach/card-art';
+import {
+  coverUrl, entityFaceImg, logoUrl, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
+} from '@peach/card-art';
 import { confirmModal, dismissMenu, fitSkeleton, presentMenu, spinnerHtml } from '@peach/legacy/ui';
 
 import { apiGet, apiSend } from '../../api';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
-import { replaceCatalogItem } from '../catalog-grid/catalog-grid';
+import { patchCatalogItems, replaceCatalogItem } from '../catalog-grid/catalog-grid';
 import type { MediaItem } from '../catalog-grid/types';
 import { RetryNote } from '../components/grid-reveal';
 import { MixQueue, MixQueueRow } from '../components/mix-queue';
@@ -383,11 +385,15 @@ function DetailTitle({ item, queue, helpers, actions, onStatus }: {
             aria-label={expanded ? '收起标题' : '展开标题'} title={expanded ? '收起标题' : '展开完整标题'} onClick={toggle}>
             <Glyph name={expanded ? 'chevron-up' : 'chevron-down'} />
           </button>
-          {/* 取景框存的是坐标不是图片：存完重取这一条，封面地址没变，变的是接口给的 `poster_box`。 */}
+          {/* 取景框存的是坐标不是图片：存完重取这一条，封面地址没变，变的是接口给的 `poster_box`。
+              背后网格里同一番号的卡不重取，就地换上新框，关掉详情看到的就是框过的样子。 */}
           {item.has_cover && item.code ? (
             <span data-cover-crop-host="">
-              <CoverCrop code={item.code} coverUrl={`/cover?code=${encodeURIComponent(item.code)}`} box={item.poster_box || null}
-                onSaved={() => void queryClient.invalidateQueries({ queryKey: itemKey(item.id), exact: true })} />
+              <CoverCrop code={item.code} coverUrl={coverUrl(item)} box={item.poster_box || null}
+                onSaved={(box) => {
+                  void queryClient.invalidateQueries({ queryKey: itemKey(item.id), exact: true });
+                  patchCatalogItems((one) => one.code === item.code, { poster_box: box });
+                }} />
             </span>
           ) : null}
           {item.location === 'online' ? null : <SourceTools id={item.id} actions={actions} onStatus={onStatus} />}
@@ -459,7 +465,7 @@ function Identity({ item, helpers, actions }: { item: DetailItem; helpers: ItemD
       ? <><span>{ref.name.slice(0, 1)}</span><Html html={entityFaceImg({ id: ref.id, hasImage: ref.has_image, version: ref.image_version, focus: ref.avatar_focus })} /></>
       : kind === 'studio'
         ? <><span>{ref.name.slice(0, 2)}</span>{ref.has_logo
-          ? <img src={`/logo?studio=${encodeURIComponent(ref.name)}&variant=icon`} alt="" loading="lazy" data-drop="self" /> : null}</>
+          ? <img src={logoUrl(ref.name, 'icon', ref.logo_version)} alt="" loading="lazy" data-drop="self" /> : null}</>
         : <span>{ref.name.slice(0, 1)}</span>;
     const content = <><span data-id-face="">{face}</span><span data-id-name="">{ref.name}</span></>;
     const overflowAttrs = kind === 'performer' && index >= CAST_SHOWN ? { 'data-castoverflow': '' } : {};

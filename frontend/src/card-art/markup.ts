@@ -17,8 +17,24 @@ export interface FaceFocus {
   box?: { cx: number; cy: number; faceW: number; imgW: number; imgH: number } | null;
 }
 
-/** 头像引用：实体 id、有没有实体图、取景。 */
-export interface FaceRef { id?: number | null; has_image?: boolean; image_version?: string; avatar_focus?: unknown }
+/** 头像引用：实体 id、有没有实体图、取景。两个版本号拼进地址的 `&v=`，见 `withVersion`。 */
+export interface FaceRef {
+  id?: number | null; has_image?: boolean; image_version?: string; logo_version?: string; avatar_focus?: unknown;
+}
+
+/* 原地替换的图（实体图、封面、标识）地址都带服务端下发的内容版本（文件修改时间）：换头像、
+   补高清封面、换标识都覆盖同一个文件，地址不跟着变的话，同一页里浏览器直接复用内存里那张
+   旧图，要刷新才看得到新的。 */
+export const withVersion = (url: string, version: string | null | undefined): string =>
+  version ? `${url}&v=${encodeURIComponent(version)}` : url;
+
+/** 封面地址。`thumb` 是派生档，`upgradeCover` 把它摘掉换原件，版本号留在后面。 */
+export const coverUrl = (item: { code?: string | null; cover_version?: string }, thumb = false): string =>
+  withVersion(`/cover?code=${encodeURIComponent(item.code || '')}${thumb ? '&thumb=1' : ''}`, item.cover_version);
+
+/** 厂牌标识地址，`variant` 跟着位置走：大位要字标、小位要方形图标。 */
+export const logoUrl = (studio: string, variant: string, version?: string | null): string =>
+  withVersion(`/logo?studio=${encodeURIComponent(studio)}&variant=${variant}`, version);
 
 const focusOf = (value: unknown): FaceFocus | null =>
   value && typeof value === 'object' ? value as FaceFocus : null;
@@ -48,26 +64,25 @@ export function performerLabel(item: { is_jav?: boolean } | null | undefined): s
    资料页大位存的照片，本库 727 张均 221 KB，索引页一屏 120 格铺进 150 px 的格子就是
    十几 MB，而屏幕上用得着的只有其中百分之几的像素。资料页仍取原件——那里就是要看清。
 
-   `version` 是服务端随 `has_image` 下发的 `image_version`。换头像原地覆盖同一个文件，
-   地址不跟着变的话，同一页里浏览器直接复用内存里那张旧图，要刷新才看得到新的。 */
+   `version` 是服务端随 `has_image` 下发的 `image_version`，`logoVersion` 是 `logo_version`。 */
 export function entityFaceImg({
   kind = 'performer', id = null, hasImage = false, version = '', rep = null, mark = null, logo = '',
-  logoVariant = 'logo', alt = '', lazy = true, style = '', dropStyle = false, focus = null, thumb = false,
+  logoVersion = '', logoVariant = 'logo', alt = '', lazy = true, style = '', dropStyle = false, focus = null, thumb = false,
 }: {
   kind?: string; id?: number | null | undefined; hasImage?: boolean | undefined; version?: string | null | undefined;
-  rep?: number | null | undefined; mark?: number | null | undefined; logo?: string; logoVariant?: string; alt?: string;
+  rep?: number | null | undefined; mark?: number | null | undefined; logo?: string;
+  logoVersion?: string | null | undefined; logoVariant?: string; alt?: string;
   lazy?: boolean; style?: string; dropStyle?: boolean; focus?: unknown; thumb?: boolean;
 } = {}): string {
   const useEntity = !!(id && hasImage);
-  const entitySrc = useEntity ? `/entity-image?kind=${kind}&id=${id}${thumb ? '&thumb=1' : ''}`
-    + (version ? `&v=${encodeURIComponent(version)}` : '') : '';
+  const entitySrc = useEntity ? withVersion(`/entity-image?kind=${kind}&id=${id}${thumb ? '&thumb=1' : ''}`, version) : '';
   // `rep` 由服务端的 has_avatar 决定有没有值，没有就不出这一环。
   const avatarSrc = rep ? `/avatar?id=${rep}` : '';
   /* 公司的门面是它自己的标识，不是作品截图——那是某部片的画面，说的是别人的事。
      厂牌走 `/logo`：`logo` 只在调用方问过 `has_logo` 时才有值。变体跟着位置走，
      大位要字标、小位要方形图标。事务所没有标识文件，走官网那条链接的站点圆标 `mark`。 */
   const useLogo = !!logo;
-  const src = useLogo ? `/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`
+  const src = useLogo ? logoUrl(logo, logoVariant, logoVersion)
     : (entitySrc || avatarSrc || (mark ? `/link-mark?id=${mark}` : ''));
   if (!src) return '';
   const fallbacks = useLogo ? [entitySrc, avatarSrc].filter(Boolean)
@@ -109,7 +124,7 @@ export function avatarInner(name: string, ref: FaceRef | null | undefined, repId
   return `<span class="ini">${esc((name || '?').slice(0, 1))}</span>`
     + entityFaceImg({
       kind, id: ref && ref.id, hasImage: !!(ref && ref.has_image), version: ref && ref.image_version, rep: repId, mark: markId,
-      logo: logoName, logoVariant, focus: hint, thumb,
+      logo: logoName, logoVersion: ref && ref.logo_version, logoVariant, focus: hint, thumb,
     });
 }
 
@@ -161,6 +176,7 @@ export interface CoverItem {
   code?: string;
   is_jav?: boolean;
   has_cover?: boolean;
+  cover_version?: string;
   has_thumb?: boolean;
   has_local_poster?: boolean;
   cover_frame?: { cx?: number | null; cy?: number | null } | null;
@@ -172,7 +188,7 @@ export interface CoverItem {
    要推多远，只有同时拿到图片和容器的比例才知道。人物在画面里的位置差别很大，写死的锚点会
    把一部分作品裁掉下巴或整个切出画外；取不到人脸就退回固定取景。 */
 export function coverImage(item: CoverItem, layout: 'big' | 'small', eager = false): string {
-  const src = `/cover?code=${encodeURIComponent(item.code || '')}&thumb=1`;
+  const src = coverUrl(item, true);
   const f = item.cover_frame || {};
   // 纵向夹在 5%–60%：脸不会长在图片下半截，落在那儿是检出跑偏而不是构图。
   const face = [f.cx != null ? ` data-cx="${f.cx}"` : '',
@@ -201,7 +217,7 @@ const NO_ARTWORK: Artwork = { kind: '', html: '' };
 export function javArtwork(item: CoverItem, layout: 'big' | 'small', eager: boolean, javImage: unknown): Artwork {
   const kind = javImageKind(item, javImage);
   if (!kind) return NO_ARTWORK;
-  const cover = item.has_cover && item.code ? `/cover?code=${encodeURIComponent(item.code)}&thumb=1` : '';
+  const cover = item.has_cover && item.code ? coverUrl(item, true) : '';
   const thumb = item.has_thumb || item.has_local_poster ? `/poster?id=${item.id}&c=4` : '';
   const coverMarkup = coverImage(item, layout, eager);
   const frame = (coverMarkup.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join('');
@@ -249,7 +265,7 @@ export function detailPosterUrl(item: CoverItem, javImage: unknown): string {
   const thumb = item.has_thumb || item.has_local_poster ? `/poster?id=${item.id}&c=4` : '';
   if (!item.is_jav) return thumb;
   return javImageKind(item, javImage) === 'cover'
-    ? `/cover?code=${encodeURIComponent(item.code || '')}` : thumb;
+    ? coverUrl(item) : thumb;
 }
 
 /** 卡片署名要的字段。 */

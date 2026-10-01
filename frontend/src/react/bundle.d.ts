@@ -436,8 +436,9 @@ export interface CoverCropProps {
   coverUrl: string;
   /** 当前生效的取景框，没有就是 null。形状同接口的 `poster_box`。 */
   box: { x0: number; y0: number; x1: number; y1: number; px: number[] } | null;
-  /** 存好之后让宿主重画封面：作品详情重取这一条，接口给的 `poster_box` 换成新框。 */
-  onSaved(): void;
+  /** 存好之后让宿主重画封面，`box` 是写端点回的新框（形状同 `box`）：作品详情重取这一条，
+   *  背后网格里同一番号的卡就地换上它。 */
+  onSaved(box: CoverCropProps['box']): void;
 }
 
 /** 数据管理页顶上那排读数卡各通往哪一页。`ads` 是垃圾文件。 */

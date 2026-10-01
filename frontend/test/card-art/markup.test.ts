@@ -2,8 +2,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  avatarInner, cardArtwork, cardIdentity, coverImage, detailPosterUrl, entityAvatar, entityFaceImg, faceBoxAttrs,
-  faceOrigin, facePos, javArtwork, mixFace, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
+  avatarInner, cardArtwork, cardIdentity, coverImage, coverUrl, detailPosterUrl, entityAvatar, entityFaceImg,
+  faceBoxAttrs, faceOrigin, facePos, javArtwork, logoUrl, mixFace, mixLabel, performerLabel, queueAvatarHtml,
+  queueThumbHtml,
 } from '../../src/card-art/markup';
 import { rememberRepresentatives, representativeOf } from '../../src/card-art/representatives';
 
@@ -66,6 +67,14 @@ describe('entityFaceImg：实体图优先，取不到退代表作头像', () => 
     expect(img.hasAttribute('style')).toBe(false);
     expect(img.dataset.facebox).toBeUndefined();
     expect('dropStyle' in img.dataset).toBe(false);
+  });
+
+  it('换过的标识地址带上版本：厂牌引用上的 logo_version 一路拼进去', () => {
+    expect(parse(entityFaceImg({ kind: 'studio', logo: 'S1', logoVersion: '18f3a' }))!.getAttribute('src'))
+      .toBe('/logo?studio=S1&variant=logo&v=18f3a');
+    expect(parse(avatarInner('S1', { logo_version: '18f3b' }, null, 'studio', null, 'S1'))!.getAttribute('src'))
+      .toBe('/logo?studio=S1&variant=icon&v=18f3b');
+    expect(logoUrl('S1', 'icon')).toBe('/logo?studio=S1&variant=icon');
   });
 
   it('不指定变体就是资料页大位要的字标', () => {
@@ -154,6 +163,15 @@ describe('coverImage：官方封面', () => {
     expect(img.dataset.posterbox).toBe('421 800 538 0 800 538');
     expect(img.getAttribute('loading')).toBe('lazy');
     expect(img.dataset.drop).toBe('self');
+  });
+
+  it('补过高清、重探过的封面地址带上版本，派生档摘掉 thumb 后版本还在', () => {
+    expect(parse(coverImage({ code: 'SSIS-001', cover_version: '18f3a' }, 'big'))!.getAttribute('src'))
+      .toBe('/cover?code=SSIS-001&thumb=1&v=18f3a');
+    expect(coverUrl({ code: 'SSIS-001', cover_version: '18f3a' })).toBe('/cover?code=SSIS-001&v=18f3a');
+    expect(detailPosterUrl({ ...JAV, cover_version: '18f3a' }, 'cover')).toBe('/cover?code=SSIS-001&v=18f3a');
+    expect(parse(javArtwork({ ...JAV, cover_version: '18f3a' }, 'big', false, 'thumbnail').html)!.dataset.javCover)
+      .toBe('/cover?code=SSIS-001&thumb=1&v=18f3a');
   });
 
   it('小图看整张；没检出人脸就不带锚点', () => {

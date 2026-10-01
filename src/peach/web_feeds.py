@@ -505,6 +505,7 @@ def q_feed_discoveries(contract, args) -> dict:
         # 本机封面与它的两份边车，形状和资产卡的同名字段一致，页面按同一套取景。
         "has_cover": contract.has_cover(row["code"]),
         "cover_frame": contract.cover_frame(row["code"]),
+        "cover_version": contract.cover_version(row["code"]),
         "poster_box": contract.poster_box(row["code"]),
         "release_date": row["release_date"],
         "studio": studios.get(row["studio"], row["studio"]),

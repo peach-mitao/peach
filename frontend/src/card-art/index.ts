@@ -10,8 +10,9 @@ export { faceSourceScale, nativeImageFit } from './native-image';
 export { rememberRepresentatives, representativeOf } from './representatives';
 export type { RepresentativeRow } from './representatives';
 export {
-  avatarInner, cardArtwork, cardIdentity, coverImage, detailPosterUrl, entityAvatar, entityFaceImg, faceBoxAttrs,
-  faceOrigin, facePos, javArtwork, mixFace, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
+  avatarInner, cardArtwork, cardIdentity, coverImage, coverUrl, detailPosterUrl, entityAvatar, entityFaceImg,
+  faceBoxAttrs, faceOrigin, facePos, javArtwork, logoUrl, mixFace, mixLabel, performerLabel, queueAvatarHtml,
+  queueThumbHtml, withVersion,
 } from './markup';
 export type { Artwork, ArtworkKind, CoverItem, FaceFocus, FaceRef, IdentityItem } from './markup';
 export {
