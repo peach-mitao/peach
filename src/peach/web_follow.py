@@ -18,7 +18,7 @@ import urllib.parse
 
 from pathlib import Path
 
-from . import avatar_face, follow_assets, follow_providers
+from . import avatar_face, follow_assets, follow_providers, wants
 from .follow import FollowSourceError
 from .follow_faces import annotate_group
 from .follow_check import plan_check, run_check
@@ -820,6 +820,17 @@ def _positive_dim(value) -> int | None:
 def _media_items(item) -> list[dict]:
     """给浏览器媒体序号和展示字段；真实上游 URL 仍只留在服务端 metadata。"""
     return _media_projection(item)[0]
+
+
+def item_thumbs(contract, connection, item_ids) -> dict[int, str | None]:
+    """别处列出关注条目时用的缩略图，与关注卡同一份投影（`_thumb_url`）。"""
+    store = _store(contract, connection)
+    found: dict[int, str | None] = {}
+    for item_id in item_ids:
+        item = store.item(int(item_id))
+        if item is not None:
+            found[int(item_id)] = _thumb_url(item)
+    return found
 
 
 def _thumb_url(item) -> str | None:
@@ -1902,6 +1913,9 @@ def w_follow_status(contract, body) -> dict:
         store = _store(contract, connection)
         for item_id in item_ids:
             store.set_status(item_id, status)
+        if status == "ignored":
+            # 忽略与「想要」互斥：忽略了的条目撤掉还没入库的想要。
+            wants.drop_follow_items(connection, item_ids)
     result = {"ok": True, "items": item_ids, "status": status}
     if len(item_ids) == 1:
         result["item"] = item_ids[0]
@@ -1995,6 +2009,8 @@ def w_follow_save(contract, body) -> dict:
     with contract.database.write_transaction() as connection:
         store = _store(contract, connection)
         asset_ids = [store.save_asset(item_id, confirm=True) for item_id in item_ids]
+        # 保存进账本就是入库：想要这一条的标「已入库」（`wants.reconcile` 按 asset_id 认）。
+        wants.reconcile(connection, asset_ids)
     result = {"ok": True, "items": item_ids, "asset_ids": asset_ids}
     if len(item_ids) == 1:
         result.update({"item": item_ids[0], "asset_id": asset_ids[0]})

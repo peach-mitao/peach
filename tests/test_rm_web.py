@@ -997,6 +997,7 @@ class WebDataTests(unittest.TestCase):
             "/api/taste", "/api/settings", "/api/links", "/api/organize", "/api/orphan-records",
             "/api/feeds", "/api/feeds/check", "/api/feeds/discoveries", "/api/feeds/lookup",
             "/api/downloads",
+            "/api/wants",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
             "/api/downloads", "/api/downloads/cancel",
@@ -1020,6 +1021,7 @@ class WebDataTests(unittest.TestCase):
             "/api/entity-name", "/api/entity-alias",
             "/api/organize/preview", "/api/organize/apply", "/api/organize/rollback",
             "/api/feeds/check", "/api/feeds/source", "/api/feeds/discovery",
+            "/api/wants",
         })
         with self.assertRaises(rm_web.ContractRouteNotFound):
             rm_web.dispatch_api_get(self.contract, "/api/typo", {})

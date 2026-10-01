@@ -95,6 +95,7 @@ from .web_scraping import (
 from .web_state import WebContract, path_version
 from .web_tasks import q_tasks
 from .web_timeline_thumbnails import q_thumbnail_jobs, q_timeline, w_thumbnail_jobs
+from .web_wants import q_wants, w_wants
 from .web_stats import (
     q_quality_goals,
     q_search_history,
@@ -345,6 +346,7 @@ GET_HANDLERS = {
     "/api/index": _get_index,
     "/api/duplicates": q_duplicates,
     "/api/quality-goals": q_quality_goals,
+    "/api/wants": q_wants,
     "/api/stats": _get_stats,
     "/api/tops": _get_tops,
     "/api/ads": _get_ads,
@@ -391,6 +393,7 @@ POST_HANDLERS = {
     "/api/playlist": w_playlist,
     "/api/preference": w_preference,
     "/api/quality-goal": w_quality_goal,
+    "/api/wants": w_wants,
     "/api/item-tag": w_item_tag,
     "/api/batch": w_batch,
     "/api/search-history": w_search_history,

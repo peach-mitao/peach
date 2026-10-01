@@ -187,7 +187,7 @@ def fetch_cover(contract, code: str,
     return data, size, evidence
 
 
-def _install_cover(contract, code: str, cover_url: str | None = None) -> bool:
+def ensure_cover(contract, code: str, cover_url: str | None = None) -> bool:
     """本机还没有这个番号的封面就去取来装上。返回这一部现在有没有封面。"""
     from .catalog_rules import is_korean_mib_code
     from .cover_artwork import install_cover
@@ -202,7 +202,7 @@ def _install_cover(contract, code: str, cover_url: str | None = None) -> bool:
     return True
 
 
-def _performer_names(value: object) -> list[str]:
+def performer_names(value: object) -> list[str]:
     if isinstance(value, list):
         return [str(item.get("name") or "") if isinstance(item, dict) else str(item)
                 for item in value]
@@ -220,7 +220,7 @@ def _scrape_fields(contract, provider, row) -> bool:
                 "UPDATE feed_discovery SET scrape_error=?,scraped_at=? WHERE id=?",
                 (str(error), feeds.stamp(), int(row["id"])))
         return False
-    names = _performer_names(fields.get("performers"))
+    names = performer_names(fields.get("performers"))
     with contract.database.write_transaction() as connection:
         connection.execute(
             "UPDATE feed_discovery SET title=COALESCE(?,title),cover_url=COALESCE(?,cover_url),"
@@ -269,7 +269,7 @@ def run(contract, key: str, handle) -> dict:
             cover_url = connection.execute(
                 "SELECT cover_url FROM feed_discovery WHERE id=?", (int(row["id"]),)).fetchone()
         try:
-            covers += _install_cover(contract, code, cover_url[0] if cover_url else None)
+            covers += ensure_cover(contract, code, cover_url[0] if cover_url else None)
         except (CoverConnectError, httpx.TransportError):
             unreachable += 1
         except Exception:  # noqa: BLE001 - 取不到封面这一部照样有资料，下一轮再试

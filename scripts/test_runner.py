@@ -32,7 +32,7 @@ COMMON_PATTERNS = ("test_context_budget.py", "test_test_collection.py", "test_co
 SCOPES: dict[str, tuple[str, ...]] = {
     "checks": ("test_copy_final_state.py", "test_dependency_policy.py", "test_repo_hygiene.py", "test_test_planning.py",
                "test_complexity_ratchet.py", "test_source_assertion_ratchet.py"),
-    "follow": ("test_follow*.py", "test_http.py", "test_migrations.py"),
+    "follow": ("test_follow*.py", "test_http.py", "test_migrations.py", "test_wants_web.py"),
     "catalog": ("test_ad_judgement.py", "test_composite_name_split.py", "test_media_libraries.py",
                 "test_content_region.py",
                 "test_duplicate_identity_merge.py",
@@ -40,7 +40,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                 "test_migrations.py",
                 "test_review_mirror.py", "test_rm_web.py",
                 "test_entity_link_install.py", "test_web_links.py", "test_entry_links.py",
-                "test_feeds.py", "test_feeds_web.py",
+                "test_feeds.py", "test_feeds_web.py", "test_wants_web.py",
                 "test_link_marks.py", "test_site_icons.py", "test_site_logos.py",
                 "test_avatar_face.py",
                 "test_brand_marks.py", "test_studio_icon_variants.py",

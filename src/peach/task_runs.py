@@ -90,6 +90,7 @@ TASK_LABELS = {
     "code-samples": "补番号样张",
     "feed-check": "订阅源拉取",
     "feed-scrape": "取新作资料",
+    "want-scrape": "取想要的资料",
     "timeline-thumbnails": "视频缩略图采集",
     "seed-import": "导入实体种子",
 }
