@@ -117,7 +117,6 @@ export interface ReviewRow {
   asset_mutation_revision?: number | null;
   entity_id?: number;
   has_image?: boolean;
-  /** 实体图的版本，拼进 `/entity-image` 的 `v=`：换过头像地址就变。 */
   image_version?: string;
   avatar_focus?: unknown;
   avatar_url?: string;
