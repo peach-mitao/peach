@@ -128,14 +128,22 @@ def _check_inputs(service: DownloadService, body) -> tuple[dict, str, str]:
 
 
 def _hints(service: DownloadService, body: dict):
-    """推建议值用的前缀表与声明根取推送发现那份，和落地换算同一个口径。"""
+    """推建议值用的前缀表与声明根取推送发现那份，和落地换算同一个口径。
+
+    PikPak 算在用：本机存着 PikPak 登录令牌，或页面说用户已在账号框里填了账号。
+    """
     from .downloads_clouddrive import Hints
     landing = service.landing
     push = getattr(landing, "push_discovery", None)
     prefixes = tuple(getattr(getattr(push, "config", None), "prefixes", ()) or ())
     pikpak_root = str(body["pikpak_root"] if "pikpak_root" in body else service.config.pikpak_root)
+    try:
+        logged_in = "refresh_token" in service.credentials.describe(PIKPAK_CREDENTIAL)["fields"]
+    except CredentialError:
+        logged_in = False
     return Hints(prefixes=prefixes, declared_roots=dict(landing.declared_roots or {}),
-                 pikpak_root=pikpak_root.strip())
+                 pikpak_root=pikpak_root.strip(),
+                 pikpak_account=body.get("pikpak_account") is True or logged_in)
 
 
 def check_clouddrive(service: DownloadService, body: dict) -> dict:

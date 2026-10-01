@@ -48627,79 +48627,47 @@ function Ige() {
 //#region src/react/settings/download-settings.tsx
 var Lge = "/api/configuration/downloads", Rge = "/api/configuration/downloads/check", zge = "/api/configuration/downloads/folder", Bge = "/api/configuration/downloads/pikpak/login", Vge = "/api/configuration/downloads/pikpak/logout";
 function Hge({ initial: e, receipt: t }) {
-	let [n, r] = (0, R.useState)(e);
+	let [n, r] = (0, R.useState)(e), [i, a] = (0, R.useState)(""), o = n.pikpak.logged_in || !!i.trim();
 	return /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [/* @__PURE__ */ (0, z.jsx)(Uge, {
 		state: n,
 		settle: r,
-		receipt: t
+		receipt: t,
+		pikpakAccount: o
 	}), /* @__PURE__ */ (0, z.jsx)(Gge, {
 		state: n,
 		settle: r,
-		receipt: t
+		receipt: t,
+		username: i,
+		setUsername: a
 	})] });
 }
-function Uge({ state: e, settle: t, receipt: n }) {
-	let [r, i] = (0, R.useState)(e.config), [a, o] = (0, R.useState)(""), [s, c] = (0, R.useState)(String(e.config.wait_hours)), [l, u] = (0, R.useState)(null), [d, f] = (0, R.useState)(""), [p, m] = (0, R.useState)({
+function Uge({ state: e, settle: t, receipt: n, pikpakAccount: r }) {
+	let [i, a] = (0, R.useState)(e.config), [o, s] = (0, R.useState)(""), [c, l] = (0, R.useState)(String(e.config.wait_hours)), [u, d] = (0, R.useState)(null), [f, p] = (0, R.useState)(""), [m, h] = (0, R.useState)({
 		target: null,
 		root: ""
-	}), [h, g] = (0, R.useState)(""), _ = aa(), v = (e) => r.targets[e] ?? "", y = (e, t) => i({
-		...r,
+	}), [g, _] = (0, R.useState)(""), [v, y] = (0, R.useState)(!1), b = aa(), x = (e) => i.targets[e] ?? "", S = (e, t) => a({
+		...i,
 		targets: {
-			...r.targets,
+			...i.targets,
 			[e]: t
 		}
-	}), b = (e) => {
-		e.preventDefault();
-		let l = {
-			...r,
-			wait_hours: s,
-			token: a
-		};
-		_.run("save", (e) => G(Lge, l, "POST", e), (e) => {
-			t(e), i(e.config), c(String(e.config.wait_hours)), o(""), g(""), n("已保存配置");
-		}, (e) => g(U(e)));
-	}, x = () => {
-		let e = !r.clouddrive_address.trim(), t = !v("115").trim(), n = !r.pikpak_root, o = {
-			clouddrive_address: r.clouddrive_address,
-			token: a,
-			target: v("115"),
-			pikpak_root: r.pikpak_root
-		};
-		_.run("check", (e) => G(Rge, o, "POST", e), (r) => {
-			let a = t ? r.suggested_target : null, o = n ? r.suggested_pikpak_root : "";
-			i((t) => ({
-				...t,
-				clouddrive_address: e && r.address ? r.address : t.clouddrive_address,
-				targets: a ? {
-					...t.targets,
-					115: a.path
-				} : t.targets,
-				pikpak_root: o || t.pikpak_root
-			})), u(r), f(e ? r.address : ""), m({
-				target: a,
-				root: o
-			}), g("");
-		}, (e) => g(U(e)));
-	}, S = (e) => {
-		let t = {
-			clouddrive_address: r.clouddrive_address,
-			token: a,
-			path: e,
-			pikpak_root: r.pikpak_root
-		};
-		_.run("folder", (e) => G(zge, t, "POST", e), (t) => {
-			u(t), m((t) => ({
-				...t,
-				target: {
-					path: e,
-					exists: !0
-				}
-			})), g(""), n("已新建目录");
-		}, (e) => g(U(e)));
-	}, C = p.target && !p.target.exists && v("115") === p.target.path;
+	}), C = !!(m.target && !m.target.exists && x("115") === m.target.path);
 	return /* @__PURE__ */ (0, z.jsxs)(Ty, {
 		title: "云下载",
-		onSubmit: b,
+		onSubmit: (e) => {
+			if (e.preventDefault(), C) {
+				y(!0);
+				return;
+			}
+			let r = {
+				...i,
+				wait_hours: c,
+				token: o
+			};
+			b.run("save", (e) => G(Lge, r, "POST", e), (e) => {
+				t(e), a(e.config), l(String(e.config.wait_hours)), s(""), _(""), n("已保存配置");
+			}, (e) => _(U(e)));
+		},
 		children: [
 			/* @__PURE__ */ (0, z.jsxs)(Dy, { children: [
 				/* @__PURE__ */ (0, z.jsx)(ky, { children: "把磁力交给 115 或 PikPak 离线下载，文件落在已挂载的网盘目录，再由推送发现登记入库，不经过这台电脑。 115 每个任务扣一条离线配额（年费会员每月 1500 条、月费 200 条），被判违规的资源不重试。" }),
@@ -48708,10 +48676,10 @@ function Uge({ state: e, settle: t, receipt: n }) {
 					placeholder: "留空自动探测本机 19798 / 29798",
 					autoComplete: "off",
 					maxLength: 200,
-					value: r.clouddrive_address,
+					value: i.clouddrive_address,
 					isDisabled: !e.available,
-					onChange: (e) => i({
-						...r,
+					onChange: (e) => a({
+						...i,
 						clouddrive_address: e
 					})
 				}),
@@ -48721,10 +48689,10 @@ function Uge({ state: e, settle: t, receipt: n }) {
 					autoComplete: "off",
 					maxLength: 400,
 					placeholder: e.token_set ? "已保存，留空不改" : "在 CloudDrive2「设置 → API 令牌」中生成",
-					hint: "令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」。",
-					value: a,
+					hint: "令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」；要在 Peach 里新建目标目录，再勾上新建文件夹权限（allow_create_folder）。",
+					value: o,
 					isDisabled: !e.available,
-					onChange: o
+					onChange: s
 				}),
 				/* @__PURE__ */ (0, z.jsx)(py, {
 					label: "115 目标目录",
@@ -48732,31 +48700,31 @@ function Uge({ state: e, settle: t, receipt: n }) {
 					autoComplete: "off",
 					maxLength: 300,
 					validationBehavior: "aria",
-					isInvalid: !!C,
-					hint: C ? "CloudDrive2 里还没有这个目录。" : "CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空时点「检查」，按推送发现里 115 那条前缀填上「前缀/云下载」。",
-					value: v("115"),
+					isInvalid: C,
+					hint: C ? v ? "这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。" : "CloudDrive2 里还没有这个目录。" : "CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空时点「检查」，按推送发现里 115 那条前缀填上「前缀/云下载」。",
+					value: x("115"),
 					isDisabled: !e.available,
-					onChange: (e) => y("115", e)
+					onChange: (e) => S("115", e)
 				}),
 				/* @__PURE__ */ (0, z.jsx)(py, {
 					label: "PikPak 目标目录",
-					placeholder: "/云下载",
+					placeholder: "以 / 开头的网盘路径",
 					autoComplete: "off",
 					maxLength: 300,
 					hint: "PikPak 网盘里的路径，目录要已经存在。",
-					value: v("pikpak"),
+					value: x("pikpak"),
 					isDisabled: !e.available,
-					onChange: (e) => y("pikpak", e)
+					onChange: (e) => S("pikpak", e)
 				}),
 				/* @__PURE__ */ (0, z.jsxs)("div", {
 					className: "flex flex-col gap-1",
 					children: [/* @__PURE__ */ (0, z.jsx)(jy, { children: "PikPak 根目录对应的媒体文件夹" }), e.pikpak_roots.length ? /* @__PURE__ */ (0, z.jsx)(vy, {
 						"aria-label": "PikPak 根目录对应的媒体文件夹",
-						selectedKey: r.pikpak_root || null,
+						selectedKey: i.pikpak_root || null,
 						isDisabled: !e.available,
-						placeholder: "选择媒体文件夹，或点检查按推送发现选",
-						onSelectionChange: (e) => i({
-							...r,
+						placeholder: "点检查按推送发现选",
+						onSelectionChange: (e) => a({
+							...i,
 							pikpak_root: e === null ? "" : String(e)
 						}),
 						children: e.pikpak_roots.map((e) => /* @__PURE__ */ (0, z.jsx)(yy, {
@@ -48771,33 +48739,73 @@ function Uge({ state: e, settle: t, receipt: n }) {
 					inputMode: "numeric",
 					autoComplete: "off",
 					hint: `远端超过这么久还没下完就标为停滞，多半是没有人做种。1 到 ${e.max_wait_hours} 小时。`,
-					value: s,
+					value: c,
 					isDisabled: !e.available,
-					onChange: c
+					onChange: l
 				})
 			] }),
-			l ? /* @__PURE__ */ (0, z.jsx)(Wge, {
-				report: l,
-				detected: d,
-				suggested: p,
-				create: e.available ? S : void 0,
-				creating: _.busy === "folder"
+			u ? /* @__PURE__ */ (0, z.jsx)(Wge, {
+				report: u,
+				detected: f,
+				suggested: m,
+				create: e.available ? (e) => {
+					let t = {
+						clouddrive_address: i.clouddrive_address,
+						token: o,
+						path: e,
+						pikpak_root: i.pikpak_root,
+						pikpak_account: r
+					};
+					b.run("folder", (e) => G(zge, t, "POST", e), (t) => {
+						d(t), h((t) => ({
+							...t,
+							target: {
+								path: e,
+								exists: !0
+							}
+						})), y(!1), _(""), n("已新建目录");
+					}, (e) => _(U(e)));
+				} : void 0,
+				creating: b.busy === "folder"
 			}) : null,
-			h || _.error ? /* @__PURE__ */ (0, z.jsx)(Dy, {
+			g || b.error ? /* @__PURE__ */ (0, z.jsx)(Dy, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, z.jsx)(Ay, { children: h || _.error })
+				children: /* @__PURE__ */ (0, z.jsx)(Ay, { children: g || b.error })
 			}) : null,
 			/* @__PURE__ */ (0, z.jsxs)(Oy, {
 				status: e.available ? void 0 : "云下载只在账本写入端可用。",
 				children: [/* @__PURE__ */ (0, z.jsx)(H, {
-					onClick: x,
+					onClick: () => {
+						let e = !i.clouddrive_address.trim(), t = !x("115").trim(), n = !i.pikpak_root, s = {
+							clouddrive_address: i.clouddrive_address,
+							token: o,
+							target: x("115"),
+							pikpak_root: i.pikpak_root,
+							pikpak_account: r
+						};
+						b.run("check", (e) => G(Rge, s, "POST", e), (r) => {
+							let i = t ? r.suggested_target : null, o = n ? r.suggested_pikpak_root : "";
+							a((t) => ({
+								...t,
+								clouddrive_address: e && r.address ? r.address : t.clouddrive_address,
+								targets: i ? {
+									...t.targets,
+									115: i.path
+								} : t.targets,
+								pikpak_root: o || t.pikpak_root
+							})), d(r), p(e ? r.address : ""), h({
+								target: i,
+								root: o
+							}), y(!1), _("");
+						}, (e) => _(U(e)));
+					},
 					disabled: !e.available,
-					...q(_.busy === "check"),
+					...q(b.busy === "check"),
 					children: "检查"
 				}), /* @__PURE__ */ (0, z.jsx)(H, {
 					type: "submit",
 					disabled: !e.available,
-					...q(_.busy === "save"),
+					...q(b.busy === "save"),
 					children: "保存配置"
 				})]
 			})
@@ -48845,8 +48853,8 @@ function Wge({ report: e, detected: t, suggested: n, create: r, creating: i }) {
 		] }), e.problems.map((e) => /* @__PURE__ */ (0, z.jsx)(Ay, { children: e }, e))]
 	});
 }
-function Gge({ state: e, settle: t, receipt: n }) {
-	let [r, i] = (0, R.useState)(""), [a, o] = (0, R.useState)(""), [s, c] = (0, R.useState)(!1), [l, u] = (0, R.useState)(""), [d, f] = (0, R.useState)(""), p = aa(), m = e.pikpak;
+function Gge({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
+	let [a, o] = (0, R.useState)(""), [s, c] = (0, R.useState)(!1), [l, u] = (0, R.useState)(""), [d, f] = (0, R.useState)(""), p = aa(), m = e.pikpak;
 	return /* @__PURE__ */ (0, z.jsxs)(Ty, {
 		title: "PikPak 账号",
 		onSubmit: (e) => {

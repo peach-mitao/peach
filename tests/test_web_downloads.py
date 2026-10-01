@@ -133,8 +133,15 @@ class SettingsBlockTests(_App):
                 "clouddrive_address": "127.0.0.1:19798", "token": "t", "target": "", "pikpak_root": ""})
             self.assertEqual((seen["target"], seen["hints"].prefixes, seen["hints"].pikpak_root),
                              ("", prefixes, ""))
+            self.assertFalse(seen["hints"].pikpak_account)
             web_downloads.check_clouddrive(self.service, {"clouddrive_address": "127.0.0.1:19798"})
             self.assertEqual(seen["target"], "/115open/已保存")
+            web_downloads.check_clouddrive(self.service, {"clouddrive_address": "127.0.0.1:19798",
+                                                          "pikpak_account": True})
+            self.assertTrue(seen["hints"].pikpak_account)
+            self.service.credentials.save(dl.PIKPAK_CREDENTIAL, {"refresh_token": "rt", "username": "u"})
+            web_downloads.check_clouddrive(self.service, {"clouddrive_address": "127.0.0.1:19798"})
+            self.assertTrue(seen["hints"].pikpak_account)
 
     def test_creating_a_folder_needs_a_token_and_a_real_folder(self):
         with self.assertRaises(ValueError) as caught:

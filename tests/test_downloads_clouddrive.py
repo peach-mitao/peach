@@ -278,9 +278,9 @@ class SuggestionTests(_Server):
         self.prefixes = (CloudPrefix("/115假", "A:\\"), CloudPrefix("/甲", "B:\\"))
         self.roots = {"115": ("B:\\",), "pikpak": ("A:\\",), "local": ("C:\\媒体",)}
 
-    def hints(self, *, prefixes=None, roots=None, pikpak_root="") -> cd.Hints:
+    def hints(self, *, prefixes=None, roots=None, pikpak_root="", pikpak_account=True) -> cd.Hints:
         return cd.Hints(self.prefixes if prefixes is None else prefixes,
-                        self.roots if roots is None else roots, pikpak_root)
+                        self.roots if roots is None else roots, pikpak_root, pikpak_account)
 
     def finds(self) -> list[str]:
         return [f"{request.parentPath.rstrip('/')}/{request.path}"
@@ -328,6 +328,11 @@ class SuggestionTests(_Server):
         self.assertEqual(report["suggested_pikpak_root"], "")
         self.assertEqual(len(report["problems"]), 1)
         self.assertIn("PikPak 根目录对应的媒体文件夹", report["problems"][0])
+
+    def test_without_a_pikpak_account_the_pikpak_root_is_left_alone(self):
+        report = cd.check(self.address, TOKEN, TARGET, hints=self.hints(prefixes=(), pikpak_account=False))
+        self.assertEqual((report["suggested_pikpak_root"], report["problems"]), ("", []))
+        self.assertEqual(self.finds(), [TARGET])
 
     def test_filled_fields_ask_nothing_about_the_prefixes(self):
         report = cd.check(self.address, TOKEN, TARGET, hints=self.hints(pikpak_root="A:\\"))

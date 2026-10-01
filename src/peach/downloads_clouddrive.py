@@ -307,10 +307,14 @@ class CloudDriveProvider:
 
 @dataclass(frozen=True)
 class Hints:
-    """「检查」推建议值用的本机配置：推送发现的前缀表、已声明的媒体根、表单上的 PikPak 根。"""
+    """「检查」推建议值用的本机配置：推送发现的前缀表、已声明的媒体根、表单上的 PikPak 根。
+
+    `pikpak_account` 为假时用户没在用 PikPak，PikPak 根那一段整段不查也不报。
+    """
     prefixes: tuple[CloudPrefix, ...] = ()
     declared_roots: dict = field(default_factory=dict)
     pikpak_root: str = ""
+    pikpak_account: bool = False
 
 
 def empty_report(address: str, problems: list[str] | None = None) -> dict:
@@ -359,7 +363,7 @@ def _inspect(report: dict, client: CloudDriveClient, target: str, hints: Hints) 
                 report["missing"].append(label)
         probe = _PrefixProbe(client, hints.prefixes)
         _inspect_target(report, client, probe, target, hints)
-        if not hints.pikpak_root:
+        if hints.pikpak_account and not hints.pikpak_root:
             try:
                 _suggest_pikpak_root(report, probe, hints)
             except DownloadError as error:

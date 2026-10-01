@@ -101,7 +101,7 @@ it('目标目录与 PikPak 根留空时检查按推送发现填回，保存配�
   expect(field(host, '115 目标目录')?.placeholder).toBe('检查时按推送发现自动填写');
   await click(buttonNamed('检查', host));
   await settle();
-  expect(sentBody(fetcher)).toMatchObject({ target: '', pikpak_root: '' });
+  expect(sentBody(fetcher)).toMatchObject({ target: '', pikpak_root: '', pikpak_account: false });
   expect(field(host, '115 目标目录')?.value).toBe('/115open/云下载');
   expect(host.textContent).toContain('按推送发现填入 /115open/云下载，保存配置后生效');
   expect(host.textContent).toContain('按推送发现填入 A:\\，保存配置后生效');
@@ -122,6 +122,21 @@ it('用户填过的目标目录不被建议值覆盖', async () => {
   expect(host.textContent).not.toContain('按推送发现填入');
 });
 
+it('在账号框里填了 PikPak 账号或已登录时，检查才问 PikPak 根', async () => {
+  const fetcher = fetchMock(200, report());
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={unfilled()} receipt={vi.fn()} />);
+  await type(field(host, '账号'), 'me@example.com');
+  await click(buttonNamed('检查', host));
+  await settle();
+  expect(sentBody(fetcher)).toMatchObject({ pikpak_account: true });
+  const signedIn = await mount(<DownloadSettings receipt={vi.fn()}
+    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false } })} />);
+  await click(buttonNamed('检查', signedIn));
+  await settle();
+  expect(sentBody(fetcher, 1)).toMatchObject({ pikpak_account: true });
+});
+
 it('推出的目录不存在时标成无效，点了「新建这个目录」才去建，建好后解除', async () => {
   const fetcher = fetchMock(200, report({ suggested_target: { path: '/115open/云下载', exists: false } }));
   vi.stubGlobal('fetch', fetcher);
@@ -134,7 +149,10 @@ it('推出的目录不存在时标成无效，点了「新建这个目录」才�
   expect(input?.getAttribute('aria-invalid')).toBe('true');
   expect(host.textContent).toContain('CloudDrive2 里还没有这个目录');
   expect(host.textContent).toContain('/115open/云下载 不存在');
+  await submit(section(host, '云下载'));
+  await settle();
   expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain('保存前先在下方新建它，或改成 CloudDrive2 里已有的目录');
 
   const hold = pending<unknown>();
   fetcher.mockImplementation(() => hold.answer);

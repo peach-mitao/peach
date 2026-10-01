@@ -35,10 +35,13 @@ export function DownloadSettings({ initial, receipt }: {
   receipt(message: string): void;
 }) {
   const [state, setState] = useState(initial);
+  // 账号框放在上面这一层：云下载卡要知道用户有没有在用 PikPak，没在用就不报 PikPak 根的提示。
+  const [username, setUsername] = useState('');
+  const pikpakAccount = state.pikpak.logged_in || Boolean(username.trim());
   return (
     <>
-      <DownloadForm state={state} settle={setState} receipt={receipt} />
-      <PikPakAccount state={state} settle={setState} receipt={receipt} />
+      <DownloadForm state={state} settle={setState} receipt={receipt} pikpakAccount={pikpakAccount} />
+      <PikPakAccount state={state} settle={setState} receipt={receipt} username={username} setUsername={setUsername} />
     </>
   );
 }
@@ -49,7 +52,7 @@ interface CardProps {
   receipt(message: string): void;
 }
 
-function DownloadForm({ state, settle, receipt }: CardProps) {
+function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { pikpakAccount: boolean }) {
   const [config, setConfig] = useState<DownloadConfig>(state.config);
   const [token, setToken] = useState('');
   const [hours, setHours] = useState(String(state.config.wait_hours));
@@ -57,13 +60,20 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
   const [detected, setDetected] = useState('');
   const [suggested, setSuggested] = useState<Suggestions>({ target: null, root: '' });
   const [failure, setFailure] = useState('');
+  const [saveBlocked, setSaveBlocked] = useState(false);
   const action = useAction();
   const target = (key: '115' | 'pikpak') => config.targets[key] ?? '';
   const setTarget = (key: '115' | 'pikpak', value: string) =>
     setConfig({ ...config, targets: { ...config.targets, [key]: value } });
+  // 检查标为不存在、用户也没改过的那个目录，存下来提交时只会报「没有这个文件夹」。
+  const missing = Boolean(suggested.target && !suggested.target.exists && target('115') === suggested.target.path);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (missing) {
+      setSaveBlocked(true);
+      return;
+    }
     const body = { ...config, wait_hours: hours, token };
     void action.run('save', (signal) => apiSend<DownloadSettingsState>(DOWNLOADS_URL, body, 'POST', signal),
       (next) => {
@@ -83,7 +93,7 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
     const blankTarget = !target('115').trim();
     const blankRoot = !config.pikpak_root;
     const body = { clouddrive_address: config.clouddrive_address, token, target: target('115'),
-      pikpak_root: config.pikpak_root };
+      pikpak_root: config.pikpak_root, pikpak_account: pikpakAccount };
     void action.run('check', (signal) => apiSend<DownloadCheckReport>(CHECK_URL, body, 'POST', signal),
       (next) => {
         const folder = blankTarget ? next.suggested_target : null;
@@ -97,22 +107,24 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
         setReport(next);
         setDetected(blank ? next.address : '');
         setSuggested({ target: folder, root });
+        setSaveBlocked(false);
         setFailure('');
       }, (cause) => setFailure(errorMessage(cause)));
   };
 
   // 只在用户点了「新建这个目录」时调 CloudDrive2 建目录，建好后服务端按这个目录再检查一遍。
   const create = (path: string) => {
-    const body = { clouddrive_address: config.clouddrive_address, token, path, pikpak_root: config.pikpak_root };
+    const body = { clouddrive_address: config.clouddrive_address, token, path, pikpak_root: config.pikpak_root,
+      pikpak_account: pikpakAccount };
     void action.run('folder', (signal) => apiSend<DownloadCheckReport>(FOLDER_URL, body, 'POST', signal),
       (next) => {
         setReport(next);
         setSuggested((current) => ({ ...current, target: { path, exists: true } }));
+        setSaveBlocked(false);
         setFailure('');
         receipt('已新建目录');
       }, (cause) => setFailure(errorMessage(cause)));
   };
-  const missing = suggested.target && !suggested.target.exists && target('115') === suggested.target.path;
 
   return (
     <Section title="云下载" onSubmit={submit}>
@@ -124,20 +136,20 @@ function DownloadForm({ state, settle, receipt }: CardProps) {
           onChange={(value) => setConfig({ ...config, clouddrive_address: value })} />
         <Input label="CloudDrive2 API 令牌" type="password" autoComplete="off" maxLength={400}
           placeholder={state.token_set ? '已保存，留空不改' : '在 CloudDrive2「设置 → API 令牌」中生成'}
-          hint="令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」。"
+          hint="令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」；要在 Peach 里新建目标目录，再勾上新建文件夹权限（allow_create_folder）。"
           value={token} isDisabled={!state.available} onChange={setToken} />
         <Input label="115 目标目录" placeholder="检查时按推送发现自动填写" autoComplete="off" maxLength={300}
-          validationBehavior="aria" isInvalid={Boolean(missing)}
-          hint={missing ? 'CloudDrive2 里还没有这个目录。' : 'CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空时点「检查」，按推送发现里 115 那条前缀填上「前缀/云下载」。'}
+          validationBehavior="aria" isInvalid={missing}
+          hint={missing ? (saveBlocked ? '这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。' : 'CloudDrive2 里还没有这个目录。') :'CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空时点「检查」，按推送发现里 115 那条前缀填上「前缀/云下载」。'}
           value={target('115')} isDisabled={!state.available} onChange={(value) => setTarget('115', value)} />
-        <Input label="PikPak 目标目录" placeholder="/云下载" autoComplete="off" maxLength={300}
+        <Input label="PikPak 目标目录" placeholder="以 / 开头的网盘路径" autoComplete="off" maxLength={300}
           hint="PikPak 网盘里的路径，目录要已经存在。"
           value={target('pikpak')} isDisabled={!state.available} onChange={(value) => setTarget('pikpak', value)} />
         <div className="flex flex-col gap-1">
           <FieldLabel>PikPak 根目录对应的媒体文件夹</FieldLabel>
           {state.pikpak_roots.length ? (
             <Select aria-label="PikPak 根目录对应的媒体文件夹" selectedKey={config.pikpak_root || null}
-              isDisabled={!state.available} placeholder="选择媒体文件夹，或点检查按推送发现选"
+              isDisabled={!state.available} placeholder="点检查按推送发现选"
               onSelectionChange={(key) => setConfig({ ...config, pikpak_root: key === null ? '' : String(key) })}>
               {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
             </Select>
@@ -205,8 +217,10 @@ function CheckReport({ report, detected, suggested, create, creating }: {
   );
 }
 
-function PikPakAccount({ state, settle, receipt }: CardProps) {
-  const [username, setUsername] = useState('');
+function PikPakAccount({ state, settle, receipt, username, setUsername }: CardProps & {
+  username: string;
+  setUsername(value: string): void;
+}) {
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
   const [captcha, setCaptcha] = useState('');
