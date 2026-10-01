@@ -8,14 +8,16 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import httpx
 from fastapi.testclient import TestClient
 
 from peach import downloads as dl
-from peach import web_downloads
+from peach import downloads_clouddrive, web_downloads
 from peach.api import create_app
 from peach.config import PeachSettings
+from peach.push_discovery import CloudPrefix, PushDiscoveryConfig
 from support.ledger import fresh_ledger
 
 HASH = "c9e15763f722f23e98a29decdfae341b98d53056"
@@ -114,6 +116,35 @@ class SettingsBlockTests(_App):
         report = web_downloads.check_clouddrive(self.service, {"clouddrive_address": "127.0.0.1:1"})
         self.assertFalse(report["ok"])
         self.assertIn("API 令牌", report["problems"][0])
+        self.assertEqual((report["suggested_target"], report["suggested_pikpak_root"]), (None, ""))
+
+    def test_the_check_takes_the_push_prefixes_and_the_blanks_on_the_form(self):
+        web_downloads.save_settings(self.service, {"targets": {"115": "/115open/已保存"}}, self.roots())
+        prefixes = (CloudPrefix("/115open", "B:\\"),)
+        self.service.landing.push_discovery.config = PushDiscoveryConfig(prefixes=prefixes)
+        seen = {}
+
+        def check(address, token, target, *, hints):
+            seen.update(target=target, hints=hints)
+            return downloads_clouddrive.empty_report(address)
+
+        with mock.patch.object(downloads_clouddrive, "check", check):
+            web_downloads.check_clouddrive(self.service, {
+                "clouddrive_address": "127.0.0.1:19798", "token": "t", "target": "", "pikpak_root": ""})
+            self.assertEqual((seen["target"], seen["hints"].prefixes, seen["hints"].pikpak_root),
+                             ("", prefixes, ""))
+            web_downloads.check_clouddrive(self.service, {"clouddrive_address": "127.0.0.1:19798"})
+            self.assertEqual(seen["target"], "/115open/已保存")
+
+    def test_creating_a_folder_needs_a_token_and_a_real_folder(self):
+        with self.assertRaises(ValueError) as caught:
+            web_downloads.create_clouddrive_folder(self.service, {
+                "clouddrive_address": "127.0.0.1:1", "path": "/115open/云下载"})
+        self.assertIn("API 令牌", str(caught.exception))
+        with self.assertRaises(ValueError) as caught:
+            web_downloads.create_clouddrive_folder(self.service, {
+                "clouddrive_address": "127.0.0.1:1", "token": "t", "path": "/"})
+        self.assertIn("根目录", str(caught.exception))
 
     def test_a_pikpak_captcha_comes_back_as_a_page_to_open(self):
         def handler(request: httpx.Request) -> httpx.Response:

@@ -1,8 +1,9 @@
 """115 云下载经 CloudDrive2 gRPC：起一个进程内的假服务端，走真实的序列化与元数据。
 
-假服务端只实现那七个方法，状态放在内存里。断言落在「Peach 发出去的是什么」上：令牌只在
+假服务端只实现那八个方法，状态放在内存里。断言落在「Peach 发出去的是什么」上：令牌只在
 `authorization` 元数据里，提交前先查目录与配额，已有同一 infohash 的任务就不再提交，
-地址留空时只用不带令牌的 `GetSystemInfo` 探测。
+地址留空时只用不带令牌的 `GetSystemInfo` 探测，目标目录留空时按 CloudDrive2 报的云盘类型
+从推送前缀里推，只有用户点了才建目录。
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import grpc
 from peach import downloads as dl
 from peach import downloads_clouddrive as cd
 from peach import downloads_clouddrive_pb2 as pb
+from peach.push_discovery import CloudPrefix
 
 HASH = "c9e15763f722f23e98a29decdfae341b98d53056"
 MAGNET = dl.parse_magnet(f"magnet:?xt=urn:btih:{HASH}&dn=ABC-123")
@@ -26,6 +28,9 @@ class FakeCloudDrive:
     def __init__(self):
         self.calls: list[tuple[str, object, str]] = []
         self.folders = {TARGET: True}
+        #: 挂载树里的云盘根 → CloudDrive2 报的云盘类型。没登记的目录都算在 115 上。
+        self.clouds = {"/115": "115open"}
+        self.create_error = ""
         self.offline: list[pb.OfflineFile] = []
         self.quota = pb.OfflineQuotaInfo(total=1500, used=3, left=1497)
         self.add_error = ""
@@ -51,12 +56,26 @@ class FakeCloudDrive:
         self._auth("FindFileByPath", request, context)
         full = f"{request.parentPath.rstrip('/')}/{request.path}"
         if full in self.folders:
+            root = max((root for root in self.clouds if full == root or full.startswith(root + "/")),
+                       key=len, default="/115")
             return pb.CloudDriveFile(name=request.path, fullPathName=full, isDirectory=True,
-                                     canOfflineDownload=self.folders[full],
-                                     CloudAPI=pb.CloudAPI(name="115open", userName="u1"))
+                                     isCloudRoot=full == root, canOfflineDownload=self.folders[full],
+                                     CloudAPI=pb.CloudAPI(name=self.clouds.get(root, "115open"),
+                                                          userName="u1", path=root))
         if full in self.files:
             return pb.CloudDriveFile(name=request.path, fullPathName=full)
         context.abort(grpc.StatusCode.NOT_FOUND, "no such file")
+
+    def CreateFolder(self, request, context):
+        self._auth("CreateFolder", request, context)
+        if self.create_error:
+            return pb.CreateFolderResult(result=pb.FileOperationResult(
+                success=False, errorMessage=self.create_error))
+        full = f"{request.parentPath.rstrip('/')}/{request.folderName}"
+        self.folders[full] = True
+        return pb.CreateFolderResult(
+            folderCreated=pb.CloudDriveFile(name=request.folderName, fullPathName=full, isDirectory=True),
+            result=pb.FileOperationResult(success=True))
 
     def AddOfflineFiles(self, request, context):
         self._auth("AddOfflineFiles", request, context)
@@ -247,6 +266,84 @@ class CheckTests(_Server):
         self.assertEqual(cd.channel_target("http://127.0.0.1"), ("127.0.0.1:19798", False))
         self.assertEqual(cd.channel_target("https://192.0.2.10:8443"), ("192.0.2.10:8443", True))
         self.assertEqual(cd.split_remote("/115/云下载/"), ("/115", "云下载"))
+
+
+class SuggestionTests(_Server):
+    """前缀名字故意和云盘对不上：`/甲` 是 115 的挂载根，`/115假` 是 PikPak 的。"""
+
+    def setUp(self):
+        super().setUp()
+        self.fake.clouds.update({"/甲": "115open", "/115假": "PikPak"})
+        self.fake.folders.update({"/甲": True, "/115假": False})
+        self.prefixes = (CloudPrefix("/115假", "A:\\"), CloudPrefix("/甲", "B:\\"))
+        self.roots = {"115": ("B:\\",), "pikpak": ("A:\\",), "local": ("C:\\媒体",)}
+
+    def hints(self, *, prefixes=None, roots=None, pikpak_root="") -> cd.Hints:
+        return cd.Hints(self.prefixes if prefixes is None else prefixes,
+                        self.roots if roots is None else roots, pikpak_root)
+
+    def finds(self) -> list[str]:
+        return [f"{request.parentPath.rstrip('/')}/{request.path}"
+                for name, request, _ in self.fake.calls if name == "FindFileByPath"]
+
+    def test_a_blank_target_takes_the_folder_under_the_prefix_clouddrive_reports_as_115(self):
+        self.fake.folders["/甲/云下载"] = True
+        report = cd.check(self.address, TOKEN, "", hints=self.hints())
+        self.assertEqual(report["suggested_target"], {"path": "/甲/云下载", "exists": True})
+        self.assertEqual(report["folder"], {"path": "/甲/云下载", "can_offline": True, "cloud": "115open"})
+        self.assertEqual(report["quota"], {"total": 1500, "used": 3, "left": 1497})
+        self.assertEqual(report["suggested_pikpak_root"], "A:\\")
+        self.assertEqual(report["problems"], [])
+
+    def test_a_missing_suggested_folder_is_reported_and_never_created(self):
+        report = cd.check(self.address, TOKEN, "", hints=self.hints(pikpak_root="A:\\"))
+        self.assertEqual(report["suggested_target"], {"path": "/甲/云下载", "exists": False})
+        self.assertEqual((report["folder"], report["quota"], report["problems"]), (None, None, []))
+        self.assertNotIn("CreateFolder", self.methods())
+        self.assertNotIn("GetOfflineQuotaInfo", self.methods())
+
+    def test_a_declared_115_root_wins_over_another_115_prefix(self):
+        self.fake.clouds["/乙"] = "115"
+        self.fake.folders.update({"/乙": True, "/乙/云下载": True, "/甲/云下载": True})
+        prefixes = (CloudPrefix("/乙", "C:\\媒体"), CloudPrefix("/甲/深一层", "B:\\"))
+        self.fake.folders["/甲/深一层"] = True
+        report = cd.check(self.address, TOKEN, "", hints=self.hints(prefixes=prefixes, pikpak_root="A:\\"))
+        self.assertEqual(report["suggested_target"]["path"], "/甲/深一层/云下载")
+
+    def test_without_a_115_prefix_the_problem_points_at_push_discovery(self):
+        only_pikpak = (CloudPrefix("/115假", "A:\\"),)
+        report = cd.check(self.address, TOKEN, "", hints=self.hints(prefixes=only_pikpak, pikpak_root="A:\\"))
+        self.assertIsNone(report["suggested_target"])
+        self.assertEqual(len(report["problems"]), 1)
+        self.assertIn("「推送发现」", report["problems"][0])
+        self.assertIn("/115假", report["problems"][0])
+        report = cd.check(self.address, TOKEN, "", hints=self.hints(prefixes=(), pikpak_root="A:\\"))
+        self.assertIn("没有登记云端路径前缀", report["problems"][0])
+
+    def test_a_pikpak_prefix_below_the_cloud_root_is_not_the_pikpak_root(self):
+        self.fake.folders["/115假/影视"] = False
+        roots = {"115": ("B:\\",), "pikpak": ("A:\\影视",)}
+        prefixes = (CloudPrefix("/115假/影视", "A:\\影视"), CloudPrefix("/甲", "B:\\"))
+        report = cd.check(self.address, TOKEN, "/115/云下载", hints=self.hints(prefixes=prefixes, roots=roots))
+        self.assertEqual(report["suggested_pikpak_root"], "")
+        self.assertEqual(len(report["problems"]), 1)
+        self.assertIn("PikPak 根目录对应的媒体文件夹", report["problems"][0])
+
+    def test_filled_fields_ask_nothing_about_the_prefixes(self):
+        report = cd.check(self.address, TOKEN, TARGET, hints=self.hints(pikpak_root="A:\\"))
+        self.assertEqual(self.finds(), [TARGET])
+        self.assertEqual((report["suggested_target"], report["suggested_pikpak_root"]), (None, ""))
+
+    def test_creating_the_folder_happens_only_on_request_and_checks_it_again(self):
+        report = cd.create_folder(self.address, TOKEN, "/甲/云下载", hints=self.hints(pikpak_root="A:\\"))
+        created = [request for name, request, _ in self.fake.calls if name == "CreateFolder"]
+        self.assertEqual([(request.parentPath, request.folderName) for request in created],
+                         [("/甲", "云下载")])
+        self.assertEqual(report["folder"], {"path": "/甲/云下载", "can_offline": True, "cloud": "115open"})
+        self.fake.create_error = "没有新建文件夹的权限"
+        with self.assertRaises(dl.DownloadError) as caught:
+            cd.create_folder(self.address, TOKEN, "/甲/另一个", hints=self.hints())
+        self.assertIn("没有新建文件夹的权限", caught.exception.detail)
 
 
 if __name__ == "__main__":

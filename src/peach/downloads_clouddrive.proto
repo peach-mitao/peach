@@ -1,4 +1,4 @@
-// CloudDrive2 gRPC 接口的子集：只留云下载用到的七个方法和它们的消息。
+// CloudDrive2 gRPC 接口的子集：只留云下载用到的八个方法和它们的消息。
 //
 // 字段号、类型与名字逐个照抄官方 https://www.clouddrive2.com/api/clouddrive.proto
 // （option version = "1.1.0"）。删掉的是用不到的字段，proto3 解码会跳过未知字段，
@@ -16,6 +16,7 @@ service CloudDriveFileSrv {
   rpc GetSystemInfo(google.protobuf.Empty) returns (CloudDriveSystemInfo) {}
   rpc GetApiTokenInfo(StringValue) returns (TokenInfo) {}
   rpc FindFileByPath(FindFileByPathRequest) returns (CloudDriveFile) {}
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResult) {}
   rpc AddOfflineFiles(AddOfflineFileRequest) returns (FileOperationResult) {}
   rpc RemoveOfflineFiles(RemoveOfflineFilesRequest) returns (FileOperationResult) {}
   rpc ListOfflineFilesByPath(FileRequest) returns (OfflineFileListResult) {}
@@ -64,8 +65,19 @@ message CloudDriveFile {
   int64 size = 4;
   CloudAPI CloudAPI = 9;
   bool isDirectory = 30;
+  bool isCloudRoot = 32;
   bool canOfflineDownload = 66;
   bool supportOfflineDownloadManagement = 75;
+}
+
+message CreateFolderRequest {
+  string parentPath = 1;
+  string folderName = 2;
+}
+
+message CreateFolderResult {
+  CloudDriveFile folderCreated = 1;
+  FileOperationResult result = 2;
 }
 
 message AddOfflineFileRequest {

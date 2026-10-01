@@ -403,7 +403,7 @@ def normalise_target(raw: str) -> str:
     """网盘里的目标目录统一成 `/a/b`。CloudDrive2 与 PikPak 都是 POSIX 口径。"""
     text = normalise_prefix(raw)
     if text == "/" or any(part in {".", ".."} for part in text.split("/")):
-        raise ValueError("目标目录要写成网盘里的一个具体文件夹，例如 /115/云下载")
+        raise ValueError("目标目录要写成网盘里的一个具体文件夹，不能是网盘根目录")
     return text
 
 
