@@ -77,6 +77,16 @@ it('一条都没有就是空态，不画空的分段', async () => {
   expect(host.querySelector('section[data-want-phase]')).toBeNull();
 });
 
+it('添加键是蓝色主按钮：输入框空着时是主按钮的禁用形态，填了番号就能点', async () => {
+  serve(listed([]));
+  const { host } = await open();
+  const addKey = () => buttonNamed('添加', host)!;
+  expect([addKey().classList.contains('bg-button-primary'), addKey().disabled]).toEqual([true, true]);
+  await type(host.querySelector<HTMLInputElement>('input[aria-label="番号"]'), 'SSIS-950');
+  await settle();
+  expect([addKey().classList.contains('bg-button-primary'), addKey().disabled]).toEqual([true, false]);
+});
+
 it('按番号添加：回车就发，回执报番号，输入框清空、清单重取', async () => {
   const fetcher = serve(listed([]), listed([want(99, { code: 'SSIS-950' })]));
   const { host, toast } = await open();
