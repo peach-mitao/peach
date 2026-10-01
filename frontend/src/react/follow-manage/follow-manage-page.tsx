@@ -1,7 +1,8 @@
-/* 关注管理页：加来源、检查更新、移除来源、管订阅源、看凭据状态。
+/* 关注管理页：加来源、检查更新、移除来源、管订阅源、管想要清单、看凭据状态。
  *
- * 四栏是四件事，所以整块切换而不是一屏铺开：看的那一页（`/follow`）不联网，联网只发生
- * 在这里点「检查更新」的那一刻。
+ * 五栏是五件事，所以整块切换而不是一屏铺开：看的那一页（`/follow`）不联网，联网只发生
+ * 在这里点「检查更新」的那一刻。「想要」排在订阅源后面：想要的作品多半是从 Feed 新作和关注
+ * 条目上点进来的，两处的来源都在这一页管。
  *
  * 地址栏与个人偏好各管各的（ADR-0031「迁移桥接」）：
  * - `tab`、`page`、`sort`、`dir` 在地址栏上。判据是「外面链接得过来吗」——把一条关注列表
@@ -34,10 +35,11 @@ import {
   FOLLOW_MANAGE_KEY, groupByAuthor, isBroken, isLayout, keepSelected, pageSizeOf,
   SORT_DEFAULT_DIR, type CredentialData, type FollowData, type Layout, type SortDir, type SortKey,
 } from './follow-manage';
+import { WantList } from '../wants/want-list';
 import { SourceList } from './source-list';
 
 const TABS = [
-  ['list', '关注列表'], ['add', '添加关注'], ['feeds', 'JAV 订阅源'], ['source', '来源和凭证'],
+  ['list', '关注列表'], ['add', '添加关注'], ['feeds', 'JAV 订阅源'], ['wants', '想要'], ['source', '来源和凭证'],
 ] as const;
 type TabKey = (typeof TABS)[number][0];
 
@@ -184,6 +186,10 @@ export function FollowManagePage(props: FollowManageProps) {
 
         <TabPanel id="feeds" className="flex flex-col gap-4">
           <FeedSources readOnly={readOnly} toast={toast} avatarInner={props.avatarInner} />
+        </TabPanel>
+
+        <TabPanel id="wants" className="flex flex-col gap-4">
+          <WantList readOnly={readOnly} toast={toast} />
         </TabPanel>
 
         <TabPanel id="source" className="flex flex-col gap-4">

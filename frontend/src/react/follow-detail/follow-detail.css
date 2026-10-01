@@ -246,6 +246,8 @@
 /* 操作键条：几何取 `[data-stage-actions]`（`../stage/stage.css`）。下载是 `<a download>`，
    不是按钮：让浏览器自己落盘，不经过 JS，几何与同排按钮一致。 */
 .peach-react [data-follow-detail] [data-follow-detail-actions] button:disabled { opacity: .45; cursor: not-allowed; }
+/* 想要过的那一条，星是填实的；色调借保存那一档（`later`）。 */
+.peach-react [data-follow-detail] [data-follow-detail-want][aria-pressed="true"] svg { fill: currentColor; }
 .peach-react [data-follow-detail] [data-follow-download] {
   box-sizing: border-box;
   flex: 0 0 36px;

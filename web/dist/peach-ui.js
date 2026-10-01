@@ -513,6 +513,7 @@ var D = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, O = 
 	"关注列表",
 	"添加关注",
 	"JAV 订阅源",
+	"想要",
 	"来源和凭证"
 ].map((e, t) => `<span class="whitespace-nowrap" aria-selected="${t === 0}">${e}</span>`).join("")}</div>`, P = (e = "") => `<span class="group inline-flex items-center select-none gap-2"><span class="flex shrink-0 items-center justify-center rounded-sm size-4 border bg-background-primary-default shadow-xs border-border-checkbox-default"></span>${e ? `<span class="text-body-medium text-text-primary">${e}</span>` : ""}</span>`, qe = ({ table: e, sort: t, dir: n }) => {
 	let r = _e.find(([e]) => e === t)[1];

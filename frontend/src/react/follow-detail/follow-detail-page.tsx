@@ -24,6 +24,7 @@ import {
 import { FOLLOW_STATUS_URL } from '../follow-manage/follow-manage';
 import { openPhotoLightbox } from '../photo-lightbox/photo-lightbox-dialog';
 import { queryClient } from '../query';
+import { addWant, fetchFollowWant, invalidateWants, removeWants, wantFollowKey, type Want } from '../wants/wants';
 import {
   FOLLOW_MEDIA_HIDE_URL, FOLLOW_SAVE_URL, authorSources, collectionCopy, detailContext, detailMedia, detailSlides,
   detailTags, fetchFollowItem, followItemKey, groupedMediaOwner, mediaName, resourceLabel, statusReceipt, tagCategory,
@@ -355,6 +356,9 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
           <button type="button" data-stage-action="later" data-follow-detail-save="" aria-label={saved ? '已保存' : '保存到账本'}
             title={saved ? '已保存' : '保存到账本'} disabled={saved} {...busyAttrs('save')}
             onClick={write.save} dangerouslySetInnerHTML={{ __html: icon(saved ? 'check' : 'bookmark-plus') }} />
+          <button type="button" data-stage-action="later" data-follow-detail-want="" aria-pressed={!!write.want}
+            aria-label={write.want ? '取消想要' : '想要'} title={write.want ? '取消想要' : '想要'}
+            {...busyAttrs('want')} onClick={write.toggleWant} dangerouslySetInnerHTML={{ __html: icon('star') }} />
           <button type="button" data-stage-action="seen" data-follow-detail-status="seen" aria-label="标记已看" title="标记已看"
             aria-pressed={item.status === 'seen'} {...busyAttrs('seen')} onClick={() => write.status('seen')}
             dangerouslySetInnerHTML={{ __html: icon('eye') }} />
@@ -410,7 +414,7 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
 }
 
 /* ── 写操作 ──
- * 保存、状态、隐藏与恢复这张图都在岛里发。状态与保存成功后在两处缓存里换同一条（详情这条与
+ * 保存、状态、想要、隐藏与恢复这张图都在岛里发。状态与保存成功后在两处缓存里换同一条（详情这条与
  * 关注页列表里那一条，卡面状态一起变），不重读列表：关掉详情回列表不该再等一个网络往返。
  * 隐藏与恢复换掉的是整份媒体清单，重取一次这一条，服务端投影给出新的可见集合与缩略图。 */
 type MediaIssue = '' | 'failed' | 'thumb';
@@ -440,6 +444,8 @@ function useDetailWrite(item: FollowDetailItem, actions: FollowDetailActions, on
     onSuccess: (_result, { to, was }) => {
       apply(to);
       setFailure('');
+      // 忽略会把这一条从想要里撤掉（两者互斥），想要那颗键要跟着弹起。
+      if (to === 'ignored') void invalidateWants();
       actions.toast(statusReceipt(to), {
         undo: was !== 'saved' ? async () => { await apiSend(FOLLOW_STATUS_URL, { item: id, to: was }); apply(was) } : undefined,
       });
@@ -468,8 +474,27 @@ function useDetailWrite(item: FollowDetailItem, actions: FollowDetailActions, on
     onError: failed,
     onSettled: (_result, _error, { index, hidden }) => mark(`${hidden ? 'hide' : 'restore'}:${index}`, false),
   });
+  /* 想要按条目问一次服务端：同一条在关注管理的「想要」页签里移除后，这颗键也要弹起。 */
+  const wantKey = wantFollowKey(id);
+  const wanted = useQuery({ queryKey: wantKey, queryFn: ({ signal }) => fetchFollowWant(id, signal) });
+  const want = wanted.data?.want ?? null;
+  const wantMutation = useMutation({
+    mutationFn: async (current: Want | null) => {
+      if (current) await removeWants([current.id]);
+      else await addWant({ follow: id });
+      return !current;
+    },
+    onSuccess: (added) => {
+      setFailure('');
+      actions.toast(added ? '已加入想要' : '已取消想要');
+      void invalidateWants();
+    },
+    onError: failed,
+    onSettled: () => mark('want', false),
+  });
   return {
-    busy, failure,
+    busy, failure, want,
+    toggleWant: () => { mark('want', true); wantMutation.mutate(want) },
     save: () => { mark('save', true); saveMutation.mutate() },
     status: (to: string) => { mark(to, true); statusMutation.mutate({ to, was: item.status }) },
     hide: (index: number) => {

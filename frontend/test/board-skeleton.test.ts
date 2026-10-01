@@ -57,7 +57,7 @@ describe('Board 页面骨架', () => {
     expect(root.querySelector('.board-segment-thumb')).toBeNull();
     expect(root.querySelector('[data-section-items] [aria-selected=true]')?.textContent).toBe('关注列表');
     const track = root.querySelector('[data-section-items]')!;
-    expect([...track.children].map((span) => span.textContent)).toEqual(['关注列表', '添加关注', 'JAV 订阅源', '来源和凭证']);
+    expect([...track.children].map((span) => span.textContent)).toEqual(['关注列表', '添加关注', 'JAV 订阅源', '想要', '来源和凭证']);
   });
   it('关注骨架的工具行按 Board UI 最终变体画：检查全部是主按钮，视图切换是按版式选中的按钮组', () => {
     const toolbar = follow().querySelector('.follow-skeleton-toolbar')!;

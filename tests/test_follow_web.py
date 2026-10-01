@@ -2995,7 +2995,7 @@ class FollowWebSourceTests(unittest.TestCase):
         表单。栏的顺序同时也是地址栏里 `tab` 的取值顺序，壳那边照着同一份；页面画出来的
         次序由 `frontend/test/react/follow-manage.test.tsx` 判。
         """
-        self.assertPageContains("const FOLLOW_MANAGE_TABS=['list','add','feeds','source'];")
+        self.assertPageContains("const FOLLOW_MANAGE_TABS=['list','add','feeds','wants','source'];")
 
     def test_the_page_is_one_narrow_column_with_credentials_inline(self):
         """侧栏在哪个宽度上都不对：宽屏把凭据推出视线，窄屏又整个塌到最底下。

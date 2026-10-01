@@ -13,6 +13,7 @@ import { FollowDetailPage } from '../../src/react/follow-detail/follow-detail-pa
 import { FOLLOW_CREDENTIALS_KEY, type FollowFeedHelpers, type FollowGroup } from '../../src/react/follow-feed/follow-feed';
 import { openPhotoLightbox } from '../../src/react/photo-lightbox/photo-lightbox-dialog';
 import { queryClient } from '../../src/react/query';
+import { wantFollowKey } from '../../src/react/wants/wants';
 import { click, mount, settle } from './render';
 
 /* 灯箱自己的开合与翻页在 `photo-lightbox.test.tsx`；这里只看详情把哪一组、从第几张交给它。 */
@@ -52,11 +53,12 @@ function actions(): ActionMocks {
 const data = (shown: FollowDetailItem, row: FollowGroup | null = group(shown)): FollowDetailData =>
   ({ item: shown, group: row, sources: [], aliases: [] });
 
-/** 假服务端：凭据为空，写接口按 `status` 回话；单条取数回给定的那一页。 */
+/** 假服务端：凭据为空，没想要过，写接口按 `status` 回话；单条取数回给定的那一页。 */
 function serve({ page = null as unknown, status = 200 } = {}) {
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.startsWith('/api/follow/credentials')) return { ok: true, status: 200, json: async () => ({ providers: [] }) };
     if (url.startsWith('/api/follow?item=')) return { ok: true, status: 200, json: async () => structuredClone(page) };
+    if (url.startsWith('/api/wants?follow=')) return { ok: true, status: 200, json: async () => ({ want: null }) };
     if (init?.method === 'POST') return { ok: status < 400, status, json: async () => (status < 400 ? { ok: true } : { detail: '写入失败' }) };
     return { ok: false, status: 404, json: async () => ({}) };
   });
@@ -66,10 +68,11 @@ function serve({ page = null as unknown, status = 200 } = {}) {
 const posts = (fetcher: ReturnType<typeof serve>) => fetcher.mock.calls
   .filter(([, init]) => init?.method === 'POST').map(([url, init]) => [url, JSON.parse(String(init!.body))]);
 
-/** 条目与凭据已在缓存里（从列表点进来的那种），直接画，不发请求。 */
+/** 条目、凭据与想要状态已在缓存里（从列表点进来的那种），直接画，不发请求。 */
 async function show(given: FollowDetailData, patch: Partial<FollowDetailProps> = {}) {
   queryClient.setQueryData(followItemKey(given.item.id), given);
   queryClient.setQueryData(FOLLOW_CREDENTIALS_KEY, { providers: [] });
+  queryClient.setQueryData(wantFollowKey(given.item.id), { want: null });
   const props: FollowDetailProps = {
     id: given.item.id, mediaIndex: null, mediaView: 'videos', helpers: helpers(), actions: actions(), ...patch,
   };
@@ -183,6 +186,34 @@ describe('写操作', () => {
     expect(host.querySelector('[data-follow-detail-status="ignored"]')?.getAttribute('aria-pressed')).toBe('false');
     expect(host.querySelector('[data-follow-state]')?.textContent).not.toBe('');
     expect(given.failure).toHaveBeenCalledOnce();
+  });
+
+  it('想要：按下去键填实，再按一次按那条想要的 id 移除', async () => {
+    let want: { id: number } | null = null;
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/api/wants?follow=')) return { ok: true, status: 200, json: async () => ({ want }) };
+      const body = JSON.parse(String(init?.body || '{}'));
+      want = body.action === 'add' ? { id: 31 } : null;
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const { host, actions: given } = await show(data(item(7)));
+    const key = () => host.querySelector('[data-follow-detail-want]')!;
+    expect([key().getAttribute('aria-pressed'), key().getAttribute('aria-label')]).toEqual(['false', '想要']);
+    await click(key());
+    await vi.waitFor(async () => {
+      await settle();
+      expect(key().getAttribute('aria-pressed')).toBe('true');
+    });
+    expect(given.toast).toHaveBeenCalledWith('已加入想要');
+    await click(key());
+    await vi.waitFor(async () => {
+      await settle();
+      expect(key().getAttribute('aria-pressed')).toBe('false');
+    });
+    expect(posts(fetcher as unknown as ReturnType<typeof serve>)).toEqual([
+      ['/api/wants', { action: 'add', follow: 7 }], ['/api/wants', { action: 'remove', ids: [31] }],
+    ]);
   });
 });
 

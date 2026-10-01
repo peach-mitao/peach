@@ -60,8 +60,8 @@ export const feedNewOptions = (entityId: number | null, rowHtml: FeedRowHtml, pr
   staleTime: Infinity,
 });
 
-/** 卡上那两颗键（不想看、标为已看过）。都是标记，写失败了卡片照样收起：这一行下次取数时会按
- *  服务端的现状重排。 */
+/** 卡上那三颗键（想要、不想看、标为已看过）。都是标记，写失败了卡片照样换样子：这一行下次取数时
+ *  会按服务端的现状重排。 */
 export const postFeedAction = (feedId: number, action: string): Promise<void> =>
   (api('/api/feeds/discovery', { method: 'POST', body: JSON.stringify({ action, ids: [feedId] }) }) as Promise<unknown>)
     .then(() => undefined, () => undefined);

@@ -174,7 +174,7 @@ def q_wants(contract, args) -> dict:
         thumbs = web_follow.item_thumbs(
             contract, connection, [row["follow_item_id"] for row in rows if row["follow_item_id"]])
     items = [_payload(contract, row, today, thumbs) for row in rows]
-    if follow:
+    if follow.isdigit():
         return {"ok": True, "want": items[0] if items else None}
     counts = {name: 0 for name in wants.PHASES}
     for item in items:
