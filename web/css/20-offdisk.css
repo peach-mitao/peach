@@ -1,5 +1,0 @@
-/* ── 脱盘模式 ────────────────────────────────────────────────────────────────
-   来源盘不在时只置灰该来源的筛选，其余来源照常。数量仍然显示：账本是本机真相，
-   脱的是盘不是记录。 ── */
-.chip.offline{opacity:.42;cursor:not-allowed;text-decoration:none}
-.chip.offline .n{text-decoration:none}

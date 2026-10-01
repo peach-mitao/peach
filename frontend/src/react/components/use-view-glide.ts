@@ -10,13 +10,18 @@
  * - 这一排量不出宽度（被 `hidden` 收起、祖先 `display:none`）或目标滚出了可视区，玻璃收起。
  *
  * 坐标以浮层根（玻璃的父元素）为原点，扣掉中间每一层的滚动量，同壳的 `viewGlideGeometry`：
- * 玻璃住在滚动层外面，纵向回弹不会被横滚容器切平。 */
+ * 玻璃住在滚动层外面，纵向回弹不会被横滚容器切平。
+ *
+ * 默认是一排横着的键；`axis: 'y'` 给竖着的一列（侧栏导航）：位移的回弹换到纵轴，滚出可视区
+ * 的判据也换成纵向。 */
 import { useCallback, useEffect, useLayoutEffect, useRef, type PointerEvent, type RefObject } from 'react';
 import { moveGlidePane } from '@peach/legacy/ui';
 
 interface Box { x: number; y: number; w: number; h: number }
 
-function geometry(pill: HTMLElement, host: HTMLElement): Box | null {
+type Axis = 'x' | 'y';
+
+function geometry(pill: HTMLElement, host: HTMLElement, axis: Axis): Box | null {
   if (!host.contains(pill)) return null;
   let x = 0;
   let y = 0;
@@ -28,18 +33,25 @@ function geometry(pill: HTMLElement, host: HTMLElement): Box | null {
   for (let node = pill.parentElement; node && node !== host; node = node.parentElement) {
     x -= node.scrollLeft;
     y -= node.scrollTop;
-    if (node.scrollWidth > node.clientWidth && getComputedStyle(node).overflowX !== 'visible') {
-      const viewport = node.getBoundingClientRect();
-      if (rect.right <= viewport.left || rect.left >= viewport.right) return null;
+    const viewport = () => node.getBoundingClientRect();
+    if (axis === 'x' && node.scrollWidth > node.clientWidth && getComputedStyle(node).overflowX !== 'visible') {
+      const edge = viewport();
+      if (rect.right <= edge.left || rect.left >= edge.right) return null;
+    }
+    if (axis === 'y' && node.scrollHeight > node.clientHeight && getComputedStyle(node).overflowY !== 'visible') {
+      const edge = viewport();
+      if (rect.bottom <= edge.top || rect.top >= edge.bottom) return null;
     }
   }
   return { x, y, w: pill.offsetWidth, h: pill.offsetHeight };
 }
 
 /** `pane` 是玻璃节点，`row` 是这一排；`pressed` 是这一排里按下那一枚的选择器。`key` 变了
- *  （按下态换了、这一排出现或收起）就带动画落到新的按下项上。返回的两个处理器接在键与排上。 */
+ *  （按下态换了、这一排出现或收起）就带动画落到新的按下项上。返回的两个处理器接在键与排上；
+ *  `sync` 给这一排自己知道的布局变化（宿主改尺寸、上方插进了别的东西）：掐掉在跑的位移，原地重量。 */
 export function useViewGlide(
   pane: RefObject<HTMLElement | null>, row: RefObject<HTMLElement | null>, pressed: string, key: unknown,
+  { axis = 'x' }: { axis?: Axis } = {},
 ) {
   const last = useRef<Box | null>(null);
   const place = useCallback((target: HTMLElement | null, animate: boolean) => {
@@ -50,7 +62,7 @@ export function useViewGlide(
     const host = glass?.parentElement;
     if (!glass) return;
     const active = line && line.offsetWidth ? target ?? line.querySelector<HTMLElement>(pressed) : null;
-    const box = active && host ? geometry(active, host) : null;
+    const box = active && host ? geometry(active, host, axis) : null;
     if (!box || !box.w) {
       glass.hidden = true;
       return;
@@ -59,8 +71,8 @@ export function useViewGlide(
     const from = glass.hidden ? null : last.current;
     glass.hidden = false;
     last.current = box;
-    moveGlidePane(glass, animate ? from : null, box, 'x');
-  }, [pane, row, pressed]);
+    moveGlidePane(glass, animate ? from : null, box, axis);
+  }, [pane, row, pressed, axis]);
 
   /* 首次落位不动画；往后按下态一变就滑过去。放在布局阶段：画出来的第一帧玻璃就在位上。 */
   const placed = useRef(false);
@@ -94,5 +106,9 @@ export function useViewGlide(
   const leave = useCallback((event: PointerEvent<HTMLElement>) => {
     if (event.pointerType !== 'touch') place(null, true);
   }, [place]);
-  return { hover, leave };
+  const sync = useCallback(() => {
+    pane.current?.getAnimations().forEach((animation) => animation.cancel());
+    place(null, false);
+  }, [pane, place]);
+  return { hover, leave, sync };
 }

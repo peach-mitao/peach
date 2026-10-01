@@ -264,10 +264,9 @@ describe('设置面板', () => {
       await page.waitForFunction((want) => JSON.stringify([...document.querySelectorAll(
         '#sidebarOrderSetting [data-sidebar-row]')].map((node) => node.getAttribute('data-sidebar-row'))) === want,
       JSON.stringify(moved));
-      const edge = await page.locator('#edge [data-nav]').evaluateAll((nodes) =>
+      const nav = await page.locator('#drawer [data-sidebar-nav] [data-nav]').evaluateAll((nodes) =>
         nodes.map((node) => node.getAttribute('data-nav')));
-      assert.deepEqual(edge.filter((key) => moved.includes(key!)), moved.filter((key) => edge.includes(key)),
-        '侧栏没有跟着面板里的新顺序重排');
+      assert.deepEqual(nav, moved, '侧栏没有跟着面板里的新顺序重排');
       assert.deepEqual((await posted(page, server, '/api/settings', 'sidebarOrder')).sidebarOrder, moved);
       assert.deepEqual((await stored(page)).sidebarOrder, moved);
       assert.deepEqual(opened.problems, []);

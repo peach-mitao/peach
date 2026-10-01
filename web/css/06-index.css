@@ -34,8 +34,7 @@
 .alphatag::before{content:"";width:7px;height:7px;border-radius:50%;
   background:var(--tag-color,var(--muted));flex:none}
 .index-tags .tg,.alphatag{--tag-color:#7A91A8}
-/* 抽屉里的关注标签沿用同一个青色，让「这是在线那套词表」在两处一致。 */
-.chip.online{border-color:color-mix(in srgb,#5AC8D8 42%,transparent);background:color-mix(in srgb,#5AC8D8 10%,transparent)}.tg.general{--tag-color:#55A7FF}
+.tg.general{--tag-color:#55A7FF}
 /* 标签云骨架与真标签同一档身量：这一页标签是主体，比卡片上的大一档。 */
 .index .index-tags .tg{border-color:color-mix(in srgb,var(--tag-color) 32%,transparent);color:var(--ink-2);
   background:color-mix(in srgb,var(--tag-color) 7%,transparent);padding:5px 12px;font-size:var(--fs-sm)}

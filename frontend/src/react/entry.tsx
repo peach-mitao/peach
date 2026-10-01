@@ -48,6 +48,7 @@ import { TastePage } from './taste/taste-page';
 
 export { configureImmerse } from './immerse/immerse-island';
 export { configureSettingsPanel } from './settings-panel/settings-panel';
+export { configureSidebar } from './sidebar/sidebar-island';
 export { configureStage } from './stage/stage';
 export { mountToaster, showToast } from './toaster';
 

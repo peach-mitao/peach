@@ -717,7 +717,7 @@ button,input,select,textarea{font-family:inherit}
    是为了展开态那一横排仍是「明暗在左、配色与设置在右」；竖排时要的顺序正好相反，
    boardui.com 那一对就是配色在上、明暗在下。配色钮与设置钮都是 36px，左右各留 10px
    内边距后在 60px 的侧栏里居中，两枚圆心落在同一条竖线上。 */
-@media(min-width:761px){.drawer:not(.open) .board-sidebar-foot{flex-direction:column-reverse;padding:12px 10px}.drawer:not(.open) .board-foot-actions{flex-direction:column}.drawer:not(.open) .board-theme-toggle{padding:2px;background:transparent}.drawer:not(.open) .board-theme-toggle button[aria-pressed=true],.drawer:not(.open) .board-theme-thumb{display:none}}
+@media(min-width:761px){[data-sidebar-drawer]:not(.open) .board-sidebar-foot{flex-direction:column-reverse;padding:12px 10px}[data-sidebar-drawer]:not(.open) .board-foot-actions{flex-direction:column}[data-sidebar-drawer]:not(.open) .board-theme-toggle{padding:2px;background:transparent}[data-sidebar-drawer]:not(.open) .board-theme-toggle button[aria-pressed=true],[data-sidebar-drawer]:not(.open) .board-theme-thumb{display:none}}
 @media(prefers-reduced-motion:reduce){.board-theme-thumb{transition:none}}
 .drawer .sec[data-sidebar-group]{border:0;padding:0;margin:4px 0 0}
 .drawer .sec[data-sidebar-group]>h3{margin:0 0 4px;letter-spacing:0;text-transform:none;color:var(--muted);font-size:14px;line-height:20px;font-weight:400;gap:4px}

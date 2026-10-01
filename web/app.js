@@ -1,4 +1,4 @@
-import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, sidebarSectionHtml, wireSidebarGroups, transitionTheme } from './dist/peach-ui.js';
+import { boundedPreference, createSettingsStore, loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
 import { faceFrame } from './js/face-frame.js';
 import { searchMorphFrames } from './js/search-morph.js';
@@ -15,7 +15,7 @@ import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js
 import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, HOME_GLOW_CHOICES, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowPalette, isNativeGlass, normalizeAccent, normalizeHomeGlow, paintGlassFaces, paintHomeGlow } from './js/home-glow.js';
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
-import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, syncSidebarSurface, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
+import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { javImageKind, normalizeJavLayout, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages, nativeImageFit, faceSourceScale, entitySkeletonHtml } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
@@ -70,9 +70,9 @@ let barsRequestSeq=0,barsDataCache=null,barsDataAt=0,barsDataPromise=null;
 let barsRendered='';
 /* 首页筛选条（`catalog-filter` 岛）的整份 props、挂载中的那一次、标签条的成员（见 `paintCatalogFilter`）。 */
 let catalogFilterProps=null,catalogFilterMounting=null,catalogTagRows=[],catalogTopsPages=null;
-/* 侧栏「更多」摊开时要照最新那份 facets 重画那一列。挂在 buildBars 的闭包上就只能是
-   画那一遍时的那份——中途改过筛选，摊开看到的是一列旧数字。 */
-let barsFacets=null,barsScopedCreators=[];
+/* 侧栏岛（`react/sidebar/`）的整份 props、它属于哪一页（路径，查询串不算），以及上一次整份画出来的
+   那组目录筛选：口径和数据都没变时 `buildBars` 不重画，换页回来就把这一份原样交回去。 */
+let sidebarProps={content:null,filters:{},latest:null},sidebarSurface='',sidebarCatalog=null,sidebarContentSeq=0;
 let loadRequestSeq=0;
 // `#grid` 上此刻挂的是哪一个 island：目录与回收站的 `catalog-grid`，或垃圾文件的 `junk-queue`。
 let gridIsland='';
@@ -92,7 +92,6 @@ const FOLLOW_FEED_SORTS=[['new','更新时间'],['hot','热度'],['dur','时长'
    排序键——那三枚键任一按下就离开它；种子写进地址，刷新和后退回到的是同一批次序。 */
 const FOLLOW_RANDOM_SORT='rand';
 let followSort='new',followDir='desc',followSeed=0;
-let sidebarDragKey=null;
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /* ── 路由表 ───────────────────────────────────────────────────────────────────
@@ -398,20 +397,29 @@ const syncPageTitle=path=>{
   document.body.dataset.surface=url.pathname;
   paintNav();
 };
-/* 导航激活态必须在每次路由变化时重算：抽屉与窄栏的按钮是 buildBars 时
-   一次性画出来的，管理页不跑 buildBars，切页后它们会停留在上一个页面的
-   按下态（实测 /stats 下「首页」还亮着）。 */
+/* 导航激活态在每次路由变化时重读：管理页不跑 buildBars，只靠这一处换按下态。
+   侧栏那块玻璃的动画也从这里起跑，不从点击那里：这一行是激活态唯一的权威出口，侧栏、浏览器
+   后退和键盘走的都是它。它跑在 `route()` 的同步段里，玻璃拿到的是旧位置到新位置。
+   侧栏岛还没接上时滚动层里是导航骨架，按下态就地改。 */
 function paintNav(){
-  document.querySelectorAll('.edge button[data-nav],#drawer .dnav button[data-nav]')
+  const sidebar=sidebarApi();
+  if(sidebar){sidebar.navChanged();return}
+  $('#drawerScroll')?.querySelectorAll('[data-nav]')
     .forEach(b=>b.setAttribute('aria-pressed',String(navOn(b.dataset.nav))));
-  /* 侧栏那块玻璃的动画从这里起跑，不从点击那里：这一行是激活态唯一的权威出口，
-     窄栏、抽屉、浏览器后退和键盘走的都是它。挂在点击上等于每加一个入口补一次。
-     它跑在 `route()` 的同步段里，比抽屉重画早一拍，玻璃拿到的是旧位置到新位置。 */
-  syncNavGlide(true);
 }
 let surfaceEpoch=0;
 const surfacePath=()=>decodeURIComponent(location.pathname);
 let lastRoutePath=surfacePath();
+/* 侧栏岛的 props 由壳拿着，每次只改其中几项再整份推进去。换了页面（路径变了，查询串不算），
+   上一页那组筛选就不属于这一页：先收回到只剩导航，等这一页自己的内容回来再画。 */
+function paintSidebar(patch={}){
+  const surface=surfacePath();
+  if(surface!==sidebarSurface){sidebarSurface=surface;sidebarProps={...sidebarProps,content:null,latest:null}}
+  sidebarProps={...sidebarProps,...patch};
+  sidebarApi()?.render(sidebarProps);
+}
+/* 导航与顶栏动作跟着地址和目录筛选走：换页、换管理区、开关 JAV 与竖屏之后都过一遍。 */
+function syncNavigation(){paintSidebar();paintNav();syncHeaderActions()}
 /* 每个表面自带一个 AbortController：claimSurface 先作废上一屏的读请求再推进 epoch。
    只判过期（`surfaceCurrent`）而让请求跑到底的话，切三四页就有三四份读请求同时占着
    那 6 条连接，最后停留的那一页反而排在队尾。
@@ -451,7 +459,7 @@ const route=(path,replace=false)=>{
   barsRequestSeq++;
   history[replace?'replaceState':'pushState']({},'',path);syncPageTitle(path);
   lastRoutePath=decodeURIComponent(new URL(path,location.href).pathname);
-  queueMicrotask(()=>{syncHeaderActions();paintListTitle();buildDrawerNavigation();void syncPostSetupTutorial()});
+  queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
 
 /* ── 脱盘模式 ─────────────────────────────────────────────────────────────────
@@ -478,14 +486,6 @@ async function loadSourceStatus(){
    所以上面这一行调用照样成立。 */
 const DURATION_TAGS=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
 const SETTINGS_KEY='peach.settings.v1';
-/* 侧栏默认给的那八个入口和它们的次序。首页之后先是关注——它是每天有新东西的那一屏；
-   JAV 是主库最常用的浏览模式，排在三个索引（艺人、标签、厂牌）前面；已标记是回头找，
-   管理垫底。播放列表和沉浸模式默认不在：两者都是从一条作品或一个索引里发起的动作，
-   常驻一格换来的是每次都要跳过它。要它们的人在设置里加回来，键仍在 NAV_CATALOG 里。
-   这份清单与 `src/peach/web_settings.py` 的同名常量逐字比对（test_web_settings.py）。 */
-const DEFAULT_SIDEBAR_ORDER=['','follow','jav','performers','tags','studios','flagged','manage'];
-const OPTIONAL_SIDEBAR_KEYS=['playlists','immerse','stats','review','data-cleanup','trash','follow-manage','quality'];
-const ALL_SIDEBAR_KEYS=[...DEFAULT_SIDEBAR_ORDER,...OPTIONAL_SIDEBAR_KEYS];
 const SORTS=[['seed','随机'],['rating','评分'],['o','高潮计数'],['plays','观看次数'],['dur','时长'],
              ['size','体积'],['new','入库时间'],['played','观看时间']];
 const JAV_RELEASE_SORT=['release','发行时间'];
@@ -513,7 +513,7 @@ const PHOTO_SIZES=[['big','大图','maximize'],['small','小图','layout-grid']]
 const PHOTO_LAYOUTS=[['fixed','固定比例','layout-grid'],['masonry','瀑布流','columns-2']];
 /* 显示器用于跟随系统主题和详情页的画面分辨率。 */
 const THEME_OPTIONS=[['system','跟随系统','monitor'],['light','浅色','sun'],['dark','深色','moon']];
-const DEFAULT_SETTINGS={batchSize:60,defaultSort:'seed',sortDefaultsVersion:3,hoverDelaySeconds:5,seekSeconds:10,searchHistoryLimit:10,relatedLimit:20,javLayout:'big',homeLayout:'small',javImage:'cover',followLayout:'default',peopleLayout:'big',photoSize:'small',ambientMode:true,miniplayer:true,theaterMode:false,theme:'system',groupCollapse:true,sidebarOrder:DEFAULT_SIDEBAR_ORDER,homeGlow:DEFAULT_HOME_GLOW,accent:DEFAULT_ACCENT};
+const DEFAULT_SETTINGS={batchSize:60,defaultSort:'seed',sortDefaultsVersion:3,hoverDelaySeconds:5,seekSeconds:10,searchHistoryLimit:10,relatedLimit:20,javLayout:'big',homeLayout:'small',javImage:'cover',followLayout:'default',peopleLayout:'big',photoSize:'small',ambientMode:true,miniplayer:true,theaterMode:false,theme:'system',groupCollapse:true,sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],homeGlow:DEFAULT_HOME_GLOW,accent:DEFAULT_ACCENT};
 let appSettings={...DEFAULT_SETTINGS};
 try{appSettings={...DEFAULT_SETTINGS,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')}}catch(_e){}
 appSettings.followInitialDays=[0,7,30,90].includes(+appSettings.followInitialDays)?+appSettings.followInitialDays:30;
@@ -555,9 +555,7 @@ Object.assign(appSettings,normalizeJavPreferences(appSettings));
 appSettings.theme=allowedSetting(appSettings.theme,THEME_CHOICES,'system');
 appSettings.homeGlow=normalizeHomeGlow(appSettings.homeGlow);
 appSettings.accent=normalizeAccent(appSettings.accent);
-const sidebarKeyAlias=key=>key==='ads'||key==='dupes'?'data-cleanup':key;
-appSettings.sidebarOrder=[...new Set((Array.isArray(appSettings.sidebarOrder)?appSettings.sidebarOrder:DEFAULT_SIDEBAR_ORDER).map(sidebarKeyAlias))].filter(key=>ALL_SIDEBAR_KEYS.includes(key));
-if(!appSettings.sidebarOrder.length)appSettings.sidebarOrder=[...DEFAULT_SIDEBAR_ORDER];
+appSettings.sidebarOrder=normalizeSidebarOrder(appSettings.sidebarOrder);
 document.documentElement.style.setProperty('--hover-delay',`${appSettings.hoverDelaySeconds}s`);
 /* 音效跟着偏好走。点击与开关那两声由 document 上的一对监听统一发；回执、菜单和弹层
    在各自的入口自己响。 */
@@ -695,10 +693,11 @@ const settingsEffects={
     repaintDetailPoster();
   },
   searchHistoryLimit:()=>updateIsland($('#searchMenu'),{historyLimit:appSettings.searchHistoryLimit}),
-  sidebarOrder:()=>{buildEdge();buildBars()},
 };
 /* 折射贴图由壳尾的装配段挂；设置面板左栏那块玻璃第一次进 DOM 时要它再扫一遍。 */
 let syncGlassOptics=()=>{};
+/* 品牌与开合键挪进侧栏标题行，同样由壳尾的装配段给（`placeBrand`）；侧栏岛换掉骨架之后要它再挪一次。 */
+let placeSidebarHead=()=>{};
 /* 来源图标：品牌使用已缓存的官方资产；通用操作图标统一使用本地 Lucide 子集。
    115 与 PikPak 都取 `MEDIA_SOURCE_ICONS` 里那份官方站标（取证
    follow-source-icons-measured.md）：来源角标、媒体库切换器和配置页问的是同一件事
@@ -712,6 +711,29 @@ const SRCICON={
 const srcBadge=(loc,cost,cls)=>{const label=`${LOC[loc]||loc}${cost==='metered'?' · 计费':''}`;
   return `<span class="${cls||'src'} ${cost==='metered'?'metered':'free'}" title="${esc(label)}" aria-label="${esc(label)}">`
     +(SRCICON[loc]||'')+'</span>'};
+/* 侧栏来源那一行开头的记号，同 `SRCICON` 一份取法：本地与在线是字形，网盘是官方站标，其余按计费画点。 */
+function sidebarDot(loc){
+  if(loc==='local')return {kind:'glyph',name:'hard-drive'};
+  if(loc==='online')return {kind:'glyph',name:'rss'};
+  if(SRCICON[loc]&&MEDIA_SOURCE_ICONS[loc])return {kind:'image',src:MEDIA_SOURCE_ICONS[loc]};
+  // 计费的两家（PikPak、在线）上面都有自己的记号，走到这里的都不计费。
+  return {kind:'cost',cost:'free'};
+}
+/* 一份目录聚合换成侧栏岛的分组。显示名在这里换好；资料页是某位创作者自己时，创作者那组去掉这个人。
+   脱盘的来源留在名单里但点不了：数量还有意义，点进去只会得到一屏放不出的卡片。 */
+function sidebarFacets(facetData,context){
+  const rows=(items,named=row=>row.label||tagLabel(row.k))=>(items||[]).map(row=>({value:String(row.k),label:named(row),n:row.n??null}));
+  const creators=context.type==='entity'&&context.kind==='creator'
+    ?(facetData.creators||[]).filter(row=>row.k!==context.name):facetData.creators;
+  return {
+    locations:(facetData.locations||[]).map(row=>({value:row.k,label:LOC[row.k]||row.k,n:row.n??null,dot:sidebarDot(row.k),
+      ...(sourceOffline(row.k)?{offline:OFFLINE_HINT}:{})})),
+    regions:rows(facetData.regions),orientations:rows(facetData.orientations),
+    creators:rows(creators),tags:rows(facetData.tags),tech:rows(facetData.tech),
+    followTags:rows(facetData.follow_tags,row=>tagLabel(row.k)),
+    duration:!!facetData.stats?.duration,
+  };
+}
 /* 空态用 Vercel 的「icon tile + 标题 + 一句解释」结构。不放假动作按钮：
    能执行的操作仍然留在各页自己的工具栏里，空态只负责解释为什么是空的。 */
 const emptyState=emptyStateHtml;
@@ -877,19 +899,19 @@ const clearSearchField=(snapshot=null)=>{
 function openUnowned(){
   resetHomeState();state.owner='none';
   clearSearchField();disposeStage(false);showHomeSurfaces();
-  route(homePath());buildEdge();buildBars();loadCatalog();
+  route(homePath());syncNavigation();buildBars();loadCatalog();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 详情页那枚产地和未归属同一种东西：它标的不是一句说明，是馆藏里一个能筛的集合。 */
 function openRegion(region){
   resetHomeState();state.region=region||'none';
   clearSearchField();disposeStage(false);showHomeSurfaces();
-  route(homePath());buildEdge();buildBars();loadCatalog();
+  route(homePath());syncNavigation();buildBars();loadCatalog();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function openHome(scroll=false){
   resetHomeState();route('/');clearSearchField();disposeStage(false);showHomeSurfaces();
-  buildEdge();buildBars();loadCatalog();
+  syncNavigation();buildBars();loadCatalog();
   if(scroll)window.scrollTo({top:0,behavior:'smooth'});
 }
 /* `onboarding=1` 来自设置完成页。标记会在 Peach 的每一页保持生效；清单只读真实接口，
@@ -2001,16 +2023,8 @@ function scrollFilteredViewToTop(){
 function applyFilterStateInPlace(filters){
   // 资料页那一条的按下态由岛按地址上的筛选算，新的筛选已经经 `routeEntityPage` 推过去了。
   if(barsContext.type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});
-  $('#drawer').querySelectorAll('.chip[data-key]').forEach(b=>
-    b.setAttribute('aria-pressed',String(String(filters[b.dataset.key]||'')
-      .split(',').filter(Boolean).includes(b.dataset.val))));
-  const durMin=$('#durMin'),durMax=$('#durMax');
-  if(durMin&&durMax){
-    durMin.value=String(filters.dur_min?Math.min(180,+filters.dur_min/60):0);
-    durMax.value=String(filters.dur_max?Math.min(180,+filters.dur_max/60):180);
-    // 轨道上那截填充由 oninput 算，改 value 不会自己触发。
-    durMin.dispatchEvent(new Event('input'));
-  }
+  // 侧栏那几组的按下态与时长两端由侧栏岛照这一份筛选画，成员不动。
+  paintSidebar({filters:{...filters}});
   renderCombo();
 }
 /* 侧栏那些数字是跟着当前筛选走的，不刷新就是一列对不上的数。但刷新只该改数字：整段
@@ -2020,17 +2034,9 @@ async function refreshFacetCounts(context){
   const seq=++facetCountsSeq;
   const [facetData]=await getBarsData(context);
   if(seq!==facetCountsSeq)return;
-  barsFacets=facetData;
   if(context.type==='home')facets=facetData;
-  const counts=new Map();
-  [['loc',facetData.locations],['orient',facetData.orientations],['region',facetData.regions],
-   ['creator',facetData.creators],
-   ['tag',facetData.tags],['tag',facetData.tech]].forEach(([key,rows])=>
-    (rows||[]).forEach(row=>counts.set(key+'\n'+row.k,row.n)));
-  $('#drawer').querySelectorAll('.chip[data-key] .n').forEach(el=>{
-    const chip=el.closest('.chip');
-    el.textContent=(counts.get(chip.dataset.key+'\n'+chip.dataset.val)||0).toLocaleString();
-  });
+  // 名单里没有的那几枚由岛记 0；「展开全部」也照这一份摊开。
+  paintSidebar({latest:sidebarFacets(facetData,context)});
 }
 function commitContextFilter(mutate){
   scrollFilteredViewToTop();
@@ -2062,95 +2068,6 @@ function commitContextFilter(mutate){
 const VIEW_PILLS=[{k:'',label:'全部'},{k:'fresh',label:'没看过'},
                   {k:'later',label:'稍后看'},{k:'flagged',label:'已标记'}];
 const catalogViews=()=>VIEW_PILLS.map(v=>({...v,href:v.k?STATE_ROUTES[v.k]:'/'}));
-/* 抽屉那一列跟筛选条那一排是同一块玻璃，只是换了根轴。它挂在 `#drawer` 上而不是那
-   一列里：切页会把 `#drawerScroll` 整块重画，住在里面的话玻璃跟着一起没，动画在第
-   一个微任务里就断了，看到的只是当前项换了个地方亮起来。`#drawer` 自己不重画，是这
-   一侧唯一的定位宿主。代价跟筛选条那边一样——那一列自己的位置和纵滚都得补回来。 */
-let navGlide=null,navGlideBox=null,navGlideTarget=null;
-/* 切一次页那一列要被画两遍：先是导航自己那一遍，跟着是发现栏连侧栏一起重画的那一遍，
-   两遍的标题行相差 4px。同步落在第一遍的读数上，玻璃就钉在那儿——一次切页留下 4px，
-   来回切几次，它离当前那一格越来越远。所以画完下一帧再对一次，量到的一样就什么都不
-   做。用当次那一格自己的引用，不重新去找按下态：指针悬在别的格上时找到的是另一格。 */
-let navGlideSettle=0;
-function settleNavGlide(deadline){
-  if(navGlideSettle)return;
-  const until=deadline||performance.now()+800;
-  navGlideSettle=requestAnimationFrame(()=>{
-    navGlideSettle=0;
-    const scroll=$('#drawerScroll'),active=navGlideTarget;
-    if(!navGlide||!navGlideBox||!scroll||!active||!active.isConnected)return;
-    /* 有位移正在跑就等它跑完再对：这一下改的是终点，会把走到一半的那段掐掉。切页那次
-       动画正好压在重画上，只看一帧就放弃的话，要对的正是这一次。 */
-    if(navGlide.getAnimations().length){
-      if(performance.now()<until)settleNavGlide(until);
-      return;
-    }
-    const box={x:active.offsetLeft,y:active.offsetTop-scroll.scrollTop,
-      w:active.offsetWidth,h:active.offsetHeight};
-    if(!box.h)return;
-    if(box.x===navGlideBox.x&&box.y===navGlideBox.y
-      &&box.w===navGlideBox.w&&box.h===navGlideBox.h)return;
-    navGlideBox=box;moveGlidePane(navGlide,null,box,'y');
-  });
-}
-function syncNavGlide(animate,target){
-  const host=$('#drawer'),scroll=$('#drawerScroll');
-  const active=(target&&target.isConnected?target:null)
-    ||(scroll&&scroll.querySelector('.dnav button[aria-pressed="true"]'));
-  navGlideTarget=active||null;
-  if(!host||!active){if(navGlide)navGlide.hidden=true;navGlideBox=null;return}
-  if(!navGlide||navGlide.parentElement!==host){
-    navGlide=document.createElement('span');navGlide.className='navglide';
-    navGlide.setAttribute('aria-hidden','true');host.prepend(navGlide);navGlideBox=null;
-  }
-  /* 坐标走 `offsetTop` 不走 `getBoundingClientRect`：抽屉自己带一条收起的位移动画，
-     量屏幕坐标会把宿主正在走的那一下一起吃进来，每量一次都是个新位置，玻璃于是在
-     一次切页里连着起跑好几段。偏移量只认布局，抽屉滑到哪儿它都不变。 */
-  const box={x:active.offsetLeft,y:active.offsetTop-scroll.scrollTop,
-    w:active.offsetWidth,h:active.offsetHeight};
-  if(!box.h)return;
-  /* 那一列纵滚到看不见当前项时收起来：它住在滚动容器外面，不跟着一起被裁，不收的话
-     会停在侧栏顶上，像块没人要的高光。 */
-  navGlide.hidden=box.y+box.h<=scroll.offsetTop||box.y>=scroll.offsetTop+scroll.clientHeight;
-  const from=navGlideBox;navGlideBox=box;
-  moveGlidePane(navGlide,animate?from:null,box,'y');
-  settleNavGlide();
-}
-/* 侧栏纵滚时玻璃原地跟上：容器滚走了它不动就会脱开对准的那一格。一帧只算一次——
-   每次都要量位置，逐个滚动事件地量等于把滚动这件事拖回主线程排队。 */
-let navGlideTick=0;
-/* 开合与响应式布局都按实际尺寸同步；开合后悬停目标归回当前导航项。 */
-function resizeNavGlide(){
-  navGlide?.getAnimations().forEach(animation=>animation.cancel());
-  syncNavGlide(false,navGlideTarget);
-}
-const navGlideResize=new ResizeObserver(resizeNavGlide);
-navGlideResize.observe($('#drawer'));
-navGlideResize.observe($('#drawerScroll'));
-document.addEventListener('board:sidebar',()=>{
-  navGlideTarget=null;
-  if(navGlideTick)cancelAnimationFrame(navGlideTick);
-  navGlideTick=requestAnimationFrame(()=>{navGlideTick=0;syncNavGlide(false)});
-});
-$('#drawerScroll').addEventListener('scroll',()=>{
-  if(navGlideTick)return;
-  navGlideTick=requestAnimationFrame(()=>{navGlideTick=0;syncNavGlide(false)});
-},{passive:true});
-/* 玻璃跟着指针走，不等点击：指到哪一格就滑过去，指针离开这一列再滑回真正选中的那格。
-   `aria-pressed` 全程不动——移过去不是选中，读屏和键盘那边不该跟着变。
-   两个监听都委托在 `#drawer` 上：那一列每次切页都整块重画，挂在按钮身上等于每次重画
-   都要记得再接一遍。用 `pointerover`／`pointerout` 而不是 enter／leave，后两个不冒泡，
-   委托接不到。 */
-$('#drawer').addEventListener('pointerover',event=>{
-  if(event.pointerType==='touch')return;
-  const button=event.target.closest?.('.dnav button[data-nav]');
-  if(button)syncNavGlide(true,button);
-});
-$('#drawer').addEventListener('pointerout',event=>{
-  if(event.pointerType==='touch')return;
-  const column=event.target.closest?.('.dnav');
-  if(column&&!column.contains(event.relatedTarget))syncNavGlide(true);
-});
 /* ── 首页筛选条（`catalog-filter` 岛，ADR-0031） ──
    两排头像、浮层上排的视图与标签、下排读数与排序，外加正文里网格上面那条交集条。筛选、路由与
    取数仍归壳：成员与按下态在这里算好当 props 递进去，动作回到这里，落点照旧是
@@ -2254,12 +2171,9 @@ $('#catalogFilter').addEventListener('click',event=>{
   if(!view||event.defaultPrevented)return;
   event.preventDefault();catalogFilterActions().setView(view.dataset.catalogView);
 });
-/* 展开与收起是同一枚键的两面，`aria-expanded` 说的就是这一组眼下摊开到哪一步，箭头照它
-   翻。一个箭头说得完的事不再配一句字：名单末尾那个位置，字比图标更像名单的最后一项。 */
-const sidebarMoreHtml=(key,group)=>`<button class="sidemore" data-more="${key}" aria-expanded="false" aria-label="展开全部${group}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>`;
 async function buildBars(){
   const requestSeq=++barsRequestSeq;
-  buildDrawerNavigation();
+  paintSidebar();
   if(!sidebarHasCatalogContent(location.pathname))return;
   /* 详情浮窗是盖住整页的模态：两排头像、标签条和抽屉在它开着的时候一格都看不见。
      为它们另取一趟这一部作品口径的聚合，换来的只是把列表那份缓存挤掉——关掉详情时
@@ -2277,9 +2191,12 @@ async function buildBars(){
      整排头像连 `<img>` 一起重建、重解一遍码，屏幕上就是白闪一下——这一排每一个都是
      一张图。比数据不比时间：详情看上十分钟再回来，取回的多半还是同一份。 */
   const rendered=signature+'\n'+JSON.stringify([facetData,tops]);
-  if(rendered===barsRendered)return;
+  /* 顶上那几排原样留着；侧栏在中途换过页面（详情开了又关）时已收回到只剩导航，同一份分组推回去。 */
+  if(rendered===barsRendered){
+    if(sidebarCatalog)paintSidebar({content:sidebarCatalog,filters:{...filterState}});
+    return;
+  }
   barsRendered=rendered;
-  const followTagRows=facetData.follow_tags||[];
   if(context.type==='home')facets=facetData;
   const topTags=facetData.tags||[];
 
@@ -2313,107 +2230,9 @@ async function buildBars(){
     views:catalogViews(),state:filterState.state||'',
   });
   renderCombo();
-
-  const chips=(items,key,multi,limit)=>items.length?`<div class="chips">`+items.slice(0,limit||999).map(it=>{
-    const sel=(filterState[key]||'').split(',').filter(Boolean).includes(String(it.k));
-    const dot=key==='loc'?(SRCICON[it.k]||`<i class="cost ${it.cost}"></i>`):'';
-    // 脱盘的来源留在列表里但不可点：数量还有意义，点进去只会得到一屏放不出的卡片。
-    const off=key==='loc'&&sourceOffline(it.k);
-    return `<button class="chip${off?' offline':''}" aria-pressed="${sel}" data-key="${key}" data-multi="${multi?1:0}"
-      ${off?`disabled title="${OFFLINE_HINT}"`:''}
-      data-val="${esc(it.k)}">${dot}<span class="chip-label">${esc(it.label||tagLabel(it.k))}</span>${it.n!=null?`<span class="n" data-count-badge="${key}:${esc(it.k)}">${it.n.toLocaleString()}</span>`:''}</button>`;
-  }).join('')+`</div>`:'';
-  // 按语义类别区分来源、创作者、内容和技术规格。
-  const sec=(t,b,x,cat)=>sidebarSectionHtml(t,b,x,cat);
-  const scopedCreators=context.type==='entity'&&context.kind==='creator'
-    ? facetData.creators.filter(item=>item.k!==context.name):facetData.creators;
-  barsFacets=facetData;barsScopedCreators=scopedCreators;
-  // 与窄栏共用 EDGE_ICONS —— 两边条目必须一致，抽屉不另写一份硬编码
-  const navBtn=(k,label,ic)=>`<button data-nav="${k}" draggable="true" aria-pressed="${navOn(k)}">
-    ${navigationIcon(k,ic)}<span>${label}</span></button>`;
-  $('#drawerScroll').innerHTML=
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <b class="disp" style="font-size:15px;letter-spacing:.1em">导航与筛选</b>
-      <button id="drawerClose" class="ib" title="收起">${icon('x')}</button></div>`+
-    `<div class="dnav">${orderedEdgeIcons().map(([k,label,ic])=>navBtn(k,label,ic)).join('')}</div>`+
-    sec('来源',chips(facetData.locations.map(l=>({k:l.k,label:LOC[l.k]||l.k,n:l.n,
-        cost:(l.k==='pikpak'||l.k==='online')?'metered':'free'})),'loc',true),'','src')
-    /* 时长只有一处读数：手柄上方那枚气泡，在拖它的时候出现。另起一行写「不限 — 不限」
-       是同一件事说第二遍，而且滑块不动时它永远是那句话。 */
-    +sec('时长',facetData.stats.duration?`<div class="duration-filter">
-      <div class="dual-range" id="durationRange"><span class="range-base"></span><span class="range-fill"></span>
-        <input id="durMin" type="range" min="0" max="180" step="5" value="${filterState.dur_min?Math.min(180,+filterState.dur_min/60):0}" aria-label="最短时长（分钟）">
-        <input id="durMax" type="range" min="0" max="180" step="5" value="${filterState.dur_max?Math.min(180,+filterState.dur_max/60):180}" aria-label="最长时长（分钟）"></div></div>`:'','','meta')
-    /* 产地紧挨着来源：两者回答的都是「这批片打哪来」，一个说存储，一个说发行体系。
-       可多选——想一次看完日韩两边的片，不该逼人点两趟。 */
-    +sec('产地',chips(facetData.regions,'region',true),'','general')
-    +sec('画幅',chips(facetData.orientations,'orient'),'','meta')
-    /* 展开键接在名单末尾，它说的是「这张名单还没完」——那句话要跟名单断掉的地方在
-       一起。挂在组名那一行时，人得先把这一列读到底、再抬头回到标题去找它。
-       身量取排名那枚展开药丸：一个箭头就说得完的事不必再配一句字。 */
-    +sec('创作者',chips(scopedCreators,'creator',false,26),scopedCreators.length>26?sidebarMoreHtml('creator','创作者'):'','artist')
-    +sec('内容标签',chips(facetData.tags,'tag',false,30),facetData.tags.length>30?sidebarMoreHtml('tag','内容标签'):'','general')
-    +sec('影片属性',chips(facetData.tech,'tag',false,16),'','meta')
-    +sec('关注标签',followTagRows.length?`<div class="chips">`+followTagRows.map(row=>
-      `<button class="chip online" data-follow-drawer-tag="${esc(row.k)}"><span class="chip-label">${esc(tagLabel(row.k))}</span><span class="n" data-count-badge="follow:${esc(row.k)}">${row.n.toLocaleString()}</span></button>`
-      ).join('')+`</div>`:'','','online');
-  /* 抽屉每次筛选都整块重画，所以徽标弹不弹由 `popBadges` 按上一次的值判断，不由节点
-     是不是新建的判断——照后者判，每换一个筛选整列计数都会一起弹。 */
-  popBadges($('#drawerScroll'),'drawer');
-  const dc=$('#drawerClose'); if(dc)dc.onclick=()=>openDrawer(false);
-  $('#drawer').querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{
-    openIndex(b.dataset.page); closeDrawerAfterNav()});
-  $('#drawer').querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));
-  $('#drawer').querySelectorAll('[data-follow-drawer-tag]').forEach(b=>b.onclick=()=>{
-    followAuthors=new Set();followProviders=new Set();followMediaView='videos';followFilter='saved';
-    followTags=new Set([b.dataset.followDrawerTag]);
-    openDrawer(false);route(followViewPath());openFollow(false)});
-  wireNavigationDrag($('#drawer').querySelector('.dnav'));
-  syncNavGlide(false);
-  /* 只认目录筛选自己的芯片。选择器写成 `.chip` 会把关注标签也扫进来——它同样
-     用 chip 的样式，但没有 data-key，被这里接管后点下去等于按 undefined 筛目录，
-     表现是跳回首页。这段在下面才执行，覆盖的正是关注标签自己的处理。 */
-  const bind=()=>$('#drawer').querySelectorAll('.chip[data-key]').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.key,v=b.dataset.val;
-    commitContextFilter(filters=>{
-      if(b.dataset.multi==='1'){const cur=(filters[k]||'').split(',').filter(Boolean);
-        const i=cur.indexOf(v);i>=0?cur.splice(i,1):cur.push(v);filters[k]=cur.join(',')}
-      else filters[k]=filters[k]===v?'':v
-    })});
-  bind();
-  const durMin=$('#durMin'),durMax=$('#durMax'),durRange=$('#durationRange');
-  if(durMin&&durMax&&durRange){
-    const syncDuration=(commit=false,changed='')=>{
-      let lo=+durMin.value,hi=+durMax.value;
-      if(lo>hi){if(changed==='min')hi=lo;else lo=hi;durMin.value=lo;durMax.value=hi}
-      durRange.style.setProperty('--lo',(lo/180*100)+'%');durRange.style.setProperty('--hi',(hi/180*100)+'%');
-      if(commit)commitContextFilter(filters=>{
-        filters.len='';filters.dur_min=lo?String(lo*60):'';filters.dur_max=hi<180?String(hi*60):''})
-    };
-    durMin.oninput=()=>syncDuration(false,'min');durMax.oninput=()=>syncDuration(false,'max');
-    durMin.onchange=()=>syncDuration(true,'min');durMax.onchange=()=>syncDuration(true,'max');syncDuration();
-  }
-  $('#drawer').querySelectorAll('[data-more]').forEach(b=>b.onclick=()=>{
-    const group=b.closest('.sec'), k=b.dataset.more;
-    const src=k==='tag'?barsFacets.tags:barsScopedCreators;
-    const lim=k==='tag'?30:26;
-    const name=group.dataset.sidebarGroup;
-    const expanded=b.getAttribute('aria-expanded')==='true';
-    /* 这一列的位置归人自己管：摊开的内容全在按下的这个点以下，把他挪过去等于替他决定
-       现在要看第几条。名单一变长，浏览器会顺着焦点和锚定把这一列推走，所以记下再放回。 */
-    const scroller=$('#drawerScroll'),keep=scroller.scrollTop;
-    const hold=()=>{scroller.scrollTop=keep};
-    const body=group.querySelector(':scope > .fcollapse'),before=body?.getBoundingClientRect().height;
-    group.querySelector('.chips').outerHTML=chips(src,k,false,expanded?lim:999);
-    /* 摊开时名单从二十几条长到全部，和分组的 Collapse 走同一份高度过渡；中途收起整组就不收尾。 */
-    const toggle=group.querySelector('.board-section-toggle');
-    if(!expanded&&body)growCollapse(body,before,()=>toggle.getAttribute('aria-expanded')==='true');
-    b.setAttribute('aria-expanded',String(!expanded));
-    b.setAttribute('aria-label',(expanded?'展开全部':'收起')+name);
-    /* 收起收的是整组。名单已经摊到最长，把它退回二十几条只是换一个断点，人还站在同一
-       列读不完的东西前面；他按这一下要的是把这一组放回去。 */
-    if(expanded)group.querySelector('.board-section-toggle').click();
-    bind();hold();requestAnimationFrame(hold);});
+  /* 侧栏那几组换成这一份聚合：`key` 换了，岛按新的按下态重定各组开合，计数徽标按上一次的值判断弹不弹。 */
+  sidebarCatalog={kind:'catalog',key:String(++sidebarContentSeq),facets:sidebarFacets(facetData,context)};
+  paintSidebar({content:sidebarCatalog,filters:{...filterState},latest:null});
 }
 /* 排序和换批都属于当前列表，放在筛选条下排，不占用全局导航。目录网格每接一页报一次总数与
    显示的卡数（竖屏带与 Mix 不算），读数由岛按位错峰写出来。 */
@@ -2485,7 +2304,7 @@ function ledgerGateNote(runtime,message,actionLabel,actionHref){
 /* 整页视图接管页面主体。
 
    这段六行的显隐此前在八个入口里各抄了一份，每份还带着随手的小差异：空格、顺序、
-   是 `buildManageBar()` 还是隐藏管理条再 `buildEdge()`。抄一次就多一次漏行的机会——
+   是 `buildManageBar()` 还是隐藏管理条再 `syncNavigation()`。抄一次就多一次漏行的机会——
    关注、播放列表、复核三个页面漏掉筛选芯片，就是从抄 `enterManagementSurface` 抄漏
    开始的，那次漏的是「离开目录」这一半，这里是「铺开新页面」的另一半。
 
@@ -2498,7 +2317,7 @@ function showManagementBody({manage=true,placeholder=''}={}){
   $('#stats').hidden=false;$('#index').hidden=true;clearCatalogGrid();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
   if(manage)buildManageBar();
-  else{$('#managebar').hidden=true;$('#manageTitle').hidden=true;buildEdge()}
+  else{$('#managebar').hidden=true;$('#manageTitle').hidden=true;syncNavigation()}
   if(!placeholder)return;
   /* 屏幕上已经是同一张骨架就别重画：innerHTML 换新节点会把 shimmer 从头放一遍，
      整页刷新看到的就是同一段动画闪两次。 */
@@ -3400,7 +3219,7 @@ function showIndexSkeleton(params){
 /* 回目录按标签筛选：点一枚是「只看这一枚」，按所选显示结果是照匹配方式拼几枚。 */
 function showIndexTags(tags,match){
   state={...state,state:'',tag:tags.join(','),tag_match:match};
-  setSelectMode(false,false);route(homePath());showHomeSurfaces();buildEdge();buildBars();loadCatalog();
+  setSelectMode(false,false);route(homePath());showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* 在线那一档的人和标签还没进账本，没有资料页可去：他们名下那批东西全在关注页上，所以点开
    等于「关注 · 这一位 / 这一枚」。其余条件一并清空——从名册点进来问的是这一位的全部更新，
@@ -3441,7 +3260,7 @@ async function openIndex(kind,push=true){
     configurable:!!runtimeConfigurable,
   },{isCurrent:()=>surfaceCurrent(surface)});
   if(!surfaceCurrent(surface))return;
-  buildEdge();scheduleStickySurfaces();
+  syncNavigation();scheduleStickySurfaces();
 }
 
 /* 「女优」只用于番号发行物。素人、创作者自制和网红内容里的出镜者是艺人，
@@ -3815,43 +3634,11 @@ async function openEntity(kind,name,push=true){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* 抽屉里所有重画都只写 #drawerScroll：#drawer 本身是定位宿主，覆盖式滚动条的轨道和
-   这层滚动容器都挂在它身上，整块 innerHTML 一换就把 buildBars() 要写的容器连轨道一起
-   抹掉，首页从此停在骨架态。换页面的判据 data-surface 也记在滚动层上：
-   syncSidebarSurface() 认定换了页面就 replaceChildren()，传宿主进去等于把滚动层删掉。 */
-function buildDrawerNavigation(){
-  const scroll=$('#drawerScroll'),key=surfacePath()+location.search;
-  if(!syncSidebarSurface(scroll,key)){
-    scroll.querySelectorAll('[data-nav]').forEach(button=>
-      button.setAttribute('aria-pressed',String(navOn(button.dataset.nav))));
-    syncNavGlide(true);
-    return;
-  }
-  scroll.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <b class="disp" style="font-size:15px;letter-spacing:.1em">导航与筛选</b>
-    <button id="drawerClose" class="ib" title="收起" aria-label="收起导航">${icon('x')}</button></div>
-    <div class="dnav">${orderedEdgeIcons().map(([k,label,ic])=>
-      `<button data-nav="${k}" draggable="true" aria-pressed="${navOn(k)}">${navigationIcon(k,ic)}<span>${label}</span></button>`).join('')}</div>`;
-  $('#drawerClose').onclick=()=>openDrawer(false);
-  scroll.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));
-  wireNavigationDrag(scroll.querySelector('.dnav'));
-  /* 重画换掉的是那一列的按钮，玻璃在 `#drawer` 上没动。这一下只把它对回新画出来的
-     那一格，不带动画：这时候动画早已经从 `paintNav` 那里起跑了。 */
-  syncNavGlide(false);
-}
-/* 侧栏那一列标签 chip。计数由调用方给：列表是岛那一版可见条目的（`loaded`），详情是这一条自己的。 */
+/* 关注页与关注详情的那一组内容标签。计数由调用方给：列表是岛那一版可见条目的（`loaded`），详情是这一条
+   自己的（`present`）。两处都落在这一个函数里：按下态读的是壳的 `followTags`，点下去回的也是壳的关注筛选。 */
 function renderFollowDrawer(counts){
-  buildDrawerNavigation();
-  const scroll=$('#drawerScroll');
-  scroll.querySelectorAll('.sec').forEach(section=>section.remove());
-  if(!counts.length)return;
-  const tagBody=`<div class="chips">${
-    counts.map(([tag,n])=>
-      `<button class="chip online" data-follow-drawer-tag="${esc(tag)}" aria-pressed="${followTags.has(tag)}"><span class="chip-label">${esc(tagLabel(tag))}</span><span class="n">${n}</span></button>`).join('')}</div>`;
-  scroll.insertAdjacentHTML('beforeend',sidebarSectionHtml('内容标签',tagBody,'','online'));
-  $('#drawer').querySelectorAll('[data-follow-drawer-tag]').forEach(b=>b.onclick=()=>{
-    followTags=new Set([b.dataset.followDrawerTag]);
-    openDrawer(false);route(followViewPath());openFollow(false)});
+  paintSidebar({content:counts.length?{kind:'follow',
+    tags:counts.map(([tag,n])=>({value:tag,label:tagLabel(tag),n})),selected:[...followTags]}:null});
 }
 function openDrawer(v){const drawer=$('#drawer'),restore=!v&&drawer.contains(document.activeElement);
   drawer.inert=!v&&innerWidth<=760;
@@ -3861,8 +3648,8 @@ function openDrawer(v){const drawer=$('#drawer'),restore=!v&&drawer.contains(doc
   if(restore)$('#filterBtn').focus();sessionStorage.setItem('board.sidebar',v?'open':'closed')}
 function closeDrawerAfterNav(){if(innerWidth<=760)openDrawer(false)}
 $('#filterBtn').onclick=()=>openDrawer(!$('#drawer').classList.contains('open'));
-/* 常驻窄图标条：点即切视图，鼠标停留 180ms 展开完整抽屉 */
-const EDGE_ICONS=[
+/* 侧栏导航默认就有的入口，`[键, 名称, 字形]`；首页的键是空串。 */
+const SIDEBAR_ITEMS=[
   ['','首页','home'],
   ['performers','艺人','user-round'],
   ['studios','厂牌','clapperboard'],
@@ -3877,7 +3664,6 @@ const EDGE_ICONS=[
      归右上角。三个名字都带「管」「设」的字，字形就得把它们分开。 */
   ['manage','管理','wrench'],
 ];
-function navigationIcon(key,glyph){return key===''?'<img class="board-home-logo" src="/peach-logo.png" alt="">':icon(glyph)}
 /* 每个管理页的身份（标题、图标、可直达的 URL）。用户仍可在设置里把其中任何
    一个加到顶层侧栏，所以这里保留全部页面，不因为它进了数据管理就删掉。 */
 const MANAGE_SECTIONS=[
@@ -3919,10 +3705,10 @@ const manageMenuSections=()=>MANAGE_SECTIONS.filter(([key])=>MANAGE_MENU_SECTION
   &&(key!=='configuration'||runtimeConfigurable===true));
 /* 配置页绑定这台机器，不进跨机同步的侧栏顺序：钉到手机的侧栏上只会得到一句「请在运行
    Peach 的电脑上打开」。 */
-const OPTIONAL_EDGE_ICONS=MANAGE_SECTIONS.filter(([key])=>key!=='configuration').map(([key,label,ic])=>
+const OPTIONAL_SIDEBAR_ITEMS=MANAGE_SECTIONS.filter(([key])=>key!=='configuration').map(([key,label,ic])=>
   key==='follow'?['follow-manage',label,ic]
     :key==='cleanup'?['data-cleanup',label,ic]:[key,label,ic]);
-const NAV_CATALOG=[...EDGE_ICONS,...OPTIONAL_EDGE_ICONS];
+const NAV_CATALOG=[...SIDEBAR_ITEMS,...OPTIONAL_SIDEBAR_ITEMS];
 const DIRECT_MANAGE_NAV={stats:'stats',review:'review','data-cleanup':'cleanup',trash:'trash','follow-manage':'follow',quality:'quality',activity:'activity'};
 /* 设置面板第一次打开时才装载 React 包；宿主只在那一下建一次，里面读到的常量那时都已就位。 */
 const settingsHost=()=>({
@@ -3950,29 +3736,47 @@ function openSettings(section=''){
   return loadSettingsPanel(settingsHost()).then(panel=>{panel.open(section);return panel});
 }
 $('#settingsBtn').onclick=()=>void openSettings();
-function orderedEdgeIcons(){
-  const byKey=new Map(NAV_CATALOG.map(item=>[item[0],item]));
-  return appSettings.sidebarOrder.map(key=>byKey.get(key)).filter(Boolean);
+/* 侧栏岛的宿主只建一次：`#drawer` 与它的覆盖式滚动条常驻，岛画进滚动层。 */
+function sidebarHost(){
+  return {
+    scroll:$('#drawerScroll'),store:settingsStore,navCatalog:NAV_CATALOG,
+    navOn,navTo,
+    toggleChip:(key,value,multi)=>commitContextFilter(filters=>{
+      if(multi){const cur=String(filters[key]||'').split(',').filter(Boolean);
+        const i=cur.indexOf(value);i>=0?cur.splice(i,1):cur.push(value);filters[key]=cur.join(',')}
+      else filters[key]=filters[key]===value?'':value
+    }),
+    setDuration:(lo,hi)=>commitContextFilter(filters=>{
+      filters.len='';filters.dur_min=lo?String(lo*60):'';filters.dur_max=hi<180?String(hi*60):''}),
+    openFollowTag:tag=>{
+      followAuthors=new Set();followProviders=new Set();followMediaView='videos';followFilter='saved';
+      followTags=new Set([tag]);openDrawer(false);route(followViewPath());openFollow(false)},
+    selectFollowTag:tag=>{followTags=new Set([tag]);openDrawer(false);route(followViewPath());openFollow(false)},
+    attached:()=>{placeSidebarHead();syncGlassOptics()},
+  };
 }
-/* 侧栏顺序跟账本走，不跟浏览器走：在 Windows 上排好，Mac 上就该是同一份。
-   本地那份仍然写，但只当首屏缓存（见 loadSyncedSettings）。
-   写服务端失败不回滚也不打断：reader 会返回 409，本地顺序照样已经生效，
-   只是这次改动不跨机同步——那是只读端的既定约束，不是操作失败。 */
-function saveSidebarSetting(){
-  saveSettings();buildEdge();buildBars();
-  api('/api/settings',{method:'POST',
-    body:JSON.stringify({sidebarOrder:appSettings.sidebarOrder})}).catch(()=>{});
+/* 启动时同步写进导航骨架（只认地址和本地设置，一个请求都不等），React 包回来后岛整块接手。骨架阶段的
+   点击由滚动层上这一处委托接住；岛接手后按钮自己处理点击，这里不再认。 */
+function mountSidebar(){
+  const scroll=$('#drawerScroll');
+  scroll.innerHTML=sidebarSkeletonHtml(appSettings.sidebarOrder,NAV_CATALOG,navOn);
+  scroll.addEventListener('click',event=>{
+    if(sidebarApi())return;
+    const button=event.target.closest?.('[data-nav]');
+    if(button)navTo(button.dataset.nav);
+  });
+  loadSidebar(sidebarHost()).then(sidebar=>sidebar.render(sidebarProps)).catch(()=>{});
 }
 /* 启动时用账本上的那份纠正本地缓存。侧栏立即用缓存显示；最终横条和作品在同步后绘制，
    读取期间只更新设置，保持已经显示的加载态。 */
-async function loadSyncedSettings({render=true}={}){
+async function loadSyncedSettings(){
   let remote=null;
   try{remote=await api('/api/settings')}catch(_e){return}
-  applySyncedSettings(remote,{render});
+  applySyncedSettings(remote);
 }
-/* 账本那一份落进本地缓存。设置面板每次打开都重取一次再交到这里，开着的面板经 store 通知跟上；
-   那时侧栏已经画过，顺序变了就当场重画。 */
-function applySyncedSettings(remote,{render=true}={}){
+/* 账本那一份落进本地缓存。设置面板每次打开都重取一次再交到这里，开着的面板与侧栏岛都经 store 通知
+   跟上：侧栏顺序变了，岛当场按新顺序重排。 */
+function applySyncedSettings(remote){
   const initial=remote&&remote.followInitialDays;
   if([0,7,30,90].includes(initial)){appSettings.followInitialDays=initial;saveSettings()}
   const days=remote&&remote.metadataRefreshDays;
@@ -3992,42 +3796,6 @@ function applySyncedSettings(remote,{render=true}={}){
   if(!order||!order.length||order.join(',')===appSettings.sidebarOrder.join(','))return;
   appSettings.sidebarOrder=order;
   saveSettings();
-  if(render){buildEdge();buildBars();wireAllDrag()}
-}
-function moveSidebarItem(key,targetKey,after=false){
-  if(key===targetKey)return;
-  const next=[...appSettings.sidebarOrder],from=next.indexOf(key);
-  if(from<0)return;
-  next.splice(from,1);
-  const target=next.indexOf(targetKey);
-  if(target<0)return;
-  next.splice(target+(after?1:0),0,key);
-  appSettings.sidebarOrder=next;saveSidebarSetting();
-}
-function wireNavigationDrag(root){
-  if(!root)return;
-  const items=[...root.querySelectorAll(':scope > [data-nav]')];
-  items.forEach(item=>{
-    item.ondragstart=e=>{
-      sidebarDragKey=item.dataset.nav;item.classList.add('nav-dragging');
-      e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',sidebarDragKey||'__home__');
-    };
-    item.ondragover=e=>{
-      if(sidebarDragKey===null||sidebarDragKey===item.dataset.nav)return;
-      e.preventDefault();e.dataTransfer.dropEffect='move';
-      const after=e.clientY>item.getBoundingClientRect().top+item.offsetHeight/2;
-      items.forEach(node=>node.classList.remove('nav-drop-before','nav-drop-after'));
-      item.classList.add(after?'nav-drop-after':'nav-drop-before');
-    };
-    item.ondrop=e=>{
-      e.preventDefault();
-      const after=item.classList.contains('nav-drop-after'),target=item.dataset.nav,key=sidebarDragKey;
-      sidebarDragKey=null;moveSidebarItem(key,target,after);
-    };
-    item.ondragend=()=>{
-      sidebarDragKey=null;items.forEach(node=>node.classList.remove('nav-dragging','nav-drop-before','nav-drop-after'));
-    };
-  });
 }
 /* 当前在哪个管理区。路由表里的 `section` 是唯一判据；垃圾文件那一屏没有自己的
    身份，它是数据管理的一部分，`state.state` 才是判据（`/junk-files` 从启动那一刻
@@ -4045,7 +3813,7 @@ function buildManageBar(){
   // 筛选条不在时那个偏移会留出一条 58px 的缝，滚动内容从缝里穿出来。
   if(current)hideDiscoveryBars();
   $('#count').classList.toggle('no-tagbar',!!current);
-  buildEdge();     // 顶层高亮跟随管理区；否则从首页进来时仍停在「首页」上
+  syncNavigation();     // 顶层高亮跟随管理区；否则从首页进来时仍停在「首页」上
   paintManageTitle();
   if(!current)return;
   const entry=MANAGE_SECTIONS.find(([k])=>k===current);
@@ -4156,7 +3924,7 @@ function openManage(section='stats'){
   /* 认不出的 section 一律落到垃圾文件：统计页那颗「查看垃圾文件」传的就是 `ads`，
      而垃圾文件是目录页的一个筛选态，没有自己的 section。 */
   state.orient='';state.state='ads';route(junkPath());
-  showHomeSurfaces();buildEdge();buildBars();loadCatalog();
+  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* JAV 模式。只有带番号的作品才有官方封套，发行时间排序、番号筛选都挂在这个语境上；
    资料页（女优/厂牌）进入时继承这个开关，因为那里同样是按番号浏览。
@@ -4221,7 +3989,7 @@ function toggleJavMode(){
   if(state.jav!=='1'&&state.sort==='release'){state.sort='seed';state.dir=''}
   state.state='';state.orient='';
   route(state.jav==='1'?'/?jav=1':'/');
-  showHomeSurfaces();buildEdge();buildBars();loadCatalog();
+  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* 批量操作后回到刚才那一页，而不是首页列表。
    实体资料页、索引页和管理区各有自己的取数路径，`loadCatalog()` 只会重建首页网格，
@@ -4246,7 +4014,7 @@ function navOn(k){
   if(directSection)return manageSection()===directSection;
   if(k==='manage'){
     const current=manageSection();
-    return !!current&&!orderedEdgeIcons().some(([key])=>DIRECT_MANAGE_NAV[key]===current);
+    return !!current&&!appSettings.sidebarOrder.some(key=>DIRECT_MANAGE_NAV[key]===current);
   }
   // JAV 和竖屏不是路径，是内存里的筛选开关，所以这两条只能问 state。
   if(k==='jav')return javActive();
@@ -4273,7 +4041,7 @@ function navTo(k){
   if(k==='shorts'){state.orient='竖屏';state.state=''}else{state.orient='';state.state=k}
   route(homePath());
   showHomeSurfaces();
-  buildEdge();buildBars();loadCatalog();
+  syncNavigation();buildBars();loadCatalog();
 }
 function syncHeaderActions(){
   const path=decodeURIComponent(location.pathname),parts=path.split('/').filter(Boolean);
@@ -4286,24 +4054,6 @@ function syncHeaderActions(){
   $('#selectMode').hidden=!canSelect;$('#density').hidden=!canDensity;
   syncPhotoWalls();
   if(!canSelect&&selectMode)setSelectMode(false,true);
-}
-function buildEdge(){
-  buildDrawerNavigation();
-  $('#edge').innerHTML=orderedEdgeIcons().map(([k,t,ic])=>
-    `<button data-nav="${k}" draggable="true" title="${t}" aria-pressed="${navOn(k)}">
-      ${navigationIcon(k,ic)}</button>`).join('')
-;
-  $('#edge').querySelectorAll('[data-loc]').forEach(b=>b.onclick=()=>{
-    const cur=(state.loc||'').split(',').filter(Boolean);
-    const i=cur.indexOf(b.dataset.loc);
-    i>=0?cur.splice(i,1):cur.push(b.dataset.loc);
-    state.loc=cur.join(',');
-    buildEdge(); buildBars(); loadCatalog();
-  });
-  $('#edge').querySelectorAll('[data-nav]').forEach(b=>b.onclick=e=>{
-    e.stopPropagation();navTo(b.dataset.nav)});
-  wireNavigationDrag($('#edge'));
-  syncHeaderActions();
 }
 /* 滚动期间挂起悬停预览：内容在鼠标下滑过会连续触发 mouseenter，
    每次都新建 video 并发起 /stream 请求，直接把页面拖垮。 */
@@ -4976,13 +4726,13 @@ function openCatalog(path){
     dur_min:params.get('dur_min')||'',dur_max:params.get('dur_max')||'',orient:params.get('orient')||'',
     state:ROUTE_STATES[path]||params.get('state')||'',...resolveSort(params.get('sort'),params.get('dir')),
     seed:params.get('seed')||(enteringHome?rollSeed():state.seed||rollSeed()),q:params.get('q')||'',jav:params.get('jav')||''};
-  $('#q').value=state.q;rememberSearchValue();buildEdge();buildBars();loadCatalog();
+  $('#q').value=state.q;rememberSearchValue();syncNavigation();buildBars();loadCatalog();
 }
 /* 回收站。它和目录页共用同一张网格，只是筛选被钉死成 `trash`。 */
 function openTrash(push){
   if(push)route('/trash');
   state={...state,creator:'',studio:'',tag:'',orient:'',state:'trash',q:''};clearSearchField();
-  showHomeSurfaces();buildEdge();buildBars();loadCatalog();
+  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* 沉浸模式当前这一条写在 `?id=`（沉浸岛每换一条经 `immerseHost.route` 写一次），刷新和后退都该回到同一条片子。 */
 function immerseStartId(){
@@ -4994,7 +4744,7 @@ async function restoreRoute(){
   surfaceEpoch++;
   barsRequestSeq++;
   syncPageTitle(location.href);
-  buildDrawerNavigation();
+  paintSidebar();
   const path=decodeURIComponent(location.pathname);
   void syncPostSetupTutorial();
   if(path==='/'&&new URLSearchParams(location.search).get('state')==='ads'){
@@ -5013,16 +4763,17 @@ async function restoreRoute(){
 window.addEventListener('popstate',restoreRoute);
 /* 左侧导航、管理条、页面标题和面包屑只认 location 和本地设置，一个请求都不等。
    挂在下面那条链上时它们排在 /api/sources 和 /api/facets 后面，实测让骨架先顶着
-   一个没有标题的空壳站了约半秒。buildManageBar() 内部会一并建好左侧导航，
-   所以这里不再单独调 buildEdge()。 */
+   一个没有标题的空壳站了约半秒。左侧导航先由 mountSidebar() 同步铺好骨架，
+   buildManageBar() 内部再按管理区重读一次按下态。 */
 entityShapesReady=loadEntityShapes();
 renderInitialSurfaceLoading();
+mountSidebar();
 buildManageBar();
 /* 那两个聚合查询喂的是首页顶部三条横条。深链进管理页或索引页时横条一开始就收着，
    结果没人看，却排在这一页自己的数据前面。 */
-Promise.all([loadSourceStatus(),loadSyncedSettings({render:false}),entityShapesReady])
+Promise.all([loadSourceStatus(),loadSyncedSettings(),entityShapesReady])
   .then(()=>wantsDiscoveryBars()?buildBars():null)
-  .then(async()=>{buildEdge();wireAllDrag();await restoreRoute();scheduleStickySurfaces()});
+  .then(async()=>{syncNavigation();wireAllDrag();await restoreRoute();scheduleStickySurfaces()});
 
 ;(()=>{
 /* Board 外壳与配置页导航。 */
@@ -5202,25 +4953,21 @@ glowPicker.querySelector('[data-glow-detail]').onclick=()=>{
   void openSettings('界面').then(panel=>panel.reveal('#homeGlowControls'));
 };
 syncGlowSidebar();
+/* 品牌（媒体库选择）与开合键是壳里浮层的锚点，挪进侧栏标题行那个空槽：骨架画好时一次，侧栏岛接手
+   换掉骨架时（`attached`）再一次。手机上抽屉收着时开合键回到顶栏原位，抽屉整块不可聚焦。 */
 function placeBrand(){
-  const close=document.querySelector('#drawerClose');
-  if(close){const head=close.parentElement;head.classList.add('board-sidebar-head');
-    boardBrand.setAttribute('aria-label','选择媒体库');
-    wireSidebarGroups(document.querySelector('#drawerScroll'));
-    const expanded=document.querySelector('#drawer').classList.contains('open'),desktop=innerWidth>760;
-    if(desktop||expanded){if(boardToggle.parentElement!==head)head.append(boardToggle)}else if(boardToggle.parentElement!==toggleHome.parentElement)toggleHome.after(boardToggle);
-    document.querySelector('#drawer').inert=!desktop&&!expanded;
-    document.querySelectorAll('#drawer .dnav button').forEach(button=>button.setAttribute('aria-label',button.textContent.trim()));
-  }
-  if(close&&boardBrand.parentElement!==close.parentElement){
-    const heading=close.parentElement.querySelector('h2,h3,strong,b');if(heading)heading.hidden=true;
-    close.before(boardBrand);
-  }
+  const head=document.querySelector('#drawerScroll > [data-sidebar-head]'),drawer=document.querySelector('#drawer');
+  if(!head)return;
+  boardBrand.setAttribute('aria-label','选择媒体库');
+  if(boardBrand.parentElement!==head)head.prepend(boardBrand);
+  const expanded=drawer.classList.contains('open'),desktop=innerWidth>760;
+  if(desktop||expanded){if(boardToggle.parentElement!==head)head.append(boardToggle)}else if(boardToggle.parentElement!==toggleHome.parentElement)toggleHome.after(boardToggle);
+  drawer.inert=!desktop&&!expanded;
 }
+placeSidebarHead=placeBrand;
 placeBrand();
 document.addEventListener('board:sidebar',placeBrand);
 addEventListener('resize',placeBrand);
-new MutationObserver(placeBrand).observe(document.querySelector('#drawer'),{childList:true,subtree:true});
 decorate();
 new MutationObserver(decorate).observe(document.querySelector('#stats'),{childList:true,subtree:true});
 new MutationObserver(decorate).observe(document.querySelector('#managebar'),{childList:true});
@@ -5294,7 +5041,7 @@ if(/Chrome|Chromium|Edg\//.test(navigator.userAgent)){
     /* 设置面板左栏那块 `[data-glass-pane]` 挂在 `<body>` 上、不在 `#main` 里，下面那个
        观察器看不到它；岛第一次画出面板时经 `syncGlassOptics` 叫这里再扫一遍。面板收着时
        宽高是零，`draw` 直接返回，等 `ResizeObserver` 在它露出来那一帧再画一次贴图。 */
-    document.querySelectorAll('.board-filter-frame,.top>.ib,.edge,.drawer,.selectiondock,.reviewcontrols,.reviewgroupbar,[data-glass-pane]').forEach(attach);
+    document.querySelectorAll('.board-filter-frame,.top>.ib,[data-sidebar-drawer],.selectiondock,.reviewcontrols,.reviewgroupbar,[data-glass-pane]').forEach(attach);
   };
   syncGlassOptics=sync;
   new MutationObserver(sync).observe(document.querySelector('#main'),{childList:true,subtree:true});sync();

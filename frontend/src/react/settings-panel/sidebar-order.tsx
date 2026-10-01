@@ -1,22 +1,21 @@
 /* 左侧导航的顺序：直接拖动排序，逐行上移、下移、隐藏，再从下面那张页面清单里加回来。
  *
- * 顺序跟账本走，不跟浏览器走：在 Windows 上排好，Mac 上就该是同一份。改完先落进本地那份
- * （侧栏立即按它重画），再写 `/api/settings`。写服务端失败不回滚也不打断：只读端会回 409，
- * 本地顺序照样已经生效，只是这次改动不跨机同步——那是只读端的既定约束，不是操作失败。 */
+ * 写入与侧栏那一列的拖动共用 `sidebar/sidebar-order.ts`：先落本地那份（侧栏按 store 的通知当场
+ * 重排），再写 `/api/settings`。 */
 import { useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 
 import { dismissMenu, presentMenu } from '@peach/legacy/ui';
 
+import { moveSidebarKey, useCommitSidebarOrder } from '../sidebar/sidebar-order';
 import { Icon } from './icon';
 import type { SettingsPanelHost } from './settings-panel-api';
-import { useSaveSettings } from './settings-data';
 
 /* 首页那一项的键是空串；空串写进属性和 dataTransfer 都等于没写，给它一个占位。 */
 const HOME = '__home__';
 const optionKey = (key: string) => key === '' ? HOME : key;
 
 export function SidebarOrder({ host }: { host: SettingsPanelHost }) {
-  const save = useSaveSettings();
+  const commit = useCommitSidebarOrder(host.store);
   const order = host.store.value.sidebarOrder;
   const byKey = new Map(host.navCatalog.map((item) => [item[0], item]));
   const visible = order.map((key) => byKey.get(key)).filter((item) => item !== undefined);
@@ -28,22 +27,9 @@ export function SidebarOrder({ host }: { host: SettingsPanelHost }) {
   const trigger = useRef<HTMLButtonElement | null>(null);
   const menu = useRef<HTMLDivElement | null>(null);
 
-  const commit = (next: string[]) => {
-    host.store.value.sidebarOrder = next;
-    host.store.save();
-    host.changed('sidebarOrder');
-    save.mutate({ sidebarOrder: next }, { onError: () => {} });
-  };
   const move = (key: string, target: string, after: boolean) => {
-    if (key === target) return;
-    const next = [...order];
-    const from = next.indexOf(key);
-    if (from < 0) return;
-    next.splice(from, 1);
-    const at = next.indexOf(target);
-    if (at < 0) return;
-    next.splice(at + (after ? 1 : 0), 0, key);
-    commit(next);
+    const next = moveSidebarKey(order, key, target, after);
+    if (next) commit(next);
   };
   const step = (key: string, delta: number) => {
     const from = order.indexOf(key), to = from + delta;

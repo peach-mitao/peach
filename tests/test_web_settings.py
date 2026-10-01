@@ -233,11 +233,11 @@ class ContractRegistrationTests(unittest.TestCase):
         """
         import re
 
-        page = (Path(__file__).resolve().parents[1] / "web" / "app.js").read_text(
+        page = (Path(__file__).resolve().parents[1] / "frontend" / "src" / "sidebar.ts").read_text(
             encoding="utf-8")
 
         def js_list(name):
-            raw = re.search(rf"const {name}=\[(.*?)\];", page).group(1)
+            raw = re.search(rf"export const {name}: readonly string\[\] = \[(.*?)\];", page).group(1)
             return tuple(item.strip().strip("'") for item in raw.split(","))
 
         self.assertEqual(js_list("DEFAULT_SIDEBAR_ORDER"), DEFAULT_SIDEBAR_ORDER)

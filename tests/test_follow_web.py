@@ -2913,7 +2913,7 @@ class FollowWebSourceTests(unittest.TestCase):
         # 看和管是两件事，两个页面：左侧导航进「看」，管理区进「管」。
         # 断言「相邻」这件事本身，不要连换行和缩进一起写死——那种断言一改格式就红，
         # 红的原因还和它想守的契约无关。
-        rail = self.page[self.page.index("const EDGE_ICONS=["):]
+        rail = self.page[self.page.index("const SIDEBAR_ITEMS=["):]
         rail = rail[:rail.index("];")]
         keys = re.findall(r"\['([a-z]*)'", rail)
         self.assertIn("follow", keys)
@@ -2947,7 +2947,7 @@ class FollowWebSourceTests(unittest.TestCase):
         self.assertPageContains("open:(params,push)=>openFollowManage(push)},")
         self.assertPageContains(
             "await openFollow(push,true);await openFollowDetail(params.id,push)")
-        self.assertPageContains(".then(async()=>{buildEdge();wireAllDrag();await restoreRoute();scheduleStickySurfaces()})")
+        self.assertPageContains(".then(async()=>{syncNavigation();wireAllDrag();await restoreRoute();scheduleStickySurfaces()})")
 
     def test_reader_management_is_locked_and_points_to_the_writer(self):
         """只读这一位由壳从 runtime 读出来交进 island，React 不自己再判一次。
