@@ -35,7 +35,8 @@
 （写了什么、为什么没写）逐条写进 `generated/performer-alias-landing.csv`。
 
 外部请求走页面缓存与站间隔；撞上 429、403 或机器人验证就把这一站记进 `scraping_access`
-的冷却记录，本轮与之后的后继在冷却期内都不再问它，结论写「未取得」。这种结论的记号
+的冷却记录，本轮与之后的后继在冷却期内都不再问它，结论写「未取得」。minnano-av 的 HTTP 客户端
+被拦时先由本机浏览器取同一页验证，取到就固定走浏览器、不冷却（`MinnanoPages`）。这种结论的记号
 只保 `RETRY_UNFETCHED`，过了再派一次；其余结论照 ADR-0053 记指纹，名字链不变不再派。
 """
 from __future__ import annotations
@@ -290,17 +291,19 @@ class MinnanoPages:
     缓存记着跳转后的最终地址：检索唯一命中会直接跳到资料页，判「这是谁的页」要看那个地址。
     撞上 429、403 或机器人验证就记冷却并抛 `Blocked`，不重试。
 
-    补女优资料后继也拿它取 avwikidb 的页（`source` 换成那一站的冷却键，传输换成
-    `SourceTransport`）；`max_age` 给了就只认这么多秒以内的缓存，资料页过期重取靠它。
+    默认传输是 `SourceTransport`：minnano-av 在 `scraping_access.SOURCES` 里登记了 `browser_fallback`，
+    HTTP 客户端被拦时先由本机浏览器取同一页验证，取到就把这一站固定到浏览器，浏览器也没取到才冷却。
+    补女优资料后继也拿它取 avwikidb 与 javdb 的页（`source` 换成那一站的冷却键）；`max_age` 给了
+    就只认这么多秒以内的缓存，资料页过期重取靠它。
     """
 
     def __init__(self, cache_dir: Path, cooldown_root: Path, transport=None, *,
                  limiter=_LIMITER, max_requests: int = MAX_REQUESTS, source: str = MINNANO,
                  max_age: float | None = None):
-        from .http import HttpxTransport
+        from .scraping_access import SourceTransport
 
         self.cache_dir, self.cooldown_root = Path(cache_dir), Path(cooldown_root)
-        self.transport = transport or HttpxTransport()
+        self.transport = transport or SourceTransport(self.cooldown_root)
         self.limiter, self.max_requests, self.requests = limiter, max_requests, 0
         self.source, self.max_age = source, max_age
 
@@ -313,7 +316,7 @@ class MinnanoPages:
 
     def get(self, url: str) -> tuple[str, str]:
         from .http import HttpRequest
-        from .scraping_access import SourcePaused, pause_source, paused_until
+        from .scraping_access import SourcePaused, paused_until
 
         path = self._path(url)
         try:
@@ -337,10 +340,10 @@ class MinnanoPages:
             raise Unavailable(f"网络请求失败：{type(error).__name__}") from None
         body = response.body.decode("utf-8", "replace")
         if response.status == 429:
-            pause_source(self.cooldown_root, self.source)
+            self._hold(refused=False)
             raise Blocked("来源限流（429）")
         if response.status == 403 or challenge_page(body):
-            pause_source(self.cooldown_root, self.source, refused=True)
+            self._hold(refused=True)
             raise Blocked("来源拒绝访问或要求机器人验证")
         if response.status != 200:
             raise Unavailable(f"HTTP {response.status}")
@@ -349,6 +352,16 @@ class MinnanoPages:
         path.write_text(json.dumps({"url": url, "final_url": final_url, "body": body},
                                    ensure_ascii=False), encoding="utf-8")
         return final_url, body
+
+    def _hold(self, *, refused: bool) -> None:
+        """记这一站的冷却。`SourceTransport` 按它这次走的那条路（HTTP 客户端或浏览器）记，别的传输按 HTTP 客户端记。"""
+        from .scraping_access import pause_source
+
+        hold = getattr(self.transport, "hold", None)
+        if hold is not None:
+            hold(self.source, "blocked" if refused else "rate_limited")
+        else:
+            pause_source(self.cooldown_root, self.source, refused=refused)
 
     def close(self) -> None:
         close = getattr(self.transport, "close", None)

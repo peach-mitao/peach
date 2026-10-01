@@ -28,7 +28,8 @@
 
 取页复用补别名后继的 `MinnanoPages`：成功页落盘缓存，minnano-av 与 avwikidb 按 3 秒间隔，撞上
 429、403 或机器人验证就记进 `scraping_access` 的冷却，本轮与之后在冷却期内都不再问，结论写「未取得」。
-avwikidb 与 javdb 的请求走 `SourceTransport`，连接方式跟采集设置里那一站的设置走。javdb 按出口 IP
+三站的请求都走 `SourceTransport`，连接方式跟采集设置里那一站的设置走；minnano-av 的 HTTP 客户端被拦时
+先由本机浏览器验证一页，取到就固定走浏览器（`scraping_access.SOURCES` 的 `browser_fallback`）。javdb 按出口 IP
 计配额、一封 3～7 天，这一站单独 5 秒间隔（与目录采集同一档），冷却记录与作品采集共用 `javdb` 那一份。
 
 多久再派一次由 `Attempts` 的记号决定：写成了的保 `REFRESH`（30 天），到期再派一次，资料页

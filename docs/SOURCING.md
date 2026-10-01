@@ -306,6 +306,22 @@ JavBus 对 FC2 都给不出东西，javdb 收了一部分但配额紧）。所�
   清冷却。JAVten 搜索一跳的 Location 是 `http://`，HTTP 层把同主机的明文跳转升回 https 再带 Cookie；浏览器
   路径里由浏览器自己跟跳。
 
+### minnano-av 的间歇拦截
+
+minnano-av 也在 Cloudflare 后面，但对 HTTP 客户端是间歇拦截：2026-10-01 同一出口上，检索页被拦、一分钟后
+资料页照常回 200。所以它不像上面两站那样一开始就走浏览器，在 `scraping_access.SOURCES` 里登记的是
+`browser_fallback`：
+
+1. 先走 HTTP 客户端（`SourceTransport`，连接方式按「来源和凭证」里这一站的设置）。
+2. 回 403、429 或验证页时，由本机浏览器取同一页验证（`peach.browser_transport`，与上面两站共用 profile 与进程）。
+3. 浏览器取到 200 的正常页：这一站固定走浏览器，写进来源设置 `secrets/follow/scraping-minnano-av.json` 的
+   `transport: browser`；HTTP 客户端攒下的冷却清掉。之后的请求不再先问 HTTP 客户端，删掉这个键才回到第一步。
+4. 浏览器也没取到（没有浏览器、验证没过、同样被拦）：照 HTTP 客户端被拦那样冷却，15 分钟起翻倍到 6 小时。
+
+补别名、补女优资料（`MinnanoPages`）与 `harvest_performer_links.py`、`harvest_agency_rosters.py`、
+`resync_performer_agency.py` 都经 `SourceTransport` 取 minnano-av，共用同一份冷却与固定状态。2026-10-01 实测：
+临时 profile 的 Chrome 取检索页，跟到资料页 `actress695633.html`，资料表解析正常。
+
 ### JavArchive
 
 - 作品地址里夹着站内文章号和标题（`/926949-FC2-PPV-4137487-…-pn.html`），拼不出来，所以先问
