@@ -18,6 +18,7 @@ export { boundedPreference } from './number-setting';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
+export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
 import type * as ReactBundle from '@peach/react';
 
@@ -261,6 +262,30 @@ export function loadSidebar(host: ReactBundle.SidebarHost): Promise<ReactBundle.
   return sidebar;
 }
 export const sidebarApi = (): ReactBundle.SidebarApi | null => sidebarReady;
+
+/* 管理区页头岛（`react/manage-header/`）：管理条、面包屑、页面标题与回收站说明行。壳启动时就装载、
+ * 接上宿主——在那之前宿主里是壳同步写进去的骨架（`manageHeaderSkeletonHtml`）；之后 `manageHeaderApi()`
+ * 同步可取，包还没装载时是 null。 */
+let manageHeader: Promise<ReactBundle.ManageHeaderApi> | null = null;
+let manageHeaderReady: ReactBundle.ManageHeaderApi | null = null;
+export function loadManageHeader(host: ReactBundle.ManageHeaderHost): Promise<ReactBundle.ManageHeaderApi> {
+  manageHeader ??= import('@peach/react').then((bundle) => {
+    manageHeaderReady = bundle.configureManageHeader(host);
+    return manageHeaderReady;
+  });
+  return manageHeader;
+}
+export const manageHeaderApi = (): ReactBundle.ManageHeaderApi | null => manageHeaderReady;
+
+/* 批量条岛（`react/batch-dock/`）：多选时底部那块浮条。壳启动时就装载；包回来之前选中的，
+ * 壳在接上时把手上那份 props 补推一次。 */
+let batchDock: Promise<ReactBundle.BatchDockApi> | null = null;
+let batchDockReady: ReactBundle.BatchDockApi | null = null;
+export function loadBatchDock(host: ReactBundle.BatchDockHost): Promise<ReactBundle.BatchDockApi> {
+  batchDock ??= import('@peach/react').then((bundle) => { batchDockReady = bundle.configureBatchDock(host); return batchDockReady });
+  return batchDock;
+}
+export const batchDockApi = (): ReactBundle.BatchDockApi | null => batchDockReady;
 
 /* 壳的播放快捷键用到的播放器件（`frontend/src/player/`）：控件点击、切换播放与快进快退都不带模块
  * 状态。详情播放器、宿主与右键菜单带状态，只在舞台岛那一份产物里用。 */

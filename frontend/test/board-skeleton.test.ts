@@ -95,7 +95,7 @@ describe('Board 页面骨架', () => {
     const head = root.querySelector('.follow-skeleton-author [data-follow-author-header]')!;
     expect([...head.querySelectorAll(':scope > button')].map((button) => button.textContent)).toEqual(['', '全选', '收起']);
     expect(root.querySelector('.follow-skeleton-surface > .group')?.textContent).toBe('全选本页');
-    expect(root.querySelector('.selectiondock')).toBeNull();
+    expect(root.querySelector('[data-selection-dock]')).toBeNull();
   });
   it('口味骨架保留分段背景与状态行间距', () => {
     const root = document.createElement('div');

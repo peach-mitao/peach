@@ -18,6 +18,8 @@ import type { StageApi, StageHost } from './stage/stage-api';
 import type { SettingsPanelApi, SettingsPanelHost } from './settings-panel/settings-panel-api';
 import type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 import type { SidebarApi, SidebarHost } from './sidebar/sidebar-api';
+import type { ManageHeaderApi, ManageHeaderHost } from './manage-header/manage-header-api';
+import type { BatchDockApi, BatchDockHost } from './batch-dock/batch-dock-api';
 
 export type { IndexProps };
 export type { CatalogGridProps };
@@ -533,6 +535,20 @@ export type {
 
 /** 接上壳给的宿主，拿回侧栏岛的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次。 */
 export declare function configureSidebar(host: SidebarHost): SidebarApi;
+
+export type {
+  ManageEntry, ManageHeaderApi, ManageHeaderHost, ManageHeaderProps, TrashCount,
+} from './manage-header/manage-header-api';
+
+/** 接上壳给的宿主，拿回管理区页头岛的命令式入口（`manage-header/manage-header-island.tsx`）。只调一次。 */
+export declare function configureManageHeader(host: ManageHeaderHost): ManageHeaderApi;
+
+export type {
+  BatchAction, BatchContext, BatchDockApi, BatchDockHost, BatchDockProps, BatchGroup,
+} from './batch-dock/batch-dock-api';
+
+/** 接上壳给的宿主，拿回批量条岛的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次。 */
+export declare function configureBatchDock(host: BatchDockHost): BatchDockApi;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;

@@ -23,38 +23,13 @@
 .emptystate h3{margin:0;font-size:var(--fs-md);font-weight:600;color:var(--ink)}
 .emptystate p{margin:0;max-width:340px;font-size:var(--fs-sm);line-height:1.55;color:var(--muted)}
 .emptystate .es-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
-.selectiondock{position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom));z-index:180;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;
-  padding:9px 11px;border:1px solid var(--line);border-radius:var(--floating-radius);background:var(--surface);
-  box-shadow:0 8px 24px #0005}.selectiondock[hidden]{display:none}
-.selectiondock>button{white-space:nowrap}
-.selectiondockcount{padding:0 8px;color:var(--ink-2);white-space:nowrap}
-.selectiondock [hidden]{display:none}
-body:has(#batchbar:not([hidden])) #stage{padding-bottom:180px}
-.batchbar span{padding:0 8px;color:var(--ink-2);white-space:nowrap}.batchbar button{border:0;border-radius:var(--floating-radius);
-  box-shadow:0 0 0 1px var(--line-soft);background:var(--ground);color:var(--ink);padding:9px 12px;cursor:pointer}.batchbar button:hover{background:var(--hover);color:var(--ink)}
-.batchbar button svg{width:17px;height:17px;margin-right:6px;vertical-align:-4px;stroke:currentColor;fill:none;stroke-width:2}
 
 @media (max-width:760px){
   .readout{display:none} .brand .sub{display:none}
   :root{--tile:168px;--topH:52px;--sortH:60px}
   /* 确认弹层的两个键是本项目 44px 命中区的对象，桌面的 32px 是 Geist 控件高度。 */
   .geist-modal-footer .geist-button{min-height:44px;padding:0 14px}
-  /* 管理入口在手机上先收成一行，按需展开为两列。当前页仍有明确上下文，
-     但不会让八个入口挤成三四行、把正文推到屏幕下方。 */
-  .managebar{display:block;width:100%;margin-bottom:14px;padding:0;border:0;background:transparent}
-  .managebar-toggle{display:flex!important;width:100%;min-height:46px;align-items:center;justify-content:space-between;
-    padding:10px 12px!important;border:1px solid var(--line-soft)!important;border-radius:var(--floating-radius)!important;background:var(--ground)!important;color:var(--ink)!important}
-  .managebar-current{display:inline-flex;align-items:center;gap:8px;font-weight:600}
-  .managebar-toggle>svg:last-child{transition:transform .16s ease}
-  .managebar.is-open .managebar-toggle>svg:last-child{transform:rotate(180deg)}
-  .managebar-menu{display:none;margin-top:8px;padding:6px;border:1px solid var(--line-soft);border-radius:var(--floating-radius);
-    background:var(--ground);grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-  .managebar.is-open .managebar-menu{display:grid}
-  .managebar-menu button{width:100%;min-height:42px;justify-content:flex-start;padding:9px 11px}
   .cleanupgrid{grid-template-columns:minmax(0,1fr)}
-  /* 说明行右端的动作在手机上要够手指点：桌面 32px 是 Geist 的控件高度，触摸区按本项目
-     的 44px 命中区来。 */
-  .pagelede-actions .batchaction{height:44px;padding-inline:16px}
   .count{align-items:center;flex-direction:row;gap:10px;padding-block:8px;
     overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-inline:contain}
   .count::-webkit-scrollbar{display:none}
@@ -63,14 +38,6 @@ body:has(#batchbar:not([hidden])) #stage{padding-bottom:180px}
   .count .sorts button{min-height:36px}
   .count.junkcount{align-items:stretch;flex-direction:column;overflow:visible;padding-block:8px}
   .reviewtabs button{height:44px}
-  #batchbar[hidden]{display:none}
-  .batchbar:has([data-junk-batch]:not([hidden])){left:12px;right:12px;bottom:12px;width:auto;transform:none;
-    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:9px 10px}
-  .batchbar:has([data-junk-batch]:not([hidden]))>span{grid-column:1/-1;padding:0;text-align:center}
-  .batchbar:has([data-junk-batch]:not([hidden])) button{display:inline-flex;min-width:0;min-height:44px;
-    align-items:center;justify-content:center;padding:8px 6px;white-space:nowrap;font-size:var(--fs-xs)}
-  .batchbar:has([data-junk-batch]:not([hidden])) button[hidden]{display:none}
-  .batchbar:has([data-junk-batch]:not([hidden])) button svg{margin-right:4px}
   .playlistpage>header{align-items:stretch;flex-direction:column}
   /* 顶栏在窄屏会被搜索框撑破 —— 搜索收成一个按钮，点了才展开。只裁横向：竖向也裁的话，
      那几枚玻璃按钮往下落的投影在顶栏下沿被切平，头像那一排上方就多出一条横线。 */
@@ -127,8 +94,8 @@ body:has(#batchbar:not([hidden])) #stage{padding-bottom:180px}
   .entityhero .entitylinks{justify-content:center;margin-top:9px;margin-bottom:-4px;padding-block:4px}
   .stats h2{font-size:var(--fs-xl)}.stats .insightcopy h2{font-size:var(--fs-3xl)}
   /* 窄屏下标题也得一起缩。`/follow` 渲染在 `#stats` 里，上面那条 `.stats h2`
-     会只把它打到 23px，而 `#manageTitle` 在 `#stats` 外面，手机上又变成两种大小。 */
-  .pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-2xl)}
+     会只把它打到 23px，页面标题要跟它同一档。 */
+  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-2xl)}
   .kv .u{display:block;margin-left:0;margin-top:2px}
 }
 /* 这个 16px 是 iOS 的阈值，不是刻度里的一档：Safari 对小于 16px 的输入框会自动放大页面。
@@ -138,7 +105,7 @@ body:has(#batchbar:not([hidden])) #stage{padding-bottom:180px}
    页面标题压得比它下面 24px 的指标数字还小，层级整个翻过来。24 这一档是 Geist
    自己就有的 Heading 24，不是新开的字号。 */
 @media (max-width:640px){
-  .pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-xl)}
+  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-xl)}
 }
 #searchBtn{display:none}
 .searchback{display:none}

@@ -718,7 +718,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 直接坐在页面上的盒子不能再填 --surface：它与 --page 在浅色一档是同一个 #FAFAFA，
         # 填上去等于没有盒子。--surface 只剩交互与内嵌那一档。垃圾卡归 `junk-queue` island，
         # 它和页面底色不同由 e2e 设计用例读计算值核对。
-        for name in (".insightpanel", ".managebar", ".emptystate"):
+        for name in (".insightpanel", ".emptystate"):
             start = css.index(name + "{")
             rule = css[start:css.index("}", start)]
             self.assertIn("var(--ground)", rule, f"{name} 是页面上的一个面")
@@ -883,8 +883,8 @@ class WebUiSourceTests(unittest.TestCase):
     def test_a_solid_tier_hover_spells_out_its_own_text_colour(self):
         """把填充换成实心一档的悬停规则必须自己写 `color`，不能指望静止那条留下来。
 
-        `:hover` 只声明 background 时，同一组里更宽的通用悬停（`.batchbar
-        button:hover`、`.junkactions button:hover` 都是）会把文字提到 `--ink`：
+        `:hover` 只声明 background 时，同一组里更宽的通用悬停（按容器写的
+        `button:hover` 都是）会把文字提到 `--ink`：
         它的选择器更弱，可 `color` 在实心档自己这条里没有对手，于是深色实底上落成
         深字深底，鼠标一压按钮上的字就没了。2026-09-04 用户在关注管理页第二次遇到
         同一个坑；靠「静止那条特指度更高」挡着不算数，那是算出来的巧合，加一条更宽的
@@ -914,7 +914,7 @@ class WebUiSourceTests(unittest.TestCase):
                     offenders.append(leaf)
         self.assertEqual(offenders, [],
                          f"实心档悬停请自己写 color，别把文字交给通用 hover：{offenders}")
-        self.assertGreaterEqual(seen, 3, "实心档的悬停规则找不到了，检查断言是否还匹配得上")
+        self.assertGreaterEqual(seen, 2, "实心档的悬停规则找不到了，检查断言是否还匹配得上")
 
     # 悬停允许照旧抬填充的孤立开关：没有并排的同类邻居，鼠标压着的那颗就是你正在问的
     # 那颗，看不出「按没按」不构成误读。侧栏导航归侧栏岛，悬停与当前项的分工由
@@ -1007,7 +1007,6 @@ class WebUiSourceTests(unittest.TestCase):
         '.chip[aria-pressed="true"]',                     # 产地选择站在对话框的 --ground 上
         '.popmenu.gselectmenu button[aria-selected="true"]',  # 浮层菜单填 --ground
         '.ib[aria-pressed="true"]',                       # 顶栏填 --ground
-        '.managebar button[aria-pressed="true"]',         # 管理导航容器填 --ground
     )
 
     def test_the_selected_face_is_one_token_that_flips_with_the_theme(self):
@@ -2433,8 +2432,6 @@ class WebUiSourceTests(unittest.TestCase):
              "color:var(--muted);cursor:pointer;font-size:var(--fs-lg);white-space:nowrap;text-decoration:none}"),
             ("排序条 .sorts button",
              "background:transparent;cursor:pointer;font-size:var(--fs-xs);color:var(--muted);"),
-            ("管理页标签 .managebar button",
-             "background:transparent;color:var(--muted);padding:0 14px;cursor:pointer;font-size:var(--fs-sm);"),
             ("复核页标签 .reviewtabs button",
              "border-radius:var(--control-radius);background:transparent;color:var(--muted);"),
         ):
@@ -3214,12 +3211,6 @@ class WebUiSourceTests(unittest.TestCase):
             self.assertPageContains(section)
         self.assertPageContains("function manageSection()")
         self.assertPageContains("function buildManageBar()")
-        self.assertPageContains('id="managebar"')
-        self.assertPageContains('class="managebar-toggle"')
-        self.assertPageContains('aria-controls="managebar-menu"')
-        self.assertPageContains("bar.classList.toggle('is-open')")
-        self.assertPageContains('.managebar .managebar-toggle{display:none}')
-        self.assertPageContains('.managebar.is-open .managebar-menu{display:grid}')
         self.assertPageContains("if(k==='manage'){openManage();return}")
         # 顶层图标里不再各自占位
         edge = self.page.split("const SIDEBAR_ITEMS=[", 1)[1].split("];", 1)[0]
@@ -3245,7 +3236,6 @@ class WebUiSourceTests(unittest.TestCase):
         )
         self.assertPageContains(
             "const MANAGE_MENU_SECTIONS=['stats','taste','cleanup','follow','activity','configuration'];")
-        self.assertPageContains("manageMenuSections().map(([k,label,ic])=>")
 
     def test_configuration_is_the_one_editing_page_and_sits_in_the_manage_menu(self):
         """配置页是唯一的配置编辑页，管理菜单列它；设置弹层那一格只是一张摘要卡（ADR-0050）。
@@ -3265,7 +3255,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("const config=document.querySelector('#stats .configpage');")
         # `runtimeConfigurable` 还有第二个用处：馆藏空态按它决定给不给「去配置媒体文件夹」。
         self.assertPageContains("let runtimeConfigurable=null;")
-        self.assertPageContains("  bar.hidden=!current;\n  probeConfigurable();")
         # 它不进可钉到侧栏的候选：侧栏顺序跨机同步，钉在手机上就是死链接。
         self.assertPageContains(
             "const OPTIONAL_SIDEBAR_ITEMS=MANAGE_SECTIONS.filter(([key])=>key!=='configuration')")
@@ -3356,7 +3345,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("key==='follow'?['follow-manage',label,ic]")
         self.assertPageLacks("key==='follow'?['follow-manage','关注管理',ic]")
         # 页标题取的就是这份注册表；关注更新流的 h2 是它自己的，仍叫「关注」。
-        self.assertPageContains("if(entry)el.textContent=pageLabel||entry[1]")
         self.assertPageContains('<div class="followhead"><h2 class="pagetitle">关注</h2></div>')
 
     def test_scraping_is_reachable_from_the_library_processing_card(self):
@@ -3368,7 +3356,6 @@ class WebUiSourceTests(unittest.TestCase):
         `frontend/test/react/scraping.test.tsx` 守，页脚三键的外观与来源外链的
         `rel` 由 `frontend/e2e/design.test.ts` 读计算值守。
         """
-        self.assertPageContains("'/scraping':'来源和凭证'")
         self.assertPageContains("$('#libraryProcessing')?.scrollIntoView({block:'start'})")
         processing = (
             Path(__file__).resolve().parents[1]
@@ -3383,60 +3370,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks('.scraping-fields')
         self.assertPageLacks('.scraping-url')
         self.assertPageLacks('.scraping-cover-form')
-
-    def test_data_management_subpages_carry_geist_breadcrumbs(self):
-        """数据管理五张卡进的是它的子页，得有回去的路和自己的名字。
-
-        垃圾文件、重复文件此前连 h2 都顶着「数据管理」，和 document.title
-        （pageTitle 早就写了垃圾文件/重复文件）互相矛盾。breadcrumb 照
-        vercel.com/geist/breadcrumbs 实测语义：nav[aria-label=Breadcrumb] > ol > li，
-        当前项 aria-current="true" 渲染纯文本，上一级是 /data-cleanup 的链接；
-        分隔符是每项自带的 chevron，最后一项由 CSS 隐藏。人工复核、回收站、
-        高清版在侧栏保留直达入口，但层级上仍从数据管理进；资源同步是 hub 上的
-        就地操作，没有独立页面，不在此列。
-        """
-        self.assertPageContains(
-            '<nav class="geist-breadcrumb" id="manageCrumb" aria-label="Breadcrumb" hidden></nav>')
-        self.assertPageContains("export function breadcrumbHtml(items)")
-        self.assertPageContains(
-            'return `<li${item.current?\' aria-current="true"\':\'\'}>${inner}${icon(\'chevron-right\')}</li>`')
-        self.assertPageContains(
-            "el.innerHTML=breadcrumbHtml([{label:'数据管理',href:'/data-cleanup'},{label,current:true}])")
-        pages = self.page.split("const MANAGE_CRUMB_PAGES={", 1)[1].split("};", 1)[0]
-        for path, label in (("/junk-files", "垃圾文件"), ("/duplicates", "重复文件"),
-                            ("/review", "人工复核"), ("/trash", "回收站"),
-                            ("/quality-goals", "高清版")):
-            self.assertIn(f"'{path}':'{label}'", pages, f"{path} 的面包屑层级名")
-        # cleanup 分区的标题按路径再分一层；其余管理页仍用 MANAGE_SECTIONS 的名字。
-        self.assertPageContains(
-            "const pageLabel=current==='cleanup'?MANAGE_CRUMB_PAGES[decodeURIComponent(location.pathname)]:null")
-        self.assertPageContains("function paintManageCrumb()")
-        # CSS：当前页升到 --ink、分隔符钉在 --muted 不跟亮、最后一项隐藏、6px 间距。
-        self.assertPageContains(".geist-breadcrumb ol{display:flex;align-items:center;gap:6px;margin:0;padding:0;list-style:none}")
-        self.assertPageContains(".geist-breadcrumb li[aria-current]{color:var(--ink)}")
-        self.assertPageContains(".geist-breadcrumb li svg{width:16px;height:16px;flex:none;stroke:var(--muted);fill:none")
-        self.assertPageContains(".geist-breadcrumb li:last-child svg{display:none}")
-        self.assertPageContains(
-            ".cleanup-layout .geist-breadcrumb,.cleanup-layout .managetitle,.cleanup-layout .pagelede")
-
-    def test_the_breadcrumb_link_routes_instead_of_reloading_the_page(self):
-        """面包屑那个 `<a href>` 必须自己接路由。
-
-        这个页面没有全局锚点拦截——`web/app.js` 里所有内部导航要么是按钮调
-        `route()`，要么像 `#brandHome` 那样 `<a>` 自带 preventDefault。所以一个
-        只写了 href 的面包屑点下去是整页重载：settings、sources、feed 全部重拉，
-        SPA 的返回表面和已读位置一起丢掉。href 仍要留着，中键和右键菜单靠它。
-        """
-        crumb = self.page.split("function paintManageCrumb()", 1)[1].split(
-            "function paintManageLede", 1)[0]
-        self.assertIn("el.querySelectorAll('a[href]').forEach", crumb,
-                      "面包屑链接没有接管左键")
-        self.assertIn("event.preventDefault();openDataCleanup()", crumb)
-        # 修饰键点击交回浏览器：那是「在新标签页打开」，不该被 SPA 吃掉。
-        self.assertIn("if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return",
-                      crumb)
-        self.assertIn("href=\"${esc(item.href)}\"", self.page,
-                      "href 仍要渲染出来，中键和右键菜单靠它")
 
     def test_taste_page_combines_private_exports_and_peach_behavior(self):
         """口味页是 React 档（ADR-0031）：遗留层只铺骨架、交容器与几样自己的能力。
@@ -3761,8 +3694,6 @@ class WebUiSourceTests(unittest.TestCase):
 
         条子常驻的话，一张没选时它在屏幕下沿横着一块空玻璃，读起来像是有东西待处理。
         """
-        self.assertPageContains('class="batchbar selectiondock"')
-        self.assertPageContains('.selectiondock[hidden]{display:none}')
         self.assertNotIn("selection.active=selectMode", self.page)
 
     def test_every_page_title_uses_one_size(self):
@@ -3771,12 +3702,12 @@ class WebUiSourceTests(unittest.TestCase):
         `/follow` 更是连标题都没有。
         """
         self.assertPageContains(
-            ".pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2{")
+            ".pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{")
         self.assertPageLacks(".index .ihead h2{margin:0;font-size:20px;font-weight:500}")
         self.assertPageLacks(".playlistpage h2{margin:0 0 5px;font-size:28px}")
         # 关注页正文归 `follow-feed` 岛，标题字号在 e2e 设计用例里量；壳的骨架用同一个类。
         self.assertPageContains('<div class="followhead"><h2 class="pagetitle">关注</h2></div>')
-        self.assertPageContains(".listtitle,.managetitle,.follow>.pagetitle{margin:0 0 20px}")
+        self.assertPageContains(".listtitle,.follow>.pagetitle{margin:0 0 20px}")
         self.assertPageContains('id="listTitle" hidden')
         # 索引页和关注页的标题外边距记在各自的头部容器上，三处必须是同一个值。
         self.assertPageContains(".index .ihead{display:flex;align-items:center;gap:12px;margin-bottom:20px}")
@@ -3792,11 +3723,11 @@ class WebUiSourceTests(unittest.TestCase):
         就有的 Heading 24，不是新开的字号；行高 1.25 也取自实测的 Heading 32。
         """
         self.assertPageContains(
-            "  .pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2"
+            "  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2"
             "{font-size:var(--fs-2xl)}")
         self.assertPageContains(
             "@media (max-width:640px){\n"
-            "  .pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2"
+            "  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2"
             "{font-size:var(--fs-xl)}\n}")
         # 三档都必须在既有刻度里，新增字号前先证明现有 8 档都不合适。
         self.assertPageContains("--fs-xl:20px; --fs-2xl:24px; --fs-3xl:32px;")
@@ -3954,12 +3885,8 @@ class WebUiSourceTests(unittest.TestCase):
         `frontend/e2e/design.test.ts` 量。这里只留壳这一侧的写入、回收站与批量条。
         """
         self.assertPageContains("await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation})});")
-        self.assertPageContains("const emptyTrash=$('#emptyTrash');")
-        self.assertPageContains("if(emptyTrash)emptyTrash.onclick=async(e)=>{")
         self.assertPageContains("const catalog=isCatalogPath(path)||path==='/trash'")
         self.assertPageContains("location.pathname==='/junk-files'?'junk':'catalog'")
-        self.assertPageContains("data-junk-batch=\"dismiss-junk\"")
-        self.assertPageContains("data-junk-batch=\"reconsider-junk\"")
 
     def test_resource_and_source_mutations_use_terminal_toasts_with_safe_undo(self):
         self.assertPageContains("actionReceipt(operation==='restore'?'已还原':'已移入回收站',{undo:async()=>")
@@ -3971,11 +3898,6 @@ class WebUiSourceTests(unittest.TestCase):
                       (follow / "source-list.tsx").read_text(encoding="utf-8"))
         self.assertPageContains("toast:actionReceipt,openFollow:()=>void openFollow()")
         self.assertPageContains("actionReceipt(syncedText(r),{undo:ids.length?async()=>")
-        self.assertPageContains("data-junk-batch=\"dispose\"")
-        self.assertPageContains(".batchbar:has([data-junk-batch]:not([hidden]))")
-        self.assertPageContains("#batchbar[hidden]{display:none}")
-        self.assertPageContains("button[hidden]{display:none}")
-        self.assertPageContains("querySelectorAll('[data-junk-batch]')")
 
     def test_search_suggestions_come_from_real_data_in_bulk(self):
         """推荐取当前馆藏，并核对实际搜索命中。`search` 岛每次聚焦都向壳要一次词池。"""
@@ -3988,70 +3910,19 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks("max-width:1440px")
         self.assertPageContains(".insightpage,.tastepage{width:min(1100px,100%);margin:0 auto")
         self.assertPageContains("grid-template-columns:repeat(2,minmax(0,1fr))")
-        self.assertPageContains(".managebar{margin-left:auto;margin-right:auto}")
-        self.assertPageContains(".insight-layout .managetitle,.insight-layout .pagelede{width:min(1100px,100%)")
         self.assertPageLacks(".tasteprivacy{margin:16px 16px 0")
         self.assertPageLacks('<p class="tasteprivacy">')
-
-    def test_duplicate_and_trash_descriptions_share_one_page_lede(self):
-        self.assertPageContains('class="pagelede mono" id="manageLede" hidden')
-        self.assertPageContains(".pagelede{margin:0 0 16px;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}")
-        self.assertPageContains("if(trash)paintManageLede(`${total.toLocaleString()} 个符合 · 显示 ${n}`,")
-        self.assertPageLacks('class="dupsum mono"')
-
-    def test_empty_trash_shares_the_lede_row_instead_of_taking_one_of_its_own(self):
-        """「清空回收站」和它左边那句计数说的是同一批文件，同属说明行。
-
-        回收站的说明搬进 `#manageLede` 之后，计数栏里就只剩这一个按钮：标题和网格之间
-        因此空出一条只放一个按钮的带子。说明行支持右端动作后两者并成一行。`hidden` 的
-        判据要同时看文本和动作——只看文本的话，总数为 0 时那句说明还在，判据却没变；
-        真正的风险是反过来：有动作没文本时整行被藏掉，按钮跟着消失。
-        """
-        self.assertPageContains("function paintManageLede(text='',actionsHtml='')")
-        self.assertPageContains("el.hidden=!text&&!actionsHtml;")
-        self.assertPageContains("el.classList.toggle('pagelede-actions',!!actionsHtml);")
-        self.assertPageContains("if(actionsHtml)el.insertAdjacentHTML('beforeend',actionsHtml);")
-        lede = self.app_js.split("if(trash)paintManageLede(", 1)[1].split("$('#count')", 1)[0]
-        self.assertIn('class="batchaction danger" id="emptyTrash"', lede,
-                      "清空回收站要挂在说明行上，不是自己占一行")
-        self.assertPageContains(
-            ".pagelede-actions{display:flex;align-items:center;justify-content:space-between;gap:16px}")
-        # 危险档只有 01-base 那一份，页面各自的 .danger 覆盖已经收掉了。
-        self.assertPageContains("button.danger.danger{")
-        self.assertPageLacks(".pagelede-actions .batchaction.danger{")
-        self.assertPageLacks(".count .sorts .batchaction.danger{")
-        # 桌面 32px 是 Geist 的控件高度，手机要回到本项目的 44px 命中区。
-        self.assertPageContains(".pagelede-actions .batchaction{height:44px;padding-inline:16px}")
-
-    def test_only_the_data_cleanup_hub_narrows_its_title_column(self):
-        """812px 窄列是数据管理 hub 自己的正文宽度，不是整个数据管理区的。
-
-        `.cleanuppage` 把 hub 那一页收进 812px，标题和面包屑跟着收才对得齐。但同一个
-        section 底下的垃圾文件、重复文件正文都是全宽网格：跟着收就是宽屏上标题凭空左缩
-        一截，标题左边缘和第一张卡的左边缘对不上。判据是「这条路径的正文是不是窄列」，
-        不是 section——采集来源也是 812px 的窄列，它和 hub 归在同一个 section 下。
-        """
-        self.assertPageContains("const CENTERED_CLEANUP_PAGES=new Set(['/data-cleanup','/scraping']);")
-        self.assertCode("document.body.classList.toggle('cleanup-layout',"
-                        "CENTERED_CLEANUP_PAGES.has(decodeURIComponent(location.pathname)));")
-        self.assertPageLacks("document.body.classList.toggle('cleanup-layout',current==='cleanup')")
-        # 窄列本体仍在 hub 上，这两条规则本身不动。
-        self.assertPageContains(".cleanuppage{width:min(812px,100%);margin:0 auto;display:grid;gap:32px}")
-        self.assertPageContains(
-            ".cleanup-layout .geist-breadcrumb,.cleanup-layout .managetitle,.cleanup-layout .pagelede")
 
     def test_every_management_page_body_shares_the_title_column(self):
         """管理区每一页的正文和它的标题一条中线，宽度都由 `--board-content` 说了算。
 
-        Board 层把 `#manageTitle` 钉在 1120 上，正文各自声明的 812 窄列比它每边窄 154px：
+        页头岛把标题钉在 1120 上，正文各自声明的 812 窄列比它每边窄 154px：
         在宽屏上就是标题顶着左边、正文整块往右缩一截。四页写在同一条规则里，往管理区新加
         一页时照抄这一行，不要在页面自己的 CSS 里另定一个数。
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".cleanuppage,.configpage,.scraping-page,.activitypage"
                       "{width:100%;max-width:var(--board-content)}", board)
-        self.assertIn("body :is(#manageTitle,#manageCrumb,#manageLede)"
-                      "{max-width:var(--board-content);width:100%;margin-left:auto;margin-right:auto}", board)
         self.assertIn(":root{--railW:88px;--board-content:1120px}", board)
 
     def test_returning_home_from_any_surface_moves_the_highlight(self):
@@ -4216,9 +4087,9 @@ class WebUiSourceTests(unittest.TestCase):
                             "--glass-tint-b:var(--glass-native-b)",
                             "--glass-native-a:#6686b8;--glass-native-b:#8f98a4"):
             self.assertIn(declaration, css)
-        # 多选那条悬浮坞和批处理条也读这两团：它们和侧栏同时在屏上，
-        # 漏掉任何一条就是一屏里两种颜色的玻璃。
-        for face in ("body .selectiondock{", ".batchbar{", "[data-glass-pane]{"):
+        # 多选那条悬浮坞（批量条与标签选择条都是 `SelectionDock`）也读这两团：它和侧栏同时在屏上，
+        # 漏掉就是一屏里两种颜色的玻璃。
+        for face in ("[data-glass-pane]{",):
             with self.subTest(face=face):
                 rule = css.split(face, 1)[1].split("}", 1)[0]
                 self.assertIn("var(--glass-drift-a),var(--glass-drift-b)", rule)
@@ -4957,19 +4828,13 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks("$('#searchMenu').hidden=true")
 
     def test_board_batch_three_aligns_ranks_and_buttons(self):
-        """管理页标题四种布局都对齐 1120；
-        主按钮与 Board 按钮同一副 36px 盒子；批量条隐藏键真的隐藏、回收站键用 error 渐变；
+        """主按钮与 Board 按钮同一副 36px 盒子；
         复核页宽度与内容列同宽、分类栏留在原地；通知的状态圆用 lucide circle-alert。
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".geist-fieldset-footer>a,.geist-fieldset-footer>button).primary{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);", board)
         self.assertIn("body .review{width:100%;max-width:var(--board-content);margin:0 auto;box-sizing:border-box}", board)
         self.assertIn("body .review .reviewcontrols{position:static;", board)
-        self.assertIn("body .batchbar button[hidden],body .batchbar button.danger[hidden]{display:none}", board)
-        self.assertIn("body .batchbar button.danger{", board)
-        # 这一颗只是不在上面那份尺寸名单里，面色跟站内每一颗危险键同一份，见
-        # `test_the_danger_tier_has_one_face_and_crossfades_into_its_hover`。
-        self.assertIn("height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium)}", board)
         # 侧栏切换器与收起键归侧栏岛的样式表，由 e2e `design.test.ts` 读计算值。
         self.assertPageContains('<symbol id="i-circle-alert" viewBox="0 0 24 24">')
 
@@ -5029,7 +4894,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 下划线只归管理导航与设置分区；两套证据的切换是分段控件，判据在
         # test_the_two_bodies_of_evidence_switch_as_a_segmented_control。
         self.assertIn(".insightpanel>header h3,.insightcopy>span{margin:0;font:var(--board-heading);color:var(--color-text-primary)}", board)
-        self.assertIn("body :is(#manageTitle,#manageCrumb,#manageLede){max-width:var(--board-content);width:100%;margin-left:auto;margin-right:auto}", board)
         # 门挡铺满播放器格、没图的身份头像画首字盘：作品详情岛，`frontend/e2e/design.test.ts` 量。
         # 头像条：女优是竖排人像格（48px 圆头像在上、名字在下），厂牌是 40px 的灰 Pill（28px 圆标识在左）。
         # 这一份给关注页骨架与人物页同台艺人；首页那两排归 `catalog-filter` 岛。
@@ -5852,8 +5716,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn(": source.enabled ? 'yellow' : 'neutral';", source_view)
         # 状态徽章只有 React 那一枚 Chip，遗留样式表里没有第二份。
         self.assertPageLacks(".sbadge")
-        # 清空回收站：danger 语义色。
-        self.assertPageContains('class="batchaction danger" id="emptyTrash"')
         self.assertPageContains("button.danger.danger{")
         # 弹层盒子走共用的 .popmenu：发丝边、投影和 2px 行距只有一份定义，各处只接管定位。
         # 行距不能省——相邻两项一个悬停一个选中时，两块填充会连成一整条，看不出是两行。
@@ -5868,7 +5730,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks("wireReviewScrollers")
         self.assertPageLacks("reviewscrollbtns")
         self.assertCode(
-            ".pagetitle,.listtitle,.managetitle,.index .ihead h2,.playlistpage h2{"
+            ".pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{"
             "\n  font-size:var(--fs-3xl);line-height:1.25;letter-spacing:-.01em;font-weight:600}")
         # 全站字体栈必须有 CJK sans 兜底：Bahnschrift/Consolas 都没有中文字形，
         # generic sans-serif/monospace 在中文 Chrome 的默认可能落到宋体。
@@ -6088,8 +5950,6 @@ class WebUiSourceTests(unittest.TestCase):
             "{isCurrent:()=>surfaceCurrent(surface)})")
         self.assertPageContains(
             "const props={receipt:message=>actionReceipt(message),reopenTutorial:reopenPostSetupTutorial};")
-        self.assertPageContains(
-            "document.body.classList.toggle('configuration-layout',current==='configuration');")
         self.assertPageContains("'/configuration':()=>configurationSkeletonHtml()")
         self.assertPageContains('stats-lede-skeleton')
         self.assertPageContains("['网络与访问',2]")
@@ -6759,7 +6619,7 @@ class WebUiSourceTests(unittest.TestCase):
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         # 资料页标签按下那块玻璃与那一排排序键由 entity-filter island 画，外观由 e2e 对照量。
-        self.assertIn(".board-filter-frame.board-filter-frame .sorts button:not(.batchaction){\n"
+        self.assertIn(".board-filter-frame.board-filter-frame .sorts button{\n"
                       "  color:color-mix(in srgb,var(--glass-text) 62%,transparent)}", board)
         self.assertIn('.board-filter-frame.board-filter-frame .sorts button[aria-pressed="true"]{\n'
                       "  background:none;backdrop-filter:none;-webkit-backdrop-filter:none;\n"
@@ -6894,7 +6754,6 @@ class WebUiSourceTests(unittest.TestCase):
         """关注页的批量条只有保存、跳过这类按行动作：这一页是浏览用的，不配全选键。"""
         self.assertPageLacks('id="followBatchAll"')
         self.assertPageLacks("#followBatchAll")
-        self.assertPageContains("$('#batchbar').querySelectorAll('[data-follow-batch]').forEach(button=>button.hidden=!followPage);")
 
     def test_the_data_management_skeleton_opens_with_a_row_of_stat_cards(self):
         """数据管理页的骨架照 Board 的 dashboard 模板：一排读数卡打头，下面的任务卡各占一行。
@@ -6968,9 +6827,6 @@ class WebUiSourceTests(unittest.TestCase):
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         self.assertIn("width:var(--tab-width,0px);height:2px;background:var(--tungsten);", board)
-        self.assertIn(".managebar .managebar-menu button[aria-pressed=\"true\"]{background:none;"
-                      "color:var(--tungsten);border-bottom-color:var(--tungsten);"
-                      "font-weight:500}", board)
         self.assertIn(".board-local-nav button[aria-selected=\"true\"]{border-bottom-color:var(--tungsten);"
                       "color:var(--tungsten);font-weight:500}", board)
         # 焦点环也是蓝的，两者靠形态分开：焦点是一圈 outline，当前项是底下那条线。
@@ -7097,7 +6953,7 @@ class WebUiSourceTests(unittest.TestCase):
         在两个页面上读出两种红，用户要判断的是哪一次更重，而这个差别是没有意思的。
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        roster = "body :is(button.danger,.batchbar button.danger):not(:disabled)"
+        roster = "body button.danger.danger:not(:disabled)"
         self.assertIn(roster + "{position:relative;isolation:isolate;background:var(--board-red);"
                       "border:0;color:#fff;box-shadow:var(--elevation-xs);", board)
         self.assertIn(roster + "::before{content:\"\";position:absolute;inset:0;z-index:-1;"
@@ -7209,24 +7065,6 @@ class WebUiSourceTests(unittest.TestCase):
                      if line.startswith("  border:0;box-shadow:inset 0 1px 0 var(--glass-rim),"))
         self.assertIn("var(--glass-shadow)", glass, "浮层那几块玻璃照旧带顶边高光")
 
-    def test_the_shuffle_key_is_the_accent_tier_among_the_sort_keys_beside_it(self):
-        """换一批走强调档：这一排其余的是排序开关，只有它是动作。
-
-        面色取全站那两个 token，压上去提亮一档；圆角随这一条上的按钮取 7px。排序键那条
-        字色规则要把它排除掉，否则它读到六成的玻璃字色。资料页那一枚在 entity-filter
-        island 里，由 e2e `entity-filter.test.ts` 对照量。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".board-filter-frame.board-filter-frame .sorts .batchaction"
-                      "{color:#fff;background:var(--board-blue);border:0;border-radius:7px;"
-                      "box-shadow:var(--elevation-xs)}", board)
-        # 选中态归排序键，换一批只有悬停。
-        self.assertIn(".board-filter-frame.board-filter-frame .sorts .batchaction:hover"
-                      "{background:var(--board-blue-hover);color:#fff}", board)
-        for selector in (".board-filter-frame.board-filter-frame .sorts button:not(.batchaction){",
-                         ".board-filter-frame.board-filter-frame .sorts button:not(.batchaction):hover{"):
-            self.assertIn(selector, board, "排序键的字色不能再盖到换一批身上")
-
     def test_the_profile_floating_panel_is_one_pane_measured_off_the_home_one(self):
         """资料页骨架里那块浮层尺寸照首页那块量，真浮层（entity-filter island）接管时不跳。
 
@@ -7304,7 +7142,7 @@ class WebUiSourceTests(unittest.TestCase):
         page = self.page
         overlay = page.split("const OVERLAY_SCROLLERS=[", 1)[1].split("].join(',')", 1)[0]
         edge = page.split("const BOARD_EDGE_SCROLLERS=", 1)[1].split(";", 1)[0]
-        for selector in (".board-local-nav", ".managebar-menu", ".follow-workspace-switch",
+        for selector in (".board-local-nav", "[data-manage-menu]", ".follow-workspace-switch",
                          ".fmanagenav"):
             self.assertIn(selector, edge, f"{selector} 会横向溢出，要按横滚层登记")
         # 扫描只看前一份名单，只写进后一份等于没登记。
@@ -7617,8 +7455,8 @@ class WebUiSourceTests(unittest.TestCase):
         """六行显隐只允许存在一份。再出现第二份就是下一次抄漏的起点。"""
         self.assertEqual(self.page.count("$('#stats').hidden=false"), 1,
                          "又有人手抄了接管块，请改调 showManagementBody()")
-        self.assertEqual(self.page.count("$('#managebar').hidden=true"), 1,
-                         "隐藏管理条的分支也只能有一处，它是 showManagementBody 的 manage:false")
+        self.assertEqual(self.page.count("paintManageHeader('')"), 1,
+                         "收起页头的分支也只能有一处，它是 showManagementBody 的 manage:false")
 
     def test_every_full_page_view_clears_the_catalog_chrome_through_one_helper(self):
         """整页视图必须走同一个清理函数，不许各自手抄一份。
@@ -7842,14 +7680,6 @@ class WebUiSourceTests(unittest.TestCase):
         浮在缩略图上的纯图标键也不在此列，那圈半透明白边是它与照片之间唯一的分界。
         """
         css = stylesheet_source()
-        # 重复页「批量保留」那条不在此列：它是一块玻璃，上面的键沿用筛选框胶囊那圈 `--glass-low` 发丝边。
-        for name in (".batchbar button{",):
-            found = re.search(r"(?:^|[}\n])" + re.escape(name), css)
-            self.assertIsNotNone(found, f"{name} 找不到基样式")
-            start = found.end() - len(name)
-            rule = css[start:css.index("}", start)]
-            self.assertIn("border:0", rule, f"{name} 不描边")
-            self.assertIn("background:var(--ground)", rule, f"{name} 自己是一块面")
         # 资源同步那一族按钮的底色自己就画出了按钮，`border-color` 落在 `border:0` 上
         # 是空转的声明：读起来像还有一圈边，实际一像素都不画。
         for rule in re.findall(r"\.resourceaction[^{]*\{[^}]*\}", css):
@@ -7880,8 +7710,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn('<Button variant="danger" size="small" disabled={readOnly}',
                       self.read_react("follow-manage/credentials.tsx"))
         # 每个页面各写一份 .danger 的时代结束了：站里只留 01-base 那一条。
-        for stale in (".pagelede-actions .batchaction.danger{", ".cleanupfieldset button.danger{",
-                      ".playlistactions .danger{", ".dupbtns button.danger{", ".batchbar .danger{"):
+        for stale in (".cleanupfieldset button.danger{", ".playlistactions .danger{", ".dupbtns button.danger{"):
             self.assertPageLacks(stale, "危险档只有 01-base 里那一份")
 
     def test_bulk_actions_use_the_home_selection_dock(self):

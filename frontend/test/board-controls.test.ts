@@ -17,12 +17,12 @@ describe('范围控件',()=>{
     expect(document.querySelectorAll('.insightswitch .board-segment-thumb')).toHaveLength(1);
     expect(document.querySelector('.insightswitch')?.getAttribute('data-board-segments')).toBe('true');
   });
-  it('管理导航接上会滑的指示条，复核和配置分类用 Pills',()=>{
-    document.body.innerHTML='<div class="reviewtabs" role="tablist"><button role="tab" aria-selected="true">元数据字段</button><button role="tab" aria-selected="false">厂牌 Logo</button></div><div class="managebar"><div class="managebar-menu"><button aria-pressed="true">统计</button></div></div>';
+  it('页内下划线导航接上会滑的指示条，复核和配置分类用 Pills',()=>{
+    document.body.innerHTML='<div class="reviewtabs" role="tablist"><button role="tab" aria-selected="true">元数据字段</button><button role="tab" aria-selected="false">厂牌 Logo</button></div><nav class="board-local-nav" aria-label="配置分区"><button aria-pressed="true">外观</button></nav>';
     const config=document.createElement('div');config.className='board-local-nav';config.dataset.sectionNav='';
     document.body.append(config);
     wireBoardTabs(document);wireBoardTabs(document);
-    expect([...document.querySelectorAll('[data-board-tabs]')].map(group=>group.className)).toEqual(['managebar-menu']);
+    expect([...document.querySelectorAll('[data-board-tabs]')].map(group=>group.getAttribute('aria-label'))).toEqual(['配置分区']);
   });
   it('范围输入把当前值换算成轨道百分比写进样式变量',()=>{
     document.body.innerHTML='<input type="range" min="0" max="180" value="45">';

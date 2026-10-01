@@ -916,7 +916,7 @@ class StandaloneConfigurationTests(_Case):
             headers = {"X-Token": "test-token"}
             page = client.get("/configuration", headers=headers)
             self.assertEqual(page.status_code, 200)
-            self.assertIn('id="managebar"', page.text, "配置页由 SPA 外壳承载，不是独立页面")
+            self.assertIn('data-manage-header', page.text, "配置页由 SPA 外壳承载，不是独立页面")
             self.assertTrue(client.get("/healthz").json()["configurable"])
             snapshot = client.get("/api/configuration", headers=headers).json()
             self.assertTrue(snapshot["editable"])

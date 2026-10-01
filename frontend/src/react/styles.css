@@ -47,7 +47,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* 管理区正文的窄列。宽度由 `web/board.css` 的 `--board-content` 说了算，页面标题
- * (`#manageTitle`) 也钉在同一个数上；这里只把它接成 `max-w-board`，不另写一个像素值。 */
+ * (`[data-manage-title]`) 也钉在同一个数上；这里只把它接成 `max-w-board`，不另写一个像素值。 */
 @theme {
   --container-board: var(--board-content, 1120px);
   /* 列表卡片左侧那块封面：宽度与 16/10 的比例在高清版、重复项、复核对照上是同一套几何，
@@ -438,7 +438,7 @@
 
 /* 两块玻璃的料由 `web/board.css` 的 `[data-glass-pane]` 一处给，两个元素都挂着那个属性。
  * 留在这里的是各自的几何、`backdrop-filter` 的饱和度和文字色：首页 `.board-filter-frame`
- * 与 `.selectiondock` 的饱和度本来就不同，不能拿同一个近似 utility 套。 */
+ * 与底部批量条（`[data-selection-dock]`）的饱和度本来就不同，不能拿同一个近似 utility 套。 */
 /* 重复文件页那条「批量保留」（`components/filter-glass.tsx`）和复核筛选条是同一块玻璃：
  * 旧版两处都是首页 `.board-filter-frame` 那一副，几何与饱和度都一样。 */
 .peach-react :is([data-review-filter], [data-filter-glass]) {
@@ -508,6 +508,36 @@
 .peach-react:has([data-selection-dock]) {
   padding-bottom: 96px;
 }
+
+/* 岛里的危险键（批量条的「移入回收站」「彻底删除」、回收站说明行的「清空回收站」）挂 `data-danger`，
+ * 红色只在这里定义一份，与壳的 `button.danger`（`web/board.css`）读同一组 `--board-red` 三档渐变：
+ * 静止 red-500→600、悬停 400→500 铺在 `::before` 上淡入、按下 600→700。尺寸归各自的岛。
+ * 不限定在 `.peach-react` 里：管理区页头岛的根在 Preflight 之外。 */
+[data-danger]:not(:disabled) {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background: var(--board-red);
+  box-shadow: var(--elevation-xs);
+  color: #fff;
+  transition: box-shadow .15s ease, color .15s ease;
+}
+
+[data-danger]:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--board-red-hover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+
+[data-danger]:not(:disabled):hover::before { opacity: 1; }
+[data-danger]:not(:disabled):active { background: var(--board-red-active); }
+[data-danger]:not(:disabled):active::before { opacity: 0; }
 
 /* 下划线 Tabs 那条 2px 蓝线（`components/board-tabs.tsx`）。位置与宽度由组件量出来写在
  * tablist 上；位移跟侧栏、筛选条上那几块玻璃同一条弹簧，宽度匀速走——跟着弹簧过冲的话，

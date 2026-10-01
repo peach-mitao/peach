@@ -51,16 +51,6 @@
 .combo .cb b{display:grid;place-items:center;width:28px;height:28px;margin-left:5px;
   cursor:pointer;color:var(--muted);font-size:var(--fs-xs);font-weight:400}
 .combo .cb b:hover{color:var(--drop);background:color-mix(in srgb,var(--drop) 12%,transparent)}
-/* 管理页标题下的说明只用这一种字形和间距；不要再让统计容器或吸顶计数栏各画一份。 */
-.pagelede{margin:0 0 16px;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
-.pagelede[hidden]{display:none}
-/* 页面动作挂在说明行右端：它和左边那句说的是同一批文件，自己占一整行时，标题和
-   内容之间会空出一条只放一个按钮的带子。 */
-.pagelede-actions{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.pagelede-actions .batchaction{box-sizing:border-box;min-height:32px;padding:0 14px;flex:none;
-  display:inline-flex;align-items:center;border:1px solid transparent;border-radius:var(--control-radius);
-  background:var(--ink);color:var(--ground);font:inherit;font-size:var(--fs-xs);font-weight:500;cursor:pointer}
-.pagelede-actions .batchaction:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 /* 首页筛选条（`catalog-filter` 岛）的宿主与 React 根都不生成盒子：两排头像与那块浮层要直接当
    body 的孩子排，浮层吸顶的范围才是整页。实体页与索引页不显示它。 */
 [data-catalog-filter],[data-catalog-filter]>.peach-react{display:contents}
