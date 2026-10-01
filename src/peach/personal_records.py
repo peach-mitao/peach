@@ -18,6 +18,15 @@ PERSONAL_RECORD_TABLES = (
     "asset_quality_goal", "activity_event", "asset_tag_preference",
 )
 
+#: 一行 `asset` 被物理删除时要一并清掉的引用表，删除与搬运记录的边界只写在这一处。
+#: `asset_search` 不在其中：0004 的 `asset_search_asset_delete` 触发器已经负责 FTS 行，
+#: 这里再删一遍只会重复，还会诱使测试库伪造一张同名普通表，把 has_fts() 骗成 True。
+ASSET_REFERENCE_TABLES = (
+    "asset_tag", "media_binding", "activity_event", "asset_entity",
+    "watch_queue", "asset_preference", "asset_tag_preference", "asset_quality_goal",
+    "playlist_item", "asset_subtitle",
+)
+
 #: 文件已不在盘上、带着个人记录的那一档。
 VANISHED = "vanished"
 

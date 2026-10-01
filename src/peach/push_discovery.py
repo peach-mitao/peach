@@ -634,12 +634,15 @@ class PushDiscoveryService:
             return None
 
     def _ingest(self, location: str, path: str) -> bool:
+        from .record_rehome import reattach_in
         from .scan import ingest_path
         result = ingest_path(self.db_path, location, path,
                              declared_roots=self.declared_roots, mounts=self.mounts)
         # 附属文件按「处理完了」计：文件在，只是按规则不登记，不是「文件不在」。
         if result.found and not result.sidecar:
             self._measure(location, path)
+            # 登记时已按番号接回过一轮；探到时长之后，要靠时长分辨的那几条再判一次。
+            reattach_in(self.db_path, [result.asset_id] if result.new else [])
         if result.found and self.after_ingest:
             self.after_ingest()
         return result.found

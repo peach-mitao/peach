@@ -5,7 +5,7 @@
 判定与执行分家的话，「命中推广词」和「可以删」之间那道界线就没人守了——
 剥掉推广词后还剩内容的文件不是广告，这条只有把判据和删除放在一起看才成立。
 
-物理删除的边界只写在 `ASSET_REFERENCE_TABLES` 一处；同目录隔离加数据库失败回滚
+物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处；同目录隔离加数据库失败回滚
 （`_restore_staged_media`）是这个模块最不能出错的部分：删错的文件找不回来。
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from typing import Sequence
 from .catalog_rules import duration_clusters, is_jav_code, normalise_code_key
 from .config import LOCATION_ROOT_DECLARATIONS
 from .field_owners import USER_MANUAL, write_owned_fields
-from .personal_records import VANISHED
+from .personal_records import ASSET_REFERENCE_TABLES, VANISHED
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 from .regions import normalize_region
 from .task_runs import TaskRunHandle
@@ -38,15 +38,6 @@ BATCH_LABELS = {
     "region": "批量判定产地",
 }
 
-
-# 清空回收站时要一并清掉的资产引用表，物理删除的边界只写在这一处。
-# `asset_search` 不在其中：0004 的 `asset_search_asset_delete` 触发器已经负责 FTS 行，
-# 这里再删一遍只会重复，还会诱使测试库伪造一张同名普通表，把 has_fts() 骗成 True。
-ASSET_REFERENCE_TABLES = (
-    "asset_tag", "media_binding", "activity_event", "asset_entity",
-    "watch_queue", "asset_preference", "asset_tag_preference", "asset_quality_goal",
-    "playlist_item", "asset_subtitle",
-)
 
 # 只认联系方式与站点形态的推广套话。「微信」「成人游戏」这类词单独出现不算：
 # 实测正片标题里就有（「还要微信跟老公汇报战果」是剧情，不是联系方式）。
