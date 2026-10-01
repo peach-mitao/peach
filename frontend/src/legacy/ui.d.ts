@@ -85,6 +85,8 @@ export declare function iconSwapHtml(a: string, b: string, state?: 'a' | 'b',
 export declare function setIconSwap(root: Element | null, state: 'a' | 'b' | boolean): Element | null;
 /** 一段标题从模糊里逐行揭示出来：`selector` 在 `root` 里选中的那几行按序错峰。 */
 export declare function revealTexts(root: Element | null, selector?: string): void;
+/** 一格文字原地换成新值：旧字淡出、新字淡入。值没变或这一格还空着时直接写，不放动画。 */
+export declare function swapText(el: HTMLElement | null, text: string, options?: { html?: boolean }): void;
 
 /** 骨架落进 DOM 之后按实际尺寸补齐到盖住视口，并挂上显示门槛（`.skeleton-awaiting`）：
  *  门槛之前就取完的，这张骨架从未被看见。 */

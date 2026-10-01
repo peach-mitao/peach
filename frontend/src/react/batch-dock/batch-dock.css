@@ -1,0 +1,16 @@
+/* 批量条岛（`frontend/src/react/batch-dock/`）。浮条的几何、玻璃与进出场归共用的 `SelectionDock`
+ * （`../styles.css` 的 `[data-selection-dock]`）；这里只写宿主不占盒子、正文给浮条让位与窄屏垃圾文件那一种
+ * 排法。与遗留层同名的类一条不写（`test/legacy-class-names.test.ts`）。 */
+
+[data-batch-dock],[data-batch-scope]{display:contents}
+
+/* 浮条出来时，作品详情那一层（`<dialog data-stage>`）的底部让出它的高度。 */
+body:has([data-batch-dock] [data-selection-dock]) [data-stage]{padding-bottom:180px}
+
+/* 窄屏垃圾文件：三颗键一行等分、计数单占一行居中，横跨整行贴底。浮条的水平居中靠 SelectionDock 自己
+   内联的 `translate(-50%)`，所以这里用「宽 = 视口减两边 12px」配 `left: 50%`，落点与贴边写法一样。 */
+@media(max-width:760px){
+  [data-batch-scope][data-context="junk"] [data-selection-dock]{bottom:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:calc(100vw - 24px);max-width:none;padding:9px 10px}
+  [data-batch-scope][data-context="junk"] [data-selection-dock]>[role="status"]{grid-column:1/-1;padding:0;text-align:center}
+  [data-batch-scope][data-context="junk"] [data-selection-dock]>button{min-width:0;min-height:44px;padding:8px 6px;font-size:var(--fs-xs)}
+}

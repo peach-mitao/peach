@@ -46,7 +46,9 @@ import { StatsPage } from './stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from './taste/taste';
 import { TastePage } from './taste/taste-page';
 
+export { configureBatchDock } from './batch-dock/batch-dock-island';
 export { configureImmerse } from './immerse/immerse-island';
+export { configureManageHeader } from './manage-header/manage-header-island';
 export { configureSettingsPanel } from './settings-panel/settings-panel';
 export { configureSidebar } from './sidebar/sidebar-island';
 export { configureStage } from './stage/stage';
