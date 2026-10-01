@@ -49,6 +49,13 @@ class ReferenceUpdateTests(unittest.TestCase):
              "readme-yingku",
              "readme-openaver", "readme-amane",
              "readme-stash", "readme-metatube", "readme-mdcx",
+             "readme-sakuramediabe", "readme-sakuramedia", "readme-neoavdc",
+             "readme-javboss", "readme-javdex", "readme-javm", "readme-mdcz",
+             "readme-javinizer-go", "readme-ammds-doc", "readme-ammds-docker",
+             "readme-javranking-extension", "readme-cuelume",
+             "readme-jav-moviemanager", "readme-nassav", "readme-garage",
+             "readme-atlas", "readme-javinfo-cli", "readme-javinfo-mcp",
+             "readme-javinfo-legacy",
              "evilcharts-registry",
              "youtube-stats-buffer-20260829"},
         )
