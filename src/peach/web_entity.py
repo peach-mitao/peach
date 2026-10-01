@@ -109,6 +109,7 @@ def label_layer(contract: WebContract, c, kind: str, entity_id: int) -> tuple[di
         ref["has_logo"] = contract.has_logo(ref["name"])
     for label in labels:
         label["has_image"] = contract.has_entity_image("studio", label["id"])
+        label["image_version"] = contract.entity_image_version("studio", label["id"])
     return maker, labels
 
 
@@ -271,6 +272,7 @@ def q_entity(contract: WebContract, args):
     # 大位那条链的后两环同样要随资料下发：实体图取不到就直接从代表作头像起步，两样
     # 都取不到就一个 `<img>` 都不出。判定在库连接之外做，它读的是目录索引。
     d["has_image"] = contract.has_entity_image(kind, d["id"])
+    d["image_version"] = contract.entity_image_version(kind, d["id"])
     attach_avatar_availability(contract, [d], key="representative_asset_id")
     # 页脚那排共演者是同一个圆头像，用的也是同一条两级链，取景也是同一份 sidecar。
     # 圆框越小越需要取景：一张 3762×2535 的封面塞进 44 px 的圆里，几何居中给出的是
@@ -278,6 +280,7 @@ def q_entity(contract: WebContract, args):
     # 同一条链，差别只在框多大，所以判据不该按页面分岔。
     for person in d["related_performers"]:
         person["has_image"] = contract.has_entity_image("performer", person["id"])
+        person["image_version"] = contract.entity_image_version("performer", person["id"])
         person["avatar_focus"] = contract.avatar_focus("performer", person["id"])
     attach_avatar_availability(contract, d["related_performers"])
     if kind == "agency":
@@ -588,6 +591,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
         # 判定在库连接之外做，它读的是目录索引而不是账本。
         for row in rows:
             row["has_image"] = contract.has_entity_image(entity_kind, row.get("entity_id"))
+            row["image_version"] = contract.entity_image_version(entity_kind, row.get("entity_id"))
         attach_avatar_availability(contract, rows)
         #: 索引页的大图版式把头像裁成竖幅，几何居中会切掉脸。取景与资料页大图同一份
         #: sidecar、同一个换算，只是这里按行取；读的是文件，所以放在连接之外。
@@ -865,6 +869,7 @@ def _suggest_faces(contract: WebContract, connection, kind: str, items: list[dic
     for item in items:
         entity_id = item["entity_id"]
         item["has_image"] = contract.has_entity_image(kind, entity_id)
+        item["image_version"] = contract.entity_image_version(kind, entity_id)
         if item["has_image"]:
             item["avatar_focus"] = contract.avatar_focus(kind, entity_id)
         item["rep"] = reps.get(entity_id)
@@ -962,6 +967,7 @@ def q_suggest(contract: WebContract, q: str, limit: int = SUGGEST_GROUP_LIMIT,
     for kind in ("studio", "agency"):
         for item in buckets.get(kind, []):
             item["has_image"] = contract.has_entity_image(kind, item["entity_id"])
+            item["image_version"] = contract.entity_image_version(kind, item["entity_id"])
             if kind == "studio":
                 item["has_logo"] = contract.has_logo(item["value"])
     return {"q": query, "groups": [

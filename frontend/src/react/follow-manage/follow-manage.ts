@@ -477,6 +477,8 @@ export interface FeedSource {
   entity_name: string | null;
   /** 这位有没有资料图：有就在名字前画 `/entity-image` 的圆框，没有退首字母。 */
   has_image?: boolean;
+  /** 实体图的版本，拼进 `/entity-image` 的 `v=`：换过头像地址就变。 */
+  image_version?: string;
   /** 资料图的人脸取景，和 `has_image` 出自同一份身份引用。 */
   avatar_focus?: unknown;
   enabled: boolean;

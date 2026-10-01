@@ -88,7 +88,10 @@ type AvatarInner = FollowManageProps['avatarInner'];
  *  有资料图按人脸取景出图，判据是服务端的 `has_image`；没有就是首字母。整格不进读屏，名字就在旁边。 */
 function FeedAvatar({ source, avatarInner }: { source: FeedSource; avatarInner: AvatarInner }) {
   const entity = source.entity_id
-    ? { id: source.entity_id, has_image: !!source.has_image, avatar_focus: source.avatar_focus }
+    ? {
+        id: source.entity_id, has_image: !!source.has_image, image_version: source.image_version,
+        avatar_focus: source.avatar_focus,
+      }
     : null;
   return (
     <span aria-hidden

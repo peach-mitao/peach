@@ -19,6 +19,8 @@ export interface PlaylistFace {
   id: number;
   name: string;
   has_image: boolean;
+  /** 实体图的版本，拼进 `/entity-image` 的 `v=`：换过头像地址就变。 */
+  image_version?: string;
   avatar_focus?: unknown;
 }
 

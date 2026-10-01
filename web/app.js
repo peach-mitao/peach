@@ -1423,11 +1423,14 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseHove
 /* `thumb` 要的是实体图缩到长边 640 的那一份。开给一屏几十格的位置用：实体图是给
    资料页大位存的照片，本库 727 张均 221 KB，索引页一屏 120 格铺进 150 px 的格子就是
    十几 MB，而屏幕上用得着的只有其中百分之几的像素。资料页仍取原件——那里就是要看清。 */
-function entityFaceImg({kind='performer',id=null,hasImage=false,rep=null,mark=null,logo='',
+/* `version` 是服务端随 `has_image` 下发的 `image_version`。换头像原地覆盖同一个文件，
+   地址不跟着变的话，同一页里浏览器直接复用内存里那张旧图，要刷新才看得到新的。 */
+function entityFaceImg({kind='performer',id=null,hasImage=false,version='',rep=null,mark=null,logo='',
                         logoVariant='logo',alt='',lazy=true,style='',dropStyle=false,
                         focus=null,thumb=false}={}){
   const useEntity=!!(id&&hasImage);
-  const entitySrc=useEntity?`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`:'';
+  const entitySrc=useEntity?`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`
+    +(version?`&v=${encodeURIComponent(version)}`:''):'';
   // `rep` 由服务端的 has_avatar 决定有没有值，没有就不出这一环。
   const avatarSrc=rep?`/avatar?id=${rep}`:'';
   /* 公司的门面是它自己的标识，不是作品截图——那是某部片的画面，说的是别人的事。
@@ -1470,7 +1473,7 @@ function avatarInner(name,ref,repId,kind='performer',markId=null,logoName='',log
   // 厂牌大格是同一个模板里的例外，由调用方点名要 `large`。
   const hint=focus===undefined?(ref&&ref.avatar_focus)||null:focus;
   return `<span class="ini">${esc((name||'?').slice(0,1))}</span>`+
-    entityFaceImg({kind,id:ref&&ref.id,hasImage:!!(ref&&ref.has_image),rep:repId,mark:markId,
+    entityFaceImg({kind,id:ref&&ref.id,hasImage:!!(ref&&ref.has_image),version:ref&&ref.image_version,rep:repId,mark:markId,
                    logo:logoName,logoVariant,focus:hint,thumb});
 }
 /* 人脸取景：资料页圆框按检出的人脸中心取景（/api/entity 的 avatar_focus）。
@@ -2153,7 +2156,7 @@ function catalogTags(filters){
    源图 1:1。取景与索引页同一份 sidecar、同一个换算。 */
 function tierPerformer(x){
   return {name:x.k,ringHtml:`<span data-tier-initial>${esc(x.k.slice(0,1))}</span>${entityFaceImg(
-    {id:x.id,hasImage:x.has_image,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus})}`};
+    {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus})}`};
 }
 /* 正规厂牌用官网 logo；缺失时只显示首两个字，绝不把作品截图冒充厂牌图标。
 
@@ -3156,7 +3159,7 @@ function peopleIndexLayout(){
 function personRingHtml(x,kind,big){
   const ref=x.entity_id||x.id;
   const company=kind==='studio'||kind==='agency';
-  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image}:null,
+  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version}:null,
     x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',
     company&&big?'large':'ring',company?null:x.avatar_focus,true);
 }
@@ -3331,14 +3334,14 @@ const entityPageHelpers={
      各自拍的，拿其中一部的画面当门面，说的是别人的事。 */
   portraitImg:(kind,d)=>{
     const company=kind==='studio'||kind==='agency';
-    return d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,
+    return d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
       rep:company||!d.has_avatar?null:d.representative_asset_id,
       mark:kind==='agency'?d.mark_link_id:null,
       logo:company&&d.has_logo?d.canonical_name:'',logoVariant:'large',
       alt:esc(d.canonical_name),lazy:false,
       style:company?'':facePos(d.avatar_focus),focus:company?null:d.avatar_focus,
       dropStyle:true}):''},
-  costarImg:x=>entityFaceImg({id:x.id,hasImage:x.has_image,rep:x.has_avatar?x.rep:null,
+  costarImg:x=>entityFaceImg({id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,
     style:facePos(x.avatar_focus),focus:x.avatar_focus}),
   wireDrag:row=>{if(row)wireDrag(row)},
   wireScroller:row=>{if(row)wireHorizontalScroller(row)},
@@ -4277,7 +4280,7 @@ const searchHelpers={
   coverHtml:card=>`<span class="pic">${searchCoverImage(card)}</span>`,
   /* 人和公司的门面走索引页同一条兜底链：人是实体图 → 代表作头像，厂牌是标识，
      事务所是官网站点圆标；都取不到就是首字母。 */
-  faceHtml:(item,kind)=>avatarInner(item.value,{id:item.entity_id,has_image:item.has_image,avatar_focus:item.avatar_focus},
+  faceHtml:(item,kind)=>avatarInner(item.value,{id:item.entity_id,has_image:item.has_image,image_version:item.image_version,avatar_focus:item.avatar_focus},
     item.rep||null,kind,item.mark||null,item.has_logo?item.value:'','icon',undefined,true),
   present:menu=>presentMenu(menu),
   dismiss:menu=>dismissMenu(menu),
@@ -4354,7 +4357,7 @@ const itemDetailHelpers={
   displayName:it=>javDisplayName(it),
   performerLabel:it=>performerLabel(it),
   // 和顶栏圆头像同一条判据：没装实体图就不出 `<img>`，取不到就是首字母垫底。
-  faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,focus:ref.avatar_focus}),
+  faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),
   queueThumbHtml:it=>mixFacePoster(it,'small'),
   queueAvatarHtml:it=>cardIdentity(it,false).avatar,
   mixLabel:it=>mixLabel(it),

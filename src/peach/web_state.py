@@ -20,6 +20,7 @@ import threading
 import time
 
 from collections import OrderedDict
+from collections.abc import Mapping
 from pathlib import Path
 from typing import NamedTuple
 
@@ -49,12 +50,12 @@ from .task_runs import TaskRunStore
 class AvatarRootIndex(NamedTuple):
     """`avatar_root` 一次扫描的产物。两样东西同处一个目录，分开扫就是白扫两遍。
 
-    `entity_images` 是已装实体图的 casefold 落盘名，`generated` 是已经裁好的头像
-    资产 id。两者的判据不一样，故意不合并成一个集合：实体图有就是有、没有就是没有，
-    而头像是按需生成的，「目录里没有」只说明还没裁过。
+    `entity_images` 是已装实体图的 casefold 落盘名到它的版本（修改时间的十六进制纳秒），
+    `generated` 是已经裁好的头像资产 id。两者的判据不一样，故意不合并成一个集合：实体图
+    有就是有、没有就是没有，而头像是按需生成的，「目录里没有」只说明还没裁过。
     """
 
-    entity_images: frozenset[str]
+    entity_images: Mapping[str, str]
     generated: frozenset[int]
 
 
@@ -489,8 +490,13 @@ class WebContract:
                            version=path_version(self.avatar_root))
 
     def _scan_avatar_root(self) -> AvatarRootIndex:
-        """一次目录扫描同时收齐实体图和已裁头像。目录不存在就是两个空集合。"""
-        entity_images: set[str] = set()
+        """一次目录扫描同时收齐实体图和已裁头像。目录不存在就是两个空集合。
+
+        实体图顺手记下修改时间：换头像是原地覆盖同一个文件，地址不带版本时，同一页里
+        浏览器直接复用内存里那张旧图，不刷新就看不到新的。Windows 上 `entry.stat()`
+        取自目录枚举本身，不多一次系统调用。
+        """
+        entity_images: dict[str, str] = {}
         generated: set[int] = set()
         try:
             with os.scandir(self.avatar_root) as entries:
@@ -500,7 +506,7 @@ class WebContract:
                         # `.ct`、`.provenance.json`、`.face.json` 都是边车，不是
                         # `/entity-image` 会取的文件，不算这个实体有图。
                         if entry.is_file():
-                            entity_images.add(name[:-len(".img")])
+                            entity_images[name[:-len(".img")]] = f"{entry.stat().st_mtime_ns:x}"
                     elif name.endswith(".jpg"):
                         # 头像按资产 id 落盘。生成中途的 `<id>.<格>.tmp.jpg` 不算数，
                         # 它随时会被删掉或改名。
@@ -508,8 +514,19 @@ class WebContract:
                         if stem.isdigit() and entry.is_file():
                             generated.add(int(stem))
         except OSError:
-            return AvatarRootIndex(frozenset(), frozenset())
-        return AvatarRootIndex(frozenset(entity_images), frozenset(generated))
+            return AvatarRootIndex({}, frozenset())
+        return AvatarRootIndex(entity_images, frozenset(generated))
+
+    def entity_image_version(self, kind: str, entity_id) -> str:
+        """这个实体那张图的版本，页面拼进 `/entity-image` 的 `v=`；没有图是空串。
+
+        判据与 `has_entity_image` 是同一份索引，两者不会一个说有、一个说没有。
+        """
+        if not self.has_entity_image(kind, entity_id):
+            return ""
+        # 两次取索引之间缓存可能刚失效过，第二次那份里未必还有这个键。
+        return self.avatar_root_index().entity_images.get(
+            entity_image_key(kind, entity_id).casefold(), "")
 
     def has_entity_image(self, kind: str, entity_id) -> bool:
         """`/entity-image` 能不能取到这个实体的图。

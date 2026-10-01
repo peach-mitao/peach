@@ -43,7 +43,7 @@ export interface CardHandlers {
   revealNote: string;
   avatarInner(
     name: string,
-    entity: { id: number; has_image: boolean; avatar_focus?: unknown } | null,
+    entity: { id: number; has_image: boolean; image_version?: string; avatar_focus?: unknown } | null,
     representativeAssetId: number | null,
     kind: string,
   ): string;
@@ -102,7 +102,7 @@ export function ReviewCard(props: ReviewCardProps) {
           openEntity={handlers.openEntity}
           avatar={handlers.avatarInner(subjectName,
             row.entity_id
-              ? { id: row.entity_id, has_image: !!row.has_image, avatar_focus: row.avatar_focus }
+              ? { id: row.entity_id, has_image: !!row.has_image, image_version: row.image_version, avatar_focus: row.avatar_focus }
               : null,
             null, subjectKind)} />
       : row.asset_id

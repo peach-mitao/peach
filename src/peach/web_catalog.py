@@ -440,7 +440,8 @@ def entity_ref(contract: WebContract, kind: str, entity_id, name: str) -> dict:
     不去问盘。
     """
     has_image = contract.has_entity_image(kind, entity_id)
-    ref = {"id": entity_id, "name": name, "has_image": has_image}
+    ref = {"id": entity_id, "name": name, "has_image": has_image,
+           "image_version": contract.entity_image_version(kind, entity_id)}
     if has_image:
         ref["avatar_focus"] = contract.avatar_focus(kind, entity_id)
     return ref
@@ -1085,6 +1086,7 @@ def q_tops(contract: WebContract, n=28, jav=False, seed="", state="", page=0):
     # 能无损放大的余量越大，全身站姿照在这里才谈得上看清是谁。
     for performer in out["performers"]:
         performer["has_image"] = contract.has_entity_image("performer", performer["id"])
+        performer["image_version"] = contract.entity_image_version("performer", performer["id"])
         performer["avatar_focus"] = contract.avatar_focus("performer", performer["id"])
     # 厂牌那排自己不出头像，但两排的 `rep` 都会进前端的 REP 表，卡片头像回落时读的
     # 就是它——所以两排都得判。

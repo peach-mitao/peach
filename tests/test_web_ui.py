@@ -1555,12 +1555,14 @@ class WebUiSourceTests(unittest.TestCase):
         # 顶栏圆头像、卡片署名、共演者、资料页大位共用 entityFaceImg；
         # `/entity-image` 和 `/avatar` 两个地址只在这一个函数里拼。
         self.assertPageContains(
-            "function entityFaceImg({kind='performer',id=null,hasImage=false,rep=null,")
+            "function entityFaceImg({kind='performer',id=null,hasImage=false,version='',rep=null,")
         self.assertPageContains("const useEntity=!!(id&&hasImage);")
         # `thumb` 那一档也只在这里拼：索引页一屏几十格取派生件，资料页大位取原件。
-        self.assertPageContains(
+        self.assertCode(
             "const entitySrc=useEntity?"
-            "`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`:'';")
+            "`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`
+"
+            "    +(version?`&v=${encodeURIComponent(version)}`:''):'';")
         self.assertPageContains("const avatarSrc=rep?`/avatar?id=${rep}`:'';")
         self.assertCode(
             "const src=useLogo?`/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`\n"
@@ -1709,7 +1711,7 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertPageContains("const hint=focus===undefined?(ref&&ref.avatar_focus)||null:focus;")
         # 详情页的出镜者格子不走 avatarInner，壳交给详情岛的那一格自己把取景递进去。
-        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,focus:ref.avatar_focus}),")
+        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),")
 
     def test_an_unlaid_out_frame_is_waited_for_instead_of_measured_as_zero(self):
         """图加载完时框还没布局，`load` 不会再来第二次。
@@ -2849,7 +2851,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 人物格走和顶栏圆头像同一个 entityFaceImg；这一格没有代表作头像可退，
         # 装了实体图才出 `<img>`，否则就是首字母垫底。
         # 厂牌那一格装了标识才出 `<img>`：`frontend/test/react/item-detail.test.tsx`。
-        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,focus:ref.avatar_focus}),")
+        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),")
 
     def test_playback_keys_reach_both_the_detail_player_and_immerse(self):
         # 两边的 Video.js 读的都是原生 video 元素，沉浸模式拉不到播放器脚本时还是裸 video，
