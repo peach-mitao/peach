@@ -121,15 +121,10 @@ describe('比例', () => {
 
 describe('作品卡', () => {
   const helpers: MediaCardHelpers = {
-    coverHtml: () => '<img class="poster cover whole" src="/cover" alt="">',
-    relayoutArt: vi.fn(),
     badgeHtml: (location) => `<span>${location}</span>`,
     titleHtml: (_it, raw) => raw,
     displayName: (_it, raw) => raw,
-    avatarHtml: (name) => name.slice(0, 1),
     tagLabel: (tag) => `#${tag}`,
-    wireHover: vi.fn(),
-    releaseHover: vi.fn(),
   };
   const actionsFor = (): MediaCardActions => ({
     open: vi.fn(), openResource: vi.fn(), openShort: vi.fn(), openShorts: vi.fn(), openMix: vi.fn(),
@@ -238,32 +233,29 @@ describe('作品卡', () => {
     expect(shortcut.host.querySelector('[data-media-resource-action]')?.getAttribute('title')).toBe('移入回收站');
   });
 
-  it('换大图／小图留着原来那张封面，交给壳原地换取景；换了作品才换图', async () => {
-    const relayoutArt = vi.fn();
-    const layered: MediaCardHelpers = {
-      ...helpers, relayoutArt,
-      coverHtml: (it, size) => `<img class="poster cover ${size === 'small' ? 'whole' : 'front'}" src="/cover?code=${it.code}" alt="">`,
-    };
+  it('换大图／小图留着原来那张封面，原地换取景；换了作品才换图', async () => {
     const BIG: MediaCardLayout = { active: true, size: 'big', portrait: false, javImage: 'cover' };
     let show!: (next: { layout: MediaCardLayout; code: string }) => void;
     function Harness() {
       const [state, set] = useState({ layout: BIG, code: 'ABC-001' });
       show = set;
       return <MediaCard item={item(19, { is_jav: true, code: state.code, has_cover: true })} variant="grid"
-        layout={state.layout} selected={false} selectMode={false} seekSeconds={10} helpers={layered}
+        layout={state.layout} selected={false} selectMode={false} seekSeconds={10} helpers={helpers}
         actions={actionsFor()} onOpen={vi.fn()} />;
     }
     const host = await mount(<Harness />);
-    const cover = host.querySelector('[data-media-art] img');
-    relayoutArt.mockClear();
+    const cover = host.querySelector<HTMLImageElement>('[data-media-art] img')!;
+    const firstSrc = cover.getAttribute('src');
+    expect([cover.classList.contains('front'), cover.dataset.javImageLayout]).toEqual([true, 'big']);
 
     await act(async () => show({ layout: { ...BIG, size: 'small' }, code: 'ABC-001' }));
     expect(host.querySelector('[data-media-art] img')).toBe(cover);
-    expect(relayoutArt).toHaveBeenLastCalledWith(host.querySelector('[data-media-art]'), 'small');
+    expect([cover.classList.contains('whole'), cover.classList.contains('front'), cover.dataset.javImageLayout]).toEqual([true, false, 'small']);
+    expect(cover.getAttribute('src')).toBe(firstSrc);
     expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe(String(16 / 9));
 
     await act(async () => show({ layout: { ...BIG, size: 'small' }, code: 'ABC-002' }));
     expect(host.querySelector('[data-media-art] img')).not.toBe(cover);
-    expect(host.querySelector('[data-media-art] img')?.getAttribute('src')).toBe('/cover?code=ABC-002');
+    expect(host.querySelector('[data-media-art] img')?.getAttribute('src')).toContain('ABC-002');
   });
 });

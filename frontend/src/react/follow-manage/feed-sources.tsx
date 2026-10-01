@@ -84,7 +84,7 @@ function StatusChip({ source }: { source: FeedSource }) {
 
 type AvatarInner = FollowManageProps['avatarInner'];
 
-/** 名字前的圆框：和关注列表的创作者圆标同一个尺寸与底色。里面那段由遗留层 `avatarInner` 拼：
+/** 名字前的圆框：和关注列表的创作者圆标同一个尺寸与底色。里面那段由 `card-art` 的 `avatarInner` 拼：
  *  有资料图按人脸取景出图，判据是服务端的 `has_image`；没有就是首字母。整格不进读屏，名字就在旁边。 */
 function FeedAvatar({ source, avatarInner }: { source: FeedSource; avatarInner: AvatarInner }) {
   const entity = source.entity_id

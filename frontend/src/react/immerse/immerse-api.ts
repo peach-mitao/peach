@@ -1,6 +1,5 @@
 /* 沉浸岛对壳的契约：壳只拿命令式入口，片单、每一格的播放器、手势、动作键与作者标题都在
  * `peach-react.js` 里。地址栏、首页筛选、头像拼法与「关掉之后去哪儿」归壳。 */
-import type { DetailEntityRef } from '../item-detail/item-detail';
 
 export interface ImmerseHost {
   /** 首页当前的筛选（壳的 `state`）：片单按它随机抽样，画幅不算。 */
@@ -11,8 +10,6 @@ export interface ImmerseHost {
   sourceOffline(location: string): boolean;
   /** 标题那一行的纯文本（遗留层 `javDisplayName`）。 */
   displayName(item: Record<string, unknown>): string;
-  /** 作者头像圆框里那一层（遗留层 `avatarInner` 加代表作 `REP`）。 */
-  avatarHtml(name: string, ref: DetailEntityRef | null, kind: 'performer' | 'creator'): string;
   /** 每换一条：壳用 replace 把 `/immerse?id=` 写进地址栏，刷新落回同一条。 */
   route(id: number): void;
   /** 沉浸模式关掉之后：壳回首页。 */

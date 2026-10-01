@@ -69,7 +69,7 @@ export function EntityHead(
 ) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      {/* `avatarInner` 是遗留层唯一那份「有图走图、没图退首字母」的实现，页面不重画一遍。 */}
+      {/* `card-art` 的 `avatarInner` 是唯一那份「有图走图、没图退首字母」的实现，页面不重画一遍。 */}
       <button type="button" aria-label={`打开创作者页：${name}`} onClick={() => openEntity(kind, name)}
         className={`relative inline-grid size-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full bg-background-secondary-default text-caption-1-medium text-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring ${LEGACY_AVATAR_IMG}`}
         dangerouslySetInnerHTML={{ __html: avatar }} />

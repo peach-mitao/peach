@@ -6,7 +6,7 @@
  * 在 `peach-ui.js` 里，React 包按 `@peach/card-art` 引用同一份产物，壳在启动时调一次。 */
 import { SKELETON_REVEAL_DELAY } from '@peach/legacy/ui';
 
-import { PANEL_ASPECT, panelFrame } from '../jav-artwork';
+import { PANEL_ASPECT, panelFrame, relayoutJavImages, type JavLayout } from '../jav-artwork';
 import { faceFrame } from './face-frame';
 import { faceSourceScale, nativeImageFit } from './native-image';
 
@@ -244,9 +244,10 @@ export function refitNativeImages(root?: ParentNode | null): void {
   });
 }
 
-/** 大图／小图原地换过之后，已经到手的封面按新卡片比例重新取景，派生档不够清楚的换回原件。 */
-export function reframeCovers(images: Iterable<HTMLImageElement>): void {
-  for (const img of images) { coverAnchor(img); upgradeCover(img); }
+/** 封面格换版式：格里的番号封面原地换取景类名，已经到手的按新卡片比例重新取景，派生档
+ *  不够清楚的换回原件。 */
+export function relayoutCovers(root: ParentNode, layout: JavLayout): void {
+  for (const img of relayoutJavImages(root, layout)) { coverAnchor(img); upgradeCover(img); }
 }
 
 let installed = false;

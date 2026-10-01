@@ -8,6 +8,7 @@
  * 从外面重新进来（`fresh`）才重取——壳只记着此刻开的是哪一个队列，用来判这一下。 */
 import type { QueryKey } from '@tanstack/react-query';
 import { esc, foldName } from '@peach/legacy/core';
+import { mixLabel } from '@peach/card-art';
 
 import { apiGet } from '../../api';
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
@@ -119,7 +120,7 @@ export async function fetchQueue(ref: QueueRef, helpers: ItemDetailHelpers, sign
     const [seed, related] = await Promise.all([fetchItem(seedId, signal), helpers.mixRelated(seedId)]);
     queryClient.setQueryData(itemKey(seed.id), seed);
     return {
-      kind: 'mix', seedId, title: `Mix · ${helpers.mixLabel(seed as unknown as QueueItem)}`,
+      kind: 'mix', seedId, title: `Mix · ${mixLabel(seed as unknown as QueueItem, helpers.tagLabel)}`,
       items: [seed as unknown as QueueItem, ...related.filter((item) => item.id !== seed.id)],
     };
   }
@@ -203,7 +204,8 @@ export async function prefetchItemDetail(props: ItemDetailProps, signal: AbortSi
 /** 标签选择器的一个候选：馆藏里带这枚标签的作品数。 */
 export interface TagCount { k: string; n?: number }
 
-/** 详情里仍由遗留层拼的几段 HTML 与读数。都是全站语义契约的唯一实现，这里不另写一份。 */
+/** 详情里仍由遗留层拼的几段 HTML 与读数。都是全站语义契约的唯一实现，这里不另写一份。
+ *  身份格与队列行的图、头像和署名直接取 `@peach/card-art`。 */
 export interface ItemDetailHelpers {
   /** 来源角标（遗留层 `srcBadge`）；`cls` 是 `srcbig` 这类尺寸档。 */
   badgeHtml(location: string, cost: string, cls?: string): string;
@@ -211,16 +213,8 @@ export interface ItemDetailHelpers {
   titleHtml(item: DetailItem): string;
   /** 同一标题的纯文本（遗留层 `javDisplayName`）。 */
   displayName(item: QueueItem): string;
-  /** 「女优」或「艺人」：番号作品叫女优。 */
-  performerLabel(item: DetailItem): string;
-  /** 身份格里那张实体图（遗留层 `entityFaceImg`）：没装图是空串，不出 `<img>`。 */
-  faceHtml(ref: DetailEntityRef): string;
-  /** 队列一行的小图（遗留层 `mixFacePoster`），和目录里 Mix 卡同一份判据。 */
-  queueThumbHtml(item: QueueItem): string;
-  /** 队列一行的头像（遗留层 `cardIdentity(item, false).avatar`）：整行是一个按钮，头像不可点。 */
-  queueAvatarHtml(item: QueueItem): string;
-  /** 这一条的署名（遗留层 `mixLabel`）：Mix 的标题与队列一行的第二行。 */
-  mixLabel(item: QueueItem): string;
+  /** 「JAV 默认封面」设置，每次现读：队列一行的小图按它取封套或预览图。 */
+  javImage(): string;
   tagLabel(tag: string): string;
   /** 时长分档那几枚标签：由时长推出来的，不在详情里列。 */
   isDurationTag(tag: string): boolean;

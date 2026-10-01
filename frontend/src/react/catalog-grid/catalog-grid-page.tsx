@@ -9,6 +9,7 @@
  * 内自动取下一页，点它等于手动取；失败在哨兵后面留一条可重试的 Note，之后只有手动才重试。 */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useInfiniteQuery, type InfiniteData, type QueryKey } from '@tanstack/react-query';
+import { mixFace as mixArtwork, mixLabel, relayoutCovers, type Artwork } from '@peach/card-art';
 import { requestErrorMessage } from '@peach/legacy/core';
 import { loadingDotsHtml } from '@peach/legacy/ui';
 
@@ -16,9 +17,8 @@ import { apiGet } from '../../api';
 import { RetryNote, useSkeletonReveal } from '../components/grid-reveal';
 import { cardRatio, MediaCard, type MediaCardVariant } from '../components/media-card';
 import { MIX_FLIP_FACES, MixCard } from '../components/mix-card';
-import { javArtwork, type Artwork } from './artwork';
 import {
-  SHORTS_BATCH, arrangeTiles, catalogParams, catalogQuery, entityQuery, mixHasPicture, mixLabel,
+  SHORTS_BATCH, arrangeTiles, catalogParams, catalogQuery, entityQuery, mixHasPicture,
   shortsBoundaries, shortsParams, splitSections, type GridPage, type ShortsCut, type Tile,
 } from './catalog-grid';
 import type { CatalogGridProps, MediaCardLayout, MediaCardHelpers, MediaItem, MediaPage } from './types';
@@ -264,12 +264,9 @@ function ShortsStrip({ cut, props, onOpen }: {
   );
 }
 
-/** Mix 的一张画面，同遗留层 `mixFacePoster`：番号作品走封套链，其余取本地预览格。 */
-function mixFace(item: MediaItem, layout: MediaCardLayout, eager: boolean, helpers: MediaCardHelpers): Artwork {
-  const jav = layout.active && !!item.is_jav;
-  if (item.is_jav) return javArtwork(item, jav ? layout.size : 'small', eager, layout.javImage, helpers.coverHtml);
-  if (!item.has_thumb && !item.has_local_poster) return { kind: '', html: '' };
-  return { kind: 'thumb', html: `<img class="poster" src="/poster?id=${item.id}&c=4" alt="" loading="${eager ? 'eager' : 'lazy'}">` };
+/** Mix 的一张画面：番号版式开着时番号作品按这一屏的大图／小图取，其余一律按小图。 */
+function mixFace(item: MediaItem, layout: MediaCardLayout, eager: boolean): Artwork {
+  return mixArtwork(item, layout.active && item.is_jav ? layout.size : 'small', eager, layout.javImage);
 }
 
 /** 目录每一页第 8 位的那张 Mix：以种子为首的相似作品。整张卡是点击区，悬停逐张翻过那一叠。 */
@@ -284,21 +281,21 @@ function HomeMix({ seed, layout, helpers, actions }: {
     const current = latest.current;
     const related = await actions.mixRelated(seed.id);
     const list = [seed, ...related].filter((item) => mixHasPicture(item, current.javImage)).slice(0, MIX_FLIP_FACES);
-    faces.current = new Map(list.map((item) => [String(item.id), mixFace(item, current, true, helpers).html]));
+    faces.current = new Map(list.map((item) => [String(item.id), mixFace(item, current, true).html]));
     return list.map((item) => String(item.id));
-  }, [seed, actions, helpers]);
+  }, [seed, actions]);
   const jav = layout.active && !!seed.is_jav;
   const size = jav ? layout.size : 'small';
-  const artwork = mixFace(seed, layout, false, helpers);
+  const artwork = mixFace(seed, layout, false);
   return (
     <MixCard data-mix-seed={String(seed.id)} name={`Mix · ${label}`}
       caption={`${helpers.displayName(seed, seed.name || '')}及相似作品`} count={0} badge="Mix" glyph wholeCard
       poster={null} artwork={artwork}
-      artworkIdentity={size === 'small' ? artwork.html : mixFace(seed, { ...layout, size: 'small' }, false, helpers).html}
-      relayoutArt={(root) => helpers.relayoutArt(root, size)}
+      artworkIdentity={size === 'small' ? artwork.html : mixFace(seed, { ...layout, size: 'small' }, false).html}
+      relayoutArt={(root) => relayoutCovers(root, size)}
       ratio={cardRatio(seed, 'grid', layout)}
       flipImages={flipImages} faceHtml={(id) => faces.current.get(id) || ''} canFlip={actions.canFlip}
-      faces={[]} faceAvatar={() => ''} onOpenEntity={actions.openEntity}
+      faces={[]} onOpenEntity={actions.openEntity}
       onOpen={(anchor) => actions.openMix(seed.id, anchor)} openLabel={`打开 Mix · ${label}`} />
   );
 }

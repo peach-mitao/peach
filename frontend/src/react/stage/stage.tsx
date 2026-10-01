@@ -11,6 +11,7 @@ import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from 'rea
 import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 
+import { releaseHoverPreviews } from '@peach/card-art';
 import { fitSkeleton, revealTexts } from '@peach/legacy/ui';
 
 import { detailSkeletonBody } from '../../board-skeleton';
@@ -276,7 +277,8 @@ function dispose({ miniplayer = true }: { miniplayer?: boolean } = {}): void {
   player.handOffStage(miniplayer);
   if (!view) return;
   const dialog = stageDialog();
-  if (dialog) stageHost().release(dialog);
+  // 舞台拆掉之前收起挂在舞台里的悬停预览（「接着看」那一排的卡）。
+  if (dialog) releaseHoverPreviews(dialog);
   // 右键菜单开着时挪进了舞台：先放回 body，别跟着浮窗一起被卸掉。
   closePlayerMenu();
   if (dialog?.open) dialog.close();

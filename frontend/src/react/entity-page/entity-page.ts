@@ -83,7 +83,6 @@ export interface EntityPageActions {
 export interface EntityPageHelpers {
   /** 大位那张图（`entityFaceImg`）：取不到就是空串，首字母垫底。 */
   portraitImg(kind: string, entity: EntityPageData): string;
-  costarImg(person: HeroCostar): string;
   /** 横滚行接上拖动与滚轮（`wireDrag`）。 */
   wireDrag(row: Element | null): void;
   /** 只接滚轮与两端渐隐（`wireHorizontalScroller`）。 */

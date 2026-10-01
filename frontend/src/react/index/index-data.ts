@@ -110,7 +110,7 @@ export interface IndexProps extends IndexRoute {
   selectMode: boolean;
   /** 页面自己要退出选择模式的两处：按所选标签显示结果，和艺人页切到在线名册。 */
   exitSelectMode(): void;
-  /** 本地名册一格的头像（遗留层 `avatarInner` 那条回落链）。 */
+  /** 本地名册一格的头像（`card-art` 的 `avatarInner` 那条回落链）。 */
   personAvatar(item: IndexPerson, entityKind: string, big: boolean): PersonAvatar;
   /** 在线创作者一格的头像：主页头像优先、归档兜底，都取不到落回首字母。 */
   authorAvatar(author: OnlineAuthor): string;

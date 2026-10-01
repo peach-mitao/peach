@@ -35,7 +35,7 @@ function actions(patch: Partial<EntityHeroActions> = {}): EntityHeroActions {
 
 function helpers(patch: Partial<EntityHeroHelpers> = {}): EntityHeroHelpers {
   return {
-    portraitImg: () => '', costarImg: () => '', wireScroller: vi.fn(), wireFeedRow: vi.fn(), receipt: vi.fn(), ...patch,
+    portraitImg: () => '', wireScroller: vi.fn(), wireFeedRow: vi.fn(), receipt: vi.fn(), ...patch,
   };
 }
 
@@ -178,6 +178,15 @@ describe('画出什么', () => {
     const wired = vi.mocked(help.wireScroller).mock.calls.map(([row]) => row);
     expect(wired).toContain(host.querySelector('[data-entity-links]'));
     expect(wired).toContain(host.querySelector('[data-related-people]'));
+  });
+
+  it('同台艺人装了实体图才出图，地址带上换图版本；没装的只有首字母', async () => {
+    const host = await open(props({ entity: performer({ related_performers: [
+      { id: 1, k: '三上悠亜', has_image: true, image_version: '1727800000' }, { id: 2, k: '河北彩花' },
+    ] }) }));
+    expect(host.querySelector('[data-related-performer="三上悠亜"] img')?.getAttribute('src'))
+      .toBe('/entity-image?kind=performer&id=1&v=1727800000');
+    expect(host.querySelector('[data-related-performer="河北彩花"] img')).toBeNull();
   });
 });
 

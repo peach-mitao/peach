@@ -468,10 +468,6 @@ export interface PlaylistsProps {
   openPlaylist(id: number, resumeAssetId: number): void;
   /** 点署名行的头像：去这个人的资料页。`kind` 是 `performer`／`creator`。 */
   openEntity(kind: string, name: string): void;
-  /** 圆框里那段 HTML（遗留层 `avatarInner`）：有图走图，没图退首字母。 */
-  faceAvatar(face: {
-    kind: string; id: number; name: string; has_image?: boolean; image_version?: string; avatar_focus?: unknown;
-  }): string;
   /** 此刻能不能悬停翻页：壳的多选、遮挡、减少动效与滚动中都回 false。 */
   canFlip(): boolean;
   /** 操作回执（遗留层 `actionReceipt`）；给了 `undo` 就带一颗撤销键。撤销抛错时回执自己

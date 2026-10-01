@@ -105,9 +105,9 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
     skeletonHtml: () => '<div data-test-skeleton></div>', groupCollapse: true, canLoadMore: () => true,
     card: {
       helpers: {
-        coverHtml: () => '', relayoutArt: vi.fn(), badgeHtml: () => '', titleHtml: (_it, raw) => raw,
-        displayName: (_it, raw) => raw, avatarHtml: (name) => name.slice(0, 1), tagLabel: (tag) => tag,
-        wireHover: vi.fn(), releaseHover: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
+        badgeHtml: () => '', titleHtml: (_it, raw) => raw,
+        displayName: (_it, raw) => raw, tagLabel: (tag) => tag,
+        personAvatar: vi.fn(() => ({ html: '', face: '' })),
       },
       actions: {
         open: vi.fn(), openResource: vi.fn(), openShort: vi.fn(), openShorts: vi.fn(), openMix: vi.fn(),
@@ -117,7 +117,7 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
       },
     },
     helpers: {
-      portraitImg: () => '', costarImg: () => '', wireDrag: vi.fn(), wireScroller: vi.fn(), wireFeedRow: vi.fn(),
+      portraitImg: () => '', wireDrag: vi.fn(), wireScroller: vi.fn(), wireFeedRow: vi.fn(),
       feedRowHtml: (data) => `<div class="feednewrow">${(data?.items || []).map((one) => `<div data-feed-id="${one.id}"></div>`).join('')}</div>`,
       receipt: vi.fn(), failure: vi.fn(), aliasForm: vi.fn(async () => {}),
       sourceToolsHtml: () => '', wireSourceTools: vi.fn(), tagLabel: (tag) => tag, comboItems: () => [],

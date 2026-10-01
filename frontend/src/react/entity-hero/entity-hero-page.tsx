@@ -4,11 +4,13 @@
  * （名字、别名与归属、外链），女优有资料时右边再加一栏资料表，同台艺人收进卡底那条色阶带——
  * 那是这个人的附注，不是这一页的正文。卡外面的交集条、筛选条与内容区仍归壳。
  *
- * 头像、同台艺人的脸和新作卡仍由遗留层拼：取图失败时兜底链（`card-art/image-fallback.ts`）会把 `<img>`
+ * 头像、同台艺人的脸和新作卡是拼好的 HTML（大位与新作卡由壳给，同台艺人的脸取自 `@peach/card-art`）：
+ * 取图失败时兜底链（`card-art/image-fallback.ts`）会把 `<img>`
  * 从 DOM 里摘掉、人脸放大（`avatarFrame`）往图上写内联尺寸、等待微光挂在图的父元素上，这几样
  * 都直接改节点，所以那几格用 `dangerouslySetInnerHTML`，React 不拥有里面的节点。 */
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { entityFaceImg, facePos } from '@peach/card-art';
 import { entityPath, esc, icon } from '@peach/legacy/core';
 
 import { AvatarPicker } from '../avatar-picker/avatar-picker-page';
@@ -19,8 +21,16 @@ import { NamePicker } from './name-picker';
 import {
   agencyOf, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
   type EntityHeroActions, type EntityHeroData, type EntityHeroHelpers, type EntityHeroProps,
-  type LinkMark, type LinkView,
+  type HeroCostar, type LinkMark, type LinkView,
 } from './entity-hero';
+
+/** 同台艺人圆框里那张图：实体图优先，退到代表作头像，按检出的人脸取景。 */
+function costarImg(person: HeroCostar): string {
+  return entityFaceImg({
+    id: person.id, hasImage: person.has_image, version: person.image_version, rep: person.has_avatar ? person.rep : null,
+    style: facePos(person.avatar_focus), focus: person.avatar_focus,
+  });
+}
 
 export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions, helpers }: EntityHeroProps) {
   const people = isPeople(kind);
@@ -83,7 +93,7 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
                 <button key={person.k} type="button" data-related-performer={person.k}
                   onClick={() => actions.openEntity('performer', person.k)}>
                   <span data-hero-ring="" dangerouslySetInnerHTML={{
-                    __html: `<span>${esc(person.k.slice(0, 1))}</span>${helpers.costarImg(person)}` }} />
+                    __html: `<span>${esc(person.k.slice(0, 1))}</span>${costarImg(person)}` }} />
                   <span data-hero-costar-name="">{person.k}</span>
                 </button>
               ))}

@@ -64,8 +64,6 @@ export interface SearchHelpers {
   pool(): Promise<string[]>;
   /** 小封面那一格（卡片的 `.pic`）连同里面那张图（`coverImage` 与 JAV 默认封面那套取景）；两样都没有是「无预览」。 */
   coverHtml(card: SuggestCard | null | undefined): string;
-  /** 人和公司的圆片里那两层：首字母与门面图（`avatarInner`，兜底链与取景都在遗留层）。 */
-  faceHtml(item: SuggestItem, kind: string): string;
   present(menu: HTMLElement): void;
   dismiss(menu: HTMLElement): void;
   /** 窄屏页签排不下时右缘渐隐（`wireHorizontalScroller`）。 */

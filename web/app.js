@@ -15,8 +15,8 @@ import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, HOME_G
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
-import { javImageKind, normalizeJavLayout, normalizeJavPreferences, relayoutJavImages, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
-import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityAvatar, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml, refitNativeImages, reframeCovers, releaseHover, releaseHoverPreviews, rememberRepresentatives, representativeOf, setHoverState, upgradeCover, wireHover, wireImageFallbacks } from './dist/peach-ui.js';
+import { javImageKind, normalizeJavLayout, normalizeJavPreferences, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
+import { avatarInner, configureHoverPreview, coverAnchor, coverImage, detailPosterUrl, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
@@ -1139,7 +1139,6 @@ const stageHost={
   expand:(kind,id,mediaIndex)=>{if(kind==='follow')void openFollowDetail(id,true,mediaIndex);else void openItem(id,true)},
   openItem:id=>void openItem(id),
   cache:it=>{CACHE[it.id]=it},
-  release:el=>releaseHoverPreviews(el),
 };
 const stageOpen=()=>!!stageApi()?.isOpen();
 /* 深链带 `?t=`：第一次挂上这一条时从这一刻接着放。 */
@@ -1374,15 +1373,10 @@ const withTagToggled=(value,tag)=>{const cur=tagList(value);const index=cur.inde
 /* 馆藏卡片网格（`catalog-grid` island）用的助手与动作。各只有一份、身份不变：卡片按引用
    比较，每次推新对象进去就是整屏重画。 */
 const gridHelpers={
-  coverHtml:(it,layout,eager)=>coverImage(it,layout,eager),
-  relayoutArt:(root,layout)=>reframeCovers(relayoutJavImages(root,layout)),
   badgeHtml:(location,cost)=>srcBadge(location,cost),
   titleHtml:(it,raw)=>javTitleHtml(it,raw),
   displayName:(it,raw)=>javDisplayName(it,raw),
-  avatarHtml:(name,ref,kind)=>entityAvatar(name,ref,kind),
   tagLabel:tag=>tagLabel(tag),
-  wireHover:(el,it)=>wireHover(el,it),
-  releaseHover:el=>releaseHover(el),
 };
 /* 打开一张作品卡：小窗开着时普通视频卡直接在小窗里换片，分卷／版次组各进自己的队列，
    其余打开详情。 */
@@ -2110,7 +2104,6 @@ async function openPlaylists(push=true){
   if(!surfaceCurrent(surface))return;
   const props={
     openPlaylist:(id,resume)=>openPlaylist(id,resume,true),openEntity,
-    faceAvatar:face=>avatarInner(face.name,face,representativeOf(face.name),face.kind),
     canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
     toast:(message,{undo}={})=>actionReceipt(message,{undo}),revision:playlistsRevision,
   };
@@ -2810,8 +2803,6 @@ const entityPageHelpers={
       alt:esc(d.canonical_name),lazy:false,
       style:company?'':facePos(d.avatar_focus),focus:company?null:d.avatar_focus,
       dropStyle:true}):''},
-  costarImg:x=>entityFaceImg({id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,
-    style:facePos(x.avatar_focus),focus:x.avatar_focus}),
   wireDrag:row=>{if(row)wireDrag(row)},
   wireScroller:row=>{if(row)wireHorizontalScroller(row)},
   wireFeedRow:row=>wireFeedNewRow(row),
@@ -3747,10 +3738,6 @@ const searchHelpers={
   pool:()=>catalogSuggestions(state,api),
   /* `.pic` 是卡片封面那一格（比例、底色、圆角与模糊垫底都认它），和里面那张图一起由壳给。 */
   coverHtml:card=>`<span class="pic">${searchCoverImage(card)}</span>`,
-  /* 人和公司的门面走索引页同一条兜底链：人是实体图 → 代表作头像，厂牌是标识，
-     事务所是官网站点圆标；都取不到就是首字母。 */
-  faceHtml:(item,kind)=>avatarInner(item.value,{id:item.entity_id,has_image:item.has_image,image_version:item.image_version,avatar_focus:item.avatar_focus},
-    item.rep||null,kind,item.mark||null,item.has_logo?item.value:'','icon',undefined,true),
   present:menu=>presentMenu(menu),
   dismiss:menu=>dismissMenu(menu),
   wireScroller:row=>wireHorizontalScroller(row),
@@ -3824,12 +3811,7 @@ const itemDetailHelpers={
   badgeHtml:(location,cost,cls)=>srcBadge(location,cost,cls),
   titleHtml:it=>javTitleHtml(it),
   displayName:it=>javDisplayName(it),
-  performerLabel:it=>performerLabel(it),
-  // 和顶栏圆头像同一条判据：没装实体图就不出 `<img>`，取不到就是首字母垫底。
-  faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),
-  queueThumbHtml:it=>queueThumbHtml(it,appSettings.javImage),
-  queueAvatarHtml:it=>queueAvatarHtml(it),
-  mixLabel:it=>mixLabel(it,tagLabel),
+  javImage:()=>appSettings.javImage,
   tagLabel:tag=>tagLabel(tag),
   isDurationTag:tag=>DURATION_TAGS.has(tag),
   tagCandidates:()=>(facets&&facets.tags)||[],
@@ -3949,7 +3931,6 @@ const immerseHost={
   seekSeconds:()=>appSettings.seekSeconds,
   sourceOffline:key=>sourceOffline(key),
   displayName:it=>javDisplayName(it),
-  avatarHtml:(name,ref,kind)=>avatarInner(name,ref,representativeOf(name),kind),
   /* 每换一条用 replace 写地址：每划一下都往历史里塞一条，后退键就废了。 */
   route:id=>route('/immerse?id='+id,true),
   closed:()=>openHome(),

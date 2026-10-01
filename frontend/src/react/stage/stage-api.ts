@@ -4,10 +4,7 @@ import type { FollowDetailActions, FollowDetailProps } from '../follow-detail/fo
 import type { ItemDetailActions, ItemDetailProps } from '../item-detail/item-detail';
 import type { StagePlayerHost } from './stage-player';
 
-export interface StageHost extends StagePlayerHost {
-  /** 舞台拆掉之前：壳收起挂在舞台里的悬停预览。 */
-  release(stage: HTMLElement): void;
-}
+export type StageHost = StagePlayerHost;
 
 /** 打开作品详情。动作里没有 `mountPlayer`：媒体框交给舞台自己的播放器。 */
 export interface StageItemRequest extends Omit<ItemDetailProps, 'actions'> {

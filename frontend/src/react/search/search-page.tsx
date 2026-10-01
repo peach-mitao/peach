@@ -9,6 +9,7 @@
  * 小封面键和最上面那排页签都放不进去。所以这里按遗留层那一套逐条照做：上下环绕着选、回车提交、
  * Escape 先关下拉再清字、空输入回车用占位里那个推荐词。 */
 import { useLayoutEffect, useReducer, useRef, type MouseEvent, type ReactNode } from 'react';
+import { avatarInner } from '@peach/card-art';
 
 import { apiGet, apiSend } from '../../api';
 import { TabCount } from '../components/board-tabs';
@@ -383,7 +384,7 @@ function Row({ entry, active, helpers, onPick, onPeek, onRemove }: {
     const sub = [`${(item.n ?? 0).toLocaleString()} 个视频`, item.agency].filter(Boolean).join(' · ');
     return (
       <div data-search-option="person" data-open-entity={opens} {...shared}>
-        <Face item={item} kind={kind} helpers={helpers} />
+        <Face item={item} kind={kind} />
         <span data-search-meta="">
           <span data-search-name=""><span>{item.value}</span>{matched}</span>
           <span data-search-sub="">{sub}</span>
@@ -403,7 +404,7 @@ function Row({ entry, active, helpers, onPick, onPeek, onRemove }: {
   }
   return (
     <div data-search-option="" data-open-entity={opens} {...shared}>
-      {kind === 'studio' || kind === 'agency' ? <Face item={item} kind={kind} helpers={helpers} /> : null}
+      {kind === 'studio' || kind === 'agency' ? <Face item={item} kind={kind} /> : null}
       <span>{item.value}</span>
       {matched}
       {item.n ? <span data-search-n="">{item.n.toLocaleString()}</span> : null}
@@ -416,7 +417,12 @@ function Cover({ card, helpers }: { card: SuggestCard | null | undefined; helper
   return <span data-search-pic="" dangerouslySetInnerHTML={{ __html: helpers.coverHtml(card) }} />;
 }
 
-/** 门面一律圆片：人是实体图 → 代表作头像，厂牌是标识，事务所是官网站点圆标；都取不到就是首字母。 */
-function Face({ item, kind, helpers }: { item: SuggestItem; kind: string; helpers: SearchProps['helpers'] }) {
-  return <span data-search-face="" data-kind={kind} dangerouslySetInnerHTML={{ __html: helpers.faceHtml(item, kind) }} />;
+/** 门面一律圆片，走索引页同一条兜底链：人是实体图 → 代表作头像，厂牌是标识，事务所是官网
+ *  站点圆标；都取不到就是首字母。一屏几十个，取派生件。 */
+function Face({ item, kind }: { item: SuggestItem; kind: string }) {
+  const ref = { id: item.entity_id as number | null | undefined, has_image: item.has_image as boolean | undefined,
+    image_version: item.image_version as string | undefined, avatar_focus: item.avatar_focus };
+  const html = avatarInner(item.value, ref, (item.rep as number | null | undefined) || null, kind,
+    (item.mark as number | null | undefined) || null, item.has_logo ? item.value : '', 'icon', undefined, true);
+  return <span data-search-face="" data-kind={kind} dangerouslySetInnerHTML={{ __html: html }} />;
 }

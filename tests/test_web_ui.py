@@ -1637,16 +1637,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("company&&big?'large':'ring',company?null:x.avatar_focus,true);")
         # 脸框写成哪条属性、页面上怎么按框放大：`frontend/test/card-art/` 的 markup 与 framing。
 
-    def test_a_slot_that_only_has_the_ref_still_gets_the_focus(self):
-        """取景不传就从 ref 上取：它和 `has_image` 出自服务端同一份下发。
-
-        七个调用点各记一次的代价实测就是漏掉六个——播放详情的出镜者、卡片署名、
-        顶栏、口味榜、播放列表、复核卡片全是几何居中。公司那一格要的是「明确不取景」，
-        传 `null` 压过默认。
-        """
-        # 详情页的出镜者格子不走 avatarInner，壳交给详情岛的那一格自己把取景递进去。
-        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),")
-
     def test_entity_link_favicons_do_not_leak_the_page_url_to_the_linked_site(self):
         # 外链的 favicon 是向对方站点发出的真实请求。锚点上的 rel="noreferrer" 只管
         # 点击跳转，管不到这个 <img>——不设 referrerpolicy 的话，光是打开一位女优的
@@ -1880,10 +1870,9 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_detail_identity_groups_by_kind_with_the_label_on_top(self):
         # 逐行一个名字在共演作品上会把整个侧栏撑满，左侧还重复一列标签。
-        # 分组与组标题归作品详情岛（`frontend/test/react/item-detail.test.tsx`）；出镜者那一组的
-        # 标签跟着作品形态走，由壳的 performerLabel 给。各组并排、按内容宽换行，没入口的格不给
-        # 手形，系列一行是整行宽的图标链接：`frontend/e2e/design.test.ts` 读计算样式。
-        self.assertPageContains("performerLabel:it=>performerLabel(it),")
+        # 分组、组标题与出镜者那一组的称谓归作品详情岛（`frontend/test/react/item-detail.test.tsx`）。
+        # 各组并排、按内容宽换行，没入口的格不给手形，系列一行是整行宽的图标链接：
+        # `frontend/e2e/design.test.ts` 读计算样式。
         self.assertPageLacks("const performerName=performerRef?.name")
         self.assertPageLacks(".identityrow", "旧的逐行布局必须整段删掉")
 
@@ -1998,15 +1987,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks('class="ticks mono"')
         self.assertPageLacks("开头就走")
         self.assertPageLacks("真实看 ${rp.toFixed(0)}% · 到达")
-
-    def test_performer_label_says_actress_only_for_jav(self):
-        """「女优」是番号发行物的行业称谓。
-
-        素人、创作者自制和网红内容里的出镜者是艺人：套上 JAV 称谓既不准确，
-        也会和同名的 creator 身份混淆。形态判据只有后端 `is_jav_code` 一份。
-        """
-        # 断言的是判据与两个称谓，不是 performerLabel 写成箭头函数还是 function。
-        self.assertPageContains("performerLabel(it)")
 
     def test_narrow_top_bar_keeps_the_actions_on_the_right(self):
         """窄屏下搜索框绝对定位后脱离了流，动作按钮会挤在品牌名右侧、右半条留空。"""
@@ -2700,12 +2680,6 @@ class WebUiSourceTests(unittest.TestCase):
         for selector, declarations in re.findall(r'([^{}]+)\{([^{}]*)\}', stylesheet_source()):
             if "text-decoration:underline" in declarations:
                 self.assertTrue(":hover" in selector or selector.strip() == ".project-banner>a", selector)
-
-    def test_every_identity_cell_can_carry_its_own_portrait(self):
-        # 人物格走和顶栏圆头像同一个 entityFaceImg；这一格没有代表作头像可退，
-        # 装了实体图才出 `<img>`，否则就是首字母垫底。
-        # 厂牌那一格装了标识才出 `<img>`：`frontend/test/react/item-detail.test.tsx`。
-        self.assertPageContains("faceHtml:ref=>entityFaceImg({id:ref.id,hasImage:ref.has_image,version:ref.image_version,focus:ref.avatar_focus}),")
 
     def test_playback_keys_reach_both_the_detail_player_and_immerse(self):
         # 两边的 Video.js 读的都是原生 video 元素，沉浸模式拉不到播放器脚本时还是裸 video，

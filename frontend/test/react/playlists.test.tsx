@@ -52,7 +52,6 @@ const written = (id: number, name = `列表${id}`) => ({ body: { ok: true, playl
 function props(patch: Partial<PlaylistsProps> = {}): PlaylistsProps {
   return {
     openPlaylist: vi.fn(), openEntity: vi.fn(),
-    faceAvatar: vi.fn((face) => `<span class="ini">${face.name.slice(0, 1)}</span>`),
     canFlip: () => true, toast: vi.fn(), revision: 0, ...patch,
   };
 }
