@@ -509,6 +509,36 @@
   padding-bottom: 96px;
 }
 
+/* 岛里的危险键（批量条的「移入回收站」「彻底删除」、回收站说明行的「清空回收站」）挂 `data-danger`，
+ * 红色只在这里定义一份，与壳的 `button.danger`（`web/board.css`）读同一组 `--board-red` 三档渐变：
+ * 静止 red-500→600、悬停 400→500 铺在 `::before` 上淡入、按下 600→700。尺寸归各自的岛。
+ * 不限定在 `.peach-react` 里：管理区页头岛的根在 Preflight 之外。 */
+[data-danger]:not(:disabled) {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background: var(--board-red);
+  box-shadow: var(--elevation-xs);
+  color: #fff;
+  transition: box-shadow .15s ease, color .15s ease;
+}
+
+[data-danger]:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--board-red-hover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+
+[data-danger]:not(:disabled):hover::before { opacity: 1; }
+[data-danger]:not(:disabled):active { background: var(--board-red-active); }
+[data-danger]:not(:disabled):active::before { opacity: 0; }
+
 /* 下划线 Tabs 那条 2px 蓝线（`components/board-tabs.tsx`）。位置与宽度由组件量出来写在
  * tablist 上；位移跟侧栏、筛选条上那几块玻璃同一条弹簧，宽度匀速走——跟着弹簧过冲的话，
  * 它会在停下之前先抻出邻居的边界。第一帧之后才打开过渡，头一次画出来直接落位。 */

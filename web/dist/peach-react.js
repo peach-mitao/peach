@@ -73592,13 +73592,17 @@ function OBe({ host: e, props: t }) {
 			label: "所选项目操作",
 			visible: t.count > 0,
 			count: `已选 ${t.count} 项`,
-			children: TBe(t.context, t.junkDismissed).map((t) => /* @__PURE__ */ (0, z.jsx)(H, {
-				variant: t.danger ? "danger" : "secondary",
-				leadingIcon: Ob(t.glyph),
+			children: TBe(t.context, t.junkDismissed).map((t) => /* @__PURE__ */ (0, z.jsxs)("button", {
+				type: "button",
 				"data-batch-group": t.group,
 				"data-batch-action": t.operation,
+				"data-danger": t.danger ? "" : void 0,
 				onClick: (n) => e.run(t.group, t.operation, n.currentTarget),
-				children: t.label
+				children: [/* @__PURE__ */ (0, z.jsx)("svg", {
+					"aria-hidden": !0,
+					viewBox: "0 0 24 24",
+					children: /* @__PURE__ */ (0, z.jsx)("use", { href: `#i-${t.glyph}` })
+				}), t.label]
 			}, `${t.group}:${t.operation}`))
 		})
 	});
@@ -75605,6 +75609,7 @@ function pHe({ host: e, lede: t }) {
 		}) : /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [/* @__PURE__ */ (0, z.jsx)(mHe, { text: t.text }), t.total ? /* @__PURE__ */ (0, z.jsx)("button", {
 			type: "button",
 			"data-empty-trash": "",
+			"data-danger": "",
 			title: "永久删除回收站内容",
 			onClick: () => e.emptyTrash(),
 			children: "清空回收站"

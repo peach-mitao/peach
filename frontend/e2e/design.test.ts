@@ -1819,6 +1819,53 @@ describe('设计决定', () => {
     }
   });
 
+  it('批量条的键是 17px 字形、计数是 --ink-2；批量条与清空回收站两颗危险键读同一组红', { timeout: 90_000 }, async () => {
+    const opened = await openCatalogFixture(browser, (payload, url) => {
+      if (url.searchParams.get('state') !== 'trash') return;
+      for (const item of payload.items) Object.assign(item, { disposal: 'trash' });
+    });
+    const { page } = opened;
+    try {
+      await page.goto(new URL('/trash', page.url()).href, { waitUntil: 'load' });
+      const cards = page.locator('#grid [data-media-card][data-id]');
+      await cards.nth(1).waitFor({ timeout: 15_000 });
+      await page.locator('[data-manage-lede] [data-empty-trash]').waitFor({ timeout: 15_000 });
+      for (const at of [0, 1]) await cards.nth(at).click({ modifiers: ['Control'], position: { x: 20, y: 20 } });
+      await page.locator('[data-batch-dock] [data-selection-dock]').waitFor({ timeout: 10_000 });
+      await settle(page);
+      const read = await page.evaluate(() => {
+        const dock = document.querySelector('[data-batch-dock] [data-selection-dock]')!;
+        /* 两颗危险键的静止面与悬停层各自读出来，再与直接解析 token 的探针比：同一份定义才会三者一致。 */
+        const probe = (token: string) => {
+          const node = document.createElement('div');
+          node.style.background = `var(${token})`;
+          document.body.append(node);
+          const value = getComputedStyle(node).backgroundImage;
+          node.remove();
+          return value;
+        };
+        const paint = (key: Element) => [getComputedStyle(key).backgroundImage, getComputedStyle(key, '::before').backgroundImage];
+        return {
+          glyphs: [...dock.querySelectorAll('button svg')].map((svg) => {
+            const box = svg.getBoundingClientRect();
+            return [box.width, box.height];
+          }),
+          count: getComputedStyle(dock.querySelector('[role="status"]')!).color,
+          batch: paint(dock.querySelector('[data-batch-action="delete"]')!),
+          empty: paint(document.querySelector('[data-manage-lede] [data-empty-trash]')!),
+          tokens: [probe('--board-red'), probe('--board-red-hover')],
+        };
+      });
+      assert.deepEqual(read.glyphs, [[17, 17], [17, 17], [17, 17]], `批量条的字形不是 17px：${JSON.stringify(read.glyphs)}`);
+      assert.equal(read.count, await tokenColor(page, 'body', '--ink-2'), '批量条的计数不是次级墨色');
+      assert.match(read.tokens[0], /^linear-gradient/, `--board-red 没解析成渐变：${read.tokens[0]}`);
+      assert.deepEqual(read.batch, read.tokens, `批量条「彻底删除」的红不是 --board-red 那一组：${JSON.stringify(read)}`);
+      assert.deepEqual(read.empty, read.tokens, `「清空回收站」的红不是 --board-red 那一组：${JSON.stringify(read)}`);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('管理区页头：面包屑当前项升到 --ink、上一级与分隔符钉在 --muted，按下的页签蓝字配一条同宽蓝线', { timeout: 60_000 }, async () => {
     const opened = await visit(browser, '/duplicates', DESKTOP);
     try {

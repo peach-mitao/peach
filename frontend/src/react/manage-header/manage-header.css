@@ -57,12 +57,9 @@ p[data-manage-lede]{display:flex;flex-wrap:wrap;align-items:center;justify-conte
 [data-manage-lede] [data-trash-lede-skeleton="text"]{width:180px;max-width:60%;height:20px}
 [data-manage-lede] [data-trash-lede-skeleton="action"]{width:88px;height:32px;max-width:none}
 
-/* 「清空回收站」：危险档，配色同全站危险键（`--board-red` 那三档渐变），尺寸是说明行里的 32px 小键。 */
-[data-manage-lede]>button[data-empty-trash]{position:relative;isolation:isolate;box-sizing:border-box;display:inline-flex;flex:none;align-items:center;min-height:32px;padding:0 14px;border:0;border-radius:var(--control-radius);background:var(--board-red);box-shadow:var(--elevation-xs);color:#fff;font:inherit;font-size:var(--fs-xs);font-weight:500;cursor:pointer;transition:box-shadow .15s ease,color .15s ease}
-[data-manage-lede]>button[data-empty-trash]::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--board-red-hover);opacity:0;pointer-events:none;transition:opacity .15s ease}
-[data-manage-lede]>button[data-empty-trash]:hover::before{opacity:1}
-[data-manage-lede]>button[data-empty-trash]:active{background:var(--board-red-active)}
-[data-manage-lede]>button[data-empty-trash]:active::before{opacity:0}
+/* 「清空回收站」：危险档，红色读 `../styles.css` 里全站那一份 `[data-danger]` 规则；这里只写尺寸，
+   是说明行里的 32px 小键。 */
+[data-manage-lede]>button[data-empty-trash]{box-sizing:border-box;display:inline-flex;flex:none;align-items:center;min-height:32px;padding:0 14px;border-radius:var(--control-radius);font:inherit;font-size:var(--fs-xs);font-weight:500;cursor:pointer}
 [data-manage-lede]>button[data-empty-trash]:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 
 /* 窄屏：管理条不再留左右中线，间距收一档、页签不带字形；说明行右端那颗键按本项目 44px 命中区来。 */

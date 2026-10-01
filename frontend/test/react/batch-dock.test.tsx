@@ -55,6 +55,15 @@ describe('浮条', () => {
     expect(root.querySelector('[data-batch-scope]')!.getAttribute('data-context')).toBe('junk');
   });
 
+  it('危险键挂 data-danger 读全站那份红，每颗键带自己的 sprite 字形', async () => {
+    const { root, render } = setup();
+    await render({ count: 2, context: 'catalog', junkDismissed: false });
+    const keys = [...root.querySelectorAll<HTMLButtonElement>('[data-selection-dock] button')];
+    expect(keys.filter((key) => key.hasAttribute('data-danger')).map((key) => key.dataset.batchAction)).toEqual(['dispose']);
+    expect(keys.map((key) => key.querySelector('use')?.getAttribute('href')))
+      .toEqual(['#i-thumbs-up', '#i-eye', '#i-bookmark-plus', '#i-globe', '#i-trash', '#i-x']);
+  });
+
   it('点一颗键把分组、操作与这颗键交回壳', async () => {
     const { root, host, render } = setup();
     await render({ count: 1, context: 'catalog', junkDismissed: false });
