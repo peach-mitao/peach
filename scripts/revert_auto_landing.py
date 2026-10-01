@@ -26,6 +26,9 @@
 id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接回记 `auto:vanished-reattach`，孤儿记录
 列表里由人接回记 `user:reattach`。
 
+「想要」清单的入库对账记在 `want_item.acquired_source` 与 `acquired_batch`（批次号
+`auto:want-acquired@<登记时刻>`）。撤回把那几条改回待找，查找计数原样留着。
+
     revert_auto_landing.py --source auto:performer-alias
     revert_auto_landing.py --source auto:performer-alias --batch auto:performer-alias@812
     revert_auto_landing.py --source auto:performer-profile
@@ -34,6 +37,7 @@ id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接�
     revert_auto_landing.py --source adr-0079-fc2-descriptive-performer
     revert_auto_landing.py --source auto:metadata-tags
     revert_auto_landing.py --source auto:vanished-reattach --batch auto:vanished-reattach@3
+    revert_auto_landing.py --source auto:want-acquired
 
 默认只列计划；`--apply` 必须同时给 `--backup`，删文件在账本行之后、同一次运行里完成。
 """
@@ -46,7 +50,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach import record_rehome, sample_images  # noqa: E402
+from peach import record_rehome, sample_images, wants  # noqa: E402
 from peach.config import GENERATED_DIR  # noqa: E402
 from peach.metadata_auto_apply import UNION_TAGS_SOURCE  # noqa: E402
 from peach.scripting import add_ledger_write_args, open_for_write, verify_after_write  # noqa: E402
@@ -229,6 +233,13 @@ def planned_files(logo_root: Path, source: str, batch: str) -> list[Path]:
     return found
 
 
+def print_acquired(planned: list[dict]) -> None:
+    """想要清单里对账标了已入库的那几条，一条一行。"""
+    for item in planned:
+        label = item["code"] or item["title"] or f"#{item['id']}"
+        print(f" - 想要 {label[:40]:<40} 资产 {item['acquired_asset_id']} {item['acquired_batch']}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     add_ledger_write_args(parser)
@@ -254,6 +265,8 @@ def main(argv: list[str] | None = None) -> int:
         rejections = planned_rejections(connection, args.source, args.batch)
         tags = planned_tags(connection, args.source, args.batch)
         rehomes = record_rehome.planned_revert(connection, args.source, args.batch)
+        acquired = wants.planned_revert(connection, args.source, args.batch)
+        print_acquired(acquired)
         for link in links:
             print(f" - 链接 {link['entity'][:20]:<20} {link['url'][:56]} {link['batch']}")
         for alias in aliases:
@@ -280,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
         print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "编号": len(refs),
                "归属": len(memberships), "片商": len(makers), "标识文件": len(files),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
-               "标签": len(tags), "接回": len(rehomes)})
+               "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
         if not args.apply:
             print("dry-run；确认无误后加 --apply --backup <路径>")
             return 0
@@ -316,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
                 (tag["asset_id"], tag["tag"], tag["source"])).rowcount or 0 for tag in tags)
             reopened = reopen_extended_decisions(connection, {tag["item_key"] for tag in tags})
             restored = record_rehome.revert(connection, args.source, args.batch)
+            reopened_wants = wants.revert(connection, args.source, args.batch)
         integrity, orphans = verify_after_write(connection)
     finally:
         connection.close()
@@ -329,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
            "删除编号": len(refs), "删除归属": len(memberships), "删除片商": len(makers),
            "删除样张": removed_samples, "删除否决": len(rejections),
            "删除标签": len(tags), "删除扁平标签": removed_tag_rows, "重开决定": reopened,
-           "撤回接回": restored, "删除文件": removed,
+           "撤回接回": restored, "想要回到待找": reopened_wants, "删除文件": removed,
            "integrity_check": integrity, "foreign_key_check": orphans})
     return 0
 
