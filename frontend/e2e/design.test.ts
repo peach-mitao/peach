@@ -12,6 +12,7 @@ import { DETAIL, openFollowFeed } from './follow-fixture.ts';
 import {
   configurationBody, expectBody, launch, layout, requiredEnv, settle, visit, VIEWPORTS, type Viewport, type Visit,
 } from './harness.ts';
+import { muteVideos, openImmerse, pickClips, pinQueue, settledClip } from './immerse-fixture.ts';
 import { ITEM, openItemPage } from './item-fixture.ts';
 import { openHome, openPanel, ORDER, PANEL, stubServer } from './settings-fixture.ts';
 
@@ -5760,6 +5761,136 @@ describe('设计决定', () => {
       assert.deepEqual([box.width, box.x + box.width, box.y + box.height], [400, DESKTOP.width - 16, DESKTOP.height - 16]);
       assert.deepEqual(await styleOf(page, '#miniplayerBack', ['width', 'height']), { width: '36px', height: '36px' });
       assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  /** 一组元素的外框，取到小数点后一位。 */
+  const rectsOf = (page: Page, selectors: Record<string, string>) => page.evaluate((entries) => Object.fromEntries(
+    Object.entries(entries).map(([name, selector]) => {
+      const box = document.querySelector(selector)!.getBoundingClientRect();
+      const round = (value: number) => Math.round(value * 10) / 10;
+      return [name, { left: round(box.left), top: round(box.top), right: round(box.right), bottom: round(box.bottom), width: round(box.width), height: round(box.height) }];
+    })), selectors);
+  const IMMERSE = {
+    root: '[data-immerse]', stage: '[data-immerse-stage]', actions: '[data-immerse-actions]', ui: '[data-immerse-ui]',
+    bar: '[data-immerse-bar]', close: '[data-immerse-close]',
+  };
+
+  it('沉浸模式桌面照 Shorts 三段：9:16 舞台居中、动作列贴舞台右侧 12px、作者标题在左下；横片换成 16:9，动作列收进框里；浅色主题下仍是深色层', { timeout: 90_000 }, async () => {
+    const opened = await visit(browser, '/', DESKTOP);
+    try {
+      const { page } = opened;
+      const { wide, tall } = await pickClips(page);
+      await pinQueue(page, [tall, wide]);
+      await muteVideos(page);
+      await openImmerse(page, tall.id);
+      const portrait = await rectsOf(page, IMMERSE);
+      assert.deepEqual(portrait.stage, { left: 415, top: 0, right: 865, bottom: 800, width: 450, height: 800 });
+      assert.deepEqual([portrait.actions.left, portrait.actions.width, portrait.actions.bottom], [877, 72, 792]);
+      assert.deepEqual([portrait.ui.left, portrait.ui.bottom], [20, 780]);
+      assert.deepEqual(portrait.bar, { left: 0, top: 780, right: 1280, bottom: 800, width: 1280, height: 20 });
+      assert.deepEqual([portrait.close.top, portrait.close.right, portrait.close.width], [15, 1265, 42]);
+      const faces = await page.evaluate(() => {
+        const read = (selector: string, names: string[]) => {
+          const style = getComputedStyle(document.querySelector(selector)!);
+          return Object.fromEntries(names.map((name) => [name, style.getPropertyValue(name)]));
+        };
+        return {
+          root: read('[data-immerse]', ['background-color']),
+          track: read('[data-immerse-track]', ['border-radius', 'background-color']),
+          floating: (() => {
+            const probe = document.createElement('div');
+            probe.style.borderRadius = 'var(--floating-radius)';
+            document.querySelector('[data-immerse]')!.append(probe);
+            const value = getComputedStyle(probe).borderRadius;
+            probe.remove();
+            return value;
+          })(),
+          circle: read('[data-immerse-circle]', ['width', 'height', 'border-radius', 'background-color', 'color']),
+          glyph: read('[data-immerse-circle] svg', ['width', 'height', 'fill', 'stroke']),
+          author: read('[data-immerse-author]>a', ['color', 'font-weight']),
+          title: read('[data-immerse-title]', ['font-size', 'font-weight', 'text-overflow', 'white-space', 'pointer-events']),
+          caption: read('[data-immerse-ui]', ['pointer-events']),
+          progress: read('[data-immerse-bar] i', ['height']),
+        };
+      });
+      const { floating, ...face } = faces;
+      assert.notEqual(floating, '0px');
+      assert.deepEqual(face, {
+        root: { 'background-color': 'rgb(15, 15, 15)' },
+        track: { 'border-radius': floating, 'background-color': 'rgb(0, 0, 0)' },
+        circle: { width: '48px', height: '48px', 'border-radius': '50%', 'background-color': 'rgba(255, 255, 255, 0.1)', color: 'rgb(241, 241, 241)' },
+        glyph: { width: '24px', height: '24px', fill: 'none', stroke: 'rgb(241, 241, 241)' },
+        author: { color: 'rgb(241, 241, 241)', 'font-weight': '600' },
+        title: { 'font-size': '20px', 'font-weight': '600', 'text-overflow': 'ellipsis', 'white-space': 'nowrap', 'pointer-events': 'auto' },
+        caption: { 'pointer-events': 'none' },
+        progress: { height: '4px' },
+      });
+
+      // 进度：4px 的线贴着 20px 热区的底，走钨丝蓝；指针靠近才变粗。
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('[data-immerse-bar] i')!).backgroundColor),
+        await tokenColor(page, '[data-immerse]', '--tungsten'));
+      await page.hover('[data-immerse-bar]');
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-immerse-bar] i')!).height === '9px');
+
+      // 动作键：悬停放大 1.05、按住缩到 .96；选中反相成浅底深字（压在画面上，抬一档的面会被画面吃掉）。
+      await page.route('**/api/feedback', (route) => route.fulfill({ json: { feedback: 'seen', o_count: 0 } }));
+      const seen = '[data-immerse-actions] button[aria-label="标为看过"]';
+      await page.hover(seen);
+      const scale = (value: string) => page.waitForFunction(([selector, want]) =>
+        getComputedStyle(document.querySelector(selector!)!).scale === want, [seen, value] as const);
+      await scale('1.05');
+      await page.mouse.down();
+      await scale('0.96');
+      await page.mouse.up();
+      await page.locator(`${seen}[aria-pressed="true"]`).waitFor({ timeout: 5_000 });
+      await page.mouse.move(0, 0);
+      assert.deepEqual(await page.evaluate((selector) => {
+        const style = getComputedStyle(document.querySelector(selector)!);
+        return [style.backgroundColor, style.color];
+      }, seen), ['rgb(241, 241, 241)', 'rgb(15, 15, 15)']);
+
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction((id) => location.search === `?id=${id}`, wide.id);
+      await settledClip(page);
+      const landscape = await rectsOf(page, IMMERSE);
+      assert.deepEqual(landscape.stage, { left: 230.4, top: 169.6, right: 1049.6, bottom: 630.4, width: 819.2, height: 460.8 });
+      assert.deepEqual([landscape.actions.right, landscape.actions.bottom], [1037.6, 612.4]);
+      assert.equal(landscape.ui.width, 404.8);
+
+      await page.evaluate(() => { document.documentElement.dataset.theme = 'light' });
+      assert.deepEqual(await page.evaluate(() => [
+        getComputedStyle(document.querySelector('[data-immerse]')!).backgroundColor,
+        getComputedStyle(document.querySelector('[data-immerse-author]>a')!).color,
+      ]), ['rgb(15, 15, 15)', 'rgb(241, 241, 241)']);
+      assert.deepEqual(opened.problems.filter((line) => !line.includes('VIDEOJS')), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('沉浸模式手机铺满视口：舞台不留圆角，动作列贴右、作者标题贴左下，作者那行的时长与序号收起', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/', MOBILE);
+    try {
+      const { page } = opened;
+      const { wide, tall } = await pickClips(page);
+      await pinQueue(page, [tall, wide]);
+      await muteVideos(page);
+      await openImmerse(page, tall.id);
+      const rects = await rectsOf(page, { ...IMMERSE, avatar: '[data-immerse-avatar]' });
+      assert.deepEqual(rects.stage, { left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844 });
+      assert.deepEqual([rects.actions.right, rects.actions.bottom, rects.actions.width], [382, 752, 56]);
+      assert.deepEqual([rects.ui.left, rects.ui.right, rects.ui.bottom], [14, 308, 816]);
+      assert.deepEqual([rects.avatar.width, rects.avatar.height], [36, 36]);
+      assert.deepEqual([rects.close.top, rects.close.right], [10, 380]);
+      assert.deepEqual(await page.evaluate(() => ({
+        radius: getComputedStyle(document.querySelector('[data-immerse-track]')!).borderRadius,
+        meta: getComputedStyle(document.querySelector('[data-immerse-author]>span')!).display,
+        title: getComputedStyle(document.querySelector('[data-immerse-title]')!).fontSize,
+      })), { radius: '0px', meta: 'none', title: '14px' });
+      assert.deepEqual(opened.problems.filter((line) => !line.includes('VIDEOJS')), []);
     } finally {
       await opened.close();
     }
