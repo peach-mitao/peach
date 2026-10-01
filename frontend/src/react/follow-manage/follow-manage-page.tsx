@@ -59,7 +59,7 @@ function Reading({ term, figure, unit }: { term: string; figure: number; unit: s
 
 export function FollowManagePage(props: FollowManageProps) {
   const {
-    route, savePreference, toast, openFollow, readOnly, readOnlyMessage, writerUrl,
+    route, savePreference, toast, openFollow, cloudDownload, readOnly, readOnlyMessage, writerUrl,
   } = props;
   const [tab, setTab] = useState<TabKey>(isTab(props.tab) ? props.tab : 'list');
   const [page, setPage] = useState(Math.max(1, Math.floor(props.page) || 1));
@@ -189,7 +189,7 @@ export function FollowManagePage(props: FollowManageProps) {
         </TabPanel>
 
         <TabPanel id="wants" className="flex flex-col gap-4">
-          <WantList readOnly={readOnly} toast={toast} />
+          <WantList readOnly={readOnly} toast={toast} cloudDownload={cloudDownload} />
         </TabPanel>
 
         <TabPanel id="source" className="flex flex-col gap-4">

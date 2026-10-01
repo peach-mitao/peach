@@ -144,6 +144,7 @@ const shellProps = (over: Partial<Props> = {}): Props => ({
   savePreference: vi.fn(),
   toast: vi.fn(),
   openFollow: vi.fn(),
+  cloudDownload: vi.fn(),
   readOnly: false, readOnlyMessage: '', writerUrl: '',
   // 遗留层那条回落链的形状：先垫首字母，有图再叠一张。
   avatarInner: vi.fn((name: string, entity: { id: number; has_image: boolean } | null) =>

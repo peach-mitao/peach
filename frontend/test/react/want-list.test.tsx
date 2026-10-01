@@ -46,10 +46,13 @@ const reads = (fetcher: ReturnType<typeof serve>) => fetcher.mock.calls.filter((
 
 async function open(readOnly = false) {
   const toast = vi.fn();
+  const cloudDownload = vi.fn();
   const host = await mount(
-    <QueryClientProvider client={queryClient}><WantList readOnly={readOnly} toast={toast} /></QueryClientProvider>);
+    <QueryClientProvider client={queryClient}>
+      <WantList readOnly={readOnly} toast={toast} cloudDownload={cloudDownload} />
+    </QueryClientProvider>);
   await settle();
-  return { host, toast };
+  return { host, toast, cloudDownload };
 }
 
 it('按待找、未发售、暂时放弃、已入库分段，段名带条数；只有暂时放弃的那条能重新查找', async () => {
@@ -68,6 +71,26 @@ it('按待找、未发售、暂时放弃、已入库分段，段名带条数；�
   ]);
   expect(buttonNamed('重新查找', host.querySelector('[data-want-id="3"]')!)).not.toBeNull();
   expect(buttonNamed('重新查找', host.querySelector('[data-want-id="2"]')!)).toBeNull();
+});
+
+it('待找与暂时放弃两段每行有云下载，带着番号、标题与 wishlist 来处；未发售与已入库没有', async () => {
+  serve(listed([
+    want(2, { title: '雨の日' }), want(3, { phase: 'given_up', search_count: 3 }),
+    want(4, { phase: 'unreleased', release_date: '2026-12-01' }), want(1, { phase: 'acquired' }),
+    want(6, { code: null, origin: 'follow', title: '关注里的一条', follow_item_id: 9 }),
+  ]));
+  const { host, cloudDownload } = await open();
+  const key = (id: number) => buttonNamed('云下载', host.querySelector(`[data-want-id="${id}"]`)!);
+  expect([2, 3, 4, 1, 6].map((id) => !!key(id))).toEqual([true, true, false, false, true]);
+  expect(key(2)!.className).toContain('bg-background-primary-default');
+  await click(key(2));
+  await click(key(3));
+  await click(key(6));
+  expect(cloudDownload.mock.calls.map(([prefill]) => prefill)).toEqual([
+    { code: 'ABC-2', title: '雨の日', origin: 'wishlist:2' },
+    { code: 'ABC-3', title: '', origin: 'wishlist:3' },
+    { code: '', title: '关注里的一条', origin: 'wishlist:6' },
+  ]);
 });
 
 it('一条都没有就是空态，不画空的分段', async () => {
@@ -124,4 +147,5 @@ it('只读的机器：输入框、添加与每行的键都禁用', async () => {
   expect(host.querySelector<HTMLInputElement>('input[aria-label="番号"]')!.disabled).toBe(true);
   expect(buttonNamed('添加', host)!.disabled).toBe(true);
   expect(buttonNamed('移除', host)!.disabled).toBe(true);
+  expect(buttonNamed('云下载', host)!.disabled).toBe(true);
 });

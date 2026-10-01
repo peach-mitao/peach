@@ -333,7 +333,7 @@ export interface ScrapingProps {
  *  走；`pageSize`／`layout` 是这台浏览器的习惯，跟着 `appSettings` 走。两组都由壳持有存储、
  *  React 持有实时状态，各只有一份。 */
 export interface FollowManageProps {
-  /** 地址栏此刻带着的页签（`list`／`add`／`feeds`／`source`）。 */
+  /** 地址栏此刻带着的页签（`list`／`add`／`feeds`／`wants`／`source`）。 */
   tab: string;
   page: number;
   sort: string;
@@ -349,6 +349,8 @@ export interface FollowManageProps {
   toast(message: string): void;
   /** 去「看更新」那一页（`/follow`）。整页换成哪一屏仍归遗留壳。 */
   openFollow(): void;
+  /** 云下载：带着番号、标题与来处（`wishlist:<想要 id>`）去活动页的云下载段，用户贴磁力交给 115 或 PikPak。 */
+  cloudDownload(prefill: { code?: string; title?: string; origin: string }): void;
   /** 账本只读：这台机器只能浏览，写操作全部不给点。 */
   readOnly: boolean;
   readOnlyMessage: string;

@@ -3108,7 +3108,7 @@ async function openFollowManage(push=true,workspace=''){
       if(patch.layout!==undefined)appSettings.followLayout=patch.layout;
       saveSettings();
     },
-    toast:actionReceipt,openFollow:()=>void openFollow(),avatarInner,
+    toast:actionReceipt,openFollow:()=>void openFollow(),cloudDownload:openCloudDownload,avatarInner,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,

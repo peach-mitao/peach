@@ -45015,7 +45015,7 @@ function Pme({ want: e }) {
 		}) : null]
 	});
 }
-function Fme({ want: e, first: t, readOnly: n, busy: r, onReset: i, onRemove: a }) {
+function Fme({ want: e, first: t, readOnly: n, busy: r, onReset: i, onRemove: a, onCloudDownload: o }) {
 	return /* @__PURE__ */ (0, z.jsxs)("li", {
 		"data-want-id": e.id,
 		className: `flex min-w-0 items-start gap-4 py-4 max-sm:gap-3 ${t ? "" : "border-t border-separator-border"}`,
@@ -45048,6 +45048,13 @@ function Fme({ want: e, first: t, readOnly: n, busy: r, onReset: i, onRemove: a 
 							href: e.link,
 							children: "来源页"
 						}) : null,
+						e.phase === "searching" || e.phase === "given_up" ? /* @__PURE__ */ (0, z.jsx)(H, {
+							variant: "secondary",
+							size: "small",
+							disabled: n,
+							onClick: o,
+							children: "云下载"
+						}) : null,
 						e.phase === "given_up" ? /* @__PURE__ */ (0, z.jsx)(H, {
 							variant: "secondary",
 							size: "small",
@@ -45070,27 +45077,27 @@ function Fme({ want: e, first: t, readOnly: n, busy: r, onReset: i, onRemove: a 
 		})]
 	});
 }
-function Ime({ readOnly: e, toast: t }) {
-	let [n, r] = (0, R.useState)(""), i = ia(), a = Qn({
+function Ime({ readOnly: e, toast: t, cloudDownload: n }) {
+	let [r, i] = (0, R.useState)(""), a = ia(), o = Qn({
 		queryKey: mF,
 		queryFn: ({ signal: e }) => kme(e),
 		refetchInterval: (e) => e.state.data?.scraping ? 3e3 : !1
-	}), o = () => {
-		let a = n.trim();
-		!a || e || i.run("add", (e) => hF({ code: a }, e), (e) => {
-			t(e.created ? `已加入想要：${vF(e.want)}` : `${vF(e.want)} 已经在想要里`), r(""), _F();
+	}), s = () => {
+		let n = r.trim();
+		!n || e || a.run("add", (e) => hF({ code: n }, e), (e) => {
+			t(e.created ? `已加入想要：${vF(e.want)}` : `${vF(e.want)} 已经在想要里`), i(""), _F();
 		});
-	}, s = (e) => {
-		e.key === "Enter" && !e.nativeEvent.isComposing && (e.preventDefault(), o());
 	}, c = (e) => {
-		i.run(`remove:${e.id}`, (t) => gF([e.id], t), () => {
+		e.key === "Enter" && !e.nativeEvent.isComposing && (e.preventDefault(), s());
+	}, l = (e) => {
+		a.run(`remove:${e.id}`, (t) => gF([e.id], t), () => {
 			t(`已移除：${vF(e)}`), _F();
 		});
-	}, l = (e) => {
-		i.run(`reset:${e.id}`, (t) => jme([e.id], t), () => {
+	}, u = (e) => {
+		a.run(`reset:${e.id}`, (t) => jme([e.id], t), () => {
 			t(`${vF(e)} 回到待找`), _F();
 		});
-	}, u = a.data, d = u?.items || [];
+	}, d = o.data, f = d?.items || [];
 	return /* @__PURE__ */ (0, z.jsxs)("div", {
 		className: "flex flex-col gap-8",
 		children: [
@@ -45111,63 +45118,68 @@ function Ime({ readOnly: e, toast: t }) {
 							children: /* @__PURE__ */ (0, z.jsx)(cy, {
 								"aria-label": "番号",
 								placeholder: "输入番号，例如 SSIS-950",
-								value: n,
+								value: r,
 								isDisabled: e,
-								onChange: r,
-								onKeyDown: s
+								onChange: i,
+								onKeyDown: c
 							})
 						}), /* @__PURE__ */ (0, z.jsx)(H, {
 							variant: "primary",
-							disabled: e || !n.trim(),
-							...q(i.busy === "add"),
-							onClick: o,
+							disabled: e || !r.trim(),
+							...q(a.busy === "add"),
+							onClick: s,
 							children: "添加"
 						})]
 					}),
 					/* @__PURE__ */ (0, z.jsx)(wy, { children: "Feed 新作卡和关注详情上点「想要」也会加到这里。文件扫进库后自动挪到「已入库」。" }),
-					i.error ? /* @__PURE__ */ (0, z.jsx)(K, {
+					a.error ? /* @__PURE__ */ (0, z.jsx)(K, {
 						tone: "error",
 						title: "这一次没有完成",
-						children: i.error
+						children: a.error
 					}) : null
 				]
 			}),
-			a.error ? /* @__PURE__ */ (0, z.jsx)(K, {
+			o.error ? /* @__PURE__ */ (0, z.jsx)(K, {
 				tone: "error",
 				title: "想要清单读取失败",
-				children: U(a.error)
+				children: U(o.error)
 			}) : null,
-			u?.scraping ? /* @__PURE__ */ (0, z.jsx)(wy, {
+			d?.scraping ? /* @__PURE__ */ (0, z.jsx)(wy, {
 				role: "status",
 				children: "正在给刚加入的番号取资料与封面。"
 			}) : null,
-			u && !d.length ? /* @__PURE__ */ (0, z.jsx)(Qi, {
+			d && !f.length ? /* @__PURE__ */ (0, z.jsx)(Qi, {
 				shell: "plain",
 				icon: gt,
 				title: "还没有想要的作品",
 				children: "在上面输入番号，或在 Feed 新作卡、关注详情上点「想要」。"
 			}) : null,
-			Ome.map(([t, n]) => {
-				let r = d.filter((e) => e.phase === t);
-				return r.length ? /* @__PURE__ */ (0, z.jsxs)("section", {
-					"aria-label": n,
+			Ome.map(([t, r]) => {
+				let i = f.filter((e) => e.phase === t);
+				return i.length ? /* @__PURE__ */ (0, z.jsxs)("section", {
+					"aria-label": r,
 					"data-want-phase": t,
 					className: "flex flex-col gap-1",
 					children: [/* @__PURE__ */ (0, z.jsxs)("h3", {
 						className: "flex items-baseline gap-2 text-title-2-medium text-text-primary",
-						children: [n, /* @__PURE__ */ (0, z.jsx)("span", {
+						children: [r, /* @__PURE__ */ (0, z.jsx)("span", {
 							className: "text-body-2-regular tabular-nums text-text-secondary",
-							children: r.length
+							children: i.length
 						})]
 					}), /* @__PURE__ */ (0, z.jsx)("ul", {
 						className: "flex flex-col",
-						children: r.map((t, n) => /* @__PURE__ */ (0, z.jsx)(Fme, {
+						children: i.map((t, r) => /* @__PURE__ */ (0, z.jsx)(Fme, {
 							want: t,
-							first: n === 0,
+							first: r === 0,
 							readOnly: e,
-							busy: i.busy,
-							onReset: () => l(t),
-							onRemove: () => c(t)
+							busy: a.busy,
+							onReset: () => u(t),
+							onRemove: () => l(t),
+							onCloudDownload: () => n({
+								code: t.code || "",
+								title: t.title || "",
+								origin: `wishlist:${t.id}`
+							})
 						}, t.id))
 					})]
 				}, t) : null;
@@ -45203,47 +45215,47 @@ function SF({ term: e, figure: t, unit: n }) {
 	});
 }
 function Lme(e) {
-	let { route: t, savePreference: n, toast: r, openFollow: i, readOnly: a, readOnlyMessage: o, writerUrl: s } = e, [c, l] = (0, R.useState)(xF(e.tab) ? e.tab : "list"), [u, d] = (0, R.useState)(Math.max(1, Math.floor(e.page) || 1)), [f, p] = (0, R.useState)(() => ej(e.sort, e.dir).sort), [m, h] = (0, R.useState)(() => ej(e.sort, e.dir).dir), [g, _] = (0, R.useState)(sde(e.layout) ? e.layout : "default"), [v, y] = (0, R.useState)(cde(e.pageSize)), [b, x] = (0, R.useState)(/* @__PURE__ */ new Set()), S = Qn({
+	let { route: t, savePreference: n, toast: r, openFollow: i, cloudDownload: a, readOnly: o, readOnlyMessage: s, writerUrl: c } = e, [l, u] = (0, R.useState)(xF(e.tab) ? e.tab : "list"), [d, f] = (0, R.useState)(Math.max(1, Math.floor(e.page) || 1)), [p, m] = (0, R.useState)(() => ej(e.sort, e.dir).sort), [h, g] = (0, R.useState)(() => ej(e.sort, e.dir).dir), [_, v] = (0, R.useState)(sde(e.layout) ? e.layout : "default"), [y, b] = (0, R.useState)(cde(e.pageSize)), [x, S] = (0, R.useState)(/* @__PURE__ */ new Set()), C = Qn({
 		queryKey: lj,
 		queryFn: ({ signal: e }) => Oj(e)
-	}), C = Qn({
+	}), w = Qn({
 		queryKey: uj,
 		queryFn: ({ signal: e }) => kj(e)
-	}), w = Qn({
+	}), T = Qn({
 		queryKey: dj,
 		queryFn: ({ signal: e }) => Pj(e)
-	}), T = S.data || { sources: [] }, E = C.data || {
+	}), E = C.data || { sources: [] }, D = w.data || {
 		root: "",
 		providers: []
-	}, D = T.sources;
+	}, O = E.sources;
 	(0, R.useEffect)(() => {
-		x((e) => {
-			let t = mde(e, D);
+		S((e) => {
+			let t = mde(e, O);
 			return t.size === e.size ? e : t;
 		});
-	}, [D]);
-	let O = (e) => {
-		let n = e.sort ?? f, r = e.dir ?? m;
+	}, [O]);
+	let k = (e) => {
+		let n = e.sort ?? p, r = e.dir ?? h;
 		t({
-			tab: e.tab ?? c,
-			page: e.page ?? u,
+			tab: e.tab ?? l,
+			page: e.page ?? d,
 			sort: n === "checked" ? "" : n,
 			dir: r === $A[n] ? "" : r
 		});
-	}, k = wj(D), A = D.filter(gj).length, j = D.filter((e) => e.enabled).length, M = (E.providers || []).filter((e) => e.requirement === "required" && !Uj(e)).length, N = new Set((w.data?.sources || []).map((e) => e.entity_id ?? `source-${e.id}`)).size;
+	}, A = wj(O), j = O.filter(gj).length, M = O.filter((e) => e.enabled).length, N = (D.providers || []).filter((e) => e.requirement === "required" && !Uj(e)).length, P = new Set((T.data?.sources || []).map((e) => e.entity_id ?? `source-${e.id}`)).size;
 	return /* @__PURE__ */ (0, z.jsxs)(ea, { children: [
-		a ? /* @__PURE__ */ (0, z.jsx)(K, {
+		o ? /* @__PURE__ */ (0, z.jsx)(K, {
 			tone: "warning",
 			title: "本机只能浏览",
-			extra: s ? /* @__PURE__ */ (0, z.jsx)("p", {
+			extra: c ? /* @__PURE__ */ (0, z.jsx)("p", {
 				className: "text-body-2-regular",
 				children: /* @__PURE__ */ (0, z.jsx)("a", {
-					href: s,
+					href: c,
 					className: "text-text-primary underline underline-offset-2",
 					children: "前往写入端管理关注"
 				})
 			}) : void 0,
-			children: o
+			children: s
 		}) : null,
 		/* @__PURE__ */ (0, z.jsxs)("div", {
 			className: eie,
@@ -45251,41 +45263,41 @@ function Lme(e) {
 			children: [
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "关注创作者",
-					figure: k.length,
+					figure: A.length,
 					unit: "位"
 				}),
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "启用来源",
-					figure: j,
-					unit: `/ ${D.length}`
+					figure: M,
+					unit: `/ ${O.length}`
 				}),
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "检查失败",
-					figure: A,
+					figure: j,
 					unit: "个来源"
 				}),
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "未看更新",
-					figure: T.counts?.new || 0,
+					figure: E.counts?.new || 0,
 					unit: "条"
 				}),
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "JAV 订阅",
-					figure: N,
+					figure: P,
 					unit: "位"
 				}),
 				/* @__PURE__ */ (0, z.jsx)(SF, {
 					term: "未看新作",
-					figure: w.data?.unread || 0,
+					figure: T.data?.unread || 0,
 					unit: "条"
 				})
 			]
 		}),
 		/* @__PURE__ */ (0, z.jsxs)(ey, {
-			selectedKey: c,
+			selectedKey: l,
 			onSelectionChange: (e) => {
 				let t = String(e);
-				xF(t) && (l(t), O({ tab: t }));
+				xF(t) && (u(t), k({ tab: t }));
 			},
 			className: "flex flex-col gap-6",
 			children: [
@@ -45297,39 +45309,39 @@ function Lme(e) {
 					children: bF.map(([e, t]) => /* @__PURE__ */ (0, z.jsx)(ny, {
 						id: e,
 						className: "cursor-pointer whitespace-nowrap",
-						children: e === "source" && M ? `${t}（${M}）` : t
+						children: e === "source" && N ? `${t}（${N}）` : t
 					}, e))
 				}),
 				/* @__PURE__ */ (0, z.jsx)(ry, {
 					id: "list",
 					className: "flex flex-col gap-4",
 					children: /* @__PURE__ */ (0, z.jsx)(_me, {
-						data: T,
-						sort: f,
-						dir: m,
-						page: u,
-						layout: g,
-						pageSize: v,
-						selected: b,
-						readOnly: a,
+						data: E,
+						sort: p,
+						dir: h,
+						page: d,
+						layout: _,
+						pageSize: y,
+						selected: x,
+						readOnly: o,
 						toast: r,
 						openFollow: i,
 						onSort: (e, t) => {
-							p(e), h(t), d(1), O({
+							m(e), g(t), f(1), k({
 								sort: e,
 								dir: t,
 								page: 1
 							});
 						},
 						onPage: (e) => {
-							d(e), O({ page: e });
+							f(e), k({ page: e });
 						},
-						onSelected: x,
+						onSelected: S,
 						onLayout: (e) => {
-							_(e), d(1), n({ layout: e }), O({ page: 1 });
+							v(e), f(1), n({ layout: e }), k({ page: 1 });
 						},
 						onPageSize: (e) => {
-							y(e), d(1), n({ pageSize: e }), O({ page: 1 });
+							b(e), f(1), n({ pageSize: e }), k({ page: 1 });
 						}
 					})
 				}),
@@ -45337,26 +45349,26 @@ function Lme(e) {
 					id: "add",
 					className: "flex flex-col gap-8",
 					children: [/* @__PURE__ */ (0, z.jsx)(Cfe, {
-						data: T,
-						credentials: E,
-						readOnly: a,
+						data: E,
+						credentials: D,
+						readOnly: o,
 						toast: r,
 						openCredentials: () => {
-							l("source"), O({ tab: "source" });
+							u("source"), k({ tab: "source" });
 						}
 					}), /* @__PURE__ */ (0, z.jsx)(Efe, {
-						groups: T.author_aliases || [],
-						readOnly: a,
+						groups: E.author_aliases || [],
+						readOnly: o,
 						toast: r,
-						suggestions: T.alias_suggestions || [],
-						sources: T.sources
+						suggestions: E.alias_suggestions || [],
+						sources: E.sources
 					})]
 				}),
 				/* @__PURE__ */ (0, z.jsx)(ry, {
 					id: "feeds",
 					className: "flex flex-col gap-4",
 					children: /* @__PURE__ */ (0, z.jsx)(Eme, {
-						readOnly: a,
+						readOnly: o,
 						toast: r,
 						avatarInner: e.avatarInner
 					})
@@ -45365,16 +45377,17 @@ function Lme(e) {
 					id: "wants",
 					className: "flex flex-col gap-4",
 					children: /* @__PURE__ */ (0, z.jsx)(Ime, {
-						readOnly: a,
-						toast: r
+						readOnly: o,
+						toast: r,
+						cloudDownload: a
 					})
 				}),
 				/* @__PURE__ */ (0, z.jsx)(ry, {
 					id: "source",
 					className: "flex flex-col gap-4",
 					children: /* @__PURE__ */ (0, z.jsx)(FM, {
-						data: E,
-						readOnly: a,
+						data: D,
+						readOnly: o,
 						toast: r
 					})
 				})

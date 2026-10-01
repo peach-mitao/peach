@@ -3,6 +3,8 @@
  * 想要从三处来：Feed 新作卡上的「想要」、关注详情上的「想要」、这里直接输入的库外番号。Peach
  * 没有库外作品的详情页，这张卡就是库外番号的入口。四段是待找、未发售、暂时放弃、已入库：未发售
  * 按发行日现算，到了发售日自己回到待找；文件扫进库或关注条目保存进账本时自动挪到已入库。
+ * 待找与暂时放弃两段的每一行有「云下载」：经壳带着番号、标题与 `wishlist:<id>` 去活动页的云下载段，
+ * 下载完的文件入库时由同一套对账挪到已入库。
  *
  * 版式与同页其余页签一致：分组靠标题，行与行之间只用一条发丝线，不各自套框。条间线写在每一行
  * 自己身上（`border-t`），岛里 `divide-*` 压不过 `@scope` 末尾的边框清零。 */
@@ -43,9 +45,9 @@ function Cover({ want }: { want: Want }) {
   );
 }
 
-function WantRow({ want, first, readOnly, busy, onReset, onRemove }: {
+function WantRow({ want, first, readOnly, busy, onReset, onRemove, onCloudDownload }: {
   want: Want; first: boolean; readOnly: boolean; busy: string;
-  onReset(): void; onRemove(): void;
+  onReset(): void; onRemove(): void; onCloudDownload(): void;
 }) {
   return (
     <li data-want-id={want.id}
@@ -65,6 +67,10 @@ function WantRow({ want, first, readOnly, busy, onReset, onRemove }: {
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {want.link ? <ExternalLink href={want.link}>来源页</ExternalLink> : null}
+          {/* 还在找的两段才给云下载：未发售的没有资源可下，已入库的已经到手。 */}
+          {want.phase === 'searching' || want.phase === 'given_up' ? (
+            <Button variant="secondary" size="small" disabled={readOnly} onClick={onCloudDownload}>云下载</Button>
+          ) : null}
           {want.phase === 'given_up' ? (
             <Button variant="secondary" size="small" disabled={readOnly} {...busyProps(busy === `reset:${want.id}`)}
               onClick={onReset}>重新查找</Button>
@@ -80,9 +86,11 @@ function WantRow({ want, first, readOnly, busy, onReset, onRemove }: {
 export interface WantListProps {
   readOnly: boolean;
   toast(message: string): void;
+  /** 带着番号、标题与 `wishlist:<id>` 去活动页的云下载段（壳的 `openCloudDownload`）。 */
+  cloudDownload(prefill: { code?: string; title?: string; origin: string }): void;
 }
 
-export function WantList({ readOnly, toast }: WantListProps) {
+export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
   const [code, setCode] = useState('');
   const action = useAction();
   const wants = useQuery({
@@ -155,7 +163,10 @@ export function WantList({ readOnly, toast }: WantListProps) {
             <ul className="flex flex-col">
               {rows.map((want, at) => (
                 <WantRow key={want.id} want={want} first={at === 0} readOnly={readOnly} busy={action.busy}
-                  onReset={() => reset(want)} onRemove={() => remove(want)} />
+                  onReset={() => reset(want)} onRemove={() => remove(want)}
+                  onCloudDownload={() => cloudDownload({
+                    code: want.code || '', title: want.title || '', origin: `wishlist:${want.id}`,
+                  })} />
               ))}
             </ul>
           </section>
