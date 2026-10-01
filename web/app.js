@@ -1483,7 +1483,10 @@ function faceBoxAttrs(f){
 function avatarFrame(img){
   const ring=img.parentElement;
   if(!ring)return;
-  ['position','right','bottom','left','top','width','height'].forEach(name=>img.style.removeProperty(name));
+  ['position','right','bottom','left','top','width','height','max-width','max-height']
+    .forEach(name=>img.style.removeProperty(name));
+  // 取景完才露面（`09-skeleton.css`）：本函数同步写完样式，先标上；只有等框布局那条路撤掉。
+  img.dataset.faceFramed='';
   if(ring.dataset.nativeSmall==='true')return;
   const rect=ring.getBoundingClientRect();
   /* 图加载完时框还没布局，是真会发生的一整类情况：面板隐藏、`display:none` 的页签、
@@ -1493,6 +1496,8 @@ function avatarFrame(img){
      等到框拿到尺寸再算一次，等不到就维持不放大。 */
   if(!(rect.width>0&&rect.height>0)){
     if(typeof ResizeObserver!=='function')return;
+    // 框是 0×0 时本来也看不见；等它量到尺寸、取完景再露面。
+    delete img.dataset.faceFramed;
     const watch=new ResizeObserver(()=>{
       const now=ring.getBoundingClientRect();
       if(!(now.width>0&&now.height>0))return;
@@ -1520,6 +1525,9 @@ function avatarFrame(img){
   s.position='absolute';s.right='auto';s.bottom='auto';
   s.left=`${frame.left}%`;s.top=`${frame.top}%`;
   s.width=`${frame.width}%`;s.height=`${frame.height}%`;
+  /* 宽常常超过框宽。React 岛的 Tailwind 预检给每张 img `max-width:100%`，会把宽夹回框宽、
+     高照样放大，脸偏到左边、右侧露出底色；内联撤掉，图落在哪个容器里都不用再各补一条。 */
+  s.maxWidth='none';s.maxHeight='none';
 }
 /* 官方封面有三种形态，实测过：整张封套约 1.48（左侧是剧照拼贴，右侧才是正封），
    竖版正封约 0.70（本身就是正封，没有左半边可裁），16:9 官方剧照约 1.78（整幅
@@ -1641,8 +1649,6 @@ const pendingSince=new WeakMap();
 function watchPendingImages(node){
   const found=node.matches(PENDING_IMAGES)?[node]:node.querySelectorAll(PENDING_IMAGES);
   for(const img of found){
-    // 缓存图插入时先完成取景；load 尚未派发也不露出默认的居中封套。
-    if(img.complete&&img.naturalWidth&&img.classList.contains('cover'))coverAnchor(img);
     if(!img.complete){
       img.parentElement.classList.add('imgwait');pendingSince.set(img.parentElement,performance.now());
     }
@@ -1662,9 +1668,21 @@ function settleImage(img){
   // 兜底：面板藏在后台或动效归零时 `transitionend` 不会来。
   timer=setTimeout(drop,1000);
 }
+/* 缓存图插进页面的第一帧就画出来了，`load` 却排在下一个任务里：不在这里先取景，那一帧
+   要么藏着（`09-skeleton.css`），要么是几何居中。观察回调是微任务，赶在绘制之前。
+   不限于 `PENDING_IMAGES` 那几种框：带脸框的头像散在各页，哪里的都一样要先取景。 */
+function frameCachedImages(node){
+  const framed='img.cover,img[data-facebox]';
+  const found=node.matches(framed)?[node]:node.querySelectorAll(framed);
+  for(const img of found){
+    if(!(img.complete&&img.naturalWidth))continue;
+    if(img.classList.contains('cover'))coverAnchor(img);
+    else{fitNativeImage(img);avatarFrame(img)}
+  }
+}
 new MutationObserver(records=>{
   for(const record of records)for(const node of record.addedNodes)
-    if(node.nodeType===Node.ELEMENT_NODE)watchPendingImages(node);
+    if(node.nodeType===Node.ELEMENT_NODE){watchPendingImages(node);frameCachedImages(node)}
 }).observe(document.body,{childList:true,subtree:true});
 // 挂在 document 上，比 body 上那条兜底链先收到：图被摘掉之前框还找得到。兜底链里还有
 // 下一张时微光留着，换上的那张到手才收。

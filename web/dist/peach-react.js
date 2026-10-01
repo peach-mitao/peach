@@ -44991,7 +44991,7 @@ function tpe(e) {
 		getNextPageParam: S.getNextPageParam,
 		placeholderData: y ? Yt : void 0
 	}), w = Ace(C.data), T = !!C.hasNextPage && !C.isPlaceholderData, E = jce(w.length, !!C.hasNextPage);
-	(0, L.useEffect)(() => {
+	(0, L.useLayoutEffect)(() => {
 		l.current && e.refitImages(l.current);
 	}, [r]);
 	let O = (0, L.useMemo)(() => u === "tags" ? w.map((t) => ({
