@@ -51,6 +51,13 @@ CREATE TABLE label_maker(
   label_id INTEGER PRIMARY KEY, maker_id INTEGER, source TEXT,
   confidence REAL DEFAULT 1.0, checked_at TEXT);
 CREATE TABLE performer_profile(entity_id INTEGER PRIMARY KEY, source TEXT);
+CREATE TABLE follow_source(id INTEGER PRIMARY KEY, entity_id INTEGER);
+CREATE TABLE feed_source(id INTEGER PRIMARY KEY, entity_id INTEGER);
+CREATE TABLE feed_discovery_entity(
+  discovery_id INTEGER, entity_id INTEGER, PRIMARY KEY(discovery_id,entity_id));
+CREATE TABLE entity_redirect(
+  old_id INTEGER PRIMARY KEY, target_id INTEGER NOT NULL, source TEXT NOT NULL,
+  merged_at TEXT NOT NULL);
 """
 
 
@@ -166,7 +173,6 @@ class RenameTests(unittest.TestCase):
         self.assertEqual(self._tags_of(7), ["足系"])
 
     def test_a_followed_bucket_entity_is_kept_for_a_person_to_look_at(self):
-        self.connection.execute("CREATE TABLE follow_source(id INTEGER PRIMARY KEY, entity_id INTEGER)")
         self._entity(21, "足系")
         self.connection.execute("INSERT INTO follow_source(entity_id) VALUES(21)")
         counts = tag_renames.apply_rows(self.connection, tag_renames.collect(self.connection))

@@ -23,7 +23,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import (
-    FileResponse, JSONResponse, PlainTextResponse, Response,
+    FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response,
     StreamingResponse,
 )
 from starlette.staticfiles import StaticFiles
@@ -34,6 +34,7 @@ from . import (
     taste_history, timeline_sheets, web_follow, web_settings,
 )
 from .config import GENERATED_DIR
+from .entities import resolve_entity_id
 from .follow import FollowSourceError
 from .follow_avatar import profile_avatar_tiers, profile_identities, resolve_official_avatar
 from .follow_covers import (
@@ -1073,12 +1074,27 @@ def entity_image(request: Request, kind: str, id: int, thumb: int = 0,
     try:
         path, content_type = state.preview_service.entity_image(kind, id)
     except PreviewUnavailable:
+        # 并入别人的实体没有自己的图：按墓碑跳到现在那一条。只在取不到时查库，
+        # 索引页一屏几百张图的常规路径不多一次查询。
+        target = current_entity_id(state.web_contract, id)
+        if target != id:
+            # 只换 id，其余参数（缩略图开关、口令）原样带上；写相对地址，不依赖反代给的主机名。
+            moved = request.url.include_query_params(id=target)
+            return RedirectResponse(f"{moved.path}?{moved.query}", status_code=307)
         return JSONResponse({"error": "unavailable"}, status_code=404)
     if thumb:
         derived = state.entity_thumb_service.thumbnail(entity_image_key(kind, id), path)
         if derived is not None:
             path, content_type = derived, ENTITY_THUMB_TYPE
     return _image_response(request, path, media_type=content_type)
+
+
+def current_entity_id(contract, entity_id: int) -> int:
+    """页面递来的实体 id 按合并墓碑换成现在的实体；解析不到就原样返回，交给接口自己的判据。"""
+    if entity_id <= 0:
+        return entity_id
+    with contract.read_connection() as connection:
+        return resolve_entity_id(connection, entity_id) or entity_id
 
 
 def _picker_roots(state) -> tuple[Path, Path]:
@@ -1111,6 +1127,7 @@ def avatar_choices(request: Request, kind: str = "performer", id: int = 0,
     """这个人还能换成哪些图。只读，不联网，不写盘。"""
     state = request.app.state.web_contract
     providers_root, avatar_root = _picker_roots(state)
+    id = current_entity_id(state, id)
     with state.read_connection() as connection:
         return JSONResponse(avatar_picker.choices(
             connection, providers_root, avatar_root, _picker_kind(kind), id,
@@ -1127,6 +1144,7 @@ def avatar_choice(request: Request, kind: str = "performer", id: int = 0,
     """
     state = request.app.state.web_contract
     providers_root, _ = _picker_roots(state)
+    id = current_entity_id(state, id)
     with state.read_connection() as connection:
         try:
             body, origin = avatar_picker.resolve(
@@ -1177,6 +1195,8 @@ async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_a
         entity_id = 0
     if entity_id <= 0:
         return JSONResponse({"error": "缺少实体 id"}, status_code=400)
+    # 页面开着时实体被并入别人，换上的图要落到现在那一条名下，不留成孤立文件。
+    entity_id = current_entity_id(state, entity_id)
     kind = _picker_kind(str(payload.get("kind") or "performer"))
     ref, url = str(payload.get("ref") or ""), str(payload.get("url") or "")
     try:
