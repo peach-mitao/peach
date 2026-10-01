@@ -22,6 +22,11 @@ export function javImageKind(item: { is_jav?: boolean; code?: string; has_cover?
   return item.has_thumb ? 'thumbnail' : '';
 }
 
+/** 正封的宽高比，与 `jav_poster_crop.PANEL_ASPECT` 同一个数：DVD 正面印刷面 135×190mm，
+ *  本机 637 张实测中位数也是它。封面框选按它锁比例；没有边车的双页封套按它从右缘量回正封
+ *  宽度，贴右缘时 0.75 的卡片比正封宽，不量就会带进一条书脊。 */
+export const PANEL_ASPECT = 0.704;
+
 /** 接口 `poster_box` 的形状：`x0/y0/x1/y1` 是源图像素坐标，`px` 是源图尺寸，
  *  `method` 记着这个框是沿折痕（`fold`）、按正封宽高比的先验（`ratio`），还是人在
  *  详情页自己框的（`manual`）。前两档的框永远满高贴右缘，只有 `x0` 是活的；手工框

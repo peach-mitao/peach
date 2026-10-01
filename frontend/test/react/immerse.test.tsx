@@ -121,7 +121,6 @@ function makeHost(): HostMock {
     seekSeconds: vi.fn<ImmerseHost['seekSeconds']>(() => 10),
     sourceOffline: vi.fn<ImmerseHost['sourceOffline']>((location) => location === 'gone'),
     displayName: vi.fn<ImmerseHost['displayName']>((item) => `片名 ${String(item.name)}`),
-    avatarHtml: vi.fn<ImmerseHost['avatarHtml']>((name) => `<span class="ini">${name}</span>`),
     route: vi.fn<ImmerseHost['route']>(),
     closed: vi.fn<ImmerseHost['closed']>(),
     openItem: vi.fn<ImmerseHost['openItem']>(),
@@ -411,8 +410,8 @@ describe('作者与标题', () => {
     await open();
     const author = q<HTMLAnchorElement>('[data-immerse-author]>a')!;
     expect(author.textContent).toBe('甲、乙、丙 等 4 人');
-    expect(host.avatarHtml).toHaveBeenCalledWith('甲', { id: 91, has_image: true }, 'performer');
-    expect(q('[data-immerse-avatar]')!.innerHTML).toBe('<span class="ini">甲</span>');
+    expect(q('[data-immerse-avatar] .ini')!.textContent).toBe('甲');
+    expect(q('[data-immerse-avatar] img')!.getAttribute('src')).toBe('/entity-image?kind=performer&id=91');
     await click(author);
     expect(host.closed).toHaveBeenCalledTimes(1);
     expect(host.openEntity).toHaveBeenCalledWith('performer', '甲');

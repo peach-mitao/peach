@@ -221,7 +221,6 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   }), [actions, alias, entity, entityId, follow, helpers, kind, name, refreshEntity, rename]);
   const heroHelpers = useMemo<EntityHeroHelpers>(() => ({
     portraitImg: () => helpers.portraitImg(kind, entity),
-    costarImg: helpers.costarImg,
     wireScroller: helpers.wireDrag,
     wireFeedRow: helpers.wireFeedRow,
     receipt: helpers.receipt,

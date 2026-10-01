@@ -51,27 +51,16 @@ export interface MediaPage { items: MediaItem[]; total?: number; has_more?: bool
  *  `portrait` 是这一屏整列都是竖屏（显式筛了竖屏），`javImage` 是「JAV 默认封面」设置。 */
 export interface MediaCardLayout { active: boolean; size: 'big' | 'small'; portrait: boolean; javImage: string }
 
-/** 卡片上仍由遗留层拼的几段 HTML 与悬停预览。都是纯函数或对元素的接线，壳里各只有一份。 */
+/** 卡片上仍由遗留层拼的几段 HTML。封面、头像与悬停预览直接取 `@peach/card-art`。 */
 export interface MediaCardHelpers {
-  /** 番号作品的官方封套 `<img>`（遗留层 `coverImage`）：取景属性由它贴，加载后由壳接管取景。 */
-  coverHtml(item: MediaItem, layout: 'big' | 'small', eager: boolean): string;
-  /** 封面格换版式：格里那张 `<img>` 原地换取景类名，已加载的按新卡片比例重算取景
-   *  （遗留层 `relayoutJavImages` + `coverAnchor`）。 */
-  relayoutArt(root: HTMLElement, layout: 'big' | 'small'): void;
   /** 来源角标（遗留层 `srcBadge`）。 */
   badgeHtml(location: string, cost: string): string;
   /** 标题的 HTML：番号 + 版次徽章 + 片名，非番号作品是转义后的名字（遗留层 `javTitleHtml`）。 */
   titleHtml(item: MediaItem, raw: string): string;
   /** 同一标题的纯文本，用于无障碍名称（遗留层 `javDisplayName`）。 */
   displayName(item: MediaItem, raw: string): string;
-  /** 头像圆框里那段 HTML（遗留层 `avatarInner`）：有图走图，没图退首字母。代表作由壳自己查。 */
-  avatarHtml(name: string, ref: MediaEntityRef | null, kind: string): string;
   /** 标签键到界面上的名称。 */
   tagLabel(tag: string): string;
-  /** 给一张卡接上悬停预览（遗留层 `wireHover`）。每张卡只接一次。 */
-  wireHover(el: HTMLElement, item: MediaItem): void;
-  /** 收掉这张卡上正在放的预览。卡片卸载时调。 */
-  releaseHover(el: HTMLElement): void;
 }
 
 /** 卡片上的动作。打开与换页都归壳：详情页、沉浸模式和小窗是遗留层的整页视图。 */

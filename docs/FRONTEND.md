@@ -52,7 +52,7 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 - 地址栏是唯一真相。壳的 `openIndex` 从地址读出 `q`、`scope`、`view`、`category` 作初值挂上来；页面换档只改自己的状态，经 `route` 写回地址，不重挂。从侧栏进来一律回到本地、字母表、全部类型。
 - 本地名册与词表读 `/api/index`，在线那一档读 `/api/follow/authors` 与 `/api/follow/tags`，键建在 `frontend/src/react/follow/online-vocab.ts`，归关注那一侧。四份都是 `useInfiniteQuery`，「载入更多」取下一页；打字过滤时新结果到手前留着上一份，不铺骨架。
-- 圆框里那段 HTML 仍由遗留层 `avatarInner` 拼，经 `personAvatar` 递进来；原尺寸摆图、补底与首字母收起的规则在 `web/css/01-base.css` 的 `[data-person-ring]`，量图的是遗留层挂在文档上的 `load` 监听。
+- 圆框里那段 HTML 由 `card-art/markup.ts` 的 `avatarInner` 拼，经壳的 `personAvatar` 递进来；原尺寸摆图、补底与首字母收起的规则在 `web/css/01-base.css` 的 `[data-person-ring]`，量图的是 `installCardArt()` 挂在文档上的 `load` 监听。
 - 顶栏选择键归壳，本地标签页读它：关掉时壳经 `updateIsland` 把 `selectMode:false` 推进来，页面清空所选。所选标签的操作条三颗键都不写账本，「显示结果」回目录按所选标签筛选。
 - 壳在数据回来之前铺的骨架仍是 `web/js/ui-components.js` 的 `indexSkeletonHtml`，页头骨架与页面同一组文字。
 
@@ -74,7 +74,7 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 - `entity` 由资料页正文岛 `entity-body`（`frontend/src/react/entity-body/`）直接渲染在它的作品视图里，不另挂岛：第一页随页头一起取来，作为 `initial` 经 `initialData` 进查询；续页经 `fetchPage` 回到壳的 `fetchEntityItems`。壳每发起一次作品请求 `revision` 加一，先推 `items:null` 换成骨架，列表回来后换键淡出。同一座岛的另两个视图是名册（索引页的 `PeopleGrid`）与照片墙（样张分段在前、本地图片在后；岛直接打开 React 灯箱（`photo-lightbox/`），定位源文件调 `actions.revealSource`，翻页调 `actions.loadMorePhotos`）。
 - `items` 挂在 `#nrow` 上：壳手上已有那一批，岛只画卡。
 - 版式、选中态与快进秒数经 `updateIsland` 推进来：换版式只重画，已载入的分页原样保留。`selected` 每次推一个新的 `Set`。
-- 壳在卡上还做三件事：悬停预览（`wireHover`／`releaseHover` 经 `helpers` 递进，状态写在卡的 `data-previewing`／`data-longhover` 上）、封面取景、图片微光（`PENDING_IMAGES` 认 `[data-media-art]>img`）。卡片的结构钩子全是 `data-media-*`；壳插进封面格的 `video.hv`、`img.hvframes` 与封套 `img.poster` 用自己的类名，样式在 `12-cards.css`。
+- 卡上的悬停预览、封面取景与图片微光都在 `frontend/src/card-art/`：卡片直接调 `wireHover`／`releaseHover`（状态写在卡的 `data-previewing`／`data-longhover` 上）与 `relayoutCovers`，微光由 `installCardArt` 装的监听按 `PENDING_IMAGES` 认 `[data-media-art]>img`；壳只经 `configureHoverPreview` 告诉悬停预览多选态、打码与延迟。卡片的结构钩子全是 `data-media-*`；悬停预览插进封面格的 `video.hv`、`img.hvframes` 与封套 `img.poster` 用自己的类名，样式在 `12-cards.css`。
 - 离场：`claimSurface` 卸 `#grid` 与 `#nrow`；资料页正文岛在换页或铺骨架前由 `releaseEntityBody` 卸；接着看是作品详情里的子组件，随舞台岛的内容一起卸。
 - 屏外卡用 `content-visibility` 跳过封面与元信息区的渲染，不做虚拟列表。
 - 单卡写操作都由用户点击触发：稍后看走 `actions.watchLater`，回收站卡的还原走 `actions.resourceOperation`，做完给撤销；彻底删除只在批量条上，先过 `confirmModal` 的危险档。
@@ -380,7 +380,7 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
 React 子树的样式是 Tailwind v4 加 BoardUI 主题，产物 `peach-react.css`；它与旧样式表同处一页的
 三条约束（工具类不分层、只扫描 `src/react/`、Preflight 限定在 `.peach-react` 里）写在
 `frontend/src/react/styles.css` 开头，逐字复制与没有复制的上游文件见 `frontend/src/react/boardui/ORIGIN.md`。
-Preflight 给每张 img `max-width:100%`；遗留层拼的人脸头像由 `avatarFrame` 在图上内联撤掉这条，
+Preflight 给每张 img `max-width:100%`；`card-art` 拼的人脸头像由 `avatarFrame` 在图上内联撤掉这条，
 岛里放这种头像的容器不必再各写 `max-width:none`。封面与带脸框的头像取景完才显示（`09-skeleton.css`）。
 `.oxlintrc.json` 里的例外也在那儿定：`configpage`、`configgroup` 是旧样式表的类名，
 React 页要按原名输出壳才拆得出分区；`swiper`、`swiper-wrapper`、`swiper-slide`、

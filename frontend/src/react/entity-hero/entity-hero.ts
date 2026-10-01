@@ -105,8 +105,6 @@ export interface EntityHeroActions {
 export interface EntityHeroHelpers {
   /** 大位那张图（`entityFaceImg`）：取不到就是空串，首字母垫底。 */
   portraitImg(): string;
-  /** 同台艺人圆框里那张图。 */
-  costarImg(person: HeroCostar): string;
   /** 横滚行接上拖动与滚轮（`wireDrag`）。 */
   wireScroller(row: Element | null): void;
   /** 新作那一行：拖动、滚轮，按设置接自动滚动。 */

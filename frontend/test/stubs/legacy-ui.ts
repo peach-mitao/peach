@@ -16,6 +16,8 @@ export const emptyStateHtml = (
 export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, swapText, wireContextCard} from '../../../web/js/ui-components.js';
 // @ts-expect-error 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。
 export {closeAnchoredMenu, dialSliderHtml, iconSwitchHtml, wireAnchoredMenu, wireDialSlider, wireHorizontalScroller, wireIconSwitch} from '../../../web/js/ui-components.js';
+// @ts-expect-error 骨架露面的等待门槛用正式那一个数。
+export {SKELETON_REVEAL_DELAY} from '../../../web/js/ui-components.js';
 /* 测试环境没有布局，骨架补齐量不出东西，这里什么都不做。 */
 export const fitSkeleton = (_root: Element | null): void => {};
 export const loadingDotsHtml = (label: string): string => `<span>${label}</span>`;

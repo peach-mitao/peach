@@ -7,22 +7,24 @@
  * 结构与样式钩子全用 `data-media-*`，不沿用旧类名：旧样式表不分层、排在后面，同名规则会
  * 落到这张卡上。样式写在 `./media-card.css`。
  *
- * 壳在这张卡上还做三件 React 看不见的事，状态因此都写成属性而不是类名（类名归 React 管，
- * 重画一次就被冲掉）：
+ * 封面、头像与悬停预览取自 `@peach/card-art`，它们在这张卡上做三件 React 看不见的事，状态
+ * 因此都写成属性而不是类名（类名归 React 管，重画一次就被冲掉）：
  * - 悬停预览（`wireHover`）往封面格里插 `video.hv`／`img.hvframes`，在卡上切
  *   `data-previewing`／`data-longhover`，并在卡上挂 `_stopHover` 让滚动与换页时收掉。
- * - 封面取景（`coverAnchor`）改的是封面格里那张图，见 `../catalog-grid/artwork.ts`；
+ * - 封面取景（`coverAnchor`）改的是封面格里那张图，所以图以 HTML 片段交给封面格；
  *   大图／小图也在那张图上原地换，见 `./art-slot.tsx`。
  * - 图片微光（`PENDING_IMAGES`）在 `[data-media-art]` 上加 `imgwait`／`imgdone`。
  *
  * 点击的分流：多选与修饰键优先，然后是打开、实体链接、未归属、
  * 标签，其余落到整张卡上就是打开。 */
 import { memo, useCallback, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import {
+  cardArtwork, cardIdentity, entityAvatar, performerLabel, relayoutCovers, releaseHover, wireHover,
+} from '@peach/card-art';
 import { esc, fmtDur, fmtSize } from '@peach/legacy/core';
 import { spinnerHtml } from '@peach/legacy/ui';
 
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
-import { cardArtwork } from '../catalog-grid/artwork';
 import { ArtSlot } from './art-slot';
 
 /** 大图卡片的容器比例，同遗留层 `COVER_FRONT_RATIO`：正封宽高比 0.667～0.749，0.75 比最宽
@@ -39,9 +41,6 @@ function Icon({ name }: { name: string }) {
 }
 
 const RESOURCE_LABELS: Record<string, string> = { image: '图片', audio: '音频', archive: '压缩包', other: '其它文件' };
-
-/** 番号作品叫女优，其余出镜者叫艺人。判据由后端 `is_jav` 给。 */
-const performerLabel = (item: MediaItem) => (item.is_jav ? '女优' : '艺人');
 
 /** 一个列表里的画面框等高，比例由版式与竖屏语境决定。 */
 export function cardRatio(_item: MediaItem, variant: MediaCardVariant, layout: MediaCardLayout): number {
@@ -62,16 +61,10 @@ export interface MediaCardProps {
   onOpen(item: MediaItem, anchor: HTMLElement): void;
 }
 
-/** 署名：头像和名字落到同一个身份上。番号作品的规范女优已经本地化时，旧扁平字段
- *  `creator` 不能抢走署名；非番号作品仍先认创作者。共演只写第一位再给总人数。 */
-function identityParts(item: MediaItem, helpers: MediaCardHelpers): { avatar: ReactNode; who: ReactNode } {
-  const performers = item.performers || [];
-  const refs = item.performer_entities || [];
+/** 署名：头像和名字落到同一个身份上（`cardIdentity`）。共演只写第一位再给总人数。 */
+function identityParts(item: MediaItem): { avatar: ReactNode; who: ReactNode } {
+  const { kind, name, coStarred, performers, refs, total } = cardIdentity(item);
   const performer = performers[0] || '';
-  const primaryCreator = item.is_jav && performer ? '' : item.creator || '';
-  const kind = primaryCreator ? 'creator' : performer ? 'performer' : '';
-  const name = primaryCreator || performer || '未归属';
-  const coStarred = performers.length > 1 && !primaryCreator;
   const label = performerLabel(item);
   const avatar = coStarred
     ? (
@@ -79,7 +72,7 @@ function identityParts(item: MediaItem, helpers: MediaCardHelpers): { avatar: Re
         {performers.slice(0, 5).map((nm, index) => (
           <button key={`${nm}:${index}`} type="button" data-media-avatar="" data-entity-kind="performer"
             data-entity-name={nm} title={`打开${label}页：${nm}`}
-            dangerouslySetInnerHTML={{ __html: helpers.avatarHtml(nm, refs[index] ?? null, 'performer') }} />
+            dangerouslySetInnerHTML={{ __html: entityAvatar(nm, refs[index] ?? null, 'performer') }} />
         ))}
       </div>
     )
@@ -88,15 +81,15 @@ function identityParts(item: MediaItem, helpers: MediaCardHelpers): { avatar: Re
         <button type="button" data-media-avatar="" data-entity-kind={kind} data-entity-name={name}
           title={`打开${kind === 'performer' ? label : '资料'}页`}
           dangerouslySetInnerHTML={{
-            __html: helpers.avatarHtml(name, kind === 'performer' ? refs[0] ?? null : item.creator_entity ?? null, kind),
+            __html: entityAvatar(name, kind === 'performer' ? refs[0] ?? null : item.creator_entity ?? null, kind),
           }} />
       )
-      : <span data-media-avatar="" dangerouslySetInnerHTML={{ __html: helpers.avatarHtml(name, null, '') }} />;
+      : <span data-media-avatar="" dangerouslySetInnerHTML={{ __html: entityAvatar(name, null, '') }} />;
   const who = coStarred
     ? (
       <>
         <button type="button" data-media-who="" data-entity-kind="performer" data-entity-name={performer}>{performer}</button>
-        <span data-media-who-more="">{`等 ${item.performer_total || performers.length} 人`}</span>
+        <span data-media-who-more="">{`等 ${total} 人`}</span>
       </>
     )
     : kind
@@ -148,15 +141,15 @@ function seekPreview(card: HTMLElement | null, delta: number) {
 
 function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, helpers, actions, onOpen }: MediaCardProps) {
   const card = useRef<HTMLElement | null>(null);
-  const latest = useRef({ item, helpers });
-  latest.current = { item, helpers };
+  const latest = useRef(item);
+  latest.current = item;
   /* 悬停预览只接一次：`wireHover` 往卡上挂监听，ref 回调换了身份 React 就会先卸后挂，
      同一张卡上会叠出第二套。卸载时收掉正在放的预览。 */
   const attach = useCallback((el: HTMLElement | null) => {
-    const { item: current, helpers: hover } = latest.current;
-    if (card.current && card.current !== el) hover.releaseHover(card.current);
+    const current = latest.current;
+    if (card.current && card.current !== el) releaseHover(card.current);
     card.current = el;
-    if (el && (!current.medium || current.medium === 'video')) hover.wireHover(el, current);
+    if (el && (!current.medium || current.medium === 'video')) wireHover(el, current);
   }, []);
 
   const parts = item.part_group || null;
@@ -164,15 +157,15 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
   const stacked = !!(parts || editions);
   const jav = layout.active && !!item.is_jav;
   const size = jav ? layout.size : 'small';
-  const artwork = cardArtwork(item, size, false, layout.javImage, helpers.coverHtml);
-  const identity = size === 'small' ? artwork.html : cardArtwork(item, 'small', false, layout.javImage, helpers.coverHtml).html;
+  const artwork = cardArtwork(item, size, false, layout.javImage);
+  const identity = size === 'small' ? artwork.html : cardArtwork(item, 'small', false, layout.javImage).html;
   const rawName = parts?.title || item.name || '';
   const shownName = helpers.displayName(item, rawName);
   const shownSize = parts?.total_size ?? item.size;
   const shownDuration = parts?.total_duration ?? item.duration;
   const watched = !parts && Number(item.play_seconds) > 0 && Number(item.duration) > 0
     ? Math.min(Number(item.play_seconds) / Number(item.duration), 1) : 0;
-  const { avatar, who } = identityParts(item, helpers);
+  const { avatar, who } = identityParts(item);
   const tags = (item.follow_tags || item.tags || []).slice(0, 3);
   const flags = [item.feedback === 'dislike' && 'dislike', item.feedback === 'seen' && 'seen',
     item.disposal === 'trash' && 'dispose', item.watch_later && 'later'].filter(Boolean) as string[];
@@ -202,7 +195,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
   const pic = (
     <div data-media-pic="" style={{ '--card-ratio': String(cardRatio(item, variant, layout)) } as CSSProperties}>
       {artwork.html
-        ? <ArtSlot artwork={artwork} identity={identity} relayout={(root) => helpers.relayoutArt(root, size)} />
+        ? <ArtSlot artwork={artwork} identity={identity} relayout={(root) => relayoutCovers(root, size)} />
         : <span data-media-nopic="">无预览</span>}
       <div data-media-badge="" dangerouslySetInnerHTML={{ __html: helpers.badgeHtml(item.location || '', item.cost || '') }} />
       <span data-media-check=""><Icon name="check" /></span>

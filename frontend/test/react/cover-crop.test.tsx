@@ -4,7 +4,8 @@
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { CoverCrop, PANEL_ASPECT } from '../../src/react/cover-crop/cover-crop-page';
+import { PANEL_ASPECT } from '../../src/jav-artwork';
+import { CoverCrop } from '../../src/react/cover-crop/cover-crop-page';
 import { queryClient } from '../../src/react/query';
 
 import { buttonNamed, click, mount, settle } from './render';

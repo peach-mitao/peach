@@ -162,7 +162,7 @@ function PlaylistMenu({ name, onRename, onDelete }: { name: string; onRename(): 
   );
 }
 
-export function PlaylistsPage({ openPlaylist, openEntity, faceAvatar, canFlip, toast, revision }: PlaylistsProps) {
+export function PlaylistsPage({ openPlaylist, openEntity, canFlip, toast, revision }: PlaylistsProps) {
   const playlists = useQuery({ queryKey: PLAYLISTS_KEY, queryFn: ({ signal }) => fetchPlaylists(signal) });
   const [renaming, setRenaming] = useState<PlaylistRow | null>(null);
   /* 壳要求重读：首帧那一代已经由 `prefetch` 取过，之后每加一次重取一次。 */
@@ -217,7 +217,7 @@ export function PlaylistsPage({ openPlaylist, openEntity, faceAvatar, canFlip, t
                   count={row.item_count}
                   poster={row.preview_asset_id ? posterUrl(row.preview_asset_id) : null}
                   flipImages={async () => (row.preview_ids || []).map(posterUrl)}
-                  canFlip={canFlip} faces={row.faces || []} faceAvatar={faceAvatar} onOpenEntity={openEntity}
+                  canFlip={canFlip} faces={row.faces || []} onOpenEntity={openEntity}
                   {...(resume ? { onOpen: () => openPlaylist(row.id, resume) } : {})}
                   openLabel={`打开播放列表 ${row.name}`}
                   menu={<PlaylistMenu name={row.name} onRename={() => setRenaming(row)} onDelete={() => remove(row)} />} />

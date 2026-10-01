@@ -1268,7 +1268,7 @@ AV 厂牌 Logo 的来源是厂牌自己的社交账号头像：社交头像天�
     里非规范厂牌只有扁平 `studio` 字段，单独一个标志）。索引是一次 `os.scandir` 的 `logo_index()`，TTL 90 秒，复核批准
     `cache_bust()` 后立刻可见。
   - 人物图与头像：`has_entity_image()`／`has_avatar()` 判定，下发为 `has_image` 与 `has_avatar`。端点用 `web_catalog` 的
-    `entity_ref()` 和 `attach_avatar_availability()`（批量取，不逐行 N+1）挂标志。页面只有 `web/app.js` 的 `entityFaceImg()` 一处拼
+    `entity_ref()` 和 `attach_avatar_availability()`（批量取，不逐行 N+1）挂标志。页面只有 `frontend/src/card-art/markup.ts` 的 `entityFaceImg()` 一处拼
     这两个地址，各取图位经 `avatarInner()` 共用它；缺席的 `has_image` 按「没图」处理，否则忘挂标志的端点会悄悄退回无条件出图。
   - 人物图随 `has_image` 一起下发 `image_version`（`entity_image_version()`，实体图修改时间的十六进制纳秒），`entityFaceImg()`
     拼成 `&v=`。换头像原地覆盖同一个文件，地址不带版本时同一页里浏览器复用内存里那张旧图，要刷新才看得到新的。

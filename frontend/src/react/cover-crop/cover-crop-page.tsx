@@ -22,6 +22,7 @@ import { errorMessage } from '../../api';
 import {
   clampBox, defaultPanelBox, isUsableSize, type CropBox, type CropSize,
 } from '../../crop-geometry';
+import { PANEL_ASPECT } from '../../jav-artwork';
 import type { CoverCropProps } from '../bundle';
 import { ModalFrame, ModalGlyph } from '../components/modal-frame';
 import { Note } from '../components/note';
@@ -30,10 +31,6 @@ import { useOverlayScrollbar } from '../components/overlay-scrollbar';
 import { CropFrame } from '../crop/crop-frame';
 import { busyProps } from '../settings/use-action';
 import { sendCoverCrop } from './cover-crop';
-
-/** 正封的宽高比。与 `jav_poster_crop.PANEL_ASPECT` 同一个数：DVD 正面印刷面
- *  135×190mm，本机 637 张实测中位数也是它。 */
-export const PANEL_ASPECT = 0.704;
 
 /** 雪碧图里的 Lucide `crop`。这枚键和旧版工具条的定位、同步删除排在一行，那两枚是
  *  15px、线宽 2 的线条字形；Remix 那枚是填充轮廓，并排看笔画粗一圈。 */

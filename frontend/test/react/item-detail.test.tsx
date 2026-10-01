@@ -31,7 +31,7 @@ const queue = (kind: DetailQueue['kind'], ids: number[], extra: Partial<DetailQu
 function helpers(patch: Partial<ItemDetailHelpers> = {}): ItemDetailHelpers {
   return {
     badgeHtml: () => '', titleHtml: (shown) => String(shown.name), displayName: (shown) => String(shown.name),
-    performerLabel: () => '女优', faceHtml: () => '', queueThumbHtml: () => '', queueAvatarHtml: () => '', mixLabel: () => '署名',
+    javImage: () => 'cover',
     tagLabel: (tag) => tag, isDurationTag: (tag) => tag.startsWith('长片'), tagCandidates: () => [], sourceOffline: () => false,
     offlineReason: () => '盘没挂上', relatedSkeletonHtml: () => '', mixRelated: async () => [], wireDrag: vi.fn(),
     wireDragReorder: vi.fn(), ...patch,
@@ -401,7 +401,7 @@ describe('侧栏怎么读', () => {
   it('身份按类分组、组标题在上；没有实体 id 的只写名字；厂牌装了标识才要 icon 变体；系列是带图标的链接', async () => {
     serve();
     const { host, actions: done } = await show(item(1, {
-      performers: ['七海ひな', '桜井まい'],
+      is_jav: true, performers: ['七海ひな', '桜井まい'],
       entity_refs: {
         performer: [{ id: 1, name: '七海ひな' }, { id: null, name: '桜井まい' }],
         studio: [{ id: 5, name: 'Peach Studio', has_logo: true }],
@@ -419,6 +419,21 @@ describe('侧栏怎么读', () => {
     expect(glyph(series)).toBe('#i-tags');
     await click(series);
     expect(done.openEntity).toHaveBeenCalledWith('series', '夏日系列');
+  });
+
+  it('出镜者那一组番号作品写女优、其余写艺人；装了实体图的格按 ref 上的取景与版本出图，没装的只有首字母', async () => {
+    serve();
+    const { host } = await show(item(1, {
+      performers: ['甲', '乙'],
+      entity_refs: { performer: [
+        { id: 3, name: '甲', has_image: true, image_version: '9', avatar_focus: { axis: 'x', pct: 30 } }, { id: 4, name: '乙' },
+      ] },
+    } as Partial<DetailItem>));
+    expect(host.querySelector('[data-id-group="performer"] [data-id-label]')?.textContent).toBe('艺人');
+    const framed = host.querySelector<HTMLImageElement>('[data-entity-name="甲"] img');
+    expect([framed?.getAttribute('src'), framed?.style.objectPosition]).toEqual(['/entity-image?kind=performer&id=3&v=9', '30% 50%']);
+    expect(host.querySelector('[data-entity-name="乙"] img')).toBeNull();
+    expect(host.querySelector('[data-entity-name="乙"]')?.textContent).toContain('乙');
   });
 
   it('没有署名人时，归属那一组就是「未归属」入口', async () => {

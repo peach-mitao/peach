@@ -134,13 +134,6 @@ export function collapseGroups(
 export const mixHasPicture = (item: MediaItem | undefined, javImage: string) =>
   !!item && Boolean(javImageKind(item, javImage));
 
-/** Mix 的署名：番号作品先认女优，其余先认创作者。 */
-export function mixLabel(item: MediaItem, tagLabel: (tag: string) => string): string {
-  const performer = (item.performers || [])[0];
-  return (item.is_jav && performer ? performer : item.creator) || performer || item.studio || item.code
-    || tagLabel((item.tags || [])[0] || '') || '为你推荐';
-}
-
 /** 种子决定 Mix 的封面和署名。从 Mix 位再往下隔一屏开始找有图、有署名的，找不到逐级放宽。 */
 export function mixSeed(visible: readonly MediaItem[], javImage: string): MediaItem | undefined {
   const named = (item: MediaItem) => mixHasPicture(item, javImage)

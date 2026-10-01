@@ -26,8 +26,8 @@ const page = (ids: number[], total = ids.length): MediaPage => ({ items: ids.map
 
 function helpers(): EntityBodyHelpers {
   return {
-    coverHtml: () => '', relayoutArt: vi.fn(), badgeHtml: () => '', titleHtml: (_it, raw) => raw, displayName: (_it, raw) => raw,
-    avatarHtml: (name) => name.slice(0, 1), tagLabel: (tag) => tag, wireHover: vi.fn(), releaseHover: vi.fn(),
+    badgeHtml: () => '', titleHtml: (_it, raw) => raw, displayName: (_it, raw) => raw,
+    tagLabel: (tag) => tag,
     personAvatar: vi.fn(() => ({ html: '<span class="ini">A</span>', face: '' })),
   };
 }

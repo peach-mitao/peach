@@ -68,6 +68,9 @@ export declare function wireContextCard(mount: Element, trigger: HTMLElement, pa
  *  重复触发由遗留层的 `wireBusyActions` 拦住。请求等待期不许改用原生 `disabled`。 */
 export declare function setActionBusy(control: Element | null, busy?: boolean): void;
 
+/** 等待不到这么多毫秒就到手的，不铺骨架或微光，到手直接露面。 */
+export declare const SKELETON_REVEAL_DELAY: number;
+
 /** Geist Spinner：只反馈用户刚点下的那一下。`label` 写正在做的事（「正在还原」）。 */
 export declare function spinnerHtml(label?: string): string;
 

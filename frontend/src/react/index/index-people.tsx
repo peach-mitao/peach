@@ -1,9 +1,9 @@
 /* 名册网格：艺人、创作者、厂牌、事务所四份本地名册，和艺人页在线那一档的来源创作者。
  *
  * 一格人：圆框或竖幅头像、名字、一个读数。四种实体同一副版式、同一条取图链，区别只在
- * 格宽与读数口径。圆框里那段 HTML 由遗留层 `avatarInner` 拼（有图走图、没图退首字母、
+ * 格宽与读数口径。圆框里那段 HTML 由 `card-art` 的 `avatarInner` 拼（有图走图、没图退首字母、
  * 小图按原尺寸摆再糊一圈底），页面不重画一遍；原尺寸取图与补底规则在
- * `web/css/01-base.css` 的 `[data-person-ring]`，量图的是遗留层挂在文档上的 `load` 监听。
+ * `web/css/01-base.css` 的 `[data-person-ring]`，量图的是 `installCardArt` 挂在文档上的 `load` 监听。
  * 格底、头像框、首字与读数的配色在同目录的 `index-people.css`。 */
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 

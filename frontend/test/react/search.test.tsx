@@ -94,7 +94,7 @@ async function stage({ pool = ['剧情'], suggest = async (q: string): Promise<S
     }),
   };
   const helpers: SearchProps['helpers'] = {
-    pool: async () => pool, coverHtml: () => '', faceHtml: () => '',
+    pool: async () => pool, coverHtml: () => '',
     present: (el) => { el.hidden = false }, dismiss: (el) => { el.hidden = true },
     wireScroller: () => {}, typed: () => {}, composing: () => {}, clearField: (el) => { el.value = '' },
   };

@@ -16,6 +16,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
+import { avatarInner, representativeOf } from '@peach/card-art';
 import { fmtDur, realDuration } from '@peach/legacy/core';
 import { spinnerHtml } from '@peach/legacy/ui';
 
@@ -613,7 +614,7 @@ function Caption({ shown }: { shown: Shown | null }) {
     close();
     helpers.openItem(item.id);
   };
-  const avatar = owner ? helpers.avatarHtml(owner.name, owner.ref, owner.kind || 'performer') : '';
+  const avatar = owner ? avatarInner(owner.name, owner.ref, representativeOf(owner.name), owner.kind || 'performer') : '';
   return (
     <div data-immerse-ui="">
       <div data-immerse-author="">

@@ -8,6 +8,7 @@
  * 徽标底色与叠放头像的让位几何写在 `../styles.css` 的 `[data-mix-*]` 那一组规则里：
  * 伪元素、`color-mix` 与相邻兄弟选择器在工具类里写不出来。 */
 import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { avatarInner, representativeOf } from '@peach/card-art';
 
 import { ArtSlot } from './art-slot';
 import { spriteGlyph } from './sprite-glyph';
@@ -42,8 +43,6 @@ export interface MixCardProps {
   canFlip(): boolean;
   /** 署名行的人，最多画五位；一位都没有时画标题首字。 */
   faces: readonly MixCardFace[];
-  /** 圆框里那段 HTML，由遗留层 `avatarInner` 拼：有图走图，没图退首字母。 */
-  faceAvatar(face: MixCardFace): string;
   /** 点头像：去这个人的资料页。 */
   onOpenEntity(kind: string, name: string): void;
   /** 点封面。不给就是这一叠没有去处（空列表），点击区不可点。参数是这张卡本身，壳拿它当
@@ -86,9 +85,9 @@ const RING = 'relative inline-grid size-9.5 flex-none place-items-center overflo
   + ' bg-background-secondary-default text-body-2-regular text-text-secondary'
   + ' [&_img]:absolute [&_img]:inset-0 [&_img]:block [&_img]:size-full [&_img]:object-cover';
 
-function Avatars({ faces, fallback, faceAvatar, onOpenEntity }: {
-  faces: readonly MixCardFace[]; fallback: string;
-  faceAvatar: MixCardProps['faceAvatar']; onOpenEntity: MixCardProps['onOpenEntity'];
+/** 圆框里那段 HTML 由 `avatarInner` 拼：有图走图，没图退首字母，代表作头像查同一张代表作表。 */
+function Avatars({ faces, fallback, onOpenEntity }: {
+  faces: readonly MixCardFace[]; fallback: string; onOpenEntity: MixCardProps['onOpenEntity'];
 }) {
   if (!faces.length) {
     return <span data-mix-initial="" aria-hidden className={`${RING} mt-0.5`}>{fallback}</span>;
@@ -99,14 +98,14 @@ function Avatars({ faces, fallback, faceAvatar, onOpenEntity }: {
         <button key={`${face.kind}:${face.id}`} type="button" title={`打开资料页：${face.name}`}
           aria-label={`打开资料页：${face.name}`} onClick={() => onOpenEntity(face.kind, face.name)}
           className={`${RING} cursor-pointer outline-none`}
-          dangerouslySetInnerHTML={{ __html: faceAvatar(face) }} />
+          dangerouslySetInnerHTML={{ __html: avatarInner(face.name, face, representativeOf(face.name), face.kind) }} />
       ))}
     </div>
   );
 }
 
 export function MixCard({
-  name, caption, count, poster, flipImages, canFlip, faces, faceAvatar, onOpenEntity, onOpen, openLabel, menu,
+  name, caption, count, poster, flipImages, canFlip, faces, onOpenEntity, onOpen, openLabel, menu,
   ratio, artwork, artworkIdentity, relayoutArt, faceHtml, badge, glyph, wholeCard,
   ...data
 }: MixCardProps & Record<`data-${string}`, string>) {
@@ -155,7 +154,7 @@ export function MixCard({
       <div className="flex min-w-0 items-start gap-2.25">
         {glyph
           ? <span data-mix-glyph="" aria-hidden><PLAY /></span>
-          : <Avatars faces={faces} fallback={name.slice(0, 1)} faceAvatar={faceAvatar} onOpenEntity={onOpenEntity} />}
+          : <Avatars faces={faces} fallback={name.slice(0, 1)} onOpenEntity={onOpenEntity} />}
         <div className="flex min-w-0 flex-1 flex-col">
           <b data-mix-title="" className="truncate text-body-bold text-text-primary">{name}</b>
           <span data-mix-caption="" className="mt-0.5 truncate text-caption-1-regular text-text-secondary">{caption}</span>

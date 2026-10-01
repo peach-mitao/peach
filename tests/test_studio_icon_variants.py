@@ -366,11 +366,10 @@ class PageSourceTests(unittest.TestCase):
         cls.source = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
 
     def test_the_studio_hero_asks_for_the_wordmark(self):
-        """大位和小位共用一条取图链，变体由调用方按位置给：大位默认就是字标。"""
-        self.assertIn("logoVariant='logo',alt='',lazy=true", self.source)
+        """大位和小位共用一条取图链，变体由调用方按位置给：大位默认就是字标。
+
+        取图链本身（默认变体与地址）由 `frontend/test/card-art/markup.test.ts` 验。"""
         self.assertIn("logo:company&&d.has_logo?d.canonical_name:'',", self.source)
-        self.assertIn("`/logo?studio=${encodeURIComponent(logo)}&variant=${logoVariant}`",
-                      self.source)
 
     def test_every_small_surface_asks_for_the_icon(self):
         for snippet in (

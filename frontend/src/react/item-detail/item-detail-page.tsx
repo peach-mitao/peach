@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
+import { entityFaceImg, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml } from '@peach/card-art';
 import { confirmModal, dismissMenu, fitSkeleton, presentMenu, spinnerHtml } from '@peach/legacy/ui';
 
 import { apiGet, apiSend } from '../../api';
@@ -205,8 +206,8 @@ function Queue({ queue, itemId, helpers, actions }: {
             disabled={gone} title={gone ? '文件已不在盘上，不能播放' : undefined}
             {...(gone ? { 'data-queue-vanished': '' } : {})}
             onClick={() => { if (!gone) actions.openQueueItem(ref, row.id) }}
-            pic={<><Html html={helpers.queueThumbHtml(row)} /><i className="mono" data-mix-item-duration="">{fmtDur(row.duration)}</i></>}
-            lead={<Html html={helpers.queueAvatarHtml(row)} />}
+            pic={<><Html html={queueThumbHtml(row, helpers.javImage())} /><i className="mono" data-mix-item-duration="">{fmtDur(row.duration)}</i></>}
+            lead={<Html html={queueAvatarHtml(row)} />}
             after={queue.kind === 'playlist' ? (
               <span data-queue-edit="">
                 <i data-queue-grip="" aria-hidden="true"><Glyph name="grip-vertical" /></i>
@@ -216,7 +217,7 @@ function Queue({ queue, itemId, helpers, actions }: {
             ) : null}>
             <span data-queue-head="">{edition}<b data-middle-truncate="">{helpers.displayName(row)}</b></span>
             <span data-truncate-end="">{gone ? '已消失 · 文件已不在盘上'
-              : queue.kind === 'parts' ? partLabel(row.part_label) : helpers.mixLabel(row)}</span>
+              : queue.kind === 'parts' ? partLabel(row.part_label) : mixLabel(row, helpers.tagLabel)}</span>
           </MixQueueRow>
         );
       })}
@@ -455,7 +456,7 @@ function Identity({ item, helpers, actions }: { item: DetailItem; helpers: ItemD
   const cell = (kind: string, ref: DetailEntityRef, index: number) => {
     const hide = kind === 'performer' && index >= CAST_SHOWN && !castOpen;
     const face = kind === 'performer'
-      ? <><span>{ref.name.slice(0, 1)}</span><Html html={helpers.faceHtml(ref)} /></>
+      ? <><span>{ref.name.slice(0, 1)}</span><Html html={entityFaceImg({ id: ref.id, hasImage: ref.has_image, version: ref.image_version, focus: ref.avatar_focus })} /></>
       : kind === 'studio'
         ? <><span>{ref.name.slice(0, 2)}</span>{ref.has_logo
           ? <img src={`/logo?studio=${encodeURIComponent(ref.name)}&variant=icon`} alt="" loading="lazy" data-drop="self" /> : null}</>
@@ -485,7 +486,7 @@ function Identity({ item, helpers, actions }: { item: DetailItem; helpers: ItemD
           </button>
         </div>
       </section>
-    ) : group(helpers.performerLabel(item), 'performer', groups.cast, overflow && !castOpen
+    ) : group(performerLabel(item), 'performer', groups.cast, overflow && !castOpen
       ? <button type="button" id="castMore" data-cast-more="" onClick={() => setCastOpen(true)}>还有 {overflow} 位</button> : null),
     group('厂牌', 'studio', groups.studios),
     group('片商', 'studio', groups.makers),
