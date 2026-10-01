@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
-from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_stats
+from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_playlists, web_stats
 from peach import web_contract as rm_web
 from peach.previews import entity_image_key, logo_key
 from support.ledger import fresh_ledger
@@ -653,6 +653,40 @@ class WebDataTests(unittest.TestCase):
         self.assertEqual(live["total"], 1)
         self.assertEqual(live["bytes"], 100, "体积口径必须跟着同一条筛选走")
 
+    def test_vanished_rows_stay_out_of_lists_search_stats_and_feed_landing(self):
+        """标「已消失」的行文件不在盘上：列表、搜索、补全、统计与 Feed 落地都不认它。"""
+        from peach import feeds
+
+        def seen():
+            stats = rm_web.q_stats(self.contract)
+            groups = rm_web.q_suggest(self.contract, "two")["groups"]
+            with self.contract.read_connection() as connection:
+                landed = feeds.in_library(connection, "XYZ-002")
+            return {
+                "items": sorted(row["id"] for row in rm_web.q_items(self.contract, {"limit": "10"})["items"]),
+                "search": [row["id"] for row in rm_web.q_items(self.contract, {"q": "two", "limit": "10"})["items"]],
+                "suggest": [item["id"] for group in groups if group["kind"] == "asset" for item in group["items"]],
+                "videos": stats["attribution"]["videos"],
+                "by_loc": sorted(row["k"] for row in stats["by_loc"]),
+                "facet_creators": [row["n"] for row in rm_web.q_facets(self.contract)["creators"]],
+                "landed": landed,
+            }
+
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE asset SET code='XYZ-002' WHERE id=2")
+            connection.commit()
+        before = seen()
+        self.assertEqual((before["items"], before["search"], before["suggest"]), ([1, 2], [2], [2]))
+        self.assertEqual((before["videos"], before["by_loc"], before["landed"]), (2, ["115", "local"], True))
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE asset SET disposal='vanished' WHERE id=2")
+            connection.commit()
+        self.contract.cache_bust()
+        after = seen()
+        self.assertEqual((after["items"], after["search"], after["suggest"]), ([1], [], []))
+        self.assertEqual((after["videos"], after["by_loc"], after["landed"]), (1, ["local"], False))
+        self.assertEqual(sum(after["facet_creators"]), sum(before["facet_creators"]) - 1)
+
     def test_legacy_length_tags_are_hidden_in_favor_of_numeric_minutes(self):
         con = sqlite3.connect(self.db_path)
         con.execute(
@@ -777,6 +811,17 @@ class WebDataTests(unittest.TestCase):
             self.contract, {"id": 1, "kind": "dislike"},
         )["feedback"])
         self.assertEqual(self.row()["disposal"], "trash")
+
+    def test_a_vanished_asset_refuses_the_recycle_bin_toggle_and_stays_vanished(self):
+        """已消失的行切进回收站再切出来就成了在库：单条切换与批量移入回收站都拒绝。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute("UPDATE asset SET disposal='vanished' WHERE id=1")
+        with self.assertRaisesRegex(ValueError, "vanished"):
+            rm_web.w_feedback(self.contract, {"id": 1, "kind": "dispose"})
+        self.assertEqual(self.row()["disposal"], "vanished")
+        with self.assertRaisesRegex(ValueError, "vanished"):
+            rm_web.w_batch(self.contract, {"ids": [1, 2], "operation": "dispose"})
+        self.assertEqual((self.row()["disposal"], self.row(2)["disposal"]), ("vanished", None))
 
     def test_a_star_writes_twenty_points_and_taking_it_back_writes_null(self):
         """评分这一列是 0–100，五颗星走 20 的倍数；撤销回 NULL，不是 0。
@@ -949,7 +994,7 @@ class WebDataTests(unittest.TestCase):
             "/api/taste/refresh",
             "/api/links/prune", "/api/resource-sync/apply",
             "/api/follow/tags", "/api/follow/authors",
-            "/api/taste", "/api/settings", "/api/links", "/api/organize",
+            "/api/taste", "/api/settings", "/api/links", "/api/organize", "/api/orphan-records",
             "/api/feeds", "/api/feeds/check", "/api/feeds/discoveries", "/api/feeds/lookup",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
@@ -961,7 +1006,7 @@ class WebDataTests(unittest.TestCase):
             "/api/preference", "/api/quality-goal", "/api/item-tag", "/api/batch",
             "/api/search-history", "/api/trash/empty",
             "/api/review/decision", "/api/review/genre",
-            "/api/purge-missing",
+            "/api/purge-missing", "/api/orphan-records/attach",
             "/api/links/check", "/api/links/prune",
             "/api/resource-sync/scan", "/api/resource-sync/apply",
             "/api/follow/check", "/api/follow/status", "/api/follow/media/hide",
@@ -1816,6 +1861,25 @@ class WebDataTests(unittest.TestCase):
         self.assertEqual(ids(dir="asc"), [1, 2, 4])
         # 不给方向时按列的默认方向走，与显式 desc 同解。
         self.assertEqual(ids(), [2, 1, 4])
+
+    def test_a_vanished_playlist_entry_stays_listed_but_is_not_the_resume_point(self):
+        """文件已不在盘上的条目照旧列出，续播位置落在它上面时退到第一条能播的。"""
+        created = rm_web.w_playlist(self.contract, {
+            "action": "create", "name": "周末", "asset_ids": [1, 2],
+        })["playlist"]
+        self.assertEqual(created["current_asset_id"], 1)
+
+        def vanish(asset_id):
+            with closing(sqlite3.connect(self.db_path)) as con, con:
+                con.execute("UPDATE asset SET disposal='vanished' WHERE id=?", (asset_id,))
+
+        vanish(1)
+        page = web_playlists.q_playlist(self.contract, {"id": created["id"]})
+        self.assertEqual([(item["id"], item["disposal"]) for item in page["items"]],
+                         [(1, "vanished"), (2, None)])
+        self.assertEqual(page["current_asset_id"], 2)
+        vanish(2)
+        self.assertIsNone(web_playlists.q_playlist(self.contract, {"id": created["id"]})["current_asset_id"])
 
     def test_persistent_playlist_can_save_mix_reorder_resume_and_edit(self):
         created = rm_web.w_playlist(self.contract, {

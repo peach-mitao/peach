@@ -3638,20 +3638,26 @@ async function syncForIsland(id){
   return {text:status.textContent,removed};
 }
 
+/* 核对目录的两档（ADR-0087）：不带个人记录的移入回收站，带的标为已消失、记录留着等接回。
+   撤销对两档都有效，`restore` 把两档都清回在库。库里唯一对得上另一个版本的，记录当场接过去
+   （`reattached`）：那一行已经删掉，撤销不碰它。 */
+const syncedText=r=>[r.trashed?`已把 ${r.trashed} 项移入回收站`:'',
+  r.vanished?`${r.vanished} 项带个人记录，已标为已消失`:'',
+  r.reattached?`${r.reattached} 项的记录已接到库里的另一个版本`:''].filter(Boolean).join('，');
 async function syncMissing(id,status,done){
   status.textContent='正在核对目录…';
   try{
     const r=await api('/api/purge-missing',{method:'POST',body:JSON.stringify({id})});
     if(r.ok===false){status.textContent=sourceHint(r.error);return}
     status.textContent=r.removed
-      ? `已把 ${r.removed} 项移入回收站（核对 ${r.checked} 项${r.unreadable?`，${r.unreadable} 项未能读取`:''}）`
+      ? `${syncedText(r)}（核对 ${r.checked} 项${r.unreadable?`，${r.unreadable} 项未能读取`:''}）`
       : r.unreadable
         ? `目录有 ${r.unreadable} 项暂时无法读取，本次未改动`
         : `目录内 ${r.checked} 项都还在，无需改动`;
     if(r.removed){
-      const ids=(r.items||[]).map(item=>item.id);
+      const ids=(r.items||[]).filter(item=>item.disposal!=='reattached').map(item=>item.id);
       if(done)done(r);
-      actionReceipt(`已把 ${r.removed} 项移入回收站`,{undo:ids.length?async()=>{
+      actionReceipt(syncedText(r),{undo:ids.length?async()=>{
         await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation:'restore'})});
         if(done)done({removed:0,restored:ids.length});
       }:null});
@@ -3663,7 +3669,7 @@ async function syncMissing(id,status,done){
 const sourceToolButtons=id=>`
     <button type="button" data-reveal="${id}" title="在文件管理器里打开源文件所在目录"
       aria-label="定位源文件">${icon('folder-open')}</button>
-    <button type="button" data-sync="${id}" title="核对该目录：磁盘上已删除的，移入 Peach 回收站"
+    <button type="button" data-sync="${id}" title="核对该目录：磁盘上已删除的移入 Peach 回收站，带个人记录的标为已消失"
       aria-label="同步删除">${icon('folder-sync')}</button>`;
 function sourceTools(id){return `<div class="srctools">${sourceToolButtons(id)}
     <span class="srcstate" aria-live="polite"></span></div>`}

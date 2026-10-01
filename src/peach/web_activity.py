@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 from typing import Protocol
 
+from .personal_records import VANISHED
 
 DEFAULT_PROFILE_ID = "local-default"
 
@@ -68,6 +69,9 @@ def w_feedback(contract: ActivityContract, body):
             current = connection.execute(
                 "SELECT disposal FROM asset WHERE id=?", (aid,),
             ).fetchone()["disposal"]
+            # 已消失的行文件不在盘上：切进回收站再切出来就成了在库（ADR-0087），整行不动。
+            if current == VANISHED:
+                raise ValueError("vanished assets cannot be moved to the recycle bin")
             connection.execute(
                 "UPDATE asset SET disposal=?, feedback_at=? WHERE id=?",
                 (None if current == "trash" else "trash", time.time(), aid),

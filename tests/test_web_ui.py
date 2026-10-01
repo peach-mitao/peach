@@ -4110,7 +4110,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("toast(`已${word} ${result.done.length} 个关注来源`)",
                       (follow / "source-list.tsx").read_text(encoding="utf-8"))
         self.assertPageContains("toast:actionReceipt,openFollow:()=>void openFollow()")
-        self.assertPageContains("actionReceipt(`已把 ${r.removed} 项移入回收站`,{undo:ids.length?async()=>")
+        self.assertPageContains("actionReceipt(syncedText(r),{undo:ids.length?async()=>")
         self.assertPageContains("data-junk-batch=\"dispose\"")
         self.assertPageContains(".batchbar:has([data-junk-batch]:not([hidden]))")
         self.assertPageContains("#batchbar[hidden]{display:none}")

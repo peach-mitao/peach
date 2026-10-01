@@ -444,10 +444,11 @@ DISCOVERY_LIMIT = 24
 #: 已入库那一条写成不相关子查询：库里的番号键只算一遍、建成临时索引，每条壳再去查它。
 #: 相关子查询的写法要给每条壳把整张 `asset` 的番号重算一遍（60 条壳 × 2881 部是 486ms），
 #: 资料页的形状名单和新作列表都等在它上面。判空与 `=` 一致：键算不出来的壳照常列出。
+#: 标「已消失」的行不算入库（ADR-0087），同 `feeds.in_library`。
 LISTED = (
     "(normalise_code_key(d.code) IS NULL OR normalise_code_key(d.code) NOT IN"
     " (SELECT key FROM (SELECT normalise_code_key(a.code) AS key FROM asset a"
-    " WHERE a.code IS NOT NULL) WHERE key IS NOT NULL))",
+    " WHERE a.code IS NOT NULL AND COALESCE(a.disposal,'')<>'vanished') WHERE key IS NOT NULL))",
     "NOT is_feed_hidden(d.title,d.performers,d.studio)",
 )
 

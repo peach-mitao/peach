@@ -913,7 +913,7 @@ def _tag_inventory(connection: sqlite3.Connection) -> dict[str, int]:
     if "medium" in columns:
         clauses.append("a.medium='video'")
     if "disposal" in columns:
-        clauses.append("(a.disposal IS NULL OR a.disposal<>'trash')")
+        clauses.append("a.disposal IS NULL")
     if "location" in columns:
         clauses.append("a.location IN ('local','115')")
     if "snapshot_path" in columns:

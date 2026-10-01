@@ -365,13 +365,15 @@ def in_library(connection: sqlite3.Connection, code: str) -> bool:
 
     比的是归一化之后的键：账本里写的是 `SSIS-950`，源里可能给 `ssis00950`，
     按原文比会把同一部片当成两部。`normalise_code_key` 由 `LedgerDatabase.connect`
-    注册成 SQL 函数，两侧因此是同一份实现。
+    注册成 SQL 函数，两侧因此是同一份实现。标「已消失」的行文件已不在盘上，不算入库
+    （ADR-0087）；回收站里的仍算，那是用户看过之后丢的。
     """
     key = normalise_code_key(code)
     if not key:
         return False
     row = connection.execute(
-        "SELECT 1 FROM asset WHERE code IS NOT NULL AND normalise_code_key(code)=? LIMIT 1",
+        "SELECT 1 FROM asset WHERE code IS NOT NULL AND COALESCE(disposal,'')<>'vanished' "
+        "AND normalise_code_key(code)=? LIMIT 1",
         (key,)).fetchone()
     return row is not None
 

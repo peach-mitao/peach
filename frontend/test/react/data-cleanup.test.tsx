@@ -15,6 +15,8 @@ import { LinkManager } from '../../src/react/data-cleanup/link-manager';
 import type { LinkCheckState } from '../../src/react/data-cleanup/links';
 import { OrganizeCard } from '../../src/react/data-cleanup/organize-card';
 import type { OrganizeData } from '../../src/react/data-cleanup/organize';
+import { OrphanRecordsCard } from '../../src/react/data-cleanup/orphan-records-card';
+import type { OrphanRecordsData } from '../../src/react/data-cleanup/orphan-records';
 import { ResourceSyncCard } from '../../src/react/data-cleanup/resource-sync-card';
 import { hasResourceRoots, type ResourceScanState } from '../../src/react/data-cleanup/resource-sync';
 import { IDLE_REPAIR } from '../../src/react/media-repair/media-repair';
@@ -107,6 +109,7 @@ const pageRoutes = (sources: MediaSourcesData): Record<string, Route> => ({
   '/api/links': { total: 0, entities: 0, by_kind: {}, top_hosts: [] },
   '/api/links/check': { status: 'idle', check_id: '', checked: 0, total: 0, gone: [], unclear: [], scope: '' },
   '/api/links/prune': { status: 'idle' },
+  '/api/orphan-records': { total: 0, items: [] },
   '/api/resource-sync/scan': { status: 'idle', scan_id: '' },
   '/api/resource-sync/apply': { status: 'idle' },
 });
@@ -229,6 +232,33 @@ describe('资源同步', () => {
     await settle();
     expect(toast).toHaveBeenCalledWith('已清理失效条目');
     expect(host.textContent).toContain('已永久删除 4 条失效记录和 3 个空文件夹，清理 2 个缓存，释放 5 MB。');
+  });
+
+  it('带个人记录的单列一档：读数卡与确认框分开报删除和标为已消失的条数，结果单报接回的', async () => {
+    const seen = confirmWith(true);
+    serve({
+      '/api/resource-sync/scan': {
+        ...scanned, purge: 3, vanish: 2,
+        sources: [{ ...scanned.sources![0]!, vanish: 2 }, scanned.sources![1]!],
+      },
+      '/api/resource-sync/apply': applyRoute({
+        purged: 3, vanished: 1, reattached: 1, blocked: [], dirs_removed: 3, dir_errors: 0, cache_removed: 2,
+        bytes_reclaimed: 0, cache_blocked: [],
+      }),
+      '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
+    });
+    const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
+    await settle();
+    expect(host.textContent).toContain('将标为已消失');
+    expect(host.textContent).toContain('2 项带个人记录');
+    await click(buttonNamed('清理失效条目', host));
+    await settle();
+    expect(seen[0]!.body).toBe(
+      '将永久删除文件已不在盘上的 3 条记录（含回收站里的）、3 个空文件夹，并清理 2 个闲置缓存。来源根目录保留。'
+      + '这几样不可撤销。2 条带个人记录的标为已消失，记录留着，可在孤儿记录里接到新文件或彻底删除。');
+    await settle();
+    expect(host.textContent).toContain(
+      '1 条带个人记录的已标为已消失，可在孤儿记录里处理。1 条的记录已接到库里的另一个版本。');
   });
 
   it('复核时发现文件还在、目录删不掉的几样留在原地：报警告档，结果条写部分完成', async () => {
@@ -370,6 +400,80 @@ describe('链接管理', () => {
     await click(buttonNamed('检查死链', host));
     await settle();
     expect(host.textContent).toContain('清单已过期，请重新检查');
+  });
+});
+
+describe('孤儿记录', () => {
+  const orphans: OrphanRecordsData = {
+    total: 2,
+    items: [
+      {
+        id: 7, name: 'ABC-123.mp4', code: 'ABC-123', location: 'local', duration: 3600, size: 10,
+        vanished_at: 200, has_thumb: true, records: { asset_preference: 1, activity_event: 3, rating: 4, play_count: 2 },
+        candidates: [
+          { id: 9, location: 'local', name: 'ABC-123.mkv', duration: 3590, size: 20 },
+          { id: 10, location: 'local', name: 'abc-123.mp4', duration: 1800, size: 5 },
+        ],
+      },
+      {
+        id: 12, name: '海边.mp4', code: '', location: 'local', duration: 600, size: 10,
+        vanished_at: 100, has_thumb: false, records: { watch_queue: 1, last_played: 1 }, candidates: [],
+      },
+    ],
+  };
+
+  it('没有已消失的作品时整块不出现', async () => {
+    const { host, server } = await openPage();
+    expect(host.querySelector('#orphan-records')).toBeNull();
+    expect(server.calls.map((call) => call.path)).toContain('/api/orphan-records');
+  });
+
+  it('每条列出带的记录与候选文件；没有候选的只给彻底删除', async () => {
+    serve({ '/api/orphan-records': orphans });
+    const host = await wrap(<OrphanRecordsCard toast={vi.fn()} />);
+    await settle();
+    const rows = [...host.querySelectorAll('[aria-label="文件已消失的作品"] tbody tr')];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.textContent).toContain('喜欢与理由 1 · 观看历史 3 · 评分 4 · 播放 2 次');
+    expect(rows[0]!.textContent).toContain('ABC-123.mkv · 60 分钟');
+    expect(rows[0]!.querySelector('img')?.getAttribute('src')).toBe('/thumb?id=7&c=4');
+    expect(rows[1]!.textContent).toContain('稍后看 1 · 播放过');
+    expect(rows[1]!.textContent).toContain('没有番号或文件名对得上的文件');
+    expect(buttonNamed('接到这个文件', rows[1]!)).toBeFalsy();
+    expect(buttonNamed('彻底删除', rows[1]!)).toBeTruthy();
+  });
+
+  it('接到这个文件直接发，目标默认是时长最接近的那个', async () => {
+    const server = serve({ '/api/orphan-records': orphans, '/api/orphan-records/attach': { ok: true, batch: 'user:reattach@1' } });
+    const toast = vi.fn();
+    const host = await wrap(<OrphanRecordsCard toast={toast} />);
+    await settle();
+    await click(buttonNamed('接到这个文件', host));
+    await settle();
+    expect(server.posts('/api/orphan-records/attach')).toEqual([{ id: 7, target: 9 }]);
+    expect(toast).toHaveBeenCalledWith('记录已接到新文件，批次 user:reattach@1');
+  });
+
+  /** 点第二条的「彻底删除」，交回弹层上写的与发出去的批量请求。 */
+  async function purgeSecond(answer: boolean) {
+    const seen = confirmWith(answer);
+    const server = serve({ '/api/orphan-records': orphans, '/api/batch': { ok: true, purged: 1, blocked: [] } });
+    const host = await wrap(<OrphanRecordsCard toast={vi.fn()} />);
+    await settle();
+    await click(buttonNamed('彻底删除', host.querySelectorAll('[aria-label="文件已消失的作品"] tbody tr')[1]!));
+    await settle();
+    return { seen, posts: server.posts('/api/batch') };
+  }
+
+  it('彻底删除是危险确认，正文写明不可撤销，确认了才发批量删除', async () => {
+    const { seen, posts } = await purgeSecond(true);
+    expect(seen[0]!.danger).toBe(true);
+    expect(seen[0]!.body).toBe('将删除「海边.mp4」这一条和它带的记录（稍后看 1 · 播放过）。此操作不可撤销。');
+    expect(posts).toEqual([{ ids: [12], operation: 'delete' }]);
+  });
+
+  it('取消确认就不发删除', async () => {
+    expect((await purgeSecond(false)).posts).toEqual([]);
   });
 });
 

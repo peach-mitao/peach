@@ -38,7 +38,7 @@ BASELINE: dict[str, int] = {
     "src/peach/web_batch.py:_scored_junk": 68,
     "scripts/scrape_codes.py:_scrape": 35,
     "scripts/localize_performer_names.py:collect": 64,
-    "src/peach/web_resource_sync.py:_resource_orphan_plan": 60,
+    "src/peach/web_resource_sync.py:_resource_orphan_plan": 50,
     "src/peach/web_review.py:_review_rows": 43,
     "src/peach/fanbox.py:normalize_fanbox_post": 59,
     "src/peach/web_follow.py:q_follow": 49,
@@ -76,6 +76,9 @@ ACCEPTED: dict[str, tuple[int, str]] = {
         65, "顺序流水线：扫描、探时长、读本地资料、联网采集、写候选、收尾共用一份进度状态"
             "与问题记录；能独立命名的段已经拆出（`_RemoteSession`、`_merge_candidates`、"
             "`_record_issue`），剩下的是编排本身"),
+    "scripts/revert_auto_landing.py:main": (
+        30, "撤回入口：每类自动落库各列一遍计划、在同一个事务里各撤一遍、最后汇总报数，"
+            "每类一个循环；拆开只是把同一个连接和十来份计划在几个只调一次的函数之间来回传"),
     "src/peach/jav_cover_fetch.py:run": (
         50, "批处理的主循环：每个番号依次量本机尺寸、择优、比较、落盘、记日志，统计、日志行"
             "和出错后换新的连接池在整轮里共用，逐段拆开只是把这几样来回传"),

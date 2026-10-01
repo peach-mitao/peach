@@ -5,7 +5,7 @@
 判定与执行分家的话，「命中推广词」和「可以删」之间那道界线就没人守了——
 剥掉推广词后还剩内容的文件不是广告，这条只有把判据和删除放在一起看才成立。
 
-物理删除的边界只写在 `ASSET_REFERENCE_TABLES` 一处；同目录隔离加数据库失败回滚
+物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处；同目录隔离加数据库失败回滚
 （`_restore_staged_media`）是这个模块最不能出错的部分：删错的文件找不回来。
 """
 from __future__ import annotations
@@ -21,6 +21,7 @@ from typing import Sequence
 from .catalog_rules import duration_clusters, is_jav_code, normalise_code_key
 from .config import LOCATION_ROOT_DECLARATIONS
 from .field_owners import USER_MANUAL, write_owned_fields
+from .personal_records import ASSET_REFERENCE_TABLES, VANISHED
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 from .regions import normalize_region
 from .task_runs import TaskRunHandle
@@ -37,15 +38,6 @@ BATCH_LABELS = {
     "region": "批量判定产地",
 }
 
-
-# 清空回收站时要一并清掉的资产引用表，物理删除的边界只写在这一处。
-# `asset_search` 不在其中：0004 的 `asset_search_asset_delete` 触发器已经负责 FTS 行，
-# 这里再删一遍只会重复，还会诱使测试库伪造一张同名普通表，把 has_fts() 骗成 True。
-ASSET_REFERENCE_TABLES = (
-    "asset_tag", "media_binding", "activity_event", "asset_entity",
-    "watch_queue", "asset_preference", "asset_tag_preference", "asset_quality_goal",
-    "playlist_item", "asset_subtitle",
-)
 
 # 只认联系方式与站点形态的推广套话。「微信」「成人游戏」这类词单独出现不算：
 # 实测正片标题里就有（「还要微信跟老公汇报战果」是剧情，不是联系方式）。
@@ -483,6 +475,8 @@ def _remove_empty_ancestors(parent: Path, source_roots: Sequence[Path]) -> list[
 def purge_vanished_rows(contract: WebContract, rows) -> dict:
     """永久删除文件已不在盘上的这些行，连同引用与派生产物；返回 `_finish_purge` 的回执。
 
+    带个人记录的在库行到不了这里：资源同步先把它们标「已消失」（ADR-0087）。
+
     `missing_only`：到了删的这一刻文件又在了（复核之后网盘才同步回来），这一行整条
     跳过进 `blocked`，媒体文件一个字节都不碰。这一批要删的只是账本行。
     """
@@ -619,10 +613,18 @@ def _batch_region_value(body) -> str | None:
     return value or None
 
 
+#: 还原与永久删除只对这两档成立：回收站里的，和文件已不在盘上、带着个人记录的
+#: （`vanished`，ADR-0087）。还原是清掉 `disposal`，永久删除走 `purge_assets`。
+DISPOSED = frozenset({"trash", VANISHED})
+
+
 def _reject_ineligible_targets(operation: str, rows) -> None:
     """选中集合与操作对不上就拒绝整批，不做部分生效。"""
-    if operation in {"restore", "delete"} and any(row["disposal"] != "trash" for row in rows):
-        raise ValueError("restore/delete is only allowed for recycle-bin assets")
+    if operation in {"restore", "delete"} and any(row["disposal"] not in DISPOSED for row in rows):
+        raise ValueError("restore/delete is only allowed for recycle-bin or vanished assets")
+    # 已消失的行文件不在盘上：进回收站再还原就成了在库，只能在孤儿记录里接回或彻底删除。
+    if operation == "dispose" and any(row["disposal"] == VANISHED for row in rows):
+        raise ValueError("vanished assets cannot be moved to the recycle bin")
     if operation in {"dismiss-junk", "reconsider-junk"} and any(
             row["location"] not in {"local", "115", "pikpak"}
             or row["disposal"] is not None for row in rows):
@@ -671,7 +673,10 @@ def w_batch(contract: WebContract, body):
                     [now, *valid_ids],
                 )
             elif operation == "delete":
-                purge_outcome = purge_assets(connection, found)
+                # 已消失的行文件本来就不在了，只删账本行；文件又回到盘上的那几条留着，
+                # 下一轮扫描会把它们接回在库。选中里有一条已消失的，整批都按这条口径删。
+                purge_outcome = purge_assets(
+                    connection, found, missing_only=any(row["disposal"] == VANISHED for row in found))
             elif operation == "dismiss-junk":
                 connection.executemany(
                     "INSERT INTO review_decision(category,item_key,status,note,updated_at) "
@@ -793,7 +798,7 @@ def q_duplicates(contract: WebContract, args):
         rows = connection.execute(
             "SELECT id,code,location,path,name,size,duration,hash,disposal "
             "FROM asset WHERE medium='video' AND code IS NOT NULL AND code<>'' "
-            "AND (disposal IS NULL OR disposal<>'trash')"
+            "AND disposal IS NULL"
         ).fetchall()
 
     grouped: dict[str, list[dict]] = {}

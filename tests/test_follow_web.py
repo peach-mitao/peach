@@ -128,7 +128,8 @@ class FollowContractTests(unittest.TestCase):
         with mock.patch.object(web_resource_sync, 'LOCATION_ROOT_DECLARATIONS',
                                {'local': (str(self.root),)}), \
              mock.patch.object(web_resource_sync, '_scan_sources',
-                               return_value={'sources': [], 'vanished_ids': [], 'empty_dirs': {}}), \
+                               return_value={'sources': [], 'vanished_ids': [], 'keep_ids': set(),
+                                             'empty_dirs': {}}), \
              mock.patch.object(web_resource_sync, 'clean_resource_orphans',
                                return_value={'cache_removed': 0, 'bytes_reclaimed': 0}):
             scan = self._post('/api/resource-sync/scan', {'background': True, 'restart': True})

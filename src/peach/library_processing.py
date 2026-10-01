@@ -33,6 +33,7 @@ from .scan import scan_location
 from .ffmpeg import FFmpegResolver
 from .jobs import DiskGuard
 from .media_probe import probe_unmeasured
+from .record_rehome import reattach_in
 
 FIELDS = ('item_key', 'code', 'query', 'asset_id', 'asset_path', 'field', 'field_label', 'current_value',
           'candidates_json', 'source_count', 'source_profile', 'policy_version', 'status',
@@ -1592,6 +1593,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                         state['probed'] += probe_unmeasured(
                             db_path, ffprobe, source, root,
                             report=lambda done, total: update(stage='读取时长与分辨率', checked=done, total=total))
+                        # 登记那一刻新文件还没有时长；探完再判一轮，多个候选按时长挑、无番号按时长配。
+                        reattach_in(db_path, result.new_ids)
             if stage == SCAN_STAGE:
                 # `checked`／`total` 在探时长时借给进度条用过；只扫描这一段没有采集，读数归零。
                 update(status='failed' if state['issue_count'] else 'complete',
@@ -1611,11 +1614,11 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             if retrying:
                 placeholders = ','.join('?' * len(chosen_ids))
                 query = (f"SELECT asset.*, {multi} FROM asset WHERE id IN ({placeholders}) AND medium='video' "
-                         "AND (disposal IS NULL OR disposal<>'trash') ORDER BY id")
+                         "AND disposal IS NULL ORDER BY id")
                 parameters = chosen_ids
             else:
                 query = (f"SELECT asset.*, {multi} FROM asset "
-                         "WHERE medium='video' AND (disposal IS NULL OR disposal<>'trash') ORDER BY id")
+                         "WHERE medium='video' AND disposal IS NULL ORDER BY id")
                 parameters = []
             with closing(sqlite3.connect(db_path, timeout=30)) as connection:
                 connection.row_factory = sqlite3.Row

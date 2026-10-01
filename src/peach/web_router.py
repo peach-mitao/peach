@@ -82,6 +82,7 @@ from .web_media_repair import q_media_repair, w_media_repair
 from .web_organize import (
     q_organize, w_organize_apply, w_organize_preview, w_organize_rollback,
 )
+from .web_orphan_records import q_orphan_records, w_orphan_attach
 from .web_playlists import q_playlist, q_playlists, w_playlist
 from .web_resource_sync import w_purge_missing, w_resource_sync_apply, w_resource_sync_scan
 from .web_review import q_review, w_review_decision, w_review_genre
@@ -328,6 +329,7 @@ GET_HANDLERS = {
     "/api/links/prune": lambda contract, args: contract.link_prune_job.snapshot() or {"status": "idle"},
     "/api/resource-sync/apply": lambda contract, args: contract.resource_apply_job.snapshot() or {"status": "idle"},
     "/api/media-repair": q_media_repair,
+    "/api/orphan-records": q_orphan_records,
     "/api/organize": q_organize,
     "/api/items": q_items,
     "/api/item": _get_item,
@@ -395,6 +397,7 @@ POST_HANDLERS = {
     "/api/organize/apply": w_organize_apply,
     "/api/organize/rollback": w_organize_rollback,
     "/api/purge-missing": w_purge_missing,
+    "/api/orphan-records/attach": w_orphan_attach,
     "/api/links/check": w_links_check,
     "/api/links/prune": w_links_prune,
     "/api/resource-sync/scan": w_resource_sync_scan,

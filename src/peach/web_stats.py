@@ -231,6 +231,12 @@ def _storage_volumes() -> list[dict[str, object]]:
     return volumes
 
 
+#: 库存一节只数盘上还在的：标「已消失」的行留着只为个人记录（ADR-0087），不算库存。
+#: 回收站里的照旧算进来。播放与消费一节是个人记录本身，不套这一条。
+PRESENT = "COALESCE(disposal,'')<>'vanished'"
+PRESENT_A = "COALESCE(a.disposal,'')<>'vanished'"
+
+
 #: 视频的时长与画质分档，顺序同 `media_probe.context_fields` 的判据：由短到长、由高到低。
 LENGTH_BANDS = ("速食", "短", "中", "长")
 QUALITY_BANDS = ("4K", "2K", "1080P", "720P", "低画质")
@@ -240,7 +246,7 @@ def _bands(c, column: str, order: tuple[str, ...]) -> list[dict[str, object]]:
     """一列分档的视频数。判据里的档位按顺序全列出来，没有视频的读 0；账本里多出的档排在后面。"""
     counts = {row[0]: row[1] for row in c.execute(
         f"SELECT {column},count(*) FROM asset WHERE medium='video' AND {column} IS NOT NULL "
-        f"GROUP BY {column}")}
+        f"AND {PRESENT} GROUP BY {column}")}
     extra = sorted(key for key in counts if key not in order)
     return [{"k": key, "n": counts.get(key, 0)} for key in (*order, *extra)]
 
@@ -310,10 +316,10 @@ def q_stats(contract: WebContract):
         out["by_loc"] = [dict(r) for r in c.execute(
             "SELECT location k, count(*) n, COALESCE(sum(size),0) bytes, "
             "SUM(CASE WHEN medium='video' THEN 1 ELSE 0 END) videos "
-            "FROM asset GROUP BY location ORDER BY bytes DESC")]
+            f"FROM asset WHERE {PRESENT} GROUP BY location ORDER BY bytes DESC")]
         out["by_medium"] = [dict(r) for r in c.execute(
             "SELECT medium k, count(*) n, COALESCE(sum(size),0) bytes "
-            "FROM asset GROUP BY medium ORDER BY bytes DESC")]
+            f"FROM asset WHERE {PRESENT} GROUP BY medium ORDER BY bytes DESC")]
         out["by_length"] = _bands(c, "ctx_length", LENGTH_BANDS)
         out["by_quality"] = _bands(c, "ctx_quality", QUALITY_BANDS)
         config = settings_file.active()
@@ -322,11 +328,11 @@ def q_stats(contract: WebContract):
             clause, params = media_libraries.predicate(config, library["id"])
             counts = c.execute(
                 "SELECT count(*) videos,COALESCE(sum(a.size),0) bytes FROM asset a "
-                "WHERE a.medium='video' AND " + clause, params,
+                f"WHERE a.medium='video' AND {PRESENT_A} AND " + clause, params,
             ).fetchone()
             out["by_library"].append({"k": library["id"], "name": library["name"],
                                       "icon": library["icon"], **dict(counts)})
-        v = c.execute("SELECT count(*) FROM asset WHERE medium='video'").fetchone()[0]
+        v = c.execute(f"SELECT count(*) FROM asset WHERE medium='video' AND {PRESENT}").fetchone()[0]
         def one(sql, *a):
             r = c.execute(sql, a).fetchone()
             return r[0] if r else 0
@@ -334,23 +340,27 @@ def q_stats(contract: WebContract):
             "videos": v,
             "creator": one("SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
                            "JOIN entity e ON e.id=ae.entity_id JOIN asset a ON a.id=ae.asset_id "
-                           "WHERE a.medium='video' AND e.kind='creator'"),
-            "code": one("SELECT count(*) FROM asset WHERE medium='video' AND code IS NOT NULL AND code<>''"),
+                           f"WHERE a.medium='video' AND {PRESENT_A} AND e.kind='creator'"),
+            "code": one(f"SELECT count(*) FROM asset WHERE medium='video' AND {PRESENT} "
+                        "AND code IS NOT NULL AND code<>''"),
             "studio": one("SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
                           "JOIN entity e ON e.id=ae.entity_id JOIN asset a ON a.id=ae.asset_id "
-                          "WHERE a.medium='video' AND e.kind='studio'"),
-            "thumb": one("SELECT count(*) FROM asset WHERE medium='video' AND snapshot_path IS NOT NULL"),
-            "duration": one("SELECT count(*) FROM asset WHERE medium='video' AND duration IS NOT NULL"),
+                          f"WHERE a.medium='video' AND {PRESENT_A} AND e.kind='studio'"),
+            "thumb": one(f"SELECT count(*) FROM asset WHERE medium='video' AND {PRESENT} "
+                         "AND snapshot_path IS NOT NULL"),
+            "duration": one(f"SELECT count(*) FROM asset WHERE medium='video' AND {PRESENT} "
+                            "AND duration IS NOT NULL"),
         }
         out["tag_source"] = [dict(r) for r in c.execute(
             "SELECT source k, count(*) n, count(DISTINCT asset_id) assets "
             "FROM asset_tag GROUP BY source ORDER BY n DESC")]
         out["tag_cov"] = one("SELECT count(DISTINCT asset_id) FROM asset_tag "
-                             "WHERE source IN ('name','r18','vision','vision-creator',"
+                             f"WHERE asset_id IN (SELECT id FROM asset WHERE {PRESENT}) "
+                             "AND source IN ('name','r18','vision','vision-creator',"
                              "'vision_creator','vision_creator_review')")
         out["top_tags"] = [dict(r, cat=tag_cat(r["k"])) for r in c.execute(
             "SELECT t.tag k, count(*) n FROM asset_tag t JOIN asset a ON a.id=t.asset_id "
-            "WHERE a.medium='video' AND t.source IN ('name','r18','vision','vision-creator',"
+            f"WHERE a.medium='video' AND {PRESENT_A} AND t.source IN ('name','r18','vision','vision-creator',"
             "'vision_creator','vision_creator_review') "
             "AND " + tag_is_not_a_performer_name("peach_normalize(t.tag)") + " "
             "GROUP BY t.tag ORDER BY n DESC LIMIT 30")]

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from .personal_records import VANISHED
 from .web_activity import DEFAULT_PROFILE_ID
 from .web_catalog import COST, con_entities, entity_ref
 
@@ -62,7 +63,7 @@ def _existing_video_ids(connection, ids: list[int]) -> list[int]:
     found = {
         int(row[0]) for row in connection.execute(
             f"SELECT id FROM asset WHERE id IN ({marks}) AND medium='video' "
-            "AND (disposal IS NULL OR disposal<>'trash')",
+            "AND disposal IS NULL",
             ids,
         )
     }
@@ -180,8 +181,11 @@ def q_playlist(contract: PlaylistContract, args):
         item["has_thumb"] = contract.has_snapshot(item.pop("snapshot_path", None))
     playlist["items"] = items
     playlist["item_count"] = len(items)
-    if playlist["current_asset_id"] not in {item["id"] for item in items}:
-        playlist["current_asset_id"] = items[0]["id"] if items else None
+    # 已消失的条目照旧列出、页面上标出来，但不当续播位置：文件不在盘上，打开也播不了。
+    gone = {item["id"] for item in items if item["disposal"] == VANISHED}
+    if playlist["current_asset_id"] in gone:
+        playable = [item["id"] for item in items if item["id"] not in gone]
+        playlist["current_asset_id"] = playable[0] if playable else None
     return playlist
 
 

@@ -87,7 +87,7 @@ def _candidates(contract, scope: tuple[str, list]) -> list[tuple[int, str, float
     with contract.read_connection() as connection:
         rows = connection.execute(
             "SELECT a.id,a.path,a.duration FROM asset a "
-            "WHERE a.path IS NOT NULL AND COALESCE(a.disposal,'')!='trash' "
+            "WHERE a.path IS NOT NULL AND a.disposal IS NULL "
             f"AND {_MP4.format('a.')} AND {condition} "
             "ORDER BY a.play_count DESC, COALESCE(a.last_played,0) DESC, a.id",
             parameters).fetchall()
@@ -145,7 +145,7 @@ def _reference_candidates(contract, asset_id: int, raw: str) -> list[str]:
     with contract.read_connection() as connection:
         rows = connection.execute(
             "SELECT path FROM asset WHERE location=(SELECT location FROM asset WHERE id=?) "
-            f"AND duration>0 AND COALESCE(disposal,'')!='trash' AND {_MP4.format('')} "
+            f"AND duration>0 AND disposal IS NULL AND {_MP4.format('')} "
             "AND substr(path,1,?)=? COLLATE NOCASE",
             (asset_id, len(prefix), prefix)).fetchall()
     return [row["path"] for row in rows]

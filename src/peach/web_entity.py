@@ -33,6 +33,10 @@ from .web_state import WebContract
 #: 一位女优可以在同一年里给多个厂牌拍片而只属于一家事务所。
 PROFILE_KINDS = {"performer", "studio", "creator", "series", "agency"}
 
+#: 资料页与索引页数作品的口径：视频，且没有标「已消失」（ADR-0087）。回收站里的照旧算；
+#: 代表作的取图不套这一条。
+COUNTED_VIDEO = "a.medium='video' AND COALESCE(a.disposal,'')<>'vanished'"
+
 
 def scope_predicate(kind: str, column: str, subject: str = "?") -> str:
     """这一页的作品挂在谁名下的 SQL 判据，占位符恒为一个。
@@ -98,7 +102,7 @@ def label_layer(contract: WebContract, c, kind: str, entity_id: int) -> tuple[di
     labels = [dict(row) for row in c.execute(
         "SELECT e.id,e.canonical_name name,e.canonical_name k,"
         "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id"
-        " WHERE a.medium='video' AND " + scope_predicate("studio", "ae.entity_id", "e.id") + ") n "
+        " WHERE " + COUNTED_VIDEO + " AND " + scope_predicate("studio", "ae.entity_id", "e.id") + ") n "
         "FROM label_maker lm JOIN entity e ON e.id=lm.label_id WHERE lm.maker_id=? "
         "ORDER BY n DESC,e.canonical_name", (entity_id,))]
     for ref in ([maker] if maker else []) + labels:
@@ -193,7 +197,7 @@ def q_entity(contract: WebContract, args):
             (" AND " + solo_performer_clause("a2.id", "ae2.entity_id") if kind == "performer" else "") +
             " ORDER BY a2.size DESC LIMIT 1) "
             "FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
-            "WHERE " + scope + " AND a.medium='video'", (d["id"], d["id"]),
+            "WHERE " + scope + " AND " + COUNTED_VIDEO, (d["id"], d["id"]),
         ).fetchone()
         d["asset_count"] = count
         d["representative_asset_id"] = rep
@@ -205,7 +209,7 @@ def q_entity(contract: WebContract, args):
             "JOIN entity tag ON tag.id=tagged.entity_id "
             "JOIN asset a ON a.id=scope.asset_id "
             "WHERE " + scope_predicate(kind, "scope.entity_id") +
-            " AND a.medium='video' AND tag.kind='tag' "
+            " AND " + COUNTED_VIDEO + " AND tag.kind='tag' "
             "AND " + tag_is_not_a_performer_name("tag.normalized_name") + " "
             f"AND tag.canonical_name NOT IN ({','.join('?' for _ in LENGTH_TAGS)}) "
             "AND " + tag_not_hidden("scope.asset_id", "tag.normalized_name") + " "
@@ -220,7 +224,7 @@ def q_entity(contract: WebContract, args):
                 "SELECT person.id,person.canonical_name k,"
                 "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
                 " JOIN asset a ON a.id=ae.asset_id "
-                " WHERE ae.entity_id=person.id AND a.medium='video') n,"
+                " WHERE ae.entity_id=person.id AND " + COUNTED_VIDEO + ") n,"
                 "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
                 " WHERE ae2.entity_id=person.id AND a2.medium='video' "
                 " AND a2.snapshot_path IS NOT NULL AND " + solo_performer_clause("a2.id", "person.id") +
@@ -242,7 +246,7 @@ def q_entity(contract: WebContract, args):
                 "JOIN entity person ON person.id=co.entity_id "
                 "JOIN asset a ON a.id=scope.asset_id "
                 "WHERE " + scope_predicate(kind, "scope.entity_id") +
-                " AND a.medium='video' AND person.kind='performer' "
+                " AND " + COUNTED_VIDEO + " AND person.kind='performer' "
                 "AND person.id<>? "
                 "GROUP BY person.id,person.canonical_name "
                 "ORDER BY n DESC,person.canonical_name LIMIT 18",
@@ -307,7 +311,7 @@ def q_entity_shapes(contract, args) -> dict:
         for row in connection.execute(
                 "SELECT DISTINCT scope.entity_id FROM asset_entity scope"
                 " JOIN entity e ON e.id=scope.entity_id AND e.kind<>'agency'"
-                " JOIN asset a ON a.id=scope.asset_id AND a.medium='video'"
+                " JOIN asset a ON a.id=scope.asset_id AND " + COUNTED_VIDEO +
                 " JOIN asset_entity co ON co.asset_id=scope.asset_id AND co.entity_id<>scope.entity_id"
                 " JOIN entity person ON person.id=co.entity_id AND person.kind='performer'"):
             parts.setdefault(int(row[0]), []).append("costars")
@@ -414,7 +418,7 @@ def q_entity_photos(contract: WebContract, args):
         scoped = ("FROM asset_entity ae CROSS JOIN asset a ON a.id=ae.asset_id "
                   "WHERE " + scope_predicate(kind, "ae.entity_id") +
                   " AND a.medium='image' AND a.name IS NOT NULL "
-                  "AND (a.disposal IS NULL OR a.disposal<>'trash') ")
+                  "AND a.disposal IS NULL ")
         sets = [{
             "id": item["id"],
             "kind": "dir",
@@ -473,14 +477,14 @@ def q_photo_set(contract: WebContract, args):
         total = c.execute(
             f"SELECT count(*) FROM asset a WHERE a.medium='image' AND a.name IS NOT NULL "
             f"AND {PHOTO_DIR}=? AND a.location=? "
-            "AND (a.disposal IS NULL OR a.disposal<>'trash')", par,
+            "AND a.disposal IS NULL", par,
         ).fetchone()[0]
         items = [{"id": item["id"], "name": item["name"], "size": item["size"] or 0,
                   "location": item["location"]}
                  for item in c.execute(
                      f"SELECT a.id,a.name,a.size,a.location FROM asset a WHERE a.medium='image' "
                      f"AND a.name IS NOT NULL AND {PHOTO_DIR}=? AND a.location=? "
-                     "AND (a.disposal IS NULL OR a.disposal<>'trash') "
+                     "AND a.disposal IS NULL "
                      f"ORDER BY {order} LIMIT ? OFFSET ?",
                      (*par, limit, offset),
                  )]
@@ -501,7 +505,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             sql = ("SELECT e.id entity_id,e.canonical_name k,"
                    "(SELECT count(*) FROM entity_membership m WHERE m.agency_id=e.id) members,"
                    "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
-                   " JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND "
+                   " JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND "
                    + scope_predicate("agency", "ae.entity_id", "e.id") + ") n,"
                    "(SELECT l.id FROM entity_link l WHERE l.entity_id=e.id"
                    " AND l.link_kind='official' AND l.hostname NOT IN ("
@@ -524,7 +528,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             scope = scope_predicate("studio", "ae.entity_id", "e.id")
             sql = ("SELECT * FROM (SELECT e.id entity_id,e.canonical_name k,"
                    "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
-                   " CROSS JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND " + scope + ") n,"
+                   " CROSS JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND " + scope + ") n,"
                    "(SELECT a2.id FROM asset_entity ae CROSS JOIN asset a2 ON a2.id=ae.asset_id "
                    " WHERE " + scope + " AND a2.medium='video' AND a2.snapshot_path IS NOT NULL "
                    " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
@@ -550,7 +554,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
                    " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
                    "JOIN asset a ON a.id=ae.asset_id "
-                   "WHERE a.medium='video' AND e.kind=? ")
+                   "WHERE " + COUNTED_VIDEO + " AND e.kind=? ")
             par = [entity_kind]
             if q: sql += "AND e.canonical_name LIKE ? "; par.append(f"%{q}%")
             sql += "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT ? OFFSET ?"
@@ -561,7 +565,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
         else:
             sql = ("SELECT e.canonical_name k, count(DISTINCT ae.asset_id) n "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
-                   "JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND e.kind='tag' "
+                   "JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND e.kind='tag' "
                    f"AND e.canonical_name NOT IN ({','.join('?' for _ in LENGTH_TAGS)}) "
                    "AND " + tag_is_not_a_performer_name("e.normalized_name") + " "
                    "AND " + tag_not_hidden("ae.asset_id", "e.normalized_name") + " ")

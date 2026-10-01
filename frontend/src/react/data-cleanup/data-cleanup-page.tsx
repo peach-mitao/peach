@@ -2,7 +2,8 @@
  *
  * 照 Board 的 dashboard 模板排：顶上一排读数卡，每张是一条内容在库里的经过、兼那一页的入口；
  * 下面一列是要在这页上做的几件事（扫描与采集、媒体修复、整理），再往下是链接
- * 管理，最后是只在有来源配了根目录时才出现的资源同步。 */
+ * 管理、只在有文件已消失的作品时才出现的孤儿记录，最后是只在有来源配了根目录时才出现的
+ * 资源同步。 */
 import { useQuery } from '@tanstack/react-query';
 import { fmtSize } from '@peach/legacy/core';
 
@@ -22,6 +23,7 @@ import {
 } from './data-cleanup';
 import { LinkManager } from './link-manager';
 import { OrganizeCard } from './organize-card';
+import { OrphanRecordsCard } from './orphan-records-card';
 import { hasResourceRoots } from './resource-sync';
 import { ResourceSyncCard } from './resource-sync-card';
 
@@ -102,6 +104,7 @@ export function DataCleanupPage({ toast, failure, open }: DataCleanupProps) {
         <OrganizeCard toast={notify} failure={failure} />
       </div>
       <LinkManager />
+      <OrphanRecordsCard toast={notify} />
       {hasResourceRoots(sources.data) ? <ResourceSyncCard toast={toast} /> : null}
     </Page>
   );

@@ -139,14 +139,19 @@ export const playlistQueue = (playlist: PlaylistPayload): DetailQueue => ({
   currentAssetId: playlist.current_asset_id,
 });
 
+/** 播放列表里标「已消失」的条目：文件不在盘上，列出来、标出来，但不打开去播放（ADR-0087）。 */
+export const isVanished = (item: QueueItem) => item.disposal === 'vanished';
+
 /** 队列里停在哪一条。Mix 就是点的那一条；分卷与版本点的那一条不在组里（深链写错了、组变了）
- *  就退到第一条；播放列表退到它记下的续播位置。一条都没有是 null。 */
+ *  就退到第一条；播放列表退到它记下的续播位置，已消失的条目不停，退到第一条能播的。
+ *  一条都停不了是 null。 */
 export function chooseItem(queue: DetailQueue, requested: number | null): number | null {
   if (queue.kind === 'mix') return requested;
-  if (!queue.items.length) return null;
-  if (requested != null && queue.items.some((item) => item.id === requested)) return requested;
-  if (queue.kind === 'playlist') return queue.currentAssetId || queue.items[0]!.id;
-  return queue.items[0]!.id;
+  const items = queue.kind === 'playlist' ? queue.items.filter((item) => !isVanished(item)) : queue.items;
+  if (!items.length) return null;
+  if (requested != null && items.some((item) => item.id === requested)) return requested;
+  if (queue.kind === 'playlist' && items.some((item) => item.id === queue.currentAssetId)) return queue.currentAssetId!;
+  return items[0]!.id;
 }
 
 /** 卷标只有分卷队列知道：`/api/item` 是单条口径，它答不出「这是第几卷」。不补的话标题栏里的
