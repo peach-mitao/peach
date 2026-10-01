@@ -1524,11 +1524,11 @@ class TrayPreparationTests(unittest.TestCase):
                 "configured": True, "web": True, "database": True, "schema": False}})
 
         specs = (ServiceSpec("http", "http://127.0.0.1/healthz", ("peach",), True),
-                 ServiceSpec("https", "https://10.0.0.2/healthz", ("peach",), "ca.crt"))
+                 ServiceSpec("https", "https://192.0.2.10/healthz", ("peach",), "ca.crt"))
         manager = ServiceManager(specs, health_get=get, log_dir=self.root)
         self.assertEqual(manager.readiness_problems(), ["HTTPS 未就绪：账本结构与迁移不一致"])
         self.assertEqual(asked, [("http://127.0.0.1/healthz?ready=1", True),
-                                 ("https://10.0.0.2/healthz?ready=1", "ca.crt")])
+                                 ("https://192.0.2.10/healthz?ready=1", "ca.crt")])
 
     def test_the_whole_tray_restart_is_detached_and_logged(self):
         python = self.root / ".venv" / tray_module._BIN_DIR / (
