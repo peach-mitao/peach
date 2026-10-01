@@ -1560,8 +1560,7 @@ class WebUiSourceTests(unittest.TestCase):
         # `thumb` 那一档也只在这里拼：索引页一屏几十格取派生件，资料页大位取原件。
         self.assertCode(
             "const entitySrc=useEntity?"
-            "`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`
-"
+            "`/entity-image?kind=${kind}&id=${id}${thumb?'&thumb=1':''}`\n"
             "    +(version?`&v=${encodeURIComponent(version)}`:''):'';")
         self.assertPageContains("const avatarSrc=rep?`/avatar?id=${rep}`:'';")
         self.assertCode(
