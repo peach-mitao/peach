@@ -154,6 +154,29 @@ class PurgeMissingTests(unittest.TestCase):
         self.assertEqual((result["trashed"], result["vanished"]), (0, 2))
         self.assertEqual(self.disposals(), {1: None, 2: "vanished", 3: "vanished", 4: None})
 
+    def test_sync_delete_reattaches_a_vanished_row_to_the_one_other_version(self):
+        """新版本先入库、旧文件后消失：标已消失的同时在库里找，唯一命中就当场接回。"""
+        sep = chr(92)
+        with self.contract.write_transaction() as connection:
+            connection.executemany(
+                "INSERT INTO asset(id,location,path,name,medium,size,code) "
+                "VALUES(?,'115',?,?,'video',10,'ABC-123')",
+                [(5, self.LEDGER_DIR + sep + "ABC-123.mp4", "ABC-123.mp4"),
+                 (6, self.OTHER_DIR + sep + "ABC-123.mkv", "ABC-123.mkv")])
+            connection.execute("INSERT INTO asset_preference(profile_id,asset_id,liked,reason,updated_at) "
+                               "VALUES('default',5,1,'','2026-01-01')")
+        result = self._run()
+        self.assertEqual((result["trashed"], result["vanished"], result["reattached"]), (1, 1, 1))
+        self.assertEqual({x["id"]: x["disposal"] for x in result["items"]},
+                         {2: "vanished", 3: "trash", 5: "reattached"})
+        self.assertEqual(self.disposals(), {1: None, 2: "vanished", 3: "trash", 4: None, 6: None})
+        with self.contract.read_connection() as connection:
+            self.assertEqual([r[0] for r in connection.execute(
+                "SELECT asset_id FROM asset_preference ORDER BY asset_id")], [2, 4, 6])
+            self.assertEqual([tuple(r) for r in connection.execute(
+                "SELECT source,old_asset_id,new_asset_id FROM record_rehome")],
+                [("auto:vanished-reattach", 5, 6)])
+
     def test_purge_undo_restores_both_tiers_and_leaves_earlier_disposals_alone(self):
         """回执的撤销走 batch restore：两档都还原；这一趟之前就进回收站的行不在名单里。"""
         with self.contract.write_transaction() as connection:
@@ -583,6 +606,23 @@ class ResourceSyncCleanupTests(unittest.TestCase):
             result = self.apply(scan)
         self.assertEqual((result["purged"], result["vanished"]), (2, 0))
         self.assertEqual(self.ids(), [1, 4, 5])
+
+    def test_a_vanished_row_with_one_other_version_in_the_library_is_reattached(self):
+        """新版本先入库、旧文件后消失：执行清理标已消失的同时当场接回，记自动接回批次。"""
+        with self.contract.write_transaction() as connection:
+            connection.execute("UPDATE asset SET code='ABC-123' WHERE id IN (1,2)")
+            connection.execute(
+                "INSERT INTO watch_queue(profile_id,asset_id,added_at) VALUES('default',2,'2026-01-01')")
+        with self.clouddrive():
+            scan = finish_scan(self.contract)
+            result = self.apply(scan)
+        self.assertEqual((result["purged"], result["vanished"], result["reattached"]), (1, 0, 1))
+        self.assertEqual(self.ids(), [1, 4, 5])
+        with self.contract.read_connection() as connection:
+            self.assertEqual([r[0] for r in connection.execute("SELECT asset_id FROM watch_queue")], [1])
+            self.assertEqual([tuple(r) for r in connection.execute(
+                "SELECT source,old_asset_id,new_asset_id FROM record_rehome")],
+                [("auto:vanished-reattach", 2, 1)])
 
     def test_a_record_added_after_the_check_still_saves_its_row(self):
         """有没有记录在执行那一刻重新问：检查之后刚点的喜欢也算。"""

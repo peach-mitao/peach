@@ -3639,9 +3639,11 @@ async function syncForIsland(id){
 }
 
 /* 核对目录的两档（ADR-0087）：不带个人记录的移入回收站，带的标为已消失、记录留着等接回。
-   撤销对两档都有效，`restore` 把两档都清回在库。 */
+   撤销对两档都有效，`restore` 把两档都清回在库。库里唯一对得上另一个版本的，记录当场接过去
+   （`reattached`）：那一行已经删掉，撤销不碰它。 */
 const syncedText=r=>[r.trashed?`已把 ${r.trashed} 项移入回收站`:'',
-  r.vanished?`${r.vanished} 项带个人记录，已标为已消失`:''].filter(Boolean).join('，');
+  r.vanished?`${r.vanished} 项带个人记录，已标为已消失`:'',
+  r.reattached?`${r.reattached} 项的记录已接到库里的另一个版本`:''].filter(Boolean).join('，');
 async function syncMissing(id,status,done){
   status.textContent='正在核对目录…';
   try{
@@ -3653,7 +3655,7 @@ async function syncMissing(id,status,done){
         ? `目录有 ${r.unreadable} 项暂时无法读取，本次未改动`
         : `目录内 ${r.checked} 项都还在，无需改动`;
     if(r.removed){
-      const ids=(r.items||[]).map(item=>item.id);
+      const ids=(r.items||[]).filter(item=>item.disposal!=='reattached').map(item=>item.id);
       if(done)done(r);
       actionReceipt(syncedText(r),{undo:ids.length?async()=>{
         await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation:'restore'})});

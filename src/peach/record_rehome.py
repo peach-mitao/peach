@@ -10,6 +10,10 @@
 
 同一 `(location, path)` 的文件回来了不归这里管：扫描的 upsert 直接清掉那一行的 `disposal`。
 
+新版本先入库、旧文件后消失时反过来找：资源同步与「同步删除」标完已消失，`reattach_vanished`
+拿刚标的这几行按同一套判据在全部在库视频里找，唯一命中就当场接回，记同一种批次；候选多个
+分不出的照旧留成孤儿。
+
 搬运把五张表的行改指新行，新行已有同一键的记录时以新行为准；`asset_quality_goal` 搬到新行
 后置 `wanted=0` 并记 `replaced_at` 关闭，不当作新行的待找目标。旧行自己的四列个人记录并进
 新行：评分新行为空才取旧的，高潮与播放次数相加，最近播放取较晚的。搬完删旧行。每次搬运在
@@ -103,14 +107,19 @@ def _closest(old: dict, candidates: list[dict]) -> dict | None:
     return next(item for item in candidates if item["id"] == gaps[0][1])
 
 
-def _creator_candidates(connection, old: dict, fresh: list[dict]) -> list[dict]:
-    creator, duration = _creator(connection, old), old.get("duration")
+def _creator_candidates(connection, old: dict, by_stem: dict[str, list[dict]]) -> list[dict]:
+    """`by_stem` 是无番号的在库行按文件名主干分的组：在整库里找时不必逐行比一遍。"""
+    same_stem = by_stem.get(_stem(old["name"]), [])
+    creator, duration = (_creator(connection, old), old.get("duration")) if same_stem else ("", None)
     if not creator or not duration:
         return []
-    return [item for item in fresh
-            if not code_key(item) and _stem(item["name"]) == _stem(old["name"])
-            and _under(item["path"], creator) and item.get("duration")
+    return [item for item in same_stem
+            if _under(item["path"], creator) and item.get("duration")
             and abs(float(item["duration"]) - float(duration)) <= DURATION_TOLERANCE]
+
+
+def _vanished_rows(connection) -> list[dict]:
+    return _rows(connection, f"SELECT {_COLUMNS} FROM asset WHERE disposal=? AND medium='video'", (VANISHED,))
 
 
 def plan(connection, new_ids: Iterable[int]) -> list[tuple[dict, dict, str]]:
@@ -118,8 +127,7 @@ def plan(connection, new_ids: Iterable[int]) -> list[tuple[dict, dict, str]]:
     wanted = sorted({int(item) for item in new_ids})
     if not wanted:
         return []
-    vanished = _rows(connection, f"SELECT {_COLUMNS} FROM asset WHERE disposal=? AND medium='video'",
-                     (VANISHED,))
+    vanished = _vanished_rows(connection)
     if not vanished:
         return []
     fresh = []
@@ -127,14 +135,35 @@ def plan(connection, new_ids: Iterable[int]) -> list[tuple[dict, dict, str]]:
         batch = wanted[offset:offset + 400]
         fresh += _rows(connection, f"SELECT {_COLUMNS} FROM asset WHERE id IN ({','.join('?' * len(batch))}) "
                        "AND disposal IS NULL AND medium='video'", batch)
+    return _pairs(connection, vanished, fresh)
+
+
+def plan_vanished(connection, old_ids: Iterable[int]) -> list[tuple[dict, dict, str]]:
+    """刚标已消失的这几行各自该接到哪一条在库视频：新版本先入库、旧文件后消失的那种。
+
+    全部已消失行都参与判定：同番号还有别的孤儿、两条旧行争同一个文件，都照旧留给人。
+    """
+    wanted = {int(item) for item in old_ids}
+    vanished = _vanished_rows(connection) if wanted else []
+    if not any(row["id"] in wanted for row in vanished):
+        return []
+    fresh = _rows(connection, f"SELECT {_COLUMNS} FROM asset WHERE disposal IS NULL AND medium='video'")
+    return [pair for pair in _pairs(connection, vanished, fresh) if pair[0]["id"] in wanted]
+
+
+def _pairs(connection, vanished: list[dict], fresh: list[dict]) -> list[tuple[dict, dict, str]]:
+    """已消失行与在库行按两条判据配对，只留一对一的。"""
     olds_by_code: dict[str, list[dict]] = defaultdict(list)
     news_by_code: dict[str, list[dict]] = defaultdict(list)
+    news_by_stem: dict[str, list[dict]] = defaultdict(list)
     for row in vanished:
         if key := code_key(row):
             olds_by_code[key].append(row)
     for row in fresh:
         if key := code_key(row):
             news_by_code[key].append(row)
+        else:
+            news_by_stem[_stem(row["name"])].append(row)
     pairs = []
     for key, olds in olds_by_code.items():
         # 同番号消失了几条（分卷、两个版本都没了）就分不出哪条记录归哪个文件，留给人。
@@ -143,7 +172,7 @@ def plan(connection, new_ids: Iterable[int]) -> list[tuple[dict, dict, str]]:
             pairs.append((olds[0], chosen, "code"))
     for old in vanished:
         if not code_key(old):
-            chosen = _closest(old, _creator_candidates(connection, old, fresh))
+            chosen = _closest(old, _creator_candidates(connection, old, news_by_stem))
             if chosen:
                 pairs.append((old, chosen, "creator-stem-duration"))
     # 两条旧行争同一个新文件：分不出，都留给人。
@@ -241,6 +270,14 @@ def reattach(connection, new_ids: Iterable[int], *, now: str | None = None) -> l
     """登记完一批新文件后接回记录；返回这一轮记下的批次 id。调用方提交。"""
     return [move(connection, old["id"], new["id"], source=AUTO_SOURCE, rule=rule, now=now)
             for old, new, rule in plan(connection, new_ids)]
+
+
+def reattach_vanished(connection, old_ids: Iterable[int], *, now: str | None = None) -> list[int]:
+    """刚标已消失的行唯一命中在库视频时当场接回；返回接走了的旧行 id。调用方提交。"""
+    pairs = plan_vanished(connection, old_ids)
+    for old, new, rule in pairs:
+        move(connection, old["id"], new["id"], source=AUTO_SOURCE, rule=rule, now=now)
+    return [old["id"] for old, _new, _rule in pairs]
 
 
 def reattach_in(db_path, new_ids: Sequence[int]) -> int:

@@ -234,15 +234,15 @@ describe('资源同步', () => {
     expect(host.textContent).toContain('已永久删除 4 条失效记录和 3 个空文件夹，清理 2 个缓存，释放 5 MB。');
   });
 
-  it('带个人记录的单列一档：读数卡与确认框分开报删除和标为已消失的条数', async () => {
+  it('带个人记录的单列一档：读数卡与确认框分开报删除和标为已消失的条数，结果单报接回的', async () => {
     const seen = confirmWith(true);
     serve({
       '/api/resource-sync/scan': {
-        ...scanned, purge: 3, vanish: 1,
-        sources: [{ ...scanned.sources![0]!, vanish: 1 }, scanned.sources![1]!],
+        ...scanned, purge: 3, vanish: 2,
+        sources: [{ ...scanned.sources![0]!, vanish: 2 }, scanned.sources![1]!],
       },
       '/api/resource-sync/apply': applyRoute({
-        purged: 3, vanished: 1, blocked: [], dirs_removed: 3, dir_errors: 0, cache_removed: 2,
+        purged: 3, vanished: 1, reattached: 1, blocked: [], dirs_removed: 3, dir_errors: 0, cache_removed: 2,
         bytes_reclaimed: 0, cache_blocked: [],
       }),
       '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
@@ -250,14 +250,15 @@ describe('资源同步', () => {
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
     expect(host.textContent).toContain('将标为已消失');
-    expect(host.textContent).toContain('1 项带个人记录');
+    expect(host.textContent).toContain('2 项带个人记录');
     await click(buttonNamed('清理失效条目', host));
     await settle();
     expect(seen[0]!.body).toBe(
       '将永久删除文件已不在盘上的 3 条记录（含回收站里的）、3 个空文件夹，并清理 2 个闲置缓存。来源根目录保留。'
-      + '这几样不可撤销。1 条带个人记录的标为已消失，记录留着，可在孤儿记录里接到新文件或彻底删除。');
+      + '这几样不可撤销。2 条带个人记录的标为已消失，记录留着，可在孤儿记录里接到新文件或彻底删除。');
     await settle();
-    expect(host.textContent).toContain('1 条带个人记录的已标为已消失，可在孤儿记录里处理。');
+    expect(host.textContent).toContain(
+      '1 条带个人记录的已标为已消失，可在孤儿记录里处理。1 条的记录已接到库里的另一个版本。');
   });
 
   it('复核时发现文件还在、目录删不掉的几样留在原地：报警告档，结果条写部分完成', async () => {

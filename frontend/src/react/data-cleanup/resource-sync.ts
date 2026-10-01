@@ -58,6 +58,8 @@ export interface ResourceApplyState {
   message?: string;
   purged?: number;
   vanished?: number;
+  /** 标了已消失、库里唯一对得上另一个版本，记录当场接过去的那几条。 */
+  reattached?: number;
   blocked?: BlockedRecord[];
   dirs_removed?: number;
   dir_errors?: number;
@@ -148,8 +150,8 @@ export function applyLeftovers(out: ResourceApplyState) {
   const blocked = out.blocked ?? [];
   const dirErrors = Number(out.dir_errors || 0);
   const cacheBlocked = out.cache_blocked ?? [];
-  const done = Number(out.purged || 0) + Number(out.vanished || 0) + Number(out.dirs_removed || 0)
-    + Number(out.cache_removed || 0);
+  const done = Number(out.purged || 0) + Number(out.vanished || 0) + Number(out.reattached || 0)
+    + Number(out.dirs_removed || 0) + Number(out.cache_removed || 0);
   const left = blocked.length + dirErrors + cacheBlocked.length;
   const names = blocked.slice(0, 3).map((item) => `「${item.name}」`).join('、') + (blocked.length > 3 ? ' 等' : '');
   const rest = [
@@ -165,6 +167,7 @@ export const applyText = (out: ResourceApplyState, formatSize: (bytes: number) =
   const { rest } = applyLeftovers(out);
   const summary = `已永久删除 ${count(out.purged)} 条失效记录和 ${count(out.dirs_removed)} 个空文件夹，`
     + `清理 ${count(out.cache_removed)} 个缓存，释放 ${formatSize(out.bytes_reclaimed || 0)}。`
-    + (out.vanished ? `${count(out.vanished)} 条带个人记录的已标为已消失，可在孤儿记录里处理。` : '');
+    + (out.vanished ? `${count(out.vanished)} 条带个人记录的已标为已消失，可在孤儿记录里处理。` : '')
+    + (out.reattached ? `${count(out.reattached)} 条的记录已接到库里的另一个版本。` : '');
   return rest ? `${summary}${rest}，重新检查后可再试。` : summary;
 };

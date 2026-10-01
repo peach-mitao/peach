@@ -6,7 +6,8 @@
 用户在网盘客户端里删掉一个目录，本机看到的是三样东西：账本里一批指向不存在文件的
 行、盘上留下的空壳目录、这些行生成过的缓存。一次检查把三样一起报出来，一次执行
 一起清掉（ADR-0036）。指向不存在文件的行分两档：带个人记录的标「已消失」留着，
-其余的永久删除（ADR-0087）。
+其余的永久删除（ADR-0087）。标了已消失的那几行若在库里唯一对得上另一个版本，当场把
+记录接过去（`record_rehome.reattach_vanished`），回执单报「已接到另一个版本」。
 
 `source_is_online` 也在这里：判断某个来源的根挂载没挂载，只有对账要问这件事。
 `w_purge_missing` 是按目录的那个入口，服务详情页上「这个目录我刚整理过」，
@@ -30,6 +31,10 @@ from .jobs import BackgroundJob
 from .media import normalized_path
 from .personal_records import VANISHED, mark_vanished, record_holders
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
+from .record_rehome import reattach_vanished
+
+#: 「同步删除」回执里，记录已接到另一个版本、旧行已删的那一条。
+REATTACHED = "reattached"
 
 
 class ResourceSyncContract(Protocol):
@@ -619,26 +624,30 @@ def _remove_empty_directories(paths: Sequence[Path], roots: Sequence[Path]) -> t
     return removed, errors
 
 
-def _mark_record_holders(contract: ResourceSyncContract, rows: Sequence) -> tuple[list[int], list]:
-    """复核过的失效行里，在库且带个人记录的标「已消失」；返回标了的 id 与剩下要删的行。
+def _mark_record_holders(contract: ResourceSyncContract,
+                         rows: Sequence) -> tuple[list[int], list[int], list]:
+    """复核过的失效行里，在库且带个人记录的标「已消失」，唯一对得上另一个版本的当场接回。
 
-    有没有记录在执行这一刻重新问：检查之后用户可能刚给某一部点了喜欢。
+    返回标了的 id、其中接回了的 id 与剩下要删的行。有没有记录在执行这一刻重新问：检查
+    之后用户可能刚给某一部点了喜欢。
     """
     in_library = [int(row["id"]) for row in rows if row["disposal"] is None]
     if not in_library:
-        return [], list(rows)
+        return [], [], list(rows)
     contract.cache_bust()
     with contract.write_transaction() as connection:
         marked = mark_vanished(connection, record_holders(connection, in_library), time.time())
+        reattached = reattach_vanished(connection, marked)
     kept = set(marked)
-    return marked, [row for row in rows if int(row["id"]) not in kept]
+    return marked, reattached, [row for row in rows if int(row["id"]) not in kept]
 
 
 def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None):
     """处理这一轮检查报出的失效记录与空文件夹，再清孤儿缓存。
 
     文件已不在盘上的行不进回收站：在库且带个人记录的标「已消失」，记录留着等接回
-    （ADR-0087）；其余的连回收站里的一起直接删（ADR-0080）。删之前逐条复核，删不掉的进
+    （ADR-0087），库里唯一对得上另一个版本的当场接过去、报在 `reattached`；其余的连回收站
+    里的一起直接删（ADR-0080）。删之前逐条复核，删不掉的进
     `blocked`；删除这一档不可撤销，所以只认检查给的候选集合。
     """
     if not configured_resource_locations():
@@ -657,7 +666,7 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
     state = _completed_scan(contract, scan_id)
     report = progress or (lambda **_fields: None)
     report(checked=0, total=None, message="正在逐条复核失效记录")
-    marked, confirmed = _mark_record_holders(
+    marked, reattached, confirmed = _mark_record_holders(
         contract, _recheck_vanished(contract, state["vanished_ids"]))
     purge = {"purged": 0, "blocked": [], "empty_dirs_removed": 0}
     if confirmed:
@@ -683,7 +692,8 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
     contract.resource_scan.update(scan_id, applied_at=time.time())
     return {
         "ok": True, "sources": state["result"]["sources"],
-        "purged": int(purge["purged"]), "vanished": len(marked),
+        "purged": int(purge["purged"]), "vanished": len(marked) - len(reattached),
+        "reattached": len(reattached),
         "blocked": blocked, "blocked_count": len(blocked),
         "dirs_removed": dirs_removed + int(purge.get("empty_dirs_removed") or 0),
         "dir_errors": dir_errors, "unreadable": int(state["result"].get("unreadable") or 0),
@@ -697,7 +707,8 @@ def w_purge_missing(contract: ResourceSyncContract, body):
     这条路径服务的是「我在资源管理器里整理网盘目录」——删掉的就是不要的，所以
     不进复核；两档都撤得回来：回执里的 8 秒撤销走 `/api/batch` 的 `restore`，
     它对回收站与已消失的行都清掉 `disposal`。已经在回收站或已消失的行不再碰，
-    撤销因此只还原这一趟改的行。
+    撤销因此只还原这一趟改的行。标了已消失、库里唯一对得上另一个版本的，记录当场接过去，
+    `items` 里那一条标 `reattached`，记的是 `auto:vanished-reattach` 批次。
 
     真正危险的不是删得太干净，而是把「盘没挂上」误判成「文件没了」：R: 掉线时
     整条来源 2,552 行都会看起来像被删。所以先做来源级在线判定，整源不在线就
@@ -738,7 +749,7 @@ def w_purge_missing(contract: ResourceSyncContract, body):
     if not missing:
         return {"ok": True, "directory": photo_set_title(directory),
                 "checked": len(rows), "removed": 0, "trashed": 0, "vanished": 0,
-                "unreadable": unreadable, "items": []}
+                "reattached": 0, "unreadable": unreadable, "items": []}
 
     contract.cache_bust()
     ids = [item["id"] for item in missing]
@@ -749,12 +760,16 @@ def w_purge_missing(contract: ResourceSyncContract, body):
             "UPDATE asset SET disposal='trash',feedback_at=? WHERE id=? AND disposal IS NULL",
             [(stamp, asset_id) for asset_id in ids if asset_id not in kept],
         )
+        reattached = set(reattach_vanished(connection, kept))
     contract.cache_bust()
     for item in missing:
-        item["disposal"] = VANISHED if item["id"] in kept else "trash"
+        # 接回了的那一行已经删掉、记录在另一个版本上，撤销不还原它（`restore` 认不到这一行）；
+        # 要撤回这一次接回，按批次号走 `revert_auto_landing.py`。
+        item["disposal"] = (REATTACHED if item["id"] in reattached
+                            else VANISHED if item["id"] in kept else "trash")
     return {
         "ok": True, "directory": photo_set_title(directory),
         "checked": len(rows), "removed": len(missing),
-        "trashed": len(missing) - len(kept), "vanished": len(kept),
-        "unreadable": unreadable, "items": missing,
+        "trashed": len(missing) - len(kept), "vanished": len(kept) - len(reattached),
+        "reattached": len(reattached), "unreadable": unreadable, "items": missing,
     }

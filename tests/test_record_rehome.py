@@ -222,6 +222,49 @@ class RecordRehomeTests(unittest.TestCase):
                 "SELECT snapshot_json FROM record_rehome WHERE id=?", (batch,)).fetchone()[0])
         self.assertEqual(snapshot["asset"]["rating"], 4, "行上的打分留在快照里")
 
+    def add_live(self, asset_id, path, *, code=None, duration=None):
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.execute("INSERT INTO asset(id,location,path,name,medium,size,code,duration) "
+                               "VALUES(?,'local',?,?,'video',10,?,?)",
+                               (asset_id, path, path.rsplit("\\", 1)[-1], code, duration))
+            connection.commit()
+
+    def reattach_vanished(self, *old_ids):
+        with closing(sqlite3.connect(self.db)) as connection:
+            moved = record_rehome.reattach_vanished(connection, old_ids)
+            connection.commit()
+        return moved
+
+    def test_a_row_that_just_vanished_moves_to_the_one_version_already_in_the_library(self):
+        self.add_live(9, "R:\\media\\hd\\ABC-123.mkv", code="ABC-123")
+        self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
+        self.assertEqual(self.reattach_vanished(7), [7])
+        self.assertEqual(self.owner("asset_preference"), [9])
+        self.assertEqual(self.query("SELECT source,rule,old_asset_id,new_asset_id FROM record_rehome"),
+                         [(record_rehome.AUTO_SOURCE, "code", 7, 9)])
+
+    def test_a_row_that_just_vanished_with_two_versions_and_no_duration_stays_an_orphan(self):
+        self.add_live(9, "R:\\media\\a\\ABC-123.mkv", code="ABC-123")
+        self.add_live(10, "R:\\media\\b\\ABC-123.mp4", code="ABC-123")
+        self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
+        self.assertEqual(self.reattach_vanished(7), [])
+        self.assertEqual(self.owner("asset_preference"), [7])
+
+    def test_only_the_rows_that_just_vanished_are_moved(self):
+        self.add_live(9, "R:\\media\\ABC-123.mkv", code="ABC-123")
+        self.add_live(10, "R:\\media\\XYZ-001.mkv", code="XYZ-001")
+        self.add_vanished(7, "R:\\media\\old\\ABC-123.mp4", code="ABC-123")
+        self.add_vanished(8, "R:\\media\\old\\XYZ-001.mp4", code="XYZ-001")
+        self.assertEqual(self.reattach_vanished(8), [8])
+        self.assertEqual(self.owner("watch_queue"), [7, 10], "不是这一轮标的孤儿不跟着搬")
+
+    def test_a_creator_video_that_just_vanished_matches_creator_stem_and_duration(self):
+        self.add_live(9, "R:\\media\\桃子\\2026\\海边.mp4", duration=601)
+        self.add_live(10, "R:\\media\\别人\\海边.mp4", duration=600)
+        self.add_vanished(7, "R:\\media\\桃子\\old\\海边.mp4", creator="桃子", duration=600)
+        self.assertEqual(self.reattach_vanished(7), [7])
+        self.assertEqual(self.owner("watch_queue"), [9])
+
     def test_each_of_the_four_row_columns_alone_counts_as_records(self):
         with closing(sqlite3.connect(self.db)) as connection:
             connection.executemany(

@@ -15379,7 +15379,7 @@ var Tl = (e) => !!(e?.missing || e?.empty || e?.cache?.files), El = {
 	e.unreadable ? `${Dl(e.unreadable)} 个目录读取失败，已跳过` : ""
 ].filter(Boolean).join(" · ") : `馆藏中有 ${Dl(e.total)} 项`;
 function Fl(e) {
-	let t = e.blocked ?? [], n = Number(e.dir_errors || 0), r = e.cache_blocked ?? [], i = Number(e.purged || 0) + Number(e.vanished || 0) + Number(e.dirs_removed || 0) + Number(e.cache_removed || 0), a = t.length + n + r.length, o = t.slice(0, 3).map((e) => `「${e.name}」`).join("、") + (t.length > 3 ? " 等" : "");
+	let t = e.blocked ?? [], n = Number(e.dir_errors || 0), r = e.cache_blocked ?? [], i = Number(e.purged || 0) + Number(e.vanished || 0) + Number(e.reattached || 0) + Number(e.dirs_removed || 0) + Number(e.cache_removed || 0), a = t.length + n + r.length, o = t.slice(0, 3).map((e) => `「${e.name}」`).join("、") + (t.length > 3 ? " 等" : "");
 	return {
 		done: i,
 		left: a,
@@ -15391,7 +15391,7 @@ function Fl(e) {
 	};
 }
 var Il = (e, t) => {
-	let { rest: n } = Fl(e), r = `已永久删除 ${Dl(e.purged)} 条失效记录和 ${Dl(e.dirs_removed)} 个空文件夹，清理 ${Dl(e.cache_removed)} 个缓存，释放 ${t(e.bytes_reclaimed || 0)}。` + (e.vanished ? `${Dl(e.vanished)} 条带个人记录的已标为已消失，可在孤儿记录里处理。` : "");
+	let { rest: n } = Fl(e), r = `已永久删除 ${Dl(e.purged)} 条失效记录和 ${Dl(e.dirs_removed)} 个空文件夹，清理 ${Dl(e.cache_removed)} 个缓存，释放 ${t(e.bytes_reclaimed || 0)}。` + (e.vanished ? `${Dl(e.vanished)} 条带个人记录的已标为已消失，可在孤儿记录里处理。` : "") + (e.reattached ? `${Dl(e.reattached)} 条的记录已接到库里的另一个版本。` : "");
 	return n ? `${r}${n}，重新检查后可再试。` : r;
 }, Ll = "/api/review?counts=1", Rl = ["review", "counts"], zl = "/api/ads?limit=1", Bl = ["junk-summary"], Vl = "/api/items?state=trash&limit=1", Hl = ["trash-summary"], Ul = [
 	["video", "视频"],
