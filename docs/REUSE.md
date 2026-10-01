@@ -115,10 +115,12 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
   `apply_alias_candidates.py` 的四种不写口径，撤回复用 `revert_auto_landing.py`。minnano-av 那一站没用
   `page_cache.Site`：它只返回正文、丢了跳转后的最终地址（复核产物要记她那一页的真实地址），限速器按实例
   各起一个，几十条后继接连跑等于没有间隔，还会把以 200 回来的机器人验证页当正文缓存下去。取页器
-  `MinnanoPages` 另记最终地址、共用一个 `HostLimiter`、认出验证页不缓存并记冷却。
+  `MinnanoPages` 另记最终地址、共用一个 `HostLimiter`、认出验证页不缓存并记冷却。传输是 `SourceTransport`，
+  HTTP 客户端被拦时改走本机浏览器复用 `browser_transport.shared` 与 `SOURCES` 的 `browser_fallback`
+  （见 [来源采集](SOURCING.md#minnano-av-的间歇拦截)），链接、名册与事务所重同步三个脚本走同一个入口。
 - 补女优资料后继（`performer_profile_followup`，ADR-0067）复用补别名后继的入口
   `minnano_profile_pages`、名字核对与 `MinnanoPages`（加 `source` 冷却键与 `max_age` 缓存期限，avwikidb
-  也用它，传输换成 `SourceTransport`），排单复用 ADR-0053 的 `Attempts`（写成的记号保 30 天）。
+  与 javdb 也用它，三站的传输都是 `SourceTransport`），排单复用 ADR-0053 的 `Attempts`（写成的记号保 30 天）。
   解析在 `minnano_av.profile` 与 `avwikidb`，读写在 `performer_profiles`；两站都读页面自带的结构，
   minnano-av 读资料表，avwikidb 读 JSON-LD。不采用的候选：`kanojo-db/scrapers` 的 Minna no AV
   爬虫与 `stashapp/CommunityScrapers` 的 Minnano-AV 规则都不是可安装的库，后者是 Stash 的 XPath 配置

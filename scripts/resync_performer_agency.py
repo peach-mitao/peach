@@ -25,12 +25,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach.config import REVIEW_DIR, STATE_DIR   # noqa: E402
+from peach.config import REVIEW_DIR, SECRETS_DIR, STATE_DIR   # noqa: E402
 from peach.entities import agency_key, name_chain, rejected_agencies   # noqa: E402
-from peach.http import HttpRequest, HttpxTransport   # noqa: E402
+from peach.http import HttpRequest   # noqa: E402
 from peach.jobs import job_main   # noqa: E402
 from peach.minnano_av import actress_id, profile_text, search_url   # noqa: E402
 from peach.review_csv import write_rows   # noqa: E402
+from peach.scraping_access import SourcePaused, SourceTransport   # noqa: E402
 from peach.scripting import (   # noqa: E402
     USER_AGENT, add_ledger_write_args, counts_of, open_for_write, verify_after_write,
 )
@@ -107,6 +108,9 @@ def ask(http, name: str, timeout: float,
         try:
             response = http(HttpRequest("GET", search_url(name), {"User-Agent": USER_AGENT}),
                             timeout, 4 << 20)
+        except SourcePaused as error:
+            # 站在冷却：再问一遍还是同一个答案，不当抖动重试。
+            return "", "", f"未取得：{error}"
         except Exception as error:   # noqa: BLE001  传输层什么都可能抛，一律当抖动
             note = f"未取得：{type(error).__name__}"
             if attempt + 1 < max(1, tries):
@@ -207,7 +211,8 @@ def run(args) -> int:
     if not args.agency and not args.only:
         raise SystemExit("要问谁：--agency 给事务所，--only 给人名，至少给一个")
     connection = open_for_write(args)
-    http = HttpxTransport()
+    # 与补别名后继同一个入口：冷却记录共用，HTTP 客户端被拦时由本机浏览器验证（`browser_fallback`）。
+    http = SourceTransport(SECRETS_DIR)
     try:
         before = counts_of(connection, EXTRA_COUNTS)
         rows = plan(connection, http, args)

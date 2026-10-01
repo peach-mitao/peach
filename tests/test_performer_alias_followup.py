@@ -683,6 +683,31 @@ class RepeatTests(Case):
         self.assertTrue(summary["sites"][alias.MINNANO].startswith("命中 " + PROFILE_URL))
         self.assertFalse(list(self.cooldown.glob("scraping-minnano-av.cooldown.json")))
 
+    def test_a_refused_page_is_fetched_in_the_local_browser_and_the_site_stays_there(self):
+        """默认传输是 `SourceTransport`：HTTP 客户端被拦时同一页由本机浏览器取，取到就缓存、不冷却，
+        这一站之后固定走浏览器；补女优资料后继与链接、名册脚本走的是同一个入口。"""
+        from peach import browser_transport
+        from peach.scraping_access import fixed_to_browser
+
+        class Browser(browser_transport.BrowserTransport):
+            def __init__(self):
+                self.calls = []
+
+            def __call__(self, request, timeout, max_bytes):
+                self.calls.append(request.url)
+                return HttpResponse(200, {}, b"<title>profile</title>", PROFILE_URL)
+
+        url = minnano_av.search_url("神山ももか")
+        browser = Browser()
+        pages = alias.MinnanoPages(self.generated / "provider-cache" / "minnano", self.cooldown, limiter=NoWait())
+        pages.transport.transports[alias.MINNANO] = lambda request, *_args: HttpResponse(403, {}, b"", request.url)
+        with mock.patch("peach.browser_transport.shared", return_value=browser):
+            self.assertEqual(pages.get(url), (PROFILE_URL, "<title>profile</title>"))
+        pages.close()
+        self.assertEqual(browser.calls, [url])
+        self.assertTrue(fixed_to_browser(self.cooldown, alias.MINNANO))
+        self.assertFalse(paused_until(self.cooldown, alias.MINNANO))
+
 
 def load_revert():
     spec = importlib.util.spec_from_file_location(
