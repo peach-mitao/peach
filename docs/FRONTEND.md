@@ -372,6 +372,8 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
 React 子树的样式是 Tailwind v4 加 BoardUI 主题，产物 `peach-react.css`；它与旧样式表同处一页的
 三条约束（工具类不分层、只扫描 `src/react/`、Preflight 限定在 `.peach-react` 里）写在
 `frontend/src/react/styles.css` 开头，逐字复制与没有复制的上游文件见 `frontend/src/react/boardui/ORIGIN.md`。
+Preflight 给每张 img `max-width:100%`；遗留层拼的人脸头像由 `avatarFrame` 在图上内联撤掉这条，
+岛里放这种头像的容器不必再各写 `max-width:none`。封面与带脸框的头像取景完才显示（`09-skeleton.css`）。
 `.oxlintrc.json` 里的例外也在那儿定：`configpage`、`configgroup` 是旧样式表的类名，
 React 页要按原名输出壳才拆得出分区；`swiper`、`swiper-wrapper`、`swiper-slide`、
 `swiper-zoom-container` 是 Swiper 核心 API 认的结构类名（图片灯箱），不写它就找不到轮播的

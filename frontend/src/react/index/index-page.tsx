@@ -7,7 +7,7 @@
  * 页头只有标题、读数、版式切换和过滤框；页面级的切换（厂牌／事务所、本地／在线）是页头
  * 下面那排 Tabs。标签页的读数住在浮层下排，页头不再重复一遍。 */
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Radio } from 'react-aria-components';
 
 import { requestErrorMessage } from '@peach/legacy/core';
@@ -141,8 +141,9 @@ export function IndexPage(props: IndexProps) {
   const more = !!result.hasNextPage && !result.isPlaceholderData;
   const readout = countText(items.length, !!result.hasNextPage);
 
-  /* 框换了大小，「这张图要不要补底」得重算：图早加载完了，不会再自己发一次 load。 */
-  useEffect(() => { if (root.current) props.refitImages(root.current) }, [layout]);
+  /* 框换了大小，「这张图要不要补底」和人脸放大都得重算：图早加载完了，不会再自己发一次 load。
+     赶在绘制之前，否则换版式那一帧是按旧框算的几何。 */
+  useLayoutEffect(() => { if (root.current) props.refitImages(root.current) }, [layout]);
 
   const tags = useMemo<TagEntry[]>(() => kind === 'tags'
     ? (items as IndexTag[]).map((tag) => ({ ...tag, label: props.tagLabel(tag.k) })) : [], [items, kind]);
