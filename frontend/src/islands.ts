@@ -16,7 +16,8 @@ export { preferredDirection } from './sort-preferences';
 export { createSettingsStore } from './settings-store';
 export { boundedPreference } from './number-setting';
 export { initBoardControls, syncBoardRange } from './board-controls';
-export { sidebarSectionHtml, wireSidebarGroups, transitionTheme } from './sidebar-groups';
+export { transitionTheme } from './theme-transition';
+export { sidebarSkeletonHtml } from './sidebar-skeleton';
 
 import type * as ReactBundle from '@peach/react';
 
@@ -28,7 +29,7 @@ export { entitySkeletonHtml } from './entity-skeleton';
 export { boardPageSkeleton, detailSkeletonHtml } from './board-skeleton';
 export { catalogSuggestions, catalogEmptyHtml } from './catalog-onboarding';
 export { catalogFilterSkeletonHtml } from './catalog-filter-skeleton';
-export { syncSidebarSurface, sidebarTagCounts, sidebarHasCatalogContent } from './sidebar';
+export { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent } from './sidebar';
 export { cleanupSkeletonHtml } from './management';
 export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 
@@ -249,6 +250,17 @@ export function loadImmerse(host: ReactBundle.ImmerseHost): Promise<ReactBundle.
   return immerse;
 }
 export const immerseApi = (): ReactBundle.ImmerseApi | null => immerseReady;
+
+/* 侧栏岛（`react/sidebar/`）：导航那一列、它上面的玻璃与按语境出现的筛选分组都在 `@peach/react` 里，
+ * 壳只拿命令式入口。壳启动时就装载、接上宿主——在那之前滚动层里是壳同步写进去的导航骨架
+ * （`sidebarSkeletonHtml`）；之后 `sidebarApi()` 同步可取，包还没装载时是 null。 */
+let sidebar: Promise<ReactBundle.SidebarApi> | null = null;
+let sidebarReady: ReactBundle.SidebarApi | null = null;
+export function loadSidebar(host: ReactBundle.SidebarHost): Promise<ReactBundle.SidebarApi> {
+  sidebar ??= import('@peach/react').then((bundle) => { sidebarReady = bundle.configureSidebar(host); return sidebarReady });
+  return sidebar;
+}
+export const sidebarApi = (): ReactBundle.SidebarApi | null => sidebarReady;
 
 /* 壳的播放快捷键用到的播放器件（`frontend/src/player/`）：控件点击、切换播放与快进快退都不带模块
  * 状态。详情播放器、宿主与右键菜单带状态，只在舞台岛那一份产物里用。 */

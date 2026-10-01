@@ -321,8 +321,8 @@
   text-align: right;
 }
 
-/* 缩放滑杆：Board 的 6px 细轨，已走过的那一段用强调色，手柄同时长滑块那一枚（`web/board.css`
- * 的 `.dual-range`）。走过的比例由 `syncBoardRange` 写在 `--board-range-value` 上。 */
+/* 缩放滑杆：Board 的 6px 细轨，已走过的那一段用强调色，手柄同侧栏时长滑块那一枚（侧栏岛的
+ * `sidebar.css`）。走过的比例由 `syncBoardRange` 写在 `--board-range-value` 上。 */
 .peach-react [data-photo-zoom] input {
   width: 116px;
   height: 20px;

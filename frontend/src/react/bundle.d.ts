@@ -17,6 +17,7 @@ import type { ItemDetailProps } from './item-detail/item-detail';
 import type { StageApi, StageHost } from './stage/stage-api';
 import type { SettingsPanelApi, SettingsPanelHost } from './settings-panel/settings-panel-api';
 import type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
+import type { SidebarApi, SidebarHost } from './sidebar/sidebar-api';
 
 export type { IndexProps };
 export type { CatalogGridProps };
@@ -438,6 +439,13 @@ export type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 
 /** 接上壳给的宿主，拿回沉浸岛的命令式入口（`immerse/immerse-island.tsx`）。只调一次。 */
 export declare function configureImmerse(host: ImmerseHost): ImmerseApi;
+
+export type {
+  SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
+} from './sidebar/sidebar-api';
+
+/** 接上壳给的宿主，拿回侧栏岛的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次。 */
+export declare function configureSidebar(host: SidebarHost): SidebarApi;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;

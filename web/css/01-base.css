@@ -185,8 +185,8 @@ body{background:var(--page);color:var(--ink);
    那组变量，规则本身不动。插值空间走 --glow-lerp。
 
    这一层画的就是侧栏玻璃面自带的那两团慢漂反光，换成用户配得了色的三枚。board.css 那条
-   玻璃规则把 --glass-drift-a/b 铺在每一块玻璃上，抽屉这一块交给这里来铺（那条规则里
-   .drawer 的两个变量因此置为 none，两套光斑叠着漂会糊成一团）；搜索框、筛选浮层、图标钮
+   玻璃规则把 --glass-drift-a/b 铺在每一块玻璃上，抽屉这一块交给这里来铺（侧栏岛的
+   `sidebar.css` 因此把抽屉上的两个变量置为 none，两套光斑叠着漂会糊成一团）；搜索框、筛选浮层、图标钮
    那些玻璃面保持自己原来的漂移不动——它们身上那一点正是从侧栏折射过去的光。
    正文身后什么都不铺：整条页面宽的光带是背景不是光晕，字压在上面读不出来。
 
@@ -194,9 +194,9 @@ body{background:var(--page);color:var(--ink);
    元素的两倍大，background-position 从 0% 到 100% 正好把光斑中心从右下角推到左上角，
    -10% 与 110% 那两档让它探出框外一点。三枚各走一条相位不同的李萨如轨迹，横竖两条动画
    41s 与 67s 互质，合起来四十多分钟不重样。
-   z-index 取 -2：.drawer 自己带 backdrop-filter，是一个层叠上下文，负层只压在它那块玻璃
-   填充之上、被导航内容全部盖住；-1 已经归了选中项那条 .navglide，光晕要在它下面。
-   溢出由 .drawer 的 overflow:hidden 连圆角一起裁掉，这一层不必自己再写一遍圆角。
+   z-index 取 -2：抽屉 #drawer 自己带 backdrop-filter，是一个层叠上下文，负层只压在它那块玻璃
+   填充之上、被导航内容全部盖住；-1 已经归了选中项那块玻璃 [data-sidebar-glide]，光晕要在它下面。
+   溢出由抽屉的 overflow:hidden 连圆角一起裁掉，这一层不必自己再写一遍圆角。
    首屏 ambient-in 那一下淡入留着：这一层一直在动，开页时从 0 亮起来读成「灯亮了」，
    直接带着满强度出现反而像一张贴图突然贴上去。 */
 .glowlayer{--ambient-opacity:calc(var(--glow-strength) * var(--glow-theme-scale));

@@ -88,6 +88,15 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 - 播放器在 `frontend/src/player/`，用 vendored 的 Video.js。入口 `mountPlayer(video, options)` 把媒体框里的 `<video>` 换成 Video.js 并返回拆除函数；详情只画媒体框，挂载由舞台的 `attachStagePlayer` 做。
 - 小窗与舞台共用同一个播放器实例：离开详情时正在放的那一个搬进小窗，展开回同一条时认领回来，不重建。显式关闭、暂停着、设置里关了小窗、换到别的条目时随舞台拆掉。交接判据钉在 `test/stage-player.test.ts`，真 Video.js 的行为在 `e2e/stage.test.ts`。
 
+### 侧栏与标签抽屉
+
+左侧抽屉 `#drawer` 里滚动的那一层（`#drawerScroll`）由常驻的 `sidebar` 岛画（`frontend/src/react/sidebar/`）：导航那一列、导航上那块滑动玻璃（`use-view-glide.ts`），以及按语境出现的筛选分组。抽屉本身、它的开合与遮罩、底栏三枚键、品牌与开合键归壳。
+
+- 壳在启动时写一份骨架（`sidebar-skeleton.ts`，与岛画的导航同一份顺序与按下态），随后 `loadSidebar(sidebarHost())` 装载岛，之后 `sidebarApi()` 同步可取，契约在 `sidebar/sidebar-api.ts`。岛接上时调 `attached`，壳把品牌与开合键挪进标题行；覆盖式滚动条仍由壳挂在 `#drawerScroll` 上。
+- 内容由壳推：`paintSidebar(patch)` 合并 `content`、`filters`、`latest` 后调 `render`。目录与资料页的聚合在 `buildBars` 里换成 `{kind:'catalog'}`，关注页与关注详情的内容标签由 `renderFollowDrawer` 推 `{kind:'follow'}`；就地改筛选时 `applyFilterStateInPlace` 只推 `filters`，`refreshFacetCounts` 只推 `latest`。点下去的动作回到壳的 `navTo`、`commitContextFilter` 与关注页的筛选。
+- 导航顺序读 `appSettings` 这一份 store 的 `sidebarOrder`：拖动排序先落 store 再写 `/api/settings`，设置面板改顺序也写同一份 store，岛按通知当场重排。按下态换了由壳的 `paintNav` 调 `navChanged`。
+- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；岛里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design.test.ts` 读计算值。
+
 ### 产物缓存
 
 产物名字不带内容哈希：引用它的 `web/app.js` 不经过构建，构建时改不了那里的路径。
@@ -127,9 +136,8 @@ URL 都从它来，它被缓存住就没人看得到新产物。
 | `15-detail.css` | 壳画的源文件管理（定位与目录对账） |
 | `16-settings.css` | 设置面板打开时的页面锁滚（面板归 `settings-panel` 岛） |
 | `17-overlay.css` | Toast 与审查遮挡 |
-| `18-drawer.css` | 筛选抽屉 |
+| `18-chips.css` | 产地选择与详情里次要操作的标签按钮（侧栏筛选标签归 `sidebar` 岛） |
 | `19-immersive.css` | 加载更多、空状态、选择条与批量条、窄屏总表（沉浸模式归 `immerse` 岛） |
-| `20-offdisk.css` | 脱盘模式 |
 | `21-online.css` | 关注页骨架与关注详情（列表归 `follow-feed` 岛） |
 | `22-followmanage.css` | 关注管理页 |
 
@@ -378,7 +386,7 @@ Preflight 给每张 img `max-width:100%`；遗留层拼的人脸头像由 `avata
 React 页要按原名输出壳才拆得出分区；`swiper`、`swiper-wrapper`、`swiper-slide`、
 `swiper-zoom-container` 是 Swiper 核心 API 认的结构类名（图片灯箱），不写它就找不到轮播的
 容器与每一张；`mono` 是 `01-base.css` 的等宽数字字体栈，和 Tailwind 的 `font-mono` 不是同一组字体；
-`javedition` 与色调（`censored` 等）是目录卡片也用的版次徽章；`chip` 是筛选抽屉的药丸键，脱盘与在线说明块里的按钮沿用它；`geist-button`、`primary` 是
+`javedition` 与色调（`censored` 等）是目录卡片也用的版次徽章；`chip` 是 `18-chips.css` 的标签按钮，壳的产地选择用它，作品详情里脱盘与在线说明块的按钮沿用它（侧栏的筛选键归侧栏岛，不用这个类）；`geist-button`、`primary` 是
 舞台模态里各处按钮共用的遗留按钮，设置面板的「添加」「恢复默认」也沿用；`popmenu` 是遗留浮层菜单的盒子，
 `presentMenu`／`dismissMenu` 的开合动效按它起，设置面板的色板弹层与侧栏「添加」菜单都是它；`geist-input`
 是 `01-base.css` 的输入框，设置面板的数值框沿用；`board-glow-grid` 那一格预设球由壳的 `renderGlowPresetGrid`

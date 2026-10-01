@@ -5,25 +5,6 @@ export function syncBoardRange(input: HTMLInputElement) {
   const min=Number(input.min)||0,max=Number(input.max)||100,value=Number(input.value);
   const percent=max>min?Math.max(0,Math.min(100,(value-min)/(max-min)*100)):0;
   input.style.setProperty('--board-range-value',`${percent}%`);
-  const group=input.closest('.dual-range');
-  if(!group)return;
-  const end=input.id==='durMax'?'max':'min';
-  let tip=group.querySelector<HTMLElement>(`[data-range-end="${end}"]`);
-  if(!tip){tip=document.createElement('output');tip.className='board-range-tip';tip.dataset.rangeEnd=end;tip.setAttribute('aria-hidden','true');group.append(tip)}
-  tip.textContent=value>=max&&end==='max'?'不限':`${value} 分钟`;
-  tip.style.left=`${percent}%`;
-  /* 气泡对着手柄居中，伸出轨道的那一截按实测溢出量收回来：这一排住在侧栏里，侧栏只
-     比轨道宽出一点点，越界的半截被侧栏裁掉，读数就只剩一半。量之前先把上一次的位移
-     清掉，否则量到的是已经收过一次的位置，越拖越偏。 */
-  tip.style.setProperty('--range-tip-shift','0px');
-  const bounds=group.getBoundingClientRect(),box=tip.getBoundingClientRect();
-  const shift=box.right>bounds.right?bounds.right-box.right
-    :box.left<bounds.left?bounds.left-box.left:0;
-  if(shift)tip.style.setProperty('--range-tip-shift',`${Math.round(shift)}px`);
-  /* 两端拖到一起时，刚动过的那枚压在上面：另一枚报的是它自己停下的位置，盖住这一枚
-     等于把唯一正在变的读数藏起来——手上还在拖，屏幕上却没有数在动。 */
-  group.querySelectorAll('.board-range-tip').forEach(node=>
-    node.toggleAttribute('data-range-active',node===tip));
 }
 
 export function initBoardControls() {

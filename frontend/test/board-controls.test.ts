@@ -24,11 +24,11 @@ describe('范围控件',()=>{
     wireBoardTabs(document);wireBoardTabs(document);
     expect([...document.querySelectorAll('[data-board-tabs]')].map(group=>group.className)).toEqual(['managebar-menu']);
   });
-  it('两个端点分别保留数值与不限状态，重复接线不增加气泡',()=>{
-    document.body.innerHTML='<div class="dual-range"><input id="durMin" type="range" min="0" max="180" value="20"><input id="durMax" type="range" min="0" max="180" value="180"></div>';
-    const inputs=[...document.querySelectorAll('input')];inputs.forEach(syncBoardRange);inputs.forEach(syncBoardRange);
-    expect(document.querySelectorAll('output')).toHaveLength(2);expect(document.querySelector('[data-range-end="min"]')?.textContent).toBe('20 分钟');
-    expect(document.querySelector('[data-range-end="max"]')?.textContent).toBe('不限');
-    inputs[1]!.value='60';syncBoardRange(inputs[1]!);expect(document.querySelector('[data-range-end="max"]')?.textContent).toBe('60 分钟');
+  it('范围输入把当前值换算成轨道百分比写进样式变量',()=>{
+    document.body.innerHTML='<input type="range" min="0" max="180" value="45">';
+    const input=document.querySelector('input')!;syncBoardRange(input);
+    expect(input.style.getPropertyValue('--board-range-value')).toBe('25%');
+    input.value='180';syncBoardRange(input);
+    expect(input.style.getPropertyValue('--board-range-value')).toBe('100%');
   });
 });

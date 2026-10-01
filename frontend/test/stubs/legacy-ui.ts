@@ -13,7 +13,7 @@ export const emptyStateHtml = (
   + `<div class="es-copy"><h3>${title}</h3><p>${description}</p></div>${options.actions || ''}</div>`;
 
 // @ts-expect-error 索引骨架复用正式模板，折叠开合、覆盖式滚动条、徽标与读数弹跳、滚动判据与补充信息卡用正式实现。
-export {attachOverlayScrollbar, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, wireContextCard} from '../../../web/js/ui-components.js';
+export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, wireContextCard} from '../../../web/js/ui-components.js';
 // @ts-expect-error 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。
 export {closeAnchoredMenu, dialSliderHtml, iconSwitchHtml, wireAnchoredMenu, wireDialSlider, wireHorizontalScroller, wireIconSwitch} from '../../../web/js/ui-components.js';
 /* 测试环境没有布局，骨架补齐量不出东西，这里什么都不做。 */

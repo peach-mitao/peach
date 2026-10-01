@@ -32,6 +32,7 @@
 @import "./stage/stage.css";
 @import "./settings-panel/settings-panel.css";
 @import "./immerse/immerse.css";
+@import "./sidebar/sidebar.css";
 
 @source "./";
 @source "../management-skeletons.ts";

@@ -81,7 +81,7 @@ class StylesheetPartitionTests(unittest.TestCase):
         "05-insights.css", "06-index.css", "07-entity.css", "08-photos.css",
         "09-skeleton.css", "11-identity.css", "12-cards.css",
         "15-detail.css", "16-settings.css",
-        "17-overlay.css", "18-drawer.css", "19-immersive.css", "20-offdisk.css",
+        "17-overlay.css", "18-chips.css", "19-immersive.css",
         "21-online.css", "22-followmanage.css", "23-configuration.css",
         "25-motion.css",
     )
@@ -644,36 +644,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("else new MutationObserver(sync).observe("
                                 "container,{childList:true,characterData:true,subtree:true});")
 
-    def test_the_drawer_scrolls_in_an_inner_layer_so_the_track_can_stay_put(self):
-        """抽屉自己不滚，滚的是里面那层：跟着内容一起滚的轨道等于没有轨道。"""
-        # 光晕那一层是抽屉的第一个子元素，滚的仍然只有 .drawerscroll 那一层。
-        self.assertPageContains('<aside class="drawer" id="drawer">'
-                                '<div class="glowlayer" aria-hidden="true"></div>'
-                                '<div class="drawerscroll" id="drawerScroll"></div></aside>')
-        self.assertPageContains("$('#drawerScroll').innerHTML=")
-        self.assertPageContains(".drawerscroll{height:100%;box-sizing:border-box;"
-                                "padding:16px 12px 60px;")
-        self.assertPageContains("overflow-y:auto;overflow-x:hidden;scrollbar-width:none}")
-        self.assertPageContains(".drawer{position:fixed;top:0;bottom:0;left:0;width:360px;")
-        self.assertPageContains("attachOverlayScrollbar(document.documentElement,{variant:'page'});")
-        self.assertPageContains("attachOverlayScrollbar($('#drawerScroll'));")
-
-    def test_every_drawer_repaint_writes_into_the_scroll_layer_not_the_host(self):
-        """#drawer 是滚动容器和轨道的宿主：谁把它整块 innerHTML 换掉，buildBars() 要写的
-        容器就没了，首页停在「正在读取作品」。所有重画只能落在 #drawerScroll 里。"""
-        source = self.page
-        self.assertNotIn("drawer.innerHTML=", source)
-        self.assertNotIn("$('#drawer').innerHTML=", source)
-        self.assertNotIn("$('#drawer').insertAdjacentHTML(", source)
-        self.assertPageContains("const scroll=$('#drawerScroll'),key=surfacePath()+location.search;")
-        self.assertPageContains("scroll.innerHTML=`<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px\">")
-        self.assertPageContains("scroll.insertAdjacentHTML('beforeend',sidebarSectionHtml('内容标签',tagBody,'','online'));")
-        # 换页面的判据记在滚动层上：syncSidebarSurface() 判定换页就 replaceChildren()，
-        # 传宿主进去会连 #drawerScroll 一起清掉，和整块 innerHTML 是同一种失败。
-        self.assertPageContains("syncSidebarSurface(scroll,key)")
-        self.assertNotIn("syncSidebarSurface(drawer", source)
-        self.assertNotIn("syncSidebarSurface($('#drawer')", source)
-
     def test_anchored_menus_open_in_the_top_layer_so_animated_ancestors_cannot_clip_them(self):
         """自绘下拉的面板进顶层，祖先上的 transform 与 overflow 都够不着它。
 
@@ -726,12 +696,12 @@ class WebUiSourceTests(unittest.TestCase):
         重建、重解一遍码，人看到的就是「点进去又退出来，页面自己刷新了一次」。
 
         回来那一次比的是数据不是时间：详情看上十分钟再回来，取回的多半还是同一份。
-        铺过骨架的那一次例外，骨架必须由一次真的绘制顶掉。
+        铺过骨架的那一次例外，骨架必须由一次真的绘制顶掉。侧栏的分组关掉详情后照样在，
+        由 `frontend/e2e/sidebar.test.ts` 在真浏览器里开关一次详情核对。
         """
         self.assertPageContains("if(barsContext.type==='item')return;",
                                 "详情不碰表面的条")
         self.assertPageContains("const rendered=signature+'\\n'+JSON.stringify([facetData,tops]);")
-        self.assertPageContains("if(rendered===barsRendered)return;")
         self.assertPageContains("  if(catalogFilterProps?.tiers)return;\n  barsRendered='';")
 
     def test_the_page_recedes_so_chrome_and_boxes_can_float_on_it(self):
@@ -743,10 +713,8 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertPageContains("body{background:var(--page);")
         css = stylesheet_source()
-        for name in (".top", ".edge"):
-            start = css.index(chr(10) + name + "{")
-            rule = css[start:css.index("}", start)]
-            self.assertIn("var(--ground)", rule, f"{name} 浮在页面底之上")
+        start = css.index(chr(10) + ".top{")
+        self.assertIn("var(--ground)", css[start:css.index("}", start)], ".top 浮在页面底之上")
         # 直接坐在页面上的盒子不能再填 --surface：它与 --page 在浅色一档是同一个 #FAFAFA，
         # 填上去等于没有盒子。--surface 只剩交互与内嵌那一档。垃圾卡归 `junk-queue` island，
         # 它和页面底色不同由 e2e 设计用例读计算值核对。
@@ -948,17 +916,15 @@ class WebUiSourceTests(unittest.TestCase):
                          f"实心档悬停请自己写 color，别把文字交给通用 hover：{offenders}")
         self.assertGreaterEqual(seen, 3, "实心档的悬停规则找不到了，检查断言是否还匹配得上")
 
-    # 悬停允许照旧抬填充的两类控件。孤立开关：没有并排的同类邻居，鼠标压着的那颗
-    # 就是你正在问的那颗，看不出「按没按」不构成误读。侧栏导航：Geist 自己就把分工
-    # 反过来写，见 test_sidebar_nav_keeps_the_hover_fill_and_leaves_state_to_the_color。
+    # 悬停允许照旧抬填充的孤立开关：没有并排的同类邻居，鼠标压着的那颗就是你正在问的
+    # 那颗，看不出「按没按」不构成误读。侧栏导航归侧栏岛，悬停与当前项的分工由
+    # `frontend/e2e/design.test.ts` 读计算值。
     HOVER_FILL_ALLOWED = (
         ".ib",              # 顶栏图标按钮，八个里只有一个有按下态
         ".brandpill",       # 顶栏厂牌胶囊，全站一颗
         ".playerstatsbtn",  # 播放器覆盖层，悬停走 ::after 另一层
         ".fb .like",        # 这一排彩色反馈按钮的既有约定就是悬停预览按下后的颜色
         ".popmenu.gselectmenu button",  # 同上；2026-09-04 实测 vercel.com 后台的菜单行，悬停与选中共用同一枚 5% 填充
-        ".edge button",     # 窄栏，实测 vercel.com/geist 左栏就是悬停抬填充
-        ".dnav button",     # 抽屉是窄栏的展开态，同一条例外
     )
 
     STATE_TOKENS = ('[aria-pressed="true"]', '[aria-selected="true"]',
@@ -1008,7 +974,7 @@ class WebUiSourceTests(unittest.TestCase):
         填充」不冲突：Button 没有选中态，没有需要让位的信号。
 
         适用面只到「一排横向的选项组」。2026-09-04 实测证明侧栏导航不在此列，Geist
-        自己把分工反过来写，见 HOVER_FILL_ALLOWED 里的两条和下一个测试。
+        自己把分工反过来写；侧栏导航归侧栏岛，由 e2e 设计用例量。
         """
         selected_bases = set()
         for leaf, body in self._leaf_rules():
@@ -1038,13 +1004,10 @@ class WebUiSourceTests(unittest.TestCase):
 
     #: 选中仍旧填 --hover 的全部去处：它们自己就站在 --ground 上，白面上再叠白等于没填。
     SELECTED_ON_GROUND = (
-        '.chip[aria-pressed="true"]',                     # 抽屉是一整张磨砂近白面
-        '.dnav button[aria-pressed="true"]',              # 同上，窄栏的展开态
-        '.edge button[aria-pressed="true"]',              # 窄栏填 --ground
+        '.chip[aria-pressed="true"]',                     # 产地选择站在对话框的 --ground 上
         '.popmenu.gselectmenu button[aria-selected="true"]',  # 浮层菜单填 --ground
         '.ib[aria-pressed="true"]',                       # 顶栏填 --ground
         '.managebar button[aria-pressed="true"]',         # 管理导航容器填 --ground
-        '.sec.cat-meta .chip[aria-pressed="true"]',       # 抽屉中性类，跟基础 .chip 同一档
     )
 
     def test_the_selected_face_is_one_token_that_flips_with_the_theme(self):
@@ -1055,7 +1018,7 @@ class WebUiSourceTests(unittest.TestCase):
         Tabs：选中态只有一件事，`bg-gray-200`（#EBEBEB），比容器往下压一档。深色一档
         叠 9% 白后本来就比面亮，同一个 token 两边都成立，三处声明写法完全一致。
 
-        例外只有一类：控件自己就站在 --ground 上（顶栏、窄栏、抽屉、浮层菜单）。那里
+        例外只有一类：控件自己就站在 --ground 上（顶栏、对话框、浮层菜单）。那里
         选中靠 --hover 那一档暗加上 --ink 的字色，与实测的 Geist 左栏一致。这一类逐个
         登记在 SELECTED_ON_GROUND。
         """
@@ -1071,24 +1034,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertEqual(on_ground, sorted(self.SELECTED_ON_GROUND),
                          "站在 --page 或凹槽上的选中态一律填 --picked；"
                          "要留 --hover 的先登记进 SELECTED_ON_GROUND 并说明它脚下是哪张面")
-
-    def test_the_duration_slider_is_a_control_in_ink_not_a_blue_progress_bar(self):
-        """时长拉条走墨色：已选段 --ink，抓手填 --ground、描 --ink，蓝只剩焦点环。
-
-        抓手必须填 --ground 而不是 --ink：--ink 自己也随主题翻面，深色下是白点、浅色下
-        就成了压在轨道上的黑疙瘩，同一个控件读出两种东西。填 --ground 则两档同义——
-        抓手永远和它坐落的那张面同色，读作从轨道上抠下来的一段。
-        """
-        self.assertPageContains(
-            ".range-fill{left:var(--lo);right:calc(100% - var(--hi));background:var(--ink)}")
-        for thumb in ("::-webkit-slider-thumb", "::-moz-range-thumb"):
-            start = self.page.index(".dual-range input" + thumb + "{")
-            rule = self.page[start:self.page.index("}", start)]
-            self.assertIn("background:var(--ground)", rule, thumb + " 抓手跟着主题翻面")
-            self.assertIn("border:2px solid var(--ink)", rule, thumb + " 描边是墨色")
-        self.assertPageContains(
-            ".dual-range input:focus-visible::-webkit-slider-thumb"
-            "{outline:2px solid var(--tungsten);outline-offset:2px}")
 
     def test_the_star_rating_sits_between_the_title_and_the_spec_line(self):
         """五颗星在标题和那行规格之间，送出的是 20 的倍数，空实两档随主题各写各的琥珀。
@@ -1110,39 +1055,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertEqual(
             self.css.count("--rating:#E5B34A;"), 2,
             "深色两处声明（prefers-color-scheme 与 data-theme）各写一份")
-
-    def test_sidebar_nav_keeps_the_hover_fill_and_leaves_state_to_the_color(self):
-        """侧栏窄栏与抽屉的悬停必须抬填充，当前项靠图标色区分。
-
-        2026-09-04 实测 vercel.com/geist 左栏（`aside` 里那 82 条链接，读的是每条
-        链接内层 `span` 的计算值与类名）：
-
-        | 状态 | 背景 | 文字 |
-        | --- | --- | --- |
-        | 未选中 | `rgba(0,0,0,0)` | `rgb(161,161,161)` |
-        | 未选中 + 悬停 | `rgb(26,26,26)`（`hover:bg-gray-100`） | `rgb(161,161,161)` 不动 |
-        | 当前项 | `rgba(255,255,255,.06)`（`bg-gray-alpha-100`，无 hover 类） | `rgb(237,237,237)` |
-
-        分工与横排选项组正好相反：填充表示「鼠标在这儿」，文字色才表示「你在这儿」。
-        两个填充的合成亮度几乎相同（10% 对 9.4%），可见 Geist 并不指望用填充强弱
-        区分二者。纯图标窄栏更需要这条：52px 方块里只有一个描边图标，光靠 --muted
-        到 --ink 的换色近乎看不见，等于窄栏没有悬停反馈。
-
-        这条曾被删过一次（`1367a9a` 把横排选项组的结论推广到了侧栏），所以这里用
-        正向断言锁住，不只依赖 HOVER_FILL_ALLOWED 的豁免。
-        """
-        self.assertPageContains(".edge button:hover{background:var(--hover)}",
-                                "窄栏悬停必须抬填充")
-        self.assertPageContains(".dnav button:hover{background:var(--hover)}",
-                                "抽屉是窄栏的展开态，走同一条")
-        # 悬停不得把图标/文字提到 --ink：那是当前项的信号，抢过来两态就分不开了。
-        self.assertPageLacks(".edge button:hover{color:var(--ink)}")
-        self.assertPageLacks(".dnav button:hover svg{color:var(--ink)}")
-        # 当前项这一侧必须仍然握着颜色，否则悬停和选中就真的同色了。
-        self.assertPageContains('.edge button[aria-pressed="true"]'
-                                "{background:var(--hover);color:var(--ink)}")
-        self.assertPageContains('.dnav button[aria-pressed="true"]'
-                                "{background:var(--hover);color:var(--ink)}")
 
     def test_form_buttons_do_not_shrink_on_press_and_disable_to_a_solid_gray(self):
         """表单里那一族按钮按下不缩放，禁用是实底灰而不是半透明。
@@ -1269,9 +1181,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("<summary aria-expanded={open} aria-controls={id} onClick={toggle}", section)
         # 原生三角去掉了，所以这一枚字形是唯一的线索，不能连它一起去掉。
         self.assertIn("list-none", section)
-        # 侧栏分组折叠还在旧壳里，转的角度与方向跟这一枚对齐。
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".board-section-toggle[aria-expanded=true] svg{transform:rotate(90deg)}", board)
+        # 侧栏分组的那一枚转角归侧栏岛，由 e2e `design.test.ts` 读计算值。
 
     def test_a_spinner_announces_the_work_and_not_the_button_it_sits_in(self):
         """`spinnerHtml()` 的名字说正在做什么，不复读按钮自己的名字。
@@ -1389,14 +1299,14 @@ class WebUiSourceTests(unittest.TestCase):
 
         两类例外，都必须是「前缀 + 运行时拼出来的一段」，不接受逐个类名的豁免：
         vendor 在运行时自己加的类（Video.js、Swiper），以及模板里用模板串拼出来的
-        类名（`' cat-'+cat` 这种，源码里不会出现完整的 `cat-artist`）。
+        类名（`geist-note-${kind}` 这种，源码里不会出现完整的 `geist-note-error`）。
         """
         # 注释里会写类名当例子，`url()` 里的域名（www.w3.org）会被当成 `.org`。
         css = re.sub(r"/\*.*?\*/", "", self.css, flags=re.S)
         css = re.sub(r"url\([^)]*\)", "url()", css)
         selectors = set(re.findall(r"\.(-?[A-Za-z_][A-Za-z0-9_-]*)", css))
         vendor = ("vjs-", "swiper-")
-        composed = ("cat-", "r34-", "geist-note-", "skeleton-")
+        composed = ("r34-", "geist-note-", "skeleton-")
         # 前缀豁免要能兑现：拼接那一处必须真的在模板里。
         for prefix in composed:
             self.assertIn(prefix, self.markup, f"{prefix} 已经没人拼了，连同规则一起删")
@@ -1522,15 +1432,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertEqual(self.page.count("playUiSound('pop');"), 2, "formModal 与 confirmModal 各响一声")
         self.assertIn("},{capture:true});", sounds)
 
-    def test_sidebar_glide_tracks_layout_and_resets_hover_on_toggle(self):
-        self.assertPageContains("const navGlideResize=new ResizeObserver(resizeNavGlide);")
-        self.assertPageContains("navGlideResize.observe($('#drawer'));")
-        self.assertPageContains("navGlideResize.observe($('#drawerScroll'));")
-        self.assertPageContains("syncNavGlide(false,navGlideTarget);")
-        self.assertPageContains("document.addEventListener('board:sidebar',()=>{\n"
-                                "  navGlideTarget=null;\n"
-                                "  if(navGlideTick)cancelAnimationFrame(navGlideTick);")
-
     def test_studio_metadata_is_not_compiled_as_inline_javascript(self):
         self.assertPageLacks('onerror="this.parentNode.innerHTML=')
         self.assertPageLacks('onload="if(this.naturalWidth')
@@ -1600,7 +1501,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 目录页四个筛选态的标题就是筛选名本身，和侧栏取同一份 STATE_LABELS。
         self.assertPageContains("title:STATE_LABELS[key],open:()=>openCatalog(path)")
         self.assertPageContains('syncPageTitle(path);')
-        self.assertPageContains('queueMicrotask(()=>{syncHeaderActions();paintListTitle();buildDrawerNavigation();void syncPostSetupTutorial()})')
+        self.assertPageContains('queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()})')
         # 设置面板的焦点（进来落在关闭键、Tab 在面板里转圈、关上后回到齿轮）由
         # `frontend/e2e/settings-panel.test.ts` 在真浏览器里走一遍。
 
@@ -2536,8 +2437,6 @@ class WebUiSourceTests(unittest.TestCase):
              "background:transparent;color:var(--muted);padding:0 14px;cursor:pointer;font-size:var(--fs-sm);"),
             ("复核页标签 .reviewtabs button",
              "border-radius:var(--control-radius);background:transparent;color:var(--muted);"),
-            ("抽屉导航 .dnav button",
-             "text-align:left;font-size:var(--fs-lg);color:var(--muted)}"),
         ):
             self.assertPageContains(rule, f"{group} 的未选中基态必须是 --muted")
 
@@ -2804,7 +2703,7 @@ class WebUiSourceTests(unittest.TestCase):
         boot = self.app_js.split("window.addEventListener('popstate',restoreRoute);", 1)[1]
         self.assertLess(boot.index("buildManageBar();"), boot.index("loadSourceStatus()"),
                         "管理条与标题要在派发请求之前画完")
-        self.assertNotIn("\nbuildEdge();", boot,
+        self.assertNotIn("\nsyncNavigation();", boot,
                          "左侧导航由 buildManageBar() 建，链外不再单独调一次")
 
     def test_a_deep_link_that_hides_the_home_bars_skips_their_two_queries(self):
@@ -3234,7 +3133,7 @@ class WebUiSourceTests(unittest.TestCase):
         board = (Path(__file__).resolve().parents[1] / 'web/board.css').read_text(encoding='utf-8')
         self.assertIn('.top .search.search.search{--glass-optic:blur(22px)}', board)
         snapshot = board.split('html[data-theme-snapshot] :is(', 1)[1].split('}', 1)[0]
-        for surface in ('.board-library-menu', '.board-filter-frame', '.search', '.drawer'):
+        for surface in ('.board-library-menu', '.board-filter-frame', '.search'):
             self.assertIn(surface, snapshot)
         self.assertIn('background-color:var(--ground)!important', snapshot)
         self.assertIn('backdrop-filter:none!important', snapshot)
@@ -3323,7 +3222,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains('.managebar.is-open .managebar-menu{display:grid}')
         self.assertPageContains("if(k==='manage'){openManage();return}")
         # 顶层图标里不再各自占位
-        edge = self.page.split("const EDGE_ICONS=[", 1)[1].split("];", 1)[0]
+        edge = self.page.split("const SIDEBAR_ITEMS=[", 1)[1].split("];", 1)[0]
         for gone in ("'trash'", "'ads'", "'stats'", "'review'"):
             self.assertNotIn(gone, edge, f"{gone} 应该已经收进管理，不再是顶层入口")
         self.assertIn("'manage'", edge)
@@ -3369,7 +3268,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("  bar.hidden=!current;\n  probeConfigurable();")
         # 它不进可钉到侧栏的候选：侧栏顺序跨机同步，钉在手机上就是死链接。
         self.assertPageContains(
-            "const OPTIONAL_EDGE_ICONS=MANAGE_SECTIONS.filter(([key])=>key!=='configuration')")
+            "const OPTIONAL_SIDEBAR_ITEMS=MANAGE_SECTIONS.filter(([key])=>key!=='configuration')")
         self.assertPageLacks("媒体文件夹与服务配置")
 
     def test_the_settings_rail_is_split_into_captioned_sections(self):
@@ -3453,7 +3352,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("['follow','关注管理','rss'],", sections)
         self.assertNotIn(
             "['follow','关注','rss'],", sections,
-            "顶层 EDGE_ICONS 里的「关注」是更新流，管理区这一项不能跟它同名")
+            "顶层 SIDEBAR_ITEMS 里的「关注」是更新流，管理区这一项不能跟它同名")
         self.assertPageContains("key==='follow'?['follow-manage',label,ic]")
         self.assertPageLacks("key==='follow'?['follow-manage','关注管理',ic]")
         # 页标题取的就是这份注册表；关注更新流的 h2 是它自己的，仍叫「关注」。
@@ -3691,19 +3590,17 @@ class WebUiSourceTests(unittest.TestCase):
             ".geist-button.primary:disabled{background:var(--sunk);color:var(--muted);box-shadow:0 0 0 1px var(--line-soft)}")
 
     def test_edge_and_drawer_share_one_navigation_dispatch(self):
-        """窄栏和抽屉各写一份分支时，抽屉那份漏了追更和播放列表。
+        """侧栏导航、骨架阶段的委托与快捷入口各写一份分支时，漏掉的那份点了没反应。
 
         漏掉的入口会落到兜底分支，把 state.state 设成一个后端不认识的值，
-        表现就是抽屉里点「在线追更」没反应，点窄栏同一个图标却能进。
+        表现就是侧栏里点「在线追更」没反应，从别处进同一个键却能进。侧栏岛与骨架
+        都只把键交给宿主的 `navTo`，点下去交出去的是哪个键由侧栏岛的用例核对。
         """
         self.assertPageContains("function navTo(k){")
-        # 有自己路径的入口一律从路由表进，两边点同一个键必然到同一屏。
+        # 有自己路径的入口一律从路由表进，几处点同一个键必然到同一屏。
         self.assertPageContains("const target=ROUTES.find(spec=>spec.nav===k&&!STATE_ROUTES[k]);")
         self.assertRoute('/follow', "nav:'follow'", "openFollow(push)")
         self.assertRoute('/playlists', "nav:'playlists'", "openPlaylists(push)")
-        self.assertPageContains(
-            "$('#drawer').querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));")
-        self.assertPageContains("e.stopPropagation();navTo(b.dataset.nav)})")
         # 派发只能存在一处；再出现第二份就是下一次漂移。
         self.assertEqual(self.app_js.count("ROUTES.find(spec=>spec.nav===k"), 1,
                          "导航跳转只能查一次路由表")
@@ -3759,34 +3656,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 直达「已保存」这一档。筛选现在由 URL 驱动，光设全局会被 openFollow 照
         # URL 推回未看，所以状态必须先写进 URL 再重取。
         self.assertPageContains("followFilter='saved';route(followViewPath());openFollow(false)}")
-
-    def test_scrim_never_covers_the_drawer_it_dims(self):
-        """遮罩铺满全屏。它排在抽屉之上时，抽屉里每一下点击都落在遮罩上，
-        而遮罩的 onclick 是「收起抽屉」——表现就是能弹出、什么都点不到、一点就关。
-
-        契约有两条，都不能各自拍数：
-
-        1. 遮罩必须低于抽屉，否则抽屉里点不到任何东西。
-        2. 抽屉打开时窄栏不得吃掉抽屉的点击——要么窄栏**严格**排在抽屉之下，要么它被显式停用。
-           相等不算「在下面」：那时先后由 DOM 顺序决定，不是可依赖的契约。
-           当前设计走后者：抽屉就是窄栏的展开态，展开时窄栏 `pointer-events:none` 让位。
-        """
-        import re as _re
-
-        def layer(selector):
-            # 同一个选择器可能声明多次（窄栏就是），生效的是最后一条。
-            found = _re.findall(_re.escape(selector) + r"\{[^}]*?z-index:(\d+)", self.page)
-            self.assertTrue(found, f"{selector} 应该显式写出 z-index")
-            return int(found[-1])
-
-        scrim, drawer, rail = layer(".scrim"), layer(".drawer"), layer(".edge")
-        self.assertLess(scrim, drawer, "遮罩压在抽屉上面，抽屉就点不动了")
-        # `>=` 而不是 `>`：两者相等时先后由 DOM 顺序决定，那不是任何人该依赖的契约，
-        # 同样要求展开时让位。
-        if rail >= drawer:
-            self.assertIn("body.drawer-open .edge{opacity:0;pointer-events:none}",
-                          self.page,
-                          "窄栏排在抽屉之上时，展开必须让位，否则它会吃掉抽屉的点击")
 
     def test_state_pages_ask_for_facets_narrowed_to_that_state(self):
         """只改数据层不够：前端不把 state 传上去，顶部三层依旧是全库口径。"""
@@ -3896,15 +3765,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains('.selectiondock[hidden]{display:none}')
         self.assertNotIn("selection.active=selectMode", self.page)
 
-    def test_collapsed_rail_is_divided_from_the_content_beside_it(self):
-        """窄栏和内容区背景接近，没有分割线就看不出左边那一条到哪里为止。
-
-        只管收起的状态：抽屉展开时从 `left:0` 盖住窄栏，分界由抽屉自己的右边框接管。
-        """
-        rail = self.page.split(".edge{position:fixed", 1)[1].split("}", 1)[0]
-        self.assertIn("border-right:1px solid var(--line-soft)", rail)
-        self.assertNotIn("border-right:0", rail)
-
     def test_every_page_title_uses_one_size(self):
         """管理区 26px、索引页 20px、播放列表 28px，从侧栏一路点过去就是三种大小。
 
@@ -3989,7 +3849,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertRoute('/performers', "nav:'performers'")
         self.assertRoute('/tags', "nav:'tags'")
         self.assertPageContains("if(k==='')return path==='/'&&!manageSection()&&!state.state")
-        self.assertPageContains("buildEdge();     // 顶层高亮跟随管理区")
+        self.assertPageContains("syncNavigation();     // 顶层高亮跟随管理区")
 
     def test_manage_surfaces_hide_the_home_rails(self):
         """回收站和垃圾文件是行政列表，不该顶着首页的人物/厂牌横条。
@@ -4200,7 +4060,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("q:'',jav:'',thumb:'0'};")
         self.assertPageContains("function openHome(scroll=false){")
         self.assertPageContains("resetHomeState();route('/');clearSearchField();disposeStage(false);showHomeSurfaces();")
-        self.assertPageContains("buildEdge();buildBars();loadCatalog();")
+        self.assertPageContains("syncNavigation();buildBars();loadCatalog();")
         # 抽屉和窄栏已经共用 navTo，这一句只应该存在一处；
         # 两份副本正是当初把追更入口漏在抽屉里的原因。
         self.assertEqual(self.page.count("function navTo(k){"), 1,
@@ -4216,7 +4076,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("['cleanup','数据管理','hard-drive']")
 
     def test_sidebar_glow_lives_inside_the_drawer_and_drifts_like_its_glass(self):
-        """光晕是侧栏玻璃面自带的那两团慢漂反光换成的三枚，长在 `.drawer` 里面。
+        """光晕是侧栏玻璃面自带的那两团慢漂反光换成的三枚，长在抽屉 `#drawer` 里面。
 
         铺在页面身后的那一版是背景不是光晕——正文和卡片压在它上面，字读不出来。所以这一层
         `position:absolute;inset:0` 待在抽屉内部，溢出连圆角一起被抽屉的 overflow 裁掉。
@@ -4226,14 +4086,15 @@ class WebUiSourceTests(unittest.TestCase):
         两条时长按 `--glow-drift-scale` 同比缩放，41:67 的比例不变——两条一样长就退化成
         一条来回滑动的直线；拉到停住走 `animation-play-state`，淡入那一条不跟着停。
         """
-        css = stylesheet_source() + (Path(__file__).resolve().parents[1]
-                                     / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn('<aside class="drawer" id="drawer"><div class="glowlayer" aria-hidden="true">'
+        root = Path(__file__).resolve().parents[1]
+        css = stylesheet_source() + (root / "web/board.css").read_text(encoding="utf-8") + (
+            root / "frontend/src/react/sidebar/sidebar.css").read_text(encoding="utf-8")
+        self.assertIn('<aside id="drawer" data-sidebar-drawer><div class="glowlayer" aria-hidden="true">'
                       '</div>', self.page, "光晕层是抽屉的第一个子元素")
         layer = css.split(".glowlayer{", 1)[1].split("}", 1)[0]
         self.assertIn("position:absolute;inset:0;z-index:-2", layer,
-                      "-1 已经归了 .navglide，光晕要在它下面、玻璃填充之上")
-        self.assertIn(":root:not([data-glow-native]) .drawer.drawer"
+                      "-1 已经归了选中项那块玻璃，光晕要在它下面、玻璃填充之上")
+        self.assertIn(":root:not([data-glow-native]) [data-sidebar-drawer][data-sidebar-drawer]"
                       "{--glass-drift-a:none;--glass-drift-b:none}", css)
         rule = css.split(".glowlayer::before{", 1)[1].split("}", 1)[0]
         self.assertEqual(rule.count("radial-gradient("), 3, "三枚光晕，不多也不少")
@@ -4498,7 +4359,7 @@ class WebUiSourceTests(unittest.TestCase):
         全在样式表里，存的只是倍率的档位。几何一旦按算完的百分比进了 localStorage，改形状
         就再也改不动那些存过的机器。
         """
-        self.assertPageContains("sidebarOrder:DEFAULT_SIDEBAR_ORDER,homeGlow:DEFAULT_HOME_GLOW,"
+        self.assertPageContains("sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],homeGlow:DEFAULT_HOME_GLOW,"
                                 "accent:DEFAULT_ACCENT}")
         self.assertPageContains("const DEFAULT_HOME_GLOW={on:true,preset:'ash',strength:100,noise:0,"
                                 "speed:100,soften:50,size:50,\n  ...glowPalette('ash')}")
@@ -4722,7 +4583,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn(".board-glow-mark{position:absolute;right:0;bottom:0;display:block;width:10px;height:16px}", css)
         self.assertNotIn(".board-glow-dot{", css)
         # 收起时侧栏只有 60px，两枚键排成一列。
-        self.assertIn(".drawer:not(.open) .board-foot-actions{flex-direction:column}", css)
+        self.assertIn("[data-sidebar-drawer]:not(.open) .board-foot-actions{flex-direction:column}", css)
 
     def test_the_colour_card_drops_the_glow_row_while_the_glow_is_off(self):
         """光晕关掉之后配色卡里只剩强调色，钮上那枚点改说强调色。
@@ -5095,11 +4956,10 @@ class WebUiSourceTests(unittest.TestCase):
                       self.read_react("settings-panel/sidebar-order.tsx"))
         self.assertPageLacks("$('#searchMenu').hidden=true")
 
-    def test_board_batch_three_aligns_ranks_buttons_and_the_sidebar_switcher(self):
+    def test_board_batch_three_aligns_ranks_and_buttons(self):
         """管理页标题四种布局都对齐 1120；
         主按钮与 Board 按钮同一副 36px 盒子；批量条隐藏键真的隐藏、回收站键用 error 渐变；
-        复核页宽度与内容列同宽、分类栏留在原地；通知的状态圆用 lucide circle-alert；
-        侧栏切换器是 32px 圆标识加名字加箭头，悬停外描一圈线，收起键只有 20px 高。
+        复核页宽度与内容列同宽、分类栏留在原地；通知的状态圆用 lucide circle-alert。
         """
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".geist-fieldset-footer>a,.geist-fieldset-footer>button).primary{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);", board)
@@ -5110,10 +4970,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 这一颗只是不在上面那份尺寸名单里，面色跟站内每一颗危险键同一份，见
         # `test_the_danger_tier_has_one_face_and_crossfades_into_its_hover`。
         self.assertIn("height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium)}", board)
-        self.assertIn(".board-sidebar-head #brandHome::before{content:'';position:absolute;inset:-5px -6px;border:2px solid var(--color-border-button-default);border-radius:999px;", board)
-        self.assertIn(".board-sidebar-head #brandHome .mark{width:32px;height:32px;border-radius:50%;background:var(--color-background-tertiary-default)}", board)
-        self.assertIn(".drawer .board-sidebar-head #filterBtn{width:20px;height:20px;padding:0;background:none;box-shadow:none}", board)
-        self.assertIn(".drawer:not(.open) .board-sidebar-head #filterBtn{width:36px;height:20px}", board)
+        # 侧栏切换器与收起键归侧栏岛的样式表，由 e2e `design.test.ts` 读计算值。
         self.assertPageContains('<symbol id="i-circle-alert" viewBox="0 0 24 24">')
 
     def test_the_library_icon_choices_exist_on_the_server_and_in_the_sprite(self):
@@ -5152,7 +5009,7 @@ class WebUiSourceTests(unittest.TestCase):
         证据切换与版式切换是同一枚分段滑块。
 
         随之对齐的还有：排序行里的分段控件与排序键同高（30px）；管理页标题只在 812px
-        窄列页面居中，别处与面包屑同一条左边线；侧栏收起键 36px、10px 圆角；详情页门挡
+        窄列页面居中，别处与面包屑同一条左边线；详情页门挡
         铺满播放器格、只圆左上角；首页女优与厂牌两排同一枚 34px 灰 Pill；沉浸模式的
         随机流不进脱盘来源的片子。
         """
@@ -5173,7 +5030,6 @@ class WebUiSourceTests(unittest.TestCase):
         # test_the_two_bodies_of_evidence_switch_as_a_segmented_control。
         self.assertIn(".insightpanel>header h3,.insightcopy>span{margin:0;font:var(--board-heading);color:var(--color-text-primary)}", board)
         self.assertIn("body :is(#manageTitle,#manageCrumb,#manageLede){max-width:var(--board-content);width:100%;margin-left:auto;margin-right:auto}", board)
-        self.assertIn(".drawer .board-sidebar-head #filterBtn{border-radius:0;color:var(--color-text-secondary);", board)
         # 门挡铺满播放器格、没图的身份头像画首字盘：作品详情岛，`frontend/e2e/design.test.ts` 量。
         # 头像条：女优是竖排人像格（48px 圆头像在上、名字在下），厂牌是 40px 的灰 Pill（28px 圆标识在左）。
         # 这一份给关注页骨架与人物页同台艺人；首页那两排归 `catalog-filter` 岛。
@@ -5272,10 +5128,9 @@ class WebUiSourceTests(unittest.TestCase):
         # 左半边筛选键的悬停填充由 `frontend/e2e/design.test.ts` 读计算样式。
 
     def test_drawer_filters_follow_entity_and_detail_context(self):
-        self.assertPageContains('function buildDrawerNavigation()')
-        self.assertPageContains('syncSidebarSurface(scroll,key)')
+        # 换页时侧栏收回到只剩导航、各页推来自己那几组，由 `frontend/test/react/sidebar.test.tsx`
+        # 与 e2e `sidebar.test.ts` 在五处页面上核对。
         self.assertCode('surfaceEpoch++;\n  barsRequestSeq++;')
-        self.assertPageContains('key=surfacePath()+location.search')
         self.assertPageLacks("api('/api/follow/tags?limit=30')")
         self.assertPageContains('loaded:tags=>renderFollowDrawer(tags),')
         self.assertPageContains('renderFollowDrawer(sidebarTagCounts([{tags:followCardTags(item)}]))')
@@ -5291,11 +5146,8 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("routeEntityPage(barsContext.kind,barsContext.name,filters);")
         self.assertPageContains("function commitContextFilter(mutate)")
         self.assertPageContains("const params=new URLSearchParams(entityFilterSearch(filters));")
-        # 没有数据的区块不渲染，画幅也必须来自 scoped API，不能硬画横屏/竖屏两个按钮。
-        self.assertPageContains("sidebarSectionHtml(t,b,x,cat)")
-        self.assertPageContains("const chips=(items,key,multi,limit)=>items.length?")
-        self.assertPageContains("chips(facetData.orientations,'orient')")
-        self.assertPageLacks("chips([{k:'竖屏'},{k:'横屏'}],'orient')")
+        # 没有数据的区块不渲染（侧栏岛的用例核对），画幅也必须来自 scoped API，不能硬画横屏/竖屏两个按钮。
+        self.assertPageContains("orientations:rows(facetData.orientations)")
 
     def test_changing_a_filter_takes_the_reader_back_to_the_top_of_the_new_list(self):
         """换筛选就回到新名单的开头，等数据的那一下铺骨架。
@@ -5338,17 +5190,14 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertCode(
             "    routeEntityPage(barsContext.kind,barsContext.name,filters);\n"
             "    applyFilterStateInPlace(filters);refreshFacetCounts(barsContext);return")
-        # 首页筛选条与资料页那排由各自的岛照推过去的 props 画，侧栏那些芯片就地改。
+        # 首页筛选条、资料页那排与侧栏都由各自的岛照推过去的 props 画；侧栏只换按下态与计数，
+        # 展开的组和这一列的位置不动，由 `frontend/test/react/sidebar.test.tsx` 与 e2e 核对。
         self.assertPageContains("  if(barsContext.type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});")
-        self.assertPageContains("$('#drawer').querySelectorAll('.chip[data-key]')")
-        # 轨道上那截填充由 oninput 算，改 value 不会自己触发。
-        self.assertPageContains("    durMin.dispatchEvent(new Event('input'));")
         self.assertPageContains("  renderCombo();")
         self.assertCode(
             "  const seq=++facetCountsSeq;\n"
             "  const [facetData]=await getBarsData(context);\n"
             "  if(seq!==facetCountsSeq)return;")
-        self.assertPageContains("  $('#drawer').querySelectorAll('.chip[data-key] .n').forEach(el=>{")
         # 从详情回到列表是换语境，不是换一条筛选：那几排本来就要照新语境重新画。
         detail = self.app_js.split("if(barsContext.type==='item'){", 1)[1]
         self.assertIn("buildBars();loadCatalog();return", detail[:detail.index("\n}")])
@@ -5413,47 +5262,9 @@ class WebUiSourceTests(unittest.TestCase):
         挤掉，关掉时整排头像连 `<img>` 一起重建。
         """
         self.assertPageContains("const pickedTags=seededSample(tagPool,TAGS_FIRST,`tags:${state.seed||''}`);")
-        self.assertPageContains("+sec('内容标签',chips(facetData.tags,'tag',false,30)")
+        self.assertPageContains("creators:rows(creators),tags:rows(facetData.tags),tech:rows(facetData.tech),")
         self.assertPageLacks("if(context.type==='item'&&!topTags.length)")
         self.assertPageLacks("const recommendationFacets=await api('/api/facets'")
-
-    def test_a_truncated_sidebar_list_says_so_at_its_own_end(self):
-        """侧栏名单没列完时，末尾那枚箭头接着摊开，再按一下把整组放回去。
-
-        它说的是「这张名单还没完」——要跟名单断掉的地方在一起。挂在标题上时，人得先把
-        这一列读到底、再抬头回到标题去找它；而标题那一行的职责是开合这一组，旁边多一个
-        按钮，点哪儿会展开就成了两件要分辨的事。
-
-        身量取排名卡上那枚展开药丸：40×20 居中，14px 箭头随 `aria-expanded` 翻面。摊开
-        之后按下去收的是整组——名单已经到最长，把它退回二十几条只是换一个断点，人还站
-        在同一列读不完的东西前面。
-        """
-        self.assertPageContains(
-            "scopedCreators.length>26?sidebarMoreHtml('creator','创作者'):''")
-        self.assertPageContains("facetData.tags.length>30?sidebarMoreHtml('tag','内容标签'):''")
-        self.assertPageContains(
-            "<button class=\"sidemore\" data-more=\"${key}\" aria-expanded=\"false\""
-            " aria-label=\"展开全部${group}\">"
-            "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><use href=\"#i-chevron-down\"/></svg></button>")
-        # 展开与收起是同一枚按钮的两面，不另开一处入口。
-        self.assertPageContains("group.querySelector('.chips').outerHTML=chips(src,k,false,expanded?lim:999);")
-        self.assertPageContains("b.setAttribute('aria-expanded',String(!expanded));")
-        self.assertPageContains("if(expanded)group.querySelector('.board-section-toggle').click();")
-        # 摊开那一下和分组 Collapse 走同一份高度过渡，不是整段名单瞬间铺出来。
-        self.assertPageContains("if(!expanded&&body)growCollapse(body,before,()=>toggle.getAttribute('aria-expanded')==='true');")
-        self.assertPageContains("export function growCollapse(body,start,isCurrent=()=>true){")
-        # 摊开的内容全在按下的这个点以下，这一列停在哪儿归人自己管。
-        self.assertPageContains("const scroller=$('#drawerScroll'),keep=scroller.scrollTop;")
-        self.assertPageContains("bind();hold();requestAnimationFrame(hold);});")
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(
-            ".drawer .board-sidebar-body .sidemore{display:grid;place-items:center;"
-            "width:40px;height:20px;margin:6px auto 2px;", board)
-        self.assertIn(".drawer .board-sidebar-body .sidemore[aria-expanded=true] svg{transform:rotate(180deg)}",
-                      board)
-        self.assertNotIn(
-            ".drawer .sec:has(.board-section-toggle[aria-expanded=false]) [data-more]", board,
-            "它落在组的正文里，折叠时跟正文一起收走，不必单独藏")
 
     def test_the_discovery_tag_row_changes_with_the_batch_seed(self):
         """标签条跟着「换一批」的种子换成员，同一批内不动。
@@ -5956,21 +5767,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("/api/trash/empty")
         self.assertPageContains("r.blocked&&r.blocked.length")
 
-    def test_closed_scrim_leaves_the_render_tree(self):
-        """iOS 26 的 Safari 按贴边、铺满宽度的 fixed 元素底色给状态栏和地址栏取色，opacity:0 的也算。
-        遮罩收起时必须 display:none，淡入淡出靠 allow-discrete 与 @starting-style 保住。"""
-        self.assertPageContains(".scrim{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.42);opacity:0;pointer-events:none;display:none;")
-        self.assertPageContains("transition:opacity .18s,display .18s allow-discrete}")
-        self.assertPageContains(".scrim.on{display:block;opacity:1;pointer-events:auto}")
-        self.assertPageContains("@starting-style{.scrim.on{opacity:0}}")
-
-    def test_mobile_scrim_shell_is_skipped_by_ios_status_bar_tinting(self):
-        """窄屏侧栏遮罩铺满视口、底色半透明，iOS 26 的 Safari 会把它当压暗层给状态栏取色。暗色画在 ::before 上，
-        遮罩外壳 visibility:hidden，Safari 跳过这层沿用顶栏的颜色，一开侧栏状态栏不整块变暗。"""
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn("  .scrim.scrim.on{top:0;z-index:101;background:none;visibility:hidden}\n"
-                      "  .scrim.scrim.on::before{content:'';position:absolute;inset:0;background:#0007;visibility:visible}\n", board)
-
     def test_card_hover_hides_source_and_duration_and_missing_size_is_explicit(self):
         self.assertPageContains('.card:hover .badge,.card:hover .dur{opacity:0}')
         # max-height 兜住 WebKit：标题里的番号块是 inline-flex，line-clamp 在那里不截。
@@ -6036,11 +5832,10 @@ class WebUiSourceTests(unittest.TestCase):
         # 限宽已回退：整条规则不许再出现（重排导航/标题前是已知的坏版式）。
         self.assertPageLacks("max-width:1004px;margin-inline:auto")
         self.assertPageContains("document.body.dataset.surface=url.pathname")
-        # 导航激活态随路由重算：抽屉/窄栏按钮是 buildBars 时一次性画的，
-        # 管理页不跑 buildBars，不重算就会停留在上一个页面的按下态。
+        # 导航激活态随路由重算：管理页不跑 buildBars，不重算就会停留在上一个页面的按下态。
+        # 侧栏岛接到 `navChanged` 就按宿主的 `navOn` 重读，由侧栏岛的用例核对。
         self.assertPageContains("paintNav();")
         self.assertPageContains("function paintNav(){")
-        self.assertPageContains(".edge button[data-nav],#drawer .dnav button[data-nav]")
         # 组合标签：pill 按按下态逐个命中；combo 芯片显示显示名、操作用原始 key。
         self.assertPageContains("selected:tagPressed(filters.tag,row.k)")
         self.assertPageContains("tagList(filters.tag).forEach(t=>items.push({kind:'untag',key:t,label:tagLabel(t)}));")
@@ -6110,20 +5905,15 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("appSettings.ambientMode=appSettings.ambientMode!==false")
         self.assertPageContains("appSettings.theaterMode=appSettings.theaterMode===true")
         # 关注自动更新与侧栏排序两格归 `settings-panel` 岛，写接口与侧栏当场重排由
-        # `frontend/e2e/settings-panel.test.ts` 守。
-        self.assertPageContains("appSettings.sidebarOrder")
-        self.assertPageContains("if(!appSettings.sidebarOrder.length)appSettings.sidebarOrder=[...DEFAULT_SIDEBAR_ORDER]")
-        self.assertPageContains("orderedEdgeIcons()")
+        # `frontend/e2e/settings-panel.test.ts` 守。侧栏顺序的规范化（认旧键、去重、空则回默认）
+        # 与可钉的键归 `frontend/src/sidebar.ts`，由 `frontend/test/sidebar.test.ts` 守；侧栏里
+        # 拖动排序归侧栏岛，写回与刷新后保持由 `frontend/e2e/sidebar.test.ts` 守。
+        self.assertPageContains("appSettings.sidebarOrder=normalizeSidebarOrder(appSettings.sidebarOrder);")
         # 遗留层的拖动排序一份：播放队列调它。设置面板那一列在岛里按 `data-*` 状态自画，
         # 行会随「添加」长出来，那一份按挂接时的行快照接监听，接不住后来的行。
         self.assertPageContains("export function wireDragReorder(root,{selector,attribute,onMove}={})")
         self.assertPageContains("wireDragReorder:(root,options)=>wireDragReorder(root,options),")
-        self.assertPageContains("function wireNavigationDrag(root){")
-        self.assertPageContains("wireNavigationDrag($('#edge'))")
-        self.assertPageContains("wireNavigationDrag($('#drawer').querySelector('.dnav'))")
-        self.assertPageContains('data-nav="${k}" draggable="true"')
         self.assertPageLacks("data-sidebar-add-select")
-        self.assertPageContains("const OPTIONAL_SIDEBAR_KEYS=['playlists','immerse','stats','review','data-cleanup','trash','follow-manage','quality']")
         self.assertPageContains("if(DIRECT_MANAGE_NAV[k]){openManage(DIRECT_MANAGE_NAV[k]);return}")
 
     def test_the_thumbnail_density_is_this_machines_state_not_this_browsers(self):
@@ -6748,7 +6538,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 选中那枚的填充只有一处，就是那块玻璃自己。
         self.assertNotIn('.board-filter-frame #tagbar .pill[data-state][aria-pressed="true"]{'
                          'background:var(--picked)', board)
-        self.assertIn(".viewglide.viewglide,[data-view-glide][data-view-glide],.drawer.drawer>.navglide{"
+        self.assertIn(".viewglide.viewglide,[data-view-glide][data-view-glide]{"
                       "position:absolute;left:0;top:0;z-index:0;pointer-events:none;", board)
         self.assertIn("backdrop-filter:var(--glass-pick);", board)
         # 位移和形变各占一个独立属性：一条属性上只放得下一段动画，而这两下的时间
@@ -6872,13 +6662,11 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("--spring-press:linear(0,0.1659,", board)
         self.assertIn(",1.0066,1.084,1.0861,1.069,", board)
         self.assertIn("--spring-press-ms:208}", board)
-        self.assertIn(".dnav button,.pill,.sorts button{"
+        self.assertIn(".pill,.sorts button{"
                       "transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press)}", board)
-        # 窄栏自己带一段填充过渡，`transition` 是整份覆盖，漏掉它悬停的渐变就没了。
-        self.assertIn(".edge button{transition:scale calc(var(--spring-press-ms) * 1ms) "
-                      "var(--spring-press),background .12s}", board)
-        self.assertIn(".dnav button:active,.pill:active,.sorts button:active,.edge button:active{"
+        self.assertIn(".pill:active,.sorts button:active{"
                       "scale:.96;transition:scale .06s ease-out}", board)
+        # 侧栏导航与时长手柄的同一套按压归侧栏岛，由 e2e `design.test.ts` 读计算值。
         self.assertIn(":is(.followauthors,.followworks,.relatedpeople) .av:active,"
                       ":is(.followauthors,.followworks) .brandpill:active"
                       "{scale:.96;transition:scale .06s ease-out}", board)
@@ -6898,90 +6686,12 @@ class WebUiSourceTests(unittest.TestCase):
         渐变没有这一层。柔边本身要留着——一条硬边扫过整屏，读出来是一块板在推。
         """
         source = (Path(__file__).resolve().parents[1]
-                  / "frontend/src/sidebar-groups.ts").read_text(encoding="utf-8")
+                  / "frontend/src/theme-transition.ts").read_text(encoding="utf-8")
         self.assertIn("const mask='radial-gradient(circle closest-side,"
                       "#000 78%,#0006 88%,transparent)';", source)
         self.assertNotIn("feGaussianBlur", source)
         self.assertIn("will-change:mask-position,mask-size;"
                       "animation:peach-theme-reveal 560ms cubic-bezier(.16,1,.3,1) both}", source)
-
-    def test_the_sidebar_current_item_is_a_pane_of_glass_that_slides_down_the_rail(self):
-        """侧栏的当前项是压在侧栏那块玻璃上的又一块玻璃，它在这一列里滑。
-
-        这一屏铺开玻璃之后，一块蓝实底就成了唯一不透光的地方，看着像贴上去的另一套
-        控件；蓝色在这套配色里只归焦点环和链接，导航的当前项靠比邻居高出一层来说话。
-        抽屉那一列的这块玻璃归 `.navglide` 一块，按钮自己只管字色：两边都铺的话，静止
-        态是一块不动的底压在滑过来的玻璃上，切换时只看得见它瞬间换位置。窄栏那一列是
-        图标，一列里认哪个亮着靠的就是那一格自己，它照旧各铺各的。
-        它跟筛选条那一排是同一块玻璃、同一条弹簧，只是换了根轴：竖排缩 Y。
-        `filter:none` 不能省：抽屉那边给当前项的悬停和按下写了 `brightness(1.08)`，
-        留着会把这块玻璃连同它身后的内容一起推亮一档。
-        抽屉那一列的悬停也归这块玻璃：指到哪一格它滑过去，指针离开这一列再滑回当前项。
-        格子底下另垫一层薄白就是两套反馈同时说话——薄白说「鼠标在这儿」，玻璃说「你在
-        这儿」，指针停在别的格上时这两句话指着两个地方。薄白留给窄栏，那一列没有会滑
-        的玻璃。委托挂在 `#drawer` 上，那一列每次切页整块重画都不必再接一遍；用的是会
-        冒泡的 `pointerover`／`pointerout`，enter／leave 委托接不到。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        app = (Path(__file__).resolve().parents[1] / "web/app.js").read_text(encoding="utf-8")
-        self.assertIn('.drawer.drawer.drawer .dnav button[aria-pressed="true"],\n'
-                      '.drawer.drawer.drawer .dnav button[aria-pressed="true"]:hover,\n'
-                      '.drawer.drawer.drawer .dnav button[aria-pressed="true"]:active{\n'
-                      "  background:none;backdrop-filter:none;-webkit-backdrop-filter:none;\n"
-                      "  color:var(--glass-text);filter:none;box-shadow:none}", board)
-        self.assertIn('.edge.edge.edge button[aria-pressed="true"],'
-                      '.edge.edge.edge button[aria-pressed="true"]:hover{\n'
-                      "  background:linear-gradient(180deg,var(--glass-sheen),transparent 62%),"
-                      "var(--glass-pick-fill);\n"
-                      "  backdrop-filter:var(--glass-pick);-webkit-backdrop-filter:var(--glass-pick);\n"
-                      "  color:var(--glass-text);filter:none;", board)
-        self.assertIn('.edge.edge.edge button:not([aria-pressed="true"]):hover{\n'
-                      "  background:color-mix(in srgb,var(--glass-rim) 26%,transparent);"
-                      "color:var(--glass-text)}", board)
-        self.assertIn(".drawer.drawer.drawer .dnav button:hover{background:none;"
-                      "color:var(--glass-text)}", board)
-        self.assertIn("const active=(target&&target.isConnected?target:null)\n"
-                      "    ||(scroll&&scroll.querySelector('.dnav button[aria-pressed=\"true\"]'));", app)
-        self.assertIn("  const button=event.target.closest?.('.dnav button[data-nav]');\n"
-                      "  if(button)syncNavGlide(true,button);", app)
-        self.assertIn("  const column=event.target.closest?.('.dnav');\n"
-                      "  if(column&&!column.contains(event.relatedTarget))syncNavGlide(true);", app)
-        # 那块玻璃住在 `#drawer` 上：切页会把 `#drawerScroll` 整块重画，住在里面的话
-        # 它跟着一起没，动画在第一个微任务里就断了。
-        self.assertIn(".drawer.drawer>.navglide{border-radius:10px;z-index:-1}", board)
-        self.assertIn("navGlide.className='navglide';", app)
-        self.assertIn("navGlide.setAttribute('aria-hidden','true');host.prepend(navGlide);navGlideBox=null;", app)
-        self.assertIn("const box={x:active.offsetLeft,y:active.offsetTop-scroll.scrollTop,", app)
-        # 激活态只有 `paintNav` 这一个权威出口，玻璃从那里起跑。
-        self.assertIn("    .forEach(b=>b.setAttribute('aria-pressed',String(navOn(b.dataset.nav))));", app)
-        self.assertIn("  syncNavGlide(true);\n}", app)
-        # 换的是轴，不是另一套动画：竖排缩 Y，走的还是那一块的搬运函数。
-        self.assertIn("moveGlidePane(navGlide,animate?from:null,box,'y');", app)
-        self.assertPageContains("{scale:axis==='y'?`1 ${grow}`:`${grow} 1`,offset:.3},{scale:'1 1',offset:1}],")
-        self.assertIn("wireNavigationDrag($('#drawer').querySelector('.dnav'));\n  syncNavGlide(false);", app)
-
-    def test_the_sidebar_pane_lands_on_the_layout_that_settles_not_the_one_mid_flight(self):
-        """那块玻璃画完下一帧再对一次位置，对的是当次那一格自己。
-
-        切一次页那一列要被画两遍：先是导航自己那一遍，跟着是发现栏连侧栏一起重画的那一
-        遍，两遍的标题行相差 4px。同步落在第一遍的读数上，玻璃就钉在那儿——一次切页留
-        下 4px，来回切几次它离当前那一格越来越远。
-
-        复对认的是当次传进来的那一格，不重新去找按下态：指针悬在别的格上时，按下态是另
-        一格，照它对等于把跟着指针走的那块玻璃拽回去。位移正在跑就等它跑完，改终点会把
-        走到一半的那段掐掉；切页那次动画正好压在重画上，只看一帧就放弃的话，要对的正是
-        这一次。
-        """
-        app = (Path(__file__).resolve().parents[1] / "web/app.js").read_text(encoding="utf-8")
-        self.assertIn("let navGlide=null,navGlideBox=null,navGlideTarget=null;", app)
-        self.assertIn("  navGlideTarget=active||null;", app)
-        self.assertIn("    const scroll=$('#drawerScroll'),active=navGlideTarget;", app)
-        self.assertIn("    if(navGlide.getAnimations().length){\n"
-                      "      if(performance.now()<until)settleNavGlide(until);\n"
-                      "      return;\n    }", app)
-        self.assertIn("    if(box.x===navGlideBox.x&&box.y===navGlideBox.y\n"
-                      "      &&box.w===navGlideBox.w&&box.h===navGlideBox.h)return;", app)
-        self.assertIn("  moveGlidePane(navGlide,animate?from:null,box,'y');\n  settleNavGlide();", app)
 
     def test_two_soft_lights_drift_across_every_pane_on_two_coprime_clocks(self):
         """玻璃面上那两团光在极慢地挪，横竖两根轴各走各的钟。
@@ -7248,46 +6958,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 页号各排各记：共用一个的话，先到头的那排会替另一排把页翻过去。续排本身归岛（`usePaged`）。
         self.assertPageContains("const rows=(await loadTops(topsQueryParams(pages.context,++pages[kind])))[kind]||[];")
         self.assertPageContains("if(page)params.set('page',String(page));")
-
-    def test_both_ends_of_a_range_slider_always_report_their_value(self):
-        """时长两端的读数常显：这里是唯一报数的地方。
-
-        藏到碰上去才出现的话，不动滑块就看不出当前筛的是哪一段；另起一行写
-        「不限 — 不限」则是同一件事说第二遍，而且滑块不动时它永远是那句话。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn("white-space:nowrap;box-shadow:var(--elevation-xs);pointer-events:none}", board)
-        self.assertNotIn(".board-range-tip[data-range-end=max]{opacity:1}", board)
-        # 两端拖到一起时它们会叠，刚动过的那枚压在上面：底下那枚报的是自己停下的位置。
-        self.assertIn(".board-range-tip[data-range-active]{z-index:2}", board)
-        controls = (Path(__file__).resolve().parents[1] / "frontend/src/board-controls.ts").read_text(encoding="utf-8")
-        self.assertIn("  group.querySelectorAll('.board-range-tip').forEach(node=>\n"
-                      "    node.toggleAttribute('data-range-active',node===tip));", controls)
-        self.assertIn("tip.textContent=value>=max&&end==='max'?'不限':`${value} 分钟`;", controls)
-        for gone in ("durMinText", "durMaxText", "duration-readout"):
-            self.assertPageLacks(gone, "时长读数只由手柄上那两枚气泡承担")
-
-    def test_a_range_readout_never_hangs_off_the_rail_it_reports_for(self):
-        """读数气泡越过轨道两端的那一截按实测收回来，不靠两端各写一个固定对齐。
-
-        这一排住在侧栏里，侧栏只比轨道宽出一点点：气泡对着手柄居中，手柄推到端点时
-        伸出去的半截会被侧栏裁掉，屏幕上只剩半个数。按端点写死 `translateX(-100%)`
-        又会让气泡在中段偏出手柄一整个身位——两端对齐的是轨道，正在报数的却是手柄。
-        量之前先把上一次的位移清掉，否则量到的是已经收过一次的位置，越拖越偏。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn("transform:translateX(calc(-50% + var(--range-tip-shift,0px)))", board)
-        for pinned in (".dual-range .board-range-tip[data-range-end=max]{transform:translateX(-100%)}",
-                       ".board-range-tip[data-range-end=min]{transform:none}"):
-            self.assertNotIn(pinned, board)
-        controls = (Path(__file__).resolve().parents[1]
-                    / "frontend/src/board-controls.ts").read_text(encoding="utf-8")
-        self.assertIn("  tip.style.setProperty('--range-tip-shift','0px');\n"
-                      "  const bounds=group.getBoundingClientRect(),box=tip.getBoundingClientRect();\n"
-                      "  const shift=box.right>bounds.right?bounds.right-box.right\n"
-                      "    :box.left<bounds.left?bounds.left-box.left:0;\n"
-                      "  if(shift)tip.style.setProperty('--range-tip-shift',`${Math.round(shift)}px`);",
-                      controls)
 
     def test_a_selected_tab_is_marked_in_the_accent_blue(self):
         """选中的 tab 是蓝字加蓝线，全站两处下划线 Tabs 共用同一枚指示条。
@@ -7748,26 +7418,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn("menu.style.left=Math.max(16,Math.min(anchor.right+8,innerWidth-width-16))+'px';", ui)
         self.assertNotIn("Math.max(anchor.right,mount.getBoundingClientRect().right)", ui)
 
-    def test_the_sidebar_switcher_clears_the_first_nav_row(self):
-        """切换器和导航首项之间留 12px。
-
-        切换器展开时自己带一圈 2px 描边，首项又会抬起 hover 底：留 4px 的话这两块底色
-        是挨着的，读起来像切换器压在第一项上。
-        """
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".drawer .dnav{margin-top:12px;gap:4px}", board)
-
-    def test_a_filter_group_opens_only_when_something_in_it_is_active(self):
-        """一进侧栏只有正在生效的那几组是展开的。
-
-        挑两组常驻展开等于替人决定他这次要按哪个维度筛，而侧栏一屏就那么长，展开的
-        部分把别的组挤到看不见的地方去。记住的选择仍然优先于这个默认。
-        """
-        groups = (Path(__file__).resolve().parents[1] / "frontend/src/sidebar-groups.ts").read_text(encoding="utf-8")
-        self.assertIn("group.open=saved!==null?saved==='open':active;", groups)
-        self.assertNotIn("group.classList.contains('cat-src')", groups)
-        self.assertNotIn("group.dataset.sidebarGroup==='时长'", groups)
-
     def test_a_wide_glyph_gets_a_wide_slot_instead_of_being_shrunk_to_fit(self):
         """1.4:1 的字形锁死方形槽位只能按宽缩，画出来就比满格的邻座矮一截。
 
@@ -7809,21 +7459,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("function openFollowTagFromIndex(tag){")
         self.assertPageContains("followTags=new Set([tag]);")
         self.assertPageContains("$('#index').hidden=true;route(followViewPath());openFollow(false);\n}")
-
-    def test_the_drawer_lists_follow_tags_without_the_catalog_binding_stealing_them(self):
-        """抽屉里的关注标签必须保住自己的点击处理。
-
-        它们用 chip 的样式，而抽屉底下那句通用绑定在更后面执行：选择器写成 `.chip`
-        就会把它们一并接管，点下去等于按 undefined 筛目录，表现是跳回首页。目录芯片
-        都带 data-key，选择器收窄到它才分得开——这个坑真踩过一次。
-        """
-        self.assertPageContains("$('#drawer').querySelectorAll('.chip[data-key]')",
-                                "通用绑定会连关注标签一起接管")
-        self.assertPageLacks("$('#drawer').querySelectorAll('.chip').forEach")
-        self.assertPageContains("data-follow-drawer-tag=")
-        self.assertPageContains("followTags=new Set([b.dataset.followDrawerTag]);")
-        self.assertPageContains("openDrawer(false);route(followViewPath());openFollow(false)});")
-        self.assertPageContains(".chip.online{")
 
     def test_catalog_filters_are_only_seeded_from_a_catalog_url(self):
         """查询参数属于它所在的路由。
@@ -7962,7 +7597,7 @@ class WebUiSourceTests(unittest.TestCase):
         折叠是渲染时做的，所以改完必须重取当前列表：不重画的话，之前被跳过的
         那些卡不会自己冒出来，看上去像开关没生效。
         """
-        self.assertPageContains("groupCollapse:true,sidebarOrder:DEFAULT_SIDEBAR_ORDER,")
+        self.assertPageContains("groupCollapse:true,sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],")
         self.assertPageContains("appSettings.groupCollapse=appSettings.groupCollapse!==false;")
         # 开关在 `settings-panel` 岛的「浏览」组，只报 `groupCollapse`（vitest 守）；壳那一侧重取。
         self.assertPageContains("groupCollapse:()=>reloadCurrentSurface(),")
@@ -8676,7 +8311,7 @@ class BoardStyleIsolationTests(unittest.TestCase):
         rules = re.findall(r'([^{}]+)\{([^{}]*)\}', css)
         centering = [selector for selector, body in rules
                      if 'display:inline-grid' in body and 'place-items:center' in body]
-        self.assertTrue(any('#drawerClose' in selector for selector in centering))
+        self.assertTrue(any('.srctools button' in selector for selector in centering))
         self.assertFalse(any('.ib,' in selector or '.sidebaraddmenu button' in selector
                              for selector in centering))
 
@@ -8856,7 +8491,7 @@ class MotionRecipeTests(unittest.TestCase):
         # 起点那一帧不带过渡：带的话挂上去只是开始朝零缩，同一次调用里摘掉时回程无处可走。
         self.assertPageContains(
             ".countbadge.popped{transform:scale(0);opacity:0;filter:blur(2px);transition:none}")
-        self.assertPageContains("popBadges($('#drawerScroll'),'drawer')")
+        # 侧栏那一列只弹变了值的几枚，由 `frontend/test/react/sidebar.test.tsx` 换一份聚合核对。
 
     def test_titles_reveal_by_line_and_leave_no_filter_behind(self):
         """按行不按词：这几处标题正是最常被复制走的几段字，拆成一串 span 会散架。
