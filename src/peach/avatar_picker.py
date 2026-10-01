@@ -101,6 +101,10 @@ class Choice:
     #: 这部作品有几位演员（`cast_sizes`）。多于一位时封面上那张脸多半是领衔的另一位，
     #: `focus` 不围着它取景；0 是不知道（不是她馆藏里的作品）。
     cast: int = 0
+    #: 封面那张底图的版本（`cover_version`）。封面会被补高清、重探原地替换，地址不变；
+    #: 预览地址带上它才不会显示旧图，交框时回递它，服务端才认得出框是在哪一张上画的。
+    #: 图库与历史按内容寻址，九宫格从视频抽帧，都不会原地变，是空串。
+    version: str = ""
 
     def as_dict(self) -> dict:
         focus = (dict(zip(("x0", "y0", "x1", "y1"), self.focus))
@@ -109,7 +113,24 @@ class Choice:
                 "width": self.width, "height": self.height,
                 "detail": self.detail, "found_by": self.found_by,
                 "current": self.current, "crop": self.crop,
-                "bases": list(self.bases), "focus": focus, "cast": self.cast}
+                "bases": list(self.bases), "focus": focus, "cast": self.cast,
+                "version": self.version}
+
+
+def cover_version(cover: Path | None) -> str:
+    """一张封面文件此刻的版本：修改时间的十六进制纳秒。文件不在就是空串。"""
+    if cover is None:
+        return ""
+    try:
+        return f"{cover.stat().st_mtime_ns:x}"
+    except OSError:
+        return ""
+
+
+def _check_version(cover: Path | None, version: str | None) -> None:
+    """框是在 `version` 那一张封面上画的；封面此后被换过，同一组坐标就落在别的地方。"""
+    if version is not None and cover_version(cover) != version:
+        raise PickerError("这张封面刚换过，回候选重新框一次")
 
 
 def name_chain(connection: sqlite3.Connection, entity_id: int) -> list[str]:
@@ -284,7 +305,7 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
             width=width, height=height,
             detail=str(title or ""), crop=True, bases=tuple(bases),
             focus=cover_focus(key, cover, _focus_face(read_sidecar(cover), cast), width, height)
-            if size else None, cast=cast)))
+            if size else None, cast=cast, version=cover_version(cover) if size else "")))
     found.sort(key=lambda item: (-item[0], item[1]))
     return [choice for _area, _order, choice in found[:MAX_ASSET_CHOICES]]
 
@@ -355,7 +376,7 @@ def code_cover(code: str, cover_root: Path | None, providers_root: Path,
     focus = cover_focus(key, cover, face, *size)
     ref = f"cover:{key}"
     return Choice(ref=ref, source="code", label=key, width=size[0], height=size[1],
-                  crop=True, bases=(ref,), focus=focus)
+                  crop=True, bases=(ref,), focus=focus, version=cover_version(cover))
 
 
 def choices(connection: sqlite3.Connection, providers_root: Path,
@@ -485,7 +506,8 @@ class ArtworkSource:
 
 
 def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
-                 artwork: ArtworkSource | None) -> tuple[bytes, dict]:
+                 artwork: ArtworkSource | None,
+                 version: str | None = None) -> tuple[bytes, dict]:
     """`asset:<id>:cover` / `asset:<id>:cell<n>` → 那张图的字节和来源记录。
 
     作品必须真的挂在这个人身上才给。页面只会递自己刚列出来的那些，但这一层不能
@@ -510,6 +532,7 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
         key = normalise_code_key(row[0])
         path = (Path(artwork.cover_root) / f"{key}.jpg") if key else None
         label = "封面"
+        _check_version(path, version)
     elif what.startswith("cell"):
         try:
             cell = int(what[len("cell"):])
@@ -535,11 +558,15 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
 def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
             entity_id: int,
             transport: HttpTransport | None,
-            artwork: ArtworkSource | None = None) -> tuple[bytes, dict]:
+            artwork: ArtworkSource | None = None,
+            version: str | None = None) -> tuple[bytes, dict]:
     """把页面回递的 `ref` 换成图片字节和一份来源记录。
 
     `ref` 只认这里自己刚枚举出来的那些：图库候选要在索引里真的存在，历史候选要在
     缓存里真的有对象。页面递不进任意地址——手填地址是另一条路，它有自己的边界。
+
+    `version` 是交框时页面回递的封面版本（`Choice.version`）。给了就核对，封面在列出
+    候选之后被换过就拒收；只取预览图时不给。
     """
     if ref.startswith("sha256:"):
         digest = ref.split(":", 1)[1].strip().lower()
@@ -547,15 +574,16 @@ def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
         return body, {"source": "avatar picker", "provider": "history",
                       "external_id": digest[:12]}
     if ref.startswith("asset:"):
-        return _asset_image(ref, connection, entity_id, artwork)
+        return _asset_image(ref, connection, entity_id, artwork, version)
     if ref.startswith("cover:"):
         # 只读本机：出网那一步在 `code_cover` 里，由人输入番号时显式触发。来源记录里
         # 不写 `upstream_url`——`keep` 拿它当缓存键，写了会让框出来的那一块顶掉整张封面。
         key = normalise_code_key(ref.split(":", 1)[1])
-        body, _path = _code_cover_bytes(
+        body, path = _code_cover_bytes(
             key, artwork.cover_root if artwork else None, providers_root) if key else (None, None)
         if body is None:
             raise PickerError("这个番号的封面还没有取过")
+        _check_version(path, version)
         return body, {"source": "avatar picker", "provider": "code-cover",
                       "external_id": key, "asset_code": key}
     if not ref.startswith("gfriends:"):
