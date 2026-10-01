@@ -146,10 +146,6 @@ const shellProps = (over: Partial<Props> = {}): Props => ({
   openFollow: vi.fn(),
   cloudDownload: vi.fn(),
   readOnly: false, readOnlyMessage: '', writerUrl: '',
-  // 遗留层那条回落链的形状：先垫首字母，有图再叠一张。
-  avatarInner: vi.fn((name: string, entity: { id: number; has_image: boolean } | null) =>
-    `<span class="ini">${name.slice(0, 1)}</span>`
-    + (entity?.has_image ? `<img src="/entity-image?kind=performer&amp;id=${entity.id}" alt="">` : '')),
   ...over,
 });
 
@@ -636,7 +632,7 @@ function stubConfirm(accept: boolean) {
 
 it('地址栏指着订阅源时首屏就带着清单，开关、移除与立即拉取都落到订阅源的接口上', async () => {
   stubConfirm(true);
-  const { host, fetcher, props } = await open({ feeds: FEEDS }, { tab: 'feeds' });
+  const { host, fetcher } = await open({ feeds: FEEDS }, { tab: 'feeds' });
   expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('JAV 订阅源');
   expect([...host.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent?.trim()))
     .toEqual(['选择', '名称', '类型', '来源', '状态', '频率', '上次拉取', '上次新增', '操作']);
@@ -644,9 +640,7 @@ it('地址栏指着订阅源时首屏就带着清单，开关、移除与立即�
   expect([...first.querySelectorAll('[role="rowheader"],[role="gridcell"]')].map(shown))
     .toEqual(['', '甲 的新作', 'JAV 订阅', 'feeds.test', '正常', '每 12 小时', '还没拉过', '0 条', '']);
   expect(first.querySelector('a')?.getAttribute('href')).toBe('https://feeds.test/a');
-  // 名字前的圆框由遗留层的回落链拼：身份引用带着有没有图，图有了才叠上去。
-  expect(props.avatarInner).toHaveBeenCalledWith(
-    '甲 的新作', { id: 41, has_image: true, avatar_focus: undefined }, null, 'performer');
+  // 名字前的圆框由 `card-art` 的回落链拼：身份引用带着有没有图，图有了才叠上去。
   expect(first.querySelector('[role="rowheader"] img')?.getAttribute('src'))
     .toBe('/entity-image?kind=performer&id=41');
   const second = checkboxNamed(host, '选择 乙 的新作')!.closest('[role="row"]')!;

@@ -70,7 +70,7 @@ export function ReviewPage(props: ReviewProps) {
     return () => query.removeEventListener('change', update);
   }, []);
   const {
-    route, openItem, openEntity, revealSource, avatarInner, toast,
+    route, openItem, openEntity, revealSource, toast,
     readOnly, readOnlyMessage, writerUrl,
   } = props;
   const [category, setCategory] = useState<ReviewCategory>(
@@ -219,7 +219,7 @@ export function ReviewPage(props: ReviewProps) {
   const mirror = mirrorText(data.mirror, readOnlyMessage);
   const genreTags = data.genre_tags || [];
   const handlers = {
-    openItem, openEntity, onReveal: reveal, revealing, revealNote, avatarInner, toast,
+    openItem, openEntity, onReveal: reveal, revealing, revealNote, toast,
   };
 
   return (

@@ -11,6 +11,8 @@ export interface PlayerSettings {
   seekSeconds: number;
   miniplayer: boolean;
   detailAutoplay: boolean;
+  /** 番号作品开播前那层封面取官方封面还是预览图（`card-art` 的 `detailPosterUrl` 按它挑）。 */
+  javImage: string;
 }
 
 export interface PlayerHost {
@@ -21,8 +23,6 @@ export interface PlayerHost {
   loadSourceStatus(): Promise<Record<string, boolean>>;
   /** 脱盘时给人看的那一句原因。 */
   offlineReason(location: string): string;
-  /** 作品详情开播前那层本地封面；没有可用的图是空串。 */
-  posterUrl(item: { id: number; [field: string]: unknown }): string;
   /** 舞台元素：氛围光的 `--video-glow`、`data-ambient` 与 `data-theater` 挂在它身上。 */
   stage(): HTMLElement | null;
 }

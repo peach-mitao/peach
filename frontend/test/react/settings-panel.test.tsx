@@ -24,7 +24,7 @@ interface Stage {
 }
 
 const settings = (): PanelSettings => ({
-  theme: 'system', uiSounds: true, homeGlow: { ...normalizeHomeGlow(null), on: true, preset: 'ash' },
+  theme: 'system', uiSounds: true, homeGlow: { ...normalizeHomeGlow(null), on: true, preset: 'ash' }, accent: 'blue',
   sidebarOrder: [''], batchSize: 60, defaultSort: 'seed', defaultSortDirection: '', groupCollapse: true,
   javImage: 'cover', feedAutoScroll: true, feedHideGroupCompilations: true, feedHideSoloCompilations: false,
   feedHideExcerpts: true, hoverDelaySeconds: 5, detailAutoplay: false, miniplayer: true, seekSeconds: 10,
@@ -44,7 +44,6 @@ function stage(): Stage {
     followInitialRanges: [['30', '30 天']],
     videoLayout: () => 'small', setVideoLayout: () => {},
     censored: () => false, setCensored: () => {}, highContrast: () => false, setHighContrast: () => {},
-    renderGlowGrid: () => {}, wireGlowGrid: () => {},
     receipt: () => {}, failure: () => {}, syncRemote: () => {}, openConfiguration: () => {}, attached: () => {},
     configurable: async () => false,
   });

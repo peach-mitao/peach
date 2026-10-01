@@ -11,7 +11,7 @@ import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from 'rea
 import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 
-import { releaseHoverPreviews } from '@peach/card-art';
+import { detailPosterUrl, releaseHoverPreviews } from '@peach/card-art';
 import { fitSkeleton, revealTexts } from '@peach/legacy/ui';
 
 import { detailSkeletonBody } from '../../board-skeleton';
@@ -299,7 +299,7 @@ function update(patch: StagePatch): void {
 function repaintPoster(): void {
   const meta = player.stageMeta();
   const item = meta?.kind === 'item' ? meta.item : null;
-  const poster = item ? stageHost().player.posterUrl(item) : '';
+  const poster = item ? detailPosterUrl(item, stageHost().player.settings().javImage) : '';
   if (!poster) return;
   const current = player.stagePlayer();
   if (current) current.poster(poster);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COVER_FRONT_RATIO } from '../src/appearance/layout';
 import { javImageKind, normalizeJavImage, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages } from '../src/jav-artwork';
 
 describe('JAV 默认封面', () => {
@@ -83,10 +84,9 @@ describe('JAV 默认封面', () => {
   });
 });
 
-/* 大图版式的容器比例，与 `web/app.js` 的 `COVER_FRONT_RATIO` 同一个值。
-   它是常量不是变量，所以这里写字面量而不是从 app.js 里取——那份是无构建的旧层，
-   引进来只会把整个页面壳拖进单测。 */
-const BIG_LAYOUT_RATIO = 0.75;
+/* 大图版式的容器比例，取的就是版式那一层（`src/appearance/layout.ts`）真会用的那个值；
+   下面算式里写的 0.75 就是它。 */
+const BIG_LAYOUT_RATIO = COVER_FRONT_RATIO;
 
 /** 算出来的那两档框永远满高贴右缘，纵向两个轴因此恒为 0 与 100。 */
 const fullHeight = (left: number) => ({ top: 0, right: 0, bottom: 0, left });

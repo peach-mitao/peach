@@ -13,6 +13,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { createColumnHelper, flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { RiDeleteBinLine, RiRefreshLine, RiRssLine } from '@remixicon/react';
 import { VisuallyHidden } from 'react-aria-components';
+import { avatarInner } from '@peach/card-art';
 import { mapLimit } from '@peach/legacy/core';
 import { confirmModal } from '@peach/legacy/ui';
 
@@ -26,7 +27,6 @@ import {
 } from '@/components/base/table/table';
 
 import { errorMessage } from '../../api';
-import type { FollowManageProps } from '../bundle';
 import { DataTableFrame } from '../components/data-table-frame';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
@@ -82,11 +82,9 @@ function StatusChip({ source }: { source: FeedSource }) {
   return <Chip variant="caption" color="lime">正常</Chip>;
 }
 
-type AvatarInner = FollowManageProps['avatarInner'];
-
 /** 名字前的圆框：和关注列表的创作者圆标同一个尺寸与底色。里面那段由 `card-art` 的 `avatarInner` 拼：
  *  有资料图按人脸取景出图，判据是服务端的 `has_image`；没有就是首字母。整格不进读屏，名字就在旁边。 */
-function FeedAvatar({ source, avatarInner }: { source: FeedSource; avatarInner: AvatarInner }) {
+function FeedAvatar({ source }: { source: FeedSource }) {
   const entity = source.entity_id
     ? {
         id: source.entity_id, has_image: !!source.has_image, image_version: source.image_version,
@@ -120,7 +118,6 @@ function sharedEntities(sources: FeedSource[]): ReadonlySet<number> {
 
 interface RowHandlers {
   readOnly: boolean;
-  avatarInner: AvatarInner;
   /** 挂着不止一条源的人，名字旁的页名只给他们写。 */
   shared: ReadonlySet<number>;
   /** 正在跑的那个动作的键（`useAction` 的 `busy`），行尾的拉取键按它挂忙态。 */
@@ -144,8 +141,8 @@ function confirmRemove(sources: FeedSource[], write: () => Promise<unknown>) {
   });
 }
 
-export function FeedSources({ readOnly, toast, avatarInner }: {
-  readOnly: boolean; toast(message: string): void; avatarInner: AvatarInner;
+export function FeedSources({ readOnly, toast }: {
+  readOnly: boolean; toast(message: string): void;
 }) {
   const feeds = useQuery({ queryKey: FEEDS_KEY, queryFn: ({ signal }) => fetchFeeds(signal) });
   const action = useAction();
@@ -191,11 +188,10 @@ export function FeedSources({ readOnly, toast, avatarInner }: {
   /* 列定义只建一次，行里的控件到点击那一刻再从这里取最新的处理器与只读态。 */
   const shared = useMemo(() => sharedEntities(sources), [sources]);
   const handlers = useRef<RowHandlers>({
-    readOnly, avatarInner, shared, busy: null, toggle: () => {}, fetch: () => {}, remove: () => {},
+    readOnly, shared, busy: null, toggle: () => {}, fetch: () => {}, remove: () => {},
   });
   handlers.current = {
     readOnly,
-    avatarInner,
     shared,
     busy: action.busy,
     toggle: (source, enabled) => void action.run(`enabled-${source.id}`,
@@ -234,7 +230,7 @@ export function FeedSources({ readOnly, toast, avatarInner }: {
           const alias = pageAlias(context.row.original, handlers.current.shared);
           return (
             <span className="flex items-center gap-2 whitespace-nowrap text-body-medium text-text-primary">
-              <FeedAvatar source={context.row.original} avatarInner={handlers.current.avatarInner} />
+              <FeedAvatar source={context.row.original} />
               {context.getValue()}
               {alias ? (
                 <span className="text-body-2-regular text-text-secondary" title={`站上这一页挂在「${alias}」名下`}>

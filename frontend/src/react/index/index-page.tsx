@@ -10,6 +10,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Radio } from 'react-aria-components';
 
+import { refitNativeImages } from '@peach/card-art';
 import { requestErrorMessage } from '@peach/legacy/core';
 import { indexSkeletonHtml } from '@peach/legacy/ui';
 
@@ -143,7 +144,7 @@ export function IndexPage(props: IndexProps) {
 
   /* 框换了大小，「这张图要不要补底」和人脸放大都得重算：图早加载完了，不会再自己发一次 load。
      赶在绘制之前，否则换版式那一帧是按旧框算的几何。 */
-  useLayoutEffect(() => { if (root.current) props.refitImages(root.current) }, [layout]);
+  useLayoutEffect(() => { if (root.current) refitNativeImages(root.current) }, [layout]);
 
   const tags = useMemo<TagEntry[]>(() => kind === 'tags'
     ? (items as IndexTag[]).map((tag) => ({ ...tag, label: props.tagLabel(tag.k) })) : [], [items, kind]);

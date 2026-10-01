@@ -129,7 +129,7 @@ describe('mountIsland', () => {
     const props = {
       kind: 'tags', q: '', scope: 'local', view: 'alphabet', category: 'all', layout: 'big', selectMode: true,
       route: vi.fn(), savePreference: vi.fn(), exitSelectMode: vi.fn(),
-      personAvatar: () => ({ html: '', face: '' }), authorAvatar: () => '', refitImages: vi.fn(),
+      personAvatar: () => ({ html: '', face: '' }), authorAvatar: () => '',
       tagLabel: (tag: string) => tag, openEntity: vi.fn(), showTags, openFollowAuthor: vi.fn(),
       openFollowTag: vi.fn(), configurable: false,
     } as const;

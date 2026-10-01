@@ -1417,7 +1417,6 @@ class WebUiSourceTests(unittest.TestCase):
                             "指数斜坡不能落到 0")
         # 开关本身归 `settings-panel` 岛，开关后点按出不出声由 `frontend/e2e/settings-panel.test.ts` 守；
         # 壳这边只剩 `settingsEffects.uiSounds` 把新值灌进模块，打开那一下补响一声。
-        self.assertPageContains("appSettings.uiSounds=appSettings.uiSounds!==false;")
         self.assertCode("setUiSoundsEnabled(appSettings.uiSounds);\nwireUiSounds();")
         self.assertPageContains(
             "uiSounds:()=>{setUiSoundsEnabled(appSettings.uiSounds);if(appSettings.uiSounds)playUiSound('toggle-on')},")
@@ -1702,7 +1701,6 @@ class WebUiSourceTests(unittest.TestCase):
     def test_entity_loading_and_detail_autoplay_share_their_entry_contracts(self):
         self.assertPageContains("const kind=ROUTE_ENTITIES[path.split('/')[1]],name=path.split('/').slice(2).join('/');")
         self.assertPageContains('showEntityLoading(kind,name);')
-        self.assertPageContains('appSettings.detailAutoplay=appSettings.detailAutoplay!==false;')
 
     def test_entity_links_have_no_external_arrow(self):
         # `target="_blank"` 已经是外链，箭头只是重复；一排链接里它还会挤掉本就不多的
@@ -2026,15 +2024,12 @@ class WebUiSourceTests(unittest.TestCase):
         1.48，就变成纵向裁切、整张封套原样铺满——这正是旧版式「只是撑满画布」的原因。
         所以裁切必须由容器比例决定，不能只靠 object-position。
         """
-        self.assertPageContains("const COVER_FRONT_RATIO=0.75;")
         self.assertPageContains(
             '.poster.cover.front[data-frame="sleeve"]{object-position:100%',
             "没有折痕数据的封套贴最右边缘")
         # 判据是 `jav` 不是 `useCover`：缺封面的卡片也要拉长，用 16:9 预览图上下留黑边，
         # 否则一行里高矮混排会把网格撕成锯齿状。
         self.assertPageLacks("useCover&&layout==='big'")
-        # 旧键要继续认，设置存在浏览器里，改名不能让用户的选择静默回落。
-        self.assertPageContains("return normalizeJavLayout(appSettings.javLayout);")
 
     def test_front_cover_shows_only_the_panel_right_of_the_fold(self):
         """大图只摆折痕右边那块正封，封底一个像素都不露。
@@ -2182,14 +2177,9 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("const enteringHome=path==='/'&&lastRoutePath!=='/';")
         self.assertPageContains("}finally{lastRoutePath=path}")
         self.assertPageContains("enteringHome?rollSeed():state.seed||rollSeed()")
-        self.assertPageContains("const SORTS=[['seed','随机'],['rating','评分']")
-        self.assertPageContains("['seed','随机'],['rating','评分'],['o','高潮计数']")
         for option in ("['daily',", "['rand',"):
             self.assertPageLacks(option, "不使用会让分页重复的 SQL RANDOM 或重复的每日模式")
         self.assertPageLacks('id="rotateSetting"')
-        self.assertPageContains("defaultSort:'seed',sortDefaultsVersion:3")
-        self.assertPageContains("appSettings.defaultSort==='new'){")
-        self.assertPageContains("if(sortDefaultsMigrated)saveSettings()")
         self.assertPageContains("const cleanSort=(value,fallback=appSettings.defaultSort)=>")
         # 手动换一批仍使用稳定种子，避免分页重复或漏项。
         self.assertPageContains("state.sort='seed';state.dir='';state.seed=rollSeed()")
@@ -2204,20 +2194,8 @@ class WebUiSourceTests(unittest.TestCase):
         `sort=big`、`sort=short`，认不出来不会报错，只会静默换成另一种排序。
         """
         self.assertPageContains("['dur','时长']")
-        self.assertPageContains("['new','入库时间'],['played','观看时间']")
-        self.assertPageContains("const SORT_ALIASES={big:['size','desc'],short:['dur','asc'],long:['dur','desc']};")
-        # 方向词按列各自定义：同一个 desc 在时间列上是「从新到旧」，在时长上是「从长到短」。
-        self.assertPageContains("dur:['从长到短','从短到长']")
-        self.assertPageContains("new:['从新到旧','从旧到新'],played:['从近到远','从远到近']")
-        # 词表可换：关注页那几列（更新时间、热度、时长）方向词是另一套，默认方向、
-        # 翻转和无障碍名称这三样的算法与目录完全相同，所以传进来而不是另写一份。
-        self.assertPageContains("const defaultSortDir=(key,words=SORT_DIR_WORDS)=>words[key]?'desc':'';")
         self.assertPageContains("function resolveSort(rawSort,rawDir,fallback=appSettings.defaultSort){")
         # 点未选中项＝换列并用该列默认方向；点选中项＝翻方向；随机没有方向。
-        self.assertPageContains("function nextSortState(key,current,dir,words=SORT_DIR_WORDS){")
-        self.assertPageContains("if(key!==current)return{sort:key,dir:defaultSortDir(key,words)};")
-        self.assertPageContains("if(!words[key])return null;")
-        self.assertPageContains("return{sort:key,dir:dir==='asc'?'desc':'asc'};")
         self.assertPageContains("const next=nextSortState(key,state.sort,state.dir);")
         self.assertPageContains("const filters=live(),next=nextSortState(key,filters.sort||'new',filters.dir);")
 
@@ -2247,9 +2225,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("&&!(key==='dir'&&filters[key]===defaultSortDir(filters.sort))")
         # 资料页列表请求带上方向由岛的 `itemsParams` 拼，见 entity-page.test.tsx。
         self.assertPageContains("...resolveSort(params.get('sort'),params.get('dir'))")
-        self.assertPageContains("defaultSort:'seed',sortDefaultsVersion:3")
-        self.assertPageContains(
-            "if((+appSettings.sortDefaultsVersion||0)<3&&SORT_ALIASES[appSettings.defaultSort]){")
         # 设置里的默认排序与排序条同源：列名中性，方向由列自己的默认值决定。
         panel = self.read_react("settings-panel/settings-panel.tsx")
         self.assertIn("['dur', '时长'], ['size', '体积'], ['new', '入库时间'], ['played', '观看时间'],", panel)
@@ -2361,14 +2336,6 @@ class WebUiSourceTests(unittest.TestCase):
             "--gc-dash:100;--gc-anim:peach-gc-draw-a;--gc-anim-b:peach-gc-draw-b;--gc-anim-c:peach-gc-draw-c}")
         vendor = (Path(__file__).resolve().parents[1] / "scripts/vendor_web_dependencies.mjs").read_text(encoding="utf-8")
         self.assertIn('if (symbol === "git-compare") inner = inner', vendor)
-
-    def test_density_toggle_shares_the_layout_glyph_map(self):
-        """顶栏密度键与筛选框的版式开关问同一件事「现在是哪种排法」，字形取同一份
-        PHOTO_SIZES 映射，按下去换成当前状态的图标。"""
-        self.assertPageContains("button.innerHTML=iconSwapHtml(big[2],small[2],")
-        self.assertPageContains("}else setIconSwap(button,size===small[0]?'b':'a');")
-        self.assertPageContains("syncDensityIcon(density==='big'?'big':'small')}")
-        self.assertPageContains("  }else applyDensity();")
 
     def test_skeletons_shimmer_by_sweeping_instead_of_breathing(self):
         """微光是横向扫光，不是整块呼吸。
@@ -2833,7 +2800,6 @@ class WebUiSourceTests(unittest.TestCase):
         不销毁而是整块搬走，流会话跟着它；显式关闭、换详情和删条目才真的销毁。
         """
         # 开关在 `settings-panel` 岛的「播放」组，关掉时壳的 `settingsEffects.miniplayer` 收起开着的小窗。
-        self.assertPageContains("appSettings.miniplayer=appSettings.miniplayer!==false;")
         self.assertPageContains("miniplayer:()=>{if(!appSettings.miniplayer)stageApi()?.closeMiniplayer()},")
         self.assertPageContains("--layer-miniplayer:900; --layer-dialog:1000;")
         # 小窗的几何由 `frontend/e2e/design.test.ts` 读计算样式。
@@ -3201,9 +3167,9 @@ class WebUiSourceTests(unittest.TestCase):
         # 交出去的都是导航、查表或回执：页面不持有它们的状态，也不自己跳转。
         self.assertPageContains("onSignal:openTasteSignal")
         self.assertPageContains("navigate:path=>{route(path);restoreRoute()}")
-        self.assertPageContains("toast:actionReceipt,avatarInner")
         # 「这一次是从设置完成页进来的」是一次性的：地址栏那一位进门就擦掉，取值走内存变量。
-        self.assertPageContains("onboarding:claimSetupEntry()")
+        # 圆标由 React 档直接用 `card-art` 那一份拼，壳不再递。
+        self.assertCode("toast:actionReceipt,onboarding:claimSetupEntry(),")
         self.assertPageContains("{isCurrent:()=>surfaceCurrent(surface)}")
         # 四条端点、缓存、轮询与所有正文标记都归 React 子树，遗留层一条都不留。
         for gone in ("/api/taste", "TASTE_CACHE_KEY", "peach-taste-job", "wireTasteProgress",
@@ -3947,9 +3913,11 @@ class WebUiSourceTests(unittest.TestCase):
                         "el.style.removeProperty('--glass-tint-b');return}")
         self.assertCode("el.style.setProperty('--glass-tint-a',glow.spot1.color);")
         # 这一档的圆球与钮上那颗点画的是当前主题下真在漂的那两色，不拿别的颜色顶。
+        balls = (Path(__file__).resolve().parents[1]
+                 / "frontend/src/react/components/glow-preset-grid.css").read_text(encoding="utf-8")
+        self.assertIn("[data-glow-ball][data-glow-native]{--glow-chip:conic-gradient"
+                      "(from -90deg,var(--glass-native-a) 0 50%,var(--glass-native-b) 50% 100%)}", balls)
         css = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        self.assertIn(".board-glow-ball[data-glow-native]{--glow-chip:conic-gradient"
-                      "(from -90deg,var(--glass-native-a) 0 50%,var(--glass-native-b) 50% 100%)}", css)
         self.assertIn(".board-glow-toggle[data-glow-native] .board-glow-mark-glow{", css)
         # 设置面板里这一档只留漂移速度：其余几条管不着任何东西，留着就是按了不动的控件。
         # 点这一档后真正看得见的拉条由 `frontend/e2e/design.test.ts` 数。
@@ -3982,8 +3950,10 @@ class WebUiSourceTests(unittest.TestCase):
         # 具体度接回来，否则焦点环和链接只在手动选深色时跟着强调色走。
         self.assertIn("@media(prefers-color-scheme:dark){:root:not([data-theme])"
                       "{--tungsten:var(--color-border-focus-ring)}}", css)
-        self.assertIn(".board-glow-ball[data-accent-ball]{--glow-chip:radial-gradient"
-                      "(circle closest-side,var(--color-accent-400),var(--color-accent-600))}", css,
+        self.assertIn("[data-glow-ball][data-accent-ball]{--glow-chip:radial-gradient"
+                      "(circle closest-side,var(--color-accent-400),var(--color-accent-600))}",
+                      (Path(__file__).resolve().parents[1]
+                       / "frontend/src/react/components/glow-preset-grid.css").read_text(encoding="utf-8"),
                       "圆球拿的就是这一档真会写上去的两级")
         # 开关、勾选框、滑轨填充与主操作键也是同一个意思。漏掉任何一个，换了强调色的页面
         # 上就会剩下几枚蓝件，读起来像是没换干净。
@@ -4002,26 +3972,14 @@ class WebUiSourceTests(unittest.TestCase):
         """强调色存一个档名，换光晕预设时跟着换，单点那一排又能把它覆盖掉。
 
         一档配色就是一副面：光晕暖着、按钮还是蓝的，读起来是两套皮叠在一起。但搭配是
-        建议不是绑定，所以那一排强调色单独点得动，点完只改强调色、不动光晕。
+        建议不是绑定，所以那一排强调色单独点得动，点完只改强调色、不动光晕。换预设、单点与
+        「重置」各写什么由 `frontend/test/react/glow-picker.test.tsx` 点出来看。
         """
         self.assertPageContains("const DEFAULT_ACCENT='blue';")
         self.assertPageContains("const normalizeAccent=value=>ACCENTS.some(([key])=>key===value)"
                                 "?value:DEFAULT_ACCENT;")
         self.assertPageContains("const glowAccent=key=>(HOME_GLOW_PRESETS.find(([name])=>name===key)"
                                 "||[])[3]||DEFAULT_ACCENT;")
-        self.assertPageContains("appSettings.accent=normalizeAccent(appSettings.accent)")
-        self.assertCode("function applyAccent(){glowRoot.dataset.accent=appSettings.accent}")
-        # 换预设：光晕、玻璃色相与强调色一起走。
-        self.assertCode("appSettings.accent=glowAccent(key);")
-        # 单点强调色：只写这一个。
-        self.assertCode("appSettings.accent=normalizeAccent(chip.dataset.accent);")
-        self.assertCode("saveSettings();applyAccent();syncGlowChrome();")
-        # 「重置」把两者一起收回默认。
-        self.assertCode("appSettings.accent=DEFAULT_ACCENT;")
-        self.assertPageContains('<div class="board-glow-grid" data-accent-grid role="group" '
-                                'aria-label="强调色"></div>')
-        self.assertPageContains('class="board-glow-chip" data-accent="${key}"')
-        self.assertPageContains('data-accent-ball="${key}"')
 
     def test_home_glow_interpolates_in_oklab_with_a_declared_fallback(self):
         """oklab 插值由 @supports 开启，认不出它的引擎退回 sRGB 而不是整层消失。"""
@@ -4046,11 +4004,8 @@ class WebUiSourceTests(unittest.TestCase):
         全在样式表里，存的只是倍率的档位。几何一旦按算完的百分比进了 localStorage，改形状
         就再也改不动那些存过的机器。
         """
-        self.assertPageContains("sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],homeGlow:DEFAULT_HOME_GLOW,"
-                                "accent:DEFAULT_ACCENT}")
         self.assertPageContains("const DEFAULT_HOME_GLOW={on:true,preset:'ash',strength:100,noise:0,"
                                 "speed:100,soften:50,size:50,\n  ...glowPalette('ash')}")
-        self.assertPageContains("appSettings.homeGlow=normalizeHomeGlow(appSettings.homeGlow)")
         self.assertCode("function normalizeHomeGlow(raw){")
         # 五条拉条的区间与默认值只有一张表，规范化按它逐项夹回去。
         self.assertCode("const GLOW_RANGES={strength:[0,100,100],noise:[0,100,0],speed:[0,300,100],"
@@ -4075,19 +4030,15 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("['custom','自定义']")
 
     def test_home_glow_data_lives_in_a_module_app_js_only_imports(self):
-        """预设、色板、规范化和那一次绘制都在 `web/js/home-glow.js`，app.js 只 import。
+        """预设、色板、规范化和那一次绘制都在 `web/js/home-glow.js`，app.js 一样都不留。
 
         React 壳要的就是这一份：留在 app.js 里，迁移时同一张预设表、同一套色板和同一段
         规范化会被抄进组件再各自演化，而两份色板差一枚颜色是看不出来的。
         所以那个模块不认识 `appSettings`、`$`、`saveSettings`，`paintHomeGlow` 只写传进来的
-        那枚元素；侧栏那枚配色钮和它的弹层留在 app.js，设置面板的光晕参数区在 `settings-panel`
-        岛里经 `@peach/legacy/home-glow` 读同一个模块。
+        那枚元素；什么时候写、写到哪一层由 `frontend/src/appearance/glow.ts` 定，配色卡与设置
+        面板的光晕参数区都经 `@peach/legacy/home-glow` 读同一个模块，壳只调 `@peach/appearance`。
         """
-        self.assertIn("import { ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, "
-                      "HOME_GLOW_CHOICES, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, "
-                      "glowPalette, isNativeGlass, normalizeAccent, "
-                      "normalizeHomeGlow, paintGlassFaces, paintHomeGlow } "
-                      "from './js/home-glow.js';", self.app_js)
+        self.assertNotIn("./js/home-glow.js", self.app_js, "光晕经 `/dist/peach-ui.js` 的应用层进来")
         for moved in ("const HOME_GLOW_PRESETS=[", "const GLOW_SWATCHES=[", "const ACCENTS=[",
                       "const GLOW_SPOT_LABELS=[", "const DEFAULT_HOME_GLOW=",
                       "function normalizeHomeGlow(", "function paintHomeGlow(",
@@ -4098,7 +4049,6 @@ class WebUiSourceTests(unittest.TestCase):
         code = "\n".join(re.sub(r"/\*.*?\*/", "", self.glow_js, flags=re.S).splitlines())
         for forbidden in ("appSettings", "saveSettings(", "document.", "peach-ui.js"):
             self.assertNotIn(forbidden, code, "这一份不认识页面，只认参数")
-        self.assertIn("paintHomeGlow(glowField,appSettings.homeGlow)", self.app_js)
 
     def test_home_glow_normalisation_replaces_a_retired_preset_wholesale(self):
         """存着的档名已经不在清单里时，连它那三枚颜色一起换成默认那一档。
@@ -4177,12 +4127,10 @@ class WebUiSourceTests(unittest.TestCase):
 
         每一步都写变量加 saveSettings() 的量过：一次 60 步拖动是 1320 次 setProperty
         和 60 次 localStorage 写入，全在主线程上。设置面板那一侧「拖动只报 glowFrame、松手才落盘」
-        与「面板 DOM 只建一次」由 `frontend/test/react/settings-panel.test.tsx` 守；壳这边把
-        glowFrame 排成一帧重画。
+        与「面板 DOM 只建一次」由 `frontend/test/react/settings-panel.test.tsx` 守；壳把
+        glowFrame 交给 `applyHomeGlow`，一帧只排一次重画由 `frontend/test/appearance/glow.test.ts` 守。
         """
         self.assertPageContains("glowFrame:()=>applyHomeGlow(),")
-        self.assertCode("glowFrame=requestAnimationFrame(()=>{glowFrame=0;"
-                        "paintHomeGlow(glowField,appSettings.homeGlow)});")
         self.assertCode("if(written.get(name)===value)return;")
 
     def test_home_glow_variables_are_written_off_the_root(self):
@@ -4190,11 +4138,11 @@ class WebUiSourceTests(unittest.TestCase):
 
         自定义属性是继承的：写在根上，整棵树都要重算样式。2026-09-16 在首页量过，
         写一次变量再强制布局，写在 <html> 上是每帧 12.7–16.6ms，写到一枚没有子节点的
-        元素上是 0.09ms；16.7ms 的帧预算装不下前者，拖动必掉帧。
+        元素上是 0.09ms；16.7ms 的帧预算装不下前者，拖动必掉帧。写到 `.glowlayer` 上由
+        `frontend/test/appearance/glow.test.ts` 读那一层的变量。
         """
         css = stylesheet_source()
         self.assertPageContains('<div class="glowlayer" aria-hidden="true"></div>')
-        self.assertCode("const glowField=document.querySelector('.glowlayer');")
         self.assertCode("el.style.setProperty(name,value);")
         self.assertIn(".glowlayer{--ambient-opacity:calc(var(--glow-strength) * var(--glow-theme-scale));", css)
         self.assertNotIn("body::before{", css, "光晕不再挂在 body 的伪元素上")
@@ -4244,14 +4192,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn(".board-glow-mark-glow{left:0;top:0;background:var(--glow-swatch,var(--ink))}", css)
         self.assertIn(".board-glow-mark-accent{left:0;bottom:0;z-index:1;", css)
         self.assertIn(".board-glow-toggle[data-glow-off] .board-glow-mark-glow{display:none}", css)
-        self.assertPageContains('<header class="board-glow-head" data-glow-presets><span>光晕</span>')
-        self.assertPageContains('class="board-glow-reset" data-glow-preset-reset>重置</button>')
-        self.assertPageContains('<p class="board-glow-head board-glow-sub"><span>强调色</span></p>')
-        self.assertPageContains('<footer><button type="button" class="geist-button primary" data-glow-detail>详细设置</button></footer>')
+        # 卡里两组球、标题、「重置」与「详细设置」由 `frontend/test/react/glow-picker.test.tsx`
+        # 渲染出来看，选中那一档自己报 aria-pressed；壳只管把卡锚在钮上。
         self.assertCode("const glowFloating=wireAnchoredMenu(boardFoot,glowButton,glowPicker);")
-        # 选中那一档自己报出来，不靠一圈环让人猜。
-        self.assertPageContains('aria-pressed="${key===current}"')
-        css = stylesheet_source() + (Path(__file__).resolve().parents[1]
+        css =stylesheet_source() + (Path(__file__).resolve().parents[1]
                                      / "web/board.css").read_text(encoding="utf-8")
         self.assertIn(".board-glow-toggle{position:relative;display:grid;place-items:center;"
                       "width:36px;height:36px;flex:none;\n  padding:0;border:0;border-radius:8px;"
@@ -4278,22 +4222,17 @@ class WebUiSourceTests(unittest.TestCase):
         那一组球和它的「重置」换的是一层现在不画的东西：点下去屏幕上没有任何反应，卡
         的上半张却还被它占着。整组连同标题一起收起来，卡就只说当前还管用的那一件事。
         开关在设置面板里、卡在侧栏底部，两处同时看得见，所以开关那一下要当场同步侧栏，
-        不能等下一次刷新。
+        不能等下一次刷新：卡和钮都订阅同一份 store，收起哪几块、钮上那枚点报什么由
+        `frontend/test/react/glow-picker.test.tsx` 点开关看。
         """
-        self.assertCode("glowButton.style.setProperty('--glow-swatch',"
-                        "glow.on?glow.spot1.color:'var(--color-accent-500)');")
-        self.assertCode("glowButton.toggleAttribute('data-glow-native',"
-                        "glow.on&&isNativeGlass(glow.preset));")
-        self.assertCode("glowButton.toggleAttribute('data-glow-off',!glow.on);")
-        self.assertCode("glowPicker.querySelectorAll('[data-glow-presets],[data-glow-grid]')"
-                        ".forEach(node=>node.hidden=!glow.on);")
-        # 设置面板那枚开关报 `glow`，壳的 `settingsEffects.glow` 当场把侧栏一起对齐。
-        self.assertPageContains("glow:()=>{applyHomeGlow();applyGlassFaces();syncGlowSidebar()},")
-        board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
-        # 类名里写死的 display 压得过 [hidden] 那条 UA 规则，收起来要自己说一遍。
-        self.assertIn(".board-glow-head[hidden],.board-glow-grid[hidden]{display:none}", board)
+        root = Path(__file__).resolve().parents[1] / "frontend/src/react"
+        card = (root / "glow-picker/glow-picker.css").read_text(encoding="utf-8")
+        # 写死的 display 压得过 [hidden] 那条 UA 规则，收起来要自己说一遍。
+        self.assertIn("[data-glow-grid][hidden]{display:none}",
+                      (root / "components/glow-preset-grid.css").read_text(encoding="utf-8"))
+        self.assertIn("[data-glow-head][hidden]{display:none}", card)
         # 收起之后「强调色」成了卡里第一样东西，它那 12px 的上间距一起归零。
-        self.assertIn(".board-glow-grid[hidden]+.board-glow-sub{margin-top:0}", board)
+        self.assertIn("[data-glow-grid][hidden]+[data-glow-sub]{margin-top:0}", card)
 
 
     def test_source_icons_are_visible_in_detail_and_list_badges(self):
@@ -4366,7 +4305,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 资料页作品请求带哪几样排序参数、JAV 语境下多一枚发行时间，由
         # `frontend/test/react/entity-page.test.tsx` 钉住；照片那一排不给排序键由 e2e
         # `entity-filter.test.ts` 量。
-        self.assertPageContains("const JAV_RELEASE_SORT=['release','发行时间']")
         self.assertPageContains("function sortKeys(current,dir,jav=javActive()){\n  return sortOptions(jav).map(")
         self.assertPageContains(
             "if(state.jav!=='1'&&state.sort==='release'){state.sort='seed';state.dir=''}")
@@ -5512,7 +5450,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains('id="i-sperm"')
 
     def test_settings_own_useful_experience_preferences(self):
-        self.assertPageContains("const DEFAULT_SETTINGS={batchSize:60,defaultSort:'seed'")
         self.assertPageLacks('id="rotateSetting"')
         self.assertPageContains("appSettings.hoverDelaySeconds")
         self.assertPageContains("appSettings.batchSize")
@@ -5520,13 +5457,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("appSettings.seekSeconds")
         self.assertPageContains("appSettings.searchHistoryLimit")
         self.assertPageContains("appSettings.relatedLimit")
-        self.assertPageContains("appSettings.ambientMode=appSettings.ambientMode!==false")
-        self.assertPageContains("appSettings.theaterMode=appSettings.theaterMode===true")
         # 关注自动更新与侧栏排序两格归 `settings-panel` 岛，写接口与侧栏当场重排由
         # `frontend/e2e/settings-panel.test.ts` 守。侧栏顺序的规范化（认旧键、去重、空则回默认）
         # 与可钉的键归 `frontend/src/sidebar.ts`，由 `frontend/test/sidebar.test.ts` 守；侧栏里
         # 拖动排序归侧栏岛，写回与刷新后保持由 `frontend/e2e/sidebar.test.ts` 守。
-        self.assertPageContains("appSettings.sidebarOrder=normalizeSidebarOrder(appSettings.sidebarOrder);")
         # 遗留层的拖动排序一份：播放队列调它。设置面板那一列在岛里按 `data-*` 状态自画，
         # 行会随「添加」长出来，那一份按挂接时的行快照接监听，接不住后来的行。
         self.assertPageContains("export function wireDragReorder(root,{selector,attribute,onMove}={})")
@@ -5559,20 +5493,6 @@ class WebUiSourceTests(unittest.TestCase):
         01-base.css 里，这里补的是「选哪一条」。三档互斥，所以是 Geist Switch——
         一组共享 name 的 radio，不是 Toggle；跟随系统等于不写属性，把判断还给媒体查询。
         """
-        self.assertPageContains("const THEME_CHOICES=['system','light','dark']")
-        self.assertPageContains(
-            "const THEME_OPTIONS=[['system','跟随系统','monitor'],"
-            "['light','浅色','sun'],['dark','深色','moon']]")
-        self.assertPageContains("theaterMode:false,theme:'system',groupCollapse:true")
-        self.assertPageContains(
-            "appSettings.theme=allowedSetting(appSettings.theme,THEME_CHOICES,'system')")
-        self.assertCode(
-            "if(choice==='system')delete root.dataset.theme;else root.dataset.theme=choice;")
-        self.assertCode("const dark=choice==='dark'||(choice==='system'&&prefersDark.matches);")
-        # 地址栏色块也归这次调用：两枚 meta 各代表一档，选中的开到 all、另一枚关掉。
-        self.assertCode("meta.media=(meta.dataset.themeColor==='dark')===dark?'all':'not all';")
-        self.assertCode(
-            "prefersDark.addEventListener('change',()=>{if(appSettings.theme==='system')applyTheme()});")
         self.assertPageContains(
             '<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"'
             ' data-theme-color="light">')
@@ -5922,7 +5842,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("+(followSort===FOLLOW_RANDOM_SORT?`&seed=${followSeed}`:'')")
         # 三档排序，每一档的方向词各说各的那一列。
         self.assertCode("const FOLLOW_FEED_SORTS=[['new','更新时间'],['hot','热度'],['dur','时长']];")
-        self.assertPageContains("dur:['从长到短','从短到长']")
         # 排序归服务端：分页在它那一侧，浏览器只拿到当前这几页。
         self.assertPageContains("+(followSort!=='new'?`&sort=${followSort}`:'')")
         self.assertPageContains("+(followDir!=='desc'?`&dir=${followDir}`:'');")
@@ -6059,11 +5978,7 @@ class WebUiSourceTests(unittest.TestCase):
         # `test_each_settings_tab_takes_its_glyph_from_its_own_name` 读岛里的 `SECTIONS`。
         self.assertIn('href="#i-folder-search"', (Path(__file__).resolve().parents[1] / "frontend" / "src" / "react" / "settings" / "media-settings.tsx")
                       .read_text(encoding="utf-8"))
-        # 主题三档各归各的：太阳是浅色、月亮是深色；跟随系统那档说的是「照这台设备走」，
-        # 讲的是设备不是明暗，所以跟 vercel.com 后台一样用显示器。画面尺寸量的是画幅本身，
-        # 分辨率同样使用显示器。
-        self.assertPageContains(
-            "[['system','跟随系统','monitor'],['light','浅色','sun'],['dark','深色','moon']]")
+        # 主题三档的字形由 `frontend/test/appearance/layout.test.ts` 钉住。
         # 换下来的这几枚没有别的使用者，雪碧图里也不留。星是有使用者的那一枚：
         # 详情页的五星评分，写进 `asset.rating`，不与任何别的意思共用。
         # 厂牌索引进去是出片的那些牌子，字形因此说「拍片」而不是说「一栋楼」；
@@ -7118,7 +7033,6 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_jav_image_preference_reaches_cards_mix_and_settings(self):
         # 设置面板那一格改完落盘由 `frontend/e2e/settings-panel.test.ts` 守。
-        self.assertPageContains("Object.assign(appSettings,normalizeJavPreferences(appSettings));")
         self.assertPageContains("syncJavImages(document,appSettings.javImage);")
 
     def test_jav_cover_source_and_size_are_independent_settings(self):
@@ -7159,19 +7073,12 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("barsContext={type:'home',filters:state};"
                                 "detailReturnBarsContext=null;disposeStage(false);")
 
-    def test_settings_sort_pair_and_hover_off(self):
-        # 设置面板里排序与方向那一对（随机时方向收起）由 `frontend/e2e/settings-panel.test.ts` 守。
-        self.assertPageContains("['rating','评分']")
-        self.assertPageContains('boundedPreference(+appSettings.hoverDelaySeconds,0,60,5)')
-
     def test_group_collapse_is_a_setting_and_defaults_to_on(self):
         """合并分卷与版本可以关掉，关掉后同番号的每一卷／每一版各占一张卡。
 
         折叠是渲染时做的，所以改完必须重取当前列表：不重画的话，之前被跳过的
         那些卡不会自己冒出来，看上去像开关没生效。
         """
-        self.assertPageContains("groupCollapse:true,sidebarOrder:[...DEFAULT_SIDEBAR_ORDER],")
-        self.assertPageContains("appSettings.groupCollapse=appSettings.groupCollapse!==false;")
         # 开关在 `settings-panel` 岛的「浏览」组，只报 `groupCollapse`（vitest 守）；壳那一侧重取。
         self.assertPageContains("groupCollapse:()=>reloadCurrentSurface(),")
         self.assertEqual(self.page.count("groupCollapse:appSettings.groupCollapse"), 2,
@@ -7532,7 +7439,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,")
         self.assertPageLacks("photorefresh")
         # 大小：存进设置，改的只是那面墙上的一个属性。
-        self.assertPageContains("photoSize:'small',")
         self.assertPageContains("wall.dataset.size=photoSize();wall.dataset.layout='fixed';")
         self.assertPageContains("setPhotoSize(photoSize()==='big'?'small':'big')")
         self.assertPageContains("pushFollowFeed({photoSize:photoSize(),photoLayout:photoLayout(),imagesOnly:!!appSettings.followImagesOnly});")
@@ -7613,7 +7519,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains(".iconswitch label:has(input:checked){background:var(--surface);color:var(--ink)")
         self.assertPageContains("let entityRequestSeq=0,entityJavLayout=false")
         self.assertPageContains("return state.jav==='1'||entityJavLayout")
-        self.assertPageContains("active:cardLayoutActive(),size:cardLayout()")
+        self.assertPageContains("return gridLayout({active:javActive()||home,home,portrait:state.orient==='竖屏'})")
 
     def test_switching_the_jav_layout_repaints_cards_without_a_request(self):
         """版式是纯展示层的开关：不发请求，也就没有等待态可放。
@@ -7638,7 +7544,6 @@ class WebUiSourceTests(unittest.TestCase):
             "const PEOPLE_LAYOUTS=[['big','大图 · 竖幅头像','maximize'],"
             "['compact','紧凑 · 圆形头像','layout-grid']];")
         # 切换与写回偏好由 `frontend/test/react/index-page.test.tsx` 验。
-        self.assertPageContains("peopleLayout:'big'", "默认与 JAV 版式、密度一致：大图为主")
 
     def test_the_big_people_layout_only_stretches_the_frame_it_does_not_change_columns(self):
         # JAV 大图那条规矩：宽度不变、高度拉长。列宽跟着改的话，窄屏会掉成一列。

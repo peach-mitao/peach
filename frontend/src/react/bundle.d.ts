@@ -20,6 +20,7 @@ import type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 import type { SidebarApi, SidebarHost } from './sidebar/sidebar-api';
 import type { ManageHeaderApi, ManageHeaderHost } from './manage-header/manage-header-api';
 import type { BatchDockApi, BatchDockHost } from './batch-dock/batch-dock-api';
+import type { GlowPickerHost } from './glow-picker/glow-picker-api';
 
 export type { IndexProps };
 export type { CatalogGridProps };
@@ -316,13 +317,6 @@ export interface TasteProps {
   navigate(route: string): void;
   /** 写操作在服务端落地之后的过去时回执。 */
   toast(message: string): void;
-  /** 实体圆标的内层 HTML：有图走图，没图退到首字母。遗留层那份唯一的回落链实现。 */
-  avatarInner(
-    name: string,
-    entity: { id: number; has_image: boolean; image_version?: string; avatar_focus?: unknown } | null,
-    representativeAssetId: number | null,
-    kind: string,
-  ): string;
   /** 从引导流程进来（`?onboarding=1`）：浏览记录导入指南直接展开。 */
   onboarding: boolean;
 }
@@ -362,13 +356,6 @@ export interface FollowManageProps {
   readOnlyMessage: string;
   /** 写入端上这一页的地址。取不到时门禁里不给去处。 */
   writerUrl: string;
-  /** 订阅源那一行的人物圆标：有图走图，没图退到首字母。遗留层那份唯一的回落链实现。 */
-  avatarInner(
-    name: string,
-    entity: { id: number; has_image: boolean; image_version?: string; avatar_focus?: unknown } | null,
-    representativeAssetId: number | null,
-    kind: string,
-  ): string;
 }
 
 /** 人工复核页。
@@ -387,13 +374,6 @@ export interface ReviewProps {
   openEntity(kind: string, name: string): void;
   /** 在资源管理器里显示这个文件。成功由遗留层自己发回执，失败回一句原因。 */
   revealSource(id: number): Promise<string>;
-  /** 实体圆标的内层 HTML：有图走图，没图退到首字母。遗留层那份唯一的回落链实现。 */
-  avatarInner(
-    name: string,
-    entity: { id: number; has_image: boolean; image_version?: string; avatar_focus?: unknown } | null,
-    representativeAssetId: number | null,
-    kind: string,
-  ): string;
   /** 写操作在服务端落地之后的过去时回执。 */
   toast(message: string): void;
   /** 账本只读：这台机器只能浏览，判定与收录全部不给点，进页面也不发那一次自动落库。 */
@@ -552,6 +532,11 @@ export type {
 
 /** 接上壳给的宿主，拿回批量条岛的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次。 */
 export declare function configureBatchDock(host: BatchDockHost): BatchDockApi;
+
+export type { GlowPickerHost } from './glow-picker/glow-picker-api';
+
+/** 接上壳给的宿主，当场画好侧栏配色卡的内容（`glow-picker/glow-picker-island.tsx`）。只调一次。 */
+export declare function configureGlowPicker(host: GlowPickerHost): void;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;
