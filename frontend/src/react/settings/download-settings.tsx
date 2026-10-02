@@ -377,8 +377,7 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
         </FactList>
       ) : browser.available ? (
         <Stack>
-          <Help>「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口，
-            之后由 Peach 续期；续期失败时回到这里重新登录。</Help>
+          <Help>「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口，之后由 Peach 续期；续期失败时回到这里重新登录。</Help>
           <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。</Help>
           {outcome ? (outcomeFailed ? <ErrorText>{outcome}</ErrorText> : <Help role="status">{outcome}</Help>) : null}
           <Disclosure summary="用账号密码登录">
@@ -391,8 +390,7 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
         </Stack>
       ) : (
         <Stack>
-          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。
-            账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
+          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
           {passwordForm}
         </Stack>
       )}

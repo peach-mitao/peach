@@ -47470,7 +47470,7 @@ function zge({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 				term: "密码",
 				children: g.remember ? "已保存，登录过期时自动重新登录" : "未保存，登录过期后需要回到这里重新登录"
 			})] }) : _.available ? /* @__PURE__ */ (0, z.jsxs)(_y, { children: [
-				/* @__PURE__ */ (0, z.jsx)(yy, { children: "「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口， 之后由 Peach 续期；续期失败时回到这里重新登录。" }),
+				/* @__PURE__ */ (0, z.jsx)(yy, { children: "「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口，之后由 Peach 续期；续期失败时回到这里重新登录。" }),
 				/* @__PURE__ */ (0, z.jsx)(yy, { children: "PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。" }),
 				p ? T ? /* @__PURE__ */ (0, z.jsx)(by, { children: p }) : /* @__PURE__ */ (0, z.jsx)(yy, {
 					role: "status",
@@ -47490,7 +47490,7 @@ function zge({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 						]
 					})
 				})
-			] }) : /* @__PURE__ */ (0, z.jsxs)(_y, { children: [/* @__PURE__ */ (0, z.jsx)(yy, { children: "PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。 账号密码只用来换登录令牌，令牌存在这台电脑上。" }), C] }),
+			] }) : /* @__PURE__ */ (0, z.jsxs)(_y, { children: [/* @__PURE__ */ (0, z.jsx)(yy, { children: "PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。账号密码只用来换登录令牌，令牌存在这台电脑上。" }), C] }),
 			d || h.error ? /* @__PURE__ */ (0, z.jsx)(_y, {
 				divided: !0,
 				children: /* @__PURE__ */ (0, z.jsx)(by, { children: d || h.error })
