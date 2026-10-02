@@ -95,6 +95,9 @@ class TestPlanningTests(unittest.TestCase):
         self.assertEqual(runner.scopes_for_changes(['scripts/localize_performer_names.py'])[0],
                          ('metadata', 'tooling'))
         self.assertEqual(runner.scopes_for_changes(['README.md'])[0], ('checks', 'tooling'))
+        for document in ('docs/TESTING.md', 'docs/CLOUDDRIVE.md', 'docs/OPERATIONS.md'):
+            with self.subTest(document=document):
+                self.assertEqual(runner.scopes_for_changes([document])[0], ('checks',))
 
     def test_library_processing_selects_the_domains_that_exercise_it(self):
         """`library_processing.py` 的模块名与测试文件名对不上，按名字推不出域。
