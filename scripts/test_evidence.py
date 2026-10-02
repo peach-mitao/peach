@@ -230,7 +230,7 @@ def holder_path(lock_path: Path) -> Path:
 
 
 @contextmanager
-def held(lock_path: Path, **note: object):
+def held(lock_path: Path, *, wait_seconds: float = 0, **note: object):
     """拿锁，并在旁边留下「谁在持有」的记录，让等锁的人知道在等什么。
 
     互斥只靠 filelock：锁是操作系统层面的句柄，只能被活着的进程持有，进程退出就释放。
@@ -238,7 +238,16 @@ def held(lock_path: Path, **note: object):
     持有者进门时覆盖，而等锁那一侧只在锁真的被占着时才去读，所以读到的总是当前持有者。
     """
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(lock_path, timeout=0):
+    lock = FileLock(lock_path)
+    try:
+        lock.acquire(timeout=0)
+    except Timeout:
+        if wait_seconds <= 0:
+            raise
+        print(f"等待 {lock_path.name}（{describe_holder(lock_path)}），最长 {wait_seconds:g} 秒。",
+              file=sys.stderr, flush=True)
+        lock.acquire(timeout=wait_seconds)
+    try:
         record = holder_path(lock_path)
         record.write_text(json.dumps({
             "pid": os.getpid(),
@@ -249,6 +258,8 @@ def held(lock_path: Path, **note: object):
             yield
         finally:
             record.unlink(missing_ok=True)
+    finally:
+        lock.release()
 
 
 def describe_holder(lock_path: Path) -> str:

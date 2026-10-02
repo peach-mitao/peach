@@ -8,7 +8,7 @@
 
 | 顺序 | 优先级与范围 | 剩余工作与依赖 |
 | --- | --- | --- |
-| 1 | P1 开发流程 | 操作 29：区分记录无效与用例失败、集成与全量测试互斥、全量锁排队；测试入口同步依赖；commit-msg 校验 trailer；操作 40 的首次导入超时 |
+| 1 | P1 开发流程 | 测试入口同步依赖；commit-msg 校验 trailer；操作 40 的首次导入超时 |
 | 2 | P1 搜索与下载 | 43 的资源搜索接已有云下载，同批做 64 的来源性质标注；42 与 57 的本地下载、续传依赖操作 12 的流量与磁盘预算；骨架 1 还缺 51 的相似匹配、去重与人工替换确认 |
 | 3 | P1 诊断 | 46 挂载探测 → 21 doctor 与分级健康检查 → 26 诊断页；12 的生产异常场景验收单列 |
 | 4 | P2 元数据质量 | 44 → 操作 36 → 54 → 29；45 的回放与 58 的来源缺陷记录随解析器做；65、61 先核对成本与预算 |
@@ -22,11 +22,12 @@
 
 | 项目 | 核对结果 | 证据 |
 | --- | --- | --- |
-| 操作 29 与测试入口 | 仍需处理：两把锁独立；记录失效与用例失败都返回 1；锁忙立即退出；入口无依赖同步，commit-msg 钩子未设置 | `scripts/test_runner.py`、`scripts/test_evidence.py`、`scripts/agent_worktree.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/githooks/` |
+| 测试入口 | 仍需处理：入口无依赖同步，commit-msg 钩子未设置 | `scripts/test.ps1`、`scripts/test.sh`、`scripts/githooks/` |
 | 操作 40 | 首次导入没有单独超时；本轮未重新触发偶发超时 | `frontend/test/islands.test.ts` 的三个 beforeAll |
 | 42、43、64 | 云下载模型已具备；本地下载器、资源搜索与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/web_downloads.py`、前端下载设置 |
 | 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
+| 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
 | 操作 1 | 当前实验未复现：备份前、备份内、备份后均为 6164 行，集合摘要一致、逐行差异 0、备份完整性 ok；历史原因未取得 | `attic/evidence/20261002-tag-backup-audit/report-20261002T092121Z.json` 与同目录差异 CSV |
 
 ### 等待条件
@@ -96,7 +97,7 @@
 11. 非 editable 安装的跨平台验收：wheel 资源与 Windows 基础依赖、仓库外 CLI 冒烟已就绪，仍需取得 macOS、Python 3.12 消费任务结果。
 12. 健康检查生产验收：`db` 区分 missing、empty、available、unavailable，`?ready=1` 检查 schema 校验和；待部署后用项目 CA 验证 HTTPS 与损坏／未初始化状态。
 13. 界面国际化：界面目前只有中文，先补英文。
-14. 制品与更新渠道：剩余 macOS 独立包、代码签名、独立测试包的自动更新、局域网配对和更完整的配置管理。已有的部分是 Windows 独立测试包（免安装 zip 与当前用户安装包两种）、首次引导与本机配置表单、按构建身份自行重建的打包托盘、由 `release_tag.py` 在发布点独家发出的版本号与标签（每个版本号对应一份制品并在 `CHANGELOG.md` 有一节），以及退出程序后完整解压新版、数据目录保持独立的测试包更新。关闭判据见 ADR-0012「1.0 门槛」第 8 项。
+14. 制品与更新渠道：剩余 macOS 独立包、代码签名、局域网配对和更完整的配置管理。已有的部分是 Windows 独立测试包（免安装 zip 与当前用户安装包两种）、首次引导与本机配置表单、按构建身份自行重建的打包托盘、由 `release_tag.py` 在发布点独家发出的版本号与标签（每个版本号对应一份制品并在 `CHANGELOG.md` 有一节），以及退出程序后完整解压新版、数据目录保持独立的测试包更新。自动检查与自动下载已有持久设置，默认关闭；下载只准备安装，重启由用户确认。关闭判据见 ADR-0012「1.0 门槛」第 8 项。
 15. 「第一个小时」教程与故障排查文档：init → 声明来源根 → scan → 打开页面 → 手机信任 CA → 托盘/菜单栏自启动，每一步写清失败表现与对应的排查动作；截图用一套小的 SFW 演示数据集生成，不取自真实馆藏。演示数据集由 `scripts/demo_dataset.py` 生成，用法见 [docs/README_MAINTENANCE.md](README_MAINTENANCE.md)「演示数据集」；教程正文与截图仍待做。
 17. 口味导入引导：`/taste` 上传（Takeout ZIP、browserexport 兼容文件）与 `scripts/taste_history.py` 直读本机浏览器库两条路都能用，首次设置和口味页也有简短指南，但没有面向陌生人的完整文档。需要一页「各浏览器怎么导出、多台设备怎么各自刷新」教程，把脚本折进 `peach` CLI（见「把常跑批处理折进 `peach` CLI」一条），并写明定时刷新的安装方式。
 19. 局域网配对：仍需一次性配对码或 HTTPS 地址二维码，减少设备首次访问时手输口令；现有口令生成、取用与非回环无口令拒绝启动不重复实现。Windows 的 HTTP 跳转与 HTTPS 单一业务入口已有生产核验记录，见 [运行态](STATUS.md)；Mac 的入口验收并入操作 24、26。配对码参照 Javdex `docs/LAN_WEB.md`（MIT）：新设备领一个六位码，桌面端核对后批准，可记住设备、逐台撤销。
@@ -176,9 +177,9 @@
 
 合计：**69 项开放需求**，其中 7 项已有骨架，62 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
 
-## 待执行的操作（42 项）
+## 待执行的操作（41 项）
 
-需要另行授权、外部条件或人工判断才能做的具体操作与复核批次，比上面的需求细一层；做完就删，不在这里留痕。待办只放这一处：[docs/STATUS.md](STATUS.md) 每次会话开头都要读，队列不该常驻在那种入口文件里。
+这里包含可直接开发的修复，以及需要另行授权、外部条件或人工判断的操作与复核批次，比上面的需求细一层；做完就删，不在这里留痕。待办只放这一处：[docs/STATUS.md](STATUS.md) 每次会话开头都要读，队列不该常驻在那种入口文件里。
 
 1. 历史证据待取得：2026-09-02 的 191 行 `javinizer:%:tag` 差异（javbus −172、r18dev −19）仍缺可归因的写入者与逐行差异。2026-10-02 的「读计数 → sqlite_backup → 再读计数」实测未复现，6164 行逐行一致，备份完整性 ok。证据在 `attic/evidence/20261002-tag-backup-audit/`；取得历史快照或写入记录后继续追溯，不据此修复真实账本。
 2. 在 `/review` 处理 5 个被跳过的标题偏移值：`MY-101`～`MY-104`、`SAR-103`。
@@ -208,7 +209,6 @@
 27. 事务所改名复核：Wish/GIRFY、LiStarPRO/GRANZPRO 缺可核验官网；LIGHT 与 ELTRA/EST 存在分流，不能整体合并；Prime Agency/GG 有歧义，Cruse Group 官网证书链未取得。原始请求与逐条结论位于顶层 `attic/reviews/20260906-portrait-agency/agency-review.csv`。只对取得证据且获用户批准的记录执行合并。
     2026-09-06 核对 wish-promotion.jp 已是其他内容站，不能作为现官网。15 条现官网链接使用共用 Chrome UA 重查，13 条返回 200；Cruse Group 证书链与 Prime Agency TLS 连接仍未取得。
 28. `install_entity_links.py` 的 `prune` 已按 `is_gone()` 分「确证没了」与「取不到但不算证据」两档，安装路径的 `check_links` 仍按「非 200 就跳过」执行。首批 703 条里 137 条因此没装，其中 31 条 twitter.com、23 条 t-powers.co.jp。安装路径照 `prune` 分两档：后者留进待复查队列，配合 `rediscover_entity_links.py` 对 t-powers／nax-pro／mines-pro 这些已经搬家的域名上溯找新锚，再装一次。
-29. 托盘自重建会被测试记录门槛卡住。机制已确认：托盘在主检出跑全量，`integrate` 的 `integration.lock` 与全量的 `full-suite.lock` 互不排斥，任何一次集成都会改掉正在验证的树，`scripts/test_runner.py` 随即因验证前后内容或依赖快照不一致判记录无效、退出码 1，托盘把它当测试失败处理：不打包、不换 EXE、同一 HEAD 不再重试。要做两件事：集成前等主检出里正在跑的全量结束（或让两把锁互斥）；`scripts/test_runner.py` 把「记录无效」和「用例失败」分成不同退出码（现在两种情况都返回 1），让托盘对前者重试而不是放弃。
 30. 封面来源头像逐条复核：37 张仍来自 `cover-fallback`，其中 3 人在图库里本来就有人像，资料页上一点就能换掉；完整初始清单位于 `attic/reviews/20260906-portrait-agency/remaining-cover-avatars.csv`。41 张被封面覆盖的 Gfriends 人像已从备份恢复，包括日向真凛，恢复记录见同目录 `cover-restore-result.json`。采集器将封面保留为未验证候选，安装函数拒绝把整张封面写成人物头像；补头像后继在这批人的作品换上新封面时截封面上的脸替换它们（`cover-face`），还没轮到的仍待逐条换。DMM 女优一览页已排除为换源候选：头像只有 125×125，且同批图 Gfriends 已收在最后一档（2026-09-11 实测，结论与取证位置见 [docs/SOURCING.md](SOURCING.md)）。
 31. 2026-09-07 首要原则审查（覆盖整个 `peach-app`）的剩余清理项，完整报告与判断依据在顶层 `attic/reviews/20260907-first-principles/review.md`。下面每条独立，可单独派工作树：
     - follow：`connector_headers` 形参、`blocked_reason` 基类钩子、`FollowCandidate.version` 输入字段只有测试在用；`KemonoConnector.HOSTS`／`SubscribeStarConnector.HOSTS` 与登记表 `url_hosts` 是同一份主机表的第二份；Rule34Video 自带的探测循环可并入 `enrich()`；425／429 进 `_send` 的可重试集后两段手写重试可删。
@@ -217,7 +217,7 @@
     - 桌面：换 EXE 两条路径（`replace_windows_tray.py` + `windows_update` 内联备份，与 `windows_restart.swap_tray_binary`）留校验更强的后者；`sync.py` 的 `PUSH_INTERVAL_SECONDS`／`push_if_needed`／`interval` 生产只传 0；`scripts/manage_tray_startup.ps1` 已由 `desktop_startup.py` 接管（同时改 ADR-0011 与 [docs/OPERATIONS.md](OPERATIONS.md)）；三张「哪些路径算运行时」清单合成一处。
     - 领域层：`catalog_rules` 里站名交替串、TLD 列表各写两份；`transcodes.requires_conversion`／`browser_path` 是同一段缓存逻辑；`library_processing` 是第三条 r18 请求路径且跨模块拿私有 `_fetch`。
     - scripts：`audit_creator_attributions.py`（查的 `legacy:asset` 已无写入者）、`apply_metadata_tags.py`（绕过 `/review`）、`creator_tags.py --apply-review`（与 `web_review` 判据不同的第二条写路，`--export-review` 要留）建议删；7 处绕开 `scripting.open_for_write`、5 处自拼只读 URI、5 处手写线性重试要接上共享实现；`audit_video_endcards.py`、`audit_fc2_similarity.py`、`localize_series_names.py` 还会用但文档没登记，归到 `peach-batch-jobs` 或 [docs/SOURCING.md](SOURCING.md)。
-    - tests：约 5 200 条源码文本断言，4 593 条在 `test_web_ui.py`（近 90 天 20% 的提交都在改它），`test_follow_web.py` 的关注管理页部分已换成 vitest 与 e2e，全文件剩 354 条；棘轮 `test_source_assertion_ratchet.py` 只许减少，换法见 [docs/TESTING.md](TESTING.md)「写什么测试」；页面断言设施两处各写一份；`test_fastapi_api.BASE_SCHEMA` 手写 22 张表，与 `migrations/*.sql` 的漂移未取得；31 个文件手写 `CREATE TABLE`，`tests/support/ledger.py` 有 22 个在用。方向是触碰时迁到 `test_web_js.py` 与 `fresh_ledger()`，不整体重写；`check_copy_final_state.py` 的词表不拦「过去／此前」。
+    - tests：2026-10-02 按 `test_source_assertion_ratchet.py` 实测有 2 433 处源码文本断言，其中 `test_web_ui.py` 为 2 116 处，`test_follow_web.py` 为 122 处；棘轮只许减少，换法见 [docs/TESTING.md](TESTING.md)「写什么测试」。页面断言设施、手写 schema 与临时表仍按触碰范围核对并迁到 `test_web_js.py` 与 `fresh_ledger()`，不整体重写；`check_copy_final_state.py` 的词表不拦「过去／此前」。
     - 前端：11 处 `await import('/dist/peach-ui.js')` 与文件顶部静态 import 并存（`test_frontend_build.py` 与 `test_web_ui.py` 钉住了这种写法，要同改）。
     - 文档：同一条规则最多写在 19 个文件里（测试入口）。
 32. 归一后要用户判的 10 张厂牌标识：AttractiveLLC ×3、C-more_Entertainment ×3、Bambi_Promotion ×2、Deep_s、Tameike_Goro。补到内容外接圆这条规则在「设计上就出血到边」的标识上会把内容推离边缘，逐张判词在 `peach-data/review/refit-review-20260908.csv`，原图在 `peach-data/archive/logos-pre-refit-20260908/`，对比页 `build/logo_compare.html` 的第一节。占宽和圆外损失都分不开 C-more（0.98／0.97）与 MARRION（0.95／0.94），所以没加窄化条件，先由用户定还原哪几张，再按定下来的形状写判据和测试。

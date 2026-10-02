@@ -6,7 +6,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -245,10 +247,86 @@ class VerificationTests(unittest.TestCase):
                 redirect_stderr(io.StringIO()), redirect_stdout(output), \
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(runner, "build_suite", side_effect=AssertionError("不该开跑")):
-            self.assertEqual(runner.main(["--scope", "full"]), 2)
+            self.assertEqual(runner.main(["--scope", "full", "--lock-timeout", "0"]), 2)
         self.assertIn("本仓库全量测试正在运行", output.getvalue())
         self.assertIn(f"pid {os.getpid()}", output.getvalue())
         self.assertIn("root elsewhere", output.getvalue())
+
+    def test_full_verification_waits_and_snapshots_after_the_holder_releases(self):
+        lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
+        waiting = threading.Event()
+        describe = evidence.describe_holder
+
+        def describe_wait(path):
+            waiting.set()
+            return describe(path)
+
+        output, errors = io.StringIO(), io.StringIO()
+        with redirect_stderr(errors), redirect_stdout(output), \
+                mock.patch.object(runner, "ROOT", self.repo), \
+                mock.patch.object(evidence, "describe_holder", side_effect=describe_wait), \
+                mock.patch.object(runner, "environment_preflight"), \
+                mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
+                    unittest.FunctionTestCase(lambda: None)])) as build, \
+                ThreadPoolExecutor(max_workers=1) as pool:
+            with evidence.held(lock, scope="integrate"):
+                future = pool.submit(runner.main, ["--scope", "full", "--lock-timeout", "5"])
+                self.assertTrue(waiting.wait(5), "验证应等待持锁的集成")
+                build.assert_not_called()
+                (self.repo / "README.md").write_text("集成完成\n", encoding="utf-8")
+            self.assertEqual(future.result(timeout=15), 0)
+        self.assertIn("等待 full-suite.lock", errors.getvalue())
+        self.assertNotIn("等待 full-suite.lock", output.getvalue())
+        self.assertTrue(evidence.covers(evidence.read(self.repo, evidence.key(self.repo)), ("full",)))
+
+    def test_full_verification_holds_the_lock_through_record_publication(self):
+        before = self.git("rev-parse", "HEAD")
+        publish = evidence.write
+
+        def publish_locked(*args, **kwargs):
+            with self.assertRaisesRegex(coordinator.WorkspaceError, "全量验证"):
+                coordinator.integrate(self.repo, "unused", lock_timeout=0)
+            return publish(*args, **kwargs)
+
+        with redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()), \
+                mock.patch.object(runner, "ROOT", self.repo), \
+                mock.patch.object(evidence, "write", side_effect=publish_locked) as written, \
+                mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
+                    unittest.FunctionTestCase(lambda: None)])):
+            self.assertEqual(runner.main(["--scope", "full"]), 0)
+        written.assert_called_once()
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+
+    def test_integration_excludes_full_verification(self):
+        def merge(*_):
+            self.assertEqual(runner.main(["--scope", "full", "--lock-timeout", "0"]), 2)
+            return {"ok": True}
+
+        with redirect_stdout(io.StringIO()), mock.patch.object(runner, "ROOT", self.repo), \
+                mock.patch.object(runner, "build_suite") as build, \
+                mock.patch.object(coordinator, "_integrate_locked", side_effect=merge):
+            self.assertTrue(coordinator.integrate(self.repo, "unused")["ok"])
+        build.assert_not_called()
+
+    def test_integration_waits_for_full_verification_before_mutation(self):
+        lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
+        waiting = threading.Event()
+        describe = evidence.describe_holder
+
+        def describe_wait(path):
+            waiting.set()
+            return describe(path)
+
+        with redirect_stdout(io.StringIO()), \
+                mock.patch.object(evidence, "describe_holder", side_effect=describe_wait), \
+                mock.patch.object(coordinator, "_integrate_locked", return_value={"ok": True}) as merge, \
+                ThreadPoolExecutor(max_workers=1) as pool:
+            with evidence.held(lock, scope="full"):
+                future = pool.submit(coordinator.integrate, self.repo, "unused", lock_timeout=5)
+                self.assertTrue(waiting.wait(5), "集成应等待全量记录写入完成")
+                merge.assert_not_called()
+            self.assertTrue(future.result(timeout=15)["ok"])
+        merge.assert_called_once()
 
     def test_empty_active_worktree_survives_prune(self):
         item = coordinator.create(self.repo, "codex", "active", self.root / "worktrees")
@@ -357,7 +435,7 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
                     unittest.FunctionTestCase(mutate)])):
-            self.assertEqual(runner.main(["--scope", "checks"]), 1)
+            self.assertEqual(runner.main(["--scope", "checks"]), 4)
         self.assertFalse(evidence.covers(evidence.read(self.repo, evidence.key(self.repo)), ("checks",)))
 
 

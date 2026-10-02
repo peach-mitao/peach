@@ -123,8 +123,28 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
             )
             result = installer.prepare("abc12345", ("src/peach/tray.py",))
             self.assertEqual(result.state, "failed")
+            installer._run.assert_called_once()
             popen.assert_not_called()
             self.assertEqual(target.read_bytes(), b"old")
+
+    def test_invalid_verification_retries_and_requires_a_valid_record(self):
+        for exits, expected in (([4, 0], "services"), ([4, 4, 4], "failed"), ([4, 1], "failed")):
+            with self.subTest(exits=exits), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                target, state, logs = self.make_tree(root)
+                runner = Mock(side_effect=[subprocess.CompletedProcess([], code) for code in exits])
+                popen = Mock()
+                installer = WindowsUpdateInstaller(
+                    root, state_dir=state, log_dir=logs, current_executable=target,
+                    run=runner, popen=popen, powershell="pwsh", frozen=True,
+                )
+                result = installer.prepare("abc12345", ("docs/STATUS.md",))
+                self.assertEqual(result.state, expected)
+                self.assertEqual(runner.call_count, len(exits))
+                for call in runner.call_args_list:
+                    self.assertIn("test.ps1", " ".join(call.args[0]))
+                popen.assert_not_called()
+                self.assertEqual(target.read_bytes(), b"old")
 
     def test_sweep_keeps_recent_backups_and_pending_staging_only(self):
         with tempfile.TemporaryDirectory() as directory:

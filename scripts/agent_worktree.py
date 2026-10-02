@@ -146,16 +146,19 @@ def require_verified(worker: Path, target_branch: str, paths: Iterable[str]) -> 
         raise WorkspaceError("验证检查期间工作树改变，请重试")
 
 
-def integrate(repo: Path, worker_branch: str, target_branch: str = "master") -> dict[str, object]:
+def integrate(repo: Path, worker_branch: str, target_branch: str = "master", *,
+              lock_timeout: float = 1800) -> dict[str, object]:
     folder = test_evidence.evidence_dir(repo)
     folder.mkdir(parents=True, exist_ok=True)
     try:
         with test_evidence.held(folder / "integration.lock",
-                                branch=worker_branch, root=str(repo)):
+                                branch=worker_branch, root=str(repo)), \
+                test_evidence.held(folder / "full-suite.lock", wait_seconds=lock_timeout,
+                                   scope="integrate", branch=worker_branch, root=str(repo)):
             return _integrate_locked(repo, worker_branch, target_branch)
     except test_evidence.Timeout as error:
         raise WorkspaceError(
-            f"另一任务正在集成（{test_evidence.describe_holder(Path(error.lock_file))}）；"
+            f"另一任务正在集成或全量验证（{test_evidence.describe_holder(Path(error.lock_file))}）；"
             "本次未修改分支，请等待后重试") from error
 
 
