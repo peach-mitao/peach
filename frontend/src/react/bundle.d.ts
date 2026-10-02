@@ -132,7 +132,12 @@ export interface DownloadSettingsState {
   max_wait_hours: number;
 }
 
-/** 「检查」的结果：每一项各自报，一项失败不挡住其余几项。 */
+/** 「保存配置」的响应：设置块加一份按已保存配置做的检查报告，没有令牌时为 null。 */
+export interface DownloadSaveResult extends DownloadSettingsState {
+  report?: DownloadCheckReport | null;
+}
+
+/** 检查的结果：每一项各自报，一项失败不挡住其余几项。 */
 export interface DownloadCheckReport {
   ok: boolean;
   /** 实际查的 CloudDrive2 地址。表单留空时是探测到的本机地址，探测不到时为空串。 */

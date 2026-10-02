@@ -1,25 +1,28 @@
 /* 「云下载」：把磁力交给 115 或 PikPak 离线下载，文件落在已挂载的网盘目录，由推送发现入库。
  *
  * 两张卡。第一张是地址、令牌、目标目录与等待上限：115 走 CloudDrive2 的 gRPC，令牌在
- * CloudDrive2「设置 → API 令牌」里生成；「检查」按此刻填的值去问 CloudDrive2 有没有离线权限、
- * 目标目录能不能离线、115 还剩几条配额，只读，不提交。地址、115 目标目录与 PikPak 根留空时，
- * 「检查」把探测到的、按推送发现推出的值填回表单，点「保存配置」才落盘；推出的目录不存在时
- * 给一颗「新建这个目录」，只有点了才在 CloudDrive2 里建。第二张是 PikPak 账号的登录与登出。
+ * CloudDrive2「设置 → API 令牌」里生成。检查去问 CloudDrive2 有没有离线权限、目标目录能不能
+ * 离线、115 还剩几条配额，只读，不提交：地址和令牌都已保存时卡片一打开就按已保存的配置查一遍，
+ * 「保存配置」的响应里也带着一份，「检查」键按此刻填的值重查。115 目标目录留空保存时，服务端按
+ * 推送发现推一个目录，已经存在就直接存上。地址、还没存的目标目录与 PikPak 根留空时，检查把
+ * 探测到的、按推送发现推出的值填回表单，点「保存配置」才落盘；推出的目录不存在时给一颗
+ * 「新建这个目录」，只有点了才在 CloudDrive2 里建。第二张是 PikPak 账号的登录与登出。
  *
  * 令牌与密码只往本机凭据文件写，读接口只回「存没存过」，所以令牌框保存后清空、提示改成
  * 「已保存，留空不改」。PikPak 要人机验证时服务端回一个验证页地址，这里给出链接让用户在浏览器
  * 里完成，Peach 不替他过验证。 */
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { Select, SelectItem } from '@/components/base/select/select';
 
-import { apiSend, errorMessage } from '../../api';
+import { apiGet, apiSend, errorMessage } from '../../api';
 import type {
-  DownloadCheckReport, DownloadConfig, DownloadSettingsState, PikPakLoginResult,
+  DownloadCheckReport, DownloadConfig, DownloadSaveResult, DownloadSettingsState, PikPakLoginResult,
 } from '../bundle';
+import { LoadingDots } from '../components/loading-dots';
 import { Note } from '../components/note';
 import { ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
@@ -58,7 +61,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
   const [hours, setHours] = useState(String(state.config.wait_hours));
   const [report, setReport] = useState<DownloadCheckReport | null>(null);
   const [detected, setDetected] = useState('');
-  const [suggested, setSuggested] = useState<Suggestions>({ target: null, root: '' });
+  const [suggested, setSuggested] = useState<Suggestions>(NO_SUGGESTIONS);
   const [failure, setFailure] = useState('');
   const [saveBlocked, setSaveBlocked] = useState(false);
   const action = useAction();
@@ -68,48 +71,72 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
   // 检查标为不存在、用户也没改过的那个目录，存下来提交时只会报「没有这个文件夹」。
   const missing = Boolean(suggested.target && !suggested.target.exists && target('115') === suggested.target.path);
 
+  // 把一份检查报告落到表单上：留空的地址、115 目标目录与 PikPak 根填建议值，用户填过的不覆盖。
+  // `saved` 是服务端保存时已经存上的 115 目标目录，它不再填回、也不再说「保存配置后生效」。
+  const show = (next: DownloadCheckReport, blank: Blanks, saved = '') => {
+    const folder = blank.target ? next.suggested_target : null;
+    const stored = Boolean(folder && saved && folder.path === saved);
+    const root = blank.root ? next.suggested_pikpak_root : '';
+    setConfig((current) => ({
+      ...current,
+      clouddrive_address: blank.address && next.address ? next.address : current.clouddrive_address,
+      targets: folder && !stored ? { ...current.targets, '115': folder.path } : current.targets,
+      pikpak_root: root || current.pikpak_root,
+    }));
+    setReport(next);
+    setDetected(blank.address ? next.address : '');
+    setSuggested({ target: folder, root, saved: stored });
+    setSaveBlocked(false);
+    setFailure('');
+  };
+
+  // 地址和令牌都已保存时，卡片一打开就按已保存的配置查一遍；令牌只在服务端取，不经页面。
+  useEffect(() => {
+    if (!state.available || !state.config.clouddrive_address || !state.token_set) return;
+    const blank = { address: false, target: !state.config.targets['115'], root: !state.config.pikpak_root };
+    void action.run('auto', (signal) => apiGet<DownloadCheckReport>(CHECK_URL, signal),
+      (next) => show(next, blank), (cause) => setFailure(errorMessage(cause)));
+    // 只在挂载时查这一次，之后由「保存配置」与「检查」接手。
+  }, []);
+
+  // 保存的响应里带着按已保存配置做的检查报告，直接渲染；115 目标目录留空时服务端已按推送发现填上。
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (missing) {
       setSaveBlocked(true);
       return;
     }
-    const body = { ...config, wait_hours: hours, token };
-    void action.run('save', (signal) => apiSend<DownloadSettingsState>(DOWNLOADS_URL, body, 'POST', signal),
+    const blankTarget = !target('115').trim();
+    const body = { ...config, wait_hours: hours, token, pikpak_account: pikpakAccount };
+    void action.run('save', (signal) => apiSend<DownloadSaveResult>(DOWNLOADS_URL, body, 'POST', signal),
       (next) => {
-        settle(next);
-        setConfig(next.config);
-        setHours(String(next.config.wait_hours));
+        const { report: checked, ...settings } = next;
+        settle(settings);
+        setConfig(settings.config);
+        setHours(String(settings.config.wait_hours));
         setToken('');
-        setFailure('');
+        if (checked) {
+          show(checked, { address: !settings.config.clouddrive_address, target: blankTarget,
+            root: !settings.config.pikpak_root }, settings.config.targets['115'] ?? '');
+        } else {
+          setReport(null);
+          setDetected('');
+          setSuggested(NO_SUGGESTIONS);
+          setSaveBlocked(false);
+          setFailure('');
+        }
         receipt('已保存配置');
       }, (cause) => setFailure(errorMessage(cause)));
   };
 
-  // 地址、115 目标目录与 PikPak 根留空时，服务端探测本机端口、按推送发现推建议值，这里填回表单；
-  // 用户点「保存配置」才落盘。用户自己填过的字段不覆盖。
+  // 「检查」按此刻填的值重查：地址留空时服务端探测本机端口，目录留空时按推送发现推建议值。
   const check = () => {
-    const blank = !config.clouddrive_address.trim();
-    const blankTarget = !target('115').trim();
-    const blankRoot = !config.pikpak_root;
+    const blank = { address: !config.clouddrive_address.trim(), target: !target('115').trim(),
+      root: !config.pikpak_root };
     const body = { clouddrive_address: config.clouddrive_address, token, target: target('115'),
       pikpak_root: config.pikpak_root, pikpak_account: pikpakAccount };
     void action.run('check', (signal) => apiSend<DownloadCheckReport>(CHECK_URL, body, 'POST', signal),
-      (next) => {
-        const folder = blankTarget ? next.suggested_target : null;
-        const root = blankRoot ? next.suggested_pikpak_root : '';
-        setConfig((current) => ({
-          ...current,
-          clouddrive_address: blank && next.address ? next.address : current.clouddrive_address,
-          targets: folder ? { ...current.targets, '115': folder.path } : current.targets,
-          pikpak_root: root || current.pikpak_root,
-        }));
-        setReport(next);
-        setDetected(blank ? next.address : '');
-        setSuggested({ target: folder, root });
-        setSaveBlocked(false);
-        setFailure('');
-      }, (cause) => setFailure(errorMessage(cause)));
+      (next) => show(next, blank), (cause) => setFailure(errorMessage(cause)));
   };
 
   // 只在用户点了「新建这个目录」时调 CloudDrive2 建目录，建好后服务端按这个目录再检查一遍。
@@ -138,9 +165,9 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
           placeholder={state.token_set ? '已保存，留空不改' : '在 CloudDrive2「设置 → API 令牌」中生成'}
           hint="令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」；要在 Peach 里新建目标目录，再勾上新建文件夹权限（allow_create_folder）。"
           value={token} isDisabled={!state.available} onChange={setToken} />
-        <Input label="115 目标目录" placeholder="检查时按推送发现自动填写" autoComplete="off" maxLength={300}
+        <Input label="115 目标目录" placeholder="留空时按推送发现自动填写" autoComplete="off" maxLength={300}
           validationBehavior="aria" isInvalid={missing}
-          hint={missing ? (saveBlocked ? '这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。' : 'CloudDrive2 里还没有这个目录。') :'CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空时点「检查」，按推送发现里 115 那条前缀填上「前缀/云下载」。'}
+          hint={missing ? (saveBlocked ? '这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。' : 'CloudDrive2 里还没有这个目录。') : 'CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空保存时按推送发现里 115 那条前缀填上「前缀/云下载」。'}
           value={target('115')} isDisabled={!state.available} onChange={(value) => setTarget('115', value)} />
         <Input label="PikPak 目标目录" placeholder="以 / 开头的网盘路径" autoComplete="off" maxLength={300}
           hint="PikPak 网盘里的路径，目录要已经存在。"
@@ -149,7 +176,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
           <FieldLabel>PikPak 根目录对应的媒体文件夹</FieldLabel>
           {state.pikpak_roots.length ? (
             <Select aria-label="PikPak 根目录对应的媒体文件夹" selectedKey={config.pikpak_root || null}
-              isDisabled={!state.available} placeholder="点检查按推送发现选"
+              isDisabled={!state.available} placeholder="检查时按推送发现选"
               onSelectionChange={(key) => setConfig({ ...config, pikpak_root: key === null ? '' : String(key) })}>
               {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
             </Select>
@@ -161,6 +188,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
           hint={`远端超过这么久还没下完就标为停滞，多半是没有人做种。1 到 ${state.max_wait_hours} 小时。`}
           value={hours} isDisabled={!state.available} onChange={setHours} />
       </Stack>
+      {action.busy === 'auto' ? <Stack divided><LoadingDots label="正在检查 CloudDrive2" /></Stack> : null}
       {report ? (
         <CheckReport report={report} detected={detected} suggested={suggested}
           create={state.available ? create : undefined} creating={action.busy === 'folder'} />
@@ -174,10 +202,21 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
   );
 }
 
-/** 这一次「检查」填回表单的建议值。目标目录不存在时也填回去，表单把它标成无效。 */
+/** 这一次检查推出的建议值。目标目录不存在时也填回去，表单把它标成无效；`saved` 为真时目标目录
+ *  已经由保存配置存上。 */
 interface Suggestions {
   target: DownloadCheckReport['suggested_target'];
   root: string;
+  saved: boolean;
+}
+
+const NO_SUGGESTIONS: Suggestions = { target: null, root: '', saved: false };
+
+/** 哪些字段留空，留空的才填建议值。 */
+interface Blanks {
+  address: boolean;
+  target: boolean;
+  root: boolean;
 }
 
 function CheckReport({ report, detected, suggested, create, creating }: {
@@ -192,7 +231,11 @@ function CheckReport({ report, detected, suggested, create, creating }: {
     <Stack divided>
       <FactList>
         {detected ? <Fact term="CloudDrive2 地址">{`探测到 ${detected}，保存配置后生效`}</Fact> : null}
-        {folder?.exists ? <Fact term="115 目标目录">{`按推送发现填入 ${folder.path}，保存配置后生效`}</Fact> : null}
+        {folder?.exists ? (
+          <Fact term="115 目标目录">
+            {suggested.saved ? `已按推送发现填入 ${folder.path}` : `按推送发现填入 ${folder.path}，保存配置后生效`}
+          </Fact>
+        ) : null}
         {folder && !folder.exists ? (
           <Fact term="115 目标目录">
             {`${folder.path} 不存在`}
