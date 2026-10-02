@@ -226,13 +226,19 @@ def _targets(port: int) -> list[dict]:
 
 
 class _Browser:
-    """一个浏览器进程与它唯一的那一页。"""
+    """一个浏览器进程与它唯一的那一页。
+
+    `attended` 为真时这是给人操作的窗口（PikPak 浏览器登录，ADR-0093）：开在屏幕内、不挡图片与字体
+    （登录页和人机验证要靠它们渲染），Edge 也不用 InPrivate，因为登录要的 localStorage 必须落在 profile 里。
+    """
 
     def __init__(self, executable: str, profile: Path, flags: tuple[str, ...], *,
                  popen: Callable[..., subprocess.Popen] = subprocess.Popen,
-                 targets: Callable[[int], list[dict]] = _targets, sleep: Callable[[float], None] = time.sleep):
+                 targets: Callable[[int], list[dict]] = _targets, sleep: Callable[[float], None] = time.sleep,
+                 attended: bool = False):
         self.executable, self.profile, self.flags = executable, Path(profile), tuple(flags)
         self._popen, self._targets, self._sleep = popen, targets, sleep
+        self.attended = attended
         self.process: subprocess.Popen | None = None
         self.socket: _WebSocket | None = None
         self.window_id = None
@@ -241,14 +247,15 @@ class _Browser:
         self.profile.mkdir(parents=True, exist_ok=True)
         port_file = self.profile / "DevToolsActivePort"
         port_file.unlink(missing_ok=True)
+        position = ONSCREEN if self.attended else OFFSCREEN
         command = [self.executable, f"--user-data-dir={self.profile}", "--remote-debugging-port=0",
                    # 带远程调试口时 Chromium 会把 `navigator.webdriver` 置真，Turnstile 据此拒绝连人工点击；关掉这个标记。
                    # 它是「不受支持的标志」，浏览器会在每个窗口顶上挂一条警告；`--test-type` 让它不挂。
                    "--disable-blink-features=AutomationControlled", "--test-type",
                    "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
                    f"--window-size={WINDOW_SIZE[0]},{WINDOW_SIZE[1]}",
-                   f"--window-position={OFFSCREEN[0]},{OFFSCREEN[1]}", *self.flags]
-        if "msedge" in Path(self.executable).name.lower():
+                   f"--window-position={position[0]},{position[1]}", *self.flags]
+        if "msedge" in Path(self.executable).name.lower() and not self.attended:
             # Edge 会拿 Windows 账号把新 profile 隐式登录并开同步；InPrivate 窗口不登录、不同步。
             # 代价是 Cookie 只活到进程退出，下次拉起再过一次验证（几秒）。
             command.append("--inprivate")
@@ -264,7 +271,8 @@ class _Browser:
             self.socket = _WebSocket(page["webSocketDebuggerUrl"])
             self.socket.call("Page.enable")
             self.socket.call("Network.enable")
-            self.socket.call("Network.setBlockedURLs", urls=list(BLOCKED_RESOURCES))
+            if not self.attended:
+                self.socket.call("Network.setBlockedURLs", urls=list(BLOCKED_RESOURCES))
             self.window_id = self.socket.call("Browser.getWindowForTarget", targetId=page.get("id", "")).get("windowId")
         except (OSError, StopIteration, KeyError, ValueError, RuntimeError) as error:
             self.close()

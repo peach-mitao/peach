@@ -6,7 +6,8 @@
  * 「保存配置」的响应里也带着一份，「检查」键按此刻填的值重查。115 目标目录留空保存时，服务端按
  * 推送发现推一个目录，已经存在就直接存上。地址、还没存的目标目录与 PikPak 根留空时，检查把
  * 探测到的、按推送发现推出的值填回表单，点「保存配置」才落盘；推出的目录不存在时给一颗
- * 「新建这个目录」，只有点了才在 CloudDrive2 里建。第二张是 PikPak 账号的登录与登出。
+ * 「新建这个目录」，只有点了才在 CloudDrive2 里建。第二张是 PikPak 账号：主路径是用浏览器登录，
+ * 账号密码登录收在折叠里。
  *
  * 令牌与密码只往本机凭据文件写，读接口只回「存没存过」，所以令牌框保存后清空、提示改成
  * 「已保存，留空不改」。PikPak 要人机验证时服务端回一个验证页地址，这里给出链接让用户在浏览器
@@ -24,7 +25,9 @@ import type {
 } from '../bundle';
 import { LoadingDots } from '../components/loading-dots';
 import { Note } from '../components/note';
-import { ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack } from './section';
+import {
+  Disclosure, ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack,
+} from './section';
 import { busyProps, useAction } from './use-action';
 
 export const DOWNLOADS_URL = '/api/configuration/downloads';
@@ -32,6 +35,8 @@ const CHECK_URL = '/api/configuration/downloads/check';
 const FOLDER_URL = '/api/configuration/downloads/folder';
 const LOGIN_URL = '/api/configuration/downloads/pikpak/login';
 const LOGOUT_URL = '/api/configuration/downloads/pikpak/logout';
+const BROWSER_URL = '/api/configuration/downloads/pikpak/browser-login';
+const POLL_MS = 2000;
 
 export function DownloadSettings({ initial, receipt }: {
   initial: DownloadSettingsState;
@@ -260,6 +265,10 @@ function CheckReport({ report, detected, suggested, create, creating }: {
   );
 }
 
+/** PikPak 账号卡。主路径是「用浏览器登录」（ADR-0093）：服务端拉起一个 Peach 专用的浏览器窗口，
+ *  用户在里面登录，Peach 取走网页端会话后关窗，之后只由 Peach 续期。这里拉起后每两秒读一次状态，
+ *  直到登好、取消、超时或失败。账号密码登录收在下面的折叠里；这台电脑没有 Chrome 或 Edge 时
+ *  只剩它，直接摊开。 */
 function PikPakAccount({ state, settle, receipt, username, setUsername }: CardProps & {
   username: string;
   setUsername(value: string): void;
@@ -268,8 +277,46 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
   const [remember, setRemember] = useState(false);
   const [captcha, setCaptcha] = useState('');
   const [failure, setFailure] = useState('');
+  // 只报这一页里拉起的那次登录怎么收场；服务端留着的上一次结果不当成新消息。
+  const [outcome, setOutcome] = useState('');
   const action = useAction();
   const account = state.pikpak;
+  const browser = state.pikpak_browser;
+  const waiting = browser.state === 'waiting';
+
+  useEffect(() => {
+    if (!waiting) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const next = await apiGet<DownloadSettingsState>(BROWSER_URL, controller.signal);
+        if (controller.signal.aborted) return;
+        settle(next);
+        if (next.pikpak_browser.state === 'done') receipt('已登录 PikPak');
+        else if (next.pikpak_browser.state !== 'waiting') setOutcome(next.pikpak_browser.message);
+        if (next.pikpak_browser.state !== 'waiting') return;
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        setFailure(errorMessage(cause));
+      }
+      timer = setTimeout(poll, POLL_MS);
+    };
+    timer = setTimeout(poll, POLL_MS);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [waiting]);
+
+  const openBrowser = () => {
+    setOutcome('');
+    void action.run('browser', (signal) => apiSend<DownloadSettingsState>(BROWSER_URL, {}, 'POST', signal),
+      (next) => { settle(next); setFailure(''); }, (cause) => setFailure(errorMessage(cause)));
+  };
+
+  const cancelBrowser = () => {
+    void action.run('cancel', (signal) => apiSend<DownloadSettingsState>(`${BROWSER_URL}/cancel`, {}, 'POST', signal),
+      (next) => { settle(next); setFailure(''); setOutcome(next.pikpak_browser.message); },
+      (cause) => setFailure(errorMessage(cause)));
+  };
 
   const login = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -295,38 +342,68 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
       (cause) => setFailure(errorMessage(cause)));
   };
 
+  const passwordForm = (
+    <>
+      <Input label="账号" placeholder="邮箱或手机号" autoComplete="username" maxLength={200}
+        value={username} isDisabled={!state.available} onChange={setUsername} />
+      <Input label="密码" type="password" autoComplete="current-password" maxLength={200}
+        value={password} isDisabled={!state.available} onChange={setPassword} />
+      <Checkbox isSelected={remember} isDisabled={!state.available} onChange={setRemember}>
+        保存密码，登录过期时自动重新登录
+      </Checkbox>
+      {captcha ? (
+        <Note tone="warning" title="需要人机验证"
+          extra={<div className="pt-2"><ExternalLink href={captcha}>打开 PikPak 验证页</ExternalLink></div>}>
+          在浏览器里完成验证后，回到这里再点一次「登录」。
+        </Note>
+      ) : null}
+    </>
+  );
+  const passwordLogin = (
+    <Button type="submit" disabled={!state.available || waiting} {...busyProps(action.busy === 'login')}>登录</Button>
+  );
+  const outcomeFailed = browser.state === 'timeout' || browser.state === 'failed';
+
   return (
     <Section title="PikPak 账号" onSubmit={login}>
       {account.logged_in ? (
         <FactList>
           <Fact term="账号">{account.username || '已登录'}</Fact>
-          <Fact term="密码">{account.remember ? '已保存，登录过期时自动重新登录' : '未保存，登录过期后需要回到这里重新登录'}</Fact>
+          {account.method === 'browser' ? (
+            <Fact term="登录方式">浏览器登录，由 Peach 续期</Fact>
+          ) : (
+            <Fact term="密码">{account.remember ? '已保存，登录过期时自动重新登录' : '未保存，登录过期后需要回到这里重新登录'}</Fact>
+          )}
         </FactList>
+      ) : browser.available ? (
+        <Stack>
+          <Help>「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口，之后由 Peach 续期；续期失败时回到这里重新登录。</Help>
+          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。</Help>
+          {outcome ? (outcomeFailed ? <ErrorText>{outcome}</ErrorText> : <Help role="status">{outcome}</Help>) : null}
+          <Disclosure summary="用账号密码登录">
+            <div className="flex flex-col gap-4">
+              <Help>账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
+              {passwordForm}
+              <div className="flex justify-end">{passwordLogin}</div>
+            </div>
+          </Disclosure>
+        </Stack>
       ) : (
         <Stack>
-          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。
-            账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
-          <Input label="账号" placeholder="邮箱或手机号" autoComplete="username" maxLength={200}
-            value={username} isDisabled={!state.available} onChange={setUsername} />
-          <Input label="密码" type="password" autoComplete="current-password" maxLength={200}
-            value={password} isDisabled={!state.available} onChange={setPassword} />
-          <Checkbox isSelected={remember} isDisabled={!state.available} onChange={setRemember}>
-            保存密码，登录过期时自动重新登录
-          </Checkbox>
-          {captcha ? (
-            <Note tone="warning" title="需要人机验证"
-              extra={<div className="pt-2"><ExternalLink href={captcha}>打开 PikPak 验证页</ExternalLink></div>}>
-              在浏览器里完成验证后，回到这里再点一次「登录」。
-            </Note>
-          ) : null}
+          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
+          {passwordForm}
         </Stack>
       )}
       {failure || action.error ? <Stack divided><ErrorText>{failure || action.error}</ErrorText></Stack> : null}
-      <Footer>
+      <Footer status={!account.logged_in && waiting
+        ? <LoadingDots label={browser.message || '等你在浏览器窗口里登录 PikPak'} /> : null}>
         {account.logged_in ? (
           <Button onClick={logout} disabled={!state.available} {...busyProps(action.busy === 'logout')}>登出</Button>
+        ) : !browser.available ? passwordLogin : waiting ? (
+          <Button type="button" onClick={cancelBrowser} {...busyProps(action.busy === 'cancel')}>取消</Button>
         ) : (
-          <Button type="submit" disabled={!state.available} {...busyProps(action.busy === 'login')}>登录</Button>
+          <Button type="button" onClick={openBrowser} disabled={!state.available}
+            {...busyProps(action.busy === 'browser')}>用浏览器登录</Button>
         )}
       </Footer>
     </Section>

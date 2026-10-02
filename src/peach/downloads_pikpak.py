@@ -9,10 +9,15 @@ PyPI `PikPakAPI` 0.1.11（GPL-3.0-only，Quan666/PikPakAPI）：请求地址、�
 **接口是非官方的，随时可能失效。** 回包形状对不上时报「配置与认证」并说明接口可能变了，
 页面上每条任务都有「复制磁力」可以退回手动。
 
-**凭据。** 账号密码只用来换 token。refresh token、access token、设备号存本机
-`CredentialStore`（`download-pikpak`），密码只在用户勾选「保存密码」时一并存，用来在
-refresh token 失效后自动重登。PikPak 每次刷新都发一个新的 refresh token，旧的随即作废，
-所以每次刷新后立刻写回。
+**凭据。** refresh token、access token、设备号存本机 `CredentialStore`（`download-pikpak`）。
+有两种来路（ADR-0093）：设置页「用浏览器登录」从 PikPak 网页的 localStorage 读出网页端签发的
+token（`downloads_pikpak_browser`）；账号密码登录用安卓客户端常量换 token，密码只在用户勾选
+「保存密码」时一并存，用来在 refresh token 失效后自动重登。PikPak 每次刷新都发一个新的 refresh
+token，旧的随即作废，所以每次刷新后立刻写回，同一份 token 也只能有 Peach 一个刷新者。
+
+**client 绑定。** token 绑定在签发它的 client 上，刷新、`captcha/init` 与签名都要用同一个 client
+的常量。凭据里的 `client_id` 记着是哪一个，`profile_for` 按它选 `ANDROID` 或 `WEB`；没有这个字段
+的旧凭据是安卓客户端登录的。
 
 **人机验证。** `captcha/init` 回包里带 `url` 时，PikPak 要求在浏览器里完成验证。Peach 不
 自动过验证：把这个地址交给设置页，用户打开完成后再点一次登录，用同一个设备号重试。
@@ -26,6 +31,7 @@ import threading
 import time
 import uuid
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Callable, Iterator
 
 import httpx
@@ -49,6 +55,53 @@ SALTS = (
     "9hFCW2R1", "sHKHpe2i96", "p7c5E6AcXQ/IJUuAEC9W6", "", "aRv9hjc9P+Pbn+u3krN6",
     "BzStcgE8qVdqjEH16l4", "SqgeZvL5j9zoHP95xWHt", "zVof5yaJkPe3VFpadPof",
 )
+
+
+@dataclass(frozen=True)
+class ClientProfile:
+    """一个 PikPak client 的协议常量。`client_secret` 为 None 时请求体不带这个键。
+
+    `sign_timestamp` 是网页端写死在脚本里的签名时间戳；为 None 时按当前毫秒数签（安卓客户端的做法）。
+    `refresh_headers` 是刷新时额外带的头。`known` 为假表示这个 client_id 是从网页 localStorage 键名里
+    读到的、Peach 没有它的签名常量：刷新照样能试，要 `captcha/init` 签名的操作直接报错。
+    """
+
+    client_id: str
+    client_secret: str | None
+    client_version: str
+    package_name: str
+    salts: tuple[str, ...]
+    sign_timestamp: str | None = None
+    refresh_headers: tuple[tuple[str, str], ...] = ()
+    known: bool = True
+
+
+ANDROID = ClientProfile(CLIENT_ID, CLIENT_SECRET, CLIENT_VERSION, PACKAGE_NAME, SALTS)
+#: 网页端（mypikpak.com/drive）的常量，取自 2026-10-02 的网页脚本，来源与哈希见
+#: `docs/reference-snapshots/pikpak-web-session-measured.md`：`5990.326e2dc8.js` 的签名配置
+#: （clientId、clientVersion、packageName、固定 timestamp 与 15 条 md5 盐），`7991.17876548.js` 登录 SDK
+#: 的刷新请求（`x-client-id`、`x-sdk-version`、`x-protocol-version` 三个头）。网页端的登录配置里没有
+#: clientSecret，SDK 的刷新请求体因此不带 `client_secret`；服务端接不接受这个形态要在真实账号上验证。
+#: PikPak 重新发布网页时盐与时间戳可能换，那时 `captcha/init` 会拒绝签名，错误里会说明。
+WEB = ClientProfile(
+    "YUMx5nI8ZU8Ap8pm", None, "2.0.0", "mypikpak.com",
+    ("C9qPpZLN8ucRTaTiUMWYS9cQvWOE", "+r6CQVxjzJV6LCV", "F", "pFJRC", "9WXYIDGrwTCz2OiVlgZa90qpECPD6olt",
+     "/750aCr4lm/Sly/c", "RB+DT/gZCrbV", "", "CyLsf7hdkIRxRm215hl", "7xHvLi2tOYP0Y92b",
+     "ZGTXXxu8E/MIWaEDB+Sm/", "1UI3", "E7fP5Pfijd+7K+t6Tg/NhuLq0eEUVChpJSkrKxpO", "ihtqpG6FMt65+Xk+tWUH2",
+     "NhXXU9rg4XXdzo7u5o"),
+    sign_timestamp="1790733736477",
+    refresh_headers=(("X-Sdk-Version", "8.1.4"), ("X-Protocol-Version", "301")),
+)
+CLIENTS = {ANDROID.client_id: ANDROID, WEB.client_id: WEB}
+
+
+def profile_for(client_id: str | None) -> ClientProfile:
+    """凭据里记的 client_id 对应的常量。没记就是安卓客户端；认不出的只知道 id，不知道签名常量。"""
+    if not client_id:
+        return ANDROID
+    return CLIENTS.get(client_id) or ClientProfile(client_id, None, "", "", (), known=False)
+
+
 #: 对外请求共用的那一份桌面 Chrome UA（`user_agent.py`）。
 BROWSER_AGENT = USER_AGENT
 TIMEOUT = 20.0
@@ -70,9 +123,10 @@ class CaptchaRequired(DownloadError):
         self.url = url
 
 
-def captcha_sign(device_id: str, timestamp: str) -> str:
-    sign = CLIENT_ID + CLIENT_VERSION + PACKAGE_NAME + device_id + timestamp
-    for salt in SALTS:
+def captcha_sign(device_id: str, timestamp: str, profile: ClientProfile = ANDROID) -> str:
+    """client_id、版本、包名、设备号、时间戳串起来，逐条加盐做 md5。网页端与安卓客户端同一个算法。"""
+    sign = profile.client_id + profile.client_version + profile.package_name + device_id + timestamp
+    for salt in profile.salts:
         sign = hashlib.md5((sign + salt).encode()).hexdigest()
     return f"1.{sign}"
 
@@ -98,13 +152,14 @@ class PikPakClient:
     """同步的最小客户端：登录、刷新、离线提交、任务列表、取消、按路径找目录。
 
     `values` 是凭据字典（`refresh_token`、`access_token`、`expires_at`、`user_id`、
-    `device_id`、可选的 `username`/`password`）。每次换到新 token 都调 `persist(values)`。
+    `device_id`、可选的 `client_id` 与 `username`/`password`）。每次换到新 token 都调 `persist(values)`。
     """
 
     def __init__(self, values: dict[str, str], *, persist: Callable[[dict], None],
                  transport: httpx.BaseTransport | None = None, clock: Callable[[], float] = time.time):
         self.values = dict(values)
         self.values.setdefault("device_id", new_device_id())
+        self.profile = profile_for(self.values.get("client_id"))
         self.persist = persist
         self.clock = clock
         self.http = httpx.Client(timeout=TIMEOUT, transport=transport, follow_redirects=False)
@@ -145,7 +200,7 @@ class PikPakClient:
 
     def _captcha(self, action: str, meta: dict) -> str:
         payload = self._send("POST", f"{USER_HOST}/v1/shield/captcha/init", body={
-            "client_id": CLIENT_ID, "action": action, "device_id": self.device_id, "meta": meta})
+            "client_id": self.profile.client_id, "action": action, "device_id": self.device_id, "meta": meta})
         if payload.get("url"):
             raise CaptchaRequired(str(payload["url"]))
         token = payload.get("captcha_token")
@@ -154,30 +209,49 @@ class PikPakClient:
         return str(token)
 
     def _drive_captcha(self, action: str) -> str:
-        stamp = str(int(self.clock() * 1000))
-        return self._captcha(action, {
-            "captcha_sign": captcha_sign(self.device_id, stamp), "client_version": CLIENT_VERSION,
-            "package_name": PACKAGE_NAME, "user_id": self.values.get("user_id", ""), "timestamp": stamp})
+        profile = self.profile
+        if not profile.known:
+            raise DownloadError("config", f"PikPak 网页端的客户端标识是 {profile.client_id}，Peach 没有它的签名常量，"
+                                          "提交不了离线任务。可以先复制磁力手动添加")
+        stamp = profile.sign_timestamp or str(int(self.clock() * 1000))
+        try:
+            return self._captcha(action, {
+                "captcha_sign": captcha_sign(self.device_id, stamp, profile),
+                "client_version": profile.client_version, "package_name": profile.package_name,
+                "user_id": self.values.get("user_id", ""), "timestamp": stamp})
+        except PikPakApiError as error:
+            reason = f"{error.description}（{error.code or error.status}）"
+            if profile is WEB:
+                raise DownloadError("config", f"PikPak 拒绝了网页端的请求签名：{reason}。网页端的签名常量可能已经更新，"
+                                              "可以先复制磁力手动添加") from None
+            raise error.as_download_error() from None
 
     # -- 登录与刷新
 
     def login(self, username: str, password: str) -> None:
+        """账号密码登录走安卓客户端：换到的 token 绑定安卓 client，凭据里记下它的 client_id。"""
+        self.profile = ANDROID
         signin = f"{USER_HOST}/v1/auth/signin"
         captcha = self._captcha(f"POST:{signin}", _account_meta(username))
         payload = self._send("POST", signin, body={
-            "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET, "username": username,
+            "client_id": ANDROID.client_id, "client_secret": ANDROID.client_secret, "username": username,
             "password": password, "captcha_token": captcha},
             headers={"X-Device-Id": self.device_id, "User-Agent": BROWSER_AGENT})
         self.values["username"] = username
+        self.values["client_id"] = ANDROID.client_id
         self._take_tokens(payload)
 
     def refresh(self) -> None:
+        """按签发 token 的那个 client 刷新。安卓与网页端的刷新请求体都不带 `client_secret`。"""
         token = self.values.get("refresh_token")
         if not token:
             raise DownloadError("config", "还没有登录 PikPak")
-        payload = self._send("POST", f"{USER_HOST}/v1/auth/token", body={
-            "client_id": CLIENT_ID, "refresh_token": token, "grant_type": "refresh_token"},
-            headers={"X-Device-Id": self.device_id, "User-Agent": BROWSER_AGENT})
+        profile = self.profile
+        body = {"client_id": profile.client_id, "refresh_token": token, "grant_type": "refresh_token"}
+        headers = {"X-Device-Id": self.device_id, "User-Agent": BROWSER_AGENT}
+        if profile is not ANDROID:
+            headers.update({"X-Client-Id": profile.client_id, **dict(profile.refresh_headers)})
+        payload = self._send("POST", f"{USER_HOST}/v1/auth/token", body=body, headers=headers)
         self._take_tokens(payload)
 
     def _take_tokens(self, payload: dict) -> None:
@@ -197,12 +271,17 @@ class PikPakClient:
             self._renew()
 
     def _renew(self) -> None:
+        """刷新；被拒时有保存的密码就重登，没有就报原因。浏览器登录的凭据没有密码，只能回设置页再登一次。"""
         try:
             self.refresh()
         except PikPakApiError as error:
             username, password = self.values.get("username"), self.values.get("password")
             if not (username and password):
-                raise DownloadError("config", "PikPak 登录已过期，请在设置页重新登录") from error
+                reason = f"{error.description}（{error.code or error.status}）"
+                if self.profile is ANDROID:
+                    raise DownloadError("config", f"PikPak 登录已过期，请在设置页重新登录：{reason}") from None
+                raise DownloadError("config", f"PikPak 拒绝刷新网页登录的令牌：{reason}。"
+                                              "请在设置页点「用浏览器登录」重新登录") from None
             self.login(username, password)
 
     def _api(self, method: str, path: str, *, body=None, params=None, captcha: str | None = None) -> dict:
@@ -435,7 +514,11 @@ def login(load: Callable[[], dict], username: str, password: str, *, remember: b
 
 
 def account(values: dict | None) -> dict:
-    """设置页显示用：登没登录、账号名、有没有存密码。不回 token 与密码本身。"""
+    """设置页显示用：登没登录、账号名、有没有存密码、怎么登的。不回 token 与密码本身。
+
+    `method` 是 `browser`（网页端签发的 token）或 `password`（安卓客户端，账号密码换的）。
+    """
     values = values or {}
+    method = "password" if profile_for(values.get("client_id")) is ANDROID else "browser"
     return {"logged_in": bool(values.get("refresh_token")), "username": values.get("username", ""),
-            "remember": bool(values.get("password"))}
+            "remember": bool(values.get("password")), "method": method}

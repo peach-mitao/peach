@@ -121,12 +121,17 @@ export interface DownloadConfig {
   wait_hours: number;
 }
 
+export type PikPakBrowserState = 'idle' | 'waiting' | 'done' | 'cancelled' | 'timeout' | 'failed';
+
 /** 设置页的云下载块。凭据只报存没存过，不回值。 */
 export interface DownloadSettingsState {
   available: boolean;
   config: DownloadConfig;
   token_set: boolean;
-  pikpak: { logged_in: boolean; username: string; remember: boolean };
+  /** `method`：`browser` 是浏览器登录取来的网页端会话，`password` 是账号密码换的令牌。 */
+  pikpak: { logged_in: boolean; username: string; remember: boolean; method: 'browser' | 'password' };
+  /** 浏览器登录（ADR-0093）：这台电脑有没有 Chrome 或 Edge，登录窗口此刻在哪一步。 */
+  pikpak_browser: { available: boolean; state: PikPakBrowserState; message: string };
   pikpak_roots: string[];
   providers: { key: DownloadProviderKey; label: string }[];
   max_wait_hours: number;

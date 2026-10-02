@@ -20,7 +20,8 @@ PikPak 只有非官方 API。
 用 `GetApiTokenInfo`、`FindFileByPath`、`GetOfflineQuotaInfo`、`AddOfflineFiles`、
 `ListOfflineFilesByPath`、`RemoveOfflineFiles`；依赖 `grpcio`、`protobuf` 精确钉版本，proto 只取用到的
 子集。PikPak 客户端自写：PyPI `PikPakAPI` 为 GPL-3.0-only，只参照协议。人机验证交给用户在浏览器里完成，
-Peach 不自动过验证；接口失效时报错并退回「复制磁力」。
+Peach 不自动过验证；接口失效时报错并退回「复制磁力」。PikPak 的主登录方式是用浏览器登录，取网页端会话交给
+Peach 续期，见 ADR-0093；账号密码登录保留为第二选择。
 
 **二、凭据存本机 `CredentialStore`。** CloudDrive2 令牌与 PikPak refresh token 不列为可同步字段，不进
 URL、日志与 ledger；PikPak 密码是否一并保存由用户选。CloudDrive2 地址留空时，「检查」依次探测本机

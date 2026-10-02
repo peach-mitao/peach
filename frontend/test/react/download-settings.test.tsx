@@ -1,3 +1,4 @@
+import { act } from 'react';
 import { expect, it, vi } from 'vitest';
 
 import { DownloadSettings } from '../../src/react/settings/download-settings';
@@ -9,7 +10,8 @@ const state = (patch: Partial<DownloadSettingsState> = {}): DownloadSettingsStat
   config: { clouddrive_address: 'http://127.0.0.1:19798', targets: { '115': '/115/云下载' },
     pikpak_root: '', wait_hours: 168 },
   token_set: false,
-  pikpak: { logged_in: false, username: '', remember: false },
+  pikpak: { logged_in: false, username: '', remember: false, method: 'password' },
+  pikpak_browser: { available: true, state: 'idle', message: '' },
   pikpak_roots: ['P:\\'],
   providers: [{ key: '115', label: '115' }, { key: 'pikpak', label: 'PikPak' }],
   max_wait_hours: 1440,
@@ -57,7 +59,7 @@ it('检查报出缺的权限、目标目录与剩余配额，操作键都是主�
     quota: { total: 1500, used: 3, left: 1497 }, problems: [],
   }));
   const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
-  for (const name of ['检查', '保存配置', '登录']) {
+  for (const name of ['检查', '保存配置', '用浏览器登录', '登录']) {
     expect(buttonNamed(name, host)?.className, name).toContain('bg-button-primary');
   }
   await click(buttonNamed('检查', host));
@@ -131,7 +133,7 @@ it('在账号框里填了 PikPak 账号或已登录时，检查才问 PikPak 根
   await settle();
   expect(sentBody(fetcher)).toMatchObject({ pikpak_account: true });
   const signedIn = await mount(<DownloadSettings receipt={vi.fn()}
-    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false } })} />);
+    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false, method: 'password' } })} />);
   await click(buttonNamed('检查', signedIn));
   await settle();
   expect(sentBody(fetcher, 1)).toMatchObject({ pikpak_account: true });
@@ -294,7 +296,7 @@ it('登录之后只显示账号与密码保存与否，可以登出', async () =
   vi.stubGlobal('fetch', fetcher);
   const receipt = vi.fn();
   const host = await mount(<DownloadSettings receipt={receipt}
-    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false } })} />);
+    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false, method: 'password' } })} />);
   expect(host.textContent).toContain('me@example.com');
   expect(field(host, '密码')).toBeNull();
   await click(buttonNamed('登出', host));
@@ -302,6 +304,98 @@ it('登录之后只显示账号与密码保存与否，可以登出', async () =
   expect(fetcher.mock.calls[0]?.[0]).toBe('/api/configuration/downloads/pikpak/logout');
   expect(receipt).toHaveBeenCalledWith('已登出 PikPak');
   expect(buttonNamed('登录', host)).not.toBeNull();
+});
+
+const BROWSER_URL = '/api/configuration/downloads/pikpak/browser-login';
+const browserAt = (stage: DownloadSettingsState['pikpak_browser']['state'], message = '') =>
+  state({ pikpak_browser: { available: true, state: stage, message } });
+const browserDone = () => state({
+  pikpak: { logged_in: true, username: '', remember: false, method: 'browser' },
+  pikpak_browser: { available: true, state: 'done', message: '已用浏览器登录 PikPak' },
+});
+/** 依次回这几份设置块，回完以后一直回最后一份。 */
+const replies = (...bodies: unknown[]) => {
+  const fetcher = fetchMock(200, bodies.at(-1));
+  for (const body of bodies) {
+    fetcher.mockImplementationOnce(async () => ({ ok: true, status: 200, json: async () => body }));
+  }
+  return fetcher;
+};
+const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) });
+
+it('有浏览器时账号密码登录收在折叠里，主路径是用浏览器登录', async () => {
+  const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  const folded = host.querySelector('details');
+  expect(folded?.querySelector('summary')?.textContent).toBe('用账号密码登录');
+  expect(folded?.open).toBe(false);
+  expect(folded?.contains(field(host, '账号'))).toBe(true);
+  expect(folded?.contains(buttonNamed('登录', host))).toBe(true);
+  expect(buttonNamed('用浏览器登录', host)?.type).toBe('button');
+});
+
+it('这台电脑没有浏览器时只剩账号密码登录，直接摊开', async () => {
+  const host = await mount(<DownloadSettings receipt={vi.fn()}
+    initial={state({ pikpak_browser: { available: false, state: 'idle', message: '' } })} />);
+  expect(buttonNamed('用浏览器登录', host)).toBeNull();
+  expect(host.querySelector('details')).toBeNull();
+  expect(field(host, '账号')).not.toBeNull();
+  expect(buttonNamed('登录', host)?.className).toContain('bg-button-primary');
+});
+
+it('用浏览器登录拉起窗口后轮询，登好就显示登录方式并停下', async () => {
+  vi.useFakeTimers();
+  const fetcher = replies(browserAt('waiting', '浏览器窗口已打开，在里面登录 PikPak'),
+    browserAt('waiting', '浏览器窗口已打开，在里面登录 PikPak'), browserDone());
+  vi.stubGlobal('fetch', fetcher);
+  const receipt = vi.fn();
+  const host = await mount(<DownloadSettings initial={state()} receipt={receipt} />);
+  await click(buttonNamed('用浏览器登录', host));
+  await settle();
+  expect(fetcher.mock.calls[0]?.[0]).toBe(BROWSER_URL);
+  expect(fetcher.mock.calls[0]?.[1]?.method).toBe('POST');
+  expect(host.querySelector('[role="status"]')?.textContent).toContain('浏览器窗口已打开，在里面登录 PikPak');
+  expect(buttonNamed('用浏览器登录', host)).toBeNull();
+  expect(buttonNamed('登录', host)?.disabled).toBe(true);
+  await tick(2000);
+  await settle();
+  expect(fetcher.mock.calls[1]?.[0]).toBe(BROWSER_URL);
+  expect(fetcher.mock.calls[1]?.[1]?.method).toBeUndefined();
+  expect(receipt).not.toHaveBeenCalled();
+  await tick(2000);
+  await settle();
+  expect(receipt).toHaveBeenCalledWith('已登录 PikPak');
+  expect(host.textContent).toContain('浏览器登录，由 Peach 续期');
+  expect(host.textContent).not.toContain('登录过期后需要回到这里重新登录');
+  expect(buttonNamed('登出', host)).not.toBeNull();
+  await tick(6000);
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
+it('刷新页面时登录窗口还开着就接着轮询，点取消回到可以重新拉起', async () => {
+  vi.useFakeTimers();
+  const fetcher = replies(browserAt('cancelled', '已取消浏览器登录'));
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={browserAt('waiting')} receipt={vi.fn()} />);
+  expect(host.querySelector('[role="status"]')?.textContent).toContain('等你在浏览器窗口里登录 PikPak');
+  await click(buttonNamed('取消', host));
+  await settle();
+  expect(fetcher.mock.calls[0]?.[0]).toBe(`${BROWSER_URL}/cancel`);
+  expect(host.textContent).toContain('已取消浏览器登录');
+  expect(buttonNamed('用浏览器登录', host)).not.toBeNull();
+  await tick(6000);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('等太久没登录时报出原因，上一次留在服务端的结果不当成新消息', async () => {
+  vi.useFakeTimers();
+  const message = '10 分钟内没有完成登录，窗口已关闭。可以再点一次「用浏览器登录」';
+  vi.stubGlobal('fetch', replies(browserAt('timeout', message)));
+  const stale = await mount(<DownloadSettings initial={browserAt('timeout', message)} receipt={vi.fn()} />);
+  expect(stale.textContent).not.toContain(message);
+  const host = await mount(<DownloadSettings initial={browserAt('waiting')} receipt={vi.fn()} />);
+  await tick(2000);
+  await settle();
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe(message);
 });
 
 it('只读端整块不可操作，并说明原因', async () => {

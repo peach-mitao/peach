@@ -44,6 +44,33 @@ class FakeProvider:
         self.cancelled.append(task.id)
 
 
+class FakeBrowserLogin:
+    """`downloads_pikpak_browser.BrowserLogin` 的替身：不拉起浏览器，只记被调了几次。"""
+
+    def __init__(self, available=True):
+        self.is_available = available
+        self.state = {"state": "idle", "message": ""}
+        self.started = self.cancelled = 0
+
+    def available(self):
+        return self.is_available
+
+    def status(self):
+        return dict(self.state)
+
+    def start(self):
+        if not self.is_available:
+            raise ValueError("这台电脑上没有找到 Chrome 或 Edge，用不了浏览器登录")
+        self.started += 1
+        self.state = {"state": "waiting", "message": "浏览器窗口已打开，在里面登录 PikPak"}
+        return self.status()
+
+    def cancel(self):
+        self.cancelled += 1
+        self.state = {"state": "cancelled", "message": "已取消浏览器登录"}
+        return self.status()
+
+
 class _App(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -250,11 +277,63 @@ class SettingsBlockTests(_App):
         self.assertFalse(result["settings"]["pikpak"]["logged_in"])
         self.assertNotIn("pw", self.secrets().get("download-pikpak.json", ""))
 
+    def test_the_service_carries_its_own_browser_login_profile(self):
+        from peach.downloads_pikpak_browser import BrowserLogin
+        login = self.service.pikpak_browser
+        self.assertIsInstance(login, BrowserLogin)
+        self.assertEqual(login.profile, self.root / "secrets" / "browser-pikpak")
+
     def test_logging_out_removes_the_pikpak_credentials(self):
         self.service.credentials.save(dl.PIKPAK_CREDENTIAL, {"refresh_token": "rt", "username": "u"})
         self.assertTrue(web_downloads.settings_payload(self.service, {})["pikpak"]["logged_in"])
         self.assertFalse(web_downloads.pikpak_logout(self.service, {})["pikpak"]["logged_in"])
         self.assertNotIn("download-pikpak.json", self.secrets())
+
+
+class BrowserLoginRouteTests(_App):
+    """浏览器登录三条接口只回设置块：状态与有没有浏览器，不回 token。登录在后台等，页面轮询读接口。"""
+
+    URL = "/api/configuration/downloads/pikpak/browser-login"
+
+    def setUp(self):
+        super().setUp()
+        self.login = FakeBrowserLogin()
+        self.service.pikpak_browser = self.login
+        self.local = TestClient(self.app, base_url="http://127.0.0.1", client=("127.0.0.1", 123))
+
+    def test_starting_polling_and_cancelling_go_through_the_settings_block(self):
+        idle = self.local.get(self.URL)
+        self.assertEqual(idle.status_code, 200, idle.text)
+        self.assertEqual(idle.json()["pikpak_browser"], {"available": True, "state": "idle", "message": ""})
+        started = self.local.post(self.URL).json()
+        self.assertEqual((started["pikpak_browser"]["state"], self.login.started), ("waiting", 1))
+        self.service.credentials.save(dl.PIKPAK_CREDENTIAL, {
+            "refresh_token": "page-refresh", "access_token": "page-access", "client_id": "YUMx5nI8ZU8Ap8pm"})
+        self.login.state = {"state": "done", "message": "已用浏览器登录 PikPak"}
+        done = self.local.get(self.URL)
+        self.assertEqual(done.json()["pikpak"], {"logged_in": True, "username": "", "remember": False,
+                                                  "method": "browser"})
+        self.assertNotIn("page-refresh", done.text)
+        self.assertNotIn("page-access", done.text)
+        cancelled = self.local.post(f"{self.URL}/cancel").json()
+        self.assertEqual((cancelled["pikpak_browser"]["state"], self.login.cancelled), ("cancelled", 1))
+
+    def test_a_machine_without_a_browser_gets_the_reason(self):
+        self.login.is_available = False
+        self.assertFalse(self.local.get(self.URL).json()["pikpak_browser"]["available"])
+        response = self.local.post(self.URL)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Chrome 或 Edge", response.text)
+
+    def test_a_read_only_side_does_not_open_a_login_window(self):
+        self.service.available = False
+        self.assertEqual(self.local.post(self.URL).status_code, 400)
+        self.assertEqual(self.login.started, 0)
+
+    def test_another_origin_cannot_open_the_window(self):
+        response = self.local.post(self.URL, headers={"origin": "https://other.invalid"})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.login.started, 0)
 
 
 if __name__ == "__main__":
