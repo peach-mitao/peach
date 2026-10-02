@@ -172,8 +172,9 @@ describe('首页筛选条', () => {
         await row.evaluate((element) => { element.scrollLeft = element.scrollWidth; });
         await page.waitForTimeout(120);
       }
-      /* 请求不带是哪一排：厂牌那排第一页就摆得下，挂上时已在右端，也要一次第 1 页（空的）就停。 */
-      assert.deepEqual(counts.tops.map((url) => url.searchParams.get('page') ?? '').sort(), ['', '1', '1', '2'],
+      /* 请求不带是哪一排：厂牌那排第一页就摆得下，挂上时已在右端，要一次第 1 页（空的）就停。女优那排
+         翻到第 1 页时参数串相同，共用那一次回包，接着自己要第 2 页。 */
+      assert.deepEqual(counts.tops.map((url) => url.searchParams.get('page') ?? '').sort(), ['', '1', '2'],
         '续页的页号不对，或到底之后还在要');
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {

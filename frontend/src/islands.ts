@@ -32,6 +32,7 @@ export { entitySkeletonHtml } from './entity-skeleton';
 export { boardPageSkeleton, detailSkeletonHtml } from './board-skeleton';
 export { catalogSuggestions, catalogEmptyHtml } from './catalog-onboarding';
 export { catalogFilterSkeletonHtml } from './catalog-filter-skeleton';
+export { dropBars, fetchBars, fetchTopsPage } from './catalog-bars';
 export { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent } from './sidebar';
 export { cleanupSkeletonHtml } from './management';
 export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';

@@ -2476,24 +2476,6 @@ class WebUiSourceTests(unittest.TestCase):
                          "管理页、索引列表、实体资料页、详情页、目录里的管理条和中央清理函数各调一次，"
                          "收起动作本身只写一处")
 
-    def test_a_narrow_state_falls_back_to_the_whole_library_for_the_top_tiers(self):
-        """状态页收窄到聚合为空时，顶部三层退回全库口径，不整块消失。
-
-        收窄本身是对的：不收窄就会列出在这一页一个作品都没有的人和厂牌。但「已标记」
-        这类集合常年只有几条，`/api/tops` 直接回两个空数组，收窄就把整排一起收走了——
-        同一条筛选条上换一格，页面顶上凭空少两层，读起来是跳去了另一个页面。
-        这一排点开的是实体页，本来就要离开当前状态，它回答的从来不是「这一页里有谁」。
-        """
-        self.assertPageContains("async function loadTops(params){")
-        self.assertCode(
-            "  const scoped=await api('/api/tops?'+params);\n"
-            "  if(scoped.performers.length||scoped.studios.length||!params.has('state'))return scoped;\n"
-            "  const wide=new URLSearchParams(params);wide.delete('state');\n"
-            "  return api('/api/tops?'+wide)")
-        # 取数只经这一条路：直接打 /api/tops 的调用会绕过回退。
-        self.assertEqual(self.app_js.count("api('/api/tops?"), 2)
-        self.assertPageContains("      loadTops(topsQueryParams(context))])")
-
     def test_the_page_chrome_paints_without_waiting_for_any_request(self):
         """左侧导航、管理条、标题和面包屑只认 location，不该排在网络请求后面。
 
@@ -4913,7 +4895,6 @@ class WebUiSourceTests(unittest.TestCase):
         # 资料页每批 48 条、续页不再数总数，由岛的 `itemsParams` 拼，见 entity-page.test.tsx。
         self.assertPageContains("barsRequestSeq")
         self.assertPageContains("async function getBarsData(context=barsContext)")
-        self.assertPageContains("Date.now()-barsDataAt<30000")
         self.assertPageLacks("p.set('limit','120')")
 
     def test_mix_card_flips_through_its_own_covers_on_hover(self):
@@ -6485,8 +6466,6 @@ class WebUiSourceTests(unittest.TestCase):
         没有续页那一排就停在第六十位。
         """
         self.assertPageContains("const params=new URLSearchParams({n:'60',seed:state.seed||''});")
-        # 页号各排各记：共用一个的话，先到头的那排会替另一排把页翻过去。续排本身归岛（`usePaged`）。
-        self.assertPageContains("const rows=(await loadTops(topsQueryParams(pages.context,++pages[kind])))[kind]||[];")
         self.assertPageContains("if(page)params.set('page',String(page));")
 
     def test_a_selected_tab_is_marked_in_the_accent_blue(self):
