@@ -113,7 +113,8 @@ LAN access, access passwords, updates and uninstalling are covered in [Operation
 - **Which cloud drives are supported?**
   - 115 and PikPak, mounted as local drives with CloudDrive2.
   - For playback, Peach reads them like ordinary folders and does not store your cloud account.
-  - For cloud download, the CloudDrive2 API token and the PikPak sign-in token are kept in this computer's credential file; your PikPak password is saved only if you tick "Save password".
+  - For cloud download, the CloudDrive2 API token and the PikPak sign-in token are kept in this computer's credential file.
+  - For PikPak, "Sign in with browser" is the recommended way: you sign in inside the window it opens, and Peach never sees your password. Signing in with your account and password also works; the password is saved only if you tick "Save password".
 - **How do I watch on my phone?**
   - Choose "devices on the same network" during first-run setup.
   - Connect your phone to the same network and open the address shown on the setup page.

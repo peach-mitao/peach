@@ -134,7 +134,7 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 | `migrations.py` SQLite 迁移 | Alembic | Alembic 会引入 SQLAlchemy/Mako/greenlet；现有范围只需顺序 SQL、校验和、备份与 PyInstaller 资源定位，没有 ORM 消费者。 |
 | Gofile API 直接 HTTP | 社区 wrapper | 官方没有维护中的 Python SDK；社区 wrapper 只是薄封装，不能绕过 Premium `contents` 权限，也不能减少 Peach 的 Bearer 隔离与媒体规范化。 |
 | `netwatch.py`、streaming/segments、sync、versioning/Windows update | 通用替代实现 | 分别是无 PyObjC 的系统通知、FFmpeg/Starlette 上的会话策略、单 writer ledger 规则和 Git/PyInstaller 更新契约；通用替代会保留同量 policy 或扩大依赖。 |
-| `downloads_pikpak.py` PikPak 云下载 | PikPakAPI；云下载直连 115 用的 `p115client` | PikPakAPI 是 GPL-3.0-only、只有 async 接口且吞掉验证页地址，只借协议常量；`p115client` 要另走一套 115 授权，和 CloudDrive2 挂载争授权名额（ADR-0089）。 |
+| `downloads_pikpak.py` PikPak 云下载 | PikPakAPI；云下载直连 115 用的 `p115client` | PikPakAPI 是 GPL-3.0-only、只有 async 接口且吞掉验证页地址，只借协议常量；`p115client` 要另走一套 115 授权，和 CloudDrive2 挂载争授权名额（ADR-0089）。浏览器登录（`downloads_pikpak_browser.py`）照 PikPak Assistant 用户脚本（MIT）读 localStorage 的 `credentials_*`，拉窗口复用 `browser_transport` 的 `attended` 档；用户脚本借网页续期，Peach 取走后自己续期（ADR-0093）。 |
 | `browser_transport.py` 本机浏览器取页 | WebSocket 客户端库 | venv 里没有 WebSocket 库，自写约 80 行 RFC 6455 客户端驱动本机 Chrome／Edge 的 CDP，做法参照 OpenAver 的隐藏 WebView2（ADR-0065）；哪些站走浏览器由 `scraping_access` 的 `browser_fallback`／`fixed_to_browser` 定，见「补女优别名后继」一条。 |
 | `organize.py`／`organize_templates.py` 目录收纳 | amane 的整理模板 | 只借占位符与可选分组语义；amane 把文件当可删的派生物，Peach 的媒体原地不动，收纳要用户发起（ADR-0039）。 |
 | `wants.py` 想要清单 | SakuraMedia 的想要与订阅 | SakuraMedia 只作行为证据；入库按番号自动对账，按 ADR-0052 直接落库（ADR-0090）。 |

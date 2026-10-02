@@ -76,6 +76,7 @@
 `.claude/skills/peach-reference-evidence/SKILL.md`。本节只索引快照，不复制测量值；给不出可重抓
 字节的实测不登记，理由写进快照正文（`tests/test_reference_updates.py` 拒收没说明的快照）。
 
+- PikPak 网页端会话、刷新请求与签名常量，以及用户脚本的取法：`pikpak-web-session-measured`（ADR-0093）。
 - 渐变参数模型、`in oklab` 插值与噪点叠层：`feralui-gradients-measured`；工作台与配色圆钮：`feralui-studio-boardui-accent-measured`。
 - 相关推荐算法：`openaver-related-ranking`，固定 revision，只参考 Tag IDF 与结构化共同点，MMR 和稳定破同分是 Peach 自加，不复制上游界面或源码。
 - 网格、控件半径、语义 token 与中间省略：`vercel-geist-grid`、`vercel-geist-controls-measured`、`vercel-geist-middle-truncate`；中间省略的适用范围见 [docs/REUSE.md](REUSE.md)。
@@ -137,7 +138,7 @@ CloudDrive 见 [docs/CLOUDDRIVE.md](CLOUDDRIVE.md)；部署、托盘重启、双
 - 追更连接器、凭据、变体和跨站归组以 ADR-0019 为准；关注页顶部标签筛选与卡片只用来源明确标记为 `general` 的内容标签，详情页与在线索引保留全部来源标签并按类型着色，未知类型不猜成 `general`。
 - FANBOX 正文统一经过 `peach.fanbox.normalize_fanbox_post`，边界见 [docs/REUSE.md](REUSE.md)「必须复用的成熟实现」。
 - FANBOX Cookie 与 Gofile token 都是本机可选凭据，只进各自站点的请求头，不进 URL、证据、ledger 公开投影或浏览器 JSON；只允许公开 JSON，不解机器人质询、不执行网页脚本、不读付费内容。
-- 云下载的 CloudDrive2 令牌与 PikPak refresh token 存本机 `CredentialStore`，不列为可同步字段，不进 URL、日志与 ledger（ADR-0089）。
+- 云下载的 CloudDrive2 令牌与 PikPak refresh token 存本机 `CredentialStore`，不列为可同步字段，不进 URL、日志与 ledger（ADR-0089）；PikPak 浏览器登录的专用 profile 在凭据根下 `browser-pikpak/`，取完会话即关窗，续期只归 Peach（ADR-0093）。
 - Gofile 把 contents API 限给 Premium：`error-notPremium` 按套餐限制报告，不误报成 token 无效；没取得文件列表时保留分享页，不得声称已取得视频。
 - 同一篇 FANBOX 可含多个 Gofile 文件夹：作品级仍是一个来源合集，媒体保留文件夹 id 与正文标签并在详情队列内分段，不拆作品也不压平混排。
 - 自动追更用 APScheduler，只在 ledger writer 启动，频率存 `peach-data/state/follow-schedule.json`，默认每小时且启动后等满一个间隔，不要改成启动即抓；单实例、与手动检查互斥见 [docs/REUSE.md](REUSE.md)「必须复用的成熟实现」，reader 只显示不可用状态。
