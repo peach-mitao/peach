@@ -40,6 +40,7 @@ const payload = (items: QualityGoal[], total = items.length): QualityGoalsData =
 
 /** 遗留层交出来的那几个助手，换成可辨认的最小实现。 */
 const legacyProps = () => ({
+  searchResources: vi.fn(),
   openItem: vi.fn<(id: number) => void>(),
   javTitleHtml: (item: QualityGoal) => `<strong class="javcode">${item.name}</strong>`,
   javDisplayName: (item: QualityGoal) => `名称 ${item.name}`,
@@ -130,6 +131,15 @@ it('封面、标题和页脚三处都打开同一部作品，无障碍名称用�
   await click(host.querySelector('h3 button'));
   await click([...host.querySelectorAll('button')].find((node) => node.textContent === '查看版本'));
   expect(props.openItem.mock.calls).toEqual([[42], [42], [42]]);
+});
+
+it('搜索资源带入番号、原版本目标与资产来源，无番号只提供查看版本', async () => {
+  const { host, props } = await open(payload([goal({ id: 42, code: 'ABC-123', reason: '中字' }), goal({ id: 43 })]));
+  const buttons = [...host.querySelectorAll('button')].filter((node) => node.textContent === '搜索资源');
+  expect(buttons).toHaveLength(1);
+  await click(buttons[0]);
+  expect(props.searchResources).toHaveBeenCalledWith({ code: 'ABC-123', title: '名称 one.mp4',
+    origin: 'asset:42', searchReason: '中字' });
 });
 
 it('一条目标都没有时给空态，不是一片白', async () => {

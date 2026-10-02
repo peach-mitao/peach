@@ -36,6 +36,19 @@ it('回车按番号查询，选择候选只填表单', async () => {
   expect(host.textContent).toContain('已填入磁力');
 });
 
+it.each([['中字', 'chinese'], ['无码', 'uncensored'], ['不需要无码，只找完整版', 'quality']])(
+  '目标 %s 原文可见，使用 %s 排序且等待回车才查询', async (reason, goal) => {
+    const fetch = vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ state: 'ready',
+      warnings: [], error: '', items: [] }) }));
+    vi.stubGlobal('fetch', fetch);
+    const host = await mount(<ResourceSearch initialCode="ABC-123" reason={reason} choose={vi.fn()} />);
+    expect(host.textContent).toContain(`版本目标：${reason}`);
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => field(host, '搜索资源')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    await settle();
+    expect(fetch.mock.calls[0]?.[0]).toContain(`goal=${goal}`);
+  });
+
 it('设置保存后清空 API key，移除需再保存才生效', async () => {
   const initial = { max_indexers: 4, indexers: [{ key: 'one', name: '测试源', url: 'http://indexer.test/api',
     enabled: true, api_key_set: true }] };

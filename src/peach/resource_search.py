@@ -172,7 +172,7 @@ def _xml(client: httpx.Client, indexer: dict, params: dict, deadline: float) -> 
             content.extend(chunk)
             if len(content) > MAX_BYTES:
                 raise ValueError("索引器响应超过 2 MiB")
-    text = bytes(content).decode("utf-8-sig")
+    text = bytes(content).decode("utf-8")
     if "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
         raise ValueError("索引器 XML 含不支持的实体声明")
     if fromstring(text).tag not in ("caps", "rss", "error"):

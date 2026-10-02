@@ -14,11 +14,17 @@ interface Candidate {
 }
 interface Result { state: string; items: Candidate[]; warnings: string[]; error: string }
 
-export function ResourceSearch({ initialCode, choose }: {
-  initialCode: string; choose(uri: string, code: string): void;
+function preferredGoal(reason: string | undefined): string {
+  if (['中字', '中文字幕'].includes(reason?.trim() ?? '')) return 'chinese';
+  if (['无码', '无码破解'].includes(reason?.trim() ?? '')) return 'uncensored';
+  return 'quality';
+}
+
+export function ResourceSearch({ initialCode, reason, choose }: {
+  initialCode: string; reason?: string; choose(uri: string, code: string): void;
 }) {
   const [code, setCode] = useState(initialCode);
-  const [goal, setGoal] = useState('quality');
+  const [goal, setGoal] = useState(() => preferredGoal(reason));
   const [min, setMin] = useState('');
   const [max, setMax] = useState('');
   const [result, setResult] = useState<Result | null>(null);
@@ -40,6 +46,7 @@ export function ResourceSearch({ initialCode, choose }: {
   };
   return (
     <section aria-label="资源搜索" aria-busy={Boolean(action.busy)} className="flex min-w-0 flex-col gap-4">
+      {reason ? <Help>版本目标：{reason}。可在下方调整搜索优先项；完整度与水印需要逐条复核。</Help> : null}
       <Input label="搜索资源" value={code} maxLength={80} placeholder="输入番号，按回车搜索"
         isDisabled={Boolean(action.busy)} onChange={setCode} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); search() }

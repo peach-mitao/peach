@@ -65,6 +65,12 @@ class SearchTests(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertEqual(self.search(feed(item(magnet_field=field)))["items"][0]["id"], HASH)
 
+    def test_utf8_xml_with_bom_is_accepted(self):
+        def respond(request):
+            xml = CAPS if request.url.params["t"] == "caps" else feed(item())
+            return httpx.Response(200, content=("\ufeff" + xml).encode("utf-8"))
+        self.assertEqual(self.search(respond)["items"][0]["id"], HASH)
+
     def test_fc2_query_uses_digits_and_keeps_exact_identity(self):
         result = self.search(feed(item(title="FC2-PPV-1234567 1080p")), code="FC2-PPV-1234567")
         self.assertEqual(self.requests[1].url.params["q"], "1234567")

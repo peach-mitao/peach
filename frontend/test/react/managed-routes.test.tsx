@@ -399,7 +399,12 @@ it('回执、打开作品与资料页都交回壳：都走过去时回执', asyn
   const r = await load();
   const actions = shellActions();
   const undo = async () => {};
-  const goals = element<QualityGoalsProps>('/quality-goals', r, {}, actions, vi.fn());
+  const go = vi.fn();
+  const goals = element<QualityGoalsProps>('/quality-goals', r, {}, actions, go);
+  const prefill = { code: 'ABC-123', origin: 'asset:3', searchReason: '中字' };
+  goals.searchResources(prefill);
+  expect(actions.requestCloudDownload).toHaveBeenCalledWith(prefill);
+  expect(go).toHaveBeenCalledWith('/activity');
   goals.openItem(3);
   expect(goals.srcBadge).toBe(actions.srcBadge);
   expect(goals.javDisplayName({ name: 'ABC-123 片名.mp4' } as never)).toContain('ABC-123');

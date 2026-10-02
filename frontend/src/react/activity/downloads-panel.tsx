@@ -27,13 +27,14 @@ import { ErrorText, FieldLabel, Footer, Help, Stack } from '../settings/section'
 import { busyProps, useAction } from '../settings/use-action';
 import { momentText } from './tasks';
 import { ResourceSearch } from './resource-search';
+import type { CloudDownloadPrefill } from '../router/shell-actions';
 
 export const DOWNLOADS_URL = '/api/downloads';
 export const DOWNLOADS_KEY = ['downloads'] as const;
 const CANCEL_URL = '/api/downloads/cancel';
 
 /** 作品页与关注条目带进来的上下文。`origin` 记在任务上，如 `asset:12`、`follow:34`。 */
-export interface DownloadPrefill { code?: string; title?: string; origin?: string }
+export type DownloadPrefill = CloudDownloadPrefill;
 
 export const downloadPollInterval = (data: DownloadsSnapshot | undefined) =>
   data?.tasks.some((task) => task.cancellable) ? 5_000 : 30_000;
@@ -121,7 +122,7 @@ function SubmitForm({ snapshot, prefill }: { snapshot: DownloadsSnapshot; prefil
     <form aria-label="提交磁力" noValidate onSubmit={submit}>
       <SettingsCard>
         <Stack>
-          <ResourceSearch initialCode={prefill?.code ?? ''} choose={(uri, selectedCode) => {
+          <ResourceSearch initialCode={prefill?.code ?? ''} reason={prefill?.searchReason} choose={(uri, selectedCode) => {
             setMagnet(uri); setCode(selectedCode); input.current?.focus();
           }} />
           {prefill?.title ? <Help>{`给「${prefill.title}」找来的资源，下载完由推送发现登记入库。`}</Help> : null}

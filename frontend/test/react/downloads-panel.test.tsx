@@ -60,7 +60,9 @@ const field = (host: HTMLElement, label: string) =>
 it('提交带上渠道、目标目录、番号与来处，成功后清空磁力框并说明下一步', async () => {
   const result: DownloadSubmitResult = { ok: true, outcome: 'submitted', task: task({ state: 'submitted' }) };
   const { posts } = serve(snapshot(), { '/api/downloads': result });
-  const host = await show({ code: 'ABC-123', title: '一部作品', origin: 'asset:12' });
+  const host = await show({ code: 'ABC-123', title: '一部作品', origin: 'asset:12', searchReason: '中字' });
+  expect(host.textContent).toContain('版本目标：中字');
+  expect(field(host, '搜索资源')?.value).toBe('ABC-123');
   expect(field(host, '番号')?.value).toBe('ABC-123');
   expect(field(host, '目标目录')?.value).toBe('/115/云下载');
   expect(document.activeElement).toBe(field(host, '磁力链接'));
