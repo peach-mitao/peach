@@ -2947,7 +2947,6 @@ class FollowWebSourceTests(unittest.TestCase):
         self.assertPageContains("open:(params,push)=>openFollowManage(push)},")
         self.assertPageContains(
             "await openFollow(push,true);await openFollowDetail(params.id,push)")
-        self.assertPageContains(".then(async()=>{syncNavigation();wireAllDrag();await restoreRoute();scheduleStickySurfaces()})")
 
     def test_reader_management_is_locked_and_points_to_the_writer(self):
         """只读这一位由壳从 runtime 读出来交进 island，React 不自己再判一次。

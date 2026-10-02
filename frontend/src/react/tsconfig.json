@@ -19,7 +19,8 @@
       "@peach/legacy/home-glow": ["../legacy/home-glow.d.ts"],
       "@peach/card-art": ["../card-art/index.ts"],
       "@peach/appearance": ["../appearance/index.ts"],
-      "@peach/query": ["../query/index.ts"]
+      "@peach/query": ["../query/index.ts"],
+      "@peach/history": ["../history/index.ts"]
     }
   },
   "include": ["./", "../../test/react"],

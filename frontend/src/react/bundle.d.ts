@@ -548,6 +548,10 @@ export type { GlowPickerHost } from './glow-picker/glow-picker-api';
 /** 接上壳给的宿主，当场画好侧栏配色卡的内容（`glow-picker/glow-picker-island.tsx`）。只调一次。 */
 export declare function configureGlowPicker(host: GlowPickerHost): void;
 
+/** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，后退前进与 React 子树里的
+ * `navigate` 由它派发给壳。重复调用是空操作。 */
+export declare function configureRouter(): void;
+
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;
 /** 发出一条回执；同一个 `id` 再调一次就是改写那一条。 */

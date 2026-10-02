@@ -7,9 +7,10 @@
  * `@/` 指向 `src/react/boardui/`，上游 BoardUI 源码里的 `@/utils/cx` 因此原样成立。
  * EvilCharts 源码的 `@/registry/*` 与 `@/lib/utils` 排在它前面：别名按书写顺序取第一个命中的。
  *
- * 卡片图片助手（`@peach/card-art`）、外观应用层（`@peach/appearance`）与 Query 客户端（`@peach/query`）
- * 不打进这份产物，改写成 `/dist/peach-ui.js`：代表作表、悬停配置、document 上那组取景监听、界面偏好
- * store 和 `QueryClient` 都只能有一份，打两份就是壳写一份、岛读另一份。 */
+ * 卡片图片助手（`@peach/card-art`）、外观应用层（`@peach/appearance`）、Query 客户端（`@peach/query`）
+ * 与浏览器历史（`@peach/history`）不打进这份产物，改写成 `/dist/peach-ui.js`：代表作表、悬停配置、
+ * document 上那组取景监听、界面偏好 store、`QueryClient` 和历史对象都只能有一份，打两份就是壳写一份、
+ * 岛读另一份。React Router 的组件仍打进这份产物，它与 peach-ui.js 里那份历史内核之间没有共享的模块状态。 */
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -19,7 +20,7 @@ import { LEGACY_MODULES } from './vite.config.ts';
 
 const SHARED_MODULES = {
   ...LEGACY_MODULES, '@peach/card-art': '/dist/peach-ui.js', '@peach/appearance': '/dist/peach-ui.js',
-  '@peach/query': '/dist/peach-ui.js', '@tanstack/query-core': '/dist/peach-ui.js',
+  '@peach/query': '/dist/peach-ui.js', '@tanstack/query-core': '/dist/peach-ui.js', '@peach/history': '/dist/peach-ui.js',
 } as const;
 
 export default defineConfig({

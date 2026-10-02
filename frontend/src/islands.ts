@@ -17,6 +17,7 @@ export {
 } from './sort-preferences';
 export * from './appearance';
 export * from './query';
+export * from './history';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
@@ -296,6 +297,14 @@ let glowPicker: Promise<void> | null = null;
 export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> {
   glowPicker ??= import('@peach/react').then((bundle) => bundle.configureGlowPicker(host));
   return glowPicker;
+}
+
+/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳。壳启动时装载，
+ * 跟侧栏共用同一次 `@peach/react` 请求；包到之前的后退前进等它挂上时补派。 */
+let router: Promise<void> | null = null;
+export function loadRouter(): Promise<void> {
+  router ??= import('@peach/react').then((bundle) => bundle.configureRouter());
+  return router;
 }
 
 /* 壳的播放快捷键用到的播放器件（`frontend/src/player/`）：控件点击、切换播放与快进快退都不带模块
