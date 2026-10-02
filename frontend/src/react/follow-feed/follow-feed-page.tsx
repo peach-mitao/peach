@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { icon, requestErrorMessage } from '@peach/legacy/core';
+import { tagLabel } from '@peach/legacy/tags';
 import { emptyStateHtml, spinnerHtml } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
@@ -392,7 +393,7 @@ function Glass({ facets, view, total, busy, props, route }: {
               <FilterPill key={tag} data-follow-tag={tag} data-entity-press=""
                 data-tag-cat={`r34-${groupTagType(facets.groups, tag)}`} pressed={view.tags.includes(tag)}
                 onPress={() => route({ tags: view.tags.includes(tag) ? view.tags.filter((key) => key !== tag) : [...view.tags, tag] })}>
-                {helpers.tagLabel(tag)}
+                {tagLabel(tag)}
                 {n ? <span data-count-badge={tag}>{String(n)}</span> : null}
               </FilterPill>
             ))}
@@ -495,7 +496,7 @@ function List({ pending, facets, data, context, props }: {
 function Cards({ facets, data, context, props, images }: {
   facets: Facets; data: FollowPage; context: FollowContext; props: FollowFeedProps; images: boolean;
 }) {
-  const { view, helpers, actions } = props;
+  const { view, actions } = props;
   const write = useFollowWrite(props);
   const wall = images ? { 'data-size': props.photoSize, 'data-layout': props.photoLayout, 'data-images-only': String(props.imagesOnly) } : {};
   let body: ReactNode;
@@ -508,7 +509,7 @@ function Cards({ facets, data, context, props, images }: {
         <FollowCard key={`${id}:${view.media}`} group={group} authorSources={siblings} media={view.media}
           context={context} selected={props.selected.has(cardId(group, view))} selectMode={props.selectMode}
           busy={write.busy.get(cardId(group, view)) || ''} failure={write.failures.get(cardId(group, view)) || ''}
-          helpers={helpers} actions={actions} onStatus={write.status} onSave={write.save} />
+          actions={actions} onStatus={write.status} onSave={write.save} />
       );
     });
   } else {

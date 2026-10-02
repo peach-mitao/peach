@@ -113,12 +113,12 @@ it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () =
   }
   await mount(r, <Probe />);
   await act(async () => { await r.startRouting(() => {}) });
-  for (const path of ['/playlists', '/follow', '/item/7']) await act(async () => { r.shellNavigate(path) });
-  await act(async () => { pop('/follow') });
+  for (const path of ['/immerse', '/follow/item/3', '/item/7']) await act(async () => { r.shellNavigate(path) });
+  await act(async () => { pop('/follow/item/3') });
   await act(async () => { r.peachHistory.push('/trash') });
   expect([mounted, unmounted]).toEqual([1, 0]);
   expect(seen.at(-1)).toBe('/trash');
-  expect(new Set(seen)).toEqual(new Set(['/', '/playlists', '/follow', '/item/7', '/trash']));
+  expect(new Set(seen)).toEqual(new Set(['/', '/immerse', '/follow/item/3', '/item/7', '/trash']));
 });
 
 it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的岛，当场就画上', async () => {

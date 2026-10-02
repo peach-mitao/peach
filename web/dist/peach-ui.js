@@ -3920,10 +3920,8 @@ var Yo = {
 	"catalog-filter": { react: "catalog-filter" },
 	"catalog-grid": { react: "catalog-grid" },
 	"feed-new": { react: "feed-new" },
-	"follow-feed": { react: "follow-feed" },
 	"junk-queue": { react: "junk-queue" },
 	"library-processing": { react: "library-processing" },
-	playlists: { react: "playlists" },
 	search: { react: "search" }
 }, Xo = () => import("/dist/peach-react.js").then(() => void 0), Zo = () => Object.keys(Yo), $ = /* @__PURE__ */ new Map();
 async function Qo(e, t, n, r = {}) {

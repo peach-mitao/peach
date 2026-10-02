@@ -405,6 +405,7 @@ export interface FollowContext {
 export interface FollowFeedHelpers {
   /** 题材圆标里那段（有代表图出 `<img>`，没有写两个字母）；取景与放大走资料页那两个函数。 */
   workMark(row: FollowWorkRow): string;
+  /** 标签的界面名称，关注详情（舞台）读它；列表页与卡片从 `@peach/legacy/tags` 直接 import 同一个函数。 */
   tagLabel(tag: string): string;
   /** 横滚行接上拖动与滚轮（`wireDrag`）；只接滚轮与两端渐隐（`wireHorizontalScroller`）。 */
   wireDrag(row: Element | null): void;

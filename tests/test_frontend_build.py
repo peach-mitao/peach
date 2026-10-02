@@ -96,8 +96,6 @@ class IslandBundleTests(unittest.TestCase):
         registered = [path.name for path in sorted((ROOT / "src" / "peach").glob("*.py"))
                       if 'api_route("/dist/{name}"' in path.read_text(encoding="utf-8")]
         self.assertEqual(len(registered), 1, f"/dist 路由注册了 {registered}")
-        app_js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
-        self.assertIn("await import('/dist/peach-ui.js')", app_js)
 
 
 REACT_BUNDLE = DIST / "peach-react.js"

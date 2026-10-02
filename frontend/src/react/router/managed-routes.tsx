@@ -1,12 +1,12 @@
-/* 由路由画的那几页：路径到首屏取数与整页的对照表，三张。
+/* 由路由画的那几页：路径到首屏取数与整页的对照表，四张。
  *
- * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`INDEX_ROUTES` 是索引页、
- * `ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记（`/performers/*`），种类与名字跟着
- * 打开走。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、
- * 引导标记、一次性预填）；回执与换到还归壳的那几屏走 `ShellActions`。管理区几页之间的跳转走 `go`：
- * 落在 `MANAGED_ROUTES` 上的交给 React Router 的 `navigate`，其余交壳。索引页与资料页不走 `go`：
- * 它们在页内写地址一律由壳认领（`routeIndex`、资料页的 `actions.route`），跨页也交壳，派发次数同壳
- * 自己打开。 */
+ * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`BROWSE_ROUTES` 是同样画进 `#stats`
+ * 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
+ * （`/performers/*`），种类与名字跟着打开走。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值
+ * （地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次）；回执与换到还归壳的那几屏走
+ * `ShellActions`。管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的
+ * `navigate`，其余交壳。另外三张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页
+ * 与关注页的 `actions.route`），跨页也交壳，派发次数同壳自己打开。 */
 import type { ReactElement } from 'react';
 
 import { javDisplayName, javTitleHtml } from '@peach/legacy/jav-title';
@@ -21,10 +21,14 @@ import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-
 import { EntityPage } from '../entity-page/entity-page-view';
 import { prefetchDuplicates } from '../duplicates/duplicates';
 import { DuplicatesPage } from '../duplicates/duplicates-page';
+import { prefetchFollowFeed } from '../follow-feed/follow-feed';
+import { FollowFeedPage } from '../follow-feed/follow-feed-page';
 import { prefetchFollowManage } from '../follow-manage/follow-manage';
 import { FollowManagePage } from '../follow-manage/follow-manage-page';
 import { prefetchIndex } from '../index/index-data';
 import { IndexPage } from '../index/index-page';
+import { prefetchPlaylists } from '../playlists/playlists';
+import { PlaylistsPage } from '../playlists/playlists-page';
 import { prefetchQualityGoals } from '../quality-goals/quality-goals';
 import { QualityGoalsPage } from '../quality-goals/quality-goals-page';
 import { prefetchReview } from '../review/review';
@@ -38,7 +42,8 @@ import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
 import type {
-  EntityRoutePath, IndexOpenProps, IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ShellActions,
+  BrowseOpenProps, BrowseRoutePath, EntityRoutePath, IndexOpenProps, IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps,
+  ManagedPath, ShellActions,
 } from './shell-actions';
 
 interface ManagedRoute<P> {
@@ -47,10 +52,11 @@ interface ManagedRoute<P> {
 }
 
 type ManagedRouteTable = { [Path in ManagedPath]: ManagedRoute<ManagedOpenProps[Path]> };
+type BrowseRouteTable = { [Path in BrowseRoutePath]: ManagedRoute<BrowseOpenProps[Path]> };
 type IndexRouteTable = { [Path in IndexRoutePath]: ManagedRoute<IndexOpenPropsTable[Path]> };
 type EntityRouteTable = { [Path in EntityRoutePath]: ManagedRoute<EntityPageProps> };
-/** 路由树画的全部路径：管理区那几页、索引页与资料页。 */
-export type RoutedPath = ManagedPath | IndexRoutePath | EntityRoutePath;
+/** 路由树画的全部路径：管理区那几页、播放列表页与关注页、索引页与资料页。 */
+export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath;
 
 /* 数据管理页读数卡的去处里，只有重复文件不按管理区身份找：它报的是数据管理的身份。 */
 function openCleanupSection(section: DataCleanupSection, actions: ShellActions, go: (path: string) => void) {
@@ -141,6 +147,25 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
  *  认领，跨进来也是壳写地址再自己打开。 */
 export const isManagedPath = (path: string): path is ManagedPath => Object.hasOwn(MANAGED_ROUTES, path);
 
+/* 播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要看得到）。停在这一页时壳要求重读，
+   经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。点开一份进舞台、翻页门槛与回执都归壳。
+   关注页：首屏是列表第一页与凭据两趟并行，挂上就是最终样子；之后换筛选、换一批、选择模式与照片版式都由
+   壳经 `updateManagedRoute` 推进来，页面按新键只重取列表、不重挂。 */
+export const BROWSE_ROUTES: BrowseRouteTable = {
+  '/playlists': {
+    prefetch: (_open, signal) => prefetchPlaylists(signal),
+    page: (open, actions) => (
+      <PlaylistsPage revision={open.revision} openPlaylist={actions.openPlaylist} openEntity={actions.openEntity}
+        canFlip={actions.canFlip} toast={(message, { undo } = {}) => actions.receipt(message, undo ? { undo } : {})} />
+    ),
+  },
+  '/follow': {
+    prefetch: (open, signal) => prefetchFollowFeed(open, signal),
+    page: (open) => <FollowFeedPage {...open} />,
+  },
+};
+const isBrowsePath = (path: string): path is BrowseRoutePath => Object.hasOwn(BROWSE_ROUTES, path);
+
 /* 索引页：地址栏上的四项由壳从地址读出、跟着这一次打开交进来；页内换档经 `routeIndex` 由壳写地址并认领，
    不重挂（后退前进到同一页的另一份 search 时，壳照旧按地址重开一次）。首屏只取第一页。 */
 const indexRoute: ManagedRoute<IndexOpenProps> = {
@@ -170,16 +195,17 @@ export const ENTITY_ROUTES: EntityRouteTable = {
   '/agencies/*': entityRoute,
 };
 
-/** 路由树画的路径（三张表的键）。`<Routes>` 的声明、首屏取数与画页都按它查。 */
+/** 路由树画的路径（四张表的键）。`<Routes>` 的声明、首屏取数与画页都按它查。 */
 export const ROUTED_PATHS: readonly RoutedPath[] = [
-  ...Object.keys(MANAGED_ROUTES) as ManagedPath[], ...Object.keys(INDEX_ROUTES) as IndexRoutePath[],
-  ...Object.keys(ENTITY_ROUTES) as EntityRoutePath[],
+  ...Object.keys(MANAGED_ROUTES) as ManagedPath[], ...Object.keys(BROWSE_ROUTES) as BrowseRoutePath[],
+  ...Object.keys(INDEX_ROUTES) as IndexRoutePath[], ...Object.keys(ENTITY_ROUTES) as EntityRoutePath[],
 ];
 export const isRoutedPath = (path: string): path is RoutedPath => (
-  isManagedPath(path) || Object.hasOwn(INDEX_ROUTES, path) || Object.hasOwn(ENTITY_ROUTES, path));
+  isManagedPath(path) || isBrowsePath(path) || Object.hasOwn(INDEX_ROUTES, path) || Object.hasOwn(ENTITY_ROUTES, path));
 
 function routeOf(path: RoutedPath): ManagedRoute<object> {
   if (isManagedPath(path)) return MANAGED_ROUTES[path] as ManagedRoute<object>;
+  if (isBrowsePath(path)) return BROWSE_ROUTES[path] as ManagedRoute<object>;
   if (Object.hasOwn(INDEX_ROUTES, path)) return INDEX_ROUTES[path as IndexRoutePath] as ManagedRoute<object>;
   return ENTITY_ROUTES[path as EntityRoutePath] as ManagedRoute<object>;
 }
