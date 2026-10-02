@@ -18,12 +18,12 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/islands.ts` | 挂载契约与注册表，构建入口；其余导出是遗留层仍在用的助手 |
 | `frontend/src/api.ts` | 带 `AbortController` 的取数封装 |
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
-| `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js` 的手写类型 |
+| `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js`、`/js/jav-title.js`、`/js/tags.js` 等遗留模块的手写类型 |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history` |
-| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，唯一一条 `path="*"` 把后退前进派发给壳的 `restoreRoute` |
+| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区十页的正文由它画（`managed-routes.tsx`） |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
@@ -103,10 +103,12 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 客户端导航
 
-React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`），页面仍由壳的 `ROUTES` 表打开。
+React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文由路由树画。
 
-- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，什么都不画。
-- 只有一条 `path="*"`，元素 `LegacyRoutes` 不按路径设 key，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。
+- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页经 portal 画进 `#stats`。
+- 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十页与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
+- 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主，宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。`claimSurface` 调 `releaseManagedRoute` 收起；详情舞台推 `/item/:id` 不经过它，页面留在舞台下面。
+- `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、云下载预填）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径交 `actions.navigate`。配置页页签与云下载预填先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 派发判据是序号：每次历史变化领一个 `seq`；`shellNavigate` 写的那一次当场认领，不派发；后退前进与 React 子树里的 `navigate` 没人认领，派发一次。地址不变的 `popstate` 也领新序号，照样派发。
 - 启动：壳在启动链上 `startRouting(restoreRoute)` 派发第一次，并认领到当时的序号。Router 先挂上时它报的序号已在其中；后挂上时读到的初值就是这一个。包到之前发生的后退前进，等 Router 挂上时补派一次。判据钉在 `test/react/router.test.tsx`。
 
@@ -235,8 +237,7 @@ npm --prefix frontend run build:agentation   # 在要用它的那份检出里构
 ```js
 // web/app.js 里的遗留入口
 const ui = await import('/dist/peach-ui.js');
-const props = {openItem, javTitleHtml, javDisplayName, srcBadge};
-await ui.mountIsland('quality-goals', $('#stats'), props, {isCurrent: () => surfaceCurrent(surface)});
+await ui.mountIsland('playlists', $('#stats'), props, {isCurrent: () => surfaceCurrent(surface)});
 ```
 
 - `mountIsland(name, el, props, options?)` 是 async 且**取完数才画**。遗留层已经铺了
@@ -265,8 +266,9 @@ await ui.mountIsland('quality-goals', $('#stats'), props, {isCurrent: () => surf
 
 遗留助手不打进产物：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml` 在浏览器里
 仍是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
-打进去就会有两份实现，语义契约各走一份。只存在于 `app.js` 里的助手
-（`javTitleHtml`、`srcBadge`、`openItem` 这类）作为 props 传进来，类型写在 island 自己的文件里。
+打进去就会有两份实现，语义契约各走一份。`/js/jav-title.js` 与 `/js/tags.js` 也这样引用，
+路由树直接 import `javTitleHtml`、`tagLabel`。只存在于 `app.js` 里的助手（`srcBadge`、`openItem`
+这类）给岛时作为 props 传进来，类型写在 island 自己的文件里；给路由树那几页时进 `ShellActions`。
 
 两条跨层都成立的硬约束：
 
@@ -430,7 +432,7 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `react-aria` | 只用 `UNSAFE_PortalProvider`：把 Popover 与下拉列表挂进 `body` 末尾同样带 `.peach-react` 的容器，弹层读到与页面内一致的 token 与 Preflight |
 | `@tanstack/react-query` | React 页面的取数与缓存：页面级 `prefetch` 与组件里的 `useQuery` 共用一份缓存，「取完数才画」不必把首屏数据当 props 串一路；轮询写成 `refetchInterval`，卸载时跟着组件一起停 |
 | `@tanstack/query-core` | `QueryClient` 本体。壳不跑 React 也要读写同一份缓存，客户端因此建在 `peach-ui.js` 里；React 包把它外置，运行时只有一份，版本与 `@tanstack/react-query` 同步固定 |
-| `react-router` | 客户端导航：`<Router>` 与唯一一条 `path="*"` 在 `peach-react.js` 里，派发后退前进给壳（见「客户端导航」）；全站那一份浏览器历史（`createBrowserHistory`，`@peach/history`）建在 `peach-ui.js` 里，因为壳要在 React 包到之前写地址，只树摇进 history 内核，不带 React。两份产物各带一半，之间没有共享的模块状态；随之装进来的 `@remix-run/route-pattern`、`cookie-es` 是它自己的依赖 |
+| `react-router` | 客户端导航：`<Router>` 与 `<Routes>` 在 `peach-react.js` 里，派发后退前进给壳、画管理区十页的正文（见「客户端导航」）；全站那一份浏览器历史（`createBrowserHistory`，`@peach/history`）建在 `peach-ui.js` 里，因为壳要在 React 包到之前写地址，只树摇进 history 内核，不带 React。两份产物各带一半，之间没有共享的模块状态；随之装进来的 `@remix-run/route-pattern`、`cookie-es` 是它自己的依赖 |
 | `@tanstack/react-table` | 表格视图的列定义、排序状态、行选择与分页。行的身份是业务 ID（`getRowId`），所以换页、换排序、换视图之后勾选的还是同一批；排序与分页跑在**全集**上，页只是最后一刀 |
 | `tailwind-merge` | BoardUI 的 `cx()` 合并类名时去掉互相冲突的工具类 |
 | `@remixicon/react` | BoardUI 组件内置的图标 |

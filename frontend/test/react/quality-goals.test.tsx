@@ -153,7 +153,7 @@ it('重新进这一页会重取：这一页的刷新就是重新进来一次，�
   expect(first.fetcher).toHaveBeenCalledTimes(1);
   await first.unmount();
 
-  // 遗留层再次进入这一页：`mountIsland` 先 prefetch 再挂载。
+  // 壳再次打开这一页：`openManagedRoute` 先 prefetch 再画。
   await prefetchQualityGoals(new AbortController().signal);
   expect(first.fetcher).toHaveBeenCalledTimes(2);
   const host = await mount(

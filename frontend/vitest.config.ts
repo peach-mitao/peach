@@ -16,6 +16,8 @@ export default mergeConfig(base, defineConfig({
       '@peach/legacy/ui': stub('legacy-ui.ts'),
       // 纯数据层，没有页面装配，测试里直接用正式实现。
       '@peach/legacy/home-glow': fileURLToPath(new URL('../web/js/home-glow.js', import.meta.url)),
+      '@peach/legacy/jav-title': fileURLToPath(new URL('../web/js/jav-title.js', import.meta.url)),
+      '@peach/legacy/tags': fileURLToPath(new URL('../web/js/tags.js', import.meta.url)),
       // 测试里 island 直接拿到 React 子树的源码入口，不经过 web/dist 产物。
       '@peach/react': source('react/entry.tsx'),
       // React 子树按 `@peach/card-art` 取卡片图片助手，产物里是 peach-ui.js；测试里两边都落到同一份源码。

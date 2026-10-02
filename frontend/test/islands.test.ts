@@ -40,9 +40,8 @@ async function until(ok: () => boolean, what: string): Promise<void> {
 describe('island 注册表', () => {
   it('登记的名字就是遗留路由能挂载的名字', () => {
     expect(islandNames()).toEqual([
-      'catalog-filter', 'catalog-grid', 'data-cleanup', 'duplicates', 'entity-page', 'feed-new', 'follow-feed', 'follow-manage', 'index',
-      'junk-queue', 'library-processing', 'playlists',
-      'scraping', 'quality-goals', 'review', 'search', 'configuration', 'activity', 'stats', 'taste']);
+      'catalog-filter', 'catalog-grid', 'entity-page', 'feed-new', 'follow-feed', 'index',
+      'junk-queue', 'library-processing', 'playlists', 'search']);
   });
 
   it('未注册的名字立刻失败，不是静默什么都不画', async () => {
@@ -52,42 +51,39 @@ describe('island 注册表', () => {
   });
 });
 
-const tasks = {
-  available: true,
-  running: [{
-    id: 1, task_key: 'follow-check', task_label: '追更检查', trigger: 'manual', status: 'running',
-    host: 'desk', started_at: '2026-09-11T10:00:00Z', finished_at: null, elapsed_seconds: 5,
-    progress_current: null, progress_total: null, progress_label: '正在查第三个来源',
-    result_summary: {}, error: '',
+const playlists = {
+  items: [{
+    id: 1, name: '周末连看', source_kind: 'manual', source_seed_asset_id: null, current_asset_id: null,
+    created_at: '2026-09-01 10:00:00', updated_at: '2026-09-01 10:00:00', item_count: 2,
+    preview_asset_id: 11, preview_ids: [11, 12], faces: [],
   }],
-  skipped: [],
-  finished: [],
 };
+const playlistProps = () => ({ openPlaylist: vi.fn(), openEntity: vi.fn(), canFlip: () => true, toast: vi.fn() });
 
 describe('mountIsland', () => {
   // 第一次 `import('@peach/react')` 要现编译整棵 React 子树，比用例里的等待窗口长得多。
   beforeAll(async () => { await import('@peach/react') });
 
   it('先把首屏取回来再画，React 根挂在自己的 `.peach-react` 容器里', async () => {
-    const fetch = deferredFetch(tasks);
+    const fetch = deferredFetch(playlists);
     fetch.install();
     const el = container();
-    const mounting = mountIsland('activity', el, {});
+    const mounting = mountIsland('playlists', el, playlistProps());
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     expect(el.querySelector('[data-skeleton]'), '数据还没回来就撤骨架会出现第二段等待态').not.toBeNull();
     fetch.resolve();
     await act(async () => { await mounting });
     expect(el.querySelector('[data-skeleton]')).toBeNull();
     // token、Preflight 与焦点规则都作用在 `.peach-react` 上，根不挂在它里面就没有样式。
-    expect(el.querySelector('.peach-react')?.textContent).toContain('追更检查');
+    expect(el.querySelector('.peach-react')?.textContent).toContain('周末连看');
   });
 
   it('取数期间用户走开就不画，骨架留给下一页', async () => {
-    const fetch = deferredFetch(tasks);
+    const fetch = deferredFetch(playlists);
     fetch.install();
     const el = container();
     let current = true;
-    const mounting = mountIsland('activity', el, {}, { isCurrent: () => current });
+    const mounting = mountIsland('playlists', el, playlistProps(), { isCurrent: () => current });
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     current = false;
     fetch.resolve();
@@ -97,19 +93,19 @@ describe('mountIsland', () => {
   });
 
   it('卸载时中止在途取数，画过的话连 React 根一起撤掉', async () => {
-    const fetch = deferredFetch(tasks);
+    const fetch = deferredFetch(playlists);
     fetch.install();
     const el = container();
-    const mounting = mountIsland('activity', el, {});
+    const mounting = mountIsland('playlists', el, playlistProps());
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     unmountIsland(el);
     await mounting;
     expect(fetch.signal()?.aborted, '离开页面必须真的中止请求').toBe(true);
     expect(el.querySelector('[data-skeleton]'), '还没画过就卸载，容器里是遗留骨架').not.toBeNull();
 
-    const again = deferredFetch(tasks);
+    const again = deferredFetch(playlists);
     again.install();
-    const painting = mountIsland('activity', el, {});
+    const painting = mountIsland('playlists', el, playlistProps());
     await until(() => again.fetched.mock.calls.length > 0, '第二次取数发出去');
     again.resolve();
     await act(async () => { await painting });
@@ -149,37 +145,6 @@ describe('mountIsland', () => {
   });
 });
 
-const configuration = {
-  editable: true, notice: '', revision: 'rev-1', media_dirs: ['D:\\Media'], port: 9123, facts: [],
-  startup: { available: true, enabled: false, silent: true, message: '', desktop: false, desktop_message: '' },
-  peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false },
-};
-
-describe('配置页的分区拆分', () => {
-  beforeAll(async () => { await import('@peach/react') });
-
-  /* 遗留壳按 `.configgroup` 小标题把后面的兄弟节点切进左栏那一列（`configTabItems`），
-     设置弹层挂完这一页紧接着就读它。`mountIsland` 返回时结构必须已经在 DOM 上——所以
-     React 根的第一帧走 `flushSync`（`react/entry.tsx` 的 `mounter`）。
-     分区自己怎么排在 `test/react/configuration.test.tsx`。 */
-  it('挂载返回的那一刻，小标题和它的分区已经在容器里', async () => {
-    const fetch = deferredFetch(configuration);
-    fetch.install();
-    const el = container();
-    await act(async () => {
-      const mounting = mountIsland('configuration', el, { receipt: vi.fn(), reopenTutorial: vi.fn() });
-      await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
-      fetch.resolve();
-      await mounting;
-      const titles = [...el.querySelectorAll('.configgroup')].map((title) => title.textContent);
-      expect(titles, '标题还没落到 DOM 上，壳那一刻就拆不出分区')
-        .toEqual(['通用', '媒体', '网络与访问', '更新与维护']);
-      expect(el.querySelector('.configpage')?.parentElement?.classList.contains('peach-react')).toBe(true);
-    });
-  });
-
-});
-
 describe('unmountIsland', () => {
   beforeAll(async () => { await import('@peach/react') });
 
@@ -190,15 +155,11 @@ describe('unmountIsland', () => {
   });
 
   it('容器上挂没挂着，遗留层问得出来', async () => {
-    // 活动页里的云下载段另取 `/api/downloads`，给它一份空表。
-    const downloads = { available: true, providers: [], tasks: [] };
-    vi.stubGlobal('fetch', vi.fn(async (input: string) => ({
-      ok: true, status: 200, json: async () => (input.startsWith('/api/downloads') ? downloads : tasks),
-    })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => playlists })));
     const el = container();
     expect(islandMounted(el)).toBe(false);
     // 取数还没回来也算挂着：这段时间里再挂一次会把在途那次作废，白等一趟。
-    const mounting = mountIsland('activity', el, {});
+    const mounting = mountIsland('playlists', el, playlistProps());
     expect(islandMounted(el)).toBe(true);
     await act(async () => { await mounting });
     expect(islandMounted(el)).toBe(true);

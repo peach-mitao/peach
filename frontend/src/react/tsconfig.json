@@ -17,6 +17,8 @@
       "@peach/legacy/core": ["../legacy/core.d.ts"],
       "@peach/legacy/ui": ["../legacy/ui.d.ts"],
       "@peach/legacy/home-glow": ["../legacy/home-glow.d.ts"],
+      "@peach/legacy/jav-title": ["../legacy/jav-title.d.ts"],
+      "@peach/legacy/tags": ["../legacy/tags.d.ts"],
       "@peach/card-art": ["../card-art/index.ts"],
       "@peach/appearance": ["../appearance/index.ts"],
       "@peach/query": ["../query/index.ts"],

@@ -4,7 +4,7 @@
  * 之后，它的入口只做两件事：铺好加载占位，然后把一个容器交给这里。
  *
  *     const ui = await import('/dist/peach-ui.js');
- *     await ui.mountIsland('configuration', $('#stats'), props);
+ *     await ui.mountIsland('playlists', $('#stats'), props);
  *
  * `mountIsland` 是 async 且**取完数才画**：遗留层已经铺了骨架，island 若先画一个空
  * 容器再自己转圈，同一次进入就会出现两段等待态（`peach-web-ui` 明确禁止）。所以这里
@@ -24,6 +24,7 @@ export { sidebarSkeletonHtml } from './sidebar-skeleton';
 export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
 import type * as ReactBundle from '@peach/react';
+import { connectManagedRoutes } from './history';
 
 export { watchJob, followJobProgress, jobActivityHtml } from './jobs';
 export { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './selection';
@@ -43,24 +44,14 @@ export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 export interface IslandContracts {
   'catalog-filter': ReactBundle.CatalogFilterProps;
   'catalog-grid': ReactBundle.CatalogGridProps;
-  'data-cleanup': ReactBundle.DataCleanupProps;
-  duplicates: ReactBundle.DuplicatesProps;
   'entity-page': ReactBundle.EntityPageProps;
   'feed-new': ReactBundle.FeedNewProps;
   'follow-feed': ReactBundle.FollowFeedProps;
-  'follow-manage': ReactBundle.FollowManageProps;
   index: ReactBundle.IndexProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   playlists: ReactBundle.PlaylistsProps;
-  'scraping': ReactBundle.ScrapingProps;
-  'quality-goals': ReactBundle.QualityGoalsProps;
-  review: ReactBundle.ReviewProps;
   search: ReactBundle.SearchProps;
-  configuration: ReactBundle.ConfigurationProps;
-  activity: ReactBundle.ActivityProps;
-  stats: ReactBundle.StatsProps;
-  taste: ReactBundle.TasteProps;
 }
 
 export type IslandName = keyof IslandContracts;
@@ -75,24 +66,14 @@ interface Island {
 const REGISTRY: { [N in IslandName]: Island } = {
   'catalog-filter': { react: 'catalog-filter' },
   'catalog-grid': { react: 'catalog-grid' },
-  'data-cleanup': { react: 'data-cleanup' },
-  duplicates: { react: 'duplicates' },
   'entity-page': { react: 'entity-page' },
   'feed-new': { react: 'feed-new' },
   'follow-feed': { react: 'follow-feed' },
-  'follow-manage': { react: 'follow-manage' },
   index: { react: 'index' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   playlists: { react: 'playlists' },
-  'scraping': { react: 'scraping' },
-  'quality-goals': { react: 'quality-goals' },
-  review: { react: 'review' },
   search: { react: 'search' },
-  configuration: { react: 'configuration' },
-  activity: { react: 'activity' },
-  stats: { react: 'stats' },
-  taste: { react: 'taste' },
 };
 
 /** 先把 React 包取回来，不挂任何东西。遗留层在自己取数的同时调它：数据一到，`mountIsland`
@@ -299,11 +280,16 @@ export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> 
   return glowPicker;
 }
 
-/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳。壳启动时装载，
- * 跟侧栏共用同一次 `@peach/react` 请求；包到之前的后退前进等它挂上时补派。 */
+/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区那几页由它画
+ * （`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；包到之前的
+ * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。 */
 let router: Promise<void> | null = null;
-export function loadRouter(): Promise<void> {
-  router ??= import('@peach/react').then((bundle) => bundle.configureRouter());
+export function loadRouter(actions: ReactBundle.ShellActions): Promise<void> {
+  if (!router) {
+    const bundle = import('@peach/react').then((loaded) => { loaded.configureRouter(actions); return loaded });
+    connectManagedRoutes(bundle.then((loaded) => loaded.prefetchManagedRoute));
+    router = bundle.then(() => undefined);
+  }
   return router;
 }
 

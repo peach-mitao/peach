@@ -1,5 +1,6 @@
 /* 客户端导航（`src/react/router/`）：只有后退前进、React 子树里的 `navigate` 和启动会让壳打开那一屏；
- * 壳自己写地址不派发；启动不论 Router 先挂还是后挂都只派发一次；`path="*"` 的元素从头到尾是同一个实例。
+ * 壳自己写地址不派发；启动不论 Router 先挂还是后挂都只派发一次；`path="*"` 的元素在非管理区地址之间从头到尾
+ * 是同一个实例。管理区那几页的宿主见 `managed-routes.test.tsx`。
  *
  * 历史对象与派发状态都是模块级的，和页面上只有一份一致，所以每条用例重新装载 `src/history` 与
  * `src/react/router`。React 与 React Router 在 node_modules 里，不随之重载，组件照常写 JSX。 */
@@ -107,12 +108,12 @@ it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () =
   }
   await mount(r, <Probe />);
   await act(async () => { await r.startRouting(() => {}) });
-  for (const path of ['/stats', '/performers', '/item/7']) await act(async () => { r.shellNavigate(path) });
+  for (const path of ['/playlists', '/performers', '/item/7']) await act(async () => { r.shellNavigate(path) });
   await act(async () => { pop('/performers') });
   await act(async () => { r.peachHistory.push('/tags') });
   expect([mounted, unmounted]).toEqual([1, 0]);
   expect(seen.at(-1)).toBe('/tags');
-  expect(new Set(seen)).toEqual(new Set(['/', '/stats', '/performers', '/item/7', '/tags']));
+  expect(new Set(seen)).toEqual(new Set(['/', '/playlists', '/performers', '/item/7', '/tags']));
 });
 
 it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的岛，当场就画上', async () => {
@@ -134,8 +135,9 @@ it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的�
 it('configureRouter 只挂一棵：重复调用后一次后退仍只派发一次', async () => {
   const r = await load();
   const dispatch = vi.fn();
-  await act(async () => { r.configureRouter() });
-  await act(async () => { r.configureRouter() });
+  const actions = {} as Parameters<typeof r.configureRouter>[0];
+  await act(async () => { r.configureRouter(actions) });
+  await act(async () => { r.configureRouter(actions) });
   await act(async () => { await r.startRouting(dispatch) });
   await act(async () => { pop('/stats') });
   expect(dispatch).toHaveBeenCalledTimes(2);
