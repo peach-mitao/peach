@@ -49,6 +49,9 @@ if (-not (Get-Command openssl.exe -ErrorAction SilentlyContinue)) {
 
 Push-Location $WorktreeRoot
 try {
+    & $Python -X utf8 scripts\test_environment.py $WorktreeRoot $MainRoot
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $Python = $LocalPython
     $LoadedModule = (& $Python -c 'import peach; print(peach.__file__)').Trim()
     if ($LASTEXITCODE -ne 0 -or -not $LoadedModule) {
         throw '无法导入当前工作树中的 peach。'

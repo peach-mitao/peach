@@ -107,7 +107,9 @@ macOS 按影响域验证：
 ./scripts/test.sh
 ```
 
-显式全量用 Windows `-Scope full` 或 macOS 首参数 `full`。入口优先当前工作树环境、核对源码位置，并记录慢测试。依赖、代码在测试中变化会使证据失效；完成安装和编辑后再启动最终验证。
+显式全量用 Windows `-Scope full` 或 macOS 首参数 `full`。入口通过 `scripts/test_environment.py` 准备 Python 依赖，再核对源码位置、选测并记录慢测试。隔离工作树按 `uv sync --locked --all-extras` 同步自己的 `.venv`；缺少本地环境时用主检出的 Python 启动准备，测试仍在新建的本地环境里运行。同步保留启动解释器的 Python 版本，忽略外部 `VIRTUAL_ENV` 和 `UV_PROJECT_ENVIRONMENT`，拒绝工作树环境指向主检出。
+
+主检出只按 ADR-0091 只读检查依赖；缺包或检查失败时以 `3` 退出，依赖变更由重启流程执行。找不到 uv、锁文件过期或同步失败也会停止测试。前端依赖与构建仍按上文安装。依赖、代码在测试中变化会使证据失效；完成安装和编辑后再启动最终验证。
 
 本机全量验证与 `integrate` 共用 `full-suite.lock`，从取得代码和环境快照一直持有到记录写入完成。
 锁忙时打印持有者并等待，最长 30 分钟；超时退出且不执行测试或合并。集成事务本身仍由

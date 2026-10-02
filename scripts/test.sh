@@ -53,6 +53,8 @@ export PYTHONPATH="$SOURCE_ROOT"
 export PYTHONIOENCODING=utf-8
 
 cd "$WORKTREE_ROOT"
+"$PYTHON" -X utf8 scripts/test_environment.py "$WORKTREE_ROOT" "$MAIN_ROOT"
+PYTHON="$WORKTREE_ROOT/.venv/bin/python"
 LOADED_MODULE="$("$PYTHON" -c 'import peach; print(peach.__file__)')"
 if [[ "$LOADED_MODULE" != "$SOURCE_ROOT/"* ]]; then
     echo "测试加载了错误源码：$LOADED_MODULE；预期位于 $SOURCE_ROOT" >&2
