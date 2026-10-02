@@ -29,7 +29,7 @@ README 迭代绑定 Codex 与 Claude 共用的工作树交付流程。每次提�
 声明与 `Co-Authored-By` 等其它 trailer 连续写在提交消息末尾的同一块里，彼此之间不留空行。
 同一块里的署名形态见 `.claude/skills/peach-worktree/SKILL.md`「暂存与提交」。
 `git interpret-trailers --parse` 只解析末尾那一块，被空行隔开的 `README-Impact` 属于正文段落，
-`ready` 报「交付提交须有唯一 README-Impact」，而提交消息本身看不出哪一行不合格。
+`commit-msg` 会指出不在末尾同一块的字段，`ready` 也会拒绝未取得唯一声明的交付。
 
 `scripts/check_readme_impact.py` 读取目标分支到交付 HEAD 的实际差异，并使用
 `git interpret-trailers --parse` 读取最后提交的声明。涉及运行时代码、前端、迁移、资源、
@@ -38,8 +38,10 @@ README 改动必须包含两种语言；`updated` 必须对应两份实际差异
 提交后的暂存内容不能满足要求。原因的真实性仍由代码审阅负责，脚本不代替语义判断。
 
 `agent_worktree.py ready/integrate` 在接受测试记录前执行这一门槛。检查覆盖本次分支交付，
-不追溯主线历史提交；允许在最后交付提交统一核对整批差异。它不是 Git 全局 hook，
-直接 Git 提交不会触发，但未通过的分支不能经项目入口集成。
+允许在最后交付提交统一核对整批差异。仓库 `scripts/githooks/commit-msg` 在 `agent/*`
+分支提交时检查署名，以及消息中已有 README 声明的格式与分段；中间提交可以不写 README 声明。
+合并消息免除署名检查，amend 使用同一套字段判据；钩子只读消息。README 声明与整个分支差异
+的一致性由交付门槛检查，未通过的分支不能经项目入口集成。
 无需定时任务、账号专属 hook 或额外模型调用。Python 下限、文案和快照校验继续复用现有测试。
 结构或品牌调整时重读已登记的参考快照，上游变化只作为参考，计划功能不得写成已实现。
 
