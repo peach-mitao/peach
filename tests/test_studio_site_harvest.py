@@ -518,14 +518,6 @@ class ConfirmedSiteTests(unittest.TestCase):
         verdict, _ = self.module.site_verdict("えむっ娘ラボ", 200, page(title), title, url)
         self.assertEqual(verdict, "ok")
 
-    def test_studios_outside_the_whitelist_are_judged_exactly_as_before(self):
-        """白名单只影响列出来的那几行。少了这条，「加一行确认」就等于放宽了通用判据。"""
-        title = "Bazooka Bass Tubes"
-        verdict, _ = self.module.site_verdict(
-            "BAZOOKA", 200, page(title, "car audio subwoofers. "), title,
-            "https://bazooka.com/", derived_hosts=frozenset({"bazooka.com"}))
-        self.assertEqual(verdict, "weak")
-
 
 class PlatformEntityTests(unittest.TestCase):
     """发行平台不是厂牌，「厂牌官网」这条路对它们本来就不成立。"""

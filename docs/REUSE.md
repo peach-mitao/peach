@@ -286,6 +286,12 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 Python、npm 与 GitHub Actions 的版本由 `.github/dependabot.yml` 每周检查；固定前端文件由
 `package-lock.json` 和 `scripts/vendor_web_dependencies.mjs` 重建并核对来源、许可证与 SHA-256。
 
+## 前端静态检查
+
+复用现有 Oxlint 1.85.0 的 correctness、`eqeqeq` 与 `oxc/no-accumulating-spread`，不新增依赖。源码和测试共用基础规则；shadcn 设计规则仅作用于自有 React 源码。
+
+评估过 MIT 许可的 [anti-slop](https://github.com/dmmulroy/anti-slop/tree/c44ef22ca116d0ba62a3ff663a0bd13a3f3fa40b)。固定提交的试跑中，8,243 条诊断里 7,274 条要求空行；其禁止 `unknown`、运行时 `typeof` 和模块 mock 的规则不适合本项目的输入校验与测试替身，因此不引入整套插件。类型安全由 TypeScript、基础 lint 与对应行为回归共同检查。
+
 ## 已删除旧实现与当前继任者
 
 找不到某个旧脚本时先查这张表：它的能力通常已经并进右边的实现，不要照旧名重写一份。

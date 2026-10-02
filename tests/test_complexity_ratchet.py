@@ -24,6 +24,7 @@
 import ast
 import pathlib
 import unittest
+from types import MappingProxyType
 
 import peach
 
@@ -134,6 +135,10 @@ def recorded() -> dict[str, int]:
 
 
 class ComplexityRatchetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.current = MappingProxyType(survey())
+
     def test_the_counter_counts_the_shapes_it_names(self):
         source = (
             "def f(items):\n"
@@ -150,7 +155,7 @@ class ComplexityRatchetTests(unittest.TestCase):
         self.assertEqual(complexity(node), 8)
 
     def test_no_function_grew_past_its_recorded_count(self):
-        current, limits = survey(), recorded()
+        current, limits = self.current, recorded()
         grown = sorted(
             f"{key}: {value}（记录 {limits.get(key, LIMIT - 1)}）"
             for key, value in current.items()
@@ -161,7 +166,7 @@ class ComplexityRatchetTests(unittest.TestCase):
                          "都不算拆：\n  " + "\n  ".join(grown))
 
     def test_the_recorded_counts_match_the_code(self):
-        current = survey()
+        current = self.current
         stale = sorted(
             f"{key}: 现在 {current.get(key, '不存在')}，记录 {value}"
             for key, value in recorded().items()

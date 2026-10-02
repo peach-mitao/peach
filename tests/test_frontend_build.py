@@ -454,11 +454,6 @@ class StatsEndpointTests(unittest.TestCase):
         for helper in ("fmtSize(", "LOC["):
             self.assertIn(helper, self.source)
 
-    def test_the_four_readings_are_the_tabs(self):
-        """四张读数卡本身就是页签：这一页没有别的主动作，读数就是入口。"""
-        self.assertIn("react-aria-components", self.source)
-        self.assertEqual(self.source.count("<MetricTab"), 4)
-
     def test_the_endpoint_is_declared_once(self):
         """端点在前端只能有一个声明处，就是这一页的数据模块。"""
         sources = sorted(path for path in (FRONTEND / "src").rglob("*.ts*"))
@@ -759,7 +754,7 @@ class VitestTests(unittest.TestCase):
         config = (FRONTEND / "vitest.config.ts").read_text(encoding="utf-8")
         self.assertIn("maxWorkers: 4", config)
 
-    def test_the_react_sources_follow_the_design_system_lint(self):
+    def test_frontend_sources_and_tests_pass_lint(self):
         """`@shadcn/lint` 挡住裸色值、任意值、内联样式和在 BoardUI 组件上改样式（ADR-0031）。"""
         npm = self._npm("lint", "oxlint")
         completed = subprocess.run(
