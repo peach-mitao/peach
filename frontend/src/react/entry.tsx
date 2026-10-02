@@ -50,6 +50,7 @@ export { configureBatchDock } from './batch-dock/batch-dock-island';
 export { configureGlowPicker } from './glow-picker/glow-picker-island';
 export { configureImmerse } from './immerse/immerse-island';
 export { configureManageHeader } from './manage-header/manage-header-island';
+export { configureRouter } from './router/router';
 export { configureSettingsPanel } from './settings-panel/settings-panel';
 export { configureSidebar } from './sidebar/sidebar-island';
 export { configureStage } from './stage/stage';

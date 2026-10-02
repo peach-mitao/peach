@@ -19,7 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
-import { peachHistory, shellNavigate } from './dist/peach-ui.js';
+import { loadRouter, peachHistory, shellNavigate, startRouting } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -3933,7 +3933,6 @@ async function restoreRoute(){
     else{showHomeSurfaces();disposeStage(false)}
   }finally{lastRoutePath=path}
 }
-window.addEventListener('popstate',restoreRoute);
 /* 左侧导航、管理条、页面标题和面包屑只认 location 和本地设置，一个请求都不等。
    挂在下面那条链上时它们排在 /api/sources 和 /api/facets 后面，实测让骨架先顶着
    一个没有标题的空壳站了约半秒。左侧导航先由 mountSidebar() 同步铺好骨架，
@@ -3941,6 +3940,8 @@ window.addEventListener('popstate',restoreRoute);
 entityShapesReady=loadEntityShapes();
 renderInitialSurfaceLoading();
 mountSidebar();
+/* 后退前进由 React Router 派发给 restoreRoute（`startRouting`），跟侧栏搭同一次 React 包请求。 */
+loadRouter().catch(()=>{});
 mountManageHeader();
 mountBatchDock();
 buildManageBar();
@@ -3948,7 +3949,7 @@ buildManageBar();
    结果没人看，却排在这一页自己的数据前面。 */
 Promise.all([loadSourceStatus(),loadSyncedSettings(),entityShapesReady])
   .then(()=>wantsDiscoveryBars()?buildBars():null)
-  .then(async()=>{syncNavigation();wireAllDrag();await restoreRoute();scheduleStickySurfaces()});
+  .then(async()=>{syncNavigation();wireAllDrag();await startRouting(restoreRoute);scheduleStickySurfaces()});
 
 ;(()=>{
 /* Board 外壳与配置页导航。 */

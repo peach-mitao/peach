@@ -22,6 +22,7 @@ export default mergeConfig(base, defineConfig({
       '@peach/card-art': source('card-art/index.ts'),
       '@peach/appearance': source('appearance/index.ts'),
       '@peach/query': source('query/index.ts'),
+      '@peach/history': source('history/index.ts'),
       '@/registry': source('react/evilcharts/registry'),
       '@/lib/utils': source('react/charts/cn.ts'),
       '@': source('react/boardui'),

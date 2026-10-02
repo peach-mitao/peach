@@ -2483,7 +2483,7 @@ class WebUiSourceTests(unittest.TestCase):
         /api/sources 和 /api/facets 共约 585ms 才出现标题，骨架先顶着一个没有标题的
         空壳。buildManageBar() 内部会一并建左侧导航，所以链外只调它一个。
         """
-        boot = self.app_js.split("window.addEventListener('popstate',restoreRoute);", 1)[1]
+        boot = self.app_js.split("/* 左侧导航、管理条、页面标题和面包屑只认 location", 1)[1]
         self.assertLess(boot.index("buildManageBar();"), boot.index("loadSourceStatus()"),
                         "管理条与标题要在派发请求之前画完")
         self.assertNotIn("\nsyncNavigation();", boot,
