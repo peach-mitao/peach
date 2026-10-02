@@ -66,7 +66,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
               "test_previews.py",
               "test_providers.py", "test_segments.py", "test_streaming.py",
               "test_subtitles.py", "test_transcodes.py"),
-    "sync": ("test_sync*.py", "test_platform.py", "test_mount.py", "test_tray.py", "test_log_retention.py",
+    "sync": ("test_sync*.py", "test_platform.py", "test_mount.py", "test_tray*.py", "test_log_retention.py",
              "test_mdns.py", "test_netwatch.py", "test_certs.py",
              "test_review_mirror.py", "test_runtime_prepare.py"),
     "metadata": ("test_scraping_access.py", "test_browser_transport.py", "test_metadata*.py", "test_genre_taxonomy.py",
@@ -629,6 +629,17 @@ def environment_preflight(scopes: tuple[str, ...], timings: Path | None = None,
     raise SystemExit(3)
 
 
+def run_local_suite(scopes: tuple[str, ...], jobs: int) -> tuple[bool, int, list]:
+    """按并发预算执行本机测试；全量分片可逐批释放模块与测试缓存。"""
+    chosen = {path for scope in scopes for path in selected_files(scope)}
+    if (jobs > 1 or "full" in scopes) and len(chosen) > 1:
+        shard_count = min(len(chosen), 4 * jobs, MAX_SHARDS)
+        print(f"本机分片：{shard_count} 片、同时 {min(jobs, shard_count)} 个子进程", flush=True)
+        return run_shards(scopes, jobs=jobs, shard_count=shard_count)
+    result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(build_suite(*scopes))
+    return result.wasSuccessful() and result.testsRun > 0, result.testsRun, result.timings
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     # `--scope` 可重复：本机并行的父进程把 `auto` 算出来的几个域原样交给每个分片子进程。
@@ -725,19 +736,7 @@ def verified_run(args, requested, scopes, files) -> int:
         folder = test_evidence.evidence_dir(ROOT)
         (folder / f"{state}.json").unlink(missing_ok=True)
         started = time.monotonic()
-        chosen = {path for scope in scopes for path in selected_files(scope)}
-        if args.jobs > 1 and len(chosen) > 1:
-            # 每个并发槽分配四片，先完成的进程继续领片，避免少数大分片占满尾段。
-            shard_count = min(len(chosen), 4 * args.jobs, MAX_SHARDS)
-            print(f"本机并行：{shard_count} 片、同时 {min(args.jobs, shard_count)} 个子进程",
-                  flush=True)
-            passed, count, timings = run_shards(scopes, jobs=args.jobs,
-                                                shard_count=shard_count)
-        else:
-            result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(
-                build_suite(*scopes))
-            passed, count, timings = (result.wasSuccessful() and result.testsRun > 0,
-                                      result.testsRun, result.timings)
+        passed, count, timings = run_local_suite(scopes, args.jobs)
         stable = state == test_evidence.key(ROOT)
         success = passed and stable
         slowest = sorted(timings, reverse=True)[:20]

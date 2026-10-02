@@ -286,7 +286,7 @@ def post_stop(window_handle: int) -> bool:
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
     user32.PostMessageW.restype = wintypes.BOOL
-    return bool(user32.PostMessageW(window_handle, WM_STOP, 0, 0))
+    return bool(user32.PostMessageW(window_handle, WM_STOP, os.getpid(), 0))
 
 
 def _descends_from(process_id: int, ancestor: int, parents: dict[int, int]) -> bool:
