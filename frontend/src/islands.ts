@@ -17,6 +17,7 @@ export {
 } from './sort-preferences';
 export * from './appearance';
 export * from './query';
+export * from './history';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';

@@ -19,6 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
+import { peachHistory, shellNavigate } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -458,10 +459,12 @@ const claimSurface=path=>{
    try/catch，也不会多出一条没人接的 rejection。 */
 const surfaceApi=(token,path,options)=>api(path,{...options,signal:token.signal})
   .catch(error=>{if(isAbort(error))return null;throw error});
+/* 地址只经全站那一份历史写（`frontend/src/history/`，`@peach/history`），不直接调 `window.history`：
+   React Router 读写的是同一个对象，绕过它写进去的条目它不知道。 */
 const route=(path,replace=false)=>{
   surfaceEpoch++;
   barsRequestSeq++;
-  history[replace?'replaceState':'pushState']({},'',path);syncPageTitle(path);
+  shellNavigate(path,{replace});syncPageTitle(path);
   lastRoutePath=decodeURIComponent(new URL(path,location.href).pathname);
   queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
@@ -780,7 +783,7 @@ if(cameFromSetup){
   // 账本里那句「教程做完了」可能是上一次安装留下的，刚走完设置就得撤回。
   postSetupTutorialDone=false;postSetupTutorialNeedsReopen=true;
   const clean=new URL(location.href);clean.searchParams.delete('onboarding');
-  history.replaceState(history.state,'',clean.pathname+(clean.search||'')+clean.hash);
+  shellNavigate(clean,{replace:true,state:peachHistory.navigation.location.state});
 }
 /* 界面标注工具（docs/FRONTEND.md「界面标注」）：`?agentation=on|off` 写这台设备的开关并从
    地址里去掉；开关开着才请求 `/dev/agentation.js`，没在本机构建过就是 404，静默不装。 */
@@ -790,7 +793,7 @@ if(cameFromSetup){
   if(flag==='off')localStorage.removeItem('peach.agentation');
   if(flag!==null){
     clean.searchParams.delete('agentation');
-    history.replaceState(history.state,'',clean.pathname+(clean.search||'')+clean.hash);
+    shellNavigate(clean,{replace:true,state:peachHistory.navigation.location.state});
   }
   if(localStorage.getItem('peach.agentation')==='on')import('/dev/agentation.js').catch(()=>{});
 }
@@ -2032,7 +2035,7 @@ async function openConfiguration(push=true){
   const props={receipt:message=>actionReceipt(message),reopenTutorial:reopenPostSetupTutorial};
   await ui.mountIsland('configuration',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
   if(surfaceCurrent(surface)){
-    if(location.hash==='#libraryProcessing'){history.replaceState(null,'','/data-cleanup#libraryProcessing');await openDataCleanup(false);return}
+    if(location.hash==='#libraryProcessing'){shellNavigate('/data-cleanup#libraryProcessing',{replace:true,state:null});await openDataCleanup(false);return}
     if(location.hash==='#peachProxy')$('#peachProxy')?.scrollIntoView({block:'start'});
     else window.scrollTo({top:0,behavior:'smooth'});
   }
