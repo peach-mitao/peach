@@ -342,7 +342,8 @@ class LeftoverProcessTests(_WorktreeCase):
 
     def sleeper(self, cwd: Path) -> subprocess.Popen:
         cwd.mkdir(parents=True, exist_ok=True)
-        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], cwd=cwd)
+        child = subprocess.Popen([sys.executable, "-c", "import sys; sys.stdin.read()"],
+                                 cwd=cwd, stdin=subprocess.PIPE)
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             rows = processes_under([cwd])
@@ -352,8 +353,8 @@ class LeftoverProcessTests(_WorktreeCase):
         return child
 
     def stop(self, child: subprocess.Popen) -> None:
-        child.kill()
-        child.wait()
+        # EOF 让解释器自己退出；Windows venv 启动器也会等其子进程结束。
+        child.communicate(timeout=10)
 
     def test_a_process_working_in_a_worktree_is_listed_with_its_details(self):
         child = self.sleeper(self.repo.parent / agent_worktree.WORKTREE_ROOT / "busy")

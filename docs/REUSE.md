@@ -88,7 +88,7 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 
 文档检查用 seiso（MIT，开发依赖），[文案门槛](../tests/test_copy_final_state.py) 调用其稳定规则；文件分类与第三方原文边界见 [seiso 配置](../seiso.toml)，表达与人工复核见 [文档与界面文案](WRITING.md)。不自建 Markdown 文档职责解析器。
 
-测试与集成用 `test_runner.py`、`agent_worktree.py`，进程互斥用开发依赖 `filelock` 的 [`FileLock`](https://py-filelock.readthedocs.io/en/stable/tutorials.html)，跨进程占锁与释放由临时 Git 仓库回归验证；代码、环境和范围记录属于 Peach 的集成约束。
+测试与集成用 `test_runner.py`、`agent_worktree.py`，进程互斥用开发依赖 `filelock` 的 [`FileLock`](https://py-filelock.readthedocs.io/en/stable/tutorials.html)。全量验证与集成共用一把锁、最多等待 30 分钟；验证持锁至记录写入完成。临时 Git 仓库回归覆盖互斥、等待和释放；代码、环境和范围记录属于 Peach 的集成约束。记录失效返回 `4`，Windows 托盘据此最多重试三轮，用例失败返回 `1`。
 
 ### 播放、采集、发布与打包
 

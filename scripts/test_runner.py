@@ -635,6 +635,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scope", action="append", dest="scopes",
                         choices=("full", "auto", *SCOPES))
     parser.add_argument("--fresh", action="store_true", help="实际重跑，不复用本机记录")
+    parser.add_argument("--lock-timeout", type=float, default=1800,
+                        help="全量锁等待秒数；0 表示锁忙时立即返回")
     parser.add_argument("--base", default="master", help="CI 选测的已验证 Git 基线")
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
@@ -644,6 +646,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="本机同时跑几个分片子进程；auto 按核数定。默认串行，正式入口传 auto")
     parser.add_argument("--list-scopes", action="store_true")
     args = parser.parse_args(argv)
+    if not 0 <= args.lock_timeout <= 1800:
+        parser.error("锁等待时间必须在 0～1800 秒之间")
     if not 1 <= args.shard_count <= MAX_SHARDS or not 0 <= args.shard_index < args.shard_count:
         parser.error(f"分片总数为 1～{MAX_SHARDS}，编号从 0 开始且小于总数")
     if args.list_scopes:
@@ -672,67 +676,80 @@ def main(argv: list[str] | None = None) -> int:
             args.timings.write_text(json.dumps({"success": success, "count": result.testsRun,
                                                 "timings": result.timings}), encoding="utf-8")
         return 0 if success else 1
-    context = test_evidence.inputs(ROOT)
-    state = context["state"]
     try:
-        with test_evidence.run_lock(ROOT, state, scope=" ".join(scopes), root=str(ROOT)):
-            if not args.fresh and "full" not in requested and test_evidence.covers(
-                    test_evidence.read(ROOT, state), scopes):
-                print("复用本机测试记录：代码、依赖环境和范围匹配（24 小时内）。", flush=True)
-                return 0
-            previous = test_evidence.read(ROOT, state)
-            baseline = None
-            if requested == ("auto",) and not args.fresh and not previous:
-                choices = []
-                for record, delta, version_only in test_evidence.baselines(ROOT, context):
-                    needed, _ = scopes_for_changes(delta)
-                    if version_only and "full" not in needed:
-                        needed = tuple(dict.fromkeys((*needed, "tooling")))
-                    if "full" not in needed:
-                        weight = len({p for scope in needed for p in selected_files(scope)})
-                        if weight <= len(files):
-                            choices.append((weight, record, needed))
-                if choices:
-                    _, baseline, scopes = min(choices, key=lambda item: item[0])
-                    print(f"复用全量基线 {baseline['state'][:12]}；新增差异补测：{' '.join(scopes)}", flush=True)
-            folder = test_evidence.evidence_dir(ROOT)
-            full_lock = test_evidence.held(folder / "full-suite.lock",
-                                           scope=" ".join(scopes), root=str(ROOT)) \
-                if "full" in scopes else nullcontext()
-            with full_lock:
-                (folder / f"{state}.json").unlink(missing_ok=True)
-                started = time.monotonic()
-                chosen = {path for scope in scopes for path in selected_files(scope)}
-                if args.jobs > 1 and len(chosen) > 1:
-                    # 片数取并发数的四倍：八片时最长一片 154 秒、最短 15 秒，墙钟被
-                    # 最重那片拖住；切细后先完成的进程接着领，长尾才摊得开。
-                    shard_count = min(len(chosen), 4 * args.jobs, MAX_SHARDS)
-                    print(f"本机并行：{shard_count} 片、同时 {min(args.jobs, shard_count)} 个子进程",
-                          flush=True)
-                    passed, count, timings = run_shards(scopes, jobs=args.jobs,
-                                                        shard_count=shard_count)
-                else:
-                    result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(
-                        build_suite(*scopes))
-                    passed, count, timings = (result.wasSuccessful() and result.testsRun > 0,
-                                              result.testsRun, result.timings)
-            stable = state == test_evidence.key(ROOT)
-            success = passed and stable
-            slowest = sorted(timings, reverse=True)[:20]
-            test_evidence.write(ROOT, state, scopes, success=success, previous=previous,
-                                context=context, baseline=baseline,
-                                elapsed=time.monotonic() - started, slowest=slowest, count=count)
-            for seconds, name in slowest[:5]:
-                print(f"慢测试 {seconds:.3f}s：{name}", flush=True)
-            if not stable:
-                print("验证期间代码或依赖环境改变，本次记录无效。", flush=True)
-            return 0 if success else 1
+        guard = test_evidence.held(test_evidence.evidence_dir(ROOT) / "full-suite.lock",
+                                  wait_seconds=args.lock_timeout,
+                                  scope=" ".join(scopes), root=str(ROOT)) \
+            if "full" in scopes else nullcontext()
+        with guard:
+            return verified_run(args, requested, scopes, files)
     except test_evidence.Timeout as error:
         lock = Path(error.lock_file)
         what = "本仓库全量测试" if lock.name == "full-suite.lock" else "相同状态的验证"
         print(f"{what}正在运行（{test_evidence.describe_holder(lock)}），请等待该次结果。",
               flush=True)
         return 2
+
+
+def incremental_scopes(context, scopes, files):
+    """从有效全量基线中选择需要补测文件最少的范围。"""
+    choices = []
+    for record, delta, version_only in test_evidence.baselines(ROOT, context):
+        needed, _ = scopes_for_changes(delta)
+        if version_only and "full" not in needed:
+            needed = tuple(dict.fromkeys((*needed, "tooling")))
+        if "full" not in needed:
+            weight = len({p for scope in needed for p in selected_files(scope)})
+            if weight <= len(files):
+                choices.append((weight, record, needed))
+    if not choices:
+        return None, scopes
+    _, baseline, scopes = min(choices, key=lambda item: item[0])
+    print(f"复用全量基线 {baseline['state'][:12]}；新增差异补测：{' '.join(scopes)}", flush=True)
+    return baseline, scopes
+
+
+def verified_run(args, requested, scopes, files) -> int:
+    """在调用方持有的全量锁内取得快照、验证并签发记录。"""
+    context = test_evidence.inputs(ROOT)
+    state = context["state"]
+    with test_evidence.run_lock(ROOT, state, scope=" ".join(scopes), root=str(ROOT)):
+        if not args.fresh and "full" not in requested and test_evidence.covers(
+                test_evidence.read(ROOT, state), scopes):
+            print("复用本机测试记录：代码、依赖环境和范围匹配（24 小时内）。", flush=True)
+            return 0
+        previous = test_evidence.read(ROOT, state)
+        baseline = None
+        if requested == ("auto",) and not args.fresh and not previous:
+            baseline, scopes = incremental_scopes(context, scopes, files)
+        folder = test_evidence.evidence_dir(ROOT)
+        (folder / f"{state}.json").unlink(missing_ok=True)
+        started = time.monotonic()
+        chosen = {path for scope in scopes for path in selected_files(scope)}
+        if args.jobs > 1 and len(chosen) > 1:
+            # 每个并发槽分配四片，先完成的进程继续领片，避免少数大分片占满尾段。
+            shard_count = min(len(chosen), 4 * args.jobs, MAX_SHARDS)
+            print(f"本机并行：{shard_count} 片、同时 {min(args.jobs, shard_count)} 个子进程",
+                  flush=True)
+            passed, count, timings = run_shards(scopes, jobs=args.jobs,
+                                                shard_count=shard_count)
+        else:
+            result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(
+                build_suite(*scopes))
+            passed, count, timings = (result.wasSuccessful() and result.testsRun > 0,
+                                      result.testsRun, result.timings)
+        stable = state == test_evidence.key(ROOT)
+        success = passed and stable
+        slowest = sorted(timings, reverse=True)[:20]
+        test_evidence.write(ROOT, state, scopes, success=success, previous=previous,
+                            context=context, baseline=baseline,
+                            elapsed=time.monotonic() - started, slowest=slowest, count=count)
+        for seconds, name in slowest[:5]:
+            print(f"慢测试 {seconds:.3f}s：{name}", flush=True)
+        if not stable:
+            print("验证期间代码或依赖环境改变，本次记录无效。", flush=True)
+            return 4
+        return 0 if success else 1
 
 
 if __name__ == "__main__":

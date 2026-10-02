@@ -287,11 +287,19 @@ class WindowsUpdateInstaller:
             )
 
         test_script = self.root / "scripts" / "test.ps1"
-        test_exit = self._run_logged(
-            [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(test_script),
-             "-Scope", "full", "-Fresh"],
-            append=False,
-        )
+        for attempt in range(3):
+            test_exit = self._run_logged(
+                [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(test_script),
+                 "-Scope", "full", "-Fresh"],
+                append=attempt > 0,
+            )
+            # test_runner 的 4 表示验证期间输入变化；最多三次，每次取得完整有效记录。
+            if test_exit != 4:
+                break
+        if test_exit == 4:
+            return WindowsUpdatePreparation(
+                "failed", "测试期间代码或依赖持续变化，三次验证均未取得有效记录；请稍后重试。",
+            )
         if test_exit != 0:
             return WindowsUpdatePreparation(
                 "failed", "代码已快进，但完整测试失败；服务与托盘均未重启，请查看日志。",
