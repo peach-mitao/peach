@@ -192,6 +192,22 @@ def _ids(body) -> list[int]:
     return ids
 
 
+def q_want_magnets(contract, args) -> dict:
+    """只读磁链查询；未发售、已入库与没有番号的条目不请求来源。"""
+    from .wants_magnets import search_for
+
+    raw = str(args.get("id") or "")
+    if not raw.isdigit():
+        raise ValueError("缺少想要条目编号")
+    with contract.database.read_connection() as connection:
+        row = wants.get(connection, int(raw))
+    if row is None:
+        raise KeyError("想要条目不存在")
+    if not row["code"] or wants.phase(row, date.today()) in {"unreleased", "acquired"}:
+        return {"ok": True, "state": "unavailable", "items": [], "error": "", "checked_at": None}
+    return search_for(contract.follow_secrets_root).query(row["code"])
+
+
 def _add(connection, body) -> dict:
     if type(body.get("feed")) is int:
         return wants.add_feed(connection, body["feed"])

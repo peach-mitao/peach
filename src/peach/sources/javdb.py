@@ -13,6 +13,8 @@ from __future__ import annotations
 import re
 import urllib.parse
 
+from bs4 import BeautifulSoup
+
 from ..catalog_rules import same_release_code
 from ..javdb import LOGIN, clean
 from .base import FailureReason, Page, Session, SiteConfig, SiteRecord, SiteSource, SourceFailure
@@ -63,6 +65,53 @@ def maker_writing(value: str) -> str:
 class JavDBSource(SiteSource):
     DEFAULT = JAVDB
 
+    def resources(self, code: str, *, session: Session) -> dict:
+        """核对作品身份后合并资源区与评论链接；最多读取三页评论。"""
+        with self.holding(session):
+            page = self.fetch(code, session=session)
+            self.parse(page, code)
+            warnings = []
+            try:
+                items = parse_magnets(page)
+            except SourceFailure as error:
+                items = []
+                warnings.append(str(error))
+            soup = BeautifulSoup(page.text, "html.parser")
+            items.extend(parse_comment_links(page))
+            entry = soup.select_one('.review-tab[data-url]')
+            next_url = str(entry.get("data-url", "")) if entry else ""
+            seen = set()
+            for _ in range(3):
+                if not next_url:
+                    break
+                url = urllib.parse.urljoin(page.url, next_url)
+                parts, original = urllib.parse.urlsplit(url), urllib.parse.urlsplit(page.url)
+                if (parts.netloc != original.netloc or parts.scheme != "https"
+                        or not parts.path.startswith(original.path + "/reviews/") or url in seen):
+                    warnings.append("部分评论未取得，请打开来源页查看。")
+                    break
+                seen.add(url)
+                try:
+                    with self.holding(session):
+                        comments = self._page(url, session=session)
+                    body = BeautifulSoup(comments.text, "html.parser")
+                    if not body.select_one('.review-items'):
+                        raise SourceFailure(FailureReason.PARSE_ERROR, "评论区域未取得")
+                    items.extend(parse_comment_links(comments))
+                except Exception:
+                    warnings.append("评论链接未取得，请打开来源页查看。")
+                    break
+                if body.select_one('.more a[href="/plans"]'):
+                    warnings.append("更多评论需要 JavDB VIP 或官方 App。")
+                following = body.select_one('a[rel="next"], .pagination-next:not([disabled])')
+                next_url = str(following.get('href', '')) if following else ""
+            else:
+                if next_url:
+                    warnings.append("已读取前三页评论，其余请打开来源页查看。")
+            if not entry and not soup.select_one('.review-items'):
+                warnings.append("评论入口未取得。")
+            return {"items": merge_resources(items), "warnings": list(dict.fromkeys(warnings))}
+
     def search_url(self, code: str) -> str:
         return f"{self.config.base_url}/search?q={urllib.parse.quote(code)}&f=all"
 
@@ -100,3 +149,108 @@ class JavDBSource(SiteSource):
             series=clean(panel.get("系列", "")), director=clean(panel.get("導演", "")),
             release_date=clean(panel.get("日期", "")), runtime=int(runtime.group()) if runtime else None,
             cover_urls=(cover.group(1),) if cover else ())
+
+
+def parse_magnets(page: Page) -> list[dict]:
+    """JavDB 磁链区：名称、大小、文件数、标签与收录日期；按 infohash 去重。"""
+    from ..downloads import parse_magnet
+
+    soup = BeautifulSoup(page.text, "html.parser")
+    container = soup.select_one("#magnets-content")
+    if container is None:
+        raise SourceFailure(FailureReason.PARSE_ERROR, "JavDB 磁链区域未取得")
+    found: dict[str, dict] = {}
+    invalid = False
+    for row in container.select(".item"):
+        link = row.select_one('a[href^="magnet:"]')
+        if link is None:
+            continue
+        try:
+            magnet = parse_magnet(str(link.get("href", "")))
+        except ValueError:
+            invalid = True
+            continue
+        def text(selector):
+            node = row.select_one(selector)
+            return node.get_text(" ", strip=True) if node else ""
+        meta = re.split(r"[,，]", text(".meta"), maxsplit=1)
+        found.setdefault(magnet.info_hash, {
+            "id": "magnet:" + magnet.info_hash, "protocol": "magnet",
+            "info_hash": magnet.info_hash, "uri": magnet.uri,
+            "name": text(".name") or magnet.name or magnet.info_hash,
+            "size": meta[0].strip(), "files": meta[1].strip() if len(meta) > 1 else "",
+            "date": text(".time") or text(".date"),
+            "attributes": list(dict.fromkeys(tag.get_text(" ", strip=True)
+                                             for tag in row.select(".tag") if tag.get_text(strip=True))),
+            "source": "JavDB", "source_url": page.url, "origins": [page.url],
+        })
+    if invalid and not found:
+        raise SourceFailure(FailureReason.PARSE_ERROR, "JavDB 磁链格式无法识别")
+    return list(found.values())
+
+
+_COMMENT_LINK = re.compile(r"(?:magnet:\?[^\s<>\"']+|ed2k://\|file\|[^\r\n<>]+?\|/|https?://[^\s<>\"']+)", re.I)
+_ED2K = re.compile(r"ed2k://\|file\|([^|]+)\|(\d+)\|([a-f0-9]{32})\|(?:[^\r\n]*?\|)?/", re.I)
+
+
+def parse_comment_links(page: Page) -> list[dict]:
+    """只取评论正文的链接，跳过作者主页、点赞与站点推广入口。"""
+    from ..downloads import parse_magnet
+
+    found = []
+    soup = BeautifulSoup(page.text, "html.parser")
+    for row in soup.select('.review-item'):
+        content = row.select_one('.content')
+        if content is None:
+            continue
+        links = [str(a.get('href', '')) for a in content.select('a[href]')]
+        links.extend(_COMMENT_LINK.findall(content.get_text(' ', strip=True)))
+        date = row.select_one('.time')
+        # 片段引用保留评论 id；正文中的任意 URL 都不会被服务器追踪请求。
+        origin = page.url + ("#" + str(row['id']) if row.get('id') else "")
+        for uri in links:
+            uri = uri.strip()
+            item = {"id": "", "protocol": "url", "info_hash": "", "uri": uri,
+                    "name": uri, "size": "", "files": "", "date": date.get_text(' ', strip=True) if date else "",
+                    "attributes": [], "source": "JavDB 评论", "source_url": origin, "origins": [origin]}
+            if uri.lower().startswith('magnet:'):
+                try:
+                    magnet = parse_magnet(uri)
+                except ValueError:
+                    continue
+                item.update(id="magnet:" + magnet.info_hash, protocol="magnet", info_hash=magnet.info_hash,
+                            name=magnet.name or magnet.info_hash)
+            elif uri.lower().startswith('ed2k:'):
+                match = _ED2K.fullmatch(uri)
+                if not match:
+                    continue
+                name, size, digest = match.groups()
+                item.update(id=f"ed2k:{digest.lower()}:{int(size)}", protocol="ed2k",
+                            name=urllib.parse.unquote(name), size=f"{int(size):,} B")
+            else:
+                try:
+                    url = urllib.parse.urlsplit(uri)
+                    if url.scheme.lower() not in {'http', 'https'} or not url.hostname or url.username or url.password:
+                        continue
+                    canonical = urllib.parse.urlunsplit((url.scheme.lower(), url.netloc.lower(), url.path or '/', url.query, url.fragment))
+                except ValueError:
+                    continue
+                item.update(id="url:" + canonical, uri=canonical)
+            found.append(item)
+    return merge_resources(found)
+
+
+def merge_resources(items: list[dict]) -> list[dict]:
+    """同一资源保留完整属性，并收集它在资源区和评论中的全部出处。"""
+    unique: dict[str, dict] = {}
+    for item in items:
+        if item['id'] not in unique:
+            unique[item['id']] = {**item, "origins": list(item['origins'])}
+            continue
+        current = unique[item['id']]
+        current['origins'] = list(dict.fromkeys([*current['origins'], *item['origins']]))
+        current['attributes'] = list(dict.fromkeys([*current['attributes'], *item['attributes']]))
+        for key in ('size', 'files'):
+            if not current[key]:
+                current[key] = item[key]
+    return list(unique.values())

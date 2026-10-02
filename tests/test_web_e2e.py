@@ -88,7 +88,7 @@ def refuse_network(*args, **kwargs):
 
 
 def e2e_command(node: str, concurrency: str = "", files: tuple[str, ...] = ()) -> list[str]:
-    """串行跑是浏览器进程预算：每条用例的 Chrome 只给两个渲染进程（`e2e/harness.ts`）。
+    """串行跑是浏览器进程预算：每条用例的 Chrome 只给一个渲染进程（`e2e/harness.ts`）。
 
     直接启动 Node 也省掉资源守卫内的一层 npm 进程。
     """
@@ -299,7 +299,7 @@ class MissingPrerequisiteTests(unittest.TestCase):
 
     def test_headless_browser_stays_within_the_resource_guard_process_budget(self):
         harness = (FRONTEND / "e2e" / "harness.ts").read_text(encoding="utf-8")
-        self.assertIn("args: ['--renderer-process-limit=2']", harness)
+        self.assertIn("args: ['--renderer-process-limit=1', '--disable-features=AudioServiceOutOfProcess', '--disable-audio-output']", harness)
         self.assertIn("timeout: 30_000", harness)
 
     def test_missing_prerequisites_skip_locally_and_fail_on_ci(self):

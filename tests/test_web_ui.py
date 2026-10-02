@@ -1765,18 +1765,12 @@ class WebUiSourceTests(unittest.TestCase):
             self.assertPageContains(hosts)
         self.assertPageLacks("knockout", "字形是白色实体，不是从圆盘里挖掉的洞")
 
-    def test_only_the_profile_link_row_is_exempt_from_the_flat_external_link(self):
-        """一句话那种外链是无边无底的蓝字；资料页那排外链是一圈药丸。
-
-        豁免判的是那枚圆盘 `[data-link-icon]`，不是「这条链接里有没有 `<img>`」。社媒标记
-        是内联 `<svg>`，按后一个判据会被当成文字外链，药丸的边和底被抹平，同一排里只有
-        它们几个没有圈；而按 `<img>` 豁免又会把别处任何包着图的外链一起放走，那些本来
-        就该是平的。判据一并消失时整排药丸都被抹平，所以三种写法都要钉。
-        """
+    def test_external_links_preserve_explicit_buttons_and_brand_controls(self):
+        """普通外链使用文字样式；品牌入口和明确标记的按钮由各自组件决定外观。"""
         board = (Path(__file__).resolve().parents[1] / "web/board.css").read_text(encoding="utf-8")
         for rule in (
-            "body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink){",
-            "body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):hover{",
+            "body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([data-button-link])){",
+            "body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([data-button-link])):hover{",
         ):
             self.assertIn(rule, board)
         for weaker in (":not(:has(img)):not(.cardlink){", ":not(:has(img)):hover{",
@@ -2920,7 +2914,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertIn('align-items:center', note)
         self.assertIn('background:color-mix(in srgb,var(--feedback-color) 8%,var(--ground))', note)
         self.assertPageContains('.geist-note.geist-note>p{margin:0;color:inherit;font:inherit;align-self:center}')
-        self.assertIn('body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):hover'
+        self.assertIn('body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([data-button-link])):hover'
                       '{background:transparent;text-decoration:underline;box-shadow:none}', board)
         self.assertIn('.board-link-button:hover{background:transparent;text-decoration:underline;box-shadow:none}', board)
 

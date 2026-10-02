@@ -46,7 +46,8 @@ export async function launch(): Promise<Browser> {
   return chromium.launch({
     headless: true,
     executablePath: requiredEnv('PEACH_E2E_CHROME'),
-    args: ['--renderer-process-limit=2'],
+    // 串行页面共用一个渲染进程，音频服务留在浏览器进程内。
+    args: ['--renderer-process-limit=1', '--disable-features=AudioServiceOutOfProcess', '--disable-audio-output'],
     timeout: 30_000,
   });
 }

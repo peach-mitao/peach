@@ -999,7 +999,7 @@ class WebDataTests(unittest.TestCase):
             "/api/taste", "/api/settings", "/api/links", "/api/organize", "/api/orphan-records",
             "/api/feeds", "/api/feeds/check", "/api/feeds/discoveries", "/api/feeds/lookup",
             "/api/downloads",
-            "/api/wants",
+            "/api/wants", "/api/wants/magnets",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
             "/api/downloads", "/api/downloads/cancel",

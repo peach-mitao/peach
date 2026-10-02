@@ -5,6 +5,7 @@ import io
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -15,6 +16,32 @@ from peach import feed_followup, wants, web_wants  # noqa: E402
 from peach.web_contract import WebContract  # noqa: E402
 from peach.web_router import dispatch_api_get, dispatch_api_post  # noqa: E402
 from support.ledger import fresh_ledger  # noqa: E402
+
+
+class MagnetLookupTests(unittest.TestCase):
+    def test_cache_serializes_and_expires_without_mutating_ledger(self):
+        from peach.wants_magnets import MagnetSearch
+        calls = []
+        now = [100.0]
+        search = MagnetSearch(Path('.'), fetcher=lambda root, code: calls.append(code) or {"items": [], "warnings": []},
+                              clock=lambda: now[0], sleeper=lambda seconds: None)
+        self.assertEqual(search.query('DEMO-001')['state'], 'ready')
+        search.query('DEMO-001')
+        self.assertEqual(calls, ['DEMO-001'])
+        now[0] += 61
+        search.query('DEMO-001')
+        self.assertEqual(len(calls), 2)
+        with search.lock:
+            self.assertEqual(search.query('DEMO-002')['state'], 'busy')
+
+    def test_source_failure_is_distinct_from_no_results(self):
+        from peach.wants_magnets import MagnetSearch
+        from peach.sources import SourceFailure, FailureReason
+        def refused(root, code):
+            raise SourceFailure(FailureReason.AUTH_REQUIRED, 'javdb 要求登录')
+        result = MagnetSearch(Path('.'), fetcher=refused).query('DEMO-001')
+        self.assertEqual(result['state'], 'error')
+        self.assertIn('登录', result['error'])
 
 
 class WantWebFixture(unittest.TestCase):
@@ -36,6 +63,22 @@ class WantWebFixture(unittest.TestCase):
         original_provider = web_wants._provider
         web_wants._provider = lambda contract: (lambda: None)
         self.addCleanup(lambda: setattr(web_wants, "_provider", original_provider))
+
+    def test_resource_lookup_reads_only_eligible_wants(self):
+        with self.contract.database.write_transaction() as connection:
+            row = wants.add_code(connection, 'DEMO-001')
+        with patch('peach.wants_magnets.search_for') as factory:
+            factory.return_value.query.return_value = {"state": "ready", "items": []}
+            self.get('/api/wants/magnets', id=str(row['id']))
+            factory.return_value.query.assert_called_once_with('DEMO-001')
+            with self.contract.database.write_transaction() as connection:
+                connection.execute("UPDATE want_item SET release_date='2999-01-01' WHERE id=?", (row['id'],))
+            self.assertEqual(self.get('/api/wants/magnets', id=str(row['id']))['state'], 'unavailable')
+            self.assertEqual(factory.return_value.query.call_count, 1)
+        with self.assertRaises(ValueError):
+            self.get('/api/wants/magnets', id='-1')
+        with self.assertRaises(KeyError):
+            self.get('/api/wants/magnets', id='999999')
 
     def _collect(self, provider, code):
         self.collected.append(code)
