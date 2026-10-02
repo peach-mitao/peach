@@ -170,7 +170,7 @@ def poll(tray) -> None:
         environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
         subprocess.Popen([str(helper), "--apply-standalone-update", str(state_path()), str(os.getpid())],
                          cwd=str(helper.parent), env=environment, creationflags=subprocess.CREATE_NO_WINDOW)
-        tray.exit()
+        tray.exit(reason="standalone-update")
     except Exception as exc:
         write(read(), state="error", message=f"未能重启：{exc}")
     finally:

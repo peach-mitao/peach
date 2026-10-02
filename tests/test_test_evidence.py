@@ -266,13 +266,12 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(evidence, "describe_holder", side_effect=describe_wait), \
                 mock.patch.object(runner, "environment_preflight"), \
-                mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
-                    unittest.FunctionTestCase(lambda: None)])) as build, \
+                mock.patch.object(runner, "run_local_suite", return_value=(True, 1, [])) as run, \
                 ThreadPoolExecutor(max_workers=1) as pool:
             with evidence.held(lock, scope="integrate"):
                 future = pool.submit(runner.main, ["--scope", "full", "--lock-timeout", "5"])
                 self.assertTrue(waiting.wait(5), "验证应等待持锁的集成")
-                build.assert_not_called()
+                run.assert_not_called()
                 (self.repo / "README.md").write_text("集成完成\n", encoding="utf-8")
             self.assertEqual(future.result(timeout=15), 0)
         self.assertIn("等待 full-suite.lock", errors.getvalue())
@@ -291,8 +290,7 @@ class VerificationTests(unittest.TestCase):
         with redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()), \
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(evidence, "write", side_effect=publish_locked) as written, \
-                mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
-                    unittest.FunctionTestCase(lambda: None)])):
+                mock.patch.object(runner, "run_local_suite", return_value=(True, 1, [])):
             self.assertEqual(runner.main(["--scope", "full"]), 0)
         written.assert_called_once()
         self.assertEqual(self.git("rev-parse", "HEAD"), before)
@@ -303,10 +301,10 @@ class VerificationTests(unittest.TestCase):
             return {"ok": True}
 
         with redirect_stdout(io.StringIO()), mock.patch.object(runner, "ROOT", self.repo), \
-                mock.patch.object(runner, "build_suite") as build, \
+                mock.patch.object(runner, "run_local_suite") as run, \
                 mock.patch.object(coordinator, "_integrate_locked", side_effect=merge):
             self.assertTrue(coordinator.integrate(self.repo, "unused")["ok"])
-        build.assert_not_called()
+        run.assert_not_called()
 
     def test_integration_waits_for_full_verification_before_mutation(self):
         lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
@@ -379,6 +377,19 @@ class VerificationTests(unittest.TestCase):
             self.assertEqual(runner.main(["--scope", "checks", "--jobs", "2", "--fresh"]), 1)
         self.assertFalse(evidence.covers(evidence.read(self.repo, evidence.key(self.repo)), ("checks",)))
 
+    def test_serial_full_run_releases_memory_between_shards(self):
+        with redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()), \
+                mock.patch.object(runner, "ROOT", self.repo), \
+                mock.patch.object(runner, "build_suite", side_effect=AssertionError("父进程不加载全量用例")), \
+                mock.patch.object(runner, "run_shards", return_value=(True, 7, [])) as shards:
+            self.assertEqual(runner.main(["--scope", "full", "--jobs", "1"]), 0)
+        shards.assert_called_once()
+        self.assertEqual(shards.call_args.kwargs["jobs"], 1)
+        self.assertEqual(shards.call_args.kwargs["shard_count"], 4)
+        record = evidence.read(self.repo, evidence.key(self.repo))
+        self.assertTrue(evidence.covers(record, ("full",)))
+        self.assertEqual(record["count"], 7)
+
     def test_full_baseline_requires_only_new_scopes_without_extending_its_age(self):
         original = self.certify(self.repo, ("full",))
         stamp = evidence.read(self.repo, original)["validated"]["full"]
@@ -401,10 +412,9 @@ class VerificationTests(unittest.TestCase):
         with redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()), \
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(runner, "resolve_auto_scope", return_value=(("full",), "fixture")), \
-                mock.patch.object(runner, "build_suite", return_value=unittest.TestSuite([
-                    unittest.FunctionTestCase(lambda: None)])) as build:
+                mock.patch.object(runner, "run_local_suite", return_value=(True, 1, [])) as run:
             self.assertEqual(runner.main(["--scope", "auto"]), 0)
-        build.assert_called_once_with("full")
+        run.assert_called_once_with(("full",), 1)
 
     def test_baseline_does_not_expand_a_small_requested_scope(self):
         self.certify(self.repo, ("full",))

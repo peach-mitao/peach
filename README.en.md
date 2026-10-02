@@ -82,6 +82,8 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 
 The test package is not code-signed yet. If Windows says "Windows protected your PC", make sure the file came from this project's Releases, then choose "More info → Run anyway". Transcoding and thumbnails need FFmpeg; without it you can still browse and play MP4 and WebM. See [Windows test build](docs/TESTING_DESKTOP.md) for how to install it.
 
+On Windows, Peach attempts to recover after an unexpected tray exit, up to three times within five minutes. Choosing “Quit Peach” keeps it closed. Exit reasons and recovery results are recorded in `tray-lifecycle.log` in the logs folder.
+
 ### Run from source (Windows, macOS)
 
 You need Git, [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.12 or newer (uv downloads a missing interpreter for you):

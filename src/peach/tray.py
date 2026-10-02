@@ -32,6 +32,7 @@ from .mdns import lan_ipv4
 from .netwatch import NetworkChangeWatcher
 from .mount import mount_share as mount_smb_share
 from .process_job import assign_to_job, create_kill_on_close_job
+from .tray_lifecycle import Lifecycle
 from .sync import COPY_ACTIONS, SyncPlan, device_id, resolve
 from .versioning import VersionManager, VersionSnapshot
 from .windows_update import (
@@ -973,6 +974,7 @@ class PeachTray:
         show_browser: bool = False,
         preparation: TrayPreparation | None = None,
     ) -> None:
+        self.lifecycle = None
         self.manager = manager
         self.silent = silent
         self.show_browser = show_browser
@@ -1230,6 +1232,8 @@ class PeachTray:
                     return
                 if prepared.state == "replace":
                     tray_icon.notify(prepared.message, "Peach 开发进度")
+                    if self.lifecycle is not None:
+                        self.lifecycle.stop("source-update", os.getpid())
                     self.manager.stop_owned()
                     self._stop_event.set()
                     tray_icon.stop()
@@ -1250,7 +1254,9 @@ class PeachTray:
 
         threading.Thread(target=work, name="PeachSourceSync", daemon=True).start()
 
-    def exit(self, icon=None, _item=None) -> None:
+    def exit(self, icon=None, _item=None, *, reason="menu-exit") -> None:
+        if self.lifecycle is not None:
+            self.lifecycle.stop(reason, os.getpid())
         self._stop_event.set()
         self.manager.stop_owned()
         (icon or self.icon).stop()
@@ -1645,6 +1651,8 @@ def main(argv: list[str] | None = None) -> int:
     waiting = needs_setup(config)
     instance = SingleInstance(config.directory("state") / "peach-tray.lock")
     manager = None
+    lifecycle = None
+    exit_code = 1
     try:
         instance.acquire()
     except AlreadyRunning:
@@ -1652,7 +1660,6 @@ def main(argv: list[str] | None = None) -> int:
             webbrowser.open(setup_url(config) if waiting else normal_url(config))
         return 0
     try:
-        specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
         # 日志按半年保留、按月切段，必须排在任何子进程打开日志之前：Windows 上被占着的
         # 文件改不了名也删不掉。整理不了只记日志，不能因此不起托盘。
         try:
@@ -1661,18 +1668,37 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             logging.getLogger(__name__).warning("日志整理失败", exc_info=True)
         log_to_file(config.directory("logs") / "tray.log")
+        if sys.platform == "win32":
+            lifecycle = Lifecycle(config.directory("state"), config.directory("logs"),
+                                  config.data_root, PROJECT_ROOT)
+            try:
+                lifecycle.start()
+            except Exception:
+                LOGGER.exception("托盘异常退出自动恢复未能启用")
+                lifecycle.stop("watchdog-start-failed", os.getpid())
+                lifecycle = None
+        specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
         manager = ServiceManager(specs, log_dir=config.directory("logs"))
         gate = SetupGate(manager, config, waiting=waiting)
         if sys.platform == "darwin":
             manager.start_missing()
             run_macos_menu_bar(manager, gate, silent=args.silent, show_browser=args.show)
         else:
-            PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show,
-                      preparation=tray_preparation(config, manager)).run()
+            tray = PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show,
+                             preparation=tray_preparation(config, manager))
+            tray.lifecycle = lifecycle
+            if lifecycle is not None:
+                lifecycle.attach(tray.icon)
+            tray.run()
+        exit_code = 0
     except Exception as exc:
-        show_message("Peach 启动失败", str(exc), error=True)
+        LOGGER.exception("托盘运行失败")
+        if not os.environ.get("PEACH_TRAY_RECOVERIES"):
+            show_message("Peach 启动失败", str(exc), error=True)
         return 1
     finally:
+        if lifecycle is not None:
+            lifecycle.exited(exit_code)
         if manager is not None:
             manager.stop_owned()
         instance.close()

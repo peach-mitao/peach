@@ -226,7 +226,7 @@ def poll(tray) -> None:
         process.stdin.write(json.dumps(job).encode("utf-8"))
         process.stdin.close()
         path.unlink()
-        tray.exit()
+        tray.exit(reason="uninstall")
     except Exception as exc:
         path.unlink(missing_ok=True)
         tray.icon.notify(f"卸载未能启动：{exc}", "Peach")

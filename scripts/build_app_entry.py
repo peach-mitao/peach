@@ -22,9 +22,19 @@ if "--data-root" in sys.argv:
     os.environ["PEACH_DATA_ROOT"] = sys.argv[_root_index + 1]
     del sys.argv[_root_index:_root_index + 2]
 
-from peach.cli import main as cli_main
-from peach.cli import subcommands
-from peach.tray import main as tray_main
+def cli_main(argv):
+    from peach.cli import main
+    return main(argv)
+
+
+def subcommands():
+    from peach.cli import subcommands as commands
+    return commands()
+
+
+def tray_main():
+    from peach.tray import main
+    return main()
 
 _ATTACH_PARENT_PROCESS = -1
 _STD_OUTPUT_HANDLE = -11
@@ -72,6 +82,9 @@ def wants_cli(argv: list[str]) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv if argv is None else argv)
+    if len(argv) == 3 and argv[1] == "--tray-watchdog":
+        from peach.tray_lifecycle import main as watchdog_main
+        return watchdog_main(argv[2:])
     if len(argv) == 4 and argv[1] == "--apply-standalone-update":
         from peach.standalone_update import apply
         return apply(Path(argv[2]), int(argv[3]))
