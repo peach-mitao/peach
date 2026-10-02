@@ -4,21 +4,46 @@
 
 ## 优先级
 
-数字不带前缀的指「尚未实现」的编号，「骨架 N」指「已有骨架、尚未完成」的编号，「操作 N」指「待执行的操作」的编号；箭头是先后顺序。
+数字不带前缀的指「尚未实现」的编号，「骨架 N」指「已有骨架、尚未完成」的编号，「操作 N」指「待执行的操作」的编号。编号保持稳定，空号不复用；下表按执行顺序排列。每项开工前核对当前主线与验收证据。
 
-1. 开发流程：操作 29（`test_runner` 分出「记录无效」退出码，集成锁与全量锁互斥）；测试入口发现锁文件变化自动同步依赖；提交时由 commit-msg 钩子校验 trailer；全量锁被占时排队等待。
-2. 想要 → 找到 → 下载 → 入库闭环：43 → 42 与 57 → 64 → 骨架 1（寻找更好版本）。
-3. 诊断链：46 → 21 → 26。
-4. 元数据来源：44 → 操作 36（日文字形例外表）→ 54 → 29 → 65 → 61。
-5. CI：23（Windows job 先量 Defender 排除）。
-6. 等用户拍板的批次：要授权写账本或改生产入口的操作 3、4、5、8、14、19、24、42；要用户复核或拍板的操作 2、9、17、18、27、32、33、34、37。
-7. 其余按区块顺序。
+| 顺序 | 优先级与范围 | 剩余工作与依赖 |
+| --- | --- | --- |
+| 1 | P1 开发流程 | 操作 29：区分记录无效与用例失败、集成与全量测试互斥、全量锁排队；测试入口同步依赖；commit-msg 校验 trailer；操作 40 的首次导入超时 |
+| 2 | P1 搜索与下载 | 43 的资源搜索接已有云下载，同批做 64 的来源性质标注；42 与 57 的本地下载、续传依赖操作 12 的流量与磁盘预算；骨架 1 还缺 51 的相似匹配、去重与人工替换确认 |
+| 3 | P1 诊断 | 46 挂载探测 → 21 doctor 与分级健康检查 → 26 诊断页；12 的生产异常场景验收单列 |
+| 4 | P2 元数据质量 | 44 → 操作 36 → 54 → 29；45 的回放与 58 的来源缺陷记录随解析器做；65、61 先核对成本与预算 |
+| 5 | P2 前端与交付 | BoardUI 每批一到两页、随功能迁移；23 先量 Windows CI 瓶颈；11、20 的安装验收与 14 的制品支持按依赖推进，再做 15 的教程 |
+| 6 | P2 维护与便利功能 | 32 缓存清理、56 源图指纹、59 清洗语料、操作 28 链接失败分类；49、53、62、69 随后；操作 31 的代码清理随相关模块做 |
+| 7 | P3 收益待验证 | AI、推荐、向量、镜像、小文件打包、新媒介、原生客户端与浏览器扩展；51 仅把支撑骨架 1 的小样本验证提前，其余未列需求按区块顺序 |
+
+### 已核对的实施状态
+
+本轮以主线 `e22486f3` 为代码基线，已对照 Claude 文档整理的合入提交 `f215289f` 与后续修订 `e092470c`。下表只覆盖已取得证据的项目，其余条目保留待办状态，不能据此视为逐项验收通过。
+
+| 项目 | 核对结果 | 证据 |
+| --- | --- | --- |
+| 操作 29 与测试入口 | 仍需处理：两把锁独立；记录失效与用例失败都返回 1；锁忙立即退出；入口无依赖同步，commit-msg 钩子未设置 | `scripts/test_runner.py`、`scripts/test_evidence.py`、`scripts/agent_worktree.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/githooks/` |
+| 操作 40 | 首次导入没有单独超时；本轮未重新触发偶发超时 | `frontend/test/islands.test.ts` 的三个 beforeAll |
+| 42、43、64 | 云下载模型已具备；本地下载器、资源搜索与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/web_downloads.py`、前端下载设置 |
+| 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
+| 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
+| 操作 1 | 当前实验未复现：备份前、备份内、备份后均为 6164 行，集合摘要一致、逐行差异 0、备份完整性 ok；历史原因未取得 | `attic/evidence/20261002-tag-backup-audit/report-20261002T092121Z.json` 与同目录差异 CSV |
+
+### 等待条件
+
+等待条件与开发优先级分开；条件满足后再安排批次，不把历史数字直接用作执行计划。
+
+- 真实账号验收：操作 43 需要用户完成 PikPak 浏览器登录，另验磁力提交与两小时以上的过期续期。
+- 预算与产品决定：操作 12 的本地下载预算；25 的 NFO 写入边界；前端全局文字亮度与图标选择。
+- 真实写入与维护窗口：操作 3、4、5、8、14、19、24、26、42；先刷新预览，涉及账本、生产入口或凭据时取得当轮授权。
+- 人工复核与证据：操作 2、9、17、18、27、30、32、33、34、37、38、41；32 的形状决定影响 35。操作 1 等历史逐行证据，有新增证据再追溯。
+- Mac 状态核对：操作 10、11、24、26 与 `STATUS.md` 的 in-sync 记录交叉核对，只执行仍缺的步骤。
 
 ## BoardUI 正式前端迁移
 
 还没迁到 React 的页面仍在 `web/app.js`。迁移按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页改写成 React + Tailwind v4 + BoardUI 原版源码：每次一到两个页面、独立分支集成，旧渲染函数、旧 CSS 与旧断言随页面一起删。控件映射见 [Board 适配](BOARD_UI.md)。迁移不包含版本号或其他分支发布工作。
 
-- 前端基础库随页面引入，取舍与时机见 ADR-0031「前端基础库」一节。TanStack Query 与 TanStack Table 已在用；React Router 在外壳与路由迁移那一步接管；馆藏网格已在 React 里、不用 TanStack Virtual，屏外卡靠 `content-visibility` 跳过渲染；要不要上虚拟列表按下一条的实测决定。
+- 前端基础库随页面引入，取舍与时机见 ADR-0031「前端基础库」一节。TanStack Query、TanStack Table 与 React Router 已在用，路由共用一份浏览器历史；馆藏网格已在 React 里、不用 TanStack Virtual，屏外卡靠 `content-visibility` 跳过渲染；要不要上虚拟列表按下一条的实测决定。
 - `bg-card-footer` 与 `bg-card-hover` 取的是 `.peach-react` 里的真值，数据管理页整理卡、统计、活动、关注管理与设置的卡片页脚带都有底色，这几页还要逐页截图核对。
 - 索引页取 BoardUI 的控件尺寸：过滤框 36px 高、底色与边框是 BoardUI 输入框那一档，遗留页的 Geist 搜索框是 38px；版式切换 66px 宽，遗留页的同类开关是 78px；名册格悬停掺 5% 主文字色，资料页名册格掺 6%。读数的逐位滚动（遗留层 `popCount`）、骨架换内容的淡入（`revealSkeleton`）与版式切换的弹簧滑块还没接进 React 那一侧。
 - React 子树深色下的次要文字取 BoardUI 的 neutral-500（115），遗留页的 `--muted`、`--ink-2` 是 163 与 212。已迁各页都是这一档，要不要把 `text-secondary` 调亮是一次全局决定，不在单页里改。
@@ -50,7 +75,7 @@
 6. **口味证据持续刷新**：ledger 已实时记录搜索、播放、高潮、喜欢/理由、不合口味和稍后看；浏览器历史现可用 SQLite 一致性副本增量进入私有源库，并生成不含 URL/标题的 creator/tag candidate 与聚合报告。旧 2026-08-13 原始包已确认不在 Windows 外置盘；仍需在 Mac 开启 iCloud Safari、完成首次导入，并把两端每周刷新装成系统计划任务。AI 结论不得直接改真相字段。
 7. **扫描与采集任务的参数标定**：无进展预警的 120 秒与单项动作预算（资料 90 秒、封面 240 秒）目前按最坏请求时长取的保守值；等一轮真实任务记录各阶段实测耗时后标定，同时确定完整问题文件的保留周期。
 
-## 尚未实现（63 项）
+## 尚未实现（62 项）
 
 1. AI Provider 的真实调用、能力协商、Credential Manager 凭据和候选审核 UI。
 2. 剩余单一创作者风格板复核、无标签内容补标。
@@ -74,8 +99,11 @@
 14. 制品与更新渠道：剩余 macOS 独立包、代码签名、独立测试包的自动更新、局域网配对和更完整的配置管理。已有的部分是 Windows 独立测试包（免安装 zip 与当前用户安装包两种）、首次引导与本机配置表单、按构建身份自行重建的打包托盘、由 `release_tag.py` 在发布点独家发出的版本号与标签（每个版本号对应一份制品并在 `CHANGELOG.md` 有一节），以及退出程序后完整解压新版、数据目录保持独立的测试包更新。关闭判据见 ADR-0012「1.0 门槛」第 8 项。
 15. 「第一个小时」教程与故障排查文档：init → 声明来源根 → scan → 打开页面 → 手机信任 CA → 托盘/菜单栏自启动，每一步写清失败表现与对应的排查动作；截图用一套小的 SFW 演示数据集生成，不取自真实馆藏。演示数据集由 `scripts/demo_dataset.py` 生成，用法见 [docs/README_MAINTENANCE.md](README_MAINTENANCE.md)「演示数据集」；教程正文与截图仍待做。
 17. 口味导入引导：`/taste` 上传（Takeout ZIP、browserexport 兼容文件）与 `scripts/taste_history.py` 直读本机浏览器库两条路都能用，首次设置和口味页也有简短指南，但没有面向陌生人的完整文档。需要一页「各浏览器怎么导出、多台设备怎么各自刷新」教程，把脚本折进 `peach` CLI（见「把常跑批处理折进 `peach` CLI」一条），并写明定时刷新的安装方式。
-19. 局域网访问：HTTP 导航与 HTTPS 单一业务入口的候选代码已就绪，待生产部署验证。配对仍需一次性配对码或 HTTPS 地址二维码，减少设备首次访问时手输口令；现有口令生成、取用与非回环无口令拒绝启动不重复实现。配对码参照 Javdex `docs/LAN_WEB.md`（MIT）：新设备领一个六位码，桌面端核对后批准，可记住设备、逐台撤销。
-20. 全新安装的自动门槛：现有 `Test` 装的是 `-e ".[build,vision,maintenance-115,naming]"` 全套可选依赖、开着 pip 缓存、只跑单元测试，证明不了「陌生用户按 README 装完能用」。补三条互相独立的冒烟：① minimal source：全新 venv、`--no-cache-dir` 只装默认依赖、`peach init`（连跑两次验幂等）、`migrate status`、**离开仓库根目录**再 `peach serve`，请求 `/healthz`、`/`、`/api/items`，覆盖 3.12／3.14 × Windows／macOS 以及无 FFmpeg／OpenSSL／Node 的机器；② wheel：`python -m build` 后在不 checkout 源码的 job 里装 `dist/*.whl` 走同一套流程，它通过才能去掉 README 的 `-e` 硬要求（依赖「非 editable 安装的跨平台验收」）；③ artifact-only：只下载刚构建的制品、不 checkout 源码地跑起来（依赖「制品与更新渠道」）。消费方一律不许 checkout：工作目录会替制品补上漏掉的文件，那是假通过。失败场景也要覆盖：数据根不可写、端口被占、账本损坏、未配置媒体目录、无 FFmpeg、非回环监听但无口令、两个 writer 同时起。
+19. 局域网配对：仍需一次性配对码或 HTTPS 地址二维码，减少设备首次访问时手输口令；现有口令生成、取用与非回环无口令拒绝启动不重复实现。Windows 的 HTTP 跳转与 HTTPS 单一业务入口已有生产核验记录，见 [运行态](STATUS.md)；Mac 的入口验收并入操作 24、26。配对码参照 Javdex `docs/LAN_WEB.md`（MIT）：新设备领一个六位码，桌面端核对后批准，可记住设备、逐台撤销。
+20. 全新安装的自动门槛：CI 的 `wheel-build` 已用 `uv build --wheel` 生成制品，`wheel-smoke` 不检出源码、用 `--no-cache-dir` 安装 wheel，并离开仓库目录运行 `scripts/smoke_wheel.py`。剩余验收分三路：
+    - minimal source：全新 venv 只装默认依赖、`peach init` 连跑两次验幂等、`migrate status`、离开仓库根目录再 `peach serve`，请求 `/healthz`、`/`、`/api/items`；覆盖 3.12／3.14 × Windows／macOS 及缺 FFmpeg／OpenSSL／Node 的环境。
+    - wheel：取得第 11 条的 macOS、Python 3.12 消费结果，并核对完整系统矩阵与失败场景；消费方保持不检出源码。
+    - artifact-only：只下载刚构建的桌面制品、不检出源码地启动，依赖第 14 条。失败场景覆盖数据根不可写、端口被占、账本损坏、未配置媒体目录、无 FFmpeg、非回环监听但无口令、两个 writer 同时启动。
 21. `peach doctor` 与分级 `/healthz`：`doctor`（另带 `--json`）逐项报版本、数据根可写性、配置文件合法性、数据库能否打开、schema 版本与待执行迁移、FFmpeg／ffprobe／OpenSSL 路径、挂载点可达性、端口占用、是否处在「局域网暴露但无口令」状态、后台任务最近一次失败；输出脱敏，不带口令、cookie、站点凭据和完整媒体路径。`/healthz` 相应从布尔改成分项状态（`database`／`schema`／`configured`／`ffmpeg`／`media_mounts`／`security`），与「健康检查生产验收」一起做。
 22. 性能基准：用 SFW 合成数据生成 1k／10k／100k／500k 四档库，nightly 测冷启动到 `/healthz`、目录页与详情页 p95、两字以上搜索 p95、本地 SSD 与网盘挂载的 Range 首字节、空闲 RSS、后台扫描时前台退化倍数、备份期间读请求不失败。门槛用「相对上一次基线下降超过 20%」，不给绝对毫秒数，因为不同机器不可比。数据集与「第一个小时」教程的演示数据集共用：`scripts/demo_dataset.py --video stub` 出规模档（2000 条约 9 秒，海报按扩展名复用一张），基准脚本与 nightly 任务待做。已有一条基线记录：关系筛选上线后在真实库上只读对照，七轮中位数为标签 195.5→25.5 ms、创作者 148.8→45.6 ms、女优 162.7→15.7 ms、厂牌 162.0→19.6 ms，返回 ID 与总数一致；这是服务端耗时，不是浏览器端延迟。
 23. CI 的 Windows job 太慢，一次 push 的墙钟由它决定。同一批 2786 个用例在 `macos-latest`（arm64）上 57 秒，在 `windows-latest` 上 1475 秒，本机 Windows 是 324 秒，runner 比开发机还慢 4.6 倍。按时间戳差算，250 个用例（9%）吃掉 1119 秒，每个稳定在 4.5 秒上下，形状像每建一个临时文件被 Defender 扫一遍。矩阵分片那一半已经在跑：`ci_plan.py` 按域与 `shard_index` 展开矩阵，入口默认 `--jobs auto` 在每个分片内再并行。剩下的一半是在 Windows job 里对 runner 的临时目录加 `Add-MpPreference -ExclusionPath`，先量一轮确认是不是 Defender。不要为了缩短墙钟把 Windows job 从矩阵里去掉：它是生产平台，也是唯一能拦住 Windows 独有回归的地方。
@@ -125,7 +153,6 @@
 49. **播放器画面条**：播放器已有进度条悬停预览（`frontend/src/player/controls.ts` 的 `mountPlayerSeekPreview`）；参照 SakuraMedia「先看画面再决定看什么」（`wiki/guide/watch-from-a-frame.md`），把已有抽帧做成播放器旁可滚动的一列缩略图，点即跳转。
 50. **女优身份冲突的四个动作**：Javinizer-Go v1.6.0（`a2ddd00`）把女优身份与逐片署名拆开：刮削只写署名、不写身份，解析不出的身份先隔离；冲突用 keep、adopt-canonical、adopt-alias、reassign 四个固定动作解决，`scrape.collision_policy` 可设无人值守的 auto_keep／auto_alias。`/review` 的女优冲突用这套动作词表，合并留 ADR-0088 的墓碑。
 51. **画面向量**：给抽帧算图像嵌入，服务「寻找更好版本」的跨编码相似匹配、不同编码的重复片、给没署名的作品认人、「更多像这一帧的」。SakuraMedia 用 SigLIP2 + Qdrant；Peach 用 SQLite 扩展 `sqlite-vec`，不多起服务，与头像匹配的人脸向量共用设施。模型几百 MB 到 1 GB 多，全库约 8 万资产的嵌入要分批跑，进第 33 条的闲置队列。先拿第 1 条验证收益。
-52. **隐私模式**：一键遮封面与头像、关预览（Javdex）。
 53. **女优体型筛选**：`performer_profile` 已有身高三围，女优列表加按年龄、身高、罩杯筛选（JAV_MovieManager）。
     - 作品加「发行时年龄」字段（发行日减生日）与按它筛选（OpenAver 0.16.1）。
 54. **无码官方站**：caribbeancom、tokyohot（Javinizer-Go，MIT）与 h0930、h4610（mdcz，GPL-3.0），放在无码链的 1pondo 之后，每站独立解析器与测试。
@@ -147,13 +174,13 @@
 70. **原生客户端**（远期）：SakuraMedia 用 Flutter 出 Windows、macOS、iOS、Android 客户端。维护成本高，PWA 不够用时再议。
 71. **「已拥有」标记的浏览器扩展**（低）：在 javdb、javbus、javlibrary 页面上给馆藏已有的番号标「已拥有」（JavBoss `content/jav-ownership.js`，凭 API 令牌查询）。Peach 侧要一个只读的按番号查询接口与独立令牌，和第 27 条的开放 API 同批设计。
 
-合计：**70 项开放需求**，其中 7 项已有骨架，63 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
+合计：**69 项开放需求**，其中 7 项已有骨架，62 项尚未实现。已完成的需求不在这里留痕，去 Git 历史查。
 
-## 待执行的操作（43 项）
+## 待执行的操作（42 项）
 
 需要另行授权、外部条件或人工判断才能做的具体操作与复核批次，比上面的需求细一层；做完就删，不在这里留痕。待办只放这一处：[docs/STATUS.md](STATUS.md) 每次会话开头都要读，队列不该常驻在那种入口文件里。
 
-1. 查清 2026-09-02 那 191 行 `javinizer:%:tag` 的去向（javbus −172、r18dev −19，无可归因的写入者）。先重跑「读计数 → sqlite_backup → 再读计数」看是否可复现。
+1. 历史证据待取得：2026-09-02 的 191 行 `javinizer:%:tag` 差异（javbus −172、r18dev −19）仍缺可归因的写入者与逐行差异。2026-10-02 的「读计数 → sqlite_backup → 再读计数」实测未复现，6164 行逐行一致，备份完整性 ok。证据在 `attic/evidence/20261002-tag-backup-audit/`；取得历史快照或写入记录后继续追溯，不据此修复真实账本。
 2. 在 `/review` 处理 5 个被跳过的标题偏移值：`MY-101`～`MY-104`、`SAR-103`。
 3. 另行授权后跑 `scripts/flatten_release_dirs.py --apply --backup <落点>`：296 个目录操作（collapse 167、rename 129）落在 CloudDrive 挂载上，影响账本路径 3374 条。执行前重跑 dry-run，191 条未挂载的随挂载状态变化。
 4. 另行授权后先备份 ledger，修正 2 组已核实姓名：恢复 `平沢すず` 的规范名；`かわいゆい` 移除错误的 `河合ゆい` 别名与 r18 外部引用，清退错误头像及 provenance 后重新生成候选；同步 actor tag 与检索投影。
@@ -177,7 +204,6 @@
 22. 用 javtiful 的 `/ja/actress/<slug>` 补演员的罗马字↔日文配对：315 页约 7560 位，切语言前缀就出日文名。厂牌名不随语言切换，这条只服务演员别名。
 23. 37 位演员在 javdb 上只有日文名（`同形`），另有 5 位未取得，中文名要换来源：javtiful 的 `/ja/actress/<slug>`（第 22 条）或 javdatabase 的 idol 页。复核产物 `peach-data/review/javdb-cn-names-20260904.csv` 逐行带 verdict 和证据，可直接筛。
 24. macOS 标识 `io.github.longmeidao.peach.*` 在 Mac 上生效：代码已在 master（`src/peach/appid.py` 是唯一来源，`install_macos_agent.py` 与 `setup_macos_port80.sh` 会自己清掉遗留标签），命令与四项核对见 [docs/OPERATIONS.md](OPERATIONS.md)「桌面入口与发布」。放进第 26 条的维护窗口一起做；两台机器都跑过之后删掉 `peach.appid` 里的遗留标签表和用到它的分支。这是换生产入口，执行前须当场授权。
-25. `peach-data/review/composite-names-20260904.csv` 里还剩 28 条 creator 规范名带括号，括号里是读音或罗马音（`Egami(えがみ)`、`永地(eichi)`、`猫屋(NEKOYA)`），决定不拆，因为它们不像艺名那样各自独立，是同一个名字的注音。同一份 CSV 里 575 条 tag 是角色的作品出处消歧，10 条 series 括号里是厂牌或载体消歧（拆了会把三个 `AV DEBUT` 撞成一个），都不要动。
 26. Mac 追上 master 的一组操作，按顺序做完再重启菜单栏。做完之前不要重启：master 上的 `peach serve --host 0.0.0.0` 没有口令会拒绝启动，reader 会直接消失。① `git pull` 到 master；② `pip uninstall -y peach-app && pip install -e ".[macos]"`；③ 先把 Windows 的 `peach-data/secrets/auth-token` 复制到 Mac 数据根的同一路径，因为 reader 取 writer 复核结果发的是自己的口令，两边必须是同一份，而 `--from-existing` 找不到文件会自己生成一份不同的；④ `peach init --from-existing --mount local=<落点>`；⑤ 重启菜单栏，核对 `/healthz`、`/review` 能读到 writer，手机与 Mac 浏览器各登录一次。第 24 条的标签改名可以放进同一个维护窗口。
 27. 事务所改名复核：Wish/GIRFY、LiStarPRO/GRANZPRO 缺可核验官网；LIGHT 与 ELTRA/EST 存在分流，不能整体合并；Prime Agency/GG 有歧义，Cruse Group 官网证书链未取得。原始请求与逐条结论位于顶层 `attic/reviews/20260906-portrait-agency/agency-review.csv`。只对取得证据且获用户批准的记录执行合并。
     2026-09-06 核对 wish-promotion.jp 已是其他内容站，不能作为现官网。15 条现官网链接使用共用 Chrome UA 重查，13 条返回 200；Cruse Group 证书链与 Prime Agency TLS 连接仍未取得。

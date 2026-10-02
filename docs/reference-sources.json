@@ -621,7 +621,7 @@
         "ref": "refs/heads/main",
         "revision": "004dc15d303dde90eb2829ca01d4f092b9f0ed2d"
       },
-      "role": "Javdex（MIT）只作产品行为证据：局域网六位配对码、隐私模式（待办第 52 条）、外部清单导入的消歧规则与四种 NFO 兼容样例。",
+      "role": "Javdex（MIT）只作产品行为证据：局域网六位配对码、隐私模式（设置页的 SFW 模式）、外部清单导入的消歧规则与四种 NFO 兼容样例。",
       "consumers": [
         "docs/PRODUCT_BACKLOG.md"
       ]

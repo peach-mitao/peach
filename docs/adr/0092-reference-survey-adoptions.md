@@ -24,6 +24,7 @@ javranking、Cuelume 等 16 个项目的最新版做了一轮调研，最新代�
 | 实体合并留转址（墓碑） | SakuraMedia | ADR-0088 |
 | 115／PikPak 离线下载 | JavBoss | ADR-0089 |
 | 「想要」清单，入库按番号自动对账 | SakuraMedia、OpenAver | ADR-0090 |
+| 隐私模式 | Javdex | 设置页的 SFW 模式覆盖图片与视频遮挡，并停止悬停预览；`settings-panel.tsx`、`web/app.js` 与 `card-art/hover.ts` |
 
 ### 进待办
 
@@ -38,7 +39,6 @@ javranking、Cuelume 等 16 个项目的最新版做了一轮调研，最新代�
 | 上榜标记 | javranking | 48 |
 | 播放器画面条 | SakuraMedia | 49 |
 | 女优身份冲突的四个动作 | Javinizer-Go | 50 |
-| 隐私模式 | Javdex | 52 |
 | 女优体型筛选 | JAV_MovieManager | 53 |
 | 无码官方站 | Javinizer-Go、mdcz | 54 |
 | 字段策略两条 | mdcz | 55 |
