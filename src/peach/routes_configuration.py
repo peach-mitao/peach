@@ -316,6 +316,33 @@ def login_pikpak(request: Request, body: dict = Body(...), _args=Depends(require
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.post("/api/configuration/downloads/pikpak/browser-login")
+def start_pikpak_browser_login(request: Request, _args=Depends(require_auth)):
+    """拉起 PikPak 登录窗口（ADR-0093），立刻回设置块；登录在后台等，页面轮询下面那条读接口。"""
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    try:
+        return web_downloads.pikpak_browser_start(service, roots)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/api/configuration/downloads/pikpak/browser-login")
+def pikpak_browser_login_status(request: Request, _args=Depends(require_auth)):
+    local_only(request)
+    service, roots = _downloads(request)
+    return web_downloads.settings_payload(service, roots)
+
+
+@router.post("/api/configuration/downloads/pikpak/browser-login/cancel")
+def cancel_pikpak_browser_login(request: Request, _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    return web_downloads.pikpak_browser_cancel(service, roots)
+
+
 @router.post("/api/configuration/downloads/pikpak/logout")
 def logout_pikpak(request: Request, _args=Depends(require_auth)):
     local_only(request)

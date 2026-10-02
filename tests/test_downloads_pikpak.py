@@ -105,7 +105,8 @@ class LoginTests(_Case):
         self.login(remember=True)
         self.assertEqual(self.stored["password"], "pw")
         self.assertEqual(pk.account(self.stored),
-                         {"logged_in": True, "username": "me@example.com", "remember": True})
+                         {"logged_in": True, "username": "me@example.com", "remember": True,
+                          "method": "password"})
 
     def test_a_captcha_hands_back_the_page_and_keeps_the_device(self):
         self.fake.captcha_url = "https://user.mypikpak.com/captcha?x=1"
@@ -207,6 +208,86 @@ class DriveTests(_Case):
         with self.assertRaises(dl.DownloadError):
             self.provider().submit(MAGNET, TARGET)
         self.assertEqual(len(self.fake.requests), sent)
+
+
+class WebClientTests(_Case):
+    """浏览器登录读到的 token 由网页端 client 签发：刷新、captcha/init 与签名都按网页端常量走。"""
+
+    def setUp(self):
+        super().setUp()
+        self.fake.refresh_count = 1
+        self.stored = {"refresh_token": "rt1", "access_token": "at1", "expires_at": "0", "user_id": "user-1",
+                       "device_id": "webdevice", "client_id": pk.WEB.client_id}
+
+    def task(self) -> dl.DownloadTask:
+        return dl.DownloadTask(1, HASH, "pikpak", MAGNET.uri, "ABC-123", TARGET, dl.SUBMITTED)
+
+    def bodies(self, path: str) -> list[dict]:
+        return [json.loads(r.content) for r in self.fake.requests if r.url.path == path]
+
+    def test_the_web_signature_matches_the_page_script(self):
+        """期望值用网页脚本里那段 `reduce` 的写法在 Node 里算出：md5 链、固定时间戳、网页端 15 条盐。"""
+        self.assertEqual(pk.captcha_sign("abc", pk.WEB.sign_timestamp, pk.WEB),
+                         "1.e07351bd60bb92ce14b49dcf7273008f")
+
+    def test_web_tokens_refresh_with_the_web_client_and_no_secret(self):
+        self.assertEqual(self.provider().status(self.task()).state, dl.MISSING)
+        refresh = [r for r in self.fake.requests if r.url.path == "/v1/auth/token"][0]
+        body = json.loads(refresh.content)
+        self.assertEqual(body["client_id"], "YUMx5nI8ZU8Ap8pm")
+        self.assertNotIn("client_secret", body)
+        self.assertEqual((refresh.headers["x-client-id"], refresh.headers["x-device-id"]),
+                         ("YUMx5nI8ZU8Ap8pm", "webdevice"))
+        self.assertEqual((self.stored["refresh_token"], self.stored["client_id"]), ("rt2", pk.WEB.client_id))
+
+    def test_a_web_submission_signs_the_captcha_with_web_constants(self):
+        self.stored["expires_at"] = "9999999999"
+        self.provider().submit(MAGNET, TARGET)
+        captcha = self.bodies("/v1/shield/captcha/init")[0]
+        self.assertEqual(captcha["client_id"], pk.WEB.client_id)
+        self.assertEqual(captcha["meta"]["timestamp"], "1790733736477")
+        self.assertEqual((captcha["meta"]["client_version"], captcha["meta"]["package_name"]),
+                         ("2.0.0", "mypikpak.com"))
+        self.assertEqual(captcha["meta"]["captcha_sign"], pk.captcha_sign("webdevice", "1790733736477", pk.WEB))
+
+    def test_a_rejected_web_refresh_names_the_reason_and_asks_for_the_browser(self):
+        self.stored["refresh_token"] = "stale"
+        with self.assertRaises(dl.DownloadError) as caught:
+            self.provider().status(self.task())
+        self.assertEqual(caught.exception.failure, "config")
+        self.assertIn("用浏览器登录", caught.exception.detail)
+        self.assertIn("invalid_grant", caught.exception.detail)
+        self.assertNotIn("stale", caught.exception.detail)
+
+    def test_a_rejected_web_signature_says_the_constants_may_have_changed(self):
+        self.stored["expires_at"] = "9999999999"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/v1/shield/captcha/init":
+                return httpx.Response(400, json={"error": "invalid_argument", "error_description": "captcha_sign"})
+            return self.fake(request)
+        provider = pk.PikPakProvider(lambda: dict(self.stored), persist=self.persist,
+                                     transport=httpx.MockTransport(handler))
+        with self.assertRaises(dl.DownloadError) as caught:
+            provider.submit(MAGNET, TARGET)
+        self.assertIn("网页端的签名常量可能已经更新", caught.exception.detail)
+
+    def test_an_unknown_client_refreshes_but_refuses_to_sign(self):
+        self.stored.update(client_id="SomeNewClient", expires_at="9999999999")
+        with self.assertRaises(dl.DownloadError) as caught:
+            self.provider().submit(MAGNET, TARGET)
+        self.assertIn("SomeNewClient", caught.exception.detail)
+        self.assertNotIn("/v1/shield/captcha/init", [r.url.path for r in self.fake.requests])
+        self.stored["expires_at"] = "0"
+        self.provider().status(self.task())
+        self.assertEqual(self.bodies("/v1/auth/token")[0]["client_id"], "SomeNewClient")
+
+    def test_the_account_says_how_it_was_signed_in(self):
+        self.assertEqual(pk.account(self.stored)["method"], "browser")
+        self.assertEqual(pk.account({"refresh_token": "x"})["method"], "password")
+        self.login()
+        self.assertEqual(self.stored["client_id"], pk.ANDROID.client_id)
+        self.assertEqual(pk.account(self.stored)["method"], "password")
 
 
 if __name__ == "__main__":

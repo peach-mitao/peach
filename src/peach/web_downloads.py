@@ -27,9 +27,14 @@ def _values(credentials: CredentialStore, provider: str) -> dict:
 def build_download_service(*, database: LedgerDatabase, state_root: Path,
                            credentials: CredentialStore, push_discovery,
                            available: bool) -> DownloadService:
-    """按 provider 键现取客户端，地址与凭据在设置页改了立刻生效。"""
+    """按 provider 键现取客户端，地址与凭据在设置页改了立刻生效。
+
+    PikPak 浏览器登录挂在 `service.pikpak_browser` 上：profile 放在凭据根下 `browser-pikpak/`，
+    登录完成后叫醒对账线程。
+    """
     from .downloads_clouddrive import CloudDriveProvider
     from .downloads_pikpak import PikPakProvider
+    from .downloads_pikpak_browser import BrowserLogin, profile_dir
 
     holder: dict[str, DownloadService] = {}
 
@@ -46,6 +51,9 @@ def build_download_service(*, database: LedgerDatabase, state_root: Path,
                               providers=providers, landing=Landing(push_discovery),
                               available=available)
     holder["service"] = service
+    service.pikpak_browser = BrowserLogin(
+        profile_dir(Path(credentials.root).parent),
+        persist=lambda values: credentials.save(PIKPAK_CREDENTIAL, values), on_done=service.wake)
     return service
 
 
@@ -94,11 +102,14 @@ def settings_payload(service: DownloadService, declared_roots) -> dict:
         pikpak = account(_values(credentials, PIKPAK_CREDENTIAL))
     except DownloadError:
         pikpak = account(None)
+    login = _browser_login(service)
     return {
         "available": service.available,
         "config": service.config.payload(),
         "token_set": "token" in credentials.describe(CLOUDDRIVE_CREDENTIAL)["fields"],
         "pikpak": pikpak,
+        "pikpak_browser": {"available": login is not None and login.available(),
+                           **(login.status() if login is not None else {"state": "idle", "message": ""})},
         "pikpak_roots": list(declared_roots.get("pikpak", ())),
         "providers": [{"key": key, "label": label} for key, label in PROVIDER_LABELS.items()],
         "max_wait_hours": MAX_WAIT_HOURS,
@@ -216,4 +227,26 @@ def pikpak_login(service: DownloadService, body: dict, declared_roots, *, transp
 
 def pikpak_logout(service: DownloadService, declared_roots) -> dict:
     service.credentials.clear(PIKPAK_CREDENTIAL)
+    return settings_payload(service, declared_roots)
+
+
+def _browser_login(service: DownloadService):
+    return getattr(service, "pikpak_browser", None)
+
+
+def pikpak_browser_start(service: DownloadService, declared_roots) -> dict:
+    """拉起登录窗口，立刻回设置块；页面看 `pikpak_browser.state` 轮询，不在这里等。"""
+    if not service.available:
+        raise ValueError("云下载只在账本写入端可用")
+    login = _browser_login(service)
+    if login is None:
+        raise ValueError("浏览器登录没有启用")
+    login.start()
+    return settings_payload(service, declared_roots)
+
+
+def pikpak_browser_cancel(service: DownloadService, declared_roots) -> dict:
+    login = _browser_login(service)
+    if login is not None:
+        login.cancel()
     return settings_payload(service, declared_roots)

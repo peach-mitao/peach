@@ -223,6 +223,27 @@ class BrowserTransportTests(unittest.TestCase):
         with self.assertRaises(BrowserUnavailable):
             transport(HttpRequest("POST", "https://javten.com/", {}), 10, 4096)
 
+    def test_an_attended_window_opens_on_screen_keeps_its_profile_and_loads_everything(self):
+        """给人登录用的窗口（ADR-0093）：开在屏幕内、Edge 也不用 InPrivate，图片与字体照常加载。"""
+        server = FakeCdp(self.generic)
+        self.addCleanup(server.close)
+
+        def popen(command, **_kwargs):
+            self.launches.append(command)
+            (self.profile / "DevToolsActivePort").write_text(f"{server.port}\n/devtools/browser/abc\n", encoding="utf-8")
+            return FakeProcess(self.profile / "DevToolsActivePort", server.port)
+
+        browser = browser_transport._Browser("C:/fake/msedge.exe", self.profile, (), popen=popen,
+                                             targets=server.targets, sleep=self.clock.sleep, attended=True)
+        browser.start()
+        self.addCleanup(browser.close)
+        command = self.launches[0]
+        self.assertIn(f"--window-position={browser_transport.ONSCREEN[0]},{browser_transport.ONSCREEN[1]}", command)
+        self.assertIn(f"--user-data-dir={self.profile}", command)
+        self.assertNotIn("--inprivate", command, "登录要的 localStorage 必须落在 profile 里")
+        self.assertNotIn("Network.setBlockedURLs", [method for method, _params in server.calls],
+                         "登录页和人机验证靠图片与字体渲染")
+
     def test_the_body_is_cut_at_the_limit_and_a_missing_status_reads_as_ok(self):
         def handler(method, params):
             if method == "Runtime.evaluate" and is_document(params):
