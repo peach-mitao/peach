@@ -1476,7 +1476,7 @@ FANZA／DMM、MGStage、一本道同族、Tokyo-Hot、AVBase、javtrailers、One
 - 时刻预览：115 上单文件抽九帧约 285 MB，两万部按每 10 秒一帧铺时间轴，流量以 TB 计。
 - 厂牌名录规模：MGStage 十一页 351 家、Prestige 11 家、KMP 42 家、jae.tokyo 展会名录 20 家。
 - 括号别名拆分：自动那拨把 r18.dev 打包的 17 条拆成 37 条别名，`--from-review` 那拨清掉 9 条尾巴；备份是 2026-09-04 的两份
-  `ledger.pre-*.db`，剩下不拆的清单见 [PRODUCT_BACKLOG](PRODUCT_BACKLOG.md)「待执行的操作」第 25 条。
+  `ledger.pre-*.db`，读音与消歧保留的判据及清单见 [复用清单](REUSE.md)。
 - 厂牌社媒核查：S-Cute 实页验证能保留两个账号及各自官方标签。
 - 标签规范名：`合集` 3699 条来自文件名，`混合集` 313 条全来自 Stash。
 - 英文 genre：2026-09-16 实测 31 份 k-mib 快照全是 `Ahegao`、`Kiss`、`Tiny Girl`，`k-mib` 有 77 行受影响；`genres_in_warning`
