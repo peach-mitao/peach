@@ -10,7 +10,7 @@
  * 骨架与整页一次换掉；页内换筛选时作品区的骨架归正文那一格自己（`useSkeletonReveal`）。 */
 import { api } from '@peach/legacy/core';
 
-import type { CatalogGridProps, MediaItem, MediaPage } from '../catalog-grid/types';
+import type { CatalogGridProps, MediaPage } from '../catalog-grid/types';
 import type { EntityBodyActions, EntityBodyHelpers, EntityCodeSet, EntityLocalPhoto, PhotoLayout, PhotoSize } from '../entity-body/entity-body';
 import type { EntityComboItem, EntitySortKey, SegmentOption } from '../entity-filter/entity-filter';
 import type { EntityHeroData, HeroCostar } from '../entity-hero/entity-hero';

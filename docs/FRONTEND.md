@@ -197,7 +197,7 @@ CI 由 `web-e2e` job 在 `windows-latest` 上执行 `web` 域，矩阵扩成全�
 React 子树读到 BoardUI 的 token 原值、持久警示是状态色块、一张卡底下只有写入那一颗是主按钮。页面迁到 React 时，旧的源码字符串断言按 ADR-0031
 分三类再删：设计决定进这里或 lint，行为进 vitest，布局与运行期进冒烟。
 
-`npm --prefix frontend run lint` 检查 `src/react/` 的设计系统规则，`web` 域与 CI 都跑。`no-restyle` 报在
+`npm --prefix frontend run lint` 检查 `src/`、`test/`、`e2e/` 的 correctness 规则、严格相等比较和累积展开；`== null` 保留同时匹配 null 与 undefined 的语义。设计系统规则只作用于 `src/react/`，排除 BoardUI 与 EvilCharts 的上游副本。`web` 域与 CI 都跑。`no-restyle` 报在
 BoardUI 组件上的间距或外观，处理办法是在组件外面套一层普通元素，不给规则加例外。
 `src/react/boardui/` 只加不改，`UPSTREAM.sha256` 记着复制时每个文件的哈希，由 `tests/test_frontend_build.py` 比对。
 
@@ -426,7 +426,7 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `vitest` | 前端测试运行器。与 Vite 共用同一份配置解析，不必再维护第二套转译 |
 | `happy-dom` | vitest 的 DOM 环境。断言的是真实 DOM 结构，比 jsdom 轻且启动快 |
 | `playwright-core` | `frontend/e2e/` 的浏览器驱动，只驱动本机 Chrome、不下载浏览器。happy-dom 没有布局，横向溢出、等待态卡住这类事实只有真浏览器测得出；不用 `@playwright/test`，用例跑在 `node:test` 上，与 docu.md（`markdown-viewer/markdown-viewer-extension` 的 `test/helpers/browser-render-harness.ts`）同一做法 |
-| `oxlint`、`@shadcn/lint` | `npm run lint`：Oxlint 加载 `@shadcn/lint` 的六条规则，只查 `src/react/`、排除 `boardui/`。不用 ESLint，因为 `@typescript-eslint/parser` 的 peer 只到 TypeScript 6.0；`eslint` 作为 `@shadcn/lint` 的 peer 会装进来，不调用 |
+| `oxlint`、`@shadcn/lint` | `npm run lint`：Oxlint 原生规则覆盖源码与测试，六条 shadcn 设计规则检查自有 React 源码。使用 TypeScript 与 Oxc 插件；规则集见 `.oxlintrc.json`。`eslint` 作为 `@shadcn/lint` 的 peer 安装，不作为检查入口 |
 | `react`、`react-dom` | 前端唯一的渲染层。BoardUI 源码是 React 组件，交互建在 React Aria 上；不经兼容层运行它（ADR-0031）。`react-dom` 的 `flushSync` 还负责配置页那一帧：壳挂完紧接着就读 DOM |
 | `react-aria-components` | BoardUI 输入框、勾选框、开关、下拉与弹出面板的交互和无障碍语义：标签关联、键盘操作、焦点进出、`aria-invalid` |
 | `react-aria` | 只用 `UNSAFE_PortalProvider`：把 Popover 与下拉列表挂进 `body` 末尾同样带 `.peach-react` 的容器，弹层读到与页面内一致的 token 与 Preflight |

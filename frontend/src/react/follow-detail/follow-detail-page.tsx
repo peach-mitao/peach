@@ -115,7 +115,7 @@ function Detail({ data, context, mediaIndex, onMedia, mediaView, helpers, action
 
 /* ── 媒体区 ── */
 
-function MediaFrame({ item, media, helpers, actions, onMedia, issues }: {
+function MediaFrame({ item, media, actions, onMedia, issues }: {
   item: FollowDetailItem; media: DetailMedia; helpers: FollowFeedHelpers; actions: FollowDetailActions;
   onMedia(index: number | null): void; issues: MediaIssues;
 }) {

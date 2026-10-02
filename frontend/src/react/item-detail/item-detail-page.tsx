@@ -9,7 +9,7 @@
  * 把服务端回的那几个字段换进 `['item', id]`，目录网格缓存里的同一张卡一起换，不重读列表。 */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { esc, fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
+import { fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
 import {
   coverUrl, entityFaceImg, logoUrl, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
 } from '@peach/card-art';
@@ -30,7 +30,7 @@ import {
   queueCopy, queueKey, ratingStars, ratingText, realWatched, recentTags, relatedKey, rememberTag, sameOrder,
   withPartLabel, withTag, withoutTag,
   type DetailEntityRef, type DetailItem, type DetailQueue, type DetailTag, type ItemDetailActions,
-  type ItemDetailHelpers, type ItemDetailProps, type MediaGate, type PlaylistPayload, type QueueItem, type TagCount,
+  type ItemDetailHelpers, type ItemDetailProps, type MediaGate, type PlaylistPayload, type TagCount,
 } from './item-detail';
 
 /** 字形原样取壳那一份 `icon()`：骨架与遗留详情画的就是它，换成别的字形接管那一拍会跳。 */
@@ -455,7 +455,7 @@ function Rating({ item, write }: { item: DetailItem; write: DetailWrite }) {
 
 /* 身份按类别分组：标签作为组标题写在上方，同类横向排开。逐行一个名字在共演作品上会把整个侧栏
    撑满。一个都没有时，「未归属」就是这条作品所属的那一类，和女优、厂牌并列：点进去看得到全部。 */
-function Identity({ item, helpers, actions }: { item: DetailItem; helpers: ItemDetailHelpers; actions: ItemDetailActions }) {
+function Identity({ item, actions }: { item: DetailItem; helpers: ItemDetailHelpers; actions: ItemDetailActions }) {
   const groups = useMemo(() => identityGroups(item), [item]);
   const [castOpen, setCastOpen] = useState(false);
   const overflow = Math.max(0, groups.cast.length - CAST_SHOWN);

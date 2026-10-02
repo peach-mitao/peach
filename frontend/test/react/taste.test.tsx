@@ -20,7 +20,7 @@ import {
 import { TasteRadar } from '../../src/react/taste/charts';
 import { TastePage } from '../../src/react/taste/taste-page';
 
-import { buttonNamed, choose, click, mount, mountRoot, settle } from './render';
+import { choose, click, mount, mountRoot, settle } from './render';
 
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 afterEach(() => queryClient.clear());

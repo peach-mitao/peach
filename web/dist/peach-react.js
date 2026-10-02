@@ -34137,42 +34137,42 @@ function cle(e, t, n) {
 	]);
 }
 function lle(e) {
-	let { view: t, seed: n, revision: r, helpers: i, actions: a } = e, o = fO(t, r), s = Ln(o), c = Cn({
+	let { view: t, seed: n, revision: r, actions: i } = e, a = fO(t, r), o = Ln(a), s = Cn({
 		queryKey: pO,
 		queryFn: ({ signal: e }) => mO(e)
-	}), l = (0, V.useMemo)(() => hO(s.data), [s.data]), u = (0, V.useMemo)(() => new Set((c.data?.providers || []).filter((e) => e.present).map((e) => e.provider)), [c.data]), d = (0, V.useMemo)(() => ({
-		sources: l?.sources || [],
-		aliases: l?.author_aliases || [],
-		credentials: u
-	}), [l, u]), f = cle(l, t, n), p = s.isPending || s.isPlaceholderData, h = !p && !!l, g = (0, V.useMemo)(() => Qce(f.visible.flatMap(_O).map((e) => ({ tags: e.tags || [] }))), [f.visible]);
+	}), c = (0, V.useMemo)(() => hO(o.data), [o.data]), l = (0, V.useMemo)(() => new Set((s.data?.providers || []).filter((e) => e.present).map((e) => e.provider)), [s.data]), u = (0, V.useMemo)(() => ({
+		sources: c?.sources || [],
+		aliases: c?.author_aliases || [],
+		credentials: l
+	}), [c, l]), d = cle(c, t, n), f = o.isPending || o.isPlaceholderData, p = !f && !!c, h = (0, V.useMemo)(() => Qce(d.visible.flatMap(_O).map((e) => ({ tags: e.tags || [] }))), [d.visible]);
 	(0, V.useEffect)(() => {
-		h && a.loaded(g);
+		p && i.loaded(h);
 	}, [
+		p,
 		h,
-		g,
-		a
+		i
 	]);
-	let _ = ule(e, !!l);
-	if (!l) return s.isError ? /* @__PURE__ */ (0, H.jsx)(Vn, {
-		message: m(s.error),
-		onRetry: () => void s.refetch()
+	let g = ule(e, !!c);
+	if (!c) return o.isError ? /* @__PURE__ */ (0, H.jsx)(Vn, {
+		message: m(o.error),
+		onRetry: () => void o.refetch()
 	}) : null;
-	let v = (e) => a.route({
+	let _ = (e) => i.route({
 		...t,
 		...e
-	}), y = qce({
+	}), v = qce({
 		...t,
-		author: f.author,
-		provider: f.provider
+		author: d.author,
+		provider: d.provider
 	}, {
-		authors: new Map([...f.authorSources].map(([e, t]) => [e, kO(t, d)])),
-		providers: f.providers,
-		works: f.workNames
-	}), b = t.status ? f.counts[t.status] || 0 : f.allCount, x = f.sources.some((e) => e.can_backfill);
+		authors: new Map([...d.authorSources].map(([e, t]) => [e, kO(t, u)])),
+		providers: d.providers,
+		works: d.workNames
+	}), y = t.status ? d.counts[t.status] || 0 : d.allCount, b = d.sources.some((e) => e.can_backfill);
 	return /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("div", {
-		ref: _.host,
+		ref: g.host,
 		"data-follow-progress": ""
-	}, _.generation), /* @__PURE__ */ (0, H.jsxs)("div", {
+	}, g.generation), /* @__PURE__ */ (0, H.jsxs)("div", {
 		"data-follow-feed": "",
 		"data-select-mode": e.selectMode ? "" : void 0,
 		children: [
@@ -34187,15 +34187,15 @@ function lle(e) {
 						variant: "secondary",
 						leadingIcon: VO,
 						"data-follow-manage": "",
-						onClick: a.openManage,
+						onClick: i.openManage,
 						children: "管理关注"
-					}), f.sources.length ? /* @__PURE__ */ (0, H.jsx)(J, {
+					}), d.sources.length ? /* @__PURE__ */ (0, H.jsx)(J, {
 						variant: "primary",
 						"data-follow-recheck": "",
 						"aria-label": "检查每个来源的更新",
-						"aria-busy": _.busy || void 0,
-						onClick: () => void _.start(!1),
-						children: _.starting === "check" ? /* @__PURE__ */ (0, H.jsx)("span", {
+						"aria-busy": g.busy || void 0,
+						onClick: () => void g.start(!1),
+						children: g.starting === "check" ? /* @__PURE__ */ (0, H.jsx)("span", {
 							className: "contents",
 							dangerouslySetInnerHTML: { __html: Ne("检查中") }
 						}) : "检查更新"
@@ -34203,74 +34203,74 @@ function lle(e) {
 				})]
 			}),
 			/* @__PURE__ */ (0, H.jsx)(dle, {
-				facets: f,
-				pressed: f.author,
-				context: d,
+				facets: d,
+				pressed: d.author,
+				context: u,
 				props: e,
-				onPick: (e) => v({ author: f.author === e ? "" : e })
+				onPick: (e) => _({ author: d.author === e ? "" : e })
 			}),
 			/* @__PURE__ */ (0, H.jsx)(fle, {
-				rows: f.workRows,
+				rows: d.workRows,
 				pressed: t.work,
 				props: e,
-				onPick: (e) => v({ work: t.work === e ? "" : e })
+				onPick: (e) => _({ work: t.work === e ? "" : e })
 			}),
 			/* @__PURE__ */ (0, H.jsx)(ple, {
-				facets: f,
+				facets: d,
 				view: t,
-				total: b,
-				busy: p,
+				total: y,
+				busy: f,
 				props: e,
-				route: v
+				route: _
 			}),
 			/* @__PURE__ */ (0, H.jsx)(mle, {
-				conditions: y,
-				onDrop: (e) => a.route(Jce(t, e)),
-				onClear: () => v({
+				conditions: v,
+				onDrop: (e) => i.route(Jce(t, e)),
+				onClear: () => _({
 					author: "",
 					provider: "",
 					work: "",
 					tags: []
 				})
 			}),
-			f.broken.length ? /* @__PURE__ */ (0, H.jsx)(hle, {
-				count: f.broken.length,
-				onManage: a.openManage
+			d.broken.length ? /* @__PURE__ */ (0, H.jsx)(hle, {
+				count: d.broken.length,
+				onManage: i.openManage
 			}) : null,
 			/* @__PURE__ */ (0, H.jsx)(gle, {
-				pending: p,
-				facets: f,
-				data: l,
-				context: d,
+				pending: f,
+				facets: d,
+				data: c,
+				context: u,
 				props: e
-			}, o.queryKey.join("\0")),
-			l.has_more || x ? /* @__PURE__ */ (0, H.jsxs)("div", {
+			}, a.queryKey.join("\0")),
+			c.has_more || b ? /* @__PURE__ */ (0, H.jsxs)("div", {
 				"data-follow-pagination": "",
-				children: [l.has_more ? /* @__PURE__ */ (0, H.jsx)("span", {
+				children: [c.has_more ? /* @__PURE__ */ (0, H.jsx)("span", {
 					"data-follow-page-action": "",
 					children: /* @__PURE__ */ (0, H.jsxs)(vr, {
 						entity: !0,
-						enabled: () => !_.busyRef.current,
+						enabled: () => !g.busyRef.current,
 						load: async () => {
-							await s.fetchNextPage({ throwOnError: !0 });
+							await o.fetchNextPage({ throwOnError: !0 });
 						},
 						children: [/* @__PURE__ */ (0, H.jsx)(ale, { className: "size-3.5" }), "加载更多"]
-					}, s.data?.pages.length)
-				}) : null, x ? /* @__PURE__ */ (0, H.jsxs)("span", {
+					}, o.data?.pages.length)
+				}) : null, b ? /* @__PURE__ */ (0, H.jsxs)("span", {
 					"data-follow-page-action": "",
 					children: [/* @__PURE__ */ (0, H.jsx)(J, {
 						variant: "secondary",
-						leadingIcon: _.olderBusy ? void 0 : ole,
+						leadingIcon: g.olderBusy ? void 0 : ole,
 						"data-follow-older": "",
-						"aria-busy": _.busy || void 0,
-						onClick: () => void _.start(!0),
-						children: _.olderBusy ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", {
+						"aria-busy": g.busy || void 0,
+						onClick: () => void g.start(!0),
+						children: g.olderBusy ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", {
 							className: "contents",
 							dangerouslySetInnerHTML: { __html: Ne("抓取中") }
 						}), /* @__PURE__ */ (0, H.jsx)("span", { children: "抓取中…" })] }) : "抓更早的一页"
 					}), /* @__PURE__ */ (0, H.jsx)("span", {
 						"data-follow-backfill": "",
-						children: Gce(f.sources)
+						children: Gce(d.sources)
 					})]
 				}) : null]
 			}) : null
@@ -77447,51 +77447,51 @@ function WGe({ data: e, context: t, mediaIndex: n, onMedia: r, mediaView: i, hel
 		]
 	});
 }
-function GGe({ item: e, media: t, helpers: n, actions: r, onMedia: i, issues: a }) {
-	let { kind: o, selected: s, src: c, images: u, position: d, carousel: f, frameRatio: p } = t, m = (0, V.useRef)(null), [h, g] = (0, V.useState)(null), _ = zGe(e, t), v = s?.thumb_url || e.thumb_url || "", y = e.playable && o === "video", b = e.playable && o === "image" ? c : e.thumb_url || "", x = e.playable && o === "image" && v && v !== c ? v : "", [S, C] = (0, V.useState)(b), w = (0, V.useRef)({
+function GGe({ item: e, media: t, actions: n, onMedia: r, issues: i }) {
+	let { kind: a, selected: o, src: s, images: c, position: u, carousel: d, frameRatio: f } = t, p = (0, V.useRef)(null), [m, h] = (0, V.useState)(null), g = zGe(e, t), _ = o?.thumb_url || e.thumb_url || "", v = e.playable && a === "video", y = e.playable && a === "image" ? s : e.thumb_url || "", b = e.playable && a === "image" && _ && _ !== s ? _ : "", [x, S] = (0, V.useState)(y), C = (0, V.useRef)({
 		item: e,
-		selected: s
-	}), T = (0, V.useRef)(a.failed);
-	T.current = a.failed, (0, V.useLayoutEffect)(() => {
-		let e = m.current;
-		if (!(!e || !y)) return r.mountPlayer(e, w.current.item, w.current.selected, { onError: () => T.current() });
-	}, [r, y]), (0, V.useLayoutEffect)(() => {
-		let e = m.current, t = e?.querySelector("[data-follow-detail-poster]"), n = e?.querySelector("[data-follow-image-step]");
+		selected: o
+	}), w = (0, V.useRef)(i.failed);
+	w.current = i.failed, (0, V.useLayoutEffect)(() => {
+		let e = p.current;
+		if (!(!e || !v)) return n.mountPlayer(e, C.current.item, C.current.selected, { onError: () => w.current() });
+	}, [n, v]), (0, V.useLayoutEffect)(() => {
+		let e = p.current, t = e?.querySelector("[data-follow-detail-poster]"), n = e?.querySelector("[data-follow-image-step]");
 		if (!e || !t || !n) return;
 		let r = () => {
 			if (!t.naturalWidth || !t.naturalHeight) return;
 			let r = e.getBoundingClientRect(), i = Math.min(r.width, r.height * (t.naturalWidth / t.naturalHeight)), a = Math.max(0, (r.width - i) / 2), o = matchMedia("(max-width:640px)").matches ? 10 : 16;
-			g(Math.round(a >= n.offsetWidth + o * 2 ? (a - n.offsetWidth) / 2 : o));
+			h(Math.round(a >= n.offsetWidth + o * 2 ? (a - n.offsetWidth) / 2 : o));
 		}, i = new ResizeObserver(r);
 		return i.observe(e), t.addEventListener("load", r), () => {
 			i.disconnect(), t.removeEventListener("load", r);
 		};
-	}, [S]);
-	let E = (e) => i(u[(d + e + u.length) % u.length].index);
+	}, [x]);
+	let T = (e) => r(c[(u + e + c.length) % c.length].index);
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
-		ref: m,
+		ref: p,
 		"data-stage-media": "",
-		"data-follow-detail-media": o || "none",
-		"data-framed": p ? "" : void 0,
+		"data-follow-detail-media": a || "none",
+		"data-framed": f ? "" : void 0,
 		style: {
-			"--follow-frame-ratio": p ? p.toFixed(4) : void 0,
-			"--follow-image-arrow-inset": h === null ? void 0 : `${h}px`
+			"--follow-frame-ratio": f ? f.toFixed(4) : void 0,
+			"--follow-image-arrow-inset": m === null ? void 0 : `${m}px`
 		},
 		children: [
-			/* @__PURE__ */ (0, H.jsx)(B7, { onClose: r.close }),
-			y ? null : b ? /* @__PURE__ */ (0, H.jsx)("img", {
+			/* @__PURE__ */ (0, H.jsx)(B7, { onClose: n.close }),
+			v ? null : y ? /* @__PURE__ */ (0, H.jsx)("img", {
 				"data-follow-detail-poster": "",
-				"data-zoomable": _.length ? "" : void 0,
-				src: S,
+				"data-zoomable": g.length ? "" : void 0,
+				src: x,
 				alt: e.title,
 				referrerPolicy: "no-referrer",
-				onClick: _.length ? () => void XT(Math.max(0, d), _) : void 0,
+				onClick: g.length ? () => void XT(Math.max(0, u), g) : void 0,
 				onError: () => {
-					if (x && S !== x) {
-						C(x), a.thumbFallback();
+					if (b && x !== b) {
+						S(b), i.thumbFallback();
 						return;
 					}
-					a.failed();
+					i.failed();
 				}
 			}) : /* @__PURE__ */ (0, H.jsxs)("div", {
 				"data-follow-detail-placeholder": "",
@@ -77500,14 +77500,14 @@ function GGe({ item: e, media: t, helpers: n, actions: r, onMedia: i, issues: a 
 					dangerouslySetInnerHTML: { __html: OO(e.resource_provider || e.provider) }
 				}), /* @__PURE__ */ (0, H.jsx)("span", { children: "没有可用预览" })]
 			}),
-			f ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [
+			d ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [
 				/* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
 					"data-follow-image-step": "-1",
 					"data-follow-image-arrow": "prev",
 					"aria-label": "上一张图片",
 					title: "上一张",
-					onClick: () => E(-1),
+					onClick: () => T(-1),
 					dangerouslySetInnerHTML: { __html: l("chevron-left") }
 				}),
 				/* @__PURE__ */ (0, H.jsx)("button", {
@@ -77516,20 +77516,20 @@ function GGe({ item: e, media: t, helpers: n, actions: r, onMedia: i, issues: a 
 					"data-follow-image-arrow": "next",
 					"aria-label": "下一张图片",
 					title: "下一张",
-					onClick: () => E(1),
+					onClick: () => T(1),
 					dangerouslySetInnerHTML: { __html: l("chevron-right") }
 				}),
 				/* @__PURE__ */ (0, H.jsx)("div", {
 					"data-follow-image-dots": "",
 					role: "group",
-					"aria-label": `${u.length} 张图片`,
-					children: u.map((e, t) => /* @__PURE__ */ (0, H.jsx)("button", {
+					"aria-label": `${c.length} 张图片`,
+					children: c.map((e, t) => /* @__PURE__ */ (0, H.jsx)("button", {
 						type: "button",
 						"data-follow-image-item": e.index,
-						"aria-current": t === d ? "true" : "false",
-						"aria-label": `第 ${t + 1} 张，共 ${u.length} 张`,
+						"aria-current": t === u ? "true" : "false",
+						"aria-label": `第 ${t + 1} 张，共 ${c.length} 张`,
 						title: `第 ${t + 1} 张`,
-						onClick: () => i(e.index)
+						onClick: () => r(e.index)
 					}, e.index))
 				})
 			] }) : null
@@ -78750,53 +78750,53 @@ function dKe({ item: e, write: t }) {
 		})]
 	});
 }
-function fKe({ item: e, helpers: t, actions: n }) {
-	let r = (0, V.useMemo)(() => Afe(e), [e]), [i, a] = (0, V.useState)(!1), o = Math.max(0, r.cast.length - 8), s = (e, t, r) => {
-		let a = e === "performer" && r >= 8 && !i, o = e === "performer" ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", { children: t.name.slice(0, 1) }), /* @__PURE__ */ (0, H.jsx)(q7, { html: N({
-			id: t.id,
-			hasImage: t.has_image,
-			version: t.image_version,
-			focus: t.avatar_focus
-		}) })] }) : e === "studio" ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", { children: t.name.slice(0, 2) }), t.has_logo ? /* @__PURE__ */ (0, H.jsx)("img", {
-			src: ee(t.name, "icon", t.logo_version),
+function fKe({ item: e, actions: t }) {
+	let n = (0, V.useMemo)(() => Afe(e), [e]), [r, i] = (0, V.useState)(!1), a = Math.max(0, n.cast.length - 8), o = (e, n, i) => {
+		let a = e === "performer" && i >= 8 && !r, o = e === "performer" ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", { children: n.name.slice(0, 1) }), /* @__PURE__ */ (0, H.jsx)(q7, { html: N({
+			id: n.id,
+			hasImage: n.has_image,
+			version: n.image_version,
+			focus: n.avatar_focus
+		}) })] }) : e === "studio" ? /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", { children: n.name.slice(0, 2) }), n.has_logo ? /* @__PURE__ */ (0, H.jsx)("img", {
+			src: ee(n.name, "icon", n.logo_version),
 			alt: "",
 			loading: "lazy",
 			"data-drop": "self"
-		}) : null] }) : /* @__PURE__ */ (0, H.jsx)("span", { children: t.name.slice(0, 1) }), s = /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", {
+		}) : null] }) : /* @__PURE__ */ (0, H.jsx)("span", { children: n.name.slice(0, 1) }), s = /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("span", {
 			"data-id-face": "",
 			children: o
 		}), /* @__PURE__ */ (0, H.jsx)("span", {
 			"data-id-name": "",
-			children: t.name
-		})] }), c = e === "performer" && r >= 8 ? { "data-castoverflow": "" } : {};
-		return t.id ? /* @__PURE__ */ (0, H.jsx)("button", {
+			children: n.name
+		})] }), c = e === "performer" && i >= 8 ? { "data-castoverflow": "" } : {};
+		return n.id ? /* @__PURE__ */ (0, H.jsx)("button", {
 			type: "button",
 			"data-id-cell": e,
 			"data-entity-kind": e,
-			"data-entity-name": t.name,
-			title: t.name,
+			"data-entity-name": n.name,
+			title: n.name,
 			hidden: a,
 			...c,
-			onClick: () => n.openEntity(e, t.name),
+			onClick: () => t.openEntity(e, n.name),
 			children: s
-		}, `${e}:${t.name}`) : /* @__PURE__ */ (0, H.jsx)("span", {
+		}, `${e}:${n.name}`) : /* @__PURE__ */ (0, H.jsx)("span", {
 			"data-id-cell": e,
-			title: t.name,
+			title: n.name,
 			hidden: a,
 			...c,
 			children: s
-		}, `${e}:${t.name}`);
-	}, c = (e, t, n, r = null) => n.length ? /* @__PURE__ */ (0, H.jsxs)("section", {
+		}, `${e}:${n.name}`);
+	}, s = (e, t, n, r = null) => n.length ? /* @__PURE__ */ (0, H.jsxs)("section", {
 		"data-id-group": t,
 		children: [/* @__PURE__ */ (0, H.jsx)("h5", {
 			"data-id-label": "",
 			children: e
 		}), /* @__PURE__ */ (0, H.jsxs)("div", {
 			"data-id-row": "",
-			children: [n.map((e, n) => s(t, e, n)), r]
+			children: [n.map((e, n) => o(t, e, n)), r]
 		})]
-	}, `${t}:${e}`) : null, l = [
-		r.unowned ? /* @__PURE__ */ (0, H.jsxs)("section", {
+	}, `${t}:${e}`) : null, c = [
+		n.unowned ? /* @__PURE__ */ (0, H.jsxs)("section", {
 			"data-id-group": "unowned",
 			children: [/* @__PURE__ */ (0, H.jsx)("h5", {
 				"data-id-label": "",
@@ -78808,7 +78808,7 @@ function fKe({ item: e, helpers: t, actions: n }) {
 					"data-id-cell": "unowned",
 					"data-open-unowned": "",
 					title: "打开未归属：馆藏里没有署名人的作品",
-					onClick: n.openUnowned,
+					onClick: t.openUnowned,
 					children: [/* @__PURE__ */ (0, H.jsx)("span", {
 						"data-id-face": "",
 						children: /* @__PURE__ */ (0, H.jsx)(K7, { name: "user-round" })
@@ -78818,42 +78818,42 @@ function fKe({ item: e, helpers: t, actions: n }) {
 					})]
 				})
 			})]
-		}, "unowned") : c(te(e), "performer", r.cast, o && !i ? /* @__PURE__ */ (0, H.jsxs)("button", {
+		}, "unowned") : s(te(e), "performer", n.cast, a && !r ? /* @__PURE__ */ (0, H.jsxs)("button", {
 			type: "button",
 			id: "castMore",
 			"data-cast-more": "",
-			onClick: () => a(!0),
+			onClick: () => i(!0),
 			children: [
 				"还有 ",
-				o,
+				a,
 				" 位"
 			]
 		}) : null),
-		c("厂牌", "studio", r.studios),
-		c("片商", "studio", r.makers)
+		s("厂牌", "studio", n.studios),
+		s("片商", "studio", n.makers)
 	].filter(Boolean);
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		"data-item-identity": "",
 		children: [
-			l.length ? /* @__PURE__ */ (0, H.jsx)("div", {
+			c.length ? /* @__PURE__ */ (0, H.jsx)("div", {
 				"data-identity-primary": "",
-				children: l
+				children: c
 			}) : null,
-			c("创作者", "creator", r.creators),
-			r.series.length ? /* @__PURE__ */ (0, H.jsxs)("section", {
+			s("创作者", "creator", n.creators),
+			n.series.length ? /* @__PURE__ */ (0, H.jsxs)("section", {
 				"data-id-group": "series",
 				children: [/* @__PURE__ */ (0, H.jsx)("h5", {
 					"data-id-label": "",
 					children: "系列"
 				}), /* @__PURE__ */ (0, H.jsx)("div", {
 					"data-series-rows": "",
-					children: r.series.map((e) => e.id ? /* @__PURE__ */ (0, H.jsxs)("button", {
+					children: n.series.map((e) => e.id ? /* @__PURE__ */ (0, H.jsxs)("button", {
 						type: "button",
 						"data-series-link": "",
 						"data-entity-kind": "series",
 						"data-entity-name": e.name,
 						title: e.name,
-						onClick: () => n.openEntity("series", e.name),
+						onClick: () => t.openEntity("series", e.name),
 						children: [/* @__PURE__ */ (0, H.jsx)(K7, { name: "tags" }), /* @__PURE__ */ (0, H.jsx)("span", { children: e.name })]
 					}, e.name) : /* @__PURE__ */ (0, H.jsxs)("span", {
 						"data-series-link": "",

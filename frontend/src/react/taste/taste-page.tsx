@@ -16,8 +16,8 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import {
   RiArrowDownSLine, RiArrowRightSLine, RiCompassLine, RiDatabase2Line, RiDeleteBinLine,
-  RiEyeLine, RiGlobalLine, RiHistoryLine, RiPriceTag3Line, RiSearchLine, RiThumbDownLine,
-  RiThumbUpLine, RiUploadLine, RiUserLine,
+  RiEyeLine, RiHistoryLine, RiPriceTag3Line, RiSearchLine, RiThumbDownLine,
+  RiThumbUpLine, RiUploadLine,
 } from '@remixicon/react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Popover, Tab, TabPanel, Tabs } from 'react-aria-components';

@@ -26,7 +26,7 @@ import type { OnlineAuthor, OnlineTag } from '../follow/online-vocab';
 import {
   INDEX_TITLES, ONLINE_TAG_CATEGORIES, TAG_CATEGORIES, countText, flatItems, indexQuery, indexRoute, indexSource, isCompany,
   isPeople, tagGroups, type IndexKind, type IndexPage as Page, type IndexPerson, type IndexProps,
-  type IndexRoute, type IndexScope, type IndexTag, type PeopleLayout, type TagView,
+  type IndexRoute, type IndexScope, type IndexTag, type PeopleLayout,
 } from './index-data';
 import { OnlineAuthors, PeopleGrid } from './index-people';
 import { TagAlphabet, TagCloud, TagDock, TagFilters, type TagEntry } from './index-tags';

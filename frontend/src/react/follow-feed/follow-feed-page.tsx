@@ -96,7 +96,7 @@ function useFacets(data: FollowPage | null, view: FollowView, seed: number) {
 type Facets = ReturnType<typeof useFacets>;
 
 export function FollowFeedPage(props: FollowFeedProps) {
-  const { view, seed, revision, helpers, actions } = props;
+  const { view, seed, revision, actions } = props;
   const query = followFeedQuery(view, revision);
   const result = useInfiniteQuery(query);
   const credentialsResult = useQuery({

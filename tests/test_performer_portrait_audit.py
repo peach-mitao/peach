@@ -563,9 +563,9 @@ class PerformerPortraitAuditTests(unittest.TestCase):
     def test_csv_replace_failure_preserves_the_previous_resume_file(self):
         previous = "existing resume data\n"
         self.out.write_text(previous, encoding="utf-8")
-        # 原子替换本身收进了 peach.review_csv，patch 目标要跟着代码走；这里仍然验的是
-        # 这个脚本的 write_csv 端到端行为：替换失败时替换前那份续跑文件必须原样保留。
-        with mock.patch("peach.review_csv.os.replace", side_effect=OSError("locked")):
+        # 时钟跨过重试期限；真实写入与失败清理仍由 write_csv 执行。
+        with mock.patch("peach.fsutil.os.replace", side_effect=OSError("locked")), \
+                mock.patch("peach.fsutil.time.monotonic", side_effect=[0.0, 11.0]):
             with self.assertRaisesRegex(OSError, "locked"):
                 self.module.write_csv(self.out, [{"section": "missing"}])
         self.assertEqual(self.out.read_text(encoding="utf-8"), previous)

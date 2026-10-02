@@ -4350,13 +4350,43 @@ describe('设计决定', () => {
     }
   });
 
-  it('亮暗卡片、按钮与回执使用克制的接触阴影', { timeout: 60_000 }, async () => {
+  it('亮暗按钮保持尺寸与悬停面色，卡片和回执保持接触阴影', { timeout: 60_000 }, async () => {
     const opened = await visit(browser, '/stats', DESKTOP);
     try {
       // 选中的那张页签按基线收掉接触阴影，读旁边没选中的一张。
       const card = opened.page.locator('#main [class~="shadow-card"]:not([data-selected])').first();
       await card.waitFor({ timeout: 15_000 });
       await settle(opened.page);
+      const checkSecondaryButton = async () => {
+        await opened.page.mouse.move(0, 0);
+        const dimensions = await opened.page.evaluate(() => {
+          const holder = document.createElement('div');
+          holder.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:10000';
+          const button = document.createElement('button');
+          button.className = 'geist-button';
+          button.dataset.buttonProbe = '';
+          button.textContent = '操作';
+          holder.append(button);
+          document.body.append(holder);
+          const style = getComputedStyle(button);
+          return [style.boxSizing, style.height, style.paddingTop, style.paddingRight,
+            style.borderTopWidth, style.display];
+        });
+        assert.deepEqual(dimensions, ['border-box', '36px', '8px', '12px', '1px', 'inline-flex']);
+        const button = opened.page.locator('[data-button-probe]');
+        try {
+          const idle = await button.evaluate(element => getComputedStyle(element).backgroundColor);
+          assert.equal(idle, await tokenColor(opened.page, 'body', '--color-background-primary-default'));
+          const border = await button.evaluate(element => getComputedStyle(element).borderTopColor);
+          await button.hover();
+          await settle(opened.page);
+          const hovered = await button.evaluate(element => getComputedStyle(element).backgroundColor);
+          assert.equal(hovered, await tokenColor(opened.page, 'body', '--control-hover'));
+          assert.equal(await button.evaluate(element => getComputedStyle(element).borderTopColor), border);
+        } finally {
+          await button.evaluate(element => element.parentElement!.remove());
+        }
+      };
       /* Tailwind 把阴影 token 的字面值抄进工具类，`.dark` 里改 `--shadow-*` 够不着它；
          旧样式表里写死的浅色阴影同样不跟主题走。读三类来源各一处的计算值。 */
       const alphas = () => opened.page.evaluate(() => {
@@ -4384,12 +4414,14 @@ describe('设计决定', () => {
         document.documentElement.classList.remove('dark');
       });
       const light = await alphas();
+      await checkSecondaryButton();
       // `web/app.js` 的 `applyTheme('dark')` 就是这两句；这里只借它换一次配色。
       await opened.page.evaluate(() => {
         document.documentElement.dataset.theme = 'dark';
         document.documentElement.classList.add('dark');
       });
       const dark = await alphas();
+      await checkSecondaryButton();
       for (const key of Object.keys(light) as Array<keyof typeof light>) {
         assert.ok(light[key] > 0 && light[key] < .2, `浅色下 ${key} 的阴影 ${light[key]} 不在浅色那一档`);
         assert.ok(dark[key] > light[key] && dark[key] <= .2,

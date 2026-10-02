@@ -26,6 +26,7 @@
 import ast
 import pathlib
 import unittest
+from types import MappingProxyType
 
 TESTS = pathlib.Path(__file__).resolve().parent
 
@@ -40,7 +41,7 @@ BASELINE: dict[str, int] = {
     "test_fastapi_api.py": 4,
     "test_follow_assets.py": 1,
     "test_follow_web.py": 122,
-    "test_frontend_build.py": 77,
+    "test_frontend_build.py": 76,
     "test_job_status.py": 3,
     "test_metadata_library.py": 7,
     "test_repo_hygiene.py": 2,
@@ -53,7 +54,7 @@ BASELINE: dict[str, int] = {
     "test_web_e2e.py": 2,
     "test_web_js.py": 1,
     "test_web_settings.py": 5,
-    "test_web_ui.py": 2103,
+    "test_web_ui.py": 2101,
     "test_windows_update.py": 3,
 }
 
@@ -228,6 +229,10 @@ def survey() -> dict[str, int]:
 
 
 class SourceAssertionRatchetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.current = MappingProxyType(survey())
+
     def test_the_counter_tells_repository_text_from_runtime_output(self):
         source = (
             "import pathlib, unittest\n"
@@ -260,13 +265,13 @@ class SourceAssertionRatchetTests(unittest.TestCase):
 
     def test_no_test_file_grew_past_its_baseline(self):
         grown = sorted(f"{name}: {count}（基线 {BASELINE.get(name, 0)}）"
-                       for name, count in survey().items() if count > BASELINE.get(name, 0))
+                       for name, count in self.current.items() if count > BASELINE.get(name, 0))
         self.assertEqual(grown, [],
                          "这些测试文件的源码文本断言多了。别改写成别的断言绕过，按本文件开头的"
                          "去向换成行为验收：\n  " + "\n  ".join(grown))
 
     def test_the_baseline_only_ratchets_down(self):
-        current = survey()
+        current = self.current
         stale = sorted(f"{name}: 现在 {current.get(name, 0)}，基线 {value}"
                        for name, value in BASELINE.items() if current.get(name, 0) < value)
         self.assertEqual(stale, [],

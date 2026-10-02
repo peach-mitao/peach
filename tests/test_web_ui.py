@@ -549,10 +549,7 @@ class WebUiSourceTests(unittest.TestCase):
         """
         css = stylesheet_source()
         secondary_hover = "background:color-mix(in srgb,var(--ink) 8%,var(--ground))"
-        self.assertCode(".geist-button{box-sizing:border-box;height:32px;padding:0 14px;"
-                        "border:0;border-radius:var(--control-radius);"
-                        "background:var(--ground);color:var(--ink);display:inline-flex;")
-        self.assertPageContains(f".geist-button:hover:not(:disabled){{{secondary_hover}}}")
+        # 尺寸、面色与悬停由 design.test.ts 在完整样式表加载后读取计算值。
         # 强调档那一面只有 `board.css` 一处（`test_the_primary_tier_has_one_face_and_crossfades_into_its_hover`）。
         # 这一层再写一份的话，它的 `:hover:not(:disabled)` 比 Board 那条静止规则重一个类，
         # 同一颗按钮的静止和悬停就分别由两处给出。
