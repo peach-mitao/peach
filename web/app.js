@@ -19,7 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
-import { loadRouter, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting } from './dist/peach-ui.js';
+import { loadRouter, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -444,7 +444,8 @@ const claimSurface=path=>{
   /* 管理区正文的容器每次换页都经过这里，所以卸载也落在这里。React 档的页面是一棵自己
      管取数的根：不卸掉它，离开之后那棵根还活着，有轮询的页面照着原节律继续敲库。
      没挂过东西的容器 unmountIsland 直接返回，逐页判断反而会漏掉新迁过来的那一页。
-     由路由树画的那几页（`openManagedRoute`）同样在这里收：详情舞台压在它们上面时不经过这里，页面留着。 */
+     由路由树画的那几页（`openManagedRoute`，`#stats` 与 `#index` 各一页）同样在这里一起收：详情舞台压在
+     它们上面时不经过这里，页面留着。 */
   releaseManagedRoute();
   unmountIsland($('#stats'));
   /* 资料页那块（换头像挂在它的圆框上）在管理区打开时只是被藏起来，DOM 还在。 */
@@ -455,8 +456,9 @@ const claimSurface=path=>{
   surfaceRequests?.abort();
   surfaceRequests=new AbortController();
   surfaceEpoch++;return surfaceToken(path)};
-/* 由路由树画的那几页画进管理区正文，取数期间壳换了页就不画。 */
+/* 由路由树画的那几页：管理区画进 `#stats`，索引页画进 `#index`；取数期间壳换了页就不画。 */
 const managedSurface=token=>({container:$('#stats'),isCurrent:()=>surfaceCurrent(token)});
+const indexSurface=token=>({container:$('#index'),isCurrent:()=>surfaceCurrent(token)});
 /* 表面级读请求：带上这个表面的 signal，被取消时返回 null 而不是抛错。
    取消只可能由 claimSurface 触发，而它已经推进了 epoch，所以调用点紧随其后的
    `surfaceCurrent()` 必然为假、走的是同一条过期分支——不用给每个表面套一层
@@ -1032,14 +1034,14 @@ function paintSelection(){
   /* 浮条宿主在 `#main` 外面，玻璃贴图的观察器看不到它长出来，画完补扫一遍。 */
   if(batchDockApi()){batchDockApi().render(batchDockProps);syncGlassOptics()}
 }
-/* 标签页的多选归 React 页面自己记：键在壳里，所以开关一变就推给正挂着的那一页，关掉时
-   页面随之清空所选。别的页面上没有挂着的索引页，`updateIsland` 是空操作。 */
+/* 标签页的多选归 React 页面自己记：键在壳里，所以开关一变就推给正画着的那一页，关掉时
+   页面随之清空所选。别的页面上 `#index` 里没有画着的索引页，`updateManagedRoute` 是空操作。 */
 function setSelectMode(on,clear=false){
   if(on&&!selectMode)selectSurface=currentSelectSurface();
   selectMode=!!on;if(!selectMode)selectSurface='';document.body.classList.toggle('select-mode',selectMode);
   if(selectMode)releaseHoverPreviews();
   $('#selectMode').setAttribute('aria-pressed',selectMode);if(clear){selected.clear();followSelected.clear();lastSelectedId=null;followLastSelectedId=null}paintSelection();
-  if(location.pathname==='/tags')updateIsland($('#index'),{selectMode})}
+  if(location.pathname==='/tags')updateManagedRoute($('#index'),{selectMode})}
 /* 只取网格直属卡片：竖屏条是嵌在网格里的横向滚动条，不该被 Shift 范围选中顺带框进来。 */
 function visibleCardIds(){return [...gridCards()].map(card=>+card.dataset.id)}
 function toggleSelection(id,range=false){
@@ -1640,8 +1642,9 @@ function showHomeSurfaces(){
   // 而且下面那一行 style.display='' 恢复不了被 class 隐藏的元素。
   document.body.classList.remove('entity-open','index-open');
   /* 索引页和资料页都画进 #index，两条路都先经过这里再 `innerHTML=`：直接盖掉的话，
-     上一页挂在里面的 React 根（换头像）就没人卸，留着一棵管着已经不在页面上的节点的根。 */
-  unmountIsland($('#index'));
+     上一页挂在里面的 React 根（资料页、换头像）就没人卸，留着一棵管着已经不在页面上的节点的根；
+     路由树画的那一页也在这里收，管理区 `#stats` 那一页不动（资料页压在它上面时它藏着继续活）。 */
+  unmountIsland($('#index'));releaseManagedRoute($('#index'));
   $('#stats').hidden=true;$('#index').hidden=true;
   if(!isFeedNewPath(location.pathname))$('#feedNew').hidden=true;
   $('#catalogFilter').style.display='';syncCatalogFilterScreen();
@@ -2502,15 +2505,10 @@ async function openIndex(kind,push=true){
   document.body.classList.add('index-open');syncCatalogFilterScreen();
   disposeStage(false);
   showIndexSkeleton(params);
-  await mountIsland('index',$('#index'),{...params,layout:peopleIndexLayout(),selectMode,
-    route:(next,{replace=false}={})=>route(indexPath(next),replace),
-    savePreference:({layout})=>{appSettings.peopleLayout=layout;saveSettings()},
-    exitSelectMode:()=>setSelectMode(false,false),
-    personAvatar,authorAvatar:onlineAuthorRingHtml,tagLabel,
-    openEntity:(entityKind,name)=>openEntity(entityKind,name),
-    showTags:showIndexTags,openFollowAuthor:openFollowAuthorFromIndex,openFollowTag:openFollowTagFromIndex,
-    configurable:!!runtimeConfigurable,
-  },{isCurrent:()=>surfaceCurrent(surface)});
+  /* 由路由树画：页内换档、存版式、退出选择、头像与去处都在 `shellActions` 里，跟着打开走的只有地址上
+     那四项与此刻的版式、选择键和配置权限。 */
+  await openManagedRoute('/'+kind,{...params,layout:peopleIndexLayout(),selectMode,
+    configurable:!!runtimeConfigurable},indexSurface(surface));
   if(!surfaceCurrent(surface))return;
   syncNavigation();scheduleStickySurfaces();
 }
@@ -3930,6 +3928,15 @@ const shellActions={
     saveSettings();
   },
   srcBadge:(location,cost)=>srcBadge(location,cost),
+  /* 索引页：同一页换 search 由壳认领、不重挂；后退前进到另一份 search 时 `restoreRoute` 照旧重开。 */
+  routeIndex:(next,{replace=false}={})=>route(indexPath(next),replace),
+  savePeopleLayout:({layout})=>{appSettings.peopleLayout=layout;saveSettings()},
+  exitSelectMode:()=>setSelectMode(false,false),
+  personAvatar:(item,entityKind,big)=>personAvatar(item,entityKind,big),
+  authorAvatar:author=>onlineAuthorRingHtml(author),
+  showIndexTags,
+  openFollowAuthor:openFollowAuthorFromIndex,
+  openFollowTag:openFollowTagFromIndex,
 };
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();

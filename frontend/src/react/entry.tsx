@@ -16,8 +16,6 @@ import { prefetchFeedNew } from './feed-new/feed-new';
 import { FeedNewPage } from './feed-new/feed-new-page';
 import { prefetchFollowFeed } from './follow-feed/follow-feed';
 import { FollowFeedPage } from './follow-feed/follow-feed-page';
-import { prefetchIndex } from './index/index-data';
-import { IndexPage } from './index/index-page';
 import { JunkQueuePage } from './junk-queue/junk-queue-page';
 import { prefetchLibraryProcessing } from './library-processing/library-processing';
 import { LibraryProcessingCard } from './library-processing/library-processing-card';
@@ -66,7 +64,6 @@ export const pages: Bundle.ReactPages = {
   'feed-new': { prefetch: prefetchFeedNew, mount: mounter(FeedNewPage) },
   /* 关注列表第一页与凭据两趟并行，挂上就是最终样子；换筛选之后的取数由页面自己的查询驱动。 */
   'follow-feed': { prefetch: prefetchFollowFeed, mount: mounter(FollowFeedPage) },
-  index: { prefetch: (props, signal) => prefetchIndex(props, signal), mount: mounter(IndexPage) },
   /* 分类条由地址决定、挂上就画得出最终样子，等的只有读数：首屏不在这里等，由页面自己的
      查询驱动等待态（`junk-queue-page.tsx` 开头）。 */
   'junk-queue': { prefetch: async () => {}, mount: mounter(JunkQueuePage) },

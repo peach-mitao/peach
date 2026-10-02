@@ -100,6 +100,7 @@ export function routeSeen(seen: number): void {
 }
 
 export {
-  connectManagedRoutes, listenManagedEntry, managedEntry, openManagedRoute, releaseManagedRoute,
+  connectManagedRoutes, listenManagedEntry, managedEntries, managedEntry, openManagedRoute, releaseManagedRoute,
+  updateManagedRoute,
   type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
 } from './managed';

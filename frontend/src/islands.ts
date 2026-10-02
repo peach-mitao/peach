@@ -47,7 +47,6 @@ export interface IslandContracts {
   'entity-page': ReactBundle.EntityPageProps;
   'feed-new': ReactBundle.FeedNewProps;
   'follow-feed': ReactBundle.FollowFeedProps;
-  index: ReactBundle.IndexProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   playlists: ReactBundle.PlaylistsProps;
@@ -69,7 +68,6 @@ const REGISTRY: { [N in IslandName]: Island } = {
   'entity-page': { react: 'entity-page' },
   'feed-new': { react: 'feed-new' },
   'follow-feed': { react: 'follow-feed' },
-  index: { react: 'index' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   playlists: { react: 'playlists' },

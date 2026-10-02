@@ -475,7 +475,6 @@ export interface ReactPages {
   'entity-page': ReactPage<EntityPageProps>;
   'feed-new': ReactPage<FeedNewProps>;
   'follow-feed': ReactPage<FollowFeedProps>;
-  index: ReactPage<IndexProps>;
   'junk-queue': ReactPage<JunkQueueProps>;
   'library-processing': ReactPage<LibraryProcessingProps>;
   playlists: ReactPage<PlaylistsProps>;

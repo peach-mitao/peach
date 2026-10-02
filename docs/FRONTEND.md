@@ -52,12 +52,12 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 索引页
 
-`/performers`、`/creators`、`/studios`、`/agencies`、`/tags` 五张索引页整个是 React（`frontend/src/react/index/`，入口 `index-page.tsx`），挂在 `#index` 上。
+`/performers`、`/creators`、`/studios`、`/agencies`、`/tags` 五张索引页整个是 React（`frontend/src/react/index/`，入口 `index-page.tsx`），由路由树画进 `#index`。
 
-- 地址栏是唯一真相。壳的 `openIndex` 从地址读出 `q`、`scope`、`view`、`category` 作初值挂上来；页面换档只改自己的状态，经 `route` 写回地址，不重挂。从侧栏进来一律回到本地、字母表、全部类型。
+- 地址栏是唯一真相。壳的 `openIndex` 从地址读出 `q`、`scope`、`view`、`category`，经 `openManagedRoute` 作初值交进来；页面换档只改自己的状态，经 `ShellActions.routeIndex` 由壳写回地址并认领，不重挂。后退前进到另一份 search 时壳照旧重开。从侧栏进来一律回到本地、字母表、全部类型。
 - 本地名册与词表读 `/api/index`，在线那一档读 `/api/follow/authors` 与 `/api/follow/tags`，键建在 `frontend/src/react/follow/online-vocab.ts`，归关注那一侧。四份都是 `useInfiniteQuery`，「载入更多」取下一页；打字过滤时新结果到手前留着上一份，不铺骨架。
 - 圆框里那段 HTML 由 `card-art/markup.ts` 的 `avatarInner` 拼，经壳的 `personAvatar` 递进来；原尺寸摆图、补底与首字母收起的规则在 `web/css/01-base.css` 的 `[data-person-ring]`，量图的是 `installCardArt()` 挂在文档上的 `load` 监听。
-- 顶栏选择键归壳，本地标签页读它：关掉时壳经 `updateIsland` 把 `selectMode:false` 推进来，页面清空所选。所选标签的操作条三颗键都不写账本，「显示结果」回目录按所选标签筛选。
+- 顶栏选择键归壳，本地标签页读它：关掉时壳经 `updateManagedRoute` 把 `selectMode:false` 推进来，页面清空所选。所选标签的操作条三颗键都不写账本，「显示结果」回目录按所选标签筛选。
 - 壳在数据回来之前铺的骨架仍是 `web/js/ui-components.js` 的 `indexSkeletonHtml`，页头骨架与页面同一组文字。
 
 ### 播放列表页
@@ -103,12 +103,12 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 客户端导航
 
-React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文由路由树画。
+React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文与五张索引页由路由树画。
 
-- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页经 portal 画进 `#stats`。
-- 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十页与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
-- 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主，宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。`claimSurface` 调 `releaseManagedRoute` 收起；详情舞台推 `/item/:id` 不经过它，页面留在舞台下面。
-- `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、云下载预填）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径交 `actions.navigate`。配置页页签与云下载预填先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
+- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页经 portal 画进 `#stats`，索引页画进 `#index`。
+- 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十五页与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
+- 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主，宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。两个容器各记一条、互不相收：`claimSurface` 调 `releaseManagedRoute()` 一起收，`showHomeSurfaces` 只收 `#index` 那一条，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
+- `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、云下载预填）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页）交 `actions.navigate`。配置页页签与云下载预填先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 派发判据是序号：每次历史变化领一个 `seq`；`shellNavigate` 写的那一次当场认领，不派发；后退前进与 React 子树里的 `navigate` 没人认领，派发一次。地址不变的 `popstate` 也领新序号，照样派发。
 - 启动：壳在启动链上 `startRouting(restoreRoute)` 派发第一次，并认领到当时的序号。Router 先挂上时它报的序号已在其中；后挂上时读到的初值就是这一个。包到之前发生的后退前进，等 Router 挂上时补派一次。判据钉在 `test/react/router.test.tsx`。
 
