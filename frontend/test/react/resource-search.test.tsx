@@ -48,14 +48,14 @@ it('查询等待期间保持输入焦点并拦截重复回车，完成后恢复�
   expect(input.disabled).toBe(false);
   expect(input.readOnly).toBe(true);
   expect(document.activeElement).toBe(input);
-  expect(input.getAttribute('aria-busy')).toBe('true');
+  expect(section(host, '资源搜索')?.getAttribute('aria-busy')).toBe('true');
   expect(host.textContent).toContain('正在搜索资源');
   await act(async () => { enter() });
   expect(fetch).toHaveBeenCalledTimes(1);
   await act(async () => finish({ ok: true, json: async () => ({ state: 'ready', items: [], warnings: [], error: '' }) }));
   await settle();
   expect(input.readOnly).toBe(false);
-  expect(input.getAttribute('aria-busy')).toBe('false');
+  expect(section(host, '资源搜索')?.getAttribute('aria-busy')).toBe('false');
   expect(host.textContent).not.toContain('正在搜索资源');
 });
 
