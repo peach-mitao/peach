@@ -253,17 +253,17 @@ class ContractRegistrationTests(unittest.TestCase):
                          web_settings.OPTIONAL_SIDEBAR_KEYS)
 
     def test_the_metadata_refresh_choices_match_the_web_surface(self):
-        """选项两边各一份：服务端多一个前端没有的值，页面就会把账本里的值打回默认。"""
+        """选项前后端各一份：服务端多一个前端没有的值，页面就会把账本里的值打回默认。
+
+        前端那一份在外观应用层（`appearance/settings.ts`），设置面板从 `@peach/appearance` 读同一份。
+        """
         import re
 
         root = Path(__file__).resolve().parents[1]
         settings = (root / "frontend/src/appearance/settings.ts").read_text(encoding="utf-8")
         panel = (root / "frontend/src/react/settings-panel/settings-panel.tsx").read_text(encoding="utf-8")
-        for source, pattern in ((settings, r"const METADATA_REFRESH_DAYS: readonly number\[\] = \[(.*?)\];"),
-                                (panel, r"const METADATA_REFRESH_DAYS = \[(.*?)\];")):
-            raw = re.search(pattern, source).group(1)
-            self.assertEqual(tuple(int(item) for item in raw.split(",")),
-                             web_settings.METADATA_REFRESH_DAYS)
+        raw = re.search(r"const METADATA_REFRESH_DAYS: readonly number\[\] = \[(.*?)\];", settings).group(1)
+        self.assertEqual(tuple(int(item) for item in raw.split(",")), web_settings.METADATA_REFRESH_DAYS)
         # 设置面板那一格（`settings-panel` 岛）列的档位与服务端同一组。
         options = re.search(r"const METADATA_OPTIONS: readonly Choice\[\] = \[(.*?)\];", panel).group(1)
         self.assertEqual(sorted(int(value) for value in re.findall(r"\['(\d+)',", options)),

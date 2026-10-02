@@ -100,8 +100,6 @@ export interface JunkQueueProps extends JunkRoute {
   countRow: HTMLElement | null;
   /** 网格骨架的 HTML（遗留层 `pageSkeletonHtml`），和壳首屏铺的是同一份。 */
   skeletonHtml(): string;
-  /** 取回的条目交给壳的缓存：批量操作按 id 从那里查。 */
-  cache(items: JunkItem[]): void;
   /** 一次取数落定（成功、为空或失败）：`revision` 是那一次的代次，壳据此放行等着它的调用方。 */
   settled?(revision: number): void;
   /** 此刻能不能往下露下一段：管理区或索引页盖在上面时不露。 */

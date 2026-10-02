@@ -108,8 +108,6 @@ export interface CatalogGridProps {
   seekSeconds: number;
   /** 刷新代次：壳要求重读时加一，查询随之换键重取，不重挂。 */
   revision: number;
-  /** 取回的条目交给壳的缓存：详情页、播放队列与批量操作按 id 从那里查。 */
-  cache(items: MediaItem[]): void;
   /** 骨架的 HTML（遗留层 `pageSkeletonHtml`），和壳首屏铺的是同一份。 */
   skeletonHtml(): string;
   /** 横排接上拖动滚动（遗留层 `wireDrag`）。 */

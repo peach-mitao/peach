@@ -519,7 +519,7 @@ function scrubCancel(): void {
 type FeedbackKind = 'dislike' | 'seen' | 'o';
 interface FeedbackResult { feedback?: string | null; disposal?: string | null; o_count?: number }
 
-/** 写一次反馈，回执换进 `['item', id]`，目录里同一张卡与壳的条目缓存跟着换。 */
+/** 写一次反馈，回执换进 `['item', id]`，目录里同一张卡跟着换。 */
 export async function sendFeedback(id: number, kind: string): Promise<FeedbackResult> {
   const result = await apiSend<FeedbackResult>(FEEDBACK_URL, { id, kind });
   const before = queryClient.getQueryData<DetailItem>(itemKey(id));
@@ -532,7 +532,6 @@ export async function sendFeedback(id: number, kind: string): Promise<FeedbackRe
   replaceCatalogItem(id, {
     feedback: next.feedback, disposal: next.disposal, watch_later: next.watch_later, rating: next.rating, o_count: next.o_count,
   });
-  immerseHost().cache(next);
   return result;
 }
 

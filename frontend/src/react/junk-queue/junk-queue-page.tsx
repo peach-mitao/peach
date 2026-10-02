@@ -30,15 +30,9 @@ const sameRoute = (key: readonly unknown[], route: JunkRoute) => key[1] === rout
 
 export function JunkQueuePage(props: JunkQueueProps) {
   const route: JunkRoute = { kind: props.kind, view: props.view };
-  const cacheItems = useRef(props.cache);
-  cacheItems.current = props.cache;
   const query = useQuery<JunkPage, Error>({
     queryKey: junkQueryKey(route, props.revision),
-    queryFn: async ({ signal }) => {
-      const page = await fetchJunkPage(route, signal);
-      cacheItems.current(page.items);
-      return page;
-    },
+    queryFn: ({ signal }) => fetchJunkPage(route, signal),
     placeholderData: (previous, previousQuery) =>
       (previousQuery && sameRoute(previousQuery.queryKey, route) ? previous : undefined),
   });

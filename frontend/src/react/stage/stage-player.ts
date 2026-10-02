@@ -32,8 +32,6 @@ export interface StagePlayerHost {
   expand(kind: StageKind, id: number, mediaIndex: number | null): void;
   /** 小窗接不了的卡片照常打开详情。 */
   openItem(id: number): void;
-  /** 小窗里换片取到的条目写进壳的缓存，卡片与详情读同一份。 */
-  cache(item: PlayerItem): void;
 }
 
 /** 小窗组件画好之后登记进来的节点；播放态、时间与比例随播放器事件直接写在它们身上。 */
@@ -397,7 +395,6 @@ export async function miniplayerPlay(id: number): Promise<void> {
   if (mine !== token || !miniplayerActive() || !held || !dom) return;
   if (!item || item.error) return;
   if (!miniplayerTakesCard(item)) { stageHost().openItem(id); return }
-  stageHost().cache(item);
   const previous = held;
   unbindHeld(previous);
   if (detailPlayer() === previous.player) setDetailPlayer(null);

@@ -971,8 +971,6 @@ $('#q').value=state.q;rememberSearchValue();
    画出来那一刻（`present`）才推。 */
 let total=0,facets=null,detailReturnPath='/',activeQueue=null,pendingQueueRoute=null,presentedItem=null;
 let detailOriginAnchor=null,detailOriginAbove=false,detailReturnNeedsRestore=false;
-const CACHE={};
-const cache=items=>{items.forEach(x=>CACHE[x.id]=x);return items};
 /* ── 详情舞台（`frontend/src/react/stage/`）──
    浮窗、进出场、骨架、两座详情、播放器与小窗都归舞台岛，壳只留来处（`detailReturnPath`、
    `followDetailReturnPath`、`detailOriginAnchor`）与命令式入口。舞台岛所在的 React 包在第一次
@@ -987,7 +985,6 @@ const stageHost={
   /* 小窗里的「展开」：同一个播放器搬回这一条的详情，地址与来处照点卡片进来的那一条走。 */
   expand:(kind,id,mediaIndex)=>{if(kind==='follow')void openFollowDetail(id,true,mediaIndex);else void openItem(id,true)},
   openItem:id=>void openItem(id),
-  cache:it=>{CACHE[it.id]=it},
 };
 const stageOpen=()=>!!stageApi()?.isOpen();
 /* 深链带 `?t=`：第一次挂上这一条时从这一刻接着放。 */
@@ -1170,9 +1167,11 @@ window.addEventListener('resize',()=>{
   coverRecheck=setTimeout(()=>$('#index').querySelectorAll('img.cover').forEach(img=>{
     if(img.complete)upgradeCover(img)}),200);
 },{passive:true});
-function openResourceCard(id,anchor=null){
-  const item=CACHE[id];
-  if(!item||!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
+/* 回收站里的一张卡：视频开详情，本地图片在新标签页开原图，其余只切换选中。判据只看卡上的
+   `medium` 与 `location`，网格把这张卡原样递过来。 */
+function openResourceCard(item,anchor=null){
+  const id=item.id;
+  if(!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
   if(item.medium==='image'&&item.location!=='online'){
     window.open('/photo?id='+id,'_blank','noopener');return
   }
@@ -1184,7 +1183,7 @@ const mixRelatedCache=new Map();
 function mixRelated(seedId){
   if(!mixRelatedCache.has(seedId))
     mixRelatedCache.set(seedId,api('/api/related?id='+seedId+'&limit=28')
-      .then(d=>cache((d.items||[]).filter(x=>x.id!==seedId)))
+      .then(d=>(d.items||[]).filter(x=>x.id!==seedId))
       .catch(error=>{mixRelatedCache.delete(seedId);throw error}));
   return mixRelatedCache.get(seedId);
 }
@@ -1238,7 +1237,7 @@ async function runResourceOperation(it,operation){
 }
 const gridActions={
   open:(it,anchor)=>openGridCard(it,anchor),
-  openResource:(it,anchor)=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openResourceCard(it.id,anchor),
+  openResource:(it,anchor)=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openResourceCard(it,anchor),
   openShort:it=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openTok(it.id),
   openShorts:()=>openTok(),
   openMix:(seedId,anchor)=>openMix(seedId,seedId,true,anchor),
@@ -2678,7 +2677,7 @@ function entityPageProps(kind,name,filters,media,hosts){
     photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,
     javLayout:javLayout(),javLayouts:JAV_LAYOUTS,states:VIEW_PILLS,peopleLayout:peopleIndexLayout(),
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
-    groupCollapse:appSettings.groupCollapse,cache,wireDrag,skeletonHtml:entityBodySkeleton,
+    groupCollapse:appSettings.groupCollapse,wireDrag,skeletonHtml:entityBodySkeleton,
     canLoadMore:entityBodyCanLoadMore,
     card:entityCard,helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
@@ -3418,7 +3417,7 @@ function catalogGridProps(){
   return {
     mode:'catalog',helpers:gridHelpers,actions:gridActions,layout:catalogGridLayout(),
     selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,revision:catalogRevision,
-    cache,wireDrag,settled:settleCatalog,
+    wireDrag,settled:settleCatalog,
     skeletonHtml:()=>catalogSkeletonHtml(),
     filters:{...state},batchSize:appSettings.batchSize,groupCollapse:appSettings.groupCollapse,
     /* 只有首页默认列表排除竖屏——那里另有独立的竖屏带承接它们。搜索必须能搜到竖屏作品，
@@ -3481,7 +3480,7 @@ function junkQueueProps(){
   return {
     ...junkRoute(location.search),helpers:junkQueueHelpers,actions:junkQueueActions,
     batchSize:appSettings.batchSize,revision:catalogRevision,selectMode,selected:new Set(selected),
-    countRow:$('#count'),cache,settled:settleCatalog,
+    countRow:$('#count'),settled:settleCatalog,
     skeletonHtml:()=>pageSkeletonHtml('正在读取垃圾文件',{cards:true,className:'catalog-skeleton postercard-skeleton'}),
     canLoadMore:()=>$('#stats').hidden&&$('#index').hidden,
   };
@@ -3600,7 +3599,7 @@ const itemDetailActions={
   close:()=>closeItemDetail(),
   /* 顶栏的实体上下文跟着画出来的这一条走；队列的地址也在这时推，停在哪一条要等岛定下来。 */
   present:item=>{
-    cache([item]);presentedItem=item;
+    presentedItem=item;
     const returnBars=detailReturnBarsContext;
     barsContext={type:'item',id:item.id,filters:returnBars?.type==='entity'
       ? {...returnBars.filters}:emptyEntityFilters()};
@@ -3678,7 +3677,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   await stage.open({kind:'item',
     id,queue,relatedLimit:appSettings.relatedLimit>0?+appSettings.relatedLimit:0,
     helpers:itemDetailHelpers,actions:itemDetailActions,
-    grid:{helpers:gridHelpers,actions:gridActions,cache},
+    grid:{helpers:gridHelpers,actions:gridActions},
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     resume:push||id==null?null:urlResume(),
   });
@@ -3711,7 +3710,6 @@ const immerseHost={
   openItem:id=>void openItem(id),
   openEntity:(kind,name)=>openEntity(kind,name),
   openUnowned:()=>openUnowned(),
-  cache:it=>{CACHE[it.id]=it},
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   warn:message=>toast({text:message},{sound:'warning'}),
   failure:(action,error)=>actionFailure(action,error),

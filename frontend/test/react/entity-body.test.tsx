@@ -47,7 +47,7 @@ function props(patch: Partial<EntityBodyProps> = {}): EntityBodyProps {
     fetchPage: vi.fn(async () => page([])), photos: null, photoSize: 'small', photoLayout: 'masonry',
     helpers: helpers(), actions: actions(),
     layout: { active: false, size: 'small', portrait: false, javImage: 'cover' },
-    selectMode: false, selected: new Set(), seekSeconds: 10, cache: vi.fn(), wireDrag: vi.fn(),
+    selectMode: false, selected: new Set(), seekSeconds: 10, wireDrag: vi.fn(),
     skeletonHtml: () => '<div data-test-skeleton>骨架</div>', groupCollapse: true, canLoadMore: () => false,
     ...patch,
   };

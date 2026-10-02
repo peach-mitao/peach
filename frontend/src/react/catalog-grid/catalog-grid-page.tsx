@@ -216,7 +216,6 @@ function useShortsStrips(
       .then((strip) => {
         const items = strip.items || [];
         if (!items.length) { offset.current = 0; return }
-        props.cache(items);
         setArrived({ page, total: Number(strip.total || 0), items, more: strip.has_more !== false });
       })
       /* 竖屏带是穿插进来的附加内容，取不到就不插，主列表照常。 */

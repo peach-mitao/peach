@@ -23,6 +23,9 @@ export const REACT_BUNDLE = {
 } as const;
 
 export default defineConfig({
+  // 库模式不替换 `process.env.NODE_ENV`。`QueryClient`（`@tanstack/query-core`）随这份产物发出，它的开发期
+  // 告警按这个值判断，不替换的话浏览器里读到一个不存在的 `process`，整个模块加载失败。
+  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: '../web/dist',
     // 产物进 Git，所以目录必须只剩当前构建的东西；残留文件会被一起提交。

@@ -21,6 +21,7 @@ export default mergeConfig(base, defineConfig({
       // React 子树按 `@peach/card-art` 取卡片图片助手，产物里是 peach-ui.js；测试里两边都落到同一份源码。
       '@peach/card-art': source('card-art/index.ts'),
       '@peach/appearance': source('appearance/index.ts'),
+      '@peach/query': source('query/index.ts'),
       '@/registry': source('react/evilcharts/registry'),
       '@/lib/utils': source('react/charts/cn.ts'),
       '@': source('react/boardui'),

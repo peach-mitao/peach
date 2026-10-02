@@ -52,7 +52,7 @@ function actions(): ActionMocks {
 function props(patch: Partial<ItemDetailProps> = {}): ItemDetailProps {
   return {
     id: 1, queue: null, relatedLimit: 0, helpers: helpers(), actions: actions(),
-    grid: { helpers: {} as ItemDetailProps['grid']['helpers'], actions: {} as ItemDetailProps['grid']['actions'], cache: vi.fn() },
+    grid: { helpers: {} as ItemDetailProps['grid']['helpers'], actions: {} as ItemDetailProps['grid']['actions'] },
     layout: {} as ItemDetailProps['layout'], selectMode: false, selected: new Set(), seekSeconds: 10, ...patch,
   };
 }

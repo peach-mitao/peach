@@ -42,7 +42,7 @@ function VideoSection(props: EntityBodyProps) {
         <CatalogGridPage mode="entity" entityKey={`${props.kind}:${props.name}`} revision={props.revision}
           initial={props.items} fetchPage={props.fetchPage} helpers={props.helpers} actions={props.actions}
           layout={props.layout} selectMode={props.selectMode} selected={props.selected}
-          seekSeconds={props.seekSeconds} cache={props.cache} wireDrag={props.wireDrag}
+          seekSeconds={props.seekSeconds} wireDrag={props.wireDrag}
           skeletonHtml={props.skeletonHtml} groupCollapse={props.groupCollapse} canLoadMore={props.canLoadMore} />
       ) : null}
     </div>

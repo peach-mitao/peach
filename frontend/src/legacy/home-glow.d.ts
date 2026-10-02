@@ -1,7 +1,7 @@
 /* `/js/home-glow.js` 的类型声明：光晕的参数模型、预设与色板，壳、设置面板与外观应用层
  * （`src/appearance/`）读同一份。只声明 TypeScript 这一侧用得到的那几样。 */
 export interface GlowSpot { color: string; alpha: number }
-/** 一份光晕设置；形状与 `settings-panel-api.ts` 的 `HomeGlow` 相同。 */
+/** 一份光晕设置。 */
 export interface HomeGlow {
   on: boolean; preset: string; strength: number; noise: number; speed: number; soften: number; size: number;
   spot1: GlowSpot; spot2: GlowSpot; spot3: GlowSpot;

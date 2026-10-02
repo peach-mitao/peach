@@ -13,11 +13,11 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { closeAnchoredMenu, wireAnchoredMenu } from '@peach/legacy/ui';
 import {
   GLOW_SPOT_LABELS, GLOW_SWATCH_FAMILIES, GLOW_SWATCHES, HOME_GLOW_SPOTS, glowColor, glowPresetName, isNativeGlass,
-  normalizeHomeGlow,
+  normalizeHomeGlow, type HomeGlow,
 } from '@peach/legacy/home-glow';
 
 import { GlowPresetGrid } from '../components/glow-preset-grid';
-import type { HomeGlow, SettingsPanelHost } from './settings-panel-api';
+import type { SettingsPanelHost } from './settings-panel-api';
 import { Icon } from './icon';
 import { DialRow } from './legacy-controls';
 

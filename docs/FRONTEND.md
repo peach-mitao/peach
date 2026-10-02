@@ -20,7 +20,8 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
 | `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js` 的手写类型 |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
-| `frontend/src/react/query.ts` | React 子树唯一的 TanStack Query 客户端，页面级 `prefetch` 与组件读的是同一份缓存 |
+| `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
+| `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
 | `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`islands.test.ts` 走挂载契约 |
@@ -267,9 +268,10 @@ await ui.mountIsland('quality-goals', $('#stats'), props, {isCurrent: () => surf
 没有就用 hooks。展开、悬停、翻到第几页这些东西只属于一页，提上去只是把本来局部的
 东西变成全局的。
 
-有第二个读者就让两个读者读**同一个 `queryKey`**，不另建一份状态。整个 React 子树只有
-`src/react/query.ts` 那一个 `QueryClient`（`tests/test_frontend_build.py` 盯着），页面级
-`prefetch` 写进去的那一份，任何组件的 `useQuery` 都直接读得到，谁先谁后都是同一个数。
+有第二个读者就让两个读者读**同一个 `queryKey`**，不另建一份状态。全站只有
+`src/query/client.ts` 那一个 `QueryClient`（`tests/test_frontend_build.py` 盯着），壳与
+React 岛都从 `@peach/query` 取它；页面级 `prefetch` 或壳写进去的那一份，任何组件的
+`useQuery` 都直接读得到，谁先谁后都是同一个数。
 现成的例子是扫描与采集那趟后台任务：`/data-cleanup` 上的卡片（容器 `#libraryProcessing`）
 要进度、结果和重试，目录页顶上那条横幅（容器 `#libraryProcessingNotice`）只要一句话和一个
 去处。两个容器不相邻，各由遗留层自己的时机挂载，读的却是同一个 `LIBRARY_PROCESSING_KEY`：
@@ -415,6 +417,7 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `react-aria-components` | BoardUI 输入框、勾选框、开关、下拉与弹出面板的交互和无障碍语义：标签关联、键盘操作、焦点进出、`aria-invalid` |
 | `react-aria` | 只用 `UNSAFE_PortalProvider`：把 Popover 与下拉列表挂进 `body` 末尾同样带 `.peach-react` 的容器，弹层读到与页面内一致的 token 与 Preflight |
 | `@tanstack/react-query` | React 页面的取数与缓存：页面级 `prefetch` 与组件里的 `useQuery` 共用一份缓存，「取完数才画」不必把首屏数据当 props 串一路；轮询写成 `refetchInterval`，卸载时跟着组件一起停 |
+| `@tanstack/query-core` | `QueryClient` 本体。壳不跑 React 也要读写同一份缓存，客户端因此建在 `peach-ui.js` 里；React 包把它外置，运行时只有一份，版本与 `@tanstack/react-query` 同步固定 |
 | `@tanstack/react-table` | 表格视图的列定义、排序状态、行选择与分页。行的身份是业务 ID（`getRowId`），所以换页、换排序、换视图之后勾选的还是同一批；排序与分页跑在**全集**上，页只是最后一刀 |
 | `tailwind-merge` | BoardUI 的 `cx()` 合并类名时去掉互相冲突的工具类 |
 | `@remixicon/react` | BoardUI 组件内置的图标 |

@@ -18,6 +18,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 
+import { METADATA_REFRESH_DAYS } from '@peach/appearance';
 import {
   attachOverlayScrollbar, closeAnchoredMenu, iconSwapHtml, loadingDotsHtml, moveGlidePane, noteHtml, revealTexts,
   setActionBusy, setIconSwap, spinnerHtml, wireHorizontalScroller,
@@ -54,7 +55,6 @@ const SORT_OPTIONS: readonly Choice[] = [
 const DIRECTION_OPTIONS: readonly Choice[] = [['desc', '降序'], ['asc', '升序']];
 const THUMBNAIL_OPTIONS: readonly Choice[] = [['off', '关闭'], ['precise', '精准'], ['coarse', '粗略']];
 const METADATA_OPTIONS: readonly Choice[] = [['7', '每周'], ['30', '每月'], ['90', '每季'], ['0', '从不']];
-const METADATA_REFRESH_DAYS = [0, 7, 30, 90];
 const JAV_IMAGE_OPTIONS: readonly Choice[] = [['cover', '官方封面', ''], ['thumbnail', '预览图', '']];
 /* 新作那一行收不收合集由服务端按账本里的设置筛，这里的开关只是镜像：真相在 `/api/settings`。 */
 const FEED_COMPILATIONS = [

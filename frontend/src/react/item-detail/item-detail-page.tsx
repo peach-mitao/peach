@@ -78,7 +78,7 @@ const CloseStage = ({ onClose }: { onClose(): void }) => (
 
 function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue | null }) {
   const { item, queue, actions, helpers } = props;
-  const write = useDetailWrite(item, actions, props.grid.cache, helpers.tagLabel);
+  const write = useDetailWrite(item, actions, helpers.tagLabel);
 
   /* 画出来的是哪一条只报一次：写完换进来的是同一条的新对象，不能因此重推地址、重画顶栏。 */
   const presented = useRef(item);
@@ -698,7 +698,6 @@ function Related(props: ItemDetailProps & { item: DetailItem }) {
     queryKey: relatedKey(item.id, relatedLimit),
     queryFn: async ({ signal }) => {
       const page = await apiGet<{ items?: MediaItem[] }>(RELATED_URL(item.id, relatedLimit), signal);
-      grid.cache(page.items || []);
       return page.items || [];
     },
   });
@@ -713,7 +712,7 @@ function Related(props: ItemDetailProps & { item: DetailItem }) {
         {result.data ? (
           <CatalogGridPage mode="items" variant="next" items={result.data} helpers={grid.helpers} actions={grid.actions}
             layout={props.layout} selectMode={props.selectMode} selected={props.selected} seekSeconds={props.seekSeconds}
-            revision={0} cache={grid.cache} wireDrag={helpers.wireDrag} skeletonHtml={() => ''} />
+            revision={0} wireDrag={helpers.wireDrag} skeletonHtml={() => ''} />
         ) : result.isError ? null : <Html html={skeleton} />}
       </div>
     </div>
@@ -727,8 +726,7 @@ function Related(props: ItemDetailProps & { item: DetailItem }) {
 type DetailWrite = ReturnType<typeof useDetailWrite>;
 type Patch = Partial<DetailItem>;
 
-function useDetailWrite(item: DetailItem, actions: ItemDetailActions, cache: (items: MediaItem[]) => void,
-  label: (tag: string) => string) {
+function useDetailWrite(item: DetailItem, actions: ItemDetailActions, label: (tag: string) => string) {
   const id = item.id;
   const key = itemKey(id);
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
@@ -745,7 +743,6 @@ function useDetailWrite(item: DetailItem, actions: ItemDetailActions, cache: (it
     queryClient.setQueryData(key, next);
     const card = { feedback: next.feedback, disposal: next.disposal, watch_later: next.watch_later, rating: next.rating, o_count: next.o_count };
     replaceCatalogItem(id, card);
-    cache([next as unknown as MediaItem]);
     return next;
   };
   const post = <T,>(url: string, body: Record<string, unknown>) => apiSend<T>(url, { id, ...body });

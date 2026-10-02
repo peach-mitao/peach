@@ -16,6 +16,7 @@ export {
   defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
 } from './sort-preferences';
 export * from './appearance';
+export * from './query';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
