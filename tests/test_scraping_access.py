@@ -265,7 +265,8 @@ class ScrapingAccessTests(unittest.TestCase):
         """`cf_clearance` 绑着解题那台浏览器的 UA：整站 UA 与用户的 Chrome 一致，Cookie 由用户贴，卡上不另收 UA。"""
         from peach.user_agent import USER_AGENT
         shown = save(self.root, "fc2ppvdb", {"cookie": "cf_clearance=abc"})
-        self.assertEqual(set(shown), {"source", "label", "login", "accepts_cookie", "network", "cookie_saved", "browser"})
+        self.assertEqual(set(shown), {"source", "label", "nature", "login", "accepts_cookie", "network", "cookie_saved", "browser"})
+        self.assertEqual(shown["nature"], "公开页面")
         self.assertTrue(shown["cookie_saved"])
         self.assertFalse(shown["browser"], "没有浏览器的机器上这张卡照旧收 Cookie")
         for name in ("fc2ppvdb", "javten"):

@@ -1,5 +1,6 @@
 /* 搜索只选择候选；真正提交由云下载表单确认。 */
 import { useState } from 'react';
+import { RiSearchLine } from '@remixicon/react';
 import { spinnerHtml } from '@peach/legacy/ui';
 import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
@@ -13,6 +14,10 @@ interface Candidate {
   nature: string; resolution: number; codec: string; chinese: boolean; uncensored: boolean;
 }
 interface Result { state: string; items: Candidate[]; warnings: string[]; error: string }
+
+function SearchSpinner({ className }: { className?: string }) {
+  return <span className={className} aria-hidden dangerouslySetInnerHTML={{ __html: spinnerHtml('') }} />;
+}
 
 function preferredGoal(reason: string | undefined): string {
   if (['中字', '中文字幕'].includes(reason?.trim() ?? '')) return 'chinese';
@@ -48,7 +53,8 @@ export function ResourceSearch({ initialCode, reason, choose }: {
     <section aria-label="资源搜索" aria-busy={Boolean(action.busy)} className="flex min-w-0 flex-col gap-4">
       {reason ? <Help>版本目标：{reason}。可在下方调整搜索优先项；完整度与水印需要逐条复核。</Help> : null}
       <Input label="搜索资源" value={code} maxLength={80} placeholder="输入番号，按回车搜索"
-        isDisabled={Boolean(action.busy)} onChange={setCode} onKeyDown={(event) => {
+        leadingIcon={action.busy ? SearchSpinner : RiSearchLine}
+        isReadOnly={Boolean(action.busy)} aria-busy={Boolean(action.busy)} onChange={setCode} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); search() }
         }} />
       <div className="flex flex-col gap-1">
@@ -64,7 +70,7 @@ export function ResourceSearch({ initialCode, reason, choose }: {
         <Input label="最大体积（GiB）" inputMode="decimal" value={max} onChange={setMax} />
       </div>
       <Help>只查询已启用的自配索引器；最多显示 5 个有做种的候选。清晰度、字幕与无码标记取自来源标题。</Help>
-      {action.busy ? <span role="status" dangerouslySetInnerHTML={{ __html: spinnerHtml('正在搜索资源') }} /> : null}
+      {action.busy ? <Help role="status">正在搜索资源</Help> : null}
       {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       {result?.error ? <Help role="status">{result.error}</Help> : null}
       {result?.state === 'ready' && !result.items.length ? <Help role="status">没有符合条件的资源。</Help> : null}

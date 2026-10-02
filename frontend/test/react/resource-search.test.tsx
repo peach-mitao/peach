@@ -36,6 +36,29 @@ it('回车按番号查询，选择候选只填表单', async () => {
   expect(host.textContent).toContain('已填入磁力');
 });
 
+it('查询等待期间保持输入焦点并拦截重复回车，完成后恢复编辑', async () => {
+  let finish!: (value: unknown) => void;
+  const fetch = vi.fn(() => new Promise((resolve) => { finish = resolve }));
+  vi.stubGlobal('fetch', fetch);
+  const host = await mount(<ResourceSearch initialCode="ABC-123" choose={vi.fn()} />);
+  const input = field(host, '搜索资源')!;
+  input.focus();
+  const enter = () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await act(async () => { enter() });
+  expect(input.disabled).toBe(false);
+  expect(input.readOnly).toBe(true);
+  expect(document.activeElement).toBe(input);
+  expect(input.getAttribute('aria-busy')).toBe('true');
+  expect(host.textContent).toContain('正在搜索资源');
+  await act(async () => { enter() });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ ok: true, json: async () => ({ state: 'ready', items: [], warnings: [], error: '' }) }));
+  await settle();
+  expect(input.readOnly).toBe(false);
+  expect(input.getAttribute('aria-busy')).toBe('false');
+  expect(host.textContent).not.toContain('正在搜索资源');
+});
+
 it.each([['中字', 'chinese'], ['无码', 'uncensored'], ['不需要无码，只找完整版', 'quality']])(
   '目标 %s 原文可见，使用 %s 排序且等待回车才查询', async (reason, goal) => {
     const fetch = vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ state: 'ready',
