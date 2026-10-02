@@ -44,7 +44,7 @@ describe('island 注册表', () => {
   it('登记的名字就是遗留路由能挂载的名字', () => {
     expect(islandNames()).toEqual([
       'catalog-filter', 'catalog-grid', 'feed-new', 'follow-feed',
-      'junk-queue', 'library-processing', 'playlists', 'search']);
+      'junk-queue', 'library-processing', 'search']);
   });
 
   it('未注册的名字立刻失败，不是静默什么都不画', async () => {
@@ -54,38 +54,33 @@ describe('island 注册表', () => {
   });
 });
 
-const playlists = {
-  items: [{
-    id: 1, name: '周末连看', source_kind: 'manual', source_seed_asset_id: null, current_asset_id: null,
-    created_at: '2026-09-01 10:00:00', updated_at: '2026-09-01 10:00:00', item_count: 2,
-    preview_asset_id: 11, preview_ids: [11, 12], faces: [],
-  }],
-};
-const playlistProps = () => ({ openPlaylist: vi.fn(), openEntity: vi.fn(), canFlip: () => true, toast: vi.fn() });
+/* 挂载契约用数据管理页那张扫描卡走一遍：首屏只等一趟 `/api/library-processing`。 */
+const processing = { status: 'idle' };
+const processingProps = () => ({ toast: vi.fn() });
 
 describe('mountIsland', () => {
   beforeAll(async () => { await import('@peach/react') }, REACT_IMPORT_TIMEOUT_MS);
 
   it('先把首屏取回来再画，React 根挂在自己的 `.peach-react` 容器里', async () => {
-    const fetch = deferredFetch(playlists);
+    const fetch = deferredFetch(processing);
     fetch.install();
     const el = container();
-    const mounting = mountIsland('playlists', el, playlistProps());
+    const mounting = mountIsland('library-processing', el, processingProps());
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     expect(el.querySelector('[data-skeleton]'), '数据还没回来就撤骨架会出现第二段等待态').not.toBeNull();
     fetch.resolve();
     await act(async () => { await mounting });
     expect(el.querySelector('[data-skeleton]')).toBeNull();
     // token、Preflight 与焦点规则都作用在 `.peach-react` 上，根不挂在它里面就没有样式。
-    expect(el.querySelector('.peach-react')?.textContent).toContain('周末连看');
+    expect(el.querySelector('.peach-react')?.textContent).toContain('扫描并补全资料');
   });
 
   it('取数期间用户走开就不画，骨架留给下一页', async () => {
-    const fetch = deferredFetch(playlists);
+    const fetch = deferredFetch(processing);
     fetch.install();
     const el = container();
     let current = true;
-    const mounting = mountIsland('playlists', el, playlistProps(), { isCurrent: () => current });
+    const mounting = mountIsland('library-processing', el, processingProps(), { isCurrent: () => current });
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     current = false;
     fetch.resolve();
@@ -95,19 +90,19 @@ describe('mountIsland', () => {
   });
 
   it('卸载时中止在途取数，画过的话连 React 根一起撤掉', async () => {
-    const fetch = deferredFetch(playlists);
+    const fetch = deferredFetch(processing);
     fetch.install();
     const el = container();
-    const mounting = mountIsland('playlists', el, playlistProps());
+    const mounting = mountIsland('library-processing', el, processingProps());
     await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
     unmountIsland(el);
     await mounting;
     expect(fetch.signal()?.aborted, '离开页面必须真的中止请求').toBe(true);
     expect(el.querySelector('[data-skeleton]'), '还没画过就卸载，容器里是遗留骨架').not.toBeNull();
 
-    const again = deferredFetch(playlists);
+    const again = deferredFetch(processing);
     again.install();
-    const painting = mountIsland('playlists', el, playlistProps());
+    const painting = mountIsland('library-processing', el, processingProps());
     await until(() => again.fetched.mock.calls.length > 0, '第二次取数发出去');
     again.resolve();
     await act(async () => { await painting });
@@ -129,11 +124,11 @@ describe('unmountIsland', () => {
   });
 
   it('容器上挂没挂着，遗留层问得出来', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => playlists })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => processing })));
     const el = container();
     expect(islandMounted(el)).toBe(false);
     // 取数还没回来也算挂着：这段时间里再挂一次会把在途那次作废，白等一趟。
-    const mounting = mountIsland('playlists', el, playlistProps());
+    const mounting = mountIsland('library-processing', el, processingProps());
     expect(islandMounted(el)).toBe(true);
     await act(async () => { await mounting });
     expect(islandMounted(el)).toBe(true);

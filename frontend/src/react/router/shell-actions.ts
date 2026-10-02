@@ -65,6 +65,10 @@ export interface ShellActions {
   /** 去关注页，只看这一位创作者或这一枚在线标签的更新。 */
   openFollowAuthor(key: string): void;
   openFollowTag(tag: string): void;
+  /** 打开一份播放列表的播放队列（舞台），从 `resumeAssetId` 那一个接着播。 */
+  openPlaylist(id: number, resumeAssetId: number): void;
+  /** 此刻能不能悬停翻页：壳的多选、遮挡、减少动效与滚动中都回 false。 */
+  canFlip(): boolean;
 }
 
 /** 壳每次打开时交进来的值，按页面分。管理区那几页画进 `#stats`。 */
@@ -85,6 +89,14 @@ export interface ManagedOpenProps {
 }
 
 export type ManagedPath = keyof ManagedOpenProps;
+
+/** 播放列表页同样画进 `#stats`，但不是管理区：跨页进来一律由壳写地址再自己打开，
+ *  所以不进 `ManagedPath`。每次打开交进来的值同样按页面分，之后的开关经 `updateManagedRoute` 推进来。 */
+export interface BrowseOpenProps {
+  '/playlists': { revision: number };
+}
+
+export type BrowseRoutePath = keyof BrowseOpenProps;
 
 /** 索引页每次打开交进来的值：地址栏上的那几项（壳从地址读出）、这台浏览器的版式偏好、顶栏选择键的
  *  现值，和本机能不能改配置。选择键之后的开关经 `updateManagedRoute` 推进来。 */

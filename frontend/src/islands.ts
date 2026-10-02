@@ -4,7 +4,7 @@
  * 之后，它的入口只做两件事：铺好加载占位，然后把一个容器交给这里。
  *
  *     const ui = await import('/dist/peach-ui.js');
- *     await ui.mountIsland('playlists', $('#stats'), props);
+ *     await ui.mountIsland('feed-new', $('#feedNew'), props);
  *
  * `mountIsland` 是 async 且**取完数才画**：遗留层已经铺了骨架，island 若先画一个空
  * 容器再自己转圈，同一次进入就会出现两段等待态（`peach-web-ui` 明确禁止）。所以这里
@@ -48,7 +48,6 @@ export interface IslandContracts {
   'follow-feed': ReactBundle.FollowFeedProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
-  playlists: ReactBundle.PlaylistsProps;
   search: ReactBundle.SearchProps;
 }
 
@@ -68,7 +67,6 @@ const REGISTRY: { [N in IslandName]: Island } = {
   'follow-feed': { react: 'follow-feed' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
-  playlists: { react: 'playlists' },
   search: { react: 'search' },
 };
 

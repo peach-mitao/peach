@@ -1892,30 +1892,27 @@ async function openAddToPlaylist(item){
     if(result.created)await playlistWrite({action:'delete',id:result.created.id});
   }});
 }
-/* 播放列表页整个归 React 子树（ADR-0031）：取数、卡面、新建改名删除都在 /dist/peach-ui.js 里。
-   壳只铺骨架，交出打开队列、资料页、头像 HTML、翻页门槛与回执。
-   已经停在这一页、岛还挂着时要求重读（顶栏「换一批」、从播放队列返回、撤销后），
+/* 播放列表页整个归 React（ADR-0031），由路由树画进 `#stats`（`BROWSE_ROUTES`）：取数、卡面、新建改名删除
+   都在 /dist/peach-react.js 里。壳只铺骨架；打开队列、资料页、翻页门槛与回执在 `shellActions` 里。
+   这一页还画着、表面也没换过（中间没有写过地址、没有经派发重开）时要求重读（顶栏「换一批」），
    推一个刷新代次让页面重取，不重挂：重挂会先铺一遍骨架，卡片与滚动位置都跟着闪。 */
 let playlistsSurface=null,playlistsRevision=0;
+function playlistsEntry(){
+  const entry=managedEntry($('#stats'));
+  return entry&&entry.path==='/playlists'&&entry.host.isConnected?entry:null;
+}
 async function openPlaylists(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/playlists');
-  if(!push&&playlistsSurface&&surfaceCurrent(playlistsSurface)&&islandMounted($('#stats'))){
+  if(!push&&playlistsSurface&&surfaceCurrent(playlistsSurface)&&playlistsEntry()){
     showManagementBody({manage:false});
-    updateIsland($('#stats'),{revision:++playlistsRevision});
+    updateManagedRoute($('#stats'),{revision:++playlistsRevision});
     return;
   }
   const surface=claimSurface('/playlists');
   showManagementBody({manage:false,placeholder:managementPlaceholder('/playlists')});
-  const ui=await import('/dist/peach-ui.js');
-  if(!surfaceCurrent(surface))return;
-  const props={
-    openPlaylist:(id,resume)=>openPlaylist(id,resume,true),openEntity,
-    canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
-    toast:(message,{undo}={})=>actionReceipt(message,{undo}),revision:playlistsRevision,
-  };
   playlistsSurface=surface;
-  await ui.mountIsland('playlists',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/playlists',{revision:playlistsRevision},managedSurface(surface));
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -3957,6 +3954,8 @@ const shellActions={
   showIndexTags,
   openFollowAuthor:openFollowAuthorFromIndex,
   openFollowTag:openFollowTagFromIndex,
+  openPlaylist:(id,resume)=>void openPlaylist(id,resume,true),
+  canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
 };
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();

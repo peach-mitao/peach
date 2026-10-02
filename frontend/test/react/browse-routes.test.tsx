@@ -1,0 +1,175 @@
+/* 播放列表页由路由树画进 `#stats`（`BROWSE_ROUTES`）：骨架留到首屏取齐，换成整页落在同一批变化里；
+ * 停在这一页时壳经 `updateManagedRoute` 推刷新代次，页面只重取、不重挂，代次不变；页面里的去处与回执
+ * 接到壳的那一组上；这条路径不交给 React Router。
+ *
+ * 页内取数、写操作与卡面由 `playlists.test.tsx` 管，这里看的是路由树这一层。 */
+import { act, type ReactElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+
+import type { PlaylistsProps } from '../../src/react/bundle';
+import type { ShellActions } from '../../src/react/router/shell-actions';
+
+// 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
+
+async function load(path = '/') {
+  vi.resetModules();
+  window.history.replaceState(null, '', path);
+  const [history, router, routes] = await Promise.all([
+    import('../../src/history'), import('../../src/react/router/router'), import('../../src/react/router/managed-routes'),
+  ]);
+  return { ...history, ...router, ...routes };
+}
+type Loaded = Awaited<ReturnType<typeof load>>;
+
+const unmounts: Array<() => void> = [];
+afterEach(async () => {
+  for (const unmount of unmounts.splice(0)) await act(async () => { unmount() });
+  document.body.innerHTML = '';
+  vi.unstubAllGlobals();
+});
+
+function shellActions(): ShellActions {
+  return {
+    openItem: vi.fn(), openEntity: vi.fn(), openTag: vi.fn(), openTasteSignal: vi.fn(), navigate: vi.fn(),
+    openManage: vi.fn(), managePath: vi.fn(() => ''), openFollow: vi.fn(), receipt: vi.fn(), toast: vi.fn(),
+    failure: vi.fn(), revealSource: vi.fn(async () => ''), reopenTutorial: vi.fn(async () => {}),
+    requestConfigurationSection: vi.fn(), requestCloudDownload: vi.fn(), routeReview: vi.fn(),
+    routeFollowManage: vi.fn(), saveFollowPreference: vi.fn(), srcBadge: () => '', routeIndex: vi.fn(),
+    savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
+    authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
+    openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
+  };
+}
+
+async function mount(r: Loaded) {
+  const root = createRoot(document.createElement('div'));
+  await act(async () => { root.render(<r.RouterRoot actions={shellActions()} />) });
+  unmounts.push(() => root.unmount());
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+}
+
+type Reply = { ok: boolean; status: number; json(): Promise<unknown> };
+const reply = (body: unknown): Reply => ({ ok: true, status: 200, json: async () => body });
+
+/** 一行播放列表；名字用来认出画的是哪一次取回来的。 */
+const playlist = (name: string) => ({
+  items: [{
+    id: 1, name, source_kind: 'manual', source_seed_asset_id: null, current_asset_id: null,
+    created_at: '2026-09-01 10:00:00', updated_at: '2026-09-01 10:00:00', item_count: 2,
+    preview_asset_id: 11, preview_ids: [11, 12], faces: [],
+  }],
+});
+
+/** 播放列表页的取数：`/api/playlists` 可以手动兑现（首屏等的就是它），回的名字可以中途换掉。 */
+function playlistsFetch({ deferred = false } = {}) {
+  const pending: Array<() => void> = [];
+  let name = '周末连看';
+  const fetched = vi.fn((input: string, init?: RequestInit) => {
+    const body = playlist(name);
+    if (!deferred) return Promise.resolve(reply(body));
+    return new Promise<Reply>((resolve, reject) => {
+      pending.push(() => resolve(reply(body)));
+      init?.signal?.addEventListener('abort', () => { reject(new DOMException('已中止', 'AbortError')) });
+    });
+  });
+  vi.stubGlobal('fetch', fetched);
+  const calls = (path: string) => fetched.mock.calls
+    .map(([input]) => new URL(String(input), 'http://peach.test')).filter((url) => url.pathname === path);
+  return {
+    fetched, calls, rename: (next: string) => { name = next },
+    resolve: () => { for (const settle of pending.splice(0)) settle() },
+  };
+}
+
+/** 管理区正文的容器，里面是壳铺好的骨架。 */
+function statsSurface(skeleton = '<div class="geist-skeleton" data-skeleton="playlists">正在读取播放列表</div>') {
+  const stats = document.createElement('section');
+  stats.id = 'stats';
+  stats.innerHTML = skeleton;
+  document.body.append(stats);
+  return { stats, skeleton: stats.firstElementChild! };
+}
+
+async function until(ok: () => boolean, what: string): Promise<void> {
+  for (let step = 0; step < 200; step += 1) {
+    if (ok()) return;
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) });
+  }
+  throw new Error(`一直没等到：${what}`);
+}
+
+/** 页面画出来的那一块（宿主里的第一个元素）：重挂之后就换成另一个。 */
+const painted = (stats: Element) => stats.querySelector(':scope > .peach-react > *');
+
+it('冷启动深链播放列表页：骨架留到首屏取齐，换成整页在同一批变化里', async () => {
+  const r = await load('/playlists');
+  const { stats, skeleton } = statsSurface();
+  await mount(r);
+  const fetch = playlistsFetch({ deferred: true });
+  const opened = r.openManagedRoute('/playlists', { revision: 0 }, { container: stats, isCurrent: () => true });
+  await until(() => fetch.calls('/api/playlists').length > 0, '首屏取数发出去');
+  expect(stats.firstElementChild, '取齐之前骨架原样留着').toBe(skeleton);
+  const batches: Array<{ skeleton: boolean; painted: boolean }> = [];
+  const observer = new MutationObserver(() => {
+    batches.push({ skeleton: stats.contains(skeleton), painted: Boolean(stats.textContent?.includes('周末连看')) });
+  });
+  observer.observe(stats, { childList: true, subtree: true });
+  unmounts.push(() => observer.disconnect());
+  fetch.resolve();
+  await act(async () => { expect(await opened).toBe(true) });
+  expect(batches[0], '骨架撤下的那一批变化里整页已经画好').toEqual({ skeleton: false, painted: true });
+  expect(r.managedEntry(stats)).toMatchObject({ path: '/playlists', props: { revision: 0 } });
+});
+
+/* 顶栏「换一批」落在这一页上：壳推一个新的刷新代次，页面只重取那一份列表，卡片不重挂。 */
+it('播放列表页就地推刷新代次：代次不变、不重挂，只重取一次', async () => {
+  const r = await load('/playlists');
+  const { stats } = statsSurface();
+  await mount(r);
+  const fetch = playlistsFetch();
+  await act(async () => {
+    await r.openManagedRoute('/playlists', { revision: 0 }, { container: stats, isCurrent: () => true });
+  });
+  const page = painted(stats);
+  const revision = r.managedEntry(stats)?.revision;
+  expect(fetch.calls('/api/playlists')).toHaveLength(1);
+  fetch.rename('换过名字');
+  await act(async () => { r.updateManagedRoute(stats, { revision: 1 }) });
+  await until(() => Boolean(stats.textContent?.includes('换过名字')), '按新代次重取回来的那一份画上');
+  expect(fetch.calls('/api/playlists'), '只重取一次').toHaveLength(2);
+  expect(fetch.fetched).toHaveBeenCalledTimes(2);
+  expect(painted(stats), '推新代次不许重挂').toBe(page);
+  expect(stats.querySelector('[data-skeleton]'), '就地重取不铺骨架').toBeNull();
+  expect(r.managedEntry(stats)?.revision).toBe(revision);
+  expect(r.managedEntry(stats)?.props).toEqual({ revision: 1 });
+});
+
+it('播放列表页：进舞台、去资料页、翻页门槛与回执都接到壳的那一组上', async () => {
+  const r = await load();
+  const actions = shellActions();
+  const props = (r.BROWSE_ROUTES['/playlists'].page({ revision: 3 }, actions, vi.fn()) as ReactElement<PlaylistsProps>).props;
+  expect([props.openPlaylist, props.openEntity, props.canFlip]).toEqual([actions.openPlaylist, actions.openEntity, actions.canFlip]);
+  expect(props.revision).toBe(3);
+  const undo = async () => {};
+  props.toast('已删除播放列表', { undo });
+  props.toast('已重命名');
+  expect(vi.mocked(actions.receipt).mock.calls).toEqual([['已删除播放列表', { undo }], ['已重命名', {}]]);
+  expect(actions.toast).not.toHaveBeenCalled();
+});
+
+it('播放列表页的路径不走 React Router：交壳写地址再打开', async () => {
+  const r = await load('/');
+  const actions = shellActions();
+  const navigate = vi.fn();
+  r.managedGo('/playlists', actions, navigate);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(vi.mocked(actions.navigate).mock.calls).toEqual([['/playlists']]);
+  expect(r.ROUTED_PATHS).toContain('/playlists');
+  expect(r.isManagedPath('/playlists')).toBe(false);
+});

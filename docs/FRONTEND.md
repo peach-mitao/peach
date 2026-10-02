@@ -23,7 +23,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history` |
-| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区十页的正文由它画（`managed-routes.tsx`） |
+| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、索引页与资料页的正文由它画（`managed-routes.tsx`） |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
@@ -70,12 +70,12 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 播放列表页
 
-`/playlists` 列表页整个是 React（`frontend/src/react/playlists/`，入口 `playlists-page.tsx`），挂在 `#stats` 上；点开一份之后的 `/playlists/:playlist/:item` 仍是遗留层 `openPlaylist`。
+`/playlists` 列表页整个是 React（`frontend/src/react/playlists/`，入口 `playlists-page.tsx`），登记在 `BROWSE_ROUTES`，由路由树画进 `#stats`；点开一份之后的 `/playlists/:playlist/:item` 仍是遗留层 `openPlaylist`。这一页不进 `isManagedPath`，页面里的跳转都交壳。
 
 - 读 `/api/playlists`，首屏 `prefetch` 写明 `staleTime: 0`：首页刚存的 Mix 进来就要看得到。新建、改名、删除都 POST `/api/playlist`，写完让列表键重取，不拿回话拼缓存。
 - 删除先过遗留层 `confirmModal`，删之前 GET `?id=` 取回内容，撤销按原内容与来源重建一份；取不到就不给撤销。回执与撤销失败的说法归 `actionReceipt`。
-- 停在这一页时壳要求重读（顶栏「换一批」、从播放队列返回），`openPlaylists(false)` 经 `updateIsland` 把 `revision` 加一，页面只重取、不重挂。
-- 每份列表是共用的 Mix 卡 `components/mix-card.tsx`：纸边、黑底封面、玻璃徽标、叠放头像，几何写在 `styles.css` 的 `[data-mix-*]`；悬停翻页是 `components/use-stack-flip.ts`（关注页卡叠也用它），时序钉在 `use-stack-flip.test.tsx`，翻页门槛（多选、遮挡、减少动效、滚动中）由壳经 `canFlip` 递进来。
+- 停在这一页、表面没换过时壳要求重读（顶栏「换一批」），`openPlaylists(false)` 经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。中间写过地址或经派发重开过（从播放队列返回、后退前进）时照地址重开一次。
+- 每份列表是共用的 Mix 卡 `components/mix-card.tsx`：纸边、黑底封面、玻璃徽标、叠放头像，几何写在 `styles.css` 的 `[data-mix-*]`；悬停翻页是 `components/use-stack-flip.ts`（关注页卡叠也用它），时序钉在 `use-stack-flip.test.tsx`，翻页门槛（多选、遮挡、减少动效、滚动中）由壳经 `ShellActions.canFlip` 递进来。
 - 改名弹层、换头像与裁剪封面共用 `components/modal-frame.tsx` 的外壳，`form` 档 540px 同 `.geist-modal`。
 
 ### 馆藏网格

@@ -18,8 +18,6 @@ import { JunkQueuePage } from './junk-queue/junk-queue-page';
 import { prefetchLibraryProcessing } from './library-processing/library-processing';
 import { LibraryProcessingCard } from './library-processing/library-processing-card';
 import { LibraryProcessingNotice } from './library-processing/library-processing-notice';
-import { prefetchPlaylists } from './playlists/playlists';
-import { PlaylistsPage } from './playlists/playlists-page';
 import { Providers } from './providers';
 
 export { configureBatchDock } from './batch-dock/batch-dock-island';
@@ -66,7 +64,6 @@ export const pages: Bundle.ReactPages = {
     prefetch: (_props, signal) => prefetchLibraryProcessing(signal),
     mount: mounter(LibraryProcessing),
   },
-  playlists: { prefetch: (_props, signal) => prefetchPlaylists(signal), mount: mounter(PlaylistsPage) },
   /* 输入框是壳的，岛只接它的事件、画下拉栏里的内容；记录与推荐聚焦时才取。 */
   search: { prefetch: async () => {}, mount: mounter(SearchPage) },
 };
