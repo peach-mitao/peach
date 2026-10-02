@@ -12,8 +12,6 @@ import { CatalogFilterPage } from './catalog-filter/catalog-filter-page';
 import { SearchPage } from './search/search-page';
 import { prefetchFeedNew } from './feed-new/feed-new';
 import { FeedNewPage } from './feed-new/feed-new-page';
-import { prefetchFollowFeed } from './follow-feed/follow-feed';
-import { FollowFeedPage } from './follow-feed/follow-feed-page';
 import { JunkQueuePage } from './junk-queue/junk-queue-page';
 import { prefetchLibraryProcessing } from './library-processing/library-processing';
 import { LibraryProcessingCard } from './library-processing/library-processing-card';
@@ -55,8 +53,6 @@ export const pages: Bundle.ReactPages = {
   'catalog-filter': { prefetch: async () => {}, mount: mounter(CatalogFilterPage) },
   /* 首页那一行新作：骨架还占着就连头几张封面一起等，再一次换掉。 */
   'feed-new': { prefetch: prefetchFeedNew, mount: mounter(FeedNewPage) },
-  /* 关注列表第一页与凭据两趟并行，挂上就是最终样子；换筛选之后的取数由页面自己的查询驱动。 */
-  'follow-feed': { prefetch: prefetchFollowFeed, mount: mounter(FollowFeedPage) },
   /* 分类条由地址决定、挂上就画得出最终样子，等的只有读数：首屏不在这里等，由页面自己的
      查询驱动等待态（`junk-queue-page.tsx` 开头）。 */
   'junk-queue': { prefetch: async () => {}, mount: mounter(JunkQueuePage) },

@@ -81,7 +81,7 @@ let sidebarProps={content:null,filters:{},latest:null},sidebarSurface='',sidebar
 let loadRequestSeq=0;
 // `#grid` 上此刻挂的是哪一个 island：目录与回收站的 `catalog-grid`，或垃圾文件的 `junk-queue`。
 let gridIsland='';
-/* `followRevision` 是关注页岛的刷新代次：已经挂着时要求重读（批量标记之后、前进后退），
+/* `followRevision` 是关注页的刷新代次：已经画着时要求重读（批量标记之后、前进后退），
    推一个新代次让它重取，不重挂。 */
 let followFilter='',followRevision=0;
 /* 值是天数，`0` 表示不限。选项文本自己说清量的是时间：这一行不挂文字标签，收起时
@@ -201,7 +201,7 @@ window.peachRegisterRoute=registerRoute;
 const pageSkeletonHtml=(label,{cards=false,className='',variant='',count,fill,cardRatio,gridClass='',gridSize=''}={})=>
   skeletonHtml(label,{variant:variant||(cards?'cards':'panel'),className,gridClass,gridSize,
     ...(count?{count}:{}),...(fill===undefined?{}:{fill}),...(cardRatio?{cardRatio}:{})});
-/* 关注页列表那一块的骨架：进页整块骨架的下半，也是岛换筛选时列表区铺的那一块。图片视图借
+/* 关注页列表那一块的骨架：进页整块骨架的下半，也是页面换筛选时列表区铺的那一块。图片视图借
    照片墙的网格算式，列数跟着照片墙尺寸档走。 */
 const followContentSkeletonHtml=(media=new URLSearchParams(location.search).get('media')==='images'?'images':'videos',
   label='正在读取关注内容')=>pageSkeletonHtml(label,{cards:true,className:'follow-content-skeleton postercard-skeleton',
@@ -2149,13 +2149,13 @@ function readFollowView(){
   followSeed=Number(params.get('seed'))>>>0||followSeed||Number(rollSeed());
   followDir=params.get('dir')==='asc'?'asc':'desc';
 }
-/* 看的那一页整个归 React 岛 `follow-feed`（ADR-0031）：取数、两排、玻璃、列表、写操作、检查
-   更新与往回抓都在 /dist/peach-react.js 里。壳只管三样：地址栏（筛选的唯一真相源）、这一次
-   进入的取样种子、选择与照片墙这几样全站偏好。侧栏标签抽屉仍在壳里，岛每取到一版列表就经
+/* 看的那一页整个由路由树画进 `#stats`（ADR-0031，`BROWSE_ROUTES` 的 `/follow`）：取数、两排、玻璃、
+   列表、写操作、检查更新与往回抓都在 /dist/peach-react.js 里。壳只管三样：地址栏（筛选的唯一真相源）、
+   这一次进入的取样种子、选择与照片墙这几样全站偏好。侧栏标签抽屉仍在壳里，页面每取到一版列表就经
    `loaded` 交回可见条目的标签计数。
 
-   岛改筛选只调 `route(view)`：这里写进地址栏，再经 `updateIsland` 推回新的 `view`。已经挂着时
-   换一档（前进后退、侧栏标签、批量标记之后）也走推送，只有列表铺骨架；重挂会把页头、两排和
+   页面改筛选只调 `route(view)`：这里写进地址栏，再经 `updateManagedRoute` 推回新的 `view`。已经画着时
+   换一档（前进后退、侧栏标签、批量标记之后）也走推送，只有列表铺骨架；重开会把页头、两排和
    那块玻璃一起先撤掉再画。 */
 function followView(){
   return {status:followFilter,media:followMediaView,author:[...followAuthors][0]||'',
@@ -2170,10 +2170,15 @@ function adoptFollowView(view){
   followTags=new Set(view.tags);
   followSort=view.sort;followDir=view.dir;followSeed=view.seed;
 }
-/* `#stats` 上此刻画着的是不是关注页那座岛：别的页面也挂在这个容器上，推错了就是往播放列表
-   里塞一份关注页的 props。 */
-function followFeedLive(){return islandMounted($('#stats'))&&!!$('#stats').querySelector('[data-follow-feed]')}
-function pushFollowFeed(patch){if(followFeedLive())updateIsland($('#stats'),patch)}
+/* `#stats` 上此刻画着的是不是关注页：管理区与播放列表页也画在这个容器里，推错了就是往播放列表
+   里塞一份关注页的 props。判据读路由树此刻画在 `#stats` 里的那一页，还在取首屏时是空的，与
+   `updateManagedRoute` 那时是空操作对得上。 */
+function followFeedEntry(){
+  const entry=managedEntry($('#stats'));
+  return entry&&entry.path==='/follow'&&entry.host.isConnected?entry:null;
+}
+function followFeedLive(){return !!followFeedEntry()}
+function pushFollowFeed(patch){if(followFeedLive())updateManagedRoute($('#stats'),patch)}
 /* 媒体那一档只换分组、不换列表，不滚回顶部；其余换的是整份列表，跟进页一样回到顶上。 */
 function routeFollowFeed(view,patch={}){
   const list=followPageUrl(0);
@@ -2188,9 +2193,10 @@ function shuffleFollowFeed(){
   followSeed=Number(rollSeed());followDiscoverySeed=followSeed;
   routeFollowFeed({...followView(),sort:FOLLOW_RANDOM_SORT},{seed:followDiscoverySeed});
 }
-/* 岛要的助手与动作各只有一份、身份不变：卡片按引用比较，每次推新对象进去就是整屏重画。
-   这里只剩要借壳里实现的几样：题材圆标借资料页的取景，标签写法、拖动与横滚、骨架和后台
-   任务进度都是壳的那一份；署名、头像、来源图标与标题前后的字样在岛里（`follow-marks.ts`）。 */
+/* 关注页与关注详情要的助手与动作各只有一份、身份不变：卡片按引用比较，每次推新对象进去就是整屏重画。
+   这里只剩要借壳里实现的几样：题材圆标借资料页的取景，拖动与横滚、骨架和后台任务进度都是壳的
+   那一份；标签写法只有详情还从这里读，列表页直接 import。署名、头像、来源图标与标题前后的字样在
+   React 包里（`follow-marks.ts`）。 */
 const followFeedHelpers={
   workMark:row=>followWorkMark(row),
   tagLabel:tag=>tagLabel(tag),
@@ -2253,7 +2259,7 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
 
 
 /* 关掉详情只是回到列表，不该重新取一遍。重取要等一个网络往返（慢），而且只会取回第一页——
-   「加载更多」出来的条目会一起消失。列表岛还挂着就只把地址栏上的那一份推回去（没变就是同一个
+   「加载更多」出来的条目会一起消失。列表页还画着就只把地址栏上的那一份推回去（没变就是同一个
    键，不重取）；深链直接进的详情没挂过列表，这时才挂。 */
 async function closeFollowDetail(){
   await stageExit();
@@ -2283,7 +2289,7 @@ async function openFollow(push=true,renderForDetail=false){
     return;
   }
   if(renderForDetail){
-    /* 深链直接进详情：详情岛自己取这一条，列表区只让出位置，岛等回到列表时再挂。侧栏抽屉由
+    /* 深链直接进详情：详情岛自己取这一条，列表区只让出位置，回到列表时才画。侧栏抽屉由
        详情画出来时按这一条的标签铺。 */
     claimSurface(surfacePath());
     showManagementBody({manage:false});
@@ -2292,9 +2298,16 @@ async function openFollow(push=true,renderForDetail=false){
   }
   const surface=claimSurface('/follow');
   showManagementBody({manage:false,placeholder:followSkeletonHtml('正在读取关注内容')});
-  await mountIsland('follow-feed',$('#stats'),followFeedProps(),
-    {isCurrent:()=>surfaceCurrent(surface),reveal:revealSkeleton});
+  await openManagedRoute('/follow',followFeedProps(),{...managedSurface(surface),place:revealFollowFeed});
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
+}
+/* 关注页取齐首屏时骨架不一次清空：`revealSkeleton` 把骨架抬成一层淡出，新宿主同时从模糊里清晰起来。
+   `write` 只放进空宿主，页面紧接着由路由树同步画进去（`openManagedRoute` 放好宿主就当场画），
+   仍在同一个任务里，骨架与整页之间没有空帧。播放列表页与管理区照旧一次清空。 */
+function revealFollowFeed(container){
+  const host=document.createElement('div');host.className='peach-react';
+  revealSkeleton(container,()=>{container.textContent='';container.append(host)});
+  return host;
 }
 
 /* 题材那一枚跟首页的厂牌药丸同形：28px 圆标识加作品名。圆里装的是这个题材下最热的

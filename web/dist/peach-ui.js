@@ -3920,7 +3920,6 @@ var Yo = {
 	"catalog-filter": { react: "catalog-filter" },
 	"catalog-grid": { react: "catalog-grid" },
 	"feed-new": { react: "feed-new" },
-	"follow-feed": { react: "follow-feed" },
 	"junk-queue": { react: "junk-queue" },
 	"library-processing": { react: "library-processing" },
 	search: { react: "search" }

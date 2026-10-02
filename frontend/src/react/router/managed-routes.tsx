@@ -1,12 +1,12 @@
 /* 由路由画的那几页：路径到首屏取数与整页的对照表，四张。
  *
  * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`BROWSE_ROUTES` 是同样画进 `#stats`
- * 的播放列表页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
+ * 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
  * （`/performers/*`），种类与名字跟着打开走。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值
  * （地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次）；回执与换到还归壳的那几屏走
  * `ShellActions`。管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的
  * `navigate`，其余交壳。另外三张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页
- * 的 `actions.route`），跨页也交壳，派发次数同壳自己打开。 */
+ * 与关注页的 `actions.route`），跨页也交壳，派发次数同壳自己打开。 */
 import type { ReactElement } from 'react';
 
 import { javDisplayName, javTitleHtml } from '@peach/legacy/jav-title';
@@ -21,6 +21,8 @@ import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-
 import { EntityPage } from '../entity-page/entity-page-view';
 import { prefetchDuplicates } from '../duplicates/duplicates';
 import { DuplicatesPage } from '../duplicates/duplicates-page';
+import { prefetchFollowFeed } from '../follow-feed/follow-feed';
+import { FollowFeedPage } from '../follow-feed/follow-feed-page';
 import { prefetchFollowManage } from '../follow-manage/follow-manage';
 import { FollowManagePage } from '../follow-manage/follow-manage-page';
 import { prefetchIndex } from '../index/index-data';
@@ -53,7 +55,7 @@ type ManagedRouteTable = { [Path in ManagedPath]: ManagedRoute<ManagedOpenProps[
 type BrowseRouteTable = { [Path in BrowseRoutePath]: ManagedRoute<BrowseOpenProps[Path]> };
 type IndexRouteTable = { [Path in IndexRoutePath]: ManagedRoute<IndexOpenPropsTable[Path]> };
 type EntityRouteTable = { [Path in EntityRoutePath]: ManagedRoute<EntityPageProps> };
-/** 路由树画的全部路径：管理区那几页、播放列表页、索引页与资料页。 */
+/** 路由树画的全部路径：管理区那几页、播放列表页与关注页、索引页与资料页。 */
 export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath;
 
 /* 数据管理页读数卡的去处里，只有重复文件不按管理区身份找：它报的是数据管理的身份。 */
@@ -146,7 +148,9 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
 export const isManagedPath = (path: string): path is ManagedPath => Object.hasOwn(MANAGED_ROUTES, path);
 
 /* 播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要看得到）。停在这一页时壳要求重读，
-   经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。点开一份进舞台、翻页门槛与回执都归壳。 */
+   经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。点开一份进舞台、翻页门槛与回执都归壳。
+   关注页：首屏是列表第一页与凭据两趟并行，挂上就是最终样子；之后换筛选、换一批、选择模式与照片版式都由
+   壳经 `updateManagedRoute` 推进来，页面按新键只重取列表、不重挂。 */
 export const BROWSE_ROUTES: BrowseRouteTable = {
   '/playlists': {
     prefetch: (_open, signal) => prefetchPlaylists(signal),
@@ -154,6 +158,10 @@ export const BROWSE_ROUTES: BrowseRouteTable = {
       <PlaylistsPage revision={open.revision} openPlaylist={actions.openPlaylist} openEntity={actions.openEntity}
         canFlip={actions.canFlip} toast={(message, { undo } = {}) => actions.receipt(message, undo ? { undo } : {})} />
     ),
+  },
+  '/follow': {
+    prefetch: (open, signal) => prefetchFollowFeed(open, signal),
+    page: (open) => <FollowFeedPage {...open} />,
   },
 };
 const isBrowsePath = (path: string): path is BrowseRoutePath => Object.hasOwn(BROWSE_ROUTES, path);

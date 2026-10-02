@@ -6,6 +6,7 @@
  * 跟着那一次打开走，不在这里。 */
 
 import type { OnlineAuthor } from '../follow/online-vocab';
+import type { FollowFeedProps } from '../follow-feed/follow-feed';
 import type { IndexKind, IndexPerson, IndexRoute, PeopleLayout, PersonAvatar } from '../index/index-data';
 
 /** 云下载表单的预填：番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
@@ -90,10 +91,13 @@ export interface ManagedOpenProps {
 
 export type ManagedPath = keyof ManagedOpenProps;
 
-/** 播放列表页同样画进 `#stats`，但不是管理区：跨页进来一律由壳写地址再自己打开，
- *  所以不进 `ManagedPath`。每次打开交进来的值同样按页面分，之后的开关经 `updateManagedRoute` 推进来。 */
+/** 播放列表页与关注页同样画进 `#stats`，但不是管理区：跨页进来一律由壳写地址再自己打开（关注页从
+ *  侧栏进来还要重掷取样种子、回到干净的 `/follow`），所以不进 `ManagedPath`。每次打开交进来的值同样按
+ *  页面分，之后的开关经 `updateManagedRoute` 推进来。关注页的助手与动作是壳里各一份、身份不变的对象
+ *  （卡片按引用比较），跟着打开走：它们拼的 HTML、碰的 DOM 与写的地址都还在壳里。 */
 export interface BrowseOpenProps {
   '/playlists': { revision: number };
+  '/follow': FollowFeedProps;
 }
 
 export type BrowseRoutePath = keyof BrowseOpenProps;

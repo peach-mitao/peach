@@ -23,7 +23,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history` |
-| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、索引页与资料页的正文由它画（`managed-routes.tsx`） |
+| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、关注页、索引页与资料页的正文由它画（`managed-routes.tsx`） |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
@@ -78,6 +78,15 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 - 每份列表是共用的 Mix 卡 `components/mix-card.tsx`：纸边、黑底封面、玻璃徽标、叠放头像，几何写在 `styles.css` 的 `[data-mix-*]`；悬停翻页是 `components/use-stack-flip.ts`（关注页卡叠也用它），时序钉在 `use-stack-flip.test.tsx`，翻页门槛（多选、遮挡、减少动效、滚动中）由壳经 `ShellActions.canFlip` 递进来。
 - 改名弹层、换头像与裁剪封面共用 `components/modal-frame.tsx` 的外壳，`form` 档 540px 同 `.geist-modal`。
 
+### 关注页
+
+`/follow` 列表页整个是 React（`frontend/src/react/follow-feed/`，入口 `follow-feed-page.tsx`），登记在 `BROWSE_ROUTES`，由路由树画进 `#stats`。它不进 `isManagedPath`：侧栏进来要重掷种子、回到干净的 `/follow`，这一步归壳的 `openFollow`。
+
+- 地址栏是筛选的唯一真相。页面改筛选、排序、换一批调 `actions.route`，壳的 `routeFollowFeed` 写好地址并认领，再经 `pushFollowFeed` 把新的 `view`／`seed` 用 `updateManagedRoute` 推进画着的那一页：代次不变、不重挂。判据是 `#stats` 的 `managedEntry` 记着 `/follow`。
+- 助手与动作是壳里各一份、身份不变的对象（卡片按引用比较），跟着打开交进来，不进 `ShellActions`。标签的界面名称列表页与卡片直接从 `@peach/legacy/tags` import。
+- 骨架淡出：`openFollow` 经 `place` 交 `revealFollowFeed`，它在 `revealSkeleton` 的 write 里只放空宿主，页面紧接着在同一个任务里画进去，骨架淡出时底下已是整页。
+- 深链 `/follow/item/:id` 开在舞台里：壳的 `renderForDetail` 只让出列表区，回到列表时才画；`followDetailActions`、`openFollowDetail`、`closeFollowDetail` 按「列表页还画着」决定就地关还是重开。
+
 ### 馆藏网格
 
 目录（`/` 与筛选态、`/trash`）、资料页作品区和详情页的接着看都由 `catalog-grid` island 画（`frontend/src/react/catalog-grid/`）。作品卡是 `components/media-card.tsx`，Mix 卡用播放列表页那张 `components/mix-card.tsx`。三种取数按 `mode` 分：
@@ -111,9 +120,9 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 客户端导航
 
-React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文、五张索引页与五类资料页由路由树画。
+React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文、播放列表页、关注页、五张索引页与五类资料页由路由树画。
 
-- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页经 portal 画进 `#stats`，索引页与资料页画进 `#index`。
+- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`。
 - 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十五页、资料页的五个模式与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
 - 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent, place})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主（给了 `place` 就由它把壳排的框架换进容器、交出宿主），宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。两个容器各记一条、互不相收：`claimSurface` 调 `releaseManagedRoute()` 一起收，`showHomeSurfaces` 只收 `#index` 那一条，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键、资料页换筛选与版式）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
 - `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、云下载预填）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页与资料页）交 `actions.navigate`。配置页页签与云下载预填先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
@@ -161,7 +170,7 @@ URL 都从它来，它被缓存住就没人看得到新产物。
 | `17-overlay.css` | Toast 与审查遮挡 |
 | `18-chips.css` | 产地选择与详情里次要操作的标签按钮（侧栏筛选标签归 `sidebar` 岛） |
 | `19-immersive.css` | 加载更多、空状态、选择条与批量条、窄屏总表（沉浸模式归 `immerse` 岛） |
-| `21-online.css` | 关注页骨架与关注详情（列表归 `follow-feed` 岛） |
+| `21-online.css` | 关注页骨架与关注详情（列表归路由树画的关注页） |
 | `22-followmanage.css` | 关注管理页 |
 
 ## 开发循环

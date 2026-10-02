@@ -13,10 +13,11 @@
  * 翻的是卡片渲染时就在手上的缩略图，悬停不为动画再发请求；第一张是静止封面本身。 */
 import { memo, useCallback, useRef, useState, type MouseEvent } from 'react';
 import { esc, fmtDur, icon } from '@peach/legacy/core';
+import { tagLabel } from '@peach/legacy/tags';
 
 import { MIX_FLIP_FACES, useStackFlip } from '../components/use-stack-flip';
 import {
-  followStack, itemForMedia, videoItems, type FollowContext, type FollowFeedActions, type FollowFeedHelpers,
+  followStack, itemForMedia, videoItems, type FollowContext, type FollowFeedActions,
   type FollowGroup, type FollowMedia, type FollowSource,
 } from './follow-feed';
 import {
@@ -43,7 +44,6 @@ export interface FollowCardProps {
   /** 这张卡正在写的那一下（状态或保存），和写失败时留在卡上的那一句。 */
   busy: string;
   failure: string;
-  helpers: FollowFeedHelpers;
   actions: FollowFeedActions;
   onStatus(id: number, to: string): void;
   onSave(id: number): void;
@@ -66,7 +66,7 @@ function Thumb({ src, width, height, onLearn }: {
 }
 
 function FollowCardView(props: FollowCardProps) {
-  const { group, authorSources, media, context, selected, selectMode, busy, failure, helpers, actions } = props;
+  const { group, authorSources, media, context, selected, selectMode, busy, failure, actions } = props;
   const item = itemForMedia(group, media);
   const imageView = media === 'images';
   const selectedMedia = imageView ? (item.media_items || []).find((entry) => entry.media_kind === 'image') : undefined;
@@ -205,7 +205,7 @@ function FollowCardView(props: FollowCardProps) {
               {tags.map((tag) => (
                 <span key={tag} data-media-tag="" data-tag-cat={`r34-${item.tag_types?.[tag] || 'unknown'}`}
                   data-follow-tag={tag}>
-                  {helpers.tagLabel(tag)}
+                  {tagLabel(tag)}
                 </span>
               ))}
             </div>

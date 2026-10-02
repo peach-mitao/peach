@@ -13,7 +13,6 @@ import type { FeedNewProps } from './feed-new/feed-new';
 import type { CatalogFilterProps, CatalogView } from './catalog-filter/catalog-filter';
 import type { SearchProps } from './search/search';
 import type { FollowDetailProps } from './follow-detail/follow-detail';
-import type { FollowFeedProps } from './follow-feed/follow-feed';
 import type { ItemDetailProps } from './item-detail/item-detail';
 import type { StageApi, StageHost } from './stage/stage-api';
 import type { SettingsPanelApi, SettingsPanelHost } from './settings-panel/settings-panel-api';
@@ -31,7 +30,6 @@ export type { FeedNewProps };
 export type { CatalogFilterProps, CatalogView };
 export type { SearchProps };
 export type { FollowDetailProps };
-export type { FollowFeedProps };
 export type { ItemDetailProps };
 
 export interface AccessState { mode: 'open' | 'password' | 'legacy' | 'locked'; revision: string }
@@ -473,7 +471,6 @@ export interface ReactPages {
   'catalog-grid': ReactPage<CatalogGridProps>;
   'catalog-filter': ReactPage<CatalogFilterProps>;
   'feed-new': ReactPage<FeedNewProps>;
-  'follow-feed': ReactPage<FollowFeedProps>;
   'junk-queue': ReactPage<JunkQueueProps>;
   'library-processing': ReactPage<LibraryProcessingProps>;
   search: ReactPage<SearchProps>;
