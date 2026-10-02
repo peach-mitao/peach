@@ -3919,7 +3919,6 @@ function Jo(e, t) {
 var Yo = {
 	"catalog-filter": { react: "catalog-filter" },
 	"catalog-grid": { react: "catalog-grid" },
-	"entity-page": { react: "entity-page" },
 	"feed-new": { react: "feed-new" },
 	"follow-feed": { react: "follow-feed" },
 	"junk-queue": { react: "junk-queue" },

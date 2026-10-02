@@ -2220,7 +2220,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("'orient','region','sort','dir','q','jav']")
         self.assertPageContains("!(key==='dir'&&value===defaultSortDir(filters.sort))")
         self.assertPageContains("&&!(key==='dir'&&filters[key]===defaultSortDir(filters.sort))")
-        # 资料页列表请求带上方向由岛的 `itemsParams` 拼，见 entity-page.test.tsx。
+        # 资料页列表请求带上方向由页面的 `itemsParams` 拼，见 entity-page.test.tsx。
         self.assertPageContains("...resolveSort(params.get('sort'),params.get('dir'))")
         # 设置里的默认排序与排序条同源：列名中性，方向由列自己的默认值决定。
         panel = self.read_react("settings-panel/settings-panel.tsx")
@@ -4232,7 +4232,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("body.entity-open [data-catalog-filter],body.index-open [data-catalog-filter]{display:none}")
         self.assertPageContains("logo:company&&d.has_logo?d.canonical_name:'',")
         profile = self.page[self.page.index("async function openEntity("):]
-        # 资料卡与筛选浮层是 entity-page 岛的两块，浮层排在资料卡之后、两者的间距由 e2e
+        # 资料卡与筛选浮层是资料页（entity-page）的两块，浮层排在资料卡之后、两者的间距由 e2e
         # `entity-filter.test.ts` 量。
         self.assertPageLacks("entityfootlabel")
         self.assertNotIn("关联艺人", profile)
@@ -4692,9 +4692,8 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("facetParams.set('id',String(context.id))")
         self.assertPageContains("barsContext={type:'item',id:item.id,filters:returnBars?.type==='entity'")
         self.assertPageContains("detailReturnBarsContext=returnBars")
-        # 实体筛选走资料页自己的落点（写地址、推给岛），不重建首页；地址的写法由
-        # `entityViewSearch` 统一拼。
-        self.assertPageContains("routeEntityPage(barsContext.kind,barsContext.name,filters);")
+        # 实体筛选走资料页自己的落点（写地址、推给页面），不重建首页，由 e2e `entity-filter.test.ts`
+        # 点标签、撤标签核对地址栏；地址的写法由 `entityViewSearch` 统一拼。
         self.assertPageContains("function commitContextFilter(mutate)")
         self.assertPageContains("const params=new URLSearchParams(entityFilterSearch(filters));")
         # 没有数据的区块不渲染（侧栏岛的用例核对），画幅也必须来自 scoped API，不能硬画横屏/竖屏两个按钮。
@@ -4738,19 +4737,16 @@ class WebUiSourceTests(unittest.TestCase):
             "  mutate(state);route(homePath());\n"
             "  applyFilterStateInPlace(state);refreshFacetCounts(barsContext);\n"
             "  loadCatalog();")
-        self.assertCode(
-            "    routeEntityPage(barsContext.kind,barsContext.name,filters);\n"
-            "    applyFilterStateInPlace(filters);refreshFacetCounts(barsContext);return")
-        # 首页筛选条、资料页那排与侧栏都由各自的岛照推过去的 props 画；侧栏只换按下态与计数，
-        # 展开的组和这一列的位置不动，由 `frontend/test/react/sidebar.test.tsx` 与 e2e 核对。
-        self.assertPageContains("  if(barsContext.type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});")
+        # 资料页那一份名单只重取一次由 e2e `entity-filter.test.ts` 核对。首页筛选条、资料页那排与侧栏
+        # 都由各自的 React 子树照推过去的 props 画；侧栏只换按下态与计数，展开的组和这一列的位置不动，
+        # 由 `frontend/test/react/sidebar.test.tsx` 与 e2e 核对。
         self.assertPageContains("  renderCombo();")
         self.assertCode(
             "  const seq=++facetCountsSeq;\n"
             "  const [facetData]=await getBarsData(context);\n"
             "  if(seq!==facetCountsSeq)return;")
         # 从详情回到列表是换语境，不是换一条筛选：那几排本来就要照新语境重新画。
-        detail = self.app_js.split("if(barsContext.type==='item'){", 1)[1]
+        detail = self.app_js.split("if(context.type==='item'){", 1)[1]
         self.assertIn("buildBars();loadCatalog();return", detail[:detail.index("\n}")])
 
     def test_the_intersection_bar_grows_into_place_instead_of_shoving_the_page(self):
@@ -4865,8 +4861,8 @@ class WebUiSourceTests(unittest.TestCase):
         生效的标签不一定在这一批抽样里，那时只有键、没有行，不印数字：印 0 会说成
         「这个标签下什么都没有」，而它此刻正筛着一屏内容。
         """
-        # 两排的数都由岛印（首页 catalog-filter、资料页 entity-page），首页由壳把每枚的 n 照推过去；
-        # 资料页那排的标签与计数由岛自己从资料里取，见 `frontend/test/react/entity-page.test.tsx`。
+        # 两排的数都由 React 印（首页 catalog-filter 岛、资料页 entity-page），首页由壳把每枚的 n 照推过去；
+        # 资料页那排的标签与计数由页面自己从资料里取，见 `frontend/test/react/entity-page.test.tsx`。
         self.assertPageContains("({k:row.k,label:tagLabel(row.k),n:row.n??null})")
 
     def test_the_refresh_key_keeps_redrawing_until_the_bars_land_too(self):
@@ -4884,9 +4880,9 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks("tagbarSkeleton", "有内容在屏幕上时不铺骨架")
 
     def test_large_collections_render_in_bounded_batches(self):
-        # 资料页每批 48 条、续页不再数总数，由岛的 `itemsParams` 拼，见 entity-page.test.tsx。
+        # 资料页每批 48 条、续页不再数总数，由页面的 `itemsParams` 拼，见 entity-page.test.tsx；
+        # 侧栏聚合按语境取口径由 e2e `sidebar.test.ts` 核对。
         self.assertPageContains("barsRequestSeq")
-        self.assertPageContains("async function getBarsData(context=barsContext)")
         self.assertPageLacks("p.set('limit','120')")
 
     def test_mix_card_flips_through_its_own_covers_on_hover(self):

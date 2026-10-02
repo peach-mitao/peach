@@ -1,5 +1,5 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
- * 管理区那几页与索引页（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的 `ROUTES` 表打开。
+ * 管理区那几页、索引页与资料页（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的 `ROUTES` 表打开。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新

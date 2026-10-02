@@ -97,3 +97,7 @@ export interface IndexOpenProps extends IndexRoute {
 /** 索引五页画进 `#index`，一种名册一条路径。 */
 export type IndexRoutePath = `/${IndexKind}`;
 export type IndexOpenPropsTable = { [Path in IndexRoutePath]: IndexOpenProps };
+
+/** 资料页画进 `#index`，每种实体一条模式（名字里可能带斜杠，吃掉剩下全部段）。种类与名字跟着打开走，
+ *  名字是壳从地址解码出来的那一份。 */
+export type EntityRoutePath = '/performers/*' | '/studios/*' | '/creators/*' | '/series/*' | '/agencies/*';

@@ -19,7 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
-import { loadRouter, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
+import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -448,8 +448,6 @@ const claimSurface=path=>{
      它们上面时不经过这里，页面留着。 */
   releaseManagedRoute();
   unmountIsland($('#stats'));
-  /* 资料页那块（换头像挂在它的圆框上）在管理区打开时只是被藏起来，DOM 还在。 */
-  unmountIsland($('#index'));
   /* 目录网格同理：目录页与回收站之间它一直挂着，换筛选只是换查询；去别的页面就卸掉，
      那些页面接着会往 `#grid` 里写自己的东西。 */
   if(!isCatalogPath(path)&&path!=='/trash')clearCatalogGrid();
@@ -974,7 +972,7 @@ const entityFilterSearch=filters=>{const params=new URLSearchParams();
   return params.toString()};
 const cloneBarsContext=context=>context&&context.type==='entity'
   ? {...context,filters:{...context.filters}}:context;
-const activeFilterState=()=>barsContext.type==='home'?state:barsContext.filters;
+const activeFilterState=()=>{const context=currentBarsContext();return context.type==='home'?state:context.filters};
 $('#q').value=state.q;rememberSearchValue();
 /* `activeQueue` 是此刻开着的队列（`{kind, seedId|playlistId}`），只用来判「是不是同一个队列里换
    一条」；队列的条目归详情岛。`pendingQueueRoute` 是队列地址的前缀：停在哪一条要等岛定下来，
@@ -1025,6 +1023,7 @@ const currentSelectSurface=()=>location.pathname==='/follow'?'follow':location.p
 function paintSelection(){
   // 卡片网格、垃圾队列与关注页的选中态归 React：每次推一份新的集合，卡片按引用比较才看得出变了。
   gridIslandHosts().forEach(host=>updateIsland(host,{selected:new Set(selected),selectMode}));
+  pushEntityPage({selected:new Set(selected),selectMode});
   pushFollowFeed({selected:new Set(followSelected),selectMode});
   /* 底部浮条归批量条岛（`react/batch-dock/`）：壳推计数与语境，每种语境列哪几颗键由岛按语境定。 */
   const followPage=location.pathname==='/follow',junkPage=location.pathname==='/junk-files';
@@ -1278,7 +1277,7 @@ const topsQueryParams=(context,page=0)=>{
 };
 /* 两份聚合存在全站那一个 QueryClient 里（`fetchBars`）：同一份口径 30 秒内复用，同时要同一份
    只发一次，口径变了换键重取。这里只按当前语境算出两个参数串。 */
-async function getBarsData(context=barsContext){
+async function getBarsData(context){
   // JAV 模式的顶部三层与筛选面板要跟着收窄，否则会列出只出现在创作者作品里的
   // 女优和厂牌，点进去却是空的。口径进键，换了口径就是另一份。
   const facetParams=new URLSearchParams();
@@ -1317,8 +1316,8 @@ function scrollFilteredViewToTop(){
    所以按下态就地改，成员和滚动位置一概不动。选中的标签排到最前是重画时的事——刚点的
    那枚就在他眼皮底下，这一下把它抽走反倒是替他决定现在该看哪儿。 */
 function applyFilterStateInPlace(filters){
-  // 资料页那一条的按下态由岛按地址上的筛选算，新的筛选已经经 `routeEntityPage` 推过去了。
-  if(barsContext.type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});
+  // 资料页那一条的按下态由页面按地址上的筛选算，新的筛选已经经 `routeEntityPage` 推过去了。
+  if(currentBarsContext().type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});
   // 侧栏那几组的按下态与时长两端由侧栏岛照这一份筛选画，成员不动。
   paintSidebar({filters:{...filters}});
   renderCombo();
@@ -1336,13 +1335,14 @@ async function refreshFacetCounts(context){
 }
 function commitContextFilter(mutate){
   scrollFilteredViewToTop();
-  if(barsContext.type==='entity'){
+  const context=currentBarsContext();
+  if(context.type==='entity'){
     // 标签是作品筛选，点了就回到作品视图：留在照片或名册里既不生效，标签条也会自相矛盾。
-    const filters={...barsContext.filters};mutate(filters);
-    routeEntityPage(barsContext.kind,barsContext.name,filters);
-    applyFilterStateInPlace(filters);refreshFacetCounts(barsContext);return
+    const filters={...context.filters};mutate(filters);
+    routeEntityPage(context.kind,context.name,filters);
+    applyFilterStateInPlace(filters);refreshFacetCounts(currentBarsContext());return
   }
-  if(barsContext.type==='item'){
+  if(context.type==='item'){
     // 从详情回到列表是换语境，不是换一条筛选：那几排本来就要照新语境重新画。
     const target=cloneBarsContext(detailReturnBarsContext);
     disposeStage(false);detailReturnBarsContext=null;
@@ -1360,7 +1360,7 @@ function commitContextFilter(mutate){
   applyFilterStateInPlace(state);refreshFacetCounts(barsContext);
   loadCatalog();
 }
-/* 左端四枚视图。资料页那一条（`entity-filter` 岛）用同一份清单画自己的观看状态。 */
+/* 左端四枚视图。资料页那一条（`entity-filter`）用同一份清单画自己的观看状态。 */
 const VIEW_PILLS=[{k:'',label:'全部'},{k:'fresh',label:'没看过'},
                   {k:'later',label:'稍后看'},{k:'flagged',label:'已标记'}];
 const catalogViews=()=>VIEW_PILLS.map(v=>({...v,href:v.k?STATE_ROUTES[v.k]:'/'}));
@@ -1476,7 +1476,7 @@ async function buildBars(){
      整排头像连 `<img>` 一起重建，人看到的就是「点进去又退出来，页面自己刷新了一次」。
      所以详情不碰表面的条，列表的口径和那份缓存原样留着等他回来。 */
   if(barsContext.type==='item')return;
-  const context=barsContext,filterState=activeFilterState();
+  const context=currentBarsContext(),filterState=activeFilterState();
   const signature=JSON.stringify([context,filterState,state.state||'',state.seed||'',javActive()]);
   renderBarsLoading(filterState);
   // 两个聚合查询互不依赖。冷启动各需约 1 秒，串行会让手机首屏白等；
@@ -1563,7 +1563,7 @@ function toggleTag(t){commitContextFilter(filters=>{filters.tag=t?withTagToggled
 const catalogOnScreen=()=>$('#index').hidden&&$('#stats').hidden;
 const COMBO_LABELS={creator:'创作者',studio:'厂牌',owner:'归属'};
 /* 生效的筛选一颗一颗列出来：先是创作者、厂牌与归属这几条整项的，再是叠加的标签。目录那条
-   （`catalog-filter` 岛）与资料页那条（`entity-filter` 岛）拿同一份清单画。 */
+   （`catalog-filter` 岛）与资料页那条（`entity-filter`）拿同一份清单画。 */
 function comboItems(filters){
   const items=[];
   if(filters.creator)items.push({kind:'clear',key:'creator',label:`${COMBO_LABELS.creator} ${filters.creator}`});
@@ -1641,10 +1641,10 @@ function showHomeSurfaces(){
   // 两个类都要清：只清 entity-open 会让从索引页回首页时顶栏一直空着，
   // 而且下面那一行 style.display='' 恢复不了被 class 隐藏的元素。
   document.body.classList.remove('entity-open','index-open');
-  /* 索引页和资料页都画进 #index，两条路都先经过这里再 `innerHTML=`：直接盖掉的话，
-     上一页挂在里面的 React 根（资料页、换头像）就没人卸，留着一棵管着已经不在页面上的节点的根；
-     路由树画的那一页也在这里收，管理区 `#stats` 那一页不动（资料页压在它上面时它藏着继续活）。 */
-  unmountIsland($('#index'));releaseManagedRoute($('#index'));
+  /* 索引页和资料页都由路由树画进 #index，两条路都先经过这里再铺骨架：直接盖掉的话，上一页的
+     React 子树就没人卸，留着一棵管着已经不在页面上的节点的根。这里只收 `#index` 那一页，管理区
+     `#stats` 那一页不动（资料页压在它上面时它藏着继续活）。 */
+  releaseManagedRoute($('#index'));
   $('#stats').hidden=true;$('#index').hidden=true;
   if(!isFeedNewPath(location.pathname))$('#feedNew').hidden=true;
   $('#catalogFilter').style.display='';syncCatalogFilterScreen();
@@ -2405,7 +2405,7 @@ function personRingHtml(x,kind,big){
     x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',
     company&&big?'large':'ring',company?null:x.avatar_focus,true);
 }
-/* 两座岛（索引页、资料页正文的名册）要的那一格头像：圆框里的 HTML 和人脸取景。 */
+/* 索引页与资料页正文的名册要的那一格头像：圆框里的 HTML 和人脸取景。 */
 const personAvatar=(x,entityKind,big)=>({html:personRingHtml(x,entityKind,big),face:faceOrigin(x.avatar_focus)});
 /* 在线创作者这一格跟本地艺人同形，差别只在圆里那张图从哪儿来：本地走 `/entity-image`
    那条自家链，在线只有来源站点给的地址，官方主页优先、归档兜底，两条都取不到就落回
@@ -2514,19 +2514,35 @@ async function openIndex(kind,push=true){
 }
 
 let entityRequestSeq=0,entityJavLayout=false;
-/* 资料页整页归 React（`entity-page`，ADR-0031 第 11d 步）：资料卡、筛选浮层、新作那一行与正文是
-   同一座岛，`/api/entity`、作品、照片与新作都由岛按查询键取（`frontend/src/react/entity-page/`）。
-   壳只写地址、挂岛、递 props：地址栏是这一页筛选与媒体视图的唯一真相源，岛改筛选调
-   `actions.route`，壳写好地址再经 `routeEntityPage` 把新的 `filters`／`media` 推回去。
-   挂载点是资料卡那一格（`[data-entity-hero]`）；浮层、新作与正文三块由壳在 `#index` 里排好，
-   岛用 portal 画进去——浮层吸顶要它的父盒就是 `#index`，新作那一行是遗留层的卡片。 */
+/* 资料页整页归 React，由路由树画进 `#index`（`ENTITY_ROUTES`，按 `/performers/*` 这样的模式登记）：
+   资料卡、筛选浮层、新作那一行与正文是同一页，`/api/entity`、作品、照片与新作都由页面按查询键取
+   （`frontend/src/react/entity-page/`）。壳只写地址、排框架、递 props：地址栏是这一页筛选与媒体视图的
+   唯一真相源，页面改筛选调 `actions.route`，壳写好地址再经 `routeEntityPage` 把新的 `filters`／`media`
+   推回去（`updateManagedRoute`，不重挂）。页面画进资料卡那一格（`[data-entity-hero]`）；浮层、新作与
+   正文三块由壳在 `#index` 里排好，页面用 portal 画进去——浮层吸顶要它的父盒就是 `#index`，新作那一行
+   是遗留层的卡片。 */
 let entityPageHost=null,entityBodyHost=null,entityPageView='',entityPageRevision=0;
-const entityPageCurrent=()=>!!entityPageHost?.isConnected&&islandMounted(entityPageHost);
+const entityRoutePath=kind=>`/${ENTITY_ROUTES[kind]||kind}/*`;
+/* 画在 `#index` 里的那一页是资料页时就是它的登记项（路径加交进去的 props），否则 null。 */
+function entityPageEntry(){
+  const entry=managedEntry($('#index'));
+  return entry&&entry.path.endsWith('/*')&&entry.host.isConnected?entry:null;
+}
+const entityPageCurrent=()=>!!entityPageEntry();
 const entityPageLive=(kind,name)=>entityPageCurrent()&&!$('#index').hidden
   &&$('#index').dataset.entityKind===kind&&$('#index').dataset.entityName===name;
-function pushEntityPage(patch){if(entityPageCurrent())updateIsland(entityPageHost,patch)}
+function pushEntityPage(patch){if(entityPageCurrent())updateManagedRoute($('#index'),patch)}
+/* 筛选条现在服务的语境。作品详情开着时是变量里那一份（`openItem` 记下的）；`#index` 里画着资料页时
+   按那一页推：种类与名字来自打开时交进去的 props，筛选是壳最近一次推过去的那一份；其余是变量
+   （首页那份 `state`，或作品详情关掉时 `closeItemDetail` 还原的那一份）。 */
+function currentBarsContext(){
+  if(barsContext.type==='item')return barsContext;
+  const entry=entityPageEntry();
+  if(entry){const {kind,name,filters}=entry.props;return {type:'entity',kind,name,filters:{...filters}}}
+  return barsContext;
+}
 /* 首页与资料页的排序键：箭头只画在选中那一枚上，无障碍名称播报的是点下去会得到什么。
-   资料页的 JAV 语境由岛按第一页作品推出来，随参数递进来。 */
+   资料页的 JAV 语境由页面按第一页作品推出来，随参数递进来。 */
 function sortKeys(current,dir,jav=javActive()){
   return sortOptions(jav).map(([key,label])=>{
     const pressed=current===key,next=nextSortState(key,current,dir);
@@ -2546,7 +2562,8 @@ const entityViewSearch=(filters,view)=>{const params=new URLSearchParams(entityF
 function routeEntityPage(kind,name,filters,media=EMPTY_ENTITY_MEDIA,{push=true}={}){
   const search=entityViewSearch(filters,media);
   if(push)route(entityPath(kind,name)+(search?'?'+search:''));
-  barsContext={type:'entity',kind,name,filters:{...filters}};
+  /* 资料页的语境由画着的那一页推（`currentBarsContext`），变量只记首页那一份，免得停在作品详情上。 */
+  barsContext={type:'home',filters:state};
   if(!entityPageLive(kind,name))return false;
   releaseHoverPreviews(entityBodyHost);
   pushEntityPage({filters:{...filters},media:{...media},seed:String(state.seed||''),jav:state.jav==='1'});
@@ -2584,14 +2601,13 @@ const entityPageHelpers={
   aliasForm:(mine,write)=>entityAliasForm(mine,write),
   sourceToolsHtml:id=>sourceTools(id),
   wireSourceTools:(root,done)=>wireSourceTools(root,done),
-  tagLabel:tag=>tagLabel(tag),
   comboItems:filters=>comboItems(filters),
   sortKeys:(sort,dir,jav)=>sortKeys(sort,dir,jav),
 };
-/* 岛递回来的写操作与跳转。筛选现读 `barsContext`，不捕获挂载那一刻的那一份。 */
+/* 页面递回来的写操作与跳转。筛选现读 `currentBarsContext()`，不捕获挂载那一刻的那一份。 */
 function entityPageActions(kind,name){
-  const live=()=>barsContext.type==='entity'&&barsContext.kind===kind&&barsContext.name===name
-    ?barsContext.filters:emptyEntityFilters();
+  const live=()=>{const context=currentBarsContext();
+    return context.type==='entity'&&context.kind===kind&&context.name===name?context.filters:emptyEntityFilters()};
   return {
     route:(filters,media)=>void routeEntityPage(kind,name,filters,media),
     toggleTag:tag=>toggleTag(tag),
@@ -2613,12 +2629,12 @@ function entityPageActions(kind,name){
       scheduleStickySurfaces()},
     missing:()=>queueMicrotask(()=>{
       if(!entityPageCurrent())return;
-      unmountIsland($('#index'));showEntityMissing(kind)}),
+      releaseManagedRoute($('#index'));showEntityMissing(kind)}),
     // 顶栏那排头像有 30 秒会话缓存，回首页时取到的还是换之前的版本号，看到的就是旧图。
     avatarChanged:()=>dropBars(),
   };
 }
-/* 卡片网格原样要的那几样与展示设置随挂载带上现值，之后由各自的开关经 `updateIsland` 推最新值。 */
+/* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。 */
 function entityPageProps(kind,name,filters,media,hosts){
   return {kind,name,filters,media,hosts,
     jav:state.jav==='1',seed:String(state.seed||''),revision:entityPageRevision,feedRevision,
@@ -2629,8 +2645,8 @@ function entityPageProps(kind,name,filters,media,hosts){
     canLoadMore:entityBodyCanLoadMore,
     card:entityCard,helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
-/* 资料页与关注页那面墙都由岛异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
-   资料页的视图由岛每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
+/* 资料页与关注页那面墙都由 React 异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
+   资料页的视图由页面每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
 function photoViewActive(){
   if(entityPageView==='photos'&&entityPageCurrent()&&!$('#index').hidden)return true;
   if(location.pathname==='/follow'&&followMediaView==='images'&&!$('#stats').hidden)return true;
@@ -2739,8 +2755,8 @@ function wireSourceTools(root,done){
   if(sync)sync.onclick=()=>syncMissing(Number(sync.dataset.sync),status,done);
 }
 
-/* 「添加别名」弹层。名字下拉本身在资料卡里（`name-picker.tsx`），换统称的确认也在岛里；这一段
-   只是弹层的表单与回执，写回交给岛递进来的 `write`（`/api/entity-alias`，成功后岛重取资料与作品）。
+/* 「添加别名」弹层。名字下拉本身在资料卡里（`name-picker.tsx`），换统称的确认也在资料页里；这一段
+   只是弹层的表单与回执，写回交给页面递进来的 `write`（`/api/entity-alias`，成功后页面重取资料与作品）。
    添别名写的是 `entity_alias`，只往这条实体上加一个写法，不改任何已有断言，所以不再问一遍；撤销
    摆在同一个弹层里，添和撤是一件事的两头。写回来的名字随后就出现在下拉里，要把它提成统称再点
    一次即可——那一步有它自己的代价，仍走确认。 */
@@ -2811,30 +2827,31 @@ function showEntityMissing(kind){
   const actions=INDEX_TITLES[index]?`<a class="geist-button primary" href="/${index}">返回${title}列表</a>`:'';
   $('#index').innerHTML=emptyState('search-x',`找不到这个${title}`,'名字可能拼错了，或者已经合并到别的名字下；回列表里重新找。',{actions});
 }
-/* 资料页的路由入口：写地址、铺骨架、挂岛。取数与页内状态都在岛里，挂载时 `prefetch` 把资料
+/* 资料页的路由入口：写地址、铺骨架、交给路由树画。取数与页内状态都在页面里，打开时首屏取数把资料
    （连同新作）、作品第一页与照片取齐，骨架与整页一次换掉。前进后退落在同一位的另一份筛选上时
-   这一页还挂着，只把地址上的新筛选推过去，不重挂。 */
+   这一页还画着，只把地址上的新筛选推过去，不重挂。 */
 async function openEntity(kind,name,push=true){
   const filters=push?emptyEntityFilters():parseEntityFilters(location.search);
   if(kind==='creator')filters.creator='';
   // 深链和前进后退要能直接落到照片视图；点进来的新页面一律从作品开始。
   const media=push?EMPTY_ENTITY_MEDIA:parseMediaView(location.search);
-  if(!push&&barsContext.type==='entity'&&barsContext.kind===kind&&barsContext.name===name
+  const shown=currentBarsContext();
+  if(!push&&shown.type==='entity'&&shown.kind===kind&&shown.name===name
     &&routeEntityPage(kind,name,filters,media,{push:false})){
-    applyFilterStateInPlace(filters);refreshFacetCounts(barsContext);return;
+    applyFilterStateInPlace(filters);refreshFacetCounts(currentBarsContext());return;
   }
   releaseHoverPreviews();
   const expectedPath=entityPath(kind,name);
   const search=entityViewSearch(filters,media);
   if(push)route(expectedPath+(search?'?'+search:''));
-  barsContext={type:'entity',kind,name,filters};
+  barsContext={type:'home',filters:state};
   showHomeSurfaces();
   disposeStage(false);
   document.body.classList.add('entity-open');syncCatalogFilterScreen();
   $('#stats').hidden=true;$('#index').hidden=false;clearCatalogGrid();hideCatalogCombo();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
   const seq=++entityRequestSeq;
-  // 资料页是 React 岛：包在等名单、铺骨架的这一下就开始取，挂载时取数不再排在下包后面。
+  // 资料页由 React 画：包在等名单、铺骨架的这一下就开始取，首屏取数不再排在下包后面。
   void preloadIslands();
   /* 名单启动时就在取；深链直接落在资料页时它可能还在路上，稍等一下再画骨架，画出来
      就是最终的形状。等不到就先画，名单到了再补那两块。 */
@@ -2847,11 +2864,11 @@ async function openEntity(kind,name,push=true){
   entityJavLayout=false;entityPageView='';
   // 名单每进一页重取一遍，下一页用的就是服务端的现状。
   void loadEntityShapes().then(()=>{if(seq===entityRequestSeq)syncEntitySkeletonParts(kind,name)});
-  /* 卡外面依次是交集条与玻璃浮层、新作和正文，顶到底一条线。四块宿主先在文档外排好，岛取齐数据
-     那一刻才换掉骨架：换掉与画出整页落在同一帧。浮层与正文各带一层 `.peach-react`（React 子树的
-     样式范围）；新作那一行是遗留层的卡片，宿主不进这个范围。 */
+  /* 卡外面依次是交集条与玻璃浮层、新作和正文，顶到底一条线。四块宿主先在文档外排好，首屏取齐
+     那一刻才换掉骨架（`place`）：换掉与画出整页落在同一个任务里。资料卡、浮层与正文各带一层
+     `.peach-react`（React 子树的样式范围）；新作那一行是遗留层的卡片，宿主不进这个范围。 */
   const frame=document.createElement('template');
-  frame.innerHTML=`<div data-entity-hero></div>
+  frame.innerHTML=`<div data-entity-hero><div class="peach-react"></div></div>
     <div data-entity-filter><div class="peach-react"></div></div>
     <section class="feednew" data-feed-new aria-label="未入库的新作" hidden></section>
     <div data-entity-body><div class="peach-react"></div></div>`;
@@ -2863,9 +2880,10 @@ async function openEntity(kind,name,push=true){
   entityPageHost=heroHost;entityBodyHost=hosts.body.parentElement;
   const isCurrent=()=>seq===entityRequestSeq&&
     decodeURIComponent(location.pathname)===decodeURIComponent(expectedPath);
-  await mountIsland('entity-page',heroHost,entityPageProps(kind,name,filters,media,hosts),{isCurrent,
-    reveal:(_el,paint)=>{$('#index').replaceChildren(...parts);paint()}});
-  if(!isCurrent()||!entityPageCurrent())return;
+  const painted=await openManagedRoute(entityRoutePath(kind),entityPageProps(kind,name,filters,media,hosts),
+    {container:$('#index'),isCurrent,
+      place:container=>{container.replaceChildren(...parts);return heroHost.firstElementChild}});
+  if(!painted||!isCurrent()||!entityPageCurrent())return;
   $('#index').dataset.entityKind=kind;$('#index').dataset.entityName=name;
   buildBars();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -3347,18 +3365,20 @@ function catalogCardRatio(){
   if(!state)return 16/9;
   return cardRatio(catalogGridLayout());
 }
-/* 挂着卡片网格的几处：目录 `#grid`、资料页作品区、作品详情（接着看那一排在它里面，版式、
-   快进秒数与选择态同名递进去）。 */
+/* 以岛挂着卡片网格的那一处：目录 `#grid`。资料页作品区由路由树画，同名的版式、快进秒数与选择态
+   经 `pushEntityPage` 推过去。 */
 function gridIslandHosts(){
-  return [$('#grid'),entityPageCurrent()?entityPageHost:null]
-    .filter(host=>host&&islandMounted(host));
+  return [$('#grid')].filter(host=>islandMounted(host));
 }
-/* 版式、「JAV 默认封面」、快进秒数这些展示层的设置变了，只推给正挂着的网格重画，不重取。 */
+/* 版式、「JAV 默认封面」、快进秒数这些展示层的设置变了，只推给正画着的网格重画，不重取。 */
 function repaintCatalogGrid(){
   gridIslandHosts().forEach(host=>{
     releaseHoverPreviews(host);
     updateIsland(host,{layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
   });
+  if(!entityPageCurrent())return;
+  releaseHoverPreviews(entityPageHost);
+  pushEntityPage({layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
 }
 function catalogGridProps(){
   const path=decodeURIComponent(location.pathname),home=isCatalogPath(path),trash=state.state==='trash';
@@ -3611,7 +3631,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   const returnSurfaceReady=hasReturnSurface();
   const needsReturnRestore=detailReturnNeedsRestore||(!push&&!returnSurfaceReady);
   if(!returnSurfaceReady)fillIdleCatalog();
-  const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(barsContext);
+  const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(currentBarsContext());
   if(push)detailReturnPath=location.pathname+location.search;
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
   disposeStage(false,true,{miniplayer:false});

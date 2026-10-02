@@ -8,7 +8,7 @@
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { NavigateFunction } from 'react-router';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
 import type {
   ConfigurationProps, DataCleanupProps, DuplicatesProps, FollowManageProps, QualityGoalsProps, ReviewProps,
@@ -16,7 +16,12 @@ import type {
 } from '../../src/react/bundle';
 import type { ShellActions } from '../../src/react/router/shell-actions';
 
+// 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
 async function load(path = '/') {
   vi.resetModules();

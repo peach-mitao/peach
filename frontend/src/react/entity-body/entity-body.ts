@@ -1,10 +1,10 @@
 /* 实体资料页的正文（ADR-0031 第 10e 步）：筛选浮层下面那一整块的数据形状。
  *
  * 这一块在三个视图之间切换：名册（事务所旗下艺人、片商旗下厂牌）、作品网格和照片墙。
- * 壳（`web/app.js` 的 `openEntity` 一族）拥有取数、路由和视图状态，岛只画：换视图、换筛选、
- * 换排序都由壳取好再用 `updateIsland` 推一份新的，不重挂。点下去的动作全部回壳。
+ * 壳（`web/app.js` 的 `openEntity` 一族）拥有取数、路由和视图状态，这一块只画：换视图、换筛选、
+ * 换排序都由壳取好再用 `updateManagedRoute` 推一份新的，不重挂。点下去的动作全部回壳。
  *
- * 作品网格就是馆藏卡片网格（`catalog-grid`）的 entity 模式，岛里直接渲染那个组件，卡片的
+ * 作品网格就是馆藏卡片网格（`catalog-grid`）的 entity 模式，这里直接渲染那个组件，卡片的
  * 助手、动作、版式与选择状态原样递进去；名册摆的是索引页那一格（`PeopleGrid`）。 */
 import type { CatalogGridProps, MediaCardActions, MediaCardHelpers, MediaPage } from '../catalog-grid/types';
 import type { IndexPerson, PeopleLayout, PersonAvatar } from '../index/index-data';
