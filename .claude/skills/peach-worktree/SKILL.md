@@ -5,7 +5,7 @@ description: 在用户说并行、工作树、暂存、提交、ready、集成�
 
 # 并行 worktree 与提交边界
 
-最后复核：2026-09-27
+最后复核：2026-10-02
 证据来源：`docs/HANDOFF.md`「并行智能体与 Git 工作树」、`README.md`、ADR-0015、ADR-0017、本机工作树与沙箱工具记录。
 
 ## 是否委派与何时使用
@@ -55,7 +55,7 @@ description: 在用户说并行、工作树、暂存、提交、ready、集成�
 
 - 提交前核对 README 影响；交付分支最后提交加 `README-Impact: updated; 说明` 或 `README-Impact: none; 原因`。
   它与 `Co-Authored-By` 等 trailer 连续写在消息末尾同一块里，中间隔一个空行就只算正文，解析不到。
-  触发面、格式、中英文同批与例外见 `docs/README_MAINTENANCE.md`；`ready/integrate` 拒收缺失或矛盾声明。
+  `commit-msg` 检查署名与已有声明格式；`ready/integrate` 核对交付差异，细节见 `docs/README_MAINTENANCE.md`。
 
 - 分支上每个提交都要署名，形态是 `Co-Authored-By: 工具 (模型 版本) <厂商 noreply>`：
   `Claude Code (Opus 5) <noreply@anthropic.com>`、`Codex (GPT-5.5) <noreply@openai.com>`。

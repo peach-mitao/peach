@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .check_readme_impact import git, unpublished
+from .check_readme_impact import git, trailers, unpublished
 
 #: 已登记的工具与它厂商的 noreply 地址。换用别的智能体就在这里加一行，别散着写。
 VENDORS = {
@@ -24,9 +24,7 @@ EXAMPLE = "Co-Authored-By: Claude Code (Opus 5) <noreply@anthropic.com>"
 def values(repo: Path, head: str = "HEAD") -> list[str]:
     """交付提交末尾那一块里的 Co-Authored-By，原样取值。"""
     message = git(repo, "show", "-s", "--format=%B", head)
-    trailers = git(repo, "interpret-trailers", "--parse", message=message)
-    return [line.partition(":")[2].strip() for line in trailers.splitlines()
-            if line.partition(":")[0].casefold() == "co-authored-by"]
+    return trailers(repo, message).get("co-authored-by", [])
 
 
 def commits(repo: Path, base: str, head: str = "HEAD") -> list[tuple[str, str]]:
@@ -36,7 +34,7 @@ def commits(repo: Path, base: str, head: str = "HEAD") -> list[tuple[str, str]]:
             for line in output.splitlines() if line.strip()]
 
 
-def _problems(commit: str, label: str, found: list[str]) -> list[str]:
+def problems(label: str, found: list[str]) -> list[str]:
     if not found:
         return [f"提交「{label}」须有 Co-Authored-By 写明工具与模型，如 {EXAMPLE}"]
     problems = []
@@ -65,7 +63,7 @@ def check(repo: Path, base: str, head: str = "HEAD") -> list[str]:
     等于只要收尾那次签对了，前面写代码的几次签成谁都放行——而要追的恰恰是写出那
     一行的提交。合进来的 merge 不算分支自己的产出，跳过。
     """
-    problems = []
+    found_problems = []
     for commit, label in commits(repo, base, head):
-        problems += _problems(commit, label, values(repo, commit))
-    return problems
+        found_problems += problems(label, values(repo, commit))
+    return found_problems

@@ -39,6 +39,26 @@ def unpublished(repo: Path) -> list[str]:
     return [f"^{PUBLISHED_REF}"]
 
 
+def trailers(repo: Path, message: str) -> dict[str, list[str]]:
+    """Git 解析提交末尾的 trailer；每个字段保留全部取值。"""
+    result: dict[str, list[str]] = {}
+    trailers = git(repo, "interpret-trailers", "--parse", message=message)
+    for line in trailers.splitlines():
+        name, _, value = line.partition(":")
+        result.setdefault(name.casefold(), []).append(value.strip())
+    return result
+
+
+def declaration(values: list[str]) -> tuple[str, list[str]]:
+    """检查声明形态；与 README 文件差异的关系由交付检查核对。"""
+    if len(values) != 1:
+        return "", ["交付提交须有唯一 README-Impact: updated; 说明 或 README-Impact: none; 原因"]
+    status, separator, reason = values[0].partition(";")
+    if status not in {"updated", "none"} or not separator or not reason.strip():
+        return "", ["README-Impact 需使用 updated/none，并在英文分号后写具体原因"]
+    return status, []
+
+
 def check(repo: Path, base: str, head: str = "HEAD") -> list[str]:
     """以实际交付差异和最后提交的 Git trailer 为依据。"""
     paths = set(git(repo, "diff", "--name-only", "--no-renames", "-z",
@@ -48,14 +68,9 @@ def check(repo: Path, base: str, head: str = "HEAD") -> list[str]:
     if not touched and not relevant:
         return []
     message = git(repo, "show", "-s", "--format=%B", head)
-    trailers = git(repo, "interpret-trailers", "--parse", message=message)
-    values = [line.partition(":")[2].strip() for line in trailers.splitlines()
-              if line.partition(":")[0].casefold() == "readme-impact"]
-    if len(values) != 1:
-        return ["交付提交须有唯一 README-Impact: updated; 说明 或 README-Impact: none; 原因"]
-    status, separator, reason = values[0].partition(";")
-    if status not in {"updated", "none"} or not separator or not reason.strip():
-        return ["README-Impact 需使用 updated/none，并在英文分号后写具体原因"]
+    status, problems = declaration(trailers(repo, message).get("readme-impact", []))
+    if problems:
+        return problems
     if touched and touched != READMES:
         return ["README.md 与 README.en.md 必须同批维护"]
     if status == "updated" and touched != READMES:

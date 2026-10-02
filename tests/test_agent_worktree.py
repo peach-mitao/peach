@@ -17,6 +17,23 @@ from support.gitrepo import seed_repository
 
 #: 仓库里版本化的 git hook，测试原样装进临时仓库。
 HOOKS = Path(__file__).resolve().parents[1] / agent_worktree.HOOKS_PATH
+AUTHOR = "Co-Authored-By: Codex (GPT-6) <noreply@openai.com>"
+
+
+def install_commit_hooks(repo: Path) -> None:
+    hooks = repo / agent_worktree.HOOKS_PATH
+    hooks.mkdir(parents=True)
+    sources = list(HOOKS.iterdir())
+    sources += [HOOKS.parent / name for name in
+                ("check_commit_message.py", "check_readme_impact.py", "co_author.py")
+                if (HOOKS.parent / name).is_file()]
+    for source in sources:
+        relative = source.relative_to(HOOKS.parent.parent)
+        target = repo / relative
+        shutil.copyfile(source, target)
+        target.chmod(0o755)
+        _git(repo, "add", relative.as_posix())
+    _git(repo, "commit", "-m", "hooks")
 
 #: 版本号的唯一来源，`src/peach/__init__.py` 在测试仓库里的最小复刻。
 VERSION_SEED = b'"""Peach application package."""\n\n__version__ = "0.7.14"\n'
@@ -112,18 +129,15 @@ class MasterCommitGuardTests(_WorktreeCase):
 
     def setUp(self):
         super().setUp()
-        hooks = self.repo / agent_worktree.HOOKS_PATH
-        hooks.mkdir(parents=True)
-        for source in HOOKS.iterdir():
-            target = hooks / source.name
-            shutil.copyfile(source, target)
-            target.chmod(0o755)
-            _git(self.repo, "add", target.relative_to(self.repo).as_posix())
-        _git(self.repo, "commit", "-m", "hooks")
+        install_commit_hooks(self.repo)
+        environment = mock.patch.dict(os.environ, {"PATH": str(Path(sys.executable).parent)
+                                                  + os.pathsep + os.environ.get("PATH", "")})
+        environment.start()
+        self.addCleanup(environment.stop)
         result = create(self.repo, "Claude", "guarded", self.root / "worktrees")
         self.worker, self.branch = Path(result["path"]), str(result["branch"])
         (self.worker / "worker.txt").write_text("worker\n", encoding="utf-8")
-        commit(self.worker, "worker change")
+        commit(self.worker, "test: worker change\n\n" + AUTHOR)
 
     def test_create_points_the_repository_at_the_versioned_hooks(self):
         self.assertEqual(_git(self.repo, "config", "core.hooksPath").stdout.strip(),
@@ -143,6 +157,7 @@ class MasterCommitGuardTests(_WorktreeCase):
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout, before)
 
     def test_integrate_still_merges_the_worker_branch(self):
+        self.assertEqual(_git(self.worker, "status", "--porcelain").stdout, "")
         integrate(self.repo, self.branch)
         self.assertEqual((self.repo / "worker.txt").read_text(encoding="utf-8"), "worker\n")
 
@@ -152,6 +167,78 @@ class MasterCommitGuardTests(_WorktreeCase):
         _git(self.repo, "add", "tracked.txt")
         _git(self.repo, "-c", f"{release_tag.MASTER_WRITER}=release", "commit", "-m", "release")
         self.assertEqual(_git(self.repo, "log", "-1", "--format=%s").stdout.strip(), "release")
+
+
+class CommitMessageGuardTests(_WorktreeCase):
+    def setUp(self):
+        super().setUp()
+        install_commit_hooks(self.repo)
+        environment = mock.patch.dict(os.environ, {"PATH": str(Path(sys.executable).parent)
+                                                  + os.pathsep + os.environ.get("PATH", "")})
+        environment.start()
+        self.addCleanup(environment.stop)
+        result = create(self.repo, "codex", "message", self.root / "worktrees with spaces")
+        self.worker = Path(result["path"])
+        (self.worker / "worker.txt").write_text("worker\n", encoding="utf-8")
+        _git(self.worker, "add", "worker.txt")
+
+    def attempt(self, message):
+        path = self.worker / "message.txt"
+        path.write_text(message, encoding="utf-8")
+        return _git(self.worker, "commit", "-F", str(path), check=False)
+
+    def test_a_missing_or_invalid_author_refuses_the_commit_and_keeps_the_index(self):
+        before = _git(self.worker, "rev-parse", "HEAD").stdout
+        for trailer in ("", "Co-Authored-By: Codex <noreply@openai.com>",
+                        "Co-Authored-By: Codex (GPT-6) <wrong@example.com>"):
+            with self.subTest(trailer=trailer):
+                result = self.attempt("test: check\n\n" + trailer)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("署名" if trailer else "Co-Authored-By", result.stderr)
+                self.assertEqual(_git(self.worker, "rev-parse", "HEAD").stdout, before)
+                self.assertEqual(_git(self.worker, "diff", "--cached", "--name-only").stdout.strip(),
+                                 "worker.txt")
+
+    def test_separated_or_malformed_readme_declarations_refuse_the_commit(self):
+        for declaration in ("README-Impact: none; 内部测试\n\n", "README-Impact: none\n",
+                            "README-Impact: none; 内部测试\nREADME-Impact: updated; 文档\n"):
+            with self.subTest(declaration=declaration):
+                result = self.attempt("test: check\n\n" + declaration + AUTHOR)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("README-Impact", result.stderr)
+
+    def test_valid_trailers_and_amend_preserve_the_message(self):
+        message = ("test: 中文提交\n\nREADME-Impact: updated; 两种语言\n" + AUTHOR
+                   + "\nCo-Authored-By: Claude Code (Opus 5) <noreply@anthropic.com>\n")
+        result = self.attempt(message)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        amended = _git(self.worker, "commit", "--amend", "--no-edit", check=False)
+        self.assertEqual(amended.returncode, 0, amended.stderr)
+        self.assertEqual(_git(self.worker, "show", "-s", "--format=%B").stdout.strip(), message.strip())
+
+    def test_intermediate_commit_can_leave_readme_scope_for_delivery_check(self):
+        result = self.attempt("test: intermediate\n\n" + AUTHOR)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_author_lines_separated_into_different_blocks_are_rejected(self):
+        result = self.attempt("test: authors\n\n" + AUTHOR + "\n\n"
+                              "Co-Authored-By: Claude Code (Opus 5) <noreply@anthropic.com>")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Co-Authored-By", result.stderr)
+
+    def test_git_comment_lines_do_not_count_as_declarations(self):
+        result = self.attempt("test: comments\n\n" + AUTHOR + "\n\n# README-Impact: example\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_merge_messages_are_exempt_from_authorship_trailers(self):
+        result = self.attempt("test: worker\n\n" + AUTHOR)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        _git(self.repo, "switch", "-c", "parallel")
+        (self.repo / "tracked.txt").write_text("parallel\n", encoding="utf-8")
+        _git(self.repo, "add", "tracked.txt")
+        _git(self.repo, "commit", "-m", "test: parallel")
+        merged = _git(self.worker, "merge", "--no-ff", "-m", "Merge parallel", "parallel", check=False)
+        self.assertEqual(merged.returncode, 0, merged.stderr)
 
 
 if __name__ == "__main__":

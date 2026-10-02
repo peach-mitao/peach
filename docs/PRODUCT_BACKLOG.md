@@ -8,7 +8,7 @@
 
 | 顺序 | 优先级与范围 | 剩余工作与依赖 |
 | --- | --- | --- |
-| 1 | P1 开发流程 | commit-msg 校验 trailer；操作 40 的首次导入超时 |
+| 1 | P1 开发流程 | 操作 40 的首次导入超时 |
 | 2 | P1 搜索与下载 | 43 的资源搜索接已有云下载，同批做 64 的来源性质标注；42 与 57 的本地下载、续传依赖操作 12 的流量与磁盘预算；骨架 1 还缺 51 的相似匹配、去重与人工替换确认 |
 | 3 | P1 诊断 | 46 挂载探测 → 21 doctor 与分级健康检查 → 26 诊断页；12 的生产异常场景验收单列 |
 | 4 | P2 元数据质量 | 44 → 操作 36 → 54 → 29；45 的回放与 58 的来源缺陷记录随解析器做；65、61 先核对成本与预算 |
@@ -18,11 +18,11 @@
 
 ### 已核对的实施状态
 
-本轮以主线 `e22486f3` 为代码基线，已对照 Claude 文档整理的合入提交 `f215289f` 与后续修订 `e092470c`。下表只覆盖已取得证据的项目，其余条目保留待办状态，不能据此视为逐项验收通过。
+待办核对覆盖主线 `e22486f3` 及后续合入，已对照 Claude 文档整理的合入提交 `f215289f` 与后续修订 `e092470c`。下表只覆盖已取得证据的项目，其余条目保留待办状态，不能据此视为逐项验收通过。
 
 | 项目 | 核对结果 | 证据 |
 | --- | --- | --- |
-| 测试入口 | 隔离工作树自动同步 Python 依赖，主检出只读核对；commit-msg 钩子仍待设置 | `scripts/test_environment.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/githooks/` |
+| 开发流程 | 隔离工作树自动同步 Python 依赖，主检出只读核对；commit-msg 检查署名、已有 README 声明和分段 | `scripts/test_environment.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/check_commit_message.py`、`scripts/githooks/` |
 | 操作 40 | 首次导入没有单独超时；本轮未重新触发偶发超时 | `frontend/test/islands.test.ts` 的三个 beforeAll |
 | 42、43、64 | 云下载模型已具备；本地下载器、资源搜索与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/web_downloads.py`、前端下载设置 |
 | 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
