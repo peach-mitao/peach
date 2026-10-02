@@ -6,8 +6,6 @@ import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 
 import type * as Bundle from './bundle';
-import { prefetchCatalogGrid } from './catalog-grid/catalog-grid';
-import { CatalogGridPage } from './catalog-grid/catalog-grid-page';
 import { CatalogFilterPage } from './catalog-filter/catalog-filter-page';
 import { SearchPage } from './search/search-page';
 import { prefetchFeedNew } from './feed-new/feed-new';
@@ -49,7 +47,6 @@ const LibraryProcessing = (props: Bundle.LibraryProcessingProps) => (
 
 /** 整页归 React 的那些页面，按名字给遗留层用。 */
 export const pages: Bundle.ReactPages = {
-  'catalog-grid': { prefetch: prefetchCatalogGrid, mount: mounter(CatalogGridPage) },
   'catalog-filter': { prefetch: async () => {}, mount: mounter(CatalogFilterPage) },
   /* 首页那一行新作：骨架还占着就连头几张封面一起等，再一次换掉。 */
   'feed-new': { prefetch: prefetchFeedNew, mount: mounter(FeedNewPage) },

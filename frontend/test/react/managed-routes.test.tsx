@@ -184,7 +184,7 @@ it('应用内切页：在途那一次被收起时不动容器，壳留着的同�
   const firstOpen = open(r, stats);
   await until(() => first.taskCalls() > 0, '第一次取数发出去');
   // 壳认领表面（`claimSurface`）：在途的首屏取数中止，这一次不画。
-  act(() => { r.releaseManagedRoute() });
+  act(() => { r.releaseManagedRoute(stats) });
   expect(first.signal()?.aborted).toBe(true);
   await act(async () => { expect(await firstOpen).toBe(false) });
   expect(stats.firstElementChild, '收起在途那一次不碰壳的骨架').toBe(skeleton);
@@ -227,7 +227,7 @@ it('同一路径再打开一次就重取：每次打开领一个新代次，页�
   await act(async () => { await open(r, stats) });
   const page = painted(stats);
   const revision = r.managedEntry(stats)?.revision;
-  act(() => { r.releaseManagedRoute() });
+  act(() => { r.releaseManagedRoute(stats) });
   expect(stats.querySelector('.peach-react'), '收起时宿主跟着撤掉').toBeNull();
   await act(async () => { await open(r, stats) });
   expect(fetch.taskCalls()).toBe(2);
@@ -254,7 +254,7 @@ it('详情舞台压在上面时页面留着，地址回来也不重挂；壳下�
   await act(async () => { r.shellNavigate('/activity') });
   expect(painted(stats)).toBe(page);
   expect(dispatch).toHaveBeenCalledTimes(1);
-  act(() => { r.releaseManagedRoute() });
+  act(() => { r.releaseManagedRoute(stats) });
   expect(stats.children).toHaveLength(0);
 });
 
@@ -267,7 +267,7 @@ it('壳直接改写了容器再收起也不报错：页面画在自己的宿主�
   const errors = vi.spyOn(console, 'error');
   await act(async () => { await open(r, stats) });
   stats.innerHTML = '<p>别的页面</p>';
-  act(() => { r.releaseManagedRoute() });
+  act(() => { r.releaseManagedRoute(stats) });
   expect(errors).not.toHaveBeenCalled();
   expect(stats.innerHTML).toBe('<p>别的页面</p>');
   expect(r.managedEntry(stats)).toBeNull();
@@ -547,8 +547,8 @@ it('就地更新在容器里没有画着的页面时是空操作：还在取首�
 });
 
 /* 资料页画进 `#index` 时管理区那一页只是被壳藏起来：两个容器各记各的，收一个不动另一个；
-   壳认领表面时不给容器，两个一起收。 */
-it('`#stats` 与 `#index` 各画一页，互不相收；不给容器时一起收', async () => {
+   一次点名两个容器就一起收。 */
+it('`#stats` 与 `#index` 各画一页，互不相收；点名两个容器时一起收', async () => {
   const r = await load('/activity');
   const { stats } = surface();
   const { index } = indexSurface();
@@ -567,7 +567,7 @@ it('`#stats` 与 `#index` 各画一页，互不相收；不给容器时一起收
   expect(index.querySelector('.peach-react')).toBeNull();
   expect(painted(stats), '收 `#index` 不动 `#stats`').toBe(page);
   await act(async () => { await r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
-  act(() => { r.releaseManagedRoute() });
+  act(() => { r.releaseManagedRoute(stats, index) });
   expect([stats.children.length, index.children.length, r.managedEntries().length]).toEqual([0, 0, 0]);
 });
 

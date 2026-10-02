@@ -17,9 +17,10 @@ const REACT_IMPORT_TIMEOUT_MS = 30_000;
 
 beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
-async function load() {
+/* `path` 是装载时的地址。`path="*"` 那一格只在不归路由树画的地址上（详情、沉浸）才画出来。 */
+async function load(path = '/') {
   vi.resetModules();
-  window.history.replaceState(null, '', '/');
+  window.history.replaceState(null, '', path);
   const [history, router] = await Promise.all([import('../../src/history'), import('../../src/react/router/router')]);
   return { ...history, ...router };
 }
@@ -88,7 +89,7 @@ it('壳写地址不派发；后退前进各派发一次，地址没变的 popsta
 });
 
 it('React 子树里的 navigate 让壳打开那一屏', async () => {
-  const r = await load();
+  const r = await load('/immerse');
   let navigate: ReturnType<typeof useNavigate> | null = null;
   function Probe() { navigate = useNavigate(); return null }
   await mount(r, <Probe />);
@@ -102,7 +103,7 @@ it('React 子树里的 navigate 让壳打开那一屏', async () => {
 });
 
 it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () => {
-  const r = await load();
+  const r = await load('/immerse');
   let mounted = 0;
   let unmounted = 0;
   const seen: string[] = [];
@@ -113,12 +114,12 @@ it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () =
   }
   await mount(r, <Probe />);
   await act(async () => { await r.startRouting(() => {}) });
-  for (const path of ['/immerse', '/follow/item/3', '/item/7']) await act(async () => { r.shellNavigate(path) });
+  for (const path of ['/follow/item/3', '/item/7', '/parts/1/2']) await act(async () => { r.shellNavigate(path) });
   await act(async () => { pop('/follow/item/3') });
-  await act(async () => { r.peachHistory.push('/trash') });
+  await act(async () => { r.peachHistory.push('/mix/4/5') });
   expect([mounted, unmounted]).toEqual([1, 0]);
-  expect(seen.at(-1)).toBe('/trash');
-  expect(new Set(seen)).toEqual(new Set(['/', '/immerse', '/follow/item/3', '/item/7', '/trash']));
+  expect(seen.at(-1)).toBe('/mix/4/5');
+  expect(new Set(seen)).toEqual(new Set(['/immerse', '/follow/item/3', '/item/7', '/parts/1/2', '/mix/4/5']));
 });
 
 it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的岛，当场就画上', async () => {

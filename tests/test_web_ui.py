@@ -7482,9 +7482,8 @@ class WebUiSourceTests(unittest.TestCase):
         body = self.app_js.split("function setJavLayout(value){", 1)[1].split("\n}", 1)[0]
         self.assertIn("repaintCatalogGrid()", body)
         self.assertNotIn("loadCatalog()", body)
+        # 推给画着的网格不重挂、不重取，由 `frontend/test/react/catalog-routes.test.tsx` 验。
         repaint = self.app_js.split("function repaintCatalogGrid(){", 1)[1].split("\n}", 1)[0]
-        self.assertIn("releaseHoverPreviews(host)", repaint)
-        self.assertIn("updateIsland(host,{layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds})", repaint)
         self.assertNotIn("renderCatalogLoading", repaint)
         self.assertNotIn("await", repaint)
 

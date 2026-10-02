@@ -43,7 +43,6 @@ export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
  *  页面自己管数据，首屏落在共用的 Query 缓存里。 */
 export interface IslandContracts {
   'catalog-filter': ReactBundle.CatalogFilterProps;
-  'catalog-grid': ReactBundle.CatalogGridProps;
   'feed-new': ReactBundle.FeedNewProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
@@ -61,7 +60,6 @@ interface Island {
 
 const REGISTRY: { [N in IslandName]: Island } = {
   'catalog-filter': { react: 'catalog-filter' },
-  'catalog-grid': { react: 'catalog-grid' },
   'feed-new': { react: 'feed-new' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },

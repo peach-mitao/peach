@@ -79,8 +79,8 @@ let catalogFilterProps=null,catalogFilterMounting=null,catalogTagRows=[],catalog
    那组目录筛选：口径和数据都没变时 `buildBars` 不重画，换页回来就把这一份原样交回去。 */
 let sidebarProps={content:null,filters:{},latest:null},sidebarSurface='',sidebarCatalog=null,sidebarContentSeq=0;
 let loadRequestSeq=0;
-// `#grid` 上此刻挂的是哪一个 island：目录与回收站的 `catalog-grid`，或垃圾文件的 `junk-queue`。
-let gridIsland='';
+// `#grid` 上最近一次打开的是哪一页（画着或首屏在途）：目录与回收站的 `catalog-grid`，或垃圾文件的 `junk-queue`。
+let gridPage='';
 /* `followRevision` 是关注页的刷新代次：已经画着时要求重读（批量标记之后、前进后退），
    推一个新代次让它重取，不重挂。 */
 let followFilter='',followRevision=0;
@@ -235,8 +235,8 @@ const reviewSkeletonHtml=(label='正在读取复核队列')=>`<div class="review
   <section class="reviewsection"><div class="reviewlist">${
     '<div class="skeletoncard" aria-hidden="true"><i></i><b></b><em></em></div>'.repeat(6)}</div></section></div>`;
 $('#loadSentinel').innerHTML=loadingDotsHtml('继续载入中…');
-/* 网格还没挂上 island 时，壳把骨架写进 `#grid > .grid`。卡片都归 island：目录与回收站是
-   `catalog-grid`，垃圾文件是 `junk-queue`。同形骨架复用节点，只有骨架交给内容才淡入。 */
+/* 网格还没画上时，壳把骨架写进 `#grid > .grid`。卡片都归 `#grid` 里那一页：目录与回收站是
+   目录网格，垃圾文件是垃圾队列。同形骨架复用节点，只有骨架交给内容才淡入。 */
 const setGridCards=html=>revealSkeleton($('#grid'),()=>{$('#grid').innerHTML=`<div class="grid">${html}</div>`});
 /* 「本页有哪些卡」，Shift 连选按这个顺序：目录、垃圾文件与资料页网格里的卡。竖屏带
    和接着看那一排不在其中，它们不在网格的分段里。 */
@@ -267,8 +267,8 @@ function renderCatalogLoading(label='正在读取作品'){
      铺着两种等待动画，而实际只有一次请求在跑。哨兵的可见性由数据落地后的
      `has_more` 重新决定，所以这里只管收，不必记住原值。 */
   $('#loadSentinel').hidden=true;
-  /* 网格已经挂着时骨架归它自己铺：`#grid` 是它的容器，壳往里写会把 React 根冲掉。 */
-  if(islandMounted($('#grid')))return;
+  /* 网格已经画着（或首屏在途）时骨架归它自己铺：`#grid` 是它的容器，壳往里写会把页面冲掉。 */
+  if(gridTaken())return;
   const grid=$('#grid'),placeholder=catalogSkeletonHtml(label);
   const skeleton=grid.querySelector('.catalog-skeleton');
   if(skeleton?.dataset.skeleton===skeletonKeyOf(placeholder)
@@ -444,17 +444,18 @@ const claimSurface=path=>{
   /* 管理区正文的容器每次换页都经过这里，所以卸载也落在这里。React 档的页面是一棵自己
      管取数的根：不卸掉它，离开之后那棵根还活着，有轮询的页面照着原节律继续敲库。
      没挂过东西的容器 unmountIsland 直接返回，逐页判断反而会漏掉新迁过来的那一页。
-     由路由树画的那几页（`openManagedRoute`，`#stats` 与 `#index` 各一页）同样在这里一起收：详情舞台压在
-     它们上面时不经过这里，页面留着。 */
-  releaseManagedRoute();
+     由路由树画进 `#stats` 与 `#index` 的那几页（`openManagedRoute`）同样在这里一起收：详情舞台压在
+     它们上面时不经过这里，页面留着。`#grid` 不在其中，容器逐个点名。 */
+  releaseManagedRoute($('#stats'),$('#index'));
   unmountIsland($('#stats'));
-  /* 目录网格同理：目录页与回收站之间它一直挂着，换筛选只是换查询；去别的页面就卸掉，
-     那些页面接着会往 `#grid` 里写自己的东西。 */
+  /* 目录网格不跟着换页收：目录页与回收站之间它一直画着，换筛选只是换查询；去别的页面才由
+     `clearCatalogGrid` 收掉，那些页面接着会往 `#grid` 里写自己的东西。 */
   if(!isCatalogPath(path)&&path!=='/trash')clearCatalogGrid();
   surfaceRequests?.abort();
   surfaceRequests=new AbortController();
   surfaceEpoch++;return surfaceToken(path)};
-/* 由路由树画的那几页：管理区画进 `#stats`，索引页画进 `#index`；取数期间壳换了页就不画。 */
+/* 由路由树画的那几页：管理区画进 `#stats`，索引页画进 `#index`，目录网格画进 `#grid`（`paintGridPage`）；
+   取数期间壳换了页就不画。 */
 const managedSurface=token=>({container:$('#stats'),isCurrent:()=>surfaceCurrent(token)});
 const indexSurface=token=>({container:$('#index'),isCurrent:()=>surfaceCurrent(token)});
 /* 表面级读请求：带上这个表面的 signal，被取消时返回 null 而不是抛错。
@@ -1022,7 +1023,7 @@ let trashCount=null;
 const currentSelectSurface=()=>location.pathname==='/follow'?'follow':location.pathname==='/junk-files'?'junk':'catalog';
 function paintSelection(){
   // 卡片网格、垃圾队列与关注页的选中态归 React：每次推一份新的集合，卡片按引用比较才看得出变了。
-  gridIslandHosts().forEach(host=>updateIsland(host,{selected:new Set(selected),selectMode}));
+  pushGridPage({selected:new Set(selected),selectMode});
   pushEntityPage({selected:new Set(selected),selectMode});
   pushFollowFeed({selected:new Set(followSelected),selectMode});
   /* 底部浮条归批量条岛（`react/batch-dock/`）：壳推计数与语境，每种语境列哪几颗键由岛按语境定。 */
@@ -2298,13 +2299,13 @@ async function openFollow(push=true,renderForDetail=false){
   }
   const surface=claimSurface('/follow');
   showManagementBody({manage:false,placeholder:followSkeletonHtml('正在读取关注内容')});
-  await openManagedRoute('/follow',followFeedProps(),{...managedSurface(surface),place:revealFollowFeed});
+  await openManagedRoute('/follow',followFeedProps(),{...managedSurface(surface),place:revealRoutedPage});
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
-/* 关注页取齐首屏时骨架不一次清空：`revealSkeleton` 把骨架抬成一层淡出，新宿主同时从模糊里清晰起来。
-   `write` 只放进空宿主，页面紧接着由路由树同步画进去（`openManagedRoute` 放好宿主就当场画），
-   仍在同一个任务里，骨架与整页之间没有空帧。播放列表页与管理区照旧一次清空。 */
-function revealFollowFeed(container){
+/* 关注页与目录网格取齐首屏时骨架不一次清空：`revealSkeleton` 把骨架抬成一层淡出，新宿主同时从模糊里
+   清晰起来。`write` 只放进空宿主，页面紧接着由路由树同步画进去（`openManagedRoute` 放好宿主就当场画），
+   仍在同一个任务里，骨架与整页之间没有空帧。播放列表页、管理区与垃圾队列照旧一次清空。 */
+function revealRoutedPage(container){
   const host=document.createElement('div');host.className='peach-react';
   revealSkeleton(container,()=>{container.textContent='';container.append(host)});
   return host;
@@ -3299,9 +3300,9 @@ $('#scrim').onclick=()=>openDrawer(false);
 /* ── 列表 ── */
 /* 按当前筛选进入或重读目录：`/` 与四个筛选态、回收站、垃圾文件。返回的 Promise 在这次
    取数落定（成功、为空或失败）时兑现，调用方 `await` 它再做下一步（撤销回执、换一批的转圈）。
-   目录与回收站的卡片网格是 `catalog-grid` island（ADR-0031）：已经挂着就把新筛选推过去，
-   它按新键重取、自己铺骨架；还没挂就挂上，首屏取完才换掉壳铺的骨架。垃圾文件那一屏是
-   逐项处置的队列，是另一个 island（`junk-queue`），同样挂在 `#grid` 上，两者换页时互相先卸。 */
+   目录与回收站的卡片网格由路由树画进 `#grid`（ADR-0031）：已经画着就把新筛选推过去，
+   它按新键重取、自己铺骨架；还没画就打开，首屏取完才换掉壳铺的骨架。垃圾文件那一屏是
+   逐项处置的队列，是另一页（`junk-queue`），同样画在 `#grid` 上，两者换页时互相先收。 */
 async function loadCatalog(){
   const requestSeq=++loadRequestSeq;
   const surface=claimSurface(surfacePath());
@@ -3314,7 +3315,7 @@ async function loadCatalog(){
   barsContext={type:'home',filters:state};detailReturnBarsContext=null;disposeStage(false);
   if(state.state==='ads')return loadJunk(surface);
   // 卸掉垃圾队列要赶在铺骨架之前：它的计数行也在 `#count` 里，先铺就把它挂着的那一格冲掉了。
-  if(gridIsland==='junk-queue')clearCatalogGrid();
+  if(gridPage==='junk-queue')clearCatalogGrid();
   renderCatalogLoading();
   showHomeSurfaces();
   if(isFeedNewPath(location.pathname)){
@@ -3334,31 +3335,45 @@ function settleCatalog(revision){
   catalogWaiters=catalogWaiters.filter(waiter=>{if(waiter.revision>revision)return true;waiter.resolve();return false});
 }
 function releaseCatalogWaiters(){const waiters=catalogWaiters;catalogWaiters=[];waiters.forEach(waiter=>waiter.resolve())}
-/* 离开目录时收起网格。`#grid` 是 React 根的容器，壳往里写内容之前必须先卸掉它。 */
+/* 离开目录时收起网格：`#grid` 里那一页由这里收，壳换页认领表面时不收它。壳往 `#grid` 里写内容之前
+   必须先收掉页面。 */
 function clearCatalogGrid(){
-  releaseHoverPreviews($('#grid'));unmountIsland($('#grid'));catalogPainting=null;gridIsland='';releaseCatalogWaiters();
-  $('#grid').innerHTML='';
-}
-function paintCatalogGrid(surface){return paintGridIsland('catalog-grid',catalogGridProps,surface,{reveal:revealSkeleton})}
-/* 垃圾队列不在挂载前取数，挂上就画它自己那份骨架，和壳铺的这份逐项相同，不必交叉淡入。 */
-function paintJunkQueue(surface){return paintGridIsland('junk-queue',junkQueueProps,surface)}
-/* `#grid` 上挂哪一个 island 记在 `gridIsland` 里：换成另一个之前先卸，旧的那棵不能收新的 props。 */
-function paintGridIsland(name,propsFor,surface,options={}){
   const grid=$('#grid');
-  if(gridIsland&&gridIsland!==name)clearCatalogGrid();
+  releaseHoverPreviews(grid);releaseManagedRoute(grid);unmountIsland(grid);
+  catalogPainting=null;gridPage='';releaseCatalogWaiters();
+  grid.innerHTML='';
+}
+function paintCatalogGrid(surface){return paintGridPage('catalog-grid',catalogGridProps,surface,{place:revealRoutedPage})}
+/* 垃圾队列不在挂载前取数，挂上就画它自己那份骨架，和壳铺的这份逐项相同，不必交叉淡入。 */
+function paintJunkQueue(surface){return paintGridPage('junk-queue',junkQueueProps,surface)}
+/* `#grid` 上画着的那一页已经落地：目录网格看路由树登记的那一条，垃圾队列看岛。 */
+function gridPainted(){return gridPage==='catalog-grid'?!!managedEntry($('#grid')):islandMounted($('#grid'))}
+/* `#grid` 归页面：已经画着，或首屏还在取。这时壳不往里写骨架。 */
+function gridTaken(){return gridPainted()||!!catalogPainting}
+/* 把壳的开关推给 `#grid` 上画着的那一页，代次不变、不重挂；还没画上时是空操作。 */
+function pushGridPage(patch){
+  if(gridPage==='catalog-grid')updateManagedRoute($('#grid'),patch);
+  else updateIsland($('#grid'),patch);
+}
+/* `#grid` 上画哪一页记在 `gridPage` 里：换成另一页之前先收，旧的那一页不能收新的 props。 */
+function paintGridPage(name,propsFor,surface,options={}){
+  const grid=$('#grid');
+  if(gridPage&&gridPage!==name)clearCatalogGrid();
   const revision=++catalogRevision;
   const settled=new Promise(resolve=>catalogWaiters.push({revision,resolve}));
   const props=propsFor();
-  /* 首屏还在取的那一次也算没挂好：`updateIsland` 对还没画出来的根是空操作，新筛选会丢。
-     重挂一次，上一次的取数随之作废。 */
-  if(islandMounted(grid)&&!catalogPainting){updateIsland(grid,props);return settled}
+  /* 首屏还在取的那一次也算没画好：就地推对还没画出来的页面是空操作，新筛选会丢。
+     重开一次，上一次的取数随之作废。 */
+  if(gridPainted()&&!catalogPainting){pushGridPage(props);return settled}
   releaseHoverPreviews(grid);
-  gridIsland=name;
-  const painting=catalogPainting=mountIsland(name,grid,props,
-    {...options,isCurrent:()=>surfaceCurrent(surface)});
+  gridPage=name;
+  const isCurrent=()=>surfaceCurrent(surface);
+  const painting=catalogPainting=name==='catalog-grid'
+    ?openManagedRoute('/',props,{...options,container:grid,isCurrent})
+    :mountIsland(name,grid,props,{...options,isCurrent});
   painting.catch(error=>console.error(error)).finally(()=>{
     if(catalogPainting===painting)catalogPainting=null;
-    if(!islandMounted(grid))releaseCatalogWaiters();
+    if(!gridTaken())releaseCatalogWaiters();
   });
   return settled;
 }
@@ -3375,17 +3390,13 @@ function catalogCardRatio(){
   if(!state)return 16/9;
   return cardRatio(catalogGridLayout());
 }
-/* 以岛挂着卡片网格的那一处：目录 `#grid`。资料页作品区由路由树画，同名的版式、快进秒数与选择态
-   经 `pushEntityPage` 推过去。 */
-function gridIslandHosts(){
-  return [$('#grid')].filter(host=>islandMounted(host));
-}
-/* 版式、「JAV 默认封面」、快进秒数这些展示层的设置变了，只推给正画着的网格重画，不重取。 */
+/* 版式、「JAV 默认封面」、快进秒数这些展示层的设置变了，只推给正画着的网格重画，不重取：目录 `#grid`
+   经 `pushGridPage`，资料页作品区经 `pushEntityPage`。 */
 function repaintCatalogGrid(){
-  gridIslandHosts().forEach(host=>{
-    releaseHoverPreviews(host);
-    updateIsland(host,{layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
-  });
+  if(gridTaken()){
+    releaseHoverPreviews($('#grid'));
+    pushGridPage({layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
+  }
   if(!entityPageCurrent())return;
   releaseHoverPreviews(entityPageHost);
   pushEntityPage({layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
@@ -3416,7 +3427,7 @@ function catalogGridProps(){
    只从地址读，壳不另记一份。 */
 function loadJunk(surface){
   const count=$('#count');
-  const live=gridIsland==='junk-queue'&&islandMounted($('#grid'))&&!catalogPainting
+  const live=gridPage==='junk-queue'&&gridPainted()&&!catalogPainting
     &&count.querySelector(':scope > .peach-react:not([data-junk-count-skeleton])');
   if(!live){clearCatalogGrid();renderCatalogLoading('正在读取垃圾文件')}
   showHomeSurfaces();
@@ -3544,11 +3555,11 @@ function hasReturnSurface(){
    一次请求补发出去：从列表里点进详情时下面就是那份列表，直接刷新详情页的地址也该有
    同样的东西，否则排序条底下是一整屏空白。
    走的是 `paintCatalogGrid` 直接挂网格那条路——`loadCatalog` 开头就 `disposeStage()`，
-   会把刚打开的这一屏详情一起收掉。网格已经挂上（哪怕还在取第一页）就不再补发；静态骨架留在
-   原位，由挂载时的 `revealSkeleton` 淡出。 */
+   会把刚打开的这一屏详情一起收掉。网格已经画上（哪怕还在取第一页）就不再补发；静态骨架留在
+   原位，首屏落地时由 `revealRoutedPage` 淡出。 */
 function fillIdleCatalog(){
   const grid=$('#grid');
-  if(islandMounted(grid)||catalogPainting)return;
+  if(gridTaken())return;
   const deepLink=bootDetailDeepLink;bootDetailDeepLink=false;
   if(!grid.querySelector('.catalog-skeleton')&&!deepLink)return;
   const count=$('#count');count.removeAttribute('aria-busy');count.removeAttribute('aria-label');

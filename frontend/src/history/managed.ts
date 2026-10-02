@@ -1,9 +1,10 @@
 /* 由路由画的那几页（ADR-0031「路由段」）：壳决定什么时候开、什么时候收，React 路由树画。
  *
- * 页面画进壳的两个容器：管理区正文 `#stats`，和索引页与资料页共用的 `#index`。一个容器同时只有一页，
- * 两个容器各记各的：资料页画进 `#index` 时，管理区那一页只是被壳藏起来、照旧活着（有轮询的页面照着原
- * 节律取数），等壳下一次认领表面（`claimSurface`）才两个一起收。页面跟着这里登记的那一条走，不跟着地址
- * 匹配走：详情舞台压在页面上时地址是 `/item/:id`，页面要留着。
+ * 页面画进壳的三个容器：管理区正文 `#stats`，索引页与资料页共用的 `#index`，目录网格与垃圾队列共用的
+ * `#grid`。一个容器同时只有一页，各个容器各记各的：资料页画进 `#index` 时，管理区那一页只是被壳藏起来、
+ * 照旧活着（有轮询的页面照着原节律取数），等壳下一次认领表面（`claimSurface`）才把 `#stats` 与 `#index`
+ * 一起收；`#grid` 不在其中，目录内换筛选也认领表面，网格要一直画着。页面跟着这里登记的那一条走，不跟着
+ * 地址匹配走：详情舞台压在页面上时地址是 `/item/:id`，页面要留着。
  *
  * 一次打开：壳铺好骨架后调 `openManagedRoute`，这里先收起同一容器里的上一页，再取首屏；取齐、壳也还停在
  * 这一页时，在同一个任务里换掉骨架、放进宿主，再让路由树同步画出整页。每次打开都领一个新代次，页面按
@@ -15,7 +16,7 @@ export interface ManagedEntry {
   path: string;
   props: object;
   revision: number;
-  /** 壳的容器（`#stats` 或 `#index`）。 */
+  /** 壳的容器（`#stats`、`#index` 或 `#grid`）。 */
   container: Element;
   host: HTMLElement;
 }
@@ -24,7 +25,7 @@ export interface ManagedEntry {
 export type ManagedPrefetch = (path: string, props: object, signal: AbortSignal) => Promise<void>;
 
 export interface ManagedOpenOptions {
-  /** 页面画进的容器（`#stats` 或 `#index`）。 */
+  /** 页面画进的容器（`#stats`、`#index` 或 `#grid`）。 */
   container: Element;
   /** 壳的换页判据：取数期间用户走开了，就不画。 */
   isCurrent: () => boolean;
@@ -113,12 +114,12 @@ export function updateManagedRoute(container: Element, patch: object): void {
   notify(false);
 }
 
-/** 收起容器里的那一页：中止在途的首屏取数，卸掉页面并撤掉宿主。不给容器就全部收起，壳换页认领表面
- *  时用。没有页面时是空操作。 */
-export function releaseManagedRoute(container?: Element): void {
-  const targets = container ? [container] : [...new Set([...pending.keys(), ...entries.keys()])];
+/** 收起这几个容器里的页面：中止在途的首屏取数，卸掉页面并撤掉宿主，一次通知。没有页面的容器是空操作。
+ *  容器逐个点名，没有「全部收起」：壳换页认领表面时收 `#stats` 与 `#index`，`#grid` 在目录各路径与回收站
+ *  之间一直画着，只在离开目录时由壳单独收。 */
+export function releaseManagedRoute(container: Element, ...more: Element[]): void {
   const removed: ManagedEntry[] = [];
-  for (const target of targets) {
+  for (const target of new Set([container, ...more])) {
     const inflight = pending.get(target);
     if (inflight) {
       inflight.controller.abort();

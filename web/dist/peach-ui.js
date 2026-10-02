@@ -2517,13 +2517,13 @@ function gr(e, t) {
 		}
 	}), pr(!1));
 }
-function _r(e) {
-	let t = e ? [e] : [.../* @__PURE__ */ new Set([...R.keys(), ...L.keys()])], n = [];
-	for (let e of t) {
-		let t = R.get(e);
-		t && (t.controller.abort(), R.delete(e));
-		let r = L.get(e);
-		r && (L.delete(e), n.push(r));
+function _r(e, ...t) {
+	let n = [];
+	for (let r of /* @__PURE__ */ new Set([e, ...t])) {
+		let e = R.get(r);
+		e && (e.controller.abort(), R.delete(r));
+		let t = L.get(r);
+		t && (L.delete(r), n.push(t));
 	}
 	if (n.length) {
 		pr(!0);
@@ -3918,7 +3918,6 @@ function Jo(e, t) {
 //#region src/islands.ts
 var Yo = {
 	"catalog-filter": { react: "catalog-filter" },
-	"catalog-grid": { react: "catalog-grid" },
 	"feed-new": { react: "feed-new" },
 	"junk-queue": { react: "junk-queue" },
 	"library-processing": { react: "library-processing" },

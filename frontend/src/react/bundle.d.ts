@@ -468,7 +468,6 @@ export interface PlaylistsProps {
 }
 
 export interface ReactPages {
-  'catalog-grid': ReactPage<CatalogGridProps>;
   'catalog-filter': ReactPage<CatalogFilterProps>;
   'feed-new': ReactPage<FeedNewProps>;
   'junk-queue': ReactPage<JunkQueueProps>;
