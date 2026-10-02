@@ -5,23 +5,10 @@
  * 再用 `changed(effect)` 告诉壳这一下要跟着做什么——重画网格、重取目录、换主题，这些都还是壳的事；
  * 侧栏顺序不经它，侧栏岛自己订阅这一份 store。跟账本走的那几项（侧栏顺序、合集开关、首次采集范围、头像刷新、搜索记录
  * 条数）由面板经 `/api/settings` 写，成功后同样落进这一份对象。 */
+import type { HomeGlow } from '@peach/legacy/home-glow';
+
 import type { SettingsStore } from '../../settings-store';
 import type { SyncedSettings } from './settings-data';
-
-export interface GlowSpot { color: string; alpha: number }
-
-export interface HomeGlow {
-  on: boolean;
-  preset: string;
-  strength: number;
-  noise: number;
-  speed: number;
-  soften: number;
-  size: number;
-  spot1: GlowSpot;
-  spot2: GlowSpot;
-  spot3: GlowSpot;
-}
 
 /** 面板读写的那几项；对象本身还有别的字段，面板不碰。 */
 export interface PanelSettings {

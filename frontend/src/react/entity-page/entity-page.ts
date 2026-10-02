@@ -111,7 +111,7 @@ export interface EntityPageHelpers {
 
 /** 卡片网格原样要的那几样，壳里同一份：版式、选择状态与展示设置由 `updateIsland` 推最新值。 */
 type SharedGridProps = Pick<CatalogGridProps,
-  'layout' | 'selectMode' | 'selected' | 'seekSeconds' | 'cache' | 'wireDrag' | 'skeletonHtml'
+  'layout' | 'selectMode' | 'selected' | 'seekSeconds' | 'wireDrag' | 'skeletonHtml'
   | 'groupCollapse' | 'canLoadMore'>;
 
 /** 壳在 `#index` 里排好的四块宿主（资料卡那一格就是岛的挂载点）。筛选浮层与正文各带一层
@@ -179,20 +179,18 @@ export function itemsParams(kind: string, name: string, filters: EntityFilters, 
 }
 
 export async function fetchItems(kind: string, name: string, filters: EntityFilters, opts: { jav: boolean; seed: string },
-  offset: number, cache: (items: MediaItem[]) => void, signal?: AbortSignal): Promise<MediaPage> {
-  const page = await api(`/api/items?${itemsParams(kind, name, filters, opts, offset)}`, signal ? { signal } : {}) as MediaPage;
-  cache(page.items || []);
-  return page;
+  offset: number, signal?: AbortSignal): Promise<MediaPage> {
+  return await api(`/api/items?${itemsParams(kind, name, filters, opts, offset)}`, signal ? { signal } : {}) as MediaPage;
 }
 
 /** 同一页里换回看过的那一份筛选不再请求：每次进页先把这一位名下的缓存清掉（`prefetch`），页内
  *  一份筛选只取一次；批量操作后换代次重取。 */
-export const itemsOptions = (props: Pick<EntityPageProps, 'kind' | 'name' | 'filters' | 'jav' | 'seed' | 'revision' | 'cache'>) => {
+export const itemsOptions = (props: Pick<EntityPageProps, 'kind' | 'name' | 'filters' | 'jav' | 'seed' | 'revision'>) => {
   const opts = { jav: props.jav, seed: props.seed };
   const query = itemsParams(props.kind, props.name, props.filters, opts).toString();
   return {
     queryKey: entityItemsKey(props.kind, props.name, query, props.revision),
-    queryFn: ({ signal }: { signal: AbortSignal }) => fetchItems(props.kind, props.name, props.filters, opts, 0, props.cache, signal),
+    queryFn: ({ signal }: { signal: AbortSignal }) => fetchItems(props.kind, props.name, props.filters, opts, 0, signal),
     staleTime: Infinity,
   };
 };

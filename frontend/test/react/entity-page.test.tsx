@@ -101,7 +101,7 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
     states: [{ k: '', label: '全部' }, { k: 'fresh', label: '没看过' }], peopleLayout: 'big',
     hosts: { filter: host(), feed, body: host() },
     layout: { active: false, size: 'small', portrait: false, javImage: 'cover' },
-    selectMode: false, selected: new Set(), seekSeconds: 10, cache: vi.fn(), wireDrag: vi.fn(),
+    selectMode: false, selected: new Set(), seekSeconds: 10, wireDrag: vi.fn(),
     skeletonHtml: () => '<div data-test-skeleton></div>', groupCollapse: true, canLoadMore: () => true,
     card: {
       helpers: {

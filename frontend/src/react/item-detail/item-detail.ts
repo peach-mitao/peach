@@ -186,7 +186,6 @@ export async function prefetchItemDetail(props: ItemDetailProps, signal: AbortSi
       else actions.redirect({ kind: 'gone' });
       return;
     }
-    props.grid.cache(queue!.items as MediaItem[]);
   }
   const id = queue ? chooseItem(queue, props.id) : props.id;
   if (id == null) {
@@ -306,8 +305,8 @@ export interface ItemDetailProps {
   relatedLimit: number;
   helpers: ItemDetailHelpers;
   actions: ItemDetailActions;
-  /** 「接着看」那一排的卡片：和目录网格同一份助手、动作与缓存。 */
-  grid: { helpers: MediaCardHelpers; actions: MediaCardActions; cache(items: MediaItem[]): void };
+  /** 「接着看」那一排的卡片：和目录网格同一份助手与动作。 */
+  grid: { helpers: MediaCardHelpers; actions: MediaCardActions };
   layout: MediaCardLayout;
   selectMode: boolean;
   selected: ReadonlySet<number>;

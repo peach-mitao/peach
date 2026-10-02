@@ -18,6 +18,7 @@ import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defau
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
+import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -68,7 +69,7 @@ wireImageFallbacks(document.body);
 let state;
 let homeHasFeed=null;
 const selected=new Set(),followSelected=new Set();
-let barsRequestSeq=0,barsDataCache=null,barsDataAt=0,barsDataPromise=null;
+let barsRequestSeq=0;
 // 顶部三层与抽屉上一次画的是哪一份：口径加数据，两样都没变就不必再画一遍。
 let barsRendered='';
 /* 首页筛选条（`catalog-filter` 岛）的整份 props、挂载中的那一次、标签条的成员（见 `paintCatalogFilter`）。 */
@@ -725,7 +726,7 @@ function resetHomeState(){
     orient:'',region:'',state:'',sort:appSettings.defaultSort,dir:preferredDirection(appSettings.defaultSort,appSettings.defaultSort,appSettings.defaultSortDirection),
     seed:rollSeed(),q:'',jav:'',thumb:'0'};
   barsContext={type:'home',filters:state};detailReturnBarsContext=null;
-  barsDataCache=null;barsDataPromise=null;
+  dropBars();
 }
 /* 离开搜索结果时把搜索框一起清掉。框里的字不是瞬间没的：`dissolveValue` 先照着它此刻
    的位置摆一份同样的字飘上去糊掉，输入框当场就空了，回来的人看见的是一个空框加一段
@@ -971,8 +972,6 @@ $('#q').value=state.q;rememberSearchValue();
    画出来那一刻（`present`）才推。 */
 let total=0,facets=null,detailReturnPath='/',activeQueue=null,pendingQueueRoute=null,presentedItem=null;
 let detailOriginAnchor=null,detailOriginAbove=false,detailReturnNeedsRestore=false;
-const CACHE={};
-const cache=items=>{items.forEach(x=>CACHE[x.id]=x);return items};
 /* ── 详情舞台（`frontend/src/react/stage/`）──
    浮窗、进出场、骨架、两座详情、播放器与小窗都归舞台岛，壳只留来处（`detailReturnPath`、
    `followDetailReturnPath`、`detailOriginAnchor`）与命令式入口。舞台岛所在的 React 包在第一次
@@ -987,7 +986,6 @@ const stageHost={
   /* 小窗里的「展开」：同一个播放器搬回这一条的详情，地址与来处照点卡片进来的那一条走。 */
   expand:(kind,id,mediaIndex)=>{if(kind==='follow')void openFollowDetail(id,true,mediaIndex);else void openItem(id,true)},
   openItem:id=>void openItem(id),
-  cache:it=>{CACHE[it.id]=it},
 };
 const stageOpen=()=>!!stageApi()?.isOpen();
 /* 深链带 `?t=`：第一次挂上这一条时从这一刻接着放。 */
@@ -1170,9 +1168,11 @@ window.addEventListener('resize',()=>{
   coverRecheck=setTimeout(()=>$('#index').querySelectorAll('img.cover').forEach(img=>{
     if(img.complete)upgradeCover(img)}),200);
 },{passive:true});
-function openResourceCard(id,anchor=null){
-  const item=CACHE[id];
-  if(!item||!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
+/* 回收站里的一张卡：视频开详情，本地图片在新标签页开原图，其余只切换选中。判据只看卡上的
+   `medium` 与 `location`，网格把这张卡原样递过来。 */
+function openResourceCard(item,anchor=null){
+  const id=item.id;
+  if(!item.medium||item.medium==='video'){openItem(id,true,null,anchor);return}
   if(item.medium==='image'&&item.location!=='online'){
     window.open('/photo?id='+id,'_blank','noopener');return
   }
@@ -1184,7 +1184,7 @@ const mixRelatedCache=new Map();
 function mixRelated(seedId){
   if(!mixRelatedCache.has(seedId))
     mixRelatedCache.set(seedId,api('/api/related?id='+seedId+'&limit=28')
-      .then(d=>cache((d.items||[]).filter(x=>x.id!==seedId)))
+      .then(d=>(d.items||[]).filter(x=>x.id!==seedId))
       .catch(error=>{mixRelatedCache.delete(seedId);throw error}));
   return mixRelatedCache.get(seedId);
 }
@@ -1238,7 +1238,7 @@ async function runResourceOperation(it,operation){
 }
 const gridActions={
   open:(it,anchor)=>openGridCard(it,anchor),
-  openResource:(it,anchor)=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openResourceCard(it.id,anchor),
+  openResource:(it,anchor)=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openResourceCard(it,anchor),
   openShort:it=>stageApi()?.miniplayerTakesCard(it)?stageApi().miniplayerPlay(it.id):openTok(it.id),
   openShorts:()=>openTok(),
   openMix:(seedId,anchor)=>openMix(seedId,seedId,true,anchor),
@@ -1257,19 +1257,9 @@ const gridActions={
 };
 
 /* ── 顶部标签条 + 抽屉 ── */
-/* 状态页把顶部三层收窄到本页口径，为的是不列出「在这一页一个作品都没有」的人和厂牌。
-   但集合窄到聚合结果为空时（「已标记」常年只有几条），收窄就把整排一并收走了：
-   同一条筛选条上换一格，页面顶上凭空少两层，读起来是跳去了另一个页面而不是换了筛选。
-   空了就退回全库口径。这一排点开的是实体页，本来就要离开当前状态，
-   它回答的从来不是「这一页里有谁」，而是「接下来去看谁」。 */
-async function loadTops(params){
-  const scoped=await api('/api/tops?'+params);
-  if(scoped.performers.length||scoped.studios.length||!params.has('state'))return scoped;
-  const wide=new URLSearchParams(params);wide.delete('state');
-  return api('/api/tops?'+wide)
-}
 /* 一排一页六十个，滚到底再要下一页。写成函数是因为续页要跟第一页同一套口径——种子、
-   JAV、状态少一个，续上来的就是另一份名单里的人。 */
+   JAV、状态少一个，续上来的就是另一份名单里的人。状态页名单为空时退回全库口径，规则在
+   `loadTops`（`frontend/src/catalog-bars.ts`），第一页与续页都经它取。 */
 const topsQueryParams=(context,page=0)=>{
   const params=new URLSearchParams({n:'60',seed:state.seed||''});
   if(page)params.set('page',String(page));
@@ -1277,10 +1267,11 @@ const topsQueryParams=(context,page=0)=>{
   if(context.type==='home'&&state.state)params.set('state',state.state);
   return params;
 };
-let barsDataScope='';
+/* 两份聚合存在全站那一个 QueryClient 里（`fetchBars`）：同一份口径 30 秒内复用，同时要同一份
+   只发一次，口径变了换键重取。这里只按当前语境算出两个参数串。 */
 async function getBarsData(context=barsContext){
   // JAV 模式的顶部三层与筛选面板要跟着收窄，否则会列出只出现在创作者作品里的
-  // 女优和厂牌，点进去却是空的。口径变了必须丢缓存，不能沿用上一套。
+  // 女优和厂牌，点进去却是空的。口径进键，换了口径就是另一份。
   const facetParams=new URLSearchParams();
   if(javActive())facetParams.set('jav','1');
   if(context.type==='entity'){
@@ -1295,16 +1286,8 @@ async function getBarsData(context=barsContext){
       if(filters[key])facetParams.set(key,filters[key]);
     });
   }
-  const scope=facetParams.toString();
-  if(scope!==barsDataScope){barsDataCache=null;barsDataPromise=null;barsDataScope=scope}
-  if(barsDataCache&&Date.now()-barsDataAt<30000)return barsDataCache;
   // 顶部三层跟着「换一批」的同一个种子走，刷新后才真的换人。
-  if(!barsDataPromise)barsDataPromise=Promise.all([
-      api('/api/facets'+(scope?'?'+scope:'')),
-      loadTops(topsQueryParams(context))])
-    .then(data=>{barsDataCache=data;barsDataAt=Date.now();return data})
-    .finally(()=>{barsDataPromise=null});
-  return barsDataPromise
+  return fetchBars(facetParams.toString(),topsQueryParams(context).toString());
 }
 /* 换一个筛选就是换一份名单，而第一屏是这份名单的开头。人停在半路时原地换掉，屏幕上那
    一段跟他刚才在读的既不连也不相干；新名单还常比旧的短，浏览器只好把他钳到别处，落点
@@ -1421,10 +1404,10 @@ function catalogFilterActions(){
     reshuffle:()=>refreshAll(),
     setLayout:value=>{if(javActive())setJavLayout(value);else setHomeLayout(value)},
     /* 每排各记各的页号：两排的长度不一样，共用一个计数会让先到头的那排替另一排把页翻过去。
-       页号跟着这一份名单走，`buildBars` 换名单时从头数起。 */
+       页号跟着这一份名单走，`buildBars` 换名单时从头数起。两排翻到同一页时由 `fetchTopsPage` 共用一次请求。 */
     moreTops:async kind=>{
       const pages=catalogTopsPages;if(!pages)return [];
-      const rows=(await loadTops(topsQueryParams(pages.context,++pages[kind])))[kind]||[];
+      const rows=(await fetchTopsPage(topsQueryParams(pages.context,++pages[kind]).toString()))[kind]||[];
       return kind==='performers'?rows.map(tierPerformer):rows.map(tierStudio);
     },
   };
@@ -2668,7 +2651,7 @@ function entityPageActions(kind,name){
       if(!entityPageCurrent())return;
       unmountIsland($('#index'));showEntityMissing(kind)}),
     // 顶栏那排头像有 30 秒会话缓存，回首页时取到的还是换之前的版本号，看到的就是旧图。
-    avatarChanged:()=>{barsDataCache=null;barsDataPromise=null},
+    avatarChanged:()=>dropBars(),
   };
 }
 /* 卡片网格原样要的那几样与展示设置随挂载带上现值，之后由各自的开关经 `updateIsland` 推最新值。 */
@@ -2678,7 +2661,7 @@ function entityPageProps(kind,name,filters,media,hosts){
     photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,
     javLayout:javLayout(),javLayouts:JAV_LAYOUTS,states:VIEW_PILLS,peopleLayout:peopleIndexLayout(),
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
-    groupCollapse:appSettings.groupCollapse,cache,wireDrag,skeletonHtml:entityBodySkeleton,
+    groupCollapse:appSettings.groupCollapse,wireDrag,skeletonHtml:entityBodySkeleton,
     canLoadMore:entityBodyCanLoadMore,
     card:entityCard,helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
@@ -3197,7 +3180,7 @@ function toggleJavMode(){
    要不要画、画哪一份由 `buildBars` 自己按当前页判断。Mix 的相关作品同理：进了回收站的
    那几部还会在翻页和队列里出现。 */
 async function reloadAfterWrite(){
-  barsDataCache=null;barsDataPromise=null;mixRelatedCache.clear();
+  dropBars();mixRelatedCache.clear();
   await Promise.all([reloadCurrentSurface(),buildBars()]);
 }
 /* 批量操作后回到刚才那一页，而不是首页列表。
@@ -3418,7 +3401,7 @@ function catalogGridProps(){
   return {
     mode:'catalog',helpers:gridHelpers,actions:gridActions,layout:catalogGridLayout(),
     selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,revision:catalogRevision,
-    cache,wireDrag,settled:settleCatalog,
+    wireDrag,settled:settleCatalog,
     skeletonHtml:()=>catalogSkeletonHtml(),
     filters:{...state},batchSize:appSettings.batchSize,groupCollapse:appSettings.groupCollapse,
     /* 只有首页默认列表排除竖屏——那里另有独立的竖屏带承接它们。搜索必须能搜到竖屏作品，
@@ -3481,7 +3464,7 @@ function junkQueueProps(){
   return {
     ...junkRoute(location.search),helpers:junkQueueHelpers,actions:junkQueueActions,
     batchSize:appSettings.batchSize,revision:catalogRevision,selectMode,selected:new Set(selected),
-    countRow:$('#count'),cache,settled:settleCatalog,
+    countRow:$('#count'),settled:settleCatalog,
     skeletonHtml:()=>pageSkeletonHtml('正在读取垃圾文件',{cards:true,className:'catalog-skeleton postercard-skeleton'}),
     canLoadMore:()=>$('#stats').hidden&&$('#index').hidden,
   };
@@ -3600,7 +3583,7 @@ const itemDetailActions={
   close:()=>closeItemDetail(),
   /* 顶栏的实体上下文跟着画出来的这一条走；队列的地址也在这时推，停在哪一条要等岛定下来。 */
   present:item=>{
-    cache([item]);presentedItem=item;
+    presentedItem=item;
     const returnBars=detailReturnBarsContext;
     barsContext={type:'item',id:item.id,filters:returnBars?.type==='entity'
       ? {...returnBars.filters}:emptyEntityFilters()};
@@ -3678,7 +3661,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   await stage.open({kind:'item',
     id,queue,relatedLimit:appSettings.relatedLimit>0?+appSettings.relatedLimit:0,
     helpers:itemDetailHelpers,actions:itemDetailActions,
-    grid:{helpers:gridHelpers,actions:gridActions,cache},
+    grid:{helpers:gridHelpers,actions:gridActions},
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     resume:push||id==null?null:urlResume(),
   });
@@ -3711,7 +3694,6 @@ const immerseHost={
   openItem:id=>void openItem(id),
   openEntity:(kind,name)=>openEntity(kind,name),
   openUnowned:()=>openUnowned(),
-  cache:it=>{CACHE[it.id]=it},
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   warn:message=>toast({text:message},{sound:'warning'}),
   failure:(action,error)=>actionFailure(action,error),
@@ -3860,7 +3842,7 @@ async function refreshAll(automatic=false){
   state.sort='seed';state.dir='';state.seed=rollSeed();
   // 顶部三层（女优头像、厂牌、标签）有 30 秒会话缓存，而 refreshAll 只重载网格：
   // 不清掉这两个缓存，「换一批」之后上面还是同一批人。
-  barsDataCache=null;barsDataPromise=null;
+  dropBars();
   /* 网格和顶部三层一起换，两边耗时不一样，所以转圈归这一层管：换批键转到这个 Promise
      落定，网格先到时标签条还在等的那段时间里它不停。顶部三层与标签条不铺骨架——它们此刻
      有内容在屏幕上，撕成灰条再填回去比直接换掉更晃眼；只铺一层微光，骨架留给从无到有的首屏。 */
@@ -3908,7 +3890,7 @@ function wireAllDrag(){['#nrow','#count'].forEach(s=>wireDrag($(s)));
 function openCatalog(path){
   const params=new URLSearchParams(location.search);
   const enteringHome=path==='/'&&lastRoutePath!=='/';
-  if(enteringHome){barsDataCache=null;barsDataPromise=null}
+  if(enteringHome)dropBars();
   state={...state,loc:params.get('loc')??onlineDefaultLoc('local,115'),creator:params.get('creator')||'',studio:params.get('studio')||'',
     tag:cleanTagFilter(params.get('tag')),tag_match:params.get('tag_match')==='any'?'any':'all',len:params.get('len')||'',
     dur_min:params.get('dur_min')||'',dur_max:params.get('dur_max')||'',orient:params.get('orient')||'',

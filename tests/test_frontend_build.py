@@ -180,7 +180,9 @@ class ReactBundleTests(unittest.TestCase):
 
     def test_the_react_bundle_keeps_the_legacy_modules_external(self):
         self.assertIn('from "/js/core.js"', self.react)
-        self.assertNotIn("process.env", self.react, "库模式没替换 NODE_ENV，浏览器里没有 process")
+        # 两份产物都打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）。
+        for name, bundle in (("peach-react.js", self.react), ("peach-ui.js", self.islands)):
+            self.assertNotIn("process.env", bundle, f"{name}：库模式没替换 NODE_ENV，浏览器里没有 process")
 
     def test_utilities_stay_outside_cascade_layers(self):
         """旧样式表不分层。工具类放进层里，`button,input,textarea{color:inherit}` 这类标签规则就会压过它。"""
@@ -716,15 +718,15 @@ class ConfigurationEndpointTests(unittest.TestCase):
 class SharedStateContractTests(unittest.TestCase):
     """一份数据有第二个读者时，两个读者读同一个 `queryKey`（ADR-0031）。
 
-    共享数据的家是 `src/react/query.ts` 那一个 QueryClient。这条门槛盯的是源码布局：
-    等到跑起来才发现两处各存一份，已经晚了。
+    共享数据的家是 `src/query/client.ts` 那一个 QueryClient，壳与 React 岛都从 `@peach/query`
+    取它。这条门槛盯的是源码布局：等到跑起来才发现两处各存一份，已经晚了。
     """
 
-    def test_the_react_subtree_has_exactly_one_query_client(self):
+    def test_the_site_has_exactly_one_query_client(self):
         sources = sorted(path for path in (FRONTEND / "src").rglob("*.ts*"))
-        declared = [path.name for path in sources
+        declared = [path.relative_to(FRONTEND / "src").as_posix() for path in sources
                     if "new QueryClient(" in path.read_text(encoding="utf-8")]
-        self.assertEqual(declared, ["query.ts"], f"QueryClient 建在 {declared}")
+        self.assertEqual(declared, ["query/client.ts"], f"QueryClient 建在 {declared}")
 
     def test_pages_do_not_keep_a_second_copy_of_shared_data(self):
         """跨页共享的数据不另起一套订阅：`@preact/signals` 已经没有读者。"""

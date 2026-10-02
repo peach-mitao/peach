@@ -1,8 +1,7 @@
 /* 馆藏卡片网格的数据：目录（`/` 与四个筛选态、回收站）、资料页作品区，以及壳直接给一批
  * 条目的那两处（详情页的接着看）。
  *
- * 目录和作品区都是一页一个 `useInfiniteQuery`，「载入更多」就是取下一页。取回来的条目
- * 交给壳的 `cache`：详情页、播放队列与批量操作都按 id 从那里查，不另取一遍。
+ * 目录和作品区都是一页一个 `useInfiniteQuery`，「载入更多」就是取下一页。
  *
  * 一屏卡片的排法全由这里算，渲染只照着画：
  * - 分卷与版次各自折叠。同一组只留第一次出现的那一张，跨页也算（设置关掉就不折）。
@@ -75,11 +74,8 @@ export function catalogQuery(props: CatalogGridProps) {
   const trash = props.filters?.state === 'trash';
   return {
     queryKey: catalogKey(params, props.revision || 0),
-    queryFn: async ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) => {
-      const page = await fetchCatalogPage(params, pageParam, batch, trash, signal);
-      props.cache(page.items);
-      return page;
-    },
+    queryFn: ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) =>
+      fetchCatalogPage(params, pageParam, batch, trash, signal),
     initialPageParam: 0,
     getNextPageParam: nextOffset(batch),
   };

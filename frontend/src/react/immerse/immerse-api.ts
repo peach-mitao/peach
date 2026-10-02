@@ -17,8 +17,6 @@ export interface ImmerseHost {
   openItem(id: number): void;
   openEntity(kind: 'performer' | 'creator', name: string): void;
   openUnowned(): void;
-  /** 动作键写回的那一份详情交给壳的条目缓存。 */
-  cache(item: Record<string, unknown>): void;
   /** 操作回执；给了 `undo` 就带一颗撤销键。 */
   toast(message: string, options?: { undo?: () => Promise<void> }): void;
   /** 带提示音的警告（片单为空）。 */

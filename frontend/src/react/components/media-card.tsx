@@ -18,6 +18,7 @@
  * 点击的分流：多选与修饰键优先，然后是打开、实体链接、未归属、
  * 标签，其余落到整张卡上就是打开。 */
 import { memo, useCallback, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { cardRatio as layoutRatio } from '@peach/appearance';
 import {
   cardArtwork, cardIdentity, entityAvatar, performerLabel, relayoutCovers, releaseHover, wireHover,
 } from '@peach/card-art';
@@ -27,11 +28,8 @@ import { spinnerHtml } from '@peach/legacy/ui';
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
 import { ArtSlot } from './art-slot';
 
-/** 大图卡片的容器比例，同 `appearance/layout.ts` 的 `COVER_FRONT_RATIO`：正封宽高比 0.667～0.749，0.75 比最宽
- *  的那张还宽，一张都不用从左边切。 */
-export const COVER_FRONT_RATIO = 0.75;
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
-export const PORTRAIT_RATIO = 9 / 16;
+const PORTRAIT_RATIO = 9 / 16;
 
 export type MediaCardVariant = 'grid' | 'short' | 'next' | 'resource';
 
@@ -42,10 +40,10 @@ function Icon({ name }: { name: string }) {
 
 const RESOURCE_LABELS: Record<string, string> = { image: '图片', audio: '音频', archive: '压缩包', other: '其它文件' };
 
-/** 一个列表里的画面框等高，比例由版式与竖屏语境决定。 */
+/** 一个列表里的画面框等高：竖屏带一律竖屏比例，其余按版式取外观应用层那一份（`@peach/appearance`
+ *  的 `cardRatio`，骨架读的也是它）。 */
 export function cardRatio(_item: MediaItem, variant: MediaCardVariant, layout: MediaCardLayout): number {
-  if (variant === 'short' || layout.portrait) return PORTRAIT_RATIO;
-  return layout.active && layout.size === 'big' ? COVER_FRONT_RATIO : 16 / 9;
+  return variant === 'short' ? PORTRAIT_RATIO : layoutRatio(layout);
 }
 
 export interface MediaCardProps {

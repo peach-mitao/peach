@@ -126,7 +126,6 @@ function makeHost(): HostMock {
     openItem: vi.fn<ImmerseHost['openItem']>(),
     openEntity: vi.fn<ImmerseHost['openEntity']>(),
     openUnowned: vi.fn<ImmerseHost['openUnowned']>(),
-    cache: vi.fn<ImmerseHost['cache']>(),
     toast: vi.fn<ImmerseHost['toast']>(),
     warn: vi.fn<ImmerseHost['warn']>(),
     failure: vi.fn<ImmerseHost['failure']>(),
@@ -336,7 +335,7 @@ describe('动作键', () => {
   const card = () => queryClient.getQueryData<{ pages: GridPage[] }>(catalogKey('q=', 0))!.pages[0]!.items[0]!;
   const action = (label: string) => q<HTMLButtonElement>(`[data-immerse-actions] button[aria-label="${label}"]`)!;
 
-  it('看过写进同一份详情：详情缓存、目录卡与壳的条目缓存一起换，按下态与字样跟着', async () => {
+  it('看过写进同一份详情：详情缓存与目录卡一起换，按下态与字样跟着', async () => {
     const fetcher = serve({ draws: [[row(1), row(2)]] });
     queryClient.setQueryData(catalogKey('q=', 0), { pages: [grid()], pageParams: [0] });
     await open();
@@ -347,7 +346,6 @@ describe('动作键', () => {
     expect(posts(fetcher).filter(([url]) => url === '/api/feedback')).toEqual([['/api/feedback', { id: 1, kind: 'seen' }]]);
     expect(queryClient.getQueryData<DetailItem>(itemKey(1))!.feedback).toBe('seen');
     expect(card()).toMatchObject({ feedback: 'seen' });
-    expect(host.cache).toHaveBeenCalledWith(expect.objectContaining({ id: 1, feedback: 'seen' }));
     expect(action('标为看过').closest('[data-immerse-action]')!.textContent).toBe('已看');
     expect(host.toast).toHaveBeenCalledWith('已标记看过', expect.objectContaining({ undo: expect.any(Function) }));
   });

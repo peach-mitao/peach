@@ -118,7 +118,7 @@ beforeEach(async () => {
   stage = await import('../src/react/stage/stage-player');
   stage.configureStagePlayer({
     player: { settings: () => settings } as never,
-    sourceOffline: () => offline, expand, openItem: vi.fn(), cache: vi.fn(),
+    sourceOffline: () => offline, expand, openItem: vi.fn(),
   }, { isOpen: () => open, requestClose });
   dom = miniplayerDom();
   stage.registerMiniplayer(dom);

@@ -36,7 +36,7 @@ function props(patch: Partial<JunkQueueProps> = {}): JunkQueueProps {
     kind: '', view: 'pending', helpers: { badgeHtml: () => '<span>本地</span>' }, actions: actions(),
     batchSize: 60, revision: 1, selectMode: false, selected: new Set(), countRow,
     skeletonHtml: () => '<div class="grid"><div class="skeletoncard"></div></div>',
-    cache: vi.fn(), settled: vi.fn(), ...patch,
+    settled: vi.fn(), ...patch,
   };
 }
 
@@ -81,10 +81,8 @@ describe('地址与取数', () => {
     expect(junkQueryString({ kind: 'archive', view: 'dismissed' })).toBe('limit=200&status=dismissed&kind=archive');
     const fetcher = fetchMock(200, answer([junk(1)]));
     vi.stubGlobal('fetch', fetcher);
-    const cache = vi.fn();
-    await open(props({ kind: 'video', cache }));
+    await open(props({ kind: 'video' }));
     expect(fetcher.mock.calls[0]![0]).toBe('/api/ads?limit=200&status=pending&kind=video');
-    expect(cache).toHaveBeenCalledWith([expect.objectContaining({ id: 1 })]);
   });
 });
 

@@ -104,7 +104,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     : { ...props.layout, active: javPage }), [props.layout, javPage]);
   const opts = { jav: props.jav, seed: props.seed };
   const fetchPage = useCallback(
-    (offset: number, signal: AbortSignal) => fetchItems(kind, name, filters, opts, offset, props.cache, signal),
+    (offset: number, signal: AbortSignal) => fetchItems(kind, name, filters, opts, offset, signal),
     // 续页的口径就是第一页那一份：代次随键变，键里已经带着筛选、种子与 JAV 开关。
     [itemsRevision]);
 
@@ -246,7 +246,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
       if (view !== 'photos') {
         const seed = actions.reshuffleVideos();
         const next = itemsOptions({ kind, name, filters: { ...filters, sort: 'seed' }, jav: props.jav, seed,
-          revision: props.revision, cache: props.cache });
+          revision: props.revision });
         await queryClient.fetchQuery(next).catch(() => null);
         return;
       }
@@ -258,7 +258,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     setJavLayout: actions.setJavLayout,
     setPhotoLayout: actions.setPhotoLayout,
     photoBack: () => actions.route(filters, { media: 'photos', set: 0 }),
-  }), [actions, filters, kind, mediaNow.set, name, props.cache, props.jav, props.revision, view, wallSet]);
+  }), [actions, filters, kind, mediaNow.set, name, props.jav, props.revision, view, wallSet]);
   const filterHelpers = useMemo<EntityFilterHelpers>(() => ({
     wireDrag: helpers.wireDrag,
     wireScroller: helpers.wireScroller,
@@ -329,7 +329,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
             <EntityBodyPage kind={kind} name={name} view={view} roster={rosterProps} items={items.data ?? null}
               revision={itemsRevision} fetchPage={fetchPage} photos={photos} photoSize={props.photoSize}
               photoLayout={props.photoLayout} helpers={props.card.helpers} actions={bodyActions} layout={layout}
-              selectMode={props.selectMode} selected={props.selected} seekSeconds={props.seekSeconds} cache={props.cache}
+              selectMode={props.selectMode} selected={props.selected} seekSeconds={props.seekSeconds}
               wireDrag={props.wireDrag} skeletonHtml={props.skeletonHtml} groupCollapse={props.groupCollapse}
               canLoadMore={props.canLoadMore} />
           ),
