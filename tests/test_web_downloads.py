@@ -90,8 +90,94 @@ class RouteTests(_App):
 
 
 class SettingsBlockTests(_App):
+    """CloudDrive2 那一侧换成 `self.answer`；没有令牌时走真的 `check`，它在连网之前就停。"""
+
+    def setUp(self):
+        super().setUp()
+        real = downloads_clouddrive.check
+        self.checked = []
+        self.answer = lambda address, target: downloads_clouddrive.empty_report(address)
+
+        def check(address, token, target, *, hints=downloads_clouddrive.Hints()):
+            if not token:
+                return real(address, token, target, hints=hints)
+            self.checked.append({"address": address, "token": token, "target": target, "hints": hints})
+            return self.answer(address, target)
+
+        patcher = mock.patch.object(downloads_clouddrive, "check", check)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def roots(self):
         return {"pikpak": ("P:\\",)}
+
+    def suggest(self, path: str, exists: bool):
+        def answer(address, target):
+            report = downloads_clouddrive.empty_report(address)
+            report["suggested_target"] = {"path": path, "exists": exists}
+            if exists:
+                report["folder"] = {"path": path, "can_offline": True, "cloud": "115open"}
+            return report
+        self.answer = answer
+
+    def test_saving_with_a_blank_target_fills_in_the_suggested_folder_when_it_exists(self):
+        self.suggest("/115open/云下载", True)
+        payload = web_downloads.save_settings(self.service, {
+            "clouddrive_address": "127.0.0.1:19798", "token": "cd2-secret", "targets": {"115": ""},
+            "wait_hours": 24}, self.roots())
+        self.assertEqual(self.checked[0]["target"], "")
+        self.assertEqual(self.checked[0]["token"], "cd2-secret")
+        self.assertEqual(payload["config"]["targets"], {"115": "/115open/云下载"})
+        self.assertEqual(payload["config"]["wait_hours"], 24)
+        self.assertEqual(payload["report"]["folder"]["path"], "/115open/云下载")
+        self.assertNotIn("cd2-secret", json.dumps(payload, ensure_ascii=False))
+        saved = json.loads((self.root / "state" / dl.SETTINGS_FILENAME).read_text(encoding="utf-8"))
+        self.assertEqual(saved["targets"], {"115": "/115open/云下载"})
+        self.assertEqual(self.service.config.targets, {"115": "/115open/云下载"})
+
+    def test_saving_with_a_blank_target_keeps_it_blank_when_the_suggested_folder_is_missing(self):
+        self.suggest("/115open/云下载", False)
+        payload = web_downloads.save_settings(self.service, {
+            "clouddrive_address": "127.0.0.1:19798", "token": "cd2-secret", "wait_hours": 24},
+            self.roots())
+        self.assertEqual(payload["config"]["targets"], {})
+        self.assertEqual(payload["config"]["wait_hours"], 24)
+        self.assertEqual(payload["report"]["suggested_target"], {"path": "/115open/云下载", "exists": False})
+
+    def test_saving_checks_the_folder_the_user_filled_in_and_keeps_it(self):
+        self.suggest("/115open/云下载", True)
+        payload = web_downloads.save_settings(self.service, {
+            "clouddrive_address": "127.0.0.1:19798", "token": "cd2-secret",
+            "targets": {"115": "/115open/自己的"}, "pikpak_account": True}, self.roots())
+        self.assertEqual(self.checked[0]["target"], "/115open/自己的")
+        self.assertTrue(self.checked[0]["hints"].pikpak_account)
+        self.assertEqual(payload["config"]["targets"], {"115": "/115open/自己的"})
+
+    def test_saving_uses_the_stored_token_and_skips_the_check_without_one(self):
+        payload = web_downloads.save_settings(self.service, {"clouddrive_address": "127.0.0.1:19798"},
+                                              self.roots())
+        self.assertIsNone(payload["report"])
+        self.assertEqual(self.checked, [])
+        self.service.credentials.save(dl.CLOUDDRIVE_CREDENTIAL, {"token": "stored"})
+        payload = web_downloads.save_settings(self.service, {"clouddrive_address": "127.0.0.1:19798"},
+                                              self.roots())
+        self.assertEqual(self.checked[0]["token"], "stored")
+        self.assertIsNotNone(payload["report"])
+        cleared = web_downloads.save_settings(self.service, {"clear_token": True}, self.roots())
+        self.assertIsNone(cleared["report"])
+
+    def test_opening_the_page_checks_the_saved_configuration(self):
+        web_downloads.save_settings(self.service, {
+            "clouddrive_address": "127.0.0.1:19798", "token": "cd2-secret",
+            "targets": {"115": "/115open/已保存"}}, self.roots())
+        self.checked.clear()
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        response = client.get("/api/configuration/downloads/check")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(set(response.json()), set(downloads_clouddrive.empty_report("")))
+        self.assertEqual((self.checked[0]["address"], self.checked[0]["token"], self.checked[0]["target"]),
+                         ("http://127.0.0.1:19798", "cd2-secret", "/115open/已保存"))
+        self.assertFalse(self.checked[0]["hints"].pikpak_account)
 
     def test_the_token_goes_to_the_local_credential_file_only(self):
         payload = web_downloads.save_settings(self.service, {

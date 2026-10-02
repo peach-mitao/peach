@@ -257,13 +257,26 @@ def _downloads(request: Request):
 
 @router.post("/api/configuration/downloads")
 def save_downloads(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
-    """地址、目标目录、等待上限与 CloudDrive2 令牌。令牌只写本机凭据文件。"""
+    """地址、目标目录、等待上限与 CloudDrive2 令牌。令牌只写本机凭据文件。
+
+    有令牌时随响应回一份按已保存配置做的检查报告；115 目标目录留空时按推送发现填上。"""
     local_only(request)
     same_origin(request)
     service, roots = _downloads(request)
     try:
         return web_downloads.save_settings(service, body, roots)
     except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/api/configuration/downloads/check")
+def check_saved_downloads(request: Request, _args=Depends(require_auth)):
+    """按已保存的地址、令牌与目录检查，页面打开时用。令牌只从本机凭据文件取，不经页面。"""
+    local_only(request)
+    service, _roots = _downloads(request)
+    try:
+        return web_downloads.check_clouddrive(service, {})
+    except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
 

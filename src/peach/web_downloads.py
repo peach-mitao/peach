@@ -106,16 +106,36 @@ def settings_payload(service: DownloadService, declared_roots) -> dict:
 
 
 def save_settings(service: DownloadService, body: dict, declared_roots) -> dict:
-    """保存地址、目录与等待上限。令牌留空表示不改，`clear_token` 才撤掉。"""
+    """保存地址、目录与等待上限。令牌留空表示不改，`clear_token` 才撤掉。
+
+    存好之后有令牌就按已保存的配置检查一遍，报告放在 `report` 里随响应回去。115 目标目录
+    留空时检查按推送发现推一个目录，CloudDrive2 里已经有它就填进设置再存一次；没有它就只
+    在报告里给出建议值，其他字段照常保存。没有令牌时 `report` 为 None。
+    """
     if not isinstance(body, dict):
         raise ValueError("设置必须是一个对象")
     token = str(body.get("token") or "").strip()
-    service.save_settings(body, declared_roots)
+    config = service.save_settings(body, declared_roots)
     if token:
         service.credentials.save(CLOUDDRIVE_CREDENTIAL, {"token": token})
     elif body.get("clear_token"):
         service.credentials.clear(CLOUDDRIVE_CREDENTIAL)
-    return settings_payload(service, declared_roots)
+    report = None
+    if "token" in service.credentials.describe(CLOUDDRIVE_CREDENTIAL)["fields"]:
+        from .downloads_clouddrive import empty_report
+        try:
+            report = check_clouddrive(service, {
+                "clouddrive_address": config.clouddrive_address,
+                "target": config.targets.get("115", ""), "pikpak_root": config.pikpak_root,
+                "pikpak_account": body.get("pikpak_account") is True})
+        except DownloadError as error:
+            report = empty_report(config.clouddrive_address, [error.detail])
+        suggested = report.get("suggested_target")
+        if not config.targets.get("115") and suggested and suggested.get("exists"):
+            filled = config.payload()
+            filled["targets"] = {**config.targets, "115": suggested["path"]}
+            service.save_settings(filled, declared_roots)
+    return {**settings_payload(service, declared_roots), "report": report}
 
 
 def _check_inputs(service: DownloadService, body) -> tuple[dict, str, str]:
@@ -147,9 +167,10 @@ def _hints(service: DownloadService, body: dict):
 
 
 def check_clouddrive(service: DownloadService, body: dict) -> dict:
-    """「检查」按页面上此刻填的值查，没带的字段取已保存的。只读，不提交、不取消、不建目录。
+    """「检查」按页面上此刻填的值查，没带的字段取已保存的；空对象就是按已保存的配置查。
+    只读，不提交、不取消、不建目录。
 
-    页面带来的地址是空串时探测本机端口；目标目录或 PikPak 根是空串时按推送发现推建议值。
+    地址是空串时探测本机端口；目标目录或 PikPak 根是空串时按推送发现推建议值。
     报告里的 `address` 与 `suggested_*` 由页面填回表单，不在这里保存。
     """
     from .downloads_clouddrive import check, empty_report

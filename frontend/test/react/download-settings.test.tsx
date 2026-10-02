@@ -98,7 +98,7 @@ it('目标目录与 PikPak 根留空时检查按推送发现填回，保存配�
   }));
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={unfilled()} receipt={vi.fn()} />);
-  expect(field(host, '115 目标目录')?.placeholder).toBe('检查时按推送发现自动填写');
+  expect(field(host, '115 目标目录')?.placeholder).toBe('留空时按推送发现自动填写');
   await click(buttonNamed('检查', host));
   await settle();
   expect(sentBody(fetcher)).toMatchObject({ target: '', pikpak_root: '', pikpak_account: false });
@@ -169,6 +169,96 @@ it('推出的目录不存在时标成无效，点了「新建这个目录」才�
   expect(field(host, '115 目标目录')?.getAttribute('aria-invalid')).not.toBe('true');
   expect(host.textContent).toContain('/115open/云下载 可以离线下载');
   expect(host.textContent).toContain('按推送发现填入 /115open/云下载，保存配置后生效');
+});
+
+it('地址和令牌都已保存时一打开就按已保存的配置检查，检查键不转', async () => {
+  const hold = pending<unknown>();
+  const fetcher = vi.fn<(...call: [string, RequestInit | undefined]) => Promise<unknown>>(() => hold.answer);
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={state({ token_set: true })} receipt={vi.fn()} />);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]?.[0]).toBe('/api/configuration/downloads/check');
+  expect(fetcher.mock.calls[0]?.[1]?.method).toBeUndefined();
+  expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+  expect(host.textContent).toContain('正在检查 CloudDrive2');
+  expect(buttonNamed('检查', host)?.getAttribute('aria-busy')).not.toBe('true');
+  await hold.release({ ok: true, status: 200, json: async () => report({
+    permissions: [{ name: 'a', label: '提交离线任务', granted: true }],
+    folder: { path: '/115/云下载', can_offline: true, cloud: '115open' },
+    quota: { total: 1500, used: 3, left: 1497 } }) });
+  await settle();
+  expect(host.textContent).not.toContain('正在检查 CloudDrive2');
+  expect(host.textContent).toContain('/115/云下载 可以离线下载');
+  expect(host.textContent).toContain('本月还剩 1497 条，共 1500 条');
+});
+
+it('没有保存令牌或地址时打开不检查', async () => {
+  const fetcher = fetchMock(200, report());
+  vi.stubGlobal('fetch', fetcher);
+  await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  await mount(<DownloadSettings receipt={vi.fn()} initial={state({ token_set: true,
+    config: { clouddrive_address: '', targets: {}, pikpak_root: '', wait_hours: 168 } })} />);
+  await settle();
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('目标目录留空保存后直接渲染响应里的检查报告，服务端填上的目录不再说保存后生效', async () => {
+  const saved = state({ token_set: true,
+    config: { clouddrive_address: 'http://127.0.0.1:19798', targets: { '115': '/115open/云下载' },
+      pikpak_root: '', wait_hours: 168 } });
+  const fetcher = fetchMock(200, { ...saved, report: report({
+    suggested_target: { path: '/115open/云下载', exists: true },
+    folder: { path: '/115open/云下载', can_offline: true, cloud: '115open' },
+    quota: { total: 1500, used: 3, left: 1497 } }) });
+  vi.stubGlobal('fetch', fetcher);
+  const receipt = vi.fn();
+  const host = await mount(<DownloadSettings initial={unfilled()} receipt={receipt} />);
+  await type(field(host, 'CloudDrive2 API 令牌'), 'cd2-token');
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]?.[0]).toBe('/api/configuration/downloads');
+  expect(sentBody(fetcher)).toMatchObject({ targets: {}, token: 'cd2-token', pikpak_account: false });
+  expect(receipt).toHaveBeenCalledWith('已保存配置');
+  expect(field(host, '115 目标目录')?.value).toBe('/115open/云下载');
+  expect(field(host, '115 目标目录')?.getAttribute('aria-invalid')).not.toBe('true');
+  expect(host.textContent).toContain('已按推送发现填入 /115open/云下载');
+  expect(host.textContent).not.toContain('/115open/云下载，保存配置后生效');
+  expect(host.textContent).toContain('/115open/云下载 可以离线下载');
+  expect(host.textContent).toContain('本月还剩 1497 条，共 1500 条');
+});
+
+it('保存时推出的目录不存在，照常保存其他字段，目录填回表单标成无效并给出新建键', async () => {
+  const fetcher = fetchMock(200, { ...unfilled(), token_set: true,
+    report: report({ suggested_target: { path: '/115open/云下载', exists: false } }) });
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={unfilled()} receipt={vi.fn()} />);
+  await type(field(host, '账号'), 'me@example.com');
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(sentBody(fetcher)).toMatchObject({ pikpak_account: true });
+  const input = field(host, '115 目标目录');
+  expect(input?.value).toBe('/115open/云下载');
+  expect(input?.getAttribute('aria-invalid')).toBe('true');
+  expect(host.textContent).toContain('/115open/云下载 不存在');
+  expect(buttonNamed('新建这个目录', host)).not.toBeNull();
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain('保存前先在下方新建它，或改成 CloudDrive2 里已有的目录');
+});
+
+it('保存的响应不带检查报告时收起上一次的报告', async () => {
+  const fetcher = fetchMock(200, report({ folder: { path: '/115/云下载', can_offline: true, cloud: '115open' } }));
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  await click(buttonNamed('检查', host));
+  await settle();
+  expect(host.textContent).toContain('/115/云下载 可以离线下载');
+  fetcher.mockImplementation(async () => ({ ok: true, status: 200, json: async () => ({ ...state(), report: null }) }));
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(host.textContent).not.toContain('可以离线下载');
 });
 
 it('两个本机端口都不应答时原样报出服务端列的地址，表单仍留空', async () => {
