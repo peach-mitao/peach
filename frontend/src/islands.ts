@@ -44,10 +44,8 @@ export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 export interface IslandContracts {
   'catalog-filter': ReactBundle.CatalogFilterProps;
   'catalog-grid': ReactBundle.CatalogGridProps;
-  'entity-page': ReactBundle.EntityPageProps;
   'feed-new': ReactBundle.FeedNewProps;
   'follow-feed': ReactBundle.FollowFeedProps;
-  index: ReactBundle.IndexProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   playlists: ReactBundle.PlaylistsProps;
@@ -66,10 +64,8 @@ interface Island {
 const REGISTRY: { [N in IslandName]: Island } = {
   'catalog-filter': { react: 'catalog-filter' },
   'catalog-grid': { react: 'catalog-grid' },
-  'entity-page': { react: 'entity-page' },
   'feed-new': { react: 'feed-new' },
   'follow-feed': { react: 'follow-feed' },
-  index: { react: 'index' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   playlists: { react: 'playlists' },
@@ -280,7 +276,7 @@ export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> 
   return glowPicker;
 }
 
-/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区那几页由它画
+/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区、索引页与资料页由它画
  * （`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；包到之前的
  * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。 */
 let router: Promise<void> | null = null;

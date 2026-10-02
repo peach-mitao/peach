@@ -56,7 +56,7 @@ function props(route: Partial<IndexRoute> = {}, patch: Partial<IndexProps> = {})
 }
 
 let setSelectMode: (on: boolean) => void = () => {};
-/** 选择键归壳：壳经 `updateIsland` 推进来的就是这一项，这里用一层状态代替。 */
+/** 选择键归壳：壳经 `updateManagedRoute` 推进来的就是这一项，这里用一层状态代替。 */
 function Shell(given: IndexProps) {
   const [selectMode, set] = useState(given.selectMode);
   setSelectMode = set;

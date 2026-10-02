@@ -1,13 +1,14 @@
-/* 管理区由路由画的那几页（`src/history/managed.ts` 与 `src/react/router/`）：壳的骨架留到首屏取齐，
- * 换成整页落在同一个任务里；冷启动不论 Router 先挂还是壳先开始路由都只派发一次；每次打开都重取；
- * 详情舞台压在上面时页面留着，壳下一次认领表面才收；这几页之间的跳转走 React Router，别的交壳。
+/* 由路由画的那几页（`src/history/managed.ts` 与 `src/react/router/`；管理区画进 `#stats`，索引页画进
+ * `#index`）：壳的骨架留到首屏取齐，换成整页落在同一个任务里；冷启动不论 Router 先挂还是壳先开始路由
+ * 都只派发一次；每次打开都重取，壳的开关就地合进去不重挂；两个容器互不相收；详情舞台压在上面时页面
+ * 留着，壳下一次认领表面才收；管理区几页之间的跳转走 React Router，别的交壳。
  *
- * 历史对象、派发状态与那一条登记都是模块级的，和页面上只有一份一致，所以每条用例重新装载
+ * 历史对象、派发状态与各容器的登记都是模块级的，和页面上只有一份一致，所以每条用例重新装载
  * `src/history` 与 `src/react/router`。 */
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { NavigateFunction } from 'react-router';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
 import type {
   ConfigurationProps, DataCleanupProps, DuplicatesProps, FollowManageProps, QualityGoalsProps, ReviewProps,
@@ -15,7 +16,12 @@ import type {
 } from '../../src/react/bundle';
 import type { ShellActions } from '../../src/react/router/shell-actions';
 
+// 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
 async function load(path = '/') {
   vi.resetModules();
@@ -42,6 +48,9 @@ function shellActions(): ShellActions {
     receipt: vi.fn(), toast: vi.fn(), failure: vi.fn(), revealSource: vi.fn(async () => ''),
     reopenTutorial: vi.fn(async () => {}), requestConfigurationSection: vi.fn(), requestCloudDownload: vi.fn(),
     routeReview: vi.fn(), routeFollowManage: vi.fn(), saveFollowPreference: vi.fn(), srcBadge: () => '',
+    routeIndex: vi.fn(), savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(),
+    personAvatar: vi.fn(() => ({ html: '', face: '' })), authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(),
+    openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
   };
 }
 
@@ -205,7 +214,7 @@ it('取数期间壳换了页就不画，骨架留给下一页', async () => {
   fetch.resolve();
   await act(async () => { expect(await opening).toBe(false) });
   expect(stats.firstElementChild).toBe(skeleton);
-  expect(r.managedEntry()).toBeNull();
+  expect(r.managedEntry(stats)).toBeNull();
 });
 
 it('同一路径再打开一次就重取：每次打开领一个新代次，页面重挂', async () => {
@@ -217,12 +226,12 @@ it('同一路径再打开一次就重取：每次打开领一个新代次，页�
   fetch.install();
   await act(async () => { await open(r, stats) });
   const page = painted(stats);
-  const revision = r.managedEntry()?.revision;
+  const revision = r.managedEntry(stats)?.revision;
   act(() => { r.releaseManagedRoute() });
   expect(stats.querySelector('.peach-react'), '收起时宿主跟着撤掉').toBeNull();
   await act(async () => { await open(r, stats) });
   expect(fetch.taskCalls()).toBe(2);
-  expect(r.managedEntry()?.revision).not.toBe(revision);
+  expect(r.managedEntry(stats)?.revision).not.toBe(revision);
   expect(painted(stats)).not.toBeNull();
   expect(painted(stats)).not.toBe(page);
 });
@@ -261,7 +270,7 @@ it('壳直接改写了容器再收起也不报错：页面画在自己的宿主�
   act(() => { r.releaseManagedRoute() });
   expect(errors).not.toHaveBeenCalled();
   expect(stats.innerHTML).toBe('<p>别的页面</p>');
-  expect(r.managedEntry()).toBeNull();
+  expect(r.managedEntry(stats)).toBeNull();
 });
 
 it('路由树没装载就打开：直接失败，不是静默什么都不画', async () => {
@@ -438,4 +447,149 @@ it('活动页的预填只跟着那一次打开：不带就是空表单，也不�
   expect(withPrefill.prefill).toEqual({ title: '片名' });
   expect('prefill' in plain).toBe(false);
   expect([location.href.includes('片名'), JSON.stringify(window.history.state ?? null).includes('片名')]).toEqual([false, false]);
+});
+
+/** 索引页与资料页共用的容器，里面是壳铺好的骨架。 */
+function indexSurface() {
+  const index = document.createElement('section');
+  index.id = 'index';
+  index.innerHTML = '<div class="geist-skeleton" data-skeleton="index">正在读取</div>';
+  document.body.append(index);
+  return { index, skeleton: index.firstElementChild! };
+}
+
+const TAGS = { items: [{ k: '痴女', n: 1, cat: 'role' }], has_more: false };
+const tagsOpen = (selectMode = false) => ({
+  kind: 'tags', q: '', scope: 'local', view: 'alphabet', category: 'all', layout: 'big', selectMode, configurable: false,
+});
+
+/** 索引页的取数：`/api/index` 按需手动兑现，其余当场回空表。 */
+function indexFetch(body: unknown = TAGS, { deferred = true } = {}) {
+  const pending: Array<() => void> = [];
+  const fetched = vi.fn((input: string, init?: RequestInit) => {
+    if (!input.startsWith('/api/index')) return Promise.resolve(reply({ items: [], has_more: false }));
+    if (!deferred) return Promise.resolve(reply(body));
+    return new Promise<Reply>((resolve, reject) => {
+      pending.push(() => resolve(reply(body)));
+      init?.signal?.addEventListener('abort', () => { reject(new DOMException('已中止', 'AbortError')) });
+    });
+  });
+  return {
+    fetched,
+    indexCalls: () => fetched.mock.calls.filter(([input]) => input.startsWith('/api/index')).length,
+    resolve: () => { for (const settle of pending.splice(0)) settle() },
+    install: () => vi.stubGlobal('fetch', fetched),
+  };
+}
+
+it('冷启动深链索引页：壳画的骨架留到首屏取齐，换成整页在同一批变化里', async () => {
+  const r = await load('/tags');
+  const { index, skeleton } = indexSurface();
+  await mount(r);
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+  const fetch = indexFetch();
+  fetch.install();
+  let opened: Promise<boolean> | undefined;
+  const dispatch = vi.fn(() => { opened = r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
+  await act(async () => { await r.startRouting(dispatch) });
+  await until(() => fetch.indexCalls() > 0, '首屏取数发出去');
+  expect(index.firstElementChild, '取齐之前骨架原样留着').toBe(skeleton);
+  const batches = watch(index, skeleton, '痴女');
+  fetch.resolve();
+  await act(async () => { expect(await opened).toBe(true) });
+  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(batches[0], '骨架撤下的那一批变化里整页已经画好').toEqual({ skeleton: false, painted: true });
+  expect(index.querySelector(':scope > .peach-react [data-index-search]')).not.toBeNull();
+});
+
+/* 壳那枚选择键关掉时经 `updateManagedRoute` 把新值推进画着的那一页：只合并这一项，其余 props 照旧，
+   代次不变、不重挂也不重取——重挂会把页头连同过滤框里打了一半的字一起换掉。 */
+it('就地更新：合并进画着的那一页，不重挂、不重取，代次不变', async () => {
+  const r = await load('/tags');
+  const { index } = indexSurface();
+  const actions = await mount(r);
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+  const fetch = indexFetch(TAGS, { deferred: false });
+  fetch.install();
+  await act(async () => { await r.openManagedRoute('/tags', tagsOpen(true), { container: index, isCurrent: () => true }) });
+  const revision = r.managedEntry(index)?.revision;
+  const calls = fetch.fetched.mock.calls.length;
+  const input = index.querySelector('[data-index-search] input');
+  const tag = () => index.querySelector<HTMLElement>('[data-alpha-tag][data-k="痴女"]')!;
+  await act(async () => { tag().click() });
+  expect(tag().getAttribute('aria-pressed')).toBe('true');
+  await act(async () => { r.updateManagedRoute(index, { selectMode: false }) });
+  expect(tag().getAttribute('aria-pressed'), '关掉选择键时所选要跟着清空').toBe('false');
+  expect(index.querySelector('[data-index-search] input'), '推新值不许重挂').toBe(input);
+  expect(r.managedEntry(index)?.revision).toBe(revision);
+  expect(r.managedEntry(index)?.props).toMatchObject({ kind: 'tags', selectMode: false, layout: 'big' });
+  expect(fetch.fetched.mock.calls.length, '推新值不许重取').toBe(calls);
+  await act(async () => { tag().click() });
+  expect(vi.mocked(actions.showIndexTags), '其余 props 照旧：不在选择模式时点一枚直接回目录')
+    .toHaveBeenCalledWith(['痴女'], 'all');
+});
+
+it('就地更新在容器里没有画着的页面时是空操作：还在取首屏时交进去的那一份照旧', async () => {
+  const r = await load('/tags');
+  const { index } = indexSurface();
+  await mount(r);
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+  const fetch = indexFetch();
+  fetch.install();
+  r.updateManagedRoute(index, { selectMode: true });
+  expect(r.managedEntry(index)).toBeNull();
+  const opening = r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true });
+  await until(() => fetch.indexCalls() > 0, '首屏取数发出去');
+  r.updateManagedRoute(index, { selectMode: true });
+  fetch.resolve();
+  await act(async () => { expect(await opening).toBe(true) });
+  expect(r.managedEntry(index)?.props).toMatchObject({ selectMode: false });
+});
+
+/* 资料页画进 `#index` 时管理区那一页只是被壳藏起来：两个容器各记各的，收一个不动另一个；
+   壳认领表面时不给容器，两个一起收。 */
+it('`#stats` 与 `#index` 各画一页，互不相收；不给容器时一起收', async () => {
+  const r = await load('/activity');
+  const { stats } = surface();
+  const { index } = indexSurface();
+  await mount(r);
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+  const tasksReply = tasksFetch(tasks(), { deferred: false });
+  const tagsReply = indexFetch(TAGS, { deferred: false });
+  vi.stubGlobal('fetch', vi.fn((input: string, init?: RequestInit) => (
+    input.startsWith('/api/index') ? tagsReply.fetched(input, init) : tasksReply.fetched(input, init))));
+  await act(async () => { await open(r, stats) });
+  const page = painted(stats);
+  await act(async () => { await r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
+  expect(painted(stats), '在 `#index` 里打开一页不收 `#stats` 那一页').toBe(page);
+  expect(r.managedEntries().map((entry) => entry.path)).toEqual(['/activity', '/tags']);
+  act(() => { r.releaseManagedRoute(index) });
+  expect(index.querySelector('.peach-react')).toBeNull();
+  expect(painted(stats), '收 `#index` 不动 `#stats`').toBe(page);
+  await act(async () => { await r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
+  act(() => { r.releaseManagedRoute() });
+  expect([stats.children.length, index.children.length, r.managedEntries().length]).toEqual([0, 0, 0]);
+});
+
+it('索引页：页内写地址、存版式、头像与去处都接到壳的那一组上', async () => {
+  const r = await load();
+  const actions = shellActions();
+  const props = (r.INDEX_ROUTES['/performers'].page(
+    { ...tagsOpen(), kind: 'performers' } as never, actions, vi.fn()) as ReactElement<Record<string, unknown>>).props;
+  expect([props.route, props.savePreference, props.exitSelectMode, props.personAvatar, props.authorAvatar,
+    props.openEntity, props.showTags, props.openFollowAuthor, props.openFollowTag]).toEqual([
+    actions.routeIndex, actions.savePeopleLayout, actions.exitSelectMode, actions.personAvatar, actions.authorAvatar,
+    actions.openEntity, actions.showIndexTags, actions.openFollowAuthor, actions.openFollowTag]);
+  expect([props.kind, props.layout, props.selectMode, props.configurable]).toEqual(['performers', 'big', false, false]);
+  expect((props.tagLabel as (tag: string) => string)('JK制服')).toBe('JK');
+});
+
+it('索引页的路径不走 React Router：同页换 search 与跨页进来都交壳', async () => {
+  const r = await load('/');
+  const actions = shellActions();
+  const navigate = vi.fn();
+  for (const path of ['/performers', '/tags?view=cloud', '/studios']) r.managedGo(path, actions, navigate);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(vi.mocked(actions.navigate).mock.calls).toEqual([['/performers'], ['/tags?view=cloud'], ['/studios']]);
+  expect(r.ROUTED_PATHS).toEqual(expect.arrayContaining(['/performers', '/creators', '/studios', '/agencies', '/tags']));
 });

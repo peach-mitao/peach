@@ -10,14 +10,10 @@ import { prefetchCatalogGrid } from './catalog-grid/catalog-grid';
 import { CatalogGridPage } from './catalog-grid/catalog-grid-page';
 import { CatalogFilterPage } from './catalog-filter/catalog-filter-page';
 import { SearchPage } from './search/search-page';
-import { prefetchEntityPage } from './entity-page/entity-page';
-import { EntityPage } from './entity-page/entity-page-view';
 import { prefetchFeedNew } from './feed-new/feed-new';
 import { FeedNewPage } from './feed-new/feed-new-page';
 import { prefetchFollowFeed } from './follow-feed/follow-feed';
 import { FollowFeedPage } from './follow-feed/follow-feed-page';
-import { prefetchIndex } from './index/index-data';
-import { IndexPage } from './index/index-page';
 import { JunkQueuePage } from './junk-queue/junk-queue-page';
 import { prefetchLibraryProcessing } from './library-processing/library-processing';
 import { LibraryProcessingCard } from './library-processing/library-processing-card';
@@ -59,14 +55,10 @@ const LibraryProcessing = (props: Bundle.LibraryProcessingProps) => (
 export const pages: Bundle.ReactPages = {
   'catalog-grid': { prefetch: prefetchCatalogGrid, mount: mounter(CatalogGridPage) },
   'catalog-filter': { prefetch: async () => {}, mount: mounter(CatalogFilterPage) },
-  /* 资料（连同新作与头几张封面）、作品第一页与照片并行取齐再画，骨架与整页一次换掉。换头像的
-     候选不在这里预取：资料页每进一次就打一遍图库的话，多数时候没人点开它。 */
-  'entity-page': { prefetch: (props) => prefetchEntityPage(props), mount: mounter(EntityPage) },
   /* 首页那一行新作：骨架还占着就连头几张封面一起等，再一次换掉。 */
   'feed-new': { prefetch: prefetchFeedNew, mount: mounter(FeedNewPage) },
   /* 关注列表第一页与凭据两趟并行，挂上就是最终样子；换筛选之后的取数由页面自己的查询驱动。 */
   'follow-feed': { prefetch: prefetchFollowFeed, mount: mounter(FollowFeedPage) },
-  index: { prefetch: (props, signal) => prefetchIndex(props, signal), mount: mounter(IndexPage) },
   /* 分类条由地址决定、挂上就画得出最终样子，等的只有读数：首屏不在这里等，由页面自己的
      查询驱动等待态（`junk-queue-page.tsx` 开头）。 */
   'junk-queue': { prefetch: async () => {}, mount: mounter(JunkQueuePage) },

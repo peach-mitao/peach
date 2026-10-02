@@ -1,6 +1,6 @@
-/* 实体资料页（`entity-page` island）：资料卡、筛选浮层、新作那一行与正文，一棵根、四块宿主。
+/* 实体资料页（路由树画进 `#index`，`managed-routes.tsx` 的 `ENTITY_ROUTES`）：资料卡、筛选浮层、新作那一行与正文，一棵根、四块宿主。
  *
- * 资料卡画在挂载点里（`[data-entity-hero]`），浮层、新作与正文经 portal 画进壳排好的另外三块：浮层
+ * 资料卡画在壳交出的宿主里（`[data-entity-hero]` 那一格），浮层、新作与正文经 portal 画进壳排好的另外三块：浮层
  * 吸顶要它的父元素就是 `#index`，新作那一行是遗留层的卡片、不进 React 子树的样式范围，所以四块各
  * 守自己的宿主。页内状态都在这里：当前视图、名册还是作品、照片墙的种子与翻页；筛选与媒体视图读
  * 地址栏（壳推进来的 `filters`／`media`），改它们只调 `actions.route`。 */
@@ -8,6 +8,7 @@ import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@peach/legacy/core';
+import { tagLabel } from '@peach/legacy/tags';
 import { confirmModal } from '@peach/legacy/ui';
 
 import { errorMessage } from '../../api';
@@ -269,7 +270,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   /* 标签按资料里的顺序摆，选中的不往前挪：刚点的那枚就在指针底下，这一下把它抽走反倒是替人决定
      现在该看哪儿。数的是这个人／厂牌名下带这个标签的视频。 */
   const tags: EntityFilterTag[] = (entity.tags || []).map((tag) => ({
-    k: tag.k, label: helpers.tagLabel(tag.k), n: tag.n, selected: tagPressed(filters.tag, tag.k) }));
+    k: tag.k, label: tagLabel(tag.k), n: tag.n, selected: tagPressed(filters.tag, tag.k) }));
   /* 艺人名册、视频、照片是这一页的三个互斥视图，共用一组圆键；只有一类东西时不出这一组。 */
   const views: EntityViewKeys | null = photoCount || roster.length ? {
     label: roster.length ? '页面视图' : '媒体类型',
@@ -293,7 +294,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   if (view === 'people') readout = `${kind === 'studio' ? '厂牌' : '艺人'} · ${roster.length.toLocaleString()}`;
   else if (view === 'videos') {
     busy = !items.data;
-    const labels = tagList(filters.tag).map(helpers.tagLabel);
+    const labels = tagList(filters.tag).map((tag) => tagLabel(tag));
     readout = `视频 · ${(items.data?.total || 0).toLocaleString()}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
   } else if (wallPage && !wallPage.error) {
     readout = inSet ? `${wallPage.title} · ${(wallPage.total || 0).toLocaleString()} 张`

@@ -8,9 +8,14 @@ import { act, useEffect, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { useLocation, useNavigate } from 'react-router';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+
+// 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
 async function load() {
   vi.resetModules();
@@ -108,12 +113,12 @@ it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () =
   }
   await mount(r, <Probe />);
   await act(async () => { await r.startRouting(() => {}) });
-  for (const path of ['/playlists', '/performers', '/item/7']) await act(async () => { r.shellNavigate(path) });
-  await act(async () => { pop('/performers') });
-  await act(async () => { r.peachHistory.push('/tags') });
+  for (const path of ['/playlists', '/follow', '/item/7']) await act(async () => { r.shellNavigate(path) });
+  await act(async () => { pop('/follow') });
+  await act(async () => { r.peachHistory.push('/trash') });
   expect([mounted, unmounted]).toEqual([1, 0]);
-  expect(seen.at(-1)).toBe('/tags');
-  expect(new Set(seen)).toEqual(new Set(['/', '/playlists', '/performers', '/item/7', '/tags']));
+  expect(seen.at(-1)).toBe('/trash');
+  expect(new Set(seen)).toEqual(new Set(['/', '/playlists', '/follow', '/item/7', '/trash']));
 });
 
 it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的岛，当场就画上', async () => {

@@ -472,10 +472,8 @@ export interface PlaylistsProps {
 export interface ReactPages {
   'catalog-grid': ReactPage<CatalogGridProps>;
   'catalog-filter': ReactPage<CatalogFilterProps>;
-  'entity-page': ReactPage<EntityPageProps>;
   'feed-new': ReactPage<FeedNewProps>;
   'follow-feed': ReactPage<FollowFeedProps>;
-  index: ReactPage<IndexProps>;
   'junk-queue': ReactPage<JunkQueueProps>;
   'library-processing': ReactPage<LibraryProcessingProps>;
   playlists: ReactPage<PlaylistsProps>;
@@ -542,10 +540,10 @@ export declare function configureGlowPicker(host: GlowPickerHost): void;
 export type { CloudDownloadPrefill, ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
 
 /** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，后退前进与 React 子树里的
- * `navigate` 由它派发给壳；管理区那几页由它画，经 `actions` 回到壳。重复调用是空操作。 */
+ * `navigate` 由它派发给壳；管理区、索引页与资料页由它画，经 `actions` 回到壳。重复调用是空操作。 */
 export declare function configureRouter(actions: ShellActions): void;
 
-/** 管理区那几页的首屏取数（`@peach/history` 的 `openManagedRoute` 经 `connectManagedRoutes` 调它）。 */
+/** 路由树那几页的首屏取数（`@peach/history` 的 `openManagedRoute` 经 `connectManagedRoutes` 调它）。 */
 export declare function prefetchManagedRoute(path: string, open: object, signal: AbortSignal): Promise<void>;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */

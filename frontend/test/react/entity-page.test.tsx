@@ -1,4 +1,4 @@
-/* 实体资料页岛：取数、页内状态与写操作。资料卡、浮层与正文各自怎么画由它们自己的用例管
+/* 实体资料页：取数、页内状态与写操作。资料卡、浮层与正文各自怎么画由它们自己的用例管
  * （`entity-hero`／`entity-filter`／`entity-body.test.tsx`），这里看的是把它们拼成一页的那一层：
  * 首屏取哪几样、换筛选重取几次、哪些动作回壳写地址、写操作成功后哪几块跟着更新。
  *
@@ -120,7 +120,7 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
       portraitImg: () => '', wireDrag: vi.fn(), wireScroller: vi.fn(), wireFeedRow: vi.fn(),
       feedRowHtml: (data) => `<div class="feednewrow">${(data?.items || []).map((one) => `<div data-feed-id="${one.id}"></div>`).join('')}</div>`,
       receipt: vi.fn(), failure: vi.fn(), aliasForm: vi.fn(async () => {}),
-      sourceToolsHtml: () => '', wireSourceTools: vi.fn(), tagLabel: (tag) => tag, comboItems: () => [],
+      sourceToolsHtml: () => '', wireSourceTools: vi.fn(), comboItems: () => [],
       sortKeys: vi.fn((sort: string) => [{ key: 'new', label: '入库时间', pressed: sort === 'new', dir: '' as const, ariaLabel: '' }]),
     },
     actions: {
@@ -133,7 +133,7 @@ function shellProps(patch: Partial<EntityPageProps> = {}): EntityPageProps {
 }
 
 let push: (patch: Partial<EntityPageProps>) => Promise<void> = async () => {};
-/** 壳经 `updateIsland` 推进来的补丁，这里用一层状态代替。 */
+/** 壳经 `updateManagedRoute` 推进来的补丁，这里用一层状态代替。 */
 function Shell(given: EntityPageProps) {
   const [current, set] = useState(given);
   push = (patch) => act(async () => { set((value) => ({ ...value, ...patch })) });

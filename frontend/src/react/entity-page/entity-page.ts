@@ -1,10 +1,11 @@
-/* 实体资料页（`entity-page` island，ADR-0031 第 11d 步）：数据形状、查询键与首屏取数。
+/* 实体资料页（路由树画进 `#index`，见 `router/managed-routes.tsx` 的 `ENTITY_ROUTES`）：数据形状、
+ * 查询键与首屏取数。
  *
  * 资料卡、筛选浮层、新作那一行与正文是同一页的四块，读的是同一份页内状态（这一页的筛选、当前
- * 视图、照片墙翻到哪儿），所以合成一座岛、一棵 React 根；四块各自的宿主仍由壳在 `#index` 里排好，
- * 岛用 portal 画进去，DOM 与几何和拆成三座岛时一致。取数全在这里：`/api/entity`、新作、作品与
- * 照片由岛按查询键取，地址栏是筛选与视图的唯一真相源、归壳写——岛改筛选只调 `actions.route`，
- * 壳写好地址再把新的 `filters`／`media` 推回来，岛按新键重取。
+ * 视图、照片墙翻到哪儿），所以是同一个组件；四块各自的宿主由壳在 `#index` 里排好，页面画进资料卡
+ * 那一格，再用 portal 画进另外三块。取数全在这里：`/api/entity`、新作、作品与照片由页面按查询键取，
+ * 地址栏是筛选与视图的唯一真相源、归壳写——页面改筛选只调 `actions.route`，壳写好地址再经
+ * `updateManagedRoute` 把新的 `filters`／`media` 推回来，页面按新键重取。
  *
  * 首屏仍由壳铺骨架（深链冷启动时 React 包还没到，骨架只能由壳画），`prefetch` 把四样取齐再画，
  * 骨架与整页一次换掉；页内换筛选时作品区的骨架归正文那一格自己（`useSkeletonReveal`）。 */
@@ -65,7 +66,7 @@ export interface EntityPageActions {
   /** 排序键：点未选中项换列，点选中项翻方向，判据同首页那一排。 */
   setSort(key: string): void;
   /** 作品视图的换一批：种子是全站那一粒（`state.seed`），壳换好、写好地址再推回来；回的是新种子，
-   *  岛据此先把那一页取到手，键上的转圈等的就是这一趟。 */
+   *  页面据此先把那一页取到手，键上的转圈等的就是这一趟。 */
   reshuffleVideos(): string;
   setJavLayout(layout: string): void;
   setPhotoLayout(layout: string): void;
@@ -97,24 +98,23 @@ export interface EntityPageHelpers {
   receipt(message: string, options?: { undo?: () => Promise<void> }): void;
   /** 失败回执（`actionFailure`）。 */
   failure(label: string, error: unknown): void;
-  /** 「添加别名」弹层：表单与回执在壳里，写回交给 `write`（岛的 mutation，成功后重取资料与作品）。 */
+  /** 「添加别名」弹层：表单与回执在壳里，写回交给 `write`（页面的 mutation，成功后重取资料与作品）。 */
   aliasForm(mine: string[], write: (payload: { alias: string; remove?: boolean }) => Promise<{ added?: boolean; alias?: string }>): Promise<void>;
   /** 图集那两枚源文件键；`done` 在对账改动了这一组之后重取它。 */
   sourceToolsHtml(setId: number): string;
   wireSourceTools(root: Element, done: () => void): void;
-  tagLabel(tag: string): string;
   /** 交集条上的那几颗，清单同首页那条（`comboItems`）。 */
   comboItems(filters: EntityFilters): EntityComboItem[];
   /** 排序键：JAV 语境下多一枚发行时间。 */
   sortKeys(sort: string, dir: string, jav: boolean): EntitySortKey[];
 }
 
-/** 卡片网格原样要的那几样，壳里同一份：版式、选择状态与展示设置由 `updateIsland` 推最新值。 */
+/** 卡片网格原样要的那几样，壳里同一份：版式、选择状态与展示设置由 `updateManagedRoute` 推最新值。 */
 type SharedGridProps = Pick<CatalogGridProps,
   'layout' | 'selectMode' | 'selected' | 'seekSeconds' | 'wireDrag' | 'skeletonHtml'
   | 'groupCollapse' | 'canLoadMore'>;
 
-/** 壳在 `#index` 里排好的四块宿主（资料卡那一格就是岛的挂载点）。筛选浮层与正文各带一层
+/** 壳在 `#index` 里排好的四块宿主（页面画进资料卡那一格）。筛选浮层与正文各带一层
  *  `.peach-react`，新作那一行是遗留层的卡片，宿主不在 React 子树的样式范围里。 */
 export interface EntityPageHosts { filter: Element; feed: HTMLElement; body: Element }
 
