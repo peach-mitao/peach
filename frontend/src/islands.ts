@@ -24,6 +24,7 @@ export { sidebarSkeletonHtml } from './sidebar-skeleton';
 export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
 import type * as ReactBundle from '@peach/react';
+import { connectManagedRoutes } from './history';
 
 export { watchJob, followJobProgress, jobActivityHtml } from './jobs';
 export { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './selection';
@@ -53,12 +54,10 @@ export interface IslandContracts {
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   playlists: ReactBundle.PlaylistsProps;
-  'scraping': ReactBundle.ScrapingProps;
   'quality-goals': ReactBundle.QualityGoalsProps;
   review: ReactBundle.ReviewProps;
   search: ReactBundle.SearchProps;
   configuration: ReactBundle.ConfigurationProps;
-  activity: ReactBundle.ActivityProps;
   stats: ReactBundle.StatsProps;
   taste: ReactBundle.TasteProps;
 }
@@ -85,12 +84,10 @@ const REGISTRY: { [N in IslandName]: Island } = {
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   playlists: { react: 'playlists' },
-  'scraping': { react: 'scraping' },
   'quality-goals': { react: 'quality-goals' },
   review: { react: 'review' },
   search: { react: 'search' },
   configuration: { react: 'configuration' },
-  activity: { react: 'activity' },
   stats: { react: 'stats' },
   taste: { react: 'taste' },
 };
@@ -299,11 +296,16 @@ export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> 
   return glowPicker;
 }
 
-/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳。壳启动时装载，
- * 跟侧栏共用同一次 `@peach/react` 请求；包到之前的后退前进等它挂上时补派。 */
+/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区那几页由它画
+ * （`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；包到之前的
+ * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。 */
 let router: Promise<void> | null = null;
-export function loadRouter(): Promise<void> {
-  router ??= import('@peach/react').then((bundle) => bundle.configureRouter());
+export function loadRouter(actions: ReactBundle.ShellActions): Promise<void> {
+  if (!router) {
+    const bundle = import('@peach/react').then((loaded) => { loaded.configureRouter(actions); return loaded });
+    connectManagedRoutes(bundle.then((loaded) => loaded.prefetchManagedRoute));
+    router = bundle.then(() => undefined);
+  }
   return router;
 }
 

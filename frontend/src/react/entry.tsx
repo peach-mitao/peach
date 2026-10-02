@@ -5,8 +5,6 @@ import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 
-import { ActivityPage } from './activity/activity-page';
-import { prefetchTasks } from './activity/tasks';
 import type * as Bundle from './bundle';
 import { prefetchCatalogGrid } from './catalog-grid/catalog-grid';
 import { CatalogGridPage } from './catalog-grid/catalog-grid-page';
@@ -37,8 +35,6 @@ import { prefetchQualityGoals } from './quality-goals/quality-goals';
 import { Providers } from './providers';
 import { prefetchReview } from './review/review';
 import { ReviewPage } from './review/review-page';
-import { ScrapingPage } from './scraping/scraping-page';
-import { prefetchScraping } from './scraping/scraping';
 import { prefetchConfiguration } from './settings/configuration';
 import { ConfigurationPage } from './settings/configuration-page';
 import { prefetchStats } from './stats/stats';
@@ -50,6 +46,7 @@ export { configureBatchDock } from './batch-dock/batch-dock-island';
 export { configureGlowPicker } from './glow-picker/glow-picker-island';
 export { configureImmerse } from './immerse/immerse-island';
 export { configureManageHeader } from './manage-header/manage-header-island';
+export { prefetchManagedRoute } from './router/managed-routes';
 export { configureRouter } from './router/router';
 export { configureSettingsPanel } from './settings-panel/settings-panel';
 export { configureSidebar } from './sidebar/sidebar-island';
@@ -77,7 +74,6 @@ const LibraryProcessing = (props: Bundle.LibraryProcessingProps) => (
 
 /** 整页归 React 的那些页面，按名字给遗留层用。 */
 export const pages: Bundle.ReactPages = {
-  activity: { prefetch: (_props, signal) => prefetchTasks(signal), mount: mounter(ActivityPage) },
   'catalog-grid': { prefetch: prefetchCatalogGrid, mount: mounter(CatalogGridPage) },
   configuration: {
     prefetch: (_props, signal) => prefetchConfiguration(signal), mount: mounter(ConfigurationPage),
@@ -118,7 +114,6 @@ export const pages: Bundle.ReactPages = {
   },
   /* 输入框是壳的，岛只接它的事件、画下拉栏里的内容；记录与推荐聚焦时才取。 */
   search: { prefetch: async () => {}, mount: mounter(SearchPage) },
-  scraping: { prefetch: (_props, signal) => prefetchScraping(signal), mount: mounter(ScrapingPage) },
   stats: { prefetch: (_props, signal) => prefetchStats(signal), mount: mounter(StatsPage) },
   /* 首屏取的是「全部时间」那一份：分析范围是组件状态，每次进这一页都从它开始。 */
   taste: {

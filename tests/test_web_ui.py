@@ -3114,8 +3114,9 @@ class WebUiSourceTests(unittest.TestCase):
     def test_scraping_is_reachable_from_the_library_processing_card(self):
         """来源和凭证自成一页，入口在数据管理那张「扫描与采集」卡上。
 
-        这一页是 React 档（ADR-0031）：遗留层只铺骨架、交容器，正文在
-        `frontend/src/react/scraping/` 里。所以这里断言的是外壳——路由、名字与入口。
+        这一页是 React 档（ADR-0031）：遗留层只铺骨架、认领表面，路由树画正文，正文在
+        `frontend/src/react/scraping/` 里。所以这里断言的是外壳——路由与入口；回执交给谁由
+        `frontend/test/react/managed-routes.test.tsx` 守。
         连接方式、Cookie 二选一、保存与撤销交什么、检查结果怎么说由
         `frontend/test/react/scraping.test.tsx` 守，页脚三键的外观与来源外链的
         `rel` 由 `frontend/e2e/design.test.ts` 读计算值守。
@@ -3126,9 +3127,6 @@ class WebUiSourceTests(unittest.TestCase):
             / 'frontend/src/react/library-processing/library-processing-card.tsx'
         ).read_text(encoding='utf-8')
         self.assertIn('href="/scraping"', processing)
-        self.assertPageContains(
-            "await ui.mountIsland('scraping',$('#stats'),{toast},"
-            "{isCurrent:()=>surfaceCurrent(surface)})")
         # 正文归 React 子树：控件、来源外链与 Cookie 二选一用 BoardUI 的源码加 Tailwind，
         # 遗留样式表里只剩骨架要的那两条。
         self.assertPageLacks('.scraping-fields')
@@ -5541,9 +5539,9 @@ class WebUiSourceTests(unittest.TestCase):
     def test_the_activity_page_is_the_one_place_that_shows_every_task(self):
         """任务中心的界面：谁在跑、谁被挡下了、刚跑完的怎么样，一屏三段。
 
-        它是 React 档（ADR-0031）：遗留层只铺骨架、交容器，整页在
+        它是 React 档（ADR-0031）：遗留层只铺骨架、认领表面，路由树画整页，整页在
         `frontend/src/react/activity/` 里。所以这里断言的是外壳——路由、菜单入口与
-        深链冷启动的骨架。三段怎么分、轮询节律和失败时留下什么由
+        深链冷启动的骨架。预填只跟着那一次打开由 `frontend/test/react/managed-routes.test.tsx` 守，三段怎么分、轮询节律和失败时留下什么由
         `frontend/test/react/activity.test.tsx` 守，徽章的三档颜色与失败卡的框线由
         `frontend/e2e/design.test.ts` 读计算值守，数据契约由 `/api/tasks` 的路由测试守。
         入口进管理菜单而不是挂在某一页下面：扫描、追更、批量都会出现在它上面，
@@ -5552,9 +5550,6 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertRoute('/activity', "section:'activity'", "title:'活动'",
                          "openActivity(push)")
         self.assertPageContains("async function openActivity(push=true)")
-        self.assertPageContains(
-            "await ui.mountIsland('activity',$('#stats'),prefill?{prefill}:{},"
-            "{isCurrent:()=>surfaceCurrent(surface)})")
         self.assertPageContains("['activity','活动','history'],")
         self.assertPageContains("quality:'quality',activity:'activity'}")
         # 深链冷启动要铺的是这一页自己的骨架，不是默认那张。

@@ -98,3 +98,8 @@ export function routeSeen(seen: number): void {
   claimed = seen;
   void dispatcher();
 }
+
+export {
+  connectManagedRoutes, listenManagedEntry, managedEntry, openManagedRoute, releaseManagedRoute,
+  type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
+} from './managed';

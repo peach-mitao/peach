@@ -4,6 +4,7 @@
  * `entry.tsx` 按这里的签名实现，两边的类型检查各自对照同一份声明。
  * 配置数据的形状以 `/api/configuration`（`src/peach/routes_configuration.py`）为准。 */
 import type { QualityGoal } from './quality-goals/quality-goals';
+import type { ShellActions } from './router/shell-actions';
 import type { IndexProps } from './index/index-data';
 import type { CatalogGridProps } from './catalog-grid/types';
 import type { JunkQueueProps } from './junk-queue/junk-queue';
@@ -469,7 +470,6 @@ export interface PlaylistsProps {
 }
 
 export interface ReactPages {
-  activity: ReactPage<ActivityProps>;
   'catalog-grid': ReactPage<CatalogGridProps>;
   configuration: ReactPage<ConfigurationProps>;
   'data-cleanup': ReactPage<DataCleanupProps>;
@@ -486,7 +486,6 @@ export interface ReactPages {
   'quality-goals': ReactPage<QualityGoalsProps>;
   review: ReactPage<ReviewProps>;
   search: ReactPage<SearchProps>;
-  scraping: ReactPage<ScrapingProps>;
   stats: ReactPage<StatsProps>;
   taste: ReactPage<TasteProps>;
 }
@@ -548,9 +547,14 @@ export type { GlowPickerHost } from './glow-picker/glow-picker-api';
 /** 接上壳给的宿主，当场画好侧栏配色卡的内容（`glow-picker/glow-picker-island.tsx`）。只调一次。 */
 export declare function configureGlowPicker(host: GlowPickerHost): void;
 
+export type { CloudDownloadPrefill, ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
+
 /** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，后退前进与 React 子树里的
- * `navigate` 由它派发给壳。重复调用是空操作。 */
-export declare function configureRouter(): void;
+ * `navigate` 由它派发给壳；管理区那几页由它画，经 `actions` 回到壳。重复调用是空操作。 */
+export declare function configureRouter(actions: ShellActions): void;
+
+/** 管理区那几页的首屏取数（`@peach/history` 的 `openManagedRoute` 经 `connectManagedRoutes` 调它）。 */
+export declare function prefetchManagedRoute(path: string, open: object, signal: AbortSignal): Promise<void>;
 
 /** 在 `host` 上挂全站唯一的 Toaster；重复调用是空操作。 */
 export declare function mountToaster(host: Element, icons: ToastIcons): void;

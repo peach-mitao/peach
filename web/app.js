@@ -19,7 +19,7 @@ import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
-import { loadRouter, peachHistory, shellNavigate, startRouting } from './dist/peach-ui.js';
+import { loadRouter, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -443,7 +443,9 @@ const claimSurface=path=>{
   if(!isFeedNewPath(path))clearHomeFeed();
   /* 管理区正文的容器每次换页都经过这里，所以卸载也落在这里。React 档的页面是一棵自己
      管取数的根：不卸掉它，离开之后那棵根还活着，有轮询的页面照着原节律继续敲库。
-     没挂过东西的容器 unmountIsland 直接返回，逐页判断反而会漏掉新迁过来的那一页。 */
+     没挂过东西的容器 unmountIsland 直接返回，逐页判断反而会漏掉新迁过来的那一页。
+     由路由树画的那几页（`openManagedRoute`）同样在这里收：详情舞台压在它们上面时不经过这里，页面留着。 */
+  releaseManagedRoute();
   unmountIsland($('#stats'));
   /* 资料页那块（换头像挂在它的圆框上）在管理区打开时只是被藏起来，DOM 还在。 */
   unmountIsland($('#index'));
@@ -453,6 +455,8 @@ const claimSurface=path=>{
   surfaceRequests?.abort();
   surfaceRequests=new AbortController();
   surfaceEpoch++;return surfaceToken(path)};
+/* 由路由树画的那几页画进管理区正文，取数期间壳换了页就不画。 */
+const managedSurface=token=>({container:$('#stats'),isCurrent:()=>surfaceCurrent(token)});
 /* 表面级读请求：带上这个表面的 signal，被取消时返回 null 而不是抛错。
    取消只可能由 claimSurface 触发，而它已经推进了 epoch，所以调用点紧随其后的
    `surfaceCurrent()` 必然为假、走的是同一条过期分支——不用给每个表面套一层
@@ -2002,10 +2006,10 @@ async function openReview(push=true){
   },{isCurrent:()=>surfaceCurrent(surface)});
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
-/* 活动页（任务中心）也是 island。它自己按内容决定轮询快慢，遗留层不给它任何助手：
+/* 活动页（任务中心）由路由树画。它自己按内容决定轮询快慢，壳不给它任何助手：
    任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads、自己提交。
    作品页与关注条目的「云下载」键经 openCloudDownload 带着番号、标题与来处进来，表单据此预填，
-   用户只贴磁力。上下文只交给这一次挂载、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。 */
+   用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。 */
 let activityPrefill=null;
 function openCloudDownload(prefill){activityPrefill=prefill;openActivity(true)}
 async function openActivity(push=true){
@@ -2014,8 +2018,7 @@ async function openActivity(push=true){
   if(push)route('/activity');
   const surface=claimSurface('/activity');
   showManagementBody({placeholder:managementPlaceholder('/activity')});
-  const ui=await import('/dist/peach-ui.js');
-  await ui.mountIsland('activity',$('#stats'),prefill?{prefill}:{},{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/activity',prefill?{prefill}:{},managedSurface(surface));
   // 带着上下文进来时表单自己聚焦磁力框、把它滚进视野，这里不再拉回顶部。
   if(surfaceCurrent(surface)&&!prefill)window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -2054,8 +2057,7 @@ async function openScraping(push=true){
      同一段 shimmer 连放两遍。标题由页头岛按 `MANAGE_CRUMB_PAGES`（`frontend/src/manage-header.ts`）认，
      不在这里再赋一次值。 */
   showManagementBody({placeholder:managementPlaceholder('/scraping')});
-  const ui=await import('/dist/peach-ui.js');
-  await ui.mountIsland('scraping',$('#stats'),{toast},{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/scraping',{},managedSurface(surface));
 }
 
 /* ── 在线追更 ──
@@ -3940,8 +3942,35 @@ async function restoreRoute(){
 entityShapesReady=loadEntityShapes();
 renderInitialSurfaceLoading();
 mountSidebar();
-/* 后退前进由 React Router 派发给 restoreRoute（`startRouting`），跟侧栏搭同一次 React 包请求。 */
-loadRouter().catch(()=>{});
+/* 后退前进由 React Router 派发给 restoreRoute（`startRouting`），跟侧栏搭同一次 React 包请求。
+   管理区那几页由路由树画，经这一组回到壳（`frontend/src/react/router/shell-actions.ts`）。 */
+const shellActions={
+  openItem:id=>void openItem(id),
+  openEntity:(kind,name)=>void openEntity(kind,name),
+  /* 点一个内容标签是「回目录并按它筛选」：整页换成目录仍归壳，页面只说点了哪个键。 */
+  openTag:key=>{closeStats();toggleTag(key)},
+  openTasteSignal,
+  navigate:path=>{route(path);restoreRoute()},
+  openManage,
+  managePath:section=>ROUTES.find(spec=>spec.section===section)?.match||'',
+  openFollow:()=>void openFollow(),
+  receipt:(message,options)=>actionReceipt(message,options),
+  toast:(message,options)=>toast(message,options),
+  failure:actionFailure,
+  revealSource:revealForIsland,
+  reopenTutorial:reopenPostSetupTutorial,
+  requestConfigurationSection:section=>{configurationRequestedSection=section},
+  requestCloudDownload:prefill=>{activityPrefill=prefill},
+  routeReview,
+  routeFollowManage,
+  saveFollowPreference:patch=>{
+    if(patch.pageSize!==undefined)appSettings.followPageSize=patch.pageSize;
+    if(patch.layout!==undefined)appSettings.followLayout=patch.layout;
+    saveSettings();
+  },
+  srcBadge:(location,cost)=>srcBadge(location,cost),
+};
+loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();
 mountBatchDock();
 buildManageBar();
