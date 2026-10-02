@@ -8,10 +8,6 @@ import { flushSync } from 'react-dom';
 import type * as Bundle from './bundle';
 import { prefetchCatalogGrid } from './catalog-grid/catalog-grid';
 import { CatalogGridPage } from './catalog-grid/catalog-grid-page';
-import { prefetchDataCleanup } from './data-cleanup/data-cleanup';
-import { DataCleanupPage } from './data-cleanup/data-cleanup-page';
-import { prefetchDuplicates } from './duplicates/duplicates';
-import { DuplicatesPage } from './duplicates/duplicates-page';
 import { CatalogFilterPage } from './catalog-filter/catalog-filter-page';
 import { SearchPage } from './search/search-page';
 import { prefetchEntityPage } from './entity-page/entity-page';
@@ -20,8 +16,6 @@ import { prefetchFeedNew } from './feed-new/feed-new';
 import { FeedNewPage } from './feed-new/feed-new-page';
 import { prefetchFollowFeed } from './follow-feed/follow-feed';
 import { FollowFeedPage } from './follow-feed/follow-feed-page';
-import { prefetchFollowManage } from './follow-manage/follow-manage';
-import { FollowManagePage } from './follow-manage/follow-manage-page';
 import { prefetchIndex } from './index/index-data';
 import { IndexPage } from './index/index-page';
 import { JunkQueuePage } from './junk-queue/junk-queue-page';
@@ -30,17 +24,7 @@ import { LibraryProcessingCard } from './library-processing/library-processing-c
 import { LibraryProcessingNotice } from './library-processing/library-processing-notice';
 import { prefetchPlaylists } from './playlists/playlists';
 import { PlaylistsPage } from './playlists/playlists-page';
-import { QualityGoalsPage } from './quality-goals/quality-goals-page';
-import { prefetchQualityGoals } from './quality-goals/quality-goals';
 import { Providers } from './providers';
-import { prefetchReview } from './review/review';
-import { ReviewPage } from './review/review-page';
-import { prefetchConfiguration } from './settings/configuration';
-import { ConfigurationPage } from './settings/configuration-page';
-import { prefetchStats } from './stats/stats';
-import { StatsPage } from './stats/stats-page';
-import { DEFAULT_WINDOW, prefetchTaste } from './taste/taste';
-import { TastePage } from './taste/taste-page';
 
 export { configureBatchDock } from './batch-dock/batch-dock-island';
 export { configureGlowPicker } from './glow-picker/glow-picker-island';
@@ -53,8 +37,7 @@ export { configureSidebar } from './sidebar/sidebar-island';
 export { configureStage } from './stage/stage';
 export { mountToaster, showToast } from './toaster';
 
-/* 第一帧用 `flushSync` 同步落到 DOM 上：遗留壳挂完这一页紧接着就读它画出来的结构
- * （配置页按 `.configgroup` 小标题切页签，再按地址里的 `#peachProxy` 滚过去），而
+/* 第一帧用 `flushSync` 同步落到 DOM 上：遗留壳挂完这一页紧接着就读它画出来的结构，而
  * `root.render` 自己是排进下一次渲染的；骨架已经清掉，晚一帧画就是一帧空白。往后的
  * `update` 照常异步。共享缓存、减弱动效与弹出层容器见 `providers.tsx`。 */
 function mounter<P extends object>(Component: ComponentType<P>) {
@@ -75,14 +58,6 @@ const LibraryProcessing = (props: Bundle.LibraryProcessingProps) => (
 /** 整页归 React 的那些页面，按名字给遗留层用。 */
 export const pages: Bundle.ReactPages = {
   'catalog-grid': { prefetch: prefetchCatalogGrid, mount: mounter(CatalogGridPage) },
-  configuration: {
-    prefetch: (_props, signal) => prefetchConfiguration(signal), mount: mounter(ConfigurationPage),
-  },
-  /* 首屏等顶上那排读数里自己的几份、两张后台任务卡与整理卡；复核、高清版与链接各读各的。 */
-  'data-cleanup': {
-    prefetch: (_props, signal) => prefetchDataCleanup(signal), mount: mounter(DataCleanupPage),
-  },
-  duplicates: { prefetch: (_props, signal) => prefetchDuplicates(signal), mount: mounter(DuplicatesPage) },
   'catalog-filter': { prefetch: async () => {}, mount: mounter(CatalogFilterPage) },
   /* 资料（连同新作与头几张封面）、作品第一页与照片并行取齐再画，骨架与整页一次换掉。换头像的
      候选不在这里预取：资料页每进一次就打一遍图库的话，多数时候没人点开它。 */
@@ -91,11 +66,6 @@ export const pages: Bundle.ReactPages = {
   'feed-new': { prefetch: prefetchFeedNew, mount: mounter(FeedNewPage) },
   /* 关注列表第一页与凭据两趟并行，挂上就是最终样子；换筛选之后的取数由页面自己的查询驱动。 */
   'follow-feed': { prefetch: prefetchFollowFeed, mount: mounter(FollowFeedPage) },
-  /* 首屏只取来源清单与凭据状态，地址栏指着「订阅源」时连它一起取。检查更新与查找那两趟
-     后台任务的快照不在首屏里：它们常年躺着上一趟的回执，等它们只会让首屏多一个往返。 */
-  'follow-manage': {
-    prefetch: (props, signal) => prefetchFollowManage(signal, props.tab), mount: mounter(FollowManagePage),
-  },
   index: { prefetch: (props, signal) => prefetchIndex(props, signal), mount: mounter(IndexPage) },
   /* 分类条由地址决定、挂上就画得出最终样子，等的只有读数：首屏不在这里等，由页面自己的
      查询驱动等待态（`junk-queue-page.tsx` 开头）。 */
@@ -105,18 +75,6 @@ export const pages: Bundle.ReactPages = {
     mount: mounter(LibraryProcessing),
   },
   playlists: { prefetch: (_props, signal) => prefetchPlaylists(signal), mount: mounter(PlaylistsPage) },
-  'quality-goals': {
-    prefetch: (_props, signal) => prefetchQualityGoals(signal), mount: mounter(QualityGoalsPage),
-  },
-  /* ADR-0018 的确定项已由扫描与资料处理任务落库；复核页只读取剩下的判断题。 */
-  review: {
-    prefetch: (_props, signal) => prefetchReview(signal), mount: mounter(ReviewPage),
-  },
   /* 输入框是壳的，岛只接它的事件、画下拉栏里的内容；记录与推荐聚焦时才取。 */
   search: { prefetch: async () => {}, mount: mounter(SearchPage) },
-  stats: { prefetch: (_props, signal) => prefetchStats(signal), mount: mounter(StatsPage) },
-  /* 首屏取的是「全部时间」那一份：分析范围是组件状态，每次进这一页都从它开始。 */
-  taste: {
-    prefetch: (_props, signal) => prefetchTaste(DEFAULT_WINDOW, signal), mount: mounter(TastePage),
-  },
 };

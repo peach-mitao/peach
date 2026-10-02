@@ -3892,22 +3892,14 @@ function Go(e, t) {
 var Ko = {
 	"catalog-filter": { react: "catalog-filter" },
 	"catalog-grid": { react: "catalog-grid" },
-	"data-cleanup": { react: "data-cleanup" },
-	duplicates: { react: "duplicates" },
 	"entity-page": { react: "entity-page" },
 	"feed-new": { react: "feed-new" },
 	"follow-feed": { react: "follow-feed" },
-	"follow-manage": { react: "follow-manage" },
 	index: { react: "index" },
 	"junk-queue": { react: "junk-queue" },
 	"library-processing": { react: "library-processing" },
 	playlists: { react: "playlists" },
-	"quality-goals": { react: "quality-goals" },
-	review: { react: "review" },
-	search: { react: "search" },
-	configuration: { react: "configuration" },
-	stats: { react: "stats" },
-	taste: { react: "taste" }
+	search: { react: "search" }
 }, qo = () => import("/dist/peach-react.js").then(() => void 0), Jo = () => Object.keys(Ko), $ = /* @__PURE__ */ new Map();
 async function Yo(e, t, n, r = {}) {
 	let i = Ko[e];

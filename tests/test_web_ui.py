@@ -3143,14 +3143,12 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertRoute('/taste', "openTaste(push)", "section:'taste'")
         self.assertPageContains("async function openTaste(push=true)")
-        self.assertPageContains("await ui.mountIsland('taste',$('#stats'),{")
-        # 交出去的都是导航、查表或回执：页面不持有它们的状态，也不自己跳转。
-        self.assertPageContains("onSignal:openTasteSignal")
+        # 交出去的都是导航、查表或回执：页面不持有它们的状态，也不自己跳转。各页拿到哪一样由
+        # `frontend/test/react/managed-routes.test.tsx` 守。
         self.assertPageContains("navigate:path=>{route(path);restoreRoute()}")
         # 「这一次是从设置完成页进来的」是一次性的：地址栏那一位进门就擦掉，取值走内存变量。
         # 圆标由 React 档直接用 `card-art` 那一份拼，壳不再递。
-        self.assertCode("toast:actionReceipt,onboarding:claimSetupEntry(),")
-        self.assertPageContains("{isCurrent:()=>surfaceCurrent(surface)}")
+        self.assertCode("openManagedRoute('/taste',{onboarding:claimSetupEntry()},managedSurface(surface))")
         # 四条端点、缓存、轮询与所有正文标记都归 React 子树，遗留层一条都不留。
         for gone in ("/api/taste", "TASTE_CACHE_KEY", "peach-taste-job", "wireTasteProgress",
                      "renderTaste", "tasteAnalysisSection", "data-taste-window",
@@ -3652,13 +3650,12 @@ class WebUiSourceTests(unittest.TestCase):
 
     def test_resource_and_source_mutations_use_terminal_toasts_with_safe_undo(self):
         self.assertPageContains("actionReceipt(operation==='restore'?'已还原':'已移入回收站',{undo:async()=>")
-        # 关注页卡片上的写操作归 `follow-feed` 岛（`follow-feed.test.tsx`），关注管理页的写操作归 React，回执仍是壳那一份 Toast（props 上的 `toast`）。
+        # 关注页卡片上的写操作归 `follow-feed` 岛（`follow-feed.test.tsx`），关注管理页的写操作归 React，回执仍是壳那一份 Toast（`managed-routes.test.tsx` 守它交到 `receipt`）。
         follow = Path(__file__).resolve().parents[1] / "frontend/src/react/follow-manage"
         self.assertIn("toast(`已添加 ${result.sources.length} 个关注来源`)",
                       (follow / "add-source.tsx").read_text(encoding="utf-8"))
         self.assertIn("toast(`已${word} ${result.done.length} 个关注来源`)",
                       (follow / "source-list.tsx").read_text(encoding="utf-8"))
-        self.assertPageContains("toast:actionReceipt,openFollow:()=>void openFollow()")
         self.assertPageContains("actionReceipt(syncedText(r),{undo:ids.length?async()=>")
 
     def test_search_suggestions_come_from_real_data_in_bulk(self):
@@ -5515,21 +5512,16 @@ class WebUiSourceTests(unittest.TestCase):
     def test_better_version_targets_have_a_management_page(self):
         """账本里标记为「还该有更好一版」的作品在管理区自成一页。
 
-        它是 React 档（ADR-0031）：遗留层只铺骨架、交容器，再把自己独有的助手（番号标题、
-        来源徽标、打开作品）作为 props 递进去，整页在 `frontend/src/react/quality-goals/` 里。
-        所以这里断言的是外壳——路由、菜单入口、骨架与挂载契约。卡片上有什么、点哪里打开
-        作品、进出这一页各发几次请求由 `frontend/test/react/quality-goals.test.tsx` 守，
+        它是 React 档（ADR-0031）：遗留层只铺骨架、认领表面，路由树画整页，整页在
+        `frontend/src/react/quality-goals/` 里。所以这里断言的是外壳——路由、菜单入口与骨架。
+        番号标题、来源徽标与打开作品交到哪里由 `frontend/test/react/managed-routes.test.tsx` 守，
+        卡片上有什么、点哪里打开作品、进出这一页各发几次请求由 `frontend/test/react/quality-goals.test.tsx` 守，
         封面的宽度与比例、长标题的中间省略由 `frontend/e2e/design.test.ts` 读计算值守，
         数据契约由 `/api/quality-goals` 的路由测试守。
         """
         self.assertPageContains("['quality','高清版','sparkles']")
         self.assertRoute('/quality-goals', "section:'quality'", "openQualityGoals(push)")
         self.assertPageContains("async function openQualityGoals(push=true)")
-        self.assertPageContains("const ui=await import('/dist/peach-ui.js')")
-        self.assertPageContains(
-            "await ui.mountIsland('quality-goals',$('#stats'),props,"
-            "{isCurrent:()=>surfaceCurrent(surface)})")
-        self.assertPageContains("const props={openItem,javTitleHtml,javDisplayName,srcBadge}")
         self.assertPageLacks("data-quality-open")
         # 正文归 React 子树：卡片、汇总行与按钮用 BoardUI 的源码加 Tailwind，
         # 遗留样式表里只剩骨架要的那几条。
@@ -5564,9 +5556,10 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageLacks(".activity-progress{")
 
     def test_the_stats_page_is_an_island_inside_the_management_shell(self):
-        """统计是主站里的一屏，遗留层只铺骨架、交容器和它独有的那几个助手。
+        """统计是主站里的一屏，遗留层只铺骨架、认领表面，路由树画整页。
 
-        它是 React 档（ADR-0031）：整页在 `frontend/src/react/stats/` 里。读数怎么分层、
+        它是 React 档（ADR-0031）：整页在 `frontend/src/react/stats/` 里。点标签与「添加媒体文件夹」
+        交到哪里由 `frontend/test/react/managed-routes.test.tsx` 守，读数怎么分层、
         环形图的几何、排行的收展和三个空态由 `frontend/test/react/stats.test.tsx` 守，
         搬家之后语义标记还在不在由 `tests/test_frontend_build.py` 的 `StatsEndpointTests`
         守，数据契约由 `/api/stats` 的路由测试守。
@@ -5576,11 +5569,6 @@ class WebUiSourceTests(unittest.TestCase):
         """
         self.assertRoute('/stats', "section:'stats'", "title:'统计'", "openStats(push)")
         self.assertPageContains("async function openStats(push=true)")
-        self.assertPageContains(
-            "await ui.mountIsland('stats',$('#stats'),{\n"
-            "    tagLabel,onTag:k=>{closeStats();toggleTag(k)},\n"
-            "    openMediaSettings:()=>openConfigurationSection('媒体'),configurable:!!runtimeConfigurable,\n"
-            "  },{isCurrent:()=>surfaceCurrent(surface)});")
         # 正文归 React 子树：读数卡、环形图与排行用 BoardUI 的源码加 Tailwind，
         # 遗留样式表里只剩骨架要的那几条。
         self.assertPageLacks(".board-radial-card{")
@@ -5591,30 +5579,26 @@ class WebUiSourceTests(unittest.TestCase):
     def test_the_configuration_page_is_an_island_inside_the_management_shell(self):
         """这台电脑的媒体文件夹与端口是主站里的一屏，不是另一套独立页面。
 
-        遗留层只铺骨架、交容器、发回执；表单与校验回显在 frontend/ 的 island 里，
+        遗留层只铺骨架、认领表面、发回执；表单与校验回显在路由树画的那一页里，回执交到哪里与
+        打开返回时分区已在 DOM 上由 `frontend/test/react/managed-routes.test.tsx` 守，
         数据契约由 tests/test_onboarding.py 对 `/api/configuration` 断言。
         """
         self.assertRoute('/configuration', "section:'configuration'", "title:'配置'",
                          "openConfiguration(push)")
         self.assertPageContains("async function openConfiguration(push=true)")
-        self.assertPageContains(
-            "await ui.mountIsland('configuration',$('#stats'),props,"
-            "{isCurrent:()=>surfaceCurrent(surface)})")
-        self.assertPageContains(
-            "const props={receipt:message=>actionReceipt(message),reopenTutorial:reopenPostSetupTutorial};")
         self.assertPageContains("'/configuration':()=>configurationSkeletonHtml()")
         self.assertPageContains('stats-lede-skeleton')
         self.assertPageContains("['网络与访问',2]")
 
     def test_review_page_is_a_separate_management_layer(self):
-        """复核有自己的路由与分类表；正文归 React 岛（ADR-0031）。"""
+        """复核有自己的路由与分类表；正文由路由树画（ADR-0031）。"""
         self.assertPageContains("const REVIEW_LABELS={metadata_fields:'元数据字段',creator_tags:'创作者标签'")
         self.assertPageContains("route('/review'+(params.category?'?category='"
                                 "+encodeURIComponent(params.category):''))")
         self.assertRoute('/review', "section:'review'", "openReview(push)")
         # 分类是地址的一部分，别的筛法不是：队列判一条就少一条，页码指向的是另一批东西。
         self.assertPageContains("return {category:Object.hasOwn(REVIEW_LABELS,category)?category:''};")
-        self.assertPageContains("await ui.mountIsland('review',$('#stats'),{...params,")
+        self.assertPageContains("await openManagedRoute('/review',{...params,")
 
     def test_detail_metadata_uses_icons_instead_of_release_copy(self):
         # 规格行每一项前面是图标、不写「发行」这类说明字：`frontend/test/react/item-detail.test.tsx`。
@@ -5735,8 +5719,7 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("video_endcards:'片尾/出处证据'")
 
     def test_reader_review_uses_the_writer_mirror_without_offering_fake_writes(self):
-        """只读端也进得来：`/healthz` 的判定和写入端地址一起交给岛，由它决定能不能写。"""
-        self.assertPageContains("import('/dist/peach-ui.js'),surfaceApi(surface,'/healthz')]);")
+        """只读端也进得来：`/healthz` 的判定和写入端地址一起交给页面，由它决定能不能写。"""
         self.assertPageContains("?new URL('/review',runtime.ledger_writer_origin).href:''")
         self.assertPageContains("readOnly:!!runtime?.ledger_read_only,")
         self.assertPageContains("readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',")

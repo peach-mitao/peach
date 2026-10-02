@@ -40,9 +40,8 @@ async function until(ok: () => boolean, what: string): Promise<void> {
 describe('island 注册表', () => {
   it('登记的名字就是遗留路由能挂载的名字', () => {
     expect(islandNames()).toEqual([
-      'catalog-filter', 'catalog-grid', 'data-cleanup', 'duplicates', 'entity-page', 'feed-new', 'follow-feed', 'follow-manage', 'index',
-      'junk-queue', 'library-processing', 'playlists',
-      'quality-goals', 'review', 'search', 'configuration', 'stats', 'taste']);
+      'catalog-filter', 'catalog-grid', 'entity-page', 'feed-new', 'follow-feed', 'index',
+      'junk-queue', 'library-processing', 'playlists', 'search']);
   });
 
   it('未注册的名字立刻失败，不是静默什么都不画', async () => {
@@ -144,37 +143,6 @@ describe('mountIsland', () => {
     await act(async () => { (tag() as HTMLElement).click() });
     expect(showTags, '其余 props 照旧：不在选择模式时点一枚直接回目录').toHaveBeenCalledWith(['痴女'], 'all');
   });
-});
-
-const configuration = {
-  editable: true, notice: '', revision: 'rev-1', media_dirs: ['D:\\Media'], port: 9123, facts: [],
-  startup: { available: true, enabled: false, silent: true, message: '', desktop: false, desktop_message: '' },
-  peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false },
-};
-
-describe('配置页的分区拆分', () => {
-  beforeAll(async () => { await import('@peach/react') });
-
-  /* 遗留壳按 `.configgroup` 小标题把后面的兄弟节点切进左栏那一列（`configTabItems`），
-     设置弹层挂完这一页紧接着就读它。`mountIsland` 返回时结构必须已经在 DOM 上——所以
-     React 根的第一帧走 `flushSync`（`react/entry.tsx` 的 `mounter`）。
-     分区自己怎么排在 `test/react/configuration.test.tsx`。 */
-  it('挂载返回的那一刻，小标题和它的分区已经在容器里', async () => {
-    const fetch = deferredFetch(configuration);
-    fetch.install();
-    const el = container();
-    await act(async () => {
-      const mounting = mountIsland('configuration', el, { receipt: vi.fn(), reopenTutorial: vi.fn() });
-      await until(() => fetch.fetched.mock.calls.length > 0, '取数发出去');
-      fetch.resolve();
-      await mounting;
-      const titles = [...el.querySelectorAll('.configgroup')].map((title) => title.textContent);
-      expect(titles, '标题还没落到 DOM 上，壳那一刻就拆不出分区')
-        .toEqual(['通用', '媒体', '网络与访问', '更新与维护']);
-      expect(el.querySelector('.configpage')?.parentElement?.classList.contains('peach-react')).toBe(true);
-    });
-  });
-
 });
 
 describe('unmountIsland', () => {

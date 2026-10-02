@@ -614,7 +614,7 @@ class FollowManageEndpointTests(unittest.TestCase):
 class ReviewEndpointTests(unittest.TestCase):
     """人工复核页从 `web/app.js` 搬过来时不能把语义契约丢在原地。
 
-    `web/app.js` 只剩一张骨架和一次挂载，页面行为由 `frontend/test/react/review.test.tsx`
+    `web/app.js` 只剩一张骨架和一次打开，页面行为由 `frontend/test/react/review.test.tsx`
     守；这里守的是「搬家之后挂载点、端点与键还在同一处」。
     """
 
@@ -629,22 +629,18 @@ class ReviewEndpointTests(unittest.TestCase):
                          "review-evidence.tsx", "candidate-form.tsx", "bulk-toolbar.tsx"))
 
     def test_the_island_mounts_where_the_skeleton_stands(self):
-        """遗留层按名字挂这一屏，名字在注册表、类型表和产物里都要对得上。
+        """遗留层铺这一屏的骨架，路由树按路径画它，路径在产物里要对得上。
 
-        骨架和岛落在同一个容器上，读完数据只是把占位换成内容；名字对不上的话遗留层
-        照样跑完，屏幕上停在那张骨架。
+        骨架和页面落在同一个容器上，读完数据只是把占位换成内容。壳按路径打开、路由表的
+        登记与各页拿到的 props 由 `frontend/test/react/managed-routes.test.tsx` 守。
         """
-        islands = (FRONTEND / "src" / "islands.ts").read_text(encoding="utf-8")
-        self.assertIn("review: ReactBundle.ReviewProps;", islands)
-        self.assertIn("review: { react: 'review' },", islands)
         app_js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
         self.assertIn("'/review':()=>reviewSkeletonHtml(),", app_js)
         self.assertIn('data-skeleton="review"', app_js)
-        self.assertIn("await ui.mountIsland('review',$('#stats'),{...params,", app_js)
         if not REACT_BUNDLE.is_file():
             self.skipTest(
                 f"{REACT_BUNDLE.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
-        self.assertIn("\n\treview: {", REACT_BUNDLE.read_text(encoding="utf-8"),
+        self.assertIn('\n\t"/review": {', REACT_BUNDLE.read_text(encoding="utf-8"),
                       "产物里没有这一页，先跑 npm --prefix frontend run build")
 
     def test_each_endpoint_is_declared_once(self):

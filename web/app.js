@@ -1632,12 +1632,7 @@ async function openStats(push=true){
   enterManagementSurface();
   disposeStage(false);
   showManagementBody({placeholder:managementPlaceholder('/stats')});
-  const ui=await import('/dist/peach-ui.js');
-  /* 点一个内容标签是「回目录并按它筛选」：整页换成目录仍归遗留壳，页面只说点了哪个键。 */
-  await ui.mountIsland('stats',$('#stats'),{
-    tagLabel,onTag:k=>{closeStats();toggleTag(k)},
-    openMediaSettings:()=>openConfigurationSection('媒体'),configurable:!!runtimeConfigurable,
-  },{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/stats',{configurable:!!runtimeConfigurable},managedSurface(surface));
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function showHomeSurfaces(){
@@ -1825,14 +1820,7 @@ async function openTaste(push=true){
   if(push)route('/taste');
   const surface=claimSurface('/taste');
   showManagementBody({placeholder:managementPlaceholder('/taste')});
-  const ui=await import('/dist/peach-ui.js');
-  /* 总结里的下一步动作按路径走，派发仍旧交给 ROUTES：在 React 档里比对一遍路径字符串，
-     就又多出一处会和那张表不一致的知识。 */
-  await ui.mountIsland('taste',$('#stats'),{
-    onSignal:openTasteSignal,navigate:path=>{route(path);restoreRoute()},
-    toast:actionReceipt,
-    onboarding:claimSetupEntry(),
-  },{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/taste',{onboarding:claimSetupEntry()},managedSurface(surface));
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1936,12 +1924,7 @@ async function openDataCleanup(push=true){
   if(push)route('/data-cleanup');
   const surface=claimSurface('/data-cleanup');
   showManagementBody({placeholder:managementPlaceholder('/data-cleanup')});
-  const ui=await import('/dist/peach-ui.js');
-  if(!surfaceCurrent(surface))return;
-  /* 重复文件报数据管理的身份，`openManage('duplicates')` 找不到它自己的 section。 */
-  const props={toast:(message,{warning=false}={})=>warning?toast({text:message},{sound:'warning'}):actionReceipt(message),
-    failure:actionFailure,open:section=>section==='duplicates'?openDuplicates():openManage(section)};
-  await ui.mountIsland('data-cleanup',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/data-cleanup',{},managedSurface(surface));
   if(surfaceCurrent(surface)&&location.hash==='#libraryProcessing')$('#libraryProcessing')?.scrollIntoView({block:'start'});
 }
 
@@ -1952,24 +1935,17 @@ async function openDuplicates(push=true){
   if(push)route('/duplicates');
   const surface=claimSurface('/duplicates');
   showManagementBody({placeholder:managementPlaceholder('/duplicates')});
-  const ui=await import('/dist/peach-ui.js');
-  if(!surfaceCurrent(surface))return;
-  const props={openItem,failure:actionFailure,toast:(message,{undo}={})=>actionReceipt(message,{undo})};
-  await ui.mountIsland('duplicates',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/duplicates',{},managedSurface(surface));
 }
 
-/* ── island 挂载点（ADR-0022）──
-   高清版目标页已经迁到 Preact。遗留层只留外壳：铺骨架、把自己独有的助手交出去，
-   取数与渲染都在 /dist/peach-ui.js 里。产物不带内容哈希，所以路径可以写死。
-   换页判据仍归遗留层：`isCurrent` 让 island 在用户走开后不要把数据画上来。 */
+/* 高清版目标页由路由树画（`frontend/src/react/router/managed-routes.tsx`）。壳只留外壳：铺骨架、
+   认领表面；换页判据仍归壳：`isCurrent` 让页面在用户走开后不要把数据画上来。 */
 async function openQualityGoals(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/quality-goals');
   const surface=claimSurface('/quality-goals');
   showManagementBody({placeholder:managementPlaceholder('/quality-goals')});
-  const ui=await import('/dist/peach-ui.js');
-  const props={openItem,javTitleHtml,javDisplayName,srcBadge};
-  await ui.mountIsland('quality-goals',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/quality-goals',{},managedSurface(surface));
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 复核页的分类进地址栏：十个分类是固定的一组身份，「在看哪一条队列」链接得过来，
@@ -1989,27 +1965,22 @@ async function openReview(push=true){
   if(push){params.category='';routeReview(params)}
   const surface=claimSurface('/review');
   showManagementBody({placeholder:managementPlaceholder('/review')});
-  const [ui,runtime]=await Promise.all([
-    import('/dist/peach-ui.js'),surfaceApi(surface,'/healthz')]);
+  const runtime=await surfaceApi(surface,'/healthz');
   if(!surfaceCurrent(surface))return;
   const writer=runtime?.ledger_writer_origin
     ?new URL('/review',runtime.ledger_writer_origin).href:'';
-  await ui.mountIsland('review',$('#stats'),{...params,
-    route:routeReview,
-    openItem:id=>void openItem(id),
-    openEntity:(kind,name)=>void openEntity(kind,name),
-    revealSource:revealForIsland,
-    toast:actionReceipt,
+  await openManagedRoute('/review',{...params,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,
-  },{isCurrent:()=>surfaceCurrent(surface)});
+  },managedSurface(surface));
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 活动页（任务中心）由路由树画。它自己按内容决定轮询快慢，壳不给它任何助手：
    任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads、自己提交。
    作品页与关注条目的「云下载」键经 openCloudDownload 带着番号、标题与来处进来，表单据此预填，
-   用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。 */
+   用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。
+   关注管理页的那颗键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个变量。 */
 let activityPrefill=null;
 function openCloudDownload(prefill){activityPrefill=prefill;openActivity(true)}
 async function openActivity(push=true){
@@ -2034,9 +2005,7 @@ async function openConfiguration(push=true){
   const surface=claimSurface('/configuration');
   showManagementBody({placeholder:managementPlaceholder('/configuration')});
   if(location.hash==='#peachProxy')configurationRequestedSection='网络与访问';
-  const ui=await import('/dist/peach-ui.js');
-  const props={receipt:message=>actionReceipt(message),reopenTutorial:reopenPostSetupTutorial};
-  await ui.mountIsland('configuration',$('#stats'),props,{isCurrent:()=>surfaceCurrent(surface)});
+  await openManagedRoute('/configuration',{},managedSurface(surface));
   if(surfaceCurrent(surface)){
     if(location.hash==='#libraryProcessing'){shellNavigate('/data-cleanup#libraryProcessing',{replace:true,state:null});await openDataCleanup(false);return}
     if(location.hash==='#peachProxy')$('#peachProxy')?.scrollIntoView({block:'start'});
@@ -2377,25 +2346,17 @@ async function openFollowManage(push=true,workspace=''){
   if(push||workspace)routeFollowManage(params);
   const surface=claimSurface('/follow-manage');
   showManagementBody({placeholder:managementPlaceholder('/follow-manage')});
-  const [ui,runtime]=await Promise.all([
-    import('/dist/peach-ui.js'),surfaceApi(surface,'/healthz')]);
+  const runtime=await surfaceApi(surface,'/healthz');
   if(!surfaceCurrent(surface))return;
   const writer=runtime?.ledger_writer_origin
     ?new URL('/follow-manage',runtime.ledger_writer_origin).href:'';
-  await ui.mountIsland('follow-manage',$('#stats'),{...params,
-    route:routeFollowManage,
+  await openManagedRoute('/follow-manage',{...params,
     pageSize:followListPageSize(),
     layout:followListLayout(),
-    savePreference:patch=>{
-      if(patch.pageSize!==undefined)appSettings.followPageSize=patch.pageSize;
-      if(patch.layout!==undefined)appSettings.followLayout=patch.layout;
-      saveSettings();
-    },
-    toast:actionReceipt,openFollow:()=>void openFollow(),cloudDownload:openCloudDownload,
     readOnly:!!runtime?.ledger_read_only,
     readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
     writerUrl:writer,
-  },{isCurrent:()=>surfaceCurrent(surface)});
+  },managedSurface(surface));
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 空态里那条「添加关注」：已经在这一页上时也走同一条路，页签跟着地址一起换。 */

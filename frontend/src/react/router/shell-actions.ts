@@ -51,8 +51,19 @@ export interface ShellActions {
 
 /** 壳每次打开时交进来的值，按页面分。 */
 export interface ManagedOpenProps {
+  '/stats': { configurable: boolean };
+  '/taste': { onboarding: boolean };
+  '/review': { category: string; readOnly: boolean; readOnlyMessage: string; writerUrl: string };
+  '/data-cleanup': Record<string, never>;
+  '/duplicates': Record<string, never>;
+  '/quality-goals': Record<string, never>;
   '/scraping': Record<string, never>;
+  '/configuration': Record<string, never>;
   '/activity': { prefill?: CloudDownloadPrefill };
+  '/follow-manage': {
+    tab: string; page: number; sort: string; dir: string; pageSize: number; layout: string;
+    readOnly: boolean; readOnlyMessage: string; writerUrl: string;
+  };
 }
 
 export type ManagedPath = keyof ManagedOpenProps;

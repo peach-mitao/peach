@@ -471,23 +471,15 @@ export interface PlaylistsProps {
 
 export interface ReactPages {
   'catalog-grid': ReactPage<CatalogGridProps>;
-  configuration: ReactPage<ConfigurationProps>;
-  'data-cleanup': ReactPage<DataCleanupProps>;
-  duplicates: ReactPage<DuplicatesProps>;
   'catalog-filter': ReactPage<CatalogFilterProps>;
   'entity-page': ReactPage<EntityPageProps>;
   'feed-new': ReactPage<FeedNewProps>;
   'follow-feed': ReactPage<FollowFeedProps>;
-  'follow-manage': ReactPage<FollowManageProps>;
   index: ReactPage<IndexProps>;
   'junk-queue': ReactPage<JunkQueueProps>;
   'library-processing': ReactPage<LibraryProcessingProps>;
   playlists: ReactPage<PlaylistsProps>;
-  'quality-goals': ReactPage<QualityGoalsProps>;
-  review: ReactPage<ReviewProps>;
   search: ReactPage<SearchProps>;
-  stats: ReactPage<StatsProps>;
-  taste: ReactPage<TasteProps>;
 }
 
 export declare const pages: ReactPages;

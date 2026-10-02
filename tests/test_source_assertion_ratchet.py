@@ -40,7 +40,7 @@ BASELINE: dict[str, int] = {
     "test_fastapi_api.py": 4,
     "test_follow_assets.py": 1,
     "test_follow_web.py": 122,
-    "test_frontend_build.py": 80,
+    "test_frontend_build.py": 77,
     "test_job_status.py": 3,
     "test_metadata_library.py": 7,
     "test_repo_hygiene.py": 2,
@@ -53,7 +53,7 @@ BASELINE: dict[str, int] = {
     "test_web_e2e.py": 2,
     "test_web_js.py": 1,
     "test_web_settings.py": 5,
-    "test_web_ui.py": 2114,
+    "test_web_ui.py": 2103,
     "test_windows_update.py": 3,
 }
 

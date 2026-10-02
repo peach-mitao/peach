@@ -4,7 +4,7 @@
  * 之后，它的入口只做两件事：铺好加载占位，然后把一个容器交给这里。
  *
  *     const ui = await import('/dist/peach-ui.js');
- *     await ui.mountIsland('configuration', $('#stats'), props);
+ *     await ui.mountIsland('playlists', $('#stats'), props);
  *
  * `mountIsland` 是 async 且**取完数才画**：遗留层已经铺了骨架，island 若先画一个空
  * 容器再自己转圈，同一次进入就会出现两段等待态（`peach-web-ui` 明确禁止）。所以这里
@@ -44,22 +44,14 @@ export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 export interface IslandContracts {
   'catalog-filter': ReactBundle.CatalogFilterProps;
   'catalog-grid': ReactBundle.CatalogGridProps;
-  'data-cleanup': ReactBundle.DataCleanupProps;
-  duplicates: ReactBundle.DuplicatesProps;
   'entity-page': ReactBundle.EntityPageProps;
   'feed-new': ReactBundle.FeedNewProps;
   'follow-feed': ReactBundle.FollowFeedProps;
-  'follow-manage': ReactBundle.FollowManageProps;
   index: ReactBundle.IndexProps;
   'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   playlists: ReactBundle.PlaylistsProps;
-  'quality-goals': ReactBundle.QualityGoalsProps;
-  review: ReactBundle.ReviewProps;
   search: ReactBundle.SearchProps;
-  configuration: ReactBundle.ConfigurationProps;
-  stats: ReactBundle.StatsProps;
-  taste: ReactBundle.TasteProps;
 }
 
 export type IslandName = keyof IslandContracts;
@@ -74,22 +66,14 @@ interface Island {
 const REGISTRY: { [N in IslandName]: Island } = {
   'catalog-filter': { react: 'catalog-filter' },
   'catalog-grid': { react: 'catalog-grid' },
-  'data-cleanup': { react: 'data-cleanup' },
-  duplicates: { react: 'duplicates' },
   'entity-page': { react: 'entity-page' },
   'feed-new': { react: 'feed-new' },
   'follow-feed': { react: 'follow-feed' },
-  'follow-manage': { react: 'follow-manage' },
   index: { react: 'index' },
   'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   playlists: { react: 'playlists' },
-  'quality-goals': { react: 'quality-goals' },
-  review: { react: 'review' },
   search: { react: 'search' },
-  configuration: { react: 'configuration' },
-  stats: { react: 'stats' },
-  taste: { react: 'taste' },
 };
 
 /** 先把 React 包取回来，不挂任何东西。遗留层在自己取数的同时调它：数据一到，`mountIsland`

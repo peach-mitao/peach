@@ -113,6 +113,8 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
           <ManagedSurface />
           <Routes>
             {Object.keys(MANAGED_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+            {/* 旧直达地址：壳把它改写成 `/data-cleanup#resource-sync` 再打开数据管理页。 */}
+            <Route path="/resource-sync" element={null} />
             <Route path="*" element={children} />
           </Routes>
         </PeachRouter>
