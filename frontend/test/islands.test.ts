@@ -6,6 +6,9 @@ import { queryClient } from '../src/react/query';
 
 import { deferredFetch } from './helpers';
 
+// 首次导入会编译整棵 React 子树，编译等待使用独立的有限窗口。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
+
 // 挂的是一棵真的 React 根，更新要在 `act` 里落地，否则断言读到的是上一帧。
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -61,8 +64,7 @@ const playlists = {
 const playlistProps = () => ({ openPlaylist: vi.fn(), openEntity: vi.fn(), canFlip: () => true, toast: vi.fn() });
 
 describe('mountIsland', () => {
-  // 第一次 `import('@peach/react')` 要现编译整棵 React 子树，比用例里的等待窗口长得多。
-  beforeAll(async () => { await import('@peach/react') });
+  beforeAll(async () => { await import('@peach/react') }, REACT_IMPORT_TIMEOUT_MS);
 
   it('先把首屏取回来再画，React 根挂在自己的 `.peach-react` 容器里', async () => {
     const fetch = deferredFetch(playlists);
@@ -146,7 +148,7 @@ describe('mountIsland', () => {
 });
 
 describe('unmountIsland', () => {
-  beforeAll(async () => { await import('@peach/react') });
+  beforeAll(async () => { await import('@peach/react') }, REACT_IMPORT_TIMEOUT_MS);
 
   it('没挂载过的容器是空操作，不抛错也不动 DOM', () => {
     const el = container();
