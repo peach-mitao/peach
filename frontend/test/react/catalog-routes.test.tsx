@@ -1,14 +1,15 @@
-/* 目录网格由路由树画进 `#grid`（`CATALOG_ROUTES`）：冷启动的骨架经 `revealSkeleton` 抬成淡出层，与整页落在同一批
- * 变化里；壳认领表面只收 `#stats` 与 `#index`，`#grid` 上那一页留着；停在目录时壳经 `updateManagedRoute` 推选择态、
- * 版式与筛选，页面不重挂、代次不变，换筛选只按新键重取一次；壳那一份助手与动作原样交给页面；目录的路径不交给
- * React Router。
+/* 目录网格与垃圾队列由路由树画进 `#grid`（`CATALOG_ROUTES`）：冷启动的骨架经 `revealSkeleton` 抬成淡出层，与整页
+ * 落在同一批变化里；壳认领表面只收 `#stats` 与 `#index`，`#grid` 上那一页留着；停在目录时壳经 `updateManagedRoute`
+ * 推选择态、版式与筛选，页面不重挂、代次不变，换筛选只按新键重取一次；垃圾队列一次清空骨架，收起时计数行那一格
+ * 同步撤掉；壳那一份助手与动作原样交给页面；这些路径不交给 React Router。
  *
- * 一屏卡片怎么排、卡面画什么由 `catalog-grid.test.tsx` 管，这里看的是路由树这一层。 */
+ * 一屏卡片怎么排、卡面画什么由 `catalog-grid.test.tsx` 与 `junk-queue.test.tsx` 管，这里看的是路由树这一层。 */
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
 import type { CatalogGridProps, MediaCardActions, MediaCardHelpers } from '../../src/react/catalog-grid/types';
+import type { JunkQueueProps } from '../../src/react/junk-queue/junk-queue';
 import type { ShellActions } from '../../src/react/router/shell-actions';
 // @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
 import { revealSkeleton } from '../../../web/js/ui-components.js';
@@ -65,13 +66,22 @@ const catalogPage = (sort: string) => ({
   items: [1, 2, 3].map((id) => ({ id, name: `作品 ${id} ${sort}`, has_thumb: true })), total: 3,
 });
 const playlistPage = { items: [] };
+/** 垃圾队列的一页：名字带着分类，认得出画的是哪一次取回来的。 */
+const junkPage = (kind: string) => ({
+  items: [11, 12, 13].map((id) => ({
+    id, name: `垃圾 ${id} ${kind || '全部'}.mp4`, junk_kind: kind || 'video', why: '时长过短', location: 'local', cost: 'free',
+  })),
+  total: 3, all_total: 3, dismissed_total: 0, counts: { video: 3 },
+});
 
-/** 目录与播放列表的取数：`/api/items` 可以手动兑现（首屏等的就是它）。 */
+/** 目录、垃圾队列与播放列表的取数：`/api/items` 可以手动兑现（首屏等的就是它）。 */
 function catalogFetch({ deferred = false } = {}) {
   const pending: Array<() => void> = [];
   const fetched = vi.fn((input: string, init?: RequestInit) => {
     const url = new URL(String(input), 'http://peach.test');
-    const body = url.pathname === '/api/playlists' ? playlistPage : catalogPage(url.searchParams.get('sort') || '');
+    const body = url.pathname === '/api/playlists' ? playlistPage
+      : url.pathname === '/api/ads' ? junkPage(url.searchParams.get('kind') || '')
+        : catalogPage(url.searchParams.get('sort') || '');
     if (!deferred || url.pathname !== '/api/items') return Promise.resolve(reply(body));
     return new Promise<Reply>((resolve, reject) => {
       pending.push(() => resolve(reply(body)));
@@ -101,6 +111,21 @@ const catalogOpen = (patch: Partial<CatalogGridProps> = {}): CatalogGridProps =>
   settled: vi.fn(), filters: { sort: 'seed' }, batchSize: 60, groupCollapse: true, excludeVertical: false,
   mix: false, shorts: false, onCount: vi.fn(), emptyHtml: () => '', canLoadMore: () => true, ...patch,
 });
+
+/** 垃圾队列那一页的打开：计数行是壳的 `#count`，壳往里铺着骨架那一版。 */
+function junkOpen(patch: Partial<JunkQueueProps> = {}): JunkQueueProps {
+  const countRow = document.createElement('div');
+  countRow.id = 'count';
+  countRow.innerHTML = '<div class="peach-react" data-junk-count-skeleton=""></div>';
+  document.body.append(countRow);
+  return {
+    kind: '', view: 'pending', helpers: { badgeHtml: () => '' },
+    actions: { navigate: vi.fn(), toggleSelection: vi.fn(), open: vi.fn(), reveal: vi.fn(async () => ''), operate: vi.fn(async () => {}) },
+    batchSize: 60, revision: 0, selectMode: false, selected: new Set(), countRow,
+    skeletonHtml: () => '<div class="grid"><div class="skeletoncard"></div></div>', settled: vi.fn(), ...patch,
+  };
+}
+const junkCards = (grid: Element) => grid.querySelectorAll('.peach-react [data-junk-card]');
 
 const GRID_SKELETON = '<div class="grid"><div class="catalog-skeleton" data-skeleton="catalog">'
   + '<div class="skeletoncard"></div></div></div>';
@@ -242,20 +267,92 @@ it('就地推筛选与刷新代次：宿主与代次不变，只按新键重取�
   expect(open.settled).toHaveBeenLastCalledWith(1);
 });
 
-it('目录网格：壳那一整份 props 原样交给页面，助手与动作身份不变', async () => {
+/* 进垃圾文件：壳先收掉 `#grid` 上的目录网格，再打开队列。队列打开前不取数，一次清空骨架、放进宿主，
+   不交叉淡入；读数由页面自己取，只取一次。 */
+it('垃圾队列：换掉 `#grid` 上的网格，一次清空骨架，首屏由页面自己取一次', async () => {
+  const r = await load('/junk-files');
+  const { grid } = gridSurface();
+  await mount(r);
+  const fetch = catalogFetch();
+  await act(async () => { await r.openManagedRoute('/', catalogOpen(), { container: grid, isCurrent: () => true }) });
+  expect(grid.querySelector('[data-media-sections]'), '先画着目录网格').not.toBeNull();
+  const open = junkOpen();
+  await act(async () => { expect(await r.openManagedRoute('/junk-files', open, { container: grid, isCurrent: () => true })).toBe(true) });
+  expect(r.managedEntries().map((entry) => entry.path), '同一容器只留一页').toEqual(['/junk-files']);
+  expect([...grid.children].map((el) => el.className), '骨架一次清空，没有淡出层').toEqual(['peach-react']);
+  await until(() => junkCards(grid).length === 3, '队列画上');
+  expect(grid.querySelector('[data-media-sections]'), '目录网格已经不在').toBeNull();
+  expect(fetch.calls('/api/ads'), '读数只取一次').toHaveLength(1);
+  expect(open.countRow?.querySelector(':scope > .peach-react:not([data-junk-count-skeleton])'), '计数行那一格接管了骨架').not.toBeNull();
+  expect(open.settled).toHaveBeenCalledWith(0);
+});
+
+/* 壳从垃圾文件去别处时先收 `#grid`，再往 `#count` 铺骨架。收的那一刻队列在计数行里建的那一格必须已经撤掉：
+   晚一拍撤，就是把壳刚铺的骨架冲掉，或者往一个已经被换掉的节点里卸 portal。 */
+it('收 `#grid` 上的垃圾队列：计数行那一格在收的同一刻撤掉，壳随后铺的骨架留得住', async () => {
+  const r = await load('/junk-files');
+  const { grid } = gridSurface();
+  await mount(r);
+  catalogFetch();
+  const open = junkOpen();
+  const count = open.countRow!;
+  await act(async () => { await r.openManagedRoute('/junk-files', open, { container: grid, isCurrent: () => true }) });
+  await until(() => junkCards(grid).length === 3, '队列画上');
+  const errors = vi.spyOn(console, 'error');
+  let atRelease: unknown[] = [];
+  act(() => {
+    r.releaseManagedRoute(grid);
+    atRelease = [count.childElementCount, grid.querySelector('.peach-react'), r.managedEntry(grid)];
+    count.innerHTML = '<div class="peach-react" data-junk-count-skeleton=""></div>';
+  });
+  expect(atRelease, '收的那一刻计数行那一格、宿主与登记都已撤掉').toEqual([0, null, null]);
+  await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) });
+  expect(count.querySelectorAll('[data-junk-count-skeleton]'), '壳铺的骨架还在').toHaveLength(1);
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+});
+
+/* 换分类、换视图、处置完重读与选择模式落在垃圾队列上：壳推进来，页面按新键重取，宿主与代次不变。 */
+it('就地推分类、刷新代次与选择态：垃圾队列不重挂，只按新键重取一次', async () => {
+  const r = await load('/junk-files');
+  const { grid } = gridSurface();
+  await mount(r);
+  const fetch = catalogFetch();
+  const open = junkOpen();
+  await act(async () => { await r.openManagedRoute('/junk-files', open, { container: grid, isCurrent: () => true }) });
+  await until(() => junkCards(grid).length === 3, '队列画上');
+  const host = r.managedEntry(grid)?.host;
+  const revision = r.managedEntry(grid)?.revision;
+  const countHost = open.countRow?.firstElementChild;
+  await act(async () => { r.updateManagedRoute(grid, { kind: 'image', revision: 1 }) });
+  await until(() => Boolean(grid.textContent?.includes('垃圾 11 image')), '按新分类取回来的那一份画上');
+  await act(async () => { r.updateManagedRoute(grid, { selectMode: true, selected: new Set([12]) }) });
+  expect(fetch.calls('/api/ads').map((url) => url.searchParams.get('kind')), '只按新键重取一次').toEqual([null, 'image']);
+  expect([r.managedEntry(grid)?.host, r.managedEntry(grid)?.revision]).toEqual([host, revision]);
+  expect(open.countRow?.firstElementChild, '计数行那一格不重建').toBe(countHost);
+  expect(grid.querySelector('[data-junk-grid]')?.hasAttribute('data-select-mode')).toBe(true);
+  expect(open.settled).toHaveBeenLastCalledWith(1);
+});
+
+it('目录网格与垃圾队列：壳那一整份 props 原样交给页面，助手与动作身份不变', async () => {
   const r = await load();
   const open = catalogOpen({ revision: 4 });
   const props = (r.CATALOG_ROUTES['/'].page(open, shellActions(), vi.fn()) as ReactElement<CatalogGridProps>).props;
   expect(props).toEqual(open);
   expect(props.helpers).toBe(open.helpers);
   expect(props.actions).toBe(open.actions);
+  const junk = junkOpen({ revision: 2 });
+  const junkProps = (r.CATALOG_ROUTES['/junk-files'].page(junk, shellActions(), vi.fn()) as ReactElement<JunkQueueProps>).props;
+  expect(junkProps).toEqual(junk);
+  expect(junkProps.helpers).toBe(junk.helpers);
+  expect(junkProps.actions).toBe(junk.actions);
 });
 
-it('目录的路径不走 React Router：交壳写地址再打开；槽里只认页面键', async () => {
+it('目录与垃圾文件的路径不走 React Router：交壳写地址再打开；槽里只认页面键', async () => {
   const r = await load('/stats');
   const actions = shellActions();
   const navigate = vi.fn();
-  const paths = ['/', '/unseen', '/watch-later', '/flagged', '/trash'];
+  const paths = ['/', '/unseen', '/watch-later', '/flagged', '/trash', '/junk-files'];
   for (const path of paths) r.managedGo(path, actions, navigate);
   r.managedGo('/?tag=a&sort=new', actions, navigate);
   expect(navigate).not.toHaveBeenCalled();
@@ -264,6 +361,6 @@ it('目录的路径不走 React Router：交壳写地址再打开；槽里只认
     expect(r.ROUTED_PATHS).toContain(path);
     expect(r.isManagedPath(path)).toBe(false);
   }
-  expect(r.isRoutedPath('/')).toBe(true);
+  expect([r.isRoutedPath('/'), r.isRoutedPath('/junk-files')]).toEqual([true, true]);
   expect(r.isRoutedPath('/trash'), '回收站画的也是 `/` 那一页').toBe(false);
 });

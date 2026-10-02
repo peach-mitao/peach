@@ -1,6 +1,6 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
- * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的
- * `ROUTES` 表打开。
+ * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列（`managed-routes.tsx`）由这棵树画，
+ * 其余页面仍由壳的 `ROUTES` 表打开。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
@@ -67,8 +67,8 @@ function NavigateInto({ target }: { target: RefObject<NavigateFunction | null> }
 }
 
 /** 管理区页面里的跳转：落在管理区那几页上的交给 React Router（派发照旧回到壳，打开次数与壳自己写地址
- * 再打开相同），别的路径交壳自己写地址、按路由表打开。播放列表页、关注页、索引页、资料页与目录虽然也由路由树画，仍交壳：
- * 同一页换 search 必须由壳认领，跨页进来也是壳写地址再自己打开。 */
+ * 再打开相同），别的路径交壳自己写地址、按路由表打开。播放列表页、关注页、索引页、资料页、目录与垃圾文件虽然也由
+ * 路由树画，仍交壳：同一页换 search 必须由壳认领，跨页进来也是壳写地址再自己打开。 */
 export function managedGo(path: string, actions: ShellActions, navigate: NavigateFunction): void {
   const target = new URL(path, window.location.href);
   if (!isManagedPath(target.pathname)) { actions.navigate(path); return }

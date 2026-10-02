@@ -79,7 +79,8 @@ let catalogFilterProps=null,catalogFilterMounting=null,catalogTagRows=[],catalog
    那组目录筛选：口径和数据都没变时 `buildBars` 不重画，换页回来就把这一份原样交回去。 */
 let sidebarProps={content:null,filters:{},latest:null},sidebarSurface='',sidebarCatalog=null,sidebarContentSeq=0;
 let loadRequestSeq=0;
-// `#grid` 上最近一次打开的是哪一页（画着或首屏在途）：目录与回收站的 `catalog-grid`，或垃圾文件的 `junk-queue`。
+// `#grid` 上最近一次打开的是哪一页（画着或首屏在途），记 `CATALOG_ROUTES` 的页面键：
+// 目录与回收站的 `/`，或垃圾文件的 `/junk-files`。
 let gridPage='';
 /* `followRevision` 是关注页的刷新代次：已经画着时要求重读（批量标记之后、前进后退），
    推一个新代次让它重取，不重挂。 */
@@ -248,7 +249,7 @@ const gridCards=()=>document.querySelectorAll(
 function renderCatalogLoading(label='正在读取作品'){
   const count=$('#count');
   /* 垃圾文件那一屏的计数行是自己的：一块摘要面加一条分类切换，没有排序也没有换批。
-     这一版是 `junk-queue` island 等数据时那一版的静态副本，island 挂上就换掉它；骨架里的
+     这一版是垃圾队列等数据时那一版的静态副本，队列画上就换掉它；骨架里的
      分类链接是真的 `<a href>`，React 包没到时点下去照常换页。目录与回收站的读数在筛选条里，
      这一行留空。 */
   const junk=decodeURIComponent(location.pathname)==='/junk-files';
@@ -1205,7 +1206,7 @@ const tagList=(value=state.tag)=>String(value||'').split(',').filter(Boolean);
 const tagPressed=(value,tag)=>tagList(value).includes(String(tag));
 const withTagToggled=(value,tag)=>{const cur=tagList(value);const index=cur.indexOf(tag);
   index>=0?cur.splice(index,1):cur.push(tag);return cur.join(',')};
-/* 馆藏卡片网格（`catalog-grid` island）用的助手与动作。各只有一份、身份不变：卡片按引用
+/* 馆藏卡片网格（`react/catalog-grid/`）用的助手与动作。各只有一份、身份不变：卡片按引用
    比较，每次推新对象进去就是整屏重画。 */
 const gridHelpers={
   badgeHtml:(location,cost)=>srcBadge(location,cost),
@@ -3302,7 +3303,7 @@ $('#scrim').onclick=()=>openDrawer(false);
    取数落定（成功、为空或失败）时兑现，调用方 `await` 它再做下一步（撤销回执、换一批的转圈）。
    目录与回收站的卡片网格由路由树画进 `#grid`（ADR-0031）：已经画着就把新筛选推过去，
    它按新键重取、自己铺骨架；还没画就打开，首屏取完才换掉壳铺的骨架。垃圾文件那一屏是
-   逐项处置的队列，是另一页（`junk-queue`），同样画在 `#grid` 上，两者换页时互相先收。 */
+   逐项处置的队列，是另一页（`/junk-files`），同样由路由树画进 `#grid`，两者换页时互相先收。 */
 async function loadCatalog(){
   const requestSeq=++loadRequestSeq;
   const surface=claimSurface(surfacePath());
@@ -3315,7 +3316,7 @@ async function loadCatalog(){
   barsContext={type:'home',filters:state};detailReturnBarsContext=null;disposeStage(false);
   if(state.state==='ads')return loadJunk(surface);
   // 卸掉垃圾队列要赶在铺骨架之前：它的计数行也在 `#count` 里，先铺就把它挂着的那一格冲掉了。
-  if(gridPage==='junk-queue')clearCatalogGrid();
+  if(gridPage==='/junk-files')clearCatalogGrid();
   renderCatalogLoading();
   showHomeSurfaces();
   if(isFeedNewPath(location.pathname)){
@@ -3339,26 +3340,24 @@ function releaseCatalogWaiters(){const waiters=catalogWaiters;catalogWaiters=[];
    必须先收掉页面。 */
 function clearCatalogGrid(){
   const grid=$('#grid');
-  releaseHoverPreviews(grid);releaseManagedRoute(grid);unmountIsland(grid);
+  releaseHoverPreviews(grid);releaseManagedRoute(grid);
   catalogPainting=null;gridPage='';releaseCatalogWaiters();
   grid.innerHTML='';
 }
-function paintCatalogGrid(surface){return paintGridPage('catalog-grid',catalogGridProps,surface,{place:revealRoutedPage})}
-/* 垃圾队列不在挂载前取数，挂上就画它自己那份骨架，和壳铺的这份逐项相同，不必交叉淡入。 */
-function paintJunkQueue(surface){return paintGridPage('junk-queue',junkQueueProps,surface)}
-/* `#grid` 上画着的那一页已经落地：目录网格看路由树登记的那一条，垃圾队列看岛。 */
-function gridPainted(){return gridPage==='catalog-grid'?!!managedEntry($('#grid')):islandMounted($('#grid'))}
+function paintCatalogGrid(surface){return paintGridPage('/',catalogGridProps,surface,{place:revealRoutedPage})}
+/* 垃圾队列不在打开前取数，画上就铺它自己那份骨架，和壳铺的这份逐项相同，不必交叉淡入。 */
+function paintJunkQueue(surface){return paintGridPage('/junk-files',junkQueueProps,surface)}
+/* `#grid` 上画着的那一页已经落地（路由树登记了那一条）。 */
+function gridPainted(){return !!managedEntry($('#grid'))}
 /* `#grid` 归页面：已经画着，或首屏还在取。这时壳不往里写骨架。 */
 function gridTaken(){return gridPainted()||!!catalogPainting}
 /* 把壳的开关推给 `#grid` 上画着的那一页，代次不变、不重挂；还没画上时是空操作。 */
-function pushGridPage(patch){
-  if(gridPage==='catalog-grid')updateManagedRoute($('#grid'),patch);
-  else updateIsland($('#grid'),patch);
-}
-/* `#grid` 上画哪一页记在 `gridPage` 里：换成另一页之前先收，旧的那一页不能收新的 props。 */
-function paintGridPage(name,propsFor,surface,options={}){
+function pushGridPage(patch){updateManagedRoute($('#grid'),patch)}
+/* `#grid` 上画哪一页（`CATALOG_ROUTES` 的页面键）记在 `gridPage` 里：换成另一页之前先收，旧的那一页
+   不能收新的 props。 */
+function paintGridPage(page,propsFor,surface,options={}){
   const grid=$('#grid');
-  if(gridPage&&gridPage!==name)clearCatalogGrid();
+  if(gridPage&&gridPage!==page)clearCatalogGrid();
   const revision=++catalogRevision;
   const settled=new Promise(resolve=>catalogWaiters.push({revision,resolve}));
   const props=propsFor();
@@ -3366,11 +3365,8 @@ function paintGridPage(name,propsFor,surface,options={}){
      重开一次，上一次的取数随之作废。 */
   if(gridPainted()&&!catalogPainting){pushGridPage(props);return settled}
   releaseHoverPreviews(grid);
-  gridPage=name;
-  const isCurrent=()=>surfaceCurrent(surface);
-  const painting=catalogPainting=name==='catalog-grid'
-    ?openManagedRoute('/',props,{...options,container:grid,isCurrent})
-    :mountIsland(name,grid,props,{...options,isCurrent});
+  gridPage=page;
+  const painting=catalogPainting=openManagedRoute(page,props,{...options,container:grid,isCurrent:()=>surfaceCurrent(surface)});
   painting.catch(error=>console.error(error)).finally(()=>{
     if(catalogPainting===painting)catalogPainting=null;
     if(!gridTaken())releaseCatalogWaiters();
@@ -3422,12 +3418,13 @@ function catalogGridProps(){
     canLoadMore:()=>$('#stats').hidden&&$('#index').hidden,
   };
 }
-/* 进入或重读垃圾文件队列。已经挂着且计数行那一格还在（在这一屏里换分类、换视图，处置完
-   重读）就把新的地址与代次推过去；否则先卸掉 `#grid` 上的旧根，铺骨架再挂。分类与视图
+/* 进入或重读垃圾文件队列。已经画着且计数行那一格还在（在这一屏里换分类、换视图，处置完
+   重读）就把新的地址与代次推过去；否则先收掉 `#grid` 上的那一页，铺骨架再打开。收要赶在
+   铺骨架之前：队列的计数行那一格在 `#count` 里，收的时候同步撤掉，骨架再写进空行。分类与视图
    只从地址读，壳不另记一份。 */
 function loadJunk(surface){
   const count=$('#count');
-  const live=gridPage==='junk-queue'&&gridPainted()&&!catalogPainting
+  const live=gridPage==='/junk-files'&&gridPainted()&&!catalogPainting
     &&count.querySelector(':scope > .peach-react:not([data-junk-count-skeleton])');
   if(!live){clearCatalogGrid();renderCatalogLoading('正在读取垃圾文件')}
   showHomeSurfaces();

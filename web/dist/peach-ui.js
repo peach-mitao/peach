@@ -3919,7 +3919,6 @@ function Jo(e, t) {
 var Yo = {
 	"catalog-filter": { react: "catalog-filter" },
 	"feed-new": { react: "feed-new" },
-	"junk-queue": { react: "junk-queue" },
 	"library-processing": { react: "library-processing" },
 	search: { react: "search" }
 }, Xo = () => import("/dist/peach-react.js").then(() => void 0), Zo = () => Object.keys(Yo), $ = /* @__PURE__ */ new Map();

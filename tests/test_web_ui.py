@@ -713,7 +713,7 @@ class WebUiSourceTests(unittest.TestCase):
         start = css.index(chr(10) + ".top{")
         self.assertIn("var(--ground)", css[start:css.index("}", start)], ".top 浮在页面底之上")
         # 直接坐在页面上的盒子不能再填 --surface：它与 --page 在浅色一档是同一个 #FAFAFA，
-        # 填上去等于没有盒子。--surface 只剩交互与内嵌那一档。垃圾卡归 `junk-queue` island，
+        # 填上去等于没有盒子。--surface 只剩交互与内嵌那一档。垃圾卡归 `react/junk-queue/` 那一页，
         # 它和页面底色不同由 e2e 设计用例读计算值核对。
         for name in (".insightpanel", ".emptystate"):
             start = css.index(name + "{")
@@ -2252,7 +2252,7 @@ class WebUiSourceTests(unittest.TestCase):
         筛选条完全由当前 state 决定，这次请求不会改变它，所以没有可占位的东西：
         连它一起清空的话，刚点下的那一枚会在等数据的整段时间里失去高亮，看着像
         没点上；`.count:empty` 还会把整行折叠，网格跟着往上跳一截。垃圾文件那一屏的
-        计数行是另一条控件，骨架是 `junk-queue` island 等数据时那一版的静态副本。
+        计数行是另一条控件，骨架是垃圾队列那一页等数据时那一版的静态副本。
         """
         # 加载态与最终态取同一份下排：取数前推的就是最终的排序与版式，只把读数换成微光。
         self.assertPageContains("    if(state)paintCatalogFilter({count:null,...catalogHeadProps()});")
@@ -3630,15 +3630,15 @@ class WebUiSourceTests(unittest.TestCase):
         self.assertPageContains("'.reviewtabs','.ftablewrap',")
         # 40em 以下要抬高触摸目标；控件现在是定高，min-height 压不动它。
         self.assertPageContains(".reviewtabs button{height:44px}")
-        # 垃圾文件那条分类归 `junk-queue` island，是首页筛选条那一副玻璃：导航链接而不是
+        # 垃圾文件那条分类归 `react/junk-queue/` 那一页，是首页筛选条那一副玻璃：导航链接而不是
         # tablist、计数徽标为 0 时整枚去掉由 `frontend/test/react/junk-queue.test.tsx` 断言，
         # 几何与滑动玻璃落位由 `frontend/e2e/design.test.ts` 在真浏览器里量。
 
     def test_junk_review_and_trash_render_every_physical_resource_type(self):
         """图片、网址快捷方式等不能复用视频播放器，但必须可预览、回收和还原。
 
-        垃圾卡本身（各类缩略图与字形、三颗处置键、选中标记、不带稍后看）归 `junk-queue`
-        island，由 `frontend/test/react/junk-queue.test.tsx` 断言；键的几何由
+        垃圾卡本身（各类缩略图与字形、三颗处置键、选中标记、不带稍后看）归 `react/junk-queue/`
+        那一页，由 `frontend/test/react/junk-queue.test.tsx` 断言；键的几何由
         `frontend/e2e/design.test.ts` 量。这里只留壳这一侧的写入、回收站与批量条。
         """
         self.assertPageContains("await api('/api/batch',{method:'POST',body:JSON.stringify({ids,operation})});")
@@ -5880,7 +5880,7 @@ class WebUiSourceTests(unittest.TestCase):
         `i-clock` 没有使用者，是用户点名留的备用件，不要当死代码清掉。
         """
         # 文件类型标的是文件，不是打开动作，也不是音量：垃圾卡与分类条的字形归
-        # `junk-queue` island，由 `frontend/test/react/junk-queue.test.tsx` 逐类钉住。
+        # `react/junk-queue/` 那一页，由 `frontend/test/react/junk-queue.test.tsx` 逐类钉住。
         # 「加载更多」往下接一页，方向由字形给出；两个空态各说自己那件事：筛不出结果，
         # 和一次比对没有发现。关注页那两处画在 `follow-feed` 岛里。
         feed = self.read_react("follow-feed/follow-feed-page.tsx")
@@ -7297,7 +7297,7 @@ class WebUiSourceTests(unittest.TestCase):
         # 复核卡的拒绝键走 Geist 的 error 变体，那是同一块红的另一个入口。
         self.assertPageContains(".geist-button.error{background:#da2f35;",
                                 "销毁键静止态就是实底红")
-        # 垃圾复核的「移入回收站」归 `junk-queue` island，静止实底红由 e2e design 在真浏览器里量。
+        # 垃圾复核的「移入回收站」归 `react/junk-queue/` 那一页，静止实底红由 e2e design 在真浏览器里量。
         # React 那侧同一块红走 BoardUI 的 danger 变体：关注来源凭据行的「清除」是其中一颗。
         self.assertIn('<Button variant="danger" size="small" disabled={readOnly}',
                       self.read_react("follow-manage/credentials.tsx"))

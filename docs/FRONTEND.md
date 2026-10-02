@@ -92,11 +92,12 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 目录（`/` 与筛选态、`/trash`）、资料页作品区和详情页的接着看画的都是同一张网格（`frontend/src/react/catalog-grid/`）。作品卡是 `components/media-card.tsx`，Mix 卡用播放列表页那张 `components/mix-card.tsx`。三种取数按 `mode` 分：
 
 - `catalog` 登记在 `CATALOG_ROUTES`，由路由树画进 `#grid`。表按页面分键：目录各路径与回收站都用 `/` 打开，槽里的路径说的是画着哪一页、不是地址；`CATALOG_PATHS` 只进 `<Routes>` 的声明，不进 `isManagedPath`。筛选态是壳的 `state`，打开时连同版式、选择态、助手与动作整份交进来；之后壳的 `paintGridPage` 看 `#grid` 的 `managedEntry`：画着就经 `updateManagedRoute` 推新筛选与 `revision`，查询换键重取、不重挂；首屏还在途就重开一次。冷启动经 `place` 交 `revealRoutedPage`，骨架淡出与整页同批交接。读数行 `#count` 的结构归壳，读数那一格、`#loadSentinel` 的自动续页、Mix 落位、竖屏带与分卷／版次折叠都在页面里。判据钉在 `test/react/catalog-routes.test.tsx`。
+- 垃圾文件队列（`/junk-files`，`frontend/src/react/junk-queue/`）不是这张网格，是 `CATALOG_ROUTES` 的另一页，同样画进 `#grid`：打开前不取数，画上就铺自己那份骨架；换分类、换视图与处置后重读经 `updateManagedRoute` 推进来。它与目录网格换页时先由 `clearCatalogGrid` 收，计数行里归它的那一格随之同步撤掉，壳再往 `#count` 铺骨架。
 - `entity` 由资料页正文 `entity-body`（`frontend/src/react/entity-body/`）直接渲染在它的作品视图里，不另挂岛：第一页随资料页首屏一起取来，续页由资料页按查询键取。同一块的另两个视图是名册（索引页的 `PeopleGrid`）与照片墙（样张分段在前、本地图片在后；直接打开 React 灯箱（`photo-lightbox/`），定位源文件调 `actions.revealSource`）。
 - `items` 挂在 `#nrow` 上：壳手上已有那一批，岛只画卡。
 - 版式、选中态与快进秒数经 `updateManagedRoute`（资料页作品区经 `pushEntityPage`）推进来：换版式只重画，已载入的分页原样保留。`selected` 每次推一个新的 `Set`。
 - 卡上的悬停预览、封面取景与图片微光都在 `frontend/src/card-art/`：卡片直接调 `wireHover`／`releaseHover`（状态写在卡的 `data-previewing`／`data-longhover` 上）与 `relayoutCovers`，微光由 `installCardArt` 装的监听按 `PENDING_IMAGES` 认 `[data-media-art]>img`；壳只经 `configureHoverPreview` 告诉悬停预览多选态、打码与延迟。卡片的结构钩子全是 `data-media-*`；悬停预览插进封面格的 `video.hv`、`img.hvframes` 与封套 `img.poster` 用自己的类名，样式在 `12-cards.css`。
-- 离场：去目录与回收站以外的页面时由 `clearCatalogGrid` 收 `#grid` 那一页（`claimSurface` 只收 `#stats` 与 `#index`）；资料页正文随资料页由 `releaseManagedRoute` 收起；接着看是作品详情里的子组件，随舞台岛的内容一起卸。
+- 离场：去目录、回收站与垃圾文件以外的页面时由 `clearCatalogGrid` 收 `#grid` 那一页（`claimSurface` 只收 `#stats` 与 `#index`）；资料页正文随资料页由 `releaseManagedRoute` 收起；接着看是作品详情里的子组件，随舞台岛的内容一起卸。
 - 屏外卡用 `content-visibility` 跳过封面与元信息区的渲染，不做虚拟列表。
 - 单卡写操作都由用户点击触发：稍后看走 `actions.watchLater`，回收站卡的还原走 `actions.resourceOperation`，做完给撤销；彻底删除只在批量条上，先过 `confirmModal` 的危险档。
 
@@ -120,10 +121,10 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 
 ### 客户端导航
 
-React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文、播放列表页、关注页、五张索引页、五类资料页与目录网格由路由树画。
+React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文、播放列表页、关注页、五张索引页、五类资料页、目录网格与垃圾队列由路由树画。
 
-- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格画进 `#grid`。
-- 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十五页、资料页的五个模式、目录网格的五条路径与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
+- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格与垃圾队列画进 `#grid`。
+- 派发点 `RouteDispatch` 是 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十五页、资料页的五个模式、`#grid` 那两页的六条路径与 `/resource-sync` 只声明路径，其余落在 `path="*"`。
 - 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent, place})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主（给了 `place` 就由它把壳排的框架换进容器、交出宿主），宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。三个容器各记一条、互不相收，`releaseManagedRoute` 逐个点名容器：`claimSurface` 收 `#stats` 与 `#index`，`showHomeSurfaces` 只收 `#index` 那一条，`#grid` 只由 `clearCatalogGrid` 收，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键、资料页换筛选与版式）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
 - `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、云下载预填）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页与资料页）交 `actions.navigate`。配置页页签与云下载预填先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 派发判据是序号：每次历史变化领一个 `seq`；`shellNavigate` 写的那一次当场认领，不派发；后退前进与 React 子树里的 `navigate` 没人认领，派发一次。地址不变的 `popstate` 也领新序号，照样派发。
@@ -274,7 +275,7 @@ await ui.mountIsland('playlists', $('#stats'), props, {isCurrent: () => surfaceC
 - 离场有两道闸。第一道是壳：`claimSurface` 是所有页面共同经过的换页点，它在那里对管理区
   正文（`#stats`）调 `unmountIsland`，根连同它的轮询一起停；路由树画的页面在同一处由
   `releaseManagedRoute($('#stats'),$('#index'))` 收起，`showHomeSurfaces` 是索引页与资料页重画前的公共点，收 `#index` 那一页，
-  目录网格离开目录时由 `clearCatalogGrid` 收。
+  `#grid` 那一页离开目录时由 `clearCatalogGrid` 收。
   多数页面的离场路径是直接 `innerHTML=`，根被挤出文档却照样活着，所以卸载必须由这
   几个公共点负责，而不是逐页判断。第二道是 `isCurrent`：取数落地时用户可能已经走开，
   这时不画。再进这一页时 `mountIsland` 先自我卸载，同时只有一份。

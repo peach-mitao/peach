@@ -1,4 +1,4 @@
-/* 垃圾文件队列（`junk-queue` island）的数据与对外契约。
+/* 垃圾文件队列（`CATALOG_ROUTES['/junk-files']`）的数据与对外契约。
  *
  * 队列一次取 200 条（`/api/ads?limit=200&status=…[&kind=…]`，`src/peach/web_batch.py` 的 `q_ads`
  * 现算评分），客户端按「每批条数」一段段露出来；换分类、换视图就是换查询键。写操作只有三种，
@@ -96,7 +96,7 @@ export interface JunkQueueProps extends JunkRoute {
   revision: number;
   selectMode: boolean;
   selected: ReadonlySet<number>;
-  /** 计数行（`#count`）。行本身归壳（换页时由壳清空），里面的摘要与分类条归 island。 */
+  /** 计数行（`#count`）。行本身归壳（换页时由壳清空），里面的摘要与分类条归这一页。 */
   countRow: HTMLElement | null;
   /** 网格骨架的 HTML（遗留层 `pageSkeletonHtml`），和壳首屏铺的是同一份。 */
   skeletonHtml(): string;

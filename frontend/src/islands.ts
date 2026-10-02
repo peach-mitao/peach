@@ -44,7 +44,6 @@ export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 export interface IslandContracts {
   'catalog-filter': ReactBundle.CatalogFilterProps;
   'feed-new': ReactBundle.FeedNewProps;
-  'junk-queue': ReactBundle.JunkQueueProps;
   'library-processing': ReactBundle.LibraryProcessingProps;
   search: ReactBundle.SearchProps;
 }
@@ -61,7 +60,6 @@ interface Island {
 const REGISTRY: { [N in IslandName]: Island } = {
   'catalog-filter': { react: 'catalog-filter' },
   'feed-new': { react: 'feed-new' },
-  'junk-queue': { react: 'junk-queue' },
   'library-processing': { react: 'library-processing' },
   search: { react: 'search' },
 };
