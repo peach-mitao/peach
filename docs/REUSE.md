@@ -1,5 +1,15 @@
 # 复用清单
 
+## 资源索引器
+
+来源性质由 `follow_providers.ProviderSpec.nature`、`scraping_access.describe` 与索引器配置投影给页面，分别标账号、公开页面、归档站与自配索引器，不参与身份可信度、优先级或启用状态判定。新增客户端仿真来源须在自己的登记处声明性质。
+
+`resource_search.py` 使用 Torznab 0.2.1（MIT，Python ≥3.10，支持项目 Python 3.12–3.14）的 `parse_capabilities` 与 `parse_torznab`。源码固定标签 v0.2.1，项目仍标为 Alpha；离线 XML POC 已覆盖 caps、GUID 磁力、体积、做种、连接数和重复标签。PyPI 包新增一项直接依赖，requests 为已有传递依赖；实际索引器验收需要用户配置端点。
+
+请求复用 HTTPX 0.28.1。SDK 自带 requests 请求层没有响应大小上限，异常可能带完整 URL，故只使用其解析器。Peach 负责每源 caps 和 search 两次请求、响应上限 2 MiB、每轮最多四源、45 秒预算、禁用重定向、脱敏错误、XML 实体声明拒收，以及体积、做种、黑名单、质量排序和最多五个候选。标题番号复用 `feeds.scan_code`，身份与中字、无码版次复用 `catalog_rules`。凭据复用 `CredentialStore`，不登记跨机同步字段；换端点不会沿用已保存的 API key。
+
+已对照 [Torznab 1.3 规范](https://torznab.github.io/spec-1.3-draft/torznab/Specification-v1.3.html) 与 SakuraMedia `torznab.py`（GPL-3.0，revision `9c6a31915c9a364c9d6717798575daf9445916bd`）的 FC2 查询、磁力字段回退与部分失败边界。SakuraMedia 耦合其 ORM，不作为运行时依赖。候选由活动页填入现有云下载表单，经用户确认后走 `submit_offline_download`。
+
 这是实现查找表：每项能力由哪个现成实现承担、Peach 自己只负责哪一段。新增、恢复或重写代码前，按 `.claude/skills/peach-reuse-first/SKILL.md` 先查本文件、当前树、Git 历史和成熟外部实现；旧文件名不存在不等于能力缺失，继任关系见「已删除旧实现与当前继任者」。
 
 安装依赖的精确版本由 [Python 清单](../pyproject.toml)、[Python 锁文件](../uv.lock)、[前端清单](../frontend/package.json) 和 [静态依赖清单](../package.json) 维护。本页记录用途、许可证与取舍；取证版本和提交号只代表对应证据。

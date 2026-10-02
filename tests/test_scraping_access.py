@@ -32,6 +32,7 @@ class ScrapingAccessTests(unittest.TestCase):
         peach_proxy.save(self.root, {"mode": "proxy", "proxy": "http://user:private-proxy@127.0.0.1:7890"})
         save(self.root, "javdb", {"cookie": "session=private-cookie", "network": "peach"})
         public = q_scraping(SimpleNamespace(follow_secrets_root=self.root), {})
+        self.assertTrue(all(row["nature"] == "公开页面" for row in public["sources"]))
         self.assertEqual(next(item['label'] for item in public['sources'] if item['source'] == 'javdb'), 'JavDB')
         self.assertNotIn("private-cookie", json.dumps(public))
         self.assertNotIn("private-proxy", json.dumps(public))

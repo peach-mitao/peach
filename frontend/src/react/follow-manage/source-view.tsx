@@ -68,6 +68,7 @@ export function SourceLink({ source }: { source: FollowSource }) {
     <a href={source.url} target="_blank" rel="noreferrer noopener" title="打开原来源"
       className="min-w-0 text-body-medium break-words text-text-primary underline-offset-2 hover:underline">
       {source.label}
+      {source.nature ? <small className="block text-caption-1-regular text-text-secondary">{source.nature}</small> : null}
     </a>
   );
 }

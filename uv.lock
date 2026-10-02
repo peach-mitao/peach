@@ -1180,6 +1180,7 @@ dependencies = [
     { name = "socksio" },
     { name = "starlette" },
     { name = "tldextract" },
+    { name = "torznab" },
     { name = "uvicorn" },
     { name = "watchdog" },
     { name = "zeroconf" },
@@ -1236,6 +1237,7 @@ requires-dist = [
     { name = "socksio", specifier = "==1.0.0" },
     { name = "starlette", specifier = "==1.6.0" },
     { name = "tldextract", specifier = "==5.3.2" },
+    { name = "torznab", specifier = "==0.2.1" },
     { name = "uvicorn", specifier = "==0.53.0" },
     { name = "watchdog", specifier = "==6.0.0" },
     { name = "zeroconf", specifier = "==0.151.3" },
@@ -2245,6 +2247,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/01/a9/ed5d3be29bfaf90c00b7159d3884b311f3880b55833d1c7be764164dc288/tldextract-5.3.2.tar.gz", hash = "sha256:c017431bc0800f2d3d1b57cce36e06668f0930f60a6d8c4615d4e2b8da298fa9", size = 191971, upload-time = "2026-08-08T20:53:13.732Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/3b/930310b274dfe3b9a4fe64ef8b24e5faf376c9a6f94bba6fc6e438058598/tldextract-5.3.2-py3-none-any.whl", hash = "sha256:6c90d2a259f5c89f4fcf01f97af15708416a59ffedddff006d67222ab30d0fb0", size = 106415, upload-time = "2026-08-08T20:53:12.675Z" },
+]
+
+[[package]]
+name = "torznab"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e5/5f/c129b48f02c766bfd09fdb612e0418cd55fdb997704569c744759b9243ec/torznab-0.2.1.tar.gz", hash = "sha256:acac787ca7460fceb7325be1e59a5da66c4d1ad24326b16ca308c4fd480a42d4", size = 57877, upload-time = "2026-09-16T16:37:43.758Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/3b/e1cabd6eccc198273ba350eb35c6eb78848d5a8434b0eb0272e1d30df2d4/torznab-0.2.1-py3-none-any.whl", hash = "sha256:6f07a621e503a0afe209ed1d4ddc0455469203762dbf2ecd7f832945a1825399", size = 8288, upload-time = "2026-09-16T16:37:42.393Z" },
 ]
 
 [[package]]

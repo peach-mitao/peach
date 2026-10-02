@@ -293,6 +293,7 @@ def fix_to_browser(root: Path, source: str) -> None:
 def describe(root: Path, source: str) -> dict:
     values = values_for(root, source)
     return {"source": source, "label": SOURCES[source]["label"],
+            "nature": SOURCES[source].get("nature", "公开页面"),
             "login": SOURCES[source]["login"], "accepts_cookie": bool(SOURCES[source].get("cookie")),
             "network": "direct" if values.get("network") == "direct" else "peach",
             "cookie_saved": bool(values.get("cookie") or values.get("cookies_text")),

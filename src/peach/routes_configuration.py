@@ -255,6 +255,29 @@ def _downloads(request: Request):
             getattr(request.app.state.push_discovery, "declared_roots", {}))
 
 
+@router.get("/api/configuration/indexers")
+def get_indexers(request: Request, _args=Depends(require_auth)):
+    from .resource_search import Indexers
+    local_only(request)
+    try:
+        return Indexers(request.app.state.downloads.credentials).public()
+    except (ValueError, OSError):
+        raise HTTPException(400, "索引器配置读不出来") from None
+
+
+@router.post("/api/configuration/indexers")
+def save_indexers(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    from .resource_search import Indexers
+    local_only(request)
+    same_origin(request)
+    try:
+        return Indexers(request.app.state.downloads.credentials).save(body)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    except OSError:
+        raise HTTPException(400, "索引器配置没有保存，请检查本机凭据目录权限") from None
+
+
 @router.post("/api/configuration/downloads")
 def save_downloads(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
     """地址、目标目录、等待上限与 CloudDrive2 令牌。令牌只写本机凭据文件。

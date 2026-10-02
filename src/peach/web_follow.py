@@ -1316,6 +1316,7 @@ def _source_payload(row, aliases: dict[str, str] | None = None) -> dict:
         "avatar_url": _avatar_url(row["provider"], row["ref"]),
         "url": row["url"],
         "semantics": row["semantics"],
+        "nature": getattr(follow_providers.PROVIDERS.get(row["provider"]), "nature", "公开页面"),
         "enabled": bool(row["enabled"]),
         "entity_id": row["entity_id"],
         "entity_name": row["entity_name"],
@@ -2619,6 +2620,8 @@ def q_follow_credentials(contract, _args) -> dict:
         providers.append({
             **described,
             "provider_label": PROVIDER_LABELS.get(provider, provider),
+            "nature": (follow_providers.PROVIDERS[provider].nature
+                       if provider in follow_providers.PROVIDERS else "用户自己的账号"),
             "followable": provider in CONNECTORS,
             "requirement": guide["requirement"],
             "needs": fields,

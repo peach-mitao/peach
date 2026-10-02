@@ -50,6 +50,8 @@ class ProviderSpec:
     #: 名字、解析到内网地址的主机仍然拒收。与 `hosts` 互斥——两个都写会让读者以为
     #: 白名单还在起作用。
     public_media_hosts: bool = False
+    #: 获取内容的渠道性质，与身份可信度、优先级和启用状态分别表达。
+    nature: str = "公开页面"
 
     def __post_init__(self) -> None:
         if self.semantics not in ("work", "release"):
@@ -71,22 +73,22 @@ PROVIDERS: dict[str, ProviderSpec] = {
         # 给出的游标页清单，能稳定走完整个创作者，所以同样可回填。
         ProviderSpec("fanbox", "FANBOX", source_url="https://{ref}.fanbox.cc/",
                      url_hosts=("fanbox.cc",), priority=1, official_identity=True,
-                     backfill=True),
+                     backfill=True, nature="用户自己的账号"),
         ProviderSpec("subscribestar", "SubscribeStar", source_url="https://{ref}",
                      url_hosts=("subscribestar.adult", "subscribestar.com"),
-                     priority=2, official_identity=True),
+                     priority=2, official_identity=True, nature="用户自己的账号"),
         ProviderSpec("patreon", "Patreon", source_url="https://www.patreon.com/cw/{ref}",
-                     url_hosts=("patreon.com",), priority=3, official_identity=True),
+                     url_hosts=("patreon.com",), priority=3, official_identity=True, nature="用户自己的账号"),
         # 归档站：同一套代码的姊妹站，支持真实历史分页所以可回填。
         ProviderSpec("kemono", "Kemono", source_url="https://kemono.cr/{ref}",
                      hosts=("kemono.cr",), url_hosts=("kemono.cr",),
-                     priority=10, backfill=True),
+                     priority=10, backfill=True, nature="归档站"),
         ProviderSpec("pawchive", "Pawchive", source_url="https://pawchive.pw/{ref}",
                      hosts=("pawchive.pw",), url_hosts=("pawchive.pw",),
-                     priority=15, backfill=True),
+                     priority=15, backfill=True, nature="归档站"),
         ProviderSpec("coomer", "Coomer", source_url="https://coomer.st/{ref}",
                      hosts=("coomer.st",), url_hosts=("coomer.st",),
-                     priority=20, backfill=True),
+                     priority=20, backfill=True, nature="归档站"),
         # 标签／模特站。
         # `excluded_external_ids` 是用户明确点名的那条，它没探过详情页、拿不到署名。
         # 同类条目由连接器按详情页的画面作者数拦截；这一条只管让它从浏览面消失。

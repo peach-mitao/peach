@@ -16,6 +16,13 @@ from peach.web_follow import PROVIDER_LABELS, _BACKFILL_PROVIDERS
 
 
 class ProviderRegistryTests(unittest.TestCase):
+    def test_source_nature_identifies_accounts_archives_and_public_pages(self):
+        for key in ("fanbox", "subscribestar", "patreon"):
+            self.assertEqual(follow_providers.PROVIDERS[key].nature, "用户自己的账号")
+        for key in ("kemono", "pawchive", "coomer"):
+            self.assertEqual(follow_providers.PROVIDERS[key].nature, "归档站")
+        self.assertEqual(follow_providers.PROVIDERS["rule34video"].nature, "公开页面")
+
     def test_every_connector_is_registered_and_every_source_has_a_connector(self):
         """新增站点漏登记不会自己报错，只会在某个页面上少一行——所以这里挡住。
 
