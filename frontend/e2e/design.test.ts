@@ -5228,7 +5228,30 @@ describe('设计决定', () => {
     }
   });
 
-  it('标签页的筛选玻璃吸到顶栏下沿时影换成抬起来那一档，上沿垫一条页面底色的遮带', { timeout: 60_000 }, async () => {
+  for (const viewport of VIEWPORTS) {
+    it(`首页吸顶筛选条的上沿在深浅主题中保持透明（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openHome(browser, viewport);
+      try {
+        const page = opened.page;
+        await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<div style="height:200vh"></div>'));
+        await page.evaluate(() => window.scrollTo(0, 600));
+        await page.waitForFunction(() => document.querySelector('[data-filter-glass]')?.hasAttribute('data-stuck'));
+        for (const theme of ['light', 'dark']) {
+          const style = await page.evaluate(value => {
+            document.documentElement.dataset.theme = value;
+            const filter = document.querySelector('[data-filter-glass]')!;
+            return { content: getComputedStyle(filter, '::before').content, shadow: getComputedStyle(filter).boxShadow };
+          }, theme);
+          assert.equal(style.content, 'none');
+          assert.match(style.shadow, /inset/);
+          await page.locator('[data-filter-glass]').screenshot({ path: `../build/sticky-${viewport.name}-${theme}.png` });
+        }
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close(); }
+    });
+  }
+
+  it('筛选玻璃吸顶使用抬起阴影，深浅主题的上沿保持透明间隙', { timeout: 60_000 }, async () => {
     const opened = await openIndexPage(browser, '/tags');
     try {
       const page = opened.page;
@@ -5261,8 +5284,11 @@ describe('设计决定', () => {
       assert.equal(farthestShadow(stuck.shadow), farthestShadow(stuck.lift), '吸顶后的影不是 --glass-lift');
       assert.ok(farthestShadow(stuck.shadow) > farthestShadow(resting.shadow), '吸顶后影没有抬起来');
       assert.match(stuck.shadow, /inset/, '吸顶后四条内嵌 rim 线丢了');
-      assert.deepEqual([strip.content, strip.top, strip.height, strip.z], ['""', '-9px', '9px', '-1']);
-      assert.match(strip.mask, /linear-gradient/, '遮带两端没有渐隐');
+      assert.equal(strip.content, 'none');
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value }, theme);
+        assert.equal((await readStrip()).content, 'none', `${theme} 主题的吸顶上沿存在遮带`);
+      }
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.waitForFunction(() => !document.querySelector('[data-filter-glass]')!.hasAttribute('data-stuck'),
         undefined, { timeout: 5_000 });

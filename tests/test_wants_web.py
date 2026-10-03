@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -28,11 +28,40 @@ class MagnetLookupTests(unittest.TestCase):
         self.assertEqual(search.query('DEMO-001')['state'], 'ready')
         search.query('DEMO-001')
         self.assertEqual(calls, ['DEMO-001'])
-        now[0] += 61
+        now[0] += 7 * 86400 + 1
         search.query('DEMO-001')
         self.assertEqual(len(calls), 2)
         with search.lock:
             self.assertEqual(search.query('DEMO-002')['state'], 'busy')
+
+    def test_release_age_controls_cache_and_manual_refresh_bypasses_it(self):
+        from peach.wants_magnets import cache_lifetime, MagnetSearch
+        today = date(2026, 10, 3)
+        self.assertEqual(cache_lifetime('2026-07-03', today), 7 * 86400)
+        self.assertEqual(cache_lifetime('2026-07-02', today), 365 * 86400)
+        self.assertEqual(cache_lifetime(None, today), 7 * 86400)
+        self.assertEqual(cache_lifetime('2026-02-28', date(2026, 5, 31)), 7 * 86400)
+        now, calls = [100.0], []
+        search = MagnetSearch(Path('.'), fetcher=lambda root, code: calls.append(code) or {'items': []},
+                              clock=lambda: now[0], sleeper=lambda seconds: None)
+        search.query('OLD-001', released='2020-01-01')
+        now[0] += 8 * 86400
+        search.query('OLD-001', released='2020-01-01')
+        self.assertEqual(len(calls), 1)
+        search.query('OLD-001', released='2020-01-01', refresh=True)
+        self.assertEqual(len(calls), 2)
+
+    def test_failures_retry_after_one_minute(self):
+        from peach.wants_magnets import MagnetSearch
+        now, calls = [100.0], []
+        def failed(root, code):
+            calls.append(code)
+            raise ValueError('failed')
+        search = MagnetSearch(Path('.'), fetcher=failed, clock=lambda: now[0], sleeper=lambda seconds: None)
+        search.query('OLD-001', released='2020-01-01')
+        now[0] += 61
+        search.query('OLD-001', released='2020-01-01')
+        self.assertEqual(len(calls), 2)
 
     def test_source_failure_is_distinct_from_no_results(self):
         from peach.wants_magnets import MagnetSearch
@@ -70,11 +99,13 @@ class WantWebFixture(unittest.TestCase):
         with patch('peach.wants_magnets.search_for') as factory:
             factory.return_value.query.return_value = {"state": "ready", "items": []}
             self.get('/api/wants/magnets', id=str(row['id']))
-            factory.return_value.query.assert_called_once_with('DEMO-001')
+            factory.return_value.query.assert_called_once_with('DEMO-001', refresh=False, released=None)
+            self.get('/api/wants/magnets', id=str(row['id']), refresh='1')
+            factory.return_value.query.assert_called_with('DEMO-001', refresh=True, released=None)
             with self.contract.database.write_transaction() as connection:
                 connection.execute("UPDATE want_item SET release_date='2999-01-01' WHERE id=?", (row['id'],))
             self.assertEqual(self.get('/api/wants/magnets', id=str(row['id']))['state'], 'unavailable')
-            self.assertEqual(factory.return_value.query.call_count, 1)
+            self.assertEqual(factory.return_value.query.call_count, 2)
         with self.assertRaises(ValueError):
             self.get('/api/wants/magnets', id='-1')
         with self.assertRaises(KeyError):
