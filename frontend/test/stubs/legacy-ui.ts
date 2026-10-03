@@ -1,8 +1,7 @@
 /* `/js/ui-components.js` 在测试里的替身（vitest.config.ts 里做 alias）。
  *
  * 只保留断言真正依赖的结构标记（`data-geist-empty-state`、`geist-note-error`）。
- * 完整的 Geist 结构由 `tests/test_web_ui.py` 直接对 `web/js/ui-components.js` 断言，
- * 这里再抄一遍只会多一处要维护的副本。 */
+ * 完整页面的结构和样式由 `frontend/e2e` 使用真实模块验证。 */
 export const emptyStateHtml = (
   iconName: string,
   title: string,
@@ -45,7 +44,7 @@ export const wireSelectField = (root: HTMLElement) => {
 };
 export const wireCollapse = (_root: ParentNode, _selector: string, _idPrefix: string): void => {};
 /* 只落位，不动画：jsdom 没有布局，量出来处处是零，那段弹簧也就没有什么可跑的。
-   动作本身由 `tests/test_web_ui.py` 对 `web/js/ui-components.js` 直接断言。 */
+   动作本身由 `frontend/e2e/design.test.ts` 在浏览器中验证。 */
 export const moveGlidePane = (
   pane: HTMLElement,
   _from: unknown,

@@ -337,8 +337,7 @@ const job = useQuery({
 直达 `#resource-sync`（`/resource-sync` 转过来的）时，它上面那几份懒取的读数也一并等齐，
 免得滚到位之后又被撑下去。
 
-端点字符串在 `frontend/src` 里只许出现一次，就在这一页的数据模块里
-（`src/react/quality-goals/quality-goals.ts`）。要拦的是「两个地方各写一遍这条 URL」。
+端点和查询键由页面的数据模块统一提供（如 `src/react/quality-goals/quality-goals.ts`）。组件测试验证请求次数、请求体和缓存更新；跨组件共享由同一个 `QueryClient` 提供。
 
 首屏要不要吃缓存看路由表：`/quality-goals` 是 `refresh:'reopen'`，刷新就是重新进这一页，
 所以它的 `prefetch` 不给 `staleTime`，每次进来都重取。要按节律更新的页面写
@@ -405,9 +404,7 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
    props 递进来，用 `dangerouslySetInnerHTML` 插；它们是全站语义契约的唯一实现，在页面里
    重写一份就会漂。而 `emptyStateHtml`、`noteHtml`、`collectionSummaryHtml` 这类只是
    「画个通用块」的助手不跟过来：React 页用 `components/` 下的组合件。
-7. `tests/test_web_ui.py` 里这一页的断言分三处：路由、菜单入口与骨架留在原地，CSS
-   字符串删掉（设计决定改由 `design.test.ts` 读计算值），行为搬进 vitest；搬到哪里写进
-   提交说明。
+7. 路由、菜单入口和骨架由组件与浏览器测试验证。`tests/test_web_ui.py` 只保留通用样式规范、CSS 分区层叠与隐私边界，不按页面逐段比对实现源码；已有行为验证的文本断言直接清退。
 8. 跑 `& .\scripts\test.ps1 -Scope web`（含 tsc、lint、vitest 与真浏览器冒烟），
    再 `npm --prefix frontend run build` 并把 `web/dist/` 一起提交。
 

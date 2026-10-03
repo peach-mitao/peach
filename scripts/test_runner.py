@@ -220,8 +220,6 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "README.md": ("checks", "tooling"),
     "README.en.md": ("checks", "tooling"),
     "docs/STATUS.md": ("checks", "tooling"),
-    "docs/CLOUDDRIVE.md": ("checks", "web"),
-    "docs/OPERATIONS.md": ("checks", "web"),
     # 差异表是 token 判据的另一半：偏离上游的每一条都要在那张表里写明原因，所以
     # `test_frontend_build.py` 读它——改表就得跑到 web。
     "frontend/src/react/boardui/ORIGIN.md": ("checks", "web"),
