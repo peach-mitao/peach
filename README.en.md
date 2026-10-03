@@ -101,6 +101,8 @@ On macOS, replace the last two lines with `uv sync --locked --python 3.14 --extr
 
 LAN access, access passwords, updates and uninstalling are covered in [Operations](docs/OPERATIONS.md).
 
+Run `peach doctor` to inspect local configuration, the ledger, tools and media mounts. `--json` returns a redacted report; see [Local diagnostics](docs/OPERATIONS.md#本机诊断) for status and actions.
+
 ## FAQ
 
 - **Will it change my files?**

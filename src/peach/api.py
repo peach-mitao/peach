@@ -197,7 +197,8 @@ def create_app(
         database=database,
     )
     repository = LedgerRepository(database)
-    mount_reachability = MountReachability(routes_api.source_roots())
+    from .mount_reachability import source_roots
+    mount_reachability = MountReachability(source_roots())
     resolver = FFmpegResolver(settings.ffmpeg_root)
     http_transport = HttpxTransport()
     follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(
@@ -477,7 +478,10 @@ def create_app(
         ffmpeg = resolver.ffmpeg()
         read_only = bool(sync is not None and sync.read_only)
         tunnel_state = tunnel_manager.snapshot()
+        from .diagnostics import health_components
+        components = health_components(settings, app.state.mount_reachability.summary())
         return {"ok": True, "service": "peach-api", "version": __version__,
+                "checks": components,
                 # 打包这份代码的提交。源码运行时是 null：跑的就是检出本身。
                 "build_commit": BUILD.commit if BUILD else None,
                 # 这台机器跑过 `peach init` 没有。未配置时服务照常起，只是没有数据。

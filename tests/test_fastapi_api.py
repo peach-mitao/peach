@@ -332,6 +332,26 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()["version"], __version__)
         # 采集浏览器等人点验证的站列在这里，供排查（ADR-0065）；平时是空表。
         self.assertEqual(response.json()["attention"], [])
+        checks = response.json()["checks"]
+        self.assertEqual(set(checks), {"database", "schema", "configured", "ffmpeg", "media_mounts", "security"})
+        self.assertTrue(all(set(check) == {"status", "reason"} for check in checks.values()))
+        self.assertNotIn(str(self.media_root), json.dumps(checks))
+
+    async def test_diagnostics_is_authenticated_local_and_uses_the_shared_report(self):
+        from peach import diagnostics
+        report = {"version": __version__, "status": "warning", "checks": {}}
+        with patch.object(diagnostics, "report", return_value=report) as shared:
+            denied = await self.client.get("/api/diagnostics")
+            self.assertEqual(denied.status_code, 401)
+            accepted = await self.client.get("/api/diagnostics?t=secret")
+            self.assertEqual(accepted.status_code, 200)
+            self.assertEqual(accepted.json(), report)
+            shared.assert_called_once_with(self.settings, self.app.state.mount_reachability.summary())
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app, client=("192.0.2.10", 1234)),
+                                         base_url="http://test") as remote:
+                denied = await remote.get("/api/diagnostics?t=secret")
+            self.assertEqual(denied.status_code, 403)
+            self.assertEqual(shared.call_count, 1)
 
     async def test_health_reports_the_build_commit_the_deploy_check_needs(self):
         """换生产托盘的脚本按这个字段确认跑起来的正是它刚打出的包。源码运行时是 null。"""

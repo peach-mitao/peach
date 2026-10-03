@@ -33,6 +33,22 @@ class MountRoot:
     path: Path | None
 
 
+def source_roots() -> list[MountRoot]:
+    """沿用账本声明根与平台映射；构造探测对象时不读取挂载。"""
+    from .config import LOCATION_ROOT_DECLARATIONS
+    from .media_configuration import SOURCE_OPTIONS
+    from .platform import is_unmapped, translate_ledger_path
+
+    labels = dict(SOURCE_OPTIONS)
+    roots = []
+    for location, declared_roots in LOCATION_ROOT_DECLARATIONS.items():
+        for declared in declared_roots:
+            resolved = translate_ledger_path(declared)
+            roots.append(MountRoot(location, labels.get(location, location), declared,
+                                   None if is_unmapped(resolved) else resolved))
+    return roots
+
+
 @dataclass
 class _Probe:
     state: str = "checking"

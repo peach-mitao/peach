@@ -95,6 +95,8 @@ def _serve(args: argparse.Namespace) -> int:
         tunnel_lan_address = args.mdns_address or lan_ipv4()
     settings = PeachSettings(
         db_path=args.db,
+        host=args.host,
+        port=args.port,
         token="" if args.setup else _serve_token(args),
         access_path=settings_file.active().directory("secrets") / "access.json",
         configured=CONFIGURED and not args.setup,
@@ -670,6 +672,29 @@ def _print_next_steps(config: settings_file.PeachConfig, *, from_existing: bool)
         print("  3. 局域网设备要装本机 CA。访问密码为可选项，在配置页设置。")
 
 
+def _doctor(args: argparse.Namespace) -> int:
+    import json
+    from . import diagnostics
+    from .mount_reachability import source_roots
+
+    config = settings_file.active()
+    settings = PeachSettings(db_path=args.db, host=config.server.host, port=config.server.port,
+                             token=auth.read_token(config.directory("secrets")),
+                             access_path=config.directory("secrets") / "access.json")
+    snapshot = {"state": "checking", "sources": [], "warnings": []}
+    if diagnostics.configuration(config, settings.configured)["status"] != "failed":
+        snapshot = diagnostics.probe_mounts(source_roots())
+    result = diagnostics.report(settings, snapshot, config=config)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False))
+    else:
+        for check in result["checks"].values():
+            print(f"{check['label']} [{check['status']}] {check['reason']}")
+            if check["action"]:
+                print(f"  {check['action']}")
+    return 1 if result["status"] == "failed" else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="peach")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -755,6 +780,11 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--db", type=Path, default=DEFAULT_DB)
     status.add_argument("--shared-db", type=Path, default=SHARED_DATABASE_PATH)
     status.set_defaults(handler=_status)
+
+    doctor = commands.add_parser("doctor", help="逐项诊断本机配置、数据库、工具与挂载，不执行修复")
+    doctor.add_argument("--json", action="store_true", help="输出脱敏 JSON 报告")
+    doctor.add_argument("--db", type=Path, default=DEFAULT_DB)
+    doctor.set_defaults(handler=_doctor)
 
     ledger_sync = commands.add_parser("ledger-sync", help="synchronize the local ledger now")
     ledger_sync.add_argument("--db", type=Path, default=DEFAULT_DB)

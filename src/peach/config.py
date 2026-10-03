@@ -80,6 +80,8 @@ TUNNEL_HOSTNAME: str = _SETTINGS.tunnel.hostname
 @dataclass(frozen=True)
 class PeachSettings:
     db_path: Path = DATABASE_PATH
+    host: str = SERVE_HOST
+    port: int = SERVE_PORT
     page_path: Path = PROJECT_ROOT / "web" / "index.html"
     vendor_path: Path = PROJECT_ROOT / "web" / "vendor"
     #: 界面标注工具的本机构建产物，由 `/dev/agentation.js` 提供。落在 `build/` 而不是 `web/`：
