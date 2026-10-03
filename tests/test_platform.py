@@ -322,6 +322,11 @@ class MountReachabilityTests(unittest.TestCase):
         self.wait_state("ok")
         self.assertEqual(self.monitor.summary()["warnings"], [])
 
+    def test_first_probe_does_not_depend_on_the_clock_origin(self):
+        self.now = -10000
+        self.wait_state("ok")
+        self.assertEqual(len(self.calls), 1)
+
     def test_pending_probe_is_unknown_and_timeout_keeps_one_worker(self):
         entered, release = threading.Event(), threading.Event()
         self.addCleanup(release.set)

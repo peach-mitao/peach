@@ -37,7 +37,7 @@ class MountRoot:
 class _Probe:
     state: str = "checking"
     checked_at: float | None = None
-    due: float = 0.0
+    due: float = float("-inf")
     started: float = 0.0
     pending: Future | None = None
 
