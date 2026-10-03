@@ -388,7 +388,7 @@ class InteractiveInitTests(unittest.TestCase):
                 sources = await client.get("/api/sources", headers={"Cookie": "tok=secret"})
                 return health, items, sources
 
-        with mock.patch.object(routes_api, "LOCATION_ROOT_DECLARATIONS", dict(loaded.locations)), \
+        with mock.patch("peach.config.LOCATION_ROOT_DECLARATIONS", dict(loaded.locations)), \
                 mock.patch.object(web_resource_sync, "LOCATION_ROOT_DECLARATIONS",
                                   dict(loaded.locations)):
             health, items, sources = asyncio.run(probe())

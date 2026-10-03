@@ -678,8 +678,10 @@ def _doctor(args: argparse.Namespace) -> int:
     from .mount_reachability import source_roots
 
     config = settings_file.active()
-    settings = PeachSettings(db_path=args.db, host=config.server.host, port=config.server.port,
+    host, port = diagnostics.doctor_endpoint(config)
+    settings = PeachSettings(db_path=args.db, host=args.host or host, port=port if args.port is None else args.port,
                              token=auth.read_token(config.directory("secrets")),
+                             tunnel_enabled=config.tunnel.enabled,
                              access_path=config.directory("secrets") / "access.json")
     snapshot = {"state": "checking", "sources": [], "warnings": []}
     if diagnostics.configuration(config, settings.configured)["status"] != "failed":
@@ -784,6 +786,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = commands.add_parser("doctor", help="逐项诊断本机配置、数据库、工具与挂载，不执行修复")
     doctor.add_argument("--json", action="store_true", help="输出脱敏 JSON 报告")
     doctor.add_argument("--db", type=Path, default=DEFAULT_DB)
+    doctor.add_argument("--host", help="诊断指定的服务监听地址")
+    doctor.add_argument("--port", type=int, help="诊断指定的服务端口")
     doctor.set_defaults(handler=_doctor)
 
     ledger_sync = commands.add_parser("ledger-sync", help="synchronize the local ledger now")

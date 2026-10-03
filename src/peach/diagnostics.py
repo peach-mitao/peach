@@ -7,11 +7,12 @@ import platform
 import shutil
 import socket
 import sqlite3
+import sys
 import tempfile
 import time
 from contextlib import closing
 
-from . import __version__, access, settings_file
+from . import __version__, access, distribution, settings_file
 from .ffmpeg import FFmpegResolver
 from .health import inspect_database
 from .mount_reachability import MountReachability, PROBE_TIMEOUT
@@ -20,6 +21,24 @@ from .mount_reachability import MountReachability, PROBE_TIMEOUT
 def item(label, status, reason, *, action="", target=None, details=None):
     return {"label": label, "status": status, "reason": reason, "action": action,
             "target": target, "details": details or {}}
+
+
+def doctor_endpoint(config):
+    """选择配置端口或具有 TLS 材料的源码托盘入口。"""
+    configured = (config.server.host, config.server.port)
+    if distribution.standalone():
+        return configured
+    tls = config.directory("secrets") / "tls"
+    if not all((tls / name).is_file() for name in ("peach-local-ca.crt", "peach.crt", "peach.key")):
+        return configured
+    if sys.platform == "darwin":
+        return "0.0.0.0", 8443
+    from .mdns import lan_ipv4
+    try:
+        address = os.environ.get("PEACH_LAN_ADDRESS") or lan_ipv4()
+    except (OSError, RuntimeError):
+        address = "0.0.0.0"
+    return address, 443
 
 
 def configuration(config, configured, *, validate=True):

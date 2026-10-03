@@ -29,9 +29,11 @@ class DiagnosticsTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.db = self.root / "ledger.db"
+        self.page = self.root / "index.html"
+        self.page.write_text("<!doctype html><title>Peach</title>", encoding="utf-8")
         self.config = PeachConfig(self.root, self.root / "config.toml", data_root_found=True,
                                   server=ServerSettings(host="127.0.0.1", port=0))
-        self.settings = PeachSettings(db_path=self.db, page_path=ROOT / "web/index.html",
+        self.settings = PeachSettings(db_path=self.db, page_path=self.page,
                                       host="127.0.0.1", port=0, configured=True,
                                       access_path=self.root / "access.json", token="private-token",
                                       ffmpeg_root=self.root / "tools")
@@ -112,6 +114,22 @@ class DiagnosticsTests(unittest.TestCase):
             result = diagnostics.port_status("127.0.0.1", 443)
         self.assertEqual(result["status"], "unknown")
         self.assertNotIn("secret", json.dumps(result))
+
+    def test_doctor_uses_source_tray_tls_and_standalone_configuration_endpoints(self):
+        self.assertEqual(diagnostics.doctor_endpoint(self.config), ("127.0.0.1", 0))
+        tls = self.config.directory("secrets") / "tls"
+        tls.mkdir(parents=True)
+        for name in ("peach-local-ca.crt", "peach.crt", "peach.key"):
+            (tls / name).write_text("fixture", encoding="utf-8")
+        with patch.object(diagnostics.distribution, "standalone", return_value=False), \
+             patch.object(diagnostics.sys, "platform", "win32"), \
+             patch.dict(diagnostics.os.environ, {"PEACH_LAN_ADDRESS": "192.0.2.10"}):
+            self.assertEqual(diagnostics.doctor_endpoint(self.config), ("192.0.2.10", 443))
+        with patch.object(diagnostics.distribution, "standalone", return_value=False), \
+             patch.object(diagnostics.sys, "platform", "darwin"):
+            self.assertEqual(diagnostics.doctor_endpoint(self.config), ("0.0.0.0", 8443))
+        with patch.object(diagnostics.distribution, "standalone", return_value=True):
+            self.assertEqual(diagnostics.doctor_endpoint(self.config), ("127.0.0.1", 0))
 
     def test_mount_unknown_and_failure_do_not_claim_online_or_break_service_readiness(self):
         upgrade(self.db, ROOT / "migrations")
