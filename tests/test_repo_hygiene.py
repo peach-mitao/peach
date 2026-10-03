@@ -205,14 +205,14 @@ class BacklogSelfConsistencyTests(unittest.TestCase):
 
     def test_the_stated_totals_match_the_items_listed(self):
         skeleton = self._numbered("## 已有骨架、尚未完成")
-        unbuilt = self._numbered("## 尚未实现")
-        claimed = re.search(r"合计：\*\*(\d+) 项开放需求\*\*，其中 (\d+) 项已有骨架，(\d+) 项尚未实现",
+        other = self._numbered("## 其他开放需求")
+        claimed = re.search(r"合计：\*\*(\d+) 项开放需求\*\*，其中 (\d+) 项已有骨架，(\d+) 项其他开放需求",
                             self.text)
         self.assertIsNotNone(claimed, "结尾那句合计被改写了，请保持可核对的写法")
-        total, said_skeleton, said_unbuilt = (int(g) for g in claimed.groups())
-        self.assertEqual((said_skeleton, said_unbuilt), (skeleton, unbuilt),
+        total, said_skeleton, said_other = (int(g) for g in claimed.groups())
+        self.assertEqual((said_skeleton, said_other), (skeleton, other),
                          "分项数和实际列出的条目对不上")
-        self.assertEqual(total, skeleton + unbuilt, "合计和分项加起来对不上")
+        self.assertEqual(total, skeleton + other, "合计和分项加起来对不上")
 
     def test_pending_operations_do_not_creep_back_into_the_entry_file(self):
         """编号待办只许住在这份文档里。
@@ -245,7 +245,7 @@ class BacklogSelfConsistencyTests(unittest.TestCase):
 
     def test_the_section_headings_declare_their_own_counts(self):
         for heading, actual in (("已有骨架、尚未完成", self._numbered("## 已有骨架、尚未完成")),
-                                ("尚未实现", self._numbered("## 尚未实现")),
+                                ("其他开放需求", self._numbered("## 其他开放需求")),
                                 ("待执行的操作", self._numbered("## 待执行的操作"))):
             declared = re.search(rf"## {heading}（(\d+) 项）", self.text)
             self.assertIsNotNone(declared, f"「{heading}」的标题应当带上条数，便于一眼核对")
