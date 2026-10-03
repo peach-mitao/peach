@@ -244,10 +244,9 @@ class LayeringTests(unittest.TestCase):
     def test_route_modules_only_depend_on_the_auth_routes(self):
         """路由层内部也是单向的：`routes_auth` 在最下面，别的 `routes_*` 只许 import 它。
 
-        `same_origin` 曾住在 `routes_configuration`，登录路由要用就在函数里反向 import；
-        `board_entry_style` 与运行信息住在 `routes_pages`，配置路由同样反向去拿。三个模块
-        于是成了一个靠函数内 import 撑住的环——import 图上看不出来，读代码的人也说不清
-        谁在谁上面。共享件下沉到 web 层（`web_entry`），路由模块之间只剩鉴权依赖这一个方向。
+        登录、首启与错误三页共用的薄壳 `page_shell` 和配置页要的运行信息住在 web 层（`web_entry`），
+        `same_origin` 住在 `routes_auth`。共享件放进任何一个 `routes_*`，别的路由模块就得反向去拿，
+        成一个靠函数内 import 撑住的环——import 图上看不出来，读代码的人也说不清谁在谁上面。
         函数内的 import 一样算：`_local_imports` 扫整棵语法树，不只看文件顶部。
         """
         offenders = []

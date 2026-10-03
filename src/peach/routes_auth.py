@@ -10,13 +10,12 @@
 from __future__ import annotations
 
 import hmac
-import html
 from collections import OrderedDict
 import threading
 import time
 from urllib.parse import urlsplit
 from . import access, tunnel
-from .web_entry import check_html, entry_page_style
+from .web_entry import page_shell
 from starlette.concurrency import run_in_threadpool
 from urllib.parse import parse_qs
 
@@ -193,51 +192,29 @@ def set_auth_cookie(response: Response, request: Request, *, days: int = 30, log
         response.delete_cookie("tok", path="/")
 
 
-def login_html(next_path: str, *, invalid: bool = False) -> str:
-    """登录页：Auth Card 的单字段形态，控件全部来自 `web_entry`。
+def login_html(next_path: str, *, invalid: bool = False, error: str = "") -> str:
+    """登录页的薄壳：表单由页面包画，服务端只给净化过的 `next`、口令是否错误与限流或参数错误的原因。"""
+    data = {"next": next_path}
+    if invalid:
+        data["invalid"] = "true"
+    if error:
+        data["error"] = error
+    return page_shell("登录 Peach", "login", data)
 
-    这一页和错误页是同一副面孔的两个状态，所以样式层整份取 `entry_page_style()`，
-    不在这里另留一套色板和控件——那一套自成一格，登录完跳进馆藏就像换了个产品。
-    """
-    safe_next = html.escape(next_path, quote=True)
-    # 密码错了是这个字段的事，不是整页的事：框体线条转 danger 色，原因紧跟在下面。
-    field_state = "true" if invalid else "false"
-    described = ' aria-describedby="login-error"' if invalid else ""
-    error = '<p class="bad" id="login-error" role="alert">访问密码不正确</p>' if invalid else ""
-    return (
-        '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<meta name="color-scheme" content="light dark">'
-        # 公网入口在跑的时候这一页就在互联网上，不希望它进任何搜索结果。
-        # 响应头那一份（`X-Robots-Tag`）管所有响应，这一行管只读 HTML 的爬虫。
-        '<meta name="robots" content="noindex, nofollow">'
-        '<title>登录 Peach</title>'
-        # 图标声明和主站同一份。书签地址是 `/`，没有会话时这一页就是它实际停在的地方：
-        # 这里不声明，浏览器只会去要 `/favicon.ico`，把「这个站没有图标」记进书签。
-        '<link rel="icon" href="/favicon.ico" type="image/x-icon">'
-        # 手动选的那一档压过系统偏好，必须在第一次绘制前定下来——固定浅色的人不该在
-        # 登录页先看一眼深色。深浅两套色板由 `entry_page_style()` 随后给出。
-        '<script>(()=>{try{'
-        'const c=JSON.parse(localStorage.getItem("peach.settings.v1")||"{}").theme;'
-        'if(c==="light"||c==="dark")document.documentElement.dataset.theme=c;'
-        '}catch(e){}})();</script>'
-        f'{entry_page_style()}</head><body><main>'
-        '<section class="setup-auth-card login-card">'
-        '<header><img class="mark" src="/peach-logo.png" alt="" width="40" height="40"><h1>Peach</h1></header>'
-        '<form method="post" action="/login">'
-        '<div class="field"><label class="field-label" for="login-token">访问密码</label>'
-        '<span class="entry-input"><input id="login-token" name="token" type="password" maxlength="256" '
-        f'autocomplete="current-password" aria-invalid="{field_state}"{described} required autofocus></span>'
-        f'{error}</div>'
-        f'<input name="next" type="hidden" value="{safe_next}">'
-        + check_html("days", "保持登录", checked=True, value="30")
-        + '<button type="submit">登录</button></form></section></main></body></html>'
-    )
+
+def _safe_next(value: str) -> str:
+    """登录后去哪：只认站内路径，`//` 开头的协议相对地址会跳出本站。"""
+    return value if value.startswith("/") and not value.startswith("//") else "/"
+
+
+def _wants_page(request: Request) -> bool:
+    """浏览器表单提交的 `Accept` 里有 `text/html`，出错时回登录页并原位报错；其余调用方回 JSON。"""
+    return "text/html" in request.headers.get("accept", "")
 
 
 @router.get("/login", response_class=HTMLResponse)
 def login(request: Request, next: str = "/"):
-    next_path = next if next.startswith("/") and not next.startswith("//") else "/"
+    next_path = _safe_next(next)
     if _authorized(request, request.app.state.settings.token,
                    _first_query_values(request)):
         return RedirectResponse(next_path, status_code=303)
@@ -247,15 +224,19 @@ def login(request: Request, next: str = "/"):
 @router.post("/login")
 async def login_submit(request: Request):
     same_origin(request)
-    _login_attempt(request)
-    token = request.app.state.settings.token
     form = parse_qs(
         (await request.body()).decode("utf-8", "replace"), keep_blank_values=True,
     )
+    next_path = _safe_next((form.get("next") or ["/"])[0])
+    try:
+        _login_attempt(request)
+    except HTTPException as exc:
+        if not _wants_page(request):
+            raise
+        return HTMLResponse(login_html(next_path, error=str(exc.detail)), status_code=exc.status_code,
+                            headers=exc.headers)
+    token = request.app.state.settings.token
     supplied = (form.get("token") or [""])[0]
-    next_path = (form.get("next") or ["/"])[0]
-    if not next_path.startswith("/") or next_path.startswith("//"):
-        next_path = "/"
     policy = access.load(request.app.state.settings.access_path)
     if token and policy["mode"] != "open" and not await run_in_threadpool(access.verify, policy, supplied, token):
         return HTMLResponse(login_html(next_path, invalid=True), status_code=401)
@@ -264,7 +245,10 @@ async def login_submit(request: Request):
         if not 0 <= days <= 365:
             raise ValueError
     except ValueError:
-        raise HTTPException(400, "请选择有效的保持登录时间") from None
+        message = "请选择有效的保持登录时间"
+        if _wants_page(request):
+            return HTMLResponse(login_html(next_path, error=message), status_code=400)
+        raise HTTPException(400, message) from None
     response = RedirectResponse(next_path, status_code=303)
     set_auth_cookie(response, request, days=days, login=True)
     return response

@@ -955,8 +955,9 @@ class StandaloneConfigurationTests(_Case):
         self.assertEqual(before, self.config.path.read_bytes())
 
     def test_browser_navigations_get_an_error_page_instead_of_raw_json(self):
-        """地址栏里直接打开一个 403／404／409 的路径，看到的是 Peach 的页面，不是一行 JSON。
+        """地址栏里直接打开一个出错的路径，看到的是 Peach 的页面，不是一行 JSON。
 
+        错误页由页面包画：壳里只有状态码与已换成中文的说明，标题与说明的显隐归前端。
         `/api/` 下的路径和不要 HTML 的调用方仍拿 JSON——页面脚本按 `error` 字段取原因。
         """
         from fastapi import HTTPException
@@ -966,41 +967,29 @@ class StandaloneConfigurationTests(_Case):
         app = create_app(PeachSettings(configured=True, token="test-token",
                                        db_path=self.config.data_root / "database" / "ledger.db"))
 
-        def refuse():
-            raise HTTPException(409, "请先完成首次设置")
+        def refuse(status: int):
+            raise HTTPException(status, {403: "请在运行 Peach 的电脑上打开配置", 409: "请先完成首次设置"}
+                                .get(status, "服务出错"))
         # 页面 catch-all 排在最后会吃掉一切路径，测试路由要插到它前面。
-        app.add_api_route("/refuse", refuse, methods=["GET"])
+        app.add_api_route("/refuse/{status}", refuse, methods=["GET"])
         app.router.routes.insert(0, app.router.routes.pop())
+        html = {"Accept": "text/html,application/xhtml+xml"}
         with TestClient(app, base_url="http://localhost") as client:
-            page = client.get("/refuse", headers={"Accept": "text/html,application/xhtml+xml"})
-            self.assertEqual(page.status_code, 409)
-            self.assertTrue(page.headers["content-type"].startswith("text/html"))
-            self.assertIn("<h1>现在不能这样做</h1>", page.text)
-            self.assertIn('<p class="lede">请先完成首次设置</p>', page.text)
-            self.assertIn('<a class="geist-button primary" href="/">返回首页</a>', page.text)
-            self.assertIn('a{color:var(--tungsten);text-decoration:none}', page.text)
-            self.assertIn('a:hover{text-decoration:none}', page.text)
-            self.assertIn("@media (prefers-color-scheme:dark)", page.text)
+            for status, detail in ((403, "请在运行 Peach 的电脑上打开配置"), (409, "请先完成首次设置"),
+                                   (400, "服务出错")):
+                with self.subTest(status):
+                    page = client.get(f"/refuse/{status}", headers=html)
+                    self.assertEqual(page.status_code, status)
+                    self.assertTrue(page.headers["content-type"].startswith("text/html"))
+                    self.assertIn(f'<div id="peach-page" data-page="error" data-status="{status}" '
+                                  f'data-detail="{detail}"></div>', page.text)
+                    self.assertIn('<script type="module" src="/dist/peach-pages.js"></script>', page.text)
+                    self.assertNotIn("/dist/peach-entry.js", page.text)
+                    self.assertNotIn("<style", page.text)
             missing = client.get("/no-such-page", headers={"Accept": "text/html"})
             self.assertEqual(missing.status_code, 404)
-            self.assertIn("<h1>四〇四</h1>", missing.text)
-            self.assertNotIn('<p class="lede">', missing.text)
-            self.assertNotIn("这个地址下没有页面。", missing.text)
-            self.assertIn('<a class="geist-button primary" href="/">返回首页</a>', missing.text)
-            from peach.web_entry import _board_button_rules, _button_rules
-            self.assertIn('.geist-button{', _button_rules())
-            self.assertIn(_button_rules(), missing.text)
-            # 主按钮那一颗连同它用到的 token 从 board.css 原样取：这三张页面上的强调档
-            # 和站内是同一份规则，不是照着抄的第二份色值，站内改一次渐变这里跟着走。
-            board_rules = _board_button_rules()
-            self.assertIn('.primary:not(:disabled){position:relative;isolation:isolate;'
-                          'background:var(--board-blue);', board_rules)
-            self.assertIn('.primary:not(:disabled):hover::before{opacity:1}', board_rules)
-            self.assertIn('.primary:not(:disabled):active{background:var(--board-blue-active)}',
-                          board_rules)
-            self.assertIn('--board-blue:linear-gradient(', board_rules)
-            self.assertIn(board_rules, missing.text)
-            data = client.get("/refuse", headers={"Accept": "application/json"})
+            self.assertIn('data-page="error" data-status="404" data-detail="这个地址下没有页面。"', missing.text)
+            data = client.get("/refuse/409", headers={"Accept": "application/json"})
             self.assertEqual(data.status_code, 409)
             self.assertEqual(data.json(), {"error": "请先完成首次设置"})
             api = client.get("/api/configuration", headers={"Accept": "text/html"})

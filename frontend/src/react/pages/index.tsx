@@ -1,21 +1,27 @@
 /* 独立页面包的构建入口（`web/dist/peach-pages.js`）。
  *
- * 服务端给的薄壳里只有一个挂载点 `#peach-page`，`data-page` 说是哪一页。这份产物不依赖主界面的
- * 任何模块：不读 `/js/` 下的遗留层，不带 Query 缓存，共用控件（折叠、整页滚动条、来源站标）由
- * `vite.pages.config.ts` 直接打进来。弹出层落在 body 上，body 本身就是 `.peach-react` 容器。 */
+ * 首启、登录与错误三页共用服务端给的同一张薄壳，壳里只有一个挂载点 `#peach-page`：`data-page` 说是
+ * 哪一页，其余 `data-*` 是服务端才知道的变量，原样交给那一页。这份产物不依赖主界面的任何模块：
+ * 不读 `/js/` 下的遗留层，不带 Query 缓存，共用控件（折叠、来源站标）由 `vite.pages.config.ts`
+ * 直接打进来。三页都用浏览器原生滚动条。弹出层落在 body 上，body 本身就是 `.peach-react` 容器。
+ *
+ * 这个包不要会话就能取（ADR-0094）：不得 import 别的产物，不得内嵌账本、配置或凭据派生的数据。 */
 import './pages.css';
 
 import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { attachOverlayScrollbar } from '../../ui-kit/overlay-scrollbar';
+import { ErrorPage } from './error/error-page';
+import { LoginPage } from './login/login-page';
+import type { PageData } from './page-data';
 import { SetupPage } from './setup/setup-page';
 
-const PAGES: Readonly<Record<string, ComponentType>> = { setup: SetupPage };
+const PAGES: Readonly<Record<string, ComponentType<{ data: PageData }>>> = {
+  setup: SetupPage,
+  login: LoginPage,
+  error: ErrorPage,
+};
 
 const mount = document.getElementById('peach-page');
 const Page = mount ? PAGES[mount.dataset.page ?? ''] : undefined;
-if (mount && Page) {
-  attachOverlayScrollbar(document.documentElement, { variant: 'page' });
-  createRoot(mount).render(<Page />);
-}
+if (mount && Page) createRoot(mount).render(<Page data={{ ...mount.dataset }} />);

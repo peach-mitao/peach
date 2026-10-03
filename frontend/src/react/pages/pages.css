@@ -1,6 +1,6 @@
 /* 独立页面包的样式入口（`web/dist/peach-pages.css`）。
  *
- * 首启页由服务端吐一个薄壳，页面上只有这一份样式表，没有 `board.css` 与 `/app.css`。控件、
+ * 首启、登录与错误三页由服务端吐同一张薄壳，页面上只有这一份样式表，没有 `board.css` 与 `/app.css`。控件、
  * token 与容器基线和主界面的 React 子树同一套（`../base.css`），扫描范围只到页面包真正用到的
  * 源码，产物才小。壳把 `.peach-react` 挂在 `<body>` 上、`.dark` 挂在 `<html>` 上。 */
 @import "tailwindcss/theme.css" layer(theme);
@@ -35,54 +35,4 @@ body.peach-react {
 
 .fcollapse.fcollapse-settled {
   overflow: visible;
-}
-
-/* 整页那条覆盖式滚动条（`src/ui-kit/overlay-scrollbar.ts`），几何同 `web/css/01-base.css`，
- * 颜色换成 BoardUI token。原生滚动条在挂上之后才藏，脚本没跑到时仍有系统那条可用。 */
-.ovtrack {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.ovtrack[hidden] {
-  display: none;
-}
-
-.ovtrack.page {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 12px;
-  z-index: 91;
-}
-
-.ovthumb {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 3px;
-  border-radius: 9999px;
-  background: var(--color-border-button-hover);
-  transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@media (pointer: fine) {
-  .ovtrack.page .ovthumb {
-    pointer-events: auto;
-  }
-}
-
-.ovtrack.page .ovthumb:hover,
-.ovtrack.page.dragging .ovthumb {
-  width: 6px;
-}
-
-[data-overlay-scrollbar] {
-  scrollbar-width: none;
-}
-
-[data-overlay-scrollbar]::-webkit-scrollbar {
-  display: none;
 }

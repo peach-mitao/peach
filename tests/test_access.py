@@ -73,39 +73,35 @@ class AccessTests(unittest.IsolatedAsyncioTestCase):
         session_header = next(header for header in response.headers.get_list("set-cookie") if header.startswith(access.COOKIE))
         self.assertNotIn("Max-Age", session_header)
         self.assertEqual((await self.login(days=366)).status_code, 400)
-        html = routes_auth.login_html("/")
-        self.assertIn('type="checkbox" name="days" value="30" checked', html)
-        self.assertNotIn('type="radio"', html)
-        # 勾上就是 30 天：没有哪一处本地设置能把它改成别的数。
-        self.assertNotIn("loginDays", html)
 
-    def test_the_login_page_is_the_auth_card_in_its_single_field_form(self):
-        """登录页是 Auth Card 的单字段形态：样式整份取 `entry_page_style()`，与错误页同一副。
+    async def test_the_login_page_is_a_shell_around_the_page_bundle(self):
+        """登录页由页面包画：壳里只有 `next`、口令错误的标记与页面包，表单字段由页面包按原名提交。
 
-        字段是 Board Input（label 在上、`.entry-input` 包住、聚焦环由卡片规则接管），
-        「保持登录」是站内自绘 Checkbox，「登录」是全宽 primary 提交键；页面自己不再留
-        第二套色板。主题预读脚本要排在样式之前，手动选的深浅色才能在首绘前定下来。
+        `next` 经净化与 HTML 转义写进挂载点；主题预读排在任何样式之前，手动选的深浅色才能在首绘前定下来。
+        控件的外观、`aria-invalid`、`role="alert"` 与焦点归 vitest 与截图验收。
         """
-        from peach.web_entry import CHECK_SVG, entry_page_style
-        html = routes_auth.login_html("/next?x=1")
-        self.assertIn(entry_page_style(), html)
-        self.assertNotIn("--alert:", html, "登录页不留自己那套色板")
-        self.assertIn('<section class="setup-auth-card login-card">', html)
-        self.assertIn('<header><img class="mark" src="/peach-logo.png" alt="" width="40" height="40"><h1>Peach</h1></header>', html)
-        self.assertIn('<div class="field"><label class="field-label" for="login-token">访问密码</label>'
-                      '<span class="entry-input"><input id="login-token" name="token" type="password"', html)
-        self.assertIn('aria-invalid="false" required autofocus>', html)
-        self.assertIn('<label class="check"><span class="pcheck"><input type="checkbox" name="days" value="30" checked>', html)
-        self.assertIn(CHECK_SVG, html)
-        self.assertIn('<span>保持登录</span></label><button type="submit">登录</button></form>', html)
-        self.assertIn('value="/next?x=1"', html)
-        self.assertNotIn('role="alert"', html)
-        theme_script = 'document.documentElement.dataset.theme=c;'
-        self.assertLess(html.index(theme_script), html.index('<style'), "主题预读要排在任何样式之前")
-        # 密码错了是字段的事：框体转 danger 色，原因紧跟在字段里并由 aria-describedby 指过去。
-        wrong = routes_auth.login_html("/", invalid=True)
-        self.assertIn('aria-invalid="true" aria-describedby="login-error" required autofocus>', wrong)
-        self.assertIn('</span><p class="bad" id="login-error" role="alert">访问密码不正确</p></div>', wrong)
+        access.save(self.path, "correct-password")
+        page = await self.client.get("/login", params={"next": '/stats?x=1&y="<b>'})
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('<div id="peach-page" data-page="login" data-next="/stats?x=1&amp;y=&quot;&lt;b&gt;">',
+                      page.text)
+        self.assertIn('<link rel="stylesheet" href="/dist/peach-pages.css">', page.text)
+        self.assertIn('<script type="module" src="/dist/peach-pages.js"></script>', page.text)
+        self.assertNotIn("<style", page.text)
+        self.assertNotIn("<form", page.text)
+        self.assertLess(page.text.index("dataset.theme=c"), page.text.index('<link rel="stylesheet"'),
+                        "主题预读要排在任何样式之前")
+        for unsafe in ("//evil.example/", "https://evil.example/"):
+            with self.subTest(unsafe):
+                page = await self.client.get("/login", params={"next": unsafe})
+                self.assertIn('data-page="login" data-next="/">', page.text)
+        wrong = await self.client.post("/login", data={"token": "incorrect", "next": "/stats", "days": "30"})
+        self.assertEqual(wrong.status_code, 401)
+        self.assertIn('data-page="login" data-next="/stats" data-invalid="true">', wrong.text)
+        self.assertFalse(self.client.cookies)
+        accepted = await self.client.post("/login", data={"token": "correct-password", "next": "/stats", "days": "30"})
+        self.assertEqual(accepted.status_code, 303)
+        self.assertEqual(accepted.headers["location"], "/stats")
 
     async def test_password_change_revokes_sessions_and_disable_is_explicit(self):
         policy = access.save(self.path, "correct-password")
