@@ -4,8 +4,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { CatalogFilterPage } from '../../src/react/catalog-filter/catalog-filter-page';
-import { EMPTY_SLOTS, type CatalogFilterProps } from '../../src/react/catalog-filter/catalog-filter';
-import { mount } from './render';
+import { EMPTY_SLOTS, type CatalogFilterProps, type TierPerformer } from '../../src/react/catalog-filter/catalog-filter';
+import { mount, mountRoot, pending, settle } from './render';
 
 function props(patch: Partial<CatalogFilterProps> = {}): CatalogFilterProps {
   return {
@@ -41,5 +41,33 @@ describe('空馆藏', () => {
     const host = await mount(<CatalogFilterPage {...props({ empty: true, offscreen: true })} />);
     expect(count(host, '[data-catalog-placeholder="performer"]')).toBe(EMPTY_SLOTS);
     expect(host.querySelector('[data-catalog-frame]')).toBeNull();
+  });
+});
+
+describe('续页', () => {
+  it('上一份名单要的那页还在路上时换了名单，新名单照样续页，旧的那页回来不进这一排', async () => {
+    // 一排一枚铺不满一行：没溢出就一直停在右端，每次画完都要下一页。
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(1000);
+    const stale = pending<TierPerformer[]>();
+    const moreTops = vi.fn<CatalogFilterProps['actions']['moreTops']>()
+      .mockReturnValueOnce(stale.answer)
+      .mockResolvedValueOnce([{ name: '新二', ringHtml: '' }])
+      .mockResolvedValue([]);
+    const tiers = (key: string, name: string) => ({ key, performers: [{ name, ringHtml: '' }], studios: [] });
+    const base = props();
+    const page = (key: string, name: string) =>
+      <CatalogFilterPage {...base} tiers={tiers(key, name)} actions={{ ...base.actions, moreTops }} />;
+    const { host, rerender } = await mountRoot(page('旧', '旧一'));
+    expect(moreTops).toHaveBeenCalledTimes(1);
+
+    await rerender(page('新', '新一'));
+    await settle();
+    await stale.release([{ name: '旧二', ringHtml: '' }]);
+    await settle();
+
+    const names = [...host.querySelectorAll('[data-tier-performer]')].map((node) => node.getAttribute('data-entity-name'));
+    expect(names).toEqual(['新一', '新二']);
+    expect(moreTops).toHaveBeenCalledTimes(3);
   });
 });
