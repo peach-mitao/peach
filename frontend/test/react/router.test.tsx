@@ -88,6 +88,19 @@ it('壳写地址不派发；后退前进各派发一次，地址没变的 popsta
   expect(dispatch).toHaveBeenCalledTimes(2);
 });
 
+it('派发带来由：启动那一次是 boot（落在详情地址上也是），之后的后退前进与 React 子树写的是 history', async () => {
+  const r = await load('/item/7');
+  let navigate: ReturnType<typeof useNavigate> | null = null;
+  function Probe() { navigate = useNavigate(); return null }
+  await mount(r, <Probe />);
+  const dispatch = vi.fn();
+  await act(async () => { await r.startRouting(dispatch) });
+  await act(async () => { r.shellNavigate('/trash') });
+  await act(async () => { pop('/item/7') });
+  await act(async () => { void navigate!('/performers') });
+  expect(dispatch.mock.calls).toEqual([['boot'], ['history'], ['history']]);
+});
+
 it('React 子树里的 navigate 让壳打开那一屏', async () => {
   const r = await load('/immerse');
   let navigate: ReturnType<typeof useNavigate> | null = null;

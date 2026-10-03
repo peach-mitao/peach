@@ -21,7 +21,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Route, Router, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router';
 
 import {
-  listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen, type BackgroundLocation, type ManagedEntry,
+  backgroundOf, listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen, type ManagedEntry,
   type Navigation,
 } from '@peach/history';
 
@@ -114,13 +114,6 @@ const ManagedPortal = memo(function ManagedPortal(
   if (!isRoutedPath(entry.path)) return null;
   return createPortal(managedPage(entry.path, entry.props, actions, go), entry.host, String(entry.revision));
 });
-
-/** 条目里记的背景：壳在详情与队列条目的 `usr` 里写 `{ backgroundLocation, overlay }`，别的条目没有。 */
-function backgroundOf(state: unknown): BackgroundLocation | null {
-  const background = (state as { backgroundLocation?: Partial<BackgroundLocation> } | null)?.backgroundLocation;
-  if (typeof background?.pathname !== 'string') return null;
-  return { pathname: background.pathname, search: typeof background.search === 'string' ? background.search : '' };
-}
 
 /* 页面组的 `location` 一直给（没有背景就给当前地址）：给与不给之间 `<Routes>` 会多包一层 `LocationContext`，
  * 来回切换就会把 `path="*"` 的元素拆掉重挂。 */

@@ -21,7 +21,7 @@ import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sideba
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
-import { clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay } from './dist/peach-ui.js';
+import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -2263,7 +2263,8 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   id=+id;
   const entering=!location.pathname.startsWith('/follow/item/');
   if(push&&entering&&!preserveReturn)followDetailReturnPath=location.pathname+location.search;
-  if(!push&&!preserveReturn)followDetailReturnPath='/follow';
+  /* 后退前进进来按条目记的来处（带筛选的那一份列表）；冷启动与没记背景的条目回 `/follow`。 */
+  if(!push&&!preserveReturn)followDetailReturnPath=takeOverlayReturn()||'/follow';
   // 条目的背景另记：从列表进来记列表这一页（带筛选），组内换条沿用上一条的。
   if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
@@ -3546,9 +3547,9 @@ const QUEUE_ROUTES={mix:'/mix',parts:'/parts',editions:'/editions',playlist:'/pl
 function openQueue(kind,key,itemId,push,anchor=null){
   key=+key;
   const same=activeQueue?.kind===kind&&(kind==='playlist'?activeQueue.playlistId:activeQueue.seedId)===key;
-  if(push&&(kind==='playlist'||!same))detailReturnPath=location.pathname+location.search;
-  /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景，
-     播放列表也一样，不跟 `detailReturnPath` 走。 */
+  /* 同一个队列里换条，来处保持打开队列那一刻的那一页：播放列表关掉回列表页并重读。 */
+  if(push&&!same)detailReturnPath=location.pathname+location.search;
+  /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景。 */
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
   return openItem(itemId==null?null:+itemId,false,queue,anchor,push);
@@ -3672,7 +3673,10 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   const needsReturnRestore=detailReturnNeedsRestore||(!push&&!returnSurfaceReady);
   if(!returnSurfaceReady)fillIdleCatalog();
   const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(currentBarsContext());
+  /* 点进来记当前这一页；后退前进进来按条目记的来处，条目没记（冷启动、深链）就沿用上一次记的。
+     队列从详情里换条也以 push=false 进来（`queuePush`），来处已由 `openQueue` 定好，不在这里取。 */
   if(push)detailReturnPath=location.pathname+location.search;
+  else if(!queuePush)detailReturnPath=takeOverlayReturn()||detailReturnPath;
   // 条目的背景另记：从页面点进来记这一页，从详情里点开另一条沿用上一条的背景，不嵌套。
   if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
@@ -3936,13 +3940,16 @@ function immerseStartId(){
   return /^\d+$/.test(id||'')?Number(id):undefined;
 }
 
-async function restoreRoute(){
+/* `origin` 由 `startRouting` 给：启动那一次是 'boot'，后退前进是 'history'；壳自己写完地址再调时不给。 */
+async function restoreRoute(origin){
   surfaceEpoch++;
   barsRequestSeq++;
   syncPageTitle(location.href);
   paintSidebar();
-  /* 后退前进与启动不接着上一次记下的详情背景：跳过几条落到别的详情上时，那份背景不属于它。 */
+  /* 不接着上一次记下的详情背景：跳过几条落到别的详情上时，那份背景不属于它。后退前进落到详情条目上
+     时改接条目自己记的背景与来处；启动不读，刷新、深链落在详情上照旧补画目录网格、关掉回缺省来处。 */
   clearOverlayBackground();
+  if(origin==='history')adoptOverlayState(peachHistory.navigation.location.state);
   const path=decodeURIComponent(location.pathname);
   void syncPostSetupTutorial();
   if(path==='/'&&new URLSearchParams(location.search).get('state')==='ads'){

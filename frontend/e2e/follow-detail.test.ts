@@ -1,4 +1,4 @@
-/* 关注详情岛（`follow-detail`）在真浏览器里的行为：从列表进出、深链、舞台在媒体框里挂
+/* 关注详情岛（`follow-detail`）在真浏览器里的行为：从列表进出、后退回详情再关掉保住筛选、深链、舞台在媒体框里挂
  * Video.js、多图轮播、合集与多媒体两种队列、写操作与撤销、隐藏与恢复、标签回列表、手机。
  * 灯箱收到整组图那一条在 `photo-lightbox.test.ts`。
  *
@@ -59,6 +59,30 @@ describe('关注详情岛', () => {
       await pathIs(page, '/follow');
       await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor();
       assert.equal(seen.list, 0, '关掉详情回列表重取了一遍');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('筛过一档再进详情：后退回到详情再关掉，回到同一档筛选', { timeout: 60_000 }, async () => {
+    const opened = await openFollowFeed(browser, '/follow?status=new', DESKTOP);
+    try {
+      const page = opened.page;
+      const filtered = () => page.waitForFunction(
+        () => location.pathname === '/follow' && location.search === '?status=new', undefined, { timeout: 10_000 });
+      await page.locator('[data-follow-item="1002"] [data-follow-open]').click();
+      await pathIs(page, '/follow/item/1002');
+      await page.locator(DETAIL_READY).waitFor();
+      await page.locator('#closeStage').click();
+      await filtered();
+      await page.goBack();
+      await pathIs(page, '/follow/item/1002');
+      await page.locator(DETAIL_READY).waitFor();
+      await page.locator('#closeStage').click();
+      await filtered();
+      await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor();
+      assert.equal(await page.locator('#stage[open]').count(), 0);
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();
