@@ -1918,7 +1918,8 @@ describe('设计决定', () => {
         const stack = element.querySelector('[data-media-stack],[data-mix-stack]')!;
         const cover = element.querySelector('[data-media-pic],[data-mix-cover]')!;
         return {
-          cover: getComputedStyle(cover).borderTopLeftRadius,
+          // 封面格的圆角由 clip-path 裁出来（media-card.css），格子本身不写 border-radius。
+          cover: getComputedStyle(cover).clipPath.match(/round (\S+)\)$/)?.[1] ?? '0px',
           ground: getComputedStyle(cover).backgroundColor,
           layers: ['::before', '::after'].map((pseudo) => getComputedStyle(stack, pseudo).borderTopLeftRadius),
           faces: element.querySelectorAll('[data-mix-faces]').length,
@@ -2731,7 +2732,7 @@ describe('设计决定', () => {
           gap: getComputedStyle(document.querySelector('#stats [data-playlist-grid]')!).gap,
           back: [back.borderTopWidth, back.inset, back.transform, back.opacity],
           mid: [mid.borderTopWidth, mid.inset, mid.transform, mid.opacity],
-          cover: [cover.backgroundColor, cover.borderRadius],
+          cover: [cover.backgroundColor, cover.clipPath],
           badge: [badge.backgroundColor, badge.backdropFilter, badge.minHeight, badge.borderRadius, badge.right, badge.bottom],
           avatars: [...card.querySelectorAll('[data-mix-avatars] button')].map((button) => {
             const style = getComputedStyle(button);
@@ -2746,7 +2747,7 @@ describe('设计决定', () => {
         gap: '18px',
         back: ['1px', '0px 12px 8px', 'matrix(1, 0, 0, 1, 0, -7)', '0.54'],
         mid: ['1px', '0px 6px 4px', 'matrix(1, 0, 0, 1, 0, -4)', '0.78'],
-        cover: ['rgb(0, 0, 0)', '14px'],
+        cover: ['rgb(0, 0, 0)', 'inset(0px round 14px)'],
         badge: ['rgba(12, 8, 8, 0.72)', 'blur(10px)', '28px', '10px', '9px', '9px'],
         avatars: [['38px', '0px', '5'], ['38px', '-22px', '4'], ['38px', '-22px', '3']],
         menu: ['30px', '30px', '10px', 'rgba(0, 0, 0, 0)'],

@@ -203,7 +203,7 @@ html.board-high-contrast .board-filter-frame.board-filter-frame.board-filter-fra
 
 .configfieldset.configfieldset:not([data-fieldset-type])>.geist-fieldset-footer,.cleanupfieldset.cleanupfieldset>.geist-fieldset-footer{background:var(--board-card-foot)}
 
-.gridstack .card .pic{border-radius:var(--surface-radius);overflow:hidden}
+.gridstack .card .pic{--pic-radius:var(--surface-radius)}
 .top{isolation:isolate}
 body.board-scrolled .top{box-shadow:none;border-bottom:0}
 /* 吸顶那一刻这块板离开纸面往上抬一档，三层影跟着加重：它盖住内容滚过去，两层之间
@@ -454,7 +454,7 @@ body>.board-filter-frame{margin-inline:16px}
 .iconswitch label{border-radius:8px}
 .iconswitch label:has(input:checked){background:var(--ground);box-shadow:0 1px 3px light-dark(#0002,#0009)}
 .card{overflow:visible;border-radius:var(--surface-radius)}
-.card :is(.pic,.mixstack){border-radius:var(--surface-radius)}
+.card .pic{--pic-radius:var(--surface-radius)}.card .mixstack{border-radius:var(--surface-radius)}
 .card .info{background:transparent}
 /* 纯图标按钮不继承浏览器按钮的水平内边距。 */
 .srctools button{padding:0;display:inline-grid;place-items:center;line-height:1;flex-shrink:0}
@@ -756,7 +756,7 @@ body button.danger.danger:not(:disabled):active::before{opacity:0}
 .board-library-menu .board-library-rows button:is(:hover,[aria-pressed=true]){background:none;box-shadow:none;color:var(--glass-text)}
 .board-library-menu .board-library-rows>.viewglide{border-radius:10px}
 .board-library-menu footer{border-color:var(--glass-low)}
-.card:hover .pic::after,.card.selected .pic::after{box-sizing:border-box;border-radius:inherit}.card.selected .pic::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;border:2px solid var(--on-media)}.card.selected .pic,.card.selected:hover .pic{box-shadow:none}
+.card:hover .pic::after,.card.selected .pic::after{box-sizing:border-box;border-radius:var(--pic-radius)}.card.selected .pic::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;border:2px solid var(--on-media)}.card.selected .pic,.card.selected:hover .pic{box-shadow:none}
 
 /* Board 公开基础控件：尺寸与来源登记在 docs/BOARD_UI.md。 */
 .pcheck{vertical-align:middle;align-self:center}.pcheck>span{position:relative;width:16px;height:16px;border:1px solid var(--color-border-button-default);border-radius:4px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs);transition:background .15s,border-color .15s,box-shadow .15s}
