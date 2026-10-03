@@ -42,7 +42,7 @@
 - 搜索玻璃用 `glideEase()` 的采样弹簧，`web/js/search-morph.js` 只管视口边界与轮廓关键帧。
 - 横排滚到头的回弹是 `wireHorizontalScroller` 内的 `edgeBounce`，头像排、厂牌排、新作排、筛选条共用；transitions.dev 的 43 条配方里没有（2026-09-23 核对）。越界位移借 UIScrollView 的橡皮筋公式 `(1 - 1/(x·c/d + 1))·d`，c = 0.55，与 use-gesture（MIT）的 `rubberband` 同一条，回弹走 `--spring-pane`。只抄公式不引依赖：拖动与滚轮归属已由 `wireHorizontalScroller` 判定。新作排自动滚动是同文件的 `wireAutoScroll`。
 - 浮层筛选首页是 React 岛 `catalog-filter`，资料页是 `entity-filter`，共用 `FilterGlassRows` 两排、交集条与排序键，滑动玻璃走 `use-view-glide.ts`。外框管玻璃与吸顶，壳管查询状态和取数，岛只画、动作回壳，按下态在发请求前由壳推到（首页 `updateIsland`，资料页 `updateManagedRoute`）；身份与观看状态的组合沿用 `/api/items`。
-- `web/board.css` 共用正式页面结构；登录与错误页共用 `web_entry.entry_page_style()`。首启页是独立页面包 `/dist/peach-pages.js` 里的 React 页，外框是 `frontend/src/react/pages/auth-card.tsx`，SPA 外壳之外的新页面挂进同一个包。
+- `web/board.css` 共用正式页面结构。首启、登录与错误三页是独立页面包 `/dist/peach-pages.js` 里的 React 页，服务端只吐 `web_entry.page_shell()` 那一张薄壳，外框是 `frontend/src/react/pages/auth-card.tsx`，SPA 外壳之外的新页面挂进同一个包。
 - `frontend/src/number-setting.ts` 共用带单位输入、可选 Switch、整数边界和锚定错误提示；关闭保留上次合法值，异步读取后切换也恢复实际值，保存归调用方。
 - 筛选内层的标签胶囊是 `FilterPill`，换一批、排序键与交集条是 `entity-filter-page.tsx` 导出的同一组组件，页面各自提供查询键与读数；`collectionHeaderHtml` 只剩资料页骨架那一排读数。横向行的拖动、滚轮、渐隐与卸载清理归 `wireHorizontalScroller` 同一个生命周期。
 - 选择范围与工具条用 `frontend/src/selection.ts`；馆藏、关注与复核保持各自身份、可见顺序、默认选择与写入权限，批量失败项的保留归业务。

@@ -131,8 +131,7 @@ BoardUI 的 76 个组件里没有图片网格或 gallery 控件，只有 carouse
 
 - 强调档全站一副面，三档渐变、`::before` 的交叉淡入和 `border:0` 都照上游；token 是
   `--board-blue`、`--board-blue-hover`、`--board-blue-active`，规则写在 `web/board.css` 的
-  `body :is(…).primary:not(:disabled)`，错误页、登录页和首启页由
-  `routes_pages._board_button_rules()` 取同一份过去，不抄第二份色值。
+  `body :is(…).primary:not(:disabled)`；错误页、登录页和首启页由页面包画，主按钮是 BoardUI Button。
 - `border:0` 不是省事：补一圈透明边在 `box-sizing:border-box` 下会把内容盒压掉 2px，而
   `background-origin` 是 padding-box，渐变被压到 34px 再延展回 36px，色标跟上游错开一像素。
 - **`padding` 是 Peach 的主动差异**：取 `8px 12px` 而不是上游四边 `8px`，中文字比拉丁字宽，
