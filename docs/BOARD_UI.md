@@ -376,8 +376,8 @@ Radio card 沿用 2026-09-08 取得的 `r/checkbox-card.json`（`checkbox-card.t
 
 ## 首次设置 Auth Card
 
-首启页（`frontend/src/react/pages/setup/`）的控件全部是 BoardUI 组件，外框是
-`pages/auth-card.tsx`；登录页与错误页仍是服务端 HTML，按钮那一档见下文 primary 的规则原文。
+首启、登录与错误三页（`frontend/src/react/pages/`）的控件全部是 BoardUI 组件，外框是
+`pages/auth-card.tsx`；登录页与错误页不带引言。
 
 Auth Card 是注册表里没有的组合：页面底色 `background-full` 上居中一张
 `background-secondary-default` 卡，一条 `separator-border`，24px 圆角，最宽 560px，内边距 32px，
@@ -435,9 +435,8 @@ Announcement 的图标标题动作结构和 RareUI Task List 的 24px 圆形状�
 Peach 照抄这一副面，包括 `::before` 的交叉淡入和 `border:0`。补一圈透明边会在
 `box-sizing:border-box` 下把内容盒压掉 2px，而 `background-origin` 是 padding-box，渐变被压到
 34px 再延展回 36px，色标就跟上游错开一像素。三档 token 是 `--board-blue`、`--board-blue-hover`、
-`--board-blue-active`，连同规则只在 `web/board.css` 一处，错误页与登录页由
-`web_entry._board_button_rules()` 取同一份过去；判据写在
-`test_the_primary_tier_has_one_face_and_crossfades_into_its_hover`。
+`--board-blue-active`，连同规则只在 `web/board.css` 一处；入口三页的主按钮是页面包里的
+BoardUI Button，读 BoardUI 自己的渐变 token。
 
 Peach 在这一档上的主动差异有两项：`padding` 取 `8px 12px` 而不是上游的四边 `8px`，中文字比
 拉丁字宽，四边等距时两侧字贴着边；上游 `active` 那一下的 0.98 缩放（`transform .42s`）没有跟，

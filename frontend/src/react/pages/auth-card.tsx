@@ -1,4 +1,4 @@
-/* 独立页面的外框：页面底色上居中一张描边卡，卡头是站标、标题和一句引言。
+/* 独立页面的外框：页面底色上居中一张描边卡，卡头是站标、标题和可选的一句引言。
  *
  * 注册表里没有 Auth Card，用 BoardUI token 组合，分层同配置页的设置区：整页 `background-full`
  * （由 `pages.css` 落在 body 上），卡面 `background-secondary-default` 加一条 `separator-border`，
@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 
 export function AuthCard({ title, lede, busy = false, children }: {
   title: string;
-  lede: string;
+  lede?: string;
   busy?: boolean;
   children?: ReactNode;
 }) {
@@ -20,7 +20,7 @@ export function AuthCard({ title, lede, busy = false, children }: {
         <header className="flex flex-col gap-1">
           <img src="/peach-logo.png" alt="" width={40} height={40} className="mb-4 size-10" />
           <h1 id="auth-card-title" className="text-title-2-medium text-text-primary">{title}</h1>
-          <p className="text-body-2-regular text-text-secondary">{lede}</p>
+          {lede ? <p className="text-body-2-regular text-text-secondary">{lede}</p> : null}
         </header>
         {children}
       </section>

@@ -22,7 +22,6 @@ import sys
 from collections.abc import Mapping, Sequence
 import re
 
-from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -38,7 +37,7 @@ from fastapi.responses import (
 from . import distribution, onboarding, settings_file
 from .config import PROJECT_ROOT
 from .routes_auth import require_asset_auth, require_page_auth, set_auth_cookie
-from .web_entry import entry_page_style, runtime_fact_entries
+from .web_entry import page_shell, runtime_fact_entries
 from .web_state import FAVICON
 
 router = APIRouter()
@@ -50,20 +49,6 @@ ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
 
 #: 回环地址的三种写法。既用来判提交端点的调用方，也用来判「只有这台电脑」那个监听选择。
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
-
-#: 首启页与错误页共用的文档头。
-_PAGE_HEAD = ('<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
-              '<meta name="viewport" content="width=device-width,initial-scale=1">'
-              '<meta name="color-scheme" content="light dark">'
-              '<link rel="icon" href="/favicon.ico" type="image/x-icon">')
-
-#: 手动选的深浅压过系统偏好，必须在第一次绘制前定下来：`data-theme` 与登录页同一写法，
-#: `dark` 类给 BoardUI 的色板，判据同 `web/index.html` 的预读脚本。
-_THEME_SCRIPT = ('<script>(()=>{try{'
-                 'const c=JSON.parse(localStorage.getItem("peach.settings.v1")||"{}").theme;'
-                 'document.documentElement.classList.toggle("dark",c==="dark"||(c!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches));'
-                 'if(c==="light"||c==="dark")document.documentElement.dataset.theme=c;'
-                 '}catch(e){}})();</script>')
 
 #: 首启页从主界面雪碧图里借的字形：「选择文件夹」与媒体来源的站标兜底。
 _SETUP_SYMBOLS = re.compile(r'<symbol id="i-(?:folder-search|hard-drive|database)"[^>]*>.*?</symbol>')
@@ -81,41 +66,22 @@ _SETUP_COPY = {
 #: 同一局域网里的设备看。命令行问答按 `HOST_OPTIONS` 的编号顺序念，两边取值一致。
 _HOST_ORDER = ("2", "1")
 
-#: 错误页的整页覆盖式滚动条（原生那条藏掉，滑块浮在内容上）取自入口包 `/dist/peach-entry.js`
-#: （源码 `frontend/src/ui-kit/`，主界面读同一份）。
-_SHARED_SCRIPT = ('<script type="module">import{attachOverlayScrollbar}from"/dist/peach-entry.js";'
-                  'attachOverlayScrollbar(document.documentElement,{variant:"page"});'
-                  '</script>')
-
 
 def setup_shell() -> str:
     """首次运行页的薄壳：题目、表单与完成态都由 `/dist/peach-pages.js` 按 `/api/setup/questions` 画出来。
 
-    这一页不加载主界面的样式与脚本，只取独立页面包；字形从 `web/index.html` 的雪碧图里按名字摘。
+    字形从 `web/index.html` 的雪碧图里按名字摘。
     """
     index = (PROJECT_ROOT / "web/index.html").read_text(encoding="utf-8")
-    symbols = ''.join(_SETUP_SYMBOLS.findall(index))
-    return (f'{_PAGE_HEAD}<title>Peach · 首次运行</title>{_THEME_SCRIPT}'
-            '<link rel="stylesheet" href="/vendor/inter/5.3.0/index.css">'
-            '<link rel="stylesheet" href="/dist/peach-pages.css">'
-            '<script type="module" src="/dist/peach-pages.js"></script></head>'
-            '<body class="peach-react">'
-            f'<svg width="0" height="0" aria-hidden="true" style="position:absolute">{symbols}</svg>'
-            '<div id="peach-page" data-page="setup"></div></body></html>\n')
+    return page_shell("Peach · 首次运行", "setup", symbols="".join(_SETUP_SYMBOLS.findall(index)))
 
 
 def error_page(status: int, message: str) -> str:
-    """浏览器导航撞上 403／404／409 时给人看的那一页，不是一行 JSON。"""
-    title = {403: "这里不能打开", 404: "四〇四", 409: "现在不能这样做"}.get(status, "出了点问题")
-    description = '' if status == 404 else f'<p class="lede">{escape(message)}</p>'
-    body = (f'<section class="error-page"><img class="mark" src="/peach-logo.png" alt=""><h1>{title}</h1>'
-            f'{description}<p><a class="geist-button primary" href="/">返回首页</a></p></section>')
-    return _document(f"Peach · {title}", body)
+    """浏览器导航撞上 HTTP 错误时给人看的那一页，不是一行 JSON。
 
-
-def _document(title: str, body: str) -> str:
-    return (f"{_PAGE_HEAD}<title>{title}</title>{entry_page_style()}"
-            f'</head><body><main>{body}</main>{_SHARED_SCRIPT}</body></html>\n')
+    标题、说明的显隐与「返回首页」归页面包，这里只给状态码和已换成中文的说明。
+    """
+    return page_shell("Peach", "error", {"status": str(status), "detail": message})
 
 
 def _copy_for(key: str, fallback: str) -> tuple[str, str]:
@@ -573,6 +539,29 @@ def app_module(request: Request, name: str,
     return asset_response(request, path, "text/javascript")
 
 
+def _bundle_response(request: Request, name: str) -> Response:
+    """`web/dist/` 下的一份产物。名字不合法或文件不在都是 404，浏览器直接打开时由错误页说。"""
+    if not re.fullmatch(r"[a-z0-9_-]+\.(?:js|css)", name):
+        raise HTTPException(404)
+    path = request.app.state.settings.page_path.parent / "dist" / name
+    if not path.is_file():
+        raise HTTPException(404)
+    media = "text/css" if name.endswith(".css") else "text/javascript"
+    return asset_response(request, path, media)
+
+
+# 两条字面量路由必须注册在 `/dist/{name}` 之前：路由按注册顺序匹配。
+@router.api_route("/dist/peach-pages.js", methods=["GET", "HEAD"])
+@router.api_route("/dist/peach-pages.css", methods=["GET", "HEAD"])
+def page_bundle(request: Request):
+    """入口页的页面包，不要会话（ADR-0094）：登录页要在拿到会话之前出图。
+
+    放行的只有这两个文件。它们提交进 Git、随仓库分发，不读账本、不含配置与凭据，内容不随
+    登录与否变化；页面包也不 import 别的产物。其余 `/dist/*` 仍走下面那条要会话的路由。
+    """
+    return _bundle_response(request, request.url.path.rsplit("/", 1)[1])
+
+
 @router.api_route("/dist/{name}", methods=["GET", "HEAD"])
 def app_bundle(request: Request, name: str,
                args: dict[str, str] = Depends(require_asset_auth)):
@@ -584,13 +573,7 @@ def app_bundle(request: Request, name: str,
     名字判据和 `/js/` 逐字一致，只多认一个 `.css`：产物名不带内容哈希，也就不需要
     名字里再有点，`peach-ui.js.map` 这类附带文件跟着一起落在 404。
     """
-    if not re.fullmatch(r"[a-z0-9_-]+\.(?:js|css)", name):
-        return PlainTextResponse("bad bundle name", status_code=404)
-    path = request.app.state.settings.page_path.parent / "dist" / name
-    if not path.is_file():
-        return PlainTextResponse("missing", status_code=404)
-    media = "text/css" if name.endswith(".css") else "text/javascript"
-    return asset_response(request, path, media)
+    return _bundle_response(request, name)
 
 
 @router.api_route("/dev/agentation.js", methods=["GET", "HEAD"])

@@ -1659,7 +1659,7 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_login_posts_the_token_without_putting_it_in_the_url(self):
         page = await self.client.get("/login?next=/stats")
         self.assertEqual(page.status_code, 200)
-        self.assertIn('type="password"', page.text)
+        self.assertIn('data-page="login" data-next="/stats"', page.text)
         refused = await self.client.post(
             "/login", content="token=wrong&next=%2Fstats",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -1684,25 +1684,48 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('<link rel="icon" href="/favicon.ico" type="image/x-icon">', page.text)
 
     async def test_the_login_page_follows_the_chosen_theme(self):
-        """登录页在拿到 cookie 之前出图，色板随入口页共用样式内联，跟着同一个选择走。
+        """登录页在拿到 cookie 之前出图，深浅色跟着同一个选择走，在第一次绘制前定下来。
 
-        它取不到 `/app.css`，颜色只能写在页面里。写死一档的话，固定浅色的人从地址栏
-        直接进来先看见一整屏黑，登录完才跳回浅色——同一次打开出现两套配色。
+        手动选的那一档存在页面自己的 localStorage 里，主题预读读它，排在页面包的样式之前；
+        默认浅色、跟随系统的深色、手动那一档压过系统这三支的色值由截图验收。
         """
-        from peach.web_entry import entry_page_style
         page = await self.client.get("/login?next=/")
         self.assertEqual(page.status_code, 200)
         self.assertIn('<meta name="color-scheme" content="light dark">', page.text)
-        self.assertIn(entry_page_style(), page.text)
-        # 三条分支：默认浅色、跟随系统的深色、手动选的那一档压过系统。
-        self.assertIn(":root{--bg:#f7f7f7;--page:#f7f7f7;--ground:#fff;", page.text)
-        self.assertIn("@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111;", page.text)
-        self.assertIn(":root[data-theme=dark]{--bg:#111;", page.text)
-        self.assertIn("body{background:var(--page)}", page.text)
-        # 手动选的那一档存在页面自己的 localStorage 里，首帧之前就要读出来。
+        self.assertIn('<link rel="stylesheet" href="/dist/peach-pages.css">', page.text)
         self.assertIn('localStorage.getItem("peach.settings.v1")', page.text)
         self.assertLess(page.text.index('localStorage.getItem("peach.settings.v1")'),
-                        page.text.index("<style"), "主题预读要排在任何样式之前")
+                        page.text.index('<link rel="stylesheet"'), "主题预读要排在任何样式之前")
+
+    async def test_refused_browser_logins_come_back_to_the_page_and_others_get_json(self):
+        """浏览器表单提交（`Accept` 含 `text/html`）撞上限流或保持登录时间不合法时回登录页并原位报错，
+        状态码照旧；其余调用方回 JSON。"""
+        routes_auth._ATTEMPTS.clear()
+        self.addCleanup(routes_auth._ATTEMPTS.clear)
+        form = {"Content-Type": "application/x-www-form-urlencoded"}
+        page = {**form, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"}
+        body = "token=secret&next=%2Fstats&days=999"
+        refused = await self.client.post("/login", content=body, headers=page)
+        self.assertEqual(refused.status_code, 400)
+        self.assertTrue(refused.headers["content-type"].startswith("text/html"))
+        self.assertIn('data-page="login" data-next="/stats" data-error="请选择有效的保持登录时间">', refused.text)
+        self.assertNotIn("set-cookie", refused.headers)
+        refused = await self.client.post("/login", content=body, headers=form)
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(refused.json(), {"error": "请选择有效的保持登录时间"})
+        routes_auth._ATTEMPTS.clear()
+        for _ in range(10):
+            wrong = await self.client.post("/login", content="token=wrong&next=%2Fstats", headers=form)
+            self.assertEqual(wrong.status_code, 401)
+        limited = await self.client.post("/login", content="token=wrong&next=%2Fstats", headers=page)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited.headers["retry-after"], "60")
+        self.assertTrue(limited.headers["content-type"].startswith("text/html"))
+        self.assertIn('data-page="login" data-next="/stats" data-error="尝试次数较多，请一分钟后重试">',
+                      limited.text)
+        limited = await self.client.post("/login", content="token=secret&next=%2Fstats", headers=form)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited.json(),{"error": "尝试次数较多，请一分钟后重试"})
 
     async def test_client_routes_serve_the_single_page_surface(self):
         await self.client.post(
@@ -2618,6 +2641,11 @@ PUBLIC_ROUTES = {
     ("GET,HEAD", "/favicon.ico"),
     ("GET,HEAD", "/favicon.svg"),
     ("GET,HEAD", "/peach-logo.png"),
+    # 入口页的页面包（ADR-0094）。登录页在拿到会话之前就要画出来，首启、登录与错误三页都由它画。
+    # 只放这两个文件：它们提交进 Git、随仓库分发，不读账本、不含配置与凭据，内容不随登录与否
+    # 变化，也不 import 别的产物；其余 `/dist/*` 仍走要会话的 `/dist/{name}`。
+    ("GET,HEAD", "/dist/peach-pages.js"),
+    ("GET,HEAD", "/dist/peach-pages.css"),
     # 拒绝收录的声明。爬虫没有会话，被 401 挡住等于这份声明根本没被读到。
     ("GET,HEAD", "/robots.txt"),
     # CloudDrive2 的文件通知。推送方是另一个进程，没有也不该有 Peach 的会话，所以它带的
@@ -2696,6 +2724,69 @@ class RouteAuthContractTests(unittest.TestCase):
         self.assertEqual(
             sorted(route.path for route in self.app.routes if isinstance(route, Mount)),
             ["/vendor"])
+
+
+@unittest.skipUnless(HAS_DEPS, "fastapi/httpx not installed")
+class LoginPageWithoutSessionTests(unittest.IsolatedAsyncioTestCase):
+    """设了访问密码的实例上，没有会话也画得出登录页：它要的资源都能取，别的产物照旧要会话。"""
+
+    PAGE_ASSETS = ("/dist/peach-pages.css", "/dist/peach-pages.js", "/vendor/inter/5.3.0/index.css",
+                   "/peach-logo.png", "/favicon.ico")
+    SESSION_ASSETS = ("/dist/peach-ui.js", "/dist/peach-react.js", "/dist/peach-entry.js",
+                      "/js/core.js", "/js/ui-sounds.js")
+
+    async def asyncSetUp(self):
+        from peach import access
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name).resolve()
+        access_path = root / "access.json"
+        access.save(access_path, "entry-password")
+        app = create_app(PeachSettings(configured=True, token="entry-token", access_path=access_path,
+                                       db_path=fresh_ledger(root), follow_state_root=root / "state"))
+        self.addCleanup(app.state.http_transport.close)
+        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver")
+        self.addAsyncCleanup(self.client.aclose)
+        routes_auth._ATTEMPTS.clear()
+
+    async def test_the_login_page_and_everything_it_loads_need_no_session(self):
+        home = await self.client.get("/")
+        self.assertEqual(home.status_code, 303)
+        self.assertEqual(home.headers["location"], "/login?next=/")
+        page = await self.client.get("/login")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('data-page="login"', page.text)
+        for path in self.PAGE_ASSETS:
+            with self.subTest(path):
+                response = await self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+        for path in self.PAGE_ASSETS[:2]:
+            with self.subTest(path):
+                response = await self.client.head(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["cache-control"], "no-cache")
+                again = await self.client.get(path, headers={"If-None-Match": response.headers["etag"]})
+                self.assertEqual(again.status_code, 304)
+
+    async def test_the_other_bundles_and_modules_still_need_a_session(self):
+        for path in self.SESSION_ASSETS:
+            with self.subTest(path):
+                self.assertEqual((await self.client.get(path)).status_code, 401)
+        login = await self.client.post("/login", data={"token": "entry-password", "next": "/"})
+        self.assertEqual(login.status_code, 303)
+        for path in self.SESSION_ASSETS + self.PAGE_ASSETS:
+            with self.subTest(path):
+                self.assertEqual((await self.client.get(path)).status_code, 200)
+
+    async def test_a_missing_bundle_opened_in_the_browser_is_the_error_page(self):
+        login = await self.client.post("/login", data={"token": "entry-password", "next": "/"})
+        self.assertEqual(login.status_code, 303)
+        page = await self.client.get("/dist/no-such.js", headers={"Accept": "text/html"})
+        self.assertEqual(page.status_code, 404)
+        self.assertIn('data-page="error" data-status="404" data-detail="这个地址下没有页面。"', page.text)
+        script = await self.client.get("/dist/no-such.js")
+        self.assertEqual(script.status_code, 404)
+        self.assertEqual(script.json(), {"error": "这个地址下没有页面。"})
 
 
 if __name__ == "__main__":
