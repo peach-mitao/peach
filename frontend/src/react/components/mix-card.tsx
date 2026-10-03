@@ -127,7 +127,7 @@ export function MixCard({
       <div data-mix-stack="" className="relative isolate rounded-surface">
         <div data-mix-cover="" data-media-pic={cover ? '' : undefined}
           style={ratio !== undefined ? { '--card-ratio': String(ratio) } as CSSProperties : undefined}
-          className="relative z-1 flex aspect-video items-center justify-center overflow-hidden rounded-surface">
+          className="relative z-1 flex aspect-video items-center justify-center overflow-hidden">
           {artwork?.html
             ? <ArtSlot artwork={artwork} identity={artworkIdentity} relayout={relayoutArt} />
             : poster

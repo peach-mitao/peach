@@ -35719,7 +35719,7 @@ function bA({ name: e, caption: t, count: n, poster: r, flipImages: i, canFlip: 
 				"data-mix-cover": "",
 				"data-media-pic": T ? "" : void 0,
 				style: d === void 0 ? void 0 : { "--card-ratio": String(d) },
-				className: "relative z-1 flex aspect-video items-center justify-center overflow-hidden rounded-surface",
+				className: "relative z-1 flex aspect-video items-center justify-center overflow-hidden",
 				children: [
 					f?.html ? /* @__PURE__ */ (0, H.jsx)(aA, {
 						artwork: f,
