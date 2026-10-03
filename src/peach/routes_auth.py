@@ -194,9 +194,9 @@ def set_auth_cookie(response: Response, request: Request, *, days: int = 30, log
 
 
 def login_html(next_path: str, *, invalid: bool = False) -> str:
-    """登录页：首启页那张 Auth Card 的单字段形态，控件全部来自 `web_entry`。
+    """登录页：Auth Card 的单字段形态，控件全部来自 `web_entry`。
 
-    这一页和首启页是同一副面孔的两个状态，所以样式层整份取 `entry_page_style()`，
+    这一页和错误页是同一副面孔的两个状态，所以样式层整份取 `entry_page_style()`，
     不在这里另留一套色板和控件——那一套自成一格，登录完跳进馆藏就像换了个产品。
     """
     safe_next = html.escape(next_path, quote=True)

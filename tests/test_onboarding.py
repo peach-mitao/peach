@@ -9,15 +9,13 @@ from __future__ import annotations
 import importlib.util
 import io
 import os
-import re
 import sqlite3
 import tempfile
 import unittest
-from html import escape
 from pathlib import Path
 from unittest import mock
 
-from peach import distribution, onboarding, routes_pages, settings_file
+from peach import distribution, onboarding, settings_file
 
 NATIVE_WINDOWS = os.name == "nt"
 HAS_HTTP_DEPS = all(importlib.util.find_spec(name) for name in ("fastapi", "httpx"))
@@ -412,367 +410,17 @@ class _SetupHttpCase(_Case):
 
         return asyncio.run(run())
 
-    def _post(self, path, data, **kwargs):
-        import asyncio
-
-        async def run():
-            async with self._client(**kwargs) as client:
-                return await client.post(path, data=data)
-
-        return asyncio.run(run())
-
-    def _form(self, **overrides):
-        base = {"data_root": str(self.data_root), "media_dir": str(self.media),
-                "host": "1", "port": "8900", "mdns_name": "peach", "scan_now": "y"}
-        base.update(overrides)
-        return {key: value for key, value in base.items() if value is not None}
-
     def _loaded(self):
         return settings_file.load_config(environ={"PEACH_DATA_ROOT": str(self.data_root)})
-
-
-@unittest.skipUnless(HAS_HTTP_DEPS, "需要 fastapi 与 httpx")
-class SetupPageTests(_SetupHttpCase):
-    """首次运行表单的 HTTP 契约：页面字段、逐字段校验、守卫与落盘。
-
-    这一层和 `peach init` 的问答共用 `peach.onboarding`，所以这里断言的是「页面渲染
-    出来的字段和 `questions()` 同名同序」，而不是另抄一份字段清单去比对。
-    """
-
-    def test_the_first_run_page_renders_every_question_plus_the_scan_checkbox(self):
-        response = self._get("/")
-        self.assertEqual(response.status_code, 200)
-        body = response.text
-        self.assertIn('<form method="post" action="/setup">', body)
-        for question in onboarding.questions(self.config, windows=NATIVE_WINDOWS):
-            self.assertIn(f'name="{question.key}"', body)
-        # 页面用自己的题面：短名词加一句说明，不把命令行那份带可选值的题面搬上来。
-        for title in ("数据目录", "媒体库", "谁可以访问", "端口", "局域网访问地址"):
-            self.assertIn(f">{title}<", body)
-        # 只有媒体文件夹非填不可。其余四项都有能直接用的默认值，折进「高级设置」，
-        # 独立包与源码部署是同一张表单；有一项报错时折叠展开着。
-        details = body.index('<details><summary><span class="setting-title">高级设置</span>')
-        self.assertLess(body.index('id="add-dir"'), details)
-        for key in ("data_root", "host", "port", "mdns_name"):
-            self.assertLess(details, body.index(f'name="{key}"'), key)
-        self.assertLess(body.index('name="mdns_name"'), body.index("</details>"))
-        self.assertNotIn('type="hidden"', body)
-        self.assertIn("details .field+.field{margin-top:24px}", body)
-        self.assertIn("Peach 数据库、缓存和设置文件都放在这里。", body)
-        self.assertIn("也可以使用外置硬盘", body)
-        # 媒体文件夹是一个可加减的列表：默认一行，「添加媒体库」和移除键由页内脚本亮出来，
-        # 新行从 <template> 里克隆，所以没有脚本时页面只有一个输入框。
-        self.assertEqual(body.count('<div class="dir"><span class="entry-input"><input name="media_dir"'), 2)
-        self.assertIn('<button type="button" class="add" id="add-dir" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>添加媒体库</button>', body)
-        self.assertIn('<template id="dir-row"><div class="dir">', body)
-        self.assertIn('class="rm" aria-label="移除这个文件夹" hidden>', body)
-        self.assertIn("template.content.firstElementChild.cloneNode(true)", body)
-        self.assertLess(body.index('id="dirs"'), body.index('id="add-dir"'))
-        # 品牌标记在标题上方，说明文字在标题下方。
-        self.assertIn('<img class="mark" src="/peach-logo.png"', body)
-        # 设置页往往是这台机器上第一个被打开、被加书签的地址，图标声明不能少。
-        self.assertIn('<link rel="icon" href="/favicon.ico" type="image/x-icon">', body)
-        self.assertLess(body.index("<h1>"), body.index('class="lede"'))
-        # 四个手填字段的标签末尾标红星；「谁可以访问」总有一个选中项，不标。
-        self.assertEqual(body.count('<span class="req"'), 4)
-        # 「谁可以访问」是两段式单选，不用原生下拉；两个选项由 `HOST_OPTIONS` 给出，
-        # 局域网在左边并且默认选中。
-        self.assertNotIn('<select name="host"', body)
-        self.assertIn('<select name="media_location"', body)
-        self.assertIn('class="switch" role="radiogroup"', body)
-        for value, label in onboarding.HOST_OPTIONS:
-            self.assertIn(f'<input type="radio" name="host" value="{value}"', body)
-            self.assertIn(f"<span>{label}</span>", body)
-        self.assertIn('<input type="radio" name="host" value="2" checked>', body)
-        self.assertLess(body.index('value="2" checked'), body.index('name="host" value="1"'))
-        # 选「只有这台电脑」时局域网地址整项隐藏，输入框同时禁用、不随表单提交。
-        self.assertIn("field.disabled=!lan", body)
-        self.assertIn("fieldRow.hidden=!lan", body)
-        # 局域网访问地址只填名字。独立包走自己的高位 HTTP 端口，源码部署才走固定 HTTPS。
-        scheme = "http" if distribution.standalone() else "https"
-        self.assertIn(f'<div class="affix"><span>{scheme}://</span><input', body)
-        self.assertIn("<span>.local</span>", body)
-        if distribution.standalone():
-            self.assertIn("http://peach.local:8900", body)
-        # 端口只填写数字，localhost 是不可编辑的固定前缀。
-        self.assertIn('<div class="affix"><span>localhost:</span><input id="f-port"', body)
-        # 默认对局域网监听，所以密码开关默认打开、两项输入直接可填；关掉后脚本再隐藏并禁用它们。
-        self.assertIn('id="access-enabled" class="ptoggle" name="access_enabled" type="checkbox" role="switch"', body)
-        self.assertNotIn('id="access-password-fields" hidden', body)
-        self.assertIn("accessFields.hidden=!accessToggle.checked", body)
-        self.assertIn('<p class="help" id="access-consequence">未设置密码时，能连接到 Peach 的设备可直接进入。</p>', body)
-        for title in ("媒体库", "访问密码", "高级设置", "完成设置后"):
-            self.assertIn(f'>{title}<', body)
-        self.assertIn('<h2 class="setting-title" id="setup-options-title">完成设置后</h2>', body)
-        self.assertIn('<h3 class="setting-subtitle">浏览器历史记录', body)
-        self.assertIn('.setup-auth-card .setting-title,.setup-auth-card .field>label.setting-title{margin:0;'
-                      'padding:0;border:0;color:var(--ink);font:600 14px/20px', body)
-        self.assertIn('.setup-auth-card .field-label{color:var(--ink-2);font:500 14px/20px', body)
-        self.assertIn(
-            '.setup-auth-card form>:is(.access-field,details,.setup-options){margin-top:24px;'
-            'padding-top:24px;border-top:1px solid var(--line)}', body)
-        self.assertIn('.setup-auth-card .password-fields>label:not(:first-child){margin-top:16px}', body)
-        self.assertIn(
-            '.setup-auth-card .history-guide-choice{margin-top:16px;padding-top:24px;'
-            'border-top:1px solid var(--line)}', body)
-        # 勾选框用站内共用的自绘结构，路径使用普通文字。
-        self.assertIn('<span class="pcheck"><input type="checkbox" name="scan_now" value="y" checked>', body)
-        self.assertIn("完成设置后扫描并补全资料：", body)
-        self.assertNotIn("完成设置后扫描并补全资料：<code>", body)
-        self.assertIn('媒体库<span class="req"', body)
-        self.assertIn('数据目录<span class="req"', body)
-        self.assertIn('端口<span class="req"', body)
-        self.assertIn('局域网访问地址<span class="req"', body)
-        # 首启页唯一主操作与站内 Board primary 共用蓝色渐变。
-        self.assertIn(
-            '.setup-auth-card :is(button[type=submit],.setup-enter){position:relative;'
-            'isolation:isolate;border:0;color:#fff;background:var(--board-blue)}', body)
-        self.assertIn('background:var(--board-blue-hover)', body)
-        self.assertIn('.setup-auth-card .dir :is(button.pick,button.rm){width:40px;height:40px', body)
-
-    @unittest.skipIf(NATIVE_WINDOWS, "盘符本身就是挂载点，Windows 上没有这句话")
-    def test_the_mounts_explanation_sits_under_the_media_field_on_posix(self):
-        body = self._get("/").text
-        self.assertIn("本机文件夹是这台电脑读取媒体的位置", body)
-        self.assertIn("Windows 中的对应路径用于匹配馆藏中已有的路径", body)
-
-    def test_invalid_values_come_back_as_a_form_with_per_field_messages(self):
-        missing = self.root / "nope"
-        response = self._post("/setup", self._form(media_dir=str(missing), port="0"))
-        self.assertEqual(response.status_code, 400)
-        body = response.text
-        self.assertIn("目录不存在", body)
-        self.assertIn("端口要是 1 到 65535 之间的整数", body)
-        self.assertIn(f'value="{missing}"', body, "填错的值要留在表单里")
-        self.assertFalse(missing.exists(), "校验不替人建目录")
-        self.assertFalse(self.data_root.exists(), "校验失败不落任何文件")
-
-    def test_a_declared_local_source_must_exist_before_setup_is_saved(self):
-        missing = self.root / "missing-local-source"
-        response = self._post("/setup", self._form(
-            media_dir=str(missing), media_location="local", media_root=""))
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("目录不存在", response.text)
-        self.assertFalse(missing.exists(), "校验不替用户创建媒体库")
-        self.assertFalse(self.data_root.exists(), "校验失败不写设置")
-
-    def test_the_lan_default_arms_the_access_password_and_says_what_no_password_means(self):
-        body = self._get("/").text
-        toggle = body[body.index('id="access-enabled"'):]
-        self.assertIn('value="y" checked>', toggle[:toggle.index("</label>")])
-        self.assertIn('未设置密码时，能连接到 Peach 的设备可直接进入。', body)
-        self.assertLess(body.index('id="access-enabled"'), body.index('id="access-consequence"'))
-        self.assertLess(body.index('id="access-consequence"'), body.index('id="access-password-fields"'))
-
-    def test_turning_the_access_password_off_survives_a_failed_submission(self):
-        # 复选框不勾就不提交，回填时那正是「他关掉了」，不能被局域网默认又打开一次。
-        response = self._post("/setup", self._form(port="0", access_enabled=None))
-        self.assertEqual(response.status_code, 400)
-        toggle = response.text[response.text.index('id="access-enabled"'):]
-        self.assertNotIn(' checked', toggle[:toggle.index("</label>")])
-
-    def test_more_rows_than_the_limit_come_back_as_a_form_not_a_crash(self):
-        # 整表不成立时校验器只回一句话，长度与行数对不上；按行覆盖会越界，用户拿到的是 500。
-        response = self._post("/setup", self._form(
-            media_dir=[str(self.media)] * 101, media_location=["local"] * 101,
-            media_root=[r"R:\media"] * 101))
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("请添加 1 到 100 个媒体文件夹", response.text)
-        self.assertFalse(self.data_root.exists(), "校验失败不写设置")
-
-    def test_two_directories_are_declared_together_and_shown_in_the_scan_label(self):
-        second = self.root / "more"
-        second.mkdir()
-        response = self._post("/setup", self._form(media_dir=[str(self.media), str(second)]))
-        self.assertEqual(response.status_code, 200, response.text)
-        loaded = self._loaded()
-        if NATIVE_WINDOWS:
-            self.assertEqual(loaded.locations, {"local": (str(self.media), str(second))})
-        else:
-            self.assertEqual(loaded.locations, {"local": (r"R:\media", r"R:\media2")})
-            self.assertEqual(loaded.mounts, {"local": (str(self.media), str(second))})
-
-    def test_a_nested_second_directory_is_rejected_on_its_own_row(self):
-        nested = self.media / "inner"
-        nested.mkdir()
-        response = self._post("/setup", self._form(media_dir=[str(self.media), str(nested)]))
-        self.assertEqual(response.status_code, 400)
-        body = response.text
-        self.assertEqual(body.count('<div class="dir"><span class="entry-input"><input name="media_dir"'), 3, "两行都回显，外加模板")
-        self.assertIn("已经在", body)
-        # 错误挂在第二行底下，第一行不背锅。
-        first_row = body.index(f'value="{escape(str(self.media), quote=True)}"')
-        second_row = body.index(f'value="{escape(str(nested), quote=True)}"')
-        self.assertLess(first_row, body.index("已经在"))
-        self.assertLess(second_row, body.index("已经在"))
-        self.assertIn("完成设置后扫描这 2 个文件夹", body)
-        self.assertFalse(self.data_root.exists())
-
-    def test_a_disabled_lan_address_falls_back_to_the_default_name(self):
-        """选「只有这台电脑」后地址项隐藏且不提交；服务端按默认值补上。"""
-        response = self._post("/setup", self._form(host="1", mdns_name=None))
-        self.assertEqual(response.status_code, 200)
-        loaded = self._loaded()
-        self.assertEqual((loaded.server.host, loaded.server.mdns_name), ("127.0.0.1", "peach"))
-
-    def test_password_switch_requires_a_password_and_stays_open_on_error(self):
-        response = self._post("/setup", self._form(access_enabled="y"))
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("请输入访问密码", response.text)
-        self.assertIn('name="access_enabled" type="checkbox" role="switch" value="y" checked', response.text)
-        self.assertNotIn('id="access-password-fields" hidden', response.text)
-
-    def test_password_fields_are_ignored_while_the_switch_is_off(self):
-        from peach import access
-        response = self._post("/setup", self._form(
-            access_password="should-not-be-used", access_confirm="should-not-be-used"))
-        self.assertEqual(response.status_code, 200, response.text)
-        policy = access.load(self.data_root / "secrets" / "access.json")
-        self.assertEqual(policy["mode"], "open")
-
-    def test_password_switch_saves_the_confirmed_password(self):
-        from peach import access
-        response = self._post("/setup", self._form(
-            access_enabled="y", access_password="correct-password",
-            access_confirm="correct-password"))
-        self.assertEqual(response.status_code, 200, response.text)
-        policy = access.load(self.data_root / "secrets" / "access.json")
-        self.assertEqual(policy["mode"], "password")
-        self.assertTrue(access.verify(policy, "correct-password"))
-
-    def test_a_valid_submission_builds_the_tree_and_shows_what_happens_next(self):
-        response = self._post("/setup", self._form())
-        self.assertEqual(response.status_code, 200)
-        for key in settings_file.DIRECTORY_KEYS:
-            self.assertTrue((self.data_root / key).is_dir(), key)
-        self.assertTrue((self.data_root / "database" / "ledger.db").is_file())
-        self.assertTrue((self.data_root / "secrets" / "tls").is_dir())
-        self.assertTrue((self.data_root / "config.toml").is_file())
-        self.certs.assert_called_once()
-        loaded = self._loaded()
-        self.assertTrue(loaded.present)
-        self.assertEqual((loaded.server.host, loaded.server.port), ("127.0.0.1", 8900))
-        self.assertFalse(loaded.replication.enabled)
-        # 勾了「现在扫描」就留下标记，扫描本身不在这条请求里跑。
-        self.assertTrue((self.data_root / "state" / onboarding.SCAN_REQUEST_NAME).is_file())
-        body = response.text
-        self.assertIn("设置完成", body)
-        self.assertIn("首次扫描已排队", body)
-        self.assertIn('/?onboarding=1', body)
-        self.assertNotIn("peach token", body)
-        self.assertNotIn("账本", body)
-        # 完成页尾部是与配置页共用的运行信息，默认折叠：版本、位置和 FFmpeg 展开可查。
-        self.assertIn("<details><summary><span>运行信息</span>", body)
-        self.assertNotIn("<details open", body)
-        for term in ("版本", "数据目录", "设置文件", "日志目录", "FFmpeg"):
-            self.assertIn(f"<dt>{term}</dt>", body)
-        self.assertIn(str(self.data_root), body)
-
-    def test_declining_the_scan_leaves_no_marker(self):
-        self._post("/setup", self._form(scan_now=None))
-        self.assertFalse((self.data_root / "state" / onboarding.SCAN_REQUEST_NAME).exists())
-
-    def test_history_guide_is_optional_and_preserves_validation_selection(self):
-        page = self._get('/').text
-        self.assertIn('name="history_guide" value="y">', page)
-        response = self._post('/setup', self._form(port='not-a-port', history_guide='y'))
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('name="history_guide" value="y" checked>', response.text)
-
-    def test_history_guide_submission_links_to_explicit_import_without_reading_history(self):
-        with mock.patch('peach.web_stats.w_taste_refresh') as refresh:
-            response = self._post('/setup', self._form(history_guide='y', scan_now=None))
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('/taste?onboarding=1', response.text)
-        self.assertIn('导入浏览器历史记录</a>', response.text)
-        refresh.assert_not_called()
-
-    def test_a_configured_machine_does_not_have_this_endpoint(self):
-        response = self._post("/setup", self._form(), configured=True)
-        self.assertEqual(response.status_code, 404)
-        self.assertFalse(self.data_root.exists())
-
-    def test_a_non_loopback_client_is_refused(self):
-        response = self._post("/setup", self._form(), client=("198.51.100.7", 51000))
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(self.data_root.exists())
-
-    def test_the_first_run_page_follows_the_system_theme(self):
-        """首启页在 SPA 之外，配色 token 从 `01-base.css` 的两段 `:root` 抽出来，深色系统就深色。"""
-        body = self._get("/").text
-        self.assertIn('<meta name="color-scheme" content="light dark">', body)
-        self.assertIn(":root{", body)
-        self.assertIn('@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){', body)
-        self.assertIn("--ground:", body)
-
-    def test_each_folder_row_can_open_the_system_folder_dialog(self):
-        """选择键夹在输入框和移除键中间，点了让这台电脑弹系统对话框，路径填回这一行。"""
-        body = self._get("/").text
-        self.assertIn('<button type="button" class="pick" aria-label="选择文件夹" hidden>', body)
-        self.assertLess(body.index('class="pick"'), body.index('class="rm"'))
-        self.assertIn("fetch('/api/pick-folder'", body)
-        self.assertIn("button.setAttribute('aria-busy','true')", body)
-        self.assertIn("row.querySelector('.pick').hidden=false", body)
-        with mock.patch("peach.folder_picker.pick_folder", return_value=str(self.media)) as picker:
-            import asyncio
-
-            async def run():
-                async with self._client() as client:
-                    return await client.post("/api/pick-folder", json={"initial": "E:/old"})
-
-            response = asyncio.run(run())
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json(), {"path": str(self.media)})
-        picker.assert_called_once_with("E:/old")
-
-    def test_advanced_settings_fold_with_the_shared_collapse_and_the_site_scrollbar(self):
-        """高级设置是 Geist Collapse：借主站的 wireCollapse，chevron 与高度都 200ms；滚动条也是主站那条。"""
-        body = self._get("/").text
-        self.assertIn('<summary><span class="setting-title">高级设置</span><svg viewBox="0 0 24 24" aria-hidden="true">', body)
-        self.assertIn('import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/dist/peach-entry.js";'
-                      'attachOverlayScrollbar(document.documentElement,{variant:"page"});'
-                      'wireCollapse(document,"details","setup-collapse");', body)
-        self.assertIn('.fcollapse{overflow:hidden;transition:height .2s ease-in-out;margin:0 -6px;padding:0 6px}', body)
-        self.assertIn('.fcollapsebody{padding:6px 0}', body, "焦点环要留 6px，不能被折叠体的裁切切掉")
-        self.assertIn('transition:transform .2s ease-in-out}', body)
-        self.assertIn('details .field{margin-top:0}', body, "折叠体里的字段不再叠一层 24px 上边距")
-        self.assertIn('@media (prefers-reduced-motion:reduce)', body)
-        self.assertIn('.ovtrack.page{position:fixed;top:0;bottom:0;right:0;z-index:91;pointer-events:none}', body)
-        self.assertIn('.ovthumb{position:absolute;border-radius:var(--pill-radius);background:var(--field-ring-hover);', body)
-        self.assertIn('[data-overlay-scrollbar]{scrollbar-width:none}', body, "原生滚动条只在脚本挂上覆盖式那条之后才藏")
-        self.assertNotIn('html{color-scheme:light;scroll-padding-top', body, "主站 html 上无条件藏滚动条的那句不借")
-        self.assertNotIn('原生滚动条在挂上覆盖式那条之后才藏', body, "借来的规则不带主站的注释")
-        script = self._get("/dist/peach-entry.js")
-        self.assertEqual(script.status_code, 200, "首启服务没有令牌，入口包得放行")
-        exported = re.search(r"export\s*\{([^}]*)\}", script.text)
-        self.assertIsNotNone(exported, "入口包是 ES module，末尾一条 export 列出页内脚本要的名字")
-        for name in ("attachOverlayScrollbar", "wireCollapse", "selectFieldHtml", "wireSelectField",
-                     "MEDIA_SOURCE_ICONS"):
-            self.assertRegex(exported.group(1), rf"\b{name}\b")
-        plain = routes_pages.error_page(404, "没有这一页")
-        self.assertNotIn("<details", plain)
-        self.assertEqual(plain.count('<script type="module">'), 1, "没有高级设置的页面也挂同一段脚本：滚动条要它")
-
-    def test_a_wrong_advanced_value_reopens_the_fold_with_the_message_in_place(self):
-        response = self._post("/setup", self._form(port="99999"))
-        self.assertEqual(response.status_code, 400)
-        body = response.text
-        self.assertIn('<details open><summary><span class="setting-title">高级设置</span>', body)
-        self.assertLess(body.index('name="port"'), body.index('<p class="bad" role="alert">'))
-
-    def test_a_second_submission_refuses_to_overwrite_the_settings_file(self):
-        self.assertEqual(self._post("/setup", self._form()).status_code, 200)
-        again = self._post("/setup", self._form(port="9100"))
-        self.assertEqual(again.status_code, 409)
-        self.assertEqual(self._loaded().server.port, 8900, "第二次提交不得改掉已写好的设置")
 
 
 @unittest.skipUnless(HAS_HTTP_DEPS, "需要 fastapi 与 httpx")
 class SetupJsonContractTests(_SetupHttpCase):
     """首启的 JSON 契约：`GET /api/setup/questions` 与 `POST /api/setup`。
 
-    两条路径与 `POST /setup` 共用守卫、校验与落盘，所以同一份输入在 HTML 端点和 JSON
-    端点上必须得到同一组错误；页面能画的内容，题目端点都要给全。
+    首次运行页的题目、默认值与文案全部来自读题端点，逐字段校验与落盘全部在提交端点；
+    这一层和 `peach init` 的问答共用 `peach.onboarding`，所以断言的是「端点给出的字段和
+    `questions()` 同名同序」，而不是另抄一份字段清单去比对。页面怎么画见 vitest 与 e2e。
     """
 
     QUESTIONS = "/api/setup/questions"
@@ -789,32 +437,87 @@ class SetupJsonContractTests(_SetupHttpCase):
         body.update(overrides)
         return {key: value for key, value in body.items() if value is not None}
 
-    @staticmethod
-    def _as_form(body):
-        """同一份提交的表单写法：三列媒体字段同名重复，勾选项不勾就不提交。"""
-        form: dict[str, object] = {}
-        for key, value in body.items():
-            if key == "media_dir":
-                form["media_dir"] = [row["path"] for row in value]
-                form["media_location"] = [row["location"] for row in value]
-                form["media_root"] = [row["root"] for row in value]
-            elif value is True:
-                form[key] = "y"
-            elif value is not False:
-                form[key] = str(value)
-        return form
-
-    def _errors_both_ways(self, body, **kwargs):
-        """把同一份输入交给两个端点，返回 (HTML 端点交给页面的 errors, JSON 端点的 errors)。"""
-        with mock.patch.object(routes_pages, "setup_page", wraps=routes_pages.setup_page) as page:
-            html = self._send("POST", "/setup", data=self._as_form(body), **kwargs)
-        self.assertEqual(html.status_code, 400, html.text[:200])
-        page.assert_called_once()
+    def _errors(self, body, **kwargs):
+        """提交一份填错的答卷，返回按题目 key 收集的 errors。"""
         response = self._send("POST", self.SUBMIT, json=body, **kwargs)
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(response.json()["error"], "有几项需要修改")
         self.assertFalse((self.data_root / "config.toml").exists(), "校验失败不写设置")
-        return page.call_args.kwargs["errors"], response.json()["errors"]
+        return response.json()["errors"]
+
+    def _submit(self, **overrides):
+        response = self._send("POST", self.SUBMIT, json=self._body(**overrides))
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def test_the_first_run_page_is_a_shell_around_the_standalone_page_bundle(self):
+        """首次运行页由独立页面包画：薄壳只带主题预读、样式、脚本、借来的字形与挂载点。"""
+        response = self._get("/")
+        self.assertEqual(response.status_code, 200)
+        body = response.text
+        self.assertIn("<title>Peach · 首次运行</title>", body)
+        self.assertIn('<link rel="icon" href="/favicon.ico" type="image/x-icon">', body)
+        self.assertLess(body.index('localStorage.getItem("peach.settings.v1")'), body.index("/dist/peach-pages.css"))
+        for symbol in ("folder-search", "hard-drive", "database"):
+            self.assertIn(f'<symbol id="i-{symbol}"', body)
+        self.assertNotIn("/dist/peach-entry.js", body)
+        self.assertNotIn("<form", body)
+        # 首启服务没有口令，页面包、Inter 与站标得放行。
+        for path in ("/dist/peach-pages.js", "/dist/peach-pages.css", "/vendor/inter/5.3.0/index.css",
+                     "/peach-logo.png"):
+            with self.subTest(path):
+                self.assertEqual(self._get(path).status_code, 200)
+
+    def test_invalid_values_are_reported_without_creating_anything(self):
+        missing = self.root / "nope"
+        errors = self._errors(self._body(media_dir=self._rows(missing), port="0"))
+        self.assertIn("目录不存在", errors["media_dir"][0])
+        self.assertIn("端口要是 1 到 65535 之间的整数", errors["port"])
+        self.assertFalse(missing.exists(), "校验不替人建目录")
+        self.assertFalse(self.data_root.exists(), "校验失败不落任何文件")
+
+    def test_a_valid_submission_builds_the_tree(self):
+        self._submit()
+        for key in settings_file.DIRECTORY_KEYS:
+            self.assertTrue((self.data_root / key).is_dir(), key)
+        self.assertTrue((self.data_root / "database" / "ledger.db").is_file())
+        self.assertTrue((self.data_root / "secrets" / "tls").is_dir())
+        self.assertTrue((self.data_root / "config.toml").is_file())
+        self.certs.assert_called_once()
+        loaded = self._loaded()
+        self.assertTrue(loaded.present)
+        self.assertEqual((loaded.server.host, loaded.server.port), ("127.0.0.1", 8900))
+        self.assertFalse(loaded.replication.enabled)
+
+    def test_two_directories_are_declared_together(self):
+        second = self.root / "more"
+        second.mkdir()
+        self._submit(media_dir=self._rows(self.media, second))
+        loaded = self._loaded()
+        if NATIVE_WINDOWS:
+            self.assertEqual(loaded.locations, {"local": (str(self.media), str(second))})
+        else:
+            self.assertEqual(loaded.locations, {"local": (r"R:\media", r"R:\media2")})
+            self.assertEqual(loaded.mounts, {"local": (str(self.media), str(second))})
+
+    def test_an_omitted_lan_address_falls_back_to_the_default_name(self):
+        """选「只有这台电脑」后地址项隐藏且不提交；服务端按默认值补上。"""
+        self._submit(host="1", mdns_name=None)
+        loaded = self._loaded()
+        self.assertEqual((loaded.server.host, loaded.server.mdns_name), ("127.0.0.1", "peach"))
+
+    def test_password_fields_are_ignored_while_the_switch_is_off(self):
+        from peach import access
+        self._submit(access_enabled=False, access_password="should-not-be-used",
+                     access_confirm="should-not-be-used")
+        self.assertEqual(access.load(self.data_root / "secrets" / "access.json")["mode"], "open")
+
+    def test_the_setup_service_opens_the_folder_dialog_for_each_row(self):
+        with mock.patch("peach.folder_picker.pick_folder", return_value=str(self.media)) as picker:
+            response = self._send("POST", "/api/pick-folder", json={"initial": "E:/old"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json(), {"path": str(self.media)})
+        picker.assert_called_once_with("E:/old")
 
     def test_the_questions_cover_every_field_in_order_with_defaults_and_copy(self):
         response = self._send("GET", self.QUESTIONS)
@@ -848,25 +551,15 @@ class SetupJsonContractTests(_SetupHttpCase):
         self.assertEqual(data["cloud"]["link"]["url"], "https://www.clouddrive2.com/help.html")
         # 默认对局域网开放，所以访问密码开关第一次出现就开着；扫描默认勾上，导入历史默认不勾。
         self.assertEqual((data["access_enabled"], data["scan_now"], data["history_guide"]), (True, True, False))
-        # 页面上的题面与说明就是这一份。
-        page = self._get("/").text
-        for item in questions:
-            self.assertIn(f">{escape(item['label'])}<", page)
-            for line in item["help"]:
-                self.assertIn(escape(line), page)
-        self.assertIn(escape(data["cloud"]["help"]), page)
 
     def test_the_questions_list_missing_mount_software_with_download_links(self):
         rows = [{"name": "CloudDrive", "available": True, "download_url": "https://www.clouddrive2.com/download.html"},
                 {"name": "WinFsp", "available": False, "download_url": "https://winfsp.dev/rel/"}]
         with mock.patch("peach.media_configuration.mount_dependencies", return_value=rows):
             data = self._send("GET", self.QUESTIONS).json()
-            page = self._get("/").text
         self.assertEqual(data["cloud"]["dependencies"], [{
             "name": "WinFsp", "message": "未检测到 WinFsp。",
             "download_url": "https://winfsp.dev/rel/", "download_label": "下载 WinFsp"}])
-        self.assertIn("未检测到 WinFsp。", page)
-        self.assertNotIn("未检测到 CloudDrive", page)
 
     def test_the_standalone_package_gets_its_own_address_form_in_the_questions(self):
         with mock.patch.object(distribution, "standalone", return_value=True):
@@ -876,7 +569,7 @@ class SetupJsonContractTests(_SetupHttpCase):
         self.assertEqual(mdns["prefix"], "http://")
         self.assertIn("http://peach.local:8900", mdns["help"][0])
 
-    def test_the_questions_are_guarded_like_the_form_but_ignore_the_origin(self):
+    def test_the_questions_are_guarded_like_the_submission_but_ignore_the_origin(self):
         cases = (
             ("已配置", {"configured": True}, 404, "not found"),
             ("非回环调用方", {"client": ("198.51.100.7", 51000)}, 403, "setup is loopback-only"),
@@ -893,7 +586,7 @@ class SetupJsonContractTests(_SetupHttpCase):
             response = self._send("GET", self.QUESTIONS, headers={"Origin": "http://elsewhere.example"})
             self.assertEqual(response.status_code, 200)
 
-    def test_the_submission_is_guarded_like_the_form(self):
+    def test_the_submission_is_loopback_only_and_same_origin(self):
         cases = (
             ("已配置", {"configured": True}, 404, "not found"),
             ("非回环调用方", {"client": ("198.51.100.7", 51000)}, 403, "setup is loopback-only"),
@@ -918,7 +611,7 @@ class SetupJsonContractTests(_SetupHttpCase):
         self.assertEqual((again.status_code, again.json()), (409, {"error": "settings file already exists"}))
         self.assertEqual(self._loaded().server.port, 8900)
 
-    def test_the_same_input_brings_the_same_messages_from_the_form_and_the_json_endpoint(self):
+    def test_each_wrong_answer_comes_back_under_its_own_key(self):
         a_file = self.root / "not-a-folder"
         a_file.write_text("x", encoding="utf-8")
         nested = self.media / "inner"
@@ -947,31 +640,27 @@ class SetupJsonContractTests(_SetupHttpCase):
         }
         for name, body in cases.items():
             with self.subTest(name):
-                html, data = self._errors_both_ways(body)
-                self.assertEqual(data, html)
-                self.assertEqual(set(data), expected_keys[name])
+                self.assertEqual(set(self._errors(body)), expected_keys[name])
         # 媒体库的错误按行对齐；整表不成立时只有一句，长度与行数不等。
-        _html, rows = self._errors_both_ways(cases["第二行嵌在第一行里"])
+        rows = self._errors(cases["第二行嵌在第一行里"])
         self.assertEqual(len(rows["media_dir"]), 2)
         self.assertEqual(rows["media_dir"][0], "")
         self.assertTrue(rows["media_dir"][1])
-        _html, table = self._errors_both_ways(cases["超过 100 行"])
+        table = self._errors(cases["超过 100 行"])
         self.assertEqual(table["media_dir"], ["请添加 1 到 100 个媒体文件夹"])
 
-    def test_an_occupied_port_on_the_standalone_package_is_the_same_message_both_ways(self):
+    def test_an_occupied_port_on_the_standalone_package_is_a_port_error(self):
         import socket
         with socket.socket() as holder, mock.patch.object(distribution, "standalone", return_value=True):
             holder.bind(("127.0.0.1", 0))
             holder.listen()
             port = holder.getsockname()[1]
-            html, data = self._errors_both_ways(self._body(port=str(port)), base_url="http://127.0.0.1:8900")
-        self.assertEqual(data, html)
+            data = self._errors(self._body(port=str(port)), base_url="http://127.0.0.1:8900")
         self.assertEqual(data, {"port": "这个端口已被占用，请换一个端口"})
 
-    def test_a_failed_apply_is_reported_on_the_data_root_both_ways(self):
+    def test_a_failed_apply_is_reported_on_the_data_root(self):
         with mock.patch.object(onboarding, "apply", side_effect=OSError("数据目录写不进去")):
-            html, data = self._errors_both_ways(self._body())
-        self.assertEqual(data, html)
+            data = self._errors(self._body())
         self.assertEqual(data, {"data_root": "数据目录写不进去"})
 
     def test_a_valid_json_submission_returns_the_entry_address_and_runtime_facts(self):
@@ -1043,39 +732,37 @@ class StandaloneConfigurationTests(_Case):
             for path in ("updates", "update-status"):
                 self.assertEqual(client.get(f"/api/configuration/{path}",headers={"X-Token":"test-token"}).status_code,403)
 
-    def test_missing_media_tools_have_download_links_in_json_and_setup_facts(self):
-        from peach.routes_pages import runtime_facts_html
+    def test_missing_media_tools_have_download_links_in_the_runtime_facts(self):
         from peach.web_entry import runtime_fact_entries
         for missing_ffmpeg, missing_probe in ((True, True), (False, True), (False, False)):
             with self.subTest(ffmpeg=missing_ffmpeg, probe=missing_probe), mock.patch(
                     "peach.ffmpeg.FFmpegResolver.ffmpeg", return_value=None if missing_ffmpeg else object()), mock.patch(
                     "peach.ffmpeg.FFmpegResolver.ffprobe", return_value=None if missing_probe else object()):
                 fact = next(row for row in runtime_fact_entries(self.config) if row['term'] == 'FFmpeg')
-                html = runtime_facts_html(self.config)
-                self.assertEqual('download_url' in fact, missing_ffmpeg or missing_probe)
-                self.assertEqual('https://ffmpeg.org/download.html' in html, missing_ffmpeg or missing_probe)
-                if missing_ffmpeg or missing_probe:
-                    self.assertIn('target="_blank"', html)
-                    self.assertIn('<svg aria-hidden="true"', html)
+                self.assertEqual(fact.get('download_url') == 'https://ffmpeg.org/download.html',
+                                 missing_ffmpeg or missing_probe)
 
     def test_mount_downloads_follow_os_and_detected_installation(self):
         from peach.media_configuration import mount_dependencies
-        from peach.routes_pages import mount_dependencies_html
+        from peach.routes_pages import missing_mount_dependencies
+
+        def names(*, windows):
+            return [row['download_label'] for row in missing_mount_dependencies(windows=windows)]
         with mock.patch("peach.media_configuration._windows_installed_names", return_value=[]), mock.patch(
                 "peach.media_configuration.shutil.which", return_value=None):
             windows = mount_dependencies(system='win32')
             self.assertEqual([row['name'] for row in windows], ['CloudDrive', 'WinFsp'])
             self.assertTrue(all(not row['available'] for row in windows))
-            self.assertIn('下载 WinFsp', mount_dependencies_html(windows=True))
-            self.assertNotIn('macFUSE', mount_dependencies_html(windows=True))
+            self.assertIn('下载 WinFsp', names(windows=True))
+            self.assertNotIn('下载 macFUSE', names(windows=True))
         with mock.patch("peach.media_configuration._windows_installed_names", return_value=['clouddrive', 'winfsp 2026']):
             self.assertTrue(all(row['available'] for row in mount_dependencies(system='win32')))
-            self.assertEqual(mount_dependencies_html(windows=True), '')
+            self.assertEqual(names(windows=True), [])
         with mock.patch("peach.media_configuration.Path.is_dir", return_value=False), mock.patch(
                 "peach.media_configuration.shutil.which", return_value=None):
             self.assertEqual([row['name'] for row in mount_dependencies(system='darwin')], ['CloudDrive', 'macFUSE'])
-            self.assertIn('下载 macFUSE', mount_dependencies_html(windows=False))
-            self.assertNotIn('WinFsp', mount_dependencies_html(windows=False))
+            self.assertIn('下载 macFUSE', names(windows=False))
+            self.assertNotIn('下载 WinFsp', names(windows=False))
 
     def setUp(self):
         super().setUp()

@@ -3,26 +3,16 @@ from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from peach import media_configuration as media_config, onboarding, settings_file
 
 
 class MediaConfigurationTests(unittest.TestCase):
-    def test_setup_mapping_fields_follow_the_server_operating_system(self):
-        from peach import routes_pages, web_entry
+    def test_runtime_facts_name_the_operating_system_and_settings_file(self):
+        from peach import web_entry
         with tempfile.TemporaryDirectory() as directory:
             config = settings_file.load_config(environ={"PEACH_DATA_ROOT": str(Path(directory).resolve())})
-            windows = routes_pages.setup_page(config, windows=True)
-            other = routes_pages.setup_page(config, windows=False)
-            self.assertNotIn('name="media_root"', windows)
-            self.assertNotIn('Windows 中的对应路径', windows)
-            self.assertIn('Windows 中的对应路径', other)
-            self.assertIn('wireSelectField', windows)
-            self.assertIn('new MutationObserver(enhance)', windows)
-            self.assertIn('id="i-chevron-down"', windows)
-            self.assertIn('.help a:hover{text-decoration:underline;', windows)
             facts = dict(web_entry.runtime_facts(config))
             self.assertIn('操作系统', facts)
             self.assertIn('设置文件', facts)
@@ -70,8 +60,8 @@ class MediaConfigurationTests(unittest.TestCase):
         with patch("peach.platform.os.scandir", side_effect=OSError("Device not configured")):
             self.assertFalse(media_config.rows(config, windows=False, probe=True)[0]["online"])
 
-    def test_setup_post_reader_keeps_cloud_source_and_inline_error(self):
-        from peach.routes_pages import _read_answers, setup_page
+    def test_setup_answers_keep_the_cloud_source_and_its_windows_root(self):
+        from peach.routes_pages import _read_answers
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory).resolve()
             config = settings_file.load_config(environ={"PEACH_DATA_ROOT": str(base)})
@@ -80,10 +70,7 @@ class MediaConfigurationTests(unittest.TestCase):
             answers, errors = _read_answers(config, submitted, windows=False)
             self.assertFalse(errors)
             self.assertEqual(answers.media_sources[0]["location"], "115")
-            html = setup_page(config, windows=False, values=submitted)
-            self.assertIn('value="115" selected', html)
-            self.assertIn('name="media_root"', html)
-            self.assertIn('value="B:/"', html)
+            self.assertEqual(answers.media_sources[0]["root"], "B:/")
 
     def test_setup_local_source_reports_native_directory_error_first(self):
         from peach.routes_pages import _setup_media_source_errors
@@ -97,30 +84,19 @@ class MediaConfigurationTests(unittest.TestCase):
         )
         self.assertEqual(errors, ["目录不存在：/missing"])
 
-    def test_completion_page_keeps_runtime_details_collapsed(self):
-        from peach.routes_pages import setup_done_page
+    def test_completion_facts_and_entry_leave_out_mounts_and_internals(self):
+        from peach.routes_pages import _setup_destination
+        from peach.web_entry import runtime_fact_entries
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory).resolve()
             config = replace(settings_file.load_config(environ={"PEACH_DATA_ROOT": str(base)}),
                              locations={"115": ("B:/",)}, mounts={"115": ("/Volumes/115",)})
-            tree = SimpleNamespace(database=base / 'ledger.db', ledger_existed=False, migrations=0,
-                                   ca_cert=None, ca_error='unavailable', token_path=base / 'token')
+            shown = " ".join(row["value"] for row in runtime_fact_entries(config))
+            for internal in ('/Volumes/115', 'peach scan configured', '本机 CA', '已应用 0 个迁移'):
+                self.assertNotIn(internal, shown)
             with patch('peach.distribution.standalone', return_value=False):
-                html = setup_done_page(SimpleNamespace(config=config, tree=tree), windows=False, scan_requested=False)
-            self.assertNotIn('/Volumes/115', html)
-            self.assertNotIn('peach scan configured', html)
-            self.assertNotIn('本机 CA', html)
-            self.assertNotIn('已应用 0 个迁移', html)
-            self.assertIn('稍后在配置页开始扫描媒体库', html)
-            self.assertIn('<details><summary><span>运行信息</span>', html)
-            self.assertNotIn('<details open', html)
-            self.assertIn('<a class="setup-enter" href=', html)
-            self.assertIn(f'href="http://127.0.0.1:{config.server.port}/?onboarding=1"', html)
+                self.assertEqual(_setup_destination(config, history_guide=False),
+                                 f'http://127.0.0.1:{config.server.port}/?onboarding=1')
             with patch('peach.distribution.standalone', return_value=True):
-                packaged = setup_done_page(SimpleNamespace(config=config, tree=tree), windows=True,
-                                           scan_requested=False, history_guide=True)
-            self.assertIn('<a class="setup-enter" href=', packaged)
-            self.assertIn(f'href="http://127.0.0.1:{config.server.port}/taste?onboarding=1"', packaged)
-            self.assertIn('>导入浏览器历史记录</a>', packaged)
-            self.assertIn('<details><summary><span>运行信息</span>', packaged)
-            self.assertNotIn('<details open', packaged)
+                self.assertEqual(_setup_destination(config, history_guide=True),
+                                 f'http://127.0.0.1:{config.server.port}/taste?onboarding=1')

@@ -20,7 +20,8 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
 | `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js`、`/js/ui-sounds.js`、`/js/jav-title.js`、`/js/tags.js` 等遗留模块的手写类型 |
 | `frontend/src/ui-kit/` | 遗留层与入口页共用的控件：覆盖式滚动条、Collapse、锚定菜单、Geist Select 与来源站标。只有这一份实现，随 `peach-entry.js` 发出；`/js/ui-components.js` 从入口包原名转出，壳与 React 子树经 `@peach/legacy/ui` 读到的是同一个模块实例 |
-| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出首启页与 `/js/ui-components.js` 要的导出，不带 React |
+| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出错误页与 `/js/ui-components.js` 要的导出，不带 React |
+| `frontend/src/react/pages/` | 独立页面包：`index.tsx` 是 `vite.pages.config.ts` 的构建入口，按挂载点的 `data-page` 画 SPA 外壳之外的页面；现在只有首启页（`setup/`）。`auth-card.tsx` 是这类页面的外框 |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
@@ -32,14 +33,27 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`islands.test.ts` 走挂载契约 |
 | `web/dist/peach-ui.js` | 构建产物，**进 Git**，由 `/dist/{name}` 提供 |
 | `web/dist/peach-react.js`、`peach-react.css` | React 子树的构建产物，**进 Git** |
-| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是首启页、完成页与错误页的页内脚本和 `/js/ui-components.js`；`/js/core.js`、`/js/ui-sounds.js` 外置。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
+| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是错误页的页内脚本和 `/js/ui-components.js`；`/js/core.js`、`/js/ui-sounds.js` 外置。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
+| `web/dist/peach-pages.js`、`peach-pages.css` | 独立页面包的构建产物，**进 Git**，不带哈希。`npm run build` 在 `peach-ui.js` 之后构建它（`emptyOutDir: false`） |
 
-首次运行页（未配置时的 `GET /` 与 `POST /setup`）不在这张表里：它是 SPA 外壳之外的一张
-独立页面，HTML 与样式都自包含在 `src/peach/routes_pages.py`，只借入口包 `/dist/peach-entry.js` 的 `attachOverlayScrollbar`、`wireCollapse` 与 Geist Select 画整页滚动条、「高级设置」的折叠和媒体来源下拉（入口包再从 `/js/core.js`、`/js/ui-sounds.js` 取字形与音效），此外不引 `web/` 的资产，也不是
-island。原因是那一套一上来就打 `/api/items`，而未配置的机器还没有数据库；它也没有客户端
-状态，原生 `<form method="post">` 不写一行 JS 就能工作。设置成功以浏览器 cookie 登录并跳入馆藏。
-同一张表单的题目与提交另有 JSON 契约 `GET /api/setup/questions`、`POST /api/setup`，形态见 `docs/OPERATIONS.md`「首次设置的内部流程」；这张页面本身走表单提交，不读它们。
-它的配色 token 从 `web/css/01-base.css` 的 `:root` 两段抽出来，跟随系统深浅色。
+首次运行页（未配置时的 `GET /`）是 SPA 外壳之外的一张独立页面。服务端只回一张薄壳
+（`routes_pages.setup_shell()`）：主题预读脚本、Inter、`/dist/peach-pages.css`、挂载点
+`#peach-page[data-page="setup"]` 和表单用到的三枚雪碧图字形；表单整个由页面包
+`/dist/peach-pages.js` 用 BoardUI 画出，题目取自 `GET /api/setup/questions`，提交走
+`POST /api/setup`，形态见 `docs/OPERATIONS.md`「首次设置的内部流程」。
+
+页面包自成一份，不引 `peach-ui.js`、`peach-react.js`、`peach-entry.js`，也不建 Query 客户端，
+请求用裸 `fetch`。原因有两条：未配置的机器还没有数据库，主界面那一套一上来就打 `/api/items`；
+首启只开一次，让它借主界面的 2.6 MB React 包或给主界面拆出共享块，都是用一次的页面去改每天
+加载的那份。和配置页共用的控件（媒体文件夹行、密码与确认两格、忙态属性）在
+`frontend/src/react/settings/`，两边各自打进自己的包。`@peach/legacy/ui` 在页面包里由别名落到
+`pages/legacy-ui.ts`，只取来源站标与折叠，不经 `/js/ui-components.js`。
+
+样式层：`pages.css` 与主界面的 `styles.css` 共用 `base.css`（暗色变体、Inter、阴影 token 与
+`.peach-react` 容器基线），Preflight 同样限定在 `.peach-react` 里，薄壳把这个类挂在 `<body>` 上，弹出层落进 body 也在范围内。
+深浅色读 `localStorage` 的 `peach.settings.v1`，同时写 `data-theme` 与 `<html>` 的 `.dark`。
+完成态在独立包上过 `RESTART_REDIRECT_MS`（`frontend/src/react/restart-redirect.ts`，与配置页
+保存后的跳转同一个数）自动跳到入口。
 
 ### 配置页
 

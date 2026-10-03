@@ -1,6 +1,6 @@
-"""入口页共用件：首启、登录与配置页都要的内联样式和运行信息。
+"""入口页共用件：登录页与错误页的内联样式，首启与配置页共用的运行信息。
 
-这些页面不加载 `app.js`，样式得随 HTML 一起送到；运行信息则被首启完成页、登录页
+登录页与错误页不加载 `app.js`，样式得随 HTML 一起送到；运行信息则被 `/api/setup`
 和 `/api/configuration` 共用。三个路由模块都要，就不能住在其中任何一个里：那会让
 路由层互相导入成环。放在 web 层，路由模块单向依赖它，`tests/test_module_layering.py`
 守着这个方向。
@@ -13,12 +13,12 @@ from .config import PROJECT_ROOT
 
 
 def board_entry_style() -> str:
-    """入口页内联公共视觉层。首启和登录页不加载 app.js，样式得随 HTML 一起送到。"""
+    """入口页内联公共视觉层。登录页与错误页不加载 app.js，样式得随 HTML 一起送到。"""
     css = (PROJECT_ROOT / "web/board-entry.css").read_text(encoding="utf-8")
     return f'<style id="boardEntryStyles">{css}</style>'
 
 
-#: 入口页表单的样式，首启、登录与错误页共用这一份。刻意不引用 `web/` 里的任何资产：
+#: 入口页表单的样式，登录与错误页共用这一份。刻意不引用 `web/` 里的任何资产：
 #: 那一套一上来就会去打 `/api/items`，而未配置的机器还没有数据库，页面只会是一屏红色
 #: 报错。这几页因此落在 SPA 外壳之外，不是 `frontend/` island（ADR-0022、docs/FRONTEND.md）。
 _ENTRY_FORM_STYLE = """<style>
@@ -149,8 +149,8 @@ def check_html(name: str, text_html: str, *, checked: bool, value: str = "y") ->
 def _theme_tokens() -> str:
     """主站 `01-base.css` 里的两套色板：浅色的 `:root` 和跟随系统的深色覆盖。
 
-    首启页在 SPA 外壳之外，但它必须和主站同一副面孔：系统是深色时主站是深色，这一页
-    也得是，否则设置完一跳进馆藏就像换了个产品。
+    登录页在 SPA 外壳之外，但它必须和主站同一副面孔：系统是深色时主站是深色，这一页
+    也得是，否则登录完一跳进馆藏就像换了个产品。
     """
     base = (PROJECT_ROOT / "web" / "css" / "01-base.css").read_text(encoding="utf-8")
     light = re.search(r":root\s*\{[^}]+\}", base).group(0)
@@ -162,8 +162,8 @@ def _theme_tokens() -> str:
 def _scrollbar_rules() -> str:
     """主站的覆盖式滚动条：轨道、滑块与「挂上之后才藏原生那条」三组规则，原样借用。
 
-    首启页装不下时滚起来也得是同一条；只取 .ovtrack 到 [data-overlay-scrollbar] 那一段，
-    不带 html 上无条件藏滚动条的那句——脚本没跑到时首启页要还有系统滚动条可用。
+    入口页装不下时滚起来也得是同一条；只取 .ovtrack 到 [data-overlay-scrollbar] 那一段，
+    不带 html 上无条件藏滚动条的那句——脚本没跑到时页面要还有系统滚动条可用。
     """
     base = (PROJECT_ROOT / "web" / "css" / "01-base.css").read_text(encoding="utf-8")
     rules = re.search(r"\.ovtrack\{.*?\[data-overlay-scrollbar\]::-webkit-scrollbar\{[^}]*\}", base, re.S).group(0)
@@ -179,7 +179,7 @@ def _button_rules() -> str:
 def _board_button_rules() -> str:
     """入口页的主按钮就是站内那一颗：规则和 token 都从 `board.css` 原样取。
 
-    错误页、登录页和首启页都是没登录时看到的 Peach，按钮换一种颜色就等于说这是另一个
+    错误页和登录页都是没登录时看到的 Peach，按钮换一种颜色就等于说这是另一个
     产品。表单提交键由 `board-entry.css` 接同一组 token，渐变色值仍只在 `board.css` 一处。
 
     只取主按钮那几条（静止、悬停铺的那层底、按下、尺寸）和它们用到的 token：`board.css`
@@ -205,7 +205,7 @@ def _board_button_rules() -> str:
 def entry_page_style() -> str:
     """入口页的整层视觉：色板、滚动条、表单控件、Geist 按钮与 Board 表面。
 
-    首启、设置完成、错误页和登录页是同一副面孔的四个状态。谁少接一段，那一页就换了
+    错误页和登录页是同一副面孔的两个状态。谁少接一段，那一页就换了
     产品：登录页曾只接 `board_entry_style()`，`--board-blue` 无处声明，主按钮的底色
     解析不出来，屏幕上只剩一行蓝字。顺序有意义——后面几段按同一套 token 覆盖前面的
     默认值，`board-entry.css` 必须排在表单样式之后。

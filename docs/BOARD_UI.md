@@ -376,24 +376,23 @@ Radio card 沿用 2026-09-08 取得的 `r/checkbox-card.json`（`checkbox-card.t
 
 ## 首次设置 Auth Card
 
-首启页的按钮、开关与分组照 Board 的哪份证据，以及 primary 按钮规则原文与 Peach 的差异。
+首启页（`frontend/src/react/pages/setup/`）的控件全部是 BoardUI 组件，外框是
+`pages/auth-card.tsx`；登录页与错误页仍是服务端 HTML，按钮那一档见下文 primary 的规则原文。
 
-Button 取证（2026-09-10）：对照官网 `/components/button` 与保存的
-`board-reference/button.json`。选择文件夹为纯图标 secondary，添加媒体库为带前置图标的
-secondary，完成设置为 primary；标准按钮高度 36px、图标 20px、圆角 10px。
-主按钮渐变使用官网实测色值；按下缩放至 0.98，
-按下 220ms、释放 420ms，曲线为 `cubic-bezier(.4,0,.2,1)`，减少动态效果时关闭。
-按钮保留原动作、键盘焦点、忙态防重复与禁用语义，不写入预览配置。
+Auth Card 是注册表里没有的组合：页面底色 `background-secondary-default` 上居中一张
+`background-primary-default` 卡，一条 `separator-border`，24px 圆角，最宽 560px，内边距 32px，
+窄屏收到 20px。卡头是 40px 站标、`title-2` 标题和一句次级文字的引言。
 
-媒体库路径行的选择与移除按钮主动采用 40×40px，与相邻 40px 输入框等高；这是组合输入
-对齐需要的局部差异，不改变页面底部「完成设置」的 36px Board primary。访问密码使用
-Board Switch medium：42×24px 轨道、18px 滑块，关闭时密码输入区域不渲染为可见控件。
-媒体库、访问密码、高级设置、完成设置后的选项以 24px 上下留白和 1px `separator` 横线分组；
-密码组内标签到输入框 6px，两项密码之间 16px。浏览器历史记录作为完成设置后的独立子组，
-同样以横线分隔。
-一级分类标题统一为 14/20、600、主文字色；分类内字段标签统一为 14/20、500、次级文字色；
-辅助说明统一为 12/18、弱文字色。「浏览器历史记录」是「完成设置后」的二级标题，用
-14/20、500，不与一级分类争夺层级。
+按钮全用 BoardUI `Button`／`IconButton` 的 medium：选择文件夹与移除为纯图标 secondary（36×36、
+图标 20px），添加媒体库为带前置图标的 secondary，完成设置为 primary（高 36px、圆角 10px）。
+路径行的输入框与图标按钮同为 36px 高，不再单独放大。忙态与防重复走 `busyProps`，与配置页同一套。
+访问密码是 BoardUI `Switch` medium（42×24px 轨道、18px 滑块），关闭时两格密码不渲染。
+「监听地址」是两段式单选（`SegmentedRadioGroup`，保留 `role="radiogroup"`），局域网在左。
+
+媒体库、访问密码、高级设置、完成设置后四组之间是 24px 留白加一条 `separator-border` 横线，
+第一组紧跟卡头不画线；浏览器历史记录是「完成设置后」里的子组，同样以横线分隔。一级分组标题
+用 `body-semibold`、主文字色；字段标签用 BoardUI `Label`；说明用 `body-2-regular`、次级文字色，
+错误用同一字号的 `text-error-primary`，框体线条随 `aria-invalid` 转 danger 色。
 
 ## 安装后教程
 
@@ -432,7 +431,7 @@ Announcement 的图标标题动作结构和 RareUI Task List 的 24px 圆形状�
 Peach 照抄这一副面，包括 `::before` 的交叉淡入和 `border:0`。补一圈透明边会在
 `box-sizing:border-box` 下把内容盒压掉 2px，而 `background-origin` 是 padding-box，渐变被压到
 34px 再延展回 36px，色标就跟上游错开一像素。三档 token 是 `--board-blue`、`--board-blue-hover`、
-`--board-blue-active`，连同规则只在 `web/board.css` 一处，错误页、登录页和首启页由
+`--board-blue-active`，连同规则只在 `web/board.css` 一处，错误页与登录页由
 `web_entry._board_button_rules()` 取同一份过去；判据写在
 `test_the_primary_tier_has_one_face_and_crossfades_into_its_hover`。
 
