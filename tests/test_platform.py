@@ -1,5 +1,7 @@
 import os
 import tempfile
+import threading
+import time
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -17,6 +19,7 @@ from peach.platform import (
     resolve_location,
     resolve_root,
     root_online,
+    root_status,
     system_volume,
     translate_ledger_path,
     translate_roots,
@@ -244,6 +247,144 @@ class OfflineModeTests(unittest.TestCase):
             dead = live / "gone"
             status = FilesystemBackend([live, dead], live / "snapshots").source_status()
         self.assertEqual([row["online"] for row in status], [True, False])
+
+
+class MountReachabilityTests(unittest.TestCase):
+    def setUp(self):
+        from peach.mount_reachability import MountReachability, MountRoot
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name).resolve()
+        self.now = 0.0
+        self.calls = []
+        self.answer = "ok"
+
+        def probe(path):
+            self.calls.append(path)
+            return self.answer
+
+        self.monitor = MountReachability([MountRoot("local", "本地磁盘", "R:/media", self.root)],
+                                         probe=probe, clock=lambda: self.now, retry_delay=0)
+        self.addCleanup(self.monitor.stop)
+
+    def wait_state(self, expected):
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            self.monitor.tick()
+            if self.monitor.summary()["sources"][0]["state"] == expected:
+                return
+            time.sleep(0.005)
+        self.fail(f"没有取得状态 {expected}")
+
+    def test_directory_probe_distinguishes_empty_missing_file_and_permission(self):
+        self.assertEqual(root_status(self.root), "ok")
+        self.assertEqual(root_status(self.root / "missing"), "missing")
+        file = self.root / "file"
+        file.touch()
+        self.assertEqual(root_status(file), "not_directory")
+        for error, expected in ((PermissionError(), "permission_denied"), (OSError(), "unavailable")):
+            with patch("peach.platform.os.scandir", side_effect=error):
+                self.assertEqual(root_status(self.root), expected)
+
+    def test_failure_while_reading_the_first_entry_is_not_online(self):
+        class Entries:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def __iter__(self): return self
+            def __next__(self): raise PermissionError
+        with patch("peach.platform.os.scandir", return_value=Entries()):
+            self.assertEqual(root_status(self.root), "permission_denied")
+            self.assertFalse(root_online(self.root))
+
+    def test_healthy_and_failed_probes_use_different_intervals_and_recover(self):
+        self.wait_state("ok")
+        self.assertEqual(len(self.calls), 1)
+        self.now = 599
+        self.monitor.tick()
+        self.assertEqual(len(self.calls), 1)
+        self.answer = "permission_denied"
+        self.now = 600
+        self.wait_state("permission_denied")
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(self.monitor.summary()["warnings"], ["本地磁盘：没有权限读取"])
+        self.now = 659
+        self.monitor.tick()
+        self.assertEqual(len(self.calls), 3)
+        self.answer = "ok"
+        self.now = 660
+        self.wait_state("ok")
+        self.assertEqual(len(self.calls), 4)
+        self.assertEqual(self.monitor.summary()["warnings"], [])
+
+    def test_a_successful_retry_does_not_report_a_failure(self):
+        answers = iter(["missing", "ok"])
+        self.monitor.probe = lambda path: next(answers)
+        self.wait_state("ok")
+        self.assertEqual(self.monitor.summary()["warnings"], [])
+
+    def test_first_probe_does_not_depend_on_the_clock_origin(self):
+        self.now = -10000
+        self.wait_state("ok")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_pending_probe_is_unknown_and_timeout_keeps_one_worker(self):
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        def blocked(path):
+            self.calls.append(path)
+            entered.set()
+            release.wait(2)
+            return "ok"
+        self.monitor.probe = blocked
+        self.monitor.tick()
+        self.assertTrue(entered.wait(1))
+        self.assertIsNone(self.monitor.sources()[0]["online"])
+        self.now = 6
+        self.monitor.tick()
+        self.assertEqual(self.monitor.summary()["sources"][0]["state"], "timeout")
+        for self.now in (60, 600, 6000):
+            self.monitor.tick()
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.monitor.summary()["warnings"], [])
+        release.set()
+        self.wait_state("ok")
+
+    def test_slow_roots_have_a_global_limit_and_stop_does_not_wait_for_them(self):
+        from peach.mount_reachability import MountReachability, MountRoot, MAX_PENDING
+        release = threading.Event()
+        self.addCleanup(release.set)
+        def blocked(path):
+            self.calls.append(path)
+            release.wait(2)
+            return "ok"
+        self.monitor = MountReachability([
+            MountRoot("local", "本地磁盘", str(at), self.root / str(at)) for at in range(12)
+        ], probe=blocked)
+        self.addCleanup(self.monitor.stop)
+        self.monitor.tick()
+        self.monitor.tick()
+        deadline = time.monotonic() + 1
+        while len(self.calls) < MAX_PENDING and time.monotonic() < deadline:
+            time.sleep(0.005)
+        self.assertEqual(len(self.calls), MAX_PENDING)
+        self.monitor.stop()
+        self.assertFalse(release.is_set())
+        self.monitor.tick()
+        self.assertEqual(len(self.calls), MAX_PENDING)
+
+    def test_summary_hides_paths_and_all_roots_contribute_to_source_health(self):
+        from peach.mount_reachability import MountReachability, MountRoot
+        self.monitor = MountReachability([
+            MountRoot("local", "本地磁盘", "R:/private", self.root),
+            MountRoot("local", "本地磁盘", "S:/private", None),
+        ])
+        self.assertFalse(self.monitor.sources()[0]["online"])
+        row = self.monitor.summary()["sources"][0]
+        self.assertEqual(row["state"], "unmapped")
+        self.assertNotIn("roots", row)
+        self.assertNotIn("declared", row)
+        self.assertNotIn("resolved", row)
+        self.assertEqual(row["message"], "本地磁盘：未配置挂载点")
 
 
 if __name__ == "__main__":

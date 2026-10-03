@@ -49,6 +49,7 @@ from .media import (
     MediaUnavailable,
 )
 from .mdns import create_mdns_publisher
+from .mount_reachability import MountReachability
 from .mp4repair import HeaderRepairStore
 from .platform import location_mounts
 from .previews import (
@@ -196,6 +197,7 @@ def create_app(
         database=database,
     )
     repository = LedgerRepository(database)
+    mount_reachability = MountReachability(routes_api.source_roots())
     resolver = FFmpegResolver(settings.ffmpeg_root)
     http_transport = HttpxTransport()
     follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(
@@ -317,6 +319,8 @@ def create_app(
         automatic_updates.start()
         push_discovery.start()
         downloads.start()
+        if settings.configured:
+            mount_reachability.start()
         warmup = asyncio.create_task(warm_startup_entries())
         aggregate_warmup = asyncio.create_task(_warm_ledger_aggregates(settings, contract))
         if mdns is not None:
@@ -335,6 +339,7 @@ def create_app(
             automatic_updates.stop()
             push_discovery.stop()
             downloads.stop()
+            mount_reachability.stop()
             # 死链检查和资源对账的后台线程是 daemon，本来挡不住进程退出；这里显式收
             # 一下，免得在途的那一轮在解释器拆卸期间还继续查库、往没人读的状态里写。
             contract.stop_background_jobs()
@@ -377,6 +382,7 @@ def create_app(
     app.state.automatic_updates = automatic_updates
     app.state.push_discovery = push_discovery
     app.state.downloads = downloads
+    app.state.mount_reachability = mount_reachability
     app.state.stream_sessions = StreamSessionRegistry()
     app.state.sync = sync
     app.state.tunnel = tunnel_manager
@@ -481,6 +487,7 @@ def create_app(
                 "configurable": routes_configuration.configurable(request),
                 "db": database_status(settings.db_path),
                 "ffmpeg": ffmpeg.source if ffmpeg else "unavailable",
+                "media_mounts": app.state.mount_reachability.summary(),
                 "mdns": mdns.status if mdns is not None else "disabled",
                 "mdns_backend": mdns.backend if mdns is not None else None,
                 "mdns_service": mdns.name if mdns is not None else None,

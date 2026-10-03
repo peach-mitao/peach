@@ -14,6 +14,12 @@
 
 安装依赖的精确版本由 [Python 清单](../pyproject.toml)、[Python 锁文件](../uv.lock)、[前端清单](../frontend/package.json) 和 [静态依赖清单](../package.json) 维护。本页记录用途、许可证与取舍；取证版本和提交号只代表对应证据。
 
+## 挂载可达性
+
+`mount_reachability.py` 参考 OpenAver 的 `core/source_reachability.py`（MIT，Copyright 2026 peace；固定 revision `8cc17e50453d9f69a81f5fee1a072df80f7aab73`，2026-10-01）采用正常 600 秒、异常 60 秒的节律、两次失败确认和超时在途去重。Peach 独立实现此算法，未复制上游源码；使用 Python 标准库线程、事件与 Future，兼容项目的 Python 3.12–3.14，不新增依赖。Peach 的路径映射与首条目录读取归 `platform`，来源接口、健康摘要和托盘共用纯内存快照；最多四个目录探测在途，后台线程不阻塞服务退出。
+
+未采用参考实现的 UNC TCP 445 探测：端口连通不能证明共享目录可读。普通文件也不能作为媒体根，`NotADirectoryError` 单列；权限拒绝、目录不存在与其他读取失败分别报告。APScheduler 已用于定时任务，但其线程执行器不能取消阻塞的文件系统调用；本功能用停止事件驱动调度，保留尚未返回的目录探测。任务中心写入 ledger，不用于此只读探测。
+
 ## Board 界面与数值设置
 
 页面控件与交互由哪些共用件承担；组件映射、Board 上游证据与许可证见 [BoardUI 适配](BOARD_UI.md)。

@@ -88,7 +88,7 @@ describe('作品详情岛', () => {
     }
   });
 
-  it('来源没挂载：说明块代替播放器，重新检测仍未挂载就换成再试', { timeout: 60_000 }, async () => {
+  it('来源不可读取：说明块代替播放器，刷新状态后显示读取结果', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.offline}`, DESKTOP);
     try {
       const page = opened.page;
@@ -96,12 +96,38 @@ describe('作品详情岛', () => {
       assert.match(await gate.innerText(), /脱盘模式/);
       assert.equal(await page.locator('#stage .vjs-tech').count(), 0, '脱盘的条目挂了播放器');
       await page.locator('#offlineRetry').click();
-      await page.locator('#offlineRetry', { hasText: '仍未挂载 · 再试' }).waitFor();
+      await page.locator('#offlineRetry', { hasText: '仍无法读取 · 刷新' }).waitFor();
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
     }
   });
+
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.mobile ? '手机' : '桌面'}来源状态：权限原因可见，未取得状态不判脱盘`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, `/item/${ITEM.offline}`, viewport);
+      try {
+        const page = opened.page;
+        let online: boolean | null = false;
+        await page.route((url) => url.pathname === '/api/sources', (route) => route.fulfill({ json: {
+          sources: [{ location: 'local', online: true }, { location: '115', online,
+            state: online === false ? 'permission_denied' : 'timeout',
+            message: online === false ? 'CloudDrive · 115：没有权限读取' : 'CloudDrive · 115：探测未返回' }],
+        } }));
+        await page.reload({ waitUntil: 'load' });
+        await page.locator(DETAIL_READY).waitFor();
+        assert.match(await page.locator('#stage [data-item-gate="offline"]').innerText(), /没有权限读取/);
+        online = null;
+        await page.reload({ waitUntil: 'load' });
+        await page.locator(DETAIL_READY).waitFor();
+        assert.equal(await page.locator('#stage [data-item-gate="offline"]').count(), 0);
+        assert.equal(await page.locator('body.offline-source').count(), 0);
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
 
   it('出演超过 8 位先收起，点「还有 N 位」全部展开', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.cast}`, DESKTOP);

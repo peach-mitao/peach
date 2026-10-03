@@ -201,6 +201,17 @@ class ServiceStatusTests(unittest.TestCase):
             "HTTP 异常（无响应） · HTTPS 异常（无响应）",
         )
 
+    def test_mount_failure_names_the_source_without_restarting_the_healthy_service(self):
+        response = Mock(status_code=200)
+        response.json.return_value = {"ok": True, "media_mounts": {
+            "warnings": ["CloudDrive · 115：没有权限读取"]}}
+        spec = ServiceSpec("https", "https://local/healthz", ("noop",), True)
+        popen = Mock()
+        manager = ServiceManager((spec,), popen=popen, health_get=lambda *a, **k: response)
+        manager.start_missing()
+        self.assertEqual(manager.status(), "HTTPS 正常（CloudDrive · 115：没有权限读取）")
+        popen.assert_not_called()
+
     def test_partial_names_the_broken_one_with_reason(self):
         self.assertEqual(
             self.manager({"http": (True, ""), "https": (False, "状态码 503")}).status(),
