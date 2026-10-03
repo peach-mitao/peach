@@ -12,7 +12,8 @@
  * 每一次历史变化（壳写的、React 子树写的、后退前进）都领一个递增的序号 `seq`。壳写地址走
  * `shellNavigate`，那一次的序号当场认领：壳写完地址自己打开那一屏，不再派发。后退前进与 React 子树
  * 写的那几次留给 `<Router>`，由它在渲染到那个序号时报给 `routeSeen`，再派发给壳（`startRouting` 交进来的
- * `restoreRoute`）。判据用序号不用地址：同一条目重放的 `popstate` 地址不变，壳照样要重开那一屏。 */
+ * `restoreRoute`）。判据用序号不用地址：同一条目重放的 `popstate` 地址不变，壳照样要重开那一屏。
+ * 派发带上来由（`RouteOrigin`）：启动那一次是 `'boot'`，之后都是 `'history'`。 */
 import { UNSAFE_createBrowserHistory, type Location, type NavigationType, type Navigator, type To } from 'react-router';
 
 import { isOverlayPath, overlayState, type OverlayKind } from './overlay';
@@ -39,7 +40,12 @@ const listeners = new Set<NavigationListener>();
 /* 已经派发过、或不该派发的最大序号。`claiming` 只在 `shellNavigate` 写地址那一下为真。 */
 let claimed = 0;
 let claiming = false;
-let dispatcher: (() => Promise<void> | void) | null = null;
+let dispatcher: RouteDispatcher | null = null;
+
+/** 派发的来由：`'boot'` 是页面加载后的第一次（刷新、新标签页、深链都算），`'history'` 是之后的后退前进与
+ * React 子树写的地址。`usr` 跨刷新存活，壳要靠它分清条目里记的背景能不能读。 */
+export type RouteOrigin = 'boot' | 'history';
+export type RouteDispatcher = (origin: RouteOrigin) => Promise<void> | void;
 
 browser.listen(({ action, location }) => {
   seq += 1;
@@ -87,18 +93,19 @@ export function shellNavigate(path: string | URL, { replace = false, state }: Sh
 /** 壳启动时派发第一次，此后的派发交给 `routeSeen`。
  *
  * 到这一刻为止的历史变化都算启动这一次的：`<Router>` 先挂上的话，它挂上时报的那个序号已经过去，
- * 不会再派发；后挂上的话，它读到的初值就是这里认领的序号。只调一次。 */
-export function startRouting(dispatch: () => Promise<void> | void): Promise<void> {
+ * 不会再派发；后挂上的话，它读到的初值就是这里认领的序号。只调一次，这一次的来由是 `'boot'`。 */
+export function startRouting(dispatch: RouteDispatcher): Promise<void> {
   dispatcher = dispatch;
   claimed = seq;
-  return Promise.resolve(dispatch());
+  return Promise.resolve(dispatch('boot'));
 }
 
-/** `<Router>` 渲染到第 `seen` 次历史变化时报到这里：壳还没开始路由、或这一次已经认领过，就不派发。 */
+/** `<Router>` 渲染到第 `seen` 次历史变化时报到这里：壳还没开始路由、或这一次已经认领过，就不派发。
+ * 派发出去的来由是 `'history'`。 */
 export function routeSeen(seen: number): void {
   if (!dispatcher || seen <= claimed) return;
   claimed = seen;
-  void dispatcher();
+  void dispatcher('history');
 }
 
 /** 原地改写当前详情条目压着的详情种类：作品详情取数后转成关注详情时地址照旧是 `/item/:id`，内容换了。
@@ -110,7 +117,8 @@ export function retagOverlay(overlay: OverlayKind): void {
 }
 
 export {
-  clearOverlayBackground, holdOverlayBackground, isOverlayPath, OVERLAY_PATHS, overlayState,
+  adoptOverlayState, backgroundOf, clearOverlayBackground, holdOverlayBackground, isOverlayPath, OVERLAY_PATHS,
+  overlayState, takeOverlayReturn,
   type BackgroundLocation, type OverlayKind, type OverlayState,
 } from './overlay';
 export {

@@ -1,4 +1,4 @@
-/* 作品详情岛（`item-detail`）在真浏览器里的行为：从目录卡进出、深链、
+/* 作品详情岛（`item-detail`）在真浏览器里的行为：从目录卡进出、深链、后退回到详情与刷新后关掉回哪一页、
  * 播放列表换条后关掉回列表页、舞台在媒体框里挂 Video.js、
  * 脱盘说明、共演收起、标题折叠、评分与标签的撤销、反馈键态、四种队列、播放列表排序与移出、保存 Mix、接着看、
  * 实体页入口与手机布局。
@@ -66,6 +66,57 @@ describe('作品详情岛', () => {
       await pathIs(page, '/');
       await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"]`).first().waitFor({ timeout: 15_000 });
       assert.ok((opened.stub.reads.get('/api/items') || 0) >= 1, '深链关掉之后没有补取列表');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('后退回到详情再关掉：回到这一条打开时压着的那一页，地址与画面一致', { timeout: 90_000 }, async () => {
+    const opened = await openItemPage(browser, '/trash', DESKTOP, { ready: `#grid [data-media-card][data-id="${ITEM.plain}"]` });
+    try {
+      const page = opened.page;
+      const openCard = async (id: number) => {
+        await page.locator(`#grid [data-media-card][data-id="${id}"] [data-media-title]`).first().click();
+        await pathIs(page, `/item/${id}`);
+        await page.locator(DETAIL_READY).waitFor();
+      };
+      await openCard(ITEM.plain);
+      await page.locator('#closeStage').click();
+      await pathIs(page, '/trash');
+      await page.locator('[data-nav=""]:visible').first().click();
+      await pathIs(page, '/');
+      await page.locator(`#grid [data-media-card][data-id="${ITEM.cast}"]`).first().waitFor({ timeout: 15_000 });
+      await openCard(ITEM.cast);
+      for (const path of ['/', '/trash', `/item/${ITEM.plain}`]) {
+        await page.goBack();
+        await pathIs(page, path);
+      }
+      await page.locator(DETAIL_READY).waitFor();
+      await page.locator('#closeStage').click();
+      await pathIs(page, '/trash');
+      await page.locator('#stage[open]').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
+      assert.equal(await page.locator('#stage[open]').count(), 0);
+      await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"]`).first().waitFor();
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('刷新落在详情上不读条目记的来处：下面补画目录网格，关掉回首页', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, '/trash', DESKTOP, { ready: `#grid [data-media-card][data-id="${ITEM.plain}"]` });
+    try {
+      const page = opened.page;
+      await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"] [data-media-title]`).first().click();
+      await pathIs(page, `/item/${ITEM.plain}`);
+      await page.locator(DETAIL_READY).waitFor();
+      assert.deepEqual(await page.evaluate(() => history.state?.usr?.backgroundLocation), { pathname: '/trash', search: '' });
+      await page.reload({ waitUntil: 'load' });
+      await page.locator(DETAIL_READY).waitFor({ timeout: 15_000 });
+      await page.locator('#closeStage').click();
+      await pathIs(page, '/');
+      await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"]`).first().waitFor({ timeout: 15_000 });
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();

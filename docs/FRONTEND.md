@@ -22,7 +22,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
-| `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history`；详情与队列地址的条目在 `usr` 里带压在哪一页上（`overlay.ts` 的 `backgroundLocation`），壳关掉详情仍按自己记的来处走 |
+| `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history`；详情与队列地址的条目在 `usr` 里带压在哪一页上（`overlay.ts` 的 `backgroundLocation`）；后退前进落到详情条目上时壳按它定来处，启动那一次不读 |
 | `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、关注页、索引页与资料页的正文由它画（`managed-routes.tsx`）；页面组按条目记的背景匹配，覆盖组按真实地址匹配详情与队列 |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
@@ -106,6 +106,7 @@ island。原因是那一套一上来就打 `/api/items`，而未配置的机器�
 作品详情与关注详情都开在同一座常驻的舞台岛里（`frontend/src/react/stage/`）。宿主 `div[data-stage-host]` 挂在 body 末尾，岛拥有 `dialog#stage`、进出场、骨架、关闭键 `#closeStage` 与小窗；两座详情是它的子组件，共用同一份 Query 缓存。
 
 - 壳只拿命令式入口：`loadStage(host)` 第一次打开详情时装载 React 包，之后 `stageApi()` 同步可取，契约在 `stage/stage-api.ts`。来处（`detailReturnPath`、`followDetailReturnPath`、`detailOriginAnchor`）、地址与顶栏上下文仍归壳。
+- 关掉详情 push 来处：点进来的是点卡那一页；同一个队列里换条不变，播放列表关掉回列表页并重读；后退前进进来的取条目记的背景（关注详情连筛选一起保住）；刷新、新标签页与深链落在详情上不读条目，作品详情下面补画目录网格、关掉回 `/`，关注详情关掉回 `/follow`。
 - 焦点：骨架期间焦点停在 dialog 本身、不画焦点环，内容到了交给关闭键。Escape 先关最里层（右键菜单、标签搜索等弹层先吃掉），没人拦才关舞台。
 - 播放器在 `frontend/src/player/`，用 vendored 的 Video.js。入口 `mountPlayer(video, options)` 把媒体框里的 `<video>` 换成 Video.js 并返回拆除函数；详情只画媒体框，挂载由舞台的 `attachStagePlayer` 做。
 - 小窗与舞台共用同一个播放器实例：离开详情时正在放的那一个搬进小窗，展开回同一条时认领回来，不重建。显式关闭、暂停着、设置里关了小窗、换到别的条目时随舞台拆掉。交接判据钉在 `test/stage-player.test.ts`，真 Video.js 的行为在 `e2e/stage.test.ts`。

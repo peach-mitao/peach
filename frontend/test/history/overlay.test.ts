@@ -1,12 +1,14 @@
 /* 详情类历史条目的背景（`src/history/overlay.ts`）：壳决定打开详情时记下背景，push 详情地址时带进 `usr`；
  * 详情之间换条沿用上一条的背景，关掉详情与别的地址都不带。这里照壳的调用顺序走一遍：
- * `holdOverlayBackground()` → `shellNavigate(详情地址, {state: overlayState(种类)})`。 */
+ * `holdOverlayBackground()` → `shellNavigate(详情地址, {state: overlayState(种类)})`。
+ * 后退前进落到详情条目上时壳先清、再 `adoptOverlayState(usr)`，打开详情那一处 `takeOverlayReturn()` 取来处；
+ * 启动那一次壳不调 `adoptOverlayState`，派发来由见 `test/react/router.test.tsx`。 */
 import { beforeEach, expect, it } from 'vitest';
 
 import * as islands from '../../src/islands';
 import {
-  clearOverlayBackground, holdOverlayBackground, isOverlayPath, overlayState, peachHistory, retagOverlay,
-  shellNavigate,
+  adoptOverlayState, clearOverlayBackground, holdOverlayBackground, isOverlayPath, overlayState, peachHistory,
+  retagOverlay, shellNavigate, takeOverlayReturn,
 } from '../../src/history';
 
 beforeEach(() => {
@@ -23,10 +25,26 @@ function open(path: string, overlay: 'item' | 'follow' = 'item') {
   shellNavigate(path, { state: overlayState(overlay) });
 }
 
+/** 浏览器后退 `steps` 条，等这一次历史变化分发完。 */
+function back(steps = 1) {
+  return new Promise<void>((resolve) => {
+    const stop = peachHistory.listen(() => { stop(); resolve() });
+    peachHistory.go(-steps);
+  });
+}
+
+/** 壳的 `restoreRoute('history')` 落到这一条上：先清，再接条目自己记的背景。 */
+function revisit() {
+  clearOverlayBackground();
+  adoptOverlayState(usr());
+}
+
 it('壳从 peach-ui.js 取到的就是这一份', () => {
   expect(islands.holdOverlayBackground).toBe(holdOverlayBackground);
   expect(islands.overlayState).toBe(overlayState);
   expect(islands.retagOverlay).toBe(retagOverlay);
+  expect(islands.adoptOverlayState).toBe(adoptOverlayState);
+  expect(islands.takeOverlayReturn).toBe(takeOverlayReturn);
 });
 
 it('覆盖层地址是作品详情、四种队列与关注详情，页面与沉浸不算', () => {
@@ -105,4 +123,57 @@ it('作品详情转成关注详情：原地改记种类，背景、地址与条�
   shellNavigate('/item/9', { replace: true, state: null });
   retagOverlay('follow');
   expect(usr()).toBeNull();
+});
+
+it('后退回到从资料页打开的那一条：来处是条目记的资料页，不是之后点开别的详情时的那一页', async () => {
+  shellNavigate('/performers/x?sort=new');
+  open('/item/7');
+  clearOverlayBackground();
+  shellNavigate('/performers/x?sort=new');
+  shellNavigate('/');
+  open('/item/8');
+  await back(3);
+  expect(location.pathname).toBe('/item/7');
+  revisit();
+  expect(takeOverlayReturn()).toBe('/performers/x?sort=new');
+});
+
+it('来处取一次就清；条目没记背景（页面条目、深链）时给 null，壳用自己的缺省', () => {
+  adoptOverlayState({ backgroundLocation: { pathname: '/trash', search: '' }, overlay: 'item' });
+  expect([takeOverlayReturn(), takeOverlayReturn()]).toEqual(['/trash', null]);
+  for (const state of [null, undefined, { from: 'router' }, { backgroundLocation: { search: '?q=1' } }]) {
+    revisit();
+    adoptOverlayState(state);
+    expect([state, takeOverlayReturn(), overlayState('item')]).toEqual([state, null, undefined]);
+  }
+});
+
+it('清掉背景时连同没取走的来处一起清', () => {
+  adoptOverlayState({ backgroundLocation: { pathname: '/stats', search: '' }, overlay: 'item' });
+  clearOverlayBackground();
+  expect([takeOverlayReturn(), overlayState('item')]).toEqual([null, undefined]);
+});
+
+it('关注详情：后退回到详情，来处保住列表的筛选', async () => {
+  shellNavigate('/follow?view=saved');
+  open('/follow/item/3', 'follow');
+  clearOverlayBackground();
+  shellNavigate('/follow?view=saved');
+  await back();
+  expect(location.pathname).toBe('/follow/item/3');
+  revisit();
+  expect(takeOverlayReturn()).toBe('/follow?view=saved');
+});
+
+it('后退进详情之后再换条：新条目接着带同一个背景', async () => {
+  shellNavigate('/playlists');
+  open('/playlists/2/9');
+  open('/playlists/2/10');
+  shellNavigate('/stats');
+  await back();
+  expect(location.pathname).toBe('/playlists/2/10');
+  revisit();
+  takeOverlayReturn();
+  open('/playlists/2/11');
+  expect(usr()).toEqual({ backgroundLocation: { pathname: '/playlists', search: '' }, overlay: 'item' });
 });
