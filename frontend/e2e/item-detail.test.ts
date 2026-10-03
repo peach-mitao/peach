@@ -1,4 +1,5 @@
-/* 作品详情岛（`item-detail`）在真浏览器里的行为：从目录卡进出、深链、舞台在媒体框里挂 Video.js、
+/* 作品详情岛（`item-detail`）在真浏览器里的行为：从目录卡进出、深链、
+ * 播放列表换条后关掉回列表页、舞台在媒体框里挂 Video.js、
  * 脱盘说明、共演收起、标题折叠、评分与标签的撤销、反馈键态、四种队列、播放列表排序与移出、保存 Mix、接着看、
  * 实体页入口与手机布局。
  *
@@ -65,6 +66,58 @@ describe('作品详情岛', () => {
       await pathIs(page, '/');
       await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"]`).first().waitFor({ timeout: 15_000 });
       assert.ok((opened.stub.reads.get('/api/items') || 0) >= 1, '深链关掉之后没有补取列表');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('播放列表里换条再关掉回到列表页并重读；后退回到其中一条再关掉也一样', { timeout: 90_000 }, async () => {
+    const opened = await openItemPage(browser, '/', DESKTOP, { ready: `#grid [data-media-card][data-id="${ITEM.plain}"]` });
+    try {
+      const page = opened.page;
+      let listed = 0;
+      // 桩里的列表行没有续播位置，卡片不给打开键；这里补上停在第一条。
+      await page.route((url) => url.pathname === '/api/playlists', (route) => {
+        listed += 1;
+        return route.fulfill({ json: { items: [{
+          id: PLAYLIST.id, name: PLAYLIST.name, item_count: PLAYLIST.items.length,
+          current_asset_id: PLAYLIST.items[0], preview_asset_id: PLAYLIST.items[0],
+        }] } });
+      });
+      await page.goto(new URL('/playlists', page.url()).toString(), { waitUntil: 'load' });
+      const card = page.locator(`[data-playlist-card="${PLAYLIST.id}"]`);
+      const step = async (id: number) => {
+        await page.locator(`#stage [data-queue-item="${id}"]`).click();
+        await pathIs(page, `/playlists/${PLAYLIST.id}/${id}`);
+        await page.locator(`#stage [data-queue-item="${id}"][aria-current="true"]`).waitFor();
+      };
+      const enter = async () => {
+        await card.locator('[data-mix-open]').click();
+        await pathIs(page, `/playlists/${PLAYLIST.id}/${PLAYLIST.items[0]}`);
+        await page.locator(DETAIL_READY).waitFor();
+        await step(PLAYLIST.items[1]!);
+        await step(PLAYLIST.items[2]!);
+      };
+      const closeToList = async () => {
+        const before = listed;
+        await page.locator('#closeStage').click();
+        await pathIs(page, '/playlists');
+        await page.locator('#stage[open]').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
+        await card.waitFor();
+        assert.equal(await page.locator('#stage[open]').count(), 0);
+        for (const deadline = Date.now() + 10_000; listed <= before && Date.now() < deadline;) await page.waitForTimeout(50);
+        assert.ok(listed > before, '关掉之后列表页没有重读');
+      };
+      await card.waitFor({ timeout: 15_000 });
+      await enter();
+      await closeToList();
+      await enter();
+      await page.goBack();
+      await pathIs(page, `/playlists/${PLAYLIST.id}/${PLAYLIST.items[1]}`);
+      await page.locator(`#stage [data-queue-item="${PLAYLIST.items[1]}"][aria-current="true"]`).waitFor();
+      await page.locator(DETAIL_READY).waitFor();
+      await closeToList();
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();

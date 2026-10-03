@@ -3546,9 +3546,9 @@ const QUEUE_ROUTES={mix:'/mix',parts:'/parts',editions:'/editions',playlist:'/pl
 function openQueue(kind,key,itemId,push,anchor=null){
   key=+key;
   const same=activeQueue?.kind===kind&&(kind==='playlist'?activeQueue.playlistId:activeQueue.seedId)===key;
-  if(push&&(kind==='playlist'||!same))detailReturnPath=location.pathname+location.search;
-  /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景，
-     播放列表也一样，不跟 `detailReturnPath` 走。 */
+  /* 同一个队列里换条，来处保持打开队列那一刻的那一页：播放列表关掉回列表页并重读。 */
+  if(push&&!same)detailReturnPath=location.pathname+location.search;
+  /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景。 */
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
   return openItem(itemId==null?null:+itemId,false,queue,anchor,push);
