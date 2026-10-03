@@ -1,8 +1,7 @@
 /* `web/dist/peach-entry.js` 的构建入口（`vite.entry.config.ts`），不带 React。
  *
  * 读者有两个，读到的是同一份模块实例：
- * - 首启页、完成页与错误页的页内脚本（`src/peach/routes_pages.py` 的 `_SHARED_SCRIPT`）按名字取
- *   整页滚动条、折叠、来源下拉与站标表；
+ * - 错误页的页内脚本（`src/peach/routes_pages.py` 的 `_SHARED_SCRIPT`）按名字取整页滚动条；
  * - 主界面的 `/js/ui-components.js` 把这里的全部导出原名转出，壳与 React 子树经 `@peach/legacy/ui`
  *   读到的也是这一份。锚定菜单的「同一时刻只开一张」、折叠的开合代际都是模块级状态，只能有一份。
  *

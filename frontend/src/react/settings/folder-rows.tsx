@@ -1,0 +1,162 @@
+/* 媒体文件夹的行：配置页「这台电脑」与首启页共用。
+ *
+ * 一行是一块描边卡：路径框、「选择文件夹」、多行时的移除键，下面一格放这一行的其余字段（来源、
+ * Windows 对应路径，配置页另有媒体库名称与图标）。行的增删、按行错误、新行接焦点与选择文件夹的
+ * 忙态归 `useFolderRows`；弹系统对话框那一请求由调用方注入，这里不认识任何端点，首启页的独立
+ * 页面包因此不必带上主界面的请求封装。 */
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { RiCloseLine } from '@remixicon/react';
+import { MEDIA_SOURCE_ICONS } from '@peach/legacy/ui';
+
+import { IconButton } from '@/components/base/buttons/icon-button';
+import { Input } from '@/components/base/input/input';
+import { Select, SelectItem } from '@/components/base/select/select';
+
+import { FieldLabel, SourceMark } from './section';
+import { busyProps } from './busy-props';
+
+/** 「选择文件夹」弹系统对话框去挑，全站用雪碧图的 `folder-search`；`folder-open` 归「打开位置」，
+ * Remix Icon 里没有这一枚。 */
+export function FolderSearchIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+      strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <use href="#i-folder-search" />
+    </svg>
+  );
+}
+
+export type SourceOption = readonly [kind: string, name: string];
+
+export const MEDIA_SOURCES: readonly SourceOption[] = [
+  ['local', '本地磁盘'], ['115', 'CloudDrive · 115'], ['pikpak', 'CloudDrive · PikPak'],
+];
+
+export const sourceMark = (location: string) => MEDIA_SOURCE_ICONS[location] || 'database';
+export const isCloudSource = (location: string) => location === '115' || location === 'pikpak';
+
+export interface FolderRowValue { path: string; location: string }
+
+/** 行状态。`pickFolder` 拿当前路径作对话框起点，返回选中的路径，取消返回 null；
+ * 失败抛出的原因经 `describe` 变成写在这一行下面的那句话。 */
+export function useFolderRows<T extends FolderRowValue>({ initial, blank, pickFolder, describe, focusAfterPick = false }: {
+  initial: () => T[];
+  blank: () => T;
+  pickFolder: (initial: string) => Promise<string | null>;
+  describe: (cause: unknown) => string;
+  /** 选完把焦点交回这一行的路径框（首启页）；配置页留在选择键上。 */
+  focusAfterPick?: boolean;
+}) {
+  const [rows, setRows] = useState(initial);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [focusRow, setFocusRow] = useState<number | null>(null);
+  const [picking, setPicking] = useState<number | null>(null);
+  const pickingNow = useRef(false);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // 新加的一行直接接过焦点：添加之后下一步一定是往里打路径。
+  useLayoutEffect(() => {
+    if (focusRow === null) return;
+    inputs.current[focusRow]?.focus();
+    setFocusRow(null);
+  }, [focusRow]);
+
+  const edit = (index: number, patch: Partial<T>) =>
+    setRows((list) => list.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const setRowError = (index: number, message: string) => setErrors((list) => {
+    const next = [...list];
+    while (next.length <= index) next.push('');
+    next[index] = message;
+    return next;
+  });
+  const add = () => {
+    setFocusRow(rows.length);
+    setRows((list) => [...list, blank()]);
+  };
+  const remove = (index: number) => {
+    setRows((list) => list.filter((_, i) => i !== index));
+    setErrors((list) => list.filter((_, i) => i !== index));
+  };
+
+  // 对话框开着的时候这一行的选择键置忙；取消什么也不改，打不开时原因写在这一行下面。
+  const pick = async (index: number) => {
+    if (pickingNow.current) return;
+    pickingNow.current = true;
+    setPicking(index);
+    try {
+      const path = await pickFolder(rows[index]?.path ?? '');
+      if (path) {
+        edit(index, { path } as Partial<T>);
+        setRowError(index, '');
+      }
+      if (focusAfterPick) setFocusRow(index);
+    } catch (cause) {
+      setRowError(index, describe(cause));
+    } finally {
+      pickingNow.current = false;
+      setPicking(null);
+    }
+  };
+
+  const inputRef = (index: number) => (element: HTMLInputElement | null) => { inputs.current[index] = element; };
+  return { rows, edit, add, remove, errors, setErrors, picking, pick, inputRef };
+}
+
+/** 一行描边卡。`label` 是路径框的无障碍名，`children` 排进路径下面那一格。`error` 原样放进路径框
+ * 下的提示，调用方可以传一段带 `role="alert"` 的节点让读屏播报。 */
+export function FolderRow({ label, path, onPath, error, inputRef, picking, onPick, onRemove, children }: {
+  label: string;
+  path: string;
+  onPath: (path: string) => void;
+  error?: ReactNode;
+  inputRef: (element: HTMLInputElement | null) => void;
+  picking: boolean;
+  onPick: () => void;
+  onRemove?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div data-folder-row className="@container flex flex-col gap-3 rounded-2lg border border-separator-border bg-background-primary-default p-3">
+      <div className="flex items-start gap-2">
+        <Input className="min-w-0 flex-1" aria-label={label} placeholder="本机文件夹路径"
+          value={path} onChange={onPath} ref={inputRef}
+          validationBehavior="aria" isInvalid={Boolean(error)} hint={error || undefined} />
+        <IconButton icon={FolderSearchIcon} aria-label="选择文件夹" onClick={onPick} {...busyProps(picking)} />
+        {onRemove ? <IconButton icon={RiCloseLine} aria-label="移除这个文件夹" onClick={onRemove} /> : null}
+      </div>
+      <div className="inline-grid grid-cols-1 gap-3 @lg:grid-cols-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** 媒体来源下拉，每项带站标；本地磁盘是雪碧图的 `hard-drive`。 */
+export function SourceSelect({ index, value, onChange, options = MEDIA_SOURCES }: {
+  index: number;
+  value: string;
+  onChange: (location: string) => void;
+  options?: readonly SourceOption[];
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldLabel>媒体来源</FieldLabel>
+      <Select aria-label={`媒体来源 ${index + 1}`} selectedKey={value}
+        onSelectionChange={(key) => { if (key !== null) onChange(String(key)); }}>
+        {options.map(([kind, name]) => (
+          <SelectItem key={kind} id={kind} textValue={name}><SourceMark mark={sourceMark(kind)} />{name}</SelectItem>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
+/** 非 Windows 上每行多出的那一格：账本里的 Windows 形态路径。 */
+export function WindowsRootInput({ value, onChange, label = 'Windows 中的对应路径', placeholder = '例如 B:\\' }: {
+  value: string;
+  onChange: (root: string) => void;
+  label?: string;
+  placeholder?: string;
+}) {
+  return <Input label={label} placeholder={placeholder} value={value} onChange={onChange} />;
+}

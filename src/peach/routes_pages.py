@@ -24,7 +24,6 @@ import re
 
 from html import escape
 from pathlib import Path
-from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import (
@@ -39,7 +38,7 @@ from fastapi.responses import (
 from . import distribution, onboarding, settings_file
 from .config import PROJECT_ROOT
 from .routes_auth import require_asset_auth, require_page_auth, set_auth_cookie
-from .web_entry import check_html, entry_page_style, runtime_fact_entries
+from .web_entry import entry_page_style, runtime_fact_entries
 from .web_state import FAVICON
 
 router = APIRouter()
@@ -52,10 +51,22 @@ ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
 #: 回环地址的三种写法。既用来判提交端点的调用方，也用来判「只有这台电脑」那个监听选择。
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 
-_SETUP_HEAD = ('<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
-               '<meta name="viewport" content="width=device-width,initial-scale=1">'
-               '<meta name="color-scheme" content="light dark">'
-               '<link rel="icon" href="/favicon.ico" type="image/x-icon">')
+#: 首启页与错误页共用的文档头。
+_PAGE_HEAD = ('<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
+              '<meta name="viewport" content="width=device-width,initial-scale=1">'
+              '<meta name="color-scheme" content="light dark">'
+              '<link rel="icon" href="/favicon.ico" type="image/x-icon">')
+
+#: 手动选的深浅压过系统偏好，必须在第一次绘制前定下来：`data-theme` 与登录页同一写法，
+#: `dark` 类给 BoardUI 的色板，判据同 `web/index.html` 的预读脚本。
+_THEME_SCRIPT = ('<script>(()=>{try{'
+                 'const c=JSON.parse(localStorage.getItem("peach.settings.v1")||"{}").theme;'
+                 'document.documentElement.classList.toggle("dark",c==="dark"||(c!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches));'
+                 'if(c==="light"||c==="dark")document.documentElement.dataset.theme=c;'
+                 '}catch(e){}})();</script>')
+
+#: 首启页从主界面雪碧图里借的字形：「选择文件夹」与媒体来源的站标兜底。
+_SETUP_SYMBOLS = re.compile(r'<symbol id="i-(?:folder-search|hard-drive|database)"[^>]*>.*?</symbol>')
 
 #: 键 -> 页面上的题目与一句说明。顺序、默认值与校验仍然来自 `onboarding.questions()`，
 #: 这里只决定同一道题在浏览器里怎么称呼：命令行那份题面要把可选值写进去，页面用控件表达。
@@ -70,120 +81,27 @@ _SETUP_COPY = {
 #: 同一局域网里的设备看。命令行问答按 `HOST_OPTIONS` 的编号顺序念，两边取值一致。
 _HOST_ORDER = ("2", "1")
 
-#: 选「只有这台电脑」时局域网地址没有意义，整项隐藏且输入框禁用；禁用的字段不随表单
-#: 提交，服务端按题目默认值补上。密码同样只在开关打开后显示并启用输入框。
-#: 媒体文件夹列表的「添加文件夹」与每行的移除键也在这里亮出来：只剩一行时移除键隐藏。
-_SETUP_SCRIPT = """<script>
-(function(){
-  var radios=document.querySelectorAll('input[name="host"]');
-  var field=document.getElementById('f-mdns_name');
-  var fieldRow=document.getElementById('field-mdns_name');
-  if(radios.length&&field&&fieldRow){
-    var sync=function(){
-      var lan=false;
-      radios.forEach(function(radio){if(radio.checked&&radio.value==="2"){lan=true;}});
-      field.disabled=!lan;
-      fieldRow.hidden=!lan;
-    };
-    radios.forEach(function(radio){radio.addEventListener('change',sync);});
-    sync();
-  }
-  var accessToggle=document.getElementById('access-enabled');
-  var accessFields=document.getElementById('access-password-fields');
-  if(accessToggle&&accessFields){
-    var syncAccess=function(){
-      accessFields.hidden=!accessToggle.checked;
-      accessFields.querySelectorAll('input').forEach(function(input){input.disabled=!accessToggle.checked;});
-    };
-    accessToggle.addEventListener('change',syncAccess);
-    syncAccess();
-  }
-  var list=document.getElementById('dirs');
-  var add=document.getElementById('add-dir');
-  var template=document.getElementById('dir-row');
-  if(!list||!add||!template){return;}
-  var rows=function(){return list.querySelectorAll('.dir');};
-  var refresh=function(){
-    var all=rows();
-    all.forEach(function(row){
-      row.querySelector('.rm').hidden=all.length<2;
-      row.querySelector('.pick').hidden=false;
-    });
-    var cloudHelp=document.getElementById('cloudHelp');
-    if(cloudHelp){cloudHelp.hidden=!Array.from(list.querySelectorAll('select[name="media_location"]')).some(function(select){return select.value!=='local';});}
-    var cloudDependencies=document.getElementById('cloudDependencies');
-    if(cloudDependencies&&cloudHelp){cloudDependencies.hidden=cloudHelp.hidden;}
-  };
-  list.addEventListener('change',refresh);
-  /* 「选择文件夹」让运行 Peach 的这台电脑弹系统对话框，把选中的绝对路径填回这一行：
-     浏览器自己拿不到本机绝对路径。等待期间按钮置忙，再点不发第二个请求。 */
-  var pickFolder=function(row,button){
-    if(button.getAttribute('aria-busy')==='true'){return;}
-    var input=row.querySelector('input');
-    var bad=row.querySelector('.bad');
-    button.setAttribute('aria-busy','true');button.setAttribute('aria-disabled','true');
-    fetch('/api/pick-folder',{method:'POST',credentials:'same-origin',
-      headers:{'Accept':'application/json','Content-Type':'application/json'},
-      body:JSON.stringify({initial:input.value})})
-      .then(function(response){return response.json().then(function(data){return {ok:response.ok,data:data};});})
-      .then(function(result){
-        if(!result.ok){throw new Error((result.data&&result.data.error)||'没能打开文件夹对话框');}
-        if(result.data.path){
-          input.value=result.data.path;input.setAttribute('aria-invalid','false');
-          if(bad){bad.remove();}
-        }
-        input.focus();
-      })
-      .catch(function(error){
-        var note=bad||document.createElement('p');
-        note.className='bad';note.setAttribute('role','alert');note.textContent=error.message;
-        row.appendChild(note);
-      })
-      .then(function(){button.removeAttribute('aria-busy');button.removeAttribute('aria-disabled');});
-  };
-  list.addEventListener('click',function(event){
-    var pick=event.target.closest('.pick');
-    if(pick){pickFolder(pick.closest('.dir'),pick);return;}
-    var remove=event.target.closest('.rm');
-    if(!remove||rows().length<2){return;}
-    remove.closest('.dir').remove();
-    refresh();
-    add.focus();
-  });
-  add.addEventListener('click',function(){
-    var row=template.content.firstElementChild.cloneNode(true);
-    list.appendChild(row);
-    refresh();
-    row.querySelector('input').focus();
-  });
-  add.hidden=false;
-  refresh();
-})();
-</script>"""
-
-#: 移除一行媒体文件夹的字形（lucide `x`）。
-_X_SVG = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-#: 「选择文件夹」（lucide `folder-search`）：弹系统对话框去挑一个文件夹。`folder-open` 归
-#: 站内的「打开位置」，不兼任。
-_FOLDER_SVG = ('<svg viewBox="0 0 24 24"><path d="M10.7 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 '
-               '1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v4.1"/><path d="m21 21-1.9-1.9"/>'
-               '<circle cx="17" cy="17" r="3"/></svg>')
-#: 折叠触发器右侧的 chevron（lucide `chevron-down`），展开时转 180 度。
-_CHEVRON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
-#: 站内共用控件取自入口包 `/dist/peach-entry.js`（源码 `frontend/src/ui-kit/`，主界面读同一份）：
-#: 整页的覆盖式滚动条（原生那条藏掉，滑块浮在内容上）、高级设置的折叠（原生 <details> 不过渡
-#: 高度）与媒体来源下拉。页面里没有 <details> 时 wireCollapse 什么也不做，所以每张页面都挂同一段脚本。
-_SHARED_SCRIPT = ('<script type="module">import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/dist/peach-entry.js";'
+#: 错误页的整页覆盖式滚动条（原生那条藏掉，滑块浮在内容上）取自入口包 `/dist/peach-entry.js`
+#: （源码 `frontend/src/ui-kit/`，主界面读同一份）。
+_SHARED_SCRIPT = ('<script type="module">import{attachOverlayScrollbar}from"/dist/peach-entry.js";'
                   'attachOverlayScrollbar(document.documentElement,{variant:"page"});'
-                  'wireCollapse(document,"details","setup-collapse");'
-                  'const enhance=()=>document.querySelectorAll("select[name=media_location]:not([hidden])").forEach(select=>{'
-                  'const holder=document.createElement("div");'
-                  'holder.innerHTML=selectFieldHtml(Array.from(select.options,o=>[o.value,o.text,MEDIA_SOURCE_ICONS[o.value]]),select.value,{label:select.getAttribute("aria-label")||"媒体来源"});'
-                  'select.after(holder);const field=wireSelectField(holder.firstElementChild);'
-                  'field.addEventListener("change",()=>{select.value=field.value;select.dispatchEvent(new Event("change",{bubbles:true}));});'
-                  'select.hidden=true;});enhance();'
-                  'const dirs=document.getElementById("dirs");if(dirs)new MutationObserver(enhance).observe(dirs,{childList:true});'
                   '</script>')
+
+
+def setup_shell() -> str:
+    """首次运行页的薄壳：题目、表单与完成态都由 `/dist/peach-pages.js` 按 `/api/setup/questions` 画出来。
+
+    这一页不加载主界面的样式与脚本，只取独立页面包；字形从 `web/index.html` 的雪碧图里按名字摘。
+    """
+    index = (PROJECT_ROOT / "web/index.html").read_text(encoding="utf-8")
+    symbols = ''.join(_SETUP_SYMBOLS.findall(index))
+    return (f'{_PAGE_HEAD}<title>Peach · 首次运行</title>{_THEME_SCRIPT}'
+            '<link rel="stylesheet" href="/vendor/inter/5.3.0/index.css">'
+            '<link rel="stylesheet" href="/dist/peach-pages.css">'
+            '<script type="module" src="/dist/peach-pages.js"></script></head>'
+            '<body class="peach-react">'
+            f'<svg width="0" height="0" aria-hidden="true" style="position:absolute">{symbols}</svg>'
+            '<div id="peach-page" data-page="setup"></div></body></html>\n')
 
 
 def error_page(status: int, message: str) -> str:
@@ -195,38 +113,9 @@ def error_page(status: int, message: str) -> str:
     return _document(f"Peach · {title}", body)
 
 
-#: 运行信息的术语／取值两列，窄屏叠成一列。只有带 `configfacts` 的页面才内联。
-_FACTS_STYLE = (
-    ".configfacts{margin:0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:10px 24px;align-items:baseline}\n"
-    ".configfacts dt{color:var(--muted);font-size:var(--fs-sm)}.configfacts dd{margin:0;overflow-wrap:anywhere}\n"
-    ".configfacts dt .gselectmark{vertical-align:-3px;margin-inline-end:8px}\n"
-    "@media(max-width:560px){.configfacts{grid-template-columns:minmax(0,1fr)}.configfacts dd{margin-top:-6px}}"
-)
-
-
 def _document(title: str, body: str) -> str:
-    # 页内脚本对两张页面都生效：找不到对应控件时它什么也不做。
-    index = (PROJECT_ROOT / "web/index.html").read_text(encoding="utf-8")
-    symbols = ''.join(re.findall(r'<symbol id="i-(?:check|chevron-down|hard-drive)"[^>]*>.*?</symbol>', index))
-    facts_css = _FACTS_STYLE if 'class="configfacts"' in body else ''
-    return (f"{_SETUP_HEAD}<title>{title}</title>{entry_page_style()}"
-            f'<style>{facts_css}</style></head><body><svg width="0" height="0" aria-hidden="true" style="position:absolute">{symbols}</svg><main>{body}</main>{_SETUP_SCRIPT}{_SHARED_SCRIPT}</body></html>\n')
-
-
-def dependency_link(url: str, label: str) -> str:
-    return (f'<a href="{escape(url, quote=True)}" target="_blank" rel="noreferrer">{escape(label)}'
-            '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a>')
-
-
-def runtime_facts_html(config, *, collapsible: bool = False) -> str:
-    content = ('<dl class="configfacts">'
-            + "".join(f'<dt>{escape(row["term"])}</dt><dd>{escape(row["value"])}'
-                      + (' ' + dependency_link(row["download_url"], row["download_label"]) if row.get("download_url") else '')
-                      + '</dd>' for row in runtime_fact_entries(config))
-            + "</dl>")
-    if collapsible:
-        return '<details><summary><span>运行信息</span>' + _CHEVRON_SVG + '</summary>' + content + '</details>'
-    return '<h2>运行信息</h2>' + content
+    return (f"{_PAGE_HEAD}<title>{title}</title>{entry_page_style()}"
+            f'</head><body><main>{body}</main>{_SHARED_SCRIPT}</body></html>\n')
 
 
 def _copy_for(key: str, fallback: str) -> tuple[str, str]:
@@ -240,52 +129,6 @@ _MEDIA_ROOT_PLACEHOLDER = "例如 B:\\"
 _POSIX_MEDIA_NOTE = "本机文件夹是这台电脑读取媒体的位置；Windows 中的对应路径用于匹配馆藏中已有的路径。"
 
 
-def _media_dir_row(value: str, error: str, *, first: bool, location: str = "local", root: str = "", windows: bool = True) -> str:
-    from .media_configuration import SOURCE_OPTIONS
-    source = '<select name="media_location" aria-label="媒体来源">' + ''.join(
-        f'<option value="{key}"{" selected" if key == location else ""}>{label}</option>'
-        for key, label in SOURCE_OPTIONS) + '</select>'
-    mapping = (f'<label>{_MEDIA_ROOT_LABEL}<span class="entry-input"><input name="media_root" type="text" aria-label="{_MEDIA_ROOT_LABEL}" '
-               f'placeholder="{_MEDIA_ROOT_PLACEHOLDER}" value="{escape(root, quote=True)}"></span></label>') if not windows else ''
-    attrs = ' id="f-media_dir" required' if first else ' aria-label="媒体库"'
-    return (f'<div class="dir"><span class="entry-input"><input name="media_dir" type="text"{attrs} autocomplete="off" '
-            f'spellcheck="false" aria-invalid="{"true" if error else "false"}" '
-            f'value="{escape(value, quote=True)}"></span>'
-            f'<button type="button" class="pick" aria-label="选择文件夹" hidden>{_FOLDER_SVG}</button>'
-            f'<button type="button" class="rm" aria-label="移除这个文件夹" hidden>{_X_SVG}</button>'
-            + (f'<p class="bad" role="alert">{escape(error)}</p>' if error else "")
-            + f'<div class="sourcefields"><label>媒体来源{source}</label>{mapping}</div></div>')
-
-
-def _media_dirs_html(values: Sequence[str], errors: Sequence[str], note: str, *, locations=(), roots=(), windows=True) -> str:
-    """媒体文件夹列表：每行一个输入框，行尾是移除键，列表下是「添加文件夹」。
-
-    移除键和添加键都带 `hidden`，由页面脚本亮出来：没有脚本时它们什么都做不了，与其留
-    两个按不动的键，不如只给一个输入框。第一行必填，后面的行留空就当没填；错误写在
-    出错的那一行底下。首次运行页与配置页共用这一段。
-    """
-    title, help_text = _copy_for("media_dir", "媒体库")
-    rows = list(values) or [""]
-    body = "".join(
-        _media_dir_row(value, errors[index] if index < len(errors) else "", first=index == 0,
-                       location=locations[index] if index < len(locations) else "local",
-                       root=roots[index] if index < len(roots) else "", windows=windows)
-        for index, value in enumerate(rows))
-    return (
-        '<div class="field">'
-        f'<label class="setting-title" for="f-media_dir">{escape(title)}<span class="req" aria-hidden="true">*</span></label>'
-        f'<div class="dirs" id="dirs">{body}</div>'
-        '<button type="button" class="add" id="add-dir" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>添加媒体库</button>'
-        f'<template id="dir-row">{_media_dir_row("", "", first=False, windows=windows)}</template>'
-        f'<p class="help" id="cloudHelp" hidden>{_CLOUD_HELP}'
-        f'<a href="{_CLOUD_HELP_URL}" target="_blank" rel="noreferrer">{_CLOUD_HELP_LABEL}'
-        '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a></p>'
-        + '<div id="cloudDependencies" hidden>' + mount_dependencies_html(windows=windows) + '</div>'
-        + "".join(f'<p class="help">{escape(line)}</p>' for line in (help_text, note) if line)
-        + "</div>"
-    )
-
-
 #: 有一行媒体来源选了云盘时，媒体库底下出现的那句提示和它的帮助链接。
 _CLOUD_HELP = "先在 CloudDrive 登录网盘并完成挂载。"
 _CLOUD_HELP_URL = "https://www.clouddrive2.com/help.html"
@@ -293,21 +136,15 @@ _CLOUD_HELP_LABEL = "挂载帮助"
 
 
 def missing_mount_dependencies(*, windows: bool) -> list[dict[str, str]]:
-    """云盘挂载缺的软件：每项一句「未检测到」和它的下载入口。首启页与 `/api/setup/questions` 共用。"""
+    """云盘挂载缺的软件：每项一句「未检测到」和它的下载入口，由 `/api/setup/questions` 交给首启页。"""
     from .media_configuration import mount_dependencies
     return [{"name": row["name"], "message": f"未检测到 {row['name']}。",
              "download_url": row["download_url"], "download_label": f"下载 {row['name']}"}
             for row in mount_dependencies(system='win32' if windows else 'darwin') if not row['available']]
 
 
-def mount_dependencies_html(*, windows: bool) -> str:
-    return ''.join('<p class="help">' + escape(row['message'])
-                   + dependency_link(row['download_url'], row['download_label']) + '</p>'
-                   for row in missing_mount_dependencies(windows=windows))
-
-
 def _media_dir_values(values: Mapping[str, object], default: str) -> list[str]:
-    """表单回显里的媒体文件夹：提交的是几行就几行，没提交过就一行默认值。"""
+    """提交里的媒体文件夹：提交的是几行就几行，一行都没有就一行默认值。"""
     raw = values.get("media_dir")
     if isinstance(raw, (list, tuple)):
         return [str(item) for item in raw] or [default]
@@ -315,7 +152,7 @@ def _media_dir_values(values: Mapping[str, object], default: str) -> list[str]:
 
 
 def _question_view(question) -> dict[str, str]:
-    """一道题在页面上的题面、说明、控件种类和输入框前后缀。首启页与 `/api/setup/questions` 读同一份。"""
+    """一道题在页面上的题面、说明、控件种类和输入框前后缀，由 `/api/setup/questions` 交给首启页。"""
     title, help_text = _copy_for(question.key, question.prompt)
     view = {"label": title, "help": help_text, "input": "text", "prefix": "", "suffix": ""}
     if question.key == "media_dir":
@@ -332,40 +169,6 @@ def _question_view(question) -> dict[str, str]:
     return view
 
 
-def _field_html(question, value: str, error: str, note: str) -> str:
-    key = escape(question.key, quote=True)
-    view = _question_view(question)
-    title, help_text = view["label"], view["help"]
-    star = '<span class="req" aria-hidden="true">*</span>'
-    if question.key == "host":
-        labels = dict(onboarding.HOST_OPTIONS)
-        options = "".join(
-            f'<label><input type="radio" name="{key}" value="{escape(choice, quote=True)}"'
-            f'{" checked" if choice == value else ""}><span>{escape(labels[choice])}</span></label>'
-            for choice in _HOST_ORDER
-        )
-        control = (f'<div class="switch" role="radiogroup" aria-labelledby="l-{key}">'
-                   f'{options}</div>')
-        label = f'<span class="legend field-label" id="l-{key}">{escape(title)}</span>'
-    else:
-        control = (f'<input id="f-{key}" name="{key}" type="{view["input"]}" required autocomplete="off" '
-                   f'spellcheck="false" aria-invalid="{"true" if error else "false"}" '
-                   f'value="{escape(value, quote=True)}">')
-        if view["prefix"] or view["suffix"]:
-            control = ('<div class="affix">'
-                       + (f'<span>{escape(view["prefix"])}</span>' if view["prefix"] else '')
-                       + control
-                       + (f'<span>{escape(view["suffix"])}</span>' if view["suffix"] else '')
-                       + '</div>')
-        else:
-            control = f'<span class="entry-input">{control}</span>'
-        label = f'<label class="field-label" for="f-{key}">{escape(title)}{star}</label>'
-    tail = "".join(
-        f'<p class="help">{escape(line)}</p>' for line in (help_text, note) if line)
-    tail += f'<p class="bad" role="alert">{escape(error)}</p>' if error else ""
-    return f'<div class="field" id="field-{key}">{label}{control}{tail}</div>'
-
-
 def _access_on_by_default(asked) -> bool:
     """访问密码开关第一次出现时开不开：host 默认是局域网（`"2"`）就开。
 
@@ -373,106 +176,6 @@ def _access_on_by_default(asked) -> bool:
     """
     host_default = next((question.default for question in asked if question.key == "host"), "2")
     return host_default == "2"
-
-
-def setup_page(
-    config, *, windows: bool, values: Mapping[str, object] | None = None,
-    errors: Mapping[str, object] | None = None, scan_now: bool = True,
-) -> str:
-    """首次运行表单。题目顺序、默认值与校验全部来自 `onboarding.questions()`。
-
-    校验失败时带着 `values` 和 `errors` 重新渲染：已经填对的几项不能让人再填一遍，
-    错在哪一项也要写在那一项底下，而不是页首一句「有字段不合法」。
-    """
-    values = values or {}
-    errors = errors or {}
-    asked = onboarding.questions(config, windows=windows)
-    fields = []
-    if errors.get("data_root"):
-        fields.append(f'<p class="bad" role="alert">{escape(errors["data_root"])}</p>')
-    media_dirs: list[str] = []
-    # 只有媒体文件夹是非填不可的。数据目录、谁可以访问、端口、局域网地址都有能直接用的
-    # 默认值，一律折进「高级设置」：不分独立包还是源码部署，同一张表单。
-    advanced: list[str] = []
-    for question in asked:
-        if question.key == "media_dir":
-            media_dirs = _media_dir_values(values, question.default)
-            row_errors = errors.get("media_dir", [])
-            fields.append(_media_dirs_html(media_dirs, list(row_errors), "" if windows else _POSIX_MEDIA_NOTE,
-                locations=values.get("media_location", ()), roots=values.get("media_root", ()), windows=windows))
-            continue
-        value = str(values.get(question.key, question.default))
-        advanced.append(_field_html(question, value, str(errors.get(question.key, "")), ""))
-    opened = " open" if any(errors.get(key) for key in ("data_root", "host", "port", "mdns_name")) else ""
-    fields.append(f'<details{opened}><summary><span class="setting-title">高级设置</span>{_CHEVRON_SVG}</summary>'
-                  + "".join(advanced) + "</details>")
-    access_error = str(errors.get("access_password", ""))
-    # 表单回填时用户自己的选择说了算，`values` 非空就只看 `access_enabled`——
-    # 复选框不勾是不提交的，那正是「他关掉了」。第一次打开按 host 的默认值定。
-    access_enabled = (values.get("access_enabled") == "y" or bool(access_error)
-                      or (not values and _access_on_by_default(asked)))
-    access_hidden = "" if access_enabled else " hidden"
-    access_disabled = "" if access_enabled else " disabled"
-    fields.insert(1, '<div class="field access-field">'
-                  '<label class="toggle-setting" for="access-enabled"><span><strong class="setting-title">访问密码</strong>'
-                  '<small>开启后，访问 Peach 需要先登录。</small></span>'
-                  f'<input id="access-enabled" class="ptoggle" name="access_enabled" type="checkbox" role="switch" value="y"'
-                  f'{" checked" if access_enabled else ""}></label>'
-                  '<p class="help" id="access-consequence">未设置密码时，能连接到 Peach 的设备可直接进入。</p>'
-                  f'<div class="password-fields" id="access-password-fields"{access_hidden}>'
-                  '<label class="field-label" for="access-password">访问密码</label><span class="entry-input">'
-                  '<input id="access-password" name="access_password" type="password" maxlength="256" '
-                  f'aria-invalid="{"true" if access_error else "false"}" autocomplete="new-password" '
-                  f'aria-describedby="access-help"{access_disabled}></span>'
-                  + (f'<p class="bad" id="access-help" role="alert">{escape(access_error)}</p>' if access_error
-                     else '<p class="help" id="access-help">请输入 8–256 个字符。</p>')
-                  + '<label class="field-label" for="access-confirm">确认访问密码</label><span class="entry-input">'
-                  '<input id="access-confirm" name="access_confirm" type="password" maxlength="256" '
-                  f'aria-invalid="{"true" if access_error else "false"}" autocomplete="new-password"{access_disabled}></span>'
-                  '</div></div>')
-    filled = [path for path in media_dirs if path]
-    if not filled:
-        scan_text = "完成设置后扫描并补全资料"
-    elif len(filled) == 1:
-        scan_text = f"完成设置后扫描并补全资料：{escape(filled[0])}"
-    else:
-        scan_text = f"完成设置后扫描这 {len(filled)} 个文件夹并补全资料"
-    body = (
-        '<section class="setup-auth-card"><header><img class="mark" src="/peach-logo.png" alt="" width="40" height="40">'
-        "<h1>欢迎使用 Peach</h1>"
-        '<p class="lede">添加媒体库，开始整理馆藏。</p></header>'
-        '<form method="post" action="/setup">'
-        + "".join(fields)
-        + '<section class="setup-options" aria-labelledby="setup-options-title">'
-        + '<h2 class="setting-title" id="setup-options-title">完成设置后</h2>'
-        + check_html("scan_now", scan_text, checked=scan_now)
-        + '<p class="help">读取已有 NFO 和封面，采集缺失资料。符合自动规则的资料会在处理完成后落库，其余候选留在复核。</p>'
-        + '<section class="history-guide-choice"><h3 class="setting-subtitle">浏览器历史记录<span class="optional">可选</span></h3>'
-        + check_html("history_guide", "接下来导入浏览器历史记录", checked=values.get("history_guide") == "y")
-        + '<p class="help">用于生成口味分析。完成设置后选择读取这台电脑，或导入其他设备的记录；也可稍后从「口味」进入。</p></section>'
-        + '</section><button type="submit">完成设置</button></form></section>'
-    )
-    return _document("Peach · 首次运行", body)
-
-
-def setup_done_page(applied, *, windows: bool, scan_requested: bool, history_guide: bool = False) -> str:
-    """成功页：扫描是否已排队、进入 Peach 的入口，运行信息默认折叠。口令不显示在页面上。"""
-    config = applied.config
-    destination = escape(_setup_destination(config, history_guide=history_guide), quote=True)
-    destination_label = '导入浏览器历史记录' if history_guide else '进入 Peach'
-    scan = ("首次扫描已排队，在后台整理媒体库，期间可以照常使用 Peach。" if scan_requested
-            else "稍后在配置页开始扫描媒体库。")
-    body = (
-        '<section class="setup-auth-card"><header><img class="mark" src="/peach-logo.png" alt="" width="40" height="40">'
-        '<h1>设置完成</h1><p class="lede">正在启动馆藏。</p></header>'
-        f'<p>{scan}</p>'
-        + f'<p><a class="setup-enter" href="{destination}">{destination_label}</a></p>'
-        + runtime_facts_html(config, collapsible=True)
-        + '</section>'
-    )
-    if distribution.standalone():
-        body += f'<meta http-equiv="refresh" content="8;url={destination}">'
-    return _document("Peach · 设置完成", body)
 
 
 def _setup_destination(config, *, history_guide: bool) -> str:
@@ -563,8 +266,10 @@ def index(request: Request, args: dict[str, str] = Depends(require_page_auth)):
         set_auth_cookie(response, request)
         return response
     if not settings.configured:
-        # 未配置不是错误状态：服务照常起，首页变成首次运行表单。
-        return HTMLResponse(setup_page(settings_file.active(), windows=os.name == "nt"))
+        # 未配置不是错误状态：服务照常起，首页（和任何前端路由的深链）变成首次运行页。
+        response = HTMLResponse(setup_shell())
+        response.headers["Cache-Control"] = "no-store"
+        return response
     if not settings.page_path.is_file():
         return PlainTextResponse("Peach page missing", status_code=500)
     if "edit" in request.query_params and _copy_editor_available():
@@ -627,7 +332,7 @@ async def copy_editor_save(request: Request, args: dict[str, str] = Depends(requ
 
 
 def _setup_guard(request: Request, *, submit: bool) -> None:
-    """首启的三个端点（`POST /setup`、`GET /api/setup/questions`、`POST /api/setup`）共用的守卫。
+    """首启的两个端点（`GET /api/setup/questions`、`POST /api/setup`）共用的守卫。
 
     形态各不相同因为原因各不相同：已经配置过的机器上这些端点根本不存在（404，不是
     「禁止」——把它做成一条可探测的 403 等于对外宣告这里有个初始化入口）；非回环调用方是
@@ -647,80 +352,6 @@ def _setup_guard(request: Request, *, submit: bool) -> None:
     origin = request.headers.get("origin")
     if origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
         raise HTTPException(status_code=403, detail="请从 Peach 设置页提交")
-
-
-def _complete_setup(
-    request: Request, config, submitted: Mapping[str, object], *, windows: bool,
-    password_enabled: bool, scan_now: bool,
-) -> tuple[object, dict[str, object]]:
-    """校验一份首启提交，全对就落盘。返回 `(applied, errors)`，两者恰有一个有内容。
-
-    `submitted` 是表单口径的扁平 dict：媒体文件夹三列是列表，其余是字串。错误按题目的
-    key 收集，访问密码的错误在 `access_password`；先报全部字段错误，字段都对了才看设置
-    文件在不在（409，并发提交或刷新重发，不能覆盖别人刚写好的那份）。
-
-    扫描不在这里跑：这条引导服务在设置完成的那一刻就会被托盘停掉，跑在它进程里的
-    扫描会跟着一起死。这里只写一个标记，由托盘切到正常服务之后消费。
-    """
-    answers, errors = _read_answers(config, submitted, windows=windows)
-    from . import access
-    password = str(submitted.get("access_password", "")) if password_enabled else ""
-    confirmation = str(submitted.get("access_confirm", "")) if password_enabled else ""
-    try:
-        if password_enabled and not password:
-            raise ValueError("请输入访问密码")
-        access.validate_password(password, confirmation)
-    except ValueError as exc:
-        errors["access_password"] = str(exc)
-    if distribution.standalone() and answers is not None:
-        try:
-            onboarding.check_available_port(answers.port, request.url.port or 80)
-        except ValueError as exc:
-            errors["port"] = str(exc)
-    if errors:
-        return None, errors
-    # 数据根决定设置文件在哪，所以拿到它之后要按它重新解析一次，不能沿用进程启动
-    # 那一刻按发现顺序算出来的这份。
-    resolved, _broken = onboarding.resolve_config(answers.data_root)
-    if resolved.path.exists():
-        raise HTTPException(status_code=409, detail="settings file already exists")
-    try:
-        applied = onboarding.apply(resolved, answers, windows=windows,
-                                   access_password=password)
-    except (OSError, RuntimeError) as exc:
-        return None, {"data_root": str(exc)}
-    if scan_now:
-        onboarding.request_first_scan(applied.config, "configured" if answers.media_sources is not None else "local")
-    return applied, {}
-
-
-@router.post("/setup")
-async def setup_submit(request: Request):
-    """首次运行表单的提交端点：守卫见 `_setup_guard`，校验与落盘见 `_complete_setup`，这里只做渲染。"""
-    _setup_guard(request, submit=True)
-    windows = os.name == "nt"
-    form = parse_qs((await request.body()).decode("utf-8", "replace"), keep_blank_values=True)
-    submitted: dict[str, object] = {key: (value or [""])[0] for key, value in form.items()}
-    # 媒体文件夹是一个列表：几行输入框同名提交，回显时也要原样给回几行。
-    submitted["media_dir"] = list(form.get("media_dir", []))
-    for key in ("media_location", "media_root"):
-        if key in form:
-            submitted[key] = list(form[key])
-    scan_now = "scan_now" in form
-
-    config = settings_file.active()
-    applied, errors = _complete_setup(request, config, submitted, windows=windows,
-                                      password_enabled="access_enabled" in form, scan_now=scan_now)
-    if errors:
-        return HTMLResponse(
-            setup_page(config, windows=windows, values=submitted, errors=errors,
-                       scan_now=scan_now),
-            status_code=400,
-        )
-    response = HTMLResponse(setup_done_page(applied, windows=windows, scan_requested=scan_now,
-                                          history_guide=submitted.get("history_guide") == "y"))
-    response.headers["Cache-Control"] = "no-store"
-    return response
 
 
 @router.get("/api/setup/questions")
@@ -777,10 +408,15 @@ def _json_text(value: object) -> str:
 
 @router.post("/api/setup")
 async def setup_submit_json(request: Request):
-    """`POST /setup` 的 JSON 版：同一组守卫、同一份校验与落盘，错误按题目 key 回给页面写回原位。
+    """首启提交：校验一份答卷，全对就落盘；错误按题目 key 回给页面写回原位。
 
-    正文形态见 `docs/OPERATIONS.md`「首次设置的内部流程」。这里把它换成表单口径的扁平
-    dict 再交 `_complete_setup`，所以同一份输入在两个端点上得到同一组错误文案。
+    正文形态见 `docs/OPERATIONS.md`「首次设置的内部流程」。正文先换成扁平 dict：媒体
+    文件夹三列是列表，其余是字串。错误按题目的 key 收集，访问密码的错误在 `access_password`；
+    先报全部字段错误，字段都对了才看设置文件在不在（409，并发提交或重发，不能覆盖别人刚
+    写好的那份）。
+
+    扫描不在这里跑：这条引导服务在设置完成的那一刻就会被托盘停掉，跑在它进程里的
+    扫描会跟着一起死。这里只写一个标记，由托盘切到正常服务之后消费。
     """
     _setup_guard(request, submit=True)
     try:
@@ -801,18 +437,44 @@ async def setup_submit_json(request: Request):
     scan_now = body.get("scan_now") is True
     history_guide = body.get("history_guide") is True
     windows = os.name == "nt"
-    applied, errors = _complete_setup(request, settings_file.active(), submitted, windows=windows,
-                                      password_enabled=body.get("access_enabled") is True, scan_now=scan_now)
+    answers, errors = _read_answers(settings_file.active(), submitted, windows=windows)
+    from . import access
+    password_enabled = body.get("access_enabled") is True
+    password = submitted.get("access_password", "") if password_enabled else ""
+    confirmation = submitted.get("access_confirm", "") if password_enabled else ""
+    try:
+        if password_enabled and not password:
+            raise ValueError("请输入访问密码")
+        access.validate_password(password, confirmation)
+    except ValueError as exc:
+        errors["access_password"] = str(exc)
+    standalone = distribution.standalone()
+    if standalone and answers is not None:
+        try:
+            onboarding.check_available_port(answers.port, request.url.port or 80)
+        except ValueError as exc:
+            errors["port"] = str(exc)
+    if not errors:
+        # 数据根决定设置文件在哪，所以拿到它之后要按它重新解析一次，不能沿用进程启动
+        # 那一刻按发现顺序算出来的这份。
+        resolved, _broken = onboarding.resolve_config(answers.data_root)
+        if resolved.path.exists():
+            raise HTTPException(status_code=409, detail="settings file already exists")
+        try:
+            applied = onboarding.apply(resolved, answers, windows=windows, access_password=password)
+        except (OSError, RuntimeError) as exc:
+            errors = {"data_root": str(exc)}
     if errors:
         raise HTTPException(status_code=400, detail={"message": "有几项需要修改", "errors": errors})
+    if scan_now:
+        onboarding.request_first_scan(applied.config, "configured" if answers.media_sources is not None else "local")
     destination = _setup_destination(applied.config, history_guide=history_guide)
-    standalone = distribution.standalone()
     return JSONResponse({
         "url": destination,
         "scan_requested": scan_now,
         "history_guide": history_guide,
         "standalone": standalone,
-        # 独立包的完成页过一会儿自己跳到入口，与 HTML 完成页的 meta refresh 同一判据；时长由前端定。
+        # 独立包的完成页过一会儿自己跳到入口；时长由前端定，与配置页保存后的跳转同一个数。
         "redirect": destination if standalone else None,
         "facts": runtime_fact_entries(applied.config),
     })
@@ -852,26 +514,17 @@ def _read_answers(
     errors: dict[str, object] = {}
     for question in onboarding.questions(config, windows=windows):
         if question.key == "media_dir":
-            if "media_location" in submitted:
-                from . import media_configuration
-                dirs = _media_dir_values(submitted, question.default)
-                kinds = submitted["media_location"]
-                roots = submitted.get("media_root", [])
-                sources = [{"location": kinds[i] if i < len(kinds) else "local", "path": path,
-                            "root": roots[i] if i < len(roots) else ""} for i, path in enumerate(dirs)]
-                _, _, problems = media_configuration.validate(sources, windows=windows)
-                problems = _setup_media_source_errors(dirs, kinds, problems, question.validate)
-                if problems:
-                    errors["media_dir"] = problems
-                values.update(media_dirs=tuple(Path(path) for path in dirs), media_sources=sources)
-                continue
-            paths, problems = onboarding.read_media_dirs(
-                _media_dir_values(submitted, ""), validate=question.validate,
-                default=question.default)
+            from . import media_configuration
+            dirs = _media_dir_values(submitted, question.default)
+            kinds = submitted.get("media_location", [])
+            roots = submitted.get("media_root", [])
+            sources = [{"location": kinds[i] if i < len(kinds) else "local", "path": path,
+                        "root": roots[i] if i < len(roots) else ""} for i, path in enumerate(dirs)]
+            _, _, problems = media_configuration.validate(sources, windows=windows)
+            problems = _setup_media_source_errors(dirs, kinds, problems, question.validate)
             if problems:
                 errors["media_dir"] = problems
-            else:
-                values["media_dirs"] = tuple(paths)
+            values.update(media_dirs=tuple(Path(path) for path in dirs), media_sources=sources)
             continue
         raw = str(submitted.get(question.key, "") or "")
         try:

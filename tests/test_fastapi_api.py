@@ -2574,17 +2574,20 @@ class UnconfiguredMachineTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(body["configured"])
         self.assertEqual(body["db"], "missing")
 
-    async def test_the_page_serves_the_first_run_form(self):
+    async def test_the_page_serves_the_first_run_shell(self):
         response = await self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response.headers["content-type"])
-        self.assertIn('<form method="post" action="/setup"', response.text)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertIn('<div id="peach-page" data-page="setup">', response.text)
+        self.assertIn('src="/dist/peach-pages.js"', response.text)
+        self.assertNotIn("/dist/peach-entry.js", response.text)
 
-    async def test_deep_links_land_on_the_same_form(self):
+    async def test_deep_links_land_on_the_same_shell(self):
         # 前端路由全部落到 `index`，未配置时不该只有首页能看。
         response = await self.client.get("/tags")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('<form method="post" action="/setup"', response.text)
+        self.assertIn('data-page="setup"', response.text)
 
     async def test_a_configured_machine_still_reports_true(self):
         app = create_app(PeachSettings(configured=True, db_path=self.settings.db_path))
@@ -2604,11 +2607,8 @@ PUBLIC_ROUTES = {
     # 登录页自己。要口令才能打开输入口令的那一页，就没有人能登录了。
     ("GET", "/login"),
     ("POST", "/login"),
-    # 首次运行表单的提交端点。这台机器那时还没有口令可验；它自己有三道守卫：
-    # 已配置过就 404、非回环调用方 403、设置文件已存在 409。
-    ("POST", "/setup"),
-    # 同一张表单的 JSON 契约：读题与提交。这台机器那时同样没有口令可验，与 `POST /setup`
-    # 共用 `routes_pages._setup_guard`：已配置过就 404、非回环调用方 403、独立包的非回环
+    # 首次运行页的读题与提交。这台机器那时还没有口令可验；两条共用
+    # `routes_pages._setup_guard`：已配置过就 404、非回环调用方 403、独立包的非回环
     # 主机名 403；提交再看 Origin（403）与设置文件已存在（409）。配置完成后读题也是 404，
     # 平台、打包形态与挂载软件这些运行事实不外露。
     ("GET", "/api/setup/questions"),

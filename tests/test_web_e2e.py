@@ -273,6 +273,105 @@ class WebE2ESmokeTests(unittest.TestCase):
                 self.assertRegex(output, r"# fail 0\b", output)
 
 
+class SetupE2ETests(unittest.TestCase):
+    """首次运行页跑在 `serve --setup` 上：临时数据根里还没有设置文件，提交成功后才有。
+
+    托盘拉起引导服务用的就是这组参数（`tray.build_setup_service_specs`）。页面那一侧是
+    `frontend/e2e/setup.test.ts`，路由冒烟的几批里它因为缺变量整组跳过。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        node = shutil.which("node")
+        if node is None:
+            missing_prerequisite("跳过首启 e2e：本机没有 Node")
+        if not (FRONTEND / "node_modules" / "playwright-core").is_dir():
+            missing_prerequisite("跳过首启 e2e：frontend/node_modules 还没装，先 `npm --prefix frontend ci`")
+        chrome = chrome_executable()
+        if chrome is None:
+            missing_prerequisite("跳过首启 e2e：没找到 Chrome；装 Google Chrome 或用 PEACH_E2E_CHROME 指定")
+        cls.node, cls.chrome = node, chrome
+        cls.root = Path(tempfile.mkdtemp(prefix="peach-e2e-setup-")).resolve()
+        cls.data = cls.root / "peach-data"
+        cls.media = cls.root / "media"
+        cls.media.mkdir()
+        cls.port = free_port()
+        cls.origin = f"http://127.0.0.1:{cls.port}"
+        env = dict(os.environ, PEACH_DATA_ROOT=str(cls.data), PYTHONIOENCODING="utf-8")
+        cls.log = (cls.root / "serve.log").open("w", encoding="utf-8")
+        cls.server = subprocess.Popen(
+            [sys.executable, "-X", "utf8", "-m", "peach", "serve", "--setup", "--host", "127.0.0.1",
+             "--port", str(cls.port), "--no-mdns", "--no-ledger-sync"],
+            cwd=str(ROOT), env=env, stdout=cls.log, stderr=subprocess.STDOUT)
+        try:
+            cls._wait_ready()
+        except BaseException:
+            cls.tearDownClass()
+            raise
+
+    @classmethod
+    def _wait_ready(cls):
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        deadline = time.monotonic() + SERVER_START_SECONDS
+        while time.monotonic() < deadline:
+            if cls.server.poll() is not None:
+                raise AssertionError(f"首启服务提前退出：{cls._server_log()}")
+            try:
+                with opener.open(f"{cls.origin}/healthz", timeout=2) as response:
+                    if response.status == 200:
+                        return
+            except (urllib.error.URLError, OSError):
+                time.sleep(0.5)
+        raise AssertionError(f"{SERVER_START_SECONDS} 秒内首启服务没有就绪：{cls._server_log()}")
+
+    @classmethod
+    def tearDownClass(cls):
+        server = getattr(cls, "server", None)
+        if server is not None and server.poll() is None:
+            server.terminate()
+            try:
+                server.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait(timeout=10)
+        if getattr(cls, "log", None) is not None:
+            cls.log.close()
+        shutil.rmtree(cls.root, ignore_errors=True)
+
+    @classmethod
+    def _server_log(cls) -> str:
+        cls.log.flush()
+        return (cls.root / "serve.log").read_text(encoding="utf-8", errors="replace")[-4000:]
+
+    def test_the_first_run_page_writes_errors_back_and_finishes(self):
+        self.assertFalse((self.data / settings_file.SETTINGS_FILENAME).exists())
+        env = dict(os.environ, PEACH_E2E_SETUP_ORIGIN=self.origin, PEACH_E2E_SETUP_MEDIA=str(self.media),
+                   PEACH_E2E_SETUP_DATA=str(self.data), PEACH_E2E_CHROME=self.chrome)
+        log_root = ROOT / "build" / "agent-verification" / "browser"
+        log_root.mkdir(parents=True, exist_ok=True)
+        log_path = log_root / "setup.tap"
+        try:
+            completed = subprocess.run(
+                e2e_command(self.node, files=("e2e/setup.test.ts",)),
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                cwd=str(FRONTEND), env=env, timeout=E2E_SECONDS, check=False)
+        except subprocess.TimeoutExpired as expired:
+            partial = expired.stdout or ""
+            if isinstance(partial, bytes):
+                partial = partial.decode("utf-8", errors="replace")
+            log_path.write_text(partial, encoding="utf-8")
+            self.fail(f"首启 e2e {E2E_SECONDS} 秒内没跑完，完整日志：{log_path}\n{partial[-4000:]}")
+        output = f"{completed.stdout}\n{completed.stderr}"
+        log_path.write_text(output, encoding="utf-8")
+        self.assertEqual(completed.returncode, 0, f"{output}\n--- serve.log ---\n{self._server_log()}")
+        self.assertRegex(output, r"# pass 1\b", output)
+        self.assertRegex(output, r"# skipped 0\b", output)
+        # 改对的那一次提交在临时数据根里落了设置文件，媒体库就是传进去的那个目录。
+        written = settings_file.load_config(environ={settings_file.DATA_ROOT_ENV: str(self.data)})
+        self.assertTrue(written.present)
+        self.assertEqual([Path(path) for path in written.locations.get("local", ())], [self.media])
+
+
 class MissingPrerequisiteTests(unittest.TestCase):
     """CI 里浏览器用例只能执行或失败，不能静默跳过；工作流那一半由 `test_frontend_build.py` 守。"""
 

@@ -80,7 +80,7 @@ class AccessTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("loginDays", html)
 
     def test_the_login_page_is_the_auth_card_in_its_single_field_form(self):
-        """登录页与首启页是同一张 Auth Card：样式整份取 `entry_page_style()`，控件同一副。
+        """登录页是 Auth Card 的单字段形态：样式整份取 `entry_page_style()`，与错误页同一副。
 
         字段是 Board Input（label 在上、`.entry-input` 包住、聚焦环由卡片规则接管），
         「保持登录」是站内自绘 Checkbox，「登录」是全宽 primary 提交键；页面自己不再留
@@ -156,21 +156,6 @@ class AccessTests(unittest.IsolatedAsyncioTestCase):
         for _ in range(9):
             await self.login("wrong")
         self.assertEqual((await self.login("wrong")).status_code, 429)
-
-    def test_setup_password_uses_an_opt_in_switch_and_never_echoes_the_secret(self):
-        from peach import routes_pages, settings_file
-        config = settings_file.load_config(environ={"PEACH_DATA_ROOT": str(self.path.parent)})
-        html = routes_pages.setup_page(config, windows=True, values={
-            "access_enabled": "y", "access_password": "sensitive-password"})
-        self.assertIn('name="access_enabled" type="checkbox" role="switch" value="y" checked', html)
-        self.assertIn('id="access-password-fields"', html)
-        self.assertNotIn('id="access-password-fields" hidden', html)
-        self.assertIn('input[type=password]{width:100%;height:var(--control-h)', html)
-        form = html.split('<form method="post" action="/setup">', 1)[1]
-        self.assertLess(form.index('name="access_password"'), form.index("高级设置"))
-        self.assertNotIn("sensitive-password", html)
-        with self.assertRaises(ValueError):
-            access.validate_password("correct-password", "different")
 
     def test_first_setup_initializes_optional_password_but_keeps_existing_policy(self):
         from peach import onboarding, settings_file

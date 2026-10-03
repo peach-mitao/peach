@@ -32,7 +32,4 @@ export function useAction(initialError = '') {
   return { run, busy, error, setError };
 }
 
-/** 等待期的按钮：写 `aria-busy` 与 `aria-disabled`、保持可聚焦，不用原生 `disabled`。 */
-export function busyProps(busy: boolean) {
-  return busy ? { 'aria-busy': true, 'aria-disabled': true } as const : {};
-}
+export { busyProps } from './busy-props';

@@ -1,7 +1,7 @@
 /* 本机访问密码，由 BoardUI 原版组件组合；表单值只留在提交期间的组件内存中。
  *
  * 字段是 BoardUI `Input`（React Aria TextField），开关是 BoardUI `Checkbox`，提交键是 BoardUI `Button`；
- * 分区外框与提示用配置页共用的 `./section`。 */
+ * 新密码与确认两框是与首启页共用的 `./password-pair`，分区外框与提示用配置页共用的 `./section`。 */
 import { useRef, useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/base/buttons/button';
@@ -11,6 +11,7 @@ import { Input } from '@/components/base/input/input';
 import { ApiError, apiSend, errorMessage } from '../../api';
 import type { AccessSettingsProps, AccessState } from '../bundle';
 import { Note } from '../components/note';
+import { PasswordPair } from './password-pair';
 import { ErrorText, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 
@@ -76,16 +77,12 @@ export function AccessSettings({ initial, receipt }: AccessSettingsProps) {
                 value={current} onChange={setCurrent} isRequired validationBehavior="aria"
                 isInvalid={Boolean(fields.current_password)} hint={fields.current_password} />
             : null}
-          {editable ? <>
-            <Input id="access-password" type="password" label={state.mode === 'password' ? '新访问密码' : '设置访问密码'}
-              autoComplete="new-password" maxLength={256} value={password} onChange={setPassword}
-              isDisabled={disable} isRequired={!disable} validationBehavior="aria"
-              isInvalid={!disable && Boolean(fields.password)}
-              hint={disable ? '关闭访问密码时无需填写。' : fields.password || '至少 8 个字符。保存后其他设备需要重新登录。'} />
-            <Input id="access-confirm" type="password" label="确认访问密码" autoComplete="new-password" maxLength={256}
-              value={confirmation} onChange={setConfirmation} isDisabled={disable} isRequired={!disable} validationBehavior="aria"
-              isInvalid={!disable && Boolean(fields.confirmation)} hint={disable ? undefined : fields.confirmation} />
-          </> : null}
+          {editable
+            ? <PasswordPair label={state.mode === 'password' ? '新访问密码' : '设置访问密码'}
+                password={password} confirmation={confirmation} onPassword={setPassword} onConfirmation={setConfirmation}
+                disabled={disable} passwordError={fields.password} confirmationError={fields.confirmation}
+                passwordHint={disable ? '关闭访问密码时无需填写。' : '至少 8 个字符。保存后其他设备需要重新登录。'} />
+            : null}
           {disable ? <Note tone="warning" title="访问范围">保存后，能连接到 Peach 的设备将直接访问馆藏。</Note> : null}
           {action.error ? <ErrorText>{action.error}</ErrorText> : null}
         </Stack>

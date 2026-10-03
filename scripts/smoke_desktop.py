@@ -55,6 +55,22 @@ def assert_standalone_tunnel(configuration: dict) -> None:
     assert tunnel['available'] is True
 
 
+def complete_first_run(opener, base: str, media: Path, port: int, password: str) -> None:
+    """首启服务的薄壳与页面包都取得到，再按页面包的提交形态完成一次设置。"""
+    with opener.open(base + "/", timeout=5) as response:
+        assert 'data-page="setup"' in response.read().decode("utf-8")
+    for path in ("/dist/peach-pages.js", "/dist/peach-pages.css", "/api/setup/questions"):
+        with opener.open(base + path, timeout=5) as response:
+            assert response.status == 200, path
+    answers = {"media_dir": [{"path": str(media), "location": "115"}], "host": "2",
+               "port": str(port), "mdns_name": "peach", "access_enabled": True,
+               "access_password": password, "access_confirm": password}
+    request = urllib.request.Request(base + "/api/setup", data=json.dumps(answers).encode(),
+        headers={"Origin": base, "Content-Type": "application/json"})
+    with opener.open(request, timeout=60) as response:
+        assert json.load(response)["url"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("executable", type=Path)
@@ -81,16 +97,8 @@ def main() -> int:
                     urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
                 base = f"http://127.0.0.1:{port}"
                 health = wait_health(opener, base, process, root / "runtime.log")
-                with opener.open(base + "/", timeout=5) as response:
-                    assert 'action="/setup"' in response.read().decode("utf-8")
                 password = "standalone-smoke-password"
-                form = {"media_dir": str(media), "media_location": "115", "host": "2",
-                        "port": str(port), "mdns_name": "peach", "access_enabled": "y",
-                        "access_password": password, "access_confirm": password}
-                request = urllib.request.Request(base + "/setup",
-                    data=urllib.parse.urlencode(form).encode(), headers={"Origin": base})
-                with opener.open(request, timeout=60) as response:
-                    assert "设置完成" in response.read().decode("utf-8")
+                complete_first_run(opener, base, media, port, password)
                 assert (data / "database" / "ledger.db").is_file()
                 process.terminate()
                 process.wait(timeout=15)

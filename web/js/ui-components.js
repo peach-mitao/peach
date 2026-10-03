@@ -1,7 +1,7 @@
 import { esc, icon, requestErrorMessage } from './core.js';
 import { playUiSound } from './ui-sounds.js';
 /* 整页与局部的覆盖式滚动条、Collapse、锚定菜单、Geist Select 与来源站标只有一份实现，在
-   `frontend/src/ui-kit/`，随 `/dist/peach-entry.js` 发出；首启页直接读那份产物，这里原名转出。 */
+   `frontend/src/ui-kit/`，随 `/dist/peach-entry.js` 发出；错误页直接读那份产物，这里原名转出。 */
 import {
   attachOverlayScrollbar, closeAnchoredMenu, dismissMenu, growCollapse, MEDIA_SOURCE_ICONS, presentMenu,
   scrollMovesAnchor, selectFieldHtml, selectOptionIconHtml, setCollapseOpen, wireAnchoredMenu, wireCollapse,
