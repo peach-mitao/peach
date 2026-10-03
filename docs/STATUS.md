@@ -1,6 +1,6 @@
 # Peach 运行核验记录
 
-最后核验：2026-10-02
+最后核验：2026-10-03
 
 实时版本与健康状态查运行实例的 `/healthz`。另见 [待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
 
@@ -12,7 +12,7 @@
 - 产地是独立维度、JAV 是其投影：`region` 空时按厂牌、创作者、番号逐层推断，不落库；韩国 MIB 不算 JAV。
 - Windows：ledger writer；源码托盘异常退出会恢复，主动退出保持关闭。用 `restart_windows_tray.py --source` 重启；代码数据在内置盘，外置盘只供 `R:\media`。
 - 托盘须普通权限启动：提权令牌看不到 CloudDrive 的 `A:`/`B:`，误报脱盘。
-- Windows HTTP `0.0.0.0:80` 只跳转 HTTPS，HTTPS 只绑当前 LAN IPv4 的 443，mDNS 名 `peach-win`；线上版本 `0.37.0`、`ledger_sync=writer`，项目 CA 严格校验的 `/healthz` 通过。
+- Windows HTTP `0.0.0.0:80` 只跳转 HTTPS，HTTPS 只绑当前 LAN IPv4 的 443，mDNS 名 `peach-win`；线上版本 `0.37.0`、`ledger_sync=writer`，2026-10-03 源码托盘重启后，项目 CA 严格校验的 `/healthz` 与 `/healthz?ready=1` 通过，线上前端产物与主线一致。
 - 正式域名下 `/healthz` 报 `configurable=true`；配置读写与选文件夹共用本机连接判据，托盘管配置重载与正式 HTTPS 地址、端口。
 - 首启与配置页按系统列缺失依赖（CloudDrive、挂载驱动、FFmpeg/ffprobe、OpenSSL）；Windows 已认出 CloudDrive 与 WinFsp。
 - 文件检查覆盖本地与网盘，来源等分、共用确认弹层；CloudDrive 分档建议首启与配置页共用。
