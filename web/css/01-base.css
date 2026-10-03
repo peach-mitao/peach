@@ -338,10 +338,9 @@ svg.externalmark{width:1.15em;height:1.15em;flex:none;align-self:center;
 button[aria-busy="true"],[role="button"][aria-busy="true"]{
   cursor:wait!important;opacity:.55!important;filter:saturate(.35)
 }
-/* 强调档那一面不在这里：它的渐变、边、阴影和悬停归 `board.css` 的 Board primary 一处，
-   入口页由 `routes_pages._board_button_rules()` 把同一批规则内联进去。这里留着一份
-   Geist 的墨色实底加悬停提亮的话，它的 `.primary:hover:not(:disabled)` 比 Board 那条
-   静止规则还重一个类，压上去就跳回墨色——那正是错误页上看到的那颗。 */
+/* 强调档那一面不在这里：它的渐变、边、阴影和悬停归 `board.css` 的 Board primary 一处。
+   这里留着一份 Geist 的墨色实底加悬停提亮的话，它的 `.primary:hover:not(:disabled)`
+   比 Board 那条静止规则还重一个类，压上去就跳回墨色。 */
 /* 实心档的禁用态要自己写：.geist-button:disabled 排在 .primary 前面，同权重下后者赢，
    不补这条的话禁用的主动作还是满格实底，看着可点。 */
 .geist-button.primary:disabled{background:var(--sunk);color:var(--muted);box-shadow:0 0 0 1px var(--line-soft)}
