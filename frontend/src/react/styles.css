@@ -36,6 +36,8 @@
 @import "./base.css";
 
 @source "./";
+/* 独立页面包（`pages/`）有自己的产物 `peach-pages.css`，它用到的工具类不进这一份。 */
+@source not "./pages";
 @source "../management-skeletons.ts";
 @source "../catalog-filter-skeleton.ts";
 /* 扫描不分代码与注释：这几个词各在注释里出现过，生成出来就和旧样式表的 `.ring`、`.grid`、
