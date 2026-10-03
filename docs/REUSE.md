@@ -6,6 +6,8 @@
 
 已核对 sakuramedia `a10fcef8`（GPL-3.0）的诊断字段与提示组织，仅作产品参考，不复制源码。OpenAver `8cc17e50`（MIT）的 HTTP 健康探针不足以表达分项状态。[fastapi-health 0.4.0](https://pypi.org/project/fastapi-health/)（MIT）在本机 Python 3.14.7 的离线试验中将状态字典视为真值；CLI、分级规则和脱敏仍需本项目处理，因此未引入。
 
+诊断页复用同一报告、TanStack Query、BoardUI 设置组合件及覆盖式滚动条。库健康参照 javm `dd0e6b62`（MIT）的计数→清单入口，采用 Peach 的资产、封面键与处理日志。来源证据复用 `performer_profile_followup` 成功落库来源与 `scraping_access.cooldown_state`，不复用 HTTP 200 作为内容健康。无新增依赖；本机只读试验已核对现有日志与成功记录。
+
 ## 资源索引器
 
 来源性质由 `follow_providers.ProviderSpec.nature`、`scraping_access.describe` 与索引器配置投影给页面，分别标账号、公开页面、归档站与自配索引器，不参与身份可信度、优先级或启用状态判定。新增客户端仿真来源须在自己的登记处声明性质。

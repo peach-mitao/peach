@@ -880,6 +880,7 @@ def peach_logo(request: Request):
 # 配置页是主站里的一屏（island），数据走 `/api/configuration`。未配置时 `index()` 给的是
 # 首次运行表单，正好就是「请先完成首次设置」该长的样子。
 @router.api_route("/configuration", methods=["GET", "HEAD"])
+@router.api_route("/diagnostics", methods=["GET", "HEAD"])
 def client_route(request: Request, item_id: int | None = None,
                  seed_id: int | None = None, mix_item_id: int | None = None,
                  part_seed_id: int | None = None, part_item_id: int | None = None,

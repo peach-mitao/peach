@@ -7,6 +7,7 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Select, SelectItem } from '@/components/base/select/select';
 import { Switch } from '@/components/base/switch/switch';
+import { LinkButton } from '@/components/base/buttons/link-button';
 
 import { apiSend } from '../../api';
 import type {
@@ -27,6 +28,7 @@ export function MaintenanceSettings(
       {data.automatic_updates ? <AutomaticUpdates initial={data.automatic_updates} receipt={receipt} /> : null}
       {data.updates ? <ReleaseUpdates initial={data.updates} initialJob={data.update_job} /> : null}
       <Facts facts={data.facts} />
+      <Section title="系统诊断"><Stack><div><LinkButton href="/diagnostics">打开系统诊断</LinkButton></div></Stack></Section>
       <TutorialSettings receipt={receipt} reopenTutorial={reopenTutorial} />
       {data.uninstall ? <UninstallSettings uninstall={data.uninstall} receipt={receipt} /> : null}
     </div>

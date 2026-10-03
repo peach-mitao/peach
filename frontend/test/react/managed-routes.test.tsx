@@ -15,6 +15,7 @@ import type {
   ScrapingProps, StatsProps, TasteProps,
 } from '../../src/react/bundle';
 import type { ShellActions } from '../../src/react/router/shell-actions';
+import type { DiagnosticsProps } from '../../src/react/diagnostics/diagnostics-page';
 
 // 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
 const REACT_IMPORT_TIMEOUT_MS = 30_000;
@@ -338,6 +339,20 @@ function element<P>(path: keyof Loaded['MANAGED_ROUTES'], r: Loaded, open: objec
   return (r.MANAGED_ROUTES[path].page as (open: object, actions: ShellActions, go: (path: string) => void) => ReactElement<P>)(
     open, actions, go).props;
 }
+
+it('诊断页先选配置分栏再导航，作品与任务交给共享入口', async () => {
+  const r = await load();
+  const actions = shellActions();
+  const order: string[] = [];
+  const go = vi.fn((path: string) => { order.push(path) });
+  vi.mocked(actions.requestConfigurationSection).mockImplementation(section => { order.push(section) });
+  const props = element<DiagnosticsProps>('/diagnostics', r, {}, actions, go);
+  props.configure('网络与访问');
+  props.openItem(12);
+  props.navigate('/activity');
+  expect(order).toEqual(['网络与访问', '/configuration', '/activity']);
+  expect(actions.openItem).toHaveBeenCalledWith(12);
+});
 
 it('统计页：点标签交壳回目录；「添加媒体文件夹」先交页签再换到配置页', async () => {
   const r = await load();

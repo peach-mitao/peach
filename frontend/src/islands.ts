@@ -18,6 +18,7 @@ export {
 export * from './appearance';
 export * from './query';
 export * from './history';
+export { registerDiagnosticsRoute } from './diagnostics-route';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';

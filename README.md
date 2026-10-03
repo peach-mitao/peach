@@ -101,7 +101,7 @@ macOS 把后两条换成 `uv sync --locked --python 3.14 --extra macos` 和 `./.
 
 局域网访问、访问密码、更新和卸载见 [运行与配置](docs/OPERATIONS.md)。
 
-运行 `peach doctor` 可逐项诊断本机配置、账本、工具与挂载；`--json` 输出脱敏报告。状态与处理方式见 [本机诊断](docs/OPERATIONS.md#本机诊断)。
+在配置页「更新与维护」打开系统诊断，可查看库健康清单、来源解析与冷却状态。运行 `peach doctor` 可取得同一份报告；`--json` 输出脱敏 JSON。状态与处理方式见 [本机诊断](docs/OPERATIONS.md#本机诊断)。
 
 ## 常见问题
 

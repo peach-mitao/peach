@@ -27,7 +27,7 @@ it('分区依次是自动更新、检查更新、运行信息、安装教程、�
   };
   const host = await mount(<MaintenanceSettings data={data} receipt={vi.fn()} reopenTutorial={vi.fn()} />);
   expect([...host.firstElementChild!.children].map((node) => node.getAttribute('aria-label')))
-    .toEqual(['自动更新', '检查更新', '运行信息', '安装教程', '卸载 Peach']);
+    .toEqual(['自动更新', '检查更新', '运行信息', '系统诊断', '安装教程', '卸载 Peach']);
   const facts = section(host, '运行信息')!;
   expect([...facts.querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(['版本', 'FFmpeg']);
   const link = facts.querySelector('a[href="https://ffmpeg.org/download.html"]');

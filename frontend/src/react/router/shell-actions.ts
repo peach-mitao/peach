@@ -84,6 +84,7 @@ export interface ManagedOpenProps {
   '/quality-goals': Record<string, never>;
   '/scraping': Record<string, never>;
   '/configuration': Record<string, never>;
+  '/diagnostics': Record<string, never>;
   '/activity': { prefill?: CloudDownloadPrefill };
   '/follow-manage': {
     tab: string; page: number; sort: string; dir: string; pageSize: number; layout: string;
