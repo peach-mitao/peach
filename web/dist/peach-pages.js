@@ -11125,7 +11125,7 @@ function St({ title: e, lede: t, busy: n = !1, children: r }) {
 		children: /* @__PURE__ */ (0, B.jsxs)("section", {
 			"aria-labelledby": "auth-card-title",
 			"aria-busy": n || void 0,
-			className: "flex w-full max-w-140 flex-col gap-6 rounded-3xl border border-separator-border bg-background-primary-default p-8 max-sm:p-5",
+			className: "flex w-full max-w-140 flex-col gap-6 rounded-3xl border border-separator-border bg-background-secondary-default p-8 max-sm:p-5",
 			children: [/* @__PURE__ */ (0, B.jsxs)("header", {
 				className: "flex flex-col gap-1",
 				children: [

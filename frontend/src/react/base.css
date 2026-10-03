@@ -1,5 +1,5 @@
 /* React 子树共用的样式基线：暗色变体、Inter、阴影 token、`.peach-react` 容器基线与 token 重声明、
- * 下拉高度与横滚条。主界面的 `styles.css`（`peach-react.css`）与独立页面包的 `pages/pages.css`
+ * 下拉高度、输入框静止态边线与横滚条。主界面的 `styles.css`（`peach-react.css`）与独立页面包的 `pages/pages.css`
  * （`peach-pages.css`）各引一次，两份产物里的控件读到同一套值。这里不写 `@source`，
  * 扫描范围由各自的入口决定。 */
 
@@ -162,6 +162,19 @@
 
 .peach-react button[aria-haspopup="listbox"][class~="text-body-2-medium"] {
   height: calc(var(--spacing) * 8);
+}
+
+/* 输入框的静止态边线。BoardUI 的 Input 靠 tertiary 填充立住、静止态不画边，而 Peach 暗色
+ * 的 tertiary 面与 primary 面同为 neutral-800：坐在 primary 卡面上的输入框（配置页「媒体」
+ * 与首启页的文件夹行、媒体库名称）整块与卡面同色，框只在聚焦时由 ring 画出来。同一张表单里的
+ * Select 本来就带 button border，这里按同一个 token 给输入框补上，两种控件静止态同形。
+ * 悬停与聚焦仍归组件自己那圈 ring，所以这条只认没有这两个状态的那一刻；用 outline 而不是
+ * ring，是因为 ring 的 box-shadow 归组件，改写它就会连带盖掉那两个状态。
+ * 外壳是 TextField 下那个 React Aria Group（`data-rac`）；它没有 aria-label 时 role 落成
+ * presentation，所以不能按 role 认。 */
+.peach-react [data-input-size] > div[data-rac]:not([data-hovered]):not([data-focus-within]) {
+  outline: 1px solid var(--color-border-button-default);
+  outline-offset: -1px;
 }
 
 /* 横着滚的那几条不画滚动条：拖得动、也能滚轮横滚，一条系统灰柱子横在图表或分段控件

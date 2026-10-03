@@ -20,10 +20,11 @@
 @source "../boardui/components/base/";
 @source "../boardui/components/application/settings/settings-rows.tsx";
 
-/* 整页底色落在 body 上：根元素没有背景时它会铺满画布，回弹滚动露出来的也是这一档。 */
+/* 整页底色落在 body 上：根元素没有背景时它会铺满画布，回弹滚动露出来的也是这一档。
+ * 取最底的 `background-full`，卡面是 secondary，卡里的控件再亮一档（`auth-card.tsx`）。 */
 body.peach-react {
   min-height: 100dvh;
-  background-color: var(--color-background-secondary-default);
+  background-color: var(--color-background-full);
 }
 
 /* 共用 Collapse（`src/ui-kit/collapse.ts`）的高度过渡，同 `web/css/08-photos.css`。 */

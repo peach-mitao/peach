@@ -379,9 +379,11 @@ Radio card 沿用 2026-09-08 取得的 `r/checkbox-card.json`（`checkbox-card.t
 首启页（`frontend/src/react/pages/setup/`）的控件全部是 BoardUI 组件，外框是
 `pages/auth-card.tsx`；登录页与错误页仍是服务端 HTML，按钮那一档见下文 primary 的规则原文。
 
-Auth Card 是注册表里没有的组合：页面底色 `background-secondary-default` 上居中一张
-`background-primary-default` 卡，一条 `separator-border`，24px 圆角，最宽 560px，内边距 32px，
-窄屏收到 20px。卡头是 40px 站标、`title-2` 标题和一句次级文字的引言。
+Auth Card 是注册表里没有的组合：页面底色 `background-full` 上居中一张
+`background-secondary-default` 卡，一条 `separator-border`，24px 圆角，最宽 560px，内边距 32px，
+窄屏收到 20px。卡头是 40px 站标、`title-2` 标题和一句次级文字的引言。分层同配置页的设置区：
+卡里的输入框与分段轨道是 tertiary，文件夹行与次级按钮是 primary，深浅两色下都比卡面亮一档；
+暗色 primary 与 tertiary 同为 neutral-800，文件夹行里的输入框靠 `base.css` 那条静止态边线立住。
 
 按钮全用 BoardUI `Button`／`IconButton` 的 medium：选择文件夹与移除为纯图标 secondary（36×36、
 图标 20px），添加媒体库为带前置图标的 secondary，完成设置为 primary（高 36px、圆角 10px）。

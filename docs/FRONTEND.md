@@ -50,7 +50,8 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 `pages/legacy-ui.ts`，只取来源站标与折叠，不经 `/js/ui-components.js`。
 
 样式层：`pages.css` 与主界面的 `styles.css` 共用 `base.css`（暗色变体、Inter、阴影 token 与
-`.peach-react` 容器基线），Preflight 同样限定在 `.peach-react` 里，薄壳把这个类挂在 `<body>` 上，弹出层落进 body 也在范围内。
+`.peach-react` 容器基线、输入框静止态边线），Preflight 同样限定在 `.peach-react` 里，薄壳把这个类挂在 `<body>` 上，弹出层落进 body 也在范围内。
+`styles.css` 以 `@source not "./pages"` 排除页面包，首启页的工具类只进 `peach-pages.css`。
 深浅色读 `localStorage` 的 `peach.settings.v1`，同时写 `data-theme` 与 `<html>` 的 `.dark`。
 完成态在独立包上过 `RESTART_REDIRECT_MS`（`frontend/src/react/restart-redirect.ts`，与配置页
 保存后的跳转同一个数）自动跳到入口。
