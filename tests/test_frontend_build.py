@@ -81,14 +81,15 @@ class IslandBundleTests(unittest.TestCase):
 
     def test_react_bundle_records_stable_dependency_paths(self):
         """区域注释只能从 `node_modules/` 起，不得把生成它的工作树路径写进产物。"""
-        if not REACT_BUNDLE.is_file():
-            self.skipTest(f"{REACT_BUNDLE.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
-        react = REACT_BUNDLE.read_text(encoding="utf-8")
-        captured = [line for line in react.splitlines()
-                    if line.startswith("//#region ") and "node_modules/" in line
-                    and not line.startswith("//#region node_modules/")]
-        self.assertEqual(captured, [],
-                         "React 产物带了工作树相对路径；在当前工作树安装依赖后重新构建")
+        for bundle in (REACT_BUNDLE, PAGES_BUNDLE):
+            with self.subTest(bundle.name):
+                if not bundle.is_file():
+                    self.skipTest(f"{bundle.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
+                captured = [line for line in bundle.read_text(encoding="utf-8").splitlines()
+                            if line.startswith("//#region ") and "node_modules/" in line
+                            and not line.startswith("//#region node_modules/")]
+                self.assertEqual(captured, [],
+                                 f"{bundle.name} 带了工作树相对路径；在当前工作树安装依赖后重新构建")
 
     def test_the_route_that_serves_it_is_registered(self):
         # 扫整个包而不是 `api.py` 一个文件：这条路由现在住在 `routes_pages.py`，
@@ -101,6 +102,8 @@ class IslandBundleTests(unittest.TestCase):
 REACT_BUNDLE = DIST / "peach-react.js"
 REACT_STYLES = DIST / "peach-react.css"
 ENTRY_BUNDLE = DIST / "peach-entry.js"
+PAGES_BUNDLE = DIST / "peach-pages.js"
+PAGES_STYLES = DIST / "peach-pages.css"
 
 
 class BoardTokenTests(unittest.TestCase):
@@ -128,7 +131,7 @@ class BoardTokenTests(unittest.TestCase):
                          [ROOT / "web" / "board.css", *sorted((ROOT / "web" / "css").glob("*.css"))])
         shared = set(re.findall(r"(--color-[\w-]+):", legacy))
         theme = (FRONTEND / "src" / "react" / "boardui" / "styles" / "theme.css").read_text(encoding="utf-8")
-        styles = (FRONTEND / "src" / "react" / "styles.css").read_text(encoding="utf-8")
+        styles = (FRONTEND / "src" / "react" / "base.css").read_text(encoding="utf-8")
         origin = (FRONTEND / "src" / "react" / "boardui" / "ORIGIN.md").read_text(encoding="utf-8")
         for upstream, local in ((":root", ".peach-react"), (".dark", ".dark .peach-react")):
             expected = {name: value for name, value in self.declarations(theme, upstream).items()
@@ -139,7 +142,7 @@ class BoardTokenTests(unittest.TestCase):
                     self.assertIn(name, origin, f"{name} 偏离上游，要在 ORIGIN.md 的差异表里写明原因")
                     expected[name] = value
             self.assertEqual(self.declarations(styles, local), expected,
-                             f"styles.css 的 {local} 要与 theme.css 的 {upstream} 同名 token 逐条一致")
+                             f"base.css 的 {local} 要与 theme.css 的 {upstream} 同名 token 逐条一致")
 
     def test_manual_and_system_dark_palettes_in_board_css_agree(self):
         """手动选深色与跟随系统深色是同一副配色，两块分开写，只改一块时文字色会差一档。"""
@@ -161,7 +164,7 @@ class ReactBundleTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        for path in (BUNDLE, REACT_BUNDLE, REACT_STYLES, ENTRY_BUNDLE):
+        for path in (BUNDLE, REACT_BUNDLE, REACT_STYLES, ENTRY_BUNDLE, PAGES_BUNDLE, PAGES_STYLES):
             if not path.is_file():
                 raise unittest.SkipTest(
                     f"{path.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
@@ -169,6 +172,8 @@ class ReactBundleTests(unittest.TestCase):
         cls.react = REACT_BUNDLE.read_text(encoding="utf-8")
         cls.css = REACT_STYLES.read_text(encoding="utf-8")
         cls.entry = ENTRY_BUNDLE.read_text(encoding="utf-8")
+        cls.pages = PAGES_BUNDLE.read_text(encoding="utf-8")
+        cls.pages_css = PAGES_STYLES.read_text(encoding="utf-8")
 
     def test_islands_load_the_react_bundle_by_its_served_path(self):
         """island 按 `@peach/react` 写，产物里必须改写成服务端真的提供的路径，且 React 不进 peach-ui.js。"""
@@ -180,21 +185,30 @@ class ReactBundleTests(unittest.TestCase):
 
     def test_the_react_bundle_keeps_the_legacy_modules_external(self):
         self.assertIn('from "/js/core.js"', self.react)
-        # 前两份产物打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）；入口包由首启页
-        # 直接加载，同样不能留下这个引用。
+        # 这几份产物打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）；入口包由错误页、
+        # 页面包由首次运行页直接加载，同样不能留下这个引用。
         for name, bundle in (("peach-react.js", self.react), ("peach-ui.js", self.islands),
-                             ("peach-entry.js", self.entry)):
+                             ("peach-entry.js", self.entry), ("peach-pages.js", self.pages)):
             self.assertNotIn("process.env", bundle, f"{name}：库模式没替换 NODE_ENV，浏览器里没有 process")
+
+    def test_the_page_bundle_stands_alone(self):
+        """首次运行页只加载页面包：产物里不能有任何外部 import，也不能借 `/dist/` 下的另一份。"""
+        imports = [line for line in self.pages.splitlines()
+                   if re.match(r'\s*(?:import\s*[{*"\w]|export\s*\*\s*from)', line)
+                   or re.search(r'\bimport\(\s*"/', line) or re.search(r'from\s*"/', line)]
+        self.assertEqual(imports, [])
 
     def test_utilities_stay_outside_cascade_layers(self):
         """旧样式表不分层。工具类放进层里，`button,input,textarea{color:inherit}` 这类标签规则就会压过它。"""
-        layers = set(re.findall(r"@layer\s+([\w-]+)", self.css))
-        self.assertNotIn("utilities", layers)
-        self.assertNotIn("base", layers)
+        for css in (self.css, self.pages_css):
+            layers = set(re.findall(r"@layer\s+([\w-]+)", css))
+            self.assertNotIn("utilities", layers)
+            self.assertNotIn("base", layers)
 
     def test_preflight_only_reaches_the_react_subtree(self):
-        self.assertEqual(self.css.count("@scope"), 1)
-        self.assertRegex(self.css, r"@scope\s*\(\.peach-react\)")
+        for css in (self.css, self.pages_css):
+            self.assertEqual(css.count("@scope"), 1)
+            self.assertRegex(css, r"@scope\s*\(\.peach-react\)")
         scoped = (FRONTEND / "src" / "react" / "preflight-scoped.css").read_text(encoding="utf-8")
         upstream = FRONTEND / "node_modules" / "tailwindcss" / "preflight.css"
         if not upstream.is_file():

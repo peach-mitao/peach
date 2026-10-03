@@ -34,7 +34,7 @@
       "@peach/history": ["./src/history/index.ts"]
     }
   },
-  "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.entry.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
+  "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.entry.config.ts", "vite.pages.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
   // React 子树另有一份放宽过的配置，入口是 src/react/tsconfig.json（`npm run typecheck` 两份都跑）。
   "exclude": ["src/react", "test/react"]
 }
