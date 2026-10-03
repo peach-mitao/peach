@@ -21,6 +21,7 @@ import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sideba
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
+import { clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -469,11 +470,12 @@ const indexSurface=token=>({container:$('#index'),isCurrent:()=>surfaceCurrent(t
 const surfaceApi=(token,path,options)=>api(path,{...options,signal:token.signal})
   .catch(error=>{if(isAbort(error))return null;throw error});
 /* 地址只经全站那一份历史写（`frontend/src/history/`，`@peach/history`），不直接调 `window.history`：
-   React Router 读写的是同一个对象，绕过它写进去的条目它不知道。 */
-const route=(path,replace=false)=>{
+   React Router 读写的是同一个对象，绕过它写进去的条目它不知道。详情地址带上 `overlayState()`
+   给的 `usr`（压在哪一页上），别的地址不带。 */
+const route=(path,replace=false,state)=>{
   surfaceEpoch++;
   barsRequestSeq++;
-  shellNavigate(path,{replace});syncPageTitle(path);
+  shellNavigate(path,{replace,state});syncPageTitle(path);
   lastRoutePath=decodeURIComponent(new URL(path,location.href).pathname);
   queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
@@ -2262,9 +2264,11 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   const entering=!location.pathname.startsWith('/follow/item/');
   if(push&&entering&&!preserveReturn)followDetailReturnPath=location.pathname+location.search;
   if(!push&&!preserveReturn)followDetailReturnPath='/follow';
+  // 条目的背景另记：从列表进来记列表这一页（带筛选），组内换条沿用上一条的。
+  if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
   disposeStage(false,false,{miniplayer:false});
-  if(push)route(`/follow/item/${id}`);
+  if(push)route(`/follow/item/${id}`,false,overlayState('follow'));
   const stage=await loadStage(stageHost);
   await stage.open({kind:'follow',id,mediaIndex,mediaView:followMediaView,
     helpers:followFeedHelpers,actions:followDetailActions,resume:push?null:urlResume()});
@@ -2277,7 +2281,7 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
    键，不重取）；深链直接进的详情没挂过列表，这时才挂。 */
 async function closeFollowDetail(){
   await stageExit();
-  disposeStage(false,false,{miniplayer:false});
+  disposeStage(false,false,{miniplayer:false});clearOverlayBackground();
   route(followDetailReturnPath||'/follow');
   if(location.pathname!=='/follow'){await restoreRoute();return}
   if(!followFeedLive()){await openFollow(false);return}
@@ -3543,6 +3547,9 @@ function openQueue(kind,key,itemId,push,anchor=null){
   key=+key;
   const same=activeQueue?.kind===kind&&(kind==='playlist'?activeQueue.playlistId:activeQueue.seedId)===key;
   if(push&&(kind==='playlist'||!same))detailReturnPath=location.pathname+location.search;
+  /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景，
+     播放列表也一样，不跟 `detailReturnPath` 走。 */
+  if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
   return openItem(itemId==null?null:+itemId,false,queue,anchor,push);
 }
@@ -3601,13 +3608,16 @@ const itemDetailActions={
     const returnBars=detailReturnBarsContext;
     barsContext={type:'item',id:item.id,filters:returnBars?.type==='entity'
       ? {...returnBars.filters}:emptyEntityFilters()};
-    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`);pendingQueueRoute=null}
+    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));pendingQueueRoute=null}
     buildBars();
   },
   /* 取数时发现要换去别处：保存过的在线资产转关注详情，队列取不到退回普通详情，播放列表空了
      回列表页，条目已不在就收起舞台。壳一换舞台，岛这一次挂载就作废。 */
   redirect:to=>{
     const push=!!pendingQueueRoute;
+    /* 地址照旧停在 `/item/:id`、内容换成关注详情：已推的那一条把详情种类改记成关注，背景不变。
+       队列地址还没推时当前条目是上一条或来处，不动它。 */
+    if(to.kind==='follow'&&!push)retagOverlay('follow');
     if(to.kind==='follow'){followDetailReturnPath=detailReturnPath||'/';void openFollowDetail(to.id,false,null,true);return}
     if(to.kind==='item'){void openItem(to.id,true);return}
     if(to.kind==='playlists'){void openPlaylists(push);return}
@@ -3644,7 +3654,7 @@ const itemDetailActions={
   trashChanged:async(disposal,undo)=>{
     if(state.state!=='ads')return;
     if(!undo&&disposal!=='trash')return;
-    if(!undo)disposeStage(true,false,{miniplayer:false});
+    if(!undo){clearOverlayBackground();disposeStage(true,false,{miniplayer:false});}
     await loadCatalog();
   },
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
@@ -3663,6 +3673,8 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   if(!returnSurfaceReady)fillIdleCatalog();
   const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(currentBarsContext());
   if(push)detailReturnPath=location.pathname+location.search;
+  // 条目的背景另记：从页面点进来记这一页，从详情里点开另一条沿用上一条的背景，不嵌套。
+  if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
   disposeStage(false,true,{miniplayer:false});
   detailOriginAnchor=origin;detailOriginAbove=above;detailReturnNeedsRestore=needsReturnRestore;
@@ -3670,7 +3682,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   activeQueue=queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId};
   pendingQueueRoute=queue&&queuePush
     ? `${QUEUE_ROUTES[queue.kind]}/${queue.kind==='playlist'?queue.playlistId:queue.seedId}`:null;
-  if(push&&!queue)route('/item/'+id);
+  if(push&&!queue)route('/item/'+id,false,overlayState('item'));
   const stage=await loadStage(stageHost);
   await stage.open({kind:'item',
     id,queue,relatedLimit:appSettings.relatedLimit>0?+appSettings.relatedLimit:0,
@@ -3687,7 +3699,7 @@ async function closeItemDetail(){
   const restore=cloneBarsContext(detailReturnBarsContext);
   const returnPath=detailReturnPath||'/',restoreSurface=detailReturnNeedsRestore;
   await stageExit();
-  disposeStage(false,false,{miniplayer:false});detailReturnBarsContext=null;
+  disposeStage(false,false,{miniplayer:false});detailReturnBarsContext=null;clearOverlayBackground();
   barsContext=restore||{type:'home',filters:state};
   route(returnPath);
   if(restoreSurface)await restoreRoute();
@@ -3929,6 +3941,8 @@ async function restoreRoute(){
   barsRequestSeq++;
   syncPageTitle(location.href);
   paintSidebar();
+  /* 后退前进与启动不接着上一次记下的详情背景：跳过几条落到别的详情上时，那份背景不属于它。 */
+  clearOverlayBackground();
   const path=decodeURIComponent(location.pathname);
   void syncPostSetupTutorial();
   if(path==='/'&&new URLSearchParams(location.search).get('state')==='ads'){

@@ -15,6 +15,8 @@
  * `restoreRoute`）。判据用序号不用地址：同一条目重放的 `popstate` 地址不变，壳照样要重开那一屏。 */
 import { UNSAFE_createBrowserHistory, type Location, type NavigationType, type Navigator, type To } from 'react-router';
 
+import { isOverlayPath, overlayState, type OverlayKind } from './overlay';
+
 /** 一次历史变化：动作、变化之后的地址，和它领到的序号。 */
 export interface Navigation {
   action: NavigationType;
@@ -99,6 +101,18 @@ export function routeSeen(seen: number): void {
   void dispatcher();
 }
 
+/** 原地改写当前详情条目压着的详情种类：作品详情取数后转成关注详情时地址照旧是 `/item/:id`，内容换了。
+ * 背景不变，条目数不变；当前不在详情地址上、或没有记下背景时什么都不做。 */
+export function retagOverlay(overlay: OverlayKind): void {
+  const state = overlayState(overlay);
+  if (!state || !isOverlayPath(window.location.pathname)) return;
+  shellNavigate(window.location.href, { replace: true, state });
+}
+
+export {
+  clearOverlayBackground, holdOverlayBackground, isOverlayPath, OVERLAY_PATHS, overlayState,
+  type BackgroundLocation, type OverlayKind, type OverlayState,
+} from './overlay';
 export {
   connectManagedRoutes, listenManagedEntry, managedEntries, managedEntry, openManagedRoute, releaseManagedRoute,
   updateManagedRoute,

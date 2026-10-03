@@ -6,19 +6,23 @@
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
  * 默认包在 `startTransition` 里，接连两次变化会并成一次渲染，后退前进就少派发一次。
  *
- * 派发点与管理区宿主是 `<Routes>` 的兄弟，从头活到尾：后退前进照旧派发给壳，由壳的准备动作（收起舞台、
+ * 派发点与管理区宿主是两组 `<Routes>` 的兄弟，从头活到尾：后退前进照旧派发给壳，由壳的准备动作（收起舞台、
  * 铺骨架、认领表面）打开那一屏；画着的页面跟着壳登记的那几条走（`@peach/history` 的
- * `openManagedRoute`，每个容器一条），详情舞台压在上面、地址换成 `/item/:id` 时它留在原处。`<Routes>` 里那几条具体
- * 路由只声明路径，`path="*"` 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。 */
+ * `openManagedRoute`，每个容器一条），详情舞台压在上面、地址换成 `/item/:id` 时它留在原处。
+ *
+ * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`）匹配，详情压在哪一页上就还匹配那一页；
+ * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。两组的具体路由都只声明路径，`path="*"`
+ * 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。 */
 import {
   createContext, memo, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject,
 } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { Route, Router, Routes, useNavigate, type NavigateFunction } from 'react-router';
+import { Route, Router, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router';
 
 import {
-  listenManagedEntry, managedEntries, peachHistory, routeSeen, type ManagedEntry, type Navigation,
+  listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen, type BackgroundLocation, type ManagedEntry,
+  type Navigation,
 } from '@peach/history';
 
 import { Providers } from '../providers';
@@ -111,7 +115,35 @@ const ManagedPortal = memo(function ManagedPortal(
   return createPortal(managedPage(entry.path, entry.props, actions, go), entry.host, String(entry.revision));
 });
 
-/** 整棵路由树。`children` 画在 `path="*"` 的元素里面，只给测试用：跟着它挂一次就说明元素没被重挂。 */
+/** 条目里记的背景：壳在详情与队列条目的 `usr` 里写 `{ backgroundLocation, overlay }`，别的条目没有。 */
+function backgroundOf(state: unknown): BackgroundLocation | null {
+  const background = (state as { backgroundLocation?: Partial<BackgroundLocation> } | null)?.backgroundLocation;
+  if (typeof background?.pathname !== 'string') return null;
+  return { pathname: background.pathname, search: typeof background.search === 'string' ? background.search : '' };
+}
+
+/* 页面组的 `location` 一直给（没有背景就给当前地址）：给与不给之间 `<Routes>` 会多包一层 `LocationContext`，
+ * 来回切换就会把 `path="*"` 的元素拆掉重挂。 */
+function RouteGroups({ children }: { children?: ReactNode }) {
+  const location = useLocation();
+  const background = backgroundOf(location.state);
+  return (
+    <>
+      <Routes location={background ?? location}>
+        {ROUTED_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
+        {/* 旧直达地址：壳把它改写成 `/data-cleanup#resource-sync` 再打开数据管理页。 */}
+        <Route path="/resource-sync" element={null} />
+        <Route path="*" element={children} />
+      </Routes>
+      <Routes>
+        {OVERLAY_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
+        <Route path="*" element={null} />
+      </Routes>
+    </>
+  );
+}
+
+/** 整棵路由树。`children` 画在页面组 `path="*"` 的元素里面，只给测试用：跟着它挂一次就说明元素没被重挂。 */
 export function RouterRoot({ children, actions = null }: { children?: ReactNode; actions?: ShellActions | null }) {
   return (
     <Providers>
@@ -119,12 +151,7 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
         <PeachRouter>
           <RouteDispatch />
           <ManagedSurface />
-          <Routes>
-            {ROUTED_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
-            {/* 旧直达地址：壳把它改写成 `/data-cleanup#resource-sync` 再打开数据管理页。 */}
-            <Route path="/resource-sync" element={null} />
-            <Route path="*" element={children} />
-          </Routes>
+          <RouteGroups>{children}</RouteGroups>
         </PeachRouter>
       </ShellActionsContext.Provider>
     </Providers>

@@ -102,24 +102,69 @@ it('React 子树里的 navigate 让壳打开那一屏', async () => {
   expect([dispatch.mock.calls.length, location.pathname]).toEqual([2, '/tags']);
 });
 
-it('path="*" 的元素不随导航重挂，只跟着地址重渲染', async () => {
-  const r = await load('/immerse');
-  let mounted = 0;
-  let unmounted = 0;
-  const seen: string[] = [];
+/* 详情与队列条目的 `usr`：压在哪一页上，和壳写的形状一致。 */
+const over = (pathname: string, overlay: 'item' | 'follow' = 'item', search = '') =>
+  ({ backgroundLocation: { pathname, search }, overlay });
+
+/** 页面组 `path="*"` 那一格的探针：记挂载、卸载与它看到的地址。 */
+function probe() {
+  const seen = { mounted: 0, unmounted: 0, paths: [] as string[] };
   function Probe() {
-    seen.push(useLocation().pathname);
-    useEffect(() => { mounted += 1; return () => { unmounted += 1 } }, []);
+    seen.paths.push(useLocation().pathname);
+    useEffect(() => { seen.mounted += 1; return () => { seen.unmounted += 1 } }, []);
     return null;
   }
+  return { seen, Probe };
+}
+
+it('详情压着下面那一页时，页面组 path="*" 的元素不重挂，看到的是背景那一页', async () => {
+  const r = await load('/immerse');
+  const { seen, Probe } = probe();
   await mount(r, <Probe />);
   await act(async () => { await r.startRouting(() => {}) });
-  for (const path of ['/follow/item/3', '/item/7', '/parts/1/2']) await act(async () => { r.shellNavigate(path) });
+  const steps: Array<[string, ReturnType<typeof over>]> = [
+    ['/follow/item/3', over('/immerse', 'follow')], ['/item/7', over('/immerse')], ['/parts/1/2', over('/immerse')]];
+  for (const [path, state] of steps) await act(async () => { r.shellNavigate(path, { state }) });
   await act(async () => { pop('/follow/item/3') });
   await act(async () => { r.peachHistory.push('/mix/4/5') });
-  expect([mounted, unmounted]).toEqual([1, 0]);
-  expect(seen.at(-1)).toBe('/mix/4/5');
-  expect(new Set(seen)).toEqual(new Set(['/immerse', '/follow/item/3', '/item/7', '/parts/1/2', '/mix/4/5']));
+  expect([seen.mounted, seen.unmounted]).toEqual([1, 0]);
+  expect(seen.paths.at(-1)).toBe('/mix/4/5');
+  expect(new Set(seen.paths)).toEqual(new Set(['/immerse', '/mix/4/5']));
+});
+
+it('页面组按背景匹配：背景是管理区那一页就匹配那一条，两组都不报没有路由', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    const r = await load('/immerse');
+    const { seen, Probe } = probe();
+    await mount(r, <Probe />);
+    await act(async () => { await r.startRouting(() => {}) });
+    await act(async () => { r.shellNavigate('/item/7', { state: over('/stats', 'item', '?range=30') }) });
+    expect([seen.mounted, seen.unmounted]).toEqual([1, 1]);
+    await act(async () => { r.shellNavigate('/item/8') });
+    await act(async () => { r.shellNavigate('/no/such/page') });
+    expect(seen.mounted).toBe(2);
+    const unmatched = warn.mock.calls.map((call) => String(call[0])).filter((text) => text.includes('No routes matched'));
+    expect(unmatched).toEqual([]);
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+it('带背景的条目后退前进照样派发一次，背景随条目回来', async () => {
+  const r = await load('/stats');
+  await mount(r);
+  const dispatch = vi.fn();
+  await act(async () => { await r.startRouting(dispatch) });
+  dispatch.mockClear();
+  await act(async () => { r.shellNavigate('/item/7', { state: over('/stats') }) });
+  await act(async () => { r.shellNavigate('/item/8', { state: over('/stats') }) });
+  expect(dispatch).not.toHaveBeenCalled();
+  await act(async () => { pop('/item/7') });
+  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(r.peachHistory.navigation.location.state).toEqual(over('/stats'));
+  await act(async () => { pop() });
+  expect(dispatch).toHaveBeenCalledTimes(2);
 });
 
 it('派发跑在 React 提交阶段之外：壳在里面用 flushSync 画别的岛，当场就画上', async () => {
