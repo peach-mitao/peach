@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "dev:react": "vite build -c vite.react.config.ts --watch",
-    "build": "vite build && vite build -c vite.react.config.ts",
+    "build": "vite build && vite build -c vite.react.config.ts && vite build -c vite.entry.config.ts",
     "build:agentation": "vite build -c vite.agentation.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/react",
     "lint": "oxlint -c .oxlintrc.json src test e2e",

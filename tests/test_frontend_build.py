@@ -100,6 +100,7 @@ class IslandBundleTests(unittest.TestCase):
 
 REACT_BUNDLE = DIST / "peach-react.js"
 REACT_STYLES = DIST / "peach-react.css"
+ENTRY_BUNDLE = DIST / "peach-entry.js"
 
 
 class BoardTokenTests(unittest.TestCase):
@@ -160,13 +161,14 @@ class ReactBundleTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        for path in (BUNDLE, REACT_BUNDLE, REACT_STYLES):
+        for path in (BUNDLE, REACT_BUNDLE, REACT_STYLES, ENTRY_BUNDLE):
             if not path.is_file():
                 raise unittest.SkipTest(
                     f"{path.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
         cls.islands = BUNDLE.read_text(encoding="utf-8")
         cls.react = REACT_BUNDLE.read_text(encoding="utf-8")
         cls.css = REACT_STYLES.read_text(encoding="utf-8")
+        cls.entry = ENTRY_BUNDLE.read_text(encoding="utf-8")
 
     def test_islands_load_the_react_bundle_by_its_served_path(self):
         """island 按 `@peach/react` 写，产物里必须改写成服务端真的提供的路径，且 React 不进 peach-ui.js。"""
@@ -178,8 +180,10 @@ class ReactBundleTests(unittest.TestCase):
 
     def test_the_react_bundle_keeps_the_legacy_modules_external(self):
         self.assertIn('from "/js/core.js"', self.react)
-        # 两份产物都打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）。
-        for name, bundle in (("peach-react.js", self.react), ("peach-ui.js", self.islands)):
+        # 前两份产物打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）；入口包由首启页
+        # 直接加载，同样不能留下这个引用。
+        for name, bundle in (("peach-react.js", self.react), ("peach-ui.js", self.islands),
+                             ("peach-entry.js", self.entry)):
             self.assertNotIn("process.env", bundle, f"{name}：库模式没替换 NODE_ENV，浏览器里没有 process")
 
     def test_utilities_stay_outside_cascade_layers(self):

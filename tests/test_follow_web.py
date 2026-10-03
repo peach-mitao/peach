@@ -2879,6 +2879,8 @@ class FollowWebSourceTests(unittest.TestCase):
         sources.extend(sorted((web / "css").glob("*.css")))
         sources.append(web / "app.js")
         sources.extend(sorted((web / "js").glob("*.js")))
+        # 共用控件（Collapse、滚动条、锚定菜单、Select）的唯一实现在 ui-kit，随入口包发出。
+        sources.extend(sorted((ROOT / "frontend" / "src" / "ui-kit").glob("*.ts")))
         cls.page = chr(10).join(
             path.read_text(encoding="utf-8") for path in sources)
 

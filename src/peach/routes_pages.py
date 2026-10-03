@@ -170,10 +170,10 @@ _FOLDER_SVG = ('<svg viewBox="0 0 24 24"><path d="M10.7 20H4a2 2 0 0 1-2-2V5a2 2
                '<circle cx="17" cy="17" r="3"/></svg>')
 #: 折叠触发器右侧的 chevron（lucide `chevron-down`），展开时转 180 度。
 _CHEVRON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
-#: 两样东西借自站内共用控件：整页的覆盖式滚动条（原生那条藏掉，滑块浮在内容上），
-#: 以及高级设置的折叠（原生 <details> 不过渡高度）。页面里没有 <details> 时 wireCollapse
-#: 什么也不做，所以每张页面都挂同一段脚本。
-_SHARED_SCRIPT = ('<script type="module">import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/js/ui-components.js";'
+#: 站内共用控件取自入口包 `/dist/peach-entry.js`（源码 `frontend/src/ui-kit/`，主界面读同一份）：
+#: 整页的覆盖式滚动条（原生那条藏掉，滑块浮在内容上）、高级设置的折叠（原生 <details> 不过渡
+#: 高度）与媒体来源下拉。页面里没有 <details> 时 wireCollapse 什么也不做，所以每张页面都挂同一段脚本。
+_SHARED_SCRIPT = ('<script type="module">import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/dist/peach-entry.js";'
                   'attachOverlayScrollbar(document.documentElement,{variant:"page"});'
                   'wireCollapse(document,"details","setup-collapse");'
                   'const enhance=()=>document.querySelectorAll("select[name=media_location]:not([hidden])").forEach(select=>{'

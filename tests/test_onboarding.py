@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import os
+import re
 import sqlite3
 import tempfile
 import unittest
@@ -715,7 +716,7 @@ class SetupPageTests(_Case):
         """高级设置是 Geist Collapse：借主站的 wireCollapse，chevron 与高度都 200ms；滚动条也是主站那条。"""
         body = self._get("/").text
         self.assertIn('<summary><span class="setting-title">高级设置</span><svg viewBox="0 0 24 24" aria-hidden="true">', body)
-        self.assertIn('import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/js/ui-components.js";'
+        self.assertIn('import{attachOverlayScrollbar,wireCollapse,selectFieldHtml,wireSelectField,MEDIA_SOURCE_ICONS}from"/dist/peach-entry.js";'
                       'attachOverlayScrollbar(document.documentElement,{variant:"page"});'
                       'wireCollapse(document,"details","setup-collapse");', body)
         self.assertIn('.fcollapse{overflow:hidden;transition:height .2s ease-in-out;margin:0 -6px;padding:0 6px}', body)
@@ -728,10 +729,13 @@ class SetupPageTests(_Case):
         self.assertIn('[data-overlay-scrollbar]{scrollbar-width:none}', body, "原生滚动条只在脚本挂上覆盖式那条之后才藏")
         self.assertNotIn('html{color-scheme:light;scroll-padding-top', body, "主站 html 上无条件藏滚动条的那句不借")
         self.assertNotIn('原生滚动条在挂上覆盖式那条之后才藏', body, "借来的规则不带主站的注释")
-        script = self._get("/js/ui-components.js")
-        self.assertEqual(script.status_code, 200, "首启服务没有令牌，共享控件脚本得放行")
-        self.assertIn("export function wireCollapse", script.text)
-        self.assertIn("export function attachOverlayScrollbar", script.text)
+        script = self._get("/dist/peach-entry.js")
+        self.assertEqual(script.status_code, 200, "首启服务没有令牌，入口包得放行")
+        exported = re.search(r"export\s*\{([^}]*)\}", script.text)
+        self.assertIsNotNone(exported, "入口包是 ES module，末尾一条 export 列出页内脚本要的名字")
+        for name in ("attachOverlayScrollbar", "wireCollapse", "selectFieldHtml", "wireSelectField",
+                     "MEDIA_SOURCE_ICONS"):
+            self.assertRegex(exported.group(1), rf"\b{name}\b")
         plain = routes_pages.error_page(404, "没有这一页")
         self.assertNotIn("<details", plain)
         self.assertEqual(plain.count('<script type="module">'), 1, "没有高级设置的页面也挂同一段脚本：滚动条要它")

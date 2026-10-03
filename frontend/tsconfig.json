@@ -26,6 +26,7 @@
       "@peach/legacy/home-glow": ["./src/legacy/home-glow.d.ts"],
       "@peach/legacy/jav-title": ["./src/legacy/jav-title.d.ts"],
       "@peach/legacy/tags": ["./src/legacy/tags.d.ts"],
+      "@peach/legacy/ui-sounds": ["./src/legacy/ui-sounds.d.ts"],
       "@peach/react": ["./src/react/bundle.d.ts"],
       "@peach/card-art": ["./src/card-art/index.ts"],
       "@peach/appearance": ["./src/appearance/index.ts"],
@@ -33,7 +34,7 @@
       "@peach/history": ["./src/history/index.ts"]
     }
   },
-  "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
+  "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.entry.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
   // React 子树另有一份放宽过的配置，入口是 src/react/tsconfig.json（`npm run typecheck` 两份都跑）。
   "exclude": ["src/react", "test/react"]
 }
