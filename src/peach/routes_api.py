@@ -30,7 +30,9 @@ from .config import LOCATION_ROOT_DECLARATIONS
 from .field_owners import RevisionConflict
 from .interaction import reveal_path
 from .jobs import TaskRunConflict
-from .platform import is_unmapped, root_online, translate_ledger_path
+from .platform import is_unmapped, translate_ledger_path
+from .mount_reachability import MountRoot
+from .media_configuration import SOURCE_OPTIONS
 from .providers import ProviderUnavailable
 from .routes_auth import require_auth
 from .task_runs import task_label
@@ -41,35 +43,15 @@ router = APIRouter()
 LOGGER = logging.getLogger(__name__)
 
 
-def _source_status() -> list[dict[str, Any]]:
-    """按 ledger 的 `asset.location` 逐个报告来源可达性。
-
-    脱盘是来源级的：本地硬盘拔掉时 115/PikPak 照常可播，反过来也一样。
-    """
-    rows: list[dict[str, Any]] = []
+def source_roots() -> list[MountRoot]:
+    """沿用账本声明根与平台映射；只构造探测对象，不读取挂载。"""
+    rows: list[MountRoot] = []
+    labels = dict(SOURCE_OPTIONS)
     for location, declared_roots in LOCATION_ROOT_DECLARATIONS.items():
-        roots: list[dict[str, Any]] = []
         for declared in declared_roots:
             resolved = translate_ledger_path(declared)
-            mapped = not is_unmapped(resolved)
-            roots.append({
-                "declared": declared,
-                "resolved": str(resolved) if mapped else None,
-                "mapped": mapped,
-                "online": bool(mapped and root_online(resolved)),
-            })
-        # 一个来源可以有几个根；只要有一个不在，整个来源就按脱盘处理，宁可少播不可误判。
-        rows.append({
-            "location": location,
-            "roots": roots,
-            "mapped": all(root["mapped"] for root in roots),
-            "online": all(root["online"] for root in roots),
-        })
-    # 在线资源是 URL，不依赖任何挂载点。
-    rows.append({
-        "location": "online", "declared": None, "resolved": None,
-        "mapped": True, "online": True,
-    })
+            rows.append(MountRoot(location, labels.get(location, location), declared,
+                                  None if is_unmapped(resolved) else resolved))
     return rows
 
 
@@ -81,11 +63,13 @@ def provider_health(request: Request, args: dict[str, str] = Depends(require_aut
 @router.get("/api/sources")
 def source_health(request: Request, args: dict[str, str] = Depends(require_auth)):
     """无副作用的来源可达性。前端据此把脱盘来源的筛选置灰。"""
-    rows = _source_status()
+    rows = request.app.state.mount_reachability.sources()
+    rows.append({"location": "online", "declared": None, "resolved": None,
+                 "mapped": True, "online": True, "state": "ok", "message": ""})
     return {
         "ok": True,
         "sources": rows,
-        "offline": [row["location"] for row in rows if not row["online"]],
+        "offline": [row["location"] for row in rows if row["online"] is False],
     }
 
 

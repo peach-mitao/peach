@@ -252,6 +252,10 @@ class ServiceManager:
             payload = response.json()
             ok = response.status_code == 200 and payload.get("ok") is True
             detail = "" if ok else f"状态码 {response.status_code}"
+            if ok and isinstance(payload.get("media_mounts"), dict):
+                warnings = payload["media_mounts"].get("warnings", [])
+                if isinstance(warnings, list):
+                    detail = "；".join(value[:120] for value in warnings[:3] if isinstance(value, str))
         except (httpx.HTTPError, OSError, ValueError, AttributeError):
             ok, detail = False, "无响应"
         with self._lock:
@@ -272,7 +276,7 @@ class ServiceManager:
             parts = []
             for spec in self.specs:
                 ok, detail = self._last_health[spec.name]
-                state = "正常" if ok else f"异常（{detail}）" if detail else "异常"
+                state = (f"正常（{detail}）" if detail else "正常") if ok else f"异常（{detail}）" if detail else "异常"
                 parts.append(f"{spec.name.upper()} {state}")
         return " · ".join(parts)
 

@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import importlib.util
 import io
@@ -342,6 +343,35 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
                           BuildInfo("c0ffee1234", __version__, "2026-09-07T00:00:00")):
             served = (await self.client.get("/healthz")).json()
         self.assertEqual(served["build_commit"], "c0ffee1234")
+
+    async def test_sources_and_public_health_read_unknown_mount_snapshot_without_io(self):
+        from peach.mount_reachability import MountReachability, MountRoot
+        monitor = MountReachability([MountRoot("local", "本地磁盘", "R:/private", self.media_root)],
+                                    probe=lambda path: self.fail("读取快照不得触发目录探测"))
+        self.addCleanup(monitor.stop)
+        self.app.state.mount_reachability = monitor
+        sources = await self.client.get("/api/sources?t=secret")
+        self.assertEqual(sources.status_code, 200)
+        self.assertEqual(sources.json()["offline"], [])
+        self.assertIsNone(sources.json()["sources"][0]["online"])
+        health = (await self.client.get("/healthz")).json()["media_mounts"]
+        self.assertEqual(health["state"], "checking")
+        self.assertNotIn("R:/private", json.dumps(health))
+        self.assertNotIn(str(self.media_root), json.dumps(health))
+
+        monitor.probe = lambda path: "permission_denied"
+        monitor.retry_delay = 0
+        for _ in range(100):
+            monitor.tick()
+            if monitor.sources()[0]["online"] is False:
+                break
+            await asyncio.sleep(0.005)
+        sources = (await self.client.get("/api/sources?t=secret")).json()
+        self.assertEqual(sources["offline"], ["local"])
+        self.assertEqual(sources["sources"][0]["message"], "本地磁盘：没有权限读取")
+        payload = (await self.client.get("/healthz")).json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["media_mounts"]["warnings"], ["本地磁盘：没有权限读取"])
 
     async def test_reader_role_keeps_gets_available_and_rejects_posts(self):
         class ReaderSync:

@@ -70,8 +70,8 @@ BASELINE: dict[str, int] = {
 #: 判过就该这么长的函数：`(分支数, 为什么拆开更差)`。键与 `BASELINE` 同形、不重叠。
 ACCEPTED: dict[str, tuple[int, str]] = {
     "src/peach/api.py:create_app": (
-        40, "应用工厂：按启动顺序构造账本、各项后台服务与路由并接成一个 app，每个可注入的"
-            "依赖各带一个缺省；拆开只是把同一条构造顺序分散到几处"),
+        41, "应用工厂：按启动顺序构造账本、各项后台服务与路由并接成一个 app，每个可注入的"
+            "依赖各带一个缺省；挂载探测按配置状态启动。拆开会把同一条构造顺序分散到几处"),
     "src/peach/library_processing.py:process_library": (
         65, "顺序流水线：扫描、探时长、读本地资料、联网采集、写候选、收尾共用一份进度状态"
             "与问题记录；能独立命名的段已经拆出（`_RemoteSession`、`_merge_candidates`、"

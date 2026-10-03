@@ -350,7 +350,7 @@ def _walk(top: Path):
                 is_dir = False
             if is_dir:
                 try:
-                    if not entry.is_symlink():
+                    if not entry.is_symlink() and entry.name.casefold() != "#recycle" and not entry.name.startswith("@"):
                         subdirectories.append(entry.path)
                 except OSError:
                     pass

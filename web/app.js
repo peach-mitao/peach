@@ -479,17 +479,19 @@ const route=(path,replace=false)=>{
    脱盘是来源级的：外置盘拔掉只影响 local，115/PikPak 照常可播；反过来也一样。
    服务端 /api/sources 是唯一判据，前端只负责置灰筛选和换掉播放器。 ── */
 let sourceOnline={};
+let sourceProblems={};
 const sourceOffline=key=>sourceOnline[key]===false;
 const OFFLINE_HINT='脱盘模式：这个来源当前没有挂载';
 const OFFLINE_REASON={local:'本地硬盘没有挂载，接上后点重新检测即可播放。',
   '115':'115 网盘没有挂载，检查 CloudDrive 是否在运行。',
   pikpak:'PikPak 没有挂载，检查 CloudDrive 是否在运行。'};
-const offlineReason=key=>OFFLINE_REASON[key]||'这个来源当前没有挂载。';
+const offlineReason=key=>sourceProblems[key]||OFFLINE_REASON[key]||'这个来源当前没有挂载。';
 async function loadSourceStatus(){
   try{
     const d=await api('/api/sources');
-    sourceOnline=Object.fromEntries((d.sources||[]).map(s=>[s.location,!!s.online]));
-  }catch(_e){sourceOnline={}}
+    sourceOnline=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.online]));
+    sourceProblems=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.message||'']));
+  }catch(_e){sourceOnline={};sourceProblems={}}
   document.body.classList.toggle('offline-source',Object.values(sourceOnline).includes(false));
   dropOfflineFromDefaultLoc();
   return sourceOnline;

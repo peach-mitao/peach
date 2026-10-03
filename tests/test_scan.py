@@ -236,5 +236,20 @@ class ScanTargetTests(unittest.TestCase):
                          ["video", "image", "audio", "archive", "other"])
 
 
+class NasDirectoryTests(unittest.TestCase):
+    def test_system_directories_are_skipped_and_similarly_named_files_are_kept(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            for name in ("#recycle", "#RECYCLE", "@eaDir", "@snapshot", "normal"):
+                folder = root / name
+                folder.mkdir(exist_ok=True)
+                (folder / "sample.mp4").write_bytes(b"x")
+            for name in ("@video.mp4", "#recycle.mp4"):
+                (root / name).write_bytes(b"x")
+            files = [Path(entry.path).relative_to(root).as_posix()
+                     for _, entries in scan._walk(root) for entry in entries]
+        self.assertEqual(set(files), {"normal/sample.mp4", "@video.mp4", "#recycle.mp4"})
+
+
 if __name__ == "__main__":
     unittest.main()

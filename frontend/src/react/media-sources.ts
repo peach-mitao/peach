@@ -2,7 +2,7 @@
  * 哪些网盘值得给一颗「优先保留」——同一份真相三个读者，所以一个 `queryKey`，端点也只在这里
  * 声明一次。
  *
- * 这一份没有节律：它是进页面那一刻的挂载情况，后台不推进它，所以不轮询。 */
+ * 服务端定期探测；页面进入时读取最新快照。 */
 import { apiGet } from '../api';
 import { queryClient } from './query';
 
@@ -12,7 +12,9 @@ export const MEDIA_SOURCES_KEY = ['media-sources'] as const;
 /** `/api/sources` 的一行。字段与 `routes_api.source_health` 对齐。 */
 export interface MediaSourceStatus {
   location: string;
-  online: boolean;
+  online: boolean | null;
+  state?: string;
+  message?: string;
   roots?: unknown[];
 }
 

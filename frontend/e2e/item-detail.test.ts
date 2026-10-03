@@ -103,6 +103,32 @@ describe('作品详情岛', () => {
     }
   });
 
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.mobile ? '手机' : '桌面'}来源状态：权限原因可见，未取得状态不判脱盘`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, `/item/${ITEM.offline}`, viewport);
+      try {
+        const page = opened.page;
+        let online: boolean | null = false;
+        await page.route((url) => url.pathname === '/api/sources', (route) => route.fulfill({ json: {
+          sources: [{ location: 'local', online: true }, { location: '115', online,
+            state: online === false ? 'permission_denied' : 'timeout',
+            message: online === false ? 'CloudDrive · 115：没有权限读取' : 'CloudDrive · 115：探测未返回' }],
+        } }));
+        await page.reload({ waitUntil: 'load' });
+        await page.locator(DETAIL_READY).waitFor();
+        assert.match(await page.locator('#stage [data-item-gate="offline"]').innerText(), /没有权限读取/);
+        online = null;
+        await page.reload({ waitUntil: 'load' });
+        await page.locator(DETAIL_READY).waitFor();
+        assert.equal(await page.locator('#stage [data-item-gate="offline"]').count(), 0);
+        assert.equal(await page.locator('body.offline-source').count(), 0);
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
+
   it('出演超过 8 位先收起，点「还有 N 位」全部展开', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.cast}`, DESKTOP);
     try {

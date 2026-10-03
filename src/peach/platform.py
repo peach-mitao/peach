@@ -108,18 +108,25 @@ def resolve_location(
     return location, tail
 
 
-def root_online(root: Path) -> bool:
-    """挂载点在不在。
-
-    目录存在还不够：CloudDrive 掉线后挂载点目录仍然在，但读第一个条目就报错
-    `Device not configured`。判据统一成「能否列出一个条目」。
-    """
+def root_status(root: Path) -> str:
+    """以目录首条读取判断挂载状态；空目录可读也算在线。"""
     try:
         with os.scandir(root) as entries:
             next(iter(entries), None)
+    except PermissionError:
+        return "permission_denied"
+    except FileNotFoundError:
+        return "missing"
+    except NotADirectoryError:
+        return "not_directory"
     except OSError:
-        return False
-    return True
+        return "unavailable"
+    return "ok"
+
+
+def root_online(root: Path) -> bool:
+    """即时确认挂载目录可读；用于文件访问与扫描的安全判断。"""
+    return root_status(root) == "ok"
 
 
 

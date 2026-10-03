@@ -149,6 +149,7 @@
 44. **DMM cid 前缀表与失败分类**：Javinizer-Go 从 r18.dev dump 生成了 24279 行「系列 → DMM cid 前缀」表（`content_id_prefixes.go`，MIT），`START-575 → 1start00575` 这类数字前缀 cid 不必再搜索；`sources/dmm.py` 注释写着它们「只有搜索答得出」，`jav_cover_fetch.py` 有几条手写映射。表随版本发布，查不到再搜索；AMMDS v1.6.71 的规则覆盖（正则、前缀、后缀、包含，`{brand}`、`{num2}`～`{num8}` 占位）作用户补丁层。不在本机自学前缀：OpenAver 0.15.3 本机自学的 53 条里 21 条是错的且无声。另移植 mdcz `crawler/sites/dmm/failureClassifier.ts`（GPL-3.0，可并入 AGPL）的分类：地区封锁、登录墙、未渲染的 Next.js 空壳、404 各成一个契约 reason，空壳判据也用于浏览器取页。
 45. **来源测试录制回放**：mdcz v0.16.0 的做法（`docs/testing-fixtures.md`）：每个番号一份 manifest，图片按 sha256 内容寻址、不进 Git，缺 blob 用同尺寸同字节数的生成图顶上；Cookie、CSRF、token 替换成固定值；回放缺一条交互就判失败，不回落公网。`sources/library-metadata/*.json` 的快照可当录制源，先拿 DMM 与 javbus 两个解析器试。
 46. **挂载可达性探测**：参照 OpenAver `core/source_reachability.py`：正常 600 秒、异常 60 秒探一次，连续两次失败才报，提示里写来源名；分开报「没有权限读取」与「不存在」（0.16.12），扫描跳过 `#recycle`、`@eaDir`、`@*` 这类 NAS 系统目录。结果给第 26 条诊断页与托盘状态用。
+    - 周期快照、在途去重、故障分类、来源接口与托盘提示已进入实现验证；Windows 回归与 Mac 挂载验收尚未完成。第 26 条诊断页仍待接入，不能关闭本项。
 47. **时刻、合集与片段导出**：「记一次高潮」已写 `activity_event.position_seconds`，推广成通用的「时刻」（时间点 + 一帧缩略图 + 可选备注），加时刻合集页；SakuraMedia 分播放列表、时刻、切片三层，各自成合集（`src/model/collections/`）。片段导出用 FFmpeg 拷流、不重编码，切点落在关键帧上，文件放 `peach-data`。时刻随个人记录按 ADR-0087 接到新版本。
     - 推荐时刻每片至多 3 条，与第 28 条的推荐分同批做。
 48. **上榜标记**：javranking-extension 的公开静态索引（先拉不到 200 B 的版本清单，变了才拉 1.26 MB `search-index.json`；schemaVersion 2，1769 部，JavDB TOP250、2020–2025 年榜、JavLibrary TOP250）每周读一次，给馆藏标「上榜」并喂给第 28 条。索引没有许可条款（未取得），只读引用并在界面标明来源；按来源存成候选标签。
