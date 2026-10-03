@@ -249,15 +249,18 @@ def held(lock_path: Path, *, wait_seconds: float = 0, **note: object):
         lock.acquire(timeout=wait_seconds)
     try:
         record = holder_path(lock_path)
-        record.write_text(json.dumps({
-            "pid": os.getpid(),
-            "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            **note,
-        }, ensure_ascii=False), encoding="utf-8")
+        record_lock = FileLock(record.with_suffix(".lock"), timeout=5)
+        with record_lock:
+            record.write_text(json.dumps({
+                "pid": os.getpid(),
+                "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                **note,
+            }, ensure_ascii=False), encoding="utf-8")
         try:
             yield
         finally:
-            record.unlink(missing_ok=True)
+            with record_lock:
+                record.unlink(missing_ok=True)
     finally:
         lock.release()
 
@@ -265,7 +268,11 @@ def held(lock_path: Path, *, wait_seconds: float = 0, **note: object):
 def describe_holder(lock_path: Path) -> str:
     """等锁时打印用：`pid 8772、01:54:39 起、scope full、root C:\\…`。"""
     try:
-        note = json.loads(holder_path(lock_path).read_text(encoding="utf-8"))
+        record = holder_path(lock_path)
+        with FileLock(record.with_suffix(".lock"), timeout=1):
+            note = json.loads(record.read_text(encoding="utf-8"))
+    except Timeout:
+        return "持有者信息暂未取得"
     except (OSError, ValueError):
         return "持有者刚退出或没留记录"
     parts = [f"pid {note.get('pid')}", f"{note.get('started_at')} 起"]
