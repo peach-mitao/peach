@@ -1,12 +1,13 @@
-/* 由路由画的那几页：路径到首屏取数与整页的对照表，四张。
+/* 由路由画的那几页：路径到首屏取数与整页的对照表，五张。
  *
  * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`BROWSE_ROUTES` 是同样画进 `#stats`
  * 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
- * （`/performers/*`），种类与名字跟着打开走。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值
- * （地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次）；回执与换到还归壳的那几屏走
- * `ShellActions`。管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的
- * `navigate`，其余交壳。另外三张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页
- * 与关注页的 `actions.route`），跨页也交壳，派发次数同壳自己打开。 */
+ * （`/performers/*`），种类与名字跟着打开走；`CATALOG_ROUTES` 是画进 `#grid` 的目录网格与垃圾队列，按页面
+ * 分键。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、
+ * 一次性预填、刷新代次），`#grid` 那两页是壳那一整份 props；回执与换到还归壳的那几屏走 `ShellActions`。
+ * 管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的 `navigate`，其余交壳。另外
+ * 四张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页与关注页的 `actions.route`、
+ * 目录的换筛选、垃圾队列的换分类），跨页也交壳，派发次数同壳自己打开。 */
 import type { ReactElement } from 'react';
 
 import { javDisplayName, javTitleHtml } from '@peach/legacy/jav-title';
@@ -15,6 +16,8 @@ import { tagLabel } from '@peach/legacy/tags';
 import { ActivityPage } from '../activity/activity-page';
 import { prefetchTasks } from '../activity/tasks';
 import type { DataCleanupSection } from '../bundle';
+import { prefetchCatalogGrid } from '../catalog-grid/catalog-grid';
+import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { prefetchDataCleanup } from '../data-cleanup/data-cleanup';
 import { DataCleanupPage } from '../data-cleanup/data-cleanup-page';
 import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-page';
@@ -27,6 +30,7 @@ import { prefetchFollowManage } from '../follow-manage/follow-manage';
 import { FollowManagePage } from '../follow-manage/follow-manage-page';
 import { prefetchIndex } from '../index/index-data';
 import { IndexPage } from '../index/index-page';
+import { JunkQueuePage } from '../junk-queue/junk-queue-page';
 import { prefetchPlaylists } from '../playlists/playlists';
 import { PlaylistsPage } from '../playlists/playlists-page';
 import { prefetchQualityGoals } from '../quality-goals/quality-goals';
@@ -42,8 +46,8 @@ import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
 import type {
-  BrowseOpenProps, BrowseRoutePath, EntityRoutePath, IndexOpenProps, IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps,
-  ManagedPath, ShellActions,
+  BrowseOpenProps, BrowseRoutePath, CatalogOpenProps, CatalogPagePath, EntityRoutePath, IndexOpenProps,
+  IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ShellActions,
 } from './shell-actions';
 
 interface ManagedRoute<P> {
@@ -55,8 +59,9 @@ type ManagedRouteTable = { [Path in ManagedPath]: ManagedRoute<ManagedOpenProps[
 type BrowseRouteTable = { [Path in BrowseRoutePath]: ManagedRoute<BrowseOpenProps[Path]> };
 type IndexRouteTable = { [Path in IndexRoutePath]: ManagedRoute<IndexOpenPropsTable[Path]> };
 type EntityRouteTable = { [Path in EntityRoutePath]: ManagedRoute<EntityPageProps> };
-/** 路由树画的全部路径：管理区那几页、播放列表页与关注页、索引页与资料页。 */
-export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath;
+type CatalogRouteTable = { [Path in CatalogPagePath]: ManagedRoute<CatalogOpenProps[Path]> };
+/** 路由树画的全部页面：管理区那几页、播放列表页与关注页、索引页与资料页、目录网格。 */
+export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath | CatalogPagePath;
 
 /* 数据管理页读数卡的去处里，只有重复文件不按管理区身份找：它报的是数据管理的身份。 */
 function openCleanupSection(section: DataCleanupSection, actions: ShellActions, go: (path: string) => void) {
@@ -195,17 +200,43 @@ export const ENTITY_ROUTES: EntityRouteTable = {
   '/agencies/*': entityRoute,
 };
 
-/** 路由树画的路径（四张表的键）。`<Routes>` 的声明、首屏取数与画页都按它查。 */
-export const ROUTED_PATHS: readonly RoutedPath[] = [
-  ...Object.keys(MANAGED_ROUTES) as ManagedPath[], ...Object.keys(BROWSE_ROUTES) as BrowseRoutePath[],
-  ...Object.keys(INDEX_ROUTES) as IndexRoutePath[], ...Object.keys(ENTITY_ROUTES) as EntityRoutePath[],
+/* 画进 `#grid` 的两页。目录网格：首页、四个筛选态里除垃圾文件外的三个，和回收站，画的都是这一张网格，
+   筛选是壳那一份 `state`；垃圾队列：垃圾文件那一屏，分类与视图只从地址读。表按页面分键：壳用 `/` 打开
+   网格、用 `/junk-files` 打开队列，槽里记的路径说的是画着哪一页、不是地址。按地址分键会在三处出错：网格在
+   `/trash` 打开之后去 `/` 是就地推，槽里的路径不跟着变；`?state=ads` 落在 `/` 上，画的是垃圾队列；冷启动
+   落在详情地址上时，网格在 `/item/:id` 底下补画。
+   网格首屏取第一页再画；队列不在打开前等，画上就铺自己那份骨架（`junk-queue-page.tsx` 开头）。之后换
+   筛选或分类、换版式、选择模式与刷新代次都由壳经 `updateManagedRoute` 推进来，页面按新键重取、自己铺
+   骨架，不重挂。 */
+export const CATALOG_ROUTES: CatalogRouteTable = {
+  '/': {
+    prefetch: (open, signal) => prefetchCatalogGrid(open, signal),
+    page: (open) => <CatalogGridPage {...open} />,
+  },
+  '/junk-files': {
+    prefetch: async () => {},
+    page: (open) => <JunkQueuePage {...open} />,
+  },
+};
+const isCatalogPage = (path: string): path is CatalogPagePath => Object.hasOwn(CATALOG_ROUTES, path);
+/** 画着 `#grid` 那两页时地址可能落在的路径：首页、三个筛选态、回收站与垃圾文件。只进 `<Routes>` 的声明，
+ *  不当槽里的键。 */
+export const CATALOG_PATHS = ['/', '/unseen', '/watch-later', '/flagged', '/trash', '/junk-files'] as const;
+
+/** `<Routes>` 声明的路径：前四张表的键，加上 `#grid` 那两页画着时地址可能落在的路径。 */
+export const ROUTED_PATHS: readonly string[] = [
+  ...Object.keys(MANAGED_ROUTES), ...Object.keys(BROWSE_ROUTES), ...Object.keys(INDEX_ROUTES),
+  ...Object.keys(ENTITY_ROUTES), ...CATALOG_PATHS,
 ];
+/** 路由树画得了这一页吗：首屏取数与画页按槽里记的路径查，`#grid` 那两页只认页面键。 */
 export const isRoutedPath = (path: string): path is RoutedPath => (
-  isManagedPath(path) || isBrowsePath(path) || Object.hasOwn(INDEX_ROUTES, path) || Object.hasOwn(ENTITY_ROUTES, path));
+  isManagedPath(path) || isBrowsePath(path) || Object.hasOwn(INDEX_ROUTES, path) || Object.hasOwn(ENTITY_ROUTES, path)
+  || isCatalogPage(path));
 
 function routeOf(path: RoutedPath): ManagedRoute<object> {
   if (isManagedPath(path)) return MANAGED_ROUTES[path] as ManagedRoute<object>;
   if (isBrowsePath(path)) return BROWSE_ROUTES[path] as ManagedRoute<object>;
+  if (isCatalogPage(path)) return CATALOG_ROUTES[path] as ManagedRoute<object>;
   if (Object.hasOwn(INDEX_ROUTES, path)) return INDEX_ROUTES[path as IndexRoutePath] as ManagedRoute<object>;
   return ENTITY_ROUTES[path as EntityRoutePath] as ManagedRoute<object>;
 }

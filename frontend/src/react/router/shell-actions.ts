@@ -5,9 +5,11 @@
  * 从 `@peach/legacy/*` 直接 import；每次打开才算得出的值（只读状态、地址上的分类与页签、引导标记）
  * 跟着那一次打开走，不在这里。 */
 
+import type { CatalogGridProps } from '../catalog-grid/types';
 import type { OnlineAuthor } from '../follow/online-vocab';
 import type { FollowFeedProps } from '../follow-feed/follow-feed';
 import type { IndexKind, IndexPerson, IndexRoute, PeopleLayout, PersonAvatar } from '../index/index-data';
+import type { JunkQueueProps } from '../junk-queue/junk-queue';
 
 /** 云下载表单的预填：番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
 export interface CloudDownloadPrefill { code?: string; title?: string; origin?: string }
@@ -101,6 +103,20 @@ export interface BrowseOpenProps {
 }
 
 export type BrowseRoutePath = keyof BrowseOpenProps;
+
+/** 目录网格与垃圾队列画进 `#grid`，同样不算管理区：进目录要由壳按地址重建筛选（`openCatalog`，进首页
+ *  还要重掷种子、作废顶部三层的缓存），回收站要把筛选钉成 `trash`，这些只有壳做得到。表按页面分键，不按
+ *  地址：目录各路径与回收站画的都是 `/` 这一页，网格在 `/trash` 打开之后去 `/` 是就地推；`/junk-files`
+ *  是垃圾队列那一页，`?state=ads` 落在 `/` 上时画的也是它。打开时交进来的是壳那一整份 props（筛选或
+ *  分类、版式、选择态与卡片的助手和动作），之后的换筛选、换版式、选择模式与刷新代次经
+ *  `updateManagedRoute` 推进来。卡片的助手与动作是壳里各一份、身份不变的对象（卡片按引用比较），
+ *  目录网格那一份资料页的作品区与详情的接着看也在用，所以跟着打开走，不进 `ShellActions`。 */
+export interface CatalogOpenProps {
+  '/': CatalogGridProps;
+  '/junk-files': JunkQueueProps;
+}
+
+export type CatalogPagePath = keyof CatalogOpenProps;
 
 /** 索引页每次打开交进来的值：地址栏上的那几项（壳从地址读出）、这台浏览器的版式偏好、顶栏选择键的
  *  现值，和本机能不能改配置。选择键之后的开关经 `updateManagedRoute` 推进来。 */

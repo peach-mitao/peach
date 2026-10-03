@@ -15,7 +15,7 @@ const CLONES = 150;
 const CLONE_BASE = 900_000;
 const PROBE_TAG = '屏外探针';
 
-/** 卡片里各块的选择器。作品卡归 `catalog-grid` island，关注卡归 `follow-feed` island，钩子都是
+/** 卡片里各块的选择器。作品卡归目录网格，关注卡归关注页，钩子都是
  * `data-media-*`；关注卡的封面格多包一层 `[data-follow-visual]`，头像和标签是 `<span>`。 */
 interface CardShape {
   card: string; pic: string; meta: string; avatar: string; text: string; tags: string;

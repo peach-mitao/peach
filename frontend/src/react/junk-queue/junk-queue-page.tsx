@@ -1,9 +1,9 @@
-/* 垃圾文件队列（`junk-queue` island，`/junk-files`）：计数行加一屏逐项处置的卡片。
+/* 垃圾文件队列（`/junk-files`，由路由树画进 `#grid`）：计数行加一屏逐项处置的卡片。
  *
- * 岛根挂在壳的 `#grid` 上，计数行经 portal 画进 `#count` 里自己建的一个 `.peach-react` 容器：
+ * 页面画在壳的 `#grid` 里，计数行经 portal 画进 `#count` 里自己建的一个 `.peach-react` 容器：
  * 那一行本身归壳（目录页也用它，换页时由壳清空），里面的摘要与分类条归这里。
  *
- * 首屏不在 `prefetch` 里等。分类条由地址决定、此刻就画得出最终样子，等的只有读数，所以挂上
+ * 首屏不在 `prefetch` 里等。分类条由地址决定、此刻就画得出最终样子，等的只有读数，所以一打开
  * 就画：计数行是等待态（`#count[aria-busy]`、摘要里一条占位），网格是壳那份骨架，数据到了
  * 骨架淡出、卡片从模糊里清晰起来（同目录网格）。在 `prefetch` 里等的话，请求挂着的这段时间
  * 屏上只有壳的静态骨架，分类点不动。
@@ -69,7 +69,7 @@ export function JunkQueuePage(props: JunkQueueProps) {
   );
 }
 
-/** 计数行里归 island 的那一格。挂上时换掉壳铺的骨架，卸载时撤掉，行本身还给壳。 */
+/** 计数行里归这一页的那一格。挂上时换掉壳铺的骨架，卸载时撤掉，行本身还给壳。 */
 function useCountHost(row: HTMLElement | null): HTMLElement | null {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {

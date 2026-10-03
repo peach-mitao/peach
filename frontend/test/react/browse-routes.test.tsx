@@ -234,8 +234,8 @@ function followFetch({ deferred = false } = {}) {
   return { fetched, calls, resolve: () => { for (const settle of pending.splice(0)) settle() } };
 }
 
-/** 同壳里的 `revealFollowFeed`：骨架交给 `revealSkeleton` 抬成淡出层，`write` 只放进空宿主。 */
-function revealFollowFeed(container: Element): HTMLElement {
+/** 同壳里的 `revealRoutedPage`：骨架交给 `revealSkeleton` 抬成淡出层，`write` 只放进空宿主。 */
+function revealRoutedPage(container: Element): HTMLElement {
   const host = document.createElement('div');
   host.className = 'peach-react';
   revealSkeleton(container, () => { container.textContent = ''; container.append(host) });
@@ -250,7 +250,7 @@ it('冷启动深链关注页：骨架淡出与整页在同一批变化里交接�
   const { stats, skeleton } = statsSurface(FOLLOW_SKELETON);
   await mount(r);
   const fetch = followFetch({ deferred: true });
-  const opened = r.openManagedRoute('/follow', followOpen(), { container: stats, isCurrent: () => true, place: revealFollowFeed });
+  const opened = r.openManagedRoute('/follow', followOpen(), { container: stats, isCurrent: () => true, place: revealRoutedPage });
   await until(() => fetch.calls('/api/follow').length > 0 && fetch.calls('/api/follow/credentials').length > 0, '首屏两趟发出去');
   expect(stats.firstElementChild, '取齐之前骨架原样留着').toBe(skeleton);
   const batches: Array<{ bare: boolean; fading: boolean; painted: boolean; revealing: boolean }> = [];
@@ -287,7 +287,7 @@ it('关注页就地推筛选与代次：代次不变、不重挂，只按新键�
   const fetch = followFetch();
   const open = followOpen();
   await act(async () => {
-    await r.openManagedRoute('/follow', open, { container: stats, isCurrent: () => true, place: revealFollowFeed });
+    await r.openManagedRoute('/follow', open, { container: stats, isCurrent: () => true, place: revealRoutedPage });
   });
   await until(() => Boolean(stats.textContent?.includes('更新 1 全部')), '首屏列表画上');
   const page = stats.querySelector('.peach-react [data-follow-feed]');

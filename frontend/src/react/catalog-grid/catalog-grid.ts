@@ -94,7 +94,7 @@ export function entityQuery(props: CatalogGridProps) {
   };
 }
 
-/** 首屏取数。只有目录要等：资料页的作品区挂在 `entity-body` 岛里，第一页由壳递进来，
+/** 首屏取数（目录网格那条路由的 `prefetch`）。只有目录要等：资料页的作品区第一页跟着资料页递进来，
  *  网格挂上时自己落进缓存（`initialData`）。 */
 export async function prefetchCatalogGrid(props: CatalogGridProps, signal: AbortSignal): Promise<void> {
   if (props.mode !== 'catalog') return;

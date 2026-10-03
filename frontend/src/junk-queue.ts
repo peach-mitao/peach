@@ -1,10 +1,10 @@
 /* 垃圾文件队列（`/junk-files`）的路由与计数行骨架。
  *
  * 看哪一类、看待判断还是已排除，全由地址决定：分类链接是可深链的 `<a href>`，刷新后原样恢复。
- * 壳（`web/app.js`）与 `junk-queue` island 读的是同一组函数，所以放在 island 层这边，不依赖 React。
+ * 壳（`web/app.js`）与垃圾队列那一页读的是同一组函数，所以放在 island 层这边，不依赖 React。
  *
  * 计数行骨架是壳在 React 包加载之前铺的那一版，画在 `.peach-react` 里，结构、`data-*` 钩子与
- * 类名和 island 等数据时画出来的那一版逐项相同（`junk-queue/junk-count.tsx`，用例对照两者），
+ * 类名和页面等数据时画出来的那一版逐项相同（`junk-queue/junk-count.tsx`，用例对照两者），
  * 所以接管那一拍这一行不跳。分类与视图此刻就有答案，只有读数和各类的计数徽标要等数据。 */
 import { esc } from '@peach/legacy/core';
 

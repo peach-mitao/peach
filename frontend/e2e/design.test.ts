@@ -210,8 +210,8 @@ async function openProcessing(
 /** 1280 的桌面视口比 `--board-content` 还窄，量不出「网格铺满、标题居中」这类差别。 */
 const WIDE = { name: 'wide', width: 1600, height: 900, mobile: false };
 
-/** 垃圾文件页。计数行由 `junk-queue` island 画，演示库里一条候选都没有时它照样在；壳铺的
- *  骨架（`[data-junk-count-skeleton]`）也有这两块，等的是 island 接管之后的那一版。 */
+/** 垃圾文件页。计数行由垃圾队列那一页画，演示库里一条候选都没有时它照样在；壳铺的
+ *  骨架（`[data-junk-count-skeleton]`）也有这两块，等的是页面接管之后的那一版。 */
 const JUNK_COUNT = '#count > .peach-react:not([data-junk-count-skeleton])';
 async function openJunk(browser: Browser): Promise<Visit> {
   const opened = await visit(browser, '/junk-files', WIDE);

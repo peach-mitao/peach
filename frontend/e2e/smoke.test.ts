@@ -92,7 +92,7 @@ const ROUTES: readonly Route[] = [
       page.locator('#stats section[aria-label="媒体修复"]')],
   },
   {
-    // 演示库里没有垃圾候选，等到的是 `junk-queue` 的空态标题；壳铺的骨架只有卡片占位。
+    // 演示库里没有垃圾候选，等到的是垃圾队列那一页的空态标题；壳铺的骨架只有卡片占位。
     path: '/junk-files',
     body: (page) => [heading(page, '#main', '垃圾文件'), heading(page, '#grid', '没有待判断的垃圾文件')],
   },
