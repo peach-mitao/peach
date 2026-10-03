@@ -78786,7 +78786,7 @@ function SKe({ item: e, badge: t, helpers: n, actions: r }) {
 				type: "button",
 				disabled: i,
 				onClick: () => void c(),
-				children: o ? "仍未挂载 · 再试" : "重新检测"
+				children: o ? "仍无法读取 · 刷新" : "刷新状态"
 			})
 		]
 	});

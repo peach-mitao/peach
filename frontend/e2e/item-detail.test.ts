@@ -88,7 +88,7 @@ describe('作品详情岛', () => {
     }
   });
 
-  it('来源没挂载：说明块代替播放器，重新检测仍未挂载就换成再试', { timeout: 60_000 }, async () => {
+  it('来源不可读取：说明块代替播放器，刷新状态后显示读取结果', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.offline}`, DESKTOP);
     try {
       const page = opened.page;
@@ -96,7 +96,7 @@ describe('作品详情岛', () => {
       assert.match(await gate.innerText(), /脱盘模式/);
       assert.equal(await page.locator('#stage .vjs-tech').count(), 0, '脱盘的条目挂了播放器');
       await page.locator('#offlineRetry').click();
-      await page.locator('#offlineRetry', { hasText: '仍未挂载 · 再试' }).waitFor();
+      await page.locator('#offlineRetry', { hasText: '仍无法读取 · 刷新' }).waitFor();
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();

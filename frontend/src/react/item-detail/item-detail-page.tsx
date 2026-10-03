@@ -158,7 +158,7 @@ function OfflineGate({ item, badge, helpers, actions }: {
       <b>脱盘模式</b>
       <span>{helpers.offlineReason(item.location || '')}</span>
       <button className="chip" id="offlineRetry" type="button" disabled={checking} onClick={() => void retry()}>
-        {still ? '仍未挂载 · 再试' : '重新检测'}
+        {still ? '仍无法读取 · 刷新' : '刷新状态'}
       </button>
     </div>
   );
