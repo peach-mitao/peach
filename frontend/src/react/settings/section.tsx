@@ -154,7 +154,7 @@ export function SpriteIcon({ name }: { name: string }) {
   );
 }
 
-/** 来源标识：网盘站标是内嵌 PNG，其余是雪碧图字形（`web/js/media-source-icons.js`）。 */
+/** 来源标识：网盘站标是内嵌 PNG，其余是雪碧图字形（`src/ui-kit/media-source-icons.ts`）。 */
 export function SourceMark({ mark }: { mark: string }) {
   return mark.startsWith('data:image/png;base64,')
     ? <img src={mark} alt="" width={16} height={16} className="size-4 shrink-0" />

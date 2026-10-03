@@ -18,7 +18,9 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/islands.ts` | 挂载契约与注册表，构建入口；其余导出是遗留层仍在用的助手 |
 | `frontend/src/api.ts` | 带 `AbortController` 的取数封装 |
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
-| `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js`、`/js/jav-title.js`、`/js/tags.js` 等遗留模块的手写类型 |
+| `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js`、`/js/ui-sounds.js`、`/js/jav-title.js`、`/js/tags.js` 等遗留模块的手写类型 |
+| `frontend/src/ui-kit/` | 遗留层与入口页共用的控件：覆盖式滚动条、Collapse、锚定菜单、Geist Select 与来源站标。只有这一份实现，随 `peach-entry.js` 发出；`/js/ui-components.js` 从入口包原名转出，壳与 React 子树经 `@peach/legacy/ui` 读到的是同一个模块实例 |
+| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出首启页与 `/js/ui-components.js` 要的导出，不带 React |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
@@ -30,9 +32,10 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`islands.test.ts` 走挂载契约 |
 | `web/dist/peach-ui.js` | 构建产物，**进 Git**，由 `/dist/{name}` 提供 |
 | `web/dist/peach-react.js`、`peach-react.css` | React 子树的构建产物，**进 Git** |
+| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是首启页、完成页与错误页的页内脚本和 `/js/ui-components.js`；`/js/core.js`、`/js/ui-sounds.js` 外置。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
 
 首次运行页（未配置时的 `GET /` 与 `POST /setup`）不在这张表里：它是 SPA 外壳之外的一张
-独立页面，HTML 与样式都自包含在 `src/peach/routes_pages.py`，只借 `/js/ui-components.js` 的 `attachOverlayScrollbar` 与 `wireCollapse` 画整页滚动条和「高级设置」的折叠，此外不引 `web/` 的资产，也不是
+独立页面，HTML 与样式都自包含在 `src/peach/routes_pages.py`，只借入口包 `/dist/peach-entry.js` 的 `attachOverlayScrollbar`、`wireCollapse` 与 Geist Select 画整页滚动条、「高级设置」的折叠和媒体来源下拉（入口包再从 `/js/core.js`、`/js/ui-sounds.js` 取字形与音效），此外不引 `web/` 的资产，也不是
 island。原因是那一套一上来就打 `/api/items`，而未配置的机器还没有数据库；它也没有客户端
 状态，原生 `<form method="post">` 不写一行 JS 就能工作。设置成功以浏览器 cookie 登录并跳入馆藏。
 它的配色 token 从 `web/css/01-base.css` 的 `:root` 两段抽出来，跟随系统深浅色。
@@ -466,6 +469,12 @@ island 动态加载；`peach-react.css` 由 `index.html` 在旧样式表之前�
 `color-scheme` 声明给值的 `--lightningcss-light/dark` 变量，`peach-react.css` 没有那条声明，
 整条声明失效。随主题变的值写成 `.dark` 祖先选择器配自定义属性（灯箱、资料卡浮层），
 `frontend/test/react-color-scheme.test.ts` 扫产物拦截。
+
+入口包单独构建（`vite.entry.config.ts`，入口 `src/entry/index.ts`），排在 `npm run build` 的最后一段：
+第一段 `vite build` 清空 `web/dist/`，后两段都不清。它不引 React、`peach-ui.js` 与 `peach-react.js`，
+没有样式表；`@peach/legacy/core` 与 `@peach/legacy/ui-sounds` 外置成 `/js/core.js`、`/js/ui-sounds.js`，
+与主界面同一个 URL，字形表与音效开关因此仍只有一份。vitest 里 `/dist/peach-entry.js` 指向
+`src/entry/index.ts`，直接加载 `/js/ui-components.js` 的用例跑的是源码。
 
 没有引入 `@testing-library/react`：`createRoot` 加 `querySelector` 已经够用
 （挂载与输入的助手在 `frontend/test/react/render.tsx`），断言的本来就是真实 DOM。

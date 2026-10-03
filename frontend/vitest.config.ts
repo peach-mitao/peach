@@ -18,6 +18,9 @@ export default mergeConfig(base, defineConfig({
       '@peach/legacy/home-glow': fileURLToPath(new URL('../web/js/home-glow.js', import.meta.url)),
       '@peach/legacy/jav-title': fileURLToPath(new URL('../web/js/jav-title.js', import.meta.url)),
       '@peach/legacy/tags': fileURLToPath(new URL('../web/js/tags.js', import.meta.url)),
+      '@peach/legacy/ui-sounds': fileURLToPath(new URL('../web/js/ui-sounds.js', import.meta.url)),
+      // `/js/ui-components.js` 从入口包原名转出共用控件；测试里那条绝对路径落到入口包的源码。
+      '/dist/peach-entry.js': source('entry/index.ts'),
       // 测试里 island 直接拿到 React 子树的源码入口，不经过 web/dist 产物。
       '@peach/react': source('react/entry.tsx'),
       // React 子树按 `@peach/card-art` 取卡片图片助手，产物里是 peach-ui.js；测试里两边都落到同一份源码。

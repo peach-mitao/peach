@@ -4,7 +4,7 @@ import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
-import { MEDIA_SOURCE_ICONS } from './js/media-source-icons.js';
+import { MEDIA_SOURCE_ICONS } from './js/ui-components.js';
 import { boardPageSkeleton, detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
 import { matchRoute, routeLabel } from './js/routes.js';
