@@ -240,6 +240,50 @@ class VerificationTests(unittest.TestCase):
         self.assertFalse(evidence.holder_path(lock).exists())
         self.assertIn("刚退出或没留记录", evidence.describe_holder(lock))
 
+    def test_holder_note_cleanup_waits_for_a_reader_to_close_the_file(self):
+        lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
+        note = evidence.holder_path(lock)
+        owner_ready = threading.Event()
+        reader_open = threading.Event()
+        owner_close = threading.Event()
+        owner_exiting = threading.Event()
+        reader_close = threading.Event()
+        original = Path.read_text
+
+        def read_note(path, *args, **kwargs):
+            if path != note:
+                return original(path, *args, **kwargs)
+            with path.open(encoding="utf-8") as handle:
+                reader_open.set()
+                if not reader_close.wait(5):
+                    raise TimeoutError("测试读者没有收到关闭信号")
+                return handle.read()
+
+        def own():
+            with evidence.held(lock, scope="full"):
+                owner_ready.set()
+                if not owner_close.wait(5):
+                    raise TimeoutError("测试持有者没有收到退出信号")
+                owner_exiting.set()
+
+        with ThreadPoolExecutor(max_workers=2) as pool, mock.patch.object(Path, "read_text", new=read_note):
+            owner = pool.submit(own)
+            try:
+                self.assertTrue(owner_ready.wait(5))
+                reader = pool.submit(evidence.describe_holder, lock)
+                self.assertTrue(reader_open.wait(5))
+                owner_close.set()
+                self.assertTrue(owner_exiting.wait(5))
+                with self.assertRaises(TimeoutError):
+                    owner.result(timeout=0.1)
+                self.assertTrue(note.exists())
+            finally:
+                owner_close.set()
+                reader_close.set()
+            owner.result(timeout=5)
+            self.assertIn("scope full", reader.result(timeout=5))
+        self.assertFalse(note.exists())
+
     def test_the_waiting_runner_names_the_holder_of_the_full_suite_lock(self):
         lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
         output = io.StringIO()

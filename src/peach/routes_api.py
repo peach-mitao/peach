@@ -26,13 +26,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from . import push_discovery, web_contract, web_tasks
-from .config import LOCATION_ROOT_DECLARATIONS
 from .field_owners import RevisionConflict
 from .interaction import reveal_path
 from .jobs import TaskRunConflict
 from .platform import is_unmapped, translate_ledger_path
-from .mount_reachability import MountRoot
-from .media_configuration import SOURCE_OPTIONS
 from .providers import ProviderUnavailable
 from .routes_auth import require_auth
 from .task_runs import task_label
@@ -41,18 +38,6 @@ from .taste_history import analyze_history, import_history_exports, write_manife
 router = APIRouter()
 
 LOGGER = logging.getLogger(__name__)
-
-
-def source_roots() -> list[MountRoot]:
-    """沿用账本声明根与平台映射；只构造探测对象，不读取挂载。"""
-    rows: list[MountRoot] = []
-    labels = dict(SOURCE_OPTIONS)
-    for location, declared_roots in LOCATION_ROOT_DECLARATIONS.items():
-        for declared in declared_roots:
-            resolved = translate_ledger_path(declared)
-            rows.append(MountRoot(location, labels.get(location, location), declared,
-                                  None if is_unmapped(resolved) else resolved))
-    return rows
 
 
 @router.get("/api/providers")

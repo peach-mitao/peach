@@ -1,5 +1,11 @@
 # 复用清单
 
+## 分级诊断
+
+`src/peach/diagnostics.py` 统一生成 CLI 与本机 API 报告；复用 `settings_file`、`health` 的只读迁移校验、`FFmpegResolver`、访问策略和挂载快照。数据库用 SQLite `mode=ro`；写入与端口检查用标准库短暂探针，不新增运行依赖。
+
+已核对 sakuramedia `a10fcef8`（GPL-3.0）的诊断字段与提示组织，仅作产品参考，不复制源码。OpenAver `8cc17e50`（MIT）的 HTTP 健康探针不足以表达分项状态。[fastapi-health 0.4.0](https://pypi.org/project/fastapi-health/)（MIT）在本机 Python 3.14.7 的离线试验中将状态字典视为真值；CLI、分级规则和脱敏仍需本项目处理，因此未引入。
+
 ## 资源索引器
 
 来源性质由 `follow_providers.ProviderSpec.nature`、`scraping_access.describe` 与索引器配置投影给页面，分别标账号、公开页面、归档站与自配索引器，不参与身份可信度、优先级或启用状态判定。新增客户端仿真来源须在自己的登记处声明性质。

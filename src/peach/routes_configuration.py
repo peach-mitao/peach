@@ -92,6 +92,14 @@ def local_only(request: Request) -> None:
         raise HTTPException(403, "请在运行 Peach 的电脑上打开配置")
 
 
+@router.get("/api/diagnostics")
+def system_diagnostics(request: Request, args: dict[str, str] = Depends(require_auth)):
+    """本机诊断与 doctor JSON 共用报告；媒体来源只读后台快照。"""
+    from . import diagnostics
+    local_only(request)
+    return diagnostics.report(request.app.state.settings, request.app.state.mount_reachability.summary())
+
+
 def configurable(request: Request) -> bool:
     """配置只向已配置的托盘服务的本机调用方开放；调试 serve 免掉托管那两条。"""
     if dev_environment():
