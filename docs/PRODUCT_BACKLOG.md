@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | 开发流程 | 隔离工作树自动同步 Python 依赖，主检出只读核对；commit-msg 检查署名、已有 README 声明和分段 | `scripts/test_environment.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/check_commit_message.py`、`scripts/githooks/` |
 | 首次前端导入 | React 导入钩子各有 30 秒上限，普通用例沿用默认超时 | `frontend/test/islands.test.ts` |
-| 42、43、64 | 云下载、JavDB 卡片资源、自配 Torznab 搜索、体积和质量筛选及既有来源性质标注已具备；本地下载、JavBus、真实索引器验收与未来 App 通道仍待补 | `src/peach/resource_search.py`、`src/peach/wants_magnets.py`、活动页资源搜索与来源配置 |
+| 42、43、64 | 云下载、JavDB 卡片资源、自配 Torznab 搜索、体积和质量筛选及既有来源性质标注已具备；资源搜索正式全量与桌面、手机取证通过，待集成和运行核验；本地下载、JavBus、真实索引器验收与未来 App 通道仍待补 | `src/peach/resource_search.py`、`src/peach/wants_magnets.py`、活动页资源搜索与来源配置 |
 | 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
 | 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
