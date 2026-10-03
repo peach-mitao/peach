@@ -38,6 +38,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 独立页面，HTML 与样式都自包含在 `src/peach/routes_pages.py`，只借入口包 `/dist/peach-entry.js` 的 `attachOverlayScrollbar`、`wireCollapse` 与 Geist Select 画整页滚动条、「高级设置」的折叠和媒体来源下拉（入口包再从 `/js/core.js`、`/js/ui-sounds.js` 取字形与音效），此外不引 `web/` 的资产，也不是
 island。原因是那一套一上来就打 `/api/items`，而未配置的机器还没有数据库；它也没有客户端
 状态，原生 `<form method="post">` 不写一行 JS 就能工作。设置成功以浏览器 cookie 登录并跳入馆藏。
+同一张表单的题目与提交另有 JSON 契约 `GET /api/setup/questions`、`POST /api/setup`，形态见 `docs/OPERATIONS.md`「首次设置的内部流程」；这张页面本身走表单提交，不读它们。
 它的配色 token 从 `web/css/01-base.css` 的 `:root` 两段抽出来，跟随系统深浅色。
 
 ### 配置页

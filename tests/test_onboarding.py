@@ -366,13 +366,8 @@ class ApplyTests(_Case):
         self.assertEqual(config.server.port, 8900, "坏文件退回内建默认")
 
 
-@unittest.skipUnless(HAS_HTTP_DEPS, "需要 fastapi 与 httpx")
-class SetupPageTests(_Case):
-    """首次运行表单的 HTTP 契约：页面字段、逐字段校验、守卫与落盘。
-
-    这一层和 `peach init` 的问答共用 `peach.onboarding`，所以这里断言的是「页面渲染
-    出来的字段和 `questions()` 同名同序」，而不是另抄一份字段清单去比对。
-    """
+class _SetupHttpCase(_Case):
+    """首启服务的 HTTP 夹具：临时数据根、证书生成打桩、没有口令的应用。"""
 
     def setUp(self):
         super().setUp()
@@ -385,7 +380,7 @@ class SetupPageTests(_Case):
         self.addCleanup(active.stop)
         self.data_root = self.root / "peach-data"
 
-    def _client(self, *, configured: bool = False, client=("127.0.0.1", 12345)):
+    def _client(self, *, configured: bool = False, client=("127.0.0.1", 12345), base_url="http://test"):
         import httpx
 
         from peach.api import create_app
@@ -397,7 +392,16 @@ class SetupPageTests(_Case):
         ))
         return httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app, client=client),
-            base_url="http://test")
+            base_url=base_url)
+
+    def _send(self, method, path, *, headers=None, data=None, json=None, **kwargs):
+        import asyncio
+
+        async def run():
+            async with self._client(**kwargs) as client:
+                return await client.request(method, path, headers=headers, data=data, json=json)
+
+        return asyncio.run(run())
 
     def _get(self, path, **kwargs):
         import asyncio
@@ -425,6 +429,15 @@ class SetupPageTests(_Case):
 
     def _loaded(self):
         return settings_file.load_config(environ={"PEACH_DATA_ROOT": str(self.data_root)})
+
+
+@unittest.skipUnless(HAS_HTTP_DEPS, "需要 fastapi 与 httpx")
+class SetupPageTests(_SetupHttpCase):
+    """首次运行表单的 HTTP 契约：页面字段、逐字段校验、守卫与落盘。
+
+    这一层和 `peach init` 的问答共用 `peach.onboarding`，所以这里断言的是「页面渲染
+    出来的字段和 `questions()` 同名同序」，而不是另抄一份字段清单去比对。
+    """
 
     def test_the_first_run_page_renders_every_question_plus_the_scan_checkbox(self):
         response = self._get("/")
@@ -752,6 +765,252 @@ class SetupPageTests(_Case):
         again = self._post("/setup", self._form(port="9100"))
         self.assertEqual(again.status_code, 409)
         self.assertEqual(self._loaded().server.port, 8900, "第二次提交不得改掉已写好的设置")
+
+
+@unittest.skipUnless(HAS_HTTP_DEPS, "需要 fastapi 与 httpx")
+class SetupJsonContractTests(_SetupHttpCase):
+    """首启的 JSON 契约：`GET /api/setup/questions` 与 `POST /api/setup`。
+
+    两条路径与 `POST /setup` 共用守卫、校验与落盘，所以同一份输入在 HTML 端点和 JSON
+    端点上必须得到同一组错误；页面能画的内容，题目端点都要给全。
+    """
+
+    QUESTIONS = "/api/setup/questions"
+    SUBMIT = "/api/setup"
+
+    def _rows(self, *paths, location="local"):
+        return [{"path": str(path), "location": location,
+                 "root": "" if NATIVE_WINDOWS else "R:\\media" + (str(index + 1) if index else "")}
+                for index, path in enumerate(paths)]
+
+    def _body(self, **overrides):
+        body = {"data_root": str(self.data_root), "media_dir": self._rows(self.media),
+                "host": "1", "port": "8900", "mdns_name": "peach", "scan_now": True}
+        body.update(overrides)
+        return {key: value for key, value in body.items() if value is not None}
+
+    @staticmethod
+    def _as_form(body):
+        """同一份提交的表单写法：三列媒体字段同名重复，勾选项不勾就不提交。"""
+        form: dict[str, object] = {}
+        for key, value in body.items():
+            if key == "media_dir":
+                form["media_dir"] = [row["path"] for row in value]
+                form["media_location"] = [row["location"] for row in value]
+                form["media_root"] = [row["root"] for row in value]
+            elif value is True:
+                form[key] = "y"
+            elif value is not False:
+                form[key] = str(value)
+        return form
+
+    def _errors_both_ways(self, body, **kwargs):
+        """把同一份输入交给两个端点，返回 (HTML 端点交给页面的 errors, JSON 端点的 errors)。"""
+        with mock.patch.object(routes_pages, "setup_page", wraps=routes_pages.setup_page) as page:
+            html = self._send("POST", "/setup", data=self._as_form(body), **kwargs)
+        self.assertEqual(html.status_code, 400, html.text[:200])
+        page.assert_called_once()
+        response = self._send("POST", self.SUBMIT, json=body, **kwargs)
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["error"], "有几项需要修改")
+        self.assertFalse((self.data_root / "config.toml").exists(), "校验失败不写设置")
+        return page.call_args.kwargs["errors"], response.json()["errors"]
+
+    def test_the_questions_cover_every_field_in_order_with_defaults_and_copy(self):
+        response = self._send("GET", self.QUESTIONS)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        data = response.json()
+        asked = onboarding.questions(self.config, windows=NATIVE_WINDOWS)
+        questions = data["questions"]
+        self.assertEqual([item["key"] for item in questions], [question.key for question in asked])
+        self.assertEqual([item["default"] for item in questions], [question.default for question in asked])
+        self.assertEqual([item["label"] for item in questions], ["数据目录", "媒体库", "谁可以访问", "端口", "局域网访问地址"])
+        by_key = {item["key"]: item for item in questions}
+        self.assertEqual([key for key, item in by_key.items() if not item["required"]], ["host"])
+        self.assertEqual([key for key, item in by_key.items() if not item["advanced"]], ["media_dir"])
+        self.assertEqual(by_key["host"]["options"], [{"value": "2", "label": "同一局域网的设备"},
+                                                     {"value": "1", "label": "只有这台电脑"}])
+        self.assertEqual((by_key["port"]["input"], by_key["port"]["prefix"]), ("number", "localhost:"))
+        self.assertEqual((by_key["mdns_name"]["prefix"], by_key["mdns_name"]["suffix"]), ("https://", ".local"))
+        self.assertEqual(by_key["mdns_name"]["visible_when"], {"host": "2"})
+        self.assertEqual(by_key["media_dir"]["input"], "folders")
+        self.assertEqual(data["windows"], NATIVE_WINDOWS)
+        self.assertFalse(data["standalone"])
+        self.assertEqual([row["value"] for row in data["media_sources"]], ["local", "115", "pikpak"])
+        self.assertEqual(data["media_source_default"], "local")
+        if NATIVE_WINDOWS:
+            self.assertIsNone(data["media_root"])
+            self.assertEqual(len(by_key["media_dir"]["help"]), 1)
+        else:
+            self.assertEqual(data["media_root"]["label"], "Windows 中的对应路径")
+            self.assertIn("本机文件夹是这台电脑读取媒体的位置", by_key["media_dir"]["help"][-1])
+        self.assertEqual(data["cloud"]["link"]["url"], "https://www.clouddrive2.com/help.html")
+        # 默认对局域网开放，所以访问密码开关第一次出现就开着；扫描默认勾上，导入历史默认不勾。
+        self.assertEqual((data["access_enabled"], data["scan_now"], data["history_guide"]), (True, True, False))
+        # 页面上的题面与说明就是这一份。
+        page = self._get("/").text
+        for item in questions:
+            self.assertIn(f">{escape(item['label'])}<", page)
+            for line in item["help"]:
+                self.assertIn(escape(line), page)
+        self.assertIn(escape(data["cloud"]["help"]), page)
+
+    def test_the_questions_list_missing_mount_software_with_download_links(self):
+        rows = [{"name": "CloudDrive", "available": True, "download_url": "https://www.clouddrive2.com/download.html"},
+                {"name": "WinFsp", "available": False, "download_url": "https://winfsp.dev/rel/"}]
+        with mock.patch("peach.media_configuration.mount_dependencies", return_value=rows):
+            data = self._send("GET", self.QUESTIONS).json()
+            page = self._get("/").text
+        self.assertEqual(data["cloud"]["dependencies"], [{
+            "name": "WinFsp", "message": "未检测到 WinFsp。",
+            "download_url": "https://winfsp.dev/rel/", "download_label": "下载 WinFsp"}])
+        self.assertIn("未检测到 WinFsp。", page)
+        self.assertNotIn("未检测到 CloudDrive", page)
+
+    def test_the_standalone_package_gets_its_own_address_form_in_the_questions(self):
+        with mock.patch.object(distribution, "standalone", return_value=True):
+            data = self._send("GET", self.QUESTIONS, base_url="http://127.0.0.1:8900").json()
+        self.assertTrue(data["standalone"])
+        mdns = next(item for item in data["questions"] if item["key"] == "mdns_name")
+        self.assertEqual(mdns["prefix"], "http://")
+        self.assertIn("http://peach.local:8900", mdns["help"][0])
+
+    def test_the_questions_are_guarded_like_the_form_but_ignore_the_origin(self):
+        cases = (
+            ("已配置", {"configured": True}, 404, "not found"),
+            ("非回环调用方", {"client": ("198.51.100.7", 51000)}, 403, "setup is loopback-only"),
+        )
+        for name, kwargs, status, message in cases:
+            with self.subTest(name):
+                response = self._send("GET", self.QUESTIONS, headers={"Accept": "text/html"}, **kwargs)
+                self.assertEqual(response.status_code, status)
+                self.assertEqual(response.json(), {"error": message}, "/api/ 下一律回 JSON")
+        with self.subTest("独立包的非回环主机名"), mock.patch.object(distribution, "standalone", return_value=True):
+            response = self._send("GET", self.QUESTIONS, base_url="http://peach.local:8900")
+            self.assertEqual((response.status_code, response.json()), (403, {"error": "请使用本机地址打开设置"}))
+        with self.subTest("读题不看 Origin"):
+            response = self._send("GET", self.QUESTIONS, headers={"Origin": "http://elsewhere.example"})
+            self.assertEqual(response.status_code, 200)
+
+    def test_the_submission_is_guarded_like_the_form(self):
+        cases = (
+            ("已配置", {"configured": True}, 404, "not found"),
+            ("非回环调用方", {"client": ("198.51.100.7", 51000)}, 403, "setup is loopback-only"),
+            ("别的页面发来", {"headers": {"Origin": "http://elsewhere.example"}}, 403, "请从 Peach 设置页提交"),
+        )
+        for name, kwargs, status, message in cases:
+            with self.subTest(name):
+                response = self._send("POST", self.SUBMIT, json=self._body(), **kwargs)
+                self.assertEqual((response.status_code, response.json()), (status, {"error": message}))
+        with self.subTest("独立包的非回环主机名"), mock.patch.object(distribution, "standalone", return_value=True):
+            response = self._send("POST", self.SUBMIT, json=self._body(), base_url="http://peach.local:8900")
+            self.assertEqual((response.status_code, response.json()), (403, {"error": "请使用本机地址打开设置"}))
+        self.assertFalse(self.data_root.exists(), "被守卫挡下的提交不落任何文件")
+        with self.subTest("不是 JSON 对象"):
+            response = self._send("POST", self.SUBMIT, json=["not", "an", "object"])
+            self.assertEqual((response.status_code, response.json()), (400, {"error": "请求正文要是 JSON 对象"}))
+
+    def test_a_second_json_submission_refuses_to_overwrite_the_settings_file(self):
+        first = self._send("POST", self.SUBMIT, json=self._body(), headers={"Origin": "http://test"})
+        self.assertEqual(first.status_code, 200, first.text)
+        again = self._send("POST", self.SUBMIT, json=self._body(port="9100"))
+        self.assertEqual((again.status_code, again.json()), (409, {"error": "settings file already exists"}))
+        self.assertEqual(self._loaded().server.port, 8900)
+
+    def test_the_same_input_brings_the_same_messages_from_the_form_and_the_json_endpoint(self):
+        a_file = self.root / "not-a-folder"
+        a_file.write_text("x", encoding="utf-8")
+        nested = self.media / "inner"
+        nested.mkdir()
+        cases = {
+            "目录不存在与端口越界": self._body(media_dir=self._rows(self.root / "nope"), port="0"),
+            "超过 100 行": self._body(media_dir=self._rows(*[self.media] * 101)),
+            "第二行嵌在第一行里": self._body(media_dir=self._rows(self.media, nested)),
+            "云盘行不是绝对路径": self._body(media_dir=self._rows(self.media) + [
+                {"path": "relative", "location": "115", "root": "" if NATIVE_WINDOWS else "R:\\cloud"}]),
+            "开关开着没填密码": self._body(access_enabled=True),
+            "两次密码不一致": self._body(access_enabled=True, access_password="first-password",
+                                   access_confirm="other-password"),
+            "密码太短": self._body(access_enabled=True, access_password="short", access_confirm="short"),
+            "高级设置的端口越界": self._body(port="99999", history_guide=True),
+            "局域网地址不合规": self._body(host="2", mdns_name="-bad-"),
+            "谁可以访问不认识": self._body(host="9"),
+            "数据目录是文件": self._body(data_root=str(a_file)),
+        }
+        expected_keys = {
+            "目录不存在与端口越界": {"media_dir", "port"}, "超过 100 行": {"media_dir"},
+            "第二行嵌在第一行里": {"media_dir"}, "云盘行不是绝对路径": {"media_dir"},
+            "开关开着没填密码": {"access_password"}, "两次密码不一致": {"access_password"},
+            "密码太短": {"access_password"}, "高级设置的端口越界": {"port"},
+            "局域网地址不合规": {"mdns_name"}, "谁可以访问不认识": {"host"}, "数据目录是文件": {"data_root"},
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                html, data = self._errors_both_ways(body)
+                self.assertEqual(data, html)
+                self.assertEqual(set(data), expected_keys[name])
+        # 媒体库的错误按行对齐；整表不成立时只有一句，长度与行数不等。
+        _html, rows = self._errors_both_ways(cases["第二行嵌在第一行里"])
+        self.assertEqual(len(rows["media_dir"]), 2)
+        self.assertEqual(rows["media_dir"][0], "")
+        self.assertTrue(rows["media_dir"][1])
+        _html, table = self._errors_both_ways(cases["超过 100 行"])
+        self.assertEqual(table["media_dir"], ["请添加 1 到 100 个媒体文件夹"])
+
+    def test_an_occupied_port_on_the_standalone_package_is_the_same_message_both_ways(self):
+        import socket
+        with socket.socket() as holder, mock.patch.object(distribution, "standalone", return_value=True):
+            holder.bind(("127.0.0.1", 0))
+            holder.listen()
+            port = holder.getsockname()[1]
+            html, data = self._errors_both_ways(self._body(port=str(port)), base_url="http://127.0.0.1:8900")
+        self.assertEqual(data, html)
+        self.assertEqual(data, {"port": "这个端口已被占用，请换一个端口"})
+
+    def test_a_failed_apply_is_reported_on_the_data_root_both_ways(self):
+        with mock.patch.object(onboarding, "apply", side_effect=OSError("数据目录写不进去")):
+            html, data = self._errors_both_ways(self._body())
+        self.assertEqual(data, html)
+        self.assertEqual(data, {"data_root": "数据目录写不进去"})
+
+    def test_a_valid_json_submission_returns_the_entry_address_and_runtime_facts(self):
+        from peach import access
+        from peach.web_entry import runtime_fact_entries
+        response = self._send("POST", self.SUBMIT, json=self._body(
+            access_enabled=True, access_password="correct-password", access_confirm="correct-password"))
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        data = response.json()
+        self.assertEqual({key: data[key] for key in ("url", "scan_requested", "history_guide", "standalone", "redirect")},
+                         {"url": "http://127.0.0.1:8900/?onboarding=1", "scan_requested": True,
+                          "history_guide": False, "standalone": False, "redirect": None})
+        self.assertEqual([row["term"] for row in data["facts"]],
+                         [row["term"] for row in runtime_fact_entries(self._loaded())])
+        self.assertIn(str(self.data_root), [row["value"] for row in data["facts"]])
+        self.assertTrue((self.data_root / "state" / onboarding.SCAN_REQUEST_NAME).is_file())
+        policy = access.load(self.data_root / "secrets" / "access.json")
+        self.assertEqual(policy["mode"], "password")
+        self.assertNotIn("correct-password", response.text, "回话里不带密码")
+
+    def test_the_history_guide_without_a_scan_leads_to_the_taste_page(self):
+        with mock.patch('peach.web_stats.w_taste_refresh') as refresh:
+            response = self._send("POST", self.SUBMIT, json=self._body(scan_now=False, history_guide=True))
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()
+        self.assertEqual((data["url"], data["scan_requested"], data["history_guide"], data["redirect"]),
+                         ("http://127.0.0.1:8900/taste?onboarding=1", False, True, None))
+        self.assertFalse((self.data_root / "state" / onboarding.SCAN_REQUEST_NAME).exists())
+        refresh.assert_not_called()
+
+    def test_the_standalone_package_is_told_to_redirect_to_the_entry_address(self):
+        with mock.patch.object(distribution, "standalone", return_value=True):
+            response = self._send("POST", self.SUBMIT, json=self._body(), base_url="http://127.0.0.1:8900")
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()
+        self.assertEqual((data["standalone"], data["scan_requested"], data["history_guide"]), (True, True, False))
+        self.assertEqual(data["redirect"], data["url"])
+        self.assertEqual(data["url"], "http://127.0.0.1:8900/?onboarding=1")
 
 
 class StandaloneConfigurationTests(_Case):
