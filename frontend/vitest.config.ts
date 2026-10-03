@@ -12,14 +12,15 @@ const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.m
 export default mergeConfig(base, defineConfig({
   resolve: {
     alias: {
-      '@peach/legacy/core': stub('legacy-core.ts'),
+      // 入口包的模块在测试里直接落到 TS 源码，与 `/dist/peach-entry.js` 那条别名是同一个模块实例。
+      '@peach/legacy/core': source('core/index.ts'),
+      '@peach/legacy/jav-title': source('core/jav-title.ts'),
+      '@peach/legacy/tags': source('core/tags.ts'),
+      '@peach/legacy/ui-sounds': source('ui-kit/sounds.ts'),
       '@peach/legacy/ui': stub('legacy-ui.ts'),
       // 纯数据层，没有页面装配，测试里直接用正式实现。
       '@peach/legacy/home-glow': fileURLToPath(new URL('../web/js/home-glow.js', import.meta.url)),
-      '@peach/legacy/jav-title': fileURLToPath(new URL('../web/js/jav-title.js', import.meta.url)),
-      '@peach/legacy/tags': fileURLToPath(new URL('../web/js/tags.js', import.meta.url)),
-      '@peach/legacy/ui-sounds': fileURLToPath(new URL('../web/js/ui-sounds.js', import.meta.url)),
-      // `/js/ui-components.js` 从入口包原名转出共用控件；测试里那条绝对路径落到入口包的源码。
+      // `/js/*.js` 垫片与 `/js/ui-components.js` 从入口包原名转出；测试里那条绝对路径落到入口包的源码。
       '/dist/peach-entry.js': source('entry/index.ts'),
       // 测试里 island 直接拿到 React 子树的源码入口，不经过 web/dist 产物。
       '@peach/react': source('react/entry.tsx'),

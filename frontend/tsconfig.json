@@ -21,12 +21,12 @@
     "types": ["vite/client"],
 
     "paths": {
-      "@peach/legacy/core": ["./src/legacy/core.d.ts"],
+      "@peach/legacy/core": ["./src/core/index.ts"],
       "@peach/legacy/ui": ["./src/legacy/ui.d.ts"],
       "@peach/legacy/home-glow": ["./src/legacy/home-glow.d.ts"],
-      "@peach/legacy/jav-title": ["./src/legacy/jav-title.d.ts"],
-      "@peach/legacy/tags": ["./src/legacy/tags.d.ts"],
-      "@peach/legacy/ui-sounds": ["./src/legacy/ui-sounds.d.ts"],
+      "@peach/legacy/jav-title": ["./src/core/jav-title.ts"],
+      "@peach/legacy/tags": ["./src/core/tags.ts"],
+      "@peach/legacy/ui-sounds": ["./src/ui-kit/sounds.ts"],
       "@peach/react": ["./src/react/bundle.d.ts"],
       "@peach/card-art": ["./src/card-art/index.ts"],
       "@peach/appearance": ["./src/appearance/index.ts"],

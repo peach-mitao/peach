@@ -8,8 +8,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
-// @ts-expect-error 用壳的正式模块：链接怎么拼、地址段对哪一类实体，与浏览器里那一份是同一份。
-import { ROUTE_ENTITIES, entityPath } from '../../../web/js/core.js';
+// 用正式模块：链接怎么拼、地址段对哪一类实体，与浏览器里那一份是同一份。
+import { ROUTE_ENTITIES, entityPath } from '../../src/core';
 // @ts-expect-error 用壳的正式路由匹配：地址读出哪个名字、标题写什么，都由它定。
 import { matchRoute, routeLabel } from '../../../web/js/routes.js';
 import type { EntityPageProps } from '../../src/react/entity-page/entity-page';

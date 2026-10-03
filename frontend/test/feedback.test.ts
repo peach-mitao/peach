@@ -1,6 +1,5 @@
 import {describe,expect,it} from 'vitest';
-// @ts-expect-error 使用浏览器正式模块验证共享契约。
-import {requestErrorMessage} from '../../web/js/core.js';
+import {requestErrorMessage} from '../src/core';
 // @ts-expect-error 使用浏览器正式控件验证输出。
 import {noteHtml,projectBannerHtml,gaugeHtml,progressHtml,configurationSkeletonHtml} from '../../web/js/ui-components.js';
 

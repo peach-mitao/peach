@@ -2,8 +2,7 @@
  * happy-dom 没有 Web Audio，这里搭一个只记录调度的假 AudioContext。模块里的
  * AudioContext 是单例，整份文件从头到尾只该建出这一个，所以用例按顺序共用它。 */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { UI_SOUNDS, playUiSound, setUiSoundsEnabled, uiSoundsEnabled, wireUiSounds } from '../../web/js/ui-sounds.js';
+import { UI_SOUNDS, playUiSound, setUiSoundsEnabled, uiSoundsEnabled, wireUiSounds } from '../src/ui-kit/sounds';
 
 interface Ramp { value: number; at: number }
 interface Param {
