@@ -64,7 +64,7 @@ class Indexers:
                 endpoint(row.get("url"))
             return rows
         except (CredentialError, ValueError, TypeError):
-            raise ValueError("索引器配置读不出来，请在本机下载设置中重新保存") from None
+            raise ValueError("索引器配置读不出来，请在本机「配置 → 媒体」中重新保存") from None
 
     def public(self) -> dict:
         return {"indexers": [
@@ -197,7 +197,7 @@ class Search:
             raise ValueError("索引器数量超过上限")
         if not active:
             return {"ok": True, "state": "unavailable", "items": [], "warnings": [],
-                    "error": "请在本机下载设置中添加并启用索引器"}
+                    "error": "请在本机「配置 → 媒体」中添加并启用索引器"}
         if not self.lock.acquire(blocking=False):
             return {"ok": False, "state": "busy", "items": [], "warnings": [],
                     "error": "资源搜索正在进行，请稍后重试"}
