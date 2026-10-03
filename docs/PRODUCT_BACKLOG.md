@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | 开发流程 | 隔离工作树自动同步 Python 依赖，主检出只读核对；commit-msg 检查署名、已有 README 声明和分段 | `scripts/test_environment.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/check_commit_message.py`、`scripts/githooks/` |
 | 首次前端导入 | React 导入钩子各有 30 秒上限，普通用例沿用默认超时 | `frontend/test/islands.test.ts` |
-| 42、43、64 | 云下载模型已具备；本地下载器、资源搜索与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/web_downloads.py`、前端下载设置 |
+| 42、43、64 | 云下载与 JavDB 卡片资源查询已具备；本地下载器、Torznab／JavBus 与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/wants_magnets.py`、前端下载设置 |
 | 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
 | 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
@@ -142,7 +142,7 @@
     - 复用云下载的任务表、状态机与九类失败分类（`src/peach/downloads.py`，ADR-0089），只有瞬时网络自动重试；qB `metaDL`／`stalledDL` 归「无源或停滞」，落地未见时定向触发 `ingest_path`。
 43. **资源搜索与候选筛选**：Torznab 是协议不是平台，基于 Newznab 扩展（`https://torznab.github.io/spec-1.3-draft/`）；Jackett、Prowlarr 是把它翻译成各站请求的代理，Sonarr／Radarr 是客户端。Peach 作客户端接用户自己配置的 Prowlarr／Jackett，不内置站点定义：先 `t=caps`，再 `t=search&q=<番号>&cat=6000`，解析 `item` 的 `title`、`size`、`pubDate` 与 `torznab:attr` 的 `seeders`、`peers`、`magneturl`、`infohash`；磁力可能在 `magneturl`、`link` 或 `guid` 任一处，按内容判断（SakuraMedia `src/service/transfers/downloads/clients/torznab.py`，FC2 番号只搜纯数字，部分索引器失败不算整体失败）。
     - Jackett 与 Prowlarr 都内置 `sukebeinyaasi`、`onejav`、`freejavtorrent`（公开）与 `clearjav-api`（私有，只收官方片商作品）的定义。sukebei 没有清晰度分类，Jackett 把它整站映射成 6000，4K 只能在 `q` 里加关键词，再从标题解析；索引器名单里没有专收 4K 的公开源。
-    - 第二路是作品页磁力：JavBus 从详情页脚本取 `gid`、`uc` 后请求 `ajax/uncledatoolsbyajax.php`（带 Referer），每行有名称、大小、日期与「高清」「字幕」标记（garage `garage_jav/javbus.go`、Atlas `services/jav-utils.ts` 的 `parseMagnets`）；JavDB 是 `#magnets-content` 下的列表，标签里有 `4K`、`字幕`。Atlas 只真正解析 JavBus 一家，其余「磁力搜索」是首页跳转链接，不做聚合。
+    - 作品页资源还需接 JavBus：从详情页脚本取 `gid`、`uc` 后请求 `ajax/uncledatoolsbyajax.php`（带 Referer），每行有名称、大小、日期与「高清」「字幕」标记（garage `garage_jav/javbus.go`、Atlas `services/jav-utils.ts` 的 `parseMagnets`）。
     - 候选筛选取 SakuraMedia `auto_download_service.py` 的判据并加强：标题解析出的番号对不上就剔除、体积区间、做种数大于 0、infohash 黑名单、最多试 5 个；Peach 另从标题与标签解析分辨率（`4K`、`2160p`）、编码、中字与无码标记，按「寻找更好版本」的目标排序，不只按体积。
 44. **DMM cid 前缀表与失败分类**：Javinizer-Go 从 r18.dev dump 生成了 24279 行「系列 → DMM cid 前缀」表（`content_id_prefixes.go`，MIT），`START-575 → 1start00575` 这类数字前缀 cid 不必再搜索；`sources/dmm.py` 注释写着它们「只有搜索答得出」，`jav_cover_fetch.py` 有几条手写映射。表随版本发布，查不到再搜索；AMMDS v1.6.71 的规则覆盖（正则、前缀、后缀、包含，`{brand}`、`{num2}`～`{num8}` 占位）作用户补丁层。不在本机自学前缀：OpenAver 0.15.3 本机自学的 53 条里 21 条是错的且无声。另移植 mdcz `crawler/sites/dmm/failureClassifier.ts`（GPL-3.0，可并入 AGPL）的分类：地区封锁、登录墙、未渲染的 Next.js 空壳、404 各成一个契约 reason，空壳判据也用于浏览器取页。
 45. **来源测试录制回放**：mdcz v0.16.0 的做法（`docs/testing-fixtures.md`）：每个番号一份 manifest，图片按 sha256 内容寻址、不进 Git，缺 blob 用同尺寸同字节数的生成图顶上；Cookie、CSRF、token 替换成固定值；回放缺一条交互就判失败，不回落公网。`sources/library-metadata/*.json` 的快照可当录制源，先拿 DMM 与 javbus 两个解析器试。

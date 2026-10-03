@@ -1,26 +1,21 @@
-/* 关注管理页的「想要」页签：上面一张按番号添加的填充卡，下面按四段列出全部想要（ADR-0090）。
- *
- * 想要从三处来：Feed 新作卡上的「想要」、关注详情上的「想要」、这里直接输入的库外番号。Peach
- * 没有库外作品的详情页，这张卡就是库外番号的入口。四段是待找、未发售、暂时放弃、已入库：未发售
- * 按发行日现算，到了发售日自己回到待找；文件扫进库或关注条目保存进账本时自动挪到已入库。
- * 待找与暂时放弃两段的每一行有「云下载」：经壳带着番号、标题与 `wishlist:<id>` 去活动页的云下载段，
- * 下载完的文件入库时由同一套对账挪到已入库。
- *
- * 版式与同页其余页签一致：分组靠标题，行与行之间只用一条发丝线，不各自套框。条间线写在每一行
- * 自己身上（`border-t`），岛里 `divide-*` 压不过 `@scope` 末尾的边框清零。 */
+/* JAV 入库：按状态分组的作品卡，卡片下方查询磁链并提交云下载。 */
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RiStarLine } from '@remixicon/react';
 
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
+import { Select, SelectItem } from '@/components/base/select/select';
 
-import { errorMessage } from '../../api';
+import { apiGet, errorMessage } from '../../api';
+import type { DownloadsSnapshot } from '../bundle';
+import { DOWNLOADS_KEY, DOWNLOADS_URL } from '../activity/downloads-panel';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
 import { Note } from '../components/note';
-import { ExternalLink, Help } from '../settings/section';
+import { Help } from '../settings/section';
+import { WantMagnets } from './want-magnets';
 import { busyProps, useAction } from '../settings/use-action';
 import {
   addWant, fetchWants, invalidateWants, PHASES, removeWants, resetWants, searchNote, wantName,
@@ -45,13 +40,14 @@ function Cover({ want }: { want: Want }) {
   );
 }
 
-function WantRow({ want, first, readOnly, busy, onReset, onRemove, onCloudDownload }: {
-  want: Want; first: boolean; readOnly: boolean; busy: string;
+function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, downloads, provider, toast }: {
+  want: Want; readOnly: boolean; busy: string; downloads?: DownloadsSnapshot; provider: string; toast(message: string): void;
   onReset(): void; onRemove(): void; onCloudDownload(): void;
 }) {
   return (
     <li data-want-id={want.id}
-      className={`flex min-w-0 items-start gap-4 py-4 max-sm:gap-3 ${first ? '' : 'border-t border-separator-border'}`}>
+      className={cardClass({ bordered: 'soft', className: 'flex flex-col gap-4 max-sm:p-4' })}>
+      <div className="flex min-w-0 items-start gap-4 max-sm:gap-3">
       <Cover want={want} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="flex min-w-0 flex-wrap items-baseline gap-x-2">
@@ -61,12 +57,11 @@ function WantRow({ want, first, readOnly, busy, onReset, onRemove, onCloudDownlo
           ) : null}
         </p>
         {facts(want) ? <p className="text-body-2-regular text-text-secondary">{facts(want)}</p> : null}
-        <p data-want-note="" className="text-caption-1-regular text-text-secondary">
-          {searchNote(want)}
-          {want.scrape_error ? `；资料没取到：${want.scrape_error}` : ''}
-        </p>
+        {!want.code || want.phase === 'unreleased' || want.phase === 'acquired' ?
+          <p data-want-note="" className="text-caption-1-regular text-text-secondary">{searchNote(want)}</p> : null}
+        {want.scrape_error ? <p className="text-caption-1-regular text-text-secondary">资料未取得：{want.scrape_error}</p> : null}
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          {want.link ? <ExternalLink href={want.link}>来源页</ExternalLink> : null}
+          {want.link ? <ButtonLink data-button-link="" variant="secondary" size="small" href={want.link} target="_blank" rel="noopener noreferrer">来源页</ButtonLink> : null}
           {/* 还在找的两段才给云下载：未发售的没有资源可下，已入库的已经到手。 */}
           {want.phase === 'searching' || want.phase === 'given_up' ? (
             <Button variant="secondary" size="small" disabled={readOnly} onClick={onCloudDownload}>云下载</Button>
@@ -79,6 +74,9 @@ function WantRow({ want, first, readOnly, busy, onReset, onRemove, onCloudDownlo
             onClick={onRemove}>移除</Button>
         </div>
       </div>
+      </div>
+      {want.code && (want.phase === 'searching' || want.phase === 'given_up')
+        ? <WantMagnets want={want} readOnly={readOnly} downloads={downloads} provider={provider} toast={toast} /> : null}
     </li>
   );
 }
@@ -92,6 +90,7 @@ export interface WantListProps {
 
 export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
   const [code, setCode] = useState('');
+  const [provider, setProvider] = useState('');
   const action = useAction();
   const wants = useQuery({
     queryKey: WANTS_KEY, queryFn: ({ signal }) => fetchWants(signal),
@@ -126,6 +125,13 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
 
   const data = wants.data;
   const items = data?.items || [];
+  const downloads = useQuery({
+    queryKey: DOWNLOADS_KEY,
+    queryFn: ({ signal }) => apiGet<DownloadsSnapshot>(`${DOWNLOADS_URL}?limit=100`, signal),
+    enabled: items.some((want) => want.code && (want.phase === 'searching' || want.phase === 'given_up')),
+  });
+  const configured = downloads.data?.providers.filter((row) => row.configured) || [];
+  const selected = configured.find((row) => row.key === provider)?.key || configured[0]?.key || '';
   return (
     <div className="flex flex-col gap-8">
       <div className={cardClass({ padding: 'none', className: 'flex flex-col gap-4 px-6 py-5 max-sm:px-4' })}>
@@ -144,6 +150,16 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
 
       {wants.error ? <Note tone="error" title="想要清单读取失败">{errorMessage(wants.error)}</Note> : null}
       {data?.scraping ? <Help role="status">正在给刚加入的番号取资料与封面。</Help> : null}
+      {configured.length ? <div className="flex flex-col gap-2">
+        <p className="text-body-medium text-text-primary">下载到</p>
+        <Select aria-label="下载到" selectedKey={selected} onSelectionChange={(key) => setProvider(String(key))}>
+          {configured.map((row) => <SelectItem key={row.key} id={row.key}>{row.label}</SelectItem>)}
+        </Select>
+        <Help>{configured.find((row) => row.key === selected)?.target || '使用已配置的目标目录'}</Help>
+      </div> : null}
+      {downloads.error ? <Note tone="error" title="下载配置未取得">{errorMessage(downloads.error)}</Note> : null}
+      {downloads.data && !configured.length ? <Note tone="neutral">请先在配置页设置 115 或 PikPak 云下载。</Note> : null}
+      {downloads.data && !downloads.data.available ? <Note tone="neutral">云下载只在账本写入端可用。</Note> : null}
 
       {data && !items.length ? (
         <EmptyState shell="plain" icon={RiStarLine} title="还没有想要的作品">
@@ -155,14 +171,15 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
         const rows = items.filter((want) => want.phase === phase);
         if (!rows.length) return null;
         return (
-          <section key={phase} aria-label={label} data-want-phase={phase} className="flex flex-col gap-1">
+          <section key={phase} aria-label={label} data-want-phase={phase} className="flex flex-col gap-4">
             <h3 className="flex items-baseline gap-2 text-title-2-medium text-text-primary">
               {label}
               <span className="text-body-2-regular tabular-nums text-text-secondary">{rows.length}</span>
             </h3>
-            <ul className="flex flex-col">
-              {rows.map((want, at) => (
-                <WantRow key={want.id} want={want} first={at === 0} readOnly={readOnly} busy={action.busy}
+            <ul className="flex flex-col gap-4">
+              {rows.map((want) => (
+                <WantRow key={want.id} want={want} readOnly={readOnly} busy={action.busy}
+                  downloads={downloads.data} provider={selected} toast={toast}
                   onReset={() => reset(want)} onRemove={() => remove(want)}
                   onCloudDownload={() => cloudDownload({
                     code: want.code || '', title: want.title || '', origin: `wishlist:${want.id}`,

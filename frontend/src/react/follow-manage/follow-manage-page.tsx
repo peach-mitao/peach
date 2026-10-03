@@ -1,7 +1,7 @@
 /* 关注管理页：加来源、检查更新、移除来源、管订阅源、管想要清单、看凭据状态。
  *
  * 五栏是五件事，所以整块切换而不是一屏铺开：看的那一页（`/follow`）不联网，联网只发生
- * 在这里点「检查更新」的那一刻。「想要」排在订阅源后面：想要的作品多半是从 Feed 新作和关注
+ * 在这里点「检查更新」的那一刻。「JAV 入库」排在订阅源后面：想要的作品多半是从 Feed 新作和关注
  * 条目上点进来的，两处的来源都在这一页管。
  *
  * 地址栏与个人偏好各管各的（ADR-0031「迁移桥接」）：
@@ -39,7 +39,7 @@ import { WantList } from '../wants/want-list';
 import { SourceList } from './source-list';
 
 const TABS = [
-  ['list', '关注列表'], ['add', '添加关注'], ['feeds', 'JAV 订阅源'], ['wants', '想要'], ['source', '来源和凭证'],
+  ['list', '关注列表'], ['add', '添加关注'], ['feeds', 'JAV 订阅源'], ['wants', 'JAV 入库'], ['source', '来源和凭证'],
 ] as const;
 type TabKey = (typeof TABS)[number][0];
 

@@ -8,6 +8,8 @@
 
 页面控件与交互由哪些共用件承担；组件映射、Board 上游证据与许可证见 [BoardUI 适配](BOARD_UI.md)。
 
+- 外链按钮复用 BoardUI `ButtonLink`，调用处加 `data-button-link`，全站文字外链规则用 `:where` 排除它，保持实体页控件的样式优先级。浏览器验收使用一个渲染进程、进程内音频服务和合成音频输出，给演示服务与媒体进程保留资源预算；入口仍为 `scripts/test.ps1` / `scripts/test.sh`。
+
 - 功能性动效由 `frontend/src/react/components/use-moving-surface.ts`、`modal-frame.tsx`、`selection-dock.tsx` 承担，用现有 Motion 12.43.0（MIT）与 React Aria Components 1.21.1（Apache-2.0）。Fluid Functionalism 只作行为与短程参数参考（[取证](reference-snapshots/fluid-functionalism.md)），不装其 Registry（额外的 Radix、字体与上下文不合 BoardUI 组合）；Peach 保留单一选中底板、键盘即时反馈与原有主题。
 - 首页新作与实体资料页共用 `/api/entity/shapes` 和 `feedNewSkeletonHtml`；`home.feed` 按新作列表同一套未入库、未忽略与合集条件判定，有内容才留位；同步设置先于最终横条和网格，同形骨架复用节点。
 - 作者别名管理用逐字复制进 `frontend/src/react/boardui/` 的 BoardUI `Table`、关注列表共用的 `DataTableFrame`、`AuthorAvatar` 与既有别名 API。两张表只有几行，不接 `@tanstack/react-table`；合并范围是这一屏自己的勾选，勾写 `slot={null}`，不走 React Aria Table 的行选择。扫描与采集三种方式收在一颗 BoardUI `Button` 加 React Aria `Popover` 下拉里，行外观取注册表 `select` 条目带来的 `menu-styles.ts`（见 `frontend/src/react/boardui/ORIGIN.md`）。
@@ -100,6 +102,7 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 - javdb 属有码与素人链的社区档，候选保留 community 来源性质，不自动写真相字段。
 - 编码边界依据 [MDN 视频编码说明](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Video_codecs) 与 [ffprobe 文档](https://ffmpeg.org/ffprobe.html)，用当前 FFmpeg；Peach 只持有兼容格式判定与缓存策略。
 - CloudDrive 引导用现有 `settings_file`、`platform.root_online`、`scan_location` 与 React 配置页，来源为 `local`、`115`、`pikpak`。挂载由用户安装的 CloudDrive 负责（[官方帮助](https://www.clouddrive2.com/help.html)：Windows 用盘符、macOS 用目录挂载点），Peach 不捆绑其二进制，挂载引导不依赖管理 API，路径处理用 `pathlib`、`os.scandir`、`tomllib`；表单、来源归属与扫描选择归 Peach。云下载经官方 proto 子集（`downloads_clouddrive.proto`，version 1.1.0）走 gRPC，令牌存 CredentialStore，不用非官方 SDK（ADR-0089）。
+- JAV 入库资源查询复用 `sources.javdb` 的身份核对、`SourceTransport` 的 Cookie 与冷却、`HostLimitedTransport` 的 3 秒间隔、`beautifulsoup4==4.15.0` 和 `downloads.parse_magnet`。JavPack 的 `JavDB.magnet.user.js` 0.0.2（GPL-3.0，仓库 revision `b546e1881147e15796c697e8e086db9d3ac0c5be`）只作页面字段参考；它依赖浏览器用户脚本 API，不能直接作为 Python 服务端依赖。Peach 负责评论链接、协议分流、去重、60 秒缓存和最多三页评论的预算，不新增依赖。2026-10-02 单作品只读实测取得 4 条磁链和含 ed2k 的评论页；评论入口从 `.review-tab[data-url]` 读取，受限评论保留来源限制提示。磁链可交现有云下载服务，ed2k 与其他网页链接提供复制。
 - 抓取入口的复用缺口见 [抓取复用审计](SCRAPING_AUDIT.md) 与 [逐脚本 CSV](scraping-audit.csv)；跨用户安装、来源网络、Cookie GUI、最高可得画质与图像清单按 [ADR-0024](adr/0024-mark-manifest-not-bundled-bytes.md)。私有后缀判断用 tldextract 5.3.2（BSD-3-Clause），随包 PSL、`suffix_list_urls=()`、`cache_dir=None`、`include_psl_private_domains=True`；Instaloader 4.15.3 与 browser_cookie3 不进正式依赖。HTTPX（BSD-3-Clause）、curl_cffi（MIT）、Pillow、amane 桥与现有候选缓存是正式基础，请求节拍用 `scripting.RateLimiter`／`HostLimiter`。
 - 采集 GUI 用 React island、CredentialStore、HTTPX、Pillow 与 BackgroundJob，`jav_cover_fetch` 同时服务界面与 CLI；Peach 保留域内凭据、来源路由、预算、冷却、番号身份与高清替换策略。Cookie 文本用标准库 SimpleCookie／MozillaCookieJar 解析，不导入 pickle。
 - 删除失效链接与资源同步的执行阶段用 `BackgroundJob.start_result` 存终态回执；刷新只查状态，写入不自动重放，确认与检查结果过期门槛照旧有效。

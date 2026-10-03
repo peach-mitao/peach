@@ -30,6 +30,10 @@ const listed = (items: Want[]): WantsData => ({
 function serve(...rounds: WantsData[]) {
   let round = 0;
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.startsWith('/api/downloads')) return { ok: true, status: 200,
+      json: async () => ({ available: true, providers: [], tasks: [] }) };
+    if (url.startsWith('/api/wants/magnets')) return { ok: true, status: 200,
+      json: async () => ({ state: 'ready', items: [], error: '', checked_at: null }) };
     if (init?.method === 'POST') {
       return { ok: true, status: 200, json: async () => ({ created: true, want: want(99, { code: 'SSIS-950' }) }) };
     }
@@ -42,7 +46,7 @@ function serve(...rounds: WantsData[]) {
 }
 const posts = (fetcher: ReturnType<typeof serve>) => fetcher.mock.calls
   .filter(([, init]) => init?.method === 'POST').map(([url, init]) => [url, JSON.parse(String(init!.body))]);
-const reads = (fetcher: ReturnType<typeof serve>) => fetcher.mock.calls.filter(([, init]) => init?.method !== 'POST');
+const reads = (fetcher: ReturnType<typeof serve>) => fetcher.mock.calls.filter(([url, init]) => url === '/api/wants' && init?.method !== 'POST');
 
 async function open(readOnly = false) {
   const toast = vi.fn();
@@ -67,7 +71,7 @@ it('按待找、未发售、暂时放弃、已入库分段，段名带条数；�
     .toEqual([['searching', '待找2'], ['unreleased', '未发售1'], ['given_up', '暂时放弃1'], ['acquired', '已入库1']]);
   const note = (id: number) => host.querySelector(`[data-want-id="${id}"] [data-want-note]`)?.textContent;
   expect([note(2), note(5), note(4), note(3), note(1)]).toEqual([
-    '还没查过', '新片：查不到也一直留在待找', '2026-12-01 发售', '查过 3 次都没找到', '入库于 2026-09-30',
+    undefined, undefined, '2026-12-01 发售', undefined, '入库于 2026-09-30',
   ]);
   expect(buttonNamed('重新查找', host.querySelector('[data-want-id="3"]')!)).not.toBeNull();
   expect(buttonNamed('重新查找', host.querySelector('[data-want-id="2"]')!)).toBeNull();
