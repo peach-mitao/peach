@@ -18,9 +18,10 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/islands.ts` | 挂载契约与注册表，构建入口；其余导出是遗留层仍在用的助手 |
 | `frontend/src/api.ts` | 带 `AbortController` 的取数封装 |
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
-| `frontend/src/legacy/*.d.ts` | `/js/core.js`、`/js/ui-components.js`、`/js/ui-sounds.js`、`/js/jav-title.js`、`/js/tags.js` 等遗留模块的手写类型 |
-| `frontend/src/ui-kit/` | 遗留层与独立页面包共用的控件：覆盖式滚动条、Collapse、锚定菜单、Geist Select 与来源站标。只有这一份实现，随 `peach-entry.js` 发出；`/js/ui-components.js` 从入口包原名转出，壳与 React 子树经 `@peach/legacy/ui` 读到的是同一个模块实例 |
-| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出 `/js/ui-components.js` 要的导出，不带 React |
+| `frontend/src/legacy/*.d.ts` | `/js/ui-components.js`、`/js/home-glow.js` 两个遗留模块的手写类型 |
+| `frontend/src/core/` | 遗留层的底层助手：`index.ts` 是取元素、请求、转义、格式化与路由常量，`tags.ts` 是标签显示名，`jav-title.ts` 是番号标题。只有这一份实现，随 `peach-entry.js` 发出；`/js/core.js`、`/js/tags.js`、`/js/jav-title.js` 是从入口包原名转出的垫片，React 子树经 `@peach/legacy/*` 外置到同一个 URL |
+| `frontend/src/ui-kit/` | 遗留层与独立页面包共用的控件：覆盖式滚动条、Collapse、锚定菜单、Geist Select、来源站标、界面音效（`sounds.ts`）与中段截断（`middle-truncate.ts`）。只有这一份实现，随 `peach-entry.js` 发出；`/js/ui-components.js`、`/js/ui-sounds.js`、`/js/middle-truncate.js` 从入口包原名转出，壳与 React 子树读到的是同一个模块实例 |
+| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出 `/js/*.js` 垫片与 `/js/ui-components.js` 要的导出，不带 React |
 | `frontend/src/react/pages/` | 独立页面包：`index.tsx` 是 `vite.pages.config.ts` 的构建入口，按挂载点的 `data-page` 画 SPA 外壳之外的三张页：首启（`setup/`）、登录（`login/`）与错误页（`error/`）。`auth-card.tsx` 是它们共用的外框 |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
 | `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
@@ -33,7 +34,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`islands.test.ts` 走挂载契约 |
 | `web/dist/peach-ui.js` | 构建产物，**进 Git**，由 `/dist/{name}` 提供 |
 | `web/dist/peach-react.js`、`peach-react.css` | React 子树的构建产物，**进 Git** |
-| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者只有 `/js/ui-components.js`；`/js/core.js`、`/js/ui-sounds.js` 外置。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
+| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是 `/js/*.js` 垫片与 `/js/ui-components.js`，产物自己没有外部 import。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
 | `web/dist/peach-pages.js`、`peach-pages.css` | 独立页面包的构建产物，**进 Git**，不带哈希。`npm run build` 在 `peach-ui.js` 之后构建它（`emptyOutDir: false`）。不要会话就能取，`routes_pages` 只为这两个文件开免登录路由，其余 `/dist/{name}` 照旧校验口令 |
 
 首次运行页（未配置时的 `GET /`）、登录页（`GET /login`）与浏览器导航撞上的错误页是 SPA
@@ -313,8 +314,9 @@ await ui.mountIsland('playlists', $('#stats'), props, {isCurrent: () => surfaceC
   合并进挂载时的 props，对同一棵根再 `render` 一次。重挂会把页面里打了一半的字和滚动
   位置一起换掉。
 
-遗留助手不打进产物：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml` 在浏览器里
-仍是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
+遗留助手不打进 `peach-ui.js` 与 `peach-react.js`：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`
+在浏览器里是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
+`/js/core.js` 这类垫片再从 `peach-entry.js` 原名转出，实现只在入口包里一份。
 打进去就会有两份实现，语义契约各走一份。`/js/jav-title.js` 与 `/js/tags.js` 也这样引用，
 路由树直接 import `javTitleHtml`、`tagLabel`。只存在于 `app.js` 里的助手（`srcBadge`、`openItem`
 这类）给岛时作为 props 传进来，类型写在 island 自己的文件里；给路由树那几页时进 `ShellActions`。
@@ -498,9 +500,12 @@ island 动态加载；`peach-react.css` 由 `index.html` 在旧样式表之前�
 
 入口包单独构建（`vite.entry.config.ts`，入口 `src/entry/index.ts`），排在 `npm run build` 的最后一段：
 第一段 `vite build` 清空 `web/dist/`，后两段都不清。它不引 React、`peach-ui.js` 与 `peach-react.js`，
-没有样式表；`@peach/legacy/core` 与 `@peach/legacy/ui-sounds` 外置成 `/js/core.js`、`/js/ui-sounds.js`，
-与主界面同一个 URL，字形表与音效开关因此仍只有一份。vitest 里 `/dist/peach-entry.js` 指向
-`src/entry/index.ts`，直接加载 `/js/ui-components.js` 的用例跑的是源码。
+没有样式表，也没有外部 import：`src/core/`、`src/ui-kit/` 都打进这一份，`/js/core.js`、`/js/tags.js`、
+`/js/jav-title.js`、`/js/ui-sounds.js`、`/js/middle-truncate.js` 是从它原名转出的垫片。这里再把 `@peach/legacy/*`
+外置回 `/js/*.js` 就和垫片互相 import 成环。字形表、音效开关与中段截断的观察者因此只有一份。
+vitest 里 `/dist/peach-entry.js` 指向 `src/entry/index.ts`，`@peach/legacy/core` 这几条别名指向同一批源码，
+直接加载 `/js/ui-components.js` 的用例跑的也是源码。`tests/test_web_js.py` 用 Node 自带的类型剥离直接跑
+`src/core/` 里的纯函数，入口包在 Node 里加载不了（锚定菜单一加载就往 document 上挂监听）。
 
 没有引入 `@testing-library/react`：`createRoot` 加 `querySelector` 已经够用
 （挂载与输入的助手在 `frontend/test/react/render.tsx`），断言的本来就是真实 DOM。

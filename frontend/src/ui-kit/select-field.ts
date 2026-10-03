@@ -1,4 +1,4 @@
-import { esc, icon } from '@peach/legacy/core';
+import { esc, icon } from '../core';
 
 import { wireAnchoredMenu } from './anchored-menu';
 

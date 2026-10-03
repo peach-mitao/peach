@@ -1,4 +1,4 @@
-"""跑真的 JS：`web/js/` 里的纯模块按行为验收，不按源码文本验收。
+"""跑真的 JS：`web/js/` 与 `frontend/src/core/` 里的纯模块按行为验收，不按源码文本验收。
 
 页面源断言（`test_web_ui.py`）能守住「这段代码还在」，守不住「它算得对」。
 以 JAV 标题为例，
@@ -21,21 +21,44 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_JS = ROOT / "web" / "js"
+# `/js/core.js`、`/js/tags.js`、`/js/jav-title.js` 是从入口包原名转出的垫片，实现是 `frontend/src/core/` 里的 TS。
+# 入口包在 Node 里加载不了（锚定菜单一加载就往 document 上挂监听），用例表仍按浏览器里的名字写，这里换到源码。
+SOURCES = {
+    "core.js": ROOT / "frontend" / "src" / "core" / "index.ts",
+    "tags.js": ROOT / "frontend" / "src" / "core" / "tags.ts",
+    "jav-title.js": ROOT / "frontend" / "src" / "core" / "jav-title.ts",
+}
 NODE = shutil.which("node")
 
 # Node 那边的入口。模块按绝对 file:// URL 引入，所以驱动脚本放临时目录也能找到它们；
 # 用例从 argv 进来，期望值全留在 Python 这边，避免同一张表在两种语言里各写一份。
+# TS 源码靠 Node 自带的类型剥离直接跑；源码里不带扩展名的相对 import 按 Vite 的口径补 `.ts` 或 `/index.ts`。
 DRIVER = """
-import { pathToFileURL } from 'node:url';
+import { existsSync } from 'node:fs';
+import { registerHooks } from 'node:module';
+import { extname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const [, , base, payload] = process.argv;
+registerHooks({
+  resolve(specifier, context, next) {
+    if (specifier.startsWith('.') && context.parentURL?.endsWith('.ts') && !extname(specifier)) {
+      const base = new URL(specifier, context.parentURL).href;
+      for (const candidate of [base + '.ts', base + '/index.ts']) {
+        if (existsSync(fileURLToPath(candidate))) return next(candidate, context);
+      }
+    }
+    return next(specifier, context);
+  },
+});
+
+const [, , payload] = process.argv;
 const cases = JSON.parse(payload);
 const cache = new Map();
 const results = [];
 for (const [module, fn, args] of cases) {
   try {
     if (!cache.has(module)) {
-      cache.set(module, await import(pathToFileURL(base + '/' + module).href));
+      cache.set(module, await import(pathToFileURL(module).href));
     }
     const target = cache.get(module)[fn];
     if (typeof target !== 'function' && typeof target !== 'object') {
@@ -109,8 +132,9 @@ class WebJsBehaviourTests(unittest.TestCase):
 
     def run_js(self, cases):
         """按顺序执行 `[模块, 导出名, 参数列表]`，返回结果列表。"""
+        located = [[SOURCES.get(module, WEB_JS / module).as_posix(), fn, args] for module, fn, args in cases]
         done = subprocess.run(
-            [NODE, str(self._driver), WEB_JS.as_posix(), json.dumps(cases)],
+            [NODE, str(self._driver), json.dumps(located)],
             capture_output=True, text=True, encoding="utf-8", timeout=60)
         if done.returncode != 0:
             self.fail(f"Node 跑不起来（exit {done.returncode}）：{done.stderr.strip()[:2000]}")

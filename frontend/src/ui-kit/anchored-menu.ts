@@ -1,4 +1,4 @@
-import { playUiSound } from '@peach/legacy/ui-sounds';
+import { playUiSound } from './sounds';
 
 interface OpenedMenu { mount: Element; menu: HTMLElement; toggle: HTMLElement; setOpen: (next: boolean) => void }
 
