@@ -67,6 +67,7 @@ peach-tray = "peach.tray:main"
 dev = [
     "filelock==4.0.1",
     "psutil==7.2.2",
+    "ruff==0.16.10",
     "seiso==0.2.0",
 ]
 build = ["pyinstaller==6.22.3"]
@@ -93,3 +94,10 @@ version = {attr = "peach.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["src/peach/downloads_clouddrive_pb2.py"]
+
+[tool.ruff.lint]
+select = ["F", "PLE", "B006", "B012", "B018", "B023"]

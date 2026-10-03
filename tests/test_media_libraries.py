@@ -4,7 +4,6 @@ import tomllib
 import unittest
 from dataclasses import replace
 from tempfile import TemporaryDirectory
-from pathlib import Path
 from types import SimpleNamespace
 
 from peach import media_libraries, settings_file

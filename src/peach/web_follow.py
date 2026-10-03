@@ -2180,7 +2180,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
             break
         current = {"source": row["id"], "label": _author_display_name(row),
                    "provider": PROVIDER_LABELS.get(row["provider"], row["provider"])}
-        def progress(**fields):
+        def progress(*, current=current, **fields):
             if job_id:
                 contract.follow_job.update(job_id, total=len(rows), checked=len(results),
                     results=results.copy(), current={**current, **fields})

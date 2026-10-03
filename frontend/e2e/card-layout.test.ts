@@ -87,7 +87,8 @@ describe('混排作品的画面框',()=>{
       corners.push({frame,x:Math.round(x),y:Math.round(y),min:await darkest(page,{x,y,width:6,height:6})});
      }
     }
-    const dark=corners.filter(corner=>corner.min<240);
+    // 高分屏的像素对齐和抗锯齿允许浅灰边缘；灰黑渗透的 150–190 区间必须失败。
+    const dark=corners.filter(corner=>corner.min<230);
     assert.deepEqual(dark,[],`${corners.length} 个角里有 ${dark.length} 个透出了黑`);
    }finally{await context.close()}
   });

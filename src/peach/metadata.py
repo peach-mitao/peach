@@ -1,10 +1,8 @@
 """Read-only external metadata providers and Peach-owned candidate normalization."""
 from __future__ import annotations
 
-import json
 import re
 from datetime import date
-from pathlib import Path
 from urllib.parse import urlsplit
 
 from .catalog_rules import (

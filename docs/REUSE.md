@@ -313,7 +313,9 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 Python、npm 与 GitHub Actions 的版本由 `.github/dependabot.yml` 每周检查；固定前端文件由
 `package-lock.json` 和 `scripts/vendor_web_dependencies.mjs` 重建并核对来源、许可证与 SHA-256。
 
-## 前端静态检查
+## 静态检查
+
+Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.16.10，版本由开发依赖和 `uv.lock` 固定。规则配置在 `pyproject.toml`；正式入口通过 `tests/test_python_lint.py` 扫描全仓自有 Python 文件，检查 Pyflakes、Ruff 支持的 Pylint 错误规则与四项常见行为隐患。Ruff 的 Pylint 规则覆盖是部分覆盖；需要跨模块推断的问题仍由对应行为回归验证。
 
 复用现有 Oxlint 1.85.0 的 correctness、`eqeqeq` 与 `oxc/no-accumulating-spread`，不新增依赖。源码和测试共用基础规则；shadcn 设计规则仅作用于自有 React 源码。
 

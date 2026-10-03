@@ -14,7 +14,6 @@ import re
 import pathlib
 import sqlite3
 import tempfile
-import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -2447,7 +2446,6 @@ class ReviewQueueTests(unittest.TestCase):
         candidate = {
             "candidate_key": "ABC-001:performers:r18dev:abc", "source": "r18dev",
             "source_url": "https://r18.dev/example", "confidence": 0.9,
-            "provider_id": "ABC-001",
             "provider_id": "ABC-001", "content_id": "abc00001",
             "value": [{"name": "木村さん", "external_id": "7", "thumb_url": ""}],
             "display_value": "木村さん", "warnings": [], "raw_snapshot": "/evidence.json",

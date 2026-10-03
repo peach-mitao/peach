@@ -1,7 +1,6 @@
 """番号发现源：解析、两层去重、已读与忽略、空壳与真实资产的边界（ADR-0042）。"""
 from __future__ import annotations
 
-import sqlite3
 import sys
 import tempfile
 import unittest

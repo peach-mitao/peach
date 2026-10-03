@@ -6,7 +6,6 @@ thread 50685），不是凭记忆构造的形状。测试本身不联网：trans
 """
 import json
 import os
-import stat
 import tempfile
 import unittest
 import urllib.parse

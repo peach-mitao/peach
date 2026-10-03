@@ -18,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import sys
 from collections.abc import Mapping, Sequence
 import re
@@ -37,7 +36,7 @@ from fastapi.responses import (
     Response,
 )
 
-from . import auth, distribution, onboarding, settings_file
+from . import distribution, onboarding, settings_file
 from .config import PROJECT_ROOT
 from .routes_auth import require_asset_auth, require_page_auth, set_auth_cookie
 from .web_entry import check_html, entry_page_style, runtime_fact_entries
@@ -354,8 +353,6 @@ def setup_page(
         if question.key == "media_dir":
             media_dirs = _media_dir_values(values, question.default)
             row_errors = errors.get("media_dir", [])
-            note = "" if windows else onboarding.mounts_explanation(
-                [path for path in media_dirs if path] or ["上面填写的目录"])
             fields.append(_media_dirs_html(media_dirs, list(row_errors), "" if windows else
                 "本机文件夹是这台电脑读取媒体的位置；Windows 中的对应路径用于匹配馆藏中已有的路径。",
                 locations=values.get("media_location", ()), roots=values.get("media_root", ()), windows=windows))

@@ -133,7 +133,7 @@ class SharedRuleTests(unittest.TestCase):
         for path in sorted((PROJECT_ROOT / "scripts").glob("*.py")):
             text = path.read_text(encoding="utf-8")
             for rule in ("is_jav_code", "normalise_code_key", "LENGTH_TAGS"):
-                if f"from peach.web_contract import" in text and rule in text.split(
+                if "from peach.web_contract import" in text and rule in text.split(
                         "from peach.web_contract import", 1)[1].split("\n", 1)[0]:
                     offenders.append(f"{path.name} → web_contract.{rule}")
         self.assertEqual(offenders, [],

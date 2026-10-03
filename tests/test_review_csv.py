@@ -3,7 +3,6 @@
 这里守的是编码契约本身。它此前在 46 个读写点各写一遍，而两条要求都属于「写的时候
 一切正常、几天后有人用 Excel 打开才发现坏了」那一类，靠人眼复查是拦不住的。
 """
-import csv
 import os
 import tempfile
 import unittest
