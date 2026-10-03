@@ -55,7 +55,7 @@ from peach.scraping_access import client_for
 from peach.genre_decisions import load_genre_decisions
 from peach.genre_taxonomy import map_genres
 from peach.review_csv import read_rows, write_rows
-from peach.scripting import USER_AGENT, open_readonly
+from peach.scripting import open_readonly
 from peach.config import DATABASE_PATH, GENERATED_DIR
 from peach.sources.fc2 import canonical_code
 from peach.sources.fc2cmadb import (VIDEO_ID, Fc2cmadbSource, collection_parts, inertia_props,

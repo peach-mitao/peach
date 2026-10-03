@@ -38,7 +38,7 @@ LIMIT = 30
 BASELINE: dict[str, int] = {
     "src/peach/web_batch.py:_scored_junk": 68,
     "scripts/scrape_codes.py:_scrape": 35,
-    "scripts/localize_performer_names.py:collect": 64,
+    "scripts/localize_performer_names.py:collect": 63,
     "src/peach/web_resource_sync.py:_resource_orphan_plan": 50,
     "src/peach/web_review.py:_review_rows": 43,
     "src/peach/fanbox.py:normalize_fanbox_post": 59,

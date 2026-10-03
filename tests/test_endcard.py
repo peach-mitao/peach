@@ -1,7 +1,6 @@
 import csv
 import hashlib
 import importlib.util
-import json
 import shutil
 import sqlite3
 import tempfile

@@ -27,7 +27,6 @@ from peach.jobs import (
     DiskGuard,
     DiskSpaceDenied,
     JobPolicyError,
-    PidFileLock,
     SourceAccessPolicy,
     require_free_space,
     job_main,

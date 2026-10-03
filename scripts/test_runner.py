@@ -28,10 +28,10 @@ if not __package__:
 from . import test_evidence
 
 COMMON_PATTERNS = ("test_context_budget.py", "test_test_collection.py", "test_complexity_ratchet.py",
-                   "test_source_assertion_ratchet.py")
+                   "test_source_assertion_ratchet.py", "test_python_lint.py")
 SCOPES: dict[str, tuple[str, ...]] = {
     "checks": ("test_copy_final_state.py", "test_dependency_policy.py", "test_repo_hygiene.py", "test_test_planning.py",
-               "test_complexity_ratchet.py", "test_source_assertion_ratchet.py"),
+               "test_complexity_ratchet.py", "test_source_assertion_ratchet.py", "test_python_lint.py"),
     "follow": ("test_follow*.py", "test_http.py", "test_migrations.py", "test_wants_web.py"),
     "catalog": ("test_ad_judgement.py", "test_composite_name_split.py", "test_media_libraries.py",
                 "test_content_region.py",

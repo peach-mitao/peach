@@ -44,7 +44,6 @@ import json
 import re
 import time
 import urllib.parse
-import sys
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path

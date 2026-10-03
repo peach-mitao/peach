@@ -966,7 +966,6 @@ class StandaloneConfigurationTests(_Case):
 
     def test_cloud_configuration_saves_all_sources_and_requests_configured_scan(self):
         from peach.routes_configuration import revision
-        from peach import media_configuration
         with self.client() as client:
             response = client.post('/api/configuration', headers={'X-Token': 'test-token'}, json={
                 'revision': revision(self.config), 'port': 9123, 'scan_now': True,

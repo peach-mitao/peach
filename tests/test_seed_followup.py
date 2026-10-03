@@ -88,7 +88,8 @@ class RunTests(Case):
     def test_run_lands_the_pack_and_writes_the_review_file(self):
         her, kmp = self.add("performer", "天川そら"), self.add("studio", "K M Produce")
         self.add("agency", "STARTUP")
-        label, maker = self.add("studio", "PRESTIGE PREMIUM"), self.add("studio", "Prestige")
+        label = self.add("studio", "PRESTIGE PREMIUM")
+        self.add("studio", "Prestige")
         with self.database.write_transaction() as connection:
             connection.execute("INSERT INTO label_maker(label_id,maker_id,source,confidence,checked_at)"
                                " VALUES(?,?,?,1.0,?)", (label, kmp, "review:user", STAMP))

@@ -40,11 +40,10 @@ import re
 import sqlite3
 import threading
 import time
-import urllib.parse
 import concurrent.futures as futures
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -72,7 +71,6 @@ from peach.gfriends import (
     index_age,
     normalized,
     parse_filetree as parse_gfriends,
-    quality_key,
 )
 from peach.http import HttpRequest, HttpTransport, HttpxTransport
 from peach.review_csv import read_rows, write_rows

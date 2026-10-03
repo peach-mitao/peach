@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 import re
-import sqlite3
 import stat
 import tempfile
 import threading

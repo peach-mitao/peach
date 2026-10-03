@@ -68,7 +68,7 @@ class RuntimeConsistencyTests(unittest.TestCase):
     def test_aggregate_cache_is_bounded_and_keeps_recent_hits(self):
         contract = WebContract(Path("unused.db"))
         for key in range(192):
-            contract.cached(str(key), lambda: key)
+            contract.cached(str(key), lambda key=key: key)
         contract.cached("0", lambda: -1)
         contract.cached("new", lambda: 999)
         self.assertEqual(len(contract.cache), 192)

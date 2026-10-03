@@ -21,7 +21,7 @@ from . import follow_providers
 from .follow import FollowSourceError, write_immutable
 from .follow_image_dims import positive_dims
 from .follow_sources import (
-    FollowCandidate, Rule34VideoConnector, SourceFetch, canonical_source_ref,
+    Rule34VideoConnector, SourceFetch, canonical_source_ref,
     official_profile_handle, origin_group_key, profile_link_identity,
 )
 from .follow_variants import classify, group_duplicates

@@ -218,8 +218,6 @@ def collect(
         FROM entity e WHERE e.kind='performer' ORDER BY e.id
         """
     ).fetchall()
-    by_id = {int(entity["id"]): entity for entity in entities}
-
     rows: list[dict[str, object]] = []
     resolved_groups: dict[int, list[dict[str, object]]] = defaultdict(list)
     for entity in entities:

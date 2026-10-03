@@ -362,7 +362,7 @@ class InteractiveInitTests(unittest.TestCase):
 
         import httpx
 
-        from peach import routes_api, web_resource_sync
+        from peach import web_resource_sync
         from peach.api import create_app
         from peach.config import PeachSettings
         from peach.platform import translate_roots

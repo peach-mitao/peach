@@ -44,19 +44,17 @@ import argparse
 import hashlib
 import html as html_mod
 import json
-import os
 import re
 import sqlite3
 import sys
 import time
 import urllib.parse
-import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from peach.avatar_face import (   # noqa: E402
-    FaceProbe, drop_sidecar, face_px_width, read_sidecar, write_sidecar,
+    FaceProbe, face_px_width, read_sidecar,
 )
 from peach.avatar_provider import (   # noqa: E402
     POLICY_VERSION,
@@ -433,7 +431,6 @@ def harvest_entity(record: dict, http: HttpTransport, limiter: HostLimiter,
     False 的行只进复核 CSV。candidates：全部有效头像（入内容寻址缓存），
     调用方做同图去重、竞选与安装。
     """
-    entity_id = record["entity_id"]
     names = record["names"]
     links: list[dict] = []
     candidates: list[dict] = []

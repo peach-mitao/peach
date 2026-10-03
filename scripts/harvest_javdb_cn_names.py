@@ -237,7 +237,7 @@ def adopted_name(current: list[str]) -> str:
 
 def judge(record: dict, html: str, url: str) -> dict:
     """一页资料页对一位账本女优的判定。"""
-    current, former = javdb.current_names(html), javdb.former_names(html)
+    current = javdb.current_names(html)
     wanted = {key(value) for value in record["chain"]}
     row = {"entity_id": record["entity_id"], "current_name": record["name"],
            "assets": record["assets"], "actor_id": javdb.actor_id(html), "url": url,

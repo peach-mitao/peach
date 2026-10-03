@@ -14,7 +14,7 @@ from peach import seed_followup, seed_pack
 from peach import task_runs as task_runs_module
 from peach.avatar_followup import TASK_KEY as AVATAR_TASK_KEY
 from peach.avatar_followup import followup_key, parse_key, plan
-from peach.followups import Followup, FollowupRunner, FollowupType, lanes
+from peach.followups import FollowupRunner, FollowupType, lanes
 from peach.jav_cover_fetch import NotFound
 from peach.jobs import BackgroundJob
 from peach.library_processing import process_library

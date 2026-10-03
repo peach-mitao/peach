@@ -14,7 +14,7 @@ from peach.follow_discovery import (
     archive_suggestions, discover, discovery_plan, forum_queries, identity_key,
     rule34video_slugs, search_variants, spelling_variants, suggest_term, tag_suggestions,
 )
-from peach.follow_secrets import Credential, CredentialError
+from peach.follow_secrets import Credential
 from peach.http import HttpResponse
 from support.backoff import no_real_backoff
 

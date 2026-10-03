@@ -170,7 +170,7 @@ def parse_magnets(page: Page) -> list[dict]:
         except ValueError:
             invalid = True
             continue
-        def text(selector):
+        def text(selector, row=row):
             node = row.select_one(selector)
             return node.get_text(" ", strip=True) if node else ""
         meta = re.split(r"[,，]", text(".meta"), maxsplit=1)

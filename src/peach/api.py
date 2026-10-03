@@ -22,7 +22,6 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from typing import Any
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request

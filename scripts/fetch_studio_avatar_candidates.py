@@ -13,7 +13,6 @@ handle 默认必须由 `--handles` 显式提供。脚本不猜 handle：猜错�
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -23,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from peach.http import HttpRequest, HttpxTransport      # noqa: E402
-from peach.images import REJECT, bake_square, classify, measure_image_size  # noqa: E402
+from peach.images import REJECT, bake_square, classify  # noqa: E402
 from peach.logo_provider import (  # noqa: E402
     POLICY_VERSION,
     LogoCandidateCache,

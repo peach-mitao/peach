@@ -486,7 +486,7 @@ class RestartEntryTests(unittest.TestCase):
         with (
             mock.patch.object(entry, "restart_tray", return_value=finished) as restart,
             mock.patch.object(entry, "find_tray_windows",
-                              return_value=(windows_restart.TrayWindow(10, 20),)) as search,
+                              return_value=(windows_restart.TrayWindow(10, 20),)),
             contextlib.redirect_stdout(io.StringIO()) as printed,
         ):
             self.assertEqual(entry.main(["--swap-from", "staged.exe"]), 0)
@@ -497,7 +497,7 @@ class RestartEntryTests(unittest.TestCase):
         entry = load_entry()
         source = windows_restart.RestartResult(True, "源码托盘已重启")
         with (
-            mock.patch.object(entry, "find_tray_windows", return_value=()) as search,
+            mock.patch.object(entry, "find_tray_windows", return_value=()),
             mock.patch.object(entry, "restart_source_tray", return_value=source) as srcs,
             contextlib.redirect_stdout(io.StringIO()) as printed,
         ):
@@ -509,7 +509,7 @@ class RestartEntryTests(unittest.TestCase):
         entry = load_entry()
         source = windows_restart.RestartResult(True, "源码托盘已重启")
         with (
-            mock.patch.object(entry, "find_tray_windows", return_value=()) as search,
+            mock.patch.object(entry, "find_tray_windows", return_value=()),
             mock.patch.object(entry, "restart_source_tray", return_value=source),
             mock.patch.object(entry, "restart_tray") as ghost,
             contextlib.redirect_stdout(io.StringIO()),

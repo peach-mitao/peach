@@ -1,5 +1,4 @@
 """K-MIB 官网解析与采集脚本的隔离测试。"""
-import csv
 import importlib.util
 import sqlite3
 import tempfile

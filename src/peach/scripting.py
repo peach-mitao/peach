@@ -24,7 +24,7 @@ from pathlib import Path
 from .config import DATABASE_PATH
 from .migrations import sqlite_backup
 
-from .user_agent import USER_AGENT
+from .user_agent import USER_AGENT as USER_AGENT
 
 #: `--apply` 缺 `--backup` 时的唯一拒绝话术。
 BACKUP_REQUIRED = "--apply 必须同时给 --backup"

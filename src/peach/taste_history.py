@@ -265,7 +265,7 @@ def refresh_history(
     results: list[dict[str, object]] = []
     with _open_history_store(store_path, host) as (store, host, now):
         for index, source in enumerate(sources):
-            def report(count=0):
+            def report(count=0, index=index):
                 if progress:
                     progress(stage="reading", checked=count, total=None,
                              message=f"读取浏览记录：第 {index + 1} / {len(sources)} 个浏览器资料，已读取 {count:,} 条")

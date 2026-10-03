@@ -45,7 +45,7 @@ class SharedRequestSkeletonTests(unittest.TestCase):
     def test_retries_exhaust_and_post_is_not_replayed(self):
         for method, expected in [('GET', 5), ('POST', 1)]:
             calls = []
-            def transport(*args):
+            def transport(*args, calls=calls):
                 calls.append(1)
                 raise httpx.ReadTimeout('temporary')
             connector = _Probe(transport=transport, sleeper=lambda _: None)

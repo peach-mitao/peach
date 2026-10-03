@@ -16,8 +16,7 @@
     python scripts/sync_sha1_115.py                 # 拉取并写入 ledger
     python scripts/sync_sha1_115.py --dupes         # 写入后直接出 SHA1 重复报告
 """
-import os, sys, json, sqlite3, time
-import sys
+import os, sys, sqlite3, time
 from collections import defaultdict
 from pathlib import Path
 

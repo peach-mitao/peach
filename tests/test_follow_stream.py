@@ -4,7 +4,7 @@ from unittest import mock
 
 import httpx
 
-from peach import follow_stream, http as peach_http
+from peach import http as peach_http
 from peach.follow_stream import (
     MAX_PROXY_REDIRECTS, FollowMediaResolver, FollowMediaUnavailable,
     FollowProxyError, ResolvedFollowMedia, open_upstream, proxy_request_headers,

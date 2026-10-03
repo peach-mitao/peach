@@ -1085,7 +1085,7 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertEqual(len(evidence), 2)
         for response in (HttpResponse(403, {}, inside, "https://brand.test/"),
                          HttpResponse(200, {}, inside, "https://elsewhere.test/")):
-            found, _, note = module.scan(lambda *args: response, "https://brand.test/", 1)
+            found, _, note = module.scan(lambda *args, response=response: response, "https://brand.test/", 1)
             self.assertEqual(found, set())
             self.assertIn("未取得", note)
 
@@ -1837,7 +1837,7 @@ class OperationalScriptTests(unittest.TestCase):
 
                 shot: list[str] = []
 
-                def fake_sheet(_ffmpeg, path, _duration, destination, _frames):
+                def fake_sheet(_ffmpeg, path, _duration, destination, _frames, shot=shot):
                     shot.append(Path(path).name)
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     destination.write_bytes(b"x" * 8192)
@@ -1846,7 +1846,7 @@ class OperationalScriptTests(unittest.TestCase):
                 choice = type("C", (), {"path": "ffmpeg"})
                 with mock.patch.object(sheets, "make_sheet", fake_sheet), \
                         mock.patch.object(sheets.FFmpegResolver, "ffmpeg",
-                                          lambda _self: choice), \
+                                          lambda _self, choice=choice: choice), \
                         redirect_stdout(io.StringIO()):
                     sheets.run(args)
                 self.assertEqual(shot, expected)
@@ -3142,7 +3142,7 @@ class ReleaseTagTests(unittest.TestCase):
                               ({("git", "branch", "--show-current"): "feature"}, []),
                               ({}, [{"ref": "refs/tags/v0.7.14"}])):
             with self.subTest(changes=changes, refs=refs), self._shell(changes), \
-                    mock.patch.object(self.release, "api", side_effect=lambda repo, path: {"object": {"sha": "abc"}} if path == "git/ref/heads/master" else refs), \
+                    mock.patch.object(self.release, "api", side_effect=lambda repo, path, refs=refs: {"object": {"sha": "abc"}} if path == "git/ref/heads/master" else refs), \
                     mock.patch.object(self.release.version_bump, "read_version", return_value="0.7.14"), \
                     mock.patch.object(Path, "read_text", return_value="## [0.7.14] - 2026-09-07\n"), \
                     self.assertRaises(ValueError):

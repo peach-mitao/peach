@@ -30,7 +30,6 @@ from peach.ffmpeg import FFmpegResolver
 from peach.jobs import (
     DiskGuard,
     JobPolicyError,
-    PidFileLock,
     SourceAccessPolicy,
     require_free_space,
     job_main,
