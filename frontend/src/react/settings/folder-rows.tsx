@@ -102,12 +102,13 @@ export function useFolderRows<T extends FolderRowValue>({ initial, blank, pickFo
   return { rows, edit, add, remove, errors, setErrors, picking, pick, inputRef };
 }
 
-/** 一行描边卡。`label` 是路径框的无障碍名，`children` 排进路径下面那一格。 */
+/** 一行描边卡。`label` 是路径框的无障碍名，`children` 排进路径下面那一格。`error` 原样放进路径框
+ * 下的提示，调用方可以传一段带 `role="alert"` 的节点让读屏播报。 */
 export function FolderRow({ label, path, onPath, error, inputRef, picking, onPick, onRemove, children }: {
   label: string;
   path: string;
   onPath: (path: string) => void;
-  error?: string;
+  error?: ReactNode;
   inputRef: (element: HTMLInputElement | null) => void;
   picking: boolean;
   onPick: () => void;

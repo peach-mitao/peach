@@ -2,7 +2,10 @@
  *
  * 两框都是 BoardUI `Input`，`id` 固定为 `access-password`、`access-confirm`，浏览器的密码管理器按
  * `new-password` 认它们。关掉时两框置灰、不必填也不标错；错误写在各自框下，`confirmationInvalid`
- * 让只有一句错误的调用方（首启页的 `access_password`）把确认框一起标红。 */
+ * 让只有一句错误的调用方（首启页的 `access_password`）把确认框一起标红。错误原样放进框下的提示，
+ * 调用方可以传一段带 `role="alert"` 的节点让读屏播报。 */
+import type { ReactNode } from 'react';
+
 import { Input } from '@/components/base/input/input';
 
 export function PasswordPair({
@@ -15,9 +18,9 @@ export function PasswordPair({
   onPassword: (value: string) => void;
   onConfirmation: (value: string) => void;
   disabled?: boolean;
-  passwordError?: string;
+  passwordError?: ReactNode;
   passwordHint?: string;
-  confirmationError?: string;
+  confirmationError?: ReactNode;
   confirmationInvalid?: boolean;
 }) {
   return (

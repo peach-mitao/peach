@@ -394,7 +394,9 @@ Auth Card 是注册表里没有的组合：页面底色 `background-full` 上居
 媒体库、访问密码、高级设置、完成设置后四组之间是 24px 留白加一条 `separator-border` 横线，
 第一组紧跟卡头不画线；浏览器历史记录是「完成设置后」里的子组，同样以横线分隔。一级分组标题
 用 `body-semibold`、主文字色；字段标签用 BoardUI `Label`；说明用 `body-2-regular`、次级文字色，
-错误用同一字号的 `text-error-primary`，框体线条随 `aria-invalid` 转 danger 色。
+整表一句与提交失败用 `ErrorText`（同一字号的 `text-error-primary`、`role="alert"`）；字段错误
+替换框下的提示，包在 `role="alert"` 里由 `aria-describedby` 挂在框上，页面上只有一份，框体随
+`aria-invalid` 转 danger 色。
 
 ## 安装后教程
 

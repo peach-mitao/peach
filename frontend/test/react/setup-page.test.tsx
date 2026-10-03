@@ -70,6 +70,19 @@ const radio = (root: ParentNode, label: string) =>
   [...root.querySelectorAll('label')].find((node) => node.textContent?.trim() === label);
 const advanced = (root: ParentNode) => [...root.querySelectorAll('summary')].find((node) => node.textContent === '高级设置');
 const submitForm = async (root: ParentNode) => { await click(buttonNamed('完成设置', root)); await settle(); };
+const alertsWith = (root: ParentNode, message: string) =>
+  [...root.querySelectorAll('[role="alert"]')].filter((node) => node.textContent?.includes(message));
+const occurrences = (root: HTMLElement, message: string) => (root.textContent ?? '').split(message).length - 1;
+
+/** 这句错误在页面上只有一份，落在一个 `role="alert"` 里，并由框的 `aria-describedby` 指到。 */
+function expectAnnounced(root: HTMLElement, input: Element | null | undefined, message: string) {
+  const alerts = alertsWith(root, message);
+  expect(alerts).toHaveLength(1);
+  expect(occurrences(root, message)).toBe(1);
+  const described = (input?.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+  expect(described.some((id) => document.getElementById(id)?.contains(alerts[0]!))).toBe(true);
+  return alerts[0]!;
+}
 
 it('题目、默认值与题面来自读题接口：媒体库一行在外面，其余折进高级设置', async () => {
   const { host } = await open();
@@ -174,7 +187,8 @@ describe('填错时原位标错', () => {
     expect(advanced(host)?.getAttribute('aria-expanded')).toBe('true');
     expect(field(host, 'port')?.value).toBe('70000');
     expect(field(host, 'port')?.getAttribute('aria-invalid')).toBe('true');
-    expect(host.textContent).toContain('端口要是 1 到 65535 之间的整数');
+    expectAnnounced(host, paths(host)[0], '目录不存在：D:\\Nope');
+    expectAnnounced(host, field(host, 'port'), '端口要是 1 到 65535 之间的整数');
     expect(document.activeElement).toBe(paths(host)[0]);
   });
 
@@ -183,8 +197,10 @@ describe('填错时原位标错', () => {
       error: '有几项需要修改', errors: { media_dir: ['请添加 1 到 100 个媒体文件夹'] } } } });
     await click(buttonNamed('添加媒体库', host));
     await submitForm(host);
-    const alert = [...host.querySelectorAll('[role="alert"]')].find((node) => node.textContent?.includes('请添加'));
+    const [alert, ...more] = alertsWith(host, '请添加 1 到 100 个媒体文件夹');
     expect(alert).toBeDefined();
+    expect(more).toHaveLength(0);
+    expect(occurrences(host, '请添加 1 到 100 个媒体文件夹')).toBe(1);
     expect(rows(host).some((row) => row.contains(alert!))).toBe(false);
     expect(alert!.compareDocumentPosition(rows(host)[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(advanced(host)?.getAttribute('aria-expanded')).toBe('false');
@@ -198,7 +214,11 @@ describe('填错时原位标错', () => {
     expect(switches(host)[0]!.checked).toBe(true);
     expect(host.querySelector('#access-password')?.getAttribute('aria-invalid')).toBe('true');
     expect(host.querySelector<HTMLInputElement>('#access-password')?.value).toBe('first-password');
-    expect(host.textContent).toContain('两次输入的访问密码不一致');
+    const first = expectAnnounced(host, host.querySelector('#access-password'), '两次输入的访问密码不一致');
+    // 同一句错误再提交一次：提示换成新节点，读屏重新播报，页面上仍只有一份。
+    await submitForm(host);
+    const second = expectAnnounced(host, host.querySelector('#access-password'), '两次输入的访问密码不一致');
+    expect(second).not.toBe(first);
   });
 });
 

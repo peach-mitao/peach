@@ -74,6 +74,11 @@ export function SetupForm({ setup, onDone }: { setup: SetupQuestions; onDone: (d
   useEffect(() => {
     if (errorRound) form.current?.querySelector<HTMLElement>('input[aria-invalid="true"]')?.focus();
   }, [errorRound]);
+  // 写回的错误放进框下的提示：`role="alert"` 让读屏在它出现时播报一次，提示本身仍由
+  // `aria-describedby` 挂在框上，文字在页面上只有这一份。`key` 跟着提交轮次换，同一句错误
+  // 再提交一次也会重新播报。
+  const announce = (message: string | undefined) =>
+    message ? <span key={errorRound} role="alert">{message}</span> : undefined;
 
   const visible = (question: SetupQuestion) =>
     !question.visible_when || Object.entries(question.visible_when).every(([key, value]) => values[key] === value);
@@ -125,7 +130,7 @@ export function SetupForm({ setup, onDone }: { setup: SetupQuestions; onDone: (d
             ))}
           </SegmentedRadioGroup>
           {help ? <Help>{help}</Help> : null}
-          {error ? <ErrorText>{error}</ErrorText> : null}
+          {error ? <ErrorText key={errorRound}>{error}</ErrorText> : null}
         </div>
       );
     }
@@ -138,7 +143,7 @@ export function SetupForm({ setup, onDone }: { setup: SetupQuestions; onDone: (d
           ? <span className="shrink-0 pl-1 text-body-regular text-text-secondary">{question.prefix}</span>
           : undefined}
         trailingIcon={question.suffix ? Suffix : undefined}
-        validationBehavior="aria" isInvalid={Boolean(error)} hint={error || help || undefined} />
+        validationBehavior="aria" isInvalid={Boolean(error)} hint={announce(error) ?? (help || undefined)} />
     );
   };
 
@@ -152,11 +157,11 @@ export function SetupForm({ setup, onDone }: { setup: SetupQuestions; onDone: (d
           <GroupTitle id="setup-media-title">
             {media.label}<span aria-hidden className="ml-0.5 text-text-error-primary">*</span>
           </GroupTitle>
-          {tableError ? <ErrorText>{tableError}</ErrorText> : null}
+          {tableError ? <ErrorText key={errorRound}>{tableError}</ErrorText> : null}
           <div role="group" aria-labelledby="setup-media-title" className="flex flex-col gap-3">
             {folders.rows.map((row, index) => (
               <FolderRow key={index} label={`${media.label} ${index + 1}`} path={row.path}
-                onPath={(path) => folders.edit(index, { path })} error={folders.errors[index]}
+                onPath={(path) => folders.edit(index, { path })} error={announce(folders.errors[index])}
                 inputRef={folders.inputRef(index)} picking={folders.picking === index}
                 onPick={() => void folders.pick(index)}
                 onRemove={folders.rows.length > 1 ? () => { folders.remove(index); addButton.current?.focus(); } : undefined}>
@@ -199,7 +204,7 @@ export function SetupForm({ setup, onDone }: { setup: SetupQuestions; onDone: (d
         {accessOn
           ? <PasswordPair label="访问密码" password={password} confirmation={confirmation}
               onPassword={setPassword} onConfirmation={setConfirmation}
-              passwordError={text(errors.access_password) || undefined} passwordHint="请输入 8–256 个字符。"
+              passwordError={announce(text(errors.access_password))} passwordHint="请输入 8–256 个字符。"
               confirmationInvalid={Boolean(errors.access_password)} />
           : null}
       </CardGroup>

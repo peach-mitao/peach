@@ -20590,10 +20590,13 @@ function Sh({ setup: e, onDone: t }) {
 	(0, v.useEffect)(() => {
 		M && A.current?.querySelector("input[aria-invalid=\"true\"]")?.focus();
 	}, [M]);
-	let te = (e) => !e.visible_when || Object.entries(e.visible_when).every(([e, t]) => s[e] === t), N = (e, t) => c((n) => ({
+	let te = (e) => e ? /* @__PURE__ */ (0, B.jsx)("span", {
+		role: "alert",
+		children: e
+	}, M) : void 0, N = (e) => !e.visible_when || Object.entries(e.visible_when).every(([e, t]) => s[e] === t), P = (e, t) => c((n) => ({
 		...n,
 		[e]: t
-	})), P = async (e) => {
+	})), ne = async (e) => {
 		if (e.preventDefault(), E) return;
 		D(!0), T("");
 		let n = {
@@ -20602,7 +20605,7 @@ function Sh({ setup: e, onDone: t }) {
 			scan_now: h,
 			history_guide: _
 		};
-		for (let e of r) te(e) && (n[e.key] = s[e.key] ?? "");
+		for (let e of r) N(e) && (n[e.key] = s[e.key] ?? "");
 		l && Object.assign(n, {
 			access_password: d,
 			access_confirm: p
@@ -20617,7 +20620,7 @@ function Sh({ setup: e, onDone: t }) {
 		} finally {
 			D(!1);
 		}
-	}, ne = (e) => {
+	}, re = (e) => {
 		let t = xh(b[e.key]), n = e.help.join("");
 		if (e.input === "choice") {
 			let r = `setup-${e.key}-label`;
@@ -20634,7 +20637,7 @@ function Sh({ setup: e, onDone: t }) {
 						orientation: "horizontal",
 						className: Jm,
 						value: s[e.key] ?? e.default,
-						onChange: (t) => N(e.key, t),
+						onChange: (t) => P(e.key, t),
 						children: (e.options ?? []).map((e) => /* @__PURE__ */ (0, B.jsx)(cp, {
 							value: e.value,
 							className: Ym,
@@ -20642,7 +20645,7 @@ function Sh({ setup: e, onDone: t }) {
 						}, e.value))
 					}),
 					n ? /* @__PURE__ */ (0, B.jsx)(Kt, { children: n }) : null,
-					t ? /* @__PURE__ */ (0, B.jsx)(qt, { children: t }) : null
+					t ? /* @__PURE__ */ (0, B.jsx)(qt, { children: t }, M) : null
 				]
 			}, e.key);
 		}
@@ -20654,7 +20657,7 @@ function Sh({ setup: e, onDone: t }) {
 			autoComplete: "off",
 			spellCheck: "false",
 			value: s[e.key] ?? "",
-			onChange: (t) => N(e.key, t),
+			onChange: (t) => P(e.key, t),
 			leadingAddon: e.prefix ? /* @__PURE__ */ (0, B.jsx)("span", {
 				className: "shrink-0 pl-1 text-body-regular text-text-secondary",
 				children: e.prefix
@@ -20665,13 +20668,13 @@ function Sh({ setup: e, onDone: t }) {
 			}) : void 0,
 			validationBehavior: "aria",
 			isInvalid: !!t,
-			hint: t || n || void 0
+			hint: te(t) ?? (n || void 0)
 		}, e.key);
-	}, re = o.rows.map((e) => e.path.trim()).filter(Boolean), ie = o.rows.some((e) => fh(e.location));
+	}, ie = o.rows.map((e) => e.path.trim()).filter(Boolean), ae = o.rows.some((e) => fh(e.location));
 	return /* @__PURE__ */ (0, B.jsxs)("form", {
 		ref: A,
 		noValidate: !0,
-		onSubmit: (e) => void P(e),
+		onSubmit: (e) => void ne(e),
 		"aria-labelledby": "auth-card-title",
 		className: "flex flex-col gap-6",
 		children: [
@@ -20687,7 +20690,7 @@ function Sh({ setup: e, onDone: t }) {
 							children: "*"
 						})]
 					}),
-					S ? /* @__PURE__ */ (0, B.jsx)(qt, { children: S }) : null,
+					S ? /* @__PURE__ */ (0, B.jsx)(qt, { children: S }, M) : null,
 					/* @__PURE__ */ (0, B.jsx)("div", {
 						role: "group",
 						"aria-labelledby": "setup-media-title",
@@ -20696,7 +20699,7 @@ function Sh({ setup: e, onDone: t }) {
 							label: `${n.label} ${r + 1}`,
 							path: t.path,
 							onPath: (e) => o.edit(r, { path: e }),
-							error: o.errors[r],
+							error: te(o.errors[r]),
 							inputRef: o.inputRef(r),
 							picking: o.picking === r,
 							onPick: () => void o.pick(r),
@@ -20724,7 +20727,7 @@ function Sh({ setup: e, onDone: t }) {
 						onClick: o.add,
 						children: "添加媒体库"
 					}),
-					ie ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsxs)(Kt, { children: [e.cloud.help, /* @__PURE__ */ (0, B.jsx)(Yt, {
+					ae ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsxs)(Kt, { children: [e.cloud.help, /* @__PURE__ */ (0, B.jsx)(Yt, {
 						href: e.cloud.link.url,
 						children: e.cloud.link.label
 					})] }), e.cloud.dependencies.map((e) => /* @__PURE__ */ (0, B.jsxs)(Kt, { children: [e.message, /* @__PURE__ */ (0, B.jsx)(Yt, {
@@ -20763,7 +20766,7 @@ function Sh({ setup: e, onDone: t }) {
 						confirmation: p,
 						onPassword: f,
 						onConfirmation: m,
-						passwordError: xh(b.access_password) || void 0,
+						passwordError: te(xh(b.access_password)),
 						passwordHint: "请输入 8–256 个字符。",
 						confirmationInvalid: !!b.access_password
 					}) : null
@@ -20774,7 +20777,7 @@ function Sh({ setup: e, onDone: t }) {
 				defaultOpen: O > 0,
 				children: /* @__PURE__ */ (0, B.jsx)("div", {
 					className: "flex flex-col gap-4",
-					children: r.filter(te).map(ne)
+					children: r.filter(N).map(re)
 				})
 			}, O) }),
 			/* @__PURE__ */ (0, B.jsxs)(Ct, {
@@ -20789,7 +20792,7 @@ function Sh({ setup: e, onDone: t }) {
 						children: [/* @__PURE__ */ (0, B.jsx)(Ip, {
 							isSelected: h,
 							onChange: g,
-							children: bh(re)
+							children: bh(ie)
 						}), /* @__PURE__ */ (0, B.jsx)(Kt, { children: "读取已有 NFO 和封面，采集缺失资料。符合自动规则的资料会在处理完成后落库，其余候选留在复核。" })]
 					}),
 					/* @__PURE__ */ (0, B.jsxs)("section", {
