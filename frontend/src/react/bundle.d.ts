@@ -4,7 +4,7 @@
  * `entry.tsx` 按这里的签名实现，两边的类型检查各自对照同一份声明。
  * 配置数据的形状以 `/api/configuration`（`src/peach/routes_configuration.py`）为准。 */
 import type { QualityGoal } from './quality-goals/quality-goals';
-import type { ShellActions } from './router/shell-actions';
+import type { CloudDownloadPrefill, ShellActions } from './router/shell-actions';
 import type { IndexProps } from './index/index-data';
 import type { CatalogGridProps } from './catalog-grid/types';
 import type { JunkQueueProps } from './junk-queue/junk-queue';
@@ -292,10 +292,11 @@ export interface ReactPage<P> {
 
 /** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。 */
 /** 作品页与关注条目的「云下载」键带进来的番号、标题与来处（`asset:12`、`follow:34`）。 */
-export interface ActivityProps { prefill?: { code?: string; title?: string; origin?: string } }
+export interface ActivityProps { prefill?: CloudDownloadPrefill }
 
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */
 export interface QualityGoalsProps {
+  searchResources(prefill: CloudDownloadPrefill): void;
   /** 打开作品详情（遗留层的整页视图，含播放器与队列）。 */
   openItem(id: number): void;
   /** 番号 + 版次徽章 + 标题的 HTML。非 JAV 条目退化成转义后的文件名。 */

@@ -25,7 +25,7 @@ import {
 
 /** 一部待升级的作品一张卡。 */
 function GoalCard(
-  { item, openItem, javTitleHtml, javDisplayName, srcBadge }: { item: QualityGoal } & QualityGoalsProps,
+  { item, openItem, searchResources, javTitleHtml, javDisplayName, srcBadge }: { item: QualityGoal } & QualityGoalsProps,
 ) {
   const open = () => openItem(item.id);
   return (
@@ -64,7 +64,10 @@ function GoalCard(
             : null}
         </div>
       </div>
-      <footer className="flex justify-end">
+      <footer className="flex flex-wrap justify-end gap-2">
+        {item.code ? <Button variant="secondary" size="small" onClick={() => searchResources({
+          code: item.code!, title: javDisplayName(item), origin: `asset:${item.id}`, searchReason: item.reason || '',
+        })}>搜索资源</Button> : null}
         <Button variant="secondary" size="small" onClick={open}>查看版本</Button>
       </footer>
     </li>

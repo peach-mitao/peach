@@ -24,6 +24,7 @@ export const AMANE_BRIDGE_KEY = ['scraping', 'amane-bridge'] as const;
 
 /** 一个采集来源。字段以 `q_scraping`（`src/peach/web_scraping.py`）为准。 */
 export interface Source {
+  nature?: string;
   source: string;
   label: string;
   login: string;

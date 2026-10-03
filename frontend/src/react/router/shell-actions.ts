@@ -12,7 +12,7 @@ import type { IndexKind, IndexPerson, IndexRoute, PeopleLayout, PersonAvatar } f
 import type { JunkQueueProps } from '../junk-queue/junk-queue';
 
 /** 云下载表单的预填：番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
-export interface CloudDownloadPrefill { code?: string; title?: string; origin?: string }
+export interface CloudDownloadPrefill { code?: string; title?: string; origin?: string; searchReason?: string }
 
 export interface ShellActions {
   /** 打开作品详情（舞台）。 */

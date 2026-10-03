@@ -118,6 +118,7 @@ function CredentialSection({ row, readOnly, toast }:
         <SourceIcon provider={row.provider} />
       </span>
       <b className="text-body-medium text-text-primary">{row.provider_label}</b>
+      {row.nature ? <span className="text-caption-1-regular text-text-secondary">{row.nature}</span> : null}
       <StateChip row={row} />
       {row.missing.length
         ? <Chip variant="caption" color="rose">{`缺 ${row.missing.join('、')}`}</Chip>

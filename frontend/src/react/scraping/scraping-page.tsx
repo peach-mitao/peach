@@ -158,6 +158,7 @@ function SourceCard({ source, toast }: { source: Source } & ScrapingProps) {
       </span>
     }>
       <Rows>
+        <SettingsRow label="来源性质">{source.nature || '公开页面'}</SettingsRow>
         <SettingsRow label="连接方式">
           <Select aria-label="连接方式" selectedKey={network}
             onSelectionChange={(key) => { if (key !== null) setNetwork(String(key)) }}>

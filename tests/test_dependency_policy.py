@@ -79,6 +79,7 @@ class DependencyPolicyTests(unittest.TestCase):
             "pystray": "pystray",
             "resvg_py": "resvg-py",
             "starlette": "starlette",
+            "torznab": "torznab",
             "uvicorn": "uvicorn",
             "watchdog": "watchdog",
             "zeroconf": "zeroconf",

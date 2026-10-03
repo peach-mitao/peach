@@ -1,6 +1,6 @@
 # Peach 产品待办
 
-最后核验：2026-10-02。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+最后核验：2026-10-03。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
 
 ## 优先级
 
@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | 开发流程 | 隔离工作树自动同步 Python 依赖，主检出只读核对；commit-msg 检查署名、已有 README 声明和分段 | `scripts/test_environment.py`、`scripts/test.ps1`、`scripts/test.sh`、`scripts/check_commit_message.py`、`scripts/githooks/` |
 | 首次前端导入 | React 导入钩子各有 30 秒上限，普通用例沿用默认超时 | `frontend/test/islands.test.ts` |
-| 42、43、64 | 云下载与 JavDB 卡片资源查询已具备；本地下载器、Torznab／JavBus 与来源性质标注仍待接入 | `src/peach/downloads.py`、`src/peach/wants_magnets.py`、前端下载设置 |
+| 42、43、64 | 云下载、JavDB 卡片资源、自配 Torznab 搜索、体积和质量筛选及既有来源性质标注已具备；资源搜索正式全量与桌面、手机取证通过，待集成和运行核验；本地下载、JavBus、真实索引器验收与未来 App 通道仍待补 | `src/peach/resource_search.py`、`src/peach/wants_magnets.py`、活动页资源搜索与来源配置 |
 | 21、26、46 | 已有数据库就绪检查；doctor、统一诊断页与周期挂载探测仍待实现 | `src/peach/health.py`、CLI 与路由登记 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
 | 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
@@ -34,6 +34,7 @@
 等待条件与开发优先级分开；条件满足后再安排批次，不把历史数字直接用作执行计划。
 
 - 真实账号验收：操作 43 需要用户完成 PikPak 浏览器登录，另验磁力提交与两小时以上的过期续期。
+- 真实索引器验收：用户尚未搭建 Prowlarr 或 Jackett，已确认后置第 43 条的真实搜索验收；实现与合成数据测试不代表真实站点可用。
 - 预算与产品决定：操作 12 的本地下载预算；25 的 NFO 写入边界；前端全局文字亮度与图标选择。
 - 真实写入与维护窗口：操作 3、4、5、8、14、19、24、26、42；先刷新预览，涉及账本、生产入口或凭据时取得当轮授权。
 - 人工复核与证据：操作 2、9、17、18、27、30、32、33、34、37、38、41；32 的形状决定影响 35。操作 1 等历史逐行证据，有新增证据再追溯。
@@ -67,7 +68,7 @@
 
 真实 ledger 迁移、双机复制取消和系统级安装另有明确授权边界。
 
-1. **寻找更好版本**：已能逐条标记「高清 / 无水印 / 完整版」等目标；还缺相似内容匹配（第 51 条）、候选去重、来源发现（第 43 条）和人工替换确认。替换完成后旧版的个人记录与目标按 ADR-0087 接到新版上，目标标「已替换」关闭。
+1. **寻找更好版本**：已能逐条标记「高清 / 无水印 / 完整版」等目标，并带番号和目标进入资源搜索；还缺相似内容匹配（第 51 条）、跨版本候选去重、第 43 条的剩余来源发现和人工替换确认。替换完成后旧版的个人记录与目标按 ADR-0087 接到新版上，目标标「已替换」关闭。
 2. **现代自适应播放**：Video.js、Range、统计面板和 115/PikPak 原生 MP4 的按需 HLS 清单已上线；还缺自适应码率、多路清单、快速首帧和来源层大块预取；做完后补 HLS 首帧、seek、自适应码率与双端视觉验收。
 3. **在线追更**：`src/peach/follow_providers.py` 登记的 12 个来源已上线（发现更新、跨站重复判定、`/follow` 与 `/follow-manage` 两页、writer 自动轮询、在线资产就地播放），关注条目的磁力可交云下载（ADR-0089）。还缺两件：关注来源附件的直链下载，归第 42 条的本地下载通道，流量与磁盘预算见「待执行的操作」第 12 条；SimpCity 多图楼层的图片轮播：`SimpCityConnector` 只把图片地址存进 `extra["images"]`，没投影成 `media_items`，归档站（`KemonoConnector._media_items`）与 f95zone（`f95_attachment_media_items`）已经投影。
 4. **首尾帧出处与不完整候选**：已有受限 FFmpeg 首尾抽帧、Windows 内置 OCR、证据帧缓存、来源/Full version 候选和 `/review`；仍需决定全库批次范围，并把用户批准后的不完整版判断接到更好版本目标。
@@ -141,6 +142,7 @@
 42. **本地下载：走用户自己的 BT 客户端与直链**：BT 通过用户本机下载器的 Web API 提交，Peach 不实现 BT 协议：qBittorrent 用 `/api/v2/auth/login`、`torrents/add`（`urls`、`savepath`、`category`／`tags`）、`torrents/info?hashes=`、`torrents/delete`；Transmission 用 `torrent-add`、`torrent-get`、`torrent-remove`，首个请求回 409 后带 `X-Transmission-Session-Id` 重发。保存路径必须落在某个本地来源根之内，watchdog 才看得到。关注来源附件（FANBOX、Patreon、Gofile 等）的直链由 Peach 自己下载。写新文件、不碰已有文件；占本机流量与磁盘，复用 `jobs.py` 的计费来源与磁盘闸门，预算见「待执行的操作」第 12 条。长下载用第 57 条的续传与停滞看门狗。
     - 复用云下载的任务表、状态机与九类失败分类（`src/peach/downloads.py`，ADR-0089），只有瞬时网络自动重试；qB `metaDL`／`stalledDL` 归「无源或停滞」，落地未见时定向触发 `ingest_path`。
 43. **资源搜索与候选筛选**：Torznab 是协议不是平台，基于 Newznab 扩展（`https://torznab.github.io/spec-1.3-draft/`）；Jackett、Prowlarr 是把它翻译成各站请求的代理，Sonarr／Radarr 是客户端。Peach 作客户端接用户自己配置的 Prowlarr／Jackett，不内置站点定义：先 `t=caps`，再 `t=search&q=<番号>&cat=6000`，解析 `item` 的 `title`、`size`、`pubDate` 与 `torznab:attr` 的 `seeders`、`peers`、`magneturl`、`infohash`；磁力可能在 `magneturl`、`link` 或 `guid` 任一处，按内容判断（SakuraMedia `src/service/transfers/downloads/clients/torznab.py`，FC2 番号只搜纯数字，部分索引器失败不算整体失败）。
+    - 自配 Torznab、凭据本机保存、候选筛选与最多五条结果、活动页填入云下载表单已实现。「寻找更好版本」页和详情页带入番号与原目标；明确的中字、无码目标自动选排序，其余文字保留供用户复核。真实索引器验收与 JavBus 作品页来源仍待补齐；逐条确认提交下载。
     - Jackett 与 Prowlarr 都内置 `sukebeinyaasi`、`onejav`、`freejavtorrent`（公开）与 `clearjav-api`（私有，只收官方片商作品）的定义。sukebei 没有清晰度分类，Jackett 把它整站映射成 6000，4K 只能在 `q` 里加关键词，再从标题解析；索引器名单里没有专收 4K 的公开源。
     - 作品页资源还需接 JavBus：从详情页脚本取 `gid`、`uc` 后请求 `ajax/uncledatoolsbyajax.php`（带 Referer），每行有名称、大小、日期与「高清」「字幕」标记（garage `garage_jav/javbus.go`、Atlas `services/jav-utils.ts` 的 `parseMagnets`）。
     - 候选筛选取 SakuraMedia `auto_download_service.py` 的判据并加强：标题解析出的番号对不上就剔除、体积区间、做种数大于 0、infohash 黑名单、最多试 5 个；Peach 另从标题与标签解析分辨率（`4K`、`2160p`）、编码、中字与无码标记，按「寻找更好版本」的目标排序，不只按体积。
@@ -166,6 +168,7 @@
 62. **智能列表与只读查询**：保存一组组合筛选，结果随馆藏自动更新；另给高级入口跑只读 SQL（只读连接，写不进去）。JAV_MovieManager 直接执行用户 SQL，读写不分，这一点不照搬。
 63. **可选遥测，默认关闭**：开启后只上报版本号与平台，上报内容在设置页逐字列出、可随时关。SakuraMedia 默认开启并上报实例 ID、插件、CPU、内存、媒体数与总字节（`src/service/system/telemetry_service.py`），javm 写死上报地址，两者都不照搬。默认关闭时看 GitHub Releases 下载计数。
 64. **来源开关旁写明来源性质**：设置页每个来源的开关旁标一类：用户自己的账号、公开页面、归档站（Kemono、Coomer 转载付费内容）、伪装客户端（第 29 条 JavDB App 通道）、用户自配索引器（第 43 条）。默认开关保持各来源现状，用户一眼看得出每一类拿的是什么。和第 29、42、43 条同批做。
+    - 现有追更、采集与索引器配置已显示渠道性质；第 29 条 App 通道尚未实现，它的「伪装客户端」标注随通道接入。来源身份可信度、优先级与启用状态分别保留。
 65. **javinfo.dev 作可选来源**：用户自带 API key 才启用。`/movie` 每千次 0.80 美元，只收成功响应；前五家来自自建目录库、毫秒级（`docs/providers`）；FC2 与无码只经 missav、sextb 两个流媒体源，没有 FC2 专门来源。接入前用新账号送的 0.02 美元（约 25 次 `/movie`）对一组已复核番号跑对照，比字段准确率与速度。归档的 legacy 仓库没有许可证，只借思路不借代码，且 r18 旧 API 已失效，没有 Peach 缺的解析器。
 66. **小文件打包**（低）：SakuraMedia v0.9.0 把影片图片与时间轴缩略图打进 `assets.zip`、`thumbnails.zip`（`ZIP_STORED`，`src/common/image_store.py` 包条目优先、单文件兜底），为的是文件数与备份速度，不影响扫描与采集速度。`peach-data` 下 `sources/` 约 9 万、`generated/` 约 6 万个文件；收益在 Syncthing 图片同步与备份。要求能解包回原样，和第 32 条一起设计。
 67. **站点互联**（观察）：AMMDS v1.6.80 让好友站点当只读数据源。单人自用时只对自己的几台机器有意义，Windows 写、Mac 读的复制已覆盖；出现第二个使用者再议。

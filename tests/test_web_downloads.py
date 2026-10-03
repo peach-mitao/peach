@@ -336,5 +336,37 @@ class BrowserLoginRouteTests(_App):
         self.assertEqual(self.login.started, 0)
 
 
+class ResourceIndexerRoutes(_App):
+    URL = "/api/configuration/indexers"
+
+    def setUp(self):
+        super().setUp()
+        self.local = TestClient(self.app, base_url="http://127.0.0.1", client=("127.0.0.1", 123))
+
+    def test_credentials_are_local_and_origin_guarded(self):
+        body = {"indexers": [{"key": "one", "name": "测试源", "url": "http://indexer.test/api",
+                              "api_key": "private-test-key", "enabled": True}]}
+        self.assertEqual(self.client.post(self.URL, json=body).status_code, 403)
+        self.assertEqual(self.local.post(self.URL, json=body,
+                                        headers={"origin": "https://other.invalid"}).status_code, 403)
+        response = self.local.post(self.URL, json=body)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("private-test-key", response.text)
+        self.assertTrue(self.local.get(self.URL).json()["indexers"][0]["api_key_set"])
+        self.assertEqual(self.client.get(self.URL).status_code, 403)
+
+    def test_search_endpoint_passes_saved_config_and_returns_candidates(self):
+        from peach.resource_search import Indexers
+        Indexers(self.service.credentials).save({"indexers": [{
+            "key": "one", "name": "测试源", "url": "http://indexer.test/api", "enabled": True}]})
+        with mock.patch("peach.web_resource_search._SEARCH.run", return_value={
+                "ok": True, "state": "ready", "items": [], "warnings": [], "error": ""}) as search:
+            response = self.client.get("/api/resources/search?code=ABC-123&goal=chinese")
+        self.assertEqual(response.status_code, 200, response.text)
+        args = search.call_args.args
+        self.assertEqual((args[0][0]["key"], args[1], args[2].goal), ("one", "ABC-123", "chinese"))
+        self.assertEqual(self.client.get("/api/resources/search?code=ABC-123&min_size=-1").status_code, 400)
+
+
 if __name__ == "__main__":
     unittest.main()

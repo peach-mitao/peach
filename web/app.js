@@ -3621,7 +3621,7 @@ const itemDetailActions={
   openRegion:region=>openRegion(region),
   openTag:tag=>{commitContextFilter(filters=>{filters.tag=tag});window.scrollTo({top:0,behavior:'smooth'})},
   addToPlaylist:item=>openAddToPlaylist(item),
-  cloudDownload:item=>openCloudDownload({code:item.code||'',title:item.title||item.name||'',origin:`asset:${item.id}`}),
+  cloudDownload:item=>openCloudDownload({code:item.code||'',title:item.title||item.name||'',origin:`asset:${item.id}`,searchReason:item.better_version?item.better_version_reason||'':''}),
   saveMix:options=>saveMixAsPlaylist(options),
   editPlaylist:()=>openPlaylists(true),
   openPlaylists:()=>openPlaylists(true),

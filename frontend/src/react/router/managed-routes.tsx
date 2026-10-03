@@ -117,8 +117,9 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/quality-goals': {
     prefetch: (_open, signal) => prefetchQualityGoals(signal),
-    page: (_open, actions) => (
+    page: (_open, actions, go) => (
       <QualityGoalsPage openItem={actions.openItem} javTitleHtml={javTitleHtml} javDisplayName={javDisplayName}
+        searchResources={(prefill) => { actions.requestCloudDownload(prefill); go('/activity') }}
         srcBadge={actions.srcBadge} />
     ),
   },

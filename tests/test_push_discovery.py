@@ -482,7 +482,7 @@ class LocalChannelTests(_ServiceCase):
             self.skipTest(f"本机起不了文件监视：{service.local_channel.message}")
         (self.media / "落地.mp4").write_bytes(b"0" * 8)
         path = self.ledger("local", "落地.mp4")
-        _wait_for(lambda: path in self.rows())
+        _wait_for(lambda: path in self.rows() and service.snapshot()["queue"]["ingested"] == 1)
         self.assertEqual(self.rows().get(path), ("video", 8))
         self.assertEqual(service.snapshot()["queue"]["ingested"], 1)
 

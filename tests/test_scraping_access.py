@@ -32,6 +32,7 @@ class ScrapingAccessTests(unittest.TestCase):
         peach_proxy.save(self.root, {"mode": "proxy", "proxy": "http://user:private-proxy@127.0.0.1:7890"})
         save(self.root, "javdb", {"cookie": "session=private-cookie", "network": "peach"})
         public = q_scraping(SimpleNamespace(follow_secrets_root=self.root), {})
+        self.assertTrue(all(row["nature"] == "公开页面" for row in public["sources"]))
         self.assertEqual(next(item['label'] for item in public['sources'] if item['source'] == 'javdb'), 'JavDB')
         self.assertNotIn("private-cookie", json.dumps(public))
         self.assertNotIn("private-proxy", json.dumps(public))
@@ -264,7 +265,8 @@ class ScrapingAccessTests(unittest.TestCase):
         """`cf_clearance` 绑着解题那台浏览器的 UA：整站 UA 与用户的 Chrome 一致，Cookie 由用户贴，卡上不另收 UA。"""
         from peach.user_agent import USER_AGENT
         shown = save(self.root, "fc2ppvdb", {"cookie": "cf_clearance=abc"})
-        self.assertEqual(set(shown), {"source", "label", "login", "accepts_cookie", "network", "cookie_saved", "browser"})
+        self.assertEqual(set(shown), {"source", "label", "nature", "login", "accepts_cookie", "network", "cookie_saved", "browser"})
+        self.assertEqual(shown["nature"], "公开页面")
         self.assertTrue(shown["cookie_saved"])
         self.assertFalse(shown["browser"], "没有浏览器的机器上这张卡照旧收 Cookie")
         for name in ("fc2ppvdb", "javten"):
