@@ -64,6 +64,7 @@ class JavDBResourceTests(unittest.TestCase):
                 patch.object(source, '_page', side_effect=SourceFailure(FailureReason.AUTH_REQUIRED, 'login')):
             result = source.resources('DEMO-001', session=Session(lambda *args: None))
         self.assertEqual(result['items'], [])
+        self.assertEqual(result['source_url'], 'https://javdb.com/v/demo')
         self.assertTrue(result['warnings'])
 
     def test_comment_urls_cannot_fetch_other_hosts(self):

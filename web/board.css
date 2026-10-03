@@ -211,7 +211,6 @@ body.board-scrolled .top{box-shadow:none;border-bottom:0}
    `.board-filter-frame` 起头，`box-shadow` 整条归特异性高的那一条，少写一遍这里就
    不生效，抬起来的那一档看不出来。 */
 .board-filter-frame.board-filter-frame.board-filter-frame.board-is-stuck{box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-lift)}
-.board-filter-frame.board-is-stuck::before{content:'';position:absolute;left:-16px;right:-16px;top:-9px;height:9px;z-index:-1;background:var(--page);mask-image:linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent);pointer-events:none}
 .board-filter-frame .tagbar.is-stuck,.board-filter-frame .count.is-stuck{backdrop-filter:none;-webkit-backdrop-filter:none}
 .peach-insights{max-width:1120px;margin:0 auto 40px;color:var(--ink)}
 .peach-insights[hidden]{display:none}

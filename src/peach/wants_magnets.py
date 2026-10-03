@@ -6,6 +6,8 @@ from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 import time
+from datetime import date
+from calendar import monthrange
 
 from .sources import FailureReason, JavDBSource, Session, SourceFailure
 
@@ -22,6 +24,17 @@ def fetch(root: Path, code: str) -> dict:
         transport.close()
 
 
+def cache_lifetime(released: str | None, today: date | None = None) -> int:
+    today = today or date.today()
+    year, month = divmod(today.year * 12 + today.month - 1 - 3, 12)
+    cutoff = date(year, month + 1, min(today.day, monthrange(year, month + 1)[1]))
+    try:
+        old = date.fromisoformat(released or '') < cutoff
+    except ValueError:
+        old = False
+    return (365 if old else 7) * 86400
+
+
 class MagnetSearch:
     """一台服务同时只查一部；缓存最多 128 部，失败一分钟后可重试。"""
 
@@ -31,13 +44,13 @@ class MagnetSearch:
         self.cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
         self.next_request = 0.0
 
-    def query(self, code: str) -> dict:
+    def query(self, code: str, *, refresh: bool = False, released: str | None = None) -> dict:
         # 等锁的请求不积压为无限队列；前端把忙态留在卡片上，稍后再取。
         if not self.lock.acquire(timeout=0.05):
             return {"ok": True, "state": "busy", "items": [], "error": "", "checked_at": None}
         try:
             cached = self.cache.get(code)
-            if cached and cached[0] > self.clock():
+            if not refresh and cached and cached[0] + (60 if cached[1]['state'] == 'error' else cache_lifetime(released)) > self.clock():
                 self.cache.move_to_end(code)
                 return cached[1]
             delay = self.next_request - self.clock()
@@ -53,7 +66,7 @@ class MagnetSearch:
             except Exception:  # 来源异常只报告查询失败，不泄露请求或凭据
                 result.update(state="error", error="JavDB 磁链未取得，请稍后重试或检查来源连接。")
             self.next_request = self.clock() + 3
-            self.cache[code] = (self.clock() + 60, result)
+            self.cache[code] = (self.clock(), result)
             self.cache.move_to_end(code)
             while len(self.cache) > 128:
                 self.cache.popitem(last=False)

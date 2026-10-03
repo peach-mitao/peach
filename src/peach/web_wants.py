@@ -205,7 +205,8 @@ def q_want_magnets(contract, args) -> dict:
         raise KeyError("想要条目不存在")
     if not row["code"] or wants.phase(row, date.today()) in {"unreleased", "acquired"}:
         return {"ok": True, "state": "unavailable", "items": [], "error": "", "checked_at": None}
-    return search_for(contract.follow_secrets_root).query(row["code"])
+    return search_for(contract.follow_secrets_root).query(
+        row["code"], refresh=str(args.get('refresh') or '') == '1', released=row['release_date'])
 
 
 def _add(connection, body) -> dict:

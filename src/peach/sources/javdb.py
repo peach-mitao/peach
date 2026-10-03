@@ -110,7 +110,8 @@ class JavDBSource(SiteSource):
                     warnings.append("已读取前三页评论，其余请打开来源页查看。")
             if not entry and not soup.select_one('.review-items'):
                 warnings.append("评论入口未取得。")
-            return {"items": merge_resources(items), "warnings": list(dict.fromkeys(warnings))}
+            return {"items": merge_resources(items), "warnings": list(dict.fromkeys(warnings)),
+                    "source_url": page.url}
 
     def search_url(self, code: str) -> str:
         return f"{self.config.base_url}/search?q={urllib.parse.quote(code)}&f=all"

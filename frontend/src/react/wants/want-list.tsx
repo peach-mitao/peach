@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RiStarLine } from '@remixicon/react';
+import { RiStarLine, RiExternalLinkLine, RiCloudLine, RiDeleteBinLine } from '@remixicon/react';
 
 import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
@@ -44,6 +44,8 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
   want: Want; readOnly: boolean; busy: string; downloads?: DownloadsSnapshot; provider: string; toast(message: string): void;
   onReset(): void; onRemove(): void; onCloudDownload(): void;
 }) {
+  const [resolvedSource, setResolvedSource] = useState('');
+  const source = want.link || resolvedSource || (want.code ? `https://javdb.com/search?q=${encodeURIComponent(want.code)}&f=all` : '');
   return (
     <li data-want-id={want.id}
       className={cardClass({ bordered: 'soft', className: 'flex flex-col gap-4 max-sm:p-4' })}>
@@ -61,22 +63,22 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
           <p data-want-note="" className="text-caption-1-regular text-text-secondary">{searchNote(want)}</p> : null}
         {want.scrape_error ? <p className="text-caption-1-regular text-text-secondary">资料未取得：{want.scrape_error}</p> : null}
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          {want.link ? <ButtonLink data-button-link="" variant="secondary" size="small" href={want.link} target="_blank" rel="noopener noreferrer">来源页</ButtonLink> : null}
+          {source ? <ButtonLink data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine} href={source} target="_blank" rel="noopener noreferrer">来源页</ButtonLink> : null}
           {/* 还在找的两段才给云下载：未发售的没有资源可下，已入库的已经到手。 */}
           {want.phase === 'searching' || want.phase === 'given_up' ? (
-            <Button variant="secondary" size="small" disabled={readOnly} onClick={onCloudDownload}>云下载</Button>
+            <Button variant="secondary" size="small" leadingIcon={RiCloudLine} disabled={readOnly} onClick={onCloudDownload}>云下载</Button>
           ) : null}
           {want.phase === 'given_up' ? (
             <Button variant="secondary" size="small" disabled={readOnly} {...busyProps(busy === `reset:${want.id}`)}
               onClick={onReset}>重新查找</Button>
           ) : null}
-          <Button variant="secondary" size="small" disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
+          <Button variant="secondary" size="small" leadingIcon={RiDeleteBinLine} disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
             onClick={onRemove}>移除</Button>
         </div>
       </div>
       </div>
       {want.code && (want.phase === 'searching' || want.phase === 'given_up')
-        ? <WantMagnets want={want} readOnly={readOnly} downloads={downloads} provider={provider} toast={toast} /> : null}
+        ? <WantMagnets want={want} readOnly={readOnly} downloads={downloads} provider={provider} toast={toast} onSource={setResolvedSource} /> : null}
     </li>
   );
 }
