@@ -1717,7 +1717,7 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
                      "/unseen", "/watch-later", "/flagged", "/junk-files",
                      "/data-cleanup", "/duplicates", "/quality-goals", "/activity",
                      "/mix/1/2", "/parts/1/2", "/editions/1/2", "/playlists",
-                     "/resource-sync",
+                     "/resource-sync", "/diagnostics",
                      "/playlists/1/1", "/follow", "/follow-manage",
                      "/follow/item/190"):
             response = await self.client.get(path)

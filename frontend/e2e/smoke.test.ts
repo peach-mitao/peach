@@ -119,6 +119,7 @@ const ROUTES: readonly Route[] = [
   // 名字对不上任何一家时要换成空态；骨架一直留着，读起来就是还在取。
   { path: '/agencies/不存在的事务所', body: (page) => [heading(page, '#index', '找不到这个事务所')] },
   { path: '/configuration', body: configurationBody },
+  { path: '/diagnostics', body: page => [heading(page, '#main', '系统诊断'), page.locator('#stats section[aria-label="库健康"]')] },
   { path: '/activity', body: (page) => [heading(page, '#main', '活动'), heading(page, '#stats', '还没有任务记录')] },
   {
     path: `/item/${requiredEnv('PEACH_E2E_ITEM')}`,

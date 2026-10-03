@@ -183,6 +183,7 @@ def probe_mounts(roots):
 
 
 def report(settings, snapshot, *, config=None):
+    from . import library_diagnostics
     config = config or settings_file.active()
     checks = component_checks(settings, snapshot, config=config)
     checks.update(data_root=writable_root(config.data_root), port=port_status(settings.host, settings.port),
@@ -191,7 +192,9 @@ def report(settings, snapshot, *, config=None):
                                details={"peach": __version__, "python": platform.python_version()}))
     statuses = {check["status"] for check in checks.values()}
     state = "failed" if "failed" in statuses else "warning" if statuses & {"warning", "unknown"} else "ok"
-    return {"version": __version__, "status": state, "checks": checks}
+    return {"version": __version__, "status": state, "checks": checks,
+            "library": library_diagnostics.library(settings, config),
+            "sources": library_diagnostics.sources(settings, config)}
 
 
 def health_components(settings, snapshot):

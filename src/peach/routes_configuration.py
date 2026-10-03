@@ -96,7 +96,8 @@ def local_only(request: Request) -> None:
 def system_diagnostics(request: Request, args: dict[str, str] = Depends(require_auth)):
     """本机诊断与 doctor JSON 共用报告；媒体来源只读后台快照。"""
     from . import diagnostics
-    local_only(request)
+    if not local_client(request):
+        raise HTTPException(403, "请在运行 Peach 的电脑上打开系统诊断")
     return diagnostics.report(request.app.state.settings, request.app.state.mount_reachability.summary())
 
 

@@ -20,6 +20,7 @@ import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
+import { registerDiagnosticsRoute } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -198,6 +199,7 @@ const ROUTES=[
    插在表尾，所以新路由要么是一条新路径，要么比现有条目更具体。 */
 const registerRoute=spec=>{ROUTES.push(spec);return spec};
 window.peachRegisterRoute=registerRoute;
+registerDiagnosticsRoute(openDiagnostics);
 
 const pageSkeletonHtml=(label,{cards=false,className='',variant='',count,fill,cardRatio,gridClass='',gridSize=''}={})=>
   skeletonHtml(label,{variant:variant||(cards?'cards':'panel'),className,gridClass,gridSize,
@@ -301,6 +303,7 @@ const MANAGEMENT_PLACEHOLDERS={
   '/follow-manage':()=>`<div class="follow">${pageSkeletonHtml('正在读取关注管理',
     {cards:true,count:3,fill:false,className:'followmanage-skeleton'})}</div>`,
   '/configuration':()=>configurationSkeletonHtml(),
+  '/diagnostics':()=>configurationSkeletonHtml(),
   /* 采集来源是 812px 窄列里一叠同宽的 Fieldset：一块高清封面加六个来源。骨架画四块，
      那是首屏装得下的张数；说明那一句是静态文案，与数据无关，立刻显示。 */
   '/scraping':()=>`<div class="scraping-page"><p>高清图片可能要经代理才能下载，先检查连接。</p>
@@ -357,7 +360,7 @@ function renderInitialSurfaceLoading(){
     return;
   }
   const management=new Set(['/stats','/taste','/review','/data-cleanup','/duplicates','/quality-goals','/scraping',
-    '/playlists','/resource-sync','/follow','/follow-manage','/configuration','/activity']);
+    '/playlists','/resource-sync','/follow','/follow-manage','/configuration','/diagnostics','/activity']);
   if(management.has(path)||path.startsWith('/follow/item/')){
     hideDiscoveryBars();
     const stats=$('#stats');stats.hidden=false;clearCatalogGrid();
@@ -2003,6 +2006,13 @@ async function openActivity(push=true){
 /* 配置页要选中的那一组页签名。页签由 `decorate` 按 `.configgroup` 切出来，它读这个名字
    选中对应的那一格，选中之后清空。 */
 let configurationRequestedSection='';
+async function openDiagnostics(push=true){
+  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
+  if(push)route('/diagnostics');
+  const surface=claimSurface('/diagnostics');
+  showManagementBody({placeholder:managementPlaceholder('/diagnostics')});
+  await openManagedRoute('/diagnostics',{},managedSurface(surface));
+}
 async function openConfiguration(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/configuration');

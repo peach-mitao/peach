@@ -24,6 +24,8 @@ import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-
 import { EntityPage } from '../entity-page/entity-page-view';
 import { prefetchDuplicates } from '../duplicates/duplicates';
 import { DuplicatesPage } from '../duplicates/duplicates-page';
+import { prefetchDiagnostics } from '../diagnostics/diagnostics';
+import { DiagnosticsPage } from '../diagnostics/diagnostics-page';
 import { prefetchFollowFeed } from '../follow-feed/follow-feed';
 import { FollowFeedPage } from '../follow-feed/follow-feed-page';
 import { prefetchFollowManage } from '../follow-manage/follow-manage';
@@ -132,6 +134,12 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     page: (_open, actions) => (
       <ConfigurationPage receipt={(message) => actions.receipt(message)} reopenTutorial={actions.reopenTutorial} />
     ),
+  },
+  '/diagnostics': {
+    prefetch: (_open, signal) => prefetchDiagnostics(signal),
+    page: (_open, actions, go) => <DiagnosticsPage navigate={go} openItem={actions.openItem}
+      receipt={message => actions.receipt(message)}
+      configure={section => { actions.requestConfigurationSection(section); go('/configuration') }} />,
   },
   '/activity': {
     prefetch: (_open, signal) => prefetchTasks(signal),

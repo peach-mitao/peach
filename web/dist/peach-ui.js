@@ -2577,22 +2577,33 @@ function Er(e) {
 	!Sr || e <= br || (br = e, Sr());
 }
 //#endregion
-//#region src/board-controls.ts
+//#region src/diagnostics-route.ts
 function Dr(e) {
+	window.peachRegisterRoute({
+		match: "/diagnostics",
+		section: "configuration",
+		title: "系统诊断",
+		refresh: "reopen",
+		open: (t, n) => e(n)
+	});
+}
+//#endregion
+//#region src/board-controls.ts
+function Or(e) {
 	let t = Number(e.min) || 0, n = Number(e.max) || 100, r = Number(e.value), i = n > t ? Math.max(0, Math.min(100, (r - t) / (n - t) * 100)) : 0;
 	e.style.setProperty("--board-range-value", `${i}%`);
 }
-function Or() {
+function kr() {
 	let e = (e) => {
-		e.querySelectorAll("input[type=range]").forEach(Dr), Mr(e), Ar(e);
+		e.querySelectorAll("input[type=range]").forEach(Or), Nr(e), jr(e);
 	};
 	e(document), new MutationObserver((t) => {
-		for (let n of t) for (let t of n.addedNodes) t instanceof Element && (t.matches("input[type=range]") && Dr(t), e(t));
+		for (let n of t) for (let t of n.addedNodes) t instanceof Element && (t.matches("input[type=range]") && Or(t), e(t));
 	}).observe(document.body, {
 		subtree: !0,
 		childList: !0
 	}), document.addEventListener("input", (e) => {
-		e.target instanceof HTMLInputElement && e.target.type === "range" && Dr(e.target);
+		e.target instanceof HTMLInputElement && e.target.type === "range" && Or(e.target);
 	});
 	let t = document.createElement("div");
 	t.className = "board-tooltip", t.id = "board-control-tooltip", t.role = "tooltip", t.hidden = !0, document.body.append(t);
@@ -2615,8 +2626,8 @@ function Or() {
 		n && ne(e, n) && o();
 	}, !0), window.addEventListener("resize", o);
 }
-var kr = /* @__PURE__ */ new Map();
-function Ar(e) {
+var Ar = /* @__PURE__ */ new Map();
+function jr(e) {
 	let t = ".board-local-nav:not([data-section-nav])", n = [...e.querySelectorAll(t)];
 	e instanceof HTMLElement && e.matches(t) && n.push(e), n.forEach((e) => {
 		if (e.hasAttribute("data-board-tabs")) return;
@@ -2630,8 +2641,8 @@ function Ar(e) {
 				left: r.offsetLeft,
 				width: r.offsetWidth
 			};
-			n(i), kr.set(t, i);
-		}, i = kr.get(t);
+			n(i), Ar.set(t, i);
+		}, i = Ar.get(t);
 		i ? n(i) : r(), requestAnimationFrame(() => {
 			e.classList.add("board-tabs-ready"), requestAnimationFrame(r);
 		});
@@ -2651,15 +2662,15 @@ function Ar(e) {
 		o.observe(e);
 	});
 }
-var jr = /* @__PURE__ */ new Map();
-function Mr(e) {
+var Mr = /* @__PURE__ */ new Map();
+function Nr(e) {
 	let t = ".iconswitch,.insightswitch,.follow-workspace-switch", n = [...e.querySelectorAll(t)];
 	e instanceof HTMLElement && e.matches(t) && n.push(e), n.forEach((e) => {
 		if (e.hasAttribute("data-board-segments") || e.closest("[data-skeleton]")) return;
 		e.dataset.boardSegments = "true";
 		let t = document.createElement("span");
 		t.className = "board-segment-thumb", t.setAttribute("aria-hidden", "true"), e.prepend(t);
-		let n = e.className + (e.getAttribute("aria-label") ?? ""), r = jr.get(n) ?? null, i = () => {
+		let n = e.className + (e.getAttribute("aria-label") ?? ""), r = Mr.get(n) ?? null, i = () => {
 			let i = e.querySelector("label:has(input:checked),button[aria-selected=true]");
 			if (!i || !i.offsetWidth) return;
 			let a = {
@@ -2668,7 +2679,7 @@ function Mr(e) {
 				w: i.offsetWidth,
 				h: i.offsetHeight
 			};
-			ee(t, r, a, "x"), r = a, jr.set(n, a);
+			ee(t, r, a, "x"), r = a, Mr.set(n, a);
 		};
 		e.addEventListener("change", i);
 		let a = new MutationObserver(i);
@@ -2689,15 +2700,15 @@ function Mr(e) {
 }
 //#endregion
 //#region src/theme-transition.ts
-var Nr = !1;
-async function Pr(e, t) {
-	if (Nr) return;
+var Pr = !1;
+async function Fr(e, t) {
+	if (Pr) return;
 	if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
 		t();
 		return;
 	}
 	let n = e.getBoundingClientRect(), r = n.left + n.width / 2, i = n.top + n.height / 2, a = Math.hypot(Math.max(r, innerWidth - r), Math.max(i, innerHeight - i)) * 2.5, o = document.createElement("style");
-	o.textContent = `::view-transition-old(root){animation:none}::view-transition-new(root){mix-blend-mode:normal;mask-image:radial-gradient(circle closest-side,#000 78%,#0006 88%,transparent);mask-repeat:no-repeat;will-change:mask-position,mask-size;animation:peach-theme-reveal 560ms cubic-bezier(.16,1,.3,1) both}@keyframes peach-theme-reveal{from{mask-position:${r}px ${i}px;mask-size:0px 0px}to{mask-position:${r - a / 2}px ${i - a / 2}px;mask-size:${a}px ${a}px}}`, Nr = !0, document.head.append(o);
+	o.textContent = `::view-transition-old(root){animation:none}::view-transition-new(root){mix-blend-mode:normal;mask-image:radial-gradient(circle closest-side,#000 78%,#0006 88%,transparent);mask-repeat:no-repeat;will-change:mask-position,mask-size;animation:peach-theme-reveal 560ms cubic-bezier(.16,1,.3,1) both}@keyframes peach-theme-reveal{from{mask-position:${r}px ${i}px;mask-size:0px 0px}to{mask-position:${r - a / 2}px ${i - a / 2}px;mask-size:${a}px ${a}px}}`, Pr = !0, document.head.append(o);
 	let s = document.documentElement;
 	s.dataset.themeSnapshot = "true";
 	let c = !1, l = () => {
@@ -2708,46 +2719,46 @@ async function Pr(e, t) {
 	} catch {
 		l();
 	} finally {
-		delete s.dataset.themeSnapshot, o.remove(), Nr = !1;
+		delete s.dataset.themeSnapshot, o.remove(), Pr = !1;
 	}
 }
 //#endregion
 //#region src/sidebar-skeleton.ts
-var Fr = (e) => e.replace(/[&<>"']/g, (e) => ({
+var Ir = (e) => e.replace(/[&<>"']/g, (e) => ({
 	"&": "&amp;",
 	"<": "&lt;",
 	">": "&gt;",
 	"\"": "&quot;",
 	"'": "&#39;"
 })[e]);
-function Ir(e, t, n) {
+function Lr(e, t, n) {
 	let r = new Map(t.map((e) => [e[0], e]));
 	return `<div data-sidebar-head=""></div><div data-sidebar-nav="">${e.map((e) => r.get(e)).filter((e) => e !== void 0).map(([e, t, r]) => {
-		let i = e === "" ? "<img data-sidebar-home-logo=\"\" src=\"/peach-logo.png\" alt=\"\">" : `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${Fr(r)}"/></svg>`;
-		return `<button type="button" data-nav="${Fr(e)}" aria-pressed="${n(e)}" aria-label="${Fr(t)}">${i}<span>${Fr(t)}</span></button>`;
+		let i = e === "" ? "<img data-sidebar-home-logo=\"\" src=\"/peach-logo.png\" alt=\"\">" : `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${Ir(r)}"/></svg>`;
+		return `<button type="button" data-nav="${Ir(e)}" aria-pressed="${n(e)}" aria-label="${Ir(t)}">${i}<span>${Ir(t)}</span></button>`;
 	}).join("")}</div>`;
 }
 //#endregion
 //#region src/manage-header.ts
-var Lr = {
+var Rr = {
 	"/junk-files": "垃圾文件",
 	"/duplicates": "重复文件",
 	"/review": "人工复核",
 	"/trash": "回收站",
 	"/quality-goals": "高清版",
 	"/scraping": "来源和凭证"
-}, Rr = /* @__PURE__ */ new Set(["/data-cleanup", "/scraping"]), zr = ({ total: e, shown: t }) => `${e.toLocaleString()} 个符合 · 显示 ${t}`;
-function Br(e) {
+}, zr = /* @__PURE__ */ new Set(["/data-cleanup", "/scraping"]), Br = ({ total: e, shown: t }) => `${e.toLocaleString()} 个符合 · 显示 ${t}`;
+function Vr(e) {
 	let t = e.sections.find(([t]) => t === e.section);
 	if (!t) return null;
-	let n = Lr[e.path] ?? "";
+	let n = Rr[e.path] ?? "";
 	return {
-		title: e.section === "cleanup" && n || t[1],
+		title: e.path === "/diagnostics" ? "系统诊断" : e.section === "cleanup" && n || t[1],
 		crumb: n,
-		compact: Rr.has(e.path) || e.section === "configuration",
+		compact: zr.has(e.path) || e.section === "configuration",
 		lede: e.section === "trash" ? e.trash ? {
 			kind: "count",
-			text: zr(e.trash),
+			text: Br(e.trash),
 			total: e.trash.total
 		} : { kind: "skeleton" } : { kind: "none" }
 	};
@@ -2758,28 +2769,28 @@ var V = (e) => e.replace(/[&<>"']/g, (e) => ({
 	">": "&gt;",
 	"\"": "&quot;",
 	"'": "&#39;"
-})[e]), Vr = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${V(e)}"/></svg>`, Hr = "<span class=\"skeleton\" data-trash-lede-skeleton=\"text\" aria-hidden=\"true\"></span><span class=\"skeleton\" data-trash-lede-skeleton=\"action\" aria-hidden=\"true\"></span>";
-function Ur(e) {
-	let t = Br(e);
+})[e]), Hr = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${V(e)}"/></svg>`, Ur = "<span class=\"skeleton\" data-trash-lede-skeleton=\"text\" aria-hidden=\"true\"></span><span class=\"skeleton\" data-trash-lede-skeleton=\"action\" aria-hidden=\"true\"></span>";
+function Wr(e) {
+	let t = Vr(e);
 	if (!t) return "";
 	let n = e.menu.map(([t, n, r]) => {
 		let i = t === e.section;
-		return `<button type="button" data-manage="${V(t)}" aria-pressed="${i}"${i ? " aria-current=\"page\"" : ""}>${Vr(r)}<span>${V(n)}</span></button>`;
-	}).join(""), r = t.crumb ? `<nav data-manage-crumb="" aria-label="Breadcrumb"><ol><li><a href="/data-cleanup">数据管理</a>${Vr("chevron-right")}</li><li aria-current="true"><span>${V(t.crumb)}</span></li></ol></nav>` : "", i = t.lede.kind === "none" ? "" : `<p class="mono" data-manage-lede="">${t.lede.kind === "skeleton" ? Hr : `<span data-lede-text="">${V(t.lede.text)}</span>${t.lede.total ? Wr : ""}`}</p>`;
+		return `<button type="button" data-manage="${V(t)}" aria-pressed="${i}"${i ? " aria-current=\"page\"" : ""}>${Hr(r)}<span>${V(n)}</span></button>`;
+	}).join(""), r = t.crumb ? `<nav data-manage-crumb="" aria-label="Breadcrumb"><ol><li><a href="/data-cleanup">数据管理</a>${Hr("chevron-right")}</li><li aria-current="true"><span>${V(t.crumb)}</span></li></ol></nav>` : "", i = t.lede.kind === "none" ? "" : `<p class="mono" data-manage-lede="">${t.lede.kind === "skeleton" ? Ur : `<span data-lede-text="">${V(t.lede.text)}</span>${t.lede.total ? Gr : ""}`}</p>`;
 	return `<nav data-manage-bar="" aria-label="管理"><div data-manage-menu="">${n}<span data-manage-indicator="" aria-hidden="true"></span></div></nav>` + r + `<h2 data-manage-title=""${t.compact ? " data-compact=\"\"" : ""}>${V(t.title)}</h2>` + i;
 }
-var Wr = "<button type=\"button\" data-empty-trash=\"\" title=\"永久删除回收站内容\">清空回收站</button>";
+var Gr = "<button type=\"button\" data-empty-trash=\"\" title=\"永久删除回收站内容\">清空回收站</button>";
 //#endregion
 //#region src/jobs.ts
-function Gr(e, n, r) {
+function Kr(e, n, r) {
 	if (!Number.isFinite(r) || r <= 0) return "";
 	let i = Math.max(0, Math.min(r, Number.isFinite(n) ? n : 0)), a = i / r * 100;
 	return `<div class="board-job-progress" role="progressbar" aria-label="${t(e)}" aria-valuemin="0" aria-valuemax="${r}" aria-valuenow="${i}"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle class="board-job-track" cx="18" cy="18" r="15"/><circle class="board-job-fill" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="${a} ${100 - a}" transform="rotate(-90 18 18)"/></svg><span>${t(e)}<small>${Math.round(a)}%</small></span></div>`;
 }
-function Kr(e, t = 0, n = 0) {
-	return n > 0 ? Gr(e, t, n) : y(e);
+function qr(e, t = 0, n = 0) {
+	return n > 0 ? Kr(e, t, n) : y(e);
 }
-async function qr(e) {
+async function Jr(e) {
 	let t = e.pause || ((e) => new Promise((t) => setTimeout(t, e))), n = 0;
 	for (; e.active();) {
 		let r;
@@ -2794,14 +2805,14 @@ async function qr(e) {
 		await t(2e3);
 	}
 }
-function Jr(e) {
+function Yr(e) {
 	let t = e.note || ((e) => te(e, {
 		label: "任务状态",
 		variant: "error"
-	})), n = e.loading || y, r = e.progress || ((e, t, n) => Kr(n || `已处理 ${e} / ${t}`, e, t)), i = e.container || ((e) => `<section class="followtask" data-geist-fieldset aria-label="任务进度"><div class="geist-fieldset-content">${e}</div></section>`), a = document.createElement("div");
+	})), n = e.loading || y, r = e.progress || ((e, t, n) => qr(n || `已处理 ${e} / ${t}`, e, t)), i = e.container || ((e) => `<section class="followtask" data-geist-fieldset aria-label="任务进度"><div class="geist-fieldset-content">${e}</div></section>`), a = document.createElement("div");
 	e.host.hidden = !0, a.dataset.followJob = "", a.setAttribute("aria-live", "polite"), e.host.prepend(a);
 	let o = e.storageKey || "peach-follow-job", s = sessionStorage.getItem(o) || void 0, c = !1;
-	qr({
+	Jr({
 		read: e.read,
 		active: () => !c && e.active() && a.isConnected,
 		keepWatching: e.watchIdle !== !1,
@@ -2827,11 +2838,11 @@ function Jr(e) {
 }
 //#endregion
 //#region src/selection.ts
-function Yr(e, t, n, r, i, a = i || !e.has(r)) {
+function Xr(e, t, n, r, i, a = i || !e.has(r)) {
 	let o = n === null ? -1 : t.indexOf(n), s = t.indexOf(r);
 	return i && o >= 0 && s >= 0 ? t.slice(Math.min(o, s), Math.max(o, s) + 1).forEach((t) => e.add(t)) : a ? e.add(r) : e.delete(r), r;
 }
-function Xr(e, t) {
+function Zr(e, t) {
 	let n = t.filter((t) => e.has(t)).length;
 	return {
 		count: n,
@@ -2839,14 +2850,14 @@ function Xr(e, t) {
 		mixed: n > 0 && n < t.length
 	};
 }
-function Zr(e, t, n) {
+function Qr(e, t, n) {
 	t.forEach((t) => n ? e.add(t) : e.delete(t));
 }
-function Qr({ count: e, label: t, all: n, summary: r, actions: i, locked: a = !1 }) {
+function $r({ count: e, label: t, all: n, summary: r, actions: i, locked: a = !1 }) {
 	e && (e.textContent = t), n && (n.checked = r.all, n.indeterminate = r.mixed);
 	for (let e of i) e.disabled = !r.count || a;
 }
-function $r(e, t, n = 1) {
+function ei(e, t, n = 1) {
 	let r = (e, t) => Array.from({ length: t - e + 1 }, (t, n) => e + n);
 	if (n * 2 + 5 >= t) return r(1, t);
 	let i = Math.max(e - n, 1), a = Math.min(e + n, t), o = i > 2, s = a < t - 2;
@@ -2866,15 +2877,15 @@ function $r(e, t, n = 1) {
 		t
 	];
 }
-function ei(e, t) {
+function ti(e, t) {
 	return Math.max(1, Math.ceil(e / t));
 }
-function ti(e, t) {
+function ni(e, t) {
 	return Math.min(Math.max(1, Math.floor(e) || 1), t);
 }
-function ni(e, t, n) {
+function ri(e, t, n) {
 	if (t <= 1) return "";
-	let r = $r(e, t).map((t) => t === "…" ? "<li class=\"board-page-dots\" aria-hidden=\"true\">…</li>" : `<li><button type="button" class="board-page" data-page="${t}" aria-label="第 ${t} 页"${t === e ? " aria-current=\"page\"" : ""}>${t}</button></li>`).join("");
+	let r = ei(e, t).map((t) => t === "…" ? "<li class=\"board-page-dots\" aria-hidden=\"true\">…</li>" : `<li><button type="button" class="board-page" data-page="${t}" aria-label="第 ${t} 页"${t === e ? " aria-current=\"page\"" : ""}>${t}</button></li>`).join("");
 	return `<nav class="board-pagination" aria-label="${n}">
     <button type="button" class="geist-button" data-page="${e - 1}"${e <= 1 ? " disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>上一页</button>
     <ul>${r}</ul>
@@ -2883,20 +2894,20 @@ function ni(e, t, n) {
 }
 //#endregion
 //#region src/card-art/face-frame.ts
-var ri = .32, ii = 13, ai = .6;
-function oi(e) {
+var ii = .32, ai = 13, oi = .6;
+function si(e) {
 	return e ? Number.isFinite(e.cx) && Number.isFinite(e.cy) && Number(e.faceW) > 0 && Number(e.imgW) > 0 && Number(e.imgH) > 0 : !1;
 }
-function si(e, t, n = 1, r = ri, i = ai) {
-	if (!oi(e) || !(t && t.w > 0 && t.h > 0)) return 1;
+function ci(e, t, n = 1, r = ii, i = oi) {
+	if (!si(e) || !(t && t.w > 0 && t.h > 0)) return 1;
 	let a = n > 0 ? n : 1, o = Math.max(t.w / e.imgW, t.h / e.imgH), s = e.faceW * o;
 	if (!(s > 0)) return 1;
 	let c = Math.min(t.w, t.h), l = Math.max(r, 13 / c) * c / s, u = Math.max(t.w / (2 * Math.min(e.cx, 1 - e.cx) * e.imgW * o), t.h / (2 * Math.min(e.cy, 1 - e.cy) * e.imgH * o)), d = e.faceW / (s * a);
 	return Math.max(1, Math.min(Math.max(l, Math.min(u, i * c / s)), d));
 }
-function ci(e, t, n = 1, r = ri, i = ai) {
-	let a = si(e, t, n, r, i);
-	if (a <= 1 || !oi(e) || !t) return null;
+function li(e, t, n = 1, r = ii, i = oi) {
+	let a = ci(e, t, n, r, i);
+	if (a <= 1 || !si(e) || !t) return null;
 	let o = Math.max(t.w / e.imgW, t.h / e.imgH) * a, s = e.imgW * o, c = e.imgH * o, l = Math.min(0, Math.max(t.w - s, t.w / 2 - e.cx * s)), u = Math.min(0, Math.max(t.h - c, t.h / 2 - e.cy * c)), d = (e, t) => Math.round(e / t * 1e4) / 100;
 	return {
 		zoom: Math.round(a * 1e3) / 1e3,
@@ -2908,48 +2919,48 @@ function ci(e, t, n = 1, r = ri, i = ai) {
 }
 //#endregion
 //#region src/card-art/image-fallback.ts
-var li = "|", ui = "closest:";
-function di(e) {
-	return String(e ?? "").split(li).map((e) => e.trim()).filter(Boolean);
+var ui = "|", di = "closest:";
+function fi(e) {
+	return String(e ?? "").split(ui).map((e) => e.trim()).filter(Boolean);
 }
-function fi({ drop: e = "self", fallbacks: n = [], initial: r = "", dropClass: i = "", dropStyle: a = !1 } = {}) {
+function pi({ drop: e = "self", fallbacks: n = [], initial: r = "", dropClass: i = "", dropStyle: a = !1 } = {}) {
 	let o = (Array.isArray(n) ? n : [n]).filter(Boolean);
 	return [
 		`data-drop="${t(e)}"`,
-		o.length ? `data-fallbacks="${t(o.join(li))}"` : "",
+		o.length ? `data-fallbacks="${t(o.join(ui))}"` : "",
 		r ? `data-initial="${t(r)}"` : "",
 		i ? `data-drop-class="${t(i)}"` : "",
 		a ? "data-drop-style" : ""
 	].filter(Boolean).join(" ");
 }
-function pi(e) {
+function mi(e) {
 	if (!e || !e.dataset || !e.dataset.drop) return "";
-	let t = di(e.dataset.fallbacks);
+	let t = fi(e.dataset.fallbacks);
 	if (t.length) {
 		let [n = "", ...r] = t;
-		return "dropStyle" in e.dataset && e.removeAttribute("style"), delete e.dataset.facebox, r.length ? e.dataset.fallbacks = r.join(li) : delete e.dataset.fallbacks, e.src = n, "retry";
+		return "dropStyle" in e.dataset && e.removeAttribute("style"), delete e.dataset.facebox, r.length ? e.dataset.fallbacks = r.join(ui) : delete e.dataset.fallbacks, e.src = n, "retry";
 	}
 	let n = e.dataset.drop;
-	if (n.startsWith(ui)) return (e.closest(n.slice(8)) || e).remove(), "drop";
+	if (n.startsWith(di)) return (e.closest(n.slice(8)) || e).remove(), "drop";
 	if (n === "initial") {
 		let t = document.createElement("span");
 		return t.className = e.dataset.dropClass || "", t.textContent = e.dataset.initial || "", e.replaceWith(t), "drop";
 	}
 	return e.remove(), "drop";
 }
-function mi(e) {
+function hi(e) {
 	e.addEventListener("error", (e) => {
-		e.target instanceof HTMLImageElement && pi(e.target);
+		e.target instanceof HTMLImageElement && mi(e.target);
 	}, !0);
 }
 //#endregion
 //#region src/card-art/native-image.ts
-function hi(e, t, n, r) {
+function gi(e, t, n, r) {
 	if (!(e > 0 && t > 0 && n > 0 && r > 0)) return 0;
 	let i = e / n, a = t / r;
 	return i > 1.001 || a > 1.001 || Math.abs(i - a) > Math.max(i, a) * .01 ? 0 : i;
 }
-function gi(e, t, n, r, i = 1) {
+function _i(e, t, n, r, i = 1) {
 	let a = Number.isFinite(i) && i > 0 ? i : 1;
 	e /= a, t /= a;
 	let o = [
@@ -2966,33 +2977,33 @@ function gi(e, t, n, r, i = 1) {
 }
 //#endregion
 //#region src/card-art/representatives.ts
-var _i = /* @__PURE__ */ new Map();
-function vi(e) {
+var vi = /* @__PURE__ */ new Map();
+function yi(e) {
 	(e || []).forEach((e) => {
-		e.rep && e.has_avatar && _i.set(e.k, e.rep);
+		e.rep && e.has_avatar && vi.set(e.k, e.rep);
 	});
 }
-function yi(e) {
-	return _i.get(e);
+function bi(e) {
+	return vi.get(e);
 }
 //#endregion
 //#region src/card-art/markup.ts
-var bi = (e, t) => t ? `${e}&v=${encodeURIComponent(t)}` : e, xi = (e, t = !1) => bi(`/cover?code=${encodeURIComponent(e.code || "")}${t ? "&thumb=1" : ""}`, e.cover_version), Si = (e, t, n) => bi(`/logo?studio=${encodeURIComponent(e)}&variant=${t}`, n), Ci = (e) => e && typeof e == "object" ? e : null;
-function wi(e) {
+var xi = (e, t) => t ? `${e}&v=${encodeURIComponent(t)}` : e, Si = (e, t = !1) => xi(`/cover?code=${encodeURIComponent(e.code || "")}${t ? "&thumb=1" : ""}`, e.cover_version), Ci = (e, t, n) => xi(`/logo?studio=${encodeURIComponent(e)}&variant=${t}`, n), wi = (e) => e && typeof e == "object" ? e : null;
+function Ti(e) {
 	return e && e.is_jav ? "女优" : "艺人";
 }
-function Ti({ kind: e = "performer", id: t = null, hasImage: n = !1, version: r = "", rep: i = null, mark: a = null, logo: o = "", logoVersion: s = "", logoVariant: c = "logo", alt: l = "", lazy: u = !0, style: d = "", dropStyle: f = !1, focus: p = null, thumb: m = !1 } = {}) {
-	let h = !!(t && n), g = h ? bi(`/entity-image?kind=${e}&id=${t}${m ? "&thumb=1" : ""}`, r) : "", _ = i ? `/avatar?id=${i}` : "", v = !!o, y = v ? Si(o, c, s) : g || _ || (a ? `/link-mark?id=${a}` : "");
+function Ei({ kind: e = "performer", id: t = null, hasImage: n = !1, version: r = "", rep: i = null, mark: a = null, logo: o = "", logoVersion: s = "", logoVariant: c = "logo", alt: l = "", lazy: u = !0, style: d = "", dropStyle: f = !1, focus: p = null, thumb: m = !1 } = {}) {
+	let h = !!(t && n), g = h ? xi(`/entity-image?kind=${e}&id=${t}${m ? "&thumb=1" : ""}`, r) : "", _ = i ? `/avatar?id=${i}` : "", v = !!o, y = v ? Ci(o, c, s) : g || _ || (a ? `/link-mark?id=${a}` : "");
 	if (!y) return "";
-	let ee = v ? [g, _].filter(Boolean) : h && _ ? [_] : [], te = h && !v, ne = te ? Ai(p) : "", re = d || ki(p);
-	return `<img src="${y}" alt="${l}"${u ? " loading=\"lazy\"" : ""} decoding="async"${te ? re : ""} ${ne}${fi({
+	let ee = v ? [g, _].filter(Boolean) : h && _ ? [_] : [], te = h && !v, ne = te ? ji(p) : "", re = d || Ai(p);
+	return `<img src="${y}" alt="${l}"${u ? " loading=\"lazy\"" : ""} decoding="async"${te ? re : ""} ${ne}${pi({
 		dropStyle: (f || !!ne || !!re) && te,
 		fallbacks: ee
 	})}>`;
 }
-function Ei(e, n, r, i = "performer", a = null, o = "", s = "icon", c = void 0, l = !1) {
+function Di(e, n, r, i = "performer", a = null, o = "", s = "icon", c = void 0, l = !1) {
 	let u = c === void 0 ? n && n.avatar_focus || null : c;
-	return `<span class="ini">${t((e || "?").slice(0, 1))}</span>` + Ti({
+	return `<span class="ini">${t((e || "?").slice(0, 1))}</span>` + Ei({
 		kind: i,
 		id: n && n.id,
 		hasImage: !!(n && n.has_image),
@@ -3006,19 +3017,19 @@ function Ei(e, n, r, i = "performer", a = null, o = "", s = "icon", c = void 0, 
 		thumb: l
 	});
 }
-function Di(e, t, n) {
-	return Ei(e, t, n ? yi(e) : null, n || "performer");
-}
-function Oi(e) {
-	let t = Ci(e);
-	return t && t.axis === "x" ? `${t.pct}% 50%` : t && t.axis === "y" ? `50% ${t.pct}%` : "";
+function Oi(e, t, n) {
+	return Di(e, t, n ? bi(e) : null, n || "performer");
 }
 function ki(e) {
-	let t = Oi(e);
-	return t ? ` style="object-position:${t}"` : "";
+	let t = wi(e);
+	return t && t.axis === "x" ? `${t.pct}% 50%` : t && t.axis === "y" ? `50% ${t.pct}%` : "";
 }
 function Ai(e) {
-	let t = Ci(e)?.box;
+	let t = ki(e);
+	return t ? ` style="object-position:${t}"` : "";
+}
+function ji(e) {
+	let t = wi(e)?.box;
 	return t ? ` data-facebox="${[
 		t.cx,
 		t.cy,
@@ -3027,8 +3038,8 @@ function Ai(e) {
 		t.imgH
 	].map(Number).join(" ")}"` : "";
 }
-function ji(e, t, n = !1) {
-	let r = xi(e, !0), i = e.cover_frame || {}, a = [i.cx == null ? "" : ` data-cx="${i.cx}"`, i.cy == null ? "" : ` data-cy="${Math.min(.6, Math.max(.05, i.cy))}"`].join(""), o = e.poster_box, s = o ? ` data-posterbox="${[
+function Mi(e, t, n = !1) {
+	let r = Si(e, !0), i = e.cover_frame || {}, a = [i.cx == null ? "" : ` data-cx="${i.cx}"`, i.cy == null ? "" : ` data-cy="${Math.min(.6, Math.max(.05, i.cy))}"`].join(""), o = e.poster_box, s = o ? ` data-posterbox="${[
 		o.x0,
 		(o.px || [])[0],
 		(o.px || [])[1],
@@ -3039,39 +3050,39 @@ function ji(e, t, n = !1) {
 	return `<img class="poster cover ${t === "small" ? "whole" : "front"}" src="${r}"
     alt="" loading="${n ? "eager" : "lazy"}"${a}${s} data-drop="self">`;
 }
-var Mi = {
+var Ni = {
 	kind: "",
 	html: ""
 };
-function Ni(e, n, r, i) {
+function Pi(e, n, r, i) {
 	let a = he(e, i);
-	if (!a) return Mi;
-	let o = e.has_cover && e.code ? xi(e, !0) : "", s = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "", c = ji(e, n, r), l = (c.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join(""), u = a === "cover" ? c : `<img class="poster" src="${s}" alt="" loading="${r ? "eager" : "lazy"}"${l}>`;
+	if (!a) return Ni;
+	let o = e.has_cover && e.code ? Si(e, !0) : "", s = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "", c = Mi(e, n, r), l = (c.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join(""), u = a === "cover" ? c : `<img class="poster" src="${s}" alt="" loading="${r ? "eager" : "lazy"}"${l}>`;
 	return {
 		kind: a === "cover" ? "cover" : "thumb",
 		html: u.replace("<img ", `<img data-jav-image="${e.id}" data-jav-cover="${t(o)}" data-jav-thumb="${t(s)}" data-jav-image-layout="${n}" `)
 	};
 }
-function Pi(e, n, r, i) {
-	return e.is_jav ? Ni(e, n, r, i) : e.follow_thumb_url ? {
+function Fi(e, n, r, i) {
+	return e.is_jav ? Pi(e, n, r, i) : e.follow_thumb_url ? {
 		kind: "thumb",
 		html: `<img class="poster" src="${t(e.follow_thumb_url)}" alt="" loading="${r ? "eager" : "lazy"}" referrerpolicy="no-referrer">`
-	} : Fi(e, n, r, i);
+	} : Ii(e, n, r, i);
 }
-function Fi(e, t, n, r) {
-	return e.is_jav ? Ni(e, t, n, r) : !e.has_thumb && !e.has_local_poster ? Mi : {
+function Ii(e, t, n, r) {
+	return e.is_jav ? Pi(e, t, n, r) : !e.has_thumb && !e.has_local_poster ? Ni : {
 		kind: "thumb",
 		html: `<img class="poster" src="/poster?id=${e.id}&c=4" alt="" loading="${n ? "eager" : "lazy"}">`
 	};
 }
-function Ii(e, t) {
-	return Fi(e, "small", !1, t).html || "<span class=\"nopic\">无预览</span>";
-}
 function Li(e, t) {
-	let n = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "";
-	return e.is_jav && he(e, t) === "cover" ? xi(e) : n;
+	return Ii(e, "small", !1, t).html || "<span class=\"nopic\">无预览</span>";
 }
-function Ri(e) {
+function Ri(e, t) {
+	let n = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "";
+	return e.is_jav && he(e, t) === "cover" ? Si(e) : n;
+}
+function zi(e) {
 	let t = e.performers || [], n = e.performer_entities || [], r = t[0] || "", i = e.is_jav && r ? "" : e.creator || "";
 	return {
 		kind: i ? "creator" : r ? "performer" : "",
@@ -3082,17 +3093,17 @@ function Ri(e) {
 		total: e.performer_total || t.length
 	};
 }
-function zi(e) {
-	let { kind: t, name: n, coStarred: r, performers: i, refs: a } = Ri(e);
-	return r ? `<div class="mavstack">${i.slice(0, 5).map((e, t) => `<span class="mav">${Ei(e, a[t], yi(e))}</span>`).join("")}</div>` : `<span class="mav">${Ei(n, t === "performer" ? a[0] : e.creator_entity, t ? yi(n) : null, t || "performer")}</span>`;
+function Bi(e) {
+	let { kind: t, name: n, coStarred: r, performers: i, refs: a } = zi(e);
+	return r ? `<div class="mavstack">${i.slice(0, 5).map((e, t) => `<span class="mav">${Di(e, a[t], bi(e))}</span>`).join("")}</div>` : `<span class="mav">${Di(n, t === "performer" ? a[0] : e.creator_entity, t ? bi(n) : null, t || "performer")}</span>`;
 }
-function Bi(e, t) {
+function Vi(e, t) {
 	let n = (e.performers || [])[0];
 	return (e.is_jav && n ? n : e.creator) || n || e.studio || e.code || t((e.tags || [])[0] || "") || "为你推荐";
 }
 //#endregion
 //#region src/card-art/framing.ts
-var Vi = () => window.devicePixelRatio || 1;
+var Hi = () => window.devicePixelRatio || 1;
 function H(e) {
 	let t = e.parentElement;
 	if (!t || ([
@@ -3117,12 +3128,12 @@ function H(e) {
 		n.observe(t);
 		return;
 	}
-	let [r = NaN, i = NaN, a = NaN, o = NaN, s = NaN] = String(e.dataset.facebox).split(" ").map(Number), c = hi(e.naturalWidth, e.naturalHeight, o, s);
+	let [r = NaN, i = NaN, a = NaN, o = NaN, s = NaN] = String(e.dataset.facebox).split(" ").map(Number), c = gi(e.naturalWidth, e.naturalHeight, o, s);
 	if (!c) {
 		e.style.objectPosition = "50% 50%";
 		return;
 	}
-	let l = ci({
+	let l = li({
 		cx: r,
 		cy: i,
 		faceW: a * c,
@@ -3131,27 +3142,27 @@ function H(e) {
 	}, {
 		w: n.width,
 		h: n.height
-	}, Vi());
+	}, Hi());
 	if (!l) return;
 	let u = e.style;
 	u.position = "absolute", u.right = "auto", u.bottom = "auto", u.left = `${l.left}%`, u.top = `${l.top}%`, u.width = `${l.width}%`, u.height = `${l.height}%`, u.maxWidth = "none", u.maxHeight = "none";
 }
-function Hi(e) {
+function Ui(e) {
 	let t = e.naturalWidth / e.naturalHeight;
 	if (!t) return;
 	let n = new URL(e.currentSrc || e.src, location.href).searchParams.get("code") || "";
 	e.dataset.frame = /^FC2(?:-PPV)?-/i.test(n) || t >= 1.65 ? "still" : t > 1.2 ? "sleeve" : "front";
-	let r = Ki(e), i = (t, n, r) => {
+	let r = qi(e), i = (t, n, r) => {
 		if (n == null || !(r > 0 && r < 1)) return;
 		let i = Math.min(1, Math.max(0, (n - r / 2) / (1 - r)));
 		e.style.setProperty(t, `${Math.round(i * 100)}%`);
 	};
-	i("--cover-x", qi(e, "cx"), r / t), i("--cover-y", qi(e, "cy"), t / r), Ui(e, r), (e.classList.contains("whole") || e.dataset.frame === "front") && Math.abs(t / r - 1) > .02 && Wi(e);
+	i("--cover-x", Ji(e, "cx"), r / t), i("--cover-y", Ji(e, "cy"), t / r), Wi(e, r), (e.classList.contains("whole") || e.dataset.frame === "front") && Math.abs(t / r - 1) > .02 && Gi(e);
 }
-function Ui(e, t) {
+function Wi(e, t) {
 	if (e.dataset.frame === "front") return;
 	let [n = NaN, r = NaN, i = NaN, a = NaN, o = NaN, s = NaN] = String(e.dataset.posterbox || "").split(" ").map(Number);
-	if (!e.dataset.posterbox && e.dataset.frame === "sleeve" && (r = e.naturalWidth, i = e.naturalHeight, n = Math.round(r - ge * i), a = 0, o = r, s = i), !hi(e.naturalWidth, e.naturalHeight, r, i)) return;
+	if (!e.dataset.posterbox && e.dataset.frame === "sleeve" && (r = e.naturalWidth, i = e.naturalHeight, n = Math.round(r - ge * i), a = 0, o = r, s = i), !gi(e.naturalWidth, e.naturalHeight, r, i)) return;
 	let c = _e({
 		x0: n,
 		y0: a,
@@ -3159,33 +3170,33 @@ function Ui(e, t) {
 		y1: s,
 		px: [r, i]
 	}, t);
-	c && (e.classList.add("panel"), e.style.setProperty("--panel-clip", `${c.clip.top}% ${c.clip.right}% ${c.clip.bottom}% ${c.clip.left}%`), e.style.setProperty("--panel-left", `${c.left}%`), e.style.setProperty("--panel-top", `${c.top}%`), e.style.setProperty("--panel-height", `${c.height}%`), Wi(e));
-}
-function Wi(e) {
-	e.closest(".pic,[data-media-pic]")?.style.setProperty("--cover-blur", `url("${e.dataset.thumbSrc || e.currentSrc || e.src}")`);
+	c && (e.classList.add("panel"), e.style.setProperty("--panel-clip", `${c.clip.top}% ${c.clip.right}% ${c.clip.bottom}% ${c.clip.left}%`), e.style.setProperty("--panel-left", `${c.left}%`), e.style.setProperty("--panel-top", `${c.top}%`), e.style.setProperty("--panel-height", `${c.height}%`), Gi(e));
 }
 function Gi(e) {
-	if (!/[?&]thumb=1(&|$)/.test(e.src) || !e.naturalWidth) return;
-	let { width: t, height: n } = e.getBoundingClientRect();
-	(getComputedStyle(e).objectFit === "contain" ? Math.min : Math.max)(t / e.naturalWidth, n / e.naturalHeight) * Vi() > 1.01 && (e.dataset.thumbSrc = e.src, e.src = e.src.replace(/[?&]thumb=1(?=&|$)/, ""));
+	e.closest(".pic,[data-media-pic]")?.style.setProperty("--cover-blur", `url("${e.dataset.thumbSrc || e.currentSrc || e.src}")`);
 }
 function Ki(e) {
+	if (!/[?&]thumb=1(&|$)/.test(e.src) || !e.naturalWidth) return;
+	let { width: t, height: n } = e.getBoundingClientRect();
+	(getComputedStyle(e).objectFit === "contain" ? Math.min : Math.max)(t / e.naturalWidth, n / e.naturalHeight) * Hi() > 1.01 && (e.dataset.thumbSrc = e.src, e.src = e.src.replace(/[?&]thumb=1(?=&|$)/, ""));
+}
+function qi(e) {
 	let t = getComputedStyle(e).getPropertyValue("--card-ratio").trim().split("/").map(Number), n = t.length === 2 ? Number(t[0]) / Number(t[1]) : Number(t[0]);
 	return Number.isFinite(n) && n > 0 ? n : 16 / 9;
 }
-function qi(e, t) {
+function Ji(e, t) {
 	let n = parseFloat(e.dataset[t] ?? "");
 	return Number.isFinite(n) ? n : null;
 }
-var Ji = ".pic>img.poster,[data-media-art]>img,.ring>img,[data-tier-ring]>img,[data-person-ring]>img,[data-entity-portrait]>img,[data-hero-ring]>img", Yi = /* @__PURE__ */ new WeakMap();
-function Xi(e) {
-	let t = e.matches(Ji) ? [e] : e.querySelectorAll(Ji);
-	for (let e of t) !e.complete && e.parentElement && (e.parentElement.classList.add("imgwait"), Yi.set(e.parentElement, performance.now()));
-}
+var Yi = ".pic>img.poster,[data-media-art]>img,.ring>img,[data-tier-ring]>img,[data-person-ring]>img,[data-entity-portrait]>img,[data-hero-ring]>img", Xi = /* @__PURE__ */ new WeakMap();
 function Zi(e) {
+	let t = e.matches(Yi) ? [e] : e.querySelectorAll(Yi);
+	for (let e of t) !e.complete && e.parentElement && (e.parentElement.classList.add("imgwait"), Xi.set(e.parentElement, performance.now()));
+}
+function Qi(e) {
 	let t = e.parentElement;
 	if (!t?.classList.contains("imgwait")) return;
-	if (performance.now() - (Yi.get(t) ?? NaN) < g) {
+	if (performance.now() - (Xi.get(t) ?? NaN) < g) {
 		t.classList.remove("imgwait");
 		return;
 	}
@@ -3195,80 +3206,80 @@ function Zi(e) {
 	};
 	t.addEventListener("transitionend", r), n = setTimeout(r, 1e3);
 }
-function Qi(e) {
+function $i(e) {
 	let t = "img.cover,img[data-facebox]", n = e.matches(t) ? [e] : e.querySelectorAll(t);
 	for (let e of n) {
 		let t = e;
-		t.complete && t.naturalWidth && (t.classList.contains("cover") ? Hi(t) : ($i(t), H(t)));
+		t.complete && t.naturalWidth && (t.classList.contains("cover") ? Ui(t) : (ea(t), H(t)));
 	}
 }
-function $i(e) {
+function ea(e) {
 	let t = e.closest("[data-fit-native]");
 	if (!t || !e.naturalWidth) return;
-	let { small: n, width: r, height: i } = gi(e.naturalWidth, e.naturalHeight, t.clientWidth, t.clientHeight, Vi());
+	let { small: n, width: r, height: i } = _i(e.naturalWidth, e.naturalHeight, t.clientWidth, t.clientHeight, Hi());
 	t.dataset.nativeSmall = String(n), t.style.setProperty("--markw", n ? r + "px" : "100%"), t.style.setProperty("--markh", n ? i + "px" : "100%");
 	let a = (e.currentSrc || e.src).replace(/"/g, "%22");
 	t.style.setProperty("--markbg", n ? `url("${a}")` : "none");
 }
-function ea(e) {
+function ta(e) {
 	(e || document).querySelectorAll("[data-fit-native] img").forEach((e) => {
-		$i(e), e.dataset.facebox && H(e);
+		ea(e), e.dataset.facebox && H(e);
 	});
 }
-function ta(e, t) {
-	for (let n of ye(e, t)) Hi(n), Gi(n);
+function na(e, t) {
+	for (let n of ye(e, t)) Ui(n), Ki(n);
 }
-var na = !1;
-function ra() {
-	na || (na = !0, document.addEventListener("load", (e) => {
+var ra = !1;
+function ia() {
+	ra || (ra = !0, document.addEventListener("load", (e) => {
 		let t = e.target;
-		t instanceof HTMLImageElement && (Zi(t), $i(t), t.classList.contains("cover") ? (Hi(t), Gi(t)) : t.dataset.facebox && H(t));
+		t instanceof HTMLImageElement && (Qi(t), ea(t), t.classList.contains("cover") ? (Ui(t), Ki(t)) : t.dataset.facebox && H(t));
 	}, !0), new MutationObserver((e) => {
-		for (let t of e) for (let e of t.addedNodes) e.nodeType === Node.ELEMENT_NODE && (Xi(e), Qi(e));
+		for (let t of e) for (let e of t.addedNodes) e.nodeType === Node.ELEMENT_NODE && (Zi(e), $i(e));
 	}).observe(document.body, {
 		childList: !0,
 		subtree: !0
 	}), document.addEventListener("error", (e) => {
 		let t = e.target;
-		t instanceof HTMLImageElement && !t.dataset.fallbacks && Zi(t);
+		t instanceof HTMLImageElement && !t.dataset.fallbacks && Qi(t);
 	}, !0));
 }
 //#endregion
 //#region src/card-art/hover.ts
-var ia = ".card,[data-media-card],[data-mix-card]", U = {
+var aa = ".card,[data-media-card],[data-mix-card]", U = {
 	selecting: () => !1,
 	censored: () => !1,
 	delaySeconds: () => 0
 };
-function aa(e) {
+function oa(e) {
 	U = e;
 }
-var oa = () => !!window.__scrolling;
-function sa(e = document, t = null) {
-	!e || !e.querySelectorAll || (e.querySelectorAll(ia).forEach((e) => {
+var sa = () => !!window.__scrolling;
+function ca(e = document, t = null) {
+	!e || !e.querySelectorAll || (e.querySelectorAll(aa).forEach((e) => {
 		e !== t && e._stopHover && e._stopHover();
 	}), e.querySelectorAll("video.hv").forEach((e) => {
-		e.closest(ia) !== t && (e._hop && clearInterval(e._hop), e.pause(), e.removeAttribute("src"), e.load(), e.remove());
+		e.closest(aa) !== t && (e._hop && clearInterval(e._hop), e.pause(), e.removeAttribute("src"), e.load(), e.remove());
 	}), e.querySelectorAll("img.hvframes").forEach((e) => {
-		e.closest(ia) !== t && (e.removeAttribute("src"), e.remove());
+		e.closest(aa) !== t && (e.removeAttribute("src"), e.remove());
 	}));
 }
-function ca(e) {
-	e._stopHover?.(), sa(e);
+function la(e) {
+	e._stopHover?.(), ca(e);
 }
-function la(e, t, n) {
+function ua(e, t, n) {
 	n ? e.dataset[t] = "" : delete e.dataset[t];
 }
-function ua(e, t) {
+function da(e, t) {
 	let n = e, r = e.querySelector("[data-media-pic]");
 	if (!r) return;
 	e.dataset.hoverMode = t.location === "local" ? "video" : "frames";
 	let i, a = () => {
-		clearTimeout(i), U.delaySeconds() && (la(e, "previewing", !0), i = setTimeout(() => {
-			U.delaySeconds() && la(e, "longhover", !0);
+		clearTimeout(i), U.delaySeconds() && (ua(e, "previewing", !0), i = setTimeout(() => {
+			U.delaySeconds() && ua(e, "longhover", !0);
 		}, U.delaySeconds() * 1e3));
 	}, o = () => {
-		clearTimeout(i), la(e, "previewing", !1), la(e, "longhover", !1);
+		clearTimeout(i), ua(e, "previewing", !1), ua(e, "longhover", !1);
 	};
 	if (t.location !== "local") {
 		if (!t.has_thumb) return;
@@ -3292,9 +3303,9 @@ function ua(e, t) {
 	}
 	let s, c = null;
 	e.addEventListener("mouseenter", () => {
-		U.selecting() || U.censored() || oa() || (s = setTimeout(() => {
-			if (oa() || U.censored()) return;
-			sa(document, e);
+		U.selecting() || U.censored() || sa() || (s = setTimeout(() => {
+			if (sa() || U.censored()) return;
+			ca(document, e);
 			let n = document.createElement("video");
 			c = n, n.className = "hv", n.muted = !0, n.playsInline = !0, n.loop = !0, n.preload = "metadata", n.src = "/stream?id=" + t.id;
 			let i = [
@@ -3324,7 +3335,7 @@ function ua(e, t) {
 }
 //#endregion
 //#region src/entity-skeleton.ts
-function da(e, t, n) {
+function fa(e, t, n) {
 	return `<section data-skeleton="entity/${e}" role="status" aria-label="正在读取资料">
     <span class="sr-only">正在读取资料</span><div aria-hidden="true">
     <section class="entityhero"><div class="entityprofile"><div class="entityportrait ${e === "studio" || e === "agency" ? "square " : ""}skeleton"></div>
@@ -3338,7 +3349,7 @@ function da(e, t, n) {
 }
 //#endregion
 //#region src/follow-sort.ts
-var fa = [
+var pa = [
 	["checked", "检查时间"],
 	["added", "添加时间"],
 	["name", "创作者名称"],
@@ -3346,7 +3357,7 @@ var fa = [
 	["source", "来源名称"],
 	["provider", "站点"],
 	["status", "状态"]
-], pa = "checked", ma = {
+], ma = "checked", ha = {
 	checked: "desc",
 	added: "desc",
 	name: "asc",
@@ -3354,38 +3365,38 @@ var fa = [
 	source: "asc",
 	provider: "asc",
 	status: "asc"
-}, ha = (e) => fa.some(([t]) => t === e);
-function ga(e, t) {
-	let n = ha(e) ? e : pa;
+}, ga = (e) => pa.some(([t]) => t === e);
+function _a(e, t) {
+	let n = ga(e) ? e : ma;
 	return {
 		sort: n,
-		dir: t === "asc" || t === "desc" ? t : ma[n]
+		dir: t === "asc" || t === "desc" ? t : ha[n]
 	};
 }
 //#endregion
 //#region src/island-skeleton.ts
-var _a = "inline-flex items-center justify-center gap-0.5 whitespace-nowrap overflow-hidden font-sans", va = {
+var va = "inline-flex items-center justify-center gap-0.5 whitespace-nowrap overflow-hidden font-sans", ya = {
 	medium: "h-9 rounded-2lg p-2 text-body-medium",
 	small: "h-8 rounded-lg px-2 py-1.5 text-body-medium"
-}, ya = {
-	medium: va.medium,
-	small: "size-8 rounded-lg p-0 text-body-medium"
 }, ba = {
+	medium: ya.medium,
+	small: "size-8 rounded-lg p-0 text-body-medium"
+}, xa = {
 	medium: "size-5 shrink-0",
 	small: "size-[18px] shrink-0"
-}, xa = {
+}, Sa = {
 	medium: "inline-flex items-center justify-center px-1 shrink-0",
 	small: "inline-flex items-center justify-center px-0.5 shrink-0"
-}, Sa = {
+}, Ca = {
 	primary: "bg-button-primary text-text-white shadow-xs",
 	secondary: "bg-background-primary-default text-text-primary border border-border-button-default shadow-xs",
 	ghost: "bg-button-ghost-background text-button-ghost-foreground"
-}, Ca = (e, t) => `<svg class="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${e}"/></svg>`;
+}, wa = (e, t) => `<svg class="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${e}"/></svg>`;
 function W({ variant: e = "primary", size: t = "medium", glyph: n, label: r, attrs: i = "", compact: a = !1 }) {
-	let o = r ? va[t] : ya[t], s = n ? Ca(n, ba[t]) : "", c = r ? `<span class="${xa[t]}"${a ? " data-compact-label" : ""}>${r}</span>` : "";
-	return `<button type="button" class="${_a} ${o} ${Sa[e]}"${i ? ` ${i}` : ""}>${s}${c}</button>`;
+	let o = r ? ya[t] : ba[t], s = n ? wa(n, xa[t]) : "", c = r ? `<span class="${Sa[t]}"${a ? " data-compact-label" : ""}>${r}</span>` : "";
+	return `<button type="button" class="${va} ${o} ${Ca[e]}"${i ? ` ${i}` : ""}>${s}${c}</button>`;
 }
-var wa = {
+var Ta = {
 	md: {
 		box: "gap-1.5 px-2.5 py-2 text-body-medium",
 		value: "gap-[5px]",
@@ -3397,32 +3408,32 @@ var wa = {
 		chevron: "size-3.5"
 	}
 };
-function Ta(e, { size: t = "md", className: n = "", attrs: r = "" } = {}) {
-	let i = wa[t];
-	return `<div class="group flex flex-col${n ? ` ${n}` : ""}"><button type="button" aria-haspopup="listbox"${r ? ` ${r}` : ""} class="flex w-full items-center justify-between rounded-2lg border border-border-button-default bg-background-primary-default shadow-xs text-text-primary ${i.box}"><span class="flex min-w-0 items-center truncate ${i.value}">${e}</span>${Ca("chevron-down", `shrink-0 text-text-secondary ${i.chevron}`)}</button></div>`;
+function Ea(e, { size: t = "md", className: n = "", attrs: r = "" } = {}) {
+	let i = Ta[t];
+	return `<div class="group flex flex-col${n ? ` ${n}` : ""}"><button type="button" aria-haspopup="listbox"${r ? ` ${r}` : ""} class="flex w-full items-center justify-between rounded-2lg border border-border-button-default bg-background-primary-default shadow-xs text-text-primary ${i.box}"><span class="flex min-w-0 items-center truncate ${i.value}">${e}</span>${wa("chevron-down", `shrink-0 text-text-secondary ${i.chevron}`)}</button></div>`;
 }
-var Ea = "flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default", Da = "flex min-w-0 flex-col gap-2", Oa = "text-body-regular text-text-secondary", ka = "text-display-4-medium tabular-nums text-text-primary", Aa = "relative inline-block h-8 w-24 rounded-2lg align-middle skeleton-sheen";
-function ja(e) {
-	return `<div data-collection-summary="" class="${Ea}"><div class="${Da}"><span class="${Oa}">${e}</span><strong class="${ka}"><span data-skeleton="count" aria-hidden="true" class="${Aa}"></span></strong></div></div>`;
+var Da = "flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default", Oa = "flex min-w-0 flex-col gap-2", ka = "text-body-regular text-text-secondary", Aa = "text-display-4-medium tabular-nums text-text-primary", ja = "relative inline-block h-8 w-24 rounded-2lg align-middle skeleton-sheen";
+function Ma(e) {
+	return `<div data-collection-summary="" class="${Da}"><div class="${Oa}"><span class="${ka}">${e}</span><strong class="${Aa}"><span data-skeleton="count" aria-hidden="true" class="${ja}"></span></strong></div></div>`;
 }
 //#endregion
 //#region src/configuration-copy.ts
-var Ma = "JavDB 或 MISSAV 无法访问时，可填写能访问的镜像域名，Peach 会保留人物页路径。 资料页只显示已有站点身份记录的入口；JavDB 和 MISSAV 还要求有 JAV 目录站记录。 缺少这些记录的 FC2 创作者不会显示这两个入口。", Na = "仅填域名；留空使用默认地址", Pa = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2"><p class="w-full px-3 text-body-2-medium text-text-secondary">${e}</p><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${t}<div class="-ml-3 flex flex-wrap items-center justify-end gap-3 rounded-b-2xl border-t border-separator-border bg-card-footer px-3 py-3">${W({
+var Na = "JavDB 或 MISSAV 无法访问时，可填写能访问的镜像域名，Peach 会保留人物页路径。 资料页只显示已有站点身份记录的入口；JavDB 和 MISSAV 还要求有 JAV 目录站记录。 缺少这些记录的 FC2 创作者不会显示这两个入口。", Pa = "仅填域名；留空使用默认地址", Fa = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2"><p class="w-full px-3 text-body-2-medium text-text-secondary">${e}</p><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${t}<div class="-ml-3 flex flex-wrap items-center justify-end gap-3 rounded-b-2xl border-t border-separator-border bg-card-footer px-3 py-3">${W({
 	label: "保存配置",
 	attrs: "disabled data-skeleton-action"
-})}</div></div></section>`, Fa = (e, t = "") => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${e}</p>${t ? `<p class="text-body-2-regular text-text-secondary">${t}</p>` : ""}</div><span class="skeleton configuration-skeleton-toggle"></span></div>`, Ia = (e) => `<div class="flex w-full flex-col gap-1"><p class="text-body-medium text-text-primary">${e} 地址</p><span class="skeleton configuration-skeleton-input"></span><p class="pt-px text-caption-1-medium text-text-secondary">${Na}</p></div>`;
-function La() {
+})}</div></div></section>`, Ia = (e, t = "") => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${e}</p>${t ? `<p class="text-body-2-regular text-text-secondary">${t}</p>` : ""}</div><span class="skeleton configuration-skeleton-toggle"></span></div>`, La = (e) => `<div class="flex w-full flex-col gap-1"><p class="text-body-medium text-text-primary">${e} 地址</p><span class="skeleton configuration-skeleton-input"></span><p class="pt-px text-caption-1-medium text-text-secondary">${Pa}</p></div>`;
+function Ra() {
 	return `<div class="peach-react"><div class="configpage">${`<div class="board-local-nav" data-section-nav data-section-items>${[
 		"通用",
 		"媒体",
 		"网络与访问",
 		"更新与维护"
-	].map((e, t) => `<button type="button" tabindex="-1" aria-selected="${t === 0}">${e}</button>`).join("")}</div>`}<div class="flex flex-col gap-6">${Pa("开机自启", `<div class="flex flex-col">${Fa("开机后启动 Peach")}${Fa("静默启动", "开机后只显示托盘图标，不打开网页；「开机后启动 Peach」打开时生效。")}${Fa("在桌面创建快捷方式", "双击图标打开 Peach 网页；卸载时一并移除。")}</div>`)}${Pa("外部入口", `<div class="flex flex-col gap-4 py-4 pr-3"><p class="text-body-2-regular text-text-secondary">${Ma}</p>${Ia("JavDB")}${Ia("MISSAV")}</div>`)}</div></div></div>`;
+	].map((e, t) => `<button type="button" tabindex="-1" aria-selected="${t === 0}">${e}</button>`).join("")}</div>`}<div class="flex flex-col gap-6">${Fa("开机自启", `<div class="flex flex-col">${Ia("开机后启动 Peach")}${Ia("静默启动", "开机后只显示托盘图标，不打开网页；「开机后启动 Peach」打开时生效。")}${Ia("在桌面创建快捷方式", "双击图标打开 Peach 网页；卸载时一并移除。")}</div>`)}${Fa("外部入口", `<div class="flex flex-col gap-4 py-4 pr-3"><p class="text-body-2-regular text-text-secondary">${Na}</p>${La("JavDB")}${La("MISSAV")}</div>`)}</div></div></div>`;
 }
 //#endregion
 //#region src/management-skeletons.ts
-var G = "relative overflow-hidden skeleton-sheen bg-background-tertiary-default rounded-lg", K = (e = "60%") => `<span class="${G} inline-block max-w-full align-middle" style="width:${e};height:1em"></span>`, Ra = "disabled data-skeleton-action", za = "min-w-0 rounded-2-5xl bg-background-secondary-default p-5 flex flex-col gap-4 max-sm:p-4";
-function Ba() {
+var G = "relative overflow-hidden skeleton-sheen bg-background-tertiary-default rounded-lg", K = (e = "60%") => `<span class="${G} inline-block max-w-full align-middle" style="width:${e};height:1em"></span>`, za = "disabled data-skeleton-action", Ba = "min-w-0 rounded-2-5xl bg-background-secondary-default p-5 flex flex-col gap-4 max-sm:p-4";
+function Va() {
 	let e = [
 		"馆藏视频",
 		"看过",
@@ -3433,7 +3444,7 @@ function Ba() {
       <span class="flex min-w-0 items-center gap-2 px-4 text-body-regular text-text-secondary max-sm:gap-1.5 max-sm:px-3"><i class="${G} size-7 max-sm:size-6"></i>${e}</span>
       <b class="px-4 pt-3 pb-4 text-title-1-medium max-sm:px-3 max-sm:pb-3">${K("4em")}</b>
       <small class="mt-auto block min-h-9.5 bg-card-footer px-4 py-2.5 text-caption-1-regular max-sm:px-3 max-sm:py-2">${K("6em")}</small>
-    </div>`).join(""), t = (e) => `<section class="${za}" data-stats-chart>
+    </div>`).join(""), t = (e) => `<section class="${Ba}" data-stats-chart>
     <header class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1"><span class="flex min-w-0 flex-col gap-1"><h3 class="text-title-2-medium text-text-primary">${e}</h3><b class="text-display-4-medium">${K("4em")}</b></span><small class="text-caption-1-regular text-text-secondary">个视频</small></header>
     <svg class="h-75 w-full max-sm:h-65 text-background-tertiary-default" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="12">${[
 		76,
@@ -3450,7 +3461,7 @@ function Ba() {
 		"时长",
 		"画质",
 		"文件类型"
-	].map((e) => `<section class="${za}"><h3 class="text-title-2-medium">${e}</h3><div class="${G} h-64"></div></section>`).join("")}</div>
+	].map((e) => `<section class="${Ba}"><h3 class="text-title-2-medium">${e}</h3><div class="${G} h-64"></div></section>`).join("")}</div>
       </div>
     </div>
     <section class="rounded-surface bg-background-secondary-default dark:bg-background-primary-default">
@@ -3463,7 +3474,7 @@ function Ba() {
     </section>
   </div></div>`;
 }
-function Va() {
+function Ha() {
 	let e = `<div class="duplicate-row items-center gap-3 border-t border-separator-border px-5 py-4 max-compact:p-4">
     <span class="${G} row-span-2 inline-grid aspect-16/10 w-full rounded-2lg"></span>
     <span class="text-body-regular max-duplicate-narrow:col-start-2 max-duplicate-narrow:-col-end-1">${K("70%")}</span>
@@ -3480,18 +3491,18 @@ function Va() {
 		variant: "secondary",
 		size: "small",
 		label: e,
-		attrs: Ra
+		attrs: za
 	})).join("")}</span>
     </div>${e.repeat(2)}</section>`;
 	return `<div class="peach-react"><div class="mx-auto w-full max-w-board pb-10.5">
     <div data-collection-summary class="mb-5 flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default">
       <div class="flex min-w-0 flex-col gap-2"><span class="text-body-regular text-text-secondary">重复内容</span><strong class="text-display-4-medium">${K("4em")}</strong></div><p class="text-body-regular text-text-secondary">${K("12em")}</p>
     </div>
-    <div data-filter-glass data-glass-pane class="mb-5.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 px-4 py-2.5"><h3 class="mr-1 text-body-medium">批量保留</h3>${["全部保留最大", "全部保留最长"].map((e) => `<button ${Ra} class="h-7.5 rounded-full border border-separator-border px-3 text-body-2-medium">${e}</button>`).join("")}</div>
+    <div data-filter-glass data-glass-pane class="mb-5.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 px-4 py-2.5"><h3 class="mr-1 text-body-medium">批量保留</h3>${["全部保留最大", "全部保留最长"].map((e) => `<button ${za} class="h-7.5 rounded-full border border-separator-border px-3 text-body-2-medium">${e}</button>`).join("")}</div>
     ${t.repeat(2)}
   </div></div>`;
 }
-function Ha() {
+function Ua() {
 	let e = `<li class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card border border-separator-border flex flex-col gap-3 p-3">
     <div class="flex min-w-0 gap-4"><span class="${G} inline-grid w-card-cover shrink-0 aspect-card-cover rounded-2lg"></span>
       <div class="flex min-w-0 flex-1 flex-col gap-1.5"><h3 class="text-headline-medium">${K("80%")}</h3><p class="text-body-2-regular">${K("60%")}</p></div>
@@ -3500,31 +3511,31 @@ function Ha() {
 		variant: "secondary",
 		size: "small",
 		label: "查看版本",
-		attrs: Ra
+		attrs: za
 	})}</footer>
   </li>`;
 	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">
-    ${ja("待升级")}
+    ${Ma("待升级")}
     <ul class="card-grid-cover gap-5">${e.repeat(6)}</ul>
   </div></div>`;
 }
 //#endregion
 //#region src/board-skeleton.ts
-var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua = () => `${q("80%")}${q("48%")}`, J = (e, t) => e.repeat(t), Wa = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${q("45%")}</b><small class="board-stat-footer">${q("60%")}</small></div>`).join("")}</div>`, Ga = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Ka = (e) => `<section class="insightpanel"><header>${e}</header><div class="insightpanelbody skeleton-lines">${J(Ua(), 3)}</div></section>`, Y = "disabled data-skeleton-action", X = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Z = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, qa = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Ja = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
+var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Wa = () => `${q("80%")}${q("48%")}`, J = (e, t) => e.repeat(t), Ga = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${q("45%")}</b><small class="board-stat-footer">${q("60%")}</small></div>`).join("")}</div>`, Ka = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, qa = (e) => `<section class="insightpanel"><header>${e}</header><div class="insightpanelbody skeleton-lines">${J(Wa(), 3)}</div></section>`, Y = "disabled data-skeleton-action", X = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Z = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, Ja = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Ya = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
 	"关注创作者",
 	"启用来源",
 	"检查失败",
 	"未看更新",
 	"JAV 订阅",
 	"未看新作"
-].map((e) => `<div class="${qa}"><span class="text-body-medium text-text-secondary">${e}</span><b class="text-title-1-medium tabular-nums text-text-primary">${X("3em")}</b></div>`).join("")}</div>`, Ya = () => `<div data-section-nav data-section-items class="flex max-w-full flex-nowrap overflow-x-auto">${[
+].map((e) => `<div class="${Ja}"><span class="text-body-medium text-text-secondary">${e}</span><b class="text-title-1-medium tabular-nums text-text-primary">${X("3em")}</b></div>`).join("")}</div>`, Xa = () => `<div data-section-nav data-section-items class="flex max-w-full flex-nowrap overflow-x-auto">${[
 	"关注列表",
 	"添加关注",
 	"JAV 订阅源",
 	"想要",
 	"来源和凭证"
-].map((e, t) => `<span class="whitespace-nowrap" aria-selected="${t === 0}">${e}</span>`).join("")}</div>`, Xa = (e = "") => `<span class="group inline-flex items-center select-none gap-2"><span class="flex shrink-0 items-center justify-center rounded-sm size-4 border bg-background-primary-default shadow-xs border-border-checkbox-default"></span>${e ? `<span class="text-body-medium text-text-primary">${e}</span>` : ""}</span>`, Za = ({ table: e, sort: t, dir: n }) => {
-	let r = fa.find(([e]) => e === t)[1];
+].map((e, t) => `<span class="whitespace-nowrap" aria-selected="${t === 0}">${e}</span>`).join("")}</div>`, Za = (e = "") => `<span class="group inline-flex items-center select-none gap-2"><span class="flex shrink-0 items-center justify-center rounded-sm size-4 border bg-background-primary-default shadow-xs border-border-checkbox-default"></span>${e ? `<span class="text-body-medium text-text-primary">${e}</span>` : ""}</span>`, Qa = ({ table: e, sort: t, dir: n }) => {
+	let r = pa.find(([e]) => e === t)[1];
 	return `<div class="flex flex-wrap items-center gap-2 follow-skeleton-toolbar"><h3 class="mr-auto text-title-2-medium text-text-primary">关注列表</h3><span class="text-body-2-regular text-text-secondary">${X("132px")}</span>${W({
 		glyph: "refresh-cw",
 		label: "检查全部",
@@ -3538,7 +3549,7 @@ var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua =
 		variant: "ghost",
 		glyph: "table",
 		attrs: `aria-pressed="${e}"`
-	})}</span>${Ta(r)}${W({
+	})}</span>${Ea(r)}${W({
 		variant: "secondary",
 		glyph: n === "asc" ? "arrow-up" : "arrow-down"
 	})}${e ? "" : W({
@@ -3548,7 +3559,7 @@ var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua =
 		compact: !0,
 		attrs: Y
 	})}</div>`;
-}, Qa = () => `<span class="flex shrink-0 items-center gap-1">${W({
+}, $a = () => `<span class="flex shrink-0 items-center gap-1">${W({
 	variant: "secondary",
 	size: "small",
 	glyph: "refresh-cw",
@@ -3558,7 +3569,7 @@ var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua =
 	size: "small",
 	glyph: "trash",
 	attrs: Y
-})}</span>`, $a = () => `<div class="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 follow-skeleton-source">${Xa()}<span class="flex min-w-0 grow flex-col gap-0.5"><span class="text-body-medium">${X("8em")}</span></span><span class="flex shrink-0 items-center gap-1.5">${Z(14, 14)}</span>${Z(48, 24)}<span class="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary">${X("113px")}</span>${Qa()}</div>`, eo = (e) => `<section class="min-w-0 bg-background-primary-default rounded-2xl shadow-card flex flex-col overflow-hidden p-2 follow-skeleton-author"><div class="flex flex-wrap items-center gap-3 px-2 py-2.5" data-follow-author-header data-open>${Z(32, 32, !0)}<b class="min-w-0 grow text-body-medium break-words text-text-primary">${X("92px")}</b>${W({
+})}</span>`, eo = () => `<div class="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 follow-skeleton-source">${Za()}<span class="flex min-w-0 grow flex-col gap-0.5"><span class="text-body-medium">${X("8em")}</span></span><span class="flex shrink-0 items-center gap-1.5">${Z(14, 14)}</span>${Z(48, 24)}<span class="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary">${X("113px")}</span>${$a()}</div>`, to = (e) => `<section class="min-w-0 bg-background-primary-default rounded-2xl shadow-card flex flex-col overflow-hidden p-2 follow-skeleton-author"><div class="flex flex-wrap items-center gap-3 px-2 py-2.5" data-follow-author-header data-open>${Z(32, 32, !0)}<b class="min-w-0 grow text-body-medium break-words text-text-primary">${X("92px")}</b>${W({
 	variant: "secondary",
 	size: "small",
 	glyph: "refresh-cw",
@@ -3575,13 +3586,13 @@ var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua =
 	glyph: "chevron-up",
 	label: "收起",
 	attrs: Y
-})}</div><div data-source-divider>${J($a(), e)}</div></section>`, to = () => {
+})}</div><div data-source-divider>${J(eo(), e)}</div></section>`, no = () => {
 	try {
 		return Number(JSON.parse(localStorage.getItem("peach.settings.v1") || "{}").followPageSize) || 20;
 	} catch {
 		return 20;
 	}
-}, no = [
+}, ro = [
 	["select", ""],
 	["author", "创作者"],
 	["source", "来源"],
@@ -3589,58 +3600,58 @@ var q = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Ua =
 	["status", "状态"],
 	["checked", "上次检查"],
 	["actions", ""]
-], ro = {
+], io = {
 	name: "author",
 	source: "source",
 	provider: "provider",
 	status: "status",
 	checked: "checked"
-}, io = "<svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M12.7071 15.2929C12.3166 15.6834 11.6834 15.6834 11.2929 15.2929L7.70711 11.7071C7.07714 11.0771 7.52331 10 8.41421 10H15.5858C16.4767 10 16.9229 11.0771 16.2929 11.7071L12.7071 15.2929Z\" fill=\"currentColor\"/></svg>", ao = (e, { sort: t, dir: n }) => `<div data-board-data-table data-follow-table class="follow-skeleton-table"><div class="w-full overflow-x-auto"><table class="bui-table bui-table-sm"><thead><tr>${no.map(([e, r]) => r ? `<th><span class="flex items-center gap-0.5">${r}<span data-sort-indicator${ro[t] === e ? ` data-direction="${n === "asc" ? "ascending" : "descending"}"` : ""}>${io}</span></span></th>` : "<th></th>").join("")}</tr></thead><tbody>${J(`<tr>${[
-	Xa(),
+}, ao = "<svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M12.7071 15.2929C12.3166 15.6834 11.6834 15.6834 11.2929 15.2929L7.70711 11.7071C7.07714 11.0771 7.52331 10 8.41421 10H15.5858C16.4767 10 16.9229 11.0771 16.2929 11.7071L12.7071 15.2929Z\" fill=\"currentColor\"/></svg>", oo = (e, { sort: t, dir: n }) => `<div data-board-data-table data-follow-table class="follow-skeleton-table"><div class="w-full overflow-x-auto"><table class="bui-table bui-table-sm"><thead><tr>${ro.map(([e, r]) => r ? `<th><span class="flex items-center gap-0.5">${r}<span data-sort-indicator${io[t] === e ? ` data-direction="${n === "asc" ? "ascending" : "descending"}"` : ""}>${ao}</span></span></th>` : "<th></th>").join("")}</tr></thead><tbody>${J(`<tr>${[
+	Za(),
 	`<span class="flex min-w-0 items-center gap-2">${Z(32, 32, !0)}${X("5em")}</span>`,
 	X("10em"),
 	`<span class="flex items-center gap-1.5">${Z(14, 14)}${X("4em")}</span>`,
 	Z(48, 24),
 	X("113px"),
-	Qa()
-].map((e) => `<td>${e}</td>`).join("")}</tr>`, e)}</tbody></table></div></div>`, oo = (e, t) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-body-2-regular text-text-secondary">${X("111px")}</span>${Ta(`每页 ${t} ${e ? "条" : "位"}`, { size: "sm" })}${Z(204, 32)}</div>`, so = (e) => {
-	let t = e.followLayout === "table", n = ga(e.followSort, e.followDir), r = e.followPageSize || to(), i = t ? ao(r, n) : `${Xa("全选本页")}<div class="flex flex-col gap-3">${eo(3)}${eo(4)}${eo(3)}</div>`;
-	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${Ja()}<div class="flex flex-col gap-6">${Ya()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 follow-skeleton-surface" data-layout="${t ? "table" : "default"}">${Za({
+	$a()
+].map((e) => `<td>${e}</td>`).join("")}</tr>`, e)}</tbody></table></div></div>`, so = (e, t) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-body-2-regular text-text-secondary">${X("111px")}</span>${Ea(`每页 ${t} ${e ? "条" : "位"}`, { size: "sm" })}${Z(204, 32)}</div>`, co = (e) => {
+	let t = e.followLayout === "table", n = _a(e.followSort, e.followDir), r = e.followPageSize || no(), i = t ? oo(r, n) : `${Za("全选本页")}<div class="flex flex-col gap-3">${to(3)}${to(4)}${to(3)}</div>`;
+	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${Ya()}<div class="flex flex-col gap-6">${Xa()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 follow-skeleton-surface" data-layout="${t ? "table" : "default"}">${Qa({
 		table: t,
 		...n
-	})}${i}${oo(t, r)}</div></div></div></div></div>`;
+	})}${i}${so(t, r)}</div></div></div></div></div>`;
 };
-function co() {
-	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${q("85%")}${q("65%")}${J(Ua(), 4)}</div></aside></div>`;
-}
 function lo() {
-	return `<div data-skeleton="detail" role="status" aria-label="正在读取作品详情">${co()}</div>`;
+	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${q("85%")}${q("65%")}${J(Wa(), 4)}</div></aside></div>`;
 }
-function uo(e, t = {}) {
+function uo() {
+	return `<div data-skeleton="detail" role="status" aria-label="正在读取作品详情">${lo()}</div>`;
+}
+function fo(e, t = {}) {
 	let n = "";
-	if (e === "/stats") n = Ba();
-	else if (e === "/taste") n = `<div class="tastepage"><header class="tastehead">${Ga(["浏览器记录", "Peach 内部"], "insightswitch")}${q("24%")}</header><div class="tastestate"></div>${Wa([
+	if (e === "/stats") n = Va();
+	else if (e === "/taste") n = `<div class="tastepage"><header class="tastehead">${Ka(["浏览器记录", "Peach 内部"], "insightswitch")}${q("24%")}</header><div class="tastestate"></div>${Ga([
 		"浏览记录",
 		"口味维度",
 		"浏览候选",
 		"私有导出"
-	], "tastesummaries")}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${J(Ua(), 4)}</div></section>${Ka("口味分析")}<div class="board-activity-charts">${Ka("浏览活动")}${Ka("时间分布")}</div>${Ka("标签")}</div>`;
-	else if (e === "/follow-manage") n = so(t);
-	else if (e === "/configuration") n = La();
+	], "tastesummaries")}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${J(Wa(), 4)}</div></section>${qa("口味分析")}<div class="board-activity-charts">${qa("浏览活动")}${qa("时间分布")}</div>${qa("标签")}</div>`;
+	else if (e === "/follow-manage") n = co(t);
+	else if (e === "/configuration") n = Ra();
 	else if (e === "/activity") n = `<div class="activitypage">${[
 		"正在进行",
 		"被挡下的",
 		"最近完成"
-	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${q("35%")}${Ua()}</div></article></div></section>`).join("")}</div>`;
-	else if (e === "/duplicates") n = Va();
-	else if (e === "/quality-goals") n = Ha();
-	else if (e === "/playlists") n = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${q("200px")}</div></header><div class="playlistcards">${J(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${Ua()}</div></div></article>`, 6)}</div></section>`;
+	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${q("35%")}${Wa()}</div></article></div></section>`).join("")}</div>`;
+	else if (e === "/duplicates") n = Ha();
+	else if (e === "/quality-goals") n = Ua();
+	else if (e === "/playlists") n = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${q("200px")}</div></header><div class="playlistcards">${J(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${Wa()}</div></div></article>`, 6)}</div></section>`;
 	else return "";
 	return `<div class="board-page-skeleton" data-skeleton="board${e}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${n}</div></div>`;
 }
 //#endregion
 //#region src/catalog-onboarding.ts
-var fo = [
+var po = [
 	"loc",
 	"creator",
 	"performer",
@@ -3658,9 +3669,9 @@ var fo = [
 	"jav",
 	"thumb"
 ];
-async function po(e, t) {
+async function mo(e, t) {
 	let n = new URLSearchParams();
-	for (let t of fo) e[t] && n.set(t, e[t]);
+	for (let t of po) e[t] && n.set(t, e[t]);
 	let [r, i] = await Promise.all([t("/api/facets?" + n), t("/api/items?" + n + "&limit=5")]), a = [...new Set([
 		...r.creators || [],
 		...r.tagperformers || [],
@@ -3671,7 +3682,7 @@ async function po(e, t) {
 		return r.set("q", e), r.set("limit", "1"), (await t("/api/items?" + r)).total > 0 ? e : "";
 	}))).filter(Boolean);
 }
-function mo({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: r = !1, online: i = !1 } = {}) {
+function ho({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: r = !1, online: i = !1 } = {}) {
 	let a = r ? "<button class=\"geist-button primary\" data-empty-settings>添加内容</button>" : "", o = "<a class=\"geist-button" + (!r || i ? " primary" : "") + "\" href=\"/follow-manage?tab=add\">添加关注</a>";
 	if (t || n) return _("search", n ? "还没有符合条件的 JAV 作品" : "没有符合条件的内容", n ? "已扫描但尚未补充发行资料的视频可在全部内容中查看。" : "清除筛选或搜索条件后查看全部内容。", { actions: "<a class=\"geist-button primary\" href=\"/?loc=&thumb=0\">查看全部内容</a>" });
 	if (e !== "catalog") {
@@ -3692,56 +3703,56 @@ function mo({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: 
 }
 //#endregion
 //#region src/catalog-filter-skeleton.ts
-var ho = 64, go = (e) => e.replace(/[&<>"]/g, (e) => ({
+var go = 64, _o = (e) => e.replace(/[&<>"]/g, (e) => ({
 	"&": "&amp;",
 	"<": "&lt;",
 	">": "&gt;",
 	"\"": "&quot;"
-})[e]), _o = (e) => e.repeat(ho);
-function vo(e, t) {
-	let n = e.map((e) => `<a href="${go(e.href)}" data-catalog-view="${go(e.k)}" data-entity-press="" aria-pressed="${t === e.k}">${go(e.label)}</a>`).join("");
-	return "<div class=\"peach-react\"><div class=\"contents\" data-catalog-root=\"\" data-loading=\"\"><div data-catalog-tiers=\"\" aria-busy=\"true\"><div data-catalog-tier=\"performers\" data-skeleton=\"tiers\">" + _o("<span data-catalog-placeholder=\"performer\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + "</div><div data-catalog-tier=\"studios\">" + _o("<span data-catalog-placeholder=\"studio\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + `</div></div><div role="group" aria-label="筛选与排序" data-filter-glass="" data-glass-pane="" data-filter-frame="" data-catalog-frame="" class="sticky top-topbar z-10 mb-5.5 flex flex-col mx-4"><div role="group" aria-label="视图与标签" data-filter-row="top" class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible"><div data-catalog-scroll=""><div role="group" aria-label="视图" data-catalog-views="">${n}<span data-entity-sep="" aria-hidden="true"></span></div><div data-catalog-tags=""><span data-catalog-placeholder="tag" aria-hidden="true">` + "<span></span>".repeat(ho) + "</span></div></div></div><div data-filter-row=\"bottom\" aria-busy=\"true\" class=\"flex min-w-0 items-center gap-3 px-3 py-2 min-h-12\"><span data-catalog-readout=\"\"><span data-skeleton=\"count\" aria-hidden=\"true\" class=\"relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen\"></span></span></div></div></div></div>";
+})[e]), vo = (e) => e.repeat(go);
+function yo(e, t) {
+	let n = e.map((e) => `<a href="${_o(e.href)}" data-catalog-view="${_o(e.k)}" data-entity-press="" aria-pressed="${t === e.k}">${_o(e.label)}</a>`).join("");
+	return "<div class=\"peach-react\"><div class=\"contents\" data-catalog-root=\"\" data-loading=\"\"><div data-catalog-tiers=\"\" aria-busy=\"true\"><div data-catalog-tier=\"performers\" data-skeleton=\"tiers\">" + vo("<span data-catalog-placeholder=\"performer\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + "</div><div data-catalog-tier=\"studios\">" + vo("<span data-catalog-placeholder=\"studio\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + `</div></div><div role="group" aria-label="筛选与排序" data-filter-glass="" data-glass-pane="" data-filter-frame="" data-catalog-frame="" class="sticky top-topbar z-10 mb-5.5 flex flex-col mx-4"><div role="group" aria-label="视图与标签" data-filter-row="top" class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible"><div data-catalog-scroll=""><div role="group" aria-label="视图" data-catalog-views="">${n}<span data-entity-sep="" aria-hidden="true"></span></div><div data-catalog-tags=""><span data-catalog-placeholder="tag" aria-hidden="true">` + "<span></span>".repeat(go) + "</span></div></div></div><div data-filter-row=\"bottom\" aria-busy=\"true\" class=\"flex min-w-0 items-center gap-3 px-3 py-2 min-h-12\"><span data-catalog-readout=\"\"><span data-skeleton=\"count\" aria-hidden=\"true\" class=\"relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen\"></span></span></div></div></div></div>";
 }
 //#endregion
 //#region src/catalog-bars.ts
-var yo = 3e4, bo = 0, xo = (e, t = bo) => [
+var bo = 3e4, xo = 0, So = (e, t = xo) => [
 	"facets",
 	e,
 	t
-], So = (e, t, n = bo) => [
+], Co = (e, t, n = xo) => [
 	"tops",
 	e,
 	t,
 	n
-], Co = (e, t = bo) => [
+], wo = (e, t = xo) => [
 	"tops",
 	e,
 	t
 ];
-async function wo(t) {
+async function To(t) {
 	let n = String(t), r = await e(`/api/tops?${n}`), i = new URLSearchParams(n);
 	return r.performers.length || r.studios.length || !i.has("state") ? r : (i.delete("state"), await e(`/api/tops?${i}`));
 }
-function To(t, n) {
+function Eo(t, n) {
 	return Promise.all([I.fetchQuery({
-		queryKey: xo(t),
+		queryKey: So(t),
 		queryFn: () => e(`/api/facets${t ? `?${t}` : ""}`),
-		staleTime: yo
+		staleTime: bo
 	}), I.fetchQuery({
-		queryKey: So(n, t),
-		queryFn: () => wo(n),
-		staleTime: yo
+		queryKey: Co(n, t),
+		queryFn: () => To(n),
+		staleTime: bo
 	})]);
 }
-function Eo(e) {
+function Do(e) {
 	return I.fetchQuery({
-		queryKey: Co(e),
-		queryFn: () => wo(e),
-		staleTime: yo
+		queryKey: wo(e),
+		queryFn: () => To(e),
+		staleTime: bo
 	});
 }
-function Do() {
-	bo += 1;
+function Oo() {
+	xo += 1;
 	let e = (e) => e.state.fetchStatus === "idle";
 	I.removeQueries({
 		queryKey: ["facets"],
@@ -3753,35 +3764,35 @@ function Do() {
 }
 //#endregion
 //#region src/management.ts
-var Oo = "扫描媒体文件夹，导入已有资料，采集缺失信息。两段也可以分开跑：新盘刚接上时先只扫描，几万个文件登记完就能用；采集被网络拖住时只重跑采集，不必再扫一遍磁盘。", ko = "修缺时间戳表（播放卡顿）和缺索引（打不开）的 MP4。常看的片子先修。", Q = "<span class=\"skeleton skeleton-text\" aria-hidden=\"true\"></span>", Ao = "type=\"button\" disabled data-skeleton-action", jo = "disabled data-skeleton-action", Mo = "aria-disabled=\"true\"", No = (e) => `<div class="peach-react"><div class="flex flex-col gap-4">${e}</div></div>`, Po = (e, t) => `<div data-geist-fieldset-content>
+var ko = "扫描媒体文件夹，导入已有资料，采集缺失信息。两段也可以分开跑：新盘刚接上时先只扫描，几万个文件登记完就能用；采集被网络拖住时只重跑采集，不必再扫一遍磁盘。", Ao = "修缺时间戳表（播放卡顿）和缺索引（打不开）的 MP4。常看的片子先修。", Q = "<span class=\"skeleton skeleton-text\" aria-hidden=\"true\"></span>", jo = "type=\"button\" disabled data-skeleton-action", Mo = "disabled data-skeleton-action", No = "aria-disabled=\"true\"", Po = (e) => `<div class="peach-react"><div class="flex flex-col gap-4">${e}</div></div>`, Fo = (e, t) => `<div data-geist-fieldset-content>
           <h3 class="text-title-2-medium text-text-primary">${e}</h3>
           <p class="text-body-2-regular text-text-secondary">${t}</p></div>`;
-function Fo() {
-	return No(`<section aria-label="扫描与采集" data-geist-fieldset data-cleanup-task data-cleanup-processing data-fieldset-stack>
-        ${Po("扫描与采集", Oo)}
-        <footer data-geist-fieldset-footer><a href="/scraping" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-sans rounded-sm text-body-medium text-accent-600"><span>来源和凭证</span>${Ca("arrow-up", "size-[18px] shrink-0 rotate-90")}</a><span data-button-group data-split-button data-variant="primary">${W({
+function Io() {
+	return Po(`<section aria-label="扫描与采集" data-geist-fieldset data-cleanup-task data-cleanup-processing data-fieldset-stack>
+        ${Fo("扫描与采集", ko)}
+        <footer data-geist-fieldset-footer><a href="/scraping" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-sans rounded-sm text-body-medium text-accent-600"><span>来源和凭证</span>${wa("arrow-up", "size-[18px] shrink-0 rotate-90")}</a><span data-button-group data-split-button data-variant="primary">${W({
 		glyph: "database",
 		label: "扫描并补全资料",
-		attrs: jo
+		attrs: Mo
 	})}${W({
 		glyph: "chevron-down",
-		attrs: `${jo} aria-label="更多扫描与采集方式"`
+		attrs: `${Mo} aria-label="更多扫描与采集方式"`
 	})}</span></footer>
       </section>`);
 }
-function Io() {
-	return No(`<section aria-label="媒体修复" data-geist-fieldset data-cleanup-task data-cleanup-processing>
-        ${Po("媒体修复", ko)}
-        <footer data-geist-fieldset-footer>${Ta(Q, {
+function Lo() {
+	return Po(`<section aria-label="媒体修复" data-geist-fieldset data-cleanup-task data-cleanup-processing>
+        ${Fo("媒体修复", Ao)}
+        <footer data-geist-fieldset-footer>${Ea(Q, {
 		className: "w-48",
-		attrs: Mo
+		attrs: No
 	})}${W({
 		label: "开始修复",
-		attrs: jo
+		attrs: Mo
 	})}</footer>
       </section>`);
 }
-function Lo() {
+function Ro() {
 	let e = [
 		["人工复核", "square-check-big"],
 		["高清版", "sparkles"],
@@ -3796,8 +3807,8 @@ function Lo() {
         <span class="board-plain-stat-head"><span class="board-stat-tile">${n(t)}</span>${e}</span>
         <strong>${Q}</strong><span class="cleanupmeta">${Q}</span></button>`).join("")}</div>
     <div class="cleanupgrid">
-      <div class="cleanupscraping">${Fo()}</div>
-      <div class="cleanupmediarepair">${Io()}</div>
+      <div class="cleanupscraping">${Io()}</div>
+      <div class="cleanupmediarepair">${Lo()}</div>
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
@@ -3808,7 +3819,7 @@ function Lo() {
             <div class="organizepresets">${t}</div>
             <p class="cleanupmeta">${Q}</p>
           </div></div>
-        <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${Ao}>预览</button></footer>
+        <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${jo}>预览</button></footer>
       </section></div>
     <section class="resourcesync" aria-labelledby="cleanup-loading-links">
       <h2 id="cleanup-loading-links">链接管理</h2>
@@ -3820,19 +3831,19 @@ function Lo() {
 		"作品资料站"
 	].map((e) => `<div><span>${e}</span><b>${Q}</b></div>`).join("")}</div>
           <div class="linkhosts"><span>主要站点</span><b>${Q}</b></div></div></div>
-        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${Ao}>${n("unlink")}<span>检查死链</span></button></div>
+        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${jo}>${n("unlink")}<span>检查死链</span></button></div>
       </div></section>
     <section class="resourcesync" aria-labelledby="cleanup-loading-sync">
       <h2 id="cleanup-loading-sync">资源同步</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">文件与记录核对</h3>
           <p>按馆藏记录逐条查找本地磁盘与网盘上的文件，列出文件已不存在的记录、空文件夹，以及不再被引用的缓存。</p></div>
-        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${Ao}>${n("git-compare")}<span>检查文件</span></button></div>
+        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${jo}>${n("git-compare")}<span>检查文件</span></button></div>
       </div></section></div>`;
 }
 //#endregion
 //#region src/junk-queue.ts
-var Ro = [
+var zo = [
 	[
 		"",
 		"全部",
@@ -3868,64 +3879,64 @@ var Ro = [
 		"其它",
 		"hard-drive"
 	]
-], zo = (e) => Ro.find(([t]) => t === e)?.[0] ?? "";
-function Bo(e) {
+], Bo = (e) => zo.find(([t]) => t === e)?.[0] ?? "";
+function Vo(e) {
 	let t = new URLSearchParams(e);
 	return {
-		kind: zo(t.get("type")),
+		kind: Bo(t.get("type")),
 		view: t.get("view") === "dismissed" ? "dismissed" : "pending"
 	};
 }
-function Vo(e = "", t = "pending") {
+function Ho(e = "", t = "pending") {
 	let n = new URLSearchParams();
 	e && n.set("type", e), t === "dismissed" && n.set("view", "dismissed");
 	let r = n.toString();
 	return `/junk-files${r ? `?${r}` : ""}`;
 }
-function Ho(e) {
+function Uo(e) {
 	return e === "dismissed" ? {
 		view: "pending",
 		label: "返回待判断",
 		glyph: "rotate-ccw",
-		href: Vo("", "pending")
+		href: Ho("", "pending")
 	} : {
 		view: "dismissed",
 		label: "已排除",
 		glyph: "eye-off",
-		href: Vo("", "dismissed")
+		href: Ho("", "dismissed")
 	};
 }
-var Uo = (e) => e === "dismissed" ? "已排除" : "待判断", Wo = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${e}"></use></svg>`;
-function Go({ kind: e, view: n }) {
-	let r = Ro.map(([r, i, a]) => `<a href="${Vo(r, n)}" data-junk-kind-link="${r}"${r === e ? " aria-current=\"page\"" : ""}>${Wo(a)}${t(i)}</a>`).join(""), i = Ho(n);
-	return `<div class="peach-react" data-junk-count-skeleton=""><div data-junk-count=""><div data-junk-summary="" aria-live="polite">${ja(Uo(n))}</div><div data-junk-filters-frame="" data-filter-glass="" data-glass-pane=""><span data-view-glide="" aria-hidden="true" hidden></span><nav data-junk-filters="" aria-label="垃圾文件分类">${r}<i data-junk-divider="" aria-hidden="true"></i><a href="${i.href}" data-junk-view-link="${i.view}"${n === "dismissed" ? " aria-current=\"page\"" : ""}>${Wo(i.glyph)}${i.label}</a></nav></div></div></div>`;
+var Wo = (e) => e === "dismissed" ? "已排除" : "待判断", Go = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${e}"></use></svg>`;
+function Ko({ kind: e, view: n }) {
+	let r = zo.map(([r, i, a]) => `<a href="${Ho(r, n)}" data-junk-kind-link="${r}"${r === e ? " aria-current=\"page\"" : ""}>${Go(a)}${t(i)}</a>`).join(""), i = Uo(n);
+	return `<div class="peach-react" data-junk-count-skeleton=""><div data-junk-count=""><div data-junk-summary="" aria-live="polite">${Ma(Wo(n))}</div><div data-junk-filters-frame="" data-filter-glass="" data-glass-pane=""><span data-view-glide="" aria-hidden="true" hidden></span><nav data-junk-filters="" aria-label="垃圾文件分类">${r}<i data-junk-divider="" aria-hidden="true"></i><a href="${i.href}" data-junk-view-link="${i.view}"${n === "dismissed" ? " aria-current=\"page\"" : ""}>${Go(i.glyph)}${i.label}</a></nav></div></div></div>`;
 }
 //#endregion
 //#region src/player/controls.ts
-function Ko(e, t) {
+function qo(e, t) {
 	e?.closest(".video-js")?.querySelector(`.vjs-control-bar ${t}`)?.click();
 }
 //#endregion
 //#region src/player/playback.ts
-function qo(e) {
+function Jo(e) {
 	e && (e.paused ? e.play()?.catch(() => {}) : e.pause());
 }
-function Jo(e, t) {
+function Yo(e, t) {
 	let n = e.duration, r = (e.currentTime || 0) + t;
 	e.currentTime = Number.isFinite(n) ? Math.max(0, Math.min(n, r)) : Math.max(0, r);
 }
 //#endregion
 //#region src/islands.ts
-var Yo = {
+var Xo = {
 	"catalog-filter": { react: "catalog-filter" },
 	"feed-new": { react: "feed-new" },
 	"library-processing": { react: "library-processing" },
 	search: { react: "search" }
-}, Xo = () => import("/dist/peach-react.js").then(() => void 0), Zo = () => Object.keys(Yo), $ = /* @__PURE__ */ new Map();
-async function Qo(e, t, n, r = {}) {
-	let i = Yo[e];
+}, Zo = () => import("/dist/peach-react.js").then(() => void 0), Qo = () => Object.keys(Xo), $ = /* @__PURE__ */ new Map();
+async function $o(e, t, n, r = {}) {
+	let i = Xo[e];
 	if (!i) throw Error(`未注册的 island：${String(e)}`);
-	ns(t);
+	rs(t);
 	let a = { controller: new AbortController() };
 	$.set(t, a);
 	let o = (await import("/dist/peach-react.js")).pages[i.react];
@@ -3934,7 +3945,7 @@ async function Qo(e, t, n, r = {}) {
 	} catch {
 		if (a.controller.signal.aborted) return;
 	}
-	if (!es(t, a, r)) return;
+	if (!ts(t, a, r)) return;
 	let s = () => {
 		t.textContent = "";
 		let e = t.ownerDocument.createElement("div");
@@ -3946,63 +3957,63 @@ async function Qo(e, t, n, r = {}) {
 	};
 	r.reveal ? r.reveal(t, s) : s();
 }
-function $o(e, t) {
+function es(e, t) {
 	let n = e ? $.get(e) : void 0;
 	!n?.update || !n.props || (n.props = {
 		...n.props,
 		...t
 	}, n.update(n.props));
 }
-function es(e, t, n) {
+function ts(e, t, n) {
 	return $.get(e) === t ? n.isCurrent && !n.isCurrent() ? ($.delete(e), !1) : !0 : !1;
 }
-var ts = (e) => !!e && $.has(e);
-function ns(e) {
-	for (let t of [...$.keys()]) (t === e || e.contains(t)) && rs(t);
-}
+var ns = (e) => !!e && $.has(e);
 function rs(e) {
+	for (let t of [...$.keys()]) (t === e || e.contains(t)) && is(t);
+}
+function is(e) {
 	let t = $.get(e);
 	t && (t.controller.abort(), $.delete(e), t.dispose?.());
 }
-var is = null;
-function as(e, t, n, r) {
-	is ??= import("/dist/peach-react.js").then((n) => (n.mountToaster(e, t), n)), is.then((e) => e.showToast(n, r));
+var as = null;
+function os(e, t, n, r) {
+	as ??= import("/dist/peach-react.js").then((n) => (n.mountToaster(e, t), n)), as.then((e) => e.showToast(n, r));
 }
-var os = null, ss = null;
-function cs(e) {
-	return os ??= import("/dist/peach-react.js").then((t) => (ss = t.configureStage(e), ss)), os;
+var ss = null, cs = null;
+function ls(e) {
+	return ss ??= import("/dist/peach-react.js").then((t) => (cs = t.configureStage(e), cs)), ss;
 }
-var ls = () => ss, us = null, ds = null;
-function fs(e) {
-	return us ??= import("/dist/peach-react.js").then((t) => (ds = t.configureSettingsPanel(e), ds)), us;
+var us = () => cs, ds = null, fs = null;
+function ps(e) {
+	return ds ??= import("/dist/peach-react.js").then((t) => (fs = t.configureSettingsPanel(e), fs)), ds;
 }
-var ps = () => ds, ms = null, hs = null;
-function gs(e) {
-	return ms ??= import("/dist/peach-react.js").then((t) => (hs = t.configureImmerse(e), hs)), ms;
+var ms = () => fs, hs = null, gs = null;
+function _s(e) {
+	return hs ??= import("/dist/peach-react.js").then((t) => (gs = t.configureImmerse(e), gs)), hs;
 }
-var _s = () => hs, vs = null, ys = null;
-function bs(e) {
-	return vs ??= import("/dist/peach-react.js").then((t) => (ys = t.configureSidebar(e), ys)), vs;
+var vs = () => gs, ys = null, bs = null;
+function xs(e) {
+	return ys ??= import("/dist/peach-react.js").then((t) => (bs = t.configureSidebar(e), bs)), ys;
 }
-var xs = () => ys, Ss = null, Cs = null;
-function ws(e) {
-	return Ss ??= import("/dist/peach-react.js").then((t) => (Cs = t.configureManageHeader(e), Cs)), Ss;
+var Ss = () => bs, Cs = null, ws = null;
+function Ts(e) {
+	return Cs ??= import("/dist/peach-react.js").then((t) => (ws = t.configureManageHeader(e), ws)), Cs;
 }
-var Ts = () => Cs, Es = null, Ds = null;
-function Os(e) {
-	return Es ??= import("/dist/peach-react.js").then((t) => (Ds = t.configureBatchDock(e), Ds)), Es;
+var Es = () => ws, Ds = null, Os = null;
+function ks(e) {
+	return Ds ??= import("/dist/peach-react.js").then((t) => (Os = t.configureBatchDock(e), Os)), Ds;
 }
-var ks = () => Ds, As = null;
-function js(e) {
-	return As ??= import("/dist/peach-react.js").then((t) => t.configureGlowPicker(e)), As;
+var As = () => Os, js = null;
+function Ms(e) {
+	return js ??= import("/dist/peach-react.js").then((t) => t.configureGlowPicker(e)), js;
 }
-var Ms = null;
-function Ns(e) {
-	if (!Ms) {
+var Ns = null;
+function Ps(e) {
+	if (!Ns) {
 		let t = import("/dist/peach-react.js").then((t) => (t.configureRouter(e), t));
-		lr(t.then((e) => e.prefetchManagedRoute)), Ms = t.then(() => void 0);
+		lr(t.then((e) => e.prefetchManagedRoute)), Ns = t.then(() => void 0);
 	}
-	return Ms;
+	return Ns;
 }
 //#endregion
-export { wt as ACCENT_CHOICES, qe as COVER_FRONT_RATIO, F as CancelledError, Ne as DEFAULT_SETTINGS, xe as DEFAULT_SIDEBAR_ORDER, ai as FACE_CEILING, ri as FACE_TARGET, Me as FEED_COMPILATION_KEYS, Ae as FOLLOW_INITIAL_DAYS, Pn as InfiniteQueryObserver, We as JAV_LAYOUTS, ae as JAV_RELEASE_SORT, je as METADATA_REFRESH_DAYS, ii as MIN_FACE_PX, Fn as Mutation, Ln as MutationCache, zn as MutationObserver, Ke as PHOTO_LAYOUTS, Ge as PHOTO_SIZES, Vn as QueriesObserver, wn as Query, Hn as QueryCache, Un as QueryClient, On as QueryObserver, Oe as SETTINGS_KEY, ie as SORTS, ce as SORT_ALIASES, se as SORT_DIR_WORDS, oe as SORT_KEYS, ke as THEME_CHOICES, Re as THEME_OPTIONS, ut as TILES, pi as advanceImageFallback, S as allowedSetting, w as appSettingsStore, xt as applyAccent, mt as applyDensity, bt as applyGlassFaces, yt as applyHomeGlow, Ie as applySyncedSettings, Ve as applyTheme, H as avatarFrame, Ei as avatarInner, ks as batchDockApi, uo as boardPageSkeleton, Pi as cardArtwork, Ri as cardIdentity, Xe as cardLayoutFor, rt as cardRatio, mo as catalogEmptyHtml, vo as catalogFilterSkeletonHtml, po as catalogSuggestions, Et as chooseAccent, Tt as chooseGlowPreset, ti as clampPage, Lo as cleanupSkeletonHtml, Ko as clickPlayerControl, aa as configureHoverPreview, lr as connectManagedRoutes, Hi as coverAnchor, Wi as coverBackdrop, qi as coverFace, ji as coverImage, Ki as coverRatio, xi as coverUrl, dt as currentDensity, Kn as dataTagErrorSymbol, Gn as dataTagSymbol, fn as defaultScheduler, cn as defaultShouldDehydrateMutation, ln as defaultShouldDehydrateQuery, ue as defaultSortDir, un as dehydrate, sn as dehydrateQuery, Li as detailPosterUrl, lo as detailSkeletonHtml, Do as dropBars, Di as entityAvatar, Ti as entityFaceImg, da as entitySkeletonHtml, tn as environmentManager, Wn as experimental_streamedQuery, Ai as faceBoxAttrs, ci as faceFrame, Oi as faceOrigin, ki as facePos, hi as faceSourceScale, si as faceZoom, To as fetchBars, Eo as fetchTopsPage, $i as fitNativeImage, nn as focusManager, Jr as followJobProgress, Qi as frameCachedImages, Ct as glowChips, nt as gridLayout, oi as hasFaceBox, k as hashKey, Ye as homeLayout, dn as hydrate, fi as imageFallbackAttrs, _s as immerseApi, Or as initBoardControls, ra as installCardArt, gn as isCancelledError, Mt as isServer, ts as islandMounted, Zo as islandNames, Ni as javArtwork, he as javImageKind, Je as javLayout, Kr as jobActivityHtml, Go as junkCountSkeletonHtml, Vo as junkPath, Bo as junkRoute, Kt as keepPreviousData, fr as listenManagedEntry, Os as loadBatchDock, js as loadGlowPicker, gs as loadImmerse, ws as loadManageHeader, Ns as loadRouter, fs as loadSettingsPanel, bs as loadSidebar, cs as loadStage, Si as logoUrl, Ts as manageHeaderApi, Ur as manageHeaderSkeletonHtml, Br as manageHeaderView, dr as managedEntries, ur as managedEntry, Lt as matchMutation, It as matchQuery, Fi as mixFace, Bi as mixLabel, Qo as mountIsland, gi as nativeImageFit, de as nextSortState, D as noop, Pe as normalizeAppSettings, me as normalizeJavImage, b as normalizeJavLayout, pe as normalizeJavPreferences, Te as normalizeSidebarOrder, N as notifyManager, P as onlineManager, mr as openManagedRoute, ei as pageCount, ni as paginationHtml, Ot as paintGlowButton, _t as paintHomeGlowNow, gt as paintPhotoSizeButton, _e as panelFrame, di as parseFallbacks, A as partialMatchKey, Cr as peachHistory, wi as performerLabel, et as photoLayout, $e as photoSize, Le as postSearchHistoryLimit, Ui as posterPanel, fe as preferredDirection, Xo as preloadIslands, I as queryClient, zi as queueAvatarHtml, Ii as queueThumbHtml, Fe as readAppSettings, ea as refitNativeImages, ta as relayoutCovers, ye as relayoutJavImages, ca as releaseHover, sa as releaseHoverPreviews, _r as releaseManagedRoute, vi as rememberRepresentatives, Bt as replaceEqualDeep, yi as representativeOf, Dt as resetGlowColors, Er as routeSeen, Jo as seekVideoBy, Zr as selectGroup, Yr as selectRange, Xr as selectionSummary, la as setHoverState, ps as settingsPanelApi, Zi as settleImage, wr as shellNavigate, Zt as shouldThrowError, as as showToast, xs as sidebarApi, Ee as sidebarHasCatalogContent, Ir as sidebarSkeletonHtml, De as sidebarTagCounts, Yt as skipToken, le as sortDirWord, ls as stageApi, Tr as startRouting, it as storeHomeLayout, at as storeJavLayout, ct as storePhotoLayout, st as storePhotoSize, ot as storeVideoLayout, Dr as syncBoardRange, ve as syncJavImages, Qr as syncSelectionToolbar, E as timeoutManager, ht as toggleDensity, qo as toggleVideoPlayback, Pr as transitionTheme, ns as unmountIsland, qn as unsetMarker, $o as updateIsland, gr as updateManagedRoute, Gi as upgradeCover, qr as watchJob, Xi as watchPendingImages, Ue as watchSystemTheme, kt as wireGlowButton, ua as wireHover, mi as wireImageFallbacks, bi as withVersion };
+export { wt as ACCENT_CHOICES, qe as COVER_FRONT_RATIO, F as CancelledError, Ne as DEFAULT_SETTINGS, xe as DEFAULT_SIDEBAR_ORDER, oi as FACE_CEILING, ii as FACE_TARGET, Me as FEED_COMPILATION_KEYS, Ae as FOLLOW_INITIAL_DAYS, Pn as InfiniteQueryObserver, We as JAV_LAYOUTS, ae as JAV_RELEASE_SORT, je as METADATA_REFRESH_DAYS, ai as MIN_FACE_PX, Fn as Mutation, Ln as MutationCache, zn as MutationObserver, Ke as PHOTO_LAYOUTS, Ge as PHOTO_SIZES, Vn as QueriesObserver, wn as Query, Hn as QueryCache, Un as QueryClient, On as QueryObserver, Oe as SETTINGS_KEY, ie as SORTS, ce as SORT_ALIASES, se as SORT_DIR_WORDS, oe as SORT_KEYS, ke as THEME_CHOICES, Re as THEME_OPTIONS, ut as TILES, mi as advanceImageFallback, S as allowedSetting, w as appSettingsStore, xt as applyAccent, mt as applyDensity, bt as applyGlassFaces, yt as applyHomeGlow, Ie as applySyncedSettings, Ve as applyTheme, H as avatarFrame, Di as avatarInner, As as batchDockApi, fo as boardPageSkeleton, Fi as cardArtwork, zi as cardIdentity, Xe as cardLayoutFor, rt as cardRatio, ho as catalogEmptyHtml, yo as catalogFilterSkeletonHtml, mo as catalogSuggestions, Et as chooseAccent, Tt as chooseGlowPreset, ni as clampPage, Ro as cleanupSkeletonHtml, qo as clickPlayerControl, oa as configureHoverPreview, lr as connectManagedRoutes, Ui as coverAnchor, Gi as coverBackdrop, Ji as coverFace, Mi as coverImage, qi as coverRatio, Si as coverUrl, dt as currentDensity, Kn as dataTagErrorSymbol, Gn as dataTagSymbol, fn as defaultScheduler, cn as defaultShouldDehydrateMutation, ln as defaultShouldDehydrateQuery, ue as defaultSortDir, un as dehydrate, sn as dehydrateQuery, Ri as detailPosterUrl, uo as detailSkeletonHtml, Oo as dropBars, Oi as entityAvatar, Ei as entityFaceImg, fa as entitySkeletonHtml, tn as environmentManager, Wn as experimental_streamedQuery, ji as faceBoxAttrs, li as faceFrame, ki as faceOrigin, Ai as facePos, gi as faceSourceScale, ci as faceZoom, Eo as fetchBars, Do as fetchTopsPage, ea as fitNativeImage, nn as focusManager, Yr as followJobProgress, $i as frameCachedImages, Ct as glowChips, nt as gridLayout, si as hasFaceBox, k as hashKey, Ye as homeLayout, dn as hydrate, pi as imageFallbackAttrs, vs as immerseApi, kr as initBoardControls, ia as installCardArt, gn as isCancelledError, Mt as isServer, ns as islandMounted, Qo as islandNames, Pi as javArtwork, he as javImageKind, Je as javLayout, qr as jobActivityHtml, Ko as junkCountSkeletonHtml, Ho as junkPath, Vo as junkRoute, Kt as keepPreviousData, fr as listenManagedEntry, ks as loadBatchDock, Ms as loadGlowPicker, _s as loadImmerse, Ts as loadManageHeader, Ps as loadRouter, ps as loadSettingsPanel, xs as loadSidebar, ls as loadStage, Ci as logoUrl, Es as manageHeaderApi, Wr as manageHeaderSkeletonHtml, Vr as manageHeaderView, dr as managedEntries, ur as managedEntry, Lt as matchMutation, It as matchQuery, Ii as mixFace, Vi as mixLabel, $o as mountIsland, _i as nativeImageFit, de as nextSortState, D as noop, Pe as normalizeAppSettings, me as normalizeJavImage, b as normalizeJavLayout, pe as normalizeJavPreferences, Te as normalizeSidebarOrder, N as notifyManager, P as onlineManager, mr as openManagedRoute, ti as pageCount, ri as paginationHtml, Ot as paintGlowButton, _t as paintHomeGlowNow, gt as paintPhotoSizeButton, _e as panelFrame, fi as parseFallbacks, A as partialMatchKey, Cr as peachHistory, Ti as performerLabel, et as photoLayout, $e as photoSize, Le as postSearchHistoryLimit, Wi as posterPanel, fe as preferredDirection, Zo as preloadIslands, I as queryClient, Bi as queueAvatarHtml, Li as queueThumbHtml, Fe as readAppSettings, ta as refitNativeImages, Dr as registerDiagnosticsRoute, na as relayoutCovers, ye as relayoutJavImages, la as releaseHover, ca as releaseHoverPreviews, _r as releaseManagedRoute, yi as rememberRepresentatives, Bt as replaceEqualDeep, bi as representativeOf, Dt as resetGlowColors, Er as routeSeen, Yo as seekVideoBy, Qr as selectGroup, Xr as selectRange, Zr as selectionSummary, ua as setHoverState, ms as settingsPanelApi, Qi as settleImage, wr as shellNavigate, Zt as shouldThrowError, os as showToast, Ss as sidebarApi, Ee as sidebarHasCatalogContent, Lr as sidebarSkeletonHtml, De as sidebarTagCounts, Yt as skipToken, le as sortDirWord, us as stageApi, Tr as startRouting, it as storeHomeLayout, at as storeJavLayout, ct as storePhotoLayout, st as storePhotoSize, ot as storeVideoLayout, Or as syncBoardRange, ve as syncJavImages, $r as syncSelectionToolbar, E as timeoutManager, ht as toggleDensity, Jo as toggleVideoPlayback, Fr as transitionTheme, rs as unmountIsland, qn as unsetMarker, es as updateIsland, gr as updateManagedRoute, Ki as upgradeCover, Jr as watchJob, Zi as watchPendingImages, Ue as watchSystemTheme, kt as wireGlowButton, da as wireHover, hi as wireImageFallbacks, xi as withVersion };
