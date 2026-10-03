@@ -25,7 +25,7 @@
 | 首次前端导入 | React 导入钩子各有 30 秒上限，普通用例沿用默认超时 | `frontend/test/islands.test.ts` |
 | 42、43、64 | 云下载、JavDB 卡片资源、自配 Torznab 搜索、体积和质量筛选及既有来源性质标注已具备；资源搜索正式全量、桌面、手机与 Windows 生产 HTTPS 核验通过，已合入并上线；本地下载、JavBus、真实索引器验收与未来 App 通道仍待补 | `src/peach/resource_search.py`、`src/peach/wants_magnets.py`、活动页资源搜索与来源配置 |
 | 46 | 周期挂载快照、故障分类、托盘提示和 NAS 目录过滤已合入，正式全量、桌面、手机与 Windows 生产 HTTPS 核验通过；本地来源目录不存在，115 与 PikPak 可读取；Mac 挂载验收待补 | `src/peach/mount_reachability.py`、`src/peach/platform.py`、API、扫描与托盘回归 |
-| 21、26 | doctor 与分级健康检查已在 Windows 上线，全量 5953 项及严格 CA 核验通过；统一诊断页、库健康清单和来源证据已实现，页面验收及 Mac 验收待补 | `src/peach/diagnostics.py`、`src/peach/library_diagnostics.py`、诊断页面与回归 |
+| 21、26 | doctor、分级健康检查和系统诊断页已在 Windows 上线，全量 5959 项、浏览器 389 项及严格 CA 核验通过；库健康清单、来源证据和冷却可查，Mac 验收待补 | `src/peach/diagnostics.py`、`src/peach/library_diagnostics.py`、诊断页面与回归 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
 | 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
 | 操作 1 | 当前实验未复现：备份前、备份内、备份后均为 6164 行，集合摘要一致、逐行差异 0、备份完整性 ok；历史原因未取得 | `attic/evidence/20261002-tag-backup-audit/report-20261002T092121Z.json` 与同目录差异 CSV |
@@ -118,6 +118,7 @@
 25. **写 NFO 与目录收纳，先定产品边界再动手**。参考 NeoAVDC 的 `nfoWriter.ts` 与 `organizeMedia.ts`（MIT，副本在 `attic/tools/20260911-参考项目/`）：Kodi `<movie>` 带 `<customnumber>`、`<mpaa>`、`<set>`、`<art>`，演员 `<thumb>` 指向 `.actors/` 相对路径；Infuse 认不出隐藏目录，要换成平铺的 `actor-<名>.jpg`；`extrafanart/` 两边都安全。收纳的判据值得原样搬：目标已存在时先比 realpath 再决定拒绝覆盖，跨卷 `EXDEV` 回退成复制加删除，已在番号目录内不再套娃，NFO／海报／背景随视频改名，只删空目录。
     Peach 至今不写媒体目录，头像与取景 sidecar 都在 `peach-data`；写 NFO 意味着复核结论对 Emby 与 Infuse 可见，代价是媒体目录多出文件、CloudDrive 挂载上的写入要走第 9 条那种维护窗口。三个可选边界：① 不写媒体目录，导出到用户指定的独立目录，播放器把它当第二个媒体源；② 按来源根逐个开启写入，默认全关；③ 全量写入。建议从 ① 起步，它不碰第 9 条的前置条件。用户拍板前不实现。
 26. **系统诊断页**：第 21 条的 `peach doctor` 与分级 `/healthz` 有了输出之后做这一页，`doctor --json` 是唯一数据源，页面不另算一遍。合并五家做法：
+    - Windows 已实现并上线，桌面、390×844 手机、正式全量及生产严格 CA 核验通过；CLI 与 API 库健康及来源报告一致，Mac 验收待取得连接。
     - 每项带「原因、修法、跳转」三元组（sakuramedia `lib/features/system_diagnostics/presentation/hints/`），修法只给动作不给命令，跳转到配置页的具体分栏；修法在路由器或系统侧的项不给跳转。提示文案守它的四条规矩：一句话、只用界面上看得见的名词、不猜原因、不写影响；「列表为空」与「请求失败」是两条不同的提示。
     - 库健康计数：识别失败、补资料失败、缺封面、缺时长，每个数字点开是番号清单、可复制（javm `docs/plans/库健康诊断-方案.md`、OpenAver 0.16.7）。
     - 来源健康：真抓对一位女优才算健康，HTTP 200 不算（OpenAver 0.16.7）；minnano-av、javdb 的冷却状态与截止时间在这里显示。

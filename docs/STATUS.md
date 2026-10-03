@@ -21,7 +21,7 @@
 - 两端各用本机 CA，私钥与凭据不跨机；代码走 Git、账本单写者复制、图片走 Syncthing；本机坐标见 `<数据根>/config.toml`。
 - Windows 真实 ledger `peach-data/database/ledger.db`，2026-10-02 已应用到 `0043`；`asset_subtitle` 195 行（孤立 19），175 部带字幕轨，`asset` 80,356 行。
 - Mac ledger 经授权从共享副本拉取，恢复 `in-sync`；`sources` 在内置盘，`archive`、`tools` 可指向外置盘。
-- doctor 与分级健康检查已在 Windows 上线，严格 CA 验证通过；本地目录不存在，115、PikPak 可读取；访问密码未开、历史失败任务为警告。
+- doctor、系统诊断页已在 Windows 上线，严格 CA 核验通过；本地目录不存在，115/PikPak 可读取；密码未开、历史失败任务为警告。
 - 本机 Python 3.14；`requires-python` 下限 3.12，CI 同测 3.12 与 3.14；Windows FFmpeg/ffprobe 在 `peach-data/tools/ffmpeg`，macOS 走 PATH。
 - amane 桥（ADR-0048）代码在 `tools/amane-bridge/`，venv 在 `peach-data/tools/amane-bridge/.venv`，四类番号链都经它问。
 - 发行名 `peach`、目录名 `peach-app`。macOS 先按序做完待办「待执行的操作」第 26 条再重启菜单栏：无口令的 `peach serve --host 0.0.0.0` 会拒绝启动。
