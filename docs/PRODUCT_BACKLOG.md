@@ -25,7 +25,7 @@
 | 首次前端导入 | React 导入钩子各有 30 秒上限，普通用例沿用默认超时 | `frontend/test/islands.test.ts` |
 | 42、43、64 | 云下载、JavDB 卡片资源、自配 Torznab 搜索、体积和质量筛选及既有来源性质标注已具备；资源搜索正式全量、桌面、手机与 Windows 生产 HTTPS 核验通过，已合入并上线；本地下载、JavBus、真实索引器验收与未来 App 通道仍待补 | `src/peach/resource_search.py`、`src/peach/wants_magnets.py`、活动页资源搜索与来源配置 |
 | 46 | 周期挂载快照、故障分类、托盘提示和 NAS 目录过滤已合入，正式全量、桌面、手机与 Windows 生产 HTTPS 核验通过；本地来源目录不存在，115 与 PikPak 可读取；Mac 挂载验收待补 | `src/peach/mount_reachability.py`、`src/peach/platform.py`、API、扫描与托盘回归 |
-| 21、26 | doctor 文本与 JSON、本机诊断 API 和分级健康检查已实现，诊断、配置、分层与 API 分片通过；正式全量、集成与运行核验待补，统一诊断页仍待实现 | `src/peach/diagnostics.py`、`src/peach/health.py`、CLI 与诊断回归 |
+| 21、26 | doctor 文本与 JSON、本机诊断 API 和分级健康检查已在 Windows 上线，全量 5953 项及严格 CA 核验通过；统一诊断页与 Mac 验收待补 | `src/peach/diagnostics.py`、`src/peach/health.py`、CLI 与诊断回归 |
 | 11、20 | CI 已有不检出源码的 wheel 消费冒烟；完整矩阵结果、minimal source 与 artifact-only 验收仍待补齐 | `.github/workflows/test.yml`、`scripts/smoke_wheel.py` |
 | 14 | 自动检查与自动下载已实现，默认关闭，安装重启仍由用户确认；macOS 包、签名与局域网配对仍待做 | `src/peach/automatic_updates.py`、配置 API、`maintenance-settings.tsx`、对应后端与前端测试 |
 | 操作 1 | 当前实验未复现：备份前、备份内、备份后均为 6164 行，集合摘要一致、逐行差异 0、备份完整性 ok；历史原因未取得 | `attic/evidence/20261002-tag-backup-audit/report-20261002T092121Z.json` 与同目录差异 CSV |
@@ -110,6 +110,7 @@
     - wheel：取得第 11 条的 macOS、Python 3.12 消费结果，并核对完整系统矩阵与失败场景；消费方保持不检出源码。
     - artifact-only：只下载刚构建的桌面制品、不检出源码地启动，依赖第 14 条。失败场景覆盖数据根不可写、端口被占、账本损坏、未配置媒体目录、无 FFmpeg、非回环监听但无口令、两个 writer 同时启动。
 21. `peach doctor` 与分级 `/healthz`：`doctor`（另带 `--json`）逐项报版本、数据根可写性、配置文件合法性、数据库能否打开、schema 版本与待执行迁移、FFmpeg／ffprobe／OpenSSL 路径、挂载点可达性、端口占用、是否处在「局域网暴露但无口令」状态、后台任务最近一次失败；输出脱敏，不带口令、cookie、站点凭据和完整媒体路径。`/healthz` 相应从布尔改成分项状态（`database`／`schema`／`configured`／`ffmpeg`／`media_mounts`／`security`），与「健康检查生产验收」一起做。
+    - Windows 已完成正式全量、集成、源码托盘重启及项目 CA 严格 HTTPS 核验；本机 CLI 与 API 报告一致。Mac 验收待取得连接。
 22. 性能基准：用 SFW 合成数据生成 1k／10k／100k／500k 四档库，nightly 测冷启动到 `/healthz`、目录页与详情页 p95、两字以上搜索 p95、本地 SSD 与网盘挂载的 Range 首字节、空闲 RSS、后台扫描时前台退化倍数、备份期间读请求不失败。门槛用「相对上一次基线下降超过 20%」，不给绝对毫秒数，因为不同机器不可比。数据集与「第一个小时」教程的演示数据集共用：`scripts/demo_dataset.py --video stub` 出规模档（2000 条约 9 秒，海报按扩展名复用一张），基准脚本与 nightly 任务待做。已有一条基线记录：关系筛选上线后在真实库上只读对照，七轮中位数为标签 195.5→25.5 ms、创作者 148.8→45.6 ms、女优 162.7→15.7 ms、厂牌 162.0→19.6 ms，返回 ID 与总数一致；这是服务端耗时，不是浏览器端延迟。
 23. CI 的 Windows job 太慢，一次 push 的墙钟由它决定。同一批 2786 个用例在 `macos-latest`（arm64）上 57 秒，在 `windows-latest` 上 1475 秒，本机 Windows 是 324 秒，runner 比开发机还慢 4.6 倍。按时间戳差算，250 个用例（9%）吃掉 1119 秒，每个稳定在 4.5 秒上下，形状像每建一个临时文件被 Defender 扫一遍。矩阵分片那一半已经在跑：`ci_plan.py` 按域与 `shard_index` 展开矩阵，入口默认 `--jobs auto` 在每个分片内再并行。剩下的一半是在 Windows job 里对 runner 的临时目录加 `Add-MpPreference -ExclusionPath`，先量一轮确认是不是 Defender。不要为了缩短墙钟把 Windows job 从矩阵里去掉：它是生产平台，也是唯一能拦住 Windows 独有回归的地方。
 24. 借鉴 vercel.com/<team>/~/deployments 的令牌式筛选与排序。那一行不是一排互斥药丸，而是「Add Filter + 若干条已添加的维度令牌（Author／Environment／Status）」，每个令牌自带下拉，维度可叠加、可逐个摘掉，另有独立的日期区间与状态汇总（`6/7`）。2026-09-05 实测它的三态：未生效 `1px dashed rgba(0,0,0,.21)` 透明底，悬停／聚焦换成 `#FFFFFF` 实底加 `1px solid rgba(0,0,0,.08)`，下拉展开时 `gray-200` 底配实线。虚线读作「建议但没应用」，实心读作「已生效」。
@@ -153,7 +154,7 @@
 44. **DMM cid 前缀表与失败分类**：Javinizer-Go 从 r18.dev dump 生成了 24279 行「系列 → DMM cid 前缀」表（`content_id_prefixes.go`，MIT），`START-575 → 1start00575` 这类数字前缀 cid 不必再搜索；`sources/dmm.py` 注释写着它们「只有搜索答得出」，`jav_cover_fetch.py` 有几条手写映射。表随版本发布，查不到再搜索；AMMDS v1.6.71 的规则覆盖（正则、前缀、后缀、包含，`{brand}`、`{num2}`～`{num8}` 占位）作用户补丁层。不在本机自学前缀：OpenAver 0.15.3 本机自学的 53 条里 21 条是错的且无声。另移植 mdcz `crawler/sites/dmm/failureClassifier.ts`（GPL-3.0，可并入 AGPL）的分类：地区封锁、登录墙、未渲染的 Next.js 空壳、404 各成一个契约 reason，空壳判据也用于浏览器取页。
 45. **来源测试录制回放**：mdcz v0.16.0 的做法（`docs/testing-fixtures.md`）：每个番号一份 manifest，图片按 sha256 内容寻址、不进 Git，缺 blob 用同尺寸同字节数的生成图顶上；Cookie、CSRF、token 替换成固定值；回放缺一条交互就判失败，不回落公网。`sources/library-metadata/*.json` 的快照可当录制源，先拿 DMM 与 javbus 两个解析器试。
 46. **挂载可达性探测**：参照 OpenAver `core/source_reachability.py`：正常 600 秒、异常 60 秒探一次，连续两次失败才报，提示里写来源名；分开报「没有权限读取」与「不存在」（0.16.12），扫描跳过 `#recycle`、`@eaDir`、`@*` 这类 NAS 系统目录。结果给第 26 条诊断页与托盘状态用。
-    - 周期快照、在途去重、故障分类、来源接口与托盘提示已实现；Windows 定向回归及桌面、390 像素手机取证通过。完整回归、生产核验与 Mac 挂载验收待补，第 26 条诊断页仍待接入，不能关闭本项。
+    - 周期快照、在途去重、故障分类、来源接口与托盘提示已实现；Windows 完整回归、桌面、390 像素手机及生产核验通过。Mac 挂载验收待补，第 26 条诊断页仍待接入，不能关闭本项。
 47. **时刻、合集与片段导出**：「记一次高潮」已写 `activity_event.position_seconds`，推广成通用的「时刻」（时间点 + 一帧缩略图 + 可选备注），加时刻合集页；SakuraMedia 分播放列表、时刻、切片三层，各自成合集（`src/model/collections/`）。片段导出用 FFmpeg 拷流、不重编码，切点落在关键帧上，文件放 `peach-data`。时刻随个人记录按 ADR-0087 接到新版本。
     - 推荐时刻每片至多 3 条，与第 28 条的推荐分同批做。
 48. **上榜标记**：javranking-extension 的公开静态索引（先拉不到 200 B 的版本清单，变了才拉 1.26 MB `search-index.json`；schemaVersion 2，1769 部，JavDB TOP250、2020–2025 年榜、JavLibrary TOP250）每周读一次，给馆藏标「上榜」并喂给第 28 条。索引没有许可条款（未取得），只读引用并在界面标明来源；按来源存成候选标签。
