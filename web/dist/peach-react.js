@@ -27820,7 +27820,7 @@ function LC(e, t, n, r, i) {
 		drained: !i
 	}), [o, s] = (0, B.useState)(a), c = o.key === n ? o : a();
 	c !== o && s(c);
-	let l = (0, B.useMemo)(() => c.fetched.length ? t.concat(c.fetched) : t, [t, c.fetched]), u = (0, B.useRef)(!1), d = (0, B.useRef)({
+	let l = (0, B.useMemo)(() => c.fetched.length ? t.concat(c.fetched) : t, [t, c.fetched]), u = (0, B.useRef)(null), d = (0, B.useRef)({
 		current: c,
 		all: l,
 		more: i
@@ -27840,8 +27840,8 @@ function LC(e, t, n, r, i) {
 				} : e);
 				return;
 			}
-			n.drained || !i || u.current || (u.current = !0, i().catch(() => []).then((e) => {
-				u.current = !1, s((t) => t.key === n.key ? e.length ? {
+			n.drained || !i || u.current === n.key || (u.current = n.key, i().catch(() => []).then((e) => {
+				u.current === n.key && (u.current = null), s((t) => t.key === n.key ? e.length ? {
 					...t,
 					fetched: t.fetched.concat(e)
 				} : {

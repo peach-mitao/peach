@@ -245,7 +245,7 @@ function usePaged<T>(row: RefObject<HTMLElement | null>, items: T[], key: string
   if (current !== page) setPage(current);
   const all = useMemo(() => (current.fetched.length ? items.concat(current.fetched) : items),
     [items, current.fetched]);
-  const fetching = useRef(false);
+  const fetching = useRef<string | null>(null);
   const state = useRef({ current, all, more });
   state.current = { current, all, more };
   const fill = useCallback(() => {
@@ -256,11 +256,12 @@ function usePaged<T>(row: RefObject<HTMLElement | null>, items: T[], key: string
       setPage((p) => (p.key === now.key ? { ...p, limit: p.limit + ROW_BATCH } : p));
       return;
     }
-    if (now.drained || !next || fetching.current) return;
-    fetching.current = true;
-    /* 要下一页的这段时间里人还在滚，`fetching` 挡住重入，免得同一页要两遍。 */
+    if (now.drained || !next || fetching.current === now.key) return;
+    fetching.current = now.key;
+    /* 要下一页的这段时间里人还在滚，`fetching` 挡住同一份名单重入，免得同一页要两遍。按 `key` 记：
+     * 旧名单那一页还在路上时名单换了，新名单照样续页，不然旧请求回来被丢掉后这一排就停在第一页。 */
     void next().catch(() => []).then((rows) => {
-      fetching.current = false;
+      if (fetching.current === now.key) fetching.current = null;
       setPage((p) => {
         if (p.key !== now.key) return p;
         return rows.length ? { ...p, fetched: p.fetched.concat(rows as T[]) } : { ...p, drained: true };

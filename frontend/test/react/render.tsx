@@ -14,8 +14,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** 挂一棵根并把卸载留给用例：用例要看卸载之后还发不发请求时用它。 */
-export async function mountRoot(element: ReactElement): Promise<{ host: HTMLElement; unmount(): Promise<void> }> {
+/** 挂一棵根并把重画与卸载留给用例：用例要换一份 props 重画，或看卸载之后还发不发请求时用它。 */
+export async function mountRoot(element: ReactElement): Promise<{
+  host: HTMLElement; rerender(next: ReactElement): Promise<void>; unmount(): Promise<void>;
+}> {
   const host = document.createElement('div');
   host.className = 'peach-react';
   document.body.append(host);
@@ -24,6 +26,7 @@ export async function mountRoot(element: ReactElement): Promise<{ host: HTMLElem
   await act(async () => root.render(element));
   return {
     host,
+    rerender: async (next) => { await act(async () => root.render(next)) },
     unmount: async () => {
       const at = roots.indexOf(root);
       if (at >= 0) roots.splice(at, 1);
