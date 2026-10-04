@@ -4,8 +4,7 @@
  * 追加、逐枚量，实测一排一百多毫秒。这里用桩出来的几何数「改了又读」发生了几次。 */
 import { afterEach, describe, expect, it } from 'vitest';
 
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { fillSkeletonTier, fitSkeleton } from '../../web/js/ui-components.js';
+import { fillSkeletonTier, fitSkeleton } from '../src/ui-kit';
 
 const ROW = 1000;
 const SLOT = 100;

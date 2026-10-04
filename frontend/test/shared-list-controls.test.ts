@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-// @ts-expect-error 浏览器共享控件使用正式实现。
-import { wireHorizontalScroller, rubberBand } from '../../web/js/ui-components.js';
+import { wireHorizontalScroller, rubberBand } from '../src/ui-kit';
 
 afterEach(async () => {document.body.replaceChildren();await new Promise(resolve=>setTimeout(resolve,0));vi.unstubAllGlobals()});
 function button(){const node=document.createElement('button');document.body.append(node);return node}

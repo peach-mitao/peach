@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { growCollapse, setCollapseOpen } from '../../web/js/ui-components.js';
+import { growCollapse, setCollapseOpen } from '../src/ui-kit';
 
 afterEach(() => { vi.useRealTimers(); document.body.replaceChildren(); });
 

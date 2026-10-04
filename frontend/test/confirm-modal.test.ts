@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { confirmModal } from '../../web/js/ui-components.js';
+import { confirmModal } from '../src/ui-kit';
 
 afterEach(() => document.body.replaceChildren());
 it('危险操作聚焦取消，取消不写入，关闭归还焦点', async () => {

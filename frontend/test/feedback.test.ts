@@ -1,7 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {requestErrorMessage} from '../src/core';
-// @ts-expect-error 使用浏览器正式控件验证输出。
-import {noteHtml,projectBannerHtml,gaugeHtml,progressHtml,configurationSkeletonHtml} from '../../web/js/ui-components.js';
+import {noteHtml,projectBannerHtml,gaugeHtml,progressHtml,configurationSkeletonHtml} from '../src/ui-kit';
 
 describe('中文错误反馈',()=>{
   it.each(['Failed to fetch','NetworkError when attempting to fetch resource.','Load failed'])('网络异常 %s 给出连接检查方法',message=>{

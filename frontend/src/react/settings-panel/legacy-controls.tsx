@@ -14,7 +14,7 @@ import {
 
 import type { Choice } from './settings-panel-api';
 
-const rows = (options: readonly Choice[]) => options.map(([value, label, mark]) => mark ? [value, label, mark] : [value, label]);
+const rows = (options: readonly Choice[]): Choice[] => options.map(([value, label, mark]) => mark ? [value, label, mark] : [value, label]);
 
 /** 一组互斥视图。`value` 与上一次画出来的不同、或者面板重新打开（`epoch` 换了）时整块重画：
  *  滑块按新的选中项重新量位置。点选本身不重画，DOM 已经是点完的样子。`variant` 是遗留模板
@@ -57,7 +57,7 @@ export function SelectField({ id, label, options, value, disabled = false, busy 
     if (!node) return;
     if (built.current !== epoch || !field.current) {
       node.innerHTML = selectFieldHtml(rows(options), value, { label });
-      const root = wireSelectField(node.firstElementChild as Element);
+      const root = wireSelectField(node.firstElementChild as HTMLElement);
       root.addEventListener('change', () => pick.current(root.value));
       field.current = root;
       built.current = epoch;
