@@ -314,6 +314,11 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
   收 `#index` 那一页；`#grid` 那一页离开目录时由 `clearCatalogGrid` 收，首页新作行由 `clearHomeFeed` 收；搜索
   下拉常驻、从不收。多数页面的离场路径是直接 `innerHTML=`，页面被挤出文档却照样活着，所以收起必须由这几个
   公共点负责，而不是逐页判断。第二道是 `isCurrent`：取数落地时用户可能已经走开，这时不画。
+- 抛错的那一面：每一面各套一层错误边界（`router.tsx` 的 `SurfaceBoundary`，按代次挂 key）。某一面渲染
+  抛错时只空出那一面，`failManagedRoute` 撤掉它的登记与宿主，`managedTaken` 回 false、推补丁是空操作，壳
+  下次打开就重开；首帧就抛错时 `openManagedRoute` 照样回 true，回来时登记已经撤了。错误经根的
+  `onCaughtError` 交给 `reportError`，每次一条，边界自己不再报。根上不套边界：派发点与两组 `<Routes>`
+  不随某一面卸掉。确定性的抛错每重开一次就再报一次；搜索下拉只在壳启动时打开，抛错后空到刷新为止。
 
 遗留助手不打进 `peach-ui.js` 与 `peach-react.js`：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`
 在浏览器里是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。

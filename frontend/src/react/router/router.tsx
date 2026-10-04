@@ -12,17 +12,21 @@
  *
  * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`）匹配，详情压在哪一页上就还匹配那一页；
  * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。两组的具体路由都只声明路径，`path="*"`
- * 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。 */
+ * 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。
+ *
+ * 一处渲染错误只带走抛错的那一面：每一面各套一层错误边界（`SurfaceBoundary`），根上不套，派发点与两组
+ * `<Routes>` 不随某一面卸掉。错误经根的 `onCaughtError` 交给 `reportError`，每次一条。 */
 import {
-  createContext, memo, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject,
+  Component, createContext, memo, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode,
+  type RefObject,
 } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { createRoot, type Root } from 'react-dom/client';
+import { createRoot, type Root, type RootOptions } from 'react-dom/client';
 import { Route, Router, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router';
 
 import {
-  backgroundOf, listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen, type ManagedEntry,
-  type Navigation,
+  backgroundOf, failManagedRoute, listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen,
+  type ManagedEntry, type Navigation,
 } from '@peach/history';
 
 import { Providers } from '../providers';
@@ -103,9 +107,29 @@ function ManagedSurface() {
     <>
       <NavigateInto target={navigate} />
       {actions ? entries.map((entry) => (
-        <ManagedPortal key={entry.revision} entry={entry} actions={actions} go={go} />)) : null}
+        <SurfaceBoundary key={entry.revision} entry={entry}>
+          <ManagedPortal entry={entry} actions={actions} go={go} />
+        </SurfaceBoundary>)) : null}
     </>
   );
+}
+
+/** 一面一层的错误边界。接住之后这一面画成空，并撤掉它的登记与宿主（`failManagedRoute`），壳下次打开时重开；
+ *  按代次挂 key，重开就是一个新的边界实例。上报不在这里：根的 `onCaughtError` 已经报过一次。 */
+class SurfaceBoundary extends Component<{ entry: ManagedEntry; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  override componentDidCatch(): void {
+    failManagedRoute(this.props.entry.container, this.props.entry.revision);
+  }
+
+  override render(): ReactNode {
+    return this.state.failed ? null : this.props.children;
+  }
 }
 
 const ManagedPortal = memo(function ManagedPortal(
@@ -151,13 +175,19 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
   );
 }
 
+/** 路由树那棵根的选项。错误边界接住的错误交给全局 `reportError`，和没人接住时 React 的上报同一条路，
+ *  控制台与 window 的 `error` 事件各见一次。运行时才取 `reportError`：测试环境里可能没有它。 */
+export const ROUTER_ROOT_OPTIONS: RootOptions = {
+  onCaughtError: (error) => { globalThis.reportError?.(error) },
+};
+
 /* 根建在一个不进文档的容器上：页面经 portal 画进壳的 `#stats`、`#index`、`#grid` 与各附属面的容器，别的地方
  * 什么都不画。
  * 第一次渲染同步做完，宿主在 `loadRouter` 落定之前就已经订阅：壳打开的第一页取齐时它一定在听。 */
 let root: Root | null = null;
 export function configureRouter(actions: ShellActions): void {
   if (root) return;
-  root = createRoot(document.createElement('div'));
+  root = createRoot(document.createElement('div'), ROUTER_ROOT_OPTIONS);
   const mounted = root;
   flushSync(() => mounted.render(<RouterRoot actions={actions} />));
 }

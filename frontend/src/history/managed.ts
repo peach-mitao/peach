@@ -159,3 +159,18 @@ export function releaseManagedRoute(container: Element, ...more: Element[]): voi
   notify(true);
   for (const shown of removed) shown.host.remove();
 }
+
+/** 某一面渲染抛错、路由树的错误边界接住之后调：只撤这一面的登记与宿主，别的面照画。之后
+ *  `managedTaken` 回 false、`updateManagedRoute` 对它是空操作，壳下一次打开就重开。代次对不上（这一格
+ *  已经收起或重开过）是空操作：过期的那一面不能撤掉壳刚开的新一面。
+ *
+ *  删登记与撤宿主当场做，通知延到微任务：这里在 React 的提交阶段里（错误边界的 `componentDidCatch`），
+ *  通知会让路由树重渲染。抛错出在打开那一次的首帧时，打开照样回 true，只是回来的那一刻登记已经撤了，
+ *  壳紧接着推的补丁是空操作。 */
+export function failManagedRoute(container: Element, failed: number): void {
+  const shown = entries.get(container);
+  if (shown?.revision !== failed) return;
+  entries.delete(container);
+  shown.host.remove();
+  queueMicrotask(() => { notify(false) });
+}
