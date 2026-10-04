@@ -322,7 +322,8 @@
   max-width: 100%;
   margin-top: 14px;
 }
-.peach-react [data-entity-card] [data-entity-links] > :is(a, span)[data-link] {
+/* 标签名放进 :where 不计特指度，下面按 data-link 取值分的变体才压得住这条底样式。 */
+.peach-react [data-entity-card] [data-entity-links] > :where(a, span)[data-link] {
   display: inline-flex;
   align-items: center;
   gap: 8px;
