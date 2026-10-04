@@ -5,7 +5,7 @@ import { act } from 'react';
 import { notifyManager } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-import { normalizeHomeGlow } from '@peach/legacy/home-glow';
+import { normalizeHomeGlow } from '@peach/appearance';
 
 import { queryClient } from '../../src/react/query';
 import { configureSettingsPanel } from '../../src/react/settings-panel/settings-panel';

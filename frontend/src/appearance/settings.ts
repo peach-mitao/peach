@@ -6,13 +6,13 @@
  *
  * 归一化的判据是「读回存量时只信形状对、范围对的值」：认不出的一项退回出厂那一档，不整份丢掉。 */
 import { api } from '@peach/legacy/core';
-import { DEFAULT_ACCENT, DEFAULT_HOME_GLOW, normalizeAccent, normalizeHomeGlow, type HomeGlow } from '@peach/legacy/home-glow';
 
 import { normalizeJavPreferences } from '../jav-artwork';
 import { boundedPreference } from '../number-setting';
 import { createSettingsStore, type SettingsStore } from '../settings-store';
 import { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder } from '../sidebar';
 import { SORT_ALIASES, SORT_KEYS } from '../sort-preferences';
+import { DEFAULT_ACCENT, DEFAULT_HOME_GLOW, normalizeAccent, normalizeHomeGlow, type HomeGlow } from './home-glow';
 
 export const SETTINGS_KEY = 'peach.settings.v1';
 /* 主题三档，键名与 <html> 上的 data-theme 同一套写法：web/css/01-base.css 的色板

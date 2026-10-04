@@ -1,9 +1,8 @@
 /* 光晕那一层的写入时机（`src/appearance/glow.ts`）。点选写什么由 `test/react/glow-picker.test.tsx` 走。 */
 import { beforeEach, expect, it, vi } from 'vitest';
 
-import { normalizeHomeGlow } from '@peach/legacy/home-glow';
-
 import { applyHomeGlow, paintHomeGlowNow, type GlowSettings } from '../../src/appearance/glow';
+import { normalizeHomeGlow } from '../../src/appearance/home-glow';
 import { SETTINGS_KEY } from '../../src/appearance/settings';
 import { createSettingsStore } from '../../src/settings-store';
 

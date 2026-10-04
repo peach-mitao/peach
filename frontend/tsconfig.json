@@ -23,7 +23,6 @@
     "paths": {
       "@peach/legacy/core": ["./src/core/index.ts"],
       "@peach/legacy/ui": ["./src/legacy/ui.d.ts"],
-      "@peach/legacy/home-glow": ["./src/legacy/home-glow.d.ts"],
       "@peach/legacy/jav-title": ["./src/core/jav-title.ts"],
       "@peach/legacy/tags": ["./src/core/tags.ts"],
       "@peach/legacy/ui-sounds": ["./src/ui-kit/sounds.ts"],

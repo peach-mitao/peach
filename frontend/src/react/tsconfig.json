@@ -16,7 +16,6 @@
       "@/*": ["./boardui/*"],
       "@peach/legacy/core": ["../core/index.ts"],
       "@peach/legacy/ui": ["../legacy/ui.d.ts"],
-      "@peach/legacy/home-glow": ["../legacy/home-glow.d.ts"],
       "@peach/legacy/jav-title": ["../core/jav-title.ts"],
       "@peach/legacy/tags": ["../core/tags.ts"],
       "@peach/card-art": ["../card-art/index.ts"],

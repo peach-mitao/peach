@@ -14,7 +14,6 @@ import { defineConfig } from 'vite';
 export const LEGACY_MODULES = {
   '@peach/legacy/core': '/js/core.js',
   '@peach/legacy/ui': '/js/ui-components.js',
-  '@peach/legacy/home-glow': '/js/home-glow.js',
   '@peach/legacy/jav-title': '/js/jav-title.js',
   '@peach/legacy/tags': '/js/tags.js',
   '@peach/legacy/ui-sounds': '/js/ui-sounds.js',

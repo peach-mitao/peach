@@ -22,3 +22,9 @@ export {
   paintHomeGlowNow, resetGlowColors, wireGlowButton,
 } from './glow';
 export type { GlowChip, GlowSettings } from './glow';
+export {
+  ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, GLASS_NATIVE_PRESET, GLOW_SPOT_LABELS, GLOW_SWATCHES, GLOW_SWATCH_FAMILIES,
+  HOME_GLOW_CHOICES, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowColor, glowPalette, glowPresetName,
+  isNativeGlass, normalizeAccent, normalizeHomeGlow, paintGlassFaces, paintHomeGlow,
+} from './home-glow';
+export type { GlowSpot, HomeGlow } from './home-glow';
