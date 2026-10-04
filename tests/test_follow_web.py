@@ -3425,7 +3425,7 @@ class FollowWebSourceTests(unittest.TestCase):
         # （e2e `follow-feed.test.ts`「载入更多」「往回抓一页」）。
 
     def test_follow_uses_the_global_multi_select_mode(self):
-        self.assertPageContains("const selected=new Set(),followSelected=new Set();")
+        # 两个选择集是壳单例里的常驻 Set（`frontend/test/shell/store.test.ts`）。
         self.assertPageContains("function toggleFollowSelection(id,range=false)")
         self.assertPageContains("path==='/tags'||path==='/follow'")
         self.assertPageContains("const body=action==='save'?{items}:{items,to:action};")
