@@ -11,8 +11,7 @@ import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import type { CatalogGridProps, MediaCardActions, MediaCardHelpers } from '../../src/react/catalog-grid/types';
 import type { JunkQueueProps } from '../../src/react/junk-queue/junk-queue';
 import type { ShellActions } from '../../src/react/router/shell-actions';
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { revealSkeleton } from '../../../web/js/ui-components.js';
+import { revealSkeleton } from '../../src/ui-kit';
 
 // 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
 const REACT_IMPORT_TIMEOUT_MS = 30_000;

@@ -48,10 +48,10 @@
 
 - 前端基础库随页面引入，取舍与时机见 ADR-0031「前端基础库」一节。TanStack Query、TanStack Table 与 React Router 已在用，路由共用一份浏览器历史；馆藏网格已在 React 里、不用 TanStack Virtual，屏外卡靠 `content-visibility` 跳过渲染；要不要上虚拟列表按下一条的实测决定。
 - `bg-card-footer` 与 `bg-card-hover` 取的是 `.peach-react` 里的真值，数据管理页整理卡、统计、活动、关注管理与设置的卡片页脚带都有底色，这几页还要逐页截图核对。
-- 索引页取 BoardUI 的控件尺寸：过滤框 36px 高、底色与边框是 BoardUI 输入框那一档，遗留页的 Geist 搜索框是 38px；版式切换 66px 宽，遗留页的同类开关是 78px；名册格悬停掺 5% 主文字色，资料页名册格掺 6%。读数的逐位滚动（遗留层 `popCount`）、骨架换内容的淡入（`revealSkeleton`）与版式切换的弹簧滑块还没接进 React 那一侧。
+- 索引页取 BoardUI 的控件尺寸：过滤框 36px 高、底色与边框是 BoardUI 输入框那一档，遗留页的 Geist 搜索框是 38px；版式切换 66px 宽，遗留页的同类开关是 78px；名册格悬停掺 5% 主文字色，资料页名册格掺 6%。读数的逐位滚动（`frontend/src/ui-kit/motion.ts` 的 `popCount`）、骨架换内容的淡入（`ui-kit/skeleton.ts` 的 `revealSkeleton`）与版式切换的弹簧滑块还没接进 React 那一侧。
 - React 子树深色下的次要文字取 BoardUI 的 neutral-500（115），遗留页的 `--muted`、`--ink-2` 是 163 与 212。已迁各页都是这一档，要不要把 `text-secondary` 调亮是一次全局决定，不在单页里改。
 - Remix Icon 候选在预览页 `/icon-review.html` 审查，用户筛选完之前保留现有已选图标。
-- 安装后教程：右下角那张卡和清单渲染仍在 `web/app.js`，状态层（三个本地键、签名、请求代际）已在 `web/js/ui-components.js`。迁移时整块接管渲染，删掉遗留那一段。
+- 安装后教程：右下角那张卡和清单渲染仍在 `web/app.js`，状态层（三个本地键、签名、请求代际）在 `frontend/src/onboarding/post-setup-tutorial.ts`。迁移时整块接管渲染，删掉遗留那一段。
 - 厂牌资料页视频视图卡片多时（如 Prestige，339 张卡），侧栏展开那一帧最长约 37ms。屏外卡已跳过封面与元信息区的渲染，剩下的开销在卡片盒本身的排版；作品区已在 `catalog-grid` island 里，要上虚拟列表就在岛里做。
 
 ## 已有骨架、尚未完成（7 项）
@@ -227,7 +227,6 @@
     - 领域层：`catalog_rules` 里站名交替串、TLD 列表各写两份；`transcodes.requires_conversion`／`browser_path` 是同一段缓存逻辑；`library_processing` 是第三条 r18 请求路径且跨模块拿私有 `_fetch`。
     - scripts：`audit_creator_attributions.py`（查的 `legacy:asset` 已无写入者）、`apply_metadata_tags.py`（绕过 `/review`）、`creator_tags.py --apply-review`（与 `web_review` 判据不同的第二条写路，`--export-review` 要留）建议删；7 处绕开 `scripting.open_for_write`、5 处自拼只读 URI、5 处手写线性重试要接上共享实现；`audit_video_endcards.py`、`audit_fc2_similarity.py`、`localize_series_names.py` 还会用但文档没登记，归到 `peach-batch-jobs` 或 [docs/SOURCING.md](SOURCING.md)。
     - tests：2026-10-02 按 `test_source_assertion_ratchet.py` 实测有 310 处源码文本断言，其中 `test_web_ui.py` 为 37 处，`test_follow_web.py` 为 122 处；棘轮只许减少，保留范围与清退判据见 [docs/TESTING.md](TESTING.md)「写什么测试」。手写 schema 与临时表按触碰范围核对并迁到 `fresh_ledger()`，不整体重写；`check_copy_final_state.py` 的词表不拦「过去／此前」。
-    - 前端：11 处 `await import('/dist/peach-ui.js')` 与文件顶部静态 import 并存，统一加载方式时核对产物外部引用与真实路由加载。
     - 文档：同一条规则最多写在 19 个文件里（测试入口）。
 32. 归一后要用户判的 10 张厂牌标识：AttractiveLLC ×3、C-more_Entertainment ×3、Bambi_Promotion ×2、Deep_s、Tameike_Goro。补到内容外接圆这条规则在「设计上就出血到边」的标识上会把内容推离边缘，逐张判词在 `peach-data/review/refit-review-20260908.csv`，原图在 `peach-data/archive/logos-pre-refit-20260908/`，对比页 `build/logo_compare.html` 的第一节。占宽和圆外损失都分不开 C-more（0.98／0.97）与 MARRION（0.95／0.94），所以没加窄化条件，先由用户定还原哪几张，再按定下来的形状写判据和测试。
 33. 补底到 64 的 7 张还没写入：`normalize_studio_logos.py --apply` 要用户自己跑（DorcelClub.img、Flower 三张、LINX.img、HEYZO.icon、Prestige.icon，逐张前后见对比页第三节）。

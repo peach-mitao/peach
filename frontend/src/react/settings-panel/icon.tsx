@@ -1,4 +1,4 @@
-/* 雪碧图里的一枚字形，写法同遗留层 `icon()`（`web/js/core.js`）：尺寸与描边由样式表按位置给。 */
+/* 雪碧图里的一枚字形，写法同遗留层 `icon()`（`src/core/index.ts`）：尺寸与描边由样式表按位置给。 */
 export function Icon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>;
 }

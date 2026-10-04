@@ -16,8 +16,7 @@ import {
   setPostSetupTutorialCollapsed,
   setPostSetupTutorialMarker,
   setPostSetupTutorialSkipped,
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-} from '../../web/js/ui-components.js';
+} from '../src/onboarding/post-setup-tutorial';
 
 const task = (key: string, done = false) =>
   ({ key, done, label: `做 ${key}`, description: '还没开始。', href: `/${key}` });

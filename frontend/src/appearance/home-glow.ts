@@ -1,16 +1,24 @@
 /* 外观配色的纯数据层：光晕的参数模型、预设、命名色板、强调色清单、读回存量的规范化，
-   以及把颜色写到指定元素上的那两次绘制。没有页面装配，也不认识 `appSettings`、`$`、
-   `saveSettings` 这些 app.js 的全局——侧栏那枚配色钮、它的弹层和设置面板的参数区仍旧
-   留在 app.js。
+   以及把颜色写到指定元素上的那两次绘制。没有页面装配，也不认识偏好对象：当前设置和目标元素
+   由外观应用层（`./glow.ts`、`./settings.ts`）递进来。
 
-   拆出来是为了迁移时只搬一次：React 壳直接 import 这一份，不用把同一张预设表、同一
-   套色板和同一段规范化再抄进组件里。同一个道理，这里不从 `../dist/peach-ui.js` 借东西
-   ——那是 React 的构建产物，它自己要 import 本文件，反向引用就闭成了一个环。
+   随 `peach-ui.js` 发出，经 `@peach/appearance` 转出：壳从 `peach-ui.js` 取，React 包按
+   `@peach/appearance` 引用、构建时改写回同一份产物，同一张预设表、同一套色板和同一段规范化只有一份。
    `glowNumber` 与它的 `boundedPreference`（`frontend/src/number-setting.ts`）判据相同：
    整数且落在区间里才算数，否则退回默认那一档。
 
    `paintHomeGlow` 只写传进来的那枚元素。写在 <html> 上整棵树都要重算样式，实测每帧
    15ms 上下，拖拉条时帧预算当场就超；量法记在 web/css/01-base.css 那条规则上面。 */
+
+export interface GlowSpot { color: string; alpha: number }
+/** 一份光晕设置。 */
+export interface HomeGlow {
+  on: boolean; preset: string; strength: number; noise: number; speed: number; soften: number; size: number;
+  spot1: GlowSpot; spot2: GlowSpot; spot3: GlowSpot;
+}
+type SpotKey = 'spot1' | 'spot2' | 'spot3';
+type GlowPalette = Pick<HomeGlow, SpotKey>;
+type GlowField = 'strength' | 'noise' | 'speed' | 'soften' | 'size';
 
 /* 一档配色就是三枚光晕的颜色与不透明度；开关、强度和颗粒不属于配色，换档时不动。
    椭圆半轴和收边位置不在这里，只有 web/css/01-base.css 一份，用户不调、也不存；圆心
@@ -22,8 +30,8 @@
    `ash` 是默认那一档，和 :root 上的默认值一字不差。
    每一档还带一枚搭配的强调色：换配色是换整套外观，按钮、焦点环和链接跟着走才是一副面。
    单点强调色可以把它覆盖掉，那一下只改强调色、不动光晕。 */
-const HOME_GLOW_SPOTS=['spot1','spot2','spot3'];
-const GLOW_SPOT_LABELS=['光晕一','光晕二','光晕三'];
+const HOME_GLOW_SPOTS:readonly SpotKey[]=['spot1','spot2','spot3'];
+const GLOW_SPOT_LABELS:readonly string[]=['光晕一','光晕二','光晕三'];
 /* 「玻璃原色」是每块玻璃自带的那两团反光，颜色由明暗主题给：深色近白、浅色一蓝一灰。
    它不走光晕那一层——两团、各自的尺寸与轨迹全在 board.css 的 `--glass-drift-a/b` 里，
    照着三枚光晕重画一遍只会得到一份形状不同的仿制品。选中这一档时光晕整层的强度算成 0，
@@ -33,7 +41,8 @@ const GLOW_SPOT_LABELS=['光晕一','光晕二','光晕三'];
 const GLASS_NATIVE_PRESET='native';
 /* 默认那一档排在最前：灰雾配蓝。灰是最不挑主题的光晕，蓝是 BoardUI 自己的强调色，
    两者一起就是这个壳没被改过时的样子；暖色那几档留给人自己挑。 */
-const HOME_GLOW_PRESETS=[
+/** `[键, 名称, 三枚光晕, 搭配的强调色]`。 */
+const HOME_GLOW_PRESETS:readonly (readonly [key:string,label:string,palette:GlowPalette,accent:string])[]=[
   ['ash','灰雾',{
     spot1:{color:'#8f98a4',alpha:52},spot2:{color:'#b6bcc4',alpha:38},spot3:{color:'#6f7783',alpha:50}},'blue'],
   ['amber','钨丝暖阁',{
@@ -76,32 +85,38 @@ const HOME_GLOW_PRESETS=[
   [GLASS_NATIVE_PRESET,'玻璃原色',{
     spot1:{color:'#6686b8',alpha:52},spot2:{color:'#8f98a4',alpha:44},spot3:{color:'#6686b8',alpha:52}},'blue'],
 ];
-const isNativeGlass=key=>key===GLASS_NATIVE_PRESET;
+/** 「玻璃原色」那一档：没有三枚光晕，面上漂的是每块玻璃自带的两团反光。 */
+const isNativeGlass=(key:string):boolean=>key===GLASS_NATIVE_PRESET;
 /* 手调过颜色之后当前档就不再是任何一个预设，侧栏那一格和面板顶上的标识要如实说这件事，
    不能继续顶着上一档的名字。 */
-const HOME_GLOW_CHOICES=[...HOME_GLOW_PRESETS.map(([key,label])=>[key,label]),['custom','自定义']];
-const glowPresetName=key=>(HOME_GLOW_CHOICES.find(([name])=>name===key)||HOME_GLOW_CHOICES[0])[1];
-const glowPalette=key=>structuredClone((HOME_GLOW_PRESETS.find(([name])=>name===key)||HOME_GLOW_PRESETS[0])[2]);
+const HOME_GLOW_CHOICES:readonly (readonly [key:string,label:string])[]=[...HOME_GLOW_PRESETS.map(([key,label])=>[key,label] as const),['custom','自定义']];
+const glowPresetName=(key:string):string=>(HOME_GLOW_CHOICES.find(([name])=>name===key)||HOME_GLOW_CHOICES[0]!)[1];
+/** 一档预设的三枚光晕（深拷贝）；认不出的键给默认那一档。 */
+const glowPalette=(key:string):GlowPalette=>structuredClone((HOME_GLOW_PRESETS.find(([name])=>name===key)||HOME_GLOW_PRESETS[0]!)[2]);
 /* 强调色是按钮、焦点环、链接和数据那一档色，走 BoardUI 的 accent 机制：十一级色阶整组
    换掉，组件本身一个字不改（`frontend/src/react/boardui/styles/theme.css` 的 accent 段）。
    这里只存档名，十一级的实际值在 `web/board.css` 里按 `:root[data-accent=…]` 一档一条；
    把色阶抄进 JS 会得到两份必然走偏的色板，而圆球本身正是拿同一组变量画的。
    十二档是 Tailwind v4 色板里绕色轮一圈取的十二个色相，六列两行正好铺满；中性色不收，
    灰的链接和灰的焦点环在这套界面上读不出是「可点的东西」。 */
-const ACCENTS=[['red','红'],['orange','橙'],['amber','琥珀'],['lime','柠绿'],['emerald','翠绿'],['teal','青绿'],
+/** `[键, 名称]`，十二档强调色。 */
+const ACCENTS:readonly (readonly [key:string,label:string])[]=[['red','红'],['orange','橙'],['amber','琥珀'],['lime','柠绿'],['emerald','翠绿'],['teal','青绿'],
   ['sky','天蓝'],['blue','蓝'],['indigo','靛蓝'],['violet','紫罗兰'],['fuchsia','品红'],['rose','玫红']];
-const DEFAULT_ACCENT='blue';
-const normalizeAccent=value=>ACCENTS.some(([key])=>key===value)?value:DEFAULT_ACCENT;
-const glowAccent=key=>(HOME_GLOW_PRESETS.find(([name])=>name===key)||[])[3]||DEFAULT_ACCENT;
+const DEFAULT_ACCENT:string='blue';
+const normalizeAccent=(value:unknown):string=>ACCENTS.some(([key])=>key===value)?value as string:DEFAULT_ACCENT;
+/** 一档预设搭配的强调色。 */
+const glowAccent=(key:string):string=>(HOME_GLOW_PRESETS.find(([name])=>name===key)||[])[3]||DEFAULT_ACCENT;
 /* 挑颜色的那张色板。名字按颜色本身取，不按它被用在哪儿——同一枚颜色换到另一枚光晕上
    还是同一个名字。每一档预设用到的颜色全部落在这张表里，所以从侧栏选完预设再打开颜色
    弹层，选中环指得出当前那一格；表里缺哪一枚，那一枚就永远是「没选中」。
    前七个色系每系六档明度打底，其余是各档预设带进来的颜色，按色相归进对应色系，所以
    各系不再一样长。青绿自成一系：feralui 那几档水色预设的主色都落在这一段，它在深色玻璃
    上确实偏冷，但那是一种可以挑的冷，不是不能出现的颜色。 */
-const GLOW_SWATCH_FAMILIES=[['all','全部'],['gray','灰'],['red','红'],['yellow','黄'],
+/** `[色系, 名称]`，第一项是「全部」。 */
+const GLOW_SWATCH_FAMILIES:readonly (readonly [key:string,label:string])[]=[['all','全部'],['gray','灰'],['red','红'],['yellow','黄'],
   ['green','绿'],['cyan','青'],['blue','蓝'],['purple','紫'],['brown','棕']];
-const GLOW_SWATCHES=[
+/** `[色系, 名称, #rrggbb]`。 */
+const GLOW_SWATCHES:readonly (readonly [family:string,name:string,hex:string])[]=[
   ['gray','云灰','#d8dade'],['gray','雾灰','#b6bcc4'],['gray','石灰','#8f98a4'],
   ['gray','铁灰','#6f7783'],['gray','墨灰','#4a4e56'],['gray','深灰','#2e3138'],
   ['red','樱红','#f08a8a'],['red','珊瑚','#e26a62'],['red','砖红','#c4544a'],
@@ -135,15 +150,16 @@ const GLOW_SWATCHES=[
      因此也要对它成立。 */
   ['blue','霁蓝','#6686b8'],
 ];
-const glowNumber=(value,min,max,fallback)=>Number.isInteger(value)&&value>=min&&value<=max?value:fallback;
-const glowColor=(value,fallback)=>/^#[0-9a-f]{6}$/i.test(String(value))?String(value).toLowerCase():fallback;
-const glowRgba=(hex,alpha)=>`rgba(${[1,3,5].map(at=>parseInt(hex.slice(at,at+2),16)).join(',')},${(alpha/100).toFixed(2)})`;
+const glowNumber=(value:number,min:number,max:number,fallback:number):number=>Number.isInteger(value)&&value>=min&&value<=max?value:fallback;
+/** 合法的 `#rrggbb` 转成小写原样返回，否则给 `fallback`。 */
+const glowColor=(value:unknown,fallback:string):string=>/^#[0-9a-f]{6}$/i.test(String(value))?String(value).toLowerCase():fallback;
+const glowRgba=(hex:string,alpha:number)=>`rgba(${[1,3,5].map(at=>parseInt(hex.slice(at,at+2),16)).join(',')},${(alpha/100).toFixed(2)})`;
 /* 速度、柔化和大小都存成 0–100 那一档的整数，换算成 CSS 要的倍率在 paintHomeGlow 里
    一次算完：存倍率的话，「默认」在数据里就是 1、在界面上却要显示成中间那一格，两边迟早
    会各按各的理解走。速度是个例外，它的中位是 100，上限 300——那一档拉满是三倍快，
    而 0 就是停住。 */
-const GLOW_RANGES={strength:[0,100,100],noise:[0,100,0],speed:[0,300,100],soften:[0,100,50],size:[0,100,50]};
-const DEFAULT_HOME_GLOW={on:true,preset:'ash',strength:100,noise:0,speed:100,soften:50,size:50,
+const GLOW_RANGES:Record<GlowField,[min:number,max:number,fallback:number]>={strength:[0,100,100],noise:[0,100,0],speed:[0,300,100],soften:[0,100,50],size:[0,100,50]};
+const DEFAULT_HOME_GLOW:HomeGlow={on:true,preset:'ash',strength:100,noise:0,speed:100,soften:50,size:50,
   ...glowPalette('ash')};
 /* 光晕参数整份来自 localStorage，形态和范围都不可信：颜色写成任意字符串会让那一层
    渐变整条失效，百分比越界会把光晕糊成一整片或者缩没。逐项夹回区间、认不出就退回
@@ -154,13 +170,14 @@ const DEFAULT_HOME_GLOW={on:true,preset:'ash',strength:100,noise:0,speed:100,sof
    已经不存在的键不必单独清理：这里只按当前模型逐项取值，重建出来的对象里没有它们。
    旧版本那套横躺在首页顶部的圆心与半轴就是这么掉的——几何现在只由 CSS 给，存过的那份
    要是跟着夹回来，老用户看到的还是半截光。 */
-function normalizeHomeGlow(raw){
-  const stored=raw&&typeof raw==='object'?raw:{};
+/** 读回存量时的规范化；给 null 得到出厂那一套。 */
+function normalizeHomeGlow(raw:unknown):HomeGlow{
+  const stored:any=raw&&typeof raw==='object'?raw:{};
   const known=HOME_GLOW_CHOICES.some(([key])=>key===stored.preset);
-  const preset=known?stored.preset:'ash';
+  const preset:string=known?stored.preset:'ash';
   const seed=glowPalette(preset==='custom'?'ash':preset);
-  const glow={on:stored.on!==false,preset};
-  for(const [field,[min,max,fallback]] of Object.entries(GLOW_RANGES))
+  const glow={on:stored.on!==false,preset} as HomeGlow;
+  for(const [field,[min,max,fallback]] of Object.entries(GLOW_RANGES) as [GlowField,[number,number,number]][])
     glow[field]=glowNumber(+stored[field],min,max,fallback);
   for(const key of HOME_GLOW_SPOTS){
     const spot=known&&stored[key]&&typeof stored[key]==='object'?stored[key]:{},fallback=seed[key];
@@ -171,7 +188,7 @@ function normalizeHomeGlow(raw){
 }
 /* 预设圆球那一圈：几枚颜色就等分成几段。写成函数是因为自定义档的颜色数和预设一样多，
    却要在弹层里现算一遍。 */
-const glowChipFill=colors=>`conic-gradient(from -90deg,${colors.map((color,index)=>
+const glowChipFill=(colors:readonly string[]):string=>`conic-gradient(from -90deg,${colors.map((color,index)=>
   `${color} ${(index*100/colors.length).toFixed(3)}% ${((index+1)*100/colors.length).toFixed(3)}%`).join(',')})`;
 /* 只写值，光晕怎么画留在 web/css/01-base.css 一份。关掉和「玻璃原色」那一档都让强度与
    颗粒归零，`.glowlayer::before` 的不透明度按那句乘法算成 0，不另设一个「关」的分支——
@@ -185,13 +202,14 @@ const glowChipFill=colors=>`conic-gradient(from -90deg,${colors.map((color,index
    落在 0.5–1.5，椭圆两根半轴同乘。速度是时长的倒数——拉条上的 100 是原速，所以倍率写成
    `100/speed`；拉到 0 没有倒数可言，那一档直接把漂移那两条动画暂停，淡入那一条不跟着停，
    否则整层会停在 opacity 0 上，看起来像光晕被关掉了。 */
-const glowWritten=new WeakMap();
-function paintHomeGlow(el,glow){
+const glowWritten=new WeakMap<HTMLElement,Map<string,string>>();
+/** 光晕那一层的变量写到 `el` 上（同值不重写）。 */
+function paintHomeGlow(el:HTMLElement|null,glow:HomeGlow):void{
   if(!el)return;
   let written=glowWritten.get(el);
   if(!written){written=new Map();glowWritten.set(el,written)}
   const live=glow.on&&!isNativeGlass(glow.preset);
-  const write=(name,value)=>{
+  const write=(name:string,value:string)=>{
     if(written.get(name)===value)return;
     written.set(name,value);el.style.setProperty(name,value);
   };
@@ -219,7 +237,8 @@ function paintHomeGlow(el,glow){
    「玻璃原色」和整项关掉走同一条路：把两枚色相变量摘掉，每块玻璃退回样式表里自己那一档
    主题色。摘掉而不是写回主题色，是因为主题色有两套、跟着明暗切换，写回去的那一套会在
    切主题时僵在原地。速度不摘——原色那两团也在漂，停不停由用户那一条拉条说了算。 */
-function paintGlassFaces(el,glow){
+/** 其余玻璃面那两团反光的色相写到 `el`（根元素）上。 */
+function paintGlassFaces(el:HTMLElement|null,glow:HomeGlow):void{
   if(!el)return;
   const native=!glow.on||isNativeGlass(glow.preset);
   el.toggleAttribute('data-glow-native',native);

@@ -3,7 +3,7 @@
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ACCENTS, DEFAULT_ACCENT, glowAccent, glowPalette, normalizeHomeGlow } from '@peach/legacy/home-glow';
+import { ACCENTS, DEFAULT_ACCENT, glowAccent, glowPalette, normalizeHomeGlow } from '@peach/appearance';
 
 import { chooseGlowPreset, wireGlowButton, type GlowSettings } from '../../src/appearance/glow';
 import { SETTINGS_KEY } from '../../src/appearance/settings';

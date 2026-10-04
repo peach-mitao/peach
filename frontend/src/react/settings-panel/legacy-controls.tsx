@@ -1,7 +1,7 @@
 /* 面板里沿用的三样共用控件：Geist Switch（`iconSwitchHtml`）、Geist Select（`selectFieldHtml`）与
  * 自绘拉条（`dialSliderHtml`）。
  *
- * 它们的模板、键盘与动效在 `web/js/ui-components.js` 一份，首页筛选条、卡片版式和配置页用的是
+ * 它们的模板、键盘与动效在 `src/ui-kit/` 一份，首页筛选条、卡片版式和配置页用的是
  * 同一套；这里只给每一枚一个容器，由助手把 HTML 写进去再接线。分段滑块由 `board-controls.ts`
  * 在 body 上的观察器看到新节点时自动接上。
  *
@@ -14,7 +14,7 @@ import {
 
 import type { Choice } from './settings-panel-api';
 
-const rows = (options: readonly Choice[]) => options.map(([value, label, mark]) => mark ? [value, label, mark] : [value, label]);
+const rows = (options: readonly Choice[]): Choice[] => options.map(([value, label, mark]) => mark ? [value, label, mark] : [value, label]);
 
 /** 一组互斥视图。`value` 与上一次画出来的不同、或者面板重新打开（`epoch` 换了）时整块重画：
  *  滑块按新的选中项重新量位置。点选本身不重画，DOM 已经是点完的样子。`variant` 是遗留模板
@@ -57,7 +57,7 @@ export function SelectField({ id, label, options, value, disabled = false, busy 
     if (!node) return;
     if (built.current !== epoch || !field.current) {
       node.innerHTML = selectFieldHtml(rows(options), value, { label });
-      const root = wireSelectField(node.firstElementChild as Element);
+      const root = wireSelectField(node.firstElementChild as HTMLElement);
       root.addEventListener('change', () => pick.current(root.value));
       field.current = root;
       built.current = epoch;

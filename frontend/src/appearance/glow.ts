@@ -1,6 +1,6 @@
 /* 光晕、玻璃面与强调色写到页面上，以及配色那几下点选。
  *
- * 光晕怎么算、怎么写在 `/js/home-glow.js`：那一份不认识偏好对象，这里把当前设置和目标元素递进去。
+ * 光晕怎么算、怎么写在 `./home-glow.ts`：那一份不认识偏好对象，这里把当前设置和目标元素递进去。
  * 侧栏那一层写的是 `.glowlayer` 那枚空 div 而不是 <html>：自定义属性是继承的，写在根上整棵树都要
  * 重算样式，实测每帧 15ms 上下，拖动时帧预算当场就超；量法和数字记在 web/css/01-base.css 那条规则
  * 上面。一帧只写一次：指针拖动一秒能发上百个 pointermove，排进 requestAnimationFrame 之后写的就是
@@ -13,7 +13,7 @@
 import {
   ACCENTS, DEFAULT_ACCENT, DEFAULT_HOME_GLOW, HOME_GLOW_PRESETS, HOME_GLOW_SPOTS, glowAccent, glowChipFill, glowPalette,
   isNativeGlass, normalizeAccent, paintGlassFaces, paintHomeGlow, type HomeGlow,
-} from '@peach/legacy/home-glow';
+} from './home-glow';
 
 import type { SettingsStore } from '../settings-store';
 import { appSettingsStore } from './settings';

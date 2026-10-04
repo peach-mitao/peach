@@ -3,8 +3,8 @@
  * 遗留路由（`web/app.js`）仍然拥有整个外壳和每一个页面。一个页面被重写成 React
  * 之后，它的入口只做两件事：铺好加载占位，然后把一个容器交给这里。
  *
- *     const ui = await import('/dist/peach-ui.js');
- *     await ui.mountIsland('feed-new', $('#feedNew'), props);
+ *     import { mountIsland } from './dist/peach-ui.js';
+ *     await mountIsland('feed-new', $('#feedNew'), props);
  *
  * `mountIsland` 是 async 且**取完数才画**：遗留层已经铺了骨架，island 若先画一个空
  * 容器再自己转圈，同一次进入就会出现两段等待态（`peach-web-ui` 明确禁止）。所以这里

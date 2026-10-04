@@ -14,7 +14,7 @@ import { closeAnchoredMenu, wireAnchoredMenu } from '@peach/legacy/ui';
 import {
   GLOW_SPOT_LABELS, GLOW_SWATCH_FAMILIES, GLOW_SWATCHES, HOME_GLOW_SPOTS, glowColor, glowPresetName, isNativeGlass,
   normalizeHomeGlow, type HomeGlow,
-} from '@peach/legacy/home-glow';
+} from '@peach/appearance';
 
 import { GlowPresetGrid } from '../components/glow-preset-grid';
 import type { SettingsPanelHost } from './settings-panel-api';

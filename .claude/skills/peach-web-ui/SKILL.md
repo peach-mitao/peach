@@ -5,12 +5,12 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 
 # Peach Web UI 复用门槛
 
-最后复核：2026-10-02
+最后复核：2026-10-04
 证据来源：现有 UI 契约、`docs/TESTING.md`、2026-09-19 本机会话工具记录。
 
 ## 开工顺序
 
-1. 读取相关页面、`web/js/ui-components.js`、`web/css/` 与 `tests/test_web_ui.py`，先找现成控件、token 和行为。
+1. 读取相关页面、`frontend/src/ui-kit/`、`web/css/` 与 `tests/test_web_ui.py`，先找现成控件、token 和行为。
 2. 外部产品被称为参考时同时执行 `peach-reference-evidence`；没有当前可复现证据就写 `未取得`，不补动画、间距或交互猜测。
 3. 视觉与交互先过 `docs/reference-snapshots/vercel-web-interface-guidelines.md` 的 Focus States、Forms、Animation、Content 四节，以及 `vercel-report-design.md`（即 `vercel.com/design.md`）的「Reject generated-design reflexes」；第三方逆向测量的 DESIGN.md（如 design-bites）不作证据。
 4. 新控件先检查 `docs/reference-snapshots/vercel-geist-controls-measured.md`、`vercel-geist-semantics-measured.md`、`vercel-geist-note-progress-switch-analytics.md`、`vercel-geist-command-search-loading.md`、`vercel-geist-button-icons.md` 与 `vercel-geist-split-button.md`。
@@ -42,7 +42,7 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 
 ## 实现门槛
 
-- 优先扩展 `web/js/ui-components.js`，不要为同一语义复制一次性 class 和模板。
+- 优先扩展 `frontend/src/ui-kit/`，不要为同一语义复制一次性 class 和模板。
 - 颜色、字号、圆角、浮层层级只用 `:root` 已有 token；新 token 必须证明现有词汇无法表达。
 - 字重只有 400／500／600 三档，标题也是 600；圆角只用 `--badge-radius`／`--control-radius`／`--surface-radius`／`--floating-radius`／`--pill-radius` 加 `50%` 与 `0`，带边框容器里的头尾条用 `calc(… - 1px)` 保持同心。两者的字面值由 `tests/test_web_ui.py` 拒绝，归属判据见 `:root` 注释。
 - 单色优先：`--tungsten` 只给焦点环、链接、进度／数据与 Toggle 开态。主动作用 `--ink` 底 `--ground` 字且每屏最多一个。标题悬停下划线不变蓝，计数徽章中性灰。其它选择器引用 `--tungsten` 由 `tests/test_web_ui.py` 拒绝；实测见 `vercel-geist-semantics-measured.md`「选中态与开关色」「Button 全变体与状态」。

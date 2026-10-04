@@ -1,7 +1,7 @@
 /* Peach island 层的构建配置。
  *
  * 输出是**一个**确定名字的 ES module：`web/dist/peach-ui.js`。不加内容哈希，
- * 因为引用它的是 Peach 自己服务的 `web/app.js`（`await import('/dist/peach-ui.js')`），
+ * 因为引用它的是 Peach 自己服务的 `web/app.js`（文件顶部的 `import … from './dist/peach-ui.js'`），
  * 那份文件不经过任何构建，没法在构建时被改写；哈希文件名只会让它指向一个不存在的路径。
  * 缓存由服务端的 `Cache-Control: no-store` 负责，和 index.html／app.js 同一口径。
  *
@@ -14,7 +14,6 @@ import { defineConfig } from 'vite';
 export const LEGACY_MODULES = {
   '@peach/legacy/core': '/js/core.js',
   '@peach/legacy/ui': '/js/ui-components.js',
-  '@peach/legacy/home-glow': '/js/home-glow.js',
   '@peach/legacy/jav-title': '/js/jav-title.js',
   '@peach/legacy/tags': '/js/tags.js',
   '@peach/legacy/ui-sounds': '/js/ui-sounds.js',

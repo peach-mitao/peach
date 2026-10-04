@@ -1,6 +1,6 @@
 /* island 层唯一的取数入口。
  *
- * 和遗留层 `web/js/core.js` 的 `api()` 保持同一套失败语义（先读 JSON，再按
+ * 和遗留层用的 `api()`（`src/core/index.ts`）保持同一套失败语义（先读 JSON，再按
  * `message`／`detail`／`error` 取人能看的原因），但多两件事：返回类型由调用方声明，
  * 请求带 `AbortSignal`。第二件是 island 必需的——页面在取数途中被换掉时，
  * 迟到的响应不能再往新页面上写东西。 */

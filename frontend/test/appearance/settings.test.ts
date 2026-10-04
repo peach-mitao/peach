@@ -1,8 +1,7 @@
 /* 界面偏好的启动归一化、整页那一份 store 与账本对账（`src/appearance/settings.ts`）。 */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_ACCENT, DEFAULT_HOME_GLOW } from '@peach/legacy/home-glow';
-
+import { DEFAULT_ACCENT, DEFAULT_HOME_GLOW } from '../../src/appearance/home-glow';
 import {
   applySyncedSettings, DEFAULT_SETTINGS, normalizeAppSettings, readAppSettings, SETTINGS_KEY, type AppSettings,
 } from '../../src/appearance/settings';

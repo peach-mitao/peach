@@ -16,7 +16,7 @@
 .insightcopy{padding:28px 24px;border-right:1px solid var(--line-soft);display:flex;flex-direction:column;align-items:flex-start}.insightcopy>span{color:var(--muted);font-size:var(--fs-xs)}
 .tastebars{min-width:0;padding:24px;align-self:center}
 .insightpanel{overflow:hidden;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}.insightpanel>header{min-height:52px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--line-soft)}.insightpanel>header h3{margin:0;font-size:var(--fs-md)}.insightpanel>header p{margin:2px 0 0;color:var(--muted);font-size:var(--fs-xs)}.insightpanelbody{min-width:0;padding:14px 16px 16px}
-/* `/js/ui-components.js` 的 `progressHtml` 那一条，关注管理页与遗留任务状态都读它。 */
+/* `frontend/src/ui-kit/markup.ts` 的 `progressHtml` 那一条，关注管理页与遗留任务状态都读它。 */
 .geist-progress{height:8px;margin-top:7px;overflow:hidden;border-radius:var(--pill-radius);background:var(--line-soft)}.geist-progress i{display:block;width:var(--progress-value);height:100%;border-radius:inherit;background:var(--tungsten)}
 @media(max-width:900px){.tastehero{grid-template-columns:minmax(220px,40%) minmax(0,1fr)}}
 @media(max-width:640px){.insighttoolbar,.tastehead{align-items:stretch}.insightswitch{align-self:flex-start}.metricstrip,.tastesummaries{grid-auto-columns:minmax(168px,82%)}.tastehero{min-height:0;grid-template-columns:minmax(0,1fr)}.insightcopy{border-right:0;border-bottom:1px solid var(--line-soft);padding:22px 18px}.tastebars{padding:18px}.insightpanel>header{padding:0 14px}.insightpanelbody{padding:12px}.tastesummary>b{font-size:var(--fs-xl)}}

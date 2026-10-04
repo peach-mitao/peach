@@ -4,8 +4,7 @@
  * 容器改宽都会再进来一次，第二次里总有已经武装过的那几枚。 */
 import { describe, expect, it, vi } from 'vitest';
 
-// @ts-expect-error 遗留模块由浏览器直接加载，此测试调用实际实现。
-import { fitSkeleton } from '../../web/js/ui-components.js';
+import { fitSkeleton } from '../src/ui-kit';
 
 const placeholder = (root: HTMLElement): HTMLElement => {
   const node = document.createElement('div');

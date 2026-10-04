@@ -3,11 +3,10 @@ import { LOC as M, api as N, brandIcon as ee, entityPath as te, esc as P, fmtClo
 import { avatarInner as ue, cardArtwork as de, cardIdentity as fe, coverUrl as pe, detailPosterUrl as me, entityAvatar as he, entityFaceImg as ge, facePos as _e, logoUrl as ve, mixFace as ye, mixLabel as be, performerLabel as xe, queueAvatarHtml as Se, queueThumbHtml as Ce, refitNativeImages as we, relayoutCovers as Te, releaseHover as Ee, releaseHoverPreviews as De, representativeOf as Oe, wireHover as ke } from "/dist/peach-ui.js";
 import { queryClient as z } from "/dist/peach-ui.js";
 import { InfiniteQueryObserver as Ae, MutationObserver as je, QueriesObserver as Me, QueryObserver as Ne, hydrate as Pe, noop as Fe, notifyManager as Ie, replaceEqualDeep as Le, shouldThrowError as Re } from "/dist/peach-ui.js";
-import { ACCENT_CHOICES as ze, METADATA_REFRESH_DAYS as Be, cardRatio as Ve, chooseAccent as He, chooseGlowPreset as Ue, glowChips as We, resetGlowColors as Ge } from "/dist/peach-ui.js";
-import { javDisplayName as Ke, javTitleHtml as qe } from "/js/jav-title.js";
-import { tagLabel as Je } from "/js/tags.js";
-import { OVERLAY_PATHS as Ye, backgroundOf as Xe, listenManagedEntry as Ze, managedEntries as Qe, peachHistory as $e, routeSeen as et } from "/dist/peach-ui.js";
-import { GLOW_SPOT_LABELS as tt, GLOW_SWATCHES as nt, GLOW_SWATCH_FAMILIES as rt, HOME_GLOW_SPOTS as it, glowColor as at, glowPresetName as ot, isNativeGlass as st, normalizeHomeGlow as ct } from "/js/home-glow.js";
+import { ACCENT_CHOICES as ze, GLOW_SPOT_LABELS as Be, GLOW_SWATCHES as Ve, GLOW_SWATCH_FAMILIES as He, HOME_GLOW_SPOTS as Ue, METADATA_REFRESH_DAYS as We, cardRatio as Ge, chooseAccent as Ke, chooseGlowPreset as qe, glowChips as Je, glowColor as Ye, glowPresetName as Xe, isNativeGlass as Ze, normalizeHomeGlow as Qe, resetGlowColors as $e } from "/dist/peach-ui.js";
+import { javDisplayName as et, javTitleHtml as tt } from "/js/jav-title.js";
+import { tagLabel as nt } from "/js/tags.js";
+import { OVERLAY_PATHS as rt, backgroundOf as it, listenManagedEntry as at, managedEntries as ot, peachHistory as st, routeSeen as ct } from "/dist/peach-ui.js";
 //#region \0rolldown/runtime.js
 var lt = Object.create, ut = Object.defineProperty, dt = Object.getOwnPropertyDescriptor, ft = Object.getOwnPropertyNames, pt = Object.getPrototypeOf, mt = Object.prototype.hasOwnProperty, ht = (e, t, n) => () => {
 	if (n) throw n[0];
@@ -31864,14 +31863,14 @@ function KE({ store: e, label: t, hidden: n }) {
 		role: "group",
 		"aria-label": t,
 		hidden: n,
-		children: We(r).map((t) => /* @__PURE__ */ (0, H.jsx)("button", {
+		children: Je(r).map((t) => /* @__PURE__ */ (0, H.jsx)("button", {
 			type: "button",
 			"data-glow-chip": "",
 			"data-glow-preset": t.key,
 			"aria-pressed": t.key === r.preset,
 			title: t.label,
 			"aria-label": t.label,
-			onClick: () => Ue(t.key, e),
+			onClick: () => qe(t.key, e),
 			children: /* @__PURE__ */ (0, H.jsx)("span", {
 				"data-glow-ball": "",
 				"aria-hidden": "true",
@@ -31899,7 +31898,7 @@ function Mce({ host: e }) {
 			children: [/* @__PURE__ */ (0, H.jsx)("span", { children: "光晕" }), /* @__PURE__ */ (0, H.jsx)("button", {
 				type: "button",
 				"data-glow-preset-reset": "",
-				onClick: () => Ge(t),
+				onClick: () => $e(t),
 				children: "重置"
 			})]
 		}),
@@ -31924,7 +31923,7 @@ function Mce({ host: e }) {
 				"aria-pressed": e === r,
 				title: n,
 				"aria-label": n,
-				onClick: () => He(e, t),
+				onClick: () => Ke(e, t),
 				children: /* @__PURE__ */ (0, H.jsx)("span", {
 					"data-glow-ball": "",
 					"aria-hidden": "true",
@@ -35255,7 +35254,7 @@ var $ue = {
 	other: "其它文件"
 };
 function _A(e, t, n) {
-	return t === "short" ? Que : Ve(n);
+	return t === "short" ? Que : Ge(n);
 }
 function ede(e) {
 	let { kind: t, name: n, coStarred: r, performers: i, refs: a, total: o } = fe(e), s = i[0] || "", c = xe(e);
@@ -40466,7 +40465,7 @@ function fhe(e) {
 		})
 	}), [s, ie]), _e = (i.tags || []).map((e) => ({
 		k: e.k,
-		label: Je(e.k),
+		label: nt(e.k),
 		n: e.n,
 		selected: Npe(a.tag, e.k)
 	})), ve = h || d.length ? {
@@ -40494,7 +40493,7 @@ function fhe(e) {
 	if (C === "people") Se = `${t === "studio" ? "厂牌" : "艺人"} · ${d.length.toLocaleString()}`;
 	else if (C === "videos") {
 		Ce = !D.data;
-		let e = EM(a.tag).map((e) => Je(e));
+		let e = EM(a.tag).map((e) => nt(e));
 		Se = `视频 · ${(D.data?.total || 0).toLocaleString()}${e.length ? ` · ${e.join(" · ")}` : ""}`;
 	} else I && !I.error ? Se = be ? `${I.title} · ${(I.total || 0).toLocaleString()} 张` : dhe(I, MM(I).length) : Ce = ne.isPending;
 	let we = (0, B.useMemo)(() => ({
@@ -41884,7 +41883,7 @@ function Tge(e) {
 								"data-media-tag": "",
 								"data-tag-cat": `r34-${u.tag_types?.[e] || "unknown"}`,
 								"data-follow-tag": e,
-								children: Je(e)
+								children: nt(e)
 							}, e))
 						}) : null,
 						O ? /* @__PURE__ */ (0, H.jsx)("span", {
@@ -42308,7 +42307,7 @@ function Ige({ facets: e, view: t, total: n, busy: r, props: i, route: a }) {
 						"data-tag-cat": `r34-${_ge(e.groups, n)}`,
 						pressed: t.tags.includes(n),
 						onPress: () => a({ tags: t.tags.includes(n) ? t.tags.filter((e) => e !== n) : [...t.tags, n] }),
-						children: [Je(n), r ? /* @__PURE__ */ (0, H.jsx)("span", {
+						children: [nt(n), r ? /* @__PURE__ */ (0, H.jsx)("span", {
 							"data-count-badge": n,
 							children: String(r)
 						}) : null]
@@ -75269,7 +75268,7 @@ var z8 = {
 	"/stats": {
 		prefetch: (e, t) => $be(t),
 		page: (e, t, n) => /* @__PURE__ */ (0, H.jsx)(FHe, {
-			tagLabel: Je,
+			tagLabel: nt,
 			onTag: t.openTag,
 			configurable: e.configurable,
 			openMediaSettings: () => {
@@ -75317,8 +75316,8 @@ var z8 = {
 		prefetch: (e, t) => Mde(t),
 		page: (e, t, n) => /* @__PURE__ */ (0, H.jsx)(_ye, {
 			openItem: t.openItem,
-			javTitleHtml: qe,
-			javDisplayName: Ke,
+			javTitleHtml: tt,
+			javDisplayName: et,
 			searchResources: (e) => {
 				t.requestCloudDownload(e), n("/activity");
 			},
@@ -75388,7 +75387,7 @@ var z8 = {
 		exitSelectMode: t.exitSelectMode,
 		personAvatar: t.personAvatar,
 		authorAvatar: t.authorAvatar,
-		tagLabel: Je,
+		tagLabel: nt,
 		openEntity: t.openEntity,
 		showTags: t.showIndexTags,
 		openFollowAuthor: t.openFollowAuthor,
@@ -76149,13 +76148,13 @@ function R5(e, t = []) {
 //#region src/react/router/router.tsx
 var z5 = (0, B.createContext)(0), B5 = (0, B.createContext)(null);
 function _Ge({ children: e }) {
-	let [t, n] = (0, B.useState)(() => $e.navigation);
-	return (0, B.useLayoutEffect)(() => (n($e.navigation), $e.listen(n)), []), /* @__PURE__ */ (0, H.jsx)(z5.Provider, {
+	let [t, n] = (0, B.useState)(() => st.navigation);
+	return (0, B.useLayoutEffect)(() => (n(st.navigation), st.listen(n)), []), /* @__PURE__ */ (0, H.jsx)(z5.Provider, {
 		value: t.seq,
 		children: /* @__PURE__ */ (0, H.jsx)(gGe, {
 			location: t.location,
 			navigationType: t.action,
-			navigator: $e,
+			navigator: st,
 			children: e
 		})
 	});
@@ -76163,7 +76162,7 @@ function _Ge({ children: e }) {
 function vGe() {
 	let e = (0, B.useContext)(z5);
 	return (0, B.useLayoutEffect)(() => {
-		queueMicrotask(() => et(e));
+		queueMicrotask(() => ct(e));
 	}, [e]), null;
 }
 function yGe({ target: e }) {
@@ -76181,8 +76180,8 @@ function bGe(e, t, n) {
 	n(`${r.pathname}${r.search}${r.hash}`);
 }
 function xGe() {
-	let e = (0, B.useContext)(B5), [t, n] = (0, B.useState)(Qe), r = (0, B.useRef)(null);
-	(0, B.useLayoutEffect)(() => (n(Qe()), Ze((e, t) => {
+	let e = (0, B.useContext)(B5), [t, n] = (0, B.useState)(ot), r = (0, B.useRef)(null);
+	(0, B.useLayoutEffect)(() => (n(ot()), at((e, t) => {
 		t ? (0, kt.flushSync)(() => n(e)) : n(e);
 	})), []);
 	let i = (0, B.useMemo)(() => (t) => {
@@ -76198,7 +76197,7 @@ var SGe = (0, B.memo)(function({ entry: e, actions: t, go: n }) {
 	return Y8(e.path) ? (0, kt.createPortal)(uWe(e.path, e.props, t, n), e.host, String(e.revision)) : null;
 });
 function CGe({ children: e }) {
-	let t = O5(), n = Xe(t.state);
+	let t = O5(), n = it(t.state);
 	return /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsxs)(L5, {
 		location: n ?? t,
 		children: [
@@ -76215,7 +76214,7 @@ function CGe({ children: e }) {
 				element: e
 			})
 		]
-	}), /* @__PURE__ */ (0, H.jsxs)(L5, { children: [Ye.map((e) => /* @__PURE__ */ (0, H.jsx)(I5, {
+	}), /* @__PURE__ */ (0, H.jsxs)(L5, { children: [rt.map((e) => /* @__PURE__ */ (0, H.jsx)(I5, {
 		path: e,
 		element: null
 	}, e)), /* @__PURE__ */ (0, H.jsx)(I5, {
@@ -76395,7 +76394,7 @@ var kGe = [
 	]
 ];
 function AGe({ host: e, spot: t, index: r, glow: i }) {
-	let a = tt[r], o = (0, B.useRef)(null), s = (0, B.useRef)(null), c = (0, B.useRef)(null), [l, u] = (0, B.useState)("all");
+	let a = Be[r], o = (0, B.useRef)(null), s = (0, B.useRef)(null), c = (0, B.useRef)(null), [l, u] = (0, B.useState)("all");
 	(0, B.useLayoutEffect)(() => {
 		let [e, t, n] = [
 			o.current,
@@ -76408,7 +76407,7 @@ function AGe({ host: e, spot: t, index: r, glow: i }) {
 	}, []);
 	let d = i[t].color, f = (r) => {
 		let i = e.store.value.homeGlow;
-		i[t].color = at(r, i[t].color), i.preset = "custom", e.store.save(), e.changed("glow"), n(), s.current?.focus();
+		i[t].color = Ye(r, i[t].color), i.preset = "custom", e.store.save(), e.changed("glow"), n(), s.current?.focus();
 	};
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		"data-glow-stop": t,
@@ -76445,7 +76444,7 @@ function AGe({ host: e, spot: t, index: r, glow: i }) {
 				"data-glow-pills": "",
 				role: "group",
 				"aria-label": "色系",
-				children: rt.map(([e, t]) => /* @__PURE__ */ (0, H.jsx)("button", {
+				children: He.map(([e, t]) => /* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
 					"data-glow-pill": e,
 					"aria-pressed": e === l,
@@ -76456,7 +76455,7 @@ function AGe({ host: e, spot: t, index: r, glow: i }) {
 				"data-glow-palette": "",
 				role: "radiogroup",
 				"aria-label": `${a}颜色`,
-				children: nt.map(([e, t, n]) => /* @__PURE__ */ (0, H.jsx)("button", {
+				children: Ve.map(([e, t, n]) => /* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
 					role: "radio",
 					"aria-checked": n === d,
@@ -76473,7 +76472,7 @@ function AGe({ host: e, spot: t, index: r, glow: i }) {
 	});
 }
 function jGe({ host: e }) {
-	let t = e.store.value.homeGlow, n = st(t.preset);
+	let t = e.store.value.homeGlow, n = Ze(t.preset);
 	return /* @__PURE__ */ (0, H.jsxs)("section", {
 		"data-glow-setting": "",
 		id: "homeGlowControls",
@@ -76488,7 +76487,7 @@ function jGe({ host: e }) {
 						"data-glow-current": "",
 						children: ["当前配色", /* @__PURE__ */ (0, H.jsx)("b", {
 							"data-glow-preset-name": "",
-							children: ot(t.preset)
+							children: Xe(t.preset)
 						})]
 					}),
 					/* @__PURE__ */ (0, H.jsx)(KE, {
@@ -76524,7 +76523,7 @@ function jGe({ host: e }) {
 				hidden: n,
 				children: [/* @__PURE__ */ (0, H.jsx)("h4", { children: "颜色" }), /* @__PURE__ */ (0, H.jsx)("div", {
 					"data-glow-stops": "",
-					children: it.map((n, r) => /* @__PURE__ */ (0, H.jsx)(AGe, {
+					children: Ue.map((n, r) => /* @__PURE__ */ (0, H.jsx)(AGe, {
 						host: e,
 						spot: n,
 						index: r,
@@ -76539,7 +76538,7 @@ function jGe({ host: e }) {
 					className: "geist-button",
 					"data-glow-reset": "",
 					onClick: () => {
-						e.store.value.homeGlow = ct(null), e.store.save(), e.changed("glow");
+						e.store.value.homeGlow = Qe(null), e.store.save(), e.changed("glow");
 					},
 					children: "恢复默认"
 				})
@@ -77616,7 +77615,7 @@ function nKe({ host: e, tab: t, epoch: n }) {
 					epoch: n,
 					onPick: (t) => {
 						let n = Number(t);
-						r.metadataRefreshDays = Be.includes(n) ? n : 30, e.store.save(), i.mutate({ metadataRefreshDays: r.metadataRefreshDays }, { onError: () => {} });
+						r.metadataRefreshDays = We.includes(n) ? n : 30, e.store.save(), i.mutate({ metadataRefreshDays: r.metadataRefreshDays }, { onError: () => {} });
 					}
 				})
 			})

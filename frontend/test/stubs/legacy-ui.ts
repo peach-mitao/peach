@@ -1,7 +1,7 @@
-/* `/js/ui-components.js` 在测试里的替身（vitest.config.ts 里做 alias）。
+/* `@peach/legacy/ui`（浏览器里是 `/js/ui-components.js`）在测试里的替身（vitest.config.ts 里做 alias）。
  *
- * 只保留断言真正依赖的结构标记（`data-geist-empty-state`、`geist-note-error`）。
- * 完整页面的结构和样式由 `frontend/e2e` 使用真实模块验证。 */
+ * 只保留断言真正依赖的结构标记（`data-geist-empty-state`、`geist-note-error`）；要用正式实现的那几样从
+ * `src/ui-kit` 转出，与入口包源码是同一个模块实例。完整页面的结构和样式由 `frontend/e2e` 使用真实模块验证。 */
 export const emptyStateHtml = (
   iconName: string,
   title: string,
@@ -11,12 +11,12 @@ export const emptyStateHtml = (
   + `<div class="es-icon" data-icon="${iconName}"></div>`
   + `<div class="es-copy"><h3>${title}</h3><p>${description}</p></div>${options.actions || ''}</div>`;
 
-// @ts-expect-error 索引骨架复用正式模板，折叠开合、覆盖式滚动条、徽标与读数弹跳、换字、滚动判据与补充信息卡用正式实现。
-export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, swapText, wireContextCard} from '../../../web/js/ui-components.js';
-// @ts-expect-error 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。
-export {closeAnchoredMenu, dialSliderHtml, iconSwitchHtml, wireAnchoredMenu, wireDialSlider, wireHorizontalScroller, wireIconSwitch} from '../../../web/js/ui-components.js';
-// @ts-expect-error 骨架露面的等待门槛用正式那一个数。
-export {SKELETON_REVEAL_DELAY} from '../../../web/js/ui-components.js';
+// 索引骨架复用正式模板，折叠开合、覆盖式滚动条、徽标与读数弹跳、换字、滚动判据与补充信息卡用正式实现。
+export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, swapText, wireContextCard} from '../../src/ui-kit';
+// 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。
+export {closeAnchoredMenu, dialSliderHtml, iconSwitchHtml, wireAnchoredMenu, wireDialSlider, wireHorizontalScroller, wireIconSwitch} from '../../src/ui-kit';
+// 骨架露面的等待门槛用正式那一个数。
+export {SKELETON_REVEAL_DELAY} from '../../src/ui-kit';
 /* 测试环境没有布局，骨架补齐量不出东西，这里什么都不做。 */
 export const fitSkeleton = (_root: Element | null): void => {};
 export const loadingDotsHtml = (label: string): string => `<span>${label}</span>`;
@@ -66,7 +66,7 @@ export const setActionBusy = (control: Element | null, busy = true): void => {
   }
 };
 
-// @ts-expect-error 使用正式 Note 验证内部操作。
-export {noteHtml} from '../../../web/js/ui-components.js';
+// 使用正式 Note 验证内部操作。
+export {noteHtml} from '../../src/ui-kit';
 
 export const badgeHtml = (text: string): string => `<span class="geist-badge">${text}</span>`;
