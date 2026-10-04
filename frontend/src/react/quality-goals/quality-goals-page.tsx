@@ -4,7 +4,7 @@
  * 体积和判定原因——决定要不要去找更好一版，看的就是这几项。
  *
  * 番号标题与来源徽标由遗留层以 HTML 字符串传进来：它们是全站语义契约的唯一实现，
- * 在这里重写一份就会漂。时长、体积、来源名走 `/js/core.js` 同一套格式化口径，同理。 */
+ * 在这里重写一份就会漂。时长、体积、来源名走 `src/core/index.ts` 同一套格式化口径，同理。 */
 import { RiSparklingLine } from '@remixicon/react';
 import { useQuery } from '@tanstack/react-query';
 

@@ -6,7 +6,7 @@
  *
  * 页签走 React Aria 的 `Tabs`：`role=tablist`／`tab`／`tabpanel`、左右方向键与游标式
  * `tabindex` 都由它给，注册表里的 `tabs` 条目是页面级导航，不是这种同页切块。
- * 体积与来源名共用 `/js/core.js` 的口径；标签的界面名称由遗留层的 `tagLabel` 递进来。 */
+ * 体积与来源名共用 `src/core/index.ts` 的口径；标签的界面名称由遗留层的 `tagLabel` 递进来。 */
 import {
   RiDatabase2Line, RiEyeLine, RiHardDrive2Line, RiHistoryLine, RiPriceTag3Line, RiVideoLine,
 } from '@remixicon/react';

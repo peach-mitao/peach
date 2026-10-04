@@ -28,7 +28,7 @@ README 保留开始使用所需的信息。字段定义放参考文档，操作�
 - 界面面向使用者说明行为。数据库列、内部状态码、实现细节放开发文档；配置所需的路径、域名和字段保持准确。
 - 中文使用中文标点，数字与单位、中文与英文间按语义留空格。代码标识、API 字段、URL、站点原名、引用及第三方许可原文不作文字替换。
 
-共享请求错误由 [requestErrorMessage](../web/js/core.js) 提供，React 的 [API 封装](../frontend/src/api.ts) 复用它；页面在错误标题中补充操作对象。文案编辑不改变字段值、路由、任务状态或数据写入条件。
+共享请求错误由 [requestErrorMessage](../frontend/src/core/index.ts) 提供，React 的 [API 封装](../frontend/src/api.ts) 复用它；页面在错误标题中补充操作对象。文案编辑不改变字段值、路由、任务状态或数据写入条件。
 
 配置页外部入口说明由 [configuration-copy.ts](../frontend/src/configuration-copy.ts) 维护，首屏骨架和正式表单共用。修改说明时，两处的换行和高度也须一致，由浏览器几何用例验证。
 

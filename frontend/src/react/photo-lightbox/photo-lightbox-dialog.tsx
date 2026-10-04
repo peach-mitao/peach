@@ -242,7 +242,7 @@ function PhotoLightbox({ slides, index, Swiper, host: actions }: {
         </div>
       </div>
       {/* 图片详情只展示安全元数据，定位只把 asset id 交给服务端：绝不能为了显示路径把 ledger
-          的本机绝对路径送进浏览器。标题按这一张换一个元素：中段省略（`middle-truncate.js`）
+          的本机绝对路径送进浏览器。标题按这一张换一个元素：中段省略（`src/ui-kit/middle-truncate.ts`）
           会改写它的文字，同一个元素上 React 再改字就对不上了。 */}
       <section ref={panel} id={detailId} data-photo-detail="" role="dialog" aria-modal="false"
         aria-labelledby={`${detailId}-title`} hidden>

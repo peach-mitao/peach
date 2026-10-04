@@ -6,7 +6,7 @@
  * `[data-media-grid] > [data-media-card]` 数本页的卡，垃圾卡也在其中。垃圾卡自己的几何
  * （描边面、元信息区、键行）写在 `./junk-queue.css`，钩子是 `data-junk-*`。
  *
- * 标题照遗留层写成转义后的 HTML：`data-middle-truncate` 由壳里的 `middle-truncate.js` 按宽度
+ * 标题照遗留层写成转义后的 HTML：`data-middle-truncate` 由中段截断（`src/ui-kit/middle-truncate.ts`）按宽度
  * 从中间截断，它直接改写这一格的文字，交给 React 管的话下一次重画会和它互相覆盖。 */
 import { memo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { esc, fmtSize } from '@peach/legacy/core';

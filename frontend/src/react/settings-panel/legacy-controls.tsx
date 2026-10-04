@@ -1,7 +1,7 @@
 /* 面板里沿用的三样共用控件：Geist Switch（`iconSwitchHtml`）、Geist Select（`selectFieldHtml`）与
  * 自绘拉条（`dialSliderHtml`）。
  *
- * 它们的模板、键盘与动效在 `web/js/ui-components.js` 一份，首页筛选条、卡片版式和配置页用的是
+ * 它们的模板、键盘与动效在 `src/ui-kit/` 一份，首页筛选条、卡片版式和配置页用的是
  * 同一套；这里只给每一枚一个容器，由助手把 HTML 写进去再接线。分段滑块由 `board-controls.ts`
  * 在 body 上的观察器看到新节点时自动接上。
  *

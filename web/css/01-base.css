@@ -44,7 +44,7 @@
   --control-radius:6px; --badge-radius:4px; --floating-radius:12px; --surface-radius:8px; --tag-pad-y:4px; --tag-pad-x:10px; --hover-delay:5s;
   /* 侧栏光晕的参数层。三枚光晕的颜色、椭圆尺寸和收边位置全部落在这里；
      `.glowlayer::before` 只引用变量，一个字面颜色都不写。这组默认值就是预设「钨丝暖阁」，
-     颜色与 js/home-glow.js 里那一档一字不差，页面第一帧和 applyHomeGlow() 写完之后画面相同。
+     颜色与 frontend/src/appearance/home-glow.ts 里那一档一字不差，页面第一帧和 applyHomeGlow() 写完之后画面相同。
      只有颜色那三个由设置面板写到 `.glowlayer` 自己的行内样式上，写在这一层而不是 <html>
      上的理由记在下面那条规则里；半轴和收边只有这一份，用户不调、也不进 localStorage。
      圆心根本不在参数里：三枚光晕是侧栏玻璃面上那两团反光换成的，位置由 glowdrift 那两条
@@ -473,7 +473,7 @@ body.settings-open>.ovtrack.page,body.photolight-open>.ovtrack.page{display:none
 .popmenu[popover]{inset:auto;margin:0}
 
 /* Geist Select：触发器穿输入框那身盒子，面板就是上面那个锚定菜单。为什么不用原生
-   下拉、几何取自哪里，见 web/js/ui-components.js 里这个组件的注释。 */
+   下拉、几何取自哪里，见 frontend/src/ui-kit/select-field.ts 的头注释。 */
 .gselect{position:relative;display:inline-flex;min-width:0}
 .gselectfield{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:space-between;
   gap:8px;width:100%;min-width:0;height:var(--control-h);padding:0 10px 0 12px;

@@ -4,7 +4,7 @@
  * 这一页是账本当前的快照，没有后台任务也不轮询：整页只有一个 `queryKey`，一屏里的四个
  * 指标、下面那三个面板读的都是同一份数，分开取就会出现这一格是新的、那一格是旧的。
  *
- * 体积走 `/js/core.js` 的 `fmtSize`，与馆藏、重复项、高清版同一套口径；播放时长、百分比
+ * 体积走 `src/core/index.ts` 的 `fmtSize`，与馆藏、重复项、高清版同一套口径；播放时长、百分比
  * 与图表的分档是这一页自己的折算，写成纯函数放在这里，由 vitest 直接验。 */
 import { apiGet } from '../../api';
 import type { BarRow } from '../charts/bar-card';

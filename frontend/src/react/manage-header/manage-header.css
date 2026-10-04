@@ -10,7 +10,7 @@
 
 /* ── 管理条 ──
    一排下划线页签，1px 基线，按下项由 `[data-manage-indicator]` 那条 2px 的线标出来。超宽时横滚，
-   两端渐隐与滚轮转横向由壳的横滚层清单接（`web/js/ui-components.js` 的 `BOARD_EDGE_SCROLLERS`）。 */
+   两端渐隐与滚轮转横向由壳的横滚层清单接（`src/ui-kit/scroll.ts` 的 `BOARD_EDGE_SCROLLERS`）。 */
 [data-manage-bar]{display:block;margin-top:20px;margin-bottom:28px}
 [data-manage-menu]{position:relative;display:flex;flex-wrap:nowrap;gap:4px;margin:0;padding:0;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 [data-manage-menu]::-webkit-scrollbar{display:none}
