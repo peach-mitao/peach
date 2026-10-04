@@ -25,7 +25,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出 `/js/*.js` 垫片要的导出，不带 React；`/js/ui-components.js` 那一份整份转出 `ui-kit/index.ts` |
 | `frontend/src/react/pages/` | 独立页面包：`index.tsx` 是 `vite.pages.config.ts` 的构建入口，按挂载点的 `data-page` 画 SPA 外壳之外的三张页：首启（`setup/`）、登录（`login/`）与错误页（`error/`）。`auth-card.tsx` 是它们共用的外框 |
 | `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
-| `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存 |
+| `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存。壳与页面共读的查询也住这里：`media-sources.ts` 是 `/api/sources` 的地址、`['media-sources']` 键与取数函数，壳的 `loadSourceStatus` 经 `loadMediaSources` 取数、不订阅，数据管理页与重复文件页按 `@peach/query` 读同一个键 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history`；详情与队列地址的条目在 `usr` 里带压在哪一页上（`overlay.ts` 的 `backgroundLocation`）；后退前进落到详情条目上时壳按它定来处，启动那一次不读 |
 | `frontend/src/shell/` | 壳自己的内存状态（ADR-0031）：目录口径 `state` 与 `barsContext`、选择集与选择模式、详情与关注详情的来处、配置页页签与活动页预填这类一次性请求。随 `peach-ui.js` 发出，壳按活绑定读；整体换掉一个值调 `writeShell`，原地改了字段或选择集之后调 `notifyShell`，读者按 `subscribeShell` 与 `shellVersion` 接 `useSyncExternalStore` |
