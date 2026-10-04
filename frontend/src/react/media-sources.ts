@@ -1,29 +1,14 @@
-/* 来源可达性。数据管理页要知道这次会扫哪几个来源、资源同步那一块出不出现，重复文件页要知道
- * 哪些网盘值得给一颗「优先保留」——同一份真相三个读者，所以一个 `queryKey`，端点也只在这里
- * 声明一次。
+/* 来源可达性在 React 页面一侧的用法。数据管理页要知道这次会扫哪几个来源、资源同步那一块出不出现，
+ * 重复文件页要知道哪些网盘值得给一颗「优先保留」。
  *
- * 服务端定期探测；页面进入时读取最新快照。 */
-import { apiGet } from '../api';
+ * 地址、查询键与取数函数和壳共用，声明在 `src/query/media-sources.ts`，按 `@peach/query` 引用，
+ * 产物里是 `/dist/peach-ui.js` 那一份。服务端定期探测；页面进入时读取最新快照。 */
+import { fetchMediaSources, MEDIA_SOURCES_KEY, type MediaSourcesData, type MediaSourceStatus } from '@peach/query';
+
 import { queryClient } from './query';
 
-export const MEDIA_SOURCES_URL = '/api/sources';
-export const MEDIA_SOURCES_KEY = ['media-sources'] as const;
-
-/** `/api/sources` 的一行。字段与 `routes_api.source_health` 对齐。 */
-export interface MediaSourceStatus {
-  location: string;
-  online: boolean | null;
-  state?: string;
-  message?: string;
-  roots?: unknown[];
-}
-
-export interface MediaSourcesData {
-  sources: MediaSourceStatus[];
-}
-
-export const fetchMediaSources = (signal?: AbortSignal) =>
-  apiGet<MediaSourcesData>(MEDIA_SOURCES_URL, signal);
+export { fetchMediaSources, MEDIA_SOURCES_KEY } from '@peach/query';
+export type { MediaSourcesData, MediaSourceStatus } from '@peach/query';
 
 export async function prefetchMediaSources(signal: AbortSignal): Promise<void> {
   await queryClient.fetchQuery({ queryKey: MEDIA_SOURCES_KEY, queryFn: () => fetchMediaSources(signal) });

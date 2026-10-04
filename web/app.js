@@ -18,7 +18,7 @@ import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defau
 import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
-import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
+import { dropBars, fetchBars, fetchTopsPage, loadMediaSources } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
@@ -481,7 +481,9 @@ const route=(path,replace=false,state)=>{
 
 /* ── 脱盘模式 ─────────────────────────────────────────────────────────────────
    脱盘是来源级的：外置盘拔掉只影响 local，115/PikPak 照常可播；反过来也一样。
-   服务端 /api/sources 是唯一判据，前端只负责置灰筛选和换掉播放器。 ── */
+   服务端 /api/sources 是唯一判据，前端只负责置灰筛选和换掉播放器。数据存在共用 QueryClient 的
+   `['media-sources']` 里（`loadMediaSources`），下面两张表只在壳自己调用时从返回值派生：页面重取
+   这个键时壳不跟着变，目录默认来源与脱盘提示只随启动、「刷新状态」与播放器报错这几次检测更新。 ── */
 let sourceOnline={};
 let sourceProblems={};
 const sourceOffline=key=>sourceOnline[key]===false;
@@ -492,7 +494,7 @@ const OFFLINE_REASON={local:'本地硬盘没有挂载，接上后点重新检测
 const offlineReason=key=>sourceProblems[key]||OFFLINE_REASON[key]||'这个来源当前没有挂载。';
 async function loadSourceStatus(){
   try{
-    const d=await api('/api/sources');
+    const d=await loadMediaSources();
     sourceOnline=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.online]));
     sourceProblems=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.message||'']));
   }catch(_e){sourceOnline={};sourceProblems={}}
