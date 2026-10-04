@@ -32,10 +32,6 @@
 /* 栏里的行、组与页签归 `search` 岛（`frontend/src/react/search/search.css`）。两栏与否看下拉栏自己
    有多宽，不看窗口，所以容器查询名挂在这块面上。 */
 .searchmenu{container:searchmenu/inline-size}
-.readout{display:flex;gap:20px;flex:none;align-items:center}
-.readout div{display:flex;flex-direction:column;line-height:1.3;align-items:flex-start}
-.readout b{font-size:var(--fs-lg);font-weight:600;font-variant-numeric:tabular-nums}
-.readout span{font-size:var(--fs-xs);color:var(--muted)}
 
 /* ── 顶部三层：女优圆头像 / 厂牌 / 内容标签 ── */
 /* 有显式 display 的元素不会被浏览器默认的 [hidden]{display:none} 隐藏，

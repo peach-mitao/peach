@@ -134,7 +134,7 @@ class WebUiPolicyTests(unittest.TestCase):
         ":focus",              # 焦点环：:focus / :focus-visible / :focus-within
         ".geist-progress", ".watchprogress", ".vjs-play-progress", ".vjs-progress-holder",  # 进度与数据
         ".ptoggle:checked",  # Toggle 开态：Geist Toggle 实测轨道 rgb(0,112,243)
-        ".entitylink", ".flink", ".taste-history-guide-content a",  # 真正的链接
+        ".flink", ".taste-history-guide-content a",  # 真正的链接
     )
 
     def test_tungsten_is_reserved_for_focus_links_progress_and_toggle(self):
@@ -232,20 +232,28 @@ class WebUiPolicyTests(unittest.TestCase):
 
         两类例外，都必须是「前缀 + 运行时拼出来的一段」，不接受逐个类名的豁免：
         vendor 在运行时自己加的类（Video.js、Swiper），以及模板里用模板串拼出来的
-        类名（`geist-note-${kind}` 这种，源码里不会出现完整的 `geist-note-error`）。
+        类名（`geist-note-${kind}` 这种，源码里不会出现完整的 `geist-note-warning`）。
+
+        查的是页面上交付的全部旧样式：`web/css/` 的分区加 `web/board.css`。只出现在
+        `:not(.x)` 里的类不要求有人挂——没人挂时那一项照样匹配，删掉它反而会降低整条
+        选择器的特指度。
         """
+        board = (Path(__file__).resolve().parents[1] / "web" / "board.css").read_text(encoding="utf-8")
         # 注释里会写类名当例子，`url()` 里的域名（www.w3.org）会被当成 `.org`。
-        css = re.sub(r"/\*.*?\*/", "", self.css, flags=re.S)
+        css = re.sub(r"/\*.*?\*/", "", self.css + board, flags=re.S)
         css = re.sub(r"url\([^)]*\)", "url()", css)
+        css = re.sub(r":not\(\.[A-Za-z_][A-Za-z0-9_-]*\)", "", css)
         selectors = set(re.findall(r"\.(-?[A-Za-z_][A-Za-z0-9_-]*)", css))
         vendor = ("vjs-", "swiper-")
-        composed = ("r34-", "geist-note-", "skeleton-")
+        composed = ("geist-note-",)
         # 前缀豁免要能兑现：拼接那一处必须真的在模板里。
         for prefix in composed:
             self.assertIn(prefix, self.markup, f"{prefix} 已经没人拼了，连同规则一起删")
+        # 按整词找：`entitylink` 不能靠 `entitylinks` 算有人用。
         unused = sorted(
             name for name in selectors
-            if name not in self.markup and not name.startswith(vendor + composed))
+            if not re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", self.markup)
+            and not name.startswith(vendor + composed))
         self.assertEqual(unused, [], f"样式表里有没人用的类选择器：{unused}")
 
     def test_studio_metadata_is_not_compiled_as_inline_javascript(self):

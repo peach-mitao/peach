@@ -16,7 +16,6 @@
 .geist-scroller-overlay.can-scroll-top::before,.geist-scroller-overlay.can-scroll-bottom::after{opacity:1}
 /* Geist Empty State：标题和说明是一个组件；外层容器只负责与上方工具条保持 16px。 */
 .emptystate{grid-column:1/-1;display:grid;justify-items:center;align-content:center;gap:8px;box-sizing:border-box;width:100%;min-height:320px;padding:48px 24px;text-align:center;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}
-.emptystate.compact{min-height:220px;border:0;background:transparent}
 .emptystate .es-icon{display:grid;place-items:center;box-sizing:border-box;width:54px;height:54px;padding:10px;border-radius:var(--floating-radius);border:1px solid var(--border-15);color:var(--muted);margin-bottom:8px}
 .emptystate .es-icon svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .emptystate .es-copy{display:grid;justify-items:center;gap:8px}
@@ -25,7 +24,7 @@
 .emptystate .es-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
 
 @media (max-width:760px){
-  .readout{display:none} .brand .sub{display:none}
+  .brand .sub{display:none}
   :root{--tile:168px;--topH:52px;--sortH:60px}
   /* 确认弹层的两个键是本项目 44px 命中区的对象，桌面的 32px 是 Geist 控件高度。 */
   .geist-modal-footer .geist-button{min-height:44px;padding:0 14px}
@@ -34,8 +33,6 @@
     overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-inline:contain}
   .count::-webkit-scrollbar{display:none}
   .count>span:first-child{line-height:36px;white-space:nowrap}
-  .count .sorts{width:max-content;margin-left:0;flex:0 0 auto;overflow:visible}
-  .count .sorts button{min-height:36px}
   .count.junkcount{align-items:stretch;flex-direction:column;overflow:visible;padding-block:8px}
   .reviewtabs button{height:44px}
   .playlistpage>header{align-items:stretch;flex-direction:column}
@@ -96,7 +93,6 @@
   /* 窄屏下标题也得一起缩。`/follow` 渲染在 `#stats` 里，上面那条 `.stats h2`
      会只把它打到 23px，页面标题要跟它同一档。 */
   .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-2xl)}
-  .kv .u{display:block;margin-left:0;margin-top:2px}
 }
 /* 这个 16px 是 iOS 的阈值，不是刻度里的一档：Safari 对小于 16px 的输入框会自动放大页面。
    所以它写死，不跟 --fs-lg 走——刻度改一档就把这个防放大保护悄悄破坏掉了。 */
@@ -152,14 +148,3 @@
 .poster.cover.front[data-frame="still"]{object-position:var(--cover-x,50%) var(--cover-y,22%)}
 /* 整张放进卡片：两侧留白透出 `.pic::before` 那层模糊底。 */
 .poster.cover.whole{object-fit:contain;object-position:50% 50%}
-
-
-/* 版式按钮嵌在排序行里，必须比 `.sorts button` 更具体，否则那条规则的内边距和
-   行高会把图标顶偏。图标按钮不设左右内边距，靠 grid 居中。 */
-/* `flex:none` 是必须的，不是保险。`.sorts` 是不换行的横向滚动条，里面的项默认可收缩，
-   而 `.iconswitch` 自己带着 `min-width:0`（fieldset 需要它才不撑破容器）——两条合起来
-   允许它被压到内容宽度以下。窄屏上排序按钮一多，三个 34 px 的版式按钮就会叠在一起，
-   还压住旁边的「发行时间」。`.sorts button` 早就有 `flex:0 0 auto`，但 fieldset 不是
-   button，那条规则选不到它。照片那一排的大小开关是同一个控件，走同一条。 */
-.sorts .iconswitch{display:inline-flex;gap:2px;margin:0 6px;flex:none}
-

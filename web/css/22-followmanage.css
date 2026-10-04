@@ -15,7 +15,6 @@
 .geist-note.geist-note>p{margin:0;color:inherit;font:inherit;align-self:center}.geist-note>p b{margin-right:8px;color:inherit}
 .geist-note-warning{--feedback-color:var(--meter);border-color:color-mix(in srgb,var(--meter) 32%,var(--ground))}
 .geist-note-error{--feedback-color:var(--drop);border-color:color-mix(in srgb,var(--drop) 30%,var(--ground))}
-.geist-note-success{--feedback-color:var(--feedback-success);border-color:color-mix(in srgb,var(--feedback-success) 30%,var(--ground))}
 .geist-note-filled{background:color-mix(in srgb,var(--feedback-color) 8%,var(--ground))}
 .geist-note-small{min-height:32px;padding:4px 8px;font-size:var(--fs-xs);line-height:22px}
 .geist-note-small>svg{height:22px}

@@ -1688,8 +1688,7 @@ function feedNewCardHtml(item){
   const cover=feedNewCoverHtml(item);
   // 番号与标题排在同一个两行的标题块里，和资产卡一样：番号加粗打头，标题接在后面截断。
   const heading=javTitleHtml({is_jav:true,code:item.code,name:item.code,display_title:item.title||''});
-  /* 点击区自己一个类，不共用 `.cardopenhit`：那一个是「在 Peach 里打开这条」的落点，
-     全站按它认站内跳转（`test_follow_web` 盯着它不许变成外链）。这一条通向别人的站。 */
+  /* 点击区用自己的类 `.feednewopen`：这一条通向别人的站，不是站内跳转。 */
   const open=item.link
     ?`<a class="feednewopen" href="${esc(item.link)}" target="_blank" rel="noreferrer" aria-label="打开 ${esc(item.code)} 的作品页"></a>`:'';
   return `<article class="card feednewcard${item.read?' isread':''}" data-feed-id="${item.id}">
