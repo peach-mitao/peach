@@ -106,7 +106,7 @@ export interface IndexProps extends IndexRoute {
   /** 版式偏好改了：存储归壳（`appSettings.peopleLayout`），资料页的名册读的也是它。 */
   savePreference(patch: { layout: PeopleLayout }): void;
   /** 顶栏那枚选择键的状态。只在本地标签页有意义：所选标签拼成目录筛选。键归壳，关掉时
-   *  壳经 `updateIsland` 把 `false` 推进来，页面随之清空所选。 */
+   *  壳经 `updateManagedRoute` 把 `false` 推进来，页面随之清空所选。 */
   selectMode: boolean;
   /** 页面自己要退出选择模式的两处：按所选标签显示结果，和艺人页切到在线名册。 */
   exitSelectMode(): void;

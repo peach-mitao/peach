@@ -244,10 +244,10 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         # 前端已拆成 ES module，`/js/{name}` 从页面同级的 js/ 取文件。
         (self.root / "js").mkdir()
         (self.root / "js" / "core.js").write_text("export const ok = 1;", encoding="utf-8")
-        # island 产物（ADR-0022）：构建结果提交进 Git，运行时由 `/dist/{name}` 提供。
+        # 前端产物（ADR-0022）：构建结果提交进 Git，运行时由 `/dist/{name}` 提供。
         (self.root / "dist").mkdir()
         (self.root / "dist" / "peach-ui.js").write_text(
-            "export const mountIsland = () => {};", encoding="utf-8")
+            "export const openManagedRoute = () => {};", encoding="utf-8")
         (self.root / "dist" / "peach-ui.css").write_text(".island{}", encoding="utf-8")
         con = sqlite3.connect(self.db)
         con.executescript(BASE_SCHEMA)

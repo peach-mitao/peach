@@ -105,7 +105,7 @@ describe('画进宿主', () => {
   });
 });
 
-/* 壳经 `updateIsland` 推补丁，这里用一层状态替它。 */
+/* 壳经 `updateManagedRoute` 推补丁，这里用一层状态替它。 */
 let push: (patch: Partial<FeedNewProps>) => void = () => {};
 function Harness(initial: FeedNewProps) {
   const [value, set] = useState(initial);

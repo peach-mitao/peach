@@ -1,8 +1,8 @@
-/* 首页筛选条（`catalog-filter` 岛，ADR-0031 第 11b 步）：数据形状。
+/* 首页筛选条（`catalog-filter` 附属面，ADR-0031 第 11b 步）：数据形状。
  *
  * 壳（`web/app.js` 的 `buildBars` 一族）拥有目录的筛选、路由与取数：两排头像、标签条的成员与
  * 按下态、四枚视图、读数、排序键和版式都由壳算好当 props 递进来，岛只画。筛选一变壳就用
- * `updateIsland` 推一份新的，不重挂；按下去的反馈（`aria-pressed` 与滑动玻璃）靠壳在发请求之前
+ * `updateManagedRoute` 推一份新的，不重挂；按下去的反馈（`aria-pressed` 与滑动玻璃）靠壳在发请求之前
  * 先推一次。动作全部回壳，岛不自己拼请求：排序、换一批与版式回壳后走 `loadCatalog`，也就是
  * `catalog-grid` 已有的那条重取入口。
  *

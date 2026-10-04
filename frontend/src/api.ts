@@ -33,7 +33,7 @@ const reasonOf = (payload: unknown): string => {
 
 /** 把抛出来的东西收敛成一句能显示给人看的原因。
  *
- * 一次取数失败会同时落到两处——`mountIsland` 的首屏状态和共享 store 的错误态——
+ * 一次取数失败会同时落到两处——路由树打开时的首屏状态和共享 store 的错误态——
  * 两边显示的必须是同一句话，否则同一个失败会因为落在哪儿而说法不同。 */
 export const errorMessage = (cause: unknown): string => requestErrorMessage(cause);
 

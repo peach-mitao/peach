@@ -274,10 +274,22 @@ it('壳直接改写了容器再收起也不报错：页面画在自己的宿主�
   expect(r.managedEntry(stats)).toBeNull();
 });
 
-it('路由树没装载就打开：直接失败，不是静默什么都不画', async () => {
+it('路由树没装载就打开：容器先归路由树、不取数，装载之后才取首屏、才画', async () => {
   const r = await load('/activity');
-  const { stats } = surface();
-  await expect(open(r, stats)).rejects.toThrow('客户端导航还没装载');
+  const { stats, skeleton } = surface();
+  const fetch = tasksFetch(tasks(), { deferred: false });
+  fetch.install();
+  const opening = open(r, stats);
+  await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) });
+  expect(fetch.taskCalls(), '没装载时不取数').toBe(0);
+  expect(stats.firstElementChild).toBe(skeleton);
+  expect(r.managedTaken(stats), '等着的那一次已经占了容器，壳不再重开').toBe(true);
+
+  await mount(r);
+  r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
+  await act(async () => { expect(await opening).toBe(true) });
+  expect(fetch.taskCalls()).toBe(1);
+  expect(painted(stats)).not.toBeNull();
 });
 
 it('包取不回来时，等着的那一页跟着失败', async () => {

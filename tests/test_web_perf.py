@@ -203,7 +203,7 @@ class PageAssetDeliveryTests(unittest.IsolatedAsyncioTestCase):
         (root / "js" / "core.js").write_text("export const ok=1;", encoding="utf-8")
         (root / "dist").mkdir()
         (root / "dist" / "peach-ui.js").write_text(
-            "export const mountIsland=()=>{};", encoding="utf-8")
+            "export const openManagedRoute=()=>{};", encoding="utf-8")
         fresh_ledger(root)
         self.app = create_app(_settings(root, page))
         self.client = httpx.AsyncClient(

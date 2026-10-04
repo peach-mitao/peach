@@ -5,11 +5,15 @@
  * 从 `@peach/legacy/*` 直接 import；每次打开才算得出的值（只读状态、地址上的分类与页签、引导标记）
  * 跟着那一次打开走，不在这里。 */
 
+import type { LibraryProcessingProps } from '../bundle';
+import type { CatalogFilterProps } from '../catalog-filter/catalog-filter';
 import type { CatalogGridProps } from '../catalog-grid/types';
+import type { FeedNewProps } from '../feed-new/feed-new';
 import type { OnlineAuthor } from '../follow/online-vocab';
 import type { FollowFeedProps } from '../follow-feed/follow-feed';
 import type { IndexKind, IndexPerson, IndexRoute, PeopleLayout, PersonAvatar } from '../index/index-data';
 import type { JunkQueueProps } from '../junk-queue/junk-queue';
+import type { SearchProps } from '../search/search';
 
 /** 云下载表单的预填：番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
 export interface CloudDownloadPrefill { code?: string; title?: string; origin?: string; searchReason?: string }
@@ -134,3 +138,15 @@ export type IndexOpenPropsTable = { [Path in IndexRoutePath]: IndexOpenProps };
 /** 资料页画进 `#index`，每种实体一条模式（名字里可能带斜杠，吃掉剩下全部段）。种类与名字跟着打开走，
  *  名字是壳从地址解码出来的那一份。 */
 export type EntityRoutePath = '/performers/*' | '/studios/*' | '/creators/*' | '/series/*' | '/agencies/*';
+
+/** 页面里的附属面，按名字登记、各画进壳的一个容器：首页筛选条（`#catalogFilter`）、首页新作行（`#feedNew`）、
+ *  目录页处理横幅（`#libraryProcessingNotice`）与顶栏搜索下拉（`#searchMenu`）。props 由壳算好、整份交进来，
+ *  之后经 `updateManagedRoute` 推补丁。 */
+export interface SurfaceOpenProps {
+  'catalog-filter': CatalogFilterProps;
+  'feed-new': FeedNewProps;
+  'library-processing': LibraryProcessingProps;
+  search: SearchProps;
+}
+
+export type SurfaceName = keyof SurfaceOpenProps;

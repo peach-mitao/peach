@@ -15,11 +15,11 @@ import { appSettingsStore, applySyncedSettings, allowedSetting, applyTheme, watc
 import { applyAccent, applyGlassFaces, applyHomeGlow, paintHomeGlowNow, wireGlowButton, loadGlowPicker } from './dist/peach-ui.js';
 import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio, gridLayout, javLayout, photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout } from './dist/peach-ui.js';
 import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
-import { mountIsland, unmountIsland, updateIsland, islandMounted, preloadIslands, paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
+import { paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage, loadMediaSources } from './dist/peach-ui.js';
-import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
+import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
@@ -441,17 +441,15 @@ const claimSurface=path=>{
      卸了再挂，换一条筛选就会让它塌一下再撑回来——实测那一下底下整块先往上跳 62px，
      二十来毫秒后落回原处，比它要说的那句话显眼得多。目录页之间它一直挂着，自己在轮询
      库那边的进度；离开目录页才收起，那些页面本来就不该有它。 */
-  if(!isProcessingNoticePath(path))unmountIsland($('#libraryProcessingNotice'));
+  if(!isProcessingNoticePath(path))releaseManagedRoute($('#libraryProcessingNotice'));
   /* 首页那一行新作同样只属于目录页。管理区的入口不经过 `showHomeSurfaces`，离开目录页时
      在这里收起并清空，连同它的自动滚动一起停掉。 */
   if(!isFeedNewPath(path))clearHomeFeed();
-  /* 管理区正文的容器每次换页都经过这里，所以卸载也落在这里。React 档的页面是一棵自己
-     管取数的根：不卸掉它，离开之后那棵根还活着，有轮询的页面照着原节律继续敲库。
-     没挂过东西的容器 unmountIsland 直接返回，逐页判断反而会漏掉新迁过来的那一页。
-     由路由树画进 `#stats` 与 `#index` 的那几页（`openManagedRoute`）同样在这里一起收：详情舞台压在
+  /* 管理区正文与索引页、资料页的容器每次换页都经过这里，所以收起也落在这里。由路由树画进 `#stats`
+     与 `#index` 的那几页（`openManagedRoute`）自己管取数：不收掉，离开之后页面还活着，有轮询的照着
+     原节律继续敲库。没画着页面的容器是空操作，逐页判断反而会漏掉新迁过来的那一页。详情舞台压在
      它们上面时不经过这里，页面留着。`#grid` 不在其中，容器逐个点名。 */
   releaseManagedRoute($('#stats'),$('#index'));
-  unmountIsland($('#stats'));
   /* 目录网格不跟着换页收：目录页与回收站之间它一直画着，换筛选只是换查询；去别的页面才由
      `clearCatalogGrid` 收掉，那些页面接着会往 `#grid` 里写自己的东西。 */
   if(!isCatalogPath(path)&&path!=='/trash')clearCatalogGrid();
@@ -562,7 +560,7 @@ const settingsEffects={
     document.querySelectorAll('img[data-jav-image].cover').forEach(coverAnchor);
     repaintDetailPoster();
   },
-  searchHistoryLimit:()=>updateIsland($('#searchMenu'),{historyLimit:appSettings.searchHistoryLimit}),
+  searchHistoryLimit:()=>updateManagedRoute($('#searchMenu'),{historyLimit:appSettings.searchHistoryLimit}),
 };
 /* 折射贴图由壳尾的装配段挂；设置面板左栏那块玻璃第一次进 DOM 时要它再扫一遍。 */
 let syncGlassOptics=()=>{};
@@ -1373,11 +1371,11 @@ function commitContextFilter(mutate){
 const VIEW_PILLS=[{k:'',label:'全部'},{k:'fresh',label:'没看过'},
                   {k:'later',label:'稍后看'},{k:'flagged',label:'已标记'}];
 const catalogViews=()=>VIEW_PILLS.map(v=>({...v,href:v.k?STATE_ROUTES[v.k]:'/'}));
-/* ── 首页筛选条（`catalog-filter` 岛，ADR-0031） ──
+/* ── 首页筛选条（附属面 `catalog-filter`，由路由树画进 `#catalogFilter`，ADR-0031） ──
    两排头像、浮层上排的视图与标签、下排读数与排序，外加正文里网格上面那条交集条。筛选、路由与
    取数仍归壳：成员与按下态在这里算好当 props 递进去，动作回到这里，落点照旧是
-   `commitContextFilter` 与 `loadCatalog`。壳手上留一份完整的 props，每次只改其中几项：岛画好了
-   就推补丁；还在挂就先记着，挂完再把整份推一次。 */
+   `commitContextFilter` 与 `loadCatalog`。壳手上留一份完整的 props，每次只改其中几项：画好了
+   就推补丁；还在打开就先记着，画上之后再把整份推一次。 */
 /* 顶上那几排先画一屏够用的量，横滚到右端再续下一批（岛里的 `usePaged`）。标签条先摆的是生效
    的那几枚加抽出来的这一批。 */
 const TAGS_FIRST=26;
@@ -1397,10 +1395,11 @@ function paintCatalogFilter(patch){
   patch={...patch,offscreen};
   catalogFilterProps={...(catalogFilterProps||catalogFilterBase()),...patch};
   if(catalogFilterMounting)return;
-  if(islandMounted(host)){updateIsland(host,patch);return}
+  if(managedTaken(host)){updateManagedRoute(host,patch);return}
   if(!host.firstChild&&!offscreen){host.innerHTML=catalogFilterSkeletonHtml(catalogViews(),catalogFilterProps.state);fitSkeleton(host)}
-  catalogFilterMounting=mountIsland('catalog-filter',host,catalogFilterProps)
-    .then(()=>updateIsland(host,catalogFilterProps))
+  /* 常驻：不随换页收，所以不判当前页。 */
+  catalogFilterMounting=openManagedRoute('catalog-filter',catalogFilterProps,{container:host,isCurrent:()=>true})
+    .then(()=>updateManagedRoute(host,catalogFilterProps))
     .finally(()=>{catalogFilterMounting=null});
 }
 function catalogFilterActions(){
@@ -1725,8 +1724,8 @@ async function loadEntityShapes(){
   return entityShapes;
 }
 function prepareHomeFeed(host){
-  // 岛一挂上，宿主就归它：骨架只在挂载之前铺，之后由岛画的那一行或空着说话。
-  if(!host||islandMounted(host)||host.querySelector('[data-feed-id]'))return;
+  // 一打开，宿主就归路由树：骨架只在打开之前铺，之后由画出来的那一行或空着说话。
+  if(!host||managedTaken(host)||host.querySelector('[data-feed-id]'))return;
   host.hidden=homeHasFeed!==true;
   if(homeHasFeed!==true)return;
   host.setAttribute('aria-busy','true');
@@ -1762,9 +1761,9 @@ function wireFeedNewRow(row){
   wireDrag(row);
   if(appSettings.feedAutoScroll)wireAutoScroll(row);
 }
-/* 首页那一行归 `feed-new` 岛（`frontend/src/react/feed-new/`），与资料页那一行同一个组件、同一族
-   查询键：取数、换掉骨架、卡上那两颗键都在岛里。壳留骨架、宿主和它什么时候在场。
-   合集开关改了、或人在目录页里换了一次筛选，都换一个代次推过去，岛见它变了就重取；资料页那
+/* 首页那一行是附属面 `feed-new`（`frontend/src/react/feed-new/`），由路由树画进 `#feedNew`，与资料页那一行
+   同一个组件、同一族查询键：取数、换掉骨架、卡上那两颗键都在组件里。壳留骨架、宿主和它什么时候在场。
+   合集开关改了、或人在目录页里换了一次筛选，都换一个代次推过去，组件见它变了就重取；资料页那
    一行收的是同一个代次。 */
 function isFeedNewPath(path){return isCatalogPath(path)&&path!=='/junk-files'}
 /* 处理横幅同样只挂在首页那几条名单上。垃圾文件也是目录路径，但它是数据管理底下的一页，
@@ -1775,23 +1774,23 @@ const feedNewHelpers={feedRowHtml,wireFeedRow:row=>wireFeedNewRow(row)};
 const feedNewActions={settled:hasItems=>{homeHasFeed=hasItems}};
 function renderHomeFeed(){
   const host=$('#feedNew');
-  if(islandMounted(host)){updateIsland(host,{revision:++feedRevision});return}
+  if(managedTaken(host)){updateManagedRoute(host,{revision:++feedRevision});return}
   prepareHomeFeed(host);
   /* 这一行不随筛选变，判在不在场只看路径：换筛选换掉的是目录的代次，不该把它这一趟作废。 */
-  void mountIsland('feed-new',host,{host,revision:feedRevision,helpers:feedNewHelpers,actions:feedNewActions},
-    {isCurrent:()=>isFeedNewPath(location.pathname)});
+  void openManagedRoute('feed-new',{host,revision:feedRevision,helpers:feedNewHelpers,actions:feedNewActions},
+    {container:host,isCurrent:()=>isFeedNewPath(location.pathname)});
 }
-/* 离开目录页时收起并清空，连同它的自动滚动一起停掉。岛还没画出来时宿主里是骨架，一起清。 */
+/* 离开目录页时收起并清空，连同它的自动滚动一起停掉。还没画出来时宿主里是骨架，一起清。 */
 function clearHomeFeed(){
   const host=$('#feedNew');
   host.querySelectorAll('.feednewrow').forEach(stopAutoScroll);
-  unmountIsland(host);
+  releaseManagedRoute(host);
   host.hidden=true;host.innerHTML='';host.removeAttribute('aria-busy');
 }
 function refreshFeedRows(){
   feedRevision+=1;
-  // 首页那一行只在目录页挂着，人不在那儿时 `updateIsland` 是空操作，不会在别的页面上冒出来。
-  updateIsland($('#feedNew'),{revision:feedRevision});
+  // 首页那一行只在目录页画着，人不在那儿时 `updateManagedRoute` 是空操作，不会在别的页面上冒出来。
+  updateManagedRoute($('#feedNew'),{revision:feedRevision});
   pushEntityPage({feedRevision});
 }
 /* 设置里开关自动滚动，页面上已经摆着的那几行当场跟着停或走，不等下一次重画。 */
@@ -2878,8 +2877,6 @@ async function openEntity(kind,name,push=true){
   $('#stats').hidden=true;$('#index').hidden=false;clearCatalogGrid();hideCatalogCombo();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
   const seq=++entityRequestSeq;
-  // 资料页由 React 画：包在等名单、铺骨架的这一下就开始取，首屏取数不再排在下包后面。
-  void preloadIslands();
   /* 名单启动时就在取；深链直接落在资料页时它可能还在路上，稍等一下再画骨架，画出来
      就是最终的形状。等不到就先画，名单到了再补那两块。 */
   if(!entityShapes){
@@ -3323,9 +3320,9 @@ $('#scrim').onclick=()=>openDrawer(false);
 async function loadCatalog(){
   const requestSeq=++loadRequestSeq;
   const surface=claimSurface(surfacePath());
-  // 已经挂着就让它接着跑：重挂要先清空容器，而它这一刻要说的话跟上一刻是同一句。
-  if(isProcessingNoticePath(location.pathname)&&!islandMounted($('#libraryProcessingNotice')))
-    void mountIsland('library-processing',$('#libraryProcessingNotice'),{toast,mode:'notice'},{isCurrent:()=>surfaceCurrent(surface)});
+  // 已经画着或首屏在取就让它接着跑：重开要先收起再重取，而它这一刻要说的话跟上一刻是同一句。
+  if(isProcessingNoticePath(location.pathname)&&!managedTaken($('#libraryProcessingNotice')))
+    void openManagedRoute('library-processing',{toast,mode:'notice'},{container:$('#libraryProcessingNotice'),isCurrent:()=>surfaceCurrent(surface)});
   /* 新作那一行只在目录路径上出现：管理页、回收站这些页面回答的是别的问题，一行「外面出了
      什么」摆在那里只是噪音。离开目录时要显式收起——它是 `#main` 的固定子节点，没人收就
      一直挂在那儿。 */
@@ -3528,10 +3525,11 @@ const searchHelpers={
   composing:()=>{cancelSearchDissolve();cancelSearchDissolve=()=>{}},
   clearField:input=>clearSearchField({text:input.value,scrollLeft:input.scrollLeft||searchValueSnapshot.scrollLeft}),
 };
-mountIsland('search',$('#searchMenu'),{
+// 搜索下拉常驻、从不收：这一刻就下令，路由树接上那一刻画进 `#searchMenu`。
+void openManagedRoute('search',{
   input:$('#q'),historyLimit:appSettings.searchHistoryLimit,actions:searchActions,helpers:searchHelpers,
   expose:control=>{searchControl=control},
-});
+},{container:$('#searchMenu'),isCurrent:()=>true});
 $('#q').addEventListener('beforeinput',e=>{if(!e.isComposing)rememberSearchValue(e.currentTarget)});
 $('#q').addEventListener('scroll',e=>{if(e.currentTarget.value)rememberSearchValue(e.currentTarget)});
 $('#q').addEventListener('pointerdown',e=>{if(e.currentTarget.value)rememberSearchValue(e.currentTarget)});

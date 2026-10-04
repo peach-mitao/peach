@@ -57,7 +57,7 @@ function props(patch: Partial<PlaylistsProps> = {}): PlaylistsProps {
 }
 
 let bump: () => void = () => {};
-/** 壳经 `updateIsland` 推进来的刷新代次，这里用一层状态代替。 */
+/** 壳经 `updateManagedRoute` 推进来的刷新代次，这里用一层状态代替。 */
 function Shell(given: PlaylistsProps) {
   const [revision, setRevision] = useState(given.revision ?? 0);
   bump = () => setRevision((now) => now + 1);

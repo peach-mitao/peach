@@ -1,6 +1,6 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
- * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列（`managed-routes.tsx`）由这棵树画，
- * 其余页面仍由壳的 `ROUTES` 表打开。
+ * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列，以及页面里的附属面（首页筛选条、
+ * 首页新作行、目录页处理横幅、顶栏搜索下拉）（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的 `ROUTES` 表打开。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
@@ -79,12 +79,12 @@ export function managedGo(path: string, actions: ShellActions, navigate: Navigat
   void navigate(`${target.pathname}${target.search}${target.hash}`);
 }
 
-/** 页面宿主：画壳在各个容器里登记的那一页（`#stats`、`#index`、`#grid` 各一页，互不相收）。
+/** 页面宿主：画壳在各个容器里登记的那一页（`#stats`、`#index`、`#grid` 与各附属面的容器各一页，互不相收）。
  *
  * 换页与收起都由 `@peach/history` 同步通知，这里用 `flushSync` 当场画完：壳在同一个任务里刚换上宿主
  * （或刚撤掉它），晚一拍画就是一帧空白。每次打开领一个代次，页面按代次重挂，首屏读的是刚取回的缓存。
- * 就地更新（`updateManagedRoute`）只换那一页的 props、代次不变，照常排进下一次渲染：同岛时代
- * `updateIsland` 的节律，而且壳的开关可能就是从页面自己的 effect 里推过来的，那里不能 `flushSync`。 */
+ * 就地更新（`updateManagedRoute`）只换那一页的 props、代次不变，照常排进下一次渲染：壳的开关可能就是从
+ * 页面自己的 effect 里推过来的，那里不能 `flushSync`。 */
 function ManagedSurface() {
   const actions = useContext(ShellActionsContext);
   const [entries, setEntries] = useState<readonly ManagedEntry[]>(managedEntries);
@@ -151,7 +151,8 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
   );
 }
 
-/* 根建在一个不进文档的容器上：页面经 portal 画进壳的 `#stats`、`#index` 与 `#grid`，别的地方什么都不画。
+/* 根建在一个不进文档的容器上：页面经 portal 画进壳的 `#stats`、`#index`、`#grid` 与各附属面的容器，别的地方
+ * 什么都不画。
  * 第一次渲染同步做完，宿主在 `loadRouter` 落定之前就已经订阅：壳打开的第一页取齐时它一定在听。 */
 let root: Root | null = null;
 export function configureRouter(actions: ShellActions): void {
