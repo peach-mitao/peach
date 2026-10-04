@@ -21,6 +21,9 @@ import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sideba
 import { dropBars, fetchBars, fetchTopsPage } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
+import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
+import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
+import { configurationRequestedSection, activityPrefill, notifyShell, writeShell } from './dist/peach-ui.js';
 import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
@@ -65,13 +68,12 @@ wireImageFallbacks(document.body);
    挪进启动路径，首屏就直接白屏。真相只留一份，一律放这里，不在用它的地方再声明。
 
    契约由 tests/test_web_ui.py::test_module_level_bindings_are_declared_before_they_are_used
-   守住：app.js 里任何模块级 `let`/`const` 都不许在声明行之前被引用。 */
-/* 目录筛选状态。初值要读启动 URL 和保存过的设置，真正的赋值排在 `initialParam()`
-   之后（搜索 `state={loc:`）；这里只提前建立绑定，好让上面设置面板的 onchange
-   不再落在 TDZ 里。 */
-let state;
+   守住：app.js 里任何模块级 `let`/`const` 都不许在声明行之前被引用。
+
+   目录口径（`state`、`barsContext`）、选择集与选择模式、详情来处和一次性请求不在这里：它们在
+   `frontend/src/shell/` 的单例里，经 peach-ui.js 导入。读法照旧；整体换掉一个值调 `writeShell`，
+   原地改了字段或选择集之后调 `notifyShell`。 */
 let homeHasFeed=null;
-const selected=new Set(),followSelected=new Set();
 let barsRequestSeq=0;
 // 顶部三层与抽屉上一次画的是哪一份：口径加数据，两样都没变就不必再画一遍。
 let barsRendered='';
@@ -91,7 +93,7 @@ let followFilter='',followRevision=0;
    框里只剩当前这一项，「全部」放在时钟图标旁边读不出是全部什么。 */
 const FOLLOW_INITIAL_RANGE_OPTIONS=[['0','不限时间'],['7','最近 7 天'],['30','最近 30 天'],
   ['90','最近 90 天']];
-let followAuthors=new Set(),followProviders=new Set(),followTags=new Set(),followWorks=new Set(),followMediaView='videos',followDetailReturnPath='/follow';
+let followAuthors=new Set(),followProviders=new Set(),followTags=new Set(),followWorks=new Set(),followMediaView='videos';
 /* 看的那一页按什么排。只有这三档在每条更新上都成立：观看次数、体积那几列问的是本机
    文件，而这一页上的东西多数还没下载。壳只拿它核对地址栏上的 `sort`；键上的说法在岛里
    （`follow-feed.ts` 的 `FOLLOW_FEED_DIR_WORDS`）。 */
@@ -501,8 +503,8 @@ async function loadSourceStatus(){
   dropOfflineFromDefaultLoc();
   return sourceOnline;
 }
-/* `dropOfflineFromDefaultLoc()` 的定义挪到了 `state` 声明之后。它读 `initialParams`
-   和 `state`，两者都是模块级 `const`/`let`，在声明行之前处于 TDZ。函数声明会提升，
+/* `dropOfflineFromDefaultLoc()` 的定义在 `initialParams` 与 `state` 的启动赋值之后。`initialParams`
+   是模块级 `const`，在声明行之前处于 TDZ；`state` 尚未写入时为 undefined。函数声明会提升，
    所以上面这一行调用照样成立。 */
 const DURATION_TAGS=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
 /* 界面偏好的出厂值、启动归一化与那一份 store 在 `frontend/src/appearance/settings.ts`：模块在 peach-ui.js
@@ -536,10 +538,12 @@ const settingsEffects={
   defaultSort:()=>{
     state.sort=appSettings.defaultSort;
     state.dir=preferredDirection(state.sort,appSettings.defaultSort,appSettings.defaultSortDirection);
+    notifyShell();
     if(location.pathname==='/')loadCatalog();
   },
   sortDirection:()=>{
     state.dir=preferredDirection(state.sort,appSettings.defaultSort,appSettings.defaultSortDirection);
+    notifyShell();
     if(location.pathname==='/')loadCatalog();
   },
   hoverDelay:()=>{
@@ -699,21 +703,21 @@ function resolveSort(rawSort,rawDir,fallback=appSettings.defaultSort){
 const initialCatalogUrl=(path=>isCatalogPath(path)||path==='/trash')(
   decodeURIComponent(location.pathname));
 const initialParam=key=>initialCatalogUrl?initialParams.get(key):null;
-state={loc:initialParams.get('loc')??'local,115',creator:initialParam('creator')||'',studio:initialParam('studio')||'',
+writeShell({state:{loc:initialParams.get('loc')??'local,115',creator:initialParam('creator')||'',studio:initialParam('studio')||'',
   owner:initialParam('owner')==='none'?'none':'',
   tag:cleanTagFilter(initialParam('tag')),len:initialParam('len')||'',dur_min:initialParam('dur_min')||'',dur_max:initialParam('dur_max')||'',
   tag_match:initialParam('tag_match')==='any'?'any':'all',orient:initialParam('orient')||'',
   region:initialParam('region')||'',
   state:ROUTE_STATES[decodeURIComponent(location.pathname)]||initialParam('state')||'',
   ...resolveSort(initialParam('sort'),initialParam('dir')),
-  seed:initialParam('seed')||rollSeed(),q:initialParam('q')||'',jav:initialParam('jav')||'',thumb:initialParam('thumb')||'0'};
+  seed:initialParam('seed')||rollSeed(),q:initialParam('q')||'',jav:initialParam('jav')||'',thumb:initialParam('thumb')||'0'}});
 /* 脱盘的来源要从默认筛选里摘掉，否则首页照样按它筛，出来一屏点开就报脱盘的卡片。
    只动默认值：地址栏里显式写了 `loc=` 就是用户自己选的，不替他改。
    全部来源都脱盘时保持原样——清空筛选会变成「什么都不筛」，那比原状更糟。
    必须写在 `state` 之后：`loadSourceStatus()` 在启动时调它，那时 `state` 已初始化。 */
 function dropOfflineFromDefaultLoc(){
   if(initialParams.has('loc'))return;
-  state.loc=onlineDefaultLoc(state.loc);
+  state.loc=onlineDefaultLoc(state.loc);notifyShell();
 }
 function onlineDefaultLoc(loc){
   return loc.split(',').filter(Boolean).filter(k=>sourceOnline[k]!==false).join(',')||loc;
@@ -727,9 +731,8 @@ function homePath(filters=state){
   if(!STATE_ROUTES[filters.state]&&filters.state)params.set('state',filters.state);
   return path+(params.size?'?'+params:'');
 }
-/* 顶部三层与筛选条画的是哪一套筛选，由它说了算。声明必须排在 resetHomeState 之前：
-   那个函数会把它拨回 home，而它是 let，用在声明之前就是 TDZ。 */
-let barsContext={type:'home',filters:state},detailReturnBarsContext=null;
+/* 顶部三层与筛选条画的是哪一套筛选，由 `barsContext` 说了算；启动时指向首页那份 `state`。 */
+writeShell({barsContext:{type:'home',filters:state}});
 /* 所有明确的「回首页」动作必须得到同一个干净状态。只改地址为 `/` 不够：state.jav
    等内存筛选还会继续进入 /api/items，让页面看似首页却只剩 JAV。来源选择是用户的
    浏览范围，继续保留；其余分类、搜索和排序恢复首页默认值。
@@ -738,10 +741,10 @@ let barsContext={type:'home',filters:state},detailReturnBarsContext=null;
    activeFilterState() 取走了——取到的是资料页那份筛选，它没有 state 这个键，
    于是四枚视图胶囊一枚都不亮，首页看上去像谁都没选中。 */
 function resetHomeState(){
-  state={loc:state.loc,creator:'',studio:'',owner:'',tag:'',tag_match:'all',len:'',dur_min:'',dur_max:'',
+  writeShell({state:{loc:state.loc,creator:'',studio:'',owner:'',tag:'',tag_match:'all',len:'',dur_min:'',dur_max:'',
     orient:'',region:'',state:'',sort:appSettings.defaultSort,dir:preferredDirection(appSettings.defaultSort,appSettings.defaultSort,appSettings.defaultSortDirection),
-    seed:rollSeed(),q:'',jav:'',thumb:'0'};
-  barsContext={type:'home',filters:state};detailReturnBarsContext=null;
+    seed:rollSeed(),q:'',jav:'',thumb:'0'}});
+  writeShell({barsContext:{type:'home',filters:state},detailReturnBarsContext:null});
   dropBars();
 }
 /* 离开搜索结果时把搜索框一起清掉。框里的字不是瞬间没的：`dissolveValue` 先照着它此刻
@@ -764,14 +767,14 @@ const clearSearchField=(snapshot=null)=>{
    署名人」永远是空的。所以它和打开资料页一样离开当前语境，回目录只留这一条筛选，
    顶栏芯片指的就是同一份列表。 */
 function openUnowned(){
-  resetHomeState();state.owner='none';
+  resetHomeState();state.owner='none';notifyShell();
   clearSearchField();disposeStage(false);showHomeSurfaces();
   route(homePath());syncNavigation();buildBars();loadCatalog();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 详情页那枚产地和未归属同一种东西：它标的不是一句说明，是馆藏里一个能筛的集合。 */
 function openRegion(region){
-  resetHomeState();state.region=region||'none';
+  resetHomeState();state.region=region||'none';notifyShell();
   clearSearchField();disposeStage(false);showHomeSurfaces();
   route(homePath());syncNavigation();buildBars();loadCatalog();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -985,9 +988,8 @@ const activeFilterState=()=>{const context=currentBarsContext();return context.t
 $('#q').value=state.q;rememberSearchValue();
 /* `activeQueue` 是此刻开着的队列（`{kind, seedId|playlistId}`），只用来判「是不是同一个队列里换
    一条」；队列的条目归详情岛。`pendingQueueRoute` 是队列地址的前缀：停在哪一条要等岛定下来，
-   画出来那一刻（`present`）才推。 */
-let total=0,facets=null,detailReturnPath='/',activeQueue=null,pendingQueueRoute=null,presentedItem=null;
-let detailOriginAnchor=null,detailOriginAbove=false,detailReturnNeedsRestore=false;
+   画出来那一刻（`present`）才推。两者与详情来处都在 `frontend/src/shell/` 的单例里。 */
+let total=0,facets=null;
 /* ── 详情舞台（`frontend/src/react/stage/`）──
    浮窗、进出场、骨架、两座详情、播放器与小窗都归舞台岛，壳只留来处（`detailReturnPath`、
    `followDetailReturnPath`、`detailOriginAnchor`）与命令式入口。舞台岛所在的 React 包在第一次
@@ -1014,16 +1016,15 @@ function stageExit(){return stageApi()?.exit()||Promise.resolve()}
    都传 miniplayer:false。 */
 function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true}={}){
   stageApi()?.dispose({miniplayer});
-  activeQueue=null;pendingQueueRoute=null;presentedItem=null;
+  writeShell({activeQueue:null,pendingQueueRoute:null,presentedItem:null});
   if(!preserveInlineOrigin){
-    detailOriginAnchor=null;detailOriginAbove=false;detailReturnNeedsRestore=false;
+    writeShell({detailOriginAnchor:null,detailOriginAbove:false,detailReturnNeedsRestore:false});
   }
   scheduleStickySurfaces();
   if(push)route(detailReturnPath||'/');
 }
 /* 换「JAV 默认封面」时，开着的作品详情把海报位跟同一张图一起换。 */
 function repaintDetailPoster(){stageApi()?.repaintPoster()}
-let selectMode=false,lastSelectedId=null,followLastSelectedId=null,selectSurface='';
 //: 最近一次推给批量条岛的那份；岛还没装载时先记着，接上那一刻补推。
 let batchDockProps={count:0,context:'catalog',junkDismissed:false};
 //: 回收站这一次进页以来最近一次读数（`paintCatalogCount` 写，页头说明行读）；还没读到或不在回收站时是 null。
@@ -1045,20 +1046,20 @@ function paintSelection(){
 /* 标签页的多选归 React 页面自己记：键在壳里，所以开关一变就推给正画着的那一页，关掉时
    页面随之清空所选。别的页面上 `#index` 里没有画着的索引页，`updateManagedRoute` 是空操作。 */
 function setSelectMode(on,clear=false){
-  if(on&&!selectMode)selectSurface=currentSelectSurface();
-  selectMode=!!on;if(!selectMode)selectSurface='';document.body.classList.toggle('select-mode',selectMode);
+  if(on&&!selectMode)writeShell({selectSurface:currentSelectSurface()});
+  writeShell({selectMode:!!on});if(!selectMode)writeShell({selectSurface:''});document.body.classList.toggle('select-mode',selectMode);
   if(selectMode)releaseHoverPreviews();
-  $('#selectMode').setAttribute('aria-pressed',selectMode);if(clear){selected.clear();followSelected.clear();lastSelectedId=null;followLastSelectedId=null}paintSelection();
+  $('#selectMode').setAttribute('aria-pressed',selectMode);if(clear){selected.clear();followSelected.clear();writeShell({lastSelectedId:null,followLastSelectedId:null})}paintSelection();
   if(location.pathname==='/tags')updateManagedRoute($('#index'),{selectMode})}
 /* 只取网格直属卡片：竖屏条是嵌在网格里的横向滚动条，不该被 Shift 范围选中顺带框进来。 */
 function visibleCardIds(){return [...gridCards()].map(card=>+card.dataset.id)}
 function toggleSelection(id,range=false){
-  lastSelectedId=selectRange(selected,visibleCardIds(),lastSelectedId,id,range);setSelectMode(true);paintSelection();
+  writeShell({lastSelectedId:selectRange(selected,visibleCardIds(),lastSelectedId,id,range)});setSelectMode(true);paintSelection();
 }
 function visibleFollowIds(){return [...document.querySelectorAll('[data-follow-list] > [data-follow-item]')]
   .map(card=>+card.dataset.followItem)}
 function toggleFollowSelection(id,range=false){
-  followLastSelectedId=selectRange(followSelected,visibleFollowIds(),followLastSelectedId,id,range);setSelectMode(true);paintSelection();
+  writeShell({followLastSelectedId:selectRange(followSelected,visibleFollowIds(),followLastSelectedId,id,range)});setSelectMode(true);paintSelection();
 }
 $('#selectMode').onclick=()=>setSelectMode(!selectMode,!selectMode?false:true);
 /* 批量条上的键回到这几条流程（`BATCH_RUNNERS` 按键的分组分派）：确认弹层、写接口、回执与撤销都在这里，
@@ -1354,7 +1355,7 @@ function commitContextFilter(mutate){
   if(context.type==='item'){
     // 从详情回到列表是换语境，不是换一条筛选：那几排本来就要照新语境重新画。
     const target=cloneBarsContext(detailReturnBarsContext);
-    disposeStage(false);detailReturnBarsContext=null;
+    disposeStage(false);writeShell({detailReturnBarsContext:null});
     if(target&&target.type==='entity'){
       mutate(target.filters);
       // 详情下面那一页通常还挂着，推新筛选就够；深链进的详情下面没有它，照新地址重开。
@@ -1362,10 +1363,10 @@ function commitContextFilter(mutate){
       else void openEntity(target.kind,target.name,false);
       return
     }
-    mutate(state);barsContext={type:'home',filters:state};route(homePath());showHomeSurfaces();
+    mutate(state);writeShell({barsContext:{type:'home',filters:state}});route(homePath());showHomeSurfaces();
     buildBars();loadCatalog();return
   }
-  mutate(state);route(homePath());
+  mutate(state);notifyShell();route(homePath());
   applyFilterStateInPlace(state);refreshFacetCounts(barsContext);
   loadCatalog();
 }
@@ -1408,7 +1409,7 @@ function catalogFilterActions(){
     openEntity:(kind,name)=>openEntity(kind,name),
     /* 按下去当场就推新的按下态，滑动玻璃跟着走，不等这一趟取数。 */
     setView:view=>{
-      state.state=view;paintCatalogFilter({state:view});
+      state.state=view;notifyShell();paintCatalogFilter({state:view});
       route(homePath());buildBars();loadCatalog();
     },
     toggleTag:tag=>toggleTag(tag),
@@ -1417,7 +1418,7 @@ function catalogFilterActions(){
     setSort:key=>{
       const next=nextSortState(key,state.sort,state.dir);
       if(!next)return;
-      state.sort=next.sort;state.dir=next.dir;loadCatalog();
+      state.sort=next.sort;state.dir=next.dir;notifyShell();loadCatalog();
     },
     reshuffle:()=>refreshAll(),
     setLayout:value=>{if(javActive())setJavLayout(value);else setHomeLayout(value)},
@@ -1819,14 +1820,14 @@ async function openResourceSync(push=true){
    仍归遗留壳，React 档只说点了哪一条。 */
 function openTasteSignal(kind,name){
   if(kind==='tag'){
-    state={...state,tag:name,tag_match:'all',creator:'',studio:'',q:'',state:'',orient:''};
+    writeShell({state:{...state,tag:name,tag_match:'all',creator:'',studio:'',q:'',state:'',orient:''}});
     clearSearchField();route(homePath());showHomeSurfaces();buildBars();loadCatalog();return
   }
   openEntity(kind,name);
 }
 async function openTaste(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  state={...state,creator:'',studio:'',tag:'',tag_match:'all',len:'',dur_min:'',dur_max:'',orient:'',region:'',state:'',q:'',jav:''};
+  writeShell({state:{...state,creator:'',studio:'',tag:'',tag_match:'all',len:'',dur_min:'',dur_max:'',orient:'',region:'',state:'',q:'',jav:''}});
   clearSearchField();
   if(push)route('/taste');
   const surface=claimSurface('/taste');
@@ -1988,12 +1989,12 @@ async function openReview(push=true){
    任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads、自己提交。
    作品页与关注条目的「云下载」键经 openCloudDownload 带着番号、标题与来处进来，表单据此预填，
    用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。
-   关注管理页的那颗键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个变量。 */
-let activityPrefill=null;
-function openCloudDownload(prefill){activityPrefill=prefill;openActivity(true)}
+   关注管理页的那颗键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个
+   `activityPrefill`（`frontend/src/shell/` 的单例）。 */
+function openCloudDownload(prefill){writeShell({activityPrefill:prefill});openActivity(true)}
 async function openActivity(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  const prefill=activityPrefill;activityPrefill=null;
+  const prefill=activityPrefill;writeShell({activityPrefill:null});
   if(push)route('/activity');
   const surface=claimSurface('/activity');
   showManagementBody({placeholder:managementPlaceholder('/activity')});
@@ -2004,9 +2005,8 @@ async function openActivity(push=true){
 /* 配置页（这台电脑的媒体文件夹与端口）同样是 island。它只在运行 Peach 的这台电脑上
    有意义：服务端按回环地址与独立包两道门放行，手机上的管理菜单也不列它
    （见 runtimeConfigurable）。保存成功的回执由遗留层的 Toast 发，island 只管表单。 */
-/* 配置页要选中的那一组页签名。页签由 `decorate` 按 `.configgroup` 切出来，它读这个名字
-   选中对应的那一格，选中之后清空。 */
-let configurationRequestedSection='';
+/* 配置页要选中的那一组页签名记在 `configurationRequestedSection`（`frontend/src/shell/` 的单例）。
+   页签由 `decorate` 按 `.configgroup` 切出来，它读这个名字选中对应的那一格，选中之后清空。 */
 async function openDiagnostics(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/diagnostics');
@@ -2019,7 +2019,7 @@ async function openConfiguration(push=true){
   if(push)route('/configuration');
   const surface=claimSurface('/configuration');
   showManagementBody({placeholder:managementPlaceholder('/configuration')});
-  if(location.hash==='#peachProxy')configurationRequestedSection='网络与访问';
+  if(location.hash==='#peachProxy')writeShell({configurationRequestedSection:'网络与访问'});
   await openManagedRoute('/configuration',{},managedSurface(surface));
   if(surfaceCurrent(surface)){
     if(location.hash==='#libraryProcessing'){shellNavigate('/data-cleanup#libraryProcessing',{replace:true,state:null});await openDataCleanup(false);return}
@@ -2029,7 +2029,7 @@ async function openConfiguration(push=true){
 }
 /* 从别处点「管理媒体库」「添加媒体文件夹」进来：落到配置页并直接选中那一组页签。 */
 function openConfigurationSection(section){
-  configurationRequestedSection=section;
+  writeShell({configurationRequestedSection:section});
   void openConfiguration(true);
 }
 
@@ -2247,7 +2247,7 @@ const followDetailActions={
   openTag:tag=>{
     if(followTags.has(tag))followTags.delete(tag);else followTags.add(tag);
     // 回到的是带上这枚标签的那一份列表：地址栏是筛选的唯一真相源，只改全局会被推回去。
-    followDetailReturnPath=followViewPath();
+    writeShell({followDetailReturnPath:followViewPath()});
     closeFollowDetail();
   },
   /* 侧栏标签抽屉跟着画出来的这一条走（这一条自己的标签）。 */
@@ -2261,9 +2261,9 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   releaseHoverPreviews();
   id=+id;
   const entering=!location.pathname.startsWith('/follow/item/');
-  if(push&&entering&&!preserveReturn)followDetailReturnPath=location.pathname+location.search;
+  if(push&&entering&&!preserveReturn)writeShell({followDetailReturnPath:location.pathname+location.search});
   /* 后退前进进来按条目记的来处（带筛选的那一份列表）；冷启动与没记背景的条目回 `/follow`。 */
-  if(!push&&!preserveReturn)followDetailReturnPath=takeOverlayReturn()||'/follow';
+  if(!push&&!preserveReturn)writeShell({followDetailReturnPath:takeOverlayReturn()||'/follow'});
   // 条目的背景另记：从列表进来记列表这一页（带筛选），组内换条沿用上一条的。
   if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
@@ -2501,7 +2501,7 @@ function showIndexSkeleton(params){
 }
 /* 回目录按标签筛选：点一枚是「只看这一枚」，按所选显示结果是照匹配方式拼几枚。 */
 function showIndexTags(tags,match){
-  state={...state,state:'',tag:tags.join(','),tag_match:match};
+  writeShell({state:{...state,state:'',tag:tags.join(','),tag_match:match}});
   setSelectMode(false,false);route(homePath());showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* 在线那一档的人和标签还没进账本，没有资料页可去：他们名下那批东西全在关注页上，所以点开
@@ -2591,7 +2591,7 @@ function routeEntityPage(kind,name,filters,media=EMPTY_ENTITY_MEDIA,{push=true}=
   const search=entityViewSearch(filters,media);
   if(push)route(entityPath(kind,name)+(search?'?'+search:''));
   /* 资料页的语境由画着的那一页推（`currentBarsContext`），变量只记首页那一份，免得停在作品详情上。 */
-  barsContext={type:'home',filters:state};
+  writeShell({barsContext:{type:'home',filters:state}});
   if(!entityPageLive(kind,name))return false;
   releaseHoverPreviews(entityBodyHost);
   pushEntityPage({filters:{...filters},media:{...media},seed:String(state.seed||''),jav:state.jav==='1'});
@@ -2646,7 +2646,7 @@ function entityPageActions(kind,name){
       const filters=live(),next=nextSortState(key,filters.sort||'new',filters.dir);
       if(next)routeEntityPage(kind,name,{...filters,...next})},
     reshuffleVideos:()=>{
-      state.seed=rollSeed();routeEntityPage(kind,name,{...live(),sort:'seed'});return String(state.seed)},
+      state.seed=rollSeed();notifyShell();routeEntityPage(kind,name,{...live(),sort:'seed'});return String(state.seed)},
     setJavLayout:value=>{setJavLayout(value);pushEntityPage({javLayout:javLayout()})},
     setPhotoLayout:value=>{storePhotoLayout(value);syncPhotoWalls()},
     openEntity:(target,to)=>void openEntity(target,to),
@@ -2872,7 +2872,7 @@ async function openEntity(kind,name,push=true){
   const expectedPath=entityPath(kind,name);
   const search=entityViewSearch(filters,media);
   if(push)route(expectedPath+(search?'?'+search:''));
-  barsContext={type:'home',filters:state};
+  writeShell({barsContext:{type:'home',filters:state}});
   showHomeSurfaces();
   disposeStage(false);
   document.body.classList.add('entity-open');syncCatalogFilterScreen();
@@ -2888,7 +2888,7 @@ async function openEntity(kind,name,push=true){
     if(seq!==entityRequestSeq)return;
   }
   showEntityLoading(kind,name);
-  detailReturnBarsContext=null;
+  writeShell({detailReturnBarsContext:null});
   entityJavLayout=false;entityPageView='';
   // 名单每进一页重取一遍，下一页用的就是服务端的现状。
   void loadEntityShapes().then(()=>{if(seq===entityRequestSeq)syncEntitySkeletonParts(kind,name)});
@@ -3132,7 +3132,7 @@ function openManage(section='stats'){
   if(target){target.open({},true);return}
   /* 认不出的 section 一律落到垃圾文件：统计页那颗「查看垃圾文件」传的就是 `ads`，
      而垃圾文件是目录页的一个筛选态，没有自己的 section。 */
-  state.orient='';state.state='ads';route(junkPath());
+  state.orient='';state.state='ads';notifyShell();route(junkPath());
   showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* JAV 模式。只有带番号的作品才有官方封套，发行时间排序、番号筛选都挂在这个语境上；
@@ -3181,7 +3181,7 @@ function setVideoLayout(value){
 function toggleJavMode(){
   state.jav=state.jav==='1'?'':'1';
   if(state.jav!=='1'&&state.sort==='release'){state.sort='seed';state.dir=''}
-  state.state='';state.orient='';
+  state.state='';state.orient='';notifyShell();
   route(state.jav==='1'?'/?jav=1':'/');
   showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
@@ -3241,6 +3241,7 @@ function navTo(k){
   const target=ROUTES.find(spec=>spec.nav===k&&!STATE_ROUTES[k]);
   if(target){target.open({},true);return}
   if(k==='shorts'){state.orient='竖屏';state.state=''}else{state.orient='';state.state=k}
+  notifyShell();
   route(homePath());
   showHomeSurfaces();
   syncNavigation();buildBars();loadCatalog();
@@ -3329,7 +3330,7 @@ async function loadCatalog(){
   /* 新作那一行只在目录路径上出现：管理页、回收站这些页面回答的是别的问题，一行「外面出了
      什么」摆在那里只是噪音。离开目录时要显式收起——它是 `#main` 的固定子节点，没人收就
      一直挂在那儿。 */
-  barsContext={type:'home',filters:state};detailReturnBarsContext=null;disposeStage(false);
+  writeShell({barsContext:{type:'home',filters:state},detailReturnBarsContext:null});disposeStage(false);
   if(state.state==='ads')return loadJunk(surface);
   // 卸掉垃圾队列要赶在铺骨架之前：它的计数行也在 `#count` 里，先铺就把它挂着的那一格冲掉了。
   if(gridPage==='/junk-files')clearCatalogGrid();
@@ -3504,7 +3505,7 @@ function searchCoverImage(card){
 const searchActions={
   search:query=>{
     rememberSearchValue();disposeStage(false);
-    state.q=query;route(state.q?'/?q='+encodeURIComponent(state.q):'/',true);loadCatalog();
+    state.q=query;notifyShell();route(state.q?'/?q='+encodeURIComponent(state.q):'/',true);loadCatalog();
   },
   openItem:id=>openItem(id),
   openEntity:(kind,name)=>openEntity(kind,name),
@@ -3547,7 +3548,7 @@ function openQueue(kind,key,itemId,push,anchor=null){
   key=+key;
   const same=activeQueue?.kind===kind&&(kind==='playlist'?activeQueue.playlistId:activeQueue.seedId)===key;
   /* 同一个队列里换条，来处保持打开队列那一刻的那一页：播放列表关掉回列表页并重读。 */
-  if(push&&!same)detailReturnPath=location.pathname+location.search;
+  if(push&&!same)writeShell({detailReturnPath:location.pathname+location.search});
   /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景。 */
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
@@ -3604,11 +3605,11 @@ const itemDetailActions={
   close:()=>closeItemDetail(),
   /* 顶栏的实体上下文跟着画出来的这一条走；队列的地址也在这时推，停在哪一条要等岛定下来。 */
   present:item=>{
-    presentedItem=item;
+    writeShell({presentedItem:item});
     const returnBars=detailReturnBarsContext;
-    barsContext={type:'item',id:item.id,filters:returnBars?.type==='entity'
-      ? {...returnBars.filters}:emptyEntityFilters()};
-    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));pendingQueueRoute=null}
+    writeShell({barsContext:{type:'item',id:item.id,filters:returnBars?.type==='entity'
+      ? {...returnBars.filters}:emptyEntityFilters()}});
+    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));writeShell({pendingQueueRoute:null})}
     buildBars();
   },
   /* 取数时发现要换去别处：保存过的在线资产转关注详情，队列取不到退回普通详情，播放列表空了
@@ -3618,7 +3619,7 @@ const itemDetailActions={
     /* 地址照旧停在 `/item/:id`、内容换成关注详情：已推的那一条把详情种类改记成关注，背景不变。
        队列地址还没推时当前条目是上一条或来处，不动它。 */
     if(to.kind==='follow'&&!push)retagOverlay('follow');
-    if(to.kind==='follow'){followDetailReturnPath=detailReturnPath||'/';void openFollowDetail(to.id,false,null,true);return}
+    if(to.kind==='follow'){writeShell({followDetailReturnPath:detailReturnPath||'/'});void openFollowDetail(to.id,false,null,true);return}
     if(to.kind==='item'){void openItem(to.id,true);return}
     if(to.kind==='playlists'){void openPlaylists(push);return}
     disposeStage(false);
@@ -3674,17 +3675,17 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(currentBarsContext());
   /* 点进来记当前这一页；后退前进进来按条目记的来处，条目没记（冷启动、深链）就沿用上一次记的。
      队列从详情里换条也以 push=false 进来（`queuePush`），来处已由 `openQueue` 定好，不在这里取。 */
-  if(push)detailReturnPath=location.pathname+location.search;
-  else if(!queuePush)detailReturnPath=takeOverlayReturn()||detailReturnPath;
+  if(push)writeShell({detailReturnPath:location.pathname+location.search});
+  else if(!queuePush)writeShell({detailReturnPath:takeOverlayReturn()||detailReturnPath});
   // 条目的背景另记：从页面点进来记这一页，从详情里点开另一条沿用上一条的背景，不嵌套。
   if(push)holdOverlayBackground();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
   disposeStage(false,true,{miniplayer:false});
-  detailOriginAnchor=origin;detailOriginAbove=above;detailReturnNeedsRestore=needsReturnRestore;
-  detailReturnBarsContext=returnBars;
-  activeQueue=queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId};
-  pendingQueueRoute=queue&&queuePush
-    ? `${QUEUE_ROUTES[queue.kind]}/${queue.kind==='playlist'?queue.playlistId:queue.seedId}`:null;
+  writeShell({detailOriginAnchor:origin,detailOriginAbove:above,detailReturnNeedsRestore:needsReturnRestore});
+  writeShell({detailReturnBarsContext:returnBars});
+  writeShell({activeQueue:queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId}});
+  writeShell({pendingQueueRoute:queue&&queuePush
+    ? `${QUEUE_ROUTES[queue.kind]}/${queue.kind==='playlist'?queue.playlistId:queue.seedId}`:null});
   if(push&&!queue)route('/item/'+id,false,overlayState('item'));
   const stage=await loadStage(stageHost);
   await stage.open({kind:'item',
@@ -3702,8 +3703,8 @@ async function closeItemDetail(){
   const restore=cloneBarsContext(detailReturnBarsContext);
   const returnPath=detailReturnPath||'/',restoreSurface=detailReturnNeedsRestore;
   await stageExit();
-  disposeStage(false,false,{miniplayer:false});detailReturnBarsContext=null;clearOverlayBackground();
-  barsContext=restore||{type:'home',filters:state};
+  disposeStage(false,false,{miniplayer:false});writeShell({detailReturnBarsContext:null});clearOverlayBackground();
+  writeShell({barsContext:restore||{type:'home',filters:state}});
   route(returnPath);
   if(restoreSurface)await restoreRoute();
   else{buildBars();if(location.pathname==='/playlists')openPlaylists(false)}
@@ -3868,7 +3869,7 @@ async function refreshAll(automatic=false){
     await openStats(false);return
   }
   if(!$('#index').hidden){return}
-  state.sort='seed';state.dir='';state.seed=rollSeed();
+  state.sort='seed';state.dir='';state.seed=rollSeed();notifyShell();
   // 顶部三层（女优头像、厂牌、标签）有 30 秒会话缓存，而 refreshAll 只重载网格：
   // 不清掉这两个缓存，「换一批」之后上面还是同一批人。
   dropBars();
@@ -3920,17 +3921,17 @@ function openCatalog(path){
   const params=new URLSearchParams(location.search);
   const enteringHome=path==='/'&&lastRoutePath!=='/';
   if(enteringHome)dropBars();
-  state={...state,loc:params.get('loc')??onlineDefaultLoc('local,115'),creator:params.get('creator')||'',studio:params.get('studio')||'',
+  writeShell({state:{...state,loc:params.get('loc')??onlineDefaultLoc('local,115'),creator:params.get('creator')||'',studio:params.get('studio')||'',
     tag:cleanTagFilter(params.get('tag')),tag_match:params.get('tag_match')==='any'?'any':'all',len:params.get('len')||'',
     dur_min:params.get('dur_min')||'',dur_max:params.get('dur_max')||'',orient:params.get('orient')||'',
     state:ROUTE_STATES[path]||params.get('state')||'',...resolveSort(params.get('sort'),params.get('dir')),
-    seed:params.get('seed')||(enteringHome?rollSeed():state.seed||rollSeed()),q:params.get('q')||'',jav:params.get('jav')||''};
+    seed:params.get('seed')||(enteringHome?rollSeed():state.seed||rollSeed()),q:params.get('q')||'',jav:params.get('jav')||''}});
   $('#q').value=state.q;rememberSearchValue();syncNavigation();buildBars();loadCatalog();
 }
 /* 回收站。它和目录页共用同一张网格，只是筛选被钉死成 `trash`。 */
 function openTrash(push){
   if(push)route('/trash');
-  state={...state,creator:'',studio:'',tag:'',orient:'',state:'trash',q:''};clearSearchField();
+  writeShell({state:{...state,creator:'',studio:'',tag:'',orient:'',state:'trash',q:''}});clearSearchField();
   showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
 }
 /* 沉浸模式当前这一条写在 `?id=`（沉浸岛每换一条经 `immerseHost.route` 写一次），刷新和后退都该回到同一条片子。 */
@@ -3988,8 +3989,8 @@ const shellActions={
   failure:actionFailure,
   revealSource:revealForIsland,
   reopenTutorial:reopenPostSetupTutorial,
-  requestConfigurationSection:section=>{configurationRequestedSection=section},
-  requestCloudDownload:prefill=>{activityPrefill=prefill},
+  requestConfigurationSection:section=>{writeShell({configurationRequestedSection:section})},
+  requestCloudDownload:prefill=>{writeShell({activityPrefill:prefill})},
   routeReview,
   routeFollowManage,
   saveFollowPreference:patch=>{
@@ -4065,7 +4066,7 @@ function decorate(){
     if(tabs){
       const requested=items.findIndex(item=>item.title===configurationRequestedSection);
       if(requested>=0)tabs.select(requested);
-      configurationRequestedSection='';
+      writeShell({configurationRequestedSection:''});
     }
   }
 }
