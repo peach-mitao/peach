@@ -1,8 +1,8 @@
 /* 图片灯箱：一枚原生模态 dialog，主画布与缩略图条各是一个 Swiper。
  *
  * 宿主是 body 末尾一个带 `.peach-react` 的容器，一棵根常驻：打开时换上新的一份灯箱
- * （`key` 每次加一，Swiper 从头建），关掉时只把内容渲染成空，根和容器留着给下一次。不走
- * `mountIsland`：那一套是给壳的页面容器用的，容器归壳、换页就被整块重写；灯箱浮在所有页面
+ * （`key` 每次加一，Swiper 从头建），关掉时只把内容渲染成空，根和容器留着给下一次。不进
+ * 路由树：那一套是给壳的页面容器用的，容器归壳、换页就被整块重写；灯箱浮在所有页面
  * 之上，哪一页都能打开，跟哪个页面容器都不同生共死。 */
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';

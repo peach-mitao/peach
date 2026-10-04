@@ -3,7 +3,7 @@
  * 整页一个岛，自己拥有取数：`/api/follow` 与 `/api/follow/credentials` 两趟都在 TanStack Query
  * 里。地址栏是筛选的唯一真相源，归壳写：壳从 URL 读出 `view`（状态、媒体、创作者、来源、题材、
  * 标签、排序、种子）当 props 递进来，岛改筛选只调 `actions.route(view)`，壳写好地址再经
- * `updateIsland` 推回新的 `view`，岛按新键取数。
+ * `updateManagedRoute` 推回新的 `view`，岛按新键取数。
  *
  * 两粒种子分开：`view.seed` 是服务端随机排序那一粒，写在地址里；`seed` 是这一次进入的取样种子，
  * 上面创作者、题材、标签三排露出哪些由它定。重新进入（壳的 `push`）与「换一批」才换它，岛重画

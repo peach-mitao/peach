@@ -1681,7 +1681,6 @@ class LibraryNfoTests(unittest.TestCase):
         self.assertIn('const rows = (credentials.providers || []).filter((row) => row.followable);', add)
         self.assertIn("defaultOpen={row.requirement === 'required' && !credentialDone(row)}>", creds)
         self.assertIn('const rows = data.providers || [];', creds)
-        self.assertIn("unmountIsland($('#libraryProcessingNotice'))", source)
         self.assertIn("mode:'notice'", source)
         configuration = (root / 'frontend/src/react/settings/configuration-page.tsx').read_text(encoding='utf-8')
         self.assertNotIn("'/api/library-processing'", configuration)

@@ -1,17 +1,8 @@
-/* island 挂载契约（ADR-0031）。
+/* `web/dist/peach-ui.js` 的构建入口：遗留壳（`web/app.js`）从这里取它要用的一切（ADR-0031）。
  *
- * 遗留路由（`web/app.js`）仍然拥有整个外壳和每一个页面。一个页面被重写成 React
- * 之后，它的入口只做两件事：铺好加载占位，然后把一个容器交给这里。
- *
- *     import { mountIsland } from './dist/peach-ui.js';
- *     await mountIsland('feed-new', $('#feedNew'), props);
- *
- * `mountIsland` 是 async 且**取完数才画**：遗留层已经铺了骨架，island 若先画一个空
- * 容器再自己转圈，同一次进入就会出现两段等待态（`peach-web-ui` 明确禁止）。所以这里
- * 先 await 页面自己的 `prefetch`，再一次性换掉骨架。
- *
- * 容器由遗留层拥有：它会在别的页面进入时直接 `innerHTML=`。因此 `mountIsland` 每次
- * 都先自我卸载，`unmountIsland` 也不假设 DOM 还在原处。 */
+ * 页面与页面里的附属面由路由树画，壳经 `@peach/history` 的 `openManagedRoute`、`updateManagedRoute` 与
+ * `releaseManagedRoute` 下令（`history/managed.ts`）；常驻层各有一个 `loadXxx(host)` 命令式入口；其余导出
+ * 是壳仍在用的助手。 */
 export {
   defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
 } from './sort-preferences';
@@ -26,7 +17,7 @@ export { sidebarSkeletonHtml } from './sidebar-skeleton';
 export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
 import type * as ReactBundle from '@peach/react';
-import { connectManagedRoutes } from './history';
+import { connectManagedRoutes, preloadManagedRoutes } from './history';
 
 export { watchJob, followJobProgress, jobActivityHtml } from './jobs';
 export { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './selection';
@@ -40,144 +31,6 @@ export { dropBars, fetchBars, fetchTopsPage } from './catalog-bars';
 export { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent } from './sidebar';
 export { cleanupSkeletonHtml } from './management';
 export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
-
-/** 每个 island 的 props。新增 island 时在这里登记，注册表随之要求实现；
- *  页面自己管数据，首屏落在共用的 Query 缓存里。 */
-export interface IslandContracts {
-  'catalog-filter': ReactBundle.CatalogFilterProps;
-  'feed-new': ReactBundle.FeedNewProps;
-  'library-processing': ReactBundle.LibraryProcessingProps;
-  search: ReactBundle.SearchProps;
-}
-
-export type IslandName = keyof IslandContracts;
-type PropsOf<N extends IslandName> = IslandContracts[N];
-
-/** 整页在 `@peach/react` 的 `pages` 里，这里只记它的名字（ADR-0031）：先 `prefetch`
- *  把首屏取回来，再换掉遗留骨架、创建 React 根。 */
-interface Island {
-  react: keyof ReactBundle.ReactPages;
-}
-
-const REGISTRY: { [N in IslandName]: Island } = {
-  'catalog-filter': { react: 'catalog-filter' },
-  'feed-new': { react: 'feed-new' },
-  'library-processing': { react: 'library-processing' },
-  search: { react: 'search' },
-};
-
-/** 先把 React 包取回来，不挂任何东西。遗留层在自己取数的同时调它：数据一到，`mountIsland`
- *  里那一次 `import` 已经落地，壳换掉骨架与岛画出首帧落在同一帧里。 */
-export const preloadIslands = (): Promise<void> => import('@peach/react').then(() => undefined);
-
-/** 已注册的 island 名字。遗留层与测试用它核对路由表，不必知道注册表结构。 */
-export const islandNames = (): IslandName[] => Object.keys(REGISTRY) as IslandName[];
-
-interface Mount {
-  controller: AbortController;
-  /** 画过之后，卸载那棵根并撤掉它的容器。还没画过的容器里是遗留骨架，不归 island 清。 */
-  dispose?: () => void;
-  /** 画过之后，把新 props 交给同一棵根；`updateIsland` 在它上面合并补丁。 */
-  update?: (props: object) => void;
-  props?: object;
-}
-
-const mounted = new Map<Element, Mount>();
-
-/** 遗留层的换页判据。它的路由是「代」而不是 AbortSignal，所以这里收一个谓词：
- *  取数期间用户走开了，island 不能把数据画到别的页面上。 */
-export interface MountOptions {
-  isCurrent?: () => boolean;
-  /** 换掉遗留骨架的方式。不给就一次清空再画；给了就交给它（遗留层 `revealSkeleton`）：
-   *  骨架抬成一层淡出，`write` 画出来的内容同时从模糊里清晰起来。 */
-  reveal?: (container: Element, write: () => void) => void;
-}
-
-/** 挂载一个 island 并等首屏数据落地。容器里原有的内容（遗留骨架）在这一刻被换掉。 */
-export async function mountIsland<N extends IslandName>(
-  name: N,
-  el: Element,
-  props: PropsOf<N>,
-  options: MountOptions = {},
-): Promise<void> {
-  const island = REGISTRY[name] as Island | undefined;
-  if (!island) throw new Error(`未注册的 island：${String(name)}`);
-  unmountIsland(el);
-  const mount: Mount = { controller: new AbortController() };
-  mounted.set(el, mount);
-  const bundle = await import('@peach/react');
-  const page = bundle.pages[island.react] as ReactBundle.ReactPage<PropsOf<N>>;
-  try {
-    await page.prefetch(props, mount.controller.signal);
-  } catch {
-    // 中止就是用户已经走开，这一次不画。其余失败照画：原因和重试的节律都在页面自己手里，
-    // 它从 Query 缓存里读到的就是这次的错误。
-    if (mount.controller.signal.aborted) return;
-  }
-  if (!claimContainer(el, mount, options)) return;
-  // token、Preflight 与焦点规则都作用在 `.peach-react` 上，React 根要挂在带这个类的容器里。
-  // 容器本身归遗留层所有（它会直接 `innerHTML=`），所以另建一个，卸载时连它一起撤掉。
-  const paint = () => {
-    el.textContent = '';
-    const host = el.ownerDocument.createElement('div');
-    host.className = 'peach-react';
-    el.append(host);
-    const root = page.mount(host, props);
-    mount.dispose = () => { root.unmount(); host.remove() };
-    mount.props = props;
-    mount.update = (next) => root.update(next as PropsOf<N>);
-  };
-  if (options.reveal) options.reveal(el, paint);
-  else paint();
-}
-
-/** 把一部分 props 推给已经画好的 island，不重挂、不重取数。壳里的开关（例如目录的选择
- *  模式）落在正挂着的页面上时走这里；还没画完或已经卸掉的容器是空操作。 */
-export function updateIsland<N extends IslandName>(el: Element | null, patch: Partial<PropsOf<N>>): void {
-  const mount = el ? mounted.get(el) : undefined;
-  if (!mount?.update || !mount.props) return;
-  mount.props = { ...mount.props, ...patch };
-  mount.update(mount.props);
-}
-
-/** 取数回来之后还能不能画：期间没有被重挂，遗留层也还停在这一页。 */
-function claimContainer(el: Element, mount: Mount, options: MountOptions): boolean {
-  // 期间被卸载或重新挂载：这一次的结果已经过期，不许往新内容上盖。
-  if (mounted.get(el) !== mount) return false;
-  // 遗留层已经换了页面：容器现在归别人，画上去就是把别的页面盖掉。
-  if (options.isCurrent && !options.isCurrent()) {
-    mounted.delete(el);
-    return false;
-  }
-  // 遗留骨架由 `paint` 整个清掉再画，一次替换，只有一次布局变化。
-  return true;
-}
-
-/** 这个容器上是不是已经挂着一个 island。
- *
- *  遗留层据此判断要不要重挂。`mountIsland` 开头就把容器卸干净，而卸载会把画过的
- *  内容清掉：内容根本没变时，那一下只是一次白白的布局塌陷。 */
-export const islandMounted = (el: Element | null): boolean => !!el && mounted.has(el);
-
-/** 卸载容器上的 island：中止在途取数并清空自己画过的内容。没挂过的容器是空操作。
- *
- *  连子孙容器一起卸。遗留壳在 `claimSurface` 只对管理区正文那一个容器（`#stats`）调它，
- *  而卡片挂在里面更深的一格上（`#libraryProcessing` 在 `#stats` 里）：只卸最外层的话，
- *  离开这一页之后那棵根还活着，照着原节律继续敲库。 */
-export function unmountIsland(el: Element): void {
-  for (const container of [...mounted.keys()]) {
-    if (container === el || el.contains(container)) disposeIsland(container);
-  }
-}
-
-function disposeIsland(el: Element): void {
-  const mount = mounted.get(el);
-  if (!mount) return;
-  mount.controller.abort();
-  mounted.delete(el);
-  // 只清自己画过的东西。还在取数时容器里是遗留骨架，那不属于 island。
-  mount.dispose?.();
-}
 
 /* 全站 Toast 的入口（Sonner，在 `@peach/react` 里）。第一条回执发出时才装载 React 包、挂上
  * Toaster：目录页本来就装载着它，别的页面不为一条还没发生的回执付首屏的代价。所有调用排在
@@ -272,8 +125,11 @@ export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> 
 
 /* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区、索引页与资料页由它画
  * （`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；包到之前的
- * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。 */
+ * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。
+ * 壳在装载之前就打开的附属面（搜索下拉、首屏骨架里的筛选条）当场发出包的请求，跟这里是同一个模块。 */
 let router: Promise<void> | null = null;
+// 装载失败由 `loadRouter` 那一份报出，等着的打开跟着它失败；这里只管提早发出请求。
+preloadManagedRoutes(() => { import('@peach/react').catch(() => {}) });
 export function loadRouter(actions: ReactBundle.ShellActions): Promise<void> {
   if (!router) {
     const bundle = import('@peach/react').then((loaded) => { loaded.configureRouter(actions); return loaded });

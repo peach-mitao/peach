@@ -274,22 +274,6 @@ export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'recei
   data: ConfigurationData;
 }
 
-/** 一棵挂在遗留容器里的 React 根。`unmount` 之后容器归还给挂载方。 */
-export interface ReactMount<P> {
-  update(props: P): void;
-  unmount(): void;
-}
-
-/** 整页归 React 的那些页面（`islands.ts` 的 React 档）。
- *
- * `prefetch` 把首屏写进共用的 Query 缓存，`mount` 创建这一页的 React 根。两件事分开是因为
- * 「取完数才画」的契约：遗留层已经铺了骨架，页面自己再转一次圈就是同一次进入里两段等待态。 */
-export interface ReactPage<P> {
-  /** 首屏取数。中止后抛 `AbortError`，挂载方据此放弃这一次。 */
-  prefetch(props: P, signal: AbortSignal): Promise<void>;
-  mount(el: Element, props: P): ReactMount<P>;
-}
-
 /** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。 */
 /** 作品页与关注条目的「云下载」键带进来的番号、标题与来处（`asset:12`、`follow:34`）。 */
 export interface ActivityProps { prefill?: CloudDownloadPrefill }
@@ -467,15 +451,6 @@ export interface PlaylistsProps {
   /** 刷新代次。壳在这一页上要求重读（顶栏「换一批」、从别处写完回来）时加一，页面据此重取，不重挂。 */
   revision?: number;
 }
-
-export interface ReactPages {
-  'catalog-filter': ReactPage<CatalogFilterProps>;
-  'feed-new': ReactPage<FeedNewProps>;
-  'library-processing': ReactPage<LibraryProcessingProps>;
-  search: ReactPage<SearchProps>;
-}
-
-export declare const pages: ReactPages;
 
 /** 全站 Toast 的两枚字形，遗留层 `icon()` 画好的 SVG 片段。 */
 export interface ToastIcons { success: string; error: string }

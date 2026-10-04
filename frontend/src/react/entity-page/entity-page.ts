@@ -240,7 +240,7 @@ export const codeSetsOf = (page: PhotoPage | null | undefined): EntityCodeSet[] 
   page && !page.error ? (page.sets || []).filter((set) => set.kind === 'code') : [];
 
 /** 每次进这一页都是新的一趟：先清掉这一位名下的缓存，再把资料（连同新作）、作品第一页与照片
- *  并行取齐，深链落在一个图集上时连那一组一起取。四样齐了 `mountIsland` 一次换掉骨架。 */
+ *  并行取齐，深链落在一个图集上时连那一组一起取。四样齐了路由树（`openManagedRoute`）一次换掉骨架。 */
 export async function prefetchEntityPage(props: EntityPageProps): Promise<void> {
   const { kind, name } = props;
   for (const head of ['entity', 'entity-items', 'entity-photos'] as const) {

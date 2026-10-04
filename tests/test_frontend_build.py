@@ -50,9 +50,9 @@ class IslandBundleTests(unittest.TestCase):
             self.assertNotRegex(name, r"-[0-9a-zA-Z_]{8}\.(?:js|css)$",
                                 f"{name} 带了内容哈希，app.js 里写死的路径会指向不存在的文件")
 
-    def test_bundle_exports_the_mount_contract(self):
-        # 遗留层只按这三个名字与 island 层打交道：挂一屏、卸一屏、核对路由表。
-        for symbol in ("mountIsland", "unmountIsland", "islandNames"):
+    def test_bundle_exports_the_managed_route_contract(self):
+        # 遗留层按这四个名字让路由树画页面与附属面：开一面、就地推、收一面、问容器归没归路由树。
+        for symbol in ("openManagedRoute", "updateManagedRoute", "releaseManagedRoute", "managedTaken"):
             self.assertIn(f"as {symbol}", self.bundle, f"产物没有导出 {symbol}")
 
     def test_bundle_keeps_the_legacy_modules_external(self):

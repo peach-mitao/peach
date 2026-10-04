@@ -232,7 +232,7 @@ function props(patch: Partial<FollowFeedProps> = {}): FollowFeedProps {
 }
 
 let push: (patch: Partial<FollowFeedProps>) => void = () => {};
-/** 壳经 `updateIsland` 推进来的补丁，这里用一层状态代替。 */
+/** 壳经 `updateManagedRoute` 推进来的补丁，这里用一层状态代替。 */
 function Shell(given: FollowFeedProps) {
   const [current, set] = useState(given);
   push = (patch) => set((value) => ({ ...value, ...patch }));

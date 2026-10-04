@@ -54,7 +54,7 @@ function props(patch: Partial<EntityBodyProps> = {}): EntityBodyProps {
 }
 
 let push: (patch: Partial<EntityBodyProps>) => void = () => {};
-/** 壳经 `updateIsland` 推进来的补丁，这里用一层状态代替。 */
+/** 壳经 `updateManagedRoute` 推进来的补丁，这里用一层状态代替。 */
 function Shell(given: EntityBodyProps) {
   const [current, set] = useState(given);
   push = (patch) => set((value) => ({ ...value, ...patch }));

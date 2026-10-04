@@ -1,9 +1,9 @@
-# 前端 island 层
+# 前端层
 
 本页说明前端构建、挂载契约和页面迁移。按任务进入：
 
 1. 修改现有页面：从 [开发循环](#开发循环) 安装依赖、构建和验证。
-2. 新增 React 页面：按 [迁移下一个页面](#迁移下一个页面) 接入路由与挂载入口。
+2. 新增 React 页面：按 [迁移下一个页面](#迁移下一个页面) 接入路由树。
 3. 查询模块职责：看 [目录与产物](#目录与产物) 和 [挂载契约](#挂载契约)。
 
 Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 React + Tailwind + BoardUI。`web/app.js` 的原生 ES module 路由拥有应用外壳，负责骨架、容器和页面助手；React 负责所挂载的页面内容。
@@ -15,7 +15,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 | 路径 | 是什么 |
 | --- | --- |
-| `frontend/src/islands.ts` | 挂载契约与注册表，构建入口；其余导出是遗留层仍在用的助手 |
+| `frontend/src/islands.ts` | `peach-ui.js` 的构建入口：路由树的开收命令（经 `history/`）、常驻层的 `loadXxx` 与遗留层仍在用的助手 |
 | `frontend/src/api.ts` | 带 `AbortController` 的取数封装 |
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
 | `frontend/src/appearance/` | 外观与版式设置（`@peach/appearance`）：偏好 store、主题、强调色、密度、卡片版式与光晕配色（`home-glow.ts`）。随 `peach-ui.js` 发出，React 子树把 `@peach/appearance` 外置成 `/dist/peach-ui.js`，两边读的是同一份 |
@@ -29,11 +29,11 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
 | `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history`；详情与队列地址的条目在 `usr` 里带压在哪一页上（`overlay.ts` 的 `backgroundLocation`）；后退前进落到详情条目上时壳按它定来处，启动那一次不读 |
 | `frontend/src/shell/` | 壳自己的内存状态（ADR-0031）：目录口径 `state` 与 `barsContext`、选择集与选择模式、详情与关注详情的来处、配置页页签与活动页预填这类一次性请求。随 `peach-ui.js` 发出，壳按活绑定读；整体换掉一个值调 `writeShell`，原地改了字段或选择集之后调 `notifyShell`，读者按 `subscribeShell` 与 `shellVersion` 接 `useSyncExternalStore` |
-| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、关注页、索引页与资料页的正文由它画（`managed-routes.tsx`）；页面组按条目记的背景匹配，覆盖组按真实地址匹配详情与队列 |
+| `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，把后退前进派发给壳的 `restoreRoute`；管理区、播放列表页、关注页、目录网格、索引页与资料页的正文，以及首页筛选条、新作行、处理横幅与搜索下拉这四个附属面由它画（`managed-routes.tsx`）；页面组按条目记的背景匹配，覆盖组按真实地址匹配详情与队列 |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
-| `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`islands.test.ts` 走挂载契约 |
+| `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`*-routes.test.tsx` 走路由树的开收契约 |
 | `web/dist/peach-ui.js` | 构建产物，**进 Git**，由 `/dist/{name}` 提供 |
 | `web/dist/peach-react.js`、`peach-react.css` | React 子树的构建产物，**进 Git** |
 | `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是 `/js/*.js` 垫片，产物自己没有外部 import。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
@@ -283,44 +283,44 @@ npm --prefix frontend run build:agentation   # 在要用它的那份检出里构
 
 ## 挂载契约
 
-遗留路由怎样把一个容器交给 React 页、又怎样收回来，下面每条都是为了不出现两段等待态或离场后还在轮询的根。
+页面与页面里的附属面只由路由树画（ADR-0031）。壳决定什么时候开、什么时候收，props 由壳算好推进来；
+React 路由树（`RouterRoot`）是唯一的一棵根，按 `frontend/src/history/managed.ts` 的登记把各面 portal 进壳的容器。
+下面每条都是为了不出现两段等待态或离场后还在轮询的页面。
 
 ```js
-// web/app.js 里的遗留入口（文件顶部 import { mountIsland } from './dist/peach-ui.js'）
-await mountIsland('playlists', $('#stats'), props, {isCurrent: () => surfaceCurrent(surface)});
+// web/app.js（文件顶部 import { openManagedRoute, … } from './dist/peach-ui.js'）
+await openManagedRoute('/playlists', props, {container: $('#stats'), isCurrent: () => surfaceCurrent(surface)});
+await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent: () => true});
 ```
 
-- `mountIsland(name, el, props, options?)` 是 async 且**取完数才画**。遗留层已经铺了
-  骨架，island 若先画一个空容器再自己转圈，同一次进入就会出现两段等待态。
-- `options.isCurrent` 是换页判据。遗留路由用「代」而不是 `AbortSignal` 判当前页
-  （`claimSurface`／`surfaceCurrent`），取数期间用户走开时，island 靠这个谓词决定不画。
-- `unmountIsland(el)` 中止在途取数，并且只清自己画过的东西：还没画就卸载时容器里
-  是遗留骨架，那不属于 island。它连子孙容器一起卸（`el` 自己，加上所有 `el.contains`
-  得到的已挂载容器）：壳只对管理区正文那一个容器调它，而「扫描与采集」卡片挂在里面
-  更深的一格上（`#libraryProcessing` 在 `#stats` 里），只卸最外层的话，离开这一页之后
-  那棵根还活着，照着原节律继续敲库。
-- 容器归遗留层所有，它会在别的页面进入时直接 `innerHTML=`，所以 `mountIsland` 每次
-  都先自我卸载。
-- 注册表里每个名字只记它在 `@peach/react` 的 `pages` 里叫什么。`mountIsland` 动态取回
-  `@peach/react`，先 `pages.<page>.prefetch(props, signal)` 把首屏写进共用的 Query 缓存，
-  再换掉骨架、在一个 `.peach-react` 容器里创建 React 根；`unmountIsland` 卸根、撤容器。
-- 离场有两道闸。第一道是壳：`claimSurface` 是所有页面共同经过的换页点，它在那里对管理区
-  正文（`#stats`）调 `unmountIsland`，根连同它的轮询一起停；路由树画的页面在同一处由
-  `releaseManagedRoute($('#stats'),$('#index'))` 收起，`showHomeSurfaces` 是索引页与资料页重画前的公共点，收 `#index` 那一页，
-  `#grid` 那一页离开目录时由 `clearCatalogGrid` 收。
-  多数页面的离场路径是直接 `innerHTML=`，根被挤出文档却照样活着，所以卸载必须由这
-  几个公共点负责，而不是逐页判断。第二道是 `isCurrent`：取数落地时用户可能已经走开，
-  这时不画。再进这一页时 `mountIsland` 先自我卸载，同时只有一份。
-- 壳手里的一项状态变了、页面又不该重挂时，用 `updateIsland(el, patch)`：它把 `patch`
-  合并进挂载时的 props，对同一棵根再 `render` 一次。重挂会把页面里打了一半的字和滚动
-  位置一起换掉。
+- 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
+  `library-processing`、`search`），两者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
+  `{prefetch, page}`；附属面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
+- `openManagedRoute(key, props, options)` 是 async 且**取完数才画**。壳已经铺了骨架，页面若先画一个空容器
+  再自己转圈，同一次进入就会出现两段等待态。它先收起同一容器里的上一面，`prefetch(props, signal)` 把首屏
+  写进共用的 Query 缓存，取齐后在同一个任务里换掉骨架、放进 `.peach-react` 宿主（或 `options.place` 排好的
+  框架），路由树用 `flushSync` 当场画完。路由树还没接上（`loadRouter` 之前）时打开先等它接上再取数：搜索下拉
+  与首页筛选条在壳启动时就打开，第一次打开当场发出 React 包的请求（`preloadManagedRoutes` 登记的装载入口）。
+- `options.isCurrent` 是换页判据。壳用「代」而不是 `AbortSignal` 判当前页（`claimSurface`／`surfaceCurrent`），
+  取数期间用户走开时靠这个谓词决定不画。常驻的面（搜索下拉、首页筛选条）传 `() => true`。
+- `managedTaken(el)` 回答这个容器归没归路由树：已经画着，或首屏还在取。壳据此决定要不要再开一次，在途时
+  再开会把那一趟中止、重取一遍。`managedEntry(el)` 只认已经画上的那一面。
+- 壳手里的一项状态变了、页面又不该重挂时，用 `updateManagedRoute(el, patch)`：它把 `patch` 合进打开时的
+  props，代次不变，页面就地重渲染。重挂会把页面里打了一半的字和滚动位置一起换掉。还没画上时是空操作。
+- `releaseManagedRoute(el, …more)` 中止在途取数，卸掉页面并撤掉宿主。还没画就收起时容器里是壳的骨架，那不
+  属于路由树，原样留着。
+- 离场有两道闸。第一道是壳的公共点：`claimSurface` 是所有页面共同经过的换页点，它收 `#stats` 与 `#index`，
+  也在离开目录页时收处理横幅（`#libraryProcessingNotice`）；`showHomeSurfaces` 是索引页与资料页重画前的公共点，
+  收 `#index` 那一页；`#grid` 那一页离开目录时由 `clearCatalogGrid` 收，首页新作行由 `clearHomeFeed` 收；搜索
+  下拉常驻、从不收。多数页面的离场路径是直接 `innerHTML=`，页面被挤出文档却照样活着，所以收起必须由这几个
+  公共点负责，而不是逐页判断。第二道是 `isCurrent`：取数落地时用户可能已经走开，这时不画。
 
 遗留助手不打进 `peach-ui.js` 与 `peach-react.js`：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`
 在浏览器里是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
 `/js/core.js` 这类垫片再从 `peach-entry.js` 原名转出，实现只在入口包里一份。
 打进去就会有两份实现，语义契约各走一份。`/js/jav-title.js` 与 `/js/tags.js` 也这样引用，
 路由树直接 import `javTitleHtml`、`tagLabel`。只存在于 `app.js` 里的助手（`srcBadge`、`openItem`
-这类）给岛时作为 props 传进来，类型写在 island 自己的文件里；给路由树那几页时进 `ShellActions`。
+这类）给附属面时作为 props 传进来，类型写在那一面自己的文件里；给路由树那几页时进 `ShellActions`。
 
 两条跨层都成立的硬约束：
 
@@ -414,9 +414,9 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
    不冒充新结果、启动时先换进这一趟的快照再重读，这三条时序在 hook 里定死，由
    `frontend/test/react/background-job.test.tsx` 拖住重读逐条验。页面只交任务键、读取与启动
    函数和 `onFinish`；缓存的是整张卡时再交 `jobOf` / `withJob`。
-3. `frontend/src/react/entry.tsx`：在 `pages` 里登记 `{prefetch, mount: mounter(Page)}`，
-   签名写进 `bundle.d.ts` 的 `ReactPages`；`frontend/src/islands.ts` 里 `IslandContracts`
-   取 bundle 的 props 类型，`REGISTRY` 登记 `{react: '<page>'}`。
+3. `frontend/src/react/router/managed-routes.tsx`：在对应的表里登记 `{prefetch, page}`，页面用路径、
+   附属面用名字；打开时交进来的 props 类型写进 `router/shell-actions.ts` 里那张表，壳经
+   `openManagedRoute` 打开（见 [挂载契约](#挂载契约)）。
 4. 外观按 BoardUI：注册表里有的条目逐字复制进 `src/react/boardui/`，哈希记进
    `ORIGIN.md` 与 `UPSTREAM.sha256`；注册表里没有的（分区标题、空态、进度、说明条）
    用 `src/react/components/` 下 Peach 自己的组合件，第二个页面要用就搬进那里，不复制一份。
@@ -489,9 +489,9 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `@types/react`、`@types/react-dom` | React 子树的类型检查 |
 | `agentation` | 本机开发用的界面标注工具栏，单独构建、不进产物与独立包（见「界面标注」） |
 
-React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 只在页面挂 React 子树时由
-island 动态加载；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩挂载
-契约与遗留层的助手。`build.cssTarget` 对齐 Tailwind v4 的浏览器基线
+React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 由壳启动时第一次
+`openManagedRoute`、`loadSidebar` 与 `loadRouter` 动态加载，三处是同一个模块请求；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩路由树的
+开收命令、常驻层的入口与遗留层的助手。`build.cssTarget` 对齐 Tailwind v4 的浏览器基线
 （Chrome 111、Firefox 128、Safari 16.4），oklch 颜色原样输出：目标再旧，lightningcss 会补
 `lab()` 回退，末位小数随平台浮点不同，CI 在 Linux 上重建的产物就与提交的对不上。
 这条基线早于原生 `light-dark()`，React 子树的样式因此不写它：lightningcss 会改写成只由

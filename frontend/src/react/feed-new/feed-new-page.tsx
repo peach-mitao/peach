@@ -1,4 +1,4 @@
-/* 首页那一行新作（`feed-new` island）。只在目录路径上挂：离开目录页由壳卸掉，人还在目录页里换
+/* 首页那一行新作（`feed-new` 附属面，路由树画进 `#feedNew`）。只在目录路径上画：离开目录页由壳收起，人还在目录页里换
  * 筛选时这一行不重挂、不重取——它不随筛选变。取回来的卡 portal 回宿主 `#feedNew` 本身。 */
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';

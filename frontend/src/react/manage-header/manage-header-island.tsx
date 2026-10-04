@@ -1,7 +1,7 @@
 /* 管理区页头岛（ADR-0031 第 11g 步）：管理条、面包屑、页面标题与回收站说明行。
  *
  * 宿主是壳常驻的 `[data-manage-header]`（`display: contents`，四块直接落在 `main` 的流里），一棵根常驻；
- * 壳只拿 `configureManageHeader` 给的命令式入口（同侧栏岛），不走 `mountIsland`：换页、换读数都落在
+ * 壳只拿 `configureManageHeader` 给的命令式入口（同侧栏岛），不进路由树：换页、换读数都落在
  * 同一棵根上，管理条下面那条指示线从上一页的位置滑到这一页，回收站读数原地换字。
  *
  * 根不包 `.peach-react`：这一块一直在 Preflight 之外，按钮与字号继承的是遗留层的全局规则，样式全在

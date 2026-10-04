@@ -1,10 +1,11 @@
-/* 由路由画的那几页：路径到首屏取数与整页的对照表，五张。
+/* 由路由画的那几页与页面里的附属面：登记键到首屏取数与画法的对照表，六张。
  *
  * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`BROWSE_ROUTES` 是同样画进 `#stats`
  * 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
  * （`/performers/*`），种类与名字跟着打开走；`CATALOG_ROUTES` 是画进 `#grid` 的目录网格与垃圾队列，按页面
- * 分键。壳每次打开一页时交进来的 `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、
- * 一次性预填、刷新代次），`#grid` 那两页是壳那一整份 props；回执与换到还归壳的那几屏走 `ShellActions`。
+ * 分键；`SURFACE_ROUTES` 是页面里的附属面，按名字登记，不是地址、不进 `<Routes>`。壳每次打开一页时交进来的
+ * `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次），`#grid` 那两页
+ * 与附属面是壳那一整份 props；回执与换到还归壳的那几屏走 `ShellActions`。
  * 管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的 `navigate`，其余交壳。另外
  * 四张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页与关注页的 `actions.route`、
  * 目录的换筛选、垃圾队列的换分类），跨页也交壳，派发次数同壳自己打开。 */
@@ -15,7 +16,8 @@ import { tagLabel } from '@peach/legacy/tags';
 
 import { ActivityPage } from '../activity/activity-page';
 import { prefetchTasks } from '../activity/tasks';
-import type { DataCleanupSection } from '../bundle';
+import type { DataCleanupSection, LibraryProcessingProps } from '../bundle';
+import { CatalogFilterPage } from '../catalog-filter/catalog-filter-page';
 import { prefetchCatalogGrid } from '../catalog-grid/catalog-grid';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { prefetchDataCleanup } from '../data-cleanup/data-cleanup';
@@ -26,6 +28,8 @@ import { prefetchDuplicates } from '../duplicates/duplicates';
 import { DuplicatesPage } from '../duplicates/duplicates-page';
 import { prefetchDiagnostics } from '../diagnostics/diagnostics';
 import { DiagnosticsPage } from '../diagnostics/diagnostics-page';
+import { prefetchFeedNew } from '../feed-new/feed-new';
+import { FeedNewPage } from '../feed-new/feed-new-page';
 import { prefetchFollowFeed } from '../follow-feed/follow-feed';
 import { FollowFeedPage } from '../follow-feed/follow-feed-page';
 import { prefetchFollowManage } from '../follow-manage/follow-manage';
@@ -33,6 +37,9 @@ import { FollowManagePage } from '../follow-manage/follow-manage-page';
 import { prefetchIndex } from '../index/index-data';
 import { IndexPage } from '../index/index-page';
 import { JunkQueuePage } from '../junk-queue/junk-queue-page';
+import { prefetchLibraryProcessing } from '../library-processing/library-processing';
+import { LibraryProcessingCard } from '../library-processing/library-processing-card';
+import { LibraryProcessingNotice } from '../library-processing/library-processing-notice';
 import { prefetchPlaylists } from '../playlists/playlists';
 import { PlaylistsPage } from '../playlists/playlists-page';
 import { prefetchQualityGoals } from '../quality-goals/quality-goals';
@@ -41,6 +48,7 @@ import { prefetchReview } from '../review/review';
 import { ReviewPage } from '../review/review-page';
 import { prefetchScraping } from '../scraping/scraping';
 import { ScrapingPage } from '../scraping/scraping-page';
+import { SearchPage } from '../search/search-page';
 import { prefetchConfiguration } from '../settings/configuration';
 import { ConfigurationPage } from '../settings/configuration-page';
 import { prefetchStats } from '../stats/stats';
@@ -49,7 +57,7 @@ import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
 import type {
   BrowseOpenProps, BrowseRoutePath, CatalogOpenProps, CatalogPagePath, EntityRoutePath, IndexOpenProps,
-  IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ShellActions,
+  IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ShellActions, SurfaceName, SurfaceOpenProps,
 } from './shell-actions';
 
 interface ManagedRoute<P> {
@@ -62,8 +70,9 @@ type BrowseRouteTable = { [Path in BrowseRoutePath]: ManagedRoute<BrowseOpenProp
 type IndexRouteTable = { [Path in IndexRoutePath]: ManagedRoute<IndexOpenPropsTable[Path]> };
 type EntityRouteTable = { [Path in EntityRoutePath]: ManagedRoute<EntityPageProps> };
 type CatalogRouteTable = { [Path in CatalogPagePath]: ManagedRoute<CatalogOpenProps[Path]> };
-/** 路由树画的全部页面：管理区那几页、播放列表页与关注页、索引页与资料页、目录网格。 */
-export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath | CatalogPagePath;
+type SurfaceRouteTable = { [Name in SurfaceName]: ManagedRoute<SurfaceOpenProps[Name]> };
+/** 路由树画的全部页面与附属面：管理区那几页、播放列表页与关注页、索引页与资料页、目录网格，加上附属面的名字。 */
+export type RoutedPath = ManagedPath | BrowseRoutePath | IndexRoutePath | EntityRoutePath | CatalogPagePath | SurfaceName;
 
 /* 数据管理页读数卡的去处里，只有重复文件不按管理区身份找：它报的是数据管理的身份。 */
 function openCleanupSection(section: DataCleanupSection, actions: ShellActions, go: (path: string) => void) {
@@ -228,6 +237,36 @@ export const CATALOG_ROUTES: CatalogRouteTable = {
   },
 };
 const isCatalogPage = (path: string): path is CatalogPagePath => Object.hasOwn(CATALOG_ROUTES, path);
+
+/* 扫描与采集一个名字两种形态：数据管理页那张卡片，和目录页顶上那条横幅。两边读同一个
+ * `queryKey`，所以同时挂着时它们看的是同一份快照，Query 也只发一份轮询。 */
+const LibraryProcessing = (props: LibraryProcessingProps) => (
+  props.mode === 'notice' ? <LibraryProcessingNotice {...props} /> : <LibraryProcessingCard {...props} />
+);
+
+/* 页面里的附属面，按名字登记：壳每次打开交进来整份 props，之后经 `updateManagedRoute` 推补丁，页面就地
+   重渲染。首页筛选条与搜索下拉不在打开前等数据（筛选条的读数与头像由壳推进来，搜索下拉的记录与推荐聚焦
+   时才取）；首页新作行连头几张封面一起等，再一次换掉骨架；处理横幅先取一份进度快照。 */
+export const SURFACE_ROUTES: SurfaceRouteTable = {
+  'catalog-filter': {
+    prefetch: async () => {},
+    page: (open) => <CatalogFilterPage {...open} />,
+  },
+  'feed-new': {
+    prefetch: (open) => prefetchFeedNew(open),
+    page: (open) => <FeedNewPage {...open} />,
+  },
+  'library-processing': {
+    prefetch: (_open, signal) => prefetchLibraryProcessing(signal),
+    page: (open) => <LibraryProcessing {...open} />,
+  },
+  /* 输入框是壳的，下拉只接它的事件、画下拉栏里的内容。 */
+  search: {
+    prefetch: async () => {},
+    page: (open) => <SearchPage {...open} />,
+  },
+};
+const isSurfaceName = (key: string): key is SurfaceName => Object.hasOwn(SURFACE_ROUTES, key);
 /** 画着 `#grid` 那两页时地址可能落在的路径：首页、三个筛选态、回收站与垃圾文件。只进 `<Routes>` 的声明，
  *  不当槽里的键。 */
 export const CATALOG_PATHS = ['/', '/unseen', '/watch-later', '/flagged', '/trash', '/junk-files'] as const;
@@ -237,15 +276,16 @@ export const ROUTED_PATHS: readonly string[] = [
   ...Object.keys(MANAGED_ROUTES), ...Object.keys(BROWSE_ROUTES), ...Object.keys(INDEX_ROUTES),
   ...Object.keys(ENTITY_ROUTES), ...CATALOG_PATHS,
 ];
-/** 路由树画得了这一页吗：首屏取数与画页按槽里记的路径查，`#grid` 那两页只认页面键。 */
+/** 路由树画得了这一页吗：首屏取数与画页按槽里记的登记键查，`#grid` 那两页只认页面键，附属面只认名字。 */
 export const isRoutedPath = (path: string): path is RoutedPath => (
   isManagedPath(path) || isBrowsePath(path) || Object.hasOwn(INDEX_ROUTES, path) || Object.hasOwn(ENTITY_ROUTES, path)
-  || isCatalogPage(path));
+  || isCatalogPage(path) || isSurfaceName(path));
 
 function routeOf(path: RoutedPath): ManagedRoute<object> {
   if (isManagedPath(path)) return MANAGED_ROUTES[path] as ManagedRoute<object>;
   if (isBrowsePath(path)) return BROWSE_ROUTES[path] as ManagedRoute<object>;
   if (isCatalogPage(path)) return CATALOG_ROUTES[path] as ManagedRoute<object>;
+  if (isSurfaceName(path)) return SURFACE_ROUTES[path] as ManagedRoute<object>;
   if (Object.hasOwn(INDEX_ROUTES, path)) return INDEX_ROUTES[path as IndexRoutePath] as ManagedRoute<object>;
   return ENTITY_ROUTES[path as EntityRoutePath] as ManagedRoute<object>;
 }
