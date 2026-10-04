@@ -122,7 +122,7 @@ export {
   type BackgroundLocation, type OverlayKind, type OverlayState,
 } from './overlay';
 export {
-  connectManagedRoutes, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
+  connectManagedRoutes, failManagedRoute, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
   preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,
   type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
 } from './managed';
