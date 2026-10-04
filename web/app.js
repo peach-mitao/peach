@@ -67,9 +67,6 @@ wireImageFallbacks(document.body);
    「函数在上、声明在下」只在那个函数直到启动之后才第一次被调用时才不炸；谁把它
    挪进启动路径，首屏就直接白屏。真相只留一份，一律放这里，不在用它的地方再声明。
 
-   契约由 tests/test_web_ui.py::test_module_level_bindings_are_declared_before_they_are_used
-   守住：app.js 里任何模块级 `let`/`const` 都不许在声明行之前被引用。
-
    目录口径（`state`、`barsContext`）、选择集与选择模式、详情来处和一次性请求不在这里：它们在
    `frontend/src/shell/` 的单例里，经 peach-ui.js 导入。读法照旧；整体换掉一个值调 `writeShell`，
    原地改了字段或选择集之后调 `notifyShell`。 */
