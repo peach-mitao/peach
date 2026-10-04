@@ -35,9 +35,6 @@ main{position:relative;z-index:1;padding:14px 16px 90px}
 #i-shuffle .strand{stroke-dasharray:var(--strand-dash,none);
   animation:peach-strand-draw var(--strand-cycle,0s) linear infinite}
 #i-shuffle .strand-b{animation-name:peach-strand-draw-late}
-.count[aria-busy="true"] #batchAction svg,
-body.refreshing #batchAction svg{
-  --strand-dash:100;--strand-cycle:2.2s}
 /* 资源同步的「检查文件」键适配自己的忙态，不统一转圈：git-compare 照 lucide-animated 的
    GitCompare 逐笔描画（右下圆→两条枝→左上圆，画完停住再一起淡出）。
    机制同换批键：动效写在 symbol 自己的零件上，忙态把动画名和周期传下去；空闲时名字是
@@ -60,15 +57,6 @@ body.refreshing #batchAction svg{
 #i-git-compare .gc-line-a,#i-git-compare .gc-line-b{animation-name:var(--gc-anim-b,none)}
 #i-git-compare .gc-end-b{animation-name:var(--gc-anim-c,none)}
 [data-resource-scan][aria-busy="true"] svg{--gc-dash:100;--gc-anim:peach-gc-draw-a;--gc-anim-b:peach-gc-draw-b;--gc-anim-c:peach-gc-draw-c}
-.count .sorts{display:flex;gap:5px;margin-left:auto;flex-wrap:nowrap;
-  overflow-x:auto;scrollbar-width:none;min-width:0}
-.count .sorts::-webkit-scrollbar{display:none}
-.count .sorts button{min-height:32px;padding:0 11px;display:inline-flex;align-items:center;
-  border:1px solid var(--border-15);border-radius:var(--control-radius);
-  background:transparent;cursor:pointer;font-size:var(--fs-xs);color:var(--muted);
-  flex:0 0 auto;white-space:nowrap}
-.count .sorts button:hover{color:var(--ink)}
-.count .sorts button[aria-pressed="true"]{background:var(--picked);color:var(--ink)}
 /* 壳自己画进 `#grid` 的那几屏（骨架、垃圾文件队列）是一叠卡：每一段卡合成一个 `.grid`，
    `#grid` 本身只是这叠卡的容器，自己不排网格。目录、回收站与资料页的作品卡由 `catalog-grid`
    island 自己排，版面写在 `frontend/src/react/components/media-card.css`。 */
@@ -139,8 +127,6 @@ body.refreshing #batchAction svg{
 /* 预览图：单格，contain 放进固定 16:9 框 —— 不拉伸、不裁切、不改框体大小 */
 .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
   display:block;background:#000}
-.cardopenhit{position:absolute;inset:0;z-index:1;border:0;border-radius:inherit;background:transparent;padding:0;cursor:pointer}
-.cardopenhit:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 .card>.pic,.card>.meta{position:relative;z-index:2}
 /* 悬停即播真视频（仅免费源，计费源永远不自动拉流） */
 .hv{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;
@@ -157,7 +143,7 @@ body .card:hover{background:var(--hover);box-shadow:0 0 0 8px var(--hover)}
 body .card:hover .pic{filter:saturate(.9) brightness(.94)}
 body .card:focus-within{background:var(--hover);box-shadow:0 0 0 8px var(--hover)}
 .select-mode .card{cursor:default}
-.select-mode .cardopenhit,.select-mode .hovertools{pointer-events:none!important}
+.select-mode .hovertools{pointer-events:none!important}
 .card.selected .pic,.card.selected:hover .pic{box-shadow:inset 0 0 0 2px var(--on-media)}
 .hovertools{position:absolute;z-index:4;display:flex;align-items:center;gap:14px;
   opacity:0;transition:opacity .15s;pointer-events:none}
@@ -187,8 +173,6 @@ body .card:focus-within{background:var(--hover);box-shadow:0 0 0 8px var(--hover
   white-space:nowrap;cursor:pointer}
 .reviewtabs button:hover{color:var(--ink)}
 .reviewtabs button:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
-.badge{position:absolute;top:6px;left:6px;display:flex;gap:4px;z-index:2;align-items:center;
-  transition:opacity .15s ease}
 /* 首页流和详情只留来源图标；完整来源与费用通过 title/aria-label 提供。 */
 .src{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;background:transparent}
 .src img,.src svg{width:18px;height:18px;border-radius:var(--badge-radius);object-fit:contain;display:block;flex:none}
@@ -203,11 +187,6 @@ body .card:focus-within{background:var(--hover);box-shadow:0 0 0 8px var(--hover
 .srcbig img,.srcbig svg{width:17px;height:17px;border-radius:var(--badge-radius);object-fit:contain;flex:none}
 .srcbig svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .srcbig.metered{color:var(--meter)}.srcbig.free{color:var(--keep)}
-.dur{position:absolute;right:6px;bottom:6px;z-index:2;background:color-mix(in srgb,#000 70%,transparent);
-  color:#F2EADF;padding:2px 6px;border-radius:var(--badge-radius);transition:opacity .15s ease}
-@media (hover:hover) and (pointer:fine){
-  .card:hover .badge,.card:hover .dur{opacity:0}
-}
 .meta{display:flex;gap:10px;min-width:0}
 .mav{width:38px;height:38px;border-radius:50%;flex:none;overflow:hidden;background:var(--sunk);
   position:relative;margin-top:2px;border:0;padding:0;cursor:pointer;color:inherit}
@@ -247,11 +226,6 @@ body .card:focus-within{background:var(--hover);box-shadow:0 0 0 8px var(--hover
 /* 归属渲染成 `<span>` 就是不可点的那一种（队列行整行本身是按钮，里面嵌不了按钮）。
    染成强调色会让人以为能点，点下去却落到卡片本身、打开的是视频详情。 */
 .meta span.who{color:var(--ink-2);cursor:default}
-.flags{display:flex;gap:3px;margin-left:auto}
-.flags i{width:6px;height:6px;border-radius:0;display:block}
-.flags i.dislike{background:var(--drop)}.flags i.seen{background:var(--muted)}
-.flags i.dispose{background:var(--meter)}
-.flags i.later{background:var(--ink)}
 /* 标签语义分级 */
 /* 卡片上那一行标签归 React 卡片（`media-card.css` 的 `[data-media-tags]`）。
    .tg 只留 max-width:100% 这一层兜底：一颗标签自己就比整张卡还宽时，横着溢出会
@@ -259,8 +233,7 @@ body .card:focus-within{background:var(--hover);box-shadow:0 0 0 8px var(--hover
 .tg{padding:var(--tag-pad-y) var(--tag-pad-x);border-radius:var(--tag-radius);font:inherit;font-size:var(--fs-xs);border:1px solid var(--line);
   line-height:1.45;white-space:nowrap;cursor:pointer;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;max-width:100%;
   background:var(--tag-fill)}
-.tg.general,.tg.artist,.tg.meta,.tg.relationship,.tg.role,.tg.appearance,.tg.scene,.tg.story,.tg.position{color:var(--ink-2);border-color:var(--line)}
-.tg.artist{font-weight:600}
+.tg.meta,.tg.position{color:var(--ink-2);border-color:var(--line)}
 .tg:hover{color:var(--ink);background:var(--hover)}
 .tg:disabled{cursor:not-allowed}
 /* 顶栏的密集模式固定为标题、身份、标签三行。缺少标签时第三行仍保留，
@@ -279,7 +252,6 @@ body[data-density="dense"] .card .meta .t{display:block;max-width:100%;min-heigh
 body[data-density="dense"] .card .meta .s{height:1.35em;min-height:0;flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
 body[data-density="dense"] .card .meta .who{flex:0 1 auto}
 body[data-density="dense"] .card .meta .size{flex:none;white-space:nowrap}
-body[data-density="dense"] .card .meta .why{display:none}
 
 .srow{display:flex;gap:13px;overflow-x:auto;padding-bottom:7px}
 
@@ -305,7 +277,7 @@ body[data-density="dense"] .card .meta .why{display:none}
 .feednewcard{flex:none;width:168px}
 /* 已看过的不移走，只退到背景里：已读是标记，不是关掉。 */
 .feednewcard.isread{opacity:.55}
-/* 通向作品页的点击区。形态同 `.cardopenhit`，但那一个的语义是站内落点，这一条是外链。
+/* 通向作品页的点击区，铺满整张卡，是一条外链。
    资产卡的 `.pic` 与 `.meta` 压在点击区上面（z-index 2），那边的点击由卡片自己的脚本
    接；这张卡只有这条外链，所以两块放行指针，落到下面的链接上，悬浮键自己再收回来。 */
 .feednewopen{position:absolute;inset:0;z-index:1;border-radius:inherit}

@@ -127,16 +127,6 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitytagbar,.entitycollectio
   color:color-mix(in srgb,var(--glass-text) 62%,transparent)}
 .board-filter-frame.board-filter-frame .iconswitch>label:hover,
 .board-filter-frame.board-filter-frame .iconswitch>label:has(input:checked){color:var(--glass-text)}
-/* 排序键回答的是「这一列按什么排」——一个参数的当前值，不是一个位置，所以不占那块
-   玻璃：同一种材质担两种语义，这一排读起来就成了另一组导航。当前值由字自己说：整排
-   八九个候选都退到六成，生效的那枚回到满值再加半档字重。只差字重不够——一排等亮度的
-   字里，扫一眼看不出哪个粗一点。 */
-.board-filter-frame.board-filter-frame .sorts button{
-  color:color-mix(in srgb,var(--glass-text) 62%,transparent)}
-.board-filter-frame.board-filter-frame .sorts button:hover{color:var(--glass-text)}
-.board-filter-frame.board-filter-frame .sorts button[aria-pressed="true"]{
-  background:none;backdrop-filter:none;-webkit-backdrop-filter:none;
-  color:var(--glass-text);border-color:transparent;box-shadow:none;font-weight:500}
 .board-filter-frame.board-is-stuck::before,.board-filter-frame.board-is-stuck::after{display:none}
 .board-filter-frame.board-filter-frame .tagbar{border-radius:22px 22px 0 0}
 .board-filter-frame.board-filter-frame .count{border-radius:0 0 22px 22px}
@@ -182,8 +172,8 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitytagbar,.entitycollectio
    毫秒才动读成的是「点了没反应」；松开才交给弹簧，冲过原尺寸一点点再收住，手指离开
    以后那块东西还自己动了一下，捏着的是软的不是一张贴纸。
    缩放走独立的 `scale` 属性：`transform` 那一格上还挂着别的位移，挤进去只能留一个。 */
-.pill,.sorts button{transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press)}
-.pill:active,.sorts button:active{scale:.96;transition:scale .06s ease-out}
+.pill{transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press)}
+.pill:active{scale:.96;transition:scale .06s ease-out}
 .top.top,body.board-scrolled .top.top{background:transparent;box-shadow:none;backdrop-filter:none;border:0}
 /* 顶栏这一条本身不铺任何底：玻璃是搜索框和右边那几个图标钮各自一块，它们中间的空处
    直接通到内容。往那片空处垫一条压制带能让滚上来的字不那么碎，代价是整条顶栏成了一块
@@ -212,8 +202,6 @@ body.board-scrolled .top{box-shadow:none;border-bottom:0}
    不生效，抬起来的那一档看不出来。 */
 .board-filter-frame.board-filter-frame.board-filter-frame.board-is-stuck{box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-lift)}
 .board-filter-frame .tagbar.is-stuck,.board-filter-frame .count.is-stuck{backdrop-filter:none;-webkit-backdrop-filter:none}
-.peach-insights{max-width:1120px;margin:0 auto 40px;color:var(--ink)}
-.peach-insights[hidden]{display:none}
 :root,[data-theme="light"]{--page:#f7f7f7;--ground:#fff;--surface:#fafafa;--sunk:#f2f2f2;--ink:#171717;--ink-2:#525252;--muted:#737373;--line:#e5e5e5;--line-soft:#ebebeb;--inset:#f0f0f0;--picked:#f0f0f0;--tungsten:#3b82f6;--control-radius:10px;--surface-radius:14px;--floating-radius:20px;--railW:272px}
 [data-theme="dark"]{--page:#111;--ground:#1c1c1c;--surface:#232323;--sunk:#171717;--ink:#fafafa;--ink-2:#d4d4d4;--muted:#a3a3a3;--line:#383838;--line-soft:#303030;--inset:#303030;--picked:#303030;--hover:rgba(255,255,255,.07)}
 body{background:var(--page)}
@@ -221,12 +209,12 @@ body{background:var(--page)}
 :root{--topH:64px}
 .top .search{background:var(--ground);border:1px solid var(--line);border-radius:var(--control-radius)}
 .tiers,.tagbar{background:var(--page)}
-.stats>section,.stats>.fieldset,.fieldset{border-radius:var(--surface-radius)}
+.stats>section{border-radius:var(--surface-radius)}
 .gridstack .card{background:transparent}
 /* 强调档不写在这一段：它那一面连同悬停归 `body :is(…).primary` 一处。在这里再写一份
    的话，静止那条会被后面那条压掉、悬停那条却比它重一个类，一颗按钮的静止和悬停就由
    两处规则分别给出。 */
-.geist-input,.geist-select,.search{box-shadow:0 1px 2px #00000004}
+.geist-input,.search{box-shadow:0 1px 2px #00000004}
 .configfieldset,[data-geist-fieldset]{border-radius:var(--surface-radius);overflow:hidden}
 @media(prefers-color-scheme:dark){:root:not([data-theme]){--page:#111;--ground:#1c1c1c;--surface:#232323;--sunk:#171717;--ink:#fafafa;--ink-2:#d4d4d4;--muted:#a3a3a3;--line:#383838;--line-soft:#303030;--inset:#303030;--picked:#303030;--hover:rgba(255,255,255,.07)}}
 
@@ -296,7 +284,6 @@ body{background:var(--page)}
 .configfieldset>.geist-fieldset-content{padding:24px;gap:20px}
 .configfieldset>.geist-fieldset-footer{background:var(--ground);border-top:1px solid var(--line-soft);padding:14px 24px}
 .configfieldset h2,.configfieldset h3{font-size:16px;font-weight:500;line-height:24px}
-.configfieldset-heading{padding-bottom:16px;border-bottom:1px solid var(--line-soft)}
 .configpage>.configgroup{display:none}
 .board-local-nav{display:flex;gap:4px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);margin:0 0 24px;padding:0;scrollbar-width:none}
 .board-local-nav button{flex:none;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:20px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
@@ -321,9 +308,8 @@ body #stats [data-section-items]>[aria-selected]:focus-visible{outline:2px solid
  body #stats [data-section-items]{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain}
  body #stats [data-section-items]>[aria-selected]{min-height:36px;padding:8px;white-space:nowrap}
 }
-[data-board-group]:not(.board-group-active){display:none!important}.board-number-help{font-size:11px!important}
-.pselect,.popmenu{border-radius:12px;border-color:var(--line);box-shadow:0 8px 24px light-dark(#00000012,#00000080)}
-.geist-switch,.switchgroup{background:var(--surface);border-radius:10px}
+[data-board-group]:not(.board-group-active){display:none!important}
+.popmenu{border-radius:12px;border-color:var(--line);box-shadow:0 8px 24px light-dark(#00000012,#00000080)}
 .iconswitch[data-board-segments]{position:relative;display:inline-flex;align-items:center;gap:2px;padding:4px;border:0;border-radius:10px;background:var(--color-background-tertiary-default)}
 .iconswitch[data-board-segments]>label{position:relative;z-index:1;border:0;border-radius:6px}
 .iconswitch[data-board-segments]>label:has(input:checked){background:transparent;box-shadow:none}
@@ -341,8 +327,7 @@ body #stats [data-section-items]>[aria-selected]:focus-visible{outline:2px solid
    `.glowlayer::before` 的不透明度跟着算成 0。这里不能再压一条 display:none——那会让设置面板上的开关、强度、
    配色和颗粒四个控件全部调不出任何变化，而界面上没有任何东西说得出为什么。 */
 .tiers{background:transparent}
-/* 面板上沿那道空隙不由自己决定：`.tiers` 收尾留 8px、`main` 上沿又是 14px，它自己那
-   8px 还被 `.combo` 的下边距吃掉，加起来 32px，下面却只有 20px，同一块浮层上下差出 12px。
+/* 面板上沿那道空隙不由自己决定：`.tiers` 收尾留 8px、`main` 上沿又是 14px，加起来 22px。
    上面这 22px 改不动（两处都是别的页面共用的），所以自己不再加，下面照同一个数写。 */
 .board-filter-frame{position:sticky;top:calc(var(--topH) + 8px);z-index:60;border:0;border-radius:16px;background:var(--ground);margin:0 0 22px;box-shadow:0 2px 14px light-dark(#00000014,#00000066)}
 @media(max-width:760px){.board-filter-frame.board-filter-frame[data-filter-free]{top:var(--filter-free-top)}}
@@ -353,7 +338,6 @@ body>.board-filter-frame{margin-inline:16px}
 .board-filter-frame .tagbar,.board-filter-frame .count{position:relative;top:auto;left:auto;width:auto;margin:0;background:transparent;box-shadow:none;border:0;padding:10px 16px}
 .board-filter-frame .tagbar{border-bottom:0;border-radius:16px 16px 0 0}
 .board-filter-frame .count{border-radius:0 0 16px 16px;min-width:0}
-.board-filter-frame .sorts{position:relative;min-width:0;overflow-x:auto;scrollbar-width:none}
 /* 上下半合起来照首页那块浮层量：跟顶栏留 8px、跟下面的网格留 22px，左右不再往外溢 16px，
    两行各 48px。基础层的 `--filterH` 是 58px，那是没有浮层时贴着顶栏的老尺寸，这里不能用它
    算下半的吸顶位置，另起一个只归这块浮层的高度。下半的吸顶位置是上半的下沿，上半没有时
@@ -367,17 +351,15 @@ body>.board-filter-frame{margin-inline:16px}
 /* 浮层下半在手机上仍是一横条：读数在左，控件跟在右边，装不下就整条往右滚。让读数
    和控件各占一行的话，这块玻璃要吃掉三行高度——上半那排标签本来就是横滚的，同一块
    玻璃上一半横滚、一半换行，读起来是两个不同的东西。滚动开在这一条自己身上而不是
-   里面的 `.sorts`：套两层横滚，触摸时两层抢同一个手势，而读数留在外层怎么滚都不走，
-   控件却已经滑没了。控件那 `margin-left:auto` 只在装得下时把它推到右端，溢出时自动
-   失效，所以窄一点也不会在读数和第一枚键之间空出一块。 */
+   里面那组控件上：套两层横滚，触摸时两层抢同一个手势，而读数留在外层怎么滚都不走，
+   控件却已经滑没了。 */
 @media(max-width:760px){
   .board-filter-frame .count,.entitycollectionhead{display:flex;flex-wrap:nowrap;align-items:center;gap:10px;
     overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
     overscroll-behavior-inline:contain;touch-action:pan-x pan-y}
   .board-filter-frame .count::-webkit-scrollbar,.entitycollectionhead::-webkit-scrollbar{display:none}
   .board-filter-frame .count>.mono,.entitycollectionhead>h3{flex:none;white-space:nowrap}
-  .board-filter-frame .count .sorts{flex:none;width:max-content;max-width:none;min-width:0;
-    margin-left:auto;overflow:visible;padding:0;margin-block:0}}
+}
 [data-overflow-right="true"]{mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent)}
 [data-overflow-left="true"]{mask-image:linear-gradient(to right,transparent,#000 18px)}
 [data-overflow-left="true"][data-overflow-right="true"]{mask-image:linear-gradient(to right,transparent,#000 18px,#000 calc(100% - 18px),transparent)}
@@ -396,7 +378,6 @@ body>.board-filter-frame{margin-inline:16px}
 .board-filter-frame .tagbar{height:48px;gap:6px;padding:8px 12px}
 .board-filter-frame .tagbar .pill{height:30px;padding:0 10px;font-size:13px;line-height:20px;border-radius:8px;border:1px solid transparent}
 .board-filter-frame .count{padding:8px 12px;min-height:46px;gap:12px}
-.board-filter-frame .sorts{gap:4px}.board-filter-frame .sorts button{height:30px;min-height:30px;font-size:12px;padding:0 8px;border:0;border-radius:7px;background:transparent}
 /* 资料卡照 Board 的卡排：secondary 底、18px 圆角、不描边，卡底那条带取卡脚那一档色阶。
    标题是 Title 3（24/32、500），别名行 Body 1，外链是 36px 的 secondary Button。 */
 .entityhero{border-radius:18px;background:var(--ground);box-shadow:none}
@@ -427,9 +408,6 @@ body>.board-filter-frame{margin-inline:16px}
 .alphatag{border-radius:8px}
 #grid.gridstack{border:0;background:transparent;padding:0;box-shadow:none;border-radius:0}
 #grid.gridstack>.grid{border:0;background:transparent;padding:0;box-shadow:none;border-radius:0}
-@media(pointer:coarse){.board-filter-frame .sorts button{height:36px}}
-#applyUISetting{padding:8px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
-#applyUISetting[hidden]{display:none}
 @media(max-width:760px){
   :root{--railW:0px}
   .top{z-index:98;background:var(--page)}
@@ -439,16 +417,11 @@ body>.board-filter-frame{margin-inline:16px}
   .configfieldset>.geist-fieldset-content{padding:20px}.board-local-nav{gap:0}.board-local-nav button{padding:10px 9px;font-size:13px}
 }
 
-#applyUISetting{grid-column:1/-1;width:100%;background:var(--board-blue);color:#fff;border:1px solid var(--color-accent-400);box-shadow:inset 0 1px 1px #ffffff60}
-/* 悬停压暗而不是提亮：这枚键铺满一整行，提亮那一档在浅色面上会让它看起来先亮一下再
-   被按下去。压暗那一档正好是 `--board-blue-active` 的两级。 */
-#applyUISetting:hover{background:var(--board-blue-active);color:#fff}
-
 /* 媒体详情、实体与管理共享卡片层级，播放器仍使用原有播放交互。 */
 .srctools button{border-radius:8px;background:var(--surface)}
-.geist-fieldset,.configfieldset,.cleanupfieldset,.resourcesyncbox{border-color:var(--line);border-radius:var(--surface-radius);background:var(--ground);overflow:clip}
+.configfieldset,.cleanupfieldset,.resourcesyncbox{border-color:var(--line);border-radius:var(--surface-radius);background:var(--ground);overflow:clip}
 .geist-fieldset-footer,.configfieldset>.geist-fieldset-footer{background:var(--surface);border-top:1px solid var(--line-soft)}
-.geist-input,.geist-select,.gselectfield{background:var(--surface);border-color:var(--line);border-radius:10px}
+.geist-input,.gselectfield{background:var(--surface);border-color:var(--line);border-radius:10px}
 .iconswitch{padding:3px;background:var(--surface);border:1px solid var(--line-soft);border-radius:10px}
 .iconswitch label{border-radius:8px}
 .iconswitch label:has(input:checked){background:var(--ground);box-shadow:0 1px 3px light-dark(#0002,#0009)}
@@ -500,7 +473,6 @@ button,input,select,textarea{font-family:inherit}
 .board-library-rows button:hover,.board-library-rows button[aria-pressed=true]{background:var(--hover)}
 .board-library-avatar{display:grid;place-items:center;width:20px;height:20px;flex:none;border-radius:50%;background:var(--picked);font-size:12px;color:var(--muted)}
 .board-library-avatar img,.board-library-avatar svg{width:20px;height:20px;object-fit:contain;fill:none;stroke:currentColor}
-.board-library-avatar[data-color="1"]{background:#bef264;color:#365314}.board-library-avatar[data-color="2"]{background:#fbcfe8;color:#9d174d}
 .board-library-rows button>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .board-library-menu footer{margin:14px -10px 0;padding:14px 18px 8px;border-top:1px solid var(--line)}
 .board-library-menu footer button{width:100%}
@@ -579,21 +551,16 @@ button,input,select,textarea{font-family:inherit}
 .metricstrip,.tastesummaries{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:row;gap:16px;overflow:visible;border:0;background:none}
 .tastesummary{display:flex;flex-direction:column;min-width:0;padding:16px 0 0;border:0;border-radius:16px;background:var(--ground);overflow:hidden;text-align:left;box-shadow:0 1px 2px #00000008}
 .tastesummary>.board-stat-label{display:flex;align-items:center;gap:8px;padding:0 16px;color:var(--ink-2);font-size:14px;line-height:20px}
-.board-stat-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,color-mix(in srgb,var(--color-accent-400) 15%,transparent),color-mix(in srgb,var(--color-accent-600) 3%,transparent));color:var(--tungsten);flex:none}
-.board-stat-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.tastesummary:nth-child(2) .board-stat-icon{color:#a78bfa;background:#a78bfa18}
-.tastesummary:nth-child(3) .board-stat-icon{color:#34d399;background:#34d39918}
-.tastesummary:nth-child(4) .board-stat-icon{color:#f59e0b;background:#f59e0b18}
 .tastesummary>.board-stat-value{padding:12px 16px 16px;font-size:28px;line-height:34px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .tastesummary>.board-stat-footer{display:block;padding:10px 16px;background:var(--board-card-foot);margin:auto 0 0;font-size:12px;line-height:18px;color:var(--muted);min-height:38px}
 .insightpanel,.tastehero{border:0;border-radius:16px;background:var(--ground);overflow:clip}
 .insightcopy{border:0}.insightpanel>header{border:0;padding-top:8px}
 @media(max-width:1000px){.metricstrip,.tastesummaries{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
-@media(max-width:480px){.board-stat-label{padding-inline:12px;font-size:13px;gap:6px}.tastesummary>.board-stat-value{padding:12px;font-size:24px;line-height:34px}.tastesummary>.board-stat-footer{padding:8px 12px}.board-stat-icon{width:24px;height:24px}}
+@media(max-width:480px){.board-stat-label{padding-inline:12px;font-size:13px;gap:6px}.tastesummary>.board-stat-value{padding:12px;font-size:24px;line-height:34px}.tastesummary>.board-stat-footer{padding:8px 12px}}
 
 /* 数据按阅读目的分组，标题与内容共享边缘。 */
 .insightpage,.tastepage{width:100%;max-width:var(--board-content)}
-.configfieldset-heading{border:0;padding-bottom:0}.configfieldset{border:0}.configfieldset>.geist-fieldset-footer{border:0}.configfieldset .configfieldset-heading h2{margin:0}
+.configfieldset{border:0}.configfieldset>.geist-fieldset-footer{border:0}
 
 /* 强调色的十一级色阶。机制照搬 BoardUI：主按钮、焦点环、链接、开关、选中态全都引用
    `--color-accent-*`，换强调色就是把这十一个变量整组指到另一个色相，组件规则一个字不改。
@@ -646,7 +613,7 @@ button,input,select,textarea{font-family:inherit}
    面板、筛选条、交集条和标签骨架都从它取值，一处改完五处一起走。 */
 :root{--tag-radius:8px}
 body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
-.pagetitle,.listtitle,.index .ihead h2,.indexheading,.playlistpage h2{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer,.board-watch-measures small,.insighttoolbar p{font:var(--board-caption);letter-spacing:.15px}
+.pagetitle,.listtitle,.index .ihead h2,.indexheading,.playlistpage h2{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer,.insighttoolbar p{font:var(--board-caption);letter-spacing:.15px}
 .geist-button,.resourceaction{background-color:var(--color-background-primary-default);border-color:var(--color-border-button-default);color:var(--color-text-primary);transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 /* 悬停只抬填充，那圈线一步不动：按钮静止态已经带一圈 1px，悬停再把它加深，
    鼠标扫过一排次级键就是一排边框忽明忽暗，而键本身并没有变化。 */
@@ -658,9 +625,6 @@ body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-
 /* 每类骨架保留实际内容的列宽、轮廓和留白。 */
 .board-page-skeleton{max-width:var(--board-content);width:100%;margin:auto}
 .skeleton-lines{display:grid;gap:12px;min-width:0}
-.skeleton-tabs{display:flex;gap:20px;align-items:center;min-height:48px;overflow-x:auto;white-space:nowrap;border-bottom:1px solid var(--line-soft)}
-.skeleton-setting{display:flex;justify-content:space-between;align-items:center;min-height:64px}
-.skeleton-toggle{width:40px;height:24px;border-radius:var(--pill-radius)}
 .skeleton-radar{width:100%;height:260px;clip-path:polygon(50% 0,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%)}
 .board-page-skeleton .tastesummary{height:152px}
 .board-page-skeleton .tastesummary>b .skeleton{height:34px}
@@ -700,7 +664,7 @@ body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u{display:block
 body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u::after{content:none}
 /* 手机上真卡的键升到 44px，键行跟着高 8px。 */
 @media(max-width:760px){body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u{height:69px}}
-.skeleton,.skeletoncard i,.skeletoncard b,.skeletoncard em,.skeletoncard s,.skeletoncard u{background:var(--color-background-tertiary-default);border-radius:8px}.skeletoncard i{border-radius:12px}.postercard-skeleton .skeletoncard{gap:6px 12px}.postercard-skeleton .skeletoncard s{border-radius:50%}.skeleton-cards>div{gap:24px 16px}.cleanup-skeleton .skeletoncard{border:0;border-radius:16px}.cleanup-skeleton .skeletoncard i,.review-skeleton .skeletoncard i{border-radius:8px}.index-skeleton .icell .ring{border-radius:50%}.entityskeletontext .skeleton{height:20px;border-radius:8px}.entityportrait.skeleton{border-radius:16px}.follow-content-skeleton .skeletoncard{padding-bottom:16px}.skeletondashstrip{border:0;gap:16px;background:none}.skeletondashstrip>span{border:0;border-radius:16px;background:var(--ground);min-height:152px}.skeletondashhero,.skeletondashpanel{border:0;border-radius:16px}
+.skeleton,.skeletoncard i,.skeletoncard b,.skeletoncard em,.skeletoncard s,.skeletoncard u{background:var(--color-background-tertiary-default);border-radius:8px}.skeletoncard i{border-radius:12px}.postercard-skeleton .skeletoncard{gap:6px 12px}.postercard-skeleton .skeletoncard s{border-radius:50%}.cleanup-skeleton .skeletoncard{border:0;border-radius:16px}.cleanup-skeleton .skeletoncard i,.review-skeleton .skeletoncard i{border-radius:8px}.index-skeleton .icell .ring{border-radius:50%}.entityskeletontext .skeleton{height:20px;border-radius:8px}.entityportrait.skeleton{border-radius:16px}.follow-content-skeleton .skeletoncard{padding-bottom:16px}.skeletondashstrip{border:0;gap:16px;background:none}.skeletondashstrip>span{border:0;border-radius:16px;background:var(--ground);min-height:152px}.skeletondashhero,.skeletondashpanel{border:0;border-radius:16px}
 
 /* Board secondary：实体细边框、轻阴影和统一的三档控件尺寸。
    悬停只换填充，那圈线一动不动——按用户要求跟 BoardUI 的强调档对齐（2026-09-12 实测
@@ -789,18 +753,12 @@ body :is(.popmenu,.gselectmenu)>:is(button,[role=option],[role=menuitem]):is(:ho
    资料页那一排上，别处的外链——包括包着图的——继续按这条走，不因为多一张图就长出个框。 */
 body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([data-button-link])){display:inline-flex;align-items:center;gap:4px;min-height:20px;padding:0;border:0;border-radius:4px;background:transparent;box-shadow:none;color:var(--tungsten);font-weight:500;text-decoration:none;text-underline-offset:3px}
 body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([data-button-link])):hover{background:transparent;text-decoration:underline;box-shadow:none}
-.board-link-button{display:inline-flex;align-items:center;justify-content:center;justify-self:start;gap:4px;max-width:100%;padding:0;border:0;border-radius:4px;background:transparent;box-shadow:none;color:var(--tungsten);font:inherit;font-weight:500;text-decoration:none;text-underline-offset:3px;transition:color .15s ease}
-.board-link-button:hover{background:transparent;text-decoration:underline;box-shadow:none}
-.board-link-button:focus-visible{outline:2px solid var(--tungsten);outline-offset:3px}
-.board-link-button>svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;transform:rotate(90deg)}
-body :is(.board-chip,.badge){display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 6px;min-height:24px;box-sizing:border-box;border:0;border-radius:6px;background:var(--color-background-tertiary-default);color:var(--color-text-secondary);font:var(--board-caption);white-space:nowrap}
-body .board-chip.success{background:color-mix(in srgb,#84cc16 16%,var(--color-background-primary-default));color:#4d7c0f}body .board-chip.error{background:color-mix(in srgb,#f43f5e 12%,var(--color-background-primary-default));color:#e11d48}
-:is(.board-button-group,[data-button-group]){display:inline-flex;align-items:center;overflow:hidden;border:1px solid var(--color-border-button-default);border-radius:10px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs)}
-:is(.board-button-group,[data-button-group])>button{height:34px;padding:0 12px;border:0;border-radius:0;box-shadow:none;color:var(--color-text-secondary);font:var(--board-body);white-space:nowrap}
-:is(.board-button-group,[data-button-group]):not([data-variant=primary])>button{background:transparent}
-:is(.board-button-group,[data-button-group])>button+button{border-left:1px solid var(--color-border-button-default)}
-:is(.board-button-group,[data-button-group])>button:is(:hover,[aria-pressed=true],[aria-selected=true]):not(.primary){background:var(--control-hover);color:var(--color-text-primary)}
-:is(.board-button-group,[data-button-group])>button:focus-visible{position:relative;z-index:1;outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
+[data-button-group]{display:inline-flex;align-items:center;overflow:hidden;border:1px solid var(--color-border-button-default);border-radius:10px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs)}
+[data-button-group]>button{height:34px;padding:0 12px;border:0;border-radius:0;box-shadow:none;color:var(--color-text-secondary);font:var(--board-body);white-space:nowrap}
+[data-button-group]:not([data-variant=primary])>button{background:transparent}
+[data-button-group]>button+button{border-left:1px solid var(--color-border-button-default)}
+[data-button-group]>button:is(:hover,[aria-pressed=true],[aria-selected=true]):not(.primary){background:var(--control-hover);color:var(--color-text-primary)}
+[data-button-group]>button:focus-visible{position:relative;z-index:1;outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
 @media(prefers-reduced-motion:reduce){.board-tooltip{transition:none}}
 @media(max-width:1000px){.cleanupgrid [data-cleanup-processing],.resourcesyncbox[data-cleanup-task]{grid-template-columns:1fr}.cleanupgrid [data-cleanup-processing]>:is(.geist-fieldset-footer,[data-geist-fieldset-footer]),.resourcesyncbox[data-cleanup-task]>.resourcesyncfooter{justify-content:flex-start;padding-top:0}}
 .metricstrip>button[aria-selected=true]{background:var(--color-background-primary-default);box-shadow:none}.metricstrip>button[aria-selected=true]::after{box-sizing:border-box}.metricstrip>button[aria-selected=true] .board-stat-footer{background:var(--board-card-foot)}
@@ -842,11 +800,10 @@ body [data-skeleton-action][data-skeleton-action]:disabled{background:var(--surf
 body [data-skeleton-action][data-skeleton-action]:disabled::before{display:none}
 body [data-split-button]>[data-skeleton-action][data-skeleton-action]:disabled{box-shadow:none}
 [data-split-button]:has(>[data-skeleton-action]:disabled){--split-seam:var(--border-15);box-shadow:0 0 0 1px var(--border-15)}
-body [data-follow-bulk],body [data-follow-status=seen],body [data-follow-status=ignored]{background:color-mix(in srgb,var(--color-accent-400) 16%,var(--color-background-primary-default));color:var(--color-accent-600);border-color:transparent}
+body [data-follow-status=seen],body [data-follow-status=ignored]{background:color-mix(in srgb,var(--color-accent-400) 16%,var(--color-background-primary-default));color:var(--color-accent-600);border-color:transparent}
 .reviewcontrols{border:0;border-radius:20px}
-.reviewtabs{overflow-x:auto!important;overflow-y:hidden;scrollbar-width:none!important;touch-action:pan-x pan-y;overscroll-behavior-x:contain}.reviewtabs::-webkit-scrollbar{display:none!important}.reviewtabs .os-scrollbar{display:none!important}
+.reviewtabs{overflow-x:auto!important;overflow-y:hidden;scrollbar-width:none!important;touch-action:pan-x pan-y;overscroll-behavior-x:contain}.reviewtabs::-webkit-scrollbar{display:none!important}
 .iconswitch.themeswitch[data-board-segments]{padding:4px;border:0;border-radius:24px;background:var(--picked);gap:4px}.iconswitch.themeswitch[data-board-segments]>label{width:32px;height:32px;border-radius:50%}.themeswitch .board-segment-thumb{border-radius:50%;background:var(--ground)}
-.card .pic>.badge{padding:4px;border-radius:10px;background:var(--glass-fill);box-shadow:inset 0 1px 0 var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(16px) saturate(145%)}.card .pic>.badge .src{background:transparent;padding:0;width:20px;height:20px}
 /* 玻璃面这一层料只有一份：漂移的两团、那道斜光、底色、内嵌的四条边和落影。认 `data-glass-pane`
    的元素全都拿它，各块自己只留几何、`backdrop-filter` 的饱和度和文字色——那三样本来就一块一个数。
    高对比与 `prefers-reduced-transparency` 的回退在下面同一个属性选择器上，不必各自再写一遍。 */
@@ -887,10 +844,6 @@ html.board-high-contrast :is(.card .badge,[data-glass-pane]){background:var(--gr
 .board-filter-frame.board-filter-frame .iconswitch[data-board-segments]>label{height:30px;min-height:30px;width:30px;padding:0;border-radius:8px}
 .board-filter-frame.board-filter-frame .iconswitch[data-board-segments] svg{width:16px;height:16px}
 .board-filter-frame.board-filter-frame .iconswitch[data-board-segments]>.board-segment-thumb{border-radius:8px}
-/* 这一组是横滚容器，会把里面东西的落影从上下两边裁掉——版式分段器的滑块和「仅显示图片」
-   那块玻璃最远那层影落在 14px 外，贴着容器边就只剩一条平切的底。上下各留出这 14px 再
-   用负外边距收回，排在行里还是 30px 高，影和聚焦环都露得出来。 */
-.count .sorts{padding:14px 2px;margin-block:-14px}
 /* 浮层上的滑块。深色那两条按主题给的填充和影写在上面，特指度到 0-5-0，所以这里也得
    数够——`[data-board-segments]` 那一节的几何照旧，换掉的只有材质。 */
 .board-filter-frame.board-filter-frame.board-filter-frame .iconswitch[data-board-segments]>.board-segment-thumb{
@@ -1012,8 +965,6 @@ html.board-high-contrast :is(.card .badge,[data-glass-pane]){background:var(--gr
 /* ── Board 第三批：主按钮尺寸、配置页白底、通知与提醒、批量条、关注行图标 ── */
 /* 主按钮与旁边的 Board 按钮同一副盒子：36px、10px 圆角、Body Medium。 */
 body :is(.geist-button,.resourceaction,.geist-fieldset-footer>a,.geist-fieldset-footer>button).primary{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);white-space:nowrap}
-/* 提醒条与上下内容留 12px：扫描卡失败也是同一个 Note。 */
-body .library-processing [role=alert]>.geist-note{margin-top:12px}
 /* 复核页的骨架与别的管理页同宽；分类那一列不悬浮，它是左右分栏里固定的一栏。 */
 body .review{width:100%;max-width:var(--board-content);margin:0 auto;box-sizing:border-box}
 body .review .reviewcontrols{position:static;z-index:auto;padding-block:0;display:block;border-radius:0}
