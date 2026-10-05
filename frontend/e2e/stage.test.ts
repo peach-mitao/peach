@@ -182,6 +182,9 @@ describe('舞台岛', () => {
     try {
       const page = opened.page;
       await page.locator(PLAYER).waitFor({ state: 'attached' });
+      assert.equal(await page.locator('#stage .vjs-time-tooltip').count(),0);
+      assert.equal(await page.locator('#stage [data-player-time]').count(),1);
+      assert.equal(await page.locator('#stage [data-player-seek-preview]').count(),1);
       const settings = page.locator('#stage .vjs-peach-settings-toggle');
       const stats = page.locator('#stage #playerStatsBtn');
       await stats.waitFor();

@@ -40,15 +40,21 @@ describe('作品详情岛', () => {
     const opened = await openItemPage(browser, '/', DESKTOP, { ready: `#grid [data-media-card][data-id="${ITEM.plain}"]` });
     try {
       const page = opened.page;
+      await page.emulateMedia({reducedMotion:'no-preference'});
       const listed = opened.stub.reads.get('/api/items') || 0;
+      const backgroundPlayState=()=>page.locator('.top .search').first().evaluate(
+        node=>getComputedStyle(node).animationPlayState);
+      const initialPlayState=await backgroundPlayState();
       await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"] [data-media-title]`).first().click();
       await pathIs(page, `/item/${ITEM.plain}`);
       await page.locator(DETAIL_READY).waitFor();
+      assert.ok((await backgroundPlayState()).split(',').every(state=>state.trim()==='paused'));
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'closeStage', '内容到了焦点不在关闭键上');
       await page.locator('#closeStage').click();
       await pathIs(page, '/');
       await page.locator('#stage[open]').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
       assert.equal(await page.locator('#stage[open]').count(), 0);
+      assert.equal(await backgroundPlayState(),initialPlayState,'关闭详情恢复背景动画状态');
       await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"]`).first().waitFor();
       assert.equal(opened.stub.reads.get('/api/items') || 0, listed, '关掉详情回列表重取了一遍');
       assert.deepEqual(withoutPlayer(opened.problems), []);
