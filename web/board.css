@@ -736,7 +736,7 @@ body .vjs-peach-speed-range::-webkit-slider-runnable-track{height:6px;border-rad
 body .vjs-peach-speed-range::-webkit-slider-thumb{margin-top:-7px}
 body .vjs-peach-speed-range::-moz-range-track{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--color-accent-400) var(--board-range-value,var(--peach-speed-percent,0%)),var(--color-background-tertiary-default) 0)}
 .board-tooltip{box-sizing:border-box;max-width:240px;padding:6px 10px;border:1px solid var(--color-border-button-default);border-radius:8px;background:var(--color-background-primary-default);color:var(--color-text-primary);font:var(--board-caption);white-space:normal;box-shadow:var(--elevation-dropdown)}
-.board-tooltip{position:fixed;z-index:var(--layer-tooltip);pointer-events:none}.board-tooltip[hidden]{display:none}
+.board-tooltip{position:fixed;inset:auto;margin:0;width:max-content;max-width:min(240px,calc(100vw - 16px));z-index:var(--layer-tooltip);pointer-events:none}.board-tooltip[hidden]{display:none}
 body :is(.popmenu,.gselectmenu){box-sizing:border-box;padding:10px;border:1px solid var(--color-border-button-default);border-radius:16px;background:var(--color-background-primary-default);color:var(--color-text-primary);box-shadow:var(--elevation-dropdown)}
 /* 每一项都在这里定死成「左起一行」，位置和形状写在同一条里。浮层看着浮在页面上方，
    DOM 却长在触发它的那张卡里，于是页面分区给自家 button 写的本地外观照样命中它：整理卡

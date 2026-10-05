@@ -290,8 +290,8 @@ body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,pa
 [data-stage][data-closing]::backdrop{animation:settings-backdrop-out .35s cubic-bezier(.4,0,.2,1) both}
 [data-stage] [data-stage-media]{overflow:hidden;border-radius:var(--surface-radius)}
 /* 动作键成组，操作按钮保留各自的可访问名称。 */
-[data-stage-side-content] [data-stage-actions]{display:flex;flex-wrap:wrap;gap:4px;width:100%;padding:0;border:0;background:transparent;overflow:visible;margin:0 0 16px}
-[data-stage-side-content] [data-stage-actions] button{flex:0 0 36px;width:36px;height:36px;min-width:36px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:var(--surface)}
+[data-stage-side-content] [data-stage-actions]{display:flex;flex-wrap:nowrap;gap:4px;width:100%;padding:0;border:0;background:transparent;overflow:visible;margin:0 0 16px}
+[data-stage-side-content] [data-stage-actions] button{flex:0 1 36px;width:36px;height:36px;min-width:30px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:var(--surface)}
 [data-stage-side-content] [data-stage-actions] button svg{display:block;width:18px;height:18px;margin:0}
 [data-stage-side-content] [data-stage-actions] button[aria-pressed=true]{box-shadow:inset 0 0 0 1px currentColor}
 /* ── 详情页：播放器格只圆左上角——右边贴着侧栏，下面接着「接着看」 ── */

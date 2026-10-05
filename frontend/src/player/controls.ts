@@ -74,14 +74,21 @@ export function mountPlayerAmbient(video: HTMLVideoElement): () => void {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) return () => {};
   let stopped = false, last = 0, run = 0;
-  const clear = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); stage.style.removeProperty('--video-glow') };
+  let glow: number[] | null = null;
+  const clear = () => { glow = null; ctx.clearRect(0, 0, canvas.width, canvas.height); stage.style.removeProperty('--video-glow') };
   const sample = () => {
     if (video.readyState < 2) return;
     try {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data; let r = 0, g = 0, b = 0, n = 0;
       for (let i = 0; i < px.length; i += 16) { r += px[i]!; g += px[i + 1]!; b += px[i + 2]!; n++ }
-      if (n) stage.style.setProperty('--video-glow', `rgb(${Math.round(r / n)} ${Math.round(g / n)} ${Math.round(b / n)})`);
+      if (n) {
+        const next = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+        // 平均色的微小抖动保持稳定，继承色只在可见变化时刷新整座详情。
+        if (!glow || next.some((value, index) => Math.abs(value - glow![index]!) >= 6)) {
+          glow = next; stage.style.setProperty('--video-glow', `rgb(${next.join(' ')})`);
+        }
+      }
     } catch { /* 跨源画面取不到像素 */ }
   };
   const queue = (id: number) => {
