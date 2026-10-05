@@ -2,10 +2,11 @@
 
 最后核验：2026-10-06
 
-实时版本与健康状态查运行实例的 `/healthz`。另见 [待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
+状态查 `/healthz`；[待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
 
 ## 运行态
 
+- 创作者字段复核见待办。
 - JAV 入库已核验。
 - 女优头像 816 张（中位脸宽 258px，38 张带水印待复核）；替下的在 `avatars-superseded/`。
 - 数据管理页「整理」（ADR-0039）可预览、执行、回滚上一批，真实库未跑过。

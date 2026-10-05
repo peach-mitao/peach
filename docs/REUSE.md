@@ -1,5 +1,9 @@
 # 复用清单
 
+## 播放器清晰度
+
+清晰度控件复用已内置 VHS 的 Video.js 8.24.1（Apache-2.0）及其 [QualityLevelList](https://github.com/videojs/videojs-contrib-quality-levels)。多档自动播放通过 `selectedIndex`、`change` 事件取得当前轨道；单档 HLS 缺少尺寸时读取视频元素的实际尺寸，并响应 `loadedmetadata`、`resize`。尺寸未取得时显示「当前画质」，轨道 ID 不作界面名称；无需新增依赖。
+
 ## 分级诊断
 
 `src/peach/diagnostics.py` 统一生成 CLI 与本机 API 报告；复用 `settings_file`、`health` 的只读迁移校验、`FFmpegResolver`、访问策略和挂载快照。数据库用 SQLite `mode=ro`；写入与端口检查用标准库短暂探针，不新增运行依赖。

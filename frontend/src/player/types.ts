@@ -9,6 +9,7 @@ export type PlayerEvents = string | string[];
 export interface QualityLevel { width?: number; height?: number; id?: string; enabled: boolean }
 export interface QualityLevelList {
   length: number;
+  selectedIndex?: number;
   [index: number]: QualityLevel;
   on?(events: PlayerEvents, handler: () => void): void;
 }

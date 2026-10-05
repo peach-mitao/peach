@@ -1,6 +1,10 @@
 # Peach 产品待办
 
-最后核验：2026-10-03。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+最后核验：2026-10-06。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+
+## 待复核的元数据
+
+- `FC2-PPV-1625020` 的资产 `6440`、`6562`：创作者「音あずさ」「音梓」均来自 `legacy:asset`，没有卖家来源证据；女优关系来自 FC2PPV-DB 和 JavDB。复核产物是 `peach-data/review/creator-quality-audit.csv`，状态为候选，真实账本保持原样。清理这两条创作者关系与兼容字段需要用户确认。
 
 ## 优先级
 

@@ -1727,6 +1727,16 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(limited.status_code, 429)
         self.assertEqual(limited.json(),{"error": "尝试次数较多，请一分钟后重试"})
 
+    async def test_index_directory_urls_keep_query_and_use_canonical_path(self):
+        await self.client.post('/login', content='token=secret&next=%2F',
+                               headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        for index in ('performers', 'creators', 'studios', 'agencies', 'tags'):
+            for method in ('GET', 'HEAD'):
+                response = await self.client.request(
+                    method, f'/{index}/?q=A%2FB&view=cloud', follow_redirects=False)
+                self.assertEqual(response.status_code, 307, (index, method))
+                self.assertEqual(response.headers['location'], f'/{index}?q=A%2FB&view=cloud')
+
     async def test_client_routes_serve_the_single_page_surface(self):
         await self.client.post(
             "/login", content="token=secret&next=%2F",

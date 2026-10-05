@@ -636,6 +636,17 @@ def peach_logo(request: Request):
     return asset_response(request, PROJECT_ROOT / "resources" / "peach-logo.png", "image/png")
 
 
+@router.api_route("/performers/", methods=["GET", "HEAD"])
+@router.api_route("/creators/", methods=["GET", "HEAD"])
+@router.api_route("/studios/", methods=["GET", "HEAD"])
+@router.api_route("/agencies/", methods=["GET", "HEAD"])
+@router.api_route("/tags/", methods=["GET", "HEAD"])
+def index_directory_redirect(request: Request, args: dict[str, str] = Depends(require_page_auth)):
+    """索引页使用规范路径，查询参数保持原样。"""
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(request.url.path.rstrip("/") + query, status_code=307)
+
+
 @router.api_route("/item/{item_id}", methods=["GET", "HEAD"])
 @router.api_route("/mix/{seed_id}/{mix_item_id}", methods=["GET", "HEAD"])
 @router.api_route("/parts/{part_seed_id}/{part_item_id}", methods=["GET", "HEAD"])
