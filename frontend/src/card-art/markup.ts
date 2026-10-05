@@ -99,7 +99,7 @@ export function entityFaceImg({
      忘了开的代价是页面上一张明显错位的图，而它只在回落发生时才现形。 */
   /* `decoding="async"` 让解码离开主线程：一屏几十张图同时落地时，同步解码把滚动
      和点击一起压住，而这些图一张都不参与首屏的排版——框的尺寸由 CSS 定死。 */
-  return `<img src="${src}" alt="${alt}"${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
+  return `<img src="${src}" width="128" height="128" alt="${alt}"${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
     + `${faceBox}${imageFallbackAttrs({
       dropStyle: (dropStyle || !!faceBox || !!framedStyle) && framed,
       fallbacks,
@@ -199,7 +199,7 @@ export function coverImage(item: CoverItem, layout: 'big' | 'small', eager = fal
   const box = pb ? ` data-posterbox="${[pb.x0, (pb.px || [])[0], (pb.px || [])[1], pb.y0, pb.x1, pb.y1].map(Number).join(' ')}"` : '';
   // 小图看整张（含剧照拼贴），大图只取右侧正封。
   return `<img class="poster cover ${layout === 'small' ? 'whole' : 'front'}" src="${src}"
-    alt="" loading="${eager ? 'eager' : 'lazy'}"${face}${box} data-drop="self">`;
+    width="640" height="360" alt="" loading="${eager ? 'eager' : 'lazy'}"${face}${box} data-drop="self">`;
 }
 
 /** 封面格的两种图：官方封套（取景链接管）或预览图。空串是这一条没有可用的图。 */
@@ -223,7 +223,7 @@ export function javArtwork(item: CoverItem, layout: 'big' | 'small', eager: bool
   const frame = (coverMarkup.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join('');
   const image = kind === 'cover'
     ? coverMarkup
-    : `<img class="poster" src="${thumb}" alt="" loading="${eager ? 'eager' : 'lazy'}"${frame}>`;
+    : `<img class="poster" src="${thumb}" width="640" height="360" alt="" loading="${eager ? 'eager' : 'lazy'}"${frame}>`;
   return {
     kind: kind === 'cover' ? 'cover' : 'thumb',
     html: image.replace('<img ', `<img data-jav-image="${item.id}" data-jav-cover="${esc(cover)}" data-jav-thumb="${esc(thumb)}" data-jav-image-layout="${layout}" `),
@@ -238,7 +238,7 @@ export function cardArtwork(item: CoverItem & { follow_thumb_url?: string | null
   if (item.follow_thumb_url) {
     return {
       kind: 'thumb',
-      html: `<img class="poster" src="${esc(item.follow_thumb_url)}" alt="" loading="${eager ? 'eager' : 'lazy'}" referrerpolicy="no-referrer">`,
+      html: `<img class="poster" src="${esc(item.follow_thumb_url)}" width="640" height="360" alt="" loading="${eager ? 'eager' : 'lazy'}" referrerpolicy="no-referrer">`,
     };
   }
   return mixFace(item, size, eager, javImage);
@@ -249,7 +249,7 @@ export function cardArtwork(item: CoverItem & { follow_thumb_url?: string | null
 export function mixFace(item: CoverItem, size: 'big' | 'small', eager: boolean, javImage: unknown): Artwork {
   if (item.is_jav) return javArtwork(item, size, eager, javImage);
   if (!item.has_thumb && !item.has_local_poster) return NO_ARTWORK;
-  return { kind: 'thumb', html: `<img class="poster" src="/poster?id=${item.id}&c=4" alt="" loading="${eager ? 'eager' : 'lazy'}">` };
+  return { kind: 'thumb', html: `<img class="poster" src="/poster?id=${item.id}&c=4" width="640" height="360" alt="" loading="${eager ? 'eager' : 'lazy'}">` };
 }
 
 /** 播放队列一行的小图：Mix 画面按小图取，没有可用的图就写「无预览」占住那一格。 */

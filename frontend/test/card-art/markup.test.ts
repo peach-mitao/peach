@@ -57,6 +57,8 @@ describe('entityFaceImg：实体图优先，取不到退代表作头像', () => 
     const lazy = parse(entityFaceImg({ id: 3, hasImage: true }))!;
     expect(lazy.getAttribute('loading')).toBe('lazy');
     expect(lazy.getAttribute('decoding')).toBe('async');
+    expect(lazy.width).toBeGreaterThan(0);
+    expect(lazy.height).toBeGreaterThan(0);
     expect(parse(entityFaceImg({ id: 3, hasImage: true, lazy: false }))!.hasAttribute('loading')).toBe(false);
   });
 
@@ -162,6 +164,8 @@ describe('coverImage：官方封面', () => {
     expect(img.dataset.cy).toBe('0.6');
     expect(img.dataset.posterbox).toBe('421 800 538 0 800 538');
     expect(img.getAttribute('loading')).toBe('lazy');
+    expect(img.width).toBeGreaterThan(0);
+    expect(img.height).toBeGreaterThan(0);
     expect(img.dataset.drop).toBe('self');
   });
 
@@ -225,8 +229,11 @@ describe('cardArtwork 与队列小图', () => {
   });
 
   it('其余取本地预览格；没有就是空的', () => {
-    expect(cardArtwork({ id: 1, has_local_poster: true }, 'big', false, 'cover').html)
-      .toBe('<img class="poster" src="/poster?id=1&c=4" alt="" loading="lazy">');
+    const img = parse(cardArtwork({ id: 1, has_local_poster: true }, 'big', false, 'cover').html)!;
+    expect(img.getAttribute('src')).toBe('/poster?id=1&c=4');
+    expect(img.getAttribute('loading')).toBe('lazy');
+    expect(img.width).toBeGreaterThan(0);
+    expect(img.height).toBeGreaterThan(0);
     expect(cardArtwork({ id: 1 }, 'big', false, 'cover').kind).toBe('');
   });
 

@@ -136,6 +136,15 @@ async function assertHolds(page: Page, problems: string[], where: string): Promi
   assert.ok(box.scrollWidth <= box.viewportWidth,
     `${where}：横向溢出，scrollWidth ${box.scrollWidth} > 视口 ${box.viewportWidth}`);
   assert.deepEqual(box.offenders, [], `${where}：有元素越出视口右边缘`);
+  if (where === '/') {
+    const images = await page.locator('img[loading="lazy"]').evaluateAll(nodes => ({
+      count: nodes.length,
+      missing: nodes.filter(node => !(Number(node.getAttribute('width')) > 0 && Number(node.getAttribute('height')) > 0))
+        .map(node => node.getAttribute('src')),
+    }));
+    assert.ok(images.count > 0, '首页没有懒加载图片');
+    assert.deepEqual(images.missing, [], '首页懒加载图片需要声明尺寸');
+  }
 }
 
 describe('路由冒烟', () => {

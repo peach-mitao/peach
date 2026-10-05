@@ -140,7 +140,7 @@
    四个值都由 `panelFrame` 算好：沿折痕和按比例算出来的框满高贴右缘，top 为 0、
    height 为 100%，纵向一个像素都不裁；只有人手工横着框才用得上另两个轴。 */
 .poster.cover.front.panel{inset:var(--panel-top,0%) auto auto var(--panel-left,0%);width:auto;
-  max-width:none;height:var(--panel-height,100%);object-fit:fill;
+  max-width:none;height:var(--panel-height,100%);aspect-ratio:var(--panel-aspect);object-fit:fill;
   clip-path:inset(var(--panel-clip,0 0 0 0))}
 .poster.cover.front[data-frame="front"]{object-fit:contain;object-position:50% 50%}
 /* 剧照比大图容器宽得多，裁的是横向，所以横向锚点必须跟着人走。没检出时回落

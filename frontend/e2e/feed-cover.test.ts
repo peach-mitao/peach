@@ -28,6 +28,12 @@ describe('新作封面显示时机',()=>{
     });
     const page=await context.newPage();
     const remote='https://covers.example.test/framing.svg';
+    const audits=await context.newCDPSession(page), lazyIssues:string[]=[];
+    audits.on('Audits.issueAdded',({issue})=>{
+     if(issue.code==='LazyLoadImageIssue'&&issue.details.lazyLoadImageIssueDetails?.url===remote)
+      lazyIssues.push(issue.details.lazyLoadImageIssueDetails.url);
+    });
+    await audits.send('Audits.enable');
     await page.route(remote,async route=>{
      if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
      await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000"><rect width="796" height="1000" fill="#f00"/><rect x="796" width="704" height="1000" fill="#0f0"/></svg>'});
@@ -49,6 +55,11 @@ describe('新作封面显示时机',()=>{
       return samples;
      });
      assert.equal(new Set(positions).size,1,'可见封面的取景保持稳定');
+     assert.deepEqual(lazyIssues,[],'正封裁切图在 DevTools 中有明确尺寸');
+     const ratio=await image.evaluate((img:HTMLImageElement)=>{
+      const box=img.getBoundingClientRect();return box.width/box.height;
+     });
+     assert.ok(Math.abs(ratio-1.5)<.01,'裁切使用源图宽高比');
      assert.deepEqual(await page.evaluate(()=>(window as any).__unframed),[],'已加载封面在取景完成前保持隐藏');
      await page.evaluate(()=>{history.pushState({},'','/stats');window.dispatchEvent(new PopStateEvent('popstate'))});
      await page.locator('#feedNew').waitFor({state:'hidden'});

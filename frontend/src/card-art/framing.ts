@@ -118,6 +118,7 @@ export function posterPanel(img: HTMLImageElement, ratio: number): void {
   if (!faceSourceScale(img.naturalWidth, img.naturalHeight, imgW, imgH)) return;
   const frame = panelFrame({ x0, y0, x1, y1, px: [imgW, imgH] }, ratio);
   if (!frame) return;
+  img.style.setProperty('--panel-aspect', `${img.naturalWidth} / ${img.naturalHeight}`);
   img.classList.add('panel');
   img.style.setProperty('--panel-clip',
     `${frame.clip.top}% ${frame.clip.right}% ${frame.clip.bottom}% ${frame.clip.left}%`);

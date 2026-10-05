@@ -75,7 +75,7 @@ function Poster({ src }: { src: string }) {
   const [broken, setBroken] = useState(false);
   if (broken) return null;
   return (
-    <img data-mix-poster="" src={src} alt="" loading="lazy" onError={() => setBroken(true)}
+    <img data-mix-poster="" src={src} width={640} height={360} alt="" loading="lazy" onError={() => setBroken(true)}
       className="absolute inset-0 block size-full object-contain" />
   );
 }
