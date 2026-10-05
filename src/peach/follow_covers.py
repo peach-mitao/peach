@@ -8,14 +8,20 @@ from __future__ import annotations
 from .user_agent import USER_AGENT
 
 import hashlib
+import io
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
+
+import httpx
+from PIL import Image, UnidentifiedImageError
 
 from .ffmpeg import FFmpegResolver
 from .follow_store import FollowItemRow
-from .follow_stream import FollowMediaResolver, FollowMediaUnavailable
+from .follow_stream import FollowMediaResolver, FollowMediaUnavailable, proxyable
+from .http import HttpRequest
 
 
 # FFmpeg's blackframe filter exports ``lavfi.blackframe.pblack`` only when the
@@ -77,12 +83,15 @@ class FollowCoverService:
         # first screen responsive without turning the source CDN into a batch job.
         self._slots = threading.BoundedSemaphore(2)
 
-    def cover(self, item: FollowItemRow, media: int | None = None) -> Path:
+    def cover(self, item: FollowItemRow, media: int | None = None, *,
+              alternatives: tuple[str, ...] = ()) -> Path:
         """条目的视频封面；`media` 点名 fanbox 帖子里的某一个视频，缺省是第一个。
 
         卡面要的是第一个视频，详情里的多媒体清单每个视频各要一张。第一个视频不论
         是否点名都落在同一份缓存上，卡面和清单里那一格共用一次抽帧。
         """
+        if item.provider == "rule34video" and media is None:
+            return self._poster(item, alternatives)
         media_index = None
         slot = ""
         if item.provider == "fanbox":
@@ -115,6 +124,7 @@ class FollowCoverService:
         destination = self.root / f"{item.id}-{slot}{fingerprint}.jpg"
         if destination.is_file():
             return destination
+
         lock = self._lock_for(destination.name)
         with lock:
             if destination.is_file():
@@ -151,6 +161,50 @@ class FollowCoverService:
                 if stale != destination and _cache_slot(stale.name, item.id) == slot:
                     stale.unlink(missing_ok=True)
             return destination
+
+    def _poster(self, item: FollowItemRow, alternatives: tuple[str, ...]) -> Path:
+        """缓存来源 poster；失效时取同一作品其他版本的封面，只请求静态图片。"""
+        urls = tuple(url for url in dict.fromkeys((item.thumb_url or "", *alternatives))
+                     if proxyable("rule34video", url))[:8]
+        if not urls:
+            raise FollowCoverUnavailable("该作品没有可用的封面地址")
+        fingerprint = hashlib.sha256("\0".join(urls).encode("utf-8")).hexdigest()[:16]
+        destination = self.root / f"{item.id}-poster-{fingerprint}.jpg"
+        if destination.is_file():
+            return destination
+        with self._lock_for(destination.name), self._slots:
+            if destination.is_file():
+                return destination
+            deadline = time.monotonic() + self.timeout
+            self.root.mkdir(parents=True, exist_ok=True)
+            temporary = destination.with_name(
+                f"{destination.stem}.{os.getpid()}.{threading.get_ident()}.tmp.jpg")
+            try:
+                for url in urls:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    try:
+                        response = self.media_resolver.transport(HttpRequest("GET", url, {
+                            "User-Agent": USER_AGENT, "Accept": "image/*", "Referer": item.url or "",
+                        }), min(8.0, remaining), 4_000_000)
+                        if response.status != 200 or len(response.body) > 4_000_000:
+                            continue
+                        if response.url and not proxyable("rule34video", response.url):
+                            continue
+                        with Image.open(io.BytesIO(response.body)) as image:
+                            if image.width * image.height > 16_000_000:
+                                continue
+                            image.seek(0)
+                            image.thumbnail((1280, 1280))
+                            image.convert("RGB").save(temporary, "JPEG", quality=90)
+                        os.replace(temporary, destination)
+                        return destination
+                    except (OSError, ValueError, httpx.HTTPError, UnidentifiedImageError, Image.DecompressionBombError):
+                        continue
+            finally:
+                temporary.unlink(missing_ok=True)
+        raise FollowCoverUnavailable("该作品的封面未取得")
 
     #: 同时追踪多少把生成锁。键是带指纹的缓存文件名，条目一多、URL 一变就再加一条，
     #: 只增不减的话，进程活多久它就长多久。超过上限就丢掉当前没人持有的键——丢锁最

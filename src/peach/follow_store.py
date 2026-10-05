@@ -24,7 +24,7 @@ from .follow_sources import (
     Rule34VideoConnector, SourceFetch, canonical_source_ref,
     official_profile_handle, origin_group_key, profile_link_identity,
 )
-from .follow_variants import classify, group_duplicates
+from .follow_variants import classify, group_duplicates, video_spec_markers
 
 
 def _now_text(moment: datetime | None = None) -> str:
@@ -738,7 +738,7 @@ class FollowStore:
             if item.provider in _RELEASE_KEY_PER_POST
             and not item.release_key.endswith(f"\u0000{item.external_id}")
             else item
-            for item in map(_with_origin_hint, items)
+            for item in map(_with_video_specs, map(_with_origin_hint, items))
         )
         stripped = _strip_author_names(split_posts, authors or {})
         linked = _hint_linked(stripped)
@@ -1152,7 +1152,7 @@ def _hint_linked(items: tuple[FollowItemRow, ...]) -> frozenset[tuple[str, str]]
 def _split_ambiguous_works(items: tuple[FollowItemRow, ...],
                            linked: frozenset[tuple[str, str]] = frozenset(),
                            ) -> tuple[FollowItemRow, ...]:
-    """`work` 语义下，同一来源出现两个 main 就不再按标题合并这一来源的这一组。
+    """`work` 语义下，同站出现两个不同的 main 帖子就按站内编号拆分作品组。
 
     实测踩到的例子：kemono 上「February Poll Animations」（1 月 31 日）和
     「February Poll + Animations」（2 月 15 日）是两个帖子，归一化后标题完全相同。
@@ -1171,7 +1171,7 @@ def _split_ambiguous_works(items: tuple[FollowItemRow, ...],
         buckets.setdefault((item.provider, item.release_key), []).append(item)
     ambiguous = {
         key for key, members in buckets.items()
-        if sum(1 for member in members if member.variant_kind == "main") > 1
+        if len({member.external_id for member in members if member.variant_kind == "main"}) > 1
     }
     if not ambiguous:
         return items
@@ -1187,6 +1187,20 @@ def _split_ambiguous_works(items: tuple[FollowItemRow, ...],
 #: 作者名在标题里至多占几个相邻的词（`Lazy Procrastinator` 占两个），以及多短的名字不剥。
 _AUTHOR_NAME_MAX_TOKENS = 4
 _AUTHOR_NAME_MIN_LENGTH = 3
+
+
+def _with_video_specs(item: FollowItemRow) -> FollowItemRow:
+    """存量作品键中的连写视频规格按当前版本判据投影，账本行保持原样。"""
+    if item.semantics != "work" or not item.release_key or "\u0000" in item.release_key:
+        return item
+    tokens = item.release_key.split(" ")
+    kept = [token for token in tokens if not video_spec_markers(token)]
+    if len(kept) == len(tokens) or not kept:
+        return item
+    verdict = classify(item.title)
+    return FollowItemRow(**{**item.__dict__, "release_key": " ".join(kept),
+                            "variant_kind": verdict.variant_kind,
+                            "variant_label": verdict.variant_label})
 
 
 def _strip_author_names(items: tuple[FollowItemRow, ...],

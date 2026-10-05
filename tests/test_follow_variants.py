@@ -25,6 +25,17 @@ class _Item:
 
 
 class ClassifyTests(unittest.TestCase):
+    def test_combined_resolution_and_frame_rate_are_version_markers(self):
+        for spec, labels in (("4K60fps", "4K + 60fps"), ("1080p60fps", "1080p + 60fps"),
+                             ("4K 60fps", "4K + 60fps")):
+            for title in (f"Evening Movie ({spec})", f"Evening Movie {spec}"):
+                with self.subTest(title=title):
+                    verdict = classify(title)
+                    self.assertEqual(verdict.release_key, "evening movie")
+                    self.assertEqual(verdict.variant_label, labels)
+        self.assertEqual(classify("Evening Movie Part 4K60fpsExtra").release_key,
+                         "evening movie part 4k60fpsextra")
+
     def _key(self, title, **kwargs):
         return classify(title, creator_aliases=ALIASES, **kwargs)
 

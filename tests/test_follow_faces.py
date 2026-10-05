@@ -119,6 +119,47 @@ class AnnotateGroupTests(unittest.TestCase):
                                (3, None): "sha256:aa"})
         self.assertEqual((stack["media"], stack["copies"], stack["kind"]), (2, 4, "mixed"))
 
+    def test_one_upload_collected_by_two_sources_counts_as_one_medium(self):
+        members = [self.member(ident, "rule34video", f"/follow-cover?id={ident}")
+                   for ident in (1, 2, 3)]
+        for member, external_id in zip(members, ("first", "first", "second")):
+            member["external_id"] = external_id
+        stack = self.annotate(members, {})
+        self.assertEqual((stack["media"], stack["copies"]), (2, 3))
+        self.assertEqual(len(stack["faces"]), 2)
+
+    def test_a_post_identity_preserves_its_separate_media_slots(self):
+        members = [self.member(ident, "fanbox", None, None, "image", media=[
+            {"index": index, "media_kind": "video", "thumb_url": f"/follow-cover?id={ident}&media={index}"}
+            for index in (0, 2)]) for ident in (1, 2)]
+        for member in members:
+            member["external_id"] = "post-1"
+        stack = self.annotate(members, {})
+        self.assertEqual((stack["media"], stack["copies"]), (2, 4))
+        self.assertEqual(len(stack["faces"]), 2)
+
+    def test_site_identity_is_namespaced_by_provider(self):
+        members = [self.member(1, "rule34video", "https://a/1.jpg"),
+                   self.member(2, "rule34xxx", "https://b/1.jpg")]
+        for member in members:
+            member["external_id"] = "123"
+        self.assertEqual(self.annotate(members, {})["media"], 2)
+
+    def test_archive_post_numbers_are_scoped_by_service_and_creator(self):
+        members = [self.member(ident, "kemono", f"https://img/{ident}.jpg") for ident in (1, 2, 3)]
+        for member, page in zip(members, ("https://kemono.cr/patreon/user/1/post/123",
+                                         "https://kemono.cr/fanbox/user/2/post/123",
+                                         "https://kemono.cr/patreon/user/1/post/123")):
+            member.update(external_id="123", url=page)
+        self.assertEqual(self.annotate(members, {})["media"], 2)
+
+    def test_known_different_files_preserve_media_despite_matching_post_identity(self):
+        members = [self.member(ident, "kemono", f"https://img/{ident}.jpg") for ident in (1, 2)]
+        for member in members:
+            member.update(external_id="123", url="https://kemono.cr/patreon/user/1/post/123")
+        stack = self.annotate(members, {}, {(1, None): "sha256:old", (2, None): "sha256:new"})
+        self.assertEqual(stack["media"], 2)
+
     def test_archive_videos_without_thumbnails_merge_only_by_file_hash(self):
         # 归档站的视频没有缩略图：哈希相同就是同一个，跨站同站都一样；不同就各算一个，
         # 也不拿别的画面去猜。

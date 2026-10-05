@@ -2042,6 +2042,51 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fallback.headers["content-type"],
                          PLACEHOLDER_CONTENT_TYPE)
 
+    async def test_rule34video_cover_uses_only_posters_from_its_work(self):
+        from peach.follow_covers import FollowCoverService
+        from peach.follow_store import FollowStore
+        from peach.follow_sources import FollowCandidate, SourceFetch
+        from peach.follow_stream import FollowMediaResolver
+        from peach.http import HttpResponse
+        from PIL import Image
+
+        connection = sqlite3.connect(self.db)
+        connection.row_factory = sqlite3.Row
+        connection.executescript((ROOT / "migrations" / "0021_follow_author_alias.sql").read_text(encoding="utf-8"))
+        store = FollowStore(lambda: connection)
+        source = store.register(provider="rule34video", ref="artist", label="Artist",
+                                url="https://rule34video.com/models/artist/")
+        store.record(source, SourceFetch(provider="rule34video", ref="artist",
+            request_url="https://rule34video.com/models/artist/", semantics="work", candidates=(
+                FollowCandidate(provider="rule34video", external_id="1", title="Evening Movie (60fps)",
+                                url="https://rule34video.com/video/1/movie/", thumb_url="https://rule34video.com/missing.jpg"),
+                FollowCandidate(provider="rule34video", external_id="2", title="Evening Movie (4K60fps)",
+                                thumb_url="https://rule34video.com/available.jpg"),
+                FollowCandidate(provider="rule34video", external_id="3", title="Another Movie",
+                                thumb_url="https://rule34video.com/other.jpg"),
+            )))
+        item = next(row for row in store.items() if row.external_id == "1")
+        connection.commit()
+        connection.close()
+        output = io.BytesIO()
+        Image.new("RGB", (96, 54), "red").save(output, "PNG")
+        requests = []
+
+        def transport(request, timeout, limit):
+            requests.append(request.url)
+            return HttpResponse(404 if request.url.endswith("missing.jpg") else 200,
+                                {"content-type": "image/png"}, output.getvalue())
+
+        self.app.state.follow_cover_service = FollowCoverService(
+            self.app.state.follow_cover_service.resolver, FollowMediaResolver(transport), self.root / "follow-covers")
+        response = await self.client.get(f"/follow-cover?id={item.id}&t=secret")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(requests, ["https://rule34video.com/missing.jpg", "https://rule34video.com/available.jpg"])
+        with Image.open(io.BytesIO(response.content)) as image:
+            self.assertEqual((image.format, image.size), ("JPEG", (96, 54)))
+        self.assertEqual((await self.client.get(f"/follow-cover?id={item.id}&t=secret")).status_code, 200)
+        self.assertEqual(len(requests), 2)
+
     async def test_stream_session_cancel_is_authenticated_and_tombstoned(self):
         denied = await self.client.post("/api/stream-cancel?session=detail-1")
         self.assertEqual(denied.status_code, 401)

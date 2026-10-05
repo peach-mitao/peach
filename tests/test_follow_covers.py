@@ -1,3 +1,4 @@
+import io
 import subprocess
 import tempfile
 import unittest
@@ -15,6 +16,8 @@ from peach.follow_covers import (
     FollowCoverUnavailable,
 )
 from peach.follow_stream import ResolvedFollowMedia
+from peach.http import HttpResponse
+import httpx
 
 
 class _FFmpeg:
@@ -33,6 +36,49 @@ class _Media:
 
 
 class FollowCoverServiceTests(unittest.TestCase):
+    def test_rule34video_uses_a_cached_work_cover_when_its_poster_is_unavailable(self):
+        image = io.BytesIO()
+        Image.new("RGB", (96, 54), "red").save(image, "PNG")
+        requests = []
+
+        def transport(request, timeout, limit):
+            requests.append(request)
+            return HttpResponse(404 if request.url.endswith("missing.jpg") else 200,
+                                {"content-type": "image/png"}, image.getvalue())
+
+        self.media.transport = transport
+        item = self._item("rule34video")
+        item.url = "https://rule34video.com/video/7/movie/"
+        item.thumb_url = "https://rule34video.com/missing.jpg"
+        alternative = "https://rule34video.com/available.jpg"
+        with mock.patch("peach.follow_covers.subprocess.run") as ffmpeg:
+            path = self.service.cover(item, alternatives=(alternative,))
+            self.assertEqual(self.service.cover(item, alternatives=(alternative,)), path)
+        self.assertEqual([request.url for request in requests], [item.thumb_url, alternative])
+        self.assertEqual(requests[0].headers["Referer"], item.url)
+        self.assertEqual(self.media.calls, 0)
+        ffmpeg.assert_not_called()
+        with Image.open(path) as cached:
+            self.assertEqual((cached.format, cached.size), ("JPEG", (96, 54)))
+
+    def test_rule34video_rejects_untrusted_posters_and_non_images(self):
+        self.media.transport = mock.Mock(return_value=HttpResponse(200, {}, b"<html>denied</html>"))
+        item = self._item("rule34video")
+        item.url = "https://rule34video.com/video/7/movie/"
+        item.thumb_url = "https://127.0.0.1/private.jpg"
+        with self.assertRaises(FollowCoverUnavailable):
+            self.service.cover(item, alternatives=("https://rule34video.com/blocked.jpg",))
+        self.assertEqual(self.media.transport.call_count, 1)
+        self.assertEqual(list(self.root.glob("*.jpg")), [])
+
+    def test_rule34video_network_failures_leave_no_cached_file(self):
+        self.media.transport = mock.Mock(side_effect=httpx.ReadTimeout("offline"))
+        item = self._item("rule34video")
+        item.thumb_url = "https://rule34video.com/poster.jpg"
+        with self.assertRaises(FollowCoverUnavailable):
+            self.service.cover(item)
+        self.assertEqual(list(self.root.glob("*.jpg")), [])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
