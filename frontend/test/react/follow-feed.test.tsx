@@ -449,6 +449,35 @@ describe('页面', () => {
     expect(learn).toHaveBeenCalledTimes(1);
   });
 
+  it('图片缩略图失败后尝试对应原图代理，代理失败结束尝试', async () => {
+    serve(feed([group(item(2, { media_kind: 'image', playable: true })),
+      group(item(3, { media_kind: 'image', playable: true, media_items: [
+        { index: 4, media_kind: 'image', thumb_url: 'https://example.test/image.jpg' },
+      ] }))]));
+    const host = await open(props({ view: view({ media: 'images' }) }));
+    const image = (id: number) => host.querySelector<HTMLImageElement>(`[data-follow-item="${id}"] [data-media-pic] > img`);
+    const fail = async (id: number) => {
+      await act(async () => { image(id)!.dispatchEvent(new Event('error')) });
+    };
+    await fail(2);
+    expect(image(2)?.getAttribute('src')).toBe('/follow-stream?id=2');
+    await fail(3);
+    expect(image(3)?.getAttribute('src')).toBe('/follow-stream?id=3&media=4');
+    await fail(2);
+    expect(image(2)).toBeNull();
+    await fail(3);
+    expect(image(3)).toBeNull();
+  });
+
+  it('视频缩略图失败不请求正片', async () => {
+    serve(feed([group(item(1, { playable: true }))]));
+    const host = await open(props());
+    await act(async () => {
+      host.querySelector('[data-media-pic] > img')!.dispatchEvent(new Event('error'));
+    });
+    expect(host.querySelector('[data-media-pic] > img')).toBeNull();
+  });
+
   it('「仅显示图片」只在图片视图出现，点下交给壳存偏好', async () => {
     serve(feed([group(item(1)), group(item(2, { media_kind: 'image' }))]));
     const given = props();

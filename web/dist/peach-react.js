@@ -41099,40 +41099,42 @@ var uhe = (e) => Number(e) > 0;
 function dhe(e) {
 	return /^\d{4}-/.test(e) ? e.startsWith(String((/* @__PURE__ */ new Date()).getFullYear())) ? e.slice(5, 10) : e.slice(0, 10) : e;
 }
-function fhe({ src: e, width: t, height: n, onLearn: r }) {
-	let [i, a] = (0, R.useState)(!1);
-	return i ? null : /* @__PURE__ */ (0, B.jsx)("img", {
-		src: e,
+function fhe({ src: e, fallback: t, width: n, height: r, onLearn: i }) {
+	let [a, o] = (0, R.useState)(!1), [s, c] = (0, R.useState)(!1);
+	return a ? null : /* @__PURE__ */ (0, B.jsx)("img", {
+		src: s ? t : e,
 		alt: "",
 		loading: "lazy",
 		referrerPolicy: "no-referrer",
-		width: t,
-		height: n,
-		onError: () => a(!0),
-		onLoad: r ? (e) => {
+		width: n,
+		height: r,
+		onError: () => {
+			t && t !== e && !s ? c(!0) : o(!0);
+		},
+		onLoad: i ? (e) => {
 			let t = e.currentTarget;
-			t.naturalWidth && t.naturalHeight && r(t.naturalWidth, t.naturalHeight);
+			t.naturalWidth && t.naturalHeight && i(t.naturalWidth, t.naturalHeight);
 		} : void 0
 	});
 }
 function phe(e) {
-	let { group: t, authorSources: n, media: r, context: i, selected: a, selectMode: o, busy: s, failure: c, actions: l } = e, u = zF(t, r), d = r === "images", f = d ? (u.media_items || []).find((e) => e.media_kind === "image") : void 0, p = f?.thumb_url || u.thumb_url || "", m = f && f.thumb_url === p ? f : null, h = !m || p === u.thumb_url, g = d ? [m, h ? u : null].find((e) => Number(e?.width) > 0 && Number(e?.height) > 0) : null, _ = d && !g && p ? (e, t) => lhe(u.id, m ? m.index : null, e, t) : void 0, v = r === "videos" ? BF(t) : [], y = (u.media_items || []).length > 1 ? u.id : v[0]?.id || u.id, b = ehe({
+	let { group: t, authorSources: n, media: r, context: i, selected: a, selectMode: o, busy: s, failure: c, actions: l } = e, u = zF(t, r), d = r === "images", f = d ? (u.media_items || []).find((e) => e.media_kind === "image") : void 0, p = f?.thumb_url || u.thumb_url || "", m = d && u.playable ? `/follow-stream?id=${u.id}${f ? `&media=${f.index}` : ""}` : void 0, h = f && f.thumb_url === p ? f : null, g = !h || p === u.thumb_url, _ = d ? [h, g ? u : null].find((e) => Number(e?.width) > 0 && Number(e?.height) > 0) : null, v = d && !_ && p ? (e, t) => lhe(u.id, h ? h.index : null, e, t) : void 0, y = r === "videos" ? BF(t) : [], b = (u.media_items || []).length > 1 ? u.id : y[0]?.id || u.id, x = ehe({
 		cover: p,
 		coverFace: (f?.thumb_url ? f : u).face,
 		stack: t.stack,
 		imageView: d,
 		limit: 9
-	}), x = (0, R.useRef)(b.faces);
-	x.current = b.faces;
-	let S = BA({
-		load: async () => x.current,
-		canFlip: () => x.current.length > 1 && l.canFlip(),
+	}), S = (0, R.useRef)(x.faces);
+	S.current = x.faces;
+	let C = BA({
+		load: async () => S.current,
+		canFlip: () => S.current.length > 1 && l.canFlip(),
 		referrerPolicy: "no-referrer"
-	}), C = (0, R.useRef)(S.onPointerLeave);
-	C.current = S.onPointerLeave;
-	let w = (0, R.useCallback)((e) => {
-		e && (e._stopHover = () => C.current());
-	}, []), T = YF(u, n, i), E = $F(u), D = (u.tags || []).slice(0, 3), O = QF(u, i), k = ZF(t, u), A = u.status === "saved", j = (e) => {
+	}), w = (0, R.useRef)(C.onPointerLeave);
+	w.current = C.onPointerLeave;
+	let T = (0, R.useCallback)((e) => {
+		e && (e._stopHover = () => w.current());
+	}, []), E = YF(u, n, i), D = $F(u), O = (u.tags || []).slice(0, 3), k = QF(u, i), A = ZF(t, u), j = u.status === "saved", M = (e) => {
 		if (!e.target.closest("[data-media-tag]")) {
 			if (o || e.shiftKey || e.ctrlKey || e.metaKey) {
 				e.preventDefault(), l.toggleSelection(u.id, e.shiftKey);
@@ -41140,46 +41142,46 @@ function phe(e) {
 			}
 			l.openDetail(u.id);
 		}
-	}, M = (e, t) => {
+	}, N = (e, t) => {
 		e.stopPropagation(), t();
 	};
 	return /* @__PURE__ */ (0, B.jsxs)("article", {
-		ref: w,
+		ref: T,
 		"data-media-card": "",
 		"data-follow-item": u.id,
 		"data-status": u.status,
 		"data-follow-image": d ? "" : void 0,
-		"data-collection": b.isMix ? "" : void 0,
+		"data-collection": x.isMix ? "" : void 0,
 		"data-selected": a ? "" : void 0,
-		onClick: j,
-		onMouseEnter: S.onPointerEnter,
-		onMouseLeave: S.onPointerLeave,
+		onClick: M,
+		onMouseEnter: C.onPointerEnter,
+		onMouseLeave: C.onPointerLeave,
 		children: [
-			/* @__PURE__ */ (0, B.jsx)("div", {
+			/* @__PURE__ */ (0, B.jsxs)("div", {
 				"data-follow-visual": "",
-				"data-mix-stack": b.isMix ? "" : void 0,
-				children: /* @__PURE__ */ (0, B.jsxs)("div", {
+				"data-mix-stack": x.isMix ? "" : void 0,
+				children: [/* @__PURE__ */ (0, B.jsx)("button", {
+					type: "button",
+					"data-follow-open": "",
+					"aria-label": `打开 ${u.title} 详情`
+				}), /* @__PURE__ */ (0, B.jsxs)("div", {
 					"data-media-pic": "",
 					children: [
-						/* @__PURE__ */ (0, B.jsx)("button", {
-							type: "button",
-							"data-follow-open": "",
-							"aria-label": `打开 ${u.title} 详情`
-						}),
 						p ? /* @__PURE__ */ (0, B.jsx)(fhe, {
 							src: p,
-							width: g?.width,
-							height: g?.height,
-							onLearn: _
+							fallback: m,
+							width: _?.width,
+							height: _?.height,
+							onLearn: v
 						}, p) : /* @__PURE__ */ (0, B.jsx)("span", {
 							"data-follow-nothumb": "",
 							dangerouslySetInnerHTML: { __html: KF(u.resource_provider || u.provider) }
 						}),
-						b.faces.length > 1 ? /* @__PURE__ */ (0, B.jsx)("div", {
+						x.faces.length > 1 ? /* @__PURE__ */ (0, B.jsx)("div", {
 							"data-mix-faces": "",
-							hidden: !S.faces.length,
-							children: S.faces.map((e, t) => /* @__PURE__ */ (0, B.jsx)("div", {
-								"data-mix-face": t === S.current ? "on" : t === S.leaving ? "off" : "",
+							hidden: !C.faces.length,
+							children: C.faces.map((e, t) => /* @__PURE__ */ (0, B.jsx)("div", {
+								"data-mix-face": t === C.current ? "on" : t === C.leaving ? "off" : "",
 								children: /* @__PURE__ */ (0, B.jsx)("img", {
 									src: e,
 									alt: "",
@@ -41207,27 +41209,27 @@ function phe(e) {
 						}) : null,
 						/* @__PURE__ */ (0, B.jsxs)("div", {
 							"data-follow-corner": "",
-							children: [b.isMix ? /* @__PURE__ */ (0, B.jsxs)("button", {
+							children: [x.isMix ? /* @__PURE__ */ (0, B.jsxs)("button", {
 								type: "button",
-								"data-follow-collection": y,
-								onClick: (e) => M(e, () => l.openDetail(y)),
+								"data-follow-collection": b,
+								onClick: (e) => N(e, () => l.openDetail(b)),
 								children: [/* @__PURE__ */ (0, B.jsx)("span", {
 									className: "contents",
-									dangerouslySetInnerHTML: { __html: L(b.glyph) }
-								}), b.label]
+									dangerouslySetInnerHTML: { __html: L(x.glyph) }
+								}), x.label]
 							}) : null, /* @__PURE__ */ (0, B.jsxs)("div", {
 								"data-follow-actions": "",
 								children: [
 									/* @__PURE__ */ (0, B.jsx)("button", {
 										type: "button",
 										"data-follow-save": u.id,
-										title: A ? "已保存" : "保存到账本",
-										"aria-label": A ? "已保存" : "保存到账本",
-										disabled: A,
+										title: j ? "已保存" : "保存到账本",
+										"aria-label": j ? "已保存" : "保存到账本",
+										disabled: j,
 										"aria-busy": s === "save" || void 0,
 										"aria-disabled": s === "save" || void 0,
-										onClick: (t) => M(t, () => e.onSave(u.id)),
-										dangerouslySetInnerHTML: { __html: L(A ? "check" : "bookmark-plus") }
+										onClick: (t) => N(t, () => e.onSave(u.id)),
+										dangerouslySetInnerHTML: { __html: L(j ? "check" : "bookmark-plus") }
 									}),
 									/* @__PURE__ */ (0, B.jsx)("button", {
 										type: "button",
@@ -41238,7 +41240,7 @@ function phe(e) {
 										disabled: u.status === "seen",
 										"aria-busy": s === "seen" || void 0,
 										"aria-disabled": s === "seen" || void 0,
-										onClick: (t) => M(t, () => e.onStatus(u.id, "seen")),
+										onClick: (t) => N(t, () => e.onStatus(u.id, "seen")),
 										dangerouslySetInnerHTML: { __html: L("eye") }
 									}),
 									/* @__PURE__ */ (0, B.jsx)("button", {
@@ -41250,7 +41252,7 @@ function phe(e) {
 										disabled: u.status === "ignored",
 										"aria-busy": s === "ignored" || void 0,
 										"aria-disabled": s === "ignored" || void 0,
-										onClick: (t) => M(t, () => e.onStatus(u.id, "ignored")),
+										onClick: (t) => N(t, () => e.onStatus(u.id, "ignored")),
 										dangerouslySetInnerHTML: { __html: L("eye-off") }
 									}),
 									u.status === "seen" || u.status === "ignored" ? /* @__PURE__ */ (0, B.jsx)("button", {
@@ -41261,14 +41263,14 @@ function phe(e) {
 										"aria-label": "恢复未看",
 										"aria-busy": s === "new" || void 0,
 										"aria-disabled": s === "new" || void 0,
-										onClick: (t) => M(t, () => e.onStatus(u.id, "new")),
+										onClick: (t) => N(t, () => e.onStatus(u.id, "new")),
 										dangerouslySetInnerHTML: { __html: L("rotate-ccw") }
 									}) : null
 								]
 							})]
 						})
 					]
-				})
+				})]
 			}),
 			/* @__PURE__ */ (0, B.jsxs)("div", {
 				"data-media-meta": "",
@@ -41276,7 +41278,7 @@ function phe(e) {
 					"data-media-avatar": "",
 					"data-follow-avatar": "",
 					title: "创作者头像",
-					dangerouslySetInnerHTML: { __html: T.avatar }
+					dangerouslySetInnerHTML: { __html: E.avatar }
 				}), /* @__PURE__ */ (0, B.jsxs)("div", {
 					"data-media-text": "",
 					children: [
@@ -41289,35 +41291,35 @@ function phe(e) {
 							"data-follow-byline": "",
 							children: [/* @__PURE__ */ (0, B.jsx)("span", {
 								"data-follow-author": "",
-								title: T.author,
-								children: T.author
+								title: E.author,
+								children: E.author
 							}), /* @__PURE__ */ (0, B.jsx)("time", {
 								dateTime: u.published_at || "",
-								title: E,
-								children: dhe(E)
+								title: D,
+								children: dhe(D)
 							})]
 						}),
-						T.credited ? /* @__PURE__ */ (0, B.jsx)("div", {
+						E.credited ? /* @__PURE__ */ (0, B.jsx)("div", {
 							"data-follow-credit": "",
-							title: `署名含 ${T.credited}`,
-							children: `署名含 ${T.credited}`
+							title: `署名含 ${E.credited}`,
+							children: `署名含 ${E.credited}`
 						}) : null,
-						k ? /* @__PURE__ */ (0, B.jsx)("div", {
+						A ? /* @__PURE__ */ (0, B.jsx)("div", {
 							"data-follow-badges": "",
-							dangerouslySetInnerHTML: { __html: k }
+							dangerouslySetInnerHTML: { __html: A }
 						}) : null,
-						D.length ? /* @__PURE__ */ (0, B.jsx)("div", {
+						O.length ? /* @__PURE__ */ (0, B.jsx)("div", {
 							"data-media-tags": "",
-							children: D.map((e) => /* @__PURE__ */ (0, B.jsx)("span", {
+							children: O.map((e) => /* @__PURE__ */ (0, B.jsx)("span", {
 								"data-media-tag": "",
 								"data-tag-cat": `r34-${u.tag_types?.[e] || "unknown"}`,
 								"data-follow-tag": e,
 								children: ct(e)
 							}, e))
 						}) : null,
-						O ? /* @__PURE__ */ (0, B.jsx)("span", {
+						k ? /* @__PURE__ */ (0, B.jsx)("span", {
 							"data-follow-issue": "",
-							children: O
+							children: k
 						}) : null
 					]
 				})]
