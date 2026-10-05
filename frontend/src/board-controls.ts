@@ -13,14 +13,15 @@ export function initBoardControls() {
   const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof Element){if(node.matches('input[type=range]'))syncBoardRange(node as HTMLInputElement);scan(node)}});
   observer.observe(document.body,{subtree:true,childList:true});
   document.addEventListener('input',event=>{if(event.target instanceof HTMLInputElement&&event.target.type==='range')syncBoardRange(event.target)});
-  const tip=document.createElement('div');tip.className='board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.hidden=true;document.body.append(tip);
+  const tip=document.createElement('div');tip.className='board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.popover='manual';tip.hidden=true;document.body.append(tip);
   let target:HTMLElement|null=null,title='',described:string|null=null,timer:ReturnType<typeof setTimeout>|undefined;
-  const hide=()=>{clearTimeout(timer);tip.hidden=true;if(target){if(!target.hasAttribute('title'))target.title=title;if(described===null)target.removeAttribute('aria-describedby');else target.setAttribute('aria-describedby',described)}target=null};
+  const hide=()=>{clearTimeout(timer);if(tip.matches(':popover-open'))tip.hidePopover();tip.hidden=true;if(target){if(!target.hasAttribute('title'))target.title=title;if(described===null)target.removeAttribute('aria-describedby');else target.setAttribute('aria-describedby',described)}target=null};
   const show=(node:EventTarget|null,delay:number)=>{
     const next=node instanceof Element?node.closest<HTMLElement>('[title]'):null;
     if(!next||next===target||next.closest('.vjs-control')||!next.title.trim())return;
     hide();target=next;title=next.title;described=next.getAttribute('aria-describedby');next.removeAttribute('title');
-    timer=setTimeout(()=>{if(target!==next||!next.isConnected)return;tip.textContent=title;tip.hidden=false;
+    timer=setTimeout(()=>{if(target!==next||!next.isConnected)return;
+      (next.closest('dialog[open]')??document.body).append(tip);tip.textContent=title;tip.hidden=false;tip.showPopover();
       const rect=next.getBoundingClientRect(),box=tip.getBoundingClientRect();
       tip.style.left=`${Math.max(8,Math.min(innerWidth-box.width-8,rect.left+(rect.width-box.width)/2))}px`;
       tip.style.top=`${rect.top>=box.height+16?rect.top-box.height-8:Math.min(innerHeight-box.height-8,rect.bottom+8)}px`;

@@ -3654,14 +3654,14 @@ function Vi() {
 		e.target instanceof HTMLInputElement && e.target.type === "range" && Bi(e.target);
 	});
 	let t = document.createElement("div");
-	t.className = "board-tooltip", t.id = "board-control-tooltip", t.role = "tooltip", t.hidden = !0, document.body.append(t);
+	t.className = "board-tooltip", t.id = "board-control-tooltip", t.role = "tooltip", t.popover = "manual", t.hidden = !0, document.body.append(t);
 	let n = null, r = "", i = null, a, o = () => {
-		clearTimeout(a), t.hidden = !0, n && (n.hasAttribute("title") || (n.title = r), i === null ? n.removeAttribute("aria-describedby") : n.setAttribute("aria-describedby", i)), n = null;
+		clearTimeout(a), t.matches(":popover-open") && t.hidePopover(), t.hidden = !0, n && (n.hasAttribute("title") || (n.title = r), i === null ? n.removeAttribute("aria-describedby") : n.setAttribute("aria-describedby", i)), n = null;
 	}, s = (e, s) => {
 		let c = e instanceof Element ? e.closest("[title]") : null;
 		!c || c === n || c.closest(".vjs-control") || !c.title.trim() || (o(), n = c, r = c.title, i = c.getAttribute("aria-describedby"), c.removeAttribute("title"), a = setTimeout(() => {
 			if (n !== c || !c.isConnected) return;
-			t.textContent = r, t.hidden = !1;
+			(c.closest("dialog[open]") ?? document.body).append(t), t.textContent = r, t.hidden = !1, t.showPopover();
 			let e = c.getBoundingClientRect(), a = t.getBoundingClientRect();
 			t.style.left = `${Math.max(8, Math.min(innerWidth - a.width - 8, e.left + (e.width - a.width) / 2))}px`, t.style.top = `${e.top >= a.height + 16 ? e.top - a.height - 8 : Math.min(innerHeight - a.height - 8, e.bottom + 8)}px`, c.setAttribute("aria-describedby", [i, t.id].filter(Boolean).join(" "));
 		}, s));

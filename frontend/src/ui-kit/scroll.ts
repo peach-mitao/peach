@@ -143,6 +143,8 @@ const AUTO_SCROLL_DWELL=2000;
 /* 人手动过之后隔多久再接着走：刚滚到想看的那张，这一排马上又自己挪走，等于跟人抢。 */
 const AUTO_SCROLL_RESUME=3000;
 const autoScrollers=new Map<Element,()=>void>();
+const autoScrollWakeups=new Set<()=>void>();
+let autoScrollVisibility:MutationObserver|null=null;
 /**
  * 横排自动滚动。指针停在上面、焦点在里面、这一排不在屏幕上、页面切到后台时都停；
  * 人滚过或拖过之后从人停下的位置接着走。系统要求减少动态效果时不动。
@@ -156,7 +158,8 @@ export function wireAutoScroll(el:any):void{
   /* 在不在屏幕上每帧量一次，不另挂观察器：页面观察器只留给「载入更多」那一份。
      滚出屏幕后循环停下，页面再滚动时由下面的捕获监听叫醒。 */
   const onscreen=()=>{const r=el.getBoundingClientRect();return r.width>0&&r.bottom>0&&r.top<innerHeight};
-  const running=()=>el.isConnected&&!hovered&&!document.hidden&&!el.matches(':focus-within')&&onscreen();
+  const running=()=>el.isConnected&&!hovered&&!document.hidden&&
+    (!document.body.hasAttribute('data-detail-open')||!!el.closest('#stage'))&&!el.matches(':focus-within')&&onscreen();
   const tick=(now:number)=>{
     frame=0;
     if(!el.isConnected){stop();return}
@@ -182,8 +185,12 @@ export function wireAutoScroll(el:any):void{
   listen(document,'visibilitychange',wake);
   document.addEventListener('scroll',wake,{capture:true,passive:true,signal:abort.signal});
   wake();
-  function stop(){cancelAnimationFrame(frame);frame=0;abort.abort();autoScrollers.delete(el)}
+  function stop(){cancelAnimationFrame(frame);frame=0;abort.abort();autoScrollers.delete(el);autoScrollWakeups.delete(wake);
+    if(!autoScrollers.size){autoScrollVisibility?.disconnect();autoScrollVisibility=null}}
   autoScrollers.set(el,stop);
+  autoScrollWakeups.add(wake);
+  if(!autoScrollVisibility){autoScrollVisibility=new MutationObserver(()=>autoScrollWakeups.forEach(resume=>resume()));
+    autoScrollVisibility.observe(document.body,{attributes:true,attributeFilter:['data-detail-open']})}
 }
 export function stopAutoScroll(el:Element):void{autoScrollers.get(el)?.()}
 

@@ -330,6 +330,33 @@ describe('作品详情岛', () => {
     }
   });
 
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.name}详情动作保持单行，提示显示在浮窗顶层`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, `/item/${ITEM.plain}`, viewport);
+      try {
+        const page = opened.page;
+        const actions = page.locator('#stage [data-item-feedback] button');
+        const rects = await actions.evaluateAll(nodes => nodes.map(node => {
+          const r = node.getBoundingClientRect(); return { top: r.top, width: r.width };
+        }));
+        assert.equal(rects.length, 9);
+        assert.ok(Math.max(...rects.map(r => r.top)) - Math.min(...rects.map(r => r.top)) <= 1);
+        assert.ok(rects.every(r => r.width >= 30));
+        await actions.first().scrollIntoViewIfNeeded();
+        await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+        await actions.first().focus();
+        const tip = page.locator('#board-control-tooltip');
+        await tip.waitFor({state:'visible'});
+        assert.equal(await tip.evaluate(node => node.matches(':popover-open')), true);
+        assert.equal(await tip.evaluate(node => node.closest('dialog')?.id), 'stage');
+        const r = await tip.boundingBox();
+        assert.ok(r && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width && r.y + r.height <= viewport.height);
+        await actions.first().evaluate(node => (node as HTMLElement).blur());
+        assert.equal(await tip.isHidden(), true);
+      } finally { await opened.close() }
+    });
+  }
+
   it('稍后看与反馈键：写完键态跟着服务端的回话变', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {

@@ -23402,33 +23402,40 @@ function ire(e) {
 	if (!t || !n) return () => {};
 	let r = n.getContext("2d", { alpha: !1 });
 	if (!r) return () => {};
-	let i = !1, a = 0, o = 0, s = () => {
-		r.clearRect(0, 0, n.width, n.height), t.style.removeProperty("--video-glow");
-	}, c = () => {
+	let i = !1, a = 0, o = 0, s = null, c = () => {
+		s = null, r.clearRect(0, 0, n.width, n.height), t.style.removeProperty("--video-glow");
+	}, l = () => {
 		if (!(e.readyState < 2)) try {
 			r.drawImage(e, 0, 0, n.width, n.height);
-			let i = r.getImageData(0, 0, n.width, n.height).data, a = 0, o = 0, s = 0, c = 0;
-			for (let e = 0; e < i.length; e += 16) a += i[e], o += i[e + 1], s += i[e + 2], c++;
-			c && t.style.setProperty("--video-glow", `rgb(${Math.round(a / c)} ${Math.round(o / c)} ${Math.round(s / c)})`);
+			let i = r.getImageData(0, 0, n.width, n.height).data, a = 0, o = 0, c = 0, l = 0;
+			for (let e = 0; e < i.length; e += 16) a += i[e], o += i[e + 1], c += i[e + 2], l++;
+			if (l) {
+				let e = [
+					Math.round(a / l),
+					Math.round(o / l),
+					Math.round(c / l)
+				];
+				(!s || e.some((e, t) => Math.abs(e - s[t]) >= 6)) && (s = e, t.style.setProperty("--video-glow", `rgb(${e.join(" ")})`));
+			}
 		} catch {}
-	}, l = (t) => {
-		e.requestVideoFrameCallback ? e.requestVideoFrameCallback((e) => u(t, e)) : requestAnimationFrame((e) => u(t, e));
-	}, u = (t, n) => {
+	}, u = (t) => {
+		e.requestVideoFrameCallback ? e.requestVideoFrameCallback((e) => d(t, e)) : requestAnimationFrame((e) => d(t, e));
+	}, d = (t, n) => {
 		if (!(i || t !== o)) {
 			if (!HS().settings().ambientMode) {
-				s();
+				c();
 				return;
 			}
-			e.paused || (!document.hidden && n - a > 480 && (a = n, c()), l(t));
+			e.paused || (!document.hidden && n - a > 480 && (a = n, l()), u(t));
 		}
-	}, d = () => {
-		i || !HS().settings().ambientMode || (c(), e.paused || l(++o));
-	}, f = (e) => {
+	}, f = () => {
+		i || !HS().settings().ambientMode || (l(), e.paused || u(++o));
+	}, p = (e) => {
 		let n = !!e.detail.enabled;
-		t.toggleAttribute("data-ambient", n), n ? d() : (o++, s());
+		t.toggleAttribute("data-ambient", n), n ? f() : (o++, c());
 	};
-	return document.addEventListener("peachambientchange", f), e.addEventListener("play", d), e.addEventListener("loadeddata", d), d(), () => {
-		i = !0, o++, document.removeEventListener("peachambientchange", f), e.removeEventListener("play", d), e.removeEventListener("loadeddata", d), s();
+	return document.addEventListener("peachambientchange", p), e.addEventListener("play", f), e.addEventListener("loadeddata", f), f(), () => {
+		i = !0, o++, document.removeEventListener("peachambientchange", p), e.removeEventListener("play", f), e.removeEventListener("loadeddata", f), c();
 	};
 }
 function are(e, t, n = 0, r = null) {

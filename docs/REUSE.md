@@ -347,6 +347,8 @@ Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.16.10，版�
 
 详情滚动复用 `attachOverlayScrollbar`：尺寸与内容盒子由 ResizeObserver 跟踪，滚动位置按帧更新；子树中的播放器时间文字不触发几何重算。详情开关复用 `data-detail-open` 暂停与恢复底层玻璃背景动画。播放器时间与悬停预览使用 Peach 控件，Video.js 的隐藏时间组件通过组件选项关闭；上游接口见 [PlayProgressBar](https://docs.videojs.com/control-bar_progress-control_play-progress-bar.js.html)。
 
+详情打开时，共用 `wireAutoScroll` 暂停底层横排，关闭后由属性观察器唤醒；播放器氛围色在任一 RGB 通道累计相差至少 6 时刷新继承色。共享 Tooltip 复用浏览器 `popover="manual"` 顶层，挂在触发器所属的模态 Dialog 内；操作键条允许按钮收缩并保持单行。无新增依赖。原生浮层契约见 [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using)。
+
 ## 当前替换队列
 
 下面是还开着的替换项，以及每一项已经定下的做法。
