@@ -2,7 +2,7 @@
  * 加载读数、画中画的 Media Session 与外挂字幕。挂上真 Video.js 的那一面在 `e2e/stage.test.ts`。 */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mountPlayerMediaSession, mountPlayerSubtitles } from '../src/player/controls';
+import { mountPlayerMediaSession, mountPlayerQualityControl, mountPlayerSubtitles } from '../src/player/controls';
 import { configurePlayer, type PlayerHost } from '../src/player/host';
 import { averageBitrate, bufferedAhead, fmtLoadRate, pushPlayerStat } from '../src/player/stats';
 import {
@@ -10,7 +10,7 @@ import {
 } from '../src/player/stream';
 import { mountPlayer } from '../src/player/detail-player';
 import { wireTelemetry } from '../src/player/telemetry';
-import type { VjsPlayer } from '../src/player/types';
+import type { QualityLevel, QualityLevelList, VjsPlayer } from '../src/player/types';
 
 type FetchCall = { url: string; init: RequestInit | undefined };
 
@@ -203,6 +203,79 @@ function fakePlayer(state: { time: number; duration: number }) {
   const fire = (event: string) => handlers.get(event)?.forEach((fn) => fn());
   return { player: player as unknown as VjsPlayer, raw: player, fire };
 }
+
+describe('播放器清晰度', () => {
+  function menu(entries: QualityLevel[], selectedIndex = 0) {
+    configurePlayer(host());
+    const root = document.createElement('div'), bar = document.createElement('div'), video = document.createElement('video');
+    root.append(video, bar); document.body.append(root);
+    const { player, fire } = fakePlayer({ time: 0, duration: 100 });
+    const events = new Map<string, () => void>();
+    const levels = Object.assign(entries, { selectedIndex, on: (names: string | string[], fn: () => void) => {
+      for (const name of [names].flat()) events.set(name, fn);
+    } }) as QualityLevelList;
+    Object.assign(player, { el: () => root, getChild: () => ({ el: () => bar }), qualityLevels: () => levels,
+      paused: () => true, ended: () => false, isFullscreen: () => false, muted: () => false, volume: () => 1, trigger: () => {} });
+    mountPlayerQualityControl(player, video, 2160);
+    const open = () => {
+      bar.querySelector<HTMLButtonElement>('.vjs-peach-settings-toggle')!.click();
+      bar.querySelector<HTMLButtonElement>('[data-player-quality-view]')!.click();
+    };
+    const labels = () => [...bar.querySelectorAll('[data-player-quality-option]')].map((node) => node.textContent);
+    return { bar, video, levels, open, labels, change: () => events.get('change')?.(), notify: (name: string) => events.get(name)?.(),
+      close: () => { fire('dispose'); root.remove() } };
+  }
+
+  it('单档 HLS 用实际视频尺寸命名，不展示轨道地址或虚构自动档', () => {
+    const view = menu([{ id: '0-https://example.test/index.m3u8?session=private', enabled: true }]);
+    try {
+      Object.defineProperties(view.video, { videoWidth: { value: 1920 }, videoHeight: { value: 1080 } });
+      view.video.dispatchEvent(new Event('loadedmetadata'));
+      view.open();
+      expect(view.labels()).toEqual(['1080p']);
+      expect(view.bar.querySelector('[data-player-quality-option]')?.getAttribute('aria-checked')).toBe('true');
+      expect(view.bar.querySelector('[data-player-quality-badge]')?.textContent).toBe('HD');
+      view.bar.querySelector<HTMLButtonElement>('[data-player-quality-option]')!.click();
+      expect(view.levels[0]!.enabled).toBe(true);
+    } finally { view.close() }
+  });
+
+  it('尺寸未取得的单档不拿源文件高度猜清晰度', () => {
+    const view = menu([{ id: 'private-stream-url', enabled: true }]);
+    try {
+      view.open();
+      expect(view.labels()).toEqual(['当前画质']);
+      expect(view.bar.querySelector<HTMLElement>('[data-player-quality-badge]')!.hidden).toBe(true);
+    } finally { view.close() }
+  });
+
+  it('轨道逐个加入时保留自动选择', () => {
+    const entries = [{ width: 640, height: 360, enabled: true }];
+    const view = menu(entries);
+    try {
+      view.open();
+      entries.push({ width: 1920, height: 1080, enabled: true });
+      view.notify('addqualitylevel');
+      view.bar.querySelector<HTMLButtonElement>('[data-player-quality-view]')!.click();
+      expect(view.labels()).toEqual(['自动', '360p', '1080p']);
+      expect(view.bar.querySelector('[data-player-quality-option="auto"]')?.getAttribute('aria-checked')).toBe('true');
+    } finally { view.close() }
+  });
+
+  it('自动档的角标跟随正在播放的轨道，未知档位使用线路名', () => {
+    const view = menu([{ width: 640, height: 360, enabled: true }, { width: 3840, height: 2160, enabled: true },
+      { id: 'private-url', enabled: true }]);
+    try {
+      view.open();
+      expect(view.labels()).toEqual(['自动', '360p', '2160p', '线路 3']);
+      const badge = view.bar.querySelector<HTMLElement>('[data-player-quality-badge]')!;
+      expect(badge.hidden).toBe(true);
+      view.levels.selectedIndex = 1; view.change();
+      expect(badge.textContent).toBe('4K');
+      expect(badge.hidden).toBe(false);
+    } finally { view.close() }
+  });
+});
 
 describe('画中画的快进快退', () => {
   it('逐个登记动作，一个不认不带走其余；步长取设置；换片时整组摘掉', () => {

@@ -147,10 +147,12 @@ export function mountPlayerQualityControl(
   const rows = (): Row[] => {
     const result: Row[] = [];
     if (levels?.length) {
-      result.push({ key: 'auto', label: '自动', pixels: 0 });
+      if (levels.length > 1) result.push({ key: 'auto', label: '自动', pixels: 0 });
       for (let index = 0; index < levels.length; index++) {
-        const level = levels[index]!, pixels = resolution(level.width, level.height);
-        result.push({ key: String(index), label: pixels ? `${pixels}p` : (level.id || `线路 ${index + 1}`), pixels });
+        const level = levels[index]!;
+        const pixels = resolution(level.width, level.height)
+          || (levels.length === 1 ? resolution(video.videoWidth, video.videoHeight) : 0);
+        result.push({ key: String(index), label: pixels ? `${pixels}p` : (levels.length === 1 ? '当前画质' : `线路 ${index + 1}`), pixels });
       }
       return result;
     }
@@ -162,9 +164,11 @@ export function mountPlayerQualityControl(
   };
   const qualityRows = () => {
     const options = rows();
-    if (!levels?.length && !sourceQualities?.length) selectedQuality = 'original';
     const active = options.find((option) => option.key === selectedQuality) || options[0]!;
-    const activePixels = active.pixels || Math.max(0, ...options.map((option) => option.pixels || 0));
+    const playing = levels?.[levels.selectedIndex ?? -1];
+    const activePixels = active.key === 'auto'
+      ? resolution(playing?.width, playing?.height) || resolution(video.videoWidth, video.videoHeight)
+      : active.pixels;
     badge.textContent = activePixels >= 2160 ? '4K' : activePixels >= 720 ? 'HD' : ''; badge.hidden = !badge.textContent;
     return { options, active };
   };
@@ -253,9 +257,9 @@ export function mountPlayerQualityControl(
     syncSpeed();
   };
   const showQuality = (direction = 1) => {
-    const { options } = qualityRows();
+    const { options, active } = qualityRows();
     const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${icon('player-menu-back')}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu">${options.map((option) =>
-      `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${esc(option.key)}" aria-checked="${option.key === selectedQuality}"><span class="vjs-peach-option-check">${option.key === selectedQuality ? icon('player-option-check') : ''}</span><span class="vjs-peach-option-label">${esc(option.label)}</span></button>`).join('')}</div>`, direction);
+      `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${esc(option.key)}" aria-checked="${option.key === active.key}"><span class="vjs-peach-option-check">${option.key === active.key ? icon('player-option-check') : ''}</span><span class="vjs-peach-option-label">${esc(option.label)}</span></button>`).join('')}</div>`, direction);
     button(panel, '[data-player-menu-back]').onclick = () => showMain(-1);
     panel.querySelectorAll<HTMLElement>('[data-player-quality-option]').forEach((option) => {
       option.onclick = () => {
@@ -285,7 +289,8 @@ export function mountPlayerQualityControl(
   document.addEventListener('pointerdown', outside);
   root.addEventListener('keydown', (event) => { if (event.key === 'Escape') { close(); toggle.focus() } });
   video.addEventListener('loadedmetadata', () => { if (isOpen()) showMain(); else qualityRows() });
-  levels?.on?.(['addqualitylevel', 'removequalitylevel'], () => { if (isOpen()) showMain(); else qualityRows() });
+  video.addEventListener('resize', () => { if (isOpen()) showMain(); else qualityRows() });
+  levels?.on?.(['addqualitylevel', 'removequalitylevel', 'change'], () => { if (isOpen()) showMain(); else qualityRows() });
   player.on('dispose', () => {
     document.removeEventListener('pointerdown', outside);
     document.removeEventListener(PLAYER_PANEL_EVENT, closeSettingsForOtherPanel);

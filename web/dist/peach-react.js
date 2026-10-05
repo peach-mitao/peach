@@ -23455,17 +23455,17 @@ function are(e, t, n = 0, r = null) {
 	}, m = () => {
 		let e = [];
 		if (u?.length) {
-			e.push({
+			u.length > 1 && e.push({
 				key: "auto",
 				label: "自动",
 				pixels: 0
 			});
-			for (let t = 0; t < u.length; t++) {
-				let n = u[t], r = p(n.width, n.height);
+			for (let n = 0; n < u.length; n++) {
+				let r = u[n], i = p(r.width, r.height) || (u.length === 1 ? p(t.videoWidth, t.videoHeight) : 0);
 				e.push({
-					key: String(t),
-					label: r ? `${r}p` : n.id || `线路 ${t + 1}`,
-					pixels: r
+					key: String(n),
+					label: i ? `${i}p` : u.length === 1 ? "当前画质" : `线路 ${n + 1}`,
+					pixels: i
 				});
 			}
 			return e;
@@ -23482,12 +23482,10 @@ function are(e, t, n = 0, r = null) {
 			pixels: r
 		}];
 	}, h = () => {
-		let e = m();
-		!u?.length && !d?.length && (f = "original");
-		let t = e.find((e) => e.key === f) || e[0], n = t.pixels || Math.max(0, ...e.map((e) => e.pixels || 0));
-		return c.textContent = n >= 2160 ? "4K" : n >= 720 ? "HD" : "", c.hidden = !c.textContent, {
+		let e = m(), n = e.find((e) => e.key === f) || e[0], r = u?.[u.selectedIndex ?? -1], i = n.key === "auto" ? p(r?.width, r?.height) || p(t.videoWidth, t.videoHeight) : n.pixels;
+		return c.textContent = i >= 2160 ? "4K" : i >= 720 ? "HD" : "", c.hidden = !c.textContent, {
 			options: e,
-			active: t
+			active: n
 		};
 	}, g = () => l.getAttribute("aria-hidden") !== "true", _ = (e) => {
 		l.setAttribute("aria-hidden", String(!e)), s.setAttribute("aria-expanded", String(e)), e && document.dispatchEvent(new CustomEvent(nC, { detail: "settings" }));
@@ -23538,8 +23536,8 @@ function are(e, t, n = 0, r = null) {
 			e.onclick = () => l(Number(e.dataset.playerSpeedOption));
 		}), c();
 	}, O = (n = 1) => {
-		let { options: r } = h(), i = x(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${L("player-menu-back")}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu">${r.map((e) => `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${ge(e.key)}" aria-checked="${e.key === f}"><span class="vjs-peach-option-check">${e.key === f ? L("player-option-check") : ""}</span><span class="vjs-peach-option-label">${ge(e.label)}</span></button>`).join("")}</div>`, n);
-		S(i, "[data-player-menu-back]").onclick = () => C(-1), i.querySelectorAll("[data-player-quality-option]").forEach((n) => {
+		let { options: r, active: i } = h(), a = x(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${L("player-menu-back")}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu">${r.map((e) => `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${ge(e.key)}" aria-checked="${e.key === i.key}"><span class="vjs-peach-option-check">${e.key === i.key ? L("player-option-check") : ""}</span><span class="vjs-peach-option-label">${ge(e.label)}</span></button>`).join("")}</div>`, n);
+		S(a, "[data-player-menu-back]").onclick = () => C(-1), a.querySelectorAll("[data-player-quality-option]").forEach((n) => {
 			n.onclick = () => {
 				if (f = n.dataset.playerQualityOption || "auto", u?.length) for (let e = 0; e < u.length; e++) u[e].enabled = f === "auto" || f === String(e);
 				if (d?.length && f.startsWith("h")) {
@@ -23567,7 +23565,13 @@ function are(e, t, n = 0, r = null) {
 		e.key === "Escape" && (v(), s.focus());
 	}), t.addEventListener("loadedmetadata", () => {
 		g() ? C() : h();
-	}), u?.on?.(["addqualitylevel", "removequalitylevel"], () => {
+	}), t.addEventListener("resize", () => {
+		g() ? C() : h();
+	}), u?.on?.([
+		"addqualitylevel",
+		"removequalitylevel",
+		"change"
+	], () => {
 		g() ? C() : h();
 	}), e.on("dispose", () => {
 		document.removeEventListener("pointerdown", k), document.removeEventListener(nC, y), b && clearTimeout(b);
