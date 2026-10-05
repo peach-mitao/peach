@@ -4044,7 +4044,7 @@ function Ra({ kind: e = "performer", id: t = null, hasImage: n = !1, version: r 
 	let h = !!(t && n), g = h ? Na(`/entity-image?kind=${e}&id=${t}${m ? "&thumb=1" : ""}`, r) : "", _ = i ? `/avatar?id=${i}` : "", v = !!o, y = v ? Fa(o, c, s) : g || _ || (a ? `/link-mark?id=${a}` : "");
 	if (!y) return "";
 	let ee = v ? [g, _].filter(Boolean) : h && _ ? [_] : [], te = h && !v, b = te ? Ua(p) : "", ne = d || Ha(p);
-	return `<img src="${y}" alt="${l}"${u ? " loading=\"lazy\"" : ""} decoding="async"${te ? ne : ""} ${b}${Ta({
+	return `<img src="${y}" width="128" height="128" alt="${l}"${u ? " loading=\"lazy\"" : ""} decoding="async"${te ? ne : ""} ${b}${Ta({
 		dropStyle: (f || !!b || !!ne) && te,
 		fallbacks: ee
 	})}>`;
@@ -4096,7 +4096,7 @@ function Wa(e, t, n = !1) {
 		o.y1
 	].map(Number).join(" ")}"` : "";
 	return `<img class="poster cover ${t === "small" ? "whole" : "front"}" src="${r}"
-    alt="" loading="${n ? "eager" : "lazy"}"${a}${s} data-drop="self">`;
+    width="640" height="360" alt="" loading="${n ? "eager" : "lazy"}"${a}${s} data-drop="self">`;
 }
 var Ga = {
 	kind: "",
@@ -4105,7 +4105,7 @@ var Ga = {
 function Ka(e, n, r, i) {
 	let a = ie(e, i);
 	if (!a) return Ga;
-	let o = e.has_cover && e.code ? Pa(e, !0) : "", s = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "", c = Wa(e, n, r), l = (c.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join(""), u = a === "cover" ? c : `<img class="poster" src="${s}" alt="" loading="${r ? "eager" : "lazy"}"${l}>`;
+	let o = e.has_cover && e.code ? Pa(e, !0) : "", s = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "", c = Wa(e, n, r), l = (c.match(/ data-(?:c[xy]|posterbox)="[^"]*"/g) || []).join(""), u = a === "cover" ? c : `<img class="poster" src="${s}" width="640" height="360" alt="" loading="${r ? "eager" : "lazy"}"${l}>`;
 	return {
 		kind: a === "cover" ? "cover" : "thumb",
 		html: u.replace("<img ", `<img data-jav-image="${e.id}" data-jav-cover="${t(o)}" data-jav-thumb="${t(s)}" data-jav-image-layout="${n}" `)
@@ -4114,13 +4114,13 @@ function Ka(e, n, r, i) {
 function qa(e, n, r, i) {
 	return e.is_jav ? Ka(e, n, r, i) : e.follow_thumb_url ? {
 		kind: "thumb",
-		html: `<img class="poster" src="${t(e.follow_thumb_url)}" alt="" loading="${r ? "eager" : "lazy"}" referrerpolicy="no-referrer">`
+		html: `<img class="poster" src="${t(e.follow_thumb_url)}" width="640" height="360" alt="" loading="${r ? "eager" : "lazy"}" referrerpolicy="no-referrer">`
 	} : Ja(e, n, r, i);
 }
 function Ja(e, t, n, r) {
 	return e.is_jav ? Ka(e, t, n, r) : !e.has_thumb && !e.has_local_poster ? Ga : {
 		kind: "thumb",
-		html: `<img class="poster" src="/poster?id=${e.id}&c=4" alt="" loading="${n ? "eager" : "lazy"}">`
+		html: `<img class="poster" src="/poster?id=${e.id}&c=4" width="640" height="360" alt="" loading="${n ? "eager" : "lazy"}">`
 	};
 }
 function Ya(e, t) {
@@ -4218,7 +4218,7 @@ function ro(e, t) {
 		y1: s,
 		px: [r, i]
 	}, t);
-	c && (e.classList.add("panel"), e.style.setProperty("--panel-clip", `${c.clip.top}% ${c.clip.right}% ${c.clip.bottom}% ${c.clip.left}%`), e.style.setProperty("--panel-left", `${c.left}%`), e.style.setProperty("--panel-top", `${c.top}%`), e.style.setProperty("--panel-height", `${c.height}%`), io(e));
+	c && (e.style.setProperty("--panel-aspect", `${e.naturalWidth} / ${e.naturalHeight}`), e.classList.add("panel"), e.style.setProperty("--panel-clip", `${c.clip.top}% ${c.clip.right}% ${c.clip.bottom}% ${c.clip.left}%`), e.style.setProperty("--panel-left", `${c.left}%`), e.style.setProperty("--panel-top", `${c.top}%`), e.style.setProperty("--panel-height", `${c.height}%`), io(e));
 }
 function io(e) {
 	e.closest(".pic,[data-media-pic]")?.style.setProperty("--cover-blur", `url("${e.dataset.thumbSrc || e.currentSrc || e.src}")`);

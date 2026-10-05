@@ -2337,7 +2337,7 @@ function revealRoutedPage(container){
    没检出脸就两样都不写，圆标按样式表里的默认取景摆。 */
 function followWorkMark([key,label,,icon,focus]){
   const fallback=esc(String(label||'').slice(0,2));
-  return icon?`<img src="/work-icon?work=${encodeURIComponent(key)}" alt="" loading="lazy"${facePos(focus)}${faceBoxAttrs(focus)}>`:fallback;
+  return icon?`<img src="/work-icon?work=${encodeURIComponent(key)}" width="128" height="128" alt="" loading="lazy"${facePos(focus)}${faceBoxAttrs(focus)}>`:fallback;
 }
 
 /* ── 管的那一页 ──
@@ -3495,7 +3495,7 @@ function hideSearchMenu(){searchControl?.close()}
 function searchCoverImage(card){
   const kind=card?javImageKind({...card,is_jav:!!card.code},appSettings.javImage):'';
   return kind==='cover'?coverImage(card,'big')
-    :kind?`<img class="poster still" src="/poster?id=${card.id}&c=4" alt="" loading="lazy" data-drop="self">`
+    :kind?`<img class="poster still" src="/poster?id=${card.id}&c=4" width="640" height="360" alt="" loading="lazy" data-drop="self">`
     :'<span class="nopic">无预览</span>';
 }
 const searchActions={

@@ -34427,7 +34427,7 @@ function yle({ item: e, selected: t, selectMode: n, helpers: r, actions: i, onOp
 				}),
 				l ? /* @__PURE__ */ (0, B.jsx)("span", {
 					"data-media-art": "thumb",
-					dangerouslySetInnerHTML: { __html: `<img class="poster" src="/photo-thumb?id=${e.id}" alt="" loading="lazy" data-drop="self">` }
+					dangerouslySetInnerHTML: { __html: `<img class="poster" src="/photo-thumb?id=${e.id}" width="640" height="360" alt="" loading="lazy" data-drop="self">` }
 				}) : null,
 				/* @__PURE__ */ (0, B.jsx)("div", {
 					"data-media-badge": "",
@@ -34579,6 +34579,8 @@ function Tle({ src: e }) {
 	return t ? null : /* @__PURE__ */ (0, B.jsx)("img", {
 		"data-mix-poster": "",
 		src: e,
+		width: 640,
+		height: 360,
 		alt: "",
 		loading: "lazy",
 		onError: () => n(!0),

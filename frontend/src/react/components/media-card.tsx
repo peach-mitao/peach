@@ -301,7 +301,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
         <span data-media-glyph=""><Icon name={glyph} /><b>{label}</b></span>
         {image
           ? <span data-media-art="thumb" dangerouslySetInnerHTML={{
-            __html: `<img class="poster" src="/photo-thumb?id=${item.id}" alt="" loading="lazy" data-drop="self">`,
+            __html: `<img class="poster" src="/photo-thumb?id=${item.id}" width="640" height="360" alt="" loading="lazy" data-drop="self">`,
           }} />
           : null}
         <div data-media-badge="" dangerouslySetInnerHTML={{ __html: helpers.badgeHtml(item.location || '', item.cost || '') }} />

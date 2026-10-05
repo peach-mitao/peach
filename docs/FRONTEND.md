@@ -275,6 +275,7 @@ npm --prefix frontend run build:agentation   # 在要用它的那份检出里构
   `peach-react.js` 的压缩改掉了。要在 Tailwind 类名之外给智能体更稳的抓手，给区块加
   `data-component`（Agentation 默认采集的属性之一）。
 - Agentation 自己的全局快捷键已关闭，避免与 Peach 的 Esc、方向键冲突，只用工具栏按钮操作。
+- 标注工具挂在自己的容器里；适配入口为它的 Shadow DOM 表单字段补齐名称。
 - 标注同步到本机 `agentation-mcp`（`http://localhost:4747`），智能体用它的 MCP 工具直接读、
   回复和标记已处理，不必复制粘贴。服务由注册了它的 Claude Code 会话拉起：
   `claude mcp add agentation -- npx -y agentation-mcp server`，注册后新开的会话才有这组工具。
