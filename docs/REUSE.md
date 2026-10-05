@@ -345,6 +345,8 @@ Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.16.10，版�
 | `dedupe_performer_creator.py`（原 `agent/claude/dedupe-identity`） | `scripts/merge_duplicate_identities.py` | 后继的判据已扩到跨 kind、同 kind 与真子集三轮，旧脚本判据更窄 |
 | RSS 适配层（feedparser） | `src/peach/feeds.py`（JavDB 演员页当伪 Feed，ADR-0042、ADR-0047、ADR-0083） | feedparser 不在依赖里；新增发现源先看番号样本，按 `peach.feeds` 的契约接入 |
 
+详情滚动复用 `attachOverlayScrollbar`：尺寸与内容盒子由 ResizeObserver 跟踪，滚动位置按帧更新；子树中的播放器时间文字不触发几何重算。详情开关复用 `data-detail-open` 暂停与恢复底层玻璃背景动画。播放器时间与悬停预览使用 Peach 控件，Video.js 的隐藏时间组件通过组件选项关闭；上游接口见 [PlayProgressBar](https://docs.videojs.com/control-bar_progress-control_play-progress-bar.js.html)。
+
 ## 当前替换队列
 
 下面是还开着的替换项，以及每一项已经定下的做法。

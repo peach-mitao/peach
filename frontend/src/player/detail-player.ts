@@ -94,8 +94,10 @@ export async function mountDetailPlayer(
        封面就在挂载那一刻被丢掉。 */
     poster: options.poster || detailPosterUrl(item, host.settings().javImage),
     controlBar: {
-      pictureInPictureToggle: true, currentTimeDisplay: true, timeDivider: true,
-      durationDisplay: true, remainingTimeDisplay: false,
+      pictureInPictureToggle: true, currentTimeDisplay: false, timeDivider: false,
+      durationDisplay: false, remainingTimeDisplay: false,
+      // 时间与悬停预览归 Peach 控件，进度条只保留播放与拖动所需的组件。
+      progressControl: { seekBar: { mouseTimeDisplay: false, playProgressBar: { timeTooltip: false } } },
     },
   });
   setDetailPlayer(player);
@@ -362,4 +364,3 @@ export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions
   });
   return () => { released = true; release() };
 }
-

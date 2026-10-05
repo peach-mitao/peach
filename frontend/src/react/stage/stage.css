@@ -34,7 +34,8 @@
 [data-stage]::backdrop{background:var(--scrim)}
 /* 骨架期间焦点停在浮窗本身（里面还没有可操作的东西），外沿不画焦点环；内容到了焦点交给关闭键。 */
 [data-stage]:focus-visible{outline:none}
-body[data-detail-open]{overflow:hidden}
+body[data-detail-open]{overflow:hidden;--glow-drift-play:paused}
+body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,paused,running}
 [data-stage]:not([data-ambient]){background:color-mix(in srgb,var(--surface) 88%,transparent)}
 [data-stage-grid]{display:grid;grid-template-columns:minmax(0,1fr) minmax(350px,390px)}
 /* Mix、分卷、播放列表和关注合集都保留普通详情的主结构：媒体在左、信息在右；

@@ -24008,10 +24008,14 @@ async function vre(e, t, n, r = {}) {
 		poster: r.poster || N(e, a.settings().javImage),
 		controlBar: {
 			pictureInPictureToggle: !0,
-			currentTimeDisplay: !0,
-			timeDivider: !0,
-			durationDisplay: !0,
-			remainingTimeDisplay: !1
+			currentTimeDisplay: !1,
+			timeDivider: !1,
+			durationDisplay: !1,
+			remainingTimeDisplay: !1,
+			progressControl: { seekBar: {
+				mouseTimeDisplay: !1,
+				playProgressBar: { timeTooltip: !1 }
+			} }
 		}
 	});
 	YS(l), l.peachItem = e, Qne(l), l.on("loadedmetadata", () => {

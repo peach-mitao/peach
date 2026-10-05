@@ -459,7 +459,9 @@ function Ie(e, { variant: t = "" } = {}) {
 		return i.className = "ovthumb", n.append(i), r.append(n), {
 			axis: e,
 			track: n,
-			thumb: i
+			thumb: i,
+			range: 0,
+			travel: 0
 		};
 	}), o = () => {
 		let t = 0, n = 0, i = e;
@@ -480,29 +482,54 @@ function Ie(e, { variant: t = "" } = {}) {
 		if (n) return;
 		let { left: a, top: s } = o();
 		t === "y" ? (i.style.top = `${s + 8}px`, i.style.height = `${Math.max(0, e.clientHeight - 16)}px`, i.style.right = `${r.clientWidth - a - e.clientWidth}px`) : (i.style.left = `${a + 8}px`, i.style.width = `${Math.max(0, e.clientWidth - 16)}px`, i.style.bottom = `${r.clientHeight - s - e.clientHeight}px`);
-	}, c = () => {
+	}, c = 0, l = "", u = () => {
+		let t = e.scrollTop, n = e.scrollLeft;
 		if (i) {
-			let { left: t, top: n } = o(), r = e.scrollHeight - e.clientHeight, a = r > 1 && e.scrollTop > 1, s = r > 1 && e.scrollTop < r - 1;
-			i.hidden = !a && !s, i.style.left = `${t}px`, i.style.top = `${n}px`, i.style.width = `${e.clientWidth}px`, i.style.height = `${e.clientHeight}px`, i.classList.toggle("can-scroll-top", a), i.classList.toggle("can-scroll-bottom", s), a || s ? (e.style.setProperty("--scroll-edge-top", a ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", s ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", a || s);
+			let n = c > 1 && t > 1, r = c > 1 && t < c - 1, a = `${n}:${r}`;
+			a !== l && (l = a, i.hidden = !n && !r, i.classList.toggle("can-scroll-top", n), i.classList.toggle("can-scroll-bottom", r), n || r ? (e.style.setProperty("--scroll-edge-top", n ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", r ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", n || r));
+		}
+		a.forEach(({ axis: e, thumb: r, range: i, travel: a }) => {
+			if (i <= 1) return;
+			let o = a > 0 ? Math.max(0, Math.min(1, (e === "y" ? t : n) / i)) * a : 0;
+			r.style.transform = `translate${e === "y" ? "Y" : "X"}(${o}px)`;
+		});
+	}, d = null, f = () => {
+		d === null && (d = requestAnimationFrame(() => {
+			d = null, u();
+		}));
+	}, p = () => {
+		if (c = e.scrollHeight - e.clientHeight, i) {
+			let { left: t, top: n } = o();
+			i.style.left = `${t}px`, i.style.top = `${n}px`, i.style.width = `${e.clientWidth}px`, i.style.height = `${e.clientHeight}px`;
 		}
 		a.forEach((t) => {
 			let { axis: n, track: r, thumb: i } = t, a = n === "y", o = a ? e.clientHeight : e.clientWidth, c = a ? e.scrollHeight : e.scrollWidth, l = c - o;
-			if (l <= 1) {
+			if (t.range = l, t.travel = 0, l <= 1) {
 				r.hidden = !0;
 				return;
 			}
 			r.hidden = !1, s(t);
 			let u = a ? r.clientHeight : r.clientWidth;
 			if (!u) return;
-			let d = Math.max(24, Math.min(u, o / c * u)), f = u - d, p = a ? e.scrollTop : e.scrollLeft, m = f > 0 ? p / l * f : 0;
-			i.style[a ? "height" : "width"] = `${d}px`, i.style.transform = `translate${a ? "Y" : "X"}(${m}px)`;
-		});
+			let d = Math.max(24, Math.min(u, o / c * u));
+			t.travel = u - d, i.style[a ? "height" : "width"] = `${d}px`;
+		}), u();
 	};
-	return (n ? document : e).addEventListener("scroll", c, { passive: !0 }), new ResizeObserver(c).observe(e), n || e.addEventListener("load", c, !0), n ? new ResizeObserver(c).observe(document.body) : new MutationObserver(c).observe(e, {
-		childList: !0,
-		characterData: !0,
-		subtree: !0
-	}), a.forEach(({ axis: t, track: n, thumb: r }) => n.addEventListener("pointerdown", (i) => {
+	(n ? document : e).addEventListener("scroll", f, { passive: !0 });
+	let m = new ResizeObserver(p);
+	if (m.observe(e), n || e.addEventListener("load", p, !0), n) m.observe(document.body);
+	else {
+		let t = /* @__PURE__ */ new Set(), n = () => {
+			let n = new Set(e.children);
+			t.forEach((e) => {
+				n.has(e) || (m.unobserve(e), t.delete(e));
+			}), n.forEach((e) => {
+				t.has(e) || (m.observe(e), t.add(e));
+			}), p();
+		};
+		n(), e.addEventListener("transitionend", p), new MutationObserver(n).observe(e, { childList: !0 });
+	}
+	return a.forEach(({ axis: t, track: n, thumb: r }) => n.addEventListener("pointerdown", (i) => {
 		let a = t === "y", o = n.getBoundingClientRect(), s = r.getBoundingClientRect(), c = a ? o.height - s.height : o.width - s.width, l = a ? e.scrollHeight - e.clientHeight : e.scrollWidth - e.clientWidth;
 		if (c <= 0 || l <= 0) return;
 		let u = (e) => a ? e.clientY : e.clientX, d = a ? s.top : s.left, f = a ? s.bottom : s.right, p = u(i) >= d && u(i) <= f ? u(i) - d : (a ? s.height : s.width) / 2, m = a ? o.top : o.left, h = (t) => {
@@ -512,7 +539,7 @@ function Ie(e, { variant: t = "" } = {}) {
 			n.classList.remove("dragging"), n.removeEventListener("pointermove", h), n.removeEventListener("pointerup", g), n.removeEventListener("pointercancel", g);
 		};
 		n.classList.add("dragging"), n.setPointerCapture(i.pointerId), n.addEventListener("pointermove", h), n.addEventListener("pointerup", g), n.addEventListener("pointercancel", g), h(i), i.preventDefault();
-	})), c(), c;
+	})), p(), p;
 }
 //#endregion
 //#region src/ui-kit/collapse.ts

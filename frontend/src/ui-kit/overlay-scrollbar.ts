@@ -1,4 +1,4 @@
-interface Lane { axis: 'x' | 'y'; track: HTMLDivElement; thumb: HTMLDivElement }
+interface Lane { axis: 'x' | 'y'; track: HTMLDivElement; thumb: HTMLDivElement; range: number; travel: number }
 
 /**
  * 覆盖式滚动条：滑块浮在内容上，一列宽度都不占。
@@ -44,7 +44,7 @@ export function attachOverlayScrollbar(
     thumb.className='ovthumb';
     track.append(thumb);
     host.append(track);
-    return {axis,track,thumb};
+    return {axis,track,thumb,range:0,travel:0};
   });
   /* 容器在宿主里的偏移，只能按布局盒子量。`getBoundingClientRect()` 给的是变换后的
      几何，而下面要拿它跟 `clientWidth` 这类布局值相减——弹层开合动画正把卡片按
@@ -74,33 +74,56 @@ export function attachOverlayScrollbar(
       track.style.bottom=`${host.clientHeight-top-container.clientHeight}px`;
     }
   };
+  let verticalRange=0,edgeState='';
+  // 滚动只读取位置；容器与轨道尺寸由尺寸、内容变化和手动重算刷新。
+  const paintPosition=()=>{
+    const top=container.scrollTop,left=container.scrollLeft;
+    if(edges){
+      const above=verticalRange>1&&top>1;
+      const below=verticalRange>1&&top<verticalRange-1;
+      const state=`${above}:${below}`;
+      if(state!==edgeState){
+        edgeState=state;
+        edges.hidden=!above&&!below;
+        edges.classList.toggle('can-scroll-top',above);
+        edges.classList.toggle('can-scroll-bottom',below);
+        if(above||below){
+          container.style.setProperty('--scroll-edge-top',above?'16px':'0px');
+          container.style.setProperty('--scroll-edge-bottom',below?'16px':'0px');
+        }else{
+          container.style.removeProperty('--scroll-edge-top');
+          container.style.removeProperty('--scroll-edge-bottom');
+        }
+        container.toggleAttribute('data-scroll-edges',above||below);
+      }
+    }
+    lanes.forEach(({axis,thumb,range,travel})=>{
+      if(range<=1)return;
+      const offset=travel>0?Math.max(0,Math.min(1,(axis==='y'?top:left)/range))*travel:0;
+      thumb.style.transform=`translate${axis==='y'?'Y':'X'}(${offset}px)`;
+    });
+  };
+  let pendingFrame:number|null=null;
+  const schedulePosition=()=>{
+    if(pendingFrame!==null)return;
+    pendingFrame=requestAnimationFrame(()=>{pendingFrame=null;paintPosition()});
+  };
   const sync=()=>{
+    verticalRange=container.scrollHeight-container.clientHeight;
     if(edges){
       const {left,top}=offsetWithin();
-      const range=container.scrollHeight-container.clientHeight;
-      const above=range>1&&container.scrollTop>1;
-      const below=range>1&&container.scrollTop<range-1;
-      edges.hidden=!above&&!below;
       edges.style.left=`${left}px`;
       edges.style.top=`${top}px`;
       edges.style.width=`${container.clientWidth}px`;
       edges.style.height=`${container.clientHeight}px`;
-      edges.classList.toggle('can-scroll-top',above);
-      edges.classList.toggle('can-scroll-bottom',below);
-      if(above||below){
-        container.style.setProperty('--scroll-edge-top',above?'16px':'0px');
-        container.style.setProperty('--scroll-edge-bottom',below?'16px':'0px');
-      }else{
-        container.style.removeProperty('--scroll-edge-top');
-        container.style.removeProperty('--scroll-edge-bottom');
-      }
-      container.toggleAttribute('data-scroll-edges',above||below);
     }
     lanes.forEach(lane=>{
       const {axis,track,thumb}=lane,vertical=axis==='y';
       const size=vertical?container.clientHeight:container.clientWidth;
       const content=vertical?container.scrollHeight:container.scrollWidth;
       const range=content-size;
+      lane.range=range;
+      lane.travel=0;
       if(range<=1){track.hidden=true;return}
       // 先显再量：藏起来的轨道长度是 0，拿它当「量不到」会把自己永久锁在隐藏态。
       track.hidden=false;
@@ -110,22 +133,33 @@ export function attachOverlayScrollbar(
       // 短到抓不住的滑块等于没有滑块：内容特别长时给它一个下限，代价是滑块位置与
       // 滚动进度不再严格线性，但可拖动比可换算重要。
       const thumbSize=Math.max(24,Math.min(trackSize,size/content*trackSize));
-      const travel=trackSize-thumbSize;
-      const at=vertical?container.scrollTop:container.scrollLeft;
-      const offset=travel>0?at/range*travel:0;
+      lane.travel=trackSize-thumbSize;
       thumb.style[vertical?'height':'width']=`${thumbSize}px`;
-      thumb.style.transform=`translate${vertical?'Y':'X'}(${offset}px)`;
     });
+    paintPosition();
   };
   const scroller:EventTarget=root?document:container;
-  scroller.addEventListener('scroll',sync,{passive:true});
-  new ResizeObserver(sync).observe(container);
+  scroller.addEventListener('scroll',schedulePosition,{passive:true});
+  const resize=new ResizeObserver(sync);
+  resize.observe(container);
   if(!root)container.addEventListener('load',sync,true);
   // 内容长短变了但容器盒子没变（抽屉重建、分区展开），容器自己的 ResizeObserver 一声不响。
   // 整页那一条改看 body：它的高度就是内容高度，而在 documentElement 上挂 subtree 的
   // MutationObserver 等于每渲染一张卡都强制一次重排。
-  if(root)new ResizeObserver(sync).observe(document.body);
-  else new MutationObserver(sync).observe(container,{childList:true,characterData:true,subtree:true});
+  if(root)resize.observe(document.body);
+  else{
+    const observed=new Set<Element>();
+    const contentChanged=()=>{
+      const children=new Set(container.children);
+      observed.forEach(child=>{if(!children.has(child)){resize.unobserve(child);observed.delete(child)}});
+      children.forEach(child=>{if(!observed.has(child)){resize.observe(child);observed.add(child)}});
+      sync();
+    };
+    // 内容自身的高度变化也刷新几何，折叠过渡与字体重排无需等待滚动。
+    contentChanged();
+    container.addEventListener('transitionend',sync);
+    new MutationObserver(contentChanged).observe(container,{childList:true});
+  }
   lanes.forEach(({axis,track,thumb})=>track.addEventListener('pointerdown',event=>{
     const vertical=axis==='y';
     const trackRect=track.getBoundingClientRect(),thumbRect=thumb.getBoundingClientRect();

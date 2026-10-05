@@ -1,6 +1,6 @@
 # Peach 运行核验记录
 
-最后核验：2026-10-03
+最后核验：2026-10-06
 
 实时版本与健康状态查运行实例的 `/healthz`。另见 [待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
 
@@ -10,7 +10,7 @@
 - 女优头像 816 张（中位脸宽 258px，38 张带水印待复核）；替下的在 `avatars-superseded/`。
 - 数据管理页「整理」（ADR-0039）可预览、执行、回滚上一批，真实库未跑过。
 - 产地是独立维度、JAV 是其投影：`region` 空时按厂牌、创作者、番号逐层推断，不落库；韩国 MIB 不算 JAV。
-- Windows：ledger writer；源码托盘异常退出会恢复，主动退出保持关闭。用 `restart_windows_tray.py --source` 重启；代码数据在内置盘，外置盘只供 `R:\media`。
+- Windows：ledger writer；源码托盘异常退出恢复，主动退出不恢复。`restart_windows_tray.py --source` 重启；代码数据在内置盘，外置盘只供 `R:\media`。详情按帧滚动
 - 托盘须普通权限启动：提权令牌看不到 CloudDrive 的 `A:`/`B:`，误报脱盘。
 - Windows：`0.0.0.0:80` 跳转 HTTPS，LAN IPv4:443 提供 HTTPS；mDNS `peach-win`、`0.37.0`、ledger writer。2026-10-03 重启，项目 CA 严格 `/healthz`、`?ready=1` 与前端摘要通过。
 - 正式域名下 `/healthz` 报 `configurable=true`；配置读写与选文件夹共用本机连接判据，托盘管配置重载与正式 HTTPS 地址、端口。
