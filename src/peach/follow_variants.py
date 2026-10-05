@@ -73,6 +73,16 @@ _BARE_MARKERS = frozenset({
 # 裸词还额外放行这几类形态无歧义的标记：`v2`、`1080p`、`60fps`、`4K`。
 # 它们不可能是固定词表，只能按形态判。
 _BARE_SHAPES = re.compile(r"v\d+|\d{3,4}p|\d{2,3}fps|[248]K")
+_VIDEO_SPEC_RE = re.compile(r"([248]k|\d{3,4}p)[\s\-]*(\d{2,3})[\s\-]*fps", re.IGNORECASE)
+
+
+def video_spec_markers(text: str) -> tuple[str, ...]:
+    """清晰度与帧率连写的一组版本标记。"""
+    matched = _VIDEO_SPEC_RE.fullmatch(text.strip())
+    if not matched:
+        return ()
+    resolution, rate = matched.groups()
+    return (resolution.upper() if resolution.lower().endswith("k") else resolution.lower(), f"{rate}fps")
 
 
 def _bare_marker_allowed(label: str) -> bool:
@@ -152,6 +162,8 @@ def _match_markers(text: str) -> tuple[list[str], list[str]]:
     probe = text.strip().casefold()
     if not probe:
         return [], []
+    if specs := video_spec_markers(probe):
+        return [], list(specs)
     wip: list[str] = []
     alt: list[str] = []
     for pattern, label in _WIP_MARKERS:
@@ -256,7 +268,7 @@ def classify(
         if wip and _bare_marker_allowed(wip[0]):
             wip_markers.extend(wip)
             continue
-        if alt and _bare_marker_allowed(alt[0]):
+        if alt and all(_bare_marker_allowed(marker) for marker in alt):
             alt_markers.extend(alt)
             continue
         kept.append(token)

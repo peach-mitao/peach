@@ -143,6 +143,7 @@ class Face:
     duration: float | None
     signature: Signature | None
     content: str | None = None
+    origin: tuple[str, int | None] | None = None
 
 
 def _duration(value) -> float | None:
@@ -158,8 +159,26 @@ def same_file(one: Face, other: Face) -> bool:
     return one.content is not None and one.content == other.content
 
 
+def same_upload(one: Face, other: Face) -> bool:
+    """同站的同一帖子及同一媒体序号，独立于收录它的关注来源。"""
+    if one.content is not None and other.content is not None and one.content != other.content:
+        return False
+    return one.origin is not None and one.provider == other.provider and one.origin == other.origin
+
+
+def _upload_origin(member: dict, slot: int | None) -> tuple[str, int | None] | None:
+    """站内全局编号与归档站的服务/作者范围分别标识一篇帖子。"""
+    external_id = str(member.get("external_id") or "")
+    if not external_id:
+        return None
+    if member.get("provider") in {"rule34video", "rule34xxx", "rule34paheal", "fanbox", "f95zone"}:
+        return external_id, slot
+    page = str(member.get("url") or "")
+    return (f"{page}\0{external_id}", slot) if page else None
+
+
 def same_face(one: Face, other: Face) -> bool:
-    if same_file(one, other):
+    if same_file(one, other) or same_upload(one, other):
         return True
     if one.url and one.url == other.url:
         return True
@@ -173,7 +192,7 @@ def same_face(one: Face, other: Face) -> bool:
 
 
 def _exact(one: Face, other: Face) -> bool:
-    return same_file(one, other) or bool(one.url and one.url == other.url)
+    return same_file(one, other) or same_upload(one, other) or bool(one.url and one.url == other.url)
 
 
 def face_clusters(faces: list[Face]) -> list[int]:
@@ -199,7 +218,7 @@ def face_clusters(faces: list[Face]) -> list[int]:
 
 def _joins_by_file(members: list[Face], face: Face) -> bool:
     """按内容哈希并进这一簇：簇里有同一个文件。"""
-    return any(same_file(member, face) for member in members)
+    return any(same_file(member, face) or same_upload(member, face) for member in members)
 
 
 def _joins_by_face(members: list[Face], face: Face) -> bool:
@@ -211,7 +230,7 @@ def _joins_by_face(members: list[Face], face: Face) -> bool:
 def media_clusters(faces: list[Face]) -> list[int]:
     """合并的媒体归成几个不同的媒体。
 
-    同一个文件（内容哈希相同）不论同站跨站都并成一个。按画面只并别的站上的同一张，
+    同站同一帖子同一媒体序号、或同一文件（内容哈希相同）都并成一个。按画面只并别的站上的同一张，
     一簇里每个站至多一份：同站画面相近的可能是差分或另一个分辨率的文件，借着跨站那一份
     把同站的两条串成一簇，计数就把它们吞掉了。
     """
@@ -260,14 +279,15 @@ def annotate_group(group: dict, index: "FollowFaceIndex | None" = None,
         provider = str(member.get("provider") or "")
         ident = member.get("id")
         own = Face(provider, str(member.get("thumb_url") or ""), _duration(member.get("duration")),
-                   None, hashes.get((ident, None)))
+                   None, hashes.get((ident, None)), _upload_origin(member, None))
         if own.url:
             thumbs.append((member, own))
         media = [entry for entry in member.get("media_items") or ()
                  if entry.get("media_kind") in MEDIA_KINDS]
         for entry in media:
             face = Face(provider, str(entry.get("thumb_url") or ""), None, None,
-                        hashes.get((ident, entry.get("index"))))
+                        hashes.get((ident, entry.get("index"))),
+                        _upload_origin(member, entry["index"]) if "index" in entry else None)
             if face.url:
                 thumbs.append((entry, face))
             merged.append((entry, face, str(entry["media_kind"])))

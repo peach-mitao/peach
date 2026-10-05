@@ -343,6 +343,33 @@ class RecordTests(_StoreCase):
 
 
 class GroupingTests(_StoreCase):
+    def test_repeated_collection_of_the_main_upload_preserves_its_variants(self):
+        for ref in ("hydrafxx", "zmsfm"):
+            source = self._source(ref=ref)
+            self.store.record(source, _fetch([
+                _candidate("main", "Evening Movie"),
+                _candidate("alt", "Evening Movie (4K60fps)"),
+            ], ref=ref), moment=MOMENT)
+        self.assertEqual(len(self.store.group(self.store.items())), 1)
+        for source in self.store.sources():
+            self.assertEqual(len(self.store.group(self.store.items(source_id=source["id"]))), 1)
+
+    def test_stored_combined_video_specs_group_without_rewriting_rows(self):
+        source = self._source()
+        self.store.record(source, _fetch([
+            _candidate("one", "Evening Movie (4K60fps)(NO WM)"),
+            _candidate("two", "Evening Movie (60fps)(NO WM)"),
+        ]), moment=MOMENT)
+        self.connection.execute("UPDATE follow_item SET release_key=? WHERE external_id='one'",
+                                ("evening movie 4k60fps",))
+        self.connection.commit()
+        groups = self.store.group(self.store.items())
+        self.assertEqual(len(groups), 1)
+        self.assertEqual({row.external_id for row in (groups[0].primary, *groups[0].variants)},
+                         {"one", "two"})
+        stored = self.connection.execute("SELECT release_key FROM follow_item WHERE external_id='one'").fetchone()[0]
+        self.assertEqual(stored, "evening movie 4k60fps")
+
     def _populate(self):
         video = self._source()
         booru = self._source(provider="rule34xxx", ref="lazyprocrastinator")

@@ -943,7 +943,11 @@ def follow_cover(request: Request, id: int, media: int | None = None,
     if item is None:
         return JSONResponse({"error": "no such follow item"}, status_code=404)
     try:
-        path = state.follow_cover_service.cover(item, media)
+        if item.provider == "rule34video":
+            path = state.follow_cover_service.cover(
+                item, media, alternatives=web_follow.cover_alternatives(state.web_contract, item.id))
+        else:
+            path = state.follow_cover_service.cover(item, media)
     except FollowCoverUnavailable:
         # 这里不 302 到 `item.thumb_url`：那等于把上游主机和地址交回浏览器，
         # 而这个端点存在的全部理由就是不让它外露。FFmpeg 或网络的临时失败一律回

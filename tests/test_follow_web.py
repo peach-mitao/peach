@@ -1831,6 +1831,44 @@ class FollowContractTests(unittest.TestCase):
         self.assertEqual({key: stacks["1,3"][key] for key in ("media", "copies", "kind")},
                          {"media": 2, "copies": 2, "kind": "video"})
 
+    def test_resolution_versions_and_duplicate_subscriptions_have_consistent_counts(self):
+        for ref in ("hydrafxx", "zmsfm"):
+            self._seed(candidates=(
+                FollowCandidate(provider="rule34video", external_id="4k", title="Evening Movie (4K60fps)(NO WM)",
+                                thumb_url="https://rule34video.com/4k.jpg"),
+                FollowCandidate(provider="rule34video", external_id="60", title="Evening Movie (60fps)(NO WM)",
+                                thumb_url="https://rule34video.com/60.jpg"),
+            ), ref=ref, label=ref)
+        for author, copies in (("", 4), ("name:hydrafxx", 2), ("name:zmsfm", 2)):
+            with self.subTest(author=author):
+                groups = self._get(author=author)["groups"]
+                self.assertEqual(len(groups), 1)
+                self.assertEqual((groups[0]["stack"]["media"], groups[0]["stack"]["copies"]), (2, copies))
+                members = [groups[0]["primary"], *groups[0]["variants"]]
+                self.assertEqual({row["external_id"] for row in members}, {"4k", "60"})
+                for member in members:
+                    self.assertEqual(member["thumb_url"], f"/follow-cover?id={member['id']}")
+        member = members[0]
+        self.assertEqual(set(web_follow.cover_alternatives(self.contract, member["id"])),
+                         {"https://rule34video.com/4k.jpg", "https://rule34video.com/60.jpg"})
+
+    def test_cover_alternatives_stay_within_the_work_and_enabled_sources(self):
+        self._seed(candidates=(
+            FollowCandidate(provider="rule34video", external_id="1", title="Evening Movie (4K60fps)",
+                            thumb_url="https://rule34video.com/4k.jpg"),
+            FollowCandidate(provider="rule34video", external_id="2", title="Evening Movie (60fps)",
+                            thumb_url="https://rule34video.com/60.jpg"),
+            FollowCandidate(provider="rule34video", external_id="3", title="Another Movie",
+                            thumb_url="https://rule34video.com/other.jpg"),
+        ))
+        group = next(group for group in self._get()["groups"] if group["stack"])
+        member = next(row for row in [group["primary"], *group["variants"]] if row["external_id"] == "1")
+        self.assertEqual(web_follow.cover_alternatives(self.contract, member["id"]),
+                         ("https://rule34video.com/60.jpg",))
+        self.assertEqual(web_follow.cover_alternatives(self.contract, 999), ())
+        self._post('/api/follow/source', {"action": "enabled", "id": member["source_id"], "enabled": False})
+        self.assertEqual(web_follow.cover_alternatives(self.contract, member["id"]), ())
+
     def test_archive_copies_of_one_file_count_as_one_medium_without_thumbnails(self):
         """归档站视频没有缩略图，计数按已存地址里的内容哈希认同一个文件，不发请求。"""
         digest = "58739e4717810cf6b2d4b4a0c1b5f79a0e2f1e3d4c5b6a79881726354a5b6c7d"

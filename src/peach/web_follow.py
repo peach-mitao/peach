@@ -836,10 +836,13 @@ def item_thumbs(contract, connection, item_ids) -> dict[int, str | None]:
 def _thumb_url(item) -> str | None:
     """卡片上用哪个缩略图。
 
-    Paheal 图片直接经现有同源代理读原图；视频站点没有高清 poster，改由
-    /follow-cover 抽首帧并缓存。这两条是 Peach 自己的路由决定，所以留在这一层；
+    Rule34Video 经 /follow-cover 缓存静态 poster，并在作品组内寻找封面回退。
+    Paheal 图片经同源代理读原图，视频经 /follow-cover 抽首帧并缓存。
+    这些是 Peach 自己的路由决定，所以留在这一层；
     其余全是「这个站的缩略图 URL 长什么样」，那是站点知识，实现在各连接器里。
     """
+    if item.provider == "rule34video" and item.thumb_url:
+        return f"/follow-cover?id={item.id}"
     if item.provider == "f95zone" and f95_discussion_image(item.thumb_url):
         return next((media["thumb_url"] for media in _media_items(item) if media["thumb_url"]), None)
     if item.provider == "fanbox":
@@ -860,6 +863,27 @@ def _thumb_url(item) -> str | None:
         if kind == "video":
             return f"/follow-cover?id={item.id}"
     return _unhide_thumb(item, display_thumb_url(item))
+
+
+def cover_alternatives(contract, item_id: int) -> tuple[str, ...]:
+    """同一作品其他版本的 Rule34Video 封面；来源地址只在服务端使用。"""
+    with contract.database.read_connection() as connection:
+        store = _store(contract, connection)
+        sources = store.sources()
+        aliases, _ = store.author_aliases()
+        enabled = {int(source["id"]) for source in sources if source["enabled"]}
+        everything = contract.cached_until_changed(
+            "follow-items:None", lambda: tuple(item for item in store.items(limit=_ALL_ITEMS)
+                                               if item.source_id in enabled and not _excluded_item(item)))
+        groups = contract.cached_until_changed(
+            "follow-cover-groups", lambda: store.group(everything, group_authors(sources, aliases)))
+        for group in groups:
+            members = (group.primary, *group.variants, *group.duplicates)
+            if any(member.id == item_id for member in members):
+                return tuple(dict.fromkeys(member.thumb_url for member in members
+                                           if member.id != item_id and member.provider == "rule34video"
+                                           and member.thumb_url))
+    return ()
 
 
 def _fanbox_card_thumb(item) -> str | None:
