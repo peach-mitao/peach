@@ -49,15 +49,19 @@ export interface FollowCardProps {
   onSave(id: number): void;
 }
 
-/** 卡面那张图。取不到就撤掉，只剩封面格的底色，同遗留层 `data-drop="self"`。 */
-function Thumb({ src, width, height, onLearn }: {
-  src: string; width?: number; height?: number; onLearn?: (width: number, height: number) => void;
+/** 卡面图片直连失败时尝试原图代理，每个入口只尝试一次。 */
+function Thumb({ src, fallback, width, height, onLearn }: {
+  src: string; fallback?: string; width?: number; height?: number; onLearn?: (width: number, height: number) => void;
 }) {
   const [broken, setBroken] = useState(false);
+  const [proxied, setProxied] = useState(false);
   if (broken) return null;
   return (
-    <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" width={width} height={height}
-      onError={() => setBroken(true)}
+    <img src={proxied ? fallback : src} alt="" loading="lazy" referrerPolicy="no-referrer" width={width} height={height}
+      onError={() => {
+        if (fallback && fallback !== src && !proxied) setProxied(true);
+        else setBroken(true);
+      }}
       onLoad={onLearn ? (event) => {
         const image = event.currentTarget;
         if (image.naturalWidth && image.naturalHeight) onLearn(image.naturalWidth, image.naturalHeight);
@@ -71,6 +75,9 @@ function FollowCardView(props: FollowCardProps) {
   const imageView = media === 'images';
   const selectedMedia = imageView ? (item.media_items || []).find((entry) => entry.media_kind === 'image') : undefined;
   const thumbUrl = selectedMedia?.thumb_url || item.thumb_url || '';
+  const imageFallback = imageView && item.playable
+    ? `/follow-stream?id=${item.id}${selectedMedia ? `&media=${selectedMedia.index}` : ''}`
+    : undefined;
   /* width/height 让浏览器在图片落地前就按固有比例占位：瀑布流按卡片高度分列，没有这两个属性时
      未加载的图高度是零，每一张加载完都把整墙的列重新平衡一遍，卡片就在列间跳。只有图片视图摆成
      瀑布流，视频卡片不占位也不回写。比例取卡面上这张图自己的：卡面是媒体清单里那张就落在那张上；
@@ -131,10 +138,10 @@ function FollowCardView(props: FollowCardProps) {
       data-selected={selected ? '' : undefined} onClick={click}
       onMouseEnter={flip.onPointerEnter} onMouseLeave={flip.onPointerLeave}>
       <div data-follow-visual="" data-mix-stack={stack.isMix ? '' : undefined}>
+        <button type="button" data-follow-open="" aria-label={`打开 ${item.title} 详情`} />
         <div data-media-pic="">
-          <button type="button" data-follow-open="" aria-label={`打开 ${item.title} 详情`} />
           {thumbUrl
-            ? <Thumb key={thumbUrl} src={thumbUrl} width={sized?.width} height={sized?.height} onLearn={learn} />
+            ? <Thumb key={thumbUrl} src={thumbUrl} fallback={imageFallback} width={sized?.width} height={sized?.height} onLearn={learn} />
             : <span data-follow-nothumb="" dangerouslySetInnerHTML={{ __html: sourceIcon(item.resource_provider || item.provider) }} />}
           {stack.faces.length > 1 ? (
             <div data-mix-faces="" hidden={!flip.faces.length}>

@@ -36,6 +36,31 @@ describe('关注页岛', () => {
   });
 
   for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.name} 图片卡的键盘焦点环在封面裁切层之外`, { timeout: 60_000 }, async () => {
+      const opened = await openFollowFeed(browser, '/follow?media=images', viewport,
+        { settings: { followImagesOnly: true } });
+      try {
+        const page = opened.page;
+        await page.keyboard.press('Tab');
+        const card = page.locator(CARDS).first();
+        await card.locator('[data-follow-open]').focus();
+        const ring = await card.locator('[data-follow-open]').evaluate((element) => {
+          const style = getComputedStyle(element);
+          const parent = getComputedStyle(element.parentElement!);
+          return { width: style.outlineWidth, offset: style.outlineOffset,
+            radius: style.borderRadius, clip: parent.clipPath, overflow: parent.overflow };
+        });
+        assert.equal(ring.width, '2px');
+        assert.equal(ring.offset, '2px');
+        assert.notEqual(ring.radius, '0px');
+        assert.equal(ring.clip, 'none');
+        assert.equal(ring.overflow, 'visible');
+        assert.deepEqual(opened.problems, []);
+      } finally {
+        await opened.close();
+      }
+    });
+
     it(`${viewport.name} 多图数量按钮可以打开详情`, { timeout: 60_000 }, async () => {
       const opened = await openFollowFeed(browser, '/follow?media=images', viewport, { settings: { followImagesOnly: false } });
       try {
