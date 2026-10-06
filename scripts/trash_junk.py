@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""把高置信度的广告残留移进回收站。
+"""把广告候选移进回收站，或按逐文件复核清单永久删除。
 
 候选来自 `peach.web_batch.q_ads`，与垃圾复核页是同一套评分与判据；这里只按分数
 与来源过滤，然后写 `disposal='trash'`——文件不动、账本行保留，清空回收站才真正
 删除，误判可以随时从回收站恢复。默认 dry-run 只出清单，`--apply` 必须同时给
 `--backup`。
+
+`--purge --review-csv` 只处理清单里 decision=delete 的确认项。每项须带路径、体积、
+证据与至少 0.95 的确认置信度；执行时核对文件未变化、来源在线且路径在根内，保护字幕与 NFO。
 
 用法:
     python scripts/trash_junk.py --min-score 60
@@ -14,6 +17,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -23,16 +28,71 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from peach.config import DATABASE_PATH, GENERATED_DIR
-from peach.review_csv import write_rows
+from peach.config import DATABASE_PATH, GENERATED_DIR, LOCATION_ROOT_DECLARATIONS
+from peach.platform import root_online, translate_ledger_path, within_root
+from peach.review_csv import read_rows, write_rows
 from peach.scripting import (
     add_ledger_write_args, counts_of, open_for_write, open_readonly, verify_after_write,
 )
-from peach.web_batch import q_ads
+from peach.web_batch import (
+    MEDIA_SIDECAR_SUFFIXES, q_ads, purge_assets, _finish_purge, _restore_staged_media,
+)
 from peach.web_contract import WebContract
 
 FIELDS = ["id", "score", "location", "medium", "size_mb", "name", "why", "path"]
 TRASHABLE_LOCATIONS = ("local", "115", "pikpak")
+
+
+def load_review(path: Path) -> list[dict]:
+    """只接受逐文件确认的删除清单，评分不构成永久删除依据。"""
+    rows = read_rows(path)
+    selected = [row for row in rows if row.get("decision") == "delete"]
+    seen = set()
+    for row in selected:
+        asset_id = int(row["id"])
+        if asset_id in seen or not row.get("path") or not row.get("why"):
+            raise ValueError("删除清单缺少路径、证据或包含重复资产")
+        confidence = float(row.get("confidence") or 0)
+        if not math.isfinite(confidence) or not .95 <= confidence <= 1:
+            raise ValueError("删除清单的确认置信度不足 0.95")
+        if int(row["size"]) < 0:
+            raise ValueError("删除清单的文件体积不能为负")
+        seen.add(asset_id)
+    return selected
+
+
+def purge_reviewed(connection, reviews: list[dict]) -> dict:
+    """核对清单与文件后，复用批量永久删除的隔离、提交与清退流程。"""
+    baseline = {tuple(row) for row in connection.execute("PRAGMA foreign_key_check")}
+    outcome = None
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        rows = []
+        for review in reviews:
+            row = connection.execute("SELECT * FROM asset WHERE id=?", (int(review["id"]),)).fetchone()
+            if row is None or row["location"] not in TRASHABLE_LOCATIONS or row["path"] != review["path"]:
+                raise ValueError("删除清单已失效：资产来源或路径不一致")
+            path = translate_ledger_path(row["path"])
+            roots = [translate_ledger_path(root) for root in LOCATION_ROOT_DECLARATIONS.get(row["location"], ())]
+            if not any(root_online(root) and within_root(path, root) for root in roots):
+                raise ValueError("删除路径不在已挂载的来源根内")
+            if path.suffix.casefold() in MEDIA_SIDECAR_SUFFIXES:
+                raise ValueError("媒体资料与字幕不能进入垃圾永久删除")
+            if path.is_symlink() or not path.is_file() or path.stat().st_size != int(review["size"]):
+                raise ValueError("删除清单已失效：文件不存在、类型或体积变化")
+            rows.append(row)
+        outcome = purge_assets(connection, rows)
+        integrity, _ = verify_after_write(connection)
+        violations = {tuple(row) for row in connection.execute("PRAGMA foreign_key_check")}
+        if integrity != "ok" or violations - baseline:
+            raise RuntimeError("删除后账本校验失败")
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        if outcome is not None:
+            _restore_staged_media(outcome["_staged"])
+        raise
+    return {**_finish_purge(outcome), "existing_foreign_keys": len(baseline)}
 
 
 def select_candidates(db_path: Path, *, min_score: int, locations: tuple[str, ...] = (),
@@ -77,11 +137,29 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--kind", choices=("video", "image", "audio", "archive", "url", "other"),
                         default="")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--review-csv", type=Path, help="含 id、path、size、decision、confidence、why 的逐文件复核清单")
+    parser.add_argument("--purge", action="store_true", help="永久删除清单中确认的垃圾，必须给 --review-csv；默认仍只出计划")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.purge:
+        if not args.review_csv:
+            raise SystemExit("--purge 必须同时给 --review-csv")
+        reviewed = load_review(args.review_csv)
+        if not args.apply:
+            print(f"清单确认删除 {len(reviewed)} 条；未加 --apply，只核对清单。")
+            return 0
+        connection = open_for_write(args)
+        try:
+            result = purge_reviewed(connection, reviewed)
+        finally:
+            connection.close()
+        report = args.out or args.review_csv.with_suffix(".result.json")
+        report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+        return 1 if result["blocked"] or result["cleanup_pending"] else 0
     locations = tuple(args.location or ())
     selected = select_candidates(args.db, min_score=args.min_score,
                                  locations=locations, kind=args.kind)
