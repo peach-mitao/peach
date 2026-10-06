@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from support.ledger import fresh_ledger
@@ -89,6 +90,86 @@ class TrashJunkTests(unittest.TestCase):
                 "--db", str(self.db_path), "--out", str(self.out), "--apply",
             ])
 
+        self.assertIsNone(self.disposal(1))
+
+    def test_story_titles_are_not_promotion_evidence(self):
+        self.add(1, "115", r"B:\作品\花式暴操包养的学妹.mp4", "video", 4000000, 20)
+        self.add(2, "115", r"B:\作品\约炮应届毕业女大，太骚了.mp4", "video", 14000000, 207)
+        self.add(3, "115", r"B:\作品\線上影片每天火熱更新中.avi", "video", 6000000, 40)
+        candidates = self.trash_junk.select_candidates(self.db_path, min_score=40)
+        self.assertEqual([row["id"] for row in candidates], [3])
+
+    def reviewed_file(self, asset_id=1, suffix=".txt"):
+        path = self.root / f"广告{asset_id}{suffix}"
+        path.write_bytes(b"promotion")
+        self.add(asset_id, "local", str(path), "other", path.stat().st_size)
+        return path, {"id": str(asset_id), "path": str(path), "size": str(path.stat().st_size),
+                      "decision": "delete", "confidence": "1", "why": "文件内容为地址发布广告"}
+
+    def test_installer_web_components_and_unprobed_promos_enter_review(self):
+        self.add(1, "115", r"B:\作品\1024_1.apk", "other")
+        self.add(2, "115", r"B:\作品\资源站_files\style.css", "other")
+        self.add(3, "115", r"B:\作品\下载APP.mp4", "video", 4000000)
+        self.add(4, "115", r"B:\作品\下载APP.srt", "other")
+        self.add(5, "115", r"B:\作品\作品.torrent", "other")
+        self.add(6, "115", r"B:\作品\正片.mp4", "video", 4000000, 3)
+        self.add(7, "115", r"B:\作品\下载APP失败探测.mp4", "video", 4000000, -1)
+        candidates = self.trash_junk.select_candidates(self.db_path, min_score=40)
+        self.assertEqual({row["id"] for row in candidates}, {1, 2, 3, 7})
+
+    def test_review_manifest_requires_unique_ids_and_confirmed_evidence(self):
+        _, review = self.reviewed_file()
+        fields = list(review)
+        for reviews in ([review, review], [{**review, "why": ""}],
+                        [{**review, "confidence": ".8"}], [{**review, "confidence": "nan"}],
+                        [{**review, "size": "-1"}]):
+            self.trash_junk.write_rows(self.out, fields, reviews)
+            with self.assertRaises(ValueError):
+                self.trash_junk.load_review(self.out)
+        self.trash_junk.write_rows(self.out, fields, [review, {**review, "decision": "retain"}])
+        self.assertEqual(len(self.trash_junk.load_review(self.out)), 1)
+
+    def purge(self, rows):
+        connection = sqlite3.connect(self.db_path)
+        connection.row_factory = sqlite3.Row
+        self.addCleanup(connection.close)
+        with mock.patch.object(self.trash_junk, "LOCATION_ROOT_DECLARATIONS", {"local": (str(self.root),)}):
+            return self.trash_junk.purge_reviewed(connection, rows)
+
+    def test_reviewed_purge_deletes_only_confirmed_file_and_ledger_row(self):
+        path, review = self.reviewed_file()
+        retained, _ = self.reviewed_file(2)
+        result = self.purge([review])
+        self.assertEqual(result["purged"], 1)
+        self.assertFalse(path.exists())
+        self.assertTrue(retained.exists())
+        self.assertIsNone(self.disposal(2))
+
+    def test_stale_review_rejects_whole_batch_before_any_file_is_removed(self):
+        path, review = self.reviewed_file()
+        changed, stale = self.reviewed_file(2)
+        changed.write_bytes(b"changed content")
+        with self.assertRaisesRegex(ValueError, "失效"):
+            self.purge([review, stale])
+        self.assertTrue(path.exists())
+        self.assertTrue(changed.exists())
+        self.assertIsNone(self.disposal(1))
+
+    def test_purge_protects_sidecars_and_unmounted_roots(self):
+        path, review = self.reviewed_file(suffix=".nfo")
+        with self.assertRaisesRegex(ValueError, "资料与字幕"):
+            self.purge([review])
+        self.assertTrue(path.exists())
+        with mock.patch.object(self.trash_junk, "root_online", return_value=False):
+            with self.assertRaisesRegex(ValueError, "已挂载"):
+                self.purge([review])
+
+    def test_database_error_restores_quarantined_file(self):
+        path, review = self.reviewed_file()
+        with mock.patch.object(self.trash_junk, "verify_after_write", return_value=("broken", 0)):
+            with self.assertRaisesRegex(RuntimeError, "校验失败"):
+                self.purge([review])
+        self.assertTrue(path.exists())
         self.assertIsNone(self.disposal(1))
 
 

@@ -47,7 +47,7 @@
 @media (max-width: 640px) {
   .peach-react [data-follow-authors] { margin-right: -12px; }
 }
-.peach-react :is(button[data-follow-author], button[data-follow-work]) {
+.peach-react :is([data-follow-authors], [data-follow-works]) > button {
   flex: none;
   border: 0;
   background: transparent;
@@ -58,20 +58,20 @@
   transition: transform var(--lift-motion, var(--board-motion)), scale calc(var(--spring-press-ms) * 1ms) var(--spring-press),
     background-color .2s ease-out, color .2s ease-out;
 }
-.peach-react :is(button[data-follow-author], button[data-follow-work]):active { scale: .96; transition: scale .06s ease-out; }
-.peach-react :is(button[data-follow-author], button[data-follow-work]):hover {
+.peach-react :is([data-follow-authors], [data-follow-works]) > button:active { scale: .96; transition: scale .06s ease-out; }
+.peach-react :is([data-follow-authors], [data-follow-works]) > button:hover {
   background: var(--color-background-primary-hover);
   color: var(--color-text-primary);
 }
-.peach-react :is(button[data-follow-author], button[data-follow-work])[aria-pressed="true"] {
+.peach-react :is([data-follow-authors], [data-follow-works]) > button[aria-pressed="true"] {
   background: var(--color-background-tertiary-default);
   color: var(--color-text-primary);
 }
-.peach-react :is(button[data-follow-author], button[data-follow-work]):focus-visible {
+.peach-react :is([data-follow-authors], [data-follow-works]) > button:focus-visible {
   outline: 2px solid var(--tungsten);
   outline-offset: 2px;
 }
-.peach-react button[data-follow-author] {
+.peach-react [data-follow-authors] > button[data-follow-author] {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -81,7 +81,7 @@
   border-radius: 12px;
   text-align: center;
 }
-.peach-react button[data-follow-work] {
+.peach-react [data-follow-works] > button[data-follow-work] {
   display: inline-flex;
   align-items: center;
   gap: 8px;
