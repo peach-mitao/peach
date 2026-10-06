@@ -1,5 +1,6 @@
 """高置信广告批量入回收站的隔离回归。"""
 import importlib.util
+import os
 import sqlite3
 import sys
 import tempfile
@@ -171,6 +172,17 @@ class TrashJunkTests(unittest.TestCase):
                 self.purge([review])
         self.assertTrue(path.exists())
         self.assertIsNone(self.disposal(1))
+
+    def test_purge_and_rollback_support_mounts_without_replace(self):
+        path, review = self.reviewed_file()
+        with mock.patch.object(os, "replace", side_effect=OSError("replacement unsupported")):
+            with mock.patch.object(self.trash_junk, "verify_after_write", return_value=("broken", 0)):
+                with self.assertRaisesRegex(RuntimeError, "校验失败"):
+                    self.purge([review])
+            self.assertTrue(path.exists())
+            self.assertIsNone(self.disposal(1))
+            self.assertEqual(self.purge([review])["purged"], 1)
+            self.assertFalse(path.exists())
 
 
 if __name__ == "__main__":

@@ -34,7 +34,9 @@ from peach.review_csv import read_rows, write_rows
 from peach.scripting import (
     add_ledger_write_args, counts_of, open_for_write, open_readonly, verify_after_write,
 )
-from peach.web_batch import q_ads, purge_assets, _finish_purge, _restore_staged_media
+from peach.web_batch import (
+    MEDIA_SIDECAR_SUFFIXES, q_ads, purge_assets, _finish_purge, _restore_staged_media,
+)
 from peach.web_contract import WebContract
 
 FIELDS = ["id", "score", "location", "medium", "size_mb", "name", "why", "path"]
@@ -74,7 +76,7 @@ def purge_reviewed(connection, reviews: list[dict]) -> dict:
             roots = [translate_ledger_path(root) for root in LOCATION_ROOT_DECLARATIONS.get(row["location"], ())]
             if not any(root_online(root) and within_root(path, root) for root in roots):
                 raise ValueError("删除路径不在已挂载的来源根内")
-            if path.suffix.casefold() in {".nfo", ".srt", ".ass", ".ssa", ".vtt", ".sub", ".idx"}:
+            if path.suffix.casefold() in MEDIA_SIDECAR_SUFFIXES:
                 raise ValueError("媒体资料与字幕不能进入垃圾永久删除")
             if path.is_symlink() or not path.is_file() or path.stat().st_size != int(review["size"]):
                 raise ValueError("删除清单已失效：文件不存在、类型或体积变化")

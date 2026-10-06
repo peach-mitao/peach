@@ -436,7 +436,7 @@ def _restore_staged_media(staged):
     """Undo same-directory quarantine moves after a database failure."""
     for original, quarantine in reversed(staged):
         if quarantine.exists() and not original.exists():
-            os.replace(quarantine, original)
+            os.rename(quarantine, original)
 
 
 def _online_source_roots() -> dict[str, tuple[Path, ...]]:
@@ -557,7 +557,7 @@ def purge_assets(connection, rows, *, missing_only: bool = False):
                     quarantine = original.with_name(
                         f".{original.name}.peach-purge-{uuid.uuid4().hex}.tmp"
                     )
-                    os.replace(original, quarantine)
+                    os.rename(original, quarantine)
                     staged.append((original, quarantine))
             except OSError as error:
                 blocked.append({"id": row["id"], "path": media,
