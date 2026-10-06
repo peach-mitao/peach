@@ -44,12 +44,10 @@ export const ONLINE_TAG_CATEGORIES: readonly (readonly [string, string])[] = [
   ['all', '全部'], ['general', '通用'], ['artist', '创作者'], ['character', '角色'],
   ['copyright', '作品'], ['metadata', '元数据'],
 ];
-export const IDENTITY_CATEGORIES: readonly (readonly [string, string])[] = [
-  ['all', '全部'], ['person', '个人'], ['account', '发布账号'], ['seller', '卖家'],
-  ['organization', '机构'], ['platform', '平台'], ['adult_performer', '成人出演者'],
-  ['model', '模特'], ['artist', '艺术创作者'], ['japanese_av', '日本 AV'],
-  ['western_adult', '西方成人发行'], ['unknown', '待核验'],
-];
+export const IDENTITY_CATEGORIES: Record<'performers' | 'creators', readonly (readonly [string, string])[]> = {
+  performers: [['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方']],
+  creators: [['all', '全部'], ['blogger', '网黄博主'], ['seller', '卖家'], ['animation', '动画作者']],
+};
 
 /** 每页条数：一屏头像 120 格，标签 180 枚。 */
 export const PAGE_SIZE = { people: 120, tags: 180 } as const;
@@ -83,7 +81,7 @@ export interface IndexTag {
 export interface IndexPage<T> {
   items: T[];
   has_more: boolean;
-  /** 标签页才有：每一类有几枚，浮层上排只摆数得到的那几类。 */
+  /** 分类的命中数量；筛选条只显示有内容的分类。 */
   categories?: Record<string, number>;
 }
 
@@ -137,7 +135,8 @@ export interface IndexProps extends IndexRoute {
  *  只有艺人和标签两页分本地与在线。 */
 export function indexRoute(route: IndexRoute): IndexRoute {
   const scope = route.kind === 'tags' || route.kind === 'performers' ? route.scope : 'local';
-  const categories = route.kind === 'tags' ? (scope === 'online' ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES) : IDENTITY_CATEGORIES;
+  const categories = route.kind === 'tags' ? (scope === 'online' ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES)
+    : route.kind === 'performers' || route.kind === 'creators' ? IDENTITY_CATEGORIES[route.kind] : [];
   const classified = scope === 'local' && (route.kind === 'creators' || route.kind === 'performers');
   const known = categories.some(([key]) => key === route.category);
   return { ...route, scope, category: (route.kind === 'tags' || classified) && known ? route.category : 'all' };

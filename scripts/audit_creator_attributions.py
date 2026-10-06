@@ -152,7 +152,7 @@ def main() -> int:
     summary = entity_summary(args.db, items)
     if args.summary:
         _write(args.summary, SUMMARY_FIELDS, summary)
-    plan = [row for row in items if row['action'] == 'remove']
+    plan = [row for row in items if row['action'] in {'remove','replace'}]
     if args.repair_plan:
         args.repair_plan.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(args.repair_plan, json.dumps({'rows': plan, 'sha256': fingerprint(plan)},

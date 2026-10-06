@@ -65,6 +65,7 @@ export interface HeroNameGroups {
 /** `/api/entity` 里资料卡读到的那些字段。 */
 export interface EntityHeroData {
   identity_labels?: string[];
+  external_refs?: { provider: string; external_kind: string; external_id: string }[];
   classifications?: { facet: string; value: string; label: string; status: string; source_url: string; evidence: string }[];
   related_identities?: { id: number; kind: string; canonical_name: string; relation: string }[];
   id: number;

@@ -164,7 +164,7 @@ def q_entity(contract: WebContract, args):
             metadata = {}
         d["metadata"] = metadata
         d['classifications'] = entity_classification.classifications(c, [d['id']])[d['id']]
-        d['identity_labels'] = entity_classification.labels(d['classifications'])
+        d.update(entity_classification.summaries(c, [d['id']])[d['id']])
         d['related_identities'] = entity_classification.related_identities(c, d['id'])
         alias_rows = _entity_alias_rows(c, d["id"])
         d["aliases"] = [row["alias"] for row in alias_rows]
@@ -567,7 +567,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
                    "WHERE " + COUNTED_VIDEO + " AND e.kind=? ")
             par = [entity_kind]
             if q: sql += "AND e.canonical_name LIKE ? "; par.append(f"%{q}%")
-            clause, values = entity_classification.filter_sql(category)
+            clause, values = entity_classification.filter_sql(category,connection=c)
             sql += clause
             par.extend(values)
             sql += "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT ? OFFSET ?"
@@ -575,9 +575,10 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             rows = [dict(r) for r in c.execute(sql, par)]
             has_more = len(rows) > limit
             rows = rows[:limit]
-            claims = entity_classification.classifications(c, [row['entity_id'] for row in rows])
+            summaries = entity_classification.summaries(c, [row['entity_id'] for row in rows])
             for row in rows:
-                row['identity_labels'] = entity_classification.labels(claims[row['entity_id']])
+                row.update(summaries[row['entity_id']])
+            category_counts = entity_classification.counts(c,entity_kind,q,COUNTED_VIDEO)
         else:
             sql = ("SELECT e.canonical_name k, count(DISTINCT ae.asset_id) n "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
@@ -617,7 +618,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
                 row["has_logo"] = contract.has_logo(row["k"])
                 row["logo_version"] = contract.logo_version(row["k"])
     result = {"kind": kind, "items": rows, "has_more": has_more}
-    if kind == "tags":
+    if kind in {"tags", "performers", "creators"}:
         result["categories"] = category_counts
     return result
 

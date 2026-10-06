@@ -4005,6 +4005,31 @@ describe('设计决定', () => {
   /* 尺寸按身份列有哪几行定：外链与看片那一行都在是 160px，缺一行是 120px。取行高百分比的话
      圆框宽、列宽、别名折行、行高绕成一个圈，折行多出的那截压进卡底内边距。
      有资料的女优默认只有外链那一行，两行都在的那位要补上看片标识与订阅开关；七沢みあ只有看片那一行。 */
+  for (const viewport of VIEWPORTS) {
+    it(`分类图标与视频数量同排，分类位于身份行最左侧（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openProfiledPerformer(browser, viewport, 'light', { identity_labels: ['女优','西方'] });
+      try {
+        const geometry = await opened.page.locator('[data-entity-alias="meta"]').evaluate((element) => {
+          const classification = element.querySelector('[data-identity-classification]')!;
+          const count = classification.nextElementSibling!;
+          const label = classification.getBoundingClientRect(), video = count.getBoundingClientRect();
+          const glyph = classification.querySelector('svg')!.getBoundingClientRect();
+          return { first: element.firstElementChild === classification, top: [label.top, video.top],
+            edges: [label.right, video.left], glyph: [glyph.width, glyph.height] };
+        });
+        assert.equal(geometry.first, true);
+        assert.ok(Math.abs(geometry.top[0]! - geometry.top[1]!) < 1, '分类与视频数量另起了行');
+        assert.ok(geometry.edges[0]! <= geometry.edges[1]!, '分类没有排在视频数量左侧');
+        assert.deepEqual(geometry.glyph, [16, 16]);
+        const measured = await layout(opened.page);
+        assert.ok(measured.scrollWidth <= measured.viewportWidth + 1);
+        assert.deepEqual(measured.offenders, []);
+        assert.deepEqual(opened.problems, []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
   const openBothRows = (browser: Browser, viewport: typeof DESKTOP) => openProfiledPerformer(browser, viewport, 'light', {
     entry_links: [
       { site: 'minnano-av', label: 'みんなのAV', ordinal: '', slot: 'pill', mark: 'brand-minnano',

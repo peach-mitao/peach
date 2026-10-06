@@ -222,7 +222,8 @@ export function IndexPage(props: IndexProps) {
       {tabs}
       {(kind === 'creators' || kind === 'performers') && scope === 'local' ? (
         <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
-          {IDENTITY_CATEGORIES.map(([key, label]) => (
+          {IDENTITY_CATEGORIES[kind].filter(([key]) => key === 'all' || key === category
+            || Number(result.data?.pages[0]?.categories?.[key] || 0) > 0).map(([key, label]) => (
             <Button key={key} variant={category === key ? 'primary' : 'secondary'} size="small"
               aria-pressed={category === key} onClick={() => go({ category: key })}>{label}</Button>
           ))}

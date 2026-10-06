@@ -4,18 +4,18 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
+from .entry_links import EXTERNAL_KIND, JAV_DIRECTORIES
+
 VALUES = {
     'identity': {'person':'个人', 'account':'发布账号', 'organization':'机构',
                  'platform':'平台', 'collection':'合集目录', 'release':'作品标识', 'unknown':'身份待核验'},
     'occupation': {'adult_performer':'成人出演者', 'model':'模特', 'actor':'演员',
-                   'artist':'艺术创作者', 'content_creator':'内容创作者'},
+                   'artist':'艺术创作者', 'animator':'动画作者', 'content_creator':'内容创作者'},
     'market': {'japanese_av':'日本 AV', 'western_adult':'西方成人发行'},
-    'account_role': {'seller':'卖家', 'publisher':'发布者'},
+    'account_role': {'seller':'卖家', 'publisher':'发布者', 'studio':'发行厂牌'},
 }
-CATEGORIES = {'person':'个人', 'account':'发布账号', 'seller':'卖家',
-              'organization':'机构', 'platform':'平台', 'adult_performer':'成人出演者',
-              'model':'模特', 'artist':'艺术创作者', 'japanese_av':'日本 AV',
-              'western_adult':'西方成人发行', 'unknown':'待核验'}
+CATEGORIES = {'japanese_av': '女优', 'amateur': '素人', 'western': '西方',
+              'blogger': '网黄博主', 'seller': '卖家', 'animation': '动画作者'}
 TRUSTED = "status IN ('observed','approved')"
 
 
@@ -65,8 +65,72 @@ def classifications(connection, entity_ids):
     return result
 
 
-def labels(claims):
-    return list(dict.fromkeys(row['label'] for row in claims if row['status'] in {'observed','approved'})) or ['待核验']
+def category_predicates(column='e.id', kind_column='e.kind', connection=None):
+    """浏览分类分别命中；发行范围与作品类型允许交叉。"""
+    providers = ','.join(f"'{provider}'" for provider in sorted(JAV_DIRECTORIES))
+    has_claims = connection is None or connection.execute(
+        "SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone()
+    def claim(facet, value):
+        if not has_claims:
+            return '0'
+        return (f"EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} "
+                f"AND ec.facet='{facet}' AND ec.value='{value}' AND {TRUSTED})")
+    def work(condition):
+        return (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
+                f"WHERE ca.entity_id={column} AND ca.role='performer' AND av.medium='video' "
+                f"AND COALESCE(av.disposal,'')<>'vanished' AND ({condition}))")
+    jav = (f"EXISTS (SELECT 1 FROM entity_external_ref er WHERE er.entity_id={column} "
+           f"AND er.external_kind='{EXTERNAL_KIND}' AND er.external_id<>'' AND er.provider IN ({providers})) "
+           f"OR {claim('market', 'japanese_av')}")
+    amateur = work("UPPER(COALESCE(av.code,'')) LIKE 'FC2%' OR EXISTS ("
+                   "SELECT 1 FROM asset_entity ta JOIN entity t ON t.id=ta.entity_id "
+                   "WHERE ta.asset_id=av.id AND t.kind='tag' AND t.canonical_name='素人')")
+    west_work = work("av.region='west'")
+    western = f"{claim('market', 'western_adult')} OR {west_work}"
+    seller = claim('account_role', 'seller')
+    animation = claim('occupation', 'animator')
+    creator_video = (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
+                     f"WHERE ca.entity_id={column} AND ca.role='creator' AND av.medium='video' "
+                     "AND COALESCE(av.disposal,'')<>'vanished')")
+    return {
+        'japanese_av': f"{kind_column}='performer' AND ({jav})",
+        'amateur': f"{kind_column}='performer' AND ({amateur})",
+        'western': f"{kind_column}='performer' AND ({western})",
+        'blogger': f"{kind_column}='creator' AND ({creator_video}) AND NOT ({seller}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')})",
+        'seller': f"{kind_column}='creator' AND ({seller})",
+        'animation': f"{kind_column}='creator' AND ({animation})",
+    }
+
+
+def summaries(connection, entity_ids):
+    """资料页与分页卡片共用一份浏览分类，不写入账本断言。"""
+    ids = list(dict.fromkeys(entity_ids))
+    if not ids:
+        return {}
+    predicates = category_predicates(connection=connection)
+    rows = connection.execute('SELECT e.id,' + ','.join(f'({sql})' for sql in predicates.values()) + ' FROM entity e WHERE e.id IN ('
+                              + ','.join('?' for _ in ids) + ')', ids)
+    result = {}
+    for row in rows:
+        categories = [key for key, matched in zip(predicates, row[1:]) if matched]
+        result[row[0]] = {'identity_categories': categories,
+                          'identity_labels': [CATEGORIES[key] for key in categories]}
+    return result
+
+
+def counts(connection, kind, query, visible_clause):
+    """对搜索范围中的有效实体独立计数，不受所选分类及分页限制。"""
+    predicates = category_predicates(connection=connection)
+    sql = ('SELECT ' + ','.join(f'COALESCE(SUM(({value})),0)' for value in predicates.values()) + ' '
+           'FROM entity e WHERE e.kind=? AND EXISTS ('
+           'SELECT 1 FROM asset_entity ae CROSS JOIN asset a ON a.id=ae.asset_id '
+           'WHERE ae.entity_id=e.id AND ' + visible_clause + ') ')
+    params = [kind]
+    if query:
+        sql += 'AND e.canonical_name LIKE ? '
+        params.append(f'%{query}%')
+    totals = connection.execute(sql,params).fetchone()
+    return {key: count for key, count in zip(predicates,totals) if count}
 
 
 def related_identities(connection, entity_id):
@@ -80,15 +144,13 @@ def related_identities(connection, entity_id):
     return [dict(zip(columns,raw)) for raw in cursor]
 
 
-def filter_sql(category, column='e.id'):
-    """筛选在分页前执行；没有可信身份断言属于待核验。"""
+def filter_sql(category, column='e.id', connection=None):
+    """浏览分类在分页前执行，与资料页采用相同来源判据。"""
     if category in {'','all'}:
         return '', []
     if category not in CATEGORIES:
         return ' AND 0 ', []
-    if category == 'unknown':
-        return f' AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} AND {TRUSTED}) ', []
-    return f' AND EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} AND ec.value=? AND {TRUSTED}) ', [category]
+    return f' AND ({category_predicates(column, connection=connection)[category]}) ', []
 
 
 def transfer(connection, source_id, target_id):

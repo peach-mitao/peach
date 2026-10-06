@@ -198,9 +198,9 @@ def strip_zero_width(name: str) -> str:
 def canonicalize_entity_name(kind: str, name: str | None) -> str:
     canonical = strip_zero_width(name).strip()
     if kind == 'creator':
-        from .classification import is_structural_creator
+        from .classification import is_structural_creator, is_repost_creator
         from .studio_sites import is_platform
-        if is_platform(canonical) or is_structural_creator(canonical):
+        if is_platform(canonical) or is_structural_creator(canonical) or is_repost_creator(canonical):
             return ''
     if kind in PERSON_ENTITY_KINDS:
         canonical = collapse_repeated_entity_name(canonical)
@@ -421,6 +421,27 @@ def _ref_is_free(connection: Connection, entity_id: int, provider: str,
     return held is None or str(held[0]) == external_id
 
 
+def _creator_ingest_identity(connection, name, asset_id):
+    """已有账号承接集合目录；已确认厂牌不进入发布账号关系。"""
+    from .classification import creator_collection_base, creator_release_identifier
+    asset = connection.execute('SELECT path,name,code FROM asset WHERE id=?',(asset_id,)).fetchone()
+    if asset and creator_release_identifier(name,path=asset[0] or '',filename=asset[1] or '',code=asset[2])[0] == 'release_identifier':
+        return ''
+    base = creator_collection_base(name)
+    if base != name:
+        held = connection.execute("SELECT canonical_name FROM entity WHERE kind='creator' AND normalized_name=?",
+                                  (normalize_entity_name(base),)).fetchone()
+        if held:
+            name = str(held[0])
+    if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
+        if connection.execute("SELECT 1 FROM entity e JOIN entity_classification ec ON ec.entity_id=e.id "
+            "WHERE e.kind='creator' AND e.normalized_name=? AND ec.facet='account_role' "
+            "AND ec.value='studio' AND ec.status IN ('observed','approved')",
+            (normalize_entity_name(name),)).fetchone():
+            return ''
+    return name
+
+
 def upsert_asset_entity(
     connection: Connection, *, kind: str, name: str | None, asset_id: int,
     role: str, source: str, confidence: float = 1.0,
@@ -430,6 +451,12 @@ def upsert_asset_entity(
 ) -> int | None:
     """写入规范实体关系；调用方负责事务和兼容投影。"""
     canonical = canonicalize_entity_name(kind, name)
+    if kind == 'creator' and not source.startswith(('user:','review:')):
+        selected = _creator_ingest_identity(connection,canonical,asset_id)
+        if selected != canonical:
+            metadata = {**(metadata or {}),'directory_name':canonical}
+            update_entity_metadata = False
+            canonical = selected
     if not canonical:
         return None
     stamp = now or datetime.now(timezone.utc).isoformat()

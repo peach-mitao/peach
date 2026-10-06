@@ -84,18 +84,25 @@ describe('地址栏上的类型', () => {
 });
 
 describe('名册', () => {
-  it('身份分类写回地址并隔离分页缓存；候选只显示待核验', async () => {
-    seed(indexKey('creators', ''), [person('待核验账号', { identity_labels: ['待核验'] })]);
-    const fetcher = serve(() => ({ items: [person('艺术账号', { identity_labels: ['发布账号', '艺术创作者'] })], has_more: false }));
+  it('浏览分类写回地址并隔离分页缓存，筛选只显示有内容的分类', async () => {
+    seed(indexKey('creators', ''), [person('真人账号', { identity_labels: ['网黄博主'] })], false, { blogger:1, seller:1 });
+    const fetcher = serve(() => ({ items: [person('卖家账号', { identity_labels: ['卖家'] })], categories:{ blogger:1, seller:1 }, has_more: false }));
     const given = props({ kind: 'creators' });
     const host = await open(given);
-    expect(cells(host)[0]?.textContent).toContain('待核验');
-    await click(buttonNamed('艺术创作者', host));
+    expect(cells(host)[0]?.textContent).toContain('网黄博主');
+    expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部网黄博主卖家');
+    await click(buttonNamed('卖家', host));
     await settle();
-    expect(given.route).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'artist' }), { replace: false });
-    expect(urls(fetcher)[0]).toContain('category=artist');
-    expect(cells(host)[0]?.textContent).toContain('发布账号 / 艺术创作者');
+    expect(given.route).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'seller' }), { replace: false });
+    expect(urls(fetcher)[0]).toContain('category=seller');
+    expect(cells(host)[0]?.textContent).toContain('卖家');
     expect(indexRoute({ kind: 'performers', q: '', scope: 'online', view: 'alphabet', category: 'artist' }).category).toBe('all');
+  });
+  it('艺人分类不显示空分类或账号分类，创作者地址不接受女优筛选', async () => {
+    seed(indexKey('performers', ''), [person('女优', { identity_labels:['女优','西方'] })], false, { japanese_av:1, western:1 });
+    const host = await open(props());
+    expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部女优西方');
+    expect(indexRoute({ kind:'creators', q:'', scope:'local', view:'alphabet', category:'japanese_av' }).category).toBe('all');
   });
   it('首屏读缓存，读数带加号，大图版式按大格取头像', async () => {
     seed(indexKey('performers', ''), [person('甲'), person('乙')], true);
