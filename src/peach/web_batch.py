@@ -293,6 +293,31 @@ def q_ads(contract: WebContract, limit=200, offset=0, kind="", status="pending")
     }
 
 
+def _promo_neighbour_counts(rows) -> dict[str, int]:
+    """统计同目录中缺少内容描述的推广名。"""
+    counts: dict[str, int] = {}
+    for row in rows:
+        name = row["name"] or PureWindowsPath(row["path"] or "").name
+        stem = PureWindowsPath(name).stem
+        if not (PROMO_PHRASE.search(stem) or PROMO_DOMAIN.search(stem)):
+            continue
+        if promo_residue(stem) >= 14:
+            continue
+        folder = str(row["path"] or name).rpartition("\\")[0]
+        counts[folder] = counts.get(folder, 0) + 1
+    return counts
+
+
+def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
+    """区分安装附件与网页存档组件。"""
+    if suffix in INSTALLER_SUFFIXES and size < 64 * 1024**2:
+        return "媒体目录中的安装附件"
+    if suffix in PAGE_COMPONENT_SUFFIXES and any(
+            part.casefold().endswith("_files") for part in PureWindowsPath(path).parent.parts):
+        return "网页存档的脚本或样式附件"
+    return ""
+
+
 def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
     """全部候选按嫌疑分从高到低，连同用户已确认不是垃圾的 id。
 
@@ -311,16 +336,7 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
         dismissed_ids = {int(key) for key in dismissed_keys if key.isdigit()}
         folder_assets, folder_videos = _folder_index(c)
     # 每个目录里挂着推广名的候选有多少个；插页判据要看它有没有同伙。
-    promo_neighbours: dict[str, int] = {}
-    for r in rows:
-        row_name = r["name"] or PureWindowsPath(r["path"] or "").name
-        row_stem = PureWindowsPath(row_name).stem
-        if not (PROMO_PHRASE.search(row_stem) or PROMO_DOMAIN.search(row_stem)):
-            continue
-        if promo_residue(row_stem) >= 14:
-            continue
-        row_folder = str(r["path"] or row_name).rpartition("\\")[0]
-        promo_neighbours[row_folder] = promo_neighbours.get(row_folder, 0) + 1
+    promo_neighbours = _promo_neighbour_counts(rows)
     out = []
     for r in rows:
         d = dict(r)
@@ -340,13 +356,9 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
             s += 60; why.append("网址快捷方式")
         elif page_archive:
             s += 60; why.append("网页存档")
-        installer = suffix in INSTALLER_SUFFIXES and (d.get("size") or 0) < 64 * 1024**2
-        page_component = suffix in PAGE_COMPONENT_SUFFIXES and any(
-            part.casefold().endswith("_files") for part in PureWindowsPath(d.get("path") or name).parent.parts)
-        if installer:
-            s += 60; why.append("媒体目录中的安装附件")
-        elif page_component:
-            s += 60; why.append("网页存档的脚本或样式附件")
+        attachment_reason = _attachment_junk_reason(suffix, d.get("path") or name, d.get("size") or 0)
+        if attachment_reason:
+            s += 60; why.append(attachment_reason)
         # 目录维度的证据：广告包的文件名往往干净（`极道世界.mp4`），唯一线索在旧导入器
         # 从目录名投影出来的创作者位或路径里。creator 位本身是推广站域名时，它就不再是
         # 「有归属所以是正片」的证据，下面两处对 creator 的信任都必须先排除这种情况。
@@ -419,7 +431,7 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
                 # 要再叠一条时长或体积证据才到门槛。
                 s += 30; why.append("住在推广目录")
         # 有真实创作者归属、且名字剥完仍有实质描述的，是被打了水印的正片，不是广告。
-        if real_owner and residue >= 14 and not (installer or page_component):
+        if real_owner and residue >= 14 and not attachment_reason:
             s -= 45
         if s >= 40:
             d["score"] = s; d["why"] = " · ".join(why)
