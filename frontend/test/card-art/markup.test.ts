@@ -16,6 +16,16 @@ const parse = (html: string): HTMLImageElement | null => {
 
 const FOCUS = { axis: 'y', pct: 12, box: { cx: 0.44, cy: 0.22, faceW: 67, imgW: 640, imgH: 960 } };
 
+describe('西方官方封面', () => {
+  it('无番号作品在卡片、队列和详情使用资产封面键', () => {
+    const item = { id: 12, has_cover: true, cover_key: 'ASSET-ID-12', cover_version: 'abc' };
+    const source = '/cover?code=ASSET-ID-12&thumb=1&v=abc';
+    expect(parse(cardArtwork(item, 'big', false, 'cover').html)?.getAttribute('src')).toBe(source);
+    expect(parse(queueThumbHtml(item, 'cover'))?.getAttribute('src')).toBe(source);
+    expect(detailPosterUrl(item, 'cover')).toBe('/cover?code=ASSET-ID-12&v=abc');
+  });
+});
+
 describe('entityFaceImg：实体图优先，取不到退代表作头像', () => {
   it('两样都取不到就一个 <img> 都不出', () => {
     expect(entityFaceImg({ id: 3, hasImage: false })).toBe('');

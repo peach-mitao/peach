@@ -158,6 +158,19 @@ const pressedView = (props: EntityPageProps) =>
 const readout = (props: EntityPageProps) => props.hosts.filter.querySelector('[data-entity-readout]')?.textContent;
 
 describe('首屏', () => {
+  it('FC2 合集读数按作品展示，文件总数留给分页', async () => {
+    const page=await open({ entity:entity({asset_count:1}),items:()=>({...items([1,2,3]),total:19,work_total:1}) });
+    expect(readout(page.props)).toBe('视频 · 1');
+    expect(cards(page.props)).toEqual(['1','2','3']);
+  });
+
+  it('合并身份的旧地址交给站内路由打开规范资料页', async () => {
+    const page=await open({entity:{redirect:{kind:'performer',name:'Christy White'}}}, {kind:'creator',name:'Christy White'});
+    expect(page.props.actions.openEntity).toHaveBeenCalledWith('performer','Christy White',true);
+    expect(page.props.actions.missing).not.toHaveBeenCalled();
+    expect(page.host.querySelector('[data-entity-hero]')).toBeNull();
+  });
+
   it('资料、作品第一页、整组照片与新作在挂载前取齐，挂上之后不再补请求', async () => {
     const page = await open({ feed: { items: [{ id: 31, has_cover: true }] } });
     expect(page.calls('/api/entity')).toHaveLength(1);

@@ -161,9 +161,13 @@ def transfer(connection, source_id, target_id):
         row = tuple(raw)
         old = connection.execute('SELECT source_url,evidence,status,confidence,checked_at FROM entity_classification WHERE entity_id=? AND facet=? AND value=? AND source=?',
                                  (target_id,*row[:3])).fetchone()
-        if old and tuple(old) != tuple(row[3:]):
+        if old and tuple(old)[:-1] != tuple(row[3:-1]):
             raise ValueError('实体分类来源冲突，需先复核')
         connection.execute('INSERT OR IGNORE INTO entity_classification VALUES(?,?,?,?,?,?,?,?,?)', (target_id,*row))
+        if old and row[-1] > old[-1]:
+            connection.execute('UPDATE entity_classification SET checked_at=? '
+                               'WHERE entity_id=? AND facet=? AND value=? AND source=?',
+                               (row[-1], target_id, *row[:3]))
     for raw in connection.execute('SELECT * FROM entity_identity_link WHERE left_id=? OR right_id=?', (source_id,source_id)).fetchall():
         row = list(raw)
         row[:2] = [target_id if value == source_id else value for value in row[:2]]

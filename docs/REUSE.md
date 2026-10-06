@@ -1,5 +1,11 @@
 # 复用清单
 
+## 西方人像与官方封面
+
+Babepedia 主图库和 Vixen 网络公开 GraphQL 的字段核对 [Stash CommunityScrapers](https://github.com/stashapp/CommunityScrapers/tree/d0f75013e09a0469b70365fef3294ca915edcf8c) 的 Babepedia、vixenNetwork 采集器（AGPL-3.0；2026-10-07 获取的 revision）。该项目使用 Python，可经插件在 Windows 上运行；Cloudflare 限流和上游字段变化可能导致未取得。只参考公开协议和身份字段，不复制 AGPL 实现，不恢复已关闭的 Stash 适配器，也不引入依赖。HTTP、HTML、图像检查、内容缓存、头像安装和封面边车分别复用现有 `HttpxTransport`、BeautifulSoup 4.15.0、`avatar_provider`、`avatar_picker`、`cover_artwork`。
+
+真实只读试验取得 Angel Smalls、Christy White、Lena Anderson、Melody Marks、Sweet Sophia 的主图库；Babepedia 的 Blaire Ivory 档案明确列出别名 Lena Anderson。Tushy 2019-08-14《Cam To Me》、Vixen 2019-04-09《I Want It All》的官方封面均已取得。搜索还返回 Lena Paul 等人的作品；Peach 用厂牌、完整名字、发行日和唯一结果筛选，并对详情再核对。没有番号的官方封面按 `ASSET-ID-<id>` 保存，资产字段保持原值。头像保留主图库候选，已有头像不自动覆盖；官方完整出演名单参与合演保护，多人封面需要框选。采集入口 `harvest_western_artwork.py` 每轮至多 16 位，默认只预览，输出来源回执。
+
 ## 实体身份与职业
 
 身份分类复用 `entity`、来源关系、`field_owners`、SQLite 迁移与版本触发器。职业与账号角色使用独立多值断言，跨角色身份使用可撤回关系；[Schema.org Person](https://schema.org/Person) 的 `hasOccupation`、`sameAs` 与 [Role](https://schema.org/Role) 提供语义参照，2026-10-06 已核对官方文档。实现不复制外部解析器或新增依赖。目录推断和搜索命中只存候选，公开来源事实与用户复核分别保留状态。
@@ -225,6 +231,7 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 - 口味页顶部给出结论与可点入口：浏览与 Peach 两侧的共同信号、可探索标签、待补证据的下一步动作。
 - 操作回执复用 Toast（Sonner 的栈，`frontend/src/react/toaster.tsx`；壳里只调 `toast()`／`actionReceipt()`）；按钮以 Spinner 和 `aria-busy` 标明忙态。后台任务显示可恢复进度，断线自动重连。
 - 实体的统称由用户在资料页自选：菜单只列这条实体名下已有的写法，选中的提为规范名、换下的留成别名，扁平投影跟着改；先过确认弹层并点名两个写法，成功后发可撤销回执；不收自由文本，撞上另一条实体的规范名只报冲突。
+- FC2 作品计数复用 `ordered_multipart_items`，`web_catalog.video_work_key` 按账本代次缓存已确认的合集键；资料、名册、同台艺人、标签与补全共用。`/api/items.work_total` 供作品读数，`total` 仍用于文件分页；不确定分段不归组。出演名单展开复用 BoardUI `Button`。跨角色人工合并走 `merge_entity`，`user:identity-merge:<kind>` 的别名与墓碑共同证明旧资料页地址，单纯同名不跨角色跳转。
 - 名字里的括号都走 `split_composite_aliases.py`：自动那拨只认罗马字复合人名，`--from-review` 那拨按人工判定清掉不承载名字的尾巴，旧写法留作别名；读音、厂牌消歧和角色出处不拆。`peach-data/review/composite-names-20260904.csv` 中的 28 条 creator 注音、575 条 tag 角色出处和 10 条 series 厂牌或载体消歧均保留，不属于待执行批次。
 - 全库创作者归属复核走 `scripts/audit_creator_attributions.py` 与 `metadata_creator_attributions`：复用 `code_creators` 的文件番号核对、DMM `matching_cids`、`western_release_identity`、厂牌规范名和别名、`studio_sites.is_platform`、字段归属、SQLite 备份及 `review_csv`。发行站作品号同时核对目录名与媒体文件名；来源目录见 [Legs Japan](https://www.legsjapan.com/en/)、[Fellatio Japan](https://www.fellatiojapan.com/en/)，平台身份见 [myfans 官方说明](https://creators.myfans.jp/)。预览覆盖全部来源关系与无作品实体；执行带冻结计划、备份和回滚记录，在事务内重算。只撤下有文件或发行来源证据的 `legacy:asset` 关系，保留用户判断、外部身份、规范实体和个人记录。月份、画质等集合后缀只回归已存在的完整账号；`creator_collection_base` 同时用于审计与摄取。公开厂牌断言可补空厂牌投影及关系，缺少规范厂牌时记录新实体完整快照；`upsert_asset_entity(update_entity_metadata=False)` 保留既有资料。结构目录、已知转载站及可信厂牌不进入自动 creator 摄取。外键检查逐项比较既有悬空；回滚核对字段版本、关系和新实体引用，后续改动拒绝整批恢复。
 - 实体链接可安装：`entity_link` 表、`q_entity` 的 `links` 契约、资料页 favicon 与管理页链接管理成套；死链区分「搬走了」和「没了」，`rediscover_entity_links.py` 从站点索引页上溯找新锚，确证没了的由 `link_status.settle_gone` 处置（已隐退女优留成不可点的失效标记，其余删除）。

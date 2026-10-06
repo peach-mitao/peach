@@ -302,16 +302,8 @@
 .peach-react [data-item-detail] [data-id-cell]:is([data-entity-kind], [data-open-unowned]):hover [data-id-name] { color: var(--ink); }
 .peach-react [data-item-detail] [data-cast-more] {
   align-self: center;
-  height: 46px;
-  padding: 0 12px;
-  border: 1px dashed var(--overlay-10);
-  border-radius: var(--floating-radius);
-  background: transparent;
-  color: var(--ink-2);
-  font-size: var(--fs-xs);
-  cursor: pointer;
+  margin-top: 7px;
 }
-.peach-react [data-item-detail] [data-cast-more]:hover { background: var(--hover); }
 .peach-react [data-item-detail] [data-series-rows] { display: grid; gap: 7px; }
 .peach-react [data-item-detail] [data-series-link] {
   display: flex;

@@ -35,10 +35,14 @@ export function EntityPage(props: EntityPageProps) {
   /* 名字对不上任何一位时 `/api/entity` 回 `{error}`：整块换成壳里那一屏空态，骨架不留着闪。空态是
      遗留层的标记，不放进 React 子树的样式范围。 */
   const missing = !!entity.data?.error;
+  const redirect = entity.data?.redirect;
   const { actions } = props;
   useLayoutEffect(() => { if (missing) actions.missing() }, [actions, missing]);
+  useLayoutEffect(() => {
+    if (redirect) actions.openEntity(redirect.kind, redirect.name, true);
+  }, [actions, redirect?.kind, redirect?.name]);
   if (entity.isError) return <RetryNote message={errorMessage(entity.error)} onRetry={() => { void entity.refetch() }} />;
-  if (!entity.data || missing) return null;
+  if (!entity.data || missing || redirect) return null;
   return <EntityLoaded {...props} entity={entity.data} />;
 }
 
@@ -295,7 +299,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   else if (view === 'videos') {
     busy = !items.data;
     const labels = tagList(filters.tag).map((tag) => tagLabel(tag));
-    readout = `视频 · ${(items.data?.total || 0).toLocaleString()}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
+    readout = `视频 · ${(items.data?.work_total ?? items.data?.total ?? 0).toLocaleString()}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
   } else if (wallPage && !wallPage.error) {
     readout = inSet ? `${wallPage.title} · ${(wallPage.total || 0).toLocaleString()} 张`
       : photoReadout(wallPage, codeSetsOf(wallPage).length);
@@ -338,4 +342,3 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     </>
   );
 }
-

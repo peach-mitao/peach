@@ -5,7 +5,8 @@ import unittest
 
 from peach import entity_classification as classification, entity_identity_research as research
 from peach.entities import merge_entity, upsert_asset_entity
-from peach.web_entity import q_index, q_entity
+from peach.web_entity import q_index, q_entity, q_suggest
+from peach.web_catalog import q_items
 from peach.web_state import WebContract
 from tests.support.ledger import fresh_ledger
 
@@ -189,3 +190,90 @@ class EntityClassificationTests(unittest.TestCase):
             merge_entity(self.connection,target_id=target,source_id=source,source_name='Old Name',alias_source='user:review')
         self.assertEqual(classification.classifications(self.connection,[target])[target][0]['label'],'模特')
         self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
+
+    def part(self, number, code='FC2-PPV-3312576', disposal=None):
+        name=f'{code}-{number}.mp4'
+        cursor=self.connection.execute(
+            "INSERT INTO asset(location,path,name,medium,code,size,duration,disposal) "
+            "VALUES('local',?,?,'video',?,100,600,?)", (f'B:\\番号\\{code}\\{name}',name,code,disposal))
+        for kind, label in [('performer','Cast Person'),('performer','Costar'),('studio','FC2 Studio'),('tag','Test Tag')]:
+            upsert_asset_entity(self.connection,kind=kind,name=label,asset_id=cursor.lastrowid,role=kind,source='test:cast')
+        self.connection.commit()
+        return cursor.lastrowid
+
+    def test_merge_deduplicates_identical_source_facts_and_keeps_latest_check_time(self):
+        _, target = self.entity('Target'); _, source = self.entity('Source')
+        for entity_id, checked in ((source, '2026-10-07T01:00:00+00:00'),
+                                   (target, '2026-10-06T01:00:00+00:00')):
+            classification.write_claim(self.connection, entity_id=entity_id, facet='identity',
+                value='person', source='source:official', evidence='同一份署名',
+                source_url='https://publisher.test/person', status='observed', confidence=1, checked_at=checked)
+        self.connection.commit()
+        with self.connection:
+            merge_entity(self.connection, target_id=target, source_id=source,
+                         source_name='Source', alias_source='user:review')
+        rows = classification.classifications(self.connection, [target])[target]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['checked_at'], '2026-10-07T01:00:00+00:00')
+
+    def test_merge_rejects_different_facts_from_the_same_source(self):
+        _, target = self.entity('Target'); _, source = self.entity('Source')
+        for entity_id, evidence in ((source, '记录甲'), (target, '记录乙')):
+            classification.write_claim(self.connection, entity_id=entity_id, facet='identity',
+                value='person', source='source:official', evidence=evidence, status='observed', confidence=1,
+                source_url='https://publisher.test/person')
+        self.connection.commit()
+        with self.assertRaisesRegex(ValueError, '来源冲突'), self.connection:
+            merge_entity(self.connection, target_id=target, source_id=source,
+                         source_name='Source', alias_source='user:review')
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM entity WHERE id IN (?,?)',
+                                                (target, source)).fetchone()[0], 2)
+
+    def test_fc2_collection_counts_once_in_profiles_rosters_tags_and_search(self):
+        for number in range(1,20): self.part(number)
+        contract=WebContract(self.db)
+        profile=q_entity(contract,{'kind':'performer','name':'Cast Person'})
+        self.assertEqual(profile['asset_count'],1)
+        self.assertEqual(profile['related_performers'][0]['n'],1)
+        self.assertEqual(profile['tags'][0]['n'],1)
+        for kind in ('performers','studios','tags'):
+            self.assertEqual(q_index(contract,kind)['items'][0]['n'],1)
+        suggest=q_suggest(contract,'Cast Person',kinds=['performer'])
+        self.assertEqual(suggest['groups'][0]['items'][0]['n'],1)
+        page=q_items(contract,{'performer':'Cast Person','limit':'5'})
+        self.assertEqual(page['work_total'],1)
+        self.assertEqual(page['total'],19)
+        self.assertEqual(len(page['items']),5)
+        self.assertEqual(page['items'][0]['part_group']['count'],19)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset').fetchone()[0],19)
+
+    def test_fc2_work_counts_keep_visibility_and_invalidate_with_ledger_changes(self):
+        self.part(1);self.part(3,disposal='trash');self.part(4,disposal='vanished')
+        contract=WebContract(self.db)
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Cast Person'})['asset_count'],1)
+        self.part(1,code='FC2-PPV-7777777')
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Cast Person'})['asset_count'],2)
+        self.assertEqual(q_items(contract,{'performer':'Cast Person'})['work_total'],2)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset_entity').fetchone()[0],16)
+
+    def test_ambiguous_fc2_encodes_are_counted_as_individual_files(self):
+        self.part(1);self.part(2)
+        self.part('1-1080p')
+        profile=q_entity(WebContract(self.db),{'kind':'performer','name':'Cast Person'})
+        self.assertEqual(profile['asset_count'],3)
+        self.assertEqual(q_items(WebContract(self.db),{'performer':'Cast Person'})['work_total'],3)
+
+    def test_cross_role_merge_routes_only_explicitly_marked_aliases(self):
+        _, target=self.entity('Known Person',kind='performer')
+        _, source=self.entity('Old Account Name')
+        with self.connection:
+            merge_entity(self.connection,target_id=target,source_id=source,
+                         source_name='Old Account Name',alias_source='user:identity-merge:creator')
+        self.assertEqual(q_entity(WebContract(self.db),{'kind':'creator','name':'Old Account Name'}),
+                         {'redirect':{'kind':'performer','name':'Known Person'}})
+        self.assertEqual(q_entity(WebContract(self.db),{'kind':'studio','name':'Known Person'}),{'error':'not found'})
+        self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
+
+    def test_matching_names_without_a_merge_are_distinct_identities(self):
+        self.entity('Known Person',kind='performer')
+        self.assertEqual(q_entity(WebContract(self.db),{'kind':'creator','name':'Known Person'}),{'error':'not found'})

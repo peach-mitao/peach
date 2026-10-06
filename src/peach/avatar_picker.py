@@ -30,6 +30,7 @@ from .avatar_cover_face import WHOLE_COVER_PROVIDERS, face_square
 from .avatar_face import read_sidecar
 from .catalog_rules import normalise_code_key
 from .entities import is_short_single_name
+from .western_artwork import artwork_cast_size, artwork_key
 from .kanji import fold_glyphs
 from .avatar_provider import (
     AvatarCandidateCache, InspectedAvatar, POLICY_VERSION, inspect_avatar,
@@ -284,7 +285,7 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
     found: list[tuple[int, int, Choice]] = []
     seen_codes: set[str] = set()
     for order, (asset_id, code, title, snapshot) in enumerate(rows):
-        key = normalise_code_key(code)
+        key = artwork_key(asset_id, code)
         if key:
             if key in seen_codes:
                 continue
@@ -298,7 +299,10 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
         if has_sheet:
             bases += [f"asset:{int(asset_id)}:cell{cell}" for cell in range(SHEET_CELLS)]
         width, height = size or (0, 0)
-        cast = casts.get(key, 0)
+        cast = casts.get(key, 0) if code else connection.execute(
+            "SELECT count(DISTINCT entity_id) FROM asset_entity WHERE asset_id=? AND role='performer'",
+            (int(asset_id),)).fetchone()[0]
+        cast = artwork_cast_size(cover, cast)
         found.append((width * height, order, Choice(
             ref=bases[0], source="asset",
             label=str(code or title or f"作品 {asset_id}"),
@@ -529,7 +533,7 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
     if row is None:
         raise PickerError("这部作品不在这个人名下")
     if what == "cover":
-        key = normalise_code_key(row[0])
+        key = artwork_key(asset_id, row[0])
         path = (Path(artwork.cover_root) / f"{key}.jpg") if key else None
         label = "封面"
         _check_version(path, version)

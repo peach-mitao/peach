@@ -15,7 +15,7 @@ import time
 from urllib.parse import urlsplit
 
 from . import entry_links, feeds, link_status, performer_header, web_feeds
-from .catalog_rules import LENGTH_TAGS, dir_expr, photo_set_title, solo_performer_clause, tag_cat
+from .catalog_rules import (LENGTH_TAGS, dir_expr, photo_set_title, solo_performer_clause, tag_cat)
 from .entities import normalize_entity_name, resolve_entity, rewrite_flat_projection
 from .social_links import ARCHIVE_HOSTS, is_archive
 from .web_catalog import (
@@ -25,6 +25,7 @@ from .web_catalog import (
     seeded_order,
     tag_is_not_a_performer_name,
     tag_not_hidden,
+    video_work_key,
 )
 from .web_state import WebContract
 from . import entity_classification
@@ -102,7 +103,7 @@ def label_layer(contract: WebContract, c, kind: str, entity_id: int) -> tuple[di
     maker = dict(maker) if maker else None
     labels = [dict(row) for row in c.execute(
         "SELECT e.id,e.canonical_name name,e.canonical_name k,"
-        "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id"
+        "(SELECT count(DISTINCT " + video_work_key(contract) + ") FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id"
         " WHERE " + COUNTED_VIDEO + " AND " + scope_predicate("studio", "ae.entity_id", "e.id") + ") n "
         "FROM label_maker lm JOIN entity e ON e.id=lm.label_id WHERE lm.maker_id=? "
         "ORDER BY n DESC,e.canonical_name", (entity_id,))]
@@ -156,6 +157,15 @@ def q_entity(contract: WebContract, args):
     with contract.read_connection() as c:
         row = resolve_entity(c, kind, name)
         if not row:
+            merged = c.execute(
+                "SELECT DISTINCT e.kind,e.canonical_name FROM entity e "
+                "JOIN entity_alias al ON al.entity_id=e.id "
+                "JOIN entity_redirect r ON r.target_id=e.id AND r.source=al.source "
+                "WHERE al.alias=? AND al.source=? ORDER BY e.id LIMIT 2",
+                (name, f'user:identity-merge:{kind}'),
+            ).fetchall()
+            if len(merged) == 1:
+                return {'redirect': {'kind': merged[0]['kind'], 'name': merged[0]['canonical_name']}}
             return {"error": "not found"}
         d = dict(row)
         try:
@@ -196,7 +206,7 @@ def q_entity(contract: WebContract, args):
             d.update(performer_header.header(c, d["id"], d["canonical_name"]))
         scope = scope_predicate(kind, "ae.entity_id")
         count, rep = c.execute(
-            "SELECT count(DISTINCT ae.asset_id),"
+            "SELECT count(DISTINCT " + video_work_key(contract) + "),"
             "(SELECT a2.id FROM asset_entity ae2 CROSS JOIN asset a2 ON a2.id=ae2.asset_id "
             " WHERE " + scope_predicate(kind, "ae2.entity_id") +
             " AND a2.medium='video' AND a2.snapshot_path IS NOT NULL " +
@@ -209,7 +219,7 @@ def q_entity(contract: WebContract, args):
         d["representative_asset_id"] = rep
         d["avatar_focus"] = contract.avatar_focus(kind, d["id"])
         d["tags"] = [dict(r) for r in c.execute(
-            "SELECT tag.id,tag.canonical_name k,count(DISTINCT scope.asset_id) n "
+            "SELECT tag.id,tag.canonical_name k,count(DISTINCT " + video_work_key(contract) + ") n "
             "FROM asset_entity scope "
             "JOIN asset_entity tagged ON tagged.asset_id=scope.asset_id "
             "JOIN entity tag ON tag.id=tagged.entity_id "
@@ -228,7 +238,7 @@ def q_entity(contract: WebContract, args):
         if kind == "agency":
             roster = c.execute(
                 "SELECT person.id,person.canonical_name k,"
-                "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
+                "(SELECT count(DISTINCT " + video_work_key(contract) + ") FROM asset_entity ae "
                 " JOIN asset a ON a.id=ae.asset_id "
                 " WHERE ae.entity_id=person.id AND " + COUNTED_VIDEO + ") n,"
                 "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
@@ -241,7 +251,7 @@ def q_entity(contract: WebContract, args):
                 (d["id"],))
         else:
             roster = c.execute(
-                "SELECT person.id,person.canonical_name k,count(DISTINCT scope.asset_id) n,"
+                "SELECT person.id,person.canonical_name k,count(DISTINCT " + video_work_key(contract) + ") n,"
                 "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
                 " WHERE ae2.entity_id=person.id AND a2.medium='video' "
                 " AND a2.snapshot_path IS NOT NULL AND " + solo_performer_clause("a2.id", "person.id") +
@@ -514,7 +524,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             # 拿它当一家公司的门面，页面上就会是一张与这家公司无关的脸。
             sql = ("SELECT e.id entity_id,e.canonical_name k,"
                    "(SELECT count(*) FROM entity_membership m WHERE m.agency_id=e.id) members,"
-                   "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
+                   "(SELECT count(DISTINCT " + video_work_key(contract) + ") FROM asset_entity ae "
                    " JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND "
                    + scope_predicate("agency", "ae.entity_id", "e.id") + ") n,"
                    "(SELECT l.id FROM entity_link l WHERE l.entity_id=e.id"
@@ -537,7 +547,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             # 的话，代表作那句每家片商都把全部有截图的视频回查一遍，一百多家叠起来要两秒多。
             scope = scope_predicate("studio", "ae.entity_id", "e.id")
             sql = ("SELECT * FROM (SELECT e.id entity_id,e.canonical_name k,"
-                   "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+                   "(SELECT count(DISTINCT " + video_work_key(contract) + ") FROM asset_entity ae"
                    " CROSS JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND " + scope + ") n,"
                    "(SELECT a2.id FROM asset_entity ae CROSS JOIN asset a2 ON a2.id=ae.asset_id "
                    " WHERE " + scope + " AND a2.medium='video' AND a2.snapshot_path IS NOT NULL "
@@ -556,7 +566,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             rows = rows[:limit]
         elif kind in INDEX_ENTITY_KINDS:
             entity_kind = INDEX_ENTITY_KINDS[kind]
-            sql = ("SELECT e.id entity_id,e.canonical_name k,count(DISTINCT ae.asset_id) n,"
+            sql = ("SELECT e.id entity_id,e.canonical_name k,count(DISTINCT " + video_work_key(contract) + ") n,"
                    "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
                    " WHERE ae2.entity_id=e.id AND a2.medium='video' AND a2.snapshot_path IS NOT NULL " +
                    (" AND " + solo_performer_clause("a2.id", "e.id") if entity_kind == "performer" else "") +
@@ -580,7 +590,7 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
                 row.update(summaries[row['entity_id']])
             category_counts = entity_classification.counts(c,entity_kind,q,COUNTED_VIDEO)
         else:
-            sql = ("SELECT e.canonical_name k, count(DISTINCT ae.asset_id) n "
+            sql = ("SELECT e.canonical_name k, count(DISTINCT " + video_work_key(contract) + ") n "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
                    "JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND e.kind='tag' "
                    f"AND e.canonical_name NOT IN ({','.join('?' for _ in LENGTH_TAGS)}) "
@@ -699,12 +709,12 @@ SUGGEST_MATCHED = (
 )
 
 
-def _suggest_entity_rows(connection, params):
+def _suggest_entity_rows(connection, params, work_key):
     """直接挂着作品的实体，按名下作品数排，前缀命中的排在前面。"""
     length_keys = {f"lt{index}": tag for index, tag in enumerate(sorted(LENGTH_TAGS))}
     kinds = ",".join(f"'{kind}'" for kind in SUGGEST_ENTITY_KINDS)
     sql = (
-        "SELECT e.kind kind, e.id entity_id, e.canonical_name k, count(DISTINCT ae.asset_id) n, "
+        "SELECT e.kind kind, e.id entity_id, e.canonical_name k, count(DISTINCT " + work_key + ") n, "
         + SUGGEST_MATCHED + " FROM entity e "
         "JOIN asset_entity ae ON ae.entity_id=e.id JOIN asset a ON a.id=ae.asset_id "
         "WHERE " + VISIBLE_CATALOG_ASSET + f" AND e.kind IN ({kinds}) "
@@ -721,7 +731,7 @@ def _suggest_entity_rows(connection, params):
     return connection.execute(sql, {**params, **length_keys}).fetchall()
 
 
-def _suggest_agency_rows(connection, params):
+def _suggest_agency_rows(connection, params, work_key):
     """事务所的规模顺着成员算，判据与它的资料页、索引页同一份。
 
     名下一部作品都没有的事务所不进补全：账本里有它的身份，但按它搜出来是空的。
@@ -733,7 +743,7 @@ def _suggest_agency_rows(connection, params):
     """
     sql = (
         "SELECT * FROM (SELECT 'agency' kind, e.id entity_id, e.canonical_name k, "
-        "(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae "
+        "(SELECT count(DISTINCT " + work_key + ") FROM asset_entity ae "
         " CROSS JOIN asset a ON a.id=ae.asset_id WHERE " + VISIBLE_CATALOG_ASSET + " AND "
         + scope_predicate("agency", "ae.entity_id", "e.id") + ") n, "
         # 事务所没有标识文件，门面是官网的站点圆标，与索引页同一条链接。
@@ -954,9 +964,10 @@ def q_suggest(contract: WebContract, q: str, limit: int = SUGGEST_GROUP_LIMIT,
     buckets: dict[str, list[dict]] = {}
     totals: dict[str, int] = {}
     with contract.read_connection() as connection:
-        entities = [dict(row) for row in _suggest_entity_rows(connection, params)]
+        work_key = video_work_key(contract)
+        entities = [dict(row) for row in _suggest_entity_rows(connection, params, work_key)]
         if "agency" in wanted:
-            entities += [dict(row) for row in _suggest_agency_rows(connection, params)]
+            entities += [dict(row) for row in _suggest_agency_rows(connection, params, work_key)]
         for row in entities:
             if row["kind"] not in wanted:
                 continue

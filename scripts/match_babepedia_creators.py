@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-r"""把 ledger 里的拉丁名 creator 回配到 babepedia 档案，产出候选 CSV。
-
-西方网黄在本库里登记为 `creator` 实体而不是 `performer`（`Shinaryen` 是 id 6710
-的 creator，312 部作品）。按 `kind='performer'` 找会一个都找不到。
+r"""把 ledger 里的拉丁名出演者与网黄博主回配到 babepedia，产出候选 CSV。
 
 判据只看 `<title>`，三条实测教训都写死在代码里：
 
@@ -165,7 +162,7 @@ def candidates(database: Path) -> list[tuple[int, str, int]]:
             """SELECT e.id, e.canonical_name,
                       (SELECT COUNT(*) FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id
                        WHERE ae.entity_id=e.id AND a.medium='video')
-               FROM entity e WHERE e.kind='creator' ORDER BY 3 DESC"""
+               FROM entity e WHERE e.kind IN ('creator','performer') ORDER BY 3 DESC"""
         ).fetchall()
     finally:
         connection.close()
@@ -178,7 +175,7 @@ FIELDS = ("entity_id", "creator", "videos", "verdict", "matched_variant",
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="把拉丁名 creator 回配到 babepedia")
+    parser = argparse.ArgumentParser(description="把拉丁名出演者与网黄博主回配到 babepedia")
     parser.add_argument("--db", type=Path, default=DATABASE_PATH)
     parser.add_argument("--out", type=Path,
                         default=GENERATED_DIR / "babepedia-candidates.csv")
@@ -202,7 +199,7 @@ def run(args: argparse.Namespace) -> int:
     done = load_done(args.out) if args.resume else {}
     if args.limit:
         todo = todo[:args.limit]
-    print(f"拉丁名 creator 候选 {len(todo)} 个（已完成 {len(done)} 个），间隔 {args.delay}s")
+    print(f"拉丁名人物候选 {len(todo)} 个（已完成 {len(done)} 个），间隔 {args.delay}s")
 
     transport = HttpxTransport()
     rows: list[dict] = []
@@ -210,7 +207,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         for index, (entity_id, name, videos) in enumerate(todo, 1):
             if name in done:
-                rows.append(done[name])
+                rows.append({**done[name], 'entity_id': entity_id, 'videos': videos})
                 continue
             verdict, variant, found, overlap = resolve(transport, name, args.delay)
             counts[verdict] = counts.get(verdict, 0) + 1

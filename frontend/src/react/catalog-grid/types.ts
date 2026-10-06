@@ -21,6 +21,7 @@ export interface MediaItem {
   play_count?: number | null;
   leave_ratio?: number | null;
   has_cover?: boolean;
+  cover_key?: string;
   /** 封面文件的内容版本，拼进封面地址的 `&v=`。 */
   cover_version?: string;
   has_thumb?: boolean;
@@ -47,7 +48,7 @@ export interface MediaItem {
 }
 
 /** `/api/items` 的一页。第一页带总数，往后的页只说还有没有。 */
-export interface MediaPage { items: MediaItem[]; total?: number; has_more?: boolean }
+export interface MediaPage { items: MediaItem[]; total?: number; work_total?: number; has_more?: boolean }
 
 /** 这一屏卡片的版式。`active` 是番号版式开关生效（JAV 模式或首页版式），`size` 是大图／小图，
  *  `portrait` 是这一屏整列都是竖屏（显式筛了竖屏），`javImage` 是「JAV 默认封面」设置。 */

@@ -29,8 +29,8 @@ export const withVersion = (url: string, version: string | null | undefined): st
   version ? `${url}&v=${encodeURIComponent(version)}` : url;
 
 /** 封面地址。`thumb` 是派生档，`upgradeCover` 把它摘掉换原件，版本号留在后面。 */
-export const coverUrl = (item: { code?: string | null; cover_version?: string }, thumb = false): string =>
-  withVersion(`/cover?code=${encodeURIComponent(item.code || '')}${thumb ? '&thumb=1' : ''}`, item.cover_version);
+export const coverUrl = (item: { code?: string | null; cover_key?: string; cover_version?: string }, thumb = false): string =>
+  withVersion(`/cover?code=${encodeURIComponent(item.cover_key || item.code || '')}${thumb ? '&thumb=1' : ''}`, item.cover_version);
 
 /** 厂牌标识地址，`variant` 跟着位置走：大位要字标、小位要方形图标。 */
 export const logoUrl = (studio: string, variant: string, version?: string | null): string =>
@@ -174,6 +174,7 @@ export function faceBoxAttrs(value: unknown): string {
 export interface CoverItem {
   id?: number;
   code?: string;
+  cover_key?: string;
   is_jav?: boolean;
   has_cover?: boolean;
   cover_version?: string;
@@ -248,6 +249,7 @@ export function cardArtwork(item: CoverItem & { follow_thumb_url?: string | null
  *  在两处长得一样。`size` 只施加给番号作品。 */
 export function mixFace(item: CoverItem, size: 'big' | 'small', eager: boolean, javImage: unknown): Artwork {
   if (item.is_jav) return javArtwork(item, size, eager, javImage);
+  if (item.has_cover && item.cover_key) return { kind: 'cover', html: coverImage(item, size, eager) };
   if (!item.has_thumb && !item.has_local_poster) return NO_ARTWORK;
   return { kind: 'thumb', html: `<img class="poster" src="/poster?id=${item.id}&c=4" width="640" height="360" alt="" loading="${eager ? 'eager' : 'lazy'}">` };
 }
@@ -263,7 +265,7 @@ export function queueThumbHtml(item: CoverItem, javImage: unknown): string {
    播放器照旧从黑场开始。 */
 export function detailPosterUrl(item: CoverItem, javImage: unknown): string {
   const thumb = item.has_thumb || item.has_local_poster ? `/poster?id=${item.id}&c=4` : '';
-  if (!item.is_jav) return thumb;
+  if (!item.is_jav) return item.has_cover && item.cover_key ? coverUrl(item) : thumb;
   return javImageKind(item, javImage) === 'cover'
     ? coverUrl(item) : thumb;
 }

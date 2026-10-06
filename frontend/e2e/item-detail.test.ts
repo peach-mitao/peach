@@ -246,7 +246,19 @@ describe('作品详情岛', () => {
       const shown = () => page.locator('#stage [data-item-identity] [data-entity-kind="performer"]:visible').count();
       assert.equal(await shown(), 8);
       assert.equal((await page.locator('#castMore').innerText()).trim(), `还有 ${NAMES.length - 8} 位`);
-      await page.locator('#castMore').click();
+      const button = page.getByRole('button', { name: `还有 ${NAMES.length - 8} 位` });
+      const appearance = await button.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return { border: style.borderTopStyle, width: parseFloat(style.borderTopWidth),
+          background: style.backgroundColor, icon: !!node.querySelector('svg'), height: node.getBoundingClientRect().height };
+      });
+      assert.equal(appearance.border, 'solid');
+      assert.ok(appearance.width >= 1);
+      assert.notEqual(appearance.background, 'rgba(0, 0, 0, 0)');
+      assert.equal(appearance.icon, true);
+      assert.ok(appearance.height >= 32);
+      await button.focus();
+      await page.keyboard.press('Enter');
       assert.equal(await shown(), NAMES.length);
       assert.equal(await page.locator('#castMore').count(), 0);
       assert.deepEqual(withoutPlayer(opened.problems), []);
