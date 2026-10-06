@@ -33,7 +33,9 @@ describe('本地与在线艺人共用名册布局', () => {
         }));
         for (const label of ['紧凑 · 圆形头像', '大图 · 竖幅头像']) {
           await page.getByRole('tab', { name: '本地', exact: true }).click();
-          await page.getByRole('radio', { name: label, exact: true }).check();
+          await page.getByRole('radio', { name: label, exact: true }).press('Space');
+          const layout = label.startsWith('紧凑') ? 'compact' : 'big';
+          await page.locator(`#index [data-index-grid][data-layout="${layout}"]`).waitFor();
           await settle(page);
           const local = await measure();
           await page.getByRole('tab', { name: '在线', exact: true }).click();
