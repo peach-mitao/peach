@@ -53,6 +53,19 @@ async function open(initial: EntityHeroProps) {
 }
 
 describe('排版用的纯函数', () => {
+  it('资料卡展示多重职业、来源与跨角色身份入口', async () => {
+    const given = props({ entity: performer({
+      identity_labels: ['成人出演者', '日本 AV', '西方成人发行'],
+      classifications: [{ facet: 'occupation', value: 'adult_performer', label: '成人出演者', status: 'observed', source_url: 'https://publisher.test/person', evidence: '发行方演员名单' }],
+      related_identities: [{ id: 2, kind: 'creator', canonical_name: '本人账号', relation: 'operates_account' }],
+    }) });
+    const host = await open(given);
+    const classification = host.querySelector('[data-identity-classification]')!;
+    expect(classification.textContent).toContain('日本 AV · 西方成人发行');
+    expect(classification.querySelector('a')?.getAttribute('href')).toBe('https://publisher.test/person');
+    await click(classification.querySelector('button'));
+    expect(given.actions.openEntity).toHaveBeenCalledWith('creator', '本人账号');
+  });
   it('名字下面那一行：读音在最前，余下的收进「+N」；什么都没有就不出这一项', () => {
     expect(nameLine({ reading: 'あおい', shown: ['葵司', 'Tsukasa Aoi'], total: 5 }))
       .toEqual({ names: ['あおい', '葵司', 'Tsukasa Aoi'], rest: 3, total: 5 });

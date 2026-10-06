@@ -19,6 +19,27 @@ from scripts import test_runner as runner
 from support.gitrepo import seed_repository
 
 
+class ResourceShardCommandTests(unittest.TestCase):
+    def test_resource_entry_keeps_shard_arguments_and_space_in_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            resource = Path(temporary)/'resource entry.py'
+            resource.write_text('', encoding='utf-8')
+            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': ''}):
+                original = runner.shard_command(('full',), 2, 4, Path(temporary)/'timings.json')
+            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(resource)}):
+                bounded = runner.shard_command(('full',), 2, 4, Path(temporary)/'timings.json')
+            self.assertEqual(bounded[:7], [sys.executable, '-X', 'utf8', str(resource.resolve()), '--timeout', '1800', '--'])
+            self.assertEqual(bounded[7:], original)
+
+    def test_missing_resource_entry_and_parallel_resource_jobs_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(Path(temporary)/'missing.py')}):
+                with self.assertRaisesRegex(ValueError, '不存在'):
+                    runner.shard_command(('full',), 0, 4, Path(temporary)/'timings.json')
+                with self.assertRaisesRegex(ValueError, 'jobs 1'):
+                    runner.run_shards(('full',), jobs=2, shard_count=4)
+
+
 class VerificationTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()

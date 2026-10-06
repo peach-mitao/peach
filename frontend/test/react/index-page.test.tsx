@@ -84,6 +84,19 @@ describe('地址栏上的类型', () => {
 });
 
 describe('名册', () => {
+  it('身份分类写回地址并隔离分页缓存；候选只显示待核验', async () => {
+    seed(indexKey('creators', ''), [person('待核验账号', { identity_labels: ['待核验'] })]);
+    const fetcher = serve(() => ({ items: [person('艺术账号', { identity_labels: ['发布账号', '艺术创作者'] })], has_more: false }));
+    const given = props({ kind: 'creators' });
+    const host = await open(given);
+    expect(cells(host)[0]?.textContent).toContain('待核验');
+    await click(buttonNamed('艺术创作者', host));
+    await settle();
+    expect(given.route).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'artist' }), { replace: false });
+    expect(urls(fetcher)[0]).toContain('category=artist');
+    expect(cells(host)[0]?.textContent).toContain('发布账号 / 艺术创作者');
+    expect(indexRoute({ kind: 'performers', q: '', scope: 'online', view: 'alphabet', category: 'artist' }).category).toBe('all');
+  });
   it('首屏读缓存，读数带加号，大图版式按大格取头像', async () => {
     seed(indexKey('performers', ''), [person('甲'), person('乙')], true);
     const given = props();

@@ -197,6 +197,11 @@ def strip_zero_width(name: str) -> str:
 
 def canonicalize_entity_name(kind: str, name: str | None) -> str:
     canonical = strip_zero_width(name).strip()
+    if kind == 'creator':
+        from .classification import is_structural_creator
+        from .studio_sites import is_platform
+        if is_platform(canonical) or is_structural_creator(canonical):
+            return ''
     if kind in PERSON_ENTITY_KINDS:
         canonical = collapse_repeated_entity_name(canonical)
         if canonical in INVALID_PERSON_ENTITY_NAMES:
@@ -264,6 +269,8 @@ def merge_entity(
     moved = {"assets": 0, "aliases": 0, "refs": 0, "links": 0, "terms": 0,
              "dropped_refs": 0, "memberships": 0, "members": 0, "labels": 0, "profiles": 0,
              "follows": 0, "feeds": 0, "discoveries": 0, "redirects": 0}
+    from .entity_classification import transfer
+    transfer(connection, source_id, target_id)
 
     # 被并入的名字本身留作别名，否则按旧名搜索会落空。
     connection.execute(
@@ -419,6 +426,7 @@ def upsert_asset_entity(
     role: str, source: str, confidence: float = 1.0,
     external_provider: str | None = None, external_id: str | int | None = None,
     metadata: dict | None = None, now: str | None = None,
+    update_entity_metadata: bool = True,
 ) -> int | None:
     """写入规范实体关系；调用方负责事务和兼容投影。"""
     canonical = canonicalize_entity_name(kind, name)
@@ -456,7 +464,7 @@ def upsert_asset_entity(
             (kind, canonical, normalized, payload, stamp, stamp),
         )
         entity_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
-    else:
+    elif update_entity_metadata:
         connection.execute(
             "UPDATE entity SET metadata_json=?,updated_at=? WHERE id=?",
             (payload, stamp, entity_id),

@@ -4,7 +4,7 @@
  * 行为落在 vitest，布局与运行期问题归 `smoke.test.ts`。每条用例守一个决定，读的是
  * `getComputedStyle`，类名或样式写法换了照样成立。 */
 import assert from 'node:assert/strict';
-import { after, before, describe, it } from 'node:test';
+import { after, before, beforeEach, describe, it } from 'node:test';
 
 import type { Browser, Locator, Page } from 'playwright-core';
 
@@ -782,9 +782,20 @@ async function followTab(opened: Visit, name: string): Promise<void> {
 
 describe('设计决定', () => {
   let browser: Browser;
+  let browserTests = 0;
 
   before(async () => {
     browser = await launch();
+  });
+
+  beforeEach(async () => {
+    // 每个浏览器至多运行 8 项，页面与图像缓存的累积占用受限。
+    if (browserTests === 8) {
+      await browser.close();
+      browser = await launch();
+      browserTests = 0;
+    }
+    browserTests += 1;
   });
 
   after(async () => {

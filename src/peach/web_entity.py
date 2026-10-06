@@ -27,6 +27,7 @@ from .web_catalog import (
     tag_not_hidden,
 )
 from .web_state import WebContract
+from . import entity_classification
 
 
 #: 有资料页的实体种类。事务所（agency）和厂牌是两件事：厂牌出片、事务所出人，
@@ -162,6 +163,9 @@ def q_entity(contract: WebContract, args):
         except (TypeError, ValueError):
             metadata = {}
         d["metadata"] = metadata
+        d['classifications'] = entity_classification.classifications(c, [d['id']])[d['id']]
+        d['identity_labels'] = entity_classification.labels(d['classifications'])
+        d['related_identities'] = entity_classification.related_identities(c, d['id'])
         alias_rows = _entity_alias_rows(c, d["id"])
         d["aliases"] = [row["alias"] for row in alias_rows]
         # 罗马字仍是检索和旧链接的重要身份键，但中文/日文规范名下面再把英文全列一遍
@@ -563,11 +567,17 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
                    "WHERE " + COUNTED_VIDEO + " AND e.kind=? ")
             par = [entity_kind]
             if q: sql += "AND e.canonical_name LIKE ? "; par.append(f"%{q}%")
+            clause, values = entity_classification.filter_sql(category)
+            sql += clause
+            par.extend(values)
             sql += "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT ? OFFSET ?"
             par.extend((limit + 1, offset))
             rows = [dict(r) for r in c.execute(sql, par)]
             has_more = len(rows) > limit
             rows = rows[:limit]
+            claims = entity_classification.classifications(c, [row['entity_id'] for row in rows])
+            for row in rows:
+                row['identity_labels'] = entity_classification.labels(claims[row['entity_id']])
         else:
             sql = ("SELECT e.canonical_name k, count(DISTINCT ae.asset_id) n "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "

@@ -66,7 +66,7 @@ export function PeopleGrid(
       {items.map((item) => {
         const avatar = props.personAvatar(item, entityKind, big);
         return (
-          <Cell key={item.k} data-k={item.k} data-kind={entityKind} name={item.k} readout={personReadout(kind, item)}
+          <Cell key={item.k} data-k={item.k} data-kind={entityKind} name={item.k} readout={`${personReadout(kind, item)}${item.identity_labels?.length ? ' · ' + item.identity_labels.join(' / ') : ''}`}
             big={big} onPress={() => props.openEntity(entityKind, item.k)}>
             <Ring html={avatar.html} face={avatar.face} company={company} big={big} />
           </Cell>

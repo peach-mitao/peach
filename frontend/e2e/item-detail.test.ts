@@ -339,7 +339,8 @@ describe('作品详情岛', () => {
         const rects = await actions.evaluateAll(nodes => nodes.map(node => {
           const r = node.getBoundingClientRect(); return { top: r.top, width: r.width };
         }));
-        assert.equal(rects.length, 9);
+        assert.equal(rects.length, 8);
+        assert.equal(await page.locator('#stage [data-fb="cloud-download"]').count(), 0);
         assert.ok(Math.max(...rects.map(r => r.top)) - Math.min(...rects.map(r => r.top)) <= 1);
         assert.ok(rects.every(r => r.width >= 30));
         await actions.first().scrollIntoViewIfNeeded();

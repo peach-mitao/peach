@@ -4,6 +4,7 @@
 
 ## 待复核的元数据
 
+- 全库创作者归属审计：2026-10-06 检查 1,685 个实体、59,433 条关系，平台、厂牌、发行标题与作品编号旧投影的修复计划保存在 `peach-data/review/creator-classification-plan.json`。250 个存疑名称的联网查询在同目录 `creator-identity-lookups.json`，可信来源分类与出演署名另存冻结计划；缺少唯一身份来源的记录保持待核验。代码、迁移、真实数据执行与生产核验须完成回归验证。
 - `FC2-PPV-1625020` 的资产 `6440`、`6562`：创作者「音あずさ」「音梓」均来自 `legacy:asset`，没有卖家来源证据；女优关系来自 FC2PPV-DB 和 JavDB。复核产物是 `peach-data/review/creator-quality-audit.csv`，状态为候选，真实账本保持原样。清理这两条创作者关系与兼容字段需要用户确认。
 
 ## 优先级

@@ -43,7 +43,7 @@ function actions(): ActionMocks {
   return {
     close: vi.fn(), present: vi.fn(), redirect: vi.fn(), openQueueItem: vi.fn(), mountPlayer: vi.fn(() => vi.fn()), reopen: vi.fn(),
     checkSource: vi.fn(async () => false), openSavedFollow: vi.fn(), openEntity: vi.fn(), openUnowned: vi.fn(), openRegion: vi.fn(),
-    openTag: vi.fn(), addToPlaylist: vi.fn(), cloudDownload: vi.fn(), saveMix: vi.fn(), editPlaylist: vi.fn(), openPlaylists: vi.fn(),
+    openTag: vi.fn(), addToPlaylist: vi.fn(), saveMix: vi.fn(), editPlaylist: vi.fn(), openPlaylists: vi.fn(),
     reveal: vi.fn(async () => ''), sync: vi.fn(async () => ({ text: '', removed: [] })), trashChanged: vi.fn(async () => {}),
     toast: vi.fn(), failure: vi.fn(),
   };
@@ -456,15 +456,12 @@ describe('侧栏怎么读', () => {
     expect(done.openUnowned).toHaveBeenCalled();
   });
 
-  it('云下载键把这一条交给壳，由壳带着番号与标题去活动页', async () => {
+  it('作品详情的动作属于当前作品', async () => {
     serve();
     const shown = item(1, { code: 'ABC-123' } as Partial<DetailItem>);
-    const { host, actions: done } = await show(shown);
-    const button = host.querySelector('[data-fb="cloud-download"]');
-    expect(button?.getAttribute('aria-label')).toBe('云下载');
-    expect(glyph(button)).toBe('#i-cloud-download');
-    await click(button);
-    expect(done.cloudDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 1, code: 'ABC-123' }));
+    const { host } = await show(shown);
+    expect(host.querySelector('[data-fb="cloud-download"]')).toBeNull();
+    expect(host.querySelector('#addPlaylist')?.getAttribute('aria-label')).toBe('加入播放列表');
   });
 
   it('每一枚键的字形只说它旁边那件事', async () => {

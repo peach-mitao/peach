@@ -189,7 +189,8 @@ class TestPlanningTests(unittest.TestCase):
             return launched, spawn
 
         launched, spawn = launcher(failing=None)
-        with contextlib.redirect_stdout(io.StringIO()) as output:
+        with patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': ''}), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
             passed, count, timings = runner.run_shards(('follow', 'tooling'), jobs=2, shard_count=3, spawn=spawn)
         self.assertTrue(passed)
         self.assertEqual(count, 10 + 11 + 12)
@@ -203,7 +204,8 @@ class TestPlanningTests(unittest.TestCase):
             self.assertIn(f'分片 {index} 的输出', output.getvalue())
 
         _, spawn = launcher(failing=2)
-        with contextlib.redirect_stdout(io.StringIO()):
+        with patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': ''}), \
+             contextlib.redirect_stdout(io.StringIO()):
             passed, count, _ = runner.run_shards(('checks',), jobs=4, shard_count=3, spawn=spawn)
         self.assertFalse(passed)
         self.assertEqual(count, 10 + 11 + 12, '失败那片的用例数也要算进总数，记录里的 count 才是实跑数')

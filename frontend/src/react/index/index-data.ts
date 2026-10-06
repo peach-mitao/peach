@@ -22,7 +22,7 @@ export type PeopleLayout = 'big' | 'compact';
 
 export const INDEX_URL = '/api/index';
 
-/** 页头标题。`/performers` 的页标题叫「女优」，页内标题跟着名册的口径叫「艺人」。 */
+/** 页头标题与名册口径。 */
 export const INDEX_TITLES: Record<IndexKind, string> = {
   performers: '艺人', creators: '创作者', studios: '厂牌', agencies: '事务所', tags: '标签',
 };
@@ -44,6 +44,12 @@ export const ONLINE_TAG_CATEGORIES: readonly (readonly [string, string])[] = [
   ['all', '全部'], ['general', '通用'], ['artist', '创作者'], ['character', '角色'],
   ['copyright', '作品'], ['metadata', '元数据'],
 ];
+export const IDENTITY_CATEGORIES: readonly (readonly [string, string])[] = [
+  ['all', '全部'], ['person', '个人'], ['account', '发布账号'], ['seller', '卖家'],
+  ['organization', '机构'], ['platform', '平台'], ['adult_performer', '成人出演者'],
+  ['model', '模特'], ['artist', '艺术创作者'], ['japanese_av', '日本 AV'],
+  ['western_adult', '西方成人发行'], ['unknown', '待核验'],
+];
 
 /** 每页条数：一屏头像 120 格，标签 180 枚。 */
 export const PAGE_SIZE = { people: 120, tags: 180 } as const;
@@ -53,6 +59,7 @@ export const isCompany = (kind: IndexKind) => kind === 'studios' || kind === 'ag
 
 /** 本地名册的一格。字段以 `q_index` 为准；公司另有标识，事务所另有成员数。 */
 export interface IndexPerson {
+  identity_labels?: string[];
   entity_id?: number;
   id?: number;
   k: string;
@@ -130,13 +137,15 @@ export interface IndexProps extends IndexRoute {
  *  只有艺人和标签两页分本地与在线。 */
 export function indexRoute(route: IndexRoute): IndexRoute {
   const scope = route.kind === 'tags' || route.kind === 'performers' ? route.scope : 'local';
-  const known = (scope === 'online' ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES).some(([key]) => key === route.category);
-  return { ...route, scope, category: route.kind === 'tags' && known ? route.category : 'all' };
+  const categories = route.kind === 'tags' ? (scope === 'online' ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES) : IDENTITY_CATEGORIES;
+  const classified = scope === 'local' && (route.kind === 'creators' || route.kind === 'performers');
+  const known = categories.some(([key]) => key === route.category);
+  return { ...route, scope, category: (route.kind === 'tags' || classified) && known ? route.category : 'all' };
 }
 
 /** 一种状态下该读哪一份：本地名册、本地词表、在线创作者或在线标签。 */
 export type IndexSource =
-  | { what: 'people'; kind: Exclude<IndexKind, 'tags'>; q: string }
+  | { what: 'people'; kind: Exclude<IndexKind, 'tags'>; q: string; category?: string }
   | { what: 'tags'; q: string; category: string }
   | { what: 'online-authors'; q: string }
   | { what: 'online-tags'; q: string; category: string };
@@ -145,16 +154,16 @@ export function indexSource(route: Pick<IndexRoute, 'kind' | 'q' | 'scope' | 'ca
   const { kind, q, scope, category } = route;
   if (kind === 'tags') return scope === 'online' ? { what: 'online-tags', q, category } : { what: 'tags', q, category };
   if (kind === 'performers' && scope === 'online') return { what: 'online-authors', q };
-  return { what: 'people', kind, q };
+  return { what: 'people', kind, q, ...(category && category !== 'all' ? { category } : {}) };
 }
 
 export const indexKey = (kind: IndexKind, q: string, category = 'all') =>
-  ['index', kind, q, ...(kind === 'tags' ? [category] : [])] as const;
+  ['index', kind, q, ...(kind === 'tags' || category !== 'all' ? [category] : [])] as const;
 
 export function indexUrl(kind: IndexKind, q: string, category: string, limit: number, offset: number): string {
   const params = new URLSearchParams({ kind, limit: String(limit), offset: String(offset) });
   if (q) params.set('q', q);
-  if (kind === 'tags' && category !== 'all') params.set('category', category);
+  if (category !== 'all') params.set('category', category);
   return `${INDEX_URL}?${params}`;
 }
 
@@ -175,8 +184,8 @@ export function indexQuery(source: IndexSource): IndexQuery {
   const base = { initialPageParam: 0, getNextPageParam: next };
   switch (source.what) {
     case 'people':
-      return { ...base, queryKey: indexKey(source.kind, source.q),
-        queryFn: ({ pageParam, signal }) => apiGet(indexUrl(source.kind, source.q, 'all', limit, pageParam), signal) };
+      return { ...base, queryKey: indexKey(source.kind, source.q, source.category || 'all'),
+        queryFn: ({ pageParam, signal }) => apiGet(indexUrl(source.kind, source.q, source.category || 'all', limit, pageParam), signal) };
     case 'tags':
       return { ...base, queryKey: indexKey('tags', source.q, source.category),
         queryFn: ({ pageParam, signal }) => apiGet(indexUrl('tags', source.q, source.category, limit, pageParam), signal) };

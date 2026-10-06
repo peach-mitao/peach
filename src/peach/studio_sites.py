@@ -115,7 +115,7 @@ CONFIRMED_SITES: dict[str, tuple[str, str]] = {
 #: 判词单列而不是静默跳过：少扫一个和「扫过但没找到」在复核件上长得一模一样，
 #: 那正是这个仓库最常见的那类缺陷。名字按 `normalise` 比，写法差异（`FC2-PPV`／`FC2 PPV`）
 #: 不影响命中。
-PLATFORM_ENTITIES = frozenset({"fc2ppv", "fc2", "myfans"})
+PLATFORM_ENTITIES = frozenset({"fc2ppv", "fc2", "myfans", "manyvids", "onlyfans", "fansly", "patreon", "fantia", "fanbox"})
 PLATFORM_VERDICT = "不适用（发行平台）"
 
 

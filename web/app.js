@@ -146,7 +146,7 @@ const ROUTES=[
     open:(params,push)=>openEntity(kind,params.name,push)})),
   /* 索引页的状态全在地址栏上（过滤词、范围、视图、类型由页面自己写回），所以就地重取
      与刷新都是按当前地址重开一次。 */
-  {match:'/performers',nav:'performers',title:'女优',
+  {match:'/performers',nav:'performers',title:'艺人',
     open:(params,push)=>openIndex('performers',push),
     reload:()=>openIndex('performers',false)},
   {match:'/creators',title:'创作者',
@@ -2455,6 +2455,7 @@ function indexPath({kind,q,scope,view,category}){
     if(scope==='online')params.set('scope','online');
     if(category!=='all')params.set('category',category)}
   if(kind==='performers'&&scope==='online')params.set('scope','online');
+  if((kind==='creators'||kind==='performers')&&scope!=='online'&&category!=='all')params.set('category',category);
   return '/'+kind+(params.size?'?'+params:'');
 }
 /* 页头那几样此刻就能给出最终样子：标题、读数的占位、版式开关、过滤框和页面级 Tabs，
@@ -3641,7 +3642,6 @@ const itemDetailActions={
   openRegion:region=>openRegion(region),
   openTag:tag=>{commitContextFilter(filters=>{filters.tag=tag});window.scrollTo({top:0,behavior:'smooth'})},
   addToPlaylist:item=>openAddToPlaylist(item),
-  cloudDownload:item=>openCloudDownload({code:item.code||'',title:item.title||item.name||'',origin:`asset:${item.id}`,searchReason:item.better_version?item.better_version_reason||'':''}),
   saveMix:options=>saveMixAsPlaylist(options),
   editPlaylist:()=>openPlaylists(true),
   openPlaylists:()=>openPlaylists(true),

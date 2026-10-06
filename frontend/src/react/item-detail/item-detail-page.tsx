@@ -337,8 +337,6 @@ function Side({ item, queue, write, helpers, actions }: {
           <button type="button" id="betterVersion" data-fb="quality" aria-label="寻找更好版本"
             title={item.better_version ? (item.better_version_reason || '已标记寻找更好版本') : '寻找高清、无水印或完整版'}
             aria-pressed={!!item.better_version} {...busy('quality')} onClick={write.quality}><Glyph name="sparkles" /></button>
-          <button type="button" data-fb="cloud-download" aria-label="云下载" title="云下载 · 贴磁力交给 115 或 PikPak 离线下载"
-            onClick={() => actions.cloudDownload(item)}><Glyph name="cloud-download" /></button>
           <button type="button" data-kind="dispose" data-fb="dispose" aria-label="移入回收站" title="移入回收站 · 文件仍保留，可从回收站永久清除"
             aria-pressed={item.disposal === 'trash'} {...busy('dispose')} onClick={() => write.feedback('dispose')}><Glyph name="trash" /></button>
         </div>
