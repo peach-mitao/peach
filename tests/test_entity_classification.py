@@ -1,4 +1,4 @@
-"""多职业分类、来源保护、身份衔接与分页的行为回归。"""
+"""浏览分类、来源保护、身份衔接与分页的行为回归。"""
 import sqlite3
 import tempfile
 import unittest
@@ -38,25 +38,105 @@ class EntityClassificationTests(unittest.TestCase):
                 {'facet':'occupation','value':'adult_performer','source_url':'https://publisher.test/profile','evidence':'发行出演名单','status':'observed','confidence':1}]}
 
     def test_multiple_markets_and_occupations_are_independent_of_entity_role(self):
-        _,entity_id=self.entity('Known Person')
+        _,entity_id=self.entity('Known Person',kind='performer')
         for facet,value in [('identity','person'),('occupation','adult_performer'),('occupation','model'),('market','japanese_av'),('market','western_adult')]:
             self.claim(entity_id,facet,value)
         self.connection.commit()
-        data=q_entity(WebContract(self.db),{'kind':'creator','name':'Known Person'})
-        self.assertEqual(set(data['identity_labels']),{'个人','成人出演者','模特','日本 AV','西方成人发行'})
+        data=q_entity(WebContract(self.db),{'kind':'performer','name':'Known Person'})
+        self.assertEqual(data['identity_labels'],['女优','西方'])
         self.assertEqual(len(data['classifications']),5)
 
     def test_candidates_and_search_hits_do_not_qualify_for_trusted_filters(self):
         _,known=self.entity('Known Person'); _,unknown=self.entity('Unknown Person')
-        self.claim(known,'identity','person')
-        classification.write_claim(self.connection,entity_id=unknown,facet='identity',value='person',source='script:lookup',evidence='同名搜索命中')
+        self.claim(known,'account_role','seller')
+        classification.write_claim(self.connection,entity_id=unknown,facet='account_role',value='seller',source='script:lookup',evidence='同名搜索命中')
         self.connection.commit()
-        data=q_index(WebContract(self.db),'creators',limit=1,category='unknown')
+        data=q_index(WebContract(self.db),'creators',limit=1,category='blogger')
         self.assertEqual([row['entity_id'] for row in data['items']],[unknown])
         self.assertFalse(data['has_more'])
-        self.assertEqual(data['items'][0]['identity_labels'],['待核验'])
-        self.assertEqual(q_index(WebContract(self.db),'creators',category='person')['items'][0]['entity_id'],known)
+        self.assertEqual(data['items'][0]['identity_labels'],['网黄博主'])
+        self.assertEqual(data['categories'],{'blogger':1,'seller':1})
+        self.assertEqual(q_index(WebContract(self.db),'creators',category='seller')['items'][0]['entity_id'],known)
         self.assertEqual(q_index(WebContract(self.db),'creators',category="person' OR 1=1")['items'],[])
+
+    def test_existing_jav_directory_identity_is_shared_by_profiles_and_paginated_filters(self):
+        expected = []
+        for provider in sorted(classification.JAV_DIRECTORIES):
+            _, entity_id = self.entity(provider, kind='performer')
+            self.connection.execute('INSERT INTO entity_external_ref(entity_id,provider,external_kind,external_id) '
+                                    'VALUES(?,?,?,?)', (entity_id,provider,'performer',str(entity_id)))
+            expected.append(entity_id)
+        self.connection.commit()
+        before = self.connection.total_changes
+        for provider in sorted(classification.JAV_DIRECTORIES):
+            profile = q_entity(WebContract(self.db),{'kind':'performer','name':provider})
+            self.assertEqual(profile['identity_labels'],['女优'])
+            self.assertEqual(profile['classifications'],[])
+        found = []
+        for offset in range(len(expected)):
+            page = q_index(WebContract(self.db),'performers',category='japanese_av',limit=1,offset=offset)
+            found.extend(row['entity_id'] for row in page['items'])
+            self.assertEqual(page['categories'],{'japanese_av':len(expected)})
+        self.assertCountEqual(found,expected)
+        self.assertEqual(self.connection.total_changes,before)
+
+    def test_collection_refs_general_directories_and_candidates_do_not_assert_jav_identity(self):
+        for provider, external_kind in [('minnano-av','production'),('babepedia','performer'),
+                                        ('stash','performer'),('r18','performer_name'),('kmib','performer')]:
+            _, entity_id = self.entity(provider, kind='performer')
+            self.connection.execute('INSERT INTO entity_external_ref(entity_id,provider,external_kind,external_id) '
+                                    'VALUES(?,?,?,?)', (entity_id,provider,external_kind,str(entity_id)))
+            classification.write_claim(self.connection,entity_id=entity_id,facet='market',value='japanese_av',
+                                       source='script:search',evidence='未核验同名搜索')
+        self.connection.commit()
+        data = q_index(WebContract(self.db),'performers')
+        self.assertEqual(len(data['items']),5)
+        self.assertTrue(all(row['identity_labels']==[] for row in data['items']))
+        self.assertEqual(q_index(WebContract(self.db),'performers',category='japanese_av')['items'],[])
+
+    def test_category_counts_respect_search_and_visible_works_without_being_limited_to_one_page(self):
+        _, seller = self.entity('Seller Match')
+        self.claim(seller,'account_role','seller')
+        self.entity('Creator Match'); self.entity('Outside')
+        asset_id, hidden = self.entity('Vanished Match')
+        self.connection.execute("UPDATE asset SET disposal='vanished' WHERE id=?",(asset_id,))
+        self.connection.commit()
+        data = q_index(WebContract(self.db),'creators',q='Match',limit=1,category='seller')
+        self.assertEqual(data['categories'],{'blogger':1,'seller':1})
+        self.assertEqual([row['entity_id'] for row in data['items']],[seller])
+
+    def test_fc2_cast_and_western_release_filters_allow_multiple_memberships(self):
+        asset_id, entity_id = self.entity('Known Person',kind='performer')
+        self.claim(entity_id,'market','japanese_av')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567',region='west' WHERE id=?",(asset_id,))
+        self.connection.commit()
+        for category in ('japanese_av','amateur','western'):
+            page = q_index(WebContract(self.db),'performers',category=category,limit=1)
+            self.assertEqual(page['categories'],{'japanese_av':1,'amateur':1,'western':1})
+            self.assertEqual(page['items'][0]['identity_labels'],['女优','素人','西方'])
+            self.assertEqual(page['items'][0]['identity_categories'],['japanese_av','amateur','western'])
+        self.connection.execute("UPDATE asset SET disposal='vanished' WHERE id=?",(asset_id,))
+        self.connection.commit()
+        self.assertEqual(classification.summaries(self.connection,[entity_id])[entity_id]['identity_labels'],['女优'])
+
+    def test_animation_author_is_separate_from_real_accounts_and_artists(self):
+        _, animator = self.entity('Animator')
+        self.claim(animator,'occupation','animator')
+        _, artist = self.entity('Artist')
+        self.claim(artist,'occupation','artist')
+        self.connection.commit()
+        page = q_index(WebContract(self.db),'creators',category='animation')
+        self.assertEqual([row['entity_id'] for row in page['items']],[animator])
+        self.assertEqual(page['categories'],{'blogger':1,'animation':1})
+
+    def test_western_cast_occupation_does_not_assert_a_japanese_av_career(self):
+        _, entity_id = self.entity('Western Performer',kind='performer')
+        self.claim(entity_id,'occupation','adult_performer')
+        self.claim(entity_id,'market','western_adult')
+        self.connection.commit()
+        profile = q_entity(WebContract(self.db),{'kind':'performer','name':'Western Performer'})
+        self.assertEqual(profile['identity_labels'],['西方'])
+        self.assertEqual(q_index(WebContract(self.db),'performers',category='japanese_av')['items'],[])
 
     def test_script_cannot_approve_or_supply_unvalidated_values(self):
         _,entity_id=self.entity('Known Person')
@@ -107,5 +187,5 @@ class EntityClassificationTests(unittest.TestCase):
         self.claim(source,'occupation','model');self.connection.commit()
         with self.connection:
             merge_entity(self.connection,target_id=target,source_id=source,source_name='Old Name',alias_source='user:review')
-        self.assertEqual(classification.labels(classification.classifications(self.connection,[target])[target]),['模特'])
+        self.assertEqual(classification.classifications(self.connection,[target])[target][0]['label'],'模特')
         self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])

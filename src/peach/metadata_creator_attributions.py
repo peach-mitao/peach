@@ -7,58 +7,38 @@ import re
 import sqlite3
 from collections import defaultdict
 
-from .catalog_rules import compact_label, western_release_identity, release_code_from_text
-from .classification import is_structural_creator
-from .code_creators import SETTLED_VERDICTS, classify as classify_code
+from .catalog_rules import compact_label, western_release_identity
+from .classification import is_structural_creator, is_repost_creator, creator_collection_base, creator_release_identifier
 from .entities import normalize_entity_name, upsert_asset_entity
 from .field_owners import is_protected, owner_of, write_owned_fields
 from .studio_sites import is_platform, normalise
-from .sources.dmm import matching_cids
 
 OWNER = 'script:creator-attributions'
-# 官网目录把模特与作品编号分列；这些编号属于作品，不是账号。
-SITE_RELEASES = {
-    'legsjapan': 'https://www.legsjapan.com/en/',
-    'fellatiojapan': 'https://www.fellatiojapan.com/en/',
-}
 FIELDS = ('asset_id', 'entity_id', 'current_creator', 'relation_source', 'confidence',
           'medium', 'path', 'name', 'studio', 'code', 'flat_creator', 'field_owner', 'studio_owner', 'revision',
-          'verdict', 'action', 'proposed_studio', 'reason')
+          'verdict', 'action', 'proposed_studio', 'proposed_creator', 'studio_source_url', 'reason')
 
 
-def _site_release(value: str) -> str:
-    text = re.sub(r'^\[[^\]]+\]', '', str(value)).strip().lower()
-    text = re.sub(r'\.(?:mp4|mkv|avi|wmv|mov|jpg|png|webp)$', '', text)
-    match = re.fullmatch(r'(legsjapan|fellatiojapan)[-_](\d{3,6})[-_]*', text)
-    return f'{match[1]}-{int(match[2])}' if match else ''
+def _collection_identity(name: str, creators: dict[str, str]) -> str:
+    """集合后缀只回归已存在的完整账号名，不造身份或改规范名。"""
+    base = creator_collection_base(name)
+    return creators.get(normalize_entity_name(base), '') if base != name else ''
 
 
 def _publisher_release(row: dict, studios: dict[str, set[str]]) -> bool:
     creator = str(row['current_creator'])
-    if row['studio'] or normalise(creator) not in studios:
+    if row['studio']:
+        # Tokyo Hot 的发行文件与已登记厂牌交叉核对，短目录名 Tokyo 属于这份作品投影。
+        return (normalise(creator) == 'tokyo' and
+                'tokyohot' in studios.get(normalise(str(row['studio'])), set()) and
+                compact_label(str(row['name'])).startswith('tokyohot') and
+                bool(row['code']) and compact_label(str(row['code'])) in compact_label(str(row['name'])))
+    if normalise(creator) not in studios:
         return False
     parts = re.split(r'[\\/]', str(row['path']))
     publisher = re.compile(r'^' + re.escape(creator) + r'[ ._-]+\d{2,4}[-.]\d{2}[-.]\d{2}(?!\d)', re.I)
     domain = '[' + creator.casefold() + '.com]'
     return any(publisher.match(part) or domain in part.casefold() for part in parts)
-
-
-def _file_identifier(row: dict) -> tuple[str, str]:
-    creator = str(row['current_creator'])
-    verdict, _, reason = classify_code(creator, [dict(
-        path=row['path'], name=row['name'], code=row['code'])])
-    if verdict in SETTLED_VERDICTS:
-        return 'release_identifier', f'{reason}；只移除创作者投影，番号不改写'
-    site = _site_release(creator)
-    if site and site == _site_release(str(row['name'])):
-        return 'release_identifier', f'目录与媒体文件同为站点作品号 {site}；官网目录 {SITE_RELEASES[site.split("-")[0]]}'
-    identifier = release_code_from_text(re.sub(r'_\d{3}$', '', creator))
-    cid = re.sub(r'_\d{3}$', '', re.sub(r'\.[^.]+$', '', str(row['name'] or '')))
-    if identifier and re.fullmatch(r'[a-z]+\d{5}(?:hhb|mhb|dmb|dm|hq|sd|hd)', cid, re.I) and matching_cids(identifier, [cid]):
-        return 'release_identifier', f'目录番号 {identifier} 与文件 DMM 商品标识一致；番号不改写'
-    if verdict == '存疑':
-        return 'identifier_candidate', reason
-    return '', ''
 
 
 def _release_title(row: dict, people: set[str]) -> bool:
@@ -92,15 +72,20 @@ def classify(row: dict, *, studios: dict[str, set[str]], people: set[str]) -> tu
         return 'online_account', 'keep', '在线账号身份，不参与本地目录判定'
     if row.get('has_identity_evidence'):
         return 'identity_conflict', 'review', '实体有外部身份引用或用户判断，需逐项复核'
+    if row.get('studio_source_url'):
+        return 'verified_studio', 'remove', '公开发行来源确认其为厂牌；作品不归属真人发布账号'
     if is_platform(creator):
         return 'platform', 'remove', '名称是发行平台；实际卖主或账号才是创作者'
+    if is_repost_creator(creator):
+        return 'repost_site', 'remove', '名称是转载站水印或站点日期目录'
     studio = str(row['studio'] or '')
     studio_names = studios.get(normalise(studio), {normalise(studio)}) if studio else set()
     if normalise(creator) and normalise(creator) in studio_names:
         return 'studio', 'remove', f'同作品发行厂牌为 {studio}，与创作者名称或其别名一致'
     if _publisher_release(row, studios):
         return 'studio_release', 'remove', '已登记厂牌名称与同作品发行文件的厂牌 token 一致'
-    identifier_verdict, identifier_reason = _file_identifier(row)
+    identifier_verdict, identifier_reason = creator_release_identifier(
+        creator,path=str(row['path']),filename=str(row['name'] or ''),code=row['code'])
     if identifier_verdict == 'release_identifier':
         return identifier_verdict, 'remove', identifier_reason
     if is_structural_creator(creator):
@@ -138,6 +123,13 @@ def collect(connection: sqlite3.Connection) -> list[dict]:
         "SELECT entity_id FROM entity_external_ref UNION "
         "SELECT entity_id FROM entity_alias WHERE source LIKE 'user:%' OR source LIKE 'review:%' UNION "
         "SELECT entity_id FROM asset_entity WHERE role='creator' AND source<>'legacy:asset'")}
+    issuers = {}
+    if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
+        issuers = dict(connection.execute("SELECT entity_id,min(source_url) FROM entity_classification "
+            "WHERE facet='account_role' AND value='studio' AND status IN ('observed','approved') "
+            "AND source_url LIKE 'https://%' GROUP BY entity_id"))
+    creators = {row[1]: row[2] for row in connection.execute(
+        "SELECT id,normalized_name,canonical_name FROM entity WHERE kind='creator'") if row[0] not in issuers}
     query = """SELECT a.id AS asset_id,e.id AS entity_id,e.canonical_name AS current_creator,
         ae.source AS relation_source,ae.confidence,a.medium,a.path,a.name,a.studio,a.code,a.creator AS flat_creator,
         a.catalog_title,a.field_owners,a.mutation_revision AS revision
@@ -149,8 +141,15 @@ def collect(connection: sqlite3.Connection) -> list[dict]:
         row['field_owner'] = owner_of(row['field_owners'], 'creator')
         row['studio_owner'] = owner_of(row.pop('field_owners'), 'studio')
         row['has_identity_evidence'] = int(row['entity_id']) in evidence
+        row['studio_source_url'] = issuers.get(int(row['entity_id']), '')
         row['verdict'], row['action'], row['reason'] = classify(row, studios=studios, people=people)
-        row['proposed_studio'] = row['current_creator'] if row['verdict'] == 'studio_release' and not is_protected(row['studio_owner']) else ''
+        row['proposed_studio'] = row['current_creator'] if row['verdict'] in {'studio_release','verified_studio'} and not row['studio'] and not is_protected(row['studio_owner']) else ''
+        row['proposed_creator'] = ''
+        if row['verdict'] in {'legacy_projection','identifier_candidate'}:
+            row['proposed_creator'] = _collection_identity(str(row['current_creator']), creators)
+            if row['proposed_creator']:
+                row.update(verdict='collection_identity', action='replace',
+                           reason='目录的月份或画质后缀与已存在的完整账号名对应')
         result.append({field: row[field] for field in FIELDS})
     return result
 
@@ -171,37 +170,66 @@ def _creator_relations(connection, asset_ids: list[int]) -> list[dict]:
         "SELECT * FROM asset_entity WHERE asset_id=? AND role='creator' ORDER BY entity_id,source", (asset_id,))]
 
 
-def _land_studio(connection, cursor, row: dict) -> dict | None:
+def _land_studio(connection, cursor, row: dict) -> tuple[dict | None, dict | None]:
     if not row['proposed_studio']:
-        return None
+        return None, None
     asset_id = int(row['asset_id'])
-    # 此分支只认已登记的厂牌，不创建新身份。
+    created = None
     entity = cursor.execute("SELECT id,canonical_name FROM entity WHERE kind='studio' AND normalized_name=?",
                             (normalize_entity_name(row['proposed_studio']),)).fetchone()
     if not entity:
-        raise ValueError('计划中的厂牌身份不存在')
-    if connection.execute("SELECT 1 FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='studio'",
-                          (asset_id, entity['id'])).fetchone():
+        if row['verdict'] != 'verified_studio' or not row['studio_source_url']:
+            raise ValueError('计划中的厂牌身份不存在')
+        entity_id = upsert_asset_entity(connection,kind='studio',name=row['proposed_studio'],asset_id=asset_id,
+            role='studio',source=OWNER,metadata={'source_url':row['studio_source_url'],'evidence':row['reason']},
+            update_entity_metadata=False)
+        created = dict(cursor.execute('SELECT * FROM entity WHERE id=?',(entity_id,)).fetchone())
+        entity = created
+    owned = cursor.execute("SELECT * FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='studio' AND source=?",
+                           (asset_id,entity['id'],OWNER)).fetchone()
+    if created:
+        added = dict(owned)
+    elif connection.execute("SELECT 1 FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='studio'",
+                            (asset_id, entity['id'])).fetchone():
         added = None
     else:
         upsert_asset_entity(connection, kind='studio', name=entity['canonical_name'], asset_id=asset_id,
-                            role='studio', source=OWNER, metadata={'evidence': row['reason']},
+                            role='studio', source=OWNER, metadata={'evidence': row['reason'], 'source_url':row['studio_source_url']},
                             update_entity_metadata=False)
         added = dict(cursor.execute("SELECT * FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='studio' AND source=?",
                                     (asset_id, entity['id'], OWNER)).fetchone())
     fields = _asset_fields(cursor, asset_id)
     write_owned_fields(connection, [asset_id], {'studio': entity['canonical_name']}, OWNER,
                        require_empty=True, expected_revision=fields['mutation_revision'])
-    return added
+    return added, created
+
+
+def _land_creator(connection, cursor, row):
+    """集合目录的作品归回已有账号；独立关系保留并避免重复署名。"""
+    if not row['proposed_creator']:
+        return None
+    target = cursor.execute("SELECT id FROM entity WHERE kind='creator' AND canonical_name=?",
+                            (row['proposed_creator'],)).fetchone()
+    if not target:
+        raise ValueError('计划中的账号身份不存在')
+    if connection.execute("SELECT 1 FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='creator'",
+                          (row['asset_id'],target['id'])).fetchone():
+        return None
+    upsert_asset_entity(connection,kind='creator',name=row['proposed_creator'],asset_id=row['asset_id'],
+                        role='creator',source=OWNER,metadata={'evidence':row['reason'],
+                        'directory_name':row['current_creator']},update_entity_metadata=False)
+    return dict(cursor.execute("SELECT * FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='creator' AND source=?",
+                               (row['asset_id'],target['id'],OWNER)).fetchone())
 
 
 def apply_plan(connection: sqlite3.Connection, plan: list[dict]) -> dict:
     """调用方持有事务；校验整批当前判定，保留实体与其它来源断言。"""
-    current = [row for row in collect(connection) if row['action'] == 'remove']
+    current = [row for row in collect(connection) if row['action'] in {'remove','replace'}]
     if fingerprint(current) != fingerprint(plan):
         raise ValueError('审计计划与当前账本不一致，请重新预览')
     removed = []
     added = []
+    created = []
     asset_ids = sorted({int(row['asset_id']) for row in plan})
     cursor = connection.cursor()
     cursor.row_factory = sqlite3.Row
@@ -213,9 +241,14 @@ def apply_plan(connection: sqlite3.Connection, plan: list[dict]) -> dict:
         removed.append(dict(raw))
         connection.execute("DELETE FROM asset_entity WHERE asset_id=? AND entity_id=? "
                            "AND role='creator' AND source=?", key)
-        studio_relation = _land_studio(connection, cursor, row)
+        studio_relation, studio_entity = _land_studio(connection, cursor, row)
         if studio_relation:
             added.append(studio_relation)
+        if studio_entity:
+            created.append(studio_entity)
+        creator_relation = _land_creator(connection,cursor,row)
+        if creator_relation:
+            added.append(creator_relation)
     for asset_id, before in before_assets.items():
         names = {str(row[0]) for row in connection.execute(
             "SELECT DISTINCT e.canonical_name FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
@@ -234,8 +267,22 @@ def apply_plan(connection: sqlite3.Connection, plan: list[dict]) -> dict:
             raise ValueError(f'资产 {asset_id} 的创作者字段拒绝写入')
     changed = [{'before': before, 'after': _asset_fields(cursor, asset_id)}
                for asset_id, before in before_assets.items() if _asset_fields(cursor, asset_id) != before]
-    return {'relations': removed, 'added_relations': added, 'fields': changed, 'plan': plan,
+    return {'relations': removed, 'added_relations': added, 'created_entities':created, 'fields': changed, 'plan': plan,
             'remaining_creator_relations': _creator_relations(connection, asset_ids)}
+
+
+def _remove_created_studios(connection, cursor, entities):
+    """本批新建的空厂牌可撤回；任何额外资料都会阻止整批恢复。"""
+    for entity in entities:
+        if dict(cursor.execute('SELECT * FROM entity WHERE id=?',(entity['id'],)).fetchone() or {}) != entity:
+            raise ValueError('新厂牌资料已发生后续改动')
+        for table, in connection.execute("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
+            if not re.fullmatch('[a-zA-Z0-9_]+',table):
+                continue
+            for foreign in connection.execute(f'PRAGMA foreign_key_list({table})'):
+                if foreign[2]=='entity' and connection.execute(f'SELECT 1 FROM {table} WHERE {foreign[3]}=?',(entity['id'],)).fetchone():
+                    raise ValueError('新厂牌出现额外资料，拒绝回滚整批')
+        connection.execute('DELETE FROM entity WHERE id=?',(entity['id'],))
 
 
 def restore(connection: sqlite3.Connection, manifest: dict) -> None:
@@ -268,6 +315,7 @@ def restore(connection: sqlite3.Connection, manifest: dict) -> None:
     for row in manifest['added_relations']:
         connection.execute('DELETE FROM asset_entity WHERE asset_id=? AND entity_id=? AND role=? AND source=?',
                            tuple(row[key] for key in ('asset_id', 'entity_id', 'role', 'source')))
+    _remove_created_studios(connection,cursor,manifest.get('created_entities',[]))
     for item in manifest['fields']:
         before, after = item['before'], item['after']
         owner = owner_of(before['field_owners'], 'creator') or OWNER

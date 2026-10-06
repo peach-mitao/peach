@@ -66,19 +66,9 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
                 onChoose={actions.chooseName} onAddAlias={actions.addAlias} />
             </div>
             <AliasLine kind={kind} entity={entity} actions={actions} />
-            {entity.identity_labels?.length ? (
-              <div data-identity-classification="" className="flex min-w-0 flex-wrap gap-2 text-caption-1-regular text-text-secondary">
-                <span>{entity.identity_labels.join(' · ')}</span>
-                {!!entity.classifications?.length && <details className="min-w-0">
-                  <summary className="cursor-pointer">分类来源</summary>
-                  <ul className="break-words">
-                    {entity.classifications.map((claim, at) => <li key={at}>
-                      {claim.label} · {claim.status === 'candidate' ? '待核验' : claim.status === 'rejected' ? '已排除' : '有来源'} · {claim.evidence}
-                      {claim.source_url.startsWith('https://') ? <> <a href={claim.source_url} target="_blank" rel="noopener noreferrer">来源</a></> : null}
-                    </li>)}
-                  </ul>
-                </details>}
-                {entity.related_identities?.map((identity) => (
+            {entity.related_identities?.length ? (
+              <div className="flex min-w-0 flex-wrap gap-2 text-caption-1-regular text-text-secondary">
+                {entity.related_identities.map((identity) => (
                   <button type="button" key={identity.id} className="text-text-primary underline" onClick={() => actions.openEntity(identity.kind, identity.canonical_name)}>
                     {identity.relation === 'same_person' ? '同一人' : '关联账号'}：{identity.canonical_name}
                   </button>
@@ -140,7 +130,7 @@ function Portrait({ kind, name, helpers, people, company }: {
   );
 }
 
-/** 名字下面那一行。女优页分三项，各带一枚图标：视频数、事务所、别名（读音在最前）；其余种类
+/** 名字下面那一行。女优页各项带图标：分类、视频数、事务所、别名（读音在最前）；其余种类
  *  仍是一行字：别名 · 视频数 · 归属。事务所是身份信息，不是链接的标签；账本里有这家的实体时
  *  给去处，只有采到的原文时只写名字。 */
 function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHeroData; actions: EntityHeroActions }) {
@@ -157,6 +147,7 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
     const line = nameLine(entity.name_groups);
     return (
       <div data-entity-alias="meta">
+        <IdentityMeta entity={entity} />
         <span data-meta-item="" title="视频"><Glyph name="film" /><span>{count}</span></span>
         {agencyNode ? <span data-meta-item="" title="事务所"><Glyph name="briefcase" /><span>{agencyNode}</span></span> : null}
         {line ? (
@@ -185,12 +176,29 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
     : (entity.labels || []).length ? <> · <b>{entity.labels!.length.toLocaleString()}</b> 个厂牌</> : null;
   const maker = entity.maker;
   return (
-    <div data-entity-alias="">
-      {aliases.length ? `${aliases.join(' / ')} · ` : ''}{count}{members}
+    <div data-entity-alias={kind === 'creator' ? 'meta' : ''}>
+      {kind === 'creator' ? <IdentityMeta entity={entity} /> : null}
+      <span>{aliases.length ? `${aliases.join(' / ')} · ` : ''}{count}{members}
       {agencyNode ? <> · {agencyNode}</> : null}
       {maker ? <> · <a href={entityPath('studio', maker.name)} data-studio-link={maker.name}
-        onClick={go('studio', maker.name)}>{maker.name}</a></> : null}
+        onClick={go('studio', maker.name)}>{maker.name}</a></> : null}</span>
     </div>
+  );
+}
+
+/** 分类是身份行的第一项；来源证据随资料下发并作为补充提示。 */
+function IdentityMeta({ entity }: { entity: EntityHeroData }) {
+  if (!entity.identity_labels?.length) return null;
+  const sources = [
+    ...(entity.external_refs || []).map((ref) => ref.provider),
+    ...(entity.classifications || []).filter((claim) => claim.status === 'observed' || claim.status === 'approved')
+      .map((claim) => claim.evidence),
+  ];
+  return (
+    <span data-meta-item="classification" data-identity-classification=""
+      title={sources.length ? [...new Set(sources)].join(' · ') : '分类'}>
+      <Glyph name="user-round" /><span>{entity.identity_labels.join(' · ')}</span>
+    </span>
   );
 }
 

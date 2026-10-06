@@ -61,7 +61,7 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 ## What it does
 
 - **Search**: type a few characters and performers, codes and videos show up together.
-- **Identity classification**: browse performers, publishing accounts and studios separately. Occupations, release markets and seller roles can coexist, with sources shown on profile pages. Unverified identities are marked for review; performer and creator lists support identity filters.
+- **身份分类**：艺人可同属女优、素人、西方；发布账号分为网黄博主、卖家、动画作者。筛选条只显示有内容的分类。资料页在视频数量左侧显示分类与图标，保留来源与核验状态。
 - **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. You can pick an avatar by drawing a box on any cover.
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".
