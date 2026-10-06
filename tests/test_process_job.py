@@ -125,7 +125,8 @@ class KillOnCloseJobTests(unittest.TestCase):
             service = int(tray.stdout.readline())
             # venv 的 python.exe 是个转发器，真正的解释器是它再起的子进程。
             wait_until(lambda: descendants(service))
-            handles = {pid: open_for_wait(pid) for pid in {service} | descendants(service)}
+            owned = {tray.pid, service} | descendants(tray.pid) | descendants(service)
+            handles = {pid: open_for_wait(pid) for pid in owned}
             for handle in handles.values():
                 if handle:
                     self.addCleanup(close_handle, handle)
@@ -133,9 +134,9 @@ class KillOnCloseJobTests(unittest.TestCase):
             tray.kill()
             tray.wait(timeout=10)
             tray.stdout.close()
-            # 离开 with 就删临时目录，服务的 stderr 正写在里面，所以在这里等它们的句柄表拆完。
+            # 托盘解释器和服务都持有日志句柄；整棵进程树 signaled 后才能删临时目录。
             survivors = still_running(handles, seconds=10)
-            self.assertFalse(survivors, f"托盘被强杀后这些服务进程还活着：{sorted(survivors)}")
+            self.assertFalse(survivors, f"托盘被强杀后这些进程还活着：{sorted(survivors)}")
 
 
 if __name__ == "__main__":
