@@ -443,6 +443,7 @@ describe('侧栏怎么读', () => {
     expect(host.querySelector('[data-id-group="performer"] [data-id-label]')?.textContent).toBe('艺人');
     const framed = host.querySelector<HTMLImageElement>('[data-entity-name="甲"] img');
     expect([framed?.getAttribute('src'), framed?.style.objectPosition]).toEqual(['/entity-image?kind=performer&id=3&v=9', '30% 50%']);
+    expect(framed?.parentElement).toBe(host.querySelector('[data-entity-name="甲"] [data-id-face]'));
     expect(host.querySelector('[data-entity-name="乙"] img')).toBeNull();
     expect(host.querySelector('[data-entity-name="乙"]')?.textContent).toContain('乙');
   });
