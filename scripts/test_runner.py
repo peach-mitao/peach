@@ -74,6 +74,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                  "test_fc2*.py",
                  "test_community_catalog.py",
                  "test_babepedia_match.py",
+                 "test_western_artwork.py",
                  "test_jav*.py", "test_code_creators.py", "test_tag_renames.py",
                  "test_reproject_snapshot_tags.py",
                  "test_stale_candidates.py", "test_logo_provider.py",

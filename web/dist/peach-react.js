@@ -39687,15 +39687,21 @@ function Zpe({ entity: e, actions: t, helpers: n }) {
 //#endregion
 //#region src/react/entity-page/entity-page-view.tsx
 function Qpe(e) {
-	let { kind: t, name: n } = e, r = wS(yN(t, n)), i = !!r.data?.error, { actions: a } = e;
+	let { kind: t, name: n } = e, r = wS(yN(t, n)), i = !!r.data?.error, a = r.data?.redirect, { actions: o } = e;
 	return (0, R.useLayoutEffect)(() => {
-		i && a.missing();
-	}, [a, i]), r.isError ? /* @__PURE__ */ (0, B.jsx)(NA, {
+		i && o.missing();
+	}, [o, i]), (0, R.useLayoutEffect)(() => {
+		a && o.openEntity(a.kind, a.name, !0);
+	}, [
+		o,
+		a?.kind,
+		a?.name
+	]), r.isError ? /* @__PURE__ */ (0, B.jsx)(NA, {
 		message: U(r.error),
 		onRetry: () => {
 			r.refetch();
 		}
-	}) : !r.data || i ? null : /* @__PURE__ */ (0, B.jsx)(tme, {
+	}) : !r.data || i || a ? null : /* @__PURE__ */ (0, B.jsx)(tme, {
 		...e,
 		entity: r.data
 	});
@@ -39964,7 +39970,7 @@ function tme(e) {
 	else if (C === "videos") {
 		we = !D.data;
 		let e = hN(i.tag).map((e) => ct(e));
-		Ce = `视频 · ${(D.data?.total || 0).toLocaleString()}${e.length ? ` · ${e.join(" · ")}` : ""}`;
+		Ce = `视频 · ${(D.data?.work_total ?? D.data?.total ?? 0).toLocaleString()}${e.length ? ` · ${e.join(" · ")}` : ""}`;
 	} else ne && !ne.error ? Ce = xe ? `${ne.title} · ${(ne.total || 0).toLocaleString()} 张` : eme(ne, xN(ne).length) : we = F.isPending;
 	let Te = (0, R.useMemo)(() => ({
 		...e.card.actions,
@@ -79746,17 +79752,17 @@ function gqe({ item: e, queue: t, helpers: n, actions: r, onStatus: i }) {
 						onClick: u,
 						children: /* @__PURE__ */ (0, B.jsx)(q7, { name: o ? "chevron-up" : "chevron-down" })
 					}),
-					e.has_cover && e.code ? /* @__PURE__ */ (0, B.jsx)("span", {
+					e.has_cover && (e.cover_key || e.code) ? /* @__PURE__ */ (0, B.jsx)("span", {
 						"data-cover-crop-host": "",
 						children: /* @__PURE__ */ (0, B.jsx)(oqe, {
-							code: e.code,
+							code: e.cover_key || e.code || "",
 							coverUrl: M(e),
 							box: e.poster_box || null,
 							onSaved: (t) => {
 								p.invalidateQueries({
 									queryKey: HC(e.id),
 									exact: !0
-								}), VC((t) => t.code === e.code, { poster_box: t });
+								}), VC((t) => (t.cover_key || t.code) === (e.cover_key || e.code), { poster_box: t });
 							}
 						})
 					}) : null,
@@ -79907,10 +79913,13 @@ function yqe({ item: e, actions: t }) {
 					})]
 				})
 			})]
-		}, "unowned") : s(ie(e), "performer", n.cast, a && !r ? /* @__PURE__ */ (0, B.jsxs)("button", {
-			type: "button",
+		}, "unowned") : s(ie(e), "performer", n.cast, a && !r ? /* @__PURE__ */ (0, B.jsxs)(J, {
+			variant: "secondary",
+			size: "small",
 			id: "castMore",
 			"data-cast-more": "",
+			trailingIcon: mT,
+			"aria-expanded": !1,
 			onClick: () => i(!0),
 			children: [
 				"还有 ",

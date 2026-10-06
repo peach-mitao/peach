@@ -32,6 +32,7 @@ from .metadata_policy import SOURCE_SPECS
 from .regions import infer_region, normalize_region, region_label
 from .web_activity import DEFAULT_PROFILE_ID
 from .web_state import WebContract
+from .western_artwork import artwork_key
 
 
 COST = {"local": "free", "115": "free", "pikpak": "metered", "online": "metered"}
@@ -40,6 +41,17 @@ COST = {"local": "free", "115": "free", "pikpak": "metered", "online": "metered"
 #: 但 BEST 合集实测有 41 位，全量下发会把列表响应撑大，所以截断并同时给出总数，
 #: 由界面显示「等 N 人」。详情页走 q_item，不受这个上限影响。
 CARD_PERFORMERS = 6
+
+
+def attach_artwork_fields(contract: WebContract, item: dict) -> None:
+    """列表、详情与推荐共用本地官方封面和版本投影。"""
+    key = artwork_key(item['id'], item.get('code'))
+    item['has_cover'] = contract.has_cover(key)
+    item['cover_key'] = key if item['has_cover'] else ''
+    if item['has_cover']:
+        item['cover_frame'] = contract.cover_frame(key)
+        item['cover_version'] = contract.cover_version(key)
+        item['poster_box'] = contract.poster_box(key)
 
 #: 排序拆成「列 + 方向」两段：`{d}` 由方向填入。方向不进列键，`时长` 才能在同一枚
 #: 控件上翻转，而不是分裂成两个互斥选项，也不会有一个方向在界面上永远点不到。
@@ -344,10 +356,11 @@ def q_items(contract: WebContract, args):
         rows = rows[:lim]
         # 条数和体积同一次聚合出来：回收站卡片要说的是「清空能腾出多少」，
         # 为它单独再发一次请求只是把同一条 WHERE 又跑一遍。
-        cnt, total_bytes = (
-            c.execute("SELECT count(*),COALESCE(sum(a.size),0) FROM asset a WHERE "
+        cnt, total_bytes, work_total = (
+            c.execute("SELECT count(*),COALESCE(sum(a.size),0),count(DISTINCT "
+                      + video_work_key(contract) + ") FROM asset a WHERE "
                       + " AND ".join(where), par).fetchone()
-            if include_total else (None, None))
+            if include_total else (None, None, None))
     # 卡片要显示出镜者和高权重标签，不能只有番号 —— 一次批量取，别 N+1
     if rows:
         ids = [r["id"] for r in rows]
@@ -395,21 +408,15 @@ def q_items(contract: WebContract, args):
         r["cost"] = COST.get(r["location"], "metered")
         r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
         r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
-        r["has_cover"] = contract.has_cover(r.get("code"))
+        attach_artwork_fields(contract, r)
         # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
         attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()))
-        if r["has_cover"]:
-            r["cover_frame"] = contract.cover_frame(r.get("code"))
-            r["cover_version"] = contract.cover_version(r.get("code"))
-            # 竖版位置要的是一个框，不是锚点：横版封套里正封那一块由离线脚本算好
-            # 写在边车里，没算过或本来就不该裁就是 null，版式退回整张封面。
-            r["poster_box"] = contract.poster_box(r.get("code"))
         r.pop("snapshot_path", None)
         r.pop("path", None)                     # 路径不外发，串流走 id
     attach_saved_follow_cards(contract, rows)
     attach_multipart_groups(contract, rows)
     attach_edition_groups(contract, rows)
-    return {"total": cnt, "bytes": total_bytes, "items": rows, "has_more": has_more}
+    return {"total": cnt, "work_total": work_total, "bytes": total_bytes, "items": rows, "has_more": has_more}
 
 def con_tags(contract: WebContract, ids, qm):
     with contract.read_connection() as c:
@@ -640,6 +647,26 @@ def q_editions(contract: WebContract, args):
     return {"title": code or str(seed["code"]), "count": len(items), "items": items}
 
 
+def video_work_key(contract: WebContract) -> str:
+    """明确的 FC2 合集按作品计数，普通文件和不确定分段各自计数。"""
+    def derive():
+        groups: dict[str, list[dict]] = {}
+        with contract.read_connection() as connection:
+            for row in connection.execute(
+                "SELECT id,name,code,size,duration FROM asset a WHERE a.medium='video' "
+                "AND COALESCE(a.disposal,'')<>'vanished' AND a.code LIKE 'FC2-PPV-%'"):
+                item = dict(row)
+                groups.setdefault(normalise_code_key(item['code']), []).append(item)
+        cases = []
+        for items in groups.values():
+            ordered = ordered_multipart_items(items)
+            if ordered:
+                ids = ','.join(str(int(item['id'])) for item in ordered)
+                cases.append(f"WHEN a.id IN ({ids}) THEN 'multipart:{int(ordered[0]['id'])}'")
+        return ('CASE ' + ' '.join(cases) + " ELSE 'asset:'||a.id END") if cases else "'asset:'||a.id"
+    return contract.cached_until_changed('catalog-video-work-key', derive)
+
+
 def _multipart_rows(contract: WebContract, codes) -> list[dict]:
     raw_codes = sorted({str(code) for code in codes if str(code or "").strip()})
     if not raw_codes:
@@ -841,10 +868,7 @@ def q_item(contract: WebContract, aid):
     d["cost"] = COST.get(d["location"], "metered")
     d["has_thumb"] = contract.has_snapshot(d["snapshot_path"])
     d['has_local_poster'] = (contract.poster_root / f"{d['id']}_4.jpg").is_file()
-    # 详情开场把本地封面挂到播放器海报位，选哪张跟着「JAV 默认封面」设置走：
-    # 不知道封套在不在盘上，这条详情就只能永远落在预览图那一档。
-    d["has_cover"] = contract.has_cover(d.get("code"))
-    d["cover_version"] = contract.cover_version(d.get("code"))
+    attach_artwork_fields(contract, d)
     # 身份格的厂牌位和顶栏小圆片同一条判据：没装标识就不输出 `<img>`。规范厂牌走
     # `entity_refs`，非规范的那条只有扁平 `studio` 字段，两边都要有标志，否则
     # 后者会从「本来能取到图」退化成永远首字母。
@@ -950,14 +974,10 @@ def q_related(contract: WebContract, aid, limit=24):
         d["cost"] = COST.get(d["location"], "metered")
         d["has_thumb"] = contract.has_snapshot(d["snapshot_path"])
         d['has_local_poster'] = (contract.poster_root / f"{d['id']}_4.jpg").is_file()
-        d["has_cover"] = contract.has_cover(d.get("code"))
+        attach_artwork_fields(contract, d)
         attach_jav_display_fields(
             d, related_tags.get(d["id"], ()), d.pop("_entity_kinds", ()),
         )
-        if d["has_cover"]:
-            d["cover_frame"] = contract.cover_frame(d.get("code"))
-            d["cover_version"] = contract.cover_version(d.get("code"))
-            d["poster_box"] = contract.poster_box(d.get("code"))
         d.pop("release_date", None)
         d.pop("snapshot_path", None)
     return {"items": picked[:limit]}

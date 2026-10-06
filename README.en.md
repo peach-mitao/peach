@@ -62,6 +62,8 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 
 - **Search**: type a few characters and performers, codes and videos show up together.
 - **身份分类**：艺人可同属女优、素人、西方；发布账号分为网黄博主、卖家、动画作者。筛选条只显示有内容的分类。资料页在视频数量左侧显示分类与图标，保留来源与核验状态。
+- **作品计数**：明确分段的同一 FC2 合集计为一个视频，分段文件和出演归属完整保留。已确认合并的身份共用资料与作品，旧资料页地址通往规范身份。
+- **西方图片来源**：出演者与网黄博主可选 Babepedia 主图库人像；Tushy 等 Vixen 网络作品以出演者和发行日匹配官方封面，卡片、详情和头像框选共用原图，无法唯一匹配时留待核验。
 - **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. You can pick an avatar by drawing a box on any cover.
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".

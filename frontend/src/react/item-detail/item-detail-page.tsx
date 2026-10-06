@@ -16,6 +16,8 @@ import {
 import { confirmModal, dismissMenu, fitSkeleton, presentMenu, spinnerHtml } from '@peach/legacy/ui';
 
 import { apiGet, apiSend } from '../../api';
+import { Button } from '@/components/base/buttons/button';
+import { RiArrowDownSLine } from '@remixicon/react';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { patchCatalogItems, replaceCatalogItem } from '../catalog-grid/catalog-grid';
 import type { MediaItem } from '../catalog-grid/types';
@@ -385,12 +387,12 @@ function DetailTitle({ item, queue, helpers, actions, onStatus }: {
           </button>
           {/* 取景框存的是坐标不是图片：存完重取这一条，封面地址没变，变的是接口给的 `poster_box`。
               背后网格里同一番号的卡不重取，就地换上新框，关掉详情看到的就是框过的样子。 */}
-          {item.has_cover && item.code ? (
+          {item.has_cover && (item.cover_key || item.code) ? (
             <span data-cover-crop-host="">
-              <CoverCrop code={item.code} coverUrl={coverUrl(item)} box={item.poster_box || null}
+              <CoverCrop code={item.cover_key || item.code || ''} coverUrl={coverUrl(item)} box={item.poster_box || null}
                 onSaved={(box) => {
                   void queryClient.invalidateQueries({ queryKey: itemKey(item.id), exact: true });
-                  patchCatalogItems((one) => one.code === item.code, { poster_box: box });
+                  patchCatalogItems((one) => (one.cover_key || one.code) === (item.cover_key || item.code), { poster_box: box });
                 }} />
             </span>
           ) : null}
@@ -492,7 +494,8 @@ function Identity({ item, actions }: { item: DetailItem; helpers: ItemDetailHelp
         </div>
       </section>
     ) : group(performerLabel(item), 'performer', groups.cast, overflow && !castOpen
-      ? <button type="button" id="castMore" data-cast-more="" onClick={() => setCastOpen(true)}>还有 {overflow} 位</button> : null),
+      ? <Button variant="secondary" size="small" id="castMore" data-cast-more="" trailingIcon={RiArrowDownSLine}
+        aria-expanded={false} onClick={() => setCastOpen(true)}>还有 {overflow} 位</Button> : null),
     group('厂牌', 'studio', groups.studios),
     group('片商', 'studio', groups.makers),
   ].filter(Boolean);

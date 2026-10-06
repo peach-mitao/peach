@@ -21,7 +21,7 @@ from pathlib import Path
 
 from . import images
 from .avatar_face import face_px_width
-from .catalog_rules import normalise_code_key
+from .western_artwork import artwork_cast_size, artwork_key
 
 PROVIDER = "cover-face"
 SOURCE_KIND = "cover_face_crop"
@@ -51,9 +51,9 @@ class CoverFace:
 
 def single_performer_works(connection, entity_id: int) -> list[tuple[int, str]]:
     """这个人名下只有她一个演员的作品，`(asset_id, 番号)`，回收站里的不算。"""
-    return [(int(asset_id), str(code)) for asset_id, code in connection.execute(
+    return [(int(asset_id), str(code or '')) for asset_id, code in connection.execute(
         "SELECT a.id,a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
-        "WHERE ae.entity_id=? AND ae.role='performer' AND coalesce(a.code,'')<>'' "
+        "WHERE ae.entity_id=? AND ae.role='performer' "
         "AND a.disposal IS NULL "
         "AND NOT EXISTS(SELECT 1 FROM asset_entity other WHERE other.asset_id=a.id "
         "AND other.role='performer' AND other.entity_id<>ae.entity_id) "
@@ -78,12 +78,15 @@ def faces(connection, cover_root: Path, entity_id: int, probe) -> list[CoverFace
     found: list[CoverFace] = []
     seen: set[str] = set()
     for asset_id, code in single_performer_works(connection, entity_id):
-        key = normalise_code_key(code)
+        key = artwork_key(asset_id, code)
         if not key or key in seen:
             continue
         seen.add(key)
+        cover = Path(cover_root) / f'{key}.jpg'
+        if artwork_cast_size(cover, 1) > 1:
+            continue
         try:
-            body = (Path(cover_root) / f"{key}.jpg").read_bytes()
+            body = cover.read_bytes()
         except OSError:
             continue
         record = probe.on_bytes(body)

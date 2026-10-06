@@ -674,6 +674,23 @@ class TargetTests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_merged_babepedia_candidates_bind_to_the_current_performer(self):
+        (self.tmp / 'babepedia-candidates.csv').write_text(
+            'entity_id,creator,verdict,babepedia_name,portrait_url\n'
+            '10,Melody Marks,命中,Melody Marks,https://www.babepedia.com/pics/Melody.jpg\n', encoding='utf8')
+        connection = self.ledger([(20, 'performer', 'Melody Marks')])
+        connection.close()
+        with sqlite3.connect(self.tmp / 'ledger.db') as writable:
+            writable.executescript('CREATE TABLE entity_redirect(old_id,target_id);'
+                                   'INSERT INTO entity_redirect VALUES(10,20);')
+        connection = sqlite3.connect(f'file:{self.tmp / "ledger.db"}?mode=ro', uri=True)
+        try:
+            targets = self.module.load_targets(connection, self.avatars, [], False)
+            self.assertEqual(targets[0]['entity_id'], 20)
+            self.assertEqual(targets[0]['routes']['babepedia']['babepedia_name'], 'Melody Marks')
+        finally:
+            connection.close()
+
     def test_a_performer_rides_the_jae_route_and_keeps_every_year(self):
         (self.tmp / "jae-performer-links-portraits.csv").write_text(
             "entity_id,kind,name,matched_name,portrait_url,source,page,verdict\n"

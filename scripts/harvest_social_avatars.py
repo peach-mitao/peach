@@ -66,6 +66,7 @@ from peach.avatar_provider import (   # noqa: E402
 from peach.config import (   # noqa: E402
     DATABASE_PATH, GENERATED_DIR, REVIEW_DIR, STATE_DIR, COVER_DIR,
 )
+from peach.entities import resolve_entity_id  # noqa: E402
 from peach.http import HttpRequest, HttpTransport, HttpxTransport   # noqa: E402
 from peach.review_csv import read_rows, write_rows   # noqa: E402
 from peach.scripting import (   # noqa: E402
@@ -352,7 +353,12 @@ def load_targets(connection: sqlite3.Connection, avatar_dir: Path,
     creator 走 babepedia 路线（babepedia-candidates.csv 的命中行）。几条路都有就都走——
     头像竞选不看路线，谁的最大最清晰用谁。
     """
-    babe = load_babepedia_rows(GENERATED_DIR / "babepedia-candidates.csv")
+    babe = {}
+    for old_id, row in load_babepedia_rows(GENERATED_DIR / "babepedia-candidates.csv").items():
+        target = (old_id if connection.execute('SELECT 1 FROM entity WHERE id=?', (old_id,)).fetchone()
+                  else resolve_entity_id(connection, old_id))
+        if target is not None:
+            babe.setdefault(target, row)
     jae = load_jae_rows(REVIEW_DIR / "jae-performer-links-portraits.csv")
     x_links: dict[int, str] = {}
     for entity_id, url in connection.execute(

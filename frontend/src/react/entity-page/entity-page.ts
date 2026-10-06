@@ -30,6 +30,7 @@ export const EMPTY_MEDIA: EntityMedia = { media: 'videos', set: 0 };
 /** `/api/entity` 里这一页读到的字段：资料卡那份，外加标签计数与名册。名字对不上时回 `{error}`。 */
 export interface EntityPageData extends EntityHeroData {
   error?: string;
+  redirect?: { kind: string; name: string };
   tags?: { k: string; n: number }[];
   related_performers?: (HeroCostar & IndexPerson)[];
   labels?: IndexPerson[];
@@ -71,7 +72,7 @@ export interface EntityPageActions {
   setJavLayout(layout: string): void;
   setPhotoLayout(layout: string): void;
   /** 站内跳转，走遗留路由的同一个入口。 */
-  openEntity(kind: string, name: string): void;
+  openEntity(kind: string, name: string, replace?: boolean): void;
   /** 这一页是不是 JAV 语境（按第一页作品的 `is_jav` 推）：壳的排序项、侧栏取数与卡片版式都读它。 */
   javContext(on: boolean): void;
   /** 换了视图或换了一批内容：壳重算吸顶，顶栏的大小图键按是不是照片墙换成对应的那一组。 */

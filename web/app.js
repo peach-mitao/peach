@@ -2648,7 +2648,9 @@ function entityPageActions(kind,name){
       state.seed=rollSeed();notifyShell();routeEntityPage(kind,name,{...live(),sort:'seed'});return String(state.seed)},
     setJavLayout:value=>{setJavLayout(value);pushEntityPage({javLayout:javLayout()})},
     setPhotoLayout:value=>{storePhotoLayout(value);syncPhotoWalls()},
-    openEntity:(target,to)=>void openEntity(target,to),
+    openEntity:(target,to,replace=false)=>{
+      if(replace){route(entityPath(target,to)+location.search,true);void openEntity(target,to,false)}
+      else void openEntity(target,to)},
     javContext:on=>{entityJavLayout=!!on},
     painted:view=>{
       const wasPhotos=photoViewActive();entityPageView=view;
