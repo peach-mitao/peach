@@ -5581,6 +5581,42 @@ describe('设计决定', () => {
     }
   });
 
+  for (const viewport of VIEWPORTS) {
+    it(`作品详情头像按有尺寸的圆框取景并显示（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, `/item/${ITEM.plain}`, viewport);
+      try {
+        const page = opened.page;
+        const base = await page.evaluate(() => fetch('/api/item?id=14').then((response) => response.json()));
+        const payload = { ...base, performers: ['取景艺人', '无图艺人'],
+          entity_refs: { ...base.entity_refs, performer: [
+            { id: 3, name: '取景艺人', has_image: true, image_version: 'face-version',
+              avatar_focus: { box: { cx: 0.58, cy: 0.49, faceW: 344, imgW: 1000, imgH: 1000 } } },
+            { id: 4, name: '无图艺人', has_image: false },
+          ] } };
+        await page.route((url) => url.pathname === '/api/item', (route) => route.fulfill({ json: payload }));
+        await page.route('**/entity-image**', (route) => route.fulfill({ contentType: 'image/svg+xml',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000"><rect width="1000" height="1000" fill="#ddd"/></svg>' }));
+        await page.goto(new URL('/item/14', page.url()).href, { waitUntil: 'load' });
+        const face = page.locator('#stage [data-entity-name="取景艺人"] [data-id-face]');
+        await face.scrollIntoViewIfNeeded();
+        await page.waitForFunction(() => {
+          const image = document.querySelector<HTMLImageElement>('#stage [data-id-cell="performer"] img');
+          return image?.complete && image.naturalWidth > 0;
+        });
+        const geometry = await face.evaluate((ring) => {
+          const image = ring.querySelector('img')!, frame = ring.getBoundingClientRect(), pixels = image.getBoundingClientRect();
+          return { visible: getComputedStyle(image).visibility, framed: image.hasAttribute('data-face-framed'),
+            direct: image.parentElement === ring, zoomed: pixels.width > frame.width,
+            covers: pixels.left <= frame.left + 0.5 && pixels.right >= frame.right - 0.5
+              && pixels.top <= frame.top + 0.5 && pixels.bottom >= frame.bottom - 0.5 };
+        });
+        assert.deepEqual(geometry, { visible: 'visible', framed: true, direct: true, zoomed: true, covers: true });
+        assert.equal(await page.locator('#stage [data-entity-name="无图艺人"] img').count(), 0);
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally { await opened.close(); }
+    });
+  }
+
   it('作品详情身份区：没实体 id 的格子不给手形，厂牌标识铺满方框', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {

@@ -79853,20 +79853,23 @@ function _qe({ item: e, write: t }) {
 }
 function vqe({ item: e, actions: t }) {
 	let n = (0, R.useMemo)(() => Vre(e), [e]), [r, i] = (0, R.useState)(!1), a = Math.max(0, n.cast.length - 8), o = (e, n, i) => {
-		let a = e === "performer" && i >= 8 && !r, o = e === "performer" ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: n.name.slice(0, 1) }), /* @__PURE__ */ (0, B.jsx)(J7, { html: te({
-			id: n.id,
-			hasImage: n.has_image,
-			version: n.image_version,
-			focus: n.avatar_focus
-		}) })] }) : e === "studio" ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: n.name.slice(0, 2) }), n.has_logo ? /* @__PURE__ */ (0, B.jsx)("img", {
-			src: F(n.name, "icon", n.logo_version),
-			alt: "",
-			loading: "lazy",
-			"data-drop": "self"
-		}) : null] }) : /* @__PURE__ */ (0, B.jsx)("span", { children: n.name.slice(0, 1) }), s = /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsx)("span", {
+		let a = e === "performer" && i >= 8 && !r, o = e === "performer" ? /* @__PURE__ */ (0, B.jsx)("span", {
 			"data-id-face": "",
-			children: o
-		}), /* @__PURE__ */ (0, B.jsx)("span", {
+			dangerouslySetInnerHTML: { __html: `<span>${ge(n.name.slice(0, 1))}</span>` + te({
+				id: n.id,
+				hasImage: n.has_image,
+				version: n.image_version,
+				focus: n.avatar_focus
+			}) }
+		}) : /* @__PURE__ */ (0, B.jsx)("span", {
+			"data-id-face": "",
+			children: e === "studio" ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: n.name.slice(0, 2) }), n.has_logo ? /* @__PURE__ */ (0, B.jsx)("img", {
+				src: F(n.name, "icon", n.logo_version),
+				alt: "",
+				loading: "lazy",
+				"data-drop": "self"
+			}) : null] }) : /* @__PURE__ */ (0, B.jsx)("span", { children: n.name.slice(0, 1) })
+		}), s = /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [o, /* @__PURE__ */ (0, B.jsx)("span", {
 			"data-id-name": "",
 			children: n.name
 		})] }), c = e === "performer" && i >= 8 ? { "data-castoverflow": "" } : {};
