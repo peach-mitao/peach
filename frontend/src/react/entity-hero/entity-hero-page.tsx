@@ -66,6 +66,25 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
                 onChoose={actions.chooseName} onAddAlias={actions.addAlias} />
             </div>
             <AliasLine kind={kind} entity={entity} actions={actions} />
+            {entity.identity_labels?.length ? (
+              <div data-identity-classification="" className="flex min-w-0 flex-wrap gap-2 text-caption-1-regular text-text-secondary">
+                <span>{entity.identity_labels.join(' · ')}</span>
+                {!!entity.classifications?.length && <details className="min-w-0">
+                  <summary className="cursor-pointer">分类来源</summary>
+                  <ul className="break-words">
+                    {entity.classifications.map((claim, at) => <li key={at}>
+                      {claim.label} · {claim.status === 'candidate' ? '待核验' : claim.status === 'rejected' ? '已排除' : '有来源'} · {claim.evidence}
+                      {claim.source_url.startsWith('https://') ? <> <a href={claim.source_url} target="_blank" rel="noopener noreferrer">来源</a></> : null}
+                    </li>)}
+                  </ul>
+                </details>}
+                {entity.related_identities?.map((identity) => (
+                  <button type="button" key={identity.id} className="text-text-primary underline" onClick={() => actions.openEntity(identity.kind, identity.canonical_name)}>
+                    {identity.relation === 'same_person' ? '同一人' : '关联账号'}：{identity.canonical_name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {links.length ? (
               <div ref={linkRow} data-entity-links="">{links.map((link, at) => <HeroLinkView key={at} link={link} />)}</div>
             ) : null}

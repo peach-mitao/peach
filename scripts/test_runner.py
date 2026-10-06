@@ -36,6 +36,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     "catalog": ("test_ad_judgement.py", "test_composite_name_split.py", "test_media_libraries.py",
                 "test_content_region.py",
                 "test_duplicate_identity_merge.py",
+                "test_entity_classification.py",
                 "test_entity_merge.py", "test_entity_redirect.py", "test_fastapi_api.py", "test_field_owners.py",
                 "test_migrations.py",
                 "test_review_mirror.py", "test_rm_web.py",
@@ -132,6 +133,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
             "test_fastapi_api.py", "test_follow_assets.py", "test_follow_web.py",
             "test_metadata_library.py", "test_studio_icon_variants.py", "test_web_settings.py"),
     "core": ("test_access.py", "test_auth.py", "test_config.py", "test_field_owners.py",
+             "test_entity_classification.py",
              "test_migrations.py", "test_ledger_revision.py",
              "test_platform.py", "test_mount.py", "test_tray.py", "test_certs.py",
              "test_folder_picker.py", "test_fsutil.py", "test_runtime_consistency.py",
@@ -521,10 +523,17 @@ def resolve_jobs(value: str) -> int:
 
 
 def shard_command(scopes: tuple[str, ...], index: int, count: int, timings: Path) -> list[str]:
-    return [sys.executable, str(ROOT / "scripts" / "test_runner.py"),
+    command = [sys.executable, str(ROOT / "scripts" / "test_runner.py"),
             *(item for scope in scopes for item in ("--scope", scope)),
             "--shard-index", str(index), "--shard-count", str(count),
             "--timings", str(timings)]
+    resource_runner = os.environ.get('PEACH_TEST_RESOURCE_RUNNER', '').strip()
+    if not resource_runner:
+        return command
+    path = Path(resource_runner).resolve()
+    if not path.is_file():
+        raise ValueError('测试资源入口不存在')
+    return [sys.executable, '-X', 'utf8', str(path), '--timeout', '1800', '--', *command]
 
 
 def run_shards(scopes: tuple[str, ...], *, jobs: int, shard_count: int,
@@ -536,6 +545,8 @@ def run_shards(scopes: tuple[str, ...], *, jobs: int, shard_count: int,
     片数比并发数多，是为了让先跑完的进程接着领下一片，重文件不至于把墙钟拖成它
     一家的长度。子进程的输出各自落盘，哪片结束就整段打印哪片，不交错。
     """
+    if os.environ.get('PEACH_TEST_RESOURCE_RUNNER', '').strip() and jobs != 1:
+        raise ValueError('受限分片必须使用 --jobs 1')
     folder = Path(tempfile.mkdtemp(prefix="peach-shards-"))
     pending = list(range(shard_count))
     running: dict[int, tuple[object, object]] = {}
@@ -569,6 +580,15 @@ def run_shards(scopes: tuple[str, ...], *, jobs: int, shard_count: int,
                 print(f"分片 {index + 1}/{shard_count} {'通过' if ok else '失败'}"
                       f"（{report.get('count', 0)} 个用例）", flush=True)
     finally:
+        for process, log in running.values():
+            if process.poll() is None:
+                if os.name == 'nt':
+                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+                else:
+                    process.terminate()
+                process.wait(timeout=15)
+            log.close()
         shutil.rmtree(folder, ignore_errors=True)
     return passed, count, timings
 

@@ -6,7 +6,8 @@ import re
 # These values were verified as legacy collection/folder labels, not creator
 # identities. Keep this boundary centralized so board generation and review
 # application cannot disagree again.
-STRUCTURAL_CREATORS = frozenset({"门槛", "视频", "宣傳文件", "宣传文件", "asce"})
+STRUCTURAL_CREATORS = frozenset({"门槛", "视频", "宣傳文件", "宣传文件", "asce",
+    "合集-洛丽塔 多创作者", "合集-足交 多创作者"})
 
 _EPISODE = re.compile(r"(?<![A-Za-z0-9])S\d{1,2}E\d{1,3}(?!\d)", re.IGNORECASE)
 _MAINSTREAM_RELEASE = re.compile(

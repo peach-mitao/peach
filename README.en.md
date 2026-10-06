@@ -61,12 +61,13 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 ## What it does
 
 - **Search**: type a few characters and performers, codes and videos show up together.
+- **Identity classification**: browse performers, publishing accounts and studios separately. Occupations, release markets and seller roles can coexist, with sources shown on profile pages. Unverified identities are marked for review; performer and creator lists support identity filters.
 - **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. You can pick an avatar by drawing a box on any cover.
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".
 - **New releases**: subscribe on a performer page or by name in follow management, including performers not yet in your library. Peach checks for new titles regularly. Follow creators across sites such as FANBOX, Patreon and Kemono; the same work on different sites appears as one card.
 - **JAV intake**: mark a new-release card or followed post as wanted, or enter a video code. Work cards find and deduplicate links from JavDB's resource list and comments, showing attributes, size and date. Add magnets directly to 115 or PikPak, or copy other links. Files scanned into your library are marked as acquired; titles set aside can be searched again.
-- **Cloud download**: paste a magnet link and hand it to 115 or PikPak for offline download; the finished file joins your library on its own. Video pages and followed items have the same entry.
+- **Cloud download**: paste a magnet link in Activity and hand it to 115 or PikPak for offline download; the finished file joins your library on its own. Followed items and your wishlist also have an entry.
 - **Find a release**: add your own Prowlarr or Jackett indexer under Media in local configuration, then search by release code in Activity's Cloud download section. Filter by size and prioritize resolution, Chinese subtitles, or uncensored editions; select a candidate and confirm submission.
 - **Statistics**: which drive holds what, how much you have watched and which tags dominate, on one page.
 - **Appearance**: light or dark, accent color and sidebar order are all yours to set.

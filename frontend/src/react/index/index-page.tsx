@@ -24,7 +24,7 @@ import { SEGMENTED_TRACK, SEGMENT_ICON, SegmentedRadioGroup as RadioGroup } from
 import { spriteGlyph } from '../components/sprite-glyph';
 import type { OnlineAuthor, OnlineTag } from '../follow/online-vocab';
 import {
-  INDEX_TITLES, ONLINE_TAG_CATEGORIES, TAG_CATEGORIES, countText, flatItems, indexQuery, indexRoute, indexSource, isCompany,
+  INDEX_TITLES, IDENTITY_CATEGORIES, ONLINE_TAG_CATEGORIES, TAG_CATEGORIES, countText, flatItems, indexQuery, indexRoute, indexSource, isCompany,
   isPeople, tagGroups, type IndexKind, type IndexPage as Page, type IndexPerson, type IndexProps,
   type IndexRoute, type IndexScope, type IndexTag, type PeopleLayout,
 } from './index-data';
@@ -163,7 +163,7 @@ export function IndexPage(props: IndexProps) {
       ? <BoardTabs tabs={SCOPE_TABS} value={scope} label="名册" onChange={(next) => {
         // 在线那一档摆的是还没进账本的人，选择模式拼的是目录批量操作，对它一条都不成立。
         if (next === 'online') props.exitSelectMode();
-        go({ scope: next });
+        go({ scope: next, category: 'all' });
       }} />
       : isCompany(kind)
         ? <BoardTabs tabs={MAKER_TABS} value={kind as 'studios' | 'agencies'} label="公司类型"
@@ -195,7 +195,7 @@ export function IndexPage(props: IndexProps) {
         </EmptyState>
       );
     }
-    if (!items.length) return <IndexEmpty kind={kind} filtered={!!q || (kind === 'tags' && category !== 'all')}
+    if (!items.length) return <IndexEmpty kind={kind} filtered={!!q || category !== 'all'}
       online={onlineTags || onlineAuthors} configurable={props.configurable} />;
     if (onlineAuthors) return <OnlineAuthors items={items as OnlineAuthor[]} layout={layout} props={props} />;
     if (isPeople(kind)) return <PeopleGrid kind={kind} items={items as IndexPerson[]} layout={layout} props={props} />;
@@ -220,6 +220,14 @@ export function IndexPage(props: IndexProps) {
         <IndexSearch label={`过滤${title}`} value={q} onQuery={(next) => { if (next !== q) go({ q: next }, !!next) }} />
       </div>
       {tabs}
+      {(kind === 'creators' || kind === 'performers') && scope === 'local' ? (
+        <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
+          {IDENTITY_CATEGORIES.map(([key, label]) => (
+            <Button key={key} variant={category === key ? 'primary' : 'secondary'} size="small"
+              aria-pressed={category === key} onClick={() => go({ category: key })}>{label}</Button>
+          ))}
+        </div>
+      ) : null}
       {kind === 'tags' ? (
         <TagFilters categories={categories} category={category} online={onlineTags} readout={readout}
           letters={groups.map(([letter]) => letter)} view={view}
