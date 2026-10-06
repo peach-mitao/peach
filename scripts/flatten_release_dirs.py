@@ -21,6 +21,7 @@ r"""摘掉发行物目录上多余的一层，并去掉目录名里的广告标�
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sqlite3
 import sys
 from collections import defaultdict
@@ -39,9 +40,18 @@ from peach.config import DATABASE_PATH, GENERATED_DIR
 from peach.migrations import sqlite_backup
 from peach.platform import translate_ledger_path
 from peach.review_csv import write_rows
+from peach.scan import medium_of
 
 
 PLAN_FIELDS = ["kind", "ledger_dir", "target_dir", "assets", "verified"]
+
+
+def directory_key(name: str) -> str:
+    """目录同名判据包含媒体扩展名包装，文件本身不参与目录图。"""
+    cleaned = strip_promo_markers(name)
+    if medium_of(cleaned) != "other":
+        cleaned = PureWindowsPath(cleaned).stem
+    return promo_free_key(cleaned)
 
 
 def _directories(connection: sqlite3.Connection) -> dict[str, set[str]]:
@@ -58,8 +68,10 @@ def _directories(connection: sqlite3.Connection) -> dict[str, set[str]]:
         parts = PureWindowsPath(str(path)).parts
         for index in range(1, len(parts) - 1):
             parent = str(PureWindowsPath(*parts[:index + 1]))
-            child = str(PureWindowsPath(*parts[:index + 2]))
-            children[parent].add(child)
+            children.setdefault(parent, set())
+            if index < len(parts) - 2:
+                child = str(PureWindowsPath(*parts[:index + 2]))
+                children[parent].add(child)
     return children
 
 
@@ -74,20 +86,16 @@ def plan_operations(connection: sqlite3.Connection) -> list[dict[str, str]]:
     collapsed: set[str] = set()
     operations: list[dict[str, str]] = []
     for parent in sorted(children):
-        kids = children[parent]
-        if len(kids) != 1:
-            continue
-        child = next(iter(kids))
-        child_name = PureWindowsPath(child).name
         parent_name = PureWindowsPath(parent).name
-        key = promo_free_key(child_name)
-        if not key or key != promo_free_key(parent_name):
-            continue
-        collapsed.add(child)
-        operations.append({
-            "kind": "collapse", "ledger_dir": child, "target_dir": parent,
-            "assets": str(counts.get(child, 0)), "verified": "",
-        })
+        for child in sorted(children[parent]):
+            key = directory_key(PureWindowsPath(child).name)
+            if not key or key != directory_key(parent_name):
+                continue
+            collapsed.add(child)
+            operations.append({
+                "kind": "collapse", "ledger_dir": child, "target_dir": parent,
+                "assets": str(counts.get(child, 0)), "verified": "",
+            })
     for directory in sorted(set(children) | {c for kids in children.values() for c in kids}):
         if directory in collapsed:
             continue
@@ -111,7 +119,7 @@ def _asset_counts(connection: sqlite3.Connection) -> dict[str, int]:
         "SELECT path FROM asset WHERE path IS NOT NULL AND trim(path)<>''"
     ):
         parts = PureWindowsPath(str(path)).parts
-        for index in range(1, len(parts)):
+        for index in range(1, len(parts) - 1):
             counts[str(PureWindowsPath(*parts[:index + 1]))] += 1
     return counts
 
@@ -119,8 +127,7 @@ def _asset_counts(connection: sqlite3.Connection) -> dict[str, int]:
 def verify(operation: dict[str, str], resolve=translate_ledger_path) -> str:
     """用真实文件系统核一条计划，返回 `ok` 或拒绝原因。
 
-    账本不知道旁挂文件，所以 collapse 前必须确认父目录里除了这个子目录真的什么都没有；
-    只按账本判会把父目录里的封面、字幕留在原地，或者在提升时撞名。
+    冗余层只在目标条目互不冲突时合并，父目录的封面与字幕保留。
     """
     source = resolve(operation["ledger_dir"])
     target = resolve(operation["target_dir"])
@@ -133,7 +140,12 @@ def verify(operation: dict[str, str], resolve=translate_ledger_path) -> str:
             return f"跳过：父目录读不到（{error.__class__.__name__}）"
         extra = [name for name in siblings if name != source.name]
         if extra:
-            return f"跳过：父目录还有 {len(extra)} 项（{extra[0]}）"
+            try:
+                for entry in source.iterdir():
+                    if entry.name.casefold() != source.name.casefold() and (target / entry.name).exists():
+                        return f"跳过：目标条目已存在（{entry.name}）"
+            except OSError as error:
+                return f"跳过：子目录读不到（{error.__class__.__name__}）"
         return "ok"
     if target.exists():
         return "跳过：目标名已存在"
@@ -153,14 +165,27 @@ def _rewrite(path: str, operation: dict[str, str]) -> str | None:
 
 
 def plan_paths(connection: sqlite3.Connection,
-               operations: list[dict[str, str]]) -> list[dict[str, str]]:
+               operations: list[dict[str, str]], *, table: str = "asset") -> list[dict[str, str]]:
     """按操作顺序（深的在前）逐条改写账本路径，返回真正会变的行。"""
+    if table not in {"asset", "asset_subtitle"}:
+        raise ValueError("路径表不受支持")
+    indexed: dict[tuple[str, ...], list[tuple[int, dict[str, str]]]] = defaultdict(list)
+    for index, operation in enumerate(operations):
+        key = tuple(part.casefold() for part in PureWindowsPath(operation["ledger_dir"]).parts)
+        indexed[key].append((index, operation))
     rows: list[dict[str, str]] = []
     for asset_id, path in connection.execute(
-        "SELECT id,path FROM asset WHERE path IS NOT NULL AND trim(path)<>'' ORDER BY id"
+        f"SELECT id,path FROM {table} WHERE path IS NOT NULL AND trim(path)<>'' ORDER BY id"
     ):
         current = str(path)
-        for operation in operations:
+        cursor = -1
+        for _ in range(len(operations)):
+            parts = tuple(part.casefold() for part in PureWindowsPath(current).parts)
+            matches = [item for depth in range(1, len(parts))
+                       for item in indexed.get(parts[:depth], ()) if item[0] > cursor]
+            if not matches:
+                break
+            cursor, operation = min(matches, key=lambda item: item[0])
             rewritten = _rewrite(current, operation)
             if rewritten is not None:
                 current = rewritten
@@ -173,28 +198,76 @@ def apply_operation(operation: dict[str, str], resolve=translate_ledger_path) ->
     """执行一条操作，返回已完成的移动，用于回滚。"""
     source = resolve(operation["ledger_dir"])
     target = resolve(operation["target_dir"])
+    if source.is_symlink() or target.is_symlink():
+        raise ValueError("拒绝符号链接目录")
+    verification = verify(operation, resolve)
+    if verification != "ok":
+        raise ValueError(verification)
     if operation["kind"] == "rename":
         source.rename(target)
         return [(source, target)]
     done: list[tuple[Path, Path]] = []
-    for entry in sorted(source.iterdir()):
-        moved = target / entry.name
-        entry.rename(moved)
-        done.append((entry, moved))
-    source.rmdir()
-    done.append((source, source))  # 记一笔，回滚时重建这个目录
+    if any(entry.name != source.name for entry in target.iterdir()):
+        entries = list(source.iterdir())
+        if any(entry.name.casefold() != source.name.casefold() and (target / entry.name).exists()
+               for entry in entries):
+            raise FileExistsError("目标条目已存在")
+        move_root = source
+        try:
+            if any(entry.name.casefold() == source.name.casefold() for entry in entries):
+                digest = hashlib.sha256(operation["ledger_dir"].encode("utf-8")).hexdigest()[:20]
+                move_root = source.with_name(".peach-organize-" + digest)
+                if move_root.exists() or move_root.is_symlink():
+                    raise FileExistsError("目录暂存位置已存在")
+                source.rename(move_root)
+                done.append((source, move_root))
+            for entry in entries:
+                entry = move_root / entry.name
+                destination = target / entry.name
+                entry.rename(destination)
+                done.append((entry, destination))
+            done.append((move_root, move_root))
+            try:
+                move_root.rmdir()
+            except FileNotFoundError:
+                pass
+        except Exception:
+            rollback(done)
+            raise
+        return done
+    digest = hashlib.sha256(operation["ledger_dir"].encode("utf-8")).hexdigest()[:20]
+    staging = target.with_name(".peach-organize-" + digest)
+    if staging.exists() or staging.is_symlink():
+        raise FileExistsError("目录暂存位置已存在")
+    staged_child = staging / source.name
+    try:
+        target.rename(staging)
+        done.append((target, staging))
+        staged_child.rename(target)
+        done.append((staged_child, target))
+        done.append((staging, staging))
+        try:
+            staging.rmdir()
+        except FileNotFoundError:
+            pass
+    except Exception:
+        rollback(done)
+        raise
     return done
 
 
 def rollback(done: list[tuple[Path, Path]]) -> None:
+    failures = []
     for source, target in reversed(done):
         try:
             if source == target:
                 source.mkdir(exist_ok=True)
             else:
                 target.rename(source)
-        except OSError:
-            print(f"  回滚失败，需要人工处理：{target} -> {source}")
+        except OSError as error:
+            failures.append(f"{target} -> {source}: {error}")
+    if failures:
+        raise RuntimeError("文件恢复失败：" + "；".join(failures))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -211,6 +284,34 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def apply_plan(connection: sqlite3.Connection, operations: list[dict[str, str]],
+               rows: list[dict[str, str]], subtitle_rows: list[dict[str, str]]) -> None:
+    """在写锁内复验路径、移动目录与引用；失败恢复账本及文件。"""
+    baseline_fk = set(connection.execute("PRAGMA foreign_key_check"))
+    done: list[tuple[Path, Path]] = []
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        if (plan_paths(connection, operations) != rows or
+                plan_paths(connection, operations, table="asset_subtitle") != subtitle_rows):
+            raise ValueError("冻结路径计划已失效")
+        for operation in operations:
+            done.extend(apply_operation(operation))
+        for table, changes in (("asset", rows), ("asset_subtitle", subtitle_rows)):
+            for row in changes:
+                changed = connection.execute(
+                    f"UPDATE {table} SET path=? WHERE id=? AND path=?",
+                    (row["new_path"], int(row["id"]), row["old_path"])).rowcount
+                if changed != 1:
+                    raise ValueError("账本路径更新失败")
+        if set(connection.execute("PRAGMA foreign_key_check")) - baseline_fk:
+            raise ValueError("出现新增外键问题")
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        rollback(done)
+        raise
+
+
 def run(args: argparse.Namespace) -> int:
     if args.apply and not args.backup:
         raise SystemExit("--apply 必须同时给 --backup")
@@ -224,13 +325,17 @@ def run(args: argparse.Namespace) -> int:
         write_rows(args.plan_csv, PLAN_FIELDS, operations)
         ready = [row for row in operations if row["verified"] == "ok"]
         rows = plan_paths(connection, ready)
+        subtitle_rows = plan_paths(connection, ready, table="asset_subtitle")
         write_rows(args.path_csv, ["id", "old_path", "new_path"], rows)
+        write_rows(args.path_csv.with_name(args.path_csv.stem + "-subtitles.csv"),
+                   ["id", "old_path", "new_path"], subtitle_rows)
         collapses = sum(1 for row in ready if row["kind"] == "collapse")
         print(f"计划 {len(operations)} 条，可执行 {len(ready)} 条"
               f"（collapse {collapses}，rename {len(ready) - collapses}），"
-              f"影响账本路径 {len(rows)} 条")
+              f"影响资产路径 {len(rows)} 条、字幕路径 {len(subtitle_rows)} 条")
         print(f"  计划 CSV：{args.plan_csv}")
         print(f"  路径 CSV：{args.path_csv}")
+        print(f"  字幕 CSV：{args.path_csv.with_name(args.path_csv.stem + '-subtitles.csv')}")
         # 逐条打印被跳过的路径会在 GBK 控制台上崩掉（媒体名里有 emoji 和生僻字），
         # 而且量级是四位数。原因按类归并打印，明细留在计划 CSV 里。
         skipped: dict[str, int] = defaultdict(int)
@@ -250,19 +355,7 @@ def run(args: argparse.Namespace) -> int:
         sqlite_backup(args.db, args.backup)
         print(f"  已备份到 {args.backup}")
 
-        done: list[tuple[Path, Path]] = []
-        try:
-            for operation in ready:
-                done.extend(apply_operation(operation))
-            with connection:
-                for row in rows:
-                    connection.execute(
-                        "UPDATE asset SET path=? WHERE id=? AND path=?",
-                        (row["new_path"], int(row["id"]), row["old_path"]))
-        except Exception:
-            print("  执行失败，回滚已完成的移动")
-            rollback(done)
-            raise
+        apply_plan(connection, ready, rows, subtitle_rows)
 
         after = connection.execute("SELECT count(*) FROM asset").fetchone()[0]
         print(f"  已执行 {len(ready)} 条；资产 {before} -> {after}")

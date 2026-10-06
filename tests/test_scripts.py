@@ -2702,6 +2702,235 @@ class FlattenReleaseDirTests(unittest.TestCase):
     def _resolver(self, root: Path):
         return lambda ledger: root.joinpath(*PureWindowsPath(str(ledger)).parts[1:])
 
+    def test_path_index_preserves_operation_order_and_component_boundaries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            connection = self._ledger(Path(tmp).resolve(), [
+                r"B:\old\inner\a.mp4", r"B:\old-other\b.mp4", r"B:\OLD\c.mp4"])
+            operations = [
+                {"ledger_dir": r"B:\old\inner", "target_dir": r"B:\old\renamed"},
+                {"ledger_dir": r"B:\old", "target_dir": r"B:\new"},
+                {"ledger_dir": r"B:\new\renamed", "target_dir": r"B:\final"}]
+            self.assertEqual(self.flatten.plan_paths(connection, operations), [
+                {"id": "1", "old_path": r"B:\old\inner\a.mp4", "new_path": r"B:\final\a.mp4"},
+                {"id": "3", "old_path": r"B:\OLD\c.mp4", "new_path": r"B:\new\c.mp4"}])
+            connection.close()
+
+    def test_directory_plan_excludes_files_and_includes_redundant_siblings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            connection = self._ledger(Path(tmp).resolve(), [
+                r"B:\ABC-123\ABC-123.mp4",
+                r"B:\ATID-353\ATID-353.mp4\ATID-353.mp4",
+                r"B:\BAZX-123\[Thz.la]bazx-123\BAZX-123cd1.mp4",
+                r"B:\BAZX-123\bazx-123\BAZX-123.mp4",
+                r"B:\合集\XYZ-456\XYZ-456.mp4"])
+            operations = self.flatten.plan_operations(connection)
+            self.assertEqual({op["ledger_dir"] for op in operations}, {
+                r"B:\ATID-353\ATID-353.mp4",
+                r"B:\BAZX-123\[Thz.la]bazx-123",
+                r"B:\BAZX-123\bazx-123"})
+            self.assertTrue(all(op["kind"] == "collapse" and op["assets"] == "1"
+                                for op in operations))
+            self.assertEqual(len(self.flatten.plan_paths(connection, operations)), 3)
+            connection.close()
+
+    def test_shared_parent_keeps_sidecars_and_recovers_directory_contents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source.parent / "poster.jpg").write_bytes(b"cover")
+            (source / "a.mp4").write_bytes(b"media")
+            (source / "b.srt").write_bytes(b"subtitle")
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            done = self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertFalse(source.exists())
+            self.assertEqual((source.parent / "poster.jpg").read_bytes(), b"cover")
+            self.assertEqual((source.parent / "a.mp4").read_bytes(), b"media")
+            self.flatten.rollback(done)
+            rename, attempts = Path.rename, [0]
+            def fail_second_move(path, target):
+                attempts[0] += 1
+                if attempts[0] == 2:
+                    raise OSError("blocked file move")
+                return rename(path, target)
+            with mock.patch.object(Path, "rename", fail_second_move):
+                with self.assertRaisesRegex(OSError, "blocked file move"):
+                    self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertEqual((source / "a.mp4").read_bytes(), b"media")
+            self.assertEqual((source / "b.srt").read_bytes(), b"subtitle")
+            self.assertEqual((source.parent / "poster.jpg").read_bytes(), b"cover")
+
+    def test_directory_plan_cleans_advertised_leaf_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            connection = self._ledger(Path(tmp).resolve(), [
+                r"B:\[Thz.la]ABC-123\[Thz.la]ABC-123.mp4"])
+            self.assertEqual(self.flatten.plan_operations(connection), [{
+                "kind": "rename", "ledger_dir": r"B:\[Thz.la]ABC-123",
+                "target_dir": r"B:\ABC-123", "assets": "1", "verified": ""}])
+            connection.close()
+
+    def test_shared_parent_collision_keeps_both_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source.parent / "a.mp4").write_bytes(b"parent version")
+            (source / "a.mp4").write_bytes(b"child version")
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            with self.assertRaisesRegex(ValueError, "目标条目已存在"):
+                self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertEqual((source.parent / "a.mp4").read_bytes(), b"parent version")
+            self.assertEqual((source / "a.mp4").read_bytes(), b"child version")
+
+    def test_media_wrapper_with_siblings_preserves_versions_and_recovers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "VGD-157" / "VGD-157.mp4"
+            source.mkdir(parents=True)
+            (source.parent / "VGD-157.mkv").write_bytes(b"other version")
+            (source / "VGD-157.mp4").write_bytes(b"media")
+            (source / "VGD-157.srt").write_bytes(b"subtitle")
+            operation = {"kind": "collapse", "ledger_dir": r"B:\VGD-157\VGD-157.mp4",
+                         "target_dir": r"B:\VGD-157"}
+            resolver = self._resolver(root)
+            done = self.flatten.apply_operation(operation, resolver)
+            self.assertTrue(source.is_file())
+            self.assertEqual(source.read_bytes(), b"media")
+            self.assertEqual((source.parent / "VGD-157.mkv").read_bytes(), b"other version")
+            self.flatten.rollback(done)
+            rename = Path.rename
+            for failing_step in (1, 2, 3):
+                attempts = [0]
+                def fail_move(path, target, attempts=attempts, failing_step=failing_step):
+                    attempts[0] += 1
+                    if attempts[0] == failing_step:
+                        raise OSError("blocked wrapper move")
+                    return rename(path, target)
+                with mock.patch.object(Path, "rename", fail_move):
+                    with self.assertRaisesRegex(OSError, "blocked wrapper move"):
+                        self.flatten.apply_operation(operation, resolver)
+                self.assertEqual((source / "VGD-157.mp4").read_bytes(), b"media")
+                self.assertEqual((source / "VGD-157.srt").read_bytes(), b"subtitle")
+                self.assertEqual((source.parent / "VGD-157.mkv").read_bytes(), b"other version")
+                self.assertFalse(list(source.parent.glob(".peach-organize-*")))
+
+    def test_partial_directory_failure_restores_already_moved_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source / "a.mp4").write_bytes(b"media")
+            (source / "b.srt").write_bytes(b"subtitle")
+            rename = Path.rename
+            attempts = [0]
+            def fail_second_move(path, target):
+                attempts[0] += 1
+                if attempts[0] == 2:
+                    raise OSError("blocked")
+                return rename(path, target)
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            with mock.patch.object(Path, "rename", fail_second_move):
+                with self.assertRaisesRegex(OSError, "blocked"):
+                    self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertEqual((source / "a.mp4").read_bytes(), b"media")
+            self.assertEqual((source / "b.srt").read_bytes(), b"subtitle")
+            self.assertFalse((source.parent / "a.mp4").exists())
+
+    def test_apply_synchronises_registered_subtitles_and_carries_covers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            inner = root / "TRE-080" / "TRE-080"
+            inner.mkdir(parents=True)
+            for name in ("TRE-080.mp4", "TRE-080.srt", "poster.jpg"):
+                (inner / name).write_bytes(name.encode())
+            connection = self._ledger(root, [r"B:\TRE-080\TRE-080\TRE-080.mp4"])
+            connection.execute("INSERT INTO asset_subtitle(asset_id,location,path,name,language,format,size,mtime,pairing,first_seen,last_seen) VALUES(1,'115',?,'TRE-080.srt','zh','srt',1,0,'exact','now','now')",
+                               (r"B:\TRE-080\TRE-080\TRE-080.srt",))
+            connection.commit(); connection.close()
+            args = self.flatten.build_parser().parse_args([
+                "--db", str(root / "ledger.db"), "--plan-csv", str(root / "plan.csv"),
+                "--path-csv", str(root / "paths.csv"), "--apply", "--backup", str(root / "backup.db")])
+            verify, apply = self.flatten.verify, self.flatten.apply_operation
+            resolve = self._resolver(root)
+            rename = Path.rename
+            def directory_only(path, target):
+                if not path.is_dir():
+                    raise OSError("file moves unsupported")
+                return rename(path, target)
+            with mock.patch.object(self.flatten, "verify", side_effect=lambda op, *args: verify(op, resolve)), \
+                    mock.patch.object(self.flatten, "apply_operation", side_effect=lambda op: apply(op, resolve)), \
+                    mock.patch.object(Path, "rename", directory_only):
+                self.assertEqual(self.flatten.run(args), 0)
+            connection = sqlite3.connect(root / "ledger.db")
+            self.assertEqual(connection.execute("SELECT path FROM asset_subtitle").fetchone()[0], r"B:\TRE-080\TRE-080.srt")
+            self.assertEqual(connection.execute("SELECT path FROM asset").fetchone()[0], r"B:\TRE-080\TRE-080.mp4")
+            self.assertEqual(connection.execute("PRAGMA integrity_check").fetchone()[0], "ok")
+            connection.close()
+            self.assertTrue((inner.parent / "poster.jpg").is_file())
+            self.assertTrue((root / "backup.db").is_file())
+
+    def test_directory_backend_can_remove_empty_staging_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source / "a.mp4").write_bytes(b"media")
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            rename = Path.rename
+            def remove_empty_parent(path, target):
+                result = rename(path, target)
+                if path.parent.name.startswith(".peach-organize-"):
+                    path.parent.rmdir()
+                return result
+            with mock.patch.object(Path, "rename", remove_empty_parent):
+                done = self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertEqual((source.parent / "a.mp4").read_bytes(), b"media")
+            self.flatten.rollback(done)
+            self.assertEqual((source / "a.mp4").read_bytes(), b"media")
+
+    def test_staging_cleanup_failure_restores_the_original_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source / "a.mp4").write_bytes(b"media")
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            remove = Path.rmdir
+            def fail_staging(path):
+                if path.name.startswith(".peach-organize-"):
+                    raise OSError("blocked cleanup")
+                return remove(path)
+            with mock.patch.object(Path, "rmdir", fail_staging):
+                with self.assertRaisesRegex(OSError, "blocked cleanup"):
+                    self.flatten.apply_operation(operation, self._resolver(root))
+            self.assertEqual((source / "a.mp4").read_bytes(), b"media")
+            self.assertEqual(list(root.iterdir()), [source.parent])
+
+    def test_subtitle_database_failure_restores_media_and_all_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source = root / "same" / "same"
+            source.mkdir(parents=True)
+            (source / "a.mp4").write_bytes(b"media")
+            (source / "a.srt").write_bytes(b"subtitle")
+            connection = self._ledger(root, [r"B:\same\same\a.mp4"])
+            connection.execute("INSERT INTO asset_subtitle(asset_id,location,path,name,format,pairing,first_seen,last_seen) VALUES(1,'115',?,'a.srt','srt','exact','now','now')",
+                               (r"B:\same\same\a.srt",))
+            connection.execute("CREATE TRIGGER blocked_subtitle BEFORE UPDATE ON asset_subtitle BEGIN SELECT RAISE(ABORT,'blocked subtitle'); END")
+            connection.commit()
+            operation = {"kind": "collapse", "ledger_dir": r"B:\same\same", "target_dir": r"B:\same"}
+            rows = self.flatten.plan_paths(connection, [operation])
+            subs = self.flatten.plan_paths(connection, [operation], table="asset_subtitle")
+            apply = self.flatten.apply_operation
+            with mock.patch.object(self.flatten, "apply_operation", side_effect=lambda op: apply(op, self._resolver(root))):
+                with self.assertRaisesRegex(sqlite3.IntegrityError, "blocked subtitle"):
+                    self.flatten.apply_plan(connection, [operation], rows, subs)
+            self.assertEqual(connection.execute("SELECT path FROM asset").fetchone()[0], r"B:\same\same\a.mp4")
+            self.assertEqual(connection.execute("SELECT path FROM asset_subtitle").fetchone()[0], r"B:\same\same\a.srt")
+            self.assertEqual((source / "a.mp4").read_bytes(), b"media")
+            self.assertEqual((source / "a.srt").read_bytes(), b"subtitle")
+            connection.close()
+
     def test_collapse_needs_a_redundant_name_not_just_a_lone_child(self):
         """`古川结爱合集` 底下只有一个 `FC2-PPV-…` 也是有意义的一层，不能合。
 
@@ -2722,8 +2951,8 @@ class FlattenReleaseDirTests(unittest.TestCase):
             self.assertNotIn(r"B:\日本\Prestige\TRE-080\[44x.me]tre-080", renames,
                              "已经被合掉的目录不该再排一次改名")
 
-    def test_collapse_refuses_when_the_parent_holds_something_the_ledger_never_saw(self):
-        """账本只记文件，不记字幕、封面和空目录；不核真实目录就会把它们留在原地。"""
+    def test_collapse_preserves_unregistered_parent_cover(self):
+        """父目录中未登记的封面随媒体合并保留原位。"""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             inner = root / "日本" / "TRE-080" / "[44x.me]tre-080"
@@ -2735,7 +2964,12 @@ class FlattenReleaseDirTests(unittest.TestCase):
             resolve = self._resolver(root)
             self.assertEqual(self.flatten.verify(operation, resolve), "ok")
             (inner.parent / "cover.jpg").write_text("x", encoding="utf-8")
-            self.assertTrue(self.flatten.verify(operation, resolve).startswith("跳过：父目录还有"))
+            self.assertEqual(self.flatten.verify(operation, resolve), "ok")
+            done = self.flatten.apply_operation(operation, resolve)
+            self.assertEqual((inner.parent / "cover.jpg").read_text(encoding="utf-8"), "x")
+            self.assertEqual((inner.parent / "TRE-080.mp4").read_text(encoding="utf-8"), "x")
+            self.flatten.rollback(done)
+            self.assertTrue((inner / "TRE-080.mp4").is_file())
 
     def test_apply_moves_files_up_then_rewrites_the_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:

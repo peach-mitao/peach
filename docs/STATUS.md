@@ -21,7 +21,7 @@
 - 访问密码未开，局域网匿名可读；可选密码首启可跳过，配置页可改可关，登录可记住设备。
 - macOS 是 reader，代码与 `peach-data` 在内置盘；`peach.local` 经 8900/8443 和 pf 提供 80/443，GET 正常、写入回 409。
 - 两端各用本机 CA，私钥与凭据不跨机；代码走 Git、账本单写者复制、图片走 Syncthing；本机坐标见 `<数据根>/config.toml`。
-- Windows ledger `peach-data/database/ledger.db`，2026-10-06 `0044`；`asset_subtitle` 195 行（孤立 19），175 部带字幕轨，`asset` 80,356 行。
+- Windows ledger `0045`（2026-10-07）；`asset_subtitle` 195 行（孤立 19），175 部带字幕轨，`asset` 80,202 行。
 - Mac ledger 经授权从共享副本拉取，恢复 `in-sync`；`sources` 在内置盘，`archive`、`tools` 可指向外置盘。
 - Windows doctor、诊断页通过 CA 核验；本地目录缺失，115/PikPak 可读取；密码未开、历史失败为警告。
 - 本机 Python 3.14；`requires-python` 下限 3.12，CI 同测 3.12 与 3.14；Windows FFmpeg/ffprobe 在 `peach-data/tools/ffmpeg`，macOS 走 PATH。
