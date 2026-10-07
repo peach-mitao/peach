@@ -1022,7 +1022,7 @@ function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true}={}
 }
 /* 换「JAV 默认封面」时，开着的作品详情把海报位跟同一张图一起换。 */
 function repaintDetailPoster(){stageApi()?.repaintPoster()}
-//: 最近一次推给批量条岛的那份；岛还没装载时先记着，接上那一刻补推。
+//: 最近一次推给批量条的那份；它还没接上时先记着，接上那一刻补推。
 let batchDockProps={count:0,context:'catalog',junkDismissed:false};
 //: 回收站这一次进页以来最近一次读数（`paintCatalogCount` 写，页头说明行读）；还没读到或不在回收站时是 null。
 let trashCount=null;
@@ -1032,7 +1032,7 @@ function paintSelection(){
   pushGridPage({selected:new Set(selected),selectMode});
   pushEntityPage({selected:new Set(selected),selectMode});
   pushFollowFeed({selected:new Set(followSelected),selectMode});
-  /* 底部浮条归批量条岛（`react/batch-dock/`）：壳推计数与语境，每种语境列哪几颗键由岛按语境定。 */
+  /* 底部浮条归常驻面 `batch-dock`（`react/batch-dock/`）：壳推计数与语境，每种语境列哪几颗键由它按语境定。 */
   const followPage=location.pathname==='/follow',junkPage=location.pathname==='/junk-files';
   const picked=followPage?followSelected:selected;
   batchDockProps={count:picked.size,context:followPage?'follow':junkPage?'junk':state.state==='trash'?'trash':'catalog',
@@ -1150,7 +1150,7 @@ async function runJunkBatch(operation,button){
 }
 const BATCH_RUNNERS={batch:runCatalogBatch,region:pickBatchRegion,follow:runFollowBatch,junk:runJunkBatch,
   clear:()=>setSelectMode(false,true)};
-/* 批量条岛在壳启动时接上 `body` 末尾的宿主；包回来之前就选中的，接上那一刻补推手上那份。 */
+/* 批量条在壳启动时由路由树画进 `body` 末尾的宿主；包回来之前就选中的，接上那一刻补推手上那份。 */
 function mountBatchDock(){
   loadBatchDock({root:$('[data-batch-dock]'),run:(group,operation,button)=>{void BATCH_RUNNERS[group]?.(operation,button)}})
     .then(dock=>{dock.render(batchDockProps);syncGlassOptics()}).catch(()=>{});
@@ -4145,7 +4145,7 @@ applyTheme();
 /* 侧栏的光晕配色卡照 boardui.com 右下角那枚「Accent color」：钮上不画字形，画的就是它管的那两样——
    左上一枚光晕色的圆、右下一枚强调色的圆叠在它上面（`appearance/glow.ts` 的 `paintGlowButton`）。
    卡的外壳在这里建、由 `wireAnchoredMenu` 锚定与开合，材质与媒体库选择弹层同一条规则；卡里的内容归
-   `glow-picker` 岛（`frontend/src/react/glow-picker/`）。 */
+   常驻面 `glow-picker`（`frontend/src/react/glow-picker/`），由路由树画进来。 */
 const glowPicker=document.createElement('div');
 glowPicker.className='popmenu board-glow-menu';glowPicker.id='boardGlowMenu';glowPicker.hidden=true;
 glowPicker.setAttribute('popover','manual');glowPicker.setAttribute('role','dialog');

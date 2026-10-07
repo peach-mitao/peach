@@ -1,7 +1,7 @@
-/* 批量条岛（`batch-dock-island.tsx`）对壳的契约，以及每种语境下列哪几颗键。
+/* 批量条（常驻面 `batch-dock`，`batch-dock-island.tsx`）对壳的契约，以及每种语境下列哪几颗键。
  *
  * 多选的状态仍归壳：开关、选中集、Shift 连选与「换了页面就退出多选」都在 `web/app.js`。壳每次重画
- * 选中态时把计数与语境推进来；岛只负责画底部那块浮条（共用的 `SelectionDock`）。点下去回到壳的
+ * 选中态时把计数与语境推进来；这一面只负责画底部那块浮条（共用的 `SelectionDock`）。点下去回到壳的
  * `run`：确认弹层、写接口、回执与撤销是壳里按分组分派的那几条流程，忙态挂在传回去的那颗键上。 */
 
 /** 目录（含资料页与标签页）、回收站、垃圾文件、关注页。 */
@@ -28,7 +28,7 @@ export interface BatchDockProps {
 }
 
 export interface BatchDockHost {
-  /** 岛画进去的那一层（`[data-batch-dock]`，本身 `display: contents`）。 */
+  /** 这一面画进去的那一层（`[data-batch-dock]`，本身 `display: contents`），也就是常驻面的宿主。 */
   root: HTMLElement;
   run(group: BatchGroup, operation: string, button: HTMLButtonElement): void;
 }

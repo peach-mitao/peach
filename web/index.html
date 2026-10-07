@@ -260,7 +260,7 @@
      写在这枚没有子节点的空 div 上，失效范围就只剩它和它那两枚伪元素。
      怎么画仍然只在 web/css/01-base.css 一份。 -->
 <aside id="drawer" data-sidebar-drawer><div class="glowlayer" aria-hidden="true"></div><div id="drawerScroll" data-sidebar-scroll></div></aside>
-<!-- 批量条归 batch-dock 岛（`frontend/src/react/batch-dock/`），选中集与写操作留在壳里。 -->
+<!-- 批量条是常驻面 batch-dock（`frontend/src/react/batch-dock/`），由路由树画进这个节点；选中集与写操作留在壳里。 -->
 <div data-batch-dock></div>
 
 <div id="toasts"></div>

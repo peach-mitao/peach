@@ -38,8 +38,13 @@ export function EntityPage(props: EntityPageProps) {
   const redirect = entity.data?.redirect;
   const { actions } = props;
   useLayoutEffect(() => { if (missing) actions.missing() }, [actions, missing]);
+  /* 换到规范资料页排到微任务里：壳换页会重排页头与选中态，那一路可能走到批量条的 `flushSync`，
+     提交阶段里它画不出来。这一代已卸下就不换。 */
   useLayoutEffect(() => {
-    if (redirect) actions.openEntity(redirect.kind, redirect.name, true);
+    if (!redirect) return;
+    let live = true;
+    queueMicrotask(() => { if (live) actions.openEntity(redirect.kind, redirect.name, true) });
+    return () => { live = false };
   }, [actions, redirect?.kind, redirect?.name]);
   if (entity.isError) return <RetryNote message={errorMessage(entity.error)} onRetry={() => { void entity.refetch() }} />;
   if (!entity.data || missing || redirect) return null;

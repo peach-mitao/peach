@@ -499,12 +499,14 @@ export type {
   BatchAction, BatchContext, BatchDockApi, BatchDockHost, BatchDockProps, BatchGroup,
 } from './batch-dock/batch-dock-api';
 
-/** 接上壳给的宿主，拿回批量条岛的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回批量条的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次；这一面由
+ *  `islands.ts` 的 `loadBatchDock` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureBatchDock(host: BatchDockHost): BatchDockApi;
 
 export type { GlowPickerHost } from './glow-picker/glow-picker-api';
 
-/** 接上壳给的宿主，当场画好侧栏配色卡的内容（`glow-picker/glow-picker-island.tsx`）。只调一次。 */
+/** 接上壳给的宿主（`glow-picker/glow-picker-island.tsx`）。只调一次；卡的内容由 `islands.ts` 的
+ *  `loadGlowPicker` 接着经常驻表的 `openResidentSurface` 在路由树里画。 */
 export declare function configureGlowPicker(host: GlowPickerHost): void;
 
 export type { CloudDownloadPrefill, ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
