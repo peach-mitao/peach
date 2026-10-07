@@ -1204,6 +1204,7 @@ maintenance-115 = [
 ]
 naming = [
     { name = "opencc" },
+    { name = "wordninja-enhanced" },
 ]
 vision = [
     { name = "numpy" },
@@ -1242,6 +1243,7 @@ requires-dist = [
     { name = "torznab", specifier = "==0.2.1" },
     { name = "uvicorn", specifier = "==0.53.0" },
     { name = "watchdog", specifier = "==6.0.0" },
+    { name = "wordninja-enhanced", marker = "extra == 'naming'", specifier = "==3.2.0" },
     { name = "zeroconf", specifier = "==0.151.3" },
 ]
 provides-extras = ["dev", "build", "macos", "vision", "maintenance-115", "naming"]
@@ -2416,6 +2418,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/36/57/ed58088fafdf4c55a0ad6bde846502567645424d7ebf325230b9237f4085/wcwidth-0.8.3.tar.gz", hash = "sha256:d128512515fbf4612e0ff21fd6380399210318b7b54a9af59dff8454cf9730eb", size = 1458450, upload-time = "2026-08-28T18:10:06.875Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/0e/57f6bb3024a597b2e8ec4aee710ffe62ddc95af2e2bb1ee7a7abdc22c68c/wcwidth-0.8.3-py3-none-any.whl", hash = "sha256:d5b73dba6158a595ec9370350e7f2637bcac8d6c5e4fde34f30fcffb6103a5e4", size = 331669, upload-time = "2026-08-28T18:10:04.909Z" },
+]
+
+[[package]]
+name = "wordninja-enhanced"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/48/e037e3cf629de38b9c7c576238d3022b670f817b55a2809666ca7b85ad13/wordninja_enhanced-3.2.0.tar.gz", hash = "sha256:3e76d95bde8cb8e03c0a64e089c6e813a3d765fabdb85b4e5a6a3ca74144e64e", size = 11356113, upload-time = "2026-09-04T15:04:25.768Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/67/7c3548ac3c5f78673e254fac1d45dba4d25133a2e65a568c13c556fa097e/wordninja_enhanced-3.2.0-py3-none-any.whl", hash = "sha256:12117e39b751ef8514314d0e25426316763b551bb80d3fafb213cb1ca2b1d06e", size = 11351728, upload-time = "2026-09-04T15:04:23.07Z" },
 ]
 
 [[package]]

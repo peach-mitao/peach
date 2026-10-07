@@ -51,6 +51,44 @@ def load_script(name: str):
     return module
 
 
+class EnglishNameSpacingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.script = load_script('space_media_names')
+        cls.language = cls.script.model()
+
+    def test_words_sequence_and_punctuation_are_preserved(self):
+        self.assertEqual(self.script.spaced_name("01_NewYear'sgift.mp4", self.language),
+                         "01_New Year's gift.mp4")
+        self.assertEqual(self.script.spaced_name('02_Thisisanothermergedtitle.mp4', self.language),
+                         '02_This is another merged title.mp4')
+
+    def test_unrelated_extensions_and_unicode_are_preserved(self):
+        for name in ('01_作品封面.jpg', 'FC2-PPV-123456.zip', '作品.mp4'):
+            self.assertEqual(self.script.spaced_name(name, self.language), name)
+
+    def test_apply_rejects_character_changes_before_opening_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db = fresh_ledger(root)
+            source = root / 'original.mp4'
+            source.write_bytes(b'media')
+            with closing(sqlite3.connect(db)) as connection:
+                connection.execute('INSERT INTO asset(id,location,path,name,medium,size) VALUES(1,?,?,?,?,?)',
+                                   ('local', str(source), source.name, 'video', 5))
+                connection.commit()
+            review = root / 'names.csv'
+            row = dict(asset_id=1, location='local', current_path=str(source), target_path=str(root / 'invented.mp4'),
+                       action='rename', reason='', size=5, original_name=source.name, new_name='invented.mp4')
+            self.script.write_rows(review, self.script.FIELDS, [row])
+            with mock.patch.object(self.script, 'open_for_write') as writer, mock.patch.object(self.script, 'location_roots', return_value={'local':[str(root)]}):
+                with self.assertRaisesRegex(ValueError, '改变了内容字符'):
+                    self.script.main(['--db', str(db), '--root', str(root), '--review-csv', str(review),
+                                      '--apply', '--backup', str(root / 'backup.db')])
+                writer.assert_not_called()
+            self.assertEqual(source.read_bytes(), b'media')
+
+
 class LibraryDirectoryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

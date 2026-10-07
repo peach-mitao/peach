@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from unittest import mock
 from pathlib import Path
 
@@ -183,6 +184,50 @@ class TrashJunkTests(unittest.TestCase):
             self.assertIsNone(self.disposal(1))
             self.assertEqual(self.purge([review])["purged"], 1)
             self.assertFalse(path.exists())
+
+    def test_small_file_delete_with_local_backup_restores_on_database_error(self):
+        from peach import web_batch
+        path, review = self.reviewed_file()
+        unsupported = OSError('rename unsupported')
+        unsupported.winerror = 50
+        with mock.patch.object(web_batch, 'GENERATED_DIR', self.root / 'generated'), mock.patch.object(os, 'rename', side_effect=unsupported):
+            with mock.patch.object(self.trash_junk, 'verify_after_write', return_value=('broken', 0)):
+                with self.assertRaisesRegex(RuntimeError, '校验失败'):
+                    self.purge([review])
+            self.assertEqual(path.read_bytes(), b'promotion')
+            self.assertIsNone(self.disposal(1))
+            self.assertEqual(self.purge([review])['purged'], 1)
+            self.assertFalse(path.exists())
+            self.assertEqual(list((self.root / 'generated' / 'purge-staging').iterdir()), [])
+
+    def test_large_file_without_rename_is_preserved(self):
+        from peach import web_batch
+        path, review = self.reviewed_file()
+        path.write_bytes(b'x' * (1024 * 1024 + 1))
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute('UPDATE asset SET size=? WHERE id=1', (path.stat().st_size,))
+            connection.commit()
+        review.update(size=str(path.stat().st_size))
+        unsupported = OSError('rename unsupported')
+        unsupported.winerror = 50
+        with mock.patch.object(web_batch, 'GENERATED_DIR', self.root / 'generated'), mock.patch.object(os, 'rename', side_effect=unsupported):
+            result = self.purge([review])
+        self.assertEqual(result['purged'], 0)
+        self.assertEqual(result['blocked'][0]['id'], 1)
+        self.assertTrue(path.is_file())
+        self.assertIsNone(self.disposal(1))
+
+    def test_download_site_navigation_images_keep_content_attachments(self):
+        from peach.web_batch import _attachment_junk_reason
+        self.assertTrue(_attachment_junk_reason('.mp4', 'A:\\作品\\社 區 最 新 情 報.mp4', 15089802))
+        self.assertEqual(_attachment_junk_reason('.mp4', 'A:\\作品\\社区最新情报合集.mp4', 15089802), '')
+        for name in ('如何使用谷歌DNS让您更快进入下载网页步骤01.jpg',
+                     '~Free Adult Movie, Fastest & Newest Porn Movie Site.jpg',
+                     'hav.so_最新成人高清店長推薦強片天天更新.gif',
+                     '__ HiHSP.pw 國產精品 高速下載 在線點播.png'):
+            self.assertTrue(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000))
+        for name in ('images.rar', '作品封面.jpg', '作品字幕.srt', 'HiHSP.com-作品截图.jpg'):
+            self.assertEqual(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000), '')
 
 
 if __name__ == "__main__":

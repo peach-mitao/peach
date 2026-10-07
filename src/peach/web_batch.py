@@ -5,13 +5,17 @@
 判定与执行分家的话，「命中推广词」和「可以删」之间那道界线就没人守了——
 剥掉推广词后还剩内容的文件不是广告，这条只有把判据和删除放在一起看才成立。
 
-物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处；同目录隔离加数据库失败回滚
+物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处；文件隔离加数据库失败回滚
 （`_restore_staged_media`）是这个模块最不能出错的部分：删错的文件找不回来。
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
+import shutil
+import tempfile
 import time
 import uuid
 
@@ -19,7 +23,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Sequence
 
 from .catalog_rules import duration_clusters, is_jav_code, normalise_code_key
-from .config import LOCATION_ROOT_DECLARATIONS
+from .config import GENERATED_DIR, LOCATION_ROOT_DECLARATIONS
 from .field_owners import USER_MANUAL, write_owned_fields
 from .personal_records import ASSET_REFERENCE_TABLES, VANISHED
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
@@ -313,6 +317,19 @@ def _promo_neighbour_counts(rows) -> dict[str, int]:
 
 def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     """区分安装附件与网页存档组件。"""
+    name = PureWindowsPath(path).stem
+    if (suffix == '.mp4' and 0 < size < 32 * 1024**2
+            and re.sub(r'\s', '', name) in {'社區最新情報', '社区最新情报'}):
+        return "用户确认的社区推广视频"
+    if suffix in {'.jpg', '.jpeg', '.png', '.gif'} and 0 < size < 2 * 1024**2:
+        if re.fullmatch(r'如何使用谷歌DNS让您更快进入下载网页步骤\s*0?[123]', name, re.I):
+            return "下载站推广导航图片"
+        if re.fullmatch(r'~?Free Adult Movie, Fastest & Newest Porn Movie Site', name, re.I):
+            return "已核验的下载站横幅"
+        if re.match(r'^hav\.so[_ ]+最新成人高清店長推薦強片天天更新$', name, re.I):
+            return "已核验的下载站横幅"
+        if re.search(r'HiHSP\.(?:com|pw)', name, re.I) and re.search(r'高速下载|高速下載|免注册|免註冊|手机看片|手機看片', name):
+            return "下载站地址或二维码推广卡片"
     if suffix in INSTALLER_SUFFIXES and size < 64 * 1024**2:
         return "媒体目录中的安装附件"
     if PureWindowsPath(path).name.casefold() in INSTALLER_ARCHIVE_NAMES and 0 < size <= 64 * 1024:
@@ -457,10 +474,58 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
 
 
 def _restore_staged_media(staged):
-    """Undo same-directory quarantine moves after a database failure."""
+    """数据库失败时恢复隔离文件；本地备份带原路径与内容摘要。"""
     for original, quarantine in reversed(staged):
         if quarantine.exists() and not original.exists():
-            os.rename(quarantine, original)
+            manifest = quarantine.parent / 'restore.json'
+            if quarantine.name == 'content' and manifest.is_file():
+                record = json.loads(manifest.read_text(encoding='utf-8'))
+                if record['original'] != str(original):
+                    raise ValueError('隔离恢复路径不符')
+                shutil.copyfile(quarantine, original)
+                if hashlib.sha256(original.read_bytes()).hexdigest() != record['sha256']:
+                    raise ValueError('隔离恢复内容不符')
+                quarantine.unlink()
+                manifest.unlink()
+                quarantine.parent.rmdir()
+            else:
+                os.rename(quarantine, original)
+
+
+def _quarantine_media(original: Path) -> Path:
+    """同目录改名不支持时，小文件先保留本地完整备份再删除原文件。"""
+    quarantine = original.with_name(f'.{original.name}.peach-purge-{uuid.uuid4().hex}.tmp')
+    try:
+        os.rename(original, quarantine)
+        return quarantine
+    except OSError as error:
+        if getattr(error, 'winerror', None) != 50 or original.is_symlink():
+            raise
+        stat = original.stat()
+        if stat.st_size > 1024 * 1024:
+            raise
+    staging = GENERATED_DIR / 'purge-staging'
+    staging.mkdir(parents=True, exist_ok=True)
+    folder = Path(tempfile.mkdtemp(prefix='purge-', dir=staging))
+    quarantine = folder / 'content'
+    manifest = folder / 'restore.json'
+    try:
+        shutil.copyfile(original, quarantine)
+        body = quarantine.read_bytes()
+        current = original.stat()
+        if len(body) != stat.st_size or (current.st_size, current.st_mtime_ns) != (stat.st_size, stat.st_mtime_ns):
+            raise OSError('文件在隔离备份期间发生变化')
+        record = dict(original=str(original), size=len(body),
+                      sha256=hashlib.sha256(body).hexdigest())
+        manifest.write_text(json.dumps(record, ensure_ascii=False), encoding='utf-8')
+        original.unlink()
+        return quarantine
+    except BaseException:
+        if original.exists():
+            quarantine.unlink(missing_ok=True)
+            manifest.unlink(missing_ok=True)
+            folder.rmdir()
+        raise
 
 
 def _online_source_roots() -> dict[str, tuple[Path, ...]]:
@@ -533,6 +598,10 @@ def _finish_purge(outcome):
     for _original, quarantine in outcome.pop("_staged"):
         try:
             quarantine.unlink(missing_ok=True)
+            manifest = quarantine.parent / 'restore.json'
+            if quarantine.name == 'content' and manifest.is_file():
+                manifest.unlink()
+                quarantine.parent.rmdir()
         except OSError as error:
             cleanup_pending.append({
                 "path": str(quarantine), "reason": error.strerror or str(error),
@@ -578,10 +647,7 @@ def purge_assets(connection, rows, *, missing_only: bool = False):
                 if original.exists() and not original.is_file():
                     raise OSError("not a regular file")
                 if original.is_file():
-                    quarantine = original.with_name(
-                        f".{original.name}.peach-purge-{uuid.uuid4().hex}.tmp"
-                    )
-                    os.rename(original, quarantine)
+                    quarantine = _quarantine_media(original)
                     staged.append((original, quarantine))
             except OSError as error:
                 blocked.append({"id": row["id"], "path": media,
