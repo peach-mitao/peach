@@ -17,8 +17,8 @@ describe('持久提示控件',()=>{
   it('配置骨架标题和卡片共用真实页面网格与正文底栏',()=>{
     const host=document.createElement('div');host.innerHTML=configurationSkeletonHtml();
     const page=host.querySelector('.configpage')!;
-    expect(page.querySelectorAll(':scope > .configgroup')).toHaveLength(4);
-    expect(page.querySelectorAll(':scope > .configfieldset')).toHaveLength(8);
+    expect(page.querySelectorAll(':scope > .configgroup')).toHaveLength(5);
+    expect(page.querySelectorAll(':scope > .configfieldset')).toHaveLength(12);
     for(const card of page.querySelectorAll('.configfieldset')){
       expect(card.querySelector(':scope > .geist-fieldset-content')).not.toBeNull();
       expect(card.querySelector(':scope > .geist-fieldset-footer')).not.toBeNull();

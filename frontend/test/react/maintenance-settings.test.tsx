@@ -16,7 +16,7 @@ const release: ReleaseState = {
 };
 const uninstall = { available: true, full_available: true, message: '', data_root: 'fixture', directories: ['fixture', 'fixture/cache'] };
 
-it('分区依次是自动更新、检查更新、运行信息、安装教程、卸载；缺依赖的那条运行信息带下载链接', async () => {
+it('分区依次是运行信息、安装教程、卸载；缺依赖的那条运行信息带下载链接，系统诊断入口在运行信息底栏', async () => {
   const data: ConfigurationData = {
     editable: true, notice: '', revision: 'r', media_dirs: [], library_count: 0, port: 9123,
     automatic_updates: automatic, updates: release, uninstall,
@@ -27,8 +27,9 @@ it('分区依次是自动更新、检查更新、运行信息、安装教程、�
   };
   const host = await mount(<MaintenanceSettings data={data} receipt={vi.fn()} reopenTutorial={vi.fn()} />);
   expect([...host.firstElementChild!.children].map((node) => node.getAttribute('aria-label')))
-    .toEqual(['自动更新', '检查更新', '运行信息', '系统诊断', '安装教程', '卸载 Peach']);
+    .toEqual(['运行信息', '安装教程', '卸载 Peach']);
   const facts = section(host, '运行信息')!;
+  expect(facts.querySelector('a[href="/diagnostics"]')?.textContent).toBe('打开系统诊断');
   expect([...facts.querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(['版本', 'FFmpeg']);
   const link = facts.querySelector('a[href="https://ffmpeg.org/download.html"]');
   expect(link?.getAttribute('target')).toBe('_blank');
@@ -57,13 +58,13 @@ describe('自动更新', () => {
     expect(receipt).toHaveBeenCalledTimes(2);
   });
 
-  it('源码运行锁住自动下载，说明写在检查频率那一行里，失败原因留在分区里且不报成功', async () => {
+  it('源码运行锁住自动下载，检查频率那一行不带说明，失败原因留在分区里且不报成功', async () => {
     vi.stubGlobal('fetch', fetchMock(400, { detail: '设置正在保存' }));
     const receipt = vi.fn();
     const host = await mount(<AutomaticUpdates initial={{ ...automatic, mode: 'check', download_available: false }} receipt={receipt} />);
     expect(switches(host)[1]!.disabled).toBe(true);
     const interval = [...host.querySelectorAll('p')].find((p) => p.textContent === '检查频率');
-    expect(interval?.nextElementSibling?.textContent).toBe('开启后一分钟内开始检查。源码运行时在发布页获取新版本。');
+    expect(interval?.nextElementSibling).toBeNull();
     await submit(host.querySelector('form'));
     await settle();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('设置正在保存');
@@ -72,6 +73,12 @@ describe('自动更新', () => {
 });
 
 describe('检查更新', () => {
+  it('还没检查过时「尚未检查」只在最新版本那一行出现一次', async () => {
+    vi.stubGlobal('fetch', fetchMock(200, { state: 'idle', progress: 0 }));
+    const host = await mount(<ReleaseUpdates initial={release} />);
+    expect(host.textContent?.split('尚未检查')).toHaveLength(2);
+  });
+
   it('刷新后接着已准备好的更新，弹一次重启确认，确认前不发重启', async () => {
     vi.useFakeTimers();
     const modal = vi.spyOn(legacyUi, 'confirmModal');

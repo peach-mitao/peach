@@ -103,8 +103,9 @@ export function useFolderRows<T extends FolderRowValue>({ initial, blank, pickFo
 }
 
 /** 一行描边卡。`label` 是路径框的无障碍名，`children` 排进路径下面那一格。`error` 原样放进路径框
- * 下的提示，调用方可以传一段带 `role="alert"` 的节点让读屏播报。 */
-export function FolderRow({ label, path, onPath, error, inputRef, picking, onPick, onRemove, children }: {
+ * 下的提示，调用方可以传一段带 `role="alert"` 的节点让读屏播报。`status` 排在路径框右侧，
+ * 配置页用它标这个文件夹此刻在不在线。 */
+export function FolderRow({ label, path, onPath, error, inputRef, picking, onPick, onRemove, status, children }: {
   label: string;
   path: string;
   onPath: (path: string) => void;
@@ -113,6 +114,7 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
   picking: boolean;
   onPick: () => void;
   onRemove?: () => void;
+  status?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -121,6 +123,7 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
         <Input className="min-w-0 flex-1" aria-label={label} placeholder="本机文件夹路径"
           value={path} onChange={onPath} ref={inputRef}
           validationBehavior="aria" isInvalid={Boolean(error)} hint={error || undefined} />
+        {status ? <div className="flex h-10 shrink-0 items-center">{status}</div> : null}
         <IconButton icon={FolderSearchIcon} aria-label="选择文件夹" onClick={onPick} {...busyProps(picking)} />
         {onRemove ? <IconButton icon={RiCloseLine} aria-label="移除这个文件夹" onClick={onRemove} /> : null}
       </div>

@@ -16,10 +16,10 @@ const open = (over: Partial<ConfigurationData> = {}, receipt = vi.fn()) =>
 const rows = (root: ParentNode) => [...root.querySelectorAll('[data-folder-row]')];
 const paths = (root: ParentNode) => [...root.querySelectorAll<HTMLInputElement>('input[aria-label^="媒体文件夹 "]')];
 
-it('托盘管理访问端口时不画端口字段，底栏说保存后重新载入', async () => {
+it('托盘管理访问端口时不画端口字段，底栏不带说明', async () => {
   const host = await open({ port_editable: false });
   expect(host.querySelector('#configPort')).toBeNull();
-  expect(host.textContent).toContain('保存后 Peach 会重新载入配置。');
+  expect(host.textContent).not.toContain('保存后 Peach');
   expect(host.querySelector('form')).not.toBeNull();
 });
 
@@ -52,7 +52,7 @@ describe('媒体文件夹', () => {
     expect(host.textContent).toContain('挂载帮助');
   });
 
-  it('其它系统每行带 Windows 对应路径，挂载状态同时给文字和来源标识', async () => {
+  it('其它系统每行带 Windows 对应路径，挂载状态标在各自那一行', async () => {
     const host = await open({ windows: false, media_sources: [
       { location: '115', root: 'B:/', path: '/Volumes/115', online: true },
       { location: 'pikpak', root: 'A:/', path: '/Volumes/PikPak', online: false },
@@ -60,15 +60,13 @@ describe('媒体文件夹', () => {
     ] });
     expect(rows(host)).toHaveLength(3);
     expect(rows(host).every((row) => row.textContent?.includes('Windows 中的对应路径'))).toBe(true);
-    const mounts = section(host, '挂载状态')!;
-    expect([...mounts.querySelectorAll('[data-mount]')].map((node) => [node.getAttribute('data-mount'), node.textContent]))
+    expect(rows(host).map((row) => [row.querySelector('[data-mount]')?.getAttribute('data-mount'), row.querySelector('[data-mount]')?.textContent]))
       .toEqual([['online', '在线'], ['offline', '离线'], ['unknown', '未检测']]);
-    expect([...mounts.querySelectorAll('dt use')].map((node) => node.getAttribute('href')))
-      .toEqual(['#i-fixture-115', '#i-fixture-pikpak', '#i-hard-drive']);
+    expect(section(host, '挂载状态')).toBeNull();
   });
 
-  /* 「刷新挂载状态」重取的是整份配置、换进整页那一个 `queryKey`，那条用例在
-     `configuration.test.tsx` 里：只挂这一个分区，看不出换进去之后谁读到了新的。 */
+  /* 只读时单列的「挂载状态」与它的刷新键在 `configuration.test.tsx` 里：刷新换进的是整页那一个
+     `queryKey`，只挂这一个分区看不出换进去之后谁读到了新的。 */
 
   it('按来源回填全部挂载点，提交带上盘符映射与媒体库', async () => {
     const fetcher = fetchMock(200, { saved: true, url: '/', revision: 'rev-2' });

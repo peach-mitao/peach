@@ -64,7 +64,7 @@ class Indexers:
                 endpoint(row.get("url"))
             return rows
         except (CredentialError, ValueError, TypeError):
-            raise ValueError("索引器配置读不出来，请在本机「配置 → 媒体」中重新保存") from None
+            raise ValueError("索引器配置读不出来，请在本机「配置 → 下载」中重新保存") from None
 
     def public(self) -> dict:
         return {"indexers": [

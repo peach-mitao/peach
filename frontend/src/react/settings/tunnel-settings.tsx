@@ -24,9 +24,8 @@ const POLL_INTERVAL = 2000;
 const MODES: [TunnelState['mode'], string][] = [['quick', '临时链接'], ['named', '命名隧道']];
 
 const HELP: Record<TunnelState['mode'], string> = {
-  quick: '只用于临时预览；地址随机、重启后会变化。启动前必须设置访问密码。',
-  named: '地址是 Cloudflare 后台绑定的公开主机名，重启后不变。启动前必须设置访问密码，'
-    + '身份策略在 Cloudflare Access 里配置。',
+  quick: '临时预览用，地址随机，重启后会变。启动前要先设置访问密码。',
+  named: '使用你在 Cloudflare 绑定的固定域名。启动前要先设置访问密码。',
 };
 
 type FieldErrors = Partial<Record<'hostname' | 'mode', string>>;
@@ -113,11 +112,11 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt }: 
           <Input id="tunnel-hostname" label="公开主机名" autoComplete="off" maxLength={253}
             value={hostname} onChange={setHostname} isDisabled={active} validationBehavior="aria"
             isInvalid={Boolean(fields.hostname)}
-            hint={fields.hostname || '在 Cloudflare Zero Trust 里指向本机 origin 的那个主机名。'} />
+            hint={fields.hostname || 'Cloudflare Zero Trust 里指向这台电脑的主机名。'} />
           <Input id="tunnel-token" type="password" label="隧道令牌" autoComplete="off" maxLength={2048}
             value={token} onChange={setToken} isDisabled={active} validationBehavior="aria"
             hint={state.token_set
-              ? '已保存。留空表示沿用已保存的令牌。'
+              ? '已保存，留空不改。'
               : '在 Cloudflare Zero Trust 的隧道详情页复制。'} />
         </> : null}
         {!state.available
@@ -130,7 +129,7 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt }: 
         {state.error ? <ErrorText>{state.error}</ErrorText> : null}
         {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       </Stack>
-      <Footer status={state.enabled ? '服务重启时会按设置尝试恢复。' : '服务重启后保持关闭。'}>
+      <Footer status={state.enabled ? 'Peach 重启后自动恢复。' : undefined}>
         <Button onClick={toggle} {...busyProps(action.busy === 'toggle')}>
           {active ? '停止公网入口' : '启动公网入口'}
         </Button>

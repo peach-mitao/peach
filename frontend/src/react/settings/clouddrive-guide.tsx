@@ -15,12 +15,12 @@ const READINGS = [['cache', '缓存上限'], ['read', '读取长度（默认 / �
 export function CloudDriveGuide() {
   return (
     <div className="@container flex flex-col gap-3">
-      <Help>
-        先在 CloudDrive 登录网盘并挂载，开启「启动时自动挂载」。
-        <ExternalLink href="https://www.clouddrive2.com/help.html">挂载帮助</ExternalLink>
-      </Help>
-      <Disclosure summary="CloudDrive 缓存建议">
-        <Help>按缓存所在硬盘和可用内存选择起步值，再根据播放表现调整。</Help>
+      <Disclosure summary="CloudDrive 设置帮助">
+        <Help>
+          先在 CloudDrive 登录网盘并挂载，开启「启动时自动挂载」。
+          <ExternalLink href="https://www.clouddrive2.com/help.html">挂载帮助</ExternalLink>
+        </Help>
+        <Help>缓存按所在硬盘和可用内存选起步值，再根据播放表现调整。</Help>
         {/* 三档同形、跨档比较：窄处每档一块纵排，宽处三项读数排成三列对齐。 */}
         <ul aria-label="按缓存所在硬盘分档" className="flex flex-col gap-2">
           {CLOUDDRIVE_PROFILES.map((profile) => (

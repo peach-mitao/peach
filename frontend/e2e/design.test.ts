@@ -869,7 +869,7 @@ describe('设计决定', () => {
       assert.notEqual(surface, 'rgba(0, 0, 0, 0)', '警示没有底色');
       assert.equal(surface, await tokenColor(opened.page, '.peach-react', '--color-status-yellow-background'));
       const ink = await note.evaluate((element) => getComputedStyle(element).color);
-      const hint = await opened.form.getByText('保存后立即生效。').evaluate((element) => getComputedStyle(element).color);
+      const hint = await opened.form.getByText('关闭访问密码时无需填写。').evaluate((element) => getComputedStyle(element).color);
       assert.notEqual(ink, hint, '警示文字和字段说明同色');
       assert.deepEqual(opened.problems, []);
     } finally {

@@ -25,6 +25,7 @@ import type {
 } from '../bundle';
 import { LoadingDots } from '../components/loading-dots';
 import { Note } from '../components/note';
+import { IndexerSettings } from './indexer-settings';
 import {
   Disclosure, ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack,
 } from './section';
@@ -37,6 +38,19 @@ const LOGIN_URL = '/api/configuration/downloads/pikpak/login';
 const LOGOUT_URL = '/api/configuration/downloads/pikpak/logout';
 const BROWSER_URL = '/api/configuration/downloads/pikpak/browser-login';
 const POLL_MS = 2000;
+
+/** 「下载」分组：云下载、PikPak 账号与资源索引器。 */
+export function DownloadGroup({ initial, receipt }: {
+  initial: DownloadSettingsState;
+  receipt(message: string): void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <DownloadSettings initial={initial} receipt={receipt} />
+      <IndexerSettings receipt={receipt} />
+    </div>
+  );
+}
 
 export function DownloadSettings({ initial, receipt }: {
   initial: DownloadSettingsState;
@@ -161,21 +175,20 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
   return (
     <Section title="云下载" onSubmit={submit}>
       <Stack>
-        <Help>把磁力交给 115 或 PikPak 离线下载，文件落在已挂载的网盘目录，再由推送发现登记入库，不经过这台电脑。
-          115 每个任务扣一条离线配额（年费会员每月 1500 条、月费 200 条），被判违规的资源不重试。</Help>
+        <Help>把磁力交给 115 或 PikPak 离线下载，下完由推送发现自动入库。</Help>
         <Input label="CloudDrive2 地址" placeholder="留空自动探测本机 19798 / 29798" autoComplete="off" maxLength={200}
           value={config.clouddrive_address} isDisabled={!state.available}
           onChange={(value) => setConfig({ ...config, clouddrive_address: value })} />
         <Input label="CloudDrive2 API 令牌" type="password" autoComplete="off" maxLength={400}
           placeholder={state.token_set ? '已保存，留空不改' : '在 CloudDrive2「设置 → API 令牌」中生成'}
-          hint="令牌需要「提交离线任务」「查看离线任务与配额」两项权限；要在 Peach 里取消任务，再勾上「取消离线任务」；要在 Peach 里新建目标目录，再勾上新建文件夹权限（allow_create_folder）。"
+          hint="生成时勾选离线任务相关权限，缺哪项「检查」会列出来。"
           value={token} isDisabled={!state.available} onChange={setToken} />
         <Input label="115 目标目录" placeholder="留空时按推送发现自动填写" autoComplete="off" maxLength={300}
           validationBehavior="aria" isInvalid={missing}
-          hint={missing ? (saveBlocked ? '这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。' : 'CloudDrive2 里还没有这个目录。') : 'CloudDrive2 挂载树里的路径，要落在「推送发现」的某个云端路径前缀下面，下载完才找得到。留空保存时按推送发现里 115 那条前缀填上「前缀/云下载」。'}
+          hint={missing ? (saveBlocked ? '这个目录还不存在，保存前先在下方新建它，或改成 CloudDrive2 里已有的目录。' : 'CloudDrive2 里还没有这个目录。') : '要在推送发现的云端路径前缀下面，留空自动填写。'}
           value={target('115')} isDisabled={!state.available} onChange={(value) => setTarget('115', value)} />
         <Input label="PikPak 目标目录" placeholder="以 / 开头的网盘路径" autoComplete="off" maxLength={300}
-          hint="PikPak 网盘里的路径，目录要已经存在。"
+          hint="目录要已经存在。"
           value={target('pikpak')} isDisabled={!state.available} onChange={(value) => setTarget('pikpak', value)} />
         <div className="flex flex-col gap-1">
           <FieldLabel>PikPak 根目录对应的媒体文件夹</FieldLabel>
@@ -190,7 +203,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
           )}
         </div>
         <Input label="等待上限（小时）" type="number" inputMode="numeric" autoComplete="off"
-          hint={`远端超过这么久还没下完就标为停滞，多半是没有人做种。1 到 ${state.max_wait_hours} 小时。`}
+          hint={`超过这么久还没下完就标为停滞，1 到 ${state.max_wait_hours} 小时。`}
           value={hours} isDisabled={!state.available} onChange={setHours} />
       </Stack>
       {action.busy === 'auto' ? <Stack divided><LoadingDots label="正在检查 CloudDrive2" /></Stack> : null}
@@ -377,8 +390,7 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
         </FactList>
       ) : browser.available ? (
         <Stack>
-          <Help>「用浏览器登录」会打开一个 Peach 专用的浏览器窗口，在里面登录 PikPak。Peach 读到登录状态后关掉窗口，之后由 Peach 续期；续期失败时回到这里重新登录。</Help>
-          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。</Help>
+          <Help>在弹出的浏览器窗口里登录 PikPak，之后由 Peach 自动续期。</Help>
           {outcome ? (outcomeFailed ? <ErrorText>{outcome}</ErrorText> : <Help role="status">{outcome}</Help>) : null}
           <Disclosure summary="用账号密码登录">
             <div className="flex flex-col gap-4">
@@ -390,7 +402,7 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
         </Stack>
       ) : (
         <Stack>
-          <Help>PikPak 没有开放接口，Peach 照 PikPak 网页端的协议直连，接口变了就会报错，那时可以先复制磁力手动添加。账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
+          <Help>账号密码只用来换登录令牌，令牌存在这台电脑上。</Help>
           {passwordForm}
         </Stack>
       )}

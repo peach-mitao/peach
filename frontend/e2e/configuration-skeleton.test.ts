@@ -3,22 +3,23 @@ import { after, before, describe, it } from 'node:test';
 import type { Browser, Page } from 'playwright-core';
 import { configurationBody, expectBody, launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
 
-const measure = (page: Page) => page.locator('.configpage').evaluate(root => {
+const measure = (page: Page, names = ['开机自启', '自动更新']) => page.locator('.configpage').evaluate((root, names) => {
   const rect = (el: Element) => {
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   };
-  const sections = ['开机自启', '外部入口'].map(name => root.querySelector(`[aria-label="${name}"]`)!);
+  const sections = names.map(name => root.querySelector(`[aria-label="${name}"]`)!);
   return {
     nav: rect(root.querySelector('.board-local-nav')!),
     selected: root.querySelector('.board-local-nav [aria-selected="true"]')?.textContent,
     sections: sections.map(section => ({
       label: rect(section.firstElementChild!),
       card: rect(section.lastElementChild!),
-      save: rect(section.querySelector('button')!),
+      // 保存键在卡片页脚，取分区里最后一个按钮：Select 的触发器也是 button。
+      save: rect([...section.querySelectorAll('button')].at(-1)!),
     })),
   };
-});
+}, names);
 
 describe('配置页等待态', () => {
   let browser: Browser;
@@ -33,16 +34,18 @@ describe('配置页等待态', () => {
         await settle(page);
         const nav = page.getByRole('tablist', { name: '配置分区' });
         assert.equal(await nav.getAttribute('aria-orientation'), 'horizontal');
-        const geometry = await measure(page);
+        const geometry = await measure(page, ['开机自启']);
         assert.ok(geometry.nav.y + geometry.nav.height <= geometry.sections[0].label.y);
-        const input = page.getByRole('textbox', { name: 'JavDB 地址', exact: true });
+        await nav.getByRole('tab', { name: '网络与访问', exact: true }).click();
+        // 切到别的页签后这一栏所在的面板隐藏，值仍要留在原处。
+        const input = page.getByRole('textbox', { name: 'JavDB 地址', exact: true, includeHidden: true });
         await input.fill('example.invalid');
         const general = nav.getByRole('tab', { name: '通用', exact: true });
-        await general.focus();
+        await general.click();
         await page.keyboard.press('ArrowRight');
         assert.equal(await nav.getByRole('tab', { name: '媒体', exact: true }).getAttribute('aria-selected'), 'true');
         await page.keyboard.press('End');
-        assert.equal(await nav.getByRole('tab', { name: '更新与维护' }).getAttribute('aria-selected'), 'true');
+        assert.equal(await nav.getByRole('tab', { name: '维护' }).getAttribute('aria-selected'), 'true');
         await page.keyboard.press('Home');
         assert.equal(await input.inputValue(), 'example.invalid');
         const bounds = await layout(page);
@@ -69,7 +72,7 @@ describe('配置页等待态', () => {
           await pending;
           await route.fulfill({ json: { ...data, startup: {
             available: true, enabled: true, silent: true, desktop: true, desktop_message: '', message: '',
-          } } });
+          }, automatic_updates: { mode: 'check', interval_hours: 24, available: true, download_available: false } } });
         });
         await opened.page.reload({ waitUntil: 'load' });
         await opened.page.locator('[data-skeleton="board/configuration"]').waitFor();

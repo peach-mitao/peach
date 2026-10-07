@@ -1,4 +1,4 @@
-/* 「媒体」分组：这台电脑的媒体文件夹与本机端口，加各来源的挂载状态。
+/* 「媒体」分组：这台电脑的媒体文件夹、本机端口与推送发现，每个文件夹标着挂载状态。
  *
  * 服务端按两道门放行：托盘管理的服务、且从运行 Peach 的这台电脑打开时 `editable` 才为真；
  * 其它情况表单不画，只留一句为什么。保存成功后 Peach 会重启，这里给一句持久提示、一条新地址
@@ -20,9 +20,7 @@ import { queryClient } from '../query';
 import { RESTART_REDIRECT_MS } from '../restart-redirect';
 import { CloudDriveGuide } from './clouddrive-guide';
 import { CONFIGURATION_KEY, fetchConfiguration } from './configuration';
-import { DownloadSettings } from './download-settings';
 import { FolderRow, isCloudSource, MEDIA_SOURCES, SourceSelect, sourceMark, useFolderRows, WindowsRootInput } from './folder-rows';
-import { IndexerSettings } from './indexer-settings';
 import { LibraryIconPicker } from './library-icon-picker';
 import { PushDiscoveryForm } from './push-discovery-settings';
 import {
@@ -55,16 +53,15 @@ const fieldErrorsOf = (cause: unknown): FieldErrors | null => {
   return (cause.body as { errors?: FieldErrors } | null)?.errors ?? null;
 };
 
+/* 能编辑时挂载状态标在每个文件夹行上；只读时没有那张表，单列一块。 */
 export function MediaSettings({ data, receipt }: ConfigurationGroupProps) {
   return (
     <div className="flex flex-col gap-6">
       {data.editable ? <MediaForm data={data} receipt={receipt} /> : <Note tone="neutral" title="只读">{data.notice}</Note>}
-      <MountStatus data={data} />
+      {data.editable ? null : <MountStatus data={data} />}
       {data.push_discovery
         ? <PushDiscoveryForm initial={data.push_discovery} receipt={receipt} />
         : null}
-      {data.downloads ? <DownloadSettings initial={data.downloads} receipt={receipt} /> : null}
-      {data.downloads ? <IndexerSettings receipt={receipt} /> : null}
     </div>
   );
 }
@@ -122,6 +119,8 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
     );
   }
 
+  // 挂载状态是已保存的那份配置的读数，只标在路径没改过的行上。
+  const mountOf = (path: string) => (path ? data.media_sources?.find((source) => source.path === path) : undefined);
   const cloud = rows.some((row) => isCloudSource(row.location));
   const missing = cloud ? (data.mount_dependencies ?? []).filter((dependency) => !dependency.available) : [];
   return (
@@ -134,7 +133,8 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
               <FolderRow key={index} label={`媒体文件夹 ${index + 1}`} path={row.path}
                 onPath={(path) => edit(index, { path })} error={rowErrors[index]} inputRef={inputRef(index)}
                 picking={picking === index} onPick={() => void pick(index)}
-                onRemove={rows.length > 1 ? () => remove(index) : undefined}>
+                onRemove={rows.length > 1 ? () => remove(index) : undefined}
+                status={mountOf(row.path) ? <MountBadge online={mountOf(row.path)?.online} /> : null}>
                 <Input label="媒体库名称" maxLength={80} placeholder="同名文件夹归入同一个媒体库"
                   value={row.library} onChange={(library) => edit(index, { library })} />
                 <div className="flex flex-col gap-1.5">
@@ -167,7 +167,7 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
         <Checkbox isSelected={scanNow} onChange={setScanNow}>保存后扫描并补全资料</Checkbox>
         {failure ? <Note tone="error" title="没有保存">{failure}</Note> : null}
       </Stack>
-      <Footer status={data.port_editable === false ? '保存后 Peach 会重新载入配置。' : '保存后 Peach 会重新启动，端口改了就用新地址打开。'}>
+      <Footer status={data.port_editable === false ? undefined : '保存后 Peach 会重新启动，端口改了就用新地址打开。'}>
         <Button type="submit" {...busyProps(action.busy === 'save')}>保存配置</Button>
       </Footer>
     </Section>

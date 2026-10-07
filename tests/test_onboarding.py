@@ -738,7 +738,8 @@ class StandaloneConfigurationTests(_Case):
             with self.subTest(ffmpeg=missing_ffmpeg, probe=missing_probe), mock.patch(
                     "peach.ffmpeg.FFmpegResolver.ffmpeg", return_value=None if missing_ffmpeg else object()), mock.patch(
                     "peach.ffmpeg.FFmpegResolver.ffprobe", return_value=None if missing_probe else object()):
-                fact = next(row for row in runtime_fact_entries(self.config) if row['term'] == 'FFmpeg')
+                # 两样都在时 FFmpeg 不占一行，取不到就按没有下载入口算。
+                fact = next((row for row in runtime_fact_entries(self.config) if row['term'] == 'FFmpeg'), {})
                 self.assertEqual(fact.get('download_url') == 'https://ffmpeg.org/download.html',
                                  missing_ffmpeg or missing_probe)
 
@@ -874,7 +875,7 @@ class StandaloneConfigurationTests(_Case):
             self.assertEqual(snapshot["media_dirs"], [str(self.media)])
             self.assertEqual(snapshot["port"], 9123)
             # 运行信息和首启完成页共用同一份 `runtime_facts`，不再各写一份。
-            self.assertIn("FFmpeg", [fact["term"] for fact in snapshot["facts"]])
+            self.assertIn("版本", [fact["term"] for fact in snapshot["facts"]])
             self.config.directory("state").mkdir(parents=True, exist_ok=True)
             response = client.post("/api/configuration", headers=headers, json={
                 "revision": snapshot["revision"], "media_dirs": [str(self.media)], "port": "9124"})

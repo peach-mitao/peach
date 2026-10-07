@@ -73,7 +73,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 配置好之后改文件夹与端口的那张页整个是 React（`frontend/src/react/settings/`，入口 `configuration-page.tsx`）。`/configuration` 是唯一的编辑页，进管理菜单；媒体库选单、统计页与首次配置引导都指向它。
 
-- 结构：一条窄列里排「通用 / 媒体 / 网络与访问 / 更新与维护」四组，每组一个 `h2.configgroup` 小标题，没有内容的组连标题一起省略。左栏页签按 `.configgroup` 标题切（`web/app.js` 的 `configTabItems`）。
+- 结构：一条窄列里排「通用 / 媒体 / 下载 / 网络与访问 / 维护」五组，每组一个 `h2.configgroup` 小标题，没有内容的组连标题一起省略。左栏页签按 `.configgroup` 标题切（`web/app.js` 的 `configTabItems`）。
 - 数据契约是 `/api/configuration`（`src/peach/routes_configuration.py`）。端点字符串只在 `frontend/src/configuration-endpoints.ts` 声明一次，整页和设置弹层的摘要卡读同一个 `queryKey`。
 - 第一帧必须同步：壳挂完这一页紧接着就读它画出来的结构，所以 `react/entry.tsx` 的 `mounter` 用 `flushSync` 画第一帧，往后的更新照常异步。小标题和分区因此必须是 `.configpage` 的直接子节点、交替排列。
 - 设置弹层「这台电脑」一格只挂 `configuration-summary`（`configuration-summary.tsx`）：媒体库数、端口、更新状态和「打开配置页」，不放可编辑的控件（ADR-0050）。媒体库数取 `/api/configuration` 的 `library_count`，由服务端按 `media_libraries.libraries` 分组数好，页面不自己归并。

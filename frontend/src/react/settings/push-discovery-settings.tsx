@@ -80,19 +80,18 @@ export function PushDiscoveryForm({ initial, receipt }: {
   return (
     <Section title="推送发现" onSubmit={submit}>
       <Rows>
-        <SettingsRow label="新文件落地就入库"
-          description="打开之后不必等下一轮扫描。定期全量扫描照常进行，漏掉的由它补上。">
+        <SettingsRow label="新文件落地就入库">
           <Switch aria-label="新文件落地就入库" isSelected={state.enabled} isDisabled={!state.available}
             onChange={(enabled) => setState({ ...state, enabled })} />
         </SettingsRow>
         <SettingsRow label="监视本机文件夹"
-          description="订阅本地来源的文件系统事件。网盘挂载不监视，因为遍历它就是走网络。">
+          description="只监视本地磁盘，网盘由下面的 CloudDrive2 通知负责。">
           <Switch aria-label="监视本机文件夹" isSelected={state.watch_local}
             isDisabled={!state.available || !state.enabled}
             onChange={(watchLocal) => setState({ ...state, watch_local: watchLocal })} />
         </SettingsRow>
         <SettingsRow label="接收 CloudDrive2 通知"
-          description="由 CloudDrive2 把网盘里的新文件推给 Peach。只接受本机与局域网发来的请求。">
+          description="网盘里有新文件时由 CloudDrive2 通知 Peach。">
           <Switch aria-label="接收 CloudDrive2 通知" isSelected={state.cloud}
             isDisabled={!state.available || !state.enabled}
             onChange={(cloud) => setState({ ...state, cloud })} />
@@ -114,10 +113,7 @@ export function PushDiscoveryForm({ initial, receipt }: {
         <Stack divided>
           <div className="flex flex-col gap-3">
             <FieldLabel>CloudDrive2 配置内容</FieldLabel>
-            <Help>Webhook 需要 CloudDrive2 会员；非会员的配置即使显示有效，也不会发送通知。
-              在「设置 → Webhooks」中添加配置，粘贴下方内容并保存。地址和密钥已填好；更换密钥后需重新复制。
-              Windows 桌面版若因换行问题显示「无效」，将配置保存为 .toml
-              文件，放入 %LOCALAPPDATA%\CloudDrive.WinUI\webhooks\ 目录。</Help>
+            <Help>在 CloudDrive2「设置 → Webhooks」里新建一条，粘贴这段配置。Webhook 需要 CloudDrive2 会员。</Help>
             {live.config_toml ? (
               <>
                 <div>
@@ -137,6 +133,8 @@ export function PushDiscoveryForm({ initial, receipt }: {
                       {live.config_toml}
                     </pre>
                   </div>
+                  <Help>Windows 桌面版粘贴后显示「无效」时，把这段存成 .toml 文件，放进
+                    %LOCALAPPDATA%\CloudDrive.WinUI\webhooks\ 目录。</Help>
                 </Disclosure>
               </>
             ) : (
@@ -151,8 +149,7 @@ export function PushDiscoveryForm({ initial, receipt }: {
         <Stack divided>
           <div className="flex flex-col gap-3">
             <FieldLabel>云端路径前缀</FieldLabel>
-            <Help>左侧填写 CloudDrive2 中的目录前缀，右侧选择对应的媒体文件夹。
-              Peach 按此对应关系定位通知中的文件。</Help>
+            <Help>左边填 CloudDrive2 里的目录，右边选它对应的媒体文件夹。</Help>
             <div role="group" aria-label="云端路径前缀" className="flex flex-col gap-3">
               {rows.map((row, index) => (
                 <div key={index} className="flex items-start gap-2">
@@ -182,7 +179,7 @@ export function PushDiscoveryForm({ initial, receipt }: {
       {failure || action.error
         ? <Stack divided><ErrorText>{failure || action.error}</ErrorText></Stack> : null}
       <Footer status={live.enabled && live.cloud
-        ? '换过密钥之后，CloudDrive2 那一侧要重新贴一次配置，否则它推来的一律被拒。' : undefined}>
+        ? '更换密钥后要在 CloudDrive2 重新粘贴配置。' : undefined}>
         {live.enabled && live.cloud ? (
           <Button onClick={rotate} disabled={!state.available}
             {...busyProps(action.busy === 'secret')}>更换密钥</Button>

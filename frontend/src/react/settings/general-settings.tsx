@@ -1,4 +1,4 @@
-/* 「通用」分组：开机自启与桌面快捷方式，人物资料页那三枚外部入口。 */
+/* 「通用」分组：开机自启与桌面快捷方式，自动更新与检查更新。 */
 import { useState, type FormEvent } from 'react';
 
 import { SettingsRow } from '@/components/application/settings/settings-rows';
@@ -7,7 +7,8 @@ import { Switch } from '@/components/base/switch/switch';
 
 import { apiSend } from '../../api';
 import type { ConfigurationGroupProps, StartupState } from '../bundle';
-import { EntryLinksForm } from './entry-links-settings';
+import { AutomaticUpdates } from './maintenance-settings';
+import { ReleaseUpdates } from './release-updates';
 import { ErrorText, Footer, Help, Rows, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 
@@ -15,7 +16,8 @@ export function GeneralSettings({ data, receipt }: ConfigurationGroupProps) {
   return (
     <div className="flex flex-col gap-6">
       {data.startup ? <StartupSettings startup={data.startup} receipt={receipt} /> : null}
-      {data.entry_links ? <EntryLinksForm initial={data.entry_links} receipt={receipt} /> : null}
+      {data.automatic_updates ? <AutomaticUpdates initial={data.automatic_updates} receipt={receipt} /> : null}
+      {data.updates ? <ReleaseUpdates initial={data.updates} initialJob={data.update_job} /> : null}
     </div>
   );
 }
@@ -42,10 +44,10 @@ export function StartupSettings({ startup, receipt }: { startup: StartupState; r
         <SettingsRow label="开机后启动 Peach">
           <Switch aria-label="开机后启动 Peach" isSelected={enabled} isDisabled={!startup.available} onChange={setEnabled} />
         </SettingsRow>
-        <SettingsRow label="静默启动" description="开机后只显示托盘图标，不打开网页；「开机后启动 Peach」打开时生效。">
+        <SettingsRow label="静默启动" description="开机后只显示托盘图标，不打开网页。">
           <Switch aria-label="静默启动" isSelected={silent} isDisabled={!startup.available || !enabled} onChange={setSilent} />
         </SettingsRow>
-        <SettingsRow label="在桌面创建快捷方式" description={startup.desktop_message || '双击图标打开 Peach 网页；卸载时一并移除。'}>
+        <SettingsRow label="在桌面创建快捷方式" description={startup.desktop_message || '双击图标打开 Peach 网页。'}>
           <Switch aria-label="在桌面创建快捷方式" isSelected={desktop} isDisabled={!desktopReady} onChange={setDesktop} />
         </SettingsRow>
       </Rows>

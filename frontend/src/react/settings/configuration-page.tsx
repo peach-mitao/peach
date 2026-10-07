@@ -1,5 +1,5 @@
 /* 配置页（`/configuration`）：这台运行 Peach 的电脑上那些要「保存配置」的多字段表单。
- * 四个分区排成一条窄列，每组一个小标题。服务端按两道门放行，不能编辑时「媒体」那一组只留
+ * 五个分区排成一条窄列，每组一个小标题。服务端按两道门放行，不能编辑时「媒体」那一组只留
  * 一句原因。设置弹层里只有一张摘要卡指到这里（ADR-0050）。
  *
  * 遗留壳按 `.configgroup` 小标题把后面那一个兄弟节点切进页签（`web/app.js` 的
@@ -11,6 +11,7 @@ import { errorMessage } from '../../api';
 import type { ConfigurationGroupProps, ConfigurationProps } from '../bundle';
 import { Note } from '../components/note';
 import { CONFIGURATION_KEY, fetchConfiguration } from './configuration';
+import { DownloadGroup } from './download-settings';
 import { GeneralSettings } from './general-settings';
 import { MaintenanceSettings } from './maintenance-settings';
 import { MediaSettings } from './media-settings';
@@ -31,17 +32,19 @@ export function ConfigurationPage({ receipt, reopenTutorial }: ConfigurationProp
     );
   }
   const group: ConfigurationGroupProps = { data, receipt };
-  const general = Boolean(data.startup || data.entry_links);
-  const network = Boolean(data.peach_proxy || data.access || data.tunnel);
+  const general = Boolean(data.startup || data.automatic_updates || data.updates);
+  const network = Boolean(data.peach_proxy || data.entry_links || data.access || data.tunnel);
   return (
     <div className="configpage">
       {general ? <h2 className="configgroup">通用</h2> : null}
       {general ? <GeneralSettings {...group} /> : null}
       <h2 className="configgroup">媒体</h2>
       <MediaSettings {...group} />
+      {data.downloads ? <h2 className="configgroup">下载</h2> : null}
+      {data.downloads ? <DownloadGroup initial={data.downloads} receipt={receipt} /> : null}
       {network ? <h2 className="configgroup">网络与访问</h2> : null}
       {network ? <NetworkSettings {...group} /> : null}
-      <h2 className="configgroup">更新与维护</h2>
+      <h2 className="configgroup">维护</h2>
       <MaintenanceSettings {...group} reopenTutorial={reopenTutorial} />
     </div>
   );

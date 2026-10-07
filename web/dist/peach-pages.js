@@ -20460,7 +20460,7 @@ function _h({ initial: e, blank: t, pickFolder: n, describe: r, focusAfterPick: 
 		}
 	};
 }
-function vh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, onPick: o, onRemove: s, children: c }) {
+function vh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, onPick: o, onRemove: s, status: c, children: l }) {
 	return /* @__PURE__ */ (0, B.jsxs)("div", {
 		"data-folder-row": !0,
 		className: "@container flex flex-col gap-3 rounded-2lg border border-separator-border bg-background-primary-default p-3",
@@ -20478,6 +20478,10 @@ function vh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, o
 					isInvalid: !!r,
 					hint: r || void 0
 				}),
+				c ? /* @__PURE__ */ (0, B.jsx)("div", {
+					className: "flex h-10 shrink-0 items-center",
+					children: c
+				}) : null,
 				/* @__PURE__ */ (0, B.jsx)(nh, {
 					icon: ph,
 					"aria-label": "选择文件夹",
@@ -20492,7 +20496,7 @@ function vh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, o
 			]
 		}), /* @__PURE__ */ (0, B.jsx)("div", {
 			className: "inline-grid grid-cols-1 gap-3 @lg:grid-cols-2",
-			children: c
+			children: l
 		})]
 	});
 }

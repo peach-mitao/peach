@@ -37,19 +37,20 @@ function IndexerForm({ initial, receipt }: { initial: State; receipt(message: st
   return (
     <Section title="资源索引器" onSubmit={save}>
       <Stack>
-        <Help>用户自配索引器。填写 Prowlarr 或 Jackett 提供的 Torznab API 地址，在活动页「云下载」中按番号搜索。</Help>
+        <Help>接入 Prowlarr 或 Jackett 后，活动页「云下载」可以按番号搜磁力。
+          Prowlarr 的 Torznab 地址在索引器列表里每个索引器的详情中复制，API key 在 Settings → General。</Help>
         {rows.map((row, index) => (
           <div key={row.key} className="flex min-w-0 flex-col gap-4 border-t border-separator-border pt-4">
             <Input label={`索引器 ${index + 1} 名称`} value={row.name} maxLength={80}
               isDisabled={Boolean(action.busy)} onChange={(name) => update(row.key, { name })} />
-            <Input label={`索引器 ${index + 1} API 地址`} value={row.url} type="url" autoComplete="off"
-              hint="不带 apikey 或其他查询参数。" isDisabled={Boolean(action.busy)}
+            <Input label={`索引器 ${index + 1} Torznab 地址`} value={row.url} type="url" autoComplete="off"
+              placeholder="http://127.0.0.1:9696/1/api" isDisabled={Boolean(action.busy)}
               onChange={(url) => update(row.key, { url })} />
             <Input label={`索引器 ${index + 1} API key`} type="password" autoComplete="new-password"
-              value={row.api_key || ''} hint={row.api_key_set ? '已保存；地址不变时留空保留。' : '仅保存在这台电脑。'}
+              value={row.api_key || ''} placeholder={row.api_key_set ? '已保存，留空不改' : undefined}
               isDisabled={Boolean(action.busy)} onChange={(api_key) => update(row.key, { api_key })} />
             <Checkbox isSelected={row.enabled} isDisabled={Boolean(action.busy)}
-              onChange={(enabled) => update(row.key, { enabled })}>启用 · 用户自配索引器</Checkbox>
+              onChange={(enabled) => update(row.key, { enabled })}>启用</Checkbox>
             {row.api_key_set ? <Checkbox isSelected={Boolean(row.clear_api_key)}
               isDisabled={Boolean(action.busy)} onChange={(clear_api_key) => update(row.key, { clear_api_key })}>
               清除已保存的 API key
@@ -60,9 +61,9 @@ function IndexerForm({ initial, receipt }: { initial: State; receipt(message: st
         ))}
         {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       </Stack>
-      <Footer status="保存后生效；关闭或移除索引器会停止向它查询。">
+      <Footer>
         <Button type="button" disabled={Boolean(action.busy) || rows.length >= initial.max_indexers}
-          onClick={() => setRows([...rows, { key: crypto.randomUUID(), name: '', url: '', enabled: false, api_key_set: false }])}>
+          onClick={() => setRows([...rows, { key: crypto.randomUUID(), name: '', url: '', enabled: true, api_key_set: false }])}>
           添加索引器
         </Button>
         <Button type="submit" {...busyProps(action.busy === 'save')}>保存配置</Button>
