@@ -16,7 +16,7 @@ from pathlib import Path, PureWindowsPath
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT / 'src'))
 from peach import organize
-from peach.catalog_rules import is_jav_code, is_korean_mib_code, normalise_code_key, promo_free_key, western_release_identity, release_code_from_filename, same_release_code
+from peach.catalog_rules import is_jav_code, is_korean_mib_code, normalise_code_key, promo_free_key, western_release_identity, release_code_from_filename, same_release_code, strip_promo_markers
 from peach.classification import is_structural_creator
 from peach.config import DATABASE_PATH, GENERATED_DIR
 from peach.entity_classification import category_predicates
@@ -114,9 +114,15 @@ def release_code(row):
     studio = re.sub(r'[-_ ]', '', row['studio'] or '').upper()
     if studio not in {'', 'FC2', 'FC2PPV'}:
         return ''
-    explicit = re.match(r'^@?FC2(?:[-_ ]?PPV)?[-_ ]*(\d{5,})(?!\d)', row['name'], re.I)
+    explicit = re.match(r'^@?FC2(?:[-_ ]?PPV)?[-_ ]*(\d{5,})(?!\d)',
+                        strip_promo_markers(row['name']), re.I)
     if explicit:
         return normalise_code_key('FC2-' + explicit.group(1))
+    platform_parent = re.fullmatch(r'FC2(?:[-_ ]?PPV)?',
+                                  PureWindowsPath(row.get('path', '')).parent.name, re.I)
+    platform_part = re.match(r'^(\d{5,})(?=早期購入|本編)', row['name'])
+    if platform_parent and platform_part:
+        return normalise_code_key('FC2-' + platform_part.group(1))
     short = re.match(r'^@?FC[-_ ]*(\d{5,})(?=[_.-]|$)', row['name'], re.I)
     parent = re.match(r'^FC(?:2)?(?:[-_ ]?PPV)?[-_ ]*(\d{5,})(?!\d)',
                       PureWindowsPath(row.get('path', '')).parent.name, re.I)
@@ -725,6 +731,8 @@ def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, 
             error = execute_operation(db,payload,op,stage,receipt,receipt_path,deadline,retry_failed)
             if isinstance(error,OfflineSource):
                 unavailable.add(owner)
+            if error is None:
+                provider_errors[owner] = 0
             if isinstance(error,OSError) and getattr(error,'winerror',None) in {50,1}:
                 provider_errors[owner] += 1
                 if provider_errors[owner]>=3:

@@ -220,6 +220,40 @@ class LibraryDirectoryTests(unittest.TestCase):
                     self.assertEqual(db.execute('SELECT path FROM asset WHERE id=3').fetchone()[0], target + r'\FC2-PPV-1234567.srt')
 
 
+    def test_supported_moves_reset_the_source_error_circuit(self):
+        script=self.script
+        for outcomes,expected in [([False,True,False,True,False,True],6),([False,False,False,True],3)]:
+            with self.subTest(outcomes=outcomes), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory).resolve()
+                ledger=fresh_ledger(root)
+                operations=[script.operation('rename',rf'A:\source{i}',rf'A:\creators\source{i}',[],'已确认归属') for i in range(len(outcomes))]
+                script.save(root/'rehome-circuit-manifest.json',dict(format=1,stage='rehome',roots={'pikpak':['A:\\']},operations=operations))
+                calls=[]
+                def backend(db,payload,op,stage,receipt,path,deadline,retry,*,calls=calls,outcomes=outcomes):
+                    index=len(calls);calls.append(op['key'])
+                    if outcomes[index]:
+                        receipt['entries'].append(dict(key=op['key'],status='committed'))
+                        return None
+                    error=OSError('不支持该请求');error.winerror=50
+                    receipt['failures'].append(dict(key=op['key'],source=op['source'],error=str(error)))
+                    return error
+                with mock.patch.object(script,'DATABASE_PATH',ledger),mock.patch.object(script,'OUT',root), \
+                        mock.patch.object(script,'execute_operation',side_effect=backend),redirect_stdout(io.StringIO()):
+                    script.run_apply('rehome',root/'backup.db',100,20,location='pikpak',batch='circuit')
+                self.assertEqual(len(calls),expected)
+
+    def test_fc2_promotional_prefixes_and_platform_named_parts(self):
+        row = dict(code=None, studio=None, name='www.98T.la@FC2-1314799-CD1.mp4',
+                   path=r'B:\番号\FC2-PPV\www.98T.la@FC2-1314799-CD1.mp4')
+        self.assertEqual(self.script.release_code(row), 'FC2-PPV-1314799')
+        for name in ('3933828早期購入.mp4', '3933828本編.mp4'):
+            part = dict(row, name=name, path=str(PureWindowsPath(r'B:\番号\FC2-PPV', name)))
+            self.assertEqual(self.script.release_code(part), 'FC2-PPV-3933828')
+            self.assertEqual(self.script.release_code(dict(part, studio='Prestige')), '')
+            self.assertEqual(self.script.release_code(dict(part, path=str(PureWindowsPath(r'B:\unknown', name)))), '')
+        self.assertEqual(self.script.release_code(dict(row, name='20250105.mp4')), '')
+        self.assertIsNone(row['code'])
+
     def test_mixed_creator_files_keep_unknown_media_and_original_structure(self):
         from peach.entity_classification import write_claim
         script = self.script
