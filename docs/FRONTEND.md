@@ -284,7 +284,7 @@ npm --prefix frontend run build:agentation   # 在要用它的那份检出里构
 
 ## 挂载契约
 
-页面与页面里的附属面只由路由树画（ADR-0031）。壳决定什么时候开、什么时候收，props 由壳算好推进来；
+页面、页面里的附属面与已收进常驻表的常驻面只由路由树画（ADR-0031）。壳决定什么时候开、什么时候收，props 由壳算好推进来；
 React 路由树（`RouterRoot`）是唯一的一棵根，按 `frontend/src/history/managed.ts` 的登记把各面 portal 进壳的容器。
 下面每条都是为了不出现两段等待态或离场后还在轮询的页面。
 
@@ -295,31 +295,40 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 ```
 
 - 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
-  `library-processing`、`search`），两者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
-  `{prefetch, page}`；附属面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
+  `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`），三者不重叠。路由树按键查
+  `managed-routes.tsx` 里的同一组表，每条是 `{prefetch, page}`；附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
+- 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
+  `openResidentSurface(name, host.root)` 在壳启动时打开一次：没有首屏取数，一直算当前页，宿主就是壳的那个节点
+  本身（`[data-batch-dock]`、`#boardGlowMenu`），组件直接画成它的子节点，DOM 和各自建根时一样。壳照旧经命令式
+  句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；`loadXxx` 等这一面
+  画上才交出句柄。常驻面从不收，只有错误边界会卸它的组件，宿主始终留在文档里。
 - `openManagedRoute(key, props, options)` 是 async 且**取完数才画**。壳已经铺了骨架，页面若先画一个空容器
   再自己转圈，同一次进入就会出现两段等待态。它先收起同一容器里的上一面，`prefetch(props, signal)` 把首屏
   写进共用的 Query 缓存，取齐后在同一个任务里换掉骨架、放进 `.peach-react` 宿主（或 `options.place` 排好的
   框架），路由树用 `flushSync` 当场画完。路由树还没接上（`loadRouter` 之前）时打开先等它接上再取数：搜索下拉
   与首页筛选条在壳启动时就打开，第一次打开当场发出 React 包的请求（`preloadManagedRoutes` 登记的装载入口）。
 - `options.isCurrent` 是换页判据。壳用「代」而不是 `AbortSignal` 判当前页（`claimSurface`／`surfaceCurrent`），
-  取数期间用户走开时靠这个谓词决定不画。常驻的面（搜索下拉、首页筛选条）传 `() => true`。
+  取数期间用户走开时靠这个谓词决定不画。一打开就不会走开的附属面（搜索下拉、首页筛选条）传 `() => true`；
+  常驻面的判据由 `openResidentSurface` 定成恒真。
 - `managedTaken(el)` 回答这个容器归没归路由树：已经画着，或首屏还在取。壳据此决定要不要再开一次，在途时
   再开会把那一趟中止、重取一遍。`managedEntry(el)` 只认已经画上的那一面。
 - 壳手里的一项状态变了、页面又不该重挂时，用 `updateManagedRoute(el, patch)`：它把 `patch` 合进打开时的
   props，代次不变，页面就地重渲染。重挂会把页面里打了一半的字和滚动位置一起换掉。还没画上时是空操作。
-- `releaseManagedRoute(el, …more)` 中止在途取数，卸掉页面并撤掉宿主。还没画就收起时容器里是壳的骨架，那不
-  属于路由树，原样留着。
+- `releaseManagedRoute(el, …more)` 中止在途取数，卸掉页面并撤掉宿主；常驻面的宿主归壳，只卸组件。还没画就
+  收起时容器里是壳的骨架，那不属于路由树，原样留着。
 - 离场有两道闸。第一道是壳的公共点：`claimSurface` 是所有页面共同经过的换页点，它收 `#stats` 与 `#index`，
   也在离开目录页时收处理横幅（`#libraryProcessingNotice`）；`showHomeSurfaces` 是索引页与资料页重画前的公共点，
   收 `#index` 那一页；`#grid` 那一页离开目录时由 `clearCatalogGrid` 收，首页新作行由 `clearHomeFeed` 收；搜索
-  下拉常驻、从不收。多数页面的离场路径是直接 `innerHTML=`，页面被挤出文档却照样活着，所以收起必须由这几个
+  下拉壳从不收，常驻表里的面结构上就不收。多数页面的离场路径是直接 `innerHTML=`，页面被挤出文档却照样活着，所以收起必须由这几个
   公共点负责，而不是逐页判断。第二道是 `isCurrent`：取数落地时用户可能已经走开，这时不画。
 - 抛错的那一面：每一面各套一层错误边界（`router.tsx` 的 `SurfaceBoundary`，按代次挂 key）。某一面渲染
   抛错时只空出那一面，`failManagedRoute` 撤掉它的登记与宿主，`managedTaken` 回 false、推补丁是空操作，壳
   下次打开就重开；首帧就抛错时 `openManagedRoute` 照样回 true，回来时登记已经撤了。错误经根的
   `onCaughtError` 交给 `reportError`，每次一条，边界自己不再报。根上不套边界：派发点与两组 `<Routes>`
   不随某一面卸掉。确定性的抛错每重开一次就再报一次；搜索下拉只在壳启动时打开，抛错后空到刷新为止。
+  常驻面抛错时只卸组件、不撤宿主，同样空到刷新为止：`loadXxx` 是缓存的 Promise，不会再开第二次；之后壳调句柄
+  只写进没人订阅的 store，不画、不抛、不再上报，所以确定性的抛错只报一次。不在下一次推内容时自动重开，因为
+  重开要等一次异步打开，那一次句柄就不再是同步画完。
 
 遗留助手不打进 `peach-ui.js` 与 `peach-react.js`：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`
 在浏览器里是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。

@@ -85,8 +85,13 @@ function GridBody(props: CatalogGridProps) {
   const body = useRef<HTMLDivElement | null>(null);
   const cuts = useShortsStrips(props, result.data, tiles, pageStarts, body);
 
+  /* 读数排到微任务里报：壳画读数会顺带重排页头与选中态，那一路可能走到批量条的 `flushSync`，
+     提交阶段里它画不出来。微任务在浏览器绘制前跑完；这一代已卸下就不报。 */
   useLayoutEffect(() => {
-    if (result.data) props.onCount?.(total, shown);
+    if (!result.data) return;
+    let live = true;
+    queueMicrotask(() => { if (live) props.onCount?.(total, shown) });
+    return () => { live = false };
   }, [result.data, total, shown]);
 
   const open = useCallback((item: MediaItem, anchor: HTMLElement) => actions.open(item, anchor), [actions]);

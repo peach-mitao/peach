@@ -123,6 +123,6 @@ export {
 } from './overlay';
 export {
   connectManagedRoutes, failManagedRoute, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
-  preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,
+  openResidentSurface, preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,
   type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
 } from './managed';

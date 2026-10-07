@@ -1,8 +1,8 @@
 /* `web/dist/peach-ui.js` 的构建入口：遗留壳（`web/app.js`）从这里取它要用的一切（ADR-0031）。
  *
  * 页面与页面里的附属面由路由树画，壳经 `@peach/history` 的 `openManagedRoute`、`updateManagedRoute` 与
- * `releaseManagedRoute` 下令（`history/managed.ts`）；常驻层各有一个 `loadXxx(host)` 命令式入口；其余导出
- * 是壳仍在用的助手。 */
+ * `releaseManagedRoute` 下令（`history/managed.ts`）；常驻层各有一个 `loadXxx(host)` 命令式入口，已收进
+ * 常驻表的那几座由入口在路由树里打开（`openResidentSurface`）；其余导出是壳仍在用的助手。 */
 export {
   defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
 } from './sort-preferences';
@@ -17,7 +17,7 @@ export { sidebarSkeletonHtml } from './sidebar-skeleton';
 export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
 import type * as ReactBundle from '@peach/react';
-import { connectManagedRoutes, preloadManagedRoutes } from './history';
+import { connectManagedRoutes, openResidentSurface, preloadManagedRoutes } from './history';
 
 export { watchJob, followJobProgress, jobActivityHtml } from './jobs';
 export { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './selection';
@@ -105,21 +105,31 @@ export function loadManageHeader(host: ReactBundle.ManageHeaderHost): Promise<Re
 }
 export const manageHeaderApi = (): ReactBundle.ManageHeaderApi | null => manageHeaderReady;
 
-/* 批量条岛（`react/batch-dock/`）：多选时底部那块浮条。壳启动时就装载；包回来之前选中的，
+/* 批量条（`react/batch-dock/`，常驻面 `batch-dock`）：多选时底部那块浮条。壳启动时就装载，路由树画上
+ * 这一面之后句柄才交出去：之后 `batchDockApi()` 同步可取、`render` 返回时已经画好；包回来之前选中的，
  * 壳在接上时把手上那份 props 补推一次。 */
 let batchDock: Promise<ReactBundle.BatchDockApi> | null = null;
 let batchDockReady: ReactBundle.BatchDockApi | null = null;
 export function loadBatchDock(host: ReactBundle.BatchDockHost): Promise<ReactBundle.BatchDockApi> {
-  batchDock ??= import('@peach/react').then((bundle) => { batchDockReady = bundle.configureBatchDock(host); return batchDockReady });
+  batchDock ??= import('@peach/react').then(async (bundle) => {
+    const api = bundle.configureBatchDock(host);
+    await openResidentSurface('batch-dock', host.root);
+    batchDockReady = api;
+    return api;
+  });
   return batchDock;
 }
 export const batchDockApi = (): ReactBundle.BatchDockApi | null => batchDockReady;
 
-/* 侧栏配色卡岛（`react/glow-picker/`）：侧栏底部那枚配色钮点开的那张卡。卡的外壳由壳建、由壳锚定与
- * 开合，壳启动时装载、把内容画进去；钮上那两枚小圆壳当场就画（`wireGlowButton`），不等这一份。 */
+/* 侧栏配色卡（`react/glow-picker/`，常驻面 `glow-picker`）：侧栏底部那枚配色钮点开的那张卡。卡的外壳由壳
+ * 建、由壳锚定与开合，壳启动时装载、由路由树把内容画进去；钮上那两枚小圆壳当场就画（`wireGlowButton`），
+ * 不等这一份。 */
 let glowPicker: Promise<void> | null = null;
 export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> {
-  glowPicker ??= import('@peach/react').then((bundle) => bundle.configureGlowPicker(host));
+  glowPicker ??= import('@peach/react').then(async (bundle) => {
+    bundle.configureGlowPicker(host);
+    await openResidentSurface('glow-picker', host.root);
+  });
   return glowPicker;
 }
 
