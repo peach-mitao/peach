@@ -65,9 +65,10 @@ DownloadRequest, DownloadReply, ListRequest, ListReply, RenameRequest = _message
 
 
 class PikPakDav:
-    def __init__(self, http: httpx.Client, root: str, refresh, rename=None):
+    def __init__(self, http: httpx.Client, root: str, refresh, rename=None, listing=None):
         self.http, self.root, self.refresh = http, PureWindowsPath(root), refresh
         self.rename = rename
+        self.listing = listing
         if self.root != PureWindowsPath('A:\\'):
             raise ValueError('HTTPS WebDAV 整理只支持已声明的 A 盘根目录')
 
@@ -91,6 +92,9 @@ class PikPakDav:
             raise OSError('WebDAV 网络应答未取得') from None
 
     def list(self, path):
+        if self.listing is not None:
+            self.url(path)
+            return self.listing(path)
         status, body = self.request('PROPFIND', path, headers={'Depth': '1'})
         if status != 207:
             raise OSError('WebDAV 目录应答未取得：HTTP ' + str(status))
@@ -198,6 +202,40 @@ class PikPakDav:
             raise UnconfirmedMove('WebDAV 移动状态未确认，保留意图回执并停止；不重复操作、不写账本') from None
 
 
+def _cloud_listing(cloud, path):
+    """逐层完整读取官方目录元数据并校验来源、父目录与重名。"""
+    item = PureWindowsPath(path)
+    if item.drive.casefold() != 'a:' or not item.is_absolute() or '..' in item.parts or len(item.parts) > 32:
+        raise ValueError('官方目录路径越出 A 盘或超过层级预算')
+    previous = None
+    for parent in (*reversed(item.parents), item):
+        if previous is not None and not any(PureWindowsPath(row['path']) == parent and row['directory'] for row in previous):
+            raise FileNotFoundError('官方父目录未列出所需目录')
+        request = ListRequest(path=('/Pikpak/' + '/'.join(parent.parts[1:])).rstrip('/'), forceRefresh=True)
+        call = cloud.channel.unary_stream(SERVICE + 'GetSubFiles',
+            request_serializer=ListRequest.SerializeToString, response_deserializer=ListReply.FromString)
+        stream = call(request, timeout=15, metadata=(('authorization', 'Bearer ' + cloud.token),))
+        rows, seen = [], set()
+        try:
+            for response in stream:
+                for member in response.subFiles:
+                    if not member.fullPathName.startswith('/Pikpak/'):
+                        raise ValueError('官方目录成员来自其他来源')
+                    name = PureWindowsPath('A:\\' + member.fullPathName[len('/Pikpak/'):].replace('/', '\\'))
+                    if name.parent != parent or str(name).casefold() in seen or member.size < 0:
+                        raise ValueError('官方目录成员越界、重名或体积无效')
+                    seen.add(str(name).casefold())
+                    rows.append(dict(path=str(name),size=member.size,directory=member.isDirectory))
+                if len(rows) > MAX_FILES:
+                    raise ValueError('官方目录成员超过预算')
+        except grpc.RpcError as error:
+            raise OSError('官方完整目录未取得：' + error.code().name) from None
+        finally:
+            stream.cancel()
+        previous = rows
+    return previous
+
+
 def _fallback_samples():
     with closing(open_readonly(DATABASE_PATH)) as db:
         return [row[0] for row in db.execute(
@@ -267,21 +305,10 @@ def pikpak_renames(sample_path: str, roots):
                 return False
 
         def refresh(path):
-            request = ListRequest(path='/Pikpak' + '/' + '/'.join(PureWindowsPath(path).parts[1:]), forceRefresh=True)
-            stream = cloud.channel.unary_stream(SERVICE + 'GetSubFiles',
-                request_serializer=ListRequest.SerializeToString, response_deserializer=ListReply.FromString)
-            replies = stream(request, timeout=15, metadata=(('authorization', 'Bearer ' + cloud.token),))
-            try:
-                count = 0
-                for response in replies:
-                    count += len(response.subFiles)
-                    if count > MAX_FILES:
-                        raise ValueError('CloudDrive 刷新超过预算')
-            finally:
-                replies.cancel()
+            return _cloud_listing(cloud, path)
 
         with httpx.Client(headers=headers, timeout=20, follow_redirects=False) as http:
-            dav, original = PikPakDav(http, 'A:\\', refresh, rename_remote), organize._rename
+            dav, original = PikPakDav(http, 'A:\\', refresh, rename_remote, listing=refresh), organize._rename
 
             def rename(source, target):
                 if PureWindowsPath(source).drive.casefold() == 'a:':
