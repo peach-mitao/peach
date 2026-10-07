@@ -436,8 +436,19 @@ def expand(source, target, *, deadline, count=None):
 
 def restore(pairs):
     failures = []
-    for source, target in reversed(pairs):
+    for index in range(len(pairs)-1, -1, -1):
+        source, target = pairs[index]
         old, new = translate_ledger_path(source), translate_ledger_path(target)
+        if not old.exists() and not new.exists():
+            ancestor, present = source, False
+            for earlier_source, earlier_target in reversed(pairs[:index]):
+                if ancestor == earlier_target:
+                    ancestor = earlier_source
+                    if translate_ledger_path(ancestor).exists():
+                        present = True
+                        break
+            if present:
+                continue
         if old.exists() and not new.exists():
             continue
         if not old.exists() and new.exists():
@@ -449,9 +460,14 @@ def restore(pairs):
             failures.append(dict(source=source, target=target, error='恢复路径状态冲突'))
     return failures
 
+def staging_name(source):
+    prefix = 'peach-organize-' if PureWindowsPath(source).drive.casefold() == 'a:' else '.peach-organize-'
+    return prefix + hashlib.sha256(source.encode()).hexdigest()[:20]
+
+
 def collapse_moves(source, target):
     parent = translate_ledger_path(target)
-    temporary = parent.with_name('.peach-organize-' + hashlib.sha256(source.encode()).hexdigest()[:20])
+    temporary = parent.with_name(staging_name(source))
     if temporary.exists() or temporary.is_symlink():
         raise FileExistsError('临时目录已存在')
     child = temporary / translate_ledger_path(source).name
@@ -592,7 +608,7 @@ def file_group_moves(op):
     return physical_pairs, empty
 
 def shared_collapse_moves(local_source, local_target, root, source):
-    temporary = local_source.with_name('.peach-organize-' + hashlib.sha256(source.encode()).hexdigest()[:20])
+    temporary = local_source.with_name(staging_name(source))
     if temporary.exists() or temporary.is_symlink() or not beneath(str(temporary), root):
         raise ValueError('暂存目录冲突或越出根目录')
     entries = list(local_source.iterdir())
@@ -649,13 +665,34 @@ def cleanup_empty_paths(paths):
         except OSError:
             pass
 
-def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, retry_failed):
+def provider_moves(pairs, root, allow_intermediate=True):
+    planned = {str(PureWindowsPath(path)).casefold() for pair in pairs for path in pair}
+    result = []
+    for old, new in pairs:
+        source, target = PureWindowsPath(old), PureWindowsPath(new)
+        if source.drive.casefold() == 'a:' and source.parent != target.parent and source.name != target.name:
+            if not allow_intermediate:
+                raise ValueError('目录折叠的改名中间路径需单独复核')
+            intermediate = str(source.with_name(target.name))
+            local = translate_ledger_path(intermediate)
+            if not beneath(intermediate, root) or intermediate.casefold() in planned or local.exists() or local.is_symlink():
+                raise FileExistsError('同父改名的中间路径冲突或越界')
+            planned.add(intermediate.casefold())
+            result.extend(((old, intermediate), (intermediate, new)))
+        else:
+            result.append((old, new))
+    return result
+
+
+def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, retry_failed, pikpak_webdav=False):
     journal, committed = None, False
     try:
         local_source,local_target,root,exclusive = operation_paths(op,payload['roots'])
         db.execute('BEGIN IMMEDIATE')
         verify_frozen_operation(db,op,stage)
         pairs,empty,collapse,shared_stage = prepare_moves(op,local_source,local_target,root,exclusive,deadline)
+        if pikpak_webdav:
+            pairs = provider_moves(pairs, root, allow_intermediate=not collapse and not shared_stage)
         journal = dict(key=op['key'],status='intent',source=op['source'],target=op['target'],moves=pairs,empty=empty,
                        assets=len(op['rows']),collapse=collapse,shared_stage=shared_stage,retry_failed=retry_failed)
         receipt['entries'].append(journal)
@@ -700,7 +737,7 @@ def verify_result(db, assets, subtitle_count, baseline):
         raise RuntimeError('目录执行后的账本计数或完整性核验失败')
     return result
 
-def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, skip_collapses=False, batch=None):
+def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, skip_collapses=False, batch=None, pikpak_webdav=False):
     if backup is None:
         raise ValueError('--apply 必须同时给 --backup')
     stem = stage + ('-' + batch if batch else '')
@@ -729,7 +766,8 @@ def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, 
             if owner in unavailable:
                 continue
             checked += 1
-            error = execute_operation(db,payload,op,stage,receipt,receipt_path,deadline,retry_failed)
+            provider_options = {'pikpak_webdav': True} if pikpak_webdav else {}
+            error = execute_operation(db,payload,op,stage,receipt,receipt_path,deadline,retry_failed,**provider_options)
             if isinstance(error,OfflineSource):
                 unavailable.add(owner)
             if error is None:
@@ -827,6 +865,7 @@ if __name__ == '__main__':
     parser.add_argument('--location', choices=('115','pikpak','local'))
     parser.add_argument('--retry-failed', action='store_true')
     parser.add_argument('--skip-collapses', action='store_true')
+    parser.add_argument('--pikpak-webdav', action='store_true', help='冻结 A 盘批次使用既有 PikPak HTTPS WebDAV 移动')
     parser.add_argument('--batch', type=lambda value: value if re.fullmatch(r'[a-zA-Z0-9_-]+', value)
                         else parser.error('批次编号只能包含字母、数字、下划线与连字号'))
     args = parser.parse_args()
@@ -834,6 +873,18 @@ if __name__ == '__main__':
     if args.self_check:
         self_check()
     elif args.apply:
-        run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch)
+        if args.pikpak_webdav:
+            from peach.organize_clouddrive import pikpak_renames
+            if args.location != 'pikpak' or not args.batch:
+                parser.error('--pikpak-webdav 需要 --location pikpak 和明确冻结批次 --batch')
+            stem = args.stage + '-' + args.batch
+            payload = json.loads((OUT/f'{stem}-manifest.json').read_text(encoding='utf-8'))
+            rows = [row for op in payload['operations'] for row in op['rows'] if row['path'].startswith('A:')]
+            if not rows:
+                parser.error('冻结批次没有 A 盘资源')
+            with pikpak_renames(rows[0]['path'], payload['roots']):
+                run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch, pikpak_webdav=True)
+        else:
+            run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch)
     else:
         build_plan(args.stage, args.batch)

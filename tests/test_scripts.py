@@ -165,6 +165,51 @@ class LibraryDirectoryTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.script.self_check()
 
+    def test_pikpak_collapse_staging_preserves_complete_recovery(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source, target = r'A:\outer\outer', r'A:\outer'
+            def translate(path):
+                return root.joinpath(*PureWindowsPath(path).parts[1:]) if PureWindowsPath(path).drive.casefold() == 'a:' else Path(path)
+            translate(source).mkdir(parents=True)
+            media = translate(source) / 'film.mp4'
+            media.write_bytes(b'media')
+            with mock.patch.object(script, 'translate_ledger_path', side_effect=translate):
+                for steps in (0, 1, 2):
+                    pairs, state = script.collapse_moves(source, target)
+                    self.assertTrue(Path(state['temporary']).name.startswith('peach-organize-'))
+                    entry = dict(moves=pairs, collapse=state)
+                    for old, new in pairs[:steps]:
+                        script.organize._rename(old, new)
+                    self.assertEqual(script.restore_entry(entry), [])
+                    self.assertEqual(media.read_bytes(), b'media')
+                    self.assertFalse(Path(state['temporary']).exists())
+
+    def test_provider_move_separates_same_parent_rename_and_cross_parent_move(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source, target = r'A:\old\account', r'A:\new\collection'
+            def translate(path):
+                return root.joinpath(*PureWindowsPath(path).parts[1:])
+            translate(source).mkdir(parents=True)
+            translate(target).parent.mkdir()
+            media = translate(source) / 'film.mp4'
+            media.write_bytes(b'media')
+            with mock.patch.object(script, 'translate_ledger_path', side_effect=translate):
+                pairs = script.provider_moves([(source,target)], 'A:\\')
+                self.assertEqual(pairs, [(source,r'A:\old\collection'),(r'A:\old\collection',target)])
+                for steps in (0, 1, 2):
+                    for old, new in pairs[:steps]:
+                        translate(old).rename(translate(new))
+                    with mock.patch.object(script.organize, '_rename', side_effect=lambda old,new:translate(old).rename(translate(new))):
+                        self.assertEqual(script.restore(pairs), [])
+                    self.assertEqual(media.read_bytes(), b'media')
+                translate(r'A:\old\collection').mkdir()
+                with self.assertRaises(FileExistsError):
+                    script.provider_moves([(source,target)], 'A:\\')
+
     def test_fc_short_parts_require_matching_parent_and_publisher(self):
         row = dict(code=None, studio=None, name='@fc1780822_1.mp4',
                    path=r'B:\MVP\FC2 collection\FC-1780822耐久黑田4K\@fc1780822_1.mp4')
