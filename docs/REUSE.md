@@ -1,5 +1,11 @@
 # 复用清单
 
+## Windows 常驻托盘
+
+独立启动复用 Windows `CreateProcessW`、`STARTUPINFOEX` 与 [`PROC_THREAD_ATTRIBUTE_PARENT_PROCESS`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute)，经标准库 `ctypes` 调用；父身份取当前会话的桌面进程，创建前后均核对 Job。官方系统 API 无额外包、固定版本或第三方许可，适用于项目支持的 Windows，2026-10-07 核对。Peach 保留参数、数据根、源码与 PyInstaller 环境处理、单实例交接及启动验收。
+
+当前树与 Git 历史已有 `windows_restart`、`tray_lifecycle` 和 `process_job`，继续复用各自的重启、恢复及子服务清理行为。`DETACHED_PROCESS` 只脱离控制台；`CREATE_BREAKAWAY_FROM_JOB` 依赖外层 Job 允许脱离，不能覆盖禁止脱离的启动器；[`Win32_Process.Create`](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects) 可以独立创建，但额外引入 WMI 命令与环境交接；`pywin32` 不属于运行依赖，监视器又必须只加载标准库，因此采用原生 API，无新增依赖。源码托盘直接调用基础解释器，按 [CPython 3.14.7 venv 启动器](https://github.com/python/cpython/blob/v3.14.7/PC/venvlauncher.c) 的 `__PYVENV_LAUNCHER__` 协议保留虚拟环境身份，避免 venv 启动器自己的 kill-on-close Job 导致重复交接。仅参照协议，没有复制 PSF 许可源码。回归在临时目录创建禁止脱离的 kill-on-close Job：关闭 Job 后普通子进程退出，独立子进程保持运行；同时核对 Unicode 参数、环境、工作目录、虚拟环境身份和实际解释器的 Job，并清理全部测试进程。
+
 ## 西方人像与官方封面
 
 Babepedia 主图库和 Vixen 网络公开 GraphQL 的字段核对 [Stash CommunityScrapers](https://github.com/stashapp/CommunityScrapers/tree/d0f75013e09a0469b70365fef3294ca915edcf8c) 的 Babepedia、vixenNetwork 采集器（AGPL-3.0；2026-10-07 获取的 revision）。该项目使用 Python，可经插件在 Windows 上运行；Cloudflare 限流和上游字段变化可能导致未取得。只参考公开协议和身份字段，不复制 AGPL 实现，不恢复已关闭的 Stash 适配器，也不引入依赖。HTTP、HTML、图像检查、内容缓存、头像安装和封面边车分别复用现有 `HttpxTransport`、BeautifulSoup 4.15.0、`avatar_provider`、`avatar_picker`、`cover_artwork`。

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Protocol
 
 from .windows_update import replace_with_retry, swap_tray_binary
+from .tray_detached import launch_detached
 
 
 WM_STOP = 0x0400 + 10  # pystray._util.win32.WM_STOP
@@ -473,12 +474,7 @@ def _await_new_tray(
 def start_tray(target: Path) -> subprocess.Popen:
     environment = os.environ.copy()
     environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
-    creationflags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-    return subprocess.Popen(
-        [str(target)], cwd=str(target.parent), stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False,
-        env=environment, creationflags=creationflags,
-    )
+    return launch_detached([str(target)], cwd=target.parent, env=environment)
 
 
 def _rolled_back(
@@ -631,12 +627,7 @@ def restart_source_tray(
             # `<项目根>\.venv\Scripts\pythonw.exe` 往上两级就是项目根。逐级取而不是
             # parents[2]：层级不够时 `.parent` 停在盘符，索引却会直接抛。
             working_directory = Path(argv[0]).parent.parent.parent
-            return subprocess.Popen(
-                argv, cwd=str(working_directory), stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                shell=False, creationflags=subprocess.DETACHED_PROCESS
-                | subprocess.CREATE_NO_WINDOW,
-            )
+            return launch_detached(argv, cwd=working_directory)
         return start(argv)
 
     windows = find_windows()

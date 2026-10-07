@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .fsutil import atomic_write_text
+from .tray_detached import launch_detached
 
 WM_STOP = 0x0400 + 10
 WM_ENDSESSION = 0x0016
@@ -91,7 +92,7 @@ class ProcessHandle:
             self.handle = None
 
 
-def watch(path: Path, *, open_process=ProcessHandle, popen=subprocess.Popen,
+def watch(path: Path, *, open_process=ProcessHandle, popen=None,
           sleep=time.sleep, now=time.time) -> int:
     """单个实例的监视器；有退出意图就交还控制权，异常退出最多恢复三次。"""
     record = json.loads(path.read_text(encoding="utf-8"))
@@ -135,10 +136,13 @@ def watch(path: Path, *, open_process=ProcessHandle, popen=subprocess.Popen,
             environment[ACK_ENV] = str(ack)
             environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
             try:
-                child = popen(record["argv"], cwd=record["cwd"], env=environment,
-                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                              creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
-                              | getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                if popen is None:
+                    child = launch_detached(record["argv"], cwd=record["cwd"], env=environment)
+                else:
+                    child = popen(record["argv"], cwd=record["cwd"], env=environment,
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                  creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
+                                  | getattr(subprocess, "CREATE_NO_WINDOW", 0))
             except OSError as exc:
                 audit(log, "recovery_start_failed", session, error=str(exc))
                 continue
@@ -207,10 +211,7 @@ class Lifecycle:
             environment = os.environ.copy()
             environment["PYTHONPATH"] = str(self.root / "src")
             environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
-            self.guard = subprocess.Popen(helper, cwd=self.root, env=environment,
-                                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                          stderr=subprocess.DEVNULL,
-                                          creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW)
+            self.guard = launch_detached(helper, cwd=self.root, env=environment)
             deadline = time.monotonic() + 10
             while not self.path.with_suffix(".ready").exists():
                 if self.guard.poll() is not None or time.monotonic() >= deadline:
