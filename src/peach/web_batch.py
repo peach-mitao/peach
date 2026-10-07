@@ -141,6 +141,7 @@ JUNK_KINDS = frozenset({"video", "image", "audio", "archive", "url", "other"})
 JUNK_VIDEO_MAX_BYTES = 120 * 1024**2
 MEDIA_SIDECAR_SUFFIXES = frozenset({".nfo", ".srt", ".ass", ".ssa", ".vtt", ".sub", ".idx"})
 INSTALLER_SUFFIXES = frozenset({".apk", ".exe", ".msi"})
+INSTALLER_ARCHIVE_NAMES = frozenset({'1024核工厂.rar'})
 PAGE_COMPONENT_SUFFIXES = frozenset({".js", ".css", ".aspx"})
 PAGE_CHROME_IMAGE = re.compile(r"^(?:banner(?:_[bs])?|1000x90(?:yunding)?|count\d*|logo|lan\d*|you|zuo|zuoxia)$", re.I)
 PAGE_PROMO_CLAIM = re.compile(r"(?:记住|記住).{0,12}(?:网址|網址)|(?:网址|網址).{0,8}(?:发布|發布)")
@@ -314,6 +315,8 @@ def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     """区分安装附件与网页存档组件。"""
     if suffix in INSTALLER_SUFFIXES and size < 64 * 1024**2:
         return "媒体目录中的安装附件"
+    if PureWindowsPath(path).name.casefold() in INSTALLER_ARCHIVE_NAMES and 0 < size <= 64 * 1024:
+        return "已核验的推广安装包附件"
     if suffix in PAGE_COMPONENT_SUFFIXES and any(
             part.casefold().endswith("_files") for part in PureWindowsPath(path).parent.parts):
         return "网页存档的脚本或样式附件"

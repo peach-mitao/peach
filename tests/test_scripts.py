@@ -80,7 +80,7 @@ class LibraryDirectoryTests(unittest.TestCase):
                 self.assertEqual(op['source'], source)
                 self.assertEqual(op['target'], r'B:\日本\一本道\092415-001')
                 self.assertEqual([row['id'] for row in op['rows']], [1, 2, 3])
-                with self.script.open_readonly(ledger) as db:
+                with closing(self.script.open_readonly(ledger)) as db:
                     self.assertEqual(op['entities'], self.script.entity_guard(db, source))
                 with closing(sqlite3.connect(ledger)) as db:
                     db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(4,?,?,?,?)',
@@ -88,7 +88,9 @@ class LibraryDirectoryTests(unittest.TestCase):
                     db.commit()
                 self.script.build_plan('rehome', 'mixed')
                 mixed = json.loads((root / 'rehome-mixed-manifest.json').read_text(encoding='utf-8'))
-                self.assertEqual(mixed['operations'], [])
+                self.assertEqual(len(mixed['operations']), 1)
+                self.assertEqual(mixed['operations'][0]['kind'], 'files')
+                self.assertEqual([r['id'] for r in mixed['operations'][0]['rows']], [1, 2])
 
     def test_sidecar_identity_conflicts_and_date_publishers(self):
         script = self.script
@@ -103,10 +105,149 @@ class LibraryDirectoryTests(unittest.TestCase):
         self.assertTrue(script.release_directory_matches('1pon-092415_001-fhd', owner))
         self.assertFalse(script.release_directory_matches('1pon-092416_001-fhd', owner))
         self.assertFalse(script.release_directory_matches('092415_001', ('release', '日本', '加勒比', '092415-001')))
+        fc2 = ('release', '日本', 'FC2', 'FC2-PPV-389339')
+        self.assertTrue(script.release_directory_matches('FC-389339最高峰 市島亜美', fc2))
+        self.assertFalse(script.release_directory_matches('FC-3893390', fc2))
+
+    def test_creator_subtype_and_korean_publisher_destinations(self):
+        script = self.script
+        row = dict(id=1, disposal=None, medium='video', code=None, studio=None,
+                   name='film.mp4', creator='account', effective_region='')
+        self.assertEqual(script.label(row, {1: [(9, 'account')]}, {}, {9}),
+                         ('creator', '创作者', 'account'))
+        self.assertEqual(script.label(row, {1: [(9, 'account')]}, {9: ['网黄博主']}, set()),
+                         ('creator', '网黄博主', 'account'))
+        self.assertEqual(script.label(dict(row, studio='MIB', code='AR-101', effective_region='kr'), {}, {}, set()),
+                         ('publisher', '韩国', 'MIB'))
+        image = dict(row, medium='image', creator=None)
+        self.assertTrue(script.compatible_sidecar(image, ('creator', '创作者', 'account'), {}))
+        self.assertFalse(script.compatible_sidecar(dict(image, code='ABP-123'), ('creator', '创作者', 'account'), {}))
 
     def test_directory_execution_preserves_sidecars_and_recovers(self):
         with redirect_stdout(io.StringIO()):
             self.script.self_check()
+
+    def test_fc_short_parts_require_matching_parent_and_publisher(self):
+        row = dict(code=None, studio=None, name='@fc1780822_1.mp4',
+                   path=r'B:\MVP\FC2 collection\FC-1780822耐久黑田4K\@fc1780822_1.mp4')
+        self.assertEqual(self.script.release_code(row), 'FC2-PPV-1780822')
+        self.assertEqual(self.script.release_code(dict(row,path=r'B:\unconfirmed\@fc1780822_1.mp4')), '')
+        self.assertEqual(self.script.release_code(dict(row,path=r'B:\FC-1780823\@fc1780822_1.mp4')), '')
+        self.assertEqual(self.script.release_code(dict(row,studio='Prestige')), '')
+        self.assertIsNone(row['code'])
+
+    def test_flatten_plan_generates_its_own_csv(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            source = r'B:\ABC-123\ABC-123'
+            media = root / 'media'
+            def translate(path):
+                return media.joinpath(*PureWindowsPath(path).parts[1:])
+            translate(source).mkdir(parents=True)
+            translate(source + r'\film.mp4').write_bytes(b'film')
+            with closing(sqlite3.connect(ledger)) as db:
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(1,?,?,?,?)',
+                           ('115',source+r'\film.mp4','film.mp4','video'))
+                db.commit()
+            with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                    mock.patch.object(script, 'location_roots', return_value={'115':['B:\\']}), \
+                    mock.patch.object(script, 'translate_ledger_path', side_effect=translate), \
+                    redirect_stdout(io.StringIO()):
+                script.build_plan('flatten', 'example')
+            manifest = json.loads((root/'flatten-example-manifest.json').read_text(encoding='utf-8'))
+            self.assertEqual([(op['kind'],op['source'],op['target']) for op in manifest['operations']],
+                             [('collapse',source,r'B:\ABC-123')])
+            self.assertTrue((root/'flatten-example-plan.csv').is_file())
+
+    def test_mixed_file_group_and_database_failure_restore(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            media = root / 'media'
+            source = r'B:\MVP\collection'
+            target = r'B:\日本\FC2\FC2-PPV-1234567'
+            def translate(path):
+                return media.joinpath(*PureWindowsPath(path).parts[1:])
+            film = source + r'\FC2-PPV-1234567.mp4'
+            translate(film).parent.mkdir(parents=True)
+            translate(film).write_bytes(b'film')
+            subtitle = source + r'\FC2-PPV-1234567.srt'
+            translate(subtitle).write_bytes(b'subtitle')
+            translate(source + r'\unknown.mp4').write_bytes(b'other')
+            with closing(sqlite3.connect(ledger)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute('INSERT INTO asset(id,location,path,name,medium,code) VALUES(1,?,?,?,?,?)',
+                           ('115', film, 'FC2-PPV-1234567.mp4', 'video', 'FC2-PPV-1234567'))
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(2,?,?,?,?)',
+                           ('115', source + r'\unknown.mp4', 'unknown.mp4', 'video'))
+                db.execute("INSERT INTO asset_subtitle(id,asset_id,location,path,name,format,pairing,first_seen,last_seen) VALUES(1,1,?,?,?,'srt','exact','2026-10-07','2026-10-07')",
+                           ('115', subtitle, PureWindowsPath(subtitle).name))
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(3,?,?,?,?)',
+                           ('115', subtitle, PureWindowsPath(subtitle).name, 'other'))
+                db.commit()
+                op = script.operation('files', source, target, script.snapshots(db, source, [1, 3]), '已知作品')
+                op['subtitles'] = script.subtitles(db, source)
+                op['entities'] = script.entity_guard(db, source, [1, 3])
+                db.execute("CREATE TRIGGER refuse_path BEFORE UPDATE OF path ON asset BEGIN SELECT RAISE(ABORT,'refuse'); END")
+                db.commit()
+            payload = dict(format=1, stage='rehome', roots={'115': ['B:\\']}, operations=[op])
+            script.save(root / 'rehome-example-manifest.json', payload)
+            with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                    mock.patch.object(script, 'translate_ledger_path', side_effect=translate), \
+                    mock.patch.object(script, 'root_online', return_value=True), \
+                    mock.patch.object(script.organize, '_rename', side_effect=lambda old, new: (translate(new).parent.mkdir(parents=True, exist_ok=True), translate(old).rename(translate(new)))), \
+                    redirect_stdout(io.StringIO()):
+                script.run_apply('rehome', root / 'backup1.db', 10, 20, batch='example')
+                receipt = json.loads((root / 'rehome-example-receipt.json').read_text(encoding='utf-8'))
+                self.assertEqual(receipt['entries'][0]['status'], 'restored')
+                self.assertEqual(translate(film).read_bytes(), b'film')
+                self.assertEqual(translate(subtitle).read_bytes(), b'subtitle')
+                self.assertFalse(translate(target + r'\FC2-PPV-1234567.mp4').exists())
+                with closing(sqlite3.connect(ledger)) as db:
+                    self.assertEqual(db.execute('SELECT path FROM asset WHERE id=1').fetchone()[0], film)
+                    db.execute('DROP TRIGGER refuse_path')
+                    db.commit()
+                script.run_apply('rehome', root / 'backup2.db', 10, 20, retry_failed=True, batch='example')
+                self.assertEqual(translate(target + r'\FC2-PPV-1234567.mp4').read_bytes(), b'film')
+                self.assertEqual(translate(target + r'\FC2-PPV-1234567.srt').read_bytes(), b'subtitle')
+                self.assertEqual(translate(source + r'\unknown.mp4').read_bytes(), b'other')
+                with closing(sqlite3.connect(ledger)) as db:
+                    self.assertEqual(db.execute('SELECT path FROM asset WHERE id=1').fetchone()[0], target + r'\FC2-PPV-1234567.mp4')
+                    self.assertEqual(db.execute('SELECT path FROM asset_subtitle WHERE id=1').fetchone()[0], target + r'\FC2-PPV-1234567.srt')
+                    self.assertEqual(db.execute('SELECT path FROM asset WHERE id=3').fetchone()[0], target + r'\FC2-PPV-1234567.srt')
+
+
+    def test_mixed_creator_files_keep_unknown_media_and_original_structure(self):
+        from peach.entity_classification import write_claim
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            source = r'B:\MVP\shared collection'
+            with closing(sqlite3.connect(ledger)) as db:
+                for aid,name in [(1,'known.mp4'),(2,'unknown.mp4')]:
+                    db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(?,?,?,?,?)',
+                               (aid,'115',source+'\\'+name,name,'video'))
+                db.execute("INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) VALUES(9,'creator','account','account','2026-10-07','2026-10-07')")
+                db.execute("INSERT INTO asset_entity(asset_id,entity_id,role,source) VALUES(1,9,'creator','test')")
+                write_claim(db,entity_id=9,facet='identity',value='unknown',source='test',evidence='归属关系存在，身份待复核')
+                db.commit()
+            with mock.patch.object(script,'DATABASE_PATH',ledger), mock.patch.object(script,'OUT',root), \
+                    mock.patch.object(script,'location_roots',return_value={'115':['B:\\']}), \
+                    mock.patch.object(script,'root_online',return_value=True), redirect_stdout(io.StringIO()):
+                script.build_plan('rehome','mixed-creators')
+            plan=json.loads((root/'rehome-mixed-creators-manifest.json').read_text(encoding='utf-8'))
+            self.assertEqual(len(plan['operations']),1)
+            op=plan['operations'][0]
+            self.assertEqual((op['kind'],op['source'],op['target']),
+                             ('files',source,r'B:\创作者\account\shared collection'))
+            self.assertEqual([row['id'] for row in op['rows']],[1])
+            self.assertEqual(plan['skipped'],[dict(source=source+r'\unknown.mp4',reason='归属未确认，保留原位置')])
+            with closing(sqlite3.connect(ledger)) as db:
+                self.assertIsNone(db.execute('SELECT creator FROM asset WHERE id=1').fetchone()[0])
 
 
 class OperationalScriptTests(unittest.TestCase):

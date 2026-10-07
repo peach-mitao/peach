@@ -392,6 +392,18 @@ class ResourceJunkQueueTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid junk status"):
             q_ads(self.contract, status="deleted")
 
+    def test_verified_small_installer_archive_with_release_code(self):
+        path = r'B:\MVP\Tokyo-Hot n1025-FHD\1024核工厂.rar'
+        self.add(211, '115', path, 'archive', 4111)
+        with closing(sqlite3.connect(self.db_path)) as db:
+            db.execute('UPDATE asset SET code=? WHERE id=?', ('n1025', 211))
+            db.commit()
+        items = q_ads(self.contract, limit=200)['items']
+        self.assertEqual([item['id'] for item in items], [211])
+        self.assertIn('推广安装包', items[0]['why'])
+        self.assertEqual(web_batch._attachment_junk_reason('.rar', path, 128 * 1024), '')
+        self.assertEqual(web_batch._attachment_junk_reason('.rar', r'B:\MVP\n1025.rar', 4111), '')
+
     def test_promotional_page_navigation_images_with_inherited_release_code(self):
         base = r'B:\MVP\1pon-092415_001-fhd'
         page = base + r'\花一分钟记住我们的网址 - sex5.xxx_files'
@@ -404,7 +416,7 @@ class ResourceJunkQueueTests(unittest.TestCase):
             db.commit()
         items = q_ads(self.contract, limit=200)['items']
         self.assertEqual([item['id'] for item in items], [201])
-        self.assertTrue(any('导航图片' in reason for reason in items[0]['why']))
+        self.assertIn('导航图片', items[0]['why'])
         self.assertEqual(web_batch._attachment_junk_reason('.gif', page + r'\1.gif', 974),
                          '推广网页存档的横幅、标志或导航图片')
         self.assertEqual(web_batch._attachment_junk_reason('.gif', page + r'\1.gif', 6000), '')

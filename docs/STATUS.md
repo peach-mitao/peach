@@ -21,13 +21,13 @@
 - 访问密码未开，局域网匿名可读；可选密码首启可跳过，配置页可改可关，登录可记住设备。
 - macOS 是 reader，代码与 `peach-data` 在内置盘；`peach.local` 经 8900/8443 和 pf 提供 80/443，GET 正常、写入回 409。
 - 两端各用本机 CA，私钥与凭据不跨机；代码走 Git、账本单写者复制、图片走 Syncthing；本机坐标见 `<数据根>/config.toml`。
-- Windows ledger `0045`（2026-10-07）；`asset_subtitle` 195 行（孤立 19），175 部带字幕轨，`asset` 80,202 行。
+- Windows ledger `0045`；字幕 195 行（孤立 19），175 部带字幕轨；10-07 删除确认垃圾 14 个，资产 80,188 行。
 - Mac ledger 经授权从共享副本拉取，恢复 `in-sync`；`sources` 在内置盘，`archive`、`tools` 可指向外置盘。
 - Windows doctor、诊断页通过 CA 核验；本地目录缺失，115/PikPak 可读取；密码未开、历史失败为警告。
 - 本机 Python 3.14；`requires-python` 下限 3.12，CI 同测 3.12 与 3.14；Windows FFmpeg/ffprobe 在 `peach-data/tools/ffmpeg`，macOS 走 PATH。
 - amane 桥（ADR-0048）代码在 `tools/amane-bridge/`，venv 在 `peach-data/tools/amane-bridge/.venv`，四类番号链都经它问。
 - 发行名 `peach`、目录名 `peach-app`。macOS 先按序做完待办「待执行的操作」第 26 条再重启菜单栏：无口令的 `peach serve --host 0.0.0.0` 会拒绝启动。
-- 扫描与采集显示项目与等待时长；无进展 120 秒预警，单项外部动作（资料 90 秒、封面 240 秒）超时跳过可重试；问题在 `state/library-processing-<job_id>.issues.jsonl`。
+- 扫描与采集 120 秒无进展预警；资料 90 秒、封面 240 秒超时可重试；问题见 `state/library-processing-<job_id>.issues.jsonl`。
 - 口味、复核、关注等聚合按账本版本号与文件版本缓存；补女优资料后继每轮存量至多 16 条。
 - 实体种子（ADR-0075）由扫描结算的 `seed-import` 后继导入，只填空、换旧种子行；不一致与重复身份在 `generated/seed-landing.csv`。
 - 推送发现开：本地 watch 加 CloudDrive 云端前缀 `/115open→B:`、`/Pikpak→A:`；关注每 60 分钟轮询；自动更新关闭。
@@ -36,4 +36,4 @@
 
 ## 批处理进度
 
-账本与产物的现算数字由 hook 写进 `peach-data/state/job-status.md`（不进 Git），手动重算 `python scripts/job_status.py`。
+批处理现状见 `peach-data/state/job-status.md`；目录与垃圾复核见 `generated/library-organize/`，未确认归属保留原位。
