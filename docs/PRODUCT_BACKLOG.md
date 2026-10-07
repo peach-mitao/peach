@@ -1,11 +1,12 @@
 # Peach 产品待办
 
-最后核验：2026-10-06。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
+最后核验：2026-10-07。这里只记还没做完的需求和待执行的操作；做完就删，历史去 Git 查。运行数字以 `peach-data/state/job-status.md` 的自动区块为准。
 
 ## 待复核的元数据
 
-- 240 项身份来源未取得，候选保存在 `peach-data/review/creator-identity-findings.json`；复核清单为同目录 `creator-identity-verification.csv`，查询记录为 `creator-identity-lookups.json`。待取得可唯一对应的公开身份来源或用户复核结论。
-- `FC2-PPV-1625020` 的资产 `6440`、`6562`：创作者「音あずさ」「音梓」均来自 `legacy:asset`，没有卖家来源证据；女优关系来自 FC2PPV-DB 和 JavDB。复核产物是 `peach-data/review/creator-quality-audit.csv`，状态为候选，真实账本保持原样。待取得发布账号证据或用户复核结论。
+- 账号身份来源待复核，当前名册见 `peach-data/review/creators-current-inventory-2.csv`；候选与查询记录见同目录 `creator-identity-findings.json`、`creator-identity-lookups.json`。「しらたま」「ひな」短名不能唯一对应艺人，保留独立身份。
+- HIP-ANGEL、Zipang、Kuchiku * Reverse Bunny 与 `gachincoppv-1009-HD` 的对应来源未取得，见 `peach-data/review/identity-simple-source-gaps.json`；JAV 资料补查缺口见同目录 `cached-minnano-identity-audit.json`。未取得来源不构成人物职业证据。
+- `FC2-PPV-1625020` 的资产 `6562`：账号「音梓」来自 `legacy:asset`，没有卖家来源证据；女优关系来自 FC2PPV-DB 和 JavDB。待取得发布账号证据或用户复核结论。
 
 ## 优先级
 
