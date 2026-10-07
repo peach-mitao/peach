@@ -82,6 +82,7 @@ class DependencyPolicyTests(unittest.TestCase):
             "torznab": "torznab",
             "uvicorn": "uvicorn",
             "watchdog": "watchdog",
+            "wordninja_enhanced": "wordninja-enhanced",
             "zeroconf": "zeroconf",
         }
         imported = set()

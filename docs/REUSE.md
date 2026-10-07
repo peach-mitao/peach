@@ -211,6 +211,10 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 
 推广网页资源目录中的横幅、标志和导航图片由 `web_batch._attachment_junk_reason` 进入复核队列。判据同时要求 `_files`、网址推广套话、域名、导航元素文件名和体积上限；继承的作品番号不豁免网页导航图片，作品图片、字幕、NFO 与普通 `_files` 目录保留。`1024核工厂.rar` 经嵌套目录清单核验仅含安装程序，精确名称且不超过 64 KiB 的附件进入复核，不泛化为所有压缩包。永久删除仍走 `trash_junk.py --purge --review-csv` 和 `purge_assets`。
 
+下载站的 DNS 导航步骤、hav.so 横幅、固定英文横幅和带下载套话的 HiHSP 地址卡片，按文件名与 2 MiB 上限进入复核；用户确认的「社區最新情報」精确名称 MP4 按 32 MiB 上限进入复核。普通作品图片和 `images.rar` 保留。CloudDrive WebDAV 的小文件删除复用原生 `Path.unlink`：同目录隔离改名报 WinError 50 时，最多 1 MiB 的文件先用标准库 `shutil.copyfile` 完整备份到 `generated/purge-staging/`，记录原路径、大小和 SHA256，再删除。数据库失败时恢复备份，提交后清退；大文件继续报告阻塞。该路径没有新增依赖，备份和恢复只由 `purge_assets` 管理。
+
+英文媒体文件名分词复用 `wordninja-enhanced==3.2.0`（MIT，2026-09-04 发布，Python ≥3.9，纯 Python，wheel 11.4 MB，无传递依赖）。源码经 `opensrc path pypi:wordninja-enhanced@3.2.0` 读取；原版 wordninja 的发布较旧，增强版提供标点保留和可补充词典。`space_media_names.py` 先出逐文件复核 CSV，只插入空格，保留序号、字符与扩展名，不推断人物或出处；指定目录内的真实文件核验后复用 `organize.apply_plan`、SQLite 备份及回滚日志。领域词汇在 `english_filename_words.txt`，有分词歧义时可按原名回滚。
+
 保留自研不是永久豁免：约束改变或候选实现更新时重新跑 POC，不因本表结论跳过外部检索。
 
 ## 已定型的产品行为

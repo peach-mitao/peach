@@ -76,8 +76,11 @@ macos = ["pyobjc-framework-Cocoa==12.2.2; sys_platform == 'darwin'"]
 # 把字节喂给 `cv2.imdecode`，被 import 的外部模块必须有声明的归属。
 vision = ["opencv-python-headless==5.0.0.93", "numpy==2.5.3"]
 maintenance-115 = ["p115client==0.0.9.6.5.1"]
-# 字形表的复核轮子，只有 tests/test_performer_localization.py 用它对账。
-naming = ["opencc==1.4.2"]
+# 字形复核与英文媒体文件名分词工具。
+naming = [
+    "opencc==1.4.2",
+    "wordninja-enhanced==3.2.0",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
