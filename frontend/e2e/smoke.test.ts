@@ -43,8 +43,8 @@ const statsInventoryTab = (page: Page): Locator =>
 const ROUTES: readonly Route[] = [
   { path: '/', body: (page) => [page.locator('#grid [data-media-card]').first()] },
   { path: '/performers', body: (page) => [heading(page, '#index', '艺人'), indexEntries(page)] },
-  { path: '/creators', body: (page) => [heading(page, '#index', '创作者'), indexEntries(page)] },
-  { path: '/creators/', body: (page) => [heading(page, '#index', '创作者'), indexEntries(page)] },
+  { path: '/creators', body: (page) => [heading(page, '#index', '卖家与动画作者'), indexEntries(page)] },
+  { path: '/creators/', body: (page) => [heading(page, '#index', '卖家与动画作者'), indexEntries(page)] },
   { path: '/studios', body: (page) => [heading(page, '#index', '厂牌'), indexEntries(page)] },
   { path: '/agencies', body: (page) => [heading(page, '#index', '事务所'), indexEntries(page)] },
   { path: '/tags', body: (page) => [heading(page, '#index', '标签'), indexEntries(page)] },

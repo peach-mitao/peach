@@ -4743,7 +4743,7 @@ function Os({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: 
 		}[e] : "") || {
 			tags: "标签",
 			performers: "艺人",
-			creators: "创作者",
+			creators: "卖家与动画作者",
 			studios: "厂牌",
 			agencies: "事务所",
 			series: "系列"

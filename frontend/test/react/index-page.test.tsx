@@ -89,6 +89,7 @@ describe('名册', () => {
     const fetcher = serve(() => ({ items: [person('卖家账号', { identity_labels: ['卖家'] })], categories:{ animation:1, seller:1 }, has_more: false }));
     const given = props({ kind: 'creators' });
     const host = await open(given);
+    expect(host.querySelector('[data-index-title]')?.textContent).toBe('卖家与动画作者');
     expect(cells(host)[0]?.textContent).toContain('动画作者');
     expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部卖家动画作者');
     await click(buttonNamed('卖家', host));
