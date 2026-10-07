@@ -8,6 +8,8 @@ Babepedia 主图库和 Vixen 网络公开 GraphQL 的字段核对 [Stash Communi
 
 ## 实体身份与职业
 
+公司资料复用 `entity.metadata_json`、HTTPX、官网公司概要表和定义列表、实体链接安装器与标识采集器。`company_profiles` 按字段保存公开出处、原文和批次，只填空；集团公司表按实体限定范围，公司成立与品牌启动分列，运营主体、发行商和集团不互相推导。目录页面不作独立公司官网。`harvest_company_profiles.py` 默认产复核 JSON，`--input --apply --backup --batch` 才落库，候选不落库，来源冲突留在产物；别名碰撞不写。`revert_auto_landing.py` 可撤回同批公司字段、链接、别名及标识，无新增依赖。
+
 Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`performer_profiles` 的整行来源保护和 `performer_alias_followup.land` 的占用检查。英文艺名只在明确允许的来源中登记，JAV 后继保留自己的名字策略。真人账号与出演者共用资料表、别名分组与头像候选；保留账号角色及旧地址。主图可以补空头像，本人档案图库仅作候选，推荐人物排除，单图失败继续其余有限候选。`harvest_western_profiles.py` 每轮至多 16 位，计划、备份、回执与批次撤回齐备；既有资料和头像保留。真实只读复核取得 Ria Kurumi 等 16 份匹配档案，无新增依赖。
 
 身份分类复用 `entity`、来源关系、`field_owners`、SQLite 迁移与版本触发器。职业与账号角色使用独立多值断言，跨角色身份使用可撤回关系；[Schema.org Person](https://schema.org/Person) 的 `hasOccupation`、`sameAs` 与 [Role](https://schema.org/Role) 提供语义参照，2026-10-06 已核对官方文档。实现不复制外部解析器或新增依赖。目录推断和搜索命中只存候选，公开来源事实与用户复核分别保留状态。

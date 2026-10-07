@@ -34,6 +34,7 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 - **Cloud and local together**: once 115 or PikPak is mounted as a local drive with CloudDrive2, its videos join the same library as your hard drives.
 - **Mount status**: media directories are checked periodically. A failed read is checked again before the tray and video page show the affected source and reason. Scans skip NAS recycle bins and system folders.
 - **Your data stays on your computer**: watch history, favorites and settings are stored locally. When filling in details, Peach only sends the video code or performer name to source sites. With cloud download, a magnet link goes only to the cloud drive you pick.
+- **Company profiles**: studio and agency pages can show company names, foundation dates, brand launch dates, locations and operating relationships when sourced information is available.
 
 ## Screenshots
 

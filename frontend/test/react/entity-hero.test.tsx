@@ -53,6 +53,21 @@ async function open(initial: EntityHeroProps) {
 }
 
 describe('排版用的纯函数', () => {
+  it('厂牌与事务所显示独立的公司资料，不显示来源悬浮说明', async () => {
+    const host = await open(props({ kind: 'studio', name: 'Brand', entity: {
+      id: 1, canonical_name: 'Brand', asset_count: 3,
+      company_profile: {
+        founded: { value: '2002-05', source_url: 'https://brand.example/company' },
+        launched: { value: '2003', source_url: 'https://brand.example/company' },
+        operator: { value: 'Brand株式会社', source_url: 'https://brand.example/company' },
+      },
+    } }));
+    const facts = host.querySelector('[data-entity-facts]')!;
+    expect(facts.textContent).toContain('公司成立2002-05');
+    expect(facts.textContent).toContain('品牌启动2003');
+    expect(facts.textContent).toContain('运营公司Brand株式会社');
+    expect(facts.querySelector('[title]')).toBeNull();
+  });
   it('真人账号与女优共用资料、别名和图标行', async () => {
     const host = await open(props({ kind: 'creator', name: 'RiaKurumi', entity: performer({
       canonical_name: 'RiaKurumi', identity_labels: ['女优','网黄博主'],

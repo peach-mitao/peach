@@ -93,6 +93,12 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             self.connection.execute("SELECT count(*) FROM entity_link").fetchone()[0], 1)
 
+    def test_automatic_link_keeps_its_revert_batch(self):
+        planned = self.module.plan(self.connection, [self.row()])
+        self.module.install(self.connection, planned, 'auto:company-profile', batch='batch1')
+        metadata = json.loads(self.connection.execute('SELECT metadata_json FROM entity_link').fetchone()[0])
+        self.assertEqual((metadata['source'],metadata['batch']), ('auto:company-profile','batch1'))
+
     def test_a_label_edited_in_the_review_table_reaches_the_ledger_on_rerun(self):
         """label 是资料页上的链接文字，复核表是它的出处：表里改了字，重跑就对齐，不另建一行。"""
         self.module.install(self.connection, self.module.plan(self.connection, [self.row()]),
