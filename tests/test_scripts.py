@@ -11,7 +11,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import closing, redirect_stderr, redirect_stdout
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest import mock
@@ -49,6 +49,64 @@ def load_script(name: str):
         sys.modules.pop(spec.name, None)
         raise
     return module
+
+
+class LibraryDirectoryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.script = load_script('organize_library_dirs')
+
+    def test_release_pack_with_unattributed_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            source = r'B:\MVP\1pon-092415_001-fhd'
+            with closing(sqlite3.connect(ledger)) as db:
+                for aid, tail, medium, studio in (
+                        (1, '1pon-092415-001-fhd1_(new).mp4', 'video', '一本道'),
+                        (2, '1pon-092415-001-fhd2_(new).mp4', 'video', '一本道'),
+                        (3, r'img\001.jpg', 'image', None)):
+                    db.execute('INSERT INTO asset(id,location,path,name,medium,code,studio) VALUES(?,?,?,?,?,?,?)',
+                               (aid, '115', source + '\\' + tail, tail, medium, '092415-001', studio))
+                db.commit()
+            with mock.patch.object(self.script, 'DATABASE_PATH', ledger), \
+                    mock.patch.object(self.script, 'OUT', root), \
+                    mock.patch.object(self.script, 'location_roots', return_value={'115': ['B:\\']}), \
+                    mock.patch.object(self.script, 'root_online', return_value=True), redirect_stdout(io.StringIO()):
+                self.script.build_plan('rehome', 'example')
+                plan = json.loads((root / 'rehome-example-manifest.json').read_text(encoding='utf-8'))
+                self.assertEqual(len(plan['operations']), 1)
+                op = plan['operations'][0]
+                self.assertEqual(op['source'], source)
+                self.assertEqual(op['target'], r'B:\日本\一本道\092415-001')
+                self.assertEqual([row['id'] for row in op['rows']], [1, 2, 3])
+                with self.script.open_readonly(ledger) as db:
+                    self.assertEqual(op['entities'], self.script.entity_guard(db, source))
+                with closing(sqlite3.connect(ledger)) as db:
+                    db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(4,?,?,?,?)',
+                               ('115', source + r'\unknown.mp4', 'unknown.mp4', 'video'))
+                    db.commit()
+                self.script.build_plan('rehome', 'mixed')
+                mixed = json.loads((root / 'rehome-mixed-manifest.json').read_text(encoding='utf-8'))
+                self.assertEqual(mixed['operations'], [])
+
+    def test_sidecar_identity_conflicts_and_date_publishers(self):
+        script = self.script
+        owner = ('release', '日本', '一本道', '092415-001')
+        image = dict(id=2, medium='image', disposal=None, code='092415-001', studio=None,
+                     creator=None, effective_region='jp')
+        self.assertTrue(script.compatible_sidecar(image, owner, {}))
+        for update in ({'code': '092416-001'}, {'studio': '别的厂牌'},
+                       {'creator': '独立作者'}, {'effective_region': 'kr'}, {'medium': 'video'}):
+            self.assertFalse(script.compatible_sidecar(dict(image, **update), owner, {}))
+        self.assertFalse(script.compatible_sidecar(image, owner, {2: [(9, '独立作者')]}))
+        self.assertTrue(script.release_directory_matches('1pon-092415_001-fhd', owner))
+        self.assertFalse(script.release_directory_matches('1pon-092416_001-fhd', owner))
+        self.assertFalse(script.release_directory_matches('092415_001', ('release', '日本', '加勒比', '092415-001')))
+
+    def test_directory_execution_preserves_sidecars_and_recovers(self):
+        with redirect_stdout(io.StringIO()):
+            self.script.self_check()
 
 
 class OperationalScriptTests(unittest.TestCase):

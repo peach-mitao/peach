@@ -72,7 +72,7 @@ PART_MARK = re.compile(r"(CD\d|part\d|分卷|-\d{1,2}$|\(\d+\)$)", re.I)
 # 创作者位是旧导入器的目录名投影，`bbsxv.xyz-DOCP-324` 这类广告包会直接落在那里；
 # 裸域名目录（98T.la@账号、huachishe.com@系列）是转载水印，不是广告，不能进判据。
 AD_DOMAIN = re.compile(
-    r"\b[0-9a-z][-0-9a-z]{1,20}\.(?:cc|xyz|com|net|la|me|top|vip|club|app|cn|pw|tv|gg)\b", re.I)
+    r"\b[0-9a-z][-0-9a-z]{1,20}\.(?:cc|xyz|xxx|com|net|la|me|top|vip|club|app|cn|pw|tv|gg)\b", re.I)
 AD_DIRPACK = re.compile(
     r"[0-9a-z][-0-9a-z]{1,20}\.[a-z]{2,10}[ \-_]+\[?[A-Za-z]{2,6}-?\d{2,5}", re.I)
 #: 同一目录里有这么多资产，它就是成套下载的资源包，不是塞进别人目录的插页。
@@ -142,6 +142,8 @@ JUNK_VIDEO_MAX_BYTES = 120 * 1024**2
 MEDIA_SIDECAR_SUFFIXES = frozenset({".nfo", ".srt", ".ass", ".ssa", ".vtt", ".sub", ".idx"})
 INSTALLER_SUFFIXES = frozenset({".apk", ".exe", ".msi"})
 PAGE_COMPONENT_SUFFIXES = frozenset({".js", ".css", ".aspx"})
+PAGE_CHROME_IMAGE = re.compile(r"^(?:banner(?:_[bs])?|1000x90(?:yunding)?|count\d*|logo|lan\d*|you|zuo|zuoxia)$", re.I)
+PAGE_PROMO_CLAIM = re.compile(r"(?:记住|記住).{0,12}(?:网址|網址)|(?:网址|網址).{0,8}(?:发布|發布)")
 
 
 def promo_residue(name: str) -> int:
@@ -315,6 +317,13 @@ def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     if suffix in PAGE_COMPONENT_SUFFIXES and any(
             part.casefold().endswith("_files") for part in PureWindowsPath(path).parent.parts):
         return "网页存档的脚本或样式附件"
+    parent = PureWindowsPath(path).parent.name
+    if (parent.casefold().endswith('_files') and PAGE_PROMO_CLAIM.search(parent)
+            and AD_DOMAIN.search(parent[:-len('_files')]) and suffix in {'.gif', '.jpg', '.png'}
+            and size < 2 * 1024**2
+            and (PAGE_CHROME_IMAGE.fullmatch(PureWindowsPath(path).stem)
+                 or (PureWindowsPath(path).name.casefold() == '1.gif' and size <= 4096))):
+        return "推广网页存档的横幅、标志或导航图片"
     return ""
 
 
