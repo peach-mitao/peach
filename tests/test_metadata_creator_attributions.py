@@ -42,6 +42,24 @@ class CreatorAttributionTests(unittest.TestCase):
     def plan(self):
         return [row for row in collect(self.connection) if row['action'] in {'remove','replace'}]
 
+    def test_rejected_account_attribution_blocks_directory_reingest_and_allows_manual_review(self):
+        asset_id, entity_id = self.asset('Parent Account')
+        self.connection.execute("DELETE FROM asset_entity WHERE asset_id=?", (asset_id,))
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,updated_at) "
+            "VALUES('creator-attribution',?,'rejected','t')", (f'{asset_id}:parent account',))
+        self.assertIsNone(upsert_asset_entity(self.connection, kind='creator',name='Parent Account',
+            asset_id=asset_id,role='creator',source='scan:directory'))
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset_entity WHERE asset_id=?',(asset_id,)).fetchone()[0],0)
+        self.assertEqual(upsert_asset_entity(self.connection,kind='creator',name='Parent Account',
+            asset_id=asset_id,role='creator',source='user:manual'),entity_id)
+
+    def test_collection_quality_suffix_uses_the_rejected_canonical_account_decision(self):
+        asset_id, _ = self.asset('Parent Account')
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,updated_at) "
+            "VALUES('creator-attribution',?,'rejected','t')", (f'{asset_id}:parent account',))
+        self.assertIsNone(upsert_asset_entity(self.connection, kind='creator',name='Parent Account4K',
+            asset_id=asset_id,role='creator',source='scan:directory'))
+
     def test_merged_person_alias_ingests_into_the_preserved_artist(self):
         asset_id, creator_id = self.asset('Former Name')
         artist_id = upsert_asset_entity(self.connection,kind='performer',name='Current Name',

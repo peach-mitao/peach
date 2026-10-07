@@ -2,12 +2,14 @@
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 
 from peach import entity_classification as classification, entity_identity_research as research
 from peach.entities import merge_entity, upsert_asset_entity
 from peach.web_entity import q_index, q_entity, q_suggest
 from peach.web_catalog import q_items
 from peach.web_state import WebContract
+from peach.web_catalog import attach_avatar_availability
 from tests.support.ledger import fresh_ledger
 
 
@@ -27,6 +29,21 @@ class EntityClassificationTests(unittest.TestCase):
         entity_id=upsert_asset_entity(self.connection,kind=kind,name=name,asset_id=asset_id,role=kind,source='legacy:asset')
         self.connection.commit()
         return asset_id,entity_id
+
+    def test_account_work_portraits_require_person_identity_and_preserve_installed_images(self):
+        asset_id,entity_id=self.entity('Publisher Account')
+        self.connection.execute("UPDATE asset SET snapshot_path='sheet.jpg' WHERE id=?",(asset_id,))
+        self.connection.commit()
+        contract=WebContract(self.db)
+        with mock.patch.object(WebContract,'has_avatar',return_value=True):
+            row={'entity_id':entity_id,'rep':asset_id,'has_image':True}
+            attach_avatar_availability(contract,[row])
+            self.assertFalse(row['has_avatar'])
+            self.assertTrue(row['has_image'])
+            self.claim(entity_id,'identity','person')
+            self.connection.commit()
+            attach_avatar_availability(contract,[row])
+            self.assertTrue(row['has_avatar'])
 
     def claim(self,entity_id,facet,value,**kwargs):
         classification.write_claim(self.connection,entity_id=entity_id,facet=facet,value=value,
@@ -53,12 +70,35 @@ class EntityClassificationTests(unittest.TestCase):
         classification.write_claim(self.connection,entity_id=unknown,facet='account_role',value='seller',source='script:lookup',evidence='同名搜索命中')
         self.connection.commit()
         data=q_index(WebContract(self.db),'performers',limit=1,category='blogger')
-        self.assertEqual([row['entity_id'] for row in data['items']],[unknown])
+        self.assertEqual(data['items'],[])
         self.assertFalse(data['has_more'])
-        self.assertEqual(data['items'][0]['identity_labels'],['网黄博主'])
-        self.assertEqual(data['categories'],{'blogger':1})
+        self.assertEqual(data['categories'],{})
+        unclassified=q_index(WebContract(self.db),'performers')
+        self.assertEqual([row['entity_id'] for row in unclassified['items']],[unknown])
+        self.assertEqual(unclassified['items'][0]['identity_labels'],[])
         self.assertEqual(q_index(WebContract(self.db),'creators',category='seller')['items'][0]['entity_id'],known)
         self.assertEqual(q_index(WebContract(self.db),'creators',category="person' OR 1=1")['items'],[])
+
+    def test_personal_accounts_publishers_and_animation_have_distinct_categories(self):
+        _,person=self.entity('Personal Account')
+        self.claim(person,'identity','person')
+        _,publisher=self.entity('Publishing Account')
+        self.claim(publisher,'identity','account')
+        self.claim(publisher,'account_role','publisher')
+        _,animation=self.entity('Animation Account')
+        self.claim(animation,'identity','account')
+        self.claim(animation,'account_role','publisher')
+        self.claim(animation,'occupation','animator')
+        _,collection=self.entity('Resource Collection')
+        self.claim(collection,'identity','collection')
+        self.claim(collection,'occupation','content_creator')
+        self.connection.commit()
+        contract=WebContract(self.db)
+        self.assertCountEqual([r['entity_id'] for r in q_index(contract,'performers',category='blogger')['items']],
+                              [person,publisher])
+        self.assertEqual(q_entity(contract,{'kind':'creator','name':'Resource Collection'})['identity_labels'],[])
+        self.assertNotIn(collection,[r['entity_id'] for r in q_index(contract,'performers')['items']])
+        self.assertEqual(q_index(contract,'performers',category='animation')['items'][0]['entity_id'],animation)
 
     def test_existing_jav_directory_identity_is_shared_by_profiles_and_paginated_filters(self):
         expected = []
@@ -159,7 +199,7 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         page = q_index(WebContract(self.db),'performers',category='animation')
         self.assertEqual([row['entity_id'] for row in page['items']],[animator])
-        self.assertEqual(page['categories'],{'animation':1,'blogger':1})
+        self.assertEqual(page['categories'],{'animation':1})
         self.assertEqual(q_index(WebContract(self.db),'creators')['items'],[])
 
     def test_real_accounts_share_artist_directory_and_keep_avatars_and_profile_routes(self):

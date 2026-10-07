@@ -567,14 +567,13 @@ class WebDataTests(unittest.TestCase):
 
         (self.avatars / f"{entity_image_key('performer', 11)}.img").write_bytes(b"x")
         self._install_snapshot()
-        # kind 是落盘名的一部分：装的是女优那张图，创作者那格照样没有实体图可取，
-        # 只是回落到了同一条作品的代表作头像。判据判错 kind 就在这一行现形。
+        # kind 是实体图落盘名的一部分；账号的关联作品画面不构成本人头像依据。
         self.assertEqual(flags("performers"), [("Canonical Alice", True, True)])
-        self.assertEqual(flags("creators"), [("Canonical Creator", False, True)])
+        self.assertEqual(flags("creators"), [("Canonical Creator", False, False)])
 
         (self.avatars / f"{entity_image_key('creator', 12)}.img").write_bytes(b"x")
         self.contract.cache_bust()
-        self.assertEqual(flags("creators"), [("Canonical Creator", True, True)])
+        self.assertEqual(flags("creators"), [("Canonical Creator", True, False)])
         # 标签索引页没有脸，不该凭空多出两个标志。
         self.assertNotIn(
             "has_image", rm_web.q_index(self.contract, "tags", limit=10)["items"][0])
@@ -618,9 +617,9 @@ class WebDataTests(unittest.TestCase):
         contract.cache_bust()
         # 同一批 dict 同时出现在总榜和分源榜里，两处必须给同一个答案。
         self.assertEqual(flags(), {
-            "creators": [("Canonical Creator", False, True)],
+            "creators": [("Canonical Creator", False, False)],
             "performers": [("Canonical Alice", True, True)],
-            "peach_creators": [("Canonical Creator", False, True)],
+            "peach_creators": [("Canonical Creator", False, False)],
             "peach_performers": [("Canonical Alice", True, True)],
         })
         # 标签榜不出脸，不该被顺手挂上两个用不到的标志。

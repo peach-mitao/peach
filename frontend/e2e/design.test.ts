@@ -2897,6 +2897,8 @@ describe('设计决定', () => {
       await page.keyboard.press('Enter');
       await modal.waitFor();
       assert.equal(await modal.getAttribute('data-motion-instant'), 'true');
+      await page.waitForFunction(() => Boolean(document.activeElement?.closest('[data-modal-motion]')),
+        null, { timeout: 5_000 });
       await page.keyboard.press('Escape');
       await modal.waitFor({ state: 'detached' });
       assert.equal(await page.evaluate(() => document.activeElement?.closest('[data-modal-motion]') !== null), false);

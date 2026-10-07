@@ -1,13 +1,39 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
-import { launch, settle, visit, VIEWPORTS } from './harness.ts';
+import { launch, requiredEnv, settle, visit, VIEWPORTS } from './harness.ts';
 
 describe('本地与在线艺人共用名册布局', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
   for (const viewport of VIEWPORTS) {
+    for (const [path, selected] of [['/performers', '艺人'], ['/creators', '卖家'],
+      ['/performers?scope=online', '在线']] as const) {
+      it(`加载占位页使用同级名册入口（${selected} · ${viewport.name}）`, { timeout: 60_000 }, async () => {
+        const context = await browser.newContext({
+          viewport: { width: viewport.width, height: viewport.height }, isMobile: viewport.mobile,
+        });
+        const page = await context.newPage();
+        let release!: () => void;
+        const gate = new Promise<void>(resolve => { release = resolve });
+        await page.route('**/dist/peach-react.js*', async route => {
+          await gate;
+          await route.continue();
+        });
+        try {
+          await page.goto(requiredEnv('PEACH_E2E_ORIGIN') + path, { waitUntil: 'domcontentloaded' });
+          await page.locator('#index [data-skeleton]').first().waitFor();
+          assert.equal(await page.locator('#index [role="tablist"]').count(), 1);
+          assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);
+          assert.deepEqual(await page.locator('#index [role="tab"][aria-selected="true"]').allTextContents(), [selected]);
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+          release();
+          await page.locator('#index [data-index-page]').waitFor();
+          assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);
+        } finally { release(); await context.close() }
+      });
+    }
     it(`两种版式的卡片尺寸一致，长名字留在卡片内（${viewport.name}）`, { timeout: 60_000 }, async () => {
       const opened = await visit(browser, '/performers', viewport);
       try {
