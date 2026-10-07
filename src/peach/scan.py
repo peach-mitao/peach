@@ -98,11 +98,13 @@ def video_stems(names) -> frozenset[str]:
 
 
 def is_sidecar(name: str, videos: frozenset[str], *, artwork_dir: bool = False) -> bool:
-    """`name` 是不是某部片的附属文件，扫描不登记。
+    """`name` 是否为不登记的附属文件或工具隔离文件。
 
     `videos` 是同目录的 `video_stems`；`artwork_dir` 表示这个目录叫 `extrafanart` 之类、
     且上一层有视频。判据只看名字，不读文件内容。
     """
+    if re.fullmatch(r'peach-purge-[a-f0-9]{32}\.peach-quarantine', name, re.IGNORECASE):
+        return True
     stem, suffix = os.path.splitext(name)
     if suffix.lower() == ".nfo":
         return True

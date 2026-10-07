@@ -321,6 +321,9 @@ def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     if (suffix == '.mp4' and 0 < size < 32 * 1024**2
             and re.sub(r'\s', '', name) in {'社區最新情報', '社区最新情报'}):
         return "用户确认的社区推广视频"
+    if (suffix == '.png' and 0 < size <= 4096
+            and name in {'51风流', '代开实习证明', '扫码约炮', '探花社区'}):
+        return "微型推广二维码候选，须核验图片内容"
     if suffix in {'.jpg', '.jpeg', '.png', '.gif'} and 0 < size < 2 * 1024**2:
         if re.fullmatch(r'如何使用谷歌DNS让您更快进入下载网页步骤\s*0?[123]', name, re.I):
             return "下载站推广导航图片"
@@ -492,9 +495,13 @@ def _restore_staged_media(staged):
                 os.rename(quarantine, original)
 
 
-def _quarantine_media(original: Path) -> Path:
+def _quarantine_media(original: Path, *, location: str | None = None) -> Path:
     """同目录改名不支持时，小文件先保留本地完整备份再删除原文件。"""
-    quarantine = original.with_name(f'.{original.name}.peach-purge-{uuid.uuid4().hex}.tmp')
+    key = uuid.uuid4().hex
+    name = (f'peach-purge-{key}.peach-quarantine'
+            if location == 'pikpak' or PureWindowsPath(str(original)).drive.casefold() == 'a:'
+            else f'.{original.name}.peach-purge-{key}.tmp')
+    quarantine = original.with_name(name)
     try:
         os.rename(original, quarantine)
         return quarantine
@@ -647,7 +654,7 @@ def purge_assets(connection, rows, *, missing_only: bool = False):
                 if original.exists() and not original.is_file():
                     raise OSError("not a regular file")
                 if original.is_file():
-                    quarantine = _quarantine_media(original)
+                    quarantine = _quarantine_media(original, location=row['location'] if 'location' in row.keys() else None)
                     staged.append((original, quarantine))
             except OSError as error:
                 blocked.append({"id": row["id"], "path": media,
