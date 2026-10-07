@@ -170,9 +170,10 @@ def parse_key(key: str) -> int:
     return int(raw)
 
 
-def _names(connection: sqlite3.Connection, entity_id: int, *, own: bool = True):
+def _names(connection: sqlite3.Connection, entity_id: int, *, own: bool = True, allow_creator: bool = False):
     """(规范名, [别名])；实体不在或不是女优返回 None。`own=False` 时不算这条后继自己写的。"""
-    row = connection.execute("SELECT canonical_name FROM entity WHERE id=? AND kind='performer'",
+    kinds = "('performer','creator')" if allow_creator else "('performer')"
+    row = connection.execute("SELECT canonical_name FROM entity WHERE id=? AND kind IN " + kinds,
                              (int(entity_id),)).fetchone()
     if row is None:
         return None
@@ -657,24 +658,26 @@ def fc2cmadb_page(pages: Fc2cmadbPages, codes: list[str], mine: set[str]) -> tup
 # -- 落库 --------------------------------------------------------------------
 
 
-def _owners(connection: sqlite3.Connection) -> dict[str, set[int]]:
+def _owners(connection: sqlite3.Connection, *, allow_creator: bool = False) -> dict[str, set[int]]:
     """折叠键 → 用着这个写法的女优实体。"""
     owners: dict[str, set[int]] = {}
+    kinds = "('performer','creator')" if allow_creator else "('performer')"
     for entity_id, written in connection.execute(
-            "SELECT id,canonical_name FROM entity WHERE kind='performer'"
+            "SELECT id,canonical_name FROM entity WHERE kind IN " + kinds +
             " UNION SELECT a.entity_id,a.alias FROM entity_alias a"
-            " JOIN entity e ON e.id=a.entity_id WHERE e.kind='performer'"):
+            " JOIN entity e ON e.id=a.entity_id WHERE e.kind IN " + kinds):
         if written:
             owners.setdefault(match_key(str(written)), set()).add(int(entity_id))
     return owners
 
 
 def land(connection: sqlite3.Connection, entity_id: int, expected_name: str, site: str,
-         url: str, names: list[str], batch: str) -> list[dict]:
+         url: str, names: list[str], batch: str, *, allow_latin: bool = False,
+         allow_creator: bool = False) -> list[dict]:
     """把一页上的写法逐个判完，该写的写进 `entity_alias`。返回每个写法一行判词。"""
     base = {"entity_id": entity_id, "canonical_name": expected_name, "site": site,
             "page": url, "batch": ""}
-    current = _names(connection, entity_id)
+    current = _names(connection, entity_id, allow_creator=allow_creator)
     if current is None:
         return [{**base, "alias": name, "action": GONE, "detail": "实体不在或不是女优"}
                 for name in names]
@@ -682,9 +685,11 @@ def land(connection: sqlite3.Connection, entity_id: int, expected_name: str, sit
         return [{**base, "alias": name, "action": STALE,
                  "detail": f"账本里这条实体现在叫 {current[0]}"} for name in names]
     have = {normalize_entity_name(name) for name in [current[0], *current[1]]}
-    owners, rows = _owners(connection), []
+    owners, rows = _owners(connection, allow_creator=allow_creator), []
     for name in dict.fromkeys(names):
         reason = rejection(name)
+        if allow_latin and reason == '罗马字写法':
+            reason = '' if len(match_key(name)) >= 4 else '短单名，会命中别人'
         others = sorted(owners.get(match_key(name), set()) - {entity_id})
         if reason:
             rows.append({**base, "alias": name, "action": SKIP, "detail": reason})

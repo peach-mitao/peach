@@ -57,16 +57,16 @@ export function PeopleGrid(
     props: Pick<IndexProps, 'personAvatar' | 'openEntity'>;
   },
 ) {
-  const entityKind = ENTITY_KINDS[kind];
   const company = isCompany(kind);
   const big = layout === 'big';
   return (
     <div data-index-grid="" data-layout={layout} data-cells={company ? 'company' : 'people'}
       className={`${company ? 'index-grid-company' : 'index-grid-person'} gap-3`}>
       {items.map((item) => {
+        const entityKind = item.entity_kind || ENTITY_KINDS[kind];
         const avatar = props.personAvatar(item, entityKind, big);
         return (
-          <Cell key={item.k} data-k={item.k} data-kind={entityKind} name={item.k} readout={`${personReadout(kind, item)}${item.identity_labels?.length ? ' · ' + item.identity_labels.join(' / ') : ''}`}
+          <Cell key={`${entityKind}:${item.entity_id || item.k}`} data-k={item.k} data-kind={entityKind} name={item.k} readout={`${personReadout(kind, item)}${item.identity_labels?.length ? ' · ' + item.identity_labels.join(' / ') : ''}`}
             big={big} onPress={() => props.openEntity(entityKind, item.k)}>
             <Ring html={avatar.html} face={avatar.face} company={company} big={big} />
           </Cell>

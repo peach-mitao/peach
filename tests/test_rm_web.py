@@ -559,7 +559,8 @@ class WebDataTests(unittest.TestCase):
         """
         def flags(kind):
             return [(row["k"], row["has_image"], row["has_avatar"])
-                    for row in rm_web.q_index(self.contract, kind, limit=10)["items"]]
+                    for row in rm_web.q_index(self.contract, 'performers', limit=10)["items"]
+                    if row['entity_kind'] == {'performers':'performer','creators':'creator'}[kind]]
 
         self.assertEqual(flags("performers"), [("Canonical Alice", False, False)])
         self.assertEqual(flags("creators"), [("Canonical Creator", False, False)])
@@ -1507,11 +1508,14 @@ class WebDataTests(unittest.TestCase):
         )["total"], 0)
 
         creators = rm_web.q_index(self.contract, "creators", limit=10)
-        self.assertEqual(creators["items"][0]["k"], "Canonical Creator")
-        self.assertEqual(creators["items"][0]["n"], 2)
+        self.assertEqual(creators["items"], [])
         performers = rm_web.q_index(self.contract, "performers", limit=10)
-        self.assertEqual(performers["items"][0]["k"], "Canonical Alice")
-        self.assertEqual(performers["items"][0]["n"], 1)
+        artists = {row["k"]: row for row in performers["items"]}
+        self.assertEqual(set(artists), {"Canonical Creator", "Canonical Alice"})
+        self.assertEqual(artists["Canonical Creator"]["n"], 2)
+        self.assertEqual(artists["Canonical Creator"]["entity_kind"], "creator")
+        self.assertEqual(artists["Canonical Alice"]["n"], 1)
+        self.assertEqual(artists["Canonical Alice"]["entity_kind"], "performer")
         stats = rm_web.q_stats(self.contract)
         self.assertEqual(stats["attribution"]["creator"], 2)
         self.assertEqual(stats["attribution"]["studio"], 2)
@@ -2581,8 +2585,10 @@ class PeopleIndexFocusTests(unittest.TestCase):
             '{"focus":{"axis":"x","pct":80}}', encoding="utf-8")
         (self.avatars / "creator-12.face.json").write_text(
             '{"focus":{"axis":"y","pct":20}}', encoding="utf-8")
-        row = rm_web.q_index(self.contract, "creators")["items"][0]
+        row = next(row for row in rm_web.q_index(self.contract, "performers")["items"]
+                   if row["k"] == "Canonical Creator")
         self.assertEqual(row["k"], "Canonical Creator")
+        self.assertEqual(row["entity_kind"], "creator")
         self.assertEqual(row["avatar_focus"], {"axis": "y", "pct": 20})
 
     def test_the_tag_index_has_no_face_to_frame(self):

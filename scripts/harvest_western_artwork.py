@@ -57,25 +57,31 @@ def run(args) -> dict:
             try:
                 portraits = babepedia_portraits(http, name, aliases, profile_url=profiles.get(entity_id, ''))
                 for origin in portraits:
-                    cache = AvatarCandidateCache(providers / 'babepedia')
-                    body = cache.lookup(origin['upstream_url'])
-                    if body is None:
-                        if not avatar_picker.allowed_source(origin['upstream_url']):
-                            raise ValueError('头像来源不是公网 HTTPS')
-                        body = avatar_picker.fetch_image(http, origin['upstream_url'])
-                    inspected = avatar_picker.accept_image(body)
-                    item['portraits'].append({**origin, 'sha256': inspected.sha256,
-                                             'width': inspected.width, 'height': inspected.height})
-                    if args.apply:
-                        avatar_picker.keep(providers, entity_id, body, origin)
-                        destination = avatar_root / f'{kind}-{entity_id}.img'
-                        if not destination.exists() and acceptable_avatar(inspected, MIN_LONG_SIDE, MIN_SHORT_SIDE):
-                            install_entity_avatar(avatar_root, kind, entity_id, body, inspected.mime_type,
-                                                  {**origin, 'source_url': origin['upstream_url']})
-                            item['installed'] = inspected.sha256
-                    time.sleep(args.delay)
+                    try:
+                        cache = AvatarCandidateCache(providers / 'babepedia')
+                        body = cache.lookup(origin['upstream_url'])
+                        if body is None:
+                            # 本人档案解析器已限定为 Babepedia 的 HTTPS 图片路径。
+                            body = avatar_picker.fetch_image(http, origin['upstream_url'])
+                        inspected = avatar_picker.accept_image(body)
+                        item['portraits'].append({**origin, 'sha256': inspected.sha256,
+                                                 'width': inspected.width, 'height': inspected.height})
+                        if args.apply:
+                            avatar_picker.keep(providers, entity_id, body, origin)
+                            destination = avatar_root / f'{kind}-{entity_id}.img'
+                            if (origin.get('automatic_install', True) and not destination.exists()
+                                    and acceptable_avatar(inspected, MIN_LONG_SIDE, MIN_SHORT_SIDE)):
+                                install_entity_avatar(avatar_root, kind, entity_id, body, inspected.mime_type,
+                                                      {**origin, 'source_url': origin['upstream_url']})
+                                item['installed'] = inspected.sha256
+                    except Exception as error:
+                        item['issues'].append({'source_url': origin['upstream_url'], 'error': str(error)})
+                    finally:
+                        time.sleep(args.delay)
             except Exception as error:
                 item['issues'].append(str(error))
+            if args.portraits_only:
+                continue
             works = connection.execute('SELECT a.id,a.name,a.code,a.studio,a.release_date FROM asset a '
                 'JOIN asset_entity ae ON ae.asset_id=a.id WHERE ae.entity_id=? '
                 "AND a.medium='video' AND a.disposal IS NULL ORDER BY a.id LIMIT 30", (entity_id,)).fetchall()
@@ -129,6 +135,7 @@ def build_parser():
     parser.add_argument('--entity', type=int, action='append', required=True)
     parser.add_argument('--delay', type=float, default=3)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--portraits-only', action='store_true')
     return parser
 
 

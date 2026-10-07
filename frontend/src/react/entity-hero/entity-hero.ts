@@ -139,8 +139,8 @@ export const isCompany = (kind: string) => kind === 'studio' || kind === 'agency
 export const isPeople = (kind: string) => kind === 'performer' || kind === 'creator';
 
 export const entityFeedTip = (on: boolean) => on
-  ? '已订阅新作：库里还没有的新片排在资料卡下面。再点一下取消订阅。'
-  : '订阅新作：定时去 JavDB 查这位有没有出新片，库里还没有的排在资料卡下面。';
+  ? '已订阅新作，点击取消订阅'
+  : '订阅新作';
 
 /** 这条实体名下已有的写法，统称排第一。 */
 export function nameChoices(entity: EntityHeroData): string[] {
@@ -190,7 +190,7 @@ export function heroLinks(entity: EntityHeroData, kind: string): LinkView[] {
     }
     const url = x.url || '';
     if (!(x.clickable && /^https?:\/\//i.test(url))) return { type: 'private', label: x.label || x.hostname || '已记录' };
-    if (kind === 'performer' && x.link_kind !== 'social') {
+    if (isPeople(kind) && x.link_kind !== 'social') {
       return { type: 'icon', url, title: performerLinkName(x, agency), mark: siteMark(x) };
     }
     if (x.link_kind === 'social') {

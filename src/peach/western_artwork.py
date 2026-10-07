@@ -5,7 +5,7 @@ import json
 import re
 from datetime import date
 from pathlib import Path
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
 
@@ -46,8 +46,8 @@ def _name(name: str) -> str:
     return re.sub(r'[\W_]+', '', str(name).casefold())
 
 
-def babepedia_portraits(http: HttpTransport, name: str, aliases=(), *, profile_url: str = '') -> list[dict]:
-    """只取名字栏与已知身份一致的主图库，推荐与用户上传不参与。"""
+def babepedia_page(http: HttpTransport, name: str, aliases=(), *, profile_url: str = '') -> tuple:
+    """读取与名字栏或别名明确相符的档案。"""
     url = profile_url or 'https://www.babepedia.com/babe/' + quote(name.replace(' ', '_'))
     parsed_profile = urlsplit(url)
     if (not public_https_url(url) or parsed_profile.hostname not in ('www.babepedia.com', 'babepedia.com')
@@ -64,27 +64,42 @@ def babepedia_portraits(http: HttpTransport, name: str, aliases=(), *, profile_u
     if aka:
         for label in aka.select('small, #aliasinfobtn'):
             label.decompose()
-    listed = {_name(n) for n in aka.get_text(' ', strip=True).split(' - ')} if aka else set()
+    alias_names = [n.strip() for n in aka.get_text(' ', strip=True).split(' - ') if n.strip()] if aka else []
+    listed = {_name(n) for n in alias_names}
     if not found or not (known & {_name(found), *listed}):
         raise ValueError('Babepedia 未取得：档案身份不一致')
     final = response.url or url
     if urlsplit(final).hostname not in ('www.babepedia.com', 'babepedia.com'):
         raise ValueError('Babepedia 未取得：来源域名不一致')
+    return soup, final, found, alias_names
+
+
+def babepedia_portraits(http: HttpTransport, name: str, aliases=(), *, profile_url: str = '') -> list[dict]:
+    """主图与本人档案图库作为候选；推荐人物不参与。"""
+    soup, final, found, _ = babepedia_page(http, name, aliases, profile_url=profile_url)
     portraits = []
     seen = set()
-    for link in soup.select('#profbox2 a.img[href]'):
+    for link in soup.select('#profbox2 a.img[href], .useruploads2 a.img[href]'):
         image = urljoin(final, str(link['href']))
         parsed = urlsplit(image)
+        primary = parsed.path.startswith('/pics/') and link.find_parent(id='profbox2') is not None
+        thumbnail = link.find('img')
+        gallery = (parsed.path.startswith('/user-uploads/') and thumbnail is not None
+                   and _name(thumbnail.get('alt', '')) == _name(found)
+                   and link.find_parent(class_='useruploads2') is not None)
         if (parsed.hostname not in ('www.babepedia.com', 'babepedia.com')
-                or not parsed.path.startswith('/pics/') or not public_https_url(image)
+                or parsed.port not in (None, 443)
+                or not (primary or gallery) or not public_https_url(image)
                 or image in seen):
             continue
+        image = urlunsplit((parsed.scheme, parsed.netloc, quote(parsed.path, safe='/%'), parsed.query, ''))
         seen.add(image)
         portraits.append({'provider': 'babepedia', 'source_kind': 'external_media_library',
                           'upstream_url': image, 'profile_url': final,
                           'external_id': f'babepedia:{found}', 'matched_name': found,
-                          'name_source': 'babepedia-profile', 'identity_verified': True})
-        if len(portraits) == 4:
+                          'name_source': 'babepedia-profile', 'identity_verified': True,
+                          'automatic_install': primary})
+        if len(portraits) == 48:
             break
     return portraits
 

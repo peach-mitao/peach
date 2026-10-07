@@ -42,6 +42,31 @@ class CreatorAttributionTests(unittest.TestCase):
     def plan(self):
         return [row for row in collect(self.connection) if row['action'] in {'remove','replace'}]
 
+    def test_merged_person_alias_ingests_into_the_preserved_artist(self):
+        asset_id, creator_id = self.asset('Former Name')
+        artist_id = upsert_asset_entity(self.connection,kind='performer',name='Current Name',
+            asset_id=asset_id,role='performer',source='release:cast',metadata={'official':'preserved'})
+        merge_entity(self.connection,target_id=artist_id,source_id=creator_id,source_name='Former Name',
+                     alias_source='user:identity-merge:creator')
+        another_id, _ = self.asset('Independent Account')
+        found = upsert_asset_entity(self.connection,kind='creator',name='Former Name',
+            asset_id=another_id,role='creator',source='scan:directory',metadata={'other':'data'})
+        self.assertEqual(found,artist_id)
+        self.assertIsNone(self.connection.execute("SELECT id FROM entity WHERE kind='creator' AND canonical_name='Former Name'").fetchone())
+        self.assertEqual(self.connection.execute('SELECT role FROM asset_entity WHERE asset_id=? AND entity_id=?',
+            (another_id,artist_id)).fetchone(),('performer',))
+        self.assertEqual(json.loads(self.connection.execute('SELECT metadata_json FROM entity WHERE id=?',
+            (artist_id,)).fetchone()[0]),{'official':'preserved'})
+
+    def test_unmerged_artist_alias_keeps_an_independent_account(self):
+        asset_id, _ = self.asset('Independent Account')
+        artist_id = upsert_asset_entity(self.connection,kind='performer',name='Current Name',
+            asset_id=asset_id,role='performer',source='release:cast')
+        self.connection.execute("INSERT INTO entity_alias VALUES(?, 'Shared Alias','shared alias','source:directory',1)",(artist_id,))
+        found = upsert_asset_entity(self.connection,kind='creator',name='Shared Alias',
+            asset_id=asset_id,role='creator',source='scan:directory')
+        self.assertNotEqual(found,artist_id)
+
     def test_content_month_quality_and_repost_directories_are_not_accounts(self):
         names = ['kj','11月','AI增强','白丝','背身足交','7sht.me','98T.la202202092146']
         for name in names:
@@ -71,7 +96,7 @@ class CreatorAttributionTests(unittest.TestCase):
         self.assertEqual(len(self.plan()),3)
         self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
 
-    def test_versioned_release_and_publisher_numbers_require_matching_files(self):
+    def test_versioned_release_directories_and_publisher_numbers_are_excluded(self):
         samples = {
             'WAAA-415_6K-C':r'B:\云下载\WAAA-415_6K-C\@Milan@ty999.me_WAAA-415_6K-C.mp4',
             'wavr00178pl':r'B:\云下载\wavr00178pl\wavr00178.part1.mp4',
@@ -85,6 +110,28 @@ class CreatorAttributionTests(unittest.TestCase):
         self.asset('banbi_555',path=r'B:\创作者\banbi_555\scene title.mp4')
         self.asset('ABW-987',path=r'B:\创作者\ABW-987\another title.mp4')
         self.assertCountEqual([row['current_creator'] for row in self.plan()],samples)
+
+    def test_release_directory_does_not_assign_its_code_to_unrelated_files(self):
+        examples = [('WAAA-415_6K-C', 'HMN-597.mp4'),
+                    ('WAAA-415_6K-C', 'daily life.mp4'),
+                    ('gachincoppv-1009-HD', 'gachincoppv-1009-HD1.wmv'),
+                    ('gachincoppv-1009-HD', 'gachincoppv-1009-HD3.wmv')]
+        ids = []
+        for name, filename in examples:
+            asset_id, _ = self.asset(name, path=f'B:\\云下载\\{name}\\{filename}')
+            ids.append(asset_id)
+            self.assertIsNone(upsert_asset_entity(self.connection,kind='creator',name=name,
+                              asset_id=asset_id,role='creator',source='scan:directory'))
+        self.asset('banbi_555', path=r'B:\创作者\banbi_555\holiday.mp4')
+        frozen = self.plan()
+        self.assertCountEqual([row['asset_id'] for row in frozen], ids)
+        with self.connection:
+            receipt = apply_plan(self.connection, frozen)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset WHERE creator IS NULL AND code IS NULL').fetchone()[0], 4)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset').fetchone()[0], 5)
+        with self.connection:
+            restore(self.connection, receipt)
+        self.assertCountEqual([row['asset_id'] for row in self.plan()], ids)
 
     def test_tokyo_publisher_requires_registered_studio_and_matching_release_file(self):
         asset_id,_ = self.asset('Tokyo',studio='东京热',code='n1042',path=r'B:\云下载\TokyoHot-n1042.mp4')

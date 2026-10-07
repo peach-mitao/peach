@@ -85,12 +85,13 @@ describe('地址栏上的类型', () => {
 
 describe('名册', () => {
   it('浏览分类写回地址并隔离分页缓存，筛选只显示有内容的分类', async () => {
-    seed(indexKey('creators', ''), [person('真人账号', { identity_labels: ['网黄博主'] })], false, { blogger:1, seller:1 });
-    const fetcher = serve(() => ({ items: [person('卖家账号', { identity_labels: ['卖家'] })], categories:{ blogger:1, seller:1 }, has_more: false }));
+    seed(indexKey('creators', ''), [person('动画作者', { identity_labels: ['动画作者'] })], false, { animation:1, seller:1 });
+    const fetcher = serve(() => ({ items: [person('卖家账号', { identity_labels: ['卖家'] })], categories:{ animation:1, seller:1 }, has_more: false }));
     const given = props({ kind: 'creators' });
     const host = await open(given);
-    expect(cells(host)[0]?.textContent).toContain('网黄博主');
-    expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部网黄博主卖家');
+    expect(host.querySelector('[data-index-title]')?.textContent).toBe('卖家与动画作者');
+    expect(cells(host)[0]?.textContent).toContain('动画作者');
+    expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部卖家动画作者');
     await click(buttonNamed('卖家', host));
     await settle();
     expect(given.route).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'seller' }), { replace: false });
@@ -98,11 +99,20 @@ describe('名册', () => {
     expect(cells(host)[0]?.textContent).toContain('卖家');
     expect(indexRoute({ kind: 'performers', q: '', scope: 'online', view: 'alphabet', category: 'artist' }).category).toBe('all');
   });
-  it('艺人分类不显示空分类或账号分类，创作者地址不接受女优筛选', async () => {
+  it('艺人分类显示有内容的分类，卖家与动画作者地址不接受女优筛选', async () => {
     seed(indexKey('performers', ''), [person('女优', { identity_labels:['女优','西方'] })], false, { japanese_av:1, western:1 });
     const host = await open(props());
     expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部女优西方');
     expect(indexRoute({ kind:'creators', q:'', scope:'local', view:'alphabet', category:'japanese_av' }).category).toBe('all');
+  });
+  it('艺人名册的真人账号保留账号头像及资料页入口', async () => {
+    seed(indexKey('performers',''),[person('真人账号',{entity_kind:'creator',identity_labels:['网黄博主']})],false,{blogger:1});
+    const given = props();
+    const host = await open(given);
+    expect(given.personAvatar).toHaveBeenCalledWith(expect.objectContaining({k:'真人账号'}),'creator',true);
+    await click(cells(host)[0]);
+    expect(given.openEntity).toHaveBeenCalledWith('creator','真人账号');
+    expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部网黄博主');
   });
   it('首屏读缓存，读数带加号，大图版式按大格取头像', async () => {
     seed(indexKey('performers', ''), [person('甲'), person('乙')], true);

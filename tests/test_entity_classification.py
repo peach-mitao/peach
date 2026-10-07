@@ -52,11 +52,11 @@ class EntityClassificationTests(unittest.TestCase):
         self.claim(known,'account_role','seller')
         classification.write_claim(self.connection,entity_id=unknown,facet='account_role',value='seller',source='script:lookup',evidence='同名搜索命中')
         self.connection.commit()
-        data=q_index(WebContract(self.db),'creators',limit=1,category='blogger')
+        data=q_index(WebContract(self.db),'performers',limit=1,category='blogger')
         self.assertEqual([row['entity_id'] for row in data['items']],[unknown])
         self.assertFalse(data['has_more'])
         self.assertEqual(data['items'][0]['identity_labels'],['网黄博主'])
-        self.assertEqual(data['categories'],{'blogger':1,'seller':1})
+        self.assertEqual(data['categories'],{'blogger':1})
         self.assertEqual(q_index(WebContract(self.db),'creators',category='seller')['items'][0]['entity_id'],known)
         self.assertEqual(q_index(WebContract(self.db),'creators',category="person' OR 1=1")['items'],[])
 
@@ -103,22 +103,53 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.execute("UPDATE asset SET disposal='vanished' WHERE id=?",(asset_id,))
         self.connection.commit()
         data = q_index(WebContract(self.db),'creators',q='Match',limit=1,category='seller')
-        self.assertEqual(data['categories'],{'blogger':1,'seller':1})
+        self.assertEqual(data['categories'],{'seller':1})
         self.assertEqual([row['entity_id'] for row in data['items']],[seller])
 
-    def test_fc2_cast_and_western_release_filters_allow_multiple_memberships(self):
+    def test_fc2_release_does_not_determine_performer_occupation(self):
         asset_id, entity_id = self.entity('Known Person',kind='performer')
         self.claim(entity_id,'market','japanese_av')
         self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567',region='west' WHERE id=?",(asset_id,))
         self.connection.commit()
-        for category in ('japanese_av','amateur','western'):
+        for category in ('japanese_av','western'):
             page = q_index(WebContract(self.db),'performers',category=category,limit=1)
-            self.assertEqual(page['categories'],{'japanese_av':1,'amateur':1,'western':1})
-            self.assertEqual(page['items'][0]['identity_labels'],['女优','素人','西方'])
-            self.assertEqual(page['items'][0]['identity_categories'],['japanese_av','amateur','western'])
+            self.assertEqual(page['categories'],{'japanese_av':1,'western':1})
+            self.assertEqual(page['items'][0]['identity_labels'],['女优','西方'])
+            self.assertEqual(page['items'][0]['identity_categories'],['japanese_av','western'])
+        self.assertEqual(q_index(WebContract(self.db),'performers',category='amateur')['items'],[])
         self.connection.execute("UPDATE asset SET disposal='vanished' WHERE id=?",(asset_id,))
         self.connection.commit()
         self.assertEqual(classification.summaries(self.connection,[entity_id])[entity_id]['identity_labels'],['女优'])
+
+    def test_amateur_scene_tag_does_not_classify_a_jav_performer_as_amateur(self):
+        asset_id, entity_id = self.entity('JAV Performer',kind='performer')
+        self.claim(entity_id,'market','japanese_av')
+        self.connection.execute("UPDATE asset SET code='SIRO-5333' WHERE id=?",(asset_id,))
+        upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,
+                            role='tag',source='test:scene-tag')
+        self.connection.commit()
+        contract=WebContract(self.db)
+        profile=q_entity(contract,{'kind':'performer','name':'JAV Performer'})
+        self.assertEqual(profile['identity_labels'],['女优'])
+        self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
+        self.assertEqual(q_index(contract,'performers')['categories'],{'japanese_av':1})
+
+    def test_amateur_identity_requires_trusted_nonprofessional_evidence(self):
+        _, confirmed = self.entity('Nonprofessional Cast',kind='performer')
+        self.claim(confirmed,'occupation','amateur_performer')
+        asset_id, unknown = self.entity('Unknown Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(asset_id,))
+        classification.write_claim(self.connection,entity_id=unknown,facet='occupation',
+            value='amateur_performer',source='script:search',evidence='未核验推断')
+        self.connection.commit()
+        contract=WebContract(self.db)
+        page=q_index(contract,'performers',category='amateur')
+        self.assertEqual([item['entity_id'] for item in page['items']],[confirmed])
+        self.assertEqual(page['categories'],{'amateur':1})
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Unknown Cast'})['identity_labels'],[])
+        self.claim(confirmed,'occupation','adult_performer')
+        self.connection.commit()
+        self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
 
     def test_animation_author_is_separate_from_real_accounts_and_artists(self):
         _, animator = self.entity('Animator')
@@ -128,7 +159,21 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         page = q_index(WebContract(self.db),'creators',category='animation')
         self.assertEqual([row['entity_id'] for row in page['items']],[animator])
-        self.assertEqual(page['categories'],{'blogger':1,'animation':1})
+        self.assertEqual(page['categories'],{'animation':1})
+
+    def test_real_accounts_share_artist_directory_and_keep_avatars_and_profile_routes(self):
+        _, actor = self.entity('Actor', kind='performer')
+        _, blogger = self.entity('Blogger')
+        _, seller = self.entity('Seller')
+        _, animator = self.entity('Animator')
+        self.claim(seller,'account_role','seller')
+        self.claim(animator,'occupation','animator')
+        self.connection.commit()
+        artists = q_index(WebContract(self.db),'performers')
+        self.assertCountEqual([row['entity_id'] for row in artists['items']],[actor,blogger])
+        self.assertEqual({row['entity_id']:row['entity_kind'] for row in artists['items']},{actor:'performer',blogger:'creator'})
+        separate = q_index(WebContract(self.db),'creators')
+        self.assertCountEqual([row['entity_id'] for row in separate['items']],[seller,animator])
 
     def test_western_cast_occupation_does_not_assert_a_japanese_av_career(self):
         _, entity_id = self.entity('Western Performer',kind='performer')

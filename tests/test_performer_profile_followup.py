@@ -165,6 +165,14 @@ class NoWait:
 
 
 class ParsingTests(unittest.TestCase):
+    def test_multiple_career_periods_use_the_first_debut_and_latest_end(self):
+        for text, until in (("2017年 - 2018年、2021年 -", None),
+                            ("2017年 - 2018年、2021年 - 2024年", 2024)):
+            with self.subTest(periods=text):
+                page = MINNANO_SPARSE.replace("2015年 - 2019年", text)
+                found = minnano_av.profile(page)
+                self.assertEqual((found['debut_year'], found['active_until']), (2017, until))
+
     def test_a_full_profile_table_is_normalised_column_by_column(self):
         found = minnano_av.profile(MINNANO_PROFILE)
         self.assertEqual({column: found[column] for column in minnano_av.PROFILE_COLUMNS}, {

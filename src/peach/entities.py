@@ -463,6 +463,18 @@ def upsert_asset_entity(
             canonical = selected
     if not canonical:
         return None
+    if kind == 'creator' and not source.startswith(('user:', 'review:')):
+        merged_people = connection.execute(
+            "SELECT DISTINCT e.id,e.canonical_name FROM entity e JOIN entity_alias al ON al.entity_id=e.id "
+            "JOIN entity_redirect r ON r.target_id=e.id AND r.source=al.source "
+            "WHERE e.kind='performer' AND al.normalized_alias=? AND al.source='user:identity-merge:creator' "
+            "ORDER BY e.id LIMIT 2", (normalize_entity_name(canonical),)).fetchall()
+        if len(merged_people) == 1:
+            metadata = {**(metadata or {}), 'directory_name': canonical}
+            canonical = str(merged_people[0][1])
+            kind = 'performer'
+            role = 'performer' if role == 'creator' else role
+            update_entity_metadata = False
     stamp = now or datetime.now(timezone.utc).isoformat()
     normalized = normalize_entity_name(canonical)
     payload = json.dumps(metadata or {}, ensure_ascii=False)

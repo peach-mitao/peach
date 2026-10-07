@@ -3300,7 +3300,7 @@ describe('设计决定', () => {
       assert.equal(await tip.isVisible(), false);
       await feed.hover();
       assert.equal(await tip.isVisible(), true, '悬停没有说明这枚图标是干嘛的');
-      assert.match(await tip.innerText(), /JavDB/);
+      assert.equal(await tip.innerText(), '订阅新作');
       const placed = await tip.evaluate((element) => {
         const box = element.getBoundingClientRect();
         return box.left >= 0 && box.right <= innerWidth && box.bottom <= innerHeight;

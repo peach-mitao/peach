@@ -74,6 +74,13 @@ def creator_release_identifier(creator: str, *, path: str, filename: str, code: 
         return 'release_identifier', f'目录与媒体文件同为站点作品号 {site}；官网目录 {SITE_RELEASES[site.split("-")[0]]}'
     versionless = re.sub(r'[-_](?:[468]k|hd)(?:[-_](?:c|ch))?$', '', creator, flags=re.I)
     identity = release_code_from_text(versionless)
+    if (versionless != creator and identity and is_jav_code(identity)
+            and normalise_code_key(versionless) == normalise_code_key(identity)
+            and creator.casefold() in [part.casefold() for part in re.split(r'[\\/]', path)]):
+        return 'release_identifier', f'目录名是发行标识 {identity} 与画质版本后缀；不作为账号，也不推断目录内文件的番号'
+    ppv = re.fullmatch(r'gachincoppv[-_](\d{3,6})[-_](?:hd|fhd|[468]k)', creator, re.I)
+    if ppv and re.fullmatch(re.escape(creator) + r'(?:[-_]?\d+)?\.[a-z0-9]+', filename, re.I):
+        return 'release_identifier', '目录与分段文件使用 Gachinco PPV 作品号及画质后缀；不作为账号'
     if identity and is_jav_code(identity) and re.search(
             r'(?<![a-z0-9])' + re.escape(versionless) + r'(?:[-_](?:[468]k|hd)\d?(?:[-_]c)?)?\.[a-z0-9]+$',filename,re.I):
         return 'release_identifier', f'目录与媒体文件的发行标识 {identity} 一致；画质与版本后缀不作为账号'
