@@ -118,10 +118,11 @@ def release_code(row):
                         strip_promo_markers(row['name']), re.I)
     if explicit:
         return normalise_code_key('FC2-' + explicit.group(1))
-    platform_parent = re.fullmatch(r'FC2(?:[-_ ]?PPV)?',
+    platform_parent = re.fullmatch(r'FC2(?:[-_ ]?PPV)?(?:[-_ ]*(\d{5,}))?',
                                   PureWindowsPath(row.get('path', '')).parent.name, re.I)
     platform_part = re.match(r'^(\d{5,})(?=早期購入|本編)', row['name'])
-    if platform_parent and platform_part:
+    if (platform_parent and platform_part
+            and platform_parent.group(1) in {None, platform_part.group(1)}):
         return normalise_code_key('FC2-' + platform_part.group(1))
     short = re.match(r'^@?FC[-_ ]*(\d{5,})(?=[_.-]|$)', row['name'], re.I)
     parent = re.match(r'^FC(?:2)?(?:[-_ ]?PPV)?[-_ ]*(\d{5,})(?!\d)',

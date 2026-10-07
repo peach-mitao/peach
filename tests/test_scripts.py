@@ -249,6 +249,9 @@ class LibraryDirectoryTests(unittest.TestCase):
         for name in ('3933828早期購入.mp4', '3933828本編.mp4'):
             part = dict(row, name=name, path=str(PureWindowsPath(r'B:\番号\FC2-PPV', name)))
             self.assertEqual(self.script.release_code(part), 'FC2-PPV-3933828')
+            canonical = dict(part, path=str(PureWindowsPath(r'B:\日本\FC2\FC2-PPV-3933828', name)))
+            self.assertEqual(self.script.release_code(canonical), 'FC2-PPV-3933828')
+            self.assertEqual(self.script.release_code(dict(canonical, path=str(PureWindowsPath(r'B:\日本\FC2\FC2-PPV-3933829', name)))), '')
             self.assertEqual(self.script.release_code(dict(part, studio='Prestige')), '')
             self.assertEqual(self.script.release_code(dict(part, path=str(PureWindowsPath(r'B:\unknown', name)))), '')
         self.assertEqual(self.script.release_code(dict(row, name='20250105.mp4')), '')
