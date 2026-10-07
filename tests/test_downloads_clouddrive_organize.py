@@ -158,6 +158,70 @@ class WebDavMoves(unittest.TestCase):
         self.assertEqual(self.entries['A:\\old\\film.mp4'], 20)
         self.dav.rename.assert_called_once()
 
+    def test_official_move_preserves_name_and_checks_actual_size(self):
+        def move(source,target):
+            self.entries[target]=self.entries.pop(source)
+            return 200
+        self.dav.move_remote=Mock(side_effect=move)
+        self.dav.move('A:\\old\\film.mp4','A:\\new\\film.mp4')
+        self.assertEqual(self.entries['A:\\new\\film.mp4'],20)
+        self.dav.move_remote.assert_called_once()
+        self.assertFalse(any(row[0]=='MOVE' for row in self.requests))
+
+    def test_delayed_listing_only_rechecks_the_single_submitted_move(self):
+        self.dav.move_remote=Mock(return_value=200)
+        self.dav.confirm_attempts=4
+        reads=0
+        def refresh(path):
+            nonlocal reads
+            reads+=1
+            if reads==3:
+                self.entries['A:\\new\\film.mp4']=self.entries.pop('A:\\old\\film.mp4')
+        self.dav.refresh=refresh
+        with patch.object(organize_clouddrive.time,'sleep'):
+            self.dav.move('A:\\old\\film.mp4','A:\\new\\film.mp4')
+        self.dav.move_remote.assert_called_once()
+        self.assertEqual(self.entries['A:\\new\\film.mp4'],20)
+
+    def test_cache_failure_after_submission_preserves_intent(self):
+        self.dav.move_remote=Mock(return_value=200)
+        self.dav.refresh=Mock(side_effect=OSError('未取得'))
+        with self.assertRaises(UnconfirmedMove):
+            self.dav.move('A:\\old\\film.mp4','A:\\new\\film.mp4')
+        self.dav.move_remote.assert_called_once()
+
+
+class OfficialMoveProtocol(unittest.TestCase):
+    def test_conflict_skip_and_false_optional_flags_are_encoded(self):
+        cloud=Mock(token='test-token')
+        cloud.channel.unary_unary.return_value.return_value=SimpleNamespace(success=True)
+        self.assertEqual(organize_clouddrive._move_remote(cloud,'A:\\old\\film.mp4','A:\\new\\film.mp4'),200)
+        request=cloud.channel.unary_unary.return_value.call_args.args[0]
+        self.assertEqual(list(request.theFilePaths),['/Pikpak/old/film.mp4'])
+        self.assertEqual(request.destPath,'/Pikpak/new')
+        self.assertEqual(request.conflictPolicy,2)
+        for flag in ('moveAcrossClouds','handleConflictRecursively'):
+            self.assertTrue(request.HasField(flag))
+            self.assertFalse(getattr(request,flag))
+
+    def test_path_boundaries_stop_before_rpc(self):
+        cloud=Mock(token='test-token')
+        for target in ('R:\\film.mp4','A:\\new\\other.mp4','A:\\old\\film.mp4','A:\\new\\..\\film.mp4'):
+            with self.subTest(target=target),self.assertRaises(ValueError):
+                organize_clouddrive._move_remote(cloud,'A:\\old\\film.mp4',target)
+        cloud.channel.unary_unary.assert_not_called()
+
+    def test_rpc_timeout_has_no_automatic_resubmission(self):
+        cloud=Mock(token='test-token')
+        cloud.channel.unary_unary.return_value.side_effect=grpc.RpcError()
+        self.assertIsNone(organize_clouddrive._move_remote(cloud,'A:\\old\\film.mp4','A:\\new\\film.mp4'))
+        cloud.channel.unary_unary.return_value.assert_called_once()
+
+    def test_cache_scope_rejects_another_drive(self):
+        cloud=Mock(token='test-token')
+        with self.assertRaises(ValueError):organize_clouddrive._refresh_listing(cloud,'B:\\MVP')
+        cloud.channel.unary_unary.assert_not_called()
+
 
 class OfficialDirectoryEvidence(unittest.TestCase):
     class Stream:
