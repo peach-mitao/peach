@@ -50,7 +50,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach import record_rehome, sample_images, wants  # noqa: E402
+from peach import company_profiles, record_rehome, sample_images, wants  # noqa: E402
 from peach.config import GENERATED_DIR  # noqa: E402
 from peach.metadata_auto_apply import UNION_TAGS_SOURCE  # noqa: E402
 from peach.scripting import add_ledger_write_args, open_for_write, verify_after_write  # noqa: E402
@@ -250,6 +250,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def print_profiles(profiles: list[dict], companies: list[dict]) -> None:
+    """显示逐行人物资料与逐字段公司资料的撤回清单。"""
+    for profile in profiles:
+        print(f" - 资料 {profile['entity'][:20]:<20} {profile['source']}")
+    for company in companies:
+        print(f" - 公司资料 {company['entity']}: {','.join(company['fields'])}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     connection = open_for_write(args)
@@ -257,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         links = planned_links(connection, args.source, args.batch)
         aliases = planned_aliases(connection, args.source, args.batch)
         profiles = planned_profiles(connection, args.source, args.batch)
+        companies = company_profiles.planned_revert(connection, args.source, args.batch)
         refs = planned_refs(connection, args.source, args.batch)
         memberships = planned_memberships(connection, args.source, args.batch)
         makers = planned_makers(connection, args.source, args.batch)
@@ -271,8 +280,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f" - 链接 {link['entity'][:20]:<20} {link['url'][:56]} {link['batch']}")
         for alias in aliases:
             print(f" - 别名 {alias['entity'][:20]:<20} {alias['alias'][:40]} {alias['source']}")
-        for profile in profiles:
-            print(f" - 资料 {profile['entity'][:20]:<20} {profile['source']}")
+        print_profiles(profiles, companies)
         for ref in refs:
             print(f" - 编号 {ref['entity'][:20]:<20} {ref['provider']} {ref['id']} {ref['batch']}")
         for membership in memberships:
@@ -290,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         for rehome in rehomes:
             print(f" - 接回 {rehome['old_asset_id']:<8} → {rehome['new_asset_id']:<8} "
                   f"{rehome['name'][:40]} {rehome['batch']}")
-        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "编号": len(refs),
+        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "编号": len(refs),
                "归属": len(memberships), "片商": len(makers), "标识文件": len(files),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
                "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
@@ -298,6 +306,7 @@ def main(argv: list[str] | None = None) -> int:
             print("dry-run；确认无误后加 --apply --backup <路径>")
             return 0
         with connection:
+            company_profiles.revert(connection, companies)
             connection.executemany("DELETE FROM entity_link WHERE id=?",
                                    [(link["id"],) for link in links])
             connection.executemany(

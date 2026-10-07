@@ -64,6 +64,7 @@ export interface HeroNameGroups {
 
 /** `/api/entity` 里资料卡读到的那些字段。 */
 export interface EntityHeroData {
+  company_profile?: Partial<Record<'legal_name' | 'founded' | 'launched' | 'country' | 'location' | 'operator' | 'parent' | 'group' | 'distributor', { value: string; source_url: string; evidence?: string }>>;
   identity_labels?: string[];
   external_refs?: { provider: string; external_kind: string; external_id: string }[];
   classifications?: { facet: string; value: string; label: string; status: string; source_url: string; evidence: string }[];
@@ -213,6 +214,19 @@ export interface FactRow {
   /** 出道片名常有四五十个字，单行截断，全名放在 title 里。 */
   clip?: string | undefined;
   tags?: string[] | undefined;
+}
+
+/** 公司资料每格表达独立事实；没有数据的格子不显示。 */
+export function companyFactRows(profile: EntityHeroData['company_profile']): FactRow[] {
+  const fields = [
+    ['legal_name', '公司名称', 'briefcase'], ['founded', '公司成立', 'calendar'],
+    ['launched', '品牌启动', 'flag'], ['country', '国家／地区', 'globe'],
+    ['location', '所在地', 'globe'], ['operator', '运营公司', 'briefcase'], ['parent', '母公司', 'briefcase'],
+    ['group', '所属集团', 'briefcase'], ['distributor', '发行商', 'film'],
+  ] as const;
+  return fields.flatMap(([key, label, glyph]) => profile?.[key]?.value?.trim()
+    ? [{ label, glyph, parts: [{ text: profile[key]!.value, tone: 'plain' as const }] }]
+    : []);
 }
 
 /** 资料表的五项：生日、身材、出道、生涯、标签。有哪项画哪项。仍在活跃的写「至今」。 */

@@ -262,13 +262,15 @@ def dead_links(connection: sqlite3.Connection, interval: float = 0.4, probe=None
     return out
 
 
-def install(connection: sqlite3.Connection, planned: list[dict], source: str) -> int:
+def install(connection: sqlite3.Connection, planned: list[dict], source: str, *, batch: str = '') -> int:
     now = datetime.now(timezone.utc).isoformat()
     written = 0
     for item in planned:
         if item["action"] != "insert":
             continue
         metadata = {"source": source, "installed_at": now}
+        if batch:
+            metadata['batch'] = batch
         if item["evidence"]:
             metadata["evidence"] = item["evidence"]
         connection.execute(

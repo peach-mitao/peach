@@ -14,7 +14,7 @@ import time
 
 from urllib.parse import urlsplit
 
-from . import entry_links, feeds, link_status, performer_header, web_feeds
+from . import company_profiles, entry_links, feeds, link_status, performer_header, web_feeds
 from .catalog_rules import (LENGTH_TAGS, dir_expr, photo_set_title, solo_performer_clause, tag_cat)
 from .entities import normalize_entity_name, resolve_entity, rewrite_flat_projection
 from .social_links import ARCHIVE_HOSTS, is_archive
@@ -182,6 +182,8 @@ def q_entity(contract: WebContract, args):
         # 只会像名称没有本地化。展示契约单独收窄，身份契约 `aliases` 保持完整。
         d["display_aliases"] = _display_entity_aliases(
             d["canonical_name"], d["aliases"])
+        if kind in {'studio', 'agency'}:
+            d['display_aliases'] = [alias for alias in d['aliases'] if alias != d['canonical_name']]
         # 自己敲进来的那几个单独报一遍：界面只在这些名字上给撤销，刮削和合并留下的
         # 是来源记录，不给一次点击删掉。
         d["user_aliases"] = [r[0] for r in c.execute(
@@ -204,6 +206,8 @@ def q_entity(contract: WebContract, args):
         # 人物资料与按名义分组的别名。
         if kind in {"performer", "creator"}:
             d.update(performer_header.header(c, d["id"], d["canonical_name"]))
+        elif kind in {'studio', 'agency'}:
+            d['company_profile'] = company_profiles.public_profile(metadata)
         scope = scope_predicate(kind, "ae.entity_id")
         count, rep = c.execute(
             "SELECT count(DISTINCT " + video_work_key(contract) + "),"

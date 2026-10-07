@@ -19,7 +19,7 @@ import { Glyph } from './glyph';
 import { FeedSwitch, MorePop } from './hero-pop';
 import { NamePicker } from './name-picker';
 import {
-  agencyOf, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
+  agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
   type EntityHeroActions, type EntityHeroData, type EntityHeroHelpers, type EntityHeroProps,
   type HeroCostar, type LinkMark, type LinkView,
 } from './entity-hero';
@@ -35,7 +35,7 @@ function costarImg(person: HeroCostar): string {
 export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions, helpers }: EntityHeroProps) {
   const people = isPeople(kind);
   const company = isCompany(kind);
-  const facts = people ? factRows(entity.profile) : [];
+  const facts = people ? factRows(entity.profile) : company ? companyFactRows(entity.company_profile) : [];
   const links = heroLinks(entity, kind);
   const marks = entryMarks(entity);
   const costars = kind === 'agency' ? [] : (entity.related_performers || []);

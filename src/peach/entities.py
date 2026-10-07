@@ -508,6 +508,13 @@ def upsert_asset_entity(
         )
         entity_id = int(connection.execute("SELECT last_insert_rowid()").fetchone()[0])
     elif update_entity_metadata:
+        if kind in {'studio', 'agency'}:
+            held = connection.execute('SELECT metadata_json FROM entity WHERE id=?', (entity_id,)).fetchone()
+            previous = json.loads(held[0] or '{}')
+            incoming = json.loads(payload)
+            if 'company_profile' in previous:
+                incoming['company_profile'] = previous['company_profile']
+            payload = json.dumps(incoming, ensure_ascii=False)
         connection.execute(
             "UPDATE entity SET metadata_json=?,updated_at=? WHERE id=?",
             (payload, stamp, entity_id),

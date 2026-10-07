@@ -3396,6 +3396,31 @@ describe('设计决定', () => {
     });
   }
 
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`公司资料页显示公司与品牌事实且长地址可折行（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const fact = (value: string) => ({ value, source_url: 'https://company.example/about' });
+      const opened = await openProfiledPerformer(browser, viewport, 'light', {
+        kind: 'studio', canonical_name: 'Company', profile: undefined, agency: undefined,
+        company_profile: { legal_name: fact('Example Company, LLC'), founded: fact('2002-05'),
+          launched: fact('2016'), operator: fact('General Media Systems, LLC'),
+          location: fact('LongOfficeAddressWithoutSpaces'.repeat(5)) },
+      });
+      try {
+        await opened.page.goto(new URL('/studios/Company', opened.page.url()).href, { waitUntil: 'load' });
+        await opened.page.locator('[data-entity-facts]').waitFor();
+        await settle(opened.page);
+        const geometry = await heroGeometry(opened.page);
+        assert.deepEqual(geometry.labels, ['公司名称', '公司成立', '品牌启动', '所在地', '运营公司']);
+        assert.equal(geometry.heroScrolls, false);
+        assert.ok(geometry.hero && geometry.facts && geometry.facts.right <= geometry.hero.right + 1);
+        assert.equal(await opened.page.locator('[data-entity-facts] [title]').count(), 0);
+        const page_ = await layout(opened.page);
+        assert.ok(page_.scrollWidth <= page_.viewportWidth);
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close(); }
+    });
+  }
+
   it('女优页头名字下面一行：视频数、事务所与读音加前三个别名，外链一律 36px 纯图标方块', { timeout: 60_000 }, async () => {
     const opened = await openProfiledPerformer(browser, DESKTOP);
     try {

@@ -296,7 +296,7 @@
   color: var(--muted);
   white-space: nowrap;
 }
-.peach-react [data-entity-facts] dd { min-width: 0; margin: 0; color: var(--ink); }
+.peach-react [data-entity-facts] dd { min-width: 0; margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 .peach-react [data-entity-facts] :is([data-fact-tone="num"], dd[data-fact="num"]) { font-variant-numeric: tabular-nums; }
 .peach-react [data-entity-facts] [data-fact-tone="sub"] { color: var(--muted); }
 .peach-react [data-entity-facts] dd[data-fact="clip"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
