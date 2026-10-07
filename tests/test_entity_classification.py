@@ -151,15 +151,16 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
 
-    def test_animation_author_is_separate_from_real_accounts_and_artists(self):
+    def test_animation_author_appears_in_artist_directory_with_its_own_category(self):
         _, animator = self.entity('Animator')
         self.claim(animator,'occupation','animator')
         _, artist = self.entity('Artist')
         self.claim(artist,'occupation','artist')
         self.connection.commit()
-        page = q_index(WebContract(self.db),'creators',category='animation')
+        page = q_index(WebContract(self.db),'performers',category='animation')
         self.assertEqual([row['entity_id'] for row in page['items']],[animator])
-        self.assertEqual(page['categories'],{'animation':1})
+        self.assertEqual(page['categories'],{'animation':1,'blogger':1})
+        self.assertEqual(q_index(WebContract(self.db),'creators')['items'],[])
 
     def test_real_accounts_share_artist_directory_and_keep_avatars_and_profile_routes(self):
         _, actor = self.entity('Actor', kind='performer')
@@ -170,10 +171,20 @@ class EntityClassificationTests(unittest.TestCase):
         self.claim(animator,'occupation','animator')
         self.connection.commit()
         artists = q_index(WebContract(self.db),'performers')
-        self.assertCountEqual([row['entity_id'] for row in artists['items']],[actor,blogger])
-        self.assertEqual({row['entity_id']:row['entity_kind'] for row in artists['items']},{actor:'performer',blogger:'creator'})
+        self.assertCountEqual([row['entity_id'] for row in artists['items']],[actor,blogger,animator])
+        self.assertEqual({row['entity_id']:row['entity_kind'] for row in artists['items']},{actor:'performer',blogger:'creator',animator:'creator'})
         separate = q_index(WebContract(self.db),'creators')
-        self.assertCountEqual([row['entity_id'] for row in separate['items']],[seller,animator])
+        self.assertCountEqual([row['entity_id'] for row in separate['items']],[seller])
+
+    def test_person_account_can_belong_to_blogger_and_seller_directories(self):
+        _, person = self.entity('Person Account')
+        self.claim(person,'identity','person')
+        self.claim(person,'account_role','seller')
+        self.connection.commit()
+        contract = WebContract(self.db)
+        self.assertEqual(q_index(contract,'performers')['items'][0]['entity_id'],person)
+        self.assertEqual(q_index(contract,'creators')['items'][0]['entity_id'],person)
+        self.assertEqual(q_entity(contract,{'kind':'creator','name':'Person Account'})['identity_labels'],['网黄博主','卖家'])
 
     def test_western_cast_occupation_does_not_assert_a_japanese_av_career(self):
         _, entity_id = self.entity('Western Performer',kind='performer')

@@ -36,6 +36,6 @@ describe('馆藏与资料空状态', () => {
       expect(catalogEmptyHtml({ kind })).toContain('data-geist-empty-state');
     }
     expect(catalogEmptyHtml({ kind: 'tags', online: true })).toContain('关注来源');
-    expect(catalogEmptyHtml({ kind: 'creators' })).toContain('还没有卖家与动画作者');
+    expect(catalogEmptyHtml({ kind: 'creators' })).toContain('还没有卖家');
   });
 });

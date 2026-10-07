@@ -36,7 +36,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     "catalog": ("test_ad_judgement.py", "test_composite_name_split.py", "test_media_libraries.py",
                 "test_content_region.py",
                 "test_duplicate_identity_merge.py",
-                "test_entity_classification.py", "test_company_profiles.py",
+                "test_entity_classification.py", "test_company_profiles.py", "test_fc2_sellers.py",
                 "test_entity_merge.py", "test_entity_redirect.py", "test_fastapi_api.py", "test_field_owners.py",
                 "test_migrations.py",
                 "test_review_mirror.py", "test_rm_web.py",
@@ -198,6 +198,8 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/studio_icons.py": ("catalog", "metadata", "web"),
     "src/peach/studio_sites.py": ("catalog", "metadata"),
     "src/peach/company_profiles.py": ("catalog", "metadata", "web"),
+    "src/peach/fc2_sellers.py": ("catalog", "metadata", "web"),
+    "scripts/import_fc2_sellers.py": ("catalog", "metadata", "tooling"),
     "scripts/harvest_company_profiles.py": ("catalog", "metadata", "web", "tooling"),
     # 失效标记由资料页、网页链接体检、维护脚本与种子导出共用。
     "src/peach/link_status.py": ("catalog", "metadata", "tooling", "web"),

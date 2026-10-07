@@ -95,8 +95,8 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
         'japanese_av': f"{kind_column} IN ('performer','creator') AND ({jav})",
         'amateur': f"{kind_column}='performer' AND ({amateur})",
         'western': f"{kind_column}='performer' AND ({western})",
-        'blogger': f"{kind_column}='creator' AND ({creator_video}) AND NOT ({seller}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')})",
-        'seller': f"{kind_column}='creator' AND ({seller})",
+        'blogger': f"{kind_column}='creator' AND ({creator_video}) AND (NOT ({seller}) OR {claim('identity','person')}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')})",
+        'seller': f"{kind_column} IN ('performer','creator') AND ({seller})",
         'animation': f"{kind_column}='creator' AND ({animation})",
     }
 
@@ -118,12 +118,12 @@ def summaries(connection, entity_ids):
 
 
 def index_scope(connection, kind: str) -> str:
-    """艺人名册包含真人账号；卖家与动画作者使用独立名册。"""
+    """艺人名册包含真人账号和动画作者；卖家使用独立名册。"""
     predicates = category_predicates(connection=connection)
     if kind == 'performer':
-        return "(e.kind='performer' OR (" + predicates['blogger'] + '))'
+        return "(e.kind='performer' OR (" + predicates['blogger'] + ') OR (' + predicates['animation'] + '))'
     if kind == 'creator':
-        return '(' + predicates['seller'] + ' OR ' + predicates['animation'] + ')'
+        return '(' + predicates['seller'] + ')'
     return "e.kind='" + kind + "'"
 
 

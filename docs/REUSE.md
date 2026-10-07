@@ -20,6 +20,8 @@ Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`
 
 身份分类复用 `entity`、来源关系、`field_owners`、SQLite 迁移与版本触发器。职业与账号角色使用独立多值断言，跨角色身份使用可撤回关系；[Schema.org Person](https://schema.org/Person) 的 `hasOccupation`、`sameAs` 与 [Role](https://schema.org/Role) 提供语义参照，2026-10-06 已核对官方文档。实现不复制外部解析器或新增依赖。目录推断和搜索命中只存候选，公开来源事实与用户复核分别保留状态。
 
+FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约、`normalise_code_key`、`upsert_asset_entity`、职业断言和 SQLite 备份。`import_fc2_sellers.py` 读取已有作品快照，不发起采集；账号地址、来源作品号和馆藏作品号必须一致。同名不同账号、作品来源冲突保留在复核产物，既有身份和资料不覆盖。写入归属为 `script:fc2-seller@<批次>`，统一撤回入口 `revert_auto_landing.py` 同时处理账号链接、别名、外部编号、卖家断言及来源关系；有后续资料或引用的实体保留。导航复用 `BoardTabs`，动画作者保留 `creator` 身份与资料路由，通过艺人分类浏览。不新增依赖或外部解析器。
+
 `entity_identity_research` 与 `apply_entity_identity_research.py` 复用规范实体写入、字段归属保护、只读预览、SQLite 备份及冻结计划。逐行撤回回执核对后续修改，新增实体有额外引用时拒绝删除；观看历史和人工判断不被回滚覆盖。
 
 ## 播放器清晰度

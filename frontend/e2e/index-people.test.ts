@@ -32,7 +32,7 @@ describe('本地与在线艺人共用名册布局', () => {
           };
         }));
         for (const label of ['紧凑 · 圆形头像', '大图 · 竖幅头像']) {
-          await page.getByRole('tab', { name: '本地', exact: true }).click();
+          await page.getByRole('tab', { name: '艺人', exact: true }).click();
           await page.getByRole('radio', { name: label, exact: true }).press('Space');
           const layout = label.startsWith('紧凑') ? 'compact' : 'big';
           await page.locator(`#index [data-index-grid][data-layout="${layout}"]`).waitFor();
@@ -44,6 +44,14 @@ describe('本地与在线艺人共用名册布局', () => {
           const online = await measure();
           assert.deepEqual(online, local, '在线卡片与本地卡片的布局不同');
           assert.ok(online.every(item => item.width >= 150 && item.contained && item.whiteSpace === 'normal'));
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+          assert.equal(await page.locator('#index [role="tablist"]').count(), 1);
+          assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);
+          await page.getByRole('tab', { name: '卖家', exact: true }).click();
+          await page.locator('#index [data-index-cell]').first().waitFor();
+          await settle(page);
+          assert.equal(await page.locator('#index [role="tablist"]').count(), 1);
+          assert.equal(await page.locator('#index [aria-label="身份分类"]').count(), 0);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         }
         assert.deepEqual(opened.problems, []);

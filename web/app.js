@@ -149,7 +149,7 @@ const ROUTES=[
   {match:'/performers',nav:'performers',title:'艺人',
     open:(params,push)=>openIndex('performers',push),
     reload:()=>openIndex('performers',false)},
-  {match:'/creators',title:'卖家与动画作者',
+  {match:'/creators',title:'卖家',
     open:(params,push)=>openIndex('creators',push),
     reload:()=>openIndex('creators',false)},
   /* 厂牌出片、事务所出人，是两种实体，所以是两条路径；页内那个
@@ -2401,7 +2401,7 @@ document.addEventListener('click',event=>{
    整页在 React（`frontend/src/react/index/`）。壳做三件事：从地址栏读出这一页的状态、铺骨架、
    把遗留层唯一那一份取图链与去处当 props 递进去。换档（厂牌↔事务所、本地↔在线、类型、视图、
    过滤词）由页面经 `route` 写回地址栏，不经过这里重挂。 */
-const INDEX_TITLES={performers:'艺人',creators:'卖家与动画作者',studios:'厂牌',
+const INDEX_TITLES={performers:'艺人',creators:'卖家',studios:'厂牌',
                     agencies:'事务所',tags:'标签'};
 /* 艺人索引版式，思路同 JAV 大图：列宽不变、只把图从圆框拉成竖幅，一屏里的人数
    不变而每张脸更大；紧凑就是圆头像那一屏。资料页的名册读的是同一个设置值。 */
