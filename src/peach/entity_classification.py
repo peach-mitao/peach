@@ -91,11 +91,15 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     creator_video = (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
                      f"WHERE ca.entity_id={column} AND ca.role='creator' AND av.medium='video' "
                      "AND COALESCE(av.disposal,'')<>'vanished')")
+    personal_account = (f"{claim('identity','person')} OR {claim('occupation','content_creator')} "
+                        f"OR ({claim('identity','account')} AND {claim('account_role','publisher')})")
+    nonpersonal = ' OR '.join(claim('identity', value) for value in
+                             ('organization', 'platform', 'collection', 'release'))
     return {
         'japanese_av': f"{kind_column} IN ('performer','creator') AND ({jav})",
         'amateur': f"{kind_column}='performer' AND ({amateur})",
         'western': f"{kind_column}='performer' AND ({western})",
-        'blogger': f"{kind_column}='creator' AND ({creator_video}) AND (NOT ({seller}) OR {claim('identity','person')}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')})",
+        'blogger': f"{kind_column}='creator' AND ({creator_video}) AND ({personal_account}) AND (NOT ({seller}) OR {claim('identity','person')}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')}) AND NOT ({nonpersonal})",
         'seller': f"{kind_column} IN ('performer','creator') AND ({seller})",
         'animation': f"{kind_column}='creator' AND ({animation})",
     }
@@ -117,11 +121,31 @@ def summaries(connection, entity_ids):
     return result
 
 
+def work_portrait_predicate(connection, column='e.id', kind_column='e.kind'):
+    """作品画面只用于出演者本人头像；发布账号需要本人身份依据。"""
+    if not connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
+        return f"{kind_column}<>'creator'"
+    return (f"({kind_column}<>'creator' OR EXISTS (SELECT 1 FROM entity_classification ec "
+            f"WHERE ec.entity_id={column} AND ec.{TRUSTED} "
+            "AND ((ec.facet='identity' AND ec.value='person') "
+            "OR (ec.facet='occupation' AND ec.value IN ('adult_performer','model','actor')))) "
+            f"AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} AND ec.{TRUSTED} "
+            "AND ((ec.facet='occupation' AND ec.value='animator') "
+            "OR (ec.facet='account_role' AND ec.value IN ('seller','studio')) "
+            "OR (ec.facet='identity' AND ec.value IN ('organization','platform','collection','release')))))")
+
+
 def index_scope(connection, kind: str) -> str:
     """艺人名册包含真人账号和动画作者；卖家使用独立名册。"""
     predicates = category_predicates(connection=connection)
     if kind == 'performer':
-        return "(e.kind='performer' OR (" + predicates['blogger'] + ') OR (' + predicates['animation'] + '))'
+        if not connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
+            return "e.kind IN ('performer','creator')"
+        return ("(e.kind='performer' OR (e.kind='creator' AND (NOT (" + predicates['seller'] + ") "
+                "OR (" + predicates['blogger'] + ") OR (" + predicates['animation'] + ")) "
+                "AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id=e.id "
+                "AND ec.status IN ('observed','approved') AND ((ec.facet='account_role' AND ec.value='studio') "
+                "OR (ec.facet='identity' AND ec.value IN ('organization','platform','collection','release'))))))")
     if kind == 'creator':
         return '(' + predicates['seller'] + ')'
     return "e.kind='" + kind + "'"

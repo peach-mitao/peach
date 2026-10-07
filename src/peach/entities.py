@@ -433,6 +433,11 @@ def _creator_ingest_identity(connection, name, asset_id):
                                   (normalize_entity_name(base),)).fetchone()
         if held:
             name = str(held[0])
+    if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='review_decision'").fetchone():
+        decision = connection.execute("SELECT status FROM review_decision WHERE category='creator-attribution' AND item_key=?",
+                                      (f'{asset_id}:{normalize_entity_name(name)}',)).fetchone()
+        if decision and decision[0] == 'rejected':
+            return ''
     if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
         normalized = normalize_entity_name(name)
         normalized_base = normalize_entity_name(base)

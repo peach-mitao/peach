@@ -348,6 +348,31 @@ class AssetArtworkTests(PickerFixture):
             cover_root=self.covers,
             frame=lambda asset_id, cell: self.cell if cell == 4 else None)
 
+    def test_account_artwork_requires_an_identified_performer(self):
+        self.add_asset(11, 'ABW-232')
+        with self.connection:
+            self.connection.execute("UPDATE entity SET kind='creator' WHERE id=7792")
+        self.assertEqual(avatar_picker.asset_artwork(self.connection, self.covers, 7792), [])
+        with self.assertRaisesRegex(avatar_picker.PickerError, '本人身份依据'):
+            avatar_picker.resolve('asset:11:cover', self.connection, self.providers,
+                                  7792, transport_of(b''), artwork=self.artwork)
+        with self.connection:
+            from peach.entity_classification import write_claim
+            write_claim(self.connection, entity_id=7792, facet='identity', value='person',
+                        source='user:identity-review', evidence='本人出演确认', status='approved', confidence=1)
+        self.assertEqual(len(avatar_picker.asset_artwork(self.connection, self.covers, 7792)), 1)
+        body, _ = avatar_picker.resolve('asset:11:cover', self.connection, self.providers,
+                                        7792, transport_of(b''), artwork=self.artwork)
+        self.assertEqual(body, self.cover.read_bytes())
+        for facet, value in [('account_role', 'seller'), ('occupation', 'animator')]:
+            with self.connection:
+                write_claim(self.connection, entity_id=7792, facet=facet, value=value,
+                            source='user:identity-review', evidence='发布他人作品', status='approved', confidence=1)
+            self.assertEqual(avatar_picker.asset_artwork(self.connection, self.covers, 7792), [])
+            with self.connection:
+                self.connection.execute('DELETE FROM entity_classification WHERE entity_id=7792 AND facet=? AND value=?',
+                                        (facet, value))
+
     def add_asset(self, asset_id: int, code: str, snapshot: str = "sheet.jpg",
                   entity_id: int = 7792, size: int = 100, file: str = "") -> None:
         file = file or f"{code}.mp4"

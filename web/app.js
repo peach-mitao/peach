@@ -2463,6 +2463,7 @@ function indexPath({kind,q,scope,view,category}){
    那一下页头不跳。这里的控件不接线：骨架只在取数那一段露面。 */
 const MAKER_INDEX_KINDS=[['studios','厂牌','clapperboard'],['agencies','事务所','briefcase']];
 const INDEX_SCOPES=[['local','本地','hard-drive'],['online','在线','rss']];
+const PEOPLE_INDEX_TABS=[['performers','艺人','user'],['creators','卖家','user'],['online','在线','rss']];
 const TAG_VIEWS=[['cloud','标签云','tags'],['alphabet','字母表','text-aa']];
 /* 标签页 Tabs 下面还有一块两排的筛选玻璃（React 的 `FilterGlassRows`）：上排是类型药丸，
    下排是读数、按首字跳转和视图切换。药丸有哪几枚、读数多少、有哪些首字都要等数据，
@@ -2483,7 +2484,8 @@ function indexPlaceholderHtml({kind,q,scope,view}){
       ${people?'<span class="mono" id="indexCount"><span class="countskeleton"></span></span>':''}${switcher}
       ${searchInputHtml({label:'过滤'+title,value:q||''})}
     </div>
-    ${kind==='tags'?tabs(INDEX_SCOPES,scope,'词表'):kind==='performers'?tabs(INDEX_SCOPES,scope,'名册')
+    ${kind==='tags'?tabs(INDEX_SCOPES,scope,'词表'):kind==='performers'||kind==='creators'
+      ?tabs(PEOPLE_INDEX_TABS,kind==='performers'&&scope==='online'?'online':kind,'人物名册')
       :company?tabs(MAKER_INDEX_KINDS,kind,'公司类型'):''}
     ${kind==='tags'?tagFilterSkeletonHtml(view):''}
     ${indexSkeletonHtml({kind,layout,mode:view})}`;

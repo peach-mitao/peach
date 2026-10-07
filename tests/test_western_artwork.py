@@ -120,6 +120,8 @@ class WesternLocalArtworkTests(unittest.TestCase):
             con = sqlite3.connect(':memory:')
             con.executescript("CREATE TABLE asset(id,code,catalog_title,name,snapshot_path,medium,size);"
                              "CREATE TABLE asset_entity(asset_id,entity_id,role);"
+                             "CREATE TABLE entity(id,kind);"
+                             "INSERT INTO entity VALUES(5,'performer');"
                              "INSERT INTO asset VALUES(1,NULL,NULL,'Tushy',NULL,'video',1);"
                              "INSERT INTO asset_entity VALUES(1,5,'performer');")
             choices = avatar_picker.asset_artwork(con, root, 5)

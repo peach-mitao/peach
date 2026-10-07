@@ -30,6 +30,7 @@ from .avatar_cover_face import WHOLE_COVER_PROVIDERS, face_square
 from .avatar_face import read_sidecar
 from .catalog_rules import normalise_code_key
 from .entities import is_short_single_name
+from .entity_classification import work_portrait_predicate
 from .western_artwork import artwork_cast_size, artwork_key
 from .kanji import fold_glyphs
 from .avatar_provider import (
@@ -274,6 +275,10 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
     **合演作品标出人数，不按封面上那张脸取景**（`_focus_face`）：封面人脸边车记的是最大那
     张脸，合集里那多半是领衔的另一位。格子照列，她自己的脸常常在九宫格里。
     """
+    allowed = connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
+                                 work_portrait_predicate(connection), (int(entity_id),)).fetchone()
+    if not allowed:
+        return []
     casts = cast_sizes(connection, entity_id)
     rows = connection.execute(
         "SELECT a.id,a.code,COALESCE(NULLIF(a.catalog_title,''),a.name),a.snapshot_path "
@@ -520,6 +525,9 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
     """
     if artwork is None:
         raise PickerError("这一次取不到作品画面")
+    if not connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
+                              work_portrait_predicate(connection), (int(entity_id),)).fetchone():
+        raise PickerError("这个账号没有作品出演者本人身份依据")
     _, _, rest = ref.partition(":")
     raw_id, _, what = rest.partition(":")
     try:

@@ -465,14 +465,24 @@ def attach_avatar_availability(contract: WebContract, rows, key="rep",
     """
     ids = sorted({int(row[key]) for row in rows if row.get(key)})
     paths: dict[int, str | None] = {}
+    entity_ids = sorted({int(row.get('entity_id') or row.get('id')) for row in rows
+                         if row.get('entity_id') or row.get('id')})
+    accounts: set[int] = set()
     if ids:
         marks = ",".join("?" * len(ids))
         with contract.read_connection() as connection:
             paths = {row[0]: row[1] for row in connection.execute(
                 f"SELECT id,snapshot_path FROM asset WHERE id IN ({marks})", ids)}
+            if entity_ids:
+                entity_marks = ','.join('?' for _ in entity_ids)
+                from .entity_classification import work_portrait_predicate
+                accounts = {row[0] for row in connection.execute(
+                    f"SELECT e.id FROM entity e WHERE e.id IN ({entity_marks}) AND NOT (" +
+                    work_portrait_predicate(connection) + ")", entity_ids)}
     for row in rows:
         rep = row.get(key)
-        row[flag] = bool(rep) and contract.has_avatar(rep, paths.get(int(rep)))
+        entity_id = row.get('entity_id') or row.get('id')
+        row[flag] = bool(rep) and entity_id not in accounts and contract.has_avatar(rep, paths.get(int(rep)))
 
 
 def attach_card_performers(contract: WebContract, rows):
