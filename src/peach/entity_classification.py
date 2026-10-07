@@ -82,9 +82,7 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     jav = (f"EXISTS (SELECT 1 FROM entity_external_ref er WHERE er.entity_id={column} "
            f"AND er.external_kind='{EXTERNAL_KIND}' AND er.external_id<>'' AND er.provider IN ({providers})) "
            f"OR {claim('market', 'japanese_av')}")
-    amateur = work("UPPER(COALESCE(av.code,'')) LIKE 'FC2%' OR EXISTS ("
-                   "SELECT 1 FROM asset_entity ta JOIN entity t ON t.id=ta.entity_id "
-                   "WHERE ta.asset_id=av.id AND t.kind='tag' AND t.canonical_name='素人')")
+    amateur = work("UPPER(COALESCE(av.code,'')) LIKE 'FC2%'")
     west_work = work("av.region='west'")
     western = f"{claim('market', 'western_adult')} OR {west_work}"
     seller = claim('account_role', 'seller')

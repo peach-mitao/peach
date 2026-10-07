@@ -120,6 +120,19 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         self.assertEqual(classification.summaries(self.connection,[entity_id])[entity_id]['identity_labels'],['女优'])
 
+    def test_amateur_scene_tag_does_not_classify_a_jav_performer_as_amateur(self):
+        asset_id, entity_id = self.entity('JAV Performer',kind='performer')
+        self.claim(entity_id,'market','japanese_av')
+        self.connection.execute("UPDATE asset SET code='SIRO-5333' WHERE id=?",(asset_id,))
+        upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,
+                            role='tag',source='test:scene-tag')
+        self.connection.commit()
+        contract=WebContract(self.db)
+        profile=q_entity(contract,{'kind':'performer','name':'JAV Performer'})
+        self.assertEqual(profile['identity_labels'],['女优'])
+        self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
+        self.assertEqual(q_index(contract,'performers')['categories'],{'japanese_av':1})
+
     def test_animation_author_is_separate_from_real_accounts_and_artists(self):
         _, animator = self.entity('Animator')
         self.claim(animator,'occupation','animator')
