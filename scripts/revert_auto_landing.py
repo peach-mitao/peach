@@ -50,7 +50,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach import company_profiles, record_rehome, sample_images, wants  # noqa: E402
+from peach import company_profiles, fc2_sellers, record_rehome, sample_images, wants  # noqa: E402
 from peach.config import GENERATED_DIR  # noqa: E402
 from peach.metadata_auto_apply import UNION_TAGS_SOURCE  # noqa: E402
 from peach.scripting import add_ledger_write_args, open_for_write, verify_after_write  # noqa: E402
@@ -266,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         aliases = planned_aliases(connection, args.source, args.batch)
         profiles = planned_profiles(connection, args.source, args.batch)
         companies = company_profiles.planned_revert(connection, args.source, args.batch)
+        sellers = fc2_sellers.planned_revert(connection, args.source, args.batch)
         refs = planned_refs(connection, args.source, args.batch)
         memberships = planned_memberships(connection, args.source, args.batch)
         makers = planned_makers(connection, args.source, args.batch)
@@ -298,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
         for rehome in rehomes:
             print(f" - 接回 {rehome['old_asset_id']:<8} → {rehome['new_asset_id']:<8} "
                   f"{rehome['name'][:40]} {rehome['batch']}")
-        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "编号": len(refs),
+        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "卖家": len(sellers), "编号": len(refs),
                "归属": len(memberships), "片商": len(makers), "标识文件": len(files),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
                "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
@@ -339,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
             reopened = reopen_extended_decisions(connection, {tag["item_key"] for tag in tags})
             restored = record_rehome.revert(connection, args.source, args.batch)
             reopened_wants = wants.revert(connection, args.source, args.batch)
+            removed_seller_relations = fc2_sellers.revert(connection, sellers)
         integrity, orphans = verify_after_write(connection)
     finally:
         connection.close()
@@ -352,7 +354,7 @@ def main(argv: list[str] | None = None) -> int:
            "删除编号": len(refs), "删除归属": len(memberships), "删除片商": len(makers),
            "删除样张": removed_samples, "删除否决": len(rejections),
            "删除标签": len(tags), "删除扁平标签": removed_tag_rows, "重开决定": reopened,
-           "撤回接回": restored, "想要回到待找": reopened_wants, "删除文件": removed,
+           "撤回接回": restored, "想要回到待找": reopened_wants, "卖家关系": removed_seller_relations, "删除文件": removed,
            "integrity_check": integrity, "foreign_key_check": orphans})
     return 0
 

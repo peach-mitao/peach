@@ -42,9 +42,10 @@ const SCOPE_TABS: BoardTab<IndexScope>[] = [
   { value: 'local', label: '本地', symbol: 'hard-drive' },
   { value: 'online', label: '在线', symbol: 'rss' },
 ];
-const PEOPLE_TABS: BoardTab<'performers' | 'creators'>[] = [
+const PEOPLE_TABS: BoardTab<'performers' | 'creators' | 'online'>[] = [
   { value: 'performers', label: '艺人', symbol: 'user-round' },
-  { value: 'creators', label: '卖家与动画作者', symbol: 'user-round' },
+  { value: 'creators', label: '卖家', symbol: 'user-round' },
+  { value: 'online', label: '在线', symbol: 'rss' },
 ];
 
 /* 公司那一格摆的是标识而不是脸，沿用艺人那套词就是提示说着「竖幅头像」、屏幕上摆着方标识。
@@ -163,13 +164,7 @@ export function IndexPage(props: IndexProps) {
       // 在线标签全是英文，字母表才是它的形态；切过去时顺手换上，不必再点一次。
       go({ scope: next, category: 'all', view: next === 'online' ? 'alphabet' : view });
     }} />
-    : kind === 'performers'
-      ? <BoardTabs tabs={SCOPE_TABS} value={scope} label="名册" onChange={(next) => {
-        // 在线那一档摆的是还没进账本的人，选择模式拼的是目录批量操作，对它一条都不成立。
-        if (next === 'online') props.exitSelectMode();
-        go({ scope: next, category: 'all' });
-      }} />
-      : isCompany(kind)
+    : isCompany(kind)
         ? <BoardTabs tabs={MAKER_TABS} value={kind as 'studios' | 'agencies'} label="公司类型"
           onChange={(next) => go({ kind: next })} />
         : null;
@@ -224,11 +219,15 @@ export function IndexPage(props: IndexProps) {
         <IndexSearch label={`过滤${title}`} value={q} onQuery={(next) => { if (next !== q) go({ q: next }, !!next) }} />
       </div>
       {kind === 'performers' || kind === 'creators' ? (
-        <BoardTabs tabs={PEOPLE_TABS} value={kind} label="人物名册"
-          onChange={(next) => go({ kind: next, scope: 'local', category: 'all' })} />
+        <BoardTabs tabs={PEOPLE_TABS} value={onlineAuthors ? 'online' : kind} label="人物名册"
+          onChange={(next) => {
+            if (next === 'online') props.exitSelectMode();
+            go({ kind: next === 'online' ? 'performers' : next,
+              scope: next === 'online' ? 'online' : 'local', category: 'all' });
+          }} />
       ) : null}
       {tabs}
-      {(kind === 'creators' || kind === 'performers') && scope === 'local' ? (
+      {kind === 'performers' && scope === 'local' ? (
         <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
           {IDENTITY_CATEGORIES[kind].filter(([key]) => key === 'all' || key === category
             || Number(result.data?.pages[0]?.categories?.[key] || 0) > 0).map(([key, label]) => (
@@ -267,7 +266,7 @@ export function IndexPage(props: IndexProps) {
 }
 
 const LABELS: Record<IndexKind, string> = {
-  tags: '标签', performers: '艺人', creators: '卖家与动画作者', studios: '厂牌', agencies: '事务所',
+  tags: '标签', performers: '艺人', creators: '卖家', studios: '厂牌', agencies: '事务所',
 };
 
 /** 空馆藏、筛选无结果与在线来源还没有内容分别给出可执行的去处。文案同目录页的空态

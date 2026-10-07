@@ -62,7 +62,7 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 ## What it does
 
 - **Search**: type a few characters and performers, codes and videos show up together.
-- **身份分类**：艺人按身份与发行范围分为女优、素人、西方；素人须有明确的非职业出演证据，职业女优不归为素人。FC2 与作品题材仅用于作品筛选。真人账号归入艺人的网黄博主分类，卖家与动画作者另列。筛选条只显示有内容的分类，资料页在视频数量左侧显示分类与图标。
+- **身份分类**：艺人按身份与发行范围分为女优、素人、西方、网黄博主和动画作者；素人须有明确的非职业出演证据，职业女优不归为素人。FC2 与作品题材仅用于作品筛选。名册使用「艺人、卖家、在线」三个并列入口，卖家按来源账号与作品对应。筛选条只显示有内容的分类，资料页在视频数量左侧显示分类与图标。
 - **作品计数**：明确分段的同一 FC2 合集计为一个视频，分段文件和出演归属完整保留。已确认合并的身份共用资料与作品，旧资料页地址通往规范身份。
 - **西方图片来源**：出演者与网黄博主可选 Babepedia 主图库人像；Tushy 等 Vixen 网络作品以出演者和发行日匹配官方封面，卡片、详情和头像框选共用原图，无法唯一匹配时留待核验。
 - **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. You can pick an avatar by drawing a box on any cover.

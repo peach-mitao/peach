@@ -30,7 +30,7 @@ export function catalogEmptyHtml({ kind = 'catalog', filtered = false, jav = fal
     jav ? '已扫描但尚未补充发行资料的视频可在全部内容中查看。' : '清除筛选或搜索条件后查看全部内容。',
     { actions: '<a class="geist-button primary" href="/?loc=&thumb=0">查看全部内容</a>' });
   if (kind !== 'catalog') {
-    const labels: Record<string, string> = { tags: '标签', performers: '艺人', creators: '卖家与动画作者', studios: '厂牌', agencies: '事务所', series: '系列' };
+    const labels: Record<string, string> = { tags: '标签', performers: '艺人', creators: '卖家', studios: '厂牌', agencies: '事务所', series: '系列' };
     // 在线那一档数的是来源上的东西，名字也跟着来源的说法：艺人页在线摆的是关注来源里的创作者。
     const onlineLabels: Record<string, string> = { tags: '标签', performers: '创作者' };
     const label = (online ? onlineLabels[kind] : '') || labels[kind] || '资料';

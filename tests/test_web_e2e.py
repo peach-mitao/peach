@@ -224,15 +224,32 @@ class WebE2ESmokeTests(unittest.TestCase):
 
     @classmethod
     def _warm_stream(cls):
-        """在 Chrome 启动多进程前用真实端点完成短片的兼容转码。"""
-        session = f"e2e-prewarm-{os.getpid()}"
-        query = urllib.parse.urlencode({"id": cls.item, "session": session})
+        """在 Chrome 启动前预热演示短片的实际播放链。"""
+        with closing(sqlite3.connect(cls.db)) as connection:
+            items = connection.execute("SELECT id FROM asset WHERE medium='video' ORDER BY id LIMIT 33").fetchall()
+        if len(items) > 32:
+            raise AssertionError("演示短片超过预热上限")
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        for (item,) in items:
+            cls._warm_clip(opener, item)
+
+    @classmethod
+    def _warm_clip(cls, opener, item):
+        session = f"e2e-prewarm-{os.getpid()}-{item}"
+        query = urllib.parse.urlencode({"id": item, "session": session})
         try:
-            with opener.open(f"{cls.origin}/stream?{query}", timeout=60) as response:
-                if response.status != 200:
-                    raise AssertionError(f"演示短片预热失败：HTTP {response.status}")
-                response.read()
+            with opener.open(f"{cls.origin}/api/stream-plan?{query}", timeout=60) as response:
+                plan = json.load(response)
+            source = cls.origin + plan['src']
+            with opener.open(source, timeout=60) as response:
+                payload = response.read()
+            if plan['protocol'] == 'hls':
+                segments = [line for line in payload.decode().splitlines() if line and not line.startswith('#')]
+                if not segments or len(segments) > 8:
+                    raise AssertionError("演示短片分片数量不符合预热预算")
+                for segment in segments:
+                    with opener.open(urllib.parse.urljoin(source, segment), timeout=60) as response:
+                        response.read()
         except (urllib.error.URLError, OSError) as error:
             raise AssertionError(f"演示短片预热失败：{error}\n{cls._server_log()}") from error
         finally:
@@ -375,6 +392,42 @@ class SetupE2ETests(unittest.TestCase):
 class MissingPrerequisiteTests(unittest.TestCase):
     """CI 里浏览器用例只能执行或失败，不能静默跳过；工作流那一半由 `test_frontend_build.py` 守。"""
 
+    def test_demo_prewarm_fetches_each_clips_hls_segments_and_cancels_sessions(self):
+        from io import BytesIO
+        fetched, cancelled = [], []
+        opener = mock.Mock()
+
+        def open_response(request, **kwargs):
+            if isinstance(request, urllib.request.Request):
+                cancelled.append(urllib.parse.parse_qs(urllib.parse.urlsplit(request.full_url).query)['session'][0])
+                payload = b''
+            else:
+                parsed = urllib.parse.urlsplit(request)
+                query = urllib.parse.parse_qs(parsed.query)
+                if parsed.path == '/api/stream-plan':
+                    item, session = query['id'][0], query['session'][0]
+                    payload = json.dumps({'protocol':'hls','src':f'/stream/hls/{item}/index.m3u8?session={session}'}).encode()
+                elif parsed.path.endswith('index.m3u8'):
+                    payload = f"#EXTM3U\n0.ts?session={query['session'][0]}\n".encode()
+                else:
+                    fetched.append(parsed.path)
+                    payload = b'segment'
+            response = BytesIO(payload)
+            response.status = 200
+            return response
+
+        opener.open.side_effect = open_response
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder).resolve() / 'demo.db'
+            with closing(sqlite3.connect(db)) as connection, connection:
+                connection.execute('CREATE TABLE asset(id INTEGER,medium TEXT)')
+                connection.executemany('INSERT INTO asset VALUES(?,?)',[(1,'video'),(2,'photo'),(3,'video')])
+            with mock.patch.multiple(WebE2ESmokeTests,db=db,origin='http://demo.test',create=True), mock.patch('urllib.request.build_opener',return_value=opener):
+                WebE2ESmokeTests._warm_stream()
+        self.assertEqual(fetched,['/stream/hls/1/0.ts','/stream/hls/3/0.ts'])
+        self.assertEqual(len(cancelled),2)
+        self.assertEqual(len(set(cancelled)),2)
+
     def test_browser_batches_cover_every_file_once_and_include_nested_suites(self):
         with tempfile.TemporaryDirectory() as folder:
             frontend = Path(folder).resolve()
@@ -398,7 +451,7 @@ class MissingPrerequisiteTests(unittest.TestCase):
 
     def test_headless_browser_stays_within_the_resource_guard_process_budget(self):
         harness = (FRONTEND / "e2e" / "harness.ts").read_text(encoding="utf-8")
-        self.assertIn("args: ['--renderer-process-limit=1', '--disable-features=AudioServiceOutOfProcess', '--disable-audio-output']", harness)
+        self.assertIn("args: ['--renderer-process-limit=1', '--in-process-gpu', '--disable-features=AudioServiceOutOfProcess', '--disable-audio-output']", harness)
         self.assertIn("timeout: 30_000", harness)
 
     def test_missing_prerequisites_skip_locally_and_fail_on_ci(self):
