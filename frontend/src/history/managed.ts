@@ -9,8 +9,8 @@
  * 要一直画着；附属面由壳按各自的路由判据收，搜索下拉壳从不收。页面跟着这里登记的那一条走，不跟着
  * 地址匹配走：详情舞台压在页面上时地址是 `/item/:id`，页面要留着。
  *
- * 常驻面（批量条、配色卡）不跟某一页走，经 `openResidentSurface` 打开：没有首屏取数、一直算当前页，宿主就是
- * 壳的那个节点。它们从不收；只有错误边界会卸掉它的组件，而且只卸组件、不撤宿主。
+ * 常驻面（批量条、配色卡、管理区页头）不跟某一页走，经 `openResidentSurface` 打开：没有首屏取数、一直算当前页，
+ * 宿主就是壳的那个节点。它们从不收；只有错误边界会卸掉它的组件，而且只卸组件、不撤宿主。
  *
  * 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面与常驻面用名字（`search`、
  * `batch-dock`），两者不重叠，路由树按键查同一组表（`react/router/managed-routes.tsx`）。
@@ -130,10 +130,15 @@ export async function openManagedRoute(path: string, props: object, options: Man
 /** 打开一座常驻面（常驻表 `RESIDENT_ROUTES` 里的名字）：一直算当前页，宿主就是壳交来的节点本身，组件直接画成
  *  它的子节点，所以 DOM 与这座面自己建根时一样。没有首屏取数，路由树接上就画；画上了回 true。
  *
+ *  `place` 在画首帧的同一个任务里把宿主交给路由树，返回的仍须是这个节点本身；不给就原样交出。宿主里先有
+ *  壳的启动骨架时（管理区页头），由它清掉骨架：骨架一直留到首帧画上的那一刻，中间没有一帧空白。
+ *
  *  每座只在壳启动（或第一次用到）时打开一次。之后壳经它的命令式句柄推内容，组件订阅自己的 store；
  *  抛错后错误边界只卸组件，这一面空到刷新为止，句柄照旧可调、不抛。 */
-export function openResidentSurface(name: string, container: HTMLElement, props: object = {}): Promise<boolean> {
-  return openManagedRoute(name, props, { container, isCurrent: () => true, place: () => container, resident: true });
+export function openResidentSurface(
+  name: string, container: HTMLElement, place: (container: HTMLElement) => HTMLElement = () => container,
+): Promise<boolean> {
+  return openManagedRoute(name, {}, { container, isCurrent: () => true, place: () => place(container), resident: true });
 }
 
 /* token、Preflight 与焦点规则都作用在 `.peach-react` 上；容器归壳，所以另建一个，收起时连它一起撤掉。 */

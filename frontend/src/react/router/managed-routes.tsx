@@ -43,6 +43,7 @@ import { JunkQueuePage } from '../junk-queue/junk-queue-page';
 import { prefetchLibraryProcessing } from '../library-processing/library-processing';
 import { LibraryProcessingCard } from '../library-processing/library-processing-card';
 import { LibraryProcessingNotice } from '../library-processing/library-processing-notice';
+import { ManageHeaderSurface } from '../manage-header/manage-header-island';
 import { prefetchPlaylists } from '../playlists/playlists';
 import { PlaylistsPage } from '../playlists/playlists-page';
 import { prefetchQualityGoals } from '../quality-goals/quality-goals';
@@ -276,7 +277,8 @@ const isSurfaceName = (key: string): key is SurfaceName => Object.hasOwn(SURFACE
 
 /* 常驻面，按名字登记：壳启动时经 `openResidentSurface` 各开一次，一直算当前页，没有首屏取数，宿主就是壳的
    那个节点。从不收，只有错误边界会卸它的组件，宿主照旧留在文档里。打开不带 props：壳经命令式句柄推内容，
-   组件订阅自己模块里的 store，句柄里的绘制同步做完。 */
+   组件订阅自己模块里的 store，句柄里的绘制同步做完。管理区页头的宿主里先有壳的启动骨架，打开时由 `place`
+   在画出首帧的同一个任务里清掉。 */
 export const RESIDENT_ROUTES: ResidentRouteTable = {
   'batch-dock': {
     prefetch: async () => {},
@@ -285,6 +287,10 @@ export const RESIDENT_ROUTES: ResidentRouteTable = {
   'glow-picker': {
     prefetch: async () => {},
     page: () => <GlowPickerSurface />,
+  },
+  'manage-header': {
+    prefetch: async () => {},
+    page: () => <ManageHeaderSurface />,
   },
 };
 const isResidentName = (key: string): key is ResidentName => Object.hasOwn(RESIDENT_ROUTES, key);

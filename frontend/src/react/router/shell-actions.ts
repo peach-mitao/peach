@@ -151,11 +151,13 @@ export interface SurfaceOpenProps {
 
 export type SurfaceName = keyof SurfaceOpenProps;
 
-/** 常驻面，按名字登记、宿主就是壳的那个节点：底部批量条（`[data-batch-dock]`）与侧栏配色卡（`#boardGlowMenu`）。
- *  打开时不带 props（`openResidentSurface`），内容由壳经各自的命令式句柄推进组件自己的 store。 */
+/** 常驻面，按名字登记、宿主就是壳的那个节点：底部批量条（`[data-batch-dock]`）、侧栏配色卡（`#boardGlowMenu`）
+ *  与管理区页头（`[data-manage-header]`）。打开时不带 props（`openResidentSurface`），内容由壳经各自的命令式句柄
+ *  推进组件自己的 store。 */
 export interface ResidentOpenProps {
   'batch-dock': Record<string, never>;
   'glow-picker': Record<string, never>;
+  'manage-header': Record<string, never>;
 }
 
 export type ResidentName = keyof ResidentOpenProps;

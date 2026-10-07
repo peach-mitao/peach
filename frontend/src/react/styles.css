@@ -322,7 +322,7 @@
 /* 岛里的危险键（批量条的「移入回收站」「彻底删除」、回收站说明行的「清空回收站」）挂 `data-danger`，
  * 红色只在这里定义一份，与壳的 `button.danger`（`web/board.css`）读同一组 `--board-red` 三档渐变：
  * 静止 red-500→600、悬停 400→500 铺在 `::before` 上淡入、按下 600→700。尺寸归各自的岛。
- * 不限定在 `.peach-react` 里：管理区页头岛的根在 Preflight 之外。 */
+ * 不限定在 `.peach-react` 里：管理区页头的宿主在 Preflight 之外。 */
 [data-danger]:not(:disabled) {
   position: relative;
   isolation: isolate;

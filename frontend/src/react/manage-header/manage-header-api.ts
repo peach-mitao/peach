@@ -1,11 +1,11 @@
-/* 管理区页头岛（`manage-header-island.tsx`）对壳的契约。
+/* 管理区页头（常驻面 `manage-header`，`manage-header-island.tsx`）对壳的契约。
  *
- * 岛画的是管理区正文上面那一块：管理条（一排下划线页签）、数据管理子页的面包屑、页面标题，以及
+ * 它画的是管理区正文上面那一块：管理条（一排下划线页签）、数据管理子页的面包屑、页面标题，以及
  * 回收站的说明行（读数与「清空回收站」）。当前在哪个管理区、菜单列哪几项、回收站读数由壳推进来
  * （`ManageHeaderProps`，定义与判据在 `src/manage-header.ts`，壳的启动骨架也用它）。
  *
  * 换页、确认弹层与写接口仍归壳：点下去回到 `openManage`、`openDataCleanup` 与清空回收站那条流程。
- * 页面标题的逐行揭示也由壳在每次推送之后做（换了页才放一遍），骨架阶段与岛接手之后是同一处。 */
+ * 页面标题的逐行揭示也由壳在每次推送之后做（换了页才放一遍），骨架阶段与路由树接手之后是同一处。 */
 import type { ManageHeaderProps } from '../../manage-header';
 
 export type { ManageEntry, ManageHeaderProps, TrashCount } from '../../manage-header';
