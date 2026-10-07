@@ -5,7 +5,7 @@ import json
 import re
 from datetime import date
 from pathlib import Path
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
 
@@ -88,9 +88,11 @@ def babepedia_portraits(http: HttpTransport, name: str, aliases=(), *, profile_u
                    and _name(thumbnail.get('alt', '')) == _name(found)
                    and link.find_parent(class_='useruploads2') is not None)
         if (parsed.hostname not in ('www.babepedia.com', 'babepedia.com')
+                or parsed.port not in (None, 443)
                 or not (primary or gallery) or not public_https_url(image)
                 or image in seen):
             continue
+        image = urlunsplit((parsed.scheme, parsed.netloc, quote(parsed.path, safe='/%'), parsed.query, ''))
         seen.add(image)
         portraits.append({'provider': 'babepedia', 'source_kind': 'external_media_library',
                           'upstream_url': image, 'profile_url': final,

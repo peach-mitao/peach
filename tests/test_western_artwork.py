@@ -23,6 +23,12 @@ def node(name='Lena Anderson', released='2019-08-14T17:30:00Z', slug='cam-to-me'
 
 
 class WesternSourceTests(unittest.TestCase):
+    def test_gallery_urls_encode_spaces_and_keep_the_public_provider_port(self):
+        page = b'<h1 id="babename">Melody Marks</h1><div id="profbox2"><a class="img" href="/pics/Melody Marks2.jpg"></a><a class="img" href="https://www.babepedia.com:123/pics/Other.jpg"></a><a class="img" href="https://localhost/pics/Other.jpg"></a></div>'
+        found = artwork.babepedia_portraits(lambda *a: HttpResponse(200,{},page), 'Melody Marks')
+        self.assertEqual([r['upstream_url'] for r in found],
+                         ['https://www.babepedia.com/pics/Melody%20Marks2.jpg'])
+
     def http(self, nodes, detail=None):
         self.calls = []
         def call(request, timeout, max_bytes):

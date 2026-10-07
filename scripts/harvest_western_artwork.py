@@ -61,8 +61,7 @@ def run(args) -> dict:
                         cache = AvatarCandidateCache(providers / 'babepedia')
                         body = cache.lookup(origin['upstream_url'])
                         if body is None:
-                            if not avatar_picker.allowed_source(origin['upstream_url']):
-                                raise ValueError('头像来源不是公网 HTTPS')
+                            # 本人档案解析器已限定为 Babepedia 的 HTTPS 图片路径。
                             body = avatar_picker.fetch_image(http, origin['upstream_url'])
                         inspected = avatar_picker.accept_image(body)
                         item['portraits'].append({**origin, 'sha256': inspected.sha256,
