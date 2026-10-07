@@ -4036,7 +4036,7 @@ function Ma(e) {
 }
 //#endregion
 //#region src/card-art/markup.ts
-var Na = (e, t) => t ? `${e}&v=${encodeURIComponent(t)}` : e, Pa = (e, t = !1) => Na(`/cover?code=${encodeURIComponent(e.code || "")}${t ? "&thumb=1" : ""}`, e.cover_version), Fa = (e, t, n) => Na(`/logo?studio=${encodeURIComponent(e)}&variant=${t}`, n), Ia = (e) => e && typeof e == "object" ? e : null;
+var Na = (e, t) => t ? `${e}&v=${encodeURIComponent(t)}` : e, Pa = (e, t = !1) => Na(`/cover?code=${encodeURIComponent(e.cover_key || e.code || "")}${t ? "&thumb=1" : ""}`, e.cover_version), Fa = (e, t, n) => Na(`/logo?studio=${encodeURIComponent(e)}&variant=${t}`, n), Ia = (e) => e && typeof e == "object" ? e : null;
 function La(e) {
 	return e && e.is_jav ? "女优" : "艺人";
 }
@@ -4118,7 +4118,10 @@ function qa(e, n, r, i) {
 	} : Ja(e, n, r, i);
 }
 function Ja(e, t, n, r) {
-	return e.is_jav ? Ka(e, t, n, r) : !e.has_thumb && !e.has_local_poster ? Ga : {
+	return e.is_jav ? Ka(e, t, n, r) : e.has_cover && e.cover_key ? {
+		kind: "cover",
+		html: Wa(e, t, n)
+	} : !e.has_thumb && !e.has_local_poster ? Ga : {
 		kind: "thumb",
 		html: `<img class="poster" src="/poster?id=${e.id}&c=4" width="640" height="360" alt="" loading="${n ? "eager" : "lazy"}">`
 	};
@@ -4128,7 +4131,7 @@ function Ya(e, t) {
 }
 function Xa(e, t) {
 	let n = e.has_thumb || e.has_local_poster ? `/poster?id=${e.id}&c=4` : "";
-	return e.is_jav && ie(e, t) === "cover" ? Pa(e) : n;
+	return e.is_jav ? ie(e, t) === "cover" ? Pa(e) : n : e.has_cover && e.cover_key ? Pa(e) : n;
 }
 function Za(e) {
 	let t = e.performers || [], n = e.performer_entities || [], r = t[0] || "", i = e.is_jav && r ? "" : e.creator || "";
