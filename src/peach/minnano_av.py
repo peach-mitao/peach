@@ -223,9 +223,10 @@ def profile(html: str) -> dict | None:
     result["blood_type"] = blood.group(1) if blood else None
     result["birthplace"] = _text(cells.get("出身地", "")) or None
     result["hobbies"] = _text(cells.get("趣味・特技", "")) or None
-    period = _PERIOD.search(_text(cells.get("AV出演期間", "")))
-    result["debut_year"] = int(period.group(1)) if period else None
-    result["active_until"] = int(period.group(2)) if period and period.group(2) else None
+    periods = list(_PERIOD.finditer(_text(cells.get("AV出演期間", ""))))
+    result["debut_year"] = min(int(period.group(1)) for period in periods) if periods else None
+    latest = max(periods, key=lambda period: int(period.group(1))) if periods else None
+    result["active_until"] = int(latest.group(2)) if latest and latest.group(2) else None
     debut = _text(cells.get("デビュー作品", ""))
     result["debut_date"] = _iso_date(debut)
     title = _TRAILING_NOTE.sub("", debut).strip() if result["debut_date"] else debut

@@ -88,7 +88,8 @@ def land(connection, entity_id: int, expected_name: str, record: dict, *, batch:
         url = link['url']
         if connection.execute('SELECT 1 FROM entity_link WHERE entity_id=? AND url=?', (entity_id,url)).fetchone():
             continue
-        metadata = json.dumps({'source':batch, 'source_url':record['profile_url']}, ensure_ascii=False)
+        metadata = json.dumps({'source':batch.split('@', 1)[0], 'batch':batch,
+                               'source_url':record['profile_url']}, ensure_ascii=False)
         cursor = connection.execute('INSERT INTO entity_link(entity_id,link_kind,label,url,hostname,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)',
             (entity_id, link['link_kind'], link['label'], url, urlsplit(url).hostname, metadata,stamp,stamp))
         added.append(cursor.lastrowid)

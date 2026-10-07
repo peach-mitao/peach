@@ -1,5 +1,6 @@
 """西方档案身份、单位转换、别名及链接边界。"""
 import unittest
+import json
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -80,6 +81,10 @@ class WesternProfileTests(unittest.TestCase):
                 first = land(connection,entity_id,'Christy White',record,batch='auto:babepedia-profile@test')
             self.assertTrue(first['profile_written'])
             self.assertEqual(len(first['added_links']),1)
+            metadata = json.loads(connection.execute('SELECT metadata_json FROM entity_link WHERE id=?',
+                (first['added_links'][0],)).fetchone()[0])
+            self.assertEqual((metadata['source'],metadata['batch']),
+                             ('auto:babepedia-profile','auto:babepedia-profile@test'))
             self.assertEqual(connection.execute('SELECT count(*) FROM entity_alias WHERE entity_id=? AND normalized_alias=?',(entity_id,'christine white')).fetchone()[0],0)
             self.assertEqual(connection.execute('SELECT alias FROM entity_alias WHERE entity_id=?',(entity_id,)).fetchall(),[('Christina Andreadou',)])
             record['profile']['height_cm'] = 170
