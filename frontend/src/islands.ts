@@ -91,15 +91,18 @@ export function loadSidebar(host: ReactBundle.SidebarHost): Promise<ReactBundle.
 }
 export const sidebarApi = (): ReactBundle.SidebarApi | null => sidebarReady;
 
-/* 管理区页头岛（`react/manage-header/`）：管理条、面包屑、页面标题与回收站说明行。壳启动时就装载、
- * 接上宿主——在那之前宿主里是壳同步写进去的骨架（`manageHeaderSkeletonHtml`）；之后 `manageHeaderApi()`
- * 同步可取，包还没装载时是 null。 */
+/* 管理区页头（`react/manage-header/`，常驻面 `manage-header`）：管理条、面包屑、页面标题与回收站说明行。
+ * 壳启动时就装载——在那之前宿主里是壳同步写进去的骨架（`manageHeaderSkeletonHtml`），骨架上的点击由壳接。
+ * 路由树打开这一面时在画首帧的同一个任务里清掉骨架，画上之后句柄才交出去：从那一刻起 `manageHeaderApi()` 同步可取、
+ * `render` 返回时已经画好；句柄还没交出时它返回 null。 */
 let manageHeader: Promise<ReactBundle.ManageHeaderApi> | null = null;
 let manageHeaderReady: ReactBundle.ManageHeaderApi | null = null;
 export function loadManageHeader(host: ReactBundle.ManageHeaderHost): Promise<ReactBundle.ManageHeaderApi> {
-  manageHeader ??= import('@peach/react').then((bundle) => {
-    manageHeaderReady = bundle.configureManageHeader(host);
-    return manageHeaderReady;
+  manageHeader ??= import('@peach/react').then(async (bundle) => {
+    const api = bundle.configureManageHeader(host);
+    await openResidentSurface('manage-header', host.root, (root) => { root.replaceChildren(); return root });
+    manageHeaderReady = api;
+    return api;
   });
   return manageHeader;
 }

@@ -1,14 +1,17 @@
-/* 管理区页头岛（ADR-0031 第 11g 步）：管理条、面包屑、页面标题与回收站说明行。
+/* 管理区页头（ADR-0031 第 11g 步）：管理条、面包屑、页面标题与回收站说明行。
  *
- * 宿主是壳常驻的 `[data-manage-header]`（`display: contents`，四块直接落在 `main` 的流里），一棵根常驻；
- * 壳只拿 `configureManageHeader` 给的命令式入口（同侧栏岛），不进路由树：换页、换读数都落在
- * 同一棵根上，管理条下面那条指示线从上一页的位置滑到这一页，回收站读数原地换字。
+ * 常驻面 `manage-header`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进壳常驻的
+ * `[data-manage-header]`（`display: contents`，四块直接落在 `main` 的流里），宿主就是那个节点本身。壳启动时
+ * 先同步在宿主里写一份同结构的骨架（`manageHeaderSkeletonHtml`）；打开这一面时 `place` 清掉骨架，路由树在
+ * 同一个任务里画出首帧。首帧还没有 props，画成空，壳拿到句柄就把手上那份推进来。之后壳只经
+ * `configureManageHeader` 给的句柄推 props：句柄写本模块的 store 再 `flushSync` 通知，返回时已经画好——壳紧接着
+ * 就读 `[data-manage-title]` 做标题揭示。换页、换读数都落在同一个组件上，管理条下面那条指示线从上一页的位置
+ * 滑到这一页，回收站读数原地换字。
  *
- * 根不包 `.peach-react`：这一块一直在 Preflight 之外，按钮与字号继承的是遗留层的全局规则，样式全在
+ * 宿主不包 `.peach-react`：这一块一直在 Preflight 之外，按钮与字号继承的是遗留层的全局规则，样式全在
  * `manage-header.css`，不用工具类。 */
-import { useLayoutEffect, useRef, type MouseEvent } from 'react';
+import { useLayoutEffect, useRef, useSyncExternalStore, type MouseEvent } from 'react';
 import { flushSync } from 'react-dom';
-import { createRoot, type Root } from 'react-dom/client';
 
 import { swapText } from '@peach/legacy/ui';
 
@@ -18,27 +21,35 @@ import type { ManageHeaderApi, ManageHeaderHost } from './manage-header-api';
 import './manage-header.css';
 
 let host: ManageHeaderHost | null = null;
-let root: Root | null = null;
 let props: ManageHeaderProps | null = null;
+const listeners = new Set<() => void>();
 
-function paint(): void {
-  const at = host, current = props;
-  if (!at || !root || !current) return;
-  flushSync(() => root!.render(<ManageHeader host={at} props={current} />));
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener) };
 }
 
+function notify(): void {
+  for (const listener of [...listeners]) listener();
+}
+
+/* 这一面抛错、被错误边界卸掉之后没人订阅，推进来的只写进 store，不画、不抛。 */
 const api: ManageHeaderApi = {
-  render(next) { props = next; paint() },
+  render(next) { props = next; flushSync(notify) },
 };
 
-/** 接上壳给的宿主，拿回页头岛的命令式入口。只调一次：宿主里原有的启动骨架在这一刻被换掉，
- *  壳随即把手上那份 props 推进来。 */
+/** 接上壳给的宿主，拿回页头的命令式入口。只调一次；壳的 `loadManageHeader` 接着在路由树里打开这一面，
+ *  画上之后才交出句柄，壳随即把手上那份 props 推进来。 */
 export function configureManageHeader(next: ManageHeaderHost): ManageHeaderApi {
   host = next;
   props = null;
-  next.root.replaceChildren();
-  root = createRoot(next.root);
   return api;
+}
+
+/** 常驻表里的那一面：读本模块的 store，宿主还没接上或壳还没推 props 时不画。 */
+export function ManageHeaderSurface() {
+  const current = useSyncExternalStore(subscribe, () => props);
+  return host && current ? <ManageHeader host={host} props={current} /> : null;
 }
 
 function ManageHeader({ host: at, props: current }: { host: ManageHeaderHost; props: ManageHeaderProps }) {

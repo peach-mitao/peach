@@ -295,13 +295,15 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 ```
 
 - 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
-  `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`），三者不重叠。路由树按键查
+  `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`），三者不重叠。路由树按键查
   `managed-routes.tsx` 里的同一组表，每条是 `{prefetch, page}`；附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
 - 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
   `openResidentSurface(name, host.root)` 在壳启动时打开一次：没有首屏取数，一直算当前页，宿主就是壳的那个节点
-  本身（`[data-batch-dock]`、`#boardGlowMenu`），组件直接画成它的子节点，DOM 和各自建根时一样。壳照旧经命令式
-  句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；`loadXxx` 等这一面
-  画上才交出句柄。常驻面从不收，只有错误边界会卸它的组件，宿主始终留在文档里。
+  本身（`[data-batch-dock]`、`#boardGlowMenu`、`[data-manage-header]`），组件直接画成它的子节点，DOM 和各自建根
+  时一样。壳照旧经命令式句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；
+  `loadXxx` 等这一面画上才交出句柄。宿主里先有壳的启动骨架时（管理区页头），`openResidentSurface` 的 `place`
+  在画首帧的同一个任务里清掉骨架；句柄交出之前骨架上的点击归壳。常驻面从不收，只有错误边界会卸它的组件，
+  宿主始终留在文档里。
 - `openManagedRoute(key, props, options)` 是 async 且**取完数才画**。壳已经铺了骨架，页面若先画一个空容器
   再自己转圈，同一次进入就会出现两段等待态。它先收起同一容器里的上一面，`prefetch(props, signal)` 把首屏
   写进共用的 Query 缓存，取齐后在同一个任务里换掉骨架、放进 `.peach-react` 宿主（或 `options.place` 排好的

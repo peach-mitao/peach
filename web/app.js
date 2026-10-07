@@ -3078,8 +3078,8 @@ function buildManageBar(){
   if(current!=='trash')trashCount=null;
   paintManageHeader(current);
 }
-/* 页头（管理条、面包屑、页面标题与回收站说明行）归页头岛（`react/manage-header/`）。壳推当前管理区、
-   菜单项与回收站读数；岛接上之前宿主里是同一份结构的骨架（`manageHeaderSkeletonHtml`）。 */
+/* 页头（管理条、面包屑、页面标题与回收站说明行）归常驻面 `manage-header`（`react/manage-header/`），由路由树画。
+   壳推当前管理区、菜单项与回收站读数；它画上之前宿主里是同一份结构的骨架（`manageHeaderSkeletonHtml`）。 */
 //: 上一次页面标题说的是哪一页。空串表示此刻没有管理区标题（首页、目录这些）。
 let lastManagePageLabel='';
 //: 骨架阶段上一次写进宿主的那段 HTML：同样的内容不重写，正在揭示的标题不被换掉。
@@ -3097,13 +3097,13 @@ function paintManageHeader(section=manageSection()){
     if(html!==manageHeaderSkeleton){manageHeaderSkeleton=html;manageHeaderRoot().innerHTML=html}
   }
   /* 换了页才揭示一遍。同一页里的每一次重画（筛选、判完一批、翻页）走的也是这里，
-     不比一下标题的话，页面标题会跟着每一次取数再飘一次。骨架阶段与岛接手之后是同一处。 */
+     不比一下标题的话，页面标题会跟着每一次取数再飘一次。骨架阶段与路由树接手之后是同一处。 */
   const label=manageHeaderView(props)?.title||'';
   if(label===lastManagePageLabel)return;
   lastManagePageLabel=label;
   if(label)revealTexts(manageHeaderRoot(),'[data-manage-title],[data-manage-lede]');
 }
-/* 壳启动时铺骨架并装载页头岛。骨架上的点击在岛接上之前由这里接：页签走 `openManage`，面包屑左键走路由
+/* 壳启动时铺骨架并装载页头。骨架上的点击在句柄交出之前由这里接：页签走 `openManage`，面包屑左键走路由
    （带修饰键或中键时照链接自己的 href 走），「清空回收站」走同一条流程。 */
 function mountManageHeader(){
   const root=manageHeaderRoot();

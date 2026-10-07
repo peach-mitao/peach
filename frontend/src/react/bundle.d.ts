@@ -492,7 +492,8 @@ export type {
   ManageEntry, ManageHeaderApi, ManageHeaderHost, ManageHeaderProps, TrashCount,
 } from './manage-header/manage-header-api';
 
-/** 接上壳给的宿主，拿回管理区页头岛的命令式入口（`manage-header/manage-header-island.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回管理区页头的命令式入口（`manage-header/manage-header-island.tsx`）。只调一次；这一面由
+ *  `islands.ts` 的 `loadManageHeader` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureManageHeader(host: ManageHeaderHost): ManageHeaderApi;
 
 export type {
