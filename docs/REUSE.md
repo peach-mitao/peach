@@ -211,6 +211,10 @@ JAV 默认封面（官方封面／预览图）与视频默认大小（大图／�
 
 完整目录分类归位使用 `scripts/organize_library_dirs.py`，复用 `organize._rename`、目录折叠入口、番号解析器、实体分类与进程锁。默认冻结计划，`--apply --backup` 才执行；`--batch` 分开保存计划与回执，失败可恢复。`--stage flatten` 自行生成折叠复核 CSV。同目录已确认作品与缺厂牌配套图作为整包处理；混合目录只移动已知文件组及配对字幕，物理文件去重，未知视频、冲突身份和覆盖目标均保留。目录名的发行站、画质和分片标记复用 `release_code_from_filename`；一本道的日期式分隔符匹配复用其官网作品号解析，不跨片商合并日期编号。FC2 发行目录可使用 `FC-` 简写并附带标题；缺番号的 `@fc编号_分片` 同时核对父目录编号与厂牌，目录编号不补写账本。韩国 MIB 按厂牌归置。已有唯一创作者关系但细分类未确认时归入通用「创作者」目录，不提升身份候选。路径同步覆盖资产与已登记字幕，不补写真相字段。
 
+PikPak WebDAV 同来源移动由 `organize_clouddrive.py` 提供，目录入口显式指定 `--pikpak-webdav --location pikpak --batch` 才启用。复用 CloudDrive 已存令牌与官方 `GetDownloadUrlPath` 的认证头；来源固定为 `https://dav.mypikpak.com`，认证不写入地址、日志或账本。协议依据 [PikPak WebDAV 官方说明](https://mypikpak.com/zh-TW/help-center/connected_apps/webdav/how_to) 与 [RFC 4918](https://www.rfc-editor.org/rfc/rfc4918)，HTTP 客户端复用已声明的 `httpx`，消息编码复用已声明的 `protobuf`，不新增依赖。`PROPFIND` 核对目录成员，`MKCOL` 创建所需父目录，`MOVE` 使用 `Overwrite: F`；单次应答上限 2 MiB，遍历上限 10,000 条。移动后核对完整路径与体积，再刷新 CloudDrive 缓存并交回现有账本事务。应答不确定时保留意图回执并停止，不重复移动；成功状态码也必须取得完整成员变化证据。A 盘折叠目录使用不以点号开头的暂存名，保留同一套恢复回执；R 盘不进入该传输路径。
+
+A 盘同父目录改名复用 CloudDrive 官方 `RenameFile`；跨父且改名的操作拆为同父改名和保留名称的 HTTPS 移动，中间路径进入恢复回执并禁止覆盖。每步核对完整成员与体积；成功应答不替代路径核验。路径中的 `@` 保留为 URI 路径字符，其他字符使用 UTF-8 百分号编码。认证样本已移动时，最多另查两条馆藏内图片样本，仅提取既有认证，不读取媒体内容。
+
 推广网页资源目录中的横幅、标志和导航图片由 `web_batch._attachment_junk_reason` 进入复核队列。判据同时要求 `_files`、网址推广套话、域名、导航元素文件名和体积上限；继承的作品番号不豁免网页导航图片，作品图片、字幕、NFO 与普通 `_files` 目录保留。`1024核工厂.rar` 经嵌套目录清单核验仅含安装程序，精确名称且不超过 64 KiB 的附件进入复核，不泛化为所有压缩包。永久删除仍走 `trash_junk.py --purge --review-csv` 和 `purge_assets`。
 
 下载站的 DNS 导航步骤、hav.so 横幅、固定英文横幅和带下载套话的 HiHSP 地址卡片，按文件名与 2 MiB 上限进入复核；用户确认的「社區最新情報」精确名称 MP4 按 32 MiB 上限进入复核。普通作品图片和 `images.rar` 保留。CloudDrive WebDAV 的小文件删除复用原生 `Path.unlink`：同目录隔离改名报 WinError 50 时，最多 1 MiB 的文件先用标准库 `shutil.copyfile` 完整备份到 `generated/purge-staging/`，记录原路径、大小和 SHA256，再删除。数据库失败时恢复备份，提交后清退；大文件继续报告阻塞。该路径没有新增依赖，备份和恢复只由 `purge_assets` 管理。
