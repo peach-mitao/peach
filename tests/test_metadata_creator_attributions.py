@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from peach.entities import upsert_asset_entity
+from peach.entities import merge_entity, upsert_asset_entity
 from peach.field_owners import write_owned_fields
 from peach.entity_classification import write_claim
 from peach.metadata_creator_attributions import apply_plan, collect, restore
@@ -112,6 +112,36 @@ class CreatorAttributionTests(unittest.TestCase):
             restore(self.connection,receipt)
         self.assertEqual(self.connection.execute('SELECT creator,studio FROM asset WHERE id=?',(asset_id,)).fetchone(),('Published Brand',None))
         self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
+
+    def test_confirmed_studio_and_aliases_are_excluded_from_automatic_creator_ingest(self):
+        asset_id, entity_id = self.asset('Published Brand')
+        write_claim(self.connection,entity_id=entity_id,facet='account_role',value='studio',
+                    source='source:official',source_url='https://publisher.test/',evidence='发行厂牌官网',
+                    status='observed',confidence=1)
+        self.connection.execute("INSERT INTO entity_alias(entity_id,alias,normalized_alias,source) VALUES(?,'Brand.test','brand.test','release')",(entity_id,))
+        receipt = apply_plan(self.connection,self.plan())
+        studio_id = receipt['created_entities'][0]['id']
+        merge_entity(self.connection,target_id=studio_id,source_id=entity_id,
+                     source_name='Published Brand',alias_source='user:identity-merge:creator')
+        for name in ('Published Brand','Published Brand2025.05','Brand.test','Brand.test2025.05'):
+            with self.subTest(name=name):
+                self.assertIsNone(upsert_asset_entity(self.connection,kind='creator',name=name,
+                                  asset_id=asset_id,role='creator',source='scan:directory'))
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM entity WHERE kind='creator'").fetchone()[0],0)
+        self.assertEqual(self.connection.execute('SELECT entity_id,role FROM asset_entity WHERE asset_id=?',(asset_id,)).fetchall(),[(studio_id,'studio')])
+        self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
+        manual_id = upsert_asset_entity(self.connection,kind='creator',name='Published Brand',
+                                       asset_id=asset_id,role='creator',source='user:manual')
+        self.assertIsNotNone(manual_id)
+
+    def test_unconfirmed_studio_claim_does_not_block_creator_ingest(self):
+        asset_id, _ = self.asset('Alice')
+        studio_id = upsert_asset_entity(self.connection,kind='studio',name='Brand',
+                                       asset_id=asset_id,role='studio',source='source:catalog')
+        write_claim(self.connection,entity_id=studio_id,facet='account_role',value='studio',
+                    source='source:search',evidence='待核验的同名检索',status='candidate',confidence=0.5)
+        self.assertIsNotNone(upsert_asset_entity(self.connection,kind='creator',name='Brand',
+                              asset_id=asset_id,role='creator',source='scan:directory'))
 
     def test_created_studio_with_subsequent_alias_refuses_atomic_restore(self):
         asset_id, entity_id = self.asset('Published Brand')
