@@ -159,6 +159,68 @@ class WebDavMoves(unittest.TestCase):
         self.dav.rename.assert_called_once()
 
 
+class OfficialDirectoryEvidence(unittest.TestCase):
+    class Stream:
+        def __init__(self, rows):
+            self.rows, self.cancelled = rows, False
+        def __iter__(self):
+            yield SimpleNamespace(subFiles=self.rows)
+        def cancel(self):
+            self.cancelled = True
+
+    def setUp(self):
+        self.paths, self.streams = [], []
+        self.entries = {'/Pikpak': [('old', True, 0)], '/Pikpak/old': [('creator@handle', True, 0)],
+                        '/Pikpak/old/creator@handle': [('film.mp4', False, 20)]}
+        def read(request, **kwargs):
+            self.paths.append((request.path,request.forceRefresh))
+            rows = [SimpleNamespace(fullPathName=request.path+'/'+name,isDirectory=directory,size=size)
+                    for name,directory,size in self.entries[request.path]]
+            stream = self.Stream(rows)
+            self.streams.append(stream)
+            return stream
+        self.cloud = Mock(token='test-token')
+        self.cloud.channel.unary_stream.return_value = read
+
+    def test_ancestor_listings_confirm_the_complete_unicode_directory(self):
+        rows = organize_clouddrive._cloud_listing(self.cloud, 'A:\\old\\creator@handle')
+        self.assertEqual(rows,[dict(path='A:\\old\\creator@handle\\film.mp4',directory=False,size=20)])
+        self.assertEqual(self.paths,[('/Pikpak',True),('/Pikpak/old',True),('/Pikpak/old/creator@handle',True)])
+        self.assertTrue(all(stream.cancelled for stream in self.streams))
+
+    def test_missing_ancestor_does_not_read_an_unverified_child(self):
+        self.entries['/Pikpak/old'] = []
+        with self.assertRaises(FileNotFoundError):
+            organize_clouddrive._cloud_listing(self.cloud,'A:\\old\\creator@handle')
+        self.assertEqual(len(self.paths),2)
+
+    def test_foreign_drive_never_uses_the_existing_credential(self):
+        with self.assertRaises(ValueError):
+            organize_clouddrive._cloud_listing(self.cloud,'R:\\Media')
+        self.assertFalse(self.paths)
+
+    def test_duplicate_members_stop_and_cancel_the_stream(self):
+        self.entries['/Pikpak/old/creator@handle'] *= 2
+        with self.assertRaises(ValueError):
+            organize_clouddrive._cloud_listing(self.cloud,'A:\\old\\creator@handle')
+        self.assertTrue(all(stream.cancelled for stream in self.streams))
+
+    def test_verified_metadata_can_complete_a_move_with_unavailable_propfind(self):
+        test = WebDavMoves('test_file_move_preserves_size_and_refreshes_both_parents')
+        test.setUp()
+        self.addCleanup(test.doCleanups)
+        def read(path):
+            return [dict(path=name,size=0 if size is True else size,directory=size is True)
+                    for name,size in test.entries.items() if name != path and name.rsplit('\\',1)[0] == path]
+        def transport(request):
+            return httpx.Response(404) if request.method == 'PROPFIND' else test.handle(request)
+        with httpx.Client(transport=httpx.MockTransport(transport)) as http:
+            dav = PikPakDav(http,'A:\\',test.refresh,listing=read)
+            dav.move('A:\\old\\film.mp4','A:\\new\\film.mp4')
+        self.assertEqual(test.entries['A:\\new\\film.mp4'],20)
+        self.assertEqual(sum(row[0]=='MOVE' for row in test.requests),1)
+
+
 class AuthenticationSamples(unittest.TestCase):
     class Missing(grpc.RpcError):
         def code(self):
