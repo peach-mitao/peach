@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from contextlib import closing, contextmanager
 from pathlib import PureWindowsPath
+import time
 from urllib.parse import quote, unquote, urlsplit
 from xml.etree import ElementTree as ET
 
 import httpx
 import grpc
 from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
+from google.protobuf.empty_pb2 import Empty
 
 from . import organize
 from .downloads_clouddrive import CloudDriveClient, SERVICE, discover
@@ -53,22 +55,38 @@ def _messages():
     rename = proto.message_type.add(name='RenameRequest')
     rename.field.add(name='path', number=1, type=9, label=1)
     rename.field.add(name='newName', number=2, type=9, label=1)
+    move = proto.message_type.add(name='MoveRequest')
+    move.field.add(name='theFilePaths', number=1, type=9, label=3)
+    move.field.add(name='destPath', number=2, type=9, label=1)
+    policy = move.enum_type.add(name='ConflictPolicy')
+    for name, number in (('Overwrite', 0), ('Rename', 1), ('Skip', 2)):
+        policy.value.add(name=name, number=number)
+    move.field.add(name='conflictPolicy', number=3, type=14, label=1,
+                   type_name='.peach_organize_cloud.MoveRequest.ConflictPolicy')
+    for name, number in (('moveAcrossClouds', 4), ('handleConflictRecursively', 5)):
+        index = len(move.oneof_decl)
+        move.oneof_decl.add(name='_' + name)
+        move.field.add(name=name, number=number, type=8, label=1, proto3_optional=True, oneof_index=index)
     pool = descriptor_pool.DescriptorPool()
     pool.AddSerializedFile(pb.DESCRIPTOR.dependencies[0].serialized_pb)
     pool.AddSerializedFile(pb.DESCRIPTOR.serialized_pb)
     pool.Add(proto)
     return tuple(message_factory.GetMessageClass(pool.FindMessageTypeByName('peach_organize_cloud.' + name))
-                 for name in ('DownloadRequest', 'DownloadReply', 'ListRequest', 'ListReply', 'RenameRequest'))
+                 for name in ('DownloadRequest', 'DownloadReply', 'ListRequest', 'ListReply', 'RenameRequest', 'MoveRequest'))
 
 
-DownloadRequest, DownloadReply, ListRequest, ListReply, RenameRequest = _messages()
+DownloadRequest, DownloadReply, ListRequest, ListReply, RenameRequest, MoveRequest = _messages()
 
 
 class PikPakDav:
-    def __init__(self, http: httpx.Client, root: str, refresh, rename=None, listing=None):
+    def __init__(self, http: httpx.Client, root: str, refresh, rename=None, listing=None, move_remote=None, confirm_attempts=1):
         self.http, self.root, self.refresh = http, PureWindowsPath(root), refresh
         self.rename = rename
         self.listing = listing
+        self.move_remote = move_remote
+        if not 1 <= confirm_attempts <= 4:
+            raise ValueError('移动确认次数越出预算')
+        self.confirm_attempts = confirm_attempts
         if self.root != PureWindowsPath('A:\\'):
             raise ValueError('HTTPS WebDAV 整理只支持已声明的 A 盘根目录')
 
@@ -160,6 +178,8 @@ class PikPakDav:
     def submit_move(self, source, target):
         if PureWindowsPath(source).parent == PureWindowsPath(target).parent and self.rename is not None:
             return 200 if self.rename(source, target) else None
+        if self.move_remote is not None and PureWindowsPath(source).name == PureWindowsPath(target).name:
+            return self.move_remote(source, target)
         return self.request('MOVE', source, headers={'Destination': self.url(target), 'Overwrite': 'F'})[0]
 
     def move(self, source, target):
@@ -178,6 +198,22 @@ class PikPakDav:
             response_status = self.submit_move(source, target)
         except OSError:
             response_status = None
+        for attempt in range(self.confirm_attempts):
+            try:
+                if self.move_remote is not None:
+                    for parent in {old_parent, new_parent}:
+                        self.refresh(parent)
+                self.confirm_move(source, target, found[0], before, response_status)
+                return
+            except FileNotFoundError:
+                raise
+            except (UnconfirmedMove, OSError, ValueError):
+                if attempt + 1 == self.confirm_attempts:
+                    raise UnconfirmedMove('移动状态未确认，保留意图回执并停止；不重复操作、不写账本') from None
+                time.sleep(2)
+
+    def confirm_move(self, source, target, source_entry, before, response_status):
+        old_parent, new_parent = str(PureWindowsPath(source).parent), str(PureWindowsPath(target).parent)
         try:
             after_parent = self.list(new_parent)
             old_listing = self.list(old_parent)
@@ -187,14 +223,14 @@ class PikPakDav:
                 if response_status is None or response_status >= 500 or 200 <= response_status < 300:
                     raise ValueError('WebDAV 请求仍可能在服务端处理')
                 raise FileNotFoundError('WebDAV 移动未执行，原文件已确认保留')
-            after = self.tree(target) if found[0]['directory'] else arrived
+            after = self.tree(target) if source_entry['directory'] else arrived
             expected = {(str(PureWindowsPath(target, *PureWindowsPath(r['path']).parts[len(PureWindowsPath(source).parts):])), r['size'])
                         for r in before}
-            if still_present or len(arrived) != 1 or arrived[0]['directory'] != found[0]['directory'] or expected != {(r['path'], r['size']) for r in after}:
+            if still_present or len(arrived) != 1 or arrived[0]['directory'] != source_entry['directory'] or expected != {(r['path'], r['size']) for r in after}:
                 raise ValueError('WebDAV 移动状态或完整成员不符')
             for parent in {old_parent, new_parent}:
                 self.refresh(parent)
-            if found[0]['directory']:
+            if source_entry['directory']:
                 self.refresh(target)
         except FileNotFoundError:
             raise
@@ -241,6 +277,43 @@ def _fallback_samples():
         return [row[0] for row in db.execute(
             "SELECT path FROM asset WHERE location='pikpak' AND disposal IS NULL AND medium='image' "
             "AND path LIKE 'A:%' ORDER BY id LIMIT 2")]
+
+
+def _move_remote(cloud, source, target):
+    """官方同来源移动保持原名，显式跳过冲突并关闭跨云及递归合并。"""
+    from . import downloads_clouddrive_pb2 as pb
+    old, new = PureWindowsPath(source), PureWindowsPath(target)
+    if (old.drive.casefold() != 'a:' or new.drive.casefold() != 'a:' or not old.is_absolute()
+            or not new.is_absolute() or '..' in old.parts or '..' in new.parts
+            or old.name != new.name or old.parent == new.parent):
+        raise ValueError('官方移动来源、父目录或文件名不符')
+    request = MoveRequest(theFilePaths=['/Pikpak/' + '/'.join(old.parts[1:])],
+                          destPath=('/Pikpak/' + '/'.join(new.parent.parts[1:])).rstrip('/'),
+                          conflictPolicy=2, moveAcrossClouds=False, handleConflictRecursively=False)
+    stub = cloud.channel.unary_unary(SERVICE + 'MoveFile', request_serializer=MoveRequest.SerializeToString,
+                                    response_deserializer=pb.FileOperationResult.FromString)
+    try:
+        reply = stub(request, timeout=15, metadata=(('authorization', 'Bearer ' + cloud.token),))
+        return 200 if reply.success else 403
+    except grpc.RpcError:
+        return None
+
+
+def _refresh_listing(cloud, path):
+    """限定 A 盘目录缓存过期后按完整祖先链读取实际成员。"""
+    from . import downloads_clouddrive_pb2 as pb
+    item = PureWindowsPath(path)
+    if item.drive.casefold() != 'a:' or not item.is_absolute() or '..' in item.parts:
+        raise ValueError('目录缓存范围越出 A 盘')
+    stub = cloud.channel.unary_unary(SERVICE + 'ForceExpireDirCache',
+            request_serializer=pb.FileRequest.SerializeToString, response_deserializer=Empty.FromString)
+    try:
+        stub(pb.FileRequest(path=('/Pikpak/' + '/'.join(item.parts[1:])).rstrip('/')),
+             timeout=15, metadata=(('authorization', 'Bearer ' + cloud.token),))
+    except grpc.RpcError as error:
+        if error.code() != grpc.StatusCode.NOT_FOUND:
+            raise OSError('目录缓存刷新未取得：' + error.code().name) from None
+    return _cloud_listing(cloud, path)
 
 
 def _download_headers(cloud, sample_path):
@@ -305,10 +378,12 @@ def pikpak_renames(sample_path: str, roots):
                 return False
 
         def refresh(path):
-            return _cloud_listing(cloud, path)
+            return _refresh_listing(cloud, path)
 
         with httpx.Client(headers=headers, timeout=20, follow_redirects=False) as http:
-            dav, original = PikPakDav(http, 'A:\\', refresh, rename_remote, listing=refresh), organize._rename
+            dav, original = PikPakDav(http, 'A:\\', refresh, rename_remote,
+                listing=lambda path: _cloud_listing(cloud, path),
+                move_remote=lambda source, target: _move_remote(cloud, source, target), confirm_attempts=4), organize._rename
 
             def rename(source, target):
                 if PureWindowsPath(source).drive.casefold() == 'a:':
