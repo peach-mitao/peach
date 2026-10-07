@@ -42,6 +42,31 @@ class CreatorAttributionTests(unittest.TestCase):
     def plan(self):
         return [row for row in collect(self.connection) if row['action'] in {'remove','replace'}]
 
+    def test_merged_person_alias_ingests_into_the_preserved_artist(self):
+        asset_id, creator_id = self.asset('Former Name')
+        artist_id = upsert_asset_entity(self.connection,kind='performer',name='Current Name',
+            asset_id=asset_id,role='performer',source='release:cast',metadata={'official':'preserved'})
+        merge_entity(self.connection,target_id=artist_id,source_id=creator_id,source_name='Former Name',
+                     alias_source='user:identity-merge:creator')
+        another_id, _ = self.asset('Independent Account')
+        found = upsert_asset_entity(self.connection,kind='creator',name='Former Name',
+            asset_id=another_id,role='creator',source='scan:directory',metadata={'other':'data'})
+        self.assertEqual(found,artist_id)
+        self.assertIsNone(self.connection.execute("SELECT id FROM entity WHERE kind='creator' AND canonical_name='Former Name'").fetchone())
+        self.assertEqual(self.connection.execute('SELECT role FROM asset_entity WHERE asset_id=? AND entity_id=?',
+            (another_id,artist_id)).fetchone(),('performer',))
+        self.assertEqual(json.loads(self.connection.execute('SELECT metadata_json FROM entity WHERE id=?',
+            (artist_id,)).fetchone()[0]),{'official':'preserved'})
+
+    def test_unmerged_artist_alias_keeps_an_independent_account(self):
+        asset_id, _ = self.asset('Independent Account')
+        artist_id = upsert_asset_entity(self.connection,kind='performer',name='Current Name',
+            asset_id=asset_id,role='performer',source='release:cast')
+        self.connection.execute("INSERT INTO entity_alias VALUES(?, 'Shared Alias','shared alias','source:directory',1)",(artist_id,))
+        found = upsert_asset_entity(self.connection,kind='creator',name='Shared Alias',
+            asset_id=asset_id,role='creator',source='scan:directory')
+        self.assertNotEqual(found,artist_id)
+
     def test_content_month_quality_and_repost_directories_are_not_accounts(self):
         names = ['kj','11月','AI增强','白丝','背身足交','7sht.me','98T.la202202092146']
         for name in names:
