@@ -33,6 +33,7 @@ from .netwatch import NetworkChangeWatcher
 from .mount import mount_share as mount_smb_share
 from .process_job import assign_to_job, create_kill_on_close_job
 from .tray_lifecycle import Lifecycle
+from .tray_detached import handoff_tray
 from .sync import COPY_ACTIONS, SyncPlan, device_id, resolve
 from .versioning import VersionManager, VersionSnapshot
 from .windows_update import (
@@ -80,6 +81,8 @@ def ledger_menu_items(make_item, sync_ledger, take_ownership) -> list:
 #: 追不上——「同步开发进度」之后菜单还是旧的，正是这个原因。
 TRAY_SOURCES = (
     "src/peach/tray.py",
+    "src/peach/tray_detached.py",
+    "src/peach/tray_lifecycle.py",
     "src/peach/menubar.py",
     "src/peach/versioning.py",
     "src/peach/sync.py",
@@ -1647,6 +1650,12 @@ def main(argv: list[str] | None = None) -> int:
     # 单实例锁和目录创建之前退出，否则一条试探命令就会在磁盘上凭空造出一个数据根，
     # 让之后的安装探测把这台机器误判成已配置。
     args = build_parser().parse_args(argv)
+    try:
+        if handoff_tray(sys.argv[1:] if argv is None else argv, PROJECT_ROOT):
+            return 0
+    except OSError as exc:
+        show_message("Peach 启动失败", f"无法独立启动托盘：{exc}", error=True)
+        return 1
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     enable_hidpi()
     # 设置文件新鲜读一次。`config.py` 的常量是 import 期算的，而首次设置正要改变它们

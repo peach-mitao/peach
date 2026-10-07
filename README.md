@@ -88,7 +88,7 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 
 测试包还没有代码签名。Windows 提示「已保护你的电脑」时，确认文件来自本项目的 Release，再点「更多信息 → 仍要运行」。转码和缩略图要用到 FFmpeg，没装也能浏览和播放 MP4、WebM，安装方法见 [Windows 测试版](docs/TESTING_DESKTOP.md)。
 
-Windows 托盘异常退出后会自动尝试恢复；5 分钟内最多恢复 3 次。主动选择「退出 Peach」会保持关闭。退出原因和恢复结果可在日志目录的 `tray-lifecycle.log` 中查看。
+Windows 托盘独立运行，关闭启动它的 Codex、Claude 或终端不会退出 Peach。托盘异常退出后会自动尝试恢复；5 分钟内最多恢复 3 次。主动选择「退出 Peach」会保持关闭。退出原因和恢复结果可在日志目录的 `tray-lifecycle.log` 中查看。
 
 ### 从源码运行（Windows、macOS）
 

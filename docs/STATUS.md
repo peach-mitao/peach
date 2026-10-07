@@ -13,7 +13,7 @@
 - JAV 头像 816 张，38 张水印待复核；17 位档案、253 张头像候选、2 张官方封面。
 - 「整理」（ADR-0039）可预览、执行、回滚，真实库未跑过。
 - 产地是独立维度、JAV 是其投影：`region` 空时按厂牌、创作者、番号逐层推断，不落库；韩国 MIB 不算 JAV。
-- Windows writer 支持异常恢复；`restart_windows_tray.py --source` 重启。内置盘存代码数据，外置盘供媒体。
+- Windows 托盘独立运行并自动恢复；`restart_windows_tray.py --source` 重启。代码数据在内置盘，媒体在外置盘。
 - 托盘须普通权限启动：提权令牌看不到 CloudDrive 的 `A:`/`B:`，误报脱盘。
 - Windows：80 跳转 HTTPS，LAN:443；`peach-win`、`0.37.0`。10-07 重启，CA、计数、跳转及桌面/手机通过。
 - `/healthz` 报 `configurable=true`；配置与选目录共用本机连接判据，托盘管理 HTTPS 地址、端口及配置重载。
