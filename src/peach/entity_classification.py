@@ -9,7 +9,7 @@ from .entry_links import EXTERNAL_KIND, JAV_DIRECTORIES
 VALUES = {
     'identity': {'person':'个人', 'account':'发布账号', 'organization':'机构',
                  'platform':'平台', 'collection':'合集目录', 'release':'作品标识', 'unknown':'身份待核验'},
-    'occupation': {'adult_performer':'成人出演者', 'model':'模特', 'actor':'演员',
+    'occupation': {'adult_performer':'成人出演者', 'amateur_performer':'非职业出演者', 'model':'模特', 'actor':'演员',
                    'artist':'艺术创作者', 'animator':'动画作者', 'content_creator':'内容创作者'},
     'market': {'japanese_av':'日本 AV', 'western_adult':'西方成人发行'},
     'account_role': {'seller':'卖家', 'publisher':'发布者', 'studio':'发行厂牌'},
@@ -82,7 +82,8 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     jav = (f"EXISTS (SELECT 1 FROM entity_external_ref er WHERE er.entity_id={column} "
            f"AND er.external_kind='{EXTERNAL_KIND}' AND er.external_id<>'' AND er.provider IN ({providers})) "
            f"OR {claim('market', 'japanese_av')}")
-    amateur = work("UPPER(COALESCE(av.code,'')) LIKE 'FC2%'")
+    amateur = (f"{claim('occupation', 'amateur_performer')} "
+               f"AND NOT ({jav} OR {claim('occupation', 'adult_performer')})")
     west_work = work("av.region='west'")
     western = f"{claim('market', 'western_adult')} OR {west_work}"
     seller = claim('account_role', 'seller')

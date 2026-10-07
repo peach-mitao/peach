@@ -106,16 +106,17 @@ class EntityClassificationTests(unittest.TestCase):
         self.assertEqual(data['categories'],{'seller':1})
         self.assertEqual([row['entity_id'] for row in data['items']],[seller])
 
-    def test_fc2_cast_and_western_release_filters_allow_multiple_memberships(self):
+    def test_fc2_release_does_not_determine_performer_occupation(self):
         asset_id, entity_id = self.entity('Known Person',kind='performer')
         self.claim(entity_id,'market','japanese_av')
         self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567',region='west' WHERE id=?",(asset_id,))
         self.connection.commit()
-        for category in ('japanese_av','amateur','western'):
+        for category in ('japanese_av','western'):
             page = q_index(WebContract(self.db),'performers',category=category,limit=1)
-            self.assertEqual(page['categories'],{'japanese_av':1,'amateur':1,'western':1})
-            self.assertEqual(page['items'][0]['identity_labels'],['女优','素人','西方'])
-            self.assertEqual(page['items'][0]['identity_categories'],['japanese_av','amateur','western'])
+            self.assertEqual(page['categories'],{'japanese_av':1,'western':1})
+            self.assertEqual(page['items'][0]['identity_labels'],['女优','西方'])
+            self.assertEqual(page['items'][0]['identity_categories'],['japanese_av','western'])
+        self.assertEqual(q_index(WebContract(self.db),'performers',category='amateur')['items'],[])
         self.connection.execute("UPDATE asset SET disposal='vanished' WHERE id=?",(asset_id,))
         self.connection.commit()
         self.assertEqual(classification.summaries(self.connection,[entity_id])[entity_id]['identity_labels'],['女优'])
@@ -132,6 +133,23 @@ class EntityClassificationTests(unittest.TestCase):
         self.assertEqual(profile['identity_labels'],['女优'])
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
         self.assertEqual(q_index(contract,'performers')['categories'],{'japanese_av':1})
+
+    def test_amateur_identity_requires_trusted_nonprofessional_evidence(self):
+        _, confirmed = self.entity('Nonprofessional Cast',kind='performer')
+        self.claim(confirmed,'occupation','amateur_performer')
+        asset_id, unknown = self.entity('Unknown Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(asset_id,))
+        classification.write_claim(self.connection,entity_id=unknown,facet='occupation',
+            value='amateur_performer',source='script:search',evidence='未核验推断')
+        self.connection.commit()
+        contract=WebContract(self.db)
+        page=q_index(contract,'performers',category='amateur')
+        self.assertEqual([item['entity_id'] for item in page['items']],[confirmed])
+        self.assertEqual(page['categories'],{'amateur':1})
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Unknown Cast'})['identity_labels'],[])
+        self.claim(confirmed,'occupation','adult_performer')
+        self.connection.commit()
+        self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
 
     def test_animation_author_is_separate_from_real_accounts_and_artists(self):
         _, animator = self.entity('Animator')
