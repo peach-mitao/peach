@@ -223,6 +223,8 @@ A 盘同父目录改名复用 CloudDrive 官方 `RenameFile`；跨父且改名�
 
 英文媒体文件名分词复用 `wordninja-enhanced==3.2.0`（MIT，2026-09-04 发布，Python ≥3.9，纯 Python，wheel 11.4 MB，无传递依赖）。源码经 `opensrc path pypi:wordninja-enhanced@3.2.0` 读取；原版 wordninja 的发布较旧，增强版提供标点保留和可补充词典。`space_media_names.py` 先出逐文件复核 CSV，只插入空格，保留序号、字符与扩展名，不推断人物或出处；指定目录内的真实文件核验后复用 `organize.apply_plan`、SQLite 备份及回滚日志。领域词汇在 `english_filename_words.txt`，有分词歧义时可按原名回滚。
 
+A 盘垃圾隔离使用短名称 `peach-purge-<32 位 UUID>.peach-quarantine`，扫描入口仅跳过这一精确格式；普通媒体和其他 `.tmp` 文件仍需复核。`51风流.png`、`代开实习证明.png`、`扫码约炮.png`、`探花社区.png` 仅在不超过 4 KiB 时进入图片内容复核，不凭名称自动删除。隔离恢复与本地完整备份沿用 `purge_assets` 的事务边界。
+
 保留自研不是永久豁免：约束改变或候选实现更新时重新跑 POC，不因本表结论跳过外部检索。
 
 ## 已定型的产品行为

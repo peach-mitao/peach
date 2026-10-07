@@ -217,6 +217,38 @@ class TrashJunkTests(unittest.TestCase):
         self.assertTrue(path.is_file())
         self.assertIsNone(self.disposal(1))
 
+    def test_pikpak_isolation_preserves_bytes_and_restores_the_original_path(self):
+        from peach import web_batch
+        from peach import scan
+        path=self.root/'作品附件.png'
+        path.write_bytes(b'confirmed promotion')
+        quarantine=web_batch._quarantine_media(path,location='pikpak')
+        self.assertFalse(path.exists())
+        self.assertFalse(quarantine.name.startswith('.'))
+        self.assertEqual(quarantine.suffix,'.peach-quarantine')
+        self.assertEqual(quarantine.read_bytes(),b'confirmed promotion')
+        self.assertTrue(scan.is_sidecar(quarantine.name,frozenset()))
+        web_batch._restore_staged_media([(path,quarantine)])
+        self.assertEqual(path.read_bytes(),b'confirmed promotion')
+        self.assertFalse(quarantine.exists())
+
+    def test_a_drive_isolation_uses_a_bounded_normal_component(self):
+        from pathlib import PureWindowsPath
+        from peach import web_batch
+        original=PureWindowsPath('a:\\作品\\'+'长'*200+'.jpg')
+        with mock.patch.object(web_batch.os,'rename') as rename:
+            quarantine=web_batch._quarantine_media(original)
+        self.assertEqual(quarantine.parent,original.parent)
+        self.assertLess(len(quarantine.name),80)
+        self.assertFalse(quarantine.name.startswith('.'))
+        self.assertEqual(quarantine.suffix,'.peach-quarantine')
+        rename.assert_called_once_with(original,quarantine)
+
+    def test_only_exact_tool_quarantine_names_are_skipped(self):
+        from peach import scan
+        for name in ('peach-purge-film.mp4','peach-purge-'+('a'*32)+'.mp4','作品.peach-quarantine'):
+            self.assertFalse(scan.is_sidecar(name,frozenset()))
+
     def test_download_site_navigation_images_keep_content_attachments(self):
         from peach.web_batch import _attachment_junk_reason
         self.assertTrue(_attachment_junk_reason('.mp4', 'A:\\作品\\社 區 最 新 情 報.mp4', 15089802))
@@ -228,6 +260,14 @@ class TrashJunkTests(unittest.TestCase):
             self.assertTrue(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000))
         for name in ('images.rar', '作品封面.jpg', '作品字幕.srt', 'HiHSP.com-作品截图.jpg'):
             self.assertEqual(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000), '')
+
+    def test_tiny_promotion_cards_require_exact_names_and_content_review(self):
+        from peach.web_batch import _attachment_junk_reason
+        for name in ('51风流', '代开实习证明', '扫码约炮', '探花社区'):
+            self.assertIn('须核验图片内容', _attachment_junk_reason('.png', 'A:\\作品\\'+name+'.png', 1400))
+            self.assertFalse(_attachment_junk_reason('.png', 'A:\\作品\\'+name+'.png', 4097))
+            self.assertFalse(_attachment_junk_reason('.png', 'A:\\作品\\'+name+'作品.png', 1400))
+            self.assertFalse(_attachment_junk_reason('.mp4', 'A:\\作品\\'+name+'.mp4', 1400))
 
 
 if __name__ == "__main__":
