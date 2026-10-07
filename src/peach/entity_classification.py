@@ -93,7 +93,7 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
                      f"WHERE ca.entity_id={column} AND ca.role='creator' AND av.medium='video' "
                      "AND COALESCE(av.disposal,'')<>'vanished')")
     return {
-        'japanese_av': f"{kind_column}='performer' AND ({jav})",
+        'japanese_av': f"{kind_column} IN ('performer','creator') AND ({jav})",
         'amateur': f"{kind_column}='performer' AND ({amateur})",
         'western': f"{kind_column}='performer' AND ({western})",
         'blogger': f"{kind_column}='creator' AND ({creator_video}) AND NOT ({seller}) AND NOT ({animation}) AND NOT ({claim('account_role','studio')})",
@@ -118,14 +118,24 @@ def summaries(connection, entity_ids):
     return result
 
 
+def index_scope(connection, kind: str) -> str:
+    """艺人名册包含真人账号；卖家与动画作者使用独立名册。"""
+    predicates = category_predicates(connection=connection)
+    if kind == 'performer':
+        return "(e.kind='performer' OR (" + predicates['blogger'] + '))'
+    if kind == 'creator':
+        return '(' + predicates['seller'] + ' OR ' + predicates['animation'] + ')'
+    return "e.kind='" + kind + "'"
+
+
 def counts(connection, kind, query, visible_clause):
     """对搜索范围中的有效实体独立计数，不受所选分类及分页限制。"""
     predicates = category_predicates(connection=connection)
     sql = ('SELECT ' + ','.join(f'COALESCE(SUM(({value})),0)' for value in predicates.values()) + ' '
-           'FROM entity e WHERE e.kind=? AND EXISTS ('
+           'FROM entity e WHERE ' + index_scope(connection, kind) + ' AND EXISTS ('
            'SELECT 1 FROM asset_entity ae CROSS JOIN asset a ON a.id=ae.asset_id '
            'WHERE ae.entity_id=e.id AND ' + visible_clause + ') ')
-    params = [kind]
+    params = []
     if query:
         sql += 'AND e.canonical_name LIKE ? '
         params.append(f'%{query}%')

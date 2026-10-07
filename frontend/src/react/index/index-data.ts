@@ -24,7 +24,7 @@ export const INDEX_URL = '/api/index';
 
 /** 页头标题与名册口径。 */
 export const INDEX_TITLES: Record<IndexKind, string> = {
-  performers: '艺人', creators: '创作者', studios: '厂牌', agencies: '事务所', tags: '标签',
+  performers: '艺人', creators: '卖家与动画作者', studios: '厂牌', agencies: '事务所', tags: '标签',
 };
 
 /** 索引格对应的实体类型，资料页与取图链都按它分。 */
@@ -45,8 +45,8 @@ export const ONLINE_TAG_CATEGORIES: readonly (readonly [string, string])[] = [
   ['copyright', '作品'], ['metadata', '元数据'],
 ];
 export const IDENTITY_CATEGORIES: Record<'performers' | 'creators', readonly (readonly [string, string])[]> = {
-  performers: [['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方']],
-  creators: [['all', '全部'], ['blogger', '网黄博主'], ['seller', '卖家'], ['animation', '动画作者']],
+  performers: [['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方'], ['blogger', '网黄博主']],
+  creators: [['all', '全部'], ['seller', '卖家'], ['animation', '动画作者']],
 };
 
 /** 每页条数：一屏头像 120 格，标签 180 枚。 */
@@ -57,6 +57,7 @@ export const isCompany = (kind: IndexKind) => kind === 'studios' || kind === 'ag
 
 /** 本地名册的一格。字段以 `q_index` 为准；公司另有标识，事务所另有成员数。 */
 export interface IndexPerson {
+  entity_kind?: string;
   identity_labels?: string[];
   entity_id?: number;
   id?: number;

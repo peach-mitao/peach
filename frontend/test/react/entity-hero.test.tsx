@@ -53,6 +53,24 @@ async function open(initial: EntityHeroProps) {
 }
 
 describe('排版用的纯函数', () => {
+  it('真人账号与女优共用资料、别名和图标行', async () => {
+    const host = await open(props({ kind: 'creator', name: 'RiaKurumi', entity: performer({
+      canonical_name: 'RiaKurumi', identity_labels: ['女优','网黄博主'],
+      profile: { height: 149 }, name_groups: { shown: ['Ria Kurumi', '百田くるみ'], total: 2 },
+    }) }));
+    expect(host.querySelector('[data-entity-facts]')?.textContent).toContain('T149');
+    expect(host.querySelector('[data-alias-names]')?.textContent).toContain('百田くるみ');
+    expect(host.querySelector('[data-meta-item][title="视频"] use')?.getAttribute('href')).toBe('#i-film');
+  });
+  it('厂牌视频数与别名各自带图标，资料不填人物字段', async () => {
+    const host = await open(props({ kind: 'studio', name: 'MOODYZ', entity: performer({
+      canonical_name: 'MOODYZ', display_aliases: ['ムーディーズ'], agency: undefined,
+    }) }));
+    expect(host.querySelector('[data-meta-item][title="视频"] use')?.getAttribute('href')).toBe('#i-film');
+    expect(host.querySelector('[data-company-names] use')?.getAttribute('href')).toBe('#i-id-card');
+    expect(host.querySelector('[data-company-names]')?.textContent).toBe('ムーディーズ');
+    expect(host.querySelector('[data-entity-facts]')).toBeNull();
+  });
   it('分类带图标位于身份行最左侧，资料保留来源与跨角色身份入口', async () => {
     const given = props({ entity: performer({
       identity_labels: ['女优','西方'],
@@ -63,7 +81,8 @@ describe('排版用的纯函数', () => {
     const classification = host.querySelector('[data-identity-classification]')!;
     expect(classification.textContent).toBe('女优 · 西方');
     expect(classification.querySelector('use')?.getAttribute('href')).toBe('#i-user-round');
-    expect(classification.getAttribute('title')).toContain('发行方演员名单');
+    expect(classification.hasAttribute('title')).toBe(false);
+    expect(host.textContent).not.toContain('发行方演员名单');
     expect(host.querySelector('[data-entity-alias]')?.firstElementChild).toBe(classification);
     expect(host.textContent).not.toContain('成人出演者');
     await click(host.querySelector('[data-entity-identity] button.underline'));

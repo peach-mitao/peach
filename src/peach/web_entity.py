@@ -199,10 +199,10 @@ def q_entity(contract: WebContract, args):
             "ORDER BY provider,external_kind,external_id",
             (d["id"],),
         )]
-        d.update(_performer_entries(contract, c, d, alias_rows) if kind == "performer"
+        d.update(_performer_entries(contract, c, d, alias_rows) if kind == "performer" or 'japanese_av' in d['identity_categories']
                  else {"entry_links": []})
-        # 页头的五项资料与按名义分组的别名（ADR-0069）：只有女优有。
-        if kind == "performer":
+        # 人物资料与按名义分组的别名。
+        if kind in {"performer", "creator"}:
             d.update(performer_header.header(c, d["id"], d["canonical_name"]))
         scope = scope_predicate(kind, "ae.entity_id")
         count, rep = c.execute(
@@ -566,16 +566,16 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
             rows = rows[:limit]
         elif kind in INDEX_ENTITY_KINDS:
             entity_kind = INDEX_ENTITY_KINDS[kind]
-            sql = ("SELECT e.id entity_id,e.canonical_name k,count(DISTINCT " + video_work_key(contract) + ") n,"
+            sql = ("SELECT e.id entity_id,e.kind entity_kind,e.canonical_name k,count(DISTINCT " + video_work_key(contract) + ") n,"
                    "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
                    " WHERE ae2.entity_id=e.id AND a2.medium='video' AND a2.snapshot_path IS NOT NULL " +
-                   (" AND " + solo_performer_clause("a2.id", "e.id") if entity_kind == "performer" else "") +
+                   (" AND (e.kind='creator' OR (" + solo_performer_clause("a2.id", "e.id") + '))' if entity_kind == "performer" else "") +
                    " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
                    " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
                    "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
                    "JOIN asset a ON a.id=ae.asset_id "
-                   "WHERE " + COUNTED_VIDEO + " AND e.kind=? ")
-            par = [entity_kind]
+                   "WHERE " + COUNTED_VIDEO + " AND " + entity_classification.index_scope(c,entity_kind) + ' ')
+            par = []
             if q: sql += "AND e.canonical_name LIKE ? "; par.append(f"%{q}%")
             clause, values = entity_classification.filter_sql(category,connection=c)
             sql += clause
@@ -614,13 +614,14 @@ def q_index(contract: WebContract, kind, q="", limit=600, offset=0, category="")
         # `/performers` 桌面视口滚三屏实测 77 个取图请求里 5 个是这样的 404。
         # 判定在库连接之外做，它读的是目录索引而不是账本。
         for row in rows:
-            row["has_image"] = contract.has_entity_image(entity_kind, row.get("entity_id"))
-            row["image_version"] = contract.entity_image_version(entity_kind, row.get("entity_id"))
+            row_kind = row.get('entity_kind',entity_kind)
+            row["has_image"] = contract.has_entity_image(row_kind, row.get("entity_id"))
+            row["image_version"] = contract.entity_image_version(row_kind, row.get("entity_id"))
         attach_avatar_availability(contract, rows)
         #: 索引页的大图版式把头像裁成竖幅，几何居中会切掉脸。取景与资料页大图同一份
         #: sidecar、同一个换算，只是这里按行取；读的是文件，所以放在连接之外。
         for row in rows:
-            row["avatar_focus"] = contract.avatar_focus(entity_kind, row["entity_id"])
+            row["avatar_focus"] = contract.avatar_focus(row.get('entity_kind',entity_kind), row["entity_id"])
         #: 公司的门面是它的标识，和资料页大位同一条链：`/logo` 优先，取不到才退回实体图。
         #: 索引页一屏几十格，缺了这个标志就只能格格出 `<img>` 等 404。
         if entity_kind in ("studio", "agency"):

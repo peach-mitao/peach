@@ -35,7 +35,7 @@ function costarImg(person: HeroCostar): string {
 export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions, helpers }: EntityHeroProps) {
   const people = isPeople(kind);
   const company = isCompany(kind);
-  const facts = kind === 'performer' ? factRows(entity.profile) : [];
+  const facts = people ? factRows(entity.profile) : [];
   const links = heroLinks(entity, kind);
   const marks = entryMarks(entity);
   const costars = kind === 'agency' ? [] : (entity.related_performers || []);
@@ -130,9 +130,7 @@ function Portrait({ kind, name, helpers, people, company }: {
   );
 }
 
-/** 名字下面那一行。女优页各项带图标：分类、视频数、事务所、别名（读音在最前）；其余种类
- *  仍是一行字：别名 · 视频数 · 归属。事务所是身份信息，不是链接的标签；账本里有这家的实体时
- *  给去处，只有采到的原文时只写名字。 */
+/** 身份资料各项带图标；别名独立排列，归属有实体时提供站内入口。 */
 function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHeroData; actions: EntityHeroActions }) {
   const agency = agencyOf(entity);
   const go = (target: string, to: string) => (event: MouseEvent) => {
@@ -143,7 +141,7 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
     ? <a href={entityPath('agency', agency.name)} data-agency={agency.name} onClick={go('agency', agency.name)}>{agency.name}</a>
     : agency.name) : null;
   const count = <><b>{entity.asset_count.toLocaleString()}</b> 个视频</>;
-  if (kind === 'performer') {
+  if (kind === 'performer' || kind === 'creator') {
     const line = nameLine(entity.name_groups);
     return (
       <div data-entity-alias="meta">
@@ -176,27 +174,22 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
     : (entity.labels || []).length ? <> · <b>{entity.labels!.length.toLocaleString()}</b> 个厂牌</> : null;
   const maker = entity.maker;
   return (
-    <div data-entity-alias={kind === 'creator' ? 'meta' : ''}>
+    <div data-entity-alias="meta">
       {kind === 'creator' ? <IdentityMeta entity={entity} /> : null}
-      <span>{aliases.length ? `${aliases.join(' / ')} · ` : ''}{count}{members}
-      {agencyNode ? <> · {agencyNode}</> : null}
-      {maker ? <> · <a href={entityPath('studio', maker.name)} data-studio-link={maker.name}
-        onClick={go('studio', maker.name)}>{maker.name}</a></> : null}</span>
+      <span data-meta-item="" title="视频"><Glyph name="film" /><span>{count}{members}</span></span>
+      {agencyNode ? <span data-meta-item="" title="事务所"><Glyph name="briefcase" /><span>{agencyNode}</span></span> : null}
+      {maker ? <span data-meta-item="" title="片商"><Glyph name="clapperboard" /><a href={entityPath('studio', maker.name)} data-studio-link={maker.name}
+        onClick={go('studio', maker.name)}>{maker.name}</a></span> : null}
+      {aliases.length ? <div data-meta-item="names" data-company-names={kind === 'studio' || kind === 'agency' ? '' : undefined}><Glyph name="id-card" /><span data-alias-names="" title="别名">{aliases.map((name, at) => <span key={at}>{name}</span>)}</span></div> : null}
     </div>
   );
 }
 
-/** 分类是身份行的第一项；来源证据随资料下发并作为补充提示。 */
+/** 分类位于身份行的第一项。 */
 function IdentityMeta({ entity }: { entity: EntityHeroData }) {
   if (!entity.identity_labels?.length) return null;
-  const sources = [
-    ...(entity.external_refs || []).map((ref) => ref.provider),
-    ...(entity.classifications || []).filter((claim) => claim.status === 'observed' || claim.status === 'approved')
-      .map((claim) => claim.evidence),
-  ];
   return (
-    <span data-meta-item="classification" data-identity-classification=""
-      title={sources.length ? [...new Set(sources)].join(' · ') : '分类'}>
+    <span data-meta-item="classification" data-identity-classification="">
       <Glyph name="user-round" /><span>{entity.identity_labels.join(' · ')}</span>
     </span>
   );
@@ -266,7 +259,7 @@ function HeroLinkView({ link }: { link: LinkView }) {
       );
     case 'private':
       return (
-        <span data-link="private" title="私人馆藏来源记录，不直接打开下载页">
+        <span data-link="private" title={link.label}>
           <LinkIcon mark={{ globe: true }} /><span data-link-label="">来源 · {link.label}</span>
         </span>
       );

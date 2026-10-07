@@ -203,7 +203,7 @@ def profiled(connection: sqlite3.Connection) -> set[int]:
         return set()
     return {int(row[0]) for row in connection.execute(
         f"SELECT p.entity_id FROM {TABLE} p JOIN entity e ON e.id=p.entity_id"
-        " AND e.kind='performer'")}
+        " AND e.kind IN ('performer','creator')")}
 
 
 def header(connection: sqlite3.Connection, entity_id: int, canonical: str,

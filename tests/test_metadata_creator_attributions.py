@@ -71,7 +71,7 @@ class CreatorAttributionTests(unittest.TestCase):
         self.assertEqual(len(self.plan()),3)
         self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
 
-    def test_versioned_release_and_publisher_numbers_require_matching_files(self):
+    def test_versioned_release_directories_and_publisher_numbers_are_excluded(self):
         samples = {
             'WAAA-415_6K-C':r'B:\云下载\WAAA-415_6K-C\@Milan@ty999.me_WAAA-415_6K-C.mp4',
             'wavr00178pl':r'B:\云下载\wavr00178pl\wavr00178.part1.mp4',
@@ -85,6 +85,28 @@ class CreatorAttributionTests(unittest.TestCase):
         self.asset('banbi_555',path=r'B:\创作者\banbi_555\scene title.mp4')
         self.asset('ABW-987',path=r'B:\创作者\ABW-987\another title.mp4')
         self.assertCountEqual([row['current_creator'] for row in self.plan()],samples)
+
+    def test_release_directory_does_not_assign_its_code_to_unrelated_files(self):
+        examples = [('WAAA-415_6K-C', 'HMN-597.mp4'),
+                    ('WAAA-415_6K-C', 'daily life.mp4'),
+                    ('gachincoppv-1009-HD', 'gachincoppv-1009-HD1.wmv'),
+                    ('gachincoppv-1009-HD', 'gachincoppv-1009-HD3.wmv')]
+        ids = []
+        for name, filename in examples:
+            asset_id, _ = self.asset(name, path=f'B:\\云下载\\{name}\\{filename}')
+            ids.append(asset_id)
+            self.assertIsNone(upsert_asset_entity(self.connection,kind='creator',name=name,
+                              asset_id=asset_id,role='creator',source='scan:directory'))
+        self.asset('banbi_555', path=r'B:\创作者\banbi_555\holiday.mp4')
+        frozen = self.plan()
+        self.assertCountEqual([row['asset_id'] for row in frozen], ids)
+        with self.connection:
+            receipt = apply_plan(self.connection, frozen)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset WHERE creator IS NULL AND code IS NULL').fetchone()[0], 4)
+        self.assertEqual(self.connection.execute('SELECT count(*) FROM asset').fetchone()[0], 5)
+        with self.connection:
+            restore(self.connection, receipt)
+        self.assertCountEqual([row['asset_id'] for row in self.plan()], ids)
 
     def test_tokyo_publisher_requires_registered_studio_and_matching_release_file(self):
         asset_id,_ = self.asset('Tokyo',studio='东京热',code='n1042',path=r'B:\云下载\TokyoHot-n1042.mp4')

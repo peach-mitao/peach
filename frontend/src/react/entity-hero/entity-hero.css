@@ -179,6 +179,7 @@
 .peach-react [data-meta-item] { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .peach-react [data-meta-item="classification"] { white-space: nowrap; flex: none; }
 .peach-react [data-meta-item="names"] { flex-wrap: wrap; }
+.peach-react [data-company-names] { flex-basis: 100%; }
 .peach-react [data-meta-item] > svg,
 .peach-react [data-entity-facts] dt svg {
   width: 16px;

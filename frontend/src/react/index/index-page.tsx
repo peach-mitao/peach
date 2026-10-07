@@ -42,6 +42,10 @@ const SCOPE_TABS: BoardTab<IndexScope>[] = [
   { value: 'local', label: '本地', symbol: 'hard-drive' },
   { value: 'online', label: '在线', symbol: 'rss' },
 ];
+const PEOPLE_TABS: BoardTab<'performers' | 'creators'>[] = [
+  { value: 'performers', label: '艺人', symbol: 'user-round' },
+  { value: 'creators', label: '卖家与动画作者', symbol: 'user-round' },
+];
 
 /* 公司那一格摆的是标识而不是脸，沿用艺人那套词就是提示说着「竖幅头像」、屏幕上摆着方标识。
    档位仍是同一个设置值，分开的只有说法。 */
@@ -219,6 +223,10 @@ export function IndexPage(props: IndexProps) {
         <span aria-hidden className="hidden h-0 basis-full max-board-narrow:order-2 max-board-narrow:block" />
         <IndexSearch label={`过滤${title}`} value={q} onQuery={(next) => { if (next !== q) go({ q: next }, !!next) }} />
       </div>
+      {kind === 'performers' || kind === 'creators' ? (
+        <BoardTabs tabs={PEOPLE_TABS} value={kind} label="人物名册"
+          onChange={(next) => go({ kind: next, scope: 'local', category: 'all' })} />
+      ) : null}
       {tabs}
       {(kind === 'creators' || kind === 'performers') && scope === 'local' ? (
         <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
@@ -259,7 +267,7 @@ export function IndexPage(props: IndexProps) {
 }
 
 const LABELS: Record<IndexKind, string> = {
-  tags: '标签', performers: '艺人', creators: '创作者', studios: '厂牌', agencies: '事务所',
+  tags: '标签', performers: '艺人', creators: '卖家与动画作者', studios: '厂牌', agencies: '事务所',
 };
 
 /** 空馆藏、筛选无结果与在线来源还没有内容分别给出可执行的去处。文案同目录页的空态

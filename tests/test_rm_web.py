@@ -559,7 +559,8 @@ class WebDataTests(unittest.TestCase):
         """
         def flags(kind):
             return [(row["k"], row["has_image"], row["has_avatar"])
-                    for row in rm_web.q_index(self.contract, kind, limit=10)["items"]]
+                    for row in rm_web.q_index(self.contract, 'performers', limit=10)["items"]
+                    if row['entity_kind'] == {'performers':'performer','creators':'creator'}[kind]]
 
         self.assertEqual(flags("performers"), [("Canonical Alice", False, False)])
         self.assertEqual(flags("creators"), [("Canonical Creator", False, False)])
