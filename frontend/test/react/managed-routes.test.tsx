@@ -317,7 +317,7 @@ it('配置页打开返回的那一刻，小标题和它的分区已经在容器�
   await act(async () => {
     expect(await r.openManagedRoute('/configuration', {}, { container: stats, isCurrent: () => true })).toBe(true);
     const titles = [...stats.querySelectorAll('.configgroup')].map((title) => title.textContent);
-    expect(titles, '标题还没落到 DOM 上，壳那一刻就拆不出分区').toEqual(['通用', '媒体', '网络与访问', '更新与维护']);
+    expect(titles, '标题还没落到 DOM 上，壳那一刻就拆不出分区').toEqual(['通用', '媒体', '网络与访问', '维护']);
     expect(stats.querySelector('.configpage')?.parentElement?.classList.contains('peach-react')).toBe(true);
   });
 });

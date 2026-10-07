@@ -88,7 +88,7 @@ export function AccessSettings({ initial, receipt }: AccessSettingsProps) {
         </Stack>
       </div>
       {editable
-        ? <Footer status="保存后立即生效。"><Button type="submit" {...busyProps(action.busy === 'save')}>保存配置</Button></Footer>
+        ? <Footer><Button type="submit" {...busyProps(action.busy === 'save')}>保存配置</Button></Footer>
         : null}
     </Section>
   );

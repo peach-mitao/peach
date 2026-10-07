@@ -82,7 +82,6 @@ it('设置保存后清空 API key，移除需再保存才生效', async () => {
   }));
   const host = await mount(<QueryClientProvider client={queryClient}><IndexerSettings receipt={vi.fn()} /></QueryClientProvider>);
   await vi.waitFor(async () => { await settle(); expect(section(host, '资源索引器')).not.toBeNull() });
-  expect(host.textContent).toContain('启用 · 用户自配索引器');
   expect(host.textContent).toContain('清除已保存的 API key');
   await type(field(host, '索引器 1 API key'), 'private-test-key');
   await submit(section(host, '资源索引器'));
@@ -93,4 +92,8 @@ it('设置保存后清空 API key，移除需再保存才生效', async () => {
   expect(posts).toHaveLength(1);
   await submit(section(host, '资源索引器'));
   expect(posts[1]).toEqual({ indexers: [] });
+  // 新添的一行默认启用：填完地址就能搜，不必再记得去勾一下。
+  await click(buttonNamed('添加索引器', host));
+  await submit(section(host, '资源索引器'));
+  expect((posts[2] as { indexers: { enabled: boolean }[] }).indexers[0]?.enabled).toBe(true);
 });

@@ -268,8 +268,8 @@ export interface ConfigurationProps {
   reopenTutorial(): Promise<void>;
 }
 
-/** 配置页的一个分组（「通用」「媒体」「网络与访问」「更新与维护」）。
- *  重开教程那一半只归「更新与维护」，别的分组不必接它。 */
+/** 配置页的一个分组（「通用」「媒体」「下载」「网络与访问」「维护」）。
+ *  重开教程那一半只归「维护」，别的分组不必接它。 */
 export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'receipt'> {
   data: ConfigurationData;
 }

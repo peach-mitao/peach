@@ -917,10 +917,11 @@ function vt(e, t) {
 }
 function yt() {
 	return `<div class="configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
-		["通用", 1],
+		["通用", 2],
 		["媒体", 2],
-		["网络与访问", 2],
-		["更新与维护", 3]
+		["下载", 2],
+		["网络与访问", 3],
+		["维护", 3]
 	].map(([e, t]) => `<h2 class="configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
 }
 function bt(e = "正在读取内容", { className: t = "", variant: n = "panel", count: r = 6, fill: i = !0, gridClass: a = "", gridSize: o = "", cardRatio: s = 0 } = {}) {

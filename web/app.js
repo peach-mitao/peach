@@ -891,7 +891,7 @@ const openTutorialTarget=task=>{
   route(task.href);void restoreRoute();
 };
 /** 重新打开安装教程：本地三个键归位，服务端标记同时撤回。
- *  重开键在配置页的「更新与维护」里，忙态、失败原因和回执都由那一侧给；教程卡是固定定位的，
+ *  重开键在配置页的「维护」里，忙态、失败原因和回执都由那一侧给；教程卡是固定定位的，
  *  在配置页上就露出来。写入失败就把原因抛回去。 */
 async function reopenPostSetupTutorial(){
   resetPostSetupTutorialState();

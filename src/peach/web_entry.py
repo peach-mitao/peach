@@ -74,7 +74,7 @@ def runtime_facts(config) -> tuple[tuple[str, str], ...]:
 
 
 def runtime_fact_entries(config) -> list[dict[str, str]]:
-    """运行信息中的缺失依赖附带官方下载入口。"""
+    """运行信息中的缺失依赖附带官方下载入口；依赖可用时不占一行。"""
     from .ffmpeg import FFmpegResolver
     entries = [{"term": term, "value": value} for term, value in runtime_facts(config)]
     resolver = FFmpegResolver(config.directory("tools") / "ffmpeg")
@@ -89,4 +89,4 @@ def runtime_fact_entries(config) -> list[dict[str, str]]:
         untrunc.update(value=untrunc["value"] + f"解压到 {config.directory('tools') / 'untrunc'}。",
                        download_url="https://github.com/anthwlock/untrunc/releases",
                        download_label="下载 untrunc")
-    return entries
+    return [row for row in entries if not (row["term"] in ("FFmpeg", "untrunc") and row["value"] == "可用")]

@@ -1,4 +1,5 @@
-/* 「更新与维护」分组：自动更新、检查更新、运行信息、重开安装教程，卸载排在最后。 */
+/* 「维护」分组：运行信息与系统诊断、重开安装教程，卸载排在最后。自动更新卡定义在这里，
+ * 摆在「通用」分组。 */
 import { useState, type FormEvent } from 'react';
 import { confirmModal } from '@peach/legacy/ui';
 
@@ -14,7 +15,6 @@ import type {
   AutomaticUpdateState, ConfigurationFact, ConfigurationGroupProps, ConfigurationProps, UninstallState,
 } from '../bundle';
 import { PathLine } from '../components/path-line';
-import { ReleaseUpdates } from './release-updates';
 import { Disclosure, ErrorText, ExternalLink, Fact, FactList, Footer, Help, Rows, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 
@@ -25,10 +25,7 @@ export function MaintenanceSettings(
 ) {
   return (
     <div className="flex flex-col gap-6">
-      {data.automatic_updates ? <AutomaticUpdates initial={data.automatic_updates} receipt={receipt} /> : null}
-      {data.updates ? <ReleaseUpdates initial={data.updates} initialJob={data.update_job} /> : null}
       <Facts facts={data.facts} />
-      <Section title="系统诊断"><Stack><div><LinkButton href="/diagnostics">打开系统诊断</LinkButton></div></Stack></Section>
       <TutorialSettings receipt={receipt} reopenTutorial={reopenTutorial} />
       {data.uninstall ? <UninstallSettings uninstall={data.uninstall} receipt={receipt} /> : null}
     </div>
@@ -68,8 +65,8 @@ export function AutomaticUpdates({ initial, receipt }: { initial: AutomaticUpdat
   const help = !initial.available
     ? '自动更新需要由托盘管理的服务。'
     : initial.download_available
-      ? '开启后一分钟内开始检查。下载完成后，在此确认重启安装。'
-      : '开启后一分钟内开始检查。源码运行时在发布页获取新版本。';
+      ? '下载完成后在这里确认重启安装。'
+      : undefined;
   return (
     <Section title="自动更新" onSubmit={submit}>
       <Rows>
@@ -108,6 +105,9 @@ function Facts({ facts }: { facts: ConfigurationFact[] }) {
           </Fact>
         ))}
       </FactList>
+      <Footer>
+        <LinkButton href="/diagnostics">打开系统诊断</LinkButton>
+      </Footer>
     </Section>
   );
 }

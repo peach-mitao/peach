@@ -93,13 +93,14 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
         <Fact term="更新通道">{data.channel}</Fact>
         <Fact term="最新版本">{data.latest_version || (data.state === 'unchecked' ? '尚未检查' : '未取得')}</Fact>
       </FactList>
-      <Stack divided>
+      {/* 还没检查过时「最新版本」那一行已经写着「尚未检查」，下面不再说一遍。 */}
+      {data.state === 'unchecked' && !data.checked_at && !error && job.state === 'idle' ? null : <Stack divided>
         {data.checked_at ? <Help>检查于 {new Date(data.checked_at * 1000).toLocaleString()}</Help> : null}
         {data.state === 'available' && !error
           ? <Note tone="info" title="有可用更新">{data.message}</Note>
           : error || data.state === 'error'
             ? <ErrorText>{error || data.message}</ErrorText>
-            : <Help role="status">{data.message}</Help>}
+            : data.state === 'unchecked' ? null : <Help role="status">{data.message}</Help>}
         {job.state === 'error' ? <ErrorText>{job.message}</ErrorText> : null}
         {job.state !== 'idle' && job.state !== 'error' ? (
           <div aria-live="polite" className="flex flex-col gap-2">
@@ -108,7 +109,7 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
             <Help>{reading}</Help>
           </div>
         ) : null}
-      </Stack>
+      </Stack>}
       <Footer status={<ExternalLink href={data.release_url}>查看发布页</ExternalLink>}>
         {job.state === 'ready' ? <Button onClick={confirmRestart}>重启安装</Button> : null}
         {data.state === 'available' && data.installation === '独立测试包' && job.state !== 'ready'

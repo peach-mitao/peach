@@ -172,7 +172,7 @@ describe('路由冒烟', () => {
           // 设置浮层的那一排 tab 常驻 DOM、关着时不可见；只点页面上看得见的那一排。
           const tabs = opened.page.locator('.board-local-nav [role="tab"]:visible');
           const count = await tabs.count();
-          // 选择器一旦对不上，循环一格都不跑也照样绿；配置页至少有媒体、网络与访问、更新与维护三格。
+          // 选择器一旦对不上，循环一格都不跑也照样绿；配置页至少有媒体、网络与访问、维护三格。
           if (route.path === '/configuration') assert.ok(count >= 3, `配置页只看到 ${count} 个分区 tab`);
           for (let index = 0; index < count; index += 1) {
             const tab = tabs.nth(index);
