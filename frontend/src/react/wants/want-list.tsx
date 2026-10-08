@@ -1,8 +1,11 @@
-/* JAV 入库：按状态分组的作品卡，卡片下方查询磁链并提交云下载。 */
+/* JAV 入库：按状态分组的作品卡，卡片下方查询磁链并提交云下载。
+ *
+ * 卡片下方的候选来自 JavDB；「搜索资源」打开云下载弹层，查自配索引器或贴磁力。页上那颗
+ * 「提交磁力」是不挂在任何作品上的同一个弹层。 */
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RiStarLine, RiExternalLinkLine, RiCloudLine, RiDeleteBinLine } from '@remixicon/react';
+import { RiStarLine, RiExternalLinkLine, RiDeleteBinLine } from '@remixicon/react';
 
 import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
@@ -10,6 +13,7 @@ import { Select, SelectItem } from '@/components/base/select/select';
 
 import { apiGet, errorMessage } from '../../api';
 import type { DownloadsSnapshot } from '../bundle';
+import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-download-dialog';
 import { DOWNLOADS_KEY, DOWNLOADS_URL } from '../activity/downloads-panel';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
@@ -66,7 +70,7 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
           {source ? <ButtonLink data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine} href={source} target="_blank" rel="noopener noreferrer">来源页</ButtonLink> : null}
           {/* 还在找的两段才给云下载：未发售的没有资源可下，已入库的已经到手。 */}
           {want.phase === 'searching' || want.phase === 'given_up' ? (
-            <Button variant="secondary" size="small" leadingIcon={RiCloudLine} disabled={readOnly} onClick={onCloudDownload}>云下载</Button>
+            <Button variant="secondary" size="small" disabled={readOnly} onClick={onCloudDownload}>搜索资源</Button>
           ) : null}
           {want.phase === 'given_up' ? (
             <Button variant="secondary" size="small" disabled={readOnly} {...busyProps(busy === `reset:${want.id}`)}
@@ -86,12 +90,11 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
 export interface WantListProps {
   readOnly: boolean;
   toast(message: string): void;
-  /** 带着番号、标题与 `wishlist:<id>` 去活动页的云下载段（壳的 `openCloudDownload`）。 */
-  cloudDownload(prefill: { code?: string; title?: string; origin: string }): void;
 }
 
-export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
+export function WantList({ readOnly, toast }: WantListProps) {
   const [code, setCode] = useState('');
+  const [download, setDownload] = useState<DownloadPrefill | null>(null);
   const [provider, setProvider] = useState('');
   const action = useAction();
   const wants = useQuery({
@@ -154,13 +157,16 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
       {data?.scraping ? <Help role="status">正在给刚加入的番号取资料与封面。</Help> : null}
       {configured.length ? <div className="flex flex-col gap-2">
         <p className="text-body-medium text-text-primary">下载到</p>
-        <Select aria-label="下载到" selectedKey={selected} onSelectionChange={(key) => setProvider(String(key))}>
-          {configured.map((row) => <SelectItem key={row.key} id={row.key}>{row.label}</SelectItem>)}
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select aria-label="下载到" selectedKey={selected} onSelectionChange={(key) => setProvider(String(key))}>
+            {configured.map((row) => <SelectItem key={row.key} id={row.key}>{row.label}</SelectItem>)}
+          </Select>
+          <Button variant="secondary" disabled={readOnly} onClick={() => setDownload({})}>提交磁力</Button>
+        </div>
         <Help>{configured.find((row) => row.key === selected)?.target || '使用已配置的目标目录'}</Help>
       </div> : null}
       {downloads.error ? <Note tone="error" title="下载配置未取得">{errorMessage(downloads.error)}</Note> : null}
-      {downloads.data && !configured.length ? <Note tone="neutral">请先在配置页设置 115 或 PikPak 云下载。</Note> : null}
+      {downloads.data && !configured.length ? <Note tone="neutral">先在配置页「下载」分组登录 PikPak，或填好 CloudDrive2 的地址与令牌。</Note> : null}
       {downloads.data && !downloads.data.available ? <Note tone="neutral">云下载只在账本写入端可用。</Note> : null}
 
       {data && !items.length ? (
@@ -183,7 +189,7 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
                 <WantRow key={want.id} want={want} readOnly={readOnly} busy={action.busy}
                   downloads={downloads.data} provider={selected} toast={toast}
                   onReset={() => reset(want)} onRemove={() => remove(want)}
-                  onCloudDownload={() => cloudDownload({
+                  onCloudDownload={() => setDownload({
                     code: want.code || '', title: want.title || '', origin: `wishlist:${want.id}`,
                   })} />
               ))}
@@ -191,6 +197,7 @@ export function WantList({ readOnly, toast, cloudDownload }: WantListProps) {
           </section>
         );
       })}
+      <CloudDownloadDialog prefill={download} close={() => setDownload(null)} receipt={toast} provider={selected} />
     </div>
   );
 }

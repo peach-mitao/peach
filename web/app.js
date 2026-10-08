@@ -23,7 +23,7 @@ import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory,
 import { registerDiagnosticsRoute } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
-import { configurationRequestedSection, activityPrefill, notifyShell, writeShell } from './dist/peach-ui.js';
+import { configurationRequestedSection, notifyShell, writeShell } from './dist/peach-ui.js';
 import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
@@ -1984,21 +1984,14 @@ async function openReview(push=true){
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 活动页（任务中心）由路由树画。它自己按内容决定轮询快慢，壳不给它任何助手：
-   任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads、自己提交。
-   关注条目的「云下载」键经 openCloudDownload 带着标题与来处进来，表单据此预填，
-   用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。
-   关注管理页、高清版目标页的键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个
-   `activityPrefill`（`frontend/src/shell/` 的单例）。 */
-function openCloudDownload(prefill){writeShell({activityPrefill:prefill});openActivity(true)}
+   任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads。 */
 async function openActivity(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  const prefill=activityPrefill;writeShell({activityPrefill:null});
   if(push)route('/activity');
   const surface=claimSurface('/activity');
   showManagementBody({placeholder:managementPlaceholder('/activity')});
-  await openManagedRoute('/activity',prefill?{prefill}:{},managedSurface(surface));
-  // 带着上下文进来时表单自己聚焦磁力框、把它滚进视野，这里不再拉回顶部。
-  if(surfaceCurrent(surface)&&!prefill)window.scrollTo({top:0,behavior:'smooth'});
+  await openManagedRoute('/activity',{},managedSurface(surface));
+  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 /* 配置页（这台电脑的媒体文件夹与端口）同样是 island。它只在运行 Peach 的这台电脑上
    有意义：服务端按回环地址与独立包两道门放行，手机上的管理菜单也不列它
@@ -2252,7 +2245,6 @@ const followDetailActions={
   present:item=>{renderFollowDrawer(sidebarTagCounts([{tags:followCardTags(item)}]))},
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   failure:(action,error)=>actionFailure(action,error),
-  cloudDownload:item=>openCloudDownload({title:item.title||'',origin:`follow:${item.id}`}),
 };
 
 async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false){
@@ -3991,7 +3983,6 @@ const shellActions={
   revealSource:revealForIsland,
   reopenTutorial:reopenPostSetupTutorial,
   requestConfigurationSection:section=>{writeShell({configurationRequestedSection:section})},
-  requestCloudDownload:prefill=>{writeShell({activityPrefill:prefill})},
   routeReview,
   routeFollowManage,
   saveFollowPreference:patch=>{

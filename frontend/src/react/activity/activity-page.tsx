@@ -20,7 +20,6 @@ import { Chip } from '@/components/base/badges/chip';
 import { Button } from '@/components/base/buttons/button';
 
 import { errorMessage } from '../../api';
-import type { ActivityProps } from '../bundle';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
 import { LoadingDots } from '../components/loading-dots';
@@ -158,7 +157,7 @@ function RunList({ live = false, children }: { live?: boolean; children: ReactNo
   );
 }
 
-export function ActivityPage({ prefill }: ActivityProps) {
+export function ActivityPage() {
   const tasks = useQuery({
     queryKey: TASKS_KEY,
     queryFn: ({ signal }) => fetchTasks(signal),
@@ -260,7 +259,7 @@ export function ActivityPage({ prefill }: ActivityProps) {
               : null}
           </>}
       {/* 离线下载跑在网盘那头，自己一张表、自己轮询；任务中心为空时它照样在。 */}
-      <Section title="云下载"><DownloadsPanel prefill={prefill} /></Section>
+      <DownloadsPanel />
     </Page>
   );
 }

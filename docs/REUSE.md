@@ -44,7 +44,7 @@ FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约�
 
 请求复用 HTTPX 0.28.1。SDK 自带 requests 请求层没有响应大小上限，异常可能带完整 URL，故只使用其解析器。Peach 负责每源 caps 和 search 两次请求、至多六份种子、响应上限 2 MiB、每轮最多四源、45 秒预算、禁用重定向、脱敏错误、XML 实体声明拒收，以及体积、做种、黑名单、质量排序和最多五个候选。标题番号复用 `feeds.scan_code`，身份与中字、无码版次复用 `catalog_rules`。凭据复用 `CredentialStore`，不登记跨机同步字段；换端点不会沿用已保存的 API key。
 
-已对照 [Torznab 1.3 规范](https://torznab.github.io/spec-1.3-draft/torznab/Specification-v1.3.html) 与 SakuraMedia `torznab.py`（GPL-3.0，revision `9c6a31915c9a364c9d6717798575daf9445916bd`）的 FC2 查询、磁力字段回退与部分失败边界。SakuraMedia 耦合其 ORM，不作为运行时依赖。候选由活动页填入现有云下载表单，经用户确认后走 `submit_offline_download`。
+已对照 [Torznab 1.3 规范](https://torznab.github.io/spec-1.3-draft/torznab/Specification-v1.3.html) 与 SakuraMedia `torznab.py`（GPL-3.0，revision `9c6a31915c9a364c9d6717798575daf9445916bd`）的 FC2 查询、磁力字段回退与部分失败边界。SakuraMedia 耦合其 ORM，不作为运行时依赖。候选填入云下载弹层的磁力框，经用户确认后走 `submit_offline_download`。
 
 OneJAV、Free JAV Torrent 只给种子链接。这类条目经索引器同源的下载代理取种子，由 bencode2 0.3.35（MIT，Python ≥3.10，有 cp314 Windows wheel 与纯 Python wheel）解码，再对 info 字典求 SHA-1。实证：真实 sukebei 种子算出的哈希与 Torznab `infohash` 一致；Prowlarr 代理对 OneJAV、Free JAV Torrent 返回 `application/x-bittorrent`。bencode2 和 fastbencode 0.3.11（Apache-2.0）都拒收键乱序的字典，重新编码就是原文。选 bencode2 是因为它有纯 Python 后备。torf（GPL-3.0）功能远超所需，bencode.py（BitTorrent 许可）、bencodepy（2015 年后停更）不采用。
 

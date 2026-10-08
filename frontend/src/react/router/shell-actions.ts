@@ -15,9 +15,6 @@ import type { IndexKind, IndexPerson, IndexRoute, PeopleLayout, PersonAvatar } f
 import type { JunkQueueProps } from '../junk-queue/junk-queue';
 import type { SearchProps } from '../search/search';
 
-/** 云下载表单的预填：番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
-export interface CloudDownloadPrefill { code?: string; title?: string; origin?: string; searchReason?: string }
-
 export interface ShellActions {
   /** 打开作品详情（舞台）。 */
   openItem(id: number): void;
@@ -47,8 +44,6 @@ export interface ShellActions {
   reopenTutorial(): Promise<void>;
   /** 下一次打开配置页时选中的页签，只交给那一次。 */
   requestConfigurationSection(section: string): void;
-  /** 下一次打开活动页时云下载表单的预填，只交给那一次。 */
-  requestCloudDownload(prefill: CloudDownloadPrefill): void;
   /** 复核页把分类写回地址栏，不重开。 */
   routeReview(params: { category: string }): void;
   /** 关注管理页把页签、页码与排序写回地址栏，不重开。 */
@@ -89,7 +84,7 @@ export interface ManagedOpenProps {
   '/scraping': Record<string, never>;
   '/configuration': Record<string, never>;
   '/diagnostics': Record<string, never>;
-  '/activity': { prefill?: CloudDownloadPrefill };
+  '/activity': Record<string, never>;
   '/follow-manage': {
     tab: string; page: number; sort: string; dir: string; pageSize: number; layout: string;
     readOnly: boolean; readOnlyMessage: string; writerUrl: string;

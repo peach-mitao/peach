@@ -73,8 +73,6 @@ export let followDetailReturnPath = '/follow';
 
 /** 配置页下一次打开要选中的那一组页签名，选中之后清空。 */
 export let configurationRequestedSection = '';
-/** 活动页云下载表单下一次打开时的预填，取一次就清掉；不进地址栏。 */
-export let activityPrefill: Record<string, string> | null = null;
 
 /** `writeShell` 能整体换掉的那几项。两个选择集是常驻实例，不在其中。 */
 export interface ShellFields {
@@ -94,7 +92,6 @@ export interface ShellFields {
   presentedItem: PresentedItem | null;
   followDetailReturnPath: string;
   configurationRequestedSection: string;
-  activityPrefill: Record<string, string> | null;
 }
 
 type Listener = () => void;
@@ -120,7 +117,6 @@ export function writeShell(patch: Partial<ShellFields>): void {
   if (has('presentedItem')) presentedItem = patch.presentedItem!;
   if (has('followDetailReturnPath')) followDetailReturnPath = patch.followDetailReturnPath!;
   if (has('configurationRequestedSection')) configurationRequestedSection = patch.configurationRequestedSection!;
-  if (has('activityPrefill')) activityPrefill = patch.activityPrefill!;
   notifyShell();
 }
 

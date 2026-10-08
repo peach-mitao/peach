@@ -144,7 +144,6 @@ const shellProps = (over: Partial<Props> = {}): Props => ({
   savePreference: vi.fn(),
   toast: vi.fn(),
   openFollow: vi.fn(),
-  cloudDownload: vi.fn(),
   readOnly: false, readOnlyMessage: '', writerUrl: '',
   ...over,
 });
