@@ -3,7 +3,7 @@
  * 结构照遗留层 `queueHtml`（`web/app.js`）：队列、行与条目各挂一枚 `data-mix-*`，样式在
  * `stage/stage.css`，作品详情与关注详情共用。一列十几条要能拖着横滚（窄屏下队列是横排），
  * 拖动借壳的 `wireDrag`，由调用方经 `listRef` 接上。 */
-import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
+import { useCallback, useLayoutEffect, useRef, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
 import { icon } from '@peach/legacy/core';
 
 export function MixQueue({ kind, title, summary, onClose, actions, listRef, children, ...data }: {
@@ -16,6 +16,23 @@ export function MixQueue({ kind, title, summary, onClose, actions, listRef, chil
   listRef?: Ref<HTMLDivElement>;
   children: ReactNode;
 } & Record<`data-${string}`, string>) {
+  const list = useRef<HTMLDivElement | null>(null);
+  const attach = useCallback((node: HTMLDivElement | null) => {
+    list.current = node;
+    if (typeof listRef === 'function') listRef(node);
+    else if (listRef) listRef.current = node;
+  }, [listRef]);
+  /* 换条时详情按条目重建，队列跟着从头挂：把正在看的那一行滚进列表可见处。只动列表自己的滚动，
+     `scrollIntoView` 会连浮窗和页面一起滚。 */
+  useLayoutEffect(() => {
+    const box = list.current;
+    const row = box?.querySelector<HTMLElement>('[data-mix-item][aria-current="true"]');
+    if (!box || !row) return;
+    const outer = box.getBoundingClientRect();
+    const inner = row.getBoundingClientRect();
+    if (inner.top < outer.top || inner.bottom > outer.bottom) box.scrollTop += inner.top - outer.top - (outer.height - inner.height) / 2;
+    if (inner.left < outer.left || inner.right > outer.right) box.scrollLeft += inner.left - outer.left - (outer.width - inner.width) / 2;
+  }, []);
   return (
     <aside data-mix-queue="" data-queue-kind={kind} {...data}>
       <div data-mix-queue-head="">
@@ -28,7 +45,7 @@ export function MixQueue({ kind, title, summary, onClose, actions, listRef, chil
             dangerouslySetInnerHTML={{ __html: icon('x') }} />
         </div>
       </div>
-      <div data-mix-list="" ref={listRef}>{children}</div>
+      <div data-mix-list="" ref={attach}>{children}</div>
     </aside>
   );
 }

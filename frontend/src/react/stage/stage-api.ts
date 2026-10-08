@@ -27,7 +27,7 @@ export type StagePatch = Partial<Pick<ItemDetailProps, 'layout' | 'selectMode' |
 
 export interface StageApi {
   /** 打开一条详情：先画骨架、`showModal()`，取完数再换成内容。小窗放着的正是这一条时，内容
-   *  画出来那一刻把同一个播放器搬回来。 */
+   *  画出来那一刻把同一个播放器搬回来。浮窗开着同一种详情时不重开，取完数原地换内容。 */
   open(request: StageRequest): Promise<void>;
   update(patch: StagePatch): void;
   /** 退场动画；拆舞台之前等它演完。 */
@@ -35,6 +35,8 @@ export interface StageApi {
   /** 拆掉舞台。`miniplayer` 为假时正在放的视频不进小窗（显式关闭、换详情、删掉当前条目）。 */
   dispose(options?: { miniplayer?: boolean }): void;
   isOpen(): boolean;
+  /** 浮窗此刻开着、能原地换条的那一种详情；没开、在退场或已要求关闭时为空。壳据此决定换条前拆不拆舞台。 */
+  showing(): StageRequest['kind'] | null;
   /** 关闭键、Escape 与点浮窗外面走的那一条：交给当前详情自己的 `close`，退场期间再要一次不重复。 */
   requestClose(): void;
   /** 该响应播放快捷键的 video：舞台开着取舞台里的，否则取小窗里的。 */

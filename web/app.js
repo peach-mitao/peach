@@ -139,7 +139,9 @@ const ROUTES=[
   {match:'/item/:id',title:'作品',open:(params,push)=>openItem(params.id,push)},
   /* 追更详情要先把列表铺好：详情页的返回、上一条／下一条都从那份列表来。 */
   {match:'/follow/item/:id',title:'关注',open:async(params,push)=>{
-    await openFollow(push,true);await openFollowDetail(params.id,push)}},
+    // 详情开着时后退前进到组里另一条：列表已在下面，详情原地换条。
+    if(stageApi()?.showing()!=='follow')await openFollow(push,true);
+    await openFollowDetail(params.id,push)}},
   /* 实体资料页。四种实体只有 kind 不同，名字里可能带斜杠，所以吃掉剩下全部段。 */
   ...Object.entries(ROUTE_ENTITIES).map(([segment,kind])=>({
     match:`/${segment}/:name*`,title:params=>params.name,
@@ -2233,8 +2235,8 @@ const followFeedProps=()=>({view:followView(),seed:followDiscoverySeed,revision:
   imagesOnly:!!appSettings.followImagesOnly,helpers:followFeedHelpers,actions:followFeedActions});
 
 /* 关注详情整块归舞台岛（`frontend/src/react/stage/`）：条目取数、媒体区、队列、侧栏、写操作与
-   播放器都在 /dist/peach-react.js 里。壳留来处与地址。换到组里另一条也走这里：舞台上的播放器
-   要先拆，地址要换。 */
+   播放器都在 /dist/peach-react.js 里。壳留来处与地址。换到组里另一条也走这里：地址要换，舞台
+   原地换内容。 */
 const followDetailActions={
   close:()=>closeFollowDetail(),
   openItem:(id,mediaIndex=null)=>openFollowDetail(id,true,mediaIndex,true),
@@ -2259,8 +2261,8 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   if(!push&&!preserveReturn)writeShell({followDetailReturnPath:takeOverlayReturn()||'/follow'});
   // 条目的背景另记：从列表进来记列表这一页（带筛选），组内换条沿用上一条的。
   if(push)holdOverlayBackground();
-  // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
-  disposeStage(false,false,{miniplayer:false});
+  // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。关注详情开着时原地换条。
+  if(stageApi()?.showing()!=='follow')disposeStage(false,false,{miniplayer:false});
   if(push)route(`/follow/item/${id}`,false,overlayState('follow'));
   const stage=await loadStage(stageHost);
   await stage.open({kind:'follow',id,mediaIndex,mediaView:followMediaView,
@@ -3680,8 +3682,9 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   else if(!queuePush)writeShell({detailReturnPath:takeOverlayReturn()||detailReturnPath});
   // 条目的背景另记：从页面点进来记这一页，从详情里点开另一条沿用上一条的背景，不嵌套。
   if(push)holdOverlayBackground();
-  // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。
-  disposeStage(false,true,{miniplayer:false});
+  /* 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。作品详情开着时
+     （队列换卷、相关作品）舞台原地换条，不拆。 */
+  if(stageApi()?.showing()!=='item')disposeStage(false,true,{miniplayer:false});
   writeShell({detailOriginAnchor:origin,detailOriginAbove:above,detailReturnNeedsRestore:needsReturnRestore});
   writeShell({detailReturnBarsContext:returnBars});
   writeShell({activeQueue:queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId}});

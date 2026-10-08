@@ -86,7 +86,7 @@ export async function prefetchFollowDetail(props: { id: number }, signal: AbortS
 export interface FollowDetailActions {
   /** 关闭详情回到来处（壳的 `closeDetail`：退场动画、拆舞台、推回列表地址）。 */
   close(): void;
-  /** 换到组里的另一条：舞台上的播放器要先拆，所以经壳重挂（`preserveReturn` 语义）。 */
+  /** 换到组里的另一条：经壳换地址（`preserveReturn` 语义），舞台原地换内容。 */
   openItem(id: number, mediaIndex?: number | null): void;
   /** 点详情里的一枚标签：壳切换那一枚筛选，回到带上它的列表。 */
   openTag(tag: string): void;

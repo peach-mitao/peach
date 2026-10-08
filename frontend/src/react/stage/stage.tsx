@@ -114,9 +114,11 @@ function StageDialog({ view: current }: { view: View }) {
     return () => dialog.removeEventListener('cancel', cancel);
   }, []);
   const { phase, content } = current;
+  /* 原地换条时关注详情按条目重建：选中的那份媒体、写操作的忙碌与失败都只属于上一条。作品详情
+     自己按条目给 `Detail` 换键，队列取数留在外层不重来。 */
   const body = content.kind === 'item'
     ? <ItemDetailPage {...content.props} />
-    : <FollowDetailPage {...content.props} />;
+    : <FollowDetailPage key={content.props.id} {...content.props} />;
   return (
     <dialog ref={ref} id="stage" data-stage="" aria-label="作品详情"
       onKeyDown={(event) => {
@@ -214,7 +216,16 @@ function startReveal(dialog: HTMLDialogElement, mine: number): void {
   timer = window.setTimeout(drop, 1000);
 }
 
+/** 浮窗开着同一种详情、不在退场：换条就原地换内容，不拆浮窗。 */
+function swappable(kind: StageRequest['kind']): HTMLDialogElement | null {
+  const dialog = stageDialog();
+  if (!view || view.content.kind !== kind || closeRequested || !dialog?.open || dialog.hasAttribute('data-closing')) return null;
+  return dialog;
+}
+
 async function open(request: StageRequest): Promise<void> {
+  const current = swappable(request.kind);
+  if (current) { await swap(request, current); return }
   if (view) dispose({ miniplayer: false });
   const mine = ++generation;
   const abort = new AbortController();
@@ -249,6 +260,32 @@ async function open(request: StageRequest): Promise<void> {
   /* 骨架里没有可聚焦的元素，`showModal()` 只能把焦点给 dialog 本身；内容到了交给关闭键。 */
   const active = document.activeElement;
   if (active === dialog || !dialog.contains(active)) dialog.querySelector<HTMLElement>('#closeStage')?.focus();
+}
+
+/* 详情开着时换到同一种的另一条（队列换卷、合集换版本、相关作品、后退前进）：浮窗、遮罩与进场都不
+   重演，也不回骨架。先把新的一条取齐，取的这段时间上一条照旧在放；取到再换内容，媒体框按条目卸下，
+   上一条的播放器随之拆掉（不进小窗）。 */
+async function swap(request: StageRequest, dialog: HTMLDialogElement): Promise<void> {
+  const mine = ++generation;
+  controller?.abort();
+  const abort = new AbortController();
+  controller = abort;
+  dismissArmed = false;
+  const content = contentFor(request);
+  try {
+    if (content.kind === 'item') await prefetchItemDetail(content.props, abort.signal);
+    else await prefetchFollowDetail(content.props, abort.signal);
+  } catch {
+    if (abort.signal.aborted) return;
+  }
+  if (mine !== generation || !view || swappable(request.kind) !== dialog) return;
+  player.prepareStageFor(request.kind, request.id ?? Number.NaN);
+  releaseHoverPreviews(dialog);
+  closePlayerMenu();
+  view = { ...view, request, content, phase: 'content' };
+  paint();
+  dialog.querySelector<HTMLElement>(':scope > [data-stage-scroll]')?.scrollTo({ top: 0 });
+  revealTexts(dialog, ':scope>:not([data-stage-fade]) [data-reveal-line]');
 }
 
 /* 详情浮窗的退场跟设置弹层同一条：`data-closing` 让 `board-dialog-out` 和遮罩淡出演完，再拆。等待有
@@ -309,6 +346,7 @@ function repaintPoster(): void {
 const api: StageApi = {
   open, update, exit, dispose, requestClose, repaintPoster,
   isOpen: () => !!view,
+  showing: () => (view && swappable(view.content.kind) ? view.content.kind : null),
   activeVideo: () => player.activeStageVideo(),
   toggleTheater: () => { if (view) applyTheaterMode(!stageHost().player.settings().theaterMode) },
   toggleMiniplayer: () => player.toggleMiniplayer(),

@@ -31,6 +31,18 @@ function watchFollowRequests(page: Page) {
   return seen;
 }
 
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架。 */
+const watchStage = (page: Page) => page.evaluate(() => {
+  const watch = { stage: document.getElementById('stage'), skeleton: false };
+  new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
+    .observe(document.body, { childList: true, subtree: true });
+  Object.assign(window, { stageWatch: watch });
+});
+const stageKept = (page: Page) => page.evaluate(() => {
+  const watch = (window as unknown as { stageWatch: { stage: Element | null; skeleton: boolean } }).stageWatch;
+  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton };
+});
+
 const openDetail = (browser: Browser, id: number, viewport = DESKTOP) =>
   openFollowFeed(browser, `/follow/item/${id}`, viewport, { ready: DETAIL_READY });
 
@@ -102,7 +114,7 @@ describe('关注详情岛', () => {
     }
   });
 
-  it('视频：舞台在媒体框里挂上 Video.js，氛围光画布与统计角标插进同一个媒体框；换一条只剩一个播放器', { timeout: 60_000 }, async () => {
+  it('视频：舞台在媒体框里挂上 Video.js，氛围光画布与统计角标插进同一个媒体框；换一条与后退都原地换、只剩一个播放器', { timeout: 60_000 }, async () => {
     const opened = await openDetail(browser, DETAIL.collection);
     try {
       const page = opened.page;
@@ -111,12 +123,20 @@ describe('关注详情岛', () => {
       await frame.locator('.video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await frame.locator('[data-ambient-canvas]').count(), 1);
       assert.equal(await frame.locator('.video-js video').count(), 1, '媒体框里的 video 不止一个');
+      await watchStage(page);
       await page.locator('[data-follow-queue-item="5102"]').click();
       await pathIs(page, '/follow/item/5102');
       await page.locator('#stage [data-follow-queue-item="5102"][aria-current="true"]').waitFor();
       await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await page.locator('#stage .video-js').count(), 1, '换一条之后旧播放器没拆');
       assert.equal(await page.locator('#stage [data-ambient-canvas]').count(), 1);
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false }, '换一条重开了浮窗');
+      await page.goBack();
+      await pathIs(page, '/follow/item/5101');
+      await page.locator('#stage [data-follow-queue-item="5101"][aria-current="true"]').waitFor();
+      await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
+      assert.equal(await page.locator('#stage .video-js').count(), 1, '后退之后旧播放器没拆');
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false }, '后退到上一条重开了浮窗');
       await page.locator('#closeStage').click();
       await pathIs(page, '/follow');
       await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor({ timeout: 15_000 });
