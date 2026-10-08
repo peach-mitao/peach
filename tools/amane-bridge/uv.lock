@@ -3,6 +3,18 @@ revision = 3
 requires-python = ">=3.14"
 
 [[package]]
+name = "ag-ui-protocol"
+version = "0.1.22"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/f7/9bf788e7d3608725d022a248a58427040f4f930ab87ddb54bd29ee4d9a51/ag_ui_protocol-0.1.22.tar.gz", hash = "sha256:d21f265284a50d9fc87ad7bcbd58f737b4b16eef7b5375f13a6e925117b52046", size = 18110, upload-time = "2026-08-31T18:20:04.334Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/6c/af3d577e68c9474c99600e65b2c6283772aae187edca6f0f2f5cbd9f565a/ag_ui_protocol-0.1.22-py3-none-any.whl", hash = "sha256:fca13ee7820f8f53e869c19e09ddd75826c1799b27c2adb6f2e567295433c704", size = 22068, upload-time = "2026-08-31T18:20:03.43Z" },
+]
+
+[[package]]
 name = "aiofiles"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -45,8 +57,8 @@ wheels = [
 
 [[package]]
 name = "amane"
-version = "0.17.0"
-source = { git = "https://github.com/sqzw-x/amane?rev=3c416618a9617be1c377694b1a150bf9821a7e6d#3c416618a9617be1c377694b1a150bf9821a7e6d" }
+version = "0.18.0"
+source = { git = "https://github.com/sqzw-x/amane?rev=7a980aff9c503f7a5815864d62a6ef309a27808a#7a980aff9c503f7a5815864d62a6ef309a27808a" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiolimiter" },
@@ -61,7 +73,7 @@ dependencies = [
     { name = "packaging" },
     { name = "parsel" },
     { name = "pillow" },
-    { name = "pydantic-ai-slim", extra = ["anthropic", "openai"] },
+    { name = "pydantic-ai-slim", extra = ["ag-ui", "anthropic", "openai"] },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -828,7 +840,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "amane", git = "https://github.com/sqzw-x/amane?rev=3c416618a9617be1c377694b1a150bf9821a7e6d" }]
+requires-dist = [{ name = "amane", git = "https://github.com/sqzw-x/amane?rev=7a980aff9c503f7a5815864d62a6ef309a27808a" }]
 
 [[package]]
 name = "pillow"
@@ -924,6 +936,10 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+ag-ui = [
+    { name = "ag-ui-protocol" },
+    { name = "starlette" },
+]
 anthropic = [
     { name = "anthropic" },
 ]

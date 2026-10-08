@@ -12,7 +12,7 @@ description = "Peach 调用 amane 刮削站点的薄桥子进程"
 requires-python = ">=3.14"
 license = "AGPL-3.0-or-later"
 dependencies = [
-  "amane @ git+https://github.com/sqzw-x/amane@3c416618a9617be1c377694b1a150bf9821a7e6d",
+  "amane @ git+https://github.com/sqzw-x/amane@7a980aff9c503f7a5815864d62a6ef309a27808a",
 ]
 
 [tool.uv]

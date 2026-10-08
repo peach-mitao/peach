@@ -35,7 +35,7 @@ BRIDGE_ROOT = Path(__file__).resolve().parents[2] / "tools" / "amane-bridge"
 BRIDGE_SCRIPT = BRIDGE_ROOT / "bridge.py"
 #: 桥的 venv 建在数据目录的工具区，和 FFmpeg 同一层；名字与源码目录一致。
 BRIDGE_TOOL_NAME = "amane-bridge"
-#: 一次子进程的默认超时。桥内每站并发、单请求 30 秒、最多两次重试，60 秒够一站走完。
+#: 一次子进程的默认超时。桥内每站并发、单请求 30 秒、每个地址最多重试一次，60 秒够一站走完。
 DEFAULT_TIMEOUT = 60
 
 #: 经桥开放给 Peach 来源链的站，套 `peach.sources` 同一份配置形状。每个站只有一个归属（ADR-0048）：
@@ -62,7 +62,8 @@ DELIVERY_DATE_SITES = frozenset({"prestige"})
 
 #: amane 的 `FailureReason`（桥脚本 `FAILURE_REASONS` 那十七档）→ 契约的 `FailureReason`，一对一。
 #: 三档分类、冷却动作与可否重试都由契约那张表定（`sources.base.REASON_KINDS` 等），这里只做名字翻译：
-#: `cloudflare_blocked`（Ray ID 拦截页）与 `ip_banned` 同属出口被封；`age_verification` 是要 Cookie 的门；
+#: `cloudflare_blocked`（无挑战的 Ray ID 拦截页）与 `ip_banned` 同属出口被封，上游先认挑战页标记，带 Ray ID
+#: 的挑战页报 `cloudflare_challenge`，两档冷却同为 `blocked`；`age_verification` 是要 Cookie 的门；
 #: `http_error`、`empty_response`、`crawler_unavailable` 都是「桥那一侧这次没答上」，归服务端错误；
 #: `unexpected` 归连接层，与它一样可重试。`http_error` 带 401/403 另算，见 `contract_reason`。
 AMANE_REASONS: dict[str, FailureReason] = {
