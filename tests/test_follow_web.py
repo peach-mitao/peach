@@ -1869,6 +1869,38 @@ class FollowContractTests(unittest.TestCase):
         self._post('/api/follow/source', {"action": "enabled", "id": member["source_id"], "enabled": False})
         self.assertEqual(web_follow.cover_alternatives(self.contract, member["id"]), ())
 
+    def test_concurrent_cover_lookups_group_the_library_once(self):
+        """账本刚变时一屏封面请求同时到：整库分组只算一次，其余等它算完直接查表。"""
+        self._seed(candidates=(
+            FollowCandidate(provider="rule34video", external_id="1", title="Evening Movie (4K60fps)",
+                            thumb_url="https://rule34video.com/4k.jpg"),
+            FollowCandidate(provider="rule34video", external_id="2", title="Evening Movie (60fps)",
+                            thumb_url="https://rule34video.com/60.jpg"),
+        ))
+        group = next(group for group in self._get()["groups"] if group["stack"])
+        ids = [row["id"] for row in (group["primary"], *group["variants"])]
+        self.contract.cache_bust()
+        original = FollowStore.group
+        entered = threading.Event()
+
+        def slow_group(store, *args, **kwargs):
+            entered.set()
+            threading.Event().wait(0.2)
+            return original(store, *args, **kwargs)
+
+        results = {}
+        with mock.patch.object(FollowStore, "group", autospec=True, side_effect=slow_group) as grouped:
+            workers = [threading.Thread(target=lambda item=item: results.__setitem__(
+                item, web_follow.cover_alternatives(self.contract, item))) for item in ids * 3]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join(10)
+        self.assertTrue(entered.is_set())
+        self.assertEqual(grouped.call_count, 1)
+        self.assertEqual(set(results.values()), {("https://rule34video.com/60.jpg",),
+                                                 ("https://rule34video.com/4k.jpg",)})
+
     def test_archive_copies_of_one_file_count_as_one_medium_without_thumbnails(self):
         """归档站视频没有缩略图，计数按已存地址里的内容哈希认同一个文件，不发请求。"""
         digest = "58739e4717810cf6b2d4b4a0c1b5f79a0e2f1e3d4c5b6a79881726354a5b6c7d"
