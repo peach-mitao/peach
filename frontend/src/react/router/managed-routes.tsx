@@ -37,6 +37,7 @@ import { FollowFeedPage } from '../follow-feed/follow-feed-page';
 import { prefetchFollowManage } from '../follow-manage/follow-manage';
 import { FollowManagePage } from '../follow-manage/follow-manage-page';
 import { GlowPickerSurface } from '../glow-picker/glow-picker-island';
+import { ImmerseSurface } from '../immerse/immerse-island';
 import { prefetchIndex } from '../index/index-data';
 import { IndexPage } from '../index/index-page';
 import { JunkQueuePage } from '../junk-queue/junk-queue-page';
@@ -278,7 +279,8 @@ const isSurfaceName = (key: string): key is SurfaceName => Object.hasOwn(SURFACE
 /* 常驻面，按名字登记：壳启动时经 `openResidentSurface` 各开一次，一直算当前页，没有首屏取数，宿主就是壳的
    那个节点。从不收，只有错误边界会卸它的组件，宿主照旧留在文档里。打开不带 props：壳经命令式句柄推内容，
    组件订阅自己模块里的 store，句柄里的绘制同步做完。管理区页头的宿主里先有壳的启动骨架，打开时由 `place`
-   在画出首帧的同一个任务里清掉。 */
+   在画出首帧的同一个任务里清掉；沉浸的宿主不在壳的页面里，第一次打开时新建，由 `place` 在画出首帧的同一个
+   任务里挂到 body 末尾。 */
 export const RESIDENT_ROUTES: ResidentRouteTable = {
   'batch-dock': {
     prefetch: async () => {},
@@ -291,6 +293,10 @@ export const RESIDENT_ROUTES: ResidentRouteTable = {
   'manage-header': {
     prefetch: async () => {},
     page: () => <ManageHeaderSurface />,
+  },
+  immerse: {
+    prefetch: async () => {},
+    page: () => <ImmerseSurface />,
   },
 };
 const isResidentName = (key: string): key is ResidentName => Object.hasOwn(RESIDENT_ROUTES, key);

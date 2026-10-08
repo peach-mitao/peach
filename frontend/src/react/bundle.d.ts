@@ -478,7 +478,8 @@ export declare function configureSettingsPanel(host: SettingsPanelHost): Setting
 
 export type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 
-/** 接上壳给的宿主，拿回沉浸岛的命令式入口（`immerse/immerse-island.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回沉浸模式的命令式入口（`immerse/immerse-island.tsx`）。只调一次；这一面由
+ *  `islands.ts` 的 `loadImmerse` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureImmerse(host: ImmerseHost): ImmerseApi;
 
 export type {

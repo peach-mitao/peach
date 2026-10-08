@@ -1,21 +1,32 @@
-/* 沉浸岛：片单怎么抽、起播与深链落在哪一条、每换一条取几次详情、动作键写回哪几份缓存、关掉之后
- * 读取有没有按会话取消，以及单击、双击、横划、竖划与进度条这几种手势。
+/* 沉浸模式：片单怎么抽、起播与深链落在哪一条、每换一条取几次详情、动作键写回哪几份缓存、关掉之后
+ * 读取有没有按会话取消，以及单击、双击、横划、竖划与进度条这几种手势；还有它作为常驻面
+ * （`RESIDENT_ROUTES.immerse`）在路由树里的行为：宿主是 body 末尾的 `[data-immerse-host]`、画上之后才交出
+ * 句柄、`open` 里的几次绘制同步画完、抛错只卸组件而模块上的监听还在。
  *
- * 播放器换成一个记账的替身：这里看的是岛交给它什么、什么时候拆它，真 Video.js 与真流会话由
+ * 每条用例照壳的启动顺序走一遍：重新装载模块、画路由树、接上取数，再经 `islands.ts` 的 `loadImmerse` 拿句柄。
+ * 播放器换成一个记账的替身：这里看的是这一面交给它什么、什么时候拆它，真 Video.js 与真流会话由
  * e2e 在浏览器里走一遍（`e2e/immerse.test.ts`）。 */
 import { act } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { seekVideoBy, toggleVideoPlayback } from '../../src/player/playback';
+import type { BatchDockApi, BatchDockHost } from '../../src/react/batch-dock/batch-dock-api';
 import { catalogKey, type GridPage } from '../../src/react/catalog-grid/catalog-grid';
 import {
   FIT_TOLERANCE, extendList, fitMode, immerseQuery, isWide, ownerOf, playable, type ImmerseItem,
 } from '../../src/react/immerse/immerse';
 import type { ImmerseApi, ImmerseHost } from '../../src/react/immerse/immerse-api';
-import { configureImmerse } from '../../src/react/immerse/immerse-island';
 import { itemKey, type DetailItem } from '../../src/react/item-detail/item-detail';
-import { queryClient } from '../../src/react/query';
+import type { ShellActions } from '../../src/react/router/shell-actions';
 import { click, pending } from './render';
+
+// 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
+const REACT_IMPORT_TIMEOUT_MS = 30_000;
+
+type ActFlag = { IS_REACT_ACT_ENVIRONMENT?: boolean };
+
+beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
 interface Mounted { video: HTMLVideoElement; item: ImmerseItem; session: string; dispose: ReturnType<typeof vi.fn> }
 
@@ -132,8 +143,63 @@ function makeHost(): HostMock {
   };
 }
 
+/* 壳那一侧的 `islands.ts` 按 `@peach/react` 引产物；React 子树的类型配置不映射这个名字，所以这里不让类型检查
+   跟进去，只按壳用的几个入口取。运行时 Vitest 把它指到 `entry.tsx`。 */
+type ShellIslands = {
+  loadImmerse(host: ImmerseHost): Promise<ImmerseApi>;
+  immerseApi(): ImmerseApi | null;
+  loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>;
+};
+const ISLANDS_MODULE = '../../src/islands';
+
+async function load() {
+  vi.resetModules();
+  window.history.replaceState(null, '', '/');
+  const [history, router, routes, query, islands] = await Promise.all([
+    import('../../src/history'), import('../../src/react/router/router'), import('../../src/react/router/managed-routes'),
+    import('../../src/react/query'), import(/* @vite-ignore */ ISLANDS_MODULE) as Promise<ShellIslands>,
+  ]);
+  return { ...history, ...router, ...routes, queryClient: query.queryClient, islands };
+}
+type Loaded = Awaited<ReturnType<typeof load>>;
+
+function shellActions(): ShellActions {
+  return {
+    openItem: vi.fn(), openEntity: vi.fn(), openTag: vi.fn(), openTasteSignal: vi.fn(), navigate: vi.fn(),
+    openManage: vi.fn(), managePath: vi.fn(() => ''), openFollow: vi.fn(), receipt: vi.fn(), toast: vi.fn(),
+    failure: vi.fn(), revealSource: vi.fn(async () => ''), reopenTutorial: vi.fn(async () => {}),
+    requestConfigurationSection: vi.fn(), requestCloudDownload: vi.fn(), routeReview: vi.fn(),
+    routeFollowManage: vi.fn(), saveFollowPreference: vi.fn(), srcBadge: () => '', routeIndex: vi.fn(),
+    savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
+    authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
+    openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
+  };
+}
+
+const unmounts: Array<() => void> = [];
+
+/** 壳启动时先画路由树（根的选项与 `configureRouter` 同一份）；接上取数单独一步，用例可以把它往后放。 */
+async function mountRouter(r: Loaded) {
+  const tree = createRoot(document.createElement('div'), r.ROUTER_ROOT_OPTIONS);
+  await act(async () => { tree.render(<r.RouterRoot actions={shellActions()} />) });
+  unmounts.push(() => tree.unmount());
+}
+async function connect(r: Loaded) {
+  await act(async () => { r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute)) });
+}
+
+/** 收下每一次上报；`console.error` 只静音，不数条数。 */
+function watchReports() {
+  const reported = vi.fn();
+  vi.stubGlobal('reportError', reported);
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  return reported;
+}
+
 let host: ReturnType<typeof makeHost>;
 let api: ImmerseApi;
+let loaded: Loaded;
+let queryClient: Loaded['queryClient'];
 
 const q = <T extends Element = HTMLElement>(selector: string) => document.querySelector<T>(selector);
 const root = () => q('[data-immerse]')!;
@@ -179,18 +245,26 @@ const swipe = (...steps: [string, number, number][]) => act(async () => {
   for (const [type, x, y] of steps) track().dispatchEvent(touch(type, x, y));
 });
 
-beforeEach(() => {
+/* 照壳的 `openTok` 接上：路由树已经画着、接上了取数，第一次打开沉浸模式时装载并拿到句柄。 */
+beforeEach(async () => {
   player.mounted = [];
   player.cancelled = [];
   player.dims.clear();
-  queryClient.clear();
   // 洗牌恒等：j 总取 i，片单顺序就是服务端给的顺序。
   vi.spyOn(Math, 'random').mockReturnValue(0.999);
+  loaded = await load();
+  queryClient = loaded.queryClient;
+  await mountRouter(loaded);
+  await connect(loaded);
   host = makeHost();
-  api = configureImmerse(host);
+  await act(async () => { api = await loaded.islands.loadImmerse(host) });
 });
 
-afterEach(() => { act(() => api.close()) });
+afterEach(async () => {
+  (globalThis as ActFlag).IS_REACT_ACT_ENVIRONMENT = true;
+  act(() => api.close());
+  for (const unmount of unmounts.splice(0)) await act(async () => { unmount() });
+});
 
 describe('片单与起播', () => {
   it('抽样去掉画幅、随机取 60 条且偏移恒为 0；续取按 id 去重接在后面', () => {
@@ -594,5 +668,98 @@ describe('播放键', () => {
     toggleVideoPlayback(null);
     expect(paused.play).toHaveBeenCalledTimes(1);
     expect(playing.pause).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('常驻面', () => {
+  const immerseHostOf = (r: Loaded) => r.managedEntries().find((entry) => entry.path === 'immerse')?.container as HTMLElement;
+
+  it('画上之后句柄才交出；宿主是 body 末尾的 [data-immerse-host]，里面直接是藏着的外框，不包 .peach-react', async () => {
+    const r = await load();
+    await mountRouter(r);
+    let loading: Promise<ImmerseApi> | null = null;
+    await act(async () => { loading = r.islands.loadImmerse(makeHost()) });
+    expect(r.islands.immerseApi(), '路由树还没接上取数，句柄不交出').toBeNull();
+    expect(immerseHostOf(r), '这一面还没画上').toBeUndefined();
+
+    await connect(r);
+    let handed: ImmerseApi | null = null;
+    await act(async () => { handed = await loading });
+    expect(r.islands.immerseApi()).toBe(handed);
+    const container = immerseHostOf(r);
+    expect(container.hasAttribute('data-immerse-host')).toBe(true);
+    expect(container.parentElement).toBe(document.body);
+    expect(document.body.lastElementChild).toBe(container);
+    expect(container.children).toHaveLength(1);
+    const frame = container.firstElementChild as HTMLElement;
+    expect(frame.hasAttribute('data-immerse')).toBe(true);
+    expect(frame.hidden, '第一次打开之前外框就在，藏着').toBe(true);
+    expect(container.querySelector('.peach-react')).toBeNull();
+    expect(container.closest('.peach-react')).toBeNull();
+    expect(handed!.isOpen()).toBe(false);
+  });
+
+  it('open 里的每一次绘制都在句柄里画完：开头那一拍就露出加载提示，返回时第一条已经出画', async () => {
+    serve({ draws: [[row(1), row(2)]] });
+    /* 不包 act：act 会把 flushSync 推到它结束时，看不出句柄自己同步没有。 */
+    (globalThis as ActFlag).IS_REACT_ACT_ENVIRONMENT = false;
+    const opening = api.open(null);
+    expect(root().hidden, '同步段里外框已经显出来').toBe(false);
+    expect(root().hasAttribute('data-idle')).toBe(true);
+    expect(q('[data-immerse-loader]')!.hidden).toBe(false);
+    expect(q('[data-immerse-loader]')!.textContent).toContain('加载内容…');
+    expect(document.body.hasAttribute('data-immerse-open')).toBe(true);
+    await opening;
+    expect(root().hasAttribute('data-idle'), '返回时已经画完，不等下一次渲染').toBe(false);
+    expect(q('[data-immerse-loader]')!.hidden).toBe(true);
+    expect(document.querySelectorAll('[data-immerse-track] > [data-immerse-slide]')).toHaveLength(1);
+    expect(meta()).toBe('· 1:00 · 竖屏 · 1/2');
+    expect(q('[data-immerse-title]')!.textContent).toBe('片名 clip-1.mp4');
+    expect(api.activeVideo()).toBe(current().video);
+  });
+
+  it('抛错只卸组件、宿主还在，body 上的打开标记留着，批量条照画；之后开关不抛，方向键与离开页面的监听还在', async () => {
+    const reported = watchReports();
+    const dockRoot = document.createElement('div');
+    dockRoot.setAttribute('data-batch-dock', '');
+    document.body.append(dockRoot);
+    let dock!: BatchDockApi;
+    await act(async () => { dock = await loaded.islands.loadBatchDock({ root: dockRoot, run: vi.fn() }) });
+    serve({ draws: [[1, 2, 3, 4, 5, 6].map((id) => row(id))] });
+    const container = immerseHostOf(loaded);
+    /* 第一条出画、作者标题那一行画标题时抛。 */
+    host.displayName.mockImplementation(() => { throw new Error('标题画不出来') });
+
+    await open();
+    expect(reported).toHaveBeenCalledTimes(1);
+    expect(reported).toHaveBeenCalledWith(expect.objectContaining({ message: '标题画不出来' }));
+    expect(container.isConnected, '宿主不撤').toBe(true);
+    expect(container.childNodes.length, '组件卸掉了').toBe(0);
+    expect(loaded.managedTaken(container)).toBe(false);
+    expect(loaded.managedEntries().map((entry) => entry.path), '别的面照画').toEqual(['batch-dock']);
+    expect(document.body.hasAttribute('data-immerse-open'), '卸组件不清 body 上的打开标记').toBe(true);
+    expect(api.isOpen()).toBe(true);
+
+    /* 模块上的监听不随组件卸掉：方向键照旧换条（交给壳写地址），离开页面照旧按会话取消还开着的格。 */
+    const first = current();
+    await key('ArrowDown');
+    await until(() => routed().at(-1) === 2);
+    await act(async () => { window.dispatchEvent(new Event('resize')) });
+    await act(async () => { window.dispatchEvent(new Event('pagehide')) });
+    expect(player.cancelled).toContain(first.session);
+
+    act(() => { expect(() => api.close()).not.toThrow() });
+    expect(api.isOpen()).toBe(false);
+    expect(document.body.hasAttribute('data-immerse-open')).toBe(false);
+    expect(host.closed).toHaveBeenCalledTimes(1);
+    host.displayName.mockImplementation((item) => `片名 ${String(item.name)}`);
+    await open();
+    expect(api.isOpen()).toBe(true);
+    act(() => { expect(() => api.close()).not.toThrow() });
+    expect(container.childNodes.length, '空到刷新为止，不自愈').toBe(0);
+    expect(reported, '确定性抛错只报那一次').toHaveBeenCalledTimes(1);
+    /* 批量条放在最后画：它的进场动画跑在 motion 的帧循环上，画完就收尾，卸树时不留进行中的动画。 */
+    await act(async () => { dock.render({ count: 2, context: 'catalog', junkDismissed: false }) });
+    expect(dockRoot.querySelector('[data-selection-dock] [role="status"]')?.textContent).toBe('已选 2 项');
   });
 });
