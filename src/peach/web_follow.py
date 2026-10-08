@@ -1420,6 +1420,8 @@ def _follow_facets(store, items, by_source, alias_map, icon_root=None) -> dict:
                    _work_icon_focus(icon_root, root)]
                   for root, row in sorted(works.items(),
                                           key=lambda pair: (-pair[1]["n"], pair[0]))],
+        # 侧栏的时长拉条只在库里有时长读数时出现，同首页 facets 的 `duration`。
+        "duration": any((item.duration or 0) > 0 for item in items),
     }
 
 
@@ -1781,6 +1783,56 @@ def _page_groups(store, everything, counted, by_author, *, item_id, statuses, or
     return ranked[offset:offset + limit], len(ranked) > offset + limit
 
 
+def _duration_arg(raw) -> float:
+    """时长一端的秒数。不是非负数就按不限读：地址是人能手改的，改坏了不该报错。"""
+    try:
+        value = float(raw or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    return value if value > 0 else 0.0
+
+
+def _follow_matcher(args, by_source, alias_map):
+    """关注页筛选条件落到一条条目上：给一条，回它在不在这次筛选里。
+
+    作者、来源、标签、题材都接受逗号分隔的多个值。作者、来源在同一维度内是「任一」：
+    选两个作者就看两个人的更新；标签是「同时具备」。时长两端是秒，同首页的
+    `dur_min`／`dur_max`，缺省或 0 是这一端不限。
+    """
+    authors = frozenset(_csv_values(args.get("author")))
+    providers = frozenset(_csv_values(args.get("provider")))
+    wanted_tags = _csv_values(args.get("tag"))
+    # 题材跟作者、来源一样是「任一」：两部作品同时成立的条目几乎没有，取交集等于
+    # 点第二枚就清空列表。
+    wanted_works = frozenset(_work_root(value) for value in _csv_values(args.get("work")))
+    dur_min, dur_max = _duration_arg(args.get("dur_min")), _duration_arg(args.get("dur_max"))
+
+    def _in_duration(item) -> bool:
+        # 任一端生效时，没有时长读数的条目（图片、外链帖）不算落在区间里。
+        seconds = float(item.duration or 0)
+        return seconds > 0 and seconds >= dur_min and not (dur_max and seconds > dur_max)
+
+    def _matches(item) -> bool:
+        row = by_source.get(item.source_id)
+        if authors and (row is None or author_key(row, alias_map) not in authors):
+            return False
+        if providers and (row is None or str(row["provider"] or "") not in providers):
+            return False
+        if wanted_tags:
+            # 在线标签索引包含 artist/character/copyright/metadata；点进去也必须
+            # 能筛到对应更新，而不是只允许卡片上那份 general 投影。
+            # 多个标签取交集：并集会把筛选变成越点越多，跟用户的意图正好相反。
+            tags = set(_item_all_tags(item))
+            if not all(tag in tags for tag in wanted_tags):
+                return False
+        if wanted_works and not any(_work_root(tag) in wanted_works
+                                    for tag in _item_works(item)):
+            return False
+        return not (dur_min or dur_max) or _in_duration(item)
+
+    return _matches
+
+
 def q_follow(contract, args) -> dict:
     statuses = tuple(
         value for value in str(args.get("status") or "").split(",") if value in _STATUSES
@@ -1799,14 +1851,6 @@ def q_follow(contract, args) -> dict:
     item_id = int(requested_item) if str(requested_item or "").isdigit() else None
     # 管理页只要来源、别名与计数。分组与筛选项占这条接口八成的时间，它一样都不用。
     summary = str(args.get("summary") or "") == "1" and item_id is None
-    # 三个筛选都接受逗号分隔的多个值。作者、来源在同一维度内是「任一」：选两个作者
-    # 就看两个人的更新；标签是「同时具备」，见下面 `_matches` 里的说明。
-    authors = frozenset(_csv_values(args.get("author")))
-    providers = frozenset(_csv_values(args.get("provider")))
-    wanted_tags = _csv_values(args.get("tag"))
-    # 题材跟作者、来源一样是「任一」：两部作品同时成立的条目几乎没有，取交集等于
-    # 点第二枚就清空列表。标签那一维仍是交集，见下面 `_matches`。
-    wanted_works = frozenset(_work_root(value) for value in _csv_values(args.get("work")))
     sort = str(args.get("sort") or "new")
     if sort not in FOLLOW_SORTS:
         sort = "new"
@@ -1830,24 +1874,7 @@ def q_follow(contract, args) -> dict:
         # 推导等于把同一个语义实现两遍，迟早漂移。所以整库取回来在 Python 里筛——
         # 实测 3054 条连 metadata 解析一起 15ms，不值得为它另设一套索引。
         by_source = {int(row["id"]): row for row in source_rows}
-
-        def _matches(item) -> bool:
-            row = by_source.get(item.source_id)
-            if authors and (row is None or author_key(row, alias_map) not in authors):
-                return False
-            if providers and (row is None or str(row["provider"] or "") not in providers):
-                return False
-            if wanted_tags:
-                # 在线标签索引包含 artist/character/copyright/metadata；点进去也必须
-                # 能筛到对应更新，而不是只允许卡片上那份 general 投影。
-                # 多个标签取交集：并集会把筛选变成越点越多，跟用户的意图正好相反。
-                tags = set(_item_all_tags(item))
-                if not all(tag in tags for tag in wanted_tags):
-                    return False
-            if wanted_works and not any(_work_root(tag) in wanted_works
-                                        for tag in _item_works(item)):
-                return False
-            return True
+        _matches = _follow_matcher(args, by_source, alias_map)
 
         # 全部条目和筛选项只随账本与来源参数变，与筛选、排序、分页无关，按账本版本号
         # 缓存：一次请求省下解析上万条 metadata 与整库分组的好几秒。

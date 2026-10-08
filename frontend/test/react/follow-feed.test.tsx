@@ -25,7 +25,9 @@ vi.mock(import('../../src/react/follow-feed/follow-marks'), async (importOrigina
 afterEach(() => { queryClient.clear() });
 notifyManager.setScheduler((notify) => notify());
 
-const VIEW: FollowView = { status: '', media: 'videos', author: '', provider: '', work: '', tags: [], sort: 'new', dir: 'desc', seed: 7 };
+const VIEW: FollowView = {
+  status: '', media: 'videos', author: '', provider: '', work: '', tags: [], durMin: 0, durMax: 0, sort: 'new', dir: 'desc', seed: 7,
+};
 const view = (patch: Partial<FollowView> = {}): FollowView => ({ ...VIEW, ...patch });
 
 const item = (id: number, extra: Partial<FollowItem> = {}): FollowItem => ({
@@ -50,6 +52,14 @@ describe('请求地址', () => {
       sort: 'hot', dir: 'asc',
     });
     expect(new URL(followPageUrl(view({ sort: 'rand', seed: 42 }), 0), 'http://peach.test').searchParams.get('seed')).toBe('42');
+  });
+
+  it('时长两端按秒交给服务端，0 那一端不写', () => {
+    const params = (patch: Partial<FollowView>) =>
+      Object.fromEntries(new URL(followPageUrl(view(patch), 0), 'http://peach.test').searchParams);
+    expect(params({ durMin: 600, durMax: 1800 })).toMatchObject({ dur_min: '600', dur_max: '1800' });
+    expect(params({ durMin: 600 })).not.toHaveProperty('dur_max');
+    expect(params({ durMax: 1800 })).not.toHaveProperty('dur_min');
   });
 });
 

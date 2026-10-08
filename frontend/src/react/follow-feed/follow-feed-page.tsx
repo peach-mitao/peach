@@ -24,7 +24,7 @@ import { spriteGlyph } from '../components/sprite-glyph';
 import { useViewGlide } from '../components/use-view-glide';
 import { Segments, Shuffle } from '../entity-filter/entity-filter-page';
 import type { SegmentOption } from '../entity-filter/entity-filter';
-import { FOLLOW_CHECK_URL, FOLLOW_STATUS_URL } from '../follow-manage/follow-manage';
+import { FOLLOW_CHECK_URL, FOLLOW_STATUS_URL, sourceIconUrl } from '../follow-manage/follow-manage';
 import { sidebarTagCounts } from '../../sidebar';
 import { queryClient } from '../query';
 import { FollowCard } from './follow-card';
@@ -33,7 +33,7 @@ import {
   FOLLOW_CREDENTIALS_KEY, FOLLOW_FEED_SORTS, FOLLOW_FILTERS, FOLLOW_TAGS_FIRST, FOLLOW_WORKS_FIRST,
   collectionItems, dropCondition, fetchFollowCredentials, followConditions, followFeedQuery, groupMediaKinds, groupTagType, itemForMedia,
   mergedPage, nextSort, randomOrder, sortAriaLabel, backfillState, withStatus,
-  type FollowCondition, type FollowContext, type FollowFeedProps, type FollowGroup, type FollowPage, type FollowSource,
+  type FollowCondition, type FollowContext, type FollowDrawer, type FollowFeedProps, type FollowGroup, type FollowPage, type FollowSource,
   type FollowJobState, type FollowView, type FollowWorkRow,
 } from './follow-feed';
 
@@ -112,16 +112,17 @@ export function FollowFeedPage(props: FollowFeedProps) {
   const facets = useFacets(data, view, seed);
   const listPending = result.isPending || result.isPlaceholderData;
 
-  /* 侧栏标签抽屉仍在壳里：每取到本键自己的数据就把可见条目的标签计数交回去，换键时暂借的
-     占位数据不交。 */
+  /* 侧栏仍在壳里：每取到本键自己的数据就把可见条目的标签计数、全库口径的来源与时长有无交回去，
+     换键时暂借的占位数据不交。来源按全库列：选中一个之后别的还在，才切得回去。 */
   const settled = !listPending && !!data;
-  const drawerTags = useMemo(
-    () => sidebarTagCounts(facets.visible.flatMap(collectionItems).map((item) => ({ tags: item.tags || [] }))),
-    [facets.visible],
-  );
+  const drawer = useMemo<FollowDrawer>(() => ({
+    tags: sidebarTagCounts(facets.visible.flatMap(collectionItems).map((item) => ({ tags: item.tags || [] }))),
+    providers: [...facets.providers].map(([key, label]) => [key, label, sourceIconUrl(key)] as const),
+    duration: !!data?.facets?.duration,
+  }), [facets.visible, facets.providers, data]);
   useEffect(() => {
-    if (settled) actions.loaded(drawerTags);
-  }, [settled, drawerTags, actions]);
+    if (settled) actions.loaded(drawer);
+  }, [settled, drawer, actions]);
 
   const job = useFollowJob(props, !!data);
 
@@ -168,7 +169,7 @@ export function FollowFeedPage(props: FollowFeedProps) {
           onPick={(key) => route({ work: view.work === key ? '' : key })} />
         <Glass facets={facets} view={view} total={total} busy={listPending} props={props} route={route} />
         <Combo conditions={conditions} onDrop={(row) => actions.route(dropCondition(view, row))}
-          onClear={() => route({ author: '', provider: '', work: '', tags: [] })} />
+          onClear={() => route({ author: '', provider: '', work: '', tags: [], durMin: 0, durMax: 0 })} />
         {facets.broken.length ? <BrokenNote count={facets.broken.length} onManage={actions.openManage} /> : null}
         <List key={query.queryKey.join('\u0000')} pending={listPending} facets={facets} data={data} context={context}
           props={props} />
@@ -529,7 +530,7 @@ function cardId(group: FollowGroup, view: FollowView): number {
 
 function Empty({ data }: { data: FollowPage }) {
   const html = (data.groups || []).length
-    ? emptyStateHtml('search-x', '当前筛选下没有更新', '切换媒体类型、创作者、来源或标签后再试。')
+    ? emptyStateHtml('search-x', '当前筛选下没有更新', '切换媒体类型、创作者、来源、时长或标签后再试。')
     : (data.sources || []).length
       ? emptyStateHtml('rss', '没有符合条件的更新', '切换状态或来源筛选后再试。')
       : emptyStateHtml('rss', '还没有关注任何来源', '添加创作者或订阅来源后，更新会集中显示在这里。',

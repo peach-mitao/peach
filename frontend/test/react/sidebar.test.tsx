@@ -114,6 +114,7 @@ function sidebarHost(order = ['', 'unseen', 'follow'], current = '', attached: (
     scroll, store, navCatalog: CATALOG,
     navOn: (key) => key === pressed,
     navTo: vi.fn(), toggleChip: vi.fn(), setDuration: vi.fn(), openFollowTag: vi.fn(), selectFollowTag: vi.fn(),
+    selectFollowProvider: vi.fn(), setFollowDuration: vi.fn(),
     attached: vi.fn(attached),
   };
   scroll.innerHTML = sidebarSkeletonHtml(order, CATALOG, host.navOn);
@@ -376,6 +377,36 @@ describe('筛选分组', async () => {
     expect(z.querySelector('[data-sidebar-count]')!.textContent).toBe('1');
     await click(scroll.querySelector('[data-follow-drawer-tag="y"]'));
     expect(host.selectFollowTag).toHaveBeenCalledWith('y');
+  });
+
+  it('关注页的来源与时长回关注筛选，不回目录筛选；详情只给标签时只有内容标签一组', async () => {
+    const { scroll, host, render } = await setup();
+    const kemono = chip('kemono', null, { dot: { kind: 'image', src: '/source-icon?provider=kemono' } });
+    render({
+      content: { kind: 'follow', tags: [chip('y', 3)], selected: [], providers: [kemono, chip('fanbox', null)], duration: true },
+      filters: { provider: 'fanbox', dur_min: 600, dur_max: '' },
+    });
+    expect([...scroll.querySelectorAll('[data-sidebar-group]')].map((node) => node.getAttribute('data-sidebar-group')))
+      .toEqual(['来源', '时长', '内容标签']);
+    expect(chipOf(scroll, 'provider', 'fanbox')!.getAttribute('aria-pressed')).toBe('true');
+    expect(chipOf(scroll, 'provider', 'kemono')!.querySelector('[data-sidebar-count]')).toBeNull();
+    expect(chipOf(scroll, 'provider', 'kemono')!.querySelector('img')!.getAttribute('src')).toBe('/source-icon?provider=kemono');
+    expect(scroll.querySelector(`[data-range-end="min"]`)!.textContent).toBe('10 分钟');
+    await click(chipOf(scroll, 'provider', 'kemono'));
+    expect(host.selectFollowProvider).toHaveBeenCalledWith('kemono');
+    expect(host.toggleChip).not.toHaveBeenCalled();
+    const max = scroll.querySelector<HTMLInputElement>('#durMax')!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(max, '60');
+      max.dispatchEvent(new Event('input', { bubbles: true }));
+      max.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(host.setFollowDuration).toHaveBeenCalledWith(10, 60);
+    expect(host.setDuration).not.toHaveBeenCalled();
+
+    render({ content: { kind: 'follow', tags: [chip('y', 1)], selected: [] } });
+    expect([...scroll.querySelectorAll('[data-sidebar-group]')].map((node) => node.getAttribute('data-sidebar-group')))
+      .toEqual(['内容标签']);
   });
 
   it('时长两端各有一枚读数，右端拉到头是「不限」；松手才提交', async () => {

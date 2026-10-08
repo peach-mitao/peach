@@ -187,13 +187,15 @@ function Groups({ host: at, content, filters, latest }: {
   host: SidebarHost; content: SidebarContent; filters: SidebarProps['filters']; latest: SidebarFacets | null;
 }) {
   const key = content.kind === 'catalog' ? content.key
-    : `follow:${content.selected.join(',')}:${content.tags.map((row) => row.value).join(',')}`;
+    : `follow:${content.selected.join(',')}:${content.tags.map((row) => row.value).join(',')}`
+      + `:${(content.providers || []).map((row) => row.value).join(',')}:${filters.provider ?? ''}`
+      + `:${content.duration ? 1 : 0}:${filters.dur_min ?? ''}:${filters.dur_max ?? ''}`;
   /* 计数徽标弹不弹由 `popBadges` 按上一次见到的值判断，不按节点是不是新建的判断：每来一份新聚合
      问一次，换一条筛选时整列计数才不会一起弹。 */
   useLayoutEffect(() => { if (content.kind === 'catalog') popBadges(at.scroll, 'drawer') }, [at, key, content.kind]);
   const groups = content.kind === 'catalog'
     ? catalogGroups(at, content.facets, filters, latest, key)
-    : [followGroup(at, content.tags, new Set(content.selected))];
+    : followGroups(at, content, filters);
   let index = 0;
   return groups.map((group) => group && (
     <Group key={group.title} title={group.title} kind={group.kind} active={group.active} index={index++} epoch={key}>
@@ -241,12 +243,28 @@ function catalogGroups(
   ];
 }
 
-function followGroup(at: SidebarHost, rows: SidebarChip[], selected: Set<string>): GroupSpec | null {
-  if (!rows.length) return null;
-  return {
-    title: '内容标签', kind: 'online', active: rows.some((row) => selected.has(row.value)),
-    body: <FollowChips rows={rows} host={at} selected={selected} badges={false} />,
-  };
+/* 关注页与关注详情：次序同目录那一列，来源、时长在前，内容标签在后。来源与时长回的是关注页的筛选，
+   不是目录的 `commitContextFilter`。 */
+function followGroups(
+  at: SidebarHost, content: Extract<SidebarContent, { kind: 'follow' }>, filters: SidebarProps['filters'],
+): (GroupSpec | null)[] {
+  const providers = content.providers || [];
+  const provider = selectedValues(filters, 'provider');
+  const selected = new Set(content.selected);
+  return [
+    providers.length ? {
+      title: '来源', kind: 'src', active: providers.some((row) => provider.includes(row.value)),
+      body: <ChipList rows={providers} filterKey="provider" multi={false} selected={provider} counts={null} host={at}
+        onToggle={(_key, value) => at.selectFollowProvider(value)} />,
+    } : null,
+    content.duration
+      ? { title: '时长', kind: 'meta', active: false, body: <Duration host={at} filters={filters} commit={at.setFollowDuration} /> }
+      : null,
+    content.tags.length ? {
+      title: '内容标签', kind: 'online', active: content.tags.some((row) => selected.has(row.value)),
+      body: <FollowChips rows={content.tags} host={at} selected={selected} badges={false} />,
+    } : null,
+  ];
 }
 
 /* 一进来只有正在生效的那几组是展开的。挑两组常驻展开等于替人决定他这次要按哪个维度筛，而侧栏一屏
@@ -312,9 +330,11 @@ function Dot({ dot }: { dot?: SidebarDot }) {
   return <i data-sidebar-cost={dot.cost} />;
 }
 
-function ChipList({ rows, filterKey, multi, selected, counts, host: at }: {
+function ChipList({ rows, filterKey, multi, selected, counts, host: at, onToggle = at.toggleChip }: {
   rows: SidebarChip[]; filterKey: string; multi: boolean; selected: string[];
   counts: Map<string, number> | null; host: SidebarHost;
+  /** 点下去回给谁：缺省是目录筛选，关注页换成它自己的。 */
+  onToggle?: SidebarHost['toggleChip'];
 }) {
   return (
     <div data-sidebar-chips="">
@@ -324,7 +344,7 @@ function ChipList({ rows, filterKey, multi, selected, counts, host: at }: {
           <button type="button" key={row.value} data-sidebar-chip="" aria-pressed={selected.includes(row.value)}
             data-key={filterKey} data-val={row.value} data-multi={multi ? '1' : '0'}
             data-offline={row.offline ? '' : undefined} disabled={!!row.offline} title={row.offline}
-            onClick={() => at.toggleChip(filterKey, row.value, multi)}>
+            onClick={() => onToggle(filterKey, row.value, multi)}>
             <Dot dot={row.dot} />
             <span data-sidebar-chip-label="">{row.label}</span>
             {n === null ? null : <span data-sidebar-count="" data-count-badge={`${filterKey}:${row.value}`}>{n.toLocaleString()}</span>}
@@ -417,7 +437,11 @@ function FollowChips({ rows, host: at, selected, badges }: {
 const minutesOf = (seconds: unknown, fallback: number) =>
   seconds ? Math.min(DURATION_MAX, Number(seconds) / 60) : fallback;
 
-function Duration({ host: at, filters }: { host: SidebarHost; filters: SidebarProps['filters'] }) {
+function Duration({ host: at, filters, commit: onCommit = at.setDuration }: {
+  host: SidebarHost; filters: SidebarProps['filters'];
+  /** 松手时回给谁：缺省是目录筛选，关注页换成它自己的。 */
+  commit?: SidebarHost['setDuration'];
+}) {
   const source = `${filters.dur_min ?? ''}:${filters.dur_max ?? ''}`;
   const [seen, setSeen] = useState(source);
   const [range, setRange] = useState(() => [minutesOf(filters.dur_min, 0), minutesOf(filters.dur_max, DURATION_MAX)]);
@@ -444,11 +468,11 @@ function Duration({ host: at, filters }: { host: SidebarHost; filters: SidebarPr
 
   /* 拖动只改读数，松手（`change`）才提交：React 的 onChange 接的是每一步 input。 */
   useEffect(() => {
-    const commit = () => at.setDuration(latest.current[0], latest.current[1]);
+    const commit = () => onCommit(latest.current[0], latest.current[1]);
     const inputs = [minInput.current, maxInput.current];
     inputs.forEach((input) => input?.addEventListener('change', commit));
     return () => inputs.forEach((input) => input?.removeEventListener('change', commit));
-  }, [at]);
+  }, [onCommit]);
 
   /* 已选那一截与两枚气泡的位置写在样式变量与 `left` 上。气泡对着手柄居中，伸出轨道的那一截按实测
      溢出量收回来：侧栏只比轨道宽出一点点，越界的半截被侧栏裁掉，读数就只剩一半。量之前先把上一次的

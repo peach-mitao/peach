@@ -121,7 +121,7 @@ const payload = (url: URL, statuses: Map<number, string>) => {
     sort: url.searchParams.get('sort') || 'new', dir: url.searchParams.get('dir') || 'desc', seed: 1,
     facets: {
       authors: AUTHORS.map((author) => `name:${author.toLowerCase()}`), providers: PROVIDERS.map(([key]) => key),
-      tags: TAGS.map((tag, at) => [tag, 30 - at * 2]), works: WORKS,
+      tags: TAGS.map((tag, at) => [tag, 30 - at * 2]), works: WORKS, duration: true,
     },
     offset, limit: 300, has_more: !offset, providers: PROVIDERS.map(([key]) => key),
   };

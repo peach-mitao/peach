@@ -188,6 +188,48 @@ describe('侧栏岛', () => {
     }
   });
 
+  it('关注页侧栏有来源、时长、内容标签三组；来源与时长进地址、按它向服务端取数，抽屉不收；刷新照地址按下', { timeout: 60_000 }, async () => {
+    const opened = await openFollowFeed(browser, '/follow', DESKTOP);
+    const { page } = opened;
+    const lists: URLSearchParams[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === '/api/follow' && !url.searchParams.has('item')) lists.push(url.searchParams);
+    });
+    const groups = () => page.locator('#drawer [data-sidebar-group]').evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-sidebar-group')));
+    try {
+      await page.locator('#drawer [data-sidebar-group="来源"] [data-sidebar-chip]').first().waitFor({ state: 'attached', timeout: 10_000 });
+      assert.deepEqual(await groups(), ['来源', '时长', '内容标签'], '关注页侧栏的分组不对');
+      assert.deepEqual((await chips(page, '来源')).map(([value]) => value), ['kemono', 'rule34xxx', 'fanbox'],
+        '来源组不是全库那几个站');
+
+      await openGroup(page, '来源');
+      await page.locator('#drawer [data-sidebar-chip][data-key="provider"][data-val="rule34xxx"]').click();
+      await page.waitForFunction(() => new URL(location.href).searchParams.get('provider') === 'rule34xxx', undefined, { timeout: 5_000 });
+      await page.locator('#drawer.open [data-sidebar-chip][data-val="rule34xxx"][aria-pressed="true"]').waitFor({ timeout: 5_000 });
+      await page.waitForFunction(() => document.querySelectorAll('#drawer [data-sidebar-group="来源"] [data-sidebar-chip]').length === 3,
+        undefined, { timeout: 5_000 });
+      assert.ok(lists.some((params) => params.get('provider') === 'rule34xxx'), '按下来源之后没有按它向服务端取数');
+
+      await openGroup(page, '时长');
+      await page.locator('#durMin').focus();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForFunction(() => new URL(location.href).searchParams.get('dur_min') === '300', undefined, { timeout: 5_000 });
+      await page.waitForFunction(() => document.querySelector('#drawer')?.classList.contains('open'), undefined, { timeout: 5_000 });
+      assert.ok(lists.some((params) => params.get('dur_min') === '300' && params.get('provider') === 'rule34xxx'),
+        '拉时长之后没有带着两条筛选向服务端取数');
+      assert.ok(!new URL(page.url()).searchParams.has('dur_max'), '右端没动却写进了上限');
+
+      await page.reload({ waitUntil: 'load' });
+      await page.locator('#drawer [data-sidebar-chip][data-val="rule34xxx"][aria-pressed="true"]').waitFor({ state: 'attached', timeout: 10_000 });
+      assert.equal(await page.locator('#durMin').inputValue(), '5', '刷新之后时长左端没有照地址回到 5 分钟');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('作品详情开着时侧栏只剩导航，关掉之后列表那几组原样回来', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, '/', DESKTOP, { ready: `#grid [data-media-card][data-id="${ITEM.plain}"]` });
     const { page } = opened;

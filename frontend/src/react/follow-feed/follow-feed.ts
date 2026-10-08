@@ -10,8 +10,8 @@
  * 才换它，从别的页面回来沿用离开时那一粒，岛重画从不重新洗牌。
  *
  * 详情（`/follow/item/:id`）是另一座岛（`../follow-detail/`），先扫这里缓存的几页找条目
- * （`findFollowItem`），扫不到才单独取。侧栏标签抽屉仍归壳画：岛每取到一版列表就经
- * `actions.loaded` 交回这一视图可见条目的标签计数。 */
+ * （`findFollowItem`），扫不到才单独取。侧栏仍归壳画：岛每取到一版列表就经 `actions.loaded`
+ * 交回这一视图可见条目的标签计数、全库口径的来源与时长有无。 */
 import { keepPreviousData, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 import { seededRank } from '@peach/legacy/core';
 
@@ -42,6 +42,9 @@ export interface FollowView {
   provider: string;
   work: string;
   tags: readonly string[];
+  /** 时长两端（秒），同首页的 `dur_min`／`dur_max`；0 是这一端不限。 */
+  durMin: number;
+  durMax: number;
   sort: FollowSort;
   dir: 'asc' | 'desc';
   /** 服务端随机排序的种子，只在 `sort` 为 `rand` 时进请求。 */
@@ -60,6 +63,8 @@ export function followPageUrl(view: FollowView, offset: number): string {
     + (view.provider ? `&provider=${csv([view.provider])}` : '')
     + (view.tags.length ? `&tag=${csv(view.tags)}` : '')
     + (view.work ? `&work=${csv([view.work])}` : '')
+    + (view.durMin ? `&dur_min=${view.durMin}` : '')
+    + (view.durMax ? `&dur_max=${view.durMax}` : '')
     + (view.sort !== 'new' ? `&sort=${view.sort}` : '')
     + (view.sort === FOLLOW_RANDOM_SORT ? `&seed=${view.seed}` : '')
     + (view.dir !== 'desc' ? `&dir=${view.dir}` : '');
@@ -140,6 +145,15 @@ export interface FollowFacets {
   providers?: string[];
   tags?: [string, number][];
   works?: FollowWorkRow[];
+  /** 库里有没有时长读数：侧栏据它出不出时长拉条。 */
+  duration?: boolean;
+}
+
+/** 交给壳画侧栏的那一份：可见条目的标签计数、全库口径的来源（键、显示名、站标地址）与时长有无。 */
+export interface FollowDrawer {
+  tags: readonly (readonly [string, number])[];
+  providers: readonly (readonly [key: string, label: string, icon: string])[];
+  duration: boolean;
 }
 
 export interface FollowPage {
@@ -440,8 +454,8 @@ export interface FollowFeedActions {
   route(view: FollowView): void;
   /** 换一批：壳掷一粒新种子，两排取样与列表次序都换。 */
   shuffle(): void;
-  /** 岛取到一版列表（首屏、续页、写操作之后）：这一视图可见条目的标签计数，壳拿去画侧栏抽屉。 */
-  loaded(tags: readonly (readonly [string, number])[]): void;
+  /** 岛取到一版列表（首屏、续页、写操作之后）：侧栏要的标签计数、来源与时长有无，壳拿去画侧栏。 */
+  loaded(drawer: FollowDrawer): void;
   openDetail(id: number): void;
   openManage(): void;
   /** 多选里的一张：`range` 是 Shift 连选。 */
