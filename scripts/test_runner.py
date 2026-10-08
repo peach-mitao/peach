@@ -15,7 +15,7 @@ import time
 import tomllib
 import unittest
 from collections.abc import Iterable
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from pathlib import Path
 
 
@@ -507,9 +507,11 @@ class TimedResult(unittest.TextTestResult):
         super().stopTest(test)
 
 
-#: 本机并行的上限。全量里最重的是 git 与 PowerShell 子进程型的 tooling 用例，四路已经
-#: 把它们摊开；再多只是让每个子进程各自 import 一遍 peach 的固定开销变多。
-MAX_JOBS = 4
+#: 整台机器同时跑的测试重任务上限。一个分片子进程、或不分片时的整轮测试，各占一个槽位；
+#: 槽位是共用 Git 目录下的文件锁，所有工作树、所有会话共用这几个，用户定的是两个。
+HEAVY_TASK_SLOTS = 2
+#: 一轮测试自己的并发上限，不超过机器的槽位数：多开的子进程只会排队等槽位。
+MAX_JOBS = HEAVY_TASK_SLOTS
 #: 最多切多少片。CI 两片是因为每片一台 runner；本机每片只是一个子进程，切细一点
 #: 才能让重文件（`test_agent_worktree.py` 一个就 80 秒）不把整片拖成长尾。
 MAX_SHARDS = 16
@@ -533,45 +535,92 @@ def shard_command(scopes: tuple[str, ...], index: int, count: int, timings: Path
             *(item for scope in scopes for item in ("--scope", scope)),
             "--shard-index", str(index), "--shard-count", str(count),
             "--timings", str(timings)]
-    resource_runner = os.environ.get('PEACH_TEST_RESOURCE_RUNNER', '').strip()
-    if not resource_runner:
-        return command
-    path = Path(resource_runner).resolve()
-    if not path.is_file():
-        raise ValueError('测试资源入口不存在')
-    return [sys.executable, '-X', 'utf8', str(path), '--timeout', '1800', '--', *command]
+    return command
+
+
+def heavy_slot_paths(slots: Path | None = None) -> list[Path]:
+    """机器级重任务槽位的锁文件；默认在共用 Git 目录旁，所有工作树看到的是同一组。"""
+    folder = slots if slots is not None else test_evidence.evidence_dir(ROOT)
+    return [folder / f"heavy-slot-{index}.lock" for index in range(1, HEAVY_TASK_SLOTS + 1)]
+
+
+def try_heavy_slot(paths: list[Path], **note: object) -> ExitStack | None:
+    """不等待地拿一个空闲槽位；全忙返回 None。拿到的槽位随返回的 ExitStack 关闭而释放。"""
+    for path in paths:
+        stack = ExitStack()
+        try:
+            stack.enter_context(test_evidence.held(path, **note))
+        except test_evidence.Timeout:
+            stack.close()
+            continue
+        return stack
+    return None
+
+
+def wait_heavy_slot(paths: list[Path], *, wait_seconds: float, poll: float = 0.2,
+                    **note: object) -> ExitStack:
+    """等到一个槽位空出来；超过 `wait_seconds` 抛 `Timeout`，锁文件取最后一个槽位。"""
+    deadline = time.monotonic() + wait_seconds
+    announced = False
+    while True:
+        slot = try_heavy_slot(paths, **note)
+        if slot is not None:
+            return slot
+        if time.monotonic() >= deadline:
+            raise test_evidence.Timeout(str(paths[-1]))
+        if not announced:
+            holders = "；".join(test_evidence.describe_holder(path) for path in paths)
+            print(f"{len(paths)} 个测试重任务槽位都在用（{holders}），最长等待 {wait_seconds:g} 秒。",
+                  flush=True)
+            announced = True
+        time.sleep(poll)
 
 
 def run_shards(scopes: tuple[str, ...], *, jobs: int, shard_count: int,
-               spawn=subprocess.Popen) -> tuple[bool, int, list]:
+               spawn=subprocess.Popen, slots: Path | None = None,
+               slot_wait: float = 1800) -> tuple[bool, int, list]:
     """把选中的文件按 CI 同一套稳定分片切开，同时最多 `jobs` 个子进程各跑一片。
 
     每片是一次 `--shard-count` 子进程：它自己从不签发记录，只把成败、用例数和逐个
     用例的耗时写进 `--timings` 那个文件，父进程汇总后签发一份记录，口径与串行相同。
     片数比并发数多，是为了让先跑完的进程接着领下一片，重文件不至于把墙钟拖成它
     一家的长度。子进程的输出各自落盘，哪片结束就整段打印哪片，不交错。
+
+    每片启动前先拿一个机器级重任务槽位（`HEAVY_TASK_SLOTS`），该片结束就还。别的
+    工作树或会话占着槽位时，这里排队，最长 `slot_wait` 秒。
     """
-    if os.environ.get('PEACH_TEST_RESOURCE_RUNNER', '').strip() and jobs != 1:
-        raise ValueError('受限分片必须使用 --jobs 1')
     folder = Path(tempfile.mkdtemp(prefix="peach-shards-"))
+    paths = heavy_slot_paths(slots)
     pending = list(range(shard_count))
-    running: dict[int, tuple[object, object]] = {}
+    running: dict[int, tuple[object, object, ExitStack]] = {}
     passed, count, timings = True, 0, []
     try:
         while pending or running:
             while pending and len(running) < jobs:
+                if running:
+                    slot = try_heavy_slot(paths, scope=" ".join(scopes), root=str(ROOT))
+                    if slot is None:
+                        break
+                else:
+                    slot = wait_heavy_slot(paths, wait_seconds=slot_wait,
+                                           scope=" ".join(scopes), root=str(ROOT))
                 index = pending.pop(0)
-                log = open(folder / f"{index}.log", "w+", encoding="utf-8", errors="replace")
-                process = spawn(shard_command(scopes, index, shard_count, folder / f"{index}.json"),
-                                stdout=log, stderr=subprocess.STDOUT, cwd=str(ROOT))
-                running[index] = (process, log)
-            finished = [index for index, (process, _) in running.items()
+                try:
+                    log = open(folder / f"{index}.log", "w+", encoding="utf-8", errors="replace")
+                    process = spawn(shard_command(scopes, index, shard_count, folder / f"{index}.json"),
+                                    stdout=log, stderr=subprocess.STDOUT, cwd=str(ROOT))
+                except BaseException:
+                    slot.close()
+                    raise
+                running[index] = (process, log, slot)
+            finished = [index for index, (process, _, _) in running.items()
                         if process.poll() is not None]
             if not finished:
                 time.sleep(0.2)
                 continue
             for index in finished:
-                process, log = running.pop(index)
+                process, log, slot = running.pop(index)
+                slot.close()
                 log.flush()
                 log.seek(0)
                 sys.stdout.write(log.read())
@@ -586,15 +635,18 @@ def run_shards(scopes: tuple[str, ...], *, jobs: int, shard_count: int,
                 print(f"分片 {index + 1}/{shard_count} {'通过' if ok else '失败'}"
                       f"（{report.get('count', 0)} 个用例）", flush=True)
     finally:
-        for process, log in running.values():
-            if process.poll() is None:
-                if os.name == 'nt':
-                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
-                else:
-                    process.terminate()
-                process.wait(timeout=15)
-            log.close()
+        for process, log, slot in running.values():
+            try:
+                if process.poll() is None:
+                    if os.name == 'nt':
+                        subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+                    else:
+                        process.terminate()
+                    process.wait(timeout=15)
+                log.close()
+            finally:
+                slot.close()
         shutil.rmtree(folder, ignore_errors=True)
     return passed, count, timings
 
@@ -653,14 +705,20 @@ def environment_preflight(scopes: tuple[str, ...], timings: Path | None = None,
     raise SystemExit(3)
 
 
-def run_local_suite(scopes: tuple[str, ...], jobs: int) -> tuple[bool, int, list]:
-    """按并发预算执行本机测试；全量分片可逐批释放模块与测试缓存。"""
+def run_local_suite(scopes: tuple[str, ...], jobs: int, *,
+                    slot_wait: float = 1800) -> tuple[bool, int, list]:
+    """按并发预算执行本机测试；全量分片可逐批释放模块与测试缓存。
+
+    分片时每片各占一个重任务槽位；不分片时整轮在本进程里跑，同样先占一个。
+    """
     chosen = {path for scope in scopes for path in selected_files(scope)}
     if (jobs > 1 or "full" in scopes) and len(chosen) > 1:
         shard_count = min(len(chosen), 4 * jobs, MAX_SHARDS)
         print(f"本机分片：{shard_count} 片、同时 {min(jobs, shard_count)} 个子进程", flush=True)
-        return run_shards(scopes, jobs=jobs, shard_count=shard_count)
-    result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(build_suite(*scopes))
+        return run_shards(scopes, jobs=jobs, shard_count=shard_count, slot_wait=slot_wait)
+    with wait_heavy_slot(heavy_slot_paths(), wait_seconds=slot_wait,
+                         scope=" ".join(scopes), root=str(ROOT)):
+        result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(build_suite(*scopes))
     return result.wasSuccessful() and result.testsRun > 0, result.testsRun, result.timings
 
 
@@ -720,6 +778,10 @@ def main(argv: list[str] | None = None) -> int:
             return verified_run(args, requested, scopes, files)
     except test_evidence.Timeout as error:
         lock = Path(error.lock_file)
+        if lock.name.startswith("heavy-slot-"):
+            print(f"{HEAVY_TASK_SLOTS} 个测试重任务槽位一直被占用，本次未开跑；"
+                  "等其他工作树或会话的测试结束后重试。", flush=True)
+            return 2
         what = "本仓库全量测试" if lock.name == "full-suite.lock" else "相同状态的验证"
         print(f"{what}正在运行（{test_evidence.describe_holder(lock)}），请等待该次结果。",
               flush=True)
@@ -760,7 +822,7 @@ def verified_run(args, requested, scopes, files) -> int:
         folder = test_evidence.evidence_dir(ROOT)
         (folder / f"{state}.json").unlink(missing_ok=True)
         started = time.monotonic()
-        passed, count, timings = run_local_suite(scopes, args.jobs)
+        passed, count, timings = run_local_suite(scopes, args.jobs, slot_wait=args.lock_timeout)
         stable = state == test_evidence.key(ROOT)
         success = passed and stable
         slowest = sorted(timings, reverse=True)[:20]

@@ -50,8 +50,7 @@ Claude 与 Codex 会话记录里交给用户、被贴回报错截图的 39 条�
   不改断言、不跳过用例。`scripts/test.ps1` 会在分片前报告无法启动的外部工具。
 - `danger-full-access` 是取消隔离，不是「提权沙箱」。除非用户明确要求承担全局风险，否则保留沙箱，
   只给当前项目入口所需的命令授权。
-- Windows 全量测试若外套 `resource_run.py`，给 `scripts/test.ps1` 传 `-Jobs 1`；外层 Job Object
-  与入口的四路并发叠加会让 Git Bash、Python 和临时 Git 进程出现 I/O 或进程创建错误。
+- 测试入口自带机器级两槽位重任务限制（`docs/TESTING.md`「验证频率」），不要再外套资源守卫；
   npm／PyInstaller、FFmpeg 与媒体批处理仍按资源预算使用外层守卫。
 
 ## 多行内容一律先写成文件
