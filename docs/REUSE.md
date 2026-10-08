@@ -14,7 +14,7 @@ Babepedia 主图库和 Vixen 网络公开 GraphQL 的字段核对 [Stash Communi
 
 ## 实体身份与职业
 
-公司资料复用 `entity.metadata_json`、HTTPX、官网公司概要表和定义列表、实体链接安装器与标识采集器。`company_profiles` 按字段保存公开出处、原文和批次，只填空；集团公司表按实体限定范围，公司成立与品牌启动分列，运营主体、发行商和集团不互相推导。目录页面不作独立公司官网。`harvest_company_profiles.py` 默认产复核 JSON，`--input --apply --backup --batch` 才落库，候选不落库，来源冲突留在产物；别名碰撞不写。`revert_auto_landing.py` 可撤回同批公司字段、链接、别名及标识，无新增依赖。
+公司资料复用 `entity.metadata_json`、HTTPX、官网公司概要表和定义列表与标识采集器。`company_profiles` 只有通用判据（概要标签、服务条款订立方原句），按字段保存出处、原文和批次，只填空；一页多张公司表时按法人名对实体名与别名选表，公司成立与品牌启动分列，集团与分工关系不由代码推导，只作候选。`harvest_company_profiles.py` 默认产复核 JSON，`--input --apply --backup --batch auto:company-profile@…` 按缓存页重放判据后落库，清单里的别名、链接与第三方页面不写。`revert_auto_landing.py` 可撤回同批公司字段及标识，无新增依赖。
 
 Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`performer_profiles` 的整行来源保护和 `performer_alias_followup.land` 的占用检查。英文艺名只在明确允许的来源中登记，JAV 后继保留自己的名字策略。真人账号与出演者共用资料表、别名分组与头像候选；保留账号角色及旧地址。主图可以补空头像，本人档案图库仅作候选，推荐人物排除，单图失败继续其余有限候选。`harvest_western_profiles.py` 每轮至多 16 位，计划、备份、回执与批次撤回齐备；既有资料和头像保留。真实只读复核取得 Ria Kurumi 等 16 份匹配档案，无新增依赖。
 
