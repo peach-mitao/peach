@@ -315,15 +315,30 @@ def _promo_neighbour_counts(rows) -> dict[str, int]:
     return counts
 
 
+def _promotion_attachment_reason(suffix: str, path: str, size: int) -> str:
+    """按体积和精确命名筛选需要内容复核的推广附件。"""
+    item = PureWindowsPath(path)
+    if (suffix == '.wmv' and 0 < size < JUNK_VIDEO_MAX_BYTES
+            and re.sub(r'\s', '', item.stem) in {'最新情報', '最新情报'}):
+        return "无内容描述的宣传视频候选，须核验视频内容"
+    if suffix != '.png' or not 0 < size <= 128 * 1024:
+        return ''
+    if size <= 4096 and item.stem in {'51风流', '代开实习证明', '扫码约炮', '探花社区'}:
+        return "微型推广二维码候选，须核验图片内容"
+    if (item.parent.name == item.stem
+            and re.fullmatch(r'｜(?:91porn|AI裸绘|小太妹|抖音极速|海角乱伦|萝莉岛)｜[^\\/]{1,80}｜?', item.stem)):
+        return "网站推广二维码候选，须核验图片内容"
+    return ''
+
+
 def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     """区分安装附件与网页存档组件。"""
     name = PureWindowsPath(path).stem
     if (suffix == '.mp4' and 0 < size < 32 * 1024**2
             and re.sub(r'\s', '', name) in {'社區最新情報', '社区最新情报'}):
         return "用户确认的社区推广视频"
-    if (suffix == '.png' and 0 < size <= 4096
-            and name in {'51风流', '代开实习证明', '扫码约炮', '探花社区'}):
-        return "微型推广二维码候选，须核验图片内容"
+    if reason := _promotion_attachment_reason(suffix, path, size):
+        return reason
     if suffix in {'.jpg', '.jpeg', '.png', '.gif'} and 0 < size < 2 * 1024**2:
         if re.fullmatch(r'如何使用谷歌DNS让您更快进入下载网页步骤\s*0?[123]', name, re.I):
             return "下载站推广导航图片"

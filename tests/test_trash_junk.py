@@ -333,6 +333,30 @@ class TrashJunkTests(unittest.TestCase):
             self.assertFalse(_attachment_junk_reason('.png', 'A:\\作品\\'+name+'作品.png', 1400))
             self.assertFalse(_attachment_junk_reason('.mp4', 'A:\\作品\\'+name+'.mp4', 1400))
 
+    def test_site_cards_require_matching_parent_and_small_png_content_review(self):
+        from peach.web_batch import _attachment_junk_reason
+        name='｜91porn｜真实国产原创亚洲最火成人网站，强势回归｜'
+        source='A:\\待确认\\My Pack\\213\\'+name+'\\'+name+'.png'
+        self.assertIn('须核验图片内容', _attachment_junk_reason('.png', source, 49130))
+        for suffix,path,size in (
+                ('.mp4', source.removesuffix('.png')+'.mp4', 49130),
+                ('.png', source, 128*1024+1),
+                ('.png', 'A:\\作品\\'+name+'.png', 49130),
+                ('.png', source.replace(name+'.png','作品截图.png'), 49130)):
+            self.assertFalse(_attachment_junk_reason(suffix,path,size))
+
+    def test_information_wmv_requires_exact_name_size_and_content_review(self):
+        from peach.web_batch import JUNK_VIDEO_MAX_BYTES, _attachment_junk_reason
+        for name in ('最新情報', '最 新 情 报'):
+            source = 'B:\\云下载\\DOCP-324\\' + name + '.wmv'
+            self.assertIn('须核验视频内容', _attachment_junk_reason('.wmv', source, 90867046))
+        for suffix, name, size in (
+                ('.wmv', '最新情報', 0),
+                ('.wmv', '最新情報', JUNK_VIDEO_MAX_BYTES),
+                ('.mp4', '最新情報', 90867046),
+                ('.wmv', '作品最新情報完整版', 90867046)):
+            self.assertFalse(_attachment_junk_reason(suffix, 'B:\\作品\\' + name + suffix, size))
+
 
 if __name__ == "__main__":
     unittest.main()
