@@ -6,6 +6,7 @@ Rule34Video's expiring signed URL is resolved only when the user explicitly pres
 from __future__ import annotations
 
 import html
+import logging
 import re
 import threading
 import time
@@ -19,8 +20,9 @@ from . import follow_providers
 from .follow_sources import USER_AGENT, archive_file_url, f95_attachment_media_items
 from .follow_secrets import Credential
 from .follow_store import FollowItemRow
-from .http import HttpRequest, HttpTransport, public_https_url, resolves_publicly
+from .http import HttpRequest, HttpResponse, HttpTransport, public_https_url, resolves_publicly
 
+LOGGER = logging.getLogger(__name__)
 
 class FollowMediaUnavailable(RuntimeError):
     pass
@@ -116,22 +118,110 @@ class FollowMediaResolver:
     #: 用户挨个点开就会挨个留下一条；只按 TTL 过期的话，进程活多久它就长多久。
     #: 上限按「一屏反复点开也够用」定，超了先丢已过期的，再丢最早写进来的。
     MAX_CACHE_ENTRIES = 256
+    #: 详情页没取到（删片、改版、被拒）后，同一条多久内不再回源。播放器起播时
+    #: `/follow-stream`、`/follow-qualities` 和之后的每个 Range 请求都会来问一遍，
+    #: 不记住失败，一条坏片就是一串详情页请求。
+    MISS_TTL = 120.0
+    #: 来源回 403 / 429 后整站暂停回源多久。带 `Retry-After` 就按它，但不超过上限。
+    #: 被限流时还照常请求只会延长封禁，卡面 poster 与播放解析都先问这里。
+    COOLDOWN = 300.0
+    MAX_COOLDOWN = 1800.0
+    REFUSED_STATUSES = frozenset({403, 429})
 
     def __init__(self, transport: HttpTransport, *, ttl: float = 300.0,
                  timeout: float = 20.0, max_bytes: int = 2_000_000,
-                 max_cache_entries: int | None = None):
+                 max_cache_entries: int | None = None,
+                 clock: Callable[[], float] = time.monotonic):
         self.transport = transport
         self.ttl = ttl
         self.timeout = timeout
         self.max_bytes = max_bytes
         self.max_cache_entries = (self.MAX_CACHE_ENTRIES if max_cache_entries is None
                                   else max_cache_entries)
+        self.clock = clock
         self._cache: dict[int, tuple[float, ResolvedFollowMedia]] = {}
+        self._misses: dict[int, float] = {}
+        self._cooldowns: dict[str, float] = {}
+        self._item_locks: dict[int, threading.Lock] = {}
         self._lock = threading.Lock()
+
+    def cooling(self, provider: str) -> float:
+        """这个来源还要暂停回源多少秒；0 表示可以请求。"""
+        with self._lock:
+            return max(0.0, self._cooldowns.get(provider, 0.0) - self.clock())
+
+    def fetch(self, provider: str, request: HttpRequest, timeout: float,
+              max_bytes: int) -> HttpResponse:
+        """经来源冷却闸门发一次请求；来源回 403 / 429 就让整站进入冷却。
+
+        播放解析与卡面 poster 共用这一道闸：同一个站，一边被限流、另一边还在请求，
+        冷却就永远结束不了。
+        """
+        remaining = self.cooling(provider)
+        if remaining:
+            raise FollowMediaUnavailable(f"{provider} 限流冷却中，{int(remaining) + 1} 秒后再试")
+        response = self.transport(request, timeout, max_bytes)
+        if response.status in self.REFUSED_STATUSES:
+            headers = {key.lower(): value for key, value in response.headers.items()}
+            try:
+                retry_after = float(headers.get("retry-after", ""))
+            except ValueError:
+                retry_after = None
+            seconds = self.pause(provider, retry_after)
+            LOGGER.warning("%s refused %s with HTTP %s; pausing upstream requests for %ds",
+                           provider, request.url, response.status, seconds)
+        return response
+
+    def pause(self, provider: str, retry_after: float | None = None) -> float:
+        """让来源进入冷却并返回冷却秒数；没给 `retry_after` 就按默认时长。
+
+        后台检查被限流时也记到这里：浏览与检查打的是同一个站，冷却只能有一份。
+        """
+        seconds = (self.COOLDOWN if retry_after is None
+                   else min(max(retry_after, 1.0), self.MAX_COOLDOWN))
+        with self._lock:
+            self._cooldowns[provider] = max(self._cooldowns.get(provider, 0.0),
+                                            self.clock() + seconds)
+        return seconds
+
+    def _item_lock(self, item_id: int) -> threading.Lock:
+        """同一条的解析排队：并发进来的请求只让第一个回源，其余等它写进缓存。"""
+        with self._lock:
+            lock = self._item_locks.get(item_id)
+            if lock is None:
+                if len(self._item_locks) >= self.max_cache_entries:
+                    for key, tracked in list(self._item_locks.items()):
+                        if not tracked.locked():
+                            del self._item_locks[key]
+                lock = self._item_locks[item_id] = threading.Lock()
+            return lock
+
+    def _cached(self, item_id: int) -> ResolvedFollowMedia | None:
+        """缓存命中返回结果；近期失败过直接抛出，不再回源。调用方持有 `_lock`。"""
+        now = self.clock()
+        cached = self._cache.get(item_id)
+        if cached and cached[0] > now:
+            return cached[1]
+        missed = self._misses.get(item_id)
+        if missed is not None:
+            if missed > now:
+                raise FollowMediaUnavailable("Rule34Video 详情页刚刚未取得，稍后再试")
+            del self._misses[item_id]
+        return None
+
+    def _remember_miss(self, item_id: int) -> None:
+        with self._lock:
+            now = self.clock()
+            for key, expiry in list(self._misses.items()):
+                if expiry <= now:
+                    del self._misses[key]
+            while self._misses and len(self._misses) >= self.max_cache_entries:
+                self._misses.pop(next(iter(self._misses)))
+            self._misses[item_id] = now + self.MISS_TTL
 
     def _remember(self, item_id: int, resolved: ResolvedFollowMedia) -> None:
         """写入缓存并保持有界。调用方持有 `_lock`。"""
-        now = time.monotonic()
+        now = self.clock()
         for key, (expiry, _) in list(self._cache.items()):
             if expiry <= now:
                 del self._cache[key]
@@ -222,17 +312,31 @@ class FollowMediaResolver:
                 public_hosts=item.provider in _PUBLIC_MEDIA_PROVIDERS)
 
         with self._lock:
-            cached = self._cache.get(item.id)
-            if cached and cached[0] > time.monotonic():
-                return _pick_quality(cached[1], height)
+            cached = self._cached(item.id)
+        if cached:
+            return _pick_quality(cached, height)
         if not item.url or not _allowed(item.provider, item.url):
             raise FollowMediaUnavailable("Rule34Video 详情地址不可用")
-        response = self.transport(
+        with self._item_lock(item.id):
+            # 排队期间前一个请求可能已经写好缓存或记下失败，先看一眼再决定回不回源。
+            with self._lock:
+                cached = self._cached(item.id)
+            if cached:
+                return _pick_quality(cached, height)
+            return _pick_quality(self._fetch_rule34video(item), height)
+
+    def _fetch_rule34video(self, item: FollowItemRow) -> ResolvedFollowMedia:
+        """抓一次详情页，解析出各档正片地址并写进缓存；没取到记一次失败。"""
+        response = self.fetch(
+            item.provider,
             HttpRequest("GET", item.url, {"User-Agent": USER_AGENT,
                                            "Accept": "text/html"}),
             self.timeout, self.max_bytes,
         )
         if response.status != 200 or len(response.body) > self.max_bytes:
+            LOGGER.warning("rule34video detail page for follow item %s unavailable: HTTP %s",
+                           item.id, response.status)
+            self._remember_miss(item.id)
             raise FollowMediaUnavailable("Rule34Video 详情页未取得")
         text = response.body.decode("utf-8", errors="replace")
         found: list[str] = []
@@ -241,6 +345,8 @@ class FollowMediaResolver:
             if candidate not in found and _allowed(item.provider, candidate):
                 found.append(candidate)
         if not found:
+            LOGGER.warning("rule34video detail page for follow item %s has no video url", item.id)
+            self._remember_miss(item.id)
             raise FollowMediaUnavailable("Rule34Video 正片地址未取得")
         # 高清优先：默认播最高一档，其余作为可选清晰度交给播放器。认不出分辨率的
         # 排在最后但不丢——签名 URL 每次都变，丢了就没有回退。
@@ -249,7 +355,6 @@ class FollowMediaResolver:
             ordered[0], item.url,
             qualities=tuple((_video_height(url), url) for url in ordered),
             allowed_hosts=tuple(_PROVIDER_HOSTS.get(item.provider, ())))
-        resolved = _pick_quality(resolved, height)
         with self._lock:
             self._remember(item.id, resolved)
         return resolved
@@ -304,13 +409,22 @@ def proxy_request_headers(target: ResolvedFollowMedia,
     return headers
 
 
+#: 代理出来的图片让浏览器留多久。卡面、灯箱和翻卡预解码都按同一个 `/follow-stream`
+#: 地址取原图，地址指向账本里固定的那一张；不让浏览器缓存的话，每进一次关注页、
+#: 每开一次灯箱都要经 Peach 再从来源站拉一遍原图。
+PROXY_IMAGE_MAX_AGE = 86400
+
+
 def proxy_response_headers(upstream: Mapping[str, str]) -> dict[str, str]:
     forwarded = {}
     for name in PROXY_RESPONSE_HEADERS:
         value = upstream.get(name)
         if value:
             forwarded[name] = value
-    forwarded["cache-control"] = "no-store"
+    # 视频照旧不缓存：rule34video 的签名地址会过期，范围请求也不该落进浏览器缓存。
+    image = str(forwarded.get("content-type", "")).lower().startswith("image/")
+    forwarded["cache-control"] = (f"private, max-age={PROXY_IMAGE_MAX_AGE}"
+                                  if image else "no-store")
     return forwarded
 
 

@@ -27,6 +27,17 @@ class FollowHistoryEnd(FollowSourceError):
     """A valid backfill response that means there are no older items."""
 
 
+class FollowSourceRateLimited(FollowSourceError):
+    """来源明确说了请求太频繁。被限的是整站，同一站剩下的来源这一轮也不该再请求。
+
+    `retry_after` 是来源给的等待秒数，没给就是 None，由冷却方按默认时长处理。
+    """
+
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
 def plain_text(value: str | None) -> str | None:
     """把站点返回的 HTML 片段压成一行纯文本。"""
     if not value:

@@ -1,3 +1,4 @@
+import threading
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -177,6 +178,88 @@ class FollowMediaResolverTests(unittest.TestCase):
                 url=f"https://rule34video.com/video/{identifier}/x/",
                 media_url=None, metadata={}))
         self.assertEqual(len(resolver._cache), 2)
+
+
+class Rule34VideoUpstreamDedupeTests(unittest.TestCase):
+    """播放器起播时同时问正片和清晰度，之后每个 Range 再问一遍；这些都只该换来一次详情页。"""
+
+    PAGE = b"<script>video_url: 'https://rule34video.com/get_file/1_720p.mp4/'</script>"
+
+    @staticmethod
+    def _item(identifier=7):
+        return SimpleNamespace(id=identifier, provider="rule34video",
+                               url=f"https://rule34video.com/video/{identifier}/x/",
+                               media_url=None, metadata={})
+
+    def test_concurrent_requests_for_one_item_share_a_single_detail_fetch(self):
+        requests = []
+        entered = threading.Event()
+        release = threading.Event()
+
+        def transport(request, timeout, max_bytes):
+            requests.append(request.url)
+            entered.set()
+            release.wait(5)
+            return HttpResponse(200, {}, self.PAGE)
+
+        resolver = FollowMediaResolver(transport)
+        results = []
+        workers = [threading.Thread(target=lambda: results.append(resolver.resolve(self._item())))
+                   for _ in range(3)]
+        workers[0].start()
+        self.assertTrue(entered.wait(5))
+        for worker in workers[1:]:
+            worker.start()
+        release.set()
+        for worker in workers:
+            worker.join(5)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(len({result.url for result in results}), 1)
+        self.assertEqual(len(results), 3)
+
+    def test_a_missing_detail_page_is_not_refetched_within_the_ttl(self):
+        clock = [1000.0]
+        transport = mock.Mock(return_value=HttpResponse(404, {}, b""))
+        resolver = FollowMediaResolver(transport, clock=lambda: clock[0])
+        for _ in range(3):
+            with self.assertRaises(FollowMediaUnavailable):
+                resolver.resolve(self._item())
+        self.assertEqual(transport.call_count, 1)
+        clock[0] += resolver.MISS_TTL + 1
+        transport.return_value = HttpResponse(200, {}, self.PAGE)
+        self.assertIn("1_720p", resolver.resolve(self._item()).url)
+        self.assertEqual(transport.call_count, 2)
+
+    def test_a_rate_limited_source_pauses_every_item_until_retry_after(self):
+        clock = [1000.0]
+        transport = mock.Mock(return_value=HttpResponse(429, {"retry-after": "90"}, b""))
+        resolver = FollowMediaResolver(transport, clock=lambda: clock[0])
+        with self.assertLogs("peach.follow_stream", "WARNING"):
+            with self.assertRaises(FollowMediaUnavailable):
+                resolver.resolve(self._item(7))
+        with self.assertRaises(FollowMediaUnavailable):
+            resolver.resolve(self._item(8))
+        self.assertEqual(transport.call_count, 1)
+        self.assertGreater(resolver.cooling("rule34video"), 0)
+        clock[0] += 91
+        self.assertEqual(resolver.cooling("rule34video"), 0)
+        transport.return_value = HttpResponse(200, {}, self.PAGE)
+        self.assertIn("1_720p", resolver.resolve(self._item(8)).url)
+        self.assertEqual(transport.call_count, 2)
+
+    def test_retry_after_is_capped_and_missing_retry_after_uses_the_default(self):
+        clock = [0.0]
+        resolver = FollowMediaResolver(
+            mock.Mock(return_value=HttpResponse(403, {"Retry-After": "999999"}, b"")),
+            clock=lambda: clock[0])
+        with self.assertLogs("peach.follow_stream", "WARNING"), self.assertRaises(FollowMediaUnavailable):
+            resolver.resolve(self._item(7))
+        self.assertEqual(resolver.cooling("rule34video"), resolver.MAX_COOLDOWN)
+        resolver = FollowMediaResolver(mock.Mock(return_value=HttpResponse(429, {}, b"")),
+                                       clock=lambda: clock[0])
+        with self.assertLogs("peach.follow_stream", "WARNING"), self.assertRaises(FollowMediaUnavailable):
+            resolver.resolve(self._item(7))
+        self.assertEqual(resolver.cooling("rule34video"), resolver.COOLDOWN)
 
 
 class Rule34VideoQualityTests(unittest.TestCase):
@@ -408,3 +491,6 @@ class ProxyUpstreamTests(unittest.TestCase):
         self.assertEqual(forwarded, {"content-type": "video/mp4",
                                      "content-length": "10",
                                      "cache-control": "no-store"})
+        # 图片地址指向账本里固定的那一张，留在浏览器里，重进关注页不再回源。
+        image = proxy_response_headers({"content-type": "image/jpeg"})
+        self.assertEqual(image["cache-control"], "private, max-age=86400")

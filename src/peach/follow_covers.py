@@ -132,46 +132,58 @@ class FollowCoverService:
         destination = self.root / f"{item.id}-{slot}{fingerprint}.jpg"
         if destination.is_file():
             return destination
+        # 抽帧失败回的是不缓存的占位图，下一次渲染就会再来；不记住失败，每次都要
+        # 重跑一遍 FFmpeg 去读上游正片。
+        if self._recent_miss(destination.name):
+            raise FollowCoverUnavailable("视频封面生成失败")
 
         lock = self._lock_for(destination.name)
         with lock:
             if destination.is_file():
                 return destination
-            self.root.mkdir(parents=True, exist_ok=True)
-            temporary = destination.with_name(
-                f"{destination.stem}.{os.getpid()}.{threading.get_ident()}.tmp.jpg")
-            command = [
-                str(choice.path), "-y", "-v", "error",
-                "-threads", "2", "-filter_threads", "1",
-                "-rw_timeout", "15000000", "-user_agent", USER_AGENT,
-            ]
-            if target.referer:
-                command.extend(("-referer", target.referer))
-            command.extend((
-                "-t", str(FOLLOW_COVER_SCAN_SECONDS), "-i", target.url,
-                "-frames:v", "1", "-threads", "2", "-vf", FOLLOW_COVER_FILTER, "-update", "1",
-                "-q:v", "4", str(temporary),
-            ))
-            try:
-                with self._slots:
-                    result = subprocess.run(
-                        command, capture_output=True, timeout=self.timeout, check=False)
-                if (result.returncode != 0 or not temporary.is_file()
-                        or temporary.stat().st_size == 0):
-                    raise FollowCoverUnavailable("视频封面生成失败")
-                os.replace(temporary, destination)
-            except (OSError, subprocess.TimeoutExpired) as exc:
-                raise FollowCoverUnavailable("视频封面生成失败") from exc
-            finally:
-                temporary.unlink(missing_ok=True)
+            if self._recent_miss(destination.name):
+                raise FollowCoverUnavailable("视频封面生成失败")
+            self._extract_frame(choice, target, destination)
             # URL 变化时留下旧帧没有价值；只清理同一条目、同一个视频的旧缓存。
             for stale in self.root.glob(f"{item.id}-*.jpg"):
                 if stale != destination and _cache_slot(stale.name, item.id) == slot:
                     stale.unlink(missing_ok=True)
             return destination
 
-    #: 一组 poster 地址全部取不到后，多久内不再重试。上游删片是长期状态，这里只挡住
-    #: 同一屏每次渲染都把 8 个地址重新挨个请求一遍。
+    def _extract_frame(self, choice, target, destination: Path) -> None:
+        """用 FFmpeg 从上游正片抽一帧写到 `destination`；失败记一次，限时内不再重跑。"""
+        self.root.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(
+            f"{destination.stem}.{os.getpid()}.{threading.get_ident()}.tmp.jpg")
+        command = [
+            str(choice.path), "-y", "-v", "error",
+            "-threads", "2", "-filter_threads", "1",
+            "-rw_timeout", "15000000", "-user_agent", USER_AGENT,
+        ]
+        if target.referer:
+            command.extend(("-referer", target.referer))
+        command.extend((
+            "-t", str(FOLLOW_COVER_SCAN_SECONDS), "-i", target.url,
+            "-frames:v", "1", "-threads", "2", "-vf", FOLLOW_COVER_FILTER, "-update", "1",
+            "-q:v", "4", str(temporary),
+        ))
+        try:
+            with self._slots:
+                result = subprocess.run(
+                    command, capture_output=True, timeout=self.timeout, check=False)
+            if (result.returncode != 0 or not temporary.is_file()
+                    or temporary.stat().st_size == 0):
+                self._remember_miss(destination.name)
+                raise FollowCoverUnavailable("视频封面生成失败")
+            os.replace(temporary, destination)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self._remember_miss(destination.name)
+            raise FollowCoverUnavailable("视频封面生成失败") from exc
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    #: 一组 poster 地址全部取不到、或一次抽帧失败后，多久内不再重试。上游删片是长期
+    #: 状态，这里只挡住同一屏每次渲染都把 8 个地址挨个请求一遍、或把 FFmpeg 再跑一遍。
     POSTER_MISS_TTL = 300.0
 
     def _poster(self, item: FollowItemRow,
@@ -192,15 +204,18 @@ class FollowCoverService:
         if not urls:
             raise FollowCoverUnavailable("该作品没有可用的封面地址")
         miss_key = hashlib.sha256("\0".join(urls).encode("utf-8")).hexdigest()
-        if self._recent_miss(miss_key):
+        if self._recent_miss(miss_key) or self.media_resolver.cooling(item.provider):
             raise FollowCoverUnavailable("该作品的封面未取得")
         with self._lock_for(destination.name):
             if destination.is_file():
                 return destination
-            if self._recent_miss(miss_key):
+            if self._recent_miss(miss_key) or self.media_resolver.cooling(item.provider):
                 raise FollowCoverUnavailable("该作品的封面未取得")
             with self._poster_slots:
                 fetched = self._fetch_poster(item, urls, destination)
+            if fetched is None:
+                # 来源在冷却：不是这张图的问题，冷却结束后照常再取，不记失败。
+                raise FollowCoverUnavailable("来源限流冷却中")
             if not fetched:
                 self._remember_miss(miss_key)
                 raise FollowCoverUnavailable("该作品的封面未取得")
@@ -232,8 +247,12 @@ class FollowCoverService:
             self._poster_misses[key] = time.monotonic()
 
     def _fetch_poster(self, item: FollowItemRow, urls: tuple[str, ...],
-                      destination: Path) -> bool:
-        """按次序取第一张能解码的 poster，转成 JPEG 原子落到 `destination`。"""
+                      destination: Path) -> bool | None:
+        """按次序取第一张能解码的 poster，转成 JPEG 原子落到 `destination`。
+
+        请求经解析器的来源闸门发出：来源一回 403 / 429 就整站冷却，剩下的地址不再
+        挨个去试，返回 None。
+        """
         deadline = time.monotonic() + self.timeout
         self.root.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(
@@ -244,9 +263,11 @@ class FollowCoverService:
                 if remaining <= 0:
                     break
                 try:
-                    response = self.media_resolver.transport(HttpRequest("GET", url, {
+                    response = self.media_resolver.fetch(item.provider, HttpRequest("GET", url, {
                         "User-Agent": USER_AGENT, "Accept": "image/*", "Referer": item.url or "",
                     }), min(8.0, remaining), 4_000_000)
+                    if self.media_resolver.cooling(item.provider):
+                        return None
                     if response.status != 200 or len(response.body) > 4_000_000:
                         continue
                     if response.url and not proxyable("rule34video", response.url):
@@ -259,6 +280,8 @@ class FollowCoverService:
                         image.convert("RGB").save(temporary, "JPEG", quality=90)
                     os.replace(temporary, destination)
                     return True
+                except FollowMediaUnavailable:
+                    return None
                 except (OSError, ValueError, httpx.HTTPError, UnidentifiedImageError, Image.DecompressionBombError):
                     continue
         finally:
