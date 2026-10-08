@@ -1,4 +1,4 @@
-/* 设置面板（`settings-panel` 岛）的桩与入口：`settings-panel.test.ts` 与 `design.test.ts` 共用。
+/* 设置面板（`settings-panel` 岛）的桩与入口：`settings-panel.test.ts` 与设计决定用例（`design-*.test.ts`）共用。
  *
  * 跟账本走的 `/api/settings` 与两份机器状态（`/api/follow/schedule`、`/api/thumbnail-jobs`）各给一份
  * 内存桩：读写都由它接住，好看写进去的是什么，也让「刷新后保持」不依赖临时服务上的状态。 */

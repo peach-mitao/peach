@@ -43,6 +43,7 @@ from support.ledger import fresh_ledger
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
+BROWSER_LOGS = ROOT / "build" / "agent-verification" / "browser"
 SERVER_START_SECONDS = 60
 E2E_SECONDS = 600
 
@@ -87,28 +88,52 @@ def refuse_network(*args, **kwargs):
     raise AssertionError("演示库的 process 不应向任何外部来源发请求")
 
 
-def e2e_command(node: str, concurrency: str = "", files: tuple[str, ...] = ()) -> list[str]:
-    """串行跑是浏览器进程预算：每条用例的 Chrome 只给一个渲染进程（`e2e/harness.ts`）。
+#: 断言帧数或动画中途位置的用例文件。别的文件并发跑时 CPU 被几个浏览器分走，
+#: 300ms 的过渡里出不了中间帧，就会误报「主线程整段被占住」或「瞬移过去」。
+CPU_SENSITIVE_SUITES = frozenset({
+    "e2e/sidebar-motion.test.ts",  # 开合过渡 300ms 里的帧数
+    "e2e/sidebar.test.ts",         # 当前项那块玻璃 900ms 内要经过中间位置
+})
 
-    直接启动 Node 也省掉资源守卫内的一层 npm 进程。
+
+def e2e_concurrency(override: str = "") -> int:
+    """浏览器用例文件的并发数：`PEACH_E2E_CONCURRENCY` 优先，CI 为 1，本机按 CPU 数推导、上限 4。
+
+    每个文件起一个 Chrome，只给一个渲染进程（`e2e/harness.ts`），一路并发约占四个逻辑核；
+    上限 4 与 vitest 的 `maxWorkers` 同一份进程预算。
     """
-    selected = concurrency or "1"
-    if not selected.isdecimal() or int(selected) < 1:
-        raise AssertionError("PEACH_E2E_CONCURRENCY 必须是正整数")
-    return [node, "--test", f"--test-concurrency={int(selected)}",
-            "--test-reporter=tap", *(files or ("e2e/**/*.test.ts",))]
+    if override:
+        if not override.isdecimal() or int(override) < 1:
+            raise AssertionError("PEACH_E2E_CONCURRENCY 必须是正整数")
+        return int(override)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return 1
+    return max(1, min(4, (os.cpu_count() or 1) // 4))
 
 
-def e2e_batches(frontend: Path) -> tuple[tuple[str, ...], ...]:
-    """设计检查、交互回归与路由冒烟各占一批，每批串行且限时 600 秒。"""
+def e2e_command(node: str, concurrency: int, files: tuple[str, ...]) -> list[str]:
+    """直接启动 Node，省掉资源守卫内的一层 npm 进程。"""
+    return [node, "--test", f"--test-concurrency={concurrency}", "--test-reporter=tap", *files]
+
+
+def e2e_batches(frontend: Path, concurrency: int) -> tuple[tuple[tuple[str, ...], int], ...]:
+    """把 `frontend/e2e` 下全部 `*.test.ts`（含子目录）分批，每批带自己的并发数，限时 600 秒。
+
+    并发时分两批：其余文件一次并发跑完，CPU 敏感的文件随后串行。并发为 1 时整轮是串行的，
+    按设计决定、交互回归与路由冒烟分三批，每批都落在限时之内。
+    """
     files = tuple(sorted(path.relative_to(frontend).as_posix()
                          for path in (frontend / "e2e").rglob("*.test.ts")))
     if not files:
         raise AssertionError("frontend/e2e 没有浏览器用例")
-    design = tuple(path for path in files if path == "e2e/design.test.ts")
-    routes = tuple(path for path in files if path == "e2e/smoke.test.ts")
-    interactions = tuple(path for path in files if path not in design + routes)
-    return tuple(batch for batch in (design, interactions, routes) if batch)
+    if concurrency == 1:
+        design = tuple(path for path in files if path.startswith("e2e/design-"))
+        routes = tuple(path for path in files if path == "e2e/smoke.test.ts")
+        interactions = tuple(path for path in files if path not in design + routes)
+        return tuple((batch, 1) for batch in (design, interactions, routes) if batch)
+    sensitive = tuple(path for path in files if path in CPU_SENSITIVE_SUITES)
+    shared = tuple(path for path in files if path not in sensitive)
+    return tuple(batch for batch in ((shared, concurrency), (sensitive, 1)) if batch[0])
 
 
 @windows_ledger_roots
@@ -149,6 +174,9 @@ class WebE2ESmokeTests(unittest.TestCase):
                 server.wait(timeout=10)
         if getattr(cls, "log", None) is not None:
             cls.log.close()
+            # 访问日志留在 TAP 旁边：哪条用例向服务端发了写请求，用例跑完之后还查得到。
+            BROWSER_LOGS.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(cls.root / "serve.log", BROWSER_LOGS / "serve.log")
         shutil.rmtree(cls.root, ignore_errors=True)
 
     @classmethod
@@ -266,14 +294,16 @@ class WebE2ESmokeTests(unittest.TestCase):
     def test_every_route_holds_the_layout_and_runtime_invariants(self):
         env = dict(os.environ, PEACH_E2E_ORIGIN=self.origin, PEACH_E2E_ITEM=str(self.item),
                    PEACH_E2E_CHROME=self.chrome)
-        log_root = ROOT / "build" / "agent-verification" / "browser"
-        log_root.mkdir(parents=True, exist_ok=True)
-        for index, batch in enumerate(e2e_batches(FRONTEND), 1):
-            log_path = log_root / f"batch-{index}.tap"
-            with self.subTest(files=batch):
+        BROWSER_LOGS.mkdir(parents=True, exist_ok=True)
+        for stale in BROWSER_LOGS.glob("batch-*.tap"):
+            stale.unlink()
+        concurrency = e2e_concurrency(os.environ.get("PEACH_E2E_CONCURRENCY", "").strip())
+        for index, (batch, lanes) in enumerate(e2e_batches(FRONTEND, concurrency), 1):
+            log_path = BROWSER_LOGS / f"batch-{index}.tap"
+            with self.subTest(files=batch, concurrency=lanes):
                 try:
                     completed = subprocess.run(
-                        e2e_command(self.node, os.environ.get("PEACH_E2E_CONCURRENCY", "").strip(), batch),
+                        e2e_command(self.node, lanes, batch),
                         capture_output=True, text=True, encoding="utf-8", errors="replace",
                         cwd=str(FRONTEND), env=env, timeout=E2E_SECONDS, check=False)
                 except subprocess.TimeoutExpired as expired:
@@ -364,12 +394,11 @@ class SetupE2ETests(unittest.TestCase):
         self.assertFalse((self.data / settings_file.SETTINGS_FILENAME).exists())
         env = dict(os.environ, PEACH_E2E_SETUP_ORIGIN=self.origin, PEACH_E2E_SETUP_MEDIA=str(self.media),
                    PEACH_E2E_SETUP_DATA=str(self.data), PEACH_E2E_CHROME=self.chrome)
-        log_root = ROOT / "build" / "agent-verification" / "browser"
-        log_root.mkdir(parents=True, exist_ok=True)
-        log_path = log_root / "setup.tap"
+        BROWSER_LOGS.mkdir(parents=True, exist_ok=True)
+        log_path = BROWSER_LOGS / "setup.tap"
         try:
             completed = subprocess.run(
-                e2e_command(self.node, files=("e2e/setup.test.ts",)),
+                e2e_command(self.node, 1, ("e2e/setup.test.ts",)),
                 capture_output=True, text=True, encoding="utf-8", errors="replace",
                 cwd=str(FRONTEND), env=env, timeout=E2E_SECONDS, check=False)
         except subprocess.TimeoutExpired as expired:
@@ -428,31 +457,58 @@ class MissingPrerequisiteTests(unittest.TestCase):
         self.assertEqual(len(cancelled),2)
         self.assertEqual(len(set(cancelled)),2)
 
-    def test_browser_batches_cover_every_file_once_and_include_nested_suites(self):
+    PATHS = ("e2e/design-cards.test.ts", "e2e/design-detail.test.ts", "e2e/smoke.test.ts",
+             "e2e/nested/feature.test.ts", "e2e/sidebar-motion.test.ts")
+
+    def batches_for(self, concurrency: int):
         with tempfile.TemporaryDirectory() as folder:
             frontend = Path(folder).resolve()
-            paths = ("e2e/design.test.ts", "e2e/smoke.test.ts", "e2e/nested/feature.test.ts")
-            for name in paths:
+            for name in (*self.PATHS, "e2e/harness.ts"):
                 path = frontend / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
-            batches = e2e_batches(frontend)
-            self.assertEqual(batches[0], ("e2e/design.test.ts",))
-            self.assertEqual(batches[-1], ("e2e/smoke.test.ts",))
-            flattened = tuple(path for batch in batches for path in batch)
-            self.assertCountEqual(flattened, paths)
-            self.assertEqual(len(flattened), len(set(flattened)))
-            self.assertEqual(e2e_command("node", files=batches[1])[-len(batches[1]):], list(batches[1]))
+            return e2e_batches(frontend, concurrency)
+
+    def assertEveryFileOnce(self, batches):
+        flattened = tuple(path for files, _ in batches for path in files)
+        self.assertCountEqual(flattened, self.PATHS)
+
+    def test_concurrent_run_puts_cpu_sensitive_suites_in_a_trailing_serial_batch(self):
+        batches = self.batches_for(4)
+        self.assertEveryFileOnce(batches)
+        (shared, lanes), (serial, serial_lanes) = batches
+        self.assertEqual(lanes, 4)
+        self.assertEqual(serial, ("e2e/sidebar-motion.test.ts",))
+        self.assertEqual(serial_lanes, 1)
+        self.assertIn("e2e/nested/feature.test.ts", shared)
+
+    def test_serial_run_splits_design_interactions_and_routes_to_stay_within_the_time_limit(self):
+        batches = self.batches_for(1)
+        self.assertEveryFileOnce(batches)
+        self.assertEqual([files for files, _ in batches], [
+            ("e2e/design-cards.test.ts", "e2e/design-detail.test.ts"),
+            ("e2e/nested/feature.test.ts", "e2e/sidebar-motion.test.ts"),
+            ("e2e/smoke.test.ts",),
+        ])
+        self.assertEqual({lanes for _, lanes in batches}, {1})
 
     def test_browser_batches_require_at_least_one_suite(self):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(AssertionError, "没有浏览器用例"):
-                e2e_batches(Path(folder).resolve())
+                e2e_batches(Path(folder).resolve(), 4)
 
-    def test_headless_browser_stays_within_the_resource_guard_process_budget(self):
-        harness = (FRONTEND / "e2e" / "harness.ts").read_text(encoding="utf-8")
-        self.assertIn("args: ['--renderer-process-limit=1', '--in-process-gpu', '--disable-features=AudioServiceOutOfProcess', '--disable-audio-output']", harness)
-        self.assertIn("timeout: 30_000", harness)
+    def test_concurrency_is_serial_on_ci_bounded_locally_and_overridable(self):
+        local = {key: value for key, value in os.environ.items() if key != "GITHUB_ACTIONS"}
+        with mock.patch.dict(os.environ, local, clear=True):
+            for cpus, expected in ((None, 1), (2, 1), (8, 2), (16, 4), (64, 4)):
+                with self.subTest(cpus=cpus), mock.patch("os.cpu_count", return_value=cpus):
+                    self.assertEqual(e2e_concurrency(), expected)
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}), mock.patch("os.cpu_count", return_value=16):
+            self.assertEqual(e2e_concurrency(), 1)
+            self.assertEqual(e2e_concurrency("3"), 3)
+        for invalid in ("0", "-1", "two"):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(AssertionError, "必须是正整数"):
+                e2e_concurrency(invalid)
 
     def test_missing_prerequisites_skip_locally_and_fail_on_ci(self):
         with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
@@ -462,25 +518,6 @@ class MissingPrerequisiteTests(unittest.TestCase):
         with mock.patch.dict(os.environ, local, clear=True):
             with self.assertRaises(unittest.SkipTest):
                 missing_prerequisite("没有 npm")
-
-    def test_the_npm_script_runs_within_the_same_browser_process_budget(self):
-        manifest = json.loads((FRONTEND / "package.json").read_text(encoding="utf-8"))
-        self.assertEqual(
-            manifest["scripts"]["e2e"],
-            'node --test --test-concurrency=1 --test-reporter=tap "e2e/**/*.test.ts"',
-        )
-
-    def test_e2e_command_serializes_by_default_and_places_the_override_before_the_glob(self):
-        self.assertEqual(e2e_command("node", "1"), [
-            "node", "--test", "--test-concurrency=1", "--test-reporter=tap",
-            "e2e/**/*.test.ts",
-        ])
-        self.assertEqual(e2e_command("node"), [
-            "node", "--test", "--test-concurrency=1", "--test-reporter=tap",
-            "e2e/**/*.test.ts",
-        ])
-        with self.assertRaisesRegex(AssertionError, "必须是正整数"):
-            e2e_command("node", "0")
 
 
 if __name__ == "__main__":

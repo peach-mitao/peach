@@ -1,4 +1,4 @@
-/* 作品详情岛（`item-detail`）的桩数据：`item-detail.test.ts` 与 `design.test.ts` 共用。
+/* 作品详情岛（`item-detail`）的桩数据：`item-detail.test.ts` 与设计决定用例（`design-*.test.ts`）共用。
  *
  * 演示库里的作品没有共演、分卷、版本和播放列表，这里按 `q_item`、`q_items`（`src/peach/web_catalog.py`）
  * 与 `w_playlist`（`src/peach/web_playlists.py`）的形状造几种形态：普通、十二位共演、在脱盘来源上、标题很长、
@@ -149,7 +149,10 @@ async function stub(page: Page): Promise<ItemStub> {
     (route) => route.fulfill({ json: { subtitles: [] } }));
   await page.route((url) => ['/api/play', '/api/activity', '/api/stream-cancel'].includes(url.pathname),
     (route) => route.fulfill({ json: { ok: true } }));
-  await page.route((url) => url.pathname === '/api/stream-plan', (route) => route.fulfill({ json: { protocol: 'direct' } }));
+  // 设置读真服务，写就地接住：`settings` 里的本地值会被推上去，改掉并发文件读到的同一份设置。
+  await page.route((url) => url.pathname === '/api/settings',
+    (route) => route.request().method() === 'GET' ? route.fallback() : route.fulfill({ json: { ok: true } }));
+  await page.route((url) => url.pathname === '/api/stream-plan',(route) => route.fulfill({ json: { protocol: 'direct' } }));
   await page.route((url) => url.pathname === '/stream', (route) => route.fulfill({ status: 204, body: '' }));
   await page.route((url) => ['/poster', '/cover', '/logo', '/entity-image', '/avatar'].includes(url.pathname), (route) => {
     const url = new URL(route.request().url());

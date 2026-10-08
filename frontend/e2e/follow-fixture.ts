@@ -1,4 +1,4 @@
-/* 关注页与关注详情两个岛的桩数据：`follow-feed.test.ts`、`follow-detail.test.ts` 与 `design.test.ts` 共用。
+/* 关注页与关注详情两个岛的桩数据：`follow-feed.test.ts`、`follow-detail.test.ts` 与设计决定用例（`design-*.test.ts`）共用。
  *
  * 演示库没有关注来源，这里按 `_source_payload`、`_group_payload`（`src/peach/web_follow.py`）造
  * 六位创作者、一页视频与图片、第二页续页，外加详情那几种形态。关注来源的真实抓取一次都不发：`/api/follow/check`

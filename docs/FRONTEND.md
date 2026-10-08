@@ -154,7 +154,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 - 内容由壳推：`paintSidebar(patch)` 合并 `content`、`filters`、`latest` 后调 `render`。目录与资料页的聚合在 `buildBars` 里换成 `{kind:'catalog'}`，关注页与关注详情的内容标签由 `renderFollowDrawer` 推 `{kind:'follow'}`；就地改筛选时 `applyFilterStateInPlace` 只推 `filters`，`refreshFacetCounts` 只推 `latest`。点下去的动作回到壳的 `navTo`、`commitContextFilter` 与关注页的筛选。`render` 与 `navChanged` 写组件模块里的 store 再 `flushSync`，返回时已经画好。
 - 导航顺序读 `appSettings` 这一份 store 的 `sidebarOrder`：拖动排序先落 store 再写 `/api/settings`，设置面板改顺序也写同一份 store，侧栏按通知当场重排。按下态换了由壳的 `paintNav` 调 `navChanged`：它跑在 `route()` 的同步段里，玻璃拿到的是旧位置到新位置。
 - 标题行 `[data-sidebar-head]` 是组件画的空槽，品牌与开合键是壳挪进去的节点；组件不往这个槽里画子节点，重画不碰它们。
-- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；组件里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design.test.ts` 读计算值。
+- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；组件里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design-detail.test.ts` 读计算值。
 
 ### 客户端导航
 
@@ -238,7 +238,7 @@ CI（`GITHUB_ACTIONS=true`）里缺这些就判失败，由工作流负责装齐
 **改了 `frontend/src` 就必须重新构建并把 `web/dist/` 一起提交**，否则 CI 会红。
 
 同一个域里还有真浏览器冒烟 `tests/test_web_e2e.py`：它在临时数据根上生成 12 条合成演示库、
-起回环 `peach serve --no-auth`，再跑 `npm --prefix frontend run e2e`。用例在
+起回环 `peach serve --no-auth`，再按批调起 `node --test` 跑 `frontend/e2e` 下全部用例（调度见 [docs/TESTING.md](TESTING.md)）。冒烟用例在
 `frontend/e2e/smoke.test.ts`，每条主路由在桌面与 390×844 下先等到目标页面主体出现（路由自己的标题，
 加上内容区、索引条目或明确的空态），再断言：无页面异常与 `console.error`、无同源 4xx/5xx 与失败请求、
 `aria-busy` 与 `data-skeleton` 会消失、无横向溢出、无越出视口的元素。主体一项不能省：页面完全没渲染时，
@@ -248,7 +248,7 @@ CI（`GITHUB_ACTIONS=true`）里缺这些就判失败，由工作流负责装齐
 CI 由 `web-e2e` job 在 `windows-latest` 上执行 `web` 域，矩阵扩成全量时改由 Windows 全量行覆盖（[docs/TESTING.md](TESTING.md)）。界面验收里发现的同类问题，
 先在这里补一条用例再修。
 
-设计决定另有 `frontend/e2e/design.test.ts`，读 `getComputedStyle` 断言用户定过的外观：React 输入框不带旧焦点环、
+设计决定另有 `frontend/e2e/design-*.test.ts`（按页面区域分文件，共用 `design-fixture.ts`），读 `getComputedStyle` 断言用户定过的外观：React 输入框不带旧焦点环、
 React 子树读到 BoardUI 的 token 原值、持久警示是状态色块、一张卡底下只有写入那一颗是主按钮。页面迁到 React 时，旧的源码字符串断言按 ADR-0031
 分三类再删：设计决定进这里或 lint，行为进 vitest，布局与运行期进冒烟。
 
@@ -459,7 +459,7 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
    断言结构、请求次数、轮询节律和失败时留下什么，用例之间 `queryClient.clear()`。
    有写操作就再断言交上去的请求体、成功后页面上不再留着秘密输入、失败后输入原样还在；
    有后台任务就用假时钟推到终态，看回执只发一次、卸载之后不再问。
-   外观决定进 `frontend/e2e/design.test.ts`：`page.route` 造出真实数据里凑不齐的状态，
+   外观决定进对应区域的 `frontend/e2e/design-*.test.ts`：`page.route` 造出真实数据里凑不齐的状态，
    断言读 `getComputedStyle`。
 6. `web/app.js` 的挂载块不变；`web/css/` 与 `web/board.css` 里只服务这一页正文的规则删掉，
    遗留骨架还要用的留着：骨架仍然用旧类名（`boardPageSkeleton`），它要的那几条不能一起删。
