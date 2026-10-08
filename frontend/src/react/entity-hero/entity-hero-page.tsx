@@ -191,14 +191,15 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
   );
 }
 
-/** 关注里绑在这位名下的来源：读数是还没入库的更新，点开去关注页只看这一位。 */
+/** 关注里绑在这位名下的来源：读数是还没入库的更新，整段是站内去处（同事务所链接的钨蓝），
+ *  点开去关注页只看这一位。 */
 function FollowMeta({ follow, actions }: { follow: HeroFollow; actions: EntityHeroActions }) {
   const from = follow.providers.join(' · ');
   return (
     <span data-meta-item="" data-entity-follow="" title={from ? `关注 · ${from}` : '关注'}>
       <Glyph name="rss" />
       <a href="/follow" onClick={(event) => { event.preventDefault(); actions.openFollowAuthor(follow.key) }}>
-        <b>{follow.n.toLocaleString()}</b> 项更新
+        {follow.n.toLocaleString()} 项更新
       </a>
     </span>
   );

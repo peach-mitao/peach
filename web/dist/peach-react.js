@@ -39634,7 +39634,7 @@ function she({ follow: e, actions: t }) {
 			onClick: (n) => {
 				n.preventDefault(), t.openFollowAuthor(e.key);
 			},
-			children: [/* @__PURE__ */ (0, V.jsx)("b", { children: e.n.toLocaleString() }), " 项更新"]
+			children: [e.n.toLocaleString(), " 项更新"]
 		})]
 	});
 }
