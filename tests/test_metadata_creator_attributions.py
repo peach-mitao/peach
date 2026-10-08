@@ -110,7 +110,7 @@ class CreatorAttributionTests(unittest.TestCase):
 
     def test_collection_annotations_reduce_to_the_account_name(self):
         for name in ('someone 合集', 'someone合辑', 'someone全集', 'someone最新12v', 'someone  30v 40g',
-                     'someone V12 80GB', 'someone(2)', 'someone 去重版 4K', 'someone 120GB'):
+                     'someone V12 80GB', 'someone(2)', 'someone 去重版 4K', 'someone 120GB', 'someone 1080p'):
             with self.subTest(name=name):
                 self.assertEqual(creator_collection_base(name), 'someone')
         for name in ('someone 2509', 'someone', 'v12', '合集'):

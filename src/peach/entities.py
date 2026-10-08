@@ -195,6 +195,21 @@ def strip_zero_width(name: str) -> str:
     return str(name or "").translate(ZERO_WIDTH)
 
 
+def is_identity_alias(kind: str, name: str | None) -> bool:
+    """人物别名只承载身份名称；画质、月份、合集注记、题材词与番号形态留在文件信息里。"""
+    text = strip_zero_width(name).strip()
+    if not text:
+        return False
+    if kind not in PERSON_ENTITY_KINDS:
+        return True
+    from .catalog_rules import normalise_code_key, release_code_from_text
+    from .classification import creator_collection_base, is_structural_creator
+    if creator_collection_base(text) != text or is_structural_creator(text):
+        return False
+    code = release_code_from_text(text)
+    return not (code and normalise_code_key(text) == normalise_code_key(code))
+
+
 def canonicalize_entity_name(kind: str, name: str | None) -> str:
     canonical = strip_zero_width(name).strip()
     if kind == 'creator':
@@ -263,8 +278,10 @@ def merge_entity(
     """
     if source_id == target_id:
         raise ValueError("实体不能并入自己")
-    if connection.execute("SELECT 1 FROM entity WHERE id=?", (target_id,)).fetchone() is None:
+    target = connection.execute("SELECT kind FROM entity WHERE id=?", (target_id,)).fetchone()
+    if target is None:
         raise ValueError(f"合并目标实体 {target_id} 不存在")
+    target_kind = str(target[0])
     stamp = now or datetime.now(timezone.utc).isoformat()
     moved = {"assets": 0, "aliases": 0, "refs": 0, "links": 0, "terms": 0,
              "dropped_refs": 0, "memberships": 0, "members": 0, "labels": 0, "profiles": 0,
@@ -272,18 +289,20 @@ def merge_entity(
     from .entity_classification import transfer
     transfer(connection, source_id, target_id)
 
-    # 被并入的名字本身留作别名，否则按旧名搜索会落空。
-    connection.execute(
-        "INSERT OR IGNORE INTO entity_alias(entity_id,alias,normalized_alias,source,confidence)"
-        " VALUES(?,?,?,?,1.0)",
-        (target_id, source_name, normalize_entity_name(source_name), alias_source),
-    )
-    connection.execute(
-        "INSERT OR IGNORE INTO entity_alias"
-        " SELECT ?,alias,normalized_alias,source,confidence FROM entity_alias WHERE entity_id=?",
-        (target_id, source_id),
-    )
-    moved["aliases"] = connection.execute("SELECT changes()").fetchone()[0]
+    # 被并入的名字本身留作别名，否则按旧名搜索会落空；人物的画质、合集与题材写法
+    # 只留墓碑，旧 id 仍按墓碑解析。
+    aliases = [(source_name, normalize_entity_name(source_name), alias_source, 1.0)]
+    aliases += connection.execute(
+        "SELECT alias,normalized_alias,source,confidence FROM entity_alias WHERE entity_id=?",
+        (source_id,)).fetchall()
+    for index, (alias, normalized, source, confidence) in enumerate(aliases):
+        if not is_identity_alias(target_kind, alias):
+            continue
+        connection.execute(
+            "INSERT OR IGNORE INTO entity_alias(entity_id,alias,normalized_alias,source,confidence)"
+            " VALUES(?,?,?,?,?)", (target_id, alias, normalized, source, confidence))
+        if index:
+            moved["aliases"] += connection.execute("SELECT changes()").fetchone()[0]
     connection.execute("DELETE FROM entity_alias WHERE entity_id=?", (source_id,))
 
     connection.execute(

@@ -69,6 +69,29 @@ class EntityMergeTests(unittest.TestCase):
         self.con.commit()
         self.assertEqual(moved["aliases"], 1, "source 的别名应被迁移并计数")
 
+    def test_person_merge_keeps_identity_names_and_drops_collection_spellings(self):
+        for name in ("新ありな4K", "新ありな 合集", "黑丝美腿", "ABP-123"):
+            self.con.execute(
+                "INSERT INTO entity_alias(entity_id,alias,normalized_alias,source,confidence)"
+                " VALUES(11,?,?,'r18',1.0)", (name, normalize_entity_name(name)))
+        self.con.execute(
+            "INSERT INTO entity_alias(entity_id,alias,normalized_alias,source,confidence)"
+            " VALUES(11,'ありな','ありな','r18',1.0)")
+        merge_entity(self.con, target_id=10, source_id=11,
+                     source_name="新ありな 1080p", alias_source="user:review")
+        aliases = {r[0] for r in self.con.execute("SELECT alias FROM entity_alias WHERE entity_id=10")}
+        self.assertEqual(aliases, {"ありな"})
+        self.assertEqual(self.con.execute("SELECT target_id FROM entity_redirect WHERE old_id=11").fetchone(), (10,))
+
+    def test_tag_merge_keeps_the_retired_name_as_alias(self):
+        for entity_id, name in ((20, "合集"), (21, "混合集")):
+            self.con.execute(
+                "INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at)"
+                " VALUES(?,'tag',?,?,'t','t')", (entity_id, name, name))
+        merge_entity(self.con, target_id=20, source_id=21, source_name="混合集", alias_source="retired")
+        self.assertEqual(self.con.execute("SELECT alias FROM entity_alias WHERE entity_id=20").fetchall(),
+                         [("混合集",)])
+
     def test_two_pages_on_the_same_site_both_follow_the_merge(self):
         """同一个站上的两个页面是两条引用，合并后都归目标实体（0032）。
 
