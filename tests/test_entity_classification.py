@@ -214,6 +214,17 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
 
+    def test_amateur_tags_from_the_vision_model_do_not_classify_a_performer(self):
+        asset_id, styled = self.entity('Styled Cast',kind='performer')
+        self.connection.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,'素人',0.6,'vision_creator')",(asset_id,))
+        for source in ('vision_creator','vision_creator_review'):
+            upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,role='tag',source=source)
+        self.connection.commit()
+        self.assertEqual(classification.summaries(self.connection,[styled])[styled]['identity_categories'],[])
+        upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,role='tag',source='name')
+        self.connection.commit()
+        self.assertEqual(classification.summaries(self.connection,[styled])[styled]['identity_categories'],['amateur'])
+
     def test_animation_author_appears_in_artist_directory_with_its_own_category(self):
         _, animator = self.entity('Animator')
         self.claim(animator,'occupation','animator')
