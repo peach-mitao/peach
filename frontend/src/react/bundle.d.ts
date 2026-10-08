@@ -274,8 +274,8 @@ export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'recei
   data: ConfigurationData;
 }
 
-/** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。 */
-/** 作品页与关注条目的「云下载」键带进来的番号、标题与来处（`asset:12`、`follow:34`）。 */
+/** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。`prefill` 是别处「云下载」键
+ *  带进来的番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
 export interface ActivityProps { prefill?: CloudDownloadPrefill }
 
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */

@@ -1985,9 +1985,9 @@ async function openReview(push=true){
 }
 /* 活动页（任务中心）由路由树画。它自己按内容决定轮询快慢，壳不给它任何助手：
    任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads、自己提交。
-   作品页与关注条目的「云下载」键经 openCloudDownload 带着番号、标题与来处进来，表单据此预填，
+   关注条目的「云下载」键经 openCloudDownload 带着标题与来处进来，表单据此预填，
    用户只贴磁力。上下文只交给这一次打开、不进地址栏：标题不该留在历史记录里，刷新后表单回到空白。
-   关注管理页的那颗键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个
+   关注管理页、高清版目标页的键经路由树走过来，先交 `requestCloudDownload` 再换地址，读的是同一个
    `activityPrefill`（`frontend/src/shell/` 的单例）。 */
 function openCloudDownload(prefill){writeShell({activityPrefill:prefill});openActivity(true)}
 async function openActivity(push=true){
@@ -2455,7 +2455,7 @@ function indexPath({kind,q,scope,view,category}){
     if(scope==='online')params.set('scope','online');
     if(category!=='all')params.set('category',category)}
   if(kind==='performers'&&scope==='online')params.set('scope','online');
-  if((kind==='creators'||kind==='performers')&&scope!=='online'&&category!=='all')params.set('category',category);
+  if(kind==='performers'&&scope!=='online'&&category!=='all')params.set('category',category);
   return '/'+kind+(params.size?'?'+params:'');
 }
 /* 页头那几样此刻就能给出最终样子：标题、读数的占位、版式开关、过滤框和页面级 Tabs，

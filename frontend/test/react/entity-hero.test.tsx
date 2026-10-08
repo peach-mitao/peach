@@ -86,10 +86,9 @@ describe('排版用的纯函数', () => {
     expect(host.querySelector('[data-company-names]')?.textContent).toBe('ムーディーズ');
     expect(host.querySelector('[data-entity-facts]')).toBeNull();
   });
-  it('分类带图标位于身份行最左侧，资料保留来源与跨角色身份入口', async () => {
+  it('分类带图标位于身份行最左侧，资料保留跨角色身份入口', async () => {
     const given = props({ entity: performer({
       identity_labels: ['女优','西方'],
-      classifications: [{ facet: 'occupation', value: 'adult_performer', label: '成人出演者', status: 'observed', source_url: 'https://publisher.test/person', evidence: '发行方演员名单' }],
       related_identities: [{ id: 2, kind: 'creator', canonical_name: '本人账号', relation: 'operates_account' }],
     }) });
     const host = await open(given);
@@ -97,9 +96,7 @@ describe('排版用的纯函数', () => {
     expect(classification.textContent).toBe('女优 · 西方');
     expect(classification.querySelector('use')?.getAttribute('href')).toBe('#i-user-round');
     expect(classification.hasAttribute('title')).toBe(false);
-    expect(host.textContent).not.toContain('发行方演员名单');
     expect(host.querySelector('[data-entity-alias]')?.firstElementChild).toBe(classification);
-    expect(host.textContent).not.toContain('成人出演者');
     await click(host.querySelector('[data-entity-identity] button.underline'));
     expect(given.actions.openEntity).toHaveBeenCalledWith('creator', '本人账号');
   });

@@ -62,7 +62,8 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         data=q_entity(WebContract(self.db),{'kind':'performer','name':'Known Person'})
         self.assertEqual(data['identity_labels'],['女优','西方'])
-        self.assertEqual(len(data['classifications']),5)
+        self.assertEqual(len(classification.classifications(self.connection,[entity_id])[entity_id]),5)
+        self.assertNotIn('classifications',data)
 
     def test_candidates_and_search_hits_do_not_qualify_for_trusted_filters(self):
         _,known=self.entity('Known Person'); _,unknown=self.entity('Unknown Person')
@@ -112,7 +113,7 @@ class EntityClassificationTests(unittest.TestCase):
         for provider in sorted(classification.JAV_DIRECTORIES):
             profile = q_entity(WebContract(self.db),{'kind':'performer','name':provider})
             self.assertEqual(profile['identity_labels'],['女优'])
-            self.assertEqual(profile['classifications'],[])
+            self.assertEqual(classification.classifications(self.connection,[profile['id']])[profile['id']],[])
         found = []
         for offset in range(len(expected)):
             page = q_index(WebContract(self.db),'performers',category='japanese_av',limit=1,offset=offset)

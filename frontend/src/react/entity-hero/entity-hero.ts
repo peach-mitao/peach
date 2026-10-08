@@ -67,7 +67,6 @@ export interface EntityHeroData {
   company_profile?: Partial<Record<'legal_name' | 'founded' | 'launched' | 'country' | 'location' | 'operator' | 'parent' | 'group' | 'distributor', { value: string; source_url: string; evidence?: string }>>;
   identity_labels?: string[];
   external_refs?: { provider: string; external_kind: string; external_id: string }[];
-  classifications?: { facet: string; value: string; label: string; status: string; source_url: string; evidence: string }[];
   related_identities?: { id: number; kind: string; canonical_name: string; relation: string }[];
   id: number;
   canonical_name: string;
