@@ -42,7 +42,7 @@ BASELINE: dict[str, int] = {
     "src/peach/web_resource_sync.py:_resource_orphan_plan": 50,
     "src/peach/web_review.py:_review_rows": 43,
     "src/peach/fanbox.py:normalize_fanbox_post": 59,
-    "src/peach/web_follow.py:q_follow": 49,
+    "src/peach/web_follow.py:q_follow": 35,
     "scripts/merge_duplicate_identities.py:collect": 50,
     "src/peach/web_review.py:_attach_review_asset_context": 46,
     "src/peach/web_review.py:w_review_decision": 46,
