@@ -1,8 +1,7 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
  * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列，以及页面里的附属面（首页筛选条、
- * 首页新作行、目录页处理横幅、顶栏搜索下拉）与常驻面（底部批量条、侧栏配色卡、管理区页头、沉浸模式、设置面板）
- * （`managed-routes.tsx`）由这棵树画，
- * 其余页面仍由壳的 `ROUTES` 表打开。
+ * 首页新作行、目录页处理横幅、顶栏搜索下拉）与常驻面（底部批量条、侧栏配色卡、管理区页头、沉浸模式、设置面板、
+ * 侧栏）（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的 `ROUTES` 表打开。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
@@ -60,8 +59,8 @@ export function PeachRouter({ children }: { children: ReactNode }) {
 
 /** 派发点：每次历史变化报给 `routeSeen`，由它判断要不要让壳打开那一屏。
  *
- * 报在提交阶段之后的微任务里，不在 layout effect 里当场报：壳打开那一屏时会用 `flushSync` 画侧栏等岛，
- * 顺带把别的根排着的更新同步刷掉；在 React 的提交阶段里调 `flushSync` 不会同步刷新，那些根就晚一拍。
+ * 报在提交阶段之后的微任务里，不在 layout effect 里当场报：壳打开那一屏时，侧栏等常驻面的句柄内部用
+ * `flushSync` 当场画完；在 React 的提交阶段里调 `flushSync` 不会同步刷新这同一棵根，句柄返回时就还没画上。
  * 微任务仍在这一次导航的同一轮里跑完，早于下一帧绘制。 */
 function RouteDispatch() {
   const seq = useContext(NavigationSeq);

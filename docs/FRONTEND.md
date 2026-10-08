@@ -145,19 +145,20 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 ### 侧栏与标签抽屉
 
-左侧抽屉 `#drawer` 里滚动的那一层（`#drawerScroll`）由常驻的 `sidebar` 岛画（`frontend/src/react/sidebar/`）：导航那一列、导航上那块滑动玻璃（`use-view-glide.ts`），以及按语境出现的筛选分组。抽屉本身、它的开合与遮罩、底栏三枚键、品牌与开合键归壳。
+左侧抽屉 `#drawer` 里滚动的那一层（`#drawerScroll`）是常驻面 `sidebar`（`frontend/src/react/sidebar/`），由路由树画：导航那一列、导航上那块滑动玻璃（`use-view-glide.ts`，经 portal 画在 `#drawer` 上），以及按语境出现的筛选分组。抽屉本身、它的开合与遮罩、底栏三枚键、品牌与开合键归壳。
 
-- 壳在启动时写一份骨架（`sidebar-skeleton.ts`，与岛画的导航同一份顺序与按下态），随后 `loadSidebar(sidebarHost())` 装载岛，之后 `sidebarApi()` 同步可取，契约在 `sidebar/sidebar-api.ts`。岛接上时调 `attached`，壳把品牌与开合键挪进标题行；覆盖式滚动条仍由壳挂在 `#drawerScroll` 上。
-- 内容由壳推：`paintSidebar(patch)` 合并 `content`、`filters`、`latest` 后调 `render`。目录与资料页的聚合在 `buildBars` 里换成 `{kind:'catalog'}`，关注页与关注详情的内容标签由 `renderFollowDrawer` 推 `{kind:'follow'}`；就地改筛选时 `applyFilterStateInPlace` 只推 `filters`，`refreshFacetCounts` 只推 `latest`。点下去的动作回到壳的 `navTo`、`commitContextFilter` 与关注页的筛选。
-- 导航顺序读 `appSettings` 这一份 store 的 `sidebarOrder`：拖动排序先落 store 再写 `/api/settings`，设置面板改顺序也写同一份 store，岛按通知当场重排。按下态换了由壳的 `paintNav` 调 `navChanged`。
-- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；岛里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design.test.ts` 读计算值。
+- 壳在启动时写一份骨架（`sidebar-skeleton.ts`，与组件画的导航同一份顺序与按下态），随后 `loadSidebar(sidebarHost())` 经 `openResidentSurface('sidebar', #drawerScroll, place)` 登记进常驻表，宿主就是 `#drawerScroll` 本身，不包 `.peach-react`。`place` 在画首帧的同一个任务里清掉骨架；画上之后先调 `attached`（壳把品牌与开合键挪进标题行的空槽），再交出句柄，此后 `sidebarApi()` 同步可取，契约在 `sidebar/sidebar-api.ts`。覆盖式滚动条由壳挂在 `#drawerScroll` 上：轨道与边缘渐隐挂在 `#drawer` 里，滚动层本身只多几个属性、样式变量与监听，子节点全归组件。
+- 内容由壳推：`paintSidebar(patch)` 合并 `content`、`filters`、`latest` 后调 `render`。目录与资料页的聚合在 `buildBars` 里换成 `{kind:'catalog'}`，关注页与关注详情的内容标签由 `renderFollowDrawer` 推 `{kind:'follow'}`；就地改筛选时 `applyFilterStateInPlace` 只推 `filters`，`refreshFacetCounts` 只推 `latest`。点下去的动作回到壳的 `navTo`、`commitContextFilter` 与关注页的筛选。`render` 与 `navChanged` 写组件模块里的 store 再 `flushSync`，返回时已经画好。
+- 导航顺序读 `appSettings` 这一份 store 的 `sidebarOrder`：拖动排序先落 store 再写 `/api/settings`，设置面板改顺序也写同一份 store，侧栏按通知当场重排。按下态换了由壳的 `paintNav` 调 `navChanged`：它跑在 `route()` 的同步段里，玻璃拿到的是旧位置到新位置。
+- 标题行 `[data-sidebar-head]` 是组件画的空槽，品牌与开合键是壳挪进去的节点；组件不往这个槽里画子节点，重画不碰它们。
+- 样式在 `sidebar/sidebar.css`，只认 `data-sidebar-*`；组件里不写 className。行为在 `test/react/sidebar.test.tsx`，量布局的玻璃滑动、拖动、各页计数与窄屏开合在 `e2e/sidebar.test.ts`；当前项玻璃、标题行间距、时长拉条与窄屏遮罩的外观在 `e2e/design.test.ts` 读计算值。
 
 ### 客户端导航
 
 React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。每一屏仍由壳的 `ROUTES` 表打开；管理区十页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理）的正文、播放列表页、关注页、五张索引页、五类资料页、目录网格与垃圾队列由路由树画。
 
 - 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格与垃圾队列画进 `#grid`。
-- 派发点 `RouteDispatch` 是两组 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时用 `flushSync` 画侧栏等岛，提交阶段内的 `flushSync` 不同步刷新别的根。`<Routes>` 里那十五页、资料页的五个模式、`#grid` 那两页的六条路径与 `/resource-sync` 只声明路径，其余落在 `path="*"`。这是页面组，按条目 `usr.backgroundLocation` 匹配，详情压在哪一页上就还匹配那一页；覆盖组按真实地址匹配 `OVERLAY_PATHS`（详情、四种队列、关注详情），元素为空，`path="*"` 兜底，两组都不会报没有路由。
+- 派发点 `RouteDispatch` 是两组 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时，侧栏等常驻面的句柄内部用 `flushSync` 当场画完，同一棵根在提交阶段里不会同步刷新。`<Routes>` 里那十五页、资料页的五个模式、`#grid` 那两页的六条路径与 `/resource-sync` 只声明路径，其余落在 `path="*"`。这是页面组，按条目 `usr.backgroundLocation` 匹配，详情压在哪一页上就还匹配那一页；覆盖组按真实地址匹配 `OVERLAY_PATHS`（详情、四种队列、关注详情），元素为空，`path="*"` 兜底，两组都不会报没有路由。
 - 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent, place})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主（给了 `place` 就由它把壳排的框架换进容器、交出宿主），宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。三个容器各记一条、互不相收，`releaseManagedRoute` 逐个点名容器：`claimSurface` 收 `#stats` 与 `#index`，`showHomeSurfaces` 只收 `#index` 那一条，`#grid` 只由 `clearCatalogGrid` 收，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键、资料页换筛选与版式）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
 - `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页与资料页）交 `actions.navigate`。配置页页签先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 派发判据是序号：每次历史变化领一个 `seq`；`shellNavigate` 写的那一次当场认领，不派发；后退前进与 React 子树里的 `navigate` 没人认领，派发一次。地址不变的 `popstate` 也领新序号，照样派发。
@@ -202,7 +203,7 @@ URL 都从它来，它被缓存住就没人看得到新产物。
 | `15-detail.css` | 壳画的源文件管理（定位与目录对账） |
 | `16-settings.css` | 设置面板打开时的页面锁滚（面板归常驻面 `settings-panel`） |
 | `17-overlay.css` | Toast 与审查遮挡 |
-| `18-chips.css` | 产地选择与详情里次要操作的标签按钮（侧栏筛选标签归 `sidebar` 岛） |
+| `18-chips.css` | 产地选择与详情里次要操作的标签按钮（侧栏筛选标签归常驻面 `sidebar`） |
 | `19-immersive.css` | 加载更多、空状态、选择条与批量条、窄屏总表（沉浸模式归常驻面 `immerse`） |
 | `21-online.css` | 关注页骨架与关注详情（列表归路由树画的关注页） |
 | `22-followmanage.css` | 关注管理页 |
@@ -296,16 +297,16 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 
 - 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
   `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`、`immerse`、
-  `settings-panel`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是 `{prefetch, page}`；
-  附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
+  `settings-panel`、`sidebar`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
+  `{prefetch, page}`；附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
 - 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
   `openResidentSurface(name, container, place?)` 打开一次（沉浸模式与设置面板在第一次打开时，其余几座在壳启动
   时）：没有首屏取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、
-  `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`），组件直接画成它的子节点，DOM 和各自
-  建根时一样，不包 `.peach-react`。壳照旧经命令式
+  `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`、`#drawerScroll`），组件直接画成它的
+  子节点，DOM 和各自建根时一样，不包 `.peach-react`。壳照旧经命令式
   句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；`loadXxx` 等这一面
-  画上才交出句柄。宿主里先有壳的启动骨架时（管理区页头），`openResidentSurface` 的 `place` 在画首帧的同一个
-  任务里清掉骨架，句柄交出之前骨架上的点击归壳；宿主不在壳的页面里时（沉浸模式），`loadImmerse` 新建
+  画上才交出句柄。宿主里先有壳的启动骨架时（管理区页头、侧栏），`openResidentSurface` 的 `place` 在画首帧的
+  同一个任务里清掉骨架，句柄交出之前骨架上的点击归壳；宿主不在壳的页面里时（沉浸模式），`loadImmerse` 新建
   `[data-immerse-host]`，`place` 在画首帧（藏着的外框）的同一个任务里把它挂到 body 末尾。沉浸的句柄
   `open(startId)` 里骨架、列表与播放器那几次绘制都在返回前画完；方向键、改窗口大小与离开页面的监听挂在模块上，
   不随组件卸掉。设置面板在第一次按齿轮时才装载：`loadSettingsPanel` 建一枚 `[data-settings-host]`，`place` 把它
@@ -476,7 +477,7 @@ Preflight 给每张 img `max-width:100%`；`card-art` 拼的人脸头像由 `ava
 React 页要按原名输出壳才拆得出分区；`swiper`、`swiper-wrapper`、`swiper-slide`、
 `swiper-zoom-container` 是 Swiper 核心 API 认的结构类名（图片灯箱），不写它就找不到轮播的
 容器与每一张；`mono` 是 `01-base.css` 的等宽数字字体栈，和 Tailwind 的 `font-mono` 不是同一组字体；
-`javedition` 与色调（`censored` 等）是目录卡片也用的版次徽章；`chip` 是 `18-chips.css` 的标签按钮，壳的产地选择用它，作品详情里脱盘与在线说明块的按钮沿用它（侧栏的筛选键归侧栏岛，不用这个类）；`geist-button`、`primary` 是
+`javedition` 与色调（`censored` 等）是目录卡片也用的版次徽章；`chip` 是 `18-chips.css` 的标签按钮，壳的产地选择用它，作品详情里脱盘与在线说明块的按钮沿用它（侧栏的筛选键归侧栏组件，不用这个类）；`geist-button`、`primary` 是
 舞台模态里各处按钮共用的遗留按钮，设置面板的「添加」「恢复默认」也沿用；`popmenu` 是遗留浮层菜单的盒子，
 `presentMenu`／`dismissMenu` 的开合动效按它起，设置面板的色板弹层与侧栏「添加」菜单都是它；`geist-input`
 是 `01-base.css` 的输入框，设置面板的数值框沿用。这几个在它们的主人（卡片、浮层菜单等）归 React 时一起收回。
@@ -514,8 +515,10 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `@types/react`、`@types/react-dom` | React 子树的类型检查 |
 | `agentation` | 本机开发用的界面标注工具栏，单独构建、不进产物与独立包（见「界面标注」） |
 
-React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 由壳启动时第一次
-`openManagedRoute`、`loadSidebar` 与 `loadRouter` 动态加载，三处是同一个模块请求；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩路由树的
+React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 由 `islands.ts` 动态加载：
+`loadRouter`、常驻面的 `loadSidebar`、`loadManageHeader`、`loadBatchDock`、`loadGlowPicker`、`loadImmerse`、
+`loadSettingsPanel`，其余 `loadXxx`，
+以及 `preloadManagedRoutes` 登记给第一次 `openManagedRoute` 的装载入口，全是同一个模块请求；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩路由树的
 开收命令、常驻层的入口与遗留层的助手。`build.cssTarget` 对齐 Tailwind v4 的浏览器基线
 （Chrome 111、Firefox 128、Safari 16.4），oklch 颜色原样输出：目标再旧，lightningcss 会补
 `lab()` 回退，末位小数随平台浮点不同，CI 在 Linux 上重建的产物就与提交的对不上。

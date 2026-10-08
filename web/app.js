@@ -76,7 +76,7 @@ let barsRequestSeq=0;
 let barsRendered='';
 /* 首页筛选条（`catalog-filter` 岛）的整份 props、挂载中的那一次、标签条的成员（见 `paintCatalogFilter`）。 */
 let catalogFilterProps=null,catalogFilterMounting=null,catalogTagRows=[],catalogTopsPages=null;
-/* 侧栏岛（`react/sidebar/`）的整份 props、它属于哪一页（路径，查询串不算），以及上一次整份画出来的
+/* 侧栏（常驻面 `sidebar`，`react/sidebar/`）的整份 props、它属于哪一页（路径，查询串不算），以及上一次整份画出来的
    那组目录筛选：口径和数据都没变时 `buildBars` 不重画，换页回来就把这一份原样交回去。 */
 let sidebarProps={content:null,filters:{},latest:null},sidebarSurface='',sidebarCatalog=null,sidebarContentSeq=0;
 let loadRequestSeq=0;
@@ -409,7 +409,7 @@ const syncPageTitle=path=>{
 /* 导航激活态在每次路由变化时重读：管理页不跑 buildBars，只靠这一处换按下态。
    侧栏那块玻璃的动画也从这里起跑，不从点击那里：这一行是激活态唯一的权威出口，侧栏、浏览器
    后退和键盘走的都是它。它跑在 `route()` 的同步段里，玻璃拿到的是旧位置到新位置。
-   侧栏岛还没接上时滚动层里是导航骨架，按下态就地改。 */
+   侧栏的句柄还没交出时滚动层里是导航骨架，按下态就地改。 */
 function paintNav(){
   const sidebar=sidebarApi();
   if(sidebar){sidebar.navChanged();return}
@@ -419,7 +419,7 @@ function paintNav(){
 let surfaceEpoch=0;
 const surfacePath=()=>decodeURIComponent(location.pathname);
 let lastRoutePath=surfacePath();
-/* 侧栏岛的 props 由壳拿着，每次只改其中几项再整份推进去。换了页面（路径变了，查询串不算），
+/* 侧栏的 props 由壳拿着，每次只改其中几项再整份推进去。换了页面（路径变了，查询串不算），
    上一页那组筛选就不属于这一页：先收回到只剩导航，等这一页自己的内容回来再画。 */
 function paintSidebar(patch={}){
   const surface=surfacePath();
@@ -506,7 +506,7 @@ async function loadSourceStatus(){
 const DURATION_TAGS=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
 /* 界面偏好的出厂值、启动归一化与那一份 store 在 `frontend/src/appearance/settings.ts`：模块在 peach-ui.js
    里，第一次取 store 时从 localStorage 读回、归一化好。壳里六十来处读写都直接改这个对象的字段，改完
-   `saveSettings()` 落盘，同一下通知开着的设置面板与侧栏岛跟上。 */
+   `saveSettings()` 落盘，同一下通知开着的设置面板与侧栏跟上。 */
 const settingsStore=appSettingsStore();
 const appSettings=settingsStore.value;
 const saveSettings=()=>settingsStore.save();
@@ -564,7 +564,7 @@ const settingsEffects={
 };
 /* 折射贴图由壳尾的装配段挂；设置面板左栏那块玻璃第一次进 DOM 时要它再扫一遍。 */
 let syncGlassOptics=()=>{};
-/* 品牌与开合键挪进侧栏标题行，同样由壳尾的装配段给（`placeBrand`）；侧栏岛换掉骨架之后要它再挪一次。 */
+/* 品牌与开合键挪进侧栏标题行，同样由壳尾的装配段给（`placeBrand`）；路由树画上侧栏、换掉骨架之后要它再挪一次。 */
 let placeSidebarHead=()=>{};
 /* 来源图标：品牌使用已缓存的官方资产；通用操作图标统一使用本地 Lucide 子集。
    115 与 PikPak 都取 `MEDIA_SOURCE_ICONS` 里那份官方站标（取证
@@ -587,7 +587,7 @@ function sidebarDot(loc){
   // 计费的两家（PikPak、在线）上面都有自己的记号，走到这里的都不计费。
   return {kind:'cost',cost:'free'};
 }
-/* 一份目录聚合换成侧栏岛的分组。显示名在这里换好；资料页是某位创作者自己时，创作者那组去掉这个人。
+/* 一份目录聚合换成侧栏的分组。显示名在这里换好；资料页是某位创作者自己时，创作者那组去掉这个人。
    脱盘的来源留在名单里但点不了：数量还有意义，点进去只会得到一屏放不出的卡片。 */
 function sidebarFacets(facetData,context){
   const rows=(items,named=row=>row.label||tagLabel(row.k))=>(items||[]).map(row=>({value:String(row.k),label:named(row),n:row.n??null}));
@@ -1325,7 +1325,7 @@ function scrollFilteredViewToTop(){
 function applyFilterStateInPlace(filters){
   // 资料页那一条的按下态由页面按地址上的筛选算，新的筛选已经经 `routeEntityPage` 推过去了。
   if(currentBarsContext().type!=='entity')paintCatalogFilter({tags:catalogTags(filters)});
-  // 侧栏那几组的按下态与时长两端由侧栏岛照这一份筛选画，成员不动。
+  // 侧栏那几组的按下态与时长两端由侧栏照这一份筛选画，成员不动。
   paintSidebar({filters:{...filters}});
   renderCombo();
 }
@@ -3017,7 +3017,7 @@ function openSettings(section=''){
   return loadSettingsPanel(settingsHost()).then(panel=>{panel.open(section);return panel});
 }
 $('#settingsBtn').onclick=()=>void openSettings();
-/* 侧栏岛的宿主只建一次：`#drawer` 与它的覆盖式滚动条常驻，岛画进滚动层。 */
+/* 侧栏的宿主只建一次：`#drawer` 与它的覆盖式滚动条常驻，路由树把常驻面 `sidebar` 画进滚动层。 */
 function sidebarHost(){
   return {
     scroll:$('#drawerScroll'),store:settingsStore,navCatalog:NAV_CATALOG,
@@ -3036,8 +3036,8 @@ function sidebarHost(){
     attached:()=>{placeSidebarHead();syncGlassOptics()},
   };
 }
-/* 启动时同步写进导航骨架（只认地址和本地设置，一个请求都不等），React 包回来后岛整块接手。骨架阶段的
-   点击由滚动层上这一处委托接住；岛接手后按钮自己处理点击，这里不再认。 */
+/* 启动时同步写进导航骨架（只认地址和本地设置，一个请求都不等），React 包回来后路由树画上侧栏、整块接手。
+   句柄交出之前骨架上的点击由滚动层上这一处委托接住；交出之后按钮自己处理点击，这里不再认。 */
 function mountSidebar(){
   const scroll=$('#drawerScroll');
   scroll.innerHTML=sidebarSkeletonHtml(appSettings.sidebarOrder,NAV_CATALOG,navOn);
@@ -4156,8 +4156,8 @@ void loadGlowPicker({root:glowPicker,store:settingsStore,openDetails:()=>{
   glowFloating.setOpen(false);openDrawer(false);
   void openSettings('界面').then(panel=>panel.reveal('#homeGlowControls'));
 }});
-/* 品牌（媒体库选择）与开合键是壳里浮层的锚点，挪进侧栏标题行那个空槽：骨架画好时一次，侧栏岛接手
-   换掉骨架时（`attached`）再一次。手机上抽屉收着时开合键回到顶栏原位，抽屉整块不可聚焦。 */
+/* 品牌（媒体库选择）与开合键是壳里浮层的锚点，挪进侧栏标题行那个空槽：骨架画好时一次，路由树画上
+   侧栏、换掉骨架时（`attached`）再一次。手机上抽屉收着时开合键回到顶栏原位，抽屉整块不可聚焦。 */
 function placeBrand(){
   const head=document.querySelector('#drawerScroll > [data-sidebar-head]'),drawer=document.querySelector('#drawer');
   if(!head)return;

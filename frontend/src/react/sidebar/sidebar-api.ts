@@ -1,13 +1,13 @@
-/* 侧栏岛（`sidebar-island.tsx`）对壳的契约。
+/* 侧栏（常驻面 `sidebar`，`sidebar-island.tsx`）对壳的契约。
  *
- * 岛画的是左侧抽屉 `#drawer` 里滚动的那一层：标题行的空槽、导航那一列、导航上那块滑动玻璃，
+ * 它画的是左侧抽屉 `#drawer` 里滚动的那一层：标题行的空槽、导航那一列、导航上那块滑动玻璃，
  * 以及导航下面按语境出现的筛选分组（目录与资料页的来源、时长、产地、画幅、创作者、标签，
  * 关注页的内容标签）。抽屉本身、它的开合、底栏（明暗、配色、设置三枚键）、品牌与开合键归壳：
  * 它们是壳里几张浮层的锚点，壳在 `attached` 时把品牌与开合键挪进标题行的空槽。
  *
  * 筛选、路由与取数仍归壳。成员、按下态与数字由壳算好推进来，点下去的动作回到壳的
  * `commitContextFilter`、`navTo` 与关注页的筛选。导航顺序读的是同一份 `appSettings`
- * （`host.store`）：设置面板或这一列自己拖动改了顺序，岛按 store 的通知当场重排。 */
+ * （`host.store`）：设置面板或这一列自己拖动改了顺序，侧栏按 store 的通知当场重排。 */
 import type { SettingsStore } from '../../settings-store';
 
 /** 来源那一行开头的小记号：本地与在线是雪碧图字形，网盘是官方站标，其余按计费画一个点。 */
@@ -56,9 +56,9 @@ export interface SidebarProps {
 }
 
 export interface SidebarHost {
-  /** 岛画进去的那一层（`#drawerScroll`）。覆盖式滚动条由壳挂在它上面，轨道住在 `#drawer` 里。 */
+  /** 侧栏画进去的那一层（`#drawerScroll`），也是常驻面的宿主。覆盖式滚动条由壳挂在它上面，轨道住在 `#drawer` 里。 */
   scroll: HTMLElement;
-  /** 界面偏好的那一份 store（`appSettings`）；岛只读写其中的 `sidebarOrder`。 */
+  /** 界面偏好的那一份 store（`appSettings`）；侧栏只读写其中的 `sidebarOrder`。 */
   store: SettingsStore<{ sidebarOrder: string[] }>;
   /** 侧栏能放的全部入口，`[键, 名称, 字形]`；首页那一项的键是空串。 */
   navCatalog: readonly (readonly [string, string, string])[];
@@ -73,13 +73,13 @@ export interface SidebarHost {
   openFollowTag(tag: string): void;
   /** 关注页与关注详情的内容标签：换成只按这一枚标签筛。 */
   selectFollowTag(tag: string): void;
-  /** 岛第一次画好之后：壳把品牌与开合键挪进标题行。 */
+  /** 路由树画出首帧之后、句柄交出之前，在同一个任务里调一次：壳把品牌与开合键挪进标题行。 */
   attached(): void;
 }
 
 export interface SidebarApi {
-  /** 整份 props；壳手上留一份，每次只改其中几项再整份推进来。 */
+  /** 整份 props；壳手上留一份，每次只改其中几项再整份推进来。返回时已经画好。 */
   render(props: SidebarProps): void;
-  /** 导航的按下态要重读（路由变了、目录筛选改了 JAV 或竖屏）：玻璃从旧项滑到新项。 */
+  /** 导航的按下态要重读（路由变了、目录筛选改了 JAV 或竖屏）：玻璃从旧项滑到新项。返回时已经画好。 */
   navChanged(): void;
 }

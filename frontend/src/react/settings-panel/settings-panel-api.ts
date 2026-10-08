@@ -3,7 +3,7 @@
  * 界面偏好只有一份：壳在启动时归一化好的 `appSettings`，经 `createSettingsStore` 递进来
  * （`frontend/src/settings-store.ts`）。面板读 `store.value`、原地改字段、`store.save()` 落盘，
  * 再用 `changed(effect)` 告诉壳这一下要跟着做什么——重画网格、重取目录、换主题，这些都还是壳的事；
- * 侧栏顺序不经它，侧栏岛自己订阅这一份 store。跟账本走的那几项（侧栏顺序、合集开关、首次采集范围、头像刷新、搜索记录
+ * 侧栏顺序不经它，侧栏自己订阅这一份 store。跟账本走的那几项（侧栏顺序、合集开关、首次采集范围、头像刷新、搜索记录
  * 条数）由面板经 `/api/settings` 写，成功后同样落进这一份对象。 */
 import type { HomeGlow } from '@peach/appearance';
 

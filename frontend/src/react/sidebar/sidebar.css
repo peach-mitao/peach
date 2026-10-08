@@ -1,4 +1,4 @@
-/* 侧栏岛（`frontend/src/react/sidebar/`）：抽屉 `#drawer` 里的导航列、筛选分组与玻璃。
+/* 侧栏（常驻面 `sidebar`，`frontend/src/react/sidebar/`）：抽屉 `#drawer` 里的导航列、筛选分组与玻璃。
  *
  * 抽屉本身（`#drawer`、`#scrim`）、覆盖式滚动条与底栏归壳；壳的元素上挂的是 `data-sidebar-drawer`、
  * `data-sidebar-scrim`、`data-sidebar-scroll`，开合态是壳挂的 `open` / `on` 类，按 `[class~=…]` 认，

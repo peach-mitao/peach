@@ -482,7 +482,8 @@ export type {
   SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
 } from './sidebar/sidebar-api';
 
-/** 接上壳给的宿主，拿回侧栏岛的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回侧栏的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次；这一面由 `islands.ts` 的
+ *  `loadSidebar` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureSidebar(host: SidebarHost): SidebarApi;
 
 export type {
