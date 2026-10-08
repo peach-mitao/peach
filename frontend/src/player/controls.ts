@@ -208,7 +208,10 @@ export function mountPlayerQualityControl(
     return next;
   };
   const button = (panel: HTMLElement, selector: string) => panel.querySelector<HTMLElement>(selector)!;
+  /** 菜单此刻摆的是哪一面；轨道与尺寸变化只就地改这一面（`refreshPanel`）。 */
+  let view: 'main' | 'speed' | 'quality' = 'main';
   const showMain = (direction = 0) => {
+    view = 'main';
     const { active } = qualityRows(), speed = Number(player.playbackRate()) || 1;
     const panel = renderPanel(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${playerHost().settings().ambientMode}">
       ${icon('player-ambient')}<span>氛围模式</span><i class="vjs-peach-switch" aria-hidden="true"></i></button>
@@ -226,6 +229,7 @@ export function mountPlayerQualityControl(
   const SPEED_MIN = .25, SPEED_MAX = 3, SPEED_STEP = .05, SPEED_PRESETS = [1, 1.25, 1.5, 2, 3];
   const speedLabel = (speed: number) => Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
   const showSpeed = (direction = 1) => {
+    view = 'speed';
     const min = SPEED_MIN, max = SPEED_MAX;
     const clampSpeed = (value: number) => Math.min(max, Math.max(min, Number(value.toFixed(2))));
     const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${icon('player-menu-back')}</button><strong>播放速度</strong></div>
@@ -256,12 +260,15 @@ export function mountPlayerQualityControl(
     });
     syncSpeed();
   };
-  const showQuality = (direction = 1) => {
+  /** 清晰度那一列：打开面板时画一次，轨道增减或自动档换轨时原地重画，焦点留在同一档上。 */
+  const fillQualityOptions = (list: HTMLElement) => {
     const { options, active } = qualityRows();
-    const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${icon('player-menu-back')}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu">${options.map((option) =>
-      `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${esc(option.key)}" aria-checked="${option.key === active.key}"><span class="vjs-peach-option-check">${option.key === active.key ? icon('player-option-check') : ''}</span><span class="vjs-peach-option-label">${esc(option.label)}</span></button>`).join('')}</div>`, direction);
-    button(panel, '[data-player-menu-back]').onclick = () => showMain(-1);
-    panel.querySelectorAll<HTMLElement>('[data-player-quality-option]').forEach((option) => {
+    const focused = list.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.playerQualityOption : undefined;
+    list.innerHTML = options.map((option) =>
+      `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${esc(option.key)}" aria-checked="${option.key === active.key}"><span class="vjs-peach-option-check">${option.key === active.key ? icon('player-option-check') : ''}</span><span class="vjs-peach-option-label">${esc(option.label)}</span></button>`).join('');
+    const buttons = [...list.querySelectorAll<HTMLElement>('[data-player-quality-option]')];
+    buttons.find((option) => focused !== undefined && option.dataset.playerQualityOption === focused)?.focus();
+    buttons.forEach((option) => {
       option.onclick = () => {
         selectedQuality = option.dataset.playerQualityOption || 'auto';
         if (levels?.length) {
@@ -284,13 +291,29 @@ export function mountPlayerQualityControl(
       };
     });
   };
+  const showQuality = (direction = 1) => {
+    view = 'quality';
+    const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${icon('player-menu-back')}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu"></div>`, direction);
+    button(panel, '[data-player-menu-back]').onclick = () => showMain(-1);
+    fillQualityOptions(button(panel, '.vjs-peach-panel-menu'));
+  };
+  /* HLS 自动码率起播时轨道陆续登记、码率随网速换档，视频尺寸也跟着变：这些事件只更新角标和
+     正在看的那一面。退回主菜单的话，正在清晰度面板里挑档的人会被一次换轨踢出去。 */
+  const refreshPanel = () => {
+    if (!isOpen()) { qualityRows(); return }
+    const panel = menu.lastElementChild as HTMLElement | null;
+    if (view === 'quality' && panel) { fillQualityOptions(button(panel, '.vjs-peach-panel-menu')); return }
+    const { active } = qualityRows();
+    const label = view === 'main' ? panel?.querySelector('[data-player-quality-view] b') : null;
+    if (label) label.textContent = active.label;
+  };
   toggle.onclick = (event) => { event.stopPropagation(); const open = !isOpen(); if (open) showMain(); setOpen(open) };
   const outside = (event: Event) => { if (!root.contains(event.target as Node)) close() };
   document.addEventListener('pointerdown', outside);
   root.addEventListener('keydown', (event) => { if (event.key === 'Escape') { close(); toggle.focus() } });
-  video.addEventListener('loadedmetadata', () => { if (isOpen()) showMain(); else qualityRows() });
-  video.addEventListener('resize', () => { if (isOpen()) showMain(); else qualityRows() });
-  levels?.on?.(['addqualitylevel', 'removequalitylevel', 'change'], () => { if (isOpen()) showMain(); else qualityRows() });
+  video.addEventListener('loadedmetadata', refreshPanel);
+  video.addEventListener('resize', refreshPanel);
+  levels?.on?.(['addqualitylevel', 'removequalitylevel', 'change'], refreshPanel);
   player.on('dispose', () => {
     document.removeEventListener('pointerdown', outside);
     document.removeEventListener(PLAYER_PANEL_EVENT, closeSettingsForOtherPanel);
@@ -299,7 +322,7 @@ export function mountPlayerQualityControl(
   qualityRows();
   mountPlayerTheaterControl(player, root);
   mountPlayerChromeLayout(player);
-  return (next) => { sourceQualities = next?.length ? next : null; if (isOpen()) showMain(); else qualityRows() };
+  return (next) => { sourceQualities = next?.length ? next : null; refreshPanel() };
 }
 
 function mountPlayerTheaterControl(player: VjsPlayer, settingsRoot: Element): void {
