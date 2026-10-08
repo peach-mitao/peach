@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .catalog_rules import normalise_code_key
+from .classification import creator_collection_base
 from .entities import canonicalize_entity_name, normalize_entity_name, upsert_asset_entity
 from .entity_classification import write_claim
 
@@ -42,18 +43,24 @@ def seller_record(payload: dict, provider: str) -> dict | None:
 
 
 def cached_records(root: Path):
-    """读取有限的 FC2 来源快照；失败快照不作为账号证据。"""
+    """逐个读取 FC2 来源快照；失败快照不作为账号证据。"""
     for provider in PROVIDERS:
-        paths = sorted(root.glob(f'FC2-PPV-*-{provider}.json'))
-        if len(paths) > 10000:
-            raise ValueError('FC2 来源快照超过单次处理上限')
-        for path in paths:
+        for path in sorted(root.glob(f'FC2-PPV-*-{provider}.json')):
             try:
                 row = seller_record(json.loads(path.read_text(encoding='utf-8')), provider)
             except (ValueError, TypeError):
                 continue
             if row and normalise_code_key(path.name.removesuffix(f'-{provider}.json')) == row['code']:
                 yield {**row, 'cache_file': str(path)}
+
+
+def ingest_name(connection, name: str) -> str:
+    """摄取会把 `XXX4K` 这类集合名归到已有账号 `XXX`；计划按同一个名字找账号。"""
+    base = creator_collection_base(name)
+    if base != name and connection.execute("SELECT 1 FROM entity WHERE kind='creator' AND normalized_name=?",
+                                           (normalize_entity_name(base),)).fetchone():
+        return base
+    return name
 
 
 def existing_account(connection, rows: list[dict]) -> tuple[int | None, str]:
@@ -63,7 +70,7 @@ def existing_account(connection, rows: list[dict]) -> tuple[int | None, str]:
                               "AND external_kind='creator' AND external_id=?", (account,)).fetchone()
     if held:
         return int(held[0]), ''
-    names = {normalize_entity_name(row['name']) for row in rows}
+    names = {normalize_entity_name(ingest_name(connection, row['name'])) for row in rows}
     found = set()
     for name in names:
         matches = connection.execute("SELECT e.id FROM entity e WHERE e.kind='creator' AND "
@@ -99,7 +106,7 @@ def _account_groups(connection, groups, skipped):
 def collect(connection, root: Path) -> dict:
     """来源账号按作品号与馆藏关联；来源冲突和非馆藏作品不落库。"""
     assets = defaultdict(list)
-    for row in connection.execute("SELECT id,code FROM asset WHERE medium='video' AND COALESCE(disposal,'')<>'vanished' AND code IS NOT NULL"):
+    for row in connection.execute("SELECT id,code FROM asset WHERE medium='video' AND disposal IS NULL AND code IS NOT NULL"):
         code = normalise_code_key(row[1])
         if code.startswith('FC2-PPV-'):
             assets[code].append(int(row[0]))
@@ -143,25 +150,38 @@ def _digest(metadata):
     return sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def _associate(connection, entity_id, name, record, metadata, batch):
+def _associate(connection, entity_id, name, record, metadata, batch, skipped):
+    """把一部作品挂到卖家账号下，返回挂上的账号；一个文件都没挂上时返回 None。
+
+    摄取判定不收（已否决、名字是厂牌、目录名是发行标识）的文件记进 `skipped`；摄取认到的
+    账号与计划不同时整批回滚。"""
     payload = {**metadata, **record}
     payload['created_payload_digest'] = _digest(payload)
+    linked = None
     for asset_id in record['asset_ids']:
-        asset = connection.execute("SELECT code FROM asset WHERE id=? AND medium='video' AND COALESCE(disposal,'')<>'vanished'", (asset_id,)).fetchone()
+        asset = connection.execute("SELECT code FROM asset WHERE id=? AND medium='video' AND disposal IS NULL", (asset_id,)).fetchone()
         if not asset or normalise_code_key(asset[0]) != record['code']:
             raise ValueError('卖家作品计划已过期')
         if entity_id and connection.execute("SELECT 1 FROM asset_entity WHERE asset_id=? AND entity_id=? AND role='creator'",
                                             (asset_id, entity_id)).fetchone():
+            linked = entity_id
             continue
-        entity_id = upsert_asset_entity(connection, kind='creator', name=name, asset_id=asset_id, role='creator',
+        landed = upsert_asset_entity(connection, kind='creator', name=name, asset_id=asset_id, role='creator',
             source=batch, metadata=payload, update_entity_metadata=False)
-        actual = connection.execute('SELECT kind FROM entity WHERE id=?', (entity_id,)).fetchone()
+        if landed is None:
+            skipped.append({'account': record['account'], 'code': record['code'], 'asset_id': asset_id,
+                            'reason': '摄取判定不收这个卖家名'})
+            continue
+        actual = connection.execute('SELECT kind FROM entity WHERE id=?', (landed,)).fetchone()
         if not actual or actual[0] != 'creator':
             raise ValueError('卖家账号与已合并出演身份冲突')
-    return entity_id
+        if entity_id and landed != entity_id:
+            raise ValueError('卖家身份计划已过期：摄取认到另一个账号')
+        entity_id = linked = landed
+    return linked
 
 
-def _install_account(connection, group, batch):
+def _install_account(connection, group, batch, skipped):
     first = group['records'][0]
     entity_id = group['entity_id']
     if existing_account(connection, group['records']) != (entity_id, ''):
@@ -173,14 +193,24 @@ def _install_account(connection, group, batch):
             raise ValueError('账号身份已变化')
         name = held[1]
     metadata = {'source': SOURCE, 'batch': batch, 'account_url': first['account_url']}
+    installed = None
     for record in group['records']:
-        entity_id = _associate(connection, entity_id, name, record, metadata, batch)
+        linked = _associate(connection, entity_id, name, record, metadata, batch, skipped)
+        if not linked:
+            continue
+        entity_id = installed = linked
         _claim(connection, entity_id, record, batch)
         alias = normalize_entity_name(record['name'])
         if alias != normalize_entity_name(name):
             connection.execute('INSERT OR IGNORE INTO entity_alias(entity_id,alias,normalized_alias,source) VALUES(?,?,?,?)',
                                (entity_id, record['name'], alias, batch))
-    if not connection.execute("SELECT 1 FROM entity_external_ref WHERE entity_id=? AND provider='fc2' AND external_kind='creator'", (entity_id,)).fetchone():
+    if not installed:
+        return None
+    other = connection.execute("SELECT external_id FROM entity_external_ref WHERE entity_id=? AND provider='fc2' "
+                               "AND external_kind='creator'", (entity_id,)).fetchone()
+    if other and other[0] != first['account']:
+        raise ValueError('卖家身份计划已过期：账号已绑定另一个 FC2 账号')
+    if not other:
         connection.execute("INSERT INTO entity_external_ref(entity_id,provider,external_kind,external_id,metadata_json) VALUES(?,'fc2','creator',?,?)",
                            (entity_id, first['account'], json.dumps(metadata)))
     _link(connection, entity_id, first, batch)
@@ -192,8 +222,10 @@ def install(connection, frozen: dict, *, batch: str) -> dict:
     if not batch.startswith(SOURCE + '@'):
         raise ValueError('卖家批次需要明确来源前缀')
     before = connection.total_changes
-    ids = [_install_account(connection, group, batch) for group in frozen['accounts']]
-    return {'entity_ids': sorted(set(ids)), 'changes': connection.total_changes - before}
+    skipped: list[dict] = []
+    ids = [_install_account(connection, group, batch, skipped) for group in frozen['accounts']]
+    return {'entity_ids': sorted({entity_id for entity_id in ids if entity_id}), 'skipped': skipped,
+            'changes': connection.total_changes - before}
 
 
 def planned_revert(connection, source: str, batch: str) -> list[dict]:

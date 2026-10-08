@@ -140,6 +140,62 @@ class Fc2SellerTests(unittest.TestCase):
         self.undo()
         self.assertEqual(self.connection.execute('SELECT canonical_name FROM entity WHERE id=?',(entity_id,)).fetchone()[0],'User Seller')
 
+    def test_rejected_seller_name_is_skipped_while_other_accounts_still_land(self):
+        rejected = self.asset('FC2-PPV-1234567')
+        self.asset('FC2-PPV-7654321')
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,note,updated_at) "
+                                "VALUES('creator-attribution',?,'rejected','','2026-10-08T00:00:00+00:00')",
+                                (f'{rejected}:seller',))
+        self.connection.commit()
+        self.snapshot()
+        self.snapshot(code='FC2-PPV-7654321',name='Other Seller',account='other')
+        result = self.install()
+        self.assertEqual(len(result['entity_ids']),1)
+        self.assertEqual([(row['code'],row['reason']) for row in result['skipped']],[('FC2-PPV-1234567','摄取判定不收这个卖家名')])
+        names = [row[0] for row in self.connection.execute("SELECT canonical_name FROM entity WHERE kind='creator'")]
+        self.assertEqual(names,['Other Seller'])
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM entity_external_ref WHERE external_id='seller'").fetchone()[0],0)
+
+    def test_held_account_gets_no_alias_or_claim_from_a_work_that_ingest_rejects(self):
+        one = self.asset('FC2-PPV-1234567')
+        two = self.asset('FC2-PPV-7654321')
+        entity_id = upsert_asset_entity(self.connection,kind='creator',name='User Name',asset_id=one,role='creator',
+            source='user:manual',external_provider='fc2',external_id='seller')
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,note,updated_at) "
+                                "VALUES('creator-attribution',?,'rejected','','2026-10-08T00:00:00+00:00')",
+                                (f'{two}:{fc2_sellers.normalize_entity_name("User Name")}',))
+        self.connection.commit()
+        self.snapshot(code='FC2-PPV-7654321',name='Public Name')
+        result = self.install()
+        self.assertEqual(result['entity_ids'],[])
+        self.assertEqual([row['asset_id'] for row in result['skipped']],[two])
+        for table in ('entity_alias','entity_classification','entity_link'):
+            self.assertEqual(self.connection.execute(f'SELECT count(*) FROM {table} WHERE entity_id=?',(entity_id,)).fetchone()[0],0)
+
+    def test_collection_names_are_planned_against_the_account_that_ingest_picks(self):
+        one = self.asset('FC2-PPV-1234567')
+        two = self.asset('FC2-PPV-7654321')
+        held = upsert_asset_entity(self.connection,kind='creator',name='Studio',asset_id=one,role='creator',source='user:manual')
+        self.connection.commit()
+        self.snapshot(code='FC2-PPV-7654321',name='Studio 4K')
+        plan = fc2_sellers.collect(self.connection,self.cache)
+        self.assertEqual(plan['accounts'][0]['entity_id'],held)
+        self.install()
+        self.assertEqual(self.connection.execute("SELECT entity_id FROM asset_entity WHERE asset_id=? AND role='creator'",(two,)).fetchone()[0],held)
+        self.connection.execute("UPDATE entity_external_ref SET external_id='other' WHERE entity_id=?",(held,))
+        self.connection.commit()
+        (self.cache / 'FC2-PPV-7654321-fc2ppvdb.json').unlink()
+        self.snapshot(code='FC2-PPV-1234567',name='Studio 4K',account='third')
+        plan = fc2_sellers.collect(self.connection,self.cache)
+        self.assertEqual([row['reason'] for row in plan['skipped']],['同名对应不同 FC2 账号'])
+
+    def test_works_in_the_recycle_bin_get_no_seller(self):
+        asset_id = self.asset('FC2-PPV-1234567')
+        self.connection.execute("UPDATE asset SET disposal='trash' WHERE id=?",(asset_id,))
+        self.connection.commit()
+        self.snapshot()
+        self.assertEqual(fc2_sellers.collect(self.connection,self.cache)['accounts'],[])
+
     def test_stale_work_plan_rolls_back_and_revert_keeps_later_user_metadata(self):
         asset_id = self.asset('FC2-PPV-1234567')
         self.snapshot()
