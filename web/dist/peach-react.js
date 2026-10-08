@@ -49617,6 +49617,7 @@ var uye = () => ({
 	groups: [],
 	tabs: [],
 	suggestRequest: 0,
+	asked: "",
 	timer: 0,
 	kind: "",
 	active: -1,
@@ -49724,6 +49725,7 @@ function pye(e, t, n, r) {
 		} catch {}
 	}, d = async (e, n = "") => {
 		let r = ++t.suggestRequest;
+		n || (t.asked = e);
 		try {
 			let i = await G(`/api/suggest?q=${encodeURIComponent(e)}` + (n ? `&kind=${n}&limit=20` : "&limit=5"));
 			if (r !== t.suggestRequest) return;
@@ -49807,7 +49809,7 @@ function pye(e, t, n, r) {
 		},
 		focus: () => {
 			Promise.all([c(), u()]).then(() => {
-				a() && (m(), h());
+				a() && (m(), i().value.trim() !== t.asked && h());
 			});
 		},
 		close: p,

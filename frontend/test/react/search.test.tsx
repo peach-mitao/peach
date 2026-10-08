@@ -62,8 +62,8 @@ interface Stage {
 }
 
 /** 壳那一侧：一个静态输入框、一块带 `data-search-menu` 的面，岛挂在面里。 */
-async function stage({ pool = ['剧情'], suggest = async (q: string): Promise<SuggestResponse> => ({ q, groups: [] }) } = {}):
-  Promise<Stage> {
+async function stage({ pool = ['剧情'], loadPool = async () => pool,
+  suggest = async (q: string): Promise<SuggestResponse> => ({ q, groups: [] }) } = {}): Promise<Stage> {
   const posts: unknown[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, 'http://peach.test');
@@ -94,7 +94,7 @@ async function stage({ pool = ['剧情'], suggest = async (q: string): Promise<S
     }),
   };
   const helpers: SearchProps['helpers'] = {
-    pool: async () => pool, coverHtml: () => '',
+    pool: loadPool, coverHtml: () => '',
     present: (el) => { el.hidden = false }, dismiss: (el) => { el.hidden = true },
     wireScroller: () => {}, typed: () => {}, composing: () => {}, clearField: (el) => { el.value = '' },
   };
@@ -152,6 +152,24 @@ describe('输入框上的时序', () => {
     await settle();
     const values = [...s.menu.querySelectorAll('[data-search-option]')].map((row) => row.getAttribute('data-search-value'));
     expect(values).toEqual(['七海ひな', '七海の夏']);
+  });
+
+  it('聚焦时的推荐池晚于敲字回来，不再按同一个词补问一次', async () => {
+    vi.useFakeTimers();
+    const asked: string[] = [];
+    const slowPool = pending<string[]>();
+    const s = await stage({ loadPool: () => slowPool.answer,
+      suggest: async (q) => { asked.push(q); return { q, groups: [performer] } } });
+    await act(async () => s.input.focus());
+    await s.typeInto('七海');
+    await debounce();
+    await settle();
+    expect(asked).toEqual(['七海']);
+    await slowPool.release(['剧情']);
+    await debounce();
+    await settle();
+    expect(asked).toEqual(['七海']);
+    expect(s.menu.hidden).toBe(false);
   });
 
   it('组字期间的输入不问补全，组完才问：拿半截拼音去查，查的是一个不存在的词', async () => {
