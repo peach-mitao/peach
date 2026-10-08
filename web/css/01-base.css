@@ -252,9 +252,13 @@ body{background:var(--page);color:var(--ink);
   font-variant-numeric:tabular-nums;font-size:var(--fs-xs)}
 button,input,textarea{font:inherit;color:inherit}
 button,a,input,textarea,select,summary,[role="button"]{touch-action:manipulation}
-/* 控件上的字不是内容：触屏长按按钮、标签 chip 或折叠标题时不选中字、不弹系统菜单。
-   链接和输入框不在这里——标题、番号、路径要能长按复制。 */
+/* 按钮里的字是界面标签时它不是内容：触屏长按按钮、标签 chip 或折叠标题时不选中字、
+   不弹系统菜单。链接和输入框不在这里。按钮里装的是馆藏数据时它就是内容——作品卡上的
+   标题与番号、女优名、标签，系列名、筛选页的女优与厂牌名、中间省略的文件名与标题——
+   照常能长按复制，页内查找也落得到（offscreen-cards.test.ts）。 */
 button,[role="button"],summary{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+[data-media-card] button,button:is([data-series-link],[data-tier-performer],[data-tier-studio],[data-middle-truncate]){
+  user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
 /* React 子树的焦点环由 BoardUI 组件自己画（输入框画在外框上）；`:where` 让特指度保持 0,1,0。 */
 :where(:not(.peach-react *)):focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

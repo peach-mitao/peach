@@ -472,27 +472,33 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     }
   });
 
-  it('手机上详情浮窗的按钮与标签长按不选字、点按不等双击判定；标题照常能选中复制', { timeout: 60_000 }, async () => {
-    const opened = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
+  it('手机上界面按钮与标签长按不选字、点按不等双击判定；标题、番号这类馆藏数据照常能选中复制', { timeout: 90_000 }, async () => {
+    /* 每个样本取 [touch-action, user-select]；没找到记成 null。 */
+    const touchOf = (page: Page, selectors: string[]) => page.evaluate((list) => list.map((selector) => {
+      const node = document.querySelector(selector);
+      return node ? [getComputedStyle(node).touchAction, getComputedStyle(node).userSelect] : null;
+    }), selectors);
+    const controls = ['#closeStage', '#likeBtn', '#stage [data-stage-action]', '#stage [data-title-fold]', '#tagPlus',
+      '#stage [data-detail-tag] [data-tag]'];
+    const stage = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
     try {
-      const page = opened.page;
-      await page.locator('#stage [data-detail-tag] [data-tag]').first().waitFor({ state: 'attached' });
-      const read = await page.evaluate(() => {
-        const controls = [...document.querySelectorAll<HTMLElement>('#stage button, #stage summary, #stage [role="button"]')];
-        const off = controls.flatMap((control) => {
-          const style = getComputedStyle(control);
-          return style.touchAction === 'manipulation' && style.userSelect === 'none'
-            ? [] : [`${control.outerHTML.slice(0, 80)} → ${style.touchAction} / ${style.userSelect}`];
-        });
-        return { count: controls.length, off,
-          title: getComputedStyle(document.querySelector('#stage [data-detail-title]')!).userSelect };
-      });
-      assert.ok(read.count > 5, `详情浮窗里只量到 ${read.count} 个控件`);
-      assert.deepEqual(read.off, []);
-      assert.notEqual(read.title, 'none', '标题是内容，不能跟着控件一起关掉选字');
-      assert.deepEqual(withoutPlayer(opened.problems), []);
+      await stage.page.locator('#stage [data-detail-tag] [data-tag]').first().waitFor({ state: 'attached' });
+      assert.deepEqual(await touchOf(stage.page, controls), controls.map(() => ['manipulation', 'none']),
+        `控件顺序：${controls.join('、')}`);
+      const [title] = await touchOf(stage.page, ['#stage [data-detail-title]']);
+      assert.notEqual(title?.[1], 'none', '详情标题是内容，不能跟着控件一起关掉选字');
+      assert.deepEqual(withoutPlayer(stage.problems), []);
     } finally {
-      await opened.close();
+      await stage.close();
+    }
+    const home = await openItemPage(browser, '/', MOBILE, { ready: '#grid [data-media-card] [data-media-title]' });
+    try {
+      const [card] = await touchOf(home.page, ['#grid [data-media-card] [data-media-title]']);
+      assert.equal(card?.[0], 'manipulation', '作品卡标题是按钮，点按不该等双击判定');
+      assert.notEqual(card?.[1], 'none', '作品卡标题装着番号，长按要能选中复制');
+      assert.deepEqual(home.problems, []);
+    } finally {
+      await home.close();
     }
   });
 
