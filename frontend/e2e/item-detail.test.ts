@@ -488,15 +488,22 @@ describe('作品详情岛', () => {
     }
   });
 
-  it('接着看：一排卡按相关作品的顺序；点一张换到那一条', { timeout: 60_000 }, async () => {
+  it('接着看：一排卡按相关作品的顺序；点一张原地换到那一条', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {
       const page = opened.page;
       await page.locator('#nrow [data-media-card]').first().waitFor();
       assert.deepEqual(await ids(page, '#nrow [data-media-card]', 'data-id'), RELATED);
+      const before = await page.locator('#stage [data-detail-title]').innerText();
+      await watchStage(page);
       await page.locator(`#nrow [data-media-card][data-id="${RELATED[0]}"] [data-media-title]`).click();
       await pathIs(page, `/item/${RELATED[0]}`);
+      await page.waitForFunction((title) => {
+        const now = document.querySelector('#stage [data-detail-title]');
+        return !!now && (now as HTMLElement).innerText !== title;
+      }, before, { timeout: 10_000 });
       await page.locator(DETAIL_READY).waitFor();
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '接着看换一条重开了浮窗');
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();
