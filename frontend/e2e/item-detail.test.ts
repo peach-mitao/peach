@@ -25,6 +25,20 @@ const current = (page: Page) => page.locator('#stage [data-queue-item][aria-curr
 const ids = (page: Page, selector: string, attribute: string) => page.locator(selector).evaluateAll(
   (nodes, name) => nodes.map((node) => Number(node.getAttribute(name))), attribute);
 
+
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。 */
+const watchStage = (page: Page) => page.evaluate(() => {
+  const watch = { stage: document.getElementById('stage'), skeleton: false };
+  new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
+    .observe(document.body, { childList: true, subtree: true });
+  Object.assign(window, { stageWatch: watch });
+});
+const stageKept = (page: Page) => page.evaluate(() => {
+  const watch = (window as unknown as { stageWatch: { stage: Element | null; skeleton: boolean } }).stageWatch;
+  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton,
+    focused: !!watch.stage?.contains(document.activeElement) };
+});
+
 describe('作品详情岛', () => {
   let browser: Browser;
 
@@ -396,16 +410,18 @@ describe('作品详情岛', () => {
     ['版本', `/editions/${ITEM.edition}/${ITEM.edition}`, 32, `/editions/${ITEM.edition}/32`],
     ['播放列表', `/playlists/${PLAYLIST.id}/11`, 15, `/playlists/${PLAYLIST.id}/15`],
   ] as const) {
-    it(`${kind}队列：深链停在给的那一条，点另一条换过去且不重取队列`, { timeout: 60_000 }, async () => {
+    it(`${kind}队列：深链停在给的那一条，点另一条原地换过去且不重取队列`, { timeout: 60_000 }, async () => {
       const opened = await openItemPage(browser, path, DESKTOP);
       try {
         const page = opened.page;
         assert.equal(await current(page), path.split('/').at(-1));
         const reads = new Map(opened.stub.reads);
+        await watchStage(page);
         await page.locator(`#stage [data-queue-item="${next}"]`).click();
         await pathIs(page, wanted);
         await page.locator(`#stage [data-queue-item="${next}"][aria-current="true"]`).waitFor();
         await page.locator(DETAIL_READY).waitFor();
+        assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, `${kind}队列换一条重开了浮窗`);
         if (kind === '分卷') assert.match(await page.locator('#stage [data-detail-title]').innerText(), /第 3 卷/);
         for (const url of ['/api/parts', '/api/editions', '/api/related']) {
           assert.equal(opened.stub.reads.get(url) || 0, reads.get(url) || 0, `同一个${kind}队列里换一条又取了 ${url}`);
@@ -472,15 +488,22 @@ describe('作品详情岛', () => {
     }
   });
 
-  it('接着看：一排卡按相关作品的顺序；点一张换到那一条', { timeout: 60_000 }, async () => {
+  it('接着看：一排卡按相关作品的顺序；点一张原地换到那一条', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {
       const page = opened.page;
       await page.locator('#nrow [data-media-card]').first().waitFor();
       assert.deepEqual(await ids(page, '#nrow [data-media-card]', 'data-id'), RELATED);
+      const before = await page.locator('#stage [data-detail-title]').innerText();
+      await watchStage(page);
       await page.locator(`#nrow [data-media-card][data-id="${RELATED[0]}"] [data-media-title]`).click();
       await pathIs(page, `/item/${RELATED[0]}`);
+      await page.waitForFunction((title) => {
+        const now = document.querySelector('#stage [data-detail-title]');
+        return !!now && (now as HTMLElement).innerText !== title;
+      }, before, { timeout: 10_000 });
       await page.locator(DETAIL_READY).waitFor();
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '接着看换一条重开了浮窗');
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();

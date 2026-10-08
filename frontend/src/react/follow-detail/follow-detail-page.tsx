@@ -6,7 +6,7 @@
  * 样式在 `../stage/stage.css`）；关注自己多出来的几块样式在 `follow-detail.css`。
  *
  * 换一份媒体（轮播、多媒体队列）只改岛内状态：媒体区按「条目:媒体」换一块，播放器随之拆了重挂。
- * 换到组里另一条经壳（`actions.openItem`），因为舞台上的播放器要先拆、地址也要换。 */
+ * 换到组里另一条经壳（`actions.openItem`）：地址要换；舞台取齐那一条后原地换内容，浮窗不重开。 */
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, foldName, icon, requestErrorMessage } from '@peach/legacy/core';
