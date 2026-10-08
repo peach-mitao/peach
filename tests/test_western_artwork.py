@@ -1,9 +1,13 @@
-"""西方官方图片的身份绑定、唯一作品匹配与无番号封面。"""
+"""西方官方图片的身份绑定、唯一作品匹配、头像比脸与按批撤回的无番号封面。"""
+import contextlib
 import io
 import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
+from types import SimpleNamespace
+from unittest import mock
 from unittest.mock import Mock
 from pathlib import Path
 
@@ -13,6 +17,8 @@ from peach import avatar_cover_face, avatar_picker, western_artwork as artwork
 from peach.http import HttpResponse
 from peach.web_catalog import attach_artwork_fields
 from peach.web_state import WebContract
+from scripts import harvest_western_artwork, revert_auto_landing
+from tests.support.ledger import fresh_ledger
 
 
 def node(name='Lena Anderson', released='2019-08-14T17:30:00Z', slug='cam-to-me'):
@@ -107,6 +113,95 @@ class WesternSourceTests(unittest.TestCase):
         self.assertEqual(artwork.filename_date('tushy.19.08.14.lena.anderson.4k.mp4', 'tushy'), '2019-08-14')
         self.assertEqual(artwork.filename_date('vixen.19.08.14.lena.mp4', 'tushy'), '')
         self.assertEqual(artwork.filename_date('tushy.19.02.31.lena.mp4', 'tushy'), '')
+
+
+def portrait(colour) -> tuple:
+    image = Image.new('RGB', (600, 800), colour)
+    buffer = io.BytesIO(); image.save(buffer, 'JPEG')
+    body = buffer.getvalue()
+    origin = {'upstream_url': f'https://www.babepedia.com/pics/{colour}.jpg', 'automatic_install': True}
+    return origin, body, avatar_picker.accept_image(body)
+
+
+class Matcher:
+    """按图中心的颜色给特征：红色是她，蓝色是别人，封面截图记作她。"""
+    unavailable = ''
+
+    def embedding(self, body):
+        if body == b'cover':
+            return [1.0, 0.0]
+        pixel = Image.open(io.BytesIO(body)).convert('RGB').getpixel((300, 400))
+        return [1.0, 0.0] if pixel[0] > pixel[2] else [0.0, 1.0]
+
+
+class WesternPortraitGateTests(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(avatar_cover_face, 'cut', return_value=(b'cover', {}))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.covers = [SimpleNamespace(code='', asset_id=1), SimpleNamespace(code='', asset_id=2)]
+
+    def test_the_portrait_that_matches_her_single_work_covers_is_chosen(self):
+        winner, evidence, reason = artwork.face_matched_portrait([portrait('blue'), portrait('red')],
+                                                                 self.covers, Matcher())
+        self.assertEqual(winner.origin['upstream_url'], 'https://www.babepedia.com/pics/red.jpg')
+        self.assertEqual([cover['asset_id'] for cover in evidence['covers']], [1, 2])
+        self.assertEqual(reason, '')
+
+    def test_without_covers_or_a_matching_face_nothing_is_installed(self):
+        self.assertEqual(artwork.face_matched_portrait([portrait('red')], [], Matcher())[0], None)
+        winner, evidence, reason = artwork.face_matched_portrait([portrait('blue')], self.covers, Matcher())
+        self.assertIsNone(winner)
+        self.assertEqual(evidence, {})
+        self.assertIn('比不出', reason)
+
+    def test_an_unavailable_model_installs_nothing(self):
+        matcher = Matcher()
+        matcher.unavailable = '模型未下载'
+        winner, _evidence, reason = artwork.face_matched_portrait([portrait('red')], self.covers, matcher)
+        self.assertIsNone(winner)
+        self.assertIn('模型未下载', reason)
+
+
+class WesternArtworkBatchTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name).resolve()
+
+    def test_profile_addresses_come_only_from_confirmed_candidate_rows(self):
+        db = fresh_ledger(self.root)
+        with closing(sqlite3.connect(db)) as connection:
+            kept, unsure = (connection.execute(
+                "INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at) "
+                "VALUES('creator',?,?,'','')", (name, name.lower())).lastrowid for name in ('Kept', 'Unsure'))
+            connection.commit()
+            table = self.root / 'babepedia-candidates.csv'
+            table.write_text('entity_id,verdict,profile_url\n'
+                             f'{kept},命中,https://www.babepedia.com/babe/Kept\n'
+                             f'{unsure},需人工确认,https://www.babepedia.com/babe/Someone\n', encoding='utf-8')
+            self.assertEqual(harvest_western_artwork.profile_urls(connection, table, [kept, unsure]),
+                             {kept: 'https://www.babepedia.com/babe/Kept'})
+
+    def test_revert_removes_one_batch_of_covers_with_their_sidecars(self):
+        covers = self.root / 'covers'
+        covers.mkdir()
+        for asset_id, record in ((1, {'source': artwork.SOURCE, 'batch': artwork.SOURCE + '@one'}),
+                                 (2, {'source': artwork.SOURCE, 'batch': artwork.SOURCE + '@two'}),
+                                 (3, {'provider': 'western-official'})):
+            (covers / f'ASSET-ID-{asset_id}.jpg').write_bytes(b'jpeg')
+            (covers / f'ASSET-ID-{asset_id}.face.json').write_text('{}', encoding='utf8')
+            (covers / f'ASSET-ID-{asset_id}.scraping.json').write_text(json.dumps(record), encoding='utf8')
+        self.assertEqual([path.name for path in artwork.planned_covers(covers, artwork.SOURCE, '')],
+                         ['ASSET-ID-1.jpg', 'ASSET-ID-2.jpg'])
+        db = fresh_ledger(self.root)
+        with contextlib.redirect_stdout(io.StringIO()):
+            revert_auto_landing.main(['--db', str(db), '--apply', '--backup', str(self.root / 'backup.db'),
+                                      '--source', artwork.SOURCE, '--batch', artwork.SOURCE + '@one',
+                                      '--cover-root', str(covers), '--logo-root', str(self.root / 'logos')])
+        self.assertEqual(sorted(path.name for path in covers.iterdir()),
+                         ['ASSET-ID-2.face.json', 'ASSET-ID-2.jpg', 'ASSET-ID-2.scraping.json',
+                          'ASSET-ID-3.face.json', 'ASSET-ID-3.jpg', 'ASSET-ID-3.scraping.json'])
 
 
 class WesternLocalArtworkTests(unittest.TestCase):

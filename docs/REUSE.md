@@ -10,17 +10,17 @@
 
 Babepedia 主图库和 Vixen 网络公开 GraphQL 的字段核对 [Stash CommunityScrapers](https://github.com/stashapp/CommunityScrapers/tree/d0f75013e09a0469b70365fef3294ca915edcf8c) 的 Babepedia、vixenNetwork 采集器（AGPL-3.0；2026-10-07 获取的 revision）。该项目使用 Python，可经插件在 Windows 上运行；Cloudflare 限流和上游字段变化可能导致未取得。只参考公开协议和身份字段，不复制 AGPL 实现，不恢复已关闭的 Stash 适配器，也不引入依赖。HTTP、HTML、图像检查、内容缓存、头像安装和封面边车分别复用现有 `HttpxTransport`、BeautifulSoup 4.15.0、`avatar_provider`、`avatar_picker`、`cover_artwork`。
 
-真实只读试验取得 Angel Smalls、Christy White、Lena Anderson、Melody Marks、Sweet Sophia 的主图库；Babepedia 的 Blaire Ivory 档案明确列出别名 Lena Anderson。Tushy 2019-08-14《Cam To Me》、Vixen 2019-04-09《I Want It All》的官方封面均已取得。搜索还返回 Lena Paul 等人的作品；Peach 用厂牌、完整名字、发行日和唯一结果筛选，并对详情再核对。没有番号的官方封面按 `ASSET-ID-<id>` 保存，资产字段保持原值。头像保留主图库候选，已有头像不自动覆盖；官方完整出演名单参与合演保护，多人封面需要框选。采集入口 `harvest_western_artwork.py` 每轮至多 16 位，默认只预览，输出来源回执。
+真实只读试验取得 Angel Smalls、Christy White、Lena Anderson、Melody Marks、Sweet Sophia 的主图库；Babepedia 的 Blaire Ivory 档案明确列出别名 Lena Anderson。Tushy 2019-08-14《Cam To Me》、Vixen 2019-04-09《I Want It All》的官方封面均已取得。搜索还返回 Lena Paul 等人的作品；Peach 用厂牌、完整名字、发行日和唯一结果筛选，并对详情再核对。没有番号的官方封面按 `ASSET-ID-<id>` 保存，资产字段保持原值。头像保留主图库候选，已有头像不自动覆盖；官方完整出演名单参与合演保护，多人封面需要框选。采集入口 `harvest_western_artwork.py` 每轮至多 16 位，默认只预览，输出来源回执；封面边车记 `auto:western-artwork@<时间>`，由 `revert_auto_landing.py` 按批撤回。
 
 ## 实体身份与职业
 
 公司资料复用 `entity.metadata_json`、HTTPX、官网公司概要表和定义列表与标识采集器。`company_profiles` 只有通用判据（概要标签、服务条款订立方原句），按字段保存出处、原文和批次，只填空；一页多张公司表时按法人名对实体名与别名选表，公司成立与品牌启动分列，集团与分工关系不由代码推导，只作候选。`harvest_company_profiles.py` 默认产复核 JSON，`--input --apply --backup --batch auto:company-profile@…` 按缓存页重放判据后落库，清单里的别名、链接与第三方页面不写。`revert_auto_landing.py` 可撤回同批公司字段及标识，无新增依赖。
 
-Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`performer_profiles` 的整行来源保护和 `performer_alias_followup.land` 的占用检查。英文艺名只在明确允许的来源中登记，JAV 后继保留自己的名字策略。真人账号与出演者共用资料表、别名分组与头像候选；保留账号角色及旧地址。主图可以补空头像，本人档案图库仅作候选，推荐人物排除，单图失败继续其余有限候选。`harvest_western_profiles.py` 每轮至多 16 位，计划、备份、回执与批次撤回齐备；既有资料和头像保留。真实只读复核取得 Ria Kurumi 等 16 份匹配档案，无新增依赖。
+Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`performer_profiles` 的整行来源保护和 `performer_alias_followup.land` 的占用检查。英文艺名只在明确允许的来源中登记，单个罗马字词只在它就是页面主名时登记，JAV 后继保留自己的名字策略。真人账号与出演者共用资料表、别名分组与头像候选；保留账号角色及旧地址，与已登记账号说法不一的链接只进回执。出演者主图经 `avatar_followup.match_gallery` 与单人作品封面比上脸才补空头像，账号与本人档案图库仅作候选，推荐人物排除，单图失败继续其余有限候选；候选表只认判词「命中」的档案地址。`harvest_western_profiles.py` 每轮至多 16 位，计划、备份、回执与批次撤回齐备；既有资料和头像保留。真实只读复核取得 Ria Kurumi 等 16 份匹配档案，无新增依赖。
 
 身份分类复用 `entity`、来源关系、`field_owners`、SQLite 迁移与版本触发器。职业与账号角色使用独立多值断言，跨角色身份使用可撤回关系；[Schema.org Person](https://schema.org/Person) 的 `hasOccupation`、`sameAs` 与 [Role](https://schema.org/Role) 提供语义参照，2026-10-06 已核对官方文档。实现不复制外部解析器或新增依赖。目录推断和搜索命中只存候选，公开来源事实与用户复核分别保留状态。
 
-FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约、`normalise_code_key`、`upsert_asset_entity`、职业断言和 SQLite 备份。`import_fc2_sellers.py` 读取已有作品快照，不发起采集；账号地址、来源作品号和馆藏作品号必须一致。同名不同账号、作品来源冲突保留在复核产物，既有身份和资料不覆盖。写入归属为 `script:fc2-seller@<批次>`，统一撤回入口 `revert_auto_landing.py` 同时处理账号链接、别名、外部编号、卖家断言及来源关系；有后续资料或引用的实体保留。导航复用 `BoardTabs`，动画作者保留 `creator` 身份与资料路由，通过艺人分类浏览。不新增依赖或外部解析器。
+FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约、`normalise_code_key`、`upsert_asset_entity`、职业断言和 SQLite 备份。`import_fc2_sellers.py` 读取已有作品快照，不发起采集；账号地址、来源作品号和馆藏作品号必须一致。同名不同账号、作品来源冲突保留在复核产物，既有身份和资料不覆盖；计划按摄取同一判据把集合名归到已有账号，摄取不收的作品记跳过，回收站作品不挂卖家。写入归属为 `script:fc2-seller@<批次>`，统一撤回入口 `revert_auto_landing.py` 同时处理账号链接、别名、外部编号、卖家断言及来源关系；有后续资料或引用的实体保留。导航复用 `BoardTabs`，动画作者保留 `creator` 身份与资料路由，通过艺人分类浏览。不新增依赖或外部解析器。
 
 账号归属复用 `review_decision`、`creator_collection_base`、`write_owned_fields` 和全库归属审计。明确拒绝的资产与账号组合在自动摄取时跳过；用户写入保留复核入口。网黄博主只命中可信个人、内容创作者或发布账号断言，未分类账号保留全部名册入口。`attach_avatar_availability` 集中处理资料页、索引、搜索与统计的作品头像：发布账号缺少本人或出演职业证据时不提供作品帧兜底，已安装图片独立保留。来源核查清单、逐关系回执和备份存于 `peach-data/review/`。
 
