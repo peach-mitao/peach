@@ -15,7 +15,26 @@ export const THEME_OPTIONS: readonly (readonly [value: string, label: string, ic
 let systemDark: MediaQueryList | null = null;
 const prefersDark = (): MediaQueryList => (systemDark ??= matchMedia('(prefers-color-scheme: dark)'));
 
+/* 换主题时整页的颜色过渡一起播，满屏拖影。写属性前挂一张样式把过渡全关掉，写完强制算一次样式，
+ * 新颜色就直接落定，之后再摘掉也不会补播。明暗键的滑块不在其内：它那段位移本来就该跟着这次切换走。
+ * 摘除排在下一帧，同时挂一枚定时器兜底：页面不可见时 rAF 不跑，样式不能一直挂着。 */
+let transitionBlock: HTMLStyleElement | null = null;
+function suppressTransitions(): () => void {
+  if (!transitionBlock) {
+    transitionBlock = document.createElement('style');
+    transitionBlock.textContent = '*:not(.board-theme-thumb),*::before,*::after{transition:none!important}';
+  }
+  if (!transitionBlock.isConnected) document.head.append(transitionBlock);
+  return () => {
+    void getComputedStyle(document.documentElement).opacity;
+    const release = () => { cancelAnimationFrame(frame); clearTimeout(timer); transitionBlock?.remove() };
+    const frame = requestAnimationFrame(release);
+    const timer = setTimeout(release, 100);
+  };
+}
+
 export function applyTheme(choice: string = appSettingsStore().value.theme): void {
+  const restore = suppressTransitions();
   const root = document.documentElement;
   if (choice === 'system') delete root.dataset.theme; else root.dataset.theme = choice;
   const dark = choice === 'dark' || (choice === 'system' && prefersDark().matches);
@@ -26,6 +45,7 @@ export function applyTheme(choice: string = appSettingsStore().value.theme): voi
   document.querySelectorAll<HTMLMetaElement>('meta[data-theme-color]').forEach((meta) => {
     meta.media = (meta.dataset.themeColor === 'dark') === dark ? 'all' : 'not all';
   });
+  restore();
 }
 
 /** 跟随系统那一档：系统换了明暗，页面当场跟上。只接一次。 */
