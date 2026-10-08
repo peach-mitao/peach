@@ -32,6 +32,10 @@ id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接�
 西方发行方的无番号作品封面（`ASSET-ID-<id>.jpg`）在 `.scraping.json` 边车里记 `source` 与 `batch`
 （`auto:western-artwork@<时间>`）。撤回删掉封面与同组边车，作品回到没有封面的样子。
 
+关注作者建档（ADR-0096）建下的创作者在 `entity.metadata_json` 里记 `source` 与 `batch`。撤回先删
+这一批的链接与别名，再解绑关注来源；实体还被别的行引用（人挂上的作品、链接）就留着，没有才删。
+
+    revert_auto_landing.py --source auto:follow-creator
     revert_auto_landing.py --source auto:performer-alias
     revert_auto_landing.py --source auto:performer-alias --batch auto:performer-alias@812
     revert_auto_landing.py --source auto:performer-profile
@@ -54,8 +58,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach import (company_profiles, fc2_sellers, jav_poster_crop, record_rehome, sample_images,  # noqa: E402
-                   wants, western_artwork)
+from peach import (company_profiles, fc2_sellers, follow_creators, jav_poster_crop,  # noqa: E402
+                   record_rehome, sample_images, wants, western_artwork)
 from peach.config import COVER_DIR, GENERATED_DIR  # noqa: E402
 from peach.metadata_auto_apply import UNION_TAGS_SOURCE  # noqa: E402
 from peach.scripting import add_ledger_write_args, open_for_write, verify_after_write  # noqa: E402
@@ -296,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         profiles = planned_profiles(connection, args.source, args.batch)
         companies = company_profiles.planned_revert(connection, args.source, args.batch)
         sellers = fc2_sellers.planned_revert(connection, args.source, args.batch)
+        creators = follow_creators.planned_revert(connection, args.source, args.batch)
         refs = planned_refs(connection, args.source, args.batch)
         memberships = planned_memberships(connection, args.source, args.batch)
         makers = planned_makers(connection, args.source, args.batch)
@@ -312,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
         for alias in aliases:
             print(f" - 别名 {alias['entity'][:20]:<20} {alias['alias'][:40]} {alias['source']}")
         print_profiles(profiles, companies)
+        for creator in creators:
+            print(f" - 建档 {creator['name'][:20]:<20} {creator['sources']} 个来源 {creator['batch']}")
         for ref in refs:
             print(f" - 编号 {ref['entity'][:20]:<20} {ref['provider']} {ref['id']} {ref['batch']}")
         for membership in memberships:
@@ -328,7 +335,8 @@ def main(argv: list[str] | None = None) -> int:
         for rehome in rehomes:
             print(f" - 接回 {rehome['old_asset_id']:<8} → {rehome['new_asset_id']:<8} "
                   f"{rehome['name'][:40]} {rehome['batch']}")
-        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "卖家": len(sellers), "编号": len(refs),
+        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "卖家": len(sellers),
+               "关注建档": len(creators), "编号": len(refs),
                "归属": len(memberships), "片商": len(makers), "标识文件": len(files), "封面": len(covers),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
                "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
@@ -370,6 +378,8 @@ def main(argv: list[str] | None = None) -> int:
             restored = record_rehome.revert(connection, args.source, args.batch)
             reopened_wants = wants.revert(connection, args.source, args.batch)
             removed_seller_relations = fc2_sellers.revert(connection, sellers)
+            # 链接与别名已在上面按批次删掉，剩下没有别的引用的实体才删得掉。
+            creator_revert = follow_creators.revert(connection, creators)
         integrity, orphans = verify_after_write(connection)
     finally:
         connection.close()
@@ -378,7 +388,8 @@ def main(argv: list[str] | None = None) -> int:
            "删除编号": len(refs), "删除归属": len(memberships), "删除片商": len(makers),
            "删除样张": removed_samples, "删除否决": len(rejections),
            "删除标签": len(tags), "删除扁平标签": removed_tag_rows, "重开决定": reopened,
-           "撤回接回": restored, "想要回到待找": reopened_wants, "卖家关系": removed_seller_relations, "删除文件": removed,
+           "撤回接回": restored, "想要回到待找": reopened_wants, "卖家关系": removed_seller_relations,
+           "解绑关注来源": creator_revert["unbound"], "删除建档实体": creator_revert["removed"], "删除文件": removed,
            "integrity_check": integrity, "foreign_key_check": orphans})
     return 0
 

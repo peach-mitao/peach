@@ -176,6 +176,7 @@ class WebContract:
         #: 不认识任何一种后继，登记表在 `followups.REGISTRY` 里。
         from . import avatar_followup  # noqa: F401  登记补头像后继
         from . import feed_followup  # noqa: F401  登记取新作资料后继
+        from . import follow_creators  # noqa: F401  登记关注作者建档后继
         from . import performer_alias_followup  # noqa: F401  登记补女优别名后继
         from . import performer_profile_followup  # noqa: F401  登记补女优资料后继
         from . import sample_followup  # noqa: F401  登记补番号样张后继

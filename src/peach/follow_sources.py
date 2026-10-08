@@ -2033,6 +2033,7 @@ _PROFILE_LINK_HOSTS = {
     "deviantart.com": "deviantart",
     "instagram.com": "instagram",
     "gumroad.com": "gumroad",
+    "ko-fi.com": "kofi",
 }
 #: 这些站点的第一段路径是功能页而不是名字，取到了也不是手柄。
 _PROFILE_PATH_STOPWORDS = frozenset({
@@ -2042,6 +2043,8 @@ _PROFILE_PATH_STOPWORDS = frozenset({
 _PROFILE_HANDLE_RE = re.compile(r"^[A-Za-z0-9._-]{2,64}$")
 _PIXIV_USER_RE = re.compile(r"(?:^|/)users/(\d{1,20})(?:$|/)")
 _XENFORO_MEMBER_RE = re.compile(r"^members/([^/.]+)\.(\d{1,20})/?$")
+_BSKY_PROFILE_RE = re.compile(r"^profile/([^/]+)$")
+_FANTIA_FANCLUB_RE = re.compile(r"^fanclubs/(\d{1,20})(?:$|/)")
 
 
 def profile_link_identity(url: str, *, forum_host: str = "") -> tuple[str, str] | None:
@@ -2070,6 +2073,16 @@ def profile_link_identity(url: str, *, forum_host: str = "") -> tuple[str, str] 
     if host == "pixiv.net":
         matched = _PIXIV_USER_RE.search(path)
         return ("pixiv", matched.group(1)) if matched else None
+    if host.endswith(".itch.io"):
+        handle = host.removesuffix(".itch.io")
+        return ("itchio", handle) if _PROFILE_HANDLE_RE.match(handle) else None
+    if host == "bsky.app":
+        matched = _BSKY_PROFILE_RE.match(path)
+        handle = matched.group(1) if matched else ""
+        return ("bsky", handle) if _PROFILE_HANDLE_RE.match(handle) else None
+    if host == "fantia.jp":
+        matched = _FANTIA_FANCLUB_RE.match(path)
+        return ("fantia", matched.group(1)) if matched else None
     if forum_host and host == forum_host.lower().removeprefix("www."):
         matched = _XENFORO_MEMBER_RE.match(path)
         return (forum_host.split(".")[0], matched.group(1)) if matched else None

@@ -1409,6 +1409,15 @@ class ProfileLinkTests(unittest.TestCase):
                 "https://www.pixiv.net/en/users/30917150"),
             ("pixiv", "30917150"))
 
+    def test_shop_and_social_hosts_name_the_account(self):
+        for url, identity in (
+                ("https://jul3d.itch.io/", ("itchio", "jul3d")),
+                ("https://ko-fi.com/artist", ("kofi", "artist")),
+                ("https://bsky.app/profile/artist.bsky.social", ("bsky", "artist.bsky.social")),
+                ("https://fantia.jp/fanclubs/12345", ("fantia", "12345"))):
+            with self.subTest(url=url):
+                self.assertEqual(follow_sources.profile_link_identity(url), identity)
+
     def test_a_function_page_is_not_a_handle(self):
         self.assertIsNone(
             follow_sources.profile_link_identity("https://www.patreon.com/login"))
