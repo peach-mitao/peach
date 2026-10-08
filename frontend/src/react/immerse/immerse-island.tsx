@@ -1,18 +1,23 @@
-/* 沉浸岛（ADR-0031 第 11e 步）：`/immerse` 的全屏连播。片单、每一格的播放器、加载提示、手势、
- * 动作键、作者与标题都在这一棵根里。
+/* 沉浸模式（ADR-0031 第 11e 步）：`/immerse` 的全屏连播。片单、每一格的播放器、加载提示、手势、
+ * 动作键、作者与标题都在这一面里。
  *
- * 宿主是 body 末尾一个常驻容器，一棵根常驻；壳只拿 `configureImmerse` 给的命令式入口（同舞台岛），
- * 不进路由树：沉浸模式盖在所有页面之上，壳的键盘、换批与播放快捷键要随时同步问它开没开、
- * 当前是哪一个 video。
+ * 常驻面 `immerse`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进 body 末尾的常驻宿主
+ * `[data-immerse-host]`，宿主就是那个节点本身，第一次打开沉浸模式时由 `islands.ts` 的 `loadImmerse` 建好、
+ * 在画首帧的同一个任务里挂进文档。首帧就是藏着的外框。壳只拿 `configureImmerse` 给的命令式入口：沉浸
+ * 模式盖在所有页面之上，壳的键盘、换批与播放快捷键要随时同步问它开没开、当前是哪一个 video。句柄写本模块
+ * 的 store 再 `flushSync` 通知，`open(startId)` 里骨架、列表与播放器那几次绘制都在返回之前画完，紧跟着读
+ * DOM 的代码读到的就是刚画好的结构。
  *
  * 外框、动作列、作者标题与进度条由 React 画；每一格（`[data-immerse-slide]` 与里面的 `<video>`）
  * 由控制器在空轨道里命令式建、拆：Video.js 要占着那块 DOM，上下滑动的位移按帧写在格子的
  * `style.transform` 上，进度条的宽度随 timeupdate 写，这三样都不能等一次重画。
  *
- * 根不包 `.peach-react`：这块全屏层的排版一直在 Preflight 之外，按钮、链接与字号继承的是遗留层
+ * 方向键、改窗口大小与离开页面这三条监听挂在模块上、不挂在组件上：错误边界卸掉这一面之后，壳照旧能
+ * 开关它，离开页面时还开着的格照旧按会话取消读取。
+ *
+ * 宿主不包 `.peach-react`：这块全屏层的排版一直在 Preflight 之外，按钮、链接与字号继承的是遗留层
  * 的全局规则，样式全在 `immerse.css`，不用工具类。 */
-import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { useLayoutEffect, useRef, useSyncExternalStore, type MouseEvent, type PointerEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -28,7 +33,6 @@ import { replaceCatalogItem } from '../catalog-grid/catalog-grid';
 import {
   FEEDBACK_URL, feedbackReceipt, fetchItem, ItemGone, itemKey, type DetailItem,
 } from '../item-detail/item-detail';
-import { Providers } from '../providers';
 import { queryClient } from '../query';
 import {
   AXIS_LOCK_PX, DISLIKE_ADVANCE_MS, DOUBLE_TAP_MS, READY_TIMEOUT_MS, SLIDE_MS, SWIPE_PX, SYNTHETIC_CLICK_MS,
@@ -72,10 +76,9 @@ interface Dom { root: HTMLElement; track: HTMLElement; bar: HTMLElement; progres
 const CLOSED: View = { open: false, idle: false, wide: false, loading: null, shown: null };
 
 let host: ImmerseHost | null = null;
-let root: Root | null = null;
-let container: HTMLElement | null = null;
 let dom: Dom | null = null;
 let view: View = CLOSED;
+const listeners = new Set<() => void>();
 /* 每次打开、关闭各换一代：取数与等待回来时代次不对就作废。 */
 let generation = 0;
 let seed = 0;
@@ -95,24 +98,22 @@ let scrubTarget: { video: HTMLVideoElement; duration: () => number } | null = nu
 let scrubbing = false;
 
 function immerseHost(): ImmerseHost {
-  if (!host) throw new Error('沉浸岛还没有接上宿主（configureImmerse）');
+  if (!host) throw new Error('沉浸模式还没有接上宿主（configureImmerse）');
   return host;
 }
 
-function immerseRoot(): Root {
-  if (!root || !container?.isConnected) {
-    root?.unmount();
-    container = document.createElement('div');
-    container.dataset.immerseHost = '';
-    document.body.append(container);
-    root = createRoot(container);
-  }
-  return root;
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener) };
 }
 
+function notify(): void {
+  for (const listener of [...listeners]) listener();
+}
+
+/* 返回时已经画完。这一面抛错、被错误边界卸掉之后没人订阅，`view` 照旧写进 store，不画、不抛。 */
 function paint(): void {
-  const at = immerseRoot();
-  flushSync(() => at.render(<Providers><ImmerseView view={view} /></Providers>));
+  flushSync(notify);
 }
 
 /* ── 加载提示 ── */
@@ -701,11 +702,11 @@ function onKeyDown(event: KeyboardEvent): void {
   if (event.key === 'ArrowUp') void step(-1);
 }
 
-/** 接上壳给的宿主，拿回沉浸模式的命令式入口。外框随根一起画出来、藏着，第一次打开之前就在。 */
+/** 接上壳给的宿主，拿回沉浸模式的命令式入口。只调一次；壳的 `loadImmerse` 接着在路由树里打开这一面，
+ *  藏着的外框画上之后才交出句柄，第一次打开之前它就在。 */
 export function configureImmerse(next: ImmerseHost): ImmerseApi {
   const first = !host;
   host = next;
-  paint();
   if (first) {
     document.addEventListener('keydown', onKeyDown);
     // 旋转手机或改窗口大小后，同一条视频的铺满／完整显示判定可能翻转。
@@ -713,4 +714,10 @@ export function configureImmerse(next: ImmerseHost): ImmerseApi {
     addEventListener('pagehide', () => { slides.forEach((slide) => cancelStreamSession(slide.session)) });
   }
   return api;
+}
+
+/** 常驻表里的那一面：读本模块的 store，宿主还没接上时不画。 */
+export function ImmerseSurface() {
+  const at = useSyncExternalStore(subscribe, () => view);
+  return host ? <ImmerseView view={at} /> : null;
 }

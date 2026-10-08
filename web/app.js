@@ -3712,8 +3712,8 @@ async function closeItemDetail(){
 }
 
 /* ── 沉浸模式（`frontend/src/react/immerse/`）──
-   全屏连播、每一格的播放器、手势与动作键都归沉浸岛；壳只留路由入口、地址栏与首页筛选。
-   岛所在的 React 包第一次打开沉浸模式时才装载，之前 `immerseApi()` 是 null：那时它必然没开。 */
+   全屏连播、每一格的播放器、手势与动作键都归常驻面 `immerse`，由路由树画；壳只留路由入口、地址栏与首页筛选。
+   React 包第一次打开沉浸模式时才装载，之前 `immerseApi()` 是 null：那时它必然没开。 */
 const immerseHost={
   filters:()=>state,
   seekSeconds:()=>appSettings.seekSeconds,

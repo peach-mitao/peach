@@ -1,4 +1,4 @@
-/* 沉浸岛（`frontend/src/react/immerse/`）：全屏连播。
+/* 沉浸模式（常驻面 `immerse`，`frontend/src/react/immerse/`）：全屏连播。
  *
  * 桌面采用 YouTube Shorts 的三段式布局：固定 9:16 舞台居中，动作列贴在舞台右侧，作者与标题留在
  * 左下角。手机才让舞台重新铺满视口。

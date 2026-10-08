@@ -5002,7 +5002,10 @@ function hc(e) {
 }
 var gc = () => mc, _c = null, vc = null;
 function yc(e) {
-	return _c ??= import("/dist/peach-react.js").then((t) => (vc = t.configureImmerse(e), vc)), _c;
+	return _c ??= import("/dist/peach-react.js").then(async (t) => {
+		let n = t.configureImmerse(e), r = document.createElement("div");
+		return r.dataset.immerseHost = "", await ei("immerse", r, (e) => (document.body.append(e), e)), vc = n, n;
+	}), _c;
 }
 var bc = () => vc, xc = null, Sc = null;
 function Cc(e) {
