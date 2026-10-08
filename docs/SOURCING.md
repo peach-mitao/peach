@@ -668,9 +668,10 @@ Instagram 的独立用户登录会话未取得，自动适配器不进正式依�
   こすっち、スコッチ、UraLesbian 三个。
 - **身份调研先按页名查日本资料站。** 通用搜索不收 sougouwiki、av_neme 这类站，只搜通用引擎得出的「未取得」
   不算查过。`research_creator_identity_wikis.py` 只读账本，对身份待核验的创作者按规范名、去掉番号前缀的名字和
-  文件名前缀，用 EUC-JP 页名直取两站（取页层与 `scrape_codes` 共用 `WikiPages` 与页缓存）。同名页是 3 位以上出演者
-  的作品一览就记 `identity=release` 的 observed 并否掉 `unknown`；都不存在时 unknown 候选写明问过哪几页；
-  404 以外的取页失败是未取得，不进清单。清单交 `apply_entity_identity_research.py` 冻结预览、备份写入。
+  文件名前缀，用 EUC-JP 页名直取两站（取页层是补别名后继的 `WikiSitePages`，页缓存、404 记忆与来源冷却与服务共用）。
+  同名页是 3 位以上出演者的作品一览就记 `identity=release` 的 observed 并否掉 `unknown`；都不存在时 unknown 候选写明
+  问过哪几页；没有页以外的取页失败是未取得，不进清单。清单交 `apply_entity_identity_research.py` 冻结预览、备份写入。
+  处理任务结束时「查创作者身份」后继按同一判据自动问新登记和存量的创作者，命中直接落批次来源的 observed（ADR-0096）。
   改实体类型仍是用户复核。裏DVD村（uradvd-mura.com）是带会员登录的 DVD／下载商店，没有按页名寻址的系列页，
   未接入，只作人工查证线索。
 

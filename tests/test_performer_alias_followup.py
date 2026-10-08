@@ -243,7 +243,7 @@ class Case(unittest.TestCase):
         cache = self.generated / "provider-cache"
         return {alias.MINNANO: alias.MinnanoPages(cache / "minnano", self.cooldown, self.minnano,
                                                   limiter=NoWait()),
-                alias.AV_NEME: alias.AvNemePages(cache / "seesaa", self.cooldown, self.av_neme),
+                alias.AV_NEME: alias.WikiSitePages(cache / "seesaa", self.cooldown, self.av_neme),
                 alias.FC2CMADB: alias.Fc2cmadbPages(cache / "fc2cmadb", self.cooldown, self.fc2cmadb,
                                                     limiter=NoWait())}
 

@@ -20,10 +20,47 @@ WIKI_ROOTS = {'sougouwiki': 'https://seesaawiki.jp/w/sougouwiki/', 'av_neme': 'h
 LABEL_PAGE_CAST = 3
 
 
+def settled_sql(column='e.id'):
+    """身份面上已有可信断言（任何来源、任何值）或已核实是发行厂牌的实体；这些不再去查。"""
+    return (f"EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} "
+            "AND ec.status IN ('observed','approved') "
+            "AND (ec.facet='identity' OR (ec.facet='account_role' AND ec.value='studio')))")
+
+
+def researchable(name):
+    """结构目录与转载站名不是任何人的名字，拿去查页只会撞上同名的无关页。"""
+    from .classification import is_repost_creator, is_structural_creator
+    return not (is_structural_creator(name) or is_repost_creator(name))
+
+
 def lookup_keys(name, prefixes=()):
     """资料站页名候选：规范名、去掉番号前缀的名字（`COSH こすっち` → `こすっち`）、文件名里的发行前缀。"""
     keys = [name, re.sub(r'^[A-Z]{2,6}\s+(?=[^\x00-\x7f])', '', name), *prefixes]
     return list(dict.fromkeys(key.strip() for key in keys if key and key.strip()))[:3]
+
+
+def filename_prefixes(connection, entity_ids):
+    """实体 id → 名下视频文件名里的发行前缀（`classification.numbered_cast_shape`），没有就是空表。"""
+    from collections import defaultdict
+    from .classification import numbered_cast_shape
+    from .entities import normalize_entity_name
+    ids = list(dict.fromkeys(int(entity_id) for entity_id in entity_ids))
+    if not ids:
+        return {}
+    people = {normalize_entity_name(row[0]) for row in connection.execute(
+        "SELECT canonical_name FROM entity WHERE kind='performer' UNION "
+        "SELECT a.alias FROM entity_alias a JOIN entity e ON e.id=a.entity_id WHERE e.kind='performer'")}
+    files = defaultdict(list)
+    for entity_id, _asset_id, name in connection.execute(
+            "SELECT DISTINCT ae.entity_id,a.id,a.name FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
+            "WHERE ae.role='creator' AND a.medium='video' AND ae.entity_id IN (" + ','.join('?' for _ in ids) + ")",
+            ids):
+        files[entity_id].append(str(name or ''))
+    result = {}
+    for entity_id in ids:
+        shape = numbered_cast_shape(files.get(entity_id, []), people)
+        result[entity_id] = [shape['prefix']] if shape and shape['prefix'] else []
+    return result
 
 
 def _label_page(page, source):
@@ -43,12 +80,12 @@ def _label_page(page, source):
 def wiki_finding(entity_id, name, keys, pages):
     """按页名直取 sougouwiki 与 av_neme，交回 `plan()` 能读的身份清单项。
 
-    `pages` 是站名到 `sources.seesaa.WikiPages` 的映射。同名页是多位出演者的作品一览就记
+    `pages` 是站名到 `performer_alias_followup.WikiSitePages` 的映射：站上没有的页抛
+    `LookupError`，其余取页失败抛 `RuntimeError`。同名页是多位出演者的作品一览就记
     `identity=release` 的 observed，并否掉 `identity=unknown`；页都不存在时只更新 unknown 候选
-    的证据，写明实际问过哪几页。404 以外的取页失败是未取得，交 None，不冻成「没有」。
+    的证据，写明实际问过哪几页。没有页以外的取页失败是未取得，交 None，不冻成「没有」。
     """
     from urllib.parse import quote
-    from .metadata import MetadataProviderError
     from .sources.seesaa import WIKI_SOURCES
     queried = []
     for wiki, root in WIKI_ROOTS.items():
@@ -61,10 +98,10 @@ def wiki_finding(entity_id, name, keys, pages):
                 continue
             try:
                 page = pages[wiki].get(url)
-            except MetadataProviderError as error:
-                if error.status_code == 404:
-                    queried.append(f'{wiki}「{key}」（页不存在）')
-                    continue
+            except LookupError:
+                queried.append(f'{wiki}「{key}」（页不存在）')
+                continue
+            except RuntimeError:
                 return None
             found = _label_page(page, source)
             if not found:

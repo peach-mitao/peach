@@ -10,7 +10,7 @@ from peach.web_entity import q_index, q_entity, q_suggest
 from peach.web_catalog import q_items
 from peach.web_state import WebContract
 from peach.web_catalog import attach_avatar_availability
-from peach.metadata import MetadataProviderError
+from peach.performer_alias_followup import Missing, Unavailable
 from peach.sources.base import Page
 from tests.support.ledger import fresh_ledger
 
@@ -33,9 +33,9 @@ class _Pages:
     def get(self, url):
         self.asked.append(url)
         if url in self.failing:
-            raise MetadataProviderError('Wiki 网络请求未取得', kind='unavailable', retryable=True)
+            raise Unavailable('Wiki 网络请求未取得')
         if url not in self.listed:
-            raise MetadataProviderError('Wiki HTTP 请求未取得', kind='unavailable', status_code=404, retryable=True)
+            raise Missing('站上没有这一页')
         return Page(url, self.listed[url])
 
 

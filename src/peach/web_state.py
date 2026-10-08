@@ -175,6 +175,7 @@ class WebContract:
         #: 后继调度（ADR-0040）。导入 `avatar_followup` 就是它的登记动作：调度器本身
         #: 不认识任何一种后继，登记表在 `followups.REGISTRY` 里。
         from . import avatar_followup  # noqa: F401  登记补头像后继
+        from . import creator_identity_followup  # noqa: F401  登记查创作者身份后继
         from . import feed_followup  # noqa: F401  登记取新作资料后继
         from . import follow_creators  # noqa: F401  登记关注作者建档后继
         from . import performer_alias_followup  # noqa: F401  登记补女优别名后继

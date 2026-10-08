@@ -1424,11 +1424,12 @@ def _entity_followups(database, config, watermark, covered=()):
     女优也算进来（`avatar_followup.plan`）。厂牌盘上没有图的派补厂牌后继
     （`studio_followup.plan`），官网与标识在那一条里一起补。新女优另派一条补别名后继
     （`performer_alias_followup.plan`，ADR-0055）与一条补女优资料后继
-    （`performer_profile_followup.plan`，ADR-0067）。
+    （`performer_profile_followup.plan`，ADR-0067）。新创作者派一条查身份后继
+    （`creator_identity_followup.plan`，ADR-0096）。
 
     这一轮的名额（`MAX_FOLLOWUPS`）先给新登记的，余下的给库里早就登记的存量（ADR-0053）：
-    补别名与补女优资料各留出至多自己的 `STOCK_SHARE` 条，厂牌先取至多自己的那一份，
-    其余给女优头像。补别名的存量先排缺头像的女优（ADR-0072）。
+    补别名与补女优资料各留出至多自己的 `STOCK_SHARE` 条，厂牌与创作者身份先各取至多自己的
+    那一份，其余给女优头像。补别名的存量先排缺头像的女优（ADR-0072）。
     存量每轮往前推一截，跑过又没变的不再派。
 
     只声明，不执行：派发在调用方结算这一轮时发生，真正去跑的是 `followups` 那一层。
@@ -1436,8 +1437,8 @@ def _entity_followups(database, config, watermark, covered=()):
     """
     if database is None or watermark is None:
         return []
-    from . import (avatar_followup, performer_alias_followup, performer_profile_followup,
-                   seed_followup, studio_followup)
+    from . import (avatar_followup, creator_identity_followup, performer_alias_followup,
+                   performer_profile_followup, seed_followup, studio_followup)
     from .followups import Attempts, attempts_root
     from .task_runs import MAX_FOLLOWUPS
     generated = config.directory('generated')
@@ -1453,6 +1454,7 @@ def _entity_followups(database, config, watermark, covered=()):
                                           since_entity_id=watermark)
             found += performer_alias_followup.plan(connection, since_entity_id=watermark)
             found += performer_profile_followup.plan(connection, since_entity_id=watermark)
+            found += creator_identity_followup.plan(connection, since_entity_id=watermark)
             taken = {item.key for item in found}
             aliases = min(performer_alias_followup.STOCK_SHARE, max(0, MAX_FOLLOWUPS - len(found)))
             profiles = min(performer_profile_followup.STOCK_SHARE,
@@ -1460,6 +1462,11 @@ def _entity_followups(database, config, watermark, covered=()):
             found += studio_followup.stock(
                 connection, generated / 'logos', attempts,
                 limit=min(studio_followup.STOCK_SHARE,
+                          max(0, MAX_FOLLOWUPS - len(found) - aliases - profiles)),
+                skip=taken)
+            found += creator_identity_followup.stock(
+                connection, attempts,
+                limit=min(creator_identity_followup.STOCK_SHARE,
                           max(0, MAX_FOLLOWUPS - len(found) - aliases - profiles)),
                 skip=taken)
             found += avatar_followup.stock(connection, generated / 'avatars', attempts,

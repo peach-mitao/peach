@@ -99,6 +99,7 @@ TASK_LABELS = {
     "jav-covers": "封面批量抓取",
     "entity-avatar": "补实体头像",
     "studio-mark": "补厂牌官网与标识",
+    "creator-identity": "查创作者身份",
     "code-samples": "补番号样张",
     "feed-check": "订阅源拉取",
     "feed-scrape": "取新作资料",
