@@ -566,6 +566,30 @@ class VerificationTests(unittest.TestCase):
         self.assertFalse(candidates[0][2])
         self.assertIn("src/peach/__init__.py", candidates[0][1])
 
+    def test_holder_notes_never_crowd_the_full_baseline_out_of_the_scan(self):
+        self.certify(self.repo, ("full",))
+        folder = evidence.evidence_dir(self.repo)
+        for index in range(40):
+            (folder / f"{index:064x}.lock.holder.json").write_text("{}", encoding="utf-8")
+        candidates = list(evidence.baselines(self.repo, evidence.inputs(self.repo)))
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][1], [])
+
+    def test_a_record_deleted_while_the_folder_is_scanned_is_skipped(self):
+        self.certify(self.repo, ("full",))
+        gone = evidence.evidence_dir(self.repo) / f"{'0' * 64}.json"
+        gone.write_text("{}", encoding="utf-8")
+        stat = Path.stat
+
+        def vanished(path, *args, **kwargs):
+            if path.name == gone.name:
+                raise FileNotFoundError(path)
+            return stat(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "stat", vanished):
+            candidates = list(evidence.baselines(self.repo, evidence.inputs(self.repo)))
+        self.assertEqual(len(candidates), 1)
+
     def test_runner_rejects_changes_during_verification(self):
         def mutate():
             (self.repo / "README.md").write_text("测试期间改动\n", encoding="utf-8")
