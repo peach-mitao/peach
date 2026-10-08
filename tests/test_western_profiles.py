@@ -46,6 +46,50 @@ class WesternProfileTests(unittest.TestCase):
             self.assertNotIn(key,facts)
         self.assertEqual(facts['active_until'],2025)
 
+    def test_split_active_years_use_the_first_start_and_the_last_end(self):
+        for raw, until in [('2014 - 2017, 2019 - 2021', 2021), ('2014 - 2017, 2019 - present', None)]:
+            with self.subTest(raw=raw):
+                body = self.page(self.cell('Years active', raw))
+                facts = profile(lambda *a, body=body: HttpResponse(200, {}, body), 'Christy White')['profile']
+                self.assertEqual(facts['debut_year'], 2014)
+                self.assertEqual(facts.get('active_until'), until)
+
+    def test_profile_links_that_disagree_with_held_links_are_reported_not_written(self):
+        with tempfile.TemporaryDirectory() as directory, closing(sqlite3.connect(fresh_ledger(Path(directory).resolve()))) as connection:
+            entity_id = connection.execute("INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at) VALUES('performer','Christy White','christy white','t','t')").lastrowid
+            connection.executemany("INSERT INTO entity_link(entity_id,link_kind,label,url,hostname,created_at,updated_at) VALUES(?,?,?,?,?,'t','t')",
+                                   [(entity_id, 'social', 'X', 'https://x.com/christy_a', 'x.com'),
+                                    (entity_id, 'official', '官网', 'https://christy.example/', 'christy.example')])
+            body = self.page() + (b'<div id="socialicons"><a class="proficon x" href="https://twitter.com/christy_b">X</a>'
+                                  b'<a class="proficon www" href="https://linktr.ee/christy">Web</a>'
+                                  b'<a class="proficon instagram" href="https://www.instagram.com/christy">IG</a></div>')
+            record = profile(lambda *a: HttpResponse(200, {}, body), 'Christy White')
+            with connection:
+                result = land(connection, entity_id, 'Christy White', record, batch='auto:babepedia-profile@links')
+            self.assertEqual([item['reason'] for item in result['link_conflicts']], ['X 已登记另一个账号', '已有官网'])
+            self.assertEqual(len(result['added_links']), 1)
+            self.assertEqual(connection.execute('SELECT count(*) FROM entity_link WHERE entity_id=?', (entity_id,)).fetchone()[0], 3)
+
+    def test_one_failed_profile_keeps_the_others_in_the_plan(self):
+        from types import SimpleNamespace
+        from scripts import harvest_western_profiles as harvest
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            path = fresh_ledger(root)
+            with closing(sqlite3.connect(path)) as connection, connection:
+                connection.executemany("INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) VALUES(?,'performer',?,?,'t','t')",
+                                       [(1, 'Christy White', 'christy white'), (2, 'Someone Else', 'someone else')])
+            waits = []
+            limiter = SimpleNamespace(wait=waits.append)
+            http = lambda *a: HttpResponse(200, {}, self.page())
+            http.close = lambda: None
+            args = SimpleNamespace(db=path, entity=[2, 1, 3], profile_url=None, plan=root / 'plan.json', out=root / 'out.json')
+            self.assertEqual(harvest.collect(args, http, limiter)['issues'], 2)
+            records = json.loads((root / 'plan.json').read_text(encoding='utf8'))
+            self.assertEqual([(record['entity_id'], 'issue' in record) for record in records], [(1, False), (2, True), (3, True)])
+            self.assertEqual(len(waits), 2)
+
     def test_babepedia_alias_identity_is_required_for_all_profile_fields(self):
         with self.assertRaisesRegex(ValueError,'身份不一致'):
             profile(lambda *a:HttpResponse(200,{},self.page()),'Someone Else')
@@ -64,6 +108,41 @@ class WesternProfileTests(unittest.TestCase):
             self.assertEqual(facts['profile']['height'],149)
             self.assertIn('Kurumi Momota',[r[0] for r in connection.execute('SELECT alias FROM entity_alias WHERE entity_id=?',(entity_id,))])
             self.assertGreater(facts['name_groups']['total'],1)
+
+    def test_single_latin_names_land_only_as_the_page_primary_name(self):
+        with tempfile.TemporaryDirectory() as directory, closing(sqlite3.connect(fresh_ledger(Path(directory).resolve()))) as connection:
+            first = connection.execute("INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at) VALUES('performer','Lena Anderson','lena anderson','t','t')").lastrowid
+            body = b'<h1 id="babename">Blaire Ivory</h1><h2 id="aka"><small>Also known as:</small>Lena Anderson - Lena - Mara - Mara Watson - Colett</h2>'
+            record = profile(lambda *a: HttpResponse(200, {}, body), 'Lena Anderson')
+            with connection:
+                land(connection, first, 'Lena Anderson', record, batch='auto:babepedia-profile@single')
+            self.assertEqual(sorted(r[0] for r in connection.execute('SELECT alias FROM entity_alias WHERE entity_id=?', (first,))),
+                             ['Blaire Ivory', 'Mara Watson'])
+            second = connection.execute("INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at) VALUES('performer','Kitten Doe','kitten doe','t','t')").lastrowid
+            body = b'<h1 id="babename">Kittenx</h1><h2 id="aka"><small>Also known as:</small>Kitten Doe - Kitty</h2>'
+            record = profile(lambda *a: HttpResponse(200, {}, body), 'Kitten Doe')
+            with connection:
+                land(connection, second, 'Kitten Doe', record, batch='auto:babepedia-profile@primary')
+            self.assertEqual([r[0] for r in connection.execute('SELECT alias FROM entity_alias WHERE entity_id=?', (second,))], ['Kittenx'])
+
+    def test_repair_drops_stored_single_latin_aliases_except_the_page_primary_name(self):
+        from scripts import repair_western_single_aliases as repair
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            path = fresh_ledger(root)
+            with closing(sqlite3.connect(path)) as connection, connection:
+                connection.execute("INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) VALUES(1,'performer','Lena Anderson','lena anderson','t','t')")
+                connection.executemany("INSERT INTO entity_alias(entity_id,alias,normalized_alias,source) VALUES(1,?,?,?)",
+                                       [('Lena', 'lena', 'auto:babepedia-profile@1'), ('Mara Watson', 'mara watson', 'auto:babepedia-profile@1'),
+                                        ('Kittenx', 'kittenx', 'auto:babepedia-profile@1'), ('Anna', 'anna', 'user:alias')])
+            (root / 'plan.json').write_text(json.dumps([{'entity_id': 1, 'matched_name': 'Kittenx'}]), encoding='utf-8')
+            common = ['--db', str(path), '--plan', str(root / 'plan.json'), '--output', str(root / 'receipt.json')]
+            self.assertEqual(repair.main(common), 0)
+            self.assertEqual(repair.main([*common, '--apply', '--backup', str(root / 'backup.db')]), 0)
+            with closing(sqlite3.connect(path)) as connection:
+                self.assertEqual(sorted(r[0] for r in connection.execute('SELECT alias FROM entity_alias')),
+                                 ['Anna', 'Kittenx', 'Mara Watson'])
 
     def test_named_person_gallery_adds_candidates_and_excludes_other_people(self):
         body = self.page() + b'<div id="profbox2"><a class="img" href="/pics/Christy.jpg"></a></div><div class="useruploads2"><a class="img" href="/user-uploads/Christy.jpg"><img alt="Christy White"></a><a class="img" href="/user-uploads/Other.jpg"><img alt="Someone Else"></a></div><a class="img" href="/pics/related.jpg"><img alt="Christy White"></a>'

@@ -17,7 +17,7 @@
    `metadata_alias_resolve` 的判据不收，也不拿去检索。
 4. **短单名不收**：两个字以内的写法（`舞香`、`茜`）与三个字以内的纯假名（`そら`、`みく`）
    只是名、不带姓，会命中别人（`entities.is_short_single_name`）；罗马字写法也不收，日文站和
-   图库都用不上它。
+   图库都用不上它。西方资料页收罗马字，单个词只在它就是页面主名时收（`latin_rejection`）。
 5. **四种不写**，与 `scripts/apply_alias_candidates.py` 同一口径：已有、被另一条实体占用、
    统称已变、查无此人。
 6. **两条实体合成一条**（ADR-0064）：minnano-av 或 av_neme 的名字栏把她和账本里另一条女优
@@ -145,6 +145,22 @@ def rejection(name: str) -> str:
         return "短单名，会命中别人"
     if is_planning_alias(name):
         return "一次性称呼"
+    if is_descriptive(name):
+        return "描述性称呼"
+    return ""
+
+
+def latin_rejection(name: str, primary: str) -> str:
+    """允许罗马字的来源（西方资料页）里，这个写法不收的原因；收得下返回空串。
+
+    `Lena`、`Anna`、`Mara` 这种单个词是名不是艺名，同名的人成百上千；只有它就是这一页的
+    主名（页面把它当作这个人的完整艺名）时才收。企划名义的判据按日文的名字边界切分，
+    罗马字的名与姓之间就是空格，不适用；描述性称呼照旧不收。
+    """
+    if len(name.split()) < 2 and match_key(name) != match_key(primary):
+        return "罗马字单名，会命中别人"
+    if len(match_key(name)) < 4:
+        return "短单名，会命中别人"
     if is_descriptive(name):
         return "描述性称呼"
     return ""
@@ -674,7 +690,11 @@ def _owners(connection: sqlite3.Connection, *, allow_creator: bool = False) -> d
 def land(connection: sqlite3.Connection, entity_id: int, expected_name: str, site: str,
          url: str, names: list[str], batch: str, *, allow_latin: bool = False,
          allow_creator: bool = False) -> list[dict]:
-    """把一页上的写法逐个判完，该写的写进 `entity_alias`。返回每个写法一行判词。"""
+    """把一页上的写法逐个判完，该写的写进 `entity_alias`。返回每个写法一行判词。
+
+    `allow_latin` 给西方资料页用：`names[0]` 必须是页面主名，罗马字写法按
+    `latin_rejection` 判。
+    """
     base = {"entity_id": entity_id, "canonical_name": expected_name, "site": site,
             "page": url, "batch": ""}
     current = _names(connection, entity_id, allow_creator=allow_creator)
@@ -688,8 +708,8 @@ def land(connection: sqlite3.Connection, entity_id: int, expected_name: str, sit
     owners, rows = _owners(connection, allow_creator=allow_creator), []
     for name in dict.fromkeys(names):
         reason = rejection(name)
-        if allow_latin and reason == '罗马字写法':
-            reason = '' if len(match_key(name)) >= 4 else '短单名，会命中别人'
+        if allow_latin and reason == "罗马字写法":
+            reason = latin_rejection(name, names[0])
         others = sorted(owners.get(match_key(name), set()) - {entity_id})
         if reason:
             rows.append({**base, "alias": name, "action": SKIP, "detail": reason})
