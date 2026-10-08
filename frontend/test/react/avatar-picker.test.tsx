@@ -244,7 +244,7 @@ it('取景就失败时原因留在候选那一屏', async () => {
       : { ok: true, status: 200, json: async () => listing([]) }
   )));
   await openPicker();
-  await type(document.querySelector<HTMLInputElement>('input[aria-label="图片地址"]'), 'https://10.0.0.1/a.jpg');
+  await type(document.querySelector<HTMLInputElement>('input[aria-label="图片地址"]'), 'https://192.0.2.1/a.jpg');
   await click(buttonNamed('用这个地址'));
   await settle();
   expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('只接受指向公网的 https 地址');
