@@ -1797,7 +1797,11 @@ class Rule34PahealConnector(_BaseConnector):
         出处抹掉。
         """
         tags = str(thumb.get("data-tags") or "").split()
+        # 列表缩略图有两种写法：归档里早期的页面给扩展名 `data-ext='mp4'`，
+        # 现在的页面给 MIME `data-mime='video/mp4'`，两种都认。
         extension = str(thumb.get("data-ext") or "").casefold()
+        mime = str(thumb.get("data-mime") or "").casefold()
+        video = extension in {"mp4", "webm", "mov"} or mime.startswith("video/")
         link = thumb.select_one("a.shm-thumb-link[href]")
         file_link = thumb.select_one("a[href*='paheal-cdn.net'], a[href*='r34i.paheal']")
         image = thumb.select_one("img[src]")
@@ -1814,8 +1818,7 @@ class Rule34PahealConnector(_BaseConnector):
             title_is_name=False,
             partial=True,
             extra={"tag": tag, "tags": " ".join(tags), "title_from": "tags",
-                   "media_kind": "video" if extension in {"mp4", "webm", "mov"}
-                                 else "image",
+                   "media_kind": "video" if video else "image",
                    "tag_types": {value: "general" for value in tags}},
         )
 

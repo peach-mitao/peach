@@ -587,6 +587,20 @@ class Rule34PahealConnectorTests(unittest.TestCase):
                          "https://r34i.paheal-cdn.net/df/fb/video")
         self.assertFalse(item.title_is_name)
 
+    def test_list_thumb_media_kind_reads_extension_or_mime(self):
+        """视频帖在图片视图里没有图片尺寸可占位，判成图片就混进瀑布流。"""
+        listing = b"""<div class='shm-image-list'>
+<div class='shm-thumb thumb' data-ext='mp4' data-tags='initiala' data-post-id='1'></div>
+<div class='shm-thumb thumb' data-mime='video/mp4' data-tags='initiala' data-post-id='2'></div>
+<div class='shm-thumb thumb' data-mime='image/jpeg' data-tags='initiala' data-post-id='3'></div>
+</div>"""
+        connector = Rule34PahealConnector(transport=_routed(
+            lambda request: HttpResponse(
+                200, {}, PAHEAL_DETAIL_HTML if "/post/view/" in request.url else listing)))
+        kinds = {item.external_id: item.extra["media_kind"]
+                 for item in connector.fetch("initiala").candidates}
+        self.assertEqual(kinds, {"1": "video", "2": "video", "3": "image"})
+
     def test_backfill_404_means_history_is_exhausted(self):
         connector = Rule34PahealConnector(transport=_transport(status=404))
         with self.assertRaises(FollowHistoryEnd):
