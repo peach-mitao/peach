@@ -22,7 +22,8 @@ describe('切换主题', () => {
       await page.emulateMedia({ reducedMotion: 'no-preference' });
       const section = page.locator('#stats section#resource-sync');
       await section.waitFor({ state: 'visible', timeout: 15_000 });
-      await page.locator('.board-theme-thumb').waitFor({ state: 'attached' });
+      // 侧栏收起时滑块不显示，也就没有位移可看；桌面视口默认展开。
+      await page.locator('#drawer.open .board-theme-thumb').waitFor({ state: 'visible', timeout: 5_000 });
       await settle(page);
 
       const result = await section.evaluate(async (host) => {
@@ -33,7 +34,9 @@ describe('切换主题', () => {
            这里放一枚同类按钮，吃的是同一份 web/css 规则。 */
         const node = host.appendChild(Object.assign(document.createElement('button'), { className: 'resourceaction', textContent: '检查文件' }));
         const frame = () => new Promise((done) => requestAnimationFrame(() => setTimeout(done, 150)));
-        const finish = () => document.getAnimations().forEach((animation) => animation.finish());
+        // 只结束过渡：动效开着时页面上还有无限循环的光晕动画，`finish()` 会对它们抛错。
+        const finish = () => document.getAnimations()
+          .forEach((animation) => { if (animation instanceof CSSTransition) animation.finish() });
         const transitions = (element: Element) => element.getAnimations()
           .map((animation) => (animation as CSSTransition).transitionProperty);
         const colours = () => document.getAnimations()
@@ -61,12 +64,10 @@ describe('切换主题', () => {
         const switched = transitions(node);
         const page = colours();
         const slid = transitions(thumb);
-        const blocked = document.head.querySelectorAll('style').length;
         await frame();
         const restored = getComputedStyle(node).transitionProperty;
-        const released = document.head.querySelectorAll('style').length;
         node.remove();
-        return { declared, raw, switched, page, slid, restored, blocked, released };
+        return { declared, raw, switched, page, slid, restored };
       });
 
       assert.match(result.declared, /background-color/, `这枚按钮没有声明颜色过渡：${result.declared}`);
@@ -74,8 +75,7 @@ describe('切换主题', () => {
       assert.deepEqual(result.switched, [], `applyTheme 之后按钮仍在过渡：${result.switched.join(', ')}`);
       assert.deepEqual(result.page, [], `applyTheme 之后页面上仍有颜色过渡：${result.page.join('; ')}`);
       assert.deepEqual(result.slid, ['transform'], `明暗键滑块没有跟着位移：${result.slid.join(', ')}`);
-      assert.equal(result.restored, result.declared, '下一帧之后按钮的过渡没有恢复');
-      assert.equal(result.released, result.blocked - 1, '关过渡的临时样式没有摘掉');
+      assert.equal(result.restored, result.declared, '下一帧之后按钮的过渡没有恢复，关过渡的临时样式还挂着');
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
