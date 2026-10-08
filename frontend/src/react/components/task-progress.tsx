@@ -12,7 +12,7 @@ export function TaskProgress({ label, value = 0, total, embedded = false }: {
     })}>
       {total && total > 0 ? <>
         <Progress label={label} value={value} max={total} />
-        <p className="text-caption-1-regular text-text-secondary">{label}</p>
+        <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{label}</p>
       </> : <LoadingDots label={label} />}
     </div>
   );

@@ -344,6 +344,35 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     } finally { await opened.close(); }
   });
 
+  it('输入框失败态只把框线换成 danger 色：填充照静止态，原因用说明文字的灰', { timeout: 60_000 }, async () => {
+    const opened = await openPlaylistsPage(browser);
+    const { page } = opened;
+    try {
+      const form = page.locator('[data-playlist-create]');
+      const resting = await form.locator('[data-input-size] > div[data-rac]').evaluate((node) => getComputedStyle(node).backgroundColor);
+      await form.getByRole('button', { name: '新建' }).click();
+      await form.locator('[data-input-size] > div[data-rac][data-invalid]').waitFor();
+      const looks = await form.locator('[data-input-size]').evaluate((root) => {
+        const probe = (token: string) => {
+          const swatch = document.createElement('i');
+          swatch.style.color = `var(${token})`;
+          root.append(swatch);
+          const color = getComputedStyle(swatch).color;
+          swatch.remove();
+          return color;
+        };
+        const group = getComputedStyle(root.querySelector(':scope > div[data-rac]')!);
+        return {
+          fill: group.backgroundColor, outline: group.outlineColor, width: group.outlineWidth,
+          reason: getComputedStyle(root.querySelector(':scope > [slot="errorMessage"]')!).color,
+          danger: probe('--color-border-error-default'), secondary: probe('--color-text-secondary'),
+        };
+      });
+      assert.deepEqual([looks.fill, looks.outline, looks.width, looks.reason],
+        [resting, looks.danger, '1px', looks.secondary]);
+    } finally { await opened.close(); }
+  });
+
   it('短菜单共享悬停面，弹窗关闭释放焦点与遮罩', { timeout: 60_000 }, async () => {
     const opened = await openPlaylistsPage(browser);
     const { page } = opened;

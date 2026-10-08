@@ -110,4 +110,19 @@ describe('混排作品的画面框',()=>{
    }finally{await context.close()}
   });
  }
+ it('Shift 连选几张卡不把中间的文字刷成选区',async()=>{
+  const context=await browser.newContext({viewport:{width:1280,height:900}});
+  try{
+   const page=await context.newPage();
+   await openHome(page,'big');
+   const titles=page.locator('#grid [data-media-grid] > [data-media-card] [data-media-title]');
+   await titles.nth(0).click({modifiers:['Control']});
+   assert.equal(await titles.nth(0).evaluate(node=>getComputedStyle(node.closest('[data-media-card]')!).userSelect),'none');
+   /* 多选态的 `user-select: none` 之外，Shift 按下那一下本身也不起选区：撤掉前者再点，两道各验一次。 */
+   await page.addStyleTag({content:'.peach-react [data-media-card]{user-select:text !important}'});
+   await titles.nth(3).click({modifiers:['Shift']});
+   await page.locator('#grid [data-media-card][data-selected]').nth(3).waitFor();
+   assert.equal(await page.evaluate(()=>String(getSelection())),'');
+  }finally{await context.close()}
+ });
 });

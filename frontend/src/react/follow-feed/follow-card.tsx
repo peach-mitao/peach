@@ -15,6 +15,7 @@ import { memo, useCallback, useRef, useState, type MouseEvent } from 'react';
 import { esc, fmtDur, icon } from '@peach/legacy/core';
 import { tagLabel } from '@peach/legacy/tags';
 
+import { suppressShiftTextSelection } from '../components/row-click';
 import { MIX_FLIP_FACES, useStackFlip } from '../components/use-stack-flip';
 import {
   followStack, itemForMedia, videoItems, type FollowContext, type FollowFeedActions,
@@ -135,7 +136,7 @@ function FollowCardView(props: FollowCardProps) {
   return (
     <article ref={attach} data-media-card="" data-follow-item={item.id} data-status={item.status}
       data-follow-image={imageView ? '' : undefined} data-collection={stack.isMix ? '' : undefined}
-      data-selected={selected ? '' : undefined} onClick={click}
+      data-selected={selected ? '' : undefined} onClick={click} onMouseDown={suppressShiftTextSelection}
       onMouseEnter={flip.onPointerEnter} onMouseLeave={flip.onPointerLeave}>
       <div data-follow-visual="" data-mix-stack={stack.isMix ? '' : undefined}>
         <button type="button" data-follow-open="" aria-label={`打开 ${item.title} 详情`} />

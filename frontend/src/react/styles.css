@@ -476,6 +476,8 @@
   transition: transform var(--lift-motion, var(--board-motion));
 }
 .peach-react [data-mix-avatars] > * + * { margin-left: -22px; }
+/* 没有图的一枚只有居中的首字母，叠到 -22px 时字被左边那枚盖掉大半：这一枚只让出 8px，字整个露出来。 */
+.peach-react [data-mix-avatars] > * + :not(:has(img)) { margin-left: -8px; }
 .peach-react [data-mix-avatars] > :nth-child(1) { z-index: 5; }
 .peach-react [data-mix-avatars] > :nth-child(2) { z-index: 4; }
 .peach-react [data-mix-avatars] > :nth-child(3) { z-index: 3; }

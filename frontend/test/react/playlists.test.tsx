@@ -109,6 +109,11 @@ describe('首屏', () => {
 });
 
 describe('卡片', () => {
+  it('上千条的徽标带千分位', async () => {
+    const host = await open([row(1, { item_count: 98765 })]);
+    expect(card(host, 1).querySelector('[data-mix-badge]')?.textContent).toBe('98,765 个视频');
+  });
+
   it('来源、条数与封面按行画；点封面从续播点接着播', async () => {
     const given = props();
     const host = await open([row(1, { source_kind: 'mix', current_asset_id: 12, item_count: 3 }), row(2)], given);

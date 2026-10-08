@@ -56,7 +56,7 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   box-shadow: 0 0 0 8px var(--hover);
 }
 .peach-react [data-media-card]:not([data-variant="resource"], [data-variant="junk"]):hover [data-media-pic] { filter: saturate(.9) brightness(.94); }
-.peach-react [data-select-mode] [data-media-card] { cursor: default; }
+.peach-react [data-select-mode] [data-media-card] { cursor: default; user-select: none; }
 .peach-react [data-select-mode] :is([data-media-open], [data-media-preview], [data-media-later], [data-media-seek]),
 .peach-react [data-select-mode] :is([data-media-later], [data-media-seek]) button { pointer-events: none !important; }
 @media (hover: hover) and (pointer: fine) {
@@ -489,6 +489,8 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   transition: transform var(--lift-motion, var(--board-motion));
 }
 .peach-react [data-media-avatars] > * + * { margin-left: -22px; }
+/* 没有图的一枚只有居中的首字母，叠到 -22px 时字被左边那枚盖掉大半：这一枚只让出 8px，字整个露出来。 */
+.peach-react [data-media-avatars] > * + :not(:has(img)) { margin-left: -8px; }
 .peach-react [data-media-avatars] > :nth-child(1) { z-index: 5; }
 .peach-react [data-media-avatars] > :nth-child(2) { z-index: 4; }
 .peach-react [data-media-avatars] > :nth-child(3) { z-index: 3; }

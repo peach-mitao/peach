@@ -171,10 +171,38 @@
  * 悬停与聚焦仍归组件自己那圈 ring，所以这条只认没有这两个状态的那一刻；用 outline 而不是
  * ring，是因为 ring 的 box-shadow 归组件，改写它就会连带盖掉那两个状态。
  * 外壳是 TextField 下那个 React Aria Group（`data-rac`）；它没有 aria-label 时 role 落成
- * presentation，所以不能按 role 认。 */
-.peach-react [data-input-size] > div[data-rac]:not([data-hovered]):not([data-focus-within]) {
+ * presentation，所以不能按 role 认。失败态的框线归下一条，这里让开。 */
+.peach-react [data-input-size] > div[data-rac]:not([data-hovered]):not([data-focus-within]):not([data-invalid]) {
   outline: 1px solid var(--color-border-button-default);
   outline-offset: -1px;
+}
+
+/* 输入框的失败态：填充照静止态，只把框线换成 danger 色，聚焦时那圈 ring 也是 danger 色。
+ * BoardUI 默认整块铺粉底、下面的原因写红字；Peach 的失败态统一按 Vercel Fieldset 只让框线变色，
+ * 原因照常写在框下，用说明文字的颜色。上游副本不改（`boardui/ORIGIN.md`），在这里统一压过去。 */
+.peach-react [data-input-size] > div[data-rac][data-invalid] {
+  background-color: var(--color-background-tertiary-default);
+  color: var(--color-foreground-icon-tertiary);
+  outline: 1px solid var(--color-border-error-default);
+  outline-offset: -1px;
+}
+
+.peach-react [data-input-size] > div[data-rac][data-invalid][data-focus-within] {
+  --tw-ring-color: var(--color-border-error-default);
+}
+
+.peach-react [data-input-size] > [slot="errorMessage"] {
+  color: var(--color-text-secondary);
+}
+
+.peach-react [data-input-size] input[aria-invalid="true"]::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 框下的说明与原因常是服务端原话：长路径和无空格的串就地折行，不撑宽卡片。 */
+.peach-react [data-input-size] > [slot="errorMessage"],
+.peach-react [data-input-size] > [slot="description"] {
+  overflow-wrap: anywhere;
 }
 
 /* 横着滚的那几条不画滚动条：拖得动、也能滚轮横滚，一条系统灰柱子横在图表或分段控件

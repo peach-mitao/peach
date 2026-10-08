@@ -11026,7 +11026,7 @@ function xt({ title: e, lede: t, busy: n = !1, children: r }) {
 						children: e
 					}),
 					t ? /* @__PURE__ */ (0, B.jsx)("p", {
-						className: "text-body-2-regular text-text-secondary",
+						className: "whitespace-pre-line text-body-2-regular text-text-secondary wrap-anywhere",
 						children: t
 					}) : null
 				]
@@ -20248,7 +20248,7 @@ function Xm(e) {
 		ref: t
 	});
 }
-var Zm = "inline-flex w-max max-w-full items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-2lg bg-background-tertiary-default p-1", Qm = "flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-body-medium whitespace-nowrap text-text-secondary outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring data-focus-visible:ring-2 data-focus-visible:ring-border-focus-ring data-selected:bg-background-primary-default data-selected:text-text-primary data-selected:shadow-card dark:data-selected:bg-background-primary-hover";
+var Zm = "inline-flex w-max max-w-full items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-2lg bg-background-tertiary-default p-1", Qm = "flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 max-sm:px-2 text-body-medium whitespace-nowrap text-text-secondary outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring data-focus-visible:ring-2 data-focus-visible:ring-border-focus-ring data-selected:bg-background-primary-default data-selected:text-text-primary data-selected:shadow-card dark:data-selected:bg-background-primary-hover";
 //#endregion
 //#region src/react/settings/busy-props.ts
 function $m(e) {

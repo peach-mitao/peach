@@ -3,7 +3,7 @@
  * 勾选框本来就在行首，但它只有 16px，一整行的其余部分点了没反应的话，选几条就要瞄几次。
  * 判「空白」看的是点到的元素往上找有没有可交互的祖先，找到行为止：行外面的祖先不算，
  * 否则整张表包在一个 `label` 里时每一下都成了「点在控件上」。 */
-import type { SyntheticEvent } from 'react';
+import type { MouseEvent, SyntheticEvent } from 'react';
 
 const INTERACTIVE = [
   'a', 'button', 'input', 'select', 'textarea', 'label',
@@ -16,4 +16,10 @@ export function clickedBlank(event: SyntheticEvent | Event, row: Element): boole
   if (!(target instanceof Element) || !row.contains(target)) return false;
   const control = target.closest(INTERACTIVE);
   return !control || !row.contains(control) || control === row;
+}
+
+/** 卡片网格的 `onMouseDown`：按着 Shift 点卡是范围多选，这一下不让浏览器把两次点击之间的
+ * 文字一并刷成选区。只拦按下，`click` 照常冒上来交给选择逻辑。 */
+export function suppressShiftTextSelection(event: MouseEvent): void {
+  if (event.shiftKey) event.preventDefault();
 }

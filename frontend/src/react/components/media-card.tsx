@@ -28,6 +28,7 @@ import { spinnerHtml } from '@peach/legacy/ui';
 
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
 import { ArtSlot } from './art-slot';
+import { suppressShiftTextSelection } from './row-click';
 
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
 const PORTRAIT_RATIO = 9 / 16;
@@ -234,7 +235,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
     <article ref={attach} data-media-card="" data-id={item.id} data-variant={variant}
       data-part-seed={parts ? parts.seed_id : undefined} data-stacked={stacked ? '' : undefined}
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click}>
+      onClick={click} onMouseDown={suppressShiftTextSelection}>
       <button type="button" data-media-open="" data-open=""
         aria-label={`打开 ${shownName}${parts ? '分卷' : editions ? '版本' : '详情'}`} />
       {stacked ? <div data-media-stack="">{pic}</div> : pic}
@@ -297,7 +298,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
   return (
     <article ref={card} data-media-card="" data-id={item.id} data-variant="resource" data-medium={item.medium || 'other'}
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click}>
+      onClick={click} onMouseDown={suppressShiftTextSelection}>
       <div data-media-pic="" style={{ '--card-ratio': String(16 / 9) } as CSSProperties}>
         <span data-media-glyph=""><Icon name={glyph} /><b>{label}</b></span>
         {image

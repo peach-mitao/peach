@@ -140,6 +140,12 @@ describe('浮条', () => {
     expect(root.querySelector('[data-batch-scope]')!.getAttribute('data-context')).toBe('junk');
   });
 
+  it('上千项的计数带千分位', async () => {
+    const { root, render } = await setup();
+    await render({ count: 12345, context: 'catalog', junkDismissed: false });
+    expect(root.querySelector('[data-selection-dock] [role="status"]')!.textContent).toBe('已选 12,345 项');
+  });
+
   it('危险键挂 data-danger 读全站那份红，每颗键带自己的 sprite 字形', async () => {
     const { root, render } = await setup();
     await render({ count: 2, context: 'catalog', junkDismissed: false });

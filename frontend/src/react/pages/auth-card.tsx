@@ -20,7 +20,7 @@ export function AuthCard({ title, lede, busy = false, children }: {
         <header className="flex flex-col gap-1">
           <img src="/peach-logo.png" alt="" width={40} height={40} className="mb-4 size-10" />
           <h1 id="auth-card-title" className="text-title-2-medium text-text-primary">{title}</h1>
-          {lede ? <p className="text-body-2-regular text-text-secondary">{lede}</p> : null}
+          {lede ? <p className="whitespace-pre-line text-body-2-regular text-text-secondary wrap-anywhere">{lede}</p> : null}
         </header>
         {children}
       </section>

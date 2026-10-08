@@ -13,9 +13,11 @@ const STOP_WIDTH = 0.4;
 
 export function Progress({ label, value, max = 100, stops = [] }: { label: string; value: number; max?: number; stops?: number[] }) {
   const total = max > 0 ? max : 1;
-  const share = (at: number) => (Math.min(Math.max(at, 0), total) / total) * SCALE;
+  const clamp = (at: number) => Math.min(Math.max(Number.isFinite(at) ? at : 0, 0), total);
+  const share = (at: number) => (clamp(at) / total) * SCALE;
+  /* 读屏值同画面一样夹在 [0, max]：超额完成读成「150 / 100」会被当成算错。 */
   return (
-    <svg role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}
+    <svg role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={clamp(value)}
       viewBox={`0 0 ${SCALE} 1`} preserveAspectRatio="none" className="h-1.5 w-full overflow-hidden rounded-full">
       <rect width={SCALE} height={1} className="fill-background-tertiary-default" />
       <rect width={share(value)} height={1} className="fill-border-focus-ring" />
