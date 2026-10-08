@@ -808,6 +808,40 @@ class KemonoConnectorTests(unittest.TestCase):
         self.assertIn("888", [c.external_id for c in result.candidates])
         self.assertEqual(result.probed, 1)
 
+    def test_a_post_already_in_the_ledger_is_not_probed_again(self):
+        """库里有的帖子当初判过保留；每次检查都再探一遍，请求数就跟着库存涨。"""
+        posts = json.loads(KEMONO_POSTS)
+        posts.append({"id": "888", "title": "March pack", "published": "2026-03-01T00:00:00",
+                      "file": {}, "attachments": [], "substring": "Here you go"})
+
+        def route(request):
+            if "/post/" in request.url:
+                raise AssertionError(f"未预期的详情请求：{request.url}")
+            return HttpResponse(200, {}, json.dumps(posts).encode())
+
+        result = KemonoConnector(transport=_routed(route), enrich_skip={"888"}).fetch("fanbox/1")
+        self.assertIn("888", [c.external_id for c in result.candidates])
+        self.assertEqual(result.probed, 0)
+
+    def test_a_rate_limited_probe_stops_the_check(self):
+        """探测被 429 挡回来时不能当成「保留」接着探下一帖，要让这次检查停下。"""
+        posts = json.loads(KEMONO_POSTS)
+        posts.extend({"id": str(ident), "title": f"pack {ident}",
+                      "published": "2026-03-01T00:00:00", "file": {}, "attachments": [],
+                      "substring": "Here"} for ident in (801, 802, 803))
+        probes = []
+
+        def route(request):
+            if "/post/" in request.url:
+                probes.append(request.url)
+                return HttpResponse(429, {"Retry-After": "90"}, b"")
+            return HttpResponse(200, {}, json.dumps(posts).encode())
+
+        with self.assertRaises(FollowSourceRateLimited) as raised:
+            KemonoConnector(transport=_routed(route)).fetch("fanbox/1")
+        self.assertEqual(raised.exception.retry_after, 90.0)
+        self.assertEqual(len(probes), 1)
+
     def test_a_post_with_no_resource_at_all_is_dropped(self):
         """公告、感谢这类帖子既没有附件也没有网盘链接，抓了详情之后确认丢掉。"""
         posts = json.loads(KEMONO_POSTS)
@@ -1048,6 +1082,56 @@ class Rule34VideoConnectorTests(unittest.TestCase):
         first = result.candidates[0]
         self.assertEqual(first.extra["model_count"], 6)
         self.assertEqual(first.extra["visual_model_count"], 1)
+
+    def test_a_video_already_detailed_in_the_ledger_is_not_probed_again(self):
+        """库里补齐过的条目不再打详情页，额度全留给新条目。
+
+        跳过的候选是 `partial`：落库时详情给的正片、封面、日期不被列表值盖掉；
+        列表那份「预览片」「相对时间」也不带进 metadata。
+        """
+        seen = []
+
+        def transport(request, timeout, max_bytes):
+            seen.append(request.url)
+            body = (RULE34VIDEO_HTML if "/models/" in request.url
+                    else RULE34VIDEO_DETAIL_HTML)
+            return HttpResponse(200, {}, body)
+
+        result = Rule34VideoConnector(transport=transport, enrich_skip={"4542721"}).fetch(
+            "lazyprocrastinator")
+        known, fresh = result.candidates
+        details = [url for url in seen if "/video/" in url]
+        self.assertEqual(result.probed, 1)
+        self.assertEqual(len(details), 1)
+        self.assertNotIn("/video/4542721/", details[0])
+        self.assertTrue(known.partial)
+        self.assertNotIn("media_kind", known.extra)
+        self.assertNotIn("published_precision", known.extra)
+        self.assertFalse(fresh.partial)
+
+    def test_a_failed_probe_does_not_overwrite_the_details_already_recorded(self):
+        def transport(request, timeout, max_bytes):
+            if "/models/" in request.url:
+                return HttpResponse(200, {}, RULE34VIDEO_HTML)
+            return HttpResponse(404, {}, b"")
+
+        result = Rule34VideoConnector(transport=transport).fetch("lazyprocrastinator")
+        self.assertTrue(all(candidate.partial for candidate in result.candidates))
+
+    def test_a_rate_limited_probe_stops_the_check(self):
+        """详情页被 429 挡回来，接着探剩下的只会让整站被封得更久。"""
+        probes = []
+
+        def transport(request, timeout, max_bytes):
+            if "/models/" in request.url:
+                return HttpResponse(200, {}, RULE34VIDEO_HTML)
+            probes.append(request.url)
+            return HttpResponse(429, {"Retry-After": "120"}, b"")
+
+        with self.assertRaises(FollowSourceRateLimited) as raised:
+            Rule34VideoConnector(transport=transport).fetch("lazyprocrastinator")
+        self.assertEqual(raised.exception.retry_after, 120.0)
+        self.assertEqual(len(probes), 1)
 
 
 class PagingBackTests(unittest.TestCase):
@@ -2133,17 +2217,18 @@ class EnrichPhaseTests(unittest.TestCase):
         from peach.follow_store import _ENRICHED_PREDICATES
         for provider, factory in sorted(follow_sources.CONNECTORS.items()):
             mark = factory.ENRICHED_MARK
+            probes = factory.DEFAULT_ENRICH_BUDGET or getattr(factory, "DEFAULT_MAX_PROBES", 0)
             with self.subTest(provider=provider):
-                self.assertEqual(bool(mark), bool(factory.DEFAULT_ENRICH_BUDGET),
-                                 "有额度就得有判据，有判据就得有额度")
+                self.assertEqual(bool(mark), bool(probes),
+                                 "打详情页就得有判据，有判据就得打详情页")
                 if mark:
                     self.assertIn(mark, _ENRICHED_PREDICATES)
 
     def test_the_mark_of_an_unknown_provider_is_empty_not_an_error(self):
         self.assertEqual(follow_sources.enrichment_mark("nope"), "")
         self.assertEqual(follow_sources.enrichment_mark(""), "")
-        self.assertEqual(follow_sources.enrichment_mark("kemono"), "",
-                         "kemono 的探测是收录判定，在列表阶段做，不是第二阶段")
+        self.assertEqual(follow_sources.enrichment_mark("kemono"), "kept",
+                         "kemono 的探测是收录判定，库里有的帖子就是判过保留的")
         self.assertEqual(follow_sources.enrichment_mark("rule34xxx"), "tag_types_duration")
 
     def test_rule34xxx_is_not_marked_by_a_time_the_list_already_gave(self):

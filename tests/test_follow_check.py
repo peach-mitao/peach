@@ -184,13 +184,24 @@ class PlanCheckTests(_CheckCase):
         planned = plan_check(self.store, _Credentials())
         self.assertEqual(planned[0]["enrich_skip"], frozenset({"1"}))
 
-    def test_a_source_without_a_second_phase_never_computes_a_skip_set(self):
-        """kemono 的探测是收录判定，在列表阶段做；那里没有可跳过的第二阶段。"""
+    def test_kemono_skips_probing_every_post_it_already_kept(self):
+        """kemono 的探测是收录判定：库里有的帖子当初判过保留，不必再探。"""
         source_id = self._register(provider="kemono", ref="fanbox/1",
                                    url="https://kemono.cr/fanbox/user/1")
         self.store.record(source_id, _fetch(
             provider="kemono", ref="fanbox/1", candidates=(
                 FollowCandidate(provider="kemono", external_id="1", title="a",
+                                published_at="2026-08-26T15:21:00Z"),)),
+            moment=MOMENT)
+        self.assertEqual(plan_check(self.store, _Credentials())[0]["enrich_skip"],
+                         frozenset({"1"}))
+
+    def test_a_source_that_never_opens_detail_pages_never_computes_a_skip_set(self):
+        source_id = self._register(provider="subscribestar", ref="creator",
+                                   url="https://subscribestar.adult/creator")
+        self.store.record(source_id, _fetch(
+            provider="subscribestar", ref="creator", candidates=(
+                FollowCandidate(provider="subscribestar", external_id="1", title="a",
                                 published_at="2026-08-26T15:21:00Z"),)),
             moment=MOMENT)
         self.assertEqual(plan_check(self.store, _Credentials())[0]["enrich_skip"],
