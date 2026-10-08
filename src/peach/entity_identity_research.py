@@ -1,4 +1,8 @@
-"""公开身份来源与馆藏署名的衔接；冻结计划和逐行回执保持可撤回。"""
+"""公开身份来源与馆藏署名的衔接；冻结计划和逐行回执保持可撤回。
+
+研究清单由人或智能体读页面后写成，不是代码判据：分类断言与身份关联一律落 candidate，
+等用户复核后才 approved（ADR-0052 决策一）。
+"""
 from __future__ import annotations
 
 import re
@@ -74,7 +78,7 @@ def apply(connection, frozen):
                 'params':[entity_id,performer_id,SOURCE], 'before':_rows(connection,'entity_identity_link','left_id=? AND right_id=? AND source=?',(entity_id,performer_id,SOURCE))})
             connection.execute('INSERT OR IGNORE INTO entity_identity_link VALUES(?,?,?,?,?,?,?,?)',
                 (entity_id,performer_id,'same_person',SOURCE,finding['cast_source_url'],
-                 '发行文件完整署名与公开出演者身份一致','observed',stamp))
+                 '发行文件完整署名与公开出演者身份一致','candidate',stamp))
             for cast in row['cast']:
                 asset_id = cast['asset']['id']
                 receipt['changes'].append({'table':'asset_entity','clause':"asset_id=? AND (entity_id=? OR (entity_id=? AND source=?))",
@@ -96,7 +100,8 @@ def apply(connection, frozen):
             receipt['changes'].append({'table':'entity_classification','clause':'entity_id=? AND source=?','params':[target,SOURCE],
                 'before':_rows(connection,'entity_classification','entity_id=? AND source=?',(target,SOURCE))})
             for claim in finding['claims']:
-                write_claim(connection, entity_id=target, source=SOURCE, **claim)
+                status = 'rejected' if claim.get('status') == 'rejected' else 'candidate'
+                write_claim(connection, entity_id=target, source=SOURCE, **{**claim, 'status': status})
     for change in receipt['changes']:
         change['after'] = _rows(connection,change['table'],change['clause'],change['params'])
     return receipt

@@ -243,6 +243,41 @@ class EntityClassificationTests(unittest.TestCase):
                 classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='person',source='script:lookup',evidence='推断',**patch)
         with self.assertRaises(ValueError):
             self.claim(entity_id,'occupation','unknown_profession')
+        with self.assertRaisesRegex(ValueError,'代码判据'):
+            classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='person',
+                source='script:identity-research',source_url='https://publisher.test/profile',
+                evidence='研究清单判断',status='observed',confidence=1)
+
+    def test_only_code_sources_make_observed_claims_trusted(self):
+        _,research=self.entity('Research Person',kind='performer')
+        _,parsed=self.entity('Parsed Person',kind='performer')
+        self.connection.execute("INSERT INTO entity_classification VALUES(?,'market','japanese_av',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed',1,'t')",(research,))
+        self.claim(parsed,'market','japanese_av')
+        self.connection.commit()
+        page=q_index(WebContract(self.db),'performers',category='japanese_av')
+        self.assertEqual([row['entity_id'] for row in page['items']],[parsed])
+        self.assertEqual(page['categories'],{'japanese_av':1})
+
+    def test_research_observations_downgrade_to_candidates_and_code_facts_stay(self):
+        _,research=self.entity('Research Person',kind='performer')
+        _,parsed=self.entity('Parsed Person',kind='performer')
+        self.connection.execute("INSERT INTO entity_classification VALUES(?,'market','japanese_av',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed',0.8,'t')",(research,))
+        self.connection.execute("INSERT INTO entity_identity_link VALUES(?,?,'same_person',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed','t')",(research,parsed))
+        self.claim(parsed,'market','japanese_av')
+        plan=classification.untrusted_observed(self.connection)
+        self.assertEqual([(row['entity_id'],row['source']) for row in plan['entity_classification']],
+                         [(research,'script:identity-research')])
+        self.assertEqual(len(plan['entity_identity_link']),1)
+        self.assertEqual(classification.downgrade_untrusted_observed(self.connection),
+                         {'entity_classification':1,'entity_identity_link':1})
+        rows=self.connection.execute('SELECT entity_id,status,confidence,evidence FROM entity_classification ORDER BY entity_id').fetchall()
+        self.assertEqual([tuple(row) for row in rows],
+                         [(research,'candidate',0.8,'研究清单判断'),(parsed,'observed',1.0,'发行方资料')])
+        self.assertEqual(classification.untrusted_observed(self.connection),
+                         {'entity_classification':[],'entity_identity_link':[]})
 
     def test_cast_role_repair_and_restore_preserve_all_business_fields(self):
         asset_id,entity_id=self.entity('Known Person')
@@ -253,7 +288,9 @@ class EntityClassificationTests(unittest.TestCase):
         with self.connection:
             receipt=research.apply(self.connection,frozen)
         self.assertEqual(self.connection.execute('SELECT role FROM asset_entity WHERE asset_id=?',(asset_id,)).fetchone()[0],'performer')
-        self.assertEqual(len(classification.related_identities(self.connection,entity_id)),1)
+        self.assertEqual(self.connection.execute('SELECT group_concat(DISTINCT status) FROM entity_classification').fetchone()[0],'candidate')
+        self.assertEqual(self.connection.execute('SELECT group_concat(status) FROM entity_identity_link').fetchone()[0],'candidate')
+        self.assertEqual(classification.related_identities(self.connection,entity_id),[])
         with self.connection:
             research.restore(self.connection,receipt)
         after=dict(self.connection.execute('SELECT * FROM asset WHERE id=?',(asset_id,)).fetchone())

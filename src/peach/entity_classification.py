@@ -16,12 +16,44 @@ VALUES = {
 }
 CATEGORIES = {'japanese_av': '女优', 'amateur': '素人', 'western': '西方',
               'blogger': '网黄博主', 'seller': '卖家', 'animation': '动画作者'}
-TRUSTED = "status IN ('observed','approved')"
+#: observed 只属于代码判据（ADR-0052 决策一）：`source:` 是抓取器从来源页解析出的事实，
+#: `script:fc2-seller@` 由 FC2 作品页快照的卖家字段解析。研究与检索结论只写 candidate。
+CODE_SOURCES = ('source:', 'script:fc2-seller@')
+
+
+def _code_source_sql(column: str) -> str:
+    return '(' + ' OR '.join(f"{column}source LIKE '{prefix}%'" for prefix in CODE_SOURCES) + ')'
+
+
+def trusted_sql(alias: str = '') -> str:
+    """可信断言：用户复核，或代码判据来源的 observed。"""
+    column = f'{alias}.' if alias else ''
+    return f"({column}status='approved' OR ({column}status='observed' AND {_code_source_sql(column)}))"
+
+
+_UNTRUSTED_OBSERVED = "status='observed' AND NOT " + _code_source_sql('')
+_CLAIM_TABLES = ('entity_classification', 'entity_identity_link')
+
+
+def untrusted_observed(connection) -> dict[str, list[dict]]:
+    """标成 observed 却不出自代码判据的断言与身份关联，即存量降级计划。"""
+    plan = {}
+    for table in _CLAIM_TABLES:
+        cursor = connection.execute(f'SELECT * FROM {table} WHERE {_UNTRUSTED_OBSERVED} ORDER BY rowid')
+        columns = [column[0] for column in cursor.description]
+        plan[table] = [dict(zip(columns, row)) for row in cursor]
+    return plan
+
+
+def downgrade_untrusted_observed(connection) -> dict[str, int]:
+    """这些行降为 candidate 等用户复核；来源、证据、置信度与检查时间原样保留。"""
+    return {table: connection.execute(f"UPDATE {table} SET status='candidate' WHERE {_UNTRUSTED_OBSERVED}").rowcount
+            for table in _CLAIM_TABLES}
 
 
 def write_claim(connection, *, entity_id, facet, value, source, evidence,
                 source_url='', status='candidate', confidence=0.5, checked_at=None):
-    """目录与检索推断保持 candidate，公开来源事实使用 observed，用户复核使用 approved。"""
+    """目录、检索与研究推断保持 candidate，代码判据事实使用 observed，用户复核使用 approved。"""
     if facet not in VALUES or value not in VALUES[facet]:
         raise ValueError('未知身份分类')
     if status not in {'candidate','observed','approved','rejected'}:
@@ -32,8 +64,8 @@ def write_claim(connection, *, entity_id, facet, value, source, evidence,
         raise ValueError('approved 只属于用户复核')
     if status == 'observed' and urlsplit(source_url).scheme != 'https':
         raise ValueError('公开事实需要 HTTPS 来源')
-    if status == 'observed' and not source.startswith(('source:', 'script:')):
-        raise ValueError('公开事实需要明确来源命名空间')
+    if status == 'observed' and not source.startswith(CODE_SOURCES):
+        raise ValueError('observed 只属于代码判据来源')
     # 脚本不覆盖同来源上的用户复核。
     old = connection.execute('SELECT status FROM entity_classification WHERE entity_id=? AND facet=? AND value=? AND source=?',
                              (entity_id,facet,value,source)).fetchone()
@@ -74,7 +106,7 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
         if not has_claims:
             return '0'
         return (f"EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} "
-                f"AND ec.facet='{facet}' AND ec.value='{value}' AND {TRUSTED})")
+                f"AND ec.facet='{facet}' AND ec.value='{value}' AND {trusted_sql('ec')})")
     def work(condition):
         return (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
                 f"WHERE ca.entity_id={column} AND ca.role='performer' AND av.medium='video' "
@@ -126,10 +158,10 @@ def work_portrait_predicate(connection, column='e.id', kind_column='e.kind'):
     if not connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
         return f"{kind_column}<>'creator'"
     return (f"({kind_column}<>'creator' OR EXISTS (SELECT 1 FROM entity_classification ec "
-            f"WHERE ec.entity_id={column} AND ec.{TRUSTED} "
+            f"WHERE ec.entity_id={column} AND {trusted_sql('ec')} "
             "AND ((ec.facet='identity' AND ec.value='person') "
             "OR (ec.facet='occupation' AND ec.value IN ('adult_performer','model','actor')))) "
-            f"AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} AND ec.{TRUSTED} "
+            f"AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} AND {trusted_sql('ec')} "
             "AND ((ec.facet='occupation' AND ec.value='animator') "
             "OR (ec.facet='account_role' AND ec.value IN ('seller','studio')) "
             "OR (ec.facet='identity' AND ec.value IN ('organization','platform','collection','release')))))")
@@ -144,7 +176,7 @@ def index_scope(connection, kind: str) -> str:
         return ("(e.kind='performer' OR (e.kind='creator' AND (NOT (" + predicates['seller'] + ") "
                 "OR (" + predicates['blogger'] + ") OR (" + predicates['animation'] + ")) "
                 "AND NOT EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id=e.id "
-                "AND ec.status IN ('observed','approved') AND ((ec.facet='account_role' AND ec.value='studio') "
+                "AND " + trusted_sql('ec') + " AND ((ec.facet='account_role' AND ec.value='studio') "
                 "OR (ec.facet='identity' AND ec.value IN ('organization','platform','collection','release'))))))")
     if kind == 'creator':
         return '(' + predicates['seller'] + ')'
@@ -171,7 +203,7 @@ def related_identities(connection, entity_id):
         return []
     cursor = connection.execute("SELECT e.id,e.kind,e.canonical_name,l.relation,l.source_url,l.evidence "
         "FROM entity_identity_link l JOIN entity e ON e.id=CASE WHEN l.left_id=? THEN l.right_id ELSE l.left_id END "
-        "WHERE (l.left_id=? OR l.right_id=?) AND l.status IN ('observed','approved') ORDER BY e.kind,e.canonical_name",
+        "WHERE (l.left_id=? OR l.right_id=?) AND " + trusted_sql('l') + " ORDER BY e.kind,e.canonical_name",
         (entity_id,entity_id,entity_id))
     columns = [column[0] for column in cursor.description]
     return [dict(zip(columns,raw)) for raw in cursor]

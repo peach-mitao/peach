@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from .catalog_rules import normalise_code_key
 from .classification import creator_collection_base
 from .entities import canonicalize_entity_name, normalize_entity_name, upsert_asset_entity
-from .entity_classification import write_claim
+from .entity_classification import trusted_sql, write_claim
 
 SOURCE = 'script:fc2-seller'
 PROVIDERS = {'fc2ppvdb': 'fc2ppv-db.com', 'fc2cmadb': 'fc2cmadb.com',
@@ -138,7 +138,7 @@ def _link(connection, entity_id, record, batch):
 
 def _claim(connection, entity_id, record, owner):
     if connection.execute("SELECT 1 FROM entity_classification WHERE entity_id=? AND facet='account_role' "
-                          "AND value='seller' AND status IN ('observed','approved')", (entity_id,)).fetchone():
+                          "AND value='seller' AND " + trusted_sql(), (entity_id,)).fetchone():
         return
     write_claim(connection, entity_id=entity_id, facet='account_role', value='seller', source=owner,
                 source_url=record['source_url'], evidence=f"作品 {record['code']} 的販売者：{record['name']}；账号 {record['account_url']}",

@@ -537,11 +537,12 @@ def _creator_ingest_identity(connection, name, asset_id):
             and _creator_attribution_rejected(connection, (original, base, name), asset_id, asset[0] if asset else '')):
         return ''
     if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
+        from .entity_classification import trusted_sql
         normalized = normalize_entity_name(name)
         normalized_base = normalize_entity_name(base)
         if connection.execute("SELECT 1 FROM entity e JOIN entity_classification ec ON ec.entity_id=e.id "
             "WHERE e.kind IN ('creator','studio') AND ec.facet='account_role' "
-            "AND ec.value='studio' AND ec.status IN ('observed','approved') "
+            "AND ec.value='studio' AND " + trusted_sql('ec') + " "
             "AND (e.normalized_name IN (?,?) OR EXISTS (SELECT 1 FROM entity_alias al "
             "WHERE al.entity_id=e.id AND al.normalized_alias IN (?,?)))",
             (normalized, normalized_base, normalized, normalized_base)).fetchone():
