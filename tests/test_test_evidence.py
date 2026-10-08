@@ -19,25 +19,70 @@ from scripts import test_runner as runner
 from support.gitrepo import seed_repository
 
 
-class ResourceShardCommandTests(unittest.TestCase):
-    def test_resource_entry_keeps_shard_arguments_and_space_in_path(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            resource = Path(temporary)/'resource entry.py'
-            resource.write_text('', encoding='utf-8')
-            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': ''}):
-                original = runner.shard_command(('full',), 2, 4, Path(temporary)/'timings.json')
-            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(resource)}):
-                bounded = runner.shard_command(('full',), 2, 4, Path(temporary)/'timings.json')
-            self.assertEqual(bounded[:7], [sys.executable, '-X', 'utf8', str(resource.resolve()), '--timeout', '1800', '--'])
-            self.assertEqual(bounded[7:], original)
+class HeavyTaskSlotTests(unittest.TestCase):
+    """机器级重任务槽位：别的会话占着的槽位，本轮分片不能再用。"""
 
-    def test_missing_resource_entry_and_parallel_resource_jobs_are_rejected(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            with mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(Path(temporary)/'missing.py')}):
-                with self.assertRaisesRegex(ValueError, '不存在'):
-                    runner.shard_command(('full',), 0, 4, Path(temporary)/'timings.json')
-                with self.assertRaisesRegex(ValueError, 'jobs 1'):
-                    runner.run_shards(('full',), jobs=2, shard_count=4)
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.slots = Path(temporary.name)
+
+    def launcher(self):
+        live, peak, commands = set(), [0], []
+
+        class Shard:
+            def __init__(self, command):
+                report = Path(command[command.index('--timings') + 1])
+                report.write_text(json.dumps({'success': True, 'count': 1, 'timings': []}),
+                                  encoding='utf-8')
+                self.polls, self.returncode = 0, None
+                live.add(self)
+                peak[0] = max(peak[0], len(live))
+
+            def poll(self):
+                self.polls += 1
+                if self.polls >= 2:
+                    live.discard(self)
+                    self.returncode = 0
+                return self.returncode
+
+        def spawn(command, *, stdout, stderr, cwd):
+            commands.append(command)
+            return Shard(command)
+        return spawn, peak, commands
+
+    def test_a_slot_held_elsewhere_leaves_this_run_one_shard_at_a_time(self):
+        spawn, peak, commands = self.launcher()
+        busy = runner.heavy_slot_paths(self.slots)[0]
+        with evidence.held(busy, scope='other session'), redirect_stdout(io.StringIO()), \
+                mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(self.slots / 'gone.py')}):
+            passed, count, _ = runner.run_shards(('checks',), jobs=2, shard_count=3,
+                                                 spawn=spawn, slots=self.slots)
+        self.assertTrue(passed)
+        self.assertEqual(count, 3)
+        self.assertEqual(peak[0], 1)
+        for command in commands:
+            self.assertEqual(command[:2], [sys.executable, str(runner.ROOT / 'scripts' / 'test_runner.py')])
+
+    def test_free_slots_let_the_run_use_both(self):
+        spawn, peak, _ = self.launcher()
+        with redirect_stdout(io.StringIO()):
+            passed, _, _ = runner.run_shards(('checks',), jobs=2, shard_count=4,
+                                             spawn=spawn, slots=self.slots)
+        self.assertTrue(passed)
+        self.assertEqual(peak[0], runner.HEAVY_TASK_SLOTS)
+        for path in runner.heavy_slot_paths(self.slots):
+            with evidence.held(path):
+                pass  # 分片结束后每个槽位都还回去了，才能不等待地再拿到
+
+    def test_all_slots_busy_times_out_without_starting_a_shard(self):
+        spawn, _, commands = self.launcher()
+        paths = runner.heavy_slot_paths(self.slots)
+        with evidence.held(paths[0]), evidence.held(paths[1]), redirect_stdout(io.StringIO()):
+            with self.assertRaises(evidence.Timeout):
+                runner.run_shards(('checks',), jobs=2, shard_count=2, spawn=spawn,
+                                  slots=self.slots, slot_wait=0)
+        self.assertEqual(commands, [])
 
 
 class VerificationTests(unittest.TestCase):
@@ -305,6 +350,17 @@ class VerificationTests(unittest.TestCase):
             self.assertIn("scope full", reader.result(timeout=5))
         self.assertFalse(note.exists())
 
+    def test_busy_heavy_slots_stop_an_unsharded_run_before_any_test(self):
+        first, second = runner.heavy_slot_paths(evidence.evidence_dir(self.repo))
+        output = io.StringIO()
+        with evidence.held(first), evidence.held(second), \
+                redirect_stderr(io.StringIO()), redirect_stdout(output), \
+                mock.patch.object(runner, "ROOT", self.repo), \
+                mock.patch.object(runner, "build_suite", side_effect=AssertionError("不该开跑")):
+            self.assertEqual(runner.main(["--scope", "checks", "--lock-timeout", "0"]), 2)
+        self.assertIn("测试重任务槽位一直被占用", output.getvalue())
+        self.assertFalse(evidence.covers(evidence.read(self.repo, evidence.key(self.repo)), ("checks",)))
+
     def test_the_waiting_runner_names_the_holder_of_the_full_suite_lock(self):
         lock = evidence.evidence_dir(self.repo) / "full-suite.lock"
         output = io.StringIO()
@@ -479,7 +535,7 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "resolve_auto_scope", return_value=(("full",), "fixture")), \
                 mock.patch.object(runner, "run_local_suite", return_value=(True, 1, [])) as run:
             self.assertEqual(runner.main(["--scope", "auto"]), 0)
-        run.assert_called_once_with(("full",), 1)
+        run.assert_called_once_with(("full",), 1, slot_wait=1800)
 
     def test_baseline_does_not_expand_a_small_requested_scope(self):
         self.certify(self.repo, ("full",))

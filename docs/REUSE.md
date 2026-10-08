@@ -223,7 +223,7 @@ A 盘同父目录改名复用 CloudDrive 官方 `RenameFile`；跨父且改名�
 
 下载站的 DNS 导航步骤、hav.so 横幅、固定英文横幅和带下载套话的 HiHSP 地址卡片，按文件名与 2 MiB 上限进入复核；用户确认的「社區最新情報」精确名称 MP4 按 32 MiB 上限进入复核。普通作品图片和 `images.rar` 保留。CloudDrive WebDAV 的小文件删除复用原生 `Path.unlink`：同目录隔离改名报 WinError 50 时，最多 1 MiB 的文件先用标准库 `shutil.copyfile` 完整备份到 `generated/purge-staging/`，记录原路径、大小和 SHA256，再删除。数据库失败时恢复备份，提交后清退；大文件继续报告阻塞。该路径没有新增依赖，备份和恢复只由 `purge_assets` 管理。
 
-英文媒体文件名分词复用 `wordninja-enhanced==3.2.0`（MIT，2026-09-04 发布，Python ≥3.9，纯 Python，wheel 11.4 MB，无传递依赖）。源码经 `opensrc path pypi:wordninja-enhanced@3.2.0` 读取；原版 wordninja 的发布较旧，增强版提供标点保留和可补充词典。`space_media_names.py` 先出逐文件复核 CSV，只插入空格，保留序号、字符与扩展名，不推断人物或出处；指定目录内的真实文件核验后复用 `organize.apply_plan`、SQLite 备份及回滚日志。领域词汇在 `english_filename_words.txt`，有分词歧义时可按原名回滚。
+英文媒体文件名分词复用 `wordninja-enhanced==3.2.0`（MIT，2026-09-04 发布，Python ≥3.9，纯 Python，wheel 11.4 MB，无传递依赖）。源码经 `opensrc path pypi:wordninja-enhanced@3.2.0` 读取；原版 wordninja 的发布较旧，增强版提供标点保留和可补充词典。`space_media_names.py` 先出逐文件复核 CSV，只插入空格，保留序号、字符与扩展名，不推断人物或出处；指定目录内的真实文件核验后复用 `organize.apply_plan`、SQLite 备份及回滚日志。领域词汇在 `english_filename_words.txt`（置顶加权，条目宜少：每多一条都会压低 `a`、`of` 等高频词），常被误当成单词的拼接串在 `english_filename_nonwords.txt` 里移出词频表。撇号缩写、全大写缩写、域名与站点编号、十六进制 viewkey 不拆；西里尔形近字母按拉丁字母算切点、原字符保留。已执行批次用 `--recompute-batch <日志>` 按原名重算出复核 CSV，再走 `--apply --review-csv`。
 
 A 盘垃圾隔离使用短名称 `peach-purge-<32 位 UUID>.peach-quarantine`，扫描入口仅跳过这一精确格式；普通媒体和其他 `.tmp` 文件仍需复核。`51风流.png`、`代开实习证明.png`、`扫码约炮.png`、`探花社区.png` 仅在不超过 4 KiB 时进入图片内容复核，不凭名称自动删除。隔离恢复与本地完整备份沿用 `purge_assets` 的事务边界。
 

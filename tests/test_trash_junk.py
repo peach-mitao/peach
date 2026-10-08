@@ -131,12 +131,76 @@ class TrashJunkTests(unittest.TestCase):
         self.trash_junk.write_rows(self.out, fields, [review, {**review, "decision": "retain"}])
         self.assertEqual(len(self.trash_junk.load_review(self.out)), 1)
 
-    def purge(self, rows):
+    def purge(self, rows, candidates=None):
         connection = sqlite3.connect(self.db_path)
         connection.row_factory = sqlite3.Row
         self.addCleanup(connection.close)
+        if candidates is None:
+            candidates = {int(row["id"]) for row in rows}
         with mock.patch.object(self.trash_junk, "LOCATION_ROOT_DECLARATIONS", {"local": (str(self.root),)}):
-            return self.trash_junk.purge_reviewed(connection, rows)
+            return self.trash_junk.purge_reviewed(connection, rows, candidates)
+
+    def execute(self, sql, *params):
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(sql, params)
+            connection.commit()
+
+    def exists(self, asset_id):
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            return connection.execute("SELECT 1 FROM asset WHERE id=?", (asset_id,)).fetchone() is not None
+
+    def test_purge_skips_rows_with_personal_records_and_reports_them(self):
+        played, played_review = self.reviewed_file(1)
+        queued, queued_review = self.reviewed_file(2)
+        clean, clean_review = self.reviewed_file(3)
+        self.execute("UPDATE asset SET play_count=1 WHERE id=1")
+        self.execute("INSERT INTO watch_queue(profile_id,asset_id,added_at) VALUES('default',2,'2026-01-01')")
+        result = self.purge([played_review, queued_review, clean_review])
+        self.assertEqual(result["purged"], 1)
+        self.assertEqual({item["id"]: item["reason"] for item in result["skipped"]},
+                         {1: "带个人记录", 2: "带个人记录"})
+        self.assertTrue(played.exists() and queued.exists())
+        self.assertTrue(self.exists(1) and self.exists(2))
+        self.assertFalse(clean.exists())
+        self.assertFalse(self.exists(3))
+
+    def test_purge_skips_rows_the_user_kept_or_that_left_the_queue(self):
+        kept, kept_review = self.reviewed_file(1)
+        stale, stale_review = self.reviewed_file(2)
+        self.execute("INSERT INTO review_decision(category,item_key,status,note,updated_at) "
+                     "VALUES('junk_file','1','rejected','用户确认不是垃圾','2026-01-01')")
+        result = self.purge([kept_review, stale_review], candidates={1})
+        self.assertEqual(result["purged"], 0)
+        self.assertEqual({item["id"]: item["reason"] for item in result["skipped"]},
+                         {1: "用户已标为不是垃圾", 2: "已不在垃圾复核队列里"})
+        self.assertTrue(kept.exists() and stale.exists())
+        self.assertTrue(self.exists(1) and self.exists(2))
+
+    def test_purge_skips_videos_with_subtitles_instead_of_orphaning_them(self):
+        video, review = self.reviewed_file(1, ".mp4")
+        subtitle = video.with_name(video.stem + ".zh.srt")
+        subtitle.write_text("1\n", encoding="utf-8")
+        result = self.purge([review])
+        self.assertEqual(result["purged"], 0)
+        self.assertIn(subtitle.name, result["skipped"][0]["reason"])
+        self.assertTrue(video.exists() and subtitle.exists())
+
+        subtitle.unlink()
+        self.execute("INSERT INTO asset_subtitle(asset_id,location,path,name,format,size,pairing,"
+                     "first_seen,last_seen) VALUES(1,'local',?,?,'srt',2,'exact','2026-01-01','2026-01-01')",
+                     str(subtitle), subtitle.name)
+        result = self.purge([review])
+        self.assertEqual(result["skipped"][0]["reason"], "登记了字幕")
+        self.assertTrue(video.exists() and self.exists(1))
+
+    def test_purge_candidates_come_from_the_junk_review_queue(self):
+        promotion = self.root / "tuu26.com.mp4"
+        promotion.write_bytes(b"promotion")
+        self.add(1, "local", str(promotion), "video", promotion.stat().st_size, 60)
+        self.reviewed_file(2)
+        candidates = self.trash_junk.candidate_ids(self.db_path)
+        self.assertIn(1, candidates)
+        self.assertNotIn(2, candidates)
 
     def test_reviewed_purge_deletes_only_confirmed_file_and_ledger_row(self):
         path, review = self.reviewed_file()
