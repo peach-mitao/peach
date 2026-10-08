@@ -1,32 +1,93 @@
 from __future__ import annotations
 
 import re
+import unicodedata
+from functools import cache
 
+from .settings_file import PROJECT_ROOT
 
-# These values were verified as legacy collection/folder labels, not creator
-# identities. Keep this boundary centralized so board generation and review
-# application cannot disagree again.
-STRUCTURAL_CREATORS = frozenset({"门槛", "视频", "宣傳文件", "宣传文件", "asce",
-    "合集-洛丽塔 多创作者", "合集-足交 多创作者", "kj", "AI增强",
-    "背身足交", "白丝", "黑丝后入", "巨乳白虎", "풋잡모음", "&网红套图（漏点）",
-    "万人求档", "某某门事件", "白袜党福音", "蜜桃臀", "前女友",
-    "검스A맨발B_풋잡", "검스_후_맨발_풋잡", "직접구매_최고급_풋잡_2",
-    "245mm_큐빅페티녀_발빨맨발_풋잡_사정"})
+STRUCTURAL_WORDS_FILE = PROJECT_ROOT / "resources" / "naming" / "structural_directory_words.txt"
 
 _EPISODE = re.compile(r"(?<![A-Za-z0-9])S\d{1,2}E\d{1,3}(?!\d)", re.IGNORECASE)
 _MAINSTREAM_RELEASE = re.compile(
     r"WEB[ ._-]?(?:DL|Rip)|HDTV|BluRay|AppleTor|\[rartv\]",
     re.IGNORECASE,
 )
+_MONTH = r"(?:\d{4}[年._-]?)?(?:0?[1-9]|1[0-2])月"
+_QUALITY = r"(?:[2468]k|\d{3,4}[pi])"
+_SEPARATORS = re.compile(r"[\s_\-.,，、&+·|/\\()（）\[\]【】「」『』《》<>@!！?？~～:：;；'\"]+")
+_FILLER = re.compile(rf"\d+(?:mm|cm|gb|g|tb|v|p|部|集|个)?|{_MONTH}|{_QUALITY}|[a-z]", re.IGNORECASE)
+_SCRIPT_RUNS = re.compile(r"[a-z0-9]+|[^a-z0-9]+")
+
+
+def _fold(value: object) -> str:
+    return unicodedata.normalize("NFKC", str(value or "")).casefold().strip()
+
+
+@cache
+def structural_vocabulary() -> frozenset[str]:
+    """标签词表、来源 genre 词表与 `resources/naming` 结构词共同构成目录词汇。
+
+    单字词（`海`、`生`、`足`）在连写切分中会拼出普通人名，不收。
+    """
+    from .catalog_rules import (APPEARANCE_TAGS, ATTRIBUTE_TAGS, POSITION_TAGS, RELATIONSHIP_TAGS,
+                                RETIRED_TAGS, ROLE_TAGS, SCENE_TAGS, STORY_TAGS, TECH_TAGS)
+    from .genre_taxonomy import CONTENT_GENRES
+    words = set()
+    for group in (APPEARANCE_TAGS, ATTRIBUTE_TAGS, POSITION_TAGS, RELATIONSHIP_TAGS,
+                  ROLE_TAGS, SCENE_TAGS, STORY_TAGS, TECH_TAGS, RETIRED_TAGS, CONTENT_GENRES):
+        words.update(group)
+    words.update(CONTENT_GENRES.values())
+    for line in STRUCTURAL_WORDS_FILE.read_text(encoding="utf-8").splitlines():
+        word = line.split("#", 1)[0].strip()
+        if word:
+            words.add(word)
+    return frozenset(folded for folded in map(_fold, words) if len(folded) > 1)
+
+
+@cache
+def _longest_word() -> int:
+    return max(map(len, structural_vocabulary()))
+
+
+def _segments_into_vocabulary(text: str, vocabulary: frozenset[str]) -> bool:
+    """连写的中日韩词组整段切成词表词；任何残余都说明名字里还有身份成分。"""
+    longest = min(len(text), _longest_word())
+    reachable = [True] + [False] * len(text)
+    for end in range(1, len(text) + 1):
+        reachable[end] = any(reachable[start] and text[start:end] in vocabulary
+                             for start in range(max(0, end - longest), end))
+    return reachable[-1]
 
 
 def is_structural_creator(name: str | None) -> bool:
-    if not name:
+    """整名只由题材、体位、画质、月份与合集注记构成时，是结构目录而不是账号。
+
+    拉丁字母段必须整段命中词表，不在段内拆词，避免把英文账号名拆成题材词。
+    """
+    folded = _fold(name)
+    if not folded:
         return False
-    folded = name.strip().casefold()
-    return (folded in {candidate.casefold() for candidate in STRUCTURAL_CREATORS}
-            or bool(re.fullmatch(r"(?:\d{4}[年._-])?(?:0?[1-9]|1[0-2])月", folded))
-            or bool(re.fullmatch(r"(?:4k|6k|8k|1080p|720p|2160p|高清|超清|去重版|整合用)", folded)))
+    vocabulary = structural_vocabulary()
+    if folded in vocabulary or re.fullmatch(_MONTH + "|" + _QUALITY, folded):
+        return True
+    hits = 0
+    for token in filter(None, _SEPARATORS.split(folded)):
+        if token in vocabulary:
+            hits += 1
+            continue
+        if _FILLER.fullmatch(token):
+            continue
+        for run in _SCRIPT_RUNS.findall(token):
+            if run in vocabulary:
+                hits += 1
+            elif _FILLER.fullmatch(run):
+                continue
+            elif re.fullmatch(r"[a-z0-9]+", run) or not _segments_into_vocabulary(run, vocabulary):
+                return False
+            else:
+                hits += 1
+    return hits > 0
 
 
 def is_repost_creator(name: str | None) -> bool:
@@ -37,13 +98,25 @@ def is_repost_creator(name: str | None) -> bool:
     return bool(match and match[1].casefold() in REPOST_SITE_LABELS)
 
 
+_COLLECTION_SUFFIX = re.compile(
+    r'(?:\s*(?:4k|6k|8k|去重版|整合用|合集|合辑|全集)'
+    r'|\s*(?:20\d{2}[.年_-](?:0?[1-9]|1[0-2])(?:月)?'
+    r'|(?:0?[1-9]|1[0-2])月|20\d{2}年[一二三四五六七八九十]+月'
+    r'|\d{4}\s*[一二三四五六七八九十]+月)'
+    r'|(?:\s+|最新)\d+v(?:\s+\d+(?:\.\d+)?\s*(?:gb|g|tb))?'
+    r'|\s+v\d+(?:\s+\d+(?:\.\d+)?\s*(?:gb|g|tb))?'
+    r'|\s+\d+(?:\.\d+)?\s*(?:gb|tb)'
+    r'|\s*[(（]\d+[)）])$', re.I)
+
+
 def creator_collection_base(name: str) -> str:
-    """剥离集合的月份与画质后缀；调用方须核对已有账号身份。"""
-    suffix = (r'(?:\s*(?:4k|6k|8k|去重版|整合用)|'
-              r'\s*(?:20\d{2}[.年_-](?:0?[1-9]|1[0-2])(?:月)?|'
-              r'(?:0?[1-9]|1[0-2])月|20\d{2}年[一二三四五六七八九十]+月|'
-              r'\d{4}\s*[一二三四五六七八九十]+月))$')
-    return re.sub(suffix, '', name, flags=re.I).strip()
+    """剥离集合的月份、画质、份数与合集后缀；调用方须核对已有账号身份。"""
+    base = str(name)
+    while True:
+        stripped = _COLLECTION_SUFFIX.sub('', base).strip()
+        if stripped == base or not stripped:
+            return base.strip()
+        base = stripped
 
 
 SITE_RELEASES = {'legsjapan': 'https://www.legsjapan.com/en/',

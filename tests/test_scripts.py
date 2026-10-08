@@ -1074,7 +1074,7 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertGreater(suite.countTestCases(), 0)
 
     def test_structural_creator_and_mainstream_release_guards(self):
-        self.assertTrue(is_structural_creator("asce"))
+        self.assertTrue(is_structural_creator("视频"))
         self.assertTrue(is_structural_creator("门槛"))
         self.assertFalse(is_structural_creator("Alice"))
         self.assertTrue(is_probable_mainstream_release(

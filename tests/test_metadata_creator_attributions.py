@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+from peach.classification import creator_collection_base, is_structural_creator
 from peach.entities import merge_entity, upsert_asset_entity
 from peach.field_owners import write_owned_fields
 from peach.entity_classification import write_claim
@@ -86,17 +87,35 @@ class CreatorAttributionTests(unittest.TestCase):
         self.assertNotEqual(found,artist_id)
 
     def test_content_month_quality_and_repost_directories_are_not_accounts(self):
-        names = ['kj','11月','AI增强','白丝','背身足交','7sht.me','98T.la202202092146']
+        names = ['zj','11月','AI修复','黑丝','美腿足交','7sht.me','98T.la202202092146']
         for name in names:
             asset_id, _ = self.asset(name)
             self.assertIsNone(upsert_asset_entity(self.connection,kind='creator',name=name,
                 asset_id=asset_id,role='creator',source='legacy:asset'))
         self.asset('Santa'); self.asset('banbi_555'); self.asset('alice.example.com')
         self.assertCountEqual([row['current_creator'] for row in self.plan()],names)
-        self.asset('kj',path=r'B:\手动归属\kj\clip.mp4',source='user:manual')
+        self.asset('zj',path=r'B:\手动归属\zj\clip.mp4',source='user:manual')
         self.assertCountEqual([row['current_creator'] for row in self.plan()],names[1:])
         self.assertEqual({row['relation_source']:row['action'] for row in collect(self.connection)
-                          if row['current_creator']=='kj'}, {'legacy:asset':'review', 'user:manual':'keep'})
+                          if row['current_creator']=='zj'}, {'legacy:asset':'review', 'user:manual':'keep'})
+
+    def test_directory_names_built_from_genre_vocabulary_are_not_accounts(self):
+        for name in ('黑丝美腿', 'jk足交合集', '极品美腿天花板', '合集-巨乳 多创作者', '美腿 1080p',
+                     '2023年5月', '4K', '맨발_모음', '검스A맨발B_풋잡', '&网红套图（走光）'):
+            with self.subTest(name=name):
+                self.assertTrue(is_structural_creator(name))
+        for name in ('Alice', '海生', 'jk小美', 'fc2美臀OLさくら', 'Lena Anderson', 'analove', '黑丝小仙女'):
+            with self.subTest(name=name):
+                self.assertFalse(is_structural_creator(name))
+
+    def test_collection_annotations_reduce_to_the_account_name(self):
+        for name in ('someone 合集', 'someone合辑', 'someone全集', 'someone最新12v', 'someone  30v 40g',
+                     'someone V12 80GB', 'someone(2)', 'someone 去重版 4K', 'someone 120GB'):
+            with self.subTest(name=name):
+                self.assertEqual(creator_collection_base(name), 'someone')
+        for name in ('someone 2509', 'someone', 'v12', '合集'):
+            with self.subTest(name=name):
+                self.assertEqual(creator_collection_base(name), name)
 
     def test_month_and_quality_collections_reuse_accounts_and_restore_all_relations(self):
         _, target = self.asset('muchi_tina',source='user:manual')
