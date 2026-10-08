@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { boardPageSkeleton, detailSkeletonHtml } from '../src/board-skeleton';
+import { boardPageSkeleton, detailSkeletonBody } from '../src/board-skeleton';
 import { wireBoardSegments } from '../src/board-controls';
 
 vi.mock('@peach/legacy/core', async importOriginal => ({
@@ -40,11 +40,10 @@ describe('Board 页面骨架', () => {
   });
   it('详情保留媒体区和资料侧栏，不创建播放器', () => {
     const root = document.createElement('div');
-    root.innerHTML = detailSkeletonHtml();
+    root.innerHTML = detailSkeletonBody();
     expect(root.querySelector('[data-stage-grid] > [data-stage-media]')).not.toBeNull();
     expect(root.querySelector('[data-stage-grid] > [data-stage-side] > [data-stage-side-content]')).not.toBeNull();
     expect(root.querySelectorAll('video, audio, iframe')).toHaveLength(0);
-    expect(root.querySelectorAll('[role="status"]')).toHaveLength(1);
   });
   const follow = (options: Parameters<typeof boardPageSkeleton>[1] = {}) => {
     const root = document.createElement('div');

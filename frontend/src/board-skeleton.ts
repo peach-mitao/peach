@@ -85,10 +85,6 @@ export function detailSkeletonBody(): string {
   return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
 }
 
-export function detailSkeletonHtml(): string {
-  return `<div data-skeleton="detail" role="status" aria-label="正在读取作品详情">${detailSkeletonBody()}</div>`;
-}
-
 export function boardPageSkeleton(
   path: string, options: FollowSkeletonOptions = {},
 ): string {

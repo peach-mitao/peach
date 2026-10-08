@@ -102,7 +102,7 @@ describe('关注详情岛', () => {
     }
   });
 
-  it('深链进详情只单条取这一条，不挂列表岛；内容到了焦点在关闭键上', { timeout: 60_000 }, async () => {
+  it('深链进详情只单条取这一条，不挂列表岛；内容到了焦点在关闭键上；刷新时只有浮窗里的骨架', { timeout: 60_000 }, async () => {
     const opened = await openDetail(browser, DETAIL.collection);
     try {
       const page = opened.page;
@@ -110,6 +110,19 @@ describe('关注详情岛', () => {
       assert.equal((await page.locator('#stage [data-follow-detail-name]').innerText()).trim(), '合集主条目 5101');
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'closeStage');
       assert.deepEqual(withoutPlayer(opened.problems), []);
+
+      // 刷新这一页：等的那一下只有浮窗里的骨架，页面里不先铺一份不在浮窗里的。
+      await page.addInitScript(() => {
+        const seen = { outside: false };
+        Object.assign(window, { detailSkeletonSeen: seen });
+        new MutationObserver(() => {
+          for (const one of document.querySelectorAll('[data-skeleton="detail"]')) if (!one.closest('#stage')) seen.outside = true;
+        }).observe(document, { childList: true, subtree: true });
+      });
+      await page.reload({ waitUntil: 'load' });
+      await page.locator(DETAIL_READY).waitFor({ timeout: 15_000 });
+      assert.equal(await page.evaluate(() => (window as unknown as { detailSkeletonSeen: { outside: boolean } })
+        .detailSkeletonSeen.outside), false, '刷新时浮窗外先画了一份详情骨架');
     } finally {
       await opened.close();
     }

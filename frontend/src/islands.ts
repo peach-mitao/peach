@@ -31,7 +31,6 @@ export { paginationHtml, pageCount, clampPage } from './pagination';
 export * from './card-art';
 export { entitySkeletonHtml } from './entity-skeleton';
 export { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './index-skeleton';
-export { detailSkeletonHtml } from './board-skeleton';
 export { catalogSuggestions, catalogEmptyHtml } from './catalog-onboarding';
 export { catalogFilterSkeletonHtml } from './catalog-filter-skeleton';
 export { dropBars, fetchBars, fetchTopsPage } from './catalog-bars';

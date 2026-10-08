@@ -5,7 +5,7 @@ import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
 import { MEDIA_SOURCE_ICONS } from './js/ui-components.js';
-import { detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
+import { initBoardControls } from './dist/peach-ui.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
 import { matchRoute, routeLabel } from './js/routes.js';
 import { tagLabel } from './js/tags.js';
@@ -274,17 +274,27 @@ function renderInitialSurfaceLoading(){
     /* 详情的骨架归舞台岛：路由到位后 `openItem` 取回 React 包就画。下面那份列表照这一次补发。 */
     hideDiscoveryBars();bootDetailDeepLink=true;return;
   }
+  if(path.startsWith('/follow/item/')){
+    /* 关注详情同样只等舞台浮窗里那份骨架，页面里不先铺一份；列表等关掉详情才画，不补发。 */
+    hideDiscoveryBars();return;
+  }
   if(path==='/junk-files'){
     /* 垃圾文件是一屏同质卡片，等的是内容结构不是后台进度：Loading Dots 说的是
        「还在跑」，这里要说的是「等下会出现几张什么形状的卡」，所以用目录骨架。 */
     renderCatalogLoading('正在读取垃圾文件');
     return;
   }
+<<<<<<< HEAD
   /* 画进 `#stats` 的那几屏（管理区、播放列表页与关注页，`managedPagePath`），加上深链直接进的关注详情。 */
   if(managedPagePath(path)||path.startsWith('/follow/item/')){
+=======
+  const management=new Set(['/stats','/taste','/review','/data-cleanup','/duplicates','/quality-goals','/scraping',
+    '/playlists','/resource-sync','/follow','/follow-manage','/configuration','/diagnostics','/activity']);
+  if(management.has(path)){
+>>>>>>> a07ec9ad (fix(web): 刷新关注详情时不先在页面里铺一份详情骨架)
     hideDiscoveryBars();
     const stats=$('#stats');stats.hidden=false;clearCatalogGrid();
-    stats.innerHTML=path.startsWith('/follow/item/')?detailSkeletonHtml():path.startsWith('/follow')&&path!=='/follow-manage'
+    stats.innerHTML=path.startsWith('/follow')&&path!=='/follow-manage'
       ?followSkeletonHtml('正在读取关注内容')
       :managementPlaceholder(path);
     fitSkeleton(stats);
