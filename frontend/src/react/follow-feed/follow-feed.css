@@ -308,8 +308,10 @@
 /* 已看的卡片保持原样：看过不等于不想再看，只有忽略的才淡下去。 */
 .peach-react [data-follow-item][data-status="ignored"] { opacity: .62; }
 .peach-react [data-follow-visual] { position: relative; isolation: isolate; border-radius: var(--surface-radius); }
+/* 封面层整体放行指针，点到哪里都落在下面那颗「打开详情」键上；勾选框与来源角标自己接指针：
+   前者要点，后者的 `title` 要悬停才出得来。 */
 .peach-react [data-follow-visual] > [data-media-pic] { z-index: 1; pointer-events: none; }
-.peach-react [data-follow-visual] [data-media-check] { pointer-events: auto; }
+.peach-react [data-follow-visual] :is([data-media-check], [data-media-badge]) { pointer-events: auto; }
 .peach-react [data-follow-open] {
   position: absolute;
   inset: 0;
