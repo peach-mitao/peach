@@ -364,10 +364,10 @@ function Ee(e) {
 function De(e = document) {
 	e.addEventListener("click", (e) => {
 		let t = e.target?.closest?.(we);
-		!t || Ee(t) || A("click");
+		t && !Ee(t) && A("click");
 	}, { capture: !0 }), e.addEventListener("change", (e) => {
 		let t = e.target;
-		!t?.matches?.(Te) || Ee(t) || A(t.checked ? "toggle-on" : "toggle-off");
+		t?.matches?.(Te) && !Ee(t) && A(t.checked ? "toggle-on" : "toggle-off");
 	}, { capture: !0 });
 }
 //#endregion
@@ -398,11 +398,7 @@ var Ne = Object.assign((e, t) => {
 	let n = getComputedStyle(t), r = parseFloat(n.columnGap) || 0, i = 0, a = 0;
 	for (let n of t.children) {
 		let t = n.getBoundingClientRect().width;
-		if (n === e) {
-			a++;
-			continue;
-		}
-		t > 0 && (i += t, a++);
+		n === e ? a++ : t > 0 && (i += t, a++);
 	}
 	return t.getBoundingClientRect().width - (parseFloat(n.paddingLeft) || 0) - (parseFloat(n.paddingRight) || 0) - i - r * Math.max(0, a - 1);
 }, Fe = (e) => {
@@ -414,7 +410,7 @@ var Ne = Object.assign((e, t) => {
 	e.classList.toggle("middle-truncated", i), e.setAttribute("aria-label", t.full), (!e.hasAttribute("title") || e.dataset.middleTitle === "true") && (e.title = t.full, e.dataset.middleTitle = "true");
 }, N = (e) => {
 	let t = j.get(e);
-	!t || t.raf || (t.raf = requestAnimationFrame(() => {
+	t && !t.raf && (t.raf = requestAnimationFrame(() => {
 		t.raf = 0, Fe(e);
 	}));
 }, Ie = (e) => {
@@ -445,7 +441,7 @@ function Re(e = document) {
 		let t = document.getSelection();
 		if (!t || t.isCollapsed) return;
 		let n = (t.anchorNode?.nodeType === Node.ELEMENT_NODE ? t.anchorNode : t.anchorNode?.parentElement)?.closest?.("[data-middle-truncate]"), r = n && j.get(n);
-		!r || !n.contains(t.focusNode) || !e.clipboardData || (e.clipboardData?.setData("text/plain", r.full), e.preventDefault());
+		r && n.contains(t.focusNode) && e.clipboardData && (e.clipboardData?.setData("text/plain", r.full), e.preventDefault());
 	});
 }
 //#endregion
@@ -596,7 +592,7 @@ var I = null, L = globalThis;
 L.__peachMenuCloser || (L.__peachMenuCloser = !0, document.addEventListener("click", (e) => {
 	if (!I) return;
 	let t = e.target;
-	I.menu.contains(t) || I.toggle.contains(t) || I.mount.contains(t) && !(t instanceof Element && t.closest("a[href],button,input,select,textarea,summary,[role=button],[role=menuitem],[tabindex]")) || I.setOpen(!1);
+	I.menu.contains(t) || I.toggle.contains(t) || (!I.mount.contains(t) || t instanceof Element && t.closest("a[href],button,input,select,textarea,summary,[role=button],[role=menuitem],[tabindex]")) && I.setOpen(!1);
 }, !0));
 function Ue() {
 	I && I.setOpen(!1);
@@ -610,13 +606,9 @@ function Ge(e, t) {
 	let n = () => {
 		R.get(e) === n && (R.delete(e), e.classList.remove("leaving"), e.hidden = !0, t && t());
 	};
-	if (R.set(e, n), e.classList.add("leaving"), getComputedStyle(e).animationName === "none") {
-		n();
-		return;
-	}
-	e.addEventListener("animationend", (t) => {
+	R.set(e, n), e.classList.add("leaving"), getComputedStyle(e).animationName === "none" ? n() : (e.addEventListener("animationend", (t) => {
 		t.target === e && n();
-	}, { once: !0 }), setTimeout(n, 240);
+	}, { once: !0 }), setTimeout(n, 240));
 }
 var Ke = () => 8 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topH")) || 0);
 function qe(e, t) {
@@ -900,11 +892,7 @@ function yt(e, t = "[data-reveal-line]") {
 //#region src/ui-kit/skeleton.ts
 function bt(e, t) {
 	if (!e) return;
-	if (e.querySelector(".skeleton-awaiting")) {
-		t();
-		return;
-	}
-	if (!e.querySelector(".skeleton,[data-skeleton],.skeletoncard,.countskeleton") || !e.firstChild) {
+	if (e.querySelector(".skeleton-awaiting") || !e.querySelector(".skeleton,[data-skeleton],.skeletoncard,.countskeleton") || !e.firstChild) {
 		t();
 		return;
 	}
@@ -990,7 +978,7 @@ function Ot(e) {
 	if (!e) return;
 	let t = [...e.matches?.(Dt) ? [e] : [], ...e.querySelectorAll(Dt)], n = t.filter((e) => !t.some((t) => t !== e && t.contains(e)));
 	for (let e of n) e.dataset.skeletonReveal || (e.dataset.skeletonReveal = "pending", e.classList.add("skeleton-awaiting"), setTimeout(() => {
-		!e.isConnected || e.dataset.skeletonReveal !== "pending" || (e.dataset.skeletonReveal = "shown", e.classList.remove("skeleton-awaiting"));
+		e.isConnected && e.dataset.skeletonReveal === "pending" && (e.dataset.skeletonReveal = "shown", e.classList.remove("skeleton-awaiting"));
 	}, 180));
 }
 var kt = 64;
@@ -1106,11 +1094,8 @@ function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
 		cancelAnimationFrame(f), f = 0, h = 0;
 	}, x = (t) => {
 		let n = Math.min(Math.max(t - p, 0), 64);
-		if (p = t, m += (u - m) * (1 - Math.exp(-n / Ft)), Math.abs(u - m) < .5 && (m = u), e.scrollLeft = m, m !== u) {
-			f = requestAnimationFrame(x);
-			return;
-		}
-		if (f = 0, h) {
+		if (p = t, m += (u - m) * (1 - Math.exp(-n / Ft)), Math.abs(u - m) < .5 && (m = u), e.scrollLeft = m, m !== u) f = requestAnimationFrame(x);
+		else if (f = 0, h) {
 			let e = h;
 			h = 0, y(e);
 		}
@@ -1124,11 +1109,7 @@ function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
 		let a = f ? u : e.scrollLeft, o = a + t.deltaY;
 		u = Math.min(n, Math.max(0, o));
 		let s = o === u ? 0 : t.deltaY;
-		if (i < Pt || u === a) {
-			u !== a && (b(), e.scrollLeft = u), s && !f ? y(s) : s && (h = s);
-			return;
-		}
-		s && (h = s), f ||= (m = e.scrollLeft, p = performance.now(), requestAnimationFrame(x));
+		i < Pt || u === a ? (u !== a && (b(), e.scrollLeft = u), s && !f ? y(s) : s && (h = s)) : (s && (h = s), f ||= (m = e.scrollLeft, p = performance.now(), requestAnimationFrame(x)));
 	}, { passive: !1 }), v(e, "mousedown", (t) => {
 		!i.drag || t.button !== 0 || e.scrollWidth - e.clientWidth <= 1 || (t.stopPropagation(), b(), s = {
 			x: t.pageX,
@@ -1262,7 +1243,7 @@ function qt(e, { className: t = "", label: n = "可滚动内容", overflow: r = 
 }
 function Y(e) {
 	let t = e.querySelector(":scope > .ui-geist-scroller-container"), n = e.querySelector(":scope > .ui-geist-scroller-overlay");
-	!t || !n || (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
+	t && n && (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
 }
 function Jt(e = document) {
 	e.querySelectorAll("[data-geist-scroller]").forEach((e) => {
@@ -1293,11 +1274,7 @@ var Yt = [
 ].join(","), Xt = ".reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
 function Zt(e = document) {
 	e.querySelectorAll(Yt).forEach((e) => {
-		if (e.matches(Xt)) {
-			Bt(e);
-			return;
-		}
-		ze(e);
+		e.matches(Xt) ? Bt(e) : ze(e);
 	});
 }
 //#endregion
@@ -1309,7 +1286,7 @@ var Qt = /* @__PURE__ */ new WeakSet();
 function $t(e = document) {
 	Qt.has(e) || (Qt.add(e), e.addEventListener("click", (t) => {
 		let n = t.target.closest?.("button[aria-busy=\"true\"],[role=\"button\"][aria-busy=\"true\"]");
-		!n || !e.contains(n) || (t.preventDefault(), t.stopImmediatePropagation());
+		n && e.contains(n) && (t.preventDefault(), t.stopImmediatePropagation());
 	}, !0));
 }
 function en(e, t, r, i, { attr: a = "", className: o = "", text: s = !1 } = {}) {
@@ -1453,20 +1430,19 @@ function ln({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 		e.target === c && !m && c.close();
 	}), c.querySelector("form").onsubmit = async (e) => {
 		if (e.preventDefault(), !(m || d.disabled)) {
-			if (!a) {
-				p = { confirmed: !0 }, c.close();
-				return;
-			}
-			f.innerHTML = "", m = !0, X(d);
-			try {
-				p = {
-					confirmed: !0,
-					result: await a()
-				}, c.close();
-			} catch (e) {
-				f.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(d, !1);
-			} finally {
-				m = !1;
+			if (!a) p = { confirmed: !0 }, c.close();
+			else {
+				f.innerHTML = "", m = !0, X(d);
+				try {
+					p = {
+						confirmed: !0,
+						result: await a()
+					}, c.close();
+				} catch (e) {
+					f.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(d, !1);
+				} finally {
+					m = !1;
+				}
 			}
 		}
 	}, c.showModal(), A("pop"), (c.querySelector(".ui-geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
@@ -1502,20 +1478,19 @@ function dn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onC
 			e.target === s && !n && !a && s.close();
 		}), u.onclick = async () => {
 			if (!n) {
-				if (!i) {
-					t = { confirmed: !0 }, s.close();
-					return;
-				}
-				d.innerHTML = "", n = !0, X(u);
-				try {
-					t = {
-						confirmed: !0,
-						result: await i()
-					}, s.close();
-				} catch (e) {
-					d.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(u, !1);
-				} finally {
-					n = !1;
+				if (!i) t = { confirmed: !0 }, s.close();
+				else {
+					d.innerHTML = "", n = !0, X(u);
+					try {
+						t = {
+							confirmed: !0,
+							result: await i()
+						}, s.close();
+					} catch (e) {
+						d.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(u, !1);
+					} finally {
+						n = !1;
+					}
 				}
 			}
 		}, s.showModal(), A("pop"), (a ? l : u).focus();
