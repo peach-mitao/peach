@@ -522,7 +522,7 @@ watchSystemTheme();
 /* 光晕、玻璃面与强调色写到页面上（`frontend/src/appearance/glow.ts`），第一帧之前同步写一次。
    侧栏那枚配色钮、它的配色卡与设置面板都订阅同一份 store，点哪一处改的配色另两处当场跟上。 */
 paintHomeGlowNow();applyGlassFaces();applyAccent();
-/* 设置面板归 React 岛（`frontend/src/react/settings-panel/`）。岛只改 `appSettings` 的字段并落盘，
+/* 设置面板归常驻面 `settings-panel`（`frontend/src/react/settings-panel/`），由路由树画。它只改 `appSettings` 的字段并落盘，
    改完用效果名告诉这里跟着做什么：重画网格、重取目录、换主题、重排侧栏都还是壳的事。 */
 const settingsEffects={
   theme:()=>applyTheme(),

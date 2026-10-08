@@ -56,14 +56,20 @@ export function loadStage(host: ReactBundle.StageHost): Promise<ReactBundle.Stag
 }
 export const stageApi = (): ReactBundle.StageApi | null => stageReady;
 
-/* 设置面板岛（`react/settings-panel/`）：同舞台岛一样只交命令式入口。第一次按齿轮时才装载 React 包、
- * 接上宿主；之后 `settingsPanelApi()` 同步可取，包还没装载时是 null——那时面板必然没开过。 */
+/* 设置面板（`react/settings-panel/`，常驻面 `settings-panel`）：只交命令式入口。第一次按齿轮时才装载 React 包，
+ * 建宿主 `[data-settings-host]`，路由树打开这一面时由 `place` 把它放进 body 末尾、在同一个任务里画出收着的面板；
+ * 画上之后句柄才交出去：从那一刻起 `settingsPanelApi()` 同步可取，`open` 返回时面板已经画好。句柄还没交出时
+ * 它返回 null——那时面板必然没开过。 */
 let settingsPanel: Promise<ReactBundle.SettingsPanelApi> | null = null;
 let settingsPanelReady: ReactBundle.SettingsPanelApi | null = null;
 export function loadSettingsPanel(host: ReactBundle.SettingsPanelHost): Promise<ReactBundle.SettingsPanelApi> {
-  settingsPanel ??= import('@peach/react').then((bundle) => {
-    settingsPanelReady = bundle.configureSettingsPanel(host);
-    return settingsPanelReady;
+  settingsPanel ??= import('@peach/react').then(async (bundle) => {
+    const api = bundle.configureSettingsPanel(host);
+    const root = document.createElement('div');
+    root.dataset.settingsHost = '';
+    await openResidentSurface('settings-panel', root, (node) => { document.body.append(node); return node });
+    settingsPanelReady = api;
+    return api;
   });
   return settingsPanel;
 }

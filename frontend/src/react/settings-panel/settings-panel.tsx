@@ -1,11 +1,13 @@
-/* 设置面板岛：顶栏齿轮打开的那一屏浮层，左栏分区、右边一组组设置行。
+/* 设置面板：顶栏齿轮打开的那一屏浮层，左栏分区、右边一组组设置行。
  *
- * 面板常驻：第一次打开时在 body 末尾建一枚 `[data-settings-host]` 挂上根，之后开合只换
- * `hidden`，分区、滚动位置之外的状态跨次打开保留。界面偏好读写的是壳递进来的那一份
- * `appSettings`（`host.store`），改完一项用 `host.changed(effect)` 告诉壳跟着做什么；跟账本走的
+ * 常驻面 `settings-panel`（`router/managed-routes.tsx` 的常驻表）：第一次打开时壳的 `loadSettingsPanel` 建一枚
+ * `[data-settings-host]`，常驻面的 `place` 把它放进 body 末尾，路由树在同一个任务里把面板画成它的子节点。
+ * 之后开合只换 `hidden`，分区、滚动位置之外的状态跨次打开保留。壳经 `configureSettingsPanel` 给的句柄开合：
+ * 句柄写本模块的 store 再 `flushSync` 通知，返回时面板已经画好，锁滚、取数与焦点紧跟在后面。界面偏好读写的是
+ * 壳递进来的那一份 `appSettings`（`host.store`），改完一项用 `host.changed(effect)` 告诉壳跟着做什么；跟账本走的
  * 那几项经 `/api/settings` 写（`settings-data.ts`）。
  *
- * 面板不在 `.peach-react` 里：行、开关、下拉、拉条与色块都是全站共用的遗留控件，外观由
+ * 宿主不在 `.peach-react` 里：行、开关、下拉、拉条与色块都是全站共用的遗留控件，外观由
  * `settings-panel.css` 与遗留样式表给。只有「这台电脑」那一格的摘要卡是 BoardUI，单独套一层。
  *
  * 每次打开都像重新进一次这一屏：共用控件重画、数值框回到当前值、两份机器状态重取。
@@ -14,7 +16,6 @@ import {
   useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore,
   type KeyboardEvent, type ReactNode,
 } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -26,7 +27,6 @@ import {
 
 import { normalizeJavImage } from '../../jav-artwork';
 import { boundedPreference } from '../../number-setting';
-import { Providers } from '../providers';
 import { prefetchConfiguration } from '../settings/configuration';
 import { ConfigurationSummary } from '../settings/configuration-summary';
 import { GlowSettings } from './glow-settings';
@@ -73,32 +73,25 @@ type Machine = 'none' | 'note' | 'summary';
 interface View { open: boolean; closing: boolean; epoch: number; tab: number; machine: Machine }
 
 let host: SettingsPanelHost | null = null;
-let root: Root | null = null;
-let container: HTMLElement | null = null;
 let view: View = { open: false, closing: false, epoch: 0, tab: 0, machine: 'none' };
 let transition = 0;
 let returnFocus: Element | null = null;
+const listeners = new Set<() => void>();
 
-function panelRoot(): Root {
-  if (!root || !container?.isConnected) {
-    root?.unmount();
-    container = document.createElement('div');
-    container.dataset.settingsHost = '';
-    document.body.append(container);
-    root = createRoot(container);
-  }
-  return root;
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener) };
 }
 
-function paint(): void {
-  const current = host;
-  if (!current) return;
-  flushSync(() => panelRoot().render(<Providers><SettingsPanel host={current} view={view} /></Providers>));
+function notify(): void {
+  for (const listener of [...listeners]) listener();
 }
 
+/* 写进 store 当场画完：句柄返回时面板已经是新的样子，紧跟着的锁滚、取数与焦点读的都是画好的 DOM。
+   这一面抛错、被错误边界卸掉之后没人订阅，写进来的只进 store，不画、不抛。 */
 function update(patch: Partial<View>): void {
   view = { ...view, ...patch };
-  paint();
+  flushSync(notify);
 }
 
 /* 「这台电脑」：能在这台设备上改配置时放摘要卡，否则一句话说清去哪儿改。摘要卡一旦挂上就留着；
@@ -124,7 +117,7 @@ function open(section = ''): void {
   document.documentElement.style.overflow = 'hidden';
   document.body.classList.add('settings-open');
   const requested = SECTIONS.findIndex(([title]) => title === section);
-  /* 先发取数再挂根：第一次打开时查询还不存在，这一趟由 `fetchQuery` 建起来，组件挂上去读到
+  /* 先发取数再画：第一次打开时查询还不存在，这一趟由 `fetchQuery` 建起来，组件画出来读到
      的就是在途的这一份，不会再发第二趟。 */
   const remote = refreshPanelData();
   update({ open: true, closing: false, epoch: view.epoch + 1, tab: requested >= 0 ? requested : view.tab });
@@ -146,7 +139,7 @@ function close(): void {
     returnFocus = null;
   };
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { queueMicrotask(finish); return }
-  container?.querySelector('[data-settings-card]')?.addEventListener('animationend', finish, { once: true });
+  document.querySelector('#settingsPanel > [data-settings-card]')?.addEventListener('animationend', finish, { once: true });
   setTimeout(finish, 380);
 }
 
@@ -157,10 +150,17 @@ const api: SettingsPanelApi = {
   reveal: (selector) => queueMicrotask(() => document.querySelector(selector)?.scrollIntoView({ block: 'nearest' })),
 };
 
+/** 接上壳给的宿主，拿回设置面板的命令式入口。只调一次；壳的 `loadSettingsPanel` 接着在路由树里打开这一面，
+ *  画上（收着的）面板之后才交出句柄。 */
 export function configureSettingsPanel(next: SettingsPanelHost): SettingsPanelApi {
   host = next;
-  paint();
   return api;
+}
+
+/** 常驻表里的那一面：读本模块的 store，宿主还没接上时不画。 */
+export function SettingsPanelSurface() {
+  const shown = useSyncExternalStore(subscribe, () => view);
+  return host ? <SettingsPanel host={host} view={shown} /> : null;
 }
 
 function trapTab(event: KeyboardEvent<HTMLElement>): void {
