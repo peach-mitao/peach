@@ -20,19 +20,29 @@ describe('切换主题', () => {
     try {
       const { page } = opened;
       await page.emulateMedia({ reducedMotion: 'no-preference' });
-      const button = page.locator('#stats section#resource-sync .resourceaction').first();
-      await button.waitFor({ state: 'visible', timeout: 15_000 });
+      const section = page.locator('#stats section#resource-sync');
+      await section.waitFor({ state: 'visible', timeout: 15_000 });
       await page.locator('.board-theme-thumb').waitFor({ state: 'attached' });
       await settle(page);
 
-      const result = await button.evaluate(async (node) => {
+      const result = await section.evaluate(async (host) => {
         const entry = '/dist/peach-ui.js', ui = await import(entry);
         const root = document.documentElement;
         const thumb = document.querySelector<HTMLElement>('.board-theme-thumb')!;
+        /* `.resourceaction` 只在这一页的加载骨架里出现，页面画完就换成 React 卡片；
+           这里放一枚同类按钮，吃的是同一份 web/css 规则。 */
+        const node = host.appendChild(Object.assign(document.createElement('button'), { className: 'resourceaction', textContent: '检查文件' }));
         const frame = () => new Promise((done) => requestAnimationFrame(() => setTimeout(done, 150)));
         const finish = () => document.getAnimations().forEach((animation) => animation.finish());
         const transitions = (element: Element) => element.getAnimations()
           .map((animation) => (animation as CSSTransition).transitionProperty);
+        const colours = () => document.getAnimations()
+          .filter((animation): animation is CSSTransition => animation instanceof CSSTransition)
+          .filter((animation) => /color|fill|stroke|shadow/.test(animation.transitionProperty))
+          .map((animation) => {
+            const target = (animation.effect as KeyframeEffect).target;
+            return `${target?.tagName.toLowerCase()}.${target?.getAttribute('class')} ${animation.transitionProperty}`;
+          });
 
         ui.applyTheme('light');
         await frame();
@@ -49,17 +59,20 @@ describe('切换主题', () => {
 
         ui.applyTheme('dark');
         const switched = transitions(node);
+        const page = colours();
         const slid = transitions(thumb);
         const blocked = document.head.querySelectorAll('style').length;
         await frame();
         const restored = getComputedStyle(node).transitionProperty;
         const released = document.head.querySelectorAll('style').length;
-        return { declared, raw, switched, slid, restored, blocked, released };
+        node.remove();
+        return { declared, raw, switched, page, slid, restored, blocked, released };
       });
 
       assert.match(result.declared, /background-color/, `这枚按钮没有声明颜色过渡：${result.declared}`);
       assert.ok(result.raw.length > 0, '直接写主题属性时按钮没有起过渡，对照不成立');
       assert.deepEqual(result.switched, [], `applyTheme 之后按钮仍在过渡：${result.switched.join(', ')}`);
+      assert.deepEqual(result.page, [], `applyTheme 之后页面上仍有颜色过渡：${result.page.join('; ')}`);
       assert.deepEqual(result.slid, ['transform'], `明暗键滑块没有跟着位移：${result.slid.join(', ')}`);
       assert.equal(result.restored, result.declared, '下一帧之后按钮的过渡没有恢复');
       assert.equal(result.released, result.blocked - 1, '关过渡的临时样式没有摘掉');
