@@ -50,7 +50,6 @@ export const followSuggestKey = (term: string) => ['follow-manage', 'suggest', t
 
 /** 一条关注来源。字段以 `_source_payload`（`src/peach/web_follow.py`）为准。 */
 export interface FollowSource {
-  nature?: string;
   id: number;
   provider: string;
   provider_label: string;
@@ -97,7 +96,6 @@ export interface FollowData {
 
 /** 一个站点的凭据状态。只报存在性与去哪儿配，不回凭据值。 */
 export interface CredentialRow {
-  nature?: string;
   provider: string;
   provider_label: string;
   followable: boolean;

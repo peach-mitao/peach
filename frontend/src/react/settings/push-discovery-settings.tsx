@@ -9,9 +9,9 @@
  *
  * 前缀怎么算合法、根是不是已声明过，同样由服务端判；这一页只把那句原因显示出来。
  *
- * 读数与配置块跟着它们所属的那个开关收起。网盘通道关着时那段配置指向一件不会发生的事；
- * 「本机文件夹监视」在总开关关着时读作「没有运行」，那一句分不出是没开还是坏了——而这
- * 一整页此刻什么也没在跑。 */
+ * 整块只有一种行：读数写在它所属那个开关的说明里，配置那段也是一行（复制键在右），
+ * 前缀表排在最后。读数与配置跟着各自的开关收起：网盘通道关着时那段配置指向一件不会
+ * 发生的事；本机监视在总开关关着时读作「没有运行」，分不出是没开还是坏了。 */
 import { useState, type FormEvent } from 'react';
 import { RiCloseLine } from '@remixicon/react';
 
@@ -25,7 +25,7 @@ import { Switch } from '@/components/base/switch/switch';
 import { apiSend, errorMessage } from '../../api';
 import type { PushDiscoveryPrefix, PushDiscoveryState } from '../bundle';
 import { useOverlayScrollbar } from '../components/overlay-scrollbar';
-import { Disclosure, ErrorText, Fact, FactList, FieldLabel, Footer, Help, Rows, Section, Stack } from './section';
+import { Disclosure, ErrorText, FieldLabel, Footer, Help, Rows, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 
 const SAVE_URL = '/api/configuration/push-discovery';
@@ -74,74 +74,61 @@ export function PushDiscoveryForm({ initial, receipt }: {
   const copy = () => {
     void navigator.clipboard.writeText(live.config_toml).then(
       () => receipt('已复制 CloudDrive2 配置'),
-      () => setFailure('浏览器没让这一页写剪贴板，展开「查看这段配置」选中自己复制。'));
+      () => setFailure('浏览器没让这一页写剪贴板，展开「查看配置」选中自己复制。'));
   };
+
+  const ingested = `已入库 ${live.queue.ingested} 个文件`
+    + (live.queue.pending ? `，队列里还有 ${live.queue.pending} 条` : '');
+  const watching = live.local_running
+    ? `正在监视 ${live.local_roots.join('、')}` : live.local_message || '没有运行';
 
   return (
     <Section title="推送发现" onSubmit={submit}>
       <Rows>
-        <SettingsRow label="新文件落地就入库">
+        <SettingsRow label="新文件落地就入库" description={live.enabled ? ingested : undefined}>
           <Switch aria-label="新文件落地就入库" isSelected={state.enabled} isDisabled={!state.available}
             onChange={(enabled) => setState({ ...state, enabled })} />
         </SettingsRow>
-        <SettingsRow label="监视本机文件夹"
-          description="只监视本地磁盘，网盘由下面的 CloudDrive2 通知负责。">
+        <SettingsRow label="监视本机文件夹" description={live.enabled && live.watch_local ? watching : undefined}>
           <Switch aria-label="监视本机文件夹" isSelected={state.watch_local}
             isDisabled={!state.available || !state.enabled}
             onChange={(watchLocal) => setState({ ...state, watch_local: watchLocal })} />
         </SettingsRow>
-        <SettingsRow label="接收 CloudDrive2 通知"
-          description="网盘里有新文件时由 CloudDrive2 通知 Peach。">
+        <SettingsRow label="接收 CloudDrive2 通知">
           <Switch aria-label="接收 CloudDrive2 通知" isSelected={state.cloud}
             isDisabled={!state.available || !state.enabled}
             onChange={(cloud) => setState({ ...state, cloud })} />
         </SettingsRow>
+        {live.enabled && live.cloud ? (
+          <SettingsRow label="Webhook 配置" description={live.config_toml
+            ? '贴进 CloudDrive2「设置 → Webhooks」，需要会员；更换密钥后要重贴。'
+            : live.origin
+              ? '还没有共享密钥，保存配置后生成。'
+              : '要先有 CloudDrive2 能访问的 HTTPS 地址才能生成。'}>
+            {live.config_toml ? <Button size="small" onClick={copy}>复制配置</Button> : null}
+          </SettingsRow>
+        ) : null}
       </Rows>
-      {live.enabled ? (
-        <Stack divided>
-          <FactList>
-            {live.watch_local ? (
-              <Fact term="本机文件夹监视">
-                {live.local_running ? live.local_roots.join('、') : live.local_message || '没有运行'}
-              </Fact>
-            ) : null}
-            <Fact term="已入库">{`${live.queue.ingested} 个文件，队列里还有 ${live.queue.pending} 条`}</Fact>
-          </FactList>
-        </Stack>
-      ) : null}
-      {live.enabled && live.cloud ? (
+      {live.enabled && live.cloud && live.config_toml ? (
         <Stack divided>
           <div className="flex flex-col gap-3">
-            <FieldLabel>CloudDrive2 配置内容</FieldLabel>
-            <Help>在 CloudDrive2「设置 → Webhooks」里新建一条，粘贴这段配置。Webhook 需要 CloudDrive2 会员。</Help>
-            {live.config_toml ? (
-              <>
-                <div>
-                  <Button size="small" onClick={copy}>复制配置</Button>
-                </div>
-                {/* 收起来是因为抄它的人不用读它：三十行里只有地址和密钥两处跟这台机器有关，
-                    两处都已经填好了。展开是留给要核对推到哪儿的那一次。 */}
-                <Disclosure summary="查看这段配置">
-                  {/* 只读的一段文本，不做成输入框：它没有可编辑的部分，贴进 CloudDrive2 的
-                      是原样这一段。换行要保留，所以窄屏下横向自己滚，不折行。
-                      纵向不设上限：这一整页本来就在设置面板自己的滚动区里，再套一层的话滚轮
-                      落在哪一层要看指针停在哪儿。横向那条用全站的覆盖式滑块，轨道挂在只裹着
-                      它的这层 `relative` 上。 */}
-                  <div className="relative">
-                    <pre ref={configScroll} tabIndex={0}
-                      className="overflow-x-auto rounded-2xl bg-background-tertiary-default p-3 text-caption-1-regular whitespace-pre text-text-primary">
-                      {live.config_toml}
-                    </pre>
-                  </div>
-                  <Help>Windows 桌面版粘贴后显示「无效」时，把这段存成 .toml 文件，放进
-                    %LOCALAPPDATA%\CloudDrive.WinUI\webhooks\ 目录。</Help>
-                </Disclosure>
-              </>
-            ) : (
-              <Help>{live.origin
-                ? '尚未生成共享密钥，请保存配置后复制。'
-                : '请先配置 CloudDrive2 能访问的 HTTPS 地址，再生成通知配置。HTTP 地址不接受通知写入，也不会自动转发。'}</Help>
-            )}
+            {/* 收起来是因为抄它的人不用读它：三十行里只有地址和密钥两处跟这台机器有关，
+                两处都已经填好了。展开是留给要核对推到哪儿的那一次。 */}
+            <Disclosure summary="查看配置">
+              {/* 只读的一段文本，不做成输入框：它没有可编辑的部分，贴进 CloudDrive2 的
+                  是原样这一段。换行要保留，所以窄屏下横向自己滚，不折行。
+                  纵向不设上限：这一整页本来就在设置面板自己的滚动区里，再套一层的话滚轮
+                  落在哪一层要看指针停在哪儿。横向那条用全站的覆盖式滑块，轨道挂在只裹着
+                  它的这层 `relative` 上。 */}
+              <div className="relative">
+                <pre ref={configScroll} tabIndex={0}
+                  className="overflow-x-auto rounded-2xl bg-background-tertiary-default p-3 text-caption-1-regular whitespace-pre text-text-primary">
+                  {live.config_toml}
+                </pre>
+              </div>
+              <Help>Windows 桌面版粘贴后显示「无效」时，把这段存成 .toml 文件，放进
+                %LOCALAPPDATA%\CloudDrive.WinUI\webhooks\ 目录。</Help>
+            </Disclosure>
           </div>
         </Stack>
       ) : null}
@@ -149,7 +136,6 @@ export function PushDiscoveryForm({ initial, receipt }: {
         <Stack divided>
           <div className="flex flex-col gap-3">
             <FieldLabel>云端路径前缀</FieldLabel>
-            <Help>左边填 CloudDrive2 里的目录，右边选它对应的媒体文件夹。</Help>
             <div role="group" aria-label="云端路径前缀" className="flex flex-col gap-3">
               {rows.map((row, index) => (
                 <div key={index} className="flex items-start gap-2">
@@ -178,9 +164,8 @@ export function PushDiscoveryForm({ initial, receipt }: {
           没在屏上，而失败的正是刚按下的那颗「保存配置」。 */}
       {failure || action.error
         ? <Stack divided><ErrorText>{failure || action.error}</ErrorText></Stack> : null}
-      <Footer status={live.enabled && live.cloud
-        ? '更换密钥后要在 CloudDrive2 重新粘贴配置。' : undefined}>
-        {live.enabled && live.cloud ? (
+      <Footer>
+        {live.enabled && live.cloud && live.config_toml ? (
           <Button onClick={rotate} disabled={!state.available}
             {...busyProps(action.busy === 'secret')}>更换密钥</Button>
         ) : null}

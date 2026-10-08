@@ -40,8 +40,6 @@ FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约�
 
 ## 资源索引器
 
-来源性质由 `follow_providers.ProviderSpec.nature`、`scraping_access.describe` 与索引器配置投影给页面，分别标账号、公开页面、归档站与自配索引器，不参与身份可信度、优先级或启用状态判定。新增客户端仿真来源须在自己的登记处声明性质。
-
 `resource_search.py` 使用 Torznab 0.2.1（MIT，Python ≥3.10，支持项目 Python 3.12–3.14）的 `parse_capabilities` 与 `parse_torznab`。源码固定标签 v0.2.1，项目仍标为 Alpha；离线 XML POC 已覆盖 caps、GUID 磁力、体积、做种、连接数和重复标签。PyPI 包新增一项直接依赖，requests 为已有传递依赖；实际索引器验收需要用户配置端点。
 
 请求复用 HTTPX 0.28.1。SDK 自带 requests 请求层没有响应大小上限，异常可能带完整 URL，故只使用其解析器。Peach 负责每源 caps 和 search 两次请求、至多六份种子、响应上限 2 MiB、每轮最多四源、45 秒预算、禁用重定向、脱敏错误、XML 实体声明拒收，以及体积、做种、黑名单、质量排序和最多五个候选。标题番号复用 `feeds.scan_code`，身份与中字、无码版次复用 `catalog_rules`。凭据复用 `CredentialStore`，不登记跨机同步字段；换端点不会沿用已保存的 API key。

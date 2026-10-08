@@ -95,7 +95,7 @@ it('只列配置好的渠道；一个都没配时说去哪里配，不画表单'
   ] }));
   const host = await show();
   expect(section(host, '提交磁力')).toBeNull();
-  expect(host.textContent).toContain('在配置页「媒体」分组');
+  expect(host.textContent).toContain('在配置页「下载」分组');
 });
 
 it('远端在跑的任务给进度与取消键，取消发到取消接口', async () => {

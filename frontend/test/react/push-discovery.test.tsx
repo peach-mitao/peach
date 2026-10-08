@@ -45,7 +45,7 @@ it('配置块默认收起，横向滚动用全站的覆盖式滑块', async () =
   const pre = host.querySelector('pre')!;
   const fold = pre.closest('details');
   expect(fold?.open).toBe(false);
-  expect(fold?.querySelector('summary')?.textContent).toContain('查看这段配置');
+  expect(fold?.querySelector('summary')?.textContent).toContain('查看配置');
   expect(pre.className).not.toContain('max-h');
   expect(pre.dataset.overlayScrollbar).toBe('true');
   expect(pre.parentElement?.querySelector('.ovtrack')).not.toBeNull();
@@ -56,7 +56,7 @@ it('这台机器没有对外的 HTTPS 地址时说出原因，不发一段填了
     <PushDiscoveryForm initial={state({ origin: '', config_toml: '' })} receipt={vi.fn()} />);
   expect(host.querySelector('pre')).toBeNull();
   expect(buttonNamed('复制配置', host)).toBeNull();
-  expect(host.textContent).toContain('请先配置 CloudDrive2 能访问的 HTTPS 地址');
+  expect(host.textContent).toContain('要先有 CloudDrive2 能访问的 HTTPS 地址');
 });
 
 it('配置块跟着已保存的开关走，拨一下不算数', async () => {

@@ -24101,7 +24101,6 @@ function Ice({ initialCode: e, reason: t, choose: n }) {
 					onChange: u
 				})]
 			}),
-			/* @__PURE__ */ (0, V.jsx)(Pk, { children: "只查询已启用的自配索引器；最多显示 5 个有做种的候选。清晰度、字幕与无码标记取自来源标题。" }),
 			_.busy ? /* @__PURE__ */ (0, V.jsx)(Pk, {
 				role: "status",
 				children: "正在搜索资源"
@@ -24132,8 +24131,7 @@ function Ice({ initialCode: e, reason: t, choose: n }) {
 							e.codec,
 							e.chinese ? "中字" : "",
 							e.uncensored ? "无码" : "",
-							e.origins.join("、"),
-							e.nature
+							e.origins.join("、")
 						].filter(Boolean).join(" · ") }),
 						/* @__PURE__ */ (0, V.jsx)("div", { children: /* @__PURE__ */ (0, V.jsx)(J, {
 							type: "button",
@@ -24184,7 +24182,7 @@ function Hce({ prefill: e }) {
 			prefill: e
 		}) : /* @__PURE__ */ (0, V.jsx)(Y, {
 			tone: "neutral",
-			children: "还没有配置云下载。在配置页「媒体」分组填好 CloudDrive2 的地址与令牌，或登录 PikPak， 这里就能粘贴磁力提交离线下载。"
+			children: "还没有配置云下载。在配置页「下载」分组填好 CloudDrive2 的地址与令牌，或登录 PikPak， 这里就能粘贴磁力提交离线下载。"
 		}) : /* @__PURE__ */ (0, V.jsx)(Y, {
 			tone: "neutral",
 			children: "云下载只在账本写入端可用。"
@@ -42160,16 +42158,13 @@ function aI({ source: e }) {
 	});
 }
 function oI({ source: e }) {
-	return /* @__PURE__ */ (0, V.jsxs)("a", {
+	return /* @__PURE__ */ (0, V.jsx)("a", {
 		href: e.url,
 		target: "_blank",
 		rel: "noreferrer noopener",
 		title: "打开原来源",
 		className: "min-w-0 text-body-medium break-words text-text-primary underline-offset-2 hover:underline",
-		children: [e.label, e.nature ? /* @__PURE__ */ (0, V.jsx)("small", {
-			className: "block text-caption-1-regular text-text-secondary",
-			children: e.nature
-		}) : null]
+		children: e.label
 	});
 }
 //#endregion
@@ -42928,10 +42923,6 @@ function age({ row: e, readOnly: t, toast: n }) {
 				className: "text-body-medium text-text-primary",
 				children: e.provider_label
 			}),
-			e.nature ? /* @__PURE__ */ (0, V.jsx)("span", {
-				className: "text-caption-1-regular text-text-secondary",
-				children: e.nature
-			}) : null,
 			/* @__PURE__ */ (0, V.jsx)(rge, { row: e }),
 			e.missing.length ? /* @__PURE__ */ (0, V.jsx)(xE, {
 				variant: "caption",
@@ -49095,10 +49086,7 @@ function qve({ source: e, toast: t }) {
 			})]
 		}),
 		children: [
-			/* @__PURE__ */ (0, V.jsxs)(jk, { children: [/* @__PURE__ */ (0, V.jsx)(Dk, {
-				label: "来源性质",
-				children: e.nature || "公开页面"
-			}), /* @__PURE__ */ (0, V.jsx)(Dk, {
+			/* @__PURE__ */ (0, V.jsx)(jk, { children: /* @__PURE__ */ (0, V.jsx)(Dk, {
 				label: "连接方式",
 				children: /* @__PURE__ */ (0, V.jsx)(Ck, {
 					"aria-label": "连接方式",
@@ -49111,7 +49099,7 @@ function qve({ source: e, toast: t }) {
 						children: t
 					}, e))
 				})
-			})] }),
+			}) }),
 			T ? /* @__PURE__ */ (0, V.jsxs)(Mk, {
 				divided: !0,
 				children: [
@@ -49845,7 +49833,7 @@ function sye({ initial: e, receipt: t }) {
 			});
 		},
 		children: [/* @__PURE__ */ (0, V.jsxs)(Mk, { children: [
-			/* @__PURE__ */ (0, V.jsx)(Pk, { children: "接入 Prowlarr 或 Jackett 后，活动页「云下载」可以按番号搜磁力。 Prowlarr 的 Torznab 地址在索引器列表里每个索引器的详情中复制，API key 在 Settings → General。" }),
+			/* @__PURE__ */ (0, V.jsx)(Pk, { children: "接入 Prowlarr 或 Jackett 后可以按番号搜磁力。Torznab 地址在 Prowlarr 每个索引器的详情里， API key 在 Settings → General。" }),
 			n.map((e, t) => /* @__PURE__ */ (0, V.jsxs)("div", {
 				className: "flex min-w-0 flex-col gap-4 border-t border-separator-border pt-4",
 				children: [
@@ -49995,7 +49983,7 @@ function mye({ state: e, settle: t, receipt: n, pikpakAccount: r }) {
 		},
 		children: [
 			/* @__PURE__ */ (0, V.jsxs)(Mk, { children: [
-				/* @__PURE__ */ (0, V.jsx)(Pk, { children: "把磁力交给 115 或 PikPak 离线下载，下完由推送发现自动入库。" }),
+				/* @__PURE__ */ (0, V.jsx)(Pk, { children: "磁力交给 115 或 PikPak 离线下载，下完自动入库。" }),
 				/* @__PURE__ */ (0, V.jsx)(vk, {
 					label: "CloudDrive2 地址",
 					placeholder: "留空自动探测本机 19798 / 29798",
@@ -50056,7 +50044,7 @@ function mye({ state: e, settle: t, receipt: n, pikpakAccount: r }) {
 							id: e,
 							children: e
 						}, e))
-					}) : /* @__PURE__ */ (0, V.jsx)(Pk, { children: "媒体文件夹里还没有「CloudDrive · PikPak」来源。在上方添加 PikPak 的挂载目录后，这里才能选。" })]
+					}) : /* @__PURE__ */ (0, V.jsx)(Pk, { children: "先在「媒体」分组添加 PikPak 挂载的文件夹，这里才能选。" })]
 				}),
 				/* @__PURE__ */ (0, V.jsx)(vk, {
 					label: "等待上限（小时）",
@@ -50843,7 +50831,7 @@ function Nye({ initial: e, blank: t, pickFolder: n, describe: r, focusAfterPick:
 function Pye({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, onPick: o, onRemove: s, status: c, children: l }) {
 	return /* @__PURE__ */ (0, V.jsxs)("div", {
 		"data-folder-row": !0,
-		className: "@container flex flex-col gap-3 rounded-2lg border border-separator-border bg-background-primary-default p-3",
+		className: "@container flex flex-col gap-2 rounded-2lg border border-separator-border bg-background-primary-default p-3",
 		children: [/* @__PURE__ */ (0, V.jsxs)("div", {
 			className: "flex items-start gap-2",
 			children: [
@@ -50875,26 +50863,24 @@ function Pye({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, 
 				}) : null
 			]
 		}), /* @__PURE__ */ (0, V.jsx)("div", {
-			className: "inline-grid grid-cols-1 gap-3 @lg:grid-cols-2",
+			className: "flex flex-wrap items-end gap-2",
 			children: l
 		})]
 	});
 }
 function Fye({ index: e, value: t, onChange: n, options: r = ER }) {
-	return /* @__PURE__ */ (0, V.jsxs)("div", {
-		className: "flex flex-col gap-1.5",
-		children: [/* @__PURE__ */ (0, V.jsx)(Ik, { children: "媒体来源" }), /* @__PURE__ */ (0, V.jsx)(Ck, {
-			"aria-label": `媒体来源 ${e + 1}`,
-			selectedKey: t,
-			onSelectionChange: (e) => {
-				e !== null && n(String(e));
-			},
-			children: r.map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)(wk, {
-				id: e,
-				textValue: t,
-				children: [/* @__PURE__ */ (0, V.jsx)(Vk, { mark: DR(e) }), t]
-			}, e))
-		})]
+	return /* @__PURE__ */ (0, V.jsx)(Ck, {
+		className: "w-full @lg:w-60",
+		"aria-label": `媒体来源 ${e + 1}`,
+		selectedKey: t,
+		onSelectionChange: (e) => {
+			e !== null && n(String(e));
+		},
+		children: r.map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)(wk, {
+			id: e,
+			textValue: t,
+			children: [/* @__PURE__ */ (0, V.jsx)(Vk, { mark: DR(e) }), t]
+		}, e))
 	});
 }
 function Iye({ value: e, onChange: t, label: n = "Windows 中的对应路径", placeholder: r = "例如 B:\\" }) {
@@ -51028,23 +51014,28 @@ function Vye({ initial: e, receipt: t }) {
 	}, m = (e, t) => a((n) => n.map((n, r) => r === e ? {
 		...n,
 		...t
-	} : n));
+	} : n)), h = (e) => {
+		e.preventDefault();
+		let t = {
+			enabled: n.enabled,
+			watch_local: n.watch_local,
+			cloud: n.cloud,
+			prefixes: i
+		};
+		c.run("save", (e) => K(zye, t, "POST", e), (e) => p(e, "已保存配置"), (e) => s(W(e)));
+	}, g = () => {
+		c.run("secret", (e) => K(Bye, {}, "POST", e), (e) => p(e, "已更换共享密钥"), (e) => s(W(e)));
+	}, _ = () => {
+		navigator.clipboard.writeText(d.config_toml).then(() => t("已复制 CloudDrive2 配置"), () => s("浏览器没让这一页写剪贴板，展开「查看配置」选中自己复制。"));
+	}, v = `已入库 ${d.queue.ingested} 个文件` + (d.queue.pending ? `，队列里还有 ${d.queue.pending} 条` : ""), y = d.local_running ? `正在监视 ${d.local_roots.join("、")}` : d.local_message || "没有运行";
 	return /* @__PURE__ */ (0, V.jsxs)(Ak, {
 		title: "推送发现",
-		onSubmit: (e) => {
-			e.preventDefault();
-			let t = {
-				enabled: n.enabled,
-				watch_local: n.watch_local,
-				cloud: n.cloud,
-				prefixes: i
-			};
-			c.run("save", (e) => K(zye, t, "POST", e), (e) => p(e, "已保存配置"), (e) => s(W(e)));
-		},
+		onSubmit: h,
 		children: [
 			/* @__PURE__ */ (0, V.jsxs)(jk, { children: [
 				/* @__PURE__ */ (0, V.jsx)(Dk, {
 					label: "新文件落地就入库",
+					description: d.enabled ? v : void 0,
 					children: /* @__PURE__ */ (0, V.jsx)(nL, {
 						"aria-label": "新文件落地就入库",
 						isSelected: n.enabled,
@@ -51057,7 +51048,7 @@ function Vye({ initial: e, receipt: t }) {
 				}),
 				/* @__PURE__ */ (0, V.jsx)(Dk, {
 					label: "监视本机文件夹",
-					description: "只监视本地磁盘，网盘由下面的 CloudDrive2 通知负责。",
+					description: d.enabled && d.watch_local ? y : void 0,
 					children: /* @__PURE__ */ (0, V.jsx)(nL, {
 						"aria-label": "监视本机文件夹",
 						isSelected: n.watch_local,
@@ -51070,7 +51061,6 @@ function Vye({ initial: e, receipt: t }) {
 				}),
 				/* @__PURE__ */ (0, V.jsx)(Dk, {
 					label: "接收 CloudDrive2 通知",
-					description: "网盘里有新文件时由 CloudDrive2 通知 Peach。",
 					children: /* @__PURE__ */ (0, V.jsx)(nL, {
 						"aria-label": "接收 CloudDrive2 通知",
 						isSelected: n.cloud,
@@ -51080,44 +51070,33 @@ function Vye({ initial: e, receipt: t }) {
 							cloud: e
 						})
 					})
-				})
+				}),
+				d.enabled && d.cloud ? /* @__PURE__ */ (0, V.jsx)(Dk, {
+					label: "Webhook 配置",
+					description: d.config_toml ? "贴进 CloudDrive2「设置 → Webhooks」，需要会员；更换密钥后要重贴。" : d.origin ? "还没有共享密钥，保存配置后生成。" : "要先有 CloudDrive2 能访问的 HTTPS 地址才能生成。",
+					children: d.config_toml ? /* @__PURE__ */ (0, V.jsx)(J, {
+						size: "small",
+						onClick: _,
+						children: "复制配置"
+					}) : null
+				}) : null
 			] }),
-			d.enabled ? /* @__PURE__ */ (0, V.jsx)(Mk, {
+			d.enabled && d.cloud && d.config_toml ? /* @__PURE__ */ (0, V.jsx)(Mk, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, V.jsxs)(Rk, { children: [d.watch_local ? /* @__PURE__ */ (0, V.jsx)(zk, {
-					term: "本机文件夹监视",
-					children: d.local_running ? d.local_roots.join("、") : d.local_message || "没有运行"
-				}) : null, /* @__PURE__ */ (0, V.jsx)(zk, {
-					term: "已入库",
-					children: `${d.queue.ingested} 个文件，队列里还有 ${d.queue.pending} 条`
-				})] })
-			}) : null,
-			d.enabled && d.cloud ? /* @__PURE__ */ (0, V.jsx)(Mk, {
-				divided: !0,
-				children: /* @__PURE__ */ (0, V.jsxs)("div", {
+				children: /* @__PURE__ */ (0, V.jsx)("div", {
 					className: "flex flex-col gap-3",
-					children: [
-						/* @__PURE__ */ (0, V.jsx)(Ik, { children: "CloudDrive2 配置内容" }),
-						/* @__PURE__ */ (0, V.jsx)(Pk, { children: "在 CloudDrive2「设置 → Webhooks」里新建一条，粘贴这段配置。Webhook 需要 CloudDrive2 会员。" }),
-						d.config_toml ? /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [/* @__PURE__ */ (0, V.jsx)("div", { children: /* @__PURE__ */ (0, V.jsx)(J, {
-							size: "small",
-							onClick: () => {
-								navigator.clipboard.writeText(d.config_toml).then(() => t("已复制 CloudDrive2 配置"), () => s("浏览器没让这一页写剪贴板，展开「查看这段配置」选中自己复制。"));
-							},
-							children: "复制配置"
-						}) }), /* @__PURE__ */ (0, V.jsxs)(Bk, {
-							summary: "查看这段配置",
-							children: [/* @__PURE__ */ (0, V.jsx)("div", {
-								className: "relative",
-								children: /* @__PURE__ */ (0, V.jsx)("pre", {
-									ref: l,
-									tabIndex: 0,
-									className: "overflow-x-auto rounded-2xl bg-background-tertiary-default p-3 text-caption-1-regular whitespace-pre text-text-primary",
-									children: d.config_toml
-								})
-							}), /* @__PURE__ */ (0, V.jsx)(Pk, { children: "Windows 桌面版粘贴后显示「无效」时，把这段存成 .toml 文件，放进 %LOCALAPPDATA%\\CloudDrive.WinUI\\webhooks\\ 目录。" })]
-						})] }) : /* @__PURE__ */ (0, V.jsx)(Pk, { children: d.origin ? "尚未生成共享密钥，请保存配置后复制。" : "请先配置 CloudDrive2 能访问的 HTTPS 地址，再生成通知配置。HTTP 地址不接受通知写入，也不会自动转发。" })
-					]
+					children: /* @__PURE__ */ (0, V.jsxs)(Bk, {
+						summary: "查看配置",
+						children: [/* @__PURE__ */ (0, V.jsx)("div", {
+							className: "relative",
+							children: /* @__PURE__ */ (0, V.jsx)("pre", {
+								ref: l,
+								tabIndex: 0,
+								className: "overflow-x-auto rounded-2xl bg-background-tertiary-default p-3 text-caption-1-regular whitespace-pre text-text-primary",
+								children: d.config_toml
+							})
+						}), /* @__PURE__ */ (0, V.jsx)(Pk, { children: "Windows 桌面版粘贴后显示「无效」时，把这段存成 .toml 文件，放进 %LOCALAPPDATA%\\CloudDrive.WinUI\\webhooks\\ 目录。" })]
+					})
 				})
 			}) : null,
 			n.enabled && n.cloud ? /* @__PURE__ */ (0, V.jsx)(Mk, {
@@ -51126,7 +51105,6 @@ function Vye({ initial: e, receipt: t }) {
 					className: "flex flex-col gap-3",
 					children: [
 						/* @__PURE__ */ (0, V.jsx)(Ik, { children: "云端路径前缀" }),
-						/* @__PURE__ */ (0, V.jsx)(Pk, { children: "左边填 CloudDrive2 里的目录，右边选它对应的媒体文件夹。" }),
 						/* @__PURE__ */ (0, V.jsx)("div", {
 							role: "group",
 							"aria-label": "云端路径前缀",
@@ -51177,22 +51155,17 @@ function Vye({ initial: e, receipt: t }) {
 				divided: !0,
 				children: /* @__PURE__ */ (0, V.jsx)(Fk, { children: o || c.error })
 			}) : null,
-			/* @__PURE__ */ (0, V.jsxs)(Nk, {
-				status: d.enabled && d.cloud ? "更换密钥后要在 CloudDrive2 重新粘贴配置。" : void 0,
-				children: [d.enabled && d.cloud ? /* @__PURE__ */ (0, V.jsx)(J, {
-					onClick: () => {
-						c.run("secret", (e) => K(Bye, {}, "POST", e), (e) => p(e, "已更换共享密钥"), (e) => s(W(e)));
-					},
-					disabled: !n.available,
-					...X(c.busy === "secret"),
-					children: "更换密钥"
-				}) : null, /* @__PURE__ */ (0, V.jsx)(J, {
-					type: "submit",
-					disabled: !n.available,
-					...X(c.busy === "save"),
-					children: "保存配置"
-				})]
-			})
+			/* @__PURE__ */ (0, V.jsxs)(Nk, { children: [d.enabled && d.cloud && d.config_toml ? /* @__PURE__ */ (0, V.jsx)(J, {
+				onClick: g,
+				disabled: !n.available,
+				...X(c.busy === "secret"),
+				children: "更换密钥"
+			}) : null, /* @__PURE__ */ (0, V.jsx)(J, {
+				type: "submit",
+				disabled: !n.available,
+				...X(c.busy === "save"),
+				children: "保存配置"
+			})] })
 		]
 	});
 }
@@ -51302,26 +51275,24 @@ function qye({ data: e, receipt: t }) {
 							onRemove: n.length > 1 ? () => a(i) : void 0,
 							status: w(t.path) ? /* @__PURE__ */ (0, V.jsx)(jR, { online: w(t.path)?.online }) : null,
 							children: [
-								/* @__PURE__ */ (0, V.jsx)(vk, {
-									label: "媒体库名称",
-									maxLength: 80,
-									placeholder: "同名文件夹归入同一个媒体库",
-									value: t.library,
-									onChange: (e) => r(i, { library: e })
-								}),
-								/* @__PURE__ */ (0, V.jsxs)("div", {
-									className: "flex flex-col gap-1.5",
-									children: [/* @__PURE__ */ (0, V.jsx)(Ik, { children: "媒体库图标" }), /* @__PURE__ */ (0, V.jsx)(Rye, {
-										label: `媒体库图标 ${i + 1}`,
-										value: t.library_icon,
-										kind: t.location,
-										onChange: (e) => r(i, { library_icon: e })
-									})]
-								}),
 								/* @__PURE__ */ (0, V.jsx)(Fye, {
 									index: i,
 									value: t.location,
 									onChange: (e) => r(i, { location: e })
+								}),
+								/* @__PURE__ */ (0, V.jsx)(vk, {
+									className: "min-w-40 flex-1",
+									"aria-label": `媒体库名称 ${i + 1}`,
+									maxLength: 80,
+									placeholder: "媒体库名称，同名归为一个库",
+									value: t.library,
+									onChange: (e) => r(i, { library: e })
+								}),
+								/* @__PURE__ */ (0, V.jsx)(Rye, {
+									label: `媒体库图标 ${i + 1}`,
+									value: t.library_icon,
+									kind: t.location,
+									onChange: (e) => r(i, { library_icon: e })
 								}),
 								e.windows === !1 ? /* @__PURE__ */ (0, V.jsx)(Iye, {
 									value: t.root,

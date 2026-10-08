@@ -135,14 +135,12 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                 picking={picking === index} onPick={() => void pick(index)}
                 onRemove={rows.length > 1 ? () => remove(index) : undefined}
                 status={mountOf(row.path) ? <MountBadge online={mountOf(row.path)?.online} /> : null}>
-                <Input label="媒体库名称" maxLength={80} placeholder="同名文件夹归入同一个媒体库"
-                  value={row.library} onChange={(library) => edit(index, { library })} />
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel>媒体库图标</FieldLabel>
-                  <LibraryIconPicker label={`媒体库图标 ${index + 1}`} value={row.library_icon} kind={row.location}
-                    onChange={(library_icon) => edit(index, { library_icon })} />
-                </div>
                 <SourceSelect index={index} value={row.location} onChange={(location) => edit(index, { location })} />
+                <Input className="min-w-40 flex-1" aria-label={`媒体库名称 ${index + 1}`} maxLength={80}
+                  placeholder="媒体库名称，同名归为一个库"
+                  value={row.library} onChange={(library) => edit(index, { library })} />
+                <LibraryIconPicker label={`媒体库图标 ${index + 1}`} value={row.library_icon} kind={row.location}
+                  onChange={(library_icon) => edit(index, { library_icon })} />
                 {data.windows === false
                   ? <WindowsRootInput value={row.root} onChange={(root) => edit(index, { root })} />
                   : null}

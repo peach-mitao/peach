@@ -76,7 +76,7 @@ export function DownloadsPanel({ prefill }: { prefill?: DownloadPrefill }) {
         : configured.length
           ? <SubmitForm snapshot={data} prefill={prefill} />
           : <Note tone="neutral">
-              还没有配置云下载。在配置页「媒体」分组填好 CloudDrive2 的地址与令牌，或登录 PikPak，
+              还没有配置云下载。在配置页「下载」分组填好 CloudDrive2 的地址与令牌，或登录 PikPak，
               这里就能粘贴磁力提交离线下载。
             </Note>}
       {data.tasks.length
