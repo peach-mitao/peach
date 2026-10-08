@@ -40,7 +40,9 @@
 
 签名在服务端按缩略图算，缓存在 `peach-data/generated/posters/follow-faces/`，不进
 ledger。`/api/follow` 只查缓存，缺的交给后台线程逐张补，下一次打开就用得上；
-浏览器不为这件事下载任何图片。
+浏览器不为这件事下载任何图片。每个地址只取一次：视频首帧读 `/follow-cover` 的磁盘
+缓存，不联网；直连图床的缩略图浏览器自己取过，服务端为算签名再取一次，并且经来源的
+按站冷却闸门，站点限流时先停下，不跟浏览抢额度。
 """
 from __future__ import annotations
 
@@ -52,7 +54,7 @@ import threading
 import time
 import urllib.parse
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -83,7 +85,7 @@ MEDIA_KINDS = frozenset({"image", "video"})
 MAX_FACES = 24
 
 _CACHE_VERSION = "face-v1"
-#: 取不到的缩略图隔多久再问一次。
+#: 取不到的缩略图隔多久再问一次。被来源限流挡回来的不算取不到，冷却过后就重排。
 RETRY_SECONDS = 24 * 3600
 #: 一张缩略图最多读多少字节。缩略图一般几十 KB，超过这个数多半是原图，不值得为一枚哈希读。
 MAX_IMAGE_BYTES = 4 << 20
@@ -259,6 +261,14 @@ def _members(group: dict) -> list[dict]:
     return members
 
 
+def _signatures(index: "FollowFaceIndex | None", faces: list[Face]) -> dict[str, Signature]:
+    """查这些缩略图的已知签名；带上各自的来源，缺的按来源的冷却闸门去补。"""
+    if index is None:
+        return {}
+    return index.lookup([face.url for face in faces],
+                        {face.url: face.provider for face in faces})
+
+
 def annotate_group(group: dict, index: "FollowFaceIndex | None" = None,
                    hashes: dict[tuple[int, int | None], str] | None = None) -> dict:
     """给一组 `/api/follow` 载荷写上翻卡与计数要用的那几个字段，原地改并返回。
@@ -296,7 +306,7 @@ def annotate_group(group: dict, index: "FollowFaceIndex | None" = None,
     if len(merged) < 2:
         group["stack"] = None
         return group
-    signatures = index.lookup([face.url for _, face in thumbs]) if index else {}
+    signatures = _signatures(index, [face for _, face in thumbs])
 
     def signed(face: Face) -> Face:
         signature = signatures.get(face.url) if face.url else None
@@ -332,12 +342,16 @@ class FollowFaceIndex:
     """
 
     def __init__(self, root: Path, transport: HttpTransport, *,
-                 cover_root: Path | None = None, clock=time.time,
+                 cover_root: Path | None = None, gate=None, clock=time.time,
                  monotonic=time.monotonic, sleeper=time.sleep, background: bool = True):
         self.root = Path(root)
         self.path = self.root / f"{_CACHE_VERSION}.json"
         self.transport = transport
         self.cover_root = Path(cover_root) if cover_root is not None else None
+        #: 按站冷却的闸门（`FollowMediaResolver`，浏览、播放与检查共用那一份）。知道来源的
+        #: 缩略图经它去取：来源在冷却就先不取，被拒就让整站冷却，这一张留到下次再排。
+        self.gate = gate
+        self._providers: dict[str, str] = {}
         self._clock = clock
         self._monotonic = monotonic
         self._sleeper = sleeper
@@ -384,8 +398,13 @@ class FollowFaceIndex:
             return self.cover_root is not None
         return public_https_url(url)
 
-    def lookup(self, urls: Iterable[str]) -> dict[str, Signature]:
-        """已知签名按地址返回；未知且能取的排进队列，这一次不等它。"""
+    def lookup(self, urls: Iterable[str],
+               providers: Mapping[str, str] | None = None) -> dict[str, Signature]:
+        """已知签名按地址返回；未知且能取的排进队列，这一次不等它。
+
+        `providers` 给出各地址属于哪个来源，取图时按它过来源的冷却闸门。
+        """
+        providers = providers or {}
         known: dict[str, Signature] = {}
         now = self._clock()
         with self._lock:
@@ -403,6 +422,8 @@ class FollowFaceIndex:
                         and self.fetchable(url)):
                     self._queued.add(url)
                     self._pending.append(url)
+                    if providers.get(url):
+                        self._providers[url] = providers[url]
         if self._pending and self._background:
             self._ensure_worker()
             self._wake.set()
@@ -431,7 +452,14 @@ class FollowFaceIndex:
                     break
                 url = self._pending.popleft()
                 self._queued.discard(url)
-            signature = self._signature(url)
+                provider = self._providers.pop(url, "")
+            if self._cooling(provider):
+                # 来源在冷却：不取也不记失败，下次打开页面会重新排上。
+                continue
+            signature = self._signature(url, provider)
+            if signature is None and self._cooling(provider):
+                # 这一张被拒、整站进了冷却：不是「取不到」，不该等一天才重试。
+                continue
             with self._lock:
                 self._entries[self._key(url)] = [
                     signature.encode() if signature is not None else "", int(self._clock())]
@@ -443,7 +471,10 @@ class FollowFaceIndex:
         self._save()
         return done
 
-    def _read(self, url: str) -> bytes | None:
+    def _cooling(self, provider: str) -> bool:
+        return bool(self.gate is not None and provider and self.gate.cooling(provider))
+
+    def _read(self, url: str, provider: str = "") -> bytes | None:
         if url.startswith(_COVER_ROUTE + "?"):
             query = urllib.parse.parse_qs(url.split("?", 1)[1])
             ident = query.get("id", [""])[0]
@@ -467,14 +498,15 @@ class FollowFaceIndex:
         if wait > 0:
             self._sleeper(wait)
         self._next_at[host] = self._monotonic() + HOST_INTERVAL
-        response = self.transport(HttpRequest(
-            "GET", url, {"User-Agent": USER_AGENT, "Accept": "image/*"}),
-            FETCH_TIMEOUT, MAX_IMAGE_BYTES)
+        request = HttpRequest("GET", url, {"User-Agent": USER_AGENT, "Accept": "image/*"})
+        response = (self.gate.fetch(provider, request, FETCH_TIMEOUT, MAX_IMAGE_BYTES)
+                    if self.gate is not None and provider
+                    else self.transport(request, FETCH_TIMEOUT, MAX_IMAGE_BYTES))
         return response.body if response.status == 200 else None
 
-    def _signature(self, url: str) -> Signature | None:
+    def _signature(self, url: str, provider: str = "") -> Signature | None:
         try:
-            data = self._read(url)
+            data = self._read(url, provider)
             if not data:
                 return None
             with Image.open(io.BytesIO(data)) as image:
