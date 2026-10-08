@@ -510,17 +510,44 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertEqual(self.scrape_codes._select_english_title_codes(connection, codes),
                          [("AAA-001", 1.0, 1)])
         connection.close()
-        source = (ROOT / "scripts" / "scrape_codes.py").read_text(encoding="utf-8")
-        self.assertIn('if args.english_title_only and field != "title":', source)
 
-    def test_unmapped_genres_are_written_out_instead_of_dropped(self):
-        source = (ROOT / "scripts" / "scrape_codes.py").read_text(encoding="utf-8")
-        # 未收录 genre 必须落盘。只要这条链断了，来源给过的值就会静默消失，
-        # 官方 tag 的缺口下一轮仍然查不出成因。
-        self.assertIn("unmapped_genres.setdefault", source)
-        self.assertIn("_write_unmapped(unmapped_path, unmapped_genres)", source)
-        self.assertNotIn("CATEGORY_MAP", source,
-                         "genre 映射只留 peach.genre_taxonomy 一份")
+    def test_unmapped_genres_are_written_out_and_english_title_runs_keep_only_titles(self):
+        """未收录 genre 必须落盘：这条链一断，来源给过的值就静默消失，官方 tag 的缺口
+        下一轮仍然查不出成因。只补英文标题的那一批只写标题字段，别的字段不进候选表。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "ledger.db"
+            sqlite3.connect(db).close(); upgrade(db, MIGRATIONS)
+            with closing(sqlite3.connect(db)) as connection:
+                connection.execute(
+                    "INSERT INTO asset(id,location,path,name,medium,code,size,catalog_title) "
+                    "VALUES(1,'local','1.mp4','1.mp4','video','AAA-001',1000,'English title')")
+                connection.commit()
+
+            class Source:
+                def query(self, code, source):
+                    return {"content_id": "aaa001", "title": "日本語タイトル",
+                            "genres": ["中出し", "見たことのないジャンル"]}
+
+            def run(*extra):
+                out, unmapped = root / f"c{len(extra)}.csv", root / f"u{len(extra)}.csv"
+                with redirect_stdout(io.StringIO()):
+                    self.scrape_codes.main([
+                        "--db", str(db), "--out", str(out), "--unmapped", str(unmapped),
+                        "--health", str(root / "h.csv"), "--raw-dir", str(root / "raw"),
+                        "--log-dir", str(root / "logs"), "--delay", "0",
+                        "--min-free", "0", "--sources", "javbus", *extra,
+                    ], provider=Source())
+                with out.open(encoding="utf-8-sig", newline="") as handle:
+                    fields = [row["field"] for row in csv.DictReader(handle)]
+                with unmapped.open(encoding="utf-8-sig", newline="") as handle:
+                    genres = [(row["genre"], row["source"], row["sample_code"])
+                              for row in csv.DictReader(handle)]
+                return fields, genres
+
+            unmapped = [("見たことのないジャンル", "javbus", "AAA-001")]
+            self.assertEqual(run(), (["title", "tags"], unmapped))
+            self.assertEqual(run("--english-title-only"), (["title"], unmapped))
 
     def test_reused_snapshots_are_re_checked_against_the_queried_code(self):
         # 「复用上一轮成功记录」只看 result 在不在，就会把当初那次错配一路带下去。
@@ -863,28 +890,18 @@ class OperationalScriptTests(unittest.TestCase):
         items = FollowStore(lambda: connection).items()
         self.assertEqual(backfill.pending_targets(items, set()), [])
 
-    def test_test_entrypoint_enforces_worktree_source_and_unittest(self):
+    def test_test_entrypoints_guard_the_worktree_source_and_are_the_only_documented_command(self):
+        """两个入口用哪个 venv、给运行器什么环境与参数，由 `test_test_environment.py` 真跑入口验；
+        这里守的是那条用例碰不到的：拒收别处源码的核对、主工作树定位和两边相同的测试域。"""
         windows = (ROOT / "scripts" / "test.ps1").read_text(encoding="utf-8")
         self.assertIn("rev-parse --git-common-dir", windows)
-        self.assertIn("$env:PYTHONPATH = $SourceRoot", windows)
-        self.assertIn("$env:PYTHONIOENCODING = 'utf-8'", windows)
-        self.assertIn("$env:PYTHONIOENCODING = $PreviousPythonIoEncoding", windows)
-        self.assertIn("$LocalPython = Join-Path $WorktreeRoot", windows)
         self.assertIn("peach.__file__", windows)
-        self.assertIn("scripts\\test_runner.py --scope $Scope", windows)
         self.assertIn("ValidateSet('full', 'auto', 'follow'", windows)
-        self.assertNotIn("pytest", windows.lower())
         # 两个平台各有一个入口，契约必须相同——否则「两边都要绿」只是句口号。
         posix = (ROOT / "scripts" / "test.sh").read_text(encoding="utf-8")
         self.assertIn("rev-parse --git-common-dir", posix)
-        self.assertIn('export PYTHONPATH="$SOURCE_ROOT"', posix)
-        self.assertIn("export PYTHONIOENCODING=utf-8", posix)
-        self.assertNotIn("    SCOPE=full", posix)
         self.assertIn("peach.__file__", posix)
-        self.assertIn('scripts/test_runner.py --scope "$SCOPE"', posix)
-        self.assertIn('SCOPE="${1:-auto}"', posix)
         self.assertIn("full|auto|follow|catalog|media|sync|metadata|tooling|web|checks|core|packaging)", posix)
-        self.assertNotIn("pytest", posix.lower())
         # 文档里可以「提到」裸命令来说明它为什么不可信，但绝不能让它单独出现成为一条可照抄的指令。
         # 判据因此不是黑名单，而是：凡出现该命令的行，必须在同一行指向某个正式入口。
         for relative in ("AGENTS.md", "README.md", "docs/HANDOFF.md"):
@@ -907,15 +924,12 @@ class OperationalScriptTests(unittest.TestCase):
         `--fresh --base <sha> --shard-*`，数组从不为空，这条路径只有本机会走到——而
         AGENTS.md 规定 macOS 的唯一测试入口就是这个脚本，崩了等于没有测试门槛。
 
-        文本判据钉住修法本身：`set -euo pipefail` 必须还在（把 `set +u` 当解法会让
-        其余变量的拼写错误没人拦），展开必须是 `${EXTRA[@]+...}` 那一种。行为判据从
-        真实脚本里截出参数处理那一段来跑，改回裸展开时这一段会跟着变。
+        文本判据钉住 `set -euo pipefail` 还在：把 `set +u` 当解法会让其余变量的拼写错误
+        没人拦，而行为上看不出来。展开写法由下面的行为判据验：从真实脚本里截出参数处理
+        那一段来跑，CI 的 macOS 行用的就是 bash 3.2，改回裸展开时这一段会崩。
         """
         source = (ROOT / "scripts" / "test.sh").read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", source)
-        self.assertIn('scripts/test_runner.py --scope "$SCOPE" ${JOBS[@]+"${JOBS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"}',
-                      source)
-        self.assertNotIn(' "${EXTRA[@]}"', source)
 
         # 真实脚本后半段要定位 venv 并跑整个测试套件，直接执行会递归。只取参数处理那一段，
         # 把 exec 的目标换成一个回显 argv 的桩，其余保持逐字一致。
@@ -3428,12 +3442,6 @@ class ApplyMetadataTagsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.apply_tags = load_script("apply_metadata_tags")
-
-    def test_it_reuses_the_review_write_mapping_instead_of_its_own_sql(self):
-        """自己拼 INSERT 会漏掉删旧行、规范化标签名和 asset_entity 那一半。"""
-        source = (ROOT / "scripts" / "apply_metadata_tags.py").read_text(encoding="utf-8")
-        self.assertIn("from peach.metadata_auto_apply import _apply_metadata_candidate", source)
-        self.assertNotIn("INSERT INTO asset_tag", source)
 
     def test_only_the_requested_source_and_field_are_written(self):
         rows = [

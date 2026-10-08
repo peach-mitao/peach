@@ -89,9 +89,12 @@ class TestEnvironmentTests(unittest.TestCase):
                 "Path('prepared').touch()\n"
                 "raise SystemExit(int(Path('prepare-exit').read_text()))\n"),
             "scripts/test_runner.py": (
-                "import json, sys\nfrom pathlib import Path\n"
+                "import json, os, sys\nfrom pathlib import Path\n"
                 "assert Path('prepared').exists()\n"
-                "Path('runner-args').write_text(json.dumps(sys.argv[1:]))\n"),
+                "Path('runner-args').write_text(json.dumps(sys.argv[1:]))\n"
+                "Path('runner-env').write_text(json.dumps({\n"
+                "    'executable': sys.executable, 'pythonpath': os.environ.get('PYTHONPATH'),\n"
+                "    'encoding': os.environ.get('PYTHONIOENCODING')}))\n"),
         }, "seed")
         subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(root / ".venv")],
                        check=True, capture_output=True, text=True, encoding="utf-8")
@@ -114,6 +117,14 @@ class TestEnvironmentTests(unittest.TestCase):
                     arguments = json.loads((root / "runner-args").read_text())
                     self.assertEqual(arguments[arguments.index("--base") + 1], "branch with space")
                     self.assertEqual(arguments[arguments.index("--scope") + 1], "checks")
+                    # 运行器用本工作树的 venv、只认本工作树的 src，输出按 UTF-8 编码。
+                    seen = json.loads((root / "runner-env").read_text())
+                    venv_bin = root / ".venv" / ("Scripts" if os.name == "nt" else "bin")
+                    self.assertEqual(os.path.realpath(os.path.dirname(seen["executable"])),
+                                     os.path.realpath(venv_bin))
+                    self.assertEqual(os.path.realpath(seen["pythonpath"]),
+                                     os.path.realpath(root / "src"))
+                    self.assertEqual(seen["encoding"], "utf-8")
 
     def test_worktree_environment_cannot_resolve_to_the_production_environment(self):
         # 路径解析也覆盖 Windows junction；不要求运行测试的账户能建立符号链接。

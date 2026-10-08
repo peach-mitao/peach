@@ -273,32 +273,17 @@ class WebUiPolicyTests(unittest.TestCase):
         # 靠 CSS 或父节点兜底的图（厂牌 `.mk`），把它们删掉反而是错的。壳自己拼的图也走同一套声明。
         self.assertPageContains('data-drop="')
 
-    def test_entity_link_favicons_do_not_leak_the_page_url_to_the_linked_site(self):
-        # 外链的 favicon 是向对方站点发出的真实请求。锚点上的 rel="noreferrer" 只管
-        # 点击跳转，管不到这个 <img>——不设 referrerpolicy 的话，光是打开一位女优的
-        # 资料页就会把 Peach 的页面地址报给 x.com、事务所站等每一个被链接的站点。
-        # 图标由本机 `/link-mark` 提供，浏览器根本不向对方站点发请求，也就无从泄露；
-        # referrerpolicy 仍然留着，它守的是这条约束本身。资料卡那一排在 entity-hero
-        # island 里，两条都由 entity-hero.test.tsx 钉住。
-        self.assertPageLacks("faviconUrl(", "外链图标不应再直接指向对方站点")
-
     def test_no_site_icon_is_fetched_by_the_browser_from_the_site_itself(self):
         """站点图标全部由本机给：浏览器不向对方站点要图，也不问第三方图标代理。
 
-        第三方代理那一跳把这一列里的每个站逐个报出去，换回来的只是一枚 16px 位图；
-        直连对方站点则只够拿到 `/favicon.ico`，站点自己备好的 apple-touch-icon 和
-        SVG 问都不问，要代理才通的来源干脆空着。采集页和口味页同走 `/site-mark`，
-        和资料页外链圆标是同一套挑图、合成与缓存。
+        外链的 favicon 是向对方站点发出的真实请求，打开一位女优的资料页就会把 Peach
+        的页面地址报给每一个被链接的站点；第三方代理那一跳则把这一列里的每个站逐个
+        报出去。资料页外链走 `/link-mark`，采集页和口味页走 `/site-mark`，是同一套
+        挑图、合成与缓存；资料卡那一排由 entity-hero.test.tsx 钉住。
         """
-        for gone in ("google.com/s2/favicons", "faviconFallbackUrl", "SITE_FAVICONS"):
-            self.assertPageLacks(gone, "站点图标不得由浏览器向站外取")
-        react = Path(__file__).resolve().parents[1] / "frontend/src/react"
-        scraping = (react / "scraping/scraping-page.tsx").read_text(encoding="utf-8")
-        self.assertIn("siteMarkUrl({ source })}", scraping)
-        self.assertNotIn("faviconUrl", scraping)
-        taste = (react / "taste/taste-page.tsx").read_text(encoding="utf-8")
-        self.assertIn('<img src={siteMarkUrl({ domain })} alt="" loading="lazy"', taste)
-        self.assertNotIn("faviconUrl", taste)
+        for gone in ("faviconUrl", "google.com/s2/favicons", "faviconFallbackUrl", "SITE_FAVICONS"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, self.markup, "站点图标不得由浏览器向站外取")
 
     def test_no_caller_ever_hands_the_link_mark_endpoint_a_url(self):
         # 让前端把地址递给服务端去取，等于开一个任意地址抓取的口子。和 `/follow-stream`
@@ -307,32 +292,6 @@ class WebUiPolicyTests(unittest.TestCase):
         # 这里守的是「没人绕过它另写一个带地址的调用」。
         self.assertPageLacks("/link-mark?url=", "外链图标端点不得接受前端给的地址")
         self.assertPageLacks("/site-mark?url=", "站点圆标端点同样只认键")
-
-    FULL_PAGE_VIEWS = ("openStats", "openTaste", "openPlaylists", "openDuplicates",
-                       "openReview", "openQualityGoals", "openFollow", "openFollowManage")
-
-    def test_source_tools_never_take_a_path_from_the_client(self):
-        """定位和对账都只发 asset id，路径由服务端查。
-
-        `q_item` 是刻意不把 `path` 发给前端的；这两个入口不能反过来让前端把
-        路径传进来，否则等于开了一个「任意路径」的接口。
-        """
-        self.assertPageContains("api('/api/reveal',{method:'POST',body:JSON.stringify({id})})")
-        self.assertPageContains("status.textContent='';toast({text:'已在资源管理器中显示'})")
-        self.assertPageContains("if(reveal)reveal.onclick=()=>revealSource(Number(reveal.dataset.reveal),status,{button:reveal})")
-        reveal_source = self.page.split("async function revealSource", 1)[1].split("async function syncMissing", 1)[0]
-        self.assertIn("setActionBusy(button)", reveal_source)
-        self.assertIn("status.textContent=''", reveal_source)
-        self.assertNotIn("status.textContent='正在定位…'", reveal_source,
-                         "请求等待态必须留在按钮内，不能撑开详情内容流")
-        self.assertNotIn("button.disabled", reveal_source,
-                         "等待按钮应保持可聚焦，并由共享 busy 状态阻止重复请求")
-        self.assertPageContains("api('/api/purge-missing',{method:'POST',body:JSON.stringify({id})})")
-        self.assertPageContains('data-reveal="${id}"')
-        self.assertPageContains('data-sync="${id}"')
-        # 作品详情岛也只把 asset id 交给壳；在线资产是 URL，岛里不画这两枚：
-        # `frontend/test/react/item-detail.test.tsx`。
-        self.assertPageContains("reveal:id=>revealForIsland(id),")
 
 
 # void 元素没有结束标签，压进栈里只会制造假报错。
@@ -435,8 +394,6 @@ class CoverSleeveThresholdTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         script = (root / "scripts" / "detect_cover_faces.py").read_text(encoding="utf-8")
         source = (root / "src" / "peach" / "cover_artwork.py").read_text(encoding="utf-8")
-        self.assertIn("from peach.cover_artwork import face_record", script)
-        self.assertIn("jav_poster_crop.SLEEVE_RATIO_MIN <= ratio", source)
         self.assertIsNone(re.search(r"^SLEEVE_RATIO_M(?:IN|AX) = ", script + source, re.M),
                           "阈值抄成第二份就会和页面漂开")
 
@@ -447,9 +404,9 @@ class BoardStyleIsolationTests(unittest.TestCase):
 
         它是盖在 `web/css/` 上的覆盖层，两份一起才画得出一个界面。留一个开关把它摘掉，
         剩下的是一屏对不上的类名——`.board-*` 那些节点仍在 DOM 里，谁也不给它们样式。
-        判据落在四处：入口 HTML 无条件引它、首屏那段脚本不再读任何界面偏好、
-        `web/` 下没有 `peach.legacy-ui` 与 `original-design` 的消费者、设置里只剩对比度
-        这一个开关。
+        判据落在三处：入口 HTML 无条件引它、`web/` 下没有 `peach.legacy-ui` 与
+        `original-design` 的消费者、壳与设置面板都不读第二套界面的开关。设置里那枚
+        「增加对比度」由 `frontend/test/react/settings-panel.test.tsx` 在渲染结果上验。
         """
         root = Path(__file__).resolve().parents[1]
         html = (root / "web/index.html").read_text(encoding="utf-8")
@@ -462,7 +419,6 @@ class BoardStyleIsolationTests(unittest.TestCase):
                 self.assertNotIn(token, text, f"{path.name} 仍在读第二套界面的开关")
         app = (root / "web/app.js").read_text(encoding="utf-8")
         panel = (root / "frontend/src/react/settings-panel/settings-panel.tsx").read_text(encoding="utf-8")
-        self.assertIn('<input type="checkbox" id="glassContrastSetting" data-toggle="" role="switch"', panel)
         for source in (app, panel):
             self.assertNotIn("legacyUISetting", source)
 

@@ -1,9 +1,8 @@
-"""追更的 Web 契约与页面源测试。
+"""追更的 Web 契约与服务端投影测试。
 
-契约层测试用临时数据库；页面源测试守的是「追更表面」这一个语义契约，
-不是某个文件——判据同 `tests/test_web_ui.py`。
+契约层测试用临时数据库；页面行为由 `frontend/test/react/follow-*.test.tsx` 与
+`frontend/e2e/follow-*.test.ts` 验证。
 """
-import hashlib
 import json
 import os
 import re
@@ -1073,18 +1072,6 @@ class FollowContractTests(unittest.TestCase):
         self._seed()
         self.assertEqual(len(self._get(limit="nope")["groups"]), 1)
 
-    def test_all_follow_surfaces_share_the_content_tag_projection(self):
-        """卡片、详情、筛选条与标签页不能各自保留一套噪声判定。"""
-        page = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
-        feed = ROOT / "frontend" / "src" / "react" / "follow-feed"
-        self.assertIn("const followCardTags=item=>item.tags||[]", page)
-        self.assertIn("const tags = (item.tags || []).slice(0, 3);",
-                      (feed / "follow-card.tsx").read_text(encoding="utf-8"), "卡片必须走过滤后的标签")
-        self.assertIn("const tagCounts = new Map(facets.tags || []);",
-                      (feed / "follow-feed-page.tsx").read_text(encoding="utf-8"), "筛选条必须直接消费服务端投影")
-        self.assertNotIn("FOLLOW_TAG_NOISE", page)
-        self.assertNotIn("FOLLOW_TAG_TOPICAL", page)
-
     def test_generated_media_is_cached_for_a_month_not_a_day(self):
         """按 id 取的生成物内容不会变，一天太短。
 
@@ -1097,12 +1084,6 @@ class FollowContractTests(unittest.TestCase):
         # 头像单独短一档：id 不变但人会换头像。
         self.assertEqual(api.AVATAR_CACHE_SECONDS, 30 * 24 * 3600)
         self.assertLess(api.AVATAR_CACHE_SECONDS, api.MEDIA_CACHE_SECONDS)
-        source = (ROOT / "src" / "peach" / "api.py").read_text(encoding="utf-8")
-        self.assertNotIn('max-age=86400', source,
-                         "媒体端点不该再写死一天")
-        self.assertNotIn('immutable"', source.replace(
-            '"public, max-age=31536000, immutable"', ''),
-            "只有 /vendor/ 那条可以 immutable")
 
     def test_archive_file_urls_get_the_data_prefix_and_the_right_host(self):
         """原始文件和缩略图走不同主机与路径，三站规则还不一样。
@@ -2939,320 +2920,29 @@ class LegacyHistoryEndPayloadTests(unittest.TestCase):
         self.assertFalse(payload["history_exhausted"])
 
 
-class FollowWebSourceTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # 和 test_web_ui 同一口径：Web 表面是拼起来的一个契约，不是某个文件。
-        # web/js 下的 ES module 用 glob 收，拆出新模块时不必回头改这里。
-        web = ROOT / "web"
-        sources = [web / "index.html"]
-        sources.extend(sorted((web / "css").glob("*.css")))
-        sources.append(web / "app.js")
-        sources.extend(sorted((web / "js").glob("*.js")))
-        # 共用控件（Collapse、滚动条、锚定菜单、Select）的唯一实现在 ui-kit，随入口包发出。
-        sources.extend(sorted((ROOT / "frontend" / "src" / "ui-kit").glob("*.ts")))
-        cls.page = chr(10).join(
-            path.read_text(encoding="utf-8") for path in sources)
+class FollowShellDecisionTests(unittest.TestCase):
+    """壳层 `web/app.js` 里两条关注页决定：组件用例驱动不了壳，浏览器用例也没碰到它们。"""
 
-    def assertPageContains(self, needle, message=""):
-        if needle not in self.page:
-            self.fail(f"Web 表面缺少：{needle!r}" + (f"（{message}）" if message else ""))
+    def test_follow_sits_before_immerse_and_neither_follow_page_joins_the_refresh(self):
+        """左栏「关注」排在沉浸模式前面；顶栏换一批不重画两个关注页。
 
-    def assertBoardContains(self, needle):
-        # Board 层的覆盖单独一张表，不在上面那份页面里；按 test_web_ui 的写法直接读它。
-        board = (ROOT / "web" / "board.css").read_text(encoding="utf-8")
-        if needle not in board:
-            self.fail(f"board.css 缺少：{needle!r}")
-
-    def read_react(self, relative):
-        """React 子树里的一份源码（ADR-0031）。关注管理页的正文不在 `web/` 里。"""
-        return (ROOT / "frontend" / "src" / "react" / relative).read_text(encoding="utf-8")
-
-    def read_front(self, relative):
-        """`frontend/src` 下的一份源码：骨架、island 注册表这类不在 `react/` 子树里的。"""
-        return (ROOT / "frontend" / "src" / relative).read_text(encoding="utf-8")
-
-    def assertReactContains(self, relative, needle, message=""):
-        source = self.read_react(relative)
-        if needle not in source:
-            self.fail(f"{relative} 缺少：{needle!r}" + (f"（{message}）" if message else ""))
-
-    def assertPageLacks(self, needle, message=""):
-        if needle in self.page:
-            self.fail(f"Web 表面不应出现：{needle!r}" + (f"（{message}）" if message else ""))
-
-    def test_watching_lives_in_the_left_rail_and_managing_stays_in_the_manage_area(self):
-        # 看和管是两件事，两个页面：左侧导航进「看」，管理区进「管」。
-        # 断言「相邻」这件事本身，不要连换行和缩进一起写死——那种断言一改格式就红，
-        # 红的原因还和它想守的契约无关。
-        rail = self.page[self.page.index("const SIDEBAR_ITEMS=["):]
-        rail = rail[:rail.index("];")]
-        keys = re.findall(r"\['([a-z]*)'", rail)
+        关注页重画要联网，联网只在按下「检查全部」时发生；`refreshAll` 认路由表上的
+        `refresh:'skip'` 跳过它们。
+        """
+        page = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        rail = page[page.index("const SIDEBAR_ITEMS=["):]
+        keys = re.findall(r"\['([a-z]*)'", rail[:rail.index("];")])
         self.assertIn("follow", keys)
         self.assertEqual(keys[keys.index("follow") + 1], "immerse",
                          "关注入口应当排在沉浸模式前面")
-        self.assertPageContains("['follow','关注','rss']")
-        # 关注入口的路径、导航键和高亮都在路由表那一条里（web/app.js 的 ROUTES），
-        # 不再是 navTo／navOn 各写一条 `k==='follow'` 分支。
-        self.assertPageContains("{match:'/follow',nav:'follow',title:'关注',refresh:'skip',")
-        self.assertPageContains("open:(params,push)=>openFollow(push),reload:()=>openFollow(false)},")
-        # 管理区这一项得在 MANAGE_SECTIONS 里找，否则它被删了测试照样绿。名字也不再
-        # 跟左栏那条相同：左栏的「关注」是看更新，这里的「关注管理」是 /follow-manage。
-        manage = self.page[self.page.index("const MANAGE_SECTIONS=["):]
-        manage = manage[:manage.index("];")]
-        self.assertIn("['follow','关注管理','rss']", manage)
-        self.assertPageContains('<symbol id="i-rss"')
-        # 管理区身份同理：`section` 写在路由表上，`openManage('follow')` 按它查表。
-        self.assertPageContains("{match:'/follow-manage',section:'follow',title:'关注管理',refresh:'skip',")
-        self.assertPageContains("open:(params,push)=>openFollowManage(push)},")
-        # 管理页的工具条不再挂一枚回「看」那一屏的按钮：左栏那条常驻入口一直在，
-        # 同一个去处在一屏里摆两个只是把工具条上真正的动作挤窄。检查完那一下的
-        # Toast 仍然给「去看更新」，因为那时人刚做完一件事、下一步确实在另一屏。
-        self.assertPageLacks("data-follow-view")
-        self.assertPageContains("action:{label:'去看更新',run:()=>openFollow()}")
+        self.assertIn("if(hit?.route.refresh==='skip')return;", page)
+        for path in ("/follow", "/follow-manage"):
+            with self.subTest(path=path):
+                self.assertRegex(page, rf"\{{match:'{re.escape(path)}',[^{{}}]*refresh:'skip'")
 
-    def test_follow_routes_restore_on_reload(self):
-        # 恢复只有一个派发点：路径匹配到哪条路由，就打开那一屏。
-        self.assertPageContains("const hit=matchRoute(ROUTES,path);")
-        self.assertPageContains("if(hit)await hit.route.open(hit.params,false);")
-        self.assertPageContains("open:(params,push)=>openFollow(push),reload:()=>openFollow(false)},")
-        self.assertPageContains("open:(params,push)=>openFollowManage(push)},")
-        self.assertPageContains(
-            "await openFollow(push,true);await openFollowDetail(params.id,push)")
 
-    def test_reader_management_is_locked_and_points_to_the_writer(self):
-        """只读这一位由壳从 runtime 读出来交进 island，React 不自己再判一次。
-
-        管理页拿到它之后说什么、停用哪些键，由 `frontend/test/react/follow-manage.test.tsx`
-        在渲染结果上判。"""
-        self.assertPageContains("readOnly:!!runtime?.ledger_read_only,")
-        self.assertPageContains("surfaceApi(surface,'/healthz')")
-
-    def test_the_input_and_its_button_are_the_same_height(self):
-        # 输入框和旁边的来源筛选按钮齐平；单行以后没有 min-height 与 resize。
-        # 几何住在共用的 .geist-search 里，关注页不再复制一份自己的输入框样式。
-        page = self.page
-        self.assertEqual(page.count('.geist-search input[type="search"]{'), 1,
-                         "旧规则留在后面会覆盖新输入框样式")
-        self.assertEqual(page.count('.faddform input[type="search"]{'), 0,
-                         "关注页私有的输入框几何已经上提到 .geist-search")
-        rule = page[page.index('.geist-search input[type="search"]{'):]
-        rule = rule[:rule.index("}")]
-        self.assertIn("height:38px", rule)
-        self.assertIn("padding:0 12px 0 38px", rule)
-        self.assertIn("line-height:20px", rule)
-        self.assertNotIn("resize:", rule)
-
-    def test_follow_filter_rows_are_multi_select_without_bulk_keys(self):
-        """关注页的作者、来源、标签三行都是多选，行首不配「全选／全不选」：这一页是浏览用的。
-
-        选中状态只有三个 Set 一份真相，URL 里按逗号拼；服务端同样按逗号拆。
-        """
-        self.assertIn("let followAuthors=new Set(),followProviders=new Set(),followTags=new Set()",
-                      self.page)
-        self.assertNotIn("followAuthor=", self.page.replace("followAuthors=", ""))
-        self.assertNotIn("followProvider=", self.page.replace("followProviders=", ""))
-        # 每一枚按下与否由 `follow-feed` 岛照 view 画（`frontend/test/react/follow-feed.test.tsx`）。
-        self.assertNotIn("followBulkButtons", self.page)
-        self.assertNotIn("data-bulk-all", self.page)
-        self.assertNotIn(".followauthors .fbulk{", self.page)
-        self.assertIn("params.set('author',[...followAuthors].join(','))", self.page)
-        self.assertIn("params.set('provider',[...followProviders].join(','))", self.page)
-
-    def test_the_manage_page_is_ordered_by_what_you_do_first(self):
-        """各栏按做事的先后排：关注列表在最前，其次添加关注与订阅源，最后才是来源和凭证。
-
-        凭据是出问题时才去配的东西，摆在第一栏就等于每次进来都先看一眼跟这次无关的
-        表单。栏的顺序同时也是地址栏里 `tab` 的取值顺序，壳那边照着同一份；页面画出来的
-        次序由 `frontend/test/react/follow-manage.test.tsx` 判。
-        """
-        self.assertPageContains("const FOLLOW_MANAGE_TABS=['list','add','feeds','wants','source'];")
-
-    def test_the_page_is_one_narrow_column_with_credentials_inline(self):
-        """侧栏在哪个宽度上都不对：宽屏把凭据推出视线，窄屏又整个塌到最底下。
-
-        三块内容本来就有先后，那就按顺序排成一列，宽度跟数据管理页同样收窄，别让一行
-        横跨整个显示器。骨架照这个宽度画，换页时不会先宽一下再收回去。
-        """
-        page = self.page
-        self.assertNotIn("faside", page)
-        # React 那一侧同宽：`Page` 是这一族页面共用的那一层。
-        self.assertReactContains("follow-manage/follow-manage-page.tsx", "<Page>")
-        # 凭据在「来源和凭证」那一栏里，每个站一行。
-        self.assertReactContains(
-            "follow-manage/credentials.tsx",
-            "<CredentialSection key={row.provider} row={row} readOnly={readOnly} toast={toast} />")
-
-    def test_sections_have_a_frame_but_their_rows_do_not(self):
-        """反模式是卡片**套**卡片，不是「不要任何容器」。
-
-        把两者混为一谈就会做成没有可读性的裸列表——而同一份文档明确警告过不要
-        因为躲开那些默认套路就做出一个无设计的模板。所以：分区有框，框里的行
-        只用分隔线。分区的框是 `follow-manage` 岛的填充卡（`components/card.tsx`）。
-        """
-        page = self.page
-        self.assertNotIn(".fcard{", page)
-        self.assertNotIn(".fsource{", page,
-                         "旧来源卡片规则会给新行重新套上边框和圆角")
-
-    def test_the_panel_cites_the_registered_report_design_source(self):
-        page = self.read_react("follow-manage/follow-manage-page.tsx")
-        self.assertIn("docs/reference-sources.json", page)
-        self.assertIn("vercel-report-design", page)
-        self.assertNotIn("e3d624baaf29dc1fc645aff3e38f03e564d2d6b1", page)
-
-    def test_the_type_scale_has_no_arbitrary_in_between_sizes(self):
-        """同一份文档点名的另一条：细小灰字加随意字号。
-
-        管理页只用 14 正文 / 13 次要 / 12 元信息三档。这三档现在是全站刻度里的
-        `--fs-md` / `--fs-sm` / `--fs-xs`，不再是写死的像素——面板当初收敛出的那三档
-        本来就该是全站的下三档，各写各的迟早会漂开。所以这里断言的是「只用这三个
-        token，且一个字面像素都不留」。
-        """
-        page = self.page
-        # 管理区共用的反馈控件一段，到链接管理骨架为止（骨架的大数读数另有一档）。
-        block = page[page.index("/* ── 关注一族与管理区共用的反馈控件 ──"):page.index("/* 链接管理骨架的概览格")]
-        self.assertEqual(re.findall(r"font-size:[\d.]+px", block), [],
-                         "面板里不该再有写死的字号")
-        steps = sorted({m for m in re.findall(r"font-size:var\(--fs-([a-z0-9]+)\)", block)})
-        self.assertEqual(steps, ["md", "sm", "xs"], f"字号档位应只有三档，实际 {steps}")
-
-    def test_expanding_prose_animates_a_measured_height(self):
-        """展开是量出来的高度过渡，不是一帧之间蹦出来。
-
-        `height:auto` 不可过渡，所以要先量再写值；收起那半程也要把正文设成 `inert`，
-        否则键盘还能 Tab 进一段看不见的表单。"""
-        self.assertPageContains(".fcollapse{overflow:hidden;transition:height .2s ease-in-out}")
-        self.assertPageContains("summary.setAttribute('aria-controls',body.id)")
-        self.assertPageContains("summary.setAttribute('aria-expanded',String(expanded))")
-        self.assertPageContains("body.inert=!expanded")
-        self.assertPageContains("body.inert=true")
-        self.assertPageContains("body.style.height=body.scrollHeight+'px'")
-        self.assertEqual(self.page.count("body.style.height=body.scrollHeight+'px'"), 1,
-                         "开合逻辑只该有一份")
-        # 箭头跟着一起转：正文在动、指示方向的那一枚却一帧跳过去，两处说的就不是同一件事。
-        self.assertIn("rotate-90 transition-transform", self.read_front("react/settings/section.tsx"))
-
-    def test_follow_views_use_primary_surfaces_secondary_actions_and_visible_dividers(self):
-        """列表外框、作者与紧凑表格分三层；行内操作不借主动作的蓝色。"""
-        sources = self.read_react("follow-manage/source-list.tsx")
-        self.assertIn('data-follow-author-header data-open={open || undefined}', sources)
-        self.assertIn('<DataTableFrame follow onRowClick=', sources)
-        # 整屏只有「检查全部」一枚主动作，行内动作都不借它的蓝；画出来几枚图标键、
-        # 分别叫什么，由 `frontend/test/react/follow-manage.test.tsx` 在渲染结果上判。
-        # 空态里那枚「添加关注」链接画在没有工具条的那一屏上，两枚不同屏，也由那份用例判。
-        self.assertEqual(sources.count('<Button variant="primary"'), 1)
-        self.assertIn('<Button variant="secondary" size="small" aria-expanded={open}', sources)
-        # 三处分层与分隔线各有自己的规则。这里只认规则还在：把整段声明逐字比一遍的话，
-        # 样式表换一次缩进就红，而那正是格式化工具随时会做的事。
-        styles = self.read_front("react/styles.css")
-        for selector in ("[data-follow-author-header][data-open] {",
-                         "[data-board-data-table] {",
-                         "[data-board-data-table] .bui-table th {",
-                         "[data-source-divider] > * + * {"):
-            with self.subTest(selector=selector):
-                self.assertIn(selector, styles)
-
-    def test_the_table_view_follows_the_boardui_data_table(self):
-        """表格视图用的就是 boardui 注册表里 `table` 那一份源码，不是照着它再写一张表。
-
-        `data-table` 条目本身是 `registry:block`，只有一份示例、依赖的条目 Peach 都没有；它演示
-        的正是「`table` 配 TanStack Table」这套接法，所以这里照接法做、把 `table` 逐字搬进来。
-        外观全在 `.bui-table` 那一组规则里，一起逐字搬进 `react/styles.css`。
-        """
-        boardui = ROOT / "frontend" / "src" / "react" / "boardui"
-        origin = (boardui / "ORIGIN.md").read_text(encoding="utf-8")
-        self.assertIn("| `table` |", origin)
-        self.assertIn("`components/base/table/table.tsx` |", origin)
-        self.assertIn("| `data-table`", origin)
-        copied = (boardui / "components" / "base" / "table" / "table.tsx").read_bytes()
-        digest = hashlib.sha256(copied).hexdigest()
-        recorded = (boardui / "UPSTREAM.sha256").read_text(encoding="utf-8")
-        self.assertIn(f"{digest}  components/base/table/table.tsx", recorded,
-                      "逐字复制的源码要和 UPSTREAM.sha256 对得上")
-        # 外观不在这里重写：页面只用组件，规则逐字落在 styles.css。
-        styles = self.read_front("react/styles.css")
-        self.assertIn(".bui-table th {", styles)
-        self.assertIn("border-top: 1px solid var(--color-separator-border);", styles)
-        self.assertIn(".bui-table tbody tr:not(:last-child) {", styles)
-        sources = self.read_react("follow-manage/source-list.tsx")
-        self.assertIn("import {\n  Table, TableBody, TableCell, TableColumn, TableHeader, TableRow,\n"
-                      "} from '@/components/base/table/table';", sources)
-        self.assertNotIn("<table", sources, "表格标签归复制过来的那份组件")
-        self.assertIn('<Table aria-label="关注来源"', sources)
-        self.assertIn('<TableBody renderEmptyState={() => \'这一页没有来源\'}>', sources)
-
-    def test_follow_watch_filters_use_the_source_identity(self):
-        # 判定本身搬去了服务端（见 FollowContractTests 里的筛选用例）；页面这一侧要
-        # 保证的是把身份原样交出去，而不是把显示名或来源标签当筛选值送过去。
-        self.assertPageContains("+(followAuthors.size?`&author=${encodeURIComponent([...followAuthors].join(','))}`:'')")
-        self.assertPageContains("+(followProviders.size?`&provider=${encodeURIComponent([...followProviders].join(','))}`:'')")
-        self.assertPageContains('class="tier followauthors"')
-        self.assertPageContains('class="tagbar followfilters"')
-        self.assertPageLacks("内容标签目前由 ${")
-        # 两排与标签按种子取样归 `follow-feed` 岛（`follow-feed.test.tsx`「取样」）；壳只在
-        # 重新进入时掷一粒新种子。
-        self.assertPageContains("if(push)followDiscoverySeed=Math.floor(Math.random()*0xffffffff)")
-
-    def test_follow_tags_are_multi_select_and_use_rule34_property_colours(self):
-        self.assertPageContains("let followAuthors=new Set(),followProviders=new Set(),followTags=new Set()")
-        # 取交集的判定在服务端；页面负责把多选的标签一次全交出去。
-        self.assertPageContains("+(followTags.size?`&tag=${encodeURIComponent([...followTags].join(','))}`:'')")
-
-    def test_follow_cards_use_author_avatars_and_open_details_inside_peach(self):
-        # 卡片本身归 `follow-feed` 岛，头像与署名在岛里（`follow-marks.test.ts`）；点卡交给壳开详情。
-        self.assertPageContains("openDetail:id=>openFollowDetail(id),")
-        self.assertNotIn(
-            'class="mav fsourceavatar" title="${esc(item.provider_label)}">${sourceIcon(item.provider)}',
-            self.page,
-        )
-        self.assertPageContains("async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false)")
-        self.assertNotIn('打开来源页面</a>', self.page)
-        self.assertNotIn('class="cardopenhit" href=', self.page)
-        self.assertNotIn('class="fcollectionthumb" href=', self.page)
-        self.assertPageContains("route(followDetailReturnPath||'/follow')")
-
-    def test_follow_image_collections_use_buttons_dots_and_arrow_keys(self):
-        self.assertPageContains("imageDots.length&&(e.key==='ArrowLeft'||e.key==='ArrowRight')")
-
-    def test_follow_detail_keeps_filter_context_and_clears_initial_loading(self):
-        self.assertPageContains("async function openFollow(push=true,renderForDetail=false)")
-        # 深链进详情不取列表、不挂列表岛，这一条由详情岛自己取；关掉详情时列表岛不在场才挂（e2e `follow-feed.test.ts`、`follow-detail.test.ts`）。
-        self.assertPageContains("const surface=claimSurface(surfacePath());")
-        self.assertPageContains("const surface=claimSurface('/follow');")
-        self.assertPageContains("await openFollow(push,true);await openFollowDetail(params.id,push)")
-        self.assertPageLacks("last.after($('#stage'))")
-        self.assertPageContains("if(!followFeedLive()){await openFollow(false);return}")
-
-    def test_follow_filters_put_all_first_and_sources_are_icon_only(self):
-        self.assertPageContains("const FOLLOW_FILTERS=[['','全部'],['new','未看']")
-        # 来源键只有图标、没有「全部来源」「全部标签」那一枚，由 `follow-feed` 岛画
-        # （`frontend/e2e/follow-source-icons.test.ts`、`follow-feed.test.tsx`）。
-
-    def test_follow_horizontal_rails_are_wired_after_each_render(self):
-        # 两排与筛选条的拖动横滚归 `follow-feed` 岛（`FilterGlassRows`）；骨架那两排同形。
-        self.assertPageContains(".followauthors{padding:3px 0 10px")
-        self.assertPageLacks(".followfilters{position:relative")
-
-    def test_the_watch_page_does_not_carry_source_management(self):
-        # 输入框、移除、凭据都只属于管理页；看的那页保持干净。
-        watch = "".join(self.read_react(f"follow-feed/{name}")
-                        for name in ("follow-feed-page.tsx", "follow-card.tsx"))
-        for management in ("followAdd", "data-follow-remove", "fcreds", "data-follow-bulk"):
-            if management in watch:
-                self.fail(f"看的那一页不应出现管理控件：{management!r}")
-
-    def test_network_check_is_an_explicit_button_not_an_auto_refresh(self):
-        # 联网只发生在按下「检查全部」的那一刻（`frontend/test/react/follow-manage.test.tsx`）。
-        # 「换一批」自动刷新绝不能顺手触发一次联网检查。这件事现在由路由表上的
-        # `refresh:'skip'` 表达：refreshAll 只认这个标记，两个关注页各自带一个。
-        self.assertPageContains("if(hit?.route.refresh==='skip')return;")
-        self.assertPageContains("{match:'/follow',nav:'follow',title:'关注',refresh:'skip',")
-        self.assertPageContains("{match:'/follow-manage',section:'follow',title:'关注管理',refresh:'skip',")
-
-    def test_every_entered_state_can_be_left_again(self):
-        self.assertIn('data-to="new" title="恢复未看" aria-label="恢复未看"',
-                      self.read_react("follow-feed/follow-card.tsx"))
+class FollowItemProjectionTests(unittest.TestCase):
+    """条目标签、作者归组、显示名、别名建议与头像地址的服务端投影。"""
 
     def test_rule34_sources_carry_content_first_tags(self):
         """Rule34Video 与 Rule34.xxx 都提供标签，载体标签不挤占内容标签。
@@ -3454,73 +3144,6 @@ class FollowWebSourceTests(unittest.TestCase):
                               ("kemono", "no-slash")):
             self.assertIsNone(web_follow._avatar_url(provider, ref),
                               f"{provider} 没有实测过的头像来源，不该猜一个")
-
-    def test_only_actionable_media_failures_enter_the_information_stream(self):
-        # 能动手的那两句（缺 F95 会话时分「部分」与「全部」）由 `follow-marks.test.ts` 量。
-        self.assertPageLacks("已显示可读取附件；F95 登录会话已保存")
-        self.assertPageLacks("这条旧记录的受保护资源会在下次检查重新解析")
-        self.assertPageLacks("个外部文件页；视频列表未取得")
-
-    def test_follow_external_links_have_a_real_icon_and_no_underlines(self):
-        self.assertPageContains('<symbol id="i-external-link"')
-        self.assertPageContains("text-decoration:none")
-
-    def test_follow_styles_exist_for_the_card_surface(self):
-        # 卡片本身的样式归 `follow-feed` 岛；壳里只剩进页骨架那面墙。
-        self.assertPageContains(".followlist{")
-
-    def test_follow_puts_the_media_buttons_at_the_top_row_left_behind_a_separator(self):
-        """媒体类型在上排最左，隔一道竖线才是状态——跟资料页那条同一个次序。
-
-        它问的是「这一页现在摆的是哪一类东西」，比右边那五枚粗一级：视频和图片各是
-        一整批内容，状态是在这一批里再挑一档。摆在下排右端的话，它挨着的是排序键和
-        动作键，读起来像给当前这批加的又一个条件，而它换掉的是整页内容。
-        """
-        self.assertPageLacks('class="insightswitch followmediaswitch"')
-        self.assertPageLacks("params.set('media-ui','switch')")
-        self.assertPageLacks('class="followmediaicons"')
-        self.assertPageLacks('data-follow-media=')
-        self.assertPageContains("params.set('author',[...followAuthors].join(','))")
-        self.assertPageLacks("if(followMediaView==='images'&&!mediaCounts.images)followMediaView='videos'")
-        self.assertPageLacks("if(followMediaView==='videos'&&!mediaCounts.videos&&mediaCounts.images)followMediaView='images'")
-        # 媒体两枚在上排最左、隔一道竖线才是状态，各有一块滑动玻璃：由 `follow-feed` 岛画，
-        # 次序与玻璃由 e2e `follow-feed.test.ts` 钉住。照片墙只剩骨架那一份栅格。
-        self.assertPageContains(".followlist.followphotowall{grid-template-columns:repeat(5,minmax(0,1fr))")
-        self.assertPageLacks(".followlist.followphotowall>.stage{column-span:all}")
-        self.assertPageLacks(".followlist.followphotowall{display:block;column-count:5")
-
-    def test_external_file_pages_do_not_default_to_video_and_paging_actions_share_one_row(self):
-        self.assertPageLacks("else kinds.add(item.media_kind==='image'?'image':'video')")
-        # 「加载更多」与「抓更早的一页」同一行、往回抓时的忙态归 `follow-feed` 岛
-        # （e2e `follow-feed.test.ts`「载入更多」「往回抓一页」）。
-
-    def test_follow_uses_the_global_multi_select_mode(self):
-        # 两个选择集是壳单例里的常驻 Set（`frontend/test/shell/store.test.ts`）。
-        self.assertPageContains("function toggleFollowSelection(id,range=false)")
-        self.assertPageContains("path==='/tags'||path==='/follow'")
-        self.assertPageContains("const body=action==='save'?{items}:{items,to:action};")
-
-    def test_ignore_actions_do_not_reuse_the_close_icon(self):
-        self.assertPageContains('<symbol id="i-eye-off"')
-        # 批量条上「忽略」的字形由 `frontend/test/react/batch-dock.test.tsx` 断言。
-        # 设置面板侧栏排序那一行的「隐藏」也是 eye-off，不借关闭的叉。
-        self.assertIn('<Icon name="eye-off" /></button>', self.read_react("settings-panel/sidebar-order.tsx"))
-
-    def test_the_check_button_stays_visible_on_a_narrow_viewport(self):
-        # 管理入口不再混进横滚筛选条；390 宽下始终留在标题右侧。
-        self.assertPageContains(".followhead{display:flex;align-items:center;justify-content:space-between")
-        self.assertPageContains('@media (max-width:640px){.followhead{align-items:center}')
-
-    def test_detail_images_open_the_same_lightbox_as_the_performer_page(self):
-        """关注详情的图要能点开大图，用的必须是同一个灯箱，不是另写一套。
-
-        灯箱不写死 `/photo?id=`：那是本地 ledger 资产的取图口，在线图没有 asset id，
-        套不进去。所以各调用方自己换成 `LightboxSlide`，在线图直接给 URL。灯箱本身归
-        React（`frontend/src/react/photo-lightbox/`），行为由 `photo-lightbox.test.tsx` 与 e2e 钉住。
-        """
-        self.assertPageLacks('<img src="/photo?id=${item.id}"',
-                             "灯箱模板仍写死本地取图口")
-
 
 
 if __name__ == "__main__":
