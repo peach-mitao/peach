@@ -16,6 +16,20 @@ from support.ledger import fresh_ledger
 
 
 class TestPlanningTests(unittest.TestCase):
+    def test_every_supplementary_test_id_names_a_real_test(self):
+        """域的补充用例按名字装载：被引用的用例改名后，装进来的是一个必然报错的占位用例，
+        选到这一域的 auto 都签不出记录。在这里按名字装一遍，改名当场就红。"""
+        loader = unittest.TestLoader()
+        sys.path[:0] = [str(runner.ROOT), str(runner.TESTS)]
+        try:
+            for scope, test_ids in runner.SCOPE_TEST_IDS.items():
+                for test_id in test_ids:
+                    with self.subTest(scope=scope, test_id=test_id):
+                        loaded = list(loader.loadTestsFromName(test_id))
+                        self.assertEqual([test.id().split(".", 1)[1] for test in loaded], [test_id.split(".", 1)[1]])
+        finally:
+            del sys.path[:2]
+
     def test_unspawnable_tools_stop_before_any_test_shard_starts(self):
         output = io.StringIO()
         with patch.object(runner.test_evidence, 'unspawnable_tools', return_value=('uv',)), \
