@@ -35,6 +35,9 @@ def digest(value: object) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
+_STATE = re.compile(r"[0-9a-f]{64}")
+
+
 def manifest(root: Path) -> dict:
     names = git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
     files = {}
@@ -165,10 +168,22 @@ def inputs(root: Path) -> dict:
             "state": digest([digest(content), dependencies])}
 
 
+def recent_records(folder: Path, limit: int = 32) -> list[Path]:
+    """最近写入的测试记录。同目录还有持锁说明 `*.lock.holder.json`，名字不是 state 摘要，
+    不算记录；记录和说明都会被别的进程随时删掉，列出后才消失的文件跳过。"""
+    found = []
+    for path in folder.glob("*.json"):
+        if not _STATE.fullmatch(path.stem):
+            continue
+        try:
+            found.append((path.stat().st_mtime, path))
+        except FileNotFoundError:
+            continue
+    return [path for _, path in sorted(found, reverse=True)[:limit]]
+
+
 def baselines(root: Path, current: dict):
-    folder = evidence_dir(root)
-    paths = sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:32]
-    for path in paths:
+    for path in recent_records(evidence_dir(root)):
         record = read(root, path.stem)
         if "full" not in record.get("passed", ()) or record.get("environment") != current["environment"]:
             continue
