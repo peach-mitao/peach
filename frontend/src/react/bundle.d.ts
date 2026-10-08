@@ -465,7 +465,7 @@ export interface ToastIcons { success: string; error: string }
 export interface ToastRequest {
   html: string;
   alert: boolean;
-  /** 毫秒；0 表示不自己消失。 */
+  /** 毫秒；0 与负数按默认的 6 秒，`Infinity` 表示不自己消失。 */
   timeout: number;
   action: { label: string; run(button: HTMLButtonElement): void } | null;
 }

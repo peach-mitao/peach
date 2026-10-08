@@ -10,7 +10,7 @@
  * `helpers.jobProgress` 盯着，跑完失效这一页的查询重取。 */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, type InfiniteData } from '@tanstack/react-query';
-import { icon, requestErrorMessage } from '@peach/legacy/core';
+import { icon, leadingGraphemes, requestErrorMessage } from '@peach/legacy/core';
 import { tagLabel } from '@peach/legacy/tags';
 import { emptyStateHtml, spinnerHtml } from '@peach/legacy/ui';
 
@@ -314,7 +314,7 @@ function Works({ rows, pressed, props, onPick }: {
       {rows.map((work) => (
         <button key={work[0]} type="button" data-follow-work={work[0]} aria-pressed={pressed === work[0]}
           onClick={() => onPick(work[0])}>
-          <span data-follow-mark="" data-fallback={String(work[1] || '').slice(0, 2)}
+          <span data-follow-mark="" data-fallback={leadingGraphemes(work[1], 2)}
             dangerouslySetInnerHTML={{ __html: props.helpers.workMark(work) }} />
           {work[1]}
         </button>

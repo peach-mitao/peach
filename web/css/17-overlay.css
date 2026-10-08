@@ -8,7 +8,10 @@
   --normal-border:var(--color-border-button-default);--normal-text:var(--color-text-primary);
   gap:10px;border-radius:var(--floating-radius);font:var(--board-body);
   box-shadow:var(--elevation-dropdown)}
-#toasts [data-sonner-toast] [data-title]{font-weight:500}
+/* 正文里的换行照写，长路径与无空格的串就地折行。一条最高占视口的四分之一，再长在条内滚：
+   悬停展开时三条叠起来仍留在视口里，不顶出上沿。 */
+#toasts [data-sonner-toast] [data-title]{font-weight:500;white-space:pre-line;overflow-wrap:anywhere;
+  max-height:24dvh;overflow-y:auto;overscroll-behavior:contain}
 #toasts [data-sonner-toast] b{font-variant-numeric:tabular-nums}
 /* 字形用全站那套描边件：成功是主色的勾，失败是警示色的圈。不写 `fill:none` 就按 `fill` 的
    初值涂黑，一个勾会糊成实心箭头；圆线帽是感叹号那一点的全部，平头线帽下它就消失。 */

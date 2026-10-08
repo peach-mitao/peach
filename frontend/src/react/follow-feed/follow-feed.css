@@ -265,7 +265,7 @@
 /* ── 列表 ── */
 .peach-react [data-follow-list] {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--tile)), 1fr));
   gap: 24px 16px;
 }
 .peach-react [data-follow-list] > [data-media-card] { align-self: start; }

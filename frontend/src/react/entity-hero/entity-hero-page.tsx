@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { entityFaceImg, facePos } from '@peach/card-art';
-import { entityPath, esc, icon } from '@peach/legacy/core';
+import { entityPath, esc, firstGrapheme, icon } from '@peach/legacy/core';
 
 import { Button } from '@/components/base/buttons/button';
 
@@ -107,7 +107,7 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
                 <button key={person.k} type="button" data-related-performer={person.k}
                   onClick={() => actions.openEntity('performer', person.k)}>
                   <span data-hero-ring="" dangerouslySetInnerHTML={{
-                    __html: `<span>${esc(person.k.slice(0, 1))}</span>${costarImg(person)}` }} />
+                    __html: `<span>${esc(firstGrapheme(person.k))}</span>${costarImg(person)}` }} />
                   <span data-hero-costar-name="">{person.k}</span>
                 </button>
               ))}
@@ -128,7 +128,7 @@ function Portrait({ kind, name, helpers, people, company }: {
 }) {
   /* 图只拼一次：兜底链摘掉的 `<img>`、人脸放大写进去的尺寸都留在节点上，重画时不能按
      同一段 HTML 再盖回去（`dangerouslySetInnerHTML` 只在字符串变了时才重写）。 */
-  const [html] = useState(() => `${helpers.portraitImg()}<span>${esc(name.slice(0, 1))}</span>`);
+  const [html] = useState(() => `${helpers.portraitImg()}<span>${esc(firstGrapheme(name))}</span>`);
   return (
     <div data-entity-portrait={people ? 'round' : 'square'} data-fit-native={company ? 'mark' : 'portrait'}
       data-entity-kind={kind} dangerouslySetInnerHTML={{ __html: html }} />

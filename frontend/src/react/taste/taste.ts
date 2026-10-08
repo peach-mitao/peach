@@ -10,6 +10,7 @@
  *
  * 刷新任务是另一份真相，节律由后台推进，所以单独一个键（`['taste','refresh']`）。 */
 import { sankey, sankeyLinkHorizontal } from 'd3-sankey';
+import { clipGraphemes } from '@peach/legacy/core';
 
 import { apiGet, apiSend, ApiError } from '../../api';
 import type { BarRow } from '../charts/bar-card';
@@ -271,5 +272,4 @@ export function flowGraph(rows: CreatorFlow[] = []): FlowGraph | null {
 }
 
 /** 节点名字太长时截断。图里一格只有这么宽，整名在 `aria-label` 和 `<title>` 里。 */
-export const flowLabel = (name: string): string =>
-  (name.length > 18 ? `${name.slice(0, 16)}…` : name);
+export const flowLabel = (name: string): string => clipGraphemes(name, 17);

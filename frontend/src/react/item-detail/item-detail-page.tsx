@@ -9,7 +9,7 @@
  * 把服务端回的那几个字段换进 `['item', id]`，目录网格缓存里的同一张卡一起换，不重读列表。 */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { esc, fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
+import { esc, firstGrapheme, fmtDur, fmtSize, icon, leadingGraphemes, requestErrorMessage } from '@peach/legacy/core';
 import {
   coverUrl, entityFaceImg, logoUrl, mixLabel, performerLabel, queueAvatarHtml, queueThumbHtml,
 } from '@peach/card-art';
@@ -462,12 +462,12 @@ function Identity({ item, actions }: { item: DetailItem; helpers: ItemDetailHelp
   const cell = (kind: string, ref: DetailEntityRef, index: number) => {
     const hide = kind === 'performer' && index >= CAST_SHOWN && !castOpen;
     const face = kind === 'performer'
-      ? <span data-id-face="" dangerouslySetInnerHTML={{ __html: `<span>${esc(ref.name.slice(0, 1))}</span>`
+      ? <span data-id-face="" dangerouslySetInnerHTML={{ __html: `<span>${esc(firstGrapheme(ref.name))}</span>`
         + entityFaceImg({ id: ref.id, hasImage: ref.has_image, version: ref.image_version, focus: ref.avatar_focus }) }} />
       : <span data-id-face="">{kind === 'studio'
-        ? <><span>{ref.name.slice(0, 2)}</span>{ref.has_logo
+        ? <><span>{leadingGraphemes(ref.name, 2)}</span>{ref.has_logo
           ? <img src={logoUrl(ref.name, 'icon', ref.logo_version)} alt="" loading="lazy" data-drop="self" /> : null}</>
-        : <span>{ref.name.slice(0, 1)}</span>}</span>;
+        : <span>{firstGrapheme(ref.name)}</span>}</span>;
     const content = <>{face}<span data-id-name="">{ref.name}</span></>;
     const overflowAttrs = kind === 'performer' && index >= CAST_SHOWN ? { 'data-castoverflow': '' } : {};
     if (!ref.id) return <span key={`${kind}:${ref.name}`} data-id-cell={kind} title={ref.name} hidden={hide} {...overflowAttrs}>{content}</span>;

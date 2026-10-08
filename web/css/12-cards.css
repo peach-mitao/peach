@@ -63,7 +63,7 @@ main{position:relative;z-index:1;padding:14px 16px 90px}
 /* 列距 16px 是给悬停面留的：卡片悬停时底色往盒外多铺 8px（见下方 `:hover`），列距再窄，
    两张卡的悬停面就顶到邻卡上。 */
 .grid{gap:24px 16px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr))}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--tile)),1fr))}
 .card{cursor:pointer;display:flex;flex-direction:column;gap:8px;min-width:0;border-radius:var(--surface-radius);
   position:relative;transition:transform .18s ease,filter .18s ease,background-color .15s ease,box-shadow .15s ease;transform-origin:center}
 /* 垃圾文件队列里，视口外的卡片跳过渲染：滚动和侧栏开合时要算的只剩屏上那几十张。

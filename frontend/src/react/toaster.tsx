@@ -36,12 +36,17 @@ export const mountToaster: typeof Bundle.mountToaster = (host, icons) => {
 /* 同一个 `id` 再调一次就是改写那一条：撤销的结果写回原回执，不另起一条，底部对齐的栈里
    不会一进一出地跳一格。改写时 `action` 显式给成 `undefined`，Sonner 按 id 合并，不写这一项
    旧的「撤销」键会留在「已撤销」旁边。 */
+/** 没给时长或给了非正数时的停留时间，同遗留壳 `toast()` 的默认值。要常驻就显式传 `Infinity`。 */
+const DEFAULT_TIMEOUT = 6000;
+
 export const showToast: typeof Bundle.showToast = (id, request) => {
+  /* 没有字的回执只是一块空白条，不弹。 */
+  if (!String(request.html ?? '').trim()) return;
   const show = request.alert ? toast.error : toast.success;
   const action = request.action;
   show(<span dangerouslySetInnerHTML={{ __html: request.html }} />, {
     id,
-    duration: request.timeout || Infinity,
+    duration: request.timeout > 0 ? request.timeout : DEFAULT_TIMEOUT,
     action: action ? {
       label: action.label,
       // 点了不关：结果要写回这一条。关掉它的是随后那次改写的计时。

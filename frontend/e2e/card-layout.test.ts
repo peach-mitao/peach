@@ -93,4 +93,21 @@ describe('混排作品的画面框',()=>{
    }finally{await context.close()}
   });
  }
+ /* 大图档一格的模块宽 336px，比 320 的手机屏还宽：网格的最小列宽要让给视口，整张卡留在屏内。 */
+ for(const size of ['big','small']){
+  it(`320 宽 ${size} 版式的卡片网格不越出视口`,async()=>{
+   const context=await browser.newContext({viewport:{width:320,height:640}});
+   try{
+    const page=await context.newPage();
+    await openHome(page,size);
+    const box=await page.locator('#grid [data-media-grid]').first().evaluate(node=>({
+     right:Math.round(node.getBoundingClientRect().right),
+     card:Math.round(node.querySelector('[data-media-card]')!.getBoundingClientRect().right),
+     page:document.documentElement.scrollWidth,
+     view:document.documentElement.clientWidth,
+    }));
+    assert.ok(box.right<=box.view&&box.card<=box.view&&box.page<=box.view,JSON.stringify(box));
+   }finally{await context.close()}
+  });
+ }
 });

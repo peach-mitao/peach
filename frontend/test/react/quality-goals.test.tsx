@@ -107,7 +107,7 @@ it('每条目标一张卡片，读数走遗留层同一套格式化口径', asyn
 it('探测失败的时长显示占位，不显示 0 也不显示负数', async () => {
   const { host } = await open(payload([goal({ duration: -1, size: 0 })]));
   expect([...host.querySelectorAll('h3 ~ p > span')].map((node) => node.textContent))
-    .toEqual(['', '本地', '—', '0 MB']);
+    .toEqual(['', '本地', '—', '大小未知']);
 });
 
 it('有番号封面就用番号封面，否则退回海报', async () => {

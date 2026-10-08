@@ -19232,10 +19232,10 @@ function bp({ tone: e, title: t, action: n, extra: r, children: i }) {
 		children: [/* @__PURE__ */ (0, B.jsxs)("div", {
 			className: "flex min-w-0 flex-1 flex-col gap-0.5",
 			children: [t ? /* @__PURE__ */ (0, B.jsx)("p", {
-				className: "text-body-medium",
+				className: "text-body-medium wrap-anywhere",
 				children: t
 			}) : null, /* @__PURE__ */ (0, B.jsx)("p", {
-				className: "text-body-2-regular",
+				className: "whitespace-pre-line text-body-2-regular wrap-anywhere",
 				children: i
 			})]
 		}), n]

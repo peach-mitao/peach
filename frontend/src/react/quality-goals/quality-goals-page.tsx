@@ -56,7 +56,7 @@ function GoalCard({ item, openItem, searchResources, javTitleHtml, javDisplayNam
             <span className="contents" dangerouslySetInnerHTML={{ __html: srcBadge(item.location, item.cost) }} />
             <span>{LOC[item.location] ?? item.location}</span>
             <span>{fmtDur(item.duration)}</span>
-            <span>{fmtSize(item.size ?? 0)}</span>
+            <span>{Number(item.size) > 0 ? fmtSize(Number(item.size)) : '大小未知'}</span>
           </p>
           {item.reason
             ? <p className="border-t border-separator-border pt-3 text-body-2-regular text-text-secondary">

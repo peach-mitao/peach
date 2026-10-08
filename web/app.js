@@ -1,6 +1,6 @@
 import { loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
-import {$, DURATION_TAGS, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, cleanTagFilter, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, newSeed, seededRank} from './js/core.js';
+import {$, DURATION_TAGS, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, cleanTagFilter, isAbort, mapLimit, entityPath, esc, firstGrapheme, fmtClock, fmtSize, foldName, icon, leadingGraphemes, isCatalogPath, newSeed, seededRank} from './js/core.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
@@ -1359,7 +1359,7 @@ function catalogTags(filters){
    `performer-8711` 那种全身站姿照在资料页只放得到 2 倍，在这里放到 3 倍还没碰到
    源图 1:1。取景与索引页同一份 sidecar、同一个换算。 */
 function tierPerformer(x){
-  return {name:x.k,ringHtml:`<span data-tier-initial>${esc(x.k.slice(0,1))}</span>${entityFaceImg(
+  return {name:x.k,ringHtml:`<span data-tier-initial>${esc(firstGrapheme(x.k))}</span>${entityFaceImg(
     {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus})}`};
 }
 /* 正规厂牌用官网 logo；缺失时只显示首两个字，绝不把作品截图冒充厂牌图标。
@@ -1368,7 +1368,7 @@ function tierPerformer(x){
    代价是：一排 30 个厂牌里 21 个是 404，而 404 那条响应不可缓存，每次重绘再打一整轮。
    `has_logo` 由 `/api/tops` 下发，判据和取图同一个函数。 */
 function tierStudio(x){
-  return {name:x.k,fallback:x.k.slice(0,2),
+  return {name:x.k,fallback:leadingGraphemes(x.k,2),
     logo:x.has_logo?logoUrl(x.k,'icon',x.logo_version):''};
 }
 /* 首屏时这一块要等两个聚合查询，约一秒。铺上骨架就必须有一次真的绘制来顶掉它，哪怕取回的
@@ -2113,7 +2113,7 @@ function revealRoutedPage(container){
    的头像，只挪不放大的话脸在图里占多少、在这枚圆里就占多少，一排看下来仍是身体。
    没检出脸就两样都不写，圆标按样式表里的默认取景摆。 */
 function followWorkMark([key,label,,icon,focus]){
-  const fallback=esc(String(label||'').slice(0,2));
+  const fallback=esc(leadingGraphemes(label,2));
   return icon?`<img src="/work-icon?work=${encodeURIComponent(key)}" width="128" height="128" alt="" loading="lazy"${facePos(focus)}${faceBoxAttrs(focus)}>`:fallback;
 }
 

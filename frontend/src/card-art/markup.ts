@@ -4,7 +4,7 @@
  * （`./image-fallback.ts`）取不到图时换 `src`、摘掉或换成首字母，取景（`./framing.ts`）在
  * 加载后往图上写内联样式与类名。React 看不见这些改动：节点归它管，重画一次就冲掉取景，
  * 被兜底链摘掉的节点再交给它更新还会报错。 */
-import { esc } from '@peach/legacy/core';
+import { esc, firstGrapheme } from '@peach/legacy/core';
 
 import { javImageKind } from '../jav-artwork';
 import { imageFallbackAttrs } from './image-fallback';
@@ -121,7 +121,7 @@ export function avatarInner(name: string, ref: FaceRef | null | undefined, repId
   // 这一层大多是小圆框和窄格子，厂牌标识在那里要方形图标而不是横着的字标；索引页的
   // 厂牌大格是同一个模板里的例外，由调用方点名要 `large`。
   const hint = focus === undefined ? (ref && ref.avatar_focus) || null : focus;
-  return `<span class="ini">${esc((name || '?').slice(0, 1))}</span>`
+  return `<span class="ini">${esc(firstGrapheme(name))}</span>`
     + entityFaceImg({
       kind, id: ref && ref.id, hasImage: !!(ref && ref.has_image), version: ref && ref.image_version, rep: repId, mark: markId,
       logo: logoName, logoVersion: ref && ref.logo_version, logoVariant, focus: hint, thumb,

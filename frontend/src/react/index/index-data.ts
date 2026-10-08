@@ -8,6 +8,8 @@
  * 取数归遗留壳的目录网格。 */
 import type { InfiniteData, QueryKey } from '@tanstack/react-query';
 
+import { firstGrapheme } from '@peach/legacy/core';
+
 import { apiGet } from '../../api';
 import { IDENTITY_CATEGORIES } from '../../identity-filter';
 import {
@@ -235,7 +237,7 @@ const COLLATOR = { numeric: true, sensitivity: 'base' } as const;
 export function tagGroups<T extends { k: string }>(items: T[], label: (tag: string) => string): [string, T[]][] {
   const groups = new Map<string, T[]>();
   for (const item of [...items].sort((a, b) => a.k.localeCompare(b.k, 'zh-CN', COLLATOR))) {
-    const first = label(item.k).normalize('NFKC').trim().charAt(0).toUpperCase();
+    const first = firstGrapheme(label(item.k).normalize('NFKC'), '').toUpperCase();
     const key = /[A-Z]/.test(first) ? first : /[0-9]/.test(first) ? '#' : /[㐀-鿿]/.test(first) ? '中文' : '其他';
     const group = groups.get(key);
     if (group) group.push(item); else groups.set(key, [item]);

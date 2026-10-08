@@ -38,8 +38,8 @@ it('撤销的结果写回同一条，栈里不另起一条', async () => {
 });
 
 it('成功的勾画出来，失败的圈不画，正文按调用点给的 HTML 插入', async () => {
-  await act(async () => showToast('ok', { html: '检查了 <b>3</b> 个来源', alert: false, timeout: 0, action: null }));
-  await act(async () => showToast('bad', { html: '保存失败：磁盘已满', alert: true, timeout: 0, action: null }));
+  await act(async () => showToast('ok', { html: '检查了 <b>3</b> 个来源', alert: false, timeout: Infinity, action: null }));
+  await act(async () => showToast('bad', { html: '保存失败：磁盘已满', alert: true, timeout: Infinity, action: null }));
   await vi.waitFor(() => expect(toastsWith('保存失败')).toHaveLength(1));
   const [ok] = toastsWith('检查了');
   const [bad] = toastsWith('保存失败');

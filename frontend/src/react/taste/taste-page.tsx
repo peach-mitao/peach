@@ -24,7 +24,7 @@ import { Popover, Tab, TabPanel, Tabs } from 'react-aria-components';
 import { MenuDialog as Dialog } from '../components/menu-dialog';
 
 import { avatarInner } from '@peach/card-art';
-import { fmtSize, siteMarkUrl } from '@peach/legacy/core';
+import { firstGrapheme, fmtSize, siteMarkUrl } from '@peach/legacy/core';
 import { confirmModal } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
@@ -99,7 +99,7 @@ function SummaryCard({ icon: Icon, term, figure, detail, accent }:
 function SiteAvatar({ name, domain }: { name: string; domain: string }) {
   return (
     <span className="relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-background-tertiary-default text-caption-1-medium text-text-secondary">
-      {name.slice(0, 1).toUpperCase()}
+      {firstGrapheme(name).toUpperCase()}
       <img src={siteMarkUrl({ domain })} alt="" loading="lazy" width={20} height={20}
         onError={(event) => event.currentTarget.remove()}
         className="absolute size-5 object-contain" />
