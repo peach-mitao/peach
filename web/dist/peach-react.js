@@ -37821,7 +37821,7 @@ function rme(e) {
 }
 //#endregion
 //#region src/react/photo-lightbox/photo-lightbox.ts
-var NN = "/vendor/swiper/14.2.0/", PN = null, ime = () => PN ??= Promise.all([new Promise((e, t) => {
+var NN = "/vendor/swiper/14.3.0/", PN = null, ime = () => PN ??= Promise.all([new Promise((e, t) => {
 	let n = `${NN}swiper-bundle.min.css`, r = document.querySelector(`link[href="${n}"]`);
 	if (r?.sheet) {
 		e();
