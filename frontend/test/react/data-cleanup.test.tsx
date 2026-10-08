@@ -2,7 +2,7 @@
  *
  * 会写真实 ledger 或删盘上东西的那几步（删失效链接、资源同步清理、整理的执行
  * 与回滚）都必须先过确认弹层：这里既量「确认了才发」，也量「取消了一个字节都不发」。
- * 外观由 `frontend/e2e/design.test.ts` 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
+ * 外观由 `frontend/e2e/design-*.test.ts` 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

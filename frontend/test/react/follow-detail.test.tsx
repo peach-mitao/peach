@@ -1,7 +1,7 @@
 /* 关注详情岛：单条取数、侧栏的次序与文案、写操作之后键态怎么变、媒体取不回时退到哪、交给壳与灯箱的是什么。
  *
  * 从列表进出不重取、舞台在媒体框里挂 Video.js、轮播圆点、恢复带、标签回列表与手机布局要真浏览器，
- * 在 `frontend/e2e/follow-detail.test.ts` 里量；尺寸与色板在 `e2e/design.test.ts`。 */
+ * 在 `frontend/e2e/follow-detail.test.ts` 里量；尺寸与色板在 `e2e/design-*.test.ts`。 */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 

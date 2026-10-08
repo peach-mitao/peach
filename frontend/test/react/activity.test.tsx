@@ -1,6 +1,6 @@
 /* 活动页的行为：三段怎么分、轮询多久一次、失败时留下什么。
  *
- * 外观（状态徽章的三档颜色、失败卡的框线）是设计决定，由 `frontend/e2e/design.test.ts`
+ * 外观（状态徽章的三档颜色、失败卡的框线）是设计决定，由 `frontend/e2e/design-*.test.ts`
  * 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';

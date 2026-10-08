@@ -2,7 +2,7 @@
  *
  * 一份快照有两个读者——数据管理页那张卡片和目录页顶上那条横幅。它们读同一个 `queryKey`，
  * 所以这里既量单独一处的行为，也量两处同时在场时的请求数。
- * 外观（横幅的语气底色、页脚按钮的主次）由 `frontend/e2e/design.test.ts` 读
+ * 外观（横幅的语气底色、页脚按钮的主次）由 `frontend/e2e/design-*.test.ts` 读
  * `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';

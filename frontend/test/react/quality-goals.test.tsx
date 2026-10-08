@@ -1,6 +1,6 @@
 /* 高清版目标页的行为：一张卡上有什么、点哪里打开作品、进出这一页各发几次请求。
  *
- * 外观（封面的宽度与比例、长标题的中间省略）是设计决定，由 `frontend/e2e/design.test.ts`
+ * 外观（封面的宽度与比例、长标题的中间省略）是设计决定，由 `frontend/e2e/design-*.test.ts`
  * 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';

@@ -2,7 +2,7 @@
  * 拉条拖动中只排重画、松手才落盘，面板 DOM 只建一次；以及它作为常驻面（`RESIDENT_ROUTES['settings-panel']`）
  * 在路由树里的行为：宿主 `[data-settings-host]` 第一次打开时放进 body 末尾、不包 `.peach-react`，画上之后句柄
  * 才交出，`open` 返回时面板已经画好，抛错只卸组件。开合动效、焦点圈、写接口与像素在真浏览器里验，见
- * `e2e/settings-panel.test.ts` 与 `e2e/design.test.ts`。 */
+ * `e2e/settings-panel.test.ts` 与 `e2e/design-*.test.ts`。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { notifyManager } from '@tanstack/react-query';

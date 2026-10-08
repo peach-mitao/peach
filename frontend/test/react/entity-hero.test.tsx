@@ -1,7 +1,7 @@
 /* 资料卡岛：名字下面那一行、资料表、外链怎么排；点下去交给壳的是什么；订阅开关成与不成时
  * 留下什么；新作那一行的两枚键；「+N」浮层的开合。
  *
- * 外观（圆框几何、人脸放大、窄屏单列、浮层位置）由 `frontend/e2e/design.test.ts` 读计算样式断言。 */
+ * 外观（圆框几何、人脸放大、窄屏单列、浮层位置）由 `frontend/e2e/design-*.test.ts` 读计算样式断言。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

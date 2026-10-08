@@ -1,6 +1,6 @@
 /* 侧栏配色卡与它底下那枚配色钮：两组球画什么、点下去写什么，光晕关掉之后卡上剩什么，设置面板那一格改了
  * 配色这里当场跟上，以及卡作为常驻面（`RESIDENT_ROUTES['glow-picker']`）由路由树直接画成 `#boardGlowMenu`
- * 的子节点。卡的锚定、开合、玻璃材质与球的像素在真浏览器里量（`e2e/design.test.ts`）。 */
+ * 的子节点。卡的锚定、开合、玻璃材质与球的像素在真浏览器里量（`e2e/design-*.test.ts`）。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';

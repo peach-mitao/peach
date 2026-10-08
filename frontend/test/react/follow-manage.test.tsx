@@ -1,7 +1,7 @@
 /* 关注管理页的行为：按创作者归组、排序作用在全集上、翻页只切最后一步、勾选跨页也跨视图，
  * 以及「检查更新」那一趟后台任务什么时候算数。
  *
- * 外观（表格的分隔线、徽章档位）是设计决定，由 `frontend/e2e/design.test.ts` 读
+ * 外观（表格的分隔线、徽章档位）是设计决定，由 `frontend/e2e/design-*.test.ts` 读
  * `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
