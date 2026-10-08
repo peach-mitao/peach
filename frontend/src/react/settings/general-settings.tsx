@@ -7,14 +7,15 @@ import { Switch } from '@/components/base/switch/switch';
 
 import { apiSend } from '../../api';
 import type { ConfigurationGroupProps, StartupState } from '../bundle';
+import { groupRoot } from './configuration-panel';
 import { AutomaticUpdates } from './maintenance-settings';
 import { ReleaseUpdates } from './release-updates';
 import { ErrorText, Footer, Help, Rows, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 
-export function GeneralSettings({ data, receipt }: ConfigurationGroupProps) {
+export function GeneralSettings({ data, receipt, panel }: ConfigurationGroupProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div {...groupRoot(panel)}>
       {data.startup ? <StartupSettings startup={data.startup} receipt={receipt} /> : null}
       {data.automatic_updates ? <AutomaticUpdates initial={data.automatic_updates} receipt={receipt} /> : null}
       {data.updates ? <ReleaseUpdates initial={data.updates} initialJob={data.update_job} /> : null}

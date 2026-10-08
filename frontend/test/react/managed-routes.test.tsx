@@ -306,18 +306,22 @@ const configuration = {
   peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false },
 };
 
-/* 壳按 `.configgroup` 小标题把后面的兄弟节点切进左栏那一列（`configTabItems`），打开返回的那一刻就读它，
-   再按 `#peachProxy` 滚过去。分区自己怎么排在 `configuration.test.tsx`。 */
-it('配置页打开返回的那一刻，小标题和它的分区已经在容器里', async () => {
+/* 壳打开返回的那一刻就按 `#peachProxy` 滚过去，所以页签条与交进来的那一组的选中态要在同一次提交里画好。
+   分区自己怎么排、页签怎么走在 `configuration.test.tsx`。 */
+it('配置页打开返回的那一刻，页签条已经在容器里，选中的是交进来的那一组', async () => {
   const r = await load('/configuration');
   const { stats } = surface();
   await mount(r);
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => configuration })));
   await act(async () => {
-    expect(await r.openManagedRoute('/configuration', {}, { container: stats, isCurrent: () => true })).toBe(true);
-    const titles = [...stats.querySelectorAll('.configgroup')].map((title) => title.textContent);
-    expect(titles, '标题还没落到 DOM 上，壳那一刻就拆不出分区').toEqual(['通用', '媒体', '网络与访问', '维护']);
+    const open = { section: '网络与访问' };
+    expect(await r.openManagedRoute('/configuration', open, { container: stats, isCurrent: () => true })).toBe(true);
+    const tabs = [...stats.querySelectorAll('.configpage > .board-local-nav[role="tablist"] > [role="tab"]')];
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['通用', '媒体', '网络与访问', '维护']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
+    const active = stats.querySelector('.board-group-active');
+    expect(active?.id).toBe(tabs[2].getAttribute('aria-controls'));
     expect(stats.querySelector('.configpage')?.parentElement?.classList.contains('peach-react')).toBe(true);
   });
 });
@@ -433,9 +437,9 @@ it('回执、打开作品与资料页都交回壳：都走过去时回执', asyn
   duplicates.toast('已删除', { undo });
   duplicates.toast('已保留');
   duplicates.failure('删除', 'boom');
-  const configuration = element<ConfigurationProps>('/configuration', r, {}, actions, vi.fn());
+  const configuration = element<ConfigurationProps>('/configuration', r, { section: '媒体' }, actions, vi.fn());
   configuration.receipt('已保存配置');
-  expect(configuration.reopenTutorial).toBe(actions.reopenTutorial);
+  expect([configuration.reopenTutorial, configuration.section]).toEqual([actions.reopenTutorial, '媒体']);
   const review = element<ReviewProps>('/review', r,
     { category: '', readOnly: false, readOnlyMessage: '', writerUrl: '' }, actions, vi.fn());
   review.openEntity('performer', '某人');

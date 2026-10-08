@@ -26,7 +26,7 @@
       }],
       "shadcn/no-arbitrary-values": "error",
       "shadcn/no-inline-styles": "error",
-      "shadcn/no-unknown-classes": ["error", { "allow": ["configpage", "configgroup", "swiper", "swiper-wrapper", "swiper-slide", "swiper-zoom-container",
+      "shadcn/no-unknown-classes": ["error", { "allow": ["configpage", "configgroup", "board-local-nav", "swiper", "swiper-wrapper", "swiper-slide", "swiper-zoom-container",
         "mono", "javedition", "censored", "chip", "geist-button",
         "primary", "popmenu", "geist-input"] }],
       "shadcn/require-static-classes": "error"

@@ -82,7 +82,8 @@ export interface ManagedOpenProps {
   '/duplicates': Record<string, never>;
   '/quality-goals': Record<string, never>;
   '/scraping': Record<string, never>;
-  '/configuration': Record<string, never>;
+  /** `section`：首帧选中的那一组页签名，壳取走 `requestConfigurationSection` 记下的那一次（地址带 `#peachProxy` 时是「网络与访问」）。 */
+  '/configuration': { section?: string };
   '/diagnostics': Record<string, never>;
   '/activity': Record<string, never>;
   '/follow-manage': {

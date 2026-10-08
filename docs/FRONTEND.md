@@ -73,9 +73,10 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 配置好之后改文件夹与端口的那张页整个是 React（`frontend/src/react/settings/`，入口 `configuration-page.tsx`）。`/configuration` 是唯一的编辑页，进管理菜单；媒体库选单、统计页与首次配置引导都指向它。
 
-- 结构：一条窄列里排「通用 / 媒体 / 下载 / 网络与访问 / 维护」五组，每组一个 `h2.configgroup` 小标题，没有内容的组连标题一起省略。左栏页签按 `.configgroup` 标题切（`web/app.js` 的 `configTabItems`）。
+- 结构：一条窄列里排「通用 / 媒体 / 下载 / 网络与访问 / 维护」五组，每组一个 `h2.configgroup` 小标题，没有内容的组连标题一起省略。页面自己画顶上那排页签（`.board-local-nav`，`role="tablist"`，方向键与 Home／End 在整排里走），一组一格，一次只显示选中的那一组；页签条和整页同一次提交画出，第一帧就在。
 - 数据契约是 `/api/configuration`（`src/peach/routes_configuration.py`）。端点字符串只在 `frontend/src/configuration-endpoints.ts` 声明一次，整页和设置弹层的摘要卡读同一个 `queryKey`。
-- 第一帧必须同步：壳挂完这一页紧接着就读它画出来的结构，所以 `react/entry.tsx` 的 `mounter` 用 `flushSync` 画第一帧，往后的更新照常异步。小标题和分区因此必须是 `.configpage` 的直接子节点、交替排列。
+- 第一帧必须同步：壳挂完这一页紧接着按地址里的 `#peachProxy` 滚到那一块，所以路由树用 `flushSync` 画第一帧，往后的更新照常异步。`.configpage` 的第一层依次是页签条、各组的小标题与面板；每组的根节点就是那一格 `role="tabpanel"`，选中的那一组带 `board-group-active`。
+- 跳到某一组：别处（统计页「添加媒体文件夹」、空库提示、媒体库选单「管理媒体库」、诊断页）把组名记进壳单例 `configurationRequestedSection`（路由树里的页面经 `actions.requestConfigurationSection`），壳打开这一页时作为 `open.section` 交进去、页面画上之后清空；页面只拿它定第一帧选中哪一格。
 - 设置弹层「这台电脑」一格只挂 `configuration-summary`（`configuration-summary.tsx`）：媒体库数、端口、更新状态和「打开配置页」，不放可编辑的控件（ADR-0050）。媒体库数取 `/api/configuration` 的 `library_count`，由服务端按 `media_libraries.libraries` 分组数好，页面不自己归并。
 - 相邻的两处不在这页：媒体修复是数据管理页 React 子树里的一张卡（`frontend/src/react/media-repair/`），订阅源是关注管理页的「订阅源」页签（`follow-manage/feed-sources.tsx`，读 `/api/feeds`）。
 - 服务端按两道门放行：托盘管理的服务、发起连接的是本机。`/healthz` 按调用方回 `configurable`，遗留层据此决定管理菜单列不列「配置」，摘要卡挂 island 还是换成一句「该配置需在服务端设备修改」。
@@ -160,7 +161,7 @@ React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`�
 - 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格与垃圾队列画进 `#grid`。
 - 派发点 `RouteDispatch` 是两组 `<Routes>` 的兄弟，从头到尾是同一个实例。它在每次历史变化后报给 `routeSeen`，由它决定要不要调 `restoreRoute`。报在提交阶段之后的微任务里：壳打开那一屏时，侧栏等常驻面的句柄内部用 `flushSync` 当场画完，同一棵根在提交阶段里不会同步刷新。`<Routes>` 里那十五页、资料页的五个模式、`#grid` 那两页的六条路径与 `/resource-sync` 只声明路径，其余落在 `path="*"`。这是页面组，按条目 `usr.backgroundLocation` 匹配，详情压在哪一页上就还匹配那一页；覆盖组按真实地址匹配 `OVERLAY_PATHS`（详情、四种队列、关注详情），元素为空，`path="*"` 兜底，两组都不会报没有路由。
 - 管理区宿主跟着壳登记的那一条走，不跟地址：壳的 `openXxx` 照旧收舞台、铺骨架、认领表面，再 `openManagedRoute(path, open, {container, isCurrent, place})`。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主（给了 `place` 就由它把壳排的框架换进容器、交出宿主），宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。三个容器各记一条、互不相收，`releaseManagedRoute` 逐个点名容器：`claimSurface` 收 `#stats` 与 `#index`，`showHomeSurfaces` 只收 `#index` 那一条，`#grid` 只由 `clearCatalogGrid` 收，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键、资料页换筛选与版式）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
-- `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页与资料页）交 `actions.navigate`。配置页页签先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
+- `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、配置页页签）；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。管理区十页之间的跳转交 `navigate`，派发照旧回到壳；别的路径（含索引页与资料页）交 `actions.navigate`。配置页页签先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 派发判据是序号：每次历史变化领一个 `seq`；`shellNavigate` 写的那一次当场认领，不派发；后退前进与 React 子树里的 `navigate` 没人认领，派发一次。地址不变的 `popstate` 也领新序号，照样派发。
 - 启动：壳在启动链上 `startRouting(restoreRoute)` 派发第一次，并认领到当时的序号。Router 先挂上时它报的序号已在其中；后挂上时读到的初值就是这一个。包到之前发生的后退前进，等 Router 挂上时补派一次。判据钉在 `test/react/router.test.tsx`。
 
@@ -502,7 +503,7 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `happy-dom` | vitest 的 DOM 环境。断言的是真实 DOM 结构，比 jsdom 轻且启动快 |
 | `playwright-core` | `frontend/e2e/` 的浏览器驱动，只驱动本机 Chrome、不下载浏览器。happy-dom 没有布局，横向溢出、等待态卡住这类事实只有真浏览器测得出；不用 `@playwright/test`，用例跑在 `node:test` 上，与 docu.md（`markdown-viewer/markdown-viewer-extension` 的 `test/helpers/browser-render-harness.ts`）同一做法 |
 | `oxlint`、`@shadcn/lint` | `npm run lint`：Oxlint 原生规则覆盖源码与测试，六条 shadcn 设计规则检查自有 React 源码。使用 TypeScript 与 Oxc 插件；规则集见 `.oxlintrc.json`。`eslint` 作为 `@shadcn/lint` 的 peer 安装，不作为检查入口 |
-| `react`、`react-dom` | 前端唯一的渲染层。BoardUI 源码是 React 组件，交互建在 React Aria 上；不经兼容层运行它（ADR-0031）。`react-dom` 的 `flushSync` 还负责配置页那一帧：壳挂完紧接着就读 DOM |
+| `react`、`react-dom` | 前端唯一的渲染层。BoardUI 源码是 React 组件，交互建在 React Aria 上；不经兼容层运行它（ADR-0031）。`react-dom` 的 `flushSync` 还负责配置页那一帧：壳挂完紧接着按 `#peachProxy` 滚过去 |
 | `react-aria-components` | BoardUI 输入框、勾选框、开关、下拉与弹出面板的交互和无障碍语义：标签关联、键盘操作、焦点进出、`aria-invalid` |
 | `react-aria` | 只用 `UNSAFE_PortalProvider`：把 Popover 与下拉列表挂进 `body` 末尾同样带 `.peach-react` 的容器，弹层读到与页面内一致的 token 与 Preflight |
 | `@tanstack/react-query` | React 页面的取数与缓存：页面级 `prefetch` 与组件里的 `useQuery` 共用一份缓存，「取完数才画」不必把首屏数据当 props 串一路；轮询写成 `refetchInterval`，卸载时跟着组件一起停 |

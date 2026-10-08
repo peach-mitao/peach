@@ -93,7 +93,7 @@ function openCleanupSection(section: DataCleanupSection, actions: ShellActions, 
 }
 
 /* 第一帧在宿主放进 `#stats` 的同一个任务里同步画完（`router.tsx` 的 `ManagedSurface`）：壳画完这一页
- * 紧接着就读它画出来的结构（配置页按 `.configgroup` 小标题切页签，再按地址里的 `#peachProxy` 滚过去）。 */
+ * 紧接着就读它画出来的结构（配置页按地址里的 `#peachProxy` 滚过去，那一刻选中的页签已经是「网络与访问」）。 */
 export const MANAGED_ROUTES: ManagedRouteTable = {
   '/stats': {
     prefetch: (_open, signal) => prefetchStats(signal),
@@ -149,8 +149,9 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/configuration': {
     prefetch: (_open, signal) => prefetchConfiguration(signal),
-    page: (_open, actions) => (
-      <ConfigurationPage receipt={(message) => actions.receipt(message)} reopenTutorial={actions.reopenTutorial} />
+    page: (open, actions) => (
+      <ConfigurationPage receipt={(message) => actions.receipt(message)} reopenTutorial={actions.reopenTutorial}
+        section={open.section ?? ''} />
     ),
   },
   '/diagnostics': {
