@@ -12,11 +12,13 @@ import json
 import os
 import sqlite3
 import tempfile
+import threading
 import time
 import tomllib
 import unittest
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
+from unittest import mock
 
 
 from peach import push_discovery as push
@@ -380,6 +382,55 @@ class IngestPathTests(_ServiceCase):
                                       **kwargs)
             self.assertEqual((result.found, result.sidecar), (True, True), parts)
         self.assertEqual(self.rows(), {})
+
+    def test_a_slow_directory_listing_does_not_hold_the_ledger_write_lock(self):
+        """挂载卡在列目录上时，同一账本的另一个写入者照样能在短超时内拿到写锁。"""
+        (self.media / "a.mp4").write_bytes(b"0" * 4)
+        entered, release = threading.Event(), threading.Event()
+        listing = scan._directory_stats
+
+        def slow_listing(directory):
+            entered.set()
+            release.wait(10)
+            return listing(directory)
+
+        outcome = {}
+
+        def ingest():
+            outcome["result"] = scan.ingest_path(
+                self.db, "local", self.ledger("local", "a.mp4"),
+                declared_roots=self.declared, mounts=self.mounts)
+
+        with mock.patch.object(scan, "_directory_stats", side_effect=slow_listing):
+            worker = threading.Thread(target=ingest)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(10))
+                other = sqlite3.connect(self.db, timeout=0.5)
+                try:
+                    other.execute("BEGIN IMMEDIATE")
+                    other.execute("COMMIT")
+                finally:
+                    other.close()
+            finally:
+                release.set()
+                worker.join(10)
+        self.assertTrue(outcome["result"].found)
+        self.assertEqual(self.rows(), {self.ledger("local", "a.mp4"): ("video", 4)})
+
+    def test_the_ingest_connection_waits_as_long_as_the_shared_ledger_connection(self):
+        (self.media / "a.mp4").write_bytes(b"0" * 4)
+        seen = []
+        reconcile = scan.wants.reconcile
+
+        def spy(connection, ids):
+            seen.append(connection.execute("PRAGMA busy_timeout").fetchone()[0])
+            return reconcile(connection, ids)
+
+        with mock.patch.object(scan.wants, "reconcile", side_effect=spy):
+            scan.ingest_path(self.db, "local", self.ledger("local", "a.mp4"),
+                             declared_roots=self.declared, mounts=self.mounts)
+        self.assertEqual(seen, [30_000])
 
     def test_a_path_that_is_already_gone_writes_nothing(self):
         result = scan.ingest_path(

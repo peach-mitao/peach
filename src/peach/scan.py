@@ -258,6 +258,7 @@ def ingest_path(
     与资源同步对账各自会处理。字幕 sidecar 的配对按定义只看同一个目录，所以只有视频
     或字幕才多列一次那个目录，别的类型连一次 `scandir` 都不发。附属文件的判定同理：
     只有叫 `poster.jpg` 这类名字、或落在 `extrafanart/` 里的图片才去列目录看有没有正片。
+    所有列目录与 stat 都在打开账本连接之前做完，写事务里只有 SQL。
     """
     windows = os.name == "nt" if windows is None else windows
     ledger_path = PureWindowsPath(path)
@@ -277,16 +278,21 @@ def ingest_path(
     mtime = time.strftime("%Y-%m-%d", time.localtime(stat.st_mtime))
     medium = medium_of(name)
     tracks = 0
-    connection = sqlite3.connect(db_path)
+    # 列目录在开连接之前做完：写事务从 upsert 开始一直持有写锁，网盘挂载卡住的那几十秒
+    # 不能落在锁里，否则同一账本的其他写入者全部跟着超时。
+    pairing = None
+    if medium == "video" or subtitles.subtitle_format(name):
+        here = _directory_stats(directory)
+        pairing = subtitles.directory_sidecars(
+            ledger_dir, here, [entry for entry in here if medium_of(entry) == "video"])
+    # 忙等时长与 `LedgerDatabase.connect` 一致。
+    connection = sqlite3.connect(db_path, timeout=30)
     try:
         connection.execute("PRAGMA journal_mode=WAL")
         connection.execute(_UPSERT, (location, str(ledger_path), name, medium,
                                      stat.st_size, mtime, now, now))
-        if medium == "video" or subtitles.subtitle_format(name):
-            here = _directory_stats(directory)
-            tracks = subtitles.record(connection, location, subtitles.directory_sidecars(
-                ledger_dir, here,
-                [entry for entry in here if medium_of(entry) == "video"]), now)[0]
+        if pairing is not None:
+            tracks = subtitles.record(connection, location, pairing, now)[0]
         asset_id, first_seen = connection.execute(
             "SELECT id,first_seen FROM asset WHERE location=? AND path=?",
             (location, str(ledger_path))).fetchone()
@@ -387,7 +393,9 @@ def scan_location(
     # 字幕要等正片的行落库之后才能按 `(location, path)` 查到 asset_id，所以先攒着，
     # 遍历完再一次登记。sidecar 按定义与正片同目录，配对只看当前这一个目录。
     sidecars: list[subtitles.Sidecar] = []
-    connection = sqlite3.connect(db_path)
+    # 写事务只在每批 upsert 到 commit 之间打开，遍历与 stat 都在两次 commit 之间，不持锁。
+    # 忙等时长与 `LedgerDatabase.connect` 一致。
+    connection = sqlite3.connect(db_path, timeout=30)
     try:
         connection.execute("PRAGMA journal_mode=WAL")
         for directory, entries in _walk(walk_root):
