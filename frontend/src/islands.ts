@@ -94,13 +94,20 @@ export function loadImmerse(host: ReactBundle.ImmerseHost): Promise<ReactBundle.
 }
 export const immerseApi = (): ReactBundle.ImmerseApi | null => immerseReady;
 
-/* 侧栏岛（`react/sidebar/`）：导航那一列、它上面的玻璃与按语境出现的筛选分组都在 `@peach/react` 里，
- * 壳只拿命令式入口。壳启动时就装载、接上宿主——在那之前滚动层里是壳同步写进去的导航骨架
- * （`sidebarSkeletonHtml`）；之后 `sidebarApi()` 同步可取，包还没装载时是 null。 */
+/* 侧栏（`react/sidebar/`，常驻面 `sidebar`）：导航那一列、它上面的玻璃与按语境出现的筛选分组。壳启动时
+ * 就装载——在那之前滚动层里是壳同步写进去的导航骨架（`sidebarSkeletonHtml`），骨架上的点击由壳接。路由树
+ * 打开这一面时在画首帧的同一个任务里清掉骨架；画上之后先调 `attached`（壳把品牌与开合键挪进标题行），再交出
+ * 句柄：从那一刻起 `sidebarApi()` 同步可取、`render` 与 `navChanged` 返回时已经画好；句柄还没交出时它返回 null。 */
 let sidebar: Promise<ReactBundle.SidebarApi> | null = null;
 let sidebarReady: ReactBundle.SidebarApi | null = null;
 export function loadSidebar(host: ReactBundle.SidebarHost): Promise<ReactBundle.SidebarApi> {
-  sidebar ??= import('@peach/react').then((bundle) => { sidebarReady = bundle.configureSidebar(host); return sidebarReady });
+  sidebar ??= import('@peach/react').then(async (bundle) => {
+    const api = bundle.configureSidebar(host);
+    await openResidentSurface('sidebar', host.scroll, (scroll) => { scroll.replaceChildren(); return scroll });
+    host.attached();
+    sidebarReady = api;
+    return api;
+  });
   return sidebar;
 }
 export const sidebarApi = (): ReactBundle.SidebarApi | null => sidebarReady;

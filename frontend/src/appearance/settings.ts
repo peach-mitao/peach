@@ -149,7 +149,7 @@ export interface SyncedSettings {
 }
 
 /* 账本那一份落进本地缓存。启动时壳取一次、设置面板每次打开再取一次，都交到这里；开着的面板与
-   侧栏岛经 store 通知跟上：侧栏顺序变了，岛当场按新顺序重排。搜索记录条数变了要推给搜索岛，那一下
+   侧栏经 store 通知跟上：侧栏顺序变了，它当场按新顺序重排。搜索记录条数变了要推给搜索岛，那一下
    由 `changed` 交回壳。 */
 export function applySyncedSettings(
   remote: SyncedSettings | null | undefined, changed: (effect: SyncedEffect) => void,

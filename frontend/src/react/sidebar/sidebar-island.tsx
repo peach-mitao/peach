@@ -1,29 +1,35 @@
-/* 侧栏岛（ADR-0031 第 11f 步）：左侧抽屉里滚动的那一层。
+/* 侧栏（ADR-0031 第 11f 步）：左侧抽屉里滚动的那一层。
  *
- * 宿主是壳常驻的 `#drawerScroll`（覆盖式滚动条挂在它上面，轨道住在 `#drawer` 里），一棵根常驻；壳只拿
- * `configureSidebar` 给的命令式入口（同舞台岛、沉浸岛），不进路由树：换页、换筛选、换语境都
- * 落在同一棵根上，导航那一列和它上面的玻璃从头到尾是同一批节点——换了节点，玻璃的位移就从头起跑，
- * 看到的只是当前项换了个地方亮起来。
+ * 常驻面 `sidebar`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进壳常驻的 `#drawerScroll`，宿主就是
+ * 那个节点本身（覆盖式滚动条挂在它上面，轨道住在 `#drawer` 里）。壳启动时先同步在宿主里写一份同结构的导航
+ * 骨架（`sidebarSkeletonHtml`）；打开这一面时 `place` 清掉骨架，路由树在同一个任务里画出首帧（只有导航），
+ * 壳紧接着经 `attached` 把品牌与开合键挪进标题行，再拿到句柄、把手上那份 props 推进来。
+ *
+ * 之后壳只经 `configureSidebar` 给的句柄说话：`render(props)` 与 `navChanged()` 写本模块的 store 再
+ * `flushSync` 通知，返回时已经画好——`navChanged` 跑在壳 `route()` 的同步段里，玻璃拿到的是旧位置到新位置。
+ * 换页、换筛选、换语境都落在同一个组件上，导航那一列和它上面的玻璃从头到尾是同一批节点——换了节点，
+ * 玻璃的位移就从头起跑，看到的只是当前项换了个地方亮起来。
  *
  * 玻璃画在 `#drawer` 上（portal），不在滚动层里：它要跟着那一列纵滚，又不能被滚动层切掉回弹的那一截。
  * 位移与抻长交给 `useViewGlide` 的纵轴版，同筛选条那几排是同一种动法。
  *
+ * 标题行 `[data-sidebar-head]` 画成一个没有子节点的空槽：品牌与开合键是壳的节点，由壳挪进来，组件不往这个
+ * 槽里画任何东西，重画也就不碰它们。
+ *
  * 分组的开合走共用 Collapse 的 `setCollapseOpen`（同设置页的 `Disclosure`）：原生 `details` 给键盘与
  * 无障碍语义，`open` 不写成受控属性，收起的那段过渡里它才不会被重新画成展开。
  *
- * 根不包 `.peach-react`：这一列一直在 Preflight 之外，按钮与字号继承的是遗留层的全局规则，样式全在
+ * 宿主不包 `.peach-react`：这一列一直在 Preflight 之外，按钮与字号继承的是遗留层的全局规则，样式全在
  * `sidebar.css`，不用工具类。 */
 import {
   createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore,
   type DragEvent, type MouseEvent, type ReactNode,
 } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { createRoot, type Root } from 'react-dom/client';
 
 import { growCollapse, popBadges, setCollapseOpen } from '@peach/legacy/ui';
 
 import { useViewGlide } from '../components/use-view-glide';
-import { Providers } from '../providers';
 import { Icon } from '../settings-panel/icon';
 import type {
   SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
@@ -38,33 +44,38 @@ const LIMITS = { creator: 26, tag: 30, tech: 16 } as const;
 const DURATION_MAX = 180;
 
 let host: SidebarHost | null = null;
-let root: Root | null = null;
-let props: SidebarProps = { content: null, filters: {}, latest: null };
-/* 导航按下态的代次：壳说「重读一遍」时加一，玻璃按新的按下项落位。 */
-let navEpoch = 0;
+/* store 里的一份：壳推来的 props 与导航按下态的代次（壳说「重读一遍」时加一，玻璃按新的按下项落位）。
+   每次写入换一个新对象，订阅者按引用判断变没变。 */
+let shown: { props: SidebarProps; epoch: number } = { props: { content: null, filters: {}, latest: null }, epoch: 0 };
+const listeners = new Set<() => void>();
 
-function paint(): void {
-  const at = host;
-  if (!at || !root) return;
-  const current = props, epoch = navEpoch;
-  flushSync(() => root!.render(<Providers><Sidebar host={at} props={current} epoch={epoch} /></Providers>));
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener) };
 }
 
+function notify(): void {
+  for (const listener of [...listeners]) listener();
+}
+
+/* 这一面抛错、被错误边界卸掉之后没人订阅，推进来的只写进 store，不画、不抛。 */
 const api: SidebarApi = {
-  render(next) { props = next; paint() },
-  navChanged() { navEpoch += 1; paint() },
+  render(next) { shown = { ...shown, props: next }; flushSync(notify) },
+  navChanged() { shown = { ...shown, epoch: shown.epoch + 1 }; flushSync(notify) },
 };
 
-/** 接上壳给的宿主，拿回侧栏岛的命令式入口。只调一次：滚动层里原有的导航骨架在这一刻被换掉。 */
+/** 接上壳给的宿主，拿回侧栏的命令式入口。只调一次；壳的 `loadSidebar` 接着在路由树里打开这一面，首帧只画
+ *  导航，画上之后调 `attached`、交出句柄，壳随即把手上那份 props 推进来。 */
 export function configureSidebar(next: SidebarHost): SidebarApi {
   host = next;
-  /* 接上那一刻只画导航，壳随即把手上那份 props 推进来。 */
-  props = { content: null, filters: {}, latest: null };
-  next.scroll.replaceChildren();
-  root = createRoot(next.scroll);
-  paint();
-  next.attached();
+  shown = { ...shown, props: { content: null, filters: {}, latest: null } };
   return api;
+}
+
+/** 常驻表里的那一面：读本模块的 store，宿主还没接上时不画。 */
+export function SidebarSurface() {
+  const current = useSyncExternalStore(subscribe, () => shown);
+  return host ? <Sidebar host={host} props={current.props} epoch={current.epoch} /> : null;
 }
 
 /* ── 整列 ── */
