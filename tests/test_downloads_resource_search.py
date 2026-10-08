@@ -1,4 +1,5 @@
 """索引器搜索用合成 XML、假 HTTP 与临时凭据；不连接真实账号。"""
+import hashlib
 import json
 import tempfile
 import unittest
@@ -8,7 +9,8 @@ from xml.sax.saxutils import escape
 import httpx
 
 from peach.follow_secrets import CredentialStore
-from peach.resource_search import CREDENTIAL, MAX_BYTES, Filters, Indexers, Search, endpoint, qualities
+from peach.resource_search import (CREDENTIAL, MAX_BYTES, MAX_TORRENTS, Filters, Indexers, Search, endpoint,
+                                   qualities)
 
 HASH = "c9e15763f722f23e98a29decdfae341b98d53056"
 CAPS = '<caps><limits max="25"/><searching><search available="yes" supportedParams="q"/></searching></caps>'
@@ -26,6 +28,19 @@ def item(title="ABC-123 4K HEVC 中字", info_hash=HASH, size=1024 ** 3, seeders
             '<torznab:attr name="peers" value="7"/></item>')
 
 
+#: 键按字节序排列的最小种子；infohash 是 info 字典原文的 SHA-1。
+INFO = b"d6:lengthi1e4:name7:ABC-123e"
+TORRENT = b"d8:announce16:http://t.test/an4:info" + INFO + b"e"
+TORRENT_HASH = hashlib.sha1(INFO).hexdigest()
+DOWNLOAD = "http://indexer.test/1/download?apikey=private-test-key&amp;link=abc"
+
+
+def torrent_item(title="ABC-123 FHD", link=DOWNLOAD, seeders=3):
+    """OneJAV 一类条目：没有磁力与 infohash，只有索引器下载代理的种子地址。"""
+    return (f'<item><title>{escape(title)}</title><size>{1024 ** 3}</size><link>{link}</link>'
+            f'<torznab:attr name="seeders" value="{seeders}"/></item>')
+
+
 def feed(*items):
     return '<rss xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>' + ''.join(items) + '</channel></rss>'
 
@@ -35,6 +50,11 @@ class SearchTests(unittest.TestCase):
         self.assertTrue(qualities("ABC-123-CH", [], "ABC-123")["chinese"])
         self.assertTrue(qualities("ABC-123-UC", [], "ABC-123")["uncensored"])
         self.assertFalse(qualities("ABC-123", [], "ABC-123")["chinese"])
+
+    def test_fhd_and_uhd_labels_count_as_resolutions(self):
+        self.assertEqual(qualities("[FHD] ABC-123", [], "ABC-123")["resolution"], 1080)
+        self.assertEqual(qualities("ABC-123 UHD", [], "ABC-123")["resolution"], 2160)
+        self.assertEqual(qualities("[HD Uncensored] ABC-123", [], "ABC-123")["resolution"], 0)
 
     def search(self, content, *, rows=None, code="ABC-123", filters=None, blocked=()):
         self.requests = []
@@ -64,6 +84,45 @@ class SearchTests(unittest.TestCase):
         for field in ("magneturl", "link", "guid"):
             with self.subTest(field=field):
                 self.assertEqual(self.search(feed(item(magnet_field=field)))["items"][0]["id"], HASH)
+
+    def torrent_search(self, *items, torrent=TORRENT, status=200, headers=None):
+        def respond(request):
+            if request.url.path.startswith("/1/download"):
+                return httpx.Response(status, content=torrent, headers=headers)
+            return httpx.Response(200, text=CAPS if request.url.params["t"] == "caps" else feed(*items))
+        return self.search(respond)
+
+    def test_torrent_only_item_becomes_a_magnet_from_its_info_dictionary(self):
+        result = self.torrent_search(torrent_item())
+        row = result["items"][0]
+        self.assertEqual((row["info_hash"], row["uri"], row["resolution"]),
+                         (TORRENT_HASH, f"magnet:?xt=urn:btih:{TORRENT_HASH}", 1080))
+        self.assertEqual([r.url.path for r in self.requests], ["/api", "/api", "/1/download"])
+        self.assertNotIn(ROW["api_key"], json.dumps(result))
+
+    def test_proxy_redirect_to_a_magnet_is_read_from_location(self):
+        result = self.torrent_search(torrent_item(), status=301,
+                                     headers={"location": f"magnet:?xt=urn:btih:{HASH}"})
+        self.assertEqual(result["items"][0]["id"], HASH)
+
+    def test_torrent_link_off_the_indexer_origin_is_not_requested(self):
+        result = self.torrent_search(torrent_item(link="http://tracker.test/1/download/x.torrent"))
+        self.assertEqual(result["items"], [])
+        self.assertEqual({r.url.host for r in self.requests}, {"indexer.test"})
+
+    def test_unreadable_torrent_drops_only_that_item(self):
+        unsorted = b"d4:infod4:name1:a6:lengthi1eee"
+        for torrent in (b"<!DOCTYPE html>", unsorted, b"d8:announce1:xe"):
+            with self.subTest(torrent=torrent[:16]):
+                result = self.torrent_search(torrent_item(), item(), torrent=torrent)
+                self.assertTrue(result["ok"])
+                self.assertEqual([row["id"] for row in result["items"]], [HASH])
+                self.assertEqual(result["warnings"], [])
+
+    def test_torrent_fetches_skip_dead_items_and_stop_at_the_per_indexer_cap(self):
+        rows = [torrent_item(), torrent_item(seeders=0)] + [torrent_item() for _ in range(MAX_TORRENTS + 2)]
+        self.torrent_search(*rows)
+        self.assertEqual(sum(r.url.path.startswith("/1/download") for r in self.requests), MAX_TORRENTS)
 
     def test_utf8_xml_with_bom_is_accepted(self):
         def respond(request):
