@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ElementTree
 from collections import Counter
 from math import ceil, hypot
 
-from PIL import Image, ImageChops, ImageDraw, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageStat
 
 # 长边/短边在这个值以内视为「已经够方」，直接用原图。
 MAX_ASPECT = 1.35
@@ -154,23 +154,48 @@ def crop_to_box(payload: bytes, box: tuple[int, int, int, int]) -> bytes | None:
             left, top, right, bottom = (int(value) for value in box)
             if not (0 <= left < right <= width and 0 <= top < bottom <= height):
                 return None
-            cropped = opened.crop((left, top, right, bottom))
-            if opened.format == "PNG":
-                buffer = io.BytesIO()
-                cropped.save(buffer, format="PNG")
-                return buffer.getvalue()
-            if cropped.mode in ("RGBA", "LA", "P"):
-                flat = Image.new("RGB", cropped.size, (255, 255, 255))
-                converted = cropped.convert("RGBA")
-                flat.paste(converted, mask=converted.split()[-1])
-                cropped = flat
-            elif cropped.mode != "RGB":
-                cropped = cropped.convert("RGB")
-            buffer = io.BytesIO()
-            cropped.save(buffer, format="JPEG", quality=CROP_JPEG_QUALITY)
-            return buffer.getvalue()
+            return _encode_like(opened.crop((left, top, right, bottom)), opened.format)
     except Exception:
         return None
+
+
+def _encode_like(image: Image.Image, source_format: str | None) -> bytes:
+    """按源图的格式重编：PNG 无损原样写，其余一律 JPEG，带 alpha 的先铺白底。"""
+    buffer = io.BytesIO()
+    if source_format == "PNG":
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+    if image.mode in ("RGBA", "LA", "P"):
+        flat = Image.new("RGB", image.size, (255, 255, 255))
+        converted = image.convert("RGBA")
+        flat.paste(converted, mask=converted.split()[-1])
+        image = flat
+    elif image.mode != "RGB":
+        image = image.convert("RGB")
+    image.save(buffer, format="JPEG", quality=CROP_JPEG_QUALITY)
+    return buffer.getvalue()
+
+
+#: EXIF 里记方向的那个标签号。1 是正向，2–8 是镜像与各个角度的旋转。
+EXIF_ORIENTATION = 0x0112
+
+
+def upright(payload: bytes) -> bytes:
+    """按 EXIF 方向转正后的图；没有方向标签或本来就是正向的原样返回。
+
+    手机照片常把像素按传感器方向存、再用一个标签说「显示时转 90°」。浏览器和 OpenCV
+    解码时都照这个标签转正，PIL 的尺寸和裁切却按原始像素走——人在页面上框的那一块、
+    人脸探针给的脸心，落到没转正的像素上是另一块区域。框选这一路的字节先过这一道，
+    三边看到的就是同一张图。读不出来的原样返回，交给后面的格式门槛去拒。
+    """
+    try:
+        with Image.open(io.BytesIO(payload)) as opened:
+            if opened.getexif().get(EXIF_ORIENTATION, 1) in (1, None):
+                return payload
+            turned = ImageOps.exif_transpose(opened)
+            return _encode_like(turned, opened.format)
+    except Exception:
+        return payload
 
 
 def is_flat(payload: bytes) -> bool:

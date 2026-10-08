@@ -287,6 +287,7 @@ A 盘垃圾隔离使用短名称 `peach-purge-<32 位 UUID>.peach-quarantine`，
 - 元数据旧决定是否过期只由 `metadata_auto_apply.metadata_decision_is_stale` 判，复核页与自动落库共用；过期后的重判、人批准标签只增不删、FC2 描述性称呼自动否决与两类撤回见 ADR-0079，`pending_genres` 收录后按并集补标签与 `genres_still_pending` 见 ADR-0082。
 - 资料页头像圆框角上的换头像入口有五条路：图库同名的其他图与这个人取过的每一张图、本机文件、https 地址、本人作品画面、输入番号取封面。
   - 取到的图按内容哈希进候选缓存，换回去不重新下载。页面只回递服务端列出的 `ref`，地址由服务端按索引拼；手填地址过 `http.public_https_url`。
+  - 人像三路（图库与取过的图、手填地址、本机文件）点开先进框选，可整张使用：`POST /api/avatar-frame` → `avatar_picker.framed` 量转正后的尺寸、按 `face_square` 落默认框；手填地址经 `typed_address` 取一次按地址存进 `url/`，之后的 `url:<地址>` 只读本机；本机文件只量不存，确认时框走查询串 `crop=x0,y0,x1,y1`。框出的一块按 `peach:picker/<sha>` 入缓存，原地址仍指整张；EXIF 方向由 `images.upright` 统一转正。
   - 作品画面一部一格，底图在封面和九宫格九格之间换，框出方形再装（`avatar_picker.asset_artwork` 与 `crop`，走 `/avatar-choice`）；服务端每次先核对作品挂在这个人名下（`asset:<id>:cover` 谁都拼得出），裁出新字节，原图不动。
   - 番号取封面（`POST /api/avatar-code-cover` → `avatar_picker.code_cover`）不要求番号在馆藏：本机封面目录优先，没有才走 `jav_cover_fetch.best_cover`，按番号只存对象、不写证据，之后的 `cover:<番号>` 只读本机。
   - 默认框围着 `avatar_picker.cover_focus` 取景：有脸取 `avatar_cover_face.face_square`（要边车里有脸宽与 `px`，缺的 `detect_cover_faces.py --redo`），没脸取 `jav_poster_crop` 的正封，前端不另抄判据。

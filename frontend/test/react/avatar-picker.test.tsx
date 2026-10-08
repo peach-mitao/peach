@@ -41,12 +41,17 @@ const listing = (choices: AvatarChoice[], extra: Record<string, unknown> = {}) =
 
 type Call = [string, RequestInit];
 
-/** 第一次取候选、之后每次提交都成功。 */
-function server(body: unknown) {
+/** 服务端量出来的那一格：300×400 的竖图，脸在上面那块。 */
+const FRAMED = { width: 300, height: 400, focus: { x0: 90, y0: 20, x1: 210, y1: 140 } };
+
+/** 第一次取候选、取景按 `framed` 回、之后每次提交都成功。 */
+function server(body: unknown, framed: Partial<AvatarChoice> = {}) {
   const calls: Call[] = [];
   const fetched = vi.fn(async (input: string, init?: RequestInit) => {
     calls.push([input, init || {}]);
-    return { ok: true, status: 200, json: async () => (init?.method === 'POST' ? { ok: true } : body) };
+    const answer = input.startsWith('/api/avatar-frame') ? choice({ ...FRAMED, ...framed })
+      : init?.method === 'POST' ? { ok: true } : body;
+    return { ok: true, status: 200, json: async () => answer };
   });
   vi.stubGlobal('fetch', fetched);
   return calls;
@@ -116,14 +121,52 @@ it('好几个名字各带回一批图时，每一格说清自己是按哪个名�
   expect(cells()[1]?.getAttribute('title')).toContain('按「葵ツカサ」找到');
 });
 
-it('点一张就提交，换完关掉弹层并让宿主重画', async () => {
+it('图库人像点开先框一块，默认框落在服务端检出的脸上，换完关掉弹层并让宿主重画', async () => {
   const calls = server(listing([choice()]));
   const { picked } = await openPicker();
   await click(cells()[0]);
   await settle();
-  expect(sent(calls, 1)[0]).toBe('/api/avatar-pick');
+  // 点一下不直接换：先问服务端这张图多大、脸在哪，再进框选。
+  expect(sent(calls, 1)[0]).toBe('/api/avatar-frame');
   expect(body(calls, 1)).toEqual({ kind: 'performer', id: 7792, ref: 'gfriends:7-S1/葵つかさ.jpg' });
+  expect(dialog()?.textContent).toContain('框出头像那一块');
+  expect(document.querySelector('[role="dialog"] img')?.getAttribute('src'))
+    .toBe('/avatar-choice?kind=performer&id=7792&ref=gfriends%3A7-S1%2F%E8%91%B5%E3%81%A4%E3%81%8B%E3%81%95.jpg');
+  await reportSize(300, 400);
+  await click(buttonNamed('用这一块'));
+  await settle();
+  expect(sent(calls, 2)[0]).toBe('/api/avatar-pick');
+  expect(body(calls, 2)).toEqual({
+    kind: 'performer', id: 7792, ref: 'gfriends:7-S1/葵つかさ.jpg', crop: FRAMED.focus, version: '',
+  });
   expect(picked).toHaveBeenCalledOnce();
+  expect(dialog()).toBeNull();
+});
+
+it('没检出脸的人像居中落框', async () => {
+  const calls = server(listing([choice()]), { focus: null });
+  await openPicker();
+  await click(cells()[0]);
+  await settle();
+  await reportSize(300, 400);
+  await click(buttonNamed('用这一块'));
+  await settle();
+  expect(body(calls, 2).crop).toEqual({ x0: 0, y0: 50, x1: 300, y1: 350 });
+});
+
+it('人像框选里能整张使用，作品画面不给这条路', async () => {
+  const calls = server(listing([choice(), artwork()]));
+  await openPicker();
+  await click(cells()[1]);
+  await settle();
+  expect(buttonNamed('整张使用')).toBeNull();
+  await click(buttonNamed('回候选'));
+  await settle();
+  await click(cells()[0]);
+  await settle();
+  await click(buttonNamed('整张使用'));
+  await settle();
+  expect(body(calls, 2)).toEqual({ kind: 'performer', id: 7792, ref: 'gfriends:7-S1/葵つかさ.jpg' });
   expect(dialog()).toBeNull();
 });
 
@@ -132,13 +175,17 @@ it('换过之后再点开重新取，「在用」不停在上一次那一格', a
   const { host } = await openPicker();
   await click(cells()[0]);
   await settle();
+  await click(buttonNamed('整张使用'));
+  await settle();
   await click(host.querySelector('button'));
   await settle();
   expect(calls.filter(([url]) => url.startsWith('/api/avatar-choices'))).toHaveLength(2);
 });
 
-it('地址栏填了才允许提交，提交的是 url 而不是 ref', async () => {
-  const calls = server(listing([]));
+it('地址栏填了才允许取图，取回来的那一份进框选，交的是服务端给的 ref', async () => {
+  const calls = server(listing([]), {
+    ref: 'url:https://example.com/a.jpg', source: 'url', label: 'example.com', bases: ['url:https://example.com/a.jpg'],
+  });
   await openPicker();
   expect(buttonNamed('用这个地址')?.disabled).toBe(true);
   await type(document.querySelector<HTMLInputElement>('input[aria-label="图片地址"]'), '  https://example.com/a.jpg  ');
@@ -146,10 +193,19 @@ it('地址栏填了才允许提交，提交的是 url 而不是 ref', async () =
   await click(buttonNamed('用这个地址'));
   await settle();
   expect(body(calls, 1)).toEqual({ kind: 'performer', id: 7792, url: 'https://example.com/a.jpg' });
+  // 预览走服务端缓存里那一份，不把手填的地址直接塞进 <img>。
+  expect(document.querySelector('[role="dialog"] img')?.getAttribute('src'))
+    .toBe('/avatar-choice?kind=performer&id=7792&ref=url%3Ahttps%3A%2F%2Fexample.com%2Fa.jpg');
+  await reportSize(300, 400);
+  await click(buttonNamed('用这一块'));
+  await settle();
+  expect(body(calls, 2)).toEqual({
+    kind: 'performer', id: 7792, ref: 'url:https://example.com/a.jpg', crop: FRAMED.focus, version: '',
+  });
 });
 
-it('本机选的图按原字节发出去，名字走查询串', async () => {
-  const calls = server(listing([]));
+it('本机选的图在浏览器里预览着框，确认时按原字节发出去，名字和框走查询串', async () => {
+  const calls = server(listing([]), { ref: '', source: 'upload', label: '我的图.jpg', bases: [] });
   await openPicker();
   const file = new File([new Uint8Array([1, 2, 3])], '我的图.jpg', { type: 'image/jpeg' });
   const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
@@ -157,20 +213,56 @@ it('本机选的图按原字节发出去，名字走查询串', async () => {
   // 按钮只是把点击转给这个输入框，挑完文件由浏览器派发 change。
   await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) });
   await settle();
-  expect(sent(calls, 1)[0]).toBe('/api/avatar-pick?kind=performer&id=7792&name=%E6%88%91%E7%9A%84%E5%9B%BE.jpg');
+  expect(sent(calls, 1)[0]).toBe('/api/avatar-frame?kind=performer&id=7792&name=%E6%88%91%E7%9A%84%E5%9B%BE.jpg');
   expect(sent(calls, 1)[1].body).toBe(file);
+  expect(document.querySelector('[role="dialog"] img')?.getAttribute('src')).toMatch(/^blob:/);
+  await reportSize(300, 400);
+  await click(buttonNamed('用这一块'));
+  await settle();
+  expect(sent(calls, 2)[0])
+    .toBe('/api/avatar-pick?kind=performer&id=7792&name=%E6%88%91%E7%9A%84%E5%9B%BE.jpg&crop=90,20,210,140');
+  expect(sent(calls, 2)[1].body).toBe(file);
 });
 
-it('换不成时弹层留在原地，原因写在里面', async () => {
+it('本机的图整张使用时不带框', async () => {
+  const calls = server(listing([]), { ref: '', source: 'upload', label: 'me.jpg', bases: [] });
+  await openPicker();
+  const file = new File([new Uint8Array([1, 2, 3])], 'me.jpg', { type: 'image/jpeg' });
+  const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) });
+  await settle();
+  await click(buttonNamed('整张使用'));
+  await settle();
+  expect(sent(calls, 2)[0]).toBe('/api/avatar-pick?kind=performer&id=7792&name=me.jpg');
+});
+
+it('取景就失败时原因留在候选那一屏', async () => {
   vi.stubGlobal('fetch', vi.fn(async (_input: string, init?: RequestInit) => (
     init?.method === 'POST'
       ? { ok: false, status: 400, json: async () => ({ error: '只接受指向公网的 https 地址' }) }
-      : { ok: true, status: 200, json: async () => listing([choice()]) }
+      : { ok: true, status: 200, json: async () => listing([]) }
+  )));
+  await openPicker();
+  await type(document.querySelector<HTMLInputElement>('input[aria-label="图片地址"]'), 'https://10.0.0.1/a.jpg');
+  await click(buttonNamed('用这个地址'));
+  await settle();
+  expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('只接受指向公网的 https 地址');
+  expect(dialog()?.textContent).toContain('更换头像');
+});
+
+it('换不成时弹层留在原地，原因写在里面', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: string, init?: RequestInit) => (
+    input === '/api/avatar-pick'
+      ? { ok: false, status: 400, json: async () => ({ error: '这张图还没下载过，而这一次不允许联网' }) }
+      : { ok: true, status: 200, json: async () => (init?.method === 'POST' ? choice(FRAMED) : listing([choice()])) }
   )));
   const { picked } = await openPicker();
   await click(cells()[0]);
   await settle();
-  expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('只接受指向公网的 https 地址');
+  await click(buttonNamed('整张使用'));
+  await settle();
+  expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('这张图还没下载过');
   expect(picked).not.toHaveBeenCalled();
   expect(dialog()).not.toBeNull();
 });
