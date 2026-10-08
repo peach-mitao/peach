@@ -265,6 +265,7 @@ describe('常驻面', () => {
 
     act(() => {
       expect(api.isOpen()).toBe(true);
+      expect(api.showing(), '浮窗跟着组件卸掉了，没有能原地换条的那一种').toBeNull();
       expect(api.activeVideo()).toBeNull();
       expect(() => api.update({ selectMode: true })).not.toThrow();
       expect(() => api.toggleTheater()).not.toThrow();
