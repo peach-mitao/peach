@@ -9,6 +9,7 @@
 import type { InfiniteData, QueryKey } from '@tanstack/react-query';
 
 import { apiGet } from '../../api';
+import { IDENTITY_CATEGORIES } from '../../identity-filter';
 import {
   fetchOnlineAuthors, fetchOnlineTags, onlineAuthorsKey, onlineTagsKey,
   type OnlineAuthor, type OnlineTag,
@@ -44,10 +45,8 @@ export const ONLINE_TAG_CATEGORIES: readonly (readonly [string, string])[] = [
   ['all', '全部'], ['general', '通用'], ['artist', '创作者'], ['character', '角色'],
   ['copyright', '作品'], ['metadata', '元数据'],
 ];
-/** 本地艺人名册的身份分类；卖家名册不分类。 */
-export const IDENTITY_CATEGORIES: readonly (readonly [string, string])[] = [
-  ['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方'], ['blogger', '网黄博主'], ['animation', '动画作者'],
-];
+/** 本地艺人名册的身份分类；卖家名册不分类。词表与壳的骨架共用一份。 */
+export { IDENTITY_CATEGORIES };
 
 /** 每页条数：一屏头像 120 格，标签 180 枚。 */
 export const PAGE_SIZE = { people: 120, tags: 180 } as const;

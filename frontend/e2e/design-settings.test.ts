@@ -658,8 +658,8 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       const page = opened.page;
       await page.route('**/api/index?**', (route) => route.fulfill({
         status: 200, contentType: 'application/json',
-        body: JSON.stringify({ items: [{ k: '痴女', n: 4, cat: 'role' }, { k: '秘书OL', n: 2, cat: 'scene' }],
-          has_more: false, categories: { role: 1, scene: 1 } }),
+        body: JSON.stringify({ items: [{ k: '痴女', n: 4, cat: 'role' }, { k: '秘书OL', n: 2, cat: 'scene' },
+          { k: 'BDSM', n: 3, cat: 'role' }], has_more: false, categories: { role: 2, scene: 1 } }),
       }));
       const release = await holdApi(page);
       await page.reload({ waitUntil: 'load' });
@@ -669,7 +669,9 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
           const box = document.querySelector(selector)?.getBoundingClientRect();
           return box ? { top: box.top, left: box.left, width: box.width, height: box.height } : null;
         };
+        const [first, second] = [...document.querySelectorAll(groupSelector)].map((node) => node.getBoundingClientRect());
         return { glass: rect(glassSelector), group: rect(groupSelector),
+          gap: first && second ? second.top - first.bottom : null,
           pills: document.querySelectorAll(`${glassSelector} [data-filter-row="top"] > *`).length,
           view: rect(`${glassSelector} [data-filter-row="bottom"] ${viewSelector}`) };
       }, [glass, group, view] as const);
@@ -687,8 +689,48 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       }
       assert.ok(Math.abs(skeleton.group!.top - live.group!.top) <= 1,
         `开头那组内容的上沿接管时跳了：骨架 ${skeleton.group!.top}，接管后 ${live.group!.top}`);
+      assert.ok(skeleton.gap !== null && live.gap !== null && Math.abs(skeleton.gap - live.gap) <= 1,
+        `字母表各组之间的间距骨架与接管后不同：骨架 ${skeleton.gap}，接管后 ${live.gap}`);
       assert.ok(Math.abs(skeleton.view!.top - live.view!.top) <= 1 && Math.abs(skeleton.view!.left - live.view!.left) <= 1,
         `视图切换接管时挪了位：骨架 (${skeleton.view!.left}, ${skeleton.view!.top})，接管后 (${live.view!.left}, ${live.view!.top})`);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('艺人页骨架里就排着身份分类那一行，React 落地时分类行与名册网格都留在原位', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/performers', DESKTOP);
+    try {
+      const page = opened.page;
+      await page.route('**/api/index?**', (route) => route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ items: [{ k: '七海ひな', n: 4 }, { k: 'Mira', n: 2 }], has_more: false,
+          categories: { japanese_av: 1, western: 1 } }),
+      }));
+      const release = await holdApi(page);
+      await page.reload({ waitUntil: 'load' });
+      await page.locator('#index [data-skeleton^="index/performers/"]').waitFor({ timeout: 15_000 });
+      const measure = (cell: string) => page.evaluate((cellSelector) => {
+        const row = document.querySelector('#index [aria-label="身份分类"]');
+        const box = row?.getBoundingClientRect();
+        const first = row?.querySelector('[aria-pressed="true"]')?.getBoundingClientRect();
+        return { row: box ? { top: box.top, left: box.left, height: box.height } : null,
+          pressed: first ? { width: first.width, height: first.height } : null,
+          cell: document.querySelector(cellSelector)?.getBoundingClientRect().top ?? null };
+      }, cell);
+      const skeleton = await measure('#index [data-skeleton] .icell');
+      release();
+      await page.locator('#index [data-index-cell]').first().waitFor({ timeout: 15_000 });
+      await settle(page);
+      const live = await measure('#index [data-index-cell]');
+      assert.ok(skeleton.row && skeleton.pressed && skeleton.cell !== null, `艺人页骨架里缺身份分类行或名册格：${JSON.stringify(skeleton)}`);
+      assert.ok(live.row && live.pressed && live.cell !== null, `接管后找不到身份分类行或名册格：${JSON.stringify(live)}`);
+      for (const key of ['top', 'left', 'height'] as const) {
+        assert.ok(Math.abs(skeleton.row![key] - live.row![key]) <= 1,
+          `身份分类行的 ${key} 接管时跳了：骨架 ${skeleton.row![key]}，接管后 ${live.row![key]}`);
+      }
+      assert.deepEqual(skeleton.pressed, live.pressed, '选中的那枚分类键接管时换了尺寸');
+      assert.ok(Math.abs(skeleton.cell! - live.cell!) <= 1, `名册第一格的上沿接管时跳了：骨架 ${skeleton.cell}，接管后 ${live.cell}`);
     } finally {
       await opened.close();
     }

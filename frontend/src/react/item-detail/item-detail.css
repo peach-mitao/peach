@@ -95,11 +95,12 @@
    默认折成两行：番号在前、正文在后，两行够认出是哪一部；正文动辄五六行，整段摊开会把评分、标签
    和动作全推到折叠线以下。真溢出时标题下面那排键最前面多一枚展开键，没溢出就不画它（判定在
    `DetailTitle` 的 ResizeObserver 里）。来源徽标是行内块、站在第一行开头，随文字一起被折。那排键
-   自成一行排在标题下面：夹在被折的文字末尾会一起被裁掉。 */
+   自成一行排在标题下面：夹在被折的文字末尾会一起被裁掉。徽标盒与一行等高、贴行顶，字形居中
+   就落在这一行的正中；`middle` 对的是基线上方半个 x 高，番号的大写和汉字看着都比徽标高。 */
 .peach-react [data-item-detail] [data-item-title] { display: block; margin-bottom: 10px; }
 .peach-react [data-item-detail] [data-item-title] [class~="srcbig"] {
   display: inline-grid;
-  vertical-align: middle;
+  vertical-align: top;
   width: 17px;
   height: 28px;
   margin: 0 8px 0 0;
