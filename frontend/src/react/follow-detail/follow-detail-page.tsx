@@ -12,7 +12,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, foldName, icon, requestErrorMessage } from '@peach/legacy/core';
 
 import { apiSend } from '../../api';
-import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-download-dialog';
 import { RetryNote } from '../components/grid-reveal';
 import { MixGroupLabel, MixQueue, MixQueueRow } from '../components/mix-queue';
 import {
@@ -309,8 +308,6 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
   const saved = item.status === 'saved';
   const { busy } = write;
   const busyAttrs = (key: string) => (busy.has(key) ? { 'aria-busy': true, 'aria-disabled': true } as const : {});
-  const cloud = useRef<HTMLButtonElement>(null);
-  const [download, setDownload] = useState<DownloadPrefill | null>(null);
   return (
     <div data-stage-side="" data-follow-detail-side="">
       <div data-stage-side-content="">
@@ -378,9 +375,6 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
               title="隐藏这张图" {...busyAttrs(`hide:${selected.index}`)} onClick={() => write.hide(selected.index)}
               dangerouslySetInnerHTML={{ __html: icon('image-off') }} />
           ) : null}
-          <button ref={cloud} type="button" data-follow-cloud-download="" aria-label="云下载" title="云下载"
-            aria-haspopup="dialog" onClick={() => setDownload({ title: item.title || '', origin: `follow:${item.id}` })}
-            dangerouslySetInnerHTML={{ __html: icon('cloud-download') }} />
           {src ? (
             <a data-follow-download="" href={`${src}${src.includes('?') ? '&' : '?'}download=1`} download=""
               aria-label="下载到本地" title="下载到本地" dangerouslySetInnerHTML={{ __html: icon('download') }} />
@@ -404,8 +398,6 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
           </div>
         ) : null}
         <span data-follow-state="" aria-live="polite">{write.failure}</span>
-        <CloudDownloadDialog prefill={download} close={() => setDownload(null)} anchor={cloud}
-          receipt={(message) => actions.toast(message)} />
         {tags.length ? (
           <div data-stage-tags="" data-follow-detail-tags="">
             {tags.map((tag) => (

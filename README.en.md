@@ -71,8 +71,8 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".
 - **New releases**: subscribe on a performer page or by name in follow management, including performers not yet in your library. Peach checks for new titles regularly. Follow creators across sites such as FANBOX, Patreon and Kemono; the same work on different sites appears as one card.
 - **JAV intake**: mark a new-release card or followed post as wanted, or enter a video code. Work cards find and deduplicate links from JavDB's resource list and comments, showing attributes, size and date. Add magnets directly to 115 or PikPak, or copy other links. Files scanned into your library are marked as acquired; titles set aside can be searched again.
-- **Cloud download**: paste a magnet link in Activity and hand it to 115 or PikPak for offline download; the finished file joins your library on its own. Followed items and your wishlist also have an entry.
-- **Find a release**: add your own Prowlarr or Jackett indexer under Downloads in local configuration, then search by release code in Activity's Cloud download section. Filter by size and prioritize resolution, Chinese subtitles, or uncensored editions; select a candidate and confirm submission.
+- **Cloud download**: open Cloud download from JAV intake or a quality goal, paste a magnet link and hand it to 115 or PikPak for offline download; the finished file joins your library on its own. Progress shows up in Activity.
+- **Find a release**: add your own Prowlarr or Jackett indexer under Downloads in local configuration, then search by release code in the Cloud download dialog. Filter by size and prioritize resolution, Chinese subtitles, or uncensored editions; select a candidate and confirm submission.
 - **Statistics**: which drive holds what, how much you have watched and which tags dominate, on one page.
 - **Appearance**: light or dark, accent color and sidebar order are all yours to set.
 - **Any screen**: works in the browser on desktop, tablet and phone.

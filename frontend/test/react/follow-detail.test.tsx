@@ -150,18 +150,6 @@ describe('写操作', () => {
     expect(given.toast).toHaveBeenCalledWith('已保存到账本');
   });
 
-  it('云下载键在详情里原地打开弹层，标题行写这一条的标题，不发写请求', async () => {
-    const fetcher = serve();
-    const { host } = await show(data(item(9)));
-    const button = host.querySelector('[data-follow-cloud-download]');
-    expect(button?.getAttribute('aria-label')).toBe('云下载');
-    expect(button?.querySelector('use')?.getAttribute('href')).toBe('#i-cloud-download');
-    await click(button);
-    await settle();
-    expect(document.querySelector('[role=dialog]')?.textContent).toContain(item(9).title);
-    expect(posts(fetcher)).toEqual([]);
-  });
-
   it('标记已看：键按下、多一枚「恢复未看」；回执的撤销写回原状态', async () => {
     const fetcher = serve();
     const { host, actions: given } = await show(data(item(5)));

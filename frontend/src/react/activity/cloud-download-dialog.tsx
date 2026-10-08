@@ -1,13 +1,11 @@
 /* 云下载弹层：在点它的那一页原地打开，搜索索引器或贴磁力，交给 115 或 PikPak 离线下载。
  *
- * 入口有三处：JAV 入库页（每条作品与页头那一颗）、高清版目标卡、关注详情。它们把番号、
+ * 入口有两处：JAV 入库页（每条作品与页上那一颗）、高清版目标卡，都带得出番号。它们把番号、
  * 标题和来处（`prefill`）交进来，提交时一并记在任务上；提交过的任务在活动页「云下载」段看。
  *
- * 下载配置（`/api/downloads`）在弹层打开时才取，和活动页、入库页读同一个缓存键。
- * 关注详情是 `showModal()` 开的原生 dialog，`anchor` 指着触发键，弹层挂进同一层才盖得住它。 */
-import { useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+ * 下载配置（`/api/downloads`）在弹层打开时才取，和活动页、入库页读同一个缓存键。 */
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UNSAFE_PortalProvider } from 'react-aria';
 import { Heading } from 'react-aria-components';
 
 import { Button } from '@/components/base/buttons/button';
@@ -18,13 +16,12 @@ import { apiGet, apiSend, errorMessage } from '../../api';
 import type { DownloadProviderKey, DownloadsSnapshot, DownloadSubmitResult } from '../bundle';
 import { ModalFrame } from '../components/modal-frame';
 import { Note } from '../components/note';
-import { overlayHost } from '../components/overlay-host';
 import { ErrorText, FieldLabel, Help } from '../settings/section';
 import { busyProps, useAction } from '../settings/use-action';
 import { DOWNLOADS_KEY, DOWNLOADS_URL, downloadPollInterval, failureText } from './downloads-panel';
 import { ResourceSearch } from './resource-search';
 
-/** 入口带进来的上下文。`origin` 记在任务上，如 `asset:12`、`follow:34`、`wishlist:5`。 */
+/** 入口带进来的上下文。`origin` 记在任务上，如 `asset:12`、`wishlist:5`。 */
 export interface DownloadPrefill { code?: string; title?: string; origin?: string; searchReason?: string }
 
 const RECEIPTS: Partial<Record<DownloadSubmitResult['outcome'], string>> = {
@@ -33,23 +30,19 @@ const RECEIPTS: Partial<Record<DownloadSubmitResult['outcome'], string>> = {
   adopted_remote: '远端已有同一任务，已接管',
 };
 
-export function CloudDownloadDialog({ prefill, close, receipt, provider, anchor }: {
+export function CloudDownloadDialog({ prefill, close, receipt, provider }: {
   /** 空就是关着；不带番号与标题的空对象是「随手贴一条磁力」。 */
   prefill: DownloadPrefill | null;
   close(): void;
   receipt(message: string): void;
   /** 打开时先选中的下载方式，入库页把页上那一份交进来。 */
   provider?: string;
-  anchor?: RefObject<Element | null>;
 }) {
-  const frame = (
+  return (
     <ModalFrame isOpen={Boolean(prefill)} onOpenChange={(open) => { if (!open) close() }} width="form">
       {prefill ? <Body prefill={prefill} close={close} receipt={receipt} provider={provider} /> : null}
     </ModalFrame>
   );
-  return anchor
-    ? <UNSAFE_PortalProvider getContainer={() => overlayHost(anchor.current)}>{frame}</UNSAFE_PortalProvider>
-    : frame;
 }
 
 function Body({ prefill, close, receipt, provider }: {
