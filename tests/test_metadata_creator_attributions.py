@@ -7,7 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from peach.classification import creator_collection_base, is_structural_creator
-from peach.entities import merge_entity, upsert_asset_entity
+from peach.entities import (apply_directory_rejections, creator_directory_key, derived_directory_rejections,
+                            merge_entity, upsert_asset_entity)
 from peach.field_owners import write_owned_fields
 from peach.entity_classification import write_claim
 from peach.metadata_creator_attributions import apply_plan, collect, restore
@@ -60,6 +61,48 @@ class CreatorAttributionTests(unittest.TestCase):
             "VALUES('creator-attribution',?,'rejected','t')", (f'{asset_id}:parent account',))
         self.assertIsNone(upsert_asset_entity(self.connection, kind='creator',name='Parent Account4K',
             asset_id=asset_id,role='creator',source='scan:directory'))
+
+    def test_directory_rejection_covers_new_files_and_subdirectories(self):
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,updated_at) "
+            "VALUES('creator-attribution',?,'rejected','t')",
+            (creator_directory_key('Parent Account', r'B:\创作者\Parent Account\Other Channel'),))
+        blocked = [r'B:\创作者\Parent Account\Other Channel\new.mp4',
+                   r'B:\创作者\Parent Account\other channel\图片\new.jpg']
+        for path in blocked:
+            asset_id, _ = self.asset('Parent Account', path=path)
+            with self.subTest(path=path):
+                self.assertIsNone(upsert_asset_entity(self.connection, kind='creator', name='Parent Account',
+                    asset_id=asset_id, role='creator', source='scan:directory'))
+                self.assertIsNotNone(upsert_asset_entity(self.connection, kind='creator', name='Parent Account',
+                    asset_id=asset_id, role='creator', source='user:manual'))
+        own_id, entity_id = self.asset('Parent Account', path=r'B:\创作者\Parent Account\own.mp4')
+        self.assertEqual(upsert_asset_entity(self.connection, kind='creator', name='Parent Account',
+            asset_id=own_id, role='creator', source='scan:directory'), entity_id)
+
+    def test_fully_rejected_subtrees_yield_topmost_directory_rejections(self):
+        root = r'B:\创作者\Parent Account'
+        rejected = [rf'{root}\Other Channel\a.mp4', rf'{root}\Other Channel\图片\b.jpg',
+                    rf'{root}\Mixed\c.mp4', r'B:\卖家\Reseller\Parent Account\e.mp4']
+        for path in rejected:
+            asset_id, _ = self.asset('Parent Account', path=path)
+            self.connection.execute("INSERT INTO review_decision(category,item_key,status,note,updated_at) "
+                "VALUES('creator-attribution',?,'rejected','另一账号','t')", (f'{asset_id}:parent account',))
+        self.asset('Parent Account', path=rf'{root}\Mixed\own.mp4')
+        proposals = derived_directory_rejections(self.connection)
+        self.assertEqual([(row['directory'], row['subtree_assets']) for row in proposals],
+                         [(rf'{root}\Other Channel', 2), (r'B:\卖家\Reseller\Parent Account', 1)])
+        self.assertEqual(apply_directory_rejections(self.connection, proposals, reviewer='script:test'), 2)
+        self.assertEqual(derived_directory_rejections(self.connection), [])
+        new_id, _ = self.asset('Elsewhere', path=rf'{root}\Other Channel\新\d.mp4')
+        self.assertIsNone(upsert_asset_entity(self.connection, kind='creator', name='Parent Account',
+            asset_id=new_id, role='creator', source='scan:directory'))
+
+    def test_collection_suffix_respects_rejection_without_a_canonical_account(self):
+        asset_id, _ = self.asset('Parent Account4K')
+        self.connection.execute("INSERT INTO review_decision(category,item_key,status,updated_at) "
+            "VALUES('creator-attribution',?,'rejected','t')", (f'{asset_id}:parent account',))
+        self.assertIsNone(upsert_asset_entity(self.connection, kind='creator', name='Parent Account4K',
+            asset_id=asset_id, role='creator', source='scan:directory'))
 
     def test_merged_person_alias_ingests_into_the_preserved_artist(self):
         asset_id, creator_id = self.asset('Former Name')

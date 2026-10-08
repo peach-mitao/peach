@@ -440,23 +440,102 @@ def _ref_is_free(connection: Connection, entity_id: int, provider: str,
     return held is None or str(held[0]) == external_id
 
 
+CREATOR_ATTRIBUTION = 'creator-attribution'
+
+
+def creator_directory_key(name: str, directory: str) -> str:
+    """目录级否定的复核键：该目录及其子目录里的文件都不归这个账号。"""
+    folded = str(directory).replace('/', '\\').rstrip('\\').casefold()
+    return f'dir:{normalize_entity_name(name)}|{folded}'
+
+
+def _directories_of(path) -> list[str]:
+    """文件所在目录及其全部祖先目录，由浅到深。"""
+    parts = [part for part in re.split(r'[\\/]', str(path or '')) if part][:-1]
+    return ['\\'.join(parts[:depth]) for depth in range(1, len(parts) + 1)]
+
+
+def derived_directory_rejections(connection) -> list[dict]:
+    """作品级否定覆盖了整个目录子树时，提议同一账号在该目录上的目录级否定。
+
+    子树内每一件有效作品都已逐个否定才提议，且只留最上层的目录：目录级否定会拦下
+    以后进入该目录的新文件，但不能顺带否定任何一件还没被否定的作品。目录路径里必须有
+    一层以该账号命名：目录归属正是从这一层来的，再往上的分类目录（如整个卖家目录）
+    即使眼下只装着被否定的作品，也不能替以后放进去的别的账号做决定。
+    """
+    from .classification import creator_collection_base
+    rejected: dict[str, set[int]] = {}
+    notes: dict[str, set[str]] = {}
+    existing = set()
+    for key, status, note in connection.execute(
+            'SELECT item_key,status,note FROM review_decision WHERE category=?', (CREATOR_ATTRIBUTION,)):
+        existing.add(key)
+        head, separator, name = key.partition(':')
+        if status == 'rejected' and separator and head.isdigit():
+            rejected.setdefault(name, set()).add(int(head))
+            notes.setdefault(name, set()).add(note)
+    members: dict[str, set[int]] = {}
+    spelled: dict[str, str] = {}
+    if rejected:
+        for asset_id, path in connection.execute("SELECT id,path FROM asset WHERE COALESCE(disposal,'')<>'vanished'"):
+            for directory in _directories_of(path):
+                members.setdefault(directory.casefold(), set()).add(asset_id)
+                spelled.setdefault(directory.casefold(), directory)
+    def names_account(folded, name):
+        return any(name in {normalize_entity_name(part), normalize_entity_name(creator_collection_base(part))}
+                   for part in folded.split('\\'))
+
+    proposals = []
+    for name, ids in sorted(rejected.items()):
+        kept: list[str] = []
+        for folded in sorted((folded for folded, held in members.items() if held <= ids),
+                             key=lambda folded: (folded.count('\\'), folded)):
+            if any(folded.startswith(top + '\\') for top in kept) or not names_account(folded, name):
+                continue
+            kept.append(folded)
+            key = creator_directory_key(name, spelled[folded])
+            if key not in existing:
+                proposals.append({'item_key': key, 'name': name, 'directory': spelled[folded],
+                                  'subtree_assets': len(members[folded]), 'name_rejections': len(ids),
+                                  'note': f'由 {len(members[folded])} 条作品级否定派生：' + '；'.join(sorted(notes[name]))})
+    return proposals
+
+
+def apply_directory_rejections(connection, proposals, *, reviewer: str) -> int:
+    """写入目录级否定；已有同键复核决定的不覆盖。"""
+    stamp = datetime.now(timezone.utc).isoformat()
+    return sum(connection.execute(
+        "INSERT OR IGNORE INTO review_decision(category,item_key,status,reviewer,note,updated_at) "
+        "VALUES(?,?,'rejected',?,?,?)", (CREATOR_ATTRIBUTION, row['item_key'], reviewer, row['note'], stamp)).rowcount
+        for row in proposals)
+
+
+def _creator_attribution_rejected(connection, names, asset_id, path) -> bool:
+    """单个作品的否定与祖先目录的否定都生效，同目录新文件不再归给被否定的账号。"""
+    names = {normalize_entity_name(name) for name in names if name}
+    keys = [f'{asset_id}:{name}' for name in names]
+    keys += [creator_directory_key(name, directory) for directory in _directories_of(path) for name in names]
+    return bool(keys) and connection.execute(
+        "SELECT 1 FROM review_decision WHERE category=? AND status='rejected' AND item_key IN ("
+        + ','.join('?' for _ in keys) + ") LIMIT 1", (CREATOR_ATTRIBUTION, *keys)).fetchone() is not None
+
+
 def _creator_ingest_identity(connection, name, asset_id):
     """已有账号承接集合目录；已确认厂牌不进入发布账号关系。"""
     from .classification import creator_collection_base, creator_release_identifier
     asset = connection.execute('SELECT path,name,code FROM asset WHERE id=?',(asset_id,)).fetchone()
     if asset and creator_release_identifier(name,path=asset[0] or '',filename=asset[1] or '',code=asset[2])[0] == 'release_identifier':
         return ''
+    original = name
     base = creator_collection_base(name)
     if base != name:
         held = connection.execute("SELECT canonical_name FROM entity WHERE kind='creator' AND normalized_name=?",
                                   (normalize_entity_name(base),)).fetchone()
         if held:
             name = str(held[0])
-    if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='review_decision'").fetchone():
-        decision = connection.execute("SELECT status FROM review_decision WHERE category='creator-attribution' AND item_key=?",
-                                      (f'{asset_id}:{normalize_entity_name(name)}',)).fetchone()
-        if decision and decision[0] == 'rejected':
-            return ''
+    if (connection.execute("SELECT 1 FROM sqlite_schema WHERE name='review_decision'").fetchone()
+            and _creator_attribution_rejected(connection, (original, base, name), asset_id, asset[0] if asset else '')):
+        return ''
     if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
         normalized = normalize_entity_name(name)
         normalized_base = normalize_entity_name(base)
