@@ -66,8 +66,15 @@ describe('切换主题', () => {
         const slid = transitions(thumb);
         await frame();
         const restored = getComputedStyle(node).transitionProperty;
+
+        /* 上面那次切换后立刻读动画，读的时候临时样式还挂着。真实页面没人读：rAF 里摘掉样式，
+           紧接着这一帧才算样式。这里切换后什么都不读，等两帧再看，0.12s 的过渡若在第一帧起了还在跑。 */
+        finish();
+        ui.applyTheme('light');
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+        const settled = [...transitions(node), ...colours()];
         node.remove();
-        return { declared, raw, switched, page, slid, restored };
+        return { declared, raw, switched, page, slid, restored, settled };
       });
 
       assert.match(result.declared, /background-color/, `这枚按钮没有声明颜色过渡：${result.declared}`);
@@ -76,6 +83,7 @@ describe('切换主题', () => {
       assert.deepEqual(result.page, [], `applyTheme 之后页面上仍有颜色过渡：${result.page.join('; ')}`);
       assert.deepEqual(result.slid, ['transform'], `明暗键滑块没有跟着位移：${result.slid.join(', ')}`);
       assert.equal(result.restored, result.declared, '下一帧之后按钮的过渡没有恢复，关过渡的临时样式还挂着');
+      assert.deepEqual(result.settled, [], `摘掉临时样式那一帧补播了颜色过渡：${result.settled.join('; ')}`);
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
