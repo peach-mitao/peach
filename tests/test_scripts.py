@@ -67,6 +67,88 @@ class EnglishNameSpacingTests(unittest.TestCase):
         for name in ('01_作品封面.jpg', 'FC2-PPV-123456.zip', '作品.mp4'):
             self.assertEqual(self.script.spaced_name(name, self.language), name)
 
+    def test_titles_from_the_executed_batch_split_at_word_bounds(self):
+        """2026-10-07 那批里切错过的真实片名。"""
+        cases = {
+            "29_Couldn'tresistherhotcowgirl,shegotacreampie.mp4":
+                "29_Couldn't resist her hot cowgirl, she got a creampie.mp4",
+            "56_HoldingmyhairsoIdon'tResist.mp4": "56_Holding my hair so I don't Resist.mp4",
+            "54_Hisdickdoesn'tfitinmyMouth.mp4": "54_His dick doesn't fit in my Mouth.mp4",
+            '48_oiledPOVfootjob.mp4': '48_oiled POV footjob.mp4',
+            '40_PetitebrunettemakeshimCIMwithhotdeepthroat.mp4':
+                '40_Petite brunette makes him CIM with hot deepthroat.mp4',
+            '74_HUGELOADonherFaceandSwallowed.mp4': '74_HUGE LOAD on her Face and Swallowed.mp4',
+            '36_Bitchwithplumpyredlips.mp4': '36_Bitch with plumpy red lips.mp4',
+            '35_Hotbrunettetakesabigcockinherthroat.mp4': '35_Hot brunette takes a big cock in her throat.mp4',
+            '52_Iinterruptedherfromaphotoshootwithahotdeepthroat.mp4':
+                '52_I interrupted her from a photoshoot with a hot deepthroat.mp4',
+            'stepsisstuckinwasher.mp4': 'stepsis stuck in washer.mp4',
+            'SPANKPH6-SpankingherRoughly.mp4': 'SPANKPH6-Spanking her Roughly.mp4',
+            'POVblowjobASMR4K.mp4': 'POV blowjob ASMR4K.mp4',
+        }
+        for name, expected in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(self.script.spaced_name(name, self.language), expected)
+
+    def test_mixed_script_words_split_and_keep_their_characters(self):
+        spaced = self.script.spaced_name('17_Filledwithсumallthethroat.mp4', self.language)
+        self.assertEqual(spaced, '17_Filled with сum all the throat.mp4')
+        self.assertIn('сum', spaced)
+
+    def test_performer_names_stay_whole(self):
+        for name, expected in (('IrinaSucksAndRides.mp4', 'Irina Sucks And Rides.mp4'),
+                               ('SonaGetsFucked.mp4', 'Sona Gets Fucked.mp4')):
+            with self.subTest(name=name):
+                self.assertEqual(self.script.spaced_name(name, self.language), expected)
+
+    def test_site_identifiers_are_left_whole(self):
+        for name in ('ph5f8a9bcdef12345.mp4', 'xvideos.com_abcdefgh.mp4',
+                     'viewkey=ph5f8a9bcdef12345.mp4'):
+            with self.subTest(name=name):
+                self.assertEqual(self.script.spaced_name(name, self.language), name)
+
+    def test_recompute_batch_plans_only_mis_split_rows_and_apply_accepts_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            db = fresh_ledger(root)
+            wrong = root / "29_Could n't resist her.mp4"
+            right = root / '02_Throat fucking.mp4'
+            moved = root / '03_Sloppy throat.mp4'
+            for path in (wrong, right):
+                path.write_bytes(b'media')
+            with closing(sqlite3.connect(db)) as connection:
+                for asset_id, path in ((1, wrong), (2, right), (3, root / 'elsewhere' / moved.name)):
+                    connection.execute('INSERT INTO asset(id,location,path,name,medium,size) VALUES(?,?,?,?,?,?)',
+                                       (asset_id, 'local', str(path), path.name, 'video', 5))
+                connection.commit()
+            log = root / 'organize-batch.json'
+            # 第 1 条在批次之后被目录整理从 New 搬到了 root：按 asset_id 找当前行。
+            log.write_text(json.dumps({'entries': [
+                {'asset_id': 1, 'old_path': str(root / 'New' / "29_Couldn'tresisther.mp4"),
+                 'new_path': str(root / 'New' / wrong.name)},
+                {'asset_id': 2, 'old_path': str(root / '02_Throatfucking.mp4'), 'new_path': str(right)},
+                {'asset_id': 3, 'old_path': str(root / '03_Sloppythroatt.mp4'), 'new_path': str(moved)},
+            ]}), encoding='utf-8')
+            review = root / 'recompute.csv'
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(self.script.main(['--db', str(db), '--root', str(root),
+                                                   '--recompute-batch', str(log), '--out', str(review)]), 0)
+            report = json.loads(output.getvalue())
+            self.assertEqual(report['planned'], 1)
+            self.assertEqual([item['asset_id'] for item in report['skipped']], [3])
+            rows = self.script.read_rows(review)
+            self.assertEqual([(row['asset_id'], PureWindowsPath(row['target_path']).name) for row in rows],
+                             [('1', "29_Couldn't resist her.mp4")])
+            self.assertTrue(wrong.exists())
+
+            with mock.patch.object(self.script, 'location_roots', return_value={'local': [str(root)]}), \
+                    mock.patch.object(self.script, 'GENERATED_DIR', root / 'generated'), \
+                    redirect_stdout(io.StringIO()):
+                self.assertEqual(self.script.main(['--db', str(db), '--root', str(root), '--review-csv', str(review),
+                                                   '--apply', '--backup', str(root / 'backup.db')]), 0)
+            self.assertFalse(wrong.exists())
+            self.assertTrue((root / "29_Couldn't resist her.mp4").exists())
+
     def test_apply_rejects_character_changes_before_opening_writer(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
