@@ -84,4 +84,30 @@ describe('本地与在线艺人共用名册布局', () => {
       } finally { await opened.close() }
     });
   }
+  it('卖家动画作者的旧链接就地落到艺人分类，地址、标题和历史只留一条', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/performers', VIEWPORTS[0]);
+    try {
+      const page = opened.page;
+      await page.locator('#index [data-index-page]').waitFor({ timeout: 15_000 });
+      const before = await page.evaluate(() => history.length);
+      const requests: string[] = [];
+      page.on('request', request => {
+        const url = new URL(request.url());
+        if (url.pathname === '/api/index') requests.push(url.search);
+      });
+      await page.goto(requiredEnv('PEACH_E2E_ORIGIN') + '/creators?category=animation', { waitUntil: 'load' });
+      await page.waitForURL(url => url.pathname === '/performers', { timeout: 15_000 });
+      await page.locator('#index [data-index-page]').waitFor({ timeout: 15_000 });
+      await settle(page);
+      assert.equal(new URL(page.url()).searchParams.get('category'), 'animation');
+      assert.equal(await page.evaluate(() => history.length), before + 1, '规范化不该多压一条历史');
+      assert.equal(await page.evaluate(() => document.body.dataset.surface), '/performers');
+      assert.match(await page.title(), /^艺人/);
+      assert.deepEqual(await page.locator('#index [role="tab"][aria-selected="true"]').allTextContents(), ['艺人']);
+      assert.equal(requests.length, 1, `名册只取一次：${requests.join(' | ')}`);
+      assert.match(requests[0], /kind=performers/);
+      assert.match(requests[0], /category=animation/);
+      assert.deepEqual(opened.problems, []);
+    } finally { await opened.close() }
+  });
 });

@@ -105,6 +105,36 @@ describe('名册', () => {
     expect(host.querySelector('[aria-label="身份分类"]')?.textContent).toBe('全部女优西方');
     expect(indexRoute({ kind:'creators', q:'', scope:'local', view:'alphabet', category:'japanese_av' }).category).toBe('all');
   });
+  it('换分类等新一页时，分类按钮行沿用上一份计数，不塌缩', async () => {
+    seed(indexKey('performers', ''), [person('女优', { identity_labels:['女优'] })], false, { japanese_av:1, amateur:2, western:1 });
+    const answer = pending<unknown>();
+    serve(() => answer.answer);
+    const host = await open(props());
+    const row = () => host.querySelector('[aria-label="身份分类"]')?.textContent;
+    expect(row()).toBe('全部女优素人西方');
+    await click(buttonNamed('素人', host));
+    await settle();
+    expect(row()).toBe('全部女优素人西方');
+    expect(buttonNamed('素人', host)?.getAttribute('aria-pressed')).toBe('true');
+    await answer.release({ items: [person('素人')], categories: { japanese_av:1, amateur:2 }, has_more: false });
+    await settle();
+    expect(row()).toBe('全部女优素人');
+  });
+  it('旧的卖家动画作者链接规范成艺人分类后，用 replace 改写地址', async () => {
+    seed(indexKey('performers', '', 'animation'), [person('动画作者')], false, { animation:1 });
+    const given = props({ kind: 'creators', category: 'animation' });
+    const host = await open(given);
+    expect(host.querySelector('[data-index-title]')?.textContent).toBe('艺人');
+    expect(given.route).toHaveBeenCalledTimes(1);
+    expect(given.route).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'performers', scope: 'local', category: 'animation' }), { replace: true });
+  });
+  it('地址本来就规范时不改写', async () => {
+    seed(indexKey('performers', ''), [person('女优')]);
+    const given = props();
+    await open(given);
+    expect(given.route).not.toHaveBeenCalled();
+  });
   it('艺人、卖家、在线共用一排导航，卖家没有重复身份筛选', async () => {
     seed(indexKey('performers',''),[person('真人账号')]);
     seed(indexKey('creators',''),[person('卖家账号')]);

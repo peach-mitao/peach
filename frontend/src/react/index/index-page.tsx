@@ -122,6 +122,14 @@ export function IndexPage(props: IndexProps) {
   const onlineTags = kind === 'tags' && scope === 'online';
   const onlineAuthors = kind === 'performers' && scope === 'online';
 
+  /* 地址给的那一份被规范过（旧链接换了名册、认不出的分类回到全部）：用 replace 改写地址，
+     标题、侧栏和历史记录都跟页面上真正显示的那一份走，后退也不会再落回旧地址。 */
+  useEffect(() => {
+    if (route.kind !== props.kind || route.scope !== props.scope || route.category !== props.category) {
+      props.route(route, { replace: true });
+    }
+  }, []);
+
   /* 选择键归壳：关掉时所选跟着清空，下次打开从零开始，同目录页的多选。 */
   useEffect(() => { if (!props.selectMode) setPicked(new Set()) }, [props.selectMode]);
 
@@ -146,6 +154,14 @@ export function IndexPage(props: IndexProps) {
   const items = flatItems(result.data);
   const more = !!result.hasNextPage && !result.isPlaceholderData;
   const readout = countText(items.length, !!result.hasNextPage);
+  /* 分类计数只随名册、词表和过滤词变，与选中哪一类无关。换分类时新一页还没到，沿用同一份
+     名册上一次拿到的计数：分类按钮行不先塌成「全部」加当前项、等数据回来再弹开。 */
+  const countsKey = `${kind}:${scope}:${q}`;
+  const lastCounts = useRef<{ key: string; counts: Record<string, number> } | null>(null);
+  const pageCounts = result.data?.pages[0]?.categories;
+  if (pageCounts && !result.isPlaceholderData) lastCounts.current = { key: countsKey, counts: pageCounts };
+  const categoryCounts = pageCounts ?? (lastCounts.current?.key === countsKey ? lastCounts.current.counts : undefined);
+  const hasEntries = ([key]: readonly [string, string]) => key === 'all' || Number(categoryCounts?.[key] || 0) > 0;
 
   /* 框换了大小，「这张图要不要补底」和人脸放大都得重算：图早加载完了，不会再自己发一次 load。
      赶在绘制之前，否则换版式那一帧是按旧框算的几何。 */
@@ -179,8 +195,7 @@ export function IndexPage(props: IndexProps) {
     });
   };
 
-  const categories = (onlineTags ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES).filter(([key]) =>
-    key === 'all' || Number(result.data?.pages[0]?.categories?.[key] || 0) > 0);
+  const categories = (onlineTags ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES).filter(hasEntries);
 
   const body = () => {
     if (result.isPending) {
@@ -229,8 +244,7 @@ export function IndexPage(props: IndexProps) {
       {tabs}
       {kind === 'performers' && scope === 'local' ? (
         <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
-          {IDENTITY_CATEGORIES[kind].filter(([key]) => key === 'all' || key === category
-            || Number(result.data?.pages[0]?.categories?.[key] || 0) > 0).map(([key, label]) => (
+          {IDENTITY_CATEGORIES.filter((entry) => entry[0] === category || hasEntries(entry)).map(([key, label]) => (
             <Button key={key} variant={category === key ? 'primary' : 'secondary'} size="small"
               aria-pressed={category === key} onClick={() => go({ category: key })}>{label}</Button>
           ))}
