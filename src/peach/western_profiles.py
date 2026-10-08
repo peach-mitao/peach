@@ -11,6 +11,7 @@ from .http import public_https_url
 from .western_artwork import babepedia_page
 from .performer_profiles import read_profile, write_profile
 from .performer_alias_followup import land as land_aliases
+from .social_links import canonical_url, handle, host_of, platform
 
 MONTHS = {name: i for i, name in enumerate(('January', 'February', 'March', 'April', 'May',
     'June', 'July', 'August', 'September', 'October', 'November', 'December'), 1)}
@@ -46,11 +47,12 @@ def profile(http, name: str, aliases=(), *, profile_url='') -> dict:
     cup = re.search(r'\bJP:\s*\d+([A-Z]+)', fields.get('Bra/cup size', ''))
     if cup:
         result['cup'] = cup[1]
-    years = re.match(r'(\d{4})\s*[-–]\s*(present|\d{4})\b', fields.get('Years active', ''))
-    if years:
-        result['debut_year'] = int(years[1])
-        if years[2] != 'present':
-            result['active_until'] = int(years[2])
+    # `2014 - 2017, 2019 - present` 是几段：出道取第一段的起点，引退取最后一段的终点。
+    spans = re.findall(r'(\d{4})\s*[-–]\s*(present|\d{4})\b', fields.get('Years active', ''))
+    if spans:
+        result['debut_year'] = int(spans[0][0])
+        if spans[-1][1] != 'present':
+            result['active_until'] = int(spans[-1][1])
     birthplace = fields.get('Birthplace', '')
     if birthplace:
         result['birthplace'] = re.sub(r'\s*\(#\d+\)', '', birthplace).strip()
@@ -82,11 +84,16 @@ def land(connection, entity_id: int, expected_name: str, record: dict, *, batch:
     aliases = land_aliases(connection, entity_id, expected_name, 'Babepedia', record['profile_url'],
                           [record['matched_name'], *record['aliases']], batch, allow_latin=True,
                           allow_creator=True)
-    added = []
+    added, conflicts = [], []
     stamp = datetime.now(timezone.utc).isoformat()
     for link in record['links']:
-        url = link['url']
-        if connection.execute('SELECT 1 FROM entity_link WHERE entity_id=? AND url=?', (entity_id,url)).fetchone():
+        url = canonical_url(link['url'])
+        existing = connection.execute('SELECT link_kind,url FROM entity_link WHERE entity_id=?', (entity_id,)).fetchall()
+        if any(canonical_url(held) == url for _kind, held in existing):
+            continue
+        reason = link_conflict(link['link_kind'], url, existing)
+        if reason:
+            conflicts.append({'url': url, 'link_kind': link['link_kind'], 'reason': reason})
             continue
         metadata = json.dumps({'source':batch.split('@', 1)[0], 'batch':batch,
                                'source_url':record['profile_url']}, ensure_ascii=False)
@@ -94,4 +101,22 @@ def land(connection, entity_id: int, expected_name: str, record: dict, *, batch:
             (entity_id, link['link_kind'], link['label'], url, urlsplit(url).hostname, metadata,stamp,stamp))
         added.append(cursor.lastrowid)
     return {'entity_id':entity_id,'name':expected_name,'profile_written':written,
-            'preserved_profile':held is not None,'aliases':aliases,'added_links':added,'source':batch}
+            'preserved_profile':held is not None,'aliases':aliases,'added_links':added,
+            'link_conflicts':conflicts,'source':batch}
+
+
+def link_conflict(link_kind: str, url: str, existing: list) -> str:
+    """资料页给的链接与账本已有链接说法不一时的原因；不冲突返回空串。
+
+    已有官网就不再添第二个官网；同一平台已登记另一个账号、同一目录站已登记另一页，
+    都是两处来源说法不一，留在回执里等人看。
+    """
+    if link_kind == 'official' and any(kind == 'official' for kind, _url in existing):
+        return '已有官网'
+    site = platform(url)
+    for _kind, held in existing:
+        if site and platform(held) == site and handle(held) != handle(url):
+            return f'{site} 已登记另一个账号'
+        if not site and link_kind != 'official' and host_of(held) == host_of(url):
+            return f'{host_of(url)} 已登记另一页'
+    return ''

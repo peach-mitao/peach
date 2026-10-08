@@ -15,6 +15,7 @@ from .user_agent import USER_AGENT
 
 SITES = frozenset(('tushy', 'tushyraw', 'vixen', 'blacked', 'blackedraw',
                    'deeper', 'slayed', 'milfy', 'wifey'))
+SOURCE = 'auto:western-artwork'
 PAGE_LIMIT = 4 * 1024 * 1024
 TIMEOUT = 20
 SEARCH_QUERY = '''query PeachSearch($query:String!,$site:Site!,$first:Int){
@@ -102,6 +103,43 @@ def babepedia_portraits(http: HttpTransport, name: str, aliases=(), *, profile_u
         if len(portraits) == 48:
             break
     return portraits
+
+
+def face_matched_portrait(fetched: list, covers: list, matcher) -> tuple:
+    """Babepedia 图里哪一张是她：与她单人作品封面比上脸才算（ADR-0056），名字相同不算。
+
+    `fetched` 是 `[(origin, body, inspected)]`，主图在前；`covers` 是
+    `avatar_cover_face.faces` 截到的封面脸。没有封面参照、模型不可用或比不上时只留候选，
+    返回 `(None, {}, 原因)`；比上时返回 `(Candidate, 比对证据, '')`。
+    """
+    from .avatar_followup import Candidate, match_gallery
+
+    found, candidates = [], {}
+    for origin, body, inspected in fetched:
+        choice = {'ref': origin['upstream_url'], 'label': 'Babepedia'}
+        found.append(choice)
+        candidates[choice['ref']] = Candidate(choice, body, origin, inspected)
+    if not covers:
+        return None, {}, '没有单人作品封面可比，只留候选'
+    result = match_gallery(found, covers, matcher, lambda choice: candidates.get(choice['ref']))
+    if result.winner is None or not result.evidence.get('covers'):
+        return None, {}, result.reason or '没有比上封面的图，只留候选'
+    return result.winner, result.evidence, ''
+
+
+def planned_covers(cover_root: Path, source: str, batch: str) -> list[Path]:
+    """边车写着这个来源与批次的无番号作品封面；撤回删掉封面与同组边车。"""
+    if source != SOURCE:
+        return []
+    found = []
+    for sidecar in sorted(Path(cover_root).glob('ASSET-ID-*.scraping.json')):
+        try:
+            record = json.loads(sidecar.read_text(encoding='utf8'))
+        except (OSError, ValueError):
+            continue
+        if isinstance(record, dict) and record.get('source') == source and (not batch or record.get('batch') == batch):
+            found.append(sidecar.with_name(sidecar.name.removesuffix('.scraping.json') + '.jpg'))
+    return found
 
 
 def filename_date(name: str, site: str) -> str:

@@ -2,6 +2,10 @@
 
 厂牌与事务所资料保存在 entity.metadata_json.company_profile；不参与身份归并。
 成立日期、品牌启动与运营公司各有字段。每格保存来源 URL、原文和批次，自动结果只填空。
+
+观测结果只来自本模块的通用判据：概要表、定义列表与成对区块里的标签，以及服务条款里的
+订立方原句。落库时按采集保存的原始页面重跑一遍（`replay`），重跑得不出的格不写；
+页面上读不出、只能由人判断的集团归属与分工关系留作 `candidate`，不进入显示契约。
 """
 from __future__ import annotations
 
@@ -9,12 +13,14 @@ import json
 import re
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
 from .http import public_https_url
-from .entities import normalize_entity_name
+from .kanji import fold_glyphs
+from .social_links import name_key
 
 KEY = 'company_profile'
 FIELDS = ('legal_name', 'founded', 'launched', 'country', 'location', 'operator', 'parent', 'group', 'distributor')
@@ -30,6 +36,11 @@ LABELS = {
     '親会社': 'parent', 'parentcompany': 'parent',
     '国': 'country', 'country': 'country',
 }
+#: 法人名里的公司形态词：比名字时剥掉，`SODクリエイト株式会社` 与别名 `SODクリエイト` 同键。
+CORPORATE_FORM = re.compile(r'株式会社|有限会社|合同会社|合資会社|合名会社|[（(]\s*[株有]\s*[)）]'
+                            r'|\b(?:inc|llc|ltd|corp|co|kft|gmbh)\b\.?', re.I)
+#: 英文服务条款开头订立方那一句：运营主体是括号或句号前的那一段。
+TERMS_OPERATOR = re.compile(r'These terms of (?:service|use) are entered into between you and ([^.()]+?)\s*(?:\(|\.)', re.I)
 COMPANY_LINK = re.compile(r'会社概要|企業情報|会社案内|特定商取引|about\s*(?:us)?|company\s*(?:profile)?|terms\s*(?:of|and|&)?\s*(?:service|use|conditions)|privacy\s*policy', re.I)
 SOCIAL_HOSTS = {'x.com', 'twitter.com', 'instagram.com', 'youtube.com', 'tiktok.com', 'facebook.com', 'threads.net', 'threads.com'}
 
@@ -115,96 +126,124 @@ def extract(html: str, source_url: str) -> dict:
     return {'facts': facts, 'conflicts': conflicts, 'company_pages': pages, 'socials': socials}
 
 
-def _vmg_facts(text: str, source_url: str, name: str) -> dict:
-    """VMG 的站点条款、品牌启动与官方品牌名录。"""
-    host = (urlsplit(source_url).hostname or '').removeprefix('www.')
-    facts = {}
-
-    def keep(key: str, value: str, evidence: str) -> None:
-        facts[key] = {'value': value, 'source_url': source_url, 'evidence': evidence, 'status': 'observed'}
-
-    if host in {'vixen.com', 'tushy.com', 'blacked.com'} and urlsplit(source_url).path == '/terms':
-        match = re.search(r'These terms of service are entered into between you and ([^.]+?)(?:\s*\(|\.)', text, re.I)
-        if match and name.casefold() == host.split('.')[0]:
-            keep('operator', match[1].strip(), match[0])
-    if host == 'vixengroup.com':
-        if urlsplit(source_url).path.rstrip('/') == '/vixen10' and name == 'Vixen':
-            match = re.search(r'\bSince (20\d{2})\.', text)
-            if match:
-                keep('launched', match[1], match[0])
-        listing = re.search(r'OUR BRANDS .*?Explore ([^.]+), all available on Vixen Plus', text)
-        if listing and name in {'Vixen', 'Tushy', 'Blacked'} and 'Vixen Media Group' in text:
-            names = [part.strip().removeprefix('and ') for part in listing[1].split(',')]
-            if name in names:
-                keep('group', 'Vixen Media Group', listing[0])
-    return facts
+def company_key(name: str) -> str:
+    """比法人名与实体名的键：剥掉公司形态词，再按全半角、空白、大小写与字形折叠。"""
+    return fold_glyphs(name_key(CORPORATE_FORM.sub(' ', str(name or ''))))
 
 
-def _corporate_events(soup: BeautifulSoup, text: str, source_url: str, name: str) -> dict:
-    """公司招聘页、法人沿革与分工陈述。"""
-    host = (urlsplit(source_url).hostname or '').removeprefix('www.')
-    facts = {}
-
-    def keep(key: str, value: str, evidence: str) -> None:
-        facts[key] = {'value': value, 'source_url': source_url, 'evidence': evidence, 'status': 'observed'}
-
-    if host == 'arwrk.net' and urlsplit(source_url).path == '/recruit/prestige-av/' and name == 'Prestige':
-        heading = soup.select_one('h1')
-        if heading and '有限会社プレステージ' in heading.get_text():
-            keep('legal_name', '有限会社プレステージ', heading.get_text(' ', strip=True))
-    if host == 'corporate.sod.co.jp' and name == 'SOD Create':
-        if '/business/softondemand' in source_url and 'SODクリエイト株式会社を設立。ソフト・オン・デマンドが販売・物流業務などを担う' in text:
-            keep('distributor', 'ソフト・オン・デマンド株式会社', 'SODクリエイト株式会社を設立。ソフト・オン・デマンドが販売・物流業務などを担う形になりました。')
-        if 'SODグループ' in text and 'SODクリエイト株式会社' in text:
-            keep('group', 'SODグループ', 'SODグループ：SODクリエイト株式会社')
-    if host == 't-powers.co.jp' and '/company' in source_url:
-        # 法人成立与2001年的集团创立是两件事，读取时间线里的法人事件。
-        for row in soup.select('dl, .p-company__history-list-item'):
-            year = row.select_one('dt, .p-company__history-list-year-text')
-            detail = row.select_one('dd, .p-company__history-list-desc')
-            if year and detail:
-                detail_text = _clean(detail.get_text(' ', strip=True))
-                if 'ティーパワーズ株式会社を設立' in detail_text:
-                    date = date_text(year.get_text(strip=True))
-                    if date:
-                        keep('founded', date, f'{year.get_text(strip=True)} {detail_text}')
-                        keep('legal_name', 'ティーパワーズ株式会社', detail_text)
-    return facts
+def _table_legal_names(table) -> list[str]:
+    return [_clean(value) for label, value in _labelled_pairs(table)
+            if LABELS.get(re.sub(r'[\s:：]', '', label).casefold()) == 'legal_name']
 
 
-def brand_facts(html: str, source_url: str, name: str) -> dict:
-    """官方品牌页明确陈述的事实；运营主体与集团名录分别读取。"""
+def extract_for_entity(html: str, source_url: str, names: list[str]) -> dict:
+    """一页列着几家公司的概要表时，只读法人名对得上这个实体名字的那一张。
+
+    法人名剥掉公司形态词后要与实体的规范名或别名相等；恰好一张对上才读，对不上或
+    对上多张时整页不出事实，避免把集团里另一家公司的成立日期记到这里。
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    tables = [table for table in soup.select('table') if _table_legal_names(table)]
+    if len(tables) < 2:
+        return extract(html, source_url)
+    keys = {company_key(name) for name in names} - {''}
+    own = [table for table in tables if any(company_key(value) in keys for value in _table_legal_names(table))]
+    if len(own) == 1:
+        parsed = extract(str(own[0]), source_url)
+        parsed['company_pages'], parsed['socials'] = _page_links(soup, source_url)
+        return parsed
+    pages, socials = _page_links(soup, source_url)
+    return {'facts': {}, 'conflicts': [], 'company_pages': pages, 'socials': socials}
+
+
+def terms_facts(html: str, source_url: str) -> dict:
+    """服务条款页里「与你订立本条款的是某公司」那一句：运营主体取自原句。"""
+    if 'terms' not in urlsplit(source_url).path.casefold():
+        return {}
     soup = BeautifulSoup(html, 'html.parser')
     for node in soup(['script', 'style']):
         node.decompose()
-    text = _clean(soup.get_text(' ', strip=True))
-    host = (urlsplit(source_url).hostname or '').removeprefix('www.')
-    facts = _vmg_facts(text, source_url, name)
-    facts.update(_corporate_events(soup, text, source_url, name))
-    if host == 'falenogroup.com' and name == '素人CLOVER' and '/makers' in source_url:
-        if 'メーカー一覧' in text and 'FALENO GROUP' in text and re.search(r'\b素人CLOVER\s+PROFILE', text):
-            facts['group'] = {'value': 'FALENO GROUP', 'source_url': source_url,
-                              'evidence': 'メーカー一覧：素人CLOVER PROFILE', 'status': 'observed'}
-    if host == 'dorcel.com' and name == 'DorcelClub' and '/confidentialitedonnees' in source_url:
-        # 隐私页的法文句子按字符倒序存放；只读该站域名与明确运营陈述的完整句子。
-        for node in soup.find_all(string=lambda value: value and 'TFK secivreS ycnegAbeW' in value):
-            statement = _clean(str(node)[::-1])
-            if statement.startswith('WebAgency Services KFT') and 'exploite les Sites internet dorcelclub.com' in statement:
-                facts['operator'] = {'value': 'WebAgency Services KFT', 'source_url': source_url,
-                                     'evidence': statement, 'status': 'observed'}
-    return facts
+    match = TERMS_OPERATOR.search(_clean(soup.get_text(' ', strip=True)))
+    if not match or not match[1].strip():
+        return {}
+    return {'operator': {'value': match[1].strip(), 'source_url': source_url,
+                         'evidence': match[0], 'status': 'observed'}}
 
 
-def extract_for_entity(html: str, source_url: str, name: str) -> dict:
-    """集团页面只读该实体的公司表，不合并其他子公司的成立日期。"""
-    if (urlsplit(source_url).hostname or '') == 'corporate.sod.co.jp' and name == 'SOD Create':
-        soup = BeautifulSoup(html, 'html.parser')
-        tables = [table for table in soup.select('table')
-                  if any(cell.get_text(strip=True) == 'SODクリエイト株式会社' for cell in table.select('td'))]
-        if len(tables) == 1:
-            return extract(str(tables[0]), source_url)
-        return {'facts': {}, 'conflicts': [], 'company_pages': [], 'socials': []}
-    return extract(html, source_url)
+def page_facts(html: str, source_url: str, names: list[str]) -> dict:
+    """一张官网页面上由代码判据读出的全部事实、歧义与后续页面。"""
+    parsed = extract_for_entity(html, source_url, names)
+    for key, fact in terms_facts(html, source_url).items():
+        held = parsed['facts'].get(key)
+        if held and held['value'] != fact['value']:
+            parsed['conflicts'].append({'field': key, 'values': [parsed['facts'].pop(key), fact]})
+        elif not any(item['field'] == key for item in parsed['conflicts']):
+            parsed['facts'][key] = fact
+    return parsed
+
+
+def merge_page(result: dict, parsed: dict) -> None:
+    """把一页的结论并进这一家：同一字段在两页上说法不同就记成歧义。"""
+    for key, fact in parsed['facts'].items():
+        held = result['facts'].get(key)
+        if held and held['value'] != fact['value']:
+            result['conflicts'].append({'field': key, 'values': [held, fact]})
+        else:
+            result['facts'][key] = fact
+    result['conflicts'].extend(parsed['conflicts'])
+
+
+def settle(result: dict) -> None:
+    """有歧义的字段整格不出。"""
+    for conflict in result['conflicts']:
+        result['facts'].pop(conflict['field'], None)
+
+
+def site_host(url: str) -> str:
+    return (urlsplit(url).hostname or '').casefold().removeprefix('www.')
+
+
+def replay(pages: list[dict], names: list[str], hosts: set[str]) -> dict:
+    """按采集时保存的原始页面重跑判据；只有这里得出的事实才算观测结果。
+
+    只读采集器自己取回的页面：HTTP 200、落在这家已登记官网的主机上。清单里另外
+    添进来的第三方页面（工商登记、新闻稿站）不算。
+    """
+    result = {'facts': {}, 'conflicts': []}
+    for page in pages:
+        cache, final = page.get('cache'), page.get('final_url') or page.get('url')
+        if not cache or not final or page.get('http_status') != 200 or site_host(final) not in hosts:
+            continue
+        try:
+            html = Path(cache).read_text(encoding='utf-8')
+        except OSError:
+            continue
+        merge_page(result, page_facts(html, final, names))
+    settle(result)
+    return result
+
+
+def entity_names(connection: sqlite3.Connection, entity_id: int) -> list[str] | None:
+    """公司实体的规范名与别名；实体不在或不是厂牌、事务所时返回 None。"""
+    row = connection.execute('SELECT kind,canonical_name FROM entity WHERE id=?', (entity_id,)).fetchone()
+    if not row or row[0] not in {'studio', 'agency'}:
+        return None
+    return [str(row[1]), *(str(alias) for (alias,) in connection.execute(
+        'SELECT alias FROM entity_alias WHERE entity_id=? ORDER BY alias', (entity_id,)))]
+
+
+def official_hosts(connection: sqlite3.Connection, entity_id: int, *, skip_batch: str = '') -> set[str]:
+    """这家已登记官网的主机（去掉 `www.`）；存档地址与 `skip_batch` 这一批写下的不算。"""
+    hosts = set()
+    for url, raw in connection.execute(
+            "SELECT url,metadata_json FROM entity_link WHERE entity_id=? AND link_kind='official'", (entity_id,)):
+        try:
+            batch = json.loads(raw or '{}').get('batch')
+        except ValueError:
+            batch = None
+        if 'web.archive.org' not in url and not (skip_batch and batch == skip_batch):
+            hosts.add(site_host(url))
+    return hosts - {''}
 
 
 def public_profile(metadata: dict) -> dict:
@@ -218,32 +257,8 @@ def public_profile(metadata: dict) -> dict:
             and value['value'].strip() and public_https_url(str(value.get('source_url', '')))}
 
 
-def fill_aliases(connection: sqlite3.Connection, entity_id: int, aliases: list[dict], *, batch: str) -> list[str]:
-    """只补带官方出处的观测别名；与其他同类实体冲突时留在复核文件。"""
-    row = connection.execute('SELECT kind,canonical_name FROM entity WHERE id=?', (entity_id,)).fetchone()
-    if not row or row[0] not in {'studio', 'agency'}:
-        return []
-    written = []
-    for alias in aliases:
-        name = str(alias.get('value', '')).strip()
-        if alias.get('status') != 'observed' or not name or name == row[1] or not public_https_url(alias.get('source_url', '')):
-            continue
-        normalized = normalize_entity_name(name)
-        conflict = connection.execute(
-            'SELECT e.id FROM entity e LEFT JOIN entity_alias a ON a.entity_id=e.id '
-            'WHERE e.kind=? AND e.id!=? AND (e.normalized_name=? OR a.normalized_alias=?) LIMIT 1',
-            (row[0], entity_id, normalized, normalized)).fetchone()
-        if conflict:
-            continue
-        connection.execute('INSERT OR IGNORE INTO entity_alias(entity_id,alias,normalized_alias,source,confidence) VALUES(?,?,?,?,1)',
-                           (entity_id, name, normalized, batch))
-        if connection.execute('SELECT changes()').fetchone()[0]:
-            written.append(name)
-    return written
-
-
 def fill(connection: sqlite3.Connection, entity_id: int, facts: dict, *, source: str, batch: str) -> dict:
-    """给公司资料填空，保留其他元信息和既有字段。调用方负责事务。"""
+    """给公司资料填空，保留其他元信息和既有字段；候选格可由观测结果接替。调用方负责事务。"""
     row = connection.execute('SELECT kind,metadata_json FROM entity WHERE id=?', (entity_id,)).fetchone()
     if row is None or row[0] not in {'studio', 'agency'}:
         return {'written': [], 'conflicts': []}
@@ -254,7 +269,7 @@ def fill(connection: sqlite3.Connection, entity_id: int, facts: dict, *, source:
     written, conflicts = [], []
     now = datetime.now(timezone.utc).isoformat()
     for key, fact in public_profile({KEY: facts}).items():
-        if key in held:
+        if key in held and not (isinstance(held[key], dict) and held[key].get('status') == 'candidate'):
             if held[key] != fact and (not isinstance(held[key], dict) or held[key].get('value') != fact['value']):
                 conflicts.append(key)
             continue
@@ -268,12 +283,13 @@ def fill(connection: sqlite3.Connection, entity_id: int, facts: dict, *, source:
 
 
 def planned_revert(connection: sqlite3.Connection, source: str, batch: str) -> list[dict]:
-    """只列这批拥有的公司资料格，其他元信息不受影响。"""
+    """只列这批拥有的公司资料格（含已降为候选的格），其他元信息不受影响。"""
     found = []
     for row in connection.execute("SELECT id,canonical_name,metadata_json FROM entity WHERE kind IN ('studio','agency')"):
-        metadata = json.loads(row[2] or '{}')
-        fields = [key for key, fact in public_profile(metadata).items()
-                  if fact.get('source') == source and (not batch or fact.get('batch') == batch)]
+        profile = json.loads(row[2] or '{}').get(KEY)
+        fields = [key for key, fact in (profile.items() if isinstance(profile, dict) else ())
+                  if isinstance(fact, dict) and fact.get('source') == source
+                  and (not batch or fact.get('batch') == batch)]
         if fields:
             found.append({'entity_id': row[0], 'entity': row[1], 'fields': fields})
     return found

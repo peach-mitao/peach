@@ -29,6 +29,9 @@ id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接�
 「想要」清单的入库对账记在 `want_item.acquired_source` 与 `acquired_batch`（批次号
 `auto:want-acquired@<登记时刻>`）。撤回把那几条改回待找，查找计数原样留着。
 
+西方发行方的无番号作品封面（`ASSET-ID-<id>.jpg`）在 `.scraping.json` 边车里记 `source` 与 `batch`
+（`auto:western-artwork@<时间>`）。撤回删掉封面与同组边车，作品回到没有封面的样子。
+
     revert_auto_landing.py --source auto:performer-alias
     revert_auto_landing.py --source auto:performer-alias --batch auto:performer-alias@812
     revert_auto_landing.py --source auto:performer-profile
@@ -38,6 +41,7 @@ id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接�
     revert_auto_landing.py --source auto:metadata-tags
     revert_auto_landing.py --source auto:vanished-reattach --batch auto:vanished-reattach@3
     revert_auto_landing.py --source auto:want-acquired
+    revert_auto_landing.py --source auto:western-artwork --batch auto:western-artwork@20261008T000000Z
 
 默认只列计划；`--apply` 必须同时给 `--backup`，删文件在账本行之后、同一次运行里完成。
 """
@@ -50,12 +54,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from peach import company_profiles, fc2_sellers, record_rehome, sample_images, wants  # noqa: E402
-from peach.config import GENERATED_DIR  # noqa: E402
+from peach import (company_profiles, fc2_sellers, jav_poster_crop, record_rehome, sample_images,  # noqa: E402
+                   wants, western_artwork)
+from peach.config import COVER_DIR, GENERATED_DIR  # noqa: E402
 from peach.metadata_auto_apply import UNION_TAGS_SOURCE  # noqa: E402
 from peach.scripting import add_ledger_write_args, open_for_write, verify_after_write  # noqa: E402
 
 SIDECARS = (".ct", ".provenance.json")
+COVER_SIDECARS = (".face.json", jav_poster_crop.SIDECAR_SUFFIX, ".scraping.json")
 
 
 def matches(record: dict, source: str, batch: str) -> bool:
@@ -247,6 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="要撤回的归属串，与写入时记的逐字相同")
     parser.add_argument("--batch", default="", help="只撤这一批；不给就撤这个来源的全部")
     parser.add_argument("--logo-root", type=Path, default=GENERATED_DIR / "logos")
+    parser.add_argument("--cover-root", type=Path, default=COVER_DIR)
     return parser
 
 
@@ -256,6 +263,28 @@ def print_profiles(profiles: list[dict], companies: list[dict]) -> None:
         print(f" - 资料 {profile['entity'][:20]:<20} {profile['source']}")
     for company in companies:
         print(f" - 公司资料 {company['entity']}: {','.join(company['fields'])}")
+
+
+def print_files(files: list[Path], covers: list[Path]) -> None:
+    """显示要删的标识文件与无番号作品封面。"""
+    for path in files:
+        print(f" - 标识 {path.name}")
+    for path in covers:
+        print(f" - 封面 {path.name}")
+
+
+def remove_files(files: list[Path], covers: list[Path]) -> int:
+    """删掉标识文件与作品封面，连同各自的同组边车；返回删掉的文件数。"""
+    targets = [target for path in files
+               for target in (path, *(path.with_name(path.name + suffix) for suffix in SIDECARS))]
+    targets += [target for path in covers
+                for target in (path, *(path.with_suffix(suffix) for suffix in COVER_SIDECARS))]
+    removed = 0
+    for target in targets:
+        if target.exists():
+            target.unlink()
+            removed += 1
+    return removed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -271,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         memberships = planned_memberships(connection, args.source, args.batch)
         makers = planned_makers(connection, args.source, args.batch)
         files = planned_files(args.logo_root, args.source, args.batch)
+        covers = western_artwork.planned_covers(args.cover_root, args.source, args.batch)
         samples = sample_images.planned_revert(connection, args.source, args.batch)
         rejections = planned_rejections(connection, args.source, args.batch)
         tags = planned_tags(connection, args.source, args.batch)
@@ -288,8 +318,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f" - 归属 {membership['entity'][:20]:<20} {membership['agency'][:30]} {membership['source']}")
         for maker in makers:
             print(f" - 片商 {maker['entity'][:20]:<20} {maker['maker'][:30]} {maker['source']}")
-        for path in files:
-            print(f" - 标识 {path.name}")
+        print_files(files, covers)
         for sample in samples:
             print(f" - 样张 {sample['code']:<20} {sample['count']} 张 {sample['source']}")
         for rejection in rejections:
@@ -300,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f" - 接回 {rehome['old_asset_id']:<8} → {rehome['new_asset_id']:<8} "
                   f"{rehome['name'][:40]} {rehome['batch']}")
         print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "卖家": len(sellers), "编号": len(refs),
-               "归属": len(memberships), "片商": len(makers), "标识文件": len(files),
+               "归属": len(memberships), "片商": len(makers), "标识文件": len(files), "封面": len(covers),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
                "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
         if not args.apply:
@@ -344,12 +373,7 @@ def main(argv: list[str] | None = None) -> int:
         integrity, orphans = verify_after_write(connection)
     finally:
         connection.close()
-    removed = 0
-    for path in files:
-        for target in (path, *(path.with_name(path.name + suffix) for suffix in SIDECARS)):
-            if target.exists():
-                target.unlink()
-                removed += 1
+    removed = remove_files(files, covers)
     print({"删除链接": len(links), "删除别名": len(aliases), "删除资料": len(profiles),
            "删除编号": len(refs), "删除归属": len(memberships), "删除片商": len(makers),
            "删除样张": removed_samples, "删除否决": len(rejections),
