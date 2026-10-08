@@ -80,6 +80,32 @@ class BackgroundJobTaskRunTests(unittest.TestCase):
         release.set()
         job.thread.join(5)
 
+    def test_a_locked_ledger_during_progress_does_not_fail_the_round(self):
+        """进度写不进去只丢这一次进度：这一轮照常跑完，结算照常落地。"""
+        job = self.job()
+        blocker = sqlite3.connect(self.db, isolation_level=None, check_same_thread=False)
+        self.addCleanup(blocker.close)
+        reached = []
+
+        def work(job_id):
+            blocker.execute("BEGIN IMMEDIATE")
+            try:
+                job.update(job_id, checked=1, total=2, stage="账本被别的写入者占着")
+            finally:
+                blocker.execute("ROLLBACK")
+            reached.append(job_id)
+            job.update(job_id, status="complete", checked=2)
+
+        with unittest.mock.patch("peach.task_runs.PROGRESS_LOCK_TIMEOUT", 0.05), \
+                self.assertLogs("peach.task_runs", "WARNING"):
+            started = job.start(work)
+            job.thread.join(5)
+        self.assertEqual(reached, [started["job_id"]])
+        self.assertEqual(job.snapshot()["status"], "complete")
+        run = self.store.query(task_key="demo")[0]
+        self.assertEqual(run.status, "succeeded")
+        self.assertEqual(run.result_summary["checked"], 2)
+
     def test_a_failing_round_is_recorded_as_failed_with_its_reason(self):
         job = self.job()
 

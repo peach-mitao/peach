@@ -322,7 +322,11 @@ class BackgroundJob:
             self._report_progress(job_id, observed)
 
     def _report_progress(self, job_id: str, state: dict) -> None:
-        """把域自己的计数投影成 `task_run` 的进度。写不进去（已终态）就算了。"""
+        """把域自己的计数投影成 `task_run` 的进度。
+
+        写不进去（已终态，或写锁一时拿不到）就算了：store 不抛、只记 warning，进度
+        上报失败不能打断这一轮任务本身。
+        """
         if self.runs is None:
             return
         run_id = self._run_ids.get(job_id)

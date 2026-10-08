@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import socket
 import sqlite3
@@ -42,6 +43,8 @@ __all__ = [
     "cli_run", "inert_handle", "stamp", "task_label",
 ]
 
+LOGGER = logging.getLogger(__name__)
+
 #: 未结束的两种状态。部分唯一索引和每一条 CAS 的 WHERE 都用这一份。
 ACTIVE_STATUSES = ("pending", "running")
 #: 终态。只有这四种能进 `finish`，也只有这四种会被 `prune` 回收。
@@ -56,6 +59,15 @@ LEASE_SECONDS = 300.0
 #: 进度与心跳的默认写入间隔。扫描一万个文件时每项都写一次库，等于给每一项加一次
 #: 写事务；页面两秒轮询一次，比这更密的进度没有读者。
 PROGRESS_INTERVAL = 2.0
+
+#: 进度与心跳最多等写锁这么久。它们不是结果：等不到就跳过这一次、记一条 warning，
+#: 下一次进度照常再写。按默认的 30 秒等，任务线程会为一行心跳停住半分钟，同进程排在
+#: 后面的写入也跟着等。
+PROGRESS_LOCK_TIMEOUT = 2.0
+
+#: 结算撞上写锁时，每次重试前等多少秒。结算写不进去，这一行就停在 `running`、
+#: 占住互斥键到下次服务重启，所以它要重试；每一次尝试本身还会等满 SQLite 的 30 秒。
+FINISH_RETRY_DELAYS = (1.0, 5.0)
 
 #: 每个 task_key 默认保留多少条终态记录。活动页只看最近几轮，更早的属于日志。
 DEFAULT_KEEP = 20
@@ -231,6 +243,9 @@ class TaskRunStore:
         self._lock = threading.Lock()
         #: run_id → 上一次写进度的单调时钟。节流只看这一份，不查库。
         self._last_write: dict[int, float] = {}
+        #: 进度正写不进去的那几轮。一段连续失败只记一条 warning，写进去一次就清掉。
+        self._progress_failing: set[int] = set()
+        self.finish_retry_delays = FINISH_RETRY_DELAYS
 
     def available(self) -> bool:
         """这本账本上有没有 `task_run` 表。
@@ -309,6 +324,10 @@ class TaskRunStore:
 
         `throttle` 是墙钟节流：页面两秒轮询一次，比这更密的写入没有读者，只有代价。
         收尾前那一次要看到真实的最终计数，调用方传 `throttle=0`。
+
+        写锁拿不到时返回 False、不抛：进度丢一次，页面上只是计数晚两秒；抛出去则会
+        打断正在跑的任务本身。没写进去的那次照样占一个节流窗口，否则账本被长时间占住
+        期间，每一次进度都要为写锁等满 `PROGRESS_LOCK_TIMEOUT`。
         """
         if not self.enabled or run_id is None or not self._due(run_id, throttle):
             return False
@@ -320,14 +339,31 @@ class TaskRunStore:
             if value is not None:
                 assignments.append(f"{column}=?")
                 values.append(value)
-        return self._update_active(run_id, assignments, values)
+        return self._update_progress(run_id, assignments, values)
 
     def heartbeat(self, run_id: int | None, *,
                   throttle: float = PROGRESS_INTERVAL) -> bool:
-        """只续租。没有计数可报、但确实还活着的阶段用它。"""
+        """只续租。没有计数可报、但确实还活着的阶段用它。写锁拿不到时同 `progress`。"""
         if not self.enabled or run_id is None or not self._due(run_id, throttle):
             return False
-        return self._update_active(run_id, ["heartbeat_at=?"], [stamp()])
+        return self._update_progress(run_id, ["heartbeat_at=?"], [stamp()])
+
+    def _update_progress(self, run_id: int, assignments: list[str],
+                         values: list[object]) -> bool:
+        try:
+            done = self._update_active(run_id, assignments, values,
+                                       timeout=PROGRESS_LOCK_TIMEOUT)
+        except sqlite3.OperationalError as error:
+            with self._lock:
+                first = run_id not in self._progress_failing
+                self._progress_failing.add(run_id)
+            if first:
+                LOGGER.warning("第 %s 轮的进度没写进 task_run，下一次进度再写：%s",
+                               run_id, error)
+            return False
+        with self._lock:
+            self._progress_failing.discard(run_id)
+        return done
 
     def finish(self, run_id: int | None, status: str, *, summary: dict | None = None,
                error: str = "") -> bool:
@@ -335,19 +371,33 @@ class TaskRunStore:
 
         返回是否由本次调用落地。`False` 表示这一轮已经被别人结算过——租约回收和任务
         自己收尾撞在一起就是这种情形，后到的那个不许覆盖。
+
+        写锁拿不到时按 `finish_retry_delays` 重试，全部用完仍写不进去才抛。
         """
         if status not in TERMINAL_STATUSES:
             raise ValueError(f"{status} 不是终态")
         if not self.enabled or run_id is None:
             return False
         moment = stamp()
-        done = self._update_active(
-            run_id,
-            ["status=?", "finished_at=?", "heartbeat_at=?", "result_summary=?", "error=?"],
-            [status, moment, moment,
-             json.dumps(summary or {}, ensure_ascii=False), error])
+        assignments = ["status=?", "finished_at=?", "heartbeat_at=?", "result_summary=?",
+                       "error=?"]
+        values = [status, moment, moment,
+                  json.dumps(summary or {}, ensure_ascii=False), error]
+        delays = list(self.finish_retry_delays)
+        while True:
+            try:
+                done = self._update_active(run_id, assignments, values)
+                break
+            except sqlite3.OperationalError as failure:
+                if not delays:
+                    raise
+                delay = delays.pop(0)
+                LOGGER.warning("第 %s 轮结算没写进 task_run，%s 秒后重试：%s",
+                               run_id, delay, failure)
+                time.sleep(delay)
         with self._lock:
             self._last_write.pop(run_id, None)
+            self._progress_failing.discard(run_id)
         return done
 
     # -- 后继（ADR-0040）--------------------------------------------------
@@ -498,9 +548,9 @@ class TaskRunStore:
         return True
 
     def _update_active(self, run_id: int, assignments: list[str],
-                       values: list[object]) -> bool:
+                       values: list[object], *, timeout: float | None = None) -> bool:
         marks = ",".join(f"'{name}'" for name in ACTIVE_STATUSES)
-        with self.database.write_transaction(notify=False) as connection:
+        with self.database.write_transaction(notify=False, timeout=timeout) as connection:
             cursor = connection.execute(
                 f"UPDATE task_run SET {','.join(assignments)} "
                 f"WHERE id=? AND status IN ({marks})",

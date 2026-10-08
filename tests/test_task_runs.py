@@ -92,6 +92,64 @@ class TaskRunStoreTests(unittest.TestCase):
         self.assertFalse(self.store.progress(run.id, current=2, throttle=60))
         self.assertEqual(self.store.get(run.id).progress_current, 1)
 
+    def hold_write_lock(self) -> sqlite3.Connection:
+        """另一个写入者占住账本的写锁，直到调用方 ROLLBACK。"""
+        blocker = sqlite3.connect(self.db, isolation_level=None)
+        self.addCleanup(blocker.close)
+        blocker.execute("BEGIN IMMEDIATE")
+        return blocker
+
+    def test_progress_gives_up_quietly_while_another_writer_holds_the_ledger(self):
+        run = self.store.start("demo", trigger="manual")
+        blocker = self.hold_write_lock()
+        with mock.patch("peach.task_runs.PROGRESS_LOCK_TIMEOUT", 0.05), \
+                self.assertLogs("peach.task_runs", "WARNING") as logs:
+            self.assertFalse(self.store.progress(run.id, current=3, throttle=0))
+            self.assertFalse(self.store.heartbeat(run.id, throttle=0))
+        # 一段连续失败只记一条，不让每两秒一次的进度把错误日志刷满。
+        self.assertEqual(len(logs.records), 1)
+        blocker.execute("ROLLBACK")
+        self.assertTrue(self.store.progress(run.id, current=4, throttle=0))
+        self.assertEqual(self.store.get(run.id).progress_current, 4)
+
+    def test_progress_does_not_queue_behind_a_writer_in_the_same_process(self):
+        run = self.store.start("demo", trigger="manual")
+        with mock.patch("peach.task_runs.PROGRESS_LOCK_TIMEOUT", 0.05), \
+                self.assertLogs("peach.task_runs", "WARNING"), self.database.write_lock:
+            self.assertFalse(self.store.progress(run.id, current=3, throttle=0))
+        self.assertTrue(self.store.progress(run.id, current=3, throttle=0))
+
+    def test_finish_retries_a_locked_ledger_and_then_lands(self):
+        run = self.store.start("demo", trigger="manual", mutex_key="demo")
+        real = self.store._update_active
+        attempts = []
+
+        def locked_once(*args, **kwargs):
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise sqlite3.OperationalError("database is locked")
+            return real(*args, **kwargs)
+
+        self.store.finish_retry_delays = (0,)
+        with mock.patch.object(self.store, "_update_active", locked_once), \
+                self.assertLogs("peach.task_runs", "WARNING"):
+            self.assertTrue(self.store.finish(run.id, "succeeded"))
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual(self.store.get(run.id).status, "succeeded")
+        # 结算落地了，互斥键也就放开了，下一轮开得起来。
+        self.assertIsNotNone(self.store.start("demo", trigger="manual", mutex_key="demo"))
+
+    def test_finish_raises_once_its_retries_are_spent(self):
+        run = self.store.start("demo", trigger="manual")
+        self.store.finish_retry_delays = (0, 0)
+        locked = mock.Mock(side_effect=sqlite3.OperationalError("database is locked"))
+        with mock.patch.object(self.store, "_update_active", locked), \
+                self.assertLogs("peach.task_runs", "WARNING"), \
+                self.assertRaises(sqlite3.OperationalError):
+            self.store.finish(run.id, "succeeded")
+        self.assertEqual(locked.call_count, 3)
+        self.assertEqual(self.store.get(run.id).status, "running")
+
     def test_an_unknown_status_or_trigger_is_refused_before_any_write(self):
         with self.assertRaises(ValueError):
             self.store.start("demo", trigger="webhook")
