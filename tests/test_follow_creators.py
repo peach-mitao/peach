@@ -13,7 +13,7 @@ from peach.follow_sources import FollowCandidate, SourceFetch
 from peach.follow_store import FollowStore
 from peach.web_contract import WebContract, dispatch_api_get, dispatch_api_post
 from peach.web_entity import q_entity
-from peach.web_follow import author_key
+from peach.follow_identity import author_key
 from scripts import revert_auto_landing
 from support.ledger import fresh_ledger
 

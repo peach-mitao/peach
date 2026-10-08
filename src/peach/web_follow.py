@@ -30,18 +30,20 @@ from .follow_discovery import (
     discovery_plan, no_backoff, suggest_term, tag_suggestions,
 )
 from .follow_image_dims import positive_dims
+from .follow_identity import (
+    author_display_name, author_key, author_name, name_key, official_avatar_url, source_metadata,
+)
 from .follow_secrets import (
     CREDENTIAL_GUIDE, CredentialError, CredentialStore, credential_store_for,
 )
 from .follow_stream import proxyable
-from .follow_avatar import MAX_PROFILE_IDENTITIES, profile_identities
 from .follow_sources import (
     CONNECTORS, KemonoConnector, Rule34VideoConnector, build_connector,
     canonical_source_ref, display_thumb_url, f95_attachment_media_items, f95_discussion_image,
     is_history_end_error, media_content_hash, parse_source_url, resource_links,
 )
 from .follow_store import (
-    FollowStore, ReleaseGroup, author_display_text, normalized_author_name,
+    FollowStore, ReleaseGroup, normalized_author_name,
 )
 from .taste_history import read_creator_candidates
 from .web_state import path_version
@@ -1096,62 +1098,6 @@ def _content_hashes(group: ReleaseGroup) -> dict[tuple[int, int | None], str]:
     return hashes
 
 
-def _author_display_name(row) -> str:
-    """一条追更来源上那个可读的作者拼写。
-
-    名字怎么算「同一个人」由 `follow_store` 定义（那是别名表的主键口径）；
-    这里只决定「这一行显示哪个字段」。
-    """
-    if row["entity_id"] and row["entity_name"]:
-        return str(row["entity_name"])
-    return author_display_text(row["label"] or row["ref"] or "",
-                               provider=str(row["provider"] or ""))
-
-
-def _source_metadata(row) -> dict:
-    try:
-        payload = json.loads(row["metadata_json"] or "{}")
-    except (KeyError, TypeError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def author_key(row, aliases: dict[str, str] | None = None) -> str:
-    """把一条来源归到「哪个作者」。
-
-    这跟 ADR-0019 的变体分组**不是同一个轴**：那个是同一条发布的多个变体，
-    这个是同一个作者在不同站点上的多条来源。用户在 Kemono 和 Pawchive 上关注的
-    `LazyProcrastinator · fanbox`、在 Rule34Video 和 Rule34.xxx 上关注的
-    `lazyprocrastinator`，是四条来源、一个人。
-
-    实体已经绑上就用实体 id——那是规范身份，比名字可靠。没绑才退回名字归一化：
-    去掉「· 服务名」后缀，再去掉大小写、空格、连字符这些不影响身份的噪声。
-    归一化只做到这一步，不做模糊匹配：把两个碰巧相似的名字并成一个人，
-    比让用户自己看到两行严重得多。
-    """
-    entity = row["entity_id"]
-    if entity:
-        return f"entity:{entity}"
-    return name_key(row, aliases)
-
-
-def name_key(row, aliases: dict[str, str] | None = None) -> str:
-    """这条来源不看实体绑定时归到哪个作者：`name:` 加归一化的名字，名字都没有就按来源。
-
-    关注作者建档（ADR-0096）靠它认出「新加的这条来源和已经建档的那几条本来就是同一组」。
-    """
-    recorded = str(_source_metadata(row).get("author_key") or "").strip()
-    if recorded:
-        normalized = recorded
-    else:
-        label = str(row["label"] or row["ref"] or "")
-        normalized = normalized_author_name(label, provider=str(row["provider"] or ""))
-    if normalized:
-        normalized = (aliases or {}).get(normalized, normalized)
-        return f"name:{normalized}"
-    return f"source:{row['id']}"
-
-
 def group_authors(source_rows, aliases: dict[str, str] | None = None,
                   ) -> dict[int, tuple[str, frozenset[str]]]:
     """每条来源的作者键，连同这位作者在各个来源上的全部名字写法。
@@ -1167,7 +1113,7 @@ def group_authors(source_rows, aliases: dict[str, str] | None = None,
         spellings = names.setdefault(keys[int(row["id"])], set())
         for raw in (normalized_author_name(str(row["label"] or row["ref"] or ""),
                                            provider=str(row["provider"] or "")),
-                    str(_source_metadata(row).get("author_key") or "").strip()):
+                    str(source_metadata(row).get("author_key") or "").strip()):
             if raw:
                 spellings.update((raw, (aliases or {}).get(raw, raw)))
     for alias, canonical in (aliases or {}).items():
@@ -1196,11 +1142,11 @@ def _profile_link_suggestions(rows, aliases: dict[str, str]) -> list[dict]:
         # 也不能再把它展示成身份合并建议。
         if row["entity_id"] or row["provider"] != "f95zone":
             continue
-        canonical = _author_display_name(row)
+        canonical = author_display_name(row)
         canonical_key = normalized_author_name(canonical)
         if not canonical_key:
             continue
-        for link in _source_metadata(row).get("official_links") or ():
+        for link in source_metadata(row).get("official_links") or ():
             if not isinstance(link, dict):
                 continue
             service = str(link.get("service") or "")
@@ -1239,10 +1185,10 @@ def _follow_alias_suggestions(rows, aliases: dict[str, str]) -> list[dict]:
         if not raw_key or raw_key.startswith("source:"):
             continue
         identity = identities.setdefault(raw_key, {
-            "key": raw_key, "name": _author_display_name(row), "providers": set(),
+            "key": raw_key, "name": author_display_name(row), "providers": set(),
         })
         identity["providers"].add(str(row["provider"]))
-        candidate_name = _author_display_name(row)
+        candidate_name = author_display_name(row)
         if candidate_name and len(candidate_name) < len(identity["name"]):
             identity["name"] = candidate_name
 
@@ -1280,82 +1226,6 @@ def _avatar_url(provider: str, ref: str) -> str | None:
     return "/follow-avatar?" + urllib.parse.urlencode({"provider": provider, "ref": ref})
 
 
-def _official_fanbox_identity(metadata: dict) -> str:
-    """名片链接里的 FANBOX 创作者 id，没有就回空串。
-
-    它直接就是 `creator.get` 的参数，一个请求到头像，所以单独走一格。pixiv 的数字
-    id 不在这里：有 pixiv 不等于开了 FANBOX，由 `_official_profile_identities` 和
-    X、Patreon 并排试。SubscribeStar 没有不带凭据就能读的头像接口，**未取得**，
-    只当身份证据用。
-    """
-    links = metadata.get("official_links")
-    if not isinstance(links, list):
-        return ""
-    handles = {str(link.get("service") or ""): str(link.get("handle") or "")
-               for link in links if isinstance(link, dict)}
-    return handles.get("fanbox") or ""
-
-
-def _official_profile_identities(metadata: dict) -> str:
-    """名片上 X、Patreon 与 pixiv 的手柄，拼成 `/follow-avatar?service=profile` 的 id。
-
-    几家都交给服务端，由它各取最大一档再留像素最多的那张；形状不合法的那条直接略过。
-    """
-    links = metadata.get("official_links")
-    pairs = [f"{link.get('service')}:{link.get('handle')}"
-             for link in (links if isinstance(links, list) else ())
-             if isinstance(link, dict)]
-    usable = [pair for pair in dict.fromkeys(pairs) if profile_identities(pair)]
-    return ",".join(usable[:MAX_PROFILE_IDENTITIES])
-
-
-def trusted_profile_links(row) -> list[dict]:
-    """这条来源名片里能当作者本人账号的那几条。
-
-    F95 的名片取自开楼正文，是作者自己贴的。booru 的 `official_links` 是作品出处，
-    合作作品会指向另一位作者，所以只留手柄就是这条来源作者名的那几条。
-    """
-    metadata = _source_metadata(row)
-    raw = metadata.get("official_links")
-    links = [link for link in (raw if isinstance(raw, list) else ()) if isinstance(link, dict)]
-    if str(row["provider"] or "") == "f95zone":
-        return links
-    expected = {
-        normalized_author_name(str(row["ref"] or "")),
-        normalized_author_name(str(metadata.get("author_key") or "")),
-    }
-    return [link for link in links
-            if normalized_author_name(str(link.get("handle") or "")) in expected]
-
-
-def _official_avatar_url(row) -> str | None:
-    """Local resolver for an avatar from the creator's official profile.
-
-    FANBOX archive refs carry the Pixiv user id, which is enough for Peach's fixed-host
-    resolver to locate the public FANBOX profile and its official ``user.iconUrl``.
-    A forum source has no such ref, so it goes through the profile links parsed out of
-    the opening post instead.  Services without a verified resolver keep the archive
-    fallback, and sources with neither fall back to the author initial.
-    """
-    provider = str(row["provider"] or "")
-    if provider in KemonoConnector.HOSTS:
-        service, _, user = str(row["ref"] or "").partition("/")
-        if service != "fanbox" or not user.isdigit():
-            return None
-        return "/follow-avatar?" + urllib.parse.urlencode(
-            {"service": service, "id": user})
-    metadata = {**_source_metadata(row), "official_links": trusted_profile_links(row)}
-    identity = _official_fanbox_identity(metadata)
-    if identity:
-        return "/follow-avatar?" + urllib.parse.urlencode(
-            {"service": "fanbox", "id": identity})
-    profiles = _official_profile_identities(metadata)
-    if not profiles:
-        return None
-    return "/follow-avatar?" + urllib.parse.urlencode(
-        {"service": "profile", "id": profiles})
-
-
 def _source_payload(row, aliases: dict[str, str] | None = None) -> dict:
     history_exhausted = _legacy_history_end(row)
     return {
@@ -1367,9 +1237,9 @@ def _source_payload(row, aliases: dict[str, str] | None = None) -> dict:
         # 标签是这条来源在站上的名字，作者名是从它推出来的人名。两者在论坛上差得
         # 很远（`Strauzek Collection [2026-09-04] [Mr_Strauz]` vs `Mr_Strauz`），
         # 而怎么推是站点知识，页面自己再推一遍迟早和这里漂移。
-        "author_name": _author_display_name(row),
+        "author_name": author_display_name(row),
         "author_key": author_key(row, aliases),
-        "official_avatar_url": _official_avatar_url(row),
+        "official_avatar_url": official_avatar_url(row),
         "avatar_url": _avatar_url(row["provider"], row["ref"]),
         "url": row["url"],
         "semantics": row["semantics"],
@@ -1518,23 +1388,6 @@ def q_follow_tags(contract, args) -> dict:
             "categories": categories}
 
 
-def author_name(rows, key: str, canonical: dict[str, str]) -> str:
-    """一位作者（同一作者键下的几条来源）叫什么。
-
-    次序跟关注页那一份分组标题一致：实体名最可靠，其次是别名表定的规范名，再次是有
-    官方主页那条来源的写法；都没有才在各条标签里选大写最多的那个——
-    `LazyProcrastinator` 比 `lazyprocrastinator` 更像作者自己写的名字。
-    """
-    entity = next((str(row["entity_name"]) for row in rows
-                   if row["entity_id"] and row["entity_name"]), "")
-    labels = [(name, bool(_official_avatar_url(row))) for row in rows
-              if (name := _author_display_name(row))]
-    official = next((name for name, has_official in labels if has_official), "")
-    best = max((name for name, _ in labels),
-               key=lambda text: sum(ch.isupper() for ch in text), default="")
-    return entity or canonical.get(key) or official or best or key
-
-
 def q_follow_authors(contract, args) -> dict:
     """在线作者索引，供艺人页那一档「在线」列出关注来源里的人。
 
@@ -1586,7 +1439,7 @@ def q_follow_authors(contract, args) -> dict:
             entry["_rows"].append(row)
             if row["entity_id"]:
                 entry["entity_id"] = int(row["entity_id"])
-            official = _official_avatar_url(row)
+            official = official_avatar_url(row)
             mirror = _avatar_url(row["provider"], row["ref"])
             if official and not entry["avatar"]:
                 entry["avatar"] = official
@@ -1736,8 +1589,8 @@ def _followed_names(rows, alias_groups) -> dict[str, str]:
 
     for row in rows:
         add(row["entity_name"])
-        add(_author_display_name(row))
-        for link in _source_metadata(row).get("official_links") or ():
+        add(author_display_name(row))
+        for link in source_metadata(row).get("official_links") or ():
             if isinstance(link, dict):
                 add(link.get("handle"))
     for group in alias_groups:
@@ -2198,7 +2051,7 @@ def _backfill_profile_links(row, credentials, writer) -> None:
     但什么都没找到会写下空清单，那是「问过了，他没留主页」，不该每次检查再问一遍。
     """
     provider = str(row["provider"] or "")
-    if provider != "f95zone" or "official_links" in _source_metadata(row):
+    if provider != "f95zone" or "official_links" in source_metadata(row):
         return
     links = _profile_links(provider, str(row["ref"] or ""),
                            credentials.load(provider))
@@ -2274,7 +2127,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
     for row in rows:
         if job_id and contract.follow_job.snapshot() is None:
             break
-        current = {"source": row["id"], "label": _author_display_name(row),
+        current = {"source": row["id"], "label": author_display_name(row),
                    "provider": PROVIDER_LABELS.get(row["provider"], row["provider"])}
         def progress(*, current=current, **fields):
             if job_id:
@@ -2306,7 +2159,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
                     connector_factory=build_connector, older=True, progress=progress,
                     initial_days=initial_days, cooldown=cooldown))
                 rounds += 1
-        result["author"] = _author_display_name(row)
+        result["author"] = author_display_name(row)
         results.append(result)
         progress()
     # 还没建档的关注作者交给建档后继（ADR-0096）。后继由结果声明、调度端统一派
@@ -2493,7 +2346,7 @@ def entity_follow(contract, connection, entity_id: int) -> dict | None:
     if not bound and not held:
         return None
     by_id = {int(row["id"]): row for row in sources}
-    official = next((url for row in bound if (url := _official_avatar_url(row))), "")
+    official = next((url for row in bound if (url := official_avatar_url(row))), "")
     archive = next((url for row in bound if (url := _avatar_url(row["provider"], row["ref"]))), "")
     return {
         "key": f"entity:{int(entity_id)}" if bound else "",

@@ -22,7 +22,7 @@ Babepedia 资料采集复用 `babepedia_page` 的主名与别名交叉核对、`
 
 FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约、`normalise_code_key`、`upsert_asset_entity`、职业断言和 SQLite 备份。`import_fc2_sellers.py` 读取已有作品快照，不发起采集；账号地址、来源作品号和馆藏作品号必须一致。同名不同账号、作品来源冲突保留在复核产物，既有身份和资料不覆盖；计划按摄取同一判据把集合名归到已有账号，摄取不收的作品记跳过，回收站作品不挂卖家。写入归属为 `script:fc2-seller@<批次>`，统一撤回入口 `revert_auto_landing.py` 同时处理账号链接、别名、外部编号、卖家断言及来源关系；有后续资料或引用的实体保留。导航复用 `BoardTabs`，动画作者保留 `creator` 身份与资料路由，通过艺人分类浏览。不新增依赖或外部解析器。
 
-关注作者建档（`follow_creators`，ADR-0096）复用关注页的作者归组 `web_follow.name_key`／`author_name`、`canonicalize_entity_name` 的平台名闸、`follow_sources.profile_link_identity` 的名片识别和后继派发（ADR-0040）。链接与别名按 `auto:follow-creator@<批次>` 记归属，`revert_auto_landing.py` 统一撤回；实体有其他引用时保留。资料页的同名确认复用 `Note` 与 Board `Button`，不新增依赖。
+关注作者建档（`follow_creators`，ADR-0096）复用关注页的作者归组 `follow_identity.name_key`／`author_name`、`canonicalize_entity_name` 的平台名闸、`follow_sources.profile_link_identity` 的名片识别和后继派发（ADR-0040）。链接与别名按 `auto:follow-creator@<批次>` 记归属，`revert_auto_landing.py` 统一撤回；实体有其他引用时保留。资料页的同名确认复用 `Note` 与 Board `Button`，不新增依赖。
 
 账号归属复用 `review_decision`、`creator_collection_base`、`write_owned_fields` 和全库归属审计。明确拒绝的资产与账号组合在自动摄取时跳过；用户写入保留复核入口。网黄博主只命中可信个人、内容创作者或发布账号断言，未分类账号保留全部名册入口。`attach_avatar_availability` 集中处理资料页、索引、搜索与统计的作品头像：发布账号缺少本人或出演职业证据时不提供作品帧兜底，已安装图片独立保留。来源核查清单、逐关系回执和备份存于 `peach-data/review/`。
 

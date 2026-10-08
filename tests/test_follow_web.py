@@ -16,8 +16,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from peach import (avatar_face, follow_assets, follow_discovery, follow_store,
-                   web_follow, web_stats)
+from peach import (avatar_face, follow_assets, follow_discovery, follow_identity,
+                   follow_store, web_follow, web_stats)
 from peach.follow import FollowHistoryEnd
 from peach.follow import FollowSourceError
 from peach.follow_discovery import Discovery, ExternalSearch
@@ -155,6 +155,10 @@ class FollowContractTests(unittest.TestCase):
             # 状态根同理：创作者清单在那里，不给就会读到这台机器上的 42 万个名字，
             # 快慢和结果都由本机状态决定。
             follow_state_root=self.root / "state")
+        self.addCleanup(self.contract.stop_background_jobs)
+        # 检查结算会声明关注作者建档后继（ADR-0096）。后台线程领走它就是和断言、和临时
+        # 目录的删除赛跑，这里关掉自动领取，要跑后继的用例自己 `drain()`。
+        self.contract.followups.stop()
 
     def _seed(self, candidates=None, provider="rule34video", ref="lazyprocrastinator",
               semantics="work", label="LazyProcrastinator"):
@@ -3077,7 +3081,7 @@ class FollowItemProjectionTests(unittest.TestCase):
         """
         row = {"entity_id": None, "entity_name": None, "provider": "f95zone",
                "ref": "63802", "label": "Strauzek Collection [2026-09-04] [Mr_Strauz]"}
-        self.assertEqual(web_follow._author_display_name(row), "Mr_Strauz")
+        self.assertEqual(follow_identity.author_display_name(row), "Mr_Strauz")
         # 页面不自己解析标签，只认服务端给的 `author_name`（`frontend/test/react/follow-marks.test.ts`）。
 
     def test_the_card_in_the_opening_post_suggests_the_other_spelling(self):
@@ -3125,13 +3129,13 @@ class FollowItemProjectionTests(unittest.TestCase):
             return {"provider": provider, "ref": ref, "metadata_json": metadata}
 
         self.assertEqual(
-            web_follow._official_avatar_url(
+            follow_identity.official_avatar_url(
                 source_row("kemono", "fanbox/30917150")),
             "/follow-avatar?service=fanbox&id=30917150",
         )
         # 论坛来源没有这种 ref，身份只能来自首楼名片：FANBOX 的创作者 id 一步到位。
         self.assertEqual(
-            web_follow._official_avatar_url(source_row(
+            follow_identity.official_avatar_url(source_row(
                 "f95zone", "87212",
                 '{"official_links":[{"service":"patreon","handle":"jul3dnsfw"},'
                 '{"service":"fanbox","handle":"jul3dnsfw"}]}')),
@@ -3140,7 +3144,7 @@ class FollowItemProjectionTests(unittest.TestCase):
         # 有 pixiv 不等于开了 FANBOX：flim13 名片上是 X 加 pixiv，pixiv 换不到头像，
         # 所以它和 X 并排递给服务端，不单独占住这一格把 X 挡在外面。
         self.assertEqual(
-            web_follow._official_avatar_url(source_row(
+            follow_identity.official_avatar_url(source_row(
                 "f95zone", "155903",
                 '{"official_links":[{"service":"twitter","handle":"Flim_13a"},'
                 '{"service":"pixiv","handle":"14934767"}]}')),
@@ -3149,7 +3153,7 @@ class FollowItemProjectionTests(unittest.TestCase):
         # 没有 FANBOX 时交给 X、Patreon 与 pixiv：几家都递给服务端去比谁更清楚，
         # 取不到头像的 SubscribeStar 和形状不对的手柄不进这串。
         self.assertEqual(
-            web_follow._official_avatar_url(source_row(
+            follow_identity.official_avatar_url(source_row(
                 "f95zone", "13899",
                 '{"official_links":[{"service":"twitter","handle":"Rekin3D"},'
                 '{"service":"patreon","handle":"sharkarts"},'
@@ -3157,7 +3161,7 @@ class FollowItemProjectionTests(unittest.TestCase):
                 '{"service":"twitter","handle":"not a handle"}]}')),
             "/follow-avatar?service=profile&id=twitter%3ARekin3D%2Cpatreon%3Asharkarts",
         )
-        self.assertIsNone(web_follow._official_avatar_url(
+        self.assertIsNone(follow_identity.official_avatar_url(
             source_row("f95zone", "63802")))
         for provider, ref in (("rule34video", "1290582"),
                               ("rule34xxx", "lazyprocrastinator"),

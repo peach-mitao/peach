@@ -1,13 +1,13 @@
 """关注作者建档：关注来源里的作者落成 `creator` 实体（ADR-0096）。
 
-关注页把同一个人在几个站上的来源归成一组（`web_follow.author_key`），但那一组只活在
+关注页把同一个人在几个站上的来源归成一组（`follow_identity.author_key`），但那一组只活在
 关注页里：没有资料页，名册上点开只能回关注页筛选。这条后继把每一组落成一条创作者实体，
 绑上它名下的来源，再把来源数据里已经有的正版发布渠道与社媒账号登记成实体链接。
 
 判据全是确定的，不联网：
 
 1. **建谁**：没绑实体、作者键是名字（`name:`）的每一组。名字取关注页那一份
-   （`web_follow.author_name`），过 `canonicalize_entity_name('creator')` 那道平台名、
+   （`follow_identity.author_name`），过 `canonicalize_entity_name('creator')` 那道平台名、
    结构目录与转载站的闸，被挡的整组跳过。
 2. **不建、等人**：账本里已有同名或同别名的创作者，或两组归一成同一个名字。姓名相同不能
    自动建立关联（ADR-0095），这几组原样留着，摘要里列出来。
@@ -15,7 +15,7 @@
    那是关注页自己的分组，不是新的同名推断，直接绑过去。
 4. **链接**：官方来源自己的地址；归档站上的原始账号（FANBOX 的数字 id 就是 pixiv 用户 id，
    Patreon 用户 id 拼 `user?u=`，OnlyFans 用户名）；名片里可信的那几条
-   （`web_follow.trusted_profile_links`）。归档站与聚合站本身不登记，`follow_source`
+   （`follow_identity.trusted_profile_links`）。归档站与聚合站本身不登记，`follow_source`
    的绑定就是它们的记录。
 
 链接只在绑定那一刻写：之后人删掉的一条不会在下一轮又长回来。每条写入都带归属串
@@ -32,6 +32,9 @@ from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from .entities import canonicalize_entity_name, normalize_entity_name
+from .follow_identity import author_display_name, author_name, name_key, trusted_profile_links
+from .follow_sources import KemonoConnector
+from .follow_store import FollowStore
 from .followups import FollowupType, register
 
 TASK_KEY = "follow-creator"
@@ -78,7 +81,7 @@ _PROFILE_URLS = {
 _OFFICIAL_PROVIDERS = ("fanbox", "subscribestar", "patreon")
 
 #: 归档站上 `服务/用户` 还原成原站账号。只收核实过形状的：FANBOX 归档的数字 id 是
-#: pixiv 用户 id（`web_follow._official_avatar_url` 靠它取官方头像），Patreon 的是用户 id，
+#: pixiv 用户 id（`follow_identity.official_avatar_url` 靠它取官方头像），Patreon 的是用户 id，
 #: OnlyFans 的是用户名。Gumroad、Fantia 的归档 id 形状未核实，不还原。
 _ARCHIVE_ACCOUNTS = {
     "fanbox": ("pixiv", "https://www.pixiv.net/users/{}", str.isdigit),
@@ -104,9 +107,6 @@ class Landing:
 
 def source_links(row) -> list[dict]:
     """一条关注来源能证明的作者账号：`service`、`url` 与证据说明。"""
-    from .follow_sources import KemonoConnector
-    from .web_follow import trusted_profile_links
-
     provider = str(row["provider"] or "")
     found: list[dict] = []
     if provider in _OFFICIAL_PROVIDERS and row["url"]:
@@ -159,9 +159,6 @@ def _name_held(connection: sqlite3.Connection, normalized: str) -> int | None:
 
 def plan(connection: sqlite3.Connection) -> list[Landing]:
     """这一轮每一位还没建档的关注作者怎么处理。只读，同样的账本给同样的结论。"""
-    from .follow_store import FollowStore
-    from .web_follow import _author_display_name, author_name, name_key
-
     store = FollowStore(lambda: connection)
     rows = store.sources()
     alias_map, alias_groups = store.author_aliases()
@@ -204,7 +201,7 @@ def plan(connection: sqlite3.Connection) -> list[Landing]:
                                     providers=providers, reason="账本里已有同名创作者"))
             continue
         normalized = normalize_entity_name(name)
-        spellings = [_author_display_name(row) for row in group] + alias_names.get(key, [])
+        spellings = [author_display_name(row) for row in group] + alias_names.get(key, [])
         aliases = tuple(dict.fromkeys(
             spelling for spelling in spellings
             if spelling and normalize_entity_name(spelling) not in ("", normalized)
