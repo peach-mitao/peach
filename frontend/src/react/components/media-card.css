@@ -231,8 +231,16 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   font-variant-numeric: tabular-nums;
   transition: opacity .15s ease;
 }
+/* 悬停或键盘聚焦时封面上的角标淡出，右上角让给悬停工具。分卷／版本计数还要退出命中与 Tab 序：
+ * 它压在倒计时圈上面，只透明的话圈接不到指针；visibility 等淡出走完再翻。关注卡的合并计数同一套
+ * （`../follow-feed/follow-feed.css`）。聚焦认 `:focus-visible`，鼠标点过留下的焦点不算。 */
 @media (hover: hover) and (pointer: fine) {
-  .peach-react [data-media-card]:hover :is([data-media-badge], [data-media-duration]) { opacity: 0; }
+  .peach-react [data-media-card]:is(:hover, :has(:focus-visible)) :is([data-media-badge], [data-media-duration]) { opacity: 0; }
+  .peach-react [data-media-card]:is(:hover, :has(:focus-visible)) [data-media-group] {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s ease, visibility 0s .15s;
+  }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .peach-react [data-media-badge] { background: var(--ground); backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -251,6 +259,7 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   font-weight: 600;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  transition: opacity .15s ease;
 }
 .peach-react [data-media-scrub] {
   position: absolute;
@@ -362,7 +371,7 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   transition: transform .15s ease, opacity .15s;
 }
-.peach-react [data-previewing] [data-media-preview] { opacity: 1; pointer-events: auto; }
+.peach-react :is([data-previewing], [data-media-card]:has(:focus-visible)) [data-media-preview] { opacity: 1; pointer-events: auto; }
 .peach-react [data-longhover] [data-media-preview] { opacity: 0; pointer-events: none; }
 .peach-react [data-media-preview]:hover { transform: scale(1.2); }
 .peach-react [data-media-preview] > svg:first-child { position: absolute; inset: 0; width: 36px; height: 36px; transform: rotate(-90deg); }
@@ -398,7 +407,7 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
 }
 .peach-react [data-media-seek] { inset: 50% auto auto 50%; transform: translate(-50%, -50%); }
 .peach-react [data-media-later] { right: 12px; bottom: 12px; }
-.peach-react :is([data-longhover] [data-media-seek], [data-media-card]:hover [data-media-later]) { opacity: 1; }
+.peach-react :is([data-longhover] [data-media-seek], [data-media-card]:is(:hover, :has(:focus-visible)) [data-media-later]) { opacity: 1; }
 .peach-react :is([data-media-later], [data-media-seek]) button {
   position: relative;
   display: flex;
@@ -416,7 +425,7 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   transition: transform .15s ease, background .15s ease;
 }
-.peach-react :is([data-longhover] [data-media-seek], [data-media-card]:hover [data-media-later]) button { pointer-events: auto; }
+.peach-react :is([data-longhover] [data-media-seek], [data-media-card]:is(:hover, :has(:focus-visible)) [data-media-later]) button { pointer-events: auto; }
 .peach-react :is([data-media-later], [data-media-seek]) button:hover { transform: scale(1.12); background: rgb(0 0 0 / .34); }
 .peach-react [data-media-seek] svg { width: 34px; height: 34px; }
 .peach-react [data-media-later] button { width: 36px; height: 36px; padding: 0; }
