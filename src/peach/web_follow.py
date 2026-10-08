@@ -2210,6 +2210,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
         for row in rows:
             row["backfill_page"] = 0
     writer = _check_writer(contract)
+    cooldown = getattr(contract, "follow_media_resolver", None)
     results = []
     for row in rows:
         if job_id and contract.follow_job.snapshot() is None:
@@ -2225,7 +2226,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
         result = _check_payload(run_check(
             row, credentials=credentials, writer=writer,
             connector_factory=build_connector, older=older, progress=progress,
-            initial_days=initial_days))
+            initial_days=initial_days, cooldown=cooldown))
         if older and body.get("backfill_all"):
             # 全量回抓：一页记完接着抓下一页，直到站点说没有更多、某一页失败，
             # 或满 500 轮。每轮把结果页写回工作行，`run_check` 从它加一起算，页码
@@ -2244,7 +2245,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
                 result = _check_payload(run_check(
                     row, credentials=credentials, writer=writer,
                     connector_factory=build_connector, older=True, progress=progress,
-                    initial_days=initial_days))
+                    initial_days=initial_days, cooldown=cooldown))
                 rounds += 1
         result["author"] = _author_display_name(row)
         results.append(result)

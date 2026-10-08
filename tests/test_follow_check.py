@@ -11,8 +11,9 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from peach.follow import FollowHistoryEnd, FollowSourceError
+from peach.follow import FollowHistoryEnd, FollowSourceError, FollowSourceRateLimited
 from peach.follow_check import plan_check, run_check
+from peach.follow_stream import FollowMediaResolver
 from peach.follow_secrets import CredentialError
 from peach.follow_sources import FollowCandidate, SourceFetch
 from peach.follow_store import FollowStore
@@ -249,6 +250,26 @@ class RunCheckTests(_CheckCase):
         self.assertFalse(result.ok)
         self.assertEqual(result.status, "error")
         self.assertEqual(self._row(source_id)["last_status"], "error")
+
+    def test_a_rate_limited_source_pauses_the_rest_of_that_site(self):
+        """被限的是整站：同一站排在后面的来源不再请求，也不被记成检查失败。"""
+        clock = [1000.0]
+        cooldown = FollowMediaResolver(transport=None, clock=lambda: clock[0])
+        first = self._register()
+        second = self._register(ref="another", url="https://another.fanbox.cc/")
+        limited = self._run(first, _Connector(error=FollowSourceRateLimited("HTTP 429", 120)),
+                            cooldown=cooldown)
+        self.assertFalse(limited.ok)
+        self.assertEqual(self._row(first)["last_status"], "error")
+        connector = _Connector(_fetch(ref="another"))
+        skipped = self._run(second, connector, cooldown=cooldown)
+        self.assertFalse(skipped.ok)
+        self.assertIn("冷却", skipped.error)
+        self.assertEqual(connector.calls, [])
+        self.assertIsNone(self._row(second)["last_status"])
+        clock[0] += 121
+        self.assertTrue(self._run(second, connector, cooldown=cooldown).ok)
+        self.assertEqual(len(connector.calls), 1)
 
     def test_an_official_profile_handle_is_learned_from_one_unambiguous_author(self):
         """fanbox 的 ref 就是作者本人的手柄，可以直接学成别名。

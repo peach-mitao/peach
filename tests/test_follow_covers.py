@@ -15,7 +15,7 @@ from peach.follow_covers import (
     FollowCoverService,
     FollowCoverUnavailable,
 )
-from peach.follow_stream import ResolvedFollowMedia
+from peach.follow_stream import FollowMediaResolver, ResolvedFollowMedia
 from peach.http import HttpResponse
 import httpx
 
@@ -25,8 +25,11 @@ class _FFmpeg:
         return BinaryChoice(Path("ffmpeg"), "test")
 
 
-class _Media:
+class _Media(FollowMediaResolver):
+    """来源闸门（冷却、`fetch`）用真的；`resolve` 换成固定的 paheal 正片。"""
+
     def __init__(self):
+        super().__init__(transport=None)
         self.calls = 0
 
     def resolve(self, item):
@@ -108,6 +111,40 @@ class FollowCoverServiceTests(unittest.TestCase):
             with self.assertRaises(FollowCoverUnavailable):
                 self.service.cover(item, alternatives=alternatives)
             self.assertEqual(self.media.transport.call_count, 4)
+
+    def test_a_rate_limited_poster_pauses_every_card_of_that_source(self):
+        """来源回 429 后，这张卡剩下的地址和别的卡都不再请求，冷却结束才恢复。"""
+        item = self._poster_transport()
+        limited = HttpResponse(429, {"Retry-After": "60"}, b"")
+        self.media.transport = mock.Mock(return_value=limited)
+        clock = [1000.0]
+        self.media.clock = lambda: clock[0]
+        with self.assertRaises(FollowCoverUnavailable):
+            self.service.cover(item, alternatives=("https://rule34video.com/other.jpg",))
+        self.assertEqual(self.media.transport.call_count, 1)
+        other = self._item("rule34video")
+        other.id, other.thumb_url = 8, "https://rule34video.com/8.jpg"
+        with self.assertRaises(FollowCoverUnavailable):
+            self.service.cover(other)
+        self.assertEqual(self.media.transport.call_count, 1)
+        # 冷却不是这张图的失败：结束后同一张卡照常再取，不被五分钟的失败记忆挡住。
+        clock[0] += 61
+        self._poster_transport()
+        self.assertTrue(self.service.cover(item).is_file())
+
+    def test_a_failed_frame_extraction_is_not_rerun_on_every_render(self):
+        failed = subprocess.CompletedProcess([], 1, b"", b"broken")
+        clock = [1000.0]
+        with mock.patch("peach.follow_covers.subprocess.run", return_value=failed) as ffmpeg, \
+                mock.patch("peach.follow_covers.time.monotonic", side_effect=lambda: clock[0]):
+            for _ in range(3):
+                with self.assertRaises(FollowCoverUnavailable):
+                    self.service.cover(self._item())
+            self.assertEqual(ffmpeg.call_count, 1)
+            clock[0] += self.service.POSTER_MISS_TTL + 1
+            with self.assertRaises(FollowCoverUnavailable):
+                self.service.cover(self._item())
+            self.assertEqual(ffmpeg.call_count, 2)
 
     def test_rule34video_posters_do_not_wait_for_ffmpeg_slots(self):
         item = self._poster_transport()

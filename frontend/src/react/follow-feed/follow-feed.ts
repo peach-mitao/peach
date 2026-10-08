@@ -6,8 +6,8 @@
  * `updateManagedRoute` 推回新的 `view`，岛按新键取数。
  *
  * 两粒种子分开：`view.seed` 是服务端随机排序那一粒，写在地址里；`seed` 是这一次进入的取样种子，
- * 上面创作者、题材、标签三排露出哪些由它定。重新进入（壳的 `push`）与「换一批」才换它，岛重画
- * 从不重新洗牌。
+ * 上面创作者、题材、标签三排露出哪些由它定。重新进入（壳的 `openFollow` 判定为 renew）与「换一批」
+ * 才换它，从别的页面回来沿用离开时那一粒，岛重画从不重新洗牌。
  *
  * 详情（`/follow/item/:id`）是另一座岛（`../follow-detail/`），先扫这里缓存的几页找条目
  * （`findFollowItem`），扫不到才单独取。侧栏标签抽屉仍归壳画：岛每取到一版列表就经
@@ -158,6 +158,10 @@ export interface FollowCredentials { providers?: { provider: string; present?: b
 
 /* ── 取数键 ── */
 
+/** 离开关注页以后，列表在缓存里留多久。回到关注页时照这一份原样画，已经加载的几页和滚动位置
+ *  才接得上；默认的 5 分钟太短，点开别处看一部片子回来就没了。 */
+export const FOLLOW_FEED_GC_MS = 30 * 60_000;
+
 /** 列表的键。媒体切换是纯前端分组，不进键：换视图不重取。`revision` 是壳要求重读的代次。 */
 export function followFeedQuery(view: FollowView, revision: number) {
   const url = followPageUrl(view, 0);
@@ -169,6 +173,7 @@ export function followFeedQuery(view: FollowView, revision: number) {
     /* 服务端先整批分组再按组分页，同一作品不会跨页，下一页的组直接接在后面。 */
     getNextPageParam: (last: FollowPage) => (last.has_more ? (last.offset || 0) + FOLLOW_PAGE : undefined),
     placeholderData: keepPreviousData,
+    gcTime: FOLLOW_FEED_GC_MS,
   };
 }
 
@@ -178,17 +183,20 @@ export const FOLLOW_CREDENTIALS_KEY: QueryKey = ['follow-feed', 'credentials'];
 export const fetchFollowCredentials = (signal?: AbortSignal) =>
   apiGet<FollowCredentials>(FOLLOW_CREDENTIALS_URL, signal).catch((): FollowCredentials => ({ providers: [] }));
 
-/** 首屏：两趟并行，挂上就是最终样子。每次重新进入都从服务端取新的一份，不读上一次留下的缓存。 */
+/** 首屏：两趟并行，挂上就是最终样子。同一个键（同一份筛选、同一个代次）缓存里还有，就是离开前
+ *  看着的那一份，原样拿来接着看，连同已经加载的几页；要重读由壳推一个新代次换键。凭据每次都重取：
+ *  它在管理页上改，回到这里就该是新的。 */
 export async function prefetchFollowFeed(props: { view: FollowView; revision: number }, signal: AbortSignal) {
   const query = followFeedQuery(props.view, props.revision);
-  queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
   queryClient.removeQueries({ queryKey: FOLLOW_CREDENTIALS_KEY, exact: true });
+  const kept = queryClient.getQueryData(query.queryKey) !== undefined;
   await Promise.all([
-    queryClient.fetchInfiniteQuery({
+    kept ? null : queryClient.fetchInfiniteQuery({
       queryKey: query.queryKey,
       queryFn: ({ pageParam }) => query.queryFn({ pageParam: pageParam as number, signal }),
       initialPageParam: 0,
       getNextPageParam: query.getNextPageParam,
+      gcTime: FOLLOW_FEED_GC_MS,
     }),
     queryClient.fetchQuery({ queryKey: FOLLOW_CREDENTIALS_KEY, queryFn: () => fetchFollowCredentials(signal) }),
   ]);

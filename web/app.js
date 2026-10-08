@@ -2044,6 +2044,8 @@ async function openScraping(push=true){
    联网只发生在管理页点「检查更新」的那一刻——看的那一页不联网。 */
 /* 这一次进入的取样种子：创作者、题材、标签三排露出哪些由它定，岛按它取样（`randomOrder`）。 */
 let followDiscoverySeed=Math.floor(Math.random()*0xffffffff);
+/* 关注列表停在哪：在 /follow 上滚动时随手记下，从别的页面回来时照它滚回去（`openFollow`）。 */
+let followScrollY=0;
 /* 关注页一次取一屏。counts 是全库口径（「未看 2292」），groups 只有这一页——
    两个数并排显示时看起来像自相矛盾，实际是两个口径，所以列表底部要能继续加载。 */
 const FOLLOW_PAGE=300;
@@ -2109,7 +2111,7 @@ function followCheckToast(report){
     (exhausted?` · <b>${exhausted} 个没有更多内容</b>`:'')+
     (failed?` · <b>${failed} 个失败</b>`:'')},
     {warn:!!failed,timeout:failed?8000:6000,sound:failed?'warning':'success',
-     action:{label:'去看更新',run:()=>openFollow()}});
+     action:{label:'去看更新',run:()=>openFollow(true,false,true)}});
 }
 /* ── 看的那一页 ── */
 /* URL 是关注页筛选的唯一真相源。
@@ -2279,19 +2281,23 @@ async function closeFollowDetail(){
 }
 
 
-async function openFollow(push=true,renderForDetail=false){
+async function openFollow(push=true,renderForDetail=false,fresh=false){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  /* 从窄栏点进来（push）是「重新进入」，回到干净的 /follow、换一粒取样种子；其余情况一律照
-     URL 推导。筛选状态由 URL 推导，不在这里逐个手写重置——漏一个就会让某一维一直按着，
-     而它们还决定服务端取哪些条目，等于取错数据。 */
-  if(push)followDiscoverySeed=Math.floor(Math.random()*0xffffffff);
-  if(push)route('/follow');
+  /* 已经在关注页再点一次窄栏，或「去看更新」（`fresh`），是「重新进入」：回到干净的 /follow、
+     换一粒取样种子、推一个新代次重取列表。从别的页面回来（点窄栏、后退前进）是「回到」：
+     筛选、取样种子、已经加载的几页和滚动位置都照离开时还原，列表不重取——看过的卡原地还在，
+     卡面也不必再向来源站要一遍。筛选状态由 URL 推导，不在这里逐个手写重置——漏一个就会让
+     某一维一直按着，而它们还决定服务端取哪些条目，等于取错数据。 */
+  const renew=fresh||(push&&location.pathname==='/follow');
+  const restoreY=renew?0:followScrollY;
+  if(renew){followDiscoverySeed=Math.floor(Math.random()*0xffffffff);followRevision++}
+  if(push)route(renew?'/follow':followViewPath());
   if(location.pathname==='/follow')readFollowView();
   if(followFeedLive()){
     // 详情盖在列表上面：列表原样留着，返回时接着看。
     if(renderForDetail)return;
     showManagementBody({manage:false});
-    pushFollowFeed({view:followView(),seed:followDiscoverySeed,revision:++followRevision});
+    pushFollowFeed({view:followView(),seed:followDiscoverySeed,revision:renew?followRevision:++followRevision});
     syncPhotoWalls();
     window.scrollTo({top:0,behavior:'smooth'});
     return;
@@ -2307,7 +2313,7 @@ async function openFollow(push=true,renderForDetail=false){
   const surface=claimSurface('/follow');
   showManagementBody({manage:false,placeholder:followSkeletonHtml('正在读取关注内容')});
   await openManagedRoute('/follow',followFeedProps(),{...managedSurface(surface),place:revealRoutedPage});
-  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
+  if(surfaceCurrent(surface))window.scrollTo(restoreY?{top:restoreY,behavior:'instant'}:{top:0,behavior:'smooth'});
 }
 /* 关注页与目录网格取齐首屏时骨架不一次清空：`revealSkeleton` 把骨架抬成一层淡出，新宿主同时从模糊里
    清晰起来。`write` 只放进空宿主，页面紧接着由路由树同步画进去（`openManagedRoute` 放好宿主就当场画），
@@ -3298,6 +3304,7 @@ document.addEventListener('focusin',scheduleStickySurfaces);
 document.addEventListener('focusout',scheduleStickySurfaces);
 window.addEventListener('scroll',()=>{
   scheduleStickySurfaces();
+  if(location.pathname==='/follow'&&followFeedLive())followScrollY=scrollY;
   window.__scrolling=true;
   // 滚动中挂起悬停预览：内容从鼠标下滑过会连续触发 mouseenter，
   // 每次新建 video 并发 /stream，几十个并发直接把页面拖垮

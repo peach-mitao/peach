@@ -24,7 +24,8 @@ from bs4 import BeautifulSoup
 from .fanbox import FanboxContentError, normalize_fanbox_post
 from . import follow_providers
 from .follow import (
-    DEFAULT_MAX_BYTES, FollowHistoryEnd, FollowSourceError, plain_text, stable_id,
+    DEFAULT_MAX_BYTES, FollowHistoryEnd, FollowSourceError, FollowSourceRateLimited,
+    plain_text, stable_id,
 )
 from .follow_secrets import Credential, CredentialError
 from .follow_gofile import GofileExpander, folder_labels
@@ -562,8 +563,13 @@ class _BaseConnector:
                 f"{self.provider} 拒绝访问（HTTP {response.status}）：需要有效凭据，"
                 "或站点已加机器人验证")
         if response.status == 429:
-            raise FollowSourceError(
-                f"{self.provider} 返回 HTTP 429：请求过于频繁，稍后再试")
+            headers = {key.lower(): value for key, value in response.headers.items()}
+            try:
+                retry_after = float(headers.get("retry-after", ""))
+            except ValueError:
+                retry_after = None
+            raise FollowSourceRateLimited(
+                f"{self.provider} 返回 HTTP 429：请求过于频繁，稍后再试", retry_after)
         if response.status != 200:
             raise FollowSourceError(f"{self.provider} 返回 HTTP {response.status}")
 
@@ -573,14 +579,15 @@ class _BaseConnector:
     _RATE_LIMIT_RE = re.compile(
         r"limit of (\d+) requests? every (\d+) seconds?", re.IGNORECASE)
 
-    def _upstream_reason(self, response: HttpResponse) -> str | None:
+    def _upstream_reason(self, response: HttpResponse) -> FollowSourceError | None:
         """能从响应正文里读出的明确失败原因；读不出就返回 None。"""
         text = response.body.decode("utf-8", errors="replace")
         matched = self._RATE_LIMIT_RE.search(text)
         if matched:
             count, seconds = matched.group(1), matched.group(2)
-            return (f"{self.provider} 触发频率限制：每 {seconds} 秒最多 "
-                    f"{count} 次请求，请稍后再试")
+            return FollowSourceRateLimited(
+                f"{self.provider} 触发频率限制：每 {seconds} 秒最多 {count} 次请求，请稍后再试",
+                float(seconds))
         return None
 
     @staticmethod
@@ -595,7 +602,7 @@ class _BaseConnector:
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             reason = self._upstream_reason(response)
             if reason:
-                raise FollowSourceError(reason) from exc
+                raise reason from exc
             snippet = self._body_snippet(response)
             detail = f"：{snippet}" if snippet else ""
             raise FollowSourceError(

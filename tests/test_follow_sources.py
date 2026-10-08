@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from peach import follow_sources
-from peach.follow import FollowHistoryEnd, FollowSourceError
+from peach.follow import FollowHistoryEnd, FollowSourceError, FollowSourceRateLimited
 from peach.follow_secrets import Credential, CredentialError, CredentialStore
 from peach.follow_sources import (
     USER_AGENT, F95ZoneConnector, FanboxConnector, KemonoConnector,
@@ -1634,10 +1634,13 @@ class Rule34XxxConnectorTests(unittest.TestCase):
         self.assertIn("频率限制", message)
         self.assertIn("60", message)
         self.assertNotIn("JSON", message)
+        # 检查循环据此让整站冷却，等的就是正文里那个窗口。
+        self.assertIsInstance(caught.exception, FollowSourceRateLimited)
+        self.assertEqual(caught.exception.retry_after, 60.0)
 
     def test_http_429_reports_throttling(self):
         connector = self._connector(body=b"{}", status=429)
-        with self.assertRaises(FollowSourceError) as caught:
+        with self.assertRaises(FollowSourceRateLimited) as caught:
             connector.fetch("lazyprocrastinator")
         self.assertIn("429", str(caught.exception))
         self.assertIn("频繁", str(caught.exception))

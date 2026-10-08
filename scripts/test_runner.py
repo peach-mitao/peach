@@ -149,7 +149,7 @@ SCOPE_TEST_IDS: dict[str, tuple[str, ...]] = {
     "follow": (
         "test_rm_web.WebDataTests.test_contract_handler_registries_are_complete_and_unknown_routes_fail",
         "test_rm_web.WebDataTests.test_read_only_post_routes_are_declared_and_all_exist",
-        "test_scripts.OperationalScriptTests.test_test_entrypoint_enforces_worktree_source_and_unittest",
+        "test_scripts.OperationalScriptTests.test_test_entrypoints_guard_the_worktree_source_and_are_the_only_documented_command",
     ),
 }
 

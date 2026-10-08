@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Mapping
 
 from . import follow_providers
-from .follow import FollowHistoryEnd, FollowSourceError
+from .follow import FollowHistoryEnd, FollowSourceError, FollowSourceRateLimited
 from .follow_secrets import CredentialError
 from .follow_sources import SourceFetch, enrichment_mark, history_window, published_stamp
 from .follow_store import RecordOutcome
@@ -98,11 +98,15 @@ def build_connector_for(provider: str, credentials, connector_factory, *,
 
 def run_check(row: Mapping, *, credentials, writer, connector_factory,
               older: bool = False, moment: datetime | None = None,
-              progress=None, initial_days: int = 0) -> CheckResult:
+              progress=None, initial_days: int = 0, cooldown=None) -> CheckResult:
     """检查一条来源。
 
     `row` 是 `plan_check` 给出的那种字典。`writer` 是零参可调用对象，返回一个产出
     `FollowStore` 的上下文管理器；每次写都单独取一次，好让调用方决定提交粒度。
+
+    `cooldown` 是按站计的限流冷却（`FollowMediaResolver` 那一份，浏览与检查共用）：
+    站点在冷却就不发请求、也不把来源记成失败；这一条被限流就让整站进入冷却，
+    同一站排在后面的来源随之跳过。
     """
     moment = moment or datetime.now(timezone.utc)
     source_id = int(row["id"])
@@ -114,6 +118,10 @@ def run_check(row: Mapping, *, credentials, writer, connector_factory,
         page = 0
     base = {"source_id": source_id, "provider": provider, "ref": ref,
             "label": str(row["label"] or ""), "page": page, "older": older}
+    remaining = cooldown.cooling(provider) if cooldown is not None else 0
+    if remaining:
+        return CheckResult(**base, ok=False, status="error",
+                           error=f"{provider} 限流冷却中，{int(remaining) + 1} 秒后再试，本次跳过")
     force = bool(row.get("force_media_reparse")) or replay_first
     cutoff, floor = _history_limits(row, metadata, writer, moment,
                                     older=older, initial_days=initial_days)
@@ -139,6 +147,7 @@ def run_check(row: Mapping, *, credentials, writer, connector_factory,
     except CredentialError as error:
         return _record_failure(writer, base, error, moment, "unauthorized")
     except FollowSourceError as error:
+        _pause_if_rate_limited(cooldown, provider, error)
         return _record_failure(writer, base, error, moment, "error")
     candidates = history_window(fetch.candidates, cutoff, floor)
     history_skipped = getattr(connector, 'history_skipped', 0) + len(fetch.candidates) - len(candidates)
@@ -159,6 +168,12 @@ def run_check(row: Mapping, *, credentials, writer, connector_factory,
         learned = store.learn_official_author_alias(provider, ref, fetch.candidates)
     return CheckResult(**base, fetch=fetch, outcome=outcome,
                        author_alias_learned=learned, history_skipped=history_skipped)
+
+
+def _pause_if_rate_limited(cooldown, provider: str, error: FollowSourceError) -> None:
+    """来源说被限流了，就让整站进入冷却；同一站排在后面的来源随之跳过。"""
+    if cooldown is not None and isinstance(error, FollowSourceRateLimited):
+        cooldown.pause(provider, error.retry_after)
 
 
 def _history_limits(row, metadata: dict, writer, moment: datetime, *,

@@ -202,6 +202,8 @@ def create_app(
     http_transport = HttpxTransport()
     follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(
         lambda provider: web_follow._credential_store(contract).load(provider))
+    # 检查更新与浏览共用这一份按站冷却：同一个站被限流，两边都得停。
+    contract.follow_media_resolver = follow_media_resolver
     follow_cover_service = FollowCoverService(
         resolver, follow_media_resolver, settings.poster_root / "follow")
     contract.follow_faces = FollowFaceIndex(

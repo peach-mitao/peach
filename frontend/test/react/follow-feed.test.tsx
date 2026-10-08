@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   backfillState, dropCondition, followConditions, followPageUrl, followStack, groupMediaKinds, itemForMedia,
-  nextSort, randomOrder, sortAriaLabel, withStatus,
+  nextSort, prefetchFollowFeed, randomOrder, sortAriaLabel, withStatus,
   type FollowFeedActions, type FollowFeedHelpers, type FollowFeedProps, type FollowGroup, type FollowItem,
   type FollowPage, type FollowSource, type FollowStackInfo, type FollowView,
 } from '../../src/react/follow-feed/follow-feed';
@@ -50,6 +50,26 @@ describe('请求地址', () => {
       sort: 'hot', dir: 'asc',
     });
     expect(new URL(followPageUrl(view({ sort: 'rand', seed: 42 }), 0), 'http://peach.test').searchParams.get('seed')).toBe('42');
+  });
+});
+
+describe('回到关注页', () => {
+  /* 从别的页面回来，壳交回同一份筛选与代次：列表照离开前那一份接着画，不重取；凭据每次都重取。
+     重新进入时壳推新代次换键，才重取列表。 */
+  it('同一个键还在缓存里就原样接着用，换代次才重取列表', async () => {
+    const fetched = vi.fn(async (input: string) => ({
+      ok: true, status: 200,
+      json: async () => (String(input).startsWith('/api/follow/credentials')
+        ? { providers: [] } : { groups: [], counts: {}, has_more: false, offset: 0 }),
+    }));
+    vi.stubGlobal('fetch', fetched);
+    const paths = () => fetched.mock.calls.map(([input]) => new URL(String(input), 'http://peach.test').pathname);
+    const signal = new AbortController().signal;
+    await prefetchFollowFeed({ view: VIEW, revision: 3 }, signal);
+    await prefetchFollowFeed({ view: VIEW, revision: 3 }, signal);
+    expect(paths().sort()).toEqual(['/api/follow', '/api/follow/credentials', '/api/follow/credentials']);
+    await prefetchFollowFeed({ view: VIEW, revision: 4 }, signal);
+    expect(paths().filter((path) => path === '/api/follow')).toHaveLength(2);
   });
 });
 
