@@ -98,7 +98,7 @@ function IndexSearch({ label, value, onQuery }: { label: string; value: string; 
     <div data-index-search="" className="ml-auto min-w-35 max-w-80 flex-1 max-board-narrow:order-1 max-board-narrow:basis-40"
       onCompositionStart={() => { composing.current = true }}
       onCompositionEnd={(event) => { composing.current = false; later((event.target as HTMLInputElement).value) }}>
-      <TextField aria-label={label} value={text}
+      <TextField aria-label={label} value={text} enterKeyHint="search"
         onChange={(next) => { setText(next); if (!composing.current) later(next) }}>
         <InputBase type="search" leadingIcon={SearchGlyph} spellCheck={false} autoComplete="off"
           onKeyDown={onKeyDown} />

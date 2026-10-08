@@ -110,4 +110,13 @@ describe('本地与在线艺人共用名册布局', () => {
       assert.deepEqual(opened.problems, []);
     } finally { await opened.close() }
   });
+  it('名册过滤框在手机上弹出的软键盘回车键标成「搜索」', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/performers', VIEWPORTS[1]);
+    try {
+      const input = opened.page.locator('#index [data-index-search] input');
+      await input.waitFor({ timeout: 15_000 });
+      assert.equal(await input.getAttribute('enterkeyhint'), 'search');
+      assert.deepEqual(opened.problems, []);
+    } finally { await opened.close() }
+  });
 });

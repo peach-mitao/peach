@@ -42413,6 +42413,7 @@ function Rge({ data: e, credentials: t, readOnly: n, toast: r, openCredentials: 
 							placeholder: jge,
 							value: a,
 							leadingIcon: CT,
+							enterKeyHint: "search",
 							isDisabled: n,
 							onChange: o,
 							onKeyDown: te
@@ -44568,6 +44569,7 @@ function I_e({ readOnly: e, toast: t, onAdded: n }) {
 						placeholder: N_e,
 						value: r,
 						leadingIcon: CT,
+						enterKeyHint: "search",
 						isDisabled: e,
 						onChange: i,
 						onKeyDown: d
@@ -45812,6 +45814,7 @@ function eve({ initialCode: e, reason: t, choose: n }) {
 				value: r,
 				maxLength: 80,
 				placeholder: "输入番号，按回车搜索",
+				enterKeyHint: "search",
 				leadingIcon: _.busy ? Q_e : CT,
 				isReadOnly: !!_.busy,
 				"aria-busy": !!_.busy,
@@ -47154,6 +47157,7 @@ function Mve({ label: e, value: t, onQuery: n }) {
 		children: /* @__PURE__ */ (0, V.jsx)(qM, {
 			"aria-label": e,
 			value: r,
+			enterKeyHint: "search",
 			onChange: (e) => {
 				i(e), a.current || s(e);
 			},
@@ -52569,6 +52573,7 @@ function GR({ id: e, label: t, value: n, disabled: r = !1, onApply: i }) {
 				children: [/* @__PURE__ */ (0, V.jsx)("input", {
 					ref: v,
 					type: "number",
+					inputMode: "numeric",
 					className: "geist-input",
 					min: o,
 					max: s,

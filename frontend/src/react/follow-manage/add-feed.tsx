@@ -98,7 +98,7 @@ export function AddFeed({ readOnly, toast, onAdded }: AddFeedProps) {
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-64 grow">
           <Input aria-label="女优名" placeholder={PLACEHOLDER} value={name} leadingIcon={RiSearchLine}
-            isDisabled={readOnly} onChange={setName} onKeyDown={onKeyDown} />
+            enterKeyHint="search" isDisabled={readOnly} onChange={setName} onKeyDown={onKeyDown} />
         </div>
         <Button variant="primary" disabled={readOnly || !name.trim()} {...busyProps(action.busy === 'lookup')}
           onClick={search}>查找</Button>

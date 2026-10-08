@@ -472,6 +472,30 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     }
   });
 
+  it('手机上详情浮窗的按钮与标签长按不选字、点按不等双击判定；标题照常能选中复制', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
+    try {
+      const page = opened.page;
+      await page.locator('#stage [data-detail-tag] [data-tag]').first().waitFor({ state: 'attached' });
+      const read = await page.evaluate(() => {
+        const controls = [...document.querySelectorAll<HTMLElement>('#stage button, #stage summary, #stage [role="button"]')];
+        const off = controls.flatMap((control) => {
+          const style = getComputedStyle(control);
+          return style.touchAction === 'manipulation' && style.userSelect === 'none'
+            ? [] : [`${control.outerHTML.slice(0, 80)} → ${style.touchAction} / ${style.userSelect}`];
+        });
+        return { count: controls.length, off,
+          title: getComputedStyle(document.querySelector('#stage [data-detail-title]')!).userSelect };
+      });
+      assert.ok(read.count > 5, `详情浮窗里只量到 ${read.count} 个控件`);
+      assert.deepEqual(read.off, []);
+      assert.notEqual(read.title, 'none', '标题是内容，不能跟着控件一起关掉选字');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('播放器控件：40px 黑圆播放键、同一档黑的右侧胶囊与提示、钨丝色进度、页面字体；统计键与加载速度角标压在左上；报错是一张盖在统计上面的卡', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {
