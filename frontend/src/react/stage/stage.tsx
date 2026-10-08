@@ -8,7 +8,7 @@
  * `open`（含原地换条）、`update` 与 `dispose` 里每一次绘制都在返回之前画完，紧跟着读 DOM 的代码（骨架量尺寸、
  * `showModal`、标题揭示、焦点交给关闭键）读到的就是刚画好的结构。
  *
- * 每次 `open` 换一枚 `generation`，取数回来时代次不对就作废；重开时 dialog 按它重建，原地换条沿用原来那个。
+ * 每次 `open` 换一枚 `generation`，取数回来时代次不对就作废；重开时 dialog 按它重建，原地换条沿用开着的那个。
  * 两座详情是这一面的子组件，和页面共用路由树的 QueryClient（`providers.tsx`）。两座详情画出来时报给壳的 `present` 排到微任务里：壳收到后
  * 会画侧栏与顶栏，那几座常驻面的句柄内部 `flushSync`，在路由树的提交阶段里画不出来。微任务在浏览器绘制前
  * 跑完；那一条已经换走（原地换条或重开）或舞台已经收起就不报。 */
@@ -163,7 +163,7 @@ function contentFor(request: StageRequest): Content {
     return hit;
   };
   const settings = () => stageHost().player.settings();
-  /* 原地换条沿用原来的代次（dialog 不重建），所以按这一次打开的 request 认：换条与重开都换一份新的。 */
+  /* 原地换条沿用浮窗开着时的代次（dialog 不重建），所以按这一次打开的 request 认：换条与重开都换一份新的。 */
   const live = () => view?.request === request;
   if (request.kind === 'item') {
     const { kind: _kind, resume: _resume, actions: base, ...props } = request;
