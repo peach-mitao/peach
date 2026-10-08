@@ -66,7 +66,7 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 - **作品计数**：明确分段的同一 FC2 合集计为一个视频，分段文件和出演归属完整保留。已确认合并的身份共用资料与作品，旧资料页地址通往规范身份。
 - **账号身份**：网黄博主分类需要身份或账号来源；未核实的条目可在全部名册查看。账号头像优先使用保存的图片，作品画面只有在本人身份有依据时才用作头像。资料页中的别名只承载身份名称，画质和资源包规格保留在文件信息中。
 - **西方图片来源**：出演者与网黄博主可选 Babepedia 主图库人像；Tushy 等 Vixen 网络作品以出演者和发行日匹配官方封面，卡片、详情和头像框选共用原图，无法唯一匹配时留待核验。
-- **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. You can pick an avatar by drawing a box on any cover.
+- **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. When changing the avatar, gallery portraits, video covers, local images and image URLs can all be cropped with a box first, or used whole.
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".
 - **New releases**: subscribe on a performer page or by name in follow management, including performers not yet in your library. Peach checks for new titles regularly. Follow creators across sites such as FANBOX, Patreon and Kemono; the same work on different sites appears as one card.
