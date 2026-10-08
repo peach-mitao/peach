@@ -62,6 +62,17 @@ export interface HeroNameGroups {
   groups?: { label?: string; names: { name: string; reading?: string }[] }[];
 }
 
+/** 创作者名下的关注来源（ADR-0096）。`key` 是关注页的作者键，没绑来源时是空串；`held` 是
+ *  关注里同名、等用户认是不是同一个人的那几组。 */
+export interface HeroFollow {
+  key: string;
+  n: number;
+  providers: string[];
+  avatar: string;
+  avatar_fallback: string;
+  held: { key: string; name: string; providers: string[]; n: number; links: string[] }[];
+}
+
 /** `/api/entity` 里资料卡读到的那些字段。 */
 export interface EntityHeroData {
   company_profile?: Partial<Record<'legal_name' | 'founded' | 'launched' | 'country' | 'location' | 'operator' | 'parent' | 'group' | 'distributor', { value: string; source_url: string; evidence?: string }>>;
@@ -83,6 +94,7 @@ export interface EntityHeroData {
   entry_links?: HeroEntryLink[];
   related_performers?: HeroCostar[];
   feed?: { following: boolean } | null;
+  follow?: HeroFollow | null;
   profile?: HeroProfile | null;
   name_groups?: HeroNameGroups | null;
 }
@@ -103,6 +115,10 @@ export interface EntityHeroActions {
   feedAction(id: number, action: string): Promise<void>;
   /** 换完头像：重进这一页，头像索引在服务端已经换过。 */
   avatarPicked(): void;
+  /** 去关注页，只看这一位名下来源的更新。 */
+  openFollowAuthor(key: string): void;
+  /** 「是同一个人」：把同名的那组关注作者绑到这位名下。失败时壳已发过失败回执。 */
+  confirmFollowAuthor(key: string, name: string): Promise<void>;
 }
 
 /** 仍由遗留层拼的那几段 HTML 与接线。 */

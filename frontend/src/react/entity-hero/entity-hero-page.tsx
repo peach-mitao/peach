@@ -13,7 +13,11 @@ import { createPortal } from 'react-dom';
 import { entityFaceImg, facePos } from '@peach/card-art';
 import { entityPath, esc, icon } from '@peach/legacy/core';
 
+import { Button } from '@/components/base/buttons/button';
+
 import { AvatarPicker } from '../avatar-picker/avatar-picker-page';
+import { Note } from '../components/note';
+import { busyProps } from '../settings/busy-props';
 import { FeedNewRow } from '../feed-new/feed-new-row';
 import { Glyph } from './glyph';
 import { FeedSwitch, MorePop } from './hero-pop';
@@ -21,7 +25,7 @@ import { NamePicker } from './name-picker';
 import {
   agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
   type EntityHeroActions, type EntityHeroData, type EntityHeroHelpers, type EntityHeroProps,
-  type HeroCostar, type LinkMark, type LinkView,
+  type HeroCostar, type HeroFollow, type LinkMark, type LinkView,
 } from './entity-hero';
 
 /** 同台艺人圆框里那张图：实体图优先，退到代表作头像，按检出的人脸取景。 */
@@ -79,6 +83,7 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
               <div ref={linkRow} data-entity-links="">{links.map((link, at) => <HeroLinkView key={at} link={link} />)}</div>
             ) : null}
             {marks.length || entity.feed ? <EntryMarks entity={entity} actions={actions} helpers={helpers} /> : null}
+            {entity.follow?.held.length ? <HeldAuthors follow={entity.follow} entity={entity} actions={actions} /> : null}
           </div>
           {facts.length ? (
             <dl data-entity-facts="">
@@ -147,6 +152,7 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
       <div data-entity-alias="meta">
         <IdentityMeta entity={entity} />
         <span data-meta-item="" title="视频"><Glyph name="film" /><span>{count}</span></span>
+        {entity.follow?.key ? <FollowMeta follow={entity.follow} actions={actions} /> : null}
         {agencyNode ? <span data-meta-item="" title="事务所"><Glyph name="briefcase" /><span>{agencyNode}</span></span> : null}
         {line ? (
           <div data-meta-item="names">
@@ -181,6 +187,50 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
       {maker ? <span data-meta-item="" title="片商"><Glyph name="clapperboard" /><a href={entityPath('studio', maker.name)} data-studio-link={maker.name}
         onClick={go('studio', maker.name)}>{maker.name}</a></span> : null}
       {aliases.length ? <div data-meta-item="names" data-company-names={kind === 'studio' || kind === 'agency' ? '' : undefined}><Glyph name="id-card" /><span data-alias-names="" title="别名">{aliases.map((name, at) => <span key={at}>{name}</span>)}</span></div> : null}
+    </div>
+  );
+}
+
+/** 关注里绑在这位名下的来源：读数是还没入库的更新，点开去关注页只看这一位。 */
+function FollowMeta({ follow, actions }: { follow: HeroFollow; actions: EntityHeroActions }) {
+  const from = follow.providers.join(' · ');
+  return (
+    <span data-meta-item="" data-entity-follow="" title={from ? `关注 · ${from}` : '关注'}>
+      <Glyph name="rss" />
+      <a href="/follow" onClick={(event) => { event.preventDefault(); actions.openFollowAuthor(follow.key) }}>
+        <b>{follow.n.toLocaleString()}</b> 项更新
+      </a>
+    </span>
+  );
+}
+
+/** 关注里有同名作者、还没认是不是同一个人：每组一条提示，认了才把那组来源绑到这位名下。
+ *  名字相同不算证据（ADR-0095），所以这里只问，不替人绑。 */
+function HeldAuthors({ follow, entity, actions }: {
+  follow: HeroFollow; entity: EntityHeroData; actions: EntityHeroActions;
+}) {
+  const [busy, setBusy] = useState('');
+  const confirm = async (key: string, name: string) => {
+    if (busy) return;
+    setBusy(key);
+    try {
+      await actions.confirmFollowAuthor(key, name);
+    } catch {
+      /* 失败回执由壳发，按钮回到可按。 */
+    } finally {
+      setBusy('');
+    }
+  };
+  return (
+    <div data-entity-held="" className="flex flex-col gap-2">
+      {follow.held.map((group) => (
+        <Note key={group.key} tone="info" title={`关注里有同名作者 ${group.name}`}
+          action={<Button size="small" {...busyProps(busy === group.key)}
+            onClick={() => { void confirm(group.key, group.name) }}>是同一个人</Button>}>
+          {[group.providers.join(' · '), `${group.n.toLocaleString()} 项更新`].filter(Boolean).join(' · ')}
+          。和 {entity.canonical_name} 是同一个人吗？
+        </Note>
+      ))}
     </div>
   );
 }

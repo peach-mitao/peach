@@ -2291,16 +2291,22 @@ const entityPageHelpers={
      （`has_logo`／`has_image`／`has_avatar`／`mark_link_id`）都由 `/api/entity` 随资料下发。
 
      作品截图不给公司用：厂牌那张是自家片没错，可这一页要认的是牌子；事务所名下的片更是成员
-     各自拍的，拿其中一部的画面当门面，说的是别人的事。 */
+     各自拍的，拿其中一部的画面当门面，说的是别人的事。
+
+     只有关注来源、还没入库作品的创作者，链上两环都是空的：末一环借关注那边的头像（主页优先、
+     归档兜底），名册在线档那一格的同一张图。 */
   portraitImg:(kind,d)=>{
     const company=kind==='studio'||kind==='agency';
-    return d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
+    const own=d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
       rep:company||!d.has_avatar?null:d.representative_asset_id,
       mark:kind==='agency'?d.mark_link_id:null,
       logo:company&&d.has_logo?d.canonical_name:'',logoVersion:d.logo_version,logoVariant:'large',
       alt:esc(d.canonical_name),lazy:false,
       style:company?'':facePos(d.avatar_focus),focus:company?null:d.avatar_focus,
-      dropStyle:true}):''},
+      dropStyle:true}):'';
+    const follow=kind==='creator'&&d.follow;
+    return own||(follow&&follow.avatar?`<img src="${esc(follow.avatar)}" alt="${esc(d.canonical_name)}" referrerpolicy="no-referrer" ${
+      imageFallbackAttrs({fallbacks:[follow.avatar_fallback||'']})}>`:'')},
   wireDrag:row=>{if(row)wireDrag(row)},
   wireScroller:row=>{if(row)wireHorizontalScroller(row)},
   wireFeedRow:row=>wireFeedNewRow(row),
@@ -2343,6 +2349,7 @@ function entityPageActions(kind,name){
       releaseManagedRoute($('#index'));showEntityMissing(kind)}),
     // 顶栏那排头像有 30 秒会话缓存，回首页时取到的还是换之前的版本号，看到的就是旧图。
     avatarChanged:()=>dropBars(),
+    openFollowAuthor:key=>openFollowAuthorFromIndex(key),
   };
 }
 /* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。

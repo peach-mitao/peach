@@ -216,9 +216,9 @@ describe('名册', () => {
     expect(cells(host)[0]?.textContent).toContain('13 人');
   });
 
-  it('艺人切到在线名册：先退出选择模式，点开去关注页', async () => {
+  it('艺人切到在线名册：先退出选择模式，没建档的点开去关注页', async () => {
     seed(indexKey('performers', ''), [person('甲')]);
-    const alice = { k: 'Alice', key: 'x:alice', n: 4, avatar: '', avatar_fallback: '', providers: [] };
+    const alice = { k: 'Alice', key: 'x:alice', n: 4, entity_id: null, held_by: '', avatar: '', avatar_fallback: '', providers: [] };
     seed(onlineAuthorsKey(''), [alice]);
     // 换档时缓存里那一份已经过期，后台照样重问一次。
     const fetcher = serve(() => ({ items: [alice], has_more: false }));
@@ -234,6 +234,26 @@ describe('名册', () => {
     await click(cell);
     expect(given.openFollowAuthor).toHaveBeenCalledWith('x:alice');
     expect(given.openEntity).not.toHaveBeenCalled();
+  });
+
+  it('在线名册里建过档的去创作者资料页；同名待确认的读数带「待确认」，去账本里那位的资料页', async () => {
+    const bound = { k: 'Jul3D', key: 'entity:9', n: 3, entity_id: 9, held_by: '', avatar: '', avatar_fallback: '', providers: [] };
+    const held = { k: 'InitialA', key: 'name:initiala', n: 8, entity_id: null, held_by: 'InitialA',
+      avatar: '', avatar_fallback: '', providers: [] };
+    seed(indexKey('performers', ''), [person('甲')]);
+    seed(onlineAuthorsKey(''), [bound, held]);
+    serve(() => ({ items: [bound, held], has_more: false }));
+    const given = props();
+    const host = await open(given);
+    await click(tab(host, 'online'));
+    await settle();
+    await click(host.querySelector('[data-follow-author="entity:9"]'));
+    expect(given.openEntity).toHaveBeenLastCalledWith('creator', 'Jul3D');
+    const pending = host.querySelector('[data-follow-author="name:initiala"]');
+    expect(pending?.textContent).toContain('8 项更新 · 待确认');
+    await click(pending);
+    expect(given.openEntity).toHaveBeenLastCalledWith('creator', 'InitialA');
+    expect(given.openFollowAuthor).not.toHaveBeenCalled();
   });
 });
 
