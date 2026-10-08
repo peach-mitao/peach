@@ -946,7 +946,7 @@ class AvatarPickerRouteTests(unittest.TestCase):
         self.app.state.http_transport = transport_of(body)
         picked = self.client.post("/api/avatar-pick?t=secret", json={
             "kind": "performer", "id": 7792, "ref": LIBRARY_REF,
-            "crop": {"x0": 50, "y0": 0, "x1": 250, "y1": 200}})
+            "crop": {"x0": 50, "y0": 100, "x1": 250, "y1": 300}})
         self.assertEqual(picked.status_code, 200)
         installed = (self.avatars / "performer-7792.img").read_bytes()
         self.assertEqual(avatar_picker.accept_image(installed).width, 200)
