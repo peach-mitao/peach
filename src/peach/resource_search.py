@@ -2,18 +2,24 @@
 
 XML 模型由 torznab 解析；请求、凭据与番号判据由 Peach 管理。搜索只返回候选，
 下载由用户逐条提交现有云下载入口。配置以一份本机凭据文件原子保存。
+
+OneJAV 一类索引器只给种子文件、不给磁力与 infohash：这类条目经索引器自己的下载代理
+取回种子，按 bencode2 解码后对 info 字典求 SHA-1，换成磁力候选。
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import threading
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import ParseError, fromstring
 
+import bencode2
 import httpx
 from torznab.exceptions import TorznabAPIError
 from torznab.parser import parse_capabilities, parse_torznab
@@ -28,6 +34,9 @@ MAX_INDEXERS = 4
 MAX_BYTES = 2 * 1024 * 1024
 MAX_RESULTS = 5
 MAX_ITEMS = 100
+#: 每个索引器每轮最多取几份种子：只取番号、体积、做种都已对上的条目。
+MAX_TORRENTS = 6
+MAX_TORRENT_BYTES = 8 * 1024 * 1024
 NATURE = "用户自配索引器"
 
 
@@ -118,8 +127,8 @@ class Filters:
 def qualities(title: str, tags: list[str], code: str) -> dict:
     text = " ".join([title, *tags])
     resolution = next((value for pattern, value in (
-        (r"(?i)(?<!\w)(?:4k|2160p)(?!\w)", 2160),
-        (r"(?i)(?<!\w)1080[pi](?!\w)", 1080),
+        (r"(?i)(?<!\w)(?:4k|2160p|uhd)(?!\w)", 2160),
+        (r"(?i)(?<!\w)(?:1080[pi]|fhd)(?!\w)", 1080),
         (r"(?i)(?<!\w)720p(?!\w)", 720)) if re.search(pattern, text)), 0)
     codec = next((value for pattern, value in (
         (r"(?i)\b(?:h[ ._-]?265|x265|hevc)\b", "HEVC"),
@@ -130,7 +139,21 @@ def qualities(title: str, tags: list[str], code: str) -> dict:
             "uncensored": "无码" in editions or "无码破解" in editions}
 
 
-def candidate(item, indexer: dict, code: str, filters: Filters) -> dict | None:
+def torrent_info_hash(data: bytes) -> str:
+    """种子文件的 v1 infohash：info 字典编码后的 SHA-1。
+
+    bencode2 拒收键乱序的字典，所以重新编码的字节就是原文，不会算出另一个哈希。
+    """
+    meta = bencode2.bdecode(data)
+    info = meta.get(b"info") if isinstance(meta, dict) else None
+    if not isinstance(info, dict):
+        raise ValueError("种子文件缺少 info 字典")
+    return hashlib.sha1(bencode2.bencode(info)).hexdigest()
+
+
+def candidate(item, indexer: dict, code: str, filters: Filters,
+              fetch: Callable[[str], str | None] | None = None) -> dict | None:
+    """`fetch` 把索引器给的种子下载地址换成 infohash；条目自带磁力或 infohash 时不调用。"""
     title = str(item.title or "")[:500]
     if not same_release_code(scan_code(title), code):
         return None
@@ -138,20 +161,22 @@ def candidate(item, indexer: dict, code: str, filters: Filters) -> dict | None:
         return None
     if item.seeders is None or item.seeders <= 0:
         return None
-    magnet = None
+    info_hash = None
     for raw in (item.magnet_url, item.link, item.guid, item.infohash):
         if raw:
             try:
-                magnet = parse_magnet(raw)
+                info_hash = parse_magnet(raw).info_hash
                 break
             except ValueError:
                 continue
-    if magnet is None:
+    if info_hash is None and fetch and item.link:
+        info_hash = fetch(item.link)
+    if info_hash is None:
         return None
     # 候选只携带规范 hash，索引器返回的 tracker 与 URL 可能含私有 passkey。
     quality = qualities(title, item.tags, code)
-    return {"id": magnet.info_hash, "info_hash": magnet.info_hash,
-            "uri": f"magnet:?xt=urn:btih:{magnet.info_hash}", "name": title,
+    return {"id": info_hash, "info_hash": info_hash,
+            "uri": f"magnet:?xt=urn:btih:{info_hash}", "name": title,
             "size": item.size, "seeders": item.seeders, "peers": item.peers,
             "date": str(item.pub_date or "")[:100], "source": indexer["name"],
             "origins": [indexer["name"]], "nature": NATURE, **quality}
@@ -180,8 +205,38 @@ def _xml(client: httpx.Client, indexer: dict, params: dict, deadline: float) -> 
     return text
 
 
+def _torrent_hash(client: httpx.Client, indexer: dict, link: str, deadline: float) -> str | None:
+    """经索引器自己的下载代理取种子换 infohash；取不到只丢这一条，不算索引器失败。
+
+    只请求与 API 地址同源的链接：Prowlarr、Jackett 的下载代理都在自己那台机器上，
+    别处的地址不替索引器去访问。代理改回磁力的重定向直接取 Location。
+    """
+    api, target = urlsplit(indexer["url"]), urlsplit(link)
+    try:
+        same_origin = (api.scheme, api.hostname, api.port) == (target.scheme, target.hostname, target.port)
+    except ValueError:
+        return None
+    remaining = deadline - time.monotonic()
+    if not same_origin or remaining <= 0:
+        return None
+    try:
+        with client.stream("GET", link, timeout=min(10, remaining)) as response:
+            if response.is_redirect:
+                return parse_magnet(response.headers.get("location", "")).info_hash
+            if response.status_code != 200:
+                return None
+            content = bytearray()
+            for chunk in response.iter_bytes(chunk_size=65536):
+                content.extend(chunk)
+                if len(content) > MAX_TORRENT_BYTES or time.monotonic() > deadline:
+                    return None
+        return torrent_info_hash(bytes(content))
+    except (httpx.HTTPError, ValueError):
+        return None
+
+
 class Search:
-    """一轮最多四个来源、每源两次请求；同一进程串行并缓存一分钟。"""
+    """一轮最多四个来源，每源两次查询、至多六份种子；同一进程串行并缓存一分钟。"""
     def __init__(self, *, transport=None, clock=time.monotonic):
         self.transport = transport
         self.clock = clock
@@ -197,7 +252,7 @@ class Search:
             raise ValueError("索引器数量超过上限")
         if not active:
             return {"ok": True, "state": "unavailable", "items": [], "warnings": [],
-                    "error": "请在本机「配置 → 媒体」中添加并启用索引器"}
+                    "error": "请在本机「配置 → 下载」中添加并启用索引器"}
         if not self.lock.acquire(blocking=False):
             return {"ok": False, "state": "busy", "items": [], "warnings": [],
                     "error": "资源搜索正在进行，请稍后重试"}
@@ -235,8 +290,15 @@ class Search:
                     items = parse_torznab(_xml(client, indexer, {
                         "t": "search", "q": query, "cat": "6000", "limit": str(limit)}, deadline))
                     successful += 1
+                    budget = [MAX_TORRENTS]
+
+                    def fetch(link: str, indexer=indexer, budget=budget) -> str | None:
+                        if budget[0] <= 0:
+                            return None
+                        budget[0] -= 1
+                        return _torrent_hash(client, indexer, link, deadline)
                     for item in items[:MAX_ITEMS]:
-                        row = candidate(item, indexer, code, filters)
+                        row = candidate(item, indexer, code, filters, fetch)
                         if row is None:
                             continue
                         prior = found.get(row["info_hash"])

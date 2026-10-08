@@ -61,6 +61,7 @@ class DependencyPolicyTests(unittest.TestCase):
             "PIL": "pillow",
             "PyObjCTools": "pyobjc-framework-Cocoa",
             "apscheduler": "APScheduler",
+            "bencode2": "bencode2",
             "browserexport": "browserexport",
             "bs4": "beautifulsoup4",
             "curl_cffi": "curl_cffi",
