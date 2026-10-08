@@ -61,31 +61,88 @@ describe('关注页岛', () => {
       }
     });
 
-    it(`${viewport.name} 多图数量按钮可以打开详情`, { timeout: 60_000 }, async () => {
-      const opened = await openFollowFeed(browser, '/follow?media=images', viewport, { settings: { followImagesOnly: false } });
-      try {
-        const page = opened.page;
-        const payload = await page.evaluate(async () => {
-          const list = await (await fetch('/api/follow?media=images')).json();
-          const detail = await (await fetch('/api/follow?item=5001')).json();
-          list.groups = detail.groups.map((group: Record<string, unknown>) => ({
-            ...group, stack: { media: 3, kind: 'image', faces: [] },
-          }));
-          list.has_more = false;
-          return list;
-        });
-        await page.route((url) => url.pathname === '/api/follow' && !url.searchParams.has('item'),
-          (route) => route.fulfill({ json: payload }));
-        await page.reload({ waitUntil: 'networkidle' });
-        await page.locator('[data-follow-list] [data-follow-collection="5001"]').click();
-        await page.waitForURL('**/follow/item/5001');
-        await page.locator('#stage[open]').waitFor();
-        assert.deepEqual(withoutPlayer(opened.problems), []);
-      } finally {
-        await opened.close();
-      }
-    });
   }
+
+  /** 图片视图里只留 5001 那一组，并把它报成三张图的合集：卡片右上角出合并计数。 */
+  const openMixCard = async (viewport: typeof DESKTOP) => {
+    const opened = await openFollowFeed(browser, '/follow?media=images', viewport, { settings: { followImagesOnly: false } });
+    const page = opened.page;
+    const payload = await page.evaluate(async () => {
+      const list = await (await fetch('/api/follow?media=images')).json();
+      const detail = await (await fetch('/api/follow?item=5001')).json();
+      list.groups = detail.groups.map((group: Record<string, unknown>) => ({
+        ...group, stack: { media: 3, kind: 'image', faces: [] },
+      }));
+      list.has_more = false;
+      return list;
+    });
+    await page.route((url) => url.pathname === '/api/follow' && !url.searchParams.has('item'),
+      (route) => route.fulfill({ json: payload }));
+    await page.reload({ waitUntil: 'networkidle' });
+    return opened;
+  };
+
+  it(`${MOBILE.name} 多图数量按钮可以打开详情`, { timeout: 60_000 }, async () => {
+    const opened = await openMixCard(MOBILE);
+    try {
+      const page = opened.page;
+      await page.locator('[data-follow-list] [data-follow-collection="5001"]').click();
+      await page.waitForURL('**/follow/item/5001');
+      await page.locator('#stage[open]').waitFor();
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it(`${DESKTOP.name} 悬停与键盘聚焦时合并计数淡出，操作键占右上角`, { timeout: 60_000 }, async () => {
+    const opened = await openMixCard(DESKTOP);
+    try {
+      const page = opened.page;
+      const card = page.locator('[data-follow-list] [data-follow-item]').filter({
+        has: page.locator('[data-follow-collection="5001"]') }).first();
+      const read = () => card.evaluate(async (element) => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const collection = element.querySelector<HTMLElement>('[data-follow-collection]')!;
+        const actions = element.querySelector<HTMLElement>('[data-follow-actions]')!;
+        const pic = element.querySelector<HTMLElement>('[data-media-pic]')!.getBoundingClientRect();
+        const box = collection.getBoundingClientRect();
+        const keys = actions.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return {
+          collection: [getComputedStyle(collection).opacity, getComputedStyle(collection).visibility],
+          actions: getComputedStyle(actions).opacity,
+          hitCollection: hit?.closest('[data-follow-collection]') === collection,
+          /* 计数与操作键都贴封面右上角那一格，上沿与右沿相对封面格的偏移。 */
+          collectionCorner: [Math.round(box.top - pic.top), Math.round(pic.right - box.right)],
+          actionsCorner: [Math.round(keys.top - pic.top), Math.round(pic.right - keys.right)],
+        };
+      });
+      await page.mouse.move(0, 0);
+      const rest = await read();
+      assert.deepEqual(rest.collection, ['1', 'visible'], '不悬停时合并计数没有显示');
+      assert.equal(rest.actions, '0', '不悬停时操作键已经露出来');
+      assert.equal(rest.hitCollection, true, '不悬停时合并计数接不到指针');
+
+      await card.locator('[data-follow-open]').hover();
+      const hovered = await read();
+      assert.deepEqual(hovered.collection, ['0', 'hidden'], '悬停时合并计数没有淡出');
+      assert.equal(hovered.actions, '1', '悬停时操作键没有出现');
+      assert.equal(hovered.hitCollection, false, '悬停时合并计数仍挡在操作键上面');
+      assert.deepEqual(hovered.actionsCorner, rest.collectionCorner,
+        `操作键没有落在合并计数的位置：${JSON.stringify(hovered)}`);
+
+      await page.mouse.move(0, 0);
+      await card.locator('[data-follow-open]').focus();
+      assert.equal(await card.locator('[data-follow-open]').evaluate((element) => element.matches(':focus-visible')), true);
+      const focused = await read();
+      assert.deepEqual(focused.collection, ['0', 'hidden'], '键盘聚焦时合并计数没有淡出');
+      assert.equal(focused.actions, '1', '键盘聚焦时操作键没有出现');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
 
   it('首屏：「全部」按下，页头、两排、筛选浮层、列表自上而下', { timeout: 60_000 }, async () => {
     const opened = await openFollowFeed(browser, '/follow', DESKTOP);

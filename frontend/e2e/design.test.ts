@@ -1955,6 +1955,48 @@ describe('设计决定', () => {
     }
   });
 
+  it('分卷计数在悬停与键盘聚焦时淡出，右上角让给倒计时圈', { timeout: 60_000 }, async () => {
+    const opened = await openCatalogFixture(browser, (payload) => {
+      const [first, second] = payload.items;
+      payload.items[0] = { ...first, part_group: {
+        key: 'DEMO-PART', title: 'DEMO-PART', count: 2, seed_id: first.id,
+        item_ids: [first.id, second.id], total_duration: 120, total_size: 1 } };
+    });
+    try {
+      const page = opened.page;
+      const card = page.locator('[data-media-card][data-part-seed]').first();
+      await card.waitFor({ timeout: 10_000 });
+      const read = () => card.evaluate(async (element) => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const group = element.querySelector<HTMLElement>('[data-media-group]')!;
+        const box = group.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return {
+          group: [getComputedStyle(group).opacity, getComputedStyle(group).visibility],
+          later: getComputedStyle(element.querySelector('[data-media-later]')!).opacity,
+          hitGroup: hit?.closest('[data-media-group]') === group,
+        };
+      });
+      await page.mouse.move(0, 0);
+      assert.deepEqual(await read(), { group: ['1', 'visible'], later: '0', hitGroup: true }, '不悬停时分卷计数没有照常显示');
+
+      await card.locator('[data-media-pic]').hover();
+      assert.deepEqual(await read(), { group: ['0', 'hidden'], later: '1', hitGroup: false },
+        '悬停时分卷计数没有淡出，或仍压在右上角的悬停工具上');
+
+      await page.mouse.move(0, 0);
+      const opener = card.locator('[data-media-open]');
+      await opener.focus();
+      assert.equal(await opener.evaluate((element) => element.matches(':focus-visible')), true);
+      assert.deepEqual(await read(), { group: ['0', 'hidden'], later: '1', hitGroup: false }, '键盘聚焦时分卷计数没有淡出');
+      assert.equal(await card.locator('[data-media-preview]').evaluate((element) => getComputedStyle(element).opacity), '1',
+        '键盘聚焦时右上角没有打开预览的键');
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('抬起与推开只属于作品卡的共演头像', { timeout: 60_000 }, async () => {
     const opened = await openCatalog(browser);
     try {

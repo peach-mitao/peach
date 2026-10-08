@@ -346,7 +346,9 @@
 }
 
 /* 右上角：合并计数与主页卡片的版本角标同一个位置，右下角只留给时长。
- * 操作键排在计数下面，悬停时出现，触屏上常驻。 */
+ * 能悬停的设备上计数和操作键叠在同一格：悬停或键盘聚焦时计数淡出、退出命中与 Tab 序，操作键
+ * 淡入，写法与时长同作品卡的分卷／版本计数（`../components/media-card.css`）。触屏上操作键常驻，
+ * 排在计数下面。 */
 .peach-react [data-follow-corner] {
   position: absolute;
   top: 10px;
@@ -373,6 +375,7 @@
   pointer-events: auto;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  transition: opacity .15s ease;
 }
 .peach-react [data-follow-collection] svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }
 .peach-react [data-follow-actions] {
@@ -402,7 +405,14 @@
 .peach-react [data-follow-actions] button:disabled { opacity: .42; cursor: not-allowed; }
 .peach-react [data-follow-actions] button[aria-busy] { cursor: wait; opacity: .72; }
 @media (hover: hover) and (pointer: fine) {
-  .peach-react [data-follow-item]:hover [data-follow-actions] { opacity: 1; pointer-events: auto; }
+  .peach-react [data-follow-corner] { display: grid; align-items: start; justify-items: end; }
+  .peach-react [data-follow-corner] > * { grid-area: 1 / 1; }
+  .peach-react [data-follow-item]:is(:hover, :has(:focus-visible)) [data-follow-actions] { opacity: 1; pointer-events: auto; }
+  .peach-react [data-follow-item]:is(:hover, :has(:focus-visible)) [data-follow-collection] {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s ease, visibility 0s .15s;
+  }
 }
 @media (hover: none), (pointer: coarse) {
   .peach-react [data-follow-item] [data-follow-actions] { opacity: 1; pointer-events: auto; }
