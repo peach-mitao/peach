@@ -284,8 +284,17 @@ async function swap(request: StageRequest, dialog: HTMLDialogElement): Promise<v
   closePlayerMenu();
   view = { ...view, request, content, phase: 'content' };
   paint();
+  /* 首次揭示还没走完就换了条：淡出那一层已经卸下，等不到它的 transitionend，模糊要当场摘掉。 */
+  dialog.removeAttribute('data-stage-reveal');
+  dialog.removeAttribute('data-stage-revealing');
   dialog.querySelector<HTMLElement>(':scope > [data-stage-scroll]')?.scrollTo({ top: 0 });
   revealTexts(dialog, ':scope>:not([data-stage-fade]) [data-reveal-line]');
+  /* 点下去的那一行随详情重建卸掉了，焦点落回 body：交给队列里新的当前行，没有队列交给关闭键。 */
+  const active = document.activeElement;
+  if (active === dialog || !dialog.contains(active)) {
+    (dialog.querySelector<HTMLElement>('[data-mix-item][aria-current="true"]')
+      || dialog.querySelector<HTMLElement>('#closeStage'))?.focus({ preventScroll: true });
+  }
 }
 
 /* 详情浮窗的退场跟设置弹层同一条：`data-closing` 让 `board-dialog-out` 和遮罩淡出演完，再拆。等待有

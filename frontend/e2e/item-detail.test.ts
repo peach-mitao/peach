@@ -26,7 +26,7 @@ const ids = (page: Page, selector: string, attribute: string) => page.locator(se
   (nodes, name) => nodes.map((node) => Number(node.getAttribute(name))), attribute);
 
 
-/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架。 */
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。 */
 const watchStage = (page: Page) => page.evaluate(() => {
   const watch = { stage: document.getElementById('stage'), skeleton: false };
   new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
@@ -35,7 +35,8 @@ const watchStage = (page: Page) => page.evaluate(() => {
 });
 const stageKept = (page: Page) => page.evaluate(() => {
   const watch = (window as unknown as { stageWatch: { stage: Element | null; skeleton: boolean } }).stageWatch;
-  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton };
+  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton,
+    focused: !!watch.stage?.contains(document.activeElement) };
 });
 
 describe('作品详情岛', () => {
@@ -420,7 +421,7 @@ describe('作品详情岛', () => {
         await pathIs(page, wanted);
         await page.locator(`#stage [data-queue-item="${next}"][aria-current="true"]`).waitFor();
         await page.locator(DETAIL_READY).waitFor();
-        assert.deepEqual(await stageKept(page), { same: true, skeleton: false }, `${kind}队列换一条重开了浮窗`);
+        assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, `${kind}队列换一条重开了浮窗`);
         if (kind === '分卷') assert.match(await page.locator('#stage [data-detail-title]').innerText(), /第 3 卷/);
         for (const url of ['/api/parts', '/api/editions', '/api/related']) {
           assert.equal(opened.stub.reads.get(url) || 0, reads.get(url) || 0, `同一个${kind}队列里换一条又取了 ${url}`);

@@ -81329,12 +81329,15 @@ async function fJe(e, t) {
 	} catch {
 		if (r.signal.aborted) return;
 	}
-	n !== j9 || !A9 || U9(e.kind) !== t || (c9(e.kind, e.id ?? NaN), ie(t), LS(), A9 = {
+	if (n !== j9 || !A9 || U9(e.kind) !== t) return;
+	c9(e.kind, e.id ?? NaN), ie(t), LS(), A9 = {
 		...A9,
 		request: e,
 		content: i,
 		phase: "content"
-	}, L9(), t.querySelector(":scope > [data-stage-scroll]")?.scrollTo({ top: 0 }), Be(t, ":scope>:not([data-stage-fade]) [data-reveal-line]"));
+	}, L9(), t.removeAttribute("data-stage-reveal"), t.removeAttribute("data-stage-revealing"), t.querySelector(":scope > [data-stage-scroll]")?.scrollTo({ top: 0 }), Be(t, ":scope>:not([data-stage-fade]) [data-reveal-line]");
+	let a = document.activeElement;
+	(a === t || !t.contains(a)) && (t.querySelector("[data-mix-item][aria-current=\"true\"]") || t.querySelector("#closeStage"))?.focus({ preventScroll: !0 });
 }
 function pJe() {
 	let e = F9();

@@ -31,7 +31,7 @@ function watchFollowRequests(page: Page) {
   return seen;
 }
 
-/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架。 */
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。 */
 const watchStage = (page: Page) => page.evaluate(() => {
   const watch = { stage: document.getElementById('stage'), skeleton: false };
   new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
@@ -40,7 +40,8 @@ const watchStage = (page: Page) => page.evaluate(() => {
 });
 const stageKept = (page: Page) => page.evaluate(() => {
   const watch = (window as unknown as { stageWatch: { stage: Element | null; skeleton: boolean } }).stageWatch;
-  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton };
+  return { same: document.getElementById('stage') === watch.stage, skeleton: watch.skeleton,
+    focused: !!watch.stage?.contains(document.activeElement) };
 });
 
 const openDetail = (browser: Browser, id: number, viewport = DESKTOP) =>
@@ -130,13 +131,13 @@ describe('关注详情岛', () => {
       await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await page.locator('#stage .video-js').count(), 1, '换一条之后旧播放器没拆');
       assert.equal(await page.locator('#stage [data-ambient-canvas]').count(), 1);
-      assert.deepEqual(await stageKept(page), { same: true, skeleton: false }, '换一条重开了浮窗');
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '换一条重开了浮窗');
       await page.goBack();
       await pathIs(page, '/follow/item/5101');
       await page.locator('#stage [data-follow-queue-item="5101"][aria-current="true"]').waitFor();
       await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await page.locator('#stage .video-js').count(), 1, '后退之后旧播放器没拆');
-      assert.deepEqual(await stageKept(page), { same: true, skeleton: false }, '后退到上一条重开了浮窗');
+      assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '后退到上一条重开了浮窗');
       await page.locator('#closeStage').click();
       await pathIs(page, '/follow');
       await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor({ timeout: 15_000 });
