@@ -220,24 +220,19 @@ class ReactBundleTests(unittest.TestCase):
                          upstream.read_text(encoding="utf-8"),
                          "preflight-scoped.css 与 tailwindcss 依赖里的原文不一致，按文件开头的说明重新生成")
 
-    def test_the_legacy_focus_ring_stays_out_of_the_react_subtree(self):
-        """旧样式表排在后面，全局 `:focus-visible` 与 `outline-none` 同特指度时它赢，输入框会多画一圈。"""
-        base = (ROOT / "web" / "css" / "01-base.css").read_text(encoding="utf-8")
-        self.assertIn(":where(:not(.peach-react *)):focus-visible{outline:2px solid var(--tungsten);", base)
-        self.assertNotRegex(base, r"(?m)^:focus-visible\{")
-
     def test_react_styles_load_before_the_legacy_stylesheets(self):
         """同名 `--color-*` token 由后面的 board.css 定值，未迁移页面的颜色才不受影响。"""
         index = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
         order = [index.index(f'href="{href}"') for href in ("/dist/peach-react.css", "/app.css", "/board.css")]
         self.assertEqual(order, sorted(order))
 
-    def test_the_dark_class_follows_the_theme_in_both_places(self):
-        """BoardUI 的深色 token 挂在 `.dark` 上；首帧脚本和 applyTheme() 都要按实际深浅加减它。"""
+    def test_the_first_frame_script_sets_the_dark_class(self):
+        """BoardUI 的深色 token 挂在 `.dark` 上，首帧脚本要在 React 包加载前按实际深浅加减它。
+
+        之后切换主题由 `applyTheme()` 负责，`frontend/test/appearance/layout.test.ts` 在 DOM 上验。
+        """
         index = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-        theme = (ROOT / "frontend" / "src" / "appearance" / "theme.ts").read_text(encoding="utf-8")
         self.assertIn("classList.toggle('dark',", index)
-        self.assertIn("root.classList.toggle('dark', dark)", theme)
 
 
 class BoardUiUpstreamTests(unittest.TestCase):

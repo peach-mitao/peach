@@ -20,6 +20,7 @@ interface Stage {
   api: SettingsPanelApi;
   changed: Mock<(effect: SettingsEffect) => void>;
   save: Mock<() => void>;
+  setHighContrast: Mock<(on: boolean) => void>;
   value: PanelSettings;
 }
 
@@ -36,6 +37,7 @@ function stage(): Stage {
   const store = createSettingsStore('peach.settings.v1', value);
   const save = vi.spyOn(store, 'save') as unknown as Mock<() => void>;
   const changed = vi.fn<(effect: SettingsEffect) => void>();
+  const setHighContrast = vi.fn<(on: boolean) => void>();
   const api = configureSettingsPanel({
     store, changed, sound: () => {},
     navCatalog: [['', '首页', 'house']],
@@ -43,11 +45,11 @@ function stage(): Stage {
     videoLayouts: [['small', '小'], ['large', '大']],
     followInitialRanges: [['30', '30 天']],
     videoLayout: () => 'small', setVideoLayout: () => {},
-    censored: () => false, setCensored: () => {}, highContrast: () => false, setHighContrast: () => {},
+    censored: () => false, setCensored: () => {}, highContrast: () => false, setHighContrast,
     receipt: () => {}, failure: () => {}, syncRemote: () => {}, openConfiguration: () => {}, attached: () => {},
     configurable: async () => false,
   });
-  return { api, changed, save, value };
+  return { api, changed, save, setHighContrast, value };
 }
 
 const effects = (changed: Stage['changed']) => changed.mock.calls.map(([effect]) => effect);
@@ -97,6 +99,17 @@ describe('设置面板与壳的接缝', () => {
     current.changed.mockClear();
     await click(panel.querySelector('#themeSetting input[value="dark"]'));
     expect([current.value.theme, effects(current.changed)]).toEqual(['dark', ['theme']]);
+    await close(current);
+  });
+
+  it('「增加对比度」是一枚开关：按下交给壳切实色背景', async () => {
+    const current = stage();
+    const panel = await open(current);
+    const contrast = panel.querySelector<HTMLInputElement>('#glassContrastSetting')!;
+    expect([contrast.getAttribute('role'), panel.querySelector('label[for="glassContrastSetting"] b')?.textContent])
+      .toEqual(['switch', '增加对比度']);
+    await click(contrast);
+    expect(current.setHighContrast.mock.calls).toEqual([[true]]);
     await close(current);
   });
 
