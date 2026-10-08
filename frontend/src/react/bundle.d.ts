@@ -266,12 +266,23 @@ export interface ConfigurationProps {
   receipt(message: string): void;
   /** 让安装教程重新出现：跳过与折叠归位、撤回账本标记。 */
   reopenTutorial(): Promise<void>;
+  /** 首帧选中的那一组页签名（别处点「管理媒体库」「添加媒体文件夹」等进来）；认不出或没给就选第一组。 */
+  section?: string;
+}
+
+/** 配置页按页签切分组时，一组的根节点作为第 `index` 格页签面板要带的属性；`active` 是此刻选中的那一组。 */
+export interface ConfigurationPanel {
+  index: number;
+  id: string;
+  labelledBy: string;
+  active: boolean;
 }
 
 /** 配置页的一个分组（「通用」「媒体」「下载」「网络与访问」「维护」）。
- *  重开教程那一半只归「维护」，别的分组不必接它。 */
+ *  重开教程那一半只归「维护」，别的分组不必接它。`panel` 只在配置页里给，单独挂一组时没有。 */
 export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'receipt'> {
   data: ConfigurationData;
+  panel?: ConfigurationPanel;
 }
 
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */

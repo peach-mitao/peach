@@ -10,6 +10,7 @@ import { apiSend } from '../../api';
 import type { ConfigurationGroupProps, PeachProxyState } from '../bundle';
 import { Note } from '../components/note';
 import { AccessSettings } from './access-settings';
+import { groupRoot } from './configuration-panel';
 import { EntryLinksForm } from './entry-links-settings';
 import { TunnelSettings } from './tunnel-settings';
 import { ErrorText, Footer, Rows, Section, Stack } from './section';
@@ -17,9 +18,9 @@ import { busyProps, useAction } from './use-action';
 
 const PROXY_MODES = [['environment', '系统代理'], ['direct', '直连'], ['proxy', '自定义']] as const;
 
-export function NetworkSettings({ data, receipt }: ConfigurationGroupProps) {
+export function NetworkSettings({ data, receipt, panel }: ConfigurationGroupProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div {...groupRoot(panel)}>
       {data.peach_proxy ? <PeachProxy initial={data.peach_proxy} receipt={receipt} /> : null}
       {data.entry_links ? <EntryLinksForm initial={data.entry_links} receipt={receipt} /> : null}
       {data.access ? <AccessSettings initial={data.access} receipt={receipt} /> : null}

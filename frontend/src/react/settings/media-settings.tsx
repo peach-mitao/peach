@@ -20,6 +20,7 @@ import { queryClient } from '../query';
 import { RESTART_REDIRECT_MS } from '../restart-redirect';
 import { CloudDriveGuide } from './clouddrive-guide';
 import { CONFIGURATION_KEY, fetchConfiguration } from './configuration';
+import { groupRoot } from './configuration-panel';
 import { FolderRow, isCloudSource, MEDIA_SOURCES, SourceSelect, sourceMark, useFolderRows, WindowsRootInput } from './folder-rows';
 import { LibraryIconPicker } from './library-icon-picker';
 import { PushDiscoveryForm } from './push-discovery-settings';
@@ -54,9 +55,9 @@ const fieldErrorsOf = (cause: unknown): FieldErrors | null => {
 };
 
 /* 能编辑时挂载状态标在每个文件夹行上；只读时没有那张表，单列一块。 */
-export function MediaSettings({ data, receipt }: ConfigurationGroupProps) {
+export function MediaSettings({ data, receipt, panel }: ConfigurationGroupProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div {...groupRoot(panel)}>
       {data.editable ? <MediaForm data={data} receipt={receipt} /> : <Note tone="neutral" title="只读">{data.notice}</Note>}
       {data.editable ? null : <MountStatus data={data} />}
       {data.push_discovery

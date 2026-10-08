@@ -21,10 +21,11 @@ import { Select, SelectItem } from '@/components/base/select/select';
 
 import { apiGet, apiSend, errorMessage } from '../../api';
 import type {
-  DownloadCheckReport, DownloadConfig, DownloadSaveResult, DownloadSettingsState, PikPakLoginResult,
+  ConfigurationPanel, DownloadCheckReport, DownloadConfig, DownloadSaveResult, DownloadSettingsState, PikPakLoginResult,
 } from '../bundle';
 import { LoadingDots } from '../components/loading-dots';
 import { Note } from '../components/note';
+import { groupRoot } from './configuration-panel';
 import { IndexerSettings } from './indexer-settings';
 import {
   Disclosure, ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack,
@@ -40,12 +41,13 @@ const BROWSER_URL = '/api/configuration/downloads/pikpak/browser-login';
 const POLL_MS = 2000;
 
 /** 「下载」分组：云下载、PikPak 账号与资源索引器。 */
-export function DownloadGroup({ initial, receipt }: {
+export function DownloadGroup({ initial, receipt, panel }: {
   initial: DownloadSettingsState;
   receipt(message: string): void;
+  panel?: ConfigurationPanel;
 }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div {...groupRoot(panel)}>
       <DownloadSettings initial={initial} receipt={receipt} />
       <IndexerSettings receipt={receipt} />
     </div>

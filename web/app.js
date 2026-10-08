@@ -1996,8 +1996,6 @@ async function openActivity(push=true){
 /* 配置页（这台电脑的媒体文件夹与端口）同样是 island。它只在运行 Peach 的这台电脑上
    有意义：服务端按回环地址与独立包两道门放行，手机上的管理菜单也不列它
    （见 runtimeConfigurable）。保存成功的回执由遗留层的 Toast 发，island 只管表单。 */
-/* 配置页要选中的那一组页签名记在 `configurationRequestedSection`（`frontend/src/shell/` 的单例）。
-   页签由 `decorate` 按 `.configgroup` 切出来，它读这个名字选中对应的那一格，选中之后清空。 */
 async function openDiagnostics(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/diagnostics');
@@ -2005,13 +2003,16 @@ async function openDiagnostics(push=true){
   showManagementBody({placeholder:managementPlaceholder('/diagnostics')});
   await openManagedRoute('/diagnostics',{},managedSurface(surface));
 }
+/* 配置页要选中的那一组页签名记在 `configurationRequestedSection`（`frontend/src/shell/` 的单例），
+   打开时作为 `section` 交给页面，页面画出来之后清空：这一页没画上（取数途中走开了）就留给下一次打开。 */
 async function openConfiguration(push=true){
   releaseHoverPreviews();disposeStage(false);enterManagementSurface();
   if(push)route('/configuration');
   const surface=claimSurface('/configuration');
   showManagementBody({placeholder:managementPlaceholder('/configuration')});
   if(location.hash==='#peachProxy')writeShell({configurationRequestedSection:'网络与访问'});
-  await openManagedRoute('/configuration',{},managedSurface(surface));
+  const section=configurationRequestedSection;
+  if(await openManagedRoute('/configuration',section?{section}:{},managedSurface(surface)))writeShell({configurationRequestedSection:''});
   if(surfaceCurrent(surface)){
     if(location.hash==='#libraryProcessing'){shellNavigate('/data-cleanup#libraryProcessing',{replace:true,state:null});await openDataCleanup(false);return}
     if(location.hash==='#peachProxy')$('#peachProxy')?.scrollIntoView({block:'start'});
@@ -4021,54 +4022,8 @@ Promise.all([loadSourceStatus(),loadSyncedSettings(),entityShapesReady])
   .then(async()=>{syncNavigation();wireAllDrag();await startRouting(restoreRoute);scheduleStickySurfaces()});
 
 ;(()=>{
-/* Board 外壳与配置页导航。 */
+/* Board 外壳：媒体库选择、侧栏底部、玻璃折射。 */
 document.documentElement.classList.toggle('board-high-contrast',localStorage.getItem('peach.high-contrast')==='true');
-let tabSequence=0;
-/* 配置页的左栏是一排下划线式页签，一条管一段节点。整块是一个 tablist，方向键在整排里走。 */
-function localTabs(root,items){
-  if(!items.length||root.querySelector(':scope > .board-local-nav'))return null;
-  const prefix=`board-tabs-${++tabSequence}`;
-  const nav=document.createElement('div');nav.className='board-local-nav';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','配置分区');
-  nav.dataset.sectionNav='';nav.dataset.sectionItems='';nav.setAttribute('aria-orientation','horizontal');
-  const buttons=[];
-  const choose=index=>{
-    /* 先全清再点亮当前这一条。一条可以带好几个节点，逐条 toggle 的话节点之间有重叠时，
-       后面那条会把前面点亮的又抹掉。 */
-    items.forEach(item=>item.nodes.forEach(node=>node.classList.remove('board-group-active')));
-    items[index].nodes.forEach(node=>node.classList.add('board-group-active'));
-    buttons.forEach((button,i)=>{button.setAttribute('aria-selected',String(i===index));button.tabIndex=i===index?0:-1});
-  };
-  items.forEach((item,i)=>{
-    const button=document.createElement('button');button.type='button';button.role='tab';button.id=`${prefix}-tab-${i}`;button.textContent=item.title;
-    item.nodes.forEach((node,j)=>{node.dataset.boardGroup=String(i);node.id||=`${prefix}-panel-${i}-${j}`;node.setAttribute('role','tabpanel');node.setAttribute('aria-labelledby',button.id)});
-    button.setAttribute('aria-controls',item.nodes.map(node=>node.id).join(' '));button.onclick=()=>choose(i);
-    button.onkeydown=event=>{let next=i;if(event.key==='ArrowRight'||event.key==='ArrowDown')next=(i+1)%items.length;else if(event.key==='ArrowLeft'||event.key==='ArrowUp')next=(i+items.length-1)%items.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=items.length-1;else return;event.preventDefault();choose(next);buttons[next].focus()};
-    buttons.push(button);nav.append(button);
-  });
-  root.prepend(nav);
-  choose(0);
-  return {nav,select:index=>choose(Math.min(Math.max(index,0),items.length-1))};
-}
-/* 一张配置页按 `.configgroup` 小标题切成几段，标题本身不进面板：它的字已经由左栏那一条
-   写出来了，留着就是同一句话在两处各说一遍。 */
-const configTabItems=page=>{
-  const items=[];
-  [...page.children].forEach(node=>{if(node.matches('.configgroup'))items.push({title:node.textContent.trim(),nodes:[]});else if(items.length)items.at(-1).nodes.push(node)});
-  return items.filter(item=>item.nodes.length);
-};
-function decorate(){
-  const config=document.querySelector('#stats .configpage');
-  if(config&&!config.querySelector(':scope > .board-local-nav')){
-    const items=configTabItems(config);
-    const tabs=localTabs(config,items);
-    /* 骨架也带 `.configpage`，但切不出页签；真页签画出来之后才消费这次请求。 */
-    if(tabs){
-      const requested=items.findIndex(item=>item.title===configurationRequestedSection);
-      if(requested>=0)tabs.select(requested);
-      writeShell({configurationRequestedSection:''});
-    }
-  }
-}
 const boardBrand=document.querySelector('#brandHome');
 boardBrand.setAttribute('aria-label','Peach 首页');
 const libraryPicker=document.createElement('div');libraryPicker.className='board-library-menu';libraryPicker.id='boardLibraryMenu';libraryPicker.hidden=true;libraryPicker.setAttribute('popover','manual');libraryPicker.setAttribute('role','dialog');libraryPicker.setAttribute('aria-label','媒体库');
@@ -4171,8 +4126,6 @@ placeSidebarHead=placeBrand;
 placeBrand();
 document.addEventListener('board:sidebar',placeBrand);
 addEventListener('resize',placeBrand);
-decorate();
-new MutationObserver(decorate).observe(document.querySelector('#stats'),{childList:true,subtree:true});
 
 let floatingScheduled=false;
 function updateFloating(){

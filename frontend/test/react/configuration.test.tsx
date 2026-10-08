@@ -1,9 +1,10 @@
-/* 配置页整页：五个分区怎么排，取不到配置时说什么，以及「一份数据一个读者」。
+/* 配置页整页：五个分区怎么排、顶上那排页签怎么走，取不到配置时说什么，以及「一份数据一个读者」。
  *
- * 分区的小标题是遗留壳拆左栏页签的依据（`web/app.js` 的 `configTabItems` 按 `.configgroup`
- * 切后面的兄弟节点），所以这里量的是结构，不是外观。各分区内部的行为在
+ * 页签条、小标题与各组的面板都是 `.configpage` 的第一层，`web/board.css` 按这层结构排版、只显示选中的
+ * 那一组，所以这里量的是结构与无障碍属性，不是外观。各分区内部的行为在
  * `general-network-settings`、`media-settings`、`maintenance-settings` 几份用例里。 */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
+import { act } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { CONFIGURATION_URL } from '../../src/configuration-endpoints';
@@ -56,28 +57,111 @@ function serve(config: ConfigurationData) {
 }
 
 /** 走完真实的首屏路径：先 `prefetch` 把配置落进缓存，再挂页面。 */
-async function open(config: ConfigurationData, receipt = vi.fn()) {
+async function open(config: ConfigurationData, { receipt = vi.fn(), section }: { receipt?: () => void; section?: string } = {}) {
   serve(config);
   await prefetchConfiguration(new AbortController().signal);
   const host = await mount(
     <QueryClientProvider client={queryClient}>
-      <ConfigurationPage receipt={receipt} reopenTutorial={vi.fn()} />
+      <ConfigurationPage receipt={receipt} reopenTutorial={vi.fn()} {...(section ? { section } : {})} />
     </QueryClientProvider>,
   );
   return host;
 }
 
 const groups = (host: ParentNode) => [...host.querySelectorAll('.configgroup')].map((title) => title.textContent);
+const tabs = (host: ParentNode) => [...host.querySelectorAll<HTMLButtonElement>('.board-local-nav [role="tab"]')];
+const selected = (host: ParentNode) => tabs(host).filter((tab) => tab.getAttribute('aria-selected') === 'true')
+  .map((tab) => tab.textContent);
+/** 此刻显示的那一组：带 `board-group-active` 的面板，按它的 `aria-labelledby` 找回页签名。 */
+const shown = (host: ParentNode) => [...host.querySelectorAll('[role="tabpanel"].board-group-active')]
+  .map((panel) => host.querySelector(`#${panel.getAttribute('aria-labelledby')}`)?.textContent);
+const press = (target: Element, key: string) => act(async () => {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+});
 
-it('五个分区各有小标题，标题和分区交替排在 `.configpage` 的第一层', async () => {
-  const host = await open(data({
-    startup, peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false },
-    downloads: downloadState,
-  }));
+const full = () => data({
+  startup, peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false }, downloads: downloadState,
+});
+
+it('五个分区各一格页签：页签条在最前，后面小标题和它的面板交替排在 `.configpage` 的第一层', async () => {
+  const host = await open(full());
   expect(groups(host)).toEqual(['通用', '媒体', '下载', '网络与访问', '维护']);
   const page = host.querySelector('.configpage')!;
-  expect([...page.children].map((node) => node.classList.contains('configgroup')))
+  const [nav, ...rest] = [...page.children];
+  expect([nav.className, nav.getAttribute('role'), nav.getAttribute('aria-label'), nav.getAttribute('aria-orientation')])
+    .toEqual(['board-local-nav', 'tablist', '配置分区', 'horizontal']);
+  expect([nav.hasAttribute('data-section-nav'), nav.hasAttribute('data-section-items')]).toEqual([true, true]);
+  expect(rest.map((node) => node.classList.contains('configgroup')))
     .toEqual([true, false, true, false, true, false, true, false, true, false]);
+  expect(tabs(host).map((tab) => tab.textContent)).toEqual(['通用', '媒体', '下载', '网络与访问', '维护']);
+  const panels = rest.filter((node) => !node.classList.contains('configgroup'));
+  tabs(host).forEach((tab, i) => {
+    expect([tab.type, tab.getAttribute('aria-controls')]).toEqual(['button', panels[i].id]);
+    expect([panels[i].getAttribute('role'), panels[i].getAttribute('aria-labelledby'), panels[i].getAttribute('data-board-group')])
+      .toEqual(['tabpanel', tab.id, String(i)]);
+  });
+  expect([selected(host), shown(host)]).toEqual([['通用'], ['通用']]);
+  expect(tabs(host).map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+});
+
+/* 页签条和整页同一次插入文档：不是先画整页、再往里补一排页签。 */
+it('页签条随整页一起画出，不单独插入', async () => {
+  serve(full());
+  await prefetchConfiguration(new AbortController().signal);
+  const inserted: Element[] = [];
+  const watch = new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) inserted.push(node);
+  });
+  watch.observe(document.body, { childList: true, subtree: true });
+  const host = await mount(
+    <QueryClientProvider client={queryClient}>
+      <ConfigurationPage receipt={vi.fn()} reopenTutorial={vi.fn()} />
+    </QueryClientProvider>,
+  );
+  inserted.push(...watch.takeRecords().flatMap((record) => [...record.addedNodes]).filter((node) => node instanceof Element));
+  watch.disconnect();
+  expect(host.querySelector('.configpage > .board-local-nav')).not.toBeNull();
+  expect(inserted.some((node) => node.matches('.board-local-nav'))).toBe(false);
+  expect(inserted.some((node) => node.matches('.configpage') && node.firstElementChild?.matches('.board-local-nav'))).toBe(true);
+});
+
+it('方向键在整排里走、首尾相接，Home 与 End 到两头，焦点跟着选中的那一格', async () => {
+  const host = await open(full());
+  const at = (name: string) => tabs(host).find((tab) => tab.textContent === name)!;
+  at('通用').focus();
+  await press(at('通用'), 'ArrowLeft');
+  expect([selected(host), shown(host), document.activeElement]).toEqual([['维护'], ['维护'], at('维护')]);
+  await press(at('维护'), 'ArrowRight');
+  expect([selected(host), document.activeElement]).toEqual([['通用'], at('通用')]);
+  await press(at('通用'), 'ArrowDown');
+  expect([selected(host), document.activeElement]).toEqual([['媒体'], at('媒体')]);
+  await press(at('媒体'), 'ArrowUp');
+  expect([selected(host), document.activeElement]).toEqual([['通用'], at('通用')]);
+  await press(at('通用'), 'End');
+  expect([selected(host), shown(host), document.activeElement]).toEqual([['维护'], ['维护'], at('维护')]);
+  await press(at('维护'), 'Home');
+  expect([selected(host), document.activeElement]).toEqual([['通用'], at('通用')]);
+  expect(tabs(host).map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+  // 别的键不归页签条：不选、不拦默认动作。
+  const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+  await act(async () => { at('通用').dispatchEvent(other) });
+  expect([selected(host), other.defaultPrevented]).toEqual([['通用'], false]);
+  await click(at('网络与访问'));
+  expect([selected(host), shown(host)]).toEqual([['网络与访问'], ['网络与访问']]);
+});
+
+/* 别处点进来要落到某一组时，组名跟着这一次打开交进来，只定第一帧选中哪一格。 */
+it('带着组名打开就落到那一组，之后重画不再跳回去', async () => {
+  const host = await open(full(), { section: '网络与访问' });
+  expect([selected(host), shown(host)]).toEqual([['网络与访问'], ['网络与访问']]);
+  await click(tabs(host).find((tab) => tab.textContent === '维护'));
+  await act(async () => { queryClient.setQueryData(CONFIGURATION_KEY, { ...full(), revision: 'rev-2' }) });
+  expect([selected(host), shown(host)]).toEqual([['维护'], ['维护']]);
+});
+
+it('交进来的组名这一页没有时落在第一组', async () => {
+  const host = await open(data(), { section: '下载' });
+  expect([groups(host), selected(host), shown(host)]).toEqual([['媒体', '维护'], ['媒体'], ['媒体']]);
 });
 
 it('没有内容的组连标题一起省略', async () => {
@@ -103,6 +187,7 @@ it('取不到配置就说打不开，连同服务端给的那句原因', async (
   expect(note?.textContent).toContain('配置读取失败');
   expect(note?.textContent).toContain('账本正在迁移');
   expect(host.querySelector('.configgroup')).toBeNull();
+  expect(host.querySelector('[role="tablist"]')).toBeNull();
 });
 
 /* 能编辑时挂载状态标在每个文件夹行上，路径改过的行不标：那是上一次保存的读数。 */
