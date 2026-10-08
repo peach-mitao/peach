@@ -9,7 +9,7 @@ import tempfile
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -17,6 +17,14 @@ from scripts import agent_worktree as coordinator
 from scripts import test_evidence as evidence
 from scripts import test_runner as runner
 from support.gitrepo import seed_repository
+
+
+def holding(paths) -> ExitStack:
+    """同时占住给定的每个槽位，扮演别的会话。"""
+    stack = ExitStack()
+    for path in paths:
+        stack.enter_context(evidence.held(path))
+    return stack
 
 
 class HeavyTaskSlotTests(unittest.TestCase):
@@ -51,12 +59,12 @@ class HeavyTaskSlotTests(unittest.TestCase):
             return Shard(command)
         return spawn, peak, commands
 
-    def test_a_slot_held_elsewhere_leaves_this_run_one_shard_at_a_time(self):
+    def test_slots_held_elsewhere_leave_this_run_one_shard_at_a_time(self):
         spawn, peak, commands = self.launcher()
-        busy = runner.heavy_slot_paths(self.slots)[0]
-        with evidence.held(busy, scope='other session'), redirect_stdout(io.StringIO()), \
+        busy = runner.heavy_slot_paths(self.slots)[1:]
+        with holding(busy), redirect_stdout(io.StringIO()), \
                 mock.patch.dict(os.environ, {'PEACH_TEST_RESOURCE_RUNNER': str(self.slots / 'gone.py')}):
-            passed, count, _ = runner.run_shards(('checks',), jobs=2, shard_count=3,
+            passed, count, _ = runner.run_shards(('checks',), jobs=runner.HEAVY_TASK_SLOTS, shard_count=3,
                                                  spawn=spawn, slots=self.slots)
         self.assertTrue(passed)
         self.assertEqual(count, 3)
@@ -64,10 +72,11 @@ class HeavyTaskSlotTests(unittest.TestCase):
         for command in commands:
             self.assertEqual(command[:2], [sys.executable, str(runner.ROOT / 'scripts' / 'test_runner.py')])
 
-    def test_free_slots_let_the_run_use_both(self):
+    def test_free_slots_let_the_run_use_every_one(self):
         spawn, peak, _ = self.launcher()
         with redirect_stdout(io.StringIO()):
-            passed, _, _ = runner.run_shards(('checks',), jobs=2, shard_count=4,
+            passed, _, _ = runner.run_shards(('checks',), jobs=runner.HEAVY_TASK_SLOTS,
+                                             shard_count=2 * runner.HEAVY_TASK_SLOTS,
                                              spawn=spawn, slots=self.slots)
         self.assertTrue(passed)
         self.assertEqual(peak[0], runner.HEAVY_TASK_SLOTS)
@@ -77,8 +86,7 @@ class HeavyTaskSlotTests(unittest.TestCase):
 
     def test_all_slots_busy_times_out_without_starting_a_shard(self):
         spawn, _, commands = self.launcher()
-        paths = runner.heavy_slot_paths(self.slots)
-        with evidence.held(paths[0]), evidence.held(paths[1]), redirect_stdout(io.StringIO()):
+        with holding(runner.heavy_slot_paths(self.slots)), redirect_stdout(io.StringIO()):
             with self.assertRaises(evidence.Timeout):
                 runner.run_shards(('checks',), jobs=2, shard_count=2, spawn=spawn,
                                   slots=self.slots, slot_wait=0)
@@ -351,9 +359,8 @@ class VerificationTests(unittest.TestCase):
         self.assertFalse(note.exists())
 
     def test_busy_heavy_slots_stop_an_unsharded_run_before_any_test(self):
-        first, second = runner.heavy_slot_paths(evidence.evidence_dir(self.repo))
         output = io.StringIO()
-        with evidence.held(first), evidence.held(second), \
+        with holding(runner.heavy_slot_paths(evidence.evidence_dir(self.repo))), \
                 redirect_stderr(io.StringIO()), redirect_stdout(output), \
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(runner, "build_suite", side_effect=AssertionError("不该开跑")):

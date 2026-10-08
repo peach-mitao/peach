@@ -508,8 +508,8 @@ class TimedResult(unittest.TextTestResult):
 
 
 #: 整台机器同时跑的测试重任务上限。一个分片子进程、或不分片时的整轮测试，各占一个槽位；
-#: 槽位是共用 Git 目录下的文件锁，所有工作树、所有会话共用这几个，用户定的是两个。
-HEAVY_TASK_SLOTS = 2
+#: 槽位是共用 Git 目录下的文件锁，所有工作树、所有会话共用这几个，用户定的是四个。
+HEAVY_TASK_SLOTS = 4
 #: 一轮测试自己的并发上限，不超过机器的槽位数：多开的子进程只会排队等槽位。
 MAX_JOBS = HEAVY_TASK_SLOTS
 #: 最多切多少片。CI 两片是因为每片一台 runner；本机每片只是一个子进程，切细一点
