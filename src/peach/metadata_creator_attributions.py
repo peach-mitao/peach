@@ -63,7 +63,20 @@ def _release_title(row: dict, people: set[str]) -> bool:
 
 
 def classify(row: dict, *, studios: dict[str, set[str]], people: set[str]) -> tuple[str, str, str]:
-    """明确错误才提供 remove；身份冲突与目录推断只提供 review。"""
+    """明确错误才提供 remove；身份冲突与目录推断只提供 review。
+
+    轮换出演者的发行命名是实体级信号，独立来源和用户归属的关系也提示复核，但不压过修复判定。
+    """
+    verdict = _relation_verdict(row, studios=studios, people=people)
+    shape = row.get('label_shape')
+    if not shape or verdict[1] not in {'keep', 'review'}:
+        return verdict
+    named = f"「{shape['prefix']}+编号+出演者」" if shape['form'] == 'prefix' else '「出演者组合-编号-标题」'
+    return 'label_shape', 'review', (f"文件名是{named}的发行命名，{shape['total']} 部里 {shape['files']} 部命中、"
+                                     f"出演者 {shape['cast']} 位轮换；疑似厂牌或系列，需查资料站或用户确认")
+
+
+def _relation_verdict(row: dict, *, studios: dict[str, set[str]], people: set[str]) -> tuple[str, str, str]:
     creator = str(row['current_creator'])
     source = str(row['relation_source'])
     if source != 'legacy:asset':
@@ -99,11 +112,6 @@ def classify(row: dict, *, studios: dict[str, set[str]], people: set[str]) -> tu
             and compact_label(creator) == compact_label(title)
             and normalize_entity_name(creator) not in people):
         return 'catalog_title', 'remove', '名称与同作品的发行标题完全一致'
-    shape = row.get('label_shape')
-    if shape:
-        named = f"「{shape['prefix']}+编号+出演者」" if shape['form'] == 'prefix' else '「出演者组合-编号-标题」'
-        return 'label_shape', 'review', (f"文件名是{named}的发行命名，{shape['total']} 部里 {shape['files']} 部命中、"
-                                         f"出演者 {shape['cast']} 位轮换；疑似厂牌或系列，需查资料站或用户确认")
     if normalize_entity_name(creator) in people:
         return 'performer_overlap', 'review', '与出演者姓名或别名一致，尚无卖主身份或同人确认'
     if identifier_verdict:

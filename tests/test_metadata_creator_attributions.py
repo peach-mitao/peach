@@ -410,19 +410,26 @@ class CreatorAttributionTests(unittest.TestCase):
             self.connection.execute("INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at) "
                                     "VALUES('performer',?,?,'t','t')", (name, normalize_entity_name(name)))
 
-    def shaped(self, account, filenames):
+    def shaped(self, account, filenames, source='legacy:asset'):
         for filename in filenames:
-            self.asset(account, path=f'B:\\创作者\\{account}\\{filename}')
+            self.asset(account, path=f'B:\\创作者\\{account}\\{filename}', source=source)
         return {row['verdict'] for row in collect(self.connection) if row['current_creator'] == account}
 
     def test_series_naming_with_rotating_cast_is_a_review_candidate_not_a_repair(self):
         self.performers('八ッ橋さい子', '本多由奈', '北川ゆず')
         self.assertEqual(self.shaped('COSH こすっち', ['こすっち001 八ッ橋さい子.mp4', 'こすっち002 八ッ橋さい子.mp4',
                                                      'こすっち003 本多由奈.mp4', 'こすっち005 北川ゆず.mp4']), {'label_shape'})
-        self.assertEqual(self.shaped('UraLesbian', ['Akari Asagiri & Eri Hirasawa - 120 - Sensual Kiss.mp4',
-                                                   'Shino Aoi & Mai Miori - 108 - Double Masturbation.mp4',
-                                                   'ChieKobayashi-ShinoAoi-039-1080p.mp4']), {'label_shape'})
+        uralesbian = ['Akari Asagiri & Eri Hirasawa - 120 - Sensual Kiss.mp4',
+                      'Shino Aoi & Mai Miori - 108 - Double Masturbation.mp4', 'ChieKobayashi-ShinoAoi-039-1080p.mp4']
+        self.assertEqual(self.shaped('UraLesbian', uralesbian, source='user:manual-organize'), {'label_shape'})
         self.assertEqual(self.plan(), [])
+
+    def test_series_naming_does_not_hold_back_a_verified_studio_repair(self):
+        _, entity_id = self.asset('Label Works', path='B:\\创作者\\Label Works\\Ann Lee & Mia Rose - 01 - Kiss.mp4')
+        write_claim(self.connection, entity_id=entity_id, facet='account_role', value='studio', source='source:publisher',
+                    source_url='https://label.test/', evidence='官网', status='observed', confidence=1)
+        verdicts = self.shaped('Label Works', ['Ann Lee & Leo King - 02 - Pool.mp4', 'Sam Fox & Mia Rose - 03 - Day.mp4'])
+        self.assertEqual(verdicts, {'verified_studio'})
 
     def test_couple_accounts_titles_and_stray_files_keep_their_account_verdicts(self):
         self.performers('Mia Rose', 'Leo King', 'Ann Lee')
