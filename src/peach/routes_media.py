@@ -944,8 +944,9 @@ def follow_cover(request: Request, id: int, media: int | None = None,
         return JSONResponse({"error": "no such follow item"}, status_code=404)
     try:
         if item.provider == "rule34video":
+            # 同作品别的版本只在磁盘缓存未命中时才去查：命中的请求不该先算一遍整库分组。
             path = state.follow_cover_service.cover(
-                item, media, alternatives=web_follow.cover_alternatives(state.web_contract, item.id))
+                item, media, alternatives=lambda: web_follow.cover_alternatives(state.web_contract, item.id))
         else:
             path = state.follow_cover_service.cover(item, media)
     except FollowCoverUnavailable:

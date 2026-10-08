@@ -256,7 +256,6 @@ describe('播放器清晰度', () => {
       view.open();
       entries.push({ width: 1920, height: 1080, enabled: true });
       view.notify('addqualitylevel');
-      view.bar.querySelector<HTMLButtonElement>('[data-player-quality-view]')!.click();
       expect(view.labels()).toEqual(['自动', '360p', '1080p']);
       expect(view.bar.querySelector('[data-player-quality-option="auto"]')?.getAttribute('aria-checked')).toBe('true');
     } finally { view.close() }
@@ -273,6 +272,37 @@ describe('播放器清晰度', () => {
       view.levels.selectedIndex = 1; view.change();
       expect(badge.textContent).toBe('4K');
       expect(badge.hidden).toBe(false);
+    } finally { view.close() }
+  });
+
+  it('菜单开着时换轨与尺寸变化只就地更新清晰度面板，焦点留在原档', () => {
+    const entries = [{ width: 640, height: 360, enabled: true }, { width: 1920, height: 1080, enabled: true }];
+    const view = menu(entries);
+    try {
+      view.open();
+      view.bar.querySelector<HTMLElement>('[data-player-quality-option="1"]')!.focus();
+      view.levels.selectedIndex = 1; view.change();
+      view.video.dispatchEvent(new Event('resize'));
+      entries.push({ width: 3840, height: 2160, enabled: true });
+      view.notify('addqualitylevel');
+      const panel = view.bar.querySelector('.vjs-peach-settings-menu')!.lastElementChild!;
+      expect(panel.querySelector('strong')?.textContent).toBe('清晰度');
+      expect([...panel.querySelectorAll('[data-player-quality-option]')].map((node) => node.textContent))
+        .toEqual(['自动', '360p', '1080p', '2160p']);
+      expect((document.activeElement as HTMLElement).dataset.playerQualityOption).toBe('1');
+    } finally { view.close() }
+  });
+
+  it('主菜单开着时尺寸变化只改清晰度那一行的读数', () => {
+    const view = menu([{ id: 'private-stream-url', enabled: true }]);
+    try {
+      view.bar.querySelector<HTMLButtonElement>('.vjs-peach-settings-toggle')!.click();
+      const row = view.bar.querySelector('[data-player-quality-view]')!;
+      expect(row.querySelector('b')?.textContent).toBe('当前画质');
+      Object.defineProperties(view.video, { videoWidth: { value: 1920 }, videoHeight: { value: 1080 } });
+      view.video.dispatchEvent(new Event('resize'));
+      expect(view.bar.querySelector('[data-player-quality-view]')).toBe(row);
+      expect(row.querySelector('b')?.textContent).toBe('1080p');
     } finally { view.close() }
   });
 });

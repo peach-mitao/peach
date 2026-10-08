@@ -173,7 +173,6 @@ def q_entity(contract: WebContract, args):
         except (TypeError, ValueError):
             metadata = {}
         d["metadata"] = metadata
-        d['classifications'] = entity_classification.classifications(c, [d['id']])[d['id']]
         d.update(entity_classification.summaries(c, [d['id']])[d['id']])
         d['related_identities'] = entity_classification.related_identities(c, d['id'])
         alias_rows = _entity_alias_rows(c, d["id"])

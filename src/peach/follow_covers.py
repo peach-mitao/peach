@@ -13,6 +13,7 @@ import os
 import subprocess
 import threading
 import time
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 import httpx
@@ -82,13 +83,20 @@ class FollowCoverService:
         # A visible grid can ask for several lazy images together. Two workers keep the
         # first screen responsive without turning the source CDN into a batch job.
         self._slots = threading.BoundedSemaphore(2)
+        # poster 只是几张静态小图的 GET，另占一组槽：上游删了片、8 个地址挨个超时的
+        # 那几张卡，不该把 fanbox 和 paheal 的抽帧也堵在后面。
+        self._poster_slots = threading.BoundedSemaphore(4)
+        self._poster_misses: dict[str, float] = {}
 
     def cover(self, item: FollowItemRow, media: int | None = None, *,
-              alternatives: tuple[str, ...] = ()) -> Path:
+              alternatives: Callable[[], Iterable[str]] | Iterable[str] = ()) -> Path:
         """条目的视频封面；`media` 点名 fanbox 帖子里的某一个视频，缺省是第一个。
 
         卡面要的是第一个视频，详情里的多媒体清单每个视频各要一张。第一个视频不论
         是否点名都落在同一份缓存上，卡面和清单里那一格共用一次抽帧。
+
+        `alternatives` 是同一作品其他版本的 poster 地址，只有 rule34video 用；给可调用
+        对象时只在磁盘缓存未命中后才调用，命中的请求不碰账本。
         """
         if item.provider == "rule34video" and media is None:
             return self._poster(item, alternatives)
@@ -162,49 +170,100 @@ class FollowCoverService:
                     stale.unlink(missing_ok=True)
             return destination
 
-    def _poster(self, item: FollowItemRow, alternatives: tuple[str, ...]) -> Path:
-        """缓存来源 poster；失效时取同一作品其他版本的封面，只请求静态图片。"""
-        urls = tuple(url for url in dict.fromkeys((item.thumb_url or "", *alternatives))
+    #: 一组 poster 地址全部取不到后，多久内不再重试。上游删片是长期状态，这里只挡住
+    #: 同一屏每次渲染都把 8 个地址重新挨个请求一遍。
+    POSTER_MISS_TTL = 300.0
+
+    def _poster(self, item: FollowItemRow,
+                alternatives: Callable[[], Iterable[str]] | Iterable[str]) -> Path:
+        """缓存来源 poster；失效时取同一作品其他版本的封面，只请求静态图片。
+
+        缓存文件按条目自己的 poster 地址命名：同作品别的版本增减不改名，命中时不用
+        先去账本里找同组版本。
+        """
+        poster_key = hashlib.sha256(
+            f"poster\0{item.thumb_url or ''}".encode("utf-8")).hexdigest()[:16]
+        destination = self.root / f"{item.id}-poster-{poster_key}.jpg"
+        if destination.is_file():
+            return destination
+        others = alternatives() if callable(alternatives) else alternatives
+        urls = tuple(url for url in dict.fromkeys((item.thumb_url or "", *others))
                      if proxyable("rule34video", url))[:8]
         if not urls:
             raise FollowCoverUnavailable("该作品没有可用的封面地址")
-        fingerprint = hashlib.sha256("\0".join(urls).encode("utf-8")).hexdigest()[:16]
-        destination = self.root / f"{item.id}-poster-{fingerprint}.jpg"
-        if destination.is_file():
-            return destination
-        with self._lock_for(destination.name), self._slots:
+        miss_key = hashlib.sha256("\0".join(urls).encode("utf-8")).hexdigest()
+        if self._recent_miss(miss_key):
+            raise FollowCoverUnavailable("该作品的封面未取得")
+        with self._lock_for(destination.name):
             if destination.is_file():
                 return destination
-            deadline = time.monotonic() + self.timeout
-            self.root.mkdir(parents=True, exist_ok=True)
-            temporary = destination.with_name(
-                f"{destination.stem}.{os.getpid()}.{threading.get_ident()}.tmp.jpg")
-            try:
-                for url in urls:
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
-                        break
-                    try:
-                        response = self.media_resolver.transport(HttpRequest("GET", url, {
-                            "User-Agent": USER_AGENT, "Accept": "image/*", "Referer": item.url or "",
-                        }), min(8.0, remaining), 4_000_000)
-                        if response.status != 200 or len(response.body) > 4_000_000:
-                            continue
-                        if response.url and not proxyable("rule34video", response.url):
-                            continue
-                        with Image.open(io.BytesIO(response.body)) as image:
-                            if image.width * image.height > 16_000_000:
-                                continue
-                            image.seek(0)
-                            image.thumbnail((1280, 1280))
-                            image.convert("RGB").save(temporary, "JPEG", quality=90)
-                        os.replace(temporary, destination)
-                        return destination
-                    except (OSError, ValueError, httpx.HTTPError, UnidentifiedImageError, Image.DecompressionBombError):
+            if self._recent_miss(miss_key):
+                raise FollowCoverUnavailable("该作品的封面未取得")
+            with self._poster_slots:
+                fetched = self._fetch_poster(item, urls, destination)
+            if not fetched:
+                self._remember_miss(miss_key)
+                raise FollowCoverUnavailable("该作品的封面未取得")
+            # 自己的 poster 地址变了才会换名；同一条目只留当前这一份。
+            for stale in self.root.glob(f"{item.id}-poster-*.jpg"):
+                if stale != destination and not stale.name.endswith(".tmp.jpg"):
+                    stale.unlink(missing_ok=True)
+            return destination
+
+    def _recent_miss(self, key: str) -> bool:
+        with self._guard:
+            missed = self._poster_misses.get(key)
+            if missed is None:
+                return False
+            if time.monotonic() - missed < self.POSTER_MISS_TTL:
+                return True
+            del self._poster_misses[key]
+            return False
+
+    def _remember_miss(self, key: str) -> None:
+        with self._guard:
+            if len(self._poster_misses) >= self.MAX_TRACKED_LOCKS:
+                now = time.monotonic()
+                for name, missed in list(self._poster_misses.items()):
+                    if now - missed >= self.POSTER_MISS_TTL:
+                        del self._poster_misses[name]
+                while len(self._poster_misses) >= self.MAX_TRACKED_LOCKS:
+                    del self._poster_misses[next(iter(self._poster_misses))]
+            self._poster_misses[key] = time.monotonic()
+
+    def _fetch_poster(self, item: FollowItemRow, urls: tuple[str, ...],
+                      destination: Path) -> bool:
+        """按次序取第一张能解码的 poster，转成 JPEG 原子落到 `destination`。"""
+        deadline = time.monotonic() + self.timeout
+        self.root.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(
+            f"{destination.stem}.{os.getpid()}.{threading.get_ident()}.tmp.jpg")
+        try:
+            for url in urls:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    response = self.media_resolver.transport(HttpRequest("GET", url, {
+                        "User-Agent": USER_AGENT, "Accept": "image/*", "Referer": item.url or "",
+                    }), min(8.0, remaining), 4_000_000)
+                    if response.status != 200 or len(response.body) > 4_000_000:
                         continue
-            finally:
-                temporary.unlink(missing_ok=True)
-        raise FollowCoverUnavailable("该作品的封面未取得")
+                    if response.url and not proxyable("rule34video", response.url):
+                        continue
+                    with Image.open(io.BytesIO(response.body)) as image:
+                        if image.width * image.height > 16_000_000:
+                            continue
+                        image.seek(0)
+                        image.thumbnail((1280, 1280))
+                        image.convert("RGB").save(temporary, "JPEG", quality=90)
+                    os.replace(temporary, destination)
+                    return True
+                except (OSError, ValueError, httpx.HTTPError, UnidentifiedImageError, Image.DecompressionBombError):
+                    continue
+        finally:
+            temporary.unlink(missing_ok=True)
+        return False
 
     #: 同时追踪多少把生成锁。键是带指纹的缓存文件名，条目一多、URL 一变就再加一条，
     #: 只增不减的话，进程活多久它就长多久。超过上限就丢掉当前没人持有的键——丢锁最

@@ -14875,39 +14875,43 @@ function cre(e, t, n = 0, r = null) {
 				b = null, n.remove(), l.classList.remove("vjs-peach-popup-animating"), l.style.height = "";
 			}, 250);
 		}), r;
-	}, S = (e, t) => e.querySelector(t), C = (t = 0) => {
+	}, S = (e, t) => e.querySelector(t), C = "main", w = (t = 0) => {
+		C = "main";
 		let { active: n } = h(), r = Number(e.playbackRate()) || 1, i = x(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${PS().settings().ambientMode}">
       ${R("player-ambient")}<span>氛围模式</span><i class="vjs-peach-switch" aria-hidden="true"></i></button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-speed>${R("player-speed")}<span>播放速度</span><b>${r === 1 ? "正常" : `${r}×`}</b>${R("player-menu-next")}</button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-quality-view>${R("player-quality")}<span>清晰度</span><b>${L(n.label)}</b>${R("player-menu-next")}</button></div>`, t);
 		S(i, "[data-player-ambient]").onclick = () => {
-			ore(!PS().settings().ambientMode), C();
-		}, S(i, "[data-player-speed]").onclick = () => D(), S(i, "[data-player-quality-view]").onclick = () => O();
-	}, w = .05, T = [
+			ore(!PS().settings().ambientMode), w();
+		}, S(i, "[data-player-speed]").onclick = () => O(), S(i, "[data-player-quality-view]").onclick = () => A();
+	}, T = .05, E = [
 		1,
 		1.25,
 		1.5,
 		2,
 		3
-	], E = (e) => Number.isInteger(e) ? e.toFixed(1) : String(e), D = (t = 1) => {
+	], D = (e) => Number.isInteger(e) ? e.toFixed(1) : String(e), O = (t = 1) => {
+		C = "speed";
 		let n = .25, r = (e) => Math.min(3, Math.max(n, Number(e.toFixed(2)))), i = x(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${R("player-menu-back")}</button><strong>播放速度</strong></div>
       <div class="vjs-peach-speed-panel"><div class="vjs-peach-speed-display"><output data-player-speed-display></output></div>
       <div class="vjs-peach-speed-slider"><button type="button" class="vjs-peach-speed-button" data-player-speed-step="-1" aria-label="播放速度减 0.05">${R("minus")}</button>
-      <input type="range" class="vjs-peach-speed-range" data-player-speed-range min="${n}" max="3" step="${w}" aria-label="播放速度">
+      <input type="range" class="vjs-peach-speed-range" data-player-speed-range min="${n}" max="3" step="${T}" aria-label="播放速度">
       <button type="button" class="vjs-peach-speed-button" data-player-speed-step="1" aria-label="播放速度加 0.05">${R("plus")}</button></div>
-      <div class="vjs-peach-speed-chips">${T.map((e) => `<span class="vjs-peach-speed-preset"><button type="button" class="vjs-peach-speed-button" data-player-speed-option="${e}" aria-pressed="false">${E(e)}</button>${e === 1 ? "<span class=\"vjs-peach-speed-preset-label\">正常</span>" : ""}</span>`).join("")}</div></div>`, t), a = i.querySelector("[data-player-speed-display]"), o = i.querySelector("[data-player-speed-range]"), s = r(Number(e.playbackRate()) || 1), c = () => {
+      <div class="vjs-peach-speed-chips">${E.map((e) => `<span class="vjs-peach-speed-preset"><button type="button" class="vjs-peach-speed-button" data-player-speed-option="${e}" aria-pressed="false">${D(e)}</button>${e === 1 ? "<span class=\"vjs-peach-speed-preset-label\">正常</span>" : ""}</span>`).join("")}</div></div>`, t), a = i.querySelector("[data-player-speed-display]"), o = i.querySelector("[data-player-speed-range]"), s = r(Number(e.playbackRate()) || 1), c = () => {
 			a.textContent = `${s.toFixed(2)}x`, o.value = String(s), o.style.setProperty("--peach-speed-percent", `${(s - n) / 2.75 * 100}%`), i.querySelectorAll("[data-player-speed-option]").forEach((e) => e.setAttribute("aria-pressed", String(Number(e.dataset.playerSpeedOption) === s)));
 		}, l = (t) => {
 			s = r(t), e.playbackRate(s), c();
 		};
-		S(i, "[data-player-menu-back]").onclick = () => C(-1), o.oninput = () => l(Number(o.value)), i.querySelectorAll("[data-player-speed-step]").forEach((e) => {
-			e.onclick = () => l(s + Number(e.dataset.playerSpeedStep) * w);
+		S(i, "[data-player-menu-back]").onclick = () => w(-1), o.oninput = () => l(Number(o.value)), i.querySelectorAll("[data-player-speed-step]").forEach((e) => {
+			e.onclick = () => l(s + Number(e.dataset.playerSpeedStep) * T);
 		}), i.querySelectorAll("[data-player-speed-option]").forEach((e) => {
 			e.onclick = () => l(Number(e.dataset.playerSpeedOption));
 		}), c();
-	}, O = (n = 1) => {
-		let { options: r, active: i } = h(), a = x(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${R("player-menu-back")}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu">${r.map((e) => `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${L(e.key)}" aria-checked="${e.key === i.key}"><span class="vjs-peach-option-check">${e.key === i.key ? R("player-option-check") : ""}</span><span class="vjs-peach-option-label">${L(e.label)}</span></button>`).join("")}</div>`, n);
-		S(a, "[data-player-menu-back]").onclick = () => C(-1), a.querySelectorAll("[data-player-quality-option]").forEach((n) => {
+	}, k = (n) => {
+		let { options: r, active: i } = h(), a = n.contains(document.activeElement) ? document.activeElement.dataset.playerQualityOption : void 0;
+		n.innerHTML = r.map((e) => `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${L(e.key)}" aria-checked="${e.key === i.key}"><span class="vjs-peach-option-check">${e.key === i.key ? R("player-option-check") : ""}</span><span class="vjs-peach-option-label">${L(e.label)}</span></button>`).join("");
+		let o = [...n.querySelectorAll("[data-player-quality-option]")];
+		o.find((e) => a !== void 0 && e.dataset.playerQualityOption === a)?.focus(), o.forEach((n) => {
 			n.onclick = () => {
 				if (f = n.dataset.playerQualityOption || "auto", u?.length) for (let e = 0; e < u.length; e++) u[e].enabled = f === "auto" || f === String(e);
 				if (d?.length && f.startsWith("h")) {
@@ -14919,34 +14923,44 @@ function cre(e, t, n = 0, r = null) {
 						r > 0 && e.currentTime(r), i && e.play()?.catch(() => {});
 					});
 				}
-				C(-1);
+				w(-1);
 			};
 		});
+	}, A = (e = 1) => {
+		C = "quality";
+		let t = x(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="返回上一个菜单">${R("player-menu-back")}</button><strong>清晰度</strong></div><div class="vjs-peach-panel-menu"></div>`, e);
+		S(t, "[data-player-menu-back]").onclick = () => w(-1), k(S(t, ".vjs-peach-panel-menu"));
+	}, j = () => {
+		if (!g()) {
+			h();
+			return;
+		}
+		let e = l.lastElementChild;
+		if (C === "quality" && e) {
+			k(S(e, ".vjs-peach-panel-menu"));
+			return;
+		}
+		let { active: t } = h(), n = C === "main" ? e?.querySelector("[data-player-quality-view] b") : null;
+		n && (n.textContent = t.label);
 	};
 	s.onclick = (e) => {
 		e.stopPropagation();
 		let t = !g();
-		t && C(), _(t);
+		t && w(), _(t);
 	};
-	let k = (e) => {
+	let M = (e) => {
 		a.contains(e.target) || v();
 	};
-	return document.addEventListener("pointerdown", k), a.addEventListener("keydown", (e) => {
+	return document.addEventListener("pointerdown", M), a.addEventListener("keydown", (e) => {
 		e.key === "Escape" && (v(), s.focus());
-	}), t.addEventListener("loadedmetadata", () => {
-		g() ? C() : h();
-	}), t.addEventListener("resize", () => {
-		g() ? C() : h();
-	}), u?.on?.([
+	}), t.addEventListener("loadedmetadata", j), t.addEventListener("resize", j), u?.on?.([
 		"addqualitylevel",
 		"removequalitylevel",
 		"change"
-	], () => {
-		g() ? C() : h();
-	}), e.on("dispose", () => {
-		document.removeEventListener("pointerdown", k), document.removeEventListener(JS, y), b && clearTimeout(b);
+	], j), e.on("dispose", () => {
+		document.removeEventListener("pointerdown", M), document.removeEventListener(JS, y), b && clearTimeout(b);
 	}), h(), lre(e, a), ure(e), (e) => {
-		d = e?.length ? e : null, g() ? C() : h();
+		d = e?.length ? e : null, j();
 	};
 }
 function lre(e, t) {
@@ -28945,17 +28959,14 @@ var Ife = (e, t, n, r) => G(Pfe(e, t, n), r), Lfe = (e, t, n, r, i) => G(Ffe(e, 
 	["character", "角色"],
 	["copyright", "作品"],
 	["metadata", "元数据"]
-], yN = {
-	performers: [
-		["all", "全部"],
-		["japanese_av", "女优"],
-		["amateur", "素人"],
-		["western", "西方"],
-		["blogger", "网黄博主"],
-		["animation", "动画作者"]
-	],
-	creators: [["all", "全部"]]
-}, bN = {
+], yN = [
+	["all", "全部"],
+	["japanese_av", "女优"],
+	["amateur", "素人"],
+	["western", "西方"],
+	["blogger", "网黄博主"],
+	["animation", "动画作者"]
+], bN = {
 	people: 120,
 	tags: 180
 }, xN = (e) => e !== "tags", SN = (e) => e === "studios" || e === "agencies";
@@ -28965,11 +28976,11 @@ function CN(e) {
 		kind: "performers",
 		scope: "local"
 	});
-	let t = e.kind === "tags" || e.kind === "performers" ? e.scope : "local", n = e.kind === "tags" ? t === "online" ? vN : _N : e.kind === "performers" || e.kind === "creators" ? yN[e.kind] : [], r = t === "local" && (e.kind === "creators" || e.kind === "performers"), i = n.some(([t]) => t === e.category);
+	let t = e.kind === "tags" || e.kind === "performers" ? e.scope : "local", n = (e.kind === "tags" ? t === "online" ? vN : _N : e.kind === "performers" && t === "local" ? yN : []).some(([t]) => t === e.category);
 	return {
 		...e,
 		scope: t,
-		category: (e.kind === "tags" || r) && i ? e.category : "all"
+		category: n ? e.category : "all"
 	};
 }
 function wN(e) {
@@ -46889,6 +46900,8 @@ function I_e(e) {
 		category: e.category
 	})), [r, i] = (0, B.useState)(e.layout), [a, o] = (0, B.useState)(/* @__PURE__ */ new Set()), [s, c] = (0, B.useState)("any"), l = (0, B.useRef)(null), { kind: u, q: d, scope: f, view: p, category: m } = t, h = gN[u], g = u === "tags" && f === "online", _ = u === "performers" && f === "online";
 	(0, B.useEffect)(() => {
+		(t.kind !== e.kind || t.scope !== e.scope || t.category !== e.category) && e.route(t, { replace: !0 });
+	}, []), (0, B.useEffect)(() => {
 		e.selectMode || o(/* @__PURE__ */ new Set());
 	}, [e.selectMode]);
 	let [v, y] = (0, B.useState)(!1), b = (r, i = !1) => {
@@ -46906,20 +46919,25 @@ function I_e(e) {
 		initialPageParam: 0,
 		getNextPageParam: x.getNextPageParam,
 		placeholderData: v ? AS.keepPreviousData : void 0
-	}), C = Vfe(S.data), w = !!S.hasNextPage && !S.isPlaceholderData, T = Hfe(C.length, !!S.hasNextPage);
+	}), C = Vfe(S.data), w = !!S.hasNextPage && !S.isPlaceholderData, T = Hfe(C.length, !!S.hasNextPage), E = `${u}:${f}:${d}`, D = (0, B.useRef)(null), O = S.data?.pages[0]?.categories;
+	O && !S.isPlaceholderData && (D.current = {
+		key: E,
+		counts: O
+	});
+	let k = O ?? (D.current?.key === E ? D.current.counts : void 0), A = ([e]) => e === "all" || Number(k?.[e] || 0) > 0;
 	(0, B.useLayoutEffect)(() => {
 		l.current && te(l.current);
 	}, [r]);
-	let E = (0, B.useMemo)(() => u === "tags" ? C.map((t) => ({
+	let j = (0, B.useMemo)(() => u === "tags" ? C.map((t) => ({
 		...t,
 		label: e.tagLabel(t.k)
-	})) : [], [C, u]), D = (0, B.useMemo)(() => u === "tags" && p === "alphabet" ? Gfe(E, (t) => e.tagLabel(t)) : [], [
-		E,
+	})) : [], [C, u]), M = (0, B.useMemo)(() => u === "tags" && p === "alphabet" ? Gfe(j, (t) => e.tagLabel(t)) : [], [
+		j,
 		p,
 		u
-	]), O = (t) => {
+	]), N = (t) => {
 		i(t), e.savePreference({ layout: t });
-	}, k = u === "tags" ? /* @__PURE__ */ (0, V.jsx)(EL, {
+	}, P = u === "tags" ? /* @__PURE__ */ (0, V.jsx)(EL, {
 		tabs: A_e,
 		value: f,
 		label: "词表",
@@ -46935,7 +46953,7 @@ function I_e(e) {
 		value: u,
 		label: "公司类型",
 		onChange: (e) => b({ kind: e })
-	}) : null, A = (t) => {
+	}) : null, ee = (t) => {
 		if (g) {
 			e.openFollowTag(t);
 			return;
@@ -46948,7 +46966,7 @@ function I_e(e) {
 			let n = new Set(e);
 			return n.delete(t) || n.add(t), n;
 		});
-	}, j = (g ? vN : _N).filter(([e]) => e === "all" || Number(S.data?.pages[0]?.categories?.[e] || 0) > 0);
+	}, F = (g ? vN : _N).filter(A);
 	return /* @__PURE__ */ (0, V.jsxs)("div", {
 		ref: l,
 		"data-index-page": u,
@@ -46971,7 +46989,7 @@ function I_e(e) {
 					xN(u) ? /* @__PURE__ */ (0, V.jsx)(N_e, {
 						kind: u,
 						layout: r,
-						onChange: O
+						onChange: N
 					}) : null,
 					/* @__PURE__ */ (0, V.jsx)("span", {
 						"aria-hidden": !0,
@@ -46998,11 +47016,11 @@ function I_e(e) {
 					});
 				}
 			}) : null,
-			k,
+			P,
 			u === "performers" && f === "local" ? /* @__PURE__ */ (0, V.jsx)("div", {
 				"aria-label": "身份分类",
 				className: "mb-4 flex flex-wrap gap-2",
-				children: yN[u].filter(([e]) => e === "all" || e === m || Number(S.data?.pages[0]?.categories?.[e] || 0) > 0).map(([e, t]) => /* @__PURE__ */ (0, V.jsx)(J, {
+				children: yN.filter((e) => e[0] === m || A(e)).map(([e, t]) => /* @__PURE__ */ (0, V.jsx)(J, {
 					variant: m === e ? "primary" : "secondary",
 					size: "small",
 					"aria-pressed": m === e,
@@ -47011,11 +47029,11 @@ function I_e(e) {
 				}, e))
 			}) : null,
 			u === "tags" ? /* @__PURE__ */ (0, V.jsx)(D_e, {
-				categories: j,
+				categories: F,
 				category: m,
 				online: g,
 				readout: T,
-				letters: D.map(([e]) => e),
+				letters: M.map(([e]) => e),
 				view: p,
 				onCategory: (e) => b({ category: e }),
 				onView: (e) => b({ view: e }),
@@ -47065,13 +47083,13 @@ function I_e(e) {
 					let t = {
 						online: g,
 						picked: a,
-						press: A
+						press: ee
 					};
 					return p === "alphabet" ? /* @__PURE__ */ (0, V.jsx)(C_e, {
-						groups: D,
+						groups: M,
 						actions: t
 					}) : /* @__PURE__ */ (0, V.jsx)(T_e, {
-						tags: E,
+						tags: j,
 						actions: t
 					});
 				})()

@@ -106,6 +106,31 @@ describe('关注页岛', () => {
     }
   });
 
+  it('来源角标接得住指针，悬停能读到来源名；点它照样进详情', { timeout: 60_000 }, async () => {
+    const opened = await openFollowFeed(browser, '/follow', DESKTOP);
+    try {
+      const page = opened.page;
+      const card = page.locator(CARDS).first();
+      const id = await card.getAttribute('data-follow-item');
+      const hit = await card.locator('[data-media-badge]').evaluate((badge) => {
+        const box = badge.getBoundingClientRect();
+        const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return { badge: target?.closest('[data-media-badge]') === badge, title: badge.getAttribute('title') };
+      });
+      assert.equal(hit.badge, true, '角标中心命中的不是角标本身');
+      assert.ok(hit.title, '角标没有来源名');
+      await card.locator('[data-media-badge]').hover();
+      const tip = page.locator('#board-control-tooltip');
+      await tip.waitFor({ state: 'visible', timeout: 5_000 });
+      assert.equal(await tip.textContent(), hit.title);
+      await card.locator('[data-media-badge]').click();
+      await page.waitForURL(`**/follow/item/${id}`);
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('两排按种子取样：换状态推回新 view 不洗牌，换一批才换', { timeout: 60_000 }, async () => {
     const opened = await openFollowFeed(browser, '/follow', DESKTOP);
     try {

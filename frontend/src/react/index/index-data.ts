@@ -44,10 +44,10 @@ export const ONLINE_TAG_CATEGORIES: readonly (readonly [string, string])[] = [
   ['all', '全部'], ['general', '通用'], ['artist', '创作者'], ['character', '角色'],
   ['copyright', '作品'], ['metadata', '元数据'],
 ];
-export const IDENTITY_CATEGORIES: Record<'performers' | 'creators', readonly (readonly [string, string])[]> = {
-  performers: [['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方'], ['blogger', '网黄博主'], ['animation', '动画作者']],
-  creators: [['all', '全部']],
-};
+/** 本地艺人名册的身份分类；卖家名册不分类。 */
+export const IDENTITY_CATEGORIES: readonly (readonly [string, string])[] = [
+  ['all', '全部'], ['japanese_av', '女优'], ['amateur', '素人'], ['western', '西方'], ['blogger', '网黄博主'], ['animation', '动画作者'],
+];
 
 /** 每页条数：一屏头像 120 格，标签 180 枚。 */
 export const PAGE_SIZE = { people: 120, tags: 180 } as const;
@@ -133,17 +133,17 @@ export interface IndexProps extends IndexRoute {
 }
 
 /** 地址栏上的类型可能是手敲或拼错的：认不出的回到「全部」，不拿它去问后端。
- *  只有艺人和标签两页分本地与在线。 */
+ *  只有艺人和标签两页分本地与在线。动画作者归艺人名册的一个分类，
+ *  卖家名册上的 `category=animation` 链接转到那里。 */
 export function indexRoute(route: IndexRoute): IndexRoute {
   if (route.kind === 'creators' && route.category === 'animation') {
     return indexRoute({ ...route, kind: 'performers', scope: 'local' });
   }
   const scope = route.kind === 'tags' || route.kind === 'performers' ? route.scope : 'local';
   const categories = route.kind === 'tags' ? (scope === 'online' ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES)
-    : route.kind === 'performers' || route.kind === 'creators' ? IDENTITY_CATEGORIES[route.kind] : [];
-  const classified = scope === 'local' && (route.kind === 'creators' || route.kind === 'performers');
+    : route.kind === 'performers' && scope === 'local' ? IDENTITY_CATEGORIES : [];
   const known = categories.some(([key]) => key === route.category);
-  return { ...route, scope, category: (route.kind === 'tags' || classified) && known ? route.category : 'all' };
+  return { ...route, scope, category: known ? route.category : 'all' };
 }
 
 /** 一种状态下该读哪一份：本地名册、本地词表、在线创作者或在线标签。 */

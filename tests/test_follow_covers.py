@@ -71,6 +71,62 @@ class FollowCoverServiceTests(unittest.TestCase):
         self.assertEqual(self.media.transport.call_count, 1)
         self.assertEqual(list(self.root.glob("*.jpg")), [])
 
+    def _poster_transport(self, failing=()):
+        image = io.BytesIO()
+        Image.new("RGB", (32, 18), "red").save(image, "PNG")
+        self.media.transport = mock.Mock(side_effect=lambda request, timeout, limit: HttpResponse(
+            404 if request.url in failing else 200, {"content-type": "image/png"}, image.getvalue()))
+        item = self._item("rule34video")
+        item.url = "https://rule34video.com/video/7/movie/"
+        item.thumb_url = "https://rule34video.com/poster.jpg"
+        return item
+
+    def test_rule34video_cache_hit_skips_the_work_lookup(self):
+        """命中磁盘缓存的请求不去问同作品还有哪些版本：那一问要整库分组。"""
+        item = self._poster_transport()
+        lookup = mock.Mock(return_value=("https://rule34video.com/other.jpg",))
+        path = self.service.cover(item, alternatives=lookup)
+        self.assertEqual(lookup.call_count, 1)
+        self.assertEqual(self.service.cover(item, alternatives=lookup), path)
+        self.assertEqual(lookup.call_count, 1)
+        self.assertEqual(self.media.transport.call_count, 1)
+
+    def test_rule34video_missing_posters_are_not_retried_within_the_ttl(self):
+        item = self._poster_transport(failing={"https://rule34video.com/poster.jpg",
+                                               "https://rule34video.com/other.jpg"})
+        clock = [1000.0]
+        alternatives = ("https://rule34video.com/other.jpg",)
+        with mock.patch("peach.follow_covers.time.monotonic", side_effect=lambda: clock[0]):
+            with self.assertRaises(FollowCoverUnavailable):
+                self.service.cover(item, alternatives=alternatives)
+            self.assertEqual(self.media.transport.call_count, 2)
+            clock[0] += self.service.POSTER_MISS_TTL - 1
+            with self.assertRaises(FollowCoverUnavailable):
+                self.service.cover(item, alternatives=alternatives)
+            self.assertEqual(self.media.transport.call_count, 2)
+            clock[0] += 2
+            with self.assertRaises(FollowCoverUnavailable):
+                self.service.cover(item, alternatives=alternatives)
+            self.assertEqual(self.media.transport.call_count, 4)
+
+    def test_rule34video_posters_do_not_wait_for_ffmpeg_slots(self):
+        item = self._poster_transport()
+        for _ in range(2):
+            self.assertTrue(self.service._slots.acquire(blocking=False))
+            self.addCleanup(self.service._slots.release)
+        self.assertTrue(self.service.cover(item).is_file())
+
+    def test_rule34video_poster_replaces_its_older_cached_files(self):
+        item = self._poster_transport()
+        stale = self.root / "7-poster-0123456789abcdef.jpg"
+        working = self.root / "7-poster-0123456789abcdef.1.2.tmp.jpg"
+        other = self.root / "8-poster-0123456789abcdef.jpg"
+        for path in (stale, working, other):
+            path.write_bytes(b"jpeg")
+        current = self.service.cover(item)
+        self.assertFalse(stale.exists())
+        self.assertTrue(working.exists() and other.exists() and current.is_file())
+
     def test_rule34video_network_failures_leave_no_cached_file(self):
         self.media.transport = mock.Mock(side_effect=httpx.ReadTimeout("offline"))
         item = self._item("rule34video")

@@ -865,8 +865,20 @@ def _thumb_url(item) -> str | None:
     return _unhide_thumb(item, display_thumb_url(item))
 
 
+#: 账本一变，冷缓存下同时到的一屏封面请求只让一个去算整库分组，其余等它算完直接命中。
+_COVER_INDEX_LOCK = threading.Lock()
+
+
 def cover_alternatives(contract, item_id: int) -> tuple[str, ...]:
     """同一作品其他版本的 Rule34Video 封面；来源地址只在服务端使用。"""
+    with _COVER_INDEX_LOCK:
+        index = contract.cached_until_changed(
+            "follow-cover-alternatives", lambda: _cover_alternative_index(contract))
+    return index.get(item_id, ())
+
+
+def _cover_alternative_index(contract) -> dict[int, tuple[str, ...]]:
+    """每条 Rule34Video 条目 → 同组其他 Rule34Video 版本的 poster 地址，整库分组一次建好。"""
     with contract.database.read_connection() as connection:
         store = _store(contract, connection)
         sources = store.sources()
@@ -875,15 +887,16 @@ def cover_alternatives(contract, item_id: int) -> tuple[str, ...]:
         everything = contract.cached_until_changed(
             "follow-items:None", lambda: tuple(item for item in store.items(limit=_ALL_ITEMS)
                                                if item.source_id in enabled and not _excluded_item(item)))
-        groups = contract.cached_until_changed(
-            "follow-cover-groups", lambda: store.group(everything, group_authors(sources, aliases)))
-        for group in groups:
-            members = (group.primary, *group.variants, *group.duplicates)
-            if any(member.id == item_id for member in members):
-                return tuple(dict.fromkeys(member.thumb_url for member in members
-                                           if member.id != item_id and member.provider == "rule34video"
-                                           and member.thumb_url))
-    return ()
+        index: dict[int, tuple[str, ...]] = {}
+        for group in store.group(everything, group_authors(sources, aliases)):
+            members = [member for member in (group.primary, *group.variants, *group.duplicates)
+                       if member.provider == "rule34video"]
+            for member in members:
+                others = tuple(dict.fromkeys(other.thumb_url for other in members
+                                             if other.id != member.id and other.thumb_url))
+                if others:
+                    index[member.id] = others
+        return index
 
 
 def _fanbox_card_thumb(item) -> str | None:
