@@ -117,8 +117,11 @@ def load_runtime() -> Runtime:
         return getattr(module, class_name)
 
     def make_client(proxy: str | None, timeout: float, rate: float):
+        # 上游 `max_retries` 是首次请求之外的重试次数：1 即每个地址最多发两次请求，单次 30 秒，
+        # 正好落在 Peach 一侧 60 秒的子进程超时里。不带 BrowserClient：撞上挑战页照样报
+        # `cloudflare_challenge`，不切浏览器渲染。
         limiters = RateLimiters(default_rate=rate)
-        return HttpClient(WebClient(limiters=limiters, proxy=proxy, timeout=timeout, max_retries=2))
+        return HttpClient(WebClient(limiters=limiters, proxy=proxy, timeout=timeout, max_retries=1))
 
     return Runtime(
         crawler=crawler, make_client=make_client,
