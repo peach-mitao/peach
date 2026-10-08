@@ -1,8 +1,8 @@
 /* 媒体文件夹的行：配置页「这台电脑」与首启页共用。
  *
- * 一行是一块描边卡：路径框、「选择文件夹」、多行时的移除键，下面一格放这一行的其余字段（来源、
- * Windows 对应路径，配置页另有媒体库名称与图标）。行的增删、按行错误、新行接焦点与选择文件夹的
- * 忙态归 `useFolderRows`；弹系统对话框那一请求由调用方注入，这里不认识任何端点，首启页的独立
+ * 一行是一块描边卡：路径框、「选择文件夹」、多行时的移除键，下面一排放这一行的其余字段
+ * （来源、Windows 对应路径，配置页另有媒体库名称与图标），宽度够时并成一行。行的增删、
+ * 按行错误、新行接焦点与选择文件夹的忙态归 `useFolderRows`；弹系统对话框那一请求由调用方注入，这里不认识任何端点，首启页的独立
  * 页面包因此不必带上主界面的请求封装。 */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { RiCloseLine } from '@remixicon/react';
@@ -12,7 +12,7 @@ import { IconButton } from '@/components/base/buttons/icon-button';
 import { Input } from '@/components/base/input/input';
 import { Select, SelectItem } from '@/components/base/select/select';
 
-import { FieldLabel, SourceMark } from './section';
+import { SourceMark } from './section';
 import { busyProps } from './busy-props';
 
 /** 「选择文件夹」弹系统对话框去挑，全站用雪碧图的 `folder-search`；`folder-open` 归「打开位置」，
@@ -118,7 +118,7 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
   children: ReactNode;
 }) {
   return (
-    <div data-folder-row className="@container flex flex-col gap-3 rounded-2lg border border-separator-border bg-background-primary-default p-3">
+    <div data-folder-row className="@container flex flex-col gap-2 rounded-2lg border border-separator-border bg-background-primary-default p-3">
       <div className="flex items-start gap-2">
         <Input className="min-w-0 flex-1" aria-label={label} placeholder="本机文件夹路径"
           value={path} onChange={onPath} ref={inputRef}
@@ -127,14 +127,15 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
         <IconButton icon={FolderSearchIcon} aria-label="选择文件夹" onClick={onPick} {...busyProps(picking)} />
         {onRemove ? <IconButton icon={RiCloseLine} aria-label="移除这个文件夹" onClick={onRemove} /> : null}
       </div>
-      <div className="inline-grid grid-cols-1 gap-3 @lg:grid-cols-2">
+      <div className="flex flex-wrap items-end gap-2">
         {children}
       </div>
     </div>
   );
 }
 
-/** 媒体来源下拉，每项带站标；本地磁盘是雪碧图的 `hard-drive`。 */
+/** 媒体来源下拉，每项带站标；本地磁盘是雪碧图的 `hard-drive`。选中项的站标就是它的标签，
+ * 框上不再挂文字名，无障碍名称由 `aria-label` 给。 */
 export function SourceSelect({ index, value, onChange, options = MEDIA_SOURCES }: {
   index: number;
   value: string;
@@ -142,15 +143,12 @@ export function SourceSelect({ index, value, onChange, options = MEDIA_SOURCES }
   options?: readonly SourceOption[];
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <FieldLabel>媒体来源</FieldLabel>
-      <Select aria-label={`媒体来源 ${index + 1}`} selectedKey={value}
-        onSelectionChange={(key) => { if (key !== null) onChange(String(key)); }}>
-        {options.map(([kind, name]) => (
-          <SelectItem key={kind} id={kind} textValue={name}><SourceMark mark={sourceMark(kind)} />{name}</SelectItem>
-        ))}
-      </Select>
-    </div>
+    <Select className="w-full @lg:w-60" aria-label={`媒体来源 ${index + 1}`} selectedKey={value}
+      onSelectionChange={(key) => { if (key !== null) onChange(String(key)); }}>
+      {options.map(([kind, name]) => (
+        <SelectItem key={kind} id={kind} textValue={name}><SourceMark mark={sourceMark(kind)} />{name}</SelectItem>
+      ))}
+    </Select>
   );
 }
 

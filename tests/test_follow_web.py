@@ -2895,7 +2895,6 @@ class LegacyHistoryEndPayloadTests(unittest.TestCase):
         payload = web_follow._source_payload(_source_row(
             backfill_page=3, last_status="error", last_error="kemono 返回 HTTP 400"))
         self.assertTrue(payload["history_exhausted"])
-        self.assertEqual(payload["nature"], "归档站")
         self.assertEqual(payload["last_status"], "not_modified")
         self.assertIsNone(payload["last_error"])
 

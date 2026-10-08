@@ -11,7 +11,7 @@ import { useAction } from '../settings/use-action';
 
 interface Candidate {
   id: string; uri: string; name: string; size: number; seeders: number; origins: string[];
-  nature: string; resolution: number; codec: string; chinese: boolean; uncensored: boolean;
+  resolution: number; codec: string; chinese: boolean; uncensored: boolean;
 }
 interface Result { state: string; items: Candidate[]; warnings: string[]; error: string }
 
@@ -69,7 +69,6 @@ export function ResourceSearch({ initialCode, reason, choose }: {
         <Input label="最小体积（GiB）" inputMode="decimal" value={min} onChange={setMin} />
         <Input label="最大体积（GiB）" inputMode="decimal" value={max} onChange={setMax} />
       </div>
-      <Help>只查询已启用的自配索引器；最多显示 5 个有做种的候选。清晰度、字幕与无码标记取自来源标题。</Help>
       {action.busy ? <Help role="status">正在搜索资源</Help> : null}
       {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       {result?.error ? <Help role="status">{result.error}</Help> : null}
@@ -80,7 +79,7 @@ export function ResourceSearch({ initialCode, reason, choose }: {
           <p className="break-words text-body-2-medium text-text-primary">{item.name}</p>
           <Help>{[`${(item.size / 1024 ** 3).toFixed(2)} GiB`, `${item.seeders} 个做种`,
             item.resolution ? `${item.resolution}p` : '', item.codec, item.chinese ? '中字' : '',
-            item.uncensored ? '无码' : '', item.origins.join('、'), item.nature].filter(Boolean).join(' · ')}</Help>
+            item.uncensored ? '无码' : '', item.origins.join('、')].filter(Boolean).join(' · ')}</Help>
           <div><Button type="button" variant="secondary" onClick={() => {
             choose(item.uri, searched); setSelected(item.id);
           }}>{selected === item.id ? '已填入磁力' : '选用此资源'}</Button></div>

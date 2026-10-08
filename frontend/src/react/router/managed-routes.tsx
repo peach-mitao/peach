@@ -137,10 +137,9 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/quality-goals': {
     prefetch: (_open, signal) => prefetchQualityGoals(signal),
-    page: (_open, actions, go) => (
+    page: (_open, actions) => (
       <QualityGoalsPage openItem={actions.openItem} javTitleHtml={javTitleHtml} javDisplayName={javDisplayName}
-        searchResources={(prefill) => { actions.requestCloudDownload(prefill); go('/activity') }}
-        srcBadge={actions.srcBadge} />
+        toast={(message) => actions.receipt(message)} srcBadge={actions.srcBadge} />
     ),
   },
   '/scraping': {
@@ -161,16 +160,15 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/activity': {
     prefetch: (_open, signal) => prefetchTasks(signal),
-    page: (open) => <ActivityPage {...(open.prefill ? { prefill: open.prefill } : {})} />,
+    page: () => <ActivityPage />,
   },
   /* 首屏只取来源清单与凭据状态，地址栏指着「订阅源」时连它一起取。检查更新与查找那两趟
      后台任务的快照不在首屏里：它们常年躺着上一趟的回执，等它们只会让首屏多一个往返。 */
   '/follow-manage': {
     prefetch: (open, signal) => prefetchFollowManage(signal, open.tab),
-    page: (open, actions, go) => (
+    page: (open, actions) => (
       <FollowManagePage {...open} route={actions.routeFollowManage} savePreference={actions.saveFollowPreference}
-        toast={(message) => actions.receipt(message)} openFollow={actions.openFollow}
-        cloudDownload={(prefill) => { actions.requestCloudDownload(prefill); go('/activity') }} />
+        toast={(message) => actions.receipt(message)} openFollow={actions.openFollow} />
     ),
   },
 };

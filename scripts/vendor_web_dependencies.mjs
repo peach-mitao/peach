@@ -120,8 +120,6 @@ const lucideIcons = new Map([
   ["image-off", "image-off"],
   ["arrow-up", "arrow-up"], ["arrow-down", "arrow-down"],
   ["calendar", "calendar"], ["download", "download"], ["monitor", "monitor"],
-  // 作品详情与关注条目的「云下载」键。
-  ["cloud-download", "cloud-download"],
   // 侧栏「管理」那一层：收拾库里的东西。`settings` 只归右上角的界面偏好。
   ["wrench", "wrench"],
   // 管理菜单里的「配置」：这台电脑的媒体文件夹与端口。

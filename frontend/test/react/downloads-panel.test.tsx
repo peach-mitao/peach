@@ -1,11 +1,11 @@
-/* 活动页云下载段的行为：提交表单带什么、任务卡给哪些键、没配置与只读端说什么。 */
+/* 活动页云下载段的行为：任务卡给哪些键、没有任务时整段不画、只读端不给写操作。 */
 import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { DownloadsPanel, downloadPollInterval, type DownloadPrefill } from '../../src/react/activity/downloads-panel';
-import type { DownloadsSnapshot, DownloadSubmitResult, DownloadTask } from '../../src/react/bundle';
+import { DownloadsPanel, downloadPollInterval } from '../../src/react/activity/downloads-panel';
+import type { DownloadsSnapshot, DownloadTask } from '../../src/react/bundle';
 import { queryClient } from '../../src/react/query';
-import { buttonNamed, choose, click, mount, section, settle, submit, type } from './render';
+import { buttonNamed, click, mount, settle } from './render';
 
 afterEach(() => queryClient.clear());
 
@@ -43,8 +43,8 @@ function serve(shown: DownloadsSnapshot, answers: Record<string, unknown> = {}) 
   return { calls, posts };
 }
 
-const show = async (prefill?: DownloadPrefill) => {
-  const host = await mount(<QueryClientProvider client={queryClient}><DownloadsPanel prefill={prefill} /></QueryClientProvider>);
+const show = async () => {
+  const host = await mount(<QueryClientProvider client={queryClient}><DownloadsPanel /></QueryClientProvider>);
   // 首屏取数要走完 fetch、json 与 Query 派发三段，等到这一段画出内容为止。
   await vi.waitFor(async () => {
     await settle();
@@ -52,51 +52,6 @@ const show = async (prefill?: DownloadPrefill) => {
   });
   return host;
 };
-
-const field = (host: HTMLElement, label: string) =>
-  [...host.querySelectorAll('label')].find((node) => node.textContent?.trim() === label)
-    ?.closest('[data-input-size]')?.querySelector('input') ?? null;
-
-it('提交带上渠道、目标目录、番号与来处，成功后清空磁力框并说明下一步', async () => {
-  const result: DownloadSubmitResult = { ok: true, outcome: 'submitted', task: task({ state: 'submitted' }) };
-  const { posts } = serve(snapshot(), { '/api/downloads': result });
-  const host = await show({ code: 'ABC-123', title: '一部作品', origin: 'asset:12', searchReason: '中字' });
-  expect(host.textContent).toContain('版本目标：中字');
-  expect(field(host, '搜索资源')?.value).toBe('ABC-123');
-  expect(field(host, '番号')?.value).toBe('ABC-123');
-  expect(field(host, '目标目录')?.value).toBe('/115/云下载');
-  expect(document.activeElement).toBe(field(host, '磁力链接'));
-  expect(host.textContent).toContain('给「一部作品」找来的资源');
-  await type(field(host, '磁力链接'), 'magnet:?xt=urn:btih:' + 'b'.repeat(40));
-  await submit(section(host, '提交磁力'));
-  await settle();
-  expect(posts()).toEqual([['/api/downloads', {
-    magnet: 'magnet:?xt=urn:btih:' + 'b'.repeat(40), provider: '115', target: '/115/云下载',
-    code: 'ABC-123', title: '一部作品', origin: 'asset:12',
-  }]]);
-  expect(field(host, '磁力链接')?.value).toBe('');
-  expect(host.querySelector('[role=status]')?.textContent).toContain('已提交');
-});
-
-it('换渠道时目标目录跟着换成那一路配置的目录，提交键是主按钮', async () => {
-  serve(snapshot());
-  const host = await show();
-  expect(buttonNamed('提交离线下载', host)?.className).toContain('bg-button-primary');
-  expect(host.textContent).toContain('115 每提交一次扣一条离线配额');
-  await choose(host.querySelector('[aria-label="下载到"]'), 'PikPak');
-  expect(field(host, '目标目录')?.value).toBe('/云下载');
-  expect(host.textContent).not.toContain('115 每提交一次扣一条离线配额');
-});
-
-it('只列配置好的渠道；一个都没配时说去哪里配，不画表单', async () => {
-  serve(snapshot({ providers: [
-    { key: '115', label: '115', configured: false, target: '' },
-    { key: 'pikpak', label: 'PikPak', configured: false, target: '' },
-  ] }));
-  const host = await show();
-  expect(section(host, '提交磁力')).toBeNull();
-  expect(host.textContent).toContain('在配置页「媒体」分组');
-});
 
 it('远端在跑的任务给进度与取消键，取消发到取消接口', async () => {
   const { posts } = serve(snapshot({ tasks: [task()] }), { '/api/downloads/cancel': { ok: true, task: task() } });
@@ -130,12 +85,22 @@ it('失败的任务写中文原因，可以重新提交；被判违规的只剩�
   }]]);
 });
 
-it('只读端说明原因，任务照常列出但没有取消键', async () => {
+it('只读端任务照常列出，但没有取消键', async () => {
   serve(snapshot({ available: false, tasks: [task()] }));
   const host = await show();
-  expect(host.textContent).toContain('云下载只在账本写入端可用');
-  expect(section(host, '提交磁力')).toBeNull();
+  expect(host.querySelector('[data-download-state=remote_running]')).not.toBeNull();
   expect(buttonNamed('取消', host)).toBeNull();
+});
+
+it('一条任务都没有时整段不画，也没有提交表单', async () => {
+  const { calls } = serve(snapshot());
+  const host = await mount(<QueryClientProvider client={queryClient}><DownloadsPanel /></QueryClientProvider>);
+  await vi.waitFor(async () => {
+    await settle();
+    if (!calls.length) throw new Error('还没取数');
+  });
+  await settle();
+  expect(host.childElementCount).toBe(0);
 });
 
 it('有任务还在跟进时五秒查一次，全是终态三十秒一次', () => {

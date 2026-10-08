@@ -37,7 +37,6 @@ MAX_ITEMS = 100
 #: 每个索引器每轮最多取几份种子：只取番号、体积、做种都已对上的条目。
 MAX_TORRENTS = 6
 MAX_TORRENT_BYTES = 8 * 1024 * 1024
-NATURE = "用户自配索引器"
 
 
 def endpoint(value: object) -> str:
@@ -78,7 +77,7 @@ class Indexers:
     def public(self) -> dict:
         return {"indexers": [
             {name: row[name] for name in ("key", "name", "url", "enabled")}
-            | {"api_key_set": bool(row.get("api_key")), "nature": NATURE}
+            | {"api_key_set": bool(row.get("api_key"))}
             for row in self.load()], "max_indexers": MAX_INDEXERS}
 
     def save(self, body: dict) -> dict:
@@ -179,7 +178,7 @@ def candidate(item, indexer: dict, code: str, filters: Filters,
             "uri": f"magnet:?xt=urn:btih:{info_hash}", "name": title,
             "size": item.size, "seeders": item.seeders, "peers": item.peers,
             "date": str(item.pub_date or "")[:100], "source": indexer["name"],
-            "origins": [indexer["name"]], "nature": NATURE, **quality}
+            "origins": [indexer["name"]], **quality}
 
 
 def _xml(client: httpx.Client, indexer: dict, params: dict, deadline: float) -> str:

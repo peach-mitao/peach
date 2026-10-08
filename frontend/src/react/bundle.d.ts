@@ -4,7 +4,7 @@
  * `entry.tsx` 按这里的签名实现，两边的类型检查各自对照同一份声明。
  * 配置数据的形状以 `/api/configuration`（`src/peach/routes_configuration.py`）为准。 */
 import type { QualityGoal } from './quality-goals/quality-goals';
-import type { CloudDownloadPrefill, ShellActions } from './router/shell-actions';
+import type { ShellActions } from './router/shell-actions';
 import type { IndexProps } from './index/index-data';
 import type { CatalogGridProps } from './catalog-grid/types';
 import type { JunkQueueProps } from './junk-queue/junk-queue';
@@ -274,13 +274,10 @@ export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'recei
   data: ConfigurationData;
 }
 
-/** 活动页没有来自遗留层的助手：整页的数据都来自 `/api/tasks`。`prefill` 是别处「云下载」键
- *  带进来的番号、标题与来处（`asset:12`、`follow:34`、`wishlist:5`）。 */
-export interface ActivityProps { prefill?: CloudDownloadPrefill }
-
 /** 高清版目标页仍由遗留层提供的能力。全是纯函数或导航，页面不持有它们的状态。 */
 export interface QualityGoalsProps {
-  searchResources(prefill: CloudDownloadPrefill): void;
+  /** 写操作在服务端落地之后的过去时回执。 */
+  toast(message: string): void;
   /** 打开作品详情（遗留层的整页视图，含播放器与队列）。 */
   openItem(id: number): void;
   /** 番号 + 版次徽章 + 标题的 HTML。非 JAV 条目退化成转义后的文件名。 */
@@ -343,8 +340,6 @@ export interface FollowManageProps {
   toast(message: string): void;
   /** 去「看更新」那一页（`/follow`）。整页换成哪一屏仍归遗留壳。 */
   openFollow(): void;
-  /** 云下载：带着番号、标题与来处（`wishlist:<想要 id>`）去活动页的云下载段，用户贴磁力交给 115 或 PikPak。 */
-  cloudDownload(prefill: { code?: string; title?: string; origin: string }): void;
   /** 账本只读：这台机器只能浏览，写操作全部不给点。 */
   readOnly: boolean;
   readOnlyMessage: string;
@@ -512,7 +507,7 @@ export type { GlowPickerHost } from './glow-picker/glow-picker-api';
  *  `loadGlowPicker` 接着经常驻表的 `openResidentSurface` 在路由树里画。 */
 export declare function configureGlowPicker(host: GlowPickerHost): void;
 
-export type { CloudDownloadPrefill, ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
+export type { ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
 
 /** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，后退前进与 React 子树里的
  * `navigate` 由它派发给壳；管理区、索引页与资料页由它画，经 `actions` 回到壳。重复调用是空操作。 */

@@ -58,7 +58,7 @@ const payload = (overrides: Partial<ActivityData> = {}): ActivityData => ({
   available: true, running: [], skipped: [], finished: [], ...overrides,
 });
 
-/* 云下载段自己取 `/api/downloads`。这里的用例只数任务中心的请求，云下载那一路另答一份空表。 */
+/* 云下载段自己取 `/api/downloads`。这里的用例只数任务中心的请求，云下载那一路另答一份空表，那一段就不画。 */
 const DOWNLOADS_IDLE: DownloadsSnapshot = { available: true, providers: [], tasks: [] };
 function stubFetch(tasks: (input: string, init?: RequestInit) => Promise<unknown>) {
   vi.stubGlobal('fetch', (input: string, init?: RequestInit) => (input.startsWith(DOWNLOADS_URL)
@@ -125,7 +125,7 @@ it('被挡下的那一轮单独成段，不在最近完成里再出现一次', a
     result_summary: { blocked_by: 3 }, error: '与第 3 轮（手动触发）冲突，本次跳过',
   });
   const { host } = await open(payload({ skipped: [blocked], finished: [blocked] }));
-  expect(sections(host)).toEqual(['正在进行', '被挡下的', '云下载']);
+  expect(sections(host)).toEqual(['正在进行', '被挡下的']);
   expect(host.querySelectorAll('li')).toHaveLength(1);
   // 原因落在卡片底部的说明区，状态由徽章说。
   expect(host.querySelector('[data-status=cancelled]')?.textContent).toContain('与第 3 轮');
@@ -168,7 +168,7 @@ it('后继还在跑时，派出它的那一轮整张卡留在正在进行，那�
     progress_label: '取新作资料：MIZD-441', progress_current: 13, progress_total: 22,
     followup_key: 'feed-scrape:MIZD-441', result_summary: {} });
   const { host } = await open(payload({ running: [scraping], finished: [parent] }));
-  expect(sections(host)).toEqual(['正在进行', '云下载']);
+  expect(sections(host)).toEqual(['正在进行']);
   const row = host.querySelector('[data-followup-key]')!;
   expect([...row.querySelectorAll('span')].map((node) => node.textContent))
     .toEqual(['取新作资料', '进行中', 'MIZD-441 · 13 / 22 项']);
@@ -202,8 +202,8 @@ it('父任务不在这一屏上时，后继照常单独摆出来', async () => {
 it('一条记录都没有时给空态，不是一片白', async () => {
   const { host } = await open(payload());
   expect(host.querySelector('h3')?.textContent).toBe('还没有任务记录');
-  // 任务中心那三段都不画，只剩自带取数的云下载段。
-  expect(sections(host)).toEqual(['云下载']);
+  // 任务中心那三段都不画；云下载没有任务，也不画。
+  expect(sections(host)).toEqual([]);
 });
 
 it('账本上还没有这张表时说清怎么办，不当成故障', async () => {

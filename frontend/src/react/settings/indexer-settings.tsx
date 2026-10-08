@@ -37,8 +37,8 @@ function IndexerForm({ initial, receipt }: { initial: State; receipt(message: st
   return (
     <Section title="资源索引器" onSubmit={save}>
       <Stack>
-        <Help>接入 Prowlarr 或 Jackett 后，活动页「云下载」可以按番号搜磁力。
-          Prowlarr 的 Torznab 地址在索引器列表里每个索引器的详情中复制，API key 在 Settings → General。</Help>
+        <Help>接入 Prowlarr 或 Jackett 后可以按番号搜磁力。Torznab 地址在 Prowlarr 每个索引器的详情里，
+          API key 在 Settings → General。</Help>
         {rows.map((row, index) => (
           <div key={row.key} className="flex min-w-0 flex-col gap-4 border-t border-separator-border pt-4">
             <Input label={`索引器 ${index + 1} 名称`} value={row.name} maxLength={80}

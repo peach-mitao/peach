@@ -175,7 +175,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
   return (
     <Section title="云下载" onSubmit={submit}>
       <Stack>
-        <Help>把磁力交给 115 或 PikPak 离线下载，下完由推送发现自动入库。</Help>
+        <Help>磁力交给 115 或 PikPak 离线下载，下完自动入库。</Help>
         <Input label="CloudDrive2 地址" placeholder="留空自动探测本机 19798 / 29798" autoComplete="off" maxLength={200}
           value={config.clouddrive_address} isDisabled={!state.available}
           onChange={(value) => setConfig({ ...config, clouddrive_address: value })} />
@@ -199,7 +199,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount }: CardProps & { p
               {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
             </Select>
           ) : (
-            <Help>媒体文件夹里还没有「CloudDrive · PikPak」来源。在上方添加 PikPak 的挂载目录后，这里才能选。</Help>
+            <Help>先在「媒体」分组添加 PikPak 挂载的文件夹，这里才能选。</Help>
           )}
         </div>
         <Input label="等待上限（小时）" type="number" inputMode="numeric" autoComplete="off"

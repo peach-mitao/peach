@@ -47,7 +47,7 @@ function shellActions(): ShellActions {
     openItem: vi.fn(), openEntity: vi.fn(), openTag: vi.fn(), openTasteSignal: vi.fn(), navigate: vi.fn(),
     openManage: vi.fn(), managePath: vi.fn((section: string) => sections[section] ?? ''), openFollow: vi.fn(),
     receipt: vi.fn(), toast: vi.fn(), failure: vi.fn(), revealSource: vi.fn(async () => ''),
-    reopenTutorial: vi.fn(async () => {}), requestConfigurationSection: vi.fn(), requestCloudDownload: vi.fn(),
+    reopenTutorial: vi.fn(async () => {}), requestConfigurationSection: vi.fn(),
     routeReview: vi.fn(), routeFollowManage: vi.fn(), saveFollowPreference: vi.fn(), srcBadge: () => '',
     routeIndex: vi.fn(), savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(),
     personAvatar: vi.fn(() => ({ html: '', face: '' })), authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(),
@@ -404,12 +404,10 @@ it('数据管理页：复核、高清版与重复文件走 go，垃圾文件与�
   expect(vi.mocked(actions.receipt).mock.calls).toEqual([['做完了']]);
 });
 
-it('复核页与关注管理页把地址写回壳，不重开；云下载先交预填再换到活动页', async () => {
+it('复核页与关注管理页把地址写回壳，不重开', async () => {
   const r = await load();
   const actions = shellActions();
-  const order: string[] = [];
-  const go = vi.fn((path: string) => { order.push(`go ${path}`) });
-  vi.mocked(actions.requestCloudDownload).mockImplementation((prefill) => { order.push(`prefill ${prefill.origin}`) });
+  const go = vi.fn();
   const review = element<ReviewProps>('/review', r,
     { category: 'name', readOnly: true, readOnlyMessage: '只读', writerUrl: '' }, actions, go);
   expect([review.route, review.category, review.readOnly]).toEqual([actions.routeReview, 'name', true]);
@@ -418,8 +416,6 @@ it('复核页与关注管理页把地址写回壳，不重开；云下载先交�
   }, actions, go);
   expect([follow.route, follow.savePreference, follow.openFollow, follow.page])
     .toEqual([actions.routeFollowManage, actions.saveFollowPreference, actions.openFollow, 2]);
-  follow.cloudDownload({ code: 'ABC-123', origin: 'wishlist:5' });
-  expect(order).toEqual(['prefill wishlist:5', 'go /activity']);
 });
 
 it('回执、打开作品与资料页都交回壳：都走过去时回执', async () => {
@@ -428,14 +424,11 @@ it('回执、打开作品与资料页都交回壳：都走过去时回执', asyn
   const undo = async () => {};
   const go = vi.fn();
   const goals = element<QualityGoalsProps>('/quality-goals', r, {}, actions, go);
-  const prefill = { code: 'ABC-123', origin: 'asset:3', searchReason: '中字' };
-  goals.searchResources(prefill);
-  expect(actions.requestCloudDownload).toHaveBeenCalledWith(prefill);
-  expect(go).toHaveBeenCalledWith('/activity');
   goals.openItem(3);
   expect(goals.srcBadge).toBe(actions.srcBadge);
   expect(goals.javDisplayName({ name: 'ABC-123 片名.mp4' } as never)).toContain('ABC-123');
   expect(goals.javTitleHtml({ name: '<b>.mp4' } as never)).not.toContain('<b>');
+  goals.toast('已提交离线下载');
   const duplicates = element<DuplicatesProps>('/duplicates', r, {}, actions, vi.fn());
   duplicates.toast('已删除', { undo });
   duplicates.toast('已保留');
@@ -460,7 +453,7 @@ it('回执、打开作品与资料页都交回壳：都走过去时回执', asyn
   expect(vi.mocked(actions.failure).mock.calls).toEqual([['删除', 'boom']]);
   expect(actions.toast).not.toHaveBeenCalled();
   expect(vi.mocked(actions.receipt).mock.calls).toEqual([
-    ['已删除', { undo }], ['已保留', {}], ['已保存配置'], ['已判定'], ['已添加 1 个关注来源'], ['已导入'],
+    ['已提交离线下载'], ['已删除', { undo }], ['已保留', {}], ['已保存配置'], ['已判定'], ['已添加 1 个关注来源'], ['已导入'],
   ]);
 });
 
@@ -470,15 +463,6 @@ it('采集页的提示走全站 Toast 原样', async () => {
   element<ScrapingProps>('/scraping', r, {}, actions, vi.fn()).toast('已保存');
   expect(vi.mocked(actions.toast).mock.calls).toEqual([['已保存']]);
   expect(actions.receipt).not.toHaveBeenCalled();
-});
-
-it('活动页的预填只跟着那一次打开：不带就是空表单，也不写进地址与历史', async () => {
-  const r = await load('/activity');
-  const withPrefill = element<{ prefill?: object }>('/activity', r, { prefill: { title: '片名' } }, shellActions(), vi.fn());
-  const plain = element<{ prefill?: object }>('/activity', r, {}, shellActions(), vi.fn());
-  expect(withPrefill.prefill).toEqual({ title: '片名' });
-  expect('prefill' in plain).toBe(false);
-  expect([location.href.includes('片名'), JSON.stringify(window.history.state ?? null).includes('片名')]).toEqual([false, false]);
 });
 
 /** 索引页与资料页共用的容器，里面是壳铺好的骨架。 */
