@@ -175,20 +175,42 @@ class EntityClassificationTests(unittest.TestCase):
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
         self.assertEqual(q_index(contract,'performers')['categories'],{'japanese_av':1})
 
-    def test_amateur_identity_requires_trusted_nonprofessional_evidence(self):
+    def work(self,name,code=None,*,tag=None,disposal=None):
+        """给已有出演者再挂一部作品。"""
+        asset_id=self.connection.execute("INSERT INTO asset(location,path,name,medium,code,disposal) VALUES('local',?,?,'video',?,?)",
+            (f'B:\\作品\\{name}\\{code or "clip"}-{self.connection.execute("SELECT count(*) FROM asset").fetchone()[0]}.mp4',
+             'clip.mp4',code,disposal)).lastrowid
+        upsert_asset_entity(self.connection,kind='performer',name=name,asset_id=asset_id,role='performer',source='legacy:asset')
+        if tag:
+            upsert_asset_entity(self.connection,kind='tag',name=tag,asset_id=asset_id,role='tag',source='test:scene-tag')
+        return asset_id
+
+    def test_amateur_identity_follows_trusted_claims_or_all_amateur_releases(self):
         _, confirmed = self.entity('Nonprofessional Cast',kind='performer')
         self.claim(confirmed,'occupation','amateur_performer')
-        asset_id, unknown = self.entity('Unknown Cast',kind='performer')
-        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(asset_id,))
-        classification.write_claim(self.connection,entity_id=unknown,facet='occupation',
+        fc2_id, fc2_only = self.entity('FC2 Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(fc2_id,))
+        self.work('FC2 Cast',tag='素人')
+        self.work('FC2 Cast',disposal='vanished')
+        mixed_id, _ = self.entity('Mixed Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-7654321' WHERE id=?",(mixed_id,))
+        self.work('Mixed Cast','ABP-001')
+        _, guessed = self.entity('Guessed Cast',kind='performer')
+        classification.write_claim(self.connection,entity_id=guessed,facet='occupation',
             value='amateur_performer',source='script:search',evidence='未核验推断')
+        jav_id, jav = self.entity('Known JAV Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1111111' WHERE id=?",(jav_id,))
+        self.claim(jav,'market','japanese_av')
         self.connection.commit()
         contract=WebContract(self.db)
         page=q_index(contract,'performers',category='amateur')
-        self.assertEqual([item['entity_id'] for item in page['items']],[confirmed])
-        self.assertEqual(page['categories'],{'amateur':1})
-        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Unknown Cast'})['identity_labels'],[])
+        self.assertEqual(sorted(item['entity_id'] for item in page['items']),sorted([confirmed,fc2_only]))
+        self.assertEqual(page['categories']['amateur'],2)
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Mixed Cast'})['identity_labels'],[])
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Guessed Cast'})['identity_labels'],[])
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Known JAV Cast'})['identity_labels'],['女优'])
         self.claim(confirmed,'occupation','adult_performer')
+        self.claim(fc2_only,'market','western_adult')
         self.connection.commit()
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
 

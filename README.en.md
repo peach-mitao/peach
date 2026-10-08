@@ -62,10 +62,10 @@ Want to look around before installing? The [live demo](https://demo.peach.video)
 ## What it does
 
 - **Search**: type a few characters and performers, codes and videos show up together.
-- **身份分类**：艺人按身份与发行范围分为女优、素人、西方、网黄博主和动画作者；素人须有明确的非职业出演证据，职业女优不归为素人。FC2 与作品题材仅用于作品筛选。名册使用「艺人、卖家、在线」三个并列入口，卖家按来源账号与作品对应。筛选条只显示有内容的分类，资料页在视频数量左侧显示分类与图标。
-- **作品计数**：明确分段的同一 FC2 合集计为一个视频，分段文件和出演归属完整保留。已确认合并的身份共用资料与作品，旧资料页地址通往规范身份。
-- **账号身份**：网黄博主分类需要身份或账号来源；未核实的条目可在全部名册查看。账号头像优先使用保存的图片，作品画面只有在本人身份有依据时才用作头像。资料页中的别名只承载身份名称，画质和资源包规格保留在文件信息中。
-- **西方图片来源**：出演者与网黄博主可选 Babepedia 主图库人像；Tushy 等 Vixen 网络作品以出演者和发行日匹配官方封面，卡片、详情和头像框选共用原图，无法唯一匹配时留待核验。
+- **Identity categories**: performers are grouped by identity and release market into JAV performers, amateurs, Western performers, adult bloggers and animation authors. Amateurs are performers with trusted evidence of non-professional appearances, or whose every video is an amateur release (an FC2-PPV code or the 素人 tag); JAV and Western performers are never filed as amateurs, and other genres only filter videos. The roster has three side-by-side entries, Performers, Sellers and Online, and sellers are matched to their works by source account. The filter bar only shows categories that have entries, and profile pages show the category with an icon left of the video count.
+- **Video counts**: clearly segmented parts of the same FC2 collection count as one video, while the part files and cast credits are kept in full. Identities confirmed as merged share their profile and videos, and old profile URLs lead to the canonical identity.
+- **Account identity**: the adult blogger category needs an identity or account source; unverified entries remain visible in the full roster. Account avatars prefer saved images, and video frames are used as an avatar only when the person's identity is backed by evidence. Aliases on profile pages carry identity names only; quality and bundle labels stay in the file details.
+- **Western image sources**: performers and adult bloggers can use a Babepedia gallery portrait. For Vixen network titles such as Tushy, official covers are matched by performer and release date and shared by cards, details and avatar cropping; titles without a unique match wait for review.
 - **Performer pages**: aliases, birthday and measurements, social accounts and JavDB and MISSAV links on one page, above every video of hers in your library and her photos. When changing the avatar, gallery portraits, video covers, local images and image URLs can all be cropped with a box first, or used whole.
 - **Filling in details**: by video code, Peach fills in titles, performers, studios and high-resolution covers from studio sites, DMM, JavBus, JavDB and others. It only fills empty fields and never overwrites your edits.
 - **Playback**: play in the browser and pick up where you left off. Like, rate, save for later, add to a playlist, or "log a climax".

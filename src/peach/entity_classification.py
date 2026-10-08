@@ -114,10 +114,16 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     jav = (f"EXISTS (SELECT 1 FROM entity_external_ref er WHERE er.entity_id={column} "
            f"AND er.external_kind='{EXTERNAL_KIND}' AND er.external_id<>'' AND er.provider IN ({providers})) "
            f"OR {claim('market', 'japanese_av')}")
-    amateur = (f"{claim('occupation', 'amateur_performer')} "
-               f"AND NOT ({jav} OR {claim('occupation', 'adult_performer')})")
     west_work = work("av.region='west'")
     western = f"{claim('market', 'western_adult')} OR {west_work}"
+    # 素人发行：FC2-PPV 番号，或作品带「素人」标签（标签表与标签实体任一处）。
+    amateur_release = ("COALESCE(av.code,'') LIKE 'FC2-PPV-%' "
+                       "OR EXISTS (SELECT 1 FROM asset_tag t WHERE t.asset_id=av.id AND t.tag='素人') "
+                       "OR EXISTS (SELECT 1 FROM asset_entity ta JOIN entity te ON te.id=ta.entity_id "
+                       "WHERE ta.asset_id=av.id AND te.kind='tag' AND te.canonical_name='素人')")
+    only_amateur_releases = f"{work('1')} AND NOT {work(f'NOT ({amateur_release})')}"
+    amateur = (f"({claim('occupation', 'amateur_performer')} OR ({only_amateur_releases})) "
+               f"AND NOT ({jav} OR {claim('occupation', 'adult_performer')} OR {western})")
     seller = claim('account_role', 'seller')
     animation = claim('occupation', 'animator')
     creator_video = (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
