@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import type { Browser, Locator } from 'playwright-core';
+import type { Browser, Locator, Page } from 'playwright-core';
 import { launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
 
 const box = (target: Locator) => target.evaluate(node => {
@@ -8,6 +8,16 @@ const box = (target: Locator) => target.evaluate(node => {
   return { x, y, width, height };
 });
 type Box = Awaited<ReturnType<typeof box>>;
+/** 找节点与量矩形在页面里的同一次同步调用里做：骨架会被同一副几何的新节点换下，分两步量会量到已脱离文档的旧节点。 */
+const liveBox = async (page: Page, selector: string): Promise<Box> => {
+  const found = await page.waitForFunction(sel => {
+    const node = document.querySelector(sel);
+    if (!node) return null;
+    const { x, y, width, height } = node.getBoundingClientRect();
+    return { x, y, width, height };
+  }, selector, { polling: 'raf' });
+  return await found.jsonValue() as Box;
+};
 const aligned = (waiting: Box, ready: Box, keys: readonly (keyof Box)[] = ['x', 'y', 'width', 'height']) => {
   for (const key of keys) assert.ok(Math.abs(waiting[key] - ready[key]) <= 1, `${key}: ${waiting[key]} / ${ready[key]}`);
 };
@@ -184,14 +194,11 @@ describe('管理页面容器与骨架', () => {
               size: 1048576, location: 'local', cost: '' })) } });
         });
         await page.reload({ waitUntil: 'load' });
-        const skeleton = page.locator('#grid .catalog-skeleton .skeletoncard').first();
-        await skeleton.waitFor();
-        const card = await box(skeleton);
+        const card = await liveBox(page, '#grid .catalog-skeleton .skeletoncard');
         release();
-        const first = page.locator('#grid [data-junk-card]').first();
-        await first.waitFor();
+        await page.locator('#grid [data-junk-card]').first().waitFor();
         await settle(page);
-        aligned(card, await box(first));
+        aligned(card, await liveBox(page, '#grid [data-junk-card]'));
       } finally { release(); await opened.close(); }
     });
     it(`回收站网格与标题、汇总栏同宽（${viewport.name}）`, { timeout: 60_000 }, async () => {
