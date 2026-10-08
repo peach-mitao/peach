@@ -26,7 +26,7 @@ FC2 卖家名册复用 `sources/fc2.py` 的 `label`、`seller_url` 来源契约�
 
 账号归属复用 `review_decision`、`creator_collection_base`、`write_owned_fields` 和全库归属审计。明确拒绝的资产与账号组合在自动摄取时跳过；用户写入保留复核入口。网黄博主只命中可信个人、内容创作者或发布账号断言，未分类账号保留全部名册入口。`attach_avatar_availability` 集中处理资料页、索引、搜索与统计的作品头像：发布账号缺少本人或出演职业证据时不提供作品帧兜底，已安装图片独立保留。来源核查清单、逐关系回执和备份存于 `peach-data/review/`。
 
-`entity_identity_research` 与 `apply_entity_identity_research.py` 复用规范实体写入、字段归属保护、只读预览、SQLite 备份及冻结计划。逐行撤回回执核对后续修改，新增实体有额外引用时拒绝删除；观看历史和人工判断不被回滚覆盖。
+`entity_identity_research` 与 `apply_entity_identity_research.py` 复用规范实体写入、字段归属保护、只读预览、SQLite 备份及冻结计划。逐行撤回回执核对后续修改，新增实体有额外引用时拒绝删除；观看历史和人工判断不被回滚覆盖。资料站调研复用 `sources/seesaa.py` 的 `WikiPages`（缓存、限额、撞墙停网）、作品表解析 `rows()` 与 `person_profile`，以及 `performer_alias_followup` 的 EUC-JP 页名直取写法，不新增依赖。
 
 ## 播放器清晰度
 

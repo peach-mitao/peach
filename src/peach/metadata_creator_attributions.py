@@ -8,7 +8,8 @@ import sqlite3
 from collections import defaultdict
 
 from .catalog_rules import compact_label, western_release_identity
-from .classification import is_structural_creator, is_repost_creator, creator_collection_base, creator_release_identifier
+from .classification import (is_structural_creator, is_repost_creator, creator_collection_base,
+                             creator_release_identifier, numbered_cast_shape)
 from .entities import normalize_entity_name, upsert_asset_entity
 from .entity_classification import trusted_sql
 from .field_owners import is_protected, owner_of, write_owned_fields
@@ -98,6 +99,11 @@ def classify(row: dict, *, studios: dict[str, set[str]], people: set[str]) -> tu
             and compact_label(creator) == compact_label(title)
             and normalize_entity_name(creator) not in people):
         return 'catalog_title', 'remove', '名称与同作品的发行标题完全一致'
+    shape = row.get('label_shape')
+    if shape:
+        named = f"「{shape['prefix']}+编号+出演者」" if shape['form'] == 'prefix' else '「出演者组合-编号-标题」'
+        return 'label_shape', 'review', (f"文件名是{named}的发行命名，{shape['total']} 部里 {shape['files']} 部命中、"
+                                         f"出演者 {shape['cast']} 位轮换；疑似厂牌或系列，需查资料站或用户确认")
     if normalize_entity_name(creator) in people:
         return 'performer_overlap', 'review', '与出演者姓名或别名一致，尚无卖主身份或同人确认'
     if identifier_verdict:
@@ -136,9 +142,15 @@ def collect(connection: sqlite3.Connection) -> list[dict]:
         a.catalog_title,a.field_owners,a.mutation_revision AS revision
         FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id AND e.kind='creator'
         JOIN asset a ON a.id=ae.asset_id WHERE ae.role='creator' ORDER BY e.id,a.id,ae.source"""
+    relations = [dict(raw) for raw in cursor.execute(query)]
+    filenames: dict[int, dict[int, str]] = defaultdict(dict)
+    for row in relations:
+        if row['medium'] == 'video':
+            filenames[int(row['entity_id'])][int(row['asset_id'])] = str(row['name'] or '')
+    shapes = {entity_id: numbered_cast_shape(list(names.values()), people) for entity_id, names in filenames.items()}
     result = []
-    for raw in cursor.execute(query):
-        row = dict(raw)
+    for row in relations:
+        row['label_shape'] = shapes.get(int(row['entity_id']))
         row['field_owner'] = owner_of(row['field_owners'], 'creator')
         row['studio_owner'] = owner_of(row.pop('field_owners'), 'studio')
         row['has_identity_evidence'] = int(row['entity_id']) in evidence

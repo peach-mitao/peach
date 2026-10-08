@@ -10,7 +10,33 @@ from peach.web_entity import q_index, q_entity, q_suggest
 from peach.web_catalog import q_items
 from peach.web_state import WebContract
 from peach.web_catalog import attach_avatar_availability
+from peach.metadata import MetadataProviderError
+from peach.sources.base import Page
 from tests.support.ledger import fresh_ledger
+
+SOUGOU = research.WIKI_ROOTS['sougouwiki'] + 'd/'
+
+
+def _work_table(*cast):
+    rows = ''.join(f'<tr><td>COSH-00{index}</td><td>こすっち00{index}</td>'
+                   f'<td><a href="{SOUGOU}%A4%A2{index}">{name}</a></td></tr>' for index, name in enumerate(cast, 1))
+    return ('<meta charset="utf-8"><div id="page-body"><div class="user-area"><table>'
+            '<tr><th>NO</th><th>TITLE</th><th>ACTRESS</th></tr>' + rows + '</table></div></div>').encode()
+
+
+class _Pages:
+    """站上只有 `listed` 里的页；`failing` 里的地址模拟网络失败。"""
+
+    def __init__(self, listed=None, failing=()):
+        self.listed, self.failing, self.asked = listed or {}, set(failing), []
+
+    def get(self, url):
+        self.asked.append(url)
+        if url in self.failing:
+            raise MetadataProviderError('Wiki 网络请求未取得', kind='unavailable', retryable=True)
+        if url not in self.listed:
+            raise MetadataProviderError('Wiki HTTP 请求未取得', kind='unavailable', status_code=404, retryable=True)
+        return Page(url, self.listed[url])
 
 
 class EntityClassificationTests(unittest.TestCase):
@@ -311,6 +337,32 @@ class EntityClassificationTests(unittest.TestCase):
                          [(research,'candidate',0.8,'研究清单判断'),(parsed,'observed',1.0,'发行方资料')])
         self.assertEqual(classification.untrusted_observed(self.connection),
                          {'entity_classification':[],'entity_identity_link':[]})
+
+    def test_name_wiki_work_list_lands_as_observed_release_and_retires_unknown(self):
+        _,entity_id=self.entity('COSH こすっち')
+        classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='unknown',
+                                   source=research.SOURCE,evidence='公开身份来源未取得')
+        keys=research.lookup_keys('COSH こすっち',['こすっち'])
+        self.assertEqual(keys,['COSH こすっち','こすっち'])
+        self.assertEqual(research.lookup_keys('secret_japan'),['secret_japan'])
+        listed={SOUGOU+'%A4%B3%A4%B9%A4%C3%A4%C1':_work_table('八ッ橋さい子','本多由奈','北川ゆず')}
+        finding=research.wiki_finding(entity_id,'COSH こすっち',keys,{'sougouwiki':_Pages(listed),'av_neme':_Pages()})
+        with self.connection:
+            research.apply(self.connection,research.plan(self.connection,[finding]))
+        claims={(row['value'],row['status']) for row in self.connection.execute(
+            "SELECT value,status FROM entity_classification WHERE entity_id=? AND facet='identity'",(entity_id,))}
+        self.assertEqual(claims,{('release','observed'),('unknown','rejected')})
+
+    def test_name_wiki_lookup_records_pages_asked_and_leaves_failed_fetches_unfetched(self):
+        missing=research.wiki_finding(7,'lucky',['lucky'],{'sougouwiki':_Pages(),'av_neme':_Pages()})
+        self.assertEqual([(claim['value'],claim['status']) for claim in missing['claims']],[('unknown','candidate')])
+        self.assertIn('sougouwiki「lucky」（页不存在）',missing['claims'][0]['evidence'])
+        self.assertIn('av_neme「lucky」（页不存在）',missing['claims'][0]['evidence'])
+        broken=_Pages(failing=[SOUGOU+'lucky'])
+        self.assertIsNone(research.wiki_finding(7,'lucky',['lucky'],{'sougouwiki':broken,'av_neme':_Pages()}))
+        few=_Pages({SOUGOU+'lucky':_work_table('八ッ橋さい子','本多由奈')})
+        finding=research.wiki_finding(7,'lucky',['lucky'],{'sougouwiki':few,'av_neme':_Pages()})
+        self.assertIn('sougouwiki「lucky」（不是作品一览）',finding['claims'][0]['evidence'])
 
     def test_cast_role_repair_and_restore_preserve_all_business_fields(self):
         asset_id,entity_id=self.entity('Known Person')
