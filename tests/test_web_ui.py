@@ -293,6 +293,16 @@ class WebUiPolicyTests(unittest.TestCase):
         self.assertPageLacks("/link-mark?url=", "外链图标端点不得接受前端给的地址")
         self.assertPageLacks("/site-mark?url=", "站点圆标端点同样只认键")
 
+    def test_locating_a_source_file_waits_inside_its_button(self):
+        """定位源文件的等待态留在按钮里，不往详情里写一行「正在定位…」撑开内容流；按钮保持
+        可聚焦，重复点击由共享 busy 状态挡住。这枚按钮画在壳的照片详情里，组件与浏览器用例都
+        没碰到它。只收 asset id 由 `test_fastapi_api.py` 的定位接口用例保证。"""
+        reveal = self.page.split("async function revealSource", 1)[1].split("async function syncMissing", 1)[0]
+        self.assertNotIn("status.textContent='正在定位…'", reveal,
+                         "请求等待态必须留在按钮内，不能撑开详情内容流")
+        self.assertNotIn("button.disabled", reveal,
+                         "等待按钮应保持可聚焦，并由共享 busy 状态阻止重复请求")
+
 
 # void 元素没有结束标签，压进栈里只会制造假报错。
 _VOID = frozenset({
