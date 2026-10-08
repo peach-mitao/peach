@@ -297,6 +297,31 @@ describe('关注页岛', () => {
     }
   });
 
+  it('瀑布流里带尺寸的图在落地前就按自己的比例占位', { timeout: 60_000 }, async () => {
+    const opened = await openFollowFeed(browser, '/follow?media=images', DESKTOP, { settings: { photoLayout: 'masonry' } });
+    const held: import('playwright-core').Route[] = [];
+    try {
+      const page = opened.page;
+      await page.route((url) => url.pathname.startsWith('/stub-thumb/'), (route) => { held.push(route) });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.locator('[data-follow-wall][data-layout="masonry"] > [data-follow-item]').first().waitFor();
+      await page.locator('[data-follow-wall] [data-media-pic] > img[width][height]').first().waitFor();
+      const boxes = await page.locator('[data-follow-wall] [data-media-pic] > img[width][height]').evaluateAll((images) =>
+        (images as HTMLImageElement[]).map((image) => {
+          const box = image.getBoundingClientRect();
+          return { pending: !image.complete || !image.naturalWidth, width: box.width, height: box.height,
+            ratio: Number(image.getAttribute('height')) / Number(image.getAttribute('width')) };
+        }));
+      const pending = boxes.filter((box) => box.pending);
+      assert.ok(pending.length, '缩略图请求挂住了，却没有一张图停在未落地');
+      const off = pending.filter((box) => Math.abs(box.height - box.width * box.ratio) > 1.5);
+      assert.deepEqual(off, [], '未落地的图没有按 width/height 属性的比例占位');
+    } finally {
+      for (const route of held.splice(0)) await route.abort().catch(() => {});
+      await opened.close();
+    }
+  });
+
   it('加载更多接在原来那些卡后面', { timeout: 60_000 }, async () => {
     const opened = await openFollowFeed(browser, '/follow', DESKTOP);
     try {
