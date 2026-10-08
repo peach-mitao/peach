@@ -1126,6 +1126,15 @@ def _picker_artwork(request: Request) -> avatar_picker.ArtworkSource:
         cover_root=state.web_contract.cover_root, frame=frame)
 
 
+def _remember_library(providers_root: Path, body: bytes, origin: dict,
+                      inspected: avatar_provider.InspectedAvatar) -> None:
+    """图库图取过一次就按地址留进缓存，翻第二遍、框它、装它都不再出网。"""
+    if str(origin.get("provider")) == "gfriends":
+        cache = avatar_provider.AvatarCandidateCache(
+            providers_root / avatar_picker.GFRIENDS_CACHE)
+        cache.store(str(origin.get("upstream_url") or ""), body, inspected)
+
+
 @router.get("/api/avatar-choices")
 def avatar_choices(request: Request, kind: str = "performer", id: int = 0,
                    args: dict[str, str] = Depends(require_auth)):
@@ -1160,10 +1169,7 @@ def avatar_choice(request: Request, kind: str = "performer", id: int = 0,
     inspected = avatar_provider.inspect_avatar(body)
     if inspected is None:
         return JSONResponse({"error": "这不是一张能识别的图片"}, status_code=415)
-    if str(origin.get("provider")) == "gfriends":
-        cache = avatar_provider.AvatarCandidateCache(
-            providers_root / avatar_picker.GFRIENDS_CACHE)
-        cache.store(str(origin.get("upstream_url") or ""), body, inspected)
+    _remember_library(providers_root, body, origin, inspected)
     result = Response(b"" if request.method == "HEAD" else body,
                       media_type=inspected.mime_type)
     # 封面会原地替换，可以缓存这么久是因为它的地址带着 `v`（`Choice.version`）：封面一换，
@@ -1172,15 +1178,87 @@ def avatar_choice(request: Request, kind: str = "performer", id: int = 0,
     return result
 
 
+async def _picker_request(request: Request) -> tuple[dict, bytes]:
+    """换头像那几个端点的请求：JSON 一份参数，或者请求体是图片字节、参数走查询串。"""
+    content_type = (request.headers.get("content-type") or "").split(";")[0].strip()
+    if content_type == "application/json":
+        sent = await request.json()
+        return (sent if isinstance(sent, dict) else {}), b""
+    return dict(request.query_params), await request.body()
+
+
+def _picker_entity(state, payload: dict) -> int:
+    """请求里的实体 id，换算成现在那一条；缺了或不成数是 0。"""
+    try:
+        entity_id = int(payload.get("id") or 0)
+    except (TypeError, ValueError):
+        return 0
+    # 页面开着时实体被并入别人，换上的图要落到现在那一条名下，不留成孤立文件。
+    return current_entity_id(state, entity_id) if entity_id > 0 else 0
+
+
+def _picker_crop(raw: object) -> object:
+    """请求里的框。JSON 给的是一个对象；本机文件那一路走查询串，写成 `x0,y0,x1,y1`。"""
+    if isinstance(raw, str) and raw.count(",") == 3:
+        return dict(zip(("x0", "y0", "x1", "y1"), raw.split(",")))
+    return raw
+
+
+@router.post("/api/avatar-frame")
+async def avatar_frame(request: Request, args: dict[str, str] = Depends(require_auth)):
+    """一张图进框选之前：量出转正后的尺寸，检出脸给默认框。不装。
+
+    - `ref`：候选网格里的那一格。图库图还没取过就像预览那样取一次、留进缓存
+    - `url`：手填的地址。过公网判据后取一次、按地址留进缓存，交回一格 `url:` 候选，
+      框选、确认都读这一份
+    - 请求体直接是图片字节：本机选的文件。只量不存，确认时浏览器再发一次原字节
+    """
+    state = request.app.state.web_contract
+    providers_root, _ = _picker_roots(state)
+    payload, body = await _picker_request(request)
+    ref, url = str(payload.get("ref") or ""), str(payload.get("url") or "")
+    probe = _WORK_FACE_PROBE.on_bytes
+    transport = request.app.state.http_transport
+
+    def library() -> avatar_picker.Choice:
+        entity_id = _picker_entity(state, payload)
+        with state.read_connection() as connection:
+            found, origin = avatar_picker.resolve(
+                ref, connection, providers_root, entity_id, transport,
+                _picker_artwork(request))
+        _remember_library(providers_root, found, origin, avatar_picker.accept_image(found))
+        return avatar_picker.framed(ref, found, probe, source="", label="")
+
+    try:
+        if ref:
+            choice = await asyncio.to_thread(library)
+        elif url:
+            if not avatar_picker.allowed_source(url):
+                return JSONResponse(
+                    {"error": "只接受指向公网的 https 地址"}, status_code=400)
+            choice = await asyncio.to_thread(
+                avatar_picker.typed_address, url, providers_root,
+                partial(avatar_picker.fetch_image, transport), probe)
+        elif body:
+            choice = await asyncio.to_thread(
+                avatar_picker.framed, "", body, probe,
+                source="upload", label=str(payload.get("name") or ""))
+        else:
+            return JSONResponse({"error": "没有可用的图片"}, status_code=400)
+    except avatar_picker.PickerError as error:
+        return JSONResponse({"error": str(error)}, status_code=400)
+    return JSONResponse(choice.as_dict())
+
+
 @router.post("/api/avatar-pick")
 async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_auth)):
-    """换头像。三种来源共用这一个出口，区别只在字节从哪来。
+    """换头像。几种来源共用这一个出口，区别只在字节从哪来。
 
-    - `ref`：服务端自己列出来的候选（图库同名图、这个人取过的图，或他作品里的画面）
-    - `url`：用户手填的地址，必须过 `allowed_source` 那道公网判据
+    - `ref`：服务端自己列出来的候选（图库同名图、这个人取过的图、他作品里的画面），
+      或经 `/api/avatar-frame` 取过、留在缓存里的番号封面与手填地址
     - 请求体直接是图片字节：用户从本机选的文件，浏览器原样发过来
 
-    `crop` 是这四条路共用的一道可选工序：给了框就先按源图像素切一块再装。作品画面
+    `crop` 是各路共用的一道可选工序：给了框就先按源图像素切一块再装。作品画面
     那一路必须给框——横图整张装进圆框只剩一块背景。被切的原图一个字节都不动。
 
     被顶下来的那张不删也不搬：它按内容哈希躺在候选缓存里，下次出现在候选列表的
@@ -1188,25 +1266,14 @@ async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_a
     """
     state = request.app.state.web_contract
     providers_root, avatar_root = _picker_roots(state)
-    content_type = (request.headers.get("content-type") or "").split(";")[0].strip()
-    if content_type == "application/json":
-        sent = await request.json()
-        payload = sent if isinstance(sent, dict) else {}
-        body = b""
-    else:
-        payload = dict(request.query_params)
-        body = await request.body()
-    try:
-        entity_id = int(payload.get("id") or 0)
-    except (TypeError, ValueError):
-        entity_id = 0
+    payload, body = await _picker_request(request)
+    entity_id = _picker_entity(state, payload)
     if entity_id <= 0:
         return JSONResponse({"error": "缺少实体 id"}, status_code=400)
-    # 页面开着时实体被并入别人，换上的图要落到现在那一条名下，不留成孤立文件。
-    entity_id = current_entity_id(state, entity_id)
     kind = _picker_kind(str(payload.get("kind") or "performer"))
-    ref, url = str(payload.get("ref") or ""), str(payload.get("url") or "")
+    ref = str(payload.get("ref") or "")
     version = payload.get("version")
+    box = _picker_crop(payload.get("crop"))
     try:
         if ref:
             with state.read_connection() as connection:
@@ -1214,20 +1281,14 @@ async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_a
                     ref, connection, providers_root, entity_id,
                     request.app.state.http_transport, _picker_artwork(request),
                     version=version if isinstance(version, str) else None)
-        elif url:
-            if not avatar_picker.allowed_source(url):
-                return JSONResponse(
-                    {"error": "只接受指向公网的 https 地址"}, status_code=400)
-            body = avatar_picker.fetch_image(request.app.state.http_transport, url)
-            origin = {"source": "avatar picker", "provider": "url",
-                      "external_id": "", "upstream_url": url}
+            _remember_library(providers_root, body, origin, avatar_picker.accept_image(body))
         elif body:
             origin = {"source": "avatar picker", "provider": "upload",
                       "external_id": str(payload.get("name") or "")}
         else:
             return JSONResponse({"error": "没有可用的图片"}, status_code=400)
-        if isinstance(payload.get("crop"), dict):
-            body, cropped = avatar_picker.crop(body, payload["crop"])
+        if box not in (None, ""):
+            body, cropped = avatar_picker.crop(body, box)
             origin = {**origin, **cropped}
         result = avatar_picker.install(providers_root, avatar_root, kind,
                                        entity_id, body, origin)

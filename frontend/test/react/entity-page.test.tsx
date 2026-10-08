@@ -11,7 +11,7 @@ import * as legacyUi from '@peach/legacy/ui';
 import { itemsParams, prefetchEntityPage, type EntityPageProps } from '../../src/react/entity-page/entity-page';
 import { EntityPage } from '../../src/react/entity-page/entity-page-view';
 import { queryClient } from '../../src/react/query';
-import { click, mountRoot, settle } from './render';
+import { buttonNamed, click, mountRoot, settle } from './render';
 
 afterEach(() => { queryClient.clear() });
 notifyManager.setScheduler((notify) => notify());
@@ -59,6 +59,10 @@ function serve(plan: Plan = {}) {
       if (url.pathname === '/api/avatar-pick') {
         plan.picked?.();
         return reply({ ok: true });
+      }
+      if (url.pathname === '/api/avatar-frame') {
+        return reply({ ref: body.ref, source: 'gfriends', label: 'a', width: 300, height: 400, detail: '',
+          found_by: '', current: false, crop: false, bases: [body.ref], focus: null, cast: 0, version: '' });
       }
       if (url.pathname === '/api/entity-name') {
         return reply({ changed: true, canonical_name: body.canonical, previous_name: body.name });
@@ -355,7 +359,9 @@ describe('写操作', () => {
     await settle();
     await click(document.querySelector('[data-avatar-choice]'));
     await settle();
-    expect(page.writes.map((one) => one.url)).toEqual(['/api/avatar-pick']);
+    await click(buttonNamed('整张使用'));
+    await settle();
+    expect(page.writes.map((one) => one.url)).toEqual(['/api/avatar-frame', '/api/avatar-pick']);
     expect(portrait()).toBe('/entity-image?v=new');
     // 网格把第一页当初值存进自己的状态：只重取不换键，卡片（连同署名里她的脸）停在旧的那一份。
     expect(cards(page.props)).toEqual(['4', '5', '6']);

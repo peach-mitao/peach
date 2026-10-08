@@ -502,6 +502,57 @@ class AssetArtworkTests(PickerFixture):
             avatar_picker.crop(b"not an image", {"x0": 0, "y0": 0, "x1": 9, "y1": 9})
 
 
+class PortraitFramingTests(unittest.TestCase):
+    """人像进框选：默认框落在哪、框在哪张像素上切。"""
+
+    def test_a_phone_photo_is_cut_where_the_page_showed_it(self):
+        # 像素按横的存、标签说「转 90° 显示」：页面上是 20×40 的竖图，上红下蓝。
+        body = sideways_photo()
+        cropped, origin = avatar_picker.crop(body, {"x0": 0, "y0": 20, "x1": 20, "y1": 40})
+        self.assertEqual(origin["crop_source_px"], [20, 40])
+        with Image.open(io.BytesIO(cropped)) as image:
+            red, _green, blue = image.convert("RGB").getpixel((10, 10))
+        self.assertGreater(blue, red, "框的是页面上的下半张，切出来却不是蓝的那一块")
+
+    def test_a_portrait_is_framed_around_the_face_the_probe_found(self):
+        from peach.avatar_cover_face import face_square
+
+        body = picture(300, 400, "teal")
+        record = face_record(300, 400, cx=0.5, cy=0.2, w=0.1)
+        choice = avatar_picker.framed(LIBRARY_REF, body, lambda _: record,
+                                      source="", label="")
+        self.assertEqual((choice.width, choice.height, choice.crop), (300, 400, False))
+        self.assertEqual(choice.bases, (LIBRARY_REF,))
+        # 和批处理从封面截头像是同一块：页面上默认框住的就是批处理会截的那块。
+        self.assertEqual(choice.focus, face_square(record, 300, 400))
+        blind = avatar_picker.framed(LIBRARY_REF, body, lambda _: None, source="", label="")
+        self.assertIsNone(blind.focus)
+
+    def test_a_phone_photo_is_measured_the_way_the_page_shows_it(self):
+        seen: list[tuple[int, int]] = []
+
+        def probe(body: bytes):
+            with Image.open(io.BytesIO(body)) as image:
+                seen.append(image.size)
+            return None
+
+        choice = avatar_picker.framed("", sideways_photo(), probe, source="upload", label="me.jpg")
+        self.assertEqual((choice.width, choice.height), (20, 40))
+        self.assertEqual(seen, [(20, 40)], "探针检的不是转正后的那张")
+
+
+def sideways_photo() -> bytes:
+    """手机照片的存法：像素是 40×20 的横图，左红右蓝，EXIF 方向 6（显示时顺时针转 90°）。
+    转正后是 20×40 的竖图，上红下蓝。"""
+    image = Image.new("RGB", (40, 20), "red")
+    ImageDraw.Draw(image).rectangle((20, 0, 40, 20), fill="blue")
+    exif = image.getexif()
+    exif[0x0112] = 6
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", exif=exif.tobytes())
+    return buffer.getvalue()
+
+
 def face_record(width: int, height: int, cx: float = 0.8, cy: float = 0.3,
                 w: float = 0.05) -> dict:
     """`avatar_face` 边车的形状：`px` 是检测时那张图的尺寸，脸框按比例给。"""
@@ -826,19 +877,100 @@ class AvatarPickerRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual((self.avatars / "performer-7792.img").read_bytes(), body)
 
+    def test_a_file_from_this_machine_can_be_cut_before_it_is_installed(self):
+        body = picture(300, 400, "olive")
+        framed = self.client.post(
+            "/api/avatar-frame?id=7792&kind=performer&name=me.jpg&t=secret",
+            content=body, headers={"content-type": "image/jpeg"})
+        self.assertEqual(framed.status_code, 200)
+        self.assertEqual((framed.json()["width"], framed.json()["height"]), (300, 400))
+        # 只量不存：本机文件确认时浏览器再发一次原字节。
+        self.assertFalse((self.providers / "upload").exists())
+        picked = self.client.post(
+            "/api/avatar-pick?id=7792&kind=performer&name=me.jpg&crop=0,0,300,300&t=secret",
+            content=body, headers={"content-type": "image/jpeg"})
+        self.assertEqual(picked.status_code, 200)
+        installed = avatar_picker.accept_image((self.avatars / "performer-7792.img").read_bytes())
+        self.assertEqual((installed.width, installed.height), (300, 300))
+
     def test_a_typed_address_is_checked_before_peach_goes_and_fetches_it(self):
-        refused = self.client.post("/api/avatar-pick?t=secret",
+        refused = self.client.post("/api/avatar-frame?t=secret",
                                    json={"id": 7792, "url": "http://169.254.169.254/a.jpg"})
         self.assertEqual(refused.status_code, 400)
-        self.assertFalse((self.avatars / "performer-7792.img").exists())
+        self.assertFalse((self.providers / avatar_picker.ADDRESS_CACHE).exists())
+        address = "https://example.com/a.jpg"
+        calls: list[str] = []
+        self.app.state.http_transport = transport_of(self.picture, calls=calls)
         with mock.patch.object(peach_http, "host_addresses",
                                return_value=("93.184.216.34",)):
-            accepted = self.client.post(
-                "/api/avatar-pick?t=secret",
-                json={"id": 7792, "url": "https://example.com/a.jpg"})
+            accepted = self.client.post("/api/avatar-frame?t=secret",
+                                        json={"id": 7792, "url": address})
         self.assertEqual(accepted.status_code, 200)
-        self.assertEqual((self.avatars / "performer-7792.img").read_bytes(),
-                         self.picture)
+        self.assertEqual(accepted.json()["ref"], f"url:{address}")
+        # 框选时看的预览、确认时切的都是取来的那一份，不再出网。
+        preview = self.client.get("/avatar-choice", params={
+            "kind": "performer", "id": 7792, "ref": f"url:{address}", "t": "secret"})
+        self.assertEqual(preview.content, self.picture)
+        picked = self.client.post("/api/avatar-pick?t=secret", json={
+            "kind": "performer", "id": 7792, "ref": f"url:{address}"})
+        self.assertEqual(picked.status_code, 200)
+        self.assertEqual(calls, [address])
+        self.assertEqual((self.avatars / "performer-7792.img").read_bytes(), self.picture)
+
+    def test_an_address_never_fetched_is_refused_instead_of_going_out(self):
+        calls: list[str] = []
+        self.app.state.http_transport = transport_of(self.picture, calls=calls)
+        response = self.client.post("/api/avatar-pick?t=secret", json={
+            "kind": "performer", "id": 7792, "ref": "url:https://example.com/b.jpg"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(calls, [])
+
+    def test_a_library_portrait_is_framed_around_the_face(self):
+        from peach import routes_media
+        from peach.avatar_cover_face import face_square
+
+        record = face_record(40, 60, cx=0.5, cy=0.25, w=0.3)
+        with mock.patch.object(routes_media._WORK_FACE_PROBE, "on_bytes", return_value=record):
+            response = self.client.post("/api/avatar-frame?t=secret", json={
+                "kind": "performer", "id": 7792, "ref": LIBRARY_REF})
+        self.assertEqual(response.status_code, 200)
+        out = response.json()
+        self.assertEqual((out["width"], out["height"], out["bases"]), (40, 60, [LIBRARY_REF]))
+        self.assertEqual(tuple(out["focus"].values()), face_square(record, 40, 60))
+        # 取过一次就留在缓存里，接下来的预览与装上去都不再出网。
+        cache = AvatarCandidateCache(self.providers / avatar_picker.GFRIENDS_CACHE)
+        self.assertEqual(cache.lookup(gfriends.image_url("7-S1", "葵つかさ.jpg")), self.picture)
+
+    def test_cutting_a_library_portrait_keeps_the_whole_one_under_its_address(self):
+        body = picture(300, 400, "purple")
+        self.app.state.http_transport = transport_of(body)
+        picked = self.client.post("/api/avatar-pick?t=secret", json={
+            "kind": "performer", "id": 7792, "ref": LIBRARY_REF,
+            "crop": {"x0": 50, "y0": 100, "x1": 250, "y1": 300}})
+        self.assertEqual(picked.status_code, 200)
+        installed = (self.avatars / "performer-7792.img").read_bytes()
+        self.assertEqual(avatar_picker.accept_image(installed).width, 200)
+        cache = AvatarCandidateCache(self.providers / avatar_picker.GFRIENDS_CACHE)
+        self.assertEqual(cache.lookup(gfriends.image_url("7-S1", "葵つかさ.jpg")), body,
+                         "图库那一格取回来的成了框出来的那一块")
+        # 框出来的那一块自己进「取过的图」，换回去不必再框一次。
+        listed = self.client.get("/api/avatar-choices?kind=performer&id=7792&t=secret").json()
+        current = [one for one in listed["choices"] if one["current"]]
+        self.assertEqual([one["ref"] for one in current],
+                         [f"sha256:{inspect_avatar(installed).sha256}"])
+        self.assertEqual(current[0]["label"], "图库")
+
+    def test_a_piece_cut_from_a_taken_picture_reads_as_one_she_took(self):
+        self.client.post("/api/avatar-pick?t=secret", json={
+            "kind": "performer", "id": 7792, "ref": LIBRARY_REF})
+        taken = f"sha256:{inspect_avatar(self.picture).sha256}"
+        picked = self.client.post("/api/avatar-pick?t=secret", json={
+            "kind": "performer", "id": 7792, "ref": taken,
+            "crop": {"x0": 0, "y0": 0, "x1": 40, "y1": 40}})
+        self.assertEqual(picked.status_code, 200)
+        listed = self.client.get("/api/avatar-choices?kind=performer&id=7792&t=secret").json()
+        current = [one for one in listed["choices"] if one["current"]]
+        self.assertEqual([one["label"] for one in current], ["取过的图"])
 
     def test_a_typed_code_brings_back_a_cover_that_then_frames_and_installs(self):
         from peach import routes_media

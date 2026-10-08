@@ -1,7 +1,8 @@
 /* 换头像的数据契约。
  *
  * 候选图走 `/avatar-choice?ref=`：页面只递服务端自己列出来的 ref，地址由服务端按索引拼。
- * 手填地址那一条是唯一的例外，它在服务端有自己的公网判据。 */
+ * 手填地址先交给 `/api/avatar-frame`，过了服务端的公网判据、取回来留在缓存里，才变成
+ * 一个 `url:` ref；本机文件只在浏览器里预览，确认时按原字节发出去。 */
 import { ApiError, apiGet, apiSend } from '../../api';
 import {
   centeredBox, frameWithin, isUsableSize, type CropBox, type CropSize,
@@ -10,11 +11,12 @@ import {
 export const AVATAR_CHOICES_URL = '/api/avatar-choices';
 export const AVATAR_PICK_URL = '/api/avatar-pick';
 export const AVATAR_CODE_COVER_URL = '/api/avatar-code-cover';
+export const AVATAR_FRAME_URL = '/api/avatar-frame';
 const AVATAR_CHOICE_IMAGE_URL = '/avatar-choice';
 
 export interface AvatarChoice {
   ref: string;
-  source: 'gfriends' | 'history' | 'asset' | 'code';
+  source: 'gfriends' | 'history' | 'asset' | 'code' | 'url' | 'upload';
   label: string;
   width: number;
   height: number;
@@ -68,6 +70,30 @@ export const fetchAvatarChoices = (kind: string, id: number, signal?: AbortSigna
 export const fetchCodeCover = (code: string) =>
   apiSend<AvatarChoice>(AVATAR_CODE_COVER_URL, { code });
 
+/** 一格人像进框选之前，服务端量出的尺寸、检出的脸和可换的底图，并进这一格自己的说明。
+ *  列表里图库图还没取过时尺寸是 0，而默认框只在尺寸对得上时才按脸落。 */
+export async function frameChoice(kind: string, id: number, choice: AvatarChoice): Promise<AvatarChoice> {
+  const framed = await apiSend<AvatarChoice>(AVATAR_FRAME_URL, { kind, id, ref: choice.ref });
+  return { ...choice, width: framed.width, height: framed.height, focus: framed.focus, bases: framed.bases };
+}
+
+/** 手填的地址：服务端过公网判据、取一次留进缓存，交回一格 `url:` 候选。 */
+export const frameAddress = (kind: string, id: number, url: string) =>
+  apiSend<AvatarChoice>(AVATAR_FRAME_URL, { kind, id, url });
+
+/** 本机文件：按原字节发过去量尺寸、检脸，服务端不留。 */
+export const frameFile = (kind: string, id: number, file: File) =>
+  sendBytes<AvatarChoice>(`${AVATAR_FRAME_URL}${query(kind, id)}&name=${encodeURIComponent(file.name)}`, file);
+
+/* 本机文件按原样发字节，不走 multipart：解析 multipart 要多一个依赖，而这里只有
+   一个文件、没有别的字段，文件名和框走查询串。请求体不是 JSON，所以不经 `apiSend`。 */
+async function sendBytes<T>(url: string, file: File): Promise<T> {
+  const response = await fetch(url, { method: 'POST', credentials: 'same-origin', body: file });
+  const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
+  if (response.ok) return payload as T;
+  throw new ApiError(payload?.error || `请求失败（${response.status}）`, response.status, payload);
+}
+
 /** 一张候选按 `aspect` 取景的那一块：有取景区就在它里面取，没有就整张图居中。
  *  `size` 不是这一格自己那张图时（换了底图）一律居中：取景区只对它自己的像素作数。 */
 export function choiceFrame(choice: AvatarChoice, size: CropSize, aspect: number): CropBox {
@@ -83,11 +109,10 @@ export const framesItself = (choice: AvatarChoice): boolean =>
 /** 框选出来的那一块，源图像素、右下开区间。后端按同一组整数裁。 */
 export interface AvatarCrop { x0: number; y0: number; x1: number; y1: number }
 
-/** 四条路交上去的东西不同，落点是同一个端点。`crop` 是其中三条共用的可选工序。 */
+/** 两条路交上去的东西不同，落点是同一个端点。`crop` 是共用的可选工序，不给就整张装。 */
 export type AvatarSubmission =
   | { ref: string; crop?: AvatarCrop; version?: string }
-  | { url: string; crop?: AvatarCrop }
-  | { file: File };
+  | { file: File; crop?: AvatarCrop };
 
 export async function sendAvatarPick(
   kind: string, id: number, submission: AvatarSubmission,
@@ -96,15 +121,9 @@ export async function sendAvatarPick(
     await apiSend(AVATAR_PICK_URL, { kind, id, ...submission });
     return;
   }
-  /* 本机文件按原样发字节，不走 multipart：解析 multipart 要多一个依赖，而这里只有
-     一个文件、没有别的字段，文件名走查询串。请求体不是 JSON，所以不经 `apiSend`。 */
-  const file = submission.file;
-  const response = await fetch(
-    `${AVATAR_PICK_URL}${query(kind, id)}&name=${encodeURIComponent(file.name)}`,
-    { method: 'POST', credentials: 'same-origin', body: file });
-  if (response.ok) return;
-  const payload = await response.json().catch(() => null) as { error?: string } | null;
-  throw new ApiError(payload?.error || `请求失败（${response.status}）`, response.status, payload);
+  const { file, crop } = submission;
+  const box = crop ? `&crop=${[crop.x0, crop.y0, crop.x1, crop.y1].join(',')}` : '';
+  await sendBytes(`${AVATAR_PICK_URL}${query(kind, id)}&name=${encodeURIComponent(file.name)}${box}`, file);
 }
 
 /** 说明只留一句：这一屏已经用图说清了在选什么，多一行字就是多一行要读的东西。
@@ -142,6 +161,7 @@ export const cropNote = (choice: AvatarChoice): string =>
 
 const SOURCE_LABELS: Record<string, string> = {
   gfriends: '图库', history: '用过的', asset: '作品画面', code: '番号封面',
+  url: '地址', upload: '本机',
 };
 
 /** 底图那一排每一格的名字：封面一格，九宫格九格按位置数。 */

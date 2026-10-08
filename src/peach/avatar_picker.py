@@ -8,9 +8,10 @@
 所以这里的立场是：自动挑一张先用着，人随时能换成别的。可换的来源有四种——图库里
 同名的其他候选、这个人自己作品里的画面、本机的图片文件、一个 https 地址。
 
-作品那一路和其余三路的形状不一样：封面是横版封套，九宫格是十六比九的画面，里面
-常常还不止一个人。这种图整张装进圆框只会得到一块背景，所以它必须先框出一块再装
-（`crop` 那个参数）；人像候选本来就是方图，那三路照旧一点就换。
+四路都可以先框出一块再装（`crop` 那个参数），框按源图像素给，服务端切出新字节。
+作品那一路必须框：封面是横版封套，九宫格是十六比九的画面，里面常常还不止一个人，
+整张装进圆框只会得到一块背景。其余三路多是人像，图库里却常是全身竖图，脸只占
+一小块，所以也先进框选（默认框落在检出的脸上，`framed`），整张装照样成立。
 
 **换过的图都留着。** 每一张取到的图都按内容哈希进候选缓存，换回去只是再装一次，
 不重新下载；被顶下来的那张也在里面，不会因为换了一次就永远找不回来。
@@ -63,8 +64,11 @@ SOURCE_NAMES = {
     "babepedia": "Babepedia",
     "kmib": "官网",
     "picker": "自己挑的",
+    "history": "取过的图",
     "asset": "作品画面",
     "code-cover": "番号封面",
+    "url": "地址",
+    "upload": "本机",
 }
 #: 按番号取来的封面放在这个来源目录里。它不属于任何人，所以只存对象、不写证据：
 #: 证据按 `performer-<id>-*` 存，写了就会冒充成某个人「取过的图」。
@@ -74,6 +78,9 @@ CODE_COVER_CACHE = "code-cover"
 MAX_ASSET_CHOICES = 12
 #: 九宫格的格数。底图可以在这九格加封面之间换，框选在换底图之后重来。
 SHEET_CELLS = 9
+#: 手填地址取来的图放在这个来源目录里，按地址存。框选、确认都从这里读，不再出网；
+#: 装上去时来源记录的 `provider` 也是它，整张装的那一份和取来的落在同一条记录上。
+ADDRESS_CACHE = "url"
 
 
 class PickerError(RuntimeError):
@@ -388,6 +395,36 @@ def code_cover(code: str, cover_root: Path | None, providers_root: Path,
                   crop=True, bases=(ref,), focus=focus, version=cover_version(cover))
 
 
+def framed(ref: str, body: bytes, probe: Callable[[bytes], dict | None], *,
+           source: str, label: str) -> Choice:
+    """一张人像进框选之前要知道的：转正后的尺寸，和脸周围那块方图。
+
+    图库人像多是全身竖图，整张装进圆框脸只占一小块，所以和作品画面一样先框再装。
+    默认框和批处理从封面截头像是同一块（`face_square`）；检不出脸时 `focus` 是 None，
+    页面居中落框。`crop` 保持 False：这几路的图整张装也成立，框选是可选的那一步。
+    """
+    accept_image(body)
+    body = images.upright(body)
+    size = images.measure_image_size(body)
+    if size is None:
+        raise PickerError("这不是一张能识别的图片")
+    return Choice(ref=ref, source=source, label=label, width=size[0], height=size[1],
+                  bases=(ref,) if ref else (), focus=face_square(probe(body), *size))
+
+
+def typed_address(url: str, providers_root: Path, fetch: Callable[[str], bytes],
+                  probe: Callable[[bytes], dict | None]) -> Choice:
+    """手填的地址取一次图，留进候选缓存，交回一格可以框的候选。
+
+    地址必须已经过 `allowed_source`。取到的字节按地址存：框选时页面看的预览、探针检的
+    脸和确认时切的都是这一份，不会因为两次取图之间站点换了图而对不上。
+    """
+    body = fetch(url)
+    AvatarCandidateCache(providers_root / ADDRESS_CACHE).store(url, body, accept_image(body))
+    host = urllib.parse.urlsplit(url).hostname or url
+    return framed(f"url:{url}", body, probe, source="url", label=host)
+
+
 def choices(connection: sqlite3.Connection, providers_root: Path,
             avatar_root: Path, kind: str, entity_id: int,
             cover_root: Path | None = None) -> dict:
@@ -598,6 +635,14 @@ def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
         _check_version(path, version)
         return body, {"source": "avatar picker", "provider": "code-cover",
                       "external_id": key, "asset_code": key}
+    if ref.startswith("url:"):
+        # 同样只读本机：取图那一步在 `typed_address` 里，地址在那里过公网判据。
+        url = ref.split(":", 1)[1]
+        body = AvatarCandidateCache(providers_root / ADDRESS_CACHE).lookup(url)
+        if body is None:
+            raise PickerError("这个地址的图还没有取过")
+        return body, {"source": "avatar picker", "provider": ADDRESS_CACHE,
+                      "external_id": "", "upstream_url": url}
     if not ref.startswith("gfriends:"):
         raise PickerError("认不出这个候选")
     category, _, filename = ref.split(":", 1)[1].partition("/")
@@ -623,9 +668,11 @@ def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
 def crop(body: bytes, box: object) -> tuple[bytes, dict]:
     """按源图像素框切出头像那一块，连同一份记着框的来源补充。
 
-    原图不动：切出来的是新字节，被切的那张（作品封面、九宫格的一格）还在原处。
-    装上去之后这份新字节自己进候选缓存，所以同一个框换回来不必再切一次。
+    原图不动：切出来的是新字节，被切的那张（作品封面、九宫格的一格、图库人像）还在
+    原处。装上去之后这份新字节自己进候选缓存，所以同一个框换回来不必再切一次。
+    框是在浏览器里转正之后的图上画的，所以先按 EXIF 方向转正再量、再切。
     """
+    body = images.upright(body)
     size = images.measure_image_size(body)
     if size is None:
         raise PickerError("这不是一张能识别的图片")
@@ -647,7 +694,11 @@ def keep(providers_root: Path, entity_id: int, body: bytes, origin: dict) -> Ins
     cache = AvatarCandidateCache(
         providers_root / str(origin.get("provider") or "picker"))
     url = str(origin.get("upstream_url") or f"peach:picker/{inspected.sha256}")
-    cache.store(url, body, inspected)
+    # 地址是缓存键：按它查回来的必须是那个地址上的整张图。框出来的一块记在自己的
+    # 内容地址下，否则图库那一格、手填的那个地址从此取回来的都是这一块。
+    key = (f"peach:picker/{inspected.sha256}"
+           if origin.get("source_kind") == "user_cropped" else url)
+    cache.store(key, body, inspected)
     cache.store_provenance(provenance_now(
         entity_id=int(entity_id), provider=str(origin.get("provider") or "picker"),
         source_kind=str(origin.get("source_kind") or "user_selected"),
