@@ -5,8 +5,8 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 
 # Peach Web UI 复用门槛
 
-最后复核：2026-10-04
-证据来源：现有 UI 契约、`docs/TESTING.md`、2026-09-19 本机会话工具记录。
+最后复核：2026-10-09
+证据来源：现有 UI 契约、`docs/TESTING.md`、2026-09-19 本机会话工具记录、jakubkrehel/skills 与 emilkowalski/skills 摘录。
 
 ## 开工顺序
 
@@ -14,6 +14,8 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 2. 外部产品被称为参考时同时执行 `peach-reference-evidence`；没有当前可复现证据就写 `未取得`，不补动画、间距或交互猜测。
 3. 视觉与交互先过 `docs/reference-snapshots/vercel-web-interface-guidelines.md` 的 Focus States、Forms、Animation、Content 四节，以及 `vercel-report-design.md`（即 `vercel.com/design.md`）的「Reject generated-design reflexes」；第三方逆向测量的 DESIGN.md（如 design-bites）不作证据。
 4. 新控件先检查 `docs/reference-snapshots/vercel-geist-controls-measured.md`、`vercel-geist-semantics-measured.md`、`vercel-geist-note-progress-switch-analytics.md`、`vercel-geist-command-search-loading.md`、`vercel-geist-button-icons.md` 与 `vercel-geist-split-button.md`。
+5. 收尾前用 `docs/reference-snapshots/jakubkrehel-interface-skills.md` 与 `emilkowalski-skills.md` 的检测表自查，组件按「极端内容场景」挑轴、按「极端值要真实」取值写夹具；与本技能冲突时以本技能为准。
+   用 `break-ui`、`/state-machine` 时，临时页和演示开关只建在本任务工作树里，交付前删掉。
 
 ## 组件选择
 
