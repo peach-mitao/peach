@@ -113,7 +113,9 @@ export function FollowFeedPage(props: FollowFeedProps) {
   const listPending = result.isPending || result.isPlaceholderData;
 
   /* 侧栏仍在壳里：每取到本键自己的数据就把可见条目的标签计数、全库口径的来源与时长有无交回去，
-     换键时暂借的占位数据不交。来源按全库列：选中一个之后别的还在，才切得回去。 */
+     换键时暂借的占位数据不交。来源按全库列：选中一个之后别的还在，才切得回去。
+     交回排到微任务里：壳收到后画侧栏，侧栏的句柄内部 `flushSync`，在提交阶段里画不出来。
+     这一次的抽屉已被下一次取代或页面已卸下就不交。 */
   const settled = !listPending && !!data;
   const drawer = useMemo<FollowDrawer>(() => ({
     tags: sidebarTagCounts(facets.visible.flatMap(collectionItems).map((item) => ({ tags: item.tags || [] }))),
@@ -121,7 +123,10 @@ export function FollowFeedPage(props: FollowFeedProps) {
     duration: !!data?.facets?.duration,
   }), [facets.visible, facets.providers, data]);
   useEffect(() => {
-    if (settled) actions.loaded(drawer);
+    if (!settled) return;
+    let live = true;
+    queueMicrotask(() => { if (live) actions.loaded(drawer) });
+    return () => { live = false };
   }, [settled, drawer, actions]);
 
   const job = useFollowJob(props, !!data);

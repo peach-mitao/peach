@@ -45,13 +45,21 @@ export function showToast(
 
 export { javImageKind, normalizeJavImage, normalizeJavLayout, normalizeJavPreferences, panelFrame, relayoutJavImages, syncJavImages } from './jav-artwork';
 
-/* 舞台岛（`react/stage/`）：详情浮窗、两座详情、播放器与小窗都在 `@peach/react` 里，壳只拿命令式
- * 入口。第一次打开详情时才装载 React 包、接上宿主；之后 `stageApi()` 同步可取，包还没装载时是
- * null——那时舞台必然没开，小窗也不在。 */
+/* 舞台（`react/stage/`，常驻面 `stage`）：详情浮窗、两座详情、播放器与小窗都在 `@peach/react` 里，壳只拿
+ * 命令式入口。第一次打开详情时才装载 React 包、接上宿主（先接播放器），建好宿主 `[data-stage-host]`、在路由树里
+ * 打开这一面：宿主在画出小窗节点的同一个任务里挂到 body 末尾，画上之后句柄才交出去。从那一刻起 `stageApi()`
+ * 同步可取；包还没装载时是 null——那时舞台必然没开，小窗也不在。 */
 let stage: Promise<ReactBundle.StageApi> | null = null;
 let stageReady: ReactBundle.StageApi | null = null;
 export function loadStage(host: ReactBundle.StageHost): Promise<ReactBundle.StageApi> {
-  stage ??= import('@peach/react').then((bundle) => { stageReady = bundle.configureStage(host); return stageReady });
+  stage ??= import('@peach/react').then(async (bundle) => {
+    const api = bundle.configureStage(host);
+    const container = document.createElement('div');
+    container.dataset.stageHost = '';
+    await openResidentSurface('stage', container, (node) => { document.body.append(node); return node });
+    stageReady = api;
+    return api;
+  });
   return stage;
 }
 export const stageApi = (): ReactBundle.StageApi | null => stageReady;

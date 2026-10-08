@@ -149,8 +149,9 @@ export type SurfaceName = keyof SurfaceOpenProps;
 
 /** 常驻面，按名字登记、宿主就是那个常驻节点：底部批量条（`[data-batch-dock]`）、侧栏配色卡（`#boardGlowMenu`）、
  *  管理区页头（`[data-manage-header]`）、沉浸模式（body 末尾的 `[data-immerse-host]`）、设置面板
- *  （`[data-settings-host]`，第一次打开时放进 body 末尾）与侧栏（`#drawerScroll`）。打开时不带 props
- *  （`openResidentSurface`），内容由壳经各自的命令式句柄推进组件自己的 store。 */
+ *  （`[data-settings-host]`，第一次打开时放进 body 末尾）、侧栏（`#drawerScroll`）与舞台（body 末尾的
+ *  `[data-stage-host]`，第一次打开详情时放进去）。打开时不带 props（`openResidentSurface`），内容由壳经各自的
+ *  命令式句柄推进组件自己的 store。 */
 export interface ResidentOpenProps {
   'batch-dock': Record<string, never>;
   'glow-picker': Record<string, never>;
@@ -158,6 +159,7 @@ export interface ResidentOpenProps {
   immerse: Record<string, never>;
   'settings-panel': Record<string, never>;
   sidebar: Record<string, never>;
+  stage: Record<string, never>;
 }
 
 export type ResidentName = keyof ResidentOpenProps;

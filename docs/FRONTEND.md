@@ -130,15 +130,17 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 - `items` 挂在 `#nrow` 上：壳手上已有那一批，岛只画卡。
 - 版式、选中态与快进秒数经 `updateManagedRoute`（资料页作品区经 `pushEntityPage`）推进来：换版式只重画，已载入的分页原样保留。`selected` 每次推一个新的 `Set`。
 - 卡上的悬停预览、封面取景与图片微光都在 `frontend/src/card-art/`：卡片直接调 `wireHover`／`releaseHover`（状态写在卡的 `data-previewing`／`data-longhover` 上）与 `relayoutCovers`，微光由 `installCardArt` 装的监听按 `PENDING_IMAGES` 认 `[data-media-art]>img`；壳只经 `configureHoverPreview` 告诉悬停预览多选态、打码与延迟。卡片的结构钩子全是 `data-media-*`；悬停预览插进封面格的 `video.hv`、`img.hvframes` 与封套 `img.poster` 用自己的类名，样式在 `12-cards.css`。
-- 离场：去目录、回收站与垃圾文件以外的页面时由 `clearCatalogGrid` 收 `#grid` 那一页（`claimSurface` 只收 `#stats` 与 `#index`）；资料页正文随资料页由 `releaseManagedRoute` 收起；接着看是作品详情里的子组件，随舞台岛的内容一起卸。
+- 离场：去目录、回收站与垃圾文件以外的页面时由 `clearCatalogGrid` 收 `#grid` 那一页（`claimSurface` 只收 `#stats` 与 `#index`）；资料页正文随资料页由 `releaseManagedRoute` 收起；接着看是作品详情里的子组件，随舞台的内容一起卸。
 - 屏外卡用 `content-visibility` 跳过封面与元信息区的渲染，不做虚拟列表。
 - 单卡写操作都由用户点击触发：稍后看走 `actions.watchLater`，回收站卡的还原走 `actions.resourceOperation`，做完给撤销；彻底删除只在批量条上，先过 `confirmModal` 的危险档。
 
 ### 舞台与播放器
 
-作品详情与关注详情都开在同一座常驻的舞台岛里（`frontend/src/react/stage/`）。宿主 `div[data-stage-host]` 挂在 body 末尾，岛拥有 `dialog#stage`、进出场、骨架、关闭键 `#closeStage` 与小窗；两座详情是它的子组件，共用同一份 Query 缓存。
+作品详情与关注详情都开在常驻面 `stage` 里（`frontend/src/react/stage/`），由路由树画。宿主 `div[data-stage-host]` 是 body 的直接子元素、整页只有一个、换详情不换，不包 `.peach-react`；这一面拥有 `dialog#stage`、进出场、骨架、关闭键 `#closeStage` 与小窗 `#miniplayer`，两座详情是它的子组件，与页面共用同一份 Query 缓存。
 
-- 壳只拿命令式入口：`loadStage(host)` 第一次打开详情时装载 React 包，之后 `stageApi()` 同步可取，契约在 `stage/stage-api.ts`。来处（`detailReturnPath`、`followDetailReturnPath`、`detailOriginAnchor`）、地址与顶栏上下文仍归壳。
+- 壳只拿命令式入口：`loadStage(host)` 第一次打开详情时装载 React 包，`configureStage` 先接上播放器，再经 `openResidentSurface('stage', …)` 建宿主、在画出小窗节点的同一个任务里挂到 body 末尾，画上之后才交出句柄；此后 `stageApi()` 同步可取，契约在 `stage/stage-api.ts`。来处（`detailReturnPath`、`followDetailReturnPath`、`detailOriginAnchor`）、地址与顶栏上下文仍归壳。
+- 句柄写本模块的 store 再 `flushSync` 通知：`open`（含原地换条）、`update`、`dispose` 里每一次绘制都在返回之前画完，骨架量尺寸、`showModal`、标题揭示与焦点交给关闭键读到的是刚画好的结构。两座详情画出来时报给壳的 `present` 排到微任务里：壳收到后画侧栏与顶栏，那几座常驻面的句柄也 `flushSync`，在路由树的提交阶段里画不出来；那一条已经换走或舞台已经收起就不报。
+- 舞台抛错时只卸组件：浮窗与小窗节点跟着消失，宿主与 body 上的 `data-detail-open` 留着，之后句柄各成员照调不抛，空到刷新为止。
 - 关掉详情 push 来处：点进来的是点卡那一页；同一个队列里换条不变，播放列表关掉回列表页并重读；后退前进进来的取条目记的背景（关注详情连筛选一起保住）；刷新、新标签页与深链落在详情上不读条目，作品详情下面补画目录网格、关掉回 `/`，关注详情关掉回 `/follow`。
 - 焦点：骨架期间焦点停在 dialog 本身、不画焦点环，内容到了交给关闭键。Escape 先关最里层（右键菜单、标签搜索等弹层先吃掉），没人拦才关舞台。
 - 播放器在 `frontend/src/player/`，用 vendored 的 Video.js。入口 `mountPlayer(video, options)` 把媒体框里的 `<video>` 换成 Video.js 并返回拆除函数；详情只画媒体框，挂载由舞台的 `attachStagePlayer` 做。
@@ -298,17 +300,18 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 
 - 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
   `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`、`immerse`、
-  `settings-panel`、`sidebar`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
+  `settings-panel`、`sidebar`、`stage`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
   `{prefetch, page}`；附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
 - 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
-  `openResidentSurface(name, container, place?)` 打开一次（沉浸模式与设置面板在第一次打开时，其余几座在壳启动
-  时）：没有首屏取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、
-  `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`、`#drawerScroll`），组件直接画成它的
+  `openResidentSurface(name, container, place?)` 打开一次（沉浸模式、设置面板与舞台在第一次打开时，其余几座在壳
+  启动时）：没有首屏取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、
+  `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`、`#drawerScroll`、`[data-stage-host]`），组件直接画成它的
   子节点，DOM 和各自建根时一样，不包 `.peach-react`。壳照旧经命令式
   句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；`loadXxx` 等这一面
   画上才交出句柄。宿主里先有壳的启动骨架时（管理区页头、侧栏），`openResidentSurface` 的 `place` 在画首帧的
-  同一个任务里清掉骨架，句柄交出之前骨架上的点击归壳；宿主不在壳的页面里时（沉浸模式），`loadImmerse` 新建
-  `[data-immerse-host]`，`place` 在画首帧（藏着的外框）的同一个任务里把它挂到 body 末尾。沉浸的句柄
+  同一个任务里清掉骨架，句柄交出之前骨架上的点击归壳；宿主不在壳的页面里时（沉浸模式、舞台），`loadImmerse` 与
+  `loadStage` 新建 `[data-immerse-host]` 与 `[data-stage-host]`，`place` 在画首帧（沉浸是藏着的外框，舞台是藏着的
+  小窗）的同一个任务里把它挂到 body 末尾。沉浸的句柄
   `open(startId)` 里骨架、列表与播放器那几次绘制都在返回前画完；方向键、改窗口大小与离开页面的监听挂在模块上，
   不随组件卸掉。设置面板在第一次按齿轮时才装载：`loadSettingsPanel` 建一枚 `[data-settings-host]`，`place` 把它
   放进 `document.body` 末尾，路由树在同一个任务里画出收着的面板，之后开合只换 `hidden`；`open(section)` 写 store
@@ -518,7 +521,7 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 
 React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 由 `islands.ts` 动态加载：
 `loadRouter`、常驻面的 `loadSidebar`、`loadManageHeader`、`loadBatchDock`、`loadGlowPicker`、`loadImmerse`、
-`loadSettingsPanel`，其余 `loadXxx`，
+`loadSettingsPanel`、`loadStage`，其余 `loadXxx`，
 以及 `preloadManagedRoutes` 登记给第一次 `openManagedRoute` 的装载入口，全是同一个模块请求；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩路由树的
 开收命令、常驻层的入口与遗留层的助手。`build.cssTarget` 对齐 Tailwind v4 的浏览器基线
 （Chrome 111、Firefox 128、Safari 16.4），oklch 颜色原样输出：目标再旧，lightningcss 会补
