@@ -657,61 +657,55 @@ def q_editions(contract: WebContract, args):
     return {"title": code or str(seed["code"]), "count": len(items), "items": items}
 
 
-def video_work_key(contract: WebContract) -> str:
-    """明确的 FC2 合集按作品计数，普通文件和不确定分段各自计数。"""
+def multipart_groups(contract: WebContract) -> dict[str, list[dict]]:
+    """全库的分卷作品：规范番号 → 按播放次序排好的各卷。
+
+    作品计数（`video_work_key`）、卡片折叠（`attach_multipart_groups`）、分卷队列
+    （`q_parts`）与相关推荐去重都读这一份，判据只此一处。范围与作品计数的口径相同：
+    进了回收站的卷仍属于这部作品，只有已消失的文件不算；卡片和队列只摆在库的那几卷
+    （`_live_parts`）。裸名首卷没有标记，由 `ordered_multipart_items` 定夺。
+    """
     def derive():
-        groups: dict[str, list[dict]] = {}
+        candidates: dict[str, list[dict]] = {}
         with contract.read_connection() as connection:
             for row in connection.execute(
-                "SELECT id,name,code,size,duration FROM asset a WHERE a.medium='video' "
-                "AND COALESCE(a.disposal,'')<>'vanished' AND a.code LIKE 'FC2-PPV-%'"):
-                item = dict(row)
-                groups.setdefault(normalise_code_key(item['code']), []).append(item)
-        cases = []
-        for items in groups.values():
-            ordered = ordered_multipart_items(items)
-            if ordered:
-                ids = ','.join(str(int(item['id'])) for item in ordered)
-                cases.append(f"WHEN a.id IN ({ids}) THEN 'multipart:{int(ordered[0]['id'])}'")
+                    "SELECT id,name,code,size,duration,disposal FROM asset WHERE medium='video' "
+                    "AND COALESCE(disposal,'')<>'vanished' AND COALESCE(code,'')<>''"):
+                code = normalise_code_key(row["code"])
+                if code:
+                    candidates.setdefault(code, []).append(dict(row))
+        return {code: ordered for code, items in candidates.items()
+                if (ordered := ordered_multipart_items(items))}
+    return contract.cached_until_changed("catalog-multipart-groups", derive)
+
+
+def _live_parts(group) -> list[dict]:
+    """一套分卷里还在库的那几卷；只剩一卷时不再成套，卡片照单个文件摆。"""
+    live = [item for item in group if item.get("disposal") is None]
+    return live if len(live) > 1 else []
+
+
+def video_work_key(contract: WebContract) -> str:
+    """分卷作品按一部计数（判据见 `multipart_groups`），其余文件各自计数。"""
+    def derive():
+        cases = [
+            f"WHEN a.id IN ({','.join(str(int(item['id'])) for item in group)}) "
+            f"THEN 'multipart:{int(group[0]['id'])}'"
+            for group in multipart_groups(contract).values()
+        ]
         return ('CASE ' + ' '.join(cases) + " ELSE 'asset:'||a.id END") if cases else "'asset:'||a.id"
     return contract.cached_until_changed('catalog-video-work-key', derive)
-
-
-def _multipart_rows(contract: WebContract, codes) -> list[dict]:
-    raw_codes = sorted({str(code) for code in codes if str(code or "").strip()})
-    if not raw_codes:
-        return []
-    placeholders = ",".join("?" * len(raw_codes))
-    with contract.read_connection() as connection:
-        rows = [dict(row) for row in connection.execute(
-            "SELECT id,name,code,size,duration FROM asset "
-            f"WHERE medium='video' AND code IN ({placeholders}) "
-            "AND disposal IS NULL",
-            raw_codes,
-        )]
-    return rows                           # 裸名首卷没有标记，由 ordered_multipart_items 定夺
-
-
-def _multipart_groups(contract: WebContract, codes) -> dict[str, list[dict]]:
-    candidates: dict[str, list[dict]] = {}
-    for row in _multipart_rows(contract, codes):
-        candidates.setdefault(normalise_code_key(row.get("code")), []).append(row)
-    return {
-        code: ordered
-        for code, items in candidates.items()
-        if (ordered := ordered_multipart_items(items))
-    }
 
 
 def attach_multipart_groups(contract: WebContract, rows) -> None:
     """Annotate list cards with one derived multipart release, without ledger writes."""
     if not rows:
         return
-    groups = _multipart_groups(contract, [row.get("code") for row in rows])
+    groups = multipart_groups(contract)
     for row in rows:
         code = normalise_code_key(row.get("code"))
-        group = groups.get(code)
-        if not group or not any(item["id"] == row["id"] for item in group):
+        group = _live_parts(groups.get(code, ()))
+        if not any(item["id"] == row["id"] for item in group):
             continue
         row["part_group"] = {
             "key": code,
@@ -736,15 +730,19 @@ def q_parts(contract: WebContract, args):
     if not seed or not seed["code"]:
         return {"error": "multipart release not found"}
     code = normalise_code_key(seed["code"])
-    group = _multipart_groups(contract, [seed["code"]]).get(code, [])
-    if not group or not any(item["id"] == asset_id for item in group):
+    group = multipart_groups(contract).get(code, [])
+    live = {item["id"] for item in _live_parts(group)}
+    if asset_id not in live:
         return {"error": "multipart release not found"}
     items = []
     # 卷号后面还挂着版次或修复标记时（`PPT-018-1-uncensored.mp4`），剥掉组内共有的
-    # 那段尾缀才取得到卷标；这一步和分组用的是同一个判据。
+    # 那段尾缀才取得到卷标；这一步和分组用的是同一个判据。卷标按整套算，进了回收站
+    # 的那一卷只是不进队列，后面几卷的卷标不跟着前移。
     stripped = names_without_shared_part_tail(group) or [""] * len(group)
     has_bonus = any(fc2_collection_label(row).startswith("特典 ") for row in group)
     for position, (row, bare) in enumerate(zip(group, stripped), 1):
+        if row["id"] not in live:
+            continue
         item = q_item(contract, row["id"])
         marker = part_marker(bare) or part_marker(str(row.get("name") or ""))
         # 裸名首卷没有标记，卷标按队列位置给；有标记时沿用文件名里的写法。
@@ -901,13 +899,13 @@ def _one_card_per_release(contract: WebContract, source_code, rows: list[dict]) 
 
     接着看按共享实体排序，同一部片的几卷实体完全一样，不收拢就会并排占满前几格。
     """
-    groups = _multipart_groups(contract, [source_code, *(row.get("code") for row in rows)])
+    groups = multipart_groups(contract)
     source_key = normalise_code_key(source_code) if source_code else ""
     kept = []
     for row in rows:
         key = normalise_code_key(row.get("code")) if row.get("code") else ""
-        group = groups.get(key)
-        if group and any(item["id"] == row["id"] for item in group) and (
+        group = _live_parts(groups.get(key, ()))
+        if any(item["id"] == row["id"] for item in group) and (
                 key == source_key or row["id"] != group[0]["id"]):
             continue
         kept.append(row)

@@ -2820,6 +2820,41 @@ class DuplicateDetectionTests(unittest.TestCase):
         parts = rm_web.q_parts(self.contract, {"id": str(listed[0]["id"])})
         self.assertEqual([row["part_label"] for row in parts["items"]], list(map(str, numbers)))
 
+    def trash(self, asset_id):
+        self.con.execute("UPDATE asset SET disposal='trash' WHERE id=?", (asset_id,))
+        self.con.commit()
+
+    def test_volumes_that_fold_into_one_card_count_as_one_work(self):
+        """作品计数与卡片折叠读同一份分卷判据，不限 FC2。"""
+        self.add("DVDMS-243", 7200, 5_000_000_000, name="DVDMS-243cd1.mp4")
+        self.add("DVDMS-243", 7000, 5_000_000_000, name="DVDMS-243cd2.mp4")
+        result = rm_web.q_items(self.contract, {"q": "DVDMS-243", "limit": "10"})
+        self.assertEqual(result["total"], 2)
+        self.assertEqual(result["work_total"], 1)
+        self.assertEqual({row["part_group"]["count"] for row in result["items"]}, {2})
+
+    def test_a_lone_live_volume_is_a_single_card_and_queue(self):
+        """FC2 合集第 3 卷进了回收站，在库的只剩第 1 卷：照单个文件摆，队列不收回收站那卷。"""
+        first = self.add("FC2-PPV-3312576", 1800, 1_000_000_000, name="FC2-PPV-3312576-1.mp4")
+        third = self.add("FC2-PPV-3312576", 2000, 1_000_000_000, name="FC2-PPV-3312576-3.mp4")
+        self.trash(third)
+        result = rm_web.q_items(self.contract, {"q": "FC2-PPV-3312576", "limit": "10"})
+        self.assertEqual([row["id"] for row in result["items"]], [first])
+        self.assertEqual(result["work_total"], 1)
+        self.assertNotIn("part_group", result["items"][0])
+        self.assertEqual(rm_web.q_parts(self.contract, {"id": str(first)}),
+                         {"error": "multipart release not found"})
+
+    def test_a_duplicate_volume_in_the_recycle_bin_keeps_the_set_unfolded_everywhere(self):
+        """回收站里还有一份重复的第 2 卷时卷号有歧义，计数和卡片都按两个文件算。"""
+        self.add("HRV-041", 237 * 60, 10_000_000_000, name="HRV-041-1.mp4")
+        self.add("HRV-041", 239 * 60, 10_100_000_000, name="HRV-041-2.mp4")
+        self.trash(self.add("HRV-041", 239 * 60, 4_460_000_000, name="HD_hrv-041-2.mp4"))
+        result = rm_web.q_items(self.contract, {"q": "HRV-041", "limit": "10"})
+        self.assertEqual(result["total"], 2)
+        self.assertEqual(result["work_total"], 2)
+        self.assertTrue(all("part_group" not in row for row in result["items"]))
+
     def test_attached_volume_markers_and_circled_titles_share_one_queue(self):
         cases = [
             ("DVDMS-243", ["DVDMS-243cd1.mp4", "DVDMS-243cd2.mp4"], ["1", "2"]),
