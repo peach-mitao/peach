@@ -183,7 +183,9 @@ it('播放列表页与关注页的路径不走 React Router：交壳写地址再
 
 /* ── 关注页 ── */
 
-const VIEW: FollowView = { status: '', media: 'videos', author: '', provider: '', work: '', tags: [], sort: 'new', dir: 'desc', seed: 7 };
+const VIEW: FollowView = {
+  status: '', media: 'videos', author: '', provider: '', work: '', tags: [], durMin: 0, durMax: 0, sort: 'new', dir: 'desc', seed: 7,
+};
 
 function followHelpers(): FollowFeedHelpers {
   return {

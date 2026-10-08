@@ -99,6 +99,8 @@ const FOLLOW_FEED_SORTS=[['new','更新时间'],['hot','热度'],['dur','时长'
    排序键——那三枚键任一按下就离开它；种子写进地址，刷新和后退回到的是同一批次序。 */
 const FOLLOW_RANDOM_SORT='rand';
 let followSort='new',followDir='desc',followSeed=0;
+/* 关注页的时长两端（秒），同首页的 `dur_min`／`dur_max`；0 是这一端不限。 */
+let followDurMin=0,followDurMax=0;
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /* ── 路由表 ───────────────────────────────────────────────────────────────────
@@ -2062,6 +2064,7 @@ const followPageUrl=offset=>
   +(followProviders.size?`&provider=${encodeURIComponent([...followProviders].join(','))}`:'')
   +(followTags.size?`&tag=${encodeURIComponent([...followTags].join(','))}`:'')
   +(followWorks.size?`&work=${encodeURIComponent([...followWorks].join(','))}`:'')
+  +(followDurMin?`&dur_min=${followDurMin}`:'')+(followDurMax?`&dur_max=${followDurMax}`:'')
   /* 排序也归服务端，理由同上：分页在它那一侧。浏览器只拿到当前这几页，在这里排
      等于每加载一页就把先后顺序重算一次，越往下翻越乱。 */
   +(followSort!=='new'?`&sort=${followSort}`:'')
@@ -2131,6 +2134,8 @@ function followViewPath(){
   if(followProviders.size)params.set('provider',[...followProviders].join(','));
   if(followTags.size)params.set('tag',[...followTags].join(','));
   if(followWorks.size)params.set('work',[...followWorks].join(','));
+  if(followDurMin)params.set('dur_min',String(followDurMin));
+  if(followDurMax)params.set('dur_max',String(followDurMax));
   if(followFilter)params.set('status',followFilter);
   if(followMediaView==='images')params.set('media','images');
   // 默认那一档不写进地址：`/follow` 本身就是「按更新时间从新到旧」。
@@ -2148,6 +2153,9 @@ function readFollowView(){
   followProviders=one('provider');
   followTags=csv('tag');
   followWorks=one('work');
+  // 手改坏的时长按不限读，同服务端。
+  const seconds=key=>{const value=Number(params.get(key));return value>0?value:0};
+  followDurMin=seconds('dur_min');followDurMax=seconds('dur_max');
   const status=params.get('status');
   // 这一排上没有的那一档按「全部」读：旧链接里的 `status=seen` 落在这一条上，
   // 否则页面停在一个没有任何药丸按下去的筛选里，看不出自己正被什么筛着。
@@ -2171,7 +2179,7 @@ function readFollowView(){
 function followView(){
   return {status:followFilter,media:followMediaView,author:[...followAuthors][0]||'',
     provider:[...followProviders][0]||'',work:[...followWorks][0]||'',tags:[...followTags],
-    sort:followSort,dir:followDir,seed:followSeed};
+    durMin:followDurMin,durMax:followDurMax,sort:followSort,dir:followDir,seed:followSeed};
 }
 function adoptFollowView(view){
   followFilter=view.status;followMediaView=view.media;
@@ -2179,6 +2187,7 @@ function adoptFollowView(view){
   followProviders=new Set(view.provider?[view.provider]:[]);
   followWorks=new Set(view.work?[view.work]:[]);
   followTags=new Set(view.tags);
+  followDurMin=view.durMin||0;followDurMax=view.durMax||0;
   followSort=view.sort;followDir=view.dir;followSeed=view.seed;
 }
 /* `#stats` 上此刻画着的是不是关注页：管理区与播放列表页也画在这个容器里，推错了就是往播放列表
@@ -2219,7 +2228,7 @@ const followFeedHelpers={
 const followFeedActions={
   route:view=>routeFollowFeed(view),
   shuffle:()=>shuffleFollowFeed(),
-  loaded:tags=>renderFollowDrawer(tags),
+  loaded:drawer=>renderFollowDrawer(drawer),
   openDetail:id=>openFollowDetail(id),
   openManage:()=>openFollowManage(),
   toggleSelection:(id,range)=>toggleFollowSelection(id,range),
@@ -2247,7 +2256,7 @@ const followDetailActions={
     closeFollowDetail();
   },
   /* 侧栏标签抽屉跟着画出来的这一条走（这一条自己的标签）。 */
-  present:item=>{renderFollowDrawer(sidebarTagCounts([{tags:followCardTags(item)}]))},
+  present:item=>{renderFollowDrawer({tags:sidebarTagCounts([{tags:followCardTags(item)}])})},
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   failure:(action,error)=>actionFailure(action,error),
 };
@@ -2510,13 +2519,13 @@ function showIndexTags(tags,match){
    等于「关注 · 这一位 / 这一枚」。其余条件一并清空——从名册点进来问的是这一位的全部更新，
    不是「这一位 且 上次留在筛选条上的那几个标签」。 */
 function openFollowAuthorFromIndex(key){
-  followTags=new Set();followProviders=new Set();followWorks=new Set();
+  followTags=new Set();followProviders=new Set();followWorks=new Set();followDurMin=followDurMax=0;
   followMediaView='videos';followFilter='';
   followAuthors=new Set([key]);
   $('#index').hidden=true;route(followViewPath());openFollow(false);
 }
 function openFollowTagFromIndex(tag){
-  followAuthors=new Set();followProviders=new Set();followMediaView='videos';followFilter='';
+  followAuthors=new Set();followProviders=new Set();followMediaView='videos';followFilter='';followDurMin=followDurMax=0;
   followTags=new Set([tag]);
   $('#index').hidden=true;route(followViewPath());openFollow(false);
 }
@@ -2919,11 +2928,23 @@ async function openEntity(kind,name,push=true){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* 关注页与关注详情的那一组内容标签。计数由调用方给：列表是岛那一版可见条目的（`loaded`），详情是这一条
-   自己的（`present`）。两处都落在这一个函数里：按下态读的是壳的 `followTags`，点下去回的也是壳的关注筛选。 */
-function renderFollowDrawer(counts){
-  paintSidebar({content:counts.length?{kind:'follow',
-    tags:counts.map(([tag,n])=>({value:tag,label:tagLabel(tag),n})),selected:[...followTags]}:null});
+/* 关注页与关注详情的侧栏。标签计数由调用方给：列表是岛那一版可见条目的（`loaded`），详情是这一条
+   自己的（`present`）。来源与时长只有列表给：来源按全库列，时长看库里有没有读数；详情只铺标签。
+   按下态读的是壳的关注筛选（`filters` 每次照它重写，目录那一份不会串过来），点下去回的也是它。 */
+function renderFollowDrawer({tags=[],providers=[],duration=false}){
+  const content=tags.length||providers.length||duration?{kind:'follow',
+    tags:tags.map(([tag,n])=>({value:tag,label:tagLabel(tag),n})),selected:[...followTags],
+    providers:providers.map(([value,label,src])=>({value,label,n:null,...(src?{dot:{kind:'image',src}}:{})})),
+    duration}:null;
+  paintSidebar({content,filters:followSidebarFilters()});
+}
+const followSidebarFilters=()=>({provider:[...followProviders][0]||'',
+  dur_min:followDurMin||'',dur_max:followDurMax||''});
+/* 侧栏改关注筛选走跟页面自己那几排同一条路（`routeFollowFeed`）：地址栏先写，再推回岛里重取；按下态
+   当场换，不等列表回来。不收抽屉：拖一下时长就把侧栏收起来，下一下就够不着了。 */
+function routeFollowFromSidebar(patch){
+  routeFollowFeed({...followView(),...patch});
+  paintSidebar({filters:followSidebarFilters()});
 }
 function openDrawer(v){const drawer=$('#drawer'),restore=!v&&drawer.contains(document.activeElement);
   drawer.inert=!v&&innerWidth<=760;
@@ -3034,8 +3055,10 @@ function sidebarHost(){
       filters.len='';filters.dur_min=lo?String(lo*60):'';filters.dur_max=hi<180?String(hi*60):''}),
     openFollowTag:tag=>{
       followAuthors=new Set();followProviders=new Set();followMediaView='videos';followFilter='saved';
-      followTags=new Set([tag]);openDrawer(false);route(followViewPath());openFollow(false)},
+      followDurMin=followDurMax=0;followTags=new Set([tag]);openDrawer(false);route(followViewPath());openFollow(false)},
     selectFollowTag:tag=>{followTags=new Set([tag]);openDrawer(false);route(followViewPath());openFollow(false)},
+    selectFollowProvider:provider=>routeFollowFromSidebar({provider:followProviders.has(provider)?'':provider}),
+    setFollowDuration:(lo,hi)=>routeFollowFromSidebar({durMin:lo?lo*60:0,durMax:hi<180?hi*60:0}),
     attached:()=>{placeSidebarHead();syncGlassOptics()},
   };
 }
@@ -3642,7 +3665,7 @@ const itemDetailActions={
      要先写进 URL，光设全局会被推回未看。 */
   openSavedFollow:()=>{
     followAuthors=new Set();followProviders=new Set();followTags=new Set();followWorks=new Set();followMediaView='videos';
-    followFilter='saved';route(followViewPath());openFollow(false)},
+    followDurMin=followDurMax=0;followFilter='saved';route(followViewPath());openFollow(false)},
   openEntity:(kind,name)=>openEntity(kind,name),
   openUnowned:()=>openUnowned(),
   openRegion:region=>openRegion(region),

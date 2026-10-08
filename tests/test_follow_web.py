@@ -1284,6 +1284,30 @@ class FollowContractTests(unittest.TestCase):
         self.assertNotEqual(titles(self._get(sort="rand", seed="77777")), titles(first))
         self.assertEqual(self._get(sort="rand", seed="abc")["seed"], 1)
 
+    def test_the_duration_range_filters_on_the_server_and_counts_follow_it(self):
+        """时长两端是秒，同首页；筛在服务端，读数与列表同一个口径。
+
+        没有时长读数的条目在任一端生效时都不算落在区间里；改坏的参数按不限读。
+        侧栏据 facets 的 `duration` 决定出不出拉条，它按全库算，筛窄了也不消失。
+        """
+        self._seed(candidates=(
+            self._clip("d1", duration=60.0), self._clip("d2", duration=1200.0),
+            self._clip("d3", duration=3600.0), self._clip("d4")))
+        titles = lambda page: sorted(group["primary"]["title"] for group in page["groups"])
+        whole = self._get()
+        self.assertTrue(whole["facets"]["duration"])
+        self.assertEqual(titles(self._get(dur_min="600")), ["Clip d2", "Clip d3"])
+        self.assertEqual(titles(self._get(dur_max="1800")), ["Clip d1", "Clip d2"])
+        ranged = self._get(dur_min="600", dur_max="1800")
+        self.assertEqual(titles(ranged), ["Clip d2"])
+        self.assertEqual(sum(ranged["counts"].values()), 1)
+        self.assertTrue(ranged["facets"]["duration"])
+        self.assertEqual(titles(self._get(dur_min="abc", dur_max="-5")), titles(whole))
+
+    def test_the_duration_facet_is_off_when_nothing_has_a_length(self):
+        self._seed(candidates=(self._clip("n1"),))
+        self.assertFalse(self._get()["facets"]["duration"])
+
     def test_an_unknown_sort_or_direction_falls_back_without_an_error(self):
         """地址栏里存着的旧参数不该报错，也不该悄悄换成另一种排序。"""
         self._seed(candidates=(self._clip("u1", duration=10.0),))
