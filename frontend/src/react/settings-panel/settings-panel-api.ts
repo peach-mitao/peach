@@ -1,4 +1,4 @@
-/* 设置面板岛（`settings-panel.tsx`）与壳之间的接缝。
+/* 设置面板（常驻面 `settings-panel`，`settings-panel.tsx`）与壳之间的接缝。
  *
  * 界面偏好只有一份：壳在启动时归一化好的 `appSettings`，经 `createSettingsStore` 递进来
  * （`frontend/src/settings-store.ts`）。面板读 `store.value`、原地改字段、`store.save()` 落盘，

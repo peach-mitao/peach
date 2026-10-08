@@ -473,7 +473,8 @@ export type {
   SettingsEffect, SettingsPanelApi, SettingsPanelHost,
 } from './settings-panel/settings-panel-api';
 
-/** 接上壳给的宿主，拿回设置面板岛的命令式入口（`settings-panel/settings-panel.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回设置面板的命令式入口（`settings-panel/settings-panel.tsx`）。只调一次；这一面由
+ *  `islands.ts` 的 `loadSettingsPanel` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureSettingsPanel(host: SettingsPanelHost): SettingsPanelApi;
 
 export type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';

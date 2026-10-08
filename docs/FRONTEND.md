@@ -200,7 +200,7 @@ URL 都从它来，它被缓存住就没人看得到新产物。
 | `11-identity.css` | 身份组、演员与系列链接、重复项、质量清单、复核对照 |
 | `12-cards.css` | 壳自己画的卡片（垃圾文件、新作）、悬停预览层与密度 |
 | `15-detail.css` | 壳画的源文件管理（定位与目录对账） |
-| `16-settings.css` | 设置面板打开时的页面锁滚（面板归 `settings-panel` 岛） |
+| `16-settings.css` | 设置面板打开时的页面锁滚（面板归常驻面 `settings-panel`） |
 | `17-overlay.css` | Toast 与审查遮挡 |
 | `18-chips.css` | 产地选择与详情里次要操作的标签按钮（侧栏筛选标签归 `sidebar` 岛） |
 | `19-immersive.css` | 加载更多、空状态、选择条与批量条、窄屏总表（沉浸模式归常驻面 `immerse`） |
@@ -295,19 +295,23 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 ```
 
 - 登记键是「面」：页面用路径（`/stats`、`/performers/*`、`/`），附属面用名字（`catalog-filter`、`feed-new`、
-  `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`、`immerse`），三者
-  不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是 `{prefetch, page}`；附属面与常驻面不进
-  `<Routes>`，也不进 `ROUTED_PATHS`。
+  `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`、`immerse`、
+  `settings-panel`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是 `{prefetch, page}`；
+  附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
 - 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
-  `openResidentSurface(name, container, place?)` 打开一次（沉浸模式在第一次打开时，其余几座在壳启动时）：没有首屏
-  取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、`[data-manage-header]`、
-  `[data-immerse-host]`），组件直接画成它的子节点，DOM 和各自建根时一样，不包 `.peach-react`。壳照旧经命令式
+  `openResidentSurface(name, container, place?)` 打开一次（沉浸模式与设置面板在第一次打开时，其余几座在壳启动
+  时）：没有首屏取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、
+  `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`），组件直接画成它的子节点，DOM 和各自
+  建根时一样，不包 `.peach-react`。壳照旧经命令式
   句柄说话：组件订阅自己模块里的 store，句柄写 store 再 `flushSync` 通知，返回时已经画好；`loadXxx` 等这一面
   画上才交出句柄。宿主里先有壳的启动骨架时（管理区页头），`openResidentSurface` 的 `place` 在画首帧的同一个
   任务里清掉骨架，句柄交出之前骨架上的点击归壳；宿主不在壳的页面里时（沉浸模式），`loadImmerse` 新建
   `[data-immerse-host]`，`place` 在画首帧（藏着的外框）的同一个任务里把它挂到 body 末尾。沉浸的句柄
   `open(startId)` 里骨架、列表与播放器那几次绘制都在返回前画完；方向键、改窗口大小与离开页面的监听挂在模块上，
-  不随组件卸掉。常驻面从不收，只有错误边界会卸它的组件，宿主始终留在文档里。
+  不随组件卸掉。设置面板在第一次按齿轮时才装载：`loadSettingsPanel` 建一枚 `[data-settings-host]`，`place` 把它
+  放进 `document.body` 末尾，路由树在同一个任务里画出收着的面板，之后开合只换 `hidden`；`open(section)` 写 store
+  当场画完，锁滚、取数与焦点紧跟在后面，`isOpen()` 读的是同一份 store。常驻面从不收，只有错误边界会卸它的组件，
+  宿主始终留在文档里。
 - `openManagedRoute(key, props, options)` 是 async 且**取完数才画**。壳已经铺了骨架，页面若先画一个空容器
   再自己转圈，同一次进入就会出现两段等待态。它先收起同一容器里的上一面，`prefetch(props, signal)` 把首屏
   写进共用的 Query 缓存，取齐后在同一个任务里换掉骨架、放进 `.peach-react` 宿主（或 `options.place` 排好的

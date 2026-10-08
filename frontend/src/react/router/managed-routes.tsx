@@ -56,6 +56,7 @@ import { ScrapingPage } from '../scraping/scraping-page';
 import { SearchPage } from '../search/search-page';
 import { prefetchConfiguration } from '../settings/configuration';
 import { ConfigurationPage } from '../settings/configuration-page';
+import { SettingsPanelSurface } from '../settings-panel/settings-panel';
 import { prefetchStats } from '../stats/stats';
 import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
@@ -280,7 +281,7 @@ const isSurfaceName = (key: string): key is SurfaceName => Object.hasOwn(SURFACE
    那个节点。从不收，只有错误边界会卸它的组件，宿主照旧留在文档里。打开不带 props：壳经命令式句柄推内容，
    组件订阅自己模块里的 store，句柄里的绘制同步做完。管理区页头的宿主里先有壳的启动骨架，打开时由 `place`
    在画出首帧的同一个任务里清掉；沉浸的宿主不在壳的页面里，第一次打开时新建，由 `place` 在画出首帧的同一个
-   任务里挂到 body 末尾。 */
+   任务里挂到 body 末尾；设置面板的宿主在第一次打开时才有，由 `place` 在同一个任务里放进 body 末尾。 */
 export const RESIDENT_ROUTES: ResidentRouteTable = {
   'batch-dock': {
     prefetch: async () => {},
@@ -297,6 +298,10 @@ export const RESIDENT_ROUTES: ResidentRouteTable = {
   immerse: {
     prefetch: async () => {},
     page: () => <ImmerseSurface />,
+  },
+  'settings-panel': {
+    prefetch: async () => {},
+    page: () => <SettingsPanelSurface />,
   },
 };
 const isResidentName = (key: string): key is ResidentName => Object.hasOwn(RESIDENT_ROUTES, key);
