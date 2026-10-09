@@ -67,7 +67,7 @@ function shellActions(): ShellActions {
     savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 

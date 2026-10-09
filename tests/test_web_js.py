@@ -153,48 +153,6 @@ class WebJsBehaviourTests(unittest.TestCase):
         for (module, fn, args, want), got in zip(table, self.run_js(cases)):
             self.assertEqual(got, want, f"{module}.{fn}{tuple(args)}")
 
-    # ── 路由匹配 ────────────────────────────────────────────────────────────
-
-    def test_route_patterns_match_what_the_table_says_and_nothing_else(self):
-        routes = [
-            {"match": "/", "title": "首页"},
-            {"match": "/item/:id", "title": "作品"},
-            {"match": "/playlists/:playlist/:item"},
-            {"match": "/performers/:name*", "title": None},
-        ]
-        self.assertJsResults([
-            # 精确路径：多一段少一段都不算。
-            ("routes.js", "matchPath", ["/", "/"], {}),
-            ("routes.js", "matchPath", ["/", "/item/7"], None),
-            ("routes.js", "matchPath", ["/stats", "/stats"], {}),
-            ("routes.js", "matchPath", ["/stats", "/stats/7"], None),
-            # `:id` 只吃数字，且吃完就得刚好用完。非数字必须落空——每条动态路由
-            # 自己写这条正则的话，漏写的那条会把 `/item/abc` 当合法 id 送进 `+parts[1]`。
-            ("routes.js", "matchPath", ["/item/:id", "/item/42"], {"id": 42}),
-            ("routes.js", "matchPath", ["/item/:id", "/item/abc"], None),
-            ("routes.js", "matchPath", ["/item/:id", "/item/"], None),
-            ("routes.js", "matchPath", ["/item/:id", "/item/42/x"], None),
-            ("routes.js", "matchPath", ["/playlists/:a/:b", "/playlists/3/9"],
-             {"a": 3, "b": 9}),
-            # `:name*` 吃掉剩下全部：女优名字里有斜杠，只吃一段会把人名切两半。
-            ("routes.js", "matchPath", ["/performers/:name*", "/performers/A/B"],
-             {"name": "A/B"}),
-            ("routes.js", "matchPath", ["/performers/:name*", "/performers/A"],
-             {"name": "A"}),
-            # 尾段为空不算命中，否则 `/performers` 索引页会被实体页抢走。
-            ("routes.js", "matchPath", ["/performers/:name*", "/performers"], None),
-            # 先登记先匹配，表里的顺序就是优先级。
-            ("routes.js", "matchRoute", [routes, "/item/7"],
-             {"route": {"match": "/item/:id", "title": "作品"}, "params": {"id": 7}}),
-            ("routes.js", "matchRoute", [routes, "/nowhere"], None),
-            # 标题：字符串直接用，没有 title 的路由给空串（由调用方兜底文案），
-            # 匹配不上也是空串。
-            ("routes.js", "routeLabel", [routes, "/item/7"], "作品"),
-            ("routes.js", "routeLabel", [routes, "/playlists/1/2"], ""),
-            ("routes.js", "routeLabel", [routes, "/performers/A/B"], ""),
-            ("routes.js", "routeLabel", [routes, "/nowhere"], ""),
-        ])
-
     # ── JAV 标题 ────────────────────────────────────────────────────────────
 
     def test_media_suffix_is_stripped_only_for_jav(self):

@@ -4,10 +4,10 @@ ADR-0022 的迁移方向是逐屏搬出 app.js，可 2026-09-13 盘点时它已�
 时多出四成——每一轮新功能都往旧壳里加一屏。行数拦不住这种增长（拦住的只是注释），
 拦得住的是「旧壳里登记了哪些页面」。
 
-冻结的是页面全集，按归属分成三列：壳打开的（app.js `ROUTES` 的字面 match）、路由树用元素画的
-（`managed-routes.tsx` 各张路由表里带 `element` 的条目；目录表按页面分键，带了元素就算 `CATALOG_PATHS`
-那几条路径）、覆盖组按真实地址匹配的详情与队列（`OVERLAY_PATHS`）。一页搬进路由树就从 app.js 的 `ROUTES`
-里删掉，三列互不相交、并起来仍是这张全集。
+冻结的是页面全集，按归属分成三列：壳打开的（app.js 里 `ROUTES` 表的字面 match，这张表已经没有了，这一列
+是空的）、路由树用元素画的（`managed-routes.tsx` 各张路由表里带 `element` 的条目；目录表按页面分键，带了元素
+就算 `CATALOG_PATHS` 那几条路径）、覆盖组按真实地址匹配的详情与队列（`OVERLAY_PATHS`）。三列互不相交、
+并起来仍是这张全集；壳那一列不许再长出来。
 """
 import pathlib
 import re
@@ -22,8 +22,8 @@ ROUTE_TABLES = FRONTEND_SRC / "react" / "router" / "managed-routes.tsx"
 OVERLAY = FRONTEND_SRC / "history" / "overlay.ts"
 CORE = FRONTEND_SRC / "core" / "index.ts"
 
-#: 以字面量写出的页面路径；`STATE_ROUTES` 那一组筛选态（三个筛选态与垃圾文件）不在此列，壳的 `ROUTES` 里
-#: 展开的组数由下面的 `SPREADS` 钉住。资料页由路由树按模式（`TREE_PATTERNS`）登记，同样不在此列。
+#: 以字面量写出的页面路径；`STATE_ROUTES` 那一组筛选态（三个筛选态与垃圾文件）不在此列。资料页由路由树按模式
+#: （`TREE_PATTERNS`）登记，同样不在此列。
 FROZEN_ROUTES = frozenset({
     "/", "/trash", "/playlists", "/playlists/:playlist/:item", "/mix/:seed/:item",
     "/parts/:seed/:item", "/editions/:seed/:item", "/item/:id", "/follow/item/:id",
@@ -32,7 +32,6 @@ FROZEN_ROUTES = frozenset({
     "/scraping", "/follow", "/follow-manage", "/configuration", "/activity", "/immerse",
     "/diagnostics",
 })
-SPREADS = 0
 #: 路由树按模式登记的资料页，一个实体种类一条。
 TREE_PATTERNS = frozenset({"/performers/*", "/studios/*", "/creators/*", "/series/*", "/agencies/*"})
 
@@ -45,8 +44,9 @@ def without_comments(source: str) -> str:
 
 
 def routes_table(source: str) -> str:
-    start = source.index("const ROUTES=[")
-    return source[start:source.index("\n];", start)]
+    """app.js 里 `ROUTES` 表的正文；没有这张表时是空串。"""
+    start = source.find("const ROUTES=[")
+    return "" if start < 0 else source[start:source.index("\n];", start)]
 
 
 def braced(source: str, start: int) -> str:
@@ -133,9 +133,8 @@ class LegacyShellRouteTests(unittest.TestCase):
         self.assertEqual(sorted(self.patterns), sorted(TREE_PATTERNS),
                          "路由树按模式登记的页面变了；新增一种同样算加页面")
 
-    def test_the_shell_table_keeps_its_spreads_and_registers_nothing_itself(self):
-        self.assertEqual(self.table.count("...Object.entries("), SPREADS,
-                         "ROUTES 里展开的路由组数量变了；新增一组同样算往旧壳里加页面")
+    def test_the_shell_opens_no_page_by_itself(self):
+        self.assertEqual(sorted(self.shell), [], "app.js 不再有自己打开的页面：页面做成路由树的元素")
         self.assertEqual(len(re.findall(r"\bregisterRoute\(", self.source)), 0,
                          "app.js 不登记页面：页面做成路由树的元素")
 

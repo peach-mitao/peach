@@ -2,7 +2,7 @@
  * `INDEX_ROUTES` 或 `ENTITY_ROUTES` 时挂上，从地址读出这一页是谁、带什么参数，再按地址打开那一页。
  *
  * 元素自己什么都不画：页面经 `openManagedRoute` 登记进 `#index`，由 `ManagedSurface` 画。打开前先报
- * `surfaceChanged` 让壳收起别的面、铺开首页那一侧，再收舞台、铺骨架，首屏取齐那一刻骨架与整页一起换掉。
+ * `surfaceChanged` 让壳收起别的面、铺开首页那一侧，再铺骨架，首屏取齐那一刻骨架与整页一起换掉。
  *
  * 什么时候打开：
  * - 索引元素按开次代次（`useOpenEpoch()`）挂 key：后退前进与不认领的跳转各领一个代次，就重挂、按地址重开；
@@ -11,16 +11,16 @@
  *   推给画着的那一页，那一页没画着才整页重开。
  * - 壳要求按当前地址从头重开（`@peach/shell` 的 `pageOpens` 加一：批量写回之后、点开的正是画着的那一位）时，
  *   两种元素都整页重开。`pageOpens` 还是 0 时壳没开始路由，元素只挂着。
- * - 挂上或领代次那一刻这一页被详情压着（页面组按背景匹配）：下面那一页早就画着，不重开。
+ * - 挂上或领代次那一刻这一页被详情压着（页面组按背景匹配）：不重开。关掉详情时这一页要是没开过、下面也没画着
+ *   （后退落到压在别处之上的详情才挂上），按地址整页打开；画着就不动。
  *
  * 打开排进微任务：路由根在历史变化的同一次调用里同步提交，打开时收起上一页与画首帧都要同步提交，在提交阶段里
- * 做会出 flushSync 告警。派发点（`RouteDispatch`）在同一次提交里排的那个微任务先跑，壳的 `restoreRoute` 写好
- * 标题与侧栏之后，这里才打开。 */
+ * 做会出 flushSync 告警。壳订阅历史早于路由根，它写标题与侧栏的那一轮排在前面。 */
 import { useContext, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router';
 
 import { appSettingsStore } from '@peach/appearance';
-import { backgroundOf, managedEntry, openManagedRoute, peachHistory, updateManagedRoute } from '@peach/history';
+import { isOverlayPath, managedEntry, openManagedRoute, peachHistory, updateManagedRoute } from '@peach/history';
 import { ROUTE_ENTITIES } from '@peach/legacy/core';
 import { pageOpens, selectMode, subscribeShell, writeShell } from '@peach/shell';
 
@@ -33,13 +33,25 @@ const readOpens = () => pageOpens;
 const readSelectMode = () => selectMode;
 const indexHost = () => document.getElementById('index');
 
+/** `usePageOpen` 的两个可选判断。`shown()`：这一页此刻画着没有，没开过的元素在详情关掉时据此决定要不要打开。
+ *  `onCovered()`：挂上或领代次那一刻被详情压着时调一次。 */
+export interface PageOpenOptions {
+  readonly shown?: () => boolean;
+  readonly onCovered?: () => void;
+}
+
 /** 这一格什么时候按地址打开。`run(fresh, live)`：`fresh` 为真是整页打开（挂上、壳要求重开），为假是同一个
  *  元素领了新代次；`live()` 在元素卸下或又开了一次之后回 false。关注页与播放列表页的元素也用它。 */
-export function usePageOpen(epoch: number, run: (fresh: boolean, live: () => boolean) => void): void {
+export function usePageOpen(
+  epoch: number, run: (fresh: boolean, live: () => boolean) => void, options: PageOpenOptions = {},
+): void {
   const opens = useSyncExternalStore(subscribeShell, readOpens);
-  const seen = useRef({ mounted: true, epoch: -1, opens: -1, run: 0 });
-  const latest = useRef(run);
-  useLayoutEffect(() => { latest.current = run });
+  /* 每次导航都重渲染一次，详情压上来、撤下去都看得见。页面组给的是背景那一份地址，压没压着看真实地址。 */
+  useLocation();
+  const covered = isOverlayPath(peachHistory.navigation.location.pathname);
+  const seen = useRef({ mounted: true, epoch: -1, opens: -1, run: 0, opened: false });
+  const latest = useRef({ run, options });
+  useLayoutEffect(() => { latest.current = { run, options } });
   useEffect(() => {
     const mark = seen.current;
     mark.mounted = true;
@@ -49,16 +61,28 @@ export function usePageOpen(epoch: number, run: (fresh: boolean, live: () => boo
     if (opens === 0) return;
     queueMicrotask(() => {
       const mark = seen.current;
+      if (!mark.mounted) return;
       /* 读这一刻的 `pageOpens`：壳写地址挂上这一格、紧接着要求重开时，两边合成一次打开。 */
-      if (!mark.mounted || (mark.epoch === epoch && mark.opens === pageOpens)) return;
-      const fresh = mark.opens !== pageOpens;
+      const stale = mark.epoch !== epoch || mark.opens !== pageOpens;
+      let fresh = mark.opens !== pageOpens;
       mark.epoch = epoch;
       mark.opens = pageOpens;
-      if (backgroundOf(peachHistory.navigation.location.state)) return;
+      if (isOverlayPath(peachHistory.navigation.location.pathname)) {
+        if (stale) latest.current.options.onCovered?.();
+        return;
+      }
+      if (!stale) {
+        if (mark.opened || latest.current.options.shown?.()) {
+          mark.opened = true;
+          return;
+        }
+        fresh = true;
+      }
+      mark.opened = true;
       const mine = ++mark.run;
-      latest.current(fresh, () => mark.mounted && mark.run === mine);
+      latest.current.run(fresh, () => mark.mounted && mark.run === mine);
     });
-  }, [epoch, opens]);
+  }, [epoch, opens, covered]);
 }
 
 /* ── 索引 ── */
@@ -68,7 +92,6 @@ async function openIndex(actions: ShellActions, kind: IndexPageKind, search: str
   if (!host) return;
   const path = `/${kind}` as const;
   actions.surfaceChanged('index', path);
-  actions.closeStage();
   const params = indexParams(kind, search);
   const layout = peopleLayoutOf(appSettingsStore().value.peopleLayout);
   paintIndexSkeleton(host, params, layout);
@@ -79,13 +102,20 @@ async function openIndex(actions: ShellActions, kind: IndexPageKind, search: str
   if (painted && live()) actions.surfaceShown?.('index', path);
 }
 
+/* `#index` 里画着、露着的是这一页索引。 */
+function indexShown(path: string): boolean {
+  const host = indexHost();
+  const entry = host ? managedEntry(host) : null;
+  return !!host && !host.hidden && !!entry && entry.path === path && entry.host.isConnected;
+}
+
 function IndexOpen({ epoch }: { epoch: number }) {
   const actions = useContext(ShellActionsContext);
   const location = useLocation();
+  const kind = location.pathname.split('/').filter(Boolean)[0] as IndexPageKind;
   usePageOpen(epoch, (_fresh, live) => {
-    const kind = location.pathname.split('/').filter(Boolean)[0] as IndexPageKind;
     if (actions) void openIndex(actions, kind, location.search, live);
-  });
+  }, { shown: () => indexShown(`/${kind}`) });
   return null;
 }
 
@@ -144,7 +174,6 @@ async function openEntity(
   if (!host) return;
   const { segment, kind, name } = target;
   actions.surfaceChanged('entity', pathname);
-  actions.closeStage();
   await shell.loading(kind, name, live);
   if (!live()) return;
   writeShell({ entityJavLayout: false });
@@ -187,7 +216,7 @@ function EntityOpen({ target }: { target: { segment: string; kind: string; name:
     if (!actions || !shell) return;
     if (!fresh && shell.refresh(target.kind, target.name, location.search)) return;
     void openEntity(actions, shell, target, location.pathname, location.search, live);
-  });
+  }, { shown: () => entityShown() && !indexHost()?.hidden });
   return null;
 }
 

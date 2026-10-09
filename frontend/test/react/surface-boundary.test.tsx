@@ -1,10 +1,11 @@
-/* 路由树一面一层错误边界：某一面渲染抛错只空出那一面并撤掉它的登记，别的面、派发点与 `<Routes>` 照旧；
+/* 路由树一面一层错误边界：某一面渲染抛错只空出那一面并撤掉它的登记，别的面与 `<Routes>` 照旧；
  * 错误经根的 `onCaughtError` 交给 `reportError`，每次一条；壳下次打开能重开。
  *
  * 首页新作行与垃圾队列的页面模块整个换掉，抛不抛、首屏取数成不成由 `pages` 当场决定：用例中途改它，就是
  * 「下一次打开换成好页面」。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { useLocation } from 'react-router';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
 import type { CatalogFilterProps } from '../../src/react/catalog-filter/catalog-filter';
@@ -43,7 +44,7 @@ vi.mock('../../src/react/junk-queue/junk-queue-page', () => ({
 /** 装载时停在沉浸地址上：页面组 `path="*"` 只在不归路由树画的地址上画出 `children`。 */
 async function load() {
   vi.resetModules();
-  window.history.replaceState(null, '', '/immerse');
+  window.history.replaceState(null, '', '/nowhere');
   const [history, router, routes] = await Promise.all([
     import('../../src/history'), import('../../src/react/router/router'), import('../../src/react/router/managed-routes'),
   ]);
@@ -70,16 +71,21 @@ function shellActions(): ShellActions {
     savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 
 /** 壳启动时的顺序：先画路由树，再接上取数。根的选项与 `configureRouter` 是同一份；返回根所在的容器，
  *  `children` 的标记节点画在那里面。 */
+/* 页面组认不出的地址那一格：记着它看到的地址，后退前进之后还跟着变就说明 `<Routes>` 还活着。 */
+function Marker() {
+  return <i data-marker data-path={useLocation().pathname} />;
+}
+
 async function mount(r: Loaded): Promise<HTMLElement> {
   const el = document.createElement('div');
   const root = createRoot(el, r.ROUTER_ROOT_OPTIONS);
-  await act(async () => { root.render(<r.RouterRoot actions={shellActions()}><i data-marker /></r.RouterRoot>) });
+  await act(async () => { root.render(<r.RouterRoot actions={shellActions()}><Marker /></r.RouterRoot>) });
   unmounts.push(() => root.unmount());
   await act(async () => { r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute)) });
   return el;
@@ -204,7 +210,7 @@ it('首屏取数失败不是渲染错误：照画、不上报', async () => {
   expect(reported).not.toHaveBeenCalled();
 });
 
-it('一页抛错：四座附属面照画，后退前进照旧派发', async () => {
+it('一页抛错：四座附属面照画，后退前进照旧跟着走', async () => {
   const reported = watchReports();
   pages.junkBroken = true;
   const r = await load();
@@ -219,9 +225,6 @@ it('一页抛错：四座附属面照画，后退前进照旧派发', async () =
     await r.openManagedRoute('library-processing', { toast: vi.fn(), mode: 'notice' }, { container: notice, isCurrent: always });
     await r.openManagedRoute('search', searchProps(exposed), { container: menu, isCurrent: always });
   });
-  const dispatch = vi.fn();
-  await act(async () => { await r.startRouting(dispatch) });
-
   const grid = container('grid');
   await act(async () => { await r.openManagedRoute('/junk-files', {}, { container: grid, isCurrent: always }) });
 
@@ -237,6 +240,9 @@ it('一页抛错：四座附属面照画，后退前进照旧派发', async () =
   expect(exposed.api).not.toBeNull();
   expect(tree.querySelector('[data-marker]')).not.toBeNull();
 
-  await act(async () => { window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state })) });
-  expect(dispatch, '派发点还活着').toHaveBeenCalledTimes(2);
+  await act(async () => {
+    window.history.replaceState(window.history.state, '', '/elsewhere');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+  });
+  expect(tree.querySelector('[data-marker]')?.getAttribute('data-path'), '路由根还跟着历史走').toBe('/elsewhere');
 });

@@ -5,6 +5,8 @@
  * 从 `@peach/legacy/*` 直接 import；每次打开才算得出的值（只读状态、地址上的分类与页签、引导标记）
  * 跟着那一次打开走，不在这里。 */
 
+import type { OverlayTarget } from '@peach/history';
+
 import type { LibraryProcessingProps } from '../bundle';
 import type { CatalogFilterProps } from '../catalog-filter/catalog-filter';
 import type { CatalogGridProps, MediaCardActions, MediaCardHelpers } from '../catalog-grid/types';
@@ -25,7 +27,7 @@ export interface ShellActions {
   openTag(key: string): void;
   /** 口味页点一条名次：标签回目录筛选，人名进资料页。 */
   openTasteSignal(kind: string, name: string): void;
-  /** 换到一个路径：push 一条不认领的地址，像后退前进一样经派发打开那一页，领一个开次代次。 */
+  /** 换到一个路径：push 一条不认领的地址，像后退前进一样领一个开次代次，由页面组按匹配打开那一页。 */
   navigate(path: string): void;
   /** 按管理区身份进一屏（路由表里 `section` 等于它的第一条；认不出的落到垃圾文件）。 */
   openManage(section: string): void;
@@ -80,7 +82,11 @@ export interface ShellActions {
   clearSearch(): void;
   /** 打开沉浸模式，从 `id` 那一条开始；不给就从头。地址由调用方负责。 */
   openImmerse(id?: number): void;
-  /** 收起详情舞台（正在放的视频照旧进小窗），不写地址。 */
+  /** 打开覆盖地址上的那一条（作品详情、队列里的一条或关注详情），地址已经在那里，不再写。 */
+  openOverlay(target: OverlayTarget): void;
+  /** 取走一次队列打开意图：等待队列定下实际条目，首屏确定后才写详情地址。 */
+  openQueueRequest?(): void;
+  /** 详情舞台开着就收起（正在放的视频照旧进小窗），不写地址。 */
   closeStage(): void;
   /** 目录网格卡片的助手与动作：壳里各一份、身份不变（卡片按引用比较），资料页作品区与目录共用。 */
   readonly grid: { helpers: MediaCardHelpers; actions: MediaCardActions };
@@ -113,6 +119,9 @@ export interface FollowFeedShell {
   skeleton(): string;
   /** 整页打开交给页面的 props：筛选、取样种子与刷新代次、选择集、照片墙偏好，以及壳里那一份助手与动作。 */
   props(): FollowFeedProps;
+  /** 关注详情下面那一层（深链、或后退前进落到关注详情上时列表没画着）：舞台上开着的不是关注详情就先收起，再铺开
+   *  管理区那一侧；列表还画在 `#stats` 里就原样留着，没画着就清空 `#stats`，列表等关掉详情才打开。 */
+  ground(): void;
 }
 
 /** 目录元素回到壳的那几步。筛选由元素按地址写进 `@peach/shell` 的 `state`，之后的事归壳。 */
@@ -125,6 +134,9 @@ export interface CatalogShell {
   open(path: string, options?: { entering?: boolean; retitle?: boolean }): void;
   /** 筛选与地址已经由壳写好：按它们重取目录。 */
   load(): void;
+  /** 没有背景的作品详情与队列地址（深链、刷新）下面补画目录网格：网格没被占着、又是启动那一条或还铺着目录骨架时，
+   *  按当前地址取一次（不是首页口径，不写筛选）。 */
+  fill(): void;
   /** 离开目录：收起 `#grid` 那一页、首页新作行与处理横幅。 */
   release(): void;
 }

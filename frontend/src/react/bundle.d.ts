@@ -522,8 +522,8 @@ export declare function configureGlowPicker(host: GlowPickerHost): void;
 
 export type { ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
 
-/** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，后退前进与 React 子树里的
- * `navigate` 由它派发给壳；管理区、索引页与资料页由它画，经 `actions` 回到壳。重复调用是空操作。 */
+/** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，每一页、沉浸与详情都由它按匹配打开；
+ * 管理区、索引页与资料页由它画，经 `actions` 回到壳。重复调用是空操作。 */
 export declare function configureRouter(actions: ShellActions): void;
 
 /** 路由树那几页的首屏取数（`@peach/history` 的 `openManagedRoute` 经 `connectManagedRoutes` 调它）。 */

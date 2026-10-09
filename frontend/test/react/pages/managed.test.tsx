@@ -1,8 +1,8 @@
-/* 管理区的页面元素（`src/react/router/pages/managed.tsx`）：页面组按匹配挂上它就打开那一页。先收舞台、报换页，
- * 再铺骨架（与壳冷启动铺的同键就不重画）、取首屏；派发一次就是打开一次，认领的写地址与详情压上来都不重开；
+/* 管理区的页面元素（`src/react/router/pages/managed.tsx`）：页面组按匹配挂上它就打开那一页。先报换页，
+ * 再铺骨架（与壳冷启动铺的同键就不重画）、取首屏；没人认领的历史变化一次就是打开一次，认领的写地址与详情压上来都不重开；
  * 卸载时这一页还露在 `#stats` 上才收；`/resource-sync` 与配置页的 `#libraryProcessing` 改写地址、不加历史条目。
  *
- * 历史对象、派发状态与壳的内存状态都是模块级的，每条用例重新装载。 */
+ * 历史对象与壳的内存状态都是模块级的，每条用例重新装载。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
@@ -46,19 +46,18 @@ function shellActions(): ShellActions {
     routeIndex: vi.fn(), savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(),
     personAvatar: vi.fn(() => ({ html: '', face: '' })), authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(),
     openFollowAuthor: vi.fn(), openFollowTag: vi.fn(), openPlaylist: vi.fn(), canFlip: () => true,
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 
-/** 挂上路由树、接上页面包，再让壳开始路由（派发是替身）。 */
+/** 挂上路由树、接上页面包，再像壳那样开始路由：`pageOpens` 写成 1。 */
 async function boot(r: Loaded, actions = shellActions()) {
   const root = createRoot(document.createElement('div'));
   await act(async () => { root.render(<r.RouterRoot actions={actions} />) });
   unmounts.push(() => root.unmount());
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
-  const dispatch = vi.fn();
-  await act(async () => { await r.startRouting(dispatch) });
-  return { actions, dispatch };
+  await act(async () => { r.shell.writeShell({ pageOpens: 1 }) });
+  return { actions };
 }
 
 /** 管理区正文的容器，铺着壳冷启动时那一张骨架。 */
@@ -118,30 +117,28 @@ const settle = () => act(async () => { await new Promise((resolve) => { setTimeo
 /** 页面画出来的那一块（宿主里的第一个元素）：重挂之后就换成另一个。 */
 const painted = (stats: Element) => stats.querySelector(':scope > .peach-react > *');
 
-it('挂上就打开：先收舞台、再报换页，骨架与冷启动那张同键不重画，首屏取齐才换成整页', async () => {
+it('挂上就打开：先报换页，骨架与冷启动那张同键不重画，首屏取齐才换成整页', async () => {
   const r = await load('/activity');
   const { stats, skeleton } = surface(r, '/activity');
   const order: string[] = [];
   const actions = shellActions();
-  vi.mocked(actions.closeStage).mockImplementation(() => { order.push('closeStage') });
   vi.mocked(actions.surfaceChanged).mockImplementation((kind, path) => { order.push(`${kind} ${path}`) });
   const api = serve({ '/api/tasks': tasks(), '/api/downloads': { available: true, providers: [], tasks: [] } }, ['/api/tasks']);
   api.fetched.mockImplementationOnce(((original) => (input: string, init?: RequestInit) => {
     order.push(`fetch ${input.split('?')[0]}`);
     return original(input, init);
   })(api.fetched.getMockImplementation()!));
-  const { dispatch } = await boot(r, actions);
+  await boot(r, actions);
   await until(() => api.calls('/api/tasks') > 0, '首屏取数发出去');
-  expect(order).toEqual(['closeStage', 'management /activity', 'fetch /api/tasks']);
+  expect(order).toEqual(['management /activity', 'fetch /api/tasks']);
   expect(stats.firstElementChild, '同一张骨架原样留着').toBe(skeleton);
   api.resolve();
   await until(() => painted(stats) !== null, '整页画上');
   expect(stats.firstElementChild).not.toBe(skeleton);
   expect(stats.textContent).toContain('追更检查');
-  expect(dispatch).toHaveBeenCalledTimes(1);
 });
 
-it('派发一次就是打开一次：认领的写地址不重开，同一路径经派发再开就重取、重挂', async () => {
+it('没人认领的写地址一次就是打开一次：认领的写地址不重开，同一路径不认领再写就重取、重挂', async () => {
   const r = await load('/activity');
   const { stats } = surface(r, '/activity');
   const api = serve({ '/api/tasks': tasks(), '/api/downloads': { available: true, providers: [], tasks: [] } });
@@ -153,7 +150,7 @@ it('派发一次就是打开一次：认领的写地址不重开，同一路径�
   await settle();
   expect([api.calls('/api/tasks'), painted(stats)]).toEqual([1, page]);
   const length = window.history.length;
-  await act(async () => { r.shellNavigate('/activity', { claim: false }) });
+  await act(async () => { r.peachHistory.push('/activity') });
   await until(() => painted(stats) !== null && painted(stats) !== page, '重挂之后再画上');
   expect(api.calls('/api/tasks')).toBe(2);
   expect(r.managedEntry(stats)?.revision).not.toBe(revision);
@@ -176,6 +173,28 @@ it('详情压在上面时页面不拆也不重开，关掉详情回到这一页�
   expect([painted(stats), api.calls('/api/tasks')]).toEqual([page, 1]);
 });
 
+it('后退落到压在这一页上的详情才挂上（中间去过别的页）时不开；关掉详情回来按地址打开一次', async () => {
+  const r = await load('/activity');
+  const { stats } = surface(r, '/activity');
+  const api = serve({ '/api/tasks': tasks(), '/api/downloads': { available: true, providers: [], tasks: [] } });
+  await boot(r);
+  await until(() => painted(stats) !== null, '画上');
+  const overlay = { backgroundLocation: { pathname: '/activity', search: '' }, overlay: 'item' };
+  await act(async () => { r.shellNavigate('/item/7', { state: overlay }) });
+  await settle();
+  await act(async () => { r.shellNavigate('/'); stats.replaceChildren() });
+  await settle();
+  await act(async () => {
+    window.history.replaceState({ usr: overlay, key: 'x', idx: 1 }, '', '/item/7');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+  });
+  await settle();
+  expect([painted(stats), api.calls('/api/tasks')], '被详情压着挂上不开').toEqual([null, 1]);
+  await act(async () => { r.shellNavigate('/activity') });
+  await until(() => painted(stats) !== null, '关掉详情后画上');
+  expect(api.calls('/api/tasks')).toBe(2);
+});
+
 it('走开时还露在 `#stats` 上就收起，收起排在提交之后、不报同步提交的告警；壳藏起了它就留着', async () => {
   const errors = vi.spyOn(console, 'error');
   const r = await load('/activity');
@@ -188,7 +207,7 @@ it('走开时还露在 `#stats` 上就收起，收起排在提交之后、不报
   expect([stats.querySelector('.peach-react'), r.managedEntry(stats)]).toEqual([null, null]);
   expect(errors).not.toHaveBeenCalled();
 
-  await act(async () => { r.shellNavigate('/activity', { claim: false }) });
+  await act(async () => { r.peachHistory.push('/activity') });
   await until(() => painted(stats) !== null, '再开一次画上');
   const page = painted(stats);
   // 资料页压过来：壳在同一个任务里藏起 `#stats`，页面藏着照常活，等下一次认领表面才收。
