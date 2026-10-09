@@ -59,7 +59,7 @@ export function cleanupSkeletonHtml(): string {
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
           <div class="organizefields">
-            <div class="organizesource"><span class="gselect"><span class="gselectfield organize-source-skeleton">${bar}${icon('chevron-down')}</span></span></div>
+            <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${bar}${icon('chevron-down')}</span></span></div>
             ${organizeField('文件名模板')}
             ${organizeField('目录模板')}
             <div class="organizepresets">${presets}</div>

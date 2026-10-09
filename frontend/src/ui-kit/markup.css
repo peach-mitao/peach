@@ -1,0 +1,14 @@
+/* `markup.ts` 画出来的那几件小部件：Spinner、Loading Dots 与计数徽标。
+   Geist Spinner = 用户触发动作的即时反馈；Loading Dots = 后台任务仍在推进。 */
+@keyframes geist-spinner-opacity{0%{opacity:1}100%{opacity:.15}}
+.ui-geist-spinner{position:relative;display:inline-block;flex:none;width:16px;height:16px;color:currentColor}
+.ui-geist-spinner>i{position:absolute;top:1px;left:7px;width:2px;height:4px;border-radius:var(--pill-radius);
+  background:currentColor;transform-origin:1px 7px;transform:rotate(var(--spinner-angle));
+  animation:geist-spinner-opacity 1s linear var(--spinner-delay) infinite}
+@keyframes geist-loading-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+.ui-geist-loading{display:inline-flex;align-items:center;min-width:0;gap:8px;color:var(--muted)}
+.ui-geist-loading-dots{display:inline-flex;align-items:center;gap:3px;flex:none}
+.ui-geist-loading-dots>i{width:4px;height:4px;border-radius:50%;background:currentColor;
+  animation:geist-loading-dot 1.2s ease-in-out infinite}
+.ui-geist-loading-dots>i:nth-child(2){animation-delay:.15s}.ui-geist-loading-dots>i:nth-child(3){animation-delay:.3s}
+.ui-geist-badge{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:20px;padding:0 6px;border-radius:var(--badge-radius);background:var(--hover);color:var(--ink-2);font-size:var(--fs-xs);font-weight:500;line-height:1;white-space:nowrap}

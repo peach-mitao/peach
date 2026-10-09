@@ -451,7 +451,7 @@ function Fe(e, { variant: t = "" } = {}) {
 	if (!r) return null;
 	e.dataset.overlayScrollbar = "true", !n && getComputedStyle(r).position === "static" && (r.style.position = "relative");
 	let i = n ? null : document.createElement("div");
-	i && (i.className = "ov-edges", i.setAttribute("aria-hidden", "true"), i.innerHTML = "<span class=\"ov-edge-top\"></span><span class=\"ov-edge-bottom\"></span>", r.append(i));
+	i && (i.className = "ui-ov-edges", i.setAttribute("aria-hidden", "true"), i.innerHTML = "<span class=\"ui-ov-edge-top\"></span><span class=\"ui-ov-edge-bottom\"></span>", r.append(i));
 	let a = (n ? ["y"] : ["y", "x"]).map((e) => {
 		let n = document.createElement("div");
 		n.className = `ovtrack ${e === "y" ? "ov-y" : "ov-x"}${t ? ` ${t}` : ""}`;
@@ -486,7 +486,7 @@ function Fe(e, { variant: t = "" } = {}) {
 		let t = e.scrollTop, n = e.scrollLeft;
 		if (i) {
 			let n = c > 1 && t > 1, r = c > 1 && t < c - 1, a = `${n}:${r}`;
-			a !== l && (l = a, i.hidden = !n && !r, i.classList.toggle("can-scroll-top", n), i.classList.toggle("can-scroll-bottom", r), n || r ? (e.style.setProperty("--scroll-edge-top", n ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", r ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", n || r));
+			a !== l && (l = a, i.hidden = !n && !r, i.classList.toggle("ui-can-scroll-top", n), i.classList.toggle("ui-can-scroll-bottom", r), n || r ? (e.style.setProperty("--scroll-edge-top", n ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", r ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", n || r));
 		}
 		a.forEach(({ axis: e, thumb: r, range: i, travel: a }) => {
 			if (i <= 1) return;
@@ -664,7 +664,7 @@ function qe(e, t, { label: r = "", attr: i = "", className: a = "" } = {}) {
 		t,
 		n
 	])}</span></button>`).join("");
-	return `<div class="gselect${a ? ` ${m(a)}` : ""}" ${i}>
+	return `<div class="ui-gselect${a ? ` ${m(a)}` : ""}" ${i}>
     <button type="button" class="gselectfield" data-select-trigger aria-haspopup="listbox"
       aria-expanded="false" aria-label="${m(r)}"><span data-select-label>${s(o)}</span>${n("chevron-down")}</button>
     <div class="popmenu gselectmenu" role="listbox" aria-label="${m(r)}" popover="manual" data-select-menu hidden>${c}</div></div>`;
@@ -760,7 +760,7 @@ function nt(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
 }
 function rt(e = "加载中") {
 	let t = Array.from({ length: 10 }, (e, t) => `<i aria-hidden="true" style="--spinner-angle:${t * 36}deg;--spinner-delay:${t * 100 - 900}ms"></i>`).join("");
-	return `<span class="geist-spinner" role="status" aria-label="${m(e)}">${t}</span>`;
+	return `<span class="ui-geist-spinner" role="status" aria-label="${m(e)}">${t}</span>`;
 }
 function it({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a = "", attrs: o = "" } = {}) {
 	let s = [
@@ -778,8 +778,8 @@ function it({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a 
     <input ${s}></div>`;
 }
 function at(e = "正在处理", { className: t = "" } = {}) {
-	return `<span class="geist-loading${t ? ` ${m(t)}` : ""}" role="status">
-    <span class="geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+	return `<span class="ui-geist-loading${t ? ` ${m(t)}` : ""}" role="status">
+    <span class="ui-geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span>${m(e)}</span></span>`;
 }
 function ot(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图", className: a = "", panel: o = "" } = {}) {
@@ -797,7 +797,7 @@ function st(e, t, r, { className: i = "", actions: a = "" } = {}) {
   </div>`;
 }
 function ct(e) {
-	return `<span class="geist-badge">${m(e)}</span>`;
+	return `<span class="ui-geist-badge">${m(e)}</span>`;
 }
 function lt(e = "") {
 	return `<span class="pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
@@ -1250,18 +1250,18 @@ function Gt(e, { className: t = "", label: n = "可滚动内容", overflow: r = 
 		"y",
 		"both"
 	])).has(r) ? r : "y";
-	return `<div class="geist-scroller${t ? ` ${m(t)}` : ""}" data-geist-scroller>
-    <div class="geist-scroller-overlay" aria-hidden="true"></div>
-    <div class="geist-scroller-container" data-overflow="${i}" tabindex="0" aria-label="${m(n)}">${e}</div>
+	return `<div class="ui-geist-scroller${t ? ` ${m(t)}` : ""}" data-geist-scroller>
+    <div class="ui-geist-scroller-overlay" aria-hidden="true"></div>
+    <div class="ui-geist-scroller-container" data-overflow="${i}" tabindex="0" aria-label="${m(n)}">${e}</div>
   </div>`;
 }
 function J(e) {
-	let t = e.querySelector(":scope > .geist-scroller-container"), n = e.querySelector(":scope > .geist-scroller-overlay");
-	!t || !n || (n.classList.toggle("can-scroll-top", t.scrollTop > 1), n.classList.toggle("can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
+	let t = e.querySelector(":scope > .ui-geist-scroller-container"), n = e.querySelector(":scope > .ui-geist-scroller-overlay");
+	!t || !n || (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
 }
 function Kt(e = document) {
 	e.querySelectorAll("[data-geist-scroller]").forEach((e) => {
-		let t = e.querySelector(":scope > .geist-scroller-container");
+		let t = e.querySelector(":scope > .ui-geist-scroller-container");
 		t && (t.dataset.scrollerWired || (t.dataset.scrollerWired = "true", t.addEventListener("scroll", () => J(e), { passive: !0 }), t.addEventListener("load", () => J(e), !0)), requestAnimationFrame(() => J(e)));
 	});
 }
@@ -1273,7 +1273,7 @@ var qt = [
 	".playlistpicklist",
 	"[data-player-stats]",
 	".vjs-peach-settings-menu",
-	".geist-scroller-container",
+	".ui-geist-scroller-container",
 	".metricstrip",
 	".tastesummaries",
 	".skeletondashstrip",
@@ -1322,17 +1322,17 @@ function Qt(e, t, n) {
 var $t = 9;
 function en({ value: e = 0, min: t = 0, max: n = 100, step: r = 1, label: i = "", suffix: a = "%", attr: o = "", className: s = "" } = {}) {
 	let c = n > t ? (e - t) / (n - t) * 100 : 0, l = `${e}${a}`;
-	return `<div class="dial${s ? ` ${m(s)}` : ""}" ${o}>
-    <div class="dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${m(i)}"
+	return `<div class="ui-dial${s ? ` ${m(s)}` : ""}" ${o}>
+    <div class="ui-dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${m(i)}"
       aria-valuemin="${t}" aria-valuemax="${n}" aria-valuenow="${e}" aria-valuetext="${m(l)}"
       data-dial-step="${r}" style="--dial-at:${c}%">
-      <span class="dial-track" aria-hidden="true"><span class="dial-fill"></span></span>
-      <span class="dial-ticks" aria-hidden="true">${"<span></span>".repeat($t)}</span>
-      <span class="dial-handle" aria-hidden="true"></span>
-    </div><b class="dial-value mono" data-dial-value>${m(l)}</b></div>`;
+      <span class="ui-dial-track" aria-hidden="true"><span class="ui-dial-fill"></span></span>
+      <span class="ui-dial-ticks" aria-hidden="true">${"<span></span>".repeat($t)}</span>
+      <span class="ui-dial-handle" aria-hidden="true"></span>
+    </div><b class="ui-dial-value mono" data-dial-value>${m(l)}</b></div>`;
 }
 function tn(e, { onInput: t = () => {}, onChange: n = () => {}, suffix: r = "%" } = {}) {
-	let i = e.querySelector("[data-dial-slider]"), a = e.querySelector("[data-dial-value]"), o = e.querySelector(".dial-track"), s = +i.getAttribute("aria-valuemin"), c = +i.getAttribute("aria-valuemax"), l = +i.dataset.dialStep || 1, u = +i.getAttribute("aria-valuenow"), d = (e) => Math.min(c, Math.max(s, Math.round(e / l) * l)), f = () => {
+	let i = e.querySelector("[data-dial-slider]"), a = e.querySelector("[data-dial-value]"), o = e.querySelector(".ui-dial-track"), s = +i.getAttribute("aria-valuemin"), c = +i.getAttribute("aria-valuemax"), l = +i.dataset.dialStep || 1, u = +i.getAttribute("aria-valuenow"), d = (e) => Math.min(c, Math.max(s, Math.round(e / l) * l)), f = () => {
 		let e = `${u}${r}`;
 		i.style.setProperty("--dial-at", `${c > s ? (u - s) / (c - s) * 100 : 0}%`), i.setAttribute("aria-valuenow", String(u)), i.setAttribute("aria-valuetext", e), a && (a.textContent = e);
 	}, p = (e, n) => {
@@ -1426,15 +1426,15 @@ function rn(e, { selector: t, attribute: n, onMove: r } = {}) {
 var an = 0;
 function on({ title: e, description: t = "", body: n = "", confirmLabel: r, cancelLabel: i = "取消", onConfirm: a = null, confirmDisabled: o = !1 } = {}) {
 	let s = document.activeElement, c = document.createElement("dialog");
-	c.className = "geist-modal";
+	c.className = "ui-geist-modal";
 	let l = `geist-form-title-${++an}`;
-	c.setAttribute("aria-labelledby", l), c.innerHTML = `<form class="geist-modal-form" novalidate>
-      <div class="geist-modal-body"><h3 id="${l}"></h3>${t ? "<p></p>" : ""}
-        <div class="geist-modal-fields">${n}</div><div data-modal-error></div></div>
+	c.setAttribute("aria-labelledby", l), c.innerHTML = `<form class="ui-geist-modal-form" novalidate>
+      <div class="ui-geist-modal-body"><h3 id="${l}"></h3>${t ? "<p></p>" : ""}
+        <div class="ui-geist-modal-fields">${n}</div><div data-modal-error></div></div>
       <footer class="geist-modal-footer">
         <div><button type="button" class="geist-button" data-modal-cancel></button></div>
         <div><button type="submit" class="geist-button primary" data-modal-confirm></button></div>
-      </footer></form>`, c.querySelector("h3").textContent = e, t && (c.querySelector(".geist-modal-body p").textContent = t);
+      </footer></form>`, c.querySelector("h3").textContent = e, t && (c.querySelector(".ui-geist-modal-body p").textContent = t);
 	let u = c.querySelector("[data-modal-cancel]"), d = c.querySelector("[data-modal-confirm]"), f = c.querySelector("[data-modal-error]");
 	u.textContent = i, d.textContent = r, d.disabled = !!o, document.body.append(c);
 	let p = null, m = !1, h = new Promise((e) => c.addEventListener("close", () => {
@@ -1464,7 +1464,7 @@ function on({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 				m = !1;
 			}
 		}
-	}, c.showModal(), O("pop"), (c.querySelector(".geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
+	}, c.showModal(), O("pop"), (c.querySelector(".ui-geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
 		dialog: c,
 		confirmButton: d,
 		done: h,
@@ -1474,14 +1474,14 @@ function on({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 var sn = 0;
 function cn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onConfirm: i = null, danger: a = !1 } = {}) {
 	let o = document.activeElement, s = document.createElement("dialog");
-	s.className = "geist-modal";
+	s.className = "ui-geist-modal";
 	let c = `geist-modal-title-${++sn}`;
-	s.setAttribute("aria-labelledby", c), s.innerHTML = `<div class="geist-modal-body">
+	s.setAttribute("aria-labelledby", c), s.innerHTML = `<div class="ui-geist-modal-body">
       <h3 id="${c}"></h3><p></p><div data-modal-error></div></div>
     <footer class="geist-modal-footer">
       <div><button type="button" class="geist-button" data-modal-cancel></button></div>
       <div><button type="button" class="geist-button primary" data-modal-confirm></button></div>
-    </footer>`, s.querySelector("h3").textContent = e, s.querySelector(".geist-modal-body p").textContent = t;
+    </footer>`, s.querySelector("h3").textContent = e, s.querySelector(".ui-geist-modal-body p").textContent = t;
 	let l = s.querySelector("[data-modal-cancel]"), u = s.querySelector("[data-modal-confirm]");
 	a && (u.classList.remove("primary"), u.classList.add("danger"));
 	let d = s.querySelector("[data-modal-error]");

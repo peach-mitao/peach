@@ -31,11 +31,11 @@ it('连续滚动按帧更新位置，内容尺寸变化后刷新滑块比例', a
   frame.shift()!(16);
   expect(thumb.style.transform).toBe('translateY(30px)');
   expect(measure).not.toHaveBeenCalled();expect(measureContent).not.toHaveBeenCalled();
-  expect(host.querySelector('.ov-edges')!.classList.contains('can-scroll-top')).toBe(true);
+  expect(host.querySelector('.ui-ov-edges')!.classList.contains('ui-can-scroll-top')).toBe(true);
   content=300;sync();
   expect(thumb.style.height).toBe('28px');
   expect(thumb.style.transform).toBe('translateY(56px)');
-  expect(host.querySelector('.ov-edges')!.classList.contains('can-scroll-bottom')).toBe(false);
+  expect(host.querySelector('.ui-ov-edges')!.classList.contains('ui-can-scroll-bottom')).toBe(false);
   height=300;sync();
   expect(host.querySelector<HTMLElement>('.ov-y')!.hidden).toBe(true);
   expect(container.hasAttribute('data-scroll-edges')).toBe(false);

@@ -35,6 +35,13 @@
 @import "./sidebar/sidebar.css";
 @import "./base.css";
 @import "../ui-kit/motion.css";
+@import "../core/core.css";
+@import "../ui-kit/markup.css";
+@import "../ui-kit/controls.css";
+@import "../ui-kit/select-field.css";
+@import "../ui-kit/scroll.css";
+@import "../ui-kit/overlay-scrollbar.css";
+@import "../ui-kit/modal.css";
 
 @source "./";
 /* 独立页面包（`pages/`）有自己的产物 `peach-pages.css`，它用到的工具类不进这一份。 */
@@ -93,8 +100,8 @@
   /* 分类列并回正文上方的那一档，以及药丸缩一号的那一档。 */
   --breakpoint-review-split: 900px;
   --breakpoint-review-tight: 600px;
-  /* 模态弹层的遮罩。注册表里没有模态弹层，也就没有它的底色；取值同旧样式表
-   * `.geist-modal::backdrop` 的黑 60%，深浅两档共用一个。 */
+  /* 模态弹层的遮罩。注册表里没有模态弹层，也就没有它的底色；取值同
+   * `ui-kit/modal.css` 里 `.ui-geist-modal::backdrop` 的黑 60%，深浅两档共用一个。 */
   --color-scrim: color-mix(in srgb, var(--color-black) 60%, transparent);
   /* 统计与口味两页的折行断点，旧 `05-insights.css` 的媒体查询统一钉在 1000px，
    * 不落在 Tailwind 的 sm/md/lg 上。写成断点 token，`board:` 变体照常生成。 */
@@ -122,7 +129,7 @@
   --spacing-empty-glyph: 54px;
   --container-empty-copy: 340px;
   --leading-empty-copy: 1.55;
-  /* 填一份表的弹层（`components/modal-frame.tsx` 的 `form` 档），同遗留层 `.geist-modal` 的 540px。 */
+  /* 填一份表的弹层（`components/modal-frame.tsx` 的 `form` 档），同 `ui-kit/modal.css` 里 `.ui-geist-modal` 的 540px。 */
   --container-form-modal: 540px;
   /* 封面格里「无预览」那一行的字距，同旧 `.nopic` 的 .12em。 */
   --tracking-caps: 0.12em;

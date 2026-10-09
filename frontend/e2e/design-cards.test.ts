@@ -636,13 +636,13 @@ describe('设计决定：作品卡、管理页与复核', () => {
         content.dataset.scrollTest = '';
         node.append(content);
       });
-      const edges = scroller.locator('..').locator('.ov-edges');
-      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .can-scroll-bottom'));
-      assert.equal(await edges.evaluate((node) => node.classList.contains('can-scroll-top')), false);
+      const edges = scroller.locator('..').locator('.ui-ov-edges');
+      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .ui-can-scroll-bottom'));
+      assert.equal(await edges.evaluate((node) => node.classList.contains('ui-can-scroll-top')), false);
       await scroller.evaluate((node) => { node.scrollTop = 100 });
-      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .can-scroll-top.can-scroll-bottom'));
+      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .ui-can-scroll-top.ui-can-scroll-bottom'));
       assert.equal(await edges.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
-      assert.equal(await edges.locator('.ov-edge-top').evaluate((node) => getComputedStyle(node).backdropFilter), 'blur(2px)');
+      assert.equal(await edges.locator('.ui-ov-edge-top').evaluate((node) => getComputedStyle(node).backdropFilter), 'blur(2px)');
       const track = scroller.locator('..').locator('.ovtrack.ov-y');
       for (const viewport of [DESKTOP, MOBILE]) {
         await opened.page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -664,7 +664,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
       await opened.page.mouse.up();
       assert.ok(await scroller.evaluate((node) => node.scrollTop > 100), '右侧轨道拖动没有滚动正文');
       await scroller.evaluate((node) => { node.scrollTop = node.scrollHeight });
-      await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] .can-scroll-bottom'));
+      await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] .ui-can-scroll-bottom'));
       await scroller.locator('[data-scroll-test]').evaluate((node) => node.remove());
       await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] [data-scroll-edges]'));
       const spacing = await card.getByRole('region', { name: '当前信息' }).evaluate((node) => {

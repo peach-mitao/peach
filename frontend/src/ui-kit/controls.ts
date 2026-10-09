@@ -64,14 +64,14 @@ const DIAL_TICKS=9;
 export function dialSliderHtml({value=0,min=0,max=100,step=1,label='',suffix='%',attr='',className=''}={}):string{
   const at=max>min?(value-min)/(max-min)*100:0;
   const text=`${value}${suffix}`;
-  return `<div class="dial${className?` ${esc(className)}`:''}" ${attr}>
-    <div class="dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${esc(label)}"
+  return `<div class="ui-dial${className?` ${esc(className)}`:''}" ${attr}>
+    <div class="ui-dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${esc(label)}"
       aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}" aria-valuetext="${esc(text)}"
       data-dial-step="${step}" style="--dial-at:${at}%">
-      <span class="dial-track" aria-hidden="true"><span class="dial-fill"></span></span>
-      <span class="dial-ticks" aria-hidden="true">${'<span></span>'.repeat(DIAL_TICKS)}</span>
-      <span class="dial-handle" aria-hidden="true"></span>
-    </div><b class="dial-value mono" data-dial-value>${esc(text)}</b></div>`;
+      <span class="ui-dial-track" aria-hidden="true"><span class="ui-dial-fill"></span></span>
+      <span class="ui-dial-ticks" aria-hidden="true">${'<span></span>'.repeat(DIAL_TICKS)}</span>
+      <span class="ui-dial-handle" aria-hidden="true"></span>
+    </div><b class="ui-dial-value mono" data-dial-value>${esc(text)}</b></div>`;
 }
 
 /**
@@ -85,7 +85,7 @@ export function wireDialSlider(root:ParentNode,{onInput=()=>{},onChange=()=>{},s
   onInput?: (value:number)=>void; onChange?: (value:number)=>void; suffix?: string;
 }={}):{readonly value:number;set(next:number):void}{
   const slider:any=root.querySelector('[data-dial-slider]'),readout=root.querySelector('[data-dial-value]');
-  const track:any=root.querySelector('.dial-track');
+  const track:any=root.querySelector('.ui-dial-track');
   const min=+slider.getAttribute('aria-valuemin'),max=+slider.getAttribute('aria-valuemax');
   const step=+slider.dataset.dialStep||1;
   let value=+slider.getAttribute('aria-valuenow');

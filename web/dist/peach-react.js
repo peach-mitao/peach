@@ -26674,7 +26674,7 @@ function TM() {
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
           <div class="organizefields">
-            <div class="organizesource"><span class="gselect"><span class="gselectfield organize-source-skeleton">${bM}${L("chevron-down")}</span></span></div>
+            <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${bM}${L("chevron-down")}</span></span></div>
             ${n("文件名模板")}
             ${n("目录模板")}
             <div class="organizepresets">${t}</div>
@@ -54564,7 +54564,7 @@ var YSe = ({ label: e, count: t }) => /* @__PURE__ */ (0, V.jsxs)("h3", {
 }), Hz = (e) => Number(e) > 0, XSe = ({ name: e }) => /* @__PURE__ */ (0, V.jsx)("span", {
 	className: "contents",
 	dangerouslySetInnerHTML: { __html: L(e) }
-}), Uz = L("external-link", "externalmark");
+}), Uz = L("external-link", "ui-externalmark");
 function ZSe(e) {
 	let { id: t, actions: n } = e, r = AS({
 		queryKey: Nz(t),

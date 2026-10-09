@@ -262,18 +262,6 @@ button,[role="button"],summary{user-select:none;-webkit-user-select:none;-webkit
 /* React 子树的焦点环由 BoardUI 组件自己画（输入框画在外框上）；`:where` 让特指度保持 0,1,0。 */
 :where(:not(.peach-react *)):focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-/* Geist Spinner = 用户触发动作的即时反馈；Loading Dots = 后台任务仍在推进。 */
-@keyframes geist-spinner-opacity{0%{opacity:1}100%{opacity:.15}}
-.geist-spinner{position:relative;display:inline-block;flex:none;width:16px;height:16px;color:currentColor}
-.geist-spinner>i{position:absolute;top:1px;left:7px;width:2px;height:4px;border-radius:var(--pill-radius);
-  background:currentColor;transform-origin:1px 7px;transform:rotate(var(--spinner-angle));
-  animation:geist-spinner-opacity 1s linear var(--spinner-delay) infinite}
-@keyframes geist-loading-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
-.geist-loading{display:inline-flex;align-items:center;min-width:0;gap:8px;color:var(--muted)}
-.geist-loading-dots{display:inline-flex;align-items:center;gap:3px;flex:none}
-.geist-loading-dots>i{width:4px;height:4px;border-radius:50%;background:currentColor;
-  animation:geist-loading-dot 1.2s ease-in-out infinite}
-.geist-loading-dots>i:nth-child(2){animation-delay:.15s}.geist-loading-dots>i:nth-child(3){animation-delay:.3s}
 /* Geist Search Input：搜索图标占前缀位，查找中原位换 Spinner，输入框几何不变。
    全站带搜索语义的输入共用这一份，各处只加宽度和位置。 */
 .geist-search{position:relative;min-width:0}
@@ -328,16 +316,6 @@ button,[role="button"],summary{user-select:none;-webkit-user-select:none;-webkit
 .geist-button,.geist-button:hover{text-decoration:none}
 /* 按钮里唯一还挂图标的一类是走出 Peach 的链接，那一枚的长相由下面两条说。 */
 .geist-button svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2}
-/* 走出 Peach 的那一枚标，全站一个写法。
-   2026-09-06 实测 vercel.com/geist/colors 的 `Learn More`：14px/20px 的文字配 16×16 图标、
-   紧跟文字 2px、与文字行居中、颜色就是链接自己的 currentColor
-   （docs/reference-snapshots/vercel-geist-external-link-mark.md）。尺寸不是全站一个常数，
-   而是相对所在文字抬一档，16/14≈1.15em，所以 12px 小字旁边它也跟着小、比例不变。
-   全站只有这一条，页面各自不再调档：这一枚每次说的都是同一件事，尺寸和间距按页面
-   分档的话，同一个意思就有八个长相，并排放着像是八种不同的标。
-   间距只由所在链接的 gap 说：挂在标自己身上会和容器的 gap 叠起来。 */
-svg.externalmark{width:1.15em;height:1.15em;flex:none;align-self:center;
-  stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .geist-button:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 .geist-button:disabled{background:var(--sunk);color:var(--muted);cursor:not-allowed}
 /* Vercel/Geist loading actions look unavailable and reject repeat activation,
@@ -371,7 +349,6 @@ button.danger.danger:disabled{
 .geist-button.error:hover:not(:disabled){background:color-mix(in srgb,#da2f35 85%,#000);color:#fff}
 .geist-button.warning:hover:not(:disabled){background:color-mix(in srgb,#ff990a 85%,#000);color:#000}
 .geist-button:is(.error,.warning):disabled{background:var(--sunk);color:var(--muted);box-shadow:0 0 0 1px var(--line-soft)}
-.geist-badge{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:20px;padding:0 6px;border-radius:var(--badge-radius);background:var(--hover);color:var(--ink-2);font-size:var(--fs-xs);font-weight:500;line-height:1;white-space:nowrap}
 .skiplink{position:fixed;z-index:1000;left:12px;top:8px;transform:translateY(-150%);
   padding:9px 13px;border-radius:var(--control-radius);background:var(--ink);color:var(--ground);text-decoration:none;
   transition:transform .12s ease}
@@ -421,13 +398,6 @@ body.settings-open>.ovtrack.page,body.photolight-open>.ovtrack.page{display:none
 [data-overlay-scrollbar]::-webkit-scrollbar{display:none}
 /* 边缘只提示仍可滚动的方向；透明渐隐适配每一档底色，覆盖层不拦点击与滚轮。 */
 [data-scroll-edges]{mask-image:linear-gradient(to bottom,transparent,#000 var(--scroll-edge-top),#000 calc(100% - var(--scroll-edge-bottom)),transparent)}
-.ov-edges{position:absolute;pointer-events:none;z-index:1;overflow:hidden}
-.ov-edges[hidden]{display:none}
-.ov-edges>span{position:absolute;left:0;right:0;height:16px;visibility:hidden;backdrop-filter:blur(2px)}
-.ov-edge-top{top:0;mask-image:linear-gradient(#000,transparent)}
-.ov-edge-bottom{bottom:0;mask-image:linear-gradient(transparent,#000)}
-.ov-edges.can-scroll-top>.ov-edge-top,.ov-edges.can-scroll-bottom>.ov-edge-bottom{visibility:visible}
-.geist-scroller:has(>[data-overlay-scrollbar])>.geist-scroller-overlay{display:none}
 /* 横向行不显示滚动条（本来就能拖动/滚轮横滚） */
 .tier,.tagbar,.srow{scrollbar-width:none}
 .tier::-webkit-scrollbar,.tagbar::-webkit-scrollbar,
@@ -437,33 +407,6 @@ body.settings-open>.ovtrack.page,body.photolight-open>.ovtrack.page{display:none
    margin 抵掉，位置一点不动。头像圈被遮是同一个缺陷重犯多次，横向头像行统一走这
    一条，不要再逐处补 padding。`.followauthors` 自带余量，不在此列。 */
 .tier,.relatedpeople{padding-top:3px;margin-top:-3px}
-
-/* 自绘单值拉条（`dialSliderHtml` / `wireDialSlider`）。几何取自 feralui.dev/gradients 的
-   `.dial-slider`，实测记在 docs/reference-snapshots/feralui-studio-boardui-accent-measured.md：
-   30px 高、20px 轨道、每 10% 一根 1×8px 刻度、3×20px 的圆头抓手，刻度与抓手默认透明，
-   悬停或拖动时才现形——一条静止的拉条上，九根刻度和一枚抓手比那条线本身还抢眼。
-   上游用自己的 ink 色画焦点环，这里仍走站内的 --tungsten：蓝只给焦点环这条是全站的。
-   当前位置只有 --dial-at 一个来源，填充宽度和抓手位置读的是同一个数。 */
-.dial{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0}
-.dial-slider{position:relative;display:flex;align-items:center;height:30px;min-width:0;
-  cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
-.dial-track{position:relative;width:100%;height:20px;border-radius:var(--pill-radius);
-  background:color-mix(in srgb,var(--ink) 11%,transparent);box-shadow:inset 0 1px 2px var(--overlay-5);overflow:hidden}
-.dial-fill{position:absolute;inset:0 auto 0 0;width:var(--dial-at,0%);
-  background:color-mix(in srgb,var(--ink) 42%,transparent)}
-.dial-slider[data-dragging] .dial-fill{background:color-mix(in srgb,var(--ink) 55%,transparent)}
-.dial-ticks{position:absolute;left:0;right:0;display:flex;justify-content:space-between;
-  padding:0 10%;opacity:0;pointer-events:none;transition:opacity .12s ease}
-.dial-ticks span{width:1px;height:8px;background:color-mix(in srgb,var(--ink) 20%,transparent)}
-.dial-handle{position:absolute;left:var(--dial-at,0%);width:3px;height:20px;transform:translateX(-50%);
-  border-radius:var(--pill-radius);background:var(--ink);box-shadow:0 1px 2px var(--overlay-5);
-  opacity:0;pointer-events:none;transition:opacity .12s ease}
-.dial-slider:hover :is(.dial-ticks,.dial-handle),
-.dial-slider:focus-visible :is(.dial-ticks,.dial-handle),
-.dial-slider[data-dragging] :is(.dial-ticks,.dial-handle){opacity:1}
-.dial-slider:focus-visible{outline:2px solid var(--tungsten);outline-offset:3px;border-radius:var(--pill-radius)}
-.dial-value{min-width:44px;color:var(--ink-2);font-weight:400;text-align:right}
-
 
 /* 锚定菜单：无展开动画，固定在视口内，内容在菜单内滚动而不是把页面撑出滚动条。
    2026-09-04 实测 vercel.com 后台的 Filter and Sort 菜单：底色是页面底色本身（浅色下
@@ -481,7 +424,6 @@ body.settings-open>.ovtrack.page,body.photolight-open>.ovtrack.page{display:none
 
 /* Geist Select：触发器穿输入框那身盒子，面板就是上面那个锚定菜单。为什么不用原生
    下拉、几何取自哪里，见 frontend/src/ui-kit/select-field.ts 的头注释。 */
-.gselect{position:relative;display:inline-flex;min-width:0}
 .gselectfield{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:space-between;
   gap:8px;width:100%;min-width:0;height:var(--control-h);padding:0 10px 0 12px;
   border:1px solid var(--field-ring);border-radius:var(--control-radius);
@@ -505,35 +447,10 @@ body.settings-open>.ovtrack.page,body.photolight-open>.ovtrack.page{display:none
 .popmenu.gselectmenu button:hover{background:var(--hover);color:var(--ink)}
 .popmenu.gselectmenu button[aria-selected="true"]{background:var(--hover);color:var(--ink)}
 
-/* Geist Modal：确认一次写操作。实测 https://vercel.com/geist/modal（2026-09-04）：
-   540px 宽、12px 圆角、窄屏两侧各留 10px，正文 20px 内边距，操作条粘在底、12px 内边距、
-   两端对齐，遮罩纯黑不带模糊。淡入用它给出的 .3s cubic-bezier(.175,.885,.32,1.1)；
-   它同时过渡 transform，起始值未取得，所以这里只做透明度。 */
-.geist-modal{box-sizing:border-box;width:min(540px,calc(100vw - 20px));
-  /* max-width 要自己写死：<dialog> 的 UA 样式带一条 calc((100% - 6px) - 2em)，
-     窄屏上它比 Geist 的 calc(100vw - 20px) 更小，卡片会莫名再窄十几像素。 */
-  max-width:min(540px,calc(100vw - 20px));max-height:min(800px,80vh);
-  padding:0;border:0;border-radius:var(--floating-radius);
-  background:var(--surface);color:var(--ink);overflow:hidden auto;overscroll-behavior:contain;
-  box-shadow:0 0 0 1px var(--border-15),0 32px 72px -12px #0009,0 8px 32px -12px #0009;
-  opacity:0;transition:opacity .3s cubic-bezier(.175,.885,.32,1.1),
-    overlay .3s allow-discrete,display .3s allow-discrete}
-.geist-modal::backdrop{background:#0009;opacity:0;
-  transition:opacity .3s cubic-bezier(.175,.885,.32,1.1),
-    overlay .3s allow-discrete,display .3s allow-discrete}
-.geist-modal[open],.geist-modal[open]::backdrop{opacity:1}
-@starting-style{.geist-modal[open],.geist-modal[open]::backdrop{opacity:0}}
-.geist-modal-body{padding:20px;font-size:var(--fs-md);line-height:20px;color:var(--ink-2)}
-.geist-modal-body h3{margin:0;font-size:var(--fs-xl);line-height:26px;font-weight:600;color:var(--ink)}
-.geist-modal-body p{margin:8px 0 0;line-height:20px;overflow-wrap:anywhere}
-.geist-modal-body [data-modal-error]:not(:empty){margin-top:12px}
+/* Geist Modal 的操作条；弹层本身、正文与表单的几何在 frontend/src/ui-kit/modal.css。 */
 .geist-modal-footer{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:16px;
   padding:12px;background:var(--surface)}
 .geist-modal-footer>div{display:flex;gap:16px}
-/* 表单正文：字段和列表都在这 20px 内边距里，和标题、操作条对着同一条边。 */
-.geist-modal-form{display:contents}
-.geist-modal-fields{display:grid;gap:14px;margin-top:16px}
-.geist-modal-fields:empty{display:none}
 .modalfield{display:grid;gap:8px}
 .modalfield>span{color:var(--muted);font-size:var(--fs-xs)}
 /* 一排能撤掉的名牌。整块不是命中区，能点的只有每块右边那一枚——名字本身在这里

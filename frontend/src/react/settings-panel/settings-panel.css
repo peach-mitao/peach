@@ -38,13 +38,13 @@
 [data-settings-panel] [data-setting-group]>h3+[data-setting-row]{border-top:0}
 [data-settings-panel] [data-setting-row] b{display:block;font-size:var(--fs-md)}
 [data-settings-panel] [data-setting-row] small{display:block;color:var(--muted);margin-top:8px;line-height:1.45}
-[data-settings-panel] [data-setting-row] [class~=gselect]{min-width:148px}
+[data-settings-panel] [data-setting-row] [class~=ui-gselect]{min-width:148px}
 [data-settings-panel] [data-setting-row][data-setting-related]{border-top:0}
 [data-settings-panel] [data-setting-group] [data-setting-row][data-setting-sort]{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:14px 16px}
 [data-settings-panel] [data-setting-sort-controls]{display:flex;gap:8px;min-width:0}
 [data-settings-panel] [data-setting-sort-controls]>div{flex:1;min-width:0}
 [data-settings-panel] [data-setting-sort-controls]>[hidden]{display:none}
-[data-settings-panel] [data-setting-sort-controls] [class~=gselect]{min-width:0;width:100%}
+[data-settings-panel] [data-setting-sort-controls] [class~=ui-gselect]{min-width:0;width:100%}
 [data-settings-panel] [data-setting-group]{margin:16px 0 0;border:1px solid var(--field-ring);border-radius:var(--floating-radius);background:var(--ground);padding:0 16px 12px}
 [data-settings-panel] [data-setting-group]>h3{margin:0;padding:14px 0 10px;font-size:var(--fs-lg);font-weight:600;color:var(--ink)}
 [data-settings-panel] [data-setting-group] [data-setting-row]{margin:0;padding-left:0;padding-right:0}
@@ -120,7 +120,7 @@
    不影响。 */
 [data-settings-panel] [data-glow-field][hidden],[data-settings-panel] [data-glow-group][hidden]{display:none}
 [data-settings-panel] [data-glow-field-label]{flex:none;width:84px;color:var(--muted);font-size:var(--fs-xs);font-weight:600;white-space:nowrap}
-[data-settings-panel] [data-glow-field] [class~=dial]{flex:1;min-width:0}
+[data-settings-panel] [data-glow-field] [class~=ui-dial]{flex:1;min-width:0}
 /* 颜色行：34px 圆点 + 名称与十六进制两行 + 行尾折角。相邻两行之间那条分隔线从圆点
    右侧起算，左边那一段留给圆点本身——线一路铺到最左边的话，三枚圆点会被切成一列格子。 */
 [data-settings-panel] [data-glow-stops]{display:grid;min-width:0}
@@ -199,7 +199,7 @@
 /* 单列是给下拉留的：148px 的下拉配上标题和说明在窄屏挤不下。开关只有 36px，
      跟标题同一行绰绰有余，跟着换行只是白占一行高度。 */
 @media (max-width:600px){[data-settings-panel] [data-setting-row]:has(input[type="checkbox"]){grid-template-columns:minmax(0,1fr) auto;gap:12px}}
-@media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=gselect]{width:100%;min-width:0}}
+@media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=ui-gselect]{width:100%;min-width:0}}
 @media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=pcheck]{justify-self:start}}
 [data-settings-panel] [data-sidebar-add-row] [data-sidebar-add-menu] button{justify-items:start}
 
@@ -265,7 +265,7 @@
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]+[data-sidebar-setting]{border-top:0}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row] b{font-size:14px;line-height:20px;font-weight:400}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row] small{font-size:12px;line-height:18px;margin-top:2px;max-width:none}
-[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=gselect]{min-width:90px;min-height:32px;height:32px;padding:6px 8px;font-size:13px;border-radius:8px}
+[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=ui-gselect]{min-width:90px;min-height:32px;height:32px;padding:6px 8px;font-size:13px;border-radius:8px}
 [data-settings-panel] [data-settings-card] [data-number-control]{gap:5px;font-size:12px}
 [data-settings-panel] [data-settings-card] [data-number-control] input{width:64px;height:32px;padding:6px;border-radius:8px;font-size:13px}
 [data-settings-panel] [data-settings-card] [data-number-control] button{min-height:32px;padding:4px 8px;font-size:12px}
@@ -323,7 +323,7 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row][data-setting-sort]{grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding-block:12px}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls]{display:flex;gap:8px;justify-content:end}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls]>div{flex:0 1 112px;min-width:0}
-[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls] [class~=gselect]{width:112px;min-width:0;padding:0}
+[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls] [class~=ui-gselect]{width:112px;min-width:0;padding:0}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=gselectfield]{height:32px;padding:0 8px;border-radius:8px;font-size:13px;gap:6px}
 [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-number-help]{display:none}
 [data-settings-panel] [data-number-fields]{position:relative}
@@ -350,7 +350,7 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row][data-setting-sort]{grid-template-columns:1fr;gap:10px}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls]{width:100%}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls]>div{flex:1}}
-@media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls] [class~=gselect]{width:100%}}
+@media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-sort-controls] [class~=ui-gselect]{width:100%}}
 @media (prefers-reduced-motion:reduce){[data-settings-panel] [data-toggle],[data-settings-panel] [data-toggle]::after,[data-settings-panel] [data-toggle]::before{transition:none}}
 @media (max-width:760px){[data-settings-panel][data-settings-panel]{padding:12px;grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card][data-settings-card]{width:calc(100vw - 24px);max-width:calc(100vw - 24px);min-width:0}}
@@ -391,7 +391,7 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-number-control] input{font-size:16px}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-number-control]{height:40px}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-number-control] input{height:38px}}
-@media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=gselect],[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=gselectfield]{height:40px;font-size:14px}}
+@media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=ui-gselect],[data-settings-panel] [data-settings-card] [data-settings-scroll] [class~=gselectfield]{height:40px;font-size:14px}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-number-control]>span{font-size:14px}}
 @media (prefers-reduced-motion:reduce){[data-settings-panel] [data-settings-card] [data-settings-head]::after{transition:none}}
 [data-settings-panel] [data-sidebar-add-menu][data-sidebar-add-menu]{transform-origin:bottom left}

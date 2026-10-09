@@ -94,7 +94,7 @@ export function progressHtml(label:string,value:unknown,max:unknown=100,{variant
 export function spinnerHtml(label='加载中'):string{
   const bars=Array.from({length:10},(_,index)=>
     `<i aria-hidden="true" style="--spinner-angle:${index*36}deg;--spinner-delay:${index*100-900}ms"></i>`).join('');
-  return `<span class="geist-spinner" role="status" aria-label="${esc(label)}">${bars}</span>`;
+  return `<span class="ui-geist-spinner" role="status" aria-label="${esc(label)}">${bars}</span>`;
 }
 
 /**
@@ -123,8 +123,8 @@ export function searchInputHtml({label,id='',name='',value='',placeholder='',att
 
 /** Geist Loading Dots: indeterminate work continuing in the background. */
 export function loadingDotsHtml(label='正在处理', {className=''}={}):string{
-  return `<span class="geist-loading${className?` ${esc(className)}`:''}" role="status">
-    <span class="geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+  return `<span class="ui-geist-loading${className?` ${esc(className)}`:''}" role="status">
+    <span class="ui-geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span>${esc(label)}</span></span>`;
 }
 
@@ -166,7 +166,7 @@ export function emptyStateHtml(iconName:string,title:unknown,description:unknown
  * `accent-color` 也只能改选中色，未选中态连悬停反馈都给不了。所以自绘一份，关注
  * 列表、来源筛选、候选清单、标签匹配和设置项共用它。
  */
-export function badgeHtml(text:unknown):string{return `<span class="geist-badge">${esc(text)}</span>`}
+export function badgeHtml(text:unknown):string{return `<span class="ui-geist-badge">${esc(text)}</span>`}
 
 export function checkboxHtml(inputAttrs=''):string{
   return `<span class="pcheck"><input type="checkbox" ${inputAttrs}><span aria-hidden="true">${icon('check')}</span></span>`;

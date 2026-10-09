@@ -39,7 +39,7 @@ export const MEDIA_SOURCE_ICONS: Record<string,string> = {local:'hard-drive','11
 export const selectOptionIconHtml = (mark?: string): string => mark ? `<i data-source-icon="${mark}"></i>` : '';
 
 export const selectFieldHtml = (items: string[][], value: string, options: { label?: string } = {}): string =>
-  `<div class="gselect" data-value="${value}"><button type="button" aria-haspopup="listbox" aria-label="${options.label}">${items.find(item => item[0] === value)?.[1]}</button></div>`;
+  `<div class="ui-gselect" data-value="${value}"><button type="button" aria-haspopup="listbox" aria-label="${options.label}">${items.find(item => item[0] === value)?.[1]}</button></div>`;
 export const wireSelectField = (root: HTMLElement) => {
   Object.defineProperty(root, 'value', { get: () => root.dataset.value, set: (value: string) => { root.dataset.value = value; } });
   return root as HTMLElement & { value: string; disabled: boolean };
@@ -71,4 +71,4 @@ export const setActionBusy = (control: Element | null, busy = true): void => {
 // 使用正式 Note 验证内部操作。
 export {noteHtml} from '../../src/ui-kit';
 
-export const badgeHtml = (text: string): string => `<span class="geist-badge">${text}</span>`;
+export const badgeHtml = (text: string): string => `<span class="ui-geist-badge">${text}</span>`;

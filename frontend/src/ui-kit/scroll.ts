@@ -246,18 +246,18 @@ export function moveGlidePane(
 /** Geist Scroller: one-axis overflow with edge fades as the scroll affordance. */
 export function scrollerHtml(content:string,{className='',label='可滚动内容',overflow='y'}={}){
   const axis=new Set(['x','y','both']).has(overflow)?overflow:'y';
-  return `<div class="geist-scroller${className?` ${esc(className)}`:''}" data-geist-scroller>
-    <div class="geist-scroller-overlay" aria-hidden="true"></div>
-    <div class="geist-scroller-container" data-overflow="${axis}" tabindex="0" aria-label="${esc(label)}">${content}</div>
+  return `<div class="ui-geist-scroller${className?` ${esc(className)}`:''}" data-geist-scroller>
+    <div class="ui-geist-scroller-overlay" aria-hidden="true"></div>
+    <div class="ui-geist-scroller-container" data-overflow="${axis}" tabindex="0" aria-label="${esc(label)}">${content}</div>
   </div>`;
 }
 
 function updateScroller(wrapper:Element){
-  const container=wrapper.querySelector(':scope > .geist-scroller-container');
-  const overlay=wrapper.querySelector(':scope > .geist-scroller-overlay');
+  const container=wrapper.querySelector(':scope > .ui-geist-scroller-container');
+  const overlay=wrapper.querySelector(':scope > .ui-geist-scroller-overlay');
   if(!container||!overlay)return;
-  overlay.classList.toggle('can-scroll-top',container.scrollTop>1);
-  overlay.classList.toggle('can-scroll-bottom',container.scrollTop+container.clientHeight<container.scrollHeight-1);
+  overlay.classList.toggle('ui-can-scroll-top',container.scrollTop>1);
+  overlay.classList.toggle('ui-can-scroll-bottom',container.scrollTop+container.clientHeight<container.scrollHeight-1);
   overlay.classList.toggle('can-scroll-left',container.scrollLeft>1);
   overlay.classList.toggle('can-scroll-right',container.scrollLeft+container.clientWidth<container.scrollWidth-1);
 }
@@ -265,7 +265,7 @@ function updateScroller(wrapper:Element){
 /** Wire newly rendered scrollers without duplicating listeners after a rerender. */
 export function wireScrollers(root:ParentNode=document):void{
   root.querySelectorAll('[data-geist-scroller]').forEach(wrapper=>{
-    const container=wrapper.querySelector<HTMLElement>(':scope > .geist-scroller-container');
+    const container=wrapper.querySelector<HTMLElement>(':scope > .ui-geist-scroller-container');
     if(!container)return;
     if(!container.dataset.scrollerWired){
       container.dataset.scrollerWired='true';
@@ -284,7 +284,7 @@ export function wireScrollers(root:ParentNode=document):void{
 const OVERLAY_SCROLLERS=[
   '[data-stage-side-content]','[data-stage-scroll]','.tagpickbody','[data-mix-list]','.playlistpicklist',
   '[data-player-stats]',
-  '.vjs-peach-settings-menu','.geist-scroller-container','.metricstrip','.tastesummaries',
+  '.vjs-peach-settings-menu','.ui-geist-scroller-container','.metricstrip','.tastesummaries',
   '.skeletondashstrip','.followpagination',
   '.reviewtabs','.ftablewrap','.board-local-nav','[data-manage-menu]',
   '.follow-workspace-switch','.fmanagenav','[role="listbox"]',

@@ -4,8 +4,8 @@
  * 层级取遗留壳的 `--layer-dialog`（`z-dialog`）：顶栏和侧栏各有自己的 z-index，比 Tailwind
  * 那档 `z-50` 都高，遮罩压不住它们，弹层开着时那两块还亮着。
  *
- * 宽度按用途取一档：换头像一排四张候选、裁剪封面放得下整张封套、填一份表同遗留层
- * `.geist-modal` 的 540px。
+ * 宽度按用途取一档：换头像一排四张候选、裁剪封面放得下整张封套、填一份表同
+ * `ui-kit/modal.css` 里 `.ui-geist-modal` 的 540px。
  *
  * 页头左边那枚 56px 图标方块也在这里（`ModalGlyph`）：它是弹层页头的一部分，不是卡。 */
 import type { ReactNode } from 'react';

@@ -4,16 +4,6 @@
    `frontend/src/react/immerse/immerse.css`。 */
 .loadmore{min-height:42px;margin:18px auto 0;text-align:center;color:var(--muted);padding:12px}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
-/* Geist Scroller：内容只沿指定轴滚动，边缘渐隐负责提示仍有内容。 */
-.geist-scroller{position:relative;min-width:0;min-height:0;overflow:hidden}
-.geist-scroller-container{box-sizing:border-box;width:100%;height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.geist-scroller-container::-webkit-scrollbar{display:none}
-.geist-scroller-container[data-overflow="y"]{overflow:hidden auto}.geist-scroller-container[data-overflow="x"]{overflow:auto hidden}.geist-scroller-container[data-overflow="both"]{overflow:auto}
-.geist-scroller-overlay{position:absolute;z-index:2;inset:0;pointer-events:none}
-.geist-scroller-overlay::before,.geist-scroller-overlay::after{content:'';position:absolute;left:0;right:0;height:40px;opacity:0;transition:opacity .18s ease}
-.geist-scroller-overlay::before{top:0;background:linear-gradient(to bottom,var(--surface),transparent)}
-.geist-scroller-overlay::after{bottom:0;background:linear-gradient(to top,var(--surface),transparent)}
-.geist-scroller-overlay.can-scroll-top::before,.geist-scroller-overlay.can-scroll-bottom::after{opacity:1}
 /* Geist Empty State：标题和说明是一个组件；外层容器只负责与上方工具条保持 16px。 */
 .emptystate{grid-column:1/-1;display:grid;justify-items:center;align-content:center;gap:8px;box-sizing:border-box;width:100%;min-height:320px;padding:48px 24px;text-align:center;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}
 .emptystate .es-icon{display:grid;place-items:center;box-sizing:border-box;width:54px;height:54px;padding:10px;border-radius:var(--floating-radius);border:1px solid var(--border-15);color:var(--muted);margin-bottom:8px}

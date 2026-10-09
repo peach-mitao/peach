@@ -210,7 +210,7 @@ describe('设置面板与壳的接缝', () => {
     const panel = await open(current);
     const root = panel.querySelector<HTMLElement>('[data-glow-dial="strength"]')!;
     const slider = root.querySelector<HTMLElement>('[data-dial-slider]')!;
-    root.querySelector<HTMLElement>('.dial-track')!.getBoundingClientRect = () =>
+    root.querySelector<HTMLElement>('.ui-dial-track')!.getBoundingClientRect = () =>
       ({ left: 0, top: 0, right: 100, bottom: 10, width: 100, height: 10, x: 0, y: 0, toJSON: () => ({}) });
     current.changed.mockClear();
     current.save.mockClear();
