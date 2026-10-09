@@ -2,7 +2,7 @@
 
 最后核验：2026-10-10
 
-状态查 `/healthz`；[待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
+查 `/healthz`；[待办](PRODUCT_BACKLOG.md)、[复用清单](REUSE.md)、[长期约定](HANDOFF.md)。
 
 ## 运行态
 
@@ -14,27 +14,27 @@
 - JAV 头像 816 张，38 张水印待复核；17 位档案、253 张头像候选、2 张官方封面。
 - 「整理」（ADR-0039）支持预览、执行、回滚；英文视频名分词 169 条。
 - 产地是独立维度、JAV 是其投影：`region` 空时按厂牌、创作者、番号逐层推断，不落库；韩国 MIB 不算 JAV。
-- Windows 托盘自动恢复；`restart_windows_tray.py --source` 重启。代码与数据在内置盘，媒体在外置盘。
+- Windows 托盘自动恢复，重启用 `restart_windows_tray.py --source`；代码与数据在内置盘，媒体在外置盘。
 - 托盘须普通权限启动：提权令牌看不到 CloudDrive 的 `A:`/`B:`，误报脱盘。
-- Windows：80 跳转 HTTPS，LAN:443；`peach-win`、`0.37.0`。10-10 重启，CA、健康及前端产物通过。
-- 主界面入口为 `peach-app.js/css`，登录与配置页使用独立的 `peach-pages.js/css`；Application 管理路由树与资源生命周期，应用域控制器保留原生宿主适配。
-- `/healthz` 报 `configurable=true`；配置与选目录共用本机连接判据，托盘管理 HTTPS 地址、端口及配置重载。
-- 首启与配置页列缺失依赖（CloudDrive、挂载驱动、FFmpeg/ffprobe、OpenSSL）；Windows 已认出 CloudDrive 与 WinFsp。
-- 文件检查覆盖本地与网盘，来源等分、共用确认弹层；CloudDrive 分档建议首启与配置页共用。
-- 访问密码未开，局域网匿名可读；可选密码首启可跳过，配置页可改可关，登录可记住设备。
+- Windows：80 跳 HTTPS，LAN:443；`peach-win`、`0.37.0`。10-10 重启，CA、健康、前端产物通过。
+- 主界面 `peach-app.js/css`，登录、配置页 `peach-pages.js/css`；Application 管理路由与资源，域控制器适配原生宿主。
+- `/healthz` 报 `configurable=true`；配置与选目录共用连接判据，托盘管理 HTTPS 地址、端口及重载。
+- 首启、配置页列缺失依赖（CloudDrive、挂载驱动、FFmpeg/ffprobe、OpenSSL）；Windows 识别 CloudDrive、WinFsp。
+- 文件检查含本地与网盘，来源等分、共用确认弹层；CloudDrive 分档建议首启与配置页共用。
+- 访问密码未开，局域网匿名可读；首启可跳过密码，配置页可改可关，登录可记住设备。
 - macOS 是 reader，代码与 `peach-data` 在内置盘；`peach.local` 经 8900/8443 和 pf 提供 80/443，GET 正常、写入回 409。
-- 两端各用本机 CA，私钥与凭据不跨机；代码走 Git、账本单写者复制、图片走 Syncthing；本机坐标见 `<数据根>/config.toml`。
+- 两端各用本机 CA，私钥与凭据不跨机；代码用 Git、账本单写者复制、图片用 Syncthing；坐标见 `<数据根>/config.toml`。
 - Windows ledger `0045`，资源 80,209 行；字幕 195 行（孤立 19），175 部带字幕轨；R 盘暂缓。
-- Mac ledger 经授权从共享副本拉取，恢复 `in-sync`；`sources` 在内置盘，`archive`、`tools` 可指向外置盘。
-- Windows doctor、诊断页通过 CA 核验；本地目录缺失，115/PikPak 可读取；密码未开、历史失败为警告。
-- Python 3.14，下限 3.12；CI 同测 3.12 与 3.14。Windows FFmpeg/ffprobe 在 `peach-data/tools/ffmpeg`，macOS 走 PATH。
-- amane 桥（ADR-0048）代码在 `tools/amane-bridge/`，venv 在 `peach-data/tools/amane-bridge/.venv`，供番号查询。
-- 发行名 `peach`、目录名 `peach-app`。macOS 按待办「待执行的操作」第 26 条处理后重启菜单栏：无口令的 `peach serve --host 0.0.0.0` 拒绝启动。
-- 扫描与采集 120 秒无进展预警；资料 90 秒、封面 240 秒超时可重试；见 `state/library-processing-<job_id>.issues.jsonl`。
-- 口味、复核、关注等聚合按账本版本号与文件版本缓存；补女优资料后继每轮存量至多 16 条。
-- 实体种子（ADR-0075）由扫描结算的 `seed-import` 后继导入，只填空、换旧种子行；不一致与重复身份在 `generated/seed-landing.csv`。
+- Mac ledger 使用已授权共享副本，`in-sync`；`sources` 在内置盘，`archive`、`tools` 可在外置盘。
+- Windows doctor、诊断页通过 CA；本地目录缺失，115/PikPak 可读；密码未开、历史失败为警告。
+- Python 3.14（下限 3.12，CI 测两版）；Windows FFmpeg/ffprobe 在 `peach-data/tools/ffmpeg`，macOS 走 PATH。
+- amane 桥（ADR-0048）供番号查询；代码 `tools/amane-bridge/`，venv `peach-data/tools/amane-bridge/.venv`。
+- 发行名 `peach`、目录名 `peach-app`。macOS 按待办第 26 条处理后重启菜单栏；无口令的 `peach serve --host 0.0.0.0` 拒绝启动。
+- 扫描、采集 120 秒无进展预警；资料 90 秒、封面 240 秒超时可重试；见 `state/library-processing-<job_id>.issues.jsonl`。
+- 口味、复核、关注等聚合按账本与文件版本缓存；女优资料后继每轮存量至多 16 条。
+- 实体种子（ADR-0075）由扫描结算后继 `seed-import` 导入，只填空、换旧种子行；冲突与重复身份在 `generated/seed-landing.csv`。
 - 推送发现开：本地 watch 加 CloudDrive 云端前缀 `/115open→B:`、`/Pikpak→A:`；关注每 60 分钟轮询；自动更新关闭。
-- Cloudflare 公网入口默认关，配置页启停，须先设访问密码；临时链接只写状态文件，命名隧道限源码环境、令牌只存设置文件；整站 `noindex` 加 `/robots.txt`。
+- Cloudflare 公网入口默认关，配置页启停前须设密码；临时链接写状态文件，命名隧道限源码部署、令牌存设置文件；整站 `noindex` 与 `/robots.txt`。
 - FC2PPV-DB、JAVten 与被拦时的 minnano-av 经本机 Chrome 取页（ADR-0065），profile 在 `secrets/browser/`，免贴 Cookie。
 
 ## 批处理进度

@@ -88970,13 +88970,15 @@ function Q8(e, t = !1) {
 	}, [n]);
 }
 function v9e() {
-	let e = (0, b.useContext)(e5);
-	return Q8((t) => {
+	let e = (0, b.useContext)(e5), t = (0, b.useRef)(e);
+	return (0, b.useLayoutEffect)(() => {
+		t.current = e;
+	}, [e]), Q8((t) => {
 		let n = $7e(q8.navigation.location.pathname);
 		e && n && (E8(), t || t9e(q8.navigation.location.state), e.openOverlay(n));
 	}, !0), (0, b.useEffect)(() => () => {
 		queueMicrotask(() => {
-			S8(q8.navigation.location.pathname) || e?.closeStage();
+			S8(q8.navigation.location.pathname) || t.current?.closeStage();
 		});
 	}, []), null;
 }
@@ -94903,7 +94905,7 @@ function Zat() {
 			}
 		}
 	}, U9.routing = !1, Z5.own(q8.listen((e) => {
-		Q.queueOpenRequest && e.seq !== Q.queueOpenRequest.seq && !S8(e.location.pathname) && b9(!1), U9.routing && !e.claimed && queueMicrotask(k9);
+		Q.queueOpenRequest && e.seq !== Q.queueOpenRequest.seq && !S8(e.location.pathname) && b9(!1), U9.routing && !e.claimed && k9();
 	})), Ltt(U9.shellActions).catch((e) => console.error("客户端导航装载失败", e)), cit(), Nrt(), R7(), Promise.all([
 		h9(),
 		oit(),
@@ -95257,7 +95259,7 @@ function fot() {
 			owners: 0
 		}, e.own(uot(document)), e.own(() => {
 			qs(), V.cancelQueries();
-		}), e.own(Rtt), e.own(u9e);
+		}), e.own(Rtt), e.own(u9e), e.own(Ra);
 	}
 	return Z9.owners += 1, Z9.effects.resume(), Z9;
 }

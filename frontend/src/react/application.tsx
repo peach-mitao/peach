@@ -6,6 +6,7 @@ import { initializeApplication } from '../application/initialize.js';
 import { connectApplication, disposeApplicationResidents } from './application-residents';
 import { renewApplicationEffects, type ApplicationEffects } from '../application/effects';
 import { initMiddleTruncate } from '../ui-kit/middle-truncate';
+import { closeAnchoredMenu } from '../ui-kit/anchored-menu';
 import { queryClient } from '../query';
 import { releaseHoverPreviews } from '../card-art';
 import { releaseAllManagedRoutes } from '../history';
@@ -30,6 +31,7 @@ function acquireResources(): ApplicationResources {
     effects.own(() => { releaseHoverPreviews(); void queryClient.cancelQueries(); });
     effects.own(disposeApplicationResidents);
     effects.own(releaseAllManagedRoutes);
+    effects.own(closeAnchoredMenu);
   }
   resources.owners += 1;
   resources.effects.resume();

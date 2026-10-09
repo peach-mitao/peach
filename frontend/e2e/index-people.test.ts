@@ -35,12 +35,12 @@ describe('本地与在线艺人共用名册布局', () => {
         const page = await context.newPage();
         let release!: () => void;
         const gate = new Promise<void>(resolve => { release = resolve });
-        await page.route('**/dist/peach-app.js*', async route => {
+        await page.route(url => url.pathname === '/api/index' || url.pathname === '/api/follow/authors', async route => {
           await gate;
           await route.continue();
         });
         try {
-          // 主模块落地前直接验收 HTML 骨架；DOMContentLoaded 要等这份模块执行。
+          // 主模块先铺索引骨架，首屏数据暂缓；标题行与名册入口在等待时已经完整可见。
           await page.goto(requiredEnv('PEACH_E2E_ORIGIN') + path, { waitUntil: 'commit' });
           await page.locator('#index [data-skeleton]').first().waitFor();
           assert.equal(await page.locator('#index [role="tablist"]').count(), 1);

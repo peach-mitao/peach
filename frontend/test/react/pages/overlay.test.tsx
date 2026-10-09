@@ -97,6 +97,22 @@ const over = (pathname: string, overlay: 'item' | 'follow' = 'item', search = ''
   ({ backgroundLocation: { pathname, search }, overlay });
 const entry = (state: unknown, key = 'x') => ({ usr: state, key, idx: 1 });
 
+it('启动覆盖元素在应用动作就绪后打开，离开详情用当前动作关闭舞台', async () => {
+  const r = await load('/item/7');
+  const { actions, opened } = shellActions(r);
+  const root = createRoot(document.createElement('div'));
+  unmounts.push(() => root.unmount());
+  await act(async () => { root.render(<r.RouterRoot />) });
+  await settle();
+  expect(actions.openOverlay).not.toHaveBeenCalled();
+  await act(async () => { root.render(<r.RouterRoot actions={actions} />) });
+  await start(r);
+  expect(opened.map(one => one.target)).toEqual([{ kind: 'item', id: 7 }]);
+  await act(async () => { r.peachHistory.push('/performers/name') });
+  await settle();
+  expect(actions.closeStage).toHaveBeenCalledTimes(1);
+});
+
 it('后退前进落到覆盖地址上接上背景并打开；没有请求的认领条目只同步地址；关掉时背景页不重挂', async () => {
   const r = await load('/nowhere');
   const { actions, opened } = shellActions(r);

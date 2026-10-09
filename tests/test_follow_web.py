@@ -5,7 +5,6 @@
 """
 import json
 import os
-import re
 import stat
 import tempfile
 import threading
