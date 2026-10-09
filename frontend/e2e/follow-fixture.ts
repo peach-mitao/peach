@@ -72,11 +72,12 @@ const gallery = (id: number, count: number, title: string) => item(id, 1, {
 });
 /** 多图轮播、视频合集（另一版加另一站的同一条）、一帖多媒体、带两张已隐藏图的帖子、一条
  *  没有任何预览、标签六种类型各一枚的帖子，以及摘要、标题与媒体报错都是不换行长串的帖子。 */
-export const DETAIL = { gallery: 5001, collection: 5101, media: 5201, hidden: 5301, bare: 5401, long: 5501 } as const;
+export const DETAIL = { gallery: 5001, largeGallery: 5002, collection: 5101, media: 5201, hidden: 5301, bare: 5401, long: 5501 } as const;
 const UNBROKEN = 'abcdef0123456789'.repeat(12);
 const TYPED_TAGS = { ow: 'copyright', tracer: 'character', kou: 'artist', solo: 'general', animated: 'metadata', odd: 'unknown' };
 const DETAIL_GROUPS = [
   group(gallery(5001, 3, '三张图的帖子 5001')),
+  group(gallery(5002, 21, '二十一张图的帖子 5002')),
   {
     ...group(item(5101, 0, { title: '合集主条目 5101' })), providers: ['kemono', 'rule34xxx'],
     variants: [item(5102, 0, { title: '合集另一版 5102', variant_kind: 'alt', variant_label: '4K',

@@ -82,7 +82,7 @@ const followList = (options: FollowSkeletonOptions) => {
 /** 详情骨架外层 `[data-skeleton="detail"]` 里面那一格：舞台岛自己画外层，里面照这一份写。格子与详情栏
  *  的几何是舞台的（`react/stage/stage.css`），骨架的底色与行距是壳的 `skeleton` 一族。 */
 export function detailSkeletonBody(): string {
-  return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
+  return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
 }
 
 export function boardPageSkeleton(
@@ -98,13 +98,13 @@ export function boardPageSkeleton(
   } else if (path === '/configuration') {
     body = configurationSkeleton();
   } else if (path === '/activity') {
-    body = `<div class="activitypage">${['正在进行', '被挡下的', '最近完成'].map(title => `<section class="activitysection"><h3 class="geist-fieldset-title">${title}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${line('35%')}${lines()}</div></article></div></section>`).join('')}</div>`;
+    body = `<div class="ui-activitypage">${['正在进行', '被挡下的', '最近完成'].map(title => `<section class="activitysection"><h3 class="geist-fieldset-title">${title}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content ui-skeleton-lines">${line('35%')}${lines()}</div></article></div></section>`).join('')}</div>`;
   } else if (path === '/duplicates') {
     body = duplicatesSkeleton();
   } else if (path === '/quality-goals') {
     body = qualityGoalsSkeleton();
   } else if (path === '/playlists') {
-    body = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${line('200px')}</div></header><div class="playlistcards">${repeat(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${lines()}</div></div></article>`, 6)}</div></section>`;
+    body = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate ui-skeleton-lines"><span>新播放列表</span>${line('200px')}</div></header><div class="ui-playlistcards">${repeat(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy ui-skeleton-lines">${lines()}</div></div></article>`, 6)}</div></section>`;
   } else return '';
   return `<div class="board-page-skeleton" data-skeleton="board${path}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${body}</div></div>`;
 }

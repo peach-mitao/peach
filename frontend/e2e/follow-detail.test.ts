@@ -125,7 +125,23 @@ describe('关注详情岛', () => {
           for (const one of document.querySelectorAll('[data-skeleton="detail"]')) if (!one.closest('#stage')) seen.outside = true;
         }).observe(document, { childList: true, subtree: true });
       });
-      await page.reload({ waitUntil: 'load' });
+      let releaseItem = () => {};
+      const itemWait = new Promise<void>((resolve) => { releaseItem = resolve; });
+      await page.route((url) => url.pathname === '/api/follow' && url.searchParams.has('item'), async (route) => {
+        await itemWait;
+        await route.fallback();
+      });
+      try {
+        await page.reload({ waitUntil: 'load' });
+        const media = page.locator('#stage [data-skeleton="detail"] [data-stage-media]');
+        await media.waitFor();
+        const box = await media.boundingBox();
+        assert.ok(box && box.height > 120, `详情等待画面高度不足：${JSON.stringify(box)}`);
+        assert.equal(await page.locator('#stage [data-skeleton="detail"] [data-stage-side-content]')
+          .evaluate((node) => getComputedStyle(node).rowGap), '12px');
+      } finally {
+        releaseItem();
+      }
       await page.locator(DETAIL_READY).waitFor({ timeout: 15_000 });
       assert.equal(await page.evaluate(() => (window as unknown as { detailSkeletonSeen: { outside: boolean } })
         .detailSkeletonSeen.outside), false, '刷新时浮窗外先画了一份详情骨架');
@@ -268,6 +284,26 @@ describe('关注详情岛', () => {
         { url: '/api/follow/status', body: { item: 5001, to: 'new' } },
         { url: '/api/follow/save', body: { item: 5001 } },
       ]);
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('二十一张图使用计数条时，键盘左右仍切图并循环，地址保持当前帖子', { timeout: 60_000 }, async () => {
+    const opened = await openDetail(browser, DETAIL.largeGallery);
+    try {
+      const page = opened.page;
+      const poster = page.locator('#stage [data-follow-detail-poster]');
+      assert.equal(await page.locator('#stage [data-follow-image-dots]').count(), 0);
+      for (const [key, index] of [['ArrowRight', 1], ['ArrowLeft', 0], ['ArrowLeft', 20]] as const) {
+        await page.keyboard.press(key);
+        await page.waitForFunction((wanted) => document.querySelector('#stage [data-follow-detail-poster]')
+          ?.getAttribute('src') === wanted, `/follow-stream?id=5002&media=${index}`);
+        assert.equal(await poster.getAttribute('src'), `/follow-stream?id=5002&media=${index}`);
+        assert.equal((await page.locator('#stage [data-follow-image-count]').innerText()).trim(), `${index + 1} / 21`);
+      }
+      assert.equal(new URL(page.url()).pathname, '/follow/item/5002');
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();

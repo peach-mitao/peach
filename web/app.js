@@ -3498,12 +3498,9 @@ document.addEventListener('keydown',e=>{
   }
   // 输入态不抢键：搜索框、标签弹窗和任何可编辑区域里的按键归它们自己处理。
   if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
-  const imageDots=[...document.querySelectorAll('#stage[open] [data-follow-image-dots] [data-follow-image-item]')];
-  if(imageDots.length&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
-    e.preventDefault();
-    const current=Math.max(0,imageDots.findIndex(dot=>dot.getAttribute('aria-current')==='true'));
-    imageDots[(current+(e.key==='ArrowRight'?1:-1)+imageDots.length)%imageDots.length].click();
-    return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    const imageStep=document.querySelector(`#stage[open] [data-follow-image-step="${e.key==='ArrowRight'?1:-1}"]`);
+    if(imageStep){e.preventDefault();imageStep.click();return}
   }
   const video=activeVideo();
   if(video){
