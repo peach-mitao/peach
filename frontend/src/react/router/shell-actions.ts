@@ -7,7 +7,7 @@
 
 import type { LibraryProcessingProps } from '../bundle';
 import type { CatalogFilterProps } from '../catalog-filter/catalog-filter';
-import type { CatalogGridProps } from '../catalog-grid/types';
+import type { CatalogGridProps, MediaCardActions, MediaCardHelpers } from '../catalog-grid/types';
 import type { FeedNewProps } from '../feed-new/feed-new';
 import type { OnlineAuthor } from '../follow/online-vocab';
 import type { FollowFeedProps } from '../follow-feed/follow-feed';
@@ -24,7 +24,7 @@ export interface ShellActions {
   openTag(key: string): void;
   /** 口味页点一条名次：标签回目录筛选，人名进资料页。 */
   openTasteSignal(kind: string, name: string): void;
-  /** 换到还归壳的一个路径：先写地址，再按路由表打开。 */
+  /** 换到一个路径：push 一条不认领的地址，像后退前进一样经派发打开那一页，领一个开次代次。 */
   navigate(path: string): void;
   /** 按管理区身份进一屏（路由表里 `section` 等于它的第一条；认不出的落到垃圾文件）。 */
   openManage(section: string): void;
@@ -71,7 +71,22 @@ export interface ShellActions {
   openPlaylist(id: number, resumeAssetId: number): void;
   /** 此刻能不能悬停翻页：壳的多选、遮挡、减少动效与滚动中都回 false。 */
   canFlip(): boolean;
+  /** 页面组换了一页：路由树里的页面元素挂上、开始取数之前报一次。壳收起上一页留下的面（悬停预览、在途读请求、
+   *  首页新作行、处理横幅、别的容器里那一页），再按种类铺开：管理区、关注页与播放列表页铺 `#stats`，索引页、
+   *  资料页与目录铺首页那一侧。 */
+  surfaceChanged(kind: SurfaceKind, path: string): void;
+  /** 清空顶栏搜索框（带散开的残影）。 */
+  clearSearch(): void;
+  /** 打开沉浸模式，从 `id` 那一条开始；不给就从头。地址由调用方负责。 */
+  openImmerse(id?: number): void;
+  /** 收起详情舞台（正在放的视频照旧进小窗），不写地址。 */
+  closeStage(): void;
+  /** 目录网格卡片的助手与动作：壳里各一份、身份不变（卡片按引用比较），资料页作品区与目录共用。 */
+  readonly grid: { helpers: MediaCardHelpers; actions: MediaCardActions };
 }
+
+/** 页面组里一页的种类，壳按它决定铺哪一侧（`surfaceChanged`）。 */
+export type SurfaceKind = 'management' | 'index' | 'entity' | 'catalog' | 'follow' | 'playlists';
 
 /** 壳每次打开时交进来的值，按页面分。管理区那几页画进 `#stats`。 */
 export interface ManagedOpenProps {

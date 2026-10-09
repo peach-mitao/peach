@@ -20,7 +20,7 @@ import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage, loadMediaSources } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
-import { registerDiagnosticsRoute } from './dist/peach-ui.js';
+import { ROUTE_META, registerDiagnosticsRoute, routeMetaOf } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
 import { configurationRequestedSection, notifyShell, writeShell } from './dist/peach-ui.js';
@@ -118,11 +118,18 @@ let followDurMin=0,followDurMax=0;
 
    顺序即优先级：先匹配上的赢，所以精确路径写在同前缀的动态路径前面。
 
+   `title`、`nav`、`section`、`refresh` 这几样元数据，路由树那一侧登记了的（`ROUTE_META`，
+   `frontend/src/history/route-meta.ts`）就不在这里写：读者一律经 `routeMeta(path)`，先查路由树、再查这张表。
+
    这张表替掉的是同一份知识的七个副本：`restoreRoute` 的分支链，加上 `navTo`、
    `navOn`、`openManage`、`manageSection`、`reloadCurrentSurface`、`refreshAll`
    各自抄的那几条。加一屏只改这张表；同一份知识散成七处时，漏一处的症状还各不相同：URL 能进但侧栏不亮、
-   点进去了但「换一批」把你扔回统计页、批量操作后回到首页而不是刚才那一屏。 */
+   点进去了但「换一批」把你扔回统计页、批量操作后回到首页而不是刚才那一屏。
+
+   条目按页面分组（目录、关注、覆盖、资料、索引、管理区、沉浸），每组前一行组名、组与组之间空开两行：
+   各组迁进路由树时只删自己那几行。 */
 const ROUTES=[
+  // ── 目录 ──
   /* 目录页：首页和四个筛选态是同一屏，路径只决定初始筛选，所以共用一个 open。
      四条筛选态直接由 STATE_ROUTES 生成——它同时是 `isCatalogPath` 的判据，
      两边各写一份就会有「路由认得、目录判定不认得」的半死路径。 */
@@ -130,8 +137,14 @@ const ROUTES=[
   ...Object.entries(STATE_ROUTES).map(([key,path])=>({
     match:path,nav:key,title:STATE_LABELS[key],open:()=>openCatalog(path)})),
   {match:'/trash',section:'trash',open:(params,push)=>openTrash(push)},
+
+
+  // ── 关注 ──
   {match:'/playlists',nav:'playlists',title:'播放列表',refresh:'reopen',
     open:(params,push)=>openPlaylists(push)},
+
+
+  // ── 覆盖 ──
   {match:'/playlists/:playlist/:item',nav:'playlists',title:'播放列表',
     open:(params,push)=>openPlaylist(params.playlist,params.item,push)},
   {match:'/mix/:seed/:item',title:'Mix',
@@ -144,10 +157,16 @@ const ROUTES=[
     // 详情开着时后退前进到组里另一条：列表已在下面，详情原地换条。
     if(stageApi()?.showing()!=='follow')await openFollow(push,true);
     await openFollowDetail(params.id,push)}},
+
+
+  // ── 资料 ──
   /* 实体资料页。四种实体只有 kind 不同，名字里可能带斜杠，所以吃掉剩下全部段。 */
   ...Object.entries(ROUTE_ENTITIES).map(([segment,kind])=>({
     match:`/${segment}/:name*`,title:params=>params.name,
     open:(params,push)=>openEntity(kind,params.name,push)})),
+
+
+  // ── 索引 ──
   /* 索引页的状态全在地址栏上（过滤词、范围、视图、类型由页面自己写回），所以就地重取
      与刷新都是按当前地址重开一次。 */
   {match:'/performers',nav:'performers',title:'艺人',
@@ -167,33 +186,34 @@ const ROUTES=[
   {match:'/tags',nav:'tags',title:'标签',
     open:(params,push)=>openIndex('tags',push),
     reload:()=>openIndex('tags',false)},
-  {match:'/stats',section:'stats',title:'统计',open:(params,push)=>openStats(push)},
-  {match:'/taste',section:'taste',title:'口味',refresh:'reopen',
-    open:(params,push)=>openTaste(push)},
-  {match:'/review',section:'review',title:'人工复核',refresh:'reopen',
-    open:(params,push)=>openReview(push)},
-  {match:'/data-cleanup',section:'cleanup',title:'数据管理',
-    open:(params,push)=>openDataCleanup(push)},
-  // 重复文件报数据管理的身份：它是那一屏的下一步，`openManage('cleanup')` 仍
-  // 应该开数据管理本身，靠的是 /data-cleanup 在表里排在前面。
-  {match:'/duplicates',section:'cleanup',title:'重复文件',refresh:'reopen',
-    open:(params,push)=>openDuplicates(push)},
+
+
+  // ── 管理区 ──
+  {match:'/stats',open:(params,push)=>openStats(push)},
+  {match:'/taste',open:(params,push)=>openTaste(push)},
+  {match:'/review',open:(params,push)=>openReview(push)},
+  {match:'/data-cleanup',open:(params,push)=>openDataCleanup(push)},
+  {match:'/duplicates',open:(params,push)=>openDuplicates(push)},
   // /resource-sync 是数据管理页上的一个锚点，没有自己的管理身份。
   {match:'/resource-sync',title:'数据管理',open:(params,push)=>openResourceSync(push)},
-  {match:'/quality-goals',section:'quality',title:'高清版',refresh:'reopen',
-    open:(params,push)=>openQualityGoals(push)},
-  {match:'/scraping',section:'cleanup',title:'来源和凭证',refresh:'reopen',
-    open:(params,push)=>openScraping(push)},
+  {match:'/quality-goals',open:(params,push)=>openQualityGoals(push)},
+  {match:'/scraping',open:(params,push)=>openScraping(push)},
+
+
+  // ── 关注 ──
   {match:'/follow',nav:'follow',title:'关注',refresh:'skip',
     open:(params,push)=>openFollow(push),reload:()=>openFollow(false)},
-  {match:'/follow-manage',section:'follow',title:'关注管理',refresh:'skip',
-    open:(params,push)=>openFollowManage(push)},
+
+
+  // ── 管理区 ──
+  {match:'/follow-manage',open:(params,push)=>openFollowManage(push)},
   // 这台电脑的媒体文件夹与端口。页面是 island，数据走 /api/configuration。
-  {match:'/configuration',section:'configuration',title:'配置',refresh:'reopen',
-    open:(params,push)=>openConfiguration(push)},
+  {match:'/configuration',open:(params,push)=>openConfiguration(push)},
   // 任务中心的界面：谁在跑、谁被挡下了、刚跑完的怎么样。数据走 /api/tasks。
-  {match:'/activity',section:'activity',title:'活动',refresh:'reopen',
-    open:(params,push)=>openActivity(push)},
+  {match:'/activity',open:(params,push)=>openActivity(push)},
+
+
+  // ── 沉浸 ──
   {match:'/immerse',nav:'immerse',title:'沉浸模式',
     open:(params,push)=>openTok(immerseStartId(),push)},
 ];
@@ -204,6 +224,13 @@ const ROUTES=[
 const registerRoute=spec=>{ROUTES.push(spec);return spec};
 window.peachRegisterRoute=registerRoute;
 registerDiagnosticsRoute(openDiagnostics);
+/* 路由元数据的读法：路由树那一侧登记了的用它的（`ROUTE_META`），没有回落到 `ROUTES`；返回与 `matchRoute`
+   同形的 `{route,params}`。按身份或侧栏键找入口路径时同样先查路由树、再查表：一个键只登记在一边。
+   打开那一屏的 `open` 仍在 `ROUTES` 里，按找到的路径取。 */
+const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta,params:{}}:matchRoute(ROUTES,path)};
+const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value)
+  ??ROUTES.find(spec=>spec[key]===value)?.match;
+const openRoutePath=path=>{const hit=matchRoute(ROUTES,path);hit.route.open(hit.params,true)};
 
 const pageSkeletonHtml=(label,{cards=false,className='',variant='',count,fill,cardRatio,gridClass='',gridSize=''}={})=>
   skeletonHtml(label,{variant:variant||(cards?'cards':'panel'),className,gridClass,gridSize,
@@ -393,7 +420,7 @@ function renderInitialSurfaceLoading(){
   }
   /* 未匹配的地址没有随后的读取，不能留一张永远不会被替换的目录骨架。合法的目录、
      回收站和沉浸模式都有路由，才进入各自真实请求对应的等待态。 */
-  if(!matchRoute(ROUTES,path)){
+  if(!routeMeta(path)){
     clearCatalogGrid();$('#count').textContent='';$('#loadSentinel').hidden=true;
     return;
   }
@@ -405,7 +432,8 @@ function renderInitialSurfaceLoading(){
    调用方有传 path 也有传 href 的，这里统一归一成 pathname。 */
 const syncPageTitle=path=>{
   const url=new URL(path,location.origin);
-  const label=routeLabel(ROUTES,decodeURIComponent(url.pathname));
+  const pathname=decodeURIComponent(url.pathname);
+  const label=routeMetaOf(pathname)?.title||routeLabel(ROUTES,pathname);
   document.title=label?`${label} · Peach`:'Peach · 蜜桃';
   document.body.dataset.surface=url.pathname;
   paintNav();
@@ -472,14 +500,18 @@ const surfaceApi=(token,path,options)=>api(path,{...options,signal:token.signal}
   .catch(error=>{if(isAbort(error))return null;throw error});
 /* 地址只经全站那一份历史写（`frontend/src/history/`，`@peach/history`），不直接调 `window.history`：
    React Router 读写的是同一个对象，绕过它写进去的条目它不知道。详情地址带上 `overlayState()`
-   给的 `usr`（压在哪一页上），别的地址不带。 */
-const route=(path,replace=false,state)=>{
+   给的 `usr`（压在哪一页上），别的地址不带。`claim:false` 见 `navigatePath`。 */
+const route=(path,replace=false,state,{claim=true}={})=>{
   surfaceEpoch++;
   barsRequestSeq++;
-  shellNavigate(path,{replace,state});syncPageTitle(path);
+  shellNavigate(path,{replace,state,claim});syncPageTitle(path);
   lastRoutePath=decodeURIComponent(new URL(path,location.href).pathname);
   queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
+/* 换到一个路径、由派发器打开（页面里的 `actions.navigate`、教程卡的跳转）：地址、标题、`lastRoutePath` 与随后那一轮
+   同步照 `route()` 做，只是这一次不认领。路由树像后退前进一样报给派发器、领一个开次代次：迁进路由树的页面由它的元素
+   打开，其余由 `restoreRoute` 按 `ROUTES` 打开。 */
+const navigatePath=path=>route(path,false,undefined,{claim:false});
 
 /* ── 脱盘模式 ─────────────────────────────────────────────────────────────────
    脱盘是来源级的：外置盘拔掉只影响 local，115/PikPak 照常可播；反过来也一样。
@@ -892,7 +924,7 @@ const readPostSetupTutorialDone=async()=>{
    刚点开的折叠也没了。口味页的导入指南要知道这一步是教程带过去的。 */
 const openTutorialTarget=task=>{
   if(task.setupEntry)cameFromSetup=true;
-  route(task.href);void restoreRoute();
+  navigatePath(task.href);
 };
 /** 重新打开安装教程：本地三个键归位，服务端标记同时撤回。
  *  重开键在配置页的「维护」里，忙态、失败原因和回执都由那一侧给；教程卡是固定定位的，
@@ -3081,11 +3113,11 @@ async function loadSyncedSettings(){
   try{remote=await api('/api/settings')}catch(_e){return}
   applySyncedSettings(remote,effect=>settingsEffects[effect]?.());
 }
-/* 当前在哪个管理区。路由表里的 `section` 是唯一判据；垃圾文件那一屏没有自己的
+/* 当前在哪个管理区。路由元数据里的 `section` 是唯一判据；垃圾文件那一屏没有自己的
    身份，它是数据管理的一部分，`state.state` 才是判据（`/junk-files` 从启动那一刻
    起 state 就是 `ads`，首页带 `?state=ads` 也一样）。 */
 function manageSection(){
-  const hit=matchRoute(ROUTES,decodeURIComponent(location.pathname));
+  const hit=routeMeta(decodeURIComponent(location.pathname));
   return hit?.route.section||(state.state==='ads'?'cleanup':'');
 }
 function buildManageBar(){
@@ -3150,11 +3182,11 @@ function paintListTitle(){
   const label=!manageSection()&&isCatalogPath(path)?STATE_LABELS[state.state]||'':'';
   el.hidden=!label;if(label)el.textContent=label;
 }
-/* 进某个管理区。入口就是路由表里 `section` 等于它的第一条，所以这里不再有一份
+/* 进某个管理区。入口就是路由元数据里 `section` 等于它的第一条，所以这里不再有一份
    「section → 打开哪个函数」的副本。 */
 function openManage(section='stats'){
-  const target=ROUTES.find(spec=>spec.section===section);
-  if(target){target.open({},true);return}
+  const path=routePathOf('section',section);
+  if(path){openRoutePath(path);return}
   /* 认不出的 section 一律落到垃圾文件：统计页那颗「查看垃圾文件」传的就是 `ads`，
      而垃圾文件是目录页的一个筛选态，没有自己的 section。 */
   state.orient='';state.state='ads';notifyShell();route(junkPath());
@@ -3230,13 +3262,13 @@ async function reloadCurrentSurface(){
     else await openEntity(kind,name,false);
     return;
   }
-  const hit=matchRoute(ROUTES,decodeURIComponent(location.pathname));
+  const hit=routeMeta(decodeURIComponent(location.pathname));
   if(hit?.route.reload){await hit.route.reload();return}
   await loadCatalog();
 }
 function navOn(k){
   const path=decodeURIComponent(location.pathname);
-  const nav=matchRoute(ROUTES,path)?.route.nav||'';
+  const nav=routeMeta(path)?.route.nav||'';
   const directSection=DIRECT_MANAGE_NAV[k];
   if(directSection)return manageSection()===directSection;
   if(k==='manage'){
@@ -3262,9 +3294,9 @@ function navTo(k){
   if(k==='manage'){openManage();return}
   if(k==='jav'){toggleJavMode();return}
   if(k===''){openHome();return}
-  // 有自己路径的入口（追更、播放列表、沉浸模式、索引页）从路由表进。
-  const target=ROUTES.find(spec=>spec.nav===k&&!STATE_ROUTES[k]);
-  if(target){target.open({},true);return}
+  // 有自己路径的入口（追更、播放列表、沉浸模式、索引页）按路由元数据的 `nav` 找路径进。
+  const path=STATE_ROUTES[k]?null:routePathOf('nav',k);
+  if(path){openRoutePath(path);return}
   if(k==='shorts'){state.orient='竖屏';state.state=''}else{state.orient='';state.state=k}
   notifyShell();
   route(homePath());
@@ -3887,12 +3919,12 @@ async function refreshAll(automatic=false){
   if(automatic&&(document.hidden||!isCatalogPath(decodeURIComponent(location.pathname))||
       stageOpen()||immerseOpen()||selectMode||selected.size||document.activeElement===$('#q')))return false;
   if(!$('#stats').hidden){
-    /* 管理区的换批行为写在路由表的 `refresh` 上：`reopen` 重开自己，
+    /* 管理区的换批行为写在路由元数据的 `refresh` 上：`reopen` 重开自己，
        `skip` 不参与（追更页重画要联网，只能由它自己的按钮触发），
        没写的（统计、数据管理、资源同步）落到统计页。 */
-    const hit=matchRoute(ROUTES,decodeURIComponent(location.pathname));
-    if(hit?.route.refresh==='skip')return;
-    if(hit?.route.refresh==='reopen'){await hit.route.open(hit.params,false);return}
+    const path=decodeURIComponent(location.pathname),refresh=routeMeta(path)?.route.refresh;
+    if(refresh==='skip')return;
+    if(refresh==='reopen'){const hit=matchRoute(ROUTES,path);await hit.route.open(hit.params,false);return}
     await openStats(false);return
   }
   if(!$('#index').hidden){return}
@@ -4007,9 +4039,9 @@ const shellActions={
   /* 点一个内容标签是「回目录并按它筛选」：整页换成目录仍归壳，页面只说点了哪个键。 */
   openTag:key=>{closeStats();toggleTag(key)},
   openTasteSignal,
-  navigate:path=>{route(path);restoreRoute()},
+  navigate:path=>navigatePath(path),
   openManage,
-  managePath:section=>ROUTES.find(spec=>spec.section===section)?.match||'',
+  managePath:section=>routePathOf('section',section)||'',
   openFollow:()=>void openFollow(),
   receipt:(message,options)=>actionReceipt(message,options),
   toast:(message,options)=>toast(message,options),
@@ -4036,6 +4068,16 @@ const shellActions={
   openFollowTag:openFollowTagFromIndex,
   openPlaylist:(id,resume)=>void openPlaylist(id,resume,true),
   canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
+  /* 页面元素挂上、开始取数之前报一次：收起上一页留下的面，再铺开这一页那一侧。 */
+  surfaceChanged:(kind,path)=>{
+    releaseHoverPreviews();claimSurface(path);
+    if(kind==='index'||kind==='entity'||kind==='catalog'){showHomeSurfaces();return}
+    enterManagementSurface();showManagementBody({manage:kind==='management'});
+  },
+  clearSearch:()=>clearSearchField(),
+  openImmerse:id=>void openTok(id,false),
+  closeStage:()=>disposeStage(false),
+  grid:{helpers:gridHelpers,actions:gridActions},
 };
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();

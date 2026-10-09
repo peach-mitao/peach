@@ -123,11 +123,14 @@ export function IndexPage(props: IndexProps) {
   const onlineAuthors = kind === 'performers' && scope === 'online';
 
   /* 地址给的那一份被规范过（旧链接换了名册、认不出的分类回到全部）：用 replace 改写地址，
-     标题、侧栏和历史记录都跟页面上真正显示的那一份走，后退也不会再落回旧地址。 */
+     标题、侧栏和历史记录都跟页面上真正显示的那一份走，后退也不会再落回旧地址。
+     写地址排到微任务里：壳写地址会同步画侧栏、路由根也同步提交，两处都用 `flushSync`，在提交阶段里画不出来。
+     这一页已卸下就不写。 */
   useEffect(() => {
-    if (route.kind !== props.kind || route.scope !== props.scope || route.category !== props.category) {
-      props.route(route, { replace: true });
-    }
+    if (route.kind === props.kind && route.scope === props.scope && route.category === props.category) return;
+    let live = true;
+    queueMicrotask(() => { if (live) props.route(route, { replace: true }) });
+    return () => { live = false };
   }, []);
 
   /* 选择键归壳：关掉时所选跟着清空，下次打开从零开始，同目录页的多选。 */

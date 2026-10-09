@@ -13,16 +13,21 @@
  * `shellNavigate`，那一次的序号当场认领：壳写完地址自己打开那一屏，不再派发。后退前进与 React 子树
  * 写的那几次留给 `<Router>`，由它在渲染到那个序号时报给 `routeSeen`，再派发给壳（`startRouting` 交进来的
  * `restoreRoute`）。判据用序号不用地址：同一条目重放的 `popstate` 地址不变，壳照样要重开那一屏。
- * 派发带上来由（`RouteOrigin`）：启动那一次是 `'boot'`，之后都是 `'history'`。 */
+ * 派发带上来由（`RouteOrigin`）：启动那一次是 `'boot'`，之后都是 `'history'`。
+ *
+ * 没人认领的那几次另领一个开次代次（`openEpoch`）：每一次都会派发、都要把那一页重开一遍，认领的写地址
+ * （壳写完自己打开，或页内 replace 写参数）不领。代次在通知订阅者之前就定了，路由根同步提交那一次渲染里
+ * 读到的已经是新代次，页面按它挂 key，一次打开只挂一次。 */
 import { UNSAFE_createBrowserHistory, type Location, type NavigationType, type Navigator, type To } from 'react-router';
 
 import { isOverlayPath, overlayState, type OverlayKind } from './overlay';
 
-/** 一次历史变化：动作、变化之后的地址，和它领到的序号。 */
+/** 一次历史变化：动作、变化之后的地址、它领到的序号，和到这一次为止的开次代次。 */
 export interface Navigation {
   action: NavigationType;
   location: Location;
   seq: number;
+  openEpoch: number;
 }
 
 export type NavigationListener = (navigation: Navigation) => void;
@@ -35,7 +40,8 @@ export interface PeachHistory extends Navigator {
 
 const browser = UNSAFE_createBrowserHistory({ v5Compat: true });
 let seq = 0;
-let current: Navigation = { action: browser.action, location: browser.location, seq };
+let openEpoch = 0;
+let current: Navigation = { action: browser.action, location: browser.location, seq, openEpoch };
 const listeners = new Set<NavigationListener>();
 /* 已经派发过、或不该派发的最大序号。`claiming` 只在 `shellNavigate` 写地址那一下为真。 */
 let claimed = 0;
@@ -50,7 +56,8 @@ export type RouteDispatcher = (origin: RouteOrigin) => Promise<void> | void;
 browser.listen(({ action, location }) => {
   seq += 1;
   if (claiming) claimed = seq;
-  current = { action, location, seq };
+  else openEpoch += 1;
+  current = { action, location, seq, openEpoch };
   for (const listener of [...listeners]) listener(current);
 });
 
@@ -72,16 +79,21 @@ export interface ShellNavigateOptions {
   replace?: boolean;
   /** 新条目的 `usr` 状态。清理地址时传 `peachHistory.navigation.location.state`，原样保住当前那一份。 */
   state?: unknown;
+  /** 当场认领这一次（缺省）。传 `false` 时这一次像后退前进一样派发、领开次代次：壳要换到一页、又要由派发器
+   *  打开它（`actions.navigate`）。 */
+  claim?: boolean;
 }
 
 /** 壳写地址：push 或 replace 一条。
  *
  * 路径先按当前地址解析成绝对的：壳传进来的有相对路径、有只带查询串的，也有整条 href，
  * `history.pushState` 本来就是这样解析的；React Router 的 `To` 只认路径，`#x` 这种会丢掉查询串。 */
-export function shellNavigate(path: string | URL, { replace = false, state }: ShellNavigateOptions = {}): void {
+export function shellNavigate(
+  path: string | URL, { replace = false, state, claim = true }: ShellNavigateOptions = {},
+): void {
   const url = new URL(path, window.location.href);
   const to: To = `${url.pathname}${url.search}${url.hash}`;
-  claiming = true;
+  claiming = claim;
   try {
     if (replace) browser.replace(to, state);
     else browser.push(to, state);
@@ -121,6 +133,7 @@ export {
   overlayState, takeOverlayReturn,
   type BackgroundLocation, type OverlayKind, type OverlayState,
 } from './overlay';
+export { ROUTE_META, routeMetaOf, type RouteMeta } from './route-meta';
 export {
   connectManagedRoutes, failManagedRoute, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
   openResidentSurface, preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,

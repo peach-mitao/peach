@@ -47062,7 +47062,13 @@ function J_e(e) {
 		category: e.category
 	})), [r, i] = (0, B.useState)(e.layout), [a, o] = (0, B.useState)(/* @__PURE__ */ new Set()), [s, c] = (0, B.useState)("any"), l = (0, B.useRef)(null), { kind: u, q: d, scope: f, view: p, category: m } = t, h = dN[u], g = u === "tags" && f === "online", _ = u === "performers" && f === "online";
 	(0, B.useEffect)(() => {
-		(t.kind !== e.kind || t.scope !== e.scope || t.category !== e.category) && e.route(t, { replace: !0 });
+		if (t.kind === e.kind && t.scope === e.scope && t.category === e.category) return;
+		let n = !0;
+		return queueMicrotask(() => {
+			n && e.route(t, { replace: !0 });
+		}), () => {
+			n = !1;
+		};
 	}, []), (0, B.useEffect)(() => {
 		e.selectMode || o(/* @__PURE__ */ new Set());
 	}, [e.selectMode]);
@@ -79527,24 +79533,24 @@ var OKe = () => /* @__PURE__ */ (0, V.jsx)(R4, {
 w7.Radar = hKe, w7.Dot = T7, w7.ActiveDot = E7, w7.PolarGrid = gKe, w7.PolarAngleAxis = _Ke, w7.PolarRadiusAxis = vKe, w7.Tooltip = yKe, w7.Legend = bKe;
 //#endregion
 //#region src/react/taste/charts.tsx
-var O7 = [
+var kKe = [
 	"stroke-chart-1",
 	"stroke-chart-2",
 	"stroke-chart-3",
 	"stroke-chart-4",
 	"stroke-chart-5",
 	"stroke-chart-6"
-], kKe = [
+], AKe = [
 	"fill-chart-1",
 	"fill-chart-2",
 	"fill-chart-3",
 	"fill-chart-4",
 	"fill-chart-5",
 	"fill-chart-6"
-], k7 = { value: {
+], O7 = { value: {
 	label: "标签命中",
 	colors: b5(y5[3])
-} }, AKe = [
+} }, jKe = [
 	"min-h-24",
 	"min-h-24",
 	"min-h-24",
@@ -79554,20 +79560,20 @@ var O7 = [
 	"min-h-52",
 	"min-h-60",
 	"min-h-64"
-], jKe = 26, MKe = { radius: k7.value }, NKe = (e, t) => Math.sqrt(e / t);
-function PKe({ rows: e, label: t }) {
+], MKe = 26, NKe = { radius: O7.value }, PKe = (e, t) => Math.sqrt(e / t);
+function FKe({ rows: e, label: t }) {
 	let n = lKe(e);
 	if (!n.length) return null;
 	let r = n[0].value, i = n.map((e) => ({
 		...e,
-		radius: NKe(e.value, r)
+		radius: PKe(e.value, r)
 	}));
 	return /* @__PURE__ */ (0, V.jsx)("div", {
 		role: "img",
 		"aria-label": `${t}：${i.map((e) => e.name).join("，")}`,
 		children: /* @__PURE__ */ (0, V.jsxs)(w7, {
 			data: i,
-			config: MKe,
+			config: NKe,
 			chartProps: { outerRadius: "58%" },
 			className: "aspect-auto h-70 text-text-secondary",
 			children: [
@@ -79584,17 +79590,17 @@ function PKe({ rows: e, label: t }) {
 		})
 	});
 }
-function FKe({ rows: e, label: t }) {
+function IKe({ rows: e, label: t }) {
 	let n = p7(e, 8);
 	return n.length ? /* @__PURE__ */ (0, V.jsx)("section", {
 		"aria-label": t,
-		className: `flex grow flex-col ${AKe[n.length]}`,
+		className: `flex grow flex-col ${jKe[n.length]}`,
 		children: /* @__PURE__ */ (0, V.jsxs)(h5, {
 			data: n,
-			config: k7,
+			config: O7,
 			layout: "horizontal",
 			barRadius: 4,
-			chartProps: { maxBarSize: jKe },
+			chartProps: { maxBarSize: MKe },
 			className: "aspect-auto text-text-secondary",
 			children: [
 				/* @__PURE__ */ (0, V.jsx)(h5.YAxis, {
@@ -79618,7 +79624,7 @@ function FKe({ rows: e, label: t }) {
 		})
 	}) : null;
 }
-function IKe({ flows: e }) {
+function LKe({ flows: e }) {
 	let [t, n] = (0, B.useState)(null), r = uKe(e);
 	if (!r) return null;
 	let i = t?.node ?? null, a = (e, n) => t ? i === null ? t.label === n : e.source === i || e.target === i : !0;
@@ -79647,7 +79653,7 @@ function IKe({ flows: e }) {
 						"aria-label": `${e.label}：${e.value} 条线索`,
 						fillOpacity: 0,
 						strokeOpacity: a(e, e.label) ? .55 : .08,
-						className: `outline-none transition-opacity ${O7[e.color]}`,
+						className: `outline-none transition-opacity ${kKe[e.color]}`,
 						onPointerEnter: () => n({
 							value: e.value,
 							label: e.label,
@@ -79681,7 +79687,7 @@ function IKe({ flows: e }) {
 							width: 10,
 							height: e.height,
 							rx: 5,
-							className: e.side === "source" ? kKe[e.color] : "fill-text-secondary"
+							className: e.side === "source" ? AKe[e.color] : "fill-text-secondary"
 						}), /* @__PURE__ */ (0, V.jsxs)("text", {
 							x: h7[e.side],
 							y: e.y + e.height / 2,
@@ -79706,8 +79712,8 @@ function IKe({ flows: e }) {
 }
 //#endregion
 //#region src/react/taste/taste-page.tsx
-var LKe = 10, A7 = hE(cM, lM, "text-body-2-medium"), j7 = `${xE()} flex flex-col gap-4`, M7 = "rounded-xl bg-background-primary-default p-3", RKe = "读取运行 Peach 的这台电脑上的浏览记录", zKe = "导入或读取浏览记录后，这里会列出已采集设备。", BKe = "馆藏里暂时没有对得上浏览信号的标签。", VKe = "采集浏览记录后，这里会显示聚合后的口味证据。", HKe = "这些词在浏览记录中出现，但 Peach 观看记录还没有对应证据", UKe = "在运行 Peach 的电脑上使用浏览器：点上面的「读取浏览器历史」。", WKe = "记录在其他设备上：导出文件后，点上面的「导入历史文件」。多台设备的文件分别导入。", GKe = "需要刷新时再次读取或导入；数据源可在页面底部移除。", KKe = "这个数据源将不再用于口味分析。原始导出文件保留。", N7 = "peach-taste-guide-dismissed";
-function P7({ icon: e, term: t, figure: n, detail: r, accent: i }) {
+var RKe = 10, k7 = hE(cM, lM, "text-body-2-medium"), A7 = `${xE()} flex flex-col gap-4`, j7 = "rounded-xl bg-background-primary-default p-3", zKe = "读取运行 Peach 的这台电脑上的浏览记录", BKe = "导入或读取浏览记录后，这里会列出已采集设备。", VKe = "馆藏里暂时没有对得上浏览信号的标签。", HKe = "采集浏览记录后，这里会显示聚合后的口味证据。", UKe = "这些词在浏览记录中出现，但 Peach 观看记录还没有对应证据", WKe = "在运行 Peach 的电脑上使用浏览器：点上面的「读取浏览器历史」。", GKe = "记录在其他设备上：导出文件后，点上面的「导入历史文件」。多台设备的文件分别导入。", KKe = "需要刷新时再次读取或导入；数据源可在页面底部移除。", qKe = "这个数据源将不再用于口味分析。原始导出文件保留。", M7 = "peach-taste-guide-dismissed";
+function N7({ icon: e, term: t, figure: n, detail: r, accent: i }) {
 	return /* @__PURE__ */ (0, V.jsx)("div", {
 		className: tM(),
 		children: /* @__PURE__ */ (0, V.jsx)(aM, {
@@ -79719,7 +79725,7 @@ function P7({ icon: e, term: t, figure: n, detail: r, accent: i }) {
 		})
 	});
 }
-function F7({ name: e, domain: t }) {
+function P7({ name: e, domain: t }) {
 	return /* @__PURE__ */ (0, V.jsxs)("span", {
 		className: "relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-background-tertiary-default text-caption-1-medium text-text-secondary",
 		children: [e.slice(0, 1).toUpperCase(), /* @__PURE__ */ (0, V.jsx)("img", {
@@ -79733,13 +79739,13 @@ function F7({ name: e, domain: t }) {
 		})]
 	});
 }
-function qKe({ html: e }) {
+function JKe({ html: e }) {
 	return /* @__PURE__ */ (0, V.jsx)("span", {
 		className: `relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-background-tertiary-default text-caption-1-medium text-text-secondary ${eL}`,
 		dangerouslySetInnerHTML: { __html: e }
 	});
 }
-function JKe({ rows: e, kind: t, visual: n, empty: r, onSignal: i }) {
+function YKe({ rows: e, kind: t, visual: n, empty: r, onSignal: i }) {
 	if (!e.length) return /* @__PURE__ */ (0, V.jsx)(SE, {
 		shell: "plain",
 		icon: CT,
@@ -79748,7 +79754,7 @@ function JKe({ rows: e, kind: t, visual: n, empty: r, onSignal: i }) {
 	});
 	let a = cKe(e);
 	return /* @__PURE__ */ (0, V.jsx)(I5, {
-		previewCount: LKe,
+		previewCount: RKe,
 		className: "inline-grid w-full gap-x-7 gap-y-2 sm:grid-cols-2",
 		children: e.map((e, r) => {
 			let o = !!t && !!e.peach_items, s = String(e.source_domain || ""), c = /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [
@@ -79767,15 +79773,15 @@ function JKe({ rows: e, kind: t, visual: n, empty: r, onSignal: i }) {
 					className: "w-6 shrink-0 text-caption-1-regular tabular-nums text-text-secondary",
 					children: r + 1
 				}),
-				n === "domain" ? /* @__PURE__ */ (0, V.jsx)(F7, {
+				n === "domain" ? /* @__PURE__ */ (0, V.jsx)(P7, {
 					name: e.name,
 					domain: e.name
 				}) : null,
-				n === "creator" && !e.entity_id && !e.has_avatar && s ? /* @__PURE__ */ (0, V.jsx)(F7, {
+				n === "creator" && !e.entity_id && !e.has_avatar && s ? /* @__PURE__ */ (0, V.jsx)(P7, {
 					name: e.name,
 					domain: s
 				}) : null,
-				n !== "none" && n !== "domain" && (e.entity_id || e.has_avatar || !s) ? /* @__PURE__ */ (0, V.jsx)(qKe, { html: w(e.name, e.entity_id ? {
+				n !== "none" && n !== "domain" && (e.entity_id || e.has_avatar || !s) ? /* @__PURE__ */ (0, V.jsx)(JKe, { html: w(e.name, e.entity_id ? {
 					id: e.entity_id,
 					has_image: !!e.has_image,
 					image_version: e.image_version,
@@ -79811,7 +79817,7 @@ function JKe({ rows: e, kind: t, visual: n, empty: r, onSignal: i }) {
 		})
 	});
 }
-function I7({ label: e, panels: t, onSignal: n }) {
+function F7({ label: e, panels: t, onSignal: n }) {
 	return /* @__PURE__ */ (0, V.jsxs)(Gk, {
 		className: `${xE({ padding: "none" })} flex flex-col`,
 		children: [/* @__PURE__ */ (0, V.jsx)("div", {
@@ -79828,14 +79834,14 @@ function I7({ label: e, panels: t, onSignal: n }) {
 		}), t.map((e) => /* @__PURE__ */ (0, V.jsx)(Jk, {
 			id: e.id,
 			className: "px-4 pt-3.5 pb-4",
-			children: /* @__PURE__ */ (0, V.jsx)(JKe, {
+			children: /* @__PURE__ */ (0, V.jsx)(YKe, {
 				...e.props,
 				onSignal: n
 			})
 		}, e.id))]
 	});
 }
-function YKe({ data: e, onSignal: t, navigate: n }) {
+function XKe({ data: e, onSignal: t, navigate: n }) {
 	let r = e.analysis;
 	if (!r?.headline) return null;
 	let i = r.confidence || {}, a = [...(r.explore || []).map((e) => ({
@@ -79850,7 +79856,7 @@ function YKe({ data: e, onSignal: t, navigate: n }) {
 		act: () => n(e.route)
 	}))];
 	return /* @__PURE__ */ (0, V.jsxs)("section", {
-		className: j7,
+		className: A7,
 		"aria-label": "口味总结",
 		children: [
 			/* @__PURE__ */ (0, V.jsxs)("header", {
@@ -79876,7 +79882,7 @@ function YKe({ data: e, onSignal: t, navigate: n }) {
 			r.points?.length ? /* @__PURE__ */ (0, V.jsx)("div", {
 				className: "inline-grid w-full gap-3 sm:grid-cols-2",
 				children: r.points.map((e) => /* @__PURE__ */ (0, V.jsxs)("div", {
-					className: `flex min-w-0 flex-col gap-1 ${M7}`,
+					className: `flex min-w-0 flex-col gap-1 ${j7}`,
 					children: [/* @__PURE__ */ (0, V.jsx)("span", {
 						className: "text-caption-1-regular text-text-secondary",
 						children: e.label
@@ -79891,7 +79897,7 @@ function YKe({ data: e, onSignal: t, navigate: n }) {
 				children: a.map((e) => /* @__PURE__ */ (0, V.jsxs)("button", {
 					type: "button",
 					onClick: e.act,
-					className: `flex w-full min-w-0 cursor-pointer items-center gap-3 ${M7} text-left outline-none hover:bg-background-primary-hover focus-visible:ring-2 focus-visible:ring-border-focus-ring`,
+					className: `flex w-full min-w-0 cursor-pointer items-center gap-3 ${j7} text-left outline-none hover:bg-background-primary-hover focus-visible:ring-2 focus-visible:ring-border-focus-ring`,
 					children: [/* @__PURE__ */ (0, V.jsxs)("span", {
 						className: "flex min-w-0 grow flex-col gap-1",
 						children: [/* @__PURE__ */ (0, V.jsx)("b", {
@@ -79910,15 +79916,15 @@ function YKe({ data: e, onSignal: t, navigate: n }) {
 				shell: "plain",
 				icon: CT,
 				title: "还没有可探索的入口",
-				children: BKe
+				children: VKe
 			})
 		]
 	});
 }
-function XKe({ onboarding: e, done: t }) {
+function ZKe({ onboarding: e, done: t }) {
 	let [n, r] = (0, B.useState)(() => {
 		try {
-			return localStorage.getItem(N7) === "1";
+			return localStorage.getItem(M7) === "1";
 		} catch {
 			return !1;
 		}
@@ -79934,11 +79940,11 @@ function XKe({ onboarding: e, done: t }) {
 			children: [
 				/* @__PURE__ */ (0, V.jsx)("p", {
 					className: "text-body-2-regular text-text-secondary",
-					children: UKe
+					children: WKe
 				}),
 				/* @__PURE__ */ (0, V.jsx)("p", {
 					className: "text-body-2-regular text-text-secondary",
-					children: WKe
+					children: GKe
 				}),
 				/* @__PURE__ */ (0, V.jsxs)("ul", {
 					className: "flex list-disc flex-col gap-1 pl-5 text-body-2-regular text-text-secondary",
@@ -79968,7 +79974,7 @@ function XKe({ onboarding: e, done: t }) {
 				}),
 				/* @__PURE__ */ (0, V.jsx)("p", {
 					className: "text-body-2-regular text-text-secondary",
-					children: GKe
+					children: KKe
 				}),
 				/* @__PURE__ */ (0, V.jsx)("span", {
 					className: "self-start",
@@ -79977,7 +79983,7 @@ function XKe({ onboarding: e, done: t }) {
 						size: "small",
 						onClick: () => {
 							try {
-								localStorage.setItem(N7, "1");
+								localStorage.setItem(M7, "1");
 							} catch {}
 							r(!0);
 						},
@@ -79988,7 +79994,7 @@ function XKe({ onboarding: e, done: t }) {
 		})
 	});
 }
-function ZKe({ busy: e, onRefresh: t, onImport: n }) {
+function QKe({ busy: e, onRefresh: t, onImport: n }) {
 	let r = (0, B.useRef)(null), [i, a] = (0, B.useState)(!1), o = (e) => {
 		a(!1), e();
 	};
@@ -79998,7 +80004,7 @@ function ZKe({ busy: e, onRefresh: t, onImport: n }) {
 		"data-variant": "primary",
 		children: [/* @__PURE__ */ (0, V.jsx)(J, {
 			leadingIcon: fT,
-			title: RKe,
+			title: zKe,
 			onClick: t,
 			...X(e),
 			children: "读取浏览器历史"
@@ -80026,7 +80032,7 @@ function ZKe({ busy: e, onRefresh: t, onImport: n }) {
 			className: "flex w-52 flex-col gap-1 outline-none",
 			children: [/* @__PURE__ */ (0, V.jsxs)("button", {
 				type: "button",
-				className: A7,
+				className: k7,
 				onClick: () => o(t),
 				children: [/* @__PURE__ */ (0, V.jsx)(fT, {
 					"aria-hidden": !0,
@@ -80034,7 +80040,7 @@ function ZKe({ busy: e, onRefresh: t, onImport: n }) {
 				}), "读取浏览器历史"]
 			}), /* @__PURE__ */ (0, V.jsxs)("button", {
 				type: "button",
-				className: A7,
+				className: k7,
 				onClick: () => o(n),
 				children: [/* @__PURE__ */ (0, V.jsx)(wT, {
 					"aria-hidden": !0,
@@ -80044,7 +80050,7 @@ function ZKe({ busy: e, onRefresh: t, onImport: n }) {
 		})
 	})] });
 }
-function QKe({ sources: e, window: t, toast: n }) {
+function $Ke({ sources: e, window: t, toast: n }) {
 	let r = DS({
 		mutationFn: (e) => nKe(e, t),
 		onSuccess: (e) => {
@@ -80052,7 +80058,7 @@ function QKe({ sources: e, window: t, toast: n }) {
 		}
 	});
 	return /* @__PURE__ */ (0, V.jsxs)("section", {
-		className: j7,
+		className: A7,
 		"aria-label": "数据源",
 		children: [
 			/* @__PURE__ */ (0, V.jsx)("h3", {
@@ -80066,7 +80072,7 @@ function QKe({ sources: e, window: t, toast: n }) {
 			e.length ? /* @__PURE__ */ (0, V.jsx)("div", {
 				className: "inline-grid w-full gap-2 sm:grid-cols-2",
 				children: e.map((e) => /* @__PURE__ */ (0, V.jsxs)("div", {
-					className: `flex min-w-0 items-center gap-3 ${M7}`,
+					className: `flex min-w-0 items-center gap-3 ${j7}`,
 					children: [
 						/* @__PURE__ */ (0, V.jsx)("span", {
 							className: "inline-grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary",
@@ -80098,7 +80104,7 @@ function QKe({ sources: e, window: t, toast: n }) {
 							onClick: () => {
 								r.isPending || Te({
 									title: "移除口味数据源",
-									body: KKe,
+									body: qKe,
 									confirmLabel: "移除口味数据源",
 									onConfirm: () => r.mutateAsync(e.source_key)
 								});
@@ -80110,12 +80116,12 @@ function QKe({ sources: e, window: t, toast: n }) {
 				shell: "plain",
 				icon: pT,
 				title: "还没有数据源",
-				children: zKe
+				children: BKe
 			})
 		]
 	});
 }
-function $Ke(e) {
+function eqe(e) {
 	let { onSignal: t, navigate: n, toast: r, onboarding: i } = e, [a, o] = (0, B.useState)("all"), [s, c] = (0, B.useState)("browser"), l = (0, B.useRef)(null), u = wS({
 		queryKey: u7(a),
 		queryFn: ({ signal: e }) => d7(a, e),
@@ -80179,7 +80185,7 @@ function $Ke(e) {
 									children: t
 								}, e))
 							}),
-							/* @__PURE__ */ (0, V.jsx)(ZKe, {
+							/* @__PURE__ */ (0, V.jsx)(QKe, {
 								busy: f || m.isPending || h.isPending,
 								onRefresh: _,
 								onImport: () => l.current?.click()
@@ -80195,7 +80201,7 @@ function $Ke(e) {
 						]
 					})]
 				}),
-				/* @__PURE__ */ (0, V.jsx)(XKe, {
+				/* @__PURE__ */ (0, V.jsx)(ZKe, {
 					onboarding: i,
 					done: !!(y.history_sources || v.updated_at)
 				}),
@@ -80222,27 +80228,27 @@ function $Ke(e) {
 						/* @__PURE__ */ (0, V.jsxs)("div", {
 							className: nM,
 							children: [
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 0,
 									icon: vT,
 									term: "浏览记录",
 									figure: Number(y.history_visits || 0).toLocaleString(),
 									detail: `${y.history_sources || 0} 个数据源 · ${f7(y.range_start)}—${f7(y.range_end)}`
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 1,
 									icon: bT,
 									term: "口味维度",
 									figure: C.length.toLocaleString(),
 									detail: C[0]?.name || "尚无主维度"
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 2,
 									icon: CT,
 									term: "浏览候选",
 									figure: w.length.toLocaleString()
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 3,
 									icon: pT,
 									term: "私有导出",
@@ -80252,7 +80258,7 @@ function $Ke(e) {
 							]
 						}),
 						/* @__PURE__ */ (0, V.jsxs)("section", {
-							className: `${j7} md:flex-row md:gap-6`,
+							className: `${A7} md:flex-row md:gap-6`,
 							"aria-label": "浏览器画像",
 							children: [/* @__PURE__ */ (0, V.jsxs)("div", {
 								className: "flex shrink-0 flex-col gap-2 pb-5 md:w-80 md:pr-6 md:pb-0",
@@ -80261,7 +80267,7 @@ function $Ke(e) {
 										className: "text-caption-1-regular text-text-secondary",
 										children: "浏览器画像"
 									}),
-									/* @__PURE__ */ (0, V.jsx)(PKe, {
+									/* @__PURE__ */ (0, V.jsx)(FKe, {
 										rows: C,
 										label: "主要口味维度"
 									}),
@@ -80272,14 +80278,14 @@ function $Ke(e) {
 								]
 							}), /* @__PURE__ */ (0, V.jsx)("div", {
 								className: "flex min-w-0 grow flex-col",
-								children: C.length ? /* @__PURE__ */ (0, V.jsx)(FKe, {
+								children: C.length ? /* @__PURE__ */ (0, V.jsx)(IKe, {
 									rows: C,
 									label: "口味维度排名"
 								}) : /* @__PURE__ */ (0, V.jsx)(SE, {
 									shell: "plain",
 									icon: CT,
 									title: "暂无口味维度",
-									children: VKe
+									children: HKe
 								})
 							})]
 						}),
@@ -80295,8 +80301,8 @@ function $Ke(e) {
 							tone: 4,
 							empty: "还没有可用于分析的口味网站访问记录。"
 						}),
-						/* @__PURE__ */ (0, V.jsx)(IKe, { flows: v.creator_flows }),
-						/* @__PURE__ */ (0, V.jsx)(I7, {
+						/* @__PURE__ */ (0, V.jsx)(LKe, { flows: v.creator_flows }),
+						/* @__PURE__ */ (0, V.jsx)(F7, {
 							label: "浏览器口味维度",
 							onSignal: t,
 							panels: [
@@ -80337,7 +80343,7 @@ function $Ke(e) {
 										rows: w,
 										kind: "",
 										visual: "none",
-										empty: HKe
+										empty: UKe
 									}
 								}
 							]
@@ -80351,26 +80357,26 @@ function $Ke(e) {
 						/* @__PURE__ */ (0, V.jsxs)("div", {
 							className: nM,
 							children: [
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 0,
 									icon: gT,
 									term: "Peach 看过",
 									figure: Number(y.peach_items || 0).toLocaleString(),
 									detail: aKe(y.peach_seconds || 0)
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 1,
 									icon: xae,
 									term: "喜欢",
 									figure: Number(y.liked || 0).toLocaleString()
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 2,
 									icon: bae,
 									term: "不合口味",
 									figure: Number(y.disliked || 0).toLocaleString()
 								}),
-								/* @__PURE__ */ (0, V.jsx)(P7, {
+								/* @__PURE__ */ (0, V.jsx)(N7, {
 									accent: 3,
 									icon: bT,
 									term: "有标签",
@@ -80379,7 +80385,7 @@ function $Ke(e) {
 							]
 						}),
 						/* @__PURE__ */ (0, V.jsxs)("section", {
-							className: `${j7} md:flex-row md:gap-6`,
+							className: `${A7} md:flex-row md:gap-6`,
 							"aria-label": "Peach 观看",
 							children: [/* @__PURE__ */ (0, V.jsxs)("div", {
 								className: "flex shrink-0 flex-col gap-0.5 pb-5 md:w-72 md:pr-6 md:pb-0",
@@ -80399,18 +80405,18 @@ function $Ke(e) {
 								]
 							}), /* @__PURE__ */ (0, V.jsxs)("div", {
 								className: "flex min-w-0 grow flex-col",
-								children: [/* @__PURE__ */ (0, V.jsx)(L7, {
+								children: [/* @__PURE__ */ (0, V.jsx)(I7, {
 									term: "有标签",
 									value: T,
 									rest: b.untagged || 0
-								}), /* @__PURE__ */ (0, V.jsx)(L7, {
+								}), /* @__PURE__ */ (0, V.jsx)(I7, {
 									term: "有身份",
 									value: E,
 									rest: b.unidentified || 0
 								})]
 							})]
 						}),
-						/* @__PURE__ */ (0, V.jsx)(I7, {
+						/* @__PURE__ */ (0, V.jsx)(F7, {
 							label: "Peach 口味维度",
 							onSignal: t,
 							panels: [
@@ -80450,19 +80456,19 @@ function $Ke(e) {
 				})
 			]
 		}),
-		/* @__PURE__ */ (0, V.jsx)(YKe, {
+		/* @__PURE__ */ (0, V.jsx)(XKe, {
 			data: v,
 			onSignal: t,
 			navigate: n
 		}),
-		/* @__PURE__ */ (0, V.jsx)(QKe, {
+		/* @__PURE__ */ (0, V.jsx)($Ke, {
 			sources: v.sources || [],
 			window: a,
 			toast: r
 		})
 	] });
 }
-function L7({ term: e, value: t, rest: n }) {
+function I7({ term: e, value: t, rest: n }) {
 	let r = Math.max(t + n, 1);
 	return /* @__PURE__ */ (0, V.jsxs)("div", {
 		className: "flex flex-col gap-1.5 border-b border-separator-border py-3 last:border-b-0",
@@ -80484,15 +80490,15 @@ function L7({ term: e, value: t, rest: n }) {
 }
 //#endregion
 //#region src/react/router/managed-routes.tsx
-function eqe(e, t, n) {
+function tqe(e, t, n) {
 	if (e === "duplicates") {
 		n("/duplicates");
 		return;
 	}
 	let r = t.managePath(e);
-	z7(r) ? n(r) : t.openManage(e);
+	R7(r) ? n(r) : t.openManage(e);
 }
-var R7 = {
+var L7 = {
 	"/stats": {
 		prefetch: (e, t) => USe(t),
 		page: (e, t, n) => /* @__PURE__ */ (0, V.jsx)(AGe, {
@@ -80506,7 +80512,7 @@ var R7 = {
 	},
 	"/taste": {
 		prefetch: (e, t) => eKe("all", t),
-		page: (e, t, n) => /* @__PURE__ */ (0, V.jsx)($Ke, {
+		page: (e, t, n) => /* @__PURE__ */ (0, V.jsx)(eqe, {
 			onSignal: t.openTasteSignal,
 			navigate: n,
 			toast: (e) => t.receipt(e),
@@ -80528,7 +80534,7 @@ var R7 = {
 		prefetch: (e, t) => rde(t),
 		page: (e, t, n) => /* @__PURE__ */ (0, V.jsx)(vfe, {
 			failure: t.failure,
-			open: (e) => eqe(e, t, n),
+			open: (e) => tqe(e, t, n),
 			toast: (e, { warning: n = !1 } = {}) => n ? t.toast({ text: e }, { sound: "warning" }) : t.receipt(e)
 		})
 	},
@@ -80587,7 +80593,7 @@ var R7 = {
 			openFollow: t.openFollow
 		})
 	}
-}, z7 = (e) => Object.hasOwn(R7, e), B7 = {
+}, R7 = (e) => Object.hasOwn(L7, e), z7 = {
 	"/playlists": {
 		prefetch: (e, t) => _ve(t),
 		page: (e, t) => /* @__PURE__ */ (0, V.jsx)(kve, {
@@ -80602,7 +80608,7 @@ var R7 = {
 		prefetch: (e, t) => uhe(e, t),
 		page: (e) => /* @__PURE__ */ (0, V.jsx)(Phe, { ...e })
 	}
-}, V7 = (e) => Object.hasOwn(B7, e), H7 = {
+}, B7 = (e) => Object.hasOwn(z7, e), V7 = {
 	prefetch: (e, t) => zfe(e, t),
 	page: (e, t) => /* @__PURE__ */ (0, V.jsx)(J_e, {
 		...e,
@@ -80617,22 +80623,22 @@ var R7 = {
 		openFollowAuthor: t.openFollowAuthor,
 		openFollowTag: t.openFollowTag
 	})
+}, H7 = {
+	"/performers": V7,
+	"/creators": V7,
+	"/studios": V7,
+	"/agencies": V7,
+	"/tags": V7
 }, U7 = {
-	"/performers": H7,
-	"/creators": H7,
-	"/studios": H7,
-	"/agencies": H7,
-	"/tags": H7
-}, W7 = {
 	prefetch: (e) => Ofe(e),
 	page: (e) => /* @__PURE__ */ (0, V.jsx)(ume, { ...e })
+}, W7 = {
+	"/performers/*": U7,
+	"/studios/*": U7,
+	"/creators/*": U7,
+	"/series/*": U7,
+	"/agencies/*": U7
 }, G7 = {
-	"/performers/*": W7,
-	"/studios/*": W7,
-	"/creators/*": W7,
-	"/series/*": W7,
-	"/agencies/*": W7
-}, K7 = {
 	"/": {
 		prefetch: (e, t) => Mre(e, t),
 		page: (e) => /* @__PURE__ */ (0, V.jsx)(CA, { ...e })
@@ -80641,7 +80647,7 @@ var R7 = {
 		prefetch: async () => {},
 		page: (e) => /* @__PURE__ */ (0, V.jsx)(lve, { ...e })
 	}
-}, q7 = (e) => Object.hasOwn(K7, e), tqe = (e) => e.mode === "notice" ? /* @__PURE__ */ (0, V.jsx)(hve, { ...e }) : /* @__PURE__ */ (0, V.jsx)(xM, { ...e }), J7 = {
+}, K7 = (e) => Object.hasOwn(G7, e), nqe = (e) => e.mode === "notice" ? /* @__PURE__ */ (0, V.jsx)(hve, { ...e }) : /* @__PURE__ */ (0, V.jsx)(xM, { ...e }), q7 = {
 	"catalog-filter": {
 		prefetch: async () => {},
 		page: (e) => /* @__PURE__ */ (0, V.jsx)(ele, { ...e })
@@ -80652,13 +80658,13 @@ var R7 = {
 	},
 	"library-processing": {
 		prefetch: (e, t) => IA(t),
-		page: (e) => /* @__PURE__ */ (0, V.jsx)(tqe, { ...e })
+		page: (e) => /* @__PURE__ */ (0, V.jsx)(nqe, { ...e })
 	},
 	search: {
 		prefetch: async () => {},
 		page: (e) => /* @__PURE__ */ (0, V.jsx)(fye, { ...e })
 	}
-}, Y7 = (e) => Object.hasOwn(J7, e), X7 = {
+}, J7 = (e) => Object.hasOwn(q7, e), Y7 = {
 	"batch-dock": {
 		prefetch: async () => {},
 		page: () => /* @__PURE__ */ (0, V.jsx)(jne, {})
@@ -80687,33 +80693,35 @@ var R7 = {
 		prefetch: async () => {},
 		page: () => /* @__PURE__ */ (0, V.jsx)(VSe, {})
 	}
-}, Z7 = (e) => Object.hasOwn(X7, e), nqe = [
+}, X7 = (e) => Object.hasOwn(Y7, e), Z7 = [
 	"/",
 	"/unseen",
 	"/watch-later",
 	"/flagged",
 	"/trash",
 	"/junk-files"
-], rqe = [
-	...Object.keys(R7),
-	...Object.keys(B7),
-	...Object.keys(U7),
-	...Object.keys(G7),
-	...nqe
-], Q7 = (e) => z7(e) || V7(e) || Object.hasOwn(U7, e) || Object.hasOwn(G7, e) || q7(e) || Y7(e) || Z7(e);
+];
+[
+	...Object.keys(L7),
+	...Object.keys(z7),
+	...Object.keys(H7),
+	...Object.keys(W7),
+	...Z7
+];
+var Q7 = (e) => R7(e) || B7(e) || Object.hasOwn(H7, e) || Object.hasOwn(W7, e) || K7(e) || J7(e) || X7(e);
 function $7(e) {
-	return z7(e) ? R7[e] : V7(e) ? B7[e] : q7(e) ? K7[e] : Y7(e) ? J7[e] : Z7(e) ? X7[e] : Object.hasOwn(U7, e) ? U7[e] : G7[e];
+	return R7(e) ? L7[e] : B7(e) ? z7[e] : K7(e) ? G7[e] : J7(e) ? q7[e] : X7(e) ? Y7[e] : Object.hasOwn(H7, e) ? H7[e] : W7[e];
 }
-function iqe(e, t, n) {
+function rqe(e, t, n) {
 	return Q7(e) ? $7(e).prefetch(t, n) : Promise.reject(/* @__PURE__ */ Error(`路由树里没有这一页：${e}`));
 }
-function aqe(e, t, n, r) {
+function iqe(e, t, n, r) {
 	return $7(e).page(t, n, r);
 }
 //#endregion
 //#region node_modules/react-router/dist/production/lib/router/url.js
-var oqe = /^(?:[a-z][a-z0-9+.-]*:|[\\/]{2})/i, sqe = /^[\\/]{2}/;
-function cqe(e, t) {
+var aqe = /^(?:[a-z][a-z0-9+.-]*:|[\\/]{2})/i, oqe = /^[\\/]{2}/;
+function sqe(e, t) {
 	return t + e.replace(/\\/g, "/");
 }
 //#endregion
@@ -80729,7 +80737,7 @@ function t9(e, t) {
 		} catch {}
 	}
 }
-function lqe({ pathname: e = "/", search: t = "", hash: n = "" }) {
+function cqe({ pathname: e = "/", search: t = "", hash: n = "" }) {
 	return t && t !== "?" && (e += t.charAt(0) === "?" ? t : "?" + t), n && n !== "#" && (e += n.charAt(0) === "#" ? n : "#" + n), e;
 }
 function n9(e) {
@@ -80744,19 +80752,19 @@ function n9(e) {
 }
 //#endregion
 //#region node_modules/react-router/dist/production/lib/router/utils.js
-function uqe(e, t, n = "/") {
-	return dqe(e, t, n, !1);
+function lqe(e, t, n = "/") {
+	return uqe(e, t, n, !1);
 }
-function dqe(e, t, n, r, i) {
+function uqe(e, t, n, r, i) {
 	let a = l9((typeof t == "string" ? n9(t) : t).pathname || "/", n);
 	if (a == null) return null;
-	let o = i ?? fqe(e), s = null, c = Tqe(a);
-	for (let e = 0; s == null && e < o.length; ++e) s = wqe(o[e], c, r);
+	let o = i ?? dqe(e), s = null, c = wqe(a);
+	for (let e = 0; s == null && e < o.length; ++e) s = Cqe(o[e], c, r);
 	return s;
 }
-function fqe(e) {
+function dqe(e) {
 	let t = r9(e);
-	return pqe(t), t;
+	return fqe(t), t;
 }
 function r9(e, t = [], n = [], r = "", i = !1) {
 	let a = (e, a, o = i, s) => {
@@ -80773,7 +80781,7 @@ function r9(e, t = [], n = [], r = "", i = !1) {
 		let l = p9([r, c.relativePath]), u = n.concat(c);
 		e.children && e.children.length > 0 && (e9(e.index !== !0, `Index routes must not have child routes. Please remove all child routes from route path "${l}".`), r9(e.children, t, u, l, o)), !(e.path == null && !e.index) && t.push({
 			path: l,
-			score: Sqe(l, e.index),
+			score: xqe(l, e.index),
 			routesMeta: u.map((e, t) => {
 				let [n, r] = c9(e.relativePath, e.caseSensitive, t === u.length - 1);
 				return {
@@ -80797,18 +80805,18 @@ function i9(e) {
 	let o = i9(r.join("/")), s = [];
 	return s.push(...o.map((e) => e === "" ? a : [a, e].join("/"))), i && s.push(...o), s.map((t) => e.startsWith("/") && t === "" ? "/" : t);
 }
-function pqe(e) {
-	e.sort((e, t) => e.score === t.score ? Cqe(e.routesMeta.map((e) => e.childrenIndex), t.routesMeta.map((e) => e.childrenIndex)) : t.score - e.score);
+function fqe(e) {
+	e.sort((e, t) => e.score === t.score ? Sqe(e.routesMeta.map((e) => e.childrenIndex), t.routesMeta.map((e) => e.childrenIndex)) : t.score - e.score);
 }
-var mqe = /^:[\w-]+$/, hqe = /^:[\w-]+/, gqe = 3.5, _qe = 3, vqe = 2, yqe = 1, bqe = 10, xqe = -2, a9 = (e) => e === "*";
-function Sqe(e, t) {
+var pqe = /^:[\w-]+$/, mqe = /^:[\w-]+/, hqe = 3.5, gqe = 3, _qe = 2, vqe = 1, yqe = 10, bqe = -2, a9 = (e) => e === "*";
+function xqe(e, t) {
 	let n = e.split("/"), r = n.length;
-	return n.some(a9) && (r += xqe), t && (r += vqe), n.filter((e) => !a9(e)).reduce((e, t) => e + (mqe.test(t) ? _qe : hqe.test(t) ? gqe : t === "" ? yqe : bqe), r);
+	return n.some(a9) && (r += bqe), t && (r += _qe), n.filter((e) => !a9(e)).reduce((e, t) => e + (pqe.test(t) ? gqe : mqe.test(t) ? hqe : t === "" ? vqe : yqe), r);
 }
-function Cqe(e, t) {
+function Sqe(e, t) {
 	return e.length === t.length && e.slice(0, -1).every((e, n) => e === t[n]) ? e[e.length - 1] - t[t.length - 1] : 0;
 }
-function wqe(e, t, n = !1) {
+function Cqe(e, t, n = !1) {
 	let { routesMeta: r } = e, i = {}, a = "/", o = [];
 	for (let e = 0; e < r.length; ++e) {
 		let s = r[e], c = e === r.length - 1, l = a === "/" ? t : t.slice(a.length) || "/", u = {
@@ -80824,7 +80832,7 @@ function wqe(e, t, n = !1) {
 		Object.assign(i, d.params), o.push({
 			params: i,
 			pathname: p9([a, d.pathname]),
-			pathnameBase: Aqe(p9([a, d.pathnameBase])),
+			pathnameBase: kqe(p9([a, d.pathnameBase])),
 			route: f
 		}), d.pathnameBase !== "/" && (a = p9([a, d.pathnameBase]));
 	}
@@ -80871,7 +80879,7 @@ function c9(e, t = !1, n = !0) {
 	}).replace(/\/([\w-]+)\?(?=\/|$|\()/g, "(?:/$1)?");
 	return e.endsWith("*") ? (r.push({ paramName: "*" }), i += e === "*" || e === "/*" ? "(.*)$" : "(?:\\/(.+)|\\/*)$") : n ? i += "\\/*$" : e !== "" && e !== "/" && (i += "(?:(?=\\/|$))"), [new RegExp(i, t ? void 0 : "i"), r];
 }
-function Tqe(e) {
+function wqe(e) {
 	try {
 		return e.split("/").map((e) => decodeURIComponent(e).replace(/\//g, "%2F")).join("/");
 	} catch (t) {
@@ -80884,12 +80892,12 @@ function l9(e, t) {
 	let n = t.endsWith("/") ? t.length - 1 : t.length, r = e.charAt(n);
 	return r && r !== "/" ? null : e.slice(n) || "/";
 }
-function Eqe(e, t = "/") {
+function Tqe(e, t = "/") {
 	let { pathname: n, search: r = "", hash: i = "" } = typeof e == "string" ? n9(e) : e, a;
 	return n ? (n = f9(n), a = n.startsWith("/") || n.startsWith("\\") ? u9(n.substring(1), "/") : u9(n, t)) : a = t, {
 		pathname: a,
-		search: jqe(r),
-		hash: Mqe(i)
+		search: Aqe(r),
+		hash: jqe(i)
 	};
 }
 function u9(e, t) {
@@ -80901,14 +80909,14 @@ function u9(e, t) {
 function d9(e, t, n, r) {
 	return `Cannot include a '${e}' character in a manually specified \`to.${t}\` field [${JSON.stringify(r)}].  Please separate it out to the \`to.${n}\` field. Alternatively you may provide the full path as a string in <Link to="..."> and the router will parse it for you.`;
 }
-function Dqe(e) {
+function Eqe(e) {
 	return e.filter((e, t) => t === 0 || e.route.path && e.route.path.length > 0);
 }
-function Oqe(e) {
-	let t = Dqe(e);
+function Dqe(e) {
+	let t = Eqe(e);
 	return t.map((e, n) => n === t.length - 1 ? e.pathname : e.pathnameBase);
 }
-function kqe(e, t, n, r = !1) {
+function Oqe(e, t, n, r = !1) {
 	let i;
 	typeof e == "string" ? i = n9(e) : (i = { ...e }, e9(!i.pathname || !i.pathname.includes("?"), d9("?", "pathname", "search", i)), e9(!i.pathname || !i.pathname.includes("#"), d9("#", "pathname", "hash", i)), e9(!i.search || !i.search.includes("#"), d9("#", "search", "hash", i)));
 	let a = e === "" || i.pathname === "", o = a ? "/" : i.pathname, s;
@@ -80922,7 +80930,7 @@ function kqe(e, t, n, r = !1) {
 		}
 		s = e >= 0 ? t[e] : "/";
 	}
-	let c = Eqe(i, s), l = o && o !== "/" && o.endsWith("/"), u = (a || o === ".") && n.endsWith("/");
+	let c = Tqe(i, s), l = o && o !== "/" && o.endsWith("/"), u = (a || o === ".") && n.endsWith("/");
 	return !c.pathname.endsWith("/") && (l || u) && (c.pathname += "/"), c;
 }
 var f9 = (e) => e.replace(/[\\/]{2,}/g, "/"), p9 = (e) => f9(e.join("/"));
@@ -80931,7 +80939,7 @@ function m9(e, t = 0) {
 	for (; n > t && e.charCodeAt(n - 1) === 47;) n--;
 	return n === e.length ? e : e.slice(0, n);
 }
-var Aqe = (e) => m9(e).replace(/^\/*/, "/"), jqe = (e) => !e || e === "?" ? "" : e.startsWith("?") ? e : "?" + e, Mqe = (e) => !e || e === "#" ? "" : e.startsWith("#") ? e : "#" + e, Nqe = class {
+var kqe = (e) => m9(e).replace(/^\/*/, "/"), Aqe = (e) => !e || e === "?" ? "" : e.startsWith("?") ? e : "?" + e, jqe = (e) => !e || e === "#" ? "" : e.startsWith("#") ? e : "#" + e, Mqe = class {
 	status;
 	statusText;
 	data;
@@ -80941,23 +80949,23 @@ var Aqe = (e) => m9(e).replace(/^\/*/, "/"), jqe = (e) => !e || e === "?" ? "" :
 		this.status = e, this.statusText = t || "", this.internal = r, n instanceof Error ? (this.data = n.toString(), this.error = n) : this.data = n;
 	}
 };
-function Pqe(e) {
+function Nqe(e) {
 	return e != null && typeof e.status == "number" && typeof e.statusText == "string" && typeof e.internal == "boolean" && "data" in e;
 }
-function Fqe(e) {
+function Pqe(e) {
 	return p9(e.map((e) => e.route.path).filter(Boolean)) || "/";
 }
 var h9 = typeof window < "u" && window.document !== void 0 && window.document.createElement !== void 0;
-function Iqe(e, t) {
+function Fqe(e, t) {
 	let n = e;
-	if (typeof n != "string" || !oqe.test(n)) return {
+	if (typeof n != "string" || !aqe.test(n)) return {
 		absoluteURL: void 0,
 		isExternal: !1,
 		to: n
 	};
 	let r = n, i = !1;
 	if (h9) try {
-		let e = new URL(window.location.href), r = sqe.test(n) ? new URL(cqe(n, e.protocol)) : new URL(n), a = l9(r.pathname, t);
+		let e = new URL(window.location.href), r = oqe.test(n) ? new URL(sqe(n, e.protocol)) : new URL(n), a = l9(r.pathname, t);
 		r.origin === e.origin && a != null ? n = a + r.search + r.hash : i = !0;
 	} catch {
 		t9(!1, `<Link to="${n}"> contains an invalid URL which will probably break when clicked - please update to a valid URL path.`);
@@ -80982,7 +80990,7 @@ function _9(e) {
 function v9(e, t) {
 	return e.origin === t.origin && (e.origin !== "null" || e.protocol === t.protocol && e.host === t.host);
 }
-function Lqe(e, t) {
+function Iqe(e, t) {
 	if (e.startsWith("//")) return !0;
 	let n = t.protocol.toLowerCase();
 	return e.toLowerCase().startsWith(n) ? t.host === "" || e.slice(n.length).startsWith("//") : !1;
@@ -80995,7 +81003,7 @@ function y9(e, t, n, r) {
 	let a = new URL(t, n), o = i != null && !v9(i, n), s = !v9(a, n);
 	if (r === "reject") {
 		if (o || s) throw Error("External navigation is not allowed");
-	} else if (s && (i == null || !Lqe(e, i) || !v9(i, a))) throw Error("External navigation is not allowed");
+	} else if (s && (i == null || !Iqe(e, i) || !v9(i, a))) throw Error("External navigation is not allowed");
 }
 //#endregion
 //#region node_modules/react-router/dist/production/lib/router/router.js
@@ -81006,9 +81014,9 @@ var b9 = [
 	"DELETE"
 ];
 new Set(b9);
-var Rqe = ["GET", ...b9];
-new Set(Rqe);
-var zqe = [
+var Lqe = ["GET", ...b9];
+new Set(Lqe);
+var Rqe = [
 	"about:",
 	"blob:",
 	"chrome:",
@@ -81020,9 +81028,9 @@ var zqe = [
 	"filesystem:",
 	"javascript:"
 ];
-function Bqe(e) {
+function zqe(e) {
 	try {
-		return zqe.includes(new URL(e).protocol);
+		return Rqe.includes(new URL(e).protocol);
 	} catch {
 		return !1;
 	}
@@ -81031,18 +81039,18 @@ function Bqe(e) {
 //#region node_modules/react-router/dist/production/lib/context.js
 var x9 = B.createContext(null);
 x9.displayName = "DataRouter";
-var Vqe = B.createContext(null);
-Vqe.displayName = "DataRouterState";
+var Bqe = B.createContext(null);
+Bqe.displayName = "DataRouterState";
 var S9 = B.createContext(null);
 S9.displayName = "DataRouterData";
-var Hqe = B.createContext(null);
-Hqe.displayName = "DataRouterNavigation";
-var Uqe = B.createContext(!1), Wqe = B.createContext({ isTransitioning: !1 });
-Wqe.displayName = "ViewTransition";
+var Vqe = B.createContext(null);
+Vqe.displayName = "DataRouterNavigation";
+var Hqe = B.createContext(!1), Uqe = B.createContext({ isTransitioning: !1 });
+Uqe.displayName = "ViewTransition";
+var Wqe = B.createContext(null);
+Wqe.displayName = "Fetchers";
 var Gqe = B.createContext(null);
-Gqe.displayName = "Fetchers";
-var Kqe = B.createContext(null);
-Kqe.displayName = "Await";
+Gqe.displayName = "Await";
 var C9 = B.createContext(null);
 C9.displayName = "Navigation";
 var w9 = B.createContext(null);
@@ -81061,17 +81069,17 @@ var O9 = B.createContext(null);
 O9.displayName = "RouteError";
 //#endregion
 //#region node_modules/react-router/dist/production/lib/errors.js
-var k9 = "REACT_ROUTER_ERROR", qqe = "REDIRECT", Jqe = "ROUTE_ERROR_RESPONSE";
-function Yqe(e) {
-	if (e.startsWith(`${k9}:${qqe}:{`)) try {
+var k9 = "REACT_ROUTER_ERROR", Kqe = "REDIRECT", qqe = "ROUTE_ERROR_RESPONSE";
+function Jqe(e) {
+	if (e.startsWith(`${k9}:${Kqe}:{`)) try {
 		let t = JSON.parse(e.slice(28));
 		if (typeof t == "object" && t && typeof t.status == "number" && typeof t.statusText == "string" && typeof t.location == "string" && typeof t.reloadDocument == "boolean" && typeof t.replace == "boolean") return t;
 	} catch {}
 }
-function Xqe(e) {
-	if (e.startsWith(`${k9}:${Jqe}:{`)) try {
+function Yqe(e) {
+	if (e.startsWith(`${k9}:${qqe}:{`)) try {
 		let t = JSON.parse(e.slice(40));
-		if (typeof t == "object" && t && typeof t.status == "number" && typeof t.statusText == "string") return new Nqe(t.status, t.statusText, t.data);
+		if (typeof t == "object" && t && typeof t.status == "number" && typeof t.statusText == "string") return new Mqe(t.status, t.statusText, t.data);
 	} catch {}
 }
 //#endregion
@@ -81083,12 +81091,12 @@ function j9() {
 	return e9(A9(), "useLocation() may be used only in the context of a <Router> component."), B.useContext(w9).location;
 }
 var M9 = "You should call navigate() in a React.useEffect(), not when your component is first rendered.";
-function Zqe() {
-	return B.useContext(E9) ? lJe() : Qqe();
+function Xqe() {
+	return B.useContext(E9) ? cJe() : Zqe();
 }
-function Qqe() {
+function Zqe() {
 	e9(A9(), "useNavigate() may be used only in the context of a <Router> component.");
-	let e = B.useContext(x9), { basename: t, navigator: n } = B.useContext(C9), { matches: r } = B.useContext(T9), { pathname: i } = j9(), a = JSON.stringify(Oqe(r)), o = B.useRef(!1);
+	let e = B.useContext(x9), { basename: t, navigator: n } = B.useContext(C9), { matches: r } = B.useContext(T9), { pathname: i } = j9(), a = JSON.stringify(Dqe(r)), o = B.useRef(!1);
 	return B.useLayoutEffect(() => {
 		o.current = !0;
 	}), B.useCallback((r, s = {}) => {
@@ -81097,8 +81105,8 @@ function Qqe() {
 			n.go(r);
 			return;
 		}
-		let c = kqe(r, JSON.parse(a), i, s.relative === "path");
-		e == null && t !== "/" && (c.pathname = c.pathname === "/" ? t : p9([t, c.pathname])), y9(typeof r == "string" ? r : lqe(r), n.createHref(c), _9(n), "reject"), (s.replace ? n.replace : n.push)(c, s.state, s);
+		let c = Oqe(r, JSON.parse(a), i, s.relative === "path");
+		e == null && t !== "/" && (c.pathname = c.pathname === "/" ? t : p9([t, c.pathname])), y9(typeof r == "string" ? r : cqe(r), n.createHref(c), _9(n), "reject"), (s.replace ? n.replace : n.push)(c, s.state, s);
 	}, [
 		t,
 		n,
@@ -81108,7 +81116,7 @@ function Qqe() {
 	]);
 }
 B.createContext(null);
-function $qe(e, t) {
+function Qqe(e, t) {
 	return N9(e, t);
 }
 function N9(e, t, n) {
@@ -81128,8 +81136,8 @@ function N9(e, t, n) {
 		d = "/" + u.replace(/^\//, "").split("/").slice(e.length).join("/");
 	}
 	let f;
-	f = n ? n.state.matches.length ? n.state.matches.map((e) => Object.assign(e, { route: n.manifest[e.route.id] || e.route })) : n.router.match(n.state.location) : uqe(e, { pathname: d });
-	let p = aJe(f && f.map((e) => Object.assign({}, e, {
+	f = n ? n.state.matches.length ? n.state.matches.map((e) => Object.assign(e, { route: n.manifest[e.route.id] || e.route })) : n.router.match(n.state.location) : lqe(e, { pathname: d });
+	let p = iJe(f && f.map((e) => Object.assign({}, e, {
 		params: Object.assign({}, o, e.params),
 		pathname: p9([s, r.encodeLocation ? r.encodeLocation(e.pathname.replace(/%/g, "%25").replace(/\?/g, "%3F").replace(/#/g, "%23")).pathname : e.pathname]),
 		pathnameBase: e.pathnameBase === "/" ? s : p9([s, r.encodeLocation ? r.encodeLocation(e.pathnameBase.replace(/%/g, "%25").replace(/\?/g, "%3F").replace(/#/g, "%23")).pathname : e.pathnameBase])
@@ -81147,14 +81155,14 @@ function N9(e, t, n) {
 		navigationType: "POP"
 	} }, p) : p;
 }
-function eJe() {
-	let e = cJe(), t = Pqe(e) ? `${e.status} ${e.statusText}` : e instanceof Error ? e.message : JSON.stringify(e), n = e instanceof Error ? e.stack : null;
+function $qe() {
+	let e = sJe(), t = Nqe(e) ? `${e.status} ${e.statusText}` : e instanceof Error ? e.message : JSON.stringify(e), n = e instanceof Error ? e.stack : null;
 	return /* @__PURE__ */ B.createElement(B.Fragment, null, /* @__PURE__ */ B.createElement("h2", null, "Unexpected Application Error!"), /* @__PURE__ */ B.createElement("h3", { style: { fontStyle: "italic" } }, t), n ? /* @__PURE__ */ B.createElement("pre", { style: {
 		padding: "0.5rem",
 		backgroundColor: "rgba(200,200,200, 0.5)"
 	} }, n) : null, null);
 }
-var tJe = /* @__PURE__ */ B.createElement(eJe, null), nJe = class extends B.Component {
+var eJe = /* @__PURE__ */ B.createElement($qe, null), tJe = class extends B.Component {
 	constructor(e) {
 		super(e), this.state = {
 			location: e.location,
@@ -81162,7 +81170,7 @@ var tJe = /* @__PURE__ */ B.createElement(eJe, null), nJe = class extends B.Comp
 			error: e.error
 		};
 	}
-	static contextType = Uqe;
+	static contextType = Hqe;
 	static getDerivedStateFromError(e) {
 		return { error: e };
 	}
@@ -81183,25 +81191,25 @@ var tJe = /* @__PURE__ */ B.createElement(eJe, null), nJe = class extends B.Comp
 	render() {
 		let e = this.state.error;
 		if (this.context && typeof e == "object" && e && "digest" in e && typeof e.digest == "string") {
-			let t = Xqe(e.digest);
+			let t = Yqe(e.digest);
 			t && (e = t);
 		}
 		let t = e === void 0 ? this.props.children : /* @__PURE__ */ B.createElement(T9.Provider, { value: this.props.routeContext }, /* @__PURE__ */ B.createElement(E9.Provider, { value: this.props.routeContext.isDataRoute }, /* @__PURE__ */ B.createElement(D9.Provider, { value: this.props.routeContext.matches[this.props.routeContext.matches.length - 1]?.route.id }, /* @__PURE__ */ B.createElement(O9.Provider, {
 			value: e,
 			children: this.props.component
 		}))));
-		return this.context ? /* @__PURE__ */ B.createElement(rJe, { error: e }, t) : t;
+		return this.context ? /* @__PURE__ */ B.createElement(nJe, { error: e }, t) : t;
 	}
 }, P9 = /* @__PURE__ */ new WeakMap();
-function rJe({ children: e, error: t }) {
+function nJe({ children: e, error: t }) {
 	let { basename: n, navigator: r } = B.useContext(C9);
 	if (typeof t == "object" && t && "digest" in t && typeof t.digest == "string") {
-		let e = Yqe(t.digest);
+		let e = Jqe(t.digest);
 		if (e) {
 			let i = P9.get(t);
 			if (i) throw i;
-			let a = Iqe(e.location, n), o = a.absoluteURL || a.to;
-			if (y9(e.location, o, _9(r), "allow-explicit"), Bqe(o)) throw Error("Invalid redirect location");
+			let a = Fqe(e.location, n), o = a.absoluteURL || a.to;
+			if (y9(e.location, o, _9(r), "allow-explicit"), zqe(o)) throw Error("Invalid redirect location");
 			if (h9 && !P9.get(t)) {
 				if (a.isExternal || e.reloadDocument) window.location.href = o;
 				else {
@@ -81217,11 +81225,11 @@ function rJe({ children: e, error: t }) {
 	}
 	return e;
 }
-function iJe({ routeContext: e, match: t, children: n }) {
+function rJe({ routeContext: e, match: t, children: n }) {
 	let r = B.useContext(x9);
 	return r && r.static && r.staticContext && (t.route.errorElement || t.route.ErrorBoundary) && (r.staticContext._deepestRenderedBoundaryId = t.route.id), /* @__PURE__ */ B.createElement(T9.Provider, { value: e }, /* @__PURE__ */ B.createElement(E9.Provider, { value: e.isDataRoute }, /* @__PURE__ */ B.createElement(D9.Provider, { value: t.route.id }, n)));
 }
-function aJe(e, t = [], n) {
+function iJe(e, t = [], n) {
 	let r = n?.state;
 	if (e == null) {
 		if (!r) return null;
@@ -81252,16 +81260,16 @@ function aJe(e, t = [], n) {
 		c(e, {
 			location: r.location,
 			params: r.matches?.[0]?.params ?? {},
-			pattern: Fqe(r.matches),
+			pattern: Pqe(r.matches),
 			errorInfo: t
 		});
 	} : void 0;
 	return i.reduceRight((e, n, c) => {
 		let u, d = !1, f = null, p = null;
-		r && (u = a && n.route.id ? a[n.route.id] : void 0, f = n.route.errorElement || tJe, o && (s < 0 && c === 0 ? (uJe("route-fallback", !1, "No `HydrateFallback` element provided to render during initial hydration"), d = !0, p = null) : s === c && (d = !0, p = n.route.hydrateFallbackElement || null)));
+		r && (u = a && n.route.id ? a[n.route.id] : void 0, f = n.route.errorElement || eJe, o && (s < 0 && c === 0 ? (lJe("route-fallback", !1, "No `HydrateFallback` element provided to render during initial hydration"), d = !0, p = null) : s === c && (d = !0, p = n.route.hydrateFallbackElement || null)));
 		let m = t.concat(i.slice(0, c + 1)), h = () => {
 			let t;
-			return t = u ? f : d ? p : n.route.Component ? /* @__PURE__ */ B.createElement(n.route.Component, null) : n.route.element ? n.route.element : e, /* @__PURE__ */ B.createElement(iJe, {
+			return t = u ? f : d ? p : n.route.Component ? /* @__PURE__ */ B.createElement(n.route.Component, null) : n.route.element ? n.route.element : e, /* @__PURE__ */ B.createElement(rJe, {
 				match: n,
 				routeContext: {
 					outlet: e,
@@ -81271,7 +81279,7 @@ function aJe(e, t = [], n) {
 				children: t
 			});
 		};
-		return r && (n.route.ErrorBoundary || n.route.errorElement || c === 0) ? /* @__PURE__ */ B.createElement(nJe, {
+		return r && (n.route.ErrorBoundary || n.route.errorElement || c === 0) ? /* @__PURE__ */ B.createElement(tJe, {
 			location: r.location,
 			revalidation: r.revalidation,
 			component: f,
@@ -81289,11 +81297,11 @@ function aJe(e, t = [], n) {
 function F9(e) {
 	return `${e} must be used within a data router.  See https://reactrouter.com/en/main/routers/picking-a-router.`;
 }
-function oJe(e) {
+function aJe(e) {
 	let t = B.useContext(x9);
 	return e9(t, F9(e)), t;
 }
-function sJe(e) {
+function oJe(e) {
 	let t = B.useContext(S9);
 	return e9(t, F9(e)), t;
 }
@@ -81301,12 +81309,12 @@ function I9(e) {
 	let t = B.useContext(D9);
 	return e9(t, `${e} can only be used on routes that contain a unique "id"`), t;
 }
-function cJe() {
-	let e = B.useContext(O9), t = sJe("useRouteError"), n = I9("useRouteError");
+function sJe() {
+	let e = B.useContext(O9), t = oJe("useRouteError"), n = I9("useRouteError");
 	return e === void 0 ? t.errors?.[n] : e;
 }
-function lJe() {
-	let { router: e } = oJe("useNavigate"), t = I9("useNavigate"), n = B.useRef(!1);
+function cJe() {
+	let { router: e } = aJe("useNavigate"), t = I9("useNavigate"), n = B.useRef(!1);
 	return B.useLayoutEffect(() => {
 		n.current = !0;
 	}), B.useCallback(async (r, i = {}) => {
@@ -81317,11 +81325,11 @@ function lJe() {
 	}, [e, t]);
 }
 var L9 = {};
-function uJe(e, t, n) {
+function lJe(e, t, n) {
 	!t && !L9[e] && (L9[e] = !0, t9(!1, n));
 }
-B.memo(dJe);
-function dJe({ routes: e, manifest: t, state: n, isStatic: r, onError: i }) {
+B.memo(uJe);
+function uJe({ routes: e, manifest: t, state: n, isStatic: r, onError: i }) {
 	let a = B.useContext(x9);
 	return e9(a, "You must render this element inside a <DataRouterContext.Provider> element"), N9(e, void 0, {
 		router: a.router,
@@ -81334,7 +81342,7 @@ function dJe({ routes: e, manifest: t, state: n, isStatic: r, onError: i }) {
 function R9(e) {
 	e9(!1, "A <Route> is only ever to be used as the child of <Routes> element, never rendered directly. Please wrap your <Route> in a <Routes>.");
 }
-function fJe({ basename: e = "/", children: t = null, location: n, navigationType: r = "POP", navigator: i, static: a = !1, useTransitions: o }) {
+function dJe({ basename: e = "/", children: t = null, location: n, navigationType: r = "POP", navigator: i, static: a = !1, useTransitions: o }) {
 	e9(!A9(), "You cannot render a <Router> inside another <Router>. You should never have more than one in your app.");
 	let s = e.replace(/^\/*/, "/"), c = B.useMemo(() => ({
 		basename: s,
@@ -81378,7 +81386,7 @@ function fJe({ basename: e = "/", children: t = null, location: n, navigationTyp
 	}));
 }
 function z9({ children: e, location: t }) {
-	return $qe(B9(e), t);
+	return Qqe(B9(e), t);
 }
 B.Component;
 function B9(e, t = []) {
@@ -81417,16 +81425,16 @@ function B9(e, t = []) {
 //#endregion
 //#region src/react/providers.tsx
 var V9 = null;
-function pJe() {
+function fJe() {
 	return V9?.isConnected || (V9 = document.createElement("div"), V9.className = "peach-react", V9.dataset.reactOverlays = "", document.body.append(V9)), V9;
 }
-function mJe({ children: e }) {
+function pJe({ children: e }) {
 	return /* @__PURE__ */ (0, V.jsx)(lS, {
 		client: z,
 		children: /* @__PURE__ */ (0, V.jsx)(rd, {
 			reducedMotion: "user",
 			children: /* @__PURE__ */ (0, V.jsx)(Qv, {
-				getContainer: pJe,
+				getContainer: fJe,
 				children: e
 			})
 		})
@@ -81434,16 +81442,21 @@ function mJe({ children: e }) {
 }
 //#endregion
 //#region src/react/router/router.tsx
-var H9 = (0, B.createContext)(0), U9 = (0, B.createContext)(null);
+var H9 = (0, B.createContext)(0), mJe = (0, B.createContext)(0), U9 = (0, B.createContext)(null);
 function hJe({ children: e }) {
 	let [t, n] = (0, B.useState)(() => ft.navigation);
-	return (0, B.useLayoutEffect)(() => (n(ft.navigation), ft.listen(n)), []), /* @__PURE__ */ (0, V.jsx)(H9.Provider, {
+	return (0, B.useLayoutEffect)(() => (n(ft.navigation), ft.listen((e) => {
+		(0, $f.flushSync)(() => n(e));
+	})), []), /* @__PURE__ */ (0, V.jsx)(H9.Provider, {
 		value: t.seq,
-		children: /* @__PURE__ */ (0, V.jsx)(fJe, {
-			location: t.location,
-			navigationType: t.action,
-			navigator: ft,
-			children: e
+		children: /* @__PURE__ */ (0, V.jsx)(mJe.Provider, {
+			value: t.openEpoch,
+			children: /* @__PURE__ */ (0, V.jsx)(dJe, {
+				location: t.location,
+				navigationType: t.action,
+				navigator: ft,
+				children: e
+			})
 		})
 	});
 }
@@ -81454,14 +81467,14 @@ function gJe() {
 	}, [e]), null;
 }
 function _Je({ target: e }) {
-	let t = Zqe();
+	let t = Xqe();
 	return (0, B.useLayoutEffect)(() => {
 		e.current = t;
 	}), null;
 }
 function vJe(e, t, n) {
 	let r = new URL(e, window.location.href);
-	if (!z7(r.pathname)) {
+	if (!R7(r.pathname)) {
 		t.navigate(e);
 		return;
 	}
@@ -81496,14 +81509,14 @@ var bJe = class extends B.Component {
 		return this.state.failed ? null : this.props.children;
 	}
 }, xJe = (0, B.memo)(function({ entry: e, actions: t, go: n }) {
-	return Q7(e.path) ? (0, $f.createPortal)(aqe(e.path, e.props, t, n), e.host, String(e.revision)) : null;
+	return Q7(e.path) ? (0, $f.createPortal)(iqe(e.path, e.props, t, n), e.host, String(e.revision)) : null;
 });
 function SJe({ children: e }) {
 	let t = j9(), n = ct(t.state);
 	return /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [/* @__PURE__ */ (0, V.jsxs)(z9, {
 		location: n ?? t,
 		children: [
-			rqe.map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
+			Object.keys(L7).map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
 				path: e,
 				element: null
 			}, e)),
@@ -81511,6 +81524,22 @@ function SJe({ children: e }) {
 				path: "/resource-sync",
 				element: null
 			}),
+			Object.keys(z7).map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
+				path: e,
+				element: null
+			}, e)),
+			Object.keys(H7).map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
+				path: e,
+				element: null
+			}, e)),
+			Object.keys(W7).map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
+				path: e,
+				element: null
+			}, e)),
+			Z7.map((e) => /* @__PURE__ */ (0, V.jsx)(R9, {
+				path: e,
+				element: null
+			}, e)),
 			/* @__PURE__ */ (0, V.jsx)(R9, {
 				path: "*",
 				element: e
@@ -81525,7 +81554,7 @@ function SJe({ children: e }) {
 	})] })] });
 }
 function CJe({ children: e, actions: t = null }) {
-	return /* @__PURE__ */ (0, V.jsx)(mJe, { children: /* @__PURE__ */ (0, V.jsx)(U9.Provider, {
+	return /* @__PURE__ */ (0, V.jsx)(pJe, { children: /* @__PURE__ */ (0, V.jsx)(U9.Provider, {
 		value: t,
 		children: /* @__PURE__ */ (0, V.jsxs)(hJe, { children: [
 			/* @__PURE__ */ (0, V.jsx)(gJe, {}),
@@ -82209,4 +82238,4 @@ var XJe = /*#__PURE__*/ B.forwardRef(function(e, t) {
 	});
 };
 //#endregion
-export { Ane as configureBatchDock, Nne as configureGlowPicker, Fie as configureImmerse, Kie as configureManageHeader, TJe as configureRouter, Ube as configureSettingsPanel, oxe as configureSidebar, BSe as configureStage, ZJe as mountToaster, iqe as prefetchManagedRoute, QJe as showToast };
+export { Ane as configureBatchDock, Nne as configureGlowPicker, Fie as configureImmerse, Kie as configureManageHeader, TJe as configureRouter, Ube as configureSettingsPanel, oxe as configureSidebar, BSe as configureStage, ZJe as mountToaster, rqe as prefetchManagedRoute, QJe as showToast };
