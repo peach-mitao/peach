@@ -142,7 +142,10 @@ describe('混排作品的画面框',()=>{
    await openHome(page,'small',()=>({creator:'',performers:names,performer_total:12}));
    const short=page.locator('[data-media-card][data-variant="short"]').first();
    await short.waitFor();
-   const measure=(card:Element)=>{
+   /* 命中测试只认视口里、没被吸顶栏压着的点：先把头像那一排即时滚到视口中间，等滚动落定再量。 */
+   const measure=async(card:Element)=>{
+    card.querySelector('[data-media-avatars]')!.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+    for(let frame=0;frame<2;frame+=1)await new Promise(requestAnimationFrame);
     const avatars=[...card.querySelectorAll('[data-media-avatars] > [data-media-avatar]')]
      .filter(node=>getComputedStyle(node).display!=='none');
     const covered=avatars.filter(node=>{
@@ -154,7 +157,6 @@ describe('混排作品的画面框',()=>{
    const grid=await page.locator('#grid [data-media-grid] > [data-media-card]').first().evaluate(measure);
    assert.equal(grid.shown,5);
    assert.equal(grid.covered,0,`有首字母被左邻盖住：${JSON.stringify(grid)}`);
-   await short.scrollIntoViewIfNeeded();
    const portrait=await short.evaluate(measure);
    assert.equal(portrait.shown,2);
    assert.equal(portrait.covered,0,JSON.stringify(portrait));
