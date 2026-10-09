@@ -602,10 +602,11 @@ function Empty({ data, filtered }: { data: FollowPage; filtered: boolean }) {
 /* ── 写操作 ──
  * 状态与稍后看（保存到账本）都在岛里发。成功后在缓存里换局部：条目状态、状态计数，筛着某一档
  * 而新状态不在这一档时整组移出；再在后台重读一遍，拿服务端的口径校正。回执带一颗撤销键，保存
- * 进账本的不给撤销——那是另一件事。只读端写入必然 409，那是正常状态，照实写在卡上。 */
+ * 进账本的不给撤销——那是另一件事。只读端写入必然 409，那是正常状态，照实写在卡上。资料页的在线
+ * 视图用的是同一个钩子，`view` 是它那一份只按创作者筛的视图。 */
 const STATUS_RECEIPTS: Record<string, string> = { new: '已恢复未看', seen: '已标记已看', ignored: '已忽略' };
 
-function useFollowWrite(props: FollowFeedProps) {
+export function useFollowWrite(props: Pick<FollowFeedProps, 'view' | 'revision' | 'actions'>) {
   const { view, revision, actions } = props;
   const [busy, setBusy] = useState<Map<number, string>>(() => new Map());
   const [failures, setFailures] = useState<Map<number, string>>(() => new Map());

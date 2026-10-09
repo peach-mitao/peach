@@ -126,7 +126,7 @@ function entityFrame() {
 function entityProps(name: string, hosts: EntityPageProps['hosts']): EntityPageProps {
   return {
     kind: 'performer', name, filters: {}, media: { media: 'videos', set: 0 }, jav: false, seed: '42',
-    revision: 0, feedRevision: 0, photoSize: 'small', photoLayout: 'masonry',
+    revision: 0, feedRevision: 0, photoSize: 'small', photoLayout: 'masonry', followImagesOnly: false,
     javLayout: 'small', javLayouts: [['small', '小图', 'layout-grid']], photoLayouts: [['masonry', '瀑布流', 'columns-2']],
     states: [{ k: '', label: '全部' }], peopleLayout: 'big', hosts,
     layout: { active: false, size: 'small', portrait: false, javImage: 'cover' },
@@ -143,6 +143,13 @@ function entityProps(name: string, hosts: EntityPageProps['hosts']): EntityPageP
         watchLater: vi.fn(async () => {}), resourceOperation: vi.fn(async () => {}), mixRelated: vi.fn(async () => []),
         canFlip: () => true, revealSource: vi.fn(async () => ''),
       },
+    },
+    follow: {
+      helpers: { workMark: () => '', tagLabel: (tag) => tag, wireDrag: vi.fn(), wireScroller: vi.fn(),
+        listSkeletonHtml: () => '<div data-test-follow-skeleton></div>', jobProgress: vi.fn() },
+      actions: { route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openManage: vi.fn(),
+        toggleSelection: vi.fn(), setImagesOnly: vi.fn(), setPhotoLayout: vi.fn(), canFlip: () => false, toast: vi.fn(),
+        failure: vi.fn(), checkReport: vi.fn() },
     },
     helpers: {
       portraitImg: () => '', wireDrag: vi.fn(), wireScroller: vi.fn(), wireFeedRow: vi.fn(),

@@ -216,13 +216,13 @@ function CompanyAliases({ aliases, wide }: { aliases: string[]; wide: boolean })
 }
 
 /** 关注里绑在这位名下的来源：读数是还没入库的更新，整段是站内去处（同事务所链接的钨蓝），
- *  点开去关注页只看这一位。 */
+ *  点开切到这一页的在线视图。 */
 function FollowMeta({ follow, actions }: { follow: HeroFollow; actions: EntityHeroActions }) {
   const from = follow.providers.join(' · ');
   return (
     <span data-meta-item="" data-entity-follow="" title={from ? `关注 · ${from}` : '关注'}>
       <Glyph name="rss" />
-      <a href="/follow" onClick={(event) => { event.preventDefault(); actions.openFollowAuthor(follow.key) }}>
+      <a href="?media=online" onClick={(event) => { event.preventDefault(); actions.openFollowAuthor(follow.key) }}>
         {follow.n.toLocaleString()} 项更新
       </a>
     </span>

@@ -2098,6 +2098,8 @@ async function closeFollowDetail(){
   await stageExit();
   disposeStage(false,false,{miniplayer:false});clearOverlayBackground();
   route(followDetailReturnPath||'/follow');
+  /* 从资料页在线视图点进来的：资料页一直画在下面，筛选、已加载的几页与滚动位置原样接着看，不从头重开。 */
+  if(entityPageView&&entityPageCurrent()&&!$('#index').hidden)return;
   if(location.pathname!=='/follow'){await restoreRoute();return}
   if(!followFeedLive()){writeShell({pageOpens:pageOpens+1});return}
   readFollowView();pushFollowFeed({view:followView()});
@@ -2243,7 +2245,7 @@ function openFollowTagFromIndex(tag){
    按地址打开这一页、排框架；壳经 `shellActions.entity` 铺骨架、递 props。地址栏是这一页筛选与媒体视图的
    唯一真相源，页面改筛选调 `actions.route`，壳写好地址再经 `routeEntityPage` 把新的 `filters`／`media`
    推回去（`updateManagedRoute`，不重挂）。 */
-let entityPageView='',entityPageRevision=0;
+let entityPageView='',entityPageWall=false,entityPageRevision=0;
 /* 画在 `#index` 里的那一页是资料页时就是它的登记项（路径加交进去的 props），否则 null。 */
 function entityPageEntry(){
   const entry=managedEntry($('#index'));
@@ -2270,13 +2272,15 @@ function sortKeys(current,dir,jav=javActive()){
     return {key,label,pressed,dir:pressed&&sortDirWord(key,dir)?(dir==='asc'?'asc':'desc'):'',
       ariaLabel:next?`按${label}${next.dir?sortDirWord(next.sort,next.dir):''}排序`:''}});
 }
-/* 地址栏上的媒体视图：`media=photos` 与目录图集 `set=<id>`。名册不进地址栏，是事务所页与片商页
-   进页时的默认视图，归岛记。 */
+/* 地址栏上的媒体视图：`media=photos`、`media=online`（创作者名下关注来源的更新）与目录图集 `set=<id>`。
+   名册不进地址栏，是事务所页与片商页进页时的默认视图，归岛记。 */
 const EMPTY_ENTITY_MEDIA={media:'videos',set:0};
-const parseMediaView=search=>{const params=new URLSearchParams(search),set=params.get('set')||'';
-  return {media:params.get('media')==='photos'?'photos':'videos',set:/^\d+$/.test(set)?Number(set):0}};
+const parseMediaView=search=>{const params=new URLSearchParams(search),set=params.get('set')||'',
+  media=params.get('media');
+  return {media:media==='photos'||media==='online'?media:'videos',set:media==='photos'&&/^\d+$/.test(set)?Number(set):0}};
 const entityViewSearch=(filters,view)=>{const params=new URLSearchParams(entityFilterSearch(filters));
   if(view&&view.media==='photos'){params.set('media','photos');if(view.set)params.set('set',String(view.set))}
+  else if(view&&view.media==='online')params.set('media','online');
   return params.toString()};
 /* 这一页换筛选、换视图的唯一落点：地址先写好，再把新的筛选与视图推给岛，岛按新键重取。
    这一页没挂着（从作品详情回来、深链）时返回 false，由调用方重开这一页。 */
@@ -2349,8 +2353,8 @@ function entityPageActions(kind,name){
     openEntity:(target,to,replace=false)=>{
       if(replace)route(entityPath(target,to)+location.search,true);
       else openEntity(target,to)},
-    painted:view=>{
-      const wasPhotos=photoViewActive();entityPageView=view;
+    painted:(view,wall)=>{
+      const wasPhotos=photoViewActive();entityPageView=view;entityPageWall=!!wall;
       if(photoViewActive()!==wasPhotos)syncDensityControl();
       scheduleStickySurfaces()},
     missing:()=>queueMicrotask(()=>{
@@ -2361,22 +2365,28 @@ function entityPageActions(kind,name){
     openFollowAuthor:key=>openFollowAuthorFromIndex(key),
   };
 }
+/* 资料页在线视图里那几张关注卡的动作：开详情、回执、悬停翻卡与图片墙偏好同关注页那一份；换筛选、
+   换一批和侧栏归资料页自己，多选认的是本地作品，这几样不接。 */
+const entityFollowActions={...followFeedActions,
+  route:()=>{},shuffle:()=>{},loaded:()=>{},toggleSelection:()=>{}};
 /* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。
    宿主与卡片的助手由路由树的资料页元素补上。 */
 function entityPageProps(kind,name,filters,media){
   return {kind,name,filters,media,
     jav:state.jav==='1',seed:String(state.seed||''),revision:entityPageRevision,feedRevision,
     photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,
+    followImagesOnly:!!appSettings.followImagesOnly,
     javLayout:javLayout(),javLayouts:JAV_LAYOUTS,states:VIEW_PILLS,peopleLayout:peopleIndexLayout(),
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     groupCollapse:appSettings.groupCollapse,wireDrag,skeletonHtml:entityBodySkeleton,
     canLoadMore:entityBodyCanLoadMore,
+    follow:{helpers:followFeedHelpers,actions:entityFollowActions},
     helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
 /* 资料页与关注页那面墙都由 React 异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
    资料页的视图由页面每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
 function photoViewActive(){
-  if(entityPageView==='photos'&&entityPageCurrent()&&!$('#index').hidden)return true;
+  if(entityPageWall&&entityPageCurrent()&&!$('#index').hidden)return true;
   if(location.pathname==='/follow'&&followMediaView==='images'&&!$('#stats').hidden)return true;
   return [...document.querySelectorAll('.followphotowall')].some(wall=>wall.getClientRects().length>0)}
 function syncPhotoWalls(){
@@ -2384,7 +2394,7 @@ function syncPhotoWalls(){
   document.querySelectorAll('.followphotowall').forEach(wall=>{
     wall.dataset.size=photoSize();wall.dataset.layout='fixed';
     wall.dataset.imagesOnly=String(!!appSettings.followImagesOnly)});
-  pushEntityPage({photoSize:photoSize(),photoLayout:photoLayout()});
+  pushEntityPage({photoSize:photoSize(),photoLayout:photoLayout(),followImagesOnly:!!appSettings.followImagesOnly});
   pushFollowFeed({photoSize:photoSize(),photoLayout:photoLayout(),imagesOnly:!!appSettings.followImagesOnly});
   syncDensityControl();
 }
@@ -3693,7 +3703,7 @@ const shellActions={
     loading:async(kind,name,current)=>{
       if(!entityShapes){await waitEntityShapes();if(!current())return}
       showEntityLoading(kind,name);
-      writeShell({detailReturnBarsContext:null});entityPageView='';
+      writeShell({detailReturnBarsContext:null});entityPageView='';entityPageWall=false;
       void loadEntityShapes().then(()=>{if(current())syncEntitySkeletonParts(kind,name)});
     },
     props:(kind,name,search)=>{

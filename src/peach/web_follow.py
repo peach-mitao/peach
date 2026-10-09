@@ -1315,6 +1315,24 @@ def _follow_facets(store, items, by_source, alias_map, icon_root=None) -> dict:
     }
 
 
+def _author_facets(contract, store, everything, by_source, alias_map, args, scope) -> dict:
+    """只按一位作者算的筛选项，创作者资料页的在线视图读它（ADR-0096）。
+
+    `facets` 按全库算，摆到一位创作者的资料页上就混进了别人的标签与来源。这一份只看这位
+    名下的条目，同样不随状态、来源、标签筛选收窄，选了一枚还切得回去。`scope` 是
+    `(source_id, summary)`：管理页那种只要计数的请求、不是正好一位作者的请求都不算。
+    """
+    source_id, summary = scope
+    authors = _csv_values(args.get("author"))
+    if summary or len(authors) != 1:
+        return {}
+    matches = _follow_matcher({"author": authors[0]}, by_source, alias_map)
+    return contract.cached_until_changed(
+        f"follow-author-facets:{source_id}:{authors[0]}",
+        lambda: _follow_facets(store, tuple(item for item in everything if matches(item)),
+                               by_source, alias_map))
+
+
 def _follow_tag_index(store, items) -> list[dict]:
     """按发布组汇总全部已分类来源标签，供在线标签索引使用。"""
     rows: dict[str, dict] = {}
@@ -1784,6 +1802,8 @@ def q_follow(contract, args) -> dict:
             f"follow-facets:{source_id}",
             lambda: _follow_facets(store, everything, by_source, alias_map, icon_root),
             path_version(icon_root))
+        author_facets = _author_facets(contract, store, everything, by_source, alias_map, args,
+                                       (source_id, summary))
         # counts 与列表同源，两边都从 `counted` 出发：筛选怎么变，数字就怎么变，
         # 扣减逻辑也只写一份。写成一句全库 SQL 再逐条减掉被隐藏的 rule34video 和
         # 无资源的 f95zone 的话，同一套排除规则要维护两份，而且它不看作者、来源和
@@ -1806,6 +1826,7 @@ def q_follow(contract, args) -> dict:
         "dir": direction,
         "seed": seed,
         "facets": facets,
+        "author_facets": author_facets,
         # counts 是全库口径，groups 只是这一页——两个数并排显示过，看起来像自相矛盾。
         "offset": offset,
         "limit": limit,

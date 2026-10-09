@@ -851,6 +851,66 @@ class AvatarPickerRouteTests(unittest.TestCase):
         self.assertEqual(out["matched_names"], ["葵つかさ"])
         self.assertIn(LIBRARY_REF, [one["ref"] for one in out["choices"]])
 
+    def _online_creator(self):
+        from peach.follow_sources import FollowCandidate, SourceFetch
+        from peach.follow_store import FollowStore
+        with self.app.state.database.write_transaction() as connection:
+            connection.execute(
+                "INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at)"
+                " VALUES(8892,'creator','Online Author','online author','t','t')")
+            connection.execute(
+                "INSERT INTO entity_link(entity_id,link_kind,label,url,created_at,updated_at)"
+                " VALUES(8892,'social','X','https://x.com/OnlineAuthor','t','t')")
+            store = FollowStore(lambda: connection)
+            source = store.register(provider="fanbox", ref="online", label="Online Author",
+                                    url="https://online.fanbox.cc/", entity_id=8892)
+            store.record(source, SourceFetch(provider="fanbox", ref="online", request_url="https://online.fanbox.cc/",
+                semantics="work", candidates=(FollowCandidate(provider="fanbox", external_id="post1", title="Online work",
+                    thumb_url="https://example.com/cover.jpg", extra={"media_kind": "image", "media_items": [
+                        {"id": "one", "media_kind": "image", "url": "https://example.com/full.jpg"},
+                        {"id": "two", "media_kind": "image", "url": "https://example.com/hidden.jpg"}]}),)))
+            item_id = store.items(source_id=source)[0].id
+            connection.execute("UPDATE follow_item SET hidden_media_json='[\"two\"]' WHERE id=?", (item_id,))
+        return item_id
+
+    def test_online_choices_include_social_cover_and_visible_content_with_private_refs(self):
+        item = self._online_creator()
+        listing = self.client.get('/api/avatar-choices?kind=creator&id=8892&t=secret').json()
+        online = next(choice for choice in listing['choices'] if choice['source'] == 'online')
+        self.assertEqual(online['bases'], [f'follow:{item}:cover', f'follow:{item}:image0'])
+        self.assertTrue(any(choice['source'] == 'social' for choice in listing['choices']))
+        self.assertNotIn('https://example.com', json.dumps(listing))
+
+    def test_single_online_image_lists_its_original_content_alongside_the_cover(self):
+        item = self._online_creator()
+        with self.app.state.database.write_transaction() as connection:
+            connection.execute("UPDATE follow_item SET metadata_json='{\"media_kind\":\"image\"}',"
+                               " media_url='https://example.com/full.jpg',hidden_media_json='[]' WHERE id=?", (item,))
+        listing = self.client.get('/api/avatar-choices?kind=creator&id=8892&t=secret').json()
+        online = next(choice for choice in listing['choices'] if choice['source'] == 'online')
+        self.assertEqual(online['bases'], [f'follow:{item}:cover', f'follow:{item}:image'])
+
+    def test_online_cover_is_cached_and_crop_installs_only_on_the_creator(self):
+        item = self._online_creator()
+        calls = []
+        self.app.state.http_transport = transport_of(self.picture, calls=calls)
+        ref = f'follow:{item}:cover'
+        with mock.patch('peach.avatar_picker.allowed_source', return_value=True):
+            preview = self.client.get('/avatar-choice', params={'kind': 'creator', 'id': 8892, 'ref': ref, 't': 'secret'})
+            self.assertEqual(preview.status_code, 200)
+            framed = self.client.post('/api/avatar-frame?t=secret', json={'kind': 'creator', 'id': 8892, 'ref': ref})
+            self.assertEqual(framed.status_code, 200)
+            self.assertEqual(framed.json()['bases'], [ref, f'follow:{item}:image0'])
+            picked = self.client.post('/api/avatar-pick?t=secret', json={'kind': 'creator', 'id': 8892,
+                'ref': ref, 'crop': {'x0': 0, 'y0': 0, 'x1': 40, 'y1': 40}})
+        self.assertEqual(picked.status_code, 200)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue((self.avatars / 'creator-8892.img').exists())
+        for entity_id, forbidden in ((7792, ref), (8892, f'follow:{item}:image1')):
+            response = self.client.get('/avatar-choice', params={'kind': 'creator', 'id': entity_id,
+                                                               'ref': forbidden, 't': 'secret'})
+            self.assertEqual(response.status_code, 404)
+
     def test_a_preview_serves_the_picture_and_a_bad_reference_404s(self):
         response = self.client.get(
             "/avatar-choice", params={"kind": "performer", "id": 7792,

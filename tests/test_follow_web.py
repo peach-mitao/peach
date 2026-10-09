@@ -1207,6 +1207,20 @@ class FollowContractTests(unittest.TestCase):
         self.assertEqual(dict(narrowed["facets"]["tags"]), {"anal": 1, "pov": 1},
                          "标签选项也必须留着，否则换不了标签")
 
+    def test_author_facets_list_only_that_author_and_ignore_other_filters(self):
+        """资料页在线视图的筛选项只数这一位：别人的标签不混进来，按了标签也切得回去。"""
+        self._seed(ref="a", label="Author A", candidates=(self._tagged("1", ["anal"]),))
+        self._seed(ref="b", label="Author B", candidates=(self._tagged("2", ["pov"]),
+                                                          self._tagged("3", ["pov", "solo"])))
+        whole = self._get()
+        self.assertEqual(whole["author_facets"], {}, "没按作者筛时不算这一份")
+        key = next(source["author_key"] for source in whole["sources"] if source["ref"] == "b")
+        own = self._get(author=key)["author_facets"]
+        self.assertEqual(dict(own["tags"]), {"pov": 2, "solo": 1})
+        self.assertEqual(own["authors"], [key])
+        self.assertEqual(self._get(author=key, tag="solo", status="new")["author_facets"]["tags"],
+                         own["tags"], "按了标签或状态之后，别的标签不能从筛选条上消失")
+
     def test_online_tag_vocabulary_matches_the_follow_filter_bar(self):
         """标签页列出的在线标签必须和关注页筛选条上的完全一致。
 

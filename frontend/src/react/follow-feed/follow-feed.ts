@@ -168,6 +168,8 @@ export interface FollowPage {
   sources: FollowSource[];
   author_aliases?: unknown[];
   facets: FollowFacets;
+  /** 正好按一位作者筛时，只数这一位名下的那一份筛选项（资料页在线视图读它）；否则是空的。 */
+  author_facets?: FollowFacets;
   offset: number;
   limit?: number;
   has_more: boolean;
@@ -345,6 +347,12 @@ export function groupMediaKinds(group: FollowGroup): Set<string> {
 export function itemForMedia(group: FollowGroup, view: FollowMedia): FollowItem {
   const wanted = view === 'images' ? 'image' : 'video';
   return collectionItemsNewest(group).find((item) => itemMediaKinds(item).has(wanted)) || group.primary;
+}
+
+/** 资料页在线视图取数用的那一份：只按创作者筛，状态全部、按更新时间从新到旧。 */
+export function entityFollowView(author: string): FollowView {
+  return { status: '', media: 'videos', author, provider: '', work: '', tags: [], durMin: 0, durMax: 0,
+    sort: 'new', dir: 'desc', seed: 0 };
 }
 
 /* F95 的「8 条动态」可能只有一个网盘页，也可能一条实际视频都没有。Mix 是播放语义，只能由已解析、

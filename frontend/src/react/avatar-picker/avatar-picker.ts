@@ -16,7 +16,7 @@ const AVATAR_CHOICE_IMAGE_URL = '/avatar-choice';
 
 export interface AvatarChoice {
   ref: string;
-  source: 'gfriends' | 'history' | 'asset' | 'code' | 'url' | 'upload';
+  source: 'gfriends' | 'history' | 'asset' | 'code' | 'url' | 'upload' | 'social' | 'online';
   label: string;
   width: number;
   height: number;
@@ -143,7 +143,7 @@ export function pickerNote(name: string, data: AvatarChoices | undefined): strin
   }
   return data.choices.length
     ? `${name}：换上的那张留在本机，随时能换回来。`
-    : `${name}：图库里没有这个名字，用下面两种方式换。`;
+    : `${name}：还没有候选图片，可输入番号、图片地址或从本机选择。`;
 }
 
 /** 超过两天按天数说：「124 小时」要人自己去除。 */
@@ -169,11 +169,15 @@ export const cropNote = (choice: AvatarChoice): string =>
 
 const SOURCE_LABELS: Record<string, string> = {
   gfriends: '图库', history: '用过的', asset: '作品画面', code: '番号封面',
-  url: '地址', upload: '本机',
+  url: '地址', upload: '本机', social: '社媒头像', online: '在线作品',
 };
 
 /** 底图那一排每一格的名字：封面一格，九宫格九格按位置数。 */
 export function baseLabel(ref: string): string {
+  if (ref.startsWith('follow:')) {
+    const what = ref.split(':')[2];
+    return what === 'cover' ? '作品封面' : `内容图片 ${Number(what.replace('image', '') || 0) + 1}`;
+  }
   if (ref.startsWith('cover:')) return '封面';
   const what = ref.split(':')[2] || '';
   if (what === 'cover') return '封面';

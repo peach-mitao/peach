@@ -116,7 +116,7 @@ export interface EntityHeroActions {
   feedAction(id: number, action: string): Promise<void>;
   /** 换完头像：重进这一页，头像索引在服务端已经换过。 */
   avatarPicked(): void;
-  /** 去关注页，只看这一位名下来源的更新。 */
+  /** 看这一位名下来源的更新：本人的切到这一页的在线视图，别的作者键去关注页只看那一位。 */
   openFollowAuthor(key: string): void;
   /** 「是同一个人」：把同名的那组关注作者绑到这位名下。失败时壳已发过失败回执。 */
   confirmFollowAuthor(key: string, name: string): Promise<void>;
