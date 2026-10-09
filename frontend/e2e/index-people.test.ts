@@ -1,7 +1,25 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import type { Browser } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
 import { launch, requiredEnv, settle, visit, VIEWPORTS } from './harness.ts';
+
+/** 标题行里搜索框、放大镜与版式开关的竖向落位和尺寸，取整到像素；图标连同线宽一起比。 */
+const headControls = (page: Page, selectors: { search: string; icon: string; layout: string }) =>
+  page.evaluate((selectors) => {
+    const box = (selector: string) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const { y, width, height } = node.getBoundingClientRect();
+      return { y: Math.round(y), width: Math.round(width), height: Math.round(height) };
+    };
+    const icon = document.querySelector(selectors.icon);
+    const search = box(selectors.search);
+    return {
+      search: search && { y: search.y, height: search.height },
+      icon: icon && { ...box(selectors.icon)!, stroke: getComputedStyle(icon).strokeWidth },
+      layout: box(selectors.layout),
+    };
+  }, selectors);
 
 describe('本地与在线艺人共用名册布局', () => {
   let browser: Browser;
@@ -28,9 +46,17 @@ describe('本地与在线艺人共用名册布局', () => {
           assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);
           assert.deepEqual(await page.locator('#index [role="tab"][aria-selected="true"]').allTextContents(), [selected]);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+          const waiting = await headControls(page, {
+            search: '#index .geist-search input', icon: '#index .geist-search-prefix svg', layout: '#index .ihead .iconswitch' });
           release();
           await page.locator('#index [data-index-page]').waitFor();
           assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);
+          const ready = await headControls(page, {
+            search: '#index [data-index-search] [role="presentation"]', icon: '#index [data-index-search] svg',
+            layout: '#index [data-index-layout]' });
+          // 标题行的搜索框与版式开关接管时原地换下：框高、竖向落位、图标与开关宽度都不跳。
+          // 横向位置跟着计数读数的字宽走，骨架那条占位条量不出真数字，不比。
+          assert.deepEqual(waiting, ready, '骨架与接管后的标题行控件几何不同');
         } finally { release(); await context.close() }
       });
     }
