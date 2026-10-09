@@ -91,7 +91,7 @@ function he(e, t) {
 }
 function ge(e, t) {
 	e.querySelectorAll("img[data-jav-image]").forEach((e) => {
-		let n = e.dataset.javCover || "", r = e.dataset.javThumb || "", i = !!(n && (fe(t) === "cover" || !r)), a = i ? n : r;
+		let n = e.dataset.javCover || "", r = e.dataset.javThumb || "", i = !(!n || fe(t) !== "cover" && r), a = i ? n : r;
 		e.classList.toggle("cover", i), e.classList.toggle("whole", i && e.dataset.javImageLayout !== "big"), e.classList.toggle("front", i && e.dataset.javImageLayout === "big"), e.classList.remove("panel"), e.removeAttribute("style"), e.closest(".pic,[data-media-pic]")?.style.removeProperty("--cover-blur"), a && e.getAttribute("src") !== a && (e.src = a);
 	});
 }
@@ -990,11 +990,7 @@ function Ge(e, t) {
 function Ke(e, t) {
 	if (!e) return;
 	let n = !t.on || C(t.preset);
-	if (e.toggleAttribute("data-glow-native", n), e.style.setProperty("--glow-drift-scale", t.speed ? (100 / t.speed).toFixed(3) : "1"), e.style.setProperty("--glow-drift-play", t.speed ? "running" : "paused"), n) {
-		e.style.removeProperty("--glass-tint-a"), e.style.removeProperty("--glass-tint-b");
-		return;
-	}
-	e.style.setProperty("--glass-tint-a", t.spot1.color), e.style.setProperty("--glass-tint-b", t.spot2.color);
+	e.toggleAttribute("data-glow-native", n), e.style.setProperty("--glow-drift-scale", t.speed ? (100 / t.speed).toFixed(3) : "1"), e.style.setProperty("--glow-drift-play", t.speed ? "running" : "paused"), n ? (e.style.removeProperty("--glass-tint-a"), e.style.removeProperty("--glass-tint-b")) : (e.style.setProperty("--glass-tint-a", t.spot1.color), e.style.setProperty("--glass-tint-b", t.spot2.color));
 }
 //#endregion
 //#region src/appearance/settings.ts
@@ -1075,7 +1071,7 @@ function tt(e, t, n = D()) {
 	let o = e && e.searchHistoryLimit;
 	Number.isInteger(o) && o >= 0 && o <= 50 ? o !== r.searchHistoryLimit && (r.searchHistoryLimit = x(o, 0, 50, 10), n.save(), t("searchHistoryLimit")) : e && e.searchHistoryLimit === null && r.searchHistoryLimit !== Qe.searchHistoryLimit && nt(n);
 	let s = Array.isArray(e && e.sidebarOrder) ? e.sidebarOrder : null;
-	!s || !s.length || s.join(",") === r.sidebarOrder.join(",") || (r.sidebarOrder = s, n.save());
+	s && s.length && s.join(",") !== r.sidebarOrder.join(",") && (r.sidebarOrder = s, n.save());
 }
 function nt(t = D()) {
 	return e("/api/settings", {
@@ -1399,7 +1395,7 @@ function yn(e, t, n) {
 	let r = !1, i;
 	return Object.defineProperty(e, "signal", {
 		enumerable: !0,
-		get: () => (i ??= t(), r ? i : (r = !0, i.aborted ? n() : i.addEventListener("abort", n, { once: !0 }), i))
+		get: () => (i ??= t(), r || (r = !0, i.aborted ? n() : i.addEventListener("abort", n, { once: !0 })), i)
 	}), e;
 }
 //#endregion
@@ -1680,13 +1676,9 @@ function zn(e) {
 		Promise.resolve(r).then(m).catch((r) => {
 			if (c()) return;
 			let i = e.retry ?? (xn() ? 0 : 3), a = e.retryDelay ?? Fn, o = typeof a == "function" ? a(n, r) : a, s = i === !0 || typeof i == "number" && n < i || typeof i == "function" && i(n, r);
-			if (t || !s) {
-				h(r);
-				return;
-			}
-			n++, e.onFail?.(n, r), dn(o).then(() => f() ? void 0 : g()).then(() => {
+			t || !s ? h(r) : (n++, e.onFail?.(n, r), dn(o).then(() => f() ? void 0 : g()).then(() => {
 				t ? h(r) : _();
-			});
+			}));
 		});
 	};
 	return {
@@ -2192,7 +2184,7 @@ var Xn = class extends P {
 		return j(this.options.refetchInterval, this.#t) ?? !1;
 	}
 	#v(e) {
-		this.#x(), this.#f = e, !(this.#f === 0 || !this.#h(this.#f)) && (this.#d = k.setInterval(() => {
+		this.#x(), this.#f = e, this.#f !== 0 && this.#h(this.#f) && (this.#d = k.setInterval(() => {
 			(this.options.refetchIntervalInBackground || Cn.isFocused()) && this.#m();
 		}, this.#f));
 	}
@@ -2766,7 +2758,7 @@ var lr = class extends P {
 				let n = this.#t[t];
 				return !n || !sn(e, n);
 			});
-			!o && !s || (o && (this.#l = t, this.#i = n), this.#t = r, this.hasListeners() && (o && (cr(e, n).forEach((e) => {
+			(o || s) && (o && (this.#l = t, this.#i = n), this.#t = r, this.hasListeners() && (o && (cr(e, n).forEach((e) => {
 				e.destroy();
 			}), cr(n, e).forEach((e) => {
 				e.subscribe((t) => {
@@ -3752,7 +3744,7 @@ function Oi(e) {
 }
 function ki(e) {
 	let t = Zr(e);
-	!t || !Ur(window.location.pathname) || wi(window.location.href, {
+	t && Ur(window.location.pathname) && wi(window.location.href, {
 		replace: !0,
 		state: t
 	});
@@ -3798,7 +3790,7 @@ function la() {
 		clearTimeout(a), t.matches(":popover-open") && t.hidePopover(), t.hidden = !0, n && (n.hasAttribute("title") || (n.title = r), i === null ? n.removeAttribute("aria-describedby") : n.setAttribute("aria-describedby", i)), n = null;
 	}, s = (e, s) => {
 		let c = e instanceof Element ? e.closest("[title]") : null;
-		!c || c === n || c.closest(".vjs-control") || !c.title.trim() || (o(), n = c, r = c.title, i = c.getAttribute("aria-describedby"), c.removeAttribute("title"), a = setTimeout(() => {
+		c && c !== n && !c.closest(".vjs-control") && c.title.trim() && (o(), n = c, r = c.title, i = c.getAttribute("aria-describedby"), c.removeAttribute("title"), a = setTimeout(() => {
 			if (n !== c || !c.isConnected) return;
 			(c.closest("dialog[open]") ?? document.body).append(t), t.textContent = r, t.hidden = !1, t.showPopover();
 			let e = c.getBoundingClientRect(), a = t.getBoundingClientRect();
@@ -3840,11 +3832,7 @@ function da(e) {
 			attributeFilter: ["aria-selected", "aria-pressed"]
 		});
 		let o = new ResizeObserver(() => {
-			if (!e.isConnected) {
-				o.disconnect(), a.disconnect();
-				return;
-			}
-			r();
+			e.isConnected ? r() : (o.disconnect(), a.disconnect());
 		});
 		o.observe(e);
 	});
@@ -3876,11 +3864,7 @@ function pa(e) {
 			attributeFilter: ["aria-selected"]
 		});
 		let o = new ResizeObserver(() => {
-			if (!e.isConnected) {
-				o.disconnect(), a.disconnect();
-				return;
-			}
-			i();
+			e.isConnected ? i() : (o.disconnect(), a.disconnect());
 		});
 		o.observe(e), i(), requestAnimationFrame(() => e.classList.add("board-segments-ready"));
 	});
@@ -4392,7 +4376,7 @@ function Po(e) {
 	}
 	t.classList.replace("imgwait", "ui-imgdone");
 	let n, r = (e) => {
-		e && (e.target !== t || e.pseudoElement !== "::after") || (t.removeEventListener("transitionend", r), clearTimeout(n), t.classList.remove("ui-imgdone"));
+		(!e || e.target === t && e.pseudoElement === "::after") && (t.removeEventListener("transitionend", r), clearTimeout(n), t.classList.remove("ui-imgdone"));
 	};
 	t.addEventListener("transitionend", r), n = setTimeout(r, 1e3);
 }
@@ -4446,7 +4430,7 @@ function Ho(e) {
 }
 var Uo = () => !!window.__scrolling;
 function Wo(e = document, t = null) {
-	!e || !e.querySelectorAll || (e.querySelectorAll(Vo).forEach((e) => {
+	e && e.querySelectorAll && (e.querySelectorAll(Vo).forEach((e) => {
 		e !== t && e._stopHover && e._stopHover();
 	}), e.querySelectorAll("video.hv").forEach((e) => {
 		e.closest(Vo) !== t && (e._hop && clearInterval(e._hop), e.pause(), e.removeAttribute("src"), e.load(), e.remove());

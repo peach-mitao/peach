@@ -123,6 +123,90 @@ class ReferenceUpdateTests(unittest.TestCase):
             problems = self.checker.validate_registry(root, registry)
             self.assertTrue(any("快照校验失败" in problem for problem in problems))
 
+    def _git_source(self, root: Path, **extra) -> dict:
+        (root / "snapshot.md").write_text("same\n", encoding="utf-8")
+        return {
+            "id": "example",
+            "url": "https://example.invalid/reference.md",
+            "snapshot": "snapshot.md",
+            "sha256": self.checker.sha256_bytes(b"same\n"),
+            "git": {"repository": "https://example.invalid/r.git", "ref": "refs/heads/main",
+                    "revision": "a" * 40},
+            **extra,
+        }
+
+    def test_a_moved_revision_with_identical_content_is_not_an_update(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source = self._git_source(Path(temp))
+            result = self.checker.inspect_source(
+                Path(temp), source, fetcher=lambda _url: b"same\n",
+                revision_resolver=lambda _source: "b" * 40,
+            )
+            self.assertFalse(result["changed"])
+            self.assertTrue(result["revision_moved"])
+
+    def test_a_volatile_page_is_judged_by_its_revision_alone(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source = self._git_source(Path(temp), volatile=True)
+            same_revision = self.checker.inspect_source(
+                Path(temp), source, fetcher=lambda _url: b"session token 123\n",
+                revision_resolver=lambda _source: "a" * 40,
+            )
+            moved = self.checker.inspect_source(
+                Path(temp), source, fetcher=lambda _url: b"session token 456\n",
+                revision_resolver=lambda _source: "b" * 40,
+            )
+            self.assertFalse(same_revision["changed"])
+            self.assertTrue(moved["changed"])
+
+    def test_every_source_has_a_cadence_and_volatile_pages_without_git_are_manual(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = self._git_source(root)
+            del source["git"]
+            registry = {"sources": [dict(source), dict(source, id="volatile", volatile=True,
+                                                         cadence="weekly")]}
+            problems = self.checker.validate_registry(root, registry)
+            self.assertTrue(any("example 的 cadence" in problem for problem in problems))
+            self.assertTrue(any("volatile 每次取回都不同" in problem for problem in problems))
+
+    def test_manual_sources_only_run_when_named(self):
+        registry = {"sources": [{"id": "weekly", "cadence": "weekly"},
+                                {"id": "page", "cadence": "manual"}]}
+        default = self.checker.selected_sources(registry, None)
+        named = self.checker.selected_sources(registry, "page")
+        weekly = self.checker.selected_sources(registry, None, "weekly")
+        self.assertEqual([source["id"] for source in default], ["weekly"])
+        self.assertEqual([source["id"] for source in named], ["page"])
+        self.assertEqual([source["id"] for source in weekly], ["weekly"])
+
+    def test_a_pinned_dependency_reports_when_upstream_moves_past_the_pin(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pinned = "c" * 40
+            (root / "pyproject.toml").write_text(
+                f'dependencies = ["dep @ git+https://github.com/o/dep@{pinned}"]\n',
+                encoding="utf-8",
+            )
+            pin = {"id": "dep", "cadence": "weekly", "manifest": "pyproject.toml",
+                   "repository": "https://github.com/o/dep.git", "ref": "refs/heads/main"}
+            current = self.checker.inspect_pin(root, pin, revision_resolver=lambda _pin: pinned)
+            behind = self.checker.inspect_pin(root, pin, revision_resolver=lambda _pin: "d" * 40)
+            self.assertFalse(current["changed"])
+            self.assertTrue(behind["changed"])
+            self.assertEqual(behind["compare"],
+                             f"https://github.com/o/dep/compare/{pinned}...{'d' * 40}")
+
+    def test_a_pin_must_name_exactly_one_sha_in_its_manifest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "pyproject.toml").write_text('dependencies = ["dep==1.0"]\n', encoding="utf-8")
+            registry = {"pins": [{"id": "dep", "cadence": "weekly", "manifest": "pyproject.toml",
+                                  "repository": "https://github.com/o/dep.git",
+                                  "ref": "refs/heads/main"}]}
+            problems = self.checker.validate_registry(root, registry)
+            self.assertTrue(any("恰好钉住一个 sha" in problem for problem in problems))
+
 
 if __name__ == "__main__":
     unittest.main()

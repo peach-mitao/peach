@@ -1,29 +1,46 @@
 {
   "schema": 1,
   "policy": "上游 Markdown 只作为待审证据；先比较锁定快照，再人工判断是否影响 Peach，禁止自动改代码。",
+  "pins": [
+    {
+      "id": "amane-bridge",
+      "cadence": "weekly",
+      "manifest": "tools/amane-bridge/pyproject.toml",
+      "repository": "https://github.com/sqzw-x/amane.git",
+      "ref": "refs/heads/main",
+      "role": "社区站与片商官网刮削的运行依赖（ADR-0043、ADR-0048）；Dependabot 推不动 git sha 钉，升级按清单顶部注释人工读 diff。"
+    }
+  ],
   "sources": [
     {
       "id": "fluid-springs",
+      "cadence": "weekly",
       "name": "Fluid Functionalism 短程弹簧参数",
       "url": "https://www.fluidfunctionalism.com/r/springs.json",
       "snapshot": "docs/reference-snapshots/upstream/fluid-springs.json",
-      "checked_on": "2026-09-29",
-      "sha256": "d31fea32ef50e0fd2d30d86186f04c9d4eaa28c3501d958db45f5e2ad1199c05",
+      "checked_on": "2026-10-08",
+      "sha256": "e8d4e6b02a35aff9d6090439fd321866716df190b84ef9b4f1e831e1acd21416",
       "role": "普通分段控件与短菜单的无回弹短程参数参考；保留 Peach 主题与无障碍行为。",
-      "consumers": ["frontend/src/react/components/use-moving-surface.ts"]
+      "consumers": [
+        "frontend/src/react/components/use-moving-surface.ts"
+      ]
     },
     {
       "id": "fluid-tabs",
+      "cadence": "weekly",
       "name": "Fluid Functionalism 分段控件行为",
       "url": "https://www.fluidfunctionalism.com/r/tabs.json",
       "snapshot": "docs/reference-snapshots/upstream/fluid-tabs.json",
-      "checked_on": "2026-09-29",
-      "sha256": "b78dda3b5a3bf306ff36271a20e8d6b24496e373e8c6ca419cfddaad1fa1b49c",
+      "checked_on": "2026-10-08",
+      "sha256": "401b81b5ebce2e438ebda32e19af9d420edd3340ad4261e3a8b0b7a1da6ee884",
       "role": "独立选中底板与即时状态更新参考；不复制组件源码、字重变化与悬停双底板。",
-      "consumers": ["frontend/src/react/components/segmented.tsx"]
+      "consumers": [
+        "frontend/src/react/components/segmented.tsx"
+      ]
     },
     {
       "id": "vercel-report-design",
+      "cadence": "monthly",
       "name": "Vercel Design Report Reference",
       "url": "https://vercel.com/design.md",
       "snapshot": "docs/reference-snapshots/vercel-report-design.md",
@@ -38,6 +55,7 @@
     },
     {
       "id": "vercel-geist-table-ranking",
+      "cadence": "monthly",
       "name": "Vercel Geist Table 与首页排行布局证据",
       "url": "https://vercel.com/geist/table",
       "snapshot": "docs/reference-snapshots/upstream/vercel-geist-table.md",
@@ -52,6 +70,7 @@
     },
     {
       "id": "vercel-web-interface-guidelines",
+      "cadence": "monthly",
       "name": "Vercel Web Interface Guidelines",
       "url": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md",
       "snapshot": "docs/reference-snapshots/vercel-web-interface-guidelines.md",
@@ -72,6 +91,7 @@
     },
     {
       "id": "fiu758-studio-logo-discovery",
+      "cadence": "monthly",
       "name": "AV研究所厂牌分类与 Logo 发现证据",
       "url": "https://fiu758.com/?cat=37",
       "snapshot": "docs/reference-snapshots/fiu758-studio-logo-discovery.md",
@@ -85,6 +105,7 @@
     },
     {
       "id": "rule34-follow-tags-and-collections",
+      "cadence": "monthly",
       "name": "Rule34 标签类型与 Rule34Video 合集证据",
       "url": "https://rule34.xxx/css/desktop.css?46",
       "snapshot": "docs/reference-snapshots/rule34-follow-tags-and-collections.md",
@@ -102,6 +123,7 @@
     },
     {
       "id": "f95-masked-gofile-media",
+      "cadence": "monthly",
       "name": "F95 掩码链接与 Gofile 文件列表证据",
       "url": "https://f95zone.to/assets/js/masked.js",
       "snapshot": "docs/reference-snapshots/f95-masked-gofile-media.md",
@@ -117,6 +139,8 @@
     },
     {
       "id": "follow-fanbox-gofile-paheal",
+      "cadence": "manual",
+      "volatile": true,
       "name": "FANBOX 多媒体、Gofile API 与 Paheal 订阅证据",
       "url": "https://lazyprocrast.fanbox.cc/posts/12228983",
       "snapshot": "docs/reference-snapshots/follow-fanbox-gofile-paheal.md",
@@ -136,6 +160,8 @@
     },
     {
       "id": "fanbox-browser-transport",
+      "cadence": "monthly",
+      "volatile": true,
       "name": "FANBOX 浏览器传输证据",
       "url": "https://github.com/Nandaka/PixivUtil2/blob/fc0f9adf44e590dde9242b3755b53528f159720a/common/PixivBrowserFactory.py",
       "snapshot": "docs/reference-snapshots/fanbox-browser-transport.md",
@@ -157,6 +183,8 @@
     },
     {
       "id": "beeg-profile-layout",
+      "cadence": "manual",
+      "volatile": true,
       "name": "Beeg SweetieFox 资料页布局与媒体切换证据",
       "url": "https://beeg.com/SweetieFox",
       "snapshot": "docs/reference-snapshots/beeg-profile-layout.md",
@@ -173,6 +201,7 @@
     },
     {
       "id": "vercel-geist-fieldset-scroller-empty-state",
+      "cadence": "monthly",
       "name": "Vercel Geist Fieldset、Scroller 与 Empty State",
       "url": "https://vercel.com/geist/fieldset",
       "snapshot": "docs/reference-snapshots/upstream/vercel-geist-fieldset.md",
@@ -188,6 +217,7 @@
     },
     {
       "id": "vercel-geist-command-search-loading",
+      "cadence": "monthly",
       "name": "Vercel Geist Command Menu、Search Input、Spinner 与 Loading Dots",
       "url": "https://vercel.com/geist/command-menu",
       "snapshot": "docs/reference-snapshots/upstream/vercel-geist-command-menu.md",
@@ -204,6 +234,8 @@
     },
     {
       "id": "vercel-notifications-note",
+      "cadence": "manual",
+      "volatile": true,
       "name": "Vercel Notifications 中性说明 Note",
       "url": "https://vercel.com/<account>/~/settings/notifications",
       "snapshot": "docs/reference-snapshots/vercel-notifications-note.md",
@@ -218,6 +250,8 @@
     },
     {
       "id": "youtube-player-controls-user-screenshot",
+      "cadence": "manual",
+      "volatile": true,
       "name": "YouTube 播放器控件、设置、影院与氛围模式证据",
       "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
       "snapshot": "docs/reference-snapshots/youtube-player-controls-user-screenshot.md",
@@ -234,6 +268,8 @@
     },
     {
       "id": "openaver-related-ranking",
+      "cadence": "monthly",
+      "volatile": true,
       "name": "OpenAver 相似探索算法证据",
       "url": "https://github.com/slive777/OpenAver",
       "snapshot": "docs/reference-snapshots/openaver-related-ranking.md",
@@ -254,6 +290,8 @@
     },
     {
       "id": "youtube-stats-buffer-20260829",
+      "cadence": "manual",
+      "volatile": true,
       "name": "YouTube Stats for Nerds Buffer Graph",
       "url": "https://www.youtube.com/",
       "snapshot": "docs/reference-snapshots/youtube-stats-buffer-measured.md",
@@ -268,6 +306,7 @@
     },
     {
       "id": "vercel-geist-tabs-secondary",
+      "cadence": "monthly",
       "name": "Vercel Geist Tabs 规范与 secondary 变体",
       "url": "https://vercel.com/geist/tabs",
       "snapshot": "docs/reference-snapshots/upstream/vercel-geist-tabs.md",
@@ -282,6 +321,7 @@
     },
     {
       "id": "vercel-geist-switch-segmented",
+      "cadence": "monthly",
       "name": "Vercel Geist Switch 分段器取舍",
       "url": "https://vercel.com/geist/switch",
       "snapshot": "docs/reference-snapshots/upstream/vercel-geist-switch.md",
@@ -296,6 +336,7 @@
     },
     {
       "id": "readme-immich",
+      "cadence": "quarterly",
       "name": "immich README",
       "url": "https://raw.githubusercontent.com/immich-app/immich/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-immich.md",
@@ -309,6 +350,7 @@
     },
     {
       "id": "readme-bruno",
+      "cadence": "quarterly",
       "name": "bruno README",
       "url": "https://raw.githubusercontent.com/usebruno/bruno/main/readme.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-bruno.md",
@@ -322,6 +364,7 @@
     },
     {
       "id": "readme-hoppscotch",
+      "cadence": "quarterly",
       "name": "hoppscotch README",
       "url": "https://raw.githubusercontent.com/hoppscotch/hoppscotch/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-hoppscotch.md",
@@ -335,11 +378,12 @@
     },
     {
       "id": "boardui-input",
+      "cadence": "weekly",
       "name": "BoardUI Input 组件源",
       "url": "https://www.boardui.com/r/input.json",
       "snapshot": "docs/reference-snapshots/upstream/boardui-input.json",
-      "checked_on": "2026-09-09",
-      "sha256": "ac1e66c9ed15f9db2750dd528bc894c856ac84e79f72ff4acb96f14b1ab9c249",
+      "checked_on": "2026-10-08",
+      "sha256": "13ceeea958db33a449ac8114819a5956072410655ec7e669c96113ff275bcc1a",
       "role": "输入框焦点口径：field 基类是 ring-2 ring-inset ring-transparent，悬停 border-button-hover、聚焦 border-button-active 且聚焦压过悬停，无外发光，transition 明确列了 box-shadow；Peach 输入面板按用户的决定保留白底与静止那条边，环画在边的内侧。",
       "consumers": [
         "web/css/22-followmanage.css",
@@ -352,11 +396,12 @@
     },
     {
       "id": "boardui-theme",
+      "cadence": "weekly",
       "name": "BoardUI 主题 token 源",
       "url": "https://www.boardui.com/r/theme.json",
       "snapshot": "docs/reference-snapshots/upstream/boardui-theme.json",
-      "checked_on": "2026-09-09",
-      "sha256": "ee1cb0e973b108b90fd4999796a595fff6a1e5e453e115a6966c43b6e53ed428",
+      "checked_on": "2026-10-08",
+      "sha256": "060b0fd6818f34dbc086007a4aae8477ac0780429ce0304ba020e6ce6ed9f75a",
       "role": "border-button-active 的取值出处（浅色 neutral-400、深色 neutral-600）；Peach 只取该档，不搬全量变量表。",
       "consumers": [
         "web/board.css",
@@ -368,11 +413,12 @@
     },
     {
       "id": "boardui-auth-card",
+      "cadence": "weekly",
       "name": "BoardUI Auth Card 组件源",
       "url": "https://www.boardui.com/r/auth-card.json",
       "snapshot": "docs/reference-snapshots/upstream/boardui-auth-card.json",
-      "checked_on": "2026-09-09",
-      "sha256": "cf4159a700769519867f150acbfafd6f3345b9990fd5b6b76c7609407f413cf2",
+      "checked_on": "2026-10-08",
+      "sha256": "334f65d6dbd7be9ed9275239b58c607e101df586c5b9a0e78d9624bde1c0bc78",
       "role": "同底色下的嵌套卡层次：一条发丝边加 shadow-xs（0 1px 2px 0 rgb(0 0 0 / 0.18)），shadow-sm 与它同批取自上游的主题 token；xs 是在 auth-card 的 24px 大圆角上成立的，Peach 这两处是 10px 小圆角，贴地细影只剩一条硬边读成环，所以改用 sm 的两档扩散，圆角沿用本站 token。",
       "consumers": [
         "web/board.css",
@@ -382,15 +428,16 @@
     },
     {
       "id": "amane-content-routes",
+      "cadence": "weekly",
       "name": "amane 内容路由与站点特性",
       "url": "https://raw.githubusercontent.com/sqzw-x/amane/main/docs/dev/content-routes.md",
       "snapshot": "docs/reference-snapshots/upstream/amane-content-routes.md",
-      "checked_on": "2026-09-22",
-      "sha256": "c6daa066caf7fdb19845f10ac6451a8d8e1bdfef986d9f4849ebfc1c0a010ab3",
+      "checked_on": "2026-10-08",
+      "sha256": "6ce3524b553ac5b82c066eecd14e360e6144564107bf723455be93687aa032a8",
       "git": {
         "repository": "https://github.com/sqzw-x/amane.git",
         "ref": "refs/heads/main",
-        "revision": "79ecfa763cc786318e1964a3d7f4e244a7d5c96d"
+        "revision": "7a980aff9c503f7a5815864d62a6ef309a27808a"
       },
       "role": "按内容类型给一条有序来源链的原则，以及逐站的领域判断：javdb 没有国产分区且不解析 plot、javbus 欧美目录不可用、kin8 从任意番号抽数字拼详情会误匹配、mgstage 不进有码默认表否则有码号也会去问它、单厂牌 API 对每个候选 SKU 都发请求、DMM 与厂牌官网的日期是 SKU 分层不必相等。Peach 只取可迁移的原则与站点判断，链上成员限于自己已接解析器的来源；候选与人工复核的契约、不落盘 NFO 是 Peach 自己的边界，上游没有这两条。",
       "consumers": [
@@ -403,6 +450,7 @@
     },
     {
       "id": "readme-yingku",
+      "cadence": "quarterly",
       "name": "映库 Yingku 说明",
       "url": "https://raw.githubusercontent.com/CChester36/Yingku/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-yingku.md",
@@ -422,6 +470,7 @@
     },
     {
       "id": "readme-openaver",
+      "cadence": "quarterly",
       "name": "OpenAver 说明",
       "url": "https://raw.githubusercontent.com/slive777/OpenAver/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-openaver.md",
@@ -440,6 +489,7 @@
     },
     {
       "id": "readme-amane",
+      "cadence": "quarterly",
       "name": "amane 说明",
       "url": "https://raw.githubusercontent.com/sqzw-x/amane/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-amane.md",
@@ -458,6 +508,7 @@
     },
     {
       "id": "readme-stash",
+      "cadence": "quarterly",
       "name": "Stash 说明",
       "url": "https://raw.githubusercontent.com/stashapp/stash/develop/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-stash.md",
@@ -476,6 +527,7 @@
     },
     {
       "id": "readme-metatube",
+      "cadence": "quarterly",
       "name": "MetaTube Jellyfin 插件说明",
       "url": "https://raw.githubusercontent.com/metatube-community/jellyfin-plugin-metatube/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-metatube.md",
@@ -494,6 +546,7 @@
     },
     {
       "id": "readme-mdcx",
+      "cadence": "quarterly",
       "name": "MDCx 说明",
       "url": "https://raw.githubusercontent.com/sqzw-x/mdcx/master/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-mdcx.md",
@@ -512,6 +565,7 @@
     },
     {
       "id": "evilcharts-registry",
+      "cadence": "weekly",
       "name": "EvilCharts 组件注册表",
       "url": "https://raw.githubusercontent.com/legions-developer/evilcharts/main/registry.json",
       "snapshot": "docs/reference-snapshots/upstream/evilcharts-registry.json",
@@ -533,6 +587,7 @@
     },
     {
       "id": "readme-sakuramediabe",
+      "cadence": "quarterly",
       "name": "SakuraMedia 后端说明",
       "url": "https://raw.githubusercontent.com/tinypinglite/sakuramediabe/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-sakuramediabe.md",
@@ -553,6 +608,7 @@
     },
     {
       "id": "readme-sakuramedia",
+      "cadence": "quarterly",
       "name": "SakuraMedia 客户端说明",
       "url": "https://raw.githubusercontent.com/tinypinglite/sakuramedia/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-sakuramedia.md",
@@ -570,6 +626,7 @@
     },
     {
       "id": "readme-neoavdc",
+      "cadence": "quarterly",
       "name": "NeoAVDC 说明",
       "url": "https://raw.githubusercontent.com/haoo999/NeoAVDC/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-neoavdc.md",
@@ -591,6 +648,7 @@
     },
     {
       "id": "readme-javboss",
+      "cadence": "quarterly",
       "name": "JavBoss 说明",
       "url": "https://raw.githubusercontent.com/Solr159/JavBoss/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javboss.md",
@@ -611,6 +669,7 @@
     },
     {
       "id": "readme-javdex",
+      "cadence": "quarterly",
       "name": "Javdex 说明",
       "url": "https://raw.githubusercontent.com/JavdexLabs/Javdex/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javdex.md",
@@ -628,6 +687,7 @@
     },
     {
       "id": "readme-javm",
+      "cadence": "quarterly",
       "name": "javm 说明",
       "url": "https://raw.githubusercontent.com/ddmoyu/javm/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javm.md",
@@ -645,6 +705,7 @@
     },
     {
       "id": "readme-mdcz",
+      "cadence": "quarterly",
       "name": "mdcz 说明",
       "url": "https://raw.githubusercontent.com/ShotHeadman/mdcz/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-mdcz.md",
@@ -662,6 +723,7 @@
     },
     {
       "id": "readme-javinizer-go",
+      "cadence": "quarterly",
       "name": "Javinizer-Go 说明",
       "url": "https://raw.githubusercontent.com/javinizer/javinizer-go/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javinizer-go.md",
@@ -680,6 +742,7 @@
     },
     {
       "id": "readme-ammds-doc",
+      "cadence": "quarterly",
       "name": "AMMDS 文档仓说明",
       "url": "https://raw.githubusercontent.com/QYG2297248353/AMMDS-DOC/master/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-ammds-doc.md",
@@ -697,6 +760,7 @@
     },
     {
       "id": "readme-ammds-docker",
+      "cadence": "quarterly",
       "name": "AMMDS 部署仓说明",
       "url": "https://raw.githubusercontent.com/QYG2297248353/AMMDS-Docker/master/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-ammds-docker.md",
@@ -714,6 +778,7 @@
     },
     {
       "id": "readme-javranking-extension",
+      "cadence": "quarterly",
       "name": "javranking-extension 说明",
       "url": "https://raw.githubusercontent.com/aizhimou/javranking-extension/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javranking-extension.md",
@@ -731,6 +796,7 @@
     },
     {
       "id": "readme-cuelume",
+      "cadence": "quarterly",
       "name": "Cuelume 说明",
       "url": "https://raw.githubusercontent.com/danielwh2/cuelume/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-cuelume.md",
@@ -748,6 +814,7 @@
     },
     {
       "id": "readme-jav-moviemanager",
+      "cadence": "quarterly",
       "name": "JAV_MovieManager 说明",
       "url": "https://raw.githubusercontent.com/4evergaeul/JAV_MovieManager/main/Readme.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-jav-moviemanager.md",
@@ -765,6 +832,7 @@
     },
     {
       "id": "readme-nassav",
+      "cadence": "quarterly",
       "name": "NASSAV 说明",
       "url": "https://raw.githubusercontent.com/Satoing/NASSAV/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-nassav.md",
@@ -782,6 +850,7 @@
     },
     {
       "id": "readme-garage",
+      "cadence": "quarterly",
       "name": "garage 说明",
       "url": "https://raw.githubusercontent.com/gsxhnd/garage/master/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-garage.md",
@@ -799,6 +868,7 @@
     },
     {
       "id": "readme-atlas",
+      "cadence": "quarterly",
       "name": "Atlas 说明",
       "url": "https://raw.githubusercontent.com/Zoroaaa/Atlas/v3/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-atlas.md",
@@ -816,6 +886,7 @@
     },
     {
       "id": "readme-javinfo-cli",
+      "cadence": "quarterly",
       "name": "javinfo 命令行说明",
       "url": "https://raw.githubusercontent.com/javinfo/cli/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-cli.md",
@@ -833,6 +904,7 @@
     },
     {
       "id": "readme-javinfo-mcp",
+      "cadence": "quarterly",
       "name": "javinfo MCP 说明",
       "url": "https://raw.githubusercontent.com/javinfo/mcp/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-mcp.md",
@@ -850,6 +922,7 @@
     },
     {
       "id": "readme-javinfo-legacy",
+      "cadence": "quarterly",
       "name": "javinfo 归档仓说明",
       "url": "https://raw.githubusercontent.com/javinfo/legacy/main/README.md",
       "snapshot": "docs/reference-snapshots/upstream/readme-javinfo-legacy.md",
