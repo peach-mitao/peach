@@ -17,6 +17,7 @@ export const LEGACY_MODULES = {
   '@peach/legacy/jav-title': '/js/jav-title.js',
   '@peach/legacy/tags': '/js/tags.js',
   '@peach/legacy/ui-sounds': '/js/ui-sounds.js',
+  '@peach/legacy/middle-truncate': '/js/middle-truncate.js',
 } as const;
 
 /** React 子树的产物（`vite.react.config.ts`）。island 只在挂 React 子树时动态 import 它。 */
