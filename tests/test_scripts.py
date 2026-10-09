@@ -3271,9 +3271,9 @@ class OperationalScriptTests(unittest.TestCase):
         from peach.repository import LedgerDatabase
 
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             db = self._chain_ledger(root, ["ABW-220"])
-            with sqlite3.connect(db) as con:
+            with closing(sqlite3.connect(db)) as con, con:
                 con.execute("UPDATE asset SET name='ABW-220.mp4',path='ABW-220.mp4',"
                             "catalog_title='Catalog title',studio='Studio A',release_date='2020-09-13'")
                 con.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) "
@@ -3314,7 +3314,7 @@ class OperationalScriptTests(unittest.TestCase):
             self.assertEqual(tags["current_value"], "肛交")
             self.assertEqual(json.loads(tags["candidates_json"])[0]["source"], "javdb")
             self.assertGreaterEqual(auto_apply_metadata(LedgerDatabase(db), candidate_root)["applied"], 1)
-            with sqlite3.connect(db) as con:
+            with closing(sqlite3.connect(db)) as con:
                 self.assertEqual(set(con.execute("SELECT tag,source FROM asset_tag WHERE asset_id=1"
                                                  " AND tag NOT LIKE '演员:%'")),
                                  {("高跟", "javinizer:javdb:tag"), ("丝袜", "javinizer:javdb:tag")})

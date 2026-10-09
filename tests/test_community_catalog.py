@@ -208,6 +208,28 @@ class CommunityCatalogTests(unittest.TestCase):
             javdb_actresses('<a class="actor-female">名字没挂链接</a>'),
             [{"japanese_name": "名字没挂链接", "profile_source": "javdb", "external_id": ""}])
 
+    def test_javdb_categories_keep_source_words_in_the_shared_record_and_snapshot(self):
+        categories = ('<div class="panel-block"><strong>類別:</strong><span class="value">'
+                      '<a href="/tags/a"> 高跟鞋 </a><a href="/tags/b"><b>絲襪</b></a>'
+                      '<a href="/tags/c">アナル</a><a href="/tags/d">未收录分類</a>'
+                      '<a href="/tags/a">高跟鞋</a><a href="/tags/empty"> </a></span></div>')
+        page = JAVDB_PAGE + categories.encode()
+        record = JavDBSource().parse(Page("https://javdb.com/v/Zb7mX", page), "ABW-358")
+        self.assertEqual(record.tags, ("高跟鞋", "絲襪", "アナル", "未收录分類"))
+        found = work(JavDBSource(), {JAVDB_SEARCH: JAVDB_RESULTS, JAVDB_DETAIL: page}, "ABW-358")
+        self.assertEqual(found, record.payload())
+        self.assertEqual(found["genres"], ["高跟鞋", "絲襪", "アナル", "未收录分類"])
+
+    def test_javdb_empty_categories_are_an_empty_genres_snapshot(self):
+        empty_panel = ('<div class="panel-block"><strong>類別:</strong>'
+                       '<span class="value"><a href="/tags/empty"> </a></span></div>')
+        for category_panel in ("", empty_panel):
+            with self.subTest(category_panel=category_panel):
+                record = JavDBSource().parse(
+                    Page("https://javdb.com/v/Zb7mX", JAVDB_PAGE + category_panel.encode()), "ABW-358")
+                self.assertEqual(record.tags, ())
+                self.assertEqual(record.payload()["genres"], [])
+
     def test_javdb_reports_a_missing_code_and_a_login_wall_differently(self):
         with self.assertRaises(SourceFailure) as caught:
             work(JavDBSource(), {JAVDB_SEARCH: JAVDB_RESULTS.replace(b"<strong>ABW-358</strong>", b"<strong>ABW-359</strong>")},
@@ -233,7 +255,7 @@ class CommunityCatalogTests(unittest.TestCase):
             "id": "ABW-358", "source_url": "https://javdb.com/v/Zb7mX", "title": TITLE,
             "actresses": [{"japanese_name": "涼森れむ", "profile_source": "javdb", "external_id": "a"}],
             "maker": "プレステージ", "label": "", "series": "", "director": "", "release_date": "2023-05-23",
-            "runtime": 210, "cover_urls": [JAVDB_COVER], "cover_url": JAVDB_COVER}
+            "runtime": 210, "genres": [], "cover_urls": [JAVDB_COVER], "cover_url": JAVDB_COVER}
         self.assertEqual(work(JavDBSource(), {JAVDB_SEARCH: JAVDB_RESULTS, JAVDB_DETAIL: JAVDB_PAGE}, "ABW-358"), expected)
         record = JavDBSource().parse(Page("https://javdb.com/v/Zb7mX", JAVDB_PAGE), "ABW-358")
         self.assertEqual((record.source, record.provenance, record.code), ("javdb", "javdb-page", "ABW-358"))

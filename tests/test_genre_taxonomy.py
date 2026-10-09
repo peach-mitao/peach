@@ -437,7 +437,7 @@ class VocabularyHygieneTests(unittest.TestCase):
             (("ドキュメンタリー", "Documentary"), "纪录片"),
             (("イメージビデオ", "Image Video", "グラビア"), "写真映像"),
             (("痴漢", "Molester", "Groping"), "痴汉"),
-            (("妊婦", "Pregnant"), "孕妇"),
+            (("妊婦", "妊娠", "Pregnant"), "孕妇"),
             (("巨根", "Big Cock", "デカチン"), "巨根"),
             (("放尿", "Peeing", "おしっこ"), "放尿"),
             (("黒人", "Black Guy"), "黑人"),
@@ -532,11 +532,11 @@ class Fc2SellerTagTests(unittest.TestCase):
     def test_words_the_catalog_has_no_slot_for_stay_on_the_review_page(self):
         """词表里没有对应一格、或者含义还没查清的词，留给人判。
 
-        `神乳` 剥掉夸法只剩「乳」这一级，和 `おっぱい` 同理；受孕那一簇说的是内射到怀孕的
-        题材，`孕妇` 说的是出镜时已经怀孕，两边不是一回事；`Iカップ` 是尺寸；`ハイレグ` 既可能是
+        `神乳` 剥掉夸法只剩「乳」这一级，和 `おっぱい` 同理；`孕ませ`、`排卵`、`種付け` 说的是
+        受孕相关题材，不等同于 `孕妇` 表达的怀孕状态；`Iカップ` 是尺寸；`ハイレグ` 既可能是
         泳装也可能是体操服；`モザ` 在一部已判无码的片子上出现，是半个词。
         """
-        for word in ("神乳", "妊娠", "孕ませ", "排卵", "種付け", "Iカップ", "ハイレグ", "モザ"):
+        for word in ("神乳", "孕ませ", "排卵", "種付け", "Iカップ", "ハイレグ", "モザ"):
             with self.subTest(word=word):
                 self.assertEqual(resolve_genre(word), UNMAPPED)
 

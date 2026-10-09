@@ -153,7 +153,7 @@ class JavDBSource(SiteSource):
             studio=maker_writing(clean(panel.get("片商", ""))), label=clean(panel.get("發行", "")),
             series=clean(panel.get("系列", "")), director=clean(panel.get("導演", "")),
             release_date=clean(panel.get("日期", "")), runtime=int(runtime.group()) if runtime else None,
-            genres=genres,
+            tags=genres,
             cover_urls=(cover.group(1),) if cover else ())
 
 
