@@ -52,7 +52,7 @@ export function ResourceSearch({ initialCode, reason, choose }: {
   return (
     <section aria-label="资源搜索" aria-busy={Boolean(action.busy)} className="flex min-w-0 flex-col gap-4">
       {reason ? <Help>版本目标：{reason}。可在下方调整搜索优先项；完整度与水印需要逐条复核。</Help> : null}
-      <Input label="搜索资源" value={code} maxLength={80} placeholder="输入番号，按回车搜索"
+      <Input label="搜索资源" value={code} maxLength={80} placeholder="输入番号，按回车搜索" enterKeyHint="search"
         leadingIcon={action.busy ? SearchSpinner : RiSearchLine}
         isReadOnly={Boolean(action.busy)} aria-busy={Boolean(action.busy)} onChange={setCode} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); search() }

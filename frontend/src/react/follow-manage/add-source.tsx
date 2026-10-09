@@ -360,7 +360,7 @@ export function AddSource({ data, credentials, readOnly, toast, openCredentials 
             if (!event.currentTarget.contains(next) && !menu.current?.contains(next)) setFocused(false);
           }}>
           <Input aria-label="来源链接、名字或 id" placeholder={PLACEHOLDER} value={line}
-            leadingIcon={RiSearchLine} isDisabled={readOnly} onChange={setLine}
+            leadingIcon={RiSearchLine} enterKeyHint="search" isDisabled={readOnly} onChange={setLine}
             onKeyDown={onKeyDown} />
           {menuOpen ? (
             <SuggestMenu field={field} menu={menu} options={options} active={active}

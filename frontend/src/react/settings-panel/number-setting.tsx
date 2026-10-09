@@ -102,7 +102,7 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
         : null}
       <div data-number-fields="" hidden={optional && !on}>
         <div data-number-control="">
-          <input ref={input} type="number" className="geist-input" min={min} max={max} step={1}
+          <input ref={input} type="number" inputMode="numeric" className="geist-input" min={min} max={max} step={1}
             value={draft} disabled={blocked} aria-label={label} aria-describedby={`${id}-error`}
             onChange={(event) => {
               setDraft(event.target.value);

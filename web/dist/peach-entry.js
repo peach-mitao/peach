@@ -764,7 +764,7 @@ function rt(e = "加载中") {
 }
 function it({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a = "", attrs: o = "" } = {}) {
 	let s = [
-		"type=\"search\"",
+		"type=\"search\" enterkeyhint=\"search\"",
 		t ? `id="${m(t)}"` : "",
 		r ? `name="${m(r)}"` : "",
 		a ? `placeholder="${m(a)}"` : "",

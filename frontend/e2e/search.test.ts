@@ -97,6 +97,15 @@ describe('顶栏搜索', () => {
     }
   });
 
+  it('软键盘的回车键标成「搜索」', { timeout: 60_000 }, async () => {
+    const opened = await openSearch(browser);
+    try {
+      assert.equal(await opened.page.locator('#q').getAttribute('enterkeyhint'), 'search');
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('上下键环绕着选；回车按选中的那一项搜，记进搜索记录，下拉栏收起', { timeout: 60_000 }, async () => {
     const opened = await openSearch(browser);
     try {

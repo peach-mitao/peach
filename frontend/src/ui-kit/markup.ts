@@ -107,7 +107,7 @@ export function searchInputHtml({label,id='',name='',value='',placeholder='',att
   label?: string; id?: string; name?: string; value?: unknown; placeholder?: string; attrs?: string;
 }={}):string{
   const parts=[
-    'type="search"',
+    'type="search" enterkeyhint="search"',
     id?`id="${esc(id)}"`:'',
     name?`name="${esc(name)}"`:'',
     placeholder?`placeholder="${esc(placeholder)}"`:'',

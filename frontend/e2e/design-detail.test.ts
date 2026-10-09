@@ -472,6 +472,36 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     }
   });
 
+  it('手机上界面按钮与标签长按不选字、点按不等双击判定；标题、番号这类馆藏数据照常能选中复制', { timeout: 90_000 }, async () => {
+    /* 每个样本取 [touch-action, user-select]；没找到记成 null。 */
+    const touchOf = (page: Page, selectors: string[]) => page.evaluate((list) => list.map((selector) => {
+      const node = document.querySelector(selector);
+      return node ? [getComputedStyle(node).touchAction, getComputedStyle(node).userSelect] : null;
+    }), selectors);
+    const controls = ['#closeStage', '#likeBtn', '#stage [data-stage-action]', '#stage [data-title-fold]', '#tagPlus',
+      '#stage [data-detail-tag] [data-tag]'];
+    const stage = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
+    try {
+      await stage.page.locator('#stage [data-detail-tag] [data-tag]').first().waitFor({ state: 'attached' });
+      assert.deepEqual(await touchOf(stage.page, controls), controls.map(() => ['manipulation', 'none']),
+        `控件顺序：${controls.join('、')}`);
+      const [title] = await touchOf(stage.page, ['#stage [data-detail-title]']);
+      assert.notEqual(title?.[1], 'none', '详情标题是内容，不能跟着控件一起关掉选字');
+      assert.deepEqual(withoutPlayer(stage.problems), []);
+    } finally {
+      await stage.close();
+    }
+    const home = await openItemPage(browser, '/', MOBILE, { ready: '#grid [data-media-card] [data-media-title]' });
+    try {
+      const [card] = await touchOf(home.page, ['#grid [data-media-card] [data-media-title]']);
+      assert.equal(card?.[0], 'manipulation', '作品卡标题是按钮，点按不该等双击判定');
+      assert.notEqual(card?.[1], 'none', '作品卡标题装着番号，长按要能选中复制');
+      assert.deepEqual(home.problems, []);
+    } finally {
+      await home.close();
+    }
+  });
+
   it('播放器控件：40px 黑圆播放键、同一档黑的右侧胶囊与提示、钨丝色进度、页面字体；统计键与加载速度角标压在左上；报错是一张盖在统计上面的卡', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
     try {
