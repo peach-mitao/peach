@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""island 层（`frontend/`）的门槛：产物、清单、契约与 vitest。
+"""前端的门槛：固定主包与页面包、清单、契约与 vitest。
 
 ADR-0022 的取舍是「构建产物进 Git」：运行时的 Python 服务、PyInstaller 包和 macOS
-上的检出都没有 Node，`web/dist/peach-ui.js` 必须是仓库里现成的文件。代价是产物会和
+上的检出都没有 Node，`web/dist/peach-app.js` 必须是仓库里现成的文件。代价是产物会和
 源码脱节，所以这里分两类断言：
 
-- **不需要 Node 的**：产物在不在、导出对不对、引用的遗留模块路径对不对、清单是否
+- **不需要 Node 的**：产物在不在、页面加载路径、独立模块图、清单是否
   精确钉版本、共享客户端是否唯一。这些在任何机器上都跑。
 - **需要 Node 的**：tsc、lint 与 vitest。npm 或 `frontend/node_modules` 不在时本机显式
   跳过——本机可能根本没装 Node，让整个测试域红掉只会让人绕过入口，而不是去装 Node。
@@ -17,6 +17,7 @@ ADR-0022 的取舍是「构建产物进 Git」：运行时的 Python 服务、Py
 from __future__ import annotations
 
 import hashlib
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -29,81 +30,68 @@ from support.conditions import missing_prerequisite
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
 DIST = ROOT / "web" / "dist"
-BUNDLE = DIST / "peach-ui.js"
+BUNDLE = DIST / "peach-app.js"
+APP_STYLES = DIST / "peach-app.css"
+PAGES_BUNDLE = DIST / "peach-pages.js"
+PAGES_STYLES = DIST / "peach-pages.css"
 
 
-class IslandBundleTests(unittest.TestCase):
+class PageAssets(HTMLParser):
+    """页面声明的脚本和样式，按浏览器的加载顺序收集。"""
+
+    def __init__(self, html):
+        super().__init__()
+        self.scripts = []
+        self.styles = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "script" and attrs.get("src"):
+            self.scripts.append(attrs)
+        elif tag == "link" and attrs.get("rel") == "stylesheet":
+            self.styles.append(attrs.get("href"))
+
+
+class MainBundleTests(unittest.TestCase):
     """提交进 Git 的产物必须是浏览器能直接 import 的那一份。"""
 
     @classmethod
     def setUpClass(cls):
-        if not BUNDLE.is_file():
-            raise unittest.SkipTest(
-                f"{BUNDLE.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
         cls.bundle = BUNDLE.read_text(encoding="utf-8")
 
     def test_bundle_name_carries_no_content_hash(self):
-        """引用它的 `web/app.js` 不经过构建，带哈希的名字它改不了。"""
+        """运行时只分发固定名字的主包和独立页面包。"""
         names = sorted(path.name for path in DIST.iterdir() if path.is_file())
-        self.assertIn("peach-ui.js", names)
-        for name in names:
-            self.assertNotRegex(name, r"-[0-9a-zA-Z_]{8}\.(?:js|css)$",
-                                f"{name} 带了内容哈希，app.js 里写死的路径会指向不存在的文件")
+        self.assertEqual(names, ["peach-app.css", "peach-app.js", "peach-pages.css", "peach-pages.js"])
 
-    def test_bundle_exports_the_managed_route_contract(self):
-        # 遗留层按这四个名字让路由树画页面与附属面：开一面、就地推、收一面、问容器归没归路由树。
-        for symbol in ("openManagedRoute", "updateManagedRoute", "releaseManagedRoute", "managedTaken"):
-            self.assertIn(f"as {symbol}", self.bundle, f"产物没有导出 {symbol}")
-
-    def test_bundle_keeps_the_legacy_modules_external(self):
-        """遗留助手不进 bundle：打进去就有两份 `LOC`／`fmtDur`，语义契约会各走一份。"""
-        self.assertIn('from "/js/core.js"', self.bundle)
-        self.assertIn('from "/js/ui-components.js"', self.bundle)
-        for name in ("/js/core.js", "/js/ui-components.js"):
-            self.assertTrue((ROOT / "web" / name.lstrip("/")).is_file(),
-                            f"产物 import 的 {name} 在仓库里不存在")
+    def test_the_main_document_loads_one_module_entry(self):
+        assets = PageAssets((ROOT / "web" / "index.html").read_text(encoding="utf-8"))
+        self.assertEqual([script["src"] for script in assets.scripts], ["/dist/peach-app.js"])
+        self.assertEqual(assets.scripts[0].get("type"), "module")
 
     def test_the_startup_switches_and_their_payload_are_in_the_shipped_bundle(self):
         """「开机自启」那三颗开关的标签和它们发出去的键，判据落在产物上。
 
-        `web/dist/peach-react.js` 是提交进 Git 的产物。改了 `frontend/src` 不重建，浏览器拿到
+        `web/dist/peach-app.js` 是提交进 Git 的产物。改了 `frontend/src` 不重建，浏览器拿到
         的仍是旧的那一份，而 tsc 和 vitest 都只看源码，谁都不会红——只有扫产物这一条会。
         """
-        if not REACT_BUNDLE.is_file():
-            self.skipTest(f"{REACT_BUNDLE.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
-        react = REACT_BUNDLE.read_text(encoding="utf-8")
         for label in ("开机后启动 Peach", "静默启动", "在桌面创建快捷方式"):
-            self.assertIn(label, react,
+            self.assertIn(label, self.bundle,
                           f"产物里没有「{label}」，先跑 npm --prefix frontend run build")
-        payload = react[react.index('"/api/configuration/startup"'):][:240]
+        payload = self.bundle[self.bundle.index('"/api/configuration/startup"'):][:240]
         for key in ("enabled:", "silent:", "desktop:"):
             self.assertIn(key, payload, f"保存开机自启没带上 {key}")
 
     def test_react_bundle_records_stable_dependency_paths(self):
         """区域注释只能从 `node_modules/` 起，不得把生成它的工作树路径写进产物。"""
-        for bundle in (REACT_BUNDLE, PAGES_BUNDLE):
+        for bundle in (BUNDLE, PAGES_BUNDLE):
             with self.subTest(bundle.name):
-                if not bundle.is_file():
-                    self.skipTest(f"{bundle.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
                 captured = [line for line in bundle.read_text(encoding="utf-8").splitlines()
                             if line.startswith("//#region ") and "node_modules/" in line
                             and not line.startswith("//#region node_modules/")]
                 self.assertEqual(captured, [],
                                  f"{bundle.name} 带了工作树相对路径；在当前工作树安装依赖后重新构建")
-
-    def test_the_route_that_serves_it_is_registered(self):
-        # 扫整个包而不是 `api.py` 一个文件：这条路由现在住在 `routes_pages.py`，
-        # 而它属于哪个模块是内部事，前端只关心它被注册了。
-        registered = [path.name for path in sorted((ROOT / "src" / "peach").glob("*.py"))
-                      if 'api_route("/dist/{name}"' in path.read_text(encoding="utf-8")]
-        self.assertEqual(len(registered), 1, f"/dist 路由注册了 {registered}")
-
-
-REACT_BUNDLE = DIST / "peach-react.js"
-REACT_STYLES = DIST / "peach-react.css"
-ENTRY_BUNDLE = DIST / "peach-entry.js"
-PAGES_BUNDLE = DIST / "peach-pages.js"
-PAGES_STYLES = DIST / "peach-pages.css"
 
 
 class BoardTokenTests(unittest.TestCase):
@@ -164,39 +152,24 @@ class ReactBundleTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        for path in (BUNDLE, REACT_BUNDLE, REACT_STYLES, ENTRY_BUNDLE, PAGES_BUNDLE, PAGES_STYLES):
-            if not path.is_file():
-                raise unittest.SkipTest(
-                    f"{path.relative_to(ROOT)} 不在：先 `npm --prefix frontend run build`")
-        cls.islands = BUNDLE.read_text(encoding="utf-8")
-        cls.react = REACT_BUNDLE.read_text(encoding="utf-8")
-        cls.css = REACT_STYLES.read_text(encoding="utf-8")
-        cls.entry = ENTRY_BUNDLE.read_text(encoding="utf-8")
+        cls.app = BUNDLE.read_text(encoding="utf-8")
+        cls.css = APP_STYLES.read_text(encoding="utf-8")
         cls.pages = PAGES_BUNDLE.read_text(encoding="utf-8")
         cls.pages_css = PAGES_STYLES.read_text(encoding="utf-8")
 
-    def test_islands_load_the_react_bundle_by_its_served_path(self):
-        """island 按 `@peach/react` 写，产物里必须改写成服务端真的提供的路径，且 React 不进 peach-ui.js。"""
-        self.assertIn('import("/dist/peach-react.js")', self.islands)
-        self.assertNotIn("react-dom", self.islands)
-        # 注册表按名字取页面，名字得在产物里对得上。
-        for page in ("catalog-filter", "library-processing", "quality-goals", "configuration"):
-            self.assertIn(page, self.react)
-
-    def test_the_react_bundle_keeps_the_legacy_modules_external(self):
-        self.assertIn('from "/js/core.js"', self.react)
-        # 这几份产物打进了读 `process.env.NODE_ENV` 的依赖（React、`@tanstack/query-core`）；入口包由错误页、
-        # 页面包由首次运行页直接加载，同样不能留下这个引用。
-        for name, bundle in (("peach-react.js", self.react), ("peach-ui.js", self.islands),
-                             ("peach-entry.js", self.entry), ("peach-pages.js", self.pages)):
+    def test_shipped_bundles_do_not_require_node_globals(self):
+        for name, bundle in (("peach-app.js", self.app), ("peach-pages.js", self.pages)):
             self.assertNotIn("process.env", bundle, f"{name}：库模式没替换 NODE_ENV，浏览器里没有 process")
 
-    def test_the_page_bundle_stands_alone(self):
-        """首次运行页只加载页面包：产物里不能有任何外部 import，也不能借 `/dist/` 下的另一份。"""
-        imports = [line for line in self.pages.splitlines()
-                   if re.match(r'\s*(?:import\s*[{*"\w]|export\s*\*\s*from)', line)
-                   or re.search(r'\bimport\(\s*"/', line) or re.search(r'from\s*"/', line)]
-        self.assertEqual(imports, [])
+    def test_shipped_bundles_have_independent_module_graphs(self):
+        """主包与页面包各自包含运行依赖，开发标注工具由本机开关单独加载。"""
+        for name, bundle, allowed_dynamic in (("peach-app.js", self.app, {"/dev/agentation.js"}),
+                                              ("peach-pages.js", self.pages, set())):
+            static = re.findall(r'(?m)^\s*(?:import\b[^;]*?|export\s*\*\s*)from\s*["\']([^"\']+)["\']'
+                                r'|^\s*import\s*["\']([^"\']+)["\']', bundle)
+            dynamic = set(re.findall(r'\bimport\s*\(\s*["\']([^"\']+)["\']\s*\)', bundle))
+            self.assertEqual(static, [], name)
+            self.assertEqual(dynamic - allowed_dynamic, set(), name)
 
     def test_utilities_stay_outside_cascade_layers(self):
         """旧样式表不分层。工具类放进层里，`button,input,textarea{color:inherit}` 这类标签规则就会压过它。"""
@@ -222,12 +195,12 @@ class ReactBundleTests(unittest.TestCase):
 
     def test_react_styles_load_before_the_legacy_stylesheets(self):
         """同名 `--color-*` token 由后面的 board.css 定值，未迁移页面的颜色才不受影响。"""
-        index = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-        order = [index.index(f'href="{href}"') for href in ("/dist/peach-react.css", "/app.css", "/board.css")]
+        assets = PageAssets((ROOT / "web" / "index.html").read_text(encoding="utf-8"))
+        order = [assets.styles.index(href) for href in ("/dist/peach-app.css", "/app.css", "/board.css")]
         self.assertEqual(order, sorted(order))
 
     def test_the_first_frame_script_sets_the_dark_class(self):
-        """BoardUI 的深色 token 挂在 `.dark` 上，首帧脚本要在 React 包加载前按实际深浅加减它。
+        """BoardUI 的深色 token 挂在 `.dark` 上，首帧脚本要在主包加载前按实际深浅加减它。
 
         之后切换主题由 `applyTheme()` 负责，`frontend/test/appearance/layout.test.ts` 在 DOM 上验。
         """
@@ -324,7 +297,7 @@ class FrontendManifestTests(unittest.TestCase):
 
     def test_the_bundle_is_committed_and_the_toolchain_is_not(self):
         tracked = subprocess.run(
-            ["git", "-C", str(ROOT), "check-ignore", "web/dist/peach-ui.js"],
+            ["git", "-C", str(ROOT), "check-ignore", "web/dist/peach-app.js"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
         self.assertEqual(tracked.returncode, 1, "web/dist 被 .gitignore 排除了，产物发不出去")
         for ignored in ("frontend/node_modules/react/package.json",):

@@ -184,7 +184,8 @@ class PageAssetDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         root = Path(self.tmp.name).resolve()
-        self.app_js = root / "app.js"
+        (root / "dist").mkdir()
+        self.app_js = root / "dist" / "peach-app.js"
         # 要大于 gzip 的 minimum_size，否则压缩那条断言测的是「太小所以没压」。
         self.app_js.write_text(
             "const peach=1;export default peach;\n" + "// filler\n" * 200,
@@ -199,19 +200,18 @@ class PageAssetDeliveryTests(unittest.IsolatedAsyncioTestCase):
         (root / "board.css").write_text(".ptoggle{width:42px}\n", encoding="utf-8")
         page = root / "index.html"
         page.write_text("<!doctype html><title>Peach test</title>", encoding="utf-8")
-        (root / "js").mkdir()
-        (root / "js" / "core.js").write_text("export const ok=1;", encoding="utf-8")
-        (root / "dist").mkdir()
-        (root / "dist" / "peach-ui.js").write_text(
-            "export const openManagedRoute=()=>{};", encoding="utf-8")
+        (root / "dist" / "peach-app.css").write_text(
+            ".peach-react{display:block}\n" + "/* filler */\n" * 200, encoding="utf-8")
+        (root / "dist" / "peach-pages.js").write_text("export const ok=1;", encoding="utf-8")
+        (root / "dist" / "peach-pages.css").write_text(".page{}", encoding="utf-8")
         fresh_ledger(root)
         self.app = create_app(_settings(root, page))
         self.client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=self.app), base_url="http://test")
         self.addAsyncCleanup(self.client.aclose)
 
-    async def test_app_js_revalidates_instead_of_being_refetched(self):
-        first = await self.client.get("/app.js")
+    async def test_main_script_revalidates_instead_of_being_refetched(self):
+        first = await self.client.get("/dist/peach-app.js")
         self.assertEqual(first.status_code, 200)
         self.assertIn("export default peach", first.text)
         # no-cache 不是「不缓存」：它是「每次回源问一次」，与 no-store 的更新语义
@@ -219,20 +219,21 @@ class PageAssetDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.headers["cache-control"], "no-cache")
         etag = first.headers["etag"]
 
-        cached = await self.client.get("/app.js", headers={"if-none-match": etag})
+        cached = await self.client.get("/dist/peach-app.js", headers={"if-none-match": etag})
         self.assertEqual(cached.status_code, 304)
         self.assertEqual(cached.content, b"")
         self.assertEqual(cached.headers["etag"], etag)
 
         # 文件一变，同一个 ETag 必须立刻失效——这是复验能替掉 no-store 的全部前提。
         self.app_js.write_text("const peach=2;export default peach;", encoding="utf-8")
-        updated = await self.client.get("/app.js", headers={"if-none-match": etag})
+        updated = await self.client.get("/dist/peach-app.js", headers={"if-none-match": etag})
         self.assertEqual(updated.status_code, 200)
         self.assertNotEqual(updated.headers["etag"], etag)
         self.assertIn("const peach=2", updated.text)
 
     async def test_every_asset_route_shares_the_same_revalidation_contract(self):
-        for path in ("/app.css", "/board.css", "/js/core.js", "/dist/peach-ui.js"):
+        for path in ("/app.css", "/board.css", "/dist/peach-app.js", "/dist/peach-app.css",
+                     "/dist/peach-pages.js", "/dist/peach-pages.css"):
             first = await self.client.get(path)
             self.assertEqual(first.status_code, 200, path)
             self.assertEqual(first.headers["cache-control"], "no-cache", path)
@@ -272,7 +273,7 @@ class PageAssetDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.headers["cache-control"], "no-store")
 
     async def test_the_real_app_compresses_its_scripts_and_styles(self):
-        for path in ("/app.js", "/app.css"):
+        for path in ("/dist/peach-app.js", "/dist/peach-app.css", "/app.css"):
             response = await self.client.get(path, headers={"accept-encoding": "gzip"})
             self.assertEqual(response.status_code, 200, path)
             self.assertEqual(response.headers.get("content-encoding"), "gzip", path)

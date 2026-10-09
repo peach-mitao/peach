@@ -4,10 +4,10 @@
 和直接粘地址都能进来。所以 `client_route` 的那一长串装饰器不是重复，是「前端有哪些
 路由」的声明，新增页面必须在这里补一行，否则刷新就是 404。
 
-`index` 的 401 走跳登录页，`/app.css`、`/app.js`、`/js/`、`/dist/`、`/dev/` 走 PlainText 提示：
+`index` 的 401 走跳登录页，`/app.css`、`/board.css`、主包和 `/dev/` 走 PlainText 提示：
 资产被浏览器直接请求，重定向到登录页只会让它把 HTML 当脚本解析。
 
-缓存也分两档：`index.html` 是 `no-store`，它是所有资产 URL 的来源；四类资产走
+缓存也分两档：`index.html` 是 `no-store`，它是所有资产 URL 的来源；静态资产走
 `asset_response()` 的 ETag 复验，更新语义与 `no-store` 相同但没变时零传输。
 
 `/app.css` 是唯一一个不对应单个文件的资产：样式表按分区拆在 `web/css/` 下，这里
@@ -160,13 +160,11 @@ def _normal_url(config) -> str:
 
 
 def asset_response(request: Request, path: Path, media: str) -> Response:
-    """页面资产与图标用 ETag 复验代替 no-store，`/app.js`、`/js/`、`/dist/`、图标共用。
+    """页面资产与图标用 ETag 复验，`/board.css`、`/dist/`、图标共用。
 
     `/app.css` 拼多份分区，ETag 口径见 `stylesheet_response()`，其余照这里。
 
-    `no-store` 让 `app.js`（435KB）加 `app.css`（232KB）每次开页都全量重下；
-    `no-cache` 的更新语义完全一样——每次都回源验证，文件一变立刻生效——但没变时
-    只回一个 304，零字节传输。代价是一次条件请求的往返。
+    `no-cache` 每次都回源验证，文件一变立刻生效；没变时只回一个 304，零字节传输。
 
     ETag 取 mtime_ns 加字节数，不读文件内容：这几个文件都由 Git 检出或 `frontend/`
     构建产生，改一次就换一次 mtime，不需要为了强校验去算全文哈希。
@@ -186,7 +184,7 @@ def asset_response(request: Request, path: Path, media: str) -> Response:
 
 
 #: 拆分后的样式表分区。层叠顺序就是文件名顺序，所以每份都带两位数前缀；
-#: 名字判据和 `/js/`、`/dist/` 同口径，不接受分隔符。清单由 `tests/test_web_ui.py` 钉住。
+#: 分区名字不接受分隔符。清单由 `tests/test_web_ui.py` 钉住。
 CSS_PART_NAME = re.compile(r"\d{2}-[a-z0-9-]+\.css")
 
 
@@ -504,14 +502,8 @@ def _read_answers(
 
 @router.api_route("/app.css", methods=["GET", "HEAD"])
 @router.api_route("/board.css", methods=["GET", "HEAD"])
-@router.api_route("/app.js", methods=["GET", "HEAD"])
 def app_asset(request: Request, args: dict[str, str] = Depends(require_asset_auth)):
-    """页面拆出来的样式与入口脚本。样式在 `web/css/`，脚本和 index.html 同目录，同一套口令。
-
-    仍然没有构建步骤：`app.js` 现在是 ES module，浏览器原生解析 import，
-    拆出来的模块见下面的 `/js/{name}`。页面里没有任何内联事件处理器，
-    全部是 `.onclick=` 属性赋值，所以顶层声明不再是全局也不影响绑定。
-    """
+    """页面共用样式，分区在 `web/css/`，BoardUI 样式与 index.html 同目录。"""
     name = request.url.path.lstrip("/")
     web = request.app.state.settings.page_path.parent
     if name == "app.css":
@@ -519,29 +511,15 @@ def app_asset(request: Request, args: dict[str, str] = Depends(require_asset_aut
     path = web / name
     if not path.is_file():
         return PlainTextResponse("missing", status_code=404)
-    return asset_response(request, path, "text/css" if name == "board.css" else "text/javascript")
+    return asset_response(request, path, "text/css")
 
 
-@router.api_route("/js/{name}", methods=["GET", "HEAD"])
-def app_module(request: Request, name: str,
-               args: dict[str, str] = Depends(require_asset_auth)):
-    """`app.js` 拆出来的 ES module。和入口脚本同一套口令与 401 形态。
-
-    文件名严格限制为一层平铺的 `[a-z0-9_-]+.js`：静态路由拼路径是典型的目录
-    穿越入口，与其在这里做 resolve 后再比较根目录，不如根本不接受分隔符。
-    前端模块规模不大，平铺够用。
-    """
-    if not re.fullmatch(r"[a-z0-9_-]+\.js", name):
-        return PlainTextResponse("bad module name", status_code=404)
-    path = request.app.state.settings.page_path.parent / "js" / name
-    if not path.is_file():
-        return PlainTextResponse("missing", status_code=404)
-    return asset_response(request, path, "text/javascript")
+_BUNDLE_NAMES = frozenset({"peach-app.js", "peach-app.css", "peach-pages.js", "peach-pages.css"})
 
 
 def _bundle_response(request: Request, name: str) -> Response:
     """`web/dist/` 下的一份产物。名字不合法或文件不在都是 404，浏览器直接打开时由错误页说。"""
-    if not re.fullmatch(r"[a-z0-9_-]+\.(?:js|css)", name):
+    if name not in _BUNDLE_NAMES:
         raise HTTPException(404)
     path = request.app.state.settings.page_path.parent / "dist" / name
     if not path.is_file():
@@ -565,13 +543,9 @@ def page_bundle(request: Request):
 @router.api_route("/dist/{name}", methods=["GET", "HEAD"])
 def app_bundle(request: Request, name: str,
                args: dict[str, str] = Depends(require_asset_auth)):
-    """`frontend/` 构建出来的 island 产物（ADR-0022）。口令与缓存口径同 `/js/`。
+    """`frontend/` 的主包使用固定文件名、会话认证与 ETag 复验。
 
-    产物提交进 Git 且文件名不带内容哈希，所以 `app.js` 能在文件顶部按固定路径
-    import `./dist/peach-ui.js`；也正因为名字不带哈希，缓存只能靠复验，
-    和 `/js/` 共用 `asset_response` 的 ETag 口径。
-    名字判据和 `/js/` 逐字一致，只多认一个 `.css`：产物名不带内容哈希，也就不需要
-    名字里再有点，`peach-ui.js.map` 这类附带文件跟着一起落在 404。
+    产物提交进 Git；只提供主包与页面包的 JS/CSS，文件名不接受路径分隔符或附带扩展名。
     """
     return _bundle_response(request, name)
 
@@ -581,7 +555,7 @@ def agentation_bundle(request: Request, args: dict[str, str] = Depends(require_a
     """界面标注工具 Agentation 的本机构建产物，口令与缓存口径同 `/dist/`。
 
     产物不进 Git、不进独立包，只在跑过 `npm --prefix frontend run build:agentation`
-    的检出里存在；其余部署一律 404。`app.js` 只在本机开关打开时才请求它。
+    的检出里存在；其余部署一律 404。主包只在本机开关打开时才请求它。
     """
     path = request.app.state.settings.agentation_path
     if not path.is_file():

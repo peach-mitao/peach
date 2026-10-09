@@ -241,14 +241,19 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         (self.logo_root / "Studio_A.img.ct").write_text("image/png", encoding="utf-8")
         self.page = self.root / "index.html"
         self.page.write_text("<!doctype html><title>Peach test</title><main>ready</main>", encoding="utf-8")
-        # 前端已拆成 ES module，`/js/{name}` 从页面同级的 js/ 取文件。
+        # 隔离页面根包含退场路径的文件，用于验证它们不会被提供。
+        (self.root / "app.js").write_text("export const retired = true;", encoding="utf-8")
         (self.root / "js").mkdir()
-        (self.root / "js" / "core.js").write_text("export const ok = 1;", encoding="utf-8")
+        for name in ("core", "tags", "jav-title", "ui-sounds", "middle-truncate", "ui-components",
+                     "filter-scroll", "search-morph"):
+            (self.root / "js" / f"{name}.js").write_text("export const ok = 1;", encoding="utf-8")
         # 前端产物（ADR-0022）：构建结果提交进 Git，运行时由 `/dist/{name}` 提供。
         (self.root / "dist").mkdir()
-        (self.root / "dist" / "peach-ui.js").write_text(
-            "export const openManagedRoute = () => {};", encoding="utf-8")
-        (self.root / "dist" / "peach-ui.css").write_text(".island{}", encoding="utf-8")
+        for name in ("peach-app.js", "peach-pages.js", "peach-ui.js", "peach-react.js", "peach-entry.js",
+                     "other.js"):
+            (self.root / "dist" / name).write_text("export const ok = 1;", encoding="utf-8")
+        for name in ("peach-app.css", "peach-pages.css", "peach-ui.css", "peach-react.css", "peach-entry.css"):
+            (self.root / "dist" / name).write_text(".peach-react{}", encoding="utf-8")
         con = sqlite3.connect(self.db)
         con.executescript(BASE_SCHEMA)
         for migration in ("0018_online_follow.sql", "0034_feed_discovery.sql"):
@@ -483,50 +488,69 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(again.status_code, 304)
 
-    async def test_front_end_modules_are_served_and_the_name_cannot_escape(self):
-        """ES module 拆分之后新增的静态路由。
+    async def test_retired_assets_are_not_served_even_when_files_exist(self):
+        paths = ("/app.js", *(f"/js/{name}.js" for name in (
+            "core", "tags", "jav-title", "ui-sounds", "middle-truncate", "ui-components",
+            "filter-scroll", "search-morph")), *(f"/dist/{name}" for name in (
+                "peach-ui.js", "peach-ui.css", "peach-react.js", "peach-react.css", "peach-entry.js",
+                "peach-entry.css")))
+        for path in paths:
+            for method in ("GET", "HEAD"):
+                with self.subTest(path=path, method=method):
+                    response = await self.client.request(method, path, params={"t": "secret"})
+                    self.assertEqual(response.status_code, 404)
 
-        路径穿越是静态路由最典型的入口。这里不做 resolve 后比根目录，而是根本不接受
-        分隔符——名字必须是一层平铺的 `[a-z0-9_-]+.js`，别的一律 404。
-        """
-        served = await self.client.get("/js/core.js?t=secret")
-        self.assertEqual(served.status_code, 200)
-        self.assertTrue(served.headers["content-type"].startswith("text/javascript"))
-        # 页面资产走 ETag 复验：更新语义与 no-store 相同（每次都回源问），但没变时
-        # 回 304 零传输。完整契约在 tests/test_web_perf.py，这里只钉住用的是哪一档。
-        self.assertEqual(served.headers["cache-control"], "no-cache")
-        self.assertIn("export", served.text, "取回的必须是真的 module")
+    async def test_main_assets_need_the_same_token_as_the_page(self):
+        for path in ("/dist/peach-app.js", "/dist/peach-app.css", "/board.css", "/app.css"):
+            for method in ("GET", "HEAD"):
+                with self.subTest(path=path, method=method):
+                    response = await self.client.request(method, path)
+                    self.assertEqual(response.status_code, 401)
+                    self.assertTrue(response.headers["content-type"].startswith("text/plain"))
+                    self.assertNotIn("location", response.headers)
+                    self.assertEqual(response.text, "需要 ?t=口令" if method == "GET" else "")
 
-        for escape in ("..%2f..%2fapp.js", "..%5c..%5csecrets.json", "sub%2fmod.js",
-                       "Core.js", "core.mjs", "core.js.map"):
-            denied = await self.client.get(f"/js/{escape}?t=secret")
-            self.assertEqual(denied.status_code, 404, f"{escape} 不该被提供")
-
-    async def test_front_end_modules_need_the_same_token_as_the_page(self):
-        unauthorized = await self.client.get("/js/core.js")
-        self.assertEqual(unauthorized.status_code, 401)
-        unauthorized_board = await self.client.get("/board.css")
-        self.assertEqual(unauthorized_board.status_code, 401)
-
-    async def test_island_bundle_is_served_with_the_same_guards_as_the_modules(self):
-        """`/dist/{name}` 提供 `frontend/` 的构建产物（ADR-0022）。
-
-        产物文件名不带内容哈希，`app.js` 直接 `import('/dist/peach-ui.js')`，所以这条
-        路由的口令、缓存与名字校验必须和 `/js/` 完全一致，不能因为「是构建产物」放宽。
-        """
-        for name, media in (("peach-ui.js", "text/javascript"), ("peach-ui.css", "text/css")):
-            served = await self.client.get(f"/dist/{name}?t=secret")
+    async def test_main_bundle_has_authenticated_get_head_mime_and_revalidation(self):
+        for name, media in (("peach-app.js", "text/javascript"), ("peach-app.css", "text/css")):
+            path = f"/dist/{name}"
+            served = await self.client.get(path, params={"t": "secret"})
             self.assertEqual(served.status_code, 200, name)
-            self.assertTrue(served.headers["content-type"].startswith(media), name)
+            self.assertEqual(served.content, (self.root / "dist" / name).read_bytes())
+            self.assertEqual(served.headers["content-type"], f"{media}; charset=utf-8", name)
             self.assertEqual(served.headers["cache-control"], "no-cache", name)
+            etag = served.headers["etag"]
+            head = await self.client.head(path, params={"t": "secret"})
+            self.assertEqual(head.status_code, 200)
+            self.assertEqual(head.content, b"")
+            self.assertEqual(head.headers["content-type"], served.headers["content-type"])
+            self.assertEqual(head.headers["etag"], etag)
+            for method in ("GET", "HEAD"):
+                cached = await self.client.request(method, path, params={"t": "secret"},
+                                                   headers={"If-None-Match": etag})
+                self.assertEqual(cached.status_code, 304)
+                self.assertEqual(cached.content, b"")
+                self.assertEqual(cached.headers["etag"], etag)
 
-        for escape in ("..%2f..%2fapp.js", "..%5c..%5csecrets.json", "sub%2fpeach-ui.js",
-                       "..%2fapp.js", "peach-ui.js.map", "peach-ui.mjs", "Peach-UI.js"):
+        for escape in ("..%2f..%2fapp.js", "..%5c..%5csecrets.json", "sub%2fpeach-app.js",
+                       "..%2fapp.js", "peach-app.js.map", "peach-app.mjs", "Peach-App.js", "other.js"):
             denied = await self.client.get(f"/dist/{escape}?t=secret")
             self.assertEqual(denied.status_code, 404, f"{escape} 不该被提供")
 
-        unauthorized = await self.client.get("/dist/peach-ui.js")
-        self.assertEqual(unauthorized.status_code, 401)
+    async def test_page_bundle_is_public_with_only_its_literal_names(self):
+        for name, media in (("peach-pages.js", "text/javascript"), ("peach-pages.css", "text/css")):
+            path = f"/dist/{name}"
+            served = await self.client.get(path)
+            self.assertEqual(served.status_code, 200)
+            self.assertEqual(served.content, (self.root / "dist" / name).read_bytes())
+            self.assertEqual(served.headers["content-type"], f"{media}; charset=utf-8")
+            head = await self.client.head(path)
+            self.assertEqual(head.status_code, 200)
+            self.assertEqual(head.content, b"")
+            self.assertEqual(head.headers["etag"], served.headers["etag"])
+            cached = await self.client.get(path, headers={"If-None-Match": served.headers["etag"]})
+            self.assertEqual(cached.status_code, 304)
+            self.assertEqual(cached.content, b"")
+        self.assertEqual((await self.client.get("/dist/peach-pages.js.map")).status_code, 401)
 
     async def test_annotation_tool_is_served_only_where_it_was_built(self):
         """`/dev/agentation.js` 只在本机构建过的检出里有东西，其余部署一律 404。"""
@@ -1023,7 +1047,7 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(page.status_code, 303)
         self.assertEqual(page.headers["location"], "/login?next=/")
 
-        asset = await self.client.get("/app.js")
+        asset = await self.client.get("/dist/peach-app.js")
         self.assertEqual(asset.status_code, 401)
         self.assertEqual(asset.text, "需要 ?t=口令")
         self.assertTrue(asset.headers["content-type"].startswith("text/plain"))
@@ -2657,7 +2681,6 @@ class UnconfiguredMachineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertIn('<div id="peach-page" data-page="setup">', response.text)
         self.assertIn('src="/dist/peach-pages.js"', response.text)
-        self.assertNotIn("/dist/peach-entry.js", response.text)
 
     async def test_deep_links_land_on_the_same_shell(self):
         # 前端路由全部落到 `index`，未配置时不该只有首页能看。
@@ -2785,8 +2808,7 @@ class LoginPageWithoutSessionTests(unittest.IsolatedAsyncioTestCase):
 
     PAGE_ASSETS = ("/dist/peach-pages.css", "/dist/peach-pages.js", "/vendor/inter/5.3.0/index.css",
                    "/peach-logo.png", "/favicon.ico")
-    SESSION_ASSETS = ("/dist/peach-ui.js", "/dist/peach-react.js", "/dist/peach-entry.js",
-                      "/js/core.js", "/js/ui-sounds.js")
+    SESSION_ASSETS = ("/dist/peach-app.js", "/dist/peach-app.css", "/app.css", "/board.css")
 
     async def asyncSetUp(self):
         from peach import access
