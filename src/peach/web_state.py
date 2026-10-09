@@ -342,10 +342,14 @@ class WebContract:
         return self.database.write_transaction()
 
     def has_snapshot(self, raw_path: str | None) -> bool:
+        return self.snapshot_file(raw_path) is not None
+
+    def snapshot_file(self, raw_path: str | None) -> Path | None:
+        """账本里那条接触印相路径在本机的文件；不在盘上是 None。"""
         if not raw_path:
-            return False
+            return None
         path = normalized_path(raw_path) if self.snapshot_root is not None else Path(raw_path)
-        return path.is_file()
+        return path if path.is_file() else None
 
     def cover_path(self, code: str | None) -> Path | None:
         """封面按归一番号存一份，多个文件共用同一张；没有就返回 None。"""

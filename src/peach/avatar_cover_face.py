@@ -12,10 +12,14 @@
 只看单人作品：一部片挂着两个演员时，封面上那张脸是谁机器答不出来。单人作品也只是
 「多半是她」，不是核实过的身份，所以来源记录标 `identity_verified: false`，这张图
 永远排在图库与名录人像之后，出现那一档就被换掉（`avatar_followup`）。
+
+个人博主（过 `work_portrait_predicate` 的发布账号）走 `sheet_faces`：作品没有番号封面，
+画面取自接触印相九格，截法与来源记录同上（ADR-0096）。
 """
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +35,10 @@ WHOLE_COVER_PROVIDERS = ("cover", "cover-fallback", "poster-fallback")
 #: 方框边长是脸宽的几倍。YuNet 的框只框到额头和下巴，放到 2.4 倍才装得下头发和下巴
 #: 下面一点；圆框再切掉四角，脸不贴边。
 FACE_SPAN = 2.4
+#: 接触印相是三行三列（`PreviewService.poster` 按同一个网格切格）。
+SHEET_GRID = 3
+#: 个人博主一次最多看这么多部作品的印相：一部九格，每格检两次脸。
+MAX_SHEET_WORKS = 24
 
 
 @dataclass(frozen=True)
@@ -43,21 +51,29 @@ class CoverFace:
     width: int
     height: int
     record: dict
+    #: 接触印相的第几格（`sheet_faces`）；封面上截的是 None。
+    cell: int | None = None
 
     @property
     def face_px(self) -> int:
         return face_px_width(self.record)
 
 
-def single_performer_works(connection, entity_id: int) -> list[tuple[int, str]]:
-    """这个人名下只有她一个演员的作品，`(asset_id, 番号)`，回收站里的不算。"""
-    return [(int(asset_id), str(code or '')) for asset_id, code in connection.execute(
-        "SELECT a.id,a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
-        "WHERE ae.entity_id=? AND ae.role='performer' "
+def single_works(connection, entity_id: int,
+                 role: str = "performer") -> list[tuple[int, str, str]]:
+    """这个人以 `role` 独占的作品，`(asset_id, 番号, 接触印相路径)`，回收站里的不算。
+
+    女优按 `performer` 取，同一部片不挂别的演员；个人博主按 `creator` 取，同一部片不挂
+    别的发布账号。
+    """
+    return [(int(asset_id), str(code or ''), str(snapshot or ''))
+            for asset_id, code, snapshot in connection.execute(
+        "SELECT a.id,a.code,a.snapshot_path FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
+        "WHERE ae.entity_id=? AND ae.role=? "
         "AND a.disposal IS NULL "
         "AND NOT EXISTS(SELECT 1 FROM asset_entity other WHERE other.asset_id=a.id "
-        "AND other.role='performer' AND other.entity_id<>ae.entity_id) "
-        "ORDER BY a.id", (int(entity_id),))]
+        "AND other.role=ae.role AND other.entity_id<>ae.entity_id) "
+        "ORDER BY a.id", (int(entity_id), role))]
 
 
 def faces(connection, cover_root: Path, entity_id: int, probe) -> list[CoverFace]:
@@ -77,7 +93,7 @@ def faces(connection, cover_root: Path, entity_id: int, probe) -> list[CoverFace
     """
     found: list[CoverFace] = []
     seen: set[str] = set()
-    for asset_id, code in single_performer_works(connection, entity_id):
+    for asset_id, code, _snapshot in single_works(connection, entity_id):
         key = artwork_key(asset_id, code)
         if not key or key in seen:
             continue
@@ -94,6 +110,72 @@ def faces(connection, cover_root: Path, entity_id: int, probe) -> list[CoverFace
         candidate = CoverFace(asset_id, key, body, int(px[0]), int(px[1]), record or {})
         if candidate.face_px > 0 and readable_cut(candidate, probe):
             found.append(candidate)
+    found.sort(key=lambda face: (face.face_px, face.width * face.height), reverse=True)
+    return found
+
+
+def sheet_cells(body: bytes) -> list[tuple[int, bytes]]:
+    """接触印相切成九格，`(格号, 字节)`。格号与 `/poster` 的 `cell` 同一个编号：行优先，0 起。"""
+    size = images.measure_image_size(body)
+    if size is None:
+        return []
+    width, height = size
+    cells = []
+    for cell in range(SHEET_GRID * SHEET_GRID):
+        col, row = cell % SHEET_GRID, cell // SHEET_GRID
+        box = (width * col // SHEET_GRID, height * row // SHEET_GRID,
+               width * (col + 1) // SHEET_GRID, height * (row + 1) // SHEET_GRID)
+        if (piece := images.crop_to_box(body, box)) is not None:
+            cells.append((cell, piece))
+    return cells
+
+
+def sheet_faces(connection, cover_root: Path, entity_id: int, probe,
+                snapshot_file: Callable[[str], Path | None], *,
+                role: str = "creator") -> list[CoverFace]:
+    """个人博主独占的作品里检得出脸的那些画面，一部作品一张，脸最宽的在前。
+
+    博主作品大多没有番号，封面目录里没有它们的封面（`artwork_key` 落到 `ASSET-ID-<id>`，
+    多数没有那张图）；画面来自接触印相的九格，有封面的作品封面也算一格。每部作品只留
+    脸最宽、截出来还检得出脸的那一格：互证数的是作品，同一部片的两格不算两份证据。
+
+    `snapshot_file` 把账本里的印相路径换成本机文件，取不到是 None（`WebContract.snapshot_file`）。
+    最多看 `MAX_SHEET_WORKS` 部作品。
+    """
+    found: list[CoverFace] = []
+    seen: set[str] = set()
+    for asset_id, code, snapshot in single_works(connection, entity_id, role):
+        if len(seen) >= MAX_SHEET_WORKS:
+            break
+        key = artwork_key(asset_id, code)
+        if key in seen:
+            continue
+        pictures: list[tuple[int | None, bytes]] = []
+        cover = Path(cover_root) / f"{key}.jpg"
+        if artwork_cast_size(cover, 1) <= 1:
+            try:
+                pictures.append((None, cover.read_bytes()))
+            except OSError:
+                pass
+        sheet = snapshot_file(snapshot) if snapshot else None
+        if sheet is not None:
+            try:
+                pictures += sheet_cells(sheet.read_bytes())
+            except OSError:
+                pass
+        if not pictures:
+            continue
+        seen.add(key)
+        best: CoverFace | None = None
+        for cell, body in pictures:
+            record = probe.on_bytes(body) or {}
+            px = record.get("px") or [0, 0]
+            candidate = CoverFace(asset_id, key, body, int(px[0]), int(px[1]), record, cell)
+            if (candidate.face_px > (best.face_px if best else 0)
+                    and readable_cut(candidate, probe)):
+                best = candidate
+        if best is not None:
+            found.append(best)
     found.sort(key=lambda face: (face.face_px, face.width * face.height), reverse=True)
     return found
 
@@ -130,12 +212,13 @@ def cut(face: CoverFace) -> tuple[bytes, dict] | None:
     body = images.crop_to_box(face.body, box)
     if body is None:
         return None
+    sheet = {"sheet_cell": face.cell} if face.cell is not None else {}
     return body, {"source": "cover face", "provider": PROVIDER, "source_kind": SOURCE_KIND,
                   "external_id": face.code, "upstream_url": f"peach:cover-face/{face.code}",
                   "asset_id": face.asset_id,
                   "asset_code": face.code, "crop_box": list(box),
                   "crop_source_px": [face.width, face.height],
-                  "face_px": face.face_px, "identity_verified": False}
+                  "face_px": face.face_px, "identity_verified": False, **sheet}
 
 
 def _has_face(probe, body: bytes | None) -> bool:
