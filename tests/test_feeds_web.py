@@ -79,6 +79,9 @@ class FeedWebFixture(unittest.TestCase):
         self.addCleanup(lambda: setattr(feed_followup, "collect", self._collect))
         # 封面装进临时封面目录；取图那一步同样替掉，换成一张现画的横版封套。
         self.contract.cover_root = Path(self.temporary.name) / "covers"
+        # 每一轮拉取还会给缺头像的存量女优派补头像，判缺不缺、试没试过都读这两处。
+        self.contract.candidate_root = Path(self.temporary.name) / "generated"
+        self.contract.avatar_root = self.contract.candidate_root / "avatars"
         self.cover_misses: set[str] = set()
         self.cover_unreachable: set[str] = set()
         self.cover_urls: dict[str, str | None] = {}
@@ -499,6 +502,29 @@ class FeedWebTest(FeedWebFixture):
         self.transport.responses[self.url] = HttpResponse(304, {}, b"", self.url)
         self.assertEqual([item["key"] for item in self._check()["followups"]],
                          ["feed-scrape:HMN-071"])
+
+    def test_every_check_carries_performers_still_missing_an_avatar(self):
+        """资料处理不跑的日子，缺头像的存量女优跟着定时拉取补（ADR-0097）。试过的不再带。"""
+        from peach import avatar_followup
+        from peach.followups import Attempts, attempts_root
+
+        with self.contract.database.write_transaction() as connection:
+            entity_id = connection.execute(
+                "INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at)"
+                " VALUES('performer','二の宮すずか','二の宮すずか',?,?)",
+                ("2026-09-22T00:00:00Z", "2026-09-22T00:00:00Z")).lastrowid
+            connection.execute(
+                "INSERT INTO asset(id,location,path,name,medium,code,size)"
+                " VALUES(9001,'R:','R:\\media\\NHDTB-557.mp4','NHDTB-557.mp4','video','NHDTB-557',1)")
+            connection.execute(
+                "INSERT INTO asset_entity(asset_id,entity_id,role,source)"
+                " VALUES(9001,?,'performer','test')", (entity_id,))
+        key = avatar_followup.followup_key("performer", entity_id)
+        self.assertIn(key, [item["key"] for item in self._check(automatic=True)["followups"]])
+        with self.contract.database.read_connection() as connection:
+            current = avatar_followup.fingerprint(connection, entity_id)
+        Attempts(attempts_root(self.contract.candidate_root)).record(key, current, "图库 6 张认不准")
+        self.assertNotIn(key, [item["key"] for item in self._check(automatic=True)["followups"]])
 
     def test_an_unknown_action_is_refused(self):
         with self.assertRaises(ValueError):

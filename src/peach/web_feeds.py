@@ -15,12 +15,15 @@ from datetime import timedelta
 from urllib.parse import quote
 
 from . import (
-    entities, entry_links, feed_followup, feeds, javdb, performer_alias_followup as alias,
-    performer_profile_followup, wants, web_catalog, web_settings, web_wants,
+    avatar_followup, entities, entry_links, feed_followup, feeds, javdb,
+    performer_alias_followup as alias, performer_profile_followup, wants, web_catalog,
+    web_settings, web_wants,
 )
 from .catalog_rules import normalise_code_key
+from .followups import Attempts, attempts_root
 from .jobs import TaskRunConflict
 from .http import HttpRequest, public_https_url
+from .task_runs import MAX_FOLLOWUPS
 
 #: 一次拉取的超时与体积上限。JavDB 演员页 78 KB；2 MiB 之外的东西不是演员页，
 #: 是被替换成了别的页面。
@@ -189,11 +192,17 @@ def _execute_check(contract, body, job_id: str) -> dict:
         batch = codes + feed_followup.backlog(
             connection, contract.cover_root, exclude=codes, retry_after=retry_after,
             limit=max(0, feed_followup.MAX_BATCH - len(codes)), hidden=hidden)
+        planned = feed_followup.plan(batch)
+        # 余下的名额给缺头像的存量女优（ADR-0097）。资料处理收尾也派这一份，但没有新片
+        # 入库的日子它一轮都不跑，存量就一直停在原地；定时拉取每天都跑。
+        planned += avatar_followup.stock(
+            connection, contract.avatar_root, Attempts(attempts_root(contract.candidate_root)),
+            limit=MAX_FOLLOWUPS - len(planned))
     return {"ok": True, "checked": len(rows), "total": len(rows), "results": results,
             "added": len(codes),
             # 后继由结果声明，调度端统一派（ADR-0040）：这里只把清单交出去。
             "followups": [dict(key=item.key, task_key=item.task_key, label=item.label)
-                          for item in feed_followup.plan(batch)]}
+                          for item in planned]}
 
 
 def w_feed_check(contract, body) -> dict:
