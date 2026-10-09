@@ -32,7 +32,7 @@ import {
 function costarImg(person: HeroCostar): string {
   return entityFaceImg({
     id: person.id, hasImage: person.has_image, version: person.image_version, rep: person.has_avatar ? person.rep : null,
-    style: facePos(person.avatar_focus), focus: person.avatar_focus,
+    style: facePos(person.avatar_focus), focus: person.avatar_focus, standIn: person.avatar_stand_in,
   });
 }
 

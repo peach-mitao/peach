@@ -284,14 +284,8 @@ function renderInitialSurfaceLoading(){
     renderCatalogLoading('正在读取垃圾文件');
     return;
   }
-<<<<<<< HEAD
-  /* 画进 `#stats` 的那几屏（管理区、播放列表页与关注页，`managedPagePath`），加上深链直接进的关注详情。 */
-  if(managedPagePath(path)||path.startsWith('/follow/item/')){
-=======
-  const management=new Set(['/stats','/taste','/review','/data-cleanup','/duplicates','/quality-goals','/scraping',
-    '/playlists','/resource-sync','/follow','/follow-manage','/configuration','/diagnostics','/activity']);
-  if(management.has(path)){
->>>>>>> a07ec9ad (fix(web): 刷新关注详情时不先在页面里铺一份详情骨架)
+  /* 管理区、播放列表页与关注页的占位由各页面接手。 */
+  if(managedPagePath(path)){
     hideDiscoveryBars();
     const stats=$('#stats');stats.hidden=false;clearCatalogGrid();
     stats.innerHTML=path.startsWith('/follow')&&path!=='/follow-manage'
@@ -1370,7 +1364,8 @@ function catalogTags(filters){
    源图 1:1。取景与索引页同一份 sidecar、同一个换算。 */
 function tierPerformer(x){
   return {name:x.k,ringHtml:`<span data-tier-initial>${esc(firstGrapheme(x.k))}</span>${entityFaceImg(
-    {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus})}`};
+    {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus,
+      standIn:x.avatar_stand_in})}`};
 }
 /* 正规厂牌用官网 logo；缺失时只显示首两个字，绝不把作品截图冒充厂牌图标。
 
@@ -2192,7 +2187,8 @@ const peopleIndexLayout=()=>peopleLayoutOf(appSettings.peopleLayout);
 function personRingHtml(x,kind,big){
   const ref=x.entity_id||x.id;
   const company=kind==='studio'||kind==='agency';
-  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version}:null,
+  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version,
+    avatar_stand_in:x.avatar_stand_in}:null,
     x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',
     company&&big?'large':'ring',company?null:x.avatar_focus,true);
 }
@@ -2311,7 +2307,7 @@ const entityPageHelpers={
   portraitImg:(kind,d)=>{
     const company=kind==='studio'||kind==='agency';
     const own=d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
-      rep:company||!d.has_avatar?null:d.representative_asset_id,
+      rep:company||!d.has_avatar?null:d.representative_asset_id,standIn:d.avatar_stand_in,
       mark:kind==='agency'?d.mark_link_id:null,
       logo:company&&d.has_logo?d.canonical_name:'',logoVersion:d.logo_version,logoVariant:'large',
       alt:esc(d.canonical_name),lazy:false,

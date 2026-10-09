@@ -144,6 +144,16 @@ describe('avatarInner：首字母垫底，再叠真实图', () => {
     expect(parse(avatarInner('A', { id: 3, has_image: true, image_version: '1727800000' }, null))!.getAttribute('src'))
       .toBe('/entity-image?kind=performer&id=3&v=1727800000');
   });
+
+  it('代表作画面替账号占位时注明不是本人；装了实体图的不注', () => {
+    const standIn = parse(avatarInner('A', { id: 3, avatar_stand_in: true }, 41, 'creator'))!;
+    expect(standIn.getAttribute('src')).toBe('/avatar?id=41');
+    expect(standIn.getAttribute('title')).toBe('代表作画面，非本人');
+    expect(standIn.getAttribute('aria-label')).toBe('代表作画面，非本人');
+    const installed = parse(avatarInner('A', { id: 3, has_image: true, avatar_stand_in: true }, 41, 'creator'))!;
+    expect(installed.hasAttribute('title')).toBe(false);
+    expect(parse(avatarInner('A', { id: 3 }, 41, 'creator'))!.hasAttribute('title')).toBe(false);
+  });
 });
 
 describe('人脸取景的换算', () => {

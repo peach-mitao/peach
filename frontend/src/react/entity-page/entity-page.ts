@@ -37,6 +37,7 @@ export interface EntityPageData extends EntityHeroData {
   has_image?: boolean;
   image_version?: string;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   has_logo?: boolean;
   representative_asset_id?: number | null;
   avatar_focus?: unknown;

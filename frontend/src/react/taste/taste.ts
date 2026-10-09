@@ -49,6 +49,7 @@ export interface RankRow {
   image_version?: string;
   avatar_focus?: unknown;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   representative_asset_id?: number | null;
   source_domain?: string | null;
 }

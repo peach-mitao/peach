@@ -426,7 +426,8 @@ function Cover({ card, helpers }: { card: SuggestCard | null | undefined; helper
  *  站点圆标；都取不到就是首字母。一屏几十个，取派生件。 */
 function Face({ item, kind }: { item: SuggestItem; kind: string }) {
   const ref = { id: item.entity_id as number | null | undefined, has_image: item.has_image as boolean | undefined,
-    image_version: item.image_version as string | undefined, avatar_focus: item.avatar_focus };
+    image_version: item.image_version as string | undefined, avatar_focus: item.avatar_focus,
+    avatar_stand_in: item.avatar_stand_in as boolean | undefined };
   const html = avatarInner(item.value, ref, (item.rep as number | null | undefined) || null, kind,
     (item.mark as number | null | undefined) || null, item.has_logo ? item.value : '', 'icon', undefined, true);
   return <span data-search-face="" data-kind={kind} dangerouslySetInnerHTML={{ __html: html }} />;

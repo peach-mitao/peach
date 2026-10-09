@@ -56,7 +56,7 @@ class EntityClassificationTests(unittest.TestCase):
         self.connection.commit()
         return asset_id,entity_id
 
-    def test_account_work_portraits_require_person_identity_and_preserve_installed_images(self):
+    def test_account_work_portraits_without_person_identity_are_marked_as_stand_ins(self):
         asset_id,entity_id=self.entity('Publisher Account')
         self.connection.execute("UPDATE asset SET snapshot_path='sheet.jpg' WHERE id=?",(asset_id,))
         self.connection.commit()
@@ -64,12 +64,14 @@ class EntityClassificationTests(unittest.TestCase):
         with mock.patch.object(WebContract,'has_avatar',return_value=True):
             row={'entity_id':entity_id,'rep':asset_id,'has_image':True}
             attach_avatar_availability(contract,[row])
-            self.assertFalse(row['has_avatar'])
+            self.assertTrue(row['has_avatar'])
+            self.assertTrue(row['avatar_stand_in'])
             self.assertTrue(row['has_image'])
             self.claim(entity_id,'identity','person')
             self.connection.commit()
             attach_avatar_availability(contract,[row])
             self.assertTrue(row['has_avatar'])
+            self.assertNotIn('avatar_stand_in',row)
 
     def claim(self,entity_id,facet,value,**kwargs):
         classification.write_claim(self.connection,entity_id=entity_id,facet=facet,value=value,

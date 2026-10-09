@@ -181,9 +181,11 @@ export function baseLabel(ref: string): string {
   return Number.isFinite(cell) ? `第 ${cell + 1} 格` : what;
 }
 
-/** 一格的完整说明，进 `title`：哪儿来的、多大、按谁找到的。 */
+/** 一格的完整说明，进 `title`：哪儿来的、多大、按谁找到的。作品画面再接上服务端的说明：
+ *  片名，账号没有本人身份依据时还有「代表作画面，非本人」。 */
 export const choiceDetail = (choice: AvatarChoice): string =>
   `${SOURCE_LABELS[choice.source] || choice.source} · ${choice.label}`
   + (choice.width ? ` · ${choice.width}×${choice.height}` : '')
   + (sharedCast(choice) ? ` · ${choice.cast.toLocaleString()} 人合演` : '')
-  + (choice.found_by ? ` · 按「${choice.found_by}」找到` : '');
+  + (choice.found_by ? ` · 按「${choice.found_by}」找到` : '')
+  + (choice.source === 'asset' && choice.detail && choice.detail !== choice.label ? ` · ${choice.detail}` : '');

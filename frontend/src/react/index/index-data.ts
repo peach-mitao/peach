@@ -68,6 +68,7 @@ export interface IndexPerson {
   has_image?: boolean;
   image_version?: string;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   avatar_focus?: unknown;
   has_logo?: boolean;
   members?: number;

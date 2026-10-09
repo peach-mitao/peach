@@ -345,6 +345,15 @@ it('合演作品的格子标出人数，框选时提醒先找到她自己的脸'
   expect(dialog()?.textContent).toContain('DVAJ-495：15 人合演，先找到她自己的脸');
 });
 
+it('账号的作品画面格子在说明里注明是代表作画面、非本人', async () => {
+  server(listing([choice({
+    ref: 'asset:11:cover', source: 'asset', label: '晚安直播', crop: true,
+    detail: '代表作画面，非本人 · 晚安直播', bases: ['asset:11:cover'],
+  })]));
+  await openPicker();
+  expect(cells()[0]?.getAttribute('title')).toContain('代表作画面，非本人');
+});
+
 /** 作品画面那一档：点开是框一块，不是直接装上去。 */
 const artwork = () => choice({
   ref: 'asset:11:cover', source: 'asset', label: 'ABW-232', detail: '',
