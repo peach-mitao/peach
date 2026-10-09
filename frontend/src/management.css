@@ -19,3 +19,11 @@
    与 `.ui-resourcesync>h2` 同一档特指度、排在它后面，所以标题多写一级 `section` 压过它的字号与外边距。 */
 .ui-resourcesync{scroll-margin-top:calc(var(--topH) + 18px);display:grid;gap:16px}
 section.ui-resourcesync>h2{margin:0;font:var(--board-heading);letter-spacing:0}
+/* 链接管理骨架的概览格与主要站点一行。正文归 React 子树（ADR-0031），这几条只服务骨架。 */
+.ui-linkstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 32px;margin-top:16px}
+.ui-linkstats>div,.ui-linkhosts{display:grid;gap:2px;min-width:0}
+.ui-linkstats span,.ui-linkhosts span{color:var(--muted);font-size:var(--fs-xs)}
+.ui-linkstats b{font-size:var(--fs-xl);font-variant-numeric:tabular-nums}
+.ui-linkstats small{color:var(--muted);font-size:var(--fs-xs)}
+.ui-linkhosts{margin-top:16px}
+.ui-linkhosts b{font-weight:500;font-size:var(--fs-sm);overflow-wrap:anywhere}

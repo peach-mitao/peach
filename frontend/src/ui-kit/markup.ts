@@ -52,12 +52,12 @@ export function noteHtml(message:any,{variant='secondary',label='',className='',
     ${icon(symbol)}<p>${label?`<b>${esc(label)}</b>`:''}<span>${esc(kind==='error'?requestErrorMessage(message):message)}</span></p>${action}${details?noteDetailsHtml(details):''}</div>`;
 }
 
-const PROJECT_BANNER_CLASSES:Record<string,string>={gray:'project-banner-gray',success:'project-banner-success',warning:'project-banner-warning',error:'project-banner-error'};
+const PROJECT_BANNER_CLASSES:Record<string,string>={gray:'project-banner-gray',success:'ui-project-banner-success',warning:'ui-project-banner-warning',error:'ui-project-banner-error'};
 export function projectBannerHtml(message:unknown,{variant='gray',href,label,value,max}:{
   variant?: string; href?: string; label?: string; value?: unknown; max?: unknown;
 }={}):string{
   const kind=['gray','success','warning','error'].includes(variant)?variant:'gray';
-  return `<aside class="project-banner ${PROJECT_BANNER_CLASSES[kind]}" role="${kind==='error'?'alert':'status'}"><div>${Number(max)>0?gaugeHtml('任务完成率',value,max):icon(kind==='error'||kind==='warning'?'alert':'info')}<p>${esc(message)}</p></div><a href="${esc(href)}">${esc(label)}</a></aside>`;
+  return `<aside class="ui-project-banner ${PROJECT_BANNER_CLASSES[kind]}" role="${kind==='error'?'alert':'status'}"><div>${Number(max)>0?gaugeHtml('任务完成率',value,max):icon(kind==='error'||kind==='warning'?'alert':'info')}<p>${esc(message)}</p></div><a href="${esc(href)}">${esc(label)}</a></aside>`;
 }
 
 export function gaugeHtml(label:string,value:unknown,max:unknown=100,{usage=false,compact=false}={}):string{
@@ -66,7 +66,7 @@ export function gaugeHtml(label:string,value:unknown,max:unknown=100,{usage=fals
   const percent=Math.max(0,Math.min(100,current/ceiling*100));
   const level=usage?(percent>=95?'error':percent>=80?'warning':'normal'):'normal';
   const status=usage?(level==='error'?'空间即将用满':level==='warning'?'空间使用偏高':'空间充足'):'';
-  return `<span class="geist-gauge" data-level="${level}" role="progressbar" aria-label="${esc(label+(status?'：'+status:''))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${percent} 100"/></svg></span>${status&&!compact?`<span class="gauge-status">${status}</span>`:''}`;
+  return `<span class="ui-geist-gauge" data-level="${level}" role="progressbar" aria-label="${esc(label+(status?'：'+status:''))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${percent} 100"/></svg></span>${status&&!compact?`<span class="ui-gauge-status">${status}</span>`:''}`;
 }
 
 /** Determinate progress only. Callers supply real units instead of a decorative width. */
@@ -78,7 +78,7 @@ export function progressHtml(label:string,value:unknown,max:unknown=100,{variant
   const percent=ceiling?current/ceiling*100:0;
   return `<div class="ui-geist-progress" role="progressbar" aria-label="${esc(label)}"
     aria-valuemin="0" aria-valuemax="${ceiling}" aria-valuenow="${current}"
-    style="--progress-value:${percent}%;--progress-color:var(${variant==='error'?'--drop':variant==='warning'?'--meter':'--feedback-success'})"><i></i>${stops.filter(stop=>Number(stop.value)>0&&Number(stop.value)<ceiling&&stop.label).map(stop=>`<span class="geist-progress-stop" style="left:${Number(stop.value)/ceiling*100}%" role="img" aria-label="${esc(stop.label)}"></span>`).join('')}</div>`;
+    style="--progress-value:${percent}%;--progress-color:var(${variant==='error'?'--drop':variant==='warning'?'--meter':'--feedback-success'})"><i></i>${stops.filter(stop=>Number(stop.value)>0&&Number(stop.value)<ceiling&&stop.label).map(stop=>`<span class="ui-geist-progress-stop" style="left:${Number(stop.value)/ceiling*100}%" role="img" aria-label="${esc(stop.label)}"></span>`).join('')}</div>`;
 }
 
 /**

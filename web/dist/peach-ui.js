@@ -5088,12 +5088,12 @@ function wc() {
       <h2 id="cleanup-loading-links">链接管理</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task data-fieldset-stack>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">站外链接</h3>
-          <div class="linksummary"><div class="linkstats"><div><span>链接总数</span><b>${$}</b><small>${$}</small></div>${[
+          <div class="linksummary"><div class="ui-linkstats"><div><span>链接总数</span><b>${$}</b><small>${$}</small></div>${[
 		"官网/事务所",
 		"社交账号",
 		"作品资料站"
 	].map((e) => `<div><span>${e}</span><b>${$}</b></div>`).join("")}</div>
-          <div class="linkhosts"><span>主要站点</span><b>${$}</b></div></div></div>
+          <div class="ui-linkhosts"><span>主要站点</span><b>${$}</b></div></div></div>
         <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${_c}>${n("unlink")}<span>检查死链</span></button></div>
       </div></section>
     <section class="ui-resourcesync" aria-labelledby="cleanup-loading-sync">

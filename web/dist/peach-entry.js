@@ -733,9 +733,9 @@ function z(e, { variant: t = "secondary", label: i = "", className: a = "", size
 }
 var $e = {
 	gray: "project-banner-gray",
-	success: "project-banner-success",
-	warning: "project-banner-warning",
-	error: "project-banner-error"
+	success: "ui-project-banner-success",
+	warning: "ui-project-banner-warning",
+	error: "ui-project-banner-error"
 };
 function et(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}) {
 	let s = [
@@ -744,19 +744,19 @@ function et(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}
 		"warning",
 		"error"
 	].includes(t) ? t : "gray";
-	return `<aside class="project-banner ${$e[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? tt("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
+	return `<aside class="ui-project-banner ${$e[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? tt("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
 }
 function tt(e, t, n = 100, { usage: r = !1, compact: i = !1 } = {}) {
 	let a = Number(n), o = Number(t);
 	if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(o)) return `<span>${m(e)}：未取得</span>`;
 	let s = Math.max(0, Math.min(100, o / a * 100)), c = r ? s >= 95 ? "error" : s >= 80 ? "warning" : "normal" : "normal", l = r ? c === "error" ? "空间即将用满" : c === "warning" ? "空间使用偏高" : "空间充足" : "";
-	return `<span class="geist-gauge" data-level="${c}" role="progressbar" aria-label="${m(e + (l ? "：" + l : ""))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${s} 100"/></svg></span>${l && !i ? `<span class="gauge-status">${l}</span>` : ""}`;
+	return `<span class="ui-geist-gauge" data-level="${c}" role="progressbar" aria-label="${m(e + (l ? "：" + l : ""))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${s} 100"/></svg></span>${l && !i ? `<span class="ui-gauge-status">${l}</span>` : ""}`;
 }
 function nt(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
 	let a = Math.max(0, Number(n) || 0), o = Math.max(0, Math.min(Number(t) || 0, a)), s = a ? o / a * 100 : 0;
 	return `<div class="ui-geist-progress" role="progressbar" aria-label="${m(e)}"
     aria-valuemin="0" aria-valuemax="${a}" aria-valuenow="${o}"
-    style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
+    style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="ui-geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
 }
 function rt(e = "加载中") {
 	let t = Array.from({ length: 10 }, (e, t) => `<i aria-hidden="true" style="--spinner-angle:${t * 36}deg;--spinner-delay:${t * 100 - 900}ms"></i>`).join("");
