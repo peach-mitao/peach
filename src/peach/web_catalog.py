@@ -465,7 +465,7 @@ def attach_avatar_availability(contract: WebContract, rows, key="rep",
 
     发布账号缺少本人或出演职业依据（不过 `work_portrait_predicate`）时，代表作画面照样
     当头像，同时标 `avatar_stand_in`：那是代表作画面，不是账号本人。资料页、索引、搜索、
-    口味榜与统计都从这里拿这个标志（ADR-0096）。
+    口味榜与统计都从这里拿这个标志（ADR-0099）。
     """
     ids = sorted({int(row[key]) for row in rows if row.get(key)})
     paths: dict[int, str | None] = {}
