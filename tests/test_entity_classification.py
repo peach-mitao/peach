@@ -175,22 +175,55 @@ class EntityClassificationTests(unittest.TestCase):
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
         self.assertEqual(q_index(contract,'performers')['categories'],{'japanese_av':1})
 
-    def test_amateur_identity_requires_trusted_nonprofessional_evidence(self):
+    def work(self,name,code=None,*,tag=None,disposal=None):
+        """给已有出演者再挂一部作品。"""
+        asset_id=self.connection.execute("INSERT INTO asset(location,path,name,medium,code,disposal) VALUES('local',?,?,'video',?,?)",
+            (f'B:\\作品\\{name}\\{code or "clip"}-{self.connection.execute("SELECT count(*) FROM asset").fetchone()[0]}.mp4',
+             'clip.mp4',code,disposal)).lastrowid
+        upsert_asset_entity(self.connection,kind='performer',name=name,asset_id=asset_id,role='performer',source='legacy:asset')
+        if tag:
+            upsert_asset_entity(self.connection,kind='tag',name=tag,asset_id=asset_id,role='tag',source='test:scene-tag')
+        return asset_id
+
+    def test_amateur_identity_follows_trusted_claims_or_all_amateur_releases(self):
         _, confirmed = self.entity('Nonprofessional Cast',kind='performer')
         self.claim(confirmed,'occupation','amateur_performer')
-        asset_id, unknown = self.entity('Unknown Cast',kind='performer')
-        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(asset_id,))
-        classification.write_claim(self.connection,entity_id=unknown,facet='occupation',
+        fc2_id, fc2_only = self.entity('FC2 Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1234567' WHERE id=?",(fc2_id,))
+        self.work('FC2 Cast',tag='素人')
+        self.work('FC2 Cast',disposal='vanished')
+        mixed_id, _ = self.entity('Mixed Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-7654321' WHERE id=?",(mixed_id,))
+        self.work('Mixed Cast','ABP-001')
+        _, guessed = self.entity('Guessed Cast',kind='performer')
+        classification.write_claim(self.connection,entity_id=guessed,facet='occupation',
             value='amateur_performer',source='script:search',evidence='未核验推断')
+        jav_id, jav = self.entity('Known JAV Cast',kind='performer')
+        self.connection.execute("UPDATE asset SET code='FC2-PPV-1111111' WHERE id=?",(jav_id,))
+        self.claim(jav,'market','japanese_av')
         self.connection.commit()
         contract=WebContract(self.db)
         page=q_index(contract,'performers',category='amateur')
-        self.assertEqual([item['entity_id'] for item in page['items']],[confirmed])
-        self.assertEqual(page['categories'],{'amateur':1})
-        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Unknown Cast'})['identity_labels'],[])
+        self.assertEqual(sorted(item['entity_id'] for item in page['items']),sorted([confirmed,fc2_only]))
+        self.assertEqual(page['categories']['amateur'],2)
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Mixed Cast'})['identity_labels'],[])
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Guessed Cast'})['identity_labels'],[])
+        self.assertEqual(q_entity(contract,{'kind':'performer','name':'Known JAV Cast'})['identity_labels'],['女优'])
         self.claim(confirmed,'occupation','adult_performer')
+        self.claim(fc2_only,'market','western_adult')
         self.connection.commit()
         self.assertEqual(q_index(contract,'performers',category='amateur')['items'],[])
+
+    def test_amateur_tags_from_the_vision_model_do_not_classify_a_performer(self):
+        asset_id, styled = self.entity('Styled Cast',kind='performer')
+        self.connection.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,'素人',0.6,'vision_creator')",(asset_id,))
+        for source in ('vision_creator','vision_creator_review'):
+            upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,role='tag',source=source)
+        self.connection.commit()
+        self.assertEqual(classification.summaries(self.connection,[styled])[styled]['identity_categories'],[])
+        upsert_asset_entity(self.connection,kind='tag',name='素人',asset_id=asset_id,role='tag',source='name')
+        self.connection.commit()
+        self.assertEqual(classification.summaries(self.connection,[styled])[styled]['identity_categories'],['amateur'])
 
     def test_animation_author_appears_in_artist_directory_with_its_own_category(self):
         _, animator = self.entity('Animator')
@@ -243,6 +276,41 @@ class EntityClassificationTests(unittest.TestCase):
                 classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='person',source='script:lookup',evidence='推断',**patch)
         with self.assertRaises(ValueError):
             self.claim(entity_id,'occupation','unknown_profession')
+        with self.assertRaisesRegex(ValueError,'代码判据'):
+            classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='person',
+                source='script:identity-research',source_url='https://publisher.test/profile',
+                evidence='研究清单判断',status='observed',confidence=1)
+
+    def test_only_code_sources_make_observed_claims_trusted(self):
+        _,research=self.entity('Research Person',kind='performer')
+        _,parsed=self.entity('Parsed Person',kind='performer')
+        self.connection.execute("INSERT INTO entity_classification VALUES(?,'market','japanese_av',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed',1,'t')",(research,))
+        self.claim(parsed,'market','japanese_av')
+        self.connection.commit()
+        page=q_index(WebContract(self.db),'performers',category='japanese_av')
+        self.assertEqual([row['entity_id'] for row in page['items']],[parsed])
+        self.assertEqual(page['categories'],{'japanese_av':1})
+
+    def test_research_observations_downgrade_to_candidates_and_code_facts_stay(self):
+        _,research=self.entity('Research Person',kind='performer')
+        _,parsed=self.entity('Parsed Person',kind='performer')
+        self.connection.execute("INSERT INTO entity_classification VALUES(?,'market','japanese_av',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed',0.8,'t')",(research,))
+        self.connection.execute("INSERT INTO entity_identity_link VALUES(?,?,'same_person',"
+            "'script:identity-research','https://publisher.test/a','研究清单判断','observed','t')",(research,parsed))
+        self.claim(parsed,'market','japanese_av')
+        plan=classification.untrusted_observed(self.connection)
+        self.assertEqual([(row['entity_id'],row['source']) for row in plan['entity_classification']],
+                         [(research,'script:identity-research')])
+        self.assertEqual(len(plan['entity_identity_link']),1)
+        self.assertEqual(classification.downgrade_untrusted_observed(self.connection),
+                         {'entity_classification':1,'entity_identity_link':1})
+        rows=self.connection.execute('SELECT entity_id,status,confidence,evidence FROM entity_classification ORDER BY entity_id').fetchall()
+        self.assertEqual([tuple(row) for row in rows],
+                         [(research,'candidate',0.8,'研究清单判断'),(parsed,'observed',1.0,'发行方资料')])
+        self.assertEqual(classification.untrusted_observed(self.connection),
+                         {'entity_classification':[],'entity_identity_link':[]})
 
     def test_cast_role_repair_and_restore_preserve_all_business_fields(self):
         asset_id,entity_id=self.entity('Known Person')
@@ -253,7 +321,9 @@ class EntityClassificationTests(unittest.TestCase):
         with self.connection:
             receipt=research.apply(self.connection,frozen)
         self.assertEqual(self.connection.execute('SELECT role FROM asset_entity WHERE asset_id=?',(asset_id,)).fetchone()[0],'performer')
-        self.assertEqual(len(classification.related_identities(self.connection,entity_id)),1)
+        self.assertEqual(self.connection.execute('SELECT group_concat(DISTINCT status) FROM entity_classification').fetchone()[0],'candidate')
+        self.assertEqual(self.connection.execute('SELECT group_concat(status) FROM entity_identity_link').fetchone()[0],'candidate')
+        self.assertEqual(classification.related_identities(self.connection,entity_id),[])
         with self.connection:
             research.restore(self.connection,receipt)
         after=dict(self.connection.execute('SELECT * FROM asset WHERE id=?',(asset_id,)).fetchone())

@@ -10,6 +10,7 @@ from collections import defaultdict
 from .catalog_rules import compact_label, western_release_identity
 from .classification import is_structural_creator, is_repost_creator, creator_collection_base, creator_release_identifier
 from .entities import normalize_entity_name, upsert_asset_entity
+from .entity_classification import trusted_sql
 from .field_owners import is_protected, owner_of, write_owned_fields
 from .studio_sites import is_platform, normalise
 
@@ -126,7 +127,7 @@ def collect(connection: sqlite3.Connection) -> list[dict]:
     issuers = {}
     if connection.execute("SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone():
         issuers = dict(connection.execute("SELECT entity_id,min(source_url) FROM entity_classification "
-            "WHERE facet='account_role' AND value='studio' AND status IN ('observed','approved') "
+            "WHERE facet='account_role' AND value='studio' AND " + trusted_sql() + " "
             "AND source_url LIKE 'https://%' GROUP BY entity_id"))
     creators = {row[1]: row[2] for row in connection.execute(
         "SELECT id,normalized_name,canonical_name FROM entity WHERE kind='creator'") if row[0] not in issuers}
