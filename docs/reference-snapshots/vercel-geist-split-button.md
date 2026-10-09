@@ -77,5 +77,5 @@ deployment`），说明不参与和主动作的比对，第一行标签才是。
   `--color-accent-400`，悬停时不变。
 - 骨架里两半是原生 `disabled`，外圈 `--border-15` 画在整组上，中缝退成同一色。
 
-两半的悬停、中缝几何与骨架禁用面由 `frontend/e2e/design.test.ts` 量 computed style 守住，
+两半的悬停、中缝几何与骨架禁用面由 `frontend/e2e/design-controls.test.ts` 量 computed style 守住，
 结构由 `tests/test_web_ui.py` 的 `test_history_actions_are_one_split_button_with_the_primary_mirrored` 守住。

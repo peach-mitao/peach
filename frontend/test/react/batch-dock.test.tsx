@@ -2,7 +2,7 @@
  * （`RESIDENT_ROUTES['batch-dock']`）在路由树里的行为：宿主就是 `[data-batch-dock]`、句柄同步画完、
  * 收起与抛错都只卸组件不撤宿主，抛错之后这一面空到刷新为止。
  *
- * 浮条的玻璃、位置与窄屏三列栅格要量布局，由 e2e 在浏览器里走（`e2e/design.test.ts`）。 */
+ * 浮条的玻璃、位置与窄屏三列栅格要量布局，由 e2e 在浏览器里走（`e2e/design-*.test.ts`）。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';

@@ -2,7 +2,7 @@
  * （`entity-hero`／`entity-filter`／`entity-body.test.tsx`），这里看的是把它们拼成一页的那一层：
  * 首屏取哪几样、换筛选重取几次、哪些动作回壳写地址、写操作成功后哪几块跟着更新。
  *
- * 骨架换成整页时的几何、吸顶与窄屏横滚由 e2e（`entity-filter.test.ts`、`design.test.ts`）量。 */
+ * 骨架换成整页时的几何、吸顶与窄屏横滚由 e2e（`entity-filter.test.ts`、`design-*.test.ts`）量。 */
 import { act, useState } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';

@@ -1,6 +1,6 @@
 /* 来源和凭证页的行为：交什么、清什么、结果怎么说、后台那一趟跟到什么时候。
  *
- * 外观（页脚三键的主次、来源外链的 `rel`）是设计决定，由 `frontend/e2e/design.test.ts`
+ * 外观（页脚三键的主次、来源外链的 `rel`）是设计决定，由 `frontend/e2e/design-*.test.ts`
  * 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';

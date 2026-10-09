@@ -19,6 +19,6 @@
 
 共用弹窗由 React Aria 的 entering／exiting 生命周期维持挂载，opacity 与 scale .98 在 200ms 内进入，120ms 退出。批量选择条沿底部 8px 路径进出，进入 160ms、退出 120ms；Motion AnimatePresence 保持退出阶段，退出内容立即 inert，数量更新不重播。上述数值是 Peach 的设计选择，不宣称是参考站的弹窗与操作条实测值。
 
-无障碍与生产边界：保留 React Aria 焦点管理，键盘与减少动态效果模式即时开合；不改变 API、账本写入、选择集合和提交时机。运行回归在 `frontend/e2e/design.test.ts`。
+无障碍与生产边界：保留 React Aria 焦点管理，键盘与减少动态效果模式即时开合；不改变 API、账本写入、选择集合和提交时机。运行回归在 `frontend/e2e/design-*.test.ts`。
 
 局部滚动区通过共用 `attachOverlayScrollbar` 接入上下边缘提示：仍可滚动的一侧显示 16px 渐隐与 2px 背景模糊，到头即撤去，不影响滚轮与点击。整页不叠加此效果。此处根据复核卡截图设计；参考站“超出框范围的模糊”实时视觉证据未取得，不宣称是上游效果的复刻。

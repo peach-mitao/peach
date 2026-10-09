@@ -1,7 +1,7 @@
 /* 换头像：点开之前不取候选，点开之后三条路交什么、换不成时说什么。
  *
  * 弹层由 React Aria 渲染到挂载容器外面，所以这里的查询都从整页找。
- * 外观（遮罩、网格列数）由 `frontend/e2e/design.test.ts` 读 `getComputedStyle` 断言。 */
+ * 外观（遮罩、网格列数）由 `frontend/e2e/design-*.test.ts` 读 `getComputedStyle` 断言。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';

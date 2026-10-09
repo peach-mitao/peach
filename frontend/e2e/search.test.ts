@@ -1,7 +1,7 @@
 /* 顶栏搜索（`search` 岛，ADR-0031）：下拉栏里有什么、键盘怎么走、提交之后去哪儿。
  *
  * 补全（`/api/suggest`）与搜索记录（`/api/search-history`）在这里各给一份桩，好数请求、好看写进去的
- * 是什么；作品与详情沿用 `item-fixture.ts`。下拉栏的排版（两栏、页签、封面格）由 `design.test.ts` 量。 */
+ * 是什么；作品与详情沿用 `item-fixture.ts`。下拉栏的排版（两栏、页签、封面格）由 `design-people.test.ts` 量。 */
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 

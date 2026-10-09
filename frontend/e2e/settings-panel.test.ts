@@ -1,5 +1,5 @@
 /* 设置面板（`settings-panel` 岛，ADR-0031）：开合与焦点、每一类设置改完立刻生效并落到该去的地方。
- * 写接口的桩在 `settings-fixture.ts`；面板的版式与像素由 `design.test.ts` 量，这里只写行为。 */
+ * 写接口的桩在 `settings-fixture.ts`；面板的版式与像素由 `design-settings.test.ts` 量，这里只写行为。 */
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 

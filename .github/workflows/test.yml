@@ -196,8 +196,9 @@ jobs:
           done
           exit 1
 
-  # 浏览器冒烟（`frontend/e2e/smoke.test.ts`）与设计决定断言（`design.test.ts`）。
-  # `python` 矩阵的 Windows 行平时只跑 `core`，这两组用例靠这里执行；矩阵扩成全量
+  # 浏览器冒烟（`frontend/e2e/smoke.test.ts`）、设计决定断言（`design-*.test.ts`）与交互回归。
+  # runner 上 `GITHUB_ACTIONS=true`，浏览器用例按设计、交互、冒烟三批串行跑。
+  # `python` 矩阵的 Windows 行平时只跑 `core`，这几组用例靠这里执行；矩阵扩成全量
   # （`plan` 的 `wide`）时 Windows 行已经把 `web` 域跑过一遍，这里就不再跑第二遍。
   web-e2e:
     name: 浏览器冒烟与设计决定断言

@@ -30,6 +30,8 @@ interface Store {
   groups: SuggestGroup[];
   tabs: SuggestTab[];
   suggestRequest: number;
+  /** 最近一次不分类补全问的词：聚焦时的数据晚到，框里还是这个词就不再问一遍。 */
+  asked: string;
   timer: number;
   kind: string;
   active: number;
@@ -41,7 +43,7 @@ interface Store {
 
 const emptyStore = (): Store => ({
   history: [], pool: [], poolRequest: 0, query: '', picks: [], suggestFor: '', groups: [], tabs: [],
-  suggestRequest: 0, timer: 0, kind: '', active: -1, reveal: false, rewind: false,
+  suggestRequest: 0, asked: '', timer: 0, kind: '', active: -1, reveal: false, rewind: false,
 });
 
 const modelOf = (s: Store): MenuModel => menuModel({
@@ -170,6 +172,7 @@ function createOps(props: () => SearchProps, s: Store, menu: () => HTMLElement |
      先发的那次完全可能后回来。 */
   const loadSuggestions = async (query: string, kind = '') => {
     const request = ++s.suggestRequest;
+    if (!kind) s.asked = query;
     try {
       const data = await apiGet<SuggestResponse>(`/api/suggest?q=${encodeURIComponent(query)}`
         + (kind ? `&kind=${kind}&limit=${SUGGEST_ONE_KIND}` : `&limit=${SUGGEST_EACH}`));
@@ -306,9 +309,10 @@ function createOps(props: () => SearchProps, s: Store, menu: () => HTMLElement |
   const focus = () => {
     void Promise.all([loadHistory(), loadPool()]).then(() => {
       if (!focused()) return;
-      // 带着 `?q=` 进来再点回输入框时，框里已经有词，补全该跟着这个词给。
+      // 带着 `?q=` 进来再点回输入框时，框里已经有词，补全该跟着这个词给。这两份数据回来之前
+      // 人可能已经敲完字、那个词的补全也问过了，同一个词不再问第二遍。
       paint();
-      refresh();
+      if (input().value.trim() !== s.asked) refresh();
     });
   };
   return { input: onInput, key, focus, close, pick, peek, remove, pickKind };

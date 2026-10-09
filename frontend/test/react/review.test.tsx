@@ -1,7 +1,7 @@
 /* 人工复核页的行为：分类是地址栏上的身份，分组筛选分页是这一刻的看法，判定只改缓存里
  * 那几行，以及只读账本上这一页什么都不写。
  *
- * 外观（卡片底色、页签选中态）是设计决定，由 `frontend/e2e/design.test.ts` 读
+ * 外观（卡片底色、页签选中态）是设计决定，由 `frontend/e2e/design-*.test.ts` 读
  * `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';

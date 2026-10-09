@@ -68,7 +68,7 @@ Python 静态检查使用开发依赖 Ruff，随每个正式测试域扫描全�
 
 浏览器冒烟与设计决定断言（`tests/test_web_e2e.py`）由 `web-e2e` job 在 `windows-latest` 上执行 `web` 域。它装 Node 24、`frontend/node_modules`、ffmpeg，并经 `PEACH_E2E_CHROME` 指定 runner 自带的 Chrome。矩阵扩成全量（`plan` 输出的 `wide`）时，Windows 全量行本身就跑 `web` 域，这个 job 按条件跳过；`verified` 只在这种情况接受它的 skipped，别的 job 跳过照样算红。
 
-浏览器用例分为设计检查、交互回归和路由冒烟三批，每批限时 600 秒。各批及批内文件默认串行执行，覆盖 `frontend/e2e` 下全部 `*.test.ts`，包括子目录；任一批失败，整轮验证失败。完整 TAP 日志保存在 `build/agent-verification/browser/`，CI 在测试结束后上传该目录。
+浏览器用例覆盖 `frontend/e2e` 下全部 `*.test.ts`，包括子目录，按文件并发、文件内串行。并发数取 `PEACH_E2E_CONCURRENCY`；未设时本机取逻辑核数的四分之一、上限 4，CI（`GITHUB_ACTIONS=true`）为 1。并发时分两批：其余文件一次并发跑完，断言帧数或动画中途位置的文件（`tests/test_web_e2e.py` 的 `CPU_SENSITIVE_SUITES`）随后串行；并发为 1 时按设计决定、交互回归和路由冒烟分三批。每批限时 600 秒，任一批失败，整轮验证失败。并发的文件共用一个服务和演示库：用例触发的写请求只能落在别的用例不断言的状态上，否则用 `page.route` 拦下或归进串行批。完整 TAP 日志与服务访问日志 `serve.log` 保存在 `build/agent-verification/browser/`，CI 在测试结束后上传其中的 TAP 日志。
 
 需要外部前置条件（Node、ffmpeg、Chrome 等）的用例，本机缺条件时跳过，在 CI（`GITHUB_ACTIONS=true`）里判失败，判定集中在 `tests/support/conditions.py` 的 `missing_prerequisite`。所以 `python` 矩阵里 `core` 以外的行也装 Node，Windows 行另装 ffmpeg 与 Chrome。
 
@@ -87,7 +87,7 @@ Windows 的路径、挂载、托盘、证书、进程编码、更新、认证及
 按下面的分工写：
 
 - 行为（点了发出什么请求、状态怎么变、算出什么值）写 vitest（`frontend/test/`）或 `tests/test_web_js.py`；后端调用真函数或真接口。
-- 用户定过的设计决定写 `frontend/e2e/design.test.ts`，读 `getComputedStyle`；布局与运行期不变量进 `smoke.test.ts`。
+- 用户定过的设计决定写进对应区域的 `frontend/e2e/design-*.test.ts`（共用 `design-fixture.ts`），读 `getComputedStyle`；布局与运行期不变量进 `smoke.test.ts`。
 - 源码文本断言只减不增，由 `tests/test_source_assertion_ratchet.py` 按文件计数拦截。已有行为或浏览器验证的实现文本断言直接清退；确有行为缺口时才补用例，并同步降低基线。
 - 先列失败模式再写用例。异步请求的中间态用手动放行的 Promise 验证；假 fetch 在同一个 `act` 里就回话，会掩盖请求未完成时的时序问题。
 - 修缺陷先写一条会失败的用例，看它红了再修；修完按同一写法搜别处，有同类就收成共用实现。没有行为缺口的改动（文案、纯样式）不补回归用例。

@@ -9,7 +9,7 @@
 要守的东西换成能跑的验收：
 - 行为（点了提交什么、状态怎么变、算出什么值）写 vitest（`frontend/test/`）或
   `tests/test_web_js.py`，后端写调用真函数或真接口的测试；
-- 用户定过的设计决定写 `frontend/e2e/design.test.ts`，读 `getComputedStyle`；
+- 用户定过的设计决定写 `frontend/e2e/design-*.test.ts`，读 `getComputedStyle`；
 - 布局与运行期不变量进 `frontend/e2e/smoke.test.ts`；
 - 全仓都该成立的写法约定写成扫描器或 lint（如 `test_complexity_ratchet.py`），
   一条规则一个检查，而不是一处写法一条断言。
@@ -51,7 +51,6 @@ BASELINE: dict[str, int] = {
     "test_studio_site_harvest.py": 1,
     "test_subprocess_encoding.py": 2,
     "test_tray.py": 3,
-    "test_web_e2e.py": 2,
     "test_web_js.py": 1,
     "test_web_settings.py": 5,
     "test_web_ui.py": 19,

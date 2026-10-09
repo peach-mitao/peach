@@ -1,7 +1,7 @@
 /* 作品详情岛：停在队列哪一条、身份与标签怎么分组、首屏要转去哪、交给壳的是什么、写完之后缓存与回执怎么变。
  *
  * 从目录进出不重取、舞台在媒体框里挂 Video.js、脱盘说明、四种队列、拖动排序、保存 Mix、接着看与手机
- * 布局要真浏览器，在 `frontend/e2e/item-detail.test.ts` 里量；尺寸与色板在 `e2e/design.test.ts`。 */
+ * 布局要真浏览器，在 `frontend/e2e/item-detail.test.ts` 里量；尺寸与色板在 `e2e/design-*.test.ts`。 */
 import { notifyManager, QueryClientProvider, type InfiniteData } from '@tanstack/react-query';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
