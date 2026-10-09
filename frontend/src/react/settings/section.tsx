@@ -21,21 +21,24 @@ interface SectionProps {
   children: ReactNode;
 }
 
+/* 分区里的说明、报错与读数常带长 URL、堆栈和无空格路径：整个分区按 `overflow-wrap:anywhere`
+   就地折断（属性会继承，行内说明、Help 与读数都跟着走），不把卡片撑出横向滚动。 */
 export function Section({ title, id, aside, onSubmit, children }: SectionProps) {
   const body = (
     <>
       {aside
+        /* 标题至少留 10rem：放不下时外链换到下一行，不把标题挤成一字一行。 */
         ? <div className="flex w-full flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0 flex-1"><SettingsSectionLabel>{title}</SettingsSectionLabel></div>
-            {aside}
+            <div className="min-w-40 flex-1"><SettingsSectionLabel>{title}</SettingsSectionLabel></div>
+            <div className="flex min-w-0 max-w-full">{aside}</div>
           </div>
         : <SettingsSectionLabel>{title}</SettingsSectionLabel>}
       <SettingsCard>{children}</SettingsCard>
     </>
   );
   return onSubmit
-    ? <form id={id} aria-label={title} noValidate onSubmit={onSubmit} className="flex w-full flex-col gap-2">{body}</form>
-    : <section id={id} aria-label={title} className="flex w-full flex-col gap-2">{body}</section>;
+    ? <form id={id} aria-label={title} noValidate onSubmit={onSubmit} className="flex w-full flex-col gap-2 wrap-anywhere">{body}</form>
+    : <section id={id} aria-label={title} className="flex w-full flex-col gap-2 wrap-anywhere">{body}</section>;
 }
 
 /** 一组 `SettingsRow`。行自己画下边线、最后一行不画，所以要有一层只装行的父元素。 */
@@ -96,11 +99,13 @@ export function FactList({ children }: { children: ReactNode }) {
   return <dl className="flex flex-col">{children}</dl>;
 }
 
+/* 名目按内容宽，最多占一半，再长就在自己那一半里折行；读数靠右，折成多行时行内文字左对齐，
+   读起来是一段话而不是一面右对齐的字墙。 */
 export function Fact({ term, children }: { term: ReactNode; children: ReactNode }) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-4 border-b border-separator-border py-2.5 pr-3 last:border-b-0">
-      <dt className="flex shrink-0 items-center gap-2 text-body-regular text-text-secondary">{term}</dt>
-      <dd className="flex min-w-0 flex-wrap items-center justify-end gap-2 text-right text-body-regular break-all text-text-primary">{children}</dd>
+      <dt className="flex max-w-1/2 min-w-0 shrink-0 items-center gap-2 text-body-regular text-text-secondary">{term}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center justify-end gap-2 text-left text-body-regular break-all text-text-primary">{children}</dd>
     </div>
   );
 }

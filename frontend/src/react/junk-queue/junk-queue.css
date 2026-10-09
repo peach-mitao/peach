@@ -217,3 +217,11 @@ body[data-density="dense"] .peach-react [data-junk-actions] [data-junk-label] { 
   .peach-react [data-junk-actions] button { min-height: 44px; }
   .peach-react [data-junk-actions] button[data-junk-action="dispose"] { padding-inline: 7px; }
 }
+
+/* 键行按自己的宽度判：卡片窄到三格放不下「图标＋五个字」时（单列手机上约 290px 宽的卡）
+ * 收掉图标、收窄内边距，字留着；无障碍名与 title 不变。 */
+.peach-react [data-junk-actions] { container-type: inline-size; }
+@container (max-width: 340px) {
+  .peach-react [data-junk-actions] button[data-junk-action] { gap: 4px; padding-inline: 6px; }
+  .peach-react [data-junk-actions] button > svg { display: none; }
+}

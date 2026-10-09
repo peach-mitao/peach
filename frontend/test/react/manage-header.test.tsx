@@ -7,7 +7,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { manageHeaderSkeletonHtml, type ManageEntry, type ManageHeaderProps } from '../../src/manage-header';
+import { manageHeaderSkeletonHtml, pressedManageKey, type ManageEntry, type ManageHeaderProps } from '../../src/manage-header';
 import type { BatchDockApi, BatchDockHost } from '../../src/react/batch-dock/batch-dock-api';
 import type { ManageHeaderApi, ManageHeaderHost } from '../../src/react/manage-header/manage-header-api';
 import type { ShellActions } from '../../src/react/router/shell-actions';
@@ -229,6 +229,19 @@ describe('管理条与面包屑', () => {
     expect(root.querySelector('[data-manage="stats"]')!.hasAttribute('aria-current')).toBe(false);
     await click(root.querySelector('[data-manage="stats"]'));
     expect(host.openManage).toHaveBeenCalledWith('stats');
+  });
+
+  it('数据管理之下的子页按下「数据管理」，骨架与组件同一个判据；管理条上没有的区不按下任何一项', async () => {
+    const first = props('trash', '/trash');
+    const { root, render } = await setup(first);
+    const pressed = () => [...root.querySelectorAll('[data-manage][aria-pressed="true"]')].map((node) => node.getAttribute('data-manage'));
+    expect(pressed()).toEqual(['cleanup']);
+    expect(manageHeaderSkeletonHtml(first)).toContain('data-manage="cleanup" aria-pressed="true"');
+    render(props('cleanup', '/quality-goals'));
+    expect(pressed()).toEqual(['cleanup']);
+    render(props('stats', '/stats'));
+    expect(pressed()).toEqual(['stats']);
+    expect(pressedManageKey({ section: 'trash', path: '/somewhere', menu: MENU })).toBe('');
   });
 
   it('面包屑普通左键走路由，带修饰键或中键的点击照链接自己走', async () => {

@@ -323,7 +323,14 @@ export function ReviewPage(props: ReviewProps) {
                 ))}
               </div>
             </section>
-          )) : (
+          )) : review.isError && !review.data ? (
+            /* 读不到队列和队列是空的不是一回事：说清楚是读取失败，给一颗重试键。 */
+            <Note tone="error" title="复核队列读取失败" action={
+              <Button variant="secondary" size="small" disabled={review.isFetching} onClick={() => void review.refetch()}>重试</Button>
+            }>
+              {errorMessage(review.error)}
+            </Note>
+          ) : (
             <EmptyState icon={RiCheckboxCircleLine} title="此分类没有待复核项目">
               可切换分类查看其他候选。
             </EmptyState>

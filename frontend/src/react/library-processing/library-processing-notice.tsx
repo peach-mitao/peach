@@ -11,6 +11,7 @@ import { RiArrowRightLine, RiErrorWarningLine, RiInformationLine } from '@remixi
 import { LinkButton } from '@/components/base/buttons/link-button';
 
 import { errorMessage } from '../../api';
+import { progressText } from '../activity/tasks';
 import type { LibraryProcessingProps } from '../bundle';
 import { currentLine, DISCONNECTED_TEXT } from './library-processing';
 import { useLibraryProcessingJob } from './use-library-processing';
@@ -56,11 +57,11 @@ export function LibraryProcessingNotice(props: LibraryProcessingProps) {
   if (!problem && !running && !failed) return null;
 
   const tone: Tone = failed ? 'error' : problem || state?.stalled ? 'warning' : 'gray';
-  const checked = state?.checked || 0;
   const total = state?.total || 0;
+  const checked = Math.min(state?.checked || 0, total);
   const message = problem
     || (failed ? '扫描与资料采集未完成'
-      : currentLine(state!) + (total ? ` · ${checked} / ${total}` : ''));
+      : currentLine(state!) + (total ? ` · ${progressText(checked, total)}` : ''));
   const Glyph = tone === 'gray' ? RiInformationLine : RiErrorWarningLine;
   return (
     <aside role={failed ? 'alert' : 'status'} className={SURFACE[tone]}>

@@ -936,7 +936,7 @@ body[data-surface="/trash"] #grid{width:100%;max-width:var(--board-content);marg
    这一页的占位条改成随正文色走的一层薄叠色，深浅两种底上都看得出。说明行那两条占位同理，归页头岛。 */
 body[data-surface="/trash"] .catalog-skeleton .skeletoncard>*{background:color-mix(in srgb,var(--ink) 7%,transparent)}
 @media(max-width:900px){
- body[data-surface="/review"] .review-workspace{grid-template-columns:1fr}
+ body[data-surface="/review"] .review-workspace{grid-template-columns:minmax(0,1fr)}
  body[data-surface="/review"] .review-workspace>.reviewcontrols{position:static;grid-column:1;grid-row:auto!important;margin-bottom:16px}
  body[data-surface="/review"] .reviewtabs{flex-direction:row;flex-wrap:wrap}
  body[data-surface="/review"] .review-workspace>:is(.reviewsection,.reviewbulktoolbar){grid-column:1}

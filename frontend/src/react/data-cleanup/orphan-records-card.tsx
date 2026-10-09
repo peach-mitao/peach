@@ -71,17 +71,17 @@ function OrphanRow({ item, toast }: { item: OrphanRecord; toast(message: string)
               : null}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span title={item.name} className="max-w-72 truncate text-body-regular text-text-primary">{item.name}</span>
-            <small className="text-caption-1-regular text-text-secondary">
+            <span title={item.name} className="max-w-56 truncate text-body-regular text-text-primary">{item.name}</span>
+            <small className="max-w-56 truncate text-caption-1-regular text-text-secondary">
               {[item.code, LOC[item.location] || item.location].filter(Boolean).join(' · ')}
             </small>
           </span>
         </span>
       </TableCell>
-      <TableCell><span className="block min-w-44">{recordsText(item.records)}</span></TableCell>
+      <TableCell><span className="block min-w-28">{recordsText(item.records)}</span></TableCell>
       <TableCell>
         {item.candidates.length
-          ? <Select aria-label={`把 ${item.name} 的记录接到哪个文件`} className="w-64" selectedKey={target}
+          ? <Select aria-label={`把 ${item.name} 的记录接到哪个文件`} className="w-52" selectedKey={target}
               onSelectionChange={(key) => { if (key !== null) setTarget(Number(key)) }}>
               {item.candidates.map((candidate) => (
                 <SelectItem key={candidate.id} id={candidate.id} textValue={candidateText(candidate)}>
@@ -108,6 +108,7 @@ function OrphanRow({ item, toast }: { item: OrphanRecord; toast(message: string)
 export function OrphanRecordsCard({ toast }: { toast(message: string): void }) {
   const query = useQuery({ queryKey: ORPHAN_RECORDS_KEY, queryFn: ({ signal }) => fetchOrphanRecords(signal) });
   const items = query.data?.items ?? [];
+  const total = query.data?.total ?? items.length;
   if (!query.isError && !items.length) return null;
   return (
     <section id="orphan-records" aria-labelledby="orphan-records-title" className="flex scroll-mt-20 flex-col gap-4">
@@ -132,6 +133,11 @@ export function OrphanRecordsCard({ toast }: { toast(message: string): void }) {
                 </TableBody>
               </Table>
             </DataTableFrame>}
+        {!query.isError && total > items.length
+          ? <p className="mt-3 text-caption-1-regular text-text-secondary">
+              {`显示前 ${items.length.toLocaleString()} 条，共 ${total.toLocaleString()} 条。`}
+            </p>
+          : null}
       </Fieldset>
     </section>
   );

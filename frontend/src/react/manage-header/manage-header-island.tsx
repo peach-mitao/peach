@@ -57,7 +57,7 @@ function ManageHeader({ host: at, props: current }: { host: ManageHeaderHost; pr
   if (!view) return null;
   return (
     <>
-      <ManageBar host={at} section={current.section} menu={current.menu} />
+      <ManageBar host={at} pressed={view.pressed} menu={current.menu} />
       {view.crumb ? <Crumb host={at} label={view.crumb} /> : null}
       <h2 data-manage-title="" data-compact={view.compact ? '' : undefined}>{view.title}</h2>
       {view.lede.kind === 'none' ? null : <TrashLede host={at} lede={view.lede} />}
@@ -69,7 +69,9 @@ function ManageHeader({ host: at, props: current }: { host: ManageHeaderHost; pr
    一排下划线页签：按下那一项由一条 2px 的线标出来。线是这一排里的一个绝对定位元素，位置与宽度
    量出来写成 `--tab-x`、`--tab-width`；换页沿弹簧滑过去。离开管理区再回来时这一排是新挂上的，
    线先落在上一次停的那一项下面、下一帧再滑到这一页：上一次停在哪儿按模块记，不按节点记。
-   真正头一次出现时没有上一次，直接落位。回收站不在菜单里，那一页没有按下项，线收成 0 宽。 */
+   真正头一次出现时没有上一次，直接落位。数据管理那几张卡通往的子页按下「数据管理」；管理条上没有
+   按下项的页面（`pressedManageKey` 判出空串）线收成 0 宽。窄屏这一排横向滚，换页时把按下那一项
+   滚进视口；只在换页时滚，用户自己横滑之后不被拉回去。 */
 let lastTab: { x: number; width: number } | null = null;
 
 function placeLine(mark: HTMLElement, x: number, width: number) {
@@ -77,7 +79,7 @@ function placeLine(mark: HTMLElement, x: number, width: number) {
   mark.style.setProperty('--tab-width', `${width}px`);
 }
 
-function ManageBar({ host: at, section, menu }: Pick<ManageHeaderProps, 'section' | 'menu'> & { host: ManageHeaderHost }) {
+function ManageBar({ host: at, pressed: key, menu }: Pick<ManageHeaderProps, 'menu'> & { host: ManageHeaderHost; pressed: string }) {
   const row = useRef<HTMLDivElement>(null);
   const line = useRef<HTMLSpanElement>(null);
 
@@ -103,16 +105,25 @@ function ManageBar({ host: at, section, menu }: Pick<ManageHeaderProps, 'section
     return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); resize.disconnect() };
   }, []);
 
-  useLayoutEffect(() => { if (line.current?.hasAttribute('data-ready')) measure() }, [section, menu]);
+  useLayoutEffect(() => { if (line.current?.hasAttribute('data-ready')) measure() }, [key, menu]);
+
+  useLayoutEffect(() => {
+    const group = row.current;
+    const pressed = group?.querySelector<HTMLElement>('button[aria-pressed="true"]');
+    if (!group || !pressed) return;
+    const left = pressed.offsetLeft, right = left + pressed.offsetWidth;
+    if (left < group.scrollLeft) group.scrollLeft = left;
+    else if (right > group.scrollLeft + group.clientWidth) group.scrollLeft = right - group.clientWidth;
+  }, [key, menu]);
 
   return (
     <nav data-manage-bar="" aria-label="管理">
       <div ref={row} data-manage-menu="">
-        {menu.map(([key, label, glyph]) => {
-          const on = key === section;
+        {menu.map(([entry, label, glyph]) => {
+          const on = entry === key;
           return (
-            <button key={key} type="button" data-manage={key} aria-pressed={on} aria-current={on ? 'page' : undefined}
-              onClick={() => at.openManage(key)}>
+            <button key={entry} type="button" data-manage={entry} aria-pressed={on} aria-current={on ? 'page' : undefined}
+              onClick={() => at.openManage(entry)}>
               <Icon name={glyph} /><span>{label}</span>
             </button>
           );

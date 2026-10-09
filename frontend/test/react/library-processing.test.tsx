@@ -10,7 +10,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 import { queryClient } from '../../src/react/query';
 import {
-  prefetchLibraryProcessing, type LibraryProcessingData,
+  currentLine, notesLine, prefetchLibraryProcessing, type LibraryProcessingData,
 } from '../../src/react/library-processing/library-processing';
 import { LibraryProcessingCard } from '../../src/react/library-processing/library-processing-card';
 import { LibraryProcessingNotice } from '../../src/react/library-processing/library-processing-notice';
@@ -163,7 +163,7 @@ it('运行态说清当前项目、动作与等待时长，处理慢只提示不�
   });
   const host = await mount(card({ toast: vi.fn() }));
 
-  expect(host.textContent).toContain('当前：ABW-001.mp4 · 查询外部资料 · 已等待 300 秒');
+  expect(host.textContent).toContain('当前：ABW-001.mp4 · 查询外部资料 · 已等待 5 分 0 秒');
   expect(host.textContent).toContain('处理较慢');
   // 有分母就画进度条，不再另画一组等待点：同一件事两种说法。
   expect(host.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
@@ -338,4 +338,11 @@ it('卡片卸载之后轮询就停了', async () => {
   await panel.unmount();
   await tick(20_000);
   expect(served.calls, '离开这一页之后那棵根还活着的话，它会照原节律接着敲库').toHaveLength(1);
+});
+
+it('来源说没有的计数带千分位，等待时长按分、时、天进位', () => {
+  expect(notesLine({ querying_metadata: 1234567, fetching_cover: 0 }))
+    .toBe('外部来源没有资料 1,234,567 部，7 天内不再问。');
+  expect(currentLine({ status: 'running', current_action: 'fetching_cover', waited_seconds: 259200 } as LibraryProcessingData))
+    .toBe('采集缺失封面 · 已等待 3 天 0 小时');
 });

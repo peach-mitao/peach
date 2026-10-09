@@ -100,7 +100,8 @@ it('每条目标一张卡片，读数走遗留层同一套格式化口径', asyn
   expect(card.querySelector('.src')?.getAttribute('data-location')).toBe('115');
   expect(card.querySelector('.src')?.classList.contains('metered')).toBe(true);
   expect(card.querySelector('h3 .ui-javcode')?.textContent).toBe('one.mp4');
-  expect(card.querySelector('h3 button')?.hasAttribute('data-middle-truncate')).toBe(true);
+  expect(card.querySelector('h3 button')?.hasAttribute('data-middle-truncate')).toBe(false);
+  expect(card.querySelector('h3 button')?.getAttribute('title')).toBe('名称 one.mp4');
   expect([...card.querySelectorAll('p')].at(-1)?.textContent).toBe('只有 720p');
 });
 

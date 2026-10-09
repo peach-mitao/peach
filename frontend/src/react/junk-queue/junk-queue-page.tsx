@@ -118,6 +118,12 @@ function JunkBody({ props, data, pending, error, retry }: {
           ))}
         </div>
         {shown.length < items.length ? <RevealMore key={segments} onMore={more} /> : null}
+        {/* 队列一次只取前 200 条：露到底了还有没取的，说清楚是截断而不是全部。 */}
+        {shown.length >= items.length && Number(data.total || 0) > items.length
+          ? <p data-junk-truncated="" className="py-6 text-center text-caption-1-regular text-text-secondary">
+              {`显示前 ${items.length.toLocaleString()} 条，共 ${Number(data.total).toLocaleString()} 条；处理掉这些后，其余的会补上来。`}
+            </p>
+          : null}
       </>
     );
   };

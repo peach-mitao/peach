@@ -2572,13 +2572,16 @@ function routeFollowFromSidebar(patch){
   routeFollowFeed({...followView(),...patch});
   paintSidebar({filters:followSidebarFilters()});
 }
+/* 侧栏按窄屏处理（抽屉盖在页面上、收起时 inert）的判据，与样式表的 `@media(max-width:760px)` 同源。
+   读的是媒体查询而不是 innerWidth：页面内容一旦撑出视口，布局视口跟着变宽，innerWidth 报的就不是屏幕宽。 */
+function narrowShell(){return matchMedia('(max-width:760px)').matches}
 function openDrawer(v){const drawer=$('#drawer'),restore=!v&&drawer.contains(document.activeElement);
-  drawer.inert=!v&&innerWidth<=760;
+  drawer.inert=!v&&narrowShell();
   drawer.classList.toggle('open',v);$('#scrim').classList.toggle('on',v);
   document.body.classList.toggle('drawer-open',!!v);document.dispatchEvent(new Event('board:sidebar'));
   $('#filterBtn').setAttribute('aria-expanded',String(!!v));$('#filterBtn').setAttribute('aria-controls','drawer');$('#filterBtn').setAttribute('aria-label',v?'收起侧栏':'展开侧栏');
   if(restore)$('#filterBtn').focus();sessionStorage.setItem('board.sidebar',v?'open':'closed')}
-function closeDrawerAfterNav(){if(innerWidth<=760)openDrawer(false)}
+function closeDrawerAfterNav(){if(narrowShell())openDrawer(false)}
 $('#filterBtn').onclick=()=>openDrawer(!$('#drawer').classList.contains('open'));
 /* 侧栏导航默认就有的入口，`[键, 名称, 字形]`；首页的键是空串。 */
 const SIDEBAR_ITEMS=[
@@ -3837,7 +3840,7 @@ function placeBrand(){
   if(!head)return;
   boardBrand.setAttribute('aria-label','选择媒体库');
   if(boardBrand.parentElement!==head)head.prepend(boardBrand);
-  const expanded=drawer.classList.contains('open'),desktop=innerWidth>760;
+  const expanded=drawer.classList.contains('open'),desktop=!narrowShell();
   if(desktop||expanded){if(boardToggle.parentElement!==head)head.append(boardToggle)}else if(boardToggle.parentElement!==toggleHome.parentElement)toggleHome.after(boardToggle);
   drawer.inert=!desktop&&!expanded;
 }
@@ -3923,4 +3926,4 @@ if(/Chrome|Chromium|Edg\//.test(navigator.userAgent)){
 
 })();
 
-openDrawer(innerWidth>760&&sessionStorage.getItem('board.sidebar')!=='closed');
+openDrawer(!narrowShell()&&sessionStorage.getItem('board.sidebar')!=='closed');

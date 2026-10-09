@@ -22,6 +22,14 @@ export type NumberSettingId = keyof typeof NUMBER_SPECS;
 
 const storageKey = (id: string) => `peach.number.${id}`;
 
+/** 以分钟计的间隔满一天时，单位旁边再说一遍是几天：「10080 分钟」读不出是一周。
+ *  不满一天、不是整数或不是分钟的读数返回空串。 */
+export function dayReading(value: number, unit: string): string {
+  if (unit !== '分钟' || !Number.isInteger(value) || value < 1440) return '';
+  const days = value / 1440;
+  return Number.isInteger(days) ? `${days.toLocaleString()} 天` : `约 ${days.toFixed(1)} 天`;
+}
+
 export function NumberSetting({ id, label, value, disabled = false, onApply }: {
   id: NumberSettingId; label: string;
   /** 当前值；null 表示还没取到（关注自动更新那一项），此时整块禁用、不改显示。 */
@@ -112,7 +120,7 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
               }
             }}
             onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit() } }} />
-          <span aria-hidden="true">{unit}</span>
+          <span aria-hidden="true">{unit}{dayReading(Number(draft), unit) ? ` · ${dayReading(Number(draft), unit)}` : ''}</span>
         </div>
         <small id={`${id}-error`} data-number-error="" role="status" hidden={!error}>{error}</small>
       </div>

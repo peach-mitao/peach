@@ -241,3 +241,32 @@ it('打开复核页只读队列，不再触发自动落库写操作', async () =
   const { fetcher } = await open();
   expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([REVIEW_URL]);
 });
+
+it('队列读取失败时说读取失败、给重试键，和空队列分得开；重试成功后画出队列', async () => {
+  let fail = true;
+  vi.stubGlobal('fetch', vi.fn(async (input: string) => {
+    if (!String(input).startsWith(REVIEW_URL)) throw new Error(`没有安排这个端点：${String(input)}`);
+    return fail
+      ? { ok: false, status: 500, json: async () => ({ message: '复核队列查询出错' }) }
+      : ok(review());
+  }));
+  await prefetchReview(new AbortController().signal).catch(() => {});
+  const { host } = await mountRoot(
+    <QueryClientProvider client={queryClient}><ReviewPage {...shellProps()} /></QueryClientProvider>);
+  await settle();
+  expect(host.textContent).toContain('复核队列读取失败');
+  expect(host.textContent).not.toContain('此分类没有待复核项目');
+  fail = false;
+  await click(buttonIn(host, '重试'));
+  await settle();
+  expect(host.textContent).not.toContain('复核队列读取失败');
+  expect(cards(host)).toHaveLength(REVIEW_PAGE_SIZE);
+});
+
+it('没有可采纳候选的卡，通过键写「不可通过」，和「跳过」字面分得开', async () => {
+  const empty: ReviewRow = { ...row(7), candidates: [] };
+  const { host } = await open({ data: review({ sections: { metadata_fields: [empty], creator_tags: [] } }) });
+  const footer = cards(host)[0]!.querySelector('footer')!;
+  expect([...footer.querySelectorAll('button')].map((button) => button.textContent?.trim()))
+    .toEqual(['拒绝', '跳过', '不可通过']);
+});

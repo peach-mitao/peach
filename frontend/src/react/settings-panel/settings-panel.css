@@ -37,7 +37,7 @@
 [data-settings-panel] [data-setting-row]{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:14px 0 14px;border-top:1px solid var(--line-soft)}
 [data-settings-panel] [data-setting-group]>h3+[data-setting-row]{border-top:0}
 [data-settings-panel] [data-setting-row] b{display:block;font-size:var(--fs-md)}
-[data-settings-panel] [data-setting-row] small{display:block;color:var(--muted);margin-top:8px;line-height:1.45}
+[data-settings-panel] [data-setting-row] small{display:block;color:var(--muted);margin-top:8px;line-height:1.45;overflow-wrap:anywhere}
 [data-settings-panel] [data-setting-row] [class~=ui-gselect]{min-width:148px}
 [data-settings-panel] [data-setting-row][data-setting-related]{border-top:0}
 [data-settings-panel] [data-setting-group] [data-setting-row][data-setting-sort]{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:14px 16px}
@@ -355,6 +355,9 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 @media (max-width:760px){[data-settings-panel][data-settings-panel]{padding:12px;grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card][data-settings-card]{width:calc(100vw - 24px);max-width:calc(100vw - 24px);min-width:0}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]:has([data-number-setting]){grid-template-columns:minmax(0,1fr) auto;gap:12px}}
+/* 再窄的手机上开关加数字框要占去一半宽，名目会挤成一字一行：控件换到名目下面、靠右。 */
+@media (max-width:420px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]:has([data-number-setting]){grid-template-columns:minmax(0,1fr);gap:8px}}
+@media (max-width:420px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]:has([data-number-setting])>:last-child{justify-self:end}}
 @media (max-width:760px){[data-settings-panel] [data-settings-card]>[data-settings-nav]{min-width:0;max-width:100%}}
 /* 纯图标按钮不继承浏览器按钮的水平内边距。 */
 [data-settings-panel] :is([data-settings-head] button,[data-sidebar-row] button){padding:0;display:inline-grid;place-items:center;line-height:1;flex-shrink:0}

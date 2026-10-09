@@ -117,11 +117,27 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
   status?: ReactNode;
   children: ReactNode;
 }) {
+  /* 一组文件夹常共用很长的前缀，窄框里露开头的话每行都是同一段；不在编辑时露末段，
+     分得出是哪一个文件夹。全文在 title 里。 */
+  const box = useRef<HTMLInputElement | null>(null);
+  const showTail = () => {
+    const input = box.current;
+    if (input && input.ownerDocument.activeElement !== input) input.scrollLeft = input.scrollWidth;
+  };
+  useLayoutEffect(() => {
+    if (box.current) box.current.title = path;
+    showTail();
+  }, [path]);
+  const attach = (element: HTMLInputElement | null) => {
+    box.current = element;
+    inputRef(element);
+  };
   return (
     <div data-folder-row className="@container flex flex-col gap-2 rounded-2lg border border-separator-border bg-background-primary-default p-3">
       <div className="flex items-start gap-2">
         <Input className="min-w-0 flex-1" aria-label={label} placeholder="本机文件夹路径"
-          value={path} onChange={onPath} ref={inputRef}
+          value={path} onChange={onPath} ref={attach}
+          onBlur={() => requestAnimationFrame(showTail)}
           validationBehavior="aria" isInvalid={Boolean(error)} hint={error || undefined} />
         {status ? <div className="flex h-10 shrink-0 items-center">{status}</div> : null}
         <IconButton icon={FolderSearchIcon} aria-label="选择文件夹" onClick={onPick} {...busyProps(picking)} />

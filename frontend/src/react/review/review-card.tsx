@@ -32,6 +32,9 @@ const CARD = cardClass({
    勾选框和判定徽章各自在这 24px 里居中，谁的字号变了也还在同一条中线上。 */
 const HEADING_LINE = 'flex min-h-6 min-w-0 items-center';
 
+/** 实体类卡头最多露几部对照作品，同服务端给的条数。 */
+const COMPARISON_SHOWN = 2;
+
 /* 一排卡等高，长出来的那部分在卡内滚。高度随内容走的话，一行里几张卡参差不齐，
    眼睛要在每张卡上重新找「判定」在哪；身份回配那一类要放下来源图和样本列表，高一档。 */
 const CARD_HEIGHT = (category: ReviewCategory) =>
@@ -86,11 +89,18 @@ export function ReviewCard(props: ReviewCardProps) {
   const assets = row.preview_assets || [];
   const decided = String(row.decision || 'pending') !== 'pending';
 
+  /* 对照作品排在不缩的卡头里：服务端给两条，再多也只露前两条，其余报一个数，
+     否则卡头会把动作条挤出卡外。 */
   const origin = comparison.length > 1
     ? <div className="flex flex-col gap-3">
-        {comparison.map((asset) => (
+        {comparison.slice(0, COMPARISON_SHOWN).map((asset) => (
           <OriginAsset key={asset.id} asset={asset} openItem={handlers.openItem} />
         ))}
+        {comparison.length > COMPARISON_SHOWN
+          ? <p className="text-body-2-regular text-text-secondary">
+              {`另有 ${(comparison.length - COMPARISON_SHOWN).toLocaleString()} 部对照作品`}
+            </p>
+          : null}
       </div>
     : asEntity
       ? <EntityHead kind={subjectKind} name={subjectName}
@@ -132,7 +142,8 @@ export function ReviewCard(props: ReviewCardProps) {
       /* 字段名是这张卡在问的问题（「这个作品的创作者填什么」），作品标识只是它问的对象。
          写在标题末尾的话，一条无番号视频的文件名会先把它挤出省略号。 */
       ? <h4 className={`${HEADING_LINE} flex-wrap gap-2`}>
-          <Chip variant="caption" color="blue">{fieldName}</Chip>
+          {/* Chip 自己不截断：外面套一层封顶的裁切框，超长的字段名不撑出卡外，全文在 title 里。 */}
+          <span title={fieldName} className="flex max-w-full min-w-0 overflow-hidden rounded-md"><Chip variant="caption" color="blue">{fieldName}</Chip></span>
           <span title={subject} className="min-w-0 truncate text-body-medium text-text-primary">{subject}</span>
         </h4>
       : <h4 className={HEADING_LINE}>
@@ -169,7 +180,7 @@ export function ReviewCard(props: ReviewCardProps) {
           {/* 实体类卡片的作品数已经写在创作者入口里，这里再写一遍就是同一个数字两处。 */}
           {!asEntity && (row.board || row.assets)
             ? <p className="text-body-2-regular text-text-secondary">
-                {`样本/资产：${row.video_count || row.assets || ''}`}
+                {`样本/资产：${Number(row.video_count || row.assets || 0).toLocaleString()}`}
               </p>
             : null}
           {!asEntity && origin ? origin : null}
@@ -183,7 +194,7 @@ export function ReviewCard(props: ReviewCardProps) {
           {preview}
           <PendingGenres row={row} tags={genreTags} locked={locked} toast={handlers.toast} />
           {!metadata && evidence
-            ? <p className="text-body-2-regular text-text-secondary">{evidence}</p>
+            ? <p className="text-body-2-regular text-text-secondary wrap-anywhere">{evidence}</p>
             : null}
         </div>
       </div>
@@ -194,7 +205,7 @@ export function ReviewCard(props: ReviewCardProps) {
       {metadata && evidence
         ? <div className="relative -mx-5 -mb-4 shrink-0">
             <p ref={current} role="region" aria-label="当前信息"
-              className="max-h-22 overflow-y-auto border-t border-separator-border px-5 py-2.5 text-body-2-regular text-text-secondary">
+              className="max-h-22 overflow-y-auto border-t border-separator-border px-5 py-2.5 text-body-2-regular text-text-secondary wrap-anywhere">
               {evidence}
             </p>
           </div>
@@ -207,9 +218,11 @@ export function ReviewCard(props: ReviewCardProps) {
           onClick={() => onDecide('rejected')}>拒绝</Button>
         <Button variant="secondary" size="small" disabled={locked} {...busyProps(busy)}
           onClick={() => onDecide('skipped')}>跳过</Button>
+        {/* 没有可采纳的候选时这颗键灰着，字面说它为什么点不了，和旁边的「跳过」分得开。 */}
         <Button variant="primary" size="small" disabled={locked || !approvable} {...busyProps(busy)}
+          title={approvable ? undefined : '没有可采纳的候选，只能拒绝或跳过'}
           onClick={() => onDecide('approved')}>
-          {approvable ? '通过' : '已跳过'}
+          {approvable ? '通过' : '不可通过'}
         </Button>
         {problem
           ? <p role="status" className="w-full text-body-2-regular text-text-error-primary">{problem}</p>

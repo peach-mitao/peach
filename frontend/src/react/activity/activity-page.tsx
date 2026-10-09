@@ -28,9 +28,10 @@ import { Page } from '../components/page';
 import { Progress } from '../components/progress';
 import { busyProps } from '../settings/use-action';
 import { DownloadsPanel } from './downloads-panel';
+import { ErrorExcerpt } from './error-excerpt';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldRoutine, followupDetail, groupFollowups, isActive,
-  isRoutine, mergeFinished, momentText, pollInterval, statusLabel, summaryText, TASKS_KEY, TRIGGER_LABELS, type TaskRunPayload,
+  isRoutine, mergeFinished, momentText, pollInterval, progressText, statusLabel, summaryText, TASKS_KEY, TRIGGER_LABELS, type TaskRunPayload,
 } from './tasks';
 
 /* 状态徽章只有三档颜色：成功是绿、失败是红、被叫停与被打断是黄，其余留中性底。
@@ -95,7 +96,7 @@ function RunCard(
       {followups?.length ? <FollowupList rows={followups} /> : null}
       {footer
         ? <div className="flex min-h-14 flex-col justify-center rounded-b-2xl border-t border-separator-border bg-card-footer px-5 py-3">
-            <p className="text-caption-1-regular text-text-secondary">{footer}</p>
+            <ErrorExcerpt text={footer} className="text-caption-1-regular text-text-secondary" />
           </div>
         : null}
     </li>
@@ -113,8 +114,8 @@ function RunningRun({ run, followups }: { run: TaskRunPayload; followups?: TaskR
     <RunCard run={run} meta={meta} followups={followups}>
       {total > 0
         ? <div className="flex flex-col gap-1.5">
-            <Progress label={label} value={current} max={total} />
-            <p className="text-caption-1-regular text-text-secondary">{label} · {current} / {total} 项</p>
+            <Progress label={label} value={Math.min(current, total)} max={total} />
+            <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{label} · {progressText(current, total)} 项</p>
           </div>
         : <LoadingDots label={label} />}
     </RunCard>
@@ -136,7 +137,7 @@ function SettledRun(
        elapsed && `用时 ${elapsed}`]).filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} footer={run.error} followups={followups}>
-      {summary ? <p className="text-caption-1-regular text-text-secondary">{summary}</p> : null}
+      {summary ? <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{summary}</p> : null}
     </RunCard>
   );
 }

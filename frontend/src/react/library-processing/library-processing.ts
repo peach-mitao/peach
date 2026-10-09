@@ -5,6 +5,7 @@
  * 轮询也由 Query 合成一份——各存一份状态的话，卡片说「已完成」、横幅还挂着进度。
  * 端点在 `frontend/src` 里只在这里声明一次（`tests/test_frontend_build.py` 盯着）。 */
 import { apiGet } from '../../api';
+import { elapsedText } from '../activity/tasks';
 import { queryClient } from '../query';
 
 export const LIBRARY_PROCESSING_URL = '/api/library-processing';
@@ -108,14 +109,14 @@ const NOTE_LABELS: Record<string, string> = {
 export function notesLine(notes: Record<string, number>): string {
   const parts = Object.entries(notes)
     .filter(([key, count]) => NOTE_LABELS[key] && count > 0)
-    .map(([key, count]) => `${NOTE_LABELS[key]} ${count} 部`);
+    .map(([key, count]) => `${NOTE_LABELS[key]} ${count.toLocaleString()} 部`);
   return parts.length ? `外部来源${parts.join('、')}，7 天内不再问。` : '';
 }
 
 /** 此刻在做什么：哪个文件、哪一步、等了多久。 */
 export function currentLine(state: LibraryProcessingData): string {
   const action = ACTION_LABELS[state.current_action || ''] || state.stage || '正在处理';
-  const waited = state.waited_seconds ? ` · 已等待 ${state.waited_seconds} 秒` : '';
+  const waited = state.waited_seconds ? ` · 已等待 ${elapsedText(state.waited_seconds)}` : '';
   return state.current_asset_name
     ? `当前：${state.current_asset_name} · ${action}${waited}`
     : action + waited;

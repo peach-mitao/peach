@@ -221,3 +221,54 @@ describe('管理页面容器与骨架', () => {
     });
   }
 });
+
+describe('管理页在极端内容下不撑出视口', () => {
+  const narrow = { name: 'narrow', width: 320, height: 720, mobile: true };
+  const LONG_PATH = `R:/media/${'很长的没有空格的目录名'.repeat(12)}/FC2-PPV-4728193.mp4`;
+  let browser: Browser;
+  before(async () => { browser = await launch(); });
+  after(async () => { await browser?.close(); });
+
+  it('复核页骨架在窄屏上不越过视口，数据到了以后侧栏仍收着', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/review', narrow);
+    let release = () => {};
+    try {
+      const page = opened.page;
+      const pending = new Promise<void>(resolve => { release = resolve; });
+      await page.route('**/api/review**', async route => { await pending; await route.continue(); });
+      await page.evaluate(() => sessionStorage.removeItem('board.sidebar'));
+      await page.reload({ waitUntil: 'load' });
+      await page.locator('[data-skeleton="review"]').waitFor();
+      const skeleton = await page.evaluate(() => ({
+        workspace: document.querySelector('[data-skeleton="review"]')!.getBoundingClientRect().width,
+        page: document.documentElement.scrollWidth,
+      }));
+      assert.ok(skeleton.workspace <= narrow.width, `骨架宽 ${skeleton.workspace}`);
+      assert.ok(skeleton.page <= narrow.width, `页面宽 ${skeleton.page}`);
+      release();
+      await page.locator('[data-skeleton="review"]').waitFor({ state: 'detached' });
+      await settle(page);
+      assert.equal(await page.evaluate(() => document.body.classList.contains('drawer-open')), false);
+    } finally { release(); await opened.close(); }
+  });
+
+  it('高清版的判定原因是一长串路径时在卡内折行，不把页面撑宽', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/quality-goals', narrow);
+    try {
+      const page = opened.page;
+      await page.route('**/api/quality-goals**', route => route.fulfill({ json: {
+        total: 1234567, offset: 0, has_more: true, items: [{
+          id: 1, name: 'FC2-PPV-4728193.mp4', code: 'FC2-PPV-4728193', location: 'local', size: 1e9, duration: 3600,
+          reason: LONG_PATH, cost: '', has_thumb: false, has_cover: false }] } }));
+      await page.reload({ waitUntil: 'load' });
+      const card = page.locator('#stats li[data-goal-id]').first();
+      await card.waitFor();
+      await settle(page);
+      const right = (await box(card)).x + (await box(card)).width;
+      assert.ok(right <= narrow.width, `卡片右缘 ${right}`);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= narrow.width);
+      assert.equal(await page.locator('#stats [data-collection-summary] strong').textContent(), '1,234,567 部作品');
+      assert.match(await page.locator('#stats').textContent() ?? '', /显示前 1 部，共 1,234,567 部。/);
+    } finally { await opened.close(); }
+  });
+});

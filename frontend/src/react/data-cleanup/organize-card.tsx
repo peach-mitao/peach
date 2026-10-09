@@ -73,9 +73,6 @@ export function OrganizeCard(
   const request = () => ({ location, file_template: fields.file.trim(), dir_template: fields.dir.trim() });
   const preview = useMutation({
     mutationFn: previewOrganize,
-    onSuccess: (_plan, sent) => void rememberTemplates({
-      ...(data?.templates ?? {}), [sent.location]: { file: sent.file_template, dir: sent.dir_template },
-    }),
     /* 模板不合法时错误就出在两个框里的一个，所以除了说原因还要指出是哪一格。 */
     onError: (cause) => {
       const target = DIRECTORY_TEMPLATE_ERROR.test(errorMessage(cause)) ? 'dir' : 'file';
@@ -113,7 +110,14 @@ export function OrganizeCard(
   };
   const runApply = () => void confirmModal({
     title: '按模板整理文件', body: APPLY_BODY(name), confirmLabel: '整理文件',
-    onConfirm: () => job.start.mutateAsync({ kind: 'apply', request: request() }),
+    /* 预览只是试一试，不落盘；确认执行的那两行才记成这个来源的模板。 */
+    onConfirm: async () => {
+      const sent = request();
+      await job.start.mutateAsync({ kind: 'apply', request: sent });
+      void rememberTemplates({
+        ...(data?.templates ?? {}), [sent.location]: { file: sent.file_template, dir: sent.dir_template },
+      });
+    },
   });
   const runRollback = () => void confirmModal({
     title: '回滚上一批整理', body: ROLLBACK_BODY, confirmLabel: '回滚整理',
@@ -126,7 +130,7 @@ export function OrganizeCard(
   const outcome = job.outcome;
   if (current?.status === 'running') {
     const line = current.message || current.stage || '正在整理文件…';
-    state = <TaskProgress embedded label={line} value={current.checked} total={current.total} />;
+    state = <TaskProgress embedded label={line} value={Math.min(current.checked || 0, current.total || 0)} total={current.total} />;
   } else if (outcome?.status === 'failed') {
     state = <Note tone="error" title="文件整理未完成">{outcome.error || '请查看任务记录，核对已处理的文件。'}</Note>;
   } else if (outcome) {
@@ -186,15 +190,16 @@ export function OrganizeCard(
         {data?.presets?.length
           ? <div className="flex flex-wrap gap-2">
               {data.presets.map((preset) => (
-                <Button key={preset.label} variant="secondary"
+                <Button key={preset.label} variant="secondary" title={preset.label}
+                  className="max-w-full [&>span]:min-w-0 [&>span]:shrink"
                   onClick={() => { edit({ file: preset.file, dir: preset.dir }); setInvalid(null) }}>
-                  {preset.label}
+                  <span className="truncate">{preset.label}</span>
                 </Button>
               ))}
             </div>
           : null}
         <p className="text-caption-1-regular leading-4.5 text-text-secondary">
-          {`${hint}；方括号里的内容在字段为空时整段省略。`}
+          {`${hint ? `${hint}；` : ''}方括号里的内容在字段为空时整段省略。`}
         </p>
       </div>
       <div aria-live="polite" className="mt-3 flex flex-col gap-2 empty:hidden">{state}</div>
