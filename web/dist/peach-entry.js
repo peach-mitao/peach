@@ -939,13 +939,13 @@ function bt(e = "正在读取内容", { className: t = "", variant: n = "panel",
     <div${a ? ` class="${m(a)}"` : ""}${o ? ` data-size="${m(o)}"` : ""}${c === "cards" && Number(s) > 0 ? ` style="--skeleton-card-ratio:${Number(s)}"` : ""} aria-hidden="true">${l}</div></div>`;
 }
 function xt({ kind: e, layout: t = "big", mode: n = "alphabet" } = {}) {
-	let r = e !== "tags", i = e === "studios" || e === "agencies", a = r ? "<span class=\"icell\"><span class=\"ring skeleton\"></span><span class=\"nm skeleton\">&nbsp;</span><span class=\"n skeleton\">&nbsp;</span></span>" : "<span class=\"alphatag\"><span class=\"skeleton\"></span><span class=\"n skeleton\"></span></span>", o = r ? `igrid" data-cells="${i ? "company" : "people"}" data-layout="${m(t)}` : "alphalist", s = !r && n === "cloud" ? `<div class="tagwall index-tags">${Array.from({ length: 60 }, (e, t) => `<span class="tg skeleton" style="width:${[
+	let r = e !== "tags", i = e === "studios" || e === "agencies", a = r ? "<span class=\"icell\"><span class=\"ring skeleton\"></span><span class=\"nm skeleton\">&nbsp;</span><span class=\"n skeleton\">&nbsp;</span></span>" : "<span class=\"alphatag\"><span class=\"skeleton\"></span><span class=\"n skeleton\"></span></span>", o = r ? `igrid" data-cells="${i ? "company" : "people"}" data-layout="${m(t)}` : "ui-alphalist", s = !r && n === "cloud" ? `<div class="tagwall index-tags">${Array.from({ length: 60 }, (e, t) => `<span class="tg skeleton" style="width:${[
 		92,
 		128,
 		76,
 		108,
 		144
-	][t % 5]}px">&nbsp;</span>`).join("")}</div>` : r ? `<div class="${o}">${a.repeat(12)}</div>` : `<section class="alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${o}">${a.repeat(10)}</div></section>`.repeat(3), c = "正在读取索引";
+	][t % 5]}px">&nbsp;</span>`).join("")}</div>` : r ? `<div class="${o}">${a.repeat(12)}</div>` : `<section class="ui-alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${o}">${a.repeat(10)}</div></section>`.repeat(3), c = "正在读取索引";
 	return `<div class="skeletonpanel index-skeleton" data-skeleton="index/${m(e)}/${m(t)}/${m(n)}"${r ? " data-fill=\"\"" : ""}
     role="status" aria-label="${c}"><span class="sr-only">${c}</span><section aria-hidden="true">${s}</section></div>`;
 }

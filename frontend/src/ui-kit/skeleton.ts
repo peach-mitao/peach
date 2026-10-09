@@ -73,14 +73,14 @@ export function indexSkeletonHtml({kind,layout='big',mode='alphabet'}:{kind?:str
   const cell=people
     ?'<span class="icell"><span class="ring skeleton"></span><span class="nm skeleton">&nbsp;</span><span class="n skeleton">&nbsp;</span></span>'
     :'<span class="alphatag"><span class="skeleton"></span><span class="n skeleton"></span></span>';
-  const grid=people?`igrid" data-cells="${company?'company':'people'}" data-layout="${esc(layout)}`:'alphalist';
+  const grid=people?`igrid" data-cells="${company?'company':'people'}" data-layout="${esc(layout)}`:'ui-alphalist';
   /* 字母表是一组一张卡：每组两行占位，铺三组，形状同页面落地后开头那几组；
      它不走 `data-fill`——那条补的是单张网格，一组补到视口下沿反而不像。 */
   const body=!people&&mode==='cloud'
     ?`<div class="tagwall index-tags">${Array.from({length:60},(_,i)=>
       `<span class="tg skeleton" style="width:${[92,128,76,108,144][i%5]}px">&nbsp;</span>`).join('')}</div>`
     :people?`<div class="${grid}">${cell.repeat(12)}</div>`
-    :`<section class="alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${grid}">${cell.repeat(10)}</div></section>`.repeat(3);
+    :`<section class="ui-alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${grid}">${cell.repeat(10)}</div></section>`.repeat(3);
   const label='正在读取索引';
   return `<div class="skeletonpanel index-skeleton" data-skeleton="index/${esc(kind)}/${esc(layout)}/${esc(mode)}"${people?' data-fill=""':''}
     role="status" aria-label="${label}"><span class="sr-only">${label}</span><section aria-hidden="true">${body}</section></div>`;

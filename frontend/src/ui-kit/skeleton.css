@@ -1,0 +1,5 @@
+/* `skeleton.ts` 画的骨架件。 */
+/* 字母表骨架：一个首字一张卡，卡里一行一枚标签。 */
+.ui-alphagroup{padding:16px 20px 12px;border-radius:var(--floating-radius);background:var(--ground)}
+.ui-alphalist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 16px}
+.ui-alphagroup{border-radius:16px;box-shadow:none}

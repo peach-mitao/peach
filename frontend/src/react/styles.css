@@ -44,6 +44,7 @@
 @import "../ui-kit/modal.css";
 @import "../board-skeleton.css";
 @import "../management.css";
+@import "../ui-kit/skeleton.css";
 
 @source "./";
 /* 独立页面包（`pages/`）有自己的产物 `peach-pages.css`，它用到的工具类不进这一份。 */
@@ -122,7 +123,7 @@
   /* 旧 `board.css` 760px 那条窄屏媒体查询：下划线 Tabs 收紧，索引页头把开关另起一行。 */
   --breakpoint-board-narrow: 761px;
   /* 索引页的格宽：人格 150px，公司格放宽一档到 180px（给方标识换宽度），字母表一行一枚标签
-   * 最窄 200px。壳铺的骨架（`web/css/06-index.css` 的 `.igrid` 与 `.alphalist`）用同一组宽。 */
+   * 最窄 200px。壳铺的骨架（`web/css/06-index.css` 的 `.igrid` 与 `ui-kit/skeleton.css` 的 `.ui-alphalist`）用同一组宽。 */
   --container-index-person: 150px;
   --container-index-company: 180px;
   --container-index-tag: 200px;

@@ -673,7 +673,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
           pills: document.querySelectorAll(`${glassSelector} [data-filter-row="top"] > *`).length,
           view: rect(`${glassSelector} [data-filter-row="bottom"] ${viewSelector}`) };
       }, [glass, group, view] as const);
-      const skeleton = await measure('#index .board-filter-frame', '#index [data-skeleton] .alphagroup', '.iconswitch');
+      const skeleton = await measure('#index .board-filter-frame', '#index [data-skeleton] .ui-alphagroup', '.iconswitch');
       release();
       await page.locator('#index [data-alphabet]').waitFor({ timeout: 15_000 });
       await settle(page);

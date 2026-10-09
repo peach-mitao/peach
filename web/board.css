@@ -404,8 +404,7 @@ body>.board-filter-frame{margin-inline:16px}
 .igrid[data-layout="big"] .icell .ring{border-radius:10px}
 .igrid[data-layout="big"] .icell .nm,.igrid[data-layout="big"] .icell .n{text-align:left}
 .igrid[data-layout="big"] .icell .nm{font-size:14px}
-/* 字母表骨架的分组卡；一行一枚标签是排名行那一档（36px、圆角 8）。 */
-.alphagroup{border-radius:16px;box-shadow:none}
+/* 字母表骨架里一行一枚标签是排名行那一档（36px、圆角 8）；分组卡在 frontend/src/ui-kit/skeleton.css。 */
 .alphatag{border-radius:8px}
 #grid.gridstack{border:0;background:transparent;padding:0;box-shadow:none;border-radius:0}
 #grid.gridstack>.grid{border:0;background:transparent;padding:0;box-shadow:none;border-radius:0}

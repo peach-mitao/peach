@@ -37,9 +37,6 @@
 /* 标签云骨架与真标签同一档身量：这一页标签是主体，比卡片上的大一档。 */
 .index .index-tags .tg{border-color:color-mix(in srgb,var(--tag-color) 32%,transparent);color:var(--ink-2);
   background:color-mix(in srgb,var(--tag-color) 7%,transparent);padding:5px 12px;font-size:var(--fs-sm)}
-/* 字母表骨架：一个首字一张卡，卡里一行一枚标签。 */
-.alphagroup{padding:16px 20px 12px;border-radius:var(--floating-radius);background:var(--ground)}
-.alphalist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 16px}
 /* 一行一枚标签：36px 高、控件圆角，取的是排名行那一档身量。 */
 .alphatag{display:flex;align-items:center;justify-content:flex-start;gap:9px;height:36px;border:0;background:transparent;
   color:var(--ink-2);padding:0 10px;border-radius:var(--control-radius);text-align:left;cursor:pointer;min-width:0}
