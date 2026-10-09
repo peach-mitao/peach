@@ -99,8 +99,9 @@ it('没人认领的历史变化各领一个开次代次、按代次挂的元素�
   expect(new Set(seen.epochs).size).toBe(4);
 });
 
-it('路由元数据登记的就是管理区、索引与资料那几页', async () => {
+it('路由元数据登记的就是管理区、索引与资料那几页，加上改写过去的旧直达地址', async () => {
   const r = await load();
   expect(new Set(Object.keys(r.ROUTE_META))).toEqual(new Set([
-    ...Object.keys(r.MANAGED_ROUTES), ...Object.keys(r.INDEX_ROUTES), ...Object.keys(r.ENTITY_ROUTES)]));
+    ...Object.keys(r.MANAGED_ROUTES), ...Object.keys(r.REDIRECT_ROUTES), ...Object.keys(r.INDEX_ROUTES),
+    ...Object.keys(r.ENTITY_ROUTES)]));
 });

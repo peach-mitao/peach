@@ -1,20 +1,21 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
  * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列，以及页面里的附属面（首页筛选条、
  * 首页新作行、目录页处理横幅、顶栏搜索下拉）与常驻面（底部批量条、侧栏配色卡、管理区页头、沉浸模式、设置面板、
- * 侧栏、详情舞台）（`managed-routes.tsx`）由这棵树画，其余页面仍由壳的 `ROUTES` 表打开。
+ * 侧栏、详情舞台）（`managed-routes.tsx`）由这棵树画。管理区那几页由页面组按匹配打开（`pages/managed.tsx`），
+ * 其余页面仍由壳的 `ROUTES` 表打开。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
  * 默认包在 `startTransition` 里，接连两次变化会并成一次渲染，后退前进就少派发一次。
  *
- * 派发点与管理区宿主是两组 `<Routes>` 的兄弟，从头活到尾：后退前进照旧派发给壳，由壳的准备动作（收起舞台、
- * 铺骨架、认领表面）打开那一屏；画着的页面跟着壳登记的那几条走（`@peach/history` 的
+ * 派发点与管理区宿主是两组 `<Routes>` 的兄弟，从头活到尾：后退前进照旧派发给壳，还归壳的那几屏由壳的准备动作
+ * （收起舞台、铺骨架、认领表面）打开；画着的页面跟着登记的那几条走（`@peach/history` 的
  * `openManagedRoute`，每个容器一条），详情舞台压在上面、地址换成 `/item/:id` 时它留在原处。
  *
  * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`）匹配，详情压在哪一页上就还匹配那一页；
- * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。页面组里索引与资料两组挂着按地址打开那一页的
- * 元素（`pages/index-entity.tsx`），其余具体路由只声明路径；`path="*"` 不按路径设 key，同一个实例在非管理区
- * 地址之间从头活到尾。
+ * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。页面组里管理区、索引与资料三组挂着按地址打开那一页的
+ * 元素（`pages/managed.tsx`、`pages/index-entity.tsx`），其余具体路由只声明路径；`path="*"` 不按路径设 key，
+ * 同一个实例在非管理区地址之间从头活到尾。
  *
  * 一处渲染错误只带走抛错的那一面：每一面各套一层错误边界（`SurfaceBoundary`），根上不套，派发点与两组
  * `<Routes>` 不随某一面卸掉。错误经根的 `onCaughtError` 交给 `reportError`，每次一条。 */
@@ -33,7 +34,8 @@ import {
 
 import { Providers } from '../providers';
 import {
-  BROWSE_ROUTES, CATALOG_PATHS, ENTITY_ROUTES, INDEX_ROUTES, MANAGED_ROUTES, isManagedPath, isRoutedPath, managedPage,
+  BROWSE_ROUTES, CATALOG_PATHS, ENTITY_ROUTES, INDEX_ROUTES, MANAGED_ROUTES, REDIRECT_ROUTES, isManagedPath, isRoutedPath,
+  managedPage,
 } from './managed-routes';
 import type { ShellActions } from './shell-actions';
 
@@ -162,9 +164,9 @@ function RouteGroups({ children }: { children?: ReactNode }) {
     <>
       <Routes location={background ?? location}>
         {/* ── 管理区 ── */}
-        {Object.keys(MANAGED_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
-        {/* 旧直达地址：壳把它改写成 `/data-cleanup#resource-sync` 再打开数据管理页。 */}
-        <Route path="/resource-sync" element={null} />
+        {Object.entries(MANAGED_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
+        {/* 旧直达地址：元素把它改写成 `/data-cleanup#resource-sync`，由数据管理页的元素打开。 */}
+        {Object.entries(REDIRECT_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
 
 
 

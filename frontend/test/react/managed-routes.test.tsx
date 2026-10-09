@@ -127,13 +127,15 @@ async function until(ok: () => boolean, what: string): Promise<void> {
   throw new Error(`一直没等到：${what}`);
 }
 
+/* 这里直接调打开管线、派发是替身：要开始路由的用例把地址落在首页，管理区的页面元素不挂（元素怎么打开见
+   `pages/managed.test.tsx`）。 */
 const open = (r: Loaded, stats: Element, isCurrent = () => true) =>
   r.openManagedRoute('/activity', {}, { container: stats, isCurrent });
 /** 页面画出来的那一块（宿主里的第一个元素）：重挂之后就换成另一个。 */
 const painted = (stats: Element) => stats.querySelector(':scope > .peach-react > *');
 
 it('冷启动深链，Router 先挂上：壳画的骨架留到首屏取齐，换成整页在同一批变化里', async () => {
-  const r = await load('/activity');
+  const r = await load('/');
   const { stats, skeleton } = surface();
   await mount(r);
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
@@ -153,7 +155,7 @@ it('冷启动深链，Router 先挂上：壳画的骨架留到首屏取齐，换
 });
 
 it('冷启动深链，壳先开始路由、Router 后挂上：包到了才取数，挂上时不再派发，骨架同样留到换成整页', async () => {
-  const r = await load('/activity');
+  const r = await load('/');
   const { stats, skeleton } = surface();
   let arrive: (prefetch: typeof r.prefetchManagedRoute) => void = () => {};
   r.connectManagedRoutes(new Promise((resolve) => { arrive = resolve }));
@@ -239,7 +241,7 @@ it('同一路径再打开一次就重取：每次打开领一个新代次，页�
 });
 
 it('详情舞台压在上面时页面留着，地址回来也不重挂；壳下一次认领表面才收', async () => {
-  const r = await load('/activity');
+  const r = await load('/');
   const { stats } = surface();
   await mount(r);
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
@@ -253,7 +255,7 @@ it('详情舞台压在上面时页面留着，地址回来也不重挂；壳下�
   await act(async () => { r.shellNavigate('/item/7') });
   expect(painted(stats), '舞台下面那一页不许跟着地址卸掉').toBe(page);
   // 关掉详情：壳把地址写回列表那一页。
-  await act(async () => { r.shellNavigate('/activity') });
+  await act(async () => { r.shellNavigate('/') });
   expect(painted(stats)).toBe(page);
   expect(dispatch).toHaveBeenCalledTimes(1);
   act(() => { r.releaseManagedRoute(stats) });

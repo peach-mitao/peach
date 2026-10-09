@@ -1,11 +1,11 @@
-/* 由路由画的那几页、页面里的附属面与常驻面：登记键到首屏取数与画法的对照表，七张。
+/* 由路由画的那几页、页面里的附属面与常驻面：登记键到首屏取数与画法的对照表，七张；另有一张旧直达地址的
+ * 改写表 `REDIRECT_ROUTES`。
  *
- * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径；`BROWSE_ROUTES` 是同样画进 `#stats`
- * 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
+ * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径，每条带页面组按匹配挂上的元素；
+ * `BROWSE_ROUTES` 是同样画进 `#stats` 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
  * （`/performers/*`），种类与名字跟着打开走；`CATALOG_ROUTES` 是画进 `#grid` 的目录网格与垃圾队列，按页面
  * 分键；`SURFACE_ROUTES` 是页面里的附属面，`RESIDENT_ROUTES` 是不跟某一页走的常驻面，都按名字登记，不是地址、
- * 不进 `<Routes>`。壳每次打开一页时交进来的
- * `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次），`#grid` 那两页
+ * 不进 `<Routes>`。每次打开交进来的 `open`（管理区由页面元素算，其余由壳算）只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、一次性预填、刷新代次），`#grid` 那两页
  * 与附属面是壳那一整份 props；回执与换到还归壳的那几屏走 `ShellActions`。
  * 管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的 `navigate`，其余交壳。另外
  * 四张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页与关注页的 `actions.route`、
@@ -64,6 +64,7 @@ import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
 import { EntityMatch, IndexMatch } from './pages/index-entity';
+import { ManagedMatch, ResourceSyncRedirect } from './pages/managed';
 import type {
   BrowseOpenProps, BrowseRoutePath, CatalogOpenProps, CatalogPagePath, EntityRoutePath, IndexOpenProps,
   IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ResidentName, ResidentOpenProps, ShellActions,
@@ -100,6 +101,7 @@ function openCleanupSection(section: DataCleanupSection, actions: ShellActions, 
  * 紧接着就读它画出来的结构（配置页按地址里的 `#peachProxy` 滚过去，那一刻选中的页签已经是「网络与访问」）。 */
 export const MANAGED_ROUTES: ManagedRouteTable = {
   '/stats': {
+    element: <ManagedMatch path="/stats" />,
     prefetch: (_open, signal) => prefetchStats(signal),
     /* 点一个内容标签是「回目录并按它筛选」，整页换成目录仍归壳。 */
     page: (open, actions, go) => (
@@ -108,6 +110,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     ),
   },
   '/taste': {
+    element: <ManagedMatch path="/taste" />,
     /* 首屏取的是「全部时间」那一份：分析范围是组件状态，每次进这一页都从它开始。 */
     prefetch: (_open, signal) => prefetchTaste(DEFAULT_WINDOW, signal),
     /* 总结里的下一步动作按路径走（`taste_history.py` 给的），路由树里没有的交壳的路由表。 */
@@ -118,6 +121,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   /* ADR-0018 的确定项已由扫描与资料处理任务落库；复核页只读取剩下的判断题。 */
   '/review': {
+    element: <ManagedMatch path="/review" />,
     prefetch: (_open, signal) => prefetchReview(signal),
     page: (open, actions) => (
       <ReviewPage {...open} route={actions.routeReview} openItem={actions.openItem} openEntity={actions.openEntity}
@@ -126,6 +130,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   /* 首屏等顶上那排读数里自己的几份、两张后台任务卡与整理卡；复核、高清版与链接各读各的。 */
   '/data-cleanup': {
+    element: <ManagedMatch path="/data-cleanup" />,
     prefetch: (_open, signal) => prefetchDataCleanup(signal),
     page: (_open, actions, go) => (
       <DataCleanupPage failure={actions.failure} open={(section) => openCleanupSection(section, actions, go)}
@@ -134,6 +139,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     ),
   },
   '/duplicates': {
+    element: <ManagedMatch path="/duplicates" />,
     prefetch: (_open, signal) => prefetchDuplicates(signal),
     page: (_open, actions) => (
       <DuplicatesPage openItem={actions.openItem} failure={actions.failure}
@@ -141,6 +147,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     ),
   },
   '/quality-goals': {
+    element: <ManagedMatch path="/quality-goals" />,
     prefetch: (_open, signal) => prefetchQualityGoals(signal),
     page: (_open, actions) => (
       <QualityGoalsPage openItem={actions.openItem} javTitleHtml={javTitleHtml} javDisplayName={javDisplayName}
@@ -148,10 +155,12 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     ),
   },
   '/scraping': {
+    element: <ManagedMatch path="/scraping" />,
     prefetch: (_open, signal) => prefetchScraping(signal),
     page: (_open, actions) => <ScrapingPage toast={(message) => actions.toast(message)} />,
   },
   '/configuration': {
+    element: <ManagedMatch path="/configuration" />,
     prefetch: (_open, signal) => prefetchConfiguration(signal),
     page: (open, actions) => (
       <ConfigurationPage receipt={(message) => actions.receipt(message)} reopenTutorial={actions.reopenTutorial}
@@ -159,18 +168,21 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
     ),
   },
   '/diagnostics': {
+    element: <ManagedMatch path="/diagnostics" />,
     prefetch: (_open, signal) => prefetchDiagnostics(signal),
     page: (_open, actions, go) => <DiagnosticsPage navigate={go} openItem={actions.openItem}
       receipt={message => actions.receipt(message)}
       configure={section => { actions.requestConfigurationSection(section); go('/configuration') }} />,
   },
   '/activity': {
+    element: <ManagedMatch path="/activity" />,
     prefetch: (_open, signal) => prefetchTasks(signal),
     page: () => <ActivityPage />,
   },
   /* 首屏只取来源清单与凭据状态，地址栏指着「订阅源」时连它一起取。检查更新与查找那两趟
      后台任务的快照不在首屏里：它们常年躺着上一趟的回执，等它们只会让首屏多一个往返。 */
   '/follow-manage': {
+    element: <ManagedMatch path="/follow-manage" />,
     prefetch: (open, signal) => prefetchFollowManage(signal, open.tab),
     page: (open, actions) => (
       <FollowManagePage {...open} route={actions.routeFollowManage} savePreference={actions.saveFollowPreference}
@@ -182,6 +194,11 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
 /** 管理区那几页之间的跳转判据：只认 `MANAGED_ROUTES` 的精确路径。索引页不算：它们换 search 要由壳
  *  认领，跨进来也是壳写地址再自己打开。 */
 export const isManagedPath = (path: string): path is ManagedPath => Object.hasOwn(MANAGED_ROUTES, path);
+
+/** 旧直达地址：页面组按匹配挂上元素，元素把地址改写到别的页面上，自己不画。 */
+export const REDIRECT_ROUTES: Readonly<Record<string, { element: ReactElement }>> = {
+  '/resource-sync': { element: <ResourceSyncRedirect /> },
+};
 
 /* 播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要看得到）。停在这一页时壳要求重读，
    经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。点开一份进舞台、翻页门槛与回执都归壳。

@@ -81,23 +81,6 @@
 .review-skeleton .skeletoncard i{aspect-ratio:auto;width:56%;height:22px;margin:0}
 .review-skeleton .skeletoncard b{width:auto;height:auto;margin:0}
 .review-skeleton .skeletoncard em{width:100%;height:36px;margin:0;border-radius:var(--control-radius);background:var(--overlay-5)}
-/* 关注管理是一列三块（添加关注、关注列表、凭据）的行政界面：骨架照 .fsec 的轮廓画，
-   一块对一块、宽度跟着 .followmanage 一起限到 812px。头部条是框体不是待填内容，
-   跟 .fsechead 同高同底色，不参与微光。 */
-.followmanage-skeleton>div{grid-template-columns:minmax(0,1fr);gap:16px;width:min(812px,100%);
-  margin-left:auto;margin-right:auto;align-items:start}
-.followmanage-skeleton .skeletoncard{gap:0;overflow:hidden;border:1px solid var(--border-10);
-  border-radius:var(--surface-radius);background:var(--ground)}
-.followmanage-skeleton .skeletoncard i{aspect-ratio:auto;height:56px;border-radius:0;
-  background:var(--overlay-5);border-bottom:1px solid var(--border-10)}
-.followmanage-skeleton .skeletoncard b{width:auto;margin:16px 16px 0}
-.followmanage-skeleton .skeletoncard em{width:42%;height:14px;margin:12px 16px 16px}
-.followmanage-skeleton .skeletoncard:nth-child(1) b{height:38px}
-.followmanage-skeleton .skeletoncard:nth-child(2) b{height:300px}
-.followmanage-skeleton .skeletoncard:nth-child(3) b{height:180px}
-/* 塌成一列时要压掉上面那三条显式定位，特异性必须与它们持平，所以仍写 nth-child。 */
-@media (max-width:1080px){.followmanage-skeleton>div{grid-template-columns:minmax(0,1fr)}
-  .followmanage-skeleton .skeletoncard:nth-child(n){grid-area:auto}}
 /* 关注列表骨架的容器与按键都是 React 那侧的类名（见 `frontend/src/board-skeleton.ts`），这里只补
    一件 Tailwind 表达不了的事：工具行窄于 740px 时带字的键收成纯图标。React 按工具行自己的宽度量，
    骨架拿关注列表那张卡做容器，它的内容宽度就是工具行的宽度，按同一条线收。 */
@@ -153,8 +136,7 @@
   animation:skeleton-sweep 1.5s ease-in-out infinite reverse}
 /* 框体不是待填的内容，本来就不参与呼吸，也不参与微光。 */
 .cleanup-skeleton .skeletoncard em::after,
-.review-skeleton .skeletoncard em::after,
-.followmanage-skeleton .skeletoncard i::after{content:none}
+.review-skeleton .skeletoncard em::after{content:none}
 /* 封面与头像还在路上：框上铺同一条微光，到手后淡出并糊掉，和换头像那一格
    （`reveal-skeleton`）同一形态。类名由 app.js 的 `watchPendingImages` 标、`settleImage`
    收。微光晚 180ms 才淡入，门槛与 `.skeleton-awaiting` 同一个数：本地图多半在这之前
@@ -202,7 +184,6 @@ img.cover:not([data-frame]),img[data-facebox]:not([data-face-framed]){visibility
 :is([data-skeleton],.avskeleton,.brandskeleton),:is([data-skeleton],.avskeleton,.brandskeleton) *,.tagskeleton,.countskeleton,.skeletoncard,.skeleton{pointer-events:none}
 [data-skeleton-action]:disabled{pointer-events:auto}
 
-.stats-lede-skeleton{display:block;width:min(380px,75%);height:22px;margin-bottom:16px}
 .config-skeleton-card .skeleton{display:block;height:20px;width:60%}
 .config-skeleton-card .geist-fieldset-content>.skeleton:first-child{height:24px;width:35%}
 .config-skeleton-card .geist-fieldset-content>.skeleton:last-child{height:var(--control-h);width:100%}

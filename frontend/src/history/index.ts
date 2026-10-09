@@ -102,6 +102,11 @@ export function shellNavigate(
   }
 }
 
+let begin: () => void = () => {};
+/** 壳开始路由的那一刻兑现。按匹配打开的页面元素等它再开页：壳启动时派发的同步那一段（标题、侧栏、
+ *  教程状态）先跑完，元素的开页排在它后面；之后每次挂上，开页都排进挂上那一轮的微任务里。 */
+export const routingStarted: Promise<void> = new Promise((resolve) => { begin = resolve });
+
 /** 壳启动时派发第一次，此后的派发交给 `routeSeen`。
  *
  * 到这一刻为止的历史变化都算启动这一次的：`<Router>` 先挂上的话，它挂上时报的那个序号已经过去，
@@ -109,6 +114,7 @@ export function shellNavigate(
 export function startRouting(dispatch: RouteDispatcher): Promise<void> {
   dispatcher = dispatch;
   claimed = seq;
+  begin();
   return Promise.resolve(dispatch('boot'));
 }
 

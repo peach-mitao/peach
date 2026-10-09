@@ -1,11 +1,11 @@
 import { loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
-import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, isAbort, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
+import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
 import { MEDIA_SOURCE_ICONS } from './js/ui-components.js';
-import { boardPageSkeleton, detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
+import { detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
 import { matchRoute, routeLabel } from './js/routes.js';
 import { initMiddleTruncate } from './js/middle-truncate.js';
@@ -17,13 +17,14 @@ import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio
 import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
 import { paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
-import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent, cleanupSkeletonHtml } from './dist/peach-ui.js';
+import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent } from './dist/peach-ui.js';
+import { managementSkeletonHtml, pageSkeletonHtml, paintManagementPlaceholder, skeletonKeyOf } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage, loadMediaSources } from './dist/peach-ui.js';
 import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
-import { ROUTE_META, registerDiagnosticsRoute, routeMetaOf } from './dist/peach-ui.js';
+import { ROUTE_META, routeMetaOf } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
-import { configurationRequestedSection, entityJavLayout, notifyShell, pageOpens, writeShell } from './dist/peach-ui.js';
+import { cameFromSetup, entityJavLayout, notifyShell, pageOpens, runtimeConfigurable, writeShell } from './dist/peach-ui.js';
 import { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './dist/peach-ui.js';
 import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
@@ -34,8 +35,8 @@ import {
   fitSkeleton, formModal, indexSkeletonHtml, loadingDotsHtml,
   dissolveValue, popBadges, revealSkeleton, revealTexts,
   moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml,
-  setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
-  wireOverlayScrollbars, wireScrollers, configurationSkeletonHtml, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
+  setActionBusy, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
+  wireOverlayScrollbars, wireScrollers, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
   postSetupTutorialMarker, setPostSetupTutorialMarker, postSetupTutorialCollapsed, setPostSetupTutorialCollapsed,
   postSetupTutorialSkipped, setPostSetupTutorialSkipped, postSetupTutorialSignature,
   nextPostSetupTutorialRequest, isCurrentPostSetupTutorialRequest, resetPostSetupTutorialState,
@@ -127,7 +128,7 @@ let followDurMin=0,followDurMax=0;
    各自抄的那几条。加一屏只改这张表；同一份知识散成七处时，漏一处的症状还各不相同：URL 能进但侧栏不亮、
    点进去了但「换一批」把你扔回统计页、批量操作后回到首页而不是刚才那一屏。
 
-   条目按页面分组（目录、关注、覆盖、资料、索引、管理区、沉浸），每组前一行组名、组与组之间空开两行：
+   条目按页面分组（目录、播放列表、覆盖、关注、沉浸），每组前一行组名、组与组之间空开两行：
    各组迁进路由树时只删自己那几行。 */
 const ROUTES=[
   // ── 目录 ──
@@ -140,7 +141,7 @@ const ROUTES=[
   {match:'/trash',section:'trash',open:(params,push)=>openTrash(push)},
 
 
-  // ── 关注 ──
+  // ── 播放列表 ──
   {match:'/playlists',nav:'playlists',title:'播放列表',refresh:'reopen',
     open:(params,push)=>openPlaylists(push)},
 
@@ -160,59 +161,36 @@ const ROUTES=[
     await openFollowDetail(params.id,push)}},
 
 
-  // ── 管理区 ──
-  {match:'/stats',open:(params,push)=>openStats(push)},
-  {match:'/taste',open:(params,push)=>openTaste(push)},
-  {match:'/review',open:(params,push)=>openReview(push)},
-  {match:'/data-cleanup',open:(params,push)=>openDataCleanup(push)},
-  {match:'/duplicates',open:(params,push)=>openDuplicates(push)},
-  // /resource-sync 是数据管理页上的一个锚点，没有自己的管理身份。
-  {match:'/resource-sync',title:'数据管理',open:(params,push)=>openResourceSync(push)},
-  {match:'/quality-goals',open:(params,push)=>openQualityGoals(push)},
-  {match:'/scraping',open:(params,push)=>openScraping(push)},
-
-
   // ── 关注 ──
   {match:'/follow',nav:'follow',title:'关注',refresh:'skip',
     open:(params,push)=>openFollow(push),reload:()=>openFollow(false)},
-
-
-  // ── 管理区 ──
-  {match:'/follow-manage',open:(params,push)=>openFollowManage(push)},
-  // 这台电脑的媒体文件夹与端口。页面是 island，数据走 /api/configuration。
-  {match:'/configuration',open:(params,push)=>openConfiguration(push)},
-  // 任务中心的界面：谁在跑、谁被挡下了、刚跑完的怎么样。数据走 /api/tasks。
-  {match:'/activity',open:(params,push)=>openActivity(push)},
 
 
   // ── 沉浸 ──
   {match:'/immerse',nav:'immerse',title:'沉浸模式',
     open:(params,push)=>openTok(immerseStartId(),push)},
 ];
-/* 登记一条新路由。ADR-0022 的迁移是逐屏搬到 `frontend/`：搬走的那一屏在自己的
-   入口里登记，不必回来改这张表。挂在 window 上是因为 app.js 是入口模块，别的
-   bundle 没法 import 它。
-   插在表尾，所以新路由要么是一条新路径，要么比现有条目更具体。 */
-const registerRoute=spec=>{ROUTES.push(spec);return spec};
-window.peachRegisterRoute=registerRoute;
-registerDiagnosticsRoute(openDiagnostics);
 /* 路由元数据的读法：路由树那一侧登记了的用它的（`ROUTE_META`），没有回落到 `ROUTES`；返回与 `matchRoute`
-   同形的 `{route,params}`。按身份或侧栏键找入口路径时同样先查路由树、再查表：一个键只登记在一边。
-   打开那一屏的 `open` 仍在 `ROUTES` 里，按找到的路径取；不在表里的是路由树按匹配打开的索引页（侧栏只通到它们）：
-   从导航进来退出选择模式、回到本地与字母表。 */
+   同形的 `{route,params}`。按身份或侧栏键找入口路径时同样先查路由树、再查表：一个键只登记在一边。 */
 const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta,params:{}}:matchRoute(ROUTES,path)};
 const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value)
   ??ROUTES.find(spec=>spec[key]===value)?.match;
+/* 管理区：路由树按匹配打开、又不随写回从头重开的那几页（索引页与资料页登记了 `reload: 'reopen'`）。 */
+const managedPagePath=path=>{const meta=routeMetaOf(path);return !!meta&&meta.reload!=='reopen'};
+/* 从侧栏、管理条进一屏。还归壳的那几屏按 `ROUTES` 打开。索引页（侧栏只通到它们）退出选择模式、回到本地与
+   字母表，认领写地址后从头重开。管理区换地址、交派发打开，再点一次同一页也是新的一次打开；关注管理回到第一页
+   与默认排序，页签沿用地址上的那一档。 */
 const openRoutePath=path=>{
   const hit=matchRoute(ROUTES,path);
   if(hit){hit.route.open(hit.params,true);return}
-  setSelectMode(false,true);
-  openRoutedPage(indexPath({kind:path.slice(1),q:'',scope:'local',view:'alphabet',category:'all'}));
+  if(!managedPagePath(path)){
+    setSelectMode(false,true);
+    openRoutedPage(indexPath({kind:path.slice(1),q:'',scope:'local',view:'alphabet',category:'all'}));
+    return;
+  }
+  navigatePath(path==='/follow-manage'?followManageEntry():path);
 };
 
-const pageSkeletonHtml=(label,{cards=false,className='',variant='',count,fill,cardRatio,gridClass='',gridSize=''}={})=>
-  skeletonHtml(label,{variant:variant||(cards?'cards':'panel'),className,gridClass,gridSize,
-    ...(count?{count}:{}),...(fill===undefined?{}:{fill}),...(cardRatio?{cardRatio}:{})});
 /* 关注页列表那一块的骨架：进页整块骨架的下半，也是页面换筛选时列表区铺的那一块。图片视图借
    照片墙的网格算式，列数跟着照片墙尺寸档走。 */
 const followContentSkeletonHtml=(media=new URLSearchParams(location.search).get('media')==='images'?'images':'videos',
@@ -232,20 +210,6 @@ const followSkeletonHtml=(label='正在读取关注内容')=>`<div class="follow
     <div class="tagbar followfilters" data-filter-row="top" data-skeleton-tier="pill"></div>
     <div class="count followcount" data-filter-row="bottom"><span class="mono"><span class="countskeleton"></span></span></div></div>
   ${followContentSkeletonHtml(undefined,label)}</div>`;
-/* 分类名是静态文案，骨架和复核页各要一份，所以它排在骨架前面而不是跟着复核页那段代码。 */
-const REVIEW_LABELS={metadata_fields:'元数据字段',creator_tags:'创作者标签',studio_logos:'厂牌 Logo',performer_avatars:'女优头像',western_identity:'西方身份回配',code_creators:'番号目录存疑',fc2_markings:'FC2 评论标记',fc2_similarity:'FC2 跨号相似',video_endcards:'片尾/出处证据'};
-/* 复核页是左边一列分类、右边工具条加一格一格 Fieldset，骨架就用最终容器的那几个类名，
-   分栏、列宽和卡高全由页面自己那套规则给：读完数据只是把占位换成内容，版面一格不挪。
-   分类名和「复核分类」这两样与数据无关，直接写出来；等的是每类多少条，所以只有计数
-   那一枚是占位。工具条上那三件——分组方式、分类筛选、全选本页——要等队列回来才知道
-   选项和条数，三枚占位一件对一件。 */
-const reviewSkeletonHtml=(label='正在读取复核队列')=>`<div class="review review-workspace review-skeleton" data-skeleton="review" aria-busy="true" aria-label="${esc(label)}">
-  <div class="reviewcontrols" data-section-nav><h2 class="review-category-title">复核分类</h2>
-    <div class="reviewtabs" data-section-items>${Object.values(REVIEW_LABELS).map((text,i)=>
-      `<button type="button" disabled aria-selected="${i===0}">${esc(text)}<span class="skeleton reviewcountskeleton" aria-hidden="true"></span></button>`).join('')}</div></div>
-  <div class="reviewbulkbar reviewbulktoolbar" aria-hidden="true">${'<span class="skeleton reviewtoolskeleton"></span>'.repeat(3)}</div>
-  <section class="reviewsection"><div class="reviewlist">${
-    '<div class="skeletoncard" aria-hidden="true"><i></i><b></b><em></em></div>'.repeat(6)}</div></section></div>`;
 $('#loadSentinel').innerHTML=loadingDotsHtml('继续载入中…');
 /* 网格还没画上时，壳把骨架写进 `#grid > .grid`。卡片都归 `#grid` 里那一页：目录与回收站是
    目录网格，垃圾文件是垃圾队列。同形骨架复用节点，只有骨架交给内容才淡入。 */
@@ -289,44 +253,11 @@ function renderCatalogLoading(label='正在读取作品'){
   else setGridCards(placeholder);
   fitSkeleton($('#grid'));
 }
-/* 每个管理表面的加载态只有一份定义，深链启动和路由到位后都从这里取。
-   两处各写各的时，整页刷新会连播两段动画：先一张通用大布局骨架，再各页自己的
-   加载态（数据管理那张还是 Loading Dots）。取同一份，键就相同，
-   showManagementBody 认出是同一张后不再重画。 */
-const MANAGEMENT_PLACEHOLDERS={
-  '/stats':()=>`<div class="insightpage"><div class="insighttoolbar" aria-hidden="true"><span class="skeleton stats-lede-skeleton"></span></div>${pageSkeletonHtml('正在读取统计',{variant:'dashboard'})}</div>`,
-  // 口味页与统计页同一套版式：指标带、一块主详情、下面同层的数据面板。
-  '/taste':()=>`<div class="tastepage">${pageSkeletonHtml('正在读取口味分析',{variant:'dashboard'})}</div>`,
-  '/data-cleanup':()=>cleanupSkeletonHtml(),
-  // /resource-sync 只是数据管理页上的一个锚点，启动时占位也该是数据管理那张。
-  '/resource-sync':()=>MANAGEMENT_PLACEHOLDERS['/data-cleanup'](),
-  '/duplicates':()=>pageSkeletonHtml('正在比对重复内容',{cards:true}),
-  '/review':()=>reviewSkeletonHtml(),
-  '/quality-goals':()=>pageSkeletonHtml('正在读取高清版目标',{cards:true}),
-  // 活动页是三段纵向排开的清单，不是同质卡片网格：骨架画三块窄条。
-  '/activity':()=>pageSkeletonHtml('正在读取任务活动',
-    {cards:true,count:3,fill:false,className:'activity-skeleton'}),
-  '/playlists':()=>pageSkeletonHtml('正在读取播放列表',{cards:true}),
-  // 关注管理是三个大区（添加关注、关注列表、凭据），不是一屏同质卡片：
-  // 骨架照 .fsec 的轮廓画三块，六张 16:9 占位说的是另一个页面的结构。
-  '/follow-manage':()=>`<div class="follow">${pageSkeletonHtml('正在读取关注管理',
-    {cards:true,count:3,fill:false,className:'followmanage-skeleton'})}</div>`,
-  '/configuration':()=>configurationSkeletonHtml(),
-  '/diagnostics':()=>configurationSkeletonHtml(),
-  /* 采集来源是 812px 窄列里一叠同宽的 Fieldset：一块高清封面加六个来源。骨架画四块，
-     那是首屏装得下的张数；说明那一句是静态文案，与数据无关，立刻显示。 */
-  '/scraping':()=>`<div class="scraping-page"><p>高清图片可能要经代理才能下载，先检查连接。</p>
-    ${pageSkeletonHtml('正在读取采集来源',{cards:true,count:4,fill:false,className:'cleanup-skeleton'})}</div>`,
-};
-/* 关注管理的骨架要照用户上次选的视图画：等数据的这段时间画成卡片、数据到了换成表格
-   的话，同一次进入里版式会整个翻一遍。视图是这台浏览器的偏好，取值走
-   `followListLayout()`——偏好那份存储声明在本行下面，直接读它就是声明前引用，
-   会提升的函数声明才能从这里回去问。页面自己的那份状态在 island 里。排序与方向在地址栏
-   里，骨架上的排序框和方向键照它画，跟接管后是同一档。 */
-const managementPlaceholder=path=>
-  boardPageSkeleton(path,{followLayout:followListLayout(),
-    ...(path==='/follow-manage'?(({sort,dir})=>({followSort:sort,followDir:dir}))(followManageParams()):{})})||
-  (MANAGEMENT_PLACEHOLDERS[path]||(()=>pageSkeletonHtml('正在读取页面')))();
+/* 管理区与播放列表页的加载态只有一份定义（`managementSkeletonHtml`），深链冷启动铺它，路由树的页面元素
+   挂上时也铺它，键相同就不重画。关注管理的视图偏好经 `followListLayout()` 取：偏好那份存储声明在本行下面，
+   直接读它就是声明前引用，会提升的函数声明才能从这里回去问。排序与方向照地址栏上的那一档。 */
+const managementPlaceholder=path=>managementSkeletonHtml(path,{followLayout:followListLayout(),
+  ...(({sort,dir})=>({followSort:sort,followDir:dir}))(followManageParams())});
 /* 顶部三层只属于首页。深链启动时先画一遍再由路由收起来，等于向管理页和索引页
    承诺了三条永远不会到货的横条。 */
 function hideDiscoveryBars(){$('#catalogFilter').style.display='none';syncCatalogFilterScreen()}
@@ -368,9 +299,8 @@ function renderInitialSurfaceLoading(){
     renderCatalogLoading('正在读取垃圾文件');
     return;
   }
-  const management=new Set(['/stats','/taste','/review','/data-cleanup','/duplicates','/quality-goals','/scraping',
-    '/playlists','/resource-sync','/follow','/follow-manage','/configuration','/diagnostics','/activity']);
-  if(management.has(path)||path.startsWith('/follow/item/')){
+  /* 画进 `#stats` 的那几屏：路由树登记的管理区（`ROUTE_META`），加上还归壳的播放列表页与关注页。 */
+  if(managedPagePath(path)||path==='/playlists'||path==='/follow'||path.startsWith('/follow/item/')){
     hideDiscoveryBars();
     const stats=$('#stats');stats.hidden=false;clearCatalogGrid();
     stats.innerHTML=path.startsWith('/follow/item/')?detailSkeletonHtml():path.startsWith('/follow')&&path!=='/follow-manage'
@@ -466,15 +396,9 @@ const claimSurface=path=>{
   surfaceRequests?.abort();
   surfaceRequests=new AbortController();
   surfaceEpoch++;return surfaceToken(path)};
-/* 由壳打开、路由树画的那几页：管理区画进 `#stats`，目录网格画进 `#grid`（`paintGridPage`）；
-   取数期间壳换了页就不画。索引页与资料页由路由树的元素打开，见 `frontend/src/react/router/pages/index-entity.tsx`。 */
+/* 由壳打开、路由树画的那几页：播放列表页与关注页画进 `#stats`，目录网格画进 `#grid`（`paintGridPage`）；
+   取数期间壳换了页就不画。管理区、索引页与资料页由路由树的元素打开，见 `frontend/src/react/router/pages/`。 */
 const managedSurface=token=>({container:$('#stats'),isCurrent:()=>surfaceCurrent(token)});
-/* 表面级读请求：带上这个表面的 signal，被取消时返回 null 而不是抛错。
-   取消只可能由 claimSurface 触发，而它已经推进了 epoch，所以调用点紧随其后的
-   `surfaceCurrent()` 必然为假、走的是同一条过期分支——不用给每个表面套一层
-   try/catch，也不会多出一条没人接的 rejection。 */
-const surfaceApi=(token,path,options)=>api(path,{...options,signal:token.signal})
-  .catch(error=>{if(isAbort(error))return null;throw error});
 /* 地址只经全站那一份历史写（`frontend/src/history/`，`@peach/history`），不直接调 `window.history`：
    React Router 读写的是同一个对象，绕过它写进去的条目它不知道。详情地址带上 `overlayState()`
    给的 `usr`（压在哪一页上），别的地址不带。`claim:false` 见 `navigatePath`。 */
@@ -623,7 +547,6 @@ function sidebarFacets(facetData,context){
 /* 空态用 Vercel 的「icon tile + 标题 + 一句解释」结构。不放假动作按钮：
    能执行的操作仍然留在各页自己的工具栏里，空态只负责解释为什么是空的。 */
 const emptyState=emptyStateHtml;
-let runtimeConfigurable=null;
 
 /* Toast：Sonner 的栈（`frontend/src/react/toaster.tsx`），挂在 #toasts（body 直下）而不是
    #stats 里——检查完会整页重画，页内浮层会被冲掉，这里不会。用法照 Geist 的处方（取证见
@@ -802,9 +725,8 @@ function openHome(scroll=false){
 /* `onboarding=1` 来自设置完成页。标记会在 Peach 的每一页保持生效；清单只读真实接口，
    不用“访问过页面”冒充完成。地址栏里那一位一进门就擦掉——它只说明「这一次是从设置
    完成页进来的」，留在地址里会被收藏、被分享、被刷新时重放。口味页要知道这件事，
-   所以它落在一个内存变量上，取一次就没了。 */
-let cameFromSetup=new URLSearchParams(location.search).get('onboarding')==='1';
-const claimSetupEntry=()=>{const came=cameFromSetup;cameFromSetup=false;return came};
+   所以它落在壳的内存状态上（`cameFromSetup`），口味页取一次就清掉。 */
+writeShell({cameFromSetup:new URLSearchParams(location.search).get('onboarding')==='1'});
 /* 清单做完这件事跟着账本走（`/api/settings` 的 `postSetupTutorialDone`），本地的
    `pending` 只是这台设备上的镜像。null 表示还没问过服务端，问一次就够——页面活着的
    这段时间里改动它的只有我们自己。 */
@@ -905,7 +827,7 @@ const readPostSetupTutorialDone=async()=>{
 /* 教程自己的跳转不走整页刷新：那张卡是常驻的，刷新一次要重来一遍取数和动画，
    刚点开的折叠也没了。口味页的导入指南要知道这一步是教程带过去的。 */
 const openTutorialTarget=task=>{
-  if(task.setupEntry)cameFromSetup=true;
+  if(task.setupEntry)writeShell({cameFromSetup:true});
   navigatePath(task.href);
 };
 /** 重新打开安装教程：本地三个键归位，服务端标记同时撤回。
@@ -1628,18 +1550,13 @@ function ledgerGateNote(runtime,message,actionLabel,actionHref){
    之前跑（`loadRequestSeq++` 要抢在在途的目录请求之前作废它），而主体有的入口在取数
    前铺（配 `placeholder` 给反馈），有的在取数后铺（数据快时不闪一下骨架）。
    两个都要调，由 `test_every_full_page_view_enters_through_the_shared_helpers` 兜住。 */
-function skeletonKeyOf(html){return String(html).match(/data-skeleton="([^"]*)"/)?.[1]||''}
 function showManagementBody({manage=true,placeholder=''}={}){
   $('#stats').hidden=false;$('#index').hidden=true;clearCatalogGrid();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
   if(manage)buildManageBar();
   else{paintManageHeader('');syncNavigation()}
-  if(!placeholder)return;
-  /* 屏幕上已经是同一张骨架就别重画：innerHTML 换新节点会把 shimmer 从头放一遍，
-     整页刷新看到的就是同一段动画闪两次。 */
-  const painted=$('#stats').querySelector('[data-skeleton]')?.dataset.skeleton||'';
-  const next=skeletonKeyOf(placeholder);
-  if(!next||next!==painted){$('#stats').innerHTML=placeholder;fitSkeleton($('#stats'))}
+  // 屏幕上已经是同一张骨架就不重画（`paintManagementPlaceholder`）。
+  if(placeholder)paintManagementPlaceholder($('#stats'),placeholder);
 }
 /* 铺开索引页与资料页。这一屏盖住目录，所以在这里收掉目录的筛选芯片，与管理页那侧的
    `enterManagementSurface()` 对称：索引页此后不再重画芯片，画上去的那条会一直留着。
@@ -1651,16 +1568,6 @@ function enterManagementSurface(){
   loadRequestSeq++;hideCatalogCombo();
   hideDiscoveryBars();
   document.body.classList.remove('entity-open','index-open');
-}
-async function openStats(push=true){
-  releaseHoverPreviews();
-  if(push)route('/stats');
-  const surface=claimSurface('/stats');
-  enterManagementSurface();
-  disposeStage(false);
-  showManagementBody({placeholder:managementPlaceholder('/stats')});
-  await openManagedRoute('/stats',{configurable:!!runtimeConfigurable},managedSurface(surface));
-  window.scrollTo({top:0,behavior:'smooth'});
 }
 function showHomeSurfaces(){
   // 两个类都要清：只清 entity-open 会让从索引页回首页时顶栏一直空着，
@@ -1824,13 +1731,6 @@ function syncHeroWide([entry]){
 }
 new ResizeObserver(syncHeroWide).observe($('#index'));
 
-/* 旧直达 URL 仍然可用，落点跟着面板一起搬到数据管理。 */
-async function openResourceSync(push=true){
-  if(push||location.pathname==='/resource-sync')route('/data-cleanup#resource-sync',!push);
-  await openDataCleanup(false);
-  $('#resource-sync')?.scrollIntoView({block:'start'});
-}
-
 /* 点一条口味名次：标签是「回目录并按它筛选」，人名直接进资料页。整页换成哪一屏
    仍归遗留壳，React 档只说点了哪一条。 */
 function openTasteSignal(kind,name){
@@ -1839,16 +1739,6 @@ function openTasteSignal(kind,name){
     clearSearchField();route(homePath());showHomeSurfaces();buildBars();loadCatalog();return
   }
   openEntity(kind,name);
-}
-async function openTaste(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  writeShell({state:{...state,creator:'',studio:'',tag:'',tag_match:'all',len:'',dur_min:'',dur_max:'',orient:'',region:'',state:'',q:'',jav:''}});
-  clearSearchField();
-  if(push)route('/taste');
-  const surface=claimSurface('/taste');
-  showManagementBody({placeholder:managementPlaceholder('/taste')});
-  await openManagedRoute('/taste',{onboarding:claimSetupEntry()},managedSurface(surface));
-  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 const playlistWrite=body=>api('/api/playlist',{method:'POST',body:JSON.stringify(body)});
@@ -1940,117 +1830,16 @@ async function openPlaylists(push=true){
   if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* 数据管理是「库里已经有的东西怎么收拾」的唯一入口：广告、重复、失效条目，
-   加上复核队列、回收站和高清版。整页归 React 子树（ADR-0031），遗留层只铺骨架、
-   交出回执与换页；读数卡通往的那几页仍归遗留路由。 */
-async function openDataCleanup(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/data-cleanup');
-  const surface=claimSurface('/data-cleanup');
-  showManagementBody({placeholder:managementPlaceholder('/data-cleanup')});
-  await openManagedRoute('/data-cleanup',{},managedSurface(surface));
-  if(surfaceCurrent(surface)&&location.hash==='#libraryProcessing')$('#libraryProcessing')?.scrollIntoView({block:'start'});
-}
-
-/* 重复文件。判据是「同番号 + 时长相近 + 分卷标记一致」，不是同番号即重复；整页归 React
-   子树（ADR-0031），批量一律走 dispose 进回收站，永久删除仍只能从回收站单独执行。 */
-async function openDuplicates(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/duplicates');
-  const surface=claimSurface('/duplicates');
-  showManagementBody({placeholder:managementPlaceholder('/duplicates')});
-  await openManagedRoute('/duplicates',{},managedSurface(surface));
-}
-
-/* 高清版目标页由路由树画（`frontend/src/react/router/managed-routes.tsx`）。壳只留外壳：铺骨架、
-   认领表面；换页判据仍归壳：`isCurrent` 让页面在用户走开后不要把数据画上来。 */
-async function openQualityGoals(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/quality-goals');
-  const surface=claimSurface('/quality-goals');
-  showManagementBody({placeholder:managementPlaceholder('/quality-goals')});
-  await openManagedRoute('/quality-goals',{},managedSurface(surface));
-  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
-}
 /* 复核页的分类进地址栏：十个分类是固定的一组身份，「在看哪一条队列」链接得过来，
    刷新也要还原。分组、筛选与页码不进——队列是消耗性的，判一条就少一条，第 3 页
    指的是哪二十行随每一次判定而变，分享出去只会指向另一批东西。 */
-function reviewParams(){
-  const category=new URLSearchParams(location.search).get('category')||'';
-  return {category:Object.hasOwn(REVIEW_LABELS,category)?category:''};
-}
 function routeReview(params){
   route('/review'+(params.category?'?category='+encodeURIComponent(params.category):''));
-}
-async function openReview(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  const params=reviewParams();
-  // 从窄栏点进来是「重新进入」：回到默认那一档分类。
-  if(push){params.category='';routeReview(params)}
-  const surface=claimSurface('/review');
-  showManagementBody({placeholder:managementPlaceholder('/review')});
-  const runtime=await surfaceApi(surface,'/healthz');
-  if(!surfaceCurrent(surface))return;
-  const writer=runtime?.ledger_writer_origin
-    ?new URL('/review',runtime.ledger_writer_origin).href:'';
-  await openManagedRoute('/review',{...params,
-    readOnly:!!runtime?.ledger_read_only,
-    readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
-    writerUrl:writer,
-  },managedSurface(surface));
-  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
-}
-/* 活动页（任务中心）由路由树画。它自己按内容决定轮询快慢，壳不给它任何助手：
-   任务中心那几段只显示 /api/tasks 的结果，云下载段自己取 /api/downloads。 */
-async function openActivity(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/activity');
-  const surface=claimSurface('/activity');
-  showManagementBody({placeholder:managementPlaceholder('/activity')});
-  await openManagedRoute('/activity',{},managedSurface(surface));
-  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
-}
-/* 配置页（这台电脑的媒体文件夹与端口）同样是 island。它只在运行 Peach 的这台电脑上
-   有意义：服务端按回环地址与独立包两道门放行，手机上的管理菜单也不列它
-   （见 runtimeConfigurable）。保存成功的回执由遗留层的 Toast 发，island 只管表单。 */
-async function openDiagnostics(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/diagnostics');
-  const surface=claimSurface('/diagnostics');
-  showManagementBody({placeholder:managementPlaceholder('/diagnostics')});
-  await openManagedRoute('/diagnostics',{},managedSurface(surface));
-}
-/* 配置页要选中的那一组页签名记在 `configurationRequestedSection`（`frontend/src/shell/` 的单例），
-   打开时作为 `section` 交给页面，页面画出来之后清空：这一页没画上（取数途中走开了）就留给下一次打开。 */
-async function openConfiguration(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/configuration');
-  const surface=claimSurface('/configuration');
-  showManagementBody({placeholder:managementPlaceholder('/configuration')});
-  if(location.hash==='#peachProxy')writeShell({configurationRequestedSection:'网络与访问'});
-  const section=configurationRequestedSection;
-  if(await openManagedRoute('/configuration',section?{section}:{},managedSurface(surface)))writeShell({configurationRequestedSection:''});
-  if(surfaceCurrent(surface)){
-    if(location.hash==='#libraryProcessing'){shellNavigate('/data-cleanup#libraryProcessing',{replace:true,state:null});await openDataCleanup(false);return}
-    if(location.hash==='#peachProxy')$('#peachProxy')?.scrollIntoView({block:'start'});
-    else window.scrollTo({top:0,behavior:'smooth'});
-  }
 }
 /* 从别处点「管理媒体库」「添加媒体文件夹」进来：落到配置页并直接选中那一组页签。 */
 function openConfigurationSection(section){
   writeShell({configurationRequestedSection:section});
-  void openConfiguration(true);
-}
-
-async function openScraping(push=true){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(push)route('/scraping');
-  const surface=claimSurface('/scraping');
-  /* 占位取共用那一份：这里另写一张时，整页刷新会先画深链启动那张、再画这一张，
-     同一段 shimmer 连放两遍。标题由页头岛按 `MANAGE_CRUMB_PAGES`（`frontend/src/manage-header.ts`）认，
-     不在这里再赋一次值。 */
-  showManagementBody({placeholder:managementPlaceholder('/scraping')});
-  await openManagedRoute('/scraping',{},managedSurface(surface));
+  navigatePath('/configuration');
 }
 
 /* ── 在线追更 ──
@@ -2243,7 +2032,7 @@ const followFeedActions={
   shuffle:()=>shuffleFollowFeed(),
   loaded:drawer=>renderFollowDrawer(drawer),
   openDetail:id=>openFollowDetail(id),
-  openManage:()=>openFollowManage(),
+  openManage:()=>navigatePath(followManageEntry()),
   toggleSelection:(id,range)=>toggleFollowSelection(id,range),
   setImagesOnly:on=>{appSettings.followImagesOnly=!!on;saveSettings();syncPhotoWalls()},
   setPhotoLayout:layout=>{storePhotoLayout(layout);syncPhotoWalls()},
@@ -2332,6 +2121,8 @@ async function openFollow(push=true,renderForDetail=false,fresh=false){
        详情画出来时按这一条的标签铺。 */
     claimSurface(surfacePath());
     showManagementBody({manage:false});
+    // 管理区那一页还挂在 `#stats` 上时先把它卸掉，直接清空会留下一棵管着已不在页面上的节点的根。
+    if($('#stats').querySelector('.peach-react'))releaseManagedRoute($('#stats'));
     $('#stats').replaceChildren();
     return;
   }
@@ -2364,52 +2155,35 @@ function followWorkMark([key,label,,icon,focus]){
 }
 
 /* ── 管的那一页 ──
-   整页归 React（ADR-0031）。遗留层只留外壳：铺骨架、把地址栏上的那几项和这台浏览器的
-   偏好交出去，取数、渲染、检查更新那趟后台任务都在 /dist/peach-react.js 里。
+   整页归 React（ADR-0031），由路由树的页面元素打开（`pages/managed.tsx`）：它铺骨架、从地址栏与这台
+   浏览器的偏好算出交给页面的那几项，取数、渲染、检查更新那趟后台任务都在 /dist/peach-react.js 里。
+   壳留的是进这一页的地址（`followManageEntry`）、页面写回地址（`routeFollowManage`）与冷启动骨架。
 
    地址栏归这里写，偏好存在 appSettings 里，实时状态在 island 手里——三样东西各只有
    一份。哪几项该进地址栏由 island 说：它把默认值传成空串，这里就不写进去，分享出去的
    地址不会挂一串和默认完全一样的参数。 */
 const FOLLOW_MANAGE_TABS=['list','add','feeds','wants','source'];
-/* 这两样偏好只有骨架和挂载这两个读者，值都在 appSettings 里。 */
+/* 列表视图偏好在 appSettings 里，壳只有骨架这一个读者；页面元素打开时自己读。 */
 function followListLayout(){return appSettings.followLayout==='table'?'table':'default'}
-function followListPageSize(){return Number(appSettings.followPageSize)||20}
 function followManageParams(){
   const params=new URLSearchParams(location.search),tab=params.get('tab');
   return {tab:FOLLOW_MANAGE_TABS.includes(tab)?tab:'list',
     page:Math.max(1,Math.floor(Number(params.get('page')))||1),
     sort:params.get('sort')||'',dir:params.get('dir')||''};
 }
-function routeFollowManage(params){
+function followManagePath(params){
   const search=new URLSearchParams();
   if(params.tab&&params.tab!=='list')search.set('tab',params.tab);
   if(params.page>1)search.set('page',String(params.page));
   if(params.sort)search.set('sort',params.sort);
   if(params.dir)search.set('dir',params.dir);
   const query=search.toString();
-  route('/follow-manage'+(query?'?'+query:''));
+  return '/follow-manage'+(query?'?'+query:'');
 }
-async function openFollowManage(push=true,workspace=''){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  const params=followManageParams();
-  if(workspace)params.tab=workspace;
-  // 从窄栏点进来是「重新进入」：回到第一页与默认排序，页签由调用方说。
-  if(push){params.page=1;params.sort='';params.dir=''}
-  if(push||workspace)routeFollowManage(params);
-  const surface=claimSurface('/follow-manage');
-  showManagementBody({placeholder:managementPlaceholder('/follow-manage')});
-  const runtime=await surfaceApi(surface,'/healthz');
-  if(!surfaceCurrent(surface))return;
-  const writer=runtime?.ledger_writer_origin
-    ?new URL('/follow-manage',runtime.ledger_writer_origin).href:'';
-  await openManagedRoute('/follow-manage',{...params,
-    pageSize:followListPageSize(),
-    layout:followListLayout(),
-    readOnly:!!runtime?.ledger_read_only,
-    readOnlyMessage:runtime?.ledger_read_only_message||'本机当前只能浏览',
-    writerUrl:writer,
-  },managedSurface(surface));
-  if(surfaceCurrent(surface))window.scrollTo({top:0,behavior:'smooth'});
+function routeFollowManage(params){route(followManagePath(params))}
+/* 从窄栏或空态点进来是「重新进入」：回到第一页与默认排序，页签由调用方说，不说就沿用地址上的那一档。 */
+function followManageEntry(workspace=''){
+  return followManagePath({tab:workspace||followManageParams().tab,page:1,sort:'',dir:''});
 }
 /* 空态里那条「添加关注」：已经在这一页上时也走同一条路，页签跟着地址一起换。 */
 document.addEventListener('click',event=>{
@@ -2417,7 +2191,7 @@ document.addEventListener('click',event=>{
   const link=event.target.closest?.('a[href="/follow-manage?tab=add"]');
   if(!link||event.defaultPrevented||event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
   event.preventDefault();
-  void openFollowManage(true,'add');
+  navigatePath(followManageEntry('add'));
 });
 
 /* ── 全部艺人 / 创作者 / 厂牌 / 事务所 / 标签索引页 ──
@@ -2877,12 +2651,13 @@ const MANAGE_SECTIONS=[
 const MANAGE_MENU_SECTIONS=['stats','taste','cleanup','follow','activity','configuration'];
 /* 「配置」只对运行 Peach 的这台电脑有意义：服务端按调用方回 `/healthz` 的 `configurable`，
    手机和另一台电脑的菜单里不列它。第一次画管理条时问一次，答复回来后重画。
-   馆藏空态也按它决定是给「去配置媒体文件夹」还是给一句解释。 */
+   馆藏空态与统计页也按它决定是给「去配置媒体文件夹」还是给一句解释。答复记在壳的内存状态上
+   （`runtimeConfigurable`），统计页的页面元素打开时读它。 */
 function probeConfigurable(){
   if(runtimeConfigurable!==null)return;
-  runtimeConfigurable=false;
+  writeShell({runtimeConfigurable:false});
   api('/healthz').then(runtime=>{
-    runtimeConfigurable=!!runtime.configurable;
+    writeShell({runtimeConfigurable:!!runtime.configurable});
     if(runtimeConfigurable&&manageSection())buildManageBar();
   }).catch(()=>{});
 }
@@ -2908,11 +2683,11 @@ const settingsHost=()=>({
   receipt:message=>actionReceipt(message),
   failure:actionFailure,
   syncRemote:remote=>applySyncedSettings(remote,effect=>settingsEffects[effect]?.()),
-  openConfiguration:()=>void openConfiguration(true),
+  openConfiguration:()=>navigatePath('/configuration'),
   attached:()=>syncGlassOptics(),
   /* 「这台电脑」那一格的判据：服务由托盘管、已完成配置、请求来自本机三条同时成立。 */
   configurable:()=>api('/healthz')
-    .then(runtime=>{runtimeConfigurable=!!runtime.configurable;return runtimeConfigurable})
+    .then(runtime=>{writeShell({runtimeConfigurable:!!runtime.configurable});return runtimeConfigurable})
     .catch(()=>null),
 });
 /* 设置能从侧栏的设置钮、配色弹层的「详细设置」和快捷键几处进来；给了分区名就落到那一页。 */
@@ -3016,11 +2791,11 @@ function mountManageHeader(){
     if(tab){openManage(tab.dataset.manage);return}
     if(event.target.closest?.('[data-manage-crumb] a[href]')){
       if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
-      event.preventDefault();openDataCleanup();return;
+      event.preventDefault();navigatePath('/data-cleanup');return;
     }
     if(event.target.closest?.('[data-empty-trash]'))emptyTrash();
   });
-  loadManageHeader({root,openManage,openDataCleanup:()=>openDataCleanup(),emptyTrash})
+  loadManageHeader({root,openManage,openDataCleanup:()=>navigatePath('/data-cleanup'),emptyTrash})
     .then(()=>paintManageHeader()).catch(()=>{});
 }
 function paintListTitle(){
@@ -3608,6 +3383,8 @@ async function closeItemDetail(){
   await stageExit();
   disposeStage(false,false,{miniplayer:false});writeShell({detailReturnBarsContext:null});clearOverlayBackground();
   writeShell({barsContext:restore||{type:'home',filters:state}});
+  /* 下面没有那一屏、要照地址重建时，路由树按匹配打开的管理区经派发重开（领一个开次代次），其余由 `restoreRoute` 打开。 */
+  if(restoreSurface&&managedPagePath(new URL(returnPath,location.href).pathname)){navigatePath(returnPath);return}
   route(returnPath);
   if(restoreSurface)await restoreRoute();
   else{buildBars();if(location.pathname==='/playlists')openPlaylists(false)}
@@ -3765,11 +3542,16 @@ async function refreshAll(automatic=false){
   if(!$('#stats').hidden){
     /* 管理区的换批行为写在路由元数据的 `refresh` 上：`reopen` 重开自己，
        `skip` 不参与（追更页重画要联网，只能由它自己的按钮触发），
-       没写的（统计、数据管理、资源同步）落到统计页。 */
+       没写的（统计、数据管理、资源同步）落到统计页。还归壳的那几屏按 `ROUTES` 重开；路由树按匹配
+       打开的那几页原地改写一次不认领的地址，领一个新的开次代次，页面元素换一次 key 重开，历史条数不变。 */
     const path=decodeURIComponent(location.pathname),refresh=routeMeta(path)?.route.refresh;
     if(refresh==='skip')return;
-    if(refresh==='reopen'){const hit=matchRoute(ROUTES,path);await hit.route.open(hit.params,false);return}
-    await openStats(false);return
+    const target=refresh==='reopen'?path:'/stats';
+    const hit=matchRoute(ROUTES,target);
+    if(hit){await hit.route.open(hit.params,false);return}
+    if(target===path)route(location.pathname+location.search+location.hash,true,peachHistory.navigation.location.state,{claim:false});
+    else navigatePath(target);
+    return;
   }
   if(!$('#index').hidden){return}
   state.sort='seed';state.dir='';state.seed=rollSeed();notifyShell();
@@ -3863,13 +3645,14 @@ async function restoreRoute(origin){
   }
   /* 唯一的派发点：路径匹配哪条路由，就把那一屏打开。`push=false`——地址栏本来
      就是它，再 `route()` 一次会往历史里塞一条重复记录。
-     `lastRoutePath` 等派发完再更新：目录页要拿它判断是不是刚从别处回到首页。 */
+     `lastRoutePath` 等派发完再更新：目录页要拿它判断是不是刚从别处回到首页。
+     路由树登记的管理区、索引页与资料页不在 `ROUTES` 里，由它们的页面元素按匹配打开。 */
   const hit=matchRoute(ROUTES,path);
   try{
     if(hit)await hit.route.open(hit.params,false);
     /* 索引页与资料页由路由树按匹配打开：后退前进与启动时元素自己开；壳直接调来重开当前地址时要它从头再开。 */
     else if(routeMetaOf(path)?.reload==='reopen'){if(!origin)writeShell({pageOpens:pageOpens+1})}
-    else{showHomeSurfaces();disposeStage(false)}
+    else if(!managedPagePath(path)){showHomeSurfaces();disposeStage(false)}
   }finally{lastRoutePath=path}
 }
 /* 左侧导航、管理条、页面标题和面包屑只认 location 和本地设置，一个请求都不等。
