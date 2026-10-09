@@ -76,7 +76,7 @@ export function progressHtml(label:string,value:unknown,max:unknown=100,{variant
   const ceiling=Math.max(0,Number(max)||0);
   const current=Math.max(0,Math.min(Number(value)||0,ceiling));
   const percent=ceiling?current/ceiling*100:0;
-  return `<div class="geist-progress" role="progressbar" aria-label="${esc(label)}"
+  return `<div class="ui-geist-progress" role="progressbar" aria-label="${esc(label)}"
     aria-valuemin="0" aria-valuemax="${ceiling}" aria-valuenow="${current}"
     style="--progress-value:${percent}%;--progress-color:var(${variant==='error'?'--drop':variant==='warning'?'--meter':'--feedback-success'})"><i></i>${stops.filter(stop=>Number(stop.value)>0&&Number(stop.value)<ceiling&&stop.label).map(stop=>`<span class="geist-progress-stop" style="left:${Number(stop.value)/ceiling*100}%" role="img" aria-label="${esc(stop.label)}"></span>`).join('')}</div>`;
 }

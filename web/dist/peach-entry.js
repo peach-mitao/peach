@@ -754,7 +754,7 @@ function tt(e, t, n = 100, { usage: r = !1, compact: i = !1 } = {}) {
 }
 function nt(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
 	let a = Math.max(0, Number(n) || 0), o = Math.max(0, Math.min(Number(t) || 0, a)), s = a ? o / a * 100 : 0;
-	return `<div class="geist-progress" role="progressbar" aria-label="${m(e)}"
+	return `<div class="ui-geist-progress" role="progressbar" aria-label="${m(e)}"
     aria-valuemin="0" aria-valuemax="${a}" aria-valuenow="${o}"
     style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
 }
@@ -1275,7 +1275,7 @@ var qt = [
 	".vjs-peach-settings-menu",
 	".ui-geist-scroller-container",
 	".metricstrip",
-	".tastesummaries",
+	".ui-tastesummaries",
 	".skeletondashstrip",
 	".followpagination",
 	".reviewtabs",

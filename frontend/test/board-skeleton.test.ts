@@ -102,8 +102,8 @@ describe('Board 页面骨架', () => {
     root.innerHTML = boardPageSkeleton('/taste');
     expect(root.querySelector('.insightswitch[data-board-segments]')).not.toBeNull();
     expect(root.querySelector('.skeleton-segment-selected')?.textContent).toBe('浏览器记录');
-    expect(root.querySelector('.tastehead + .tastestate + .tastesummaries')).not.toBeNull();
-    expect(root.querySelector('.tastehead .skeleton-tabs')).toBeNull();
+    expect(root.querySelector('.ui-tastehead + .ui-tastestate + .ui-tastesummaries')).not.toBeNull();
+    expect(root.querySelector('.ui-tastehead .skeleton-tabs')).toBeNull();
   });
   it('关注表格视图是 Board UI 表格外框，当前排序那一列带方向', () => {
     const root = follow({ followLayout: 'table' });

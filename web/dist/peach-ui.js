@@ -4784,7 +4784,7 @@ function As() {
 }
 //#endregion
 //#region src/board-skeleton.ts
-var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, js = () => `${J("80%")}${J("48%")}`, Y = (e, t) => e.repeat(t), Ms = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${J("45%")}</b><small class="board-stat-footer">${J("60%")}</small></div>`).join("")}</div>`, Ns = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Ps = (e) => `<section class="insightpanel"><header>${e}</header><div class="insightpanelbody skeleton-lines">${Y(js(), 3)}</div></section>`, X = "disabled data-skeleton-action", Z = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Q = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, Fs = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Is = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
+var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, js = () => `${J("80%")}${J("48%")}`, Y = (e, t) => e.repeat(t), Ms = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${J("45%")}</b><small class="board-stat-footer">${J("60%")}</small></div>`).join("")}</div>`, Ns = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Ps = (e) => `<section class="ui-insightpanel"><header>${e}</header><div class="ui-insightpanelbody skeleton-lines">${Y(js(), 3)}</div></section>`, X = "disabled data-skeleton-action", Z = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Q = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, Fs = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Is = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
 	"关注创作者",
 	"启用来源",
 	"检查失败",
@@ -4893,12 +4893,12 @@ function Zs() {
 function Qs(e, t = {}) {
 	let n = "";
 	if (e === "/stats") n = Os();
-	else if (e === "/taste") n = `<div class="tastepage"><header class="tastehead">${Ns(["浏览器记录", "Peach 内部"], "insightswitch")}${J("24%")}</header><div class="tastestate"></div>${Ms([
+	else if (e === "/taste") n = `<div class="tastepage"><header class="ui-tastehead">${Ns(["浏览器记录", "Peach 内部"], "insightswitch")}${J("24%")}</header><div class="ui-tastestate"></div>${Ms([
 		"浏览记录",
 		"口味维度",
 		"浏览候选",
 		"私有导出"
-	], "tastesummaries")}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${Y(js(), 4)}</div></section>${Ps("口味分析")}<div class="board-activity-charts">${Ps("浏览活动")}${Ps("时间分布")}</div>${Ps("标签")}</div>`;
+	], "ui-tastesummaries")}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="ui-tastebars skeleton-lines">${Y(js(), 4)}</div></section>${Ps("口味分析")}<div class="board-activity-charts">${Ps("浏览活动")}${Ps("时间分布")}</div>${Ps("标签")}</div>`;
 	else if (e === "/follow-manage") n = Ys(t);
 	else if (e === "/configuration") n = Ts();
 	else if (e === "/activity") n = `<div class="ui-activitypage">${[

@@ -132,7 +132,7 @@ class WebUiPolicyTests(unittest.TestCase):
 
     TUNGSTEN_ALLOWED_SELECTORS = (
         ":focus",              # 焦点环：:focus / :focus-visible / :focus-within
-        ".geist-progress", ".watchprogress", ".vjs-play-progress", ".vjs-progress-holder",  # 进度与数据
+        ".watchprogress", ".vjs-play-progress", ".vjs-progress-holder",  # 进度与数据
         ".ptoggle:checked",  # Toggle 开态：Geist Toggle 实测轨道 rgb(0,112,243)
         ".flink", ".taste-history-guide-content a",  # 真正的链接
     )
