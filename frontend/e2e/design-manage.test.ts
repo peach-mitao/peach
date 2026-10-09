@@ -754,23 +754,42 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
   }
 
   for (const viewport of [DESKTOP, { ...MOBILE, name: 'narrow', width: 320 }]) {
-    it(`七位数的读数留在卡里，来源行的时间、开关与操作键不越出行（${viewport.name}）`, { timeout: 60_000 }, async () => {
-      const opened = await openFollowManage(browser, viewport, { new: 1284000, seen: 22000, saved: 0, ignored: 0 });
+    it(`七位数的读数留在卡里；长名字与长报错的来源行不越出行，桌面上操作键和名字同一行（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const long = 'ThisIsAVeryLongUsernameThatPatreonAllowsWithoutAnySpaces2024';
+      const opened = await openFollowManage(browser, viewport, {
+        counts: { new: 1284000, seen: 22000, saved: 0, ignored: 0 },
+        extra: [
+          followSource(4, long, 'Patreon', `${long} · Patreon`),
+          { ...followSource(5, 'broken', 'Kemono', 'broken · Kemono', 'error'),
+            last_error: `peach.follow_providers.ProviderError: HTTP 403: <!DOCTYPE html>${'<div class="cf">'.repeat(40)}` },
+        ],
+      });
       try {
         const spill = await opened.page.evaluate(() => {
           const out = (node: Element, frame: Element) => node.getBoundingClientRect().right > frame.getBoundingClientRect().right + 1;
           const readings = [...document.querySelectorAll('[data-follow-reading]')]
             .filter((node) => [...node.children].some((part) => out(part, node.parentElement!)))
             .map((node) => node.textContent);
-          const rows = [...document.querySelectorAll('[data-follow-source-row]')]
+          const rows = [...document.querySelectorAll('[data-follow-source-row]')];
+          const spilled = rows
             .filter((row) => row.scrollWidth > row.clientWidth + 1 || [...row.querySelectorAll('button, [role="switch"], input')]
               .some((control) => out(control, row)))
             .map((row) => row.textContent);
-          return { readings, rows, text: document.querySelector('[data-follow-reading]')?.parentElement?.parentElement?.textContent };
+          // 末一枚操作键的竖直中线落在名字列的上下沿之间，就是同一行。
+          const split = rows.filter((row) => {
+            const name = row.querySelector('a')!.parentElement!.getBoundingClientRect();
+            const last = [...row.querySelectorAll('button')].at(-1)!.getBoundingClientRect();
+            const middle = (last.top + last.bottom) / 2;
+            return middle < name.top - 1 || middle > name.bottom + 1;
+          }).map((row) => row.textContent);
+          return { readings, spilled, split, rows: rows.length,
+            text: document.querySelector('[data-follow-reading]')?.parentElement?.parentElement?.textContent };
         });
         assert.ok(spill.text?.includes('1,284,000'), `读数没有用上七位数：${spill.text}`);
+        assert.equal(spill.rows, 5, '造的五条来源没有全部画出来');
         assert.deepEqual(spill.readings, [], '读数越出了卡片');
-        assert.deepEqual(spill.rows, [], '来源行的控件越出了行');
+        assert.deepEqual(spill.spilled, [], '来源行的控件越出了行');
+        if (!viewport.mobile) assert.deepEqual(spill.split, [], '桌面上来源行的操作键掉到了名字下面');
         assert.deepEqual(opened.problems, []);
       } finally {
         await opened.close();

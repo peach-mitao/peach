@@ -153,7 +153,8 @@ function SourceRow(
       className="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 max-sm:gap-x-2"
       onClick={(event) => { if (clickedBlank(event, event.currentTarget)) onToggle(!selected) }}>
       <Checkbox isSelected={selected} onChange={onToggle} aria-label={`选择 ${source.label}`} />
-      <span className="flex min-w-0 grow flex-col gap-0.5">
+      {/* 名字列从零宽起长：长名字和报错在列内折行或截断，不把站标、状态和操作键挤到下一行。 */}
+      <span className="flex min-w-0 grow basis-0 flex-col gap-0.5">
         <SourceLink source={source} />
         {source.last_error ? <ErrorLine text={source.last_error} /> : null}
       </span>
