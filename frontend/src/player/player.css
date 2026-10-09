@@ -35,15 +35,11 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 /* 画面层的高度只跟着外框走。上面那条 `[data-stage-media] video` 的 76vh 是给裸 `<video>` 的，它同样
    命中 Video.js 里面这一枚：影院模式把外框放高之后，画面还停在 76vh，底下空出一条黑边。 */
 [data-stage-media] .video-js .vjs-tech{object-fit:contain;max-height:none}
-[data-stage-media] .video-js .vjs-big-play-button{left:50%;top:50%;width:56px;height:56px;margin:0;
-  transform:translate(-50%,-50%);border:0;border-radius:50%;
-  background:rgba(0,0,0,.3);box-shadow:none;line-height:56px}
-[data-stage-media] .video-js .vjs-big-play-button:hover,[data-stage-media] .video-js .vjs-big-play-button:focus{background:rgba(255,255,255,.1)}
-[data-stage-media] .video-js .vjs-big-play-button .vjs-icon-placeholder:before{content:"";left:50%;top:50%;width:0;height:0;
-  border-top:.72em solid transparent;border-bottom:.72em solid transparent;border-left:1.05em solid #fff;
-  transform:translate(-38%,-50%)}
 /* 中心提示圆自己就是画面中央的播放态入口，原生大播放键留着只会跟它抢同一块地方。 */
-[data-stage-media] .video-js:has(.vjs-peach-bezel) .vjs-big-play-button{display:none}
+[data-stage-media] .video-js .vjs-big-play-button{display:none}
+/* Peach 的控件在 `player.ready` 里才装上（提示圆是其中一枚）。在那之前控制条是 Video.js 原装那一排：
+   没有时间、没有右侧胶囊，播放键也没换上 Peach 的字形，机器一忙这一段就看得见。装上之前先藏着。 */
+[data-stage-media] .video-js:not(:has(.vjs-peach-bezel)) .vjs-control-bar{visibility:hidden}
 /* YouTube e937390a `FsY` spinner DOM 与当前四段动画；复用 Video.js 的 waiting/seeking 状态。 */
 [data-stage-media] .video-js .vjs-loading-spinner{z-index:18;left:50%;top:50%;width:64px;height:64px;margin:0;padding:0;border:0;border-radius:0;background:transparent;opacity:1;transform:translate(-50%,-50%)}
 [data-stage-media] .video-js .vjs-loading-spinner:before,[data-stage-media] .video-js .vjs-loading-spinner:after{content:none}

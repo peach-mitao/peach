@@ -31,11 +31,17 @@ function watchFollowRequests(page: Page) {
   return seen;
 }
 
-/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。 */
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。
+ *  顺带盯新播放器：Peach 控件（提示圆是其中一枚）装上之前，Video.js 原装的控制条与大播放键不该露出来。 */
 const watchStage = (page: Page) => page.evaluate(() => {
-  const watch = { stage: document.getElementById('stage'), skeleton: false };
-  new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
-    .observe(document.body, { childList: true, subtree: true });
+  const watch = { stage: document.getElementById('stage'), skeleton: false, rawControls: false };
+  const shown = (node: Element | null) => !!node && getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility !== 'hidden';
+  new MutationObserver(() => {
+    if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true;
+    for (const player of document.querySelectorAll('#stage div.video-js:not(:has(.vjs-peach-bezel))')) {
+      if (shown(player.querySelector('.vjs-control-bar')) || shown(player.querySelector('.vjs-big-play-button'))) watch.rawControls = true;
+    }
+  }).observe(document.body, { childList: true, subtree: true });
   Object.assign(window, { stageWatch: watch });
 });
 const stageKept = (page: Page) => page.evaluate(() => {
@@ -138,6 +144,7 @@ describe('关注详情岛', () => {
       assert.equal(await frame.locator('[data-ambient-canvas]').count(), 1);
       assert.equal(await frame.locator('.video-js video').count(), 1, '媒体框里的 video 不止一个');
       await watchStage(page);
+      const seen = watchFollowRequests(page);
       await page.locator('[data-follow-queue-item="5102"]').click();
       await pathIs(page, '/follow/item/5102');
       await page.locator('#stage [data-follow-queue-item="5102"][aria-current="true"]').waitFor();
@@ -151,6 +158,9 @@ describe('关注详情岛', () => {
       await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await page.locator('#stage .video-js').count(), 1, '后退之后旧播放器没拆');
       assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '后退到上一条重开了浮窗');
+      assert.deepEqual(seen.item, [], '组里的另一条和取过的那一条又单条取了一次，点下去要等一个来回才换');
+      assert.equal(await page.evaluate(() => (window as unknown as { stageWatch: { rawControls: boolean } }).stageWatch.rawControls),
+        false, 'Peach 控件装上之前露出了 Video.js 原装的控制条或大播放键');
       await page.locator('#closeStage').click();
       await pathIs(page, '/follow');
       await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor({ timeout: 15_000 });

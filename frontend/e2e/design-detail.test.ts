@@ -546,7 +546,6 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
       assert.equal((await styleOf(page, '#stage .vjs-progress-holder', ['height']))!.height, '6px', '彩条本身不变粗');
       assert.equal((await styleOf(page, '#stage .vjs-play-progress', ['background-color']))!['background-color'],
         await tokenColor(page, '#stage', '--tungsten'));
-      assert.deepEqual(await styleOf(page, '#stage .vjs-big-play-button', ['width', 'height']), { width: '56px', height: '56px' });
       assert.equal((await styleOf(page, '#stage .video-js', ['font-family']))!['font-family'],
         (await styleOf(page, 'body', ['font-family']))!['font-family'], '播放器里的字用页面字体，不是 Video.js 的 Arial');
       assert.deepEqual(await styleOf(page, '#stage [data-player-theater] > .vjs-peach-tooltip',
