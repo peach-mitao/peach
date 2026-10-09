@@ -4,6 +4,7 @@
 
 ## 待复核的元数据
 
+- 有码内容标签按 ADR-0100 优先 JavDB；真实馆藏回填待逐资产来源归属预览与同轮授权。未知词 `妓女`、`無碼流出`、`無碼破解`、`靴子` 保留原文复核，不据离线样本猜测。
 - 账号身份来源待复核，当前名册见 `peach-data/review/creators-current-inventory-2.csv`；候选与查询记录见同目录 `creator-identity-findings.json`、`creator-identity-lookups.json`。「しらたま」「ひな」短名不能唯一对应艺人，保留独立身份。
 - HIP-ANGEL、Zipang、Kuchiku * Reverse Bunny 与 `gachincoppv-1009-HD` 的对应来源未取得，见 `peach-data/review/identity-simple-source-gaps.json`；JAV 资料补查缺口见同目录 `cached-minnano-identity-audit.json`。未取得来源不构成人物职业证据。
 - `FC2-PPV-1625020` 的资产 `6562`：账号「音梓」来自 `legacy:asset`，没有卖家来源证据；女优关系来自 FC2PPV-DB 和 JavDB。待取得发布账号证据或用户复核结论。
@@ -84,7 +85,7 @@
 6. **口味证据持续刷新**：ledger 已实时记录搜索、播放、高潮、喜欢/理由、不合口味和稍后看；浏览器历史现可用 SQLite 一致性副本增量进入私有源库，并生成不含 URL/标题的 creator/tag candidate 与聚合报告。旧 2026-08-13 原始包已确认不在 Windows 外置盘；仍需在 Mac 开启 iCloud Safari、完成首次导入，并把两端每周刷新装成系统计划任务。AI 结论不得直接改真相字段。
 7. **扫描与采集任务的参数标定**：无进展预警的 120 秒与单项动作预算（资料 90 秒、封面 240 秒）目前按最坏请求时长取的保守值；等一轮真实任务记录各阶段实测耗时后标定，同时确定完整问题文件的保留周期。
 
-## 其他开放需求（65 项）
+## 其他开放需求（66 项）
 
 本区包含尚未开始和部分已实现的需求；每项正文说明剩余工作，验收状态见「已核对的实施状态」。
 

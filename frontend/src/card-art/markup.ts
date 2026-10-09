@@ -72,8 +72,8 @@ export function performerLabel(item: { is_jav?: boolean } | null | undefined): s
    `version` 是服务端随 `has_image` 下发的 `image_version`，`logoVersion` 是 `logo_version`。
 
    `standIn` 是服务端的 `avatar_stand_in`：账号没有本人身份依据，圆框里那张代表作画面只是
-   替它占位。打头的是代表作头像时图上带一句 `title` 与 `aria-label` 说明这一点；实体图打头时
-   那张是装上的图，不带。 */
+   替它占位。显示代表作头像时图上带 `title` 与 `aria-label` 说明这一点；实体图不带，
+   取图失败退到代表作时再补上。 */
 export function entityFaceImg({
   kind = 'performer', id = null, hasImage = false, version = '', rep = null, mark = null, logo = '',
   logoVersion = '', logoVariant = 'logo', alt = '', lazy = true, style = '', dropStyle = false, focus = null, thumb = false,
@@ -111,7 +111,9 @@ export function entityFaceImg({
   /* `decoding="async"` 让解码离开主线程：一屏几十张图同时落地时，同步解码把滚动
      和点击一起压住，而这些图一张都不参与首屏的排版——框的尺寸由 CSS 定死。 */
   const note = standIn && src === avatarSrc ? ` title="${STAND_IN_TITLE}" aria-label="${STAND_IN_TITLE}"` : '';
-  return `<img src="${src}" width="128" height="128" alt="${alt}"${note}${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
+  const fallbackNote = standIn && fallbacks.includes(avatarSrc)
+    ? ` data-fallback-note-src="${esc(avatarSrc)}" data-fallback-note="${STAND_IN_TITLE}"` : '';
+  return `<img src="${src}" width="128" height="128" alt="${alt}"${note}${fallbackNote}${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
     + `${faceBox}${imageFallbackAttrs({
       dropStyle: (dropStyle || !!faceBox || !!framedStyle) && framed,
       fallbacks,

@@ -7,6 +7,7 @@ import {
   queueThumbHtml,
 } from '../../src/card-art/markup';
 import { rememberRepresentatives, representativeOf } from '../../src/card-art/representatives';
+import { advanceImageFallback } from '../../src/card-art/image-fallback';
 
 const parse = (html: string): HTMLImageElement | null => {
   const box = document.createElement('div');
@@ -153,6 +154,19 @@ describe('avatarInner：首字母垫底，再叠真实图', () => {
     const installed = parse(avatarInner('A', { id: 3, has_image: true, avatar_stand_in: true }, 41, 'creator'))!;
     expect(installed.hasAttribute('title')).toBe(false);
     expect(parse(avatarInner('A', { id: 3 }, 41, 'creator'))!.hasAttribute('title')).toBe(false);
+  });
+
+  it('实体图失败退到代表作时说明非本人，真人代表作不加该说明', () => {
+    const standIn = parse(avatarInner('A', { id: 3, has_image: true, avatar_stand_in: true }, 41, 'creator'))!;
+    expect(standIn.hasAttribute('title')).toBe(false);
+    expect(advanceImageFallback(standIn)).toBe('retry');
+    expect(standIn.getAttribute('src')).toBe('/avatar?id=41');
+    expect(standIn.title).toBe('代表作画面，非本人');
+    expect(standIn.getAttribute('aria-label')).toBe('代表作画面，非本人');
+    const person = parse(avatarInner('A', { id: 3, has_image: true }, 41, 'creator'))!;
+    advanceImageFallback(person);
+    expect(person.hasAttribute('title')).toBe(false);
+    expect(person.hasAttribute('aria-label')).toBe(false);
   });
 });
 
