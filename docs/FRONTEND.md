@@ -6,7 +6,7 @@
 2. 新增 React 页面：按 [迁移下一个页面](#迁移下一个页面) 接入路由树。
 3. 查询模块职责：看 [目录与产物](#目录与产物) 和 [挂载契约](#挂载契约)。
 
-Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React + Tailwind + BoardUI。`web/app.js` 的原生 ES module 拥有应用外壳，负责骨架、容器和页面助手；React 路由树负责客户端导航、页面与详情内容。
+Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React + Tailwind + BoardUI。主界面由 `frontend/src/react/bootstrap.tsx` 启动 `Application`，应用域控制器负责骨架、容器和页面助手，React 路由树负责客户端导航、页面与详情内容。主界面只有 `peach-app.js` 与 `peach-app.css` 两份产物，控制器与组件引用同一源码图。
 
 只有一条不可变的约束：**运行时没有 Node**。Python 服务、PyInstaller 包和 macOS 上的
 检出都直接读 `web/`，所以构建产物提交进 Git，不用任何 CDN。
@@ -15,29 +15,27 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React +
 
 | 路径 | 是什么 |
 | --- | --- |
-| `frontend/src/islands.ts` | `peach-ui.js` 的构建入口：路由树的开收命令（经 `history/`）、常驻层的 `loadXxx` 与遗留层仍在用的助手 |
+| `frontend/src/react/bootstrap.tsx`、`application.tsx` | 主界面启动入口与 Application 生命周期；配置共享状态、挂载路由树、启动应用域控制器并在卸载时清理 |
 | `frontend/src/api.ts` | 带 `AbortController` 的取数封装 |
 | `frontend/src/management.ts` | 数据管理首屏 Fieldset 与网盘能力显隐 |
-| `frontend/src/appearance/` | 外观与版式设置（`@peach/appearance`）：偏好 store、主题、强调色、密度、卡片版式与光晕配色（`home-glow.ts`）。随 `peach-ui.js` 发出，React 子树把 `@peach/appearance` 外置成 `/dist/peach-ui.js`，两边读的是同一份 |
-| `frontend/src/core/` | 遗留层的底层助手：`index.ts` 是取元素、请求、转义、格式化与路由常量，`tags.ts` 是标签显示名，`jav-title.ts` 是番号标题。只有这一份实现，随 `peach-entry.js` 发出；`/js/core.js`、`/js/tags.js`、`/js/jav-title.js` 是从入口包原名转出的垫片，React 子树经 `@peach/legacy/*` 外置到同一个 URL |
-| `frontend/src/ui-kit/` | 遗留层与独立页面包共用的控件：覆盖式滚动条、Collapse、锚定菜单、Geist Select、来源站标，模板（`markup.ts`）、读数动效（`motion.ts`）、骨架（`skeleton.ts`）、横滚与覆盖式滚动条接线（`scroll.ts`）、开关与拉条等控件（`controls.ts`）、确认框与表单框（`modal.ts`），以及界面音效（`sounds.ts`）与中段截断（`middle-truncate.ts`）。`index.ts` 是 `/js/ui-components.js` 的导出清单。只有这一份实现，随 `peach-entry.js` 发出；`/js/ui-components.js`、`/js/ui-sounds.js`、`/js/middle-truncate.js` 从入口包原名转出，壳与 React 子树读到的是同一个模块实例 |
-| `frontend/src/onboarding/` | 安装后教程的状态层（`post-setup-tutorial.ts`）：三个本地键、签名与请求代际。随 `peach-entry.js` 发出，经 `/js/ui-components.js` 原名转出 |
-| `frontend/src/entry/` | 入口包：`index.ts` 是 `vite.entry.config.ts` 的构建入口，列出 `/js/*.js` 垫片要的导出，不带 React；`/js/ui-components.js` 那一份整份转出 `ui-kit/index.ts` |
+| `frontend/src/appearance/` | 外观与版式设置（`@peach/appearance`）：偏好 store、主题、强调色、密度、卡片版式与光晕配色。别名直接解析到本目录，控制器与组件读写同一实例 |
+| `frontend/src/core/` | DOM 取元素、请求、转义、格式化与路由常量（`index.ts`）、标签显示名（`tags.ts`）、番号标题（`jav-title.ts`）。`@peach/legacy/*` 是源码别名，主包直接包含唯一实现 |
+| `frontend/src/ui-kit/` | 共享控件与模板：滚动条、Collapse、锚定菜单、Select、来源站标、读数动效、骨架、横滚、开关、拉条、确认框、音效与中段截断。`@peach/legacy/ui` 直接解析到 `index.ts`；独立页面包仅打入用到的控件 |
+| `frontend/src/onboarding/` | 安装后教程状态（`post-setup-tutorial.ts`）：本地键、签名与请求代际，控制器直接引用共享源码 |
+| `frontend/src/application/` | 按职责拆分的应用适配：目录、关注、实体、索引、布局、导航、媒体与全局动作。`initializeApplication` 按启动次序连接控制器，副作用由生命周期管理 |
 | `frontend/src/react/pages/` | 独立页面包：`index.tsx` 是 `vite.pages.config.ts` 的构建入口，按挂载点的 `data-page` 画 SPA 外壳之外的三张页：首启（`setup/`）、登录（`login/`）与错误页（`error/`）。`auth-card.tsx` 是它们共用的外框 |
-| `frontend/src/react/` | React 子树：`entry.tsx` 是构建入口，`bundle.d.ts` 是对外契约，`boardui/` 逐字复制 BoardUI 源码 |
-| `frontend/src/query/` | 全站唯一的 TanStack Query 客户端（`@peach/query`）：随 `peach-ui.js` 发出，壳直接 `fetchQuery`，React 包把它与 `@tanstack/query-core` 外置成 `/dist/peach-ui.js`，页面级 `prefetch`、组件和壳读的是同一份缓存。壳与页面共读的查询也住这里：`media-sources.ts` 是 `/api/sources` 的地址、`['media-sources']` 键与取数函数，壳的 `loadSourceStatus` 经 `loadMediaSources` 取数、不订阅，数据管理页与重复文件页按 `@peach/query` 读同一个键 |
+| `frontend/src/react/` | 路由页面、常驻面与组件；`entry.tsx` 是内部命令式适配，`application-residents.ts` 连接常驻面，`bundle.d.ts` 声明内部接口，`boardui/` 逐字复制上游源码 |
+| `frontend/src/query/` | 全站唯一 TanStack Query 客户端（`@peach/query`）与共享来源查询。Application 的 `fetchQuery`、页面 `prefetch` 和 Providers 读同一实例；`media-sources.ts` 声明 `/api/sources` 与查询键 |
 | `frontend/src/react/query.ts` | React 子树里取那一个客户端的入口，转出 `@peach/query` |
-| `frontend/src/history/` | 全站唯一的浏览器历史（`@peach/history`）：React Router 的 `createBrowserHistory` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，不直接调 `window.history`；详情与队列地址的条目在 `usr` 里带压在哪一页上（`overlay.ts` 的 `backgroundLocation`）；后退前进落到详情条目上时壳按它定来处，启动那一次不读 |
-| `frontend/src/shell/` | 壳自己的内存状态（ADR-0031）：目录口径 `state` 与 `barsContext`、选择集与选择模式、详情与关注详情的来处、配置页页签与活动页预填这类一次性请求。随 `peach-ui.js` 发出，壳按活绑定读；整体换掉一个值调 `writeShell`，原地改了字段或选择集之后调 `notifyShell`，读者按 `subscribeShell` 与 `shellVersion` 接 `useSyncExternalStore` |
+| `frontend/src/history/` | 全站唯一浏览器历史（`@peach/history`），与路由树共用 React Router 的 `createBrowserHistory`。地址经 `shellNavigate` 写入；覆盖条目在 `usr` 中记录背景，启动不读取背景 |
+| `frontend/src/shell/` | 目录口径、选择集、详情来处与一次性请求的共享单例。控制器与组件直接引用活绑定；整体换值用 `writeShell`，原地修改后用 `notifyShell` 通知订阅者 |
 | `frontend/src/react/router/` | 客户端导航：`<Router>` 接管那一份历史，后退前进由它自己处理；每条路径的页面（管理区、播放列表页、关注页、目录网格、索引页、资料页与沉浸）、覆盖组的详情与队列，以及首页筛选条、新作行、处理横幅与搜索下拉这四个附属面由它画（`managed-routes.tsx`）；页面组按条目记的背景匹配，覆盖组按真实地址匹配详情与队列 |
 | `frontend/src/catalog-bars.ts` | 首页筛选栏与侧栏的两份聚合：`['facets', 口径]` 与 `['tops', 参数, 口径]`，续页 `['tops', 参数]`，30 秒复用，状态页名单为空时退回全库口径；壳的 `getBarsData` 只算参数串 |
 | `frontend/src/react/components/` | Peach 自己的组合件（说明条、进度、空态、等待点），BoardUI 注册表里没有对应条目的那些 |
 | `frontend/src/react/taste/` | 口味页：`taste.ts` 是契约与几何算法，`charts.tsx` 是雷达／名次条／热力／桑基，`taste-page.tsx` 是整页 |
 | `frontend/test/` | vitest 用例与遗留模块的桩；`test/react/` 直接挂组件，`*-routes.test.tsx` 走路由树的开收契约 |
-| `web/dist/peach-ui.js` | 构建产物，**进 Git**，由 `/dist/{name}` 提供 |
-| `web/dist/peach-react.js`、`peach-react.css` | React 子树的构建产物，**进 Git** |
-| `web/dist/peach-entry.js` | 入口包的构建产物，**进 Git**。读者是 `/js/*.js` 垫片，产物自己没有外部 import。和别的产物一样走 `/dist/{name}` 的口令校验，首启服务没有口令所以直接放行 |
-| `web/dist/peach-pages.js`、`peach-pages.css` | 独立页面包的构建产物，**进 Git**，不带哈希。`npm run build` 在 `peach-ui.js` 之后构建它（`emptyOutDir: false`）。不要会话就能取，`routes_pages` 只为这两个文件开免登录路由，其余 `/dist/{name}` 照旧校验口令 |
+| `web/dist/peach-app.js`、`peach-app.css` | 主界面构建产物，**进 Git**，固定文件名，由 `web/index.html` 引用；服务端通过 `/dist/{name}` 提供 |
+| `web/dist/peach-pages.js`、`peach-pages.css` | 首启、登录与错误页的独立构建产物，**进 Git**，固定文件名。主包构建后追加构建（`emptyOutDir: false`）；只有这两份产物允许免登录读取 |
 
 首次运行页（未配置时的 `GET /`）、登录页（`GET /login`）与浏览器导航撞上的错误页是 SPA
 外壳之外的三张独立页面。服务端对三页都只回同一张薄壳（`web_entry.page_shell()`）：主题预读
@@ -55,12 +53,11 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React +
   「返回首页」。
 - 三页用原生滚动条，不挂覆盖式滚动条。
 
-页面包自成一份，不引 `peach-ui.js`、`peach-react.js`、`peach-entry.js`，也不建 Query 客户端，
+页面包自成一份，不加载主包 `peach-app.js`，也不建 Query 客户端，
 请求用裸 `fetch`。原因有三条：未配置的机器还没有数据库，主界面那一套一上来就打 `/api/items`；
-首启只开一次，让它借主界面的 2.6 MB React 包或给主界面拆出共享块，都是用一次的页面去改每天
-加载的那份；登录页在没有会话时就要画出来，免登录面只多这两份产物，不连带主界面的包。和配置页共用的控件（媒体文件夹行、密码与确认两格、忙态属性）在
+首启只开一次，不为它改动每天加载的主包或拆出共享块；登录页在没有会话时就要画出来，免登录面只多这两份产物，不连带主界面的包。和配置页共用的控件（媒体文件夹行、密码与确认两格、忙态属性）在
 `frontend/src/react/settings/`，两边各自打进自己的包。`@peach/legacy/ui` 在页面包里由别名落到
-`pages/legacy-ui.ts`，只取来源站标与折叠，不经 `/js/ui-components.js`。
+`pages/legacy-ui.ts`，只把来源站标与折叠的源码打进独立包。
 
 样式层：`pages.css` 与主界面的 `styles.css` 共用 `base.css`（暗色变体、Inter、阴影 token 与
 `.peach-react` 容器基线、输入框静止态边线），Preflight 同样限定在 `.peach-react` 里，薄壳把这个类挂在 `<body>` 上，弹出层落进 body 也在范围内。
@@ -138,7 +135,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React +
 
 作品详情与关注详情都开在常驻面 `stage` 里（`frontend/src/react/stage/`），由路由树画。宿主 `div[data-stage-host]` 是 body 的直接子元素、整页只有一个、换详情不换，不包 `.peach-react`；这一面拥有 `dialog#stage`、进出场、骨架、关闭键 `#closeStage` 与小窗 `#miniplayer`，两座详情是它的子组件，与页面共用同一份 Query 缓存。
 
-- 壳只拿命令式入口：`loadStage(host)` 第一次打开详情时装载 React 包，`configureStage` 先接上播放器，再经 `openResidentSurface('stage', …)` 建宿主、在画出小窗节点的同一个任务里挂到 body 末尾，画上之后才交出句柄；此后 `stageApi()` 同步可取，契约在 `stage/stage-api.ts`。来处（`detailReturnPath`、`followDetailReturnPath`、`detailOriginAnchor`）、地址与顶栏上下文仍归壳。
+- Application 使用命令式入口：`loadStage(host)` 第一次打开详情时连接常驻面，`configureStage` 接上播放器，再经 `openResidentSurface('stage', …)` 建宿主、在画出小窗节点的同一个任务里挂到 body 末尾，画上之后才交出句柄；此后 `stageApi()` 同步可取，契约在 `stage/stage-api.ts`。来处（`detailReturnPath`、`followDetailReturnPath`、`detailOriginAnchor`）、地址与顶栏上下文由应用域维护。
 - 句柄写本模块的 store 再 `flushSync` 通知：`open`（含原地换条）、`update`、`dispose` 里每一次绘制都在返回之前画完，骨架量尺寸、`showModal`、标题揭示与焦点交给关闭键读到的是刚画好的结构。两座详情画出来时报给壳的 `present` 排到微任务里：壳收到后画侧栏与顶栏，那几座常驻面的句柄也 `flushSync`，在路由树的提交阶段里画不出来；那一条已经换走或舞台已经收起就不报。
 - 舞台抛错时只卸组件：浮窗与小窗节点跟着消失，宿主与 body 上的 `data-detail-open` 留着，之后句柄各成员照调不抛，空到刷新为止。
 - 关掉详情 push 来处：点进来的是点卡那一页；同一个队列里换条不变，播放列表关掉回列表页并重读；后退前进进来的取条目记的背景（关注详情连筛选一起保住）；刷新、新标签页与深链落在详情上不读条目，作品详情下面补画目录网格、关掉回 `/`，关注详情关掉回 `/follow`。
@@ -160,24 +157,20 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React +
 
 React Router 以 Declarative 模式接管历史（`frontend/src/react/router/`）。管理区十一页（统计、口味、复核、数据管理、重复文件、高清版、来源与凭证、配置、活动、关注管理、诊断）、五张索引页与五类资料页由路由树按匹配打开，`/resource-sync` 与 `/configuration#libraryProcessing` 由元素用 replace 改写到数据管理页；目录六条路径、播放列表页与关注页同样由路由树按匹配打开；作品详情、四种队列与关注详情由覆盖组按匹配送进舞台，沉浸由页面组的 `/immerse` 元素打开。壳没有路由表。
 
-- 历史只有一份：`@peach/history` 随 `peach-ui.js` 发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格与垃圾队列画进 `#grid`。
+- 历史只有一份：`@peach/history` 直接解析到共享源码，随主包发出，壳的 `route()` 经 `shellNavigate` 写地址，`<Router>` 的 `navigator` 也是它。路由树挂在一个不进文档的容器上，管理区那一页与播放列表页、关注页经 portal 画进 `#stats`，索引页与资料页画进 `#index`，目录网格与垃圾队列画进 `#grid`。
 - 元素打开那一屏的动作排在提交阶段之后的微任务里：侧栏等常驻面的句柄内部用 `flushSync` 当场画完，同一棵根在提交阶段里不会同步刷新。页面组的 `<Routes>` 里每条路径都挂着元素，`/immerse` 也在这一组；它按条目 `usr.backgroundLocation` 匹配，详情压在哪一页上就还匹配那一页，启动那一条不读背景。覆盖组按真实地址匹配 `OVERLAY_PATHS`（详情、四种队列、关注详情），元素把那一条详情送进舞台常驻面，按派发序号挂 key。两组都不会报没有路由。
 - 页面的宿主跟地址：元素挂上经 `surfaceChanged` 让壳收起别的面，再由元素铺这一页的骨架，然后 `openManagedRoute(path, open, {container, isCurrent, place})`。覆盖元素离开时，去处不是覆盖地址才收舞台。它领一个代次、先取首屏，取齐后在同一个任务里清掉骨架、放进 `.peach-react` 宿主（给了 `place` 就由它把壳排的框架换进容器、交出宿主），宿主用 `flushSync` 当场画完，骨架与正文之间没有空白帧；同一路径再打开就是新代次，页面重挂重取。三个容器各记一条、互不相收，`releaseManagedRoute` 逐个点名容器：`claimSurface` 收 `#stats` 与 `#index`，`showHomeSurfaces` 只收 `#index` 那一条，`#grid` 只由 `clearCatalogGrid` 收，资料页压在管理页上时管理页藏着照常活；详情舞台推 `/item/:id` 不经过它们，页面留在舞台下面。打开之后壳的开关（选择键、资料页换筛选与版式）经 `updateManagedRoute(container, patch)` 合进画着的那一页：代次不变，不重挂、不重取，照常排进下一次渲染。
 - `open` 只带那一次才算得出的值（地址上的分类与页签、只读状态、引导标记、配置页页签），由元素自算；回执与换到还归壳的那几屏走壳交给 `configureRouter(actions)` 的 `ShellActions`，经 Context 下发。站内跳转交 `navigate`（壳那边是 `actions.navigate`，同样不认领），派发后由对应元素按开次代次打开。壳要重开画着的索引页或资料页（批量操作后重取、筛选回退、点开的正是画着的那一位）时把 `@peach/shell` 的 `pageOpens` 计数加一，元素整页重开；同一微任务里的换页与重开合成一次。元素从 effect 里写地址一律排进微任务并带存活守卫：路由根同步提交，提交阶段里同步写地址会出 flushSync 告警。配置页页签先交给壳再换地址，不进地址栏。判据钉在 `test/react/managed-routes.test.tsx`。
 - 每次历史变化领一个 `seq`。页面元素经 `useOpenEpoch()` 读开次代次、按它挂 key：壳的 `shellNavigate` 写地址时当场认领，页面不重开；后退前进、React 子树里的 `navigate` 与壳的 `actions.navigate` 领新代次，页面重挂重取。覆盖元素按 `seq` 挂 key，接手该次详情请求；详情内改写地址时认领序号，不重复打开。队列打开意图经 `queueOpens` 交给元素，取齐数据后才写入实际队列地址。`actions.navigate` 照 `route()` 写好标题，使用 `shellNavigate(path, {claim: false})`。地址不变的 `popstate` 也领新序号与新代次。
 - 路由根同步提交：`PeachRouter` 在历史变化的同一调用里 `flushSync` 换上新地址，`shellNavigate` 与后退前进返回时两组 `<Routes>` 已经换好匹配、上一页的元素已经卸掉。派发不在这次提交里，仍排在其后的微任务。判据钉在 `test/react/router-sync.test.tsx`。
-- 管理区十一条路径的标题、侧栏身份（`section`）与顶栏「换一批」的行为（`refresh`）登记在 `@peach/history` 的 `ROUTE_META`：壳在 React 包到之前就要读。壳的读者经 `routeMeta(path)` 读它；同一身份按登记顺序取第一条，数据管理排在重复文件与来源和凭证前面。
-- 启动：壳完成来源、页面结构与运行态准备后推进 `pageOpens`，路由树按当前地址匹配首屏；启动条目不读取历史背景。包到之前发生的后退前进，等 Router 挂上时按当时的地址匹配一次。判据钉在 `test/react/router.test.tsx`。
+- 管理区十一条路径的标题、侧栏身份（`section`）与顶栏「换一批」的行为（`refresh`）登记在 `@peach/history` 的 `ROUTE_META`：Application 启动与路由元素都直接读这份源码。壳的读者经 `routeMeta(path)` 读它；同一身份按登记顺序取第一条，数据管理排在重复文件与来源和凭证前面。
+- 启动：壳完成来源、页面结构与运行态准备后推进 `pageOpens`，路由树按当前地址匹配首屏；启动条目不读取历史背景。Router 挂载前发生的后退前进，在挂载时按当前地址匹配一次。判据钉在 `test/react/router.test.tsx`。
 
 队列首屏取齐前，打开意图由源导航序号持有取消权。新的非覆盖导航（包括同地址 POP）撤回意图、清空待写地址并作废舞台代次；意图微任务、舞台装载和响应回调都检查取消状态。成功首屏在写队列地址前解除取消权，覆盖详情之间换条不会关闭新舞台。
 
 ### 产物缓存
 
-产物名字不带内容哈希：引用它的 `web/app.js` 不经过构建，构建时改不了那里的路径。
-缓存由服务端控制：`/dist/` 与 `/app.js`、`/app.css`、`/js/` 同一档，回
-`Cache-Control: no-cache` 加一个 mtime＋字节数的 ETag：每次都回源问，没变时回 304
-零传输，更新语义与 `no-store` 等价。只有 `index.html` 用 `no-store`：所有资产
-URL 都从它来，它被缓存住就没人看得到新产物。
+产物使用固定文件名，由 `web/index.html` 与独立页面薄壳引用。服务端对 `/dist/` 与 `/app.css` 返回 `Cache-Control: no-cache` 和 mtime＋字节数的 ETag；浏览器每次重新验证，内容未变时返回 304。`index.html` 使用 `no-store`，确保入口能看到当前产物。
 
 ## 样式表分区
 
@@ -277,10 +270,10 @@ npm --prefix frontend run build:agentation   # 在要用它的那份检出里构
 
 - 产物写到 `build/agentation/peach-agentation.js`，由 `/dev/agentation.js` 提供，口令同 `/dist/`。
   它不进 Git、不进独立包：Agentation 是 PolyForm Shield 许可，只许自用，不随 Peach 分发，
-  所以不放在会被打包整个带走的 `web/` 下。没构建过的检出里这条路由是 404，`app.js` 静默跳过。
+  所以不放在会被打包整个带走的 `web/` 下。没构建过的检出里这条路由是 404，`Application` 静默跳过。
 - 产物是本机构建的：换检出、升级依赖之后重跑一次，刷新页面即生效。
 - 标注里拿不到源文件路径：它靠 React 的 `_debugSource`，React 19 已移除这个字段；组件名也被
-  `peach-react.js` 的压缩改掉了。要在 Tailwind 类名之外给智能体更稳的抓手，给区块加
+  `peach-app.js` 的压缩改掉了。要在 Tailwind 类名之外给智能体更稳的抓手，给区块加
   `data-component`（Agentation 默认采集的属性之一）。
 - Agentation 自己的全局快捷键已关闭，避免与 Peach 的 Esc、方向键冲突，只用工具栏按钮操作。
 - 标注工具挂在自己的容器里；适配入口为它的 Shadow DOM 表单字段补齐名称。
@@ -297,7 +290,7 @@ React 路由树（`RouterRoot`）是唯一的一棵根，按 `frontend/src/histo
 下面每条都是为了不出现两段等待态或离场后还在轮询的页面。
 
 ```js
-// web/app.js（文件顶部 import { openManagedRoute, … } from './dist/peach-ui.js'）
+// 路由元素直接引用共享源码：import { openManagedRoute } from '../../../history/managed'
 await openManagedRoute('/playlists', props, {container: $('#stats'), isCurrent: () => surfaceCurrent(surface)});
 await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent: () => true});
 ```
@@ -306,7 +299,7 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
   `library-processing`、`search`），常驻面也用名字（`batch-dock`、`glow-picker`、`manage-header`、`immerse`、
   `settings-panel`、`sidebar`、`stage`），三者不重叠。路由树按键查 `managed-routes.tsx` 里的同一组表，每条是
   `{prefetch, page}`；附属面与常驻面不进 `<Routes>`，也不进 `ROUTED_PATHS`。
-- 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `islands.ts` 的 `loadXxx(host)` 经
+- 常驻面是不跟某一页走的那几座，登记在常驻表 `RESIDENT_ROUTES` 里，由 `application-residents.ts` 的 `loadXxx(host)` 经
   `openResidentSurface(name, container, place?)` 打开一次（沉浸模式、设置面板与舞台在第一次打开时，其余几座在壳
   启动时）：没有首屏取数，一直算当前页，宿主就是那个常驻节点本身（`[data-batch-dock]`、`#boardGlowMenu`、
   `[data-manage-header]`、`[data-immerse-host]`、`[data-settings-host]`、`#drawerScroll`、`[data-stage-host]`），组件直接画成它的
@@ -324,8 +317,7 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
 - `openManagedRoute(key, props, options)` 是 async 且**取完数才画**。壳已经铺了骨架，页面若先画一个空容器
   再自己转圈，同一次进入就会出现两段等待态。它先收起同一容器里的上一面，`prefetch(props, signal)` 把首屏
   写进共用的 Query 缓存，取齐后在同一个任务里换掉骨架、放进 `.peach-react` 宿主（或 `options.place` 排好的
-  框架），路由树用 `flushSync` 当场画完。路由树还没接上（`loadRouter` 之前）时打开先等它接上再取数：搜索下拉
-  与首页筛选条在壳启动时就打开，第一次打开当场发出 React 包的请求（`preloadManagedRoutes` 登记的装载入口）。
+  框架），路由树用 `flushSync` 当场画完。路由树尚未接上时，打开先等待路由树连接再取数。搜索下拉与首页筛选条在 Application 启动阶段登记，页面与常驻面的代码均已包含在主包内。
 - `options.isCurrent` 是换页判据。壳用「代」而不是 `AbortSignal` 判当前页（`claimSurface`／`surfaceCurrent`），
   取数期间用户走开时靠这个谓词决定不画。一打开就不会走开的附属面（搜索下拉、首页筛选条）传 `() => true`；
   常驻面的判据由 `openResidentSurface` 定成恒真。
@@ -349,12 +341,7 @@ await openManagedRoute('search', props, {container: $('#searchMenu'), isCurrent:
   只写进没人订阅的 store，不画、不抛、不再上报，所以确定性的抛错只报一次。不在下一次推内容时自动重开，因为
   重开要等一次异步打开，那一次句柄就不再是同步画完。
 
-遗留助手不打进 `peach-ui.js` 与 `peach-react.js`：`LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`
-在浏览器里是 `/js/*.js`，源码用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
-`/js/core.js` 这类垫片再从 `peach-entry.js` 原名转出，实现只在入口包里一份。
-打进去就会有两份实现，语义契约各走一份。`/js/jav-title.js` 与 `/js/tags.js` 也这样引用，
-路由树直接 import `javTitleHtml`、`tagLabel`。只存在于 `app.js` 里的助手（`srcBadge`、`openItem`
-这类）给附属面时作为 props 传进来，类型写在那一面自己的文件里；给路由树那几页时进 `ShellActions`。
+共享助手 `LOC`、`fmtDur`、`fmtSize`、`emptyStateHtml`、`noteHtml`、`javTitleHtml` 与 `tagLabel` 直接来自 `core/`、`ui-kit/` 的唯一源码。`@peach/legacy/*` 是源码别名，不对应浏览器垫片或外置产物。应用动作（如 `srcBadge`、`openItem`）由各域控制器经有限 props/actions 接口交给组件；路由层的跨域动作由 `ShellActions` 下发。
 
 两条跨层都成立的硬约束：
 
@@ -465,19 +452,14 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
    有后台任务就用假时钟推到终态，看回执只发一次、卸载之后不再问。
    外观决定进对应区域的 `frontend/e2e/design-*.test.ts`：`page.route` 造出真实数据里凑不齐的状态，
    断言读 `getComputedStyle`。
-6. `web/app.js` 的挂载块不变；`web/css/` 与 `web/board.css` 里只服务这一页正文的规则删掉，
-   遗留骨架还要用的留着：骨架仍然用旧类名（`boardPageSkeleton`），它要的那几条不能一起删。
-   遗留层只在 `app.js` 里有的助手（`javTitleHtml`、`srcBadge` 这类返回 HTML 的）继续由
-   props 递进来，用 `dangerouslySetInnerHTML` 插；它们是全站语义契约的唯一实现，在页面里
-   重写一份就会漂。而 `emptyStateHtml`、`noteHtml`、`collectionSummaryHtml` 这类只是
-   「画个通用块」的助手不跟过来：React 页用 `components/` 下的组合件。
+6. 页面接入 `react/router/`，所需助手复用 `core/`、`ui-kit/` 或域内 typed controller。只有应用动作通过 props/actions 传入；通用块用 `components/` 的组合件。清理只服务该页正文的 `web/css/` 与 `web/board.css` 规则，保留骨架及其他读者仍需的规则。
 7. 路由、菜单入口和骨架由组件与浏览器测试验证。`tests/test_web_ui.py` 只保留通用样式规范、CSS 分区层叠与隐私边界，不按页面逐段比对实现源码；已有行为验证的文本断言直接清退。
 8. 跑 `& .\scripts\test.ps1 -Scope web`（含 tsc、lint、vitest 与真浏览器冒烟），
    再 `npm --prefix frontend run build` 并把 `web/dist/` 一起提交。
 
-遗留骨架与 `web/app.js` 画的那些页继续用 `web/css/` 下的分区，`peach-ui.js` 不出样式表。
-只由 `frontend/src` 产出标记的规则（含 `ui-kit` 模板与骨架拼的 HTML）住在组件旁的 css，类名带 `ui-` 前缀，经 `react/styles.css` 引入、随 `peach-react.css` 加载；壳也拼的类和尚未搬的类仍在 `web/css/` 与 `web/board.css`。原地换态的动效类在 `ui-kit/motion.css`。Video.js 的样式表不进首屏，由 `player/videojs.ts` 随播放器插到第一张样式表之前。
-React 子树的样式是 Tailwind v4 加 BoardUI 主题，产物 `peach-react.css`；它与旧样式表同处一页的
+应用骨架与全局外壳沿用 `web/css/` 下仍被读取的分区。主界面组件与共享控件样式由 `react/styles.css` 汇入 `peach-app.css`。
+只由 `frontend/src` 产出标记的规则（含 `ui-kit` 模板与骨架拼的 HTML）住在组件旁的 css，类名带 `ui-` 前缀，经 `react/styles.css` 引入、随 `peach-app.css` 加载；壳也拼的类和尚未搬的类仍在 `web/css/` 与 `web/board.css`。原地换态的动效类在 `ui-kit/motion.css`。Video.js 的样式表不进首屏，由 `player/videojs.ts` 随播放器插到第一张样式表之前。
+React 子树的样式是 Tailwind v4 加 BoardUI 主题，产物 `peach-app.css`；它与旧样式表同处一页的
 三条约束（工具类不分层、只扫描 `src/react/`、Preflight 限定在 `.peach-react` 里）写在
 `frontend/src/react/styles.css` 开头，逐字复制与没有复制的上游文件见 `frontend/src/react/boardui/ORIGIN.md`。
 Preflight 给每张 img `max-width:100%`；`card-art` 拼的人脸头像由 `avatarFrame` 在图上内联撤掉这条，
@@ -515,36 +497,20 @@ vendor 到 `web/vendor/` 的四个包（video.js、swiper、lucide-static、heal
 | `react-aria-components` | BoardUI 输入框、勾选框、开关、下拉与弹出面板的交互和无障碍语义：标签关联、键盘操作、焦点进出、`aria-invalid` |
 | `react-aria` | 只用 `UNSAFE_PortalProvider`：把 Popover 与下拉列表挂进 `body` 末尾同样带 `.peach-react` 的容器，弹层读到与页面内一致的 token 与 Preflight |
 | `@tanstack/react-query` | React 页面的取数与缓存：页面级 `prefetch` 与组件里的 `useQuery` 共用一份缓存，「取完数才画」不必把首屏数据当 props 串一路；轮询写成 `refetchInterval`，卸载时跟着组件一起停 |
-| `@tanstack/query-core` | `QueryClient` 本体。壳不跑 React 也要读写同一份缓存，客户端因此建在 `peach-ui.js` 里；React 包把它外置，运行时只有一份，版本与 `@tanstack/react-query` 同步固定 |
-| `react-router` | 客户端导航：`<Router>` 与 `<Routes>` 在 `peach-react.js` 里，后退前进由路由树自己处理，每条路径按匹配画（见「客户端导航」）；全站那一份浏览器历史（`createBrowserHistory`，`@peach/history`）建在 `peach-ui.js` 里，因为壳要在 React 包到之前写地址，只树摇进 history 内核，不带 React。两份产物各带一半，之间没有共享的模块状态；随之装进来的 `@remix-run/route-pattern`、`cookie-es` 是它自己的依赖 |
+| `@tanstack/query-core` | `QueryClient` 本体。Application 与 React 页面直接引用同一客户端源码，运行时只有一份；版本与 `@tanstack/react-query` 同步固定 |
+| `react-router` | Declarative 客户端导航：Router、Routes 与共享浏览器历史包含在主包内，地址经唯一历史对象派发。`@remix-run/route-pattern`、`cookie-es` 是它的依赖 |
 | `@tanstack/react-table` | 表格视图的列定义、排序状态、行选择与分页。行的身份是业务 ID（`getRowId`），所以换页、换排序、换视图之后勾选的还是同一批；排序与分页跑在**全集**上，页只是最后一刀 |
 | `tailwind-merge` | BoardUI 的 `cx()` 合并类名时去掉互相冲突的工具类 |
 | `@remixicon/react` | BoardUI 组件内置的图标 |
-| `tailwindcss`、`@tailwindcss/vite` | 按 `src/react/` 里实际用到的类名生成 `peach-react.css` |
+| `tailwindcss`、`@tailwindcss/vite` | 按 `src/react/` 里实际用到的类名生成 `peach-app.css` |
 | `@types/react`、`@types/react-dom` | React 子树的类型检查 |
 | `agentation` | 本机开发用的界面标注工具栏，单独构建、不进产物与独立包（见「界面标注」） |
 
-React 子树单独构建（`vite.react.config.ts`）。`peach-react.js` 由 `islands.ts` 动态加载：
-`loadRouter`、常驻面的 `loadSidebar`、`loadManageHeader`、`loadBatchDock`、`loadGlowPicker`、`loadImmerse`、
-`loadSettingsPanel`、`loadStage`，其余 `loadXxx`，
-以及 `preloadManagedRoutes` 登记给第一次 `openManagedRoute` 的装载入口，全是同一个模块请求；`peach-react.css` 由 `index.html` 在旧样式表之前引入；`peach-ui.js` 只剩路由树的
-开收命令、常驻层的入口与遗留层的助手。`build.cssTarget` 对齐 Tailwind v4 的浏览器基线
-（Chrome 111、Firefox 128、Safari 16.4），oklch 颜色原样输出：目标再旧，lightningcss 会补
-`lab()` 回退，末位小数随平台浮点不同，CI 在 Linux 上重建的产物就与提交的对不上。
-这条基线早于原生 `light-dark()`，React 子树的样式因此不写它：lightningcss 会改写成只由
-`color-scheme` 声明给值的 `--lightningcss-light/dark` 变量，`peach-react.css` 没有那条声明，
-整条声明失效。随主题变的值写成 `.dark` 祖先选择器配自定义属性（灯箱、资料卡浮层），
-`frontend/test/react-color-scheme.test.ts` 扫产物拦截。
+主界面由 `vite.config.ts` 从 `src/react/bootstrap.tsx` 构建为 `peach-app.js` 与 `peach-app.css`。Application、路由树、常驻面与共享状态同属一份源码图，`@peach/*` 直接解析到源码，不外置 React、Query、历史、shell 或 UI 模块。主界面不做代码分割；开发取证工具 `/dev/agentation.js` 是独立的按需外部模块。
 
-入口包单独构建（`vite.entry.config.ts`，入口 `src/entry/index.ts`），排在 `npm run build` 的最后一段：
-第一段 `vite build` 清空 `web/dist/`，后两段都不清。它不引 React、`peach-ui.js` 与 `peach-react.js`，
-没有样式表，也没有外部 import：`src/core/`、`src/ui-kit/`、`src/onboarding/` 都打进这一份，`/js/core.js`、`/js/tags.js`、
-`/js/jav-title.js`、`/js/ui-sounds.js`、`/js/middle-truncate.js`、`/js/ui-components.js` 是从它原名转出的垫片。这里再把 `@peach/legacy/*`
-外置回 `/js/*.js` 就和垫片互相 import 成环。字形表、音效开关、中段截断的观察者、确认框的标题序号与计数徽标的读数因此只有一份。
-vitest 里 `/dist/peach-entry.js` 指向 `src/entry/index.ts`，`@peach/legacy/core` 这几条别名指向同一批源码；
-`@peach/legacy/ui` 落到 `test/stubs/legacy-ui.ts`，其中一部分是桩，要用正式实现的那几样从 `src/ui-kit/` 转出；
-测 `ui-kit` 的用例直接 import 源码。`tests/test_web_js.py` 用 Node 自带的类型剥离直接跑
-`src/core/` 里的纯函数，入口包在 Node 里加载不了（锚定菜单一加载就往 document 上挂监听）。
+`npm run build` 先构建主界面并清空 `web/dist/`，再用 `vite.pages.config.ts` 追加独立页面包。浏览器基线是 Chrome 111、Firefox 128、Safari 16.4，oklch 原样输出；随主题变化的值用 `.dark` 与自定义属性，不写 `light-dark()`，由 `react-color-scheme.test.ts` 检查产物。
+
+Vitest 的模块别名也指向共享源码；`@peach/legacy/ui` 在组件测试中可落到 `test/stubs/legacy-ui.ts`，需真实控件的测试直接引用 `src/ui-kit/`。`tests/test_web_js.py` 使用 Node 类型剥离验证 `src/core/` 纯函数，不加载需要 document 的主包。
 
 没有引入 `@testing-library/react`：`createRoot` 加 `querySelector` 已经够用
 （挂载与输入的助手在 `frontend/test/react/render.tsx`），断言的本来就是真实 DOM。

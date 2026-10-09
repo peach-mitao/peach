@@ -1,4 +1,4 @@
-/* 全站那一个 `QueryClient`（`src/query/`）：壳从 `peach-ui.js` 取，React 岛经 `Providers` 读到的是同一个。 */
+/* 全站唯一 QueryClient（src/query/）：Application 与 Providers 直接引用共享源码，读写同一缓存。 */
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';

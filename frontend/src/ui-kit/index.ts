@@ -1,8 +1,6 @@
-/* `/js/ui-components.js` 的导出清单：那份垫片从 `/dist/peach-entry.js` 原名转出的就是这里列的名字，不多不少。
- *
- * 壳经垫片读，React 子树与 island 按 `@peach/legacy/ui` 写、构建时改写回 `/js/ui-components.js`，类型检查也落到
- * 这一份；入口包另带的 core、音效、中段截断不在清单里，写错 import 在类型检查时就报出来，不会到浏览器里才变成
- * undefined。 */
+/* 共享控件导出清单：Application 与 React 页面按 @peach/legacy/ui 或源码路径引用。
+ * 别名直接指向本文件，控件随 peach-app.js 发出一份，类型检查也读同一清单。
+ * 独立页面包仅将用到的控件直接打进自己的产物。 */
 export { attachOverlayScrollbar } from './overlay-scrollbar';
 export { growCollapse, setCollapseOpen, wireCollapse } from './collapse';
 export { closeAnchoredMenu, dismissMenu, presentMenu, scrollMovesAnchor, wireAnchoredMenu } from './anchored-menu';

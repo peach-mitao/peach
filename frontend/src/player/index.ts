@@ -1,11 +1,6 @@
-/* 播放器模块（ADR-0031 第 11a 步）：命令式 TypeScript，不进 React 渲染。
- *
- * Video.js 会把 `<video>` 包进自己的 div、在里面插控制条，DOM 归它；React 只给它一块宿主。
- * 舞台播放区与沉浸模式的每一格都在 effect 里调 `mountPlayer(video, options)`，拿回拆掉它的函数。
- *
- * 带状态的几块（宿主、详情播放器槽位、详情流会话、右键菜单）只由舞台岛所在的
- * `peach-react.js` 使用：`peach-ui.js` 也打了一份这个模块，两份各有自己的模块状态；壳那一份
- * 只用控件点击与 `playback.ts` 这两样不带状态的。 */
+/* 播放器模块：命令式 TypeScript，不进入 React 渲染。
+ * Video.js 接管 video 宿主与控件 DOM；舞台和沉浸的 effect 调 mountPlayer 并保存清理函数。
+ * Application 与 React 页面共享源码图，宿主、播放器槽位、流会话与右键菜单状态各只有一份。 */
 export type { PlayerHost, PlayerSettings } from './host';
 export { configurePlayer } from './host';
 export type { PlayerMenuHooks } from './menu';

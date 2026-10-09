@@ -61,8 +61,8 @@ interface Pending { revision: number; controller: AbortController }
 let connect: (ready: Promise<ManagedPrefetch>) => void = () => {};
 const prefetcher = new Promise<ManagedPrefetch>((resolve) => { connect = resolve });
 prefetcher.catch(() => {});
-/* 第一次打开时就发出 React 包的请求：壳排在路由树装载之前的那几次打开（搜索下拉、首屏骨架里的筛选条）
- * 不该等到 `loadRouter` 才开始取包。装载入口由构建入口登记，只调一次。 */
+/* 首次打开时调用应用登记的就绪入口，让搜索下拉与首屏筛选条等待路由树连接后取数。
+ * 页面代码已在主包中，就绪入口只调用一次。 */
 let preload: (() => void) | null = null;
 export function preloadManagedRoutes(load: () => void): void {
   preload = load;

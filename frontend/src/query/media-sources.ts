@@ -1,9 +1,7 @@
-/* 来源可达性（`/api/sources`）：地址、查询键与取数函数全站只在这里声明一次，随 `peach-ui.js` 发出。
- *
- * 读者有四个：壳的脱盘判据（`web/app.js` 的 `loadSourceStatus`）、数据管理页、资源同步与重复文件页。
- * 壳从 `peach-ui.js` 取，React 包按 `@peach/query` 引用，两边读写同一个 `queryKey`。键不设 `staleTime`：
- * 壳的「刷新状态」与页面进入时都按服务端最新的探测快照重取。壳只在自己调用时读返回值，不订阅这个键，
- * 页面重取不会改动目录默认来源与脱盘提示。 */
+/* 来源可达性（/api/sources）：地址、查询键与取数函数只在本模块声明。
+ * Application 的 loadSourceStatus、数据管理页、资源同步与重复文件页共读此键。
+ * 不设 staleTime，显式刷新与进入页面按服务端最新快照读取。
+ * Application 只读调用返回值、不订阅；页面重取不会改变目录默认来源与脱盘提示。 */
 import { isCancelledError } from '@tanstack/query-core';
 
 import { apiGet } from '../api';

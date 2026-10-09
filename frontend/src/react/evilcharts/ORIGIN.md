@@ -31,7 +31,7 @@
 | 上游 | 处理 | 原因 |
 | --- | --- | --- |
 | `@/lib/utils` 的 `cn` | `../charts/cn.ts`：先经 `clsx` 摊平条件类名，再交给 BoardUI 的 `cx` | 上游的 `cn` 由 `shadcn init` 生成，Peach 不跑 init；`cx` 已是带 BoardUI 字阶的 `tailwind-merge`，但不认 `clsx` 的对象写法 |
-| 路径别名 | `frontend/vite.react.config.ts`、`frontend/vitest.config.ts` 与 `../tsconfig.json` 把 `@/registry/*` 指到本目录、`@/lib/utils` 指到 `../charts/cn.ts`，排在 BoardUI 的 `@/*` 前面 | 上游按 shadcn 项目的目录写 import，改路径就要改上游文件 |
+| 路径别名 | `frontend/vite.config.ts`、`frontend/vite.pages.config.ts`、`frontend/vitest.config.ts` 与 `../tsconfig.json` 把 `@/registry/*` 指到本目录、`@/lib/utils` 指到 `../charts/cn.ts`，排在 BoardUI 的 `@/*` 前面 | 上游按 shadcn 项目的目录写 import，改路径就要改上游文件 |
 | 类型导入 | `../tsconfig.json` 关掉 `verbatimModuleSyntax` | 上游用普通 import 取 `RectRadius`、`TypedDataKey` 两个类型；`isolatedModules` 仍开着，转译时照常剥掉 |
 | shadcn 语义色名 | `../styles.css` 的 `@theme inline` 把 `background`、`foreground`、`muted`、`muted-foreground`、`border` 接到 BoardUI 已有 token；`primary` 不接 | 上游浮层与轴刻度写的是 shadcn 色名，Peach 没有这一套变量；`primary` 只有加载指示用，Peach 不传 `isLoading` |
 | 系列颜色 | 调用处的 `ChartConfig` 只写 `var(--color-chart-N)`，不写上游示例里的 oklch 字面值 | 颜色只取 BoardUI 的 `chart-*` 档，深浅两档跟着 token 走 |

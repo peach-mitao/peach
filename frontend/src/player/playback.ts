@@ -1,7 +1,7 @@
 /* 播放快捷键与沉浸模式手势共用的两步：切换播放、快进快退。
  *
  * 直接操作原生元素而不是 Video.js 实例：舞台、小窗与沉浸模式的 Video.js 读的都是这个元素，沉浸
- * 模式在播放器脚本拉不到时还是裸 video，一条实现全盖住。读者是壳的键盘（`web/app.js` 的
+ * 模式在播放器脚本拉不到时还是裸 video，一条实现全盖住。读者是壳的键盘（`Application` 的
  * `activeVideo()` 取到的那一个）与沉浸岛的单击、双击。 */
 
 export function toggleVideoPlayback(video: HTMLVideoElement | null | undefined): void {

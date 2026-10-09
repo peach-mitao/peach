@@ -1,12 +1,12 @@
 /* 界面偏好在这台浏览器上的那一份真相（`peach.settings.v1`）。
  *
- * 值是壳在启动时归一化好的那个对象本身（`web/app.js` 的 `appSettings`）：壳里六十来处读写都
+ * 值是壳在启动时归一化好的那个对象本身（`application/preferences.js` 的 `appSettings`）：壳里六十来处读写都
  * 直接改它的字段，改完调 `save()` 落盘。落盘同时换一个版本号、通知订阅者——设置面板
  * （`react/settings-panel/`）用 `useSyncExternalStore` 读版本号，壳在哪里改了一项，开着的面板当场跟上，
  * 两边读的是同一个对象，不各存一份。
  *
  * 快照是版本号而不是对象：壳的写法是原地改字段，对象引用从头到尾不变，拿它当快照 React 永远
- * 以为没变。这个模块在 `peach-ui.js` 里、启动时同步可用；面板只拿壳递过去的实例，自己不建第二个。 */
+ * 以为没变。本模块由 Application 与 React 页面直接引用，启动时同步可用；面板只拿壳递过去的实例，自己不建第二个。 */
 export interface SettingsStore<T extends object> {
   /** 活的设置对象，读到的就是此刻的值。 */
   readonly value: T;

@@ -1,6 +1,6 @@
 /* 详情浮窗右侧那一列队列（Mix、分卷、版本、播放列表、关注的合集与多媒体）。
  *
- * 结构照遗留层 `queueHtml`（`web/app.js`）：队列、行与条目各挂一枚 `data-mix-*`，样式在
+ * 队列、行与条目各挂一枚 `data-mix-*`，样式在
  * `stage/stage.css`，作品详情与关注详情共用。一列十几条要能拖着横滚（窄屏下队列是横排），
  * 拖动借壳的 `wireDrag`，由调用方经 `listRef` 接上。 */
 import { useCallback, useLayoutEffect, useRef, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';

@@ -8,11 +8,11 @@
    配方给的下限附近：它们一天里要响几百次，只能是陪衬。
 
    全站只开一个 AudioContext，而且要等到第一声真要响时才建：浏览器在用户手势之前
-   不让出声，页面一进来就建会被挂起，还多占一路系统音频。开关状态由 app.js 的
+   不让出声，页面一进来就建会被挂起，还多占一路系统音频。开关状态由 Application 的
    `appSettings.uiSounds` 决定，通过 `setUiSoundsEnabled` 灌进来；关着时这里连
    AudioContext 都不碰。
 
-   随 `/dist/peach-entry.js` 发出，`/js/ui-sounds.js` 原名转出：开关状态只能有一份，设置面板打开的
+   随主包发出，由共享源码直接引用：开关状态只能有一份，设置面板打开的
    和菜单开合时响的是同一个。 */
 
 type Recipe = (ctx: AudioContext, now: number) => void;

@@ -1,8 +1,8 @@
-/* 安装后教程的状态。随 `peach-entry.js` 发出，`/js/ui-components.js` 原名转出；请求代际是模块级状态，
+/* 安装后教程的状态。由共享源码直接引用，随 `peach-app.js` 发出；请求代际是模块级状态，
    壳与设置面板读写的是同一份。
 
-   教程本身还画在遗留层（迁往 React 的待办在 `docs/PRODUCT_BACKLOG.md`），但「做到哪了」
-   不属于渲染：清单做完这件事跟着账本走（`/api/settings` 的 `postSetupTutorialDone`），
+   教程 DOM 由 application/tutorial.js 装配；完成状态与渲染分开。
+   清单完成跟着账本走（`/api/settings` 的 `postSetupTutorialDone`），
    换台设备打开不会又被教一遍；折叠和逐项跳过是当下这块屏幕的摆法，留在本地。
    三个键、签名和请求代际都收在这里，装配那一侧只管把它们接到 DOM 上。 */
 export const POST_SETUP_TUTORIAL_KEY='peach.post-setup-tutorial.v1';

@@ -2,7 +2,7 @@
  * 播放器与小窗都在这一面里。
  *
  * 常驻面 `stage`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进 body 末尾的常驻宿主
- * `[data-stage-host]`，宿主就是那个节点本身、不包 `.peach-react`，第一次打开详情时由 `islands.ts` 的
+ * `[data-stage-host]`，宿主就是那个节点本身、不包 `.peach-react`，第一次打开详情时由 `application-residents.ts` 的
  * `loadStage` 建好、在画出小窗节点的同一个任务里挂进文档。舞台盖在所有页面之上，小窗要在换页之后接着放，
  * 所以宿主不跟某一页走。壳只拿 `configureStage` 给的命令式入口：句柄写本模块的 store 再 `flushSync` 通知，
  * `open`（含原地换条）、`update` 与 `dispose` 里每一次绘制都在返回之前画完，紧跟着读 DOM 的代码（骨架量尺寸、
