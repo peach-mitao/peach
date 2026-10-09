@@ -45,6 +45,53 @@ class GenreTaxonomyTests(unittest.TestCase):
         self.assertEqual(unknown, ["尚未收錄的分類"])
         self.assertEqual(resolve_genre("靴子"), UNMAPPED)
 
+    def test_javdb_aliases_share_the_existing_semantic_targets(self):
+        aliases = (
+            ("溫泉", "Hot Spring", "温泉"),
+            ("女同性戀", "Lesbian", "百合"),
+            ("女同接吻", "レズキス", "百合"),
+            ("強姦", "レイプ", "强制剧情"),
+            ("偷窺", "盗撮", "偷拍偷窥"),
+            ("處女", "Virgin", "处女设定"),
+            ("爛醉如泥的", "泥酔", "醉酒"),
+            ("黑人演員", "黒人男優", "黑人"),
+            ("家教", "Private Tutor", "家庭教师"),
+            ("童年朋友", "幼なじみ", "青梅竹马"),
+            ("變性者", "Transsexual", "跨性别"),
+            ("肉肉女", "Chubby", "丰满"),
+            ("水手服", "Sailor Uniform", "制服"),
+            ("學校泳裝", "School Swimsuits", "泳装"),
+            ("手指插入", "Fingering", "手交"),
+            ("手淫", "Masturbation", "自慰"),
+            ("輪姦", "Gangbang", "多人"),
+            ("兩男兩女", "Foursome", "3P多人"),
+            ("打屁股", "Spanking", "调教"),
+            ("灌腸", "Enema", "排泄"),
+            ("假陽具", "Dildo", "性玩具"),
+            ("肛交", "Anal Sex", "肛交"),
+            ("薄馬賽克", "ギリモザ", "薄码"),
+            ("數位馬賽克", "Digital Mosaic", "有码"),
+        )
+        for chinese, existing, target in aliases:
+            with self.subTest(chinese=chinese, existing=existing):
+                tags, unknown = map_genres([chinese, existing, chinese])
+                self.assertEqual(tags, [target])
+                self.assertEqual(unknown, [])
+
+    def test_javdb_aliases_keep_distinct_or_unsupported_meanings_unmapped(self):
+        raw = ["靴子", "濕身", "濕透", "飲尿", "妓女", "雙性人", "母親",
+               "女醫生", "女檢察官", "戀腿癖", "戀乳癖", "口爆/吞精", "車站性交",
+               "無碼流出", "無碼破解", "子宮頸", "正太控", "瘦小身型"]
+        tags, unknown = map_genres(raw)
+        self.assertEqual(tags, [])
+        self.assertEqual(unknown, raw)
+
+    def test_javdb_aliases_preserve_scene_behavior_and_anal_boundaries(self):
+        tags, unknown = map_genres(["戶外", "Exhibitionism", "洗澡", "溫泉",
+                                    "手淫", "手指插入", "Anal", "肛交", "肛門・肛交"])
+        self.assertEqual(tags, ["户外", "户外露出", "浴室", "温泉", "自慰", "手交", "屁眼", "肛交"])
+        self.assertEqual(unknown, [])
+
     def test_every_projection_lands_in_the_existing_catalog_vocabulary(self):
         """投影只能落在既有词表上。
 
