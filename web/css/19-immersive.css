@@ -70,7 +70,6 @@
   .entityprofile{grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;justify-items:center;text-align:center}
   /* 单列时头像上下各是一整行，没有「右边那列有多高」可跟，尺寸就还是钉住的 96px。 */
   .entityportrait{height:96px;min-height:96px;max-height:96px;width:96px}.entityhero h2{font-size:var(--fs-xl)}
-  .entityidentity{width:100%}
   .entityfoot{padding:10px 16px}
   /* 标题行是 flex，`text-align:center` 管不到它，得自己居中。 */
   .entitytitle{justify-content:center}

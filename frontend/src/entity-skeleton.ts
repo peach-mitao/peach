@@ -10,7 +10,7 @@ export function entitySkeletonHtml(kind: string, head: string, body: string) {
   return `<section data-skeleton="entity/${kind}" role="status" aria-label="正在读取资料">
     <span class="sr-only">正在读取资料</span><div aria-hidden="true">
     <section class="entityhero"><div class="entityprofile"><div class="entityportrait ${square ? 'square ' : ''}skeleton"></div>
-      <div class="entityidentity entityskeletontext"><div class="entitytitle"><h2 class="skeleton">&nbsp;</h2></div>
+      <div class="ui-entityidentity entityskeletontext"><div class="entitytitle"><h2 class="skeleton">&nbsp;</h2></div>
       <div class="alias"><span class="skeleton"></span></div>
       <div class="entitylinks"><span class="skeleton"></span></div></div></div></section>
     <div class="board-filter-frame" data-filter-frame>
