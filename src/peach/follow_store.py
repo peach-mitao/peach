@@ -161,7 +161,8 @@ def _carry_image_dims(metadata: dict, previous_json: str | None) -> dict:
         if dims:
             metadata["width"], metadata["height"] = dims
     learned = _learned_media_dims(previous.get("media_items"))
-    if learned and isinstance(metadata.get("media_items"), list):
+    # 连接器给的清单可能是 tuple（f95 把附件与 gofile 两段拼起来），写进 JSON 后才是数组。
+    if learned and isinstance(metadata.get("media_items"), (list, tuple)):
         carried = []
         for media in metadata["media_items"]:
             dims = learned.get(str(media.get("id") or media.get("url") or "")) \
