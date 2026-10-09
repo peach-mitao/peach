@@ -17,11 +17,11 @@ function r(e, t = 0) {
 		413: "提交内容过大，请减少数量后重试。",
 		429: "请求过于频繁，请稍后重试。",
 		500: "Peach 服务处理失败，请重试；持续失败时查看托盘日志。",
-		502: "连接上游服务失败，请检查代理或来源服务。",
+		502: "Peach 服务没有取回结果，请稍后重试；持续失败时查看托盘日志。",
 		503: "Peach 服务暂时不可用，请稍后重试。",
 		504: "等待服务响应超时，请稍后重试。"
 	};
-	return /Failed to fetch|fetch failed|NetworkError|Load failed|network request failed|ERR_CONNECTION/i.test(n) ? "无法连接到 Peach 服务，请确认网络连接和托盘服务已启动。" : e?.name === "TimeoutError" || /timed? ?out|timeout/i.test(n) ? "等待服务响应超时，请检查连接后重试。" : /[㐀-鿿]/.test(n) && !/^请求失败[（(]/.test(n) ? n : i[r] ? i[r] : "操作未完成，请重试；持续失败时查看托盘日志。";
+	return /Failed to fetch|fetch failed|NetworkError|Load failed|network request failed|ERR_CONNECTION/i.test(n) ? "无法连接到 Peach 服务，请确认网络连接和托盘服务已启动。" : e?.name === "TimeoutError" || !r && /timed? ?out|timeout/i.test(n) ? "等待服务响应超时，请检查连接后重试。" : /[㐀-鿿]/.test(n) && !/^请求失败[（(]/.test(n) ? n : i[r] ? i[r] : "操作未完成，请重试；持续失败时查看托盘日志。";
 }
 var i = async (e, t) => {
 	if (!t?.method || t.method === "GET") {
@@ -165,28 +165,44 @@ var i = async (e, t) => {
 	return Number.isFinite(t) && t > 0 ? t : 0;
 }, ie = (e) => {
 	if (e = re(e), !e) return "—";
-	e = Math.round(e);
-	let t = e / 3600 | 0, n = e % 3600 / 60 | 0, r = e % 60;
+	if (e = Math.round(e), e >= 172800) {
+		let t = Math.floor(e / 86400), n = Math.floor(e % 86400 / 3600);
+		return n ? `${t} 天 ${n} 小时` : `${t} 天`;
+	}
+	let t = Math.floor(e / 3600), n = Math.floor(e % 3600 / 60), r = e % 60;
 	return t ? `${t}:${String(n).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${n}:${String(r).padStart(2, "0")}`;
 }, ae = (e) => {
 	e = Math.max(0, Math.floor(Number(e) || 0));
 	let t = e / 3600 | 0, n = e % 3600 / 60 | 0, r = e % 60;
 	return t ? `${t}:${String(n).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${n}:${String(r).padStart(2, "0")}`;
-}, oe = (e) => e >= 0x4000000000000 ? (e / 0x4000000000000).toFixed(2) + " PB" : e >= 1099511627776 ? (e / 1099511627776).toFixed(2) + " TB" : e >= 1073741824 ? (e / 1073741824).toFixed(1) + " GB" : (e / 1048576 | 0) + " MB", se = {
+}, oe = (e) => {
+	if (e == null || e === "") return "大小未知";
+	let t = Number(e);
+	return !Number.isFinite(t) || t < 0 ? "大小未知" : t === 0 ? "0 B" : t < 1048576 ? `${Math.max(1, Math.round(t / 1024))} KB` : t >= 0x4000000000000 ? (t / 0x4000000000000).toFixed(2) + " PB" : t >= 1099511627776 ? (t / 1099511627776).toFixed(2) + " TB" : t >= 1073741824 ? (t / 1073741824).toFixed(1) + " GB" : Math.floor(t / 1048576) + " MB";
+}, w = typeof Intl < "u" && typeof Intl.Segmenter == "function" ? new Intl.Segmenter(void 0, { granularity: "grapheme" }) : null, se = (e) => w ? Array.from(w.segment(e), (e) => e.segment) : Array.from(e), ce = (e, t) => {
+	let n = String(e ?? "").trim(), r = [];
+	if (!n || t <= 0) return "";
+	if (!w) return Array.from(n).slice(0, t).join("");
+	for (let e of w.segment(n)) if (r.push(e.segment), r.length >= t) break;
+	return r.join("");
+}, le = (e, t = "?") => ce(e, 1) || t, ue = (e, t) => {
+	let n = se(String(e ?? ""));
+	return n.length > t ? `${n.slice(0, Math.max(0, t - 1)).join("")}…` : n.join("");
+}, de = {
 	local: "本地",
 	115: "115",
 	pikpak: "PikPak",
 	online: "在线"
-}, ce = (e, t) => {
+}, fe = (e, t) => {
 	let n = 2166136261;
 	for (let r of `${e}\u0000${t}`) n ^= r.codePointAt(0), n = Math.imul(n, 16777619) >>> 0;
 	return n;
-}, le = () => String(((Date.now() ^ (Math.random() * 1e9 | 0)) >>> 0) % 99991), ue = /* @__PURE__ */ new Set([
+}, pe = () => String(((Date.now() ^ (Math.random() * 1e9 | 0)) >>> 0) % 99991), me = /* @__PURE__ */ new Set([
 	"短片-2分内",
 	"中片-10分内",
 	"长片-30分内",
 	"超长片-30分上"
-]), de = (e) => String(e || "").split(",").filter((e) => e && !ue.has(e)).join(","), w = {
+]), he = (e) => String(e || "").split(",").filter((e) => e && !me.has(e)).join(","), ge = {
 	"1080P": "1080p",
 	"60fps": "60FPS",
 	AI去码: "AI解码",
@@ -201,20 +217,20 @@ var i = async (e, t) => {
 	"3P多人": "3P",
 	双洞齐插: "双洞齐下",
 	毒龙: "毒龙钻"
-}, fe = (e) => w[e] || e, pe = /\.(?:mp4|mkv|avi|wmv|mov|m4v|webm|ts|m2ts|mts|mpg|mpeg|flv|rm|rmvb|iso)$/i, me = (e, t = e?.name) => {
+}, _e = (e) => ge[e] || e, ve = /\.(?:mp4|mkv|avi|wmv|mov|m4v|webm|ts|m2ts|mts|mpg|mpeg|flv|rm|rmvb|iso)$/i, T = (e, t = e?.name) => {
 	let n = String(t || "").trim();
-	return e?.is_jav ? n.replace(pe, "") : n;
-}, T = (e) => /[぀-ヿ㐀-鿿]/.test(String(e || "")), he = (e) => {
+	return e?.is_jav ? n.replace(ve, "") : n;
+}, ye = (e) => /[぀-ヿ㐀-鿿]/.test(String(e || "")), be = (e) => {
 	let t = [e?.catalog_title, e?.original_title].map((e) => String(e || "").trim()).filter(Boolean);
-	return t.find(T) || t[0] || "";
+	return t.find(ye) || t[0] || "";
 };
 function E(e, t = e?.name) {
-	let n = me(e, t), r = String(e?.code || "").trim().toUpperCase();
+	let n = T(e, t), r = String(e?.code || "").trim().toUpperCase();
 	if (!e?.is_jav || !r) return {
 		code: "",
 		title: n
 	};
-	let i = String(e?.display_code || r).trim().toUpperCase(), a = n.toUpperCase(), o = a === r || a === i || a.startsWith(r) && /^[\s._\-[\]]/.test(n.slice(r.length)) || a.startsWith(i) && /^[\s._\-[\]]/.test(n.slice(i.length)), s = a.startsWith(i) ? i.length : r.length, c = (o ? n.slice(s) : n).replace(/^[\s._-]+/, "").trim(), l = he(e), u = Object.prototype.hasOwnProperty.call(e || {}, "display_title") ? String(e.display_title || "").trim() : c;
+	let i = String(e?.display_code || r).trim().toUpperCase(), a = n.toUpperCase(), o = a === r || a === i || a.startsWith(r) && /^[\s._\-[\]]/.test(n.slice(r.length)) || a.startsWith(i) && /^[\s._\-[\]]/.test(n.slice(i.length)), s = a.startsWith(i) ? i.length : r.length, c = (o ? n.slice(s) : n).replace(/^[\s._-]+/, "").trim(), l = be(e), u = Object.prototype.hasOwnProperty.call(e || {}, "display_title") ? String(e.display_title || "").trim() : c;
 	return {
 		code: i,
 		title: l || u,
@@ -225,7 +241,7 @@ function E(e, t = e?.name) {
 		].includes(e)) : []
 	};
 }
-var ge = (e, t = e?.name) => {
+var xe = (e, t = e?.name) => {
 	let { code: n, title: r, badges: i = [] } = E(e, t);
 	return n ? [
 		n,
@@ -233,7 +249,7 @@ var ge = (e, t = e?.name) => {
 		r
 	].filter(Boolean).join(" ") : r;
 };
-function _e(e, t = e?.name) {
+function Se(e, t = e?.name) {
 	let { code: n, title: r, badges: i = [] } = E(e, t);
 	if (!n) return m(r);
 	let a = i.map((e) => `<small class="javedition ${e === "中字" ? "subtitle" : e === "无码" ? "uncensored" : "cracked"}">${m(e)}</small>`).join("");
@@ -242,7 +258,7 @@ function _e(e, t = e?.name) {
 //#endregion
 //#region src/ui-kit/sounds.ts
 var D = null, O = !1;
-function ve() {
+function Ce() {
 	let e = globalThis.AudioContext || globalThis.webkitAudioContext;
 	return e ? (D ||= new e(), D.state === "suspended" && D.resume()?.catch?.(() => {}), D) : null;
 }
@@ -256,7 +272,7 @@ function k(e, t, { type: n = "sine", from: r, to: i = r, duration: a, volume: o,
 	}
 	p.connect(f), f.connect(e.destination), d.start(u), d.stop(u + a + .01);
 }
-function ye(e, t, { duration: n, volume: r, filter: i, sweepTo: a = null, attack: o = 0 }) {
+function A(e, t, { duration: n, volume: r, filter: i, sweepTo: a = null, attack: o = 0 }) {
 	let s = Math.max(1, Math.round(e.sampleRate * n)), c = e.createBuffer(1, s, e.sampleRate), l = c.getChannelData(0);
 	for (let e = 0; e < s; e++) l[e] = Math.random() * 2 - 1;
 	let u = e.createBufferSource();
@@ -268,8 +284,8 @@ function ye(e, t, { duration: n, volume: r, filter: i, sweepTo: a = null, attack
 		u.disconnect(), d.disconnect(), f.disconnect();
 	}, u.start(t);
 }
-var be = {
-	click: (e, t) => ye(e, t, {
+var j = {
+	click: (e, t) => A(e, t, {
 		duration: .06,
 		volume: .12,
 		filter: {
@@ -327,7 +343,7 @@ var be = {
 			Q: 1
 		}
 	}),
-	whoosh: (e, t) => ye(e, t, {
+	whoosh: (e, t) => A(e, t, {
 		duration: .12,
 		volume: .08,
 		attack: .036,
@@ -343,114 +359,110 @@ var be = {
 		duration: .04,
 		volume: .15
 	})
-}, xe = Object.freeze(Object.keys(be));
-function Se(e) {
+}, we = Object.freeze(Object.keys(j));
+function Te(e) {
 	O = e === !0;
 }
-function Ce() {
+function Ee() {
 	return O;
 }
-function A(e) {
-	let t = be[e];
+function M(e) {
+	let t = j[e];
 	if (!t) throw Error(`没有「${e}」这种界面音效`);
 	if (!O) return !1;
-	let n = ve();
+	let n = Ce();
 	return n ? (t(n, n.currentTime), !0) : !1;
 }
-var we = "button,[role=\"button\"],[role=\"tab\"],[role=\"menuitem\"],[role=\"menuitemradio\"],[role=\"menuitemcheckbox\"],[role=\"option\"],summary,a[href]", Te = "input[type=\"checkbox\"][role=\"switch\"]";
-function Ee(e) {
+var De = "button,[role=\"button\"],[role=\"tab\"],[role=\"menuitem\"],[role=\"menuitemradio\"],[role=\"menuitemcheckbox\"],[role=\"option\"],summary,a[href]", Oe = "input[type=\"checkbox\"][role=\"switch\"]";
+function ke(e) {
 	return e.disabled === !0 || e.getAttribute("aria-disabled") === "true";
 }
-function De(e = document) {
+function Ae(e = document) {
 	e.addEventListener("click", (e) => {
-		let t = e.target?.closest?.(we);
-		!t || Ee(t) || A("click");
+		let t = e.target?.closest?.(De);
+		t && !ke(t) && M("click");
 	}, { capture: !0 }), e.addEventListener("change", (e) => {
 		let t = e.target;
-		!t?.matches?.(Te) || Ee(t) || A(t.checked ? "toggle-on" : "toggle-off");
+		t?.matches?.(Oe) && !ke(t) && M(t.checked ? "toggle-on" : "toggle-off");
 	}, { capture: !0 });
 }
 //#endregion
 //#region src/ui-kit/middle-truncate.ts
-var Oe = "…", ke = typeof Intl.Segmenter == "function" ? new Intl.Segmenter(void 0, { granularity: "grapheme" }) : null, j = /* @__PURE__ */ new WeakMap(), Ae = /* @__PURE__ */ new WeakSet(), M = null, je = (e) => ke ? [...ke.segment(String(e ?? ""))].map((e) => e.segment) : Array.from(String(e ?? ""));
-function Me(e, t) {
-	let n = je(e);
+var je = "…", Me = typeof Intl.Segmenter == "function" ? new Intl.Segmenter(void 0, { granularity: "grapheme" }) : null, N = /* @__PURE__ */ new WeakMap(), Ne = /* @__PURE__ */ new WeakSet(), P = null, Pe = (e) => Me ? [...Me.segment(String(e ?? ""))].map((e) => e.segment) : Array.from(String(e ?? ""));
+function Fe(e, t) {
+	let n = Pe(e);
 	if (!n.length || t(e)) return String(e ?? "");
-	let r = 0, i = Math.max(0, n.length - 1), a = Oe;
+	let r = 0, i = Math.max(0, n.length - 1), a = je;
 	for (; r <= i;) {
-		let e = r + i >> 1, o = Math.ceil(e / 2), s = Math.floor(e / 2), c = n.slice(0, o).join("") + Oe + (s ? n.slice(-s).join("") : "");
+		let e = r + i >> 1, o = Math.ceil(e / 2), s = Math.floor(e / 2), c = n.slice(0, o).join("") + je + (s ? n.slice(-s).join("") : "");
 		t(c) ? (a = c, r = e + 1) : i = e - 1;
 	}
 	return a;
 }
-var Ne = Object.assign((e, t) => {
-	let n = getComputedStyle(e), r = (Ne.canvas ||= document.createElement("canvas")).getContext("2d");
+var Ie = Object.assign((e, t) => {
+	let n = getComputedStyle(e), r = (Ie.canvas ||= document.createElement("canvas")).getContext("2d");
 	if (!r) return Infinity;
 	r.font = n.font || `${n.fontStyle} ${n.fontWeight} ${n.fontSize} ${n.fontFamily}`;
 	let i = r.measureText(t).width, a = parseFloat(n.letterSpacing);
-	Number.isFinite(a) && (i += Math.max(0, je(t).length - 1) * a);
+	Number.isFinite(a) && (i += Math.max(0, Pe(t).length - 1) * a);
 	let o = parseFloat(n.wordSpacing);
 	return Number.isFinite(o) && (i += (t.match(/\s/g) || []).length * o), i;
-}, { canvas: null }), Pe = (e) => {
+}, { canvas: null }), Le = (e) => {
 	if (e.dataset.middleTruncateWithin === void 0) return e.clientWidth;
 	let t = e.parentElement;
 	if (!t) return e.clientWidth;
 	let n = getComputedStyle(t), r = parseFloat(n.columnGap) || 0, i = 0, a = 0;
 	for (let n of t.children) {
 		let t = n.getBoundingClientRect().width;
-		if (n === e) {
-			a++;
-			continue;
-		}
-		t > 0 && (i += t, a++);
+		n === e ? a++ : t > 0 && (i += t, a++);
 	}
 	return t.getBoundingClientRect().width - (parseFloat(n.paddingLeft) || 0) - (parseFloat(n.paddingRight) || 0) - i - r * Math.max(0, a - 1);
-}, Fe = (e) => {
-	let t = j.get(e);
+}, Re = (e) => {
+	let t = N.get(e);
 	if (!t || !e.isConnected) return;
-	let n = Pe(e), r = n > 0 ? Me(t.full, (t) => Ne(e, t) <= n) : t.full;
+	let n = Le(e), r = n > 0 ? Fe(t.full, (t) => Ie(e, t) <= n) : t.full;
 	t.rendered = r, e.textContent !== r && (e.textContent = r);
 	let i = r !== t.full;
 	e.classList.toggle("middle-truncated", i), e.setAttribute("aria-label", t.full), (!e.hasAttribute("title") || e.dataset.middleTitle === "true") && (e.title = t.full, e.dataset.middleTitle = "true");
-}, N = (e) => {
-	let t = j.get(e);
-	!t || t.raf || (t.raf = requestAnimationFrame(() => {
-		t.raf = 0, Fe(e);
+}, F = (e) => {
+	let t = N.get(e);
+	t && !t.raf && (t.raf = requestAnimationFrame(() => {
+		t.raf = 0, Re(e);
 	}));
-}, Ie = (e) => {
-	e instanceof HTMLElement && (j.has(e) || j.set(e, {
+}, ze = (e) => {
+	e instanceof HTMLElement && (N.has(e) || N.set(e, {
 		full: e.textContent || "",
 		rendered: e.textContent || "",
 		raf: 0
-	}), Ae.has(e) || (Ae.add(e), e.dataset.middleTruncateWithin !== void 0 && e.parentElement ? M?.observe(e.parentElement) : M?.observe(e)), N(e));
-}, Le = (e) => {
+	}), Ne.has(e) || (Ne.add(e), e.dataset.middleTruncateWithin !== void 0 && e.parentElement ? P?.observe(e.parentElement) : P?.observe(e)), F(e));
+}, Be = (e) => {
 	if (e.nodeType !== Node.ELEMENT_NODE) return;
 	let t = e;
-	t.matches("[data-middle-truncate]") && Ie(t), t.querySelectorAll("[data-middle-truncate]").forEach(Ie);
+	t.matches("[data-middle-truncate]") && ze(t), t.querySelectorAll("[data-middle-truncate]").forEach(ze);
 };
-function Re(e = document) {
-	M = new ResizeObserver((e) => e.forEach((e) => {
-		N(e.target), e.target.querySelectorAll?.(":scope>[data-middle-truncate-within]").forEach(N);
-	})), Le(e.documentElement || e), new MutationObserver((e) => e.forEach((e) => {
-		e.addedNodes.forEach(Le);
+function Ve(e = document) {
+	P = new ResizeObserver((e) => e.forEach((e) => {
+		F(e.target), e.target.querySelectorAll?.(":scope>[data-middle-truncate-within]").forEach(F);
+	})), Be(e.documentElement || e), new MutationObserver((e) => e.forEach((e) => {
+		e.addedNodes.forEach(Be);
 		let t = (e.target.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target)?.closest?.("[data-middle-truncate]");
 		if (!t) return;
-		let n = j.get(t);
-		n && t.textContent !== n.rendered && (n.full = t.textContent || "", t.dataset.middleTitle === "true" && t.removeAttribute("title"), N(t));
+		let n = N.get(t);
+		n && t.textContent !== n.rendered && (n.full = t.textContent || "", t.dataset.middleTitle === "true" && t.removeAttribute("title"), F(t));
 	})).observe(e.body || e, {
 		childList: !0,
 		characterData: !0,
 		subtree: !0
-	}), document.fonts?.ready?.then(() => e.querySelectorAll("[data-middle-truncate]").forEach(N)), e.addEventListener("copy", (e) => {
+	}), document.fonts?.ready?.then(() => e.querySelectorAll("[data-middle-truncate]").forEach(F)), e.addEventListener("copy", (e) => {
 		let t = document.getSelection();
 		if (!t || t.isCollapsed) return;
-		let n = (t.anchorNode?.nodeType === Node.ELEMENT_NODE ? t.anchorNode : t.anchorNode?.parentElement)?.closest?.("[data-middle-truncate]"), r = n && j.get(n);
-		!r || !n.contains(t.focusNode) || !e.clipboardData || (e.clipboardData?.setData("text/plain", r.full), e.preventDefault());
+		let n = (t.anchorNode?.nodeType === Node.ELEMENT_NODE ? t.anchorNode : t.anchorNode?.parentElement)?.closest?.("[data-middle-truncate]"), r = n && N.get(n);
+		r && n.contains(t.focusNode) && e.clipboardData && (e.clipboardData?.setData("text/plain", r.full), e.preventDefault());
 	});
 }
 //#endregion
 //#region src/ui-kit/overlay-scrollbar.ts
-function ze(e, { variant: t = "" } = {}) {
+function He(e, { variant: t = "" } = {}) {
 	if (!e || e.dataset.overlayScrollbar) return null;
 	let n = e === document.documentElement, r = n ? document.body : e.parentElement;
 	if (!r) return null;
@@ -548,7 +560,7 @@ function ze(e, { variant: t = "" } = {}) {
 }
 //#endregion
 //#region src/ui-kit/collapse.ts
-function Be(e, t, n, r = "summary") {
+function Ue(e, t, n, r = "summary") {
 	e?.querySelectorAll(t).forEach((e, t) => {
 		if (e.querySelector(":scope > .ui-fcollapse")) return;
 		let i = document.createElement("div");
@@ -561,65 +573,61 @@ function Be(e, t, n, r = "summary") {
 		r !== "summary" && e.querySelector("summary").addEventListener("click", (e) => e.preventDefault());
 		let s = e.open;
 		i.id = `${n}-${t}`, i.inert = !s, s && i.classList.add("ui-fcollapse-settled"), o.setAttribute("aria-controls", i.id), o.setAttribute("aria-expanded", String(s)), o.addEventListener("click", (t) => {
-			t.preventDefault(), s = !s, o.setAttribute("aria-expanded", String(s)), Ve(e, i, s);
+			t.preventDefault(), s = !s, o.setAttribute("aria-expanded", String(s)), We(e, i, s);
 		});
 	});
 }
-var P = /* @__PURE__ */ new WeakMap();
-function Ve(e, t, n) {
+var I = /* @__PURE__ */ new WeakMap();
+function We(e, t, n) {
 	t.classList.add("ui-fcollapse");
-	let r = (P.get(t) || 0) + 1;
-	P.set(t, r);
-	let i = () => P.get(t) === r;
+	let r = (I.get(t) || 0) + 1;
+	I.set(t, r);
+	let i = () => I.get(t) === r;
 	if (n) {
 		t.inert = !1;
 		let n = e.open ? t.getBoundingClientRect().height : 0;
-		e.open = !0, F(t, n, i);
-	} else t.inert = !0, t.classList.remove("ui-fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", He(t, () => {
+		e.open = !0, Ke(t, n, i);
+	} else t.inert = !0, t.classList.remove("ui-fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Ge(t, () => {
 		i() && (e.open = !1, t.style.height = "");
 	});
 }
-function He(e, t) {
+function Ge(e, t) {
 	let n = !1, r, i = (a) => {
 		a && a.propertyName !== "height" || n || (n = !0, e.removeEventListener("transitionend", i), clearTimeout(r), t());
 	};
 	e.addEventListener("transitionend", i), r = setTimeout(i, 260);
 }
-function F(e, t, n = () => !0) {
-	e.classList.remove("ui-fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", He(e, () => {
+function Ke(e, t, n = () => !0) {
+	e.classList.remove("ui-fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Ge(e, () => {
 		n() && (e.style.height = "auto", e.classList.add("ui-fcollapse-settled"));
 	});
 }
 //#endregion
 //#region src/ui-kit/anchored-menu.ts
-var I = null, L = globalThis;
-L.__peachMenuCloser || (L.__peachMenuCloser = !0, document.addEventListener("click", (e) => {
-	if (!I) return;
+var L = null, qe = globalThis;
+qe.__peachMenuCloser || (qe.__peachMenuCloser = !0, document.addEventListener("click", (e) => {
+	if (!L) return;
 	let t = e.target;
-	I.menu.contains(t) || I.toggle.contains(t) || I.mount.contains(t) && !(t instanceof Element && t.closest("a[href],button,input,select,textarea,summary,[role=button],[role=menuitem],[tabindex]")) || I.setOpen(!1);
+	L.menu.contains(t) || L.toggle.contains(t) || (!L.mount.contains(t) || t instanceof Element && t.closest("a[href],button,input,select,textarea,summary,[role=button],[role=menuitem],[tabindex]")) && L.setOpen(!1);
 }, !0));
-function Ue() {
-	I && I.setOpen(!1);
+function Je() {
+	L && L.setOpen(!1);
 }
 var R = /* @__PURE__ */ new WeakMap();
-function We(e) {
-	R.delete(e), e.classList.remove("leaving"), e.hidden && A("whoosh"), e.hidden = !1;
+function Ye(e) {
+	R.delete(e), e.classList.remove("leaving"), e.hidden && M("whoosh"), e.hidden = !1;
 }
-function Ge(e, t) {
+function Xe(e, t) {
 	if (e.hidden || R.has(e)) return;
 	let n = () => {
 		R.get(e) === n && (R.delete(e), e.classList.remove("leaving"), e.hidden = !0, t && t());
 	};
-	if (R.set(e, n), e.classList.add("leaving"), getComputedStyle(e).animationName === "none") {
-		n();
-		return;
-	}
-	e.addEventListener("animationend", (t) => {
+	R.set(e, n), e.classList.add("leaving"), getComputedStyle(e).animationName === "none" ? n() : (e.addEventListener("animationend", (t) => {
 		t.target === e && n();
-	}, { once: !0 }), setTimeout(n, 240);
+	}, { once: !0 }), setTimeout(n, 240));
 }
-var Ke = () => 8 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topH")) || 0);
-function qe(e, t) {
+var Ze = () => 8 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topH")) || 0);
+function Qe(e, t) {
 	return e.target instanceof Node && e.target.contains(t);
 }
 function z(e, t, n, { side: r = !1, align: i = "end" } = {}) {
@@ -629,24 +637,24 @@ function z(e, t, n, { side: r = !1, align: i = "end" } = {}) {
 			n.dataset.placement = "right", n.style.maxHeight = Math.max(0, innerHeight - 32) + "px", n.style.left = Math.max(16, Math.min(e.right + 8, innerWidth - a - 16)) + "px", n.style.top = Math.max(16, Math.min(e.top, innerHeight - n.offsetHeight - 16)) + "px";
 			return;
 		}
-		let o = Ke(), s = innerHeight - 8 - e.bottom - 8, c = e.top - 8 - o, l = n.scrollHeight + n.offsetHeight - n.clientHeight, u = s >= l || s >= c, d = Math.min(l, Math.max(u ? s : c, 0));
+		let o = Ze(), s = innerHeight - 8 - e.bottom - 8, c = e.top - 8 - o, l = n.scrollHeight + n.offsetHeight - n.clientHeight, u = s >= l || s >= c, d = Math.min(l, Math.max(u ? s : c, 0));
 		n.dataset.placement = u ? "bottom" : "top", n.style.maxHeight = d + "px";
 		let f = i === "start" || n.classList.contains("context-card") ? e.left : e.right - a;
 		n.style.left = Math.max(8, Math.min(f, innerWidth - a - 8)) + "px", n.style.top = (u ? e.bottom + 8 : e.top - 8 - d) + "px";
 	}, o = (e) => {
-		qe(e, t) && l(!1);
+		Qe(e, t) && l(!1);
 	}, s = n.hasAttribute("popover"), c = !1, l = (r) => {
-		r ? (I && I.mount !== e && I.setOpen(!1), c = !0, We(n), s && !n.matches(":popover-open") && n.showPopover(), a(), window.addEventListener("resize", a), window.addEventListener("scroll", o, {
+		r ? (L && L.mount !== e && L.setOpen(!1), c = !0, Ye(n), s && !n.matches(":popover-open") && n.showPopover(), a(), window.addEventListener("resize", a), window.addEventListener("scroll", o, {
 			capture: !0,
 			passive: !0
-		})) : (c = !1, window.removeEventListener("resize", a), window.removeEventListener("scroll", o, !0), Ge(n, () => {
+		})) : (c = !1, window.removeEventListener("resize", a), window.removeEventListener("scroll", o, !0), Xe(n, () => {
 			n.style.left = "", n.style.top = "", n.style.maxHeight = "", s && n.matches(":popover-open") && n.hidePopover();
-		})), t.setAttribute("aria-expanded", String(r)), I = r ? {
+		})), t.setAttribute("aria-expanded", String(r)), L = r ? {
 			mount: e,
 			menu: n,
 			toggle: t,
 			setOpen: l
-		} : I && I.mount === e ? null : I;
+		} : L && L.mount === e ? null : L;
 	};
 	return t.addEventListener("click", (e) => {
 		e.stopPropagation(), l(!c);
@@ -659,11 +667,11 @@ function z(e, t, n, { side: r = !1, align: i = "end" } = {}) {
 }
 //#endregion
 //#region src/ui-kit/select-field.ts
-function Je(e) {
+function $e(e) {
 	return e ? e.startsWith("data:image/png;base64,") ? `<img class="gselectmark" src="${m(e)}" alt="" width="16" height="16">` : n(e, "gselectmark") : "";
 }
-function Ye(e, t, { label: r = "", attr: i = "", className: a = "" } = {}) {
-	let o = e.find(([e]) => String(e) === String(t)) || e[0] || ["", ""], s = ([, e, t]) => `${Je(t)}${m(e)}`, c = e.map(([e, t, n]) => `<button type="button" role="option" data-select-option="${m(e)}"
+function et(e, t, { label: r = "", attr: i = "", className: a = "" } = {}) {
+	let o = e.find(([e]) => String(e) === String(t)) || e[0] || ["", ""], s = ([, e, t]) => `${$e(t)}${m(e)}`, c = e.map(([e, t, n]) => `<button type="button" role="option" data-select-option="${m(e)}"
       aria-selected="${String(e) === String(o[0])}" tabindex="-1"><span data-select-content>${s([
 		e,
 		t,
@@ -674,7 +682,7 @@ function Ye(e, t, { label: r = "", attr: i = "", className: a = "" } = {}) {
       aria-expanded="false" aria-label="${m(r)}"><span data-select-label>${s(o)}</span>${n("chevron-down")}</button>
     <div class="popmenu gselectmenu" role="listbox" aria-label="${m(r)}" popover="manual" data-select-menu hidden>${c}</div></div>`;
 }
-function Xe(e) {
+function tt(e) {
 	let t = e.querySelector("[data-select-trigger]"), n = e.querySelector("[data-select-menu]"), r = e.querySelector("[data-select-label]"), i = () => [...n.querySelectorAll("[data-select-option]")], a = () => n.querySelector("[aria-selected=\"true\"]");
 	t.addEventListener("click", () => {
 		let r = `${t.getBoundingClientRect().width}px`;
@@ -714,60 +722,60 @@ function Xe(e) {
 }
 //#endregion
 //#region src/ui-kit/media-source-icons.ts
-var Ze = {
+var nt = {
 	local: "hard-drive",
 	115: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAHB0lEQVR4nO2bbUwURxjH/zN38qIcb4JWoIoHFYumWhDbRquNiSlYC4ZGjVYrotHWD1VTLdY00X7zbA22Na21KWqsUMHYSiygJjaRQDW+VK2YioBarVZBQA9QDm6nedajCuxxHrfH7dX+kiXcvszM8+zO7DPP/JfBzcQmfx4O1jpJEmKUgBTHwUYIIAyAwbYRZtoYUCdBVDLwi5yxCgjfo1Uly2vd2T7mjkJj3vgsUVitcwWkqQxstAv1CAFxnoEfZjpdbvXPq05p1gFxqSZDexuWCIhMCMTDHTBcYGA5+n7YdrEwy6xOkS4yJi07uMliWSGEeB9ACPqGBsbYFwE+PpvP7l/Z6BEHCCFYzDRTBgATBMLhCRhofMiqLsrawRgTvSuiFxinbxjK2pErgAnQAAwoE3rMrTmw5s9eXOscxpSNE5iQ9glgEDQEA24LxtNrij8sc+Y67szJscmmTAjpiNaMJ+Q2CemI3Ea1n4CZM/N1p5pqPoXASngDDNmJAcbVBQWzrI5PfRLjzTX7AKTCuyhMNBjTHTmBOypFvvPeZzyRamt775+A2GRTpgTxHbwYDraoqiQrx2kHGFM2TqBBBYAPvBsLGJ9i7+3AenjPn9DiaN/rV6QeSUpxgl4pwotNMeWqbXw/PceYuAiEBvk7dZ2/Xz8MCQvE2JERGB4ZgteXOt8jyRY5cBPi1a4Ro77rybbwVtUIzzDAF7mmOYiPGexSOZt2Hu31tRS12mzbbvctMCYtO1iO7VVmUXqSy8bX323Bjp9OutoUk81GZQc0WSwr1J7YBAb4IiNtnMvlbCs4jpYHba4VIhAu26jkgLhUk8E2pVWVRenj5S7QWyxtVhQcOoecH0+o0h6ykWztNga0t2GJ2vP5oAA/ZKQldtv/1Q+/Yv8vFWg0P3BYhrm5Fa2WdjWbFWKzdVMnB8iZHJVZ/NZ4BPTvfPfzis64NJipgc1W2QG8I4endhor2OCHd1ITOu27/6AN2btK4XEE4mWbYXMAJTD74u5/f+A07jS2QAt02MzlH5Cmqn/3u/d9vV6HyeOM8nFP02Ezo7y9hPu31MwQr86YjHdnv9zjOTXX7+D4uWsoKv0D5WeuwgMIDv/Belq0gFDP+JBAf8zv0veVMEYNlLc508bir1t3sffw78g/eA5/16mS7X4SGNnOacVG7b4/wN+5CWTk4CAsnzcRh79djPlvOnaeWkhCjOK0XKVmoXWNzdhTchalpy7Ld9YZ+vv5YP2yqfK8YfDAALgbASmOxSRvoGmv67GqHcJCBuDFkRHybC5pdBQSno8EY457XPW1O5i9ajca7t13V9Oo359kxuQNlwFEo494JsyAGVNGYeGMcbJzeuLcxZt4e02e63MA+1yh1+C/cXFfQIPc1vxjmJSxFZt3lcJqleye+0LcEKyYP9GdzTH0uQM6oPj+y9xyzM3Kw83ae3bPmzc9ARGDAt3qAI9ysuI6Zn2wG7X1TYrHfX30WDb7FbfVz23iBI9yo/YeFq/bK88VlJicZHRX1WZNOIA4X3ULuw6cVjwWER6I6Ai3rLybOclSoBFy9p2wO/ePHTpQ9foYUMdJkwONUNvQjIuXlSVBOp36w5UEUclJkAQNcdPOXIDTs6oyjMRYshpLQ1gl5big5nq96nVxxio4SdEeps21QVx0uGJesPKK6mo5QbZz0uGRFA0agMLk4ZGh3faX/XaF9HKqQjZXlSyvlUcW0uFBA9BUWKmvUxZZbTps5vIPnS4XHoZecwsU0mgHyypRUU0JK3XpsJnTH1mByXABHoKySFvWzpAXQrtOiT/aXKx+hQwXOlSn/NE+ZldE4E6GDQlGwaZ5eG4YyYcfcbu+CRkf5+Nuk+PFE2d53Fbe8Q/JT0mBiT6CJjlLZ76Eoq8zMTyq88B36WodFqzdgxu37c8SXaDBZqtMpxEnJsW0XgixDm6CNAKUGaLU+OzkMQgN6t/peLtVwjf5x7Alr1xeE3QHjLFPqouz1ivqAwJ8fDabLa3LXF0hHjEsDBMSoqHjHH4+egwM7g9jVCgS46O69XOC0l6Hyiuxs/CU3VBYFRhqycbOu7pgTNmwEAI5aiyMvjbeiEkJRhifDUXkoCB5qbyt3YrmFguu3mxE5dVaHCq7hPIzV2CV+iAWY8isKV6zvUcHiIcSmVKt6IDV1BNXFWd1k8jwbicyJkh4TMIi/EewiaTmKinKudIFpKYi4bEsMfN+LLKI2o6SnNu7inR1HOw9eDlkQ08Kct7TxbLCkiEb3gpDdk8qUcJhmoVU1yQ8hvdRaGs7XHJAQcEsK6muvepJILn8EyjFCafyTDbx9Nca1g9bqM87euwfhzlbw1P9yQxBFZDwmAILaATbR1NJzhpP/P/ZHFzkqf1wsitP7aezSjyVH0/DDlr/fP4fOwTeE5lpP+gAAAAASUVORK5CYII=",
 	pikpak: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACY0lEQVR4nNWXy2tTQRSHv7m5RUWttqlNW1OairhKNbrU+lhE/AOkdCOIIO7arty0QhSxCIIQ7VJwIfgfCIJdFB+rgC32AVIflD5CbFUsoohJRiZzb5Ne05p4kxv94HCTc+bO+c0MM3eOoICD/TJswAAQBdoBH5UhA8wDo1mIv7ojpuyAsH9EBuQgkmuASXVJI4lN3BXDawIifXIQwQ28RDA0ERfDwpr2cQ9G7iSdhcOGteZeJ1eYKreB5DS1I2oiCJba2hDQVA9tjdDaCHMfICuhMwDJz5D8BMtftK9E2s2NttrJMOxvzSdT1rIb6goW69KIXsjr5/K+nxlIWWKWrOebJIxNFhXgK7r20QjcPL+59PllGH8LarDvU3oWFHU+CDZpK+TKA3j88vd+zGKd93av/y8lrKxao7Ls6bROrrj6EE6E9WzZppZKrJ0y0Hu8RAGhZuhohqk5nShp2Y/0+nZqxPaoFQsr2my2mNDSkBe01w/7AvAu9QcB/nrYs0vboU4qSsNOwCHAoMYY/5WAsckNt1NJ8WKY5TS+fF8/E7f/Lu5aQDrjLu5agOlzF3ct4NYFd3HXAk51uYv/k9vQLPeFr9/h4gh0dcCBNu17vaiP7nt9sGNblQVs3wo9x+DZNCRm9aUyFICebh0rF9PpWP22+QvqC3f2qLZyKda34XTMLsGLGSrO8xndtxMR6ZfqQ+tz7uczRyDor0zyxY/6LlDkoMqYVsUSKvSqho8SVB/JglqCUWqF4ImharVcueQ96j4bN3KFoiDmeXpJTOXO7QJVoyEZ8mgm0rm6sLA4talFef4LaurBZfZxNPMAAAAASUVORK5CYII="
-}, Qe = /* @__PURE__ */ new Set([
+}, rt = /* @__PURE__ */ new Set([
 	"secondary",
 	"warning",
 	"error",
 	"success"
 ]);
-function $e({ readout: e = "", controls: t = "", before: n = "", className: r = "", loading: i = !1, filterRow: a = "" } = {}) {
+function it({ readout: e = "", controls: t = "", before: n = "", className: r = "", loading: i = !1, filterRow: a = "" } = {}) {
 	return `<div class="entitycollectionhead${r ? " " + m(r) : ""}"${a ? ` data-filter-row="${m(a)}"` : ""}>${n}<h3${i ? " class=\"skeleton\"" : ""}>${e}</h3>${t}</div>`;
 }
-function et({ label: e = "", items: t = [], footnote: n = "" } = {}) {
+function at({ label: e = "", items: t = [], footnote: n = "" } = {}) {
 	return `<details class="geist-note-details"><summary>${m(e)}</summary>
     <ul>${t.map((e) => `<li>${e.href ? `<a href="${m(e.href)}">${m(e.label || "")}</a>` : `<b>${m(e.label || "")}</b>`}<span>${m(e.note || "")}</span>${e.hint ? `<code>${m(e.hint)}</code>` : ""}</li>`).join("")}</ul>${n ? `<p>${m(n)}</p>` : ""}</details>`;
 }
 function B(e, { variant: t = "secondary", label: i = "", className: a = "", size: o = "medium", filled: s = !1, actionLabel: c = "", actionHref: l = "", details: u = null } = {}) {
-	let d = Qe.has(t) ? t : "secondary", f = d === "secondary" ? "info" : d === "success" ? "check" : "alert", p = d === "error" ? " role=\"alert\"" : " role=\"note\"", h = c ? l ? `<a class="geist-button" href="${m(l)}" data-note-action>${m(c)}</a>` : `<button type="button" class="geist-button primary" data-note-action>${m(c)}</button>` : "";
+	let d = rt.has(t) ? t : "secondary", f = d === "secondary" ? "info" : d === "success" ? "check" : "alert", p = d === "error" ? " role=\"alert\"" : " role=\"note\"", h = c ? l ? `<a class="geist-button" href="${m(l)}" data-note-action>${m(c)}</a>` : `<button type="button" class="geist-button primary" data-note-action>${m(c)}</button>` : "";
 	return `<div class="geist-note geist-note-${d}${a ? ` ${m(a)}` : ""}${o === "small" ? " geist-note-small" : ""}${s ? " geist-note-filled" : ""}"${p}>
-    ${n(f)}<p>${i ? `<b>${m(i)}</b>` : ""}<span>${m(d === "error" ? r(e) : e)}</span></p>${h}${u ? et(u) : ""}</div>`;
+    ${n(f)}<p>${i ? `<b>${m(i)}</b>` : ""}<span>${m(d === "error" ? r(e) : e)}</span></p>${h}${u ? at(u) : ""}</div>`;
 }
-var tt = {
+var ot = {
 	gray: "project-banner-gray",
 	success: "ui-project-banner-success",
 	warning: "ui-project-banner-warning",
 	error: "ui-project-banner-error"
 };
-function nt(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}) {
+function st(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}) {
 	let s = [
 		"gray",
 		"success",
 		"warning",
 		"error"
 	].includes(t) ? t : "gray";
-	return `<aside class="ui-project-banner ${tt[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? rt("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
+	return `<aside class="ui-project-banner ${ot[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? ct("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
 }
-function rt(e, t, n = 100, { usage: r = !1, compact: i = !1 } = {}) {
+function ct(e, t, n = 100, { usage: r = !1, compact: i = !1 } = {}) {
 	let a = Number(n), o = Number(t);
 	if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(o)) return `<span>${m(e)}：未取得</span>`;
 	let s = Math.max(0, Math.min(100, o / a * 100)), c = r ? s >= 95 ? "error" : s >= 80 ? "warning" : "normal" : "normal", l = r ? c === "error" ? "空间即将用满" : c === "warning" ? "空间使用偏高" : "空间充足" : "";
 	return `<span class="ui-geist-gauge" data-level="${c}" role="progressbar" aria-label="${m(e + (l ? "：" + l : ""))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${s} 100"/></svg></span>${l && !i ? `<span class="ui-gauge-status">${l}</span>` : ""}`;
 }
-function it(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
+function lt(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
 	let a = Math.max(0, Number(n) || 0), o = Math.max(0, Math.min(Number(t) || 0, a)), s = a ? o / a * 100 : 0;
 	return `<div class="ui-geist-progress" role="progressbar" aria-label="${m(e)}"
     aria-valuemin="0" aria-valuemax="${a}" aria-valuenow="${o}"
     style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="ui-geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
 }
-function at(e = "加载中") {
+function ut(e = "加载中") {
 	let t = Array.from({ length: 10 }, (e, t) => `<i aria-hidden="true" style="--spinner-angle:${t * 36}deg;--spinner-delay:${t * 100 - 900}ms"></i>`).join("");
 	return `<span class="ui-geist-spinner" role="status" aria-label="${m(e)}">${t}</span>`;
 }
-function ot({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a = "", attrs: o = "" } = {}) {
+function dt({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a = "", attrs: o = "" } = {}) {
 	let s = [
 		"type=\"search\" enterkeyhint=\"search\"",
 		t ? `id="${m(t)}"` : "",
@@ -782,41 +790,41 @@ function ot({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a 
     <span class="geist-search-prefix" data-search-prefix>${n("search")}</span>
     <input ${s}></div>`;
 }
-function st(e = "正在处理", { className: t = "" } = {}) {
+function ft(e = "正在处理", { className: t = "" } = {}) {
 	return `<span class="ui-geist-loading${t ? ` ${m(t)}` : ""}" role="status">
     <span class="ui-geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span>${m(e)}</span></span>`;
 }
-function ct(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图", className: a = "", panel: o = "" } = {}) {
+function pt(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图", className: a = "", panel: o = "" } = {}) {
 	let s = e.map(({ value: e, label: i, count: a, symbol: s }) => {
 		let c = String(e) === String(t), l = a == null ? "" : `<span class="ui-board-tab-count">${m(Number(a).toLocaleString())}</span>`;
 		return `<button type="button" role="tab" ${r}="${m(e)}" aria-selected="${c}"${o ? ` aria-controls="${m(o)}"` : ""}>${s ? n(s) : ""}${m(i)}${l}</button>`;
 	}).join("");
 	return `<div class="ui-board-local-nav ui-board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
 }
-function lt(e, t, r, { className: i = "", actions: a = "" } = {}) {
+function mt(e, t, r, { className: i = "", actions: a = "" } = {}) {
 	return `<div class="ui-emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
     <div class="ui-es-icon" aria-hidden="true">${n(e)}</div>
     <div class="ui-es-copy"><h3>${m(t)}</h3><p>${m(r)}</p></div>
     ${a ? `<div class="ui-es-actions">${a}</div>` : ""}
   </div>`;
 }
-function ut(e) {
+function ht(e) {
 	return `<span class="ui-geist-badge">${m(e)}</span>`;
 }
-function dt(e = "") {
+function gt(e = "") {
 	return `<span class="ui-pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
 }
 //#endregion
 //#region src/ui-kit/motion.ts
-function ft(e, t, r = "a", { className: i = "", iconClass: a = "", label: o = "" } = {}) {
+function _t(e, t, r = "a", { className: i = "", iconClass: a = "", label: o = "" } = {}) {
 	return `<span class="iconswap${i ? " " + m(i) : ""}" data-icon-swap data-icon-state="${r === "b" ? "b" : "a"}"${o ? ` aria-label="${m(o)}"` : ""}><span data-icon="a">${n(e, a)}</span><span data-icon="b">${n(t, a)}</span></span>`;
 }
-function pt(e, t) {
+function vt(e, t) {
 	let n = e && (e.matches?.("[data-icon-swap]") ? e : e.querySelector?.("[data-icon-swap]"));
 	return n && (n.dataset.iconState = t === "b" || t === !0 ? "b" : "a"), n;
 }
-function mt(e, t, { html: n = !1 } = {}) {
+function yt(e, t, { html: n = !1 } = {}) {
 	if (!e) return;
 	let r = String(t ?? ""), i = () => {
 		n ? e.innerHTML = r : e.textContent = r;
@@ -836,7 +844,7 @@ function mt(e, t, { html: n = !1 } = {}) {
 		e.classList.contains("leaving") && (e.removeEventListener("transitionend", s), o());
 	}, 400);
 }
-function ht(e, t) {
+function bt(e, t) {
 	if (!e) return;
 	let n = String(t ?? ""), r = e.dataset.popCount;
 	if (r === n && e.firstElementChild) return;
@@ -846,7 +854,7 @@ function ht(e, t) {
 	let a = e.firstElementChild;
 	a.getBoundingClientRect(), a.classList.add("popping");
 }
-function gt(e, t = e && e.parentElement, { text: n = e && e.value, scrollLeft: r = e && e.scrollLeft || 0 } = {}) {
+function xt(e, t = e && e.parentElement, { text: n = e && e.value, scrollLeft: r = e && e.scrollLeft || 0 } = {}) {
 	if (!e || !t || (t.querySelectorAll(":scope > .cleardissolve").forEach((e) => e.remove()), e.classList.remove("dissolving"), e.value = "", !n || !e.isConnected)) return () => {};
 	let i = e.getBoundingClientRect(), a = t.getBoundingClientRect();
 	if (!i.width) return () => {};
@@ -873,14 +881,14 @@ function gt(e, t = e && e.parentElement, { text: n = e && e.value, scrollLeft: r
 	};
 	return o.addEventListener("animationend", d), u = setTimeout(d, 1e3), d;
 }
-var _t = /* @__PURE__ */ new Map();
-function vt(e, t = "") {
+var St = /* @__PURE__ */ new Map();
+function Ct(e, t = "") {
 	e && e.querySelectorAll("[data-count-badge]").forEach((e) => {
-		let n = `${t}\u0000${e.dataset.countBadge}`, r = e.textContent || "", i = _t.get(n);
-		_t.set(n, r), e.classList.add("countbadge"), i !== void 0 && i !== r && (e.classList.add("popped"), e.getBoundingClientRect(), e.classList.remove("popped"));
+		let n = `${t}\u0000${e.dataset.countBadge}`, r = e.textContent || "", i = St.get(n);
+		St.set(n, r), e.classList.add("countbadge"), i !== void 0 && i !== r && (e.classList.add("popped"), e.getBoundingClientRect(), e.classList.remove("popped"));
 	});
 }
-function yt(e, t = "[data-reveal-line]") {
+function wt(e, t = "[data-reveal-line]") {
 	if (!e) return;
 	let n = [...e.querySelectorAll(t)];
 	if (!n.length) return;
@@ -898,13 +906,9 @@ function yt(e, t = "[data-reveal-line]") {
 }
 //#endregion
 //#region src/ui-kit/skeleton.ts
-function bt(e, t) {
+function Tt(e, t) {
 	if (!e) return;
-	if (e.querySelector(".skeleton-awaiting")) {
-		t();
-		return;
-	}
-	if (!e.querySelector(".skeleton,[data-skeleton],.skeletoncard,.countskeleton") || !e.firstChild) {
+	if (e.querySelector(".skeleton-awaiting") || !e.querySelector(".skeleton,[data-skeleton],.skeletoncard,.countskeleton") || !e.firstChild) {
 		t();
 		return;
 	}
@@ -920,7 +924,7 @@ function bt(e, t) {
 		n.isConnected && (n.removeEventListener("transitionend", i), r());
 	}, 1e3);
 }
-function xt() {
+function Et() {
 	return `<div class="ui-configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
 		["通用", 2],
 		["媒体", 2],
@@ -929,7 +933,7 @@ function xt() {
 		["维护", 3]
 	].map(([e, t]) => `<h2 class="ui-configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
 }
-function St(e = "正在读取内容", { className: t = "", variant: n = "panel", count: r = 6, fill: i = !0, gridClass: a = "", gridSize: o = "", cardRatio: s = 0 } = {}) {
+function Dt(e = "正在读取内容", { className: t = "", variant: n = "panel", count: r = 6, fill: i = !0, gridClass: a = "", gridSize: o = "", cardRatio: s = 0 } = {}) {
 	let c = (/* @__PURE__ */ new Set([
 		"panel",
 		"cards",
@@ -943,7 +947,7 @@ function St(e = "正在读取内容", { className: t = "", variant: n = "panel",
     role="status" aria-label="${m(e)}"><span class="sr-only">${m(e)}</span>
     <div${a ? ` class="${m(a)}"` : ""}${o ? ` data-size="${m(o)}"` : ""}${c === "cards" && Number(s) > 0 ? ` style="--skeleton-card-ratio:${Number(s)}"` : ""} aria-hidden="true">${l}</div></div>`;
 }
-function Ct({ kind: e, layout: t = "big", mode: n = "alphabet" } = {}) {
+function Ot({ kind: e, layout: t = "big", mode: n = "alphabet" } = {}) {
 	let r = e !== "tags", i = e === "studios" || e === "agencies", a = r ? "<span class=\"icell\"><span class=\"ring skeleton\"></span><span class=\"nm skeleton\">&nbsp;</span><span class=\"n skeleton\">&nbsp;</span></span>" : "<span class=\"alphatag\"><span class=\"skeleton\"></span><span class=\"n skeleton\"></span></span>", o = r ? `igrid" data-cells="${i ? "company" : "people"}" data-layout="${m(t)}` : "ui-alphalist", s = !r && n === "cloud" ? `<div class="tagwall index-tags">${Array.from({ length: 60 }, (e, t) => `<span class="tg skeleton" style="width:${[
 		92,
 		128,
@@ -954,11 +958,11 @@ function Ct({ kind: e, layout: t = "big", mode: n = "alphabet" } = {}) {
 	return `<div class="skeletonpanel index-skeleton" data-skeleton="index/${m(e)}/${m(t)}/${m(n)}"${r ? " data-fill=\"\"" : ""}
     role="status" aria-label="${c}"><span class="sr-only">${c}</span><section aria-hidden="true">${s}</section></div>`;
 }
-var wt = {
+var kt = {
 	av: () => "<span class=\"av avskeleton\"><span class=\"ring\"></span><span class=\"nm\">&nbsp;</span></span>",
 	brandpill: (e) => `<span class="brandpill brandskeleton" style="width:${e}px"><span class="mk"></span></span>`,
 	pill: (e) => `<span class="pill tagskeleton" style="width:${e}px"></span>`
-}, Tt = {
+}, At = {
 	av: [0],
 	brandpill: [
 		132,
@@ -985,47 +989,47 @@ var wt = {
 		76,
 		84
 	]
-}, Et = 180, Dt = "[data-skeleton],[data-skeleton-tier],.countskeleton";
-function Ot(e) {
+}, jt = 180, Mt = "[data-skeleton],[data-skeleton-tier],.countskeleton";
+function Nt(e) {
 	if (!e) return;
-	let t = [...e.matches?.(Dt) ? [e] : [], ...e.querySelectorAll(Dt)], n = t.filter((e) => !t.some((t) => t !== e && t.contains(e)));
+	let t = [...e.matches?.(Mt) ? [e] : [], ...e.querySelectorAll(Mt)], n = t.filter((e) => !t.some((t) => t !== e && t.contains(e)));
 	for (let e of n) e.dataset.skeletonReveal || (e.dataset.skeletonReveal = "pending", e.classList.add("skeleton-awaiting"), setTimeout(() => {
-		!e.isConnected || e.dataset.skeletonReveal !== "pending" || (e.dataset.skeletonReveal = "shown", e.classList.remove("skeleton-awaiting"));
+		e.isConnected && e.dataset.skeletonReveal === "pending" && (e.dataset.skeletonReveal = "shown", e.classList.remove("skeleton-awaiting"));
 	}, 180));
 }
-var kt = 64;
-function At(e) {
-	e = e.filter((e) => e.row && wt[e.kind] && (!e.row.children.length || e.row.scrollWidth <= e.row.clientWidth)).map((e) => ({
+var Pt = 64;
+function Ft(e) {
+	e = e.filter((e) => e.row && kt[e.kind] && (!e.row.children.length || e.row.scrollWidth <= e.row.clientWidth)).map((e) => ({
 		...e,
 		start: e.row.children.length,
 		added: 0
 	}));
 	let t = (e, t) => {
-		let n = wt[e.kind], r = Tt[e.kind], i = "";
-		for (let a = Math.min(kt, e.added + t); e.added < a; e.added++) i += n(r[e.added % r.length]);
+		let n = kt[e.kind], r = At[e.kind], i = "";
+		for (let a = Math.min(Pt, e.added + t); e.added < a; e.added++) i += n(r[e.added % r.length]);
 		e.row.insertAdjacentHTML("beforeend", i);
 	};
-	for (let n of e) t(n, Tt[n.kind].length);
+	for (let n of e) t(n, At[n.kind].length);
 	for (let n = 0; n < 4; n++) {
-		let n = e.filter((e) => e.added < kt && e.row.scrollWidth <= e.row.clientWidth).map((e) => {
+		let n = e.filter((e) => e.added < Pt && e.row.scrollWidth <= e.row.clientWidth).map((e) => {
 			let t = e.row.children[e.start].getBoundingClientRect(), n = e.row.lastElementChild.getBoundingClientRect(), r = Math.max(1, (n.right - t.left) / e.added);
 			return [e, Math.ceil((e.row.getBoundingClientRect().right - n.right) / r) + 1];
 		});
 		if (!n.length) break;
 		for (let [e, r] of n) t(e, Math.max(1, r));
 	}
-	for (let t of e) Ot(t.row);
+	for (let t of e) Nt(t.row);
 }
-function jt(e, t) {
-	At([{
+function It(e, t) {
+	Ft([{
 		row: e,
 		kind: t
 	}]);
 }
-function Mt(e) {
+function Lt(e) {
 	if (!e) return;
 	let t = (t) => [...e.matches?.(t) ? [e] : [], ...e.querySelectorAll(t)];
-	At(t("[data-skeleton-tier]").map((e) => ({
+	Ft(t("[data-skeleton-tier]").map((e) => ({
 		row: e,
 		kind: e.dataset.skeletonTier
 	})));
@@ -1038,15 +1042,15 @@ function Mt(e) {
 		for (; e.children.length > s;) e.lastElementChild.remove();
 		for (; e.children.length < s;) e.appendChild(t.cloneNode(!0));
 	}
-	Ot(e);
+	Nt(e);
 }
 //#endregion
 //#region src/ui-kit/scroll.ts
-var V = /* @__PURE__ */ new Map(), H, Nt = 240, Pt = 50, Ft = 70, It = .55, Lt = .35, Rt = 480;
+var V = /* @__PURE__ */ new Map(), H, Rt = 240, zt = 50, Bt = 70, Vt = .55, Ht = .35, Ut = 480;
 function U(e, t) {
-	return !e || !(t > 0) ? 0 : Math.sign(e) * (1 - 1 / (Math.abs(e) * It / t + 1)) * t;
+	return !e || !(t > 0) ? 0 : Math.sign(e) * (1 - 1 / (Math.abs(e) * Vt / t + 1)) * t;
 }
-function zt(e) {
+function Wt(e) {
 	let t = null, n = 0, r = () => typeof e.animate != "function" || matchMedia("(prefers-reduced-motion:reduce)").matches, i = () => {
 		t = null, n || e.classList.remove("edgepull");
 	}, a = (n, r) => {
@@ -1066,7 +1070,7 @@ function zt(e) {
 		},
 		kick(t) {
 			if (r() || n) return;
-			let i = -U(t * Lt, Math.min(e.clientWidth, Rt));
+			let i = -U(t * Ht, Math.min(e.clientWidth, Ut));
 			if (!i) return;
 			let o = J();
 			a([
@@ -1084,14 +1088,14 @@ function zt(e) {
 		}
 	};
 }
-function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
+function Gt(e, { drag: t = !1, fade: n = !0 } = {}) {
 	if (!e) return;
 	let r = V.get(e);
 	if (r) return r.options.drag ||= t, r.options.fade ||= n, r.update(), r;
 	let i = {
 		drag: t,
 		fade: n
-	}, a = new AbortController(), o = zt(e), s = null, c = 0, l = 0, u = 0, d = !1, f = 0, p = 0, m = 0, h = 0, g = (t, n) => {
+	}, a = new AbortController(), o = Wt(e), s = null, c = 0, l = 0, u = 0, d = !1, f = 0, p = 0, m = 0, h = 0, g = (t, n) => {
 		e.dataset[t] !== n && (e.dataset[t] = n);
 	}, _ = () => {
 		i.fade && (g("overflowLeft", String(e.scrollLeft > 1)), g("overflowRight", String(e.scrollLeft + e.clientWidth < e.scrollWidth - 1)));
@@ -1106,11 +1110,8 @@ function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
 		cancelAnimationFrame(f), f = 0, h = 0;
 	}, x = (t) => {
 		let n = Math.min(Math.max(t - p, 0), 64);
-		if (p = t, m += (u - m) * (1 - Math.exp(-n / Ft)), Math.abs(u - m) < .5 && (m = u), e.scrollLeft = m, m !== u) {
-			f = requestAnimationFrame(x);
-			return;
-		}
-		if (f = 0, h) {
+		if (p = t, m += (u - m) * (1 - Math.exp(-n / Bt)), Math.abs(u - m) < .5 && (m = u), e.scrollLeft = m, m !== u) f = requestAnimationFrame(x);
+		else if (f = 0, h) {
 			let e = h;
 			h = 0, y(e);
 		}
@@ -1120,15 +1121,11 @@ function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
 		if (t.defaultPrevented || !t.cancelable || Math.abs(t.deltaY) <= Math.abs(t.deltaX) || n <= 0) return;
 		t.preventDefault();
 		let r = performance.now(), i = Math.abs(t.deltaY);
-		r > l && (d = !1), l = r + Nt;
+		r > l && (d = !1), l = r + Rt;
 		let a = f ? u : e.scrollLeft, o = a + t.deltaY;
 		u = Math.min(n, Math.max(0, o));
 		let s = o === u ? 0 : t.deltaY;
-		if (i < Pt || u === a) {
-			u !== a && (b(), e.scrollLeft = u), s && !f ? y(s) : s && (h = s);
-			return;
-		}
-		s && (h = s), f ||= (m = e.scrollLeft, p = performance.now(), requestAnimationFrame(x));
+		i < zt || u === a ? (u !== a && (b(), e.scrollLeft = u), s && !f ? y(s) : s && (h = s)) : (s && (h = s), f ||= (m = e.scrollLeft, p = performance.now(), requestAnimationFrame(x)));
 	}, { passive: !1 }), v(e, "mousedown", (t) => {
 		!i.drag || t.button !== 0 || e.scrollWidth - e.clientWidth <= 1 || (t.stopPropagation(), b(), s = {
 			x: t.pageX,
@@ -1159,8 +1156,8 @@ function Bt(e, { drag: t = !1, fade: n = !0 } = {}) {
 		subtree: !0
 	})), _(), C;
 }
-var Vt = 24, Ht = 2e3, Ut = 3e3, W = /* @__PURE__ */ new Map(), G = /* @__PURE__ */ new Set(), K = null;
-function Wt(e) {
+var Kt = 24, qt = 2e3, Jt = 3e3, W = /* @__PURE__ */ new Map(), G = /* @__PURE__ */ new Set(), K = null;
+function Yt(e) {
 	if (!e || W.has(e) || matchMedia("(prefers-reduced-motion:reduce)").matches) return;
 	let t = new AbortController(), n = e.scrollLeft, r = 1, i = 0, a = 0, o = !1, s = 0, c = (e, n, r) => e.addEventListener(n, r, {
 		passive: !0,
@@ -1178,11 +1175,11 @@ function Wt(e) {
 		let o = i ? Math.min(t - i, 64) : 0;
 		i = t;
 		let c = e.scrollWidth - e.clientWidth;
-		t < s || c <= 1 || (n = Math.min(c, Math.max(0, n + r * Vt * o / 1e3)), e.scrollLeft = n, (n >= c || n <= 0) && (r = n >= c ? -1 : 1, s = t + Ht));
+		t < s || c <= 1 || (n = Math.min(c, Math.max(0, n + r * Kt * o / 1e3)), e.scrollLeft = n, (n >= c || n <= 0) && (r = n >= c ? -1 : 1, s = t + qt));
 	}, f = () => {
 		e.isConnected ? !a && u() && (i = 0, a = requestAnimationFrame(d)) : m();
 	}, p = () => {
-		s = performance.now() + Ut;
+		s = performance.now() + Jt;
 	};
 	c(e, "scroll", () => {
 		Math.abs(e.scrollLeft - n) > 1 && (n = e.scrollLeft, p());
@@ -1203,7 +1200,7 @@ function Wt(e) {
 		attributeFilter: ["data-detail-open"]
 	}));
 }
-function Gt(e) {
+function Xt(e) {
 	W.get(e)?.();
 }
 var q = null;
@@ -1217,7 +1214,7 @@ function J() {
 	}
 	return q;
 }
-function Kt(e, t, n, r = "x") {
+function Zt(e, t, n, r = "x") {
 	e.style.width = `${n.w}px`, e.style.height = `${n.h}px`;
 	let i = r === "y" ? "h" : "w", a = r === "y" ? "y" : "x", o = `${n.x}px ${n.y}px`;
 	if (t && t[a] !== n[a] && !matchMedia("(prefers-reduced-motion:reduce)").matches) {
@@ -1249,7 +1246,7 @@ function Kt(e, t, n, r = "x") {
 	}
 	e.style.translate = o;
 }
-function qt(e, { className: t = "", label: n = "可滚动内容", overflow: r = "y" } = {}) {
+function Qt(e, { className: t = "", label: n = "可滚动内容", overflow: r = "y" } = {}) {
 	let i = (/* @__PURE__ */ new Set([
 		"x",
 		"y",
@@ -1262,15 +1259,15 @@ function qt(e, { className: t = "", label: n = "可滚动内容", overflow: r = 
 }
 function Y(e) {
 	let t = e.querySelector(":scope > .ui-geist-scroller-container"), n = e.querySelector(":scope > .ui-geist-scroller-overlay");
-	!t || !n || (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
+	t && n && (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
 }
-function Jt(e = document) {
+function $t(e = document) {
 	e.querySelectorAll("[data-geist-scroller]").forEach((e) => {
 		let t = e.querySelector(":scope > .ui-geist-scroller-container");
 		t && (t.dataset.scrollerWired || (t.dataset.scrollerWired = "true", t.addEventListener("scroll", () => Y(e), { passive: !0 }), t.addEventListener("load", () => Y(e), !0)), requestAnimationFrame(() => Y(e)));
 	});
 }
-var Yt = [
+var en = [
 	"[data-stage-side-content]",
 	"[data-stage-scroll]",
 	".tagpickbody",
@@ -1290,14 +1287,10 @@ var Yt = [
 	".follow-workspace-switch",
 	".fmanagenav",
 	"[role=\"listbox\"]"
-].join(","), Xt = ".reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
-function Zt(e = document) {
-	e.querySelectorAll(Yt).forEach((e) => {
-		if (e.matches(Xt)) {
-			Bt(e);
-			return;
-		}
-		ze(e);
+].join(","), tn = ".reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
+function nn(e = document) {
+	e.querySelectorAll(en).forEach((e) => {
+		e.matches(tn) ? Gt(e) : He(e);
 	});
 }
 //#endregion
@@ -1305,38 +1298,38 @@ function Zt(e = document) {
 function X(e, t = !0) {
 	e && (t ? (e.setAttribute("aria-busy", "true"), e.setAttribute("aria-disabled", "true")) : (e.removeAttribute("aria-busy"), e.removeAttribute("aria-disabled")));
 }
-var Qt = /* @__PURE__ */ new WeakSet();
-function $t(e = document) {
-	Qt.has(e) || (Qt.add(e), e.addEventListener("click", (t) => {
+var rn = /* @__PURE__ */ new WeakSet();
+function an(e = document) {
+	rn.has(e) || (rn.add(e), e.addEventListener("click", (t) => {
 		let n = t.target.closest?.("button[aria-busy=\"true\"],[role=\"button\"][aria-busy=\"true\"]");
-		!n || !e.contains(n) || (t.preventDefault(), t.stopImmediatePropagation());
+		n && e.contains(n) && (t.preventDefault(), t.stopImmediatePropagation());
 	}, !0));
 }
-function en(e, t, r, i, { attr: a = "", className: o = "", text: s = !1 } = {}) {
+function on(e, t, r, i, { attr: a = "", className: o = "", text: s = !1 } = {}) {
 	let c = r.map(([t, r, o]) => `<label title="${m(r)}"><input type="radio" name="${m(e)}" value="${m(t)}" ${a}
       ${t === i ? "checked" : ""}><span aria-hidden="true">${s ? (o ? n(o) : "") + m(r) : n(o)}</span><span class="sr-only">${m(r)}</span></label>`).join("");
 	return `<fieldset class="iconswitch${o ? ` ${m(o)}` : ""}"><legend class="sr-only">${m(t)}</legend>${c}</fieldset>`;
 }
-function tn(e, t, n) {
+function sn(e, t, n) {
 	e?.querySelectorAll(`[${t}]`).forEach((e) => {
 		e.onchange = () => {
 			e.checked && n(e.value);
 		};
 	});
 }
-var nn = 9;
-function rn({ value: e = 0, min: t = 0, max: n = 100, step: r = 1, label: i = "", suffix: a = "%", attr: o = "", className: s = "" } = {}) {
+var cn = 9;
+function ln({ value: e = 0, min: t = 0, max: n = 100, step: r = 1, label: i = "", suffix: a = "%", attr: o = "", className: s = "" } = {}) {
 	let c = n > t ? (e - t) / (n - t) * 100 : 0, l = `${e}${a}`;
 	return `<div class="ui-dial${s ? ` ${m(s)}` : ""}" ${o}>
     <div class="ui-dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${m(i)}"
       aria-valuemin="${t}" aria-valuemax="${n}" aria-valuenow="${e}" aria-valuetext="${m(l)}"
       data-dial-step="${r}" style="--dial-at:${c}%">
       <span class="ui-dial-track" aria-hidden="true"><span class="ui-dial-fill"></span></span>
-      <span class="ui-dial-ticks" aria-hidden="true">${"<span></span>".repeat(nn)}</span>
+      <span class="ui-dial-ticks" aria-hidden="true">${"<span></span>".repeat(cn)}</span>
       <span class="ui-dial-handle" aria-hidden="true"></span>
     </div><b class="ui-dial-value mono" data-dial-value>${m(l)}</b></div>`;
 }
-function an(e, { onInput: t = () => {}, onChange: n = () => {}, suffix: r = "%" } = {}) {
+function un(e, { onInput: t = () => {}, onChange: n = () => {}, suffix: r = "%" } = {}) {
 	let i = e.querySelector("[data-dial-slider]"), a = e.querySelector("[data-dial-value]"), o = e.querySelector(".ui-dial-track"), s = +i.getAttribute("aria-valuemin"), c = +i.getAttribute("aria-valuemax"), l = +i.dataset.dialStep || 1, u = +i.getAttribute("aria-valuenow"), d = (e) => Math.min(c, Math.max(s, Math.round(e / l) * l)), f = () => {
 		let e = `${u}${r}`;
 		i.style.setProperty("--dial-at", `${c > s ? (u - s) / (c - s) * 100 : 0}%`), i.setAttribute("aria-valuenow", String(u)), i.setAttribute("aria-valuetext", e), a && (a.textContent = e);
@@ -1384,7 +1377,7 @@ function an(e, { onInput: t = () => {}, onChange: n = () => {}, suffix: r = "%" 
 		}
 	};
 }
-function on(e, t, n) {
+function dn(e, t, n) {
 	n.classList.add("context-card"), n.setAttribute("popover", "manual"), n.setAttribute("role", "dialog"), n.tabIndex = -1, t.setAttribute("aria-haspopup", "dialog"), t.setAttribute("aria-controls", n.id);
 	let r = z(e, t, n), i, a = () => {
 		clearTimeout(i), r.setOpen(!1);
@@ -1406,7 +1399,7 @@ function on(e, t, n) {
 		hide: a
 	};
 }
-function sn(e, { selector: t, attribute: n, onMove: r } = {}) {
+function fn(e, { selector: t, attribute: n, onMove: r } = {}) {
 	let i = () => [...e.querySelectorAll(t)], a = () => i().forEach((e) => e.classList.remove("dragging", "drop-before", "drop-after")), o = null;
 	i().forEach((e) => {
 		let t = e.getAttribute(n);
@@ -1428,11 +1421,11 @@ function sn(e, { selector: t, attribute: n, onMove: r } = {}) {
 }
 //#endregion
 //#region src/ui-kit/modal.ts
-var cn = 0;
-function ln({ title: e, description: t = "", body: n = "", confirmLabel: r, cancelLabel: i = "取消", onConfirm: a = null, confirmDisabled: o = !1 } = {}) {
+var pn = 0;
+function mn({ title: e, description: t = "", body: n = "", confirmLabel: r, cancelLabel: i = "取消", onConfirm: a = null, confirmDisabled: o = !1 } = {}) {
 	let s = document.activeElement, c = document.createElement("dialog");
 	c.className = "ui-geist-modal";
-	let l = `geist-form-title-${++cn}`;
+	let l = `geist-form-title-${++pn}`;
 	c.setAttribute("aria-labelledby", l), c.innerHTML = `<form class="ui-geist-modal-form" novalidate>
       <div class="ui-geist-modal-body"><h3 id="${l}"></h3>${t ? "<p></p>" : ""}
         <div class="ui-geist-modal-fields">${n}</div><div data-modal-error></div></div>
@@ -1453,34 +1446,33 @@ function ln({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 		e.target === c && !m && c.close();
 	}), c.querySelector("form").onsubmit = async (e) => {
 		if (e.preventDefault(), !(m || d.disabled)) {
-			if (!a) {
-				p = { confirmed: !0 }, c.close();
-				return;
-			}
-			f.innerHTML = "", m = !0, X(d);
-			try {
-				p = {
-					confirmed: !0,
-					result: await a()
-				}, c.close();
-			} catch (e) {
-				f.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(d, !1);
-			} finally {
-				m = !1;
+			if (!a) p = { confirmed: !0 }, c.close();
+			else {
+				f.innerHTML = "", m = !0, X(d);
+				try {
+					p = {
+						confirmed: !0,
+						result: await a()
+					}, c.close();
+				} catch (e) {
+					f.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(d, !1);
+				} finally {
+					m = !1;
+				}
 			}
 		}
-	}, c.showModal(), A("pop"), (c.querySelector(".ui-geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
+	}, c.showModal(), M("pop"), (c.querySelector(".ui-geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
 		dialog: c,
 		confirmButton: d,
 		done: h,
 		close: () => c.close()
 	};
 }
-var un = 0;
-function dn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onConfirm: i = null, danger: a = !1 } = {}) {
+var hn = 0;
+function gn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onConfirm: i = null, danger: a = !1 } = {}) {
 	let o = document.activeElement, s = document.createElement("dialog");
 	s.className = "ui-geist-modal";
-	let c = `geist-modal-title-${++un}`;
+	let c = `geist-modal-title-${++hn}`;
 	s.setAttribute("aria-labelledby", c), s.innerHTML = `<div class="ui-geist-modal-body">
       <h3 id="${c}"></h3><p></p><div data-modal-error></div></div>
     <footer class="geist-modal-footer">
@@ -1502,28 +1494,27 @@ function dn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onC
 			e.target === s && !n && !a && s.close();
 		}), u.onclick = async () => {
 			if (!n) {
-				if (!i) {
-					t = { confirmed: !0 }, s.close();
-					return;
-				}
-				d.innerHTML = "", n = !0, X(u);
-				try {
-					t = {
-						confirmed: !0,
-						result: await i()
-					}, s.close();
-				} catch (e) {
-					d.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(u, !1);
-				} finally {
-					n = !1;
+				if (!i) t = { confirmed: !0 }, s.close();
+				else {
+					d.innerHTML = "", n = !0, X(u);
+					try {
+						t = {
+							confirmed: !0,
+							result: await i()
+						}, s.close();
+					} catch (e) {
+						d.innerHTML = B(e.message || "操作未完成", { variant: "error" }), X(u, !1);
+					} finally {
+						n = !1;
+					}
 				}
 			}
-		}, s.showModal(), A("pop"), (a ? l : u).focus();
+		}, s.showModal(), M("pop"), (a ? l : u).focus();
 	});
 }
 //#endregion
 //#region src/onboarding/post-setup-tutorial.ts
-var fn = "peach.post-setup-tutorial.v1", Z = "peach.post-setup-tutorial-collapsed.v1", pn = "peach.post-setup-tutorial-skipped.v1", Q = (e) => {
+var _n = "peach.post-setup-tutorial.v1", Z = "peach.post-setup-tutorial-collapsed.v1", vn = "peach.post-setup-tutorial-skipped.v1", Q = (e) => {
 	try {
 		return localStorage.getItem(e);
 	} catch {
@@ -1533,22 +1524,22 @@ var fn = "peach.post-setup-tutorial.v1", Z = "peach.post-setup-tutorial-collapse
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
-}, mn = () => Q("peach.post-setup-tutorial.v1") || "", hn = (e) => $(fn, e), gn = () => Q(Z) === "1", _n = (e) => $(Z, e ? "1" : "0"), vn = () => {
+}, yn = () => Q("peach.post-setup-tutorial.v1") || "", bn = (e) => $(_n, e), xn = () => Q(Z) === "1", Sn = (e) => $(Z, e ? "1" : "0"), Cn = () => {
 	try {
 		let e = JSON.parse(Q("peach.post-setup-tutorial-skipped.v1") || "[]");
 		return new Set(Array.isArray(e) ? e.filter((e) => typeof e == "string") : []);
 	} catch {
 		return /* @__PURE__ */ new Set();
 	}
-}, yn = (e) => $(pn, JSON.stringify([...e])), bn = (e) => JSON.stringify(e.map((e) => [
+}, wn = (e) => $(vn, JSON.stringify([...e])), Tn = (e) => JSON.stringify(e.map((e) => [
 	e.key,
 	e.done,
 	e.label,
 	e.description,
 	e.href
-])), xn = 0, Sn = () => ++xn, Cn = (e) => e === xn;
-function wn() {
-	yn(/* @__PURE__ */ new Set()), _n(!1), hn("pending");
+])), En = 0, Dn = () => ++En, On = (e) => e === En;
+function kn() {
+	wn(/* @__PURE__ */ new Set()), Sn(!1), bn("pending");
 }
 //#endregion
-export { e as $, ue as DURATION_TAGS, d as ENTITY_ROUTES, se as LOC, Ze as MEDIA_SOURCE_ICONS, Z as POST_SETUP_TUTORIAL_COLLAPSED_KEY, fn as POST_SETUP_TUTORIAL_KEY, pn as POST_SETUP_TUTORIAL_SKIPPED_KEY, f as ROUTE_ENTITIES, c as ROUTE_STATES, Et as SKELETON_REVEAL_DELAY, l as STATE_LABELS, s as STATE_ROUTES, w as TAG_DISPLAY_NAMES, xe as UI_SOUNDS, i as api, ze as attachOverlayScrollbar, ut as badgeHtml, ct as boardTabsHtml, S as brandIcon, dt as checkboxHtml, de as cleanTagFilter, Ue as closeAnchoredMenu, $e as collectionHeaderHtml, xt as configurationSkeletonHtml, dn as confirmModal, rn as dialSliderHtml, Ge as dismissMenu, gt as dissolveValue, lt as emptyStateHtml, p as entityPath, m as esc, jt as fillSkeletonTier, Mt as fitSkeleton, ae as fmtClock, ie as fmtDur, oe as fmtSize, C as foldName, ln as formModal, rt as gaugeHtml, J as glideEase, F as growCollapse, T as hasJapaneseText, n as icon, ft as iconSwapHtml, en as iconSwitchHtml, Ct as indexSkeletonHtml, Re as initMiddleTruncate, a as isAbort, u as isCatalogPath, Cn as isCurrentPostSetupTutorialRequest, ge as javDisplayName, me as javFileDisplayName, he as javPreferredTitle, _e as javTitleHtml, E as javTitleParts, y as linkMarkUrl, st as loadingDotsHtml, o as mapLimit, Me as middleTruncateText, Kt as moveGlidePane, le as newSeed, Sn as nextPostSetupTutorialRequest, B as noteHtml, ne as officialLinkText, A as playUiSound, vt as popBadges, ht as popCount, gn as postSetupTutorialCollapsed, mn as postSetupTutorialMarker, bn as postSetupTutorialSignature, vn as postSetupTutorialSkipped, We as presentMenu, it as progressHtml, nt as projectBannerHtml, re as realDuration, r as requestErrorMessage, wn as resetPostSetupTutorialState, bt as revealSkeleton, yt as revealTexts, U as rubberBand, qe as scrollMovesAnchor, qt as scrollerHtml, ot as searchInputHtml, ce as seededRank, Ye as selectFieldHtml, Je as selectOptionIconHtml, X as setActionBusy, Ve as setCollapseOpen, pt as setIconSwap, _n as setPostSetupTutorialCollapsed, hn as setPostSetupTutorialMarker, yn as setPostSetupTutorialSkipped, Se as setUiSoundsEnabled, b as siteMarkUrl, v as siteName, St as skeletonHtml, at as spinnerHtml, Gt as stopAutoScroll, mt as swapText, fe as tagLabel, Ce as uiSoundsEnabled, z as wireAnchoredMenu, Wt as wireAutoScroll, $t as wireBusyActions, Be as wireCollapse, on as wireContextCard, an as wireDialSlider, sn as wireDragReorder, Bt as wireHorizontalScroller, tn as wireIconSwitch, Zt as wireOverlayScrollbars, Jt as wireScrollers, Xe as wireSelectField, De as wireUiSounds };
+export { e as $, me as DURATION_TAGS, d as ENTITY_ROUTES, de as LOC, nt as MEDIA_SOURCE_ICONS, Z as POST_SETUP_TUTORIAL_COLLAPSED_KEY, _n as POST_SETUP_TUTORIAL_KEY, vn as POST_SETUP_TUTORIAL_SKIPPED_KEY, f as ROUTE_ENTITIES, c as ROUTE_STATES, jt as SKELETON_REVEAL_DELAY, l as STATE_LABELS, s as STATE_ROUTES, ge as TAG_DISPLAY_NAMES, we as UI_SOUNDS, i as api, He as attachOverlayScrollbar, ht as badgeHtml, pt as boardTabsHtml, S as brandIcon, gt as checkboxHtml, he as cleanTagFilter, ue as clipGraphemes, Je as closeAnchoredMenu, it as collectionHeaderHtml, Et as configurationSkeletonHtml, gn as confirmModal, ln as dialSliderHtml, Xe as dismissMenu, xt as dissolveValue, mt as emptyStateHtml, p as entityPath, m as esc, It as fillSkeletonTier, le as firstGrapheme, Lt as fitSkeleton, ae as fmtClock, ie as fmtDur, oe as fmtSize, C as foldName, mn as formModal, ct as gaugeHtml, J as glideEase, Ke as growCollapse, ye as hasJapaneseText, n as icon, _t as iconSwapHtml, on as iconSwitchHtml, Ot as indexSkeletonHtml, Ve as initMiddleTruncate, a as isAbort, u as isCatalogPath, On as isCurrentPostSetupTutorialRequest, xe as javDisplayName, T as javFileDisplayName, be as javPreferredTitle, Se as javTitleHtml, E as javTitleParts, ce as leadingGraphemes, y as linkMarkUrl, ft as loadingDotsHtml, o as mapLimit, Fe as middleTruncateText, Zt as moveGlidePane, pe as newSeed, Dn as nextPostSetupTutorialRequest, B as noteHtml, ne as officialLinkText, M as playUiSound, Ct as popBadges, bt as popCount, xn as postSetupTutorialCollapsed, yn as postSetupTutorialMarker, Tn as postSetupTutorialSignature, Cn as postSetupTutorialSkipped, Ye as presentMenu, lt as progressHtml, st as projectBannerHtml, re as realDuration, r as requestErrorMessage, kn as resetPostSetupTutorialState, Tt as revealSkeleton, wt as revealTexts, U as rubberBand, Qe as scrollMovesAnchor, Qt as scrollerHtml, dt as searchInputHtml, fe as seededRank, et as selectFieldHtml, $e as selectOptionIconHtml, X as setActionBusy, We as setCollapseOpen, vt as setIconSwap, Sn as setPostSetupTutorialCollapsed, bn as setPostSetupTutorialMarker, wn as setPostSetupTutorialSkipped, Te as setUiSoundsEnabled, b as siteMarkUrl, v as siteName, Dt as skeletonHtml, ut as spinnerHtml, Xt as stopAutoScroll, yt as swapText, _e as tagLabel, Ee as uiSoundsEnabled, z as wireAnchoredMenu, Yt as wireAutoScroll, an as wireBusyActions, Ue as wireCollapse, dn as wireContextCard, un as wireDialSlider, fn as wireDragReorder, Gt as wireHorizontalScroller, sn as wireIconSwitch, nn as wireOverlayScrollbars, $t as wireScrollers, tt as wireSelectField, Ae as wireUiSounds };
