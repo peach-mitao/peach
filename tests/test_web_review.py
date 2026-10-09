@@ -1303,7 +1303,7 @@ class ReviewQueueTests(unittest.TestCase):
         self._asset(501, "ABW-501", "ABW-501.mp4")
         self._seed_tags(501, ["肛交", "巨乳"])
         protected = [("高跟", "manual"), ("丝袜", "name"), ("美乳", "stash")]
-        with sqlite3.connect(self.db_path) as con:
+        with contextlib.closing(sqlite3.connect(self.db_path)) as con, con:
             for tag, source in protected:
                 con.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(501,?,1,?)",
                             (tag, source))
@@ -1314,13 +1314,13 @@ class ReviewQueueTests(unittest.TestCase):
         self.write_metadata_rows([{"item_key": "asset:501:tags", "code": "ABW-501",
             "field": "tags", "current": "", "candidates": [
                 {"value": ["肛交", "巨乳"], "display": "肛交、巨乳"},
-                {"source": "javdb", "value": ["高跟", "丝袜", "屁眼"], "display": "高跟、丝袜、屁眼",
+                {"source": "javdb", "value": ["高跟", "丝袜", "美乳", "屁眼"], "display": "高跟、丝袜、美乳、屁眼",
                  "unmapped_genres": ["未知类别501"]}]}])
         self.assertEqual(self._auto()["applied"], 1)
         linked, flat = self._tags_of(501)
         self.assertEqual(flat, {"高跟", "丝袜", "美乳", "屁眼"})
         self.assertNotIn("肛交", linked)
-        with sqlite3.connect(self.db_path) as con:
+        with contextlib.closing(sqlite3.connect(self.db_path)) as con:
             for tag, source in protected:
                 self.assertEqual(con.execute("SELECT source FROM asset_tag WHERE asset_id=501 AND tag=?",
                                              (tag,)).fetchone()[0], source)
@@ -2592,13 +2592,14 @@ class ReviewQueueTests(unittest.TestCase):
         con.close()
 
     def test_metadata_tag_approval_writes_tags_for_detail_consumers(self):
-        con = sqlite3.connect(self.db_path)
-        con.execute("UPDATE asset SET code='ABC-001' WHERE id=1")
-        con.execute(
-            "INSERT INTO asset_tag(asset_id,tag,confidence,source) "
-            "VALUES(1,'美乳',0.4,'filename')"
-        )
-        con.commit(); con.close()
+        with contextlib.closing(sqlite3.connect(self.db_path)) as con, con:
+            con.execute("UPDATE asset SET code='ABC-001' WHERE id=1")
+            con.execute(
+                "INSERT INTO asset_tag(asset_id,tag,confidence,source) "
+                "VALUES(1,'美乳',0.4,'filename')"
+            )
+            upsert_asset_entity(con, kind="tag", name="美乳", asset_id=1, role="tag",
+                                source="filename", confidence=0.4)
         candidate = {
             "candidate_key": "ABC-001:tags:r18dev:abc", "source": "r18dev",
             "source_url": "https://r18.dev/example", "confidence": 0.9,
@@ -2616,14 +2617,21 @@ class ReviewQueueTests(unittest.TestCase):
             "candidate_key": candidate["candidate_key"], "status": "approved",
         })
         self.assertEqual(result["applied_assets"], 1)
-        con = sqlite3.connect(self.db_path)
-        self.assertEqual(con.execute(
-            "SELECT tag,confidence,source FROM asset_tag WHERE asset_id=1 ORDER BY tag"
-        ).fetchall(), [
-            ("美乳", 0.9, "javinizer:r18dev:tag"),
-            ("颜射", 0.9, "javinizer:r18dev:tag"),
-        ])
-        con.close()
+        with contextlib.closing(sqlite3.connect(self.db_path)) as con:
+            self.assertEqual(con.execute(
+                "SELECT tag,confidence,source FROM asset_tag WHERE asset_id=1 ORDER BY tag"
+            ).fetchall(), [
+                ("美乳", 0.9, "javinizer:r18dev:tag"),
+                ("颜射", 0.9, "javinizer:r18dev:tag"),
+            ])
+            self.assertEqual(con.execute(
+                "SELECT e.canonical_name,ae.confidence,ae.source FROM asset_entity ae "
+                "JOIN entity e ON e.id=ae.entity_id WHERE ae.asset_id=1 AND ae.role='tag' "
+                "AND ae.source='javinizer:r18dev:tag' ORDER BY e.canonical_name"
+            ).fetchall(), [
+                ("美乳", 0.9, "javinizer:r18dev:tag"),
+                ("颜射", 0.9, "javinizer:r18dev:tag"),
+            ])
 
     def test_a_stale_candidate_lands_on_the_current_vocabulary(self):
         """候选文件停在抓取那一刻：那时给的撤掉的粗桶与退役名，落库时按现在的词表处理。"""

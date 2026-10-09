@@ -1317,7 +1317,10 @@ def _apply_metadata_candidate(
     for asset_id in asset_ids:
         for tag in tags:
             connection.execute(
-                "INSERT OR IGNORE INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,?,?,?)",
+                "INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,?,?,?) "
+                "ON CONFLICT(asset_id,tag) DO UPDATE SET "
+                "confidence=excluded.confidence,source=excluded.source "
+                "WHERE asset_tag.source='filename' AND asset_tag.confidence<excluded.confidence",
                 (asset_id, tag, confidence, f"javinizer:{source}:tag"),
             )
             upsert_asset_entity(

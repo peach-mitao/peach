@@ -1363,8 +1363,8 @@ class LibraryNfoTests(unittest.TestCase):
     def test_a_source_that_already_answered_within_the_week_is_not_asked_again(self):
         """上一趟存下的原始快照还新鲜就直接用，不发请求。
 
-        有效期与「说过没有」的记忆同一个（7 天）：两边同时到期，才不会出现「没有」
-        已经过期、「有」还压着旧值。「重试未完成项」要的就是新答复，强制重问。
+        有效期与「说过没有」的记忆同一个（7 天）。给过待批候选的来源不重问；
+        重试忽略过期/缺失记忆，只向尚未给过候选的来源请求新答复。
         """
         media = self.root / 'media'
         media.mkdir()
@@ -1393,7 +1393,80 @@ class LibraryNfoTests(unittest.TestCase):
 
         os.utime(snapshot_path, (time.time() - 8 * 24 * 3600,) * 2)
         run(retry_ids=[1])
-        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb', 'r18dev', 'javdb'])
+        # r18dev 的整份答复已在待批候选表；重试不重复该来源。DMM 尚未给过候选，
+        # 社区档在重试时可以再查此前只说过「没有」的 JavDB。
+        retry_sources = [call.args[1] for call in provider.query.call_args_list[1:]]
+        self.assertEqual(retry_sources, ['dmm'])
+        provider.community.assert_called_once()
+        self.assertIn('javdb', provider.community.call_args.kwargs['route'])
+        rows = {row['field']: json.loads(row['candidates_json'])
+                for row in read_rows(self.root / 'generated/library-metadata-field-candidates.csv')}
+        self.assertEqual([entry['source'] for entry in rows['title']], ['r18dev'])
+        self.assertEqual(rows['title'][0]['value'], '甘やかされて')
+
+    @windows_ledger_roots
+    def test_fresh_official_and_javdb_snapshots_supply_scalars_and_tags_without_queries(self):
+        media = self.root / 'media'
+        media.mkdir()
+        (media / 'DASS-468.mp4').write_bytes(b'video')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': (str(media),)})
+        directory = config.directory('sources') / 'library-metadata'
+        directory.mkdir(parents=True)
+        documents = {
+            'r18dev': {'id': 'DASS-468', 'title': '甘やかされて', 'maker': 'Das',
+                      'release_date': '2024-09-10', 'actresses': [{'japanese_name': '胡桃さくら'}]},
+            'javdb': {'id': 'DASS-468', 'genres': ['高跟鞋', 'Anal Play'],
+                      'source_url': 'https://javdb.com/v/example'},
+        }
+        for source, payload in documents.items():
+            (directory / f'DASS-468-{source}.json').write_text(
+                json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+        provider = stub_provider()
+        provider.cover.return_value = False
+        result = process_library(config, db, self.root / 'generated', self.root / 'covers',
+                                 provider_factory=Mock(return_value=provider))
+        provider.query.assert_not_called()
+        provider.community.assert_not_called()
+        self.assertEqual((result['status'], result['issue_count']), ('complete', 0))
+        rows = {row['field']: json.loads(row['candidates_json'])
+                for row in read_rows(self.root / 'generated/library-metadata-field-candidates.csv')}
+        self.assertEqual([entry['source'] for entry in rows['title']], ['r18dev'])
+        self.assertEqual([(entry['source'], entry['value']) for entry in rows['tags']],
+                         [('javdb', ['高跟', '屁眼'])])
+        self.assertEqual(Path(rows['tags'][0]['raw_snapshot']), directory / 'DASS-468-javdb.json')
+
+    def test_expired_javdb_snapshot_is_requested_once_and_answered_sources_are_skipped(self):
+        from peach.library_processing import _MissCache, _RemoteSession, misses_path
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        path = config.directory('sources') / 'library-metadata' / 'DASS-468-javdb.json'
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'id': 'DASS-468', 'genres': ['口交']}), encoding='utf-8')
+        os.utime(path, (time.time() - 8 * 24 * 3600,) * 2)
+        provider = Mock()
+        provider.query.return_value = {'id': 'DASS-468', 'genres': ['高跟鞋']}
+        session = _RemoteSession(config, Mock(return_value=provider),
+                                 _MissCache(misses_path(config)), retrying=False)
+        options = dict(update=Mock(), issue=Mock(), deadline=time.monotonic() + 60)
+        try:
+            entries = session._preferred_tags({}, 'DASS-468', ['tags'], ('r18dev', 'javdb'),
+                                              [], set(), **options)
+            self.assertEqual([(source, payload['genres']) for source, payload, _ in entries],
+                             [('javdb', ['高跟鞋'])])
+            provider.query.assert_called_once()
+            self.assertEqual(provider.query.call_args.args, ('DASS-468', 'javdb'))
+            # 同一趟已取到的来源、已有待批候选的来源均不重问；新鲜快照直接复用。
+            self.assertEqual(session._preferred_tags({}, 'DASS-468', ['tags'], ('r18dev', 'javdb'),
+                                                      entries, set(), **options), [])
+            self.assertEqual(session._preferred_tags({}, 'DASS-468', ['tags'], ('r18dev', 'javdb'),
+                                                      [], {'javdb'}, **options), [])
+            cached = session._preferred_tags({}, 'DASS-468', ['tags'], ('r18dev', 'javdb'),
+                                             [], set(), **options)
+            self.assertEqual(cached, entries)
+            provider.query.assert_called_once()
+        finally:
+            session.close()
 
     @windows_ledger_roots
     def test_a_cached_product_page_still_sends_the_row_to_the_mirror_for_its_cast(self):
