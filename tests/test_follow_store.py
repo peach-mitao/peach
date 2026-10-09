@@ -1277,6 +1277,16 @@ class ImageDimsTests(_StoreCase):
         ])).metadata["media_items"]
         self.assertEqual((media_items[0]["width"], media_items[0]["height"]), (640, 480))
 
+    def test_a_refetched_media_tuple_keeps_learned_dims(self):
+        """f95 的清单是附件与 gofile 两段拼成的 tuple，学到的尺寸照样对回。"""
+        source_id = self._source(provider="kemono", ref="a")
+        attachment = {"id": "f95-attachment-1", "media_kind": "image",
+                      "url": "https://attachments.f95zone.to/2026/10/1_a.png"}
+        item = self._record(source_id, self._image(media_items=[attachment]))
+        self.store.set_image_dims(item.id, 2000, 1125, media_index=0)
+        media_items = self._record(source_id, self._image(media_items=(attachment,))).metadata["media_items"]
+        self.assertEqual((media_items[0]["width"], media_items[0]["height"]), (2000, 1125))
+
 
 class EnrichedMarkTests(_StoreCase):
     """「这一行不必再打详情页」怎么从 ledger 里读出来。"""
