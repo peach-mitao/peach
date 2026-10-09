@@ -1,14 +1,18 @@
-/* 舞台岛（ADR-0031 第 11a 步）：详情浮窗 `<dialog id="stage">`、它的进出场、骨架与揭示、两座详情、
- * 播放器与小窗都在这一棵根里。
+/* 舞台（ADR-0031 第 11a 步）：详情浮窗 `<dialog id="stage">`、它的进出场、骨架与揭示、两座详情、
+ * 播放器与小窗都在这一面里。
  *
- * 宿主是 body 末尾一个常驻容器，一棵根常驻；壳只拿 `configureStage` 给的命令式入口（形同图片灯箱
- * 与 Toast），不进路由树（`openManagedRoute`）：那一套是给壳的页面容器用的，容器归壳、换页就被整块重写，而舞台
- * 盖在所有页面之上，小窗还要在换页之后接着放。
+ * 常驻面 `stage`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进 body 末尾的常驻宿主
+ * `[data-stage-host]`，宿主就是那个节点本身、不包 `.peach-react`，第一次打开详情时由 `islands.ts` 的
+ * `loadStage` 建好、在画出小窗节点的同一个任务里挂进文档。舞台盖在所有页面之上，小窗要在换页之后接着放，
+ * 所以宿主不跟某一页走。壳只拿 `configureStage` 给的命令式入口：句柄写本模块的 store 再 `flushSync` 通知，
+ * `open`（含原地换条）、`update` 与 `dispose` 里每一次绘制都在返回之前画完，紧跟着读 DOM 的代码（骨架量尺寸、
+ * `showModal`、标题揭示、焦点交给关闭键）读到的就是刚画好的结构。
  *
- * 每次 `open` 换一枚 `generation`：dialog 按它重建，取数回来时代次不对就作废。两座详情是舞台树里的
- * 子组件，和页面岛共用同一个 QueryClient（`providers.tsx`）。 */
-import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+ * 每次 `open` 换一枚 `generation`，取数回来时代次不对就作废；重开时 dialog 按它重建，原地换条沿用开着的那个。
+ * 两座详情是这一面的子组件，和页面共用路由树的 QueryClient（`providers.tsx`）。两座详情画出来时报给壳的 `present` 排到微任务里：壳收到后
+ * 会画侧栏与顶栏，那几座常驻面的句柄内部 `flushSync`，在路由树的提交阶段里画不出来。微任务在浏览器绘制前
+ * 跑完；那一条已经换走（原地换条或重开）或舞台已经收起就不报。 */
+import { useLayoutEffect, useRef, useSyncExternalStore, type MouseEvent, type PointerEvent } from 'react';
 import { flushSync } from 'react-dom';
 
 import { detailPosterUrl, releaseHoverPreviews } from '@peach/card-art';
@@ -20,7 +24,6 @@ import { prefetchFollowDetail, type FollowDetailActions, type FollowDetailProps 
 import { FollowDetailPage } from '../follow-detail/follow-detail-page';
 import { prefetchItemDetail, type ItemDetailActions, type ItemDetailProps } from '../item-detail/item-detail';
 import { ItemDetailPage } from '../item-detail/item-detail-page';
-import { Providers } from '../providers';
 import { Miniplayer } from './miniplayer';
 import * as player from './stage-player';
 import type { StageApi, StageHost, StagePatch, StageRequest } from './stage-api';
@@ -41,9 +44,8 @@ interface View {
 }
 
 let host: StageHost | null = null;
-let root: Root | null = null;
-let container: HTMLElement | null = null;
 let view: View | null = null;
+const listeners = new Set<() => void>();
 let generation = 0;
 let controller: AbortController | null = null;
 /* 关闭键、Escape、点浮窗外面与原生 `cancel` 可能在同一下里各来一次：退场动画期间再要一次，
@@ -63,20 +65,18 @@ function stageHost(): StageHost {
   return host;
 }
 
-function stageRoot(): Root {
-  if (!root || !container?.isConnected) {
-    root?.unmount();
-    container = document.createElement('div');
-    container.dataset.stageHost = '';
-    document.body.append(container);
-    root = createRoot(container);
-  }
-  return root;
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener) };
 }
 
+function notify(): void {
+  for (const listener of [...listeners]) listener();
+}
+
+/* 返回时已经画完。这一面抛错、被错误边界卸掉之后没人订阅，`view` 照旧写进 store，不画、不抛。 */
 function paint(): void {
-  const at = stageRoot();
-  flushSync(() => at.render(<Providers><StageTree view={view} /></Providers>));
+  flushSync(notify);
 }
 
 function StageTree({ view: current }: { view: View | null }) {
@@ -163,6 +163,8 @@ function contentFor(request: StageRequest): Content {
     return hit;
   };
   const settings = () => stageHost().player.settings();
+  /* 原地换条沿用浮窗开着时的代次（dialog 不重建），所以按这一次打开的 request 认：换条与重开都换一份新的。 */
+  const live = () => view?.request === request;
   if (request.kind === 'item') {
     const { kind: _kind, resume: _resume, actions: base, ...props } = request;
     const actions: ItemDetailActions = {
@@ -173,7 +175,7 @@ function contentFor(request: StageRequest): Content {
         player.setStageMeta({ kind: 'item', item, title: String(item.title || item.name || ''),
           sub: String(performers?.[0] || item.creator || '未归属') });
         toggleStageModes(settings().ambientMode, settings().theaterMode);
-        base.present(item, queue);
+        queueMicrotask(() => { if (live()) base.present(item, queue) });
       },
       mountPlayer: (frame, item, _media, options) => player.attachStagePlayer(frame, {
         kind: 'item', item, autoplay: options?.autoplay, resume: takeResume(item.id), id: 'vid',
@@ -188,7 +190,7 @@ function contentFor(request: StageRequest): Content {
     present: (item, kind) => {
       player.setStageMeta({ kind: 'follow', item, title: item.title || '', sub: item.author || item.source_label || '' });
       toggleStageModes(kind === 'video' && settings().ambientMode, kind === 'video' && settings().theaterMode);
-      base.present(item, kind);
+      queueMicrotask(() => { if (live()) base.present(item, kind) });
     },
     mountPlayer: (frame, item, media, options) => player.attachStagePlayer(frame, {
       kind: 'follow', item, media, poster: item.thumb_url || undefined, onError: options.onError, resume: takeResume(item.id),
@@ -365,10 +367,16 @@ const api: StageApi = {
   miniplayerPlay: (id) => { void player.miniplayerPlay(id) },
 };
 
-/** 接上壳给的宿主，拿回舞台的命令式入口。小窗的节点随根一起画出来，第一次进小窗之前就在。 */
+/** 接上壳给的宿主，拿回舞台的命令式入口。先接播放器；小窗的节点在路由树打开这一面时画出来，第一次进小窗
+ *  之前就在。 */
 export function configureStage(next: StageHost): StageApi {
   host = next;
   player.configureStagePlayer(next, { isOpen: () => !!view, requestClose });
-  paint();
   return api;
+}
+
+/** 常驻面 `stage` 的组件：订阅本模块的 store。小窗节点无条件画着，播放器搬进搬出都命令式地落在它里面。 */
+export function StageSurface() {
+  const at = useSyncExternalStore(subscribe, () => view);
+  return host ? <StageTree view={at} /> : null;
 }

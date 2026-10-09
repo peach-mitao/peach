@@ -58,6 +58,7 @@ import { prefetchConfiguration } from '../settings/configuration';
 import { ConfigurationPage } from '../settings/configuration-page';
 import { SettingsPanelSurface } from '../settings-panel/settings-panel';
 import { SidebarSurface } from '../sidebar/sidebar-island';
+import { StageSurface } from '../stage/stage';
 import { prefetchStats } from '../stats/stats';
 import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
@@ -280,8 +281,9 @@ const isSurfaceName = (key: string): key is SurfaceName => Object.hasOwn(SURFACE
 /* 常驻面，按名字登记：壳启动时经 `openResidentSurface` 各开一次，一直算当前页，没有首屏取数，宿主就是壳的
    那个节点。从不收，只有错误边界会卸它的组件，宿主照旧留在文档里。打开不带 props：壳经命令式句柄推内容，
    组件订阅自己模块里的 store，句柄里的绘制同步做完。管理区页头与侧栏的宿主里先有壳的启动骨架，打开时由
-   `place` 在画出首帧的同一个任务里清掉；沉浸的宿主不在壳的页面里，第一次打开时新建，由 `place` 在画出首帧的
-   同一个任务里挂到 body 末尾；设置面板的宿主在第一次打开时才有，由 `place` 在同一个任务里放进 body 末尾。 */
+   `place` 在画出首帧的同一个任务里清掉；沉浸与舞台的宿主不在壳的页面里，第一次打开时新建，由 `place` 在画出首帧
+   （沉浸是藏着的外框，舞台是小窗节点）的同一个任务里挂到 body 末尾；设置面板的宿主在第一次打开时才有，由 `place`
+   在同一个任务里放进 body 末尾。 */
 export const RESIDENT_ROUTES: ResidentRouteTable = {
   'batch-dock': {
     prefetch: async () => {},
@@ -306,6 +308,10 @@ export const RESIDENT_ROUTES: ResidentRouteTable = {
   sidebar: {
     prefetch: async () => {},
     page: () => <SidebarSurface />,
+  },
+  stage: {
+    prefetch: async () => {},
+    page: () => <StageSurface />,
   },
 };
 const isResidentName = (key: string): key is ResidentName => Object.hasOwn(RESIDENT_ROUTES, key);

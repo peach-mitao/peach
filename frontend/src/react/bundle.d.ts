@@ -472,7 +472,8 @@ export interface ToastRequest {
 
 export type { StageApi, StageHost, StagePatch, StageRequest } from './stage/stage-api';
 
-/** 接上壳给的宿主，拿回舞台岛的命令式入口（`stage/stage.tsx`）。只调一次。 */
+/** 接上壳给的宿主，拿回舞台的命令式入口（`stage/stage.tsx`）。只调一次；这一面由 `islands.ts` 的
+ *  `loadStage` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureStage(host: StageHost): StageApi;
 
 export type {

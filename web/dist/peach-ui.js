@@ -4994,7 +4994,10 @@ function sc(e, t, n, r) {
 }
 var cc = null, lc = null;
 function uc(e) {
-	return cc ??= import("/dist/peach-react.js").then((t) => (lc = t.configureStage(e), lc)), cc;
+	return cc ??= import("/dist/peach-react.js").then(async (t) => {
+		let n = t.configureStage(e), r = document.createElement("div");
+		return r.dataset.stageHost = "", await B("stage", r, (e) => (document.body.append(e), e)), lc = n, n;
+	}), cc;
 }
 var dc = () => lc, fc = null, pc = null;
 function mc(e) {
