@@ -30,7 +30,7 @@ uv sync --locked --extra build
 
 Dependabot 的 PR 一律在本地接管，不在网页上合：
 
-- npm 的两份清单各有一层派生产物：根 `package.json` 对应 `web/vendor/**` 与 `web/index.html` 的版本注释，`frontend/package.json` 对应 `web/dist/peach-ui.js`。Dependabot 算不出这些，它的 workflow 拿到的 token 又是只读的，推不回 `dependabot/**`，所以 `npm run check:vendor` 或 island 产物那一关必红。
+- npm 的两份清单各有一层派生产物：根 `package.json` 对应 `web/vendor/**` 与 `web/index.html` 的版本注释，`frontend/package.json` 对应 `web/dist/` 的主界面与独立页面包。Dependabot 算不出这些，它的 workflow 拿到的 token 又是只读的，推不回 `dependabot/**`，所以 `npm run check:vendor` 或前端产物检查会失败。
 - uv 与 github-actions 没有派生产物，但 master 在本机集成、通常领先 origin。在网页上合会让两边分叉，回并要在主检出 master 上 merge，被 `scripts/githooks/` 拒收。
 
 每周的升级在一个隔离工作树里一次接完：

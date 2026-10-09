@@ -1,4 +1,4 @@
-"""跑真的 JS：`web/js/` 与 `frontend/src/core/` 里的纯模块按行为验收，不按源码文本验收。
+"""跑真的 JS：`frontend/src/` 里的纯模块按行为验收，不按源码文本验收。
 
 页面源断言（`test_web_ui.py`）能守住「这段代码还在」，守不住「它算得对」。
 以 JAV 标题为例，
@@ -20,13 +20,13 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_JS = ROOT / "web" / "js"
-# `/js/core.js`、`/js/tags.js`、`/js/jav-title.js` 是从入口包原名转出的垫片，实现是 `frontend/src/core/` 里的 TS。
-# 入口包在 Node 里加载不了（锚定菜单一加载就往 document 上挂监听），用例表仍按浏览器里的名字写，这里换到源码。
+# 用例以能力名定位源码，Node 直接运行纯模块。
 SOURCES = {
     "core.js": ROOT / "frontend" / "src" / "core" / "index.ts",
     "tags.js": ROOT / "frontend" / "src" / "core" / "tags.ts",
     "jav-title.js": ROOT / "frontend" / "src" / "core" / "jav-title.ts",
+    "filter-scroll.js": ROOT / "frontend" / "src" / "application" / "filter-scroll.js",
+    "search-morph.js": ROOT / "frontend" / "src" / "application" / "search-morph.js",
 }
 NODE = shutil.which("node")
 
@@ -132,7 +132,7 @@ class WebJsBehaviourTests(unittest.TestCase):
 
     def run_js(self, cases):
         """按顺序执行 `[模块, 导出名, 参数列表]`，返回结果列表。"""
-        located = [[SOURCES.get(module, WEB_JS / module).as_posix(), fn, args] for module, fn, args in cases]
+        located = [[SOURCES[module].as_posix(), fn, args] for module, fn, args in cases]
         done = subprocess.run(
             [NODE, str(self._driver), json.dumps(located)],
             capture_output=True, text=True, encoding="utf-8", timeout=60)

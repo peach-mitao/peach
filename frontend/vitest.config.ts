@@ -1,5 +1,4 @@
-/* 测试配置和构建配置分开：`resolve.alias` 会同时作用于构建，
- * 把遗留模块的桩打进产物里——那正是 `build.rollupOptions.external` 要避免的。 */
+/* 测试配置单独提供 UI 桩；生产构建的所有别名均指向真实源码。 */
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig, mergeConfig } from 'vitest/config';
@@ -12,18 +11,14 @@ const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.m
 export default mergeConfig(base, defineConfig({
   resolve: {
     alias: {
-      // 入口包的模块在测试里直接落到 TS 源码，与 `/dist/peach-entry.js` 那条别名是同一个模块实例。
+      // 控制器与 React 组件的共享能力指向同一份 TS 源码。
       '@peach/legacy/core': source('core/index.ts'),
       '@peach/legacy/jav-title': source('core/jav-title.ts'),
       '@peach/legacy/tags': source('core/tags.ts'),
       '@peach/legacy/ui-sounds': source('ui-kit/sounds.ts'),
       '@peach/legacy/middle-truncate': source('ui-kit/middle-truncate.ts'),
       '@peach/legacy/ui': stub('legacy-ui.ts'),
-      // `/js/*.js` 垫片（含 `/js/ui-components.js`）从入口包原名转出；测试里那条绝对路径落到入口包的源码。
-      '/dist/peach-entry.js': source('entry/index.ts'),
-      // 测试里 island 直接拿到 React 子树的源码入口，不经过 web/dist 产物。
-      '@peach/react': source('react/entry.tsx'),
-      // React 子树按 `@peach/card-art` 取卡片图片助手，产物里是 peach-ui.js；测试里两边都落到同一份源码。
+      // 图片、外观、查询、历史与壳状态在控制器和页面之间保持模块身份。
       '@peach/card-art': source('card-art/index.ts'),
       '@peach/appearance': source('appearance/index.ts'),
       '@peach/query': source('query/index.ts'),

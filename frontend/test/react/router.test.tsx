@@ -128,19 +128,3 @@ it('壳认领写的地址不领开次代次；后退前进与 React 子树里的
   await act(async () => { void navigate!('/performers') });
   expect([epoch() - start, r.peachHistory.navigation.claimed, location.pathname]).toEqual([3, false, '/performers']);
 });
-
-it('configureRouter 只挂一棵：重复调用后一次后退落到详情上，覆盖元素只打开一次', async () => {
-  const r = await load('/nowhere');
-  const shell = await import('../../src/shell');
-  const openOverlay = vi.fn();
-  const actions = { openOverlay, closeStage: vi.fn() } as unknown as Parameters<typeof r.configureRouter>[0];
-  await act(async () => { r.configureRouter(actions) });
-  await act(async () => { r.configureRouter(actions) });
-  await act(async () => { shell.writeShell({ pageOpens: 1 }) });
-  await act(async () => {
-    window.history.replaceState({ usr: over('/nowhere'), key: 'x', idx: 1 }, '', '/item/7');
-    pop();
-  });
-  await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) });
-  expect(openOverlay.mock.calls).toEqual([[{ kind: 'item', id: 7 }]]);
-});

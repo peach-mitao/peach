@@ -2,8 +2,8 @@
 
    只复用已验证的行为：按容器宽度保留首尾、使用单个省略号、宽度变化后重算、复制与无障碍名称
    仍提供完整原文。调用方只需给文件名、路径、URL 或 ID 加 data-middle-truncate；标题和说明继续
-   使用末尾省略。随 `/dist/peach-entry.js` 发出，`/js/middle-truncate.js` 原名转出：全文档只有一个
-   观察者，由 `peach-ui.js` 的入口（`src/islands.ts`）启动，壳拼的 HTML 与 React 子树写的属性都归它管。 */
+   使用末尾省略。随 `peach-app.js` 发出，由 Application 启动与清理全文档的唯一观察者，
+   原生宿主与 React 子树写的属性都归它管。 */
 
 interface TruncateState { full: string; rendered: string; raf: number }
 

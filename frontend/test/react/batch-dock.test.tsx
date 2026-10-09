@@ -32,7 +32,7 @@ vi.mock(import('../../src/react/components/selection-dock'), async (importOrigin
 });
 
 /* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
-type ShellIslands = { loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>; batchDockApi(): BatchDockApi | null };
+type ShellIslands = { connectApplication(next: (actions: ShellActions) => void): () => void; loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>; batchDockApi(): BatchDockApi | null };
 const ISLANDS_MODULE = '../../src/react/application-residents';
 
 async function load() {
@@ -70,8 +70,9 @@ function shellActions(): ShellActions {
   };
 }
 
-/** 壳启动时的顺序：先画路由树（根的选项与 `configureRouter` 同一份），再接上取数。 */
+/** 壳启动时的顺序：先画路由树（根的选项与 `mountApplication` 同一份），再接上取数。 */
 async function mountRouter(r: Loaded) {
+  unmounts.push(r.islands.connectApplication(() => {}));
   const root = createRoot(document.createElement('div'), r.ROUTER_ROOT_OPTIONS);
   await act(async () => { root.render(<r.RouterRoot actions={shellActions()} />) });
   unmounts.push(() => root.unmount());

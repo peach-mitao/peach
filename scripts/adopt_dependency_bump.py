@@ -4,7 +4,7 @@ Dependabot 只改 manifest 和 lock。根 `package.json` 的 npm 包还有一层
 `web/vendor/**` 的字节、`web/index.html` 里那行版本注释、每个 `ORIGIN.md` 的哈希与
 lock integrity——它算不出来，于是 `npm run check:vendor` 在它的 PR 上必红（实际发生过：
 lucide-static 1.38.0 → 1.40.0 的 PR #4）。`frontend/package.json` 同理，产物是
-`web/dist/peach-ui.js`。
+`web/dist/` 中的主界面与独立页面包。
 
 修不了那个 PR 本身：Dependabot 触发的 workflow 拿到的 token 是只读的，往
 `dependabot/**` 推回重算的产物得靠 `pull_request_target` 或一个 PAT，两条都是给 CI 加

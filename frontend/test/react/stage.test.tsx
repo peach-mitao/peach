@@ -99,7 +99,7 @@ function request(id: number, patch: Partial<StageItemRequest> = {}): StageItemRe
 }
 
 /* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
-type ShellIslands = {
+type ShellIslands = { connectApplication(next: (actions: ShellActions) => void): () => void;
   loadStage(host: StageHost): Promise<StageApi>;
   stageApi(): StageApi | null;
   loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>;
@@ -133,8 +133,9 @@ function shellActions(): ShellActions {
 
 const unmounts: Array<() => void> = [];
 
-/** 壳启动时先画路由树（根的选项与 `configureRouter` 同一份）；接上取数单独一步，用例可以把它往后放。 */
+/** 壳启动时先画路由树（根的选项与 `mountApplication` 同一份）；接上取数单独一步，用例可以把它往后放。 */
 async function mountRouter(r: Loaded) {
+  unmounts.push(r.islands.connectApplication(() => {}));
   const tree = createRoot(document.createElement('div'), r.ROUTER_ROOT_OPTIONS);
   await act(async () => { tree.render(<r.RouterRoot actions={shellActions()} />) });
   unmounts.push(() => tree.unmount());

@@ -94,7 +94,7 @@ class PageLoginRequired(Exception):
 
 
 class AssetLoginRequired(Exception):
-    """页面资产（app.css/app.js）未授权：401 形态是 PlainText 提示。"""
+    """页面脚本与样式未授权：401 形态是 PlainText 提示。"""
 
 
 def _origin_key(value: str) -> tuple[str, str, int | None] | None:

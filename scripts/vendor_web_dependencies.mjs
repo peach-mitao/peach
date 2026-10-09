@@ -269,14 +269,13 @@ stage("web/vendor/remixicon-LICENSE.txt", lfText("node_modules", "remixicon", "L
 stage("web/vendor/remixicon-ORIGIN.md", `# Remix Icon ${versions.remixicon}\n\n- npm 包：\`remixicon@${versions.remixicon}\`\n- npm lock integrity：\`${integrity("remixicon")}\`\n- 许可证：Remix Icon License v1.0，见 \`remixicon-LICENSE.txt\`。\n- 消费者：设置导航七枚内联 symbol，其中 \`palette-line\` 同时给侧栏底部那枚配色钮。完整候选由本地 HTML 审查。\n`);
 stage("web/index.html", index);
 
-let app = text("web", "app.js");
-// 播放器脚本按需加载，版本钉在 app.js 的加载器里而不是 index.html，所以这里和 index
-// 一样要跟着清单走；`test_dependency_policy` 两侧都核。
-app = app.replaceAll(/\/vendor\/videojs\/[0-9.]+\//g, `/vendor/videojs/${versions["video.js"]}/`);
-stage("web/app.js", app);
+let player = text("frontend", "src", "player", "videojs.ts");
+// 播放器版本由按需加载器固定，随前端清单重算；依赖检查同时核对 HTML 与加载器。
+player = player.replaceAll(/\/vendor\/videojs\/[0-9.]+\//g, `/vendor/videojs/${versions["video.js"]}/`);
+stage("frontend/src/player/videojs.ts", player);
 
 // 灯箱的 Swiper 同理按需加载，版本钉在 React 灯箱的加载器里。改了之后要在 frontend/
-// 重新 `npm run build`，`web/dist/peach-react.js` 里那一份才跟上。
+// 重新 `npm run build`，`web/dist/peach-app.js` 里的版本才与源码一致。
 const swiperPin = value => value.replaceAll(/\/vendor\/swiper\/[0-9.]+\//g, `/vendor/swiper/${versions.swiper}/`);
 for (const path of ["frontend/src/react/photo-lightbox/photo-lightbox.ts", "frontend/test/react/photo-lightbox.test.tsx"]) {
   stage(path, swiperPin(text(...path.split("/"))));

@@ -4,7 +4,7 @@
  * 侧栏、详情舞台）（`managed-routes.tsx`）由这棵树画。每一页、沉浸模式与详情覆盖都由路由按匹配打开
  * （`pages/` 下各元素），壳不接派发：它只订阅历史同步标题与侧栏，换页时写地址。
  *
- * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
+ * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：应用启动时就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
  * 默认包在 `startTransition` 里，接连两次变化会并成一次渲染，后退前进就少开一次。
  *
@@ -24,7 +24,7 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { createRoot, type Root, type RootOptions } from 'react-dom/client';
+import type { RootOptions } from 'react-dom/client';
 import { Route, Router, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router';
 
 import {
@@ -225,14 +225,3 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
 export const ROUTER_ROOT_OPTIONS: RootOptions = {
   onCaughtError: (error) => { globalThis.reportError?.(error) },
 };
-
-/* 根建在一个不进文档的容器上：页面经 portal 画进壳的 `#stats`、`#index`、`#grid` 与各附属面的容器，别的地方
- * 什么都不画。
- * 第一次渲染同步做完，宿主在 `loadRouter` 落定之前就已经订阅：壳打开的第一页取齐时它一定在听。 */
-let root: Root | null = null;
-export function configureRouter(actions: ShellActions): void {
-  if (root) return;
-  root = createRoot(document.createElement('div'), ROUTER_ROOT_OPTIONS);
-  const mounted = root;
-  flushSync(() => mounted.render(<RouterRoot actions={actions} />));
-}

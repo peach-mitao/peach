@@ -119,7 +119,7 @@ def main() -> int:
                     headers={"Origin": base})
                 with opener.open(login, timeout=10) as response:
                     assert response.status == 200
-                for path in ("/", "/app.css", "/app.js", "/dist/peach-ui.js", "/api/items"):
+                for path in ("/", "/app.css", "/dist/peach-app.js", "/dist/peach-app.css", "/api/items"):
                     with opener.open(base + path, timeout=10) as response:
                         assert response.status == 200, path
                 with opener.open(base + "/api/configuration", timeout=5) as response:

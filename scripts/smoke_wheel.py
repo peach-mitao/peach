@@ -45,11 +45,11 @@ def main():
             assert client.get("/api/items", headers=headers).status_code == 200
             assert client.get("/", headers=headers).status_code == 200
             assert settings.page_path.is_file()
-            assert (settings.page_path.parent / "app.js").is_file()
-            assert (settings.page_path.parent / "dist" / "peach-ui.js").is_file()
+            for name in ("peach-app.js", "peach-app.css", "peach-pages.js", "peach-pages.css"):
+                assert (settings.page_path.parent / "dist" / name).is_file()
             assert any(settings.vendor_path.iterdir())
             print(json.dumps({"module": peach.__file__, "ready": ready.json(),
-                              "checks": ["migrations", "web", "vendor", "island", "auth", "items"]}))
+                              "checks": ["migrations", "web", "vendor", "frontend", "auth", "items"]}))
         finally:
             client.close()
         with socket.socket() as reservation:
@@ -73,7 +73,7 @@ def main():
                             if process.poll() is not None or time.monotonic() > deadline:
                                 raise RuntimeError("wheel 服务未就绪")
                             time.sleep(0.1)
-                    for path in ("/", "/api/items", "/app.js"):
+                    for path in ("/", "/api/items", "/dist/peach-app.js"):
                         response = http.get(path, headers={"X-Token": "wheel-smoke"})
                         assert response.status_code == 200, (path, response.status_code)
                     print(json.dumps({"tcp": "passed", "init_repeat": "existing_config_preserved"}))

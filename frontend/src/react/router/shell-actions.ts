@@ -1,4 +1,4 @@
-/* 壳交给路由树的能力（`configureRouter(actions)`），经 Context 下发给路由树画的那几页。
+/* Application 交给路由树的能力，经 Context 下发给路由树画的那几页。
  *
  * 这里只放两类东西：换到还归壳的那一屏（目录、资料页、详情、关注、垃圾文件），和只有壳才有的
  * 状态或回执（Toast、偏好存储、一次性上下文）。纯查表的助手（`tagLabel`、`javTitleHtml`）由页面
