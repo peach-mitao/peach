@@ -40509,7 +40509,7 @@ function ihe(e) {
 		return e.data;
 	}, () => i(""), (e) => i(W(e))), o = t.data;
 	return o ? /* @__PURE__ */ (0, V.jsxs)("div", {
-		className: "configpage flex flex-col gap-6",
+		className: "ui-configpage flex flex-col gap-6",
 		children: [
 			/* @__PURE__ */ (0, V.jsx)("div", {
 				className: "flex justify-end",
@@ -40576,7 +40576,7 @@ function ihe(e) {
 			})
 		]
 	}) : /* @__PURE__ */ (0, V.jsx)("div", {
-		className: "configpage",
+		className: "ui-configpage",
 		children: /* @__PURE__ */ (0, V.jsx)(Y, {
 			tone: "error",
 			title: "诊断读取失败",
@@ -52089,7 +52089,7 @@ function pxe({ receipt: e, reopenTutorial: t, section: n = "" }) {
 		reopenTutorial: t,
 		section: n
 	}) : /* @__PURE__ */ (0, V.jsx)("div", {
-		className: "configpage",
+		className: "ui-configpage",
 		children: /* @__PURE__ */ (0, V.jsx)(Y, {
 			tone: "error",
 			title: "配置读取失败",
@@ -52150,9 +52150,9 @@ function hxe({ data: e, receipt: t, reopenTutorial: n, section: r }) {
 		e.preventDefault(), o(f[r].title), s.current[r]?.focus();
 	};
 	return /* @__PURE__ */ (0, V.jsxs)("div", {
-		className: "configpage",
+		className: "ui-configpage",
 		children: [/* @__PURE__ */ (0, V.jsx)("div", {
-			className: "board-local-nav",
+			className: "ui-board-local-nav",
 			role: "tablist",
 			"aria-label": "配置分区",
 			"data-section-nav": "",
@@ -52173,7 +52173,7 @@ function hxe({ data: e, receipt: t, reopenTutorial: n, section: r }) {
 				children: e
 			}, e))
 		}), f.map(({ title: e, body: t }, n) => /* @__PURE__ */ (0, V.jsxs)(z.Fragment, { children: [/* @__PURE__ */ (0, V.jsx)("h2", {
-			className: "configgroup",
+			className: "ui-configgroup",
 			children: e
 		}), t({
 			index: n,
@@ -54129,7 +54129,7 @@ var _z = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2
 	attrs: "disabled data-skeleton-action"
 })}</div></div></section>`, vz = (e, t = "", n = "ui-configuration-skeleton-toggle") => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${e}</p>${t ? `<p class="text-body-2-regular text-text-secondary">${t}</p>` : ""}</div><span class="skeleton ${n}"></span></div>`;
 function fSe() {
-	return `<div class="peach-react"><div class="configpage">${`<div class="board-local-nav" data-section-nav data-section-items>${[
+	return `<div class="peach-react"><div class="ui-configpage">${`<div class="ui-board-local-nav" data-section-nav data-section-items>${[
 		"通用",
 		"媒体",
 		"下载",

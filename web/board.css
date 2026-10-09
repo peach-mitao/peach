@@ -226,9 +226,9 @@ body{background:var(--page)}
 /* Task entry cards and editing panels have different information density. */
 /* 管理区每一页的正文跟标题走同一条中线。标题由页头岛（`react/manage-header/`）钉在 1120 上，
    正文也得钉到同一个数：`.scraping-page` 和 `.ui-activitypage` 自己声明的 812 窄列比标题
-   每边窄 154px，读起来就是正文整块往右缩了一截。数据管理与活动页骨架的同一条在
-   frontend/src 的 management.css 与 board-skeleton.css。 */
-.configpage,.scraping-page{width:100%;max-width:var(--board-content)}
+   每边窄 154px，读起来就是正文整块往右缩了一截。数据管理、活动页骨架与配置页的同一条在
+   frontend/src 的 management.css、board-skeleton.css 与 react/settings/configuration-page.css。 */
+.scraping-page{width:100%;max-width:var(--board-content)}
 .cleanupgrid{gap:16px}
 .cleanupfieldset{border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px #00000003}
 .cleanupfieldset>.geist-fieldset-content{padding:20px 20px 16px;min-height:120px}
@@ -285,15 +285,6 @@ body{background:var(--page)}
 .configfieldset>.geist-fieldset-content{padding:24px;gap:20px}
 .configfieldset>.geist-fieldset-footer{background:var(--ground);border-top:1px solid var(--line-soft);padding:14px 24px}
 .configfieldset h2,.configfieldset h3{font-size:16px;font-weight:500;line-height:24px}
-.configpage>.configgroup{display:none}
-.board-local-nav{display:flex;gap:4px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);margin:0 0 24px;padding:0;scrollbar-width:none}
-.board-local-nav button{flex:none;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:20px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
-.board-local-nav button[aria-selected="true"]{border-bottom-color:var(--tungsten);color:var(--tungsten);font-weight:500}
-.board-local-nav button:focus-visible{outline:2px solid var(--tungsten);outline-offset:-3px}
-/* 配置分类在正文上方横排，与关注管理共用 Pills。 */
-.configpage:has(>.board-local-nav){grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
-.configpage>.board-local-nav{grid-column:1;grid-row:1;position:static;display:flex;flex-direction:row;align-items:stretch;margin:0;padding:0;border:0;border-radius:0}
-.configpage:has(>.board-local-nav)>:not(.board-local-nav):not(.configgroup){grid-column:1;grid-row:2;min-width:0}
 /* BoardUI gray PillTab：透明容器与独立选中底色，取证见 board-review-layout.md。 */
 body #stats [data-section-nav]{background:none;border-radius:0;padding:0;box-shadow:none}
 body #stats [data-section-nav] h2{margin:0 0 12px;padding:0;font:var(--board-body-medium);color:var(--color-text-primary)}
@@ -303,9 +294,6 @@ body #stats [data-section-items]>[aria-selected]:hover{background:var(--color-ba
 body #stats [data-section-items]>[aria-selected=true]{background:var(--color-background-tertiary-default);color:var(--color-text-primary)}
 body #stats [data-section-items]>[aria-selected]:focus-visible{outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
 @media(max-width:900px){
- .configpage:has(>.board-local-nav){grid-template-columns:minmax(0,1fr);gap:20px}
- .configpage>.board-local-nav{grid-column:1;grid-row:1;position:static;flex-direction:row}
- .configpage:has(>.board-local-nav)>:not(.board-local-nav):not(.configgroup){grid-column:1;grid-row:2}
  body #stats [data-section-items]{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain}
  body #stats [data-section-items]>[aria-selected]{min-height:36px;padding:8px;white-space:nowrap}
 }
@@ -385,14 +373,8 @@ body>.board-filter-frame{margin-inline:16px}
 .entityfoot{background:var(--board-card-foot);border-top-color:var(--line-soft)}
 .entityhero h2{font-size:24px;font-weight:500;line-height:32px}
 .entityhero .alias{font-size:14px;line-height:20px}
-/* 计数徽标照 tabs.tsx：`rounded-sm px-1 py-px text-caption-1-medium`，未选中黑 10% 底半透明，
-   选中换成强调色 12% 底、强调色字。字母表分组卡的字头旁挂的也是这一枚。 */
-.board-tab-count{display:inline-block;margin-left:6px;padding:1px 4px;border-radius:4px;font:var(--board-caption);font-weight:500;line-height:16px;
-  background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);opacity:.5;vertical-align:1px}
-.board-local-nav button[aria-selected="true"] .board-tab-count{background:color-mix(in srgb,var(--tungsten) 12%,transparent);color:var(--tungsten);opacity:1}
-/* 索引页页头下面那排 Tabs（厂牌／事务所、本地／在线）跟浮层留同样的 22px；前置字形 16px。 */
+/* 索引页页头下面那排 Tabs（厂牌／事务所、本地／在线）跟浮层留同样的 22px。 */
 .indextabs{margin:0 0 22px}
-.board-tabs button svg{width:16px;height:16px;margin-right:6px;vertical-align:-3px;stroke:currentColor;fill:none;stroke-width:2}
 /* 索引格照 Board 的卡排：secondary 底、16px 圆角、不描边，名字 Body 1 Medium、读数 Caption。
    大图版式里图铺满卡宽、文字靠左；紧凑版式是圆头像居中那一屏。 */
 .igrid{gap:12px}
@@ -414,8 +396,7 @@ body>.board-filter-frame{margin-inline:16px}
   .cleanupgrid{grid-template-columns:1fr;gap:12px}
   .cleanupfieldset>.geist-fieldset-content{min-height:0;padding:18px}
   .cleanupfieldset strong{font-size:22px}.cleanupfieldset>.geist-fieldset-footer{padding:12px 18px}
-  .configfieldset>.geist-fieldset-content{padding:20px}.board-local-nav{gap:0}.board-local-nav button{padding:10px 9px;font-size:13px}
-}
+  .configfieldset>.geist-fieldset-content{padding:20px}}
 
 /* 媒体详情、实体与管理共享卡片层级，播放器仍使用原有播放交互。 */
 .srctools button{border-radius:8px;background:var(--surface)}
@@ -760,14 +741,8 @@ body .gselectmenu [role=option][aria-selected=true],body .popmenu [aria-checked=
    遗留壳铺的那张骨架：它在这一格里画两块等待中的面板。 */
 .board-activity-charts{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;margin:20px 0}
 @media(max-width:1000px){.board-activity-charts{grid-template-columns:1fr}}
-[data-board-tabs]{position:relative!important}[data-board-tabs]::before{content:'';position:absolute;bottom:0;left:0;width:var(--tab-width,0px);height:2px;background:var(--tungsten);transform:translateX(var(--tab-x,0px));pointer-events:none;z-index:1}/* 这条指示条也是「当前落在哪一个」，位移跟着同一条弹簧走。它是伪元素，没法像那几块
-   底板一样再挂一段独立的形变——冲过落点再荡回来这一下有，抻开那一下没有。
-   宽度另走匀速：跟着弹簧过冲的话，它会在停下之前先抻出邻居的边界。 */
-[data-board-tabs].board-tabs-ready::before{
-  transition:transform calc(var(--spring-pane-ms,200) * 1ms) var(--spring-pane,ease),
-             width calc(var(--spring-pane-ms,200) * 1ms) ease}
+[data-board-tabs]{position:relative!important}[data-board-tabs]::before{content:'';position:absolute;bottom:0;left:0;width:var(--tab-width,0px);height:2px;background:var(--tungsten);transform:translateX(var(--tab-x,0px));pointer-events:none;z-index:1}
 body [data-board-tabs] button[aria-selected=true]{border-bottom-color:transparent}
-@media(prefers-reduced-motion:reduce){[data-board-tabs].board-tabs-ready::before{transition:none}}
 /* Split Button 照 Geist 实测（`vercel-geist-split-button.md`「悬停」）：两半各是一颗
    带自己填充的按钮，整组只管并排和外圆角，悬停只抬指针下那一半——抬的那一层就是
    `bg-button-primary` 自己的 `::before` 淡入。中缝那条 1px 线是触发档的 `::after`，

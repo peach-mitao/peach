@@ -286,7 +286,7 @@ const OVERLAY_SCROLLERS=[
   '[data-player-stats]',
   '.vjs-peach-settings-menu','.ui-geist-scroller-container','.metricstrip','.ui-tastesummaries',
   '.ui-skeletondashstrip','.followpagination',
-  '.reviewtabs','.ftablewrap','.board-local-nav','[data-manage-menu]',
+  '.reviewtabs','.ftablewrap','.ui-board-local-nav','[data-manage-menu]',
   '.follow-workspace-switch','.fmanagenav','[role="listbox"]',
 ].join(',');
 /* Board 层里会超宽的横向滚动层：两端按滚动位置渐隐说明「那边还有」，鼠标停在上面时竖向
@@ -295,7 +295,7 @@ const OVERLAY_SCROLLERS=[
    点名的清单，漏登记就是「看得见、够不着」：一排分区在 390px 下溢出两百多像素，
    却既没有渐隐也不接滚轮。组件自己量溢出，不溢出的宽度上登记等于空转，所以按可能
    溢出的层登记，不按某一个断点登记。React 档的页面自己用 `overflow-x-auto`，不进这份清单。 */
-const BOARD_EDGE_SCROLLERS='.reviewtabs,.ftablewrap,.board-local-nav,[data-manage-menu],'
+const BOARD_EDGE_SCROLLERS='.reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],'
   +'.follow-workspace-switch,.fmanagenav';
 
 /** 把这一批 DOM 里所有该有覆盖式滚动条的容器接上；重复调用只接新出现的那些。 */

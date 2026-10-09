@@ -133,7 +133,7 @@ export function loadingDotsHtml(label='正在处理', {className=''}={}):string{
  *
  * 索引页用它切厂牌／事务所与本地／在线两套词表：两档各是一条地址。它回答的是页面层级的
  * 「在哪一页」，不是给当前这批加一条筛选——筛选归玻璃条上的药丸。
- * 每一枚都是 `role=tab`，当前项写 `aria-selected`；滑动的 2px 蓝线由 `board-local-nav`
+ * 每一枚都是 `role=tab`，当前项写 `aria-selected`；滑动的 2px 蓝线由 `ui-board-local-nav`
  * 那条共用规则和 `wireBoardTabs` 提供，这里只出 DOM。计数是可选的尾随徽标，口径由调用方
  * 给：Tabs 自己不算数。前置字形也是可选的，只在它指向对象（厂牌、事务所、本地、订阅源）
  * 时出现。
@@ -144,11 +144,11 @@ export function boardTabsHtml(items:{value:unknown;label:unknown;count?:unknown;
   }={}):string{
   const tabs=items.map(({value,label:text,count,symbol})=>{
     const selected=String(value)===String(active);
-    const badge=count==null?'':`<span class="board-tab-count">${esc(Number(count).toLocaleString())}</span>`;
+    const badge=count==null?'':`<span class="ui-board-tab-count">${esc(Number(count).toLocaleString())}</span>`;
     return `<button type="button" role="tab" ${attr}="${esc(value)}" aria-selected="${selected}"${
       panel?` aria-controls="${esc(panel)}"`:''}>${symbol?icon(symbol):''}${esc(text)}${badge}</button>`;
   }).join('');
-  return `<div class="board-local-nav board-tabs${className?` ${esc(className)}`:''}" role="tablist" aria-label="${esc(label)}">${tabs}</div>`;
+  return `<div class="ui-board-local-nav ui-board-tabs${className?` ${esc(className)}`:''}" role="tablist" aria-label="${esc(label)}">${tabs}</div>`;
 }
 
 /** Geist Empty State: icon tile, title and explanatory copy stay one semantic unit. */

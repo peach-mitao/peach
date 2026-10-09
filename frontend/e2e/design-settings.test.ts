@@ -290,7 +290,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       assert.deepEqual(await machine.locator('dt').allTextContents(), ['媒体库', '端口', '更新']);
       assert.equal(await machine.locator('input, textarea, select, form, [role="switch"], [aria-haspopup="listbox"]').count(), 0,
         '摘要卡里出现了可编辑的控件');
-      assert.equal(await panel.locator('.configpage').count(), 0, '设置弹层里又挂了一份配置页');
+      assert.equal(await panel.locator('.ui-configpage').count(), 0, '设置弹层里又挂了一份配置页');
       for (const text of ['媒体修复', '订阅源', '保持登录时间']) {
         assert.equal(await panel.getByText(text, { exact: true }).count(), 0, `设置弹层里还有「${text}」`);
       }

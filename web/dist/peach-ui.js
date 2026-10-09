@@ -3777,7 +3777,7 @@ function ia() {
 }
 var aa = /* @__PURE__ */ new Map();
 function oa(e) {
-	let t = ".board-local-nav:not([data-section-nav])", n = [...e.querySelectorAll(t)];
+	let t = ".ui-board-local-nav:not([data-section-nav])", n = [...e.querySelectorAll(t)];
 	e instanceof HTMLElement && e.matches(t) && n.push(e), n.forEach((e) => {
 		if (e.hasAttribute("data-board-tabs")) return;
 		e.dataset.boardTabs = "true";
@@ -3793,7 +3793,7 @@ function oa(e) {
 			n(i), aa.set(t, i);
 		}, i = aa.get(t);
 		i ? n(i) : r(), requestAnimationFrame(() => {
-			e.classList.add("board-tabs-ready"), requestAnimationFrame(r);
+			e.classList.add("ui-board-tabs-ready"), requestAnimationFrame(r);
 		});
 		let a = new MutationObserver(r);
 		a.observe(e, {
@@ -4685,7 +4685,7 @@ var ws = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2
 	attrs: "disabled data-skeleton-action"
 })}</div></div></section>`, G = (e, t = "", n = "ui-configuration-skeleton-toggle") => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${e}</p>${t ? `<p class="text-body-2-regular text-text-secondary">${t}</p>` : ""}</div><span class="skeleton ${n}"></span></div>`;
 function Ts() {
-	return `<div class="peach-react"><div class="configpage">${`<div class="board-local-nav" data-section-nav data-section-items>${[
+	return `<div class="peach-react"><div class="ui-configpage">${`<div class="ui-board-local-nav" data-section-nav data-section-items>${[
 		"通用",
 		"媒体",
 		"下载",

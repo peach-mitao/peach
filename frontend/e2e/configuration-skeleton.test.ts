@@ -3,15 +3,15 @@ import { after, before, describe, it } from 'node:test';
 import type { Browser, Page } from 'playwright-core';
 import { configurationBody, expectBody, launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
 
-const measure = (page: Page, names = ['开机自启', '自动更新']) => page.locator('.configpage').evaluate((root, names) => {
+const measure = (page: Page, names = ['开机自启', '自动更新']) => page.locator('.ui-configpage').evaluate((root, names) => {
   const rect = (el: Element) => {
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   };
   const sections = names.map(name => root.querySelector(`[aria-label="${name}"]`)!);
   return {
-    nav: rect(root.querySelector('.board-local-nav')!),
-    selected: root.querySelector('.board-local-nav [aria-selected="true"]')?.textContent,
+    nav: rect(root.querySelector('.ui-board-local-nav')!),
+    selected: root.querySelector('.ui-board-local-nav [aria-selected="true"]')?.textContent,
     sections: sections.map(section => ({
       label: rect(section.firstElementChild!),
       card: rect(section.lastElementChild!),
@@ -52,7 +52,7 @@ describe('配置页等待态', () => {
         assert.ok(bounds.scrollWidth <= bounds.viewportWidth);
         assert.deepEqual(bounds.offenders, []);
         await page.setViewportSize({ width: viewport.mobile ? 1280 : 390, height: 844 });
-        await page.waitForFunction(expected => document.querySelector('.configpage>.board-local-nav')?.getAttribute('aria-orientation') === expected,
+        await page.waitForFunction(expected => document.querySelector('.ui-configpage>.ui-board-local-nav')?.getAttribute('aria-orientation') === expected,
           'horizontal');
         assert.equal(await general.getAttribute('aria-selected'), 'true');
         assert.equal(await input.inputValue(), 'example.invalid');

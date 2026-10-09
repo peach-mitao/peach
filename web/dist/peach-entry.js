@@ -784,10 +784,10 @@ function at(e = "正在处理", { className: t = "" } = {}) {
 }
 function ot(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图", className: a = "", panel: o = "" } = {}) {
 	let s = e.map(({ value: e, label: i, count: a, symbol: s }) => {
-		let c = String(e) === String(t), l = a == null ? "" : `<span class="board-tab-count">${m(Number(a).toLocaleString())}</span>`;
+		let c = String(e) === String(t), l = a == null ? "" : `<span class="ui-board-tab-count">${m(Number(a).toLocaleString())}</span>`;
 		return `<button type="button" role="tab" ${r}="${m(e)}" aria-selected="${c}"${o ? ` aria-controls="${m(o)}"` : ""}>${s ? n(s) : ""}${m(i)}${l}</button>`;
 	}).join("");
-	return `<div class="board-local-nav board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
+	return `<div class="ui-board-local-nav ui-board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
 }
 function st(e, t, r, { className: i = "", actions: a = "" } = {}) {
 	return `<div class="ui-emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
@@ -916,13 +916,13 @@ function vt(e, t) {
 	}, 1e3);
 }
 function yt() {
-	return `<div class="configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
+	return `<div class="ui-configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
 		["通用", 2],
 		["媒体", 2],
 		["下载", 2],
 		["网络与访问", 3],
 		["维护", 3]
-	].map(([e, t]) => `<h2 class="configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
+	].map(([e, t]) => `<h2 class="ui-configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
 }
 function bt(e = "正在读取内容", { className: t = "", variant: n = "panel", count: r = 6, fill: i = !0, gridClass: a = "", gridSize: o = "", cardRatio: s = 0 } = {}) {
 	let c = (/* @__PURE__ */ new Set([
@@ -1280,12 +1280,12 @@ var qt = [
 	".followpagination",
 	".reviewtabs",
 	".ftablewrap",
-	".board-local-nav",
+	".ui-board-local-nav",
 	"[data-manage-menu]",
 	".follow-workspace-switch",
 	".fmanagenav",
 	"[role=\"listbox\"]"
-].join(","), Jt = ".reviewtabs,.ftablewrap,.board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
+].join(","), Jt = ".reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
 function Yt(e = document) {
 	e.querySelectorAll(qt).forEach((e) => {
 		if (e.matches(Jt)) {

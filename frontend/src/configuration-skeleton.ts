@@ -5,8 +5,8 @@ const section = (title: string, content: string) => `<section aria-label="${titl
 const row = (label: string, description = '', control = 'ui-configuration-skeleton-toggle') => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${label}</p>${description ? `<p class="text-body-2-regular text-text-secondary">${description}</p>` : ''}</div><span class="skeleton ${control}"></span></div>`;
 
 export function configurationSkeleton(): string {
-  const nav = `<div class="board-local-nav" data-section-nav data-section-items>${['通用', '媒体', '下载', '网络与访问', '维护'].map((title, i) => `<button type="button" tabindex="-1" aria-selected="${i === 0}">${title}</button>`).join('')}</div>`;
+  const nav = `<div class="ui-board-local-nav" data-section-nav data-section-items>${['通用', '媒体', '下载', '网络与访问', '维护'].map((title, i) => `<button type="button" tabindex="-1" aria-selected="${i === 0}">${title}</button>`).join('')}</div>`;
   const startup = section('开机自启', `<div class="flex flex-col">${row('开机后启动 Peach')}${row('静默启动', '开机后只显示托盘图标，不打开网页。')}${row('在桌面创建快捷方式', '双击图标打开 Peach 网页。')}</div>`);
   const updates = section('自动更新', `<div class="flex flex-col">${row('自动检查新版本')}${row('自动下载更新')}${row('检查频率', '', 'ui-configuration-skeleton-select')}</div>`);
-  return `<div class="peach-react"><div class="configpage">${nav}<div class="flex flex-col gap-6">${startup}${updates}</div></div></div>`;
+  return `<div class="peach-react"><div class="ui-configpage">${nav}<div class="flex flex-col gap-6">${startup}${updates}</div></div></div>`;
 }

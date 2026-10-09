@@ -1,9 +1,6 @@
-/* 配置页（/configuration）的外壳：分组小标题排在一条 812px 窄列里，与数据管理 hub 同宽。
-   分区本身是 React 子树（`frontend/src/react/settings/`），样式归 `peach-react.css`。
-   `.configfieldset` 几条只给配置骨架用。 */
-.configpage{width:min(812px,100%);margin:0 auto;display:grid;gap:20px}
-.configgroup{margin:16px 0 0;font-size:var(--fs-2xl);line-height:1.3;font-weight:600}
-.configgroup:first-child{margin-top:0}
+/* 配置页（/configuration）骨架的卡片框体：`.configfieldset` 几条只给配置骨架用。
+   页面外壳与页签条在 `frontend/src/react/settings/configuration-page.css`；分区本身是 React 子树
+   （`frontend/src/react/settings/`），样式归 `peach-react.css`。 */
 .resourcesyncfooter>p{margin:0 auto 0 0;text-align:left}
 .configfieldset{display:flex;flex-direction:column;min-width:0;margin:0;padding:0;overflow:hidden;
   border:1px solid var(--line);border-radius:var(--control-radius);background:var(--ground)}

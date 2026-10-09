@@ -8,7 +8,7 @@
 .ui-organizefield{display:grid;gap:6px;min-width:0}
 .ui-organizefield>span{color:var(--ink-2);font-size:var(--fs-sm)}
 .ui-organizepresets{display:flex;flex-wrap:wrap;gap:8px}
-/* 正文跟管理区页头钉在同一条中线上（web/board.css 里 `.configpage` 那一条的说明）。 */
+/* 正文跟管理区页头钉在同一条中线上（web/board.css 里 `.scraping-page` 那一条的说明）。 */
 .ui-cleanuppage{width:100%;max-width:var(--board-content)}
 /* 整理卡骨架：三颗预设就是最终那种次级键，库名和预设名要等数据。来源下拉的占位宽度在
    web/css/09-skeleton.css 的 `.organize-source-skeleton`。占位条 `skeleton-text` 是旧表的类，按 `[class~=…]` 写，

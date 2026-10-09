@@ -9,7 +9,7 @@
  * 全站同一条弹簧（`--spring-pane-ms`／`--spring-pane`，规则在 `../styles.css` 的
  * `[data-tab-indicator]`）。头一次画出来时直接落位，第一帧之后才打开过渡，免得它从左端飞进来。
  *
- * 不挂 `data-board-tabs`、也不用 `board-local-nav`：遗留层 `wireBoardTabs` 在 `body` 上观察
+ * 不挂 `data-board-tabs`、也不用 `ui-board-local-nav`：遗留层 `wireBoardTabs` 在 `body` 上观察
  * 新插入的节点，认的就是那两样，挂上了就是两套接线同时量同一条线。 */
 import { useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 
@@ -22,7 +22,7 @@ export interface BoardTab<V extends string> {
   symbol?: string;
 }
 
-/** 页签与分组标题后面挂的那个计数徽标（旧 `.board-tab-count`）：12/16 半档字重、主文字色
+/** 页签与分组标题后面挂的那个计数徽标（遗留层 `.ui-board-tab-count` 的同款）：12/16 半档字重、主文字色
  *  10% 的底，整块降到五成，是附注不是读数。口径由调用方给，徽标自己不算数。 */
 export function TabCount({ value }: { value: number }) {
   return (

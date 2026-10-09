@@ -1,6 +1,6 @@
 /* 配置页整页：五个分区怎么排、顶上那排页签怎么走，取不到配置时说什么，以及「一份数据一个读者」。
  *
- * 页签条、小标题与各组的面板都是 `.configpage` 的第一层，`web/board.css` 按这层结构排版、只显示选中的
+ * 页签条、小标题与各组的面板都是 `.ui-configpage` 的第一层，`configuration-page.css` 按这层结构排版、只显示选中的
  * 那一组，所以这里量的是结构与无障碍属性，不是外观。各分区内部的行为在
  * `general-network-settings`、`media-settings`、`maintenance-settings` 几份用例里。 */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
@@ -68,8 +68,8 @@ async function open(config: ConfigurationData, { receipt = vi.fn(), section }: {
   return host;
 }
 
-const groups = (host: ParentNode) => [...host.querySelectorAll('.configgroup')].map((title) => title.textContent);
-const tabs = (host: ParentNode) => [...host.querySelectorAll<HTMLButtonElement>('.board-local-nav [role="tab"]')];
+const groups = (host: ParentNode) => [...host.querySelectorAll('.ui-configgroup')].map((title) => title.textContent);
+const tabs = (host: ParentNode) => [...host.querySelectorAll<HTMLButtonElement>('.ui-board-local-nav [role="tab"]')];
 const selected = (host: ParentNode) => tabs(host).filter((tab) => tab.getAttribute('aria-selected') === 'true')
   .map((tab) => tab.textContent);
 /** 此刻显示的那一组：带 `board-group-active` 的面板，按它的 `aria-labelledby` 找回页签名。 */
@@ -83,18 +83,18 @@ const full = () => data({
   startup, peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false }, downloads: downloadState,
 });
 
-it('五个分区各一格页签：页签条在最前，后面小标题和它的面板交替排在 `.configpage` 的第一层', async () => {
+it('五个分区各一格页签：页签条在最前，后面小标题和它的面板交替排在 `.ui-configpage` 的第一层', async () => {
   const host = await open(full());
   expect(groups(host)).toEqual(['通用', '媒体', '下载', '网络与访问', '维护']);
-  const page = host.querySelector('.configpage')!;
+  const page = host.querySelector('.ui-configpage')!;
   const [nav, ...rest] = [...page.children];
   expect([nav.className, nav.getAttribute('role'), nav.getAttribute('aria-label'), nav.getAttribute('aria-orientation')])
-    .toEqual(['board-local-nav', 'tablist', '配置分区', 'horizontal']);
+    .toEqual(['ui-board-local-nav', 'tablist', '配置分区', 'horizontal']);
   expect([nav.hasAttribute('data-section-nav'), nav.hasAttribute('data-section-items')]).toEqual([true, true]);
-  expect(rest.map((node) => node.classList.contains('configgroup')))
+  expect(rest.map((node) => node.classList.contains('ui-configgroup')))
     .toEqual([true, false, true, false, true, false, true, false, true, false]);
   expect(tabs(host).map((tab) => tab.textContent)).toEqual(['通用', '媒体', '下载', '网络与访问', '维护']);
-  const panels = rest.filter((node) => !node.classList.contains('configgroup'));
+  const panels = rest.filter((node) => !node.classList.contains('ui-configgroup'));
   tabs(host).forEach((tab, i) => {
     expect([tab.type, tab.getAttribute('aria-controls')]).toEqual(['button', panels[i].id]);
     expect([panels[i].getAttribute('role'), panels[i].getAttribute('aria-labelledby'), panels[i].getAttribute('data-board-group')])
@@ -120,9 +120,9 @@ it('页签条随整页一起画出，不单独插入', async () => {
   );
   inserted.push(...watch.takeRecords().flatMap((record) => [...record.addedNodes]).filter((node) => node instanceof Element));
   watch.disconnect();
-  expect(host.querySelector('.configpage > .board-local-nav')).not.toBeNull();
-  expect(inserted.some((node) => node.matches('.board-local-nav'))).toBe(false);
-  expect(inserted.some((node) => node.matches('.configpage') && node.firstElementChild?.matches('.board-local-nav'))).toBe(true);
+  expect(host.querySelector('.ui-configpage > .ui-board-local-nav')).not.toBeNull();
+  expect(inserted.some((node) => node.matches('.ui-board-local-nav'))).toBe(false);
+  expect(inserted.some((node) => node.matches('.ui-configpage') && node.firstElementChild?.matches('.ui-board-local-nav'))).toBe(true);
 });
 
 it('方向键在整排里走、首尾相接，Home 与 End 到两头，焦点跟着选中的那一格', async () => {
@@ -186,7 +186,7 @@ it('取不到配置就说打不开，连同服务端给的那句原因', async (
   const note = host.querySelector('[role="alert"]');
   expect(note?.textContent).toContain('配置读取失败');
   expect(note?.textContent).toContain('账本正在迁移');
-  expect(host.querySelector('.configgroup')).toBeNull();
+  expect(host.querySelector('.ui-configgroup')).toBeNull();
   expect(host.querySelector('[role="tablist"]')).toBeNull();
 });
 

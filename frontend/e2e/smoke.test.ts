@@ -10,7 +10,7 @@
  * 所以索引页的主体是「条目或空态」二选一，不绑死其中一种。标题只能拿来认页面，不能单独
  * 当主体：管理页的 `[data-manage-title]` 由外壳先写好，内容区失败时它照样在。
  *
- * 分区 tab（`.board-local-nav`）只显示当前那一格，其余面板不参与布局；每一格都切过去
+ * 分区 tab（`.ui-board-local-nav`）只显示当前那一格，其余面板不参与布局；每一格都切过去
  * 再测一遍，否则配置页「网络与访问」这类不在首屏的分区永远不会被量到。 */
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
@@ -170,7 +170,7 @@ describe('路由冒烟', () => {
           await settle(opened.page);
           await assertHolds(opened.page, opened.problems, route.path);
           // 设置浮层的那一排 tab 常驻 DOM、关着时不可见；只点页面上看得见的那一排。
-          const tabs = opened.page.locator('.board-local-nav [role="tab"]:visible');
+          const tabs = opened.page.locator('.ui-board-local-nav [role="tab"]:visible');
           const count = await tabs.count();
           // 选择器一旦对不上，循环一格都不跑也照样绿；配置页至少有媒体、网络与访问、维护三格。
           if (route.path === '/configuration') assert.ok(count >= 3, `配置页只看到 ${count} 个分区 tab`);

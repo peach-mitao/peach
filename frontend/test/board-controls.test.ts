@@ -18,8 +18,8 @@ describe('范围控件',()=>{
     expect(document.querySelector('.insightswitch')?.getAttribute('data-board-segments')).toBe('true');
   });
   it('页内下划线导航接上会滑的指示条，复核和配置分类用 Pills',()=>{
-    document.body.innerHTML='<div class="reviewtabs" role="tablist"><button role="tab" aria-selected="true">元数据字段</button><button role="tab" aria-selected="false">厂牌 Logo</button></div><nav class="board-local-nav" aria-label="配置分区"><button aria-pressed="true">外观</button></nav>';
-    const config=document.createElement('div');config.className='board-local-nav';config.dataset.sectionNav='';
+    document.body.innerHTML='<div class="reviewtabs" role="tablist"><button role="tab" aria-selected="true">元数据字段</button><button role="tab" aria-selected="false">厂牌 Logo</button></div><nav class="ui-board-local-nav" aria-label="配置分区"><button aria-pressed="true">外观</button></nav>';
+    const config=document.createElement('div');config.className='ui-board-local-nav';config.dataset.sectionNav='';
     document.body.append(config);
     wireBoardTabs(document);wireBoardTabs(document);
     expect([...document.querySelectorAll('[data-board-tabs]')].map(group=>group.getAttribute('aria-label'))).toEqual(['配置分区']);
