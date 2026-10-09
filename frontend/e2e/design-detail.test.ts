@@ -384,20 +384,23 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     try {
       const page = opened.page;
       const picker = page.locator('#stage [data-tag-picker]');
-      const motion = () => page.evaluate(() => {
-        const node = document.querySelector<HTMLElement>('#stage [data-tag-picker]');
-        return node && !node.hidden ? getComputedStyle(node).animationName : 'closed';
+      /* 关闭动效只有 150ms，点完再读计算样式会在负载高时读到已收起；改记选择器上真正开播过的动效。 */
+      await page.evaluate(() => {
+        const played: string[] = [];
+        (window as unknown as { pickerMotion: string[] }).pickerMotion = played;
+        document.addEventListener('animationstart', (event) => {
+          if ((event.target as Element).matches('[data-tag-picker]')) played.push(event.animationName);
+        }, true);
       });
+      const played = () => page.evaluate(() => (window as unknown as { pickerMotion: string[] }).pickerMotion.splice(0));
       const cycle = async () => {
         await page.locator('#tagPlus').click();
         await page.locator('#tagPickSearch').waitFor();
-        const opening = await motion();
         await page.locator('#stage [data-rating-value]').click();
-        const closing = await motion();
         await picker.waitFor({ state: 'hidden' });
-        return [opening, closing];
+        return played();
       };
-      assert.deepEqual(await cycle(), ['none', 'closed']);
+      assert.deepEqual(await cycle(), [], '减少动态效果时当场开合，不播动效');
       await page.emulateMedia({ reducedMotion: 'no-preference' });
       assert.deepEqual(await cycle(), ['board-menu-in', 'board-menu-out']);
       assert.deepEqual(withoutPlayer(opened.problems), []);
