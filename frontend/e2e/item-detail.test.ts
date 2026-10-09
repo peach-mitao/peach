@@ -10,11 +10,12 @@ import { after, before, describe, it } from 'node:test';
 import type { Browser, Page } from 'playwright-core';
 
 import { layout, launch, VIEWPORTS } from './harness.ts';
-import { ITEM, NAMES, PLAYLIST, RELATED, openItemPage } from './item-fixture.ts';
+import { CATALOG, ITEM, NAMES, PLAYLIST, RELATED, openItemPage } from './item-fixture.ts';
 
 const DESKTOP = VIEWPORTS.find((viewport) => !viewport.mobile)!;
 const MOBILE = VIEWPORTS.find((viewport) => viewport.mobile)!;
 const DETAIL_READY = '#stage[open] [data-item-side]';
+const PART_CARD = `#grid [data-media-card][data-id="${ITEM.part}"] [data-media-title]`;
 /** 桩里的片源没有正片，播放器拿到空响应会报一条 VIDEOJS 错误；量的不是它。 */
 const withoutPlayer = (problems: string[]) => problems.filter((line) => !line.includes('VIDEOJS'));
 const pathIs = (page: Page, path: string) => page.waitForFunction(
@@ -48,6 +49,99 @@ describe('作品详情岛', () => {
 
   after(async () => {
     await browser.close();
+  });
+
+  for (const destination of ['/activity', '/performers']) {
+    it(`分卷等待响应时后退到 ${destination}：舞台撤回，晚到的响应不能改变地址或历史深度`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, '/', DESKTOP, { ready: PART_CARD, catalogIds: [...CATALOG, ITEM.part] });
+      let release = () => {};
+      try {
+        const page = opened.page;
+        await page.evaluate(async (path) => {
+          const moduleUrl = '/dist/peach-ui.js';
+          const { peachHistory } = await import(moduleUrl);
+          peachHistory.push(path);
+        }, destination);
+        await pathIs(page, destination);
+        await page.evaluate(async () => { const moduleUrl = '/dist/peach-ui.js'; (await import(moduleUrl)).peachHistory.push('/') });
+        await page.locator(PART_CARD).waitFor();
+        const depth = await page.evaluate(() => history.length);
+        let arrived = () => {};
+        const requested = new Promise<void>(resolve => { arrived = resolve });
+        const gate = new Promise<void>(resolve => { release = resolve });
+        let finished = () => {};
+        const responded = new Promise<void>(resolve => { finished = resolve });
+        await page.route((url) => url.pathname === '/api/parts', async route => {
+          arrived();
+          await gate;
+          try { await route.fallback() }
+          catch (error) { assert.match(route.request().failure()?.errorText || '', /ERR_ABORTED/, String(error)) }
+          finally { finished() }
+        });
+        await page.locator(PART_CARD).click();
+        await requested;
+        await page.locator('#stage[open]').waitFor();
+        assert.equal(await page.evaluate(() => location.pathname), '/');
+        assert.equal(await page.evaluate(() => history.length), depth, '队列未取齐时没有临时历史条目');
+        await page.goBack();
+        await pathIs(page, destination);
+        await page.waitForFunction(() => !document.querySelector('#stage[open]'));
+        const seq = await page.evaluate(async () => { const moduleUrl = '/dist/peach-ui.js'; return (await import(moduleUrl)).peachHistory.navigation.seq });
+        release();
+        await responded;
+        await page.waitForTimeout(500);
+        assert.equal(await page.locator('#stage[open]').count(), 0);
+        assert.equal(await page.evaluate(() => location.pathname), destination);
+        assert.equal(await page.evaluate(() => history.length), depth);
+        assert.equal(await page.evaluate(async () => { const moduleUrl = '/dist/peach-ui.js'; return (await import(moduleUrl)).peachHistory.navigation.seq }), seq);
+        assert.deepEqual(opened.stub.writes, []);
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally { release(); await opened.close() }
+    });
+  }
+
+  it('点分卷的同一任务里重放源页 POP：队列意图不取数、不铺舞台、不写条目', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, '/', DESKTOP, { ready: PART_CARD, catalogIds: [...CATALOG, ITEM.part] });
+    try {
+      const page = opened.page;
+      const depth = await page.evaluate(() => history.length);
+      await page.locator(PART_CARD).evaluate(node => {
+        (node as HTMLElement).click();
+        window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+      });
+      await page.waitForTimeout(500);
+      assert.equal(opened.stub.reads.get('/api/parts') || 0, 0);
+      assert.equal(await page.locator('#stage[open]').count(), 0);
+      assert.deepEqual(await page.evaluate(() => [location.pathname, history.length]), ['/', depth]);
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally { await opened.close() }
+  });
+
+  it('首次舞台宿主接上时重放源页 POP：包已到货的旧队列请求也不能开舞台', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, '/', DESKTOP, { ready: PART_CARD, catalogIds: [...CATALOG, ITEM.part] });
+    try {
+      const page = opened.page;
+      assert.equal(await page.locator('[data-stage-host]').count(), 0);
+      const depth = await page.evaluate(() => history.length);
+      await page.evaluate(() => {
+        const append = document.body.append.bind(document.body);
+        document.body.append = (...nodes: (Node | string)[]) => {
+          append(...nodes);
+          if (nodes.some(node => node instanceof HTMLElement && node.hasAttribute('data-stage-host'))) {
+            document.body.append = append;
+            document.body.dataset.queueStagePop = '1';
+            window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+          }
+        };
+      });
+      await page.locator(PART_CARD).click();
+      await page.locator('body[data-queue-stage-pop]').waitFor({ state: 'attached' });
+      await page.waitForTimeout(500);
+      assert.equal(opened.stub.reads.get('/api/parts') || 0, 0);
+      assert.equal(await page.locator('#stage[open]').count(), 0);
+      assert.deepEqual(await page.evaluate(() => [location.pathname, history.length]), ['/', depth]);
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally { await opened.close() }
   });
 
   it('目录点卡进详情：地址换成这一条；关掉回列表不重取', { timeout: 60_000 }, async () => {

@@ -355,8 +355,15 @@ const navigatePath=(path,replace=false,state)=>{
    覆盖组按导航序号挂上，再取走这次请求；队列取齐后只写地址、在线条目转换详情种类的 replace 没有打开请求。 */
 let requestedOverlay=null;
 let requestedQueue=null;
+let queueOpenRequest=null;
 let initialOverlayOpened=false;
+function cancelQueueRequest(){
+  if(queueOpenRequest)queueOpenRequest.cancelled=true;
+  queueOpenRequest=null;requestedQueue=null;
+  writeShell({pendingQueueRoute:null});
+}
 function requestOverlay(path,kind,open){
+  cancelQueueRequest();
   holdOverlayBackground();
   requestedOverlay={path,open};
   route(path,false,overlayState(kind));
@@ -904,7 +911,8 @@ function urlResume(){
 function stageExit(){return stageApi()?.exit()||Promise.resolve()}
 /* 离开详情。正在放的视频默认进小窗接着放；显式关闭（叉、Escape）、换成别的详情和删掉当前条目
    都传 miniplayer:false。 */
-function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true}={}){
+function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true,preserveQueueRequest=null}={}){
+  if(queueOpenRequest!==preserveQueueRequest)cancelQueueRequest();
   stageApi()?.dispose({miniplayer});
   writeShell({activeQueue:null,pendingQueueRoute:null,presentedItem:null});
   if(!preserveInlineOrigin){
@@ -3207,7 +3215,9 @@ function openQueue(kind,key,itemId,push,anchor=null){
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
   if(push){
-    requestedQueue=()=>openItem(itemId==null?null:+itemId,false,queue,anchor,true);
+    cancelQueueRequest();
+    const request=queueOpenRequest={seq:peachHistory.navigation.seq,cancelled:false};
+    requestedQueue=()=>openItem(itemId==null?null:+itemId,false,queue,anchor,true,request);
     writeShell({queueOpens:queueOpens+1});
     return;
   }
@@ -3253,7 +3263,7 @@ const itemDetailActions={
     const returnBars=detailReturnBarsContext;
     writeShell({barsContext:{type:'item',id:item.id,filters:returnBars?.type==='entity'
       ? {...returnBars.filters}:emptyEntityFilters()}});
-    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));writeShell({pendingQueueRoute:null})}
+    if(pendingQueueRoute){queueOpenRequest=null;route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));writeShell({pendingQueueRoute:null})}
     buildBars();
   },
   /* 取数时发现要换去别处：保存过的在线资产转关注详情，队列取不到退回普通详情，播放列表空了
@@ -3305,7 +3315,9 @@ const itemDetailActions={
   failure:(action,error)=>actionFailure(action,error),
 };
 
-async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
+async function openItem(id,push=true,queue=null,anchor=null,queuePush=false,queueRequest=null){
+  if(queueRequest?.cancelled)return;
+  if(!queueRequest)cancelQueueRequest();
   if(push&&!queue){
     writeShell({detailReturnPath:location.pathname+location.search});
     requestOverlay('/item/'+(+id),'item',()=>openItem(id,false,null,anchor));
@@ -3328,7 +3340,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   if(push)holdOverlayBackground();
   /* 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。作品详情开着时
      （队列换卷、相关作品）舞台原地换条，不拆。 */
-  if(stageApi()?.showing()!=='item')disposeStage(false,true,{miniplayer:false});
+  if(stageApi()?.showing()!=='item')disposeStage(false,true,{miniplayer:false,preserveQueueRequest:queueRequest});
   writeShell({detailOriginAnchor:origin,detailOriginAbove:above,detailReturnNeedsRestore:needsReturnRestore});
   writeShell({detailReturnBarsContext:returnBars});
   writeShell({activeQueue:queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId}});
@@ -3336,9 +3348,14 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
     ? `${QUEUE_ROUTES[queue.kind]}/${queue.kind==='playlist'?queue.playlistId:queue.seedId}`:null});
   if(push&&!queue)route('/item/'+id,false,overlayState('item'));
   const stage=await loadStage(stageHost);
+  if(queueRequest?.cancelled)return;
+  const actions=queueRequest?{...itemDetailActions,
+    present:(item,queue)=>{if(!queueRequest.cancelled)itemDetailActions.present(item,queue)},
+    redirect:to=>{if(!queueRequest.cancelled)itemDetailActions.redirect(to)},
+  }:itemDetailActions;
   await stage.open({kind:'item',
     id,queue,relatedLimit:appSettings.relatedLimit>0?+appSettings.relatedLimit:0,
-    helpers:itemDetailHelpers,actions:itemDetailActions,
+    helpers:itemDetailHelpers,actions,
     grid:{helpers:gridHelpers,actions:gridActions},
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     resume:push||id==null?null:urlResume(),
@@ -3722,7 +3739,11 @@ const shellActions={
 /* 壳开始路由之前（来源、设置与形状名单读齐之前）没人认领的变化不跟：开始那一刻按当时的地址跑一次。
    订阅排在路由树之前，同一次变化里这一轮先跑，页面再按匹配打开。 */
 let routing=false;
-peachHistory.listen(navigation=>{if(routing&&!navigation.claimed)queueMicrotask(syncRouteChrome)});
+peachHistory.listen(navigation=>{
+  /* 取齐前地址仍在源页：任何非覆盖历史变化（包括同地址 POP）都撤回这一趟，晚到的包或响应不能再开舞台。 */
+  if(queueOpenRequest&&navigation.seq!==queueOpenRequest.seq&&!isOverlayPath(navigation.location.pathname))disposeStage(false);
+  if(routing&&!navigation.claimed)queueMicrotask(syncRouteChrome);
+});
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();
 mountBatchDock();

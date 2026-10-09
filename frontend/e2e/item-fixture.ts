@@ -83,7 +83,7 @@ export interface ItemStub {
 
 const body = (request: Request) => JSON.parse(request.postData() || '{}') as Record<string, unknown>;
 
-async function stub(page: Page): Promise<ItemStub> {
+async function stub(page: Page, catalogIds: readonly number[] = CATALOG): Promise<ItemStub> {
   const state: ItemStub = { writes: [], reads: new Map() };
   const read = (path: string) => state.reads.set(path, (state.reads.get(path) || 0) + 1);
   const playlists = new Map<number, { id: number; name: string; ids: number[]; current: number | null }>([
@@ -101,7 +101,7 @@ async function stub(page: Page): Promise<ItemStub> {
       return route.fulfill({ json: respond(new URL(request.url()), request) });
     });
   await json('/api/item', (url) => DETAILS.get(Number(url.searchParams.get('id'))) || { error: '这一条已不在账本里' });
-  await json('/api/items', () => ({ items: CATALOG.map(card), total: CATALOG.length, has_more: false }));
+  await json('/api/items', () => ({ items: catalogIds.map(card), total: catalogIds.length, has_more: false }));
   await json('/api/related', () => ({ items: RELATED.map(card) }));
   await json('/api/parts', () => PARTS);
   await json('/api/editions', () => EDITIONS);
@@ -168,14 +168,16 @@ export interface ItemVisit extends Visit {
 
 /** 打开一页：桩与设置装好之后重新载入，等到 `ready` 出现、等待态结束。 */
 export async function openItemPage(browser: Browser, path: string, viewport: Viewport,
-  { settings = {}, ready = '#stage[open] [data-item-side]' }: { settings?: Record<string, unknown>; ready?: string } = {},
+  { settings = {}, ready = '#stage[open] [data-item-side]', catalogIds }: {
+    settings?: Record<string, unknown>; ready?: string; catalogIds?: readonly number[];
+  } = {},
 ): Promise<ItemVisit> {
   const opened = await visit(browser, '/', viewport);
   const page = opened.page;
   await page.context().addInitScript((value) => {
     localStorage.setItem('peach.settings.v1', JSON.stringify(value));
   }, { detailAutoplay: false, relatedLimit: 12, ...settings });
-  const stubbed = await stub(page);
+  const stubbed = await stub(page, catalogIds);
   await page.goto(new URL(path, page.url()).toString(), { waitUntil: 'load' });
   await page.locator(ready).first().waitFor({ timeout: 15_000 });
   await settle(page);
