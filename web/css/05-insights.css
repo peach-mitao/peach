@@ -1,8 +1,7 @@
 /* 统计页与口味页的等待态版式：指标带、主详情、同层数据面板。
    两页的正文都归 React（ADR-0031），这里留下的是遗留壳铺的那张骨架读到的层级。 */
-.insightpage,.tastepage{width:min(1100px,100%);margin:0 auto;padding:0 0 48px;min-width:0}
-.insighttoolbar,.tastehead{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap}
-.insighttoolbar p{margin:0;color:var(--muted);font-size:var(--fs-xs)}
+.tastepage{width:min(1100px,100%);margin:0 auto;padding:0 0 48px;min-width:0}
+.tastehead{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap}
 .insightswitch{display:inline-flex;padding:3px;border:1px solid var(--line-soft);border-radius:var(--surface-radius);background:var(--ground)}.insightswitch label{cursor:pointer}.insightswitch input{position:absolute;opacity:0;pointer-events:none}.insightswitch span{height:30px;display:grid;place-items:center;padding:0 12px;border-radius:var(--control-radius);color:var(--muted);font-size:var(--fs-sm)}.insightswitch input:checked+span{background:var(--picked);color:var(--ink);font-weight:500}.insightswitch input:focus-visible+span{outline:2px solid var(--tungsten);outline-offset:-2px}
 /* 下限按内容实测取：一格里最宽的是 24px 的数字和那行 12px 的补充说明，加左右
    各 16px 内边距是 140px。四格因此到 645px 视口仍是一整条，再窄由下面的手机
@@ -19,4 +18,4 @@
 /* `frontend/src/ui-kit/markup.ts` 的 `progressHtml` 那一条，关注管理页与遗留任务状态都读它。 */
 .geist-progress{height:8px;margin-top:7px;overflow:hidden;border-radius:var(--pill-radius);background:var(--line-soft)}.geist-progress i{display:block;width:var(--progress-value);height:100%;border-radius:inherit;background:var(--tungsten)}
 @media(max-width:900px){.tastehero{grid-template-columns:minmax(220px,40%) minmax(0,1fr)}}
-@media(max-width:640px){.insighttoolbar,.tastehead{align-items:stretch}.insightswitch{align-self:flex-start}.metricstrip,.tastesummaries{grid-auto-columns:minmax(168px,82%)}.tastehero{min-height:0;grid-template-columns:minmax(0,1fr)}.insightcopy{border-right:0;border-bottom:1px solid var(--line-soft);padding:22px 18px}.tastebars{padding:18px}.insightpanel>header{padding:0 14px}.insightpanelbody{padding:12px}.tastesummary>b{font-size:var(--fs-xl)}}
+@media(max-width:640px){.tastehead{align-items:stretch}.insightswitch{align-self:flex-start}.metricstrip,.tastesummaries{grid-auto-columns:minmax(168px,82%)}.tastehero{min-height:0;grid-template-columns:minmax(0,1fr)}.insightcopy{border-right:0;border-bottom:1px solid var(--line-soft);padding:22px 18px}.tastebars{padding:18px}.insightpanel>header{padding:0 14px}.insightpanelbody{padding:12px}.tastesummary>b{font-size:var(--fs-xl)}}

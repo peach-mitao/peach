@@ -34,6 +34,8 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   '/configuration': { section: 'configuration', title: '配置', refresh: 'reopen' },
   '/activity': { section: 'activity', title: '活动', refresh: 'reopen' },
   '/diagnostics': { section: 'configuration', title: '系统诊断', refresh: 'reopen' },
+  // 旧直达地址，改写到数据管理页的锚点，没有自己的管理身份。
+  '/resource-sync': { title: '数据管理' },
   '/performers': { nav: 'performers', title: '艺人', reload: 'reopen' },
   '/creators': { title: '卖家', reload: 'reopen' },
   '/studios': { nav: 'studios', title: '厂牌', reload: 'reopen' },

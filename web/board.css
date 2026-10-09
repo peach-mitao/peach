@@ -452,7 +452,7 @@ button,input,select,textarea{font-family:inherit}
 .index .ihead h2{font-size:24px;line-height:34px;font-weight:500}
 .indexheading{font-size:24px;line-height:34px}
 .index .ihead .geist-search input{font-size:14px;line-height:20px}
-.insighttoolbar,.tastehead{gap:16px}
+.tastehead{gap:16px}
 /* 进场用 backwards 而不是 both：终点帧本来就是元素的自然状态，保留它只多留下一个
    `filter:blur(0)`。非 none 的 filter 会另起一个 backdrop root，卡片里任何
    backdrop-filter 从此只采样得到卡片自己的内容——左栏的玻璃于是退化成一块半透明色。
@@ -559,7 +559,7 @@ button,input,select,textarea{font-family:inherit}
 @media(max-width:480px){.board-stat-label{padding-inline:12px;font-size:13px;gap:6px}.tastesummary>.board-stat-value{padding:12px;font-size:24px;line-height:34px}.tastesummary>.board-stat-footer{padding:8px 12px}}
 
 /* 数据按阅读目的分组，标题与内容共享边缘。 */
-.insightpage,.tastepage{width:100%;max-width:var(--board-content)}
+.tastepage{width:100%;max-width:var(--board-content)}
 .configfieldset{border:0}.configfieldset>.geist-fieldset-footer{border:0}
 
 /* 强调色的十一级色阶。机制照搬 BoardUI：主按钮、焦点环、链接、开关、选中态全都引用
@@ -613,7 +613,7 @@ button,input,select,textarea{font-family:inherit}
    面板、筛选条、交集条和标签骨架都从它取值，一处改完五处一起走。 */
 :root{--tag-radius:8px}
 body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
-.pagetitle,.listtitle,.index .ihead h2,.indexheading,.playlistpage h2{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer,.insighttoolbar p{font:var(--board-caption);letter-spacing:.15px}
+.pagetitle,.listtitle,.index .ihead h2,.indexheading,.playlistpage h2{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer{font:var(--board-caption);letter-spacing:.15px}
 .geist-button,.resourceaction{background-color:var(--color-background-primary-default);border-color:var(--color-border-button-default);color:var(--color-text-primary);transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 /* 悬停只抬填充，那圈线一步不动：按钮静止态已经带一圈 1px，悬停再把它加深，
    鼠标扫过一排次级键就是一排边框忽明忽暗，而键本身并没有变化。 */

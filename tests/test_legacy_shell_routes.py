@@ -4,10 +4,9 @@ ADR-0022 的迁移方向是逐屏搬出 app.js，可 2026-09-13 盘点时它已�
 时多出四成——每一轮新功能都往旧壳里加一屏。行数拦不住这种增长（拦住的只是注释），
 拦得住的是「旧壳里登记了哪些页面」。
 
-冻结的是页面全集，按归属分成三列：壳打开的（app.js `ROUTES` 的字面 match，加上 island 入口经
-`window.peachRegisterRoute` 登记的）、路由树用元素画的（`managed-routes.tsx` 各张路由表里带
-`element` 的条目）、覆盖组按真实地址匹配的详情与队列（`OVERLAY_PATHS`）。一页搬进路由树就从
-app.js 的 `ROUTES` 里删掉，三列互不相交、并起来仍是这张全集。
+冻结的是页面全集，按归属分成三列：壳打开的（app.js `ROUTES` 的字面 match）、路由树用元素画的
+（`managed-routes.tsx` 各张路由表里带 `element` 的条目）、覆盖组按真实地址匹配的详情与队列
+（`OVERLAY_PATHS`）。一页搬进路由树就从 app.js 的 `ROUTES` 里删掉，三列互不相交、并起来仍是这张全集。
 """
 import pathlib
 import re
@@ -99,16 +98,6 @@ def tree_routes(source: str) -> set[str]:
     return found
 
 
-def registered_routes() -> set[str]:
-    """island 入口经 `window.peachRegisterRoute` 登记给壳的页面。"""
-    found = set()
-    for path in FRONTEND_SRC.rglob("*.ts*"):
-        source = path.read_text(encoding="utf-8")
-        if "peachRegisterRoute(" in source:
-            found |= set(re.findall(r"match:\s*'([^']*)'", source))
-    return found
-
-
 class LegacyShellRouteTests(unittest.TestCase):
     def setUp(self):
         self.source = APP.read_text(encoding="utf-8")
@@ -118,8 +107,7 @@ class LegacyShellRouteTests(unittest.TestCase):
         tree = tree_routes(ROUTE_TABLES.read_text(encoding="utf-8"))
         self.patterns = {path for path in tree if path.endswith("/*")}
         self.tree = tree - self.patterns
-        literal = set(re.findall(r"match:\s*'([^']*)'", self.table)) | registered_routes()
-        self.shell = literal - self.overlay
+        self.shell = set(re.findall(r"match:\s*'([^']*)'", self.table)) - self.overlay
 
     def test_the_three_owners_partition_the_frozen_pages(self):
         self.assertEqual(sorted(self.shell & self.tree), [],
@@ -141,7 +129,7 @@ class LegacyShellRouteTests(unittest.TestCase):
         self.assertEqual(self.table.count("...Object.entries("), SPREADS,
                          "ROUTES 里展开的路由组数量变了；新增一组同样算往旧壳里加页面")
         self.assertEqual(len(re.findall(r"\bregisterRoute\(", self.source)), 0,
-                         "app.js 自己不该调用 registerRoute：那是给 island 入口用的")
+                         "app.js 不登记页面：页面做成路由树的元素")
 
 
 if __name__ == "__main__":

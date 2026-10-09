@@ -112,7 +112,8 @@ export interface EntityPageShell {
 /** 页面组里一页的种类，壳按它决定铺哪一侧（`surfaceChanged`）。 */
 export type SurfaceKind = 'management' | 'index' | 'entity' | 'catalog' | 'follow' | 'playlists';
 
-/** 壳每次打开时交进来的值，按页面分。管理区那几页画进 `#stats`。 */
+/** 管理区那几页每次打开时交给页面的值，由页面元素从地址、偏好与壳的状态算（`pages/managed.tsx`），按页面分。
+ *  管理区那几页画进 `#stats`。 */
 export interface ManagedOpenProps {
   '/stats': { configurable: boolean };
   '/taste': { onboarding: boolean };
@@ -121,7 +122,7 @@ export interface ManagedOpenProps {
   '/duplicates': Record<string, never>;
   '/quality-goals': Record<string, never>;
   '/scraping': Record<string, never>;
-  /** `section`：首帧选中的那一组页签名，壳取走 `requestConfigurationSection` 记下的那一次（地址带 `#peachProxy` 时是「网络与访问」）。 */
+  /** `section`：首帧选中的那一组页签名，取走 `requestConfigurationSection` 记下的那一次（地址带 `#peachProxy` 时是「网络与访问」）。 */
   '/configuration': { section?: string };
   '/diagnostics': Record<string, never>;
   '/activity': Record<string, never>;

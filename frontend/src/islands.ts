@@ -10,7 +10,6 @@ export * from './appearance';
 export * from './query';
 export * from './history';
 export * from './shell';
-export { registerDiagnosticsRoute } from './diagnostics-route';
 export { initBoardControls, syncBoardRange } from './board-controls';
 export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
@@ -25,12 +24,12 @@ export { paginationHtml, pageCount, clampPage } from './pagination';
 export * from './card-art';
 export { entitySkeletonHtml } from './entity-skeleton';
 export { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './index-skeleton';
-export { boardPageSkeleton, detailSkeletonHtml } from './board-skeleton';
+export { detailSkeletonHtml } from './board-skeleton';
 export { catalogSuggestions, catalogEmptyHtml } from './catalog-onboarding';
 export { catalogFilterSkeletonHtml } from './catalog-filter-skeleton';
 export { dropBars, fetchBars, fetchTopsPage } from './catalog-bars';
 export { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder, sidebarTagCounts, sidebarHasCatalogContent } from './sidebar';
-export { cleanupSkeletonHtml } from './management';
+export { managementSkeletonHtml, pageSkeletonHtml, paintManagementPlaceholder, skeletonKeyOf } from './management-placeholder';
 export { junkCountSkeletonHtml, junkPath, junkRoute } from './junk-queue';
 
 /* 全站 Toast 的入口（Sonner，在 `@peach/react` 里）。第一条回执发出时才装载 React 包、挂上
