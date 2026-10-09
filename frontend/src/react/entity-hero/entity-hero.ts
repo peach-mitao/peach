@@ -185,7 +185,7 @@ export type LinkMark = { brand: string } | { site: string } | { globe: true };
 export type LinkView =
   | { type: 'icon'; url: string; title: string; mark: LinkMark }
   | { type: 'gone'; title: string }
-  | { type: 'private'; label: string }
+  | { type: 'private'; label: string; sources?: string[] }
   | { type: 'url'; url: string; title: string; text: string; mark: LinkMark };
 
 const siteMark = (link: HeroLink): LinkMark => ({ site: linkMarkUrl(link) });
@@ -215,7 +215,18 @@ export function heroLinks(entity: EntityHeroData, kind: string): LinkView[] {
     }
     return { type: 'url', url, title: x.label || '', text: officialLinkText(x, kind, names), mark: siteMark(x) };
   });
-  return [...pills, ...links];
+  return [...pills, ...foldPrivate(links)];
+}
+
+/** 不公开的来源点不开，只是「记过这么一处」：两处以上收成排在末尾的一枚「N 个不公开来源」，
+ *  各处的名字进 title。夹在图标中间一处占一整行，会把一排图标外链切成好几段。 */
+function foldPrivate(links: LinkView[]): LinkView[] {
+  const hidden = links.filter((link): link is Extract<LinkView, { type: 'private' }> => link.type === 'private');
+  if (hidden.length < 2) return links;
+  return [
+    ...links.filter((link) => link.type !== 'private'),
+    { type: 'private', label: `${hidden.length.toLocaleString()} 个不公开来源`, sources: hidden.map((link) => link.label) },
+  ];
 }
 
 /** 看片的那一行：站点自己的横向标识。 */
@@ -248,8 +259,10 @@ export function companyFactRows(profile: EntityHeroData['company_profile']): Fac
 export function factRows(p: HeroProfile | null | undefined): FactRow[] {
   if (!p) return [];
   const rows: FactRow[] = [];
+  // 年龄由服务端按生日算、与生日成对下发；只拿到生日时那一行只写生日。
   if (p.birth_date) rows.push({ glyph: 'cake', label: '生日', parts: [
-    { text: p.birth_date, tone: 'num' }, { text: `· ${p.age} 岁`, tone: 'sub' }] });
+    { text: p.birth_date, tone: 'num' },
+    ...(Number.isFinite(p.age) ? [{ text: `· ${p.age} 岁`, tone: 'sub' as const }] : [])] });
   const size = ([['T', p.height], ['B', p.bust], ['W', p.waist], ['H', p.hip]] as const)
     .filter(([, value]) => value).map(([letter, value]) => `${letter}${value}`).join(' · ');
   const cup = p.cup ? `${size ? '· ' : ''}${p.cup} 罩杯` : '';
@@ -265,9 +278,13 @@ export function factRows(p: HeroProfile | null | undefined): FactRow[] {
   return rows;
 }
 
-/** 标签那一格只列前几个，余下的收进「+N」；只多出一个时直接列出来，「+1」和那一个标签一样宽。 */
-export function shownTags(tags: string[]): { shown: string[]; rest: number } {
-  const cut = tags.length > FACT_TAGS_SHOWN + 1 ? FACT_TAGS_SHOWN : tags.length;
+/** 公司页名字下面那一行先列几个别名，余下的收进「+N」。 */
+export const COMPANY_ALIASES_SHOWN = 3;
+
+/** 标签那一格只列前几个，余下的收进「+N」；只多出一个时直接列出来，「+1」和那一个标签一样宽。
+ *  公司别名按 `COMPANY_ALIASES_SHOWN` 用同一条规则。 */
+export function shownTags(tags: string[], limit = FACT_TAGS_SHOWN): { shown: string[]; rest: number } {
+  const cut = tags.length > limit + 1 ? limit : tags.length;
   return { shown: tags.slice(0, cut), rest: tags.length - cut };
 }
 

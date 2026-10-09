@@ -193,3 +193,16 @@ export function toNatural(value: number, rendered: number, natural: number): num
   if (!(rendered > 0)) return 0;
   return (value * natural) / rendered;
 }
+
+/** 框在屏幕上的短边小于这么多 CSS 像素时，改大小那枚角柄挪到框外。角柄 12px，框只比它
+ *  大一点时整块都被角柄盖住，按下去只能改大小、拖不动框。 */
+export const HANDLE_ROOM = 36;
+
+/** 角柄该不该放到框外：`rect` 是 `boxPercent` 的百分比，`shown` 是图当前的显示尺寸。
+ *  显示尺寸还没量到时不挪。 */
+export function handleOutside(
+  rect: { width: number; height: number }, shown: CropSize | null,
+): boolean {
+  if (!shown || !(shown.width > 0) || !(shown.height > 0)) return false;
+  return Math.min((rect.width / 100) * shown.width, (rect.height / 100) * shown.height) < HANDLE_ROOM;
+}

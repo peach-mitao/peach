@@ -175,6 +175,23 @@ describe('fitNativeImage：比框还小的图原尺寸摆', () => {
     expect(box.style.getPropertyValue('--markw')).toBe('100%');
     expect(box.style.getPropertyValue('--markbg')).toBe('none');
   });
+
+  it('超扁的标识短边撑到下限、不补模糊底；人像框不走这一条', () => {
+    const host = mount('<span data-fit-native="mark"><img src="/logo?studio=b"></span>'
+      + '<span data-fit-native="portrait"><img src="/avatar?p=c"></span>');
+    const [mark, portrait] = [...host.querySelectorAll<HTMLElement>('[data-fit-native]')];
+    for (const box of [mark!, portrait!]) {
+      Object.defineProperty(box, 'clientWidth', { value: 180 });
+      Object.defineProperty(box, 'clientHeight', { value: 180 });
+    }
+    fitNativeImage(sized(mark!.querySelector('img')!, 1378, 42));
+    expect(mark!.dataset.nativeClamp).toBe('true');
+    expect(mark!.style.getPropertyValue('--markw')).toBe('180px');
+    expect(mark!.style.getPropertyValue('--markh')).toBe('18px');
+    expect(mark!.style.getPropertyValue('--markbg')).toBe('none');
+    fitNativeImage(sized(portrait!.querySelector('img')!, 1378, 42));
+    expect(portrait!.dataset.nativeClamp).toBe('false');
+  });
 });
 
 describe('加载微光', () => {

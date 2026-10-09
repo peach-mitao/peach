@@ -8,7 +8,7 @@ import { SKELETON_REVEAL_DELAY } from '@peach/legacy/ui';
 
 import { PANEL_ASPECT, panelFrame, relayoutJavImages, type JavLayout } from '../jav-artwork';
 import { faceFrame } from './face-frame';
-import { faceSourceScale, nativeImageFit } from './native-image';
+import { faceSourceScale, markClamp, nativeImageFit } from './native-image';
 
 const devicePixels = () => window.devicePixelRatio || 1;
 
@@ -228,6 +228,18 @@ export function frameCachedImages(node: Element): void {
 export function fitNativeImage(img: HTMLImageElement): void {
   const box = img.closest<HTMLElement>('[data-fit-native]');
   if (!box || !img.naturalWidth) return;
+  /* 超扁、超高的标识另走一条：短边撑到下限、长边两头裁掉（`[data-native-clamp]` 换成 cover），
+     不补底——那一圈模糊放大的是一道线，只会糊成一大块。 */
+  const clamp = box.dataset.fitNative === 'mark'
+    ? markClamp(img.naturalWidth, img.naturalHeight, box.clientWidth, box.clientHeight) : null;
+  box.dataset.nativeClamp = String(!!clamp);
+  if (clamp) {
+    box.dataset.nativeSmall = 'false';
+    box.style.setProperty('--markw', clamp.width + 'px');
+    box.style.setProperty('--markh', clamp.height + 'px');
+    box.style.setProperty('--markbg', 'none');
+    return;
+  }
   // 版式切换会改变框的大小，每次按屏幕像素密度重新判断。
   const { small, width, height } = nativeImageFit(img.naturalWidth, img.naturalHeight, box.clientWidth, box.clientHeight, devicePixels());
   box.dataset.nativeSmall = String(small);

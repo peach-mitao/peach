@@ -126,13 +126,21 @@ export async function sendAvatarPick(
   await sendBytes(`${AVATAR_PICK_URL}${query(kind, id)}&name=${encodeURIComponent(file.name)}${box}`, file);
 }
 
+/** 说明里点名的别名个数。再多就是一大段字，把候选网格挤得只剩一排。 */
+const NOTE_NAMES = 2;
+
 /** 说明只留一句：这一屏已经用图说清了在选什么，多一行字就是多一行要读的东西。
- *  按哪个名字找到的要说——找错人是这里唯一会出的大错，而名字是唯一的线索。 */
+ *  按哪个名字找到的要说——找错人是这里唯一会出的大错，而名字是唯一的线索。名字多时点名
+ *  前两个，余下的只报个数，每一格按谁找到的在格子的 title 里。 */
 export function pickerNote(name: string, data: AvatarChoices | undefined): string {
   // 候选在路上时网格里是 Skeleton，这里不再另写一句「正在读取」。
   if (!data) return name;
   const elsewhere = data.matched_names.filter((one) => one !== name);
-  if (elsewhere.length) return `${name}：图库里按「${elsewhere.join('」「')}」找到的。`;
+  if (elsewhere.length) {
+    const named = `「${elsewhere.slice(0, NOTE_NAMES).join('」「')}」`;
+    const more = elsewhere.length > NOTE_NAMES ? `等 ${elsewhere.length.toLocaleString()} 个名字` : '';
+    return `${name}：图库里按${named}${more}找到的。`;
+  }
   return data.choices.length
     ? `${name}：换上的那张留在本机，随时能换回来。`
     : `${name}：图库里没有这个名字，用下面两种方式换。`;
@@ -156,7 +164,7 @@ export const sharedCast = (choice: AvatarChoice): boolean => choice.cast > 1;
 
 export const cropNote = (choice: AvatarChoice): string =>
   sharedCast(choice)
-    ? `${choice.label}：${choice.cast} 人合演，先找到她自己的脸，再拖动方框选一块。`
+    ? `${choice.label}：${choice.cast.toLocaleString()} 人合演，先找到她自己的脸，再拖动方框选一块。`
     : `${choice.label}：拖动方框选一块，滚轮或角上那枚方块改大小。`;
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -177,5 +185,5 @@ export function baseLabel(ref: string): string {
 export const choiceDetail = (choice: AvatarChoice): string =>
   `${SOURCE_LABELS[choice.source] || choice.source} · ${choice.label}`
   + (choice.width ? ` · ${choice.width}×${choice.height}` : '')
-  + (sharedCast(choice) ? ` · ${choice.cast} 人合演` : '')
+  + (sharedCast(choice) ? ` · ${choice.cast.toLocaleString()} 人合演` : '')
   + (choice.found_by ? ` · 按「${choice.found_by}」找到` : '');

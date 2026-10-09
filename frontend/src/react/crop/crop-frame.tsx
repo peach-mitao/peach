@@ -13,7 +13,7 @@ import type {
 } from 'react';
 
 import {
-  boxPercent, clampBox, isUsableSize, moveBox, resizeFromCorner, scaleBox, toNatural,
+  boxPercent, clampBox, handleOutside, isUsableSize, moveBox, resizeFromCorner, scaleBox, toNatural,
   type CropBox, type CropSize,
 } from '../../crop-geometry';
 
@@ -39,8 +39,17 @@ export function CropFrame({ src, aspect, box, size, onBox, onSize, label }: Crop
   const image = useRef<HTMLImageElement>(null);
   const drag = useRef<{ mode: 'move' | 'resize'; x: number; y: number; box: CropBox } | null>(null);
   const [failed, setFailed] = useState(false);
+  /* 图当前的显示尺寸，只用来判断框在屏幕上够不够大、角柄放框里还是框外。 */
+  const [shown, setShown] = useState<CropSize | null>(null);
 
   useEffect(() => { setFailed(false) }, [src]);
+  useEffect(() => {
+    const node = image.current;
+    if (!node) return undefined;
+    const observer = new ResizeObserver(() => setShown({ width: node.clientWidth, height: node.clientHeight }));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   /** 显示像素的位移 → 源图像素。图片按 `max-w-full` 缩放，两个轴的比例一样。 */
   const scale = useCallback((dx: number, dy: number) => {
@@ -101,6 +110,7 @@ export function CropFrame({ src, aspect, box, size, onBox, onSize, label }: Crop
   }
 
   const rect = box && size ? boxPercent(clampBox(box, size, aspect), size) : null;
+  const outside = rect ? handleOutside(rect, shown) : false;
   /* 位置只经自定义属性进 CSS：六个百分数挂在容器上，压暗块与框本身各自用类名取用，
      样式仍然全在类里（`docs/FRONTEND.md`）。 */
   const frame = rect ? {
@@ -127,7 +137,8 @@ export function CropFrame({ src, aspect, box, size, onBox, onSize, label }: Crop
           <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 top-(--crop-b) bg-scrim" />
           <div aria-hidden className="pointer-events-none absolute left-0 top-(--crop-t) h-(--crop-h) w-(--crop-l) bg-scrim" />
           <div aria-hidden className="pointer-events-none absolute right-0 left-(--crop-r) top-(--crop-t) h-(--crop-h) bg-scrim" />
-          {/* 框本身。整块可拖，右下角那枚小方块改大小；方向键与加减号做同样两件事。 */}
+          {/* 框本身。整块可拖，右下角那枚小方块改大小；方向键与加减号做同样两件事。
+              框在屏幕上很小（极扁、极长的图）时角柄整枚挪到框外右下，框里留给拖动。 */}
           <div role="group" tabIndex={0} aria-label={label} data-crop-box
             onPointerDown={start('move')} onPointerMove={move}
             onPointerUp={end} onPointerCancel={end} onKeyDown={keys}
@@ -136,9 +147,9 @@ export function CropFrame({ src, aspect, box, size, onBox, onSize, label }: Crop
               onBox(scaleBox(box, event.deltaY > 0 ? WHEEL_STEP : 1 / WHEEL_STEP, size, aspect));
             }}
             className="absolute left-(--crop-l) top-(--crop-t) h-(--crop-h) w-(--crop-w) cursor-move touch-none outline-none ring-2 ring-border-focus-ring ring-inset focus-visible:ring-4">
-            <span data-crop-handle onPointerDown={start('resize')} onPointerMove={move}
-              onPointerUp={end} onPointerCancel={end}
-              className="absolute -right-1.5 -bottom-1.5 size-3 cursor-nwse-resize touch-none rounded-xs border border-separator-border bg-background-full" />
+            <span data-crop-handle data-outside={outside || undefined} onPointerDown={start('resize')}
+              onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+              className="absolute -right-1.5 -bottom-1.5 data-outside:-right-3.5 data-outside:-bottom-3.5 size-3 cursor-nwse-resize touch-none rounded-xs border border-separator-border bg-background-full" />
           </div>
         </>
       )}

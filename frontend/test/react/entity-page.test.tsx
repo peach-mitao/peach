@@ -227,12 +227,31 @@ describe('换筛选与视图', () => {
     await settle();
     expect(page.calls('/api/items').map((url) => url.searchParams.get('tag'))).toEqual([null, '巨乳']);
     expect(cards(page.props)).toEqual(['7']);
-    expect(readout(page.props)).toBe('视频 · 1 · 巨乳');
+    // 选了哪几枚由交集条列着，读数只报个数：标签名再列一遍，几枚长标签就能把这一行撑出页面。
+    expect(readout(page.props)).toBe('视频 · 1 · 已选 1 个标签');
     expect(page.props.hosts.filter.querySelector('[data-entity-tag="巨乳"]')?.getAttribute('aria-pressed')).toBe('true');
     await push({ filters: {} });
     await settle();
     expect(page.calls('/api/items')).toHaveLength(2);
     expect(cards(page.props)).toEqual(['1', '2', '3']);
+  });
+
+  it('名下一部视频也没有：正文是空态，下排不出排序键', async () => {
+    const page = await open({ entity: entity({ asset_count: 0 }), items: () => items([]) });
+    expect(page.props.hosts.body.textContent).toContain('还没有视频');
+    expect(page.props.hosts.body.querySelector('[data-media-grid]')).toBeNull();
+    expect(page.props.hosts.filter.querySelector('[data-entity-sort]')).toBeNull();
+    expect(buttonNamed('查看全部视频', page.props.hosts.body)).toBeNull();
+  });
+
+  it('筛完一部不剩：空态给一条回到全部视频的路，撤掉观看状态与交集条上的筛选', async () => {
+    const page = await open({ items: (query) => items(query.get('tag') ? [] : [1, 2, 3]) },
+      { filters: { tag: '巨乳', state: 'fresh', sort: 'new' } });
+    expect(page.props.hosts.body.textContent).toContain('没有符合条件的视频');
+    await click(buttonNamed('查看全部视频', page.props.hosts.body));
+    expect(page.props.actions.route).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'new', tag: '', state: '', creator: '', studio: '', owner: '' }),
+      expect.objectContaining({ media: 'videos' }));
   });
 
   it('视图键与观看状态不自己改地址：交给壳写好再推回来；照片已在首屏取过，切过去不请求', async () => {

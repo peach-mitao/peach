@@ -25,3 +25,17 @@ export function nativeImageFit(width: number, height: number, frameWidth: number
   const scale = valid ? Math.min(1, frameWidth / width, frameHeight / height) : 1;
   return { small, width: width * scale, height: height * scale };
 }
+
+/** 标识按框 contain 之后，短边至少占框短边的这一份。10:1 的字标在方框里正好落在这条线上。 */
+export const MARK_MIN_SHORT = 0.1;
+
+/** 超扁、超高的标识（实测 1378×42、42×600）按框 contain 只剩一道线：短边撑到 `MARK_MIN_SHORT`，
+ *  长边仍按框，摆的时候 cover，裁掉的是长边两头。比例正常的标识返回 `null`，照常 contain。 */
+export function markClamp(width: number, height: number, frameWidth: number, frameHeight: number) {
+  if (![width, height, frameWidth, frameHeight].every(value => Number.isFinite(value) && value > 0)) return null;
+  const scale = Math.min(frameWidth / width, frameHeight / height);
+  const shownWidth = width * scale, shownHeight = height * scale;
+  const floor = Math.min(frameWidth, frameHeight) * MARK_MIN_SHORT;
+  if (Math.min(shownWidth, shownHeight) >= floor) return null;
+  return shownHeight < shownWidth ? { width: shownWidth, height: floor } : { width: floor, height: shownHeight };
+}

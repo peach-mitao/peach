@@ -176,6 +176,29 @@ describe('名册', () => {
     expect(given.openEntity).toHaveBeenCalledWith('performer', '甲');
   });
 
+  it('格子底下的作品数带单位、按千分位写；页头读数同样分位', async () => {
+    seed(indexKey('performers', ''), [person('甲', { n: 128400 }), person('乙', { n: 0 })]);
+    const host = await open(props());
+    expect(cells(host)[0]?.textContent).toContain('128,400 个视频');
+    expect(cells(host)[1]?.textContent).toContain('0 个视频');
+  });
+
+  it('名册没读到时页头不写「0 项」，空态配出错的字形', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: '读不出来' }) })));
+    const host = await open(props());
+    await settle();
+    expect(host.textContent).toContain('没能读取');
+    expect(host.querySelector('[data-index-count]')?.textContent ?? '').toBe('');
+    expect(host.textContent).not.toContain('0 项');
+  });
+
+  it('字母表里截断的标签名悬停看得到全名', async () => {
+    const long = 'とても長い日本語のタグ名がここに続いて途中で切れてしまうもの';
+    seed(indexKey('tags', '', 'all'), [tag(long)]);
+    const host = await open(props({ kind: 'tags' }));
+    expect(alphaTag(host, long)?.getAttribute('title')).toBe(long);
+  });
+
   it('换版式写回偏好、按圆框取头像，并把已经加载完的图重量一遍', async () => {
     seed(indexKey('performers', ''), [person('甲')]);
     const given = props();

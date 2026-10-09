@@ -11,9 +11,13 @@ import { api } from '@peach/legacy/core';
 import { tagLabel } from '@peach/legacy/tags';
 import { confirmModal } from '@peach/legacy/ui';
 
+import { Button } from '@/components/base/buttons/button';
+
 import { errorMessage } from '../../api';
 import type { MediaCardLayout } from '../catalog-grid/types';
+import { EmptyState } from '../components/empty-state';
 import { RetryNote } from '../components/grid-reveal';
+import { spriteGlyph } from '../components/sprite-glyph';
 import type { EntityBodyActions, EntityPhotos, EntityRoster } from '../entity-body/entity-body';
 import { EntityBodyPage } from '../entity-body/entity-body-page';
 import type {
@@ -66,7 +70,7 @@ const newSeed = () => String(((Date.now() ^ (Math.random() * 1e9 | 0)) >>> 0) % 
 function photoReadout(page: PhotoPage, codeSets: number) {
   return `照片 · ${[
     page.total || !codeSets ? `${(page.total || 0).toLocaleString()} 张` : '',
-    codeSets ? `样张 ${(page.sample_total || 0).toLocaleString()} 张 · ${codeSets} 部作品` : '',
+    codeSets ? `样张 ${(page.sample_total || 0).toLocaleString()} 张 · ${codeSets.toLocaleString()} 部作品` : '',
   ].filter(Boolean).join(' · ')}`;
 }
 
@@ -315,13 +319,22 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     back: inSet, shuffle: !!wallPage.total, layout: props.photoLayout, layouts: props.photoLayouts,
     setId: inSet ? Number(wallPage.id) : 0,
   } : null;
+  /* 名下一部作品都没有（或筛完一部不剩）时正文是空态，下排那排排序键与换一批没有东西可排，不出。 */
+  const combo = helpers.comboItems(filters);
+  const filtered = combo.length > 0 || !!filters.state;
+  const worksEmpty = view === 'videos' && !!items.data && !(items.data.items || []).length;
+  const showAll = () => actions.route(
+    // 键名与壳的 `clearAll` 同一组，外加观看状态。
+    { ...filters, state: '', tag: '', creator: '', studio: '', owner: '' }, EMPTY_MEDIA);
   let readout = '';
   let busy = false;
   if (view === 'people') readout = `${kind === 'studio' ? '厂牌' : '艺人'} · ${roster.length.toLocaleString()}`;
   else if (view === 'videos') {
     busy = !items.data;
-    const labels = tagList(filters.tag).map((tag) => tagLabel(tag));
-    readout = `视频 · ${(items.data?.work_total ?? items.data?.total ?? 0).toLocaleString()}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
+    /* 选了哪几枚标签由上面那条交集条一枚一枚列着，读数只报个数：标签名再列一遍，几枚长标签
+       就能把这一行撑出页面。 */
+    const picked = tagList(filters.tag).length;
+    readout = `视频 · ${(items.data?.work_total ?? items.data?.total ?? 0).toLocaleString()}${picked ? ` · 已选 ${picked.toLocaleString()} 个标签` : ''}`;
   } else if (wallPage && !wallPage.error) {
     readout = inSet ? `${wallPage.title} · ${(wallPage.total || 0).toLocaleString()} 张`
       : photoReadout(wallPage, codeSetsOf(wallPage).length);
@@ -346,12 +359,13 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         feedHost={entityId ? hosts.feed : null} jav={javPage} actions={heroActions} helpers={heroHelpers} />
       {createPortal(
         <EntityFilterPage kind={kind} name={name} view={view} views={views} state={filters.state || ''}
-          states={props.states} tags={tags} combo={helpers.comboItems(filters)} readout={readout} busy={busy}
-          video={video} photo={photo} actions={filterActions} helpers={filterHelpers} />,
+          states={props.states} tags={tags} combo={combo} readout={readout} busy={busy}
+          video={worksEmpty ? null : video} photo={photo} actions={filterActions} helpers={filterHelpers} />,
         hosts.filter)}
       {createPortal(
         view === 'videos' && items.isError
           ? <RetryNote message={errorMessage(items.error)} onRetry={() => { void items.refetch() }} />
+          : worksEmpty ? <WorksEmpty filtered={filtered} onShowAll={showAll} />
           : (
             <EntityBodyPage kind={kind} name={name} view={view} roster={rosterProps} items={items.data ?? null}
               revision={itemsRevision} fetchPage={fetchPage} photos={photos} photoSize={props.photoSize}
@@ -362,5 +376,19 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
           ),
         hosts.body)}
     </>
+  );
+}
+
+/** 作品区一部也没有。筛完一部不剩时给一条回到全部视频的路：观看状态与交集条上的筛选一起撤掉。 */
+function WorksEmpty({ filtered, onShowAll }: { filtered: boolean; onShowAll(): void }) {
+  return filtered ? (
+    <EmptyState icon={spriteGlyph('search')} title="没有符合条件的视频"
+      actions={<Button variant="secondary" onClick={onShowAll}>查看全部视频</Button>}>
+      清除筛选后查看名下全部视频。
+    </EmptyState>
+  ) : (
+    <EmptyState icon={spriteGlyph('film')} title="还没有视频">
+      署上这个名字的视频入库后会显示在这里。
+    </EmptyState>
   );
 }

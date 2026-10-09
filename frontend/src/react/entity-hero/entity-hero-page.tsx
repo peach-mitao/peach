@@ -23,7 +23,7 @@ import { Glyph } from './glyph';
 import { FeedSwitch, MorePop } from './hero-pop';
 import { NamePicker } from './name-picker';
 import {
-  agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
+  COMPANY_ALIASES_SHOWN, agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
   type EntityHeroActions, type EntityHeroData, type EntityHeroHelpers, type EntityHeroProps,
   type HeroCostar, type HeroFollow, type LinkMark, type LinkView,
 } from './entity-hero';
@@ -72,11 +72,17 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, actions,
             <AliasLine kind={kind} entity={entity} actions={actions} />
             {entity.related_identities?.length ? (
               <div className="flex min-w-0 flex-wrap gap-2 text-caption-1-regular text-text-secondary">
-                {entity.related_identities.map((identity) => (
-                  <button type="button" key={identity.id} className="text-text-primary underline" onClick={() => actions.openEntity(identity.kind, identity.canonical_name)}>
-                    {identity.relation === 'same_person' ? '同一人' : '关联账号'}：{identity.canonical_name}
-                  </button>
-                ))}
+                {/* 账号名常是一长串无空格的英文，窄屏下得能在任意处折行。 */}
+                {entity.related_identities.map((identity) => {
+                  const text = `${identity.relation === 'same_person' ? '同一人' : '关联账号'}：${identity.canonical_name}`;
+                  return (
+                    <button type="button" key={identity.id} title={text}
+                      className="min-w-0 max-w-full text-text-primary underline wrap-anywhere"
+                      onClick={() => actions.openEntity(identity.kind, identity.canonical_name)}>
+                      {text}
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
             {links.length ? (
@@ -159,8 +165,8 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
             <Glyph name="id-card" />
             <span data-alias-names="" title="别名">{line.names.map((one, at) => <span key={at}>{one}</span>)}</span>
             {line.rest > 0 ? (
-              <MorePop id="entityAliasPop" hook="alias" rest={line.rest} label={`另外 ${line.rest} 个别名`}
-                heading={`${line.total} 个别名`}>
+              <MorePop id="entityAliasPop" hook="alias" rest={line.rest} label={`另外 ${line.rest.toLocaleString()} 个别名`}
+                heading={`${line.total.toLocaleString()} 个别名`}>
                 <dl>
                   {(entity.name_groups?.groups || []).map((group, at) => (
                     <NameGroup key={at} label={group.label} names={group.names} />
@@ -186,7 +192,25 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
       {agencyNode ? <span data-meta-item="" title="事务所"><Glyph name="briefcase" /><span>{agencyNode}</span></span> : null}
       {maker ? <span data-meta-item="" title="片商"><Glyph name="clapperboard" /><a href={entityPath('studio', maker.name)} data-studio-link={maker.name}
         onClick={go('studio', maker.name)}>{maker.name}</a></span> : null}
-      {aliases.length ? <div data-meta-item="names" data-company-names={kind === 'studio' || kind === 'agency' ? '' : undefined}><Glyph name="id-card" /><span data-alias-names="" title="别名">{aliases.map((name, at) => <span key={at}>{name}</span>)}</span></div> : null}
+      {aliases.length ? <CompanyAliases aliases={aliases} wide={kind === 'studio' || kind === 'agency'} /> : null}
+    </div>
+  );
+}
+
+/** 公司别名：先列几个，余下的收进「+N」，浮层里一个名字一行。片商改过几轮名、挂过一串
+ *  label 时别名能有三十多个，全摊开会占掉资料卡十几行。 */
+function CompanyAliases({ aliases, wide }: { aliases: string[]; wide: boolean }) {
+  const { shown, rest } = shownTags(aliases, COMPANY_ALIASES_SHOWN);
+  return (
+    <div data-meta-item="names" data-company-names={wide ? '' : undefined}>
+      <Glyph name="id-card" />
+      <span data-alias-names="" title="别名">{shown.map((name, at) => <span key={at}>{name}</span>)}</span>
+      {rest ? (
+        <MorePop id="entityAliasPop" hook="alias" rest={rest} label={`另外 ${rest.toLocaleString()} 个别名`}
+          heading={`${aliases.length.toLocaleString()} 个别名`}>
+          <dl><NameGroup names={aliases.map((name) => ({ name }))} /></dl>
+        </MorePop>
+      ) : null}
     </div>
   );
 }
@@ -246,12 +270,15 @@ function IdentityMeta({ entity }: { entity: EntityHeroData }) {
   );
 }
 
+/** 浮层里的一组名字：一个名字一行，读音排在它下面一行。串成一段的话，名字和读音分不清各属于谁。 */
 function NameGroup({ label, names }: { label?: string; names: { name: string; reading?: string }[] }) {
   return (
     <>
       {label ? <dt>{label}</dt> : null}
       <dd data-wide={label ? undefined : ''}>
-        {names.map((entry, at) => <span key={at}>{entry.name}{entry.reading ? <small>{entry.reading}</small> : null}</span>)}
+        {names.map((entry, at) => (
+          <span key={at} data-pop-name="">{entry.name}{entry.reading ? <small>{entry.reading}</small> : null}</span>
+        ))}
       </dd>
     </>
   );
@@ -272,10 +299,11 @@ function FactTags({ tags }: { tags: string[] }) {
   const { shown, rest } = shownTags(tags);
   return (
     <>
-      {shown.map((tag) => <span key={tag} data-fact-tag="">{tag}</span>)}
+      {shown.map((tag) => <span key={tag} data-fact-tag="" title={tag}>{tag}</span>)}
       {rest ? (
-        <MorePop id="entityTagPop" hook="fact" rest={rest} label={`另外 ${rest} 个标签`} heading={`${tags.length} 个标签`}>
-          <div data-fact-tags="">{tags.map((tag) => <span key={tag} data-fact-tag="">{tag}</span>)}</div>
+        <MorePop id="entityTagPop" hook="fact" rest={rest} label={`另外 ${rest.toLocaleString()} 个标签`}
+          heading={`${tags.length.toLocaleString()} 个标签`}>
+          <div data-fact-tags="">{tags.map((tag) => <span key={tag} data-fact-tag="" title={tag}>{tag}</span>)}</div>
         </MorePop>
       ) : null}
     </>
@@ -310,8 +338,9 @@ function HeroLinkView({ link }: { link: LinkView }) {
       );
     case 'private':
       return (
-        <span data-link="private" title={link.label}>
-          <LinkIcon mark={{ globe: true }} /><span data-link-label="">来源 · {link.label}</span>
+        <span data-link="private" title={link.sources ? link.sources.join('\n') : link.label}>
+          <LinkIcon mark={{ globe: true }} />
+          <span data-link-label="">{link.sources ? link.label : `来源 · ${link.label}`}</span>
         </span>
       );
     default:

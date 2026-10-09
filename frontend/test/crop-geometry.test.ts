@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  boxPercent, centeredBox, clampBox, defaultPanelBox, frameWithin, MIN_CROP_EDGE, moveBox,
+  boxPercent, centeredBox, clampBox, defaultPanelBox, frameWithin, handleOutside, HANDLE_ROOM, MIN_CROP_EDGE, moveBox,
   previewStyle, resizeFromCorner, scaleBox, toNatural, windowStyle,
 } from '../src/crop-geometry';
 
@@ -120,5 +120,22 @@ describe('框换算成样式', () => {
     expect(toNatural(100, 400, 800)).toBe(200);
     // 图还没布局出来，除数是 0：给 0 而不是 Infinity。
     expect(toNatural(100, 0, 800)).toBe(0);
+  });
+});
+
+describe('角柄放哪儿', () => {
+  it('框在屏幕上够大时角柄压在框角上', () => {
+    expect(handleOutside({ width: 50, height: 50 }, { width: 400, height: 400 })).toBe(false);
+  });
+  it('4000×200 的图只剩 20px 高，框比角柄大不了多少，角柄挪到框外', () => {
+    // 方框占满图高：屏幕上 20×20。
+    expect(handleOutside({ width: 5, height: 100 }, { width: 400, height: 20 })).toBe(true);
+  });
+  it('只看短边：长条框哪怕很长也要挪', () => {
+    expect(handleOutside({ width: 100, height: 100 }, { width: 600, height: HANDLE_ROOM - 1 })).toBe(true);
+  });
+  it('图的显示尺寸还没量到时不挪', () => {
+    expect(handleOutside({ width: 5, height: 5 }, null)).toBe(false);
+    expect(handleOutside({ width: 5, height: 5 }, { width: 0, height: 0 })).toBe(false);
   });
 });

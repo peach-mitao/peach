@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nativeImageFit, faceSourceScale } from '../../src/card-art/native-image';
+import { markClamp, MARK_MIN_SHORT, nativeImageFit, faceSourceScale } from '../../src/card-art/native-image';
 
 it('544×724 的旧人像不能使用 2184×1468 封面的焦点', () => {
   expect(faceSourceScale(544, 724, 2184, 1468)).toBe(0);
@@ -49,5 +49,22 @@ describe('头像和标识的小图补底', () => {
     expect(nativeImageFit(350, 350, 369, 369, 2).small).toBe(false);
     expect(nativeImageFit(150, 200, 180, 240).small).toBe(false);
     expect(nativeImageFit(0, 0, 180, 240).small).toBe(false);
+  });
+});
+
+describe('超扁、超高的标识撑出最小短边', () => {
+  it('1378×42 的横条短边撑到框短边的下限，长边仍按框', () => {
+    expect(markClamp(1378, 42, 180, 180)).toEqual({ width: 180, height: 180 * MARK_MIN_SHORT });
+  });
+  it('42×600 的竖条同理撑宽', () => {
+    expect(markClamp(42, 600, 180, 180)).toEqual({ width: 180 * MARK_MIN_SHORT, height: 180 });
+  });
+  it('10:1 的字标和方形标识照常 contain', () => {
+    expect(markClamp(400, 40, 180, 180)).toBeNull();
+    expect(markClamp(120, 120, 180, 180)).toBeNull();
+  });
+  it('尺寸没量到时不动', () => {
+    expect(markClamp(0, 0, 180, 180)).toBeNull();
+    expect(markClamp(1378, 42, 0, 0)).toBeNull();
   });
 });

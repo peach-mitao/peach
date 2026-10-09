@@ -283,6 +283,55 @@ it('过期的图库索引说出多久没更新，不说成还没取过', async (
   expect(dialog()?.textContent).not.toContain('还没取过');
 });
 
+it('按好多个名字找到时说明只点名前两个，余下的报个数', async () => {
+  const names = ['葵つかさ', '葵ツカサ', 'あおいつかさ', 'Aoi Tsukasa', '葵司 (AV女優)'];
+  server(listing([choice({ found_by: names[4] })], { matched_names: names }));
+  await openPicker();
+  const note = dialog()?.textContent || '';
+  expect(note).toContain('图库里按「葵つかさ」「葵ツカサ」等 5 个名字找到的');
+  expect(note).not.toContain('あおいつかさ');
+  // 没点名的那几个照旧落在各自格子的 title 里。
+  expect(cells()[0]?.getAttribute('title')).toContain('按「葵司 (AV女優)」找到');
+});
+
+it('一张候选也没有时不留网格那一带，手填那两条路照旧在', async () => {
+  server(listing([], { matched_names: [] }));
+  await openPicker();
+  expect(document.querySelector('[role="listbox"]')).toBeNull();
+  expect(buttonNamed('从本机选图片')).not.toBeNull();
+  expect(document.querySelector('input[aria-label="图片地址"]')).not.toBeNull();
+});
+
+it('候选没取到时原因旁边有「重试」，点了再取一遍', async () => {
+  let fail = true;
+  const fetched = vi.fn(async () => (fail
+    ? { ok: false, status: 500, json: async () => ({ error: '候选读不出来' }) }
+    : { ok: true, status: 200, json: async () => listing([choice()]) }));
+  vi.stubGlobal('fetch', fetched);
+  await openPicker();
+  expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('候选读不出来');
+  expect(document.querySelector('[role="listbox"]')).toBeNull();
+  fail = false;
+  await click(buttonNamed('重试'));
+  await settle();
+  expect(fetched).toHaveBeenCalledTimes(2);
+  expect(cells()).toHaveLength(1);
+  expect(dialog()?.querySelector('[role="alert"]')).toBeNull();
+});
+
+it('提交失败的原因旁边不给「重试」：重来的是那颗提交键自己', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (_input: string, init?: RequestInit) => (
+    init?.method === 'POST'
+      ? { ok: false, status: 400, json: async () => ({ error: '只接受指向公网的 https 地址' }) }
+      : { ok: true, status: 200, json: async () => listing([choice()]) }
+  )));
+  await openPicker();
+  await click(cells()[0]);
+  await settle();
+  expect(dialog()?.querySelector('[role="alert"]')).not.toBeNull();
+  expect(buttonNamed('重试')).toBeNull();
+});
+
 it('合演作品的格子标出人数，框选时提醒先找到她自己的脸', async () => {
   server(listing([choice({
     ref: 'asset:11:cover', source: 'asset', label: 'DVAJ-495', crop: true,
@@ -318,7 +367,7 @@ it('候选回来之前网格里是同一种格子的骨架，回来之后换成�
   expect(cells()).toHaveLength(1);
 });
 
-it('一格的图到了才揭开，取不到也揭开', async () => {
+it('一格的图到了才揭开，取不到时撤掉图、揭开空底', async () => {
   server(listing([choice(), choice({ ref: 'sha256:abc', source: 'history', label: 'twitter' })]));
   await openPicker();
   const [first, second] = cells();
@@ -328,7 +377,10 @@ it('一格的图到了才揭开，取不到也揭开', async () => {
   await act(async () => { first?.querySelector('img')?.dispatchEvent(new Event('load')) });
   expect(layers(first).map((one) => one.hasAttribute('data-revealed'))).toEqual([true, true]);
   await act(async () => { second?.querySelector('img')?.dispatchEvent(new Event('error')) });
-  expect(second?.querySelector('img')?.hasAttribute('data-revealed')).toBe(true);
+  expect(second?.querySelector('img')).toBeNull();
+  expect(second?.querySelector('[data-choice-lost]')).not.toBeNull();
+  expect(second?.querySelector('.reveal-skeleton')?.hasAttribute('data-revealed')).toBe(true);
+  expect(second?.textContent).toContain('twitter');
 });
 
 it('封面格子在取景区里取一块 3:4，图库人像照旧铺满', async () => {
