@@ -47,7 +47,8 @@ from peach.metadata import (
     extract_peach_fields,
     identifies_code,
 )
-from peach.metadata_policy import PEACH_FIELDS, POLICY_VERSION, SOURCE_SPECS, field_rank, sort_candidates
+from peach.metadata_policy import (PEACH_FIELDS, POLICY_VERSION, SOURCE_SPECS, field_rank,
+                                   preferred_tag_source, sort_candidates)
 from peach.platform import system_volume
 from peach.review_csv import ENCODING, write_rows
 from peach.sources import Session
@@ -828,6 +829,61 @@ def _build_adapter(args, sources, provider=None):
     return ChainAdapter(factory, wikis)
 
 
+def _collect_code_fields(*, code, query, variants, chain, profile, sources, adapter, args,
+                         health, throttle, genre_decisions, unmapped_genres,
+                         error_writer, error_handle):
+    """一个番号逐档取证并汇总字段；标量齐全后只补优先标签来源，返回候选与失败次数。"""
+    by_field: dict[str, list[dict]] = {}
+    given: set[str] = set()
+    errors = 0
+    stages = metadata_routes.stages_for_chain(chain)
+    tag_source = (preferred_tag_source(code)
+                  if sources is None and not args.english_title_only else None)
+    scalar_settled = False
+    asked: set[str] = set()
+    for stage, then in zip(stages, (*stages[1:], "")):
+        members = throttle.open_members(metadata_routes.stage_members(stage, chain))
+        if scalar_settled:
+            members = tuple(name for name in members if name == tag_source)
+        if not members:
+            continue
+        asked.update(members)
+        results, used_network = _ask_stage(
+            adapter, query=query, variants=variants, stage=stage, members=members,
+            args=args, health=health)
+        for source, (payload, error, attempt) in results.items():
+            if payload is None:
+                error = error or MetadataProviderError("no result", kind="empty")
+                error_writer.writerow({
+                    "code": code, "query": query, "source": source, "kind": error.kind,
+                    "status_code": error.status_code, "retryable": int(error.retryable),
+                    "message": str(error),
+                })
+                error_handle.flush()
+                errors += 1
+                throttle.record_failure(source, error)
+                continue
+            throttle.record_success(source)
+            candidates = _candidates_from(
+                payload, query=query, source=source, profile=profile,
+                snapshot=args.raw_dir / attempt / f"{source}.json",
+                genre_decisions=genre_decisions, health=health,
+                unmapped_genres=unmapped_genres, code=code)
+            for field, candidate in candidates.items():
+                by_field.setdefault(field, []).append(candidate)
+                if candidate["value"]:
+                    given.add(field)
+        # 本地快照不消耗网络限流窗口。
+        if args.delay > 0 and used_network:
+            time.sleep(args.delay + random.uniform(0, min(0.4, args.delay / 3)))
+        if sources is None and metadata_routes.settles(
+                metadata_routes.SCALAR_FIELDS, given, wants_tags=True, then=then):
+            scalar_settled = True
+            if tag_source not in chain or tag_source in asked:
+                break
+    return by_field, errors
+
+
 def main(argv: list[str] | None = None, *, provider=None) -> int:
     """入口只负责把这一趟登记进任务中心，正文在 `_scrape` 里。
 
@@ -904,52 +960,17 @@ def _scrape(parser, args, handle, *, provider=None) -> int:
             # 第一个永远是账本的规范写法，评审键不随回退漂移。
             variants = code_query_variants(code) or (query,)
             chain = _chain_for(row, profile=profile, sources=sources)
-            by_field: dict[str, list[dict]] = {}
-            given: set[str] = set()
             fetched_at = datetime.now(timezone.utc).isoformat()
-            stages = metadata_routes.stages_for_chain(chain)
-            for stage, then in zip(stages, (*stages[1:], "")):
-                members = throttle.open_members(metadata_routes.stage_members(stage, chain))
-                if not members:
-                    continue
-                results, used_network = _ask_stage(
-                    adapter, query=query, variants=variants, stage=stage, members=members,
-                    args=args, health=health)
-                for source, (payload, error, attempt) in results.items():
-                    if payload is None:
-                        error = error or MetadataProviderError("no result", kind="empty")
-                        error_writer.writerow({
-                            "code": code, "query": query, "source": source, "kind": error.kind,
-                            "status_code": error.status_code, "retryable": int(error.retryable),
-                            "message": str(error),
-                        })
-                        error_handle.flush(); errors_written += 1
-                        throttle.record_failure(source, error)
-                        continue
-                    throttle.record_success(source)
-                    candidates = _candidates_from(
-                        payload, query=query, source=source, profile=profile,
-                        snapshot=args.raw_dir / attempt / f"{source}.json",
-                        genre_decisions=genre_decisions, health=health,
-                        unmapped_genres=unmapped_genres, code=code)
-                    for field, candidate in candidates.items():
-                        by_field.setdefault(field, []).append(candidate)
-                        if candidate["value"]:
-                            given.add(field)
-                # 续跑重建候选时会读取数百个本地快照；它们没有网络请求，不该
-                # 消耗来源限流窗口。只给本次真实 fetch 留间隔。
-                if args.delay > 0 and used_network:
-                    time.sleep(args.delay + random.uniform(0, min(0.4, args.delay / 3)))
-                # 走链才短路：官方那一档把必填标量给全了就不问下一档，与采集任务同一判据
-                # （`metadata_routes.settles`）；点名的来源用户要的就是每家都问。这里不对照账本
-                # 现值，标签一律算「还缺」。
-                if sources is None and metadata_routes.settles(
-                        metadata_routes.SCALAR_FIELDS, given, wants_tags=True, then=then):
-                    break
+            by_field, errors = _collect_code_fields(
+                code=code, query=query, variants=variants, chain=chain, profile=profile,
+                sources=sources, adapter=adapter, args=args, health=health, throttle=throttle,
+                genre_decisions=genre_decisions, unmapped_genres=unmapped_genres,
+                error_writer=error_writer, error_handle=error_handle)
+            errors_written += errors
             for field, candidates in by_field.items():
                 if args.english_title_only and field != "title":
                     continue
-                candidates = sort_candidates(field, candidates)
+                candidates = sort_candidates(field, candidates, code=code)
                 candidate_writer.writerow({
                     "item_key": f"{query}:{field}", "code": code, "query": query,
                     "field": field, "field_label": FIELD_LABELS[field],

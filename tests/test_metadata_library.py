@@ -40,7 +40,7 @@ def stub_provider():
     provider = Mock()
 
     def dmm_has_nothing(code, source='r18dev', **_):
-        if source == 'dmm':
+        if source in ('dmm', 'javdb'):
             raise NotFound('HTTP 404')
         return DEFAULT
 
@@ -483,7 +483,7 @@ class LibraryNfoTests(unittest.TestCase):
         candidates.unlink()
         process_library(config, db, self.root / 'generated', self.root / 'covers', provider_factory=factory)
         self.assertEqual(list(read_rows(candidates, missing_ok=True)), [])
-        provider.query.assert_called_once()
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['r18dev', 'javdb'])
 
     @windows_ledger_roots
     def test_a_performer_marker_is_not_a_content_tag_the_ledger_already_has(self):
@@ -514,7 +514,7 @@ class LibraryNfoTests(unittest.TestCase):
         process_library(config, db, self.root / 'generated', self.root / 'covers', provider_factory=factory)
         self.assertIn('tags', {row['field'] for row in read_rows(candidates, missing_ok=True)})
 
-    def _collect_with_maker(self, code, maker, payload, r18dev=None):
+    def _collect_with_maker(self, code, maker, payload, r18dev=None, javdb=None):
         """一部有码片走采集，官方档由经桥的片商站 `maker` 答 `payload`；返回 (provider, 候选行)。"""
         media = self.root / 'media'
         media.mkdir()
@@ -525,31 +525,49 @@ class LibraryNfoTests(unittest.TestCase):
         provider.amane.side_effect = None
         provider.amane.return_value = [(maker, {'id': code, 'content_id': code, 'source': maker, **payload})]
         provider.query.return_value = r18dev or {'id': code}
+        if javdb is not None:
+            other_query = provider.query.side_effect
+            provider.query.side_effect = lambda query, source='r18dev', **kwargs: (
+                javdb if source == 'javdb' else other_query(query, source, **kwargs))
         process_library(config, db, self.root / 'generated', self.root / 'covers',
                         provider_factory=Mock(return_value=provider))
         return provider, read_rows(self.root / 'generated/library-metadata-field-candidates.csv')
 
     @windows_ledger_roots
+    def test_javdb_tags_are_collected_with_their_community_identity_after_maker_scalars(self):
+        provider, rows = self._collect_with_maker('SSIS-057', 'makers', {
+            'title': '標題', 'maker': 'エスワン ナンバーワンスタイル', 'release_date': '2021-05-07',
+            'genres': ['巨乳'], 'actresses': [{'japanese_name': '葵つかさ'}]},
+            javdb={'id': 'SSIS-057', 'genres': ['高跟鞋', '絲襪', '待收錄分類']})
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb'])
+        provider.community.assert_not_called()
+        tags = next(row for row in rows if row['field'] == 'tags')
+        candidate = next(c for c in json.loads(tags['candidates_json']) if c['source'] == 'javdb')
+        self.assertEqual(candidate['value'], ['高跟', '丝袜'])
+        self.assertEqual(candidate['unmapped_genres'], ['待收錄分類'])
+        self.assertEqual((candidate['source_kind'], candidate['official']), ('community', False))
+
+    @windows_ledger_roots
     def test_a_maker_site_answering_every_scalar_settles_the_chain_before_r18dev(self):
-        """片商官网是官方档第一家：标量与标签都给全了，r18.dev 与综合索引都不再问。"""
+        """片商官网给齐标量后，只额外请求 JavDB 内容类别。"""
         provider, rows = self._collect_with_maker('SSIS-057', 'makers', {
             'title': '標題', 'maker': 'エスワン ナンバーワンスタイル', 'release_date': '2021-05-07',
             'genres': ['巨乳'], 'actresses': [{'japanese_name': '葵つかさ'}]})
         self.assertEqual(provider.amane.call_args.kwargs['route'], ('makers',))
-        provider.query.assert_not_called()
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb'])
         provider.community.assert_not_called()
         title = next(row for row in rows if row['field'] == 'title')
         self.assertEqual([candidate['source'] for candidate in json.loads(title['candidates_json'])], ['makers'])
 
     @windows_ledger_roots
     def test_a_maker_site_without_tags_leaves_them_to_r18dev_but_not_to_the_indexes(self):
-        """FALENO 官网不给类别：缺标签的行再问 r18.dev 一次，综合索引照样不问。"""
+        """FALENO 官网不给类别：继续请求 r18.dev 与 JavDB。"""
         provider, rows = self._collect_with_maker('FSDSS-437', 'faleno', {
             'title': '標題', 'maker': 'FALENO', 'release_date': '2022-07-07',
             'actresses': [{'japanese_name': '女優'}]},
             r18dev={'id': 'FSDSS-437', 'genres': ['巨乳']})
         self.assertEqual(provider.amane.call_args.kwargs['route'], ('faleno',))
-        provider.query.assert_called_once()
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['r18dev', 'javdb'])
         provider.community.assert_not_called()
         tags = next(row for row in rows if row['field'] == 'tags')
         self.assertEqual({candidate['source'] for candidate in json.loads(tags['candidates_json'])}, {'r18dev'})
@@ -1366,7 +1384,7 @@ class LibraryNfoTests(unittest.TestCase):
         run = lambda **extra: process_library(config, db, self.root / 'generated', self.root / 'covers',
                                               provider_factory=Mock(return_value=provider), **extra)
         result = run()
-        provider.query.assert_not_called()
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb'])
         provider.community.assert_not_called()
         self.assertEqual((result['status'], result['issue_count']), ('complete', 0))
         rows = {row['field']: json.loads(row['candidates_json'])
@@ -1375,7 +1393,7 @@ class LibraryNfoTests(unittest.TestCase):
 
         os.utime(snapshot_path, (time.time() - 8 * 24 * 3600,) * 2)
         run(retry_ids=[1])
-        provider.query.assert_called_once()
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb', 'r18dev', 'javdb'])
 
     @windows_ledger_roots
     def test_a_cached_product_page_still_sends_the_row_to_the_mirror_for_its_cast(self):

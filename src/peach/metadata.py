@@ -512,7 +512,7 @@ def extract_peach_fields(payload: dict, genre_decisions=None) -> dict[str, dict]
     # 原文另存一份结构化的：复核页要拿它做「收录成哪个中文标签」的按钮，从那句中文
     # 提示里再拆回词来是把显示当接口用。
     mapped, unmapped = map_genres(payload.get("genres") or [], genre_decisions)
-    if mapped:
+    if mapped or unmapped:
         out["tags"] = {
             "value": mapped,
             "display_value": "、".join(mapped),

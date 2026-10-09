@@ -25,6 +25,23 @@ DEMO = SiteConfig(name="demo", label="Demo", provider="demo-page", base_url="htt
 
 
 class JavDBResourceTests(unittest.TestCase):
+    def test_categories_keep_raw_words_and_deduplicate_links_after_identity_check(self):
+        from peach.sources.javdb import JavDBSource
+        from peach.metadata import extract_peach_fields
+        html = '''<div class="panel-block"><strong>番號:</strong><span class="value">ABW-220</span></div>
+        <div class="panel-block"><strong>類別:</strong><span class="value">
+        <a href="/tags?c=1">高跟鞋</a><a href="/tags?c=2">絲襪、過膝襪</a>
+        <a href="/tags?c=3"><b>尚未收錄的分類</b></a><a href="/tags?c=1">高跟鞋</a>
+        <a href="/tags?c=4">單體作品</a></span></div>'''
+        page = Page("https://javdb.com/v/demo", html.encode())
+        record = JavDBSource().parse(page, "ABW-220")
+        self.assertEqual(record.genres, ("高跟鞋", "絲襪、過膝襪", "尚未收錄的分類", "單體作品"))
+        fields = extract_peach_fields(record.payload())
+        self.assertEqual(fields["tags"]["value"], ["高跟", "丝袜"])
+        self.assertEqual(fields["tags"]["unmapped_genres"], ["尚未收錄的分類"])
+        with self.assertRaises(SourceFailure):
+            JavDBSource().parse(page, "ABW-221")
+
     def test_resource_area_and_comment_links_share_identity(self):
         from peach.sources.javdb import parse_magnets, parse_comment_links, merge_resources
         digest = 'a' * 40

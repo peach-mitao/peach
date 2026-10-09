@@ -54,7 +54,7 @@ from .metadata_alias_resolve import (
 )
 from .metadata_policy import (
     CHAIN_OFFICIAL, FALLBACK_SOURCES, LOCAL_NFO_SOURCE, SOURCE_SPECS,
-    blacklisted, chain_rank, source_tier,
+    blacklisted, chain_rank, preferred_tag_source, source_tier,
 )
 from .review_csv import read_candidates
 from .sources import fc2
@@ -474,7 +474,7 @@ def _decision_note(decision: dict) -> dict:
     return note if isinstance(note, dict) else {}
 
 
-def metadata_decision_is_stale(decision: dict, candidates: list[dict]) -> bool:
+def metadata_decision_is_stale(decision: dict, candidates: list[dict], *, code: str = "") -> bool:
     """旧决定是否已经不对应这一行现存的候选；复核页与自动落库共用这一份。
 
     `metadata_fields` 的 `item_key` 是 `<番号>:<字段>`，不带候选身份。于是
@@ -500,6 +500,8 @@ def metadata_decision_is_stale(decision: dict, candidates: list[dict]) -> bool:
         return False
     status = str(decision.get("status") or "").strip()
     if status == "approved":
+        if _preferred_tags_changed(decision, candidates, code=code):
+            return True
         approved_key = str(note.get("candidate_key") or "").strip()
         refreshed_key = str(note.get("refreshed_candidate_key") or "").strip()
         return bool(approved_key) and not {approved_key, refreshed_key} & keys
@@ -507,6 +509,26 @@ def metadata_decision_is_stale(decision: dict, candidates: list[dict]) -> bool:
         rejected = {str(key).strip() for key in note.get("candidate_keys") or []}
         return not keys <= rejected
     return False
+
+
+def _preferred_tags_changed(decision: dict, candidates: list[dict], *, code: str = "") -> bool:
+    """有码标签出现了尚未结算的 JavDB 候选，旧来源的批准需要重判。"""
+    keyed_code, _, field = str(decision.get("item_key") or "").rpartition(":")
+    code = code or keyed_code
+    source = preferred_tag_source(code) if field == "tags" else None
+    note = _decision_note(decision)
+    if not source or str(decision.get("status") or "") != "approved":
+        return False
+    if any(str(c.get("source") or "").strip() == LOCAL_NFO_SOURCE for c in candidates):
+        return False
+    keys = {str(note.get(key) or "").strip()
+            for key in ("candidate_key", "refreshed_candidate_key")} - {""}
+    if not keys and not note.get("source"):
+        return False
+    preferred = [c for c in candidates if str(c.get("source") or "").strip() == source
+                 and _candidate_identifies_code(code, c)]
+    return bool(preferred) and not any(
+        str(c.get("candidate_key") or "").strip() in keys for c in preferred)
 
 
 def _same_as_current(connection, field: str, candidate: dict, current: str) -> bool:
@@ -575,10 +597,10 @@ def _normalised_candidate(field: str, candidate: dict, resolve=None) -> dict:
                if resolved else {})}
 
 
-def _preferred_candidate(field: str, candidates: list[dict]) -> dict:
+def _preferred_candidate(field: str, candidates: list[dict], *, code: str = "") -> dict:
     """取值一致时由谁署名。字段优先级链已经排好，落库记的出处就该是链上最靠前的那家。"""
     return min(candidates, key=lambda candidate: chain_rank(
-        field, str(candidate.get("source") or "").strip()))
+        field, str(candidate.get("source") or "").strip(), code=code))
 
 
 #: 韩国 MIB 番号唯一可信的来源：官网 k-mib.com（`metadata_kmib`）。
@@ -675,6 +697,8 @@ def _auto_apply_rule(candidate: dict, agreed: int) -> str:
     单独记名：它是唯一一条会改掉账本已有值的自动写入，回溯时第一个要捞出来的就是它。
     """
     source = str(candidate.get("source") or "").strip()
+    if candidate.get("tag_policy") == "censored-javdb":
+        return "metadata-censored-javdb-tags"
     if candidate.get("alias_source"):
         return f"adr-0038-planning-alias-resolved-{candidate['alias_source']}"
     if candidate.get("honorific_agreed"):
@@ -765,7 +789,7 @@ def _settled_candidates(connection, field: str, code: str, candidates: list[dict
         return [], None, []
     if len(values) == 1:
         return candidates, settled_by, []
-    ranks = {id(c): chain_rank(field, str(c.get("source") or "").strip())
+    ranks = {id(c): chain_rank(field, str(c.get("source") or "").strip(), code=code)
              for c in candidates}
     winner = min(candidates, key=lambda candidate: ranks[id(candidate)])
     # 同一家给出两个不同的值时，链上没有人能替它取舍：`ranks` 里它们分数相同，`min`
@@ -872,17 +896,20 @@ def pending_genres(candidates: list[dict]) -> list[str]:
         for genre in candidate.get("unmapped_genres") or [] if str(genre).strip()))
 
 
-def _may_replace_current(candidates: list[dict]) -> bool:
+def _may_replace_current(candidates: list[dict], *, field: str = "", code: str = "") -> bool:
     """这批候选能不能改掉账本已有的值：只有链上第一档可以。
 
     第一档是本地 NFO 与官方来源（含官方镜像）——用户自己整理的那份，和发行方自己
     写的那页。ADR-0035 让官方来源替换现值时用的就是这条界线，ADR-0038 只是把本地
     NFO 一并纳进来：它在链上排在官方前面，没有理由反而不能替换。
 
-    社区来源仍然只补空（ADR-0033）。兜底来源连挑战都不算：javbus 搜不到就给首个
+    有码作品的 JavDB 内容标签可以替换自动元数据标签；人工批准走并集，其他来源归属保留。
+    其他社区字段只补空（ADR-0033）。兜底来源连挑战都不算：javbus 搜不到就给首个
     近似命中，`259LUXU-891` 它答的是 `259LUXU-1891`。
     """
     sources = {str(c.get("source") or "").strip() for c in candidates}
+    if field == "tags" and preferred_tag_source(code) in sources:
+        return True
     return bool(sources) and all(
         source_tier(source) <= CHAIN_OFFICIAL for source in sources)
 
@@ -947,9 +974,9 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
     if not candidates:
         return None
     replaces_current = bool(str(row.get("current_value") or "").strip())
-    if replaces_current and not _may_replace_current(candidates):
+    if replaces_current and not _may_replace_current(candidates, field=field, code=code):
         return None
-    candidate = _preferred_candidate(field, candidates)
+    candidate = _preferred_candidate(field, candidates, code=code)
     query = str(row.get("query") or code).strip()
     # 韩国 MIB 的番号问 JAV 目录站必错，这类候选一条都不该走自动批准。第 3 条对它们
     # 全部成立——文件名就叫 `AR-101 Ari....mp4`——但它保证的是「候选属于这个文件」，
@@ -970,6 +997,8 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
                       for target in targets):
         return None
     return {**_normalised_candidate(field, candidate, resolve),
+            **({"tag_policy": "censored-javdb"}
+               if field == "tags" and candidate.get("source") == preferred_tag_source(code) else {}),
             "agreed_sources": len(candidates),
             **({"settled_by": settled_by} if settled_by else {}),
             **({"chain_winner": str(candidate.get("source") or "").strip(),
@@ -1288,15 +1317,13 @@ def _apply_metadata_candidate(
     for asset_id in asset_ids:
         for tag in tags:
             connection.execute(
-                "INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,?,?,?) "
-                "ON CONFLICT DO UPDATE SET "
-                "confidence=excluded.confidence,source=excluded.source",
+                "INSERT OR IGNORE INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,?,?,?)",
                 (asset_id, tag, confidence, f"javinizer:{source}:tag"),
             )
             upsert_asset_entity(
                 connection, kind="tag", name=tag, asset_id=asset_id, role="tag",
                 source=f"javinizer:{source}:tag", confidence=confidence,
-                metadata=metadata, now=now,
+                metadata=metadata, now=now, update_entity_metadata=False,
             )
     return len(asset_ids)
 
@@ -1423,7 +1450,7 @@ def auto_apply_metadata(database, candidate_root, *, batch_size=AUTO_APPLY_BATCH
                 if landed is not None:
                     refreshed += 1
                     continue
-                if prior is not None and not _decision_reopens(prior, row["candidates"]):
+                if prior is not None and not _decision_reopens(prior, row["candidates"], code=row.get("code") or ""):
                     continue
                 candidate = metadata_auto_apply_candidate(
                     connection, row, snapshot_root=snapshot_root)
@@ -1471,6 +1498,7 @@ def auto_apply_metadata(database, candidate_root, *, batch_size=AUTO_APPLY_BATCH
 
 #: 落库候选里有值才原样抄进 note 的几项。
 _LANDING_NOTE_EXTRAS = (
+    "tag_policy",
     # 链上被压下的说法。自动结算的前提是事后答得出「当时还有哪些说法、为什么没选它」，
     # 而候选 CSV 会被下一批盖掉，这里是唯一跟着账本一起留下来的那一份（ADR-0038）。
     "overruled",
@@ -1617,6 +1645,8 @@ def _land_collected_genres(connection, item_key: str, decision: dict | None, row
     之后，下一轮按那时的收录结果重补一次。
     """
     note = _decision_note(decision or {})
+    if decision and _preferred_tags_changed(decision, row.get("candidates") or [], code=row.get("code") or ""):
+        return None
     newly = _newly_collected_genres(decision, note, genre_decisions)
     candidate = _approved_candidate(note, row) if newly else None
     if candidate is None:
@@ -1668,6 +1698,8 @@ def _extend_unkeyed_tag_approval(connection, item_key: str, decision: dict | Non
     source = str(note.get("source") or "").strip()
     if note.get("candidate_key") or not source:
         return None
+    if _preferred_tags_changed(decision, row.get("candidates") or [], code=row.get("code") or ""):
+        source = preferred_tag_source(str(row.get("code") or "")) or source
     matches = [candidate for candidate in row.get("candidates") or []
                if str(candidate.get("source") or "").strip() == source]
     key = str(matches[0].get("candidate_key") or "").strip() if len(matches) == 1 else ""
@@ -1685,7 +1717,7 @@ def _extend_unkeyed_tag_approval(connection, item_key: str, decision: dict | Non
     return added
 
 
-def _decision_reopens(decision: dict, candidates: list[dict]) -> bool:
+def _decision_reopens(decision: dict, candidates: list[dict], *, code: str = "") -> bool:
     """已有决定的这一行要不要重新走一遍判据。
 
     过期的决定（`metadata_decision_is_stale`）等于没有决定：页面已经把它摆回人工队列，
@@ -1694,6 +1726,7 @@ def _decision_reopens(decision: dict, candidates: list[dict]) -> bool:
     带 `pending_genres` 的自动落库不重判：标签已经落了，那一行等的是生词收录，
     由 genre 那一侧管。
     """
-    if not metadata_decision_is_stale(decision, candidates):
+    if not metadata_decision_is_stale(decision, candidates, code=code):
         return False
-    return not _decision_note(decision).get("pending_genres")
+    return (not _decision_note(decision).get("pending_genres")
+            or _preferred_tags_changed(decision, candidates, code=code))

@@ -2884,7 +2884,7 @@ class OperationalScriptTests(unittest.TestCase):
             self.assertTrue(tag_candidates[0]["official"])
             self.assertEqual(tag_candidates[0]["profile"], "custom")
             self.assertEqual(tag_candidates[0]["policy_version"],
-                             "metadata-source-policy-v5")
+                             "metadata-source-policy-v6")
             # 位次跟着 `metadata_policy.FIELD_SOURCE_ORDER` 里 tags 那一行走：
             # 前面每插进一个来源，r18dev 就往后挪一格。
             self.assertEqual(tag_candidates[0]["field_rank"], 12)
@@ -3208,8 +3208,8 @@ class OperationalScriptTests(unittest.TestCase):
                 "actresses": [{"japanese_name": "木村さん"}], "maker": "Studio A",
                 "release_date": "2020-09-13T00:00:00Z"}
 
-    def test_chain_profile_stops_at_the_first_stage_that_settles_the_scalars(self):
-        """默认走正式链：官方那一档把必填标量给全就停，落空才问综合索引那一档。
+    def test_chain_profile_collects_javdb_tags_after_the_scalars_settle(self):
+        """默认走正式链：标量齐全后只补 JavDB 类别，标量不足时问完整综合索引档。
 
         判据与采集任务同一份（`metadata_routes.settles`），停手的单位是「档」不是
         「家」：综合索引那一档的三家一起问，谁都不因为前一家答上而被跳过。
@@ -3239,7 +3239,7 @@ class OperationalScriptTests(unittest.TestCase):
                 ], provider=provider)
             self.assertEqual(result, 0)
             self.assertEqual(provider.calls, [
-                ("ABC-001", "makers"), ("ABC-001", "r18dev"),
+                ("ABC-001", "makers"), ("ABC-001", "r18dev"), ("ABC-001", "javdb"),
                 ("DEF-002", "makers"), ("DEF-002", "r18dev"), ("DEF-002", "dmm"), ("DEF-002", "avbase"),
                 ("DEF-002", "javbus"), ("DEF-002", "javdb"),
             ])
@@ -3261,8 +3261,63 @@ class OperationalScriptTests(unittest.TestCase):
             # 走链时健康表覆盖所有链的并集，没轮到的档计数为 0 而不是缺行。
             self.assertEqual(set(health_rows), set(self.scrape_codes.CHAIN_SOURCES))
             self.assertEqual(health_rows["r18dev"]["attempted"], "2")
-            self.assertEqual(health_rows["javdb"]["attempted"], "1")
+            self.assertEqual(health_rows["javdb"]["attempted"], "2")
             self.assertEqual(health_rows["fc2"]["attempted"], "0")
+
+    def test_censored_tags_can_be_recollected_and_rejudged_when_tags_are_already_present(self):
+        """按番号文件重取候选不依赖标签为空；临时库的旧自动标签按 JavDB 策略重判。"""
+        from peach.entities import upsert_asset_entity
+        from peach.metadata_auto_apply import auto_apply_metadata
+        from peach.repository import LedgerDatabase
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = self._chain_ledger(root, ["ABW-220"])
+            with sqlite3.connect(db) as con:
+                con.execute("UPDATE asset SET name='ABW-220.mp4',path='ABW-220.mp4',"
+                            "catalog_title='Catalog title',studio='Studio A',release_date='2020-09-13'")
+                con.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) "
+                            "VALUES(1,'肛交',0.9,'javinizer:r18dev:tag')")
+                upsert_asset_entity(con, kind="tag", name="肛交", asset_id=1, role="tag",
+                                    source="javinizer:r18dev:tag")
+                upsert_asset_entity(con, kind="performer", name="木村さん", asset_id=1,
+                                    role="performer", source="javinizer:r18dev:performer")
+                con.execute("INSERT INTO review_decision(category,item_key,status,note,updated_at) "
+                            "VALUES('metadata_fields','ABW-220:tags','approved',?,'2026-01-01')",
+                            (json.dumps({"auto_applied": True, "source": "r18dev",
+                                         "candidate_key": "old-r18dev", "value": "肛交"}),))
+
+            class Recollection:
+                def __init__(self):
+                    self.calls = []
+
+                def query(self, code, source):
+                    self.calls.append((code, source))
+                    genres = ["高跟鞋", "絲襪"] if source == "javdb" else ["アナル"]
+                    return {**OperationalScriptTests._full_payload(code, source), "genres": genres}
+
+            provider = Recollection()
+            code_file = root / "codes.txt"
+            code_file.write_text("ABW-220\n", encoding="utf-8")
+            candidate_root = root / "candidates"
+            output = candidate_root / "metadata-field-candidates-javdb.csv"
+            with redirect_stdout(io.StringIO()):
+                exit_code = self.scrape_codes.main([
+                    "--db", str(db), "--out", str(output), "--codes-file", str(code_file),
+                    "--raw-dir", str(root / "raw"), "--log-dir", str(root / "logs"),
+                    "--delay", "0", "--min-free", "0",
+                ], provider=provider)
+            self.assertEqual(exit_code, 0)
+            self.assertIn(("ABW-220", "javdb"), provider.calls)
+            with output.open(encoding="utf-8-sig", newline="") as handle:
+                tags = next(row for row in csv.DictReader(handle) if row["field"] == "tags")
+            self.assertEqual(tags["current_value"], "肛交")
+            self.assertEqual(json.loads(tags["candidates_json"])[0]["source"], "javdb")
+            self.assertGreaterEqual(auto_apply_metadata(LedgerDatabase(db), candidate_root)["applied"], 1)
+            with sqlite3.connect(db) as con:
+                self.assertEqual(set(con.execute("SELECT tag,source FROM asset_tag WHERE asset_id=1"
+                                                 " AND tag NOT LIKE '演员:%'")),
+                                 {("高跟", "javinizer:javdb:tag"), ("丝袜", "javinizer:javdb:tag")})
 
     def test_explicit_sources_ask_every_named_source_and_refuse_retired_names(self):
         """`--sources` 点名的每一家都问，官方答全了也不停；历史来源名当场拒绝。"""

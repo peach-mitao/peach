@@ -30,6 +30,21 @@ def _catalog_vocabulary() -> set[str]:
 
 
 class GenreTaxonomyTests(unittest.TestCase):
+    def test_anal_region_is_distinct_from_anal_intercourse(self):
+        for raw in ("Anal", "Anal Play", "アナル", "アナル責め", "アナルシリーズ", "肛門・肛交"):
+            with self.subTest(raw=raw):
+                self.assertEqual(resolve_genre(raw), "屁眼")
+        for raw in ("Anal Sex", "アナルセックス", "アナルファック", "アナル中出し"):
+            with self.subTest(raw=raw):
+                self.assertEqual(resolve_genre(raw), "肛交")
+
+    def test_javdb_categories_have_explicit_existing_vocabulary_targets(self):
+        tags, unknown = map_genres(["高跟鞋", "絲襪、過膝襪", "白天出軌", "女大學生",
+                                    "第一人稱攝影", "4小時以上作品", "單體作品", "尚未收錄的分類"])
+        self.assertEqual(tags, ["高跟", "丝袜", "出轨", "学生", "主观视角"])
+        self.assertEqual(unknown, ["尚未收錄的分類"])
+        self.assertEqual(resolve_genre("靴子"), UNMAPPED)
+
     def test_every_projection_lands_in_the_existing_catalog_vocabulary(self):
         """投影只能落在既有词表上。
 
