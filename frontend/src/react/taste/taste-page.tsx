@@ -24,7 +24,7 @@ import { Popover, Tab, TabPanel, Tabs } from 'react-aria-components';
 import { MenuDialog as Dialog } from '../components/menu-dialog';
 
 import { avatarInner } from '@peach/card-art';
-import { fmtSize, siteMarkUrl } from '@peach/legacy/core';
+import { firstGrapheme, fmtSize, siteMarkUrl } from '@peach/legacy/core';
 import { confirmModal } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
@@ -53,9 +53,9 @@ import { busyProps } from '../settings/use-action';
 import { ActivityHeat } from '../charts/heat-card';
 import { CreatorSankey, RankedBars, TasteRadar } from './charts';
 import {
-  DEFAULT_WINDOW, fetchTaste, fetchTasteJob, IDLE_POLL_MS, importTasteExport, rankDetail,
-  rankShares, removeTasteSource, startTasteRefresh, tasteDate, tasteHours, tasteKey,
-  TASTE_REFRESH_KEY, TASTE_WINDOWS, type RankRow, type TasteData, type TasteJob,
+  DEFAULT_WINDOW, fetchTaste, fetchTasteJob, historySpan, IDLE_POLL_MS, importTasteExport, radarRows,
+  rankDetail, rankShares, removeTasteSource, startTasteRefresh, tasteDate, tasteDimensions, tasteHours,
+  tasteKey, TASTE_REFRESH_KEY, TASTE_WINDOWS, type RankRow, type TasteData, type TasteJob,
 } from './taste';
 
 /** 收起时露这么多条名次。二十条一次铺开会把下面几块整个顶到屏外。 */
@@ -72,6 +72,12 @@ const NO_SOURCE_HINT = '导入或读取浏览记录后，这里会列出已采�
 const NO_LEAD_HINT = '馆藏里暂时没有对得上浏览信号的标签。';
 const NO_CATEGORY_HINT = '采集浏览记录后，这里会显示聚合后的口味证据。';
 const GAP_HINT = '这些词在浏览记录中出现，但 Peach 观看记录还没有对应证据';
+const NO_BROWSER_TAG_HINT = '采集浏览记录后，这里会列出浏览过的标签。';
+const NO_BROWSER_CREATOR_HINT = '采集浏览记录后，这里会列出浏览过的创作者。';
+const NO_DOMAIN_HINT = '采集浏览记录后，这里会列出常访问的网站。';
+const NO_PEACH_TAG_HINT = '在 Peach 里播放或评价作品后，这里会列出对应的标签。';
+const NO_PEACH_CREATOR_HINT = '在 Peach 里播放或评价作品后，这里会列出对应的创作者。';
+const NO_PEACH_PERFORMER_HINT = '在 Peach 里播放或评价作品后，这里会列出对应的女优。';
 const GUIDE_LOCAL = '在运行 Peach 的电脑上使用浏览器：点上面的「读取浏览器历史」。';
 const GUIDE_REMOTE = '记录在其他设备上：导出文件后，点上面的「导入历史文件」。多台设备的文件分别导入。';
 const GUIDE_REFRESH = '需要刷新时再次读取或导入；数据源可在页面底部移除。';
@@ -99,7 +105,7 @@ function SummaryCard({ icon: Icon, term, figure, detail, accent }:
 function SiteAvatar({ name, domain }: { name: string; domain: string }) {
   return (
     <span className="relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-background-tertiary-default text-caption-1-medium text-text-secondary">
-      {name.slice(0, 1).toUpperCase()}
+      {firstGrapheme(name).toUpperCase()}
       <img src={siteMarkUrl({ domain })} alt="" loading="lazy" width={20} height={20}
         onError={(event) => event.currentTarget.remove()}
         className="absolute size-5 object-contain" />
@@ -156,7 +162,8 @@ function RankList({ rows, kind, visual, empty, onSignal }: RankListProps) {
                 ? <EntityAvatar html={avatarInner(
                     row.name,
                     row.entity_id
-                      ? { id: row.entity_id, has_image: !!row.has_image, image_version: row.image_version, avatar_focus: row.avatar_focus }
+                      ? { id: row.entity_id, has_image: !!row.has_image, image_version: row.image_version,
+                        avatar_focus: row.avatar_focus, avatar_stand_in: row.avatar_stand_in }
                       : null,
                     row.has_avatar ? row.representative_asset_id ?? null : null,
                     visual === 'creator' ? 'creator' : kind || 'performer',
@@ -171,7 +178,7 @@ function RankList({ rows, kind, visual, empty, onSignal }: RankListProps) {
           const shape = 'relative isolate flex min-h-11 w-full min-w-0 items-center gap-2.5'
             + ' rounded-lg px-3 py-2 text-left';
           return (
-            <li key={row.name} className="min-w-0">
+            <li key={`${row.name}:${index}`} className="min-w-0">
               {clickable
                 ? <button type="button" onClick={() => onSignal(kind, row.name)}
                     className={`${shape} cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring`}>
@@ -228,12 +235,12 @@ function AnalysisCard({ data, onSignal, navigate }:
         <h3 className="text-title-2-medium text-text-primary">口味总结</h3>
         {/* 结论句是这张卡的主角：旧 `.tasteleads .tastelede p` 是 20/30 的主文字色，比正文
             大一档、限宽 64ch。「有多少把握」是它的注脚，旧版就是一句灰字配一枚 8px 圆点。 */}
-        <p className="max-w-prose text-title-2-regular text-text-primary">{analysis.headline}</p>
+        <p className="max-w-prose text-title-2-regular wrap-anywhere text-text-primary">{analysis.headline}</p>
         <p className="flex flex-wrap items-center gap-2 text-body-2-regular text-text-secondary">
           <i aria-hidden className={`size-2 shrink-0 rounded-full ${confidence.level === 'high'
             ? 'bg-status-lime-text'
             : confidence.level === 'medium' ? 'bg-status-yellow-text' : 'bg-text-tertiary'}`} />
-          {confidence.label || '仍在学习'}
+          <span className="min-w-0 wrap-anywhere">{confidence.label || '仍在学习'}</span>
         </p>
       </header>
       {analysis.points?.length ? (
@@ -252,8 +259,8 @@ function AnalysisCard({ data, onSignal, navigate }:
             <button key={lead.key} type="button" onClick={lead.act}
               className={`flex w-full min-w-0 cursor-pointer items-center gap-3 ${TILE} text-left outline-none hover:bg-background-primary-hover focus-visible:ring-2 focus-visible:ring-border-focus-ring`}>
               <span className="flex min-w-0 grow flex-col gap-1">
-                <b className="text-body-2-medium text-text-primary">{lead.title}</b>
-                <small className="text-caption-1-regular text-text-secondary">{lead.detail}</small>
+                <b className="text-body-2-medium wrap-anywhere text-text-primary">{lead.title}</b>
+                <small className="text-caption-1-regular wrap-anywhere text-text-secondary">{lead.detail}</small>
               </span>
               <RiArrowRightSLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             </button>
@@ -368,7 +375,7 @@ function SourceList(
                   {`${source.browser} · ${source.host} · ${Number(source.visits || 0).toLocaleString()} 条`}
                 </small>
               </span>
-              <Button variant="secondary" size="small" aria-label={`移除 ${source.profile}`}
+              <Button variant="secondary" size="small" aria-label={`移除 ${source.profile}`} className="shrink-0"
                 iconOnly leadingIcon={RiDeleteBinLine} {...busyProps(remove.isPending)}
                 onClick={() => {
                   if (remove.isPending) return;
@@ -450,7 +457,8 @@ export function TastePage(props: TasteProps) {
   const coverage = data.coverage || {};
   const rank = data.rankings || {};
   const storage = data.storage || {};
-  const categories = rank.browser_categories || [];
+  const categories = tasteDimensions(rank.browser_categories || []);
+  const radar = radarRows(categories).length > 0;
   const gaps = data.gaps || [];
   const tagged = coverage.tagged || 0;
   const identified = coverage.identified || 0;
@@ -494,17 +502,20 @@ export function TastePage(props: TasteProps) {
           <div className={STAT_STRIP}>
             <SummaryCard accent={0} icon={RiHistoryLine} term="浏览记录"
               figure={Number(summary.history_visits || 0).toLocaleString()}
-              detail={`${summary.history_sources || 0} 个数据源 · ${tasteDate(summary.range_start)}—${tasteDate(summary.range_end)}`} />
+              detail={historySpan(summary)} />
             <SummaryCard accent={1} icon={RiPriceTag3Line} term="口味维度"
               figure={categories.length.toLocaleString()} detail={categories[0]?.name || '尚无主维度'} />
             <SummaryCard accent={2} icon={RiSearchLine} term="浏览候选" figure={gaps.length.toLocaleString()} />
             <SummaryCard accent={3} icon={RiDatabase2Line} term="私有导出"
               figure={Number(storage.exports || 0).toLocaleString()} detail={fmtSize(storage.bytes || 0)} />
           </div>
-          <section className={`${CARD} md:flex-row md:gap-6`} aria-label="浏览器画像">
-            <div className="flex shrink-0 flex-col gap-2 pb-5 md:w-80 md:pr-6 md:pb-0">
+          {/* 维度不足三个画不成雷达：左栏只留标题与更新时间，排行条占满整张卡。 */}
+          <section className={radar ? `${CARD} md:flex-row md:gap-6` : CARD} aria-label="浏览器画像">
+            <div className={radar
+              ? 'flex shrink-0 flex-col gap-2 pb-5 md:w-80 md:pr-6 md:pb-0'
+              : 'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'}>
               <span className="text-caption-1-regular text-text-secondary">浏览器画像</span>
-              <TasteRadar rows={categories} label="主要口味维度" />
+              {radar ? <TasteRadar rows={categories} label="主要口味维度" /> : null}
               <small className="text-caption-1-regular text-text-secondary">
                 {data.updated_at ? `更新于 ${tasteDate(data.updated_at)}` : '尚未采集浏览记录'}
               </small>
@@ -522,9 +533,9 @@ export function TastePage(props: TasteProps) {
           <CreatorSankey flows={data.creator_flows} />
           <DimensionPanels label="浏览器口味维度" onSignal={onSignal}
             panels={[
-              { id: 'tags', name: '标签', props: { rows: rank.browser_tags || [], kind: 'tag', visual: 'none', empty: '暂无足够证据' } },
-              { id: 'creators', name: '创作者', props: { rows: rank.browser_creators || [], kind: 'creator', visual: 'creator', empty: '暂无创作者证据' } },
-              { id: 'domains', name: '常访问网站', props: { rows: rank.domains || [], kind: '', visual: 'domain', empty: '暂无网站证据' } },
+              { id: 'tags', name: '标签', props: { rows: rank.browser_tags || [], kind: 'tag', visual: 'none', empty: NO_BROWSER_TAG_HINT } },
+              { id: 'creators', name: '创作者', props: { rows: rank.browser_creators || [], kind: 'creator', visual: 'creator', empty: NO_BROWSER_CREATOR_HINT } },
+              { id: 'domains', name: '常访问网站', props: { rows: rank.domains || [], kind: '', visual: 'domain', empty: NO_DOMAIN_HINT } },
               { id: 'gaps', name: '浏览候选', props: { rows: gaps, kind: '', visual: 'none', empty: GAP_HINT } },
             ]} />
         </TabPanel>
@@ -552,9 +563,9 @@ export function TastePage(props: TasteProps) {
           </section>
           <DimensionPanels label="Peach 口味维度" onSignal={onSignal}
             panels={[
-              { id: 'tags', name: '标签', props: { rows: rank.peach_tags || [], kind: 'tag', visual: 'none', empty: '暂无足够证据' } },
-              { id: 'creators', name: '创作者', props: { rows: rank.peach_creators || [], kind: 'creator', visual: 'creator', empty: '暂无创作者证据' } },
-              { id: 'performers', name: '女优', props: { rows: rank.peach_performers || [], kind: 'performer', visual: 'entity', empty: '暂无女优证据' } },
+              { id: 'tags', name: '标签', props: { rows: rank.peach_tags || [], kind: 'tag', visual: 'none', empty: NO_PEACH_TAG_HINT } },
+              { id: 'creators', name: '创作者', props: { rows: rank.peach_creators || [], kind: 'creator', visual: 'creator', empty: NO_PEACH_CREATOR_HINT } },
+              { id: 'performers', name: '女优', props: { rows: rank.peach_performers || [], kind: 'performer', visual: 'entity', empty: NO_PEACH_PERFORMER_HINT } },
             ]} />
         </TabPanel>
       </Tabs>
@@ -573,7 +584,7 @@ function CoverageMetric({ term, value, rest }: { term: string; value: number; re
         <span>{term}</span>
         <b className="tabular-nums">
           {value.toLocaleString()}
-          <span className="ml-1.5 text-caption-1-regular text-text-secondary">{`${rest} 项待补`}</span>
+          <span className="ml-1.5 text-caption-1-regular text-text-secondary">{`${rest.toLocaleString()} 项待补`}</span>
         </b>
       </p>
       <Progress label={`${term}：${value.toLocaleString()} / ${total.toLocaleString()}`}

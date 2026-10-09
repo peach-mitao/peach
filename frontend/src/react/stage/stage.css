@@ -93,8 +93,11 @@ body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,pa
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-row]{display:block;position:relative;min-width:0;background:transparent;scroll-snap-align:start}
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item]{display:flex;flex-direction:column;align-items:stretch;gap:7px;padding:0}
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item]:hover,[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item][aria-current="true"]{background:transparent}
-[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-pic]{width:100%;border:1px solid transparent}
-[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item][aria-current="true"] [data-mix-item-pic]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-pic]{width:100%}
+/* 当前那张的框画在格子里面：格子按圆角整块裁（clip-path），画在外面的阴影一律被裁掉。外圈墨色、
+   里圈垫一道底色，几个版本的封面都是同一张深色画面时也认得出是哪一张。 */
+[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item][aria-current="true"] [data-mix-item-pic]:after{content:"";position:absolute;
+  inset:0;z-index:1;border-radius:var(--badge-radius);box-shadow:inset 0 0 0 2px var(--ink),inset 0 0 0 4px var(--ground);pointer-events:none}
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-meta]{width:100%;padding:0 2px;align-items:flex-start}
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-meta] [class~="mav"],[data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-meta] [class~="mavstack"]{margin-top:2px}
 [data-stage-grid][data-with-queue]>[data-mix-queue] [data-mix-item-text]{flex:1;min-width:0}
@@ -140,7 +143,7 @@ body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,pa
    图片详情和合集详情右侧的背景一起截短。所有详情分支共用这层结构。 */
 [data-stage-side-content]{box-sizing:border-box;width:100%;height:100%;max-height:76vh;padding:18px;display:flex;gap:0;
   flex-direction:column;overflow-y:auto;overflow-x:hidden}
-[data-stage-title]{font-size:var(--fs-lg);line-height:1.4;word-break:break-all;margin-bottom:8px}
+[data-stage-title]{font-size:var(--fs-lg);line-height:1.4;overflow-wrap:anywhere;margin-bottom:8px}
 [data-stage-meta]{display:flex;gap:9px;flex-wrap:wrap;color:var(--muted);margin-bottom:18px}
 [data-stage-tags]{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 18px}
 [data-stage-actions]{display:flex;align-items:center;gap:0;margin:0 0 12px;padding:0;border:1px solid var(--border-10);border-radius:var(--control-radius);background:var(--overlay-5);width:max-content;overflow:hidden;flex:none}

@@ -4,7 +4,7 @@
  * （`./image-fallback.ts`）取不到图时换 `src`、摘掉或换成首字母，取景（`./framing.ts`）在
  * 加载后往图上写内联样式与类名。React 看不见这些改动：节点归它管，重画一次就冲掉取景，
  * 被兜底链摘掉的节点再交给它更新还会报错。 */
-import { esc } from '@peach/legacy/core';
+import { esc, firstGrapheme } from '@peach/legacy/core';
 
 import { javImageKind } from '../jav-artwork';
 import { imageFallbackAttrs } from './image-fallback';
@@ -17,10 +17,15 @@ export interface FaceFocus {
   box?: { cx: number; cy: number; faceW: number; imgW: number; imgH: number } | null;
 }
 
-/** 头像引用：实体 id、有没有实体图、取景。两个版本号拼进地址的 `&v=`，见 `withVersion`。 */
+/** 头像引用：实体 id、有没有实体图、取景。两个版本号拼进地址的 `&v=`，见 `withVersion`。
+ *  `avatar_stand_in` 是服务端说的「代表作画面不是本人」（`attach_avatar_availability`）。 */
 export interface FaceRef {
   id?: number | null; has_image?: boolean; image_version?: string; logo_version?: string; avatar_focus?: unknown;
+  avatar_stand_in?: boolean;
 }
+
+/** 代表作画面替账号顶着圆框时，悬停与读屏读到的那句。 */
+export const STAND_IN_TITLE = '代表作画面，非本人';
 
 /* 原地替换的图（实体图、封面、标识）地址都带服务端下发的内容版本（文件修改时间）：换头像、
    补高清封面、换标识都覆盖同一个文件，地址不跟着变的话，同一页里浏览器直接复用内存里那张
@@ -64,15 +69,21 @@ export function performerLabel(item: { is_jav?: boolean } | null | undefined): s
    资料页大位存的照片，本库 727 张均 221 KB，索引页一屏 120 格铺进 150 px 的格子就是
    十几 MB，而屏幕上用得着的只有其中百分之几的像素。资料页仍取原件——那里就是要看清。
 
-   `version` 是服务端随 `has_image` 下发的 `image_version`，`logoVersion` 是 `logo_version`。 */
+   `version` 是服务端随 `has_image` 下发的 `image_version`，`logoVersion` 是 `logo_version`。
+
+   `standIn` 是服务端的 `avatar_stand_in`：账号没有本人身份依据，圆框里那张代表作画面只是
+   替它占位。显示代表作头像时图上带 `title` 与 `aria-label` 说明这一点；实体图不带，
+   取图失败退到代表作时再补上。 */
 export function entityFaceImg({
   kind = 'performer', id = null, hasImage = false, version = '', rep = null, mark = null, logo = '',
   logoVersion = '', logoVariant = 'logo', alt = '', lazy = true, style = '', dropStyle = false, focus = null, thumb = false,
+  standIn = false,
 }: {
   kind?: string; id?: number | null | undefined; hasImage?: boolean | undefined; version?: string | null | undefined;
   rep?: number | null | undefined; mark?: number | null | undefined; logo?: string;
   logoVersion?: string | null | undefined; logoVariant?: string; alt?: string;
   lazy?: boolean; style?: string; dropStyle?: boolean; focus?: unknown; thumb?: boolean;
+  standIn?: boolean | undefined;
 } = {}): string {
   const useEntity = !!(id && hasImage);
   const entitySrc = useEntity ? withVersion(`/entity-image?kind=${kind}&id=${id}${thumb ? '&thumb=1' : ''}`, version) : '';
@@ -99,7 +110,10 @@ export function entityFaceImg({
      忘了开的代价是页面上一张明显错位的图，而它只在回落发生时才现形。 */
   /* `decoding="async"` 让解码离开主线程：一屏几十张图同时落地时，同步解码把滚动
      和点击一起压住，而这些图一张都不参与首屏的排版——框的尺寸由 CSS 定死。 */
-  return `<img src="${src}" width="128" height="128" alt="${alt}"${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
+  const note = standIn && src === avatarSrc ? ` title="${STAND_IN_TITLE}" aria-label="${STAND_IN_TITLE}"` : '';
+  const fallbackNote = standIn && fallbacks.includes(avatarSrc)
+    ? ` data-fallback-note-src="${esc(avatarSrc)}" data-fallback-note="${STAND_IN_TITLE}"` : '';
+  return `<img src="${src}" width="128" height="128" alt="${alt}"${note}${fallbackNote}${lazy ? ' loading="lazy"' : ''} decoding="async"${framed ? framedStyle : ''} `
     + `${faceBox}${imageFallbackAttrs({
       dropStyle: (dropStyle || !!faceBox || !!framedStyle) && framed,
       fallbacks,
@@ -121,10 +135,11 @@ export function avatarInner(name: string, ref: FaceRef | null | undefined, repId
   // 这一层大多是小圆框和窄格子，厂牌标识在那里要方形图标而不是横着的字标；索引页的
   // 厂牌大格是同一个模板里的例外，由调用方点名要 `large`。
   const hint = focus === undefined ? (ref && ref.avatar_focus) || null : focus;
-  return `<span class="ini">${esc((name || '?').slice(0, 1))}</span>`
+  return `<span class="ini">${esc(firstGrapheme(name))}</span>`
     + entityFaceImg({
       kind, id: ref && ref.id, hasImage: !!(ref && ref.has_image), version: ref && ref.image_version, rep: repId, mark: markId,
       logo: logoName, logoVersion: ref && ref.logo_version, logoVariant, focus: hint, thumb,
+      standIn: !!(ref && ref.avatar_stand_in),
     });
 }
 

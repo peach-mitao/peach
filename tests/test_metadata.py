@@ -14,6 +14,12 @@ from peach.metadata import (
 
 
 class MetadataProviderTests(unittest.TestCase):
+    def test_all_unmapped_genres_are_reviewable_without_fabricated_tags(self):
+        fields = extract_peach_fields({"genres": ["未知类别甲", "未知类别乙"]})
+        self.assertEqual(fields["tags"]["value"], [])
+        self.assertEqual(fields["tags"]["unmapped_genres"], ["未知类别甲", "未知类别乙"])
+        self.assertTrue(fields["tags"]["warnings"])
+
     def test_the_gate_rejects_paths_and_urls(self):
         for unsafe in ("/media/IPX-535.mp4", r"R:\media\IPX-535.mp4", "https://x/IPX-535"):
             with self.subTest(unsafe=unsafe), self.assertRaises(ValueError):
@@ -95,7 +101,7 @@ class MetadataProviderTests(unittest.TestCase):
         self.assertEqual(fields["studio"]["value"], "Studio")
         self.assertEqual(fields["release_date"]["value"], "2020-09-13")
         self.assertIn("已规范化", fields["release_date"]["warnings"][0])
-        self.assertEqual(fields["tags"]["value"], ["肛交"])
+        self.assertEqual(fields["tags"]["value"], ["屁眼"])
 
     def test_performer_profile_names_are_aliases_not_separate_people(self):
         fields = extract_peach_fields({"actresses": [{

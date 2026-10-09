@@ -126,6 +126,8 @@ export interface MenuModel {
   /** 两栏：左栏身份和词，右栏作品。空输入时是记录与推荐两组短词。 */
   left: MenuSection[];
   right: MenuSection[];
+  /** 这个词的补全已经回来、一条都没有：栏里写一行「没有找到」，分得清是没结果还是还没搜。 */
+  empty: boolean;
   options: SearchOption[];
 }
 
@@ -156,7 +158,7 @@ export function menuModel({ query, history, picks, suggestFor, groups, tabs, kin
   if (!query) {
     const recent = matching.length ? { label: '搜索记录', options: matching.map((value) => add({ type: 'history', value })) } : null;
     const suggested = picks.length ? { label: '推荐', options: picks.map((value) => add({ type: 'pick', value })) } : null;
-    return { tabs: null, recent: null, left: recent ? [recent] : [], right: suggested ? [suggested] : [], options };
+    return { tabs: null, recent: null, left: recent ? [recent] : [], right: suggested ? [suggested] : [], empty: false, options };
   }
   const fresh = suggestFor === query;
   const recent = !kind && matching.length
@@ -169,7 +171,8 @@ export function menuModel({ query, history, picks, suggestFor, groups, tabs, kin
   });
   const left = shown.filter((group) => !SUGGEST_RIGHT_KINDS.has(group.kind)).map(section);
   const right = shown.filter((group) => SUGGEST_RIGHT_KINDS.has(group.kind)).map(section);
-  return { tabs: fresh && tabs.length > 1 ? [...tabs] : null, recent, left, right, options };
+  const empty = fresh && !shown.some((group) => group.items.length);
+  return { tabs: fresh && tabs.length > 1 ? [...tabs] : null, recent, left, right, empty, options };
 }
 
 /** 空输入时从词池里洗出几条推荐，搜过的不再推。每画一次下拉栏洗一次；删一条记录不算重画，

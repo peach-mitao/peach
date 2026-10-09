@@ -19,14 +19,14 @@ class LedgerDatabase:
         self.write_lock = threading.Lock()
         self.after_commit = lambda: None
 
-    def connect(self, *, write: bool = False) -> sqlite3.Connection:
+    def connect(self, *, write: bool = False, timeout: float = 30) -> sqlite3.Connection:
         target = (
             str(self.db_path)
             if write
             else self.db_path.resolve().as_uri() + "?mode=ro"
         )
         connection = sqlite3.connect(
-            target, timeout=30, check_same_thread=False, uri=not write,
+            target, timeout=timeout, check_same_thread=False, uri=not write,
         )
         connection.row_factory = sqlite3.Row
         connection.create_function("is_jav_code", 1, is_jav_code, deterministic=True)
@@ -52,15 +52,22 @@ class LedgerDatabase:
             connection.close()
 
     @contextmanager
-    def write_transaction(self, *, notify: bool = True):
+    def write_transaction(self, *, notify: bool = True, timeout: float | None = None):
         """写事务。`notify=False` 的写入不触发 `after_commit`。
 
         `after_commit` 在服务里是清聚合缓存。任务中心的心跳与进度每两秒写一行
         `task_run`，它和馆藏数据没有任何关系；跟着清一次缓存，等于让首页、统计和
         复核页在每个长任务运行期间全程失去缓存。
+
+        `timeout` 给可以放弃的写入用：进程内的写锁与 SQLite 的写锁各最多等这么久，
+        等不到抛 `sqlite3.OperationalError`，与 SQLite 自己等超时是同一种异常。不传则
+        进程内一直排队、SQLite 等 30 秒。
         """
-        with self.write_lock:
-            connection = self.connect(write=True)
+        if not self.write_lock.acquire(timeout=-1 if timeout is None else timeout):
+            raise sqlite3.OperationalError("database is locked")
+        try:
+            connection = (self.connect(write=True) if timeout is None
+                          else self.connect(write=True, timeout=timeout))
             try:
                 yield connection
             except BaseException:
@@ -72,6 +79,8 @@ class LedgerDatabase:
                     self.after_commit()
             finally:
                 connection.close()
+        finally:
+            self.write_lock.release()
 
 
 @dataclass(frozen=True)

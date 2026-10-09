@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RiFileListLine } from '@remixicon/react';
 import { Button } from '@/components/base/buttons/button';
 import { errorMessage } from '../../api';
+import { ErrorExcerpt } from '../activity/error-excerpt';
 import { EmptyState } from '../components/empty-state';
 import { useOverlayScrollbar } from '../components/overlay-scrollbar';
 import { Note } from '../components/note';
@@ -45,12 +46,12 @@ function HealthList({ group, openItem, receipt }: Pick<DiagnosticsProps, 'openIt
   const action = useAction();
   const scroll = useOverlayScrollbar<HTMLUListElement>();
   const list = group.items.map(row => row.code || `作品 #${row.id}`).join('\n');
-  return <Disclosure summary={`${group.label} · ${group.count === null ? '未取得' : `${group.count} 项`}`}>
+  return <Disclosure summary={`${group.label} · ${group.count === null ? '未取得' : `${group.count.toLocaleString()} 项`}`}>
     {group.count === null ? <Note tone="neutral">清单未取得，请重新检查。</Note> : !group.items.length
       ? <EmptyState icon={RiFileListLine} title="清单为空" shell="plain">没有需要处理的作品。</EmptyState>
       : <Stack>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            {group.truncated ? <span className="text-body-2-regular text-text-secondary">当前显示 {group.items.length} 项</span> : null}
+            {group.truncated ? <span className="text-body-2-regular text-text-secondary">当前显示 {group.items.length.toLocaleString()} 项</span> : null}
             <Button size="small" variant="secondary" {...busyProps(action.busy === 'copy')} onClick={() => void action.run('copy',
               () => navigator.clipboard.writeText(list), () => receipt('已复制清单'))}>复制当前清单</Button>
           </div>
@@ -88,8 +89,9 @@ export function DiagnosticsPage(props: DiagnosticsProps) {
     </Section>)}
     <Section title="来源会话"><Stack>
       {data.sources.map(source => <div key={source.source} className="flex flex-col gap-2">
-        <h3 className="text-body-medium text-text-primary">{source.label} · {STATUS[source.status]}</h3>
-        <p className="text-body-regular text-text-primary">{source.reason}</p>
+        <h3 className="text-body-medium text-text-primary">{source.label} · {STATUS[source.status] ?? '未取得'}</h3>
+        {/* 原因常是整段堆栈：平时只露异常那一行，全文收在「查看详情」后面。 */}
+        <ErrorExcerpt text={source.reason} className="text-body-regular text-text-primary" />
         <FactList>
           <Fact term="上次解析成功">{source.last_success_at ? moment(source.last_success_at) : '未取得'}</Fact>
           <Fact term="冷却截止">{source.cooldown_until ? moment(source.cooldown_until) : '未在冷却'}</Fact>

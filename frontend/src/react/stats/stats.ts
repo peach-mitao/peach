@@ -21,9 +21,12 @@ export interface LocationCount { k: string; n: number; bytes: number; videos: nu
 /** 按媒体库分的库存。`name` 是用户给这个库起的名字。 */
 export interface LibraryCount { k: string; name: string; icon: string; videos: number; bytes: number }
 
+/** 一个计数。服务端某一项取不到时回 null，页面读成「未取得」。 */
+export type Count = number | null;
+
 /** 视频的资料归属：分母是 `videos`，其余几项是已经有那一项的条数。 */
 export interface Attribution {
-  videos: number; creator: number; code: number; studio: number; thumb: number; duration: number;
+  videos: number; creator: Count; code: Count; studio: Count; thumb: Count; duration: Count;
 }
 
 /** 一个标签来源覆盖了多少条标签、多少个视频。 */
@@ -32,8 +35,8 @@ export interface TagSource { k: string; n: number; assets: number }
 export interface TopTag { k: string; n: number; cat: string }
 
 export interface Consumption {
-  played: number; library_played: number; online_played: number; play_seconds: number;
-  o_total: number; liked: number; dislike: number; seen: number; trash: number; skimmed: number;
+  played: Count; library_played: Count; online_played: Count; play_seconds: Count;
+  o_total: Count; liked: Count; dislike: Count; seen: Count; trash: Count; skimmed: Count;
 }
 
 /** 按文件类型分的条目数。`k` 是 `video`／`image`／`archive` 这些媒介代号。 */
@@ -72,7 +75,7 @@ export interface StatsData {
   replays: ReplayCount[];
   attribution: Attribution;
   tag_source: TagSource[];
-  tag_cov: number;
+  tag_cov: Count;
   top_tags: TopTag[];
   consumption: Consumption;
   recent: RecentPlay[];
@@ -90,13 +93,34 @@ export async function prefetchStats(signal: AbortSignal): Promise<void> {
   await queryClient.fetchQuery({ queryKey: STATS_KEY, queryFn: () => fetchStats(signal) });
 }
 
-/** 整数百分比。分母是 0 时读 0，不是 NaN。 */
-export const percentOf = (value: number, total: number): number =>
-  total ? Math.round(value / total * 100) : 0;
+/** 取得了的计数：null、NaN 与无穷都不算。 */
+export const known = (value: Count | undefined): value is number =>
+  value != null && Number.isFinite(value);
 
-/** 累计播放时长：够一小时读小时，不够读分钟。 */
-export const playedFor = (seconds: number): string =>
-  seconds >= 3600 ? `${(seconds / 3600).toFixed(1)} 小时` : `${Math.round(seconds / 60)} 分钟`;
+/** 一个计数的读法：千分位；取不到时读「未取得」。 */
+export const fmtCount = (value: Count | undefined): string =>
+  (known(value) ? value.toLocaleString() : '未取得');
+
+/** 整数百分比，夹在 0 到 100 之间。分母是 0 或取不到时读 0，不是 NaN。 */
+export const percentOf = (value: Count | undefined, total: Count | undefined): number =>
+  (known(value) && known(total) && total > 0
+    ? Math.min(100, Math.max(0, Math.round(value / total * 100))) : 0);
+
+/** 百分比的读法：有一点但不到 0.5% 时读「<1%」，不读成 0%。 */
+export const percentText = (value: Count | undefined, total: Count | undefined): string => {
+  const share = percentOf(value, total);
+  return !share && known(value) && value > 0 && known(total) && total > 0 ? '<1%' : `${share}%`;
+};
+
+/** 累计播放时长：不到一小时读分钟，不到 48 小时读小时，再往上读天。 */
+export const playedFor = (seconds: Count | undefined): string => {
+  if (!known(seconds)) return '未取得';
+  const value = Math.max(0, seconds);
+  if (value >= 48 * 3600) {
+    return `${(value / 86_400).toLocaleString(undefined, { maximumFractionDigits: 1 })} 天`;
+  }
+  return value >= 3600 ? `${(value / 3600).toFixed(1)} 小时` : `${Math.round(value / 60)} 分钟`;
+};
 
 /** 真实看过的比例：播放秒数占时长，封顶 100%。时长未取得时读 0。 */
 export const watchedShare = (row: RecentPlay): number =>
@@ -119,11 +143,33 @@ export const watchNote = (row: RecentPlay): string => {
 export const playedItemUrl = (row: RecentPlay): string =>
   `${row.kind === 'online' ? '/follow/item/' : '/item/'}${row.id}`;
 
-/** 径向图里的一段。 */
-export interface RadialSlice { name: string; value: number; detail: string }
+/** 径向图里的一段。`bytes` 是这一段占的体积，图例格子里读成它的大小。 */
+export interface RadialSlice { name: string; value: number; bytes?: number }
+
+/** 一张径向图最多画几圈：图表色只有六档，第七圈起颜色就和前面的重了。 */
+export const RADIAL_MAX = 6;
+
+/** 径向图要画的几段。段数超过 `RADIAL_MAX` 时留下最多的前五段，其余并成一段「其余 N 项」。
+ *  负数与非有限的值先滤掉。 */
+export function radialSlices(rows: RadialSlice[], max = RADIAL_MAX): RadialSlice[] {
+  const slices = rows.filter((row) => Number.isFinite(row.value) && row.value >= 0);
+  if (slices.length <= max) return slices;
+  const ranked = [...slices].sort((a, b) => b.value - a.value);
+  const rest = ranked.slice(max - 1);
+  return [...ranked.slice(0, max - 1), {
+    name: `其余 ${rest.length.toLocaleString()} 项`,
+    value: rest.reduce((sum, row) => sum + row.value, 0),
+    bytes: rest.reduce((sum, row) => sum + (row.bytes ?? 0), 0),
+  }];
+}
 
 /** 满圈代表的数：最长那段留一成余量，看得出是「最多」而不是「全部」。 */
 export const radialCeiling = (values: number[]): number => Math.max(1, ...values) * 1.1;
+
+/** 一段画多长的弧：不为 0 的段至少画满圈的 2%，和最长那段差几个数量级时也看得见。
+ *  0 就是 0，不垫高。 */
+export const radialArc = (value: number, ceiling: number): number =>
+  (value > 0 ? Math.max(value, ceiling * 0.02) : 0);
 
 /** 每圈的粗细（像素）。段数多时压细，最内圈才不会缩进圆心，也不会和相邻那圈叠在一起。 */
 export const radialBarSize = (count: number): number =>
@@ -152,10 +198,10 @@ export const bandRows = (rows: BandCount[], labels: Record<string, string> = {})
 export const lengthRows = (rows: BandCount[]): BarRow[] => bandRows(rows, LENGTH_LABEL);
 
 /** 播放次数的分档：五次以内一次一档，往后并成两档，长尾不把柱子拉成一排细线。
- * 名字写短，390 宽的手机上七根柱子的类别名不互相挤掉。 */
+ * 名字只写次数，单位在图的标题里：320 宽的手机上七根柱子的类别名不互相挤掉。 */
 const REPLAY_BANDS: readonly [number, number, string][] = [
-  [1, 1, '1 次'], [2, 2, '2 次'], [3, 3, '3 次'], [4, 4, '4 次'], [5, 5, '5 次'],
-  [6, 9, '6–9 次'], [10, Infinity, '≥10 次'],
+  [1, 1, '1'], [2, 2, '2'], [3, 3, '3'], [4, 4, '4'], [5, 5, '5'],
+  [6, 9, '6–9'], [10, Infinity, '≥10'],
 ];
 
 export const replayRows = (rows: ReplayCount[]): BarRow[] =>

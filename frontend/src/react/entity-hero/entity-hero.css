@@ -58,6 +58,8 @@
  * 挂加号的宿主叠成和圆框一样大、一样位置的一块，高度与居中取圆框同一个 `--portrait-size`，加号的
  * `right/bottom` 就量在圆框上；它盖在脸上，不接指针。不用 `transform` 居中：它会给弹层的
  * `fixed` 遮罩另起包含块。 */
+/* 头像跟身份那一列竖向居中，但这一格最高只比圆框多 64px：身份列被几十条外链撑高时，
+ * 拉伸到上限就停、贴着行顶，圆框离卡顶至多 32px，不会被居中挤出首屏。 */
 .peach-react [data-entity-portrait-wrap] {
   position: relative;
   display: flex;
@@ -65,6 +67,7 @@
   align-items: center;
   width: max-content;
   max-width: 100%;
+  max-height: calc(var(--portrait-size) + 64px);
 }
 .peach-react [data-entity-portrait-wrap] > [data-avatar-picker] {
   position: absolute;
@@ -116,6 +119,10 @@
   margin: auto;
   object-fit: contain;
 }
+/* 超扁、超高的标识：短边已撑到下限（`markClamp`），cover 裁掉长边两头。 */
+.peach-react [data-entity-portrait][data-native-clamp="true"] img { object-fit: cover; }
+/* 没有人脸取景的竖长头像偏上取：脸多在画面上半截。有取景时 `facePos` 的内联样式盖过这一条。 */
+.peach-react [data-entity-portrait="round"] img { object-position: 50% 25%; }
 
 /* ── 身份 ── */
 .peach-react [data-entity-identity] { min-width: 0; max-width: 100%; }
@@ -192,8 +199,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.peach-react [data-alias-names] > span + span::before,
-.peach-react [data-hero-pop] dd > span + span::before {
+.peach-react [data-alias-names] > span + span::before {
   margin: 0 6px;
   color: var(--muted);
   content: "·";
@@ -261,9 +267,17 @@
   margin: 0;
 }
 .peach-react [data-hero-pop] dt { color: var(--muted); white-space: nowrap; }
-.peach-react [data-hero-pop] dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.peach-react [data-hero-pop] dd {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .peach-react [data-hero-pop] dd[data-wide] { grid-column: 1 / -1; }
-.peach-react [data-hero-pop] small { margin-left: 4px; color: var(--muted); font-size: inherit; }
+/* 一个名字一行，读音小一档排在名字下面。 */
+.peach-react [data-pop-name] { display: grid; }
+.peach-react [data-hero-pop] small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.4; }
 
 /* ── 资料表 ── */
 .peach-react [data-entity-facts] {
@@ -302,7 +316,12 @@
 .peach-react [data-entity-facts] dd[data-fact="clip"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 站上的标签只是读数，不是这一页的筛选（那排在下面的筛选条里），所以是标签的脸、不接点击。 */
 .peach-react :is(dd[data-fact="tags"], [data-fact-tags]) { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 一枚标签至多一行宽，超长的截成省略号，全文在 title 里。 */
 .peach-react [data-fact-tag] {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 var(--tag-pad-x);
   border: 1px solid var(--line);
   border-radius: var(--tag-radius);

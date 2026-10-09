@@ -45,8 +45,17 @@ export const MANAGE_CRUMB_PAGES: Readonly<Record<string, string>> = {
    其余管理页跟全站页面标题走 24px。 */
 const COMPACT_TITLE_PATHS = new Set(['/data-cleanup', '/scraping']);
 
+/** 管理条上按下哪一项。数据管理那几张卡通往的子页从数据管理进，按下的是「数据管理」；
+ *  别的页按自己的管理区，管理条上没有这一项时就没有按下项。 */
+export function pressedManageKey(props: Pick<ManageHeaderProps, 'section' | 'path' | 'menu'>): string {
+  const key = MANAGE_CRUMB_PAGES[props.path] ? 'cleanup' : props.section;
+  return props.menu.some(([entry]) => entry === key) ? key : '';
+}
+
 export interface ManageHeaderView {
   title: string;
+  /** 管理条上按下的那一项；空串时没有按下项。 */
+  pressed: string;
   /** 面包屑当前那一项的名字；空串时不画面包屑。 */
   crumb: string;
   compact: boolean;
@@ -54,7 +63,8 @@ export interface ManageHeaderView {
   lede: { kind: 'none' } | { kind: 'skeleton' } | { kind: 'count'; text: string; total: number };
 }
 
-export const trashLedeText = ({ total, shown }: TrashCount) => `${total.toLocaleString()} 个符合 · 显示 ${shown}`;
+export const trashLedeText = ({ total, shown }: TrashCount) =>
+  `${total.toLocaleString()} 个符合 · 显示 ${shown.toLocaleString()}`;
 
 /** 页头这一刻画什么；不在管理区时是 null。 */
 export function manageHeaderView(props: ManageHeaderProps): ManageHeaderView | null {
@@ -63,6 +73,7 @@ export function manageHeaderView(props: ManageHeaderProps): ManageHeaderView | n
   const crumb = MANAGE_CRUMB_PAGES[props.path] ?? '';
   return {
     title: props.path === '/diagnostics' ? '系统诊断' : (props.section === 'cleanup' && crumb) || entry[1],
+    pressed: pressedManageKey(props),
     crumb,
     compact: COMPACT_TITLE_PATHS.has(props.path) || props.section === 'configuration',
     lede: props.section !== 'trash' ? { kind: 'none' }
@@ -85,7 +96,7 @@ export function manageHeaderSkeletonHtml(props: ManageHeaderProps): string {
   const view = manageHeaderView(props);
   if (!view) return '';
   const menu = props.menu.map(([key, label, mark]) => {
-    const on = key === props.section;
+    const on = key === view.pressed;
     return `<button type="button" data-manage="${escape(key)}" aria-pressed="${on}"${on ? ' aria-current="page"' : ''}>`
       + `${glyph(mark)}<span>${escape(label)}</span></button>`;
   }).join('');

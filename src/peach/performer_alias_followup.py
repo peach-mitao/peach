@@ -119,6 +119,10 @@ class Unavailable(RuntimeError):
     """这一页没取到（网络、非 200、本条请求数用完）。"""
 
 
+class Missing(Unavailable, LookupError):
+    """站上没有这一页（404，或近期问过是 404）。"""
+
+
 # -- 名字 --------------------------------------------------------------------
 
 
@@ -386,21 +390,24 @@ class MinnanoPages:
             close()
 
 
-class AvNemePages:
-    """av_neme 的取页：缓存、请求上限与撞墙判定都是 `sources.seesaa.WikiPages` 那一份，
-    这里只把它撞墙的那一下记进冷却，并在冷却期内一次都不问。
+class WikiSitePages:
+    """Seesaa 上一个 Wiki 的取页：缓存、请求上限与撞墙判定都是 `sources.seesaa.WikiPages` 那一份，
+    这里只把它撞墙的那一下按站名记进冷却，并在冷却期内一次都不问。缺省是 av_neme。
 
     站上没有的页（404）也记下（`missing.json`，保 `MISSING_TTL`）：按页名直取会问到不存在的页，
-    同一位女优下一轮再跑不该为它再发一次请求。
+    同一个名字下一轮再跑不该为它再发一次请求。没有的页抛 `Missing`，与没取到分开。
     """
 
     MISSING_TTL = 30 * 86400
 
-    def __init__(self, cache_dir: Path, cooldown_root: Path, transport=None):
-        from .sources.seesaa import AV_NEME as CONFIG, WikiPages
+    def __init__(self, cache_dir: Path, cooldown_root: Path, transport=None, *, config=None,
+                 max_requests: int = MAX_REQUESTS):
+        from .sources.seesaa import AV_NEME as DEFAULT, WikiPages
 
-        self.pages = WikiPages(cache_dir, config=CONFIG, transport=transport, limiter=_LIMITER,
-                               max_requests=MAX_REQUESTS)
+        config = config or DEFAULT
+        self.site = config.name
+        self.pages = WikiPages(cache_dir, config=config, transport=transport, limiter=_LIMITER,
+                               max_requests=max_requests)
         self.cooldown_root = Path(cooldown_root)
         self.missing_path = Path(cache_dir) / "missing.json"
 
@@ -415,11 +422,11 @@ class AvNemePages:
         from .metadata import MetadataProviderError
         from .scraping_access import pause_source, paused_until
 
-        if paused_until(self.cooldown_root, AV_NEME):
+        if paused_until(self.cooldown_root, self.site):
             raise Blocked("来源正在冷却")
         missing = self._missing()
         if time.time() - float(missing.get(url, 0)) < self.MISSING_TTL:
-            raise Unavailable("站上没有这一页")
+            raise Missing("站上没有这一页")
         try:
             return self.pages.get(url)
         except MetadataProviderError as error:
@@ -428,9 +435,10 @@ class AvNemePages:
                     missing[url] = time.time()
                     self.missing_path.parent.mkdir(parents=True, exist_ok=True)
                     self.missing_path.write_text(json.dumps(missing), encoding="utf-8")
+                    raise Missing(str(error)) from None
                 raise Unavailable(str(error)) from None
             limited = error.status_code == 429
-            pause_source(self.cooldown_root, AV_NEME, refused=not limited)
+            pause_source(self.cooldown_root, self.site, refused=not limited)
             raise Blocked("来源限流（429）" if limited else "来源拒绝访问或要求机器人验证") from None
 
     def close(self) -> None:
@@ -509,7 +517,7 @@ def open_sites(contract) -> dict:
     cache = Path(contract.candidate_root) / "provider-cache"
     cooldown = _cooldown_root(contract)
     return {MINNANO: MinnanoPages(cache / "minnano-av-pages", cooldown),
-            AV_NEME: AvNemePages(cache / "seesaa-pages", cooldown),
+            AV_NEME: WikiSitePages(cache / "seesaa-pages", cooldown),
             FC2CMADB: Fc2cmadbPages(cache / "fc2cmadb-actresses", cooldown)}
 
 

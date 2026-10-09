@@ -169,6 +169,77 @@ def creator_release_identifier(creator: str, *, path: str, filename: str, code: 
     return ('identifier_candidate',reason) if verdict == '存疑' else ('','')
 
 
+_JP_NAME = r'[぀-ヿ一-鿿々ー・]{2,10}'
+_ROMAN_NAME = r'[A-Z][a-z]+(?: [A-Z][a-z]+){1,2}'
+_CAMEL_NAME = r'[A-Z][a-z]+[A-Z][a-z]+'
+#: `こすっち238 宇流木さら`：固定前缀紧跟编号，后面只有一个人名。
+_PREFIX_NUMBER_CAST = re.compile(r'^(?P<prefix>[^\d\s\[\]【】()（）]{2,}?)[\s_-]*(?P<number>\d{2,4})[\s_-]+'
+                                 r'(?P<cast>' + _JP_NAME + '|' + _ROMAN_NAME + r')$')
+#: `Akari Asagiri & Eri Hirasawa - 120 - Sensual Kiss`：出演者组合、编号、标题三段。
+_CAST_NUMBER_TITLE = re.compile(r'^(?P<cast>.+?)\s+-\s+(?P<number>\d{2,4})\s+-\s+\S.*$')
+#: `ChieKobayashi-ShinoAoi-039-1080p`：驼峰人名连写、编号、可选画质。
+_CAMEL_CAST_NUMBER = re.compile(r'^(?P<cast>' + _CAMEL_NAME + r'(?:-' + _CAMEL_NAME + r')+)-(?P<number>\d{2,4})(?:-.*)?$')
+_CAST_SPLIT = re.compile(r'\s*(?:&|,|、| and )\s*')
+#: 至少几部、几位出演者，命中文件占比，以及固定成员出现在多大比例的命中文件里就算个人或情侣账号。
+LABEL_SHAPE_FILES, LABEL_SHAPE_CAST, LABEL_SHAPE_SHARE, LABEL_SHAPE_FIXED_MEMBER = 3, 3, 0.5, 0.8
+
+
+def _cast_key(name: str) -> str:
+    return re.sub(r'[\s・]', '', unicodedata.normalize('NFKC', name)).casefold()
+
+
+def _numbered_cast(filename: str) -> tuple[str, str, int, list[str]] | None:
+    """一个文件名 → (形态, 前缀, 编号, 出演者)；不是这几种发行命名返回 None。"""
+    text = unicodedata.normalize('NFKC', re.sub(r'\.[A-Za-z0-9]{2,4}$', '', filename)).strip()
+    text = re.sub(r'\s*\(\d+\)$', '', text)
+    found = _PREFIX_NUMBER_CAST.match(text)
+    if found:
+        return 'prefix', found['prefix'].casefold(), int(found['number']), [found['cast']]
+    found = _CAST_NUMBER_TITLE.match(text)
+    if found:
+        cast = _CAST_SPLIT.split(found['cast'])
+        if all(re.fullmatch(_JP_NAME + '|' + _ROMAN_NAME, name) for name in cast):
+            return 'cast', '', int(found['number']), cast
+    found = _CAMEL_CAST_NUMBER.match(text)
+    if found:
+        return 'cast', '', int(found['number']), found['cast'].split('-')
+    return None
+
+
+def numbered_cast_shape(filenames: list[str], people: set[str]) -> dict | None:
+    """同一账号名下的发行命名轮换出演者时，交回疑似厂牌或系列的依据；只供复核。
+
+    认三种命名：「前缀+编号+出演者」、「出演者 & 出演者 - 编号 - 标题」、驼峰人名连写加编号。
+    前缀形态的尾段可能是标题，所以至少三位出演者要是账本已有的出演者名或别名（`people`
+    存 `normalize_entity_name` 后的写法）；另外两种由分隔结构标出人名位置。
+    同一位出演者出现在绝大多数命中文件里的是个人或情侣账号，不报。
+    """
+    from .entities import normalize_entity_name
+    groups: dict[tuple[str, str], list[tuple[int, list[str]]]] = {}
+    for filename in filenames:
+        shaped = _numbered_cast(filename)
+        if shaped:
+            groups.setdefault(shaped[:2], []).append(shaped[2:])
+    if not groups:
+        return None
+    (form, prefix), matched = max(groups.items(), key=lambda item: len(item[1]))
+    appearances: dict[str, int] = {}
+    known = set()
+    for _number, cast in matched:
+        for key, name in {_cast_key(name): name for name in cast}.items():
+            appearances[key] = appearances.get(key, 0) + 1
+            if normalize_entity_name(name) in people:
+                known.add(key)
+    numbers = {number for number, _cast in matched}
+    if (len(matched) < LABEL_SHAPE_FILES or len(matched) < LABEL_SHAPE_SHARE * len(filenames)
+            or len(numbers) < LABEL_SHAPE_FILES or len(appearances) < LABEL_SHAPE_CAST
+            or (form == 'prefix' and len(known) < LABEL_SHAPE_CAST)
+            or max(appearances.values()) >= LABEL_SHAPE_FIXED_MEMBER * len(matched)):
+        return None
+    return {'form': form, 'prefix': prefix, 'files': len(matched), 'total': len(filenames),
+            'cast': len(appearances), 'known_cast': len(known)}
+
+
 def is_probable_mainstream_release(name: str | None, path: str | None = None) -> bool:
     """Return only strong TV-release candidates; callers must still review them."""
     text = " ".join(part for part in (name, path) if part)

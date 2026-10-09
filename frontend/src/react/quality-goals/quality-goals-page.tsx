@@ -37,7 +37,7 @@ function GoalCard({ item, openItem, searchResources, javTitleHtml, javDisplayNam
             间距的规则，排在 `peach-react.css` 后面会赢。这颗按钮是 flex 子项，行内格
             会被块级化，算出来仍是 `display:grid`。 */}
         <button type="button" onClick={open} aria-label={`打开 ${javDisplayName(item)}`}
-          className="relative inline-grid w-card-cover shrink-0 aspect-card-cover cursor-pointer place-items-center overflow-hidden rounded-2lg bg-background-tertiary-default">
+          className="relative inline-grid w-card-cover shrink-0 self-start aspect-card-cover cursor-pointer place-items-center overflow-hidden rounded-2lg bg-background-tertiary-default">
           {/* 图片取不到时（onError 把 img 摘掉）露出来的就是这句。 */}
           <span className="text-caption-1-regular text-text-secondary">暂无预览</span>
           <img src={previewUrl(item)} alt="" loading="lazy"
@@ -45,9 +45,10 @@ function GoalCard({ item, openItem, searchResources, javTitleHtml, javDisplayNam
             className="absolute inset-0 size-full object-contain" />
         </button>
         <div className="flex min-w-0 flex-col gap-1.5">
+          {/* 标题从番号读起，长了折到第二行再截尾：中段截断会把番号和片名一起切掉。 */}
           <h3 className="text-headline-medium text-text-primary">
-            <button type="button" data-middle-truncate onClick={open}
-              className="block w-full cursor-pointer text-left"
+            <button type="button" onClick={open} title={javDisplayName(item)}
+              className="line-clamp-2 w-full cursor-pointer text-left wrap-anywhere"
               dangerouslySetInnerHTML={{ __html: javTitleHtml(item) }} />
           </h3>
           <p className="flex flex-wrap items-center gap-2 text-body-2-regular text-text-secondary">
@@ -56,10 +57,10 @@ function GoalCard({ item, openItem, searchResources, javTitleHtml, javDisplayNam
             <span className="contents" dangerouslySetInnerHTML={{ __html: srcBadge(item.location, item.cost) }} />
             <span>{LOC[item.location] ?? item.location}</span>
             <span>{fmtDur(item.duration)}</span>
-            <span>{fmtSize(item.size ?? 0)}</span>
+            <span>{Number(item.size) > 0 ? fmtSize(Number(item.size)) : '大小未知'}</span>
           </p>
           {item.reason
-            ? <p className="border-t border-separator-border pt-3 text-body-2-regular text-text-secondary">
+            ? <p className="border-t border-separator-border pt-3 text-body-2-regular text-text-secondary wrap-anywhere">
                 {item.reason}
               </p>
             : null}
@@ -100,10 +101,16 @@ export function QualityGoalsPage({ toast, ...props }: QualityGoalsProps) {
     <Page>
       {/* 总数取服务端的 `total` 而不是这一页的条数：`limit` 截断时两者不是一个数，
           而这一行要回答的是「一共还欠多少部」。 */}
-      <CollectionSummary label="待升级" figure={`${data.total} 部作品`} flush />
+      <CollectionSummary label="待升级" figure={`${Number(data.total || 0).toLocaleString()} 部作品`} flush />
       <ul className="card-grid-cover gap-5">
         {items.map((item) => <GoalCard key={item.id} item={item} {...props} searchResources={setDownload} />)}
       </ul>
+      {/* 列表只取前 200 部；总数比这多时说清楚这一页不是全部。 */}
+      {Number(data.total || 0) > items.length
+        ? <p className="mt-6 text-center text-caption-1-regular text-text-secondary">
+            {`显示前 ${items.length.toLocaleString()} 部，共 ${Number(data.total).toLocaleString()} 部。`}
+          </p>
+        : null}
       <CloudDownloadDialog prefill={download} close={() => setDownload(null)} receipt={toast} />
     </Page>
   );

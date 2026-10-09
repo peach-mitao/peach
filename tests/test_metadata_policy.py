@@ -21,6 +21,21 @@ from peach.metadata_policy import (
 
 
 class MetadataPolicyTests(unittest.TestCase):
+    def test_censored_tags_prefer_javdb_while_nfo_and_other_fields_keep_their_order(self):
+        candidates = [{"source": "dmm"}, {"source": "javdb"}, {"source": "mgstage"}]
+        self.assertEqual(sort_candidates("tags", candidates, code="ABW-220")[0]["source"], "javdb")
+        self.assertEqual(sort_candidates("tags", [*candidates, {"source": "local_nfo"}],
+                                         code="ABW-220")[0]["source"], "local_nfo")
+        self.assertLess(chain_rank("tags", "local_nfo", code="ABW-220"),
+                        chain_rank("tags", "javdb", code="ABW-220"))
+        self.assertLess(chain_rank("tags", "javdb", code="ABW-220"),
+                        chain_rank("tags", "dmm", code="ABW-220"))
+        for field in ("studio", "performers", "title", "release_date"):
+            self.assertEqual(sort_candidates(field, candidates, code="ABW-220")[0]["source"], "dmm")
+        for code in ("FC2-PPV-1234567", "259LUXU-1475", "040221-001", "AR-101"):
+            self.assertEqual(sort_candidates("tags", candidates, code=code)[0]["source"], "mgstage")
+        self.assertFalse(SOURCE_SPECS["javdb"].official)
+
     def test_every_source_the_chain_can_ask_is_registered_once(self):
         """链上每一档的成员都要在 `SOURCE_SPECS` 里有级别，否则候选算不出 official。"""
         chain_sources = {source for chain in metadata_routes.ROUTES.values() for source in chain}

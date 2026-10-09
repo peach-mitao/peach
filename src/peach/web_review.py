@@ -47,7 +47,7 @@ from .metadata_auto_apply import (
     metadata_decision_is_stale,
     refresh_current_values,
 )
-from .metadata_policy import FALLBACK_SOURCES, SOURCE_SPECS
+from .metadata_policy import FALLBACK_SOURCES, SOURCE_SPECS, preferred_tag_source
 from .previews import logo_key
 from .review_csv import CANDIDATE_PREFIX, read_candidates
 
@@ -279,7 +279,7 @@ def _metadata_decision_in_force(decision: dict, row: dict, genre_decisions: dict
     """
     if not decision:
         return decision
-    if metadata_decision_is_stale(decision, row.get("candidates") or []):
+    if metadata_decision_is_stale(decision, row.get("candidates") or [], code=row.get("code") or ""):
         return {}
     if decision.get("status") == "approved" and genres_still_pending(genre_decisions, decision):
         return {}
@@ -519,6 +519,11 @@ def _drop_community_challenges_to_official(connection, rows: list[dict]) -> list
     def keep(row: dict) -> bool:
         item_key = str(row.get("item_key") or "")
         if item_key not in official_values:
+            return True
+        preferred = preferred_tag_source(row.get("code"))
+        sources = {c.get("source") for c in row.get("candidates") or []}
+        sources.discard(None)
+        if row.get("field") == "tags" and preferred in sources:
             return True
         # 现值被别的动作改过就不能再算「official 写的那一个」，交回人工。
         if official_values[item_key] != str(row.get("current_value") or "").strip():

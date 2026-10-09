@@ -129,6 +129,8 @@ export interface CatalogGridProps {
   /** 每接一页报一次：总数与此刻显示的卡数（Mix 与竖屏带不算）。壳据此推筛选条的读数、重画批量条，
    *  回收站把读数写在说明行上。 */
   onCount?(total: number, shown: number): void;
+  /** 首屏取数失败：没有读数可报，壳据此把筛选条那条读数微光收起。 */
+  onCountFailed?(): void;
   /** 空态 HTML。`libraryEmpty` 是整个馆藏都还没有作品。 */
   emptyHtml?(state: { trash: boolean; libraryEmpty: boolean }): string;
   /** 此刻能不能自动续页：管理区或索引页盖在目录上时不续。 */

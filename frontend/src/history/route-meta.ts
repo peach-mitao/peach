@@ -1,18 +1,19 @@
-/* 路由树那一侧的路由元数据（ADR-0031「React Router 外壳阶段接管」）：标题、侧栏键、管理区身份与「换一批」的
- * 行为，按精确路径登记。壳的读者（标题、侧栏高亮与跳转、管理区身份、换一批）先查这里，没有再回落到壳的
- * `ROUTES` 表；一条路径只在一边登记。
+/* 路由元数据（ADR-0031「React Router 外壳阶段接管」）：标题、侧栏键、管理区身份与「换一批」的行为，按路径登记，
+ * 全站只有这一张。壳的读者（标题、侧栏高亮与跳转、管理区身份、换一批）都查这里。
  *
- * 放在 `@peach/history` 而不随 `managed-routes.tsx` 进 React 包：壳启动时就要读（冷启动的管理区页头、
- * 第一次派发的标题），那时 React 包可能还没到。路由树经 `@peach/history` 读的也是这一份。
+ * 放在 `@peach/history` 而不随 `managed-routes.tsx` 进 React 包：壳启动时就要读（冷启动的管理区页头与标题），
+ * 那时 React 包可能还没到。路由树经 `@peach/history` 读的也是这一份。
  *
- * 字段同壳的 `ROUTES` 表：`title` 是 document.title 用的标签；`nav` 是侧栏 `data-nav` 的键；`section` 是管理区
- * 身份，同一身份按登记顺序取第一条作入口（数据管理排在重复文件与来源和凭证前面）；`refresh` 是列表栏
- * 「换一批」在这一页的行为，`reopen` 重开自己、`skip` 不参与，不写则回统计页；`reload` 是批量写回之后的就地
- * 重取，`reopen` 让这一页按当前地址从头重开（索引页与资料页）。
+ * 字段：`title` 是 document.title 用的标签；`nav` 是侧栏 `data-nav` 的键；`section` 是管理区身份，同一身份按
+ * 登记顺序取第一条作入口（数据管理排在重复文件与来源和凭证前面）；`refresh` 是列表栏「换一批」在这一页的行为，
+ * `reopen` 重开自己、`skip` 不参与，不写则回统计页；`reload` 是批量写回之后的就地重取，`reopen` 让这一页按当前
+ * 地址从头重开（索引页与资料页）。同一个侧栏键按登记顺序取第一条作入口：播放列表页排在播放列表队列前面。
  *
- * 资料页按模式登记（`/performers/*`，同 `ENTITY_ROUTES`），标题是地址上的名字。`routeMetaOf` 先查精确路径，
- * 没有再按去掉空段之后的各段找：只剩一段查那一段的精确路径（`/performers/`），多于一段按第一段找模式，名字是
- * 剩下各段连起来的那一串（读者交进来的是解码过的路径），同壳的 `matchPath`。 */
+ * 资料页按模式登记（`/performers/*`，同 `ENTITY_ROUTES`），标题是地址上的名字；覆盖的六条按 `OVERLAY_PATHS` 的
+ * 写法登记，参数只认数字。`routeMetaOf` 先查精确路径，再查覆盖路径，没有再按去掉空段之后的各段找：只剩一段查
+ * 那一段的精确路径（`/performers/`），多于一段按第一段找模式，名字是剩下各段连起来的那一串（读者交进来的是
+ * 解码过的路径，名字里的斜杠吃掉剩下全部段，空尾段不算）。 */
+import { overlayMatch } from './overlay';
 
 export interface RouteMeta {
   readonly title?: string;
@@ -56,11 +57,22 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   '/flagged': { nav: 'flagged', title: '已标记' },
   '/junk-files': { nav: 'ads', title: '垃圾文件' },
   '/trash': { section: 'trash' },
+  // 覆盖：详情、四种队列与关注详情。分卷与版本队列没有自己的标签。
+  '/playlists/:playlist/:item': { nav: 'playlists', title: '播放列表' },
+  '/mix/:seed/:item': { title: 'Mix' },
+  '/parts/:seed/:item': {},
+  '/editions/:seed/:item': {},
+  '/item/:id': { title: '作品' },
+  '/follow/item/:id': { title: '关注' },
+  // 沉浸模式进页面组，不算覆盖。
+  '/immerse': { nav: 'immerse', title: '沉浸模式' },
 };
 
-/** 这条路径在路由树一侧登记的元数据；没登记是 `null`，由壳回落到自己的表。 */
+/** 这条路径登记的元数据；没登记是 `null`。 */
 export function routeMetaOf(path: string): RouteMeta | null {
   if (Object.hasOwn(ROUTE_META, path)) return ROUTE_META[path]!;
+  const overlay = overlayMatch(path);
+  if (overlay) return ROUTE_META[overlay.path]!;
   const [segment, ...rest] = path.split('/').filter(Boolean);
   if (!segment) return null;
   if (!rest.length) return Object.hasOwn(ROUTE_META, `/${segment}`) ? ROUTE_META[`/${segment}`]! : null;

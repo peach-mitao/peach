@@ -314,48 +314,113 @@ class TrashJunkTests(unittest.TestCase):
             self.assertFalse(scan.is_sidecar(name,frozenset()))
 
     def test_download_site_navigation_images_keep_content_attachments(self):
-        from peach.web_batch import _attachment_junk_reason
-        self.assertTrue(_attachment_junk_reason('.mp4', 'A:\\作品\\社 區 最 新 情 報.mp4', 15089802))
-        self.assertEqual(_attachment_junk_reason('.mp4', 'A:\\作品\\社区最新情报合集.mp4', 15089802), '')
+        from peach.web_batch import _promo_name_reason
+        self.assertIn('须核验视频内容', _promo_name_reason('.mp4', 'A:\\作品\\社 區 最 新 情 報.mp4', 15089802))
+        self.assertEqual(_promo_name_reason('.mp4', 'A:\\作品\\社区最新情报合集.mp4', 15089802), '')
+        self.assertEqual(_promo_name_reason('.mp4', 'A:\\作品\\社區最新情報.mp4', 32 * 1024**2), '')
         for name in ('如何使用谷歌DNS让您更快进入下载网页步骤01.jpg',
                      '~Free Adult Movie, Fastest & Newest Porn Movie Site.jpg',
                      'hav.so_最新成人高清店長推薦強片天天更新.gif',
                      '__ HiHSP.pw 國產精品 高速下載 在線點播.png'):
-            self.assertTrue(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000))
+            self.assertIn('须核验图片内容', _promo_name_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000))
+            self.assertEqual(_promo_name_reason(Path(name).suffix, 'B:\\作品\\' + name, 2 * 1024**2), '')
         for name in ('images.rar', '作品封面.jpg', '作品字幕.srt', 'HiHSP.com-作品截图.jpg'):
-            self.assertEqual(_attachment_junk_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000), '')
+            self.assertEqual(_promo_name_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000), '')
 
     def test_tiny_promotion_cards_require_exact_names_and_content_review(self):
-        from peach.web_batch import _attachment_junk_reason
+        from peach.web_batch import _promo_name_reason
         for name in ('51风流', '代开实习证明', '扫码约炮', '探花社区'):
-            self.assertIn('须核验图片内容', _attachment_junk_reason('.png', 'A:\\作品\\'+name+'.png', 1400))
-            self.assertFalse(_attachment_junk_reason('.png', 'A:\\作品\\'+name+'.png', 4097))
-            self.assertFalse(_attachment_junk_reason('.png', 'A:\\作品\\'+name+'作品.png', 1400))
-            self.assertFalse(_attachment_junk_reason('.mp4', 'A:\\作品\\'+name+'.mp4', 1400))
+            self.assertIn('须核验图片内容', _promo_name_reason('.png', 'A:\\作品\\'+name+'.png', 1400))
+            self.assertFalse(_promo_name_reason('.png', 'A:\\作品\\'+name+'.png', 4097))
+            self.assertFalse(_promo_name_reason('.png', 'A:\\作品\\'+name+'作品.png', 1400))
+            self.assertFalse(_promo_name_reason('.mp4', 'A:\\作品\\'+name+'.mp4', 1400))
 
     def test_site_cards_require_matching_parent_and_small_png_content_review(self):
-        from peach.web_batch import _attachment_junk_reason
+        from peach.web_batch import _promo_name_reason
         name='｜91porn｜真实国产原创亚洲最火成人网站，强势回归｜'
         source='A:\\待确认\\My Pack\\213\\'+name+'\\'+name+'.png'
-        self.assertIn('须核验图片内容', _attachment_junk_reason('.png', source, 49130))
+        self.assertIn('须核验图片内容', _promo_name_reason('.png', source, 49130))
         for suffix,path,size in (
                 ('.mp4', source.removesuffix('.png')+'.mp4', 49130),
                 ('.png', source, 128*1024+1),
                 ('.png', 'A:\\作品\\'+name+'.png', 49130),
                 ('.png', source.replace(name+'.png','作品截图.png'), 49130)):
-            self.assertFalse(_attachment_junk_reason(suffix,path,size))
+            self.assertFalse(_promo_name_reason(suffix,path,size))
 
     def test_information_wmv_requires_exact_name_size_and_content_review(self):
-        from peach.web_batch import JUNK_VIDEO_MAX_BYTES, _attachment_junk_reason
+        from peach.web_batch import JUNK_VIDEO_MAX_BYTES, _promo_name_reason
         for name in ('最新情報', '最 新 情 报'):
             source = 'B:\\云下载\\DOCP-324\\' + name + '.wmv'
-            self.assertIn('须核验视频内容', _attachment_junk_reason('.wmv', source, 90867046))
+            self.assertIn('须核验视频内容', _promo_name_reason('.wmv', source, 90867046))
         for suffix, name, size in (
                 ('.wmv', '最新情報', 0),
                 ('.wmv', '最新情報', JUNK_VIDEO_MAX_BYTES),
                 ('.mp4', '最新情報', 90867046),
                 ('.wmv', '作品最新情報完整版', 90867046)):
-            self.assertFalse(_attachment_junk_reason(suffix, 'B:\\作品\\' + name + suffix, size))
+            self.assertFalse(_promo_name_reason(suffix, 'B:\\作品\\' + name + suffix, size))
+
+    def test_apply_leaves_name_only_promotion_attachments_in_review(self):
+        """固定命名只够进复核队列；同一次 --apply 里真正够格的条目照常移入回收站。"""
+        site = '｜91porn｜真实国产原创亚洲最火成人网站，强势回归｜'
+        named = {
+            1: (r'B:\作品\51风流.png', 'image', 1400, None),
+            2: (r'B:\作品\代开实习证明.png', 'image', 1400, None),
+            3: (r'B:\作品\探花社区.png', 'image', 1400, None),
+            4: ('B:\\待确认\\213\\' + site + '\\' + site + '.png', 'image', 49130, None),
+            5: (r'B:\作品\最新情報.wmv', 'video', 90867046, None),
+            6: (r'B:\作品\社區最新情報.mp4', 'video', 15089802, 60),
+            7: (r'B:\作品\如何使用谷歌DNS让您更快进入下载网页步骤01.jpg', 'image', 50000, None),
+            8: (r'B:\作品\1024核工厂.rar', 'archive', 4111, None),
+        }
+        for asset_id, (path, medium, size, duration) in named.items():
+            self.add(asset_id, '115', path, medium, size, duration)
+        self.add(9, '115', r'B:\广告\tuu26.com.mp4', 'video', 10 * 1024**2, 60)
+
+        queued = self.trash_junk.select_candidates(self.db_path, min_score=40)
+        self.assertEqual({row['id'] for row in queued}, {*named, 9})
+        code = self.trash_junk.main([
+            '--db', str(self.db_path), '--out', str(self.out),
+            '--apply', '--backup', str(self.backup),
+        ])
+
+        self.assertEqual(code, 0)
+        self.assertEqual({asset_id: self.disposal(asset_id) for asset_id in named},
+                         dict.fromkeys(named))
+        self.assertEqual(self.disposal(9), 'trash')
+
+    def test_unprobed_videos_need_more_than_directory_and_size_evidence(self):
+        """没探测时长的视频凭推广目录、推广创作者位与体积只进复核队列。"""
+        self.add(1, '115', r'B:\_含羞草APP\极道世界.mp4', 'video', 10 * 1024**2)
+        self.add(2, '115', r'B:\作品\极道世界.mp4', 'video', 10 * 1024**2)
+        self.add(3, '115', r'B:\bbsxv.xyz-DOCP-324\_含羞草APP\极道世界.mp4', 'video', 10 * 1024**2)
+        self.add(4, '115', r'B:\bbsxv.xyz-DOCP-325\_含羞草APP\极道世界.mp4', 'video', 10 * 1024**2, 60)
+        self.add(5, '115', r'B:\广告\tuu26.com.mp4', 'video', 10 * 1024**2)
+        self.execute("UPDATE asset SET creator='bbsxv.xyz' WHERE id=2")
+
+        queued = {row['id']: row['score'] for row in
+                  self.trash_junk.select_candidates(self.db_path, min_score=40)}
+        trashable = {row['id'] for row in self.trash_junk.select_candidates(self.db_path, min_score=60)}
+
+        self.assertEqual(set(queued), {1, 2, 3, 4, 5})
+        self.assertEqual(queued[1], 40)
+        self.assertLess(max(queued[1], queued[2], queued[3]), 60)
+        self.assertEqual(trashable, {4, 5})
+
+    def test_promotion_names_come_from_the_lexicon_file(self):
+        from peach import web_batch
+        lexicon = self.root / 'promo_attachment_names.json'
+        lexicon.write_text('{"rules": [{"reason": "测试推广卡，须核验图片内容", "suffixes": [".png"], '
+                           '"max_bytes": 4096, "names": ["测试推广卡"]}]}', encoding='utf-8')
+        web_batch.promo_name_rules.cache_clear()
+        self.addCleanup(web_batch.promo_name_rules.cache_clear)
+        with mock.patch.object(web_batch, 'PROMO_NAMES_FILE', lexicon):
+            self.assertEqual(web_batch._promo_name_reason('.png', r'B:\作品\测试推广卡.png', 1400),
+                             '测试推广卡，须核验图片内容')
+            self.assertEqual(web_batch._promo_name_reason('.png', r'B:\作品\51风流.png', 1400), '')
+        web_batch.promo_name_rules.cache_clear()
+        with mock.patch.object(web_batch, 'PROMO_NAMES_FILE', self.root / 'missing.json'):
+            with self.assertRaises(FileNotFoundError):
+                web_batch.promo_name_rules()
 
 
 if __name__ == "__main__":

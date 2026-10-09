@@ -2,9 +2,9 @@
 
 搜索页 `/search?q=<番号>&f=all` 的结果卡片带番号，番号一致的那张进详情页；详情页
 `?locale=zh` 下面板字段是 `番號`、`日期`、`片商`、`發行`、`系列`、`導演`、`演員`，
-演员里女优带 `actor-female`。它按出口 IP 计配额，限速与封禁的处理在 `scraping_access`
+演员里女优带 `actor-female`，类别保留链接里的原词。它按出口 IP 计配额，限速与封禁的处理在 `scraping_access`
 和调用方的主机间隔里，这里只管取页与解析。几家的值常有出入：ABW-358 在 javdb 上发行日期是
-MGS 的 5/23、标题带 MGS 附注、演员里有男优，所以社区来源的资料一律要两家一致才免复核。
+MGS 的 5/23、标题带 MGS 附注、演员里有男优，各字段按 Peach 的来源策略结算。
 
 一部分页面要登录才给，回的是登入页而不是 401/403（`peach.javdb.LOGIN`），搜索页与详情页都要认。
 """
@@ -142,6 +142,10 @@ class JavDBSource(SiteSource):
         title = _TITLE.search(text)
         tag = _COVER.search(text)
         cover = _IMG_SRC.search(tag.group(0)) if tag else None
+        genres = tuple(dict.fromkeys(
+            clean(link.get_text(" ", strip=True))
+            for link in BeautifulSoup(panel.get("類別", ""), "html.parser").find_all("a")
+            if clean(link.get_text(" ", strip=True))))
         return SiteRecord(
             source=self.config.name, provenance=self.config.provider, code=shown, source_url=page.url,
             title=clean(title.group(1)) if title else "",
@@ -149,6 +153,7 @@ class JavDBSource(SiteSource):
             studio=maker_writing(clean(panel.get("片商", ""))), label=clean(panel.get("發行", "")),
             series=clean(panel.get("系列", "")), director=clean(panel.get("導演", "")),
             release_date=clean(panel.get("日期", "")), runtime=int(runtime.group()) if runtime else None,
+            tags=genres,
             cover_urls=(cover.group(1),) if cover else ())
 
 

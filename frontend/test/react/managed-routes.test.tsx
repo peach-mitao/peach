@@ -1,9 +1,9 @@
 /* 由路由画的那几页（`src/history/managed.ts` 与 `src/react/router/`；管理区画进 `#stats`，索引页画进
- * `#index`）：壳的骨架留到首屏取齐，换成整页落在同一个任务里；冷启动不论 Router 先挂还是壳先开始路由
- * 都只派发一次；每次打开都重取，壳的开关就地合进去不重挂；两个容器互不相收；详情舞台压在上面时页面
- * 留着，壳下一次认领表面才收；管理区几页之间的跳转走 React Router，别的交壳。
+ * `#index`）：壳的骨架留到首屏取齐，换成整页落在同一个任务里；冷启动不论 Router 先挂还是先打开都只取一次；
+ * 每次打开都重取，壳的开关就地合进去不重挂；两个容器互不相收；详情舞台压在上面时页面留着，壳下一次认领
+ * 表面才收；管理区几页之间的跳转走 React Router，别的交壳。
  *
- * 历史对象、派发状态与各容器的登记都是模块级的，和页面上只有一份一致，所以每条用例重新装载
+ * 历史对象与各容器的登记都是模块级的，和页面上只有一份一致，所以每条用例重新装载
  * `src/history` 与 `src/react/router`。 */
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -52,7 +52,7 @@ function shellActions(): ShellActions {
     routeIndex: vi.fn(), savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(),
     personAvatar: vi.fn(() => ({ html: '', face: '' })), authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(),
     openFollowAuthor: vi.fn(), openFollowTag: vi.fn(), openPlaylist: vi.fn(), canFlip: () => true,
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 
@@ -127,7 +127,7 @@ async function until(ok: () => boolean, what: string): Promise<void> {
   throw new Error(`一直没等到：${what}`);
 }
 
-/* 这里直接调打开管线、派发是替身：要开始路由的用例把地址落在首页，管理区的页面元素不挂（元素怎么打开见
+/* 这里直接调打开管线：用例把地址落在首页或不交壳的动作，管理区的页面元素不打开（元素怎么打开见
    `pages/managed.test.tsx`）。 */
 const open = (r: Loaded, stats: Element, isCurrent = () => true) =>
   r.openManagedRoute('/activity', {}, { container: stats, isCurrent });
@@ -142,19 +142,18 @@ it('冷启动深链，Router 先挂上：壳画的骨架留到首屏取齐，换
   const fetch = tasksFetch();
   fetch.install();
   let opened: Promise<boolean> | undefined;
-  const dispatch = vi.fn(() => { opened = open(r, stats) });
-  await act(async () => { await r.startRouting(dispatch) });
+  await act(async () => { opened = open(r, stats) });
   await until(() => fetch.taskCalls() > 0, '首屏取数发出去');
   expect(stats.firstElementChild, '取齐之前骨架原样留着').toBe(skeleton);
   const batches = watch(stats, skeleton);
   fetch.resolve();
   await act(async () => { expect(await opened).toBe(true) });
-  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(fetch.taskCalls()).toBe(1);
   expect(batches[0], '骨架撤下的那一批变化里整页已经画好，中间没有空白的一帧').toEqual({ skeleton: false, painted: true });
   expect(stats.querySelector(':scope > .peach-react')?.textContent).toContain('追更检查');
 });
 
-it('冷启动深链，壳先开始路由、Router 后挂上：包到了才取数，挂上时不再派发，骨架同样留到换成整页', async () => {
+it('冷启动深链，壳先打开、Router 后挂上：包到了才取数，骨架同样留到换成整页', async () => {
   const r = await load('/');
   const { stats, skeleton } = surface();
   let arrive: (prefetch: typeof r.prefetchManagedRoute) => void = () => {};
@@ -162,10 +161,8 @@ it('冷启动深链，壳先开始路由、Router 后挂上：包到了才取数
   const fetch = tasksFetch();
   fetch.install();
   let opened: Promise<boolean> | undefined;
-  const dispatch = vi.fn(() => { opened = open(r, stats) });
-  await act(async () => { await r.startRouting(dispatch) });
+  await act(async () => { opened = open(r, stats) });
   await mount(r);
-  expect(dispatch).toHaveBeenCalledTimes(1);
   expect(fetch.fetched).not.toHaveBeenCalled();
   expect(stats.firstElementChild).toBe(skeleton);
   await act(async () => { arrive(r.prefetchManagedRoute) });
@@ -174,7 +171,7 @@ it('冷启动深链，壳先开始路由、Router 后挂上：包到了才取数
   const batches = watch(stats, skeleton);
   fetch.resolve();
   await act(async () => { expect(await opened).toBe(true) });
-  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(fetch.taskCalls()).toBe(1);
   expect(batches[0]).toEqual({ skeleton: false, painted: true });
 });
 
@@ -246,8 +243,6 @@ it('详情舞台压在上面时页面留着，地址回来也不重挂；壳下�
   await mount(r);
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
   tasksFetch(tasks(), { deferred: false }).install();
-  const dispatch = vi.fn();
-  await act(async () => { await r.startRouting(dispatch) });
   await act(async () => { await open(r, stats) });
   const page = painted(stats);
   expect(page).not.toBeNull();
@@ -257,7 +252,6 @@ it('详情舞台压在上面时页面留着，地址回来也不重挂；壳下�
   // 关掉详情：壳把地址写回列表那一页。
   await act(async () => { r.shellNavigate('/') });
   expect(painted(stats)).toBe(page);
-  expect(dispatch).toHaveBeenCalledTimes(1);
   act(() => { r.releaseManagedRoute(stats) });
   expect(stats.children).toHaveLength(0);
 });
@@ -341,16 +335,14 @@ it('这几页之间的跳转交给 React Router，别的路径交壳', async () 
   expect(vi.mocked(actions.navigate).mock.calls).toEqual([['/'], ['/trash']]);
 });
 
-it('页面里的跳转落到壳上：只派发一次、历史只多一条', async () => {
+it('页面里的跳转：只领一个开次代次、历史只多一条', async () => {
   const r = await load('/scraping');
   await mount(r);
-  const dispatch = vi.fn();
-  await act(async () => { await r.startRouting(dispatch) });
-  dispatch.mockClear();
+  const epoch = r.peachHistory.navigation.openEpoch;
   const before = window.history.length;
   const navigate = ((to: string) => { r.peachHistory.push(to) }) as unknown as NavigateFunction;
   await act(async () => { r.managedGo('/activity', shellActions(), navigate) });
-  expect([dispatch.mock.calls.length, location.pathname, window.history.length - before]).toEqual([1, '/activity', 1]);
+  expect([r.peachHistory.navigation.openEpoch - epoch, location.pathname, window.history.length - before]).toEqual([1, '/activity', 1]);
 });
 
 /** 一页的元素与它拿到的 props，不画。 */
@@ -513,14 +505,13 @@ it('冷启动深链索引页：壳画的骨架留到首屏取齐，换成整页�
   const fetch = indexFetch();
   fetch.install();
   let opened: Promise<boolean> | undefined;
-  const dispatch = vi.fn(() => { opened = r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
-  await act(async () => { await r.startRouting(dispatch) });
+  await act(async () => { opened = r.openManagedRoute('/tags', tagsOpen(), { container: index, isCurrent: () => true }) });
   await until(() => fetch.indexCalls() > 0, '首屏取数发出去');
   expect(index.firstElementChild, '取齐之前骨架原样留着').toBe(skeleton);
   const batches = watch(index, skeleton, '痴女');
   fetch.resolve();
   await act(async () => { expect(await opened).toBe(true) });
-  expect(dispatch).toHaveBeenCalledTimes(1);
+  expect(fetch.indexCalls()).toBe(1);
   expect(batches[0], '骨架撤下的那一批变化里整页已经画好').toEqual({ skeleton: false, painted: true });
   expect(index.querySelector(':scope > .peach-react [data-index-search]')).not.toBeNull();
 });

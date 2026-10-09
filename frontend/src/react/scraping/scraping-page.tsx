@@ -28,7 +28,7 @@ import { Page } from '../components/page';
 import { SEGMENT, SEGMENTED_TRACK, SegmentedRadioGroup as RadioGroup } from '../components/segmented';
 import { queryClient } from '../query';
 import {
-  ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Rows, Section, Stack,
+  Disclosure, ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Rows, Section, Stack,
 } from '../settings/section';
 import { busyProps } from '../settings/use-action';
 import {
@@ -39,6 +39,21 @@ import {
 } from './scraping';
 
 const NETWORKS = [['peach', 'Peach 代理'], ['direct', '直接连接']] as const;
+
+/** 连接方式的选项。账本里存着这两种以外的值（旧版写下的、手改的）时把它原样列成一项，
+ *  下拉框照实显示现在是什么，不落到空占位上。 */
+export function networkOptions(current: string): (readonly [string, string])[] {
+  return NETWORKS.some(([key]) => key === current) || !current ? [...NETWORKS] : [...NETWORKS, [current, current]];
+}
+
+/** 登录页外链只写主机名：整条地址在窄屏上会把分区标题挤成一字一行，路径也说明不了是哪个站。 */
+export function linkHost(url: string): string {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
+}
 const COOKIE_METHODS = [['paste', '粘贴 Cookie'], ['file', '导入文件']] as const;
 
 /* 前面是站点自己的图标（指对象），后面是外链箭头（指形态）——两枚都在
@@ -154,14 +169,15 @@ function SourceCard({ source, toast }: { source: Source } & ScrapingProps) {
     <Section title={source.label} onSubmit={submit} aside={
       <span className="flex min-w-0 items-center gap-1">
         <SiteMark source={source.source} />
-        <ExternalLink href={source.login}>{source.login}</ExternalLink>
+        <ExternalLink href={source.login}>{linkHost(source.login)}</ExternalLink>
       </span>
     }>
       <Rows>
         <SettingsRow label="连接方式">
-          <Select aria-label="连接方式" selectedKey={network}
+          {/* 定宽：账本里的长取值按内容撑宽会把左边的「连接方式」挤成竖排，定宽后取值在框里截断。 */}
+          <Select aria-label="连接方式" className="w-44 min-w-0" selectedKey={network}
             onSelectionChange={(key) => { if (key !== null) setNetwork(String(key)) }}>
-            {NETWORKS.map(([key, name]) => <SelectItem key={key} id={key}>{name}</SelectItem>)}
+            {networkOptions(network).map(([key, name]) => <SelectItem key={key} id={key}>{name}</SelectItem>)}
           </Select>
         </SettingsRow>
       </Rows>
@@ -310,9 +326,14 @@ function AmaneBridgeCard({ toast }: ScrapingProps) {
         <Fact term="已安装版本">{data.installed_version || '未安装'}</Fact>
         <Fact term="上游最新版本">{check.data?.latest ?? '尚未检查'}</Fact>
         <Fact term="运行环境">{data.installed ? '已安装' : '未安装'}</Fact>
-        <Fact term="内置站点">{data.sites.map((site) => site.label).join('、')}</Fact>
+        <Fact term="内置站点">{data.sites.length.toLocaleString()} 个</Fact>
       </FactList>
       <Stack divided>
+        {data.sites.length
+          ? <Disclosure summary="查看内置站点">
+              <p className="text-body-2-regular text-text-secondary">{data.sites.map((site) => site.label).join('、')}</p>
+            </Disclosure>
+          : null}
         <Help>
           已安装版本：{data.installed_version || '未安装'}。amane（{data.license}）提供这些内置站点的解析能力。
           重新安装会使用 Peach 内置的 {data.version} 版本，不随上游自动升级。

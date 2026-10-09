@@ -343,7 +343,7 @@ function ChipList({ rows, filterKey, multi, selected, counts, host: at, onToggle
         return (
           <button type="button" key={row.value} data-sidebar-chip="" aria-pressed={selected.includes(row.value)}
             data-key={filterKey} data-val={row.value} data-multi={multi ? '1' : '0'}
-            data-offline={row.offline ? '' : undefined} disabled={!!row.offline} title={row.offline}
+            data-offline={row.offline ? '' : undefined} disabled={!!row.offline} title={row.offline || row.label}
             onClick={() => onToggle(filterKey, row.value, multi)}>
             <Dot dot={row.dot} />
             <span data-sidebar-chip-label="">{row.label}</span>
@@ -418,7 +418,7 @@ function FollowChips({ rows, host: at, selected, badges }: {
     <div data-sidebar-chips="">
       {rows.map((row) => (
         <button type="button" key={row.value} data-sidebar-chip="" data-online="" data-follow-drawer-tag={row.value}
-          aria-pressed={selected ? selected.has(row.value) : undefined}
+          aria-pressed={selected ? selected.has(row.value) : undefined} title={row.label}
           onClick={() => (selected ? at.selectFollowTag(row.value) : at.openFollowTag(row.value))}>
           <span data-sidebar-chip-label="">{row.label}</span>
           <span data-sidebar-count="" data-count-badge={badges ? `follow:${row.value}` : undefined}>

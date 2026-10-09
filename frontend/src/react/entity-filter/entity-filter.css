@@ -194,6 +194,13 @@
   letter-spacing: normal;
   white-space: nowrap;
 }
+/* 资料页这一行的读数可以让位：右边那排排序键放不下时它截成省略号，不把页面撑宽。 */
+.peach-react [data-entity-filter-glass] [data-entity-readout] {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .peach-react [data-entity-sorts] {
   display: flex;
@@ -331,6 +338,8 @@
     max-width: none;
     overflow: visible;
   }
+  /* 整条在横滚，读数不用让位：让位的话它会先被挤成 0 宽。 */
+  .peach-react [data-entity-filter-glass] [data-entity-readout] { flex: none; }
 }
 
 /* 窄屏往下滚时浮层让出顶栏下沿，往回滚再落下来；`--filter-free-top` 与标记由壳的

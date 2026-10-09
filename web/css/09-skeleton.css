@@ -35,7 +35,7 @@
    封面与下面那组之间是 8px：行距 3px 由 .mtext 的行距定，剩下 5px 记在头像格和
    标题格的上边距里，两格一起加才不会把头像顶偏。
    首页和关注页是同一种卡，所以共用这一块；关注页只差归属行高一点，见下面那条。 */
-.postercard-skeleton>div{grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr));gap:24px 16px}
+.postercard-skeleton>div{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--tile)),1fr));gap:24px 16px}
 .postercard-skeleton .skeletoncard{grid-template-columns:38px minmax(0,1fr);column-gap:10px;row-gap:3px;
   align-content:start}
 /* 封面格的圆角与真卡的 `.pic` 同一枚 token，到货那一下角不变形。 */

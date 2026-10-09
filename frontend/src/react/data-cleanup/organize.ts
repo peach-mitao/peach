@@ -69,8 +69,8 @@ export const startOrganize = (command: OrganizeCommand) => command.kind === 'app
   ? apiSend<OrganizeJob>(ORGANIZE_APPLY_URL, { ...command.request, confirm: true })
   : apiSend<OrganizeJob>(ORGANIZE_ROLLBACK_URL, { confirm: true });
 
-/** 预览成功的那一刻顺手存下模板：下次进这一页看到的是自己上次用的那两行，而不是又一次
- *  空框。只读端存不进去，那不该挡住预览，所以失败不报。 */
+/** 确认执行的那一刻存下模板：下次进这一页看到的是自己上次执行用的那两行，而不是又一次
+ *  空框。预览不存，试过又放弃的模板不会顶掉上一次的。存不进去不该挡住已经起跑的整理，所以失败不报。 */
 export async function rememberTemplates(templates: Record<string, OrganizeTemplate>): Promise<void> {
   queryClient.setQueryData<OrganizeData>(ORGANIZE_KEY, (data) => (data ? { ...data, templates } : data));
   try {

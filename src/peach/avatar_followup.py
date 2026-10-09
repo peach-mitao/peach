@@ -23,6 +23,10 @@
 * 两档都落空、图库里只有没过尺寸门槛的小图时，装认得准的那张小图（ADR-0066）：只有一张
   就装它，好几张照同一套互证判据挑，认定的几张里挑像素最大的。小图同样可以在上面几档里
   作证，只是不当那张被装上的图。这一档装的图之后有了过门槛的图或封面人脸就换掉。
+* **个人博主**（过 `work_portrait_predicate` 的发布账号）不查图库，只从自己独占作品的
+  画面上截脸（`avatar_cover_face.sheet_faces`，接触印相九格加有封面的那张）：两部不同作品
+  截出的脸互相过线才装，判据与馆外单人作品封面同一条（ADR-0074、ADR-0099）。情侣号、
+  多人号的两部作品对不上同一张脸就不装。装上的和封面截脸同一档。没过判据的账号不派。
 * **厂牌**不走这条：官网和标识由补厂牌后继（`studio_followup`）按厂牌那套判据补。
 
 这条后继是幂等的（ADR-0040 第六条要求）：第一件事就是看盘上有没有那张图，有就当场返回。
@@ -46,7 +50,8 @@ TASK_KEY = "entity-avatar"
 TASK_LABEL = "补实体头像"
 
 #: 会被派后继的实体种类。厂牌的图是标识，归 `studio_followup`；系列、标签没有头像位。
-KINDS = ("performer",)
+#: 发布账号只派过 `work_portrait_predicate` 的那些（`_candidates`）。
+KINDS = ("performer", "creator")
 
 #: 一次刮削最多为这么多个新实体派后继。上限本身由 `task_runs.MAX_FOLLOWUPS` 判，
 #: 这里先按作品数排好序再交出去：截断真的发生时，留下的该是库里出现得最多的那些。
@@ -67,6 +72,9 @@ MAX_MATCH_CANDIDATES = 24
 NEAR_DUPLICATE = 0.9
 #: 小图兜底那一档装上的图，头像边车里记的 `source_kind`。
 SMALL_SOURCE_KIND = "gallery_small"
+#: 派出之后账号分类被改、不再过 `work_portrait_predicate` 时的结论。它取决于分类而不是作品，
+#: 不记进 `Attempts`：分类改回来时照常再派。
+NO_IDENTITY = "账号没有本人身份依据"
 
 
 def followup_key(kind: str, entity_id: int) -> str:
@@ -93,11 +101,12 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
     `covered_asset_ids` 是这一轮换上了新封面的作品。它们的女优也派一条：没头像的现在
     可能截得出脸了，头像是从封面截的那些可能换得到更清楚的一张。
     """
+    wanted = _candidates(connection)
     rows = connection.execute(
         "SELECT e.id,e.kind,e.canonical_name,"
         " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
         "  WHERE ae.entity_id=e.id) AS assets"
-        " FROM entity e WHERE e.id>? AND e.kind='performer' ORDER BY e.id",
+        f" FROM entity e WHERE e.id>? AND {wanted} ORDER BY e.id",
         (int(since_entity_id),)).fetchall()
     covered = [int(asset_id) for asset_id in covered_asset_ids]
     if covered:
@@ -107,7 +116,7 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
             "SELECT e.id,e.kind,e.canonical_name,"
             " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
             "  WHERE ae.entity_id=e.id) AS assets"
-            " FROM entity e WHERE e.kind='performer' AND e.id IN"
+            f" FROM entity e WHERE {wanted} AND e.id IN"
             f" (SELECT entity_id FROM asset_entity WHERE asset_id IN ({marks}))"
             " ORDER BY e.id", covered).fetchall() if int(row["id"]) not in known]
     found = []
@@ -121,6 +130,23 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
     return [Followup(key=followup_key(kind, entity_id), task_key=TASK_KEY,
                      label=f"{TASK_LABEL}：{name}" if name else TASK_LABEL)
             for _assets, entity_id, kind, name in found]
+
+
+def _candidates(connection: sqlite3.Connection) -> str:
+    """派后继的实体：女优，加作品画面能当本人头像的发布账号。"""
+    from .entity_classification import work_portrait_predicate
+
+    return ("(e.kind='performer' OR (e.kind='creator' AND "
+            f"{work_portrait_predicate(connection)}))")
+
+
+def _portrait_account(connection: sqlite3.Connection, entity_id: int) -> bool:
+    """这个发布账号此刻过不过 `work_portrait_predicate`。派出与跑之间分类可能被改过。"""
+    from .entity_classification import work_portrait_predicate
+
+    return connection.execute(
+        f"SELECT 1 FROM entity e WHERE e.id=? AND {work_portrait_predicate(connection)}",
+        (int(entity_id),)).fetchone() is not None
 
 
 def needs_avatar(avatar_root, kind: str, entity_id: int) -> bool:
@@ -142,7 +168,11 @@ def _installed_small(avatar_root, kind: str, entity_id: int) -> bool:
     return isinstance(record, dict) and record.get("source_kind") == SMALL_SOURCE_KIND
 
 
-#: 指纹里的量：别名数与 avwikidb 编号数。SQL 与 `stock` 那条共用。
+#: 指纹里的量：作品数、别名数与 avwikidb 编号数。SQL 与 `stock` 那条共用。发布账号的
+#: 作品只数铺过接触印相的：印相是它唯一的画面来源，后补的印相要让它再派一次。
+_WORK_COUNT = ("(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+               " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=e.id"
+               " AND (e.kind<>'creator' OR coalesce(a.snapshot_path,'')<>''))")
 _ALIAS_COUNT = "(SELECT count(*) FROM entity_alias al WHERE al.entity_id=e.id)"
 _OFFSITE_COUNT = ("(SELECT count(*) FROM entity_external_ref x WHERE x.entity_id=e.id"
                   " AND x.provider='avwikidb' AND x.external_kind='performer')")
@@ -165,15 +195,14 @@ def fingerprint(connection: sqlite3.Connection, entity_id: int) -> str:
     馆外单人作品的封面才有路可走；判据换了，同一份证据也可能认得出。
     """
     row = connection.execute(
-        "SELECT (SELECT count(DISTINCT asset_id) FROM asset_entity WHERE entity_id=e.id),"
-        f" {_ALIAS_COUNT}, {_OFFSITE_COUNT} FROM entity e WHERE e.id=?",
+        f"SELECT {_WORK_COUNT}, {_ALIAS_COUNT}, {_OFFSITE_COUNT} FROM entity e WHERE e.id=?",
         (int(entity_id),)).fetchone()
     return _fingerprint(*(row if row else (0, 0, 0)))
 
 
 def stock(connection: sqlite3.Connection, avatar_root, attempts, *, limit: int,
           skip=()) -> list[Followup]:
-    """库里早就登记、至今缺头像的女优，作品多的在前，最多 `limit` 条（ADR-0053）。
+    """库里早就登记、至今缺头像的女优与个人博主，作品多的在前，最多 `limit` 条（ADR-0053）。
 
     跑过一次、指纹也没变的不再派（`attempts`）：作品和别名都没变，封面和图库命中也不会变。
     """
@@ -182,10 +211,11 @@ def stock(connection: sqlite3.Connection, avatar_root, attempts, *, limit: int,
     skip = set(skip)
     found = []
     for row in connection.execute(
-            "SELECT e.id,e.kind,e.canonical_name,count(DISTINCT ae.asset_id) AS assets,"
+            f"SELECT e.id,e.kind,e.canonical_name,{_WORK_COUNT} AS assets,"
             f" {_ALIAS_COUNT} AS aliases, {_OFFSITE_COUNT} AS offsite"
-            " FROM entity e JOIN asset_entity ae ON ae.entity_id=e.id"
-            " WHERE e.kind='performer' GROUP BY e.id ORDER BY assets DESC, e.id"):
+            f" FROM entity e WHERE {_candidates(connection)}"
+            " AND EXISTS(SELECT 1 FROM asset_entity ae WHERE ae.entity_id=e.id)"
+            " ORDER BY assets DESC, e.id"):
         entity_id, kind = int(row["id"]), str(row["kind"])
         key = followup_key(kind, entity_id)
         current = _fingerprint(row["assets"], row["aliases"], row["offsite"])
@@ -204,10 +234,12 @@ def run(contract, key: str, handle) -> dict:
     """跑一条补头像后继，再把实体当时的指纹记进 `Attempts`，存量补派按它判。
 
     该比对却取不到比对模型、或 avwikidb 正在冷却的那一次不记：结论取决于那天有没有网，
-    不取决于她的作品和名字，记下来就要等到她多一部作品才会再试。
+    不取决于她的作品和名字，记下来就要等到她多一部作品才会再试。账号此刻没有本人身份
+    依据的那一次（`NO_IDENTITY`）同样不记。
     """
     summary = _run(contract, key, handle)
-    if summary.get("face_match_unavailable") or summary.get("source_unavailable"):
+    if (summary.get("face_match_unavailable") or summary.get("source_unavailable")
+            or summary.get("outcome") == NO_IDENTITY):
         return summary
     _kind, entity_id = parse_key(key)
     with contract.database.read_connection() as connection:
@@ -240,6 +272,10 @@ def _run(contract, key: str, handle) -> dict:
             # 实体被合并或删掉了。这不是失败：那件事已经不存在了。
             return {"outcome": "实体已不存在"}
         name = str(row[0] or "")
+        if kind == "creator":
+            handle.progress(label=f"{TASK_LABEL}：{name}", throttle=0)
+            return _install_account_face(contract, connection, providers_root, avatar_root,
+                                         entity_id, name, cropped_px)
         # 图库索引只读本地缓存，这一步不联网；联网只发生在要量、要比、要装那几张的时候。
         listing = avatar_picker.choices(connection, providers_root, avatar_root,
                                         kind, entity_id)
@@ -656,6 +692,59 @@ def _install_offsite(contract, connection, providers_root, avatar_root, kind: st
             "outcome": "已装上", "size": f"{inspected['width']}×{inspected['height']}",
             "source": f"馆外单人作品封面 {winner.code}"
                       f"（{len(outcome.evidence['codes'])} 部互证）"}
+
+
+def _install_account_face(contract, connection, providers_root, avatar_root, entity_id: int,
+                          name: str, cropped_px: int | None) -> dict:
+    """个人博主：两部独占作品的画面截出同一张脸才装（ADR-0074 的互证，ADR-0099）。
+
+    一部作品只出一张脸（`sheet_faces`），互证数的是作品。没对上的脸照样截好留进候选缓存，
+    挑图弹层里能点。装上的来源记 `cover-face`、`identity_verified: false`，和封面截脸同一档。
+    """
+    from . import avatar_offsite_cover_face as offsite
+    from .avatar_face import FaceProbe
+
+    summary = {"name": name, "matched": 0}
+    if not _portrait_account(connection, entity_id):
+        return {**summary, "outcome": NO_IDENTITY}
+    probe = FaceProbe()
+    faces = avatar_cover_face.sheet_faces(connection, contract.cover_root, entity_id, probe,
+                                          contract.snapshot_file)
+    if probe.unavailable:
+        return {**summary, "outcome": f"探针不可用：{probe.unavailable}",
+                "face_match_unavailable": True}
+    if not faces:
+        return {**summary, "outcome": "作品画面上没有能截的脸"}
+    matcher = face_match.FaceMatcher()
+    agreed, scores = offsite.agreeing(faces, matcher)
+    if matcher.unavailable:
+        return {**summary, "outcome": f"比对模型不可用：{matcher.unavailable}",
+                "face_match_unavailable": True}
+    winner = agreed[0] if len({face.code for face in agreed}) >= offsite.AGREE_WORKS else None
+    kept = 0
+    for face in faces[:MAX_KEPT_FACES]:
+        if face is not winner and (extra := avatar_cover_face.cut(face)) is not None:
+            avatar_picker.keep(providers_root, entity_id, *extra)
+            kept += 1
+    summary = {**summary, **({"kept": kept} if kept else {})}
+    if winner is None:
+        return {**summary, "outcome": f"作品画面截到 {len(faces)} 张脸，凑不齐两部互证"}
+    if cropped_px and not avatar_cover_face.installed_face_readable(avatar_root, "creator",
+                                                                    entity_id, probe):
+        cropped_px = 0
+    if cropped_px is not None and winner.face_px <= cropped_px:
+        return {**summary, "outcome": "已是最清楚的作品画面人脸", "source": winner.code}
+    cut = avatar_cover_face.cut(winner)
+    if cut is None:
+        return {**summary, "outcome": "画面截不出这一块", "source": winner.code}
+    body, origin = cut
+    evidence = {"codes": [face.code for face in agreed], "scores": scores}
+    inspected = avatar_picker.install(providers_root, avatar_root, "creator", entity_id, body,
+                                      {**origin, "face_match": evidence})
+    contract.cache_bust()
+    return {**summary, "outcome": "已装上",
+            "size": f"{inspected['width']}×{inspected['height']}",
+            "source": f"作品画面 {winner.code}（{len(evidence['codes'])} 部互证）"}
 
 
 #: 不写账本：这条后继只往 `avatar_root` 与候选缓存里写文件。它照样一次只跑一条——

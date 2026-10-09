@@ -7,7 +7,7 @@ import * as legacyUi from '@peach/legacy/ui';
 
 import { MediaRepairCard } from '../../src/react/media-repair/media-repair-card';
 import {
-  IDLE_REPAIR, MEDIA_REPAIR_KEY, prefetchMediaRepair, REPAIR_LIBRARIES_KEY,
+  IDLE_REPAIR, MEDIA_REPAIR_KEY, prefetchMediaRepair, REPAIR_LIBRARIES_KEY, statusLine,
   type MediaRepairState, type RepairLibrary,
 } from '../../src/react/media-repair/media-repair';
 import { queryClient } from '../../src/react/query';
@@ -130,4 +130,9 @@ it('缺索引的片子卡在没装 untrunc 上时，指明去配置页的运行�
   });
   expect(host.querySelector('p[role="status"]')?.textContent).toBe('修好 0 部，2 部修不了');
   expect(host.textContent).toContain('2 部缺索引的片子要装上 untrunc 才修得了，下载入口在配置页的「运行信息」里');
+});
+
+it('进度读数按总数封顶：服务端报出的已查数超过总数时不写成 1,500 / 1,000', () => {
+  expect(statusLine({ ...IDLE_REPAIR, status: 'running', stage: '修复', checked: 1500, total: 1000 }))
+    .toBe('修复 1,000 / 1,000');
 });

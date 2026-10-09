@@ -65,6 +65,10 @@ export function advanceImageFallback(image: HTMLImageElement | null | undefined)
     delete image.dataset.facebox;
     if (rest.length) image.dataset.fallbacks = rest.join(FALLBACK_SEPARATOR);
     else delete image.dataset.fallbacks;
+    if (next === image.dataset.fallbackNoteSrc && image.dataset.fallbackNote) {
+      image.title = image.dataset.fallbackNote;
+      image.setAttribute('aria-label', image.dataset.fallbackNote);
+    }
     image.src = next;
     return 'retry';
   }

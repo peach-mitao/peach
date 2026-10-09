@@ -26,7 +26,7 @@ from .genre_decisions import load_genre_decisions
 from .metadata import extract_catalog_evidence, extract_peach_fields, validate_provider_code
 from . import metadata_routes
 from . import sample_followup
-from .metadata_policy import SOURCE_SPECS
+from .metadata_policy import SOURCE_SPECS, preferred_tag_source
 from .platform import root_online, translate_ledger_path
 from .review_csv import read_rows, write_rows
 from .scan import scan_location
@@ -1264,6 +1264,8 @@ class _RemoteSession:
         再问 r18.dev；无码问一本道官网（本机证据指着它时），FC2 问发行方商品页与下架镜像，
         问不着才落到 AVBase、JavBus 与 javdb 那一档。
 
+        有码缺标签时另取 JavDB 类别；标量已经齐全时只补这一家，不扩展其他社区查询。
+
         短路判据是**这一行还缺的必填标量**（标题、演员、厂牌、发行日期），不是「有人答了
         就算」：r18.dev 少给演员时照旧往下问，否则那一行只能等人工去填。列表字段（标签、
         封面）不参与短路——多一家就多一批标签和一个图源，而免复核本来就要两家一致
@@ -1285,11 +1287,13 @@ class _RemoteSession:
         required = list(metadata_routes.required_scalars(missing))
         wants_tags = 'tags' in missing
         problems, held, entries = [], [], []
+        attempted = set(answered)
         stages = _sources_for(code, *evidence, route_overrides=self._routes)
         for source, then in zip(stages, (*stages[1:], '')):
             members = self._askable(metadata_routes.stage_members(source, chain), code, answered)
             if not members:
                 continue
+            attempted.update(members)
             cached = self._cached_evidence(members, code) if self._consult else []
             if cached:
                 entries.extend(cached)
@@ -1326,6 +1330,8 @@ class _RemoteSession:
             if metadata_routes.settles(required, _given_fields(entries),
                                        wants_tags=wants_tags, then=then):
                 break
+        entries.extend(self._preferred_tags(row, code, missing, chain, entries, attempted,
+            update=update, issue=issue, deadline=_extended(deadline, _excused(self._provider) - mark)))
         if entries:
             return entries
         # 链上任何一档还在正常作答，这一行就是真没取到；全被限住时才算没轮到。
@@ -1334,6 +1340,31 @@ class _RemoteSession:
               if problems else MISS_MESSAGES[action],
               action=action, retryable=True, paused=paused)
         return []
+
+    def _preferred_tags(self, row, code, missing, chain, entries, answered, *, update, issue, deadline):
+        """缺标签的有码作品补取 JavDB；已取证、路由排除或缺失记忆命中时直接返回。"""
+        source = preferred_tag_source(code)
+        if ('tags' not in missing or source not in chain
+                or source in {entry[0] for entry in entries}
+                or not self._askable((source,), code, answered)):
+            return []
+        cached = self._cached_evidence((source,), code) if self._consult else []
+        if cached:
+            return cached
+        try:
+            payload = self.provider().query(code, source, deadline=deadline)
+        except Exception as error:
+            if isinstance(error, DeadlineExceeded):
+                self.reset()
+                issue(row, 'JavDB 标签在预算时间内未取得', action='querying_metadata', retryable=True)
+            elif is_missing(error):
+                self.misses.record(source, code)
+            else:
+                issue(row, 'JavDB 标签未取得：' + describe_failure(error),
+                      action='querying_metadata', retryable=True, paused=source_paused(error))
+            return []
+        update(stage='保存资料候选')
+        return [self._evidence(source, code, payload)]
 
     def _cover(self, row, code, cover_root, *, update, issue, snapshots=(), absent=()):
         action = 'fetching_cover'
@@ -1424,11 +1455,12 @@ def _entity_followups(database, config, watermark, covered=()):
     女优也算进来（`avatar_followup.plan`）。厂牌盘上没有图的派补厂牌后继
     （`studio_followup.plan`），官网与标识在那一条里一起补。新女优另派一条补别名后继
     （`performer_alias_followup.plan`，ADR-0055）与一条补女优资料后继
-    （`performer_profile_followup.plan`，ADR-0067）。
+    （`performer_profile_followup.plan`，ADR-0067）。新创作者派一条查身份后继
+    （`creator_identity_followup.plan`，ADR-0098）。
 
     这一轮的名额（`MAX_FOLLOWUPS`）先给新登记的，余下的给库里早就登记的存量（ADR-0053）：
-    补别名与补女优资料各留出至多自己的 `STOCK_SHARE` 条，厂牌先取至多自己的那一份，
-    其余给女优头像。补别名的存量先排缺头像的女优（ADR-0072）。
+    补别名与补女优资料各留出至多自己的 `STOCK_SHARE` 条，厂牌与创作者身份先各取至多自己的
+    那一份，其余给女优头像。补别名的存量先排缺头像的女优（ADR-0072）。
     存量每轮往前推一截，跑过又没变的不再派。
 
     只声明，不执行：派发在调用方结算这一轮时发生，真正去跑的是 `followups` 那一层。
@@ -1436,8 +1468,8 @@ def _entity_followups(database, config, watermark, covered=()):
     """
     if database is None or watermark is None:
         return []
-    from . import (avatar_followup, performer_alias_followup, performer_profile_followup,
-                   seed_followup, studio_followup)
+    from . import (avatar_followup, creator_identity_followup, performer_alias_followup,
+                   performer_profile_followup, seed_followup, studio_followup)
     from .followups import Attempts, attempts_root
     from .task_runs import MAX_FOLLOWUPS
     generated = config.directory('generated')
@@ -1453,6 +1485,7 @@ def _entity_followups(database, config, watermark, covered=()):
                                           since_entity_id=watermark)
             found += performer_alias_followup.plan(connection, since_entity_id=watermark)
             found += performer_profile_followup.plan(connection, since_entity_id=watermark)
+            found += creator_identity_followup.plan(connection, since_entity_id=watermark)
             taken = {item.key for item in found}
             aliases = min(performer_alias_followup.STOCK_SHARE, max(0, MAX_FOLLOWUPS - len(found)))
             profiles = min(performer_profile_followup.STOCK_SHARE,
@@ -1460,6 +1493,11 @@ def _entity_followups(database, config, watermark, covered=()):
             found += studio_followup.stock(
                 connection, generated / 'logos', attempts,
                 limit=min(studio_followup.STOCK_SHARE,
+                          max(0, MAX_FOLLOWUPS - len(found) - aliases - profiles)),
+                skip=taken)
+            found += creator_identity_followup.stock(
+                connection, attempts,
+                limit=min(creator_identity_followup.STOCK_SHARE,
                           max(0, MAX_FOLLOWUPS - len(found) - aliases - profiles)),
                 skip=taken)
             found += avatar_followup.stock(connection, generated / 'avatars', attempts,

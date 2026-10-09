@@ -54,6 +54,10 @@ export function BoardTabs<V extends string>(
       if (!selected || !selected.offsetWidth) return;
       host.style.setProperty('--tab-x', `${selected.offsetLeft}px`);
       host.style.setProperty('--tab-width', `${selected.offsetWidth}px`);
+      /* 窄屏这一排横着滚：选中那一枚落在可见区外时把这一排挪到它露全，只动这一排，不动页面。 */
+      const left = selected.offsetLeft, right = left + selected.offsetWidth;
+      if (left < host.scrollLeft) host.scrollLeft = left;
+      else if (right > host.scrollLeft + host.clientWidth) host.scrollLeft = right - host.clientWidth;
     };
     measure();
     const frame = requestAnimationFrame(() => indicator.current?.setAttribute('data-ready', ''));

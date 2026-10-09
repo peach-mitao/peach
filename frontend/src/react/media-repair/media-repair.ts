@@ -54,7 +54,8 @@ const count = (value: number) => Number(value).toLocaleString();
 /** 一句话说清此刻在干什么：扫描报进度，修复报进度加当前这部片。 */
 export function statusLine(state: MediaRepairState): string {
   if (state.status === 'running') {
-    const where = state.total ? `${count(state.checked)} / ${count(state.total)}` : '准备中';
+    // 服务端偶尔报出超过总数的已查数，按总数封顶。
+    const where = state.total ? `${count(Math.min(state.checked || 0, state.total))} / ${count(state.total)}` : '准备中';
     return state.stage === '修复' && state.message
       ? `修复 ${where} · ${state.message}`
       : `${state.stage || '扫描'} ${where}`;

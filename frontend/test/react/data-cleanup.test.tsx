@@ -496,7 +496,7 @@ describe('整理', () => {
     });
   }
 
-  it('模板框跟着存下的模板走；预览发的是这一格的来源与模板，成功后存下模板', async () => {
+  it('模板框跟着存下的模板走；预览发的是这一格的来源与模板，预览不存模板', async () => {
     const server = organizeServer();
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
@@ -508,14 +508,12 @@ describe('整理', () => {
     expect(server.posts('/api/organize/preview')).toEqual([
       { location: 'local', file_template: '{number} {title}', dir_template: '' },
     ]);
-    expect(server.posts('/api/settings')).toEqual([
-      { organizeTemplates: { local: { file: '{number} {title}', dir: '' } } },
-    ]);
+    expect(server.posts('/api/settings')).toEqual([]);
     expect(host.textContent).toContain('2 个文件会改名或移动，5 个已经就是目标名字；跳过 缺番号 1。');
     expect(host.textContent).toContain('ABC-001.mp4');
   });
 
-  it('执行先确认，确认了才发 apply', async () => {
+  it('执行先确认，确认了才发 apply，起跑后存下这次的模板', async () => {
     const seen = confirmWith(true);
     const server = organizeServer();
     queryClient.setQueryData(['organize'], organizeIdle);
@@ -529,6 +527,9 @@ describe('整理', () => {
     expect(seen[0]!.body).toContain('「本地」上的文件名与目录');
     expect(server.posts('/api/organize/apply')).toEqual([
       { location: 'local', file_template: '{number}', dir_template: '', confirm: true },
+    ]);
+    expect(server.posts('/api/settings')).toEqual([
+      { organizeTemplates: { local: { file: '{number}', dir: '' } } },
     ]);
   });
 

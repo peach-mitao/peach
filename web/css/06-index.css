@@ -29,6 +29,9 @@
 .igrid[data-cells="company"]{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
 .igrid[data-cells="company"][data-layout="big"] .icell .ring{aspect-ratio:1}
 .index .ihead .iconswitch{flex:none}
+/* 骨架里的版式开关是接管后那枚 BoardUI 分段器的替身：每格 28px 见方、图标 16px，整枚宽度对得上。 */
+.index .ihead .iconswitch>label{width:28px;height:28px}
+.index .ihead .iconswitch svg{width:16px;height:16px}
 .tagwall{display:flex;flex-wrap:wrap;gap:7px}
 /* 标签行骨架前面那枚色点，占的是真标签类型色点的位置。 */
 .alphatag::before{content:"";width:7px;height:7px;border-radius:50%;

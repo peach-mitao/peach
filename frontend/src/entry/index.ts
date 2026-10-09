@@ -7,7 +7,7 @@
 export {
   $, seededRank, newSeed, DURATION_TAGS, cleanTagFilter, realDuration, icon, api, isAbort, mapLimit, STATE_ROUTES, ROUTE_STATES, STATE_LABELS, isCatalogPath,
   ENTITY_ROUTES, ROUTE_ENTITIES, entityPath, esc, brandIcon, siteName, linkMarkUrl, siteMarkUrl, foldName,
-  officialLinkText, fmtDur, fmtClock, fmtSize, LOC, requestErrorMessage,
+  officialLinkText, fmtDur, fmtClock, fmtSize, firstGrapheme, leadingGraphemes, clipGraphemes, LOC, requestErrorMessage,
 } from '../core';
 export { TAG_DISPLAY_NAMES, tagLabel } from '../core/tags';
 export {

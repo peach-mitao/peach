@@ -10,11 +10,13 @@
  *
  * 刷新任务是另一份真相，节律由后台推进，所以单独一个键（`['taste','refresh']`）。 */
 import { sankey, sankeyLinkHorizontal } from 'd3-sankey';
+import { clipGraphemes } from '@peach/legacy/core';
 
 import { apiGet, apiSend, ApiError } from '../../api';
 import type { BarRow } from '../charts/bar-card';
 import type { ActivityCounts } from '../charts/heat';
 import { queryClient } from '../query';
+import { playedFor } from '../stats/stats';
 
 export const TASTE_URL = '/api/taste';
 export const TASTE_REFRESH_URL = '/api/taste/refresh';
@@ -47,6 +49,7 @@ export interface RankRow {
   image_version?: string;
   avatar_focus?: unknown;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   representative_asset_id?: number | null;
   source_domain?: string | null;
 }
@@ -171,9 +174,20 @@ export const IDLE_POLL_MS = 10_000;
 export const tasteDate = (value: string | null | undefined): string =>
   (value ? new Date(value).toLocaleDateString('zh-CN') : '—');
 
-/** 累计时长：够一小时读小时，不够读分钟。与统计页同一套口径。 */
-export const tasteHours = (seconds: number): string =>
-  (seconds >= 3600 ? `${(seconds / 3600).toFixed(1)} 小时` : `${Math.round(seconds / 60)} 分钟`);
+/** 浏览记录那张读数卡的脚注：几个数据源，加上记录覆盖的日期范围；两头都没有日期时不写范围。 */
+export function historySpan(summary: TasteSummary): string {
+  const sources = `${Number(summary.history_sources || 0).toLocaleString()} 个数据源`;
+  if (!summary.range_start && !summary.range_end) return sources;
+  return `${sources} · ${tasteDate(summary.range_start)}—${tasteDate(summary.range_end)}`;
+}
+
+/** 累计时长。与统计页同一套口径。 */
+export const tasteHours = playedFor;
+
+/** 「口味维度」读数：分数为正的维度才算，和雷达、排行条画出来的是同一批。 */
+export const tasteDimensions = (rows: RankRow[]): RankRow[] =>
+  rows.filter((row) => Number.isFinite(Number(row.score)) && Number(row.score) > 0)
+    .sort((a, b) => Number(b.score) - Number(a.score));
 
 /** 一行在这一榜里的强度。浏览侧按访问次数，Peach 侧按分数，都退化到条目数。 */
 export const rankStrength = (row: RankRow): number =>
@@ -183,8 +197,8 @@ export const rankStrength = (row: RankRow): number =>
 export function rankDetail(row: RankRow): string {
   if (row.web_visits == null) return Number(row.score || row.visits || 0).toLocaleString();
   const parts: string[] = [];
-  if (row.web_visits) parts.push(`浏览 ${row.web_visits}`);
-  if (row.peach_items) parts.push(`Peach ${row.peach_items}`);
+  if (row.web_visits) parts.push(`浏览 ${Number(row.web_visits).toLocaleString()}`);
+  if (row.peach_items) parts.push(`Peach ${Number(row.peach_items).toLocaleString()}`);
   return parts.join(' · ');
 }
 
@@ -224,23 +238,58 @@ export interface FlowLink {
   key: string; d: string; width: number; color: number;
   source: number; target: number; value: number; label: string;
 }
-export interface FlowGraph { nodes: FlowNode[]; links: FlowLink[]; total: number }
+export interface FlowGraph { nodes: FlowNode[]; links: FlowLink[]; total: number; height: number }
 
-/** 节点条宽与画布：左右各留一截给文字，视口 720×435。 */
+/** 节点条宽与画布：左右各留一截给文字，视口宽 720，高度跟着节点数走，最矮 435。 */
 export const FLOW_NODE_WIDTH = 10;
 export const FLOW_VIEWBOX = { width: 720, height: 435 } as const;
 export const FLOW_LABEL_X = { source: 145, target: 545 } as const;
 
+/** 一侧最多几个节点。再多就留下线索最多的前几个，其余并成一个「其余 N …」节点。 */
+export const FLOW_SIDE_MAX = 12;
+
+/** 相邻两个节点之间的空隙，也就是两个节点中心的最小间距：节点名和它下面那行数从中心往上
+ *  约 7、往下约 22，隔 30 时小节点挤在一起，两行字也不压到下一个节点上。 */
+const FLOW_ROW = 30;
+
+/** 除去空隙之外，留给节点本身按线索数分的高度。 */
+const FLOW_NODE_ROOM = 240;
+
+/** 一侧的名字超过 `FLOW_SIDE_MAX` 个时，把线索少的那些名字映射到同一个合并节点上。 */
+function foldSide(flows: CreatorFlow[], side: 'source' | 'target', rest: (count: number) => string) {
+  const totals = new Map<string, number>();
+  for (const row of flows) totals.set(row[side], (totals.get(row[side]) ?? 0) + row.value);
+  if (totals.size <= FLOW_SIDE_MAX) return (name: string) => name;
+  const ranked = [...totals].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  const kept = new Set(ranked.slice(0, FLOW_SIDE_MAX - 1));
+  const merged = rest(ranked.length - kept.size);
+  return (name: string) => (kept.has(name) ? name : merged);
+}
+
 /** 来源网站 → 创作者的流向布局。值为 0 或缺一端的流先滤掉，全空时返回 `null`。 */
 export function flowGraph(rows: CreatorFlow[] = []): FlowGraph | null {
-  const flows = rows.filter((row) =>
+  const valid = rows.filter((row) =>
     row.source && row.target && Number.isFinite(row.value) && row.value > 0);
-  if (!flows.length) return null;
+  if (!valid.length) return null;
+  const sourceOf = foldSide(valid, 'source', (count) => `其余 ${count.toLocaleString()} 个网站`);
+  const targetOf = foldSide(valid, 'target', (count) => `其余 ${count.toLocaleString()} 位创作者`);
+  const folded = new Map<string, CreatorFlow>();
+  for (const row of valid) {
+    const source = sourceOf(row.source);
+    const target = targetOf(row.target);
+    const key = JSON.stringify([source, target]);
+    const seen = folded.get(key);
+    if (seen) seen.value += row.value;
+    else folded.set(key, { source, target, value: row.value });
+  }
+  const flows = [...folded.values()];
   const sources = [...new Set(flows.map((row) => row.source))];
   const targets = [...new Set(flows.map((row) => row.target))];
+  const rowsOnSide = Math.max(sources.length, targets.length);
+  const bottom = Math.max(404, 16 + (rowsOnSide - 1) * FLOW_ROW + FLOW_NODE_ROOM);
   const graph = sankey<{ id: string; name: string; side: 'source' | 'target' }, object>()
-    .nodeId((node) => node.id).nodeWidth(FLOW_NODE_WIDTH).nodePadding(22)
-    .extent([[155, 16], [535, 404]])({
+    .nodeId((node) => node.id).nodeWidth(FLOW_NODE_WIDTH).nodePadding(FLOW_ROW)
+    .extent([[155, 16], [535, bottom]])({
       nodes: [
         ...sources.map((name) => ({ id: `source:${name}`, name, side: 'source' as const })),
         ...targets.map((name) => ({ id: `target:${name}`, name, side: 'target' as const })),
@@ -267,9 +316,8 @@ export function flowGraph(rows: CreatorFlow[] = []): FlowGraph | null {
       label: `${from.name} → ${to.name}`,
     };
   });
-  return { nodes, links, total };
+  return { nodes, links, total, height: bottom + FLOW_VIEWBOX.height - 404 };
 }
 
 /** 节点名字太长时截断。图里一格只有这么宽，整名在 `aria-label` 和 `<title>` 里。 */
-export const flowLabel = (name: string): string =>
-  (name.length > 18 ? `${name.slice(0, 16)}…` : name);
+export const flowLabel = (name: string): string => clipGraphemes(name, 17);

@@ -18,7 +18,8 @@ export const SEGMENTED_TRACK = 'inline-flex w-max max-w-full items-center gap-0.
 
 /* 深色下选中面用 `background-primary-hover`：深色的 `background-primary-default` 与轨道
  * （`background-tertiary-default`）是同一档 neutral-800，画上去看不见。 */
-export const SEGMENT = 'flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1'
+/* 手机宽度每格左右各收 2px：四个中文页签在 320 宽的轨道里刚好排下，不被轨道裁掉末字。 */
+export const SEGMENT = 'flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 max-sm:px-2'
   + ' text-body-medium whitespace-nowrap text-text-secondary outline-none transition-colors'
   + ' hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring'
   + ' data-focus-visible:ring-2 data-focus-visible:ring-border-focus-ring'
@@ -26,7 +27,7 @@ export const SEGMENT = 'flex min-h-7 flex-none cursor-pointer items-center gap-1
   + ' dark:data-selected:bg-background-primary-hover';
 
 /** `aria-selected` 而不是 `data-selected` 的宿主（自己写的 `<button role="tab">`）用这一串。 */
-export const SEGMENT_ARIA = 'flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1'
+export const SEGMENT_ARIA = 'flex min-h-7 flex-none cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 max-sm:px-2'
   + ' text-body-medium whitespace-nowrap text-text-secondary outline-none transition-colors'
   + ' hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring'
   + ' aria-selected:bg-background-primary-default aria-selected:text-text-primary aria-selected:shadow-card'

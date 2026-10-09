@@ -2,7 +2,7 @@
  * 详情之间换条沿用上一条的背景，关掉详情与别的地址都不带。这里照壳的调用顺序走一遍：
  * `holdOverlayBackground()` → `shellNavigate(详情地址, {state: overlayState(种类)})`。
  * 后退前进落到详情条目上时壳先清、再 `adoptOverlayState(usr)`，打开详情那一处 `takeOverlayReturn()` 取来处；
- * 启动那一次壳不调 `adoptOverlayState`，派发来由见 `test/react/router.test.tsx`。 */
+ * 启动那一次不调 `adoptOverlayState`，覆盖元素什么时候接背景见 `test/react/pages/overlay.test.tsx`。 */
 import { beforeEach, expect, it } from 'vitest';
 
 import * as islands from '../../src/islands';

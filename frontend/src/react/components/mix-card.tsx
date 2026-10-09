@@ -9,6 +9,7 @@
  * 伪元素、`color-mix` 与相邻兄弟选择器在工具类里写不出来。 */
 import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { avatarInner, representativeOf } from '@peach/card-art';
+import { firstGrapheme } from '@peach/legacy/core';
 
 import { ArtSlot } from './art-slot';
 import { spriteGlyph } from './sprite-glyph';
@@ -147,14 +148,14 @@ export function MixCard({
           <span data-mix-badge=""
             className="absolute right-2.25 bottom-2.25 z-6 flex min-h-7 items-center gap-1.5 rounded-2lg px-2.25 py-1 text-caption-1-semibold text-text-white">
             <PLAY aria-hidden className="size-3.75" />
-            {badge ?? `${count} 个视频`}
+            {badge ?? `${count.toLocaleString()} 个视频`}
           </span>
         </div>
       </div>
       <div className="flex min-w-0 items-start gap-2.25">
         {glyph
           ? <span data-mix-glyph="" aria-hidden><PLAY /></span>
-          : <Avatars faces={faces} fallback={name.slice(0, 1)} onOpenEntity={onOpenEntity} />}
+          : <Avatars faces={faces} fallback={firstGrapheme(name)} onOpenEntity={onOpenEntity} />}
         <div className="flex min-w-0 flex-1 flex-col">
           <b data-mix-title="" className="truncate text-body-bold text-text-primary">{name}</b>
           <span data-mix-caption="" className="mt-0.5 truncate text-caption-1-regular text-text-secondary">{caption}</span>

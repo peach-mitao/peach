@@ -31,7 +31,6 @@ export { paginationHtml, pageCount, clampPage } from './pagination';
 export * from './card-art';
 export { entitySkeletonHtml } from './entity-skeleton';
 export { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './index-skeleton';
-export { detailSkeletonHtml } from './board-skeleton';
 export { catalogSuggestions, catalogEmptyHtml } from './catalog-onboarding';
 export { catalogFilterSkeletonHtml } from './catalog-filter-skeleton';
 export { dropBars, fetchBars, fetchTopsPage } from './catalog-bars';
@@ -172,9 +171,9 @@ export function loadGlowPicker(host: ReactBundle.GlowPickerHost): Promise<void> 
   return glowPicker;
 }
 
-/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，后退前进由它派发给壳；管理区、索引页与资料页由它画
- * （`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；包到之前的
- * 后退前进等它挂上时补派，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。
+/* 客户端导航（`react/router/`）：React Router 接管全站那一份历史，每一页、沉浸与详情都由路由树按匹配打开；管理区、
+ * 索引页与资料页由它画（`openManagedRoute`）。壳启动时装载、交进自己的能力，跟侧栏共用同一次 `@peach/react` 请求；
+ * 包到之前的后退前进等它挂上时按那一刻的地址打开，包到之前打开的那一页等它到了再取数。包取不回来时，等着的那一页跟着失败。
  * 壳在装载之前就打开的附属面（搜索下拉、首屏骨架里的筛选条）当场发出包的请求，跟这里是同一个模块。 */
 let router: Promise<void> | null = null;
 // 装载失败由 `loadRouter` 那一份报出，等着的打开跟着它失败；这里只管提早发出请求。

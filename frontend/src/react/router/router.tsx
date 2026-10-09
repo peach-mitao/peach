@@ -1,24 +1,24 @@
 /* 客户端导航（ADR-0031「React Router 外壳阶段接管」）：React Router 的 Declarative 模式接管 history。
  * 管理区那几页、播放列表页与关注页、索引页与资料页、目录网格与垃圾队列，以及页面里的附属面（首页筛选条、
  * 首页新作行、目录页处理横幅、顶栏搜索下拉）与常驻面（底部批量条、侧栏配色卡、管理区页头、沉浸模式、设置面板、
- * 侧栏、详情舞台）（`managed-routes.tsx`）由这棵树画。管理区、索引与资料页和目录由页面组按匹配打开
- * （`pages/managed.tsx`、`pages/index-entity.tsx`、`pages/catalog.tsx`），其余页面仍由壳的 `ROUTES` 表打开。
+ * 侧栏、详情舞台）（`managed-routes.tsx`）由这棵树画。每一页、沉浸模式与详情覆盖都由路由按匹配打开
+ * （`pages/` 下各元素），壳不接派发：它只订阅历史同步标题与侧栏，换页时写地址。
  *
  * 用底层的 `<Router>`，history 是 `@peach/history` 那一份：壳在 React 包到之前就要写地址，`<BrowserRouter>`
  * 自己建的 history 只听 `popstate`，看不见壳 push 进去的条目。也不用 `unstable_HistoryRouter`：它的更新
- * 默认包在 `startTransition` 里，接连两次变化会并成一次渲染，后退前进就少派发一次。
+ * 默认包在 `startTransition` 里，接连两次变化会并成一次渲染，后退前进就少开一次。
  *
- * 派发点与管理区宿主是两组 `<Routes>` 的兄弟，从头活到尾：后退前进照旧派发给壳，还归壳的那几屏由壳的准备动作
- * （收起舞台、铺骨架、认领表面）打开；画着的页面跟着登记的那几条走（`@peach/history` 的
+ * 页面宿主是两组 `<Routes>` 的兄弟，从头活到尾：画着的页面跟着登记的那几条走（`@peach/history` 的
  * `openManagedRoute`，每个容器一条），详情舞台压在上面、地址换成 `/item/:id` 时它留在原处。
  *
- * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`）匹配，详情压在哪一页上就还匹配那一页；
- * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。页面组里管理区、关注、索引、资料与目录五组挂着按地址
- * 打开那一页的元素（`pages/managed.tsx`、`pages/follow.tsx`、`pages/index-entity.tsx`、`pages/catalog.tsx`），其余
- * 具体路由只声明路径；`path="*"` 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。
+ * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`，启动那一条不读）匹配，详情压在哪一页上就还
+ * 匹配那一页，背景页不重挂；覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`，`pages/overlay.tsx`）。页面组
+ * 里管理区、关注、索引、资料、目录与沉浸各挂按地址打开那一页的元素（`pages/managed.tsx`、`pages/follow.tsx`、
+ * `pages/index-entity.tsx`、`pages/catalog.tsx`、`pages/immerse.tsx`）；没有背景的覆盖地址也在页面组里挂一格：
+ * 作品与队列补画目录网格，关注详情只让出 `#stats`。`path="*"` 是认不出的地址，什么都不打开。
  *
- * 一处渲染错误只带走抛错的那一面：每一面各套一层错误边界（`SurfaceBoundary`），根上不套，派发点与两组
- * `<Routes>` 不随某一面卸掉。错误经根的 `onCaughtError` 交给 `reportError`，每次一条。 */
+ * 一处渲染错误只带走抛错的那一面：每一面各套一层错误边界（`SurfaceBoundary`），根上不套，两组 `<Routes>` 不随
+ * 某一面卸掉。错误经根的 `onCaughtError` 交给 `reportError`，每次一条。 */
 import {
   Component, createContext, memo, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode,
   type RefObject,
@@ -28,21 +28,20 @@ import { createRoot, type Root, type RootOptions } from 'react-dom/client';
 import { Route, Router, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router';
 
 import {
-  backgroundOf, failManagedRoute, listenManagedEntry, managedEntries, OVERLAY_PATHS, peachHistory, routeSeen,
+  failManagedRoute, listenManagedEntry, managedEntries, navigationBackground, OVERLAY_PATHS, peachHistory,
   type ManagedEntry, type Navigation,
 } from '@peach/history';
 
 import { Providers } from '../providers';
 import {
-  BROWSE_ROUTES, CATALOG_PATHS, CATALOG_ROUTES, ENTITY_ROUTES, INDEX_ROUTES, MANAGED_ROUTES, REDIRECT_ROUTES, isManagedPath, isRoutedPath,
-  managedPage,
+  BROWSE_ROUTES, CATALOG_PATHS, CATALOG_ROUTES, ENTITY_ROUTES, IMMERSE_ROUTES, INDEX_ROUTES, MANAGED_ROUTES, REDIRECT_ROUTES,
+  isManagedPath, isRoutedPath, managedPage,
 } from './managed-routes';
+import { FollowDetailGround, OverlayMatch, QueueRequests } from './pages/overlay';
 import type { ShellActions } from './shell-actions';
 
-/* 每次历史变化的序号。地址没变的 `popstate`（同一条目重放）不会让 Router 的 location 变，
- * 但壳一向在每个 `popstate` 上重开那一屏，所以派发跟的是这个序号，不是 location。 */
-const NavigationSeq = createContext(0);
-/* 开次代次（`@peach/history` 的 `openEpoch`）：没人认领的历史变化各领一个，认领的写地址不领。 */
+/* 开次代次（`@peach/history` 的 `openEpoch`）：没人认领的历史变化各领一个，认领的写地址不领。地址没变的
+ * `popstate`（同一条目重放）不会让 Router 的 location 变，代次照样变，按它挂 key 的元素照样重开。 */
 const OpenEpoch = createContext(0);
 
 /** 当前这一页是第几次打开：页面元素按它挂 key，重开就重挂，认领的写地址（页内 replace 写参数）不重挂。 */
@@ -53,7 +52,7 @@ export const ShellActionsContext = createContext<ShellActions | null>(null);
 
 /** 路由根在历史变化的同一调用里同步提交（`flushSync`）：`shellNavigate` 与后退前进返回时，两组 `<Routes>`
  *  的匹配已经换成新地址，上一页的元素已经卸掉，壳接着往同一个容器里写骨架不会撕掉 React 还管着的节点。
- *  派发不在这一次提交里跑：`RouteDispatch` 把它排进提交之后的微任务。 */
+ *  元素的打开不在这一次提交里跑，各自排进提交之后的微任务。 */
 export function PeachRouter({ children }: { children: ReactNode }) {
   const [navigation, setNavigation] = useState<Navigation>(() => peachHistory.navigation);
   useLayoutEffect(() => {
@@ -62,25 +61,12 @@ export function PeachRouter({ children }: { children: ReactNode }) {
     return peachHistory.listen((next) => { flushSync(() => setNavigation(next)) });
   }, []);
   return (
-    <NavigationSeq.Provider value={navigation.seq}>
-      <OpenEpoch.Provider value={navigation.openEpoch}>
-        <Router location={navigation.location} navigationType={navigation.action} navigator={peachHistory}>
-          {children}
-        </Router>
-      </OpenEpoch.Provider>
-    </NavigationSeq.Provider>
+    <OpenEpoch.Provider value={navigation.openEpoch}>
+      <Router location={navigation.location} navigationType={navigation.action} navigator={peachHistory}>
+        {children}
+      </Router>
+    </OpenEpoch.Provider>
   );
-}
-
-/** 派发点：每次历史变化报给 `routeSeen`，由它判断要不要让壳打开那一屏。
- *
- * 报在提交阶段之后的微任务里，不在 layout effect 里当场报：壳打开那一屏时，侧栏等常驻面的句柄内部用
- * `flushSync` 当场画完；在 React 的提交阶段里调 `flushSync` 不会同步刷新这同一棵根，句柄返回时就还没画上。
- * 微任务仍在这一次导航的同一轮里跑完，早于下一帧绘制。 */
-function RouteDispatch() {
-  const seq = useContext(NavigationSeq);
-  useLayoutEffect(() => { queueMicrotask(() => routeSeen(seq)) }, [seq]);
-  return null;
 }
 
 /* 跟着地址重渲染的只有这一格：它把当前的 `navigate` 交给管理区宿主，宿主与页面不随导航重渲染。 */
@@ -90,8 +76,8 @@ function NavigateInto({ target }: { target: RefObject<NavigateFunction | null> }
   return null;
 }
 
-/** 管理区页面里的跳转：落在管理区那几页上的交给 React Router，别的路径交 `actions.navigate`（壳写好标题与
- * 侧栏）。两条路都不认领，各派发一次、领一个开次代次，打开次数与后退前进相同。 */
+/** 管理区页面里的跳转：落在管理区那几页上的交给 React Router，别的路径交 `actions.navigate`。两条路都不认领，
+ * 各领一个开次代次，打开次数与后退前进相同。 */
 export function managedGo(path: string, actions: ShellActions, navigate: NavigateFunction): void {
   const target = new URL(path, window.location.href);
   if (!isManagedPath(target.pathname)) { actions.navigate(path); return }
@@ -155,11 +141,13 @@ const ManagedPortal = memo(function ManagedPortal(
 });
 
 /* 页面组的 `location` 一直给（没有背景就给当前地址）：给与不给之间 `<Routes>` 会多包一层 `LocationContext`，
- * 来回切换就会把 `path="*"` 的元素拆掉重挂。
- * 两组按页面分段，段与段之间隔开几行：各组迁进来时只改自己那一段。 */
+ * 来回切换就会把页面元素拆掉重挂。背景读的是当前条目（`navigationBackground`），启动那一条当作没有。
+ * 两组按页面分段，段与段之间隔开几行。 */
 function RouteGroups({ children }: { children?: ReactNode }) {
   const location = useLocation();
-  const background = backgroundOf(location.state);
+  // 同一条目重放时地址不变、`useLocation` 不触发重渲染，代次照样变：启动那一条重放之后要开始读背景。
+  useOpenEpoch();
+  const background = navigationBackground();
   return (
     <>
       <Routes location={background ?? location}>
@@ -190,7 +178,19 @@ function RouteGroups({ children }: { children?: ReactNode }) {
 
 
 
-        {/* ── 沉浸 ── `/immerse` 落在下面的 `path="*"`。 */}
+        {/* ── 沉浸 ── */}
+        {Object.entries(IMMERSE_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
+
+
+
+        {/* ── 没有背景的覆盖地址 ── 作品与队列挂目录元素，补画网格；关注详情只让出 `#stats`。 */}
+        {OVERLAY_PATHS.map((path) => (
+          <Route key={path} path={path} element={path === '/follow/item/:id' ? <FollowDetailGround /> : CATALOG_ROUTES['/'].element} />
+        ))}
+
+
+
+        {/* 认不出的地址。`children` 只给测试用。 */}
         <Route path="*" element={children} />
       </Routes>
 
@@ -198,7 +198,7 @@ function RouteGroups({ children }: { children?: ReactNode }) {
 
       {/* ── 覆盖 ── */}
       <Routes>
-        {OVERLAY_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
+        {OVERLAY_PATHS.map((path) => <Route key={path} path={path} element={<OverlayMatch path={path} />} />)}
         <Route path="*" element={null} />
       </Routes>
     </>
@@ -211,8 +211,8 @@ export function RouterRoot({ children, actions = null }: { children?: ReactNode;
     <Providers>
       <ShellActionsContext.Provider value={actions}>
         <PeachRouter>
-          <RouteDispatch />
           <ManagedSurface />
+          <QueueRequests />
           <RouteGroups>{children}</RouteGroups>
         </PeachRouter>
       </ShellActionsContext.Provider>

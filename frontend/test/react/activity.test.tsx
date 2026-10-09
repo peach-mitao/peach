@@ -8,7 +8,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 import { ActivityPage } from '../../src/react/activity/activity-page';
 import { DOWNLOADS_URL } from '../../src/react/activity/downloads-panel';
-import { elapsedText, prefetchTasks, summaryText, TASKS_URL } from '../../src/react/activity/tasks';
+import { ErrorExcerpt } from '../../src/react/activity/error-excerpt';
+import {
+  elapsedText, errorHeadline, prefetchTasks, progressText, summaryText, TASKS_URL,
+} from '../../src/react/activity/tasks';
 import type { ActivityData, FinishedPage, TaskRunPayload } from '../../src/react/activity/tasks';
 import type { DownloadsSnapshot } from '../../src/react/bundle';
 import { queryClient } from '../../src/react/query';
@@ -366,7 +369,15 @@ it('时长与摘要的折算各自成立', () => {
   expect(elapsedText(59)).toBe('59 秒');
   expect(elapsedText(75)).toBe('1 分 15 秒');
   expect(elapsedText(3725)).toBe('1 小时 2 分');
+  // 满 48 小时按天说：「73 小时 1 分」读不出是三天。
+  expect(elapsedText(47 * 3600 + 59 * 60)).toBe('47 小时 59 分');
+  expect(elapsedText(73 * 3600 + 60)).toBe('3 天 1 小时');
   expect(elapsedText(null)).toBe('');
+  expect(summaryText({ checked: 1234567 })).toBe('已检查 1,234,567');
+  // 进度按总数封顶，带千分位。
+  expect(progressText(1500, 1000)).toBe('1,000 / 1,000');
+  expect(progressText(-3, 10)).toBe('0 / 10');
+  expect(progressText(null, null)).toBe('0 / 0');
   // 明细与「谁挡的」不进这一行：前者太长，后者已经写在错误那一句里了。
   expect(summaryText({ checked: 7, operation: 'like', rows: [1], blocked_by: 3 }))
     .toBe('已检查 7 · 操作 like');
@@ -375,4 +386,27 @@ it('时长与摘要的折算各自成立', () => {
     status: 'complete', run_id: 351, started_at: 1790138114.86, checked: 83, total: 83,
     request_id: '417dab8d', completed_at: 1790138495.48,
   })).toBe('已检查 83 · 总数 83');
+});
+
+it('报错在列表里只露一行：traceback 取最后一行，别的取第一行非空', () => {
+  const stack = 'Traceback (most recent call last):\n  File "x.py", line 1, in <module>\nValueError: 坏了';
+  expect(errorHeadline(stack)).toBe('ValueError: 坏了');
+  expect(errorHeadline('\n  连接超时\n详情见日志')).toBe('连接超时');
+  expect(errorHeadline('')).toBe('');
+  expect(errorHeadline(null)).toBe('');
+});
+
+it('报错摘要平时只露一行，「查看详情」展开全文、再点收起；只有一行时不给这颗键', async () => {
+  const stack = 'Traceback (most recent call last):\n  File "x.py", line 1\nValueError: 坏了';
+  const host = await mount(<ErrorExcerpt text={stack} />);
+  expect(host.textContent).toBe('ValueError: 坏了查看详情');
+  await click(buttonNamed('查看详情', host));
+  expect(host.textContent).toContain('File "x.py", line 1');
+  expect(buttonNamed('收起详情', host)?.getAttribute('aria-expanded')).toBe('true');
+  await click(buttonNamed('收起详情', host));
+  expect(host.textContent).toBe('ValueError: 坏了查看详情');
+
+  const single = await mount(<ErrorExcerpt text="只有一行" />);
+  expect(single.textContent).toBe('只有一行');
+  expect(buttonNamed('查看详情', single)).toBeNull();
 });

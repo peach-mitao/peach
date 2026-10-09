@@ -8,6 +8,8 @@
  * 取数归遗留壳的目录网格。 */
 import type { InfiniteData, QueryKey } from '@tanstack/react-query';
 
+import { firstGrapheme } from '@peach/legacy/core';
+
 import { apiGet } from '../../api';
 import { IDENTITY_CATEGORIES } from '../../identity-filter';
 import {
@@ -66,6 +68,7 @@ export interface IndexPerson {
   has_image?: boolean;
   image_version?: string;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   avatar_focus?: unknown;
   has_logo?: boolean;
   members?: number;
@@ -217,7 +220,7 @@ export const flatItems = <T>(data: InfiniteData<IndexPage<T>> | undefined): T[] 
   data ? data.pages.flatMap((page) => page.items) : [];
 
 /** 读数：取到几条，后面还有就带一个加号。 */
-export const countText = (count: number, more: boolean) => `${count}${more ? '+' : ''} 项`;
+export const countText = (count: number, more: boolean) => `${count.toLocaleString()}${more ? '+' : ''} 项`;
 
 /** 一枚标签的类型色键（`../styles.css` 的 `[data-tag-cat]`）。在线那一套取上游 tag_type，
  *  加 `r34-` 前缀与本地同名的类分开：本地的 `artist` 是橙色，在线的是红色。 */
@@ -225,9 +228,9 @@ export const tagColorKey = (online: boolean, cat: string | undefined) =>
   online ? `r34-${cat || 'unknown'}` : cat || 'general';
 
 /** 格子底下那个读数。事务所数的是人：它名下的视频是成员拍的，只报视频数会让它唯一独有的
- *  读数消失；数字带单位，否则读不出是人还是片。 */
+ *  读数消失。数字一律带单位，同一排格子才读得出数的是人还是片，单独一个「0」也不像漏了字。 */
 export const personReadout = (kind: IndexKind, item: IndexPerson) =>
-  kind === 'agencies' ? `${(item.members || 0).toLocaleString()} 人` : item.n.toLocaleString();
+  kind === 'agencies' ? `${(item.members || 0).toLocaleString()} 人` : `${(item.n || 0).toLocaleString()} 个视频`;
 
 const COLLATOR = { numeric: true, sensitivity: 'base' } as const;
 
@@ -235,7 +238,7 @@ const COLLATOR = { numeric: true, sensitivity: 'base' } as const;
 export function tagGroups<T extends { k: string }>(items: T[], label: (tag: string) => string): [string, T[]][] {
   const groups = new Map<string, T[]>();
   for (const item of [...items].sort((a, b) => a.k.localeCompare(b.k, 'zh-CN', COLLATOR))) {
-    const first = label(item.k).normalize('NFKC').trim().charAt(0).toUpperCase();
+    const first = firstGrapheme(label(item.k).normalize('NFKC'), '').toUpperCase();
     const key = /[A-Z]/.test(first) ? first : /[0-9]/.test(first) ? '#' : /[㐀-鿿]/.test(first) ? '中文' : '其他';
     const group = groups.get(key);
     if (group) group.push(item); else groups.set(key, [item]);

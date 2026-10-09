@@ -56,7 +56,8 @@ describe('启动骨架', () => {
     node.innerHTML = manageHeaderSkeletonHtml(props('trash', '/trash'));
     expect([...node.querySelectorAll<HTMLElement>('[data-manage]')].map((button) => button.dataset.manage))
       .toEqual(['stats', 'cleanup', 'configuration']);
-    expect(node.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect([...node.querySelectorAll<HTMLElement>('[aria-pressed="true"]')].map((button) => button.dataset.manage))
+      .toEqual(['cleanup']);
     expect([...node.querySelectorAll<HTMLElement>('[data-trash-lede-skeleton]')].map((cell) => cell.dataset.trashLedeSkeleton))
       .toEqual(['text', 'action']);
     expect(node.querySelector('[data-manage-crumb] a')!.getAttribute('href')).toBe('/data-cleanup');

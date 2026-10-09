@@ -17,8 +17,9 @@ VALUES = {
 CATEGORIES = {'japanese_av': '女优', 'amateur': '素人', 'western': '西方',
               'blogger': '网黄博主', 'seller': '卖家', 'animation': '动画作者'}
 #: observed 只属于代码判据（ADR-0052 决策一）：`source:` 是抓取器从来源页解析出的事实，
-#: `script:fc2-seller@` 由 FC2 作品页快照的卖家字段解析。研究与检索结论只写 candidate。
-CODE_SOURCES = ('source:', 'script:fc2-seller@')
+#: `script:fc2-seller@` 由 FC2 作品页快照的卖家字段解析，`script:creator-identity-wiki@` 由查创作者
+#: 身份后继按页名直取资料站、按作品表结构判定（ADR-0098）。研究与检索结论只写 candidate。
+CODE_SOURCES = ('source:', 'script:fc2-seller@', 'script:creator-identity-wiki@')
 #: 视觉模型标签的来源前缀：`vision`、`vision_creator`、`vision_creator_review` 等。
 MODEL_TAG_SOURCE_PREFIX = 'vision'
 

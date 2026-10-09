@@ -8,7 +8,7 @@
 
 export function LoadingDots({ label, inline = false }: { label: string; inline?: boolean }) {
   const dots = (
-    <span aria-hidden className="inline-flex items-center gap-1">
+    <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
       <i className="dot-wave-0 size-1 rounded-full bg-current" />
       <i className="dot-wave-1 size-1 rounded-full bg-current" />
       <i className="dot-wave-2 size-1 rounded-full bg-current" />
@@ -16,9 +16,9 @@ export function LoadingDots({ label, inline = false }: { label: string; inline?:
   );
   if (inline) return <span role="status" className="inline-flex items-center gap-2">{dots}{label}</span>;
   return (
-    <p role="status" className="flex items-center gap-2 text-caption-1-regular text-text-secondary">
+    <p role="status" className="flex min-w-0 items-center gap-2 text-caption-1-regular text-text-secondary">
       {dots}
-      {label}
+      <span className="min-w-0 wrap-anywhere">{label}</span>
     </p>
   );
 }

@@ -23,8 +23,8 @@ import { queryClient } from '../query';
 import { SourceMark } from '../settings/section';
 import { busyProps } from '../settings/use-action';
 import {
-  batchOperate, bulkCloudPreferences, DUPLICATES_KEY, duplicateVictims, fetchDuplicates, KEEP_LABELS,
-  mixedCloudPreferences, victimBytes, type DuplicateFile, type DuplicateGroup, type KeepRule,
+  batchOperate, bulkCloudPreferences, distinctName, DUPLICATES_KEY, duplicateVictims, fetchDuplicates, KEEP_LABELS,
+  mixedCloudPreferences, sharedNamePrefix, victimBytes, type DuplicateFile, type DuplicateGroup, type KeepRule,
 } from './duplicates';
 
 const PLAY = spriteGlyph('play');
@@ -53,8 +53,10 @@ function evidenceFlag(group: DuplicateGroup) {
   </span>;
 }
 
-function FileRow({ file, openItem }: { file: DuplicateFile; openItem(id: number): void }) {
+/** 一份副本。`prefix` 是组内共有的名字开头，显示时用「…」顶替，整名在 title 里。 */
+function FileRow({ file, prefix, openItem }: { file: DuplicateFile; prefix: string; openItem(id: number): void }) {
   const open = () => openItem(file.id);
+  const location = LOC[file.location] || file.location || file.drive;
   return (
     <div className="duplicate-row items-center gap-3 border-t border-separator-border px-5 py-4 max-compact:p-4">
       {/* 封面格居中用 `inline-grid`：`grid` 与旧样式表同名，不生成这个工具类。 */}
@@ -68,7 +70,7 @@ function FileRow({ file, openItem }: { file: DuplicateFile; openItem(id: number)
       <span className="flex min-w-0 items-center gap-2 max-duplicate-narrow:col-start-2 max-duplicate-narrow:-col-end-1">
         <button type="button" onClick={open} title={file.name} data-middle-truncate data-middle-truncate-within
           className="min-w-0 shrink cursor-pointer truncate text-left text-body-regular hover:text-text-secondary">
-          {file.name}
+          {distinctName(file.name, prefix)}
         </button>
         {file.is_largest || file.is_longest
           ? <span className="flex flex-none gap-1">
@@ -79,12 +81,12 @@ function FileRow({ file, openItem }: { file: DuplicateFile; openItem(id: number)
       </span>
       <span className={`${MONO} flex min-w-0 items-center gap-1.5`}>
         <SourceMark mark={MEDIA_SOURCE_ICONS[file.location] || 'database'} />
-        <span className="whitespace-nowrap">{LOC[file.location] || file.location || file.drive}</span>
+        <span title={location} className="min-w-0 truncate">{location}</span>
       </span>
       <span className={MONO}>{fmtSize(file.size || 0)}</span>
       <span className={MONO}>{fmtDur(file.duration)}</span>
-      <span data-middle-truncate title={file.path ?? ''}
-        className={`${MONO} col-start-2 -col-end-1 min-w-0 truncate pt-0.5 max-duplicate-narrow:col-span-full`}>
+      {/* 路径整条折行显示：同一组的几份常只在中段不同，截断会让它们看起来一模一样。 */}
+      <span className={`${MONO} col-start-2 -col-end-1 min-w-0 pt-0.5 wrap-anywhere max-duplicate-narrow:col-span-full`}>
         {file.path ?? ''}
       </span>
     </div>
@@ -142,7 +144,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
   return (
     <div className="mx-auto w-full max-w-board pb-10.5">
       <CollectionSummary label="重复内容" figure={`${Number(data.total || 0).toLocaleString()} 组`}
-        detail={`${data.files} 个文件 · 可回收 ${fmtSize(data.reclaimable)}`} />
+        detail={`${Number(data.files || 0).toLocaleString()} 个文件 · 可回收 ${fmtSize(data.reclaimable)}`} />
       {groups.length
         ? <FilterGlass title="批量保留">
             <GlassPill busy={pending === 'all:largest'} onPress={() => run({ groups, keep: 'largest', key: 'all:largest' })}>
@@ -165,13 +167,14 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
       {groups.length
         ? groups.map((group, index) => {
             const one = [group];
+            const prefix = sharedNamePrefix(group.files.map((file) => file.name));
             const key = (keep: string) => `${index}:${keep}`;
             return (
               <section key={`${group.code}-${index}`} aria-label={group.code} className={GROUP}>
                 <div className="flex flex-wrap items-center gap-3 bg-background-tertiary-default p-5 max-compact:p-4 dark:bg-background-secondary-default">
                   <b className="text-title-2-medium text-text-primary">{group.code}</b>
                   <span className="font-mono text-caption-1-regular leading-5 text-text-primary">
-                    {`${group.count} 个 · 可回收 ${fmtSize(group.reclaimable)}`}
+                    {`${Number(group.count || 0).toLocaleString()} 个 · 可回收 ${fmtSize(group.reclaimable)}`}
                   </span>
                   {evidenceFlag(group)}
                   {group.cross_drive
@@ -192,13 +195,18 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                       onClick={() => run({ groups: one, keep: 'all', key: key('all') })}>整组回收</Button>
                   </span>
                 </div>
-                <div>{group.files.map((file) => <FileRow key={file.id} file={file} openItem={openItem} />)}</div>
+                <div>{group.files.map((file) => <FileRow key={file.id} file={file} prefix={prefix} openItem={openItem} />)}</div>
               </section>
             );
           })
         : <EmptyState icon={STACK} title="没有找到重复文件">
             所有来源之间没有检测到内容相同的文件。扫描新来源后，这里会自动更新。
           </EmptyState>}
+      {groups.length > 0 && data.total > groups.length
+        ? <p className="text-center text-caption-1-regular text-text-secondary">
+            {`显示可回收最多的前 ${groups.length.toLocaleString()} 组，共 ${Number(data.total).toLocaleString()} 组；处理掉这些后，其余的会补上来。`}
+          </p>
+        : null}
     </div>
   );
 }

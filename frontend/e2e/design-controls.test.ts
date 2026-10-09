@@ -57,14 +57,54 @@ describe('设计决定：控件、状态与首页顶部', () => {
     }
   });
 
-  it('React 子树读 BoardUI 的 token 原值，不被 board.css 的同名定值盖掉', { timeout: 60_000 }, async () => {
+  it('岛外与 React 子树的语义色是同一份：board.css 根上的每个 --color-* 两边画出同一个像素', { timeout: 60_000 }, async () => {
     const opened = await openAccess(browser);
     try {
       const shell = await opened.form.locator('#access-password').evaluate(
         (element) => getComputedStyle(element.closest('[role="presentation"]')!).backgroundColor);
-      // BoardUI theme.css 浅色 neutral-200 是 #ebebeb；board.css 在 :root 上给的是 #e5e5e5。
+      // BoardUI theme.css 把浅色 neutral-200 改成了 #ebebeb，不是 Tailwind 默认的 #e5e5e5。
       assert.equal(shell, 'rgb(235, 235, 235)');
-      assert.equal(await tokenColor(opened.page, ':root', '--color-background-tertiary-default'), 'rgb(229, 229, 229)');
+      // 岛外的骨架读根上的值，接管后的组件读岛内的值；同一块面两帧要同色。岛内写 oklch、
+      // board.css 写十六进制或引用，字面不同，画成像素再比。
+      const drift = await opened.form.evaluate((island) => {
+        const sheet = [...document.styleSheets].find((candidate) => candidate.href?.includes('/board.css'))!;
+        const names = new Set<string>();
+        const walk = (rules: CSSRuleList) => {
+          for (const rule of rules) {
+            if ('cssRules' in rule) walk((rule as CSSGroupingRule).cssRules);
+            if (!(rule instanceof CSSStyleRule) || !rule.selectorText.includes(':root')) continue;
+            for (const name of rule.style) if (name.startsWith('--color-') && !name.startsWith('--color-accent-')) names.add(name);
+          }
+        };
+        walk(sheet.cssRules);
+        const paint = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+        const pixel = (host: Element, name: string) => {
+          const probe = host.appendChild(document.createElement('i'));
+          probe.style.color = `var(${name})`;
+          paint.clearRect(0, 0, 1, 1);
+          paint.fillStyle = getComputedStyle(probe).color;
+          paint.fillRect(0, 0, 1, 1);
+          probe.remove();
+          return [...paint.getImageData(0, 0, 1, 1).data].join(',');
+        };
+        const root = document.documentElement;
+        const before = { theme: root.dataset.theme, dark: root.classList.contains('dark') };
+        const drift: string[] = [];
+        for (const theme of ['light', 'dark']) {
+          root.dataset.theme = theme;
+          root.classList.toggle('dark', theme === 'dark');
+          for (const name of names) {
+            const page = pixel(document.body, name), inside = pixel(island, name);
+            if (page !== inside) drift.push(`${theme} ${name}：岛外 ${page}，岛内 ${inside}`);
+          }
+        }
+        if (before.theme === undefined) delete root.dataset.theme;
+        else root.dataset.theme = before.theme;
+        root.classList.toggle('dark', before.dark);
+        return { count: names.size, drift };
+      });
+      assert.ok(drift.count >= 15, `只从 board.css 根上读到 ${drift.count} 个语义色`);
+      assert.deepEqual(drift.drift, []);
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
@@ -129,8 +169,8 @@ describe('设计决定：控件、状态与首页顶部', () => {
     }
   });
 
-  it('高清版卡片的封面是 150px 宽的 16/10 方块，长标题从中间省略', { timeout: 60_000 }, async () => {
-    const long = '这是一个长到必须省略才放得下的文件名，用来盯住中间截断在 React 插进来的节点上也生效.mp4';
+  it('高清版卡片的封面是 150px 宽的 16/10 方块，长标题从头显示、最多两行', { timeout: 60_000 }, async () => {
+    const long = '这是一个长到必须省略才放得下的文件名，用来盯住标题从头显示而番号不被截掉.mp4';
     const opened = await openQualityGoals(browser, [
       qualityGoal(1, long), qualityGoal(2, 'short.mp4'),
     ]);
@@ -142,13 +182,18 @@ describe('设计决定：控件、状态与首页顶部', () => {
       }));
       assert.equal(box.width, '150px');
       assert.equal(box.ratio.replaceAll(' ', ''), '16/10');
-      // 中间截断由 `peach-ui.js` 入口启动的 MutationObserver 接手：React 插进来的
-      // 节点不经过遗留层的渲染函数，观察器认不出它就只剩尾部省略。
       const title = opened.page.locator('li[data-goal-id="1"] h3 button');
       await title.waitFor({ timeout: 5_000 });
-      await opened.page.locator('li[data-goal-id="1"] h3 button.middle-truncated')
-        .waitFor({ timeout: 10_000 });
-      assert.ok((await title.textContent())!.includes('…'), '长标题没有被省略');
+      const shown = await title.evaluate((element) => ({
+        clamp: getComputedStyle(element).webkitLineClamp,
+        middle: element.classList.contains('middle-truncated') || element.hasAttribute('data-middle-truncate'),
+        text: element.textContent,
+        hint: element.getAttribute('title'),
+      }));
+      assert.equal(shown.clamp, '2');
+      assert.equal(shown.middle, false, '标题仍被中间截断');
+      assert.equal(shown.text, long);
+      assert.equal(shown.hint, long);
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
@@ -504,6 +549,9 @@ describe('设计决定：控件、状态与首页顶部', () => {
         assert.ok(firstSpread[index] > before[index], `首枚悬停时第 ${index + 1} 枚没有向标题方向展开`);
       }
 
+      /* 第三枚要从静止位置指上去：首枚悬停时它被推开 20px，直接移过去，它让回原位后指针会落到右邻上。 */
+      await opened.page.mouse.move(0, 0);
+      await waitForAvatarMotion();
       await avatars.nth(2).hover();
       await waitForAvatarMotion();
       const after = await avatars.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().x));

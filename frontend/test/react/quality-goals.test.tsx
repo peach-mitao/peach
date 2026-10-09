@@ -100,14 +100,15 @@ it('每条目标一张卡片，读数走遗留层同一套格式化口径', asyn
   expect(card.querySelector('.src')?.getAttribute('data-location')).toBe('115');
   expect(card.querySelector('.src')?.classList.contains('metered')).toBe(true);
   expect(card.querySelector('h3 .ui-javcode')?.textContent).toBe('one.mp4');
-  expect(card.querySelector('h3 button')?.hasAttribute('data-middle-truncate')).toBe(true);
+  expect(card.querySelector('h3 button')?.hasAttribute('data-middle-truncate')).toBe(false);
+  expect(card.querySelector('h3 button')?.getAttribute('title')).toBe('名称 one.mp4');
   expect([...card.querySelectorAll('p')].at(-1)?.textContent).toBe('只有 720p');
 });
 
 it('探测失败的时长显示占位，不显示 0 也不显示负数', async () => {
   const { host } = await open(payload([goal({ duration: -1, size: 0 })]));
   expect([...host.querySelectorAll('h3 ~ p > span')].map((node) => node.textContent))
-    .toEqual(['', '本地', '—', '0 MB']);
+    .toEqual(['', '本地', '—', '大小未知']);
 });
 
 it('有番号封面就用番号封面，否则退回海报', async () => {

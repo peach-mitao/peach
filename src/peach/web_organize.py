@@ -102,6 +102,8 @@ def w_organize_apply(contract, body) -> dict:
     location, file_template, dir_template = _templates(contract, body)
     if not file_template and not dir_template:
         raise ValueError("至少要给一个模板")
+    if organize.unverified_location(location):
+        raise ValueError(f"{location} 挂载上的改名无法核验云端结果，界面只出预览，不执行")
     job = contract.organize_job
 
     def work(job_id: str) -> None:

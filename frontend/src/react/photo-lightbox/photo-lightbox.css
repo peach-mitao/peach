@@ -182,6 +182,17 @@
 
 /* ── 底部工具条 ──
  * 详情、页码和缩放操作统一落在底部；多图时整体抬到缩略图条上方。 */
+/* 原图与缩略图都取不到时那一张的占位：一块暗面写一句话，字色同底栏。 */
+.peach-react [data-photo-missing] {
+  display: grid;
+  place-items: center;
+  width: min(480px, 80vw);
+  aspect-ratio: 4 / 3;
+  border-radius: var(--surface-radius);
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .62);
+  font-size: var(--fs-sm);
+}
 .peach-react [data-photo-bar] {
   position: absolute;
   right: 14px;
@@ -209,6 +220,7 @@
   font-family: "Cascadia Mono", Consolas, ui-monospace, "Microsoft YaHei UI", "PingFang SC", monospace;
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   backdrop-filter: blur(16px);
 }
 
@@ -539,6 +551,12 @@
   }
   .peach-react [data-photo-nav="fwd"] {
     right: 8px;
+  }
+}
+/* 手机最窄那一档放不下「1286 / 1289」加整条缩放：滑条收起，缩放只剩加减键、适应与 1:1。 */
+@media (max-width: 400px) {
+  .peach-react [data-photo-zoom] input {
+    display: none;
   }
 }
 

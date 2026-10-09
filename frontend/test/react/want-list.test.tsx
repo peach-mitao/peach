@@ -6,7 +6,7 @@ import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { queryClient } from '../../src/react/query';
-import { WantList } from '../../src/react/wants/want-list';
+import { WANT_PAGE_SIZE, WantList } from '../../src/react/wants/want-list';
 import type { Want, WantsData } from '../../src/react/wants/wants';
 import { buttonNamed, click, mount, settle, type } from './render';
 
@@ -146,4 +146,22 @@ it('只读的机器：输入框、添加与每行的键都禁用', async () => {
   expect(buttonNamed('添加', host)!.disabled).toBe(true);
   expect(buttonNamed('移除', host)!.disabled).toBe(true);
   expect(buttonNamed('搜索资源', host)!.disabled).toBe(true);
+});
+
+it(`一段多于 ${WANT_PAGE_SIZE} 条时分页，页码各段各记各的；报错只露一行`, async () => {
+  const many = Array.from({ length: 45 }, (_, index) => want(index + 1, {
+    phase: index < 42 ? 'unreleased' : 'acquired', scrape_error: index === 0 ? '第一行\n第二行' : null,
+  }));
+  serve(listed(many));
+  const { host } = await open();
+  const unreleased = host.querySelector('[data-want-phase="unreleased"]')!;
+  expect(unreleased.querySelector('h3')?.textContent).toBe('未发售42');
+  expect(unreleased.querySelectorAll('li[data-want-id]')).toHaveLength(WANT_PAGE_SIZE);
+  expect(unreleased.querySelector('[data-want-pager]')?.textContent).toContain('1–20 / 42 条');
+  expect(unreleased.querySelector('[data-error-line]')?.textContent).toBe('资料未取得：第一行');
+  await click(unreleased.querySelector('button[aria-label="第 3 页"]'));
+  expect([...unreleased.querySelectorAll<HTMLElement>('li[data-want-id]')].map((row) => row.dataset.wantId)).toEqual(['41', '42']);
+  const acquired = host.querySelector('[data-want-phase="acquired"]')!;
+  expect(acquired.querySelectorAll('li[data-want-id]')).toHaveLength(3);
+  expect(acquired.querySelector('[data-want-pager]')).toBeNull();
 });

@@ -150,6 +150,24 @@ describe('排版用的纯函数', () => {
     ]);
   });
 
+  it('生日写了而年龄没下发时只写生日，不拼出「undefined 岁」', () => {
+    const [birth] = factRows({ birth_date: '1990-08-14' });
+    expect(birth?.parts.map((part) => part.text)).toEqual(['1990-08-14']);
+  });
+
+  it('两处以上不公开来源合并成一枚排在末尾，各处名字留给 title；只有一处照旧', () => {
+    const links = heroLinks(performer({ links: [
+      { link_id: 1, clickable: false, label: '私人记录' },
+      { link_id: 2, link_kind: 'social', clickable: true, label: 'X', url: 'https://x.com/aoi' },
+      { link_id: 3, clickable: false, label: '论坛帖' },
+      { link_id: 4, clickable: false, label: '群聊截图' },
+    ] }), 'performer');
+    expect(links.map((link) => link.type)).toEqual(['icon', 'private']);
+    expect(links[1]).toEqual({ type: 'private', label: '3 个不公开来源', sources: ['私人记录', '论坛帖', '群聊截图'] });
+    expect(heroLinks(performer({ links: [{ link_id: 1, clickable: false, label: '私人记录' }] }), 'performer'))
+      .toEqual([{ type: 'private', label: '私人记录' }]);
+  });
+
   it('公司页的官网保留名字，指回自家的写「官方网站」', () => {
     const [site] = heroLinks({
       id: 1, canonical_name: 'S1 NO.1 STYLE', asset_count: 1,
@@ -179,6 +197,28 @@ describe('画出什么', () => {
     expect(agency.querySelector('[data-entity-foot]')).toBeNull();
     const performerLine = (await open(props())).querySelector('[data-entity-alias]')?.textContent ?? '';
     expect(performerLine).not.toContain('事务所');
+  });
+
+  it('公司别名先列三个，余下的收进「+N」，浮层里一个名字一行', async () => {
+    const names = Array.from({ length: 30 }, (_, at) => `旧レーベル${at + 1}`);
+    const host = await open(props({ kind: 'studio', name: 'S1', entity: {
+      id: 3, canonical_name: 'S1', asset_count: 9, display_aliases: names,
+    } }));
+    const inline = host.querySelectorAll('[data-company-names] [data-alias-names] > span');
+    expect([...inline].map((one) => one.textContent)).toEqual(['旧レーベル1', '旧レーベル2', '旧レーベル3']);
+    expect(host.querySelector('[data-hero-more="alias"]')?.textContent).toBe('+27');
+    const pop = document.getElementById('entityAliasPop')!;
+    expect(pop.querySelectorAll('[data-pop-name]')).toHaveLength(30);
+  });
+
+  it('合并后的不公开来源写个数，各处名字一行一个放进 title', async () => {
+    const host = await open(props({ entity: performer({ links: [
+      { link_id: 1, clickable: false, label: '私人记录' },
+      { link_id: 3, clickable: false, label: '论坛帖' },
+    ] }) }));
+    const chip = host.querySelector('[data-link="private"]');
+    expect(chip?.textContent).toContain('2 个不公开来源');
+    expect(chip?.getAttribute('title')).toBe('私人记录\n论坛帖');
   });
 
   it('纯图标外链的名字在 title 与读屏名称里；站点圆标由本机给、不带来源页地址，取不到时交兜底链撤掉；官网写字', async () => {

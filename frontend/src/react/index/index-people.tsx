@@ -43,7 +43,7 @@ function Cell(
         className: `${CELL} ${big ? 'items-stretch text-left' : 'items-center text-center'}`,
       })}>
       {children}
-      <span data-index-name="" className="text-body-medium break-all text-text-primary">{name}</span>
+      <span data-index-name="" className="text-body-medium wrap-anywhere text-text-primary">{name}</span>
       <span data-index-readout="" className="text-caption-1-regular">{readout}</span>
     </button>
   );

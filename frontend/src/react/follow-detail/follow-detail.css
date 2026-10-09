@@ -109,6 +109,22 @@
   border-radius: var(--pill-radius);
   background: #fff;
 }
+/* 张数多于 `FOLLOW_DOTS_MAX` 时圆点条换成「当前 / 总数」：位置与底衬同圆点条。 */
+.peach-react [data-follow-detail] [data-follow-image-count] {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  padding: 4px 11px;
+  border-radius: var(--pill-radius);
+  background: rgba(0, 0, 0, .5);
+  color: #fff;
+  font: 500 var(--fs-xs) / 16px var(--board-font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
 
 /* ── 队列 ──
    合集队列卡的出处与时间：标记、站点图标和时间按盒子居中成一行，不靠基线偏移去凑。标记可收窄
@@ -176,6 +192,7 @@
   gap: 10px;
   margin: 2px 0 12px;
 }
+.peach-react [data-follow-detail] [data-follow-detail-identity] > div { min-width: 0; overflow-wrap: anywhere; }
 .peach-react [data-follow-detail] [data-follow-detail-identity] b,
 .peach-react [data-follow-detail] [data-follow-detail-identity] span { display: block; }
 .peach-react [data-follow-detail] [data-follow-detail-identity] > div > span {
@@ -230,13 +247,27 @@
   line-height: 1.6;
   color: var(--ink-2);
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
+/* 摘要默认收在八行内，操作键留在首屏；量出来确实超出时才在下面给一枚「展开」。
+   侧栏内容区是定高的纵向 flex，裁切后的摘要最小高度归零，不禁止收缩就会被压没。 */
+.peach-react [data-follow-detail] [data-follow-detail-summary][data-clamped] {
+  flex-shrink: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  overflow: hidden;
+}
+.peach-react [data-follow-detail] [data-follow-detail-summary]:has(+ [data-follow-summary-toggle]) { margin-bottom: 4px; }
+.peach-react [data-follow-detail] [data-follow-summary-toggle] { flex-shrink: 0; align-self: flex-start; margin: 0 0 16px -8px; }
 /* 「媒体未取得」与两句取回失败的提示：小一档正文字号（`--fs-sm`）、1.7 行高，警示色。 */
 .peach-react [data-follow-detail] [data-follow-media-issue] {
   margin: 18px 0 8px;
   font-size: var(--fs-sm);
   line-height: 1.7;
   color: var(--drop);
+  overflow-wrap: anywhere;
 }
 .peach-react [data-follow-detail] [data-follow-media-issue][hidden] { display: none; }
 .peach-react [data-follow-detail] [data-follow-resources] {

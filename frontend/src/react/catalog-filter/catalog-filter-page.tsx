@@ -65,7 +65,7 @@ function Glass(props: CatalogFilterProps) {
     <FilterGlassRows label="筛选与排序" topLabel="视图与标签"
       attrs={{ 'data-filter-frame': '', 'data-catalog-frame': '' }}
       className="mx-4" topClassName="gap-1.5 overflow-visible" bottomClassName={props.trash ? 'hidden' : 'min-h-12'}
-      bottomRef={bottomRow} busy={!props.count || props.refreshing}
+      bottomRef={bottomRow} busy={props.count === null || props.refreshing}
       panes={<span ref={pane} data-view-glide="" aria-hidden="true" />}
       top={
         <div ref={scroll} data-catalog-scroll="">
@@ -199,8 +199,9 @@ function Head({ count, refreshing, layout, sorts, actions }: CatalogFilterProps)
 function Readout({ count }: { count: CatalogFilterProps['count'] }) {
   const readout = useRef<HTMLSpanElement>(null);
   const skeleton = useRef<HTMLSpanElement>(null);
-  const text = count ? `${count.total.toLocaleString()} 个符合 · 显示 ${count.shown}` : '';
+  const text = count ? `${count.total.toLocaleString()} 个符合 · 显示 ${count.shown.toLocaleString()}` : '';
   useLayoutEffect(() => {
+    if (count === false) return;
     if (!count) { fitSkeleton(skeleton.current); return }
     const el = readout.current;
     if (!el) return;
@@ -208,6 +209,7 @@ function Readout({ count }: { count: CatalogFilterProps['count'] }) {
     lastReadout = text;
     popCount(el, text);
   }, [count, text]);
+  if (count === false) return <span key="failed" data-catalog-readout="" />;
   return count
     ? <span key="readout" ref={readout} data-catalog-readout="" data-count-readout="" role="status" />
     : (

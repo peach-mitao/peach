@@ -7,7 +7,7 @@
    详情归 `follow-detail` 岛（`frontend/src/react/follow-detail/follow-detail.css`）。 */
 .followauthors{padding:3px 0 10px;margin:0 0 2px;overscroll-behavior-inline:contain}
 .followauthors .av{width:76px}
-.followlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr))}
+.followlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--tile)),1fr))}
 .followlist.followphotowall{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 10px;align-items:start}
 /* 固定比例视图的媒体框在懒加载前占好高度。 */
 @media (max-width:1400px){.followlist.followphotowall{grid-template-columns:repeat(4,minmax(0,1fr))}}

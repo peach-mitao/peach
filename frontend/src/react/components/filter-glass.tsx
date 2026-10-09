@@ -30,7 +30,8 @@ export function FilterGlass({ title, children }: { title: string; children: Reac
  *  媒体键钉住，只有里面那一格滚。这些由调用方在 `className`／`topClassName`／`bottomClassName`
  *  里改写，`cx` 合并时后写的赢。`panes` 是直接挂在浮层根上的那几块滑动玻璃
  *  （`use-view-glide.ts`），`attrs` 给根补壳要认的标记（窄屏让位认 `data-filter-frame`）。
- *  `busy` 标在下排上：读数在等这一趟取数，下排里认它的动效（换批键描线）跟着走。 */
+ *  `busy` 标在下排上：读数在等这一趟取数，下排里认它的动效（换批键描线）跟着走。上排没有可放的
+ *  东西时 `top` 给 `null`，整行不出，玻璃只剩下排。 */
 export function FilterGlassRows(
   { label, topLabel, top, bottom, className, topClassName, bottomClassName, panes, attrs, busy, bottomRef }: {
     label: string;
@@ -52,11 +53,13 @@ export function FilterGlassRows(
     <div ref={glass} role="group" aria-label={label} data-filter-glass data-glass-pane="" {...attrs}
       className={cx('sticky top-topbar z-10 mb-5.5 flex flex-col', className)}>
       {panes}
-      <div role="group" aria-label={topLabel} data-filter-row="top"
-        className={cx('flex h-12 min-w-0 items-center gap-1.75 overflow-x-auto overscroll-x-contain px-3 py-2',
-          topClassName)}>
-        {top}
-      </div>
+      {top === null ? null : (
+        <div role="group" aria-label={topLabel} data-filter-row="top"
+          className={cx('flex h-12 min-w-0 items-center gap-1.75 overflow-x-auto overscroll-x-contain px-3 py-2',
+            topClassName)}>
+          {top}
+        </div>
+      )}
       <div ref={bottomRef} data-filter-row="bottom" aria-busy={busy || undefined}
         className={cx('flex min-h-11.5 min-w-0 items-center gap-3 px-3 py-2', bottomClassName)}>
         {bottom}

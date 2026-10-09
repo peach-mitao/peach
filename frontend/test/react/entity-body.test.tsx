@@ -82,7 +82,7 @@ describe('名册', () => {
     expect(ring?.dataset.fitNative).toBe('portrait');
     expect(ring?.style.getPropertyValue('--face')).toBe('40% 20%');
     expect([...host.querySelectorAll('[data-index-cell]')].map((cell) => cell.querySelector('[data-index-readout]')?.textContent))
-      .toEqual(['12', '3']);
+      .toEqual(['12 个视频', '3 个视频']);
     await click(host.querySelector('[data-index-cell][data-k="小湊よつ葉"]'));
     expect(given.actions.openEntity).toHaveBeenCalledWith('performer', '小湊よつ葉');
     expect(host.querySelector('[data-entity-grid]')).toBeNull();
@@ -98,6 +98,18 @@ describe('名册', () => {
     expect(given.helpers.personAvatar).toHaveBeenCalledWith(expect.objectContaining({ k: 'S1 NO.1 STYLE' }), 'studio', false);
     await click(host.querySelector('[data-index-cell]'));
     expect(given.actions.openEntity).toHaveBeenCalledWith('studio', 'S1 NO.1 STYLE');
+  });
+
+  it('上千人的名册先摆 120 格，「载入更多」一次再接 120 格，摆完就收起', async () => {
+    const people = Array.from({ length: 250 }, (_, at) => ({ k: `艺人${at}`, n: 1 }));
+    const host = await open(props({ kind: 'agency', view: 'people', roster: { kind: 'performers', people, layout: 'big' } }));
+    const count = () => host.querySelectorAll('[data-index-cell]').length;
+    expect(count()).toBe(120);
+    await click(host.querySelector('[data-entity-more]'));
+    expect(count()).toBe(240);
+    await click(host.querySelector('[data-entity-more]'));
+    expect(count()).toBe(250);
+    expect(host.querySelector('[data-entity-more]')).toBeNull();
   });
 });
 
@@ -183,7 +195,7 @@ describe('照片墙', () => {
     expect(slides).toHaveLength(7);
     expect(slides[3]).toEqual({
       src: '/sample-image?code=SSIS-001&n=1', thumb: '/sample-thumb?code=SSIS-001&n=1', name: 'SSIS-001 样张 1',
-      asset: null, source: 'DMM', position: 1, total: 2,
+      asset: null, source: 'DMM',
     });
     expect(slides[5]).toEqual({
       src: '/photo?id=101', thumb: '/photo-thumb?id=101', name: '101.jpg', asset: { id: 101, name: '101.jpg' },

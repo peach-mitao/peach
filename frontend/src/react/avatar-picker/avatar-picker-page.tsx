@@ -154,6 +154,10 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
     || (listing.error ? errorMessage(listing.error) : '');
   const busy = submit.isPending || opening.isPending;
   const index = cropping ? '' : indexNote(data);
+  // 只有候选那一份没取到时提示旁边给「重试」：提交和取封面失败，重来的是那颗键自己。
+  const listingFailed = !!problem && !!listing.error && problem === errorMessage(listing.error);
+  // 候选取完是空的（或没取到）时不留网格那一带：两条分隔线之间空着一块，读起来像还在等。
+  const showGrid = listing.isPending || choices.length > 0;
   return (
     <>
       {/* 头部：左边一个方图标槽，右边标题加一句说明，右上角是关闭键。 */}
@@ -164,13 +168,18 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
             <Heading slot="title" className="text-title-3-semibold text-text-primary">
               {cropping ? '框出头像那一块' : '更换头像'}
             </Heading>
-            {!cropping && choices.length ? <Chip color="soft">{choices.length} 张可选</Chip> : null}
+            {!cropping && choices.length ? <Chip color="soft">{choices.length.toLocaleString()} 张可选</Chip> : null}
           </div>
           <p className="text-body-2-regular text-text-secondary">
             {cropping ? cropNote(cropping.choice) : pickerNote(name, data)}
           </p>
           {index ? <Note tone="neutral">{index}</Note> : null}
-          {problem ? <Note tone="error">{problem}</Note> : null}
+          {problem ? (
+            <Note tone="error" action={listingFailed ? (
+              <Button variant="secondary" size="small" {...busyProps(listing.isFetching)}
+                onClick={() => { if (!listing.isFetching) void listing.refetch() }}>重试</Button>
+            ) : undefined}>{problem}</Note>
+          ) : null}
         </div>
         <IconButton icon={RiCloseLine} size="small" aria-label="关闭" onClick={close} />
       </div>
@@ -182,6 +191,7 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
       {/* 候选网格是这一屏唯一会滚的层：头部和底下那排操作再长也不动。上下各留 16px：
           只留上边的话，最后一排图贴着底下那条线。外面这一层只为放那条覆盖式滚动条的
           轨道，它按 `absolute` 铺，得有一个只裹着滚动块本身的定位祖先。 */}
+      {showGrid ? (
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div ref={grid} className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-separator-border px-5 py-4">
           {/* 候选回来之前摆同一种格子的占位，格子外框、比例与标签那一行都和真格子一样，
@@ -212,13 +222,14 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
                   : null}
                 {/* 合演封面上最大那张脸多半是领衔的另一位，格子不围着它取景，这里标出人数。 */}
                 {sharedCast(choice)
-                  ? <span className="absolute top-1 right-1"><Chip variant="caption" color="gray">{choice.cast} 人</Chip></span>
+                  ? <span className="absolute top-1 right-1"><Chip variant="caption" color="gray">{choice.cast.toLocaleString()} 人</Chip></span>
                   : null}
               </button>
             ))}
           </div>
         </div>
       </div>
+      ) : null}
       {/* 番号、手填地址和本机文件跟候选是并列的几条路，不是候选看完之后的补充，所以摆在
           固定的那一块里：网格再长也不会把它们推到看不见的地方。 */}
       <div className="flex shrink-0 flex-col gap-3 border-t border-separator-border p-5">
@@ -240,7 +251,8 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
           {/* 原生文件选择器长相不可控，按钮归 BoardUI，输入框只留着接文件。 */}
           <input ref={file} type="file" accept="image/png,image/jpeg" tabIndex={-1} aria-hidden
             className="hidden" onChange={pickFile} />
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* 地址一行至少 224px：窄屏下和「从本机选图片」挤不进一行就整行换下去，输入框不被压成一条缝。 */}
+          <div className="flex min-w-0 flex-1 basis-56 items-center gap-2">
             <div className="min-w-0 flex-1">
               <Input type="url" aria-label="图片地址" placeholder="https://…" value={url} onChange={setUrl} />
             </div>
@@ -263,25 +275,28 @@ function PickerBody({ kind, entityId, name, onPicked, close }: AvatarPickerProps
 function ChoiceImage({ src, choice }: { src: string; choice: AvatarChoice }) {
   const image = useRef<HTMLImageElement>(null);
   const [revealed, setRevealed] = useState(false);
+  const [lost, setLost] = useState(false);
   /* 缓存里的图可能在挂上 `onLoad` 之前就已经解码完，那一次 `load` 不会再来。 */
   useEffect(() => {
     if (image.current?.complete && image.current.naturalWidth) setRevealed(true);
   }, []);
   const size = { width: choice.width, height: choice.height };
   const place = framesItself(choice) ? windowStyle(choiceFrame(choice, size, TILE_ASPECT), size) : null;
-  const shown = revealed ? true : undefined;
+  const shown = revealed || lost ? true : undefined;
   return (
-    <span className="relative block w-full aspect-avatar-choice overflow-hidden">
-      {/* 取不到图也要揭开：骨架停在那儿就读成还在等。 */}
-      <img ref={image} loading="lazy" alt="" src={src} data-revealed={shown}
-        onLoad={() => setRevealed(true)} onError={() => setRevealed(true)}
+    <span data-choice-lost={lost || undefined}
+      className="relative block w-full aspect-avatar-choice overflow-hidden">
+      {/* 取不到图时揭开骨架、撤掉图：骨架停在那儿读成还在等，留着图就是一枚破图标。
+          格子剩一块空底，名字和来源照旧在下面那行与 title 里。 */}
+      {lost ? null : <img ref={image} loading="lazy" alt="" src={src} data-revealed={shown}
+        onLoad={() => setRevealed(true)} onError={() => setLost(true)}
         className={place
           ? 'reveal-content absolute max-w-none top-(--tile-top) left-(--tile-left) h-(--tile-height) w-(--tile-width)'
           : 'reveal-content absolute inset-0 size-full object-cover'}
         style={place ? {
           '--tile-top': place.top, '--tile-left': place.left,
           '--tile-height': place.height, '--tile-width': place.width,
-        } as CSSProperties : undefined} />
+        } as CSSProperties : undefined} />}
       <span aria-hidden data-revealed={shown}
         className="reveal-skeleton pointer-events-none absolute inset-0 skeleton-sheen" />
     </span>

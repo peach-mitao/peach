@@ -58,6 +58,7 @@ SOURCE_NAMES = {
     "gfriends": "图库",
     "jae": "展会名录",
     "social-web": "社交主页",
+    "follow-content": "在线作品",
     "cover": "作品封面",
     "cover-fallback": "作品封面",
     "cover-face": "封面人脸",
@@ -81,6 +82,8 @@ SHEET_CELLS = 9
 #: 手填地址取来的图放在这个来源目录里，按地址存。框选、确认都从这里读，不再出网；
 #: 装上去时来源记录的 `provider` 也是它，整张装的那一份和取来的落在同一条记录上。
 ADDRESS_CACHE = "url"
+#: 发布账号没有本人身份依据时，作品画面格子上的说明。
+STAND_IN_NOTE = "代表作画面，非本人"
 
 
 class PickerError(RuntimeError):
@@ -188,7 +191,7 @@ def installed_digest(avatar_root: Path, kind: str, entity_id: int) -> str:
 def cast_sizes(connection: sqlite3.Connection, entity_id: int) -> dict[str, int]:
     """她名下每个番号的作品有几位演员，番号按 `normalise_code_key`。
 
-    与 `avatar_cover_face.single_performer_works` 同一个口径：只数 `performer` 角色。同一个
+    与 `avatar_cover_face.single_works` 同一个口径：只数 `performer` 角色。同一个
     番号有几条 asset 行时取人数最多的那一行。
     """
     sizes: dict[str, int] = {}
@@ -281,11 +284,13 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
 
     **合演作品标出人数，不按封面上那张脸取景**（`_focus_face`）：封面人脸边车记的是最大那
     张脸，合集里那多半是领衔的另一位。格子照列，她自己的脸常常在九宫格里。
+
+    发布账号没有本人身份依据（不过 `work_portrait_predicate`）时格子照列，说明里写明是
+    代表作画面、非本人：挑不挑由人决定（ADR-0099）。
     """
-    allowed = connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
-                                 work_portrait_predicate(connection), (int(entity_id),)).fetchone()
-    if not allowed:
-        return []
+    stand_in = connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
+                                  work_portrait_predicate(connection),
+                                  (int(entity_id),)).fetchone() is None
     casts = cast_sizes(connection, entity_id)
     rows = connection.execute(
         "SELECT a.id,a.code,COALESCE(NULLIF(a.catalog_title,''),a.name),a.snapshot_path "
@@ -319,7 +324,8 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
             ref=bases[0], source="asset",
             label=str(code or title or f"作品 {asset_id}"),
             width=width, height=height,
-            detail=str(title or ""), crop=True, bases=tuple(bases),
+            detail=" · ".join(filter(None, (STAND_IN_NOTE if stand_in else "", str(title or "")))),
+            crop=True, bases=tuple(bases),
             focus=cover_focus(key, cover, _focus_face(read_sidecar(cover), cast), width, height)
             if size else None, cast=cast, version=cover_version(cover) if size else "")))
     found.sort(key=lambda item: (-item[0], item[1]))
@@ -562,9 +568,6 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
     """
     if artwork is None:
         raise PickerError("这一次取不到作品画面")
-    if not connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
-                              work_portrait_predicate(connection), (int(entity_id),)).fetchone():
-        raise PickerError("这个账号没有作品出演者本人身份依据")
     _, _, rest = ref.partition(":")
     raw_id, _, what = rest.partition(":")
     try:
@@ -601,14 +604,16 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
         raise PickerError(f"读不出这部作品的{label}") from error
     return body, {"source": "avatar picker", "provider": "asset",
                   "external_id": f"{asset_id}:{what}",
-                  "asset_id": asset_id, "asset_code": str(row[0] or "")}
+                  "asset_id": asset_id, "asset_code": str(row[0] or ""),
+                  "identity_verified": False}
 
 
 def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
             entity_id: int,
             transport: HttpTransport | None,
             artwork: ArtworkSource | None = None,
-            version: str | None = None) -> tuple[bytes, dict]:
+            version: str | None = None,
+            online: Callable[[str], tuple[bytes, dict]] | None = None) -> tuple[bytes, dict]:
     """把页面回递的 `ref` 换成图片字节和一份来源记录。
 
     `ref` 只认这里自己刚枚举出来的那些：图库候选要在索引里真的存在，历史候选要在
@@ -617,6 +622,10 @@ def resolve(ref: str, connection: sqlite3.Connection, providers_root: Path,
     `version` 是交框时页面回递的封面版本（`Choice.version`）。给了就核对，封面在列出
     候选之后被换过就拒收；只取预览图时不给。
     """
+    if ref.startswith(("follow:", "follow-avatar:", "follow-link:")):
+        if online is None:
+            raise PickerError("在线头像候选未取得")
+        return online(ref)
     if ref.startswith("sha256:"):
         digest = ref.split(":", 1)[1].strip().lower()
         body = _cached_object(providers_root, digest)

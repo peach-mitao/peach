@@ -558,22 +558,23 @@ class WebDataTests(unittest.TestCase):
         404，而这条响应不带缓存头，每次重绘再打一整轮。
         """
         def flags(kind):
-            return [(row["k"], row["has_image"], row["has_avatar"])
+            return [(row["k"], row["has_image"], row["has_avatar"], row.get("avatar_stand_in", False))
                     for row in rm_web.q_index(self.contract, 'performers', limit=10)["items"]
                     if row['entity_kind'] == {'performers':'performer','creators':'creator'}[kind]]
 
-        self.assertEqual(flags("performers"), [("Canonical Alice", False, False)])
-        self.assertEqual(flags("creators"), [("Canonical Creator", False, False)])
+        self.assertEqual(flags("performers"), [("Canonical Alice", False, False, False)])
+        self.assertEqual(flags("creators"), [("Canonical Creator", False, False, False)])
 
         (self.avatars / f"{entity_image_key('performer', 11)}.img").write_bytes(b"x")
         self._install_snapshot()
-        # kind 是实体图落盘名的一部分；账号的关联作品画面不构成本人头像依据。
-        self.assertEqual(flags("performers"), [("Canonical Alice", True, True)])
-        self.assertEqual(flags("creators"), [("Canonical Creator", False, False)])
+        # kind 是落盘名的一部分：装的是女优那张图，创作者那格照样没有实体图可取，
+        # 回落到同一条作品的代表作头像。账号没有本人身份依据，那张画面标成代表作画面。
+        self.assertEqual(flags("performers"), [("Canonical Alice", True, True, False)])
+        self.assertEqual(flags("creators"), [("Canonical Creator", False, True, True)])
 
         (self.avatars / f"{entity_image_key('creator', 12)}.img").write_bytes(b"x")
         self.contract.cache_bust()
-        self.assertEqual(flags("creators"), [("Canonical Creator", True, False)])
+        self.assertEqual(flags("creators"), [("Canonical Creator", True, True, True)])
         # 标签索引页没有脸，不该凭空多出两个标志。
         self.assertNotIn(
             "has_image", rm_web.q_index(self.contract, "tags", limit=10)["items"][0])
@@ -615,13 +616,17 @@ class WebDataTests(unittest.TestCase):
         (self.avatars / f"{entity_image_key('performer', 11)}.img").write_bytes(b"x")
         self._install_snapshot()
         contract.cache_bust()
-        # 同一批 dict 同时出现在总榜和分源榜里，两处必须给同一个答案。
+        # 同一批 dict 同时出现在总榜和分源榜里，两处必须给同一个答案。账号没有本人身份
+        # 依据，代表作头像照出，另标代表作画面。
         self.assertEqual(flags(), {
-            "creators": [("Canonical Creator", False, False)],
+            "creators": [("Canonical Creator", False, True)],
             "performers": [("Canonical Alice", True, True)],
-            "peach_creators": [("Canonical Creator", False, False)],
+            "peach_creators": [("Canonical Creator", False, True)],
             "peach_performers": [("Canonical Alice", True, True)],
         })
+        rankings = rm_web.q_taste(contract, {"window": "all"})["rankings"]
+        self.assertTrue(rankings["creators"][0]["avatar_stand_in"])
+        self.assertNotIn("avatar_stand_in", rankings["performers"][0])
         # 标签榜不出脸，不该被顺手挂上两个用不到的标志。
         tags = rm_web.q_taste(contract, {"window": "all"})["rankings"]["tags"]
         self.assertNotIn("has_image", tags[0])

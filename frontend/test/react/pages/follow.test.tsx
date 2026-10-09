@@ -1,9 +1,9 @@
 /* 关注页与播放列表页的路由元素（`src/react/router/pages/follow.tsx`）：页面组匹配到这两条时挂上，按开次代次、
  * 壳的重开次数（`@peach/shell` 的 `pageOpens`）与覆盖层决定什么时候按地址打开那一页，画进 `#stats`。
  *
- * 关注页不按代次挂 key：每次打开先收舞台、再交壳按地址读筛选（`follow.refresh`），列表还画着就由壳就地推，
+ * 关注页不按代次挂 key：每次打开先交壳按地址读筛选（`follow.refresh`），列表还画着就由壳就地推，
  * 没画着才整页打开。这里的壳替身照真壳的判据推：`#stats` 里画着关注页就把地址上的种子与一个新代次推过去。
- * 页面自己怎么取数、怎么画由 `browse-routes.test.tsx` 与各页的用例管。历史对象、派发状态与壳状态都是模块级的，
+ * 页面自己怎么取数、怎么画由 `browse-routes.test.tsx` 与各页的用例管。历史对象与壳状态都是模块级的，
  * 每条用例重新装载。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -69,8 +69,7 @@ function shellActions(r: Loaded) {
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: () => true,
     surfaceChanged: vi.fn((kind: string, path: string) => { log.push(`surface ${kind} ${path}`) }),
-    clearSearch: vi.fn(), openImmerse: vi.fn(),
-    closeStage: vi.fn(() => { log.push('closeStage') }),
+    clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(),
     grid: { helpers: {}, actions: {} } as ShellActions['grid'],
     follow: {
       refresh: vi.fn(() => {
@@ -82,6 +81,7 @@ function shellActions(r: Loaded) {
       }),
       skeleton: vi.fn(() => FOLLOW_SKELETON),
       props: vi.fn(props),
+      ground: vi.fn(() => { log.push('ground') }),
     },
   };
   return { actions, log };
@@ -146,9 +146,7 @@ async function boot(r: Loaded, actions: ShellActions) {
   await act(async () => { root.render(<r.RouterRoot actions={actions} />) });
   unmounts.push(() => root.unmount());
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
-  await act(async () => {
-    await r.startRouting((origin) => { if (origin === 'boot') r.shell.writeShell({ pageOpens: 1 }) });
-  });
+  await act(async () => { r.shell.writeShell({ pageOpens: 1 }) });
   await settle();
 }
 
@@ -173,14 +171,14 @@ const page = (stats: Element) => stats.querySelector(':scope > .peach-react > *'
 const opens = (actions: ShellActions) => vi.mocked(actions.surfaceChanged).mock.calls.length;
 const FOLLOW_ITEM_STATE = { backgroundLocation: { pathname: '/follow', search: '' }, overlay: 'follow' };
 
-it('关注元素：壳开始路由那一下按地址整页打开，先收舞台、交壳读筛选，再报换面、铺骨架、取齐首屏', async () => {
+it('关注元素：壳开始路由那一下按地址整页打开，先交壳读筛选，再报换面、铺骨架、取齐首屏', async () => {
   const r = await load('/follow');
   const stats = statsSurface();
   const calls = serve();
   const { actions, log } = shellActions(r);
   await boot(r, actions);
   await until(() => page(stats) !== null, '整页画上');
-  expect(log).toEqual(['closeStage', 'refresh', 'surface follow /follow']);
+  expect(log).toEqual(['refresh', 'surface follow /follow']);
   expect(actions.follow!.skeleton).toHaveBeenCalledTimes(1);
   expect([calls('/api/follow'), calls('/api/follow/credentials')]).toEqual([1, 1]);
   expect(r.managedEntry(stats)).toMatchObject({ path: '/follow', props: { revision: 0 } });
@@ -244,32 +242,33 @@ it('关注元素：进详情、关掉回列表都由壳认领写地址，列表�
   expect(calls('/api/follow')).toBe(1);
 });
 
-it('关注元素：深链直接进关注详情不挂列表；关掉详情（壳认领写地址、要求重开）时才整页打开', async () => {
+it('关注元素：深链直接进关注详情不挂列表，只交壳让出 `#stats`；关掉详情（壳认领写地址、要求重开）时才整页打开', async () => {
   const r = await load('/follow/item/2');
   const stats = statsSurface('');
   const calls = serve();
   const { actions, log } = shellActions(r);
   await boot(r, actions);
-  expect(log, '深链详情下面不挂列表').toEqual([]);
+  expect(log, '深链详情下面不挂列表').toEqual(['ground']);
   expect(calls('/api/follow')).toBe(0);
   await openRouted(r, '/follow');
   await until(() => page(stats) !== null, '关掉详情后整页画上');
-  expect(log).toEqual(['closeStage', 'refresh', 'surface follow /follow']);
+  expect(log).toEqual(['ground', 'refresh', 'surface follow /follow']);
 });
 
-it('关注元素：后退前进落在压着列表的详情上时不动；之后认领写回列表地址也不动，壳要求重开才打开', async () => {
+it('关注元素：后退前进落在压着列表的详情上、列表没画着时交壳让出 `#stats`；关掉回列表（认领写地址）整页打开一次', async () => {
   const r = await load('/immerse');
-  statsSurface('');
+  const stats = statsSurface('');
   serve();
   const { actions, log } = shellActions(r);
   await boot(r, actions);
   await pop(r, '/follow/item/2', { usr: FOLLOW_ITEM_STATE, key: 'x', idx: 1 });
-  await act(async () => { r.shellNavigate('/follow') });
-  await settle();
-  expect(log, '被详情压着挂上、认领写地址都不打开').toEqual([]);
-  await act(async () => { r.shell.writeShell({ pageOpens: r.shell.pageOpens + 1 }) });
-  await settle();
-  expect(log).toEqual(['closeStage', 'refresh', 'surface follow /follow']);
+  expect(log, '被详情压着挂上不打开').toEqual(['ground']);
+  await act(async () => {
+    r.shellNavigate('/follow');
+    r.shell.writeShell({ pageOpens: r.shell.pageOpens + 1 });
+  });
+  await until(() => page(stats) !== null, '关掉详情后整页画上');
+  expect(log, '认领写地址与要求重开合成一次').toEqual(['ground', 'refresh', 'surface follow /follow']);
 });
 
 it('播放列表元素：按地址整页打开；停在这一页要求重读时就地推新代次重取，壳要求重开时整页重开', async () => {
@@ -279,7 +278,7 @@ it('播放列表元素：按地址整页打开；停在这一页要求重读时�
   const { actions, log } = shellActions(r);
   await boot(r, actions);
   await until(() => page(stats) !== null, '整页画上');
-  expect(log).toEqual(['closeStage', 'surface playlists /playlists']);
+  expect(log).toEqual(['surface playlists /playlists']);
   expect(stats.querySelector('[data-skeleton]'), '骨架取齐之后撤下').toBeNull();
   const painted = page(stats);
   await act(async () => { r.shell.writeShell({ playlistsRevision: r.shell.playlistsRevision + 1 }) });

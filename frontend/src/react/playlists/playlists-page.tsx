@@ -23,9 +23,9 @@ import { cx } from '@/utils/cx';
 import { errorMessage } from '../../api';
 import type { PlaylistsProps } from '../bundle';
 import { EmptyState } from '../components/empty-state';
+import { RetryNote } from '../components/grid-reveal';
 import { MixCard } from '../components/mix-card';
 import { ModalFrame } from '../components/modal-frame';
-import { Note } from '../components/note';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { busyProps } from '../settings/use-action';
 import {
@@ -174,14 +174,7 @@ export function PlaylistsPage({ openPlaylist, openEntity, canFlip, toast, revisi
   }, [revision]);
 
   const data = playlists.data;
-  if (!data) {
-    return (
-      <div className="mx-auto w-full max-w-board">
-        <Note tone="error" title="播放列表读取失败">{playlists.error ? errorMessage(playlists.error) : '未取得播放列表，请刷新页面重试。'}</Note>
-      </div>
-    );
-  }
-  const items = data.items ?? [];
+  const items = data?.items ?? [];
 
   const remove = (row: PlaylistRow) => {
     void confirmModal({
@@ -206,21 +199,27 @@ export function PlaylistsPage({ openPlaylist, openEntity, canFlip, toast, revisi
         </div>
         <CreateForm toast={toast} />
       </header>
-      {items.length
+      {/* 读取失败时页头与新建框照常在，提示与重试键落在列表的位置上。 */}
+      {!data
+        ? (playlists.isError
+          ? <RetryNote message={errorMessage(playlists.error) || '播放列表读取失败'} onRetry={() => void playlists.refetch()} />
+          : null)
+        : items.length
         ? (
           <div data-playlist-grid="" className="card-grid-cover gap-4.5">
             {items.map((row) => {
               const resume = resumeAssetId(row);
+              const name = row.name.trim() || '未命名播放列表';
               return (
-                <MixCard key={row.id} data-playlist-card={String(row.id)} name={row.name}
+                <MixCard key={row.id} data-playlist-card={String(row.id)} name={name}
                   caption={row.source_kind === 'mix' ? '由 Mix 保存' : '手动播放列表'}
                   count={row.item_count}
                   poster={row.preview_asset_id ? posterUrl(row.preview_asset_id) : null}
                   flipImages={async () => (row.preview_ids || []).map(posterUrl)}
                   canFlip={canFlip} faces={row.faces || []} onOpenEntity={openEntity}
                   {...(resume ? { onOpen: () => openPlaylist(row.id, resume) } : {})}
-                  openLabel={`打开播放列表 ${row.name}`}
-                  menu={<PlaylistMenu name={row.name} onRename={() => setRenaming(row)} onDelete={() => remove(row)} />} />
+                  openLabel={`打开播放列表 ${name}`}
+                  menu={<PlaylistMenu name={name} onRename={() => setRenaming(row)} onDelete={() => remove(row)} />} />
               );
             })}
           </div>

@@ -7,7 +7,8 @@ import * as legacyUi from '@peach/legacy/ui';
 
 import { DuplicatesPage } from '../../src/react/duplicates/duplicates-page';
 import {
-  cloudPreferenceLocations, DUPLICATES_KEY, duplicateVictims, mixedCloudPreferences, prefetchDuplicates,
+  cloudPreferenceLocations, distinctName, DUPLICATES_KEY, duplicateVictims, mixedCloudPreferences, prefetchDuplicates,
+  sharedNamePrefix,
   type DuplicateFile, type DuplicateGroup, type DuplicatesData,
 } from '../../src/react/duplicates/duplicates';
 import { cloudLocations, MEDIA_SOURCES_KEY, type MediaSourcesData } from '../../src/react/media-sources';
@@ -178,4 +179,17 @@ it('没有重复组时是一张空态，不画批量条', async () => {
   const { host } = await open({ total: 0, files: 0, reclaimable: 0, groups: [] });
   expect(host.textContent).toContain('没有找到重复文件');
   expect(buttonNamed('全部保留最大', host)).toBeNull();
+});
+
+it('同组副本只在中段不同时，名字去掉共有开头、退到断词处，差别留在显示的那一段里', () => {
+  const names = ['ABC-123 [1080p] 转载站甲.mp4', 'ABC-123 [720p] 转载站甲.mp4', 'ABC-123 [480p] 转载站甲.mp4'];
+  const prefix = sharedNamePrefix(names);
+  expect(prefix).toBe('ABC-123 [');
+  expect(names.map((name) => distinctName(name, prefix)))
+    .toEqual(['…1080p] 转载站甲.mp4', '…720p] 转载站甲.mp4', '…480p] 转载站甲.mp4']);
+  // 共有段太短、只有一份或名字整个都是共有段时，原样显示。
+  expect(sharedNamePrefix(['AB-1.mp4', 'AB-2.mp4'])).toBe('');
+  expect(sharedNamePrefix(['ABC-123 一份.mp4'])).toBe('');
+  expect(sharedNamePrefix(['ABC-123 part.mp4', 'ABC-123 part.mp4'])).toBe('ABC-123 part.');
+  expect(distinctName('ABC-123 part.mp4', 'ABC-123 part.mp4')).toBe('ABC-123 part.mp4');
 });

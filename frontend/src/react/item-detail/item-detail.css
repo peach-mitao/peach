@@ -14,6 +14,15 @@
  * 有两处的类不是岛挂的：来源徽标由壳的 `badgeHtml` 画成 `srcbig`，选择器收起时由
  * `dismissMenu` 挂上 `leaving`。这两处用 `[class~=…]` 认，权重和类选择器相同。 */
 
+/* 作品与队列都没取到时，播放器格里只有那条重试提示：格子照播放器的 16:9 撑开，提示居中，
+   不塌成一条压着提示的窄条。 */
+.peach-react [data-item-detail] [data-item-placeholder] {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  padding: 16px;
+}
+
 /* ── 播放区：没挂载、在线与计费三种说明块 ──
    说明块铺满播放器格，不上下留黑；圆角跟着格走（格只圆左上角，右边贴着侧栏）。 */
 .peach-react [data-item-detail] [data-item-gate] {
@@ -58,7 +67,8 @@
    这一层，`min-width:0` 才让中段省略照旧按剩余宽度算。 */
 .peach-react [data-item-detail] [data-queue-head] { display: flex; align-items: center; gap: 5px; margin-top: 0; color: var(--ink); }
 .peach-react [data-item-detail] [data-queue-head] b { flex: 1; min-width: 0; }
-.peach-react [data-item-detail] [data-queue-edition] { flex: none; font-style: normal; }
+/* 版本字样最多占一半：长字样自己省略，番号总留得下。 */
+.peach-react [data-item-detail] [data-queue-edition] { flex: 0 1 auto; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; }
 /* 播放列表的顺序靠拖，每格右上角只剩抓手和移出，压在缩略图上，深色半透明底。 */
 .peach-react [data-item-detail] [data-queue-edit] {
   position: absolute;
@@ -346,9 +356,11 @@
   background: var(--tag-fill);
   overflow: hidden;
   min-height: 30px;
+  max-width: 100%;
 }
 .peach-react [data-item-detail] [data-detail-tag] button { border: 0; background: transparent; color: var(--ink-2); cursor: pointer; height: 28px; }
-.peach-react [data-item-detail] [data-detail-tag] [data-tag] { padding: 3px 8px; }
+/* 长标签单行省略：按钮高度定死 28px，折成两行时第二行会被切掉一半。全名在 title 上。 */
+.peach-react [data-item-detail] [data-detail-tag] [data-tag] { min-width: 0; padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peach-react [data-item-detail] [data-detail-tag] [data-remove-tag] { width: 28px; padding: 0; display: grid; place-items: center; color: var(--muted); }
 .peach-react [data-item-detail] [data-detail-tag] [data-tag]:hover { background: var(--hover); color: var(--ink); }
 .peach-react [data-item-detail] [data-detail-tag] [data-remove-tag]:hover {

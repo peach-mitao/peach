@@ -6,7 +6,7 @@ import { layout, settle, visit } from './harness.ts';
 import {
   DESKTOP, MOBILE, tokenColor, openDuplicates, openIndexPage, openPlaylistsPage, openFollowManage, holdApi,
   controlFaces, openPerformer, PROFILED, openProfiledPerformer, popmenuShadow, heroGeometry, disabledTokens,
-  waitingActionFaces, assertDisabledFace, followTab, installDesignBrowser,
+  waitingActionFaces, assertDisabledFace, followTab, followSource, installDesignBrowser,
 } from './design-fixture.ts';
 
 describe('设计决定：数据管理、索引页与资料页头', () => {
@@ -203,7 +203,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     }
   });
 
-  it('播放列表卡：封面后压两层纸边、黑底封面、玻璃徽标、38px 头像叠 22px；标题 32/44，菜单键静止透明', { timeout: 60_000 }, async () => {
+  it('播放列表卡：封面后压两层纸边、黑底封面、玻璃徽标、38px 头像有图叠 22px、只有首字母叠 8px；标题 32/44，菜单键静止透明', { timeout: 60_000 }, async () => {
     const opened = await openPlaylistsPage(browser);
     try {
       const page = opened.page;
@@ -240,7 +240,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
         mid: ['1px', '0px 6px 4px', 'matrix(1, 0, 0, 1, 0, -4)', '0.78'],
         cover: ['rgb(0, 0, 0)', 'inset(0px round 14px)'],
         badge: ['rgba(12, 8, 8, 0.72)', 'blur(10px)', '28px', '10px', '9px', '9px'],
-        avatars: [['38px', '0px', '5'], ['38px', '-22px', '4'], ['38px', '-22px', '3']],
+        avatars: [['38px', '0px', '5'], ['38px', '-8px', '4'], ['38px', '-8px', '3']],
         menu: ['30px', '30px', '10px', 'rgba(0, 0, 0, 0)'],
         blank: ['1.44px', 'uppercase'],
       });
@@ -341,6 +341,35 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await aligned();
       assert.deepEqual(opened.problems, []);
+    } finally { await opened.close(); }
+  });
+
+  it('输入框失败态只把框线换成 danger 色：填充照静止态，原因用说明文字的灰', { timeout: 60_000 }, async () => {
+    const opened = await openPlaylistsPage(browser);
+    const { page } = opened;
+    try {
+      const form = page.locator('[data-playlist-create]');
+      const resting = await form.locator('[data-input-size] > div[data-rac]').evaluate((node) => getComputedStyle(node).backgroundColor);
+      await form.getByRole('button', { name: '新建' }).click();
+      await form.locator('[data-input-size] > div[data-rac][data-invalid]').waitFor();
+      const looks = await form.locator('[data-input-size]').evaluate((root) => {
+        const probe = (token: string) => {
+          const swatch = document.createElement('i');
+          swatch.style.color = `var(${token})`;
+          root.append(swatch);
+          const color = getComputedStyle(swatch).color;
+          swatch.remove();
+          return color;
+        };
+        const group = getComputedStyle(root.querySelector(':scope > div[data-rac]')!);
+        return {
+          fill: group.backgroundColor, outline: group.outlineColor, width: group.outlineWidth,
+          reason: getComputedStyle(root.querySelector(':scope > [slot="errorMessage"]')!).color,
+          danger: probe('--color-border-error-default'), secondary: probe('--color-text-secondary'),
+        };
+      });
+      assert.deepEqual([looks.fill, looks.outline, looks.width, looks.reason],
+        [resting, looks.danger, '1px', looks.secondary]);
     } finally { await opened.close(); }
   });
 
@@ -578,7 +607,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       { path: '/follow', ready: '.followauthors .avskeleton',
         targets: ['.followauthors .avskeleton', '.followworks .brandskeleton', '[data-skeleton^="cards/"] > div > *'] },
       { path: '/follow-manage', ready: '[data-skeleton="board/follow-manage"] .ui-follow-skeleton-toolbar',
-        targets: ['[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(2)',
+        targets: ['[data-skeleton] .ui-follow-skeleton-toolbar [data-follow-toolbar-controls] > button:nth-of-type(1)',
           '[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(1)'] },
     ];
     for (const { path, ready, targets, prepare } of pages) {
@@ -724,6 +753,55 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     });
   }
 
+  for (const viewport of [DESKTOP, { ...MOBILE, name: 'narrow', width: 320 }]) {
+    it(`七位数的读数和单位留在卡里同一行；长名字与长报错的来源行不越出行，桌面上操作键和名字同一行（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const long = 'ThisIsAVeryLongUsernameThatPatreonAllowsWithoutAnySpaces2024';
+      const opened = await openFollowManage(browser, viewport, {
+        counts: { new: 1284000, seen: 22000, saved: 0, ignored: 0 },
+        extra: [
+          followSource(4, long, 'Patreon', `${long} · Patreon`),
+          { ...followSource(5, 'broken', 'Kemono', 'broken · Kemono', 'error'),
+            last_error: `peach.follow_providers.ProviderError: HTTP 403: <!DOCTYPE html>${'<div class="cf">'.repeat(40)}` },
+        ],
+      });
+      try {
+        const spill = await opened.page.evaluate(() => {
+          const out = (node: Element, frame: Element) => node.getBoundingClientRect().right > frame.getBoundingClientRect().right + 1;
+          const readings = [...document.querySelectorAll('[data-follow-reading]')]
+            .filter((node) => [...node.children].some((part) => out(part, node.parentElement!)))
+            .map((node) => node.textContent);
+          const wrapped = [...document.querySelectorAll('[data-follow-reading]')].filter((node) => {
+            const [figure, unit] = [...node.children].map((part) => part.getBoundingClientRect());
+            return unit!.top >= figure!.bottom - 1;
+          }).map((node) => node.textContent);
+          const rows = [...document.querySelectorAll('[data-follow-source-row]')];
+          const spilled = rows
+            .filter((row) => row.scrollWidth > row.clientWidth + 1 || [...row.querySelectorAll('button, [role="switch"], input')]
+              .some((control) => out(control, row)))
+            .map((row) => row.textContent);
+          // 末一枚操作键的竖直中线落在名字列的上下沿之间，就是同一行。
+          const split = rows.filter((row) => {
+            const name = row.querySelector('a')!.parentElement!.getBoundingClientRect();
+            const last = [...row.querySelectorAll('button')].at(-1)!.getBoundingClientRect();
+            const middle = (last.top + last.bottom) / 2;
+            return middle < name.top - 1 || middle > name.bottom + 1;
+          }).map((row) => row.textContent);
+          return { readings, wrapped, spilled, split, rows: rows.length,
+            text: document.querySelector('[data-follow-reading]')?.parentElement?.parentElement?.textContent };
+        });
+        assert.ok(spill.text?.includes('1,284,000'), `读数没有用上七位数：${spill.text}`);
+        assert.equal(spill.rows, 5, '造的五条来源没有全部画出来');
+        assert.deepEqual(spill.readings, [], '读数越出了卡片');
+        assert.deepEqual(spill.wrapped, [], '七位数的读数把单位挤到了下一行');
+        assert.deepEqual(spill.spilled, [], '来源行的控件越出了行');
+        if (!viewport.mobile) assert.deepEqual(spill.split, [], '桌面上来源行的操作键掉到了名字下面');
+        assert.deepEqual(opened.problems, []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
+
   it('凭据的四种处境四副底色：待办和完成一眼分得开', { timeout: 60_000 }, async () => {
     const opened = await openFollowManage(browser);
     try {
@@ -759,7 +837,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       const mark = opened.page.locator('[data-entry-marks] a[data-entry-mark]').first();
       await mark.waitFor({ timeout: 15_000 });
       await settle(opened.page);
-      // 浅色下 `--hover` 与资料卡的 `--ground` 同是 #f5f5f5，垫上去等于没垫。
+      // 浅色下 `--hover` 与资料卡的 `--ground` 同是 #f7f7f7，垫上去等于没垫。
       await opened.page.evaluate(() => {
         document.documentElement.dataset.theme = 'light';
         document.documentElement.classList.remove('dark');

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Iterable, Mapping
 
 
-POLICY_VERSION = "metadata-source-policy-v5"
+POLICY_VERSION = "metadata-source-policy-v6"
 PEACH_FIELDS = (
     "title", "original_title", "performers", "studio", "series", "release_date", "tags",
 )
@@ -150,7 +150,14 @@ def source_tier(source: str) -> int:
     return CHAIN_COMMUNITY
 
 
-def chain_rank(field: str, source: str) -> tuple[int, int, str]:
+def preferred_tag_source(code: str | None) -> str | None:
+    """有码作品的内容标签采用 JavDB 社区类别，其余类型沿用来源链。"""
+    from .metadata_routes import classify
+
+    return PREFERRED_COMMUNITY_SOURCE if code and classify(code) == "censored" else None
+
+
+def chain_rank(field: str, source: str, *, code: str | None = None) -> tuple[int, int, str]:
     """字段优先级链上的排序键，越小越先采信。
 
     层内用 `FIELD_SOURCE_ORDER` 再排一次：官方来源之间谁更接近这部片的发行方，
@@ -158,6 +165,11 @@ def chain_rank(field: str, source: str) -> tuple[int, int, str]:
     保证同分时顺序是确定的——不确定的顺序会让同一批候选在两次运行里落不同的值。
     """
     name = str(source or "").strip()
+    if field == "tags" and preferred_tag_source(code):
+        if name == LOCAL_NFO_SOURCE:
+            return (-2, 0, name)
+        if name == preferred_tag_source(code):
+            return (-1, 0, name)
     priority = FIELD_SOURCE_PRIORITY.get(field, ())
     if name in priority:
         return (-1, priority.index(name), name)
@@ -225,22 +237,27 @@ FIELD_SOURCE_ORDER = {
 }
 
 
-def field_rank(field: str, source: str) -> int:
+def field_rank(field: str, source: str, *, code: str | None = None) -> int:
     """这家来源在这个字段的顺序表里排第几，从 1 起；表里没有的排在末尾之后。"""
     order = FIELD_SOURCE_ORDER[field]
+    if field == "tags" and preferred_tag_source(code) and source == LOCAL_NFO_SOURCE:
+        return -1
+    if field == "tags" and source == preferred_tag_source(code):
+        return 0
     try:
         return order.index(source) + 1
     except ValueError:
         return len(order) + 1
 
 
-def sort_candidates(field: str, candidates: Iterable[Mapping[str, object]]) -> list[dict]:
+def sort_candidates(field: str, candidates: Iterable[Mapping[str, object]], *,
+                    code: str | None = None) -> list[dict]:
     """同一字段的候选按来源顺序表排，同位次按置信度，再按来源名兜底保证确定。"""
     if field not in PEACH_FIELDS:
         raise ValueError("未知 Peach 元数据字段：" + field)
     rows = [dict(candidate) for candidate in candidates]
     for row in rows:
-        row["field_rank"] = field_rank(field, str(row.get("source") or ""))
+        row["field_rank"] = field_rank(field, str(row.get("source") or ""), code=code)
     rows.sort(key=lambda row: (
         int(row["field_rank"]),
         -float(row.get("confidence") or 0),

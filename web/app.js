@@ -1,13 +1,12 @@
 import { loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
-import {$, DURATION_TAGS, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, cleanTagFilter, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, newSeed, seededRank} from './js/core.js';
+import {$, DURATION_TAGS, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, cleanTagFilter, isAbort, mapLimit, entityPath, esc, firstGrapheme, fmtClock, fmtSize, foldName, icon, leadingGraphemes, isCatalogPath, newSeed, seededRank} from './js/core.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
 import { MEDIA_SOURCE_ICONS } from './js/ui-components.js';
-import { detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
+import { initBoardControls } from './dist/peach-ui.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
-import { matchRoute, routeLabel } from './js/routes.js';
 import { tagLabel } from './js/tags.js';
 import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js';
 import { appSettingsStore, applySyncedSettings, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
@@ -19,14 +18,14 @@ import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent } from './dist/peach-ui.js';
 import { managementSkeletonHtml, pageSkeletonHtml, paintManagementPlaceholder, skeletonKeyOf } from './dist/peach-ui.js';
 import { dropBars, fetchBars, fetchTopsPage, loadMediaSources } from './dist/peach-ui.js';
-import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, startRouting, updateManagedRoute } from './dist/peach-ui.js';
-import { ROUTE_META, routeMetaOf } from './dist/peach-ui.js';
+import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate, updateManagedRoute } from './dist/peach-ui.js';
+import { ROUTE_META, bootEntry, isOverlayPath, routeMetaOf } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
-import { cameFromSetup, entityJavLayout, notifyShell, pageOpens, runtimeConfigurable, writeShell } from './dist/peach-ui.js';
+import { cameFromSetup, entityJavLayout, notifyShell, pageOpens, queueOpens, runtimeConfigurable, writeShell } from './dist/peach-ui.js';
 import { followDiscoverySeed, followRevision, playlistsRevision } from './dist/peach-ui.js';
 import { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './dist/peach-ui.js';
-import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
+import { clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
@@ -102,66 +101,25 @@ let followSort='new',followDir='desc',followSeed=0;
 let followDurMin=0,followDurMax=0;
 /* ────────────────────────────────────────────────────────────────────────── */
 
-/* ── 路由表 ───────────────────────────────────────────────────────────────────
-   一屏一条。`match` 的三种写法见 `web/js/routes.js`，其余字段：
-
-   - `open(params,push)`：进入这一屏。`push=false` 表示地址栏已经是它了——首屏
-     恢复、popstate、换一批都是这种，此时不再 `route()`。
-   - `title`：document.title 用的标签，字符串或拿 params 算的函数；不写则用站名。
-   - `nav`：侧栏／抽屉里 `data-nav` 的键，同时决定高亮（`navOn`）和跳转（`navTo`）。
-   - `section`：管理区身份（`manageSection`），也是 `openManage` 的入口键。
-   - `refresh`：列表栏 ⟳「换一批」在这一屏的行为。`reopen` 重开自己；`skip` 不参与
-     ——追更页重画要联网，只能由它自己的按钮触发；不写则回统计页。
-   - `reload`：批量操作后就地重取（`reloadCurrentSurface`）。它和 `open` 的区别是
-     要保留页内已经打好的输入，所以不能拿 `open` 顶替。
-
-   顺序即优先级：先匹配上的赢，所以精确路径写在同前缀的动态路径前面。
-
-   `title`、`nav`、`section`、`refresh` 这几样元数据，路由树那一侧登记了的（`ROUTE_META`，
-   `frontend/src/history/route-meta.ts`）就不在这里写：读者一律经 `routeMeta(path)`，先查路由树、再查这张表。
-
-   这张表替掉的是同一份知识的七个副本：`restoreRoute` 的分支链，加上 `navTo`、
-   `navOn`、`openManage`、`manageSection`、`reloadCurrentSurface`、`refreshAll`
-   各自抄的那几条。加一屏只改这张表；同一份知识散成七处时，漏一处的症状还各不相同：URL 能进但侧栏不亮、
-   点进去了但「换一批」把你扔回统计页、批量操作后回到首页而不是刚才那一屏。
-
-   条目按页面分组（目录、播放列表、覆盖、关注、沉浸），每组前一行组名、组与组之间空开两行：
-   各组迁进路由树时只删自己那几行。 */
-const ROUTES=[
-  // ── 覆盖 ──
-  {match:'/playlists/:playlist/:item',nav:'playlists',title:'播放列表',
-    open:(params,push)=>openPlaylist(params.playlist,params.item,push)},
-  {match:'/mix/:seed/:item',title:'Mix',
-    open:(params,push)=>openMix(params.seed,params.item,push)},
-  {match:'/parts/:seed/:item',open:(params,push)=>openParts(params.seed,params.item,push)},
-  {match:'/editions/:seed/:item',open:(params,push)=>openEditions(params.seed,params.item,push)},
-  {match:'/item/:id',title:'作品',open:(params,push)=>openItem(params.id,push)},
-  /* 关注详情压在列表上：列表由路由树按条目记的背景画在下面，详情页的返回、上一条／下一条都从那份列表来。 */
-  {match:'/follow/item/:id',title:'关注',open:async(params,push)=>{
-    await openFollowDetail(params.id,push)}},
-
-
-  // ── 沉浸 ──
-  {match:'/immerse',nav:'immerse',title:'沉浸模式',
-    open:(params,push)=>openTok(immerseStartId(),push)},
-];
-/* 路由元数据的读法：路由树那一侧登记了的用它的（`ROUTE_META`），没有回落到 `ROUTES`；返回与 `matchRoute`
-   同形的 `{route,params}`。按身份或侧栏键找入口路径时同样先查路由树、再查表：一个键只登记在一边。 */
-const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta,params:{}}:matchRoute(ROUTES,path)};
-const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value)
-  ??ROUTES.find(spec=>spec[key]===value)?.match;
+/* ── 路由元数据 ──
+   标题、侧栏键、管理区身份与「换一批」的行为全站只登记一处（`ROUTE_META`，`frontend/src/history/route-meta.ts`），
+   读者一律经 `routeMeta(path)`，返回 `{route}`；按身份或侧栏键找入口路径经 `routePathOf`。 */
+const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta}:null};
+const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value);
 /* 目录：首页、三个筛选态、垃圾文件与回收站。路由树按匹配打开，画在 `#grid`，不是管理区。 */
 const catalogPage=path=>isCatalogPath(path)||path==='/trash';
 /* 画进 `#stats` 的那几页（管理区、播放列表页与关注页）：路由树按匹配打开、又不随写回从头重开（索引页与资料页
-   登记了 `reload: 'reopen'`，目录另判）。 */
-const managedPagePath=path=>{const meta=routeMetaOf(path);return !!meta&&meta.reload!=='reopen'&&!catalogPage(path)};
-/* 从侧栏、管理条进一屏。还归壳的那几屏按 `ROUTES` 打开。目录（管理条只通到回收站）认领写地址后从头重开。
+   登记了 `reload: 'reopen'`，目录另判；详情、队列与沉浸压在页面上，不算）。 */
+const managedPagePath=path=>{
+  const meta=routeMetaOf(path);
+  return !!meta&&meta.reload!=='reopen'&&!catalogPage(path)&&!isOverlayPath(path)&&path!=='/immerse';
+};
+/* 从侧栏、管理条进一屏。沉浸模式由壳认领写地址、当场打开。目录（管理条只通到回收站）认领写地址后从头重开。
    索引页（侧栏只通到它们）退出选择模式、回到本地与字母表，同样认领写地址后从头重开。关注页分「回到」与
    「重新进入」（`enterFollow`）；播放列表页认领写地址后从头重开，再点一次也一样。管理区换地址、交派发打开，
    再点一次同一页也是新的一次打开；关注管理回到第一页与默认排序，页签沿用地址上的那一档。 */
 const openRoutePath=path=>{
-  const hit=matchRoute(ROUTES,path);
-  if(hit){hit.route.open(hit.params,true);return}
+  if(path==='/immerse'){void openTok(immerseStartId());return}
   if(path==='/follow'){enterFollow();return}
   if(path==='/playlists'||catalogPage(path)){openRoutedPage(path);return}
   if(!managedPagePath(path)){
@@ -238,7 +196,7 @@ function renderCatalogLoading(label='正在读取作品'){
    挂上时也铺它，键相同就不重画。关注管理的视图偏好经 `followListLayout()` 取：偏好那份存储声明在本行下面，
    直接读它就是声明前引用，会提升的函数声明才能从这里回去问。排序与方向照地址栏上的那一档。 */
 const managementPlaceholder=path=>managementSkeletonHtml(path,{followLayout:followListLayout(),
-  ...(({sort,dir})=>({followSort:sort,followDir:dir}))(followManageParams())});
+  ...(({sort,dir,tab})=>({followSort:sort,followDir:dir,followTab:tab}))(followManageParams())});
 /* 顶部三层只属于首页。深链启动时先画一遍再由路由收起来，等于向管理页和索引页
    承诺了三条永远不会到货的横条。 */
 function hideDiscoveryBars(){$('#catalogFilter').style.display='none';syncCatalogFilterScreen()}
@@ -263,16 +221,18 @@ function waitEntityShapes(){
   });
   return Promise.race([entityShapesReady||=loadEntityShapes(),deadline]);
 }
-/* 冷启动直接落在详情地址上：详情下面那份列表一次请求都没发过，由 `fillIdleCatalog` 补发一次。 */
-let bootDetailDeepLink=false;
 function renderInitialSurfaceLoading(){
   const path=decodeURIComponent(location.pathname);
-  /* 骨架画的就是这个表面，所以先把 `data-surface` 写上：深链冷启动时 `restoreRoute()`
-     排在这一步后面，等它写的话骨架会先按默认版式铺一遍，数据到货再跳成分栏。 */
+  /* 骨架画的就是这个表面，所以先把 `data-surface` 写上：深链冷启动时壳开始路由排在这一步后面，
+     等它写的话骨架会先按默认版式铺一遍，数据到货再跳成分栏。 */
   document.body.dataset.surface=location.pathname;
   if(/^\/(item\/\d+|(?:mix|parts|editions|playlists)\/\d+\/\d+)$/.test(path)){
-    /* 详情的骨架归舞台岛：路由到位后 `openItem` 取回 React 包就画。下面那份列表照这一次补发。 */
-    hideDiscoveryBars();bootDetailDeepLink=true;return;
+    /* 详情的骨架归舞台岛：路由到位后 `openItem` 取回 React 包就画。下面那份列表由路由树的目录元素补发。 */
+    hideDiscoveryBars();return;
+  }
+  if(path.startsWith('/follow/item/')){
+    /* 关注详情同样只等舞台浮窗里那份骨架，页面里不先铺一份；列表等关掉详情才画，不补发。 */
+    hideDiscoveryBars();return;
   }
   if(path==='/junk-files'){
     /* 垃圾文件是一屏同质卡片，等的是内容结构不是后台进度：Loading Dots 说的是
@@ -280,11 +240,11 @@ function renderInitialSurfaceLoading(){
     renderCatalogLoading('正在读取垃圾文件');
     return;
   }
-  /* 画进 `#stats` 的那几屏（管理区、播放列表页与关注页，`managedPagePath`），加上深链直接进的关注详情。 */
-  if(managedPagePath(path)||path.startsWith('/follow/item/')){
+  /* 管理区、播放列表页与关注页的占位由各页面接手。 */
+  if(managedPagePath(path)){
     hideDiscoveryBars();
     const stats=$('#stats');stats.hidden=false;clearCatalogGrid();
-    stats.innerHTML=path.startsWith('/follow/item/')?detailSkeletonHtml():path.startsWith('/follow')&&path!=='/follow-manage'
+    stats.innerHTML=path.startsWith('/follow')&&path!=='/follow-manage'
       ?followSkeletonHtml('正在读取关注内容')
       :managementPlaceholder(path);
     fitSkeleton(stats);
@@ -322,7 +282,7 @@ function renderInitialSurfaceLoading(){
 const syncPageTitle=path=>{
   const url=new URL(path,location.origin);
   const pathname=decodeURIComponent(url.pathname);
-  const label=routeMetaOf(pathname)?.title||routeLabel(ROUTES,pathname);
+  const label=routeMetaOf(pathname)?.title;
   document.title=label?`${label} · Peach`:'Peach · 蜜桃';
   document.body.dataset.surface=url.pathname;
   paintNav();
@@ -378,17 +338,47 @@ const claimSurface=path=>{
   surfaceEpoch++;return surfaceToken(path)};
 /* 地址只经全站那一份历史写（`frontend/src/history/`，`@peach/history`），不直接调 `window.history`：
    React Router 读写的是同一个对象，绕过它写进去的条目它不知道。详情地址带上 `overlayState()`
-   给的 `usr`（压在哪一页上），别的地址不带。`claim:false` 见 `navigatePath`。 */
-const route=(path,replace=false,state,{claim=true}={})=>{
+   给的 `usr`（压在哪一页上），别的地址不带。认领写地址保持页面代次，覆盖元素接走一次性的打开请求。 */
+const route=(path,replace=false,state)=>{
   surfaceEpoch++;
   barsRequestSeq++;
-  shellNavigate(path,{replace,state,claim});syncPageTitle(path);
+  shellNavigate(path,{replace,state});syncPageTitle(path);
   queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
-/* 换到一个路径、由派发器打开（页面里的 `actions.navigate`、教程卡的跳转）：地址、标题与随后那一轮
-   同步照 `route()` 做，只是这一次不认领。路由树像后退前进一样报给派发器、领一个开次代次：迁进路由树的页面由它的元素
-   打开，其余由 `restoreRoute` 按 `ROUTES` 打开。 */
-const navigatePath=path=>route(path,false,undefined,{claim:false});
+/* 换到一个路径、由路由树按匹配打开（页面里的 `actions.navigate`、教程卡的跳转）：不认领，像后退前进一样领一个
+   开次代次，标题、侧栏与教程状态由 `syncRouteChrome` 跟上，顶栏动作与列表标题随后补一轮。 */
+const navigatePath=(path,replace=false,state)=>{
+  if(replace)peachHistory.replace(path,state);else peachHistory.push(path,state);
+  queueMicrotask(()=>{syncHeaderActions();paintListTitle()});
+};
+/* 点卡的参数只交给这一次覆盖元素打开，不放进浏览器条目（锚点是活节点）。认领写地址保住背景页的开次代次，
+   覆盖组按导航序号挂上，再取走这次请求；队列取齐后只写地址、在线条目转换详情种类的 replace 没有打开请求。 */
+let requestedOverlay=null;
+let requestedQueue=null;
+let queueOpenRequest=null;
+let initialOverlayOpened=false;
+function cancelQueueRequest(){
+  if(queueOpenRequest)queueOpenRequest.cancelled=true;
+  queueOpenRequest=null;requestedQueue=null;
+  writeShell({pendingQueueRoute:null});
+}
+function requestOverlay(path,kind,open){
+  cancelQueueRequest();
+  holdOverlayBackground();
+  requestedOverlay={path,open};
+  route(path,false,overlayState(kind));
+}
+/* 每一次没人认领的历史变化（后退前进、`navigatePath`、React 子树写的地址）之后：标题、侧栏、表面代次与教程状态
+   跟上当前地址，不接着上一次记下的详情背景（跳过几条落到别的详情上时那份背景不属于它；落到详情条目上时由路由树
+   的覆盖元素改接条目自己记的背景）。壳开始路由那一刻也跑一次。页面、沉浸与详情都由路由树按匹配打开。 */
+function syncRouteChrome(){
+  surfaceEpoch++;
+  barsRequestSeq++;
+  syncPageTitle(location.href);
+  paintSidebar();
+  clearOverlayBackground();
+  void syncPostSetupTutorial();
+}
 /* 从壳里进路由树按匹配打开的那几页（索引页、资料页）：认领写地址，再让 `pageOpens` 加一。换了一页时挂上的元素
    按地址打开，两件事合成一次；地址落在画着的同一页上时元素不重挂，靠这一下从头重开。 */
 function openRoutedPage(path){
@@ -921,7 +911,8 @@ function urlResume(){
 function stageExit(){return stageApi()?.exit()||Promise.resolve()}
 /* 离开详情。正在放的视频默认进小窗接着放；显式关闭（叉、Escape）、换成别的详情和删掉当前条目
    都传 miniplayer:false。 */
-function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true}={}){
+function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=true,preserveQueueRequest=null}={}){
+  if(queueOpenRequest!==preserveQueueRequest)cancelQueueRequest();
   stageApi()?.dispose({miniplayer});
   writeShell({activeQueue:null,pendingQueueRoute:null,presentedItem:null});
   if(!preserveInlineOrigin){
@@ -1359,8 +1350,9 @@ function catalogTags(filters){
    `performer-8711` 那种全身站姿照在资料页只放得到 2 倍，在这里放到 3 倍还没碰到
    源图 1:1。取景与索引页同一份 sidecar、同一个换算。 */
 function tierPerformer(x){
-  return {name:x.k,ringHtml:`<span data-tier-initial>${esc(x.k.slice(0,1))}</span>${entityFaceImg(
-    {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus})}`};
+  return {name:x.k,ringHtml:`<span data-tier-initial>${esc(firstGrapheme(x.k))}</span>${entityFaceImg(
+    {id:x.id,hasImage:x.has_image,version:x.image_version,rep:x.has_avatar?x.rep:null,style:facePos(x.avatar_focus),focus:x.avatar_focus,
+      standIn:x.avatar_stand_in})}`};
 }
 /* 正规厂牌用官网 logo；缺失时只显示首两个字，绝不把作品截图冒充厂牌图标。
 
@@ -1368,7 +1360,7 @@ function tierPerformer(x){
    代价是：一排 30 个厂牌里 21 个是 404，而 404 那条响应不可缓存，每次重绘再打一整轮。
    `has_logo` 由 `/api/tops` 下发，判据和取图同一个函数。 */
 function tierStudio(x){
-  return {name:x.k,fallback:x.k.slice(0,2),
+  return {name:x.k,fallback:leadingGraphemes(x.k,2),
     logo:x.has_logo?logoUrl(x.k,'icon',x.logo_version):''};
 }
 /* 首屏时这一块要等两个聚合查询，约一秒。铺上骨架就必须有一次真的绘制来顶掉它，哪怕取回的
@@ -1581,16 +1573,19 @@ function feedNewCardHtml(item){
     .join('<span aria-hidden="true">·</span>');
   const cover=feedNewCoverHtml(item);
   // 番号与标题排在同一个两行的标题块里，和资产卡一样：番号加粗打头，标题接在后面截断。
-  const heading=javTitleHtml({is_jav:true,code:item.code,name:item.code,display_title:item.title||''});
+  const name=item.code||String(item.title||'').trim()||'未命名新作';
+  const heading=item.code
+    ?javTitleHtml({is_jav:true,code:item.code,name:item.code,display_title:item.title||''})
+    :esc(name);
   /* 点击区用自己的类 `.feednewopen`：这一条通向别人的站，不是站内跳转。 */
   const open=item.link
-    ?`<a class="feednewopen" href="${esc(item.link)}" target="_blank" rel="noreferrer" aria-label="打开 ${esc(item.code)} 的作品页"></a>`:'';
+    ?`<a class="feednewopen" href="${esc(item.link)}" target="_blank" rel="noreferrer" aria-label="打开 ${esc(name)} 的作品页"></a>`:'';
   return `<article class="card feednewcard${item.read?' isread':''}" data-feed-id="${item.id}">
     ${open}<div class="pic" style="--card-ratio:${COVER_FRONT_RATIO}">${cover}
       <div class="hovertools feednewtools">
-        <button type="button" data-feed-action="${item.wanted?'unwant':'want'}" aria-pressed="${!!item.wanted}" title="${item.wanted?'取消想要':'想要'}" aria-label="想要 ${esc(item.code)}">${icon('star')}</button>
-        <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${esc(item.code)}">${icon('x')}</button>
-        <button type="button" data-feed-action="read" title="标为已看过" aria-label="标为已看过 ${esc(item.code)}">${icon('check')}</button></div></div>
+        <button type="button" data-feed-action="${item.wanted?'unwant':'want'}" aria-pressed="${!!item.wanted}" title="${item.wanted?'取消想要':'想要'}" aria-label="想要 ${esc(name)}">${icon('star')}</button>
+        <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${esc(name)}">${icon('x')}</button>
+        <button type="button" data-feed-action="read" title="标为已看过" aria-label="标为已看过 ${esc(name)}">${icon('check')}</button></div></div>
     <div class="meta"><div class="mtext"><span class="t">${heading}</span>
       <div class="s mono">${label||(item.title?'':'资料还没取到')}</div></div></div></article>`;
 }
@@ -1812,10 +1807,10 @@ function openConfigurationSection(section){
    `@peach/shell` 里：壳写，路由树的关注元素打开时读。 */
 /* 关注页一次取一屏。counts 是全库口径（「未看 2292」），groups 只有这一页——
    两个数并排显示时看起来像自相矛盾，实际是两个口径，所以列表底部要能继续加载。 */
-const FOLLOW_PAGE=300;
+const FOLLOW_PAGE=100;
 /* 创作者、来源和标签一起交给服务端。只让状态走服务端、这三个在浏览器里筛的话，
    药丸上的数字（全库口径）和列表（筛过的这几页）就是两套口径，换个筛选条件
-   数字纹丝不动；而且选个冷门创作者，一页 300 条里可能只剩两条，得反复点加载更多。 */
+   数字纹丝不动；而且选个冷门创作者，一页 100 条里可能只剩两条，得反复点加载更多。 */
 const followPageUrl=offset=>
   `/api/follow?limit=${FOLLOW_PAGE}&offset=${offset}`
   +(followFilter?`&status=${followFilter}`:'')
@@ -2017,6 +2012,18 @@ const followFeedShell={
   },
   skeleton:()=>followSkeletonHtml('正在读取关注内容'),
   props:followFeedProps,
+  /* 关注详情底下没画着列表（深链进来，或后退前进落到压在列表上的详情、中间去过别的页）：让出 `#stats`，
+     不画列表，等关掉详情再按地址打开。关注详情已经开着（组内换条）就不动。 */
+  ground:()=>{
+    if(stageApi()?.showing()==='follow')return;
+    releaseHoverPreviews();disposeStage(false);enterManagementSurface();
+    if(followFeedLive())return;
+    claimSurface(surfacePath());
+    showManagementBody({manage:false});
+    // 管理区那一页还挂在 `#stats` 上时先把它卸掉，直接清空会留下一棵管着已不在页面上的节点的根。
+    if($('#stats').querySelector('.peach-react'))releaseManagedRoute($('#stats'));
+    $('#stats').replaceChildren();
+  },
 };
 /* 从侧栏、管理页与检查更新的回执进关注页。已经停在关注页再点一次侧栏，或检查更新之后去看（`fresh`），是
    「重新进入」：回到干净的 /follow、换一粒取样种子，列表从顶上重取。从别的页面过来是「回到」：筛选、取样种子、
@@ -2051,6 +2058,11 @@ const followDetailActions={
 };
 
 async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false){
+  if(push){
+    if(!location.pathname.startsWith('/follow/item/')&&!preserveReturn)writeShell({followDetailReturnPath:location.pathname+location.search});
+    requestOverlay(`/follow/item/${+id}`,'follow',()=>openFollowDetail(id,false,mediaIndex,preserveReturn));
+    return;
+  }
   releaseHoverPreviews();
   id=+id;
   const entering=!location.pathname.startsWith('/follow/item/');
@@ -2059,8 +2071,6 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   if(!push&&!preserveReturn)writeShell({followDetailReturnPath:takeOverlayReturn()||'/follow'});
   // 条目的背景另记：从列表进来记列表这一页（带筛选），组内换条沿用上一条的。
   if(push)holdOverlayBackground();
-  // 派发进来（启动、后退前进）时详情开着就是组里另一条：列表已在下面，详情原地换条。
-  if(!push&&!preserveReturn&&stageApi()?.showing()!=='follow')settleFollowDetailGround();
   // 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。关注详情开着时原地换条。
   if(stageApi()?.showing()!=='follow')disposeStage(false,false,{miniplayer:false});
   if(push)route(`/follow/item/${id}`,false,overlayState('follow'));
@@ -2068,18 +2078,6 @@ async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=fals
   await stage.open({kind:'follow',id,mediaIndex,mediaView:followMediaView,
     helpers:followFeedHelpers,actions:followDetailActions,resume:push?null:urlResume()});
   scheduleStickySurfaces();
-}
-/* 派发进来的关注详情下面那一层：列表由路由树按条目记的背景画着就原样留着，返回时接着看。深链直接进来（或从
-   别的页面后退前进过来）时下面没画着列表：详情岛自己取这一条，列表区只让出位置，关掉详情时才画。侧栏抽屉由
-   详情画出来时按这一条的标签铺。 */
-function settleFollowDetailGround(){
-  releaseHoverPreviews();disposeStage(false);enterManagementSurface();
-  if(followFeedLive())return;
-  claimSurface(surfacePath());
-  showManagementBody({manage:false});
-  // 管理区那一页还挂在 `#stats` 上时先把它卸掉，直接清空会留下一棵管着已不在页面上的节点的根。
-  if($('#stats').querySelector('.peach-react'))releaseManagedRoute($('#stats'));
-  $('#stats').replaceChildren();
 }
 
 
@@ -2090,7 +2088,9 @@ async function closeFollowDetail(){
   await stageExit();
   disposeStage(false,false,{miniplayer:false});clearOverlayBackground();
   route(followDetailReturnPath||'/follow');
-  if(location.pathname!=='/follow'){await restoreRoute();return}
+  /* 从资料页在线视图点进来的：资料页一直画在下面，筛选、已加载的几页与滚动位置原样接着看，不从头重开。 */
+  if(entityPageView&&entityPageCurrent()&&!$('#index').hidden)return;
+  if(location.pathname!=='/follow'){writeShell({pageOpens:pageOpens+1});return}
   if(!followFeedLive()){writeShell({pageOpens:pageOpens+1});return}
   readFollowView();pushFollowFeed({view:followView()});
 }
@@ -2113,7 +2113,7 @@ function revealRoutedPage(container){
    的头像，只挪不放大的话脸在图里占多少、在这枚圆里就占多少，一排看下来仍是身体。
    没检出脸就两样都不写，圆标按样式表里的默认取景摆。 */
 function followWorkMark([key,label,,icon,focus]){
-  const fallback=esc(String(label||'').slice(0,2));
+  const fallback=esc(leadingGraphemes(label,2));
   return icon?`<img src="/work-icon?work=${encodeURIComponent(key)}" width="128" height="128" alt="" loading="lazy"${facePos(focus)}${faceBoxAttrs(focus)}>`:fallback;
 }
 
@@ -2179,7 +2179,8 @@ const peopleIndexLayout=()=>peopleLayoutOf(appSettings.peopleLayout);
 function personRingHtml(x,kind,big){
   const ref=x.entity_id||x.id;
   const company=kind==='studio'||kind==='agency';
-  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version}:null,
+  return avatarInner(x.k,ref?{id:ref,has_image:x.has_image,image_version:x.image_version,logo_version:x.logo_version,
+    avatar_stand_in:x.avatar_stand_in}:null,
     x.has_avatar&&!company?x.rep:null,kind,x.mark,x.has_logo?x.k:'',
     company&&big?'large':'ring',company?null:x.avatar_focus,true);
 }
@@ -2234,7 +2235,7 @@ function openFollowTagFromIndex(tag){
    按地址打开这一页、排框架；壳经 `shellActions.entity` 铺骨架、递 props。地址栏是这一页筛选与媒体视图的
    唯一真相源，页面改筛选调 `actions.route`，壳写好地址再经 `routeEntityPage` 把新的 `filters`／`media`
    推回去（`updateManagedRoute`，不重挂）。 */
-let entityPageView='',entityPageRevision=0;
+let entityPageView='',entityPageWall=false,entityPageRevision=0;
 /* 画在 `#index` 里的那一页是资料页时就是它的登记项（路径加交进去的 props），否则 null。 */
 function entityPageEntry(){
   const entry=managedEntry($('#index'));
@@ -2261,13 +2262,15 @@ function sortKeys(current,dir,jav=javActive()){
     return {key,label,pressed,dir:pressed&&sortDirWord(key,dir)?(dir==='asc'?'asc':'desc'):'',
       ariaLabel:next?`按${label}${next.dir?sortDirWord(next.sort,next.dir):''}排序`:''}});
 }
-/* 地址栏上的媒体视图：`media=photos` 与目录图集 `set=<id>`。名册不进地址栏，是事务所页与片商页
-   进页时的默认视图，归岛记。 */
+/* 地址栏上的媒体视图：`media=photos`、`media=online`（创作者名下关注来源的更新）与目录图集 `set=<id>`。
+   名册不进地址栏，是事务所页与片商页进页时的默认视图，归岛记。 */
 const EMPTY_ENTITY_MEDIA={media:'videos',set:0};
-const parseMediaView=search=>{const params=new URLSearchParams(search),set=params.get('set')||'';
-  return {media:params.get('media')==='photos'?'photos':'videos',set:/^\d+$/.test(set)?Number(set):0}};
+const parseMediaView=search=>{const params=new URLSearchParams(search),set=params.get('set')||'',
+  media=params.get('media');
+  return {media:media==='photos'||media==='online'?media:'videos',set:media==='photos'&&/^\d+$/.test(set)?Number(set):0}};
 const entityViewSearch=(filters,view)=>{const params=new URLSearchParams(entityFilterSearch(filters));
   if(view&&view.media==='photos'){params.set('media','photos');if(view.set)params.set('set',String(view.set))}
+  else if(view&&view.media==='online')params.set('media','online');
   return params.toString()};
 /* 这一页换筛选、换视图的唯一落点：地址先写好，再把新的筛选与视图推给岛，岛按新键重取。
    这一页没挂着（从作品详情回来、深链）时返回 false，由调用方重开这一页。 */
@@ -2298,7 +2301,7 @@ const entityPageHelpers={
   portraitImg:(kind,d)=>{
     const company=kind==='studio'||kind==='agency';
     const own=d.id?entityFaceImg({kind,id:d.id,hasImage:d.has_image,version:d.image_version,
-      rep:company||!d.has_avatar?null:d.representative_asset_id,
+      rep:company||!d.has_avatar?null:d.representative_asset_id,standIn:d.avatar_stand_in,
       mark:kind==='agency'?d.mark_link_id:null,
       logo:company&&d.has_logo?d.canonical_name:'',logoVersion:d.logo_version,logoVariant:'large',
       alt:esc(d.canonical_name),lazy:false,
@@ -2340,8 +2343,8 @@ function entityPageActions(kind,name){
     openEntity:(target,to,replace=false)=>{
       if(replace)route(entityPath(target,to)+location.search,true);
       else openEntity(target,to)},
-    painted:view=>{
-      const wasPhotos=photoViewActive();entityPageView=view;
+    painted:(view,wall)=>{
+      const wasPhotos=photoViewActive();entityPageView=view;entityPageWall=!!wall;
       if(photoViewActive()!==wasPhotos)syncDensityControl();
       scheduleStickySurfaces()},
     missing:()=>queueMicrotask(()=>{
@@ -2352,22 +2355,28 @@ function entityPageActions(kind,name){
     openFollowAuthor:key=>openFollowAuthorFromIndex(key),
   };
 }
+/* 资料页在线视图里那几张关注卡的动作：开详情、回执、悬停翻卡与图片墙偏好同关注页那一份；换筛选、
+   换一批和侧栏归资料页自己，多选认的是本地作品，这几样不接。 */
+const entityFollowActions={...followFeedActions,
+  route:()=>{},shuffle:()=>{},loaded:()=>{},toggleSelection:()=>{}};
 /* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。
    宿主与卡片的助手由路由树的资料页元素补上。 */
 function entityPageProps(kind,name,filters,media){
   return {kind,name,filters,media,
     jav:state.jav==='1',seed:String(state.seed||''),revision:entityPageRevision,feedRevision,
     photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,
+    followImagesOnly:!!appSettings.followImagesOnly,
     javLayout:javLayout(),javLayouts:JAV_LAYOUTS,states:VIEW_PILLS,peopleLayout:peopleIndexLayout(),
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     groupCollapse:appSettings.groupCollapse,wireDrag,skeletonHtml:entityBodySkeleton,
     canLoadMore:entityBodyCanLoadMore,
+    follow:{helpers:followFeedHelpers,actions:entityFollowActions},
     helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
 /* 资料页与关注页那面墙都由 React 异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
    资料页的视图由页面每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
 function photoViewActive(){
-  if(entityPageView==='photos'&&entityPageCurrent()&&!$('#index').hidden)return true;
+  if(entityPageWall&&entityPageCurrent()&&!$('#index').hidden)return true;
   if(location.pathname==='/follow'&&followMediaView==='images'&&!$('#stats').hidden)return true;
   return [...document.querySelectorAll('.followphotowall')].some(wall=>wall.getClientRects().length>0)}
 function syncPhotoWalls(){
@@ -2375,7 +2384,7 @@ function syncPhotoWalls(){
   document.querySelectorAll('.followphotowall').forEach(wall=>{
     wall.dataset.size=photoSize();wall.dataset.layout='fixed';
     wall.dataset.imagesOnly=String(!!appSettings.followImagesOnly)});
-  pushEntityPage({photoSize:photoSize(),photoLayout:photoLayout()});
+  pushEntityPage({photoSize:photoSize(),photoLayout:photoLayout(),followImagesOnly:!!appSettings.followImagesOnly});
   pushFollowFeed({photoSize:photoSize(),photoLayout:photoLayout(),imagesOnly:!!appSettings.followImagesOnly});
   syncDensityControl();
 }
@@ -2569,13 +2578,16 @@ function routeFollowFromSidebar(patch){
   routeFollowFeed({...followView(),...patch});
   paintSidebar({filters:followSidebarFilters()});
 }
+/* 侧栏按窄屏处理（抽屉盖在页面上、收起时 inert）的判据，与样式表的 `@media(max-width:760px)` 同源。
+   读的是媒体查询而不是 innerWidth：页面内容一旦撑出视口，布局视口跟着变宽，innerWidth 报的就不是屏幕宽。 */
+function narrowShell(){return matchMedia('(max-width:760px)').matches}
 function openDrawer(v){const drawer=$('#drawer'),restore=!v&&drawer.contains(document.activeElement);
-  drawer.inert=!v&&innerWidth<=760;
+  drawer.inert=!v&&narrowShell();
   drawer.classList.toggle('open',v);$('#scrim').classList.toggle('on',v);
   document.body.classList.toggle('drawer-open',!!v);document.dispatchEvent(new Event('board:sidebar'));
   $('#filterBtn').setAttribute('aria-expanded',String(!!v));$('#filterBtn').setAttribute('aria-controls','drawer');$('#filterBtn').setAttribute('aria-label',v?'收起侧栏':'展开侧栏');
   if(restore)$('#filterBtn').focus();sessionStorage.setItem('board.sidebar',v?'open':'closed')}
-function closeDrawerAfterNav(){if(innerWidth<=760)openDrawer(false)}
+function closeDrawerAfterNav(){if(narrowShell())openDrawer(false)}
 $('#filterBtn').onclick=()=>openDrawer(!$('#drawer').classList.contains('open'));
 /* 侧栏导航默认就有的入口，`[键, 名称, 字形]`；首页的键是空串。 */
 const SIDEBAR_ITEMS=[
@@ -3077,7 +3089,7 @@ function catalogGridProps(){
     mix:home&&!trash,
     /* JAV 模式不插竖屏带：主列表的 exclude_vertical 管不到它，它是独立请求、独立插入的。 */
     shorts:home&&!javActive()&&state.orient!=='竖屏'&&!trash,
-    countRow:$('#count'),onCount:paintCatalogCount,
+    countRow:$('#count'),onCount:paintCatalogCount,onCountFailed:()=>paintCatalogFilter({count:false}),
     emptyHtml:({trash:inTrash,libraryEmpty})=>inTrash
       ?emptyState('trash','回收站是空的','删掉的内容会先到这里；确认不再需要后再清空。')
       :catalogEmptyHtml({jav:javActive()&&!libraryEmpty,configurable:runtimeConfigurable,filtered:!libraryEmpty}),
@@ -3202,6 +3214,13 @@ function openQueue(kind,key,itemId,push,anchor=null){
   /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景。 */
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
+  if(push){
+    cancelQueueRequest();
+    const request=queueOpenRequest={seq:peachHistory.navigation.seq,cancelled:false};
+    requestedQueue=()=>openItem(itemId==null?null:+itemId,false,queue,anchor,true,request);
+    writeShell({queueOpens:queueOpens+1});
+    return;
+  }
   return openItem(itemId==null?null:+itemId,false,queue,anchor,push);
 }
 function openMix(seedId,itemId=seedId,push=true,anchor=null){return openQueue('mix',seedId,itemId,push,anchor)}
@@ -3216,21 +3235,6 @@ function openPlaylist(playlistId,itemId=null,push=true){return openQueue('playli
 function hasReturnSurface(){
   return !!$('#grid').querySelector('[data-id],[data-mix-seed]')
     ||!$('#index').hidden||!$('#stats').hidden;
-}
-/* 同一张骨架的另一半问题：深链冷启动时列表一次请求都没发过，`renderInitialSurfaceLoading`
-   占位的那张「正在读取作品」就停在详情下方，写着在读，其实没有任何请求在跑。这里把那
-   一次请求补发出去：从列表里点进详情时下面就是那份列表，直接刷新详情页的地址也该有
-   同样的东西，否则排序条底下是一整屏空白。
-   走的是 `paintCatalogGrid` 直接挂网格那条路——`loadCatalog` 开头就 `disposeStage()`，
-   会把刚打开的这一屏详情一起收掉。网格已经画上（哪怕还在取第一页）就不再补发；静态骨架留在
-   原位，首屏落地时由 `revealRoutedPage` 淡出。 */
-function fillIdleCatalog(){
-  const grid=$('#grid');
-  if(gridTaken())return;
-  const deepLink=bootDetailDeepLink;bootDetailDeepLink=false;
-  if(!grid.querySelector('.catalog-skeleton')&&!deepLink)return;
-  const count=$('#count');count.removeAttribute('aria-busy');count.removeAttribute('aria-label');
-  void paintCatalogGrid(surfaceToken(surfacePath()));
 }
 /* 作品详情整块归舞台岛（`frontend/src/react/stage/`）：条目与队列的取数、播放区、侧栏、接着看、
    写操作与播放器都在 /dist/peach-react.js 里。壳留来处：从哪一张卡进来、关掉回哪一份列表、顶栏
@@ -3259,7 +3263,7 @@ const itemDetailActions={
     const returnBars=detailReturnBarsContext;
     writeShell({barsContext:{type:'item',id:item.id,filters:returnBars?.type==='entity'
       ? {...returnBars.filters}:emptyEntityFilters()}});
-    if(pendingQueueRoute){route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));writeShell({pendingQueueRoute:null})}
+    if(pendingQueueRoute){queueOpenRequest=null;route(`${pendingQueueRoute}/${item.id}`,false,overlayState('item'));writeShell({pendingQueueRoute:null})}
     buildBars();
   },
   /* 取数时发现要换去别处：保存过的在线资产转关注详情，队列取不到退回普通详情，播放列表空了
@@ -3311,7 +3315,14 @@ const itemDetailActions={
   failure:(action,error)=>actionFailure(action,error),
 };
 
-async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
+async function openItem(id,push=true,queue=null,anchor=null,queuePush=false,queueRequest=null){
+  if(queueRequest?.cancelled)return;
+  if(!queueRequest)cancelQueueRequest();
+  if(push&&!queue){
+    writeShell({detailReturnPath:location.pathname+location.search});
+    requestOverlay('/item/'+(+id),'item',()=>openItem(id,false,null,anchor));
+    return;
+  }
   releaseHoverPreviews();
   id=id==null?null:+id;
   const origin=anchor?.isConnected?anchor:(detailOriginAnchor?.isConnected?detailOriginAnchor:null);
@@ -3320,7 +3331,6 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
     : detailOriginAbove;
   const returnSurfaceReady=hasReturnSurface();
   const needsReturnRestore=detailReturnNeedsRestore||(!push&&!returnSurfaceReady);
-  if(!returnSurfaceReady)fillIdleCatalog();
   const returnBars=barsContext.type==='item'?detailReturnBarsContext:cloneBarsContext(currentBarsContext());
   /* 点进来记当前这一页；后退前进进来按条目记的来处，条目没记（冷启动、深链）就沿用上一次记的。
      队列从详情里换条也以 push=false 进来（`queuePush`），来处已由 `openQueue` 定好，不在这里取。 */
@@ -3330,7 +3340,7 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
   if(push)holdOverlayBackground();
   /* 换详情不进小窗；小窗里放着别的条目也让位（舞台岛判），两个播放器不同时出声。作品详情开着时
      （队列换卷、相关作品）舞台原地换条，不拆。 */
-  if(stageApi()?.showing()!=='item')disposeStage(false,true,{miniplayer:false});
+  if(stageApi()?.showing()!=='item')disposeStage(false,true,{miniplayer:false,preserveQueueRequest:queueRequest});
   writeShell({detailOriginAnchor:origin,detailOriginAbove:above,detailReturnNeedsRestore:needsReturnRestore});
   writeShell({detailReturnBarsContext:returnBars});
   writeShell({activeQueue:queue&&{kind:queue.kind,seedId:queue.seedId,playlistId:queue.playlistId}});
@@ -3338,9 +3348,14 @@ async function openItem(id,push=true,queue=null,anchor=null,queuePush=false){
     ? `${QUEUE_ROUTES[queue.kind]}/${queue.kind==='playlist'?queue.playlistId:queue.seedId}`:null});
   if(push&&!queue)route('/item/'+id,false,overlayState('item'));
   const stage=await loadStage(stageHost);
+  if(queueRequest?.cancelled)return;
+  const actions=queueRequest?{...itemDetailActions,
+    present:(item,queue)=>{if(!queueRequest.cancelled)itemDetailActions.present(item,queue)},
+    redirect:to=>{if(!queueRequest.cancelled)itemDetailActions.redirect(to)},
+  }:itemDetailActions;
   await stage.open({kind:'item',
     id,queue,relatedLimit:appSettings.relatedLimit>0?+appSettings.relatedLimit:0,
-    helpers:itemDetailHelpers,actions:itemDetailActions,
+    helpers:itemDetailHelpers,actions,
     grid:{helpers:gridHelpers,actions:gridActions},
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     resume:push||id==null?null:urlResume(),
@@ -3355,10 +3370,10 @@ async function closeItemDetail(){
   await stageExit();
   disposeStage(false,false,{miniplayer:false});writeShell({detailReturnBarsContext:null});clearOverlayBackground();
   writeShell({barsContext:restore||{type:'home',filters:state}});
-  /* 下面没有那一屏、要照地址重建时，路由树按匹配打开的管理区经派发重开（领一个开次代次），其余由 `restoreRoute` 打开。 */
+  /* 下面没有那一屏、要照地址重建时，管理区不认领写地址、领一个开次代次重开，其余认领写地址后要路由树从头重开。 */
   if(restoreSurface&&managedPagePath(new URL(returnPath,location.href).pathname)){navigatePath(returnPath);return}
   route(returnPath);
-  if(restoreSurface)await restoreRoute();
+  if(restoreSurface)writeShell({pageOpens:pageOpens+1});
   // 播放列表页回来就从头重开、取最新的那一份（详情里可能刚加进或移出了一条）。
   else{buildBars();if(location.pathname==='/playlists')writeShell({pageOpens:pageOpens+1})}
 }
@@ -3382,9 +3397,10 @@ const immerseHost={
   failure:(action,error)=>actionFailure(action,error),
 };
 const immerseOpen=()=>!!immerseApi()?.isOpen();
+let requestedImmerseId;
 /* 小窗开着时打开沉浸模式先关小窗：两个播放器不同时出声。 */
 async function openTok(startId=null,push=true){
-  if(push)route('/immerse');
+  if(push){requestedImmerseId=startId;route('/immerse');return}
   stageApi()?.closeMiniplayer();
   await (await loadImmerse(immerseHost)).open(startId);
 }
@@ -3476,12 +3492,9 @@ document.addEventListener('keydown',e=>{
   }
   // 输入态不抢键：搜索框、标签弹窗和任何可编辑区域里的按键归它们自己处理。
   if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
-  const imageDots=[...document.querySelectorAll('#stage[open] [data-follow-image-dots] [data-follow-image-item]')];
-  if(imageDots.length&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
-    e.preventDefault();
-    const current=Math.max(0,imageDots.findIndex(dot=>dot.getAttribute('aria-current')==='true'));
-    imageDots[(current+(e.key==='ArrowRight'?1:-1)+imageDots.length)%imageDots.length].click();
-    return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    const imageStep=document.querySelector(`#stage[open] [data-follow-image-step="${e.key==='ArrowRight'?1:-1}"]`);
+    if(imageStep){e.preventDefault();imageStep.click();return}
   }
   const video=activeVideo();
   if(video){
@@ -3515,16 +3528,13 @@ async function refreshAll(automatic=false){
   if(!$('#stats').hidden){
     /* 管理区的换批行为写在路由元数据的 `refresh` 上：`reopen` 重开自己，
        `skip` 不参与（追更页重画要联网，只能由它自己的按钮触发），
-       没写的（统计、数据管理、资源同步）落到统计页。播放列表页画着就只重读（`rereadPlaylists`）；还归壳的
-       那几屏按 `ROUTES` 重开；路由树按匹配打开的那几页原地改写一次不认领的地址，领一个新的开次代次，页面元素
-       换一次 key 重开，历史条数不变。 */
+       没写的（统计、数据管理、资源同步）落到统计页。播放列表页画着就只重读（`rereadPlaylists`）；别的页原地
+       改写一次不认领的地址，领一个新的开次代次，页面元素换一次 key 重开，历史条数不变。 */
     const path=decodeURIComponent(location.pathname),refresh=routeMeta(path)?.route.refresh;
     if(refresh==='skip')return;
     if(path==='/playlists'){rereadPlaylists();return}
     const target=refresh==='reopen'?path:'/stats';
-    const hit=matchRoute(ROUTES,target);
-    if(hit){await hit.route.open(hit.params,false);return}
-    if(target===path)route(location.pathname+location.search+location.hash,true,peachHistory.navigation.location.state,{claim:false});
+    if(target===path)navigatePath(location.pathname+location.search+location.hash,true,peachHistory.navigation.location.state);
     else navigatePath(target);
     return;
   }
@@ -3580,32 +3590,6 @@ function immerseStartId(){
   return /^\d+$/.test(id||'')?Number(id):undefined;
 }
 
-/* `origin` 由 `startRouting` 给：启动那一次是 'boot'，后退前进是 'history'；壳自己写完地址再调时不给。 */
-async function restoreRoute(origin){
-  // 路由树里按匹配打开的页面等这一下才开始打开：壳的状态到这时才齐。
-  if(origin==='boot')writeShell({pageOpens:1});
-  surfaceEpoch++;
-  barsRequestSeq++;
-  syncPageTitle(location.href);
-  paintSidebar();
-  /* 不接着上一次记下的详情背景：跳过几条落到别的详情上时，那份背景不属于它。后退前进落到详情条目上
-     时改接条目自己记的背景与来处；启动不读，刷新、深链落在详情上照旧补画目录网格、关掉回缺省来处。 */
-  clearOverlayBackground();
-  if(origin==='history')adoptOverlayState(peachHistory.navigation.location.state);
-  const path=decodeURIComponent(location.pathname);
-  void syncPostSetupTutorial();
-  /* 唯一的派发点：路径匹配哪条路由，就把那一屏打开。`push=false`——地址栏本来
-     就是它，再 `route()` 一次会往历史里塞一条重复记录。
-     路由树登记的管理区、索引页、资料页与目录不在 `ROUTES` 里，由它们的页面元素按匹配打开；
-     首页上的 `?state=ads` 由目录元素改写成垃圾文件的地址。 */
-  const hit=matchRoute(ROUTES,path);
-  if(hit)await hit.route.open(hit.params,false);
-  /* 索引页、资料页与目录由路由树按匹配打开：后退前进与启动时元素自己开；壳直接调来重开当前地址时要它从头再开。 */
-  else if(routeMetaOf(path)?.reload==='reopen'||catalogPage(path)){if(!origin)writeShell({pageOpens:pageOpens+1})}
-  /* 播放列表页与关注页同样由路由树按匹配打开，壳直接调来时同样要它按当前地址再开一次。 */
-  else if(path==='/playlists'||path==='/follow'){if(!origin)writeShell({pageOpens:pageOpens+1})}
-  else if(!managedPagePath(path)){showHomeSurfaces();disposeStage(false)}
-}
 /* 左侧导航、管理条、页面标题和面包屑只认 location 和本地设置，一个请求都不等。
    挂在下面那条链上时它们排在 /api/sources 和 /api/facets 后面，实测让骨架先顶着
    一个没有标题的空壳站了约半秒。左侧导航先由 mountSidebar() 同步铺好骨架，
@@ -3613,8 +3597,8 @@ async function restoreRoute(origin){
 entityShapesReady=loadEntityShapes();
 renderInitialSurfaceLoading();
 mountSidebar();
-/* 后退前进由 React Router 派发给 restoreRoute（`startRouting`），跟侧栏搭同一次 React 包请求。
-   管理区那几页由路由树画，经这一组回到壳（`frontend/src/react/router/shell-actions.ts`）。 */
+/* 客户端导航跟侧栏搭同一次 React 包请求。每一页、沉浸与详情都由路由树按匹配打开，经这一组回到壳
+   （`frontend/src/react/router/shell-actions.ts`）。 */
 const shellActions={
   openItem:id=>void openItem(id),
   openEntity:(kind,name)=>void openEntity(kind,name),
@@ -3667,8 +3651,28 @@ const shellActions={
     enterManagementSurface();showManagementBody({manage:kind==='management'});
   },
   clearSearch:()=>clearSearchField(),
-  openImmerse:id=>void openTok(id,false),
-  closeStage:()=>disposeStage(false),
+  openImmerse:id=>{
+    const start=requestedImmerseId===undefined?id:requestedImmerseId;
+    requestedImmerseId=undefined;void openTok(start,false);
+  },
+  openQueueRequest:()=>{
+    const open=requestedQueue;requestedQueue=null;
+    if(open)void open();
+  },
+  /* 覆盖地址要打开的那一条（作品详情、关注详情、四种队列），地址栏已经是它。 */
+  openOverlay:target=>{
+    const requested=requestedOverlay;
+    requestedOverlay=null;
+    if(peachHistory.navigation.claimed&&(!bootEntry()||initialOverlayOpened)){
+      if(requested?.path===location.pathname)void requested.open();
+      return;
+    }
+    if(bootEntry())initialOverlayOpened=true;
+    if(target.kind==='item')void openItem(target.id,false);
+    else if(target.kind==='follow')void openFollowDetail(target.id,false);
+    else void openQueue(target.queue,target.key,target.item,false);
+  },
+  closeStage:()=>{if(stageOpen())disposeStage(false)},
   grid:{helpers:gridHelpers,actions:gridActions},
 
   // 索引页与资料页的元素用。
@@ -3681,7 +3685,7 @@ const shellActions={
     loading:async(kind,name,current)=>{
       if(!entityShapes){await waitEntityShapes();if(!current())return}
       showEntityLoading(kind,name);
-      writeShell({detailReturnBarsContext:null});entityPageView='';
+      writeShell({detailReturnBarsContext:null});entityPageView='';entityPageWall=false;
       void loadEntityShapes().then(()=>{if(current())syncEntitySkeletonParts(kind,name)});
     },
     props:(kind,name,search)=>{
@@ -3708,14 +3712,10 @@ const shellActions={
     /* 地址上没写来源时的缺省：本地加 115，离线的那一处摘掉。 */
     defaultLoc:()=>onlineDefaultLoc('local,115'),
     /* 整页打开：筛选已由目录元素照地址写进 `state`。`retitle` 是首页 `?state=ads` 改写成垃圾文件地址的那一下：
-       改写认领了，没经过派发，标题、侧栏与教程状态在这里补；`entering` 是从别处回到首页，顶部三层的缓存作废。
+       改写认领了，标题、侧栏与教程状态在这里补；`entering` 是从别处回到首页，顶部三层的缓存作废。
        回收站清掉搜索框，别的页把地址上的搜索词摆回框里。 */
     open:(path,{entering=false,retitle=false}={})=>{
-      if(retitle){
-        surfaceEpoch++;barsRequestSeq++;
-        syncPageTitle(location.href);paintSidebar();clearOverlayBackground();
-        syncHeaderActions();paintListTitle();void syncPostSetupTutorial();
-      }
+      if(retitle){syncRouteChrome();syncHeaderActions();paintListTitle()}
       if(entering)dropBars();
       if(path==='/trash'){clearSearchField();showHomeSurfaces()}
       else{$('#q').value=state.q;rememberSearchValue()}
@@ -3723,10 +3723,27 @@ const shellActions={
     },
     /* 壳认领写了地址、筛选已在 `state` 里：只重取。 */
     load:()=>{handOff(loadCatalog())},
+    /* 没有背景的作品与队列地址（深链、刷新）：详情下面那份列表一次请求都没发过，补发一次，不留一张写着在读、
+       其实没有请求在跑的骨架。走 `paintCatalogGrid` 直接挂网格：`loadCatalog` 开头就 `disposeStage()`，会把这一屏
+       详情一起收掉。网格已经画上（哪怕还在取第一页）就不再补发；不是启动那一条时只接着那张骨架。 */
+    fill:()=>{
+      if(gridTaken())return;
+      if(!bootEntry()&&!$('#grid').querySelector('.catalog-skeleton'))return;
+      const count=$('#count');count.removeAttribute('aria-busy');count.removeAttribute('aria-label');
+      void paintCatalogGrid(surfaceToken(surfacePath()));
+    },
     /* 离开目录：收起网格、首页新作行与处理横幅。 */
     release:()=>{clearCatalogGrid();clearHomeFeed();releaseManagedRoute($('#libraryProcessingNotice'))},
   },
 };
+/* 壳开始路由之前（来源、设置与形状名单读齐之前）没人认领的变化不跟：开始那一刻按当时的地址跑一次。
+   订阅排在路由树之前，同一次变化里这一轮先跑，页面再按匹配打开。 */
+let routing=false;
+peachHistory.listen(navigation=>{
+  /* 取齐前地址仍在源页：任何非覆盖历史变化（包括同地址 POP）都撤回这一趟，晚到的包或响应不能再开舞台。 */
+  if(queueOpenRequest&&navigation.seq!==queueOpenRequest.seq&&!isOverlayPath(navigation.location.pathname))disposeStage(false);
+  if(routing&&!navigation.claimed)queueMicrotask(syncRouteChrome);
+});
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();
 mountBatchDock();
@@ -3735,7 +3752,12 @@ buildManageBar();
    结果没人看，却排在这一页自己的数据前面。 */
 Promise.all([loadSourceStatus(),loadSyncedSettings(),entityShapesReady])
   .then(()=>wantsDiscoveryBars()?buildBars():null)
-  .then(async()=>{syncNavigation();wireAllDrag();await startRouting(restoreRoute);scheduleStickySurfaces()});
+  .then(()=>{
+    syncNavigation();wireAllDrag();
+    // 路由树里按匹配打开的页面等这一下才开始打开：壳的状态到这时才齐。
+    routing=true;writeShell({pageOpens:1});syncRouteChrome();
+    scheduleStickySurfaces();
+  });
 
 ;(()=>{
 /* Board 外壳：媒体库选择、侧栏底部、玻璃折射。 */
@@ -3834,7 +3856,7 @@ function placeBrand(){
   if(!head)return;
   boardBrand.setAttribute('aria-label','选择媒体库');
   if(boardBrand.parentElement!==head)head.prepend(boardBrand);
-  const expanded=drawer.classList.contains('open'),desktop=innerWidth>760;
+  const expanded=drawer.classList.contains('open'),desktop=!narrowShell();
   if(desktop||expanded){if(boardToggle.parentElement!==head)head.append(boardToggle)}else if(boardToggle.parentElement!==toggleHome.parentElement)toggleHome.after(boardToggle);
   drawer.inert=!desktop&&!expanded;
 }
@@ -3920,4 +3942,4 @@ if(/Chrome|Chromium|Edg\//.test(navigator.userAgent)){
 
 })();
 
-openDrawer(innerWidth>760&&sessionStorage.getItem('board.sidebar')!=='closed');
+openDrawer(!narrowShell()&&sessionStorage.getItem('board.sidebar')!=='closed');

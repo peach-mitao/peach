@@ -210,7 +210,7 @@ export function IndexPage(props: IndexProps) {
     }
     if (result.isError) {
       return (
-        <EmptyState icon={spriteGlyph('search')} title={`没能读取${title}`}
+        <EmptyState icon={spriteGlyph('alert')} title={`没能读取${title}`}
           actions={<Button variant="secondary" onClick={() => void result.refetch()}>重试</Button>}>
           {requestErrorMessage(result.error)}
         </EmptyState>
@@ -232,7 +232,8 @@ export function IndexPage(props: IndexProps) {
         </h2>
         {isPeople(kind) ? (
           <span data-index-count="" className="text-caption-1-regular leading-5 whitespace-nowrap text-text-secondary tabular-nums">
-            {result.isPending ? '' : readout}
+            {/* 没取到就没有读数：「0 项」读起来是「名册是空的」，和报错说的是两件事。 */}
+            {result.isPending || result.isError ? '' : readout}
           </span>
         ) : null}
         {isPeople(kind) ? <LayoutSwitch kind={kind} layout={layout} onChange={changeLayout} /> : null}

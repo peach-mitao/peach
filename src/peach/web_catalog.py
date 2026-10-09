@@ -462,6 +462,10 @@ def attach_avatar_availability(contract: WebContract, rows, key="rep",
     判据要看接触印相在不在盘上，一次批量取路径——逐行查库就是 N+1，顶栏一次 30 行。
     「还没裁过但印相还在」算取得到：`/avatar` 按需生成，把这种也判成没有等于把点一下
     就有的头像永远关掉。
+
+    发布账号缺少本人或出演职业依据（不过 `work_portrait_predicate`）时，代表作画面照样
+    当头像，同时标 `avatar_stand_in`：那是代表作画面，不是账号本人。资料页、索引、搜索、
+    口味榜与统计都从这里拿这个标志（ADR-0099）。
     """
     ids = sorted({int(row[key]) for row in rows if row.get(key)})
     paths: dict[int, str | None] = {}
@@ -482,7 +486,10 @@ def attach_avatar_availability(contract: WebContract, rows, key="rep",
     for row in rows:
         rep = row.get(key)
         entity_id = row.get('entity_id') or row.get('id')
-        row[flag] = bool(rep) and entity_id not in accounts and contract.has_avatar(rep, paths.get(int(rep)))
+        row[flag] = bool(rep) and contract.has_avatar(rep, paths.get(int(rep)))
+        row.pop('avatar_stand_in', None)
+        if row[flag] and entity_id in accounts:
+            row['avatar_stand_in'] = True
 
 
 def attach_card_performers(contract: WebContract, rows):

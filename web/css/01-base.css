@@ -262,25 +262,24 @@ button,[role="button"],summary{user-select:none;-webkit-user-select:none;-webkit
 /* React 子树的焦点环由 BoardUI 组件自己画（输入框画在外框上）；`:where` 让特指度保持 0,1,0。 */
 :where(:not(.peach-react *)):focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-/* Geist Search Input：搜索图标占前缀位，查找中原位换 Spinner，输入框几何不变。
-   全站带搜索语义的输入共用这一份，各处只加宽度和位置。 */
+/* 静态搜索框：React 接管前的骨架里用（索引页标题行），接管后换成 BoardUI 的 InputBase。
+   两者是同一只框的前后两帧，几何与面照 InputBase 取：无边框的填充底、20px 图标距左 8px、
+   文字从 34px 起（8 + 20 + 2 + 4），框高跟同一行按钮共用 --control-h。 */
 .geist-search{position:relative;min-width:0}
-.geist-search-prefix{position:absolute;z-index:1;left:12px;top:11px;
-  display:grid;place-items:center;width:16px;height:16px;color:var(--muted);pointer-events:none}
-.geist-search-prefix>svg{width:16px;height:16px;stroke:currentColor;fill:none}
-.geist-search input[type="search"]{width:100%;min-width:0;height:38px;
-  box-sizing:border-box;border:1px solid var(--field-ring);border-radius:var(--control-radius);
-  background:var(--ground);color:var(--ink);padding:0 12px 0 38px;font-size:var(--fs-md);font-family:inherit;
-  line-height:20px;transition:box-shadow .12s ease}
+.geist-search-prefix{position:absolute;z-index:1;left:8px;top:calc((var(--control-h) - 20px) / 2);
+  display:grid;place-items:center;width:20px;height:20px;color:var(--color-text-tertiary);pointer-events:none}
+.geist-search-prefix>svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none}
+.geist-search input[type="search"]{width:100%;min-width:0;height:var(--control-h);
+  box-sizing:border-box;border:0;border-radius:var(--control-radius);
+  background:var(--color-background-tertiary-default);color:var(--ink);padding:0 8px 0 34px;font-size:var(--fs-md);
+  font-family:inherit;line-height:20px;transition:box-shadow .12s ease}
 .geist-search input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
-.geist-search input[type="search"]::placeholder{color:var(--muted)}
+.geist-search input[type="search"]::placeholder{color:var(--color-text-tertiary)}
 /* 悬停与聚焦是同一枚 2px inset ring 在两档灰之间换档，聚焦压过悬停（BoardUI Input
-   的 `ring-2 ring-inset`，2026-09-09 取证登记 boardui-input）。环画在静止那条边的
-   内侧，三态边框同色——把聚焦态的边改成透明只会露出控件自己的底，那正是环外那条
-   亮边的来源。上游把 box-shadow 写进了 transition，环是渐变出来的，不是硬切。 */
+   的 `ring-2 ring-inset`，2026-09-09 取证登记 boardui-input）。上游把 box-shadow 写进了
+   transition，环是渐变出来的，不是硬切。 */
 .geist-search input[type="search"]:hover{box-shadow:inset 0 0 0 2px var(--color-border-button-hover)}
 .geist-search input[type="search"]:focus{outline:0;box-shadow:inset 0 0 0 2px var(--color-border-button-active)}
-.geist-search:focus-within .geist-search-prefix{color:var(--ink)}
 /* 纯文本输入框：全站唯一一份。此前每处自己拼内边距，控件高度散在 34/40/43 三档，
    而 <=760px 那条把输入框字号顶到 16 像素的防放大规则只抬没写死高度的那几个，
    同一行里的按钮不动，两个控件就差一截。

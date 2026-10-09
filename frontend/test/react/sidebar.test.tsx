@@ -76,7 +76,7 @@ function shellActions(): ShellActions {
     savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 
@@ -301,6 +301,14 @@ describe('筛选分组', async () => {
     expect(offline.disabled).toBe(true);
     expect(offline.hasAttribute('data-offline')).toBe(true);
     expect(offline.title).toBe('这块盘没挂上');
+  });
+
+  it('名字放不下被省略时悬停读得到全名：普通条目与关注标签都带 title', async () => {
+    const { scroll, render } = await setup();
+    render({ content: { kind: 'catalog', key: '1', facets: facets({ followTags: [chip('the_legend_of_zelda:_tears_of_the_kingdom', 2)] }) } });
+    expect(chipOf(scroll, 'tag', 'a')!.title).toBe(chipOf(scroll, 'tag', 'a')!.querySelector('[data-sidebar-chip-label]')!.textContent);
+    expect(scroll.querySelector<HTMLElement>('[data-follow-drawer-tag="the_legend_of_zelda:_tears_of_the_kingdom"]')!.title)
+      .toBe(scroll.querySelector('[data-follow-drawer-tag="the_legend_of_zelda:_tears_of_the_kingdom"] [data-sidebar-chip-label]')!.textContent);
   });
 
   it('就地刷新的计数只改数字：名单里有、新聚合里没有的记 0', async () => {

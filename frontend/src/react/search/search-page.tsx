@@ -50,7 +50,7 @@ const modelOf = (s: Store): MenuModel => menuModel({
   query: s.query, history: s.history, picks: s.picks, suggestFor: s.suggestFor, groups: s.groups, tabs: s.tabs,
   kind: s.kind,
 });
-const hasContent = (m: MenuModel) => !!(m.tabs || m.recent || m.left.length || m.right.length);
+const hasContent = (m: MenuModel) => !!(m.tabs || m.recent || m.left.length || m.right.length || m.empty);
 
 const Sprite = ({ name }: { name: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>
@@ -125,6 +125,7 @@ export function SearchPage(props: SearchProps) {
       {model.tabs ? <Tabs tabs={model.tabs} kind={s.kind} onPick={op.pickKind} wire={props.helpers.wireScroller} /> : null}
       {model.recent ? section(model.recent) : null}
       {columns(model.left, model.right)}
+      {model.empty ? <p data-search-empty="" role="status">没有找到</p> : null}
     </div>
   );
 }
@@ -377,7 +378,7 @@ function Row({ entry, active, helpers, onPick, onPeek, onRemove }: {
     return (
       <div data-search-option="work" data-open-item={item.id} {...shared}>
         <Cover card={item.card} helpers={helpers} />
-        <span data-search-meta=""><span data-search-name="">{item.value}</span><span data-search-sub="">{byline}</span></span>
+        <span data-search-meta=""><span data-search-name=""><span>{item.value}</span></span><span data-search-sub="">{byline}</span></span>
       </div>
     );
   }
@@ -425,7 +426,8 @@ function Cover({ card, helpers }: { card: SuggestCard | null | undefined; helper
  *  站点圆标；都取不到就是首字母。一屏几十个，取派生件。 */
 function Face({ item, kind }: { item: SuggestItem; kind: string }) {
   const ref = { id: item.entity_id as number | null | undefined, has_image: item.has_image as boolean | undefined,
-    image_version: item.image_version as string | undefined, avatar_focus: item.avatar_focus };
+    image_version: item.image_version as string | undefined, avatar_focus: item.avatar_focus,
+    avatar_stand_in: item.avatar_stand_in as boolean | undefined };
   const html = avatarInner(item.value, ref, (item.rep as number | null | undefined) || null, kind,
     (item.mark as number | null | undefined) || null, item.has_logo ? item.value : '', 'icon', undefined, true);
   return <span data-search-face="" data-kind={kind} dangerouslySetInnerHTML={{ __html: html }} />;

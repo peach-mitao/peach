@@ -30,6 +30,68 @@ def _catalog_vocabulary() -> set[str]:
 
 
 class GenreTaxonomyTests(unittest.TestCase):
+    def test_anal_region_is_distinct_from_anal_intercourse(self):
+        for raw in ("Anal", "Anal Play", "アナル", "アナル責め", "アナルシリーズ", "肛門・肛交"):
+            with self.subTest(raw=raw):
+                self.assertEqual(resolve_genre(raw), "屁眼")
+        for raw in ("Anal Sex", "アナルセックス", "アナルファック", "アナル中出し"):
+            with self.subTest(raw=raw):
+                self.assertEqual(resolve_genre(raw), "肛交")
+
+    def test_javdb_categories_have_explicit_existing_vocabulary_targets(self):
+        tags, unknown = map_genres(["高跟鞋", "絲襪、過膝襪", "白天出軌", "女大學生",
+                                    "第一人稱攝影", "4小時以上作品", "單體作品", "尚未收錄的分類"])
+        self.assertEqual(tags, ["高跟", "丝袜", "出轨", "学生", "主观视角"])
+        self.assertEqual(unknown, ["尚未收錄的分類"])
+        self.assertEqual(resolve_genre("靴子"), UNMAPPED)
+
+    def test_javdb_aliases_share_the_existing_semantic_targets(self):
+        aliases = (
+            ("溫泉", "Hot Spring", "温泉"),
+            ("女同性戀", "Lesbian", "百合"),
+            ("女同接吻", "レズキス", "百合"),
+            ("強姦", "レイプ", "强制剧情"),
+            ("偷窺", "盗撮", "偷拍偷窥"),
+            ("處女", "Virgin", "处女设定"),
+            ("爛醉如泥的", "泥酔", "醉酒"),
+            ("黑人演員", "黒人男優", "黑人"),
+            ("家教", "Private Tutor", "家庭教师"),
+            ("童年朋友", "幼なじみ", "青梅竹马"),
+            ("變性者", "Transsexual", "跨性别"),
+            ("肉肉女", "Chubby", "丰满"),
+            ("水手服", "Sailor Uniform", "制服"),
+            ("學校泳裝", "School Swimsuits", "泳装"),
+            ("手指插入", "Fingering", "手交"),
+            ("手淫", "Masturbation", "自慰"),
+            ("輪姦", "Gangbang", "多人"),
+            ("兩男兩女", "Foursome", "3P多人"),
+            ("打屁股", "Spanking", "调教"),
+            ("灌腸", "Enema", "排泄"),
+            ("假陽具", "Dildo", "性玩具"),
+            ("肛交", "Anal Sex", "肛交"),
+            ("薄馬賽克", "ギリモザ", "薄码"),
+            ("數位馬賽克", "Digital Mosaic", "有码"),
+        )
+        for chinese, existing, target in aliases:
+            with self.subTest(chinese=chinese, existing=existing):
+                tags, unknown = map_genres([chinese, existing, chinese])
+                self.assertEqual(tags, [target])
+                self.assertEqual(unknown, [])
+
+    def test_javdb_aliases_keep_distinct_or_unsupported_meanings_unmapped(self):
+        raw = ["靴子", "濕身", "濕透", "飲尿", "妓女", "雙性人", "母親",
+               "女醫生", "女檢察官", "戀腿癖", "戀乳癖", "口爆/吞精", "車站性交",
+               "無碼流出", "無碼破解", "子宮頸", "正太控", "瘦小身型"]
+        tags, unknown = map_genres(raw)
+        self.assertEqual(tags, [])
+        self.assertEqual(unknown, raw)
+
+    def test_javdb_aliases_preserve_scene_behavior_and_anal_boundaries(self):
+        tags, unknown = map_genres(["戶外", "Exhibitionism", "洗澡", "溫泉",
+                                    "手淫", "手指插入", "Anal", "肛交", "肛門・肛交"])
+        self.assertEqual(tags, ["户外", "户外露出", "浴室", "温泉", "自慰", "手交", "屁眼", "肛交"])
+        self.assertEqual(unknown, [])
+
     def test_every_projection_lands_in_the_existing_catalog_vocabulary(self):
         """投影只能落在既有词表上。
 
@@ -375,7 +437,7 @@ class VocabularyHygieneTests(unittest.TestCase):
             (("ドキュメンタリー", "Documentary"), "纪录片"),
             (("イメージビデオ", "Image Video", "グラビア"), "写真映像"),
             (("痴漢", "Molester", "Groping"), "痴汉"),
-            (("妊婦", "Pregnant"), "孕妇"),
+            (("妊婦", "妊娠", "Pregnant"), "孕妇"),
             (("巨根", "Big Cock", "デカチン"), "巨根"),
             (("放尿", "Peeing", "おしっこ"), "放尿"),
             (("黒人", "Black Guy"), "黑人"),
@@ -470,11 +532,11 @@ class Fc2SellerTagTests(unittest.TestCase):
     def test_words_the_catalog_has_no_slot_for_stay_on_the_review_page(self):
         """词表里没有对应一格、或者含义还没查清的词，留给人判。
 
-        `神乳` 剥掉夸法只剩「乳」这一级，和 `おっぱい` 同理；受孕那一簇说的是内射到怀孕的
-        题材，`孕妇` 说的是出镜时已经怀孕，两边不是一回事；`Iカップ` 是尺寸；`ハイレグ` 既可能是
+        `神乳` 剥掉夸法只剩「乳」这一级，和 `おっぱい` 同理；`孕ませ`、`排卵`、`種付け` 说的是
+        受孕相关题材，不等同于 `孕妇` 表达的怀孕状态；`Iカップ` 是尺寸；`ハイレグ` 既可能是
         泳装也可能是体操服；`モザ` 在一部已判无码的片子上出现，是半个词。
         """
-        for word in ("神乳", "妊娠", "孕ませ", "排卵", "種付け", "Iカップ", "ハイレグ", "モザ"):
+        for word in ("神乳", "孕ませ", "排卵", "種付け", "Iカップ", "ハイレグ", "モザ"):
             with self.subTest(word=word):
                 self.assertEqual(resolve_genre(word), UNMAPPED)
 

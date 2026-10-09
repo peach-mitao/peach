@@ -43,14 +43,16 @@ import { SelectionDock } from '../components/selection-dock';
 import { busyProps } from '../settings/use-action';
 import {
   authorGroups, authorName, checkedText, checkEvidenceGap, checkFailures, checkSummary,
-  COLUMN_SORT, dropSources, fetchCheckJob, fetchPending, FOLLOW_CHECK_KEY, isBroken,
+  COLUMN_SORT, dropSources, errorHeadline, fetchCheckJob, fetchPending, FOLLOW_CHECK_KEY, isBroken,
   LAYOUTS, markItem, PAGE_SIZES, pageWindow, patchSource, removeSource,
   reloadFollowManage, selectionState, setSourceEnabled, SORT_DEFAULT_DIR, SORT_OPTIONS,
   sortLabel, startCheck, tableRows, toggleGroup,
   type CheckJob, type FollowData, type FollowSource, type Layout, type SortDir, type SortKey,
   type TableRow as SourceTableRow,
 } from './follow-manage';
-import { AuthorAvatar, SourceIcon, SourceLink, StatusBadge } from './source-view';
+import { AuthorAvatar, ErrorLine, SourceIcon, SourceLink, StatusBadge } from './source-view';
+
+const count = (value: unknown) => (Number(value) || 0).toLocaleString();
 
 /** 列头点的就是工具栏里的那一档排序，所以两边共用同一张对照表，方向也共用一个值。 */
 const SORT_COLUMN = Object.fromEntries(
@@ -144,17 +146,17 @@ function SourceRow(
   { source, selected, onToggle, handlers }:
   { source: FollowSource; selected: boolean; onToggle(on: boolean): void; handlers: RowHandlers },
 ) {
-  /* 点这一行的空白处就是勾上或取消：勾选框只有 16px，一行里其余的地方点了没反应的话，选几条要瞄几次。 */
+  /* 点这一行的空白处就是勾上或取消：勾选框只有 16px，一行里其余的地方点了没反应的话，选几条要瞄几次。
+     窄屏固定两行：上一行勾选、名字、站标与状态，下一行上次检查、开关与两枚动作键。 */
   return (
-    <div data-selected={selected || undefined}
-      className="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3"
+    <div data-selected={selected || undefined} data-follow-source-row=""
+      className="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 max-sm:gap-x-2"
       onClick={(event) => { if (clickedBlank(event, event.currentTarget)) onToggle(!selected) }}>
       <Checkbox isSelected={selected} onChange={onToggle} aria-label={`选择 ${source.label}`} />
-      <span className="flex min-w-0 grow flex-col gap-0.5">
+      {/* 名字列从零宽起长：长名字和报错在列内折行或截断，不把站标、状态和操作键挤到下一行。 */}
+      <span className="flex min-w-0 grow basis-0 flex-col gap-0.5">
         <SourceLink source={source} />
-        {source.last_error
-          ? <small className="text-caption-1-regular text-text-error-primary">{source.last_error}</small>
-          : null}
+        {source.last_error ? <ErrorLine text={source.last_error} /> : null}
       </span>
       {/* 卡片里站名只出一枚图标：这一行紧挨着的就是作者名和状态徽章，站名写出来是同一个词
           并排两次。名字仍在 DOM 里，读屏和取不到图标时都还读得到；表格那边「站点」是独立
@@ -164,19 +166,21 @@ function SourceRow(
         <SourceIcon provider={source.provider} label={source.provider_label} />
       </span>
       <StatusBadge source={source} />
-      <span className="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary">
-        {checkedText(source)}
-      </span>
-      <Switch aria-label={`启用 ${source.label}`} isSelected={source.enabled}
-        isDisabled={handlers.readOnly} onChange={(on) => handlers.toggle(source, on)} />
-      <span className="flex shrink-0 items-center gap-1">
-        <Button variant="secondary" size="small" iconOnly leadingIcon={RiRefreshLine}
-          aria-label={`检查 ${source.label} 的更新`}
-          disabled={!source.enabled || handlers.readOnly} {...busyProps(handlers.busy)}
-          onClick={() => handlers.check([source.id])} />
-        <Button variant="secondary" size="small" iconOnly leadingIcon={RiDeleteBinLine}
-          aria-label={`移除 ${source.label}`} disabled={handlers.readOnly}
-          onClick={() => handlers.remove(source)} />
+      <span data-follow-source-controls="" className="contents max-sm:flex max-sm:w-full max-sm:flex-wrap max-sm:items-center max-sm:gap-1.5">
+        <span className="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary max-sm:mr-auto max-sm:text-caption-1-regular">
+          {checkedText(source)}
+        </span>
+        <Switch aria-label={`启用 ${source.label}`} isSelected={source.enabled}
+          isDisabled={handlers.readOnly} onChange={(on) => handlers.toggle(source, on)} />
+        <span className="flex shrink-0 items-center gap-1">
+          <Button variant="secondary" size="small" iconOnly leadingIcon={RiRefreshLine}
+            aria-label={`检查 ${source.label} 的更新`}
+            disabled={!source.enabled || handlers.readOnly} {...busyProps(handlers.busy)}
+            onClick={() => handlers.check([source.id])} />
+          <Button variant="secondary" size="small" iconOnly leadingIcon={RiDeleteBinLine}
+            aria-label={`移除 ${source.label}`} disabled={handlers.readOnly}
+            onClick={() => handlers.remove(source)} />
+        </span>
       </span>
     </div>
   );
@@ -207,27 +211,30 @@ function AuthorCard(
       <div data-follow-author-header data-open={open || undefined}
         className="flex flex-wrap items-center gap-3 px-2 py-2.5">
         <AuthorAvatar group={group} name={name} />
-        <b className="min-w-0 grow text-body-medium break-words text-text-primary">{name}</b>
+        <b className="min-w-0 grow text-body-medium wrap-anywhere text-text-primary max-sm:basis-0">{name}</b>
         <Button variant="secondary" size="small" iconOnly leadingIcon={RiRefreshLine}
           aria-label={`检查 ${name} 的全部来源`} disabled={!enabled.length || handlers.readOnly}
           {...busyProps(handlers.busy)} onClick={() => handlers.check(enabled)} />
-        <span className="flex shrink-0 items-center gap-1" title={providers}>
-          {group.map((source) => <SourceIcon key={source.id} provider={source.provider} />)}
-          {/* 只读屏用的文字走 `VisuallyHidden`：它把样式写在元素上，不会生成一个和旧
-              样式表同名的工具类（`web/css/01-base.css` 里那条 `.sr-only` 带 !important）。 */}
-          <VisuallyHidden>{`来源：${providers}`}</VisuallyHidden>
+        {/* 窄屏固定两行：上一行头像、名字与检查键，下一行站标、失败数与全选、收起。 */}
+        <span data-follow-author-controls="" className="contents max-sm:flex max-sm:w-full max-sm:items-center max-sm:gap-2">
+          <span className="flex shrink-0 items-center gap-1 max-sm:mr-auto max-sm:min-w-0 max-sm:shrink max-sm:flex-wrap" title={providers}>
+            {group.map((source) => <SourceIcon key={source.id} provider={source.provider} />)}
+            {/* 只读屏用的文字走 `VisuallyHidden`：它把样式写在元素上，不会生成一个和旧
+                样式表同名的工具类（`web/css/01-base.css` 里那条 `.sr-only` 带 !important）。 */}
+            <VisuallyHidden>{`来源：${providers}`}</VisuallyHidden>
+          </span>
+          {bad
+            ? <span className="shrink-0 text-body-2-regular text-text-error-primary">{`${bad} 个失败`}</span>
+            : null}
+          <Button variant="secondary" size="small" leadingIcon={RiCheckDoubleLine}
+            aria-pressed={state.all ? 'true' : state.some ? 'mixed' : 'false'}
+            aria-label={`${state.all ? '取消全选' : '全选'} ${name} 的来源`}
+            onClick={() => onToggleGroup(!state.all)}>{state.all ? '取消全选' : '全选'}</Button>
+          <Button variant="secondary" size="small" aria-expanded={open} aria-controls={panel}
+            leadingIcon={open ? RiArrowUpSLine : RiArrowDownSLine}
+            aria-label={`${open ? '收起' : '展开'} ${name} 的来源`}
+            onClick={() => onOpen(!open)}>{open ? '收起' : '展开'}</Button>
         </span>
-        {bad
-          ? <span className="shrink-0 text-body-2-regular text-text-error-primary">{`${bad} 个失败`}</span>
-          : null}
-        <Button variant="secondary" size="small" leadingIcon={RiCheckDoubleLine}
-          aria-pressed={state.all ? 'true' : state.some ? 'mixed' : 'false'}
-          aria-label={`${state.all ? '取消全选' : '全选'} ${name} 的来源`}
-          onClick={() => onToggleGroup(!state.all)}>{state.all ? '取消全选' : '全选'}</Button>
-        <Button variant="secondary" size="small" aria-expanded={open} aria-controls={panel}
-          leadingIcon={open ? RiArrowUpSLine : RiArrowDownSLine}
-          aria-label={`${open ? '收起' : '展开'} ${name} 的来源`}
-          onClick={() => onOpen(!open)}>{open ? '收起' : '展开'}</Button>
       </div>
       <div id={panel} hidden={!open} data-source-divider>
         {group.map((source) => (
@@ -397,11 +404,7 @@ export function SourceList(props: SourceListProps) {
         cell: (context) => (
           <span className="flex min-w-0 flex-col gap-0.5">
             <SourceLink source={context.row.original.source} />
-            {context.row.original.source.last_error
-              ? <small className="text-caption-1-regular text-text-error-primary">
-                  {context.row.original.source.last_error}
-                </small>
-              : null}
+            {context.row.original.source.last_error ? <ErrorLine text={context.row.original.source.last_error} /> : null}
           </span>
         ),
       }),
@@ -516,46 +519,51 @@ export function SourceList(props: SourceListProps) {
       padding: 'none',
       className: 'flex flex-col gap-4 px-6 py-5 max-sm:px-4',
     })}>
-      {/* 放不下时带字的按钮先收成图标，再让整行换行。收起后名字由 `aria-label` 接着说。 */}
-      <div ref={toolbar} className="flex flex-wrap items-center gap-2">
-        <h3 className="mr-auto text-title-2-medium text-text-primary">关注列表</h3>
-        <span className="text-body-2-regular text-text-secondary">
-          {`${sources.length} 个来源${counts.new ? ` · ${counts.new} 条未看` : ''}`}
+      {/* 放不下时带字的按钮先收成图标，再让整行换行。收起后名字由 `aria-label` 接着说。
+          窄屏固定两行：上一行标题、读数与检查全部，下一行版式、排序与全部收起。 */}
+      <div ref={toolbar} data-follow-toolbar="" className="flex flex-wrap items-center gap-2">
+        <span className="contents max-sm:flex max-sm:min-w-0 max-sm:flex-1 max-sm:flex-col">
+          <h3 className="mr-auto text-title-2-medium text-text-primary">关注列表</h3>
+          <span className="text-body-2-regular text-text-secondary">
+            {`${sources.length.toLocaleString()} 个来源${counts.new ? ` · ${count(counts.new)} 条未看` : ''}`}
+          </span>
         </span>
         <Button variant="primary" leadingIcon={RiRefreshLine} disabled={readOnly}
           aria-label="检查全部" iconOnly={compact}
           {...busyProps(rowHandlers.busy)} onClick={() => startChecking([])}>检查全部</Button>
-        <span data-button-group role="group" aria-label="关注列表版式">
-          <Button variant="ghost" iconOnly
-            leadingIcon={RiLayoutGridLine} aria-label={LAYOUTS[0][1]} aria-pressed={!asTable}
-            onClick={() => onLayout('default')} />
-          <Button variant="ghost" iconOnly
-            leadingIcon={RiTableLine} aria-label={LAYOUTS[1][1]} aria-pressed={asTable}
-            onClick={() => onLayout('table')} />
+        <span data-follow-toolbar-controls="" className="contents max-sm:flex max-sm:w-full max-sm:items-center max-sm:gap-2">
+          <span data-button-group role="group" aria-label="关注列表版式">
+            <Button variant="ghost" iconOnly
+              leadingIcon={RiLayoutGridLine} aria-label={LAYOUTS[0][1]} aria-pressed={!asTable}
+              onClick={() => onLayout('default')} />
+            <Button variant="ghost" iconOnly
+              leadingIcon={RiTableLine} aria-label={LAYOUTS[1][1]} aria-pressed={asTable}
+              onClick={() => onLayout('table')} />
+          </span>
+          <Select aria-label="关注列表排序" selectedKey={sort}
+            onSelectionChange={(key) => {
+              if (key === null) return;
+              const next = String(key) as SortKey;
+              onSort(next, SORT_DEFAULT_DIR[next]);
+            }}>
+            {SORT_OPTIONS.map(([key, name]) => <SelectItem key={key} id={key}>{name}</SelectItem>)}
+          </Select>
+          {/* 箭头是装饰，方向由无障碍名称说，而且说的是点下去会得到的那一头。 */}
+          <Button variant="secondary" iconOnly
+            leadingIcon={dir === 'asc' ? RiArrowUpLine : RiArrowDownLine}
+            aria-label={sortLabel(sort, dir)}
+            onClick={() => onSort(sort, dir === 'asc' ? 'desc' : 'asc')} />
+          {asTable ? null : (
+            <Button variant="secondary" iconOnly={compact}
+              leadingIcon={allCollapsed ? RiArrowDownSLine : RiArrowUpSLine}
+              aria-label={allCollapsed ? '全部展开' : '全部收起'}
+              onClick={() => setCollapsed(allCollapsed
+                ? new Set<string>()
+                : new Set(groups.map((group) => String(group[0]!.author_key || group[0]!.id))))}>
+              {allCollapsed ? '全部展开' : '全部收起'}
+            </Button>
+          )}
         </span>
-        <Select aria-label="关注列表排序" selectedKey={sort}
-          onSelectionChange={(key) => {
-            if (key === null) return;
-            const next = String(key) as SortKey;
-            onSort(next, SORT_DEFAULT_DIR[next]);
-          }}>
-          {SORT_OPTIONS.map(([key, name]) => <SelectItem key={key} id={key}>{name}</SelectItem>)}
-        </Select>
-        {/* 箭头是装饰，方向由无障碍名称说，而且说的是点下去会得到的那一头。 */}
-        <Button variant="secondary" iconOnly
-          leadingIcon={dir === 'asc' ? RiArrowUpLine : RiArrowDownLine}
-          aria-label={sortLabel(sort, dir)}
-          onClick={() => onSort(sort, dir === 'asc' ? 'desc' : 'asc')} />
-        {asTable ? null : (
-          <Button variant="secondary" iconOnly={compact}
-            leadingIcon={allCollapsed ? RiArrowDownSLine : RiArrowUpSLine}
-            aria-label={allCollapsed ? '全部展开' : '全部收起'}
-            onClick={() => setCollapsed(allCollapsed
-              ? new Set<string>()
-              : new Set(groups.map((group) => String(group[0]!.author_key || group[0]!.id))))}>
-            {allCollapsed ? '全部展开' : '全部收起'}
-          </Button>
-        )}
       </div>
 
       {/* 这一趟在后台跑，关掉页面还在继续，所以状态留在页面上而不是只让按钮转一下。 */}
@@ -569,7 +577,7 @@ export function SourceList(props: SourceListProps) {
             extra={<ul className="flex flex-col gap-0.5 text-body-2-regular">
               {failures.map((row, at) => (
                 <li key={`${row.provider || ''}-${row.ref || at}`}>
-                  {`${row.provider_label || row.provider || ''} ${row.author || row.label || row.ref || ''}：${row.error || '未说明原因'}`}
+                  {`${row.provider_label || row.provider || ''} ${row.author || row.label || row.ref || ''}：${errorHeadline(row.error || '') || '未说明原因'}`}
                 </li>
               ))}
             </ul>}>
@@ -663,7 +671,7 @@ export function SourceList(props: SourceListProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-body-2-regular text-text-secondary">
-          {`${win.start + 1}–${win.end} / ${win.total} ${asTable ? '个来源' : '位创作者'}`}
+          {`${count(win.start + 1)}–${count(win.end)} / ${count(win.total)} ${asTable ? '个来源' : '位创作者'}`}
         </span>
         <Select aria-label="每页显示数量" size="sm" selectedKey={String(pageSize)}
           onSelectionChange={(key) => { if (key !== null) table.setPageSize(Number(key)) }}>
@@ -681,7 +689,7 @@ export function SourceList(props: SourceListProps) {
         /* 旧 `.fsecfoot`：汇总与它的动作是卡底那一条带，比卡面暗一点点，通到卡片左右两沿。 */
         <div className="-mx-6 -mb-5 flex flex-wrap items-center gap-2 border-t border-separator-border rounded-b-2xl bg-card-footer px-6 py-4 max-sm:-mx-4 max-sm:px-4">
           <span className="mr-auto text-body-2-regular text-text-secondary">
-            {`未看 ${counts.new} · 已看 ${counts.seen || 0} · 已保存 ${counts.saved || 0} · 已忽略 ${counts.ignored || 0}`}
+            {`未看 ${count(counts.new)} · 已看 ${count(counts.seen)} · 已保存 ${count(counts.saved)} · 已忽略 ${count(counts.ignored)}`}
           </span>
           <Button variant="secondary" size="small" onClick={openFollow}>去看更新</Button>
           <Button variant="secondary" size="small" disabled={readOnly} {...busyProps(markAll.isPending)}

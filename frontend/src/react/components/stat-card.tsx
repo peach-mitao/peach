@@ -82,7 +82,8 @@ export function StatCard(
         ) : null}
         <span className="min-w-0 truncate">{label}</span>
       </span>
-      <b className="px-4 pt-3 pb-4 text-title-1-medium tabular-nums text-text-primary max-sm:px-3 max-sm:pb-3">
+      {/* 窄屏两张一排时卡只有一百四十来像素，读数降一档字号；九位数再放不下就折行，不截掉开头几位。 */}
+      <b className="px-4 pt-3 pb-4 text-title-1-medium tabular-nums text-text-primary wrap-anywhere max-sm:px-3 max-sm:pb-3 max-sm:text-title-3-medium">
         {figure}
       </b>
       {/* 脚注压在卡底：卡片被邻居撑高时空出来的那块留给读数上方，脚注不跟着飘。 */}

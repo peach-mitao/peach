@@ -93,6 +93,13 @@ function GridBody(props: CatalogGridProps) {
     queueMicrotask(() => { if (live) props.onCount?.(total, shown) });
     return () => { live = false };
   }, [result.data, total, shown]);
+  const failed = !result.isPending && !result.data;
+  useLayoutEffect(() => {
+    if (!failed) return;
+    let live = true;
+    queueMicrotask(() => { if (live) props.onCountFailed?.() });
+    return () => { live = false };
+  }, [failed]);
 
   const open = useCallback((item: MediaItem, anchor: HTMLElement) => actions.open(item, anchor), [actions]);
   const openResource = useCallback(
@@ -191,7 +198,8 @@ export function LoadMore({ entity, load, enabled, children }: {
     <>
       {entity
         ? <button ref={attach} type="button" data-entity-more="" {...aria} onClick={() => void run(true)}>{children ?? '载入更多'}</button>
-        : <div ref={attach} data-load-more="" {...aria} onClick={() => void run(true)}
+        /* 失败时只留下面那条重试：哨兵收起但不卸下，重试接上之后照旧由它续页。 */
+        : <div ref={attach} data-load-more="" {...aria} hidden={Boolean(state.error)} onClick={() => void run(true)}
           dangerouslySetInnerHTML={{ __html: loadingDotsHtml('继续载入中…') }} />}
       {state.error ? <RetryNote message={state.error} onRetry={() => void run(true)} /> : null}
     </>

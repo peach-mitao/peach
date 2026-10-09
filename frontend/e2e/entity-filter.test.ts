@@ -208,7 +208,7 @@ describe('实体页筛选浮层', () => {
       await page.locator('[data-entity-tag="中出"]').click();
       assert.equal(await page.locator('[data-entity-tag="中出"]').getAttribute('aria-pressed'), 'true');
       await page.locator('[data-entity-combo] [data-combo-chip]', { hasText: '中出' }).waitFor();
-      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 中出' }).waitFor({ timeout: 15_000 });
+      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 已选 1 个标签' }).waitFor({ timeout: 15_000 });
       assert.match(decodeURIComponent(page.url()), /[?&]tag=中出/);
       await page.getByRole('button', { name: '撤掉 中出' }).click();
       await page.locator('[data-entity-readout]', { hasText: /^视频 · 24$/ }).waitFor({ timeout: 15_000 });
@@ -243,7 +243,7 @@ describe('实体页筛选浮层', () => {
       await page.waitForFunction(() => document.querySelector('[data-local-wall]')?.getAttribute('data-layout') === 'fixed');
       await segment(page, '图片布局', 'masonry').click();
       await page.locator('[data-media-view="videos"]').click();
-      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 中出' }).waitFor({ timeout: 15_000 });
+      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 已选 1 个标签' }).waitFor({ timeout: 15_000 });
       assert.equal(await page.locator('[data-entity-tag]').count(), TAGS.length);
       assert.equal(await page.locator('[data-entity-combo] [data-combo-chip]').count(), 1);
       assert.deepEqual(unexpected(opened), []);
@@ -360,18 +360,38 @@ describe('实体页筛选浮层', () => {
       assert.doesNotMatch(page.url(), /[?&]media=/);
       const before = stubs.itemQueries.length;
       await page.locator('[data-entity-tag="中出"]').click();
-      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 中出' }).waitFor({ timeout: 15_000 });
+      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 已选 1 个标签' }).waitFor({ timeout: 15_000 });
       await settle(page);
       assert.equal(stubs.itemQueries.length - before, 1, `加一枚标签发了 ${stubs.itemQueries.length - before} 次作品请求`);
       await page.locator('[data-media-view="photos"]').click();
       await page.locator('[data-entity-readout]', { hasText: /^照片/ }).waitFor({ timeout: 15_000 });
       await page.locator('[data-media-view="videos"]').click();
-      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 中出' }).waitFor({ timeout: 15_000 });
+      await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 已选 1 个标签' }).waitFor({ timeout: 15_000 });
       await settle(page);
       assert.equal(stubs.itemQueries.length - before, 1, '切照片再切回视频又取了一遍作品');
       assert.deepEqual(unexpected(opened), []);
     } finally {
       await opened.close();
+    }
+  });
+
+  it('选了六枚长标签，读数只报个数，两种宽度下页面都不被撑宽', { timeout: 60_000 }, async () => {
+    const long = Array.from({ length: 6 }, (_, at) => `とても長い日本語のタグ名その${at + 1}・途中で切れない`);
+    for (const viewport of [DESKTOP, PHONE]) {
+      const opened = await openPerformer(browser, viewport, `?tag=${encodeURIComponent(long.join(','))}`);
+      try {
+        const { page } = opened;
+        await page.locator('[data-entity-readout]', { hasText: '视频 · 24 · 已选 6 个标签' }).waitFor({ timeout: 15_000 });
+        const width = await page.evaluate(() => ({
+          page: document.documentElement.scrollWidth, view: window.innerWidth,
+          readout: document.querySelector('[data-entity-filter-glass] [data-entity-readout]')!.textContent,
+        }));
+        assert.ok(width.page <= width.view, `${viewport.name}：页面被撑到 ${width.page}px（视口 ${width.view}）`);
+        assert.ok(!long.some((tag) => width.readout?.includes(tag)), `${viewport.name}：读数里又列了标签名`);
+        assert.deepEqual(unexpected(opened), []);
+      } finally {
+        await opened.close();
+      }
     }
   });
 });

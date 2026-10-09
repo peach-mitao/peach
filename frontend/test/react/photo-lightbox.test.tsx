@@ -84,11 +84,11 @@ const local = (id: number, extra: Record<string, unknown> = {}): LightboxSlide =
   src: `/photo?id=${id}`, thumb: `/photo-thumb?id=${id}`, name: `${id}.jpg`,
   asset: { id, name: `${id}.jpg`, location: 'local', size: 2 * 1024 * 1024, ...extra },
 });
-const sample = (n: number, total: number): LightboxSlide => ({
+const sample = (n: number): LightboxSlide => ({
   src: `/sample-image?code=SSIS-057&n=${n}`, thumb: `/sample-thumb?code=SSIS-057&n=${n}`,
-  name: `SSIS-057 样张 ${n}`, asset: null, source: 'DMM', position: n, total,
+  name: `SSIS-057 样张 ${n}`, asset: null, source: 'DMM',
 });
-const WALL = [sample(1, 2), sample(2, 2), local(100), local(101), local(102)];
+const WALL = [sample(1), sample(2), local(100), local(101), local(102)];
 
 const q = <T extends Element = HTMLElement>(box: Element, selector: string) => box.querySelector<T>(selector)!;
 const labelled = (box: Element, label: string) => q<HTMLButtonElement>(box, `[aria-label="${label}"]`);
@@ -204,13 +204,15 @@ describe('翻页', () => {
     expect(q(box, '[data-photo-detail] h2').textContent).toBe('101.jpg');
   });
 
-  it('原图取不到换上这张的缩略图，只换一次', async () => {
+  it('原图取不到换上这张的缩略图，只换一次；缩略图也取不到就换成占位', async () => {
     const box = await open(0, WALL);
-    const img = q<HTMLImageElement>(box, '[data-photo-main] img');
+    const slide = q(box, '[data-photo-main] .swiper-slide');
+    const img = q<HTMLImageElement>(slide, 'img');
     await act(async () => { img.dispatchEvent(new Event('error')) });
     expect(img.getAttribute('src')).toBe('/sample-thumb?code=SSIS-057&n=1');
     await act(async () => { img.dispatchEvent(new Event('error')) });
-    expect(img.getAttribute('src')).toBe('/sample-thumb?code=SSIS-057&n=1');
+    expect(slide.querySelector('img')).toBeNull();
+    expect(slide.querySelector('[data-photo-missing]')?.textContent).toBe('图片取不到');
   });
 
   it('灯箱量到新尺寸就让两条轮播重量，缩放按上一次的目标重算', async () => {
@@ -365,15 +367,16 @@ describe('信息面板', () => {
     expect(status.textContent).toBe('');
   });
 
-  it('样张与在线图不出定位键：写来源、第几张，大图到了补上分辨率；没名字写「未命名图片」', async () => {
-    const box = await open(0, [sample(1, 2), { src: '/follow-stream?id=5&media=0', thumb: '/t.jpg', size: 3000 }]);
+  it('样张与在线图不出定位键：写来源，大图到了补上分辨率，第几张只看底栏；没名字写「未命名图片」', async () => {
+    const box = await open(0, [sample(1), { src: '/follow-stream?id=5&media=0', thumb: '/t.jpg', size: 3000 }]);
     const meta = q(box, '[data-photo-detail-meta]');
     expect(q<HTMLButtonElement>(box, '[data-photo-reveal]').hidden).toBe(true);
-    expect(meta.textContent).toBe('DMM · 第 1 / 2 张');
+    expect(meta.textContent).toBe('DMM');
+    expect(q(box, '[data-photo-count]').textContent).toBe('1 / 2');
     const img = q<HTMLImageElement>(box, '[data-photo-main] img');
     Object.defineProperties(img, { naturalWidth: { value: 1600 }, naturalHeight: { value: 1200 } });
     await act(async () => { img.dispatchEvent(new Event('load')) });
-    expect(meta.textContent).toBe('DMM · 第 1 / 2 张 · 1600 × 1200');
+    expect(meta.textContent).toBe('DMM · 1600 × 1200');
     await main().go(1);
     expect(q(box, '[data-photo-detail] h2').textContent).toBe('未命名图片');
     expect(meta.textContent).toBe('在线图片 · 3\u00a0KB');

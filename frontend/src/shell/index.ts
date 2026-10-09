@@ -12,7 +12,7 @@
  *
  * 每次写入之后通知订阅者，版本号单调递增，React 读者按 `useSyncExternalStore(subscribeShell, shellVersion)`
  * 接。服务端事实（来源在线状态、目录总数、聚合、实体形态、回收站计数）不在这里，归 TanStack Query；
- * 壳路由派发判过期的代次计数器也不在这里。 */
+ * 壳判过期的代次计数器也不在这里。 */
 
 /** 目录筛选口径：键与地址栏上的查询参数同名（`loc`、`creator`、`tag`、`state`、`sort`、`seed`…）。 */
 export type CatalogFilters = Record<string, string>;
@@ -78,10 +78,12 @@ export let runtimeConfigurable: boolean | null = null;
 /** 这一次是不是从设置完成页（或教程卡）进来的：口味页打开时取走，取一次就清。 */
 export let cameFromSetup = false;
 
-/** 壳要路由树按地址打开页面的次数。启动派发那一次记 1：在那之前来源、设置与形状名单还没读完，路由树里按匹配
+/** 壳要路由树按地址打开页面的次数。壳开始路由那一次记 1：在那之前来源、设置与形状名单还没读完，路由树里按匹配
  *  挂上的页面元素只挂着、不打开。之后壳每要求一次「按当前地址把这一页从头重开」（批量写回之后、设置变了要重取、
  *  点开的正是画着的那一位）就加一。后退前进与跨页由开次代次（`@peach/history` 的 `openEpoch`）管，不经这里。 */
 export let pageOpens = 0;
+/** 队列打开意图的代次：真实条目尚未取齐，地址由详情首屏确定。 */
+export let queueOpens = 0;
 /** 资料页按第一页作品推出来的 JAV 语境（壳的 `javActive` 读）：页面推上来，资料页每打开一次先清掉。 */
 export let entityJavLayout = false;
 /** 关注页这一次进入的取样种子：创作者、题材、标签三排露出哪些由它定，列表按它取样。重新进入与「换一批」时重掷。 */
@@ -112,6 +114,7 @@ export interface ShellFields {
   followDetailReturnPath: string;
   configurationRequestedSection: string;
   pageOpens: number;
+  queueOpens: number;
   entityJavLayout: boolean;
   followDiscoverySeed: number;
   followRevision: number;
@@ -145,6 +148,7 @@ export function writeShell(patch: Partial<ShellFields>): void {
   if (has('followDetailReturnPath')) followDetailReturnPath = patch.followDetailReturnPath!;
   if (has('configurationRequestedSection')) configurationRequestedSection = patch.configurationRequestedSection!;
   if (has('pageOpens')) pageOpens = patch.pageOpens!;
+  if (has('queueOpens')) queueOpens = patch.queueOpens!;
   if (has('entityJavLayout')) entityJavLayout = patch.entityJavLayout!;
   if (has('followDiscoverySeed')) followDiscoverySeed = patch.followDiscoverySeed!;
   if (has('followRevision')) followRevision = patch.followRevision!;

@@ -63,7 +63,7 @@ main{position:relative;z-index:1;padding:14px 16px 90px}
 /* 列距 16px 是给悬停面留的：卡片悬停时底色往盒外多铺 8px（见下方 `:hover`），列距再窄，
    两张卡的悬停面就顶到邻卡上。 */
 .grid{gap:24px 16px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr))}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--tile)),1fr))}
 .card{cursor:pointer;display:flex;flex-direction:column;gap:8px;min-width:0;border-radius:var(--surface-radius);
   position:relative;transition:transform .18s ease,filter .18s ease,background-color .15s ease,box-shadow .15s ease;transform-origin:center}
 /* 垃圾文件队列里，视口外的卡片跳过渲染：滚动和侧栏开合时要算的只剩屏上那几十张。
@@ -286,6 +286,7 @@ body[data-density="dense"] .card .meta .size{flex:none;white-space:nowrap}
 /* 「想要」按下时星形填实：同一颗键既是开关也是读数。 */
 .feednewtools button[aria-pressed="true"] svg{fill:currentColor}
 .feednewcard .meta .t{font-size:var(--fs-sm)}
+/* 番号整段不折行；比卡还宽的长串在卡边收成省略号，不被标题块的溢出裁成半个字。 */
 /* 女优名加发行日一行放完，放不下截掉女优名的尾巴：折成两行时断在日期中间，读成两个数。 */
 .feednewcard .meta .s{flex-wrap:nowrap;white-space:nowrap;min-height:1lh}
 .feednewcard .meta .s>span{flex:none}

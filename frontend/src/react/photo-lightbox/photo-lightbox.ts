@@ -24,9 +24,6 @@ export interface LightboxSlide {
   /** 没有 asset 时信息面板第一段：站名或「官方样张」，缺省是「在线图片」。 */
   source?: string;
   size?: number;
-  /** 在所属那一组里的序号与张数，多于一张时面板写「第 n / N 张」。 */
-  position?: number;
-  total?: number;
 }
 
 /** 灯箱要回壳办的事。定位成功由壳发回执，失败回一句原因，写在按钮下面。 */
@@ -136,12 +133,11 @@ export const fmtPhotoSize = (raw: unknown): string => {
 
 export const photoTitle = (slide: LightboxSlide): string => (slide.asset?.name || slide.name) || '未命名图片';
 
-/** 面板第二行。本地图是来源与大小；别的是来源、序号、分辨率（大图到了才有）和大小。 */
+/** 面板第二行。本地图是来源与大小；别的是来源、分辨率（大图到了才有）和大小。第几张只有底栏那一个编号。 */
 export function photoMeta(slide: LightboxSlide, natural: readonly [number, number] | undefined): string {
   const asset = slide.asset;
   if (asset) return [LOC[asset.location ?? ''] || asset.location || '来源未知', fmtPhotoSize(asset.size)].join(' · ');
-  const sequence = (slide.total ?? 0) > 1 ? `第 ${slide.position} / ${slide.total} 张` : '';
   const resolution = natural?.[0] && natural[1] ? `${natural[0]} × ${natural[1]}` : '';
-  return [slide.source || '在线图片', sequence, resolution, slide.size ? fmtPhotoSize(slide.size) : '']
+  return [slide.source || '在线图片', resolution, slide.size ? fmtPhotoSize(slide.size) : '']
     .filter(Boolean).join(' · ');
 }

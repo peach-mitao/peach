@@ -19,6 +19,7 @@ import {
 } from '@/components/base/table/table';
 
 import { errorMessage } from '../../api';
+import { ErrorExcerpt } from '../activity/error-excerpt';
 import { useBackgroundJob } from '../background-job';
 import { DataTableFrame } from '../components/data-table-frame';
 import {
@@ -46,6 +47,9 @@ const DISCONNECTED = '暂时无法读取进度，正在重新连接…';
 
 const count = (value: number | undefined) => Number(value || 0).toLocaleString();
 
+/** 一张结果表先露的行数：一趟检查能判出上百条，全铺开这一节就有几屏长。 */
+export const LINK_TABLE_PREVIEW = 10;
+
 /** 一格读数：名目、数字、可选的一句注。每一类各占一格：挤成一行时标签和数字之间只剩
  *  间隔点，数字归谁全靠猜。 */
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
@@ -65,13 +69,17 @@ function LinkTable(
     picked?: readonly number[]; onPick?(next: number[]): void; children?: ReactNode;
   },
 ) {
+  const [expanded, setExpanded] = useState(false);
   if (!items.length) return null;
   const chosen = picked ?? [];
   const all = chosen.length > 0 && chosen.length === items.length;
+  // 收起时只露前几行；全选、重试与删除照旧作用于整张表，表头的计数也是全部。
+  const shown = expanded ? items : items.slice(0, LINK_TABLE_PREVIEW);
+  const folded = items.length > LINK_TABLE_PREVIEW;
   return (
     <div className={RESULT_SECTION}>
       <h4 className="mb-1 text-body-semibold text-text-primary">
-        {title}<b className="ml-1.5 font-semibold tabular-nums text-text-secondary">{items.length}</b>
+        {title}<b className="ml-1.5 font-semibold tabular-nums text-text-secondary">{items.length.toLocaleString()}</b>
       </h4>
       <p className="mb-3 text-caption-1-regular text-text-secondary">{hint}</p>
       <DataTableFrame>
@@ -91,7 +99,7 @@ function LinkTable(
             <TableColumn id="url">地址</TableColumn>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
+            {shown.map((item) => (
               <TableRow key={item.id} id={item.id}>
                 {onPick ? (
                   <TableCell>
@@ -102,10 +110,15 @@ function LinkTable(
                         : chosen.filter((id) => id !== item.id))} />
                   </TableCell>
                 ) : null}
-                <TableCell>{item.entity}</TableCell>
+                {/* 结果常是整段报错：收成一行、宽度封顶，所属和标签留出能读的宽度。 */}
+                <TableCell><span className="block min-w-24 wrap-anywhere">{item.entity}</span></TableCell>
                 <TableCell>{LINK_KINDS[item.link_kind] || item.link_kind}</TableCell>
-                <TableCell>{item.label || ''}</TableCell>
-                <TableCell><span className="tabular-nums text-text-error-primary">{item.note}</span></TableCell>
+                <TableCell><span className="block min-w-24 wrap-anywhere">{item.label || ''}</span></TableCell>
+                <TableCell>
+                  <div className="min-w-40 max-w-80">
+                    <ErrorExcerpt text={item.note} className="tabular-nums text-text-error-primary" />
+                  </div>
+                </TableCell>
                 <TableCell>
                   {/* 地址保留首尾：`/official/talent/X` 与 `/talent/X` 的差别就在尾部，尾部省略
                       正好把这张表要回答的东西切掉。中缩改写的是那个 span 的 textContent，
@@ -121,6 +134,13 @@ function LinkTable(
           </TableBody>
         </Table>
       </DataTableFrame>
+      {folded
+        ? <div className="mt-2">
+            <Button variant="secondary" size="small" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+              {expanded ? '收起' : `显示全部 ${items.length.toLocaleString()} 条`}
+            </Button>
+          </div>
+        : null}
       {children}
     </div>
   );
@@ -158,7 +178,7 @@ export function LinkManager() {
   const unclear = state?.unclear ?? [];
   const retryable = done ? unclear : [];
   const info = stats.data;
-  const hosts = (info?.top_hosts ?? []).slice(0, 3).map(([host, n]) => `${host} ${n}`).join(' · ');
+  const hosts = (info?.top_hosts ?? []).slice(0, 3).map(([host, n]) => `${host} ${count(n)}`).join(' · ');
 
   const run = (retry?: readonly number[]) => {
     if (running || (retry && !retry.length)) return;
@@ -193,11 +213,11 @@ export function LinkManager() {
   } else if (state && state.status !== 'idle') {
     progress = <>
       {state.status === 'running'
-        ? <TaskProgress embedded label={checkLine(state)} value={state.checked} total={state.total} />
+        ? <TaskProgress embedded label={checkLine(state)} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
         : null}
       {removing
         ? <TaskProgress embedded label={prune.job?.message || '正在重验并删除失效链接…'}
-            value={prune.job?.checked} total={prune.job?.total} />
+            value={Math.min(prune.job?.checked || 0, prune.job?.total || 0)} total={prune.job?.total} />
         : null}
     </>;
     const pickedLabel = picked.length ? `重试选中的 ${picked.length} 条` : '重试选中的链接';

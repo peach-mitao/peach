@@ -2,26 +2,27 @@
  * 垃圾文件）时挂上，按地址重建目录筛选（`@peach/shell` 的 `state`），再交壳收舞台以外的事：搜索框、侧栏与顶栏、
  * 顶部三层和取数（`ShellActions.catalog`）。
  *
- * 元素按页面挂 key：首页、三个筛选态与回收站画的是同一张网格，共用一个元素；垃圾文件是另一页。换筛选、后退前进与
- * 壳要求重开都不重挂，元素在每一轮变化之后的微任务里按下面的次序判断做哪一件：
+ * 元素按页面挂 key：首页、三个筛选态与回收站画的是同一张网格，共用一个元素；垃圾文件是另一页。没有背景的作品与
+ * 队列地址（深链、刷新）也挂这个元素。换筛选、后退前进与壳要求重开都不重挂，元素在每一轮变化之后的微任务里按下面的
+ * 次序判断做哪一件：
+ * - 详情压在上面：条目记了背景（页面组按背景匹配）就什么都不做，下面那一页一直画着；没有背景时补画一次目录网格
+ *   （`ShellActions.catalog.fill`），详情下面不留一张永远在读的骨架。
  * - 壳要求按当前地址从头重开（`pageOpens` 加一：启动、深链详情关掉补画来处、从管理条进回收站）：整页打开。
  * - 领了新的开次代次（后退前进、不认领的跳转）：整页打开；后退前进从别处回到首页时作废顶部三层的缓存、重掷取样种子，
  *   在目录里换来换去沿用这一粒。地址上写了 `seed` 就用它。
- * - 壳认领写了地址（换筛选、换排序、换一批、回首页）：筛选已经由壳写进 `state`，只重取。
- * - 详情压在上面（页面组按背景匹配）：什么都不做；关掉详情回到压着的那一份地址、筛选也没变时不重取，下面那一页
- *   一直画着。
+ * - 壳认领写了地址（换筛选、换排序、换一批、回首页）：筛选已经由壳写进 `state`，只重取；关掉详情回到压着的那一份
+ *   地址、筛选也没变时不重取。这一页要是还没开过（后退落到压在别处之上的详情，挂上时就被盖着），整页打开。
  * `pageOpens` 还是 0 时壳没开始路由，元素只挂着。挂上那一刻按那一次历史变化认没认领分别算作后两种；路由根晚于
  * 壳开始路由才装上时，挂上那一刻算第一种。
  *
- * 整页打开先收舞台。`?state=ads` 落在首页上时不打开，改写成垃圾文件的地址（不加条目），由垃圾文件那一页的元素接着
- * 打开。卸载时去处不是目录、详情、沉浸或资料页，就收起 `#grid`、首页新作行与处理横幅：那三处离开目录也留着它们。
- * 判断、改写与收起都排进微任务：路由根在历史变化的同一次调用里同步提交，派发点（`RouteDispatch`）在同一次提交里
- * 排的那个微任务先跑，壳的 `restoreRoute` 写好标题与侧栏之后，这里才动。 */
+ * `?state=ads` 落在首页上时不打开，改写成垃圾文件的地址（不加条目），由垃圾文件那一页的元素接着打开。卸载时去处
+ * 不是目录、详情、沉浸或资料页，就收起 `#grid`、首页新作行与处理横幅：那三处离开目录也留着它们。判断、改写与收起
+ * 都排进微任务：路由根在历史变化的同一次调用里同步提交，壳订阅历史早于路由根，它写标题与侧栏的那一轮排在前面。 */
 import { useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router';
 
 import { appSettingsStore } from '@peach/appearance';
-import { backgroundOf, isOverlayPath, peachHistory, shellNavigate } from '@peach/history';
+import { isOverlayPath, navigationBackground, overlayTarget, peachHistory, shellNavigate } from '@peach/history';
 import { cleanTagFilter, isCatalogPath, newSeed, ROUTE_STATES } from '@peach/legacy/core';
 import { pageOpens, state, subscribeShell, writeShell, type CatalogFilters } from '@peach/shell';
 
@@ -48,7 +49,8 @@ peachHistory.listen((navigation) => {
 /* 首页上的 `?state=ads` 改写成垃圾文件地址那一下：垃圾文件那一页的元素挂上时取走，整页打开。 */
 let junkRedirect = false;
 
-/** 元素上一次处理到哪儿：序号、开次代次、重开次数，那一刻有没有详情压着、页面组画的是哪一份地址与哪一套筛选。 */
+/** 元素上一次处理到哪儿：序号、开次代次、重开次数，那一刻有没有详情压着、页面组画的是哪一份地址与哪一套筛选，
+ *  这一页开过没有。 */
 interface Seen {
   seq: number;
   epoch: number;
@@ -56,16 +58,17 @@ interface Seen {
   covered: boolean;
   address: string;
   filters: string;
+  opened: boolean;
 }
 
-function seen(): Seen {
+function seen(opened: boolean): Seen {
   const { seq, openEpoch, location } = peachHistory.navigation;
   const covered = isOverlayPath(location.pathname);
-  const shown = (covered ? backgroundOf(location.state) : null) ?? location;
+  const shown = navigationBackground() ?? location;
   const filters = state ?? {};
   return {
     seq, epoch: openEpoch, opens: pageOpens, covered, address: `${shown.pathname}${shown.search}`,
-    filters: JSON.stringify(filters, Object.keys(filters).sort()),
+    filters: JSON.stringify(filters, Object.keys(filters).sort()), opened,
   };
 }
 
@@ -93,18 +96,22 @@ function filtersAt(pathname: string, search: string, entering: boolean, shell: C
 /** 判断这一轮做哪一件，做掉；`mark` 换成这一刻。 */
 function settle(mark: Seen, actions: ShellActions): void {
   const was = { ...mark };
-  const now = seen();
+  const now = seen(was.opened);
   Object.assign(mark, now);
   const shell = actions.catalog;
-  if (!shell || now.opens === 0 || now.covered) return;
+  if (!shell || now.opens === 0) return;
+  if (now.covered) {
+    if (!navigationBackground()) shell.fill();
+    return;
+  }
   let entering = false;
   if (now.opens === was.opens) {
-    if (now.epoch === was.epoch) {
+    if (now.epoch === was.epoch && was.opened) {
       if (now.seq === was.seq || (was.covered && now.address === was.address && now.filters === was.filters)) return;
       shell.load();
       return;
     }
-    entering = peachHistory.navigation.action === 'POP' && last.from !== '/';
+    if (now.epoch !== was.epoch) entering = peachHistory.navigation.action === 'POP' && last.from !== '/';
   }
   const { pathname, search } = peachHistory.navigation.location;
   if (pathname === '/' && new URLSearchParams(search).get('state') === 'ads') {
@@ -116,7 +123,7 @@ function settle(mark: Seen, actions: ShellActions): void {
   const retitle = junkRedirect;
   junkRedirect = false;
   entering &&= pathname === '/';
-  actions.closeStage();
+  mark.opened = true;
   writeShell({ state: filtersAt(pathname, search, entering, shell) });
   shell.open(pathname, { entering, retitle });
 }
@@ -137,7 +144,7 @@ function CatalogOpen() {
   useEffect(() => {
     const own = live.current;
     own.mounted = true;
-    const now = seen();
+    const now = seen(!isOverlayPath(peachHistory.navigation.location.pathname));
     /* 挂上这一刻就记下：之后壳在同一轮里要求重开（`pageOpens` 加一），微任务里比得出来。 */
     if (!now.covered && now.opens > 0) {
       if (junkRedirect || last.seq === initialSeq) now.opens = -1;
@@ -165,8 +172,10 @@ function CatalogOpen() {
   return null;
 }
 
-/** 目录六条路径共用的元素：首页、三个筛选态与回收站一个 key，垃圾文件另一个；页面组按背景匹配时取背景那一页。 */
+/** 目录六条路径共用的元素：首页、三个筛选态与回收站一个 key，垃圾文件另一个；页面组按背景匹配时取背景那一页。
+ *  覆盖地址的参数不是数字（`/item/abc`）时什么都不挂：那不是一条详情，下面也不补画。 */
 export function CatalogMatch() {
   const { pathname } = useLocation();
+  if (isOverlayPath(pathname) && !overlayTarget(pathname)) return null;
   return <CatalogOpen key={pathname === '/junk-files' ? '/junk-files' : '/'} />;
 }

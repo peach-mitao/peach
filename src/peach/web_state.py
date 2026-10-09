@@ -175,6 +175,7 @@ class WebContract:
         #: 后继调度（ADR-0040）。导入 `avatar_followup` 就是它的登记动作：调度器本身
         #: 不认识任何一种后继，登记表在 `followups.REGISTRY` 里。
         from . import avatar_followup  # noqa: F401  登记补头像后继
+        from . import creator_identity_followup  # noqa: F401  登记查创作者身份后继
         from . import feed_followup  # noqa: F401  登记取新作资料后继
         from . import follow_creators  # noqa: F401  登记关注作者建档后继
         from . import performer_alias_followup  # noqa: F401  登记补女优别名后继
@@ -341,10 +342,14 @@ class WebContract:
         return self.database.write_transaction()
 
     def has_snapshot(self, raw_path: str | None) -> bool:
+        return self.snapshot_file(raw_path) is not None
+
+    def snapshot_file(self, raw_path: str | None) -> Path | None:
+        """账本里那条接触印相路径在本机的文件；不在盘上是 None。"""
         if not raw_path:
-            return False
+            return None
         path = normalized_path(raw_path) if self.snapshot_root is not None else Path(raw_path)
-        return path.is_file()
+        return path if path.is_file() else None
 
     def cover_path(self, code: str | None) -> Path | None:
         """封面按归一番号存一份，多个文件共用同一张；没有就返回 None。"""

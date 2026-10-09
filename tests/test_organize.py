@@ -298,6 +298,43 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(result["failures"][0]["reason"], organize.SKIP_CROSS_VOLUME)
         self.assertTrue((self.media / "旧" / "abc123.mp4").is_file())
 
+    def _pikpak_plan(self):
+        self._file("旧/abc123.mp4")
+        _seed(self.db_path, [
+            {"id": 1, "path": "A:\\x\\旧\\abc123.mp4", "name": "abc123.mp4", "code": "ABC-123"},
+        ])
+        roots = mock.patch.object(organize, "location_roots",
+                                  lambda: {"local": (ROOT_DECLARATION,), "pikpak": ("A:\\",)})
+        roots.start()
+        self.addCleanup(roots.stop)
+        return {"rows": [{"asset_id": 1, "action": "rename",
+                          "current_path": "A:\\x\\旧\\abc123.mp4",
+                          "target_path": "A:\\x\\旧\\ABC-123.mp4"}]}
+
+    def test_pikpak_batch_without_a_verified_rename_is_refused_whole(self):
+        plan = self._pikpak_plan()
+        with self.assertRaisesRegex(organize.OrganizeError, "pikpak"):
+            self._apply(plan)
+        self.assertTrue((self.media / "旧" / "abc123.mp4").is_file())
+        with self.assertRaises(organize.UnverifiedRename):
+            organize._rename("A:\\x\\旧\\abc123.mp4", "A:\\x\\旧\\ABC-123.mp4")
+        self.assertTrue((self.media / "旧" / "abc123.mp4").is_file())
+
+    def test_injected_verified_rename_carries_pikpak_rows(self):
+        plan = self._pikpak_plan()
+        calls = []
+
+        def verified(source, target):
+            calls.append((source, target))
+            self._translate(source).rename(self._translate(target))
+
+        with organize.verified_renames("pikpak", verified):
+            result = self._apply(plan)
+        self.assertEqual((result["moved"], result["failed"]), (1, 0))
+        self.assertEqual(calls, [("A:\\x\\旧\\abc123.mp4", "A:\\x\\旧\\ABC-123.mp4")])
+        self.assertTrue((self.media / "旧" / "ABC-123.mp4").is_file())
+        self.assertTrue(organize.unverified_location("pikpak"))
+
     def test_missing_source_is_reported_not_raised(self):
         _seed(self.db_path, [
             {"id": 1, "path": "R:\\media\\旧\\abc123.mp4", "name": "abc123.mp4",
@@ -343,6 +380,13 @@ class EndpointTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             w_organize_apply(self.contract, {"location": "local",
+                                             "file_template": "{number}"})
+
+    def test_apply_on_a_source_without_verified_rename_is_refused(self):
+        from peach.web_organize import w_organize_apply
+
+        with self.assertRaisesRegex(ValueError, "pikpak"):
+            w_organize_apply(self.contract, {"location": "pikpak", "confirm": True,
                                              "file_template": "{number}"})
 
     def test_rollback_without_a_batch_is_refused(self):

@@ -16,7 +16,7 @@ const AVATAR_CHOICE_IMAGE_URL = '/avatar-choice';
 
 export interface AvatarChoice {
   ref: string;
-  source: 'gfriends' | 'history' | 'asset' | 'code' | 'url' | 'upload';
+  source: 'gfriends' | 'history' | 'asset' | 'code' | 'url' | 'upload' | 'social' | 'online';
   label: string;
   width: number;
   height: number;
@@ -126,16 +126,24 @@ export async function sendAvatarPick(
   await sendBytes(`${AVATAR_PICK_URL}${query(kind, id)}&name=${encodeURIComponent(file.name)}${box}`, file);
 }
 
+/** 说明里点名的别名个数。再多就是一大段字，把候选网格挤得只剩一排。 */
+const NOTE_NAMES = 2;
+
 /** 说明只留一句：这一屏已经用图说清了在选什么，多一行字就是多一行要读的东西。
- *  按哪个名字找到的要说——找错人是这里唯一会出的大错，而名字是唯一的线索。 */
+ *  按哪个名字找到的要说——找错人是这里唯一会出的大错，而名字是唯一的线索。名字多时点名
+ *  前两个，余下的只报个数，每一格按谁找到的在格子的 title 里。 */
 export function pickerNote(name: string, data: AvatarChoices | undefined): string {
   // 候选在路上时网格里是 Skeleton，这里不再另写一句「正在读取」。
   if (!data) return name;
   const elsewhere = data.matched_names.filter((one) => one !== name);
-  if (elsewhere.length) return `${name}：图库里按「${elsewhere.join('」「')}」找到的。`;
+  if (elsewhere.length) {
+    const named = `「${elsewhere.slice(0, NOTE_NAMES).join('」「')}」`;
+    const more = elsewhere.length > NOTE_NAMES ? `等 ${elsewhere.length.toLocaleString()} 个名字` : '';
+    return `${name}：图库里按${named}${more}找到的。`;
+  }
   return data.choices.length
     ? `${name}：换上的那张留在本机，随时能换回来。`
-    : `${name}：图库里没有这个名字，用下面两种方式换。`;
+    : `${name}：还没有候选图片，可输入番号、图片地址或从本机选择。`;
 }
 
 /** 超过两天按天数说：「124 小时」要人自己去除。 */
@@ -156,16 +164,20 @@ export const sharedCast = (choice: AvatarChoice): boolean => choice.cast > 1;
 
 export const cropNote = (choice: AvatarChoice): string =>
   sharedCast(choice)
-    ? `${choice.label}：${choice.cast} 人合演，先找到她自己的脸，再拖动方框选一块。`
+    ? `${choice.label}：${choice.cast.toLocaleString()} 人合演，先找到她自己的脸，再拖动方框选一块。`
     : `${choice.label}：拖动方框选一块，滚轮或角上那枚方块改大小。`;
 
 const SOURCE_LABELS: Record<string, string> = {
   gfriends: '图库', history: '用过的', asset: '作品画面', code: '番号封面',
-  url: '地址', upload: '本机',
+  url: '地址', upload: '本机', social: '社媒头像', online: '在线作品',
 };
 
 /** 底图那一排每一格的名字：封面一格，九宫格九格按位置数。 */
 export function baseLabel(ref: string): string {
+  if (ref.startsWith('follow:')) {
+    const what = ref.split(':')[2];
+    return what === 'cover' ? '作品封面' : `内容图片 ${Number(what.replace('image', '') || 0) + 1}`;
+  }
   if (ref.startsWith('cover:')) return '封面';
   const what = ref.split(':')[2] || '';
   if (what === 'cover') return '封面';
@@ -173,9 +185,11 @@ export function baseLabel(ref: string): string {
   return Number.isFinite(cell) ? `第 ${cell + 1} 格` : what;
 }
 
-/** 一格的完整说明，进 `title`：哪儿来的、多大、按谁找到的。 */
+/** 一格的完整说明，进 `title`：哪儿来的、多大、按谁找到的。作品画面再接上服务端的说明：
+ *  片名，账号没有本人身份依据时还有「代表作画面，非本人」。 */
 export const choiceDetail = (choice: AvatarChoice): string =>
   `${SOURCE_LABELS[choice.source] || choice.source} · ${choice.label}`
   + (choice.width ? ` · ${choice.width}×${choice.height}` : '')
-  + (sharedCast(choice) ? ` · ${choice.cast} 人合演` : '')
-  + (choice.found_by ? ` · 按「${choice.found_by}」找到` : '');
+  + (sharedCast(choice) ? ` · ${choice.cast.toLocaleString()} 人合演` : '')
+  + (choice.found_by ? ` · 按「${choice.found_by}」找到` : '')
+  + (choice.source === 'asset' && choice.detail && choice.detail !== choice.label ? ` · ${choice.detail}` : '');

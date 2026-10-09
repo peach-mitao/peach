@@ -28,11 +28,15 @@ import { spinnerHtml } from '@peach/legacy/ui';
 
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
 import { ArtSlot } from './art-slot';
+import { suppressShiftTextSelection } from './row-click';
 
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
 const PORTRAIT_RATIO = 9 / 16;
 
 export type MediaCardVariant = 'grid' | 'short' | 'next' | 'resource';
+
+/** 片名空着时卡片标题与读屏名的兜底，资源卡那一档是「未命名资源」。 */
+const UNNAMED = '未命名视频';
 
 /** 雪碧图里的一枚字形，写法同遗留层 `icon()`：尺寸与描边由 `./media-card.css` 按位置给。 */
 function Icon({ name }: { name: string }) {
@@ -159,7 +163,8 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
   const artwork = cardArtwork(item, size, false, layout.javImage);
   const identity = size === 'small' ? artwork.html : cardArtwork(item, 'small', false, layout.javImage).html;
   const rawName = parts?.title || item.name || '';
-  const shownName = helpers.displayName(item, rawName);
+  const shownName = helpers.displayName(item, rawName).trim() || UNNAMED;
+  const titleHtml = helpers.titleHtml(item, rawName).trim() || esc(UNNAMED);
   const shownSize = parts?.total_size ?? item.size;
   const shownDuration = parts?.total_duration ?? item.duration;
   const watched = !parts && Number(item.play_seconds) > 0 && Number(item.duration) > 0
@@ -199,9 +204,9 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
       <div data-media-badge="" dangerouslySetInnerHTML={{ __html: helpers.badgeHtml(item.location || '', item.cost || '') }} />
       <span data-media-check=""><Icon name="check" /></span>
       <span data-media-trash-mark=""><Icon name="trash" /><b>回收站</b></span>
-      {parts ? <span data-media-group="">{`${parts.count} 卷`}</span> : null}
+      {parts ? <span data-media-group="">{`${Number(parts.count).toLocaleString()} 卷`}</span> : null}
       {editions
-        ? <span data-media-group="" title={editions.editions.join(' · ')}>{`${editions.count} 个版本`}</span>
+        ? <span data-media-group="" title={editions.editions.join(' · ')}>{`${Number(editions.count).toLocaleString()} 个版本`}</span>
         : null}
       <span data-media-duration="">{fmtDur(shownDuration)}</span>
       {watched > 0
@@ -234,7 +239,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
     <article ref={attach} data-media-card="" data-id={item.id} data-variant={variant}
       data-part-seed={parts ? parts.seed_id : undefined} data-stacked={stacked ? '' : undefined}
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click}>
+      onClick={click} onMouseDown={suppressShiftTextSelection}>
       <button type="button" data-media-open="" data-open=""
         aria-label={`打开 ${shownName}${parts ? '分卷' : editions ? '版本' : '详情'}`} />
       {stacked ? <div data-media-stack="">{pic}</div> : pic}
@@ -242,7 +247,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
         {avatar}
         <div data-media-text="">
           <button type="button" data-media-title="" data-open=""
-            dangerouslySetInnerHTML={{ __html: helpers.titleHtml(item, rawName) }} />
+            dangerouslySetInnerHTML={{ __html: titleHtml }} />
           <div data-media-byline="">
             {who}
             {item.why ? <span data-media-why="">{item.why}</span> : null}
@@ -297,7 +302,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
   return (
     <article ref={card} data-media-card="" data-id={item.id} data-variant="resource" data-medium={item.medium || 'other'}
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click}>
+      onClick={click} onMouseDown={suppressShiftTextSelection}>
       <div data-media-pic="" style={{ '--card-ratio': String(16 / 9) } as CSSProperties}>
         <span data-media-glyph=""><Icon name={glyph} /><b>{label}</b></span>
         {image

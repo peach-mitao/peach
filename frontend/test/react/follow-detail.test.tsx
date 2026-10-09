@@ -9,7 +9,7 @@ import {
   collectionCopy, detailTags, followItemKey, tagCategory,
   type FollowDetailActions, type FollowDetailData, type FollowDetailItem, type FollowDetailProps,
 } from '../../src/react/follow-detail/follow-detail';
-import { FollowDetailPage } from '../../src/react/follow-detail/follow-detail-page';
+import { FOLLOW_DOTS_MAX, FollowDetailPage } from '../../src/react/follow-detail/follow-detail-page';
 import { FOLLOW_CREDENTIALS_KEY, type FollowFeedHelpers, type FollowGroup } from '../../src/react/follow-feed/follow-feed';
 import { openPhotoLightbox } from '../../src/react/photo-lightbox/photo-lightbox-dialog';
 import { queryClient } from '../../src/react/query';
@@ -97,6 +97,12 @@ describe('取数', () => {
       await settle();
       expect(gone.textContent).toContain('这条关注内容已不存在');
     });
+    /* 不存在的条目重试也取不回来：只给一条回到关注的路。 */
+    const back = gone.querySelector('[data-follow-detail-gone] [data-note-action]');
+    expect(back?.textContent).toBe('回到关注');
+    expect(gone.textContent).not.toContain('重试');
+    await click(back);
+    expect(props.actions.close).toHaveBeenCalled();
   });
 });
 
@@ -129,6 +135,34 @@ describe('侧栏', () => {
     expect(download.hasAttribute('download')).toBe(true);
     expect(download.getAttribute('href')).toBe('/follow-stream?id=2&download=1');
     expect(host.querySelector('[data-follow-detail-identity] > div')?.textContent).toBe('作者发布者 Poster');
+  });
+
+  it('标题为空时标题区与多媒体队列写同一句「未命名内容」', async () => {
+    const { host } = await show(data(item(5, { title: '', media_items: [
+      { index: 0, media_kind: 'video', name: 'a.mp4', resource_group: 'g1' }, { ...image(1), resource_group: 'g1' },
+    ] })));
+    expect(host.querySelector('[data-follow-detail-name]')?.textContent).toBe('未命名内容');
+    expect(host.querySelector('[data-follow-queue]')?.textContent).toContain('未命名内容 · 2 个媒体');
+  });
+
+  it('摘要默认收起，量出来被截了才给「展开」，展开后同一枚键收回', async () => {
+    const high = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+    const box = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200);
+    try {
+      const { host } = await show(data(item(6, { summary: '很长的正文' })));
+      const summary = host.querySelector('[data-follow-detail-summary]')!;
+      expect(summary.hasAttribute('data-clamped')).toBe(true);
+      const toggle = host.querySelector('[data-follow-summary-toggle]')!;
+      expect(toggle.textContent).toBe('展开');
+      await click(toggle);
+      expect(summary.hasAttribute('data-clamped')).toBe(false);
+      expect(host.querySelector('[data-follow-summary-toggle]')?.textContent).toBe('收起');
+    } finally {
+      high.mockRestore();
+      box.mockRestore();
+    }
+    const { host: short } = await show(data(item(7, { summary: '短' })));
+    expect(short.querySelector('[data-follow-summary-toggle]')).toBeNull();
   });
 
   it('媒体没取回来的原因画在侧栏里', async () => {
@@ -230,6 +264,17 @@ describe('媒体', () => {
     await settle();
     expect(poster.getAttribute('src')).toBe('/thumb/11-0');
     expect(host.querySelector('[data-media-thumb-fallback]')?.hasAttribute('hidden')).toBe(false);
+  });
+
+  it(`轮播多于 ${FOLLOW_DOTS_MAX} 张时圆点条换成「当前 / 总数」`, async () => {
+    const many = Array.from({ length: FOLLOW_DOTS_MAX + 100 }, (_, index) => image(index));
+    const { host } = await show(data(item(14, { media_kind: 'image', media_items: many })), { mediaIndex: 99 });
+    expect(host.querySelector('[data-follow-image-dots]')).toBeNull();
+    expect(host.querySelector('[data-follow-image-count]')?.textContent).toBe('100 / 120');
+    queryClient.clear();
+    const { host: few } = await show(data(item(15, { media_kind: 'image', media_items: [image(0), image(1), image(2)] })));
+    expect(few.querySelectorAll('[data-follow-image-dots] [data-follow-image-item]')).toHaveLength(3);
+    expect(few.querySelector('[data-follow-image-count]')).toBeNull();
   });
 
   it('多图帖点图把整组交给灯箱，从当前这张开始', async () => {

@@ -16,6 +16,7 @@ import {
   junkDecision, junkKindMeta,
   type JunkItem, type JunkOperation, type JunkQueueActions, type JunkQueueHelpers, type JunkView,
 } from './junk-queue';
+import { suppressShiftTextSelection } from '../components/row-click';
 
 /** 雪碧图里的一枚字形，写法同遗留层 `icon()`：尺寸与描边由样式表按位置给。 */
 function Icon({ name }: { name: string }) {
@@ -89,7 +90,7 @@ function JunkCardView({ item, view, selected, selectMode, helpers, actions }: Ju
 
   return (
     <article ref={card} data-media-card="" data-variant="junk" data-junk-card="" data-id={item.id} data-junk-kind={kind}
-      data-selected={selected ? '' : undefined} onClick={clickCard}>
+      data-selected={selected ? '' : undefined} onClick={clickCard} onMouseDown={suppressShiftTextSelection}>
       <div data-media-pic="" style={{ '--card-ratio': String(16 / 9) } as CSSProperties}>
         <span data-media-glyph=""><Icon name={glyph} /><b>{label}</b></span>
         {preview

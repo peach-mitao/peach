@@ -5,9 +5,10 @@
  * 队列地址要等取完数才 push，背景仍是决定那一刻的，不是 push 那一刻的地址。详情之间换条沿用上一条的
  * 背景、不嵌套；只存路径与查询串，不存 DOM、对象或条目 `key`（刷新后对不上任何活条目）。
  *
- * 读：后退前进落到详情条目上时，壳调 `adoptOverlayState` 接上这一条记的背景，打开详情的那一处再用
- * `takeOverlayReturn` 取来处，关掉回到那一页。冷启动（刷新、新标签页、深链）不读：条目跨刷新仍带着
- * `usr`，下面那页却只补画了目录网格，关掉照旧回各自的缺省来处。 */
+ * 读：后退前进落到详情条目上时，路由树的覆盖元素（`react/router/pages/overlay.tsx`）调 `adoptOverlayState`
+ * 接上这一条记的背景，壳打开详情的那一处再用 `takeOverlayReturn` 取来处，关掉回到那一页。冷启动（刷新、
+ * 新标签页、深链）不读：条目跨刷新仍带着 `usr`，下面那页却从没画过，页面组照没有背景补画（`/item/:id` 补画
+ * 目录网格），关掉回各自的缺省来处。 */
 import { matchPath } from 'react-router';
 
 /** 覆盖在页面上的那几种地址。不进 `isRoutedPath`：页面宿主不画它们。 */
@@ -16,7 +17,34 @@ export const OVERLAY_PATHS = [
   '/follow/item/:id',
 ] as const;
 
+export type OverlayPath = typeof OVERLAY_PATHS[number];
+
 export type OverlayKind = 'item' | 'follow';
+
+/** 一条覆盖地址要打开的那一条：作品详情、关注详情，或四种队列里的一条（`key` 是种子或播放列表）。 */
+export type OverlayTarget =
+  | { kind: 'item' | 'follow'; id: number }
+  | { kind: 'queue'; queue: 'mix' | 'parts' | 'editions' | 'playlist'; key: number; item: number };
+
+const QUEUES = { '/mix/:seed/:item': 'mix', '/parts/:seed/:item': 'parts', '/editions/:seed/:item': 'editions',
+  '/playlists/:playlist/:item': 'playlist' } as const;
+
+/** 地址匹配哪一条覆盖路径；参数要全是数字，`/item/abc` 不算。 */
+export function overlayMatch(pathname: string): { path: OverlayPath; target: OverlayTarget } | null {
+  for (const path of OVERLAY_PATHS) {
+    const match = matchPath(path, pathname);
+    if (!match) continue;
+    const values = Object.values(match.params);
+    if (!values.every((value) => /^\d+$/.test(value ?? ''))) return null;
+    const [first, second] = values.map(Number) as [number, number];
+    if (path === '/item/:id' || path === '/follow/item/:id') return { path, target: { kind: path === '/item/:id' ? 'item' : 'follow', id: first } };
+    return { path, target: { kind: 'queue', queue: QUEUES[path], key: first, item: second } };
+  }
+  return null;
+}
+
+/** 地址要打开的那一条覆盖；不是覆盖地址或参数不是数字时是 null。 */
+export const overlayTarget = (pathname: string): OverlayTarget | null => overlayMatch(pathname)?.target ?? null;
 
 export interface BackgroundLocation {
   pathname: string;

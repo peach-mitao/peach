@@ -114,6 +114,8 @@ def plan(connection, root):
     owner, index, _ = resolve_root(canonical_root + '\\_', location_roots())
     if not owner or index < 0 or not root_online(translate_ledger_path(canonical_root)):
         raise ValueError('目录不在在线馆藏来源内')
+    if organize.unverified_location(owner):
+        raise ValueError(f'来源 {owner} 的挂载改名无法核验云端结果，不出分词计划')
     language = model()
     result, claimed = [], set()
     for row in connection.execute('SELECT id,path,name,size FROM asset WHERE location=? AND disposal IS NULL AND medium=\'video\' ORDER BY id', (owner,)):
@@ -205,6 +207,8 @@ def main(argv=None):
             location, index, _ = resolve_root(str(source), location_roots())
             if location != row['location'] or index < 0 or not root_online(translate_ledger_path(str(source.parent))):
                 raise ValueError('英文文件名不在在线馆藏来源内')
+            if organize.unverified_location(location):
+                raise ValueError(f'来源 {location} 的挂载改名无法核验云端结果，整批未执行')
             if asset_id in seen or held is None or tuple(held) != (str(source), int(row['size'])):
                 raise ValueError('英文文件名复核已失效')
             if str(source.parent).casefold() != str(PureWindowsPath(args.root)).casefold() or source.parent != target.parent:

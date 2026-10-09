@@ -1070,6 +1070,147 @@ class OffsiteCoverFaceTests(FaceStubCase):
         self.assertEqual(planned(), [key])
 
 
+class AccountFaceFollowupTests(FaceStubCase):
+    """个人博主从自己独占作品的接触印相上截脸，两部作品互证才装（ADR-0074、ADR-0096）。"""
+
+    def setUp(self):
+        super().setUp()
+        self.account = self.entity("creator", "博主")
+        self.identify(self.account)
+
+    def identify(self, entity_id: int) -> None:
+        from peach.entity_classification import write_claim
+
+        with self.database.write_transaction(notify=False) as connection:
+            write_claim(connection, entity_id=entity_id, facet="identity", value="person",
+                        source="user:identity-review", evidence="本人出镜", status="approved",
+                        confidence=1)
+
+    def sheet(self, asset_id: int, colour) -> Path:
+        """九格同一个人的接触印相：每格上半截黑、下半截是这个人的颜色。"""
+        import io
+
+        from PIL import Image
+        sheet = Image.new("RGB", (900, 600))
+        cell = Image.open(io.BytesIO(self.picture((300, 200), colour)))
+        for index in range(9):
+            sheet.paste(cell, (index % 3 * 300, index // 3 * 200))
+        path = self.root / "snapshots" / f"{asset_id}.jpg"
+        path.parent.mkdir(exist_ok=True)
+        sheet.save(path, format="JPEG", quality=95)
+        return path
+
+    def post(self, asset_id: int, colour, *, owners: tuple[int, ...] = (),
+             snapshot: bool = True) -> None:
+        """账号名下一部没有番号的作品；`colour` 为 None 时没有印相。"""
+        path = self.sheet(asset_id, colour) if snapshot and colour is not None else None
+        with self.database.write_transaction(notify=False) as connection:
+            connection.execute(
+                "INSERT INTO asset(id,location,path,name,medium,size,snapshot_path) "
+                "VALUES(?,'R:',?,?,'video',100,?)",
+                (asset_id, f"R:\\media\\{asset_id}.mp4", f"{asset_id}.mp4",
+                 str(path) if path else None))
+            for entity_id in owners or (self.account,):
+                connection.execute(
+                    "INSERT INTO asset_entity(asset_id,entity_id,role,source) "
+                    "VALUES(?,?,'creator','test')", (asset_id, entity_id))
+
+    def contract(self):
+        def snapshot_file(raw):
+            path = Path(raw) if raw else None
+            return path if path is not None and path.is_file() else None
+
+        return SimpleNamespace(
+            avatar_root=self.avatars, candidate_root=self.root / "generated",
+            cover_root=self.covers, database=self.database, task_runs=self.store,
+            cache_bust=lambda: None, snapshot_file=snapshot_file)
+
+    def run_followup(self) -> dict:
+        from peach.avatar_followup import run as avatar_run
+
+        return avatar_run(self.contract(), followup_key("creator", self.account), mock.Mock())
+
+    def provenance(self) -> dict:
+        return json.loads((self.avatars / f"creator-{self.account}.img.provenance.json")
+                          .read_text(encoding="utf-8"))
+
+    def test_the_key_round_trips_for_an_account(self):
+        self.assertEqual(parse_key(followup_key("creator", 9553)), ("creator", 9553))
+
+    def test_two_works_agreeing_install_the_face(self):
+        self.post(1, self.HER)
+        self.post(2, self.HER_AGAIN)
+        summary = self.run_followup()
+        self.assertEqual((summary["outcome"], summary["source"]),
+                         ("已装上", "作品画面 ASSET-ID-1（2 部互证）"))
+        record = self.provenance()
+        self.assertEqual((record["provider"], record["identity_verified"], record["sheet_cell"]),
+                         ("cover-face", False, 0))
+        self.assertEqual(sorted(record["face_match"]["codes"]), ["ASSET-ID-1", "ASSET-ID-2"])
+
+    def test_two_different_people_install_nothing(self):
+        """情侣号、多人号：两部作品截出的脸对不上同一个人。"""
+        self.post(1, self.HER)
+        self.post(2, self.STRANGER)
+        summary = self.run_followup()
+        self.assertIn("凑不齐两部互证", summary["outcome"])
+        self.assertEqual(summary["kept"], 2)
+        self.assertFalse((self.avatars / f"creator-{self.account}.img").exists())
+
+    def test_nine_cells_of_one_work_are_one_piece_of_evidence(self):
+        self.post(1, self.HER)
+        self.assertIn("凑不齐两部互证", self.run_followup()["outcome"])
+        self.assertFalse((self.avatars / f"creator-{self.account}.img").exists())
+
+    def test_works_shared_with_another_account_are_not_read(self):
+        other = self.entity("creator", "另一个号")
+        self.post(1, self.HER)
+        self.post(2, self.HER_AGAIN, owners=(self.account, other))
+        self.assertIn("凑不齐两部互证", self.run_followup()["outcome"])
+
+    def test_an_account_without_identity_is_neither_planned_nor_recorded(self):
+        from peach.avatar_followup import NO_IDENTITY, fingerprint, stock
+        from peach.followups import Attempts, attempts_root
+
+        unknown = self.entity("creator", "未核实的号")
+        self.post(1, self.HER, owners=(self.account, unknown))
+        attempts = Attempts(attempts_root(self.root / "generated"))
+        with self.database.read_connection() as connection:
+            planned = [item.key for item in plan(connection, self.avatars, since_entity_id=0)]
+            stocked = [item.key for item in stock(connection, self.avatars, attempts, limit=10)]
+        for keys in (planned, stocked):
+            self.assertIn(followup_key("creator", self.account), keys)
+            self.assertNotIn(followup_key("creator", unknown), keys)
+        from peach.avatar_followup import run as avatar_run
+
+        key = followup_key("creator", unknown)
+        self.assertEqual(avatar_run(self.contract(), key, mock.Mock())["outcome"], NO_IDENTITY)
+        with self.database.read_connection() as connection:
+            current = fingerprint(connection, unknown)
+        self.assertFalse(attempts.settled(key, current))
+
+    def test_a_new_contact_sheet_queues_the_account_again(self):
+        from peach.avatar_followup import stock
+        from peach.followups import Attempts, attempts_root
+
+        attempts = Attempts(attempts_root(self.root / "generated"))
+        key = followup_key("creator", self.account)
+
+        def planned():
+            with self.database.read_connection() as connection:
+                return [item.key for item in stock(connection, self.avatars, attempts, limit=10)]
+
+        self.post(1, self.HER)
+        self.post(2, None)
+        self.run_followup()
+        self.assertEqual(planned(), [])
+        path = self.sheet(2, self.HER_AGAIN)
+        with self.database.write_transaction(notify=False) as connection:
+            connection.execute("UPDATE asset SET snapshot_path=? WHERE id=2", (str(path),))
+        self.assertEqual(planned(), [key])
+        self.assertEqual(self.run_followup()["outcome"], "已装上")
+
+
 class ProcessLibraryTests(LedgerTestCase):
     """一整条链走通：刮削登记新女优 → 声明后继 → 派出 → 真的跑完。
 

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -11,6 +12,7 @@ import tempfile
 import time
 from collections import Counter, defaultdict
 from contextlib import closing
+from functools import cache
 from pathlib import Path, PureWindowsPath
 
 PROJECT = Path(__file__).resolve().parent.parent
@@ -22,9 +24,11 @@ from peach.config import DATABASE_PATH, GENERATED_DIR
 from peach.entity_classification import category_predicates
 from peach.jobs import PidFileLock
 from peach.migrations import sqlite_backup
+from peach.organize_clouddrive import UnconfirmedMove
 from peach.organize_templates import MAX_PATH, sanitise_component
 from peach.platform import location_roots, resolve_root, root_online, translate_ledger_path
 from peach.review_csv import write_rows
+from peach.scan import ARTWORK_DIRS, is_sidecar, video_stems
 from peach.regions import infer_region
 from peach.scripting import open_readonly
 from peach.sources.onepondo import STUDIO as ONEPONDO_STUDIO, movie_id
@@ -35,8 +39,15 @@ _spec = importlib.util.spec_from_file_location('directory_flatten', Path(__file_
 flatten = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(flatten)
 FIELDS = ('id', 'path', 'name', 'medium', 'disposal', 'code', 'studio', 'creator', 'mutation_revision')
-GENERIC = {'创作者', '网黄博主', '卖家', '动画作者', '日本', '韩国', '西方', '欧美', '番号',
-           'MVP', 'xxr', 'kkg', '云下载', 'Pack From Shared', 'My Pack', '_未知厂牌', 'FC2-PPV', 'FC2'}
+#: 本脚本写出的分类目录；`label()` 与 `classification_inputs()` 给出的就是这几个。
+CATEGORY_DIRS = frozenset({'创作者', '网黄博主', '卖家', '动画作者', '日本', '韩国', '西方', 'FC2'})
+CONTAINER_WORDS_FILE = PROJECT / 'resources' / 'naming' / 'container_directory_words.txt'
+
+@cache
+def container_names():
+    """不整体改名到某个归属下的目录名：分类目录加词表里的容器目录。"""
+    words = (line.split('#', 1)[0].strip() for line in CONTAINER_WORDS_FILE.read_text(encoding='utf-8').splitlines())
+    return frozenset(name.casefold() for name in (*CATEGORY_DIRS, *words) if name)
 
 def save(path, payload):
     path = Path(path)
@@ -217,16 +228,17 @@ def catalog_nodes(all_rows, roots, creators, categories, unverified, skipped):
             continue
         root = roots[location][index]
         owner = label(row, creators, categories, unverified)
+        if owner and filename_code_conflicts(row, owner):
+            # 账本番号与文件名自带的编号指向两部作品：哪个对未取得，按归属未知留在原处。
+            owner, row['_code_conflict'] = None, True
         row['_owner'], row['_root'] = owner, root
         parent = PureWindowsPath(row['path']).parent
         while str(parent).casefold() != str(PureWindowsPath(root)).casefold():
             key = str(parent)
-            node = nodes.setdefault(key, dict(rows=[], labels=set(), unknown=[], root=root))
+            node = nodes.setdefault(key, dict(rows=[], labels=set(), root=root))
             node['rows'].append(signature(row))
             if owner:
                 node['labels'].add(owner)
-            elif row['disposal'] is None and row['medium'] in {'video', 'image', 'audio', 'archive'}:
-                node['unknown'].append(row)
             if parent.parent == parent:
                 raise ValueError('目录不在声明来源根内')
             parent = parent.parent
@@ -237,7 +249,7 @@ def directory_owner(source, node, rows_by_id, creators):
     primary = [rows_by_id[r['id']] for r in node['rows']
                if r['medium'] in {'video', 'audio', 'archive'} and r['disposal'] is None]
     labels = {r['_owner'] for r in primary if r['_owner']} or node['labels']
-    if path.name in GENERIC or len(labels) != 1:
+    if path.name.casefold() in container_names() or len(labels) != 1:
         return None
     owner = next(iter(labels))
     allowed_creators = {name for r in primary for _, name in creators.get(r['id'], [])}
@@ -252,29 +264,68 @@ def directory_owner(source, node, rows_by_id, creators):
             rows_by_id[row['id']]['_owner'] = owner
     return owner
 
-def owner_directory(root, path, owner):
-    parts = owner[1:]
-    if owner[0] != 'release':
+def filename_code_conflicts(row, owner):
+    """发行类视频的文件名自带编号，且与账本番号不是同一部作品。"""
+    return (owner[0] == 'release' and row['medium'] == 'video'
+            and bool(release_code_from_filename(row['name']))
+            and not release_directory_matches(row['name'], owner))
+
+def release_directory_index(all_rows):
+    """已有的番号目录：`(来源根, 分类, 厂牌)` → 该层下按规范写法命名的目录名。"""
+    index = defaultdict(set)
+    for row in all_rows:
+        root = row.get('_root')
+        if not root or row['disposal'] is not None or not beneath(row['path'], root):
+            continue
+        parts = PureWindowsPath(row['path']).parts[len(PureWindowsPath(root).parts):]
+        if len(parts) >= 4 and normalise_code_key(parts[2]) == parts[2]:
+            index[(root.casefold(), parts[0], parts[1])].add(parts[2])
+    return index
+
+def release_directory_name(root, owner, existing):
+    """同一作品只落一个目录：有等价的已有目录就并过去，几处都有时一本道取官网作品号写法。"""
+    if existing is None:
+        return owner[3]
+    names = existing[(root.casefold(), owner[1], sanitise_component(owner[2]))]
+    matches = sorted(name for name in names if release_directory_matches(name, owner))
+    official = movie_id(owner[3]) if owner[2] == ONEPONDO_STUDIO else None
+    chosen = next((name for name in (official, owner[3]) if name and name in matches),
+                  matches[0] if matches else owner[3])
+    names.add(chosen)
+    return chosen
+
+def owner_directory(root, path, owner, existing=None):
+    """归属的规范目录。创作者类只保留规范名那一层之下的结构，规范名之上的容器目录都丢掉；
+    路径里没有规范名那一层时只带源目录自己的名字。"""
+    if owner[0] == 'release':
+        parts = (owner[1], owner[2], release_directory_name(root, owner, existing))
+    else:
         category, canonical = owner[1:]
         relative = path.relative_to(PureWindowsPath(root)).parts
-        tail = list(relative)
-        while tail and tail[0] in GENERIC:
-            tail.pop(0)
-        if tail and promo_free_key(tail[0]) == promo_free_key(canonical):
-            tail.pop(0)
-        if tail and promo_free_key(tail[-1]) == promo_free_key(canonical):
-            tail.pop()
+        layers = [i for i, part in enumerate(relative) if promo_free_key(part) == promo_free_key(canonical)]
+        tail = relative[layers[-1] + 1:] if layers else tuple(
+            part for part in relative[-1:] if part.casefold() not in container_names())
         parts = (category, canonical, *tail)
     return str(PureWindowsPath(root, *(sanitise_component(part) for part in parts)))
 
-def directory_target(source, node, owner, rows_by_id, skipped):
+def above_canonical(source, node, owner):
+    """路径里还没到规范名那一层、而下面有这一层：它只是容器，交给规范名那层整体移动。"""
+    key, depth = promo_free_key(owner[2]), len(PureWindowsPath(source).parts)
+    if any(promo_free_key(part) == key for part in PureWindowsPath(source).parts):
+        return False
+    return any(promo_free_key(part) == key
+               for row in node['rows'] for part in PureWindowsPath(row['path']).parts[depth:-1])
+
+def directory_target(source, node, owner, rows_by_id, skipped, existing=None):
     path = PureWindowsPath(source)
     if owner[0] == 'release':
         if not release_directory_matches(path.name, owner):
             return None
         for row in node['rows']:
             rows_by_id[row['id']]['_owner'] = owner
-    target = owner_directory(node['root'], path, owner)
+    elif above_canonical(source, node, owner):
+        return None
+    target = owner_directory(node['root'], path, owner, existing)
     if target.casefold() == source.casefold():
         return None
     if beneath(target, source) or beneath(source, target):
@@ -285,13 +336,13 @@ def directory_target(source, node, owner, rows_by_id, skipped):
         return None
     return target
 
-def directory_operations(nodes, rows_by_id, creators, skipped):
+def directory_operations(nodes, rows_by_id, creators, skipped, existing=None):
     operations, selected = [], set()
     for source, node in sorted(nodes.items(), key=lambda pair: (len(PureWindowsPath(pair[0]).parts), pair[0])):
         owner = directory_owner(source, node, rows_by_id, creators)
         if owner is None:
             continue
-        target = directory_target(source, node, owner, rows_by_id, skipped)
+        target = directory_target(source, node, owner, rows_by_id, skipped, existing)
         if target is None:
             continue
         path = PureWindowsPath(source)
@@ -302,7 +353,7 @@ def directory_operations(nodes, rows_by_id, creators, skipped):
                                     '账本规范归属：' + '/'.join(owner[1:])))
     return operations
 
-def file_operations(db, all_rows, rows_by_path, covered):
+def file_operations(db, all_rows, rows_by_path, covered, existing=None):
     operations = []
     file_groups = defaultdict(list)
     for row in all_rows:
@@ -310,7 +361,7 @@ def file_operations(db, all_rows, rows_by_path, covered):
         if row['id'] in covered or not root or not owner or row['disposal'] is not None:
             continue
         parent = str(PureWindowsPath(row['path']).parent)
-        target = owner_directory(root, PureWindowsPath(parent), owner)
+        target = owner_directory(root, PureWindowsPath(parent), owner, existing)
         if beneath(row['path'], target):
             continue
         if len(str(PureWindowsPath(target, PureWindowsPath(row['path']).name)).encode('utf-16-le')) // 2 > MAX_PATH:
@@ -329,14 +380,21 @@ def file_operations(db, all_rows, rows_by_path, covered):
         covered.update(r['id'] for r in rows)
     return operations
 
-def pending_paths(all_rows, mounts, covered):
+def canonical_directory(root, owner, existing=None):
+    if owner[0] == 'release':
+        return owner_directory(root, PureWindowsPath(root), owner, existing)
+    return str(PureWindowsPath(root, *(sanitise_component(p) for p in owner[1:3])))
+
+def pending_paths(all_rows, mounts, covered, existing=None):
     skipped = []
     for row in all_rows:
         if row['disposal'] is None and row['id'] not in covered:
             owner, root = row.get('_owner'), row.get('_root')
             if root and not mounts[root]:
                 reason = '来源离线，保留原位置'
-            elif owner and beneath(row['path'], str(PureWindowsPath(root, *(sanitise_component(p) for p in (owner[1:] if owner[0]=='release' else owner[1:3]))))):
+            elif row.get('_code_conflict'):
+                reason = '账本番号与文件名编号不一致，待确认'
+            elif owner and beneath(row['path'], canonical_directory(root, owner, existing)):
                 reason = '已在规范分类目录'
             elif row['medium'] == 'other':
                 reason = '附带文件缺少明确作品目录，保留原位置'
@@ -403,10 +461,11 @@ def build_plan(stage, batch=None):
             mounts = {root:root_online(translate_ledger_path(root)) for values in roots.values() for root in values}
             skipped = []
             nodes = catalog_nodes(all_rows,roots,creators,categories,unverified,skipped)
-            operations = directory_operations(nodes,by_id,creators,skipped)
+            existing = release_directory_index(all_rows)
+            operations = directory_operations(nodes,by_id,creators,skipped,existing)
             covered = {r['id'] for op in operations for r in op['rows']}
-            operations.extend(file_operations(db,all_rows,by_path,covered))
-            skipped.extend(pending_paths(all_rows,mounts,covered))
+            operations.extend(file_operations(db,all_rows,by_path,covered,existing))
+            skipped.extend(pending_paths(all_rows,mounts,covered,existing))
         attach_plan_guards(db,operations,stage,all_rows)
         payload = dict(format=1,stage=stage,roots=roots,operations=operations,skipped=skipped)
     write_plan(payload,stem)
@@ -595,7 +654,45 @@ def verify_frozen_operation(db, op, stage):
     if stage == 'rehome' and entity_guard(db, source, row_ids) != op['entities']:
         raise ValueError('冻结计划已失效：创作者身份发生变化')
 
-def file_group_moves(op):
+def sidecar_owner(name, videos):
+    """带片名的附属文件属于哪部视频：取最长的、后面紧跟分隔符的片名前缀。"""
+    stem = os.path.splitext(name)[0].casefold()
+    owners = [video for video in videos
+              if stem == video or (stem.startswith(video) and stem[len(video)] in '-._ ')]
+    return max(owners, key=len) if owners else None
+
+def sidecar_moves(op, moving, registered):
+    """同目录里随本组视频走的附属文件，判据取 `scan.is_sidecar`。
+
+    带片名的附属（`<片名>-poster.jpg`、`<片名>.nfo`）跟着它的视频走；裸 `poster.jpg`、
+    `movie.nfo` 与 `extrafanart` 这类目录级附属，只在本组带走了源目录全部视频时才走。
+    账本登记过的文件、工具隔离文件与目标已有同名项的都留在原处。
+    """
+    source, target = op['source'], op['target']
+    entries = list(translate_ledger_path(source).iterdir())
+    videos = video_stems(entry.name for entry in entries if entry.is_file())
+    moved = video_stems(moving)
+    whole = bool(videos) and videos <= moved
+    pairs = []
+    for entry in entries:
+        old, new = str(PureWindowsPath(source, entry.name)), str(PureWindowsPath(target, entry.name))
+        if (entry.is_symlink() or entry.name in moving or old.casefold() in registered
+                or entry.name.casefold().endswith('.peach-quarantine')):
+            continue
+        if entry.is_dir():
+            inside = old.casefold() + '\\'
+            belongs = (whole and entry.name.casefold() in ARTWORK_DIRS
+                       and not any(path.startswith(inside) for path in registered))
+        elif is_sidecar(entry.name, videos):
+            owner = sidecar_owner(entry.name, videos)
+            belongs = owner in moved if owner else whole
+        else:
+            belongs = False
+        if belongs and not translate_ledger_path(new).exists():
+            pairs.append((old, new))
+    return pairs
+
+def file_group_moves(op, registered=frozenset()):
     source, target = op['source'], op['target']
     physical_pairs = [(r['path'], rewrite(r['path'], source, target))
                       for r in (*op['rows'], *op['subtitles'])]
@@ -604,6 +701,8 @@ def file_group_moves(op):
         old, new = translate_ledger_path(old), translate_ledger_path(new)
         if old.is_symlink() or new.is_symlink() or not old.is_file() or new.exists():
             raise ValueError('分组文件未取得、符号链接或目标冲突')
+    moving = {PureWindowsPath(old).name for old, _ in physical_pairs}
+    physical_pairs += sidecar_moves(op, moving, registered)
     empty = [source]
     return physical_pairs, empty
 
@@ -622,11 +721,11 @@ def shared_collapse_moves(local_source, local_target, root, source):
     empty = [str(temporary)]
     return physical_pairs, empty, shared_stage
 
-def prepare_moves(op, local_source, local_target, root, exclusive_parent, deadline):
+def prepare_moves(op, local_source, local_target, root, exclusive_parent, deadline, registered=frozenset()):
     source, target = op['source'], op['target']
     collapse, shared_stage = None, None
     if op['kind'] == 'files':
-        pairs, empty = file_group_moves(op)
+        pairs, empty = file_group_moves(op, registered)
     elif op['kind'] == 'collapse' and exclusive_parent:
         pairs, collapse = collapse_moves(source,target)
         if not beneath(pairs[0][1],root):
@@ -659,11 +758,21 @@ def commit_paths(db, op):
     db.commit()
 
 def cleanup_empty_paths(paths):
+    """删掉移空的源目录；删不掉的连同里面剩下的名字一起返回，写进回执。"""
+    failures = []
     for path in sorted(paths,key=lambda p:len(Path(p).parts),reverse=True):
+        local = translate_ledger_path(path)
         try:
-            translate_ledger_path(path).rmdir()
-        except OSError:
-            pass
+            local.rmdir()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            try:
+                remaining = sorted(entry.name for entry in local.iterdir())
+            except OSError:
+                remaining = []
+            failures.append(dict(path=path, error=str(error), count=len(remaining), remaining=remaining[:10]))
+    return failures
 
 def provider_moves(pairs, root, allow_intermediate=True):
     planned = {str(PureWindowsPath(path)).casefold() for pair in pairs for path in pair}
@@ -684,13 +793,33 @@ def provider_moves(pairs, root, allow_intermediate=True):
     return result
 
 
+def record_cleanup(journal, empty, receipt, receipt_path):
+    """账本已提交之后收尾：删不掉的源目录记进本条回执，收尾本身出错也只记录不抛。"""
+    try:
+        errors = cleanup_empty_paths(empty)
+    except Exception as error:
+        errors = [dict(path=journal['source'], error=str(error), count=None, remaining=[])]
+    if errors:
+        journal['cleanup_errors'] = errors
+        save(receipt_path, receipt)
+
+
+def record_unconfirmed(db, op, receipt, receipt_path, error):
+    """状态未知：不猜着搬回，账本事务回滚，意图留在回执里交给续跑的 `recover()` 判定。"""
+    db.rollback()
+    receipt['failures'].append(dict(key=op['key'], source=op['source'], error=str(error), unconfirmed=True))
+    save(receipt_path, receipt)
+
+
 def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, retry_failed, pikpak_webdav=False):
+    """一条目录操作。确定性失败记入 `failures` 并恢复本条后返回错误；状态未知时记录后停止本批。"""
     journal, committed = None, False
     try:
         local_source,local_target,root,exclusive = operation_paths(op,payload['roots'])
         db.execute('BEGIN IMMEDIATE')
         verify_frozen_operation(db,op,stage)
-        pairs,empty,collapse,shared_stage = prepare_moves(op,local_source,local_target,root,exclusive,deadline)
+        registered = {row['path'].casefold() for row in (*snapshots(db,op['source']),*subtitles(db,op['source']))}
+        pairs,empty,collapse,shared_stage = prepare_moves(op,local_source,local_target,root,exclusive,deadline,registered)
         if pikpak_webdav:
             pairs = provider_moves(pairs, root, allow_intermediate=not collapse and not shared_stage)
         journal = dict(key=op['key'],status='intent',source=op['source'],target=op['target'],moves=pairs,empty=empty,
@@ -703,12 +832,19 @@ def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, r
         journal['status'] = 'committed'
         cleanup_collapse(journal)
         save(receipt_path,receipt)
-        cleanup_empty_paths(empty)
+        record_cleanup(journal, empty, receipt, receipt_path)
+    except UnconfirmedMove as error:
+        record_unconfirmed(db, op, receipt, receipt_path, error)
+        raise
     except Exception as error:
         if committed:
             raise RuntimeError('账本已提交，回执保存失败；保留文件位置供续跑核对') from error
         db.rollback()
-        failures = restore_entry(journal) if journal is not None else []
+        try:
+            failures = restore_entry(journal) if journal is not None else []
+        except UnconfirmedMove as unknown:
+            record_unconfirmed(db, op, receipt, receipt_path, unknown)
+            raise
         if journal is not None:
             journal['status'] = 'rollback_failed' if failures else 'restored'
         receipt['failures'].append(dict(key=op['key'],source=op['source'],error=str(error),rollback_failures=failures))
@@ -719,7 +855,7 @@ def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, r
     return None
 
 def pending_operations(payload, receipt, retry_failed, skip_collapses, location):
-    done = {r['key'] for r in receipt['entries'] if r['status']=='committed'}
+    done = {r['key'] for r in receipt['entries'] if r['status'] in {'committed','rolled_back'}}
     failed = set() if retry_failed else {r['key'] for r in receipt['failures']}
     for op in payload['operations']:
         if (skip_collapses and op['kind']=='collapse') or op['key'] in done or op['key'] in failed:
@@ -746,6 +882,11 @@ def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, 
         raise ValueError('计划格式不受支持，请使用新的批次编号冻结计划')
     receipt_path = OUT/f'{stem}-receipt.json'
     receipt = json.loads(receipt_path.read_text(encoding='utf-8')) if receipt_path.exists() else dict(entries=[],failures=[])
+    blocked = sorted({owner for _,owner in pending_operations(payload,receipt,retry_failed,skip_collapses,location)
+                      if organize.unverified_location(owner)})
+    if blocked:
+        raise ValueError('冻结批次含 ' + '、'.join(blocked) + ' 来源的操作，挂载改名无法核验云端结果；'
+                         'A 盘须用 --location pikpak --pikpak-webdav 经官方通道执行，其他来源用 --location 限定')
     lock = PidFileLock(OUT/'directory-job.lock')
     lock.acquire()
     db = None
@@ -780,11 +921,138 @@ def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, 
                 print(json.dumps(dict(checked=checked,committed=sum(r['status']=='committed' for r in receipt['entries']),failed=len(receipt['failures'])),ensure_ascii=False),flush=True)
         receipt['verification'] = verify_result(db,assets,subtitle_count,baseline)
         save(receipt_path,receipt)
-        print(json.dumps(dict(stage=stage,checked=checked,committed=sum(r['status']=='committed' for r in receipt['entries']),failed=len(receipt['failures']),verification=receipt['verification']),ensure_ascii=False))
+        print(json.dumps(dict(stage=stage,checked=checked,committed=sum(r['status']=='committed' for r in receipt['entries']),failed=len(receipt['failures']),
+                              cleanup_errors=sum(len(r.get('cleanup_errors') or ()) for r in receipt['entries']),verification=receipt['verification']),ensure_ascii=False))
     finally:
         if db is not None:
             db.close()
         lock.release()
+
+def changed_since_commit(db, op):
+    """已提交的一条里，账本路径已不在移动后位置上的行与字幕：被人或别的流程改过，不能撤回。"""
+    changed = []
+    for table, rows in (('asset', op['rows']), ('asset_subtitle', op['subtitles'])):
+        for row in rows:
+            expected = rewrite(row['path'], op['source'], op['target'])
+            present = db.execute(f'SELECT path FROM {table} WHERE id=?', (row['id'],)).fetchone()
+            if not present or present[0] != expected:
+                changed.append(dict(table=table, id=row['id'], expected=expected, current=present[0] if present else None))
+    return changed
+
+def reverse_operation(op):
+    """撤回用的反向操作：行与字幕取移动后的路径，来源与目标对调。"""
+    moved = lambda rows: [dict(row, path=rewrite(row['path'], op['source'], op['target'])) for row in rows]
+    return dict(op, source=op['target'], target=op['source'], rows=moved(op['rows']), subtitles=moved(op['subtitles']))
+
+def prune_empty_parents(path, root):
+    """撤回后目标那一侧移空的目录逐层删到来源根为止，遇到非空就停。"""
+    current = PureWindowsPath(path)
+    while beneath(str(current), root):
+        try:
+            translate_ledger_path(str(current)).rmdir()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            return
+        current = current.parent
+
+def rollback_candidates(payload, receipt, location):
+    """回执里已提交的条目，按执行顺序倒过来。"""
+    operations = {op['key']: op for op in payload['operations']}
+    for entry in reversed(receipt['entries']):
+        if entry['status'] == 'committed':
+            op = operations[entry['key']]
+            owner, index, _ = resolve_root(op['source'] + '\\_', payload['roots'])
+            if not location or owner == location:
+                yield entry, op, owner, payload['roots'][owner][index]
+
+def rollback_entry(db, entry, op, root, receipt, receipt_path):
+    """撤回一条：账本核对 → 文件按回执逆序搬回 → 账本写入移动前的路径。文件搬不回就停在这里。"""
+    db.execute('BEGIN IMMEDIATE')
+    changed = changed_since_commit(db, op)
+    if changed:
+        db.rollback()
+        return dict(key=entry['key'], source=op['target'], status='changed', changed=changed)
+    try:
+        failures = restore_entry(entry)
+    except UnconfirmedMove as error:
+        failures = [dict(error=str(error), unconfirmed=True)]
+    if failures:
+        db.rollback()
+        entry['status'] = 'rollback_failed'
+        receipt['rollbacks'].append(dict(key=entry['key'], source=op['target'], status='rollback_failed', failures=failures))
+        save(receipt_path, receipt)
+        raise RuntimeError('撤回时文件未能全部搬回，停止本批；回执里这一条标为 rollback_failed')
+    back = reverse_operation(op)
+    try:
+        commit_paths(db, back)
+    except Exception as error:
+        db.rollback()
+        entry['status'] = 'rollback_failed'
+        receipt['rollbacks'].append(dict(key=entry['key'], source=op['target'], status='rollback_failed', error=str(error)))
+        save(receipt_path, receipt)
+        raise RuntimeError('文件已搬回，账本路径写入失败，停止本批') from error
+    entry['status'] = 'rolled_back'
+    prune_empty_parents(op['target'], root)
+    return dict(key=entry['key'], source=op['target'], target=op['source'], status='rolled_back', assets=len(op['rows']))
+
+def run_rollback(stage, batch=None, backup=None, location=None, apply=False):
+    """整批撤回已提交的目录操作。默认只列计划；`apply` 时先备份账本再逐条撤回。"""
+    stem = stage + ('-' + batch if batch else '')
+    payload = json.loads((OUT/f'{stem}-manifest.json').read_text(encoding='utf-8'))
+    receipt_path = OUT/f'{stem}-receipt.json'
+    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+    candidates = list(rollback_candidates(payload, receipt, location))
+    if not apply:
+        with closing(open_readonly(DATABASE_PATH)) as db:
+            plan = [dict(key=entry['key'], source=op['target'], target=op['source'], assets=len(op['rows']),
+                         changed=changed_since_commit(db, op)) for entry, op, _, _ in candidates]
+        print(json.dumps(dict(stage=stage, batch=batch, rollback=len(plan), changed=sum(bool(p['changed']) for p in plan),
+                              operations=plan), ensure_ascii=False, indent=1))
+        return plan
+    if backup is None:
+        raise ValueError('--apply 必须同时给 --backup')
+    blocked = sorted({owner for *_, owner, _ in candidates if organize.unverified_location(owner)})
+    if blocked:
+        raise ValueError('撤回含 ' + '、'.join(blocked) + ' 来源的操作，挂载改名无法核验云端结果；'
+                         'A 盘须用 --location pikpak --pikpak-webdav 经官方通道撤回')
+    lock = PidFileLock(OUT/'directory-job.lock')
+    lock.acquire()
+    db = None
+    try:
+        sqlite_backup(DATABASE_PATH, backup)
+        receipt.setdefault('backups', []).append(str(backup))
+        receipt.setdefault('rollbacks', [])
+        db = sqlite3.connect(DATABASE_PATH, timeout=15)
+        db.row_factory = sqlite3.Row
+        recover(db, payload, receipt, receipt_path)
+        baseline = {tuple(r) for r in db.execute('PRAGMA foreign_key_check')}
+        assets = db.execute('SELECT count(*) FROM asset').fetchone()[0]
+        subtitle_count = db.execute('SELECT count(*) FROM asset_subtitle').fetchone()[0]
+        results = []
+        for entry, op, _, root in rollback_candidates(payload, receipt, location):
+            results.append(rollback_entry(db, entry, op, root, receipt, receipt_path))
+            receipt['rollbacks'].append(results[-1])
+            save(receipt_path, receipt)
+        receipt['rollback_verification'] = verify_result(db, assets, subtitle_count, baseline)
+        save(receipt_path, receipt)
+        print(json.dumps(dict(stage=stage, batch=batch, rolled_back=sum(r['status'] == 'rolled_back' for r in results),
+                              changed=[r for r in results if r['status'] == 'changed'],
+                              verification=receipt['rollback_verification']), ensure_ascii=False))
+        return results
+    finally:
+        if db is not None:
+            db.close()
+        lock.release()
+
+def pikpak_channel(stage, batch):
+    """A 盘批次的官方核验改名通道。"""
+    from peach.organize_clouddrive import pikpak_renames
+    payload = json.loads((OUT/f'{stage}-{batch}-manifest.json').read_text(encoding='utf-8'))
+    rows = [row for op in payload['operations'] for row in op['rows'] if row['path'].startswith('A:')]
+    if not rows:
+        raise ValueError('冻结批次没有 A 盘资源')
+    return pikpak_renames(rows[0]['path'], payload['roots'])
 
 def self_check():
     with tempfile.TemporaryDirectory() as directory:
@@ -865,26 +1133,29 @@ if __name__ == '__main__':
     parser.add_argument('--location', choices=('115','pikpak','local'))
     parser.add_argument('--retry-failed', action='store_true')
     parser.add_argument('--skip-collapses', action='store_true')
-    parser.add_argument('--pikpak-webdav', action='store_true', help='冻结 A 盘批次使用既有 PikPak HTTPS WebDAV 移动')
+    parser.add_argument('--pikpak-webdav', action='store_true',
+                        help='A 盘批次经 CloudDrive 官方改名与移动执行，并以官方完整目录核验；A 盘操作必须带它')
     parser.add_argument('--batch', type=lambda value: value if re.fullmatch(r'[a-zA-Z0-9_-]+', value)
                         else parser.error('批次编号只能包含字母、数字、下划线与连字号'))
+    parser.add_argument('--rollback', action='store_true',
+                        help='按回执逆序撤回这一批已提交的操作；不带 --apply 只列计划')
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
+    if args.pikpak_webdav and args.apply and (args.location != 'pikpak' or not args.batch):
+        parser.error('--pikpak-webdav 需要 --location pikpak 和明确冻结批次 --batch')
     if args.self_check:
         self_check()
+    elif args.rollback and not args.apply:
+        run_rollback(args.stage, args.batch, location=args.location)
+    elif args.rollback and args.pikpak_webdav:
+        with pikpak_channel(args.stage, args.batch):
+            run_rollback(args.stage, args.batch, args.backup, args.location, apply=True)
+    elif args.rollback:
+        run_rollback(args.stage, args.batch, args.backup, args.location, apply=True)
+    elif args.apply and args.pikpak_webdav:
+        with pikpak_channel(args.stage, args.batch):
+            run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch, pikpak_webdav=True)
     elif args.apply:
-        if args.pikpak_webdav:
-            from peach.organize_clouddrive import pikpak_renames
-            if args.location != 'pikpak' or not args.batch:
-                parser.error('--pikpak-webdav 需要 --location pikpak 和明确冻结批次 --batch')
-            stem = args.stage + '-' + args.batch
-            payload = json.loads((OUT/f'{stem}-manifest.json').read_text(encoding='utf-8'))
-            rows = [row for op in payload['operations'] for row in op['rows'] if row['path'].startswith('A:')]
-            if not rows:
-                parser.error('冻结批次没有 A 盘资源')
-            with pikpak_renames(rows[0]['path'], payload['roots']):
-                run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch, pikpak_webdav=True)
-        else:
-            run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch)
+        run_apply(args.stage, args.backup, args.limit, args.seconds, args.location, args.retry_failed, args.skip_collapses, args.batch)
     else:
         build_plan(args.stage, args.batch)

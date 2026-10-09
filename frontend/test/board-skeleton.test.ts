@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { boardPageSkeleton, detailSkeletonHtml } from '../src/board-skeleton';
+import { boardPageSkeleton, detailSkeletonBody } from '../src/board-skeleton';
 import { wireBoardSegments } from '../src/board-controls';
 
 vi.mock('@peach/legacy/core', async importOriginal => ({
@@ -40,11 +40,10 @@ describe('Board 页面骨架', () => {
   });
   it('详情保留媒体区和资料侧栏，不创建播放器', () => {
     const root = document.createElement('div');
-    root.innerHTML = detailSkeletonHtml();
+    root.innerHTML = detailSkeletonBody();
     expect(root.querySelector('[data-stage-grid] > [data-stage-media]')).not.toBeNull();
     expect(root.querySelector('[data-stage-grid] > [data-stage-side] > [data-stage-side-content]')).not.toBeNull();
     expect(root.querySelectorAll('video, audio, iframe')).toHaveLength(0);
-    expect(root.querySelectorAll('[role="status"]')).toHaveLength(1);
   });
   const follow = (options: Parameters<typeof boardPageSkeleton>[1] = {}) => {
     const root = document.createElement('div');
@@ -57,7 +56,15 @@ describe('Board 页面骨架', () => {
     expect(root.querySelector('.board-segment-thumb')).toBeNull();
     expect(root.querySelector('[data-section-items] [aria-selected=true]')?.textContent).toBe('关注列表');
     const track = root.querySelector('[data-section-items]')!;
-    expect([...track.children].map((span) => span.textContent)).toEqual(['关注列表', '添加关注', 'JAV 订阅源', '想要', '来源和凭证']);
+    expect([...track.children].map((span) => span.textContent)).toEqual(['关注列表', '添加关注', 'JAV 订阅源', 'JAV 入库', '来源和凭证']);
+  });
+  it('关注骨架选中地址栏 `?tab=` 那一枚页签，列表以外的页签不画关注列表的工具行', () => {
+    const feeds = follow({ followTab: 'feeds' });
+    expect(feeds.querySelector('[data-section-items] [aria-selected=true]')?.textContent).toBe('JAV 订阅源');
+    expect(feeds.querySelector('.ui-follow-skeleton-toolbar')).toBeNull();
+    expect(feeds.querySelector('.ui-follow-skeleton-surface')).not.toBeNull();
+    expect(follow({ followTab: 'wants' }).querySelector('[data-section-items] [aria-selected=true]')?.textContent).toBe('JAV 入库');
+    expect(follow({ followTab: 'nope' }).querySelector('[data-section-items] [aria-selected=true]')?.textContent).toBe('关注列表');
   });
   it('关注骨架的工具行按 Board UI 最终变体画：检查全部是主按钮，视图切换是按版式选中的按钮组', () => {
     const toolbar = follow().querySelector('.ui-follow-skeleton-toolbar')!;
@@ -69,7 +76,7 @@ describe('Board 页面骨架', () => {
     expect(group.map((button) => button.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
     expect(group.every((button) => button.classList.contains('bg-button-ghost-background'))).toBe(true);
     expect(toolbar.querySelector('button[aria-haspopup="listbox"]')?.textContent).toBe('检查时间');
-    expect(toolbar.lastElementChild?.textContent).toBe('全部收起');
+    expect([...toolbar.querySelectorAll('button')].at(-1)?.textContent).toBe('全部收起');
     const tableGroup = follow({ followLayout: 'table' }).querySelectorAll('[data-button-group] > button');
     expect([...tableGroup].map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
   });
@@ -88,22 +95,25 @@ describe('Board 页面骨架', () => {
     const root = follow();
     expect(root.querySelectorAll('.follow-skeleton-source')).toHaveLength(10);
     for (const row of root.querySelectorAll('.follow-skeleton-source')) {
-      const actions = [...row.lastElementChild!.children];
+      const actions = [...row.lastElementChild!.lastElementChild!.children];
       expect(actions.map((button) => button.querySelector('use')?.getAttribute('href'))).toEqual(['#i-refresh-cw', '#i-trash']);
       for (const button of actions) expect(button.className).toContain('size-8 rounded-lg p-0');
     }
     const head = root.querySelector('.follow-skeleton-author [data-follow-author-header]')!;
-    expect([...head.querySelectorAll(':scope > button')].map((button) => button.textContent)).toEqual(['', '全选', '收起']);
+    expect([...head.querySelectorAll('button')].map((button) => button.textContent)).toEqual(['', '全选', '收起']);
     expect(root.querySelector('.ui-follow-skeleton-surface > .group')?.textContent).toBe('全选本页');
     expect(root.querySelector('[data-selection-dock]')).toBeNull();
   });
-  it('口味骨架保留分段背景与状态行间距', () => {
+  it('口味骨架画在 React 岛里，按浏览器记录那一页排', () => {
     const root = document.createElement('div');
     root.innerHTML = boardPageSkeleton('/taste');
-    expect(root.querySelector('.insightswitch[data-board-segments]')).not.toBeNull();
-    expect(root.querySelector('.skeleton-segment-selected')?.textContent).toBe('浏览器记录');
-    expect(root.querySelector('.ui-tastehead + .ui-tastestate + .ui-tastesummaries')).not.toBeNull();
-    expect(root.querySelector('.ui-tastehead .skeleton-tabs')).toBeNull();
+    expect(root.querySelector('.peach-react')).not.toBeNull();
+    expect(root.querySelector('[data-taste-segments] [data-selected]')?.textContent).toBe('浏览器记录');
+    expect([...root.querySelectorAll('[data-taste-metrics] > div > span')].map((span) => span.textContent))
+      .toEqual(['浏览记录', '口味维度', '浏览候选', '私有导出']);
+    expect(root.querySelector('[data-taste-portrait]')?.textContent).toContain('浏览器画像');
+    expect([...root.querySelectorAll('h3')].map((h3) => h3.textContent))
+      .toEqual(['浏览活跃时间', '每日活跃', '创作者线索来源']);
   });
   it('关注表格视图是 Board UI 表格外框，当前排序那一列带方向', () => {
     const root = follow({ followLayout: 'table' });

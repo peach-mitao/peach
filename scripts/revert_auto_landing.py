@@ -5,7 +5,8 @@
 `entity_alias.source` 直接就是批次号 `<source>@<任务行 id>`（ADR-0055）。女优资料行的
 `performer_profile.source` 同样是批次号，后继登记的站上编号在 `entity_external_ref.metadata_json`
 里记 `source` 与 `batch`（ADR-0067），番号样张的 `code_sample_image.source` 也是批次号（ADR-0068），
-种子包补的所属事务所 `entity_membership.source` 与 label 的片商 `label_maker.source` 同样（ADR-0073、ADR-0075）。
+种子包补的所属事务所 `entity_membership.source` 与 label 的片商 `label_maker.source` 同样（ADR-0073、ADR-0075），
+查创作者身份后继写的身份断言 `entity_classification.source` 也是批次号（ADR-0098）。
 判据错了一批，就按它们认出来一起撤掉，不必一条条找。
 
 复核队列的自动否决记在 `review_decision.note` 里（`auto_rejected` 与 `rule`，ADR-0079），
@@ -39,6 +40,7 @@ id 或路径已被别的行占用时那一批拒绝撤回。登记时自动接�
     revert_auto_landing.py --source auto:performer-alias
     revert_auto_landing.py --source auto:performer-alias --batch auto:performer-alias@812
     revert_auto_landing.py --source auto:performer-profile
+    revert_auto_landing.py --source script:creator-identity-wiki
     revert_auto_landing.py --source auto:sample-images
     revert_auto_landing.py --source auto:seed --batch auto:seed@2026-09-25
     revert_auto_landing.py --source adr-0079-fc2-descriptive-performer
@@ -114,6 +116,19 @@ def planned_profiles(connection, source: str, batch: str) -> list[dict]:
             for row in connection.execute(
                 "SELECT p.entity_id,e.canonical_name,p.source FROM performer_profile p"
                 " JOIN entity e ON e.id=p.entity_id WHERE " + clause + " ORDER BY p.entity_id",
+                values)]
+
+
+def planned_claims(connection, source: str, batch: str) -> list[dict]:
+    """这个来源写下的身份断言（`source` 列存批次号）。FC2 卖家那一批连同关系由 `fc2_sellers` 撤。"""
+    if source == fc2_sellers.SOURCE:
+        return []
+    clause, values = _batch_clause("c.source", source, batch)
+    return [{"entity_id": row["entity_id"], "entity": row["canonical_name"], "facet": row["facet"],
+             "value": row["value"], "source": row["source"]}
+            for row in connection.execute(
+                "SELECT c.entity_id,e.canonical_name,c.facet,c.value,c.source FROM entity_classification c"
+                " JOIN entity e ON e.id=c.entity_id WHERE " + clause + " ORDER BY c.entity_id,c.facet,c.value",
                 values)]
 
 
@@ -298,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         links = planned_links(connection, args.source, args.batch)
         aliases = planned_aliases(connection, args.source, args.batch)
         profiles = planned_profiles(connection, args.source, args.batch)
+        claims = planned_claims(connection, args.source, args.batch)
         companies = company_profiles.planned_revert(connection, args.source, args.batch)
         sellers = fc2_sellers.planned_revert(connection, args.source, args.batch)
         creators = follow_creators.planned_revert(connection, args.source, args.batch)
@@ -319,6 +335,8 @@ def main(argv: list[str] | None = None) -> int:
         print_profiles(profiles, companies)
         for creator in creators:
             print(f" - 建档 {creator['name'][:20]:<20} {creator['sources']} 个来源 {creator['batch']}")
+        for claim in claims:
+            print(f" - 断言 {claim['entity'][:20]:<20} {claim['facet']}={claim['value']} {claim['source']}")
         for ref in refs:
             print(f" - 编号 {ref['entity'][:20]:<20} {ref['provider']} {ref['id']} {ref['batch']}")
         for membership in memberships:
@@ -335,8 +353,8 @@ def main(argv: list[str] | None = None) -> int:
         for rehome in rehomes:
             print(f" - 接回 {rehome['old_asset_id']:<8} → {rehome['new_asset_id']:<8} "
                   f"{rehome['name'][:40]} {rehome['batch']}")
-        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "公司资料": len(companies), "卖家": len(sellers),
-               "关注建档": len(creators), "编号": len(refs),
+        print({"链接": len(links), "别名": len(aliases), "资料": len(profiles), "断言": len(claims),
+               "公司资料": len(companies), "卖家": len(sellers), "关注建档": len(creators), "编号": len(refs),
                "归属": len(memberships), "片商": len(makers), "标识文件": len(files), "封面": len(covers),
                "样张": sum(sample["count"] for sample in samples), "否决": len(rejections),
                "标签": len(tags), "接回": len(rehomes), "想要入库": len(acquired)})
@@ -353,6 +371,9 @@ def main(argv: list[str] | None = None) -> int:
             connection.executemany(
                 "DELETE FROM performer_profile WHERE entity_id=? AND source=?",
                 [(profile["entity_id"], profile["source"]) for profile in profiles])
+            connection.executemany(
+                "DELETE FROM entity_classification WHERE entity_id=? AND facet=? AND value=? AND source=?",
+                [(claim["entity_id"], claim["facet"], claim["value"], claim["source"]) for claim in claims])
             connection.executemany(
                 "DELETE FROM entity_external_ref WHERE provider=? AND external_kind=?"
                 " AND external_id=?", [(ref["provider"], ref["kind"], ref["id"]) for ref in refs])
@@ -384,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         connection.close()
     removed = remove_files(files, covers)
-    print({"删除链接": len(links), "删除别名": len(aliases), "删除资料": len(profiles),
+    print({"删除链接": len(links), "删除别名": len(aliases), "删除资料": len(profiles), "删除断言": len(claims),
            "删除编号": len(refs), "删除归属": len(memberships), "删除片商": len(makers),
            "删除样张": removed_samples, "删除否决": len(rejections),
            "删除标签": len(tags), "删除扁平标签": removed_tag_rows, "重开决定": reopened,

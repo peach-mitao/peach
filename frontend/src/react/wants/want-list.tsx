@@ -3,7 +3,7 @@
  * 卡片下方的候选来自 JavDB；「搜索资源」打开云下载弹层，查自配索引器或贴磁力。页上那颗
  * 「提交磁力」是不挂在任何作品上的同一个弹层。 */
 import { useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RiStarLine, RiExternalLinkLine, RiDeleteBinLine } from '@remixicon/react';
 
@@ -18,6 +18,9 @@ import { DOWNLOADS_KEY, DOWNLOADS_URL } from '../activity/downloads-panel';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
 import { Note } from '../components/note';
+import { Pagination } from '../follow-manage/source-list';
+import { pageWindow } from '../follow-manage/follow-manage';
+import { ErrorLine } from '../follow-manage/source-view';
 import { Help } from '../settings/section';
 import { WantMagnets } from './want-magnets';
 import { busyProps, useAction } from '../settings/use-action';
@@ -27,6 +30,8 @@ import {
 } from './wants';
 
 const ORIGINS: Record<Want['origin'], string> = { code: '手动添加', feed: 'Feed 新作', follow: '关注' };
+/** 每一段一页摆多少张：一张卡二十来个节点，上千条一次摆开就是十几万像素高的一页。 */
+export const WANT_PAGE_SIZE = 20;
 
 /** 资料那一行：发行日、厂牌、女优、从哪儿加进来的。 */
 const facts = (want: Want) => [want.release_date, want.studio, want.performers, ORIGINS[want.origin]]
@@ -57,7 +62,7 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
       <Cover want={want} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <b className="text-headline-medium text-text-primary">{wantName(want)}</b>
+          <b className="min-w-0 text-headline-medium wrap-anywhere text-text-primary">{wantName(want)}</b>
           {want.code && want.title ? (
             <span className="min-w-0 truncate text-body-2-regular text-text-secondary">{want.title}</span>
           ) : null}
@@ -65,7 +70,7 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
         {facts(want) ? <p className="text-body-2-regular text-text-secondary">{facts(want)}</p> : null}
         {!want.code || want.phase === 'unreleased' || want.phase === 'acquired' ?
           <p data-want-note="" className="text-caption-1-regular text-text-secondary">{searchNote(want)}</p> : null}
-        {want.scrape_error ? <p className="text-caption-1-regular text-text-secondary">资料未取得：{want.scrape_error}</p> : null}
+        {want.scrape_error ? <ErrorLine text={want.scrape_error} prefix="资料未取得：" tone="muted" /> : null}
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {source ? <ButtonLink data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine} href={source} target="_blank" rel="noopener noreferrer">来源页</ButtonLink> : null}
           {/* 还在找的两段才给云下载：未发售的没有资源可下，已入库的已经到手。 */}
@@ -84,6 +89,31 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
       {want.code && (want.phase === 'searching' || want.phase === 'given_up')
         ? <WantMagnets want={want} readOnly={readOnly} downloads={downloads} provider={provider} toast={toast} onSource={setResolvedSource} /> : null}
     </li>
+  );
+}
+
+/** 一段（待找、未发售……）：标题带这一段的总数，多于一页时分页，页码各段各记各的。 */
+function WantPhase({ phase, label, rows, row }: {
+  phase: string; label: string; rows: Want[]; row(want: Want): ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const win = pageWindow(rows.length, WANT_PAGE_SIZE, page);
+  return (
+    <section aria-label={label} data-want-phase={phase} className="flex flex-col gap-4">
+      <h3 className="flex items-baseline gap-2 text-title-2-medium text-text-primary">
+        {label}
+        <span className="text-body-2-regular tabular-nums text-text-secondary">{rows.length.toLocaleString()}</span>
+      </h3>
+      <ul className="flex flex-col gap-4">{rows.slice(win.start, win.end).map(row)}</ul>
+      {win.pages > 1 ? (
+        <div data-want-pager="" className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-body-2-regular tabular-nums text-text-secondary">
+            {`${(win.start + 1).toLocaleString()}–${win.end.toLocaleString()} / ${win.total.toLocaleString()} 条`}
+          </span>
+          <Pagination label={`${label}分页`} page={win.page} pages={win.pages} onPage={setPage} />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -179,22 +209,14 @@ export function WantList({ readOnly, toast }: WantListProps) {
         const rows = items.filter((want) => want.phase === phase);
         if (!rows.length) return null;
         return (
-          <section key={phase} aria-label={label} data-want-phase={phase} className="flex flex-col gap-4">
-            <h3 className="flex items-baseline gap-2 text-title-2-medium text-text-primary">
-              {label}
-              <span className="text-body-2-regular tabular-nums text-text-secondary">{rows.length}</span>
-            </h3>
-            <ul className="flex flex-col gap-4">
-              {rows.map((want) => (
-                <WantRow key={want.id} want={want} readOnly={readOnly} busy={action.busy}
-                  downloads={downloads.data} provider={selected} toast={toast}
-                  onReset={() => reset(want)} onRemove={() => remove(want)}
-                  onCloudDownload={() => setDownload({
-                    code: want.code || '', title: want.title || '', origin: `wishlist:${want.id}`,
-                  })} />
-              ))}
-            </ul>
-          </section>
+          <WantPhase key={phase} phase={phase} label={label} rows={rows} row={(want) => (
+            <WantRow key={want.id} want={want} readOnly={readOnly} busy={action.busy}
+              downloads={downloads.data} provider={selected} toast={toast}
+              onReset={() => reset(want)} onRemove={() => remove(want)}
+              onCloudDownload={() => setDownload({
+                code: want.code || '', title: want.title || '', origin: `wishlist:${want.id}`,
+              })} />
+          )} />
         );
       })}
       <CloudDownloadDialog prefill={download} close={() => setDownload(null)} receipt={toast} provider={selected} />

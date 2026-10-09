@@ -2,7 +2,7 @@
  * 次数（`@peach/shell` 的 `pageOpens`）与覆盖层决定整页打开还是只重取；整页打开时照地址重建目录筛选，交壳收尾。
  *
  * 网格怎么取数、怎么画由 `catalog-routes.test.tsx` 与各页的用例管；这里看的是元素什么时候开、开几次、写进
- * `state` 的是哪一套筛选、交给壳什么。历史对象、派发状态与壳状态都是模块级的，每条用例重新装载。 */
+ * `state` 的是哪一套筛选、交给壳什么。历史对象与壳状态都是模块级的，每条用例重新装载。 */
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
@@ -46,8 +46,7 @@ function shellActions() {
     savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: () => true,
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(),
-    closeStage: vi.fn(() => { log.push('closeStage') }),
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(),
     grid: { helpers: {}, actions: {} } as ShellActions['grid'],
     configurable: () => true,
     surfaceShown: vi.fn(),
@@ -58,6 +57,7 @@ function shellActions() {
       }),
       load: vi.fn(() => { log.push('load') }),
       release: vi.fn(() => { log.push('release') }),
+      fill: vi.fn(() => { log.push('fill') }),
     },
   };
   return { actions, log };
@@ -75,9 +75,7 @@ async function boot(r: Loaded, actions: ShellActions) {
   await act(async () => { root.render(<r.RouterRoot actions={actions} />) });
   unmounts.push(() => root.unmount());
   await settle();
-  await act(async () => {
-    await r.startRouting((origin) => { if (origin === 'boot') r.shell.writeShell({ pageOpens: 1 }) });
-  });
+  await act(async () => { r.shell.writeShell({ pageOpens: 1 }) });
   await settle();
 }
 
@@ -92,11 +90,11 @@ async function pop(path: string, state: unknown = null) {
 
 const filters = (r: Loaded) => r.shell.state ?? {};
 
-it('启动：壳开始路由之前只挂着；启动那一下照地址写筛选、收舞台、整页打开一次', async () => {
+it('启动：壳开始路由之前只挂着；启动那一下照地址写筛选、整页打开一次', async () => {
   const r = await load('/unseen?tag=a,%E7%9F%AD%E7%89%87-2%E5%88%86%E5%86%85&owner=none&loc=local');
   const { actions, log } = shellActions();
   await boot(r, actions);
-  expect(log).toEqual(['closeStage', 'open /unseen']);
+  expect(log).toEqual(['open /unseen']);
   expect(filters(r)).toMatchObject({ state: 'fresh', tag: 'a', owner: 'none', loc: 'local' });
   expect(filters(r).seed, '地址上没写种子就掷一粒').toMatch(/^\d+$/);
 });
@@ -106,10 +104,10 @@ it('从回收站后退到首页重掷取样种子，并让壳作废顶部三层�
   r.shell.writeShell({ state: { seed: '111', sort: 'seed', dir: '' } });
   const { actions, log } = shellActions();
   await boot(r, actions);
-  expect(log).toEqual(['closeStage', 'open /trash']);
+  expect(log).toEqual(['open /trash']);
   expect(filters(r)).toMatchObject({ state: 'trash', seed: '111' });
   await pop('/');
-  expect(log.slice(2)).toEqual(['closeStage', 'open / entering']);
+  expect(log.slice(1)).toEqual(['open / entering']);
   expect(filters(r).state).toBe('');
   expect(filters(r).seed).toMatch(/^\d+$/);
   expect(filters(r).seed).not.toBe('111');
@@ -122,7 +120,7 @@ it('首页换一枚标签的后退前进沿用这一粒种子', async () => {
   await boot(r, actions);
   expect(filters(r)).toMatchObject({ tag: 'a', seed: '222' });
   await pop('/?tag=b');
-  expect(log.slice(2)).toEqual(['closeStage', 'open /']);
+  expect(log.slice(1)).toEqual(['open /']);
   expect(filters(r)).toMatchObject({ tag: 'b', seed: '222' });
 });
 
@@ -143,7 +141,7 @@ it('壳认领写地址只重取，不重建筛选；同一个地址再写一次�
   await settle();
   await act(async () => { r.shellNavigate('/?tag=x', { replace: true }) });
   await settle();
-  expect(log.slice(2)).toEqual(['load', 'load']);
+  expect(log.slice(1)).toEqual(['load', 'load']);
   expect(filters(r).tag).toBe('x');
 });
 
@@ -156,7 +154,7 @@ it('首页、筛选态与回收站之间换页不重挂；壳认领进回收站�
     r.shell.writeShell({ pageOpens: r.shell.pageOpens + 1 });
   });
   await settle();
-  expect(log.slice(2)).toEqual(['closeStage', 'open /trash']);
+  expect(log.slice(1)).toEqual(['open /trash']);
   expect(actions.catalog?.release).not.toHaveBeenCalled();
 });
 
@@ -167,18 +165,48 @@ it('详情压着时什么都不做；关掉回到压着的那一份地址、筛�
   const overlay = { backgroundLocation: { pathname: '/', search: '?tag=a' }, overlay: 'item' };
   await act(async () => { r.shellNavigate('/item/7', { state: overlay }) });
   await settle();
-  await act(async () => { r.shellNavigate('/item/8', { claim: false, state: overlay }) });
+  await act(async () => { r.peachHistory.push('/item/8', overlay) });
   await settle();
   await act(async () => { r.shellNavigate('/?tag=a') });
   await settle();
-  expect(log.slice(2), '关掉回到原处').toEqual([]);
+  expect(log.slice(1), '关掉回到原处').toEqual([]);
   await act(async () => { r.shellNavigate('/item/7', { state: overlay }) });
   await settle();
   r.shell.writeShell({ state: { ...filters(r), seed: '9' } });
   await act(async () => { r.shellNavigate('/?tag=a') });
   await settle();
-  expect(log.slice(2), '压着的时候筛选换了').toEqual(['load']);
+  expect(log.slice(1), '压着的时候筛选换了').toEqual(['load']);
   expect(actions.catalog?.release).not.toHaveBeenCalled();
+});
+
+it('没有背景的作品地址（深链）：补画一次目录网格，不整页打开；关掉时壳要求重开才整页打开', async () => {
+  const r = await load('/item/7');
+  const { actions, log } = shellActions();
+  await boot(r, actions);
+  expect(log).toEqual(['fill']);
+  await act(async () => {
+    r.shellNavigate('/');
+    r.shell.writeShell({ pageOpens: r.shell.pageOpens + 1 });
+  });
+  await settle();
+  expect(log).toEqual(['fill', 'open /']);
+});
+
+it('后退落到压在首页上的详情才挂上（中间去过别的页）：压着时不动，关掉回首页整页打开', async () => {
+  const r = await load('/');
+  const { actions, log } = shellActions();
+  await boot(r, actions);
+  const overlay = { backgroundLocation: { pathname: '/', search: '' }, overlay: 'item' };
+  await act(async () => { r.shellNavigate('/item/7', { state: overlay }) });
+  await settle();
+  await act(async () => { r.peachHistory.push('/stats') });
+  await settle();
+  expect(log.slice(1)).toEqual(['release']);
+  await pop('/item/7', { usr: overlay, key: 'x', idx: 1 });
+  expect(log.slice(2), '压着的时候不开').toEqual([]);
+  await act(async () => { r.shellNavigate('/') });
+  await settle();
+  expect(log.slice(2)).toEqual(['open /']);
 });
 
 it('首页上的 `?state=ads` 原地改写成垃圾文件的地址，由垃圾文件那一页整页打开并补标题', async () => {
@@ -188,7 +216,7 @@ it('首页上的 `?state=ads` 原地改写成垃圾文件的地址，由垃圾�
   await boot(r, actions);
   expect(window.location.pathname + window.location.search).toBe('/junk-files?type=video&view=dismissed');
   expect(window.history.length, '改写不加条目').toBe(length);
-  expect(log).toEqual(['closeStage', 'open /junk-files retitle']);
+  expect(log).toEqual(['open /junk-files retitle']);
   expect(filters(r).state).toBe('ads');
 });
 

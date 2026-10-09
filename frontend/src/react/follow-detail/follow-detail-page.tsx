@@ -10,8 +10,11 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, foldName, icon, requestErrorMessage } from '@peach/legacy/core';
+import { noteHtml } from '@peach/legacy/ui';
 
-import { apiSend } from '../../api';
+import { Button } from '@/components/base/buttons/button';
+
+import { ApiError, apiSend } from '../../api';
 import { RetryNote } from '../components/grid-reveal';
 import { MixGroupLabel, MixQueue, MixQueueRow } from '../components/mix-queue';
 import {
@@ -19,20 +22,22 @@ import {
   type FollowContext, type FollowFeedHelpers, type FollowGroup,
 } from '../follow-feed/follow-feed';
 import {
-  followBadges, followIdentity, followMediaIssue, followTitleMarks, followWhen, sourceIcon,
+  followBadges, followIdentity, followMediaIssue, followTitle, followTitleMarks, followWhen, sourceIcon,
 } from '../follow-feed/follow-marks';
 import { FOLLOW_STATUS_URL } from '../follow-manage/follow-manage';
 import { openPhotoLightbox } from '../photo-lightbox/photo-lightbox-dialog';
 import { queryClient } from '../query';
 import { addWant, fetchFollowWant, invalidateWants, removeWants, wantFollowKey, type Want } from '../wants/wants';
 import {
-  FOLLOW_MEDIA_HIDE_URL, FOLLOW_SAVE_URL, authorSources, collectionCopy, detailContext, detailMedia, detailSlides,
+  FOLLOW_MEDIA_HIDE_URL, FOLLOW_SAVE_URL, FollowItemGone, authorSources, collectionCopy, detailContext, detailMedia, detailSlides,
   detailTags, fetchFollowItem, followItemKey, groupedMediaOwner, mediaName, resourceLabel, statusReceipt, tagCategory,
   type DetailMedia, type FollowDetailActions, type FollowDetailData, type FollowDetailItem, type FollowDetailMedia,
   type FollowDetailProps,
 } from './follow-detail';
 
 const realDuration = (value: unknown) => Number(value) > 0;
+/** 轮播张数多于它时，圆点条换成「当前 / 总数」：1280 宽下四十来个点就碰到画框边了。 */
+export const FOLLOW_DOTS_MAX = 20;
 
 /** 字形原样取壳那一份 `icon()`：骨架与遗留详情画的就是它，换成别的字形接管那一拍会跳。 */
 const Glyph = ({ name }: { name: string }) => (
@@ -58,7 +63,9 @@ export function FollowDetailPage(props: FollowDetailProps) {
           <CloseStage onClose={actions.close} />
           <div data-follow-detail-placeholder="">
             {result.isError
-              ? <RetryNote message={requestErrorMessage(result.error)} onRetry={() => void result.refetch()} />
+              ? gone(result.error)
+                ? <GoneNote onBack={actions.close} />
+                : <RetryNote message={requestErrorMessage(result.error)} onRetry={() => void result.refetch()} />
               : null}
           </div>
         </div>
@@ -68,6 +75,17 @@ export function FollowDetailPage(props: FollowDetailProps) {
   return (
     <Detail {...props} data={result.data} context={detailContext(result.data, credentials)}
       mediaIndex={mediaIndex} onMedia={setMediaIndex} />
+  );
+}
+
+const gone = (error: unknown) => error instanceof FollowItemGone || (error instanceof ApiError && error.status === 404);
+
+/** 条目已经不在了：重试取不回来，只给一条回到关注页的路。 */
+function GoneNote({ onBack }: { onBack(): void }) {
+  return (
+    <div data-follow-detail-gone="" onClick={(event) => {
+      if ((event.target as HTMLElement).closest('[data-note-action]')) onBack();
+    }} dangerouslySetInnerHTML={{ __html: noteHtml('这条关注内容已不存在，可能已被来源删除或已清理。', { actionLabel: '回到关注' }) }} />
   );
 }
 
@@ -190,14 +208,20 @@ function MediaFrame({ item, media, actions, onMedia, issues }: {
             onClick={() => step(-1)} dangerouslySetInnerHTML={{ __html: icon('chevron-left') }} />
           <button type="button" data-follow-image-step="1" data-follow-image-arrow="next" aria-label="下一张图片" title="下一张"
             onClick={() => step(1)} dangerouslySetInnerHTML={{ __html: icon('chevron-right') }} />
-          <div data-follow-image-dots="" role="group" aria-label={`${images.length} 张图片`}>
-            {images.map((image, index) => (
-              <button type="button" key={image.index} data-follow-image-item={image.index}
-                aria-current={index === position ? 'true' : 'false'}
-                aria-label={`第 ${index + 1} 张，共 ${images.length} 张`} title={`第 ${index + 1} 张`}
-                onClick={() => onMedia(image.index)} />
-            ))}
-          </div>
+          {images.length > FOLLOW_DOTS_MAX ? (
+            <span data-follow-image-count="" aria-live="polite" aria-label={`第 ${position + 1} 张，共 ${images.length} 张`}>
+              {`${(position + 1).toLocaleString()} / ${images.length.toLocaleString()}`}
+            </span>
+          ) : (
+            <div data-follow-image-dots="" role="group" aria-label={`${images.length} 张图片`}>
+              {images.map((image, index) => (
+                <button type="button" key={image.index} data-follow-image-item={image.index}
+                  aria-current={index === position ? 'true' : 'false'}
+                  aria-label={`第 ${index + 1} 张，共 ${images.length} 张`} title={`第 ${index + 1} 张`}
+                  onClick={() => onMedia(image.index)} />
+              ))}
+            </div>
+          )}
         </>
       ) : null}
     </div>
@@ -230,7 +254,7 @@ function CollectionQueue({ group, itemId, helpers, actions }: {
   const listRef = useDragRow(helpers);
   return (
     <MixQueue kind="collection" data-follow-queue="" title="视频合集" onClose={actions.close} listRef={listRef}
-      summary={`${group.primary.title || '未命名合集'} · ${items.length} 个视频`}>
+      summary={`${followTitle(group.primary)} · ${items.length} 个视频`}>
       {items.map((member) => {
         const duplicate = group.duplicates.includes(member);
         const copy = collectionCopy(group, member, duplicate ? member.provider_label : '');
@@ -275,7 +299,7 @@ function MediaQueue({ item, current, currentId = item.id, helpers, actions, onMe
   const pick = (media: FollowDetailMedia) => (item.id === currentId ? onMedia(media.index) : actions.openItem(item.id, media.index));
   return (
     <MixQueue kind="media" data-follow-queue="" title="多媒体" onClose={actions.close} listRef={listRef}
-      summary={`${item.title || '未命名内容'} · ${items.length} 个媒体`}>
+      summary={`${followTitle(item)} · ${items.length} 个媒体`}>
       {groups.map((row) => [
         row.label ? <MixGroupLabel key={`label:${row.key}`} label={row.label} count={row.items.length} /> : null,
         ...row.items.map((media) => (
@@ -313,7 +337,7 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
       <div data-stage-side-content="">
         <div data-follow-detail-title="">
           <div data-stage-title="" data-follow-detail-name="" data-reveal-line=""
-            dangerouslySetInnerHTML={{ __html: followTitleMarks(single, item) + esc(item.title) }} />
+            dangerouslySetInnerHTML={{ __html: followTitleMarks(single, item) + esc(followTitle(item)) }} />
           {item.url ? (
             <a data-follow-origin="" href={item.url} target="_blank" rel="noreferrer noopener"
               title="打开来源页面" aria-label="打开来源页面"
@@ -333,7 +357,7 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
           {realDuration(item.duration) ? <span>{fmtDur(item.duration)}</span> : null}
           {badges ? <span data-follow-badges="" dangerouslySetInnerHTML={{ __html: badges }} /> : null}
         </div>
-        {item.summary ? <p data-follow-detail-summary="">{item.summary}</p> : null}
+        {item.summary ? <Summary key={item.id} text={item.summary} /> : null}
         {mediaIssue ? <p data-follow-media-issue="">{mediaIssue}</p> : null}
         {/* 上游没给出媒体时，代理只会回一个不含缘由的失败。有缩略图就换上缩略图并说明这是缩略图；
             连缩略图也取不到，才说「这次没取到、多半是限流」——别让人对着一块空画布猜。 */}
@@ -408,6 +432,32 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** 摘要默认收在八行内，量出来确实被截了才给「展开」；展开后同一枚键收回。 */
+function Summary({ text }: { text: string }) {
+  const node = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  useLayoutEffect(() => {
+    const box = node.current;
+    if (!box || open) return undefined;
+    const measure = () => setOverflows(box.scrollHeight > box.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [text, open]);
+  return (
+    <>
+      <p ref={node} data-follow-detail-summary="" data-clamped={open ? undefined : ''}>{text}</p>
+      {overflows || open ? (
+        <Button variant="ghost" size="small" data-follow-summary-toggle="" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? '收起' : '展开'}
+        </Button>
+      ) : null}
+    </>
   );
 }
 

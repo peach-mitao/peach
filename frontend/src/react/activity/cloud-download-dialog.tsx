@@ -68,7 +68,7 @@ function Body({ prefill, close, receipt, provider }: {
   return (
     <div className="flex min-h-0 flex-col">
       {header}
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
         {query.error ? <Note tone="error">{errorMessage(query.error)}</Note> : null}
         {data && !data.available ? <Note tone="neutral">云下载只在账本写入端可用。</Note> : null}
         {data?.available && !configured.length

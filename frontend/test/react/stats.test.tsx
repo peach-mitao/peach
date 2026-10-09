@@ -9,9 +9,11 @@ import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { queryClient } from '../../src/react/query';
+import { shortCount } from '../../src/react/charts/bar-card';
+import { categoryAxisWidth, fitLabel, labelWidth } from '../../src/react/charts/chart-card';
 import {
-  lengthRows, mediumRows, prefetchStats, radialBarSize, radialCeiling, replayRows, STATS_URL, watchNote,
-  type StatsData,
+  fmtCount, lengthRows, mediumRows, percentOf, percentText, playedFor, prefetchStats, radialArc,
+  radialBarSize, radialCeiling, radialSlices, replayRows, STATS_URL, watchNote, type StatsData,
 } from '../../src/react/stats/stats';
 import { StatsPage } from '../../src/react/stats/stats-page';
 
@@ -164,9 +166,9 @@ it('分布图的分档：时长换成分钟区间，文件类型多的在前，�
     .toEqual([{ name: '账号', value: 9 }, { name: '视频', value: 4 }, { name: 'x', value: 1 }]);
   expect(replayRows([{ k: 1, n: 52 }, { k: 2, n: 13 }, { k: 4, n: 6 }, { k: 7, n: 1 }, { k: 9, n: 1 }, { k: 12, n: 2 }]))
     .toEqual([
-      { name: '1 次', value: 52 }, { name: '2 次', value: 13 }, { name: '3 次', value: 0 },
-      { name: '4 次', value: 6 }, { name: '5 次', value: 0 }, { name: '6–9 次', value: 2 },
-      { name: '≥10 次', value: 2 },
+      { name: '1', value: 52 }, { name: '2', value: 13 }, { name: '3', value: 0 },
+      { name: '4', value: 6 }, { name: '5', value: 0 }, { name: '6–9', value: 2 },
+      { name: '≥10', value: 2 },
     ]);
 });
 
@@ -190,10 +192,78 @@ it('看过那一层有播放时间的两张热力图，指到一格读数换成�
   expect(liked?.nextElementSibling?.textContent).toBe('1');
 });
 
-it('没有播放时间记录时看过那一层不出热力图', async () => {
+it('没有播放时间记录时看过那一层不出热力图，留一张说明卡', async () => {
   const { host } = await open(payload({ play_activity: { timezone: 'UTC+08:00', days: [], hours: [] } }));
   await click(tabNamed(host, '看过'));
   expect(host.querySelector('[role=tabpanel] svg[role=img]')).toBeNull();
+  expect(host.querySelector('[role=tabpanel] section[aria-label="播放时间"] p')?.textContent)
+    .toBe('开始播放后，这里会显示播放落在一周的哪些时段。');
+});
+
+it('全是 0 的分布图与没有分段的径向图都换成说明卡', async () => {
+  const { host } = await open(payload({
+    by_library: [],
+    by_quality: [{ k: '4K', n: 0 }, { k: '1080P', n: 0 }],
+  }));
+  const panel = host.querySelector('[role=tabpanel]')!;
+  expect(panel.querySelector('section[aria-label="媒体库"] p')?.textContent)
+    .toBe('把媒体文件夹归进媒体库后，这里会按库显示视频数。');
+  expect(panel.querySelector('section[aria-label="画质"] p')?.textContent).toBe('探测画质后，这里会显示画质分布。');
+});
+
+it('计数取不到时读「未取得」，不白屏也不读成 NaN', async () => {
+  const { host } = await open(payload({
+    tag_cov: null,
+    attribution: { videos: 4, creator: null, code: null, studio: null, thumb: null, duration: null },
+    consumption: {
+      played: null, library_played: null, online_played: null, play_seconds: null,
+      o_total: null, liked: null, dislike: null, seen: null, trash: null, skimmed: null,
+    },
+  }));
+  const cards = [...host.querySelectorAll('[role=tablist]')[0]!.querySelectorAll('[role=tab]')];
+  expect(cards.map((tab) => tab.querySelector('b')?.textContent)).toEqual(['4', '未取得', '未取得', '1 个卷']);
+  expect(host.textContent).not.toContain('NaN');
+});
+
+it('计数加千分位，百分比夹在 0 到 100，有一点就不读 0%', () => {
+  expect(fmtCount(1234567)).toBe((1234567).toLocaleString());
+  expect(fmtCount(null)).toBe('未取得');
+  expect([percentOf(150, 100), percentOf(-3, 100), percentOf(5, 0), percentOf(null, 10)]).toEqual([100, 0, 0, 0]);
+  expect([percentText(1, 1000), percentText(0, 1000), percentText(1, 2)]).toEqual(['<1%', '0%', '50%']);
+});
+
+it('播放时长：不到一小时读分钟，不到 48 小时读小时，再往上读天', () => {
+  expect([playedFor(1800), playedFor(7200), playedFor(48 * 3600), playedFor(-5), playedFor(null)])
+    .toEqual(['30 分钟', '2.0 小时', '2 天', '0 分钟', '未取得']);
+});
+
+it('径向图超过六段并掉尾部，体积跟着合计；负数与非有限值不画', () => {
+  const rows = Array.from({ length: 8 }, (_, at) => ({ name: `库${at}`, value: 80 - at * 10, bytes: 1 }));
+  const slices = radialSlices([...rows, { name: '坏', value: -1 }, { name: '空', value: Number.NaN }]);
+  expect(slices.map((row) => row.name)).toEqual(['库0', '库1', '库2', '库3', '库4', '其余 3 项']);
+  expect(slices.at(-1)).toEqual({ name: '其余 3 项', value: 30 + 20 + 10, bytes: 3 });
+});
+
+it('不为 0 的段至少画满圈的 2%，0 仍是 0', () => {
+  expect(radialArc(1, 1000)).toBe(20);
+  expect(radialArc(500, 1000)).toBe(500);
+  expect(radialArc(0, 1000)).toBe(0);
+});
+
+it('柱端读数十万以上换成万、亿', () => {
+  expect([shortCount(99999), shortCount(123456), shortCount(1_234_567_890)])
+    .toEqual([(99999).toLocaleString(), '12.3万', '12.3亿']);
+});
+
+it('类别名放不下就截断加省略号，轴宽跟着最长的名字走并封顶', () => {
+  expect(fitLabel('短名', 60)).toBe('短名');
+  const long = '一个特别长的类别名字';
+  const cut = fitLabel(long, 60);
+  expect(cut).toMatch(/^一个.*…$/);
+  expect(long.startsWith(cut.slice(0, -1))).toBe(true);
+  expect(labelWidth(cut)).toBeLessThanOrEqual(60);
+  expect(categoryAxisWidth(['ab'])).toBe(36);
+  expect(categoryAxisWidth(['一个特别长的类别名字一个特别长的类别名字'])).toBe(104);
 });
 
 it('覆盖率那一层的每条进度用同一对分子分母，不另算一遍', async () => {

@@ -173,7 +173,7 @@ function shellActions(): ShellActions {
     savePeopleLayout: vi.fn(), exitSelectMode: vi.fn(), personAvatar: vi.fn(() => ({ html: '', face: '' })),
     authorAvatar: vi.fn(() => ''), showIndexTags: vi.fn(), openFollowAuthor: vi.fn(), openFollowTag: vi.fn(),
     openPlaylist: vi.fn(), canFlip: vi.fn(() => true),
-    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
+    surfaceChanged: vi.fn(), clearSearch: vi.fn(), openImmerse: vi.fn(), openOverlay: vi.fn(), closeStage: vi.fn(), grid: {} as ShellActions['grid'],
   };
 }
 
@@ -293,6 +293,13 @@ describe('片单与起播', () => {
     expect(routed()).toEqual([3]);
     expect(meta()).toBe('· 1:00 · 竖屏 · 3/6');
     expect(gets(fetcher, '/api/item?id=')).toBe(1);
+  });
+
+  it('片名空着时标题写「未命名视频」', async () => {
+    serve({ draws: [[1, 2, 3].map((id) => row(id))] });
+    host.displayName.mockImplementation(() => '');
+    await open(1);
+    expect(q('[data-immerse-title]')!.textContent).toBe('未命名视频');
   });
 
   it('深链的那一条不在这一批里：取它的详情插到最前，地址栏落回同一条', async () => {

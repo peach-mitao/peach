@@ -13,7 +13,8 @@ import { api } from '@peach/legacy/core';
 
 import type { CatalogGridProps, MediaPage } from '../catalog-grid/types';
 import type { EntityBodyActions, EntityBodyHelpers, EntityCodeSet, EntityLocalPhoto, PhotoLayout, PhotoSize } from '../entity-body/entity-body';
-import type { EntityComboItem, EntitySortKey, SegmentOption } from '../entity-filter/entity-filter';
+import type { EntityComboItem, EntitySortKey, EntityView, SegmentOption } from '../entity-filter/entity-filter';
+import type { FollowFeedActions, FollowFeedHelpers } from '../follow-feed/follow-feed';
 import type { EntityHeroData, HeroCostar } from '../entity-hero/entity-hero';
 import { feedNewKey, feedNewOptions, type FeedRowHtml } from '../feed-new/feed-new';
 import type { IndexPerson, PeopleLayout } from '../index/index-data';
@@ -23,8 +24,8 @@ import { queryClient } from '../query';
 export const ENTITY_FILTER_KEYS = ['loc', 'creator', 'tag', 'state', 'dur_min', 'dur_max', 'orient', 'sort', 'dir'] as const;
 export type EntityFilters = Readonly<Record<string, string>>;
 
-/** 地址栏上的媒体视图：`media=photos` 与目录图集 `set=<id>`。名册不进地址栏，见 `rosterView`。 */
-export interface EntityMedia { media: 'videos' | 'photos'; set: number }
+/** 地址栏上的媒体视图：`media=photos`、`media=online` 与目录图集 `set=<id>`。名册不进地址栏，见 `rosterView`。 */
+export interface EntityMedia { media: 'videos' | 'photos' | 'online'; set: number }
 export const EMPTY_MEDIA: EntityMedia = { media: 'videos', set: 0 };
 
 /** `/api/entity` 里这一页读到的字段：资料卡那份，外加标签计数与名册。名字对不上时回 `{error}`。 */
@@ -37,6 +38,7 @@ export interface EntityPageData extends EntityHeroData {
   has_image?: boolean;
   image_version?: string;
   has_avatar?: boolean;
+  avatar_stand_in?: boolean;
   has_logo?: boolean;
   representative_asset_id?: number | null;
   avatar_focus?: unknown;
@@ -75,8 +77,9 @@ export interface EntityPageActions {
   openEntity(kind: string, name: string, replace?: boolean): void;
   /** 这一页是不是 JAV 语境（按第一页作品的 `is_jav` 推）：壳的排序项、侧栏取数与卡片版式都读它。 */
   javContext(on: boolean): void;
-  /** 换了视图或换了一批内容：壳重算吸顶，顶栏的大小图键按是不是照片墙换成对应的那一组。 */
-  painted(view: 'people' | 'videos' | 'photos'): void;
+  /** 换了视图或换了一批内容：壳重算吸顶，顶栏的大小图键按是不是照片墙（`wall`：照片视图，或在线
+   *  视图摆着图片）换成对应的那一组。 */
+  painted(view: EntityView, wall: boolean): void;
   /** 名字对不上任何一位（`/api/entity` 回 `{error}`）：壳把整块换成空态。 */
   missing(): void;
   /** 换过头像：壳丢掉自己缓存着的那几排头像（顶部三条），下次画时按新版本号重取。 */
@@ -137,6 +140,8 @@ export interface EntityPageProps extends SharedGridProps {
   feedRevision: number;
   photoSize: PhotoSize;
   photoLayout: PhotoLayout;
+  /** 关注图片墙的「仅显示图片」（`followImagesOnly`），在线视图与关注页共用这一个设置。 */
+  followImagesOnly: boolean;
   /** JAV 卡片版式的现值与可选项。 */
   javLayout: string;
   javLayouts: readonly SegmentOption[];
@@ -148,6 +153,9 @@ export interface EntityPageProps extends SharedGridProps {
   hosts: EntityPageHosts;
   /** 卡片上的助手与动作就是目录那一份；照片墙多一枚定位源文件。 */
   card: { helpers: EntityBodyHelpers; actions: Omit<EntityBodyActions, 'loadMorePhotos'> };
+  /** 在线视图里的关注卡：骨架、拖动与进度同关注页那一份；动作是资料页语境的一份，换筛选、侧栏、
+   *  多选与图片偏好都不接（这一页不画关注页的侧栏，多选认的是本地作品）。 */
+  follow: { helpers: FollowFeedHelpers; actions: FollowFeedActions };
   helpers: EntityPageHelpers;
   actions: EntityPageActions;
 }

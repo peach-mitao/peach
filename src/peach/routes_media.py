@@ -16,6 +16,7 @@ import logging
 import re
 import time
 from functools import partial
+from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import quote, urlsplit
@@ -29,7 +30,7 @@ from fastapi.responses import (
 from starlette.staticfiles import StaticFiles
 
 from . import (
-    avatar_face, avatar_picker, avatar_provider, follow_assets, images,
+    avatar_face, avatar_online, avatar_picker, avatar_provider, follow_assets, images,
     jav_poster_crop, link_marks, link_status, scraping_access, site_icons, social_links, subtitles,
     taste_history, timeline_sheets, web_follow, web_settings,
 )
@@ -1135,6 +1136,69 @@ def _remember_library(providers_root: Path, body: bytes, origin: dict,
         cache.store(str(origin.get("upstream_url") or ""), body, inspected)
 
 
+def _picker_online_projection(item) -> avatar_online.MediaChoices:
+    """候选与关注卡共用可见媒体和封面策略，HTTP 地址由 web 层决定。"""
+    indexes = tuple(media["index"] for media in web_follow._media_items(item)
+                    if media["media_kind"] == "image")
+    if (not web_follow._raw_media_items(item) and not item.hidden_media
+            and web_follow._media_kind(item) == "image" and item.media_url):
+        indexes = (None,)
+    return avatar_online.MediaChoices(cover=web_follow._thumb_url(item), images=indexes)
+
+
+def _picker_online(request: Request, connection, entity_id: int):
+    """复用关注代理的主机、凭据与有界封面判据，按候选缓存原图。"""
+    state = request.app.state
+    providers_root, _ = _picker_roots(state.web_contract)
+    cache = avatar_provider.AvatarCandidateCache(providers_root / "follow-content")
+
+    def media(item, index):
+        target = state.follow_media_resolver.resolve(item, index)
+        upstream = open_upstream(state.http_transport.client, "GET", target, incoming={})
+        try:
+            chunks, length = [], 0
+            deadline = time.monotonic() + avatar_picker.FETCH_TIMEOUT
+            for chunk in upstream.iter_bytes():
+                if time.monotonic() > deadline:
+                    raise avatar_picker.PickerError("这张图未取得：请求超时")
+                length += len(chunk)
+                if length > avatar_picker.MAX_IMAGE_BYTES:
+                    raise avatar_picker.PickerError("图太大了")
+                chunks.append(chunk)
+            return b"".join(chunks)
+        finally:
+            upstream.close()
+
+    def image(item, url):
+        if url.startswith("/follow-cover"):
+            return state.follow_cover_service.cover(item).read_bytes()
+        if url.startswith("/follow-stream"):
+            return media(item, None)
+        if not avatar_picker.allowed_source(url):
+            raise avatar_picker.PickerError("封面地址不可用")
+        return avatar_picker.fetch_image(state.http_transport, url)
+
+    def avatar(params):
+        response = follow_avatar(request, args={}, **params)
+        return Path(response.path).read_bytes() if isinstance(response, FileResponse) else None
+
+    def resolve(ref):
+        def remembered(fetch):
+            def wrapped(*args):
+                found = cache.lookup(f"peach:online/{entity_id}/{ref}")
+                return found if found is not None else fetch(*args)
+            return wrapped
+        try:
+            body, origin = avatar_online.resolve(ref, connection, entity_id,
+                project=_picker_online_projection,
+                image=remembered(image), avatar=remembered(avatar), media=remembered(media))
+        except (OSError, httpx.HTTPError, FollowMediaUnavailable, FollowProxyError, FollowCoverUnavailable) as error:
+            raise avatar_picker.PickerError("在线图片未取得") from error
+        cache.store(f"peach:online/{entity_id}/{ref}", body, avatar_picker.accept_image(body))
+        return body, origin
+    return resolve
+
+
 @router.get("/api/avatar-choices")
 def avatar_choices(request: Request, kind: str = "performer", id: int = 0,
                    args: dict[str, str] = Depends(require_auth)):
@@ -1143,9 +1207,13 @@ def avatar_choices(request: Request, kind: str = "performer", id: int = 0,
     providers_root, avatar_root = _picker_roots(state)
     id = current_entity_id(state, id)
     with state.read_connection() as connection:
-        return JSONResponse(avatar_picker.choices(
+        listing = avatar_picker.choices(
             connection, providers_root, avatar_root, _picker_kind(kind), id,
-            cover_root=state.cover_root))
+            cover_root=state.cover_root)
+        if kind == "creator":
+            listing["choices"] += [choice.as_dict() for choice in avatar_online.choices(
+                connection, id, project=_picker_online_projection)]
+        return JSONResponse(listing)
 
 
 @router.api_route("/avatar-choice", methods=["GET", "HEAD"])
@@ -1163,7 +1231,8 @@ def avatar_choice(request: Request, kind: str = "performer", id: int = 0,
         try:
             body, origin = avatar_picker.resolve(
                 ref, connection, providers_root, id,
-                request.app.state.http_transport, _picker_artwork(request))
+                request.app.state.http_transport, _picker_artwork(request),
+                online=_picker_online(request, connection, id))
         except avatar_picker.PickerError as error:
             return JSONResponse({"error": str(error)}, status_code=404)
     inspected = avatar_provider.inspect_avatar(body)
@@ -1225,9 +1294,15 @@ async def avatar_frame(request: Request, args: dict[str, str] = Depends(require_
         with state.read_connection() as connection:
             found, origin = avatar_picker.resolve(
                 ref, connection, providers_root, entity_id, transport,
-                _picker_artwork(request))
+                _picker_artwork(request), online=_picker_online(request, connection, entity_id))
+            listed = avatar_online.choices(connection, entity_id, project=_picker_online_projection) if ref.startswith("follow:") else []
         _remember_library(providers_root, found, origin, avatar_picker.accept_image(found))
-        return avatar_picker.framed(ref, found, probe, source="", label="")
+        choice = avatar_picker.framed(ref, found, probe, source="", label="")
+        if ref.startswith("follow:"):
+            original = next((one for one in listed if ref in one.bases), None)
+            if original:
+                choice = replace(choice, bases=original.bases)
+        return choice
 
     try:
         if ref:
@@ -1280,7 +1355,8 @@ async def avatar_pick(request: Request, args: dict[str, str] = Depends(require_a
                 body, origin = avatar_picker.resolve(
                     ref, connection, providers_root, entity_id,
                     request.app.state.http_transport, _picker_artwork(request),
-                    version=version if isinstance(version, str) else None)
+                    version=version if isinstance(version, str) else None,
+                    online=_picker_online(request, connection, entity_id))
             _remember_library(providers_root, body, origin, avatar_picker.accept_image(body))
         elif body:
             origin = {"source": "avatar picker", "provider": "upload",

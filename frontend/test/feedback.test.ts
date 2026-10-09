@@ -9,6 +9,16 @@ describe('中文错误反馈',()=>{
   it.each([[401,'登录已失效'],[403,'没有执行此操作的权限'],[404,'已不存在'],[429,'过于频繁'],[503,'暂时不可用'],[504,'超时']])('HTTP %s 使用明确原因', (code,reason)=>{
     expect(requestErrorMessage('request failed',code)).toContain(reason);
   });
+  it('正文里的 timeout 字样不把 500 读成超时',()=>{
+    expect(requestErrorMessage('Traceback: httpx.ReadTimeout raised in handler (timeout=30)',500))
+      .toBe('Peach 服务处理失败，请重试；持续失败时查看托盘日志。');
+    expect(requestErrorMessage('read timed out')).toContain('超时');
+  });
+  it('本机接口的 502 说的是 Peach 服务，不提代理',()=>{
+    const text=requestErrorMessage('Bad Gateway',502);
+    expect(text).toContain('Peach 服务');
+    expect(text).not.toContain('代理');
+  });
   it('保留服务端明确的中文原因',()=>{
     expect(requestErrorMessage('媒体盘没有挂载，请先连接媒体盘。',409)).toBe('媒体盘没有挂载，请先连接媒体盘。');
   });

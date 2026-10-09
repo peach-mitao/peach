@@ -157,19 +157,36 @@ export function followupDetail(row: TaskRunPayload): string {
   const label = row.progress_label || '';
   const item = label.startsWith(prefix) ? label.slice(prefix.length) : label === row.task_label ? '' : label;
   const total = row.progress_total || 0;
-  const tail = row.error || summaryText(row.result_summary)
-    || (isActive(row) && total > 0 ? `${row.progress_current || 0} / ${total} 项` : '');
+  const tail = errorHeadline(row.error) || summaryText(row.result_summary)
+    || (isActive(row) && total > 0 ? `${progressText(row.progress_current, total)} 项` : '');
   return [item, tail].filter(Boolean).join(' · ');
 }
 
-/** 秒数说成「几分几秒」。跑了几小时的批处理也要一眼读得出量级。 */
+/** 秒数说成「几分几秒」。跑了几小时的批处理也要一眼读得出量级：满 48 小时按天说。 */
 export function elapsedText(seconds: number | null | undefined): string {
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return '';
   const whole = Math.floor(seconds);
   if (whole < 60) return `${whole} 秒`;
   const minutes = Math.floor(whole / 60);
   if (minutes < 60) return `${minutes} 分 ${whole % 60} 秒`;
-  return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} 小时 ${minutes % 60} 分`;
+  return `${Math.floor(hours / 24).toLocaleString()} 天 ${hours % 24} 小时`;
+}
+
+/** 进度读数「已做 / 总数」：服务端偶尔报出超过总数的已做数，按总数封顶。 */
+export function progressText(current: number | null | undefined, total: number | null | undefined): string {
+  const all = Math.max(0, Number(total) || 0);
+  const done = Math.min(all, Math.max(0, Number(current) || 0));
+  return `${done.toLocaleString()} / ${all.toLocaleString()}`;
+}
+
+/** 一段报错在列表里只露的那一行。Python traceback 的第一行永远是「Traceback (most recent call
+ *  last):」，说明不了什么，取最后一行的异常类型与消息；别的取第一行非空。 */
+export function errorHeadline(text: string | null | undefined): string {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  return /^Traceback \(most recent call last\)/.test(lines[0]!) ? lines[lines.length - 1]! : lines[0]!;
 }
 
 /** 时间戳说成本地的「月-日 时:分」。账本里存的是 UTC，界面上一律按本机时区读。 */
@@ -194,6 +211,6 @@ export function summaryText(summary: Record<string, unknown>): string {
     .filter(([key, value]) => !SUMMARY_HIDDEN.has(key)
       && (typeof value === 'number' || typeof value === 'string')
       && String(value) !== '')
-    .map(([key, value]) => `${SUMMARY_LABELS[key] || key} ${value}`)
+    .map(([key, value]) => `${SUMMARY_LABELS[key] || key} ${typeof value === 'number' ? value.toLocaleString() : value}`)
     .join(' · ');
 }

@@ -10,6 +10,7 @@
 import { useMutation, type QueryClient } from '@tanstack/react-query';
 
 import { apiGet, apiSend } from '../../api';
+import { errorHeadline } from '../activity/tasks';
 import { queryClient } from '../query';
 import { localTime } from '../time';
 
@@ -97,15 +98,16 @@ export function useSaveThumbnailMode() {
 export function followScheduleCopy(status: FollowScheduleStatus): string {
   if (!status.available) return '只在账本写入端运行';
   if (status.running) return '正在检查全部来源…';
-  if (status.last_error) return `上次失败：${status.last_error}`;
-  if (status.last_finished_at) return `上次完成 ${localTime(status.last_finished_at)} · 新增 ${status.last_added || 0}`;
+  // 面板里一行说明放不下整段堆栈，只说异常那一行；全文在活动页这一轮的卡片里。
+  if (status.last_error) return `上次失败：${errorHeadline(status.last_error)}`;
+  if (status.last_finished_at) return `上次完成 ${localTime(status.last_finished_at)} · 新增 ${(status.last_added || 0).toLocaleString()}`;
   if (status.next_run_at) return `下次 ${localTime(status.next_run_at)}`;
   return status.enabled ? '等待首次运行' : '已关闭';
 }
 
 export function videoThumbnailCopy(status: ThumbnailJobStatus): string {
   if (status.status === 'running') return '正在采集，进度在活动页查看。';
-  if (status.status === 'failed') return `上一轮采集停下了：${status.stopped || '原因未取得'}`;
+  if (status.status === 'failed') return `上一轮采集停下了：${errorHeadline(status.stopped) || '原因未取得'}`;
   if (status.status === 'complete') return status.stopped ? '上一轮采集已按停。' : '上一轮采集已完成。';
   return status.mode === 'off'
     ? '关闭时不采集；已经生成的图留在盘上，清理走数据管理页。'

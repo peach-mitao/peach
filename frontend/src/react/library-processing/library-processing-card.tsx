@@ -145,7 +145,7 @@ function Outcome(
                       <ul ref={list} className="max-h-96 overflow-y-auto pr-3">
                         {details.items.map((item) => (
                           <li key={item.key}
-                            className="flex flex-col gap-0.5 border-b border-current/15 py-2 first:pt-1 last:border-b-0 last:pb-1">
+                            className="flex flex-col gap-0.5 border-b border-current/15 py-2 wrap-anywhere first:pt-1 last:border-b-0 last:pb-1">
                             {item.href
                               ? <a href={item.href} className="text-body-2-medium underline-offset-4 hover:underline">{item.label}</a>
                               : <span className="text-body-2-medium">{item.label}</span>}
@@ -240,7 +240,7 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
           <FieldsetTitle>扫描与采集</FieldsetTitle>
           <p className="text-body-2-regular text-text-secondary">{SCAN_CARD_TEXT}</p>
           {state.status === 'running'
-            ? <TaskProgress embedded label={line} value={state.checked} total={state.total} />
+            ? <TaskProgress embedded label={line} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
             : null}
         </div>
       </Fieldset>

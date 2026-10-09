@@ -36,7 +36,7 @@ function AlphaTag({ tag, actions }: { tag: TagEntry; actions: TagActions }) {
   const pressed = actions.picked.has(tag.k);
   return (
     <button type="button" data-alpha-tag="" data-k={tag.k} data-tag-cat={tagColorKey(actions.online, tag.cat)}
-      aria-pressed={pressed} onClick={() => actions.press(tag.k)}
+      aria-pressed={pressed} title={tag.label} onClick={() => actions.press(tag.k)}
       className="flex h-9 min-w-0 cursor-pointer items-center gap-2.25 rounded-lg px-2.5 text-left text-body-regular text-text-secondary outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus-ring">
       <Dot />
       <span className="min-w-0 flex-1 truncate">{tag.label}</span>
@@ -150,7 +150,7 @@ export function TagDock(
   { count: number; match: 'any' | 'all'; onMatch(match: 'any' | 'all'): void; onClear(): void; onApply(): void },
 ) {
   return (
-    <SelectionDock visible={count > 0} label="所选标签操作" count={`已选 ${count} 个标签`}>
+    <SelectionDock visible={count > 0} label="所选标签操作" count={`已选 ${count.toLocaleString()} 个标签`}>
       <Checkbox isSelected={match === 'any'} onChange={(on) => onMatch(on ? 'any' : 'all')}>
         <span className="flex flex-col">
           <span className="text-body-medium">广泛匹配</span>

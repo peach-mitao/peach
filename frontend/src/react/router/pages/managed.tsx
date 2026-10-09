@@ -1,24 +1,27 @@
 /* 管理区十一页与 `/resource-sync` 的页面元素：页面组按匹配挂上它们，挂上就打开那一页（ADR-0031「管理区页面由
  * 路由树按匹配打开」）。
  *
- * 一次打开：等壳开始路由（`routingStarted`），收舞台，经 `surfaceChanged` 让壳收起别的面、铺开管理区，铺这一页的
+ * 一次打开：等壳开始路由（`@peach/shell` 的 `pageOpens` 大于 0），经 `surfaceChanged` 让壳收起别的面、铺开管理区，铺这一页的
  * 骨架（与壳冷启动铺的是同一张，键相同就不重画），按需问一次 `/healthz`，再走 `openManagedRoute` 取齐首屏、
  * 在同一个任务里换成整页。首帧 props 由元素自己从地址、偏好与壳的状态算。
  *
- * 按开次代次挂 key：派发一次就是打开一次，同一路径再打开就重挂重取；认领的写地址（复核页换分类、关注管理换页签）
- * 代次不变，不重开。详情压在上面时页面组还匹配这一页：key 停在压上来之前那一次，页面不拆；经背景匹配挂上的
- * （启动就落在详情上）不打开，背景页不补画。
+ * 按开次代次挂 key：没人认领的历史变化一次就是打开一次，同一路径再打开就重挂重取；认领的写地址（复核页换分类、
+ * 关注管理换页签）代次不变，不重开。详情压在上面时页面组还匹配这一页：key 停在压上来之前那一次，页面不拆；经背景
+ * 匹配挂上的（后退落到压在这一页上的详情）先不打开，详情撤下时按那一刻的代次挂 key 打开。
  *
  * 卸载时这一页还画在 `#stats` 里、壳也没藏起它，才收起；资料页、首页压过来时壳只藏起 `#stats`，页面照旧活着，
  * 等下一次认领表面才收。收起排进微任务：卸载发生在路由根同步提交的那一次里。 */
-import { useContext, useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useLocation } from 'react-router';
 
 import { appSettingsStore } from '@peach/appearance';
 import {
-  isOverlayPath, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, routingStarted, shellNavigate,
+  isOverlayPath, managedEntry, openManagedRoute, peachHistory, releaseManagedRoute, shellNavigate,
 } from '@peach/history';
 import { api, isAbort } from '@peach/legacy/core';
-import { cameFromSetup, configurationRequestedSection, runtimeConfigurable, state, writeShell } from '@peach/shell';
+import {
+  cameFromSetup, configurationRequestedSection, pageOpens, runtimeConfigurable, state, subscribeShell, writeShell,
+} from '@peach/shell';
 
 import { managementSkeletonHtml, paintManagementPlaceholder } from '../../../management-placeholder';
 import { isReviewCategory } from '../../review/review';
@@ -42,6 +45,10 @@ interface Runtime {
 }
 
 const FOLLOW_MANAGE_TABS = ['list', 'add', 'feeds', 'wants', 'source'];
+
+const readStarted = () => pageOpens > 0;
+/** 壳开始路由没有（`pageOpens` 大于 0）。 */
+const useRoutingStarted = (): boolean => useSyncExternalStore(subscribeShell, readStarted);
 
 /* `/resource-sync` 改写过来的那一次数据管理页，打开后滚到资源同步那一块；取一次就清。 */
 let resourceSyncPending = false;
@@ -117,7 +124,6 @@ const SCROLL_WHEN_CURRENT = new Set<ManagedPath>(['/review', '/quality-goals', '
 async function openPage(path: ManagedPath, actions: ShellActions, run: Run): Promise<void> {
   const stats = document.getElementById('stats');
   if (!stats) return;
-  actions.closeStage();
   actions.surfaceChanged('management', path);
   if (path === '/taste') {
     writeShell({
@@ -156,43 +162,53 @@ async function openPage(path: ManagedPath, actions: ShellActions, run: Run): Pro
 /** 管理区一页的元素。 */
 export function ManagedMatch({ path }: { path: ManagedPath }) {
   const epoch = useOpenEpoch();
+  // 每次导航都重渲染一次：详情撤下的那一次认领写地址不领代次，也要看得见。
+  useLocation();
   const covered = isOverlayPath(peachHistory.navigation.location.pathname);
-  const opening = useRef(epoch);
+  const opening = useRef<number | null>(covered ? null : epoch);
   if (!covered) opening.current = epoch;
   // 路径也进 key：认领的写地址从一页换到另一页（配置页改写到数据管理页）时代次不变，页面组在同一个位置换了路由。
-  return <ManagedPage key={`${path} ${opening.current}`} path={path} covered={covered} />;
+  return <ManagedPage key={`${path} ${opening.current ?? 'covered'}`} path={path} covered={opening.current === null} />;
 }
 
 function ManagedPage({ path, covered }: { path: ManagedPath; covered: boolean }) {
   const actions = useContext(ShellActionsContext);
+  const started = useRoutingStarted();
+  const run = useRef<Run | null>(null);
   useEffect(() => {
-    if (covered || !actions) return undefined;
-    const run: Run = { live: true, revision: 0, controller: new AbortController() };
-    void routingStarted.then(() => (run.live ? openPage(path, actions, run) : undefined));
-    return () => {
-      run.live = false;
-      run.controller.abort();
-      const stats = document.getElementById('stats');
-      queueMicrotask(() => {
-        if (stats && run.revision && !stats.hidden && managedEntry(stats)?.revision === run.revision) releaseManagedRoute(stats);
-      });
-    };
-    // 每次挂上只打开一次：详情压上来、关掉时 `covered` 变了也不重开。
+    if (covered || !actions || !started || run.current) return;
+    const current: Run = { live: true, revision: 0, controller: new AbortController() };
+    run.current = current;
+    queueMicrotask(() => { if (current.live) void openPage(path, actions, current) });
+    // 每次挂上只打开一次：壳开始路由那一刻，或挂上时已经开始了。
+  }, [started]);
+  useEffect(() => () => {
+    const current = run.current;
+    if (!current) return;
+    current.live = false;
+    current.controller.abort();
+    const stats = document.getElementById('stats');
+    queueMicrotask(() => {
+      if (stats && current.revision && !stats.hidden && managedEntry(stats)?.revision === current.revision) releaseManagedRoute(stats);
+    });
   }, []);
   return null;
 }
 
 /** 旧直达地址 `/resource-sync`：改写成数据管理页的资源同步锚点，不加历史条目，再由数据管理页的元素打开。 */
 export function ResourceSyncRedirect() {
+  const started = useRoutingStarted();
+  const done = useRef(false);
   useEffect(() => {
-    if (isOverlayPath(peachHistory.navigation.location.pathname)) return undefined;
+    if (!started || done.current || isOverlayPath(peachHistory.navigation.location.pathname)) return undefined;
+    done.current = true;
     let live = true;
-    void routingStarted.then(() => {
+    queueMicrotask(() => {
       if (!live) return;
       resourceSyncPending = true;
       shellNavigate('/data-cleanup#resource-sync', { replace: true });
     });
     return () => { live = false };
-  }, []);
+  }, [started]);
   return null;
 }

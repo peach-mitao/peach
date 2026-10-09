@@ -31,11 +31,17 @@ function watchFollowRequests(page: Page) {
   return seen;
 }
 
-/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。 */
+/** 换条前记下舞台节点并盯住骨架：原地换条时浮窗还是同一个节点，中途不回骨架，焦点留在浮窗里。
+ *  顺带盯新播放器：Peach 控件（提示圆是其中一枚）装上之前，Video.js 原装的控制条与大播放键不该露出来。 */
 const watchStage = (page: Page) => page.evaluate(() => {
-  const watch = { stage: document.getElementById('stage'), skeleton: false };
-  new MutationObserver(() => { if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true })
-    .observe(document.body, { childList: true, subtree: true });
+  const watch = { stage: document.getElementById('stage'), skeleton: false, rawControls: false };
+  const shown = (node: Element | null) => !!node && getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility !== 'hidden';
+  new MutationObserver(() => {
+    if (document.querySelector('#stage [data-skeleton="detail"]')) watch.skeleton = true;
+    for (const player of document.querySelectorAll('#stage div.video-js:not(:has(.vjs-peach-bezel))')) {
+      if (shown(player.querySelector('.vjs-control-bar')) || shown(player.querySelector('.vjs-big-play-button'))) watch.rawControls = true;
+    }
+  }).observe(document.body, { childList: true, subtree: true });
   Object.assign(window, { stageWatch: watch });
 });
 const stageKept = (page: Page) => page.evaluate(() => {
@@ -102,7 +108,7 @@ describe('关注详情岛', () => {
     }
   });
 
-  it('深链进详情只单条取这一条，不挂列表岛；内容到了焦点在关闭键上', { timeout: 60_000 }, async () => {
+  it('深链进详情只单条取这一条，不挂列表岛；内容到了焦点在关闭键上；刷新时只有浮窗里的骨架', { timeout: 60_000 }, async () => {
     const opened = await openDetail(browser, DETAIL.collection);
     try {
       const page = opened.page;
@@ -110,6 +116,35 @@ describe('关注详情岛', () => {
       assert.equal((await page.locator('#stage [data-follow-detail-name]').innerText()).trim(), '合集主条目 5101');
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'closeStage');
       assert.deepEqual(withoutPlayer(opened.problems), []);
+
+      // 刷新这一页：等的那一下只有浮窗里的骨架，页面里不先铺一份不在浮窗里的。
+      await page.addInitScript(() => {
+        const seen = { outside: false };
+        Object.assign(window, { detailSkeletonSeen: seen });
+        new MutationObserver(() => {
+          for (const one of document.querySelectorAll('[data-skeleton="detail"]')) if (!one.closest('#stage')) seen.outside = true;
+        }).observe(document, { childList: true, subtree: true });
+      });
+      let releaseItem = () => {};
+      const itemWait = new Promise<void>((resolve) => { releaseItem = resolve; });
+      await page.route((url) => url.pathname === '/api/follow' && url.searchParams.has('item'), async (route) => {
+        await itemWait;
+        await route.fallback();
+      });
+      try {
+        await page.reload({ waitUntil: 'load' });
+        const media = page.locator('#stage [data-skeleton="detail"] [data-stage-media]');
+        await media.waitFor();
+        const box = await media.boundingBox();
+        assert.ok(box && box.height > 120, `详情等待画面高度不足：${JSON.stringify(box)}`);
+        assert.equal(await page.locator('#stage [data-skeleton="detail"] [data-stage-side-content]')
+          .evaluate((node) => getComputedStyle(node).rowGap), '12px');
+      } finally {
+        releaseItem();
+      }
+      await page.locator(DETAIL_READY).waitFor({ timeout: 15_000 });
+      assert.equal(await page.evaluate(() => (window as unknown as { detailSkeletonSeen: { outside: boolean } })
+        .detailSkeletonSeen.outside), false, '刷新时浮窗外先画了一份详情骨架');
     } finally {
       await opened.close();
     }
@@ -125,6 +160,7 @@ describe('关注详情岛', () => {
       assert.equal(await frame.locator('[data-ambient-canvas]').count(), 1);
       assert.equal(await frame.locator('.video-js video').count(), 1, '媒体框里的 video 不止一个');
       await watchStage(page);
+      const seen = watchFollowRequests(page);
       await page.locator('[data-follow-queue-item="5102"]').click();
       await pathIs(page, '/follow/item/5102');
       await page.locator('#stage [data-follow-queue-item="5102"][aria-current="true"]').waitFor();
@@ -138,6 +174,9 @@ describe('关注详情岛', () => {
       await page.locator('#stage .video-js .vjs-control-bar').waitFor({ state: 'attached' });
       assert.equal(await page.locator('#stage .video-js').count(), 1, '后退之后旧播放器没拆');
       assert.deepEqual(await stageKept(page), { same: true, skeleton: false, focused: true }, '后退到上一条重开了浮窗');
+      assert.deepEqual(seen.item, [], '组里的另一条和取过的那一条又单条取了一次，点下去要等一个来回才换');
+      assert.equal(await page.evaluate(() => (window as unknown as { stageWatch: { rawControls: boolean } }).stageWatch.rawControls),
+        false, 'Peach 控件装上之前露出了 Video.js 原装的控制条或大播放键');
       await page.locator('#closeStage').click();
       await pathIs(page, '/follow');
       await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor({ timeout: 15_000 });
@@ -251,6 +290,26 @@ describe('关注详情岛', () => {
     }
   });
 
+  it('二十一张图使用计数条时，键盘左右仍切图并循环，地址保持当前帖子', { timeout: 60_000 }, async () => {
+    const opened = await openDetail(browser, DETAIL.largeGallery);
+    try {
+      const page = opened.page;
+      const poster = page.locator('#stage [data-follow-detail-poster]');
+      assert.equal(await page.locator('#stage [data-follow-image-dots]').count(), 0);
+      for (const [key, index] of [['ArrowRight', 1], ['ArrowLeft', 0], ['ArrowLeft', 20]] as const) {
+        await page.keyboard.press(key);
+        await page.waitForFunction((wanted) => document.querySelector('#stage [data-follow-detail-poster]')
+          ?.getAttribute('src') === wanted, `/follow-stream?id=5002&media=${index}`);
+        assert.equal(await poster.getAttribute('src'), `/follow-stream?id=5002&media=${index}`);
+        assert.equal((await page.locator('#stage [data-follow-image-count]').innerText()).trim(), `${index + 1} / 21`);
+      }
+      assert.equal(new URL(page.url()).pathname, '/follow/item/5002');
+      assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('隐藏这张图退到恢复带，从恢复带点回来又回到轮播', { timeout: 60_000 }, async () => {
     const opened = await openDetail(browser, DETAIL.hidden);
     try {
@@ -316,4 +375,36 @@ describe('关注详情岛', () => {
       await opened.close();
     }
   });
+
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`长摘要收在八行内、不被侧栏压扁，长串标题与媒体报错不撑宽侧栏（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openDetail(browser, DETAIL.long, viewport);
+      try {
+        const page = opened.page;
+        const measure = () => page.evaluate(() => {
+          const side = document.querySelector('#stage [data-stage-side-content]')!;
+          const summary = document.querySelector<HTMLElement>('#stage [data-follow-detail-summary]')!;
+          const lineHeight = parseFloat(getComputedStyle(summary).lineHeight);
+          const right = side.getBoundingClientRect().right;
+          const inside = ['[data-follow-detail-name]', '[data-follow-detail-summary]', '[data-follow-media-issue]']
+            .map((selector) => document.querySelector(`#stage ${selector}`)!.getBoundingClientRect().right)
+            .every((edge) => edge <= right + 1);
+          return { lines: summary.clientHeight / lineHeight, inside, scroll: side.scrollWidth, width: side.clientWidth };
+        });
+        const folded = await measure();
+        assert.ok(folded.lines >= 7.5 && folded.lines <= 8.5, `收起的摘要不是八行：${JSON.stringify(folded)}`);
+        assert.ok(folded.inside && folded.scroll <= folded.width, `侧栏被撑宽：${JSON.stringify(folded)}`);
+        const toggle = page.locator('#stage [data-follow-summary-toggle]');
+        assert.equal((await toggle.innerText()).trim(), '展开');
+        await toggle.click();
+        const open = await measure();
+        assert.ok(open.lines > 20, `展开后摘要没有全部露出：${JSON.stringify(open)}`);
+        assert.ok(open.inside && open.scroll <= open.width, `展开后侧栏被撑宽：${JSON.stringify(open)}`);
+        assert.deepEqual((await layout(page)).offenders, [], '详情里有元素越出视口右边');
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
 });

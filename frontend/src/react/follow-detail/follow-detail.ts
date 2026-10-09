@@ -1,7 +1,7 @@
 /* 关注详情 `/follow/item/:id` 的数据与判定（ADR-0031）。
  *
  * 这一块是舞台岛（`../stage/`）树里的子组件；舞台本身、进出场、小窗与 Video.js 归舞台岛
- * （JAV 详情也在用）。条目归这里：先扫关注页岛已缓存的那几页（`findFollowItem`），
+ * （JAV 详情也在用）。条目归这里：先扫关注页岛已缓存的那几页（`findFollowItem`）与已取过的详情，
  * 扫不到才单条取 `GET /api/follow?item=<id>`，响应形状同列表那一页，只含这一条所在的组。 */
 import type { QueryKey } from '@tanstack/react-query';
 import { apiGet } from '../../api';
@@ -59,24 +59,43 @@ export const FOLLOW_ITEM_URL = (id: number) => `/api/follow?item=${encodeURIComp
 export const FOLLOW_SAVE_URL = '/api/follow/save';
 export const FOLLOW_MEDIA_HIDE_URL = '/api/follow/media/hide';
 
-/** 单条取：响应只含这一条所在的组。条目已不存在时服务端回空组，这里报成一次失败。 */
+/** 条目已不存在：重试也取不回来，详情给的是「回到关注」而不是重试。 */
+export class FollowItemGone extends Error {
+  constructor() { super('这条关注内容已不存在') }
+}
+
+/** 单条取：响应只含这一条所在的组。条目已不存在时服务端回空组，这里报成 `FollowItemGone`。 */
 export async function fetchFollowItem(id: number, signal?: AbortSignal): Promise<FollowDetailData> {
   const page = await apiGet<FollowPage>(FOLLOW_ITEM_URL(id), signal);
   for (const group of page.groups || []) {
     const item = collectionItems(group).find((member) => member.id === id);
     if (item) return { item: item as FollowDetailItem, group, sources: page.sources || [], aliases: page.author_aliases || [] };
   }
-  throw new Error('这条关注内容已不存在');
+  throw new FollowItemGone();
 }
 
-/** 首屏：列表缓存里有就直接用（关掉详情回列表也不重取），没有才单条取；凭据没取过才取。 */
+/** 已经取过的详情里，组里有这一条的那一份：合集换版本、多媒体换到组里另一条，组就是舞台上
+ *  正摆着的那一份，单条取回来的也只是同一组。 */
+function findDetailGroupItem(id: number): FollowDetailData | null {
+  for (const [, data] of queryClient.getQueriesData<FollowDetailData>({ queryKey: ['follow-item'] })) {
+    if (!data?.group) continue;
+    const item = collectionItems(data.group).find((member) => member.id === id);
+    if (item) return { ...data, item: item as FollowDetailItem };
+  }
+  return null;
+}
+
+/** 首屏：列表缓存里有就直接用（关掉详情回列表也不重取）；这一条取过、或者就在舞台上那一组里，
+ *  也不再问服务端——点下去到换过去之间没有等待。都没有才单条取；凭据没取过才取。 */
 export async function prefetchFollowDetail(props: { id: number }, signal: AbortSignal): Promise<void> {
   const key = followItemKey(props.id);
   const hit = findFollowItem(props.id);
   const credentials = queryClient.getQueryData(FOLLOW_CREDENTIALS_KEY)
     ? null
     : queryClient.fetchQuery({ queryKey: FOLLOW_CREDENTIALS_KEY, queryFn: () => fetchFollowCredentials(signal) });
-  if (hit) queryClient.setQueryData<FollowDetailData>(key, { ...hit, item: hit.item as FollowDetailItem });
+  const cached = hit ? { ...hit, item: hit.item as FollowDetailItem }
+    : queryClient.getQueryData<FollowDetailData>(key) ?? findDetailGroupItem(props.id);
+  if (cached) queryClient.setQueryData<FollowDetailData>(key, cached);
   else await queryClient.fetchQuery({ queryKey: key, queryFn: () => fetchFollowItem(props.id, signal) });
   await credentials;
 }
@@ -240,19 +259,18 @@ const sized = (media: FollowDetailMedia | null) => (media?.size ? { size: media.
 export function detailSlides(item: FollowDetailItem, media: DetailMedia): LightboxSlide[] {
   const { images, kind, src, selected } = media;
   if (images.length) {
-    return images.map((image, index) => ({
+    return images.map((image) => ({
       src: `/follow-stream?id=${item.id}&media=${image.index}`,
       thumb: image.thumb_url || item.thumb_url || `/follow-stream?id=${item.id}&media=${image.index}`,
       name: image.name || item.title, source: mediaSourceLabel(image, item), ...sized(image),
-      position: index + 1, total: images.length,
     }));
   }
   if (kind === 'image' && src) {
     return [{ src, thumb: item.thumb_url || src, name: item.title, source: mediaSourceLabel(selected, item),
-      ...sized(selected), position: 1, total: 1 }];
+      ...sized(selected) }];
   }
   return item.thumb_url ? [{ src: item.thumb_url, thumb: item.thumb_url, name: item.title,
-    source: item.provider_label || item.provider || '在线图片', position: 1, total: 1 }] : [];
+    source: item.provider_label || item.provider || '在线图片' }] : [];
 }
 
 /* ── 写完之后 ── */

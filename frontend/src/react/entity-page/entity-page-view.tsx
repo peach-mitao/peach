@@ -11,11 +11,16 @@ import { api } from '@peach/legacy/core';
 import { tagLabel } from '@peach/legacy/tags';
 import { confirmModal } from '@peach/legacy/ui';
 
+import { Button } from '@/components/base/buttons/button';
+
 import { errorMessage } from '../../api';
 import type { MediaCardLayout } from '../catalog-grid/types';
+import { EmptyState } from '../components/empty-state';
 import { RetryNote } from '../components/grid-reveal';
+import { spriteGlyph } from '../components/sprite-glyph';
 import type { EntityBodyActions, EntityPhotos, EntityRoster } from '../entity-body/entity-body';
 import { EntityBodyPage } from '../entity-body/entity-body-page';
+import { EntityOnline } from '../entity-body/entity-online';
 import type {
   EntityFilterActions, EntityFilterHelpers, EntityFilterTag, EntityPhotoHead, EntityVideoHead, EntityView, EntityViewKeys,
 } from '../entity-filter/entity-filter';
@@ -28,6 +33,7 @@ import {
   EMPTY_MEDIA, codeSetsOf, entityKey, entityOptions, entityPhotosKey, fetchItems, itemsOptions,
   photosOptions, tagList, tagPressed, type EntityPageData, type EntityPageProps, type PhotoPage,
 } from './entity-page';
+import { useEntityOnline } from './use-entity-online';
 
 export function EntityPage(props: EntityPageProps) {
   const { kind, name } = props;
@@ -66,7 +72,7 @@ const newSeed = () => String(((Date.now() ^ (Math.random() * 1e9 | 0)) >>> 0) % 
 function photoReadout(page: PhotoPage, codeSets: number) {
   return `照片 · ${[
     page.total || !codeSets ? `${(page.total || 0).toLocaleString()} 张` : '',
-    codeSets ? `样张 ${(page.sample_total || 0).toLocaleString()} 张 · ${codeSets} 部作品` : '',
+    codeSets ? `样张 ${(page.sample_total || 0).toLocaleString()} 张 · ${codeSets.toLocaleString()} 部作品` : '',
   ].filter(Boolean).join(' · ')}`;
 }
 
@@ -84,7 +90,12 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   const basePhotos = basePage && !basePage.error ? basePage : null;
   const photoCount = basePhotos ? (basePhotos.total || 0) + (basePhotos.sample_total || 0) : 0;
   const photosAvailable = (basePhotos?.total || 0) > 0 || codeSetsOf(basePhotos).length > 0;
-  const mediaNow = media.media === 'photos' && photosAvailable ? media : EMPTY_MEDIA;
+  /* 关注里绑在这位名下的来源（ADR-0096）：有就多一个在线视图。本地一部视频都没有时作品视图是空的，
+     视频键不出，进页就落在在线。 */
+  const followKey = kind === 'creator' ? entity.follow?.key || '' : '';
+  const onlineOnly = !!followKey && !entity.asset_count;
+  const mediaNow = media.media === 'photos' && photosAvailable ? media
+    : (media.media === 'online' || onlineOnly) && followKey ? { media: 'online' as const, set: 0 } : EMPTY_MEDIA;
 
   /* 名册与媒体不共用地址栏：地址栏只认 `media`，名册是事务所页与片商页的默认视图，进页就在那里。
      换了筛选就回到作品：标签是作品筛选，留在名册里既不生效，标签条也会自相矛盾。 */
@@ -96,6 +107,13 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     setRosterView('videos');
   }
   const view: EntityView = company && rosterView === 'people' && roster.length ? 'people' : mediaNow.media;
+
+  /* ── 在线：筛选与取数同关注页，只按这位的作者键筛 ── */
+  const online = useEntityOnline(followKey, view === 'online', {
+    photoLayout: props.photoLayout, photoLayouts: props.photoLayouts, imagesOnly: props.followImagesOnly,
+    setImagesOnly: props.follow.actions.setImagesOnly,
+  });
+  const photoWall = view === 'photos' || (view === 'online' && online.media === 'images');
 
   /* 换过几次头像。资料卡与作品网格都把图拼进了自己的状态（网格只在代次变时才按新的第一页
      重建），重取到新数据还不够，得换键重建，新图地址里的版本才落得到页面上。 */
@@ -151,7 +169,8 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
 
   /* 换了视图、换了一批内容之后吸顶要重算一次。 */
   const hasItems = !!items.data;
-  useEffect(() => { actions.painted(view) }, [actions, view, itemsRevision, photos?.revision, hasItems]);
+  useEffect(() => { actions.painted(view, photoWall) },
+    [actions, view, photoWall, itemsRevision, photos?.revision, hasItems, online.key]);
 
   /* ── 写操作 ── */
   const alive = useRef(true);
@@ -234,7 +253,11 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         if (alive.current) setAvatarEpoch((epoch) => epoch + 1);
       });
     },
-    openFollowAuthor: actions.openFollowAuthor,
+    /* 资料卡那句「N 项更新」：这位名下的就在这一页的在线视图里，不离开；别的作者键才去关注页。 */
+    openFollowAuthor: (key) => {
+      if (key && key === followKey) actions.route(filters, { media: 'online', set: 0 });
+      else actions.openFollowAuthor(key);
+    },
     /* 认过之后那组来源的更新都记到这位名下：资料重取，读数与提示跟着换。 */
     confirmFollowAuthor: async (key, author) => {
       try {
@@ -246,7 +269,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
       helpers.receipt(`已把关注里的 ${author} 记到 ${entity.canonical_name} 名下`);
       await refreshEntity();
     },
-  }), [actions, alias, bindFollow, entity, entityId, follow, helpers, kind, name, refreshEntity, rename]);
+  }), [actions, alias, bindFollow, entity, entityId, filters, follow, followKey, helpers, kind, name, refreshEntity, rename]);
   const heroHelpers = useMemo<EntityHeroHelpers>(() => ({
     portraitImg: () => helpers.portraitImg(kind, entity),
     wireScroller: helpers.wireDrag,
@@ -260,7 +283,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     setView: (next) => {
       if (next === view && !mediaNow.set) return;
       setRosterView(next === 'people' ? 'people' : 'videos');
-      actions.route(filters, next === 'photos' ? { media: 'photos', set: 0 } : EMPTY_MEDIA);
+      actions.route(filters, next === 'photos' || next === 'online' ? { media: next, set: 0 } : EMPTY_MEDIA);
     },
     setState: (value) => actions.route({ ...filters, state: value }, EMPTY_MEDIA),
     toggleTag: actions.toggleTag,
@@ -285,7 +308,8 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     setJavLayout: actions.setJavLayout,
     setPhotoLayout: actions.setPhotoLayout,
     photoBack: () => actions.route(filters, { media: 'photos', set: 0 }),
-  }), [actions, filters, kind, mediaNow.set, name, props.jav, props.revision, view, wallSet]);
+    ...online.actions,
+  }), [actions, filters, kind, mediaNow.set, name, online.actions, props.jav, props.revision, view, wallSet]);
   const filterHelpers = useMemo<EntityFilterHelpers>(() => ({
     wireDrag: helpers.wireDrag,
     wireScroller: helpers.wireScroller,
@@ -297,13 +321,15 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
      现在该看哪儿。数的是这个人／厂牌名下带这个标签的视频。 */
   const tags: EntityFilterTag[] = (entity.tags || []).map((tag) => ({
     k: tag.k, label: tagLabel(tag.k), n: tag.n, selected: tagPressed(filters.tag, tag.k) }));
-  /* 艺人名册、视频、照片是这一页的三个互斥视图，共用一组圆键；只有一类东西时不出这一组。 */
-  const views: EntityViewKeys | null = photoCount || roster.length ? {
+  /* 艺人名册、视频、照片与在线是这一页的互斥视图，共用一组圆键；只有一类东西时不出这一组。 */
+  const viewKinds = [roster.length, !onlineOnly, photoCount, followKey].filter(Boolean).length;
+  const views: EntityViewKeys | null = viewKinds > 1 ? {
     label: roster.length ? '页面视图' : '媒体类型',
     people: roster.length ? { label: kind === 'studio' ? '厂牌' : '艺人', count: roster.length,
       icon: kind === 'studio' ? 'clapperboard' : 'user-round' } : null,
-    videos: { count: entity.asset_count || 0 },
+    videos: onlineOnly ? null : { count: entity.asset_count || 0 },
     photos: photoCount ? { count: photoCount } : null,
+    online: followKey ? { count: entity.follow?.n || 0 } : null,
   } : null;
   const video: EntityVideoHead = {
     sorts: helpers.sortKeys(filters.sort || 'new', filters.dir || '', javPage),
@@ -315,13 +341,26 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     back: inSet, shuffle: !!wallPage.total, layout: props.photoLayout, layouts: props.photoLayouts,
     setId: inSet ? Number(wallPage.id) : 0,
   } : null;
+  /* 名下一部作品都没有（或筛完一部不剩）时正文是空态，下排那排排序键与换一批没有东西可排，不出。 */
+  const combo = helpers.comboItems(filters);
+  const filtered = combo.length > 0 || !!filters.state;
+  const worksEmpty = view === 'videos' && !!items.data && !(items.data.items || []).length;
+  const showAll = () => actions.route(
+    // 键名与壳的 `clearAll` 同一组，外加观看状态。
+    { ...filters, state: '', tag: '', creator: '', studio: '', owner: '' }, EMPTY_MEDIA);
   let readout = '';
   let busy = false;
   if (view === 'people') readout = `${kind === 'studio' ? '厂牌' : '艺人'} · ${roster.length.toLocaleString()}`;
+  else if (view === 'online') {
+    busy = online.busy;
+    readout = `在线 · ${(online.total ?? entity.follow?.n ?? 0).toLocaleString()} 项更新`;
+  }
   else if (view === 'videos') {
     busy = !items.data;
-    const labels = tagList(filters.tag).map((tag) => tagLabel(tag));
-    readout = `视频 · ${(items.data?.work_total ?? items.data?.total ?? 0).toLocaleString()}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
+    /* 选了哪几枚标签由上面那条交集条一枚一枚列着，读数只报个数：标签名再列一遍，几枚长标签
+       就能把这一行撑出页面。 */
+    const picked = tagList(filters.tag).length;
+    readout = `视频 · ${(items.data?.work_total ?? items.data?.total ?? 0).toLocaleString()}${picked ? ` · 已选 ${picked.toLocaleString()} 个标签` : ''}`;
   } else if (wallPage && !wallPage.error) {
     readout = inSet ? `${wallPage.title} · ${(wallPage.total || 0).toLocaleString()} 张`
       : photoReadout(wallPage, codeSetsOf(wallPage).length);
@@ -346,12 +385,19 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         feedHost={entityId ? hosts.feed : null} jav={javPage} actions={heroActions} helpers={heroHelpers} />
       {createPortal(
         <EntityFilterPage kind={kind} name={name} view={view} views={views} state={filters.state || ''}
-          states={props.states} tags={tags} combo={helpers.comboItems(filters)} readout={readout} busy={busy}
-          video={video} photo={photo} actions={filterActions} helpers={filterHelpers} />,
+          states={props.states} tags={tags} combo={combo} readout={readout} busy={busy}
+          video={worksEmpty ? null : video} photo={photo} online={view === 'online' ? online.head : null} actions={filterActions}
+          helpers={filterHelpers} />,
         hosts.filter)}
       {createPortal(
-        view === 'videos' && items.isError
+        view === 'online'
+          ? <EntityOnline key={online.key} view={online.view} media={online.media} result={online.result}
+            data={online.data} visible={online.visible} context={online.context} photoSize={props.photoSize}
+            photoLayout={props.photoLayout} imagesOnly={props.followImagesOnly} helpers={props.follow.helpers}
+            actions={props.follow.actions} canLoadMore={props.canLoadMore} />
+          : view === 'videos' && items.isError
           ? <RetryNote message={errorMessage(items.error)} onRetry={() => { void items.refetch() }} />
+          : worksEmpty ? <WorksEmpty filtered={filtered} onShowAll={showAll} />
           : (
             <EntityBodyPage kind={kind} name={name} view={view} roster={rosterProps} items={items.data ?? null}
               revision={itemsRevision} fetchPage={fetchPage} photos={photos} photoSize={props.photoSize}
@@ -362,5 +408,19 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
           ),
         hosts.body)}
     </>
+  );
+}
+
+/** 作品区一部也没有。筛完一部不剩时给一条回到全部视频的路：观看状态与交集条上的筛选一起撤掉。 */
+function WorksEmpty({ filtered, onShowAll }: { filtered: boolean; onShowAll(): void }) {
+  return filtered ? (
+    <EmptyState icon={spriteGlyph('search')} title="没有符合条件的视频"
+      actions={<Button variant="secondary" onClick={onShowAll}>查看全部视频</Button>}>
+      清除筛选后查看名下全部视频。
+    </EmptyState>
+  ) : (
+    <EmptyState icon={spriteGlyph('film')} title="还没有视频">
+      署上这个名字的视频入库后会显示在这里。
+    </EmptyState>
   );
 }

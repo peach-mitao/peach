@@ -1,5 +1,5 @@
-/* 由路由画的那几页、页面里的附属面与常驻面：登记键到首屏取数与画法的对照表，七张；另有一张旧直达地址的
- * 改写表 `REDIRECT_ROUTES`。
+/* 由路由画的那几页、页面里的附属面与常驻面：登记键到首屏取数与画法的对照表，七张；另有旧直达地址的
+ * 改写表 `REDIRECT_ROUTES` 和沉浸模式的 `IMMERSE_ROUTES`，只挂元素。
  *
  * `MANAGED_ROUTES` 是管理区那几页（画进 `#stats`），键是精确路径，每条带页面组按匹配挂上的元素；
  * `BROWSE_ROUTES` 是同样画进 `#stats` 的播放列表页与关注页；`INDEX_ROUTES` 是索引页、`ENTITY_ROUTES` 是资料页（都画进 `#index`），资料页按模式登记
@@ -9,7 +9,7 @@
  * 与附属面是壳那一整份 props；回执与换到还归壳的那几屏走 `ShellActions`。
  * 管理区几页之间的跳转走 `go`：落在 `MANAGED_ROUTES` 上的交给 React Router 的 `navigate`，其余交壳。另外
  * 四张表的页面不走 `go`：它们在页内写地址一律由壳认领（`routeIndex`、资料页与关注页的 `actions.route`、
- * 目录的换筛选、垃圾队列的换分类），跨页也交壳，派发次数同壳自己打开。 */
+ * 目录的换筛选、垃圾队列的换分类），跨页也交壳，打开次数同壳自己打开。 */
 import type { ReactElement } from 'react';
 
 import { javDisplayName, javTitleHtml } from '@peach/legacy/jav-title';
@@ -65,6 +65,7 @@ import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
 import { CatalogMatch } from './pages/catalog';
 import { FollowMatch, PlaylistsMatch } from './pages/follow';
+import { ImmerseMatch } from './pages/immerse';
 import { EntityMatch, IndexMatch } from './pages/index-entity';
 import { ManagedMatch, ResourceSyncRedirect } from './pages/managed';
 import type {
@@ -200,6 +201,11 @@ export const isManagedPath = (path: string): path is ManagedPath => Object.hasOw
 /** 旧直达地址：页面组按匹配挂上元素，元素把地址改写到别的页面上，自己不画。 */
 export const REDIRECT_ROUTES: Readonly<Record<string, { element: ReactElement }>> = {
   '/resource-sync': { element: <ResourceSyncRedirect /> },
+};
+
+/** 沉浸模式：页面组按匹配挂上元素（`pages/immerse.tsx`），元素交壳打开常驻面 `immerse`，自己不画。 */
+export const IMMERSE_ROUTES: Readonly<Record<string, { element: ReactElement }>> = {
+  '/immerse': { element: <ImmerseMatch /> },
 };
 
 /* 两页都由元素按匹配打开（`pages/follow.tsx`）。播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要

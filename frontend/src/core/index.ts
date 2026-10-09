@@ -19,9 +19,10 @@ const icon=(name:string,cls='')=>{
 export function requestErrorMessage(cause:any,status=0):string{
   const text=String(cause?.message??cause??'');
   const code=Number(status||cause?.status||text.match(/\b(400|401|403|404|408|409|413|429|500|502|503|504)\b/)?.[1]);
-  const messages:Record<number,string>={400:'提交内容有误，请检查输入后重试。',401:'登录已失效，请刷新页面重新登录。',403:'当前设备没有执行此操作的权限，请在运行 Peach 的电脑上操作。',404:'请求的内容已不存在，请刷新列表。',408:'请求超时，请稍后重试。',409:'当前状态不允许此操作，请刷新后重试。',413:'提交内容过大，请减少数量后重试。',429:'请求过于频繁，请稍后重试。',500:'Peach 服务处理失败，请重试；持续失败时查看托盘日志。',502:'连接上游服务失败，请检查代理或来源服务。',503:'Peach 服务暂时不可用，请稍后重试。',504:'等待服务响应超时，请稍后重试。'};
+  const messages:Record<number,string>={400:'提交内容有误，请检查输入后重试。',401:'登录已失效，请刷新页面重新登录。',403:'当前设备没有执行此操作的权限，请在运行 Peach 的电脑上操作。',404:'请求的内容已不存在，请刷新列表。',408:'请求超时，请稍后重试。',409:'当前状态不允许此操作，请刷新后重试。',413:'提交内容过大，请减少数量后重试。',429:'请求过于频繁，请稍后重试。',500:'Peach 服务处理失败，请重试；持续失败时查看托盘日志。',502:'Peach 服务没有取回结果，请稍后重试；持续失败时查看托盘日志。',503:'Peach 服务暂时不可用，请稍后重试。',504:'等待服务响应超时，请稍后重试。'};
   if(/Failed to fetch|fetch failed|NetworkError|Load failed|network request failed|ERR_CONNECTION/i.test(text))return '无法连接到 Peach 服务，请确认网络连接和托盘服务已启动。';
-  if(cause?.name==='TimeoutError'||/timed? ?out|timeout/i.test(text))return '等待服务响应超时，请检查连接后重试。';
+  /* 正文里的 timeout 字样只在没有状态码时才算超时：500 的堆栈里常带着某个库的 timeout 参数名。 */
+  if(cause?.name==='TimeoutError'||(!code&&/timed? ?out|timeout/i.test(text)))return '等待服务响应超时，请检查连接后重试。';
   if(/[㐀-鿿]/.test(text)&&!/^请求失败[（(]/.test(text))return text;
   if(messages[code])return messages[code];
   return '操作未完成，请重试；持续失败时查看托盘日志。';
@@ -167,14 +168,47 @@ const officialLinkText=(link:{url?:string;label?:string},kind:string,names:reado
 
    所以判据是「有限且大于零」，不是「非空」。 */
 const realDuration=(value:unknown)=>{const n=Number(value);return Number.isFinite(n)&&n>0?n:0};
-/** 秒数格式化成 `h:mm:ss`／`m:ss`；`0`、负数与非有限值都是 `—`（probe 的硬失败哨兵）。 */
-const fmtDur:(seconds:number|null|undefined)=>string=(s:any)=>{s=realDuration(s);if(!s)return'—';s=Math.round(s);const h=s/3600|0,m=(s%3600)/60|0,x=s%60;
+/** 秒数格式化成 `h:mm:ss`／`m:ss`，48 小时起写成 `N 天 N 小时`；`0`、负数与非有限值都是 `—`
+ *  （probe 的硬失败哨兵）。 */
+const fmtDur:(seconds:number|null|undefined)=>string=(s:any)=>{s=realDuration(s);if(!s)return'—';s=Math.round(s);
+  if(s>=48*3600){const d=Math.floor(s/86400),hours=Math.floor((s%86400)/3600);return hours?`${d} 天 ${hours} 小时`:`${d} 天`}
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;
   return h?`${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${m}:${String(x).padStart(2,'0')}`};
 /** 秒数格式化成播放器时钟 `h:mm:ss`／`m:ss`；非数值当 0。 */
 const fmtClock:(seconds:unknown)=>string=(s:any)=>{s=Math.max(0,Math.floor(Number(s)||0));const h=s/3600|0,m=(s%3600)/60|0,x=s%60;
   return h?`${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${m}:${String(x).padStart(2,'0')}`};
-/* 网盘报的容量可以到 PB：PikPak 报 10 PiB，写成 TB 是「10240.00 TB」。 */
-const fmtSize:(bytes:number|null|undefined)=>string=(b:any)=>b>=1125899906842624?(b/1125899906842624).toFixed(2)+' PB':b>=1099511627776?(b/1099511627776).toFixed(2)+' TB':b>=1073741824?(b/1073741824).toFixed(1)+' GB':(b/1048576|0)+' MB';
+/* 网盘报的容量可以到 PB：PikPak 报 10 PiB，写成 TB 是「10240.00 TB」。不到 1 MB 写 KB，
+   非零的最少写 1 KB，免得 1 字节读成「0」。缺值、NaN 与负数是「大小未知」；0 是真的 0——
+   可回收空间、已下载量这类读数会是 0，单个文件的 0 字节由调用方判成未知。 */
+const fmtSize:(bytes:number|null|undefined)=>string=(value:any)=>{
+  if(value===null||value===undefined||value==='')return '大小未知';
+  const b=Number(value);
+  if(!Number.isFinite(b)||b<0)return '大小未知';
+  if(b===0)return '0 B';
+  if(b<1048576)return `${Math.max(1,Math.round(b/1024))} KB`;
+  return b>=1125899906842624?(b/1125899906842624).toFixed(2)+' PB':b>=1099511627776?(b/1099511627776).toFixed(2)+' TB':b>=1073741824?(b/1073741824).toFixed(1)+' GB':Math.floor(b/1048576)+' MB'};
+/* 名字的第一个字素：头像垫底、首字母圆框都取它。按 UTF-16 码元取会把 emoji 劈成半个代理对，
+   画出来是「�」；肤色、ZWJ 组合与国旗也要整枚取。空名用 `fallback`。 */
+const graphemeSegmenter=typeof Intl!=='undefined'&&typeof Intl.Segmenter==='function'
+  ? new Intl.Segmenter(undefined,{granularity:'grapheme'})
+  : null;
+const graphemesOf=(value:string)=>graphemeSegmenter
+  ? Array.from(graphemeSegmenter.segment(value),part=>part.segment)
+  : Array.from(value);
+/** 开头 `count` 个字素（不加省略号）：厂牌没有标识时垫的两个字用它。 */
+const leadingGraphemes=(value:unknown,count:number)=>{
+  const text=String(value??'').trim(),parts:string[]=[];
+  if(!text||count<=0)return '';
+  if(!graphemeSegmenter)return Array.from(text).slice(0,count).join('');
+  for(const part of graphemeSegmenter.segment(text)){parts.push(part.segment);if(parts.length>=count)break}
+  return parts.join('');
+};
+const firstGrapheme=(value:unknown,fallback='?')=>leadingGraphemes(value,1)||fallback;
+/** 按字素截断：超过 `max` 个字素时留前 `max - 1` 个再接「…」。 */
+const clipGraphemes=(value:unknown,max:number)=>{
+  const parts=graphemesOf(String(value??''));
+  return parts.length>max?`${parts.slice(0,Math.max(0,max-1)).join('')}…`:parts.join('');
+};
 /** 来源代号到界面名称：`local`→`本地`、`115`→`115`、`pikpak`→`PikPak`、`online`→`在线`。 */
 const LOC:Record<string,string>={local:'本地','115':'115',pikpak:'PikPak',online:'在线'};
 /* 种子随机：FNV-1a 把「种子 + 键」压成一个 32 位数当排序键。同一个种子下顺序稳定，
@@ -219,5 +253,8 @@ export {
   fmtDur,
   fmtClock,
   fmtSize,
+  firstGrapheme,
+  leadingGraphemes,
+  clipGraphemes,
   LOC,
 };
