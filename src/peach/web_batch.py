@@ -19,6 +19,7 @@ import tempfile
 import time
 import uuid
 
+from functools import cache
 from pathlib import Path, PureWindowsPath
 from typing import Sequence
 
@@ -28,6 +29,7 @@ from .field_owners import USER_MANUAL, write_owned_fields
 from .personal_records import ASSET_REFERENCE_TABLES, VANISHED
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 from .regions import normalize_region
+from .settings_file import PROJECT_ROOT
 from .task_runs import TaskRunHandle
 from .web_activity import DEFAULT_PROFILE_ID
 from .web_catalog import COST, attach_card_performers
@@ -145,7 +147,13 @@ JUNK_KINDS = frozenset({"video", "image", "audio", "archive", "url", "other"})
 JUNK_VIDEO_MAX_BYTES = 120 * 1024**2
 MEDIA_SIDECAR_SUFFIXES = frozenset({".nfo", ".srt", ".ass", ".ssa", ".vtt", ".sub", ".idx"})
 INSTALLER_SUFFIXES = frozenset({".apk", ".exe", ".msi"})
-INSTALLER_ARCHIVE_NAMES = frozenset({'1024核工厂.rar'})
+#: 按固定命名识别的推广附件。名字和体积只能说明「像」，内容要人看过才算数。
+PROMO_NAMES_FILE = PROJECT_ROOT / "resources" / "junk" / "promo_attachment_names.json"
+#: 进入垃圾复核队列的分数线。
+JUNK_REVIEW_SCORE = 40
+#: `scripts/trash_junk.py --apply` 默认的自动移入回收站分数线。只能复核的证据
+#: （固定命名、未探测时长视频的目录与体积证据）单独凑不到这一档。
+AUTO_TRASH_SCORE = 60
 PAGE_COMPONENT_SUFFIXES = frozenset({".js", ".css", ".aspx"})
 PAGE_CHROME_IMAGE = re.compile(r"^(?:banner(?:_[bs])?|1000x90(?:yunding)?|count\d*|logo|lan\d*|you|zuo|zuoxia)$", re.I)
 PAGE_PROMO_CLAIM = re.compile(r"(?:记住|記住).{0,12}(?:网址|網址)|(?:网址|網址).{0,8}(?:发布|發布)")
@@ -268,7 +276,10 @@ def q_ads(contract: WebContract, limit=200, offset=0, kind="", status="pending")
     广告包还有一类没有推广词的样本：目录名自曝（`一键约炮`、`-APP`、`論壇文宣`），
     整包只有一条正片加一张配套封面，其余是装饰符小图、品牌推广卡与网页存档。
     这几种形态各自独立计分，配套封面走正片配对豁免，推广目录里的长视频只加 30 分、
-    要再叠一条时长或体积证据才到门槛。"""
+    要再叠一条时长或体积证据才到门槛。
+
+    词库 `PROMO_NAMES_FILE` 里的固定命名，以及未探测时长视频的目录与体积证据，只够进队列：
+    这部分分数单独凑够 `AUTO_TRASH_SCORE` 时压到线下，须有别的证据或人看过内容才进回收站。"""
     kind = str(kind or "").strip().casefold()
     status = str(status or "pending").strip().casefold()
     if kind and kind not in JUNK_KINDS:
@@ -315,43 +326,46 @@ def _promo_neighbour_counts(rows) -> dict[str, int]:
     return counts
 
 
-def _promotion_attachment_reason(suffix: str, path: str, size: int) -> str:
-    """按体积和精确命名筛选需要内容复核的推广附件。"""
+@cache
+def promo_name_rules() -> tuple[dict, ...]:
+    """读取 `PROMO_NAMES_FILE` 的推广附件命名规则；文件缺失或格式不对直接报错。"""
+    data = json.loads(PROMO_NAMES_FILE.read_text(encoding="utf-8"))
+    rules = []
+    for entry in data["rules"]:
+        names = frozenset(re.sub(r"\s", "", name).casefold() for name in entry.get("names", ()))
+        patterns = tuple(re.compile(pattern, re.I) for pattern in entry.get("patterns", ()))
+        if not entry["reason"] or not (names or patterns) or int(entry["max_bytes"]) <= 0:
+            raise ValueError(f"推广附件命名规则不完整：{entry}")
+        rules.append({
+            "reason": str(entry["reason"]),
+            "suffixes": frozenset(str(suffix).casefold() for suffix in entry["suffixes"]),
+            "max_bytes": int(entry["max_bytes"]),
+            "parent_is_name": bool(entry.get("parent_is_name")),
+            "names": names,
+            "patterns": patterns,
+        })
+    return tuple(rules)
+
+
+def _promo_name_reason(suffix: str, path: str, size: int) -> str:
+    """命中词库里推广附件固定命名的理由；只够进复核队列，见 `AUTO_TRASH_SCORE`。"""
     item = PureWindowsPath(path)
-    if (suffix == '.wmv' and 0 < size < JUNK_VIDEO_MAX_BYTES
-            and re.sub(r'\s', '', item.stem) in {'最新情報', '最新情报'}):
-        return "无内容描述的宣传视频候选，须核验视频内容"
-    if suffix != '.png' or not 0 < size <= 128 * 1024:
-        return ''
-    if size <= 4096 and item.stem in {'51风流', '代开实习证明', '扫码约炮', '探花社区'}:
-        return "微型推广二维码候选，须核验图片内容"
-    if (item.parent.name == item.stem
-            and re.fullmatch(r'｜(?:91porn|AI裸绘|小太妹|抖音极速|海角乱伦|萝莉岛)｜[^\\/]{1,80}｜?', item.stem)):
-        return "网站推广二维码候选，须核验图片内容"
-    return ''
+    stem = item.stem
+    for rule in promo_name_rules():
+        if suffix not in rule["suffixes"] or not 0 < size <= rule["max_bytes"]:
+            continue
+        if rule["parent_is_name"] and item.parent.name != stem:
+            continue
+        if (re.sub(r"\s", "", stem).casefold() in rule["names"]
+                or any(pattern.fullmatch(stem) for pattern in rule["patterns"])):
+            return rule["reason"]
+    return ""
 
 
 def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
     """区分安装附件与网页存档组件。"""
-    name = PureWindowsPath(path).stem
-    if (suffix == '.mp4' and 0 < size < 32 * 1024**2
-            and re.sub(r'\s', '', name) in {'社區最新情報', '社区最新情报'}):
-        return "用户确认的社区推广视频"
-    if reason := _promotion_attachment_reason(suffix, path, size):
-        return reason
-    if suffix in {'.jpg', '.jpeg', '.png', '.gif'} and 0 < size < 2 * 1024**2:
-        if re.fullmatch(r'如何使用谷歌DNS让您更快进入下载网页步骤\s*0?[123]', name, re.I):
-            return "下载站推广导航图片"
-        if re.fullmatch(r'~?Free Adult Movie, Fastest & Newest Porn Movie Site', name, re.I):
-            return "已核验的下载站横幅"
-        if re.match(r'^hav\.so[_ ]+最新成人高清店長推薦強片天天更新$', name, re.I):
-            return "已核验的下载站横幅"
-        if re.search(r'HiHSP\.(?:com|pw)', name, re.I) and re.search(r'高速下载|高速下載|免注册|免註冊|手机看片|手機看片', name):
-            return "下载站地址或二维码推广卡片"
     if suffix in INSTALLER_SUFFIXES and size < 64 * 1024**2:
         return "媒体目录中的安装附件"
-    if PureWindowsPath(path).name.casefold() in INSTALLER_ARCHIVE_NAMES and 0 < size <= 64 * 1024:
-        return "已核验的推广安装包附件"
     if suffix in PAGE_COMPONENT_SUFFIXES and any(
             part.casefold().endswith("_files") for part in PureWindowsPath(path).parent.parts):
         return "网页存档的脚本或样式附件"
@@ -363,6 +377,36 @@ def _attachment_junk_reason(suffix: str, path: str, size: int) -> str:
                  or (PureWindowsPath(path).name.casefold() == '1.gif' and size <= 4096))):
         return "推广网页存档的横幅、标志或导航图片"
     return ""
+
+
+def _video_evidence(row, stem: str, longer: dict, promo_dir: bool,
+                    directory_points: int) -> tuple[int, int, list[str]]:
+    """视频自己的证据：同番号完整版、时长、体积与推广目录。
+
+    返回（分数，其中只够复核的分数，理由）。时长没探测到的视频可能就是正片：
+    推广创作者位或「域名+番号」目录（`directory_points`）、推广目录与体积只说明它住在哪、
+    有多大，说明不了它是广告，这些分数只够进复核队列。
+    """
+    score, why = 0, []
+    code = (row["code"] or "").strip()
+    duration = row["duration"]
+    longest = longer.get(code)
+    if longest and REAL_CODE.match(code) and duration is not None and 0 < duration < longest * 0.2 \
+            and not PART_MARK.search(stem):
+        # 分卷已排除，真番号下不到两成时长基本就是片段/预告，单独即可入队复核。
+        # 用户标记的 `反抗不如享受.mp4`（ABW-220，244 秒）正好卡在旧的 35 分门外。
+        score += 40; why.append(f"同番号有 {longest/60:.0f} 分完整版")
+    if duration is not None and 0 < duration < 240:
+        score += 15; why.append("不足 4 分钟")
+    context = directory_points
+    if (row["size"] or 0) < JUNK_VIDEO_MAX_BYTES:
+        score += 10; context += 10; why.append("小于 120 MB")
+    if promo_dir:
+        # 30 分单独不构成删片理由：正片也可能躺在别人起错名的目录里，
+        # 要再叠一条时长或体积证据才到门槛。
+        score += 30; context += 30; why.append("住在推广目录")
+    probed = duration is not None and duration > 0
+    return score, 0 if probed else context, why
 
 
 def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
@@ -406,6 +450,11 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
         attachment_reason = _attachment_junk_reason(suffix, d.get("path") or name, d.get("size") or 0)
         if attachment_reason:
             s += 60; why.append(attachment_reason)
+        # 只够进复核队列的分数：固定命名，和未探测时长视频的目录与体积证据。
+        review_only = 0
+        name_reason = _promo_name_reason(suffix, d.get("path") or name, d.get("size") or 0)
+        if name_reason:
+            s += JUNK_REVIEW_SCORE; review_only += JUNK_REVIEW_SCORE; why.append(name_reason)
         # 目录维度的证据：广告包的文件名往往干净（`极道世界.mp4`），唯一线索在旧导入器
         # 从目录名投影出来的创作者位或路径里。creator 位本身是推广站域名时，它就不再是
         # 「有归属所以是正片」的证据，下面两处对 creator 的信任都必须先排除这种情况。
@@ -446,10 +495,12 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
             if neighbours >= PROMO_CLUSTER_FILES:
                 s += 30
                 why.append(f"同目录另有 {neighbours - 1} 个同类推广名")
+        directory_points = 0
         if owner_is_promo:
-            s += 50; why.append("创作者位是推广站域名")
+            directory_points = 50; why.append("创作者位是推广站域名")
         elif AD_DIRPACK.search(folder) and not self_evident:
-            s += 45; why.append("目录是「域名+番号」的推广打包")
+            directory_points = 45; why.append("目录是「域名+番号」的推广打包")
+        s += directory_points
         # 非视频的推广形态：装饰符小图、品牌推广名、住在推广目录。`self_evident`
         # （真番号、内容级体积、正片配套图）与网页存档、网址快捷方式已单独计分，
         # 这里不重复叠加。
@@ -462,25 +513,14 @@ def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
             elif promo_dir:
                 s += 50; why.append("住在推广目录")
         if d.get("medium") == "video":
-            code = (d["code"] or "").strip()
-            mx = longer.get(code)
-            if mx and REAL_CODE.match(code) and d["duration"] is not None and 0 < d["duration"] < mx * 0.2 \
-                    and not PART_MARK.search(nm):
-                # 分卷已排除，真番号下不到两成时长基本就是片段/预告，单独即可入队复核。
-                # 用户标记的 `反抗不如享受.mp4`（ABW-220，244 秒）正好卡在旧的 35 分门外。
-                s += 40; why.append(f"同番号有 {mx/60:.0f} 分完整版")
-            if d["duration"] is not None and 0 < d["duration"] < 240:
-                s += 15; why.append("不足 4 分钟")
-            if (d["size"] or 0) < JUNK_VIDEO_MAX_BYTES:
-                s += 10; why.append("小于 120 MB")
-            if promo_dir:
-                # 30 分单独不构成删片理由：正片也可能躺在别人起错名的目录里，
-                # 要再叠一条时长或体积证据才到门槛。
-                s += 30; why.append("住在推广目录")
+            points, weak, reasons = _video_evidence(d, nm, longer, promo_dir, directory_points)
+            s += points; review_only += weak; why.extend(reasons)
         # 有真实创作者归属、且名字剥完仍有实质描述的，是被打了水印的正片，不是广告。
-        if real_owner and residue >= 14 and not attachment_reason:
+        if real_owner and residue >= 14 and not (attachment_reason or name_reason):
             s -= 45
-        if s >= 40:
+        if review_only and s - review_only < AUTO_TRASH_SCORE:
+            s = min(s, AUTO_TRASH_SCORE - 1)
+        if s >= JUNK_REVIEW_SCORE:
             d["score"] = s; d["why"] = " · ".join(why)
             d["cost"] = COST.get(d["location"], "metered")
             d["has_thumb"] = contract.has_snapshot(d["snapshot_path"])

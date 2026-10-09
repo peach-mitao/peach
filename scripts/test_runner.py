@@ -211,6 +211,8 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/seed_pack.py": ("metadata", "tooling"),
     "scripts/seed_pack.py": ("metadata", "tooling"),
     "src/peach/seed_followup.py": ("metadata", "tooling"),
+    # 推广附件命名词库：垃圾复核队列（`test_ad_judgement.py`）与回收站脚本（`test_trash_junk.py`）都读它。
+    "resources/junk/promo_attachment_names.json": ("catalog", "tooling"),
     # 补女优资料后继的解析与读写层、一次补完的脚本，测试都在 `test_performer_profile_followup.py`。
     "scripts/run_performer_profiles.py": ("metadata",),
     "src/peach/avwikidb.py": ("metadata",),

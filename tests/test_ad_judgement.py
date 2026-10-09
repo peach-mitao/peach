@@ -392,7 +392,7 @@ class ResourceJunkQueueTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid junk status"):
             q_ads(self.contract, status="deleted")
 
-    def test_verified_small_installer_archive_with_release_code(self):
+    def test_small_installer_archive_name_enters_review_with_release_code(self):
         path = r'B:\MVP\Tokyo-Hot n1025-FHD\1024核工厂.rar'
         self.add(211, '115', path, 'archive', 4111)
         with closing(sqlite3.connect(self.db_path)) as db:
@@ -401,8 +401,8 @@ class ResourceJunkQueueTests(unittest.TestCase):
         items = q_ads(self.contract, limit=200)['items']
         self.assertEqual([item['id'] for item in items], [211])
         self.assertIn('推广安装包', items[0]['why'])
-        self.assertEqual(web_batch._attachment_junk_reason('.rar', path, 128 * 1024), '')
-        self.assertEqual(web_batch._attachment_junk_reason('.rar', r'B:\MVP\n1025.rar', 4111), '')
+        self.assertEqual(web_batch._promo_name_reason('.rar', path, 128 * 1024), '')
+        self.assertEqual(web_batch._promo_name_reason('.rar', r'B:\MVP\n1025.rar', 4111), '')
 
     def test_promotional_page_navigation_images_with_inherited_release_code(self):
         base = r'B:\MVP\1pon-092415_001-fhd'

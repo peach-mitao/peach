@@ -219,15 +219,15 @@ PikPak WebDAV 同来源移动由 `organize_clouddrive.py` 提供，目录入口�
 
 A 盘同父目录改名复用 CloudDrive 官方 `RenameFile`；跨父且改名的操作拆为同父改名和保留名称的 HTTPS 移动，中间路径进入恢复回执并禁止覆盖。每步核对完整成员与体积；成功应答不替代路径核验。路径中的 `@` 保留为 URI 路径字符，其他字符使用 UTF-8 百分号编码。认证样本已移动时，最多另查两条馆藏内图片样本，仅提取既有认证，不读取媒体内容。
 
-推广网页资源目录中的横幅、标志和导航图片由 `web_batch._attachment_junk_reason` 进入复核队列。判据同时要求 `_files`、网址推广套话、域名、导航元素文件名和体积上限；继承的作品番号不豁免网页导航图片，作品图片、字幕、NFO 与普通 `_files` 目录保留。`1024核工厂.rar` 经嵌套目录清单核验仅含安装程序，精确名称且不超过 64 KiB 的附件进入复核，不泛化为所有压缩包。永久删除仍走 `trash_junk.py --purge --review-csv` 和 `purge_assets`。
+推广网页资源目录中的横幅、标志和导航图片由 `web_batch._attachment_junk_reason` 进入复核队列。判据同时要求 `_files`、网址推广套话、域名、导航元素文件名和体积上限；继承的作品番号不豁免网页导航图片，作品图片、字幕、NFO 与普通 `_files` 目录保留。固定命名的推广附件（安装包、宣传视频、二维码卡片、下载站横幅）按扩展名、体积上限与整名收在词库 `resources/junk/promo_attachment_names.json`，由 `web_batch._promo_name_reason` 读取；命中只计复核档 `JUNK_REVIEW_SCORE`，未探测时长视频的推广目录、推广创作者位与体积证据同样只到复核档，这类分数单独凑不到 `trash_junk.py` 默认的自动移入回收站门槛 `AUTO_TRASH_SCORE`，不凭名称移入回收站或删除。永久删除仍走 `trash_junk.py --purge --review-csv` 和 `purge_assets`。
 
-下载站的 DNS 导航步骤、hav.so 横幅、固定英文横幅和带下载套话的 HiHSP 地址卡片，按文件名与 2 MiB 上限进入复核；用户确认的「社區最新情報」精确名称 MP4 按 32 MiB 上限进入复核。普通作品图片和 `images.rar` 保留。CloudDrive WebDAV 的小文件删除复用原生 `Path.unlink`：同目录隔离改名报 WinError 50 时，最多 1 MiB 的文件先用标准库 `shutil.copyfile` 完整备份到 `generated/purge-staging/`，记录原路径、大小和 SHA256，再删除。数据库失败时恢复备份，提交后清退；大文件继续报告阻塞。该路径没有新增依赖，备份和恢复只由 `purge_assets` 管理。
+普通作品图片和 `images.rar` 保留。CloudDrive WebDAV 的小文件删除复用原生 `Path.unlink`：同目录隔离改名报 WinError 50 时，最多 1 MiB 的文件先用标准库 `shutil.copyfile` 完整备份到 `generated/purge-staging/`，记录原路径、大小和 SHA256，再删除。数据库失败时恢复备份，提交后清退；大文件继续报告阻塞。该路径没有新增依赖，备份和恢复只由 `purge_assets` 管理。
 
 英文媒体文件名分词复用 `wordninja-enhanced==3.2.0`（MIT，2026-09-04 发布，Python ≥3.9，纯 Python，wheel 11.4 MB，无传递依赖）。源码经 `opensrc path pypi:wordninja-enhanced@3.2.0` 读取；原版 wordninja 的发布较旧，增强版提供标点保留和可补充词典。`space_media_names.py` 先出逐文件复核 CSV，只插入空格，保留序号、字符与扩展名，不推断人物或出处；指定目录内的真实文件核验后复用 `organize.apply_plan`、SQLite 备份及回滚日志。领域词汇在 `english_filename_words.txt`（置顶加权，条目宜少：每多一条都会压低 `a`、`of` 等高频词），常被误当成单词的拼接串在 `english_filename_nonwords.txt` 里移出词频表。撇号缩写、全大写缩写、域名与站点编号、十六进制 viewkey 不拆；西里尔形近字母按拉丁字母算切点、原字符保留。已执行批次用 `--recompute-batch <日志>` 按原名重算出复核 CSV，再走 `--apply --review-csv`。
 
-A 盘垃圾隔离使用短名称 `peach-purge-<32 位 UUID>.peach-quarantine`，扫描入口仅跳过这一精确格式；普通媒体和其他 `.tmp` 文件仍需复核。`51风流.png`、`代开实习证明.png`、`扫码约炮.png`、`探花社区.png` 仅在不超过 4 KiB 时进入图片内容复核，不凭名称自动删除。隔离恢复与本地完整备份沿用 `purge_assets` 的事务边界。
+A 盘垃圾隔离使用短名称 `peach-purge-<32 位 UUID>.peach-quarantine`，扫描入口仅跳过这一精确格式；普通媒体和其他 `.tmp` 文件仍需复核。隔离恢复与本地完整备份沿用 `purge_assets` 的事务边界。
 
-推广附件沿用内容复核候选入口：六类站名、与父目录同名且不超过 128 KiB 的 PNG，以及精确命名「最新情報／最新情报」、小于 120 MiB 的 WMV 进入复核；命名规则不直接删除文件。A 盘原文件取证复用 CloudDrive 官方 `GetDownloadUrlPath` 的本机原文件代理，不经过 Peach 转码，也不传递认证信息到其他来源；实际二维码副本和视频取证帧见馆藏复核产物。
+推广附件的 A 盘原文件取证复用 CloudDrive 官方 `GetDownloadUrlPath` 的本机原文件代理，不经过 Peach 转码，也不传递认证信息到其他来源；实际二维码副本和视频取证帧见馆藏复核产物。
 
 保留自研不是永久豁免：约束改变或候选实现更新时重新跑 POC，不因本表结论跳过外部检索。
 

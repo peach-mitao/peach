@@ -40,7 +40,8 @@ from peach.scripting import (
     add_ledger_write_args, counts_of, open_for_write, open_readonly, verify_after_write,
 )
 from peach.web_batch import (
-    MEDIA_SIDECAR_SUFFIXES, q_ads, purge_assets, _finish_purge, _restore_staged_media,
+    AUTO_TRASH_SCORE, MEDIA_SIDECAR_SUFFIXES, q_ads, purge_assets, _finish_purge,
+    _restore_staged_media,
 )
 from peach.web_contract import WebContract
 
@@ -177,8 +178,9 @@ def trash_assets(connection, asset_ids: list[int]) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="把高置信广告残留移入回收站")
     add_ledger_write_args(parser, db_default=DATABASE_PATH)
-    parser.add_argument("--min-score", type=int, default=60,
-                        help="垃圾评分下限；默认 60（整个名字都是推广语一档）")
+    parser.add_argument("--min-score", type=int, default=AUTO_TRASH_SCORE,
+                        help=f"垃圾评分下限；默认 {AUTO_TRASH_SCORE}（整个名字都是推广语一档，"
+                             "固定命名与未探测时长视频的目录证据单独到不了）")
     parser.add_argument("--location", action="append", choices=TRASHABLE_LOCATIONS)
     parser.add_argument("--kind", choices=("video", "image", "audio", "archive", "url", "other"),
                         default="")
