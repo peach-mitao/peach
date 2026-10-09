@@ -323,7 +323,7 @@ it('表格视图把每条来源摊成一行，勾的还是来源 ID', async () =
   expect(sentBody(fetcher, FOLLOW_SOURCE_URL)).toEqual([{ action: 'enabled', id: 2, enabled: false }]);
 });
 
-it('两种视图的行尾都有启用开关，拨一下只写这一条，勾选和 toast 都不动', async () => {
+it('表格视图的行尾有启用开关，拨一下只写这一条，勾选和 toast 都不动', async () => {
   const { host, fetcher } = await open({}, { layout: 'table' });
   await click(checkboxNamed(host, '选择 甲 · Pawchive'));
   const toggle = () => host.querySelector<HTMLInputElement>('[aria-label="启用 甲 · Pawchive"]');
@@ -334,14 +334,16 @@ it('两种视图的行尾都有启用开关，拨一下只写这一条，勾选�
   expect(toggle()?.checked).toBe(false);
   expect(host.textContent).toContain('已选 1 个来源');
   expect(host.textContent).not.toContain('已暂停 1 个关注来源');
+});
 
-  const card = await open({}, { layout: 'default' });
-  const cardToggle = () => card.host.querySelector<HTMLInputElement>('[aria-label="启用 甲 · Pawchive"]');
-  expect(cardToggle()?.checked).toBe(true);
-  await click(cardToggle());
+it('卡片视图的行尾有启用开关，拨一下只写这一条', async () => {
+  const { host, fetcher } = await open({}, { layout: 'default' });
+  const toggle = () => host.querySelector<HTMLInputElement>('[aria-label="启用 甲 · Pawchive"]');
+  expect(toggle()?.checked).toBe(true);
+  await click(toggle());
   await settle();
-  expect(sentBody(card.fetcher, FOLLOW_SOURCE_URL)).toEqual([{ action: 'enabled', id: 2, enabled: false }]);
-  expect(cardToggle()?.checked).toBe(false);
+  expect(sentBody(fetcher, FOLLOW_SOURCE_URL)).toEqual([{ action: 'enabled', id: 2, enabled: false }]);
+  expect(toggle()?.checked).toBe(false);
 });
 
 it('表格里点一行的空白处就是选这一行，再点取消；点行里的链接不算选', async () => {
@@ -768,35 +770,43 @@ it('订阅源页签不收地址，只读的这台查找、开关、移除与拉�
   expect(host.querySelector<HTMLInputElement>('input[aria-label="启用 甲 的新作"]')?.disabled).toBe(true);
 });
 
-it('JAV 订阅分页保留跨页选择，页容量切换回到首页', async () => {
-  const feeds = { unread: 81, sources: Array.from({ length: 25 }, (_, i) => ({
-    ...FEEDS.sources[0], id: i + 1, name: `来源 ${i + 1}`, entity_name: `来源 ${i + 1}`,
-  })) };
-  const { host } = await open({ feeds }, { tab: 'feeds' });
+/* 铺满一整页的用例时限：表格不按行记忆化，每点一下整页 20 行连同勾选框、开关一起重画，单跑就要
+   0.5–0.8 秒；全量测试十六片并行时整机慢六到七倍，会越过默认的 5 秒。15 秒仍能抓住真正卡死的用例。 */
+const FULL_PAGE = { timeout: 15_000 };
+
+/** 刚好铺满两页的订阅源：每页 20 条起，第二页只剩一条。 */
+const twoPagesOfFeeds = (unread = 0) => ({ unread, sources: Array.from({ length: 21 }, (_, i) => ({
+  ...FEEDS.sources[0], id: i + 1, name: `来源 ${i + 1}`, entity_name: `来源 ${i + 1}`,
+})) });
+
+it('JAV 订阅分页保留跨页选择', FULL_PAGE, async () => {
+  const { host } = await open({ feeds: twoPagesOfFeeds() }, { tab: 'feeds' });
   const rows = () => host.querySelectorAll('[role="row"][data-key]');
   expect(rows()).toHaveLength(20);
-  expect(host.textContent).toContain('1–20 / 25 个订阅源');
+  expect(host.textContent).toContain('1–20 / 21 个订阅源');
   await click(checkboxNamed(host, '选择 来源 1'));
   await click(buttonNamed('下一页', host));
-  expect(rows()).toHaveLength(5);
-  expect(host.textContent).toContain('21–25 / 25 个订阅源');
+  expect(rows()).toHaveLength(1);
+  expect(host.textContent).toContain('21–21 / 21 个订阅源');
   expect(host.textContent).toContain('已选 1 条订阅源');
   await click(checkboxNamed(host, '选择 来源 21'));
   await click(buttonNamed('上一页', host));
   expect(checkboxNamed(host, '选择 来源 1')?.checked).toBe(true);
   expect(host.textContent).toContain('已选 2 条订阅源');
-  await click(buttonNamed('下一页', host));
-  await choose(host.querySelector('button[aria-label="每页显示数量"]'), '每页 10 条');
-  expect(rows()).toHaveLength(10);
-  expect(host.textContent).toContain('1–10 / 25 个订阅源');
-  expect(host.querySelector('footer')?.textContent).toContain('未看 81 · 已启用 25 / 25');
 });
 
-it('移除末页的最后一个订阅源会显示有效页', async () => {
+it('JAV 订阅换页容量回到首页，状态栏照全集计数', FULL_PAGE, async () => {
+  const { host } = await open({ feeds: twoPagesOfFeeds(81) }, { tab: 'feeds' });
+  await click(buttonNamed('下一页', host));
+  await choose(host.querySelector('button[aria-label="每页显示数量"]'), '每页 10 条');
+  expect(host.querySelectorAll('[role="row"][data-key]')).toHaveLength(10);
+  expect(host.textContent).toContain('1–10 / 21 个订阅源');
+  expect(host.querySelector('footer')?.textContent).toContain('未看 81 · 已启用 21 / 21');
+});
+
+it('移除末页的最后一个订阅源会显示有效页', FULL_PAGE, async () => {
   stubConfirm(true);
-  const feeds = { unread: 0, sources: Array.from({ length: 21 }, (_, i) => ({
-    ...FEEDS.sources[0], id: i + 1, name: `来源 ${i + 1}`, entity_name: `来源 ${i + 1}`,
-  })) };
+  const feeds = twoPagesOfFeeds();
   const plan: Plan = { feeds, feedWrite: ({ id }) => {
     plan.feeds = { ...feeds, sources: feeds.sources.filter(source => source.id !== id) };
     return ok({ ok: true });
