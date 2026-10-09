@@ -188,11 +188,16 @@ _PARTIAL_UPDATE = (
     "  last_seen_at=excluded.last_seen_at"
 )
 
-#: 「第二阶段已经补齐过这一行」在 ledger 上怎么看出来。键就是连接器声明的
+#: 「详情页已经问过这一行」在 ledger 上怎么看出来。键就是连接器声明的
 #: `ENRICHED_MARK`，值是判据。写死成一张表而不是拼 SQL：判据是封闭词表，
 #: 由 `tests/test_follow_sources.py` 反过来核对每个连接器声明的键都在这里。
 _ENRICHED_PREDICATES = {
     "published_at": "published_at IS NOT NULL AND published_at<>''",
+    # rule34video：标签、分类与署名只有详情页给，有 `tag_types` 就是详情页取到过。
+    "tag_types": "json_extract(metadata_json,'$.tag_types') IS NOT NULL",
+    # kemono 系：详情页只用来判「这一帖交付了资源没有」，没有要补的列。判过保留的帖子
+    # 才会落库，所以行在 ledger 里本身就是判定结果，库里有的帖子不必再探。
+    "kept": "1",
     # rule34xxx：分类只有帖子页给，时长只有原文件头给，两样都有才算补齐。只看分类的话，
     # 时长功能上线前补过分类的行、文件头那次没读到的行，常规检查永远不会再问。
     "tag_types_duration": (

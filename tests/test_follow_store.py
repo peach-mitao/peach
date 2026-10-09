@@ -1342,6 +1342,45 @@ class EnrichedMarkTests(_StoreCase):
             "SELECT external_id, duration FROM follow_item WHERE source_id=?", (source_id,)))
         self.assertEqual(durations, {"empty": 10.0, "known": 30.0})
 
+    def test_a_rule34video_row_stays_detailed_when_the_list_sees_it_again(self):
+        """补齐过的 rule34video 行再被列表看到时不打详情页，详情给的值都要留住。"""
+        source_id = self._source(provider="rule34video", ref="artist")
+        self.store.record(source_id, _fetch([
+            FollowCandidate(provider="rule34video", external_id="1", title="a",
+                            media_url="https://rule34video.com/get_file/1_720p.mp4/",
+                            published_at="2026-08-18T00:00:00Z",
+                            extra={"media_kind": "video", "published_precision": "exact",
+                                   "tag_types": {"3D": "metadata"}}),
+            FollowCandidate(provider="rule34video", external_id="2", title="b",
+                            media_url="https://rule34video.com/get_file/2_preview.mp4/",
+                            partial=True, extra={"media_kind": "preview_clip"}),
+        ], provider="rule34video", ref="artist"), moment=MOMENT)
+        self.assertEqual(self.store.enriched_external_ids(source_id, "tag_types"),
+                         frozenset({"1"}))
+        self.store.record(source_id, _fetch([
+            FollowCandidate(provider="rule34video", external_id="1", title="a",
+                            media_url="https://rule34video.com/get_file/1_preview.mp4/",
+                            published_at="2026-08-10T00:00:00Z", partial=True,
+                            extra={"added_text": "2 months ago"}),
+        ], provider="rule34video", ref="artist"), moment=MOMENT + timedelta(minutes=1))
+        media_url, published_at, metadata = self.connection.execute(
+            "SELECT media_url, published_at, metadata_json FROM follow_item"
+            " WHERE source_id=? AND external_id='1'", (source_id,)).fetchone()
+        self.assertEqual(media_url, "https://rule34video.com/get_file/1_720p.mp4/")
+        self.assertEqual(published_at, "2026-08-18T00:00:00Z")
+        self.assertEqual(json.loads(metadata)["media_kind"], "video")
+        self.assertEqual(self.store.enriched_external_ids(source_id, "tag_types"),
+                         frozenset({"1"}))
+
+    def test_every_kemono_row_in_the_ledger_counts_as_judged(self):
+        source_id = self._source(provider="kemono", ref="fanbox/1")
+        self.store.record(source_id, _fetch([
+            FollowCandidate(provider="kemono", external_id="10", title="a"),
+            FollowCandidate(provider="kemono", external_id="11", title="b", partial=True),
+        ], provider="kemono", ref="fanbox/1"), moment=MOMENT)
+        self.assertEqual(self.store.enriched_external_ids(source_id, "kept"),
+                         frozenset({"10", "11"}))
+
     def test_an_unregistered_mark_is_refused_not_silently_matched(self):
         source_id = self._source()
         with self.assertRaises(ValueError):

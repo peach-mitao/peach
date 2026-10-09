@@ -445,7 +445,8 @@ class _BaseConnector:
     #: 列表页一次请求给一整页，详情页是每条一次——它是唯一会让请求数随条目数增长
     #: 的路径，所以必须有额度，不能由页面长度决定。
     DEFAULT_ENRICH_BUDGET = 0
-    #: 第二阶段成功之后，ledger 行上哪一处会有值。空串 = 没有第二阶段。
+    #: 详情页问过之后，ledger 行上哪一处会有值。空串 = 不打详情页。第二阶段补细节
+    #: （`DEFAULT_ENRICH_BUDGET`）与列表阶段的逐条探测（`DEFAULT_MAX_PROBES`）都按它跳过。
     #: 调用方拿它算「这条不必再问详情」，判据本身登记在 `follow_store`。
     #: **不能一律用 `published_at`**：rule34xxx 的上传时间来自列表的 `change`，
     #: 第一次落库就有值，拿它当判据会让详情失败的行永远补不回来。
@@ -562,16 +563,25 @@ class _BaseConnector:
             raise FollowSourceError(
                 f"{self.provider} 拒绝访问（HTTP {response.status}）：需要有效凭据，"
                 "或站点已加机器人验证")
-        if response.status == 429:
-            headers = {key.lower(): value for key, value in response.headers.items()}
-            try:
-                retry_after = float(headers.get("retry-after", ""))
-            except ValueError:
-                retry_after = None
-            raise FollowSourceRateLimited(
-                f"{self.provider} 返回 HTTP 429：请求过于频繁，稍后再试", retry_after)
+        self._raise_if_rate_limited(response)
         if response.status != 200:
             raise FollowSourceError(f"{self.provider} 返回 HTTP {response.status}")
+
+    def _raise_if_rate_limited(self, response: HttpResponse) -> None:
+        """HTTP 429 抛 `FollowSourceRateLimited`。
+
+        逐条探测详情页时也要过这一关：探测吞掉失败是为了不因一条取不到就丢更新，
+        被限流却不同，接着探剩下的只会让整站被封得更久，要让检查停下、整站冷却。
+        """
+        if response.status != 429:
+            return
+        headers = {key.lower(): value for key, value in response.headers.items()}
+        try:
+            retry_after = float(headers.get("retry-after", ""))
+        except ValueError:
+            retry_after = None
+        raise FollowSourceRateLimited(
+            f"{self.provider} 返回 HTTP 429：请求过于频繁，稍后再试", retry_after)
 
     #: 上游限流页的固定句式（2026-08-29 实测 rule34.xxx）：HTTP 200 + 文本正文
     #: "You currently have a limit of 60 requests every 60 second(s)"。不识别的话
@@ -785,6 +795,7 @@ class KemonoConnector(_BaseConnector):
     #: 增长的路径：一个从不贴附件、只发网盘链接的作者会让每一帖都触发一次。上限用完
     #: 之后剩下的判不出来的帖子一律保留——宁可多留卡片，不能因为额度用完就删更新。
     DEFAULT_MAX_PROBES = 12
+    ENRICHED_MARK = "kept"
 
     #: 列表接口一页的条数，2026-08-27 实测为 50（`?o=50` 拿到的是第 51 条起）。
     PAGE_SIZE = 50
@@ -879,6 +890,9 @@ class KemonoConnector(_BaseConnector):
             if not self.within_history(self._candidate(post, service, user)):
                 continue
             verdict = self._delivers_resource(post)
+            if verdict is None and str(post.get("id") or "") in self.enrich_skip:
+                # 库里已有的帖子当初判过保留，再探一次只会得到同一个答案。
+                verdict = True
             if verdict is None and probed < self.max_probes:
                 # 列表接口判不出来才去抓详情。这是唯一一处「一帖一请求」，
                 # 所以只在拿不准时用，并且有上限。
@@ -926,7 +940,8 @@ class KemonoConnector(_BaseConnector):
         """抓详情页再判一次。**抓不到就当它是 release。**
 
         这一步是兜底，不是判据来源：网络抖一下就删掉用户的一份更新，是拿一次失败的
-        请求换一次不可见的数据丢失。宁可多留一张卡片。
+        请求换一次不可见的数据丢失。宁可多留一张卡片。被限流例外：照样抛出，让这次
+        检查停下、整站冷却。
         """
         post_id = str(post.get("id") or "")
         if not post_id:
@@ -934,9 +949,12 @@ class KemonoConnector(_BaseConnector):
         url = f"https://{self.host}/api/v1/{service}/user/{user}/post/{post_id}"
         try:
             response = self._get(url)
+            self._raise_if_rate_limited(response)
             if response.status >= 400:
                 return True
             payload = self.parse_json(response)
+        except FollowSourceRateLimited:
+            raise
         except (FollowSourceError, OSError, httpx.HTTPError):
             return True
         if not isinstance(payload, dict):
@@ -1126,6 +1144,10 @@ class Rule34VideoConnector(_BaseConnector):
         r"\((?:va|audio|audio/sfx|sfx|sound|voice|music)\)\s*$", re.IGNORECASE)
     MAX_COLLECTION_MODELS = 3
     DEFAULT_MAX_PROBES = 24
+    ENRICHED_MARK = "tag_types"
+    #: 列表卡片给的、详情页会改写的 metadata 键。库里已补齐的行跳过探测时去掉它们，
+    #: 免得列表的「预览片」「相对时间」并进去盖掉详情页取到的值。
+    _LIST_ONLY_EXTRA = ("media_kind", "published_precision")
 
     @classmethod
     def visual_model_count(cls, models) -> int:
@@ -1197,7 +1219,13 @@ class Rule34VideoConnector(_BaseConnector):
             if not self.within_history(candidate):
                 continue
             enriched = candidate
-            if probed < self.max_probes and candidate.url:
+            if str(candidate.external_id) in self.enrich_skip:
+                # 库里这条的详情已经取到过：不再打详情页，只让列表权威的几列照常更新。
+                # 合辑在落库前就挡掉了，库里有的都不是合辑。
+                enriched = replace(candidate, partial=True, extra={
+                    key: value for key, value in candidate.extra.items()
+                    if key not in self._LIST_ONLY_EXTRA})
+            elif probed < self.max_probes and candidate.url:
                 probed += 1
                 enriched = self._probe_detail(candidate)
             visual = int(enriched.extra.get("visual_model_count") or 0)
@@ -1247,16 +1275,22 @@ class Rule34VideoConnector(_BaseConnector):
 
         Rule34Video 的列表页只有预览片和相对时间，详情页才同时给 JSON-LD 正片、
         内容标签、分类与署名作者。探测有每页 24 条上限，不会无界放大请求。
+        失败时的列表候选标成 `partial`：库里已有的正片、封面与日期不被列表值盖掉，
+        判据仍不成立，下次检查再补。被限流照样抛出，让检查停下、整站冷却。
         """
+        listed = replace(candidate, partial=True)
         try:
             response = self._get(candidate.url or "", headers={"Accept": "text/html"})
+            self._raise_if_rate_limited(response)
             if response.status != 200:
-                return candidate
+                return listed
             detail = self._detail(response.body)
+        except FollowSourceRateLimited:
+            raise
         except (FollowSourceError, OSError, httpx.HTTPError, ValueError):
-            return candidate
+            return listed
         if not detail:
-            return candidate
+            return listed
         extra = {**dict(candidate.extra), **detail["extra"]}
         return replace(
             candidate,

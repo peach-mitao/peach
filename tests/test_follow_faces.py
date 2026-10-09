@@ -17,6 +17,7 @@ from peach.follow_faces import (
     face_clusters,
     same_face,
 )
+from peach.follow_stream import FollowMediaResolver
 from peach.http import HttpResponse
 
 
@@ -103,8 +104,8 @@ class AnnotateGroupTests(unittest.TestCase):
 
     def annotate(self, members, signatures, hashes=None):
         index = mock.Mock()
-        index.lookup.side_effect = lambda urls: {url: signatures[url]
-                                                 for url in urls if url in signatures}
+        index.lookup.side_effect = lambda urls, providers=None: {
+            url: signatures[url] for url in urls if url in signatures}
         group = {"primary": members[0], "variants": members[1:], "duplicates": []}
         return annotate_group(group, index, hashes)["stack"]
 
@@ -322,6 +323,39 @@ class FollowFaceIndexTests(unittest.TestCase):
         index.lookup([url])
         self.assertEqual(index.drain(), 1)
         self.assertEqual(self.requests, [url, url])
+
+    def test_a_refused_thumbnail_pauses_its_source_without_a_day_long_miss(self):
+        """缩略图被 429 挡回来：整站冷却，冷却期间同站的不再取；冷却过了照常补上。
+
+        被拒不是「取不到」，记成失败就要等一天才再算这一批。
+        """
+        refused = {"https://img.example.com/a.png"}
+        clock = [0.0]
+        gate = FollowMediaResolver(transport=None, clock=lambda: clock[0])
+
+        def transport(request, timeout, limit):
+            self.requests.append(request.url)
+            if request.url in refused:
+                return HttpResponse(429, {"Retry-After": "60"}, b"")
+            return HttpResponse(200, {}, self.bodies[request.url])
+
+        gate.transport = transport
+        self.bodies["https://img.example.com/b.png"] = _png(_stripes)
+        index = self.index(gate=gate)
+        urls = ["https://img.example.com/a.png", "https://img.example.com/b.png"]
+        providers = dict.fromkeys(urls, "kemono")
+        index.lookup(urls, providers)
+        index.drain()
+        self.assertEqual(self.requests, ["https://img.example.com/a.png"],
+                         "第一张被拒后，同站第二张不再请求")
+        self.assertGreater(gate.cooling("kemono"), 0)
+
+        refused.clear()
+        clock[0] += 61
+        index.lookup(urls, providers)
+        index.drain()
+        self.assertEqual(index.lookup(urls), {"https://img.example.com/a.png": _signature(_left_bright),
+                                              "https://img.example.com/b.png": _signature(_stripes)})
 
     def test_only_public_https_and_cached_covers_are_fetched(self):
         index = self.index()
