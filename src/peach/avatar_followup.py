@@ -25,7 +25,7 @@
   作证，只是不当那张被装上的图。这一档装的图之后有了过门槛的图或封面人脸就换掉。
 * **个人博主**（过 `work_portrait_predicate` 的发布账号）不查图库，只从自己独占作品的
   画面上截脸（`avatar_cover_face.sheet_faces`，接触印相九格加有封面的那张）：两部不同作品
-  截出的脸互相过线才装，判据与馆外单人作品封面同一条（ADR-0074、ADR-0096）。情侣号、
+  截出的脸互相过线才装，判据与馆外单人作品封面同一条（ADR-0074、ADR-0099）。情侣号、
   多人号的两部作品对不上同一张脸就不装。装上的和封面截脸同一档。没过判据的账号不派。
 * **厂牌**不走这条：官网和标识由补厂牌后继（`studio_followup`）按厂牌那套判据补。
 
@@ -696,7 +696,7 @@ def _install_offsite(contract, connection, providers_root, avatar_root, kind: st
 
 def _install_account_face(contract, connection, providers_root, avatar_root, entity_id: int,
                           name: str, cropped_px: int | None) -> dict:
-    """个人博主：两部独占作品的画面截出同一张脸才装（ADR-0074 的互证，ADR-0096）。
+    """个人博主：两部独占作品的画面截出同一张脸才装（ADR-0074 的互证，ADR-0099）。
 
     一部作品只出一张脸（`sheet_faces`），互证数的是作品。没对上的脸照样截好留进候选缓存，
     挑图弹层里能点。装上的来源记 `cover-face`、`identity_verified: false`，和封面截脸同一档。

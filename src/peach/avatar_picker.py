@@ -285,7 +285,7 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
     张脸，合集里那多半是领衔的另一位。格子照列，她自己的脸常常在九宫格里。
 
     发布账号没有本人身份依据（不过 `work_portrait_predicate`）时格子照列，说明里写明是
-    代表作画面、非本人：挑不挑由人决定（ADR-0096）。
+    代表作画面、非本人：挑不挑由人决定（ADR-0099）。
     """
     stand_in = connection.execute('SELECT 1 FROM entity e WHERE e.id=? AND ' +
                                   work_portrait_predicate(connection),

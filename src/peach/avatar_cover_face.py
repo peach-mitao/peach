@@ -14,7 +14,7 @@
 永远排在图库与名录人像之后，出现那一档就被换掉（`avatar_followup`）。
 
 个人博主（过 `work_portrait_predicate` 的发布账号）走 `sheet_faces`：作品没有番号封面，
-画面取自接触印相九格，截法与来源记录同上（ADR-0096）。
+画面取自接触印相九格，截法与来源记录同上（ADR-0099）。
 """
 from __future__ import annotations
 
