@@ -4,6 +4,7 @@
  * 后退前进落到详情条目上时壳先清、再 `adoptOverlayState(usr)`，打开详情那一处 `takeOverlayReturn()` 取来处；
  * 启动那一次不调 `adoptOverlayState`，覆盖元素什么时候接背景见 `test/react/pages/overlay.test.tsx`。 */
 import { beforeEach, expect, it } from 'vitest';
+import { retagOverlay as sharedRetagOverlay } from '@peach/history';
 
 import * as overlay from '../../src/history/overlay';
 import {
@@ -42,7 +43,7 @@ function revisit() {
 it('共享 history 入口与覆盖背景模块使用同一份绑定', () => {
   expect(overlay.holdOverlayBackground).toBe(holdOverlayBackground);
   expect(overlay.overlayState).toBe(overlayState);
-  expect(overlay.retagOverlay).toBe(retagOverlay);
+  expect(sharedRetagOverlay).toBe(retagOverlay);
   expect(overlay.adoptOverlayState).toBe(adoptOverlayState);
   expect(overlay.takeOverlayReturn).toBe(takeOverlayReturn);
 });
