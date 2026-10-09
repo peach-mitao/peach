@@ -1,6 +1,6 @@
 import { loadSettingsPanel, settingsPanelApi, loadSidebar, sidebarApi, sidebarSkeletonHtml, transitionTheme } from './dist/peach-ui.js';
 import { batchDockApi, loadBatchDock, loadManageHeader, manageHeaderApi, manageHeaderSkeletonHtml, manageHeaderView } from './dist/peach-ui.js';
-import {$, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, seededRank} from './js/core.js';
+import {$, DURATION_TAGS, ENTITY_ROUTES, LOC, ROUTE_ENTITIES, ROUTE_STATES, STATE_LABELS, STATE_ROUTES, api, cleanTagFilter, mapLimit, entityPath, esc, fmtClock, fmtSize, foldName, icon, isCatalogPath, newSeed, seededRank} from './js/core.js';
 import { searchMorphFrames } from './js/search-morph.js';
 import { filterScrollState } from './js/filter-scroll.js';
 import { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './dist/peach-ui.js';
@@ -13,7 +13,7 @@ import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js
 import { appSettingsStore, applySyncedSettings, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
 import { applyAccent, applyGlassFaces, applyHomeGlow, paintHomeGlowNow, wireGlowButton, loadGlowPicker } from './dist/peach-ui.js';
 import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio, gridLayout, javLayout, photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout } from './dist/peach-ui.js';
-import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
+import { SORTS, JAV_RELEASE_SORT, defaultSortDir, nextSortState, sortDirWord, sortFromAddress } from './dist/peach-ui.js';
 import { paginationHtml, pageCount, clampPage, preferredDirection, showToast, followJobProgress } from './dist/peach-ui.js';
 import { junkCountSkeletonHtml, junkPath, junkRoute } from './dist/peach-ui.js';
 import { catalogSuggestions, catalogEmptyHtml, catalogFilterSkeletonHtml, sidebarTagCounts, sidebarHasCatalogContent } from './dist/peach-ui.js';
@@ -128,16 +128,6 @@ let followDurMin=0,followDurMax=0;
    条目按页面分组（目录、播放列表、覆盖、关注、沉浸），每组前一行组名、组与组之间空开两行：
    各组迁进路由树时只删自己那几行。 */
 const ROUTES=[
-  // ── 目录 ──
-  /* 目录页：首页和四个筛选态是同一屏，路径只决定初始筛选，所以共用一个 open。
-     四条筛选态直接由 STATE_ROUTES 生成——它同时是 `isCatalogPath` 的判据，
-     两边各写一份就会有「路由认得、目录判定不认得」的半死路径。 */
-  {match:'/',open:()=>openCatalog('/')},
-  ...Object.entries(STATE_ROUTES).map(([key,path])=>({
-    match:path,nav:key,title:STATE_LABELS[key],open:()=>openCatalog(path)})),
-  {match:'/trash',section:'trash',open:(params,push)=>openTrash(push)},
-
-
   // ── 覆盖 ──
   {match:'/playlists/:playlist/:item',nav:'playlists',title:'播放列表',
     open:(params,push)=>openPlaylist(params.playlist,params.item,push)},
@@ -160,18 +150,20 @@ const ROUTES=[
 const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta,params:{}}:matchRoute(ROUTES,path)};
 const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value)
   ??ROUTES.find(spec=>spec[key]===value)?.match;
+/* 目录：首页、三个筛选态、垃圾文件与回收站。路由树按匹配打开，画在 `#grid`，不是管理区。 */
+const catalogPage=path=>isCatalogPath(path)||path==='/trash';
 /* 画进 `#stats` 的那几页（管理区、播放列表页与关注页）：路由树按匹配打开、又不随写回从头重开（索引页与资料页
-   登记了 `reload: 'reopen'`）。 */
-const managedPagePath=path=>{const meta=routeMetaOf(path);return !!meta&&meta.reload!=='reopen'};
-/* 从侧栏、管理条进一屏。还归壳的那几屏按 `ROUTES` 打开。索引页（侧栏只通到它们）退出选择模式、回到本地与
-   字母表，认领写地址后从头重开。关注页分「回到」与「重新进入」（`enterFollow`）；播放列表页认领写地址后从头
-   重开，再点一次也一样。管理区换地址、交派发打开，再点一次同一页也是新的一次打开；关注管理回到第一页
-   与默认排序，页签沿用地址上的那一档。 */
+   登记了 `reload: 'reopen'`，目录另判）。 */
+const managedPagePath=path=>{const meta=routeMetaOf(path);return !!meta&&meta.reload!=='reopen'&&!catalogPage(path)};
+/* 从侧栏、管理条进一屏。还归壳的那几屏按 `ROUTES` 打开。目录（管理条只通到回收站）认领写地址后从头重开。
+   索引页（侧栏只通到它们）退出选择模式、回到本地与字母表，同样认领写地址后从头重开。关注页分「回到」与
+   「重新进入」（`enterFollow`）；播放列表页认领写地址后从头重开，再点一次也一样。管理区换地址、交派发打开，
+   再点一次同一页也是新的一次打开；关注管理回到第一页与默认排序，页签沿用地址上的那一档。 */
 const openRoutePath=path=>{
   const hit=matchRoute(ROUTES,path);
   if(hit){hit.route.open(hit.params,true);return}
   if(path==='/follow'){enterFollow();return}
-  if(path==='/playlists'){openRoutedPage(path);return}
+  if(path==='/playlists'||catalogPage(path)){openRoutedPage(path);return}
   if(!managedPagePath(path)){
     setSelectMode(false,true);
     openRoutedPage(indexPath({kind:path.slice(1),q:'',scope:'local',view:'alphabet',category:'all'}));
@@ -347,7 +339,6 @@ function paintNav(){
 }
 let surfaceEpoch=0;
 const surfacePath=()=>decodeURIComponent(location.pathname);
-let lastRoutePath=surfacePath();
 /* 侧栏的 props 由壳拿着，每次只改其中几项再整份推进去。换了页面（路径变了，查询串不算），
    上一页那组筛选就不属于这一页：先收回到只剩导航，等这一页自己的内容回来再画。 */
 function paintSidebar(patch={}){
@@ -392,10 +383,9 @@ const route=(path,replace=false,state,{claim=true}={})=>{
   surfaceEpoch++;
   barsRequestSeq++;
   shellNavigate(path,{replace,state,claim});syncPageTitle(path);
-  lastRoutePath=decodeURIComponent(new URL(path,location.href).pathname);
   queueMicrotask(()=>{syncHeaderActions();paintListTitle();paintSidebar();void syncPostSetupTutorial()});
 };
-/* 换到一个路径、由派发器打开（页面里的 `actions.navigate`、教程卡的跳转）：地址、标题、`lastRoutePath` 与随后那一轮
+/* 换到一个路径、由派发器打开（页面里的 `actions.navigate`、教程卡的跳转）：地址、标题与随后那一轮
    同步照 `route()` 做，只是这一次不认领。路由树像后退前进一样报给派发器、领一个开次代次：迁进路由树的页面由它的元素
    打开，其余由 `restoreRoute` 按 `ROUTES` 打开。 */
 const navigatePath=path=>route(path,false,undefined,{claim:false});
@@ -431,7 +421,6 @@ async function loadSourceStatus(){
 /* `dropOfflineFromDefaultLoc()` 的定义在 `initialParams` 与 `state` 的启动赋值之后。`initialParams`
    是模块级 `const`，在声明行之前处于 TDZ；`state` 尚未写入时为 undefined。函数声明会提升，
    所以上面这一行调用照样成立。 */
-const DURATION_TAGS=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
 /* 界面偏好的出厂值、启动归一化与那一份 store 在 `frontend/src/appearance/settings.ts`：模块在 peach-ui.js
    里，第一次取 store 时从 localStorage 读回、归一化好。壳里六十来处读写都直接改这个对象的字段，改完
    `saveSettings()` 落盘，同一下通知开着的设置面板与侧栏跟上。 */
@@ -450,6 +439,20 @@ watchSystemTheme();
 /* 光晕、玻璃面与强调色写到页面上（`frontend/src/appearance/glow.ts`），第一帧之前同步写一次。
    侧栏那枚配色钮、它的配色卡与设置面板都订阅同一份 store，点哪一处改的配色另两处当场跟上。 */
 paintHomeGlowNow();applyGlassFaces();applyAccent();
+/* 目录的取数由目录元素（`frontend/src/react/router/pages/catalog.tsx`）经 `shellActions.catalog` 发起。要等这一趟的人
+   （换一批要转到网格落定）先排上号，元素发起的下一次 `loadCatalog` 交给排着的每一位。 */
+let catalogLoadWaiters=[];
+const nextCatalogLoad=()=>new Promise(resolve=>catalogLoadWaiters.push(resolve));
+const handOff=loading=>{catalogLoadWaiters.splice(0).forEach(resolve=>resolve(loading));return loading};
+/* 原地改写目录的筛选（换排序、换一批、改了默认排序）：首页与三个筛选态把筛选写回地址，replace、不加条目、
+   条目记的背景原样留着，目录元素见地址写了就重取；回收站与垃圾文件的地址不带这些筛选，直接重取。 */
+function replaceCatalogAddress(){
+  const path=surfacePath();
+  if(!isCatalogPath(path)||path==='/junk-files')return loadCatalog();
+  const loading=nextCatalogLoad();
+  shellNavigate(homePath(),{replace:true,state:peachHistory.navigation.location.state});
+  return loading;
+}
 /* 设置面板归常驻面 `settings-panel`（`frontend/src/react/settings-panel/`），由路由树画。它只改 `appSettings` 的字段并落盘，
    改完用效果名告诉这里跟着做什么：重画网格、重取目录、换主题、重排侧栏都还是壳的事。 */
 const settingsEffects={
@@ -464,12 +467,12 @@ const settingsEffects={
     state.sort=appSettings.defaultSort;
     state.dir=preferredDirection(state.sort,appSettings.defaultSort,appSettings.defaultSortDirection);
     notifyShell();
-    if(location.pathname==='/')loadCatalog();
+    if(location.pathname==='/')replaceCatalogAddress();
   },
   sortDirection:()=>{
     state.dir=preferredDirection(state.sort,appSettings.defaultSort,appSettings.defaultSortDirection);
     notifyShell();
-    if(location.pathname==='/')loadCatalog();
+    if(location.pathname==='/')replaceCatalogAddress();
   },
   hoverDelay:()=>{
     if(!appSettings.hoverDelaySeconds)document.querySelectorAll('[data-previewing],[data-longhover]')
@@ -596,8 +599,6 @@ const actionFailure=(message,error)=>toast(
 
 /* 随机排序每次进入首页都换种子；同一次访问继续复用该种子，保证筛选和分页
    不会重复或漏项。「换一批」仍可在当前访问里主动生成下一批。 */
-/* 异或结果是有符号 32 位，先转无符号再取模：种子要写进地址，后端只认非负整数。 */
-const newSeed=()=>String(((Date.now()^(Math.random()*1e9|0))>>>0)%99991);
 const rollSeed=()=>newSeed();
 /* 抽样只决定「这一批露出哪些」，不动原有顺序：标签条照旧按数量从多到少读下来，
    换一批换的是成员。装不满就原样返回，详情页那种只有几个标签的集合不受影响。 */
@@ -609,15 +610,9 @@ const seededSample=(rows,count,seed,key=row=>row.k)=>{
   return rows.filter(row=>picked.has(key(row)));
 };
 const initialParams=new URLSearchParams(location.search);
-const cleanTagFilter=value=>String(value||'').split(',').filter(tag=>tag&&!DURATION_TAGS.has(tag)).join(',');
-const cleanSort=(value,fallback=appSettings.defaultSort)=>SORT_KEYS.includes(value)?value:fallback;
-/* 列和方向一次解出来：旧键自带方向，`dir` 显式写了就听它的，随机没有方向。 */
-function resolveSort(rawSort,rawDir,fallback=appSettings.defaultSort){
-  const alias=SORT_ALIASES[rawSort];
-  const sort=cleanSort(alias?alias[0]:rawSort,fallback);
-  if(!SORT_DIR_WORDS[sort])return{sort,dir:''};
-  return{sort,dir:rawDir==='asc'||rawDir==='desc'?rawDir:(alias?alias[1]:rawSort?'desc':preferredDirection(sort,appSettings.defaultSort,appSettings.defaultSortDirection))};
-}
+/* 列和方向一次解出来（`sortFromAddress`，目录元素读地址用的也是它）：旧键自带方向，`dir` 显式写了就听它的，随机没有方向。 */
+const resolveSort=(rawSort,rawDir,fallback=appSettings.defaultSort)=>
+  sortFromAddress(rawSort,rawDir,appSettings.defaultSort,appSettings.defaultSortDirection,fallback);
 /* 查询参数属于它所在的路由，所以目录的筛选只从目录 URL 里读。
 
    不能无条件读启动 URL：`/follow?tag=blender` 会顺手把目录也筛成 blender，
@@ -661,7 +656,7 @@ writeShell({barsContext:{type:'home',filters:state}});
    等内存筛选还会继续进入 /api/items，让页面看似首页却只剩 JAV。来源选择是用户的
    浏览范围，继续保留；其余分类、搜索和排序恢复首页默认值。
    barsContext 也在这里回到 home：从资料页点侧栏或左上角标志回首页时，loadCatalog()
-   确实会把它拨回来，但 openHome 是先 buildBars() 后 loadCatalog()，buildBars 开头就把
+   确实会把它拨回来，但 goHome 是先 buildBars() 后取数，buildBars 开头就把
    activeFilterState() 取走了——取到的是资料页那份筛选，它没有 state 这个键，
    于是四枚视图胶囊一枚都不亮，首页看上去像谁都没选中。 */
 function resetHomeState(){
@@ -687,25 +682,14 @@ const clearSearchField=(snapshot=null)=>{
   cancelSearchDissolve=dissolveValue(input,input.parentElement,previous);
   searchValueSnapshot={text:'',scrollLeft:0};
 };
-/* 「未归属」是全库那一类，不是当前这一页里的子筛选：在某位女优的资料页上再筛「没有
-   署名人」永远是空的。所以它和打开资料页一样离开当前语境，回目录只留这一条筛选，
-   顶栏芯片指的就是同一份列表。 */
-function openUnowned(){
-  resetHomeState();state.owner='none';notifyShell();
-  clearSearchField();disposeStage(false);showHomeSurfaces();
-  route(homePath());syncNavigation();buildBars();loadCatalog();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-/* 详情页那枚产地和未归属同一种东西：它标的不是一句说明，是馆藏里一个能筛的集合。 */
-function openRegion(region){
-  resetHomeState();state.region=region||'none';notifyShell();
-  clearSearchField();disposeStage(false);showHomeSurfaces();
-  route(homePath());syncNavigation();buildBars();loadCatalog();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function openHome(scroll=false){
-  resetHomeState();route('/');clearSearchField();disposeStage(false);showHomeSurfaces();
-  syncNavigation();buildBars();loadCatalog();
+/* 回首页：筛选回到干净状态，认领写地址，取数由目录元素接着做。`filters` 是回首页时只留的那一条筛选：
+   「未归属」是全库那一类，不是当前这一页里的子筛选，在某位女优的资料页上再筛「没有署名人」永远是空的，所以它和
+   打开资料页一样离开当前语境，顶栏芯片指的就是同一份列表；详情页那枚产地同理，标的是馆藏里一个能筛的集合。 */
+function goHome(filters=null,scroll=false){
+  resetHomeState();
+  if(filters){Object.assign(state,filters);notifyShell()}
+  route(filters?homePath():'/');clearSearchField();disposeStage(false);showHomeSurfaces();
+  syncNavigation();buildBars();
   if(scroll)window.scrollTo({top:0,behavior:'smooth'});
 }
 /* `onboarding=1` 来自设置完成页。标记会在 Peach 的每一页保持生效；清单只读真实接口，
@@ -1185,7 +1169,7 @@ const gridActions={
   openShorts:()=>openTok(),
   openMix:(seedId,anchor)=>openMix(seedId,seedId,true,anchor),
   openEntity:(kind,name)=>openEntity(kind,name),
-  openUnowned:()=>openUnowned(),
+  openUnowned:()=>goHome({owner:'none'},true),
   /* 卡片上的标签是「只看这个标签」，已经在筛它就取消。在哪一屏点就在哪一屏生效。 */
   toggleTag:tag=>{
     commitContextFilter(filters=>{filters.tag=tagPressed(filters.tag,tag)?'':tag});
@@ -1288,11 +1272,10 @@ function commitContextFilter(mutate){
       return
     }
     mutate(state);writeShell({barsContext:{type:'home',filters:state}});route(homePath());showHomeSurfaces();
-    buildBars();loadCatalog();return
+    buildBars();return
   }
   mutate(state);notifyShell();route(homePath());
   applyFilterStateInPlace(state);refreshFacetCounts(barsContext);
-  loadCatalog();
 }
 /* 左端四枚视图。资料页那一条（`entity-filter`）用同一份清单画自己的观看状态。 */
 const VIEW_PILLS=[{k:'',label:'全部'},{k:'fresh',label:'没看过'},
@@ -1300,8 +1283,8 @@ const VIEW_PILLS=[{k:'',label:'全部'},{k:'fresh',label:'没看过'},
 const catalogViews=()=>VIEW_PILLS.map(v=>({...v,href:v.k?STATE_ROUTES[v.k]:'/'}));
 /* ── 首页筛选条（附属面 `catalog-filter`，由路由树画进 `#catalogFilter`，ADR-0031） ──
    两排头像、浮层上排的视图与标签、下排读数与排序，外加正文里网格上面那条交集条。筛选、路由与
-   取数仍归壳：成员与按下态在这里算好当 props 递进去，动作回到这里，落点照旧是
-   `commitContextFilter` 与 `loadCatalog`。壳手上留一份完整的 props，每次只改其中几项：画好了
+   取数仍归壳：成员与按下态在这里算好当 props 递进去，动作回到这里，落点是 `commitContextFilter`
+   与改写地址，由目录元素接着重取。壳手上留一份完整的 props，每次只改其中几项：画好了
    就推补丁；还在打开就先记着，画上之后再把整份推一次。 */
 /* 顶上那几排先画一屏够用的量，横滚到右端再续下一批（岛里的 `usePaged`）。标签条先摆的是生效
    的那几枚加抽出来的这一批。 */
@@ -1335,7 +1318,7 @@ function catalogFilterActions(){
     /* 按下去当场就推新的按下态，滑动玻璃跟着走，不等这一趟取数。 */
     setView:view=>{
       state.state=view;notifyShell();paintCatalogFilter({state:view});
-      route(homePath());buildBars();loadCatalog();
+      route(homePath());buildBars();
     },
     toggleTag:tag=>toggleTag(tag),
     clearFilter:key=>commitContextFilter(filters=>{filters[key]=''}),
@@ -1343,7 +1326,7 @@ function catalogFilterActions(){
     setSort:key=>{
       const next=nextSortState(key,state.sort,state.dir);
       if(!next)return;
-      state.sort=next.sort;state.dir=next.dir;notifyShell();loadCatalog();
+      state.sort=next.sort;state.dir=next.dir;notifyShell();replaceCatalogAddress();
     },
     reshuffle:()=>refreshAll(),
     setLayout:value=>{if(javActive())setJavLayout(value);else setHomeLayout(value)},
@@ -1570,7 +1553,7 @@ function showHomeSurfaces(){
   $('#catalogFilter').style.display='';syncCatalogFilterScreen();
   buildManageBar();paintListTitle();   // 放在最后：管理区要盖掉上面刚恢复的首页横条
 }
-function closeStats(push=true){if(push)route('/');showHomeSurfaces();loadCatalog()}
+function closeStats(){route('/');showHomeSurfaces()}
 
 /* 未入库的新作：订阅源发现的番号，库里还没有文件（ADR-0042）。
  *
@@ -1724,7 +1707,7 @@ new ResizeObserver(syncHeroWide).observe($('#index'));
 function openTasteSignal(kind,name){
   if(kind==='tag'){
     writeShell({state:{...state,tag:name,tag_match:'all',creator:'',studio:'',q:'',state:'',orient:''}});
-    clearSearchField();route(homePath());showHomeSurfaces();buildBars();loadCatalog();return
+    clearSearchField();route(homePath());showHomeSurfaces();buildBars();return
   }
   openEntity(kind,name);
 }
@@ -2229,7 +2212,7 @@ function showIndexContainer(){
 /* 回目录按标签筛选：点一枚是「只看这一枚」，按所选显示结果是照匹配方式拼几枚。 */
 function showIndexTags(tags,match){
   writeShell({state:{...state,state:'',tag:tags.join(','),tag_match:match}});
-  setSelectMode(false,false);route(homePath());showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
+  setSelectMode(false,false);route(homePath());showHomeSurfaces();syncNavigation();buildBars();
 }
 /* 在线那一档的人和标签还没进账本，没有资料页可去：他们名下那批东西全在关注页上，所以点开
    等于「关注 · 这一位 / 这一枚」。其余条件一并清空——从名册点进来问的是这一位的全部更新，
@@ -2792,7 +2775,7 @@ function openManage(section='stats'){
   /* 认不出的 section 一律落到垃圾文件：统计页那颗「查看垃圾文件」传的就是 `ads`，
      而垃圾文件是目录页的一个筛选态，没有自己的 section。 */
   state.orient='';state.state='ads';notifyShell();route(junkPath());
-  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
+  showHomeSurfaces();syncNavigation();buildBars();
 }
 /* JAV 模式。只有带番号的作品才有官方封套，发行时间排序、番号筛选都挂在这个语境上；
    资料页（女优/厂牌）进入时继承这个开关，因为那里同样是按番号浏览。
@@ -2841,8 +2824,8 @@ function toggleJavMode(){
   state.jav=state.jav==='1'?'':'1';
   if(state.jav!=='1'&&state.sort==='release'){state.sort='seed';state.dir=''}
   state.state='';state.orient='';notifyShell();
-  route(state.jav==='1'?'/?jav=1':'/');
-  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
+  route(homePath());
+  showHomeSurfaces();syncNavigation();buildBars();
 }
 /* 批量写完：当前页重取，顶部三条与侧栏计数也按新账本重算。那两样有 30 秒会话缓存
    （`getBarsData`），不清掉的话一批作品进了回收站，侧栏的数和上面那排头像要等半分钟才跟上。
@@ -2894,7 +2877,7 @@ function navTo(k){
   if(DIRECT_MANAGE_NAV[k]){openManage(DIRECT_MANAGE_NAV[k]);return}
   if(k==='manage'){openManage();return}
   if(k==='jav'){toggleJavMode();return}
-  if(k===''){openHome();return}
+  if(k===''){goHome();return}
   // 有自己路径的入口（追更、播放列表、沉浸模式、索引页）按路由元数据的 `nav` 找路径进。
   const path=STATE_ROUTES[k]?null:routePathOf('nav',k);
   if(path){openRoutePath(path);return}
@@ -2902,7 +2885,7 @@ function navTo(k){
   notifyShell();
   route(homePath());
   showHomeSurfaces();
-  syncNavigation();buildBars();loadCatalog();
+  syncNavigation();buildBars();
 }
 function syncHeaderActions(){
   const path=decodeURIComponent(location.pathname),parts=path.split('/').filter(Boolean);
@@ -3126,8 +3109,8 @@ async function runJunkOperation(it,operation){
 }
 const junkQueueHelpers={badgeHtml:(location,cost)=>srcBadge(location,cost)};
 const junkQueueActions={
-  /* 换分类、换视图：先收起多选，改地址再重读。 */
-  navigate:path=>{if(selectMode)setSelectMode(false,true);route(path);loadCatalog()},
+  /* 换分类、换视图：先收起多选，再改地址，由目录元素重读。 */
+  navigate:path=>{if(selectMode)setSelectMode(false,true);route(path)},
   toggleSelection:(id,range)=>toggleSelection(id,range),
   open:(it,anchor)=>it.junk_kind==='image'
     ?window.open('/photo?id='+it.id,'_blank','noopener'):openItem(it.id,true,null,anchor),
@@ -3164,7 +3147,7 @@ function searchCoverImage(card){
 const searchActions={
   search:query=>{
     rememberSearchValue();disposeStage(false);
-    state.q=query;notifyShell();route(state.q?'/?q='+encodeURIComponent(state.q):'/',true);loadCatalog();
+    state.q=query;notifyShell();route(state.q?'/?q='+encodeURIComponent(state.q):'/',true);
   },
   openItem:id=>openItem(id),
   openEntity:(kind,name)=>openEntity(kind,name),
@@ -3300,8 +3283,8 @@ const itemDetailActions={
     followAuthors=new Set();followProviders=new Set();followTags=new Set();followWorks=new Set();followMediaView='videos';
     followDurMin=followDurMax=0;followFilter='saved';openRoutedPage(followViewPath())},
   openEntity:(kind,name)=>openEntity(kind,name),
-  openUnowned:()=>openUnowned(),
-  openRegion:region=>openRegion(region),
+  openUnowned:()=>goHome({owner:'none'},true),
+  openRegion:region=>goHome({region:region||'none'},true),
   openTag:tag=>{commitContextFilter(filters=>{filters.tag=tag});window.scrollTo({top:0,behavior:'smooth'})},
   addToPlaylist:item=>openAddToPlaylist(item),
   saveMix:options=>saveMixAsPlaylist(options),
@@ -3383,10 +3366,10 @@ const immerseHost={
   displayName:it=>javDisplayName(it),
   /* 每换一条用 replace 写地址：每划一下都往历史里塞一条，后退键就废了。 */
   route:id=>route('/immerse?id='+id,true),
-  closed:()=>openHome(),
+  closed:()=>goHome(),
   openItem:id=>void openItem(id),
   openEntity:(kind,name)=>openEntity(kind,name),
-  openUnowned:()=>openUnowned(),
+  openUnowned:()=>goHome({owner:'none'},true),
   toast:(message,{undo}={})=>actionReceipt(message,{undo}),
   warn:message=>toast({text:message},{sound:'warning'}),
   failure:(action,error)=>actionFailure(action,error),
@@ -3459,7 +3442,7 @@ $('#q').addEventListener('blur',()=>setTimeout(()=>{
 document.addEventListener('pointerdown',event=>{
   if(!event.target.closest('.search'))hideSearchMenu();
 },true);
-$('#brandHome').onclick=e=>{e.preventDefault();openHome(true)};
+$('#brandHome').onclick=e=>{e.preventDefault();goHome(null,true)};
 /* 当前该响应播放快捷键的 video：沉浸模式优先，其次舞台（详情里的，没开详情就是小窗里的），都没开
    就返回 null。切换播放与快进快退在 `frontend/src/player/playback.ts`，沉浸岛的单击、双击也用它。 */
 function activeVideo(){
@@ -3547,7 +3530,8 @@ async function refreshAll(automatic=false){
      落定，网格先到时标签条还在等的那段时间里它不停。顶部三层与标签条不铺骨架——它们此刻
      有内容在屏幕上，撕成灰条再填回去比直接换掉更晃眼；只铺一层微光，骨架留给从无到有的首屏。 */
   paintCatalogFilter({refreshing:true});
-  try{await Promise.all([loadCatalog(),buildBars()])}
+  /* 目录元素在改写地址排下的那个微任务里发起取数；让过这一拍，网格先认领表面、铺好等待态，顶部三层再取。 */
+  try{const loading=replaceCatalogAddress();await null;await Promise.all([loading,buildBars()])}
   finally{paintCatalogFilter({refreshing:false})}
   if(!automatic)window.scrollTo({top:0,behavior:'smooth'});
   return true;
@@ -3583,27 +3567,6 @@ function wireDrag(el){return wireHorizontalScroller(el,{drag:true})}
 function wireAllDrag(){['#nrow','#count'].forEach(s=>wireDrag($(s)));
   document.querySelectorAll('.tier,.srow').forEach(wireDrag)}
 
-/* 目录页（首页 + 四个筛选态）：筛选全部从 URL 读，路径只决定初始筛选态。
-   `enteringHome` 判的是「从别处回到首页」：顶部三层有 30 秒会话缓存，不作废的话
-   回到首页看到的还是上一次那批人。判据是 `lastRoutePath`，所以 `restoreRoute`
-   要等派发完再更新它。 */
-function openCatalog(path){
-  const params=new URLSearchParams(location.search);
-  const enteringHome=path==='/'&&lastRoutePath!=='/';
-  if(enteringHome)dropBars();
-  writeShell({state:{...state,loc:params.get('loc')??onlineDefaultLoc('local,115'),creator:params.get('creator')||'',studio:params.get('studio')||'',
-    tag:cleanTagFilter(params.get('tag')),tag_match:params.get('tag_match')==='any'?'any':'all',len:params.get('len')||'',
-    dur_min:params.get('dur_min')||'',dur_max:params.get('dur_max')||'',orient:params.get('orient')||'',
-    state:ROUTE_STATES[path]||params.get('state')||'',...resolveSort(params.get('sort'),params.get('dir')),
-    seed:params.get('seed')||(enteringHome?rollSeed():state.seed||rollSeed()),q:params.get('q')||'',jav:params.get('jav')||''}});
-  $('#q').value=state.q;rememberSearchValue();syncNavigation();buildBars();loadCatalog();
-}
-/* 回收站。它和目录页共用同一张网格，只是筛选被钉死成 `trash`。 */
-function openTrash(push){
-  if(push)route('/trash');
-  writeShell({state:{...state,creator:'',studio:'',tag:'',orient:'',state:'trash',q:''}});clearSearchField();
-  showHomeSurfaces();syncNavigation();buildBars();loadCatalog();
-}
 /* 沉浸模式当前这一条写在 `?id=`（沉浸岛每换一条经 `immerseHost.route` 写一次），刷新和后退都该回到同一条片子。 */
 function immerseStartId(){
   const id=new URLSearchParams(location.search).get('id');
@@ -3624,23 +3587,17 @@ async function restoreRoute(origin){
   if(origin==='history')adoptOverlayState(peachHistory.navigation.location.state);
   const path=decodeURIComponent(location.pathname);
   void syncPostSetupTutorial();
-  if(path==='/'&&new URLSearchParams(location.search).get('state')==='ads'){
-    const {kind,view}=junkRoute(location.search);
-    route(junkPath(kind,view),true);await restoreRoute();return;
-  }
   /* 唯一的派发点：路径匹配哪条路由，就把那一屏打开。`push=false`——地址栏本来
      就是它，再 `route()` 一次会往历史里塞一条重复记录。
-     `lastRoutePath` 等派发完再更新：目录页要拿它判断是不是刚从别处回到首页。
-     路由树登记的管理区、索引页与资料页不在 `ROUTES` 里，由它们的页面元素按匹配打开。 */
+     路由树登记的管理区、索引页、资料页与目录不在 `ROUTES` 里，由它们的页面元素按匹配打开；
+     首页上的 `?state=ads` 由目录元素改写成垃圾文件的地址。 */
   const hit=matchRoute(ROUTES,path);
-  try{
-    if(hit)await hit.route.open(hit.params,false);
-    /* 索引页与资料页由路由树按匹配打开：后退前进与启动时元素自己开；壳直接调来重开当前地址时要它从头再开。 */
-    else if(routeMetaOf(path)?.reload==='reopen'){if(!origin)writeShell({pageOpens:pageOpens+1})}
-    /* 播放列表页与关注页同样由路由树按匹配打开，壳直接调来时同样要它按当前地址再开一次。 */
-    else if(path==='/playlists'||path==='/follow'){if(!origin)writeShell({pageOpens:pageOpens+1})}
-    else if(!managedPagePath(path)){showHomeSurfaces();disposeStage(false)}
-  }finally{lastRoutePath=path}
+  if(hit)await hit.route.open(hit.params,false);
+  /* 索引页、资料页与目录由路由树按匹配打开：后退前进与启动时元素自己开；壳直接调来重开当前地址时要它从头再开。 */
+  else if(routeMetaOf(path)?.reload==='reopen'||catalogPage(path)){if(!origin)writeShell({pageOpens:pageOpens+1})}
+  /* 播放列表页与关注页同样由路由树按匹配打开，壳直接调来时同样要它按当前地址再开一次。 */
+  else if(path==='/playlists'||path==='/follow'){if(!origin)writeShell({pageOpens:pageOpens+1})}
+  else if(!managedPagePath(path)){showHomeSurfaces();disposeStage(false)}
 }
 /* 左侧导航、管理条、页面标题和面包屑只认 location 和本地设置，一个请求都不等。
    挂在下面那条链上时它们排在 /api/sources 和 /api/facets 后面，实测让骨架先顶着
@@ -3738,6 +3695,30 @@ const shellActions={
 
   // 关注与播放列表用。
   follow:followFeedShell,
+
+  // 目录用。
+  catalog:{
+    /* 地址上没写来源时的缺省：本地加 115，离线的那一处摘掉。 */
+    defaultLoc:()=>onlineDefaultLoc('local,115'),
+    /* 整页打开：筛选已由目录元素照地址写进 `state`。`retitle` 是首页 `?state=ads` 改写成垃圾文件地址的那一下：
+       改写认领了，没经过派发，标题、侧栏与教程状态在这里补；`entering` 是从别处回到首页，顶部三层的缓存作废。
+       回收站清掉搜索框，别的页把地址上的搜索词摆回框里。 */
+    open:(path,{entering=false,retitle=false}={})=>{
+      if(retitle){
+        surfaceEpoch++;barsRequestSeq++;
+        syncPageTitle(location.href);paintSidebar();clearOverlayBackground();
+        syncHeaderActions();paintListTitle();void syncPostSetupTutorial();
+      }
+      if(entering)dropBars();
+      if(path==='/trash'){clearSearchField();showHomeSurfaces()}
+      else{$('#q').value=state.q;rememberSearchValue()}
+      syncNavigation();buildBars();handOff(loadCatalog());
+    },
+    /* 壳认领写了地址、筛选已在 `state` 里：只重取。 */
+    load:()=>{handOff(loadCatalog())},
+    /* 离开目录：收起网格、首页新作行与处理横幅。 */
+    release:()=>{clearCatalogGrid();clearHomeFeed();releaseManagedRoute($('#libraryProcessingNotice'))},
+  },
 };
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();

@@ -49,6 +49,13 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   '/playlists': { nav: 'playlists', title: '播放列表', refresh: 'reopen' },
   // 关注页重画要联网取一遍卡面，「换一批」只由页面自己的按钮触发。
   '/follow': { nav: 'follow', title: '关注', refresh: 'skip' },
+  // 目录：首页与回收站没有自己的标签，三个筛选态与垃圾文件的侧栏键与标签同 `STATE_ROUTES`、`STATE_LABELS`。
+  '/': {},
+  '/unseen': { nav: 'fresh', title: '没看过' },
+  '/watch-later': { nav: 'later', title: '稍后看' },
+  '/flagged': { nav: 'flagged', title: '已标记' },
+  '/junk-files': { nav: 'ads', title: '垃圾文件' },
+  '/trash': { section: 'trash' },
 };
 
 /** 这条路径在路由树一侧登记的元数据；没登记是 `null`，由壳回落到自己的表。 */

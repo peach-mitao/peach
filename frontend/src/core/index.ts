@@ -185,10 +185,18 @@ const seededRank=(seed:number|string,value:string)=>{
   for(const char of `${seed}\u0000${value}`){hash^=char.codePointAt(0) as number;hash=Math.imul(hash,16777619)>>>0}
   return hash;
 };
+/* 掷一粒取样种子。异或结果是有符号 32 位，先转无符号再取模：种子要写进地址，后端只认非负整数。 */
+const newSeed=()=>String(((Date.now()^(Math.random()*1e9|0))>>>0)%99991);
+/* 时长四档是筛选条上的时长段，不是内容标签：目录的标签筛选里不收它们，地址上带来的也摘掉。 */
+const DURATION_TAGS:ReadonlySet<string>=new Set(['短片-2分内','中片-10分内','长片-30分内','超长片-30分上']);
+const cleanTagFilter=(value:unknown)=>String(value||'').split(',').filter(tag=>tag&&!DURATION_TAGS.has(tag)).join(',');
 
 export {
   $,
   seededRank,
+  newSeed,
+  DURATION_TAGS,
+  cleanTagFilter,
   realDuration,
   icon,
   api,

@@ -246,6 +246,29 @@ describe('首页筛选条', () => {
     }
   });
 
+  it('未归属跟着地址走：侧栏回首页按全库取，后退回到带它的地址再按它取', { timeout: 60_000 }, async () => {
+    const opened = await openHome(browser, '/?owner=none');
+    try {
+      const { page, counts } = opened;
+      assert.equal(counts.items.at(-1)?.searchParams.get('owner'), 'none', '地址上的未归属没有进列表请求');
+      let before = counts.items.length;
+      await page.locator('[data-nav=""]:visible').first().click();
+      await page.waitForFunction(() => location.pathname === '/' && !location.search);
+      await until(() => counts.items.length > before, '回首页之后没有重取列表');
+      await settle(page);
+      assert.equal(counts.items.at(-1)?.searchParams.has('owner'), false, '回首页之后还带着未归属');
+      before = counts.items.length;
+      await page.goBack();
+      await page.waitForFunction(() => new URLSearchParams(location.search).get('owner') === 'none');
+      await until(() => counts.items.length > before, '后退之后没有重取列表');
+      await settle(page);
+      assert.equal(counts.items.at(-1)?.searchParams.get('owner'), 'none', '后退回来没有按地址上的未归属取');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('进详情再关回来：头像条还是原来那批节点，图还是解码过的那一张，也没有多发聚合请求', { timeout: 60_000 }, async () => {
     const opened = await openHome(browser);
     try {

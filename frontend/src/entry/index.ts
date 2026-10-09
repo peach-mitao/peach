@@ -5,7 +5,7 @@
  * 读到的也是这一份。锚定菜单的「同一时刻只开一张」、折叠的开合代际、确认框的标题序号、计数徽标的上一次读数、
  * 教程的请求代际、音效开关与中段截断的全文档观察者都是模块级状态，`LOC`、`fmtDur` 是语义契约，都只能有一份。 */
 export {
-  $, seededRank, realDuration, icon, api, isAbort, mapLimit, STATE_ROUTES, ROUTE_STATES, STATE_LABELS, isCatalogPath,
+  $, seededRank, newSeed, DURATION_TAGS, cleanTagFilter, realDuration, icon, api, isAbort, mapLimit, STATE_ROUTES, ROUTE_STATES, STATE_LABELS, isCatalogPath,
   ENTITY_ROUTES, ROUTE_ENTITIES, entityPath, esc, brandIcon, siteName, linkMarkUrl, siteMarkUrl, foldName,
   officialLinkText, fmtDur, fmtClock, fmtSize, LOC, requestErrorMessage,
 } from '../core';
