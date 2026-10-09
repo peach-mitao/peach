@@ -6,7 +6,7 @@ import { layout, settle, visit } from './harness.ts';
 import {
   DESKTOP, MOBILE, tokenColor, openDuplicates, openIndexPage, openPlaylistsPage, openFollowManage, holdApi,
   controlFaces, openPerformer, PROFILED, openProfiledPerformer, popmenuShadow, heroGeometry, disabledTokens,
-  waitingActionFaces, assertDisabledFace, followTab, installDesignBrowser,
+  waitingActionFaces, assertDisabledFace, followTab, followSource, installDesignBrowser,
 } from './design-fixture.ts';
 
 describe('设计决定：数据管理、索引页与资料页头', () => {

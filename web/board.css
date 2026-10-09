@@ -522,7 +522,6 @@ button,input,select,textarea{font-family:inherit}
 .insightcopy{border:0}@media(max-width:1000px){.metricstrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
 
 /* 数据按阅读目的分组，标题与内容共享边缘。 */
-.tastepage{width:100%;max-width:var(--board-content)}
 .configfieldset{border:0}.configfieldset>.geist-fieldset-footer{border:0}
 
 /* 强调色的十一级色阶。机制照搬 BoardUI：主按钮、焦点环、链接、开关、选中态全都引用
@@ -579,7 +578,7 @@ button,input,select,textarea{font-family:inherit}
    面板、筛选条、交集条和标签骨架都从它取值，一处改完五处一起走。 */
 :root{--tag-radius:8px}
 body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
-.pagetitle,.listtitle,.index .ihead h2,.indexheading{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer{font:var(--board-caption);letter-spacing:.15px}
+.pagetitle,.listtitle,.index .ihead h2,.indexheading{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3{font:var(--board-heading);letter-spacing:0}.board-library-rows button{font:var(--board-body)}
 .geist-button,.resourceaction{background-color:var(--color-background-primary-default);border-color:var(--color-border-button-default);color:var(--color-text-primary);transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 /* 悬停只抬填充，那圈线一步不动：按钮静止态已经带一圈 1px，悬停再把它加深，
    鼠标扫过一排次级键就是一排边框忽明忽暗，而键本身并没有变化。 */
@@ -592,8 +591,6 @@ body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-
 .board-page-skeleton{max-width:var(--board-content);width:100%;margin:auto}
 .board-page-skeleton .tastesummary{height:152px}
 .board-page-skeleton .tastesummary>b .skeleton{height:34px}
-.skeleton-segments>span{display:flex;align-items:center;padding:4px 10px;min-height:28px;border-radius:6px;color:var(--color-text-secondary);font:var(--board-body);white-space:nowrap}
-.skeleton-segments>span.skeleton-segment-selected{color:var(--color-text-primary);font:var(--board-body-medium);background:var(--color-background-primary-default);box-shadow:var(--elevation-xs)}
 .board-page-skeleton .pic{height:auto}
 .board-page-skeleton .playlistcreate{min-width:200px}
 .board-page-skeleton .mixcopy{flex:1}
@@ -716,7 +713,7 @@ body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([dat
 [data-button-group]>button:is(:hover,[aria-pressed=true],[aria-selected=true]):not(.primary){background:var(--control-hover);color:var(--color-text-primary)}
 [data-button-group]>button:focus-visible{position:relative;z-index:1;outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
 @media(max-width:1000px){.cleanupgrid [data-cleanup-processing],.resourcesyncbox[data-cleanup-task]{grid-template-columns:1fr}.cleanupgrid [data-cleanup-processing]>:is(.geist-fieldset-footer,[data-geist-fieldset-footer]),.resourcesyncbox[data-cleanup-task]>.resourcesyncfooter{justify-content:flex-start;padding-top:0}}
-.metricstrip>button[aria-selected=true]{background:var(--color-background-primary-default);box-shadow:none}.metricstrip>button[aria-selected=true]::after{box-sizing:border-box}.metricstrip>button[aria-selected=true] .board-stat-footer{background:var(--board-card-foot)}
+.metricstrip>button[aria-selected=true]{background:var(--color-background-primary-default);box-shadow:none}.metricstrip>button[aria-selected=true]::after{box-sizing:border-box}
 body .gselectmenu [role=option][aria-selected=true],body .popmenu [aria-checked=true]{background:color-mix(in srgb,var(--color-text-primary) 10%,var(--color-background-primary-default));color:var(--color-text-primary)}
 .insightswitch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs)}.insightswitch label>span{display:flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:7px;color:var(--color-text-secondary);font:var(--board-body-medium)}.insightswitch label:has(input:checked)>span{background:var(--color-background-primary-hover);color:var(--color-text-primary);box-shadow:var(--elevation-xs)}
 [data-board-tabs]{position:relative!important}[data-board-tabs]::before{content:'';position:absolute;bottom:0;left:0;width:var(--tab-width,0px);height:2px;background:var(--tungsten);transform:translateX(var(--tab-x,0px));pointer-events:none;z-index:1}
@@ -779,8 +776,8 @@ html.board-high-contrast :is(.card .badge,[data-glass-pane]){background:var(--gr
 .insightswitch[data-board-segments] label>span{display:flex;align-items:center;min-height:28px;height:auto;padding:4px 10px;border-radius:6px;background:transparent;box-shadow:none;color:var(--color-text-secondary);font:var(--board-body);transition:color .2s ease}
 .insightswitch[data-board-segments] label:hover>span{color:var(--color-text-primary)}
 .insightswitch[data-board-segments] label:has(input:checked)>span{background:transparent;box-shadow:none;color:var(--color-text-primary);font:var(--board-body-medium)}
-:root[data-theme="dark"] :is(.iconswitch:not(.themeswitch),.insightswitch,.follow-workspace-switch)>:is(.board-segment-thumb,.skeleton-segment-selected){background:color-mix(in srgb,var(--color-text-primary) 14%,var(--color-background-tertiary-default));box-shadow:0 1px 2px #00000040}
-@media(prefers-color-scheme:dark){:root:not([data-theme]) :is(.iconswitch:not(.themeswitch),.insightswitch,.follow-workspace-switch)>:is(.board-segment-thumb,.skeleton-segment-selected){background:color-mix(in srgb,var(--color-text-primary) 14%,var(--color-background-tertiary-default));box-shadow:0 1px 2px #00000040}}
+:root[data-theme="dark"] :is(.iconswitch:not(.themeswitch),.insightswitch,.follow-workspace-switch)>.board-segment-thumb{background:color-mix(in srgb,var(--color-text-primary) 14%,var(--color-background-tertiary-default));box-shadow:0 1px 2px #00000040}
+@media(prefers-color-scheme:dark){:root:not([data-theme]) :is(.iconswitch:not(.themeswitch),.insightswitch,.follow-workspace-switch)>.board-segment-thumb{background:color-mix(in srgb,var(--color-text-primary) 14%,var(--color-background-tertiary-default));box-shadow:0 1px 2px #00000040}}
 /* 浮层上的分段器（版式、大小这类）跟同一排的圆键、药丸和「仅显示图片」那枚开关一样高
    （30px），滑块就是整枚选项：轨道不留内边距，选项 30px 见方、图标 16px，圆角跟那块滑动
    玻璃同一个 8px。轨道留 3px 的话滑块比旁边那块玻璃矮一圈、圆角也小一档，同一块料在

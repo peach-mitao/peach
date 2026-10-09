@@ -14,7 +14,7 @@
 - `アナル`、`Anal`、`Anal Play`、`アナル責め`、`アナルシリーズ`、`肛門・肛交` 投到既有标签「屁眼」。明确表示肛交的词才投「肛交」。没有可靠语义的词保留为 UNMAPPED，已映射部分可按判据结算，未知部分继续复核。
 - 缺标签的有码作品在必填标量结算后单独补取 JavDB，不扩展其他社区查询。取页复用来源路由、缓存、缺失记忆、冷却与超时机制，已尝试来源不重复请求，失败保留已取得的标量。
 - 已有标签的作品通过 `scrape_codes` 按番号重取候选；例行库处理保护已有字段。新 JavDB 候选允许重判旧的自动标签决定，使用真实番号核对身份，包含 `asset:<ID>:tags` 主键。
-- 自动替换只撤下 `javinizer:*` 和 `auto:metadata-tags@*` 的标签归属，保留 `manual`、`name`、`stash` 与实体关系。人工 approved 继续按并集补新增，保留人工判断、候选身份及时间。落库记录 `metadata-censored-javdb-tags` 与 `tag_policy=censored-javdb`，不冒称官方来源。
+- 自动替换只撤下 `javinizer:*` 和 `auto:metadata-tags@*` 的标签归属，保留 `manual`、`name`、`stash` 与实体关系。人工 approved 继续按并集补新增；更高置信度的候选可以更新同名 `filename` 扁平投影，并保留实体的多来源证据。保留人工判断、候选身份及时间。落库记录 `metadata-censored-javdb-tags` 与 `tag_policy=censored-javdb`，不冒称官方来源。
 - 回填真实馆藏须有同轮明确授权、逐资产预览、备份与正式账本写入入口。离线来源差异不能代替真实账本的来源归属审查。
 
 ## 验证与影响

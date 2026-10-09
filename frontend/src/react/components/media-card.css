@@ -536,7 +536,7 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
 /* 番号与版本徽标在别处是一个不折行的整块；卡片标题只有两行，整块比卡宽时会被直接切掉、
  * 没有省略号。这里拆成行内的几枚徽标，放不下的折到下一行，第二行末尾照样由 line-clamp 收住。
  * 这两枚类由 `core/jav-title.ts` 挂上，按 `[class~=…]` 认，权重与类选择器相同。 */
-.peach-react [data-media-title] [class~="javidentity"] { display: inline; white-space: normal; }
+.peach-react [data-media-title] [class~="ui-javidentity"] { display: inline; white-space: normal; }
 .peach-react [data-media-title] [class~="javedition"] { margin-left: 5px; }
 .peach-react [data-media-byline] {
   display: flex;
