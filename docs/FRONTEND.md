@@ -6,7 +6,7 @@
 2. 新增 React 页面：按 [迁移下一个页面](#迁移下一个页面) 接入路由树。
 3. 查询模块职责：看 [目录与产物](#目录与产物) 和 [挂载契约](#挂载契约)。
 
-Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 React + Tailwind + BoardUI。`web/app.js` 的原生 ES module 路由拥有应用外壳，负责骨架、容器和页面助手；React 负责所挂载的页面内容。
+Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 接入 React + Tailwind + BoardUI。`web/app.js` 的原生 ES module 拥有应用外壳，负责骨架、容器和页面助手；React 路由树负责客户端导航、页面与详情内容。
 
 只有一条不可变的约束：**运行时没有 Node**。Python 服务、PyInstaller 包和 macOS 上的
 检出都直接读 `web/`，所以构建产物提交进 Git，不用任何 CDN。

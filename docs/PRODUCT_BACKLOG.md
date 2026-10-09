@@ -51,7 +51,7 @@
 
 ## BoardUI 正式前端迁移
 
-还没迁到 React 的页面仍在 `web/app.js`。迁移按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页改写成 React + Tailwind v4 + BoardUI 原版源码：每次一到两个页面、独立分支集成，旧渲染函数、旧 CSS 与旧断言随页面一起删。控件映射见 [Board 适配](BOARD_UI.md)。迁移不包含版本号或其他分支发布工作。
+页面与详情由 React 路由树渲染，`web/app.js` 保留应用外壳、首帧骨架与动作接线。后续按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 分域收口状态、动作与入口，再清退无消费者的样式和桥接；每步独立集成并验证行为。控件映射见 [Board 适配](BOARD_UI.md)。迁移不包含版本号或其他分支发布工作。
 
 - 前端基础库随页面引入，取舍与时机见 ADR-0031「前端基础库」一节。TanStack Query、TanStack Table 与 React Router 已在用，路由共用一份浏览器历史；馆藏网格已在 React 里、不用 TanStack Virtual，屏外卡靠 `content-visibility` 跳过渲染；要不要上虚拟列表按下一条的实测决定。
 - `bg-card-footer` 与 `bg-card-hover` 取的是 `.peach-react` 里的真值，数据管理页整理卡、统计、活动、关注管理与设置的卡片页脚带都有底色，这几页还要逐页截图核对。
