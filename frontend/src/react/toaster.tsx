@@ -10,7 +10,7 @@ import { Toaster, toast } from 'sonner';
 
 import type * as Bundle from './bundle';
 
-/* 成功那一枚勾自己画出来（`web/css/25-motion.css` 的 `[data-toast-glyph=draw]`），失败那一枚
+/* 成功那一枚勾自己画出来（`src/ui-kit/motion.css` 的 `[data-toast-glyph=draw]`），失败那一枚
    不画：错误要的是立刻看清。字形由遗留层的 `icon()` 给，和全站其余图标同一套描边件。 */
 const glyph = (html: string, draw: boolean) => (
   <span data-toast-glyph={draw ? 'draw' : 'still'} aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />

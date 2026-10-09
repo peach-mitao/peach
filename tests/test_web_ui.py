@@ -471,11 +471,12 @@ class MotionRecipeTests(unittest.TestCase):
 
     def test_motion_recipes_only_animate_compositor_properties(self):
         """这几条都长在读数、按钮和整页占位上，一次重排就是一整棵子树。"""
-        motion = (Path(__file__).resolve().parents[1]
-                  / "web/css/25-motion.css").read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        motion = "\n".join((root / path).read_text(encoding="utf-8")
+                           for path in ("web/css/25-motion.css", "frontend/src/ui-kit/motion.css"))
         allowed = {"opacity", "filter", "transform", "translate", "stroke-dashoffset"}
         frames = re.findall(r"@keyframes\s+[\w-]+\{(.*?)\}\s*\}", motion, re.S)
-        self.assertTrue(frames, "这份分区里应当有关键帧")
+        self.assertTrue(frames, "这两份样式里应当有关键帧")
         for body in frames:
             for prop in re.findall(r"([a-z-]+)\s*:", body):
                 with self.subTest(prop=prop):
