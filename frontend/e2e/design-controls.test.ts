@@ -129,8 +129,8 @@ describe('设计决定：控件、状态与首页顶部', () => {
     }
   });
 
-  it('高清版卡片的封面是 150px 宽的 16/10 方块，长标题从中间省略', { timeout: 60_000 }, async () => {
-    const long = '这是一个长到必须省略才放得下的文件名，用来盯住中间截断在 React 插进来的节点上也生效.mp4';
+  it('高清版卡片的封面是 150px 宽的 16/10 方块，长标题从头显示、最多两行', { timeout: 60_000 }, async () => {
+    const long = '这是一个长到必须省略才放得下的文件名，用来盯住标题从头显示而番号不被截掉.mp4';
     const opened = await openQualityGoals(browser, [
       qualityGoal(1, long), qualityGoal(2, 'short.mp4'),
     ]);
@@ -142,13 +142,18 @@ describe('设计决定：控件、状态与首页顶部', () => {
       }));
       assert.equal(box.width, '150px');
       assert.equal(box.ratio.replaceAll(' ', ''), '16/10');
-      // 中间截断由 `peach-ui.js` 入口启动的 MutationObserver 接手：React 插进来的
-      // 节点不经过遗留层的渲染函数，观察器认不出它就只剩尾部省略。
       const title = opened.page.locator('li[data-goal-id="1"] h3 button');
       await title.waitFor({ timeout: 5_000 });
-      await opened.page.locator('li[data-goal-id="1"] h3 button.middle-truncated')
-        .waitFor({ timeout: 10_000 });
-      assert.ok((await title.textContent())!.includes('…'), '长标题没有被省略');
+      const shown = await title.evaluate((element) => ({
+        clamp: getComputedStyle(element).webkitLineClamp,
+        middle: element.classList.contains('middle-truncated') || element.hasAttribute('data-middle-truncate'),
+        text: element.textContent,
+        hint: element.getAttribute('title'),
+      }));
+      assert.equal(shown.clamp, '2');
+      assert.equal(shown.middle, false, '标题仍被中间截断');
+      assert.equal(shown.text, long);
+      assert.equal(shown.hint, long);
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();

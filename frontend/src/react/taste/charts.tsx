@@ -6,17 +6,41 @@
  * 是 `stroke-width`，颜色只取 BoardUI 的 `chart-*` 档；指向一条流或一个节点时读数换成它的，
  * 换的是 React 状态，指针离开或焦点移走就回到总数。差异登记在 `../boardui/ORIGIN.md`。 */
 import { useState } from 'react';
+import { Text } from 'recharts';
 
 import { EvilBarChart } from '@/registry/charts/recharts-bar-chart';
 import { EvilRadarChart } from '@/registry/charts/recharts-radar-chart';
 
-import { BAR_DOMAIN, barLabel } from '../charts/bar-card';
-import { CHART_CARD, CHART_COLORS, ChartHead, tone } from '../charts/chart-card';
+import { BAR_DOMAIN, BAR_LABEL_ROOM, barLabel } from '../charts/bar-card';
+import {
+  CategoryTick, categoryAxisWidth, CHART_CARD, CHART_COLORS, ChartHead, fitLabel, tone,
+} from '../charts/chart-card';
 import { ChartTip } from '../charts/chart-tip';
 import {
   flowGraph, flowLabel, FLOW_LABEL_X, FLOW_NODE_WIDTH, FLOW_VIEWBOX, radarRows, RANK_MAX, topScores,
   type CreatorFlow, type RankRow,
 } from './taste';
+
+/** 雷达顶点外侧的维度名。左右两侧的名字往外排，能用的宽度是顶点到图框边；上下两个居中排，
+ *  能用的是顶点到较近那条边的两倍。放不下就截断，全名在 `<title>`、浮层与读屏名称里。 */
+function RadarTick(
+  props: { x?: number; cx?: number; textAnchor?: string; payload?: { value?: unknown } } & Record<string, unknown>,
+) {
+  const { x = 0, cx, textAnchor, payload, ...rest } = props;
+  const name = String(payload?.value ?? '');
+  const width = typeof cx === 'number' ? cx * 2 : 0;
+  const room = !width ? 56
+    : textAnchor === 'start' ? width - x
+    : textAnchor === 'end' ? x
+    : 2 * Math.min(x, width - x);
+  return (
+    <g>
+      <title>{name}</title>
+      <Text {...(rest as object)} x={x} textAnchor={textAnchor as 'start' | 'middle' | 'end' | undefined}
+        fill="currentColor" fontSize={12}>{fitLabel(name, room - 4)}</Text>
+    </g>
+  );
+}
 
 /** 六档图表色循环。类名写成整串，Tailwind 扫得到。 */
 const FLOW_STROKE = [
@@ -59,7 +83,7 @@ export function TasteRadar({ rows, label }: { rows: RankRow[]; label: string }) 
       <EvilRadarChart data={data} config={RADAR_CONFIG} chartProps={{ outerRadius: '58%' }}
         className="aspect-auto h-70 text-text-secondary">
         <EvilRadarChart.PolarGrid />
-        <EvilRadarChart.PolarAngleAxis dataKey="name" />
+        <EvilRadarChart.PolarAngleAxis dataKey="name" tick={<RadarTick />} />
         {/* 半径轴定死在 0 到 1：外圈就是最大的维度，不让 Recharts 往上取整留出空圈。网格圈跟着
             这根轴的刻度走，Recharts 默认只取整数刻度，要放开小数才有四等分的圈。 */}
         <EvilRadarChart.PolarRadiusAxis domain={[0, 1]} allowDecimals tick={false} />
@@ -71,15 +95,18 @@ export function TasteRadar({ rows, label }: { rows: RankRow[]; label: string }) 
 }
 
 /** 口味维度排行：一个维度一条横向的柱，画的是 EvilCharts 的 `EvilBarChart`，数标在柱尾。
- *  整块在纵向 flex 里撑满父级给的高度，图表容器本身是 `flex-1`。 */
+ *  整块在纵向 flex 里撑满父级给的高度，图表容器本身是 `flex-1`。维度名那一栏有宽度上限，
+ *  名字再长也只截断，不把柱子挤没。 */
 export function RankedBars({ rows, label }: { rows: RankRow[]; label: string }) {
   const data = topScores(rows, RANK_MAX);
   if (!data.length) return null;
   return (
     <section aria-label={label} className={`flex grow flex-col ${RANK_HEIGHT[data.length]}`}>
       <EvilBarChart data={data} config={DIMENSION_CONFIG} layout="horizontal" barRadius={4}
-        chartProps={{ maxBarSize: RANK_BAR_SIZE }} className="aspect-auto text-text-secondary">
-        <EvilBarChart.YAxis dataKey="name" interval={0} />
+        chartProps={{ maxBarSize: RANK_BAR_SIZE, margin: { top: 5, right: BAR_LABEL_ROOM, bottom: 5, left: 5 } }}
+        className="aspect-auto text-text-secondary">
+        <EvilBarChart.YAxis dataKey="name" interval={0} tick={<CategoryTick along="y" />}
+          width={categoryAxisWidth(data.map((row) => row.name))} />
         <EvilBarChart.XAxis hide domain={BAR_DOMAIN} />
         <EvilBarChart.Bar dataKey="value" enableHoverHighlight
           barProps={{ dataKey: 'value', label: barLabel('right') }} />
@@ -104,10 +131,20 @@ export function CreatorSankey({ flows }: { flows: CreatorFlow[] | undefined }) {
     <section className={CHART_CARD}>
       <ChartHead title="创作者线索来源" figure={(shown ? shown.value : graph.total).toLocaleString()}
         note={shown ? shown.label : '条线索'} />
-      <div className="min-w-0 overflow-x-auto">
-        <svg viewBox={`0 0 ${FLOW_VIEWBOX.width} ${FLOW_VIEWBOX.height}`} fill="none"
+      {/* 两侧各留一截给节点名，画布窄于 640 时字缩到读不清：手机上换成按线索数排的一列流向。 */}
+      <ol aria-label="来源网站与创作者线索" className="flex flex-col sm:hidden">
+        {[...graph.links].sort((a, b) => b.value - a.value).map((link) => (
+          <li key={link.key}
+            className="flex items-baseline justify-between gap-3 border-b border-separator-border py-2 text-body-2-regular text-text-primary last:border-b-0">
+            <span className="min-w-0 wrap-anywhere">{link.label}</span>
+            <b className="shrink-0 tabular-nums">{link.value.toLocaleString()}</b>
+          </li>
+        ))}
+      </ol>
+      <div className="min-w-0 max-sm:hidden">
+        <svg viewBox={`0 0 ${FLOW_VIEWBOX.width} ${graph.height}`} fill="none"
           role="img" aria-label="来源网站与创作者线索"
-          className="block h-auto max-h-130 min-w-160 w-full" onPointerLeave={() => setShown(null)}>
+          className="block h-auto w-full" onPointerLeave={() => setShown(null)}>
           <g>
             {graph.links.map((link) => (
               <path key={link.key} d={link.d} strokeWidth={link.width} tabIndex={0} role="img"
@@ -145,7 +182,7 @@ export function CreatorSankey({ flows }: { flows: CreatorFlow[] | undefined }) {
           </g>
         </svg>
       </div>
-      <footer className="flex justify-between gap-3 text-caption-1-regular text-text-secondary">
+      <footer className="flex justify-between gap-3 text-caption-1-regular text-text-secondary max-sm:hidden">
         <span>来源网站</span><span>创作者 · 线索占比</span>
       </footer>
     </section>

@@ -14,8 +14,9 @@ import * as legacyUi from '@peach/legacy/ui';
 import { JOB_RUNNING_POLL_MS } from '../../src/react/background-job';
 import { queryClient } from '../../src/react/query';
 import {
-  DEFAULT_WINDOW, prefetchTaste, radarRows, RANK_MAX, TASTE_IMPORT_URL, TASTE_REFRESH_URL,
-  TASTE_SOURCE_URL, TASTE_URL, topScores, type TasteData, type TasteJob,
+  DEFAULT_WINDOW, FLOW_VIEWBOX, flowGraph, historySpan, prefetchTaste, radarRows, RANK_MAX, rankDetail,
+  TASTE_IMPORT_URL, TASTE_REFRESH_URL, TASTE_SOURCE_URL, TASTE_URL, tasteDimensions, topScores,
+  type TasteData, type TasteJob,
 } from '../../src/react/taste/taste';
 import { TasteRadar } from '../../src/react/taste/charts';
 import { TastePage } from '../../src/react/taste/taste-page';
@@ -163,6 +164,49 @@ it('口味维度取分数最高的几个：雷达三到六个，排行条最多�
   expect(topScores(rows, RANK_MAX).map((row) => row.value)).toEqual([9, 8, 7, 6, 5, 4, 3, 2]);
   expect(radarRows(rows).map((row) => row.name)).toEqual(['维度9', '维度8', '维度7', '维度6', '维度5', '维度4']);
   expect(radarRows([{ name: '甲', score: 3 }, { name: '乙', score: 1 }, { name: '丙' }])).toEqual([]);
+});
+
+it('「口味维度」读数只数分数为正的维度，和雷达、排行条画的是同一批', () => {
+  expect(tasteDimensions([{ name: '负', score: -2 }, { name: '乙', score: 3 }, { name: '零', score: 0 },
+    { name: '甲', score: 9 }, { name: '缺' }]).map((row) => row.name)).toEqual(['甲', '乙']);
+});
+
+it('数据源与名次底下的数加千分位，没有起止日期时只读数据源数', () => {
+  expect(historySpan({ history_sources: 12345 })).toBe(`${(12345).toLocaleString()} 个数据源`);
+  expect(historySpan({ history_sources: 2, range_start: '2026-01-01', range_end: '2026-09-01' }))
+    .toMatch(/^2 个数据源 · .+—.+$/);
+  expect(rankDetail({ name: '甲', web_visits: 12345, peach_items: 6789 }))
+    .toBe(`浏览 ${(12345).toLocaleString()} · Peach ${(6789).toLocaleString()}`);
+});
+
+it('流向图一侧超过十二个节点时并掉尾部，画布跟着节点数加高，节点不挤在一起', () => {
+  const flows = Array.from({ length: 20 }, (_, at) => ({ source: 'example.com', target: `创作者${at}`, value: 40 - at }));
+  const graph = flowGraph(flows)!;
+  const targets = graph.nodes.filter((node) => node.side === 'target');
+  expect(targets).toHaveLength(12);
+  expect(targets.find((node) => node.name === '其余 9 位创作者')?.value).toBe(29 + 28 + 27 + 26 + 25 + 24 + 23 + 22 + 21);
+  expect(graph.height).toBeGreaterThan(FLOW_VIEWBOX.height);
+  const centers = targets.map((node) => node.y + node.height / 2).sort((a, b) => a - b);
+  for (let at = 1; at < centers.length; at += 1) expect(centers[at]! - centers[at - 1]!).toBeGreaterThanOrEqual(30);
+  expect(flowGraph(flows.slice(0, 3))!.height).toBe(FLOW_VIEWBOX.height);
+});
+
+it('维度不足三个时画像卡不出雷达，排行条照常出', async () => {
+  const { host } = await open({ taste: [payload({ rankings: {
+    ...payload().rankings, browser_categories: [{ name: '维度甲', score: 4 }, { name: '维度乙', score: 2 }],
+  } })] });
+  const portrait = host.querySelector('section[aria-label="浏览器画像"]')!;
+  expect(portrait.querySelector('div[role=img]')).toBeNull();
+  expect(portrait.querySelector('section[aria-label="口味维度排名"]')).not.toBeNull();
+});
+
+it('没有名次的榜给一句怎么补，不重复「暂无足够证据」', async () => {
+  const { host } = await open();
+  await click([...host.querySelectorAll('[role=tab]')].find((tab) => tab.textContent === 'Peach 内部') ?? null);
+  await click([...host.querySelectorAll('[role=tab]')].find((tab) => tab.textContent === '创作者') ?? null);
+  const panel = [...host.querySelectorAll('[role=tabpanel]')].at(-1)!;
+  expect(panel.textContent).toContain('暂无足够证据');
+  expect(panel.textContent).toContain('在 Peach 里播放或评价作品后，这里会列出对应的创作者。');
 });
 
 it('雷达半径按平方根刻度：最大的维度落在外圈，浮层读的仍是原始次数', async () => {

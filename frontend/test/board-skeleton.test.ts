@@ -105,13 +105,16 @@ describe('Board 页面骨架', () => {
     expect(root.querySelector('.follow-skeleton-surface > .group')?.textContent).toBe('全选本页');
     expect(root.querySelector('[data-selection-dock]')).toBeNull();
   });
-  it('口味骨架保留分段背景与状态行间距', () => {
+  it('口味骨架画在 React 岛里，按浏览器记录那一页排', () => {
     const root = document.createElement('div');
     root.innerHTML = boardPageSkeleton('/taste');
-    expect(root.querySelector('.insightswitch[data-board-segments]')).not.toBeNull();
-    expect(root.querySelector('.skeleton-segment-selected')?.textContent).toBe('浏览器记录');
-    expect(root.querySelector('.tastehead + .tastestate + .tastesummaries')).not.toBeNull();
-    expect(root.querySelector('.tastehead .skeleton-tabs')).toBeNull();
+    expect(root.querySelector('.peach-react')).not.toBeNull();
+    expect(root.querySelector('[data-taste-segments] [data-selected]')?.textContent).toBe('浏览器记录');
+    expect([...root.querySelectorAll('[data-taste-metrics] > div > span')].map((span) => span.textContent))
+      .toEqual(['浏览记录', '口味维度', '浏览候选', '私有导出']);
+    expect(root.querySelector('[data-taste-portrait]')?.textContent).toContain('浏览器画像');
+    expect([...root.querySelectorAll('h3')].map((h3) => h3.textContent))
+      .toEqual(['浏览活跃时间', '每日活跃', '创作者线索来源']);
   });
   it('关注表格视图是 Board UI 表格外框，当前排序那一列带方向', () => {
     const root = follow({ followLayout: 'table' });

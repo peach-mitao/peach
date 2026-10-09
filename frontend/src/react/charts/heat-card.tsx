@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { CHART_CARD, ChartHead } from './chart-card';
+import { CHART_CARD, ChartEmpty, ChartHead } from './chart-card';
 import { TIP_SURFACE, TIP_SWATCH, TipRow } from './chart-tip';
 import { dayCalendar, hourGrid, WEEKDAYS, type ActivityCounts, type HeatCell } from './heat';
 
@@ -71,10 +71,12 @@ export function HeatCard(
     <section className={CHART_CARD}>
       <ChartHead title={title} figure={(cell ? cell.count : total).toLocaleString()}
         note={cell ? cell.label : words.unit} />
+      {/* 带坐标轴的星期 × 小时有 24 列，压到 320 以下格子和字都读不清，宁可在卡里横滚；
+          每日那张只有 13 列，跟着卡片缩，最近几天不会藏到右边看不见的地方。 */}
       <div className="relative">
         <div className="min-w-0 overflow-x-auto">
           <svg role="img" aria-label={title} onPointerLeave={() => setShown(-1)}
-            viewBox={`0 0 ${width} ${height}`} className="block h-auto min-w-80 w-full">
+            viewBox={`0 0 ${width} ${height}`} className={axis ? 'block h-auto min-w-80 w-full' : 'block h-auto w-full'}>
             {axis}
             {cells.map((item, index) => {
               const { x, y } = at(index);
@@ -119,24 +121,17 @@ const HOUR_AXIS = (
 
 /** 一份活跃计数的两张热力图：星期 × 小时，和最近 91 天。
  *
- * 没有可用记录时，给了 `empty` 就留一张只有那句话的卡，没给就整块不出现。 */
+ * 没有可用记录时留一张只有 `empty` 那句话的卡。 */
 export function ActivityHeat(
   { activity, title, dailyTitle, words, tone, empty }:
   {
     activity: ActivityCounts | undefined; title: string; dailyTitle: string;
-    words: HeatWords; tone: HeatTone; empty?: string;
+    words: HeatWords; tone: HeatTone; empty: string;
   },
 ) {
   const hours = hourGrid(activity);
   const days = dayCalendar(activity);
-  if (!days.cells.length) {
-    return empty ? (
-      <section className={CHART_CARD}>
-        <h3 className="text-title-2-medium text-text-primary">{title}</h3>
-        <p className="text-body-2-regular text-text-secondary">{empty}</p>
-      </section>
-    ) : null;
-  }
+  if (!days.cells.length) return <ChartEmpty title={title}>{empty}</ChartEmpty>;
   /* 两张卡按各自内容的高度排：星期 × 小时有 24 列，格子比每日那张小一半，同行拉成等高
      会在它下面空出半张卡。 */
   return (

@@ -519,11 +519,7 @@ button,input,select,textarea{font-family:inherit}
 .board-library-avatar svg{width:20px;height:20px;stroke-width:2}.board-library-avatar{background:none;border-radius:0}
 .metricstrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:row;gap:16px;overflow:visible;border:0;background:none}
 .tastesummary{display:flex;flex-direction:column;min-width:0;padding:16px 0 0;border:0;border-radius:16px;background:var(--ground);overflow:hidden;text-align:left;box-shadow:0 1px 2px #00000008}
-.tastesummary>.board-stat-label{display:flex;align-items:center;gap:8px;padding:0 16px;color:var(--ink-2);font-size:14px;line-height:20px}
-.tastesummary>.board-stat-value{padding:12px 16px 16px;font-size:28px;line-height:34px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.tastesummary>.board-stat-footer{display:block;padding:10px 16px;background:var(--board-card-foot);margin:auto 0 0;font-size:12px;line-height:18px;color:var(--muted);min-height:38px}
 .insightcopy{border:0}@media(max-width:1000px){.metricstrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
-@media(max-width:480px){.board-stat-label{padding-inline:12px;font-size:13px;gap:6px}.tastesummary>.board-stat-value{padding:12px;font-size:24px;line-height:34px}.tastesummary>.board-stat-footer{padding:8px 12px}}
 
 /* 数据按阅读目的分组，标题与内容共享边缘。 */
 .tastepage{width:100%;max-width:var(--board-content)}
