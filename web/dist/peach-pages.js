@@ -19333,10 +19333,10 @@ function Up({ term: e, children: t }) {
 	return /* @__PURE__ */ (0, z.jsxs)("div", {
 		className: "flex min-h-11 items-center justify-between gap-4 border-b border-separator-border py-2.5 pr-3 last:border-b-0",
 		children: [/* @__PURE__ */ (0, z.jsx)("dt", {
-			className: "flex shrink-0 items-center gap-2 text-body-regular text-text-secondary",
+			className: "flex max-w-1/2 min-w-0 shrink-0 items-center gap-2 text-body-regular text-text-secondary",
 			children: e
 		}), /* @__PURE__ */ (0, z.jsx)("dd", {
-			className: "flex min-w-0 flex-wrap items-center justify-end gap-2 text-right text-body-regular break-all text-text-primary",
+			className: "flex min-w-0 flex-wrap items-center justify-end gap-2 text-left text-body-regular break-all text-text-primary",
 			children: t
 		})]
 	});
@@ -20489,7 +20489,13 @@ function Ah({ initial: e, blank: t, pickFolder: n, describe: r, focusAfterPick: 
 	};
 }
 function jh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, onPick: o, onRemove: s, status: c, children: l }) {
-	return /* @__PURE__ */ (0, z.jsxs)("div", {
+	let u = (0, _.useRef)(null), d = () => {
+		let e = u.current;
+		e && e.ownerDocument.activeElement !== e && (e.scrollLeft = e.scrollWidth);
+	};
+	return (0, _.useLayoutEffect)(() => {
+		u.current && (u.current.title = t), d();
+	}, [t]), /* @__PURE__ */ (0, z.jsxs)("div", {
 		"data-folder-row": !0,
 		className: "@container flex flex-col gap-2 rounded-2lg border border-separator-border bg-background-primary-default p-3",
 		children: [/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -20501,7 +20507,10 @@ function jh({ label: e, path: t, onPath: n, error: r, inputRef: i, picking: a, o
 					placeholder: "本机文件夹路径",
 					value: t,
 					onChange: n,
-					ref: i,
+					ref: (e) => {
+						u.current = e, i(e);
+					},
+					onBlur: () => requestAnimationFrame(d),
 					validationBehavior: "aria",
 					isInvalid: !!r,
 					hint: r || void 0
