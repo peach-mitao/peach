@@ -1,6 +1,6 @@
 /**
  * Geist Collapse：原生 `<details>` 不过渡高度，所以把 summary 以外的内容包进
- * `.fcollapse`，开合时量 `scrollHeight` 写 inline `height` 让它过渡。
+ * `.ui-fcollapse`，开合时量 `scrollHeight` 写 inline `height` 让它过渡。
  * （试过 `::details-content`，那条路会吞掉内容，已弃。）
  *
  * 同一个 `details` 只接一次，重绘后原样再调用是安全的。
@@ -9,9 +9,9 @@ export function wireCollapse(
   root: ParentNode | null | undefined, selector: string, idPrefix: string, triggerSelector = 'summary',
 ): void {
   root?.querySelectorAll<HTMLDetailsElement>(selector).forEach((details,index)=>{
-    if(details.querySelector(':scope > .fcollapse'))return;
-    const body=document.createElement('div');body.className='fcollapse';
-    /* 内边距放在内层 .fcollapsebody：.fcollapse 自身不带 padding，height 才能真正
+    if(details.querySelector(':scope > .ui-fcollapse'))return;
+    const body=document.createElement('div');body.className='ui-fcollapse';
+    /* 内边距放在内层 .fcollapsebody：.ui-fcollapse 自身不带 padding，height 才能真正
        过渡到 0，否则 border-box 会卡在内边距上、收起末尾跳一下。 */
     const inner=document.createElement('div');inner.className='fcollapsebody';
     [...details.children].forEach(child=>{
@@ -27,7 +27,7 @@ export function wireCollapse(
     /* 高度过渡要 `overflow:hidden`，可展开着不动时它还在裁——里面最后那一行卡片的落影
        正好落在下沿外，被切掉半条，读出来是这一列没排完。过渡跑完（或一开始就是展开的）
        就摘掉那道裁边；收起那一下先装回去，否则内容会在高度收到 0 的过程中一直露在外面。 */
-    if(expanded)body.classList.add('fcollapse-settled');
+    if(expanded)body.classList.add('ui-fcollapse-settled');
     summary.setAttribute('aria-controls',body.id);
     summary.setAttribute('aria-expanded',String(expanded));
     summary.addEventListener('click',event=>{
@@ -40,12 +40,12 @@ export function wireCollapse(
 }
 
 /**
- * 把一个 Collapse 开到或收到 `expanded`，`body` 是 summary 后面那层容器，`.fcollapse` 由这里挂上。
+ * 把一个 Collapse 开到或收到 `expanded`，`body` 是 summary 后面那层容器，`.ui-fcollapse` 由这里挂上。
  * `wireCollapse`、React 设置页的 `Disclosure` 与侧栏分组共用这一份；过渡途中又被反向点按时，前一次的收尾不再做。
  */
 const collapseRuns=new WeakMap<HTMLElement,number>();
 export function setCollapseOpen(details: HTMLDetailsElement, body: HTMLElement, expanded: boolean): void {
-  body.classList.add('fcollapse');
+  body.classList.add('ui-fcollapse');
   const run=(collapseRuns.get(body)||0)+1;collapseRuns.set(body,run);
   const isCurrent=()=>collapseRuns.get(body)===run;
   if(expanded){
@@ -54,7 +54,7 @@ export function setCollapseOpen(details: HTMLDetailsElement, body: HTMLElement, 
     details.open=true;
     growCollapse(body,start,isCurrent);
   }else{
-    body.inert=true;body.classList.remove('fcollapse-settled');
+    body.inert=true;body.classList.remove('ui-fcollapse-settled');
     body.style.height=body.getBoundingClientRect().height+'px';body.getBoundingClientRect();
     body.style.height='0px';
     settleHeight(body,()=>{if(isCurrent()){details.open=false;body.style.height=''}});
@@ -75,12 +75,12 @@ function settleHeight(body: HTMLElement, fn: () => void): void {
 }
 
 /**
- * `.fcollapse` 从 `start` 长到内容此刻的高度，跑完交回 `auto` 并摘掉裁边。Collapse 展开与
+ * `.ui-fcollapse` 从 `start` 长到内容此刻的高度，跑完交回 `auto` 并摘掉裁边。Collapse 展开与
  * 侧栏名单摊开共用这一份。`isCurrent` 返回 false 说明中途又被收起，收尾就不做。
  */
 export function growCollapse(body: HTMLElement, start: number, isCurrent: () => boolean = ()=>true): void {
-  body.classList.remove('fcollapse-settled');
+  body.classList.remove('ui-fcollapse-settled');
   body.style.height=start+'px';body.getBoundingClientRect();
   body.style.height=body.scrollHeight+'px';
-  settleHeight(body,()=>{if(isCurrent()){body.style.height='auto';body.classList.add('fcollapse-settled')}});
+  settleHeight(body,()=>{if(isCurrent()){body.style.height='auto';body.classList.add('ui-fcollapse-settled')}});
 }

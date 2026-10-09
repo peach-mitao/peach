@@ -545,9 +545,9 @@ function Fe(e, { variant: t = "" } = {}) {
 //#region src/ui-kit/collapse.ts
 function Ie(e, t, n, r = "summary") {
 	e?.querySelectorAll(t).forEach((e, t) => {
-		if (e.querySelector(":scope > .fcollapse")) return;
+		if (e.querySelector(":scope > .ui-fcollapse")) return;
 		let i = document.createElement("div");
-		i.className = "fcollapse";
+		i.className = "ui-fcollapse";
 		let a = document.createElement("div");
 		a.className = "fcollapsebody", [...e.children].forEach((e) => {
 			e.tagName !== "SUMMARY" && a.appendChild(e);
@@ -555,14 +555,14 @@ function Ie(e, t, n, r = "summary") {
 		let o = e.querySelector(r);
 		r !== "summary" && e.querySelector("summary").addEventListener("click", (e) => e.preventDefault());
 		let s = e.open;
-		i.id = `${n}-${t}`, i.inert = !s, s && i.classList.add("fcollapse-settled"), o.setAttribute("aria-controls", i.id), o.setAttribute("aria-expanded", String(s)), o.addEventListener("click", (t) => {
+		i.id = `${n}-${t}`, i.inert = !s, s && i.classList.add("ui-fcollapse-settled"), o.setAttribute("aria-controls", i.id), o.setAttribute("aria-expanded", String(s)), o.addEventListener("click", (t) => {
 			t.preventDefault(), s = !s, o.setAttribute("aria-expanded", String(s)), Le(e, i, s);
 		});
 	});
 }
 var F = /* @__PURE__ */ new WeakMap();
 function Le(e, t, n) {
-	t.classList.add("fcollapse");
+	t.classList.add("ui-fcollapse");
 	let r = (F.get(t) || 0) + 1;
 	F.set(t, r);
 	let i = () => F.get(t) === r;
@@ -570,7 +570,7 @@ function Le(e, t, n) {
 		t.inert = !1;
 		let n = e.open ? t.getBoundingClientRect().height : 0;
 		e.open = !0, ze(t, n, i);
-	} else t.inert = !0, t.classList.remove("fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Re(t, () => {
+	} else t.inert = !0, t.classList.remove("ui-fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Re(t, () => {
 		i() && (e.open = !1, t.style.height = "");
 	});
 }
@@ -581,8 +581,8 @@ function Re(e, t) {
 	e.addEventListener("transitionend", i), r = setTimeout(i, 260);
 }
 function ze(e, t, n = () => !0) {
-	e.classList.remove("fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Re(e, () => {
-		n() && (e.style.height = "auto", e.classList.add("fcollapse-settled"));
+	e.classList.remove("ui-fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Re(e, () => {
+		n() && (e.style.height = "auto", e.classList.add("ui-fcollapse-settled"));
 	});
 }
 //#endregion

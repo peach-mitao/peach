@@ -27,12 +27,12 @@ body.peach-react {
   background-color: var(--color-background-full);
 }
 
-/* 共用 Collapse（`src/ui-kit/collapse.ts`）的高度过渡，同 `web/css/08-photos.css`。 */
-.fcollapse {
+/* 共用 Collapse（`src/ui-kit/collapse.ts`）的高度过渡，同 `src/ui-kit/collapse.css`。 */
+.ui-fcollapse {
   overflow: hidden;
   transition: height 0.2s ease-in-out;
 }
 
-.fcollapse.fcollapse-settled {
+.ui-fcollapse.ui-fcollapse-settled {
   overflow: visible;
 }

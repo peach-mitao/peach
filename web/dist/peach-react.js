@@ -53908,7 +53908,7 @@ function lSe({ title: e, kind: t, active: n, index: r, epoch: i, children: a }) 
 		let t = o.current, r = s.current;
 		if (!t || !r) return;
 		let i = u.current ? dz(e, n) : c;
-		u.current = !0, t.open !== i && (t.open = i, r.inert = !i, r.style.height = "", r.classList.contains("fcollapse") && r.classList.toggle("fcollapse-settled", i), l(i));
+		u.current = !0, t.open !== i && (t.open = i, r.inert = !i, r.style.height = "", r.classList.contains("ui-fcollapse") && r.classList.toggle("ui-fcollapse-settled", i), l(i));
 	}, [i]);
 	let d = (t) => {
 		if (t?.preventDefault(), !o.current || !s.current) return;
@@ -54001,7 +54001,7 @@ function dSe({ epoch: e, title: t, rows: n, latest: r, limit: i, filterKey: a, s
 		};
 		if (_) {
 			let t = e.body.closest("details");
-			e.body.classList.add("fcollapse"), Ie(e.body, e.before, () => !!t?.open && !e.body.inert);
+			e.body.classList.add("ui-fcollapse"), Ie(e.body, e.before, () => !!t?.open && !e.body.inert);
 		}
 		t(), requestAnimationFrame(t);
 	}, [d, _]), /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [/* @__PURE__ */ (0, V.jsx)(pz, {

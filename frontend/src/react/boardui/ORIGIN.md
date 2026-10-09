@@ -52,7 +52,7 @@
 | 等待点 | `../components/loading-dots.tsx` 三颗点，错相由 `../styles.css` 的 `dot-wave-*` 给 | 注册表里没有等待态组件，没有总量时也不画进度条 |
 | 分区标题与任务卡 | `../activity/activity-page.tsx` 自己用 `title-*` 字阶和 `separator-border` 的圆角框排，失败那张换成 `border-error-default` | 注册表里没有分区标题；卡片条目都带自己的头尾结构与操作区 |
 | 汇总行与卡片网格 | `../quality-goals/quality-goals-page.tsx` 的汇总一行用 `title-2-semibold` 配正文字阶排；网格取 `../styles.css` 的 `card-grid`，封面取 `w-card-cover` 与 `aspect-card-cover` | 注册表里没有列表页的汇总行；`auto-fill` 网格与定宽封面在工具类里没有对应档位，写成 `@utility` 与 `@theme` 而不是任意值 |
-| 折叠 | `../settings/section.tsx` 的 `Disclosure` 用原生 `details`，开合调 `/js/ui-components.js` 的 `setCollapseOpen`，高度按共用 Collapse 的 `.fcollapse` 过渡（`.2s ease-in-out`） | 注册表里没有折叠组件；原生 `details` 不过渡高度 |
+| 折叠 | `../settings/section.tsx` 的 `Disclosure` 用原生 `details`，开合调 `/js/ui-components.js` 的 `setCollapseOpen`，高度按共用 Collapse 的 `.ui-fcollapse` 过渡（`.2s ease-in-out`） | 注册表里没有折叠组件；原生 `details` 不过渡高度 |
 | 图标选择 | `../settings/library-icon-picker.tsx` 用 React Aria 的 `Popover`、`RadioGroup` 组合，面板取 `menu-styles.ts` 的外观 | 注册表里没有网格单选的弹出面板 |
 | 二选一切换 | `../scraping/scraping-page.tsx` 提供 Cookie 的两种方式用 React Aria 的 `RadioGroup`，选中项取 `background-tertiary-default` 配 `text-primary` | 注册表里 `tabs` 是页面级导航、`segmented-control` 没有条目；这里切的是同一个字段的两种填法，不是两块内容 |
 | 选文件 | 同上：原生 `input[type=file]` 只留着接文件，点它的是一颗 `secondary` 按钮，选中的文件名跟在旁边 | 注册表里没有文件选择组件；原生控件的按钮长相由浏览器决定，改不动 |
