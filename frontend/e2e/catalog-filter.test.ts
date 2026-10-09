@@ -78,7 +78,11 @@ async function openHome(browser: Browser, path = '/', viewport = DESKTOP): Promi
   await page.locator(READOUT, { hasText: '个符合' }).waitFor({ timeout: 15_000 });
   await page.locator(`${FILTER} [data-tier-performer]`).first().waitFor({ timeout: 15_000 });
   await settle(page);
-  return { ...opened, counts };
+  // 关页时 `/api/facets` 那一趟 `route.fetch` 可能还在路上，它落空不算失败。
+  return { ...opened, counts, close: async () => {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await opened.close();
+  } };
 }
 
 const tag = (page: Page, key: string) => page.locator(`${FILTER} [data-catalog-tag="${key}"]`);
