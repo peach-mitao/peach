@@ -2962,22 +2962,16 @@ class LegacyHistoryEndPayloadTests(unittest.TestCase):
 
 
 class FollowShellDecisionTests(unittest.TestCase):
-    """应用默认导航的关注入口与换一批策略。"""
+    """关注页的换一批策略。"""
 
-    def test_follow_sits_before_immerse_and_neither_follow_page_joins_the_refresh(self):
-        """左栏「关注」排在沉浸模式前面；顶栏换一批不重画两个关注页。
+    def test_neither_follow_page_joins_the_refresh(self):
+        """顶栏换一批不重画两个关注页。
 
         关注页重画要联网，联网只在按下「检查全部」时发生；`refreshAll` 认路由元数据上的
         `refresh: 'skip'` 跳过它们。两页都登记在 `ROUTE_META`，由
         `frontend/test/history/history.test.ts` 钉住。
         """
         application = ROOT / 'frontend/src/application'
-        page = (application / 'layout.js').read_text(encoding="utf-8")
-        rail = re.search(r'\bSIDEBAR_ITEMS\s*=\s*\[(.*?)\];', page, re.S).group(1)
-        keys = re.findall(r"\['([a-z]*)'", rail)
-        self.assertIn("follow", keys)
-        self.assertEqual(keys[keys.index("follow") + 1], "immerse",
-                         "关注入口应当排在沉浸模式前面")
         preferences = (application / 'preferences.js').read_text(encoding='utf-8')
         self.assertIn("if(refresh==='skip')return;", preferences)
 

@@ -9,6 +9,8 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createSettingsStore } from '../../src/settings-store';
+import { NAV_CATALOG } from '../../src/application/navigation-items';
+import { DEFAULT_SIDEBAR_ORDER } from '../../src/sidebar';
 import { sidebarSkeletonHtml } from '../../src/sidebar-skeleton';
 import type { BatchDockApi, BatchDockHost } from '../../src/react/batch-dock/batch-dock-api';
 import type { ShellActions } from '../../src/react/router/shell-actions';
@@ -235,6 +237,24 @@ describe('换手', () => {
 });
 
 describe('导航', () => {
+  it('完整词表按持久偏好画默认导航，沉浸模式可在关注后启用', async () => {
+    const r = await load();
+    await mountRouter(r);
+    await connect(r);
+    const { scroll, host, store } = sidebarHost([...DEFAULT_SIDEBAR_ORDER]);
+    host.navCatalog = NAV_CATALOG;
+    scroll.innerHTML = sidebarSkeletonHtml(store.value.sidebarOrder, NAV_CATALOG, host.navOn);
+    await act(async () => { await r.islands.loadSidebar(host) });
+    expect(navKeys(scroll)).toEqual(DEFAULT_SIDEBAR_ORDER);
+    expect(scroll.querySelector('[data-nav="immerse"]')).toBeNull();
+    await act(async () => {
+      store.value.sidebarOrder = ['follow', 'immerse', ...DEFAULT_SIDEBAR_ORDER.filter((key) => key !== 'follow')];
+      store.save();
+    });
+    expect(navKeys(scroll).slice(0, 2)).toEqual(['follow', 'immerse']);
+    expect(scroll.querySelector('[data-nav="immerse"]')?.textContent).toContain('沉浸模式');
+  });
+
   it('store 里的顺序一变（设置面板或另一台机器同步回来），这一列当场重排', async () => {
     const { scroll, store } = await setup();
     act(() => { store.value.sidebarOrder = ['follow', '', 'stats']; store.save() });
