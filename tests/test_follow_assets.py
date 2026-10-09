@@ -325,8 +325,10 @@ class SourceIconTableTests(unittest.TestCase):
         self.assertEqual(listed, set(follow_assets.SOURCE_ICON_URLS))
         # 页面里没有任何一条站点图标的远端地址：图标全部经 Peach 落盘后再给页面，
         # 图标地址怎么拼在 `frontend/test/react/follow-marks.test.ts`。
-        for page in (listing, (root / "web" / "app.js").read_text(encoding="utf-8")):
-            self.assertNotIn("favicon.ico'", page)
+        for path in sorted((root / "frontend" / "src").rglob("*")):
+            if path.suffix in {".js", ".ts", ".tsx"}:
+                with self.subTest(path=path):
+                    self.assertNotIn("favicon.ico'", path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -363,15 +363,17 @@ class PageSourceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.source = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        cls.application = ROOT / 'frontend/src/application'
 
     def test_the_studio_hero_asks_for_the_wordmark(self):
         """大位和小位共用一条取图链，变体由调用方按位置给：大位默认就是字标。
 
         取图链本身（默认变体与地址）由 `frontend/test/card-art/markup.test.ts` 验。"""
-        self.assertIn("logo:company&&d.has_logo?d.canonical_name:'',", self.source)
+        source = (self.application / 'entity.js').read_text(encoding='utf-8')
+        self.assertIn("logo:company&&d.has_logo?d.canonical_name:'',", source)
 
     def test_every_small_surface_asks_for_the_icon(self):
+        source = (self.application / 'catalog.js').read_text(encoding='utf-8')
         for snippet in (
             "logoUrl(x.k,'icon',x.logo_version)",
         ):
@@ -381,7 +383,7 @@ class PageSourceTests(unittest.TestCase):
             # 声明式的，不存在按 `img.dataset.studio` 换图的第三处。「不许漏 variant」
             # 由下面那条按行扫描的断言守。
             with self.subTest(snippet=snippet):
-                self.assertIn(snippet, self.source)
+                self.assertIn(snippet, source)
 
     def test_one_disk_has_one_mark_wherever_it_shows_up(self):
         """网盘的图形只有一份，不因为取图入口不同而长成两枚。
@@ -391,15 +393,18 @@ class PageSourceTests(unittest.TestCase):
         读出来像两个来源；而厂牌那条取图链本来就不认网盘，115 能从那里取到只是名字
         碰巧撞上了一个厂牌文件名。
         """
-        self.assertIn('\'115\':`<img class="source-icon" src="${MEDIA_SOURCE_ICONS[\'115\']}" alt="">`,',
-                      self.source)
-        self.assertIn('pikpak:`<img class="source-icon" src="${MEDIA_SOURCE_ICONS.pikpak}" alt="">`,',
-                      self.source)
-        self.assertNotIn("studio=115", self.source)
+        source = (self.application / 'preferences.js').read_text(encoding='utf-8')
+        self.assertIn('\'115\':`<img class="source-icon" src="${MEDIA_SOURCE_ICONS[\'115\']}" alt="">`,', source)
+        self.assertIn('pikpak:`<img class="source-icon" src="${MEDIA_SOURCE_ICONS.pikpak}" alt="">`,', source)
+        for path in sorted((ROOT / 'frontend/src').rglob('*')):
+            if path.suffix in {'.js', '.ts', '.tsx'}:
+                self.assertNotIn("studio=115", path.read_text(encoding='utf-8'))
 
     def test_no_logo_request_is_left_without_a_variant(self):
         """漏掉一处就会在那个位置继续显示补白字标，而且没人会注意到。"""
-        bare = [line.strip() for line in self.source.splitlines()
+        bare = [(path.relative_to(ROOT).as_posix(), line.strip())
+                for path in sorted((ROOT / 'frontend/src').rglob('*')) if path.suffix in {'.js', '.ts', '.tsx'}
+                for line in path.read_text(encoding='utf-8').splitlines()
                 if "/logo?studio=" in line and "variant=" not in line]
         self.assertEqual(bare, [])
 

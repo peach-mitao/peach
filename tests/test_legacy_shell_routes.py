@@ -1,13 +1,8 @@
-"""旧壳 `web/app.js` 的路由表只许减不许增：新页面做成 `frontend/` 的 island 或路由树的元素。
+"""页面全集由 React 路由注册表和覆盖组共同声明。
 
-ADR-0022 的迁移方向是逐屏搬出 app.js，可 2026-09-13 盘点时它已长到 10818 行，比立项
-时多出四成——每一轮新功能都往旧壳里加一屏。行数拦不住这种增长（拦住的只是注释），
-拦得住的是「旧壳里登记了哪些页面」。
-
-冻结的是页面全集，按归属分成三列：壳打开的（app.js 里 `ROUTES` 表的字面 match，这张表已经没有了，这一列
-是空的）、路由树用元素画的（`managed-routes.tsx` 各张路由表里带 `element` 的条目；目录表按页面分键，带了元素
-就算 `CATALOG_PATHS` 那几条路径）、覆盖组按真实地址匹配的详情与队列（`OVERLAY_PATHS`）。三列互不相交、
-并起来仍是这张全集；壳那一列不许再长出来。
+`managed-routes.tsx` 的页面元素按真实地址注册，目录表展开到 `CATALOG_PATHS`。
+详情与队列使用 `OVERLAY_PATHS`；两类路径互不相交、共同覆盖固定页面全集。
+实体资料页另按种类登记模式路径，筛选态沿用 `STATE_ROUTES` 的目录身份。
 """
 import pathlib
 import re
@@ -41,12 +36,6 @@ _STRING_OR_COMMENT = re.compile(r"""('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|/\
 
 def without_comments(source: str) -> str:
     return _STRING_OR_COMMENT.sub(lambda hit: hit.group(1) or "", source)
-
-
-def routes_table(source: str) -> str:
-    """app.js 里 `ROUTES` 表的正文；没有这张表时是空串。"""
-    start = source.find("const ROUTES=[")
-    return "" if start < 0 else source[start:source.index("\n];", start)]
 
 
 def braced(source: str, start: int) -> str:
@@ -108,35 +97,28 @@ def tree_routes(source: str) -> set[str]:
 
 class LegacyShellRouteTests(unittest.TestCase):
     def setUp(self):
-        self.source = APP.read_text(encoding="utf-8")
-        self.table = routes_table(self.source)
         self.overlay = quoted_list(OVERLAY.read_text(encoding="utf-8"), "OVERLAY_PATHS")
         tree = tree_routes(ROUTE_TABLES.read_text(encoding="utf-8"))
         self.patterns = {path for path in tree if path.endswith("/*")}
         state_routes = CORE.read_text(encoding="utf-8").split("const STATE_ROUTES", 1)[1].split("};", 1)[0]
         self.tree = tree - self.patterns - set(re.findall(r":'([^']*)'", state_routes))
-        self.shell = set(re.findall(r"match:\s*'([^']*)'", self.table)) - self.overlay
 
-    def test_the_three_owners_partition_the_frozen_pages(self):
-        self.assertEqual(sorted(self.shell & self.tree), [],
-                         "这些页面已经由路由树的元素画，请从 app.js 的 ROUTES 里删掉")
+    def test_the_route_registry_and_overlays_partition_the_frozen_pages(self):
         self.assertEqual(sorted(self.tree & self.overlay), [], "覆盖组的路径不该在页面组里再登记元素")
-        union = self.shell | self.tree | self.overlay
+        union = self.tree | self.overlay
         added = sorted(union - FROZEN_ROUTES)
         self.assertEqual(added, [],
                          "多出了页面；新页面请做成 frontend/ 的 island 或路由树的元素，"
                          "并把它加进 FROZEN_ROUTES：" + "、".join(added))
         gone = sorted(FROZEN_ROUTES - union)
-        self.assertEqual(gone, [], "这些页面三列里都找不到了，删掉了的话请从 FROZEN_ROUTES 里删掉：" + "、".join(gone))
+        self.assertEqual(gone, [], "注册表缺少页面：" + "、".join(gone))
 
     def test_the_tree_registers_exactly_the_entity_patterns(self):
         self.assertEqual(sorted(self.patterns), sorted(TREE_PATTERNS),
                          "路由树按模式登记的页面变了；新增一种同样算加页面")
 
-    def test_the_shell_opens_no_page_by_itself(self):
-        self.assertEqual(sorted(self.shell), [], "app.js 不再有自己打开的页面：页面做成路由树的元素")
-        self.assertEqual(len(re.findall(r"\bregisterRoute\(", self.source)), 0,
-                         "app.js 不登记页面：页面做成路由树的元素")
+    def test_the_application_has_no_unbundled_shell_entry(self):
+        self.assertFalse(APP.exists(), "主页面入口应为固定的 peach-app 构建产物")
 
 
 if __name__ == "__main__":
