@@ -22,6 +22,7 @@ from peach.config import DATABASE_PATH, GENERATED_DIR
 from peach.entity_classification import category_predicates
 from peach.jobs import PidFileLock
 from peach.migrations import sqlite_backup
+from peach.organize_clouddrive import UnconfirmedMove
 from peach.organize_templates import MAX_PATH, sanitise_component
 from peach.platform import location_roots, resolve_root, root_online, translate_ledger_path
 from peach.review_csv import write_rows
@@ -684,7 +685,15 @@ def provider_moves(pairs, root, allow_intermediate=True):
     return result
 
 
+def record_unconfirmed(db, op, receipt, receipt_path, error):
+    """状态未知：不猜着搬回，账本事务回滚，意图留在回执里交给续跑的 `recover()` 判定。"""
+    db.rollback()
+    receipt['failures'].append(dict(key=op['key'], source=op['source'], error=str(error), unconfirmed=True))
+    save(receipt_path, receipt)
+
+
 def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, retry_failed, pikpak_webdav=False):
+    """一条目录操作。确定性失败记入 `failures` 并恢复本条后返回错误；状态未知时记录后停止本批。"""
     journal, committed = None, False
     try:
         local_source,local_target,root,exclusive = operation_paths(op,payload['roots'])
@@ -704,11 +713,18 @@ def execute_operation(db, payload, op, stage, receipt, receipt_path, deadline, r
         cleanup_collapse(journal)
         save(receipt_path,receipt)
         cleanup_empty_paths(empty)
+    except UnconfirmedMove as error:
+        record_unconfirmed(db, op, receipt, receipt_path, error)
+        raise
     except Exception as error:
         if committed:
             raise RuntimeError('账本已提交，回执保存失败；保留文件位置供续跑核对') from error
         db.rollback()
-        failures = restore_entry(journal) if journal is not None else []
+        try:
+            failures = restore_entry(journal) if journal is not None else []
+        except UnconfirmedMove as unknown:
+            record_unconfirmed(db, op, receipt, receipt_path, unknown)
+            raise
         if journal is not None:
             journal['status'] = 'rollback_failed' if failures else 'restored'
         receipt['failures'].append(dict(key=op['key'],source=op['source'],error=str(error),rollback_failures=failures))
@@ -746,6 +762,11 @@ def run_apply(stage, backup, limit, seconds, location=None, retry_failed=False, 
         raise ValueError('计划格式不受支持，请使用新的批次编号冻结计划')
     receipt_path = OUT/f'{stem}-receipt.json'
     receipt = json.loads(receipt_path.read_text(encoding='utf-8')) if receipt_path.exists() else dict(entries=[],failures=[])
+    blocked = sorted({owner for _,owner in pending_operations(payload,receipt,retry_failed,skip_collapses,location)
+                      if organize.unverified_location(owner)})
+    if blocked:
+        raise ValueError('冻结批次含 ' + '、'.join(blocked) + ' 来源的操作，挂载改名无法核验云端结果；'
+                         'A 盘须用 --location pikpak --pikpak-webdav 经官方通道执行，其他来源用 --location 限定')
     lock = PidFileLock(OUT/'directory-job.lock')
     lock.acquire()
     db = None
@@ -865,7 +886,8 @@ if __name__ == '__main__':
     parser.add_argument('--location', choices=('115','pikpak','local'))
     parser.add_argument('--retry-failed', action='store_true')
     parser.add_argument('--skip-collapses', action='store_true')
-    parser.add_argument('--pikpak-webdav', action='store_true', help='冻结 A 盘批次使用既有 PikPak HTTPS WebDAV 移动')
+    parser.add_argument('--pikpak-webdav', action='store_true',
+                        help='A 盘批次经 CloudDrive 官方改名与移动执行，并以官方完整目录核验；A 盘操作必须带它')
     parser.add_argument('--batch', type=lambda value: value if re.fullmatch(r'[a-zA-Z0-9_-]+', value)
                         else parser.error('批次编号只能包含字母、数字、下划线与连字号'))
     args = parser.parse_args()

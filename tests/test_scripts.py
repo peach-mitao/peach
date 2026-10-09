@@ -403,9 +403,111 @@ class LibraryDirectoryTests(unittest.TestCase):
                     receipt['failures'].append(dict(key=op['key'],source=op['source'],error=str(error)))
                     return error
                 with mock.patch.object(script,'DATABASE_PATH',ledger),mock.patch.object(script,'OUT',root), \
-                        mock.patch.object(script,'execute_operation',side_effect=backend),redirect_stdout(io.StringIO()):
+                        mock.patch.object(script,'execute_operation',side_effect=backend),redirect_stdout(io.StringIO()), \
+                        script.organize.verified_renames('pikpak', lambda source, target: None):
                     script.run_apply('rehome',root/'backup.db',100,20,location='pikpak',batch='circuit')
                 self.assertEqual(len(calls),expected)
+
+    def test_pikpak_operations_need_the_verified_channel(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            operations = [script.operation('rename', r'A:\source', r'A:\creators\source', [], '已确认归属'),
+                          script.operation('rename', r'B:\source', r'B:\creators\source', [], '已确认归属')]
+            script.save(root/'rehome-mixed-manifest.json',
+                        dict(format=1, stage='rehome', roots={'pikpak': ['A:\\'], '115': ['B:\\']}, operations=operations))
+            with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                    mock.patch.object(script, 'execute_operation') as backend, redirect_stdout(io.StringIO()):
+                for location in (None, 'pikpak'):
+                    with self.subTest(location=location), self.assertRaisesRegex(ValueError, '--pikpak-webdav'):
+                        script.run_apply('rehome', root/'backup.db', 10, 20, location=location, batch='mixed')
+                backend.assert_not_called()
+                self.assertFalse((root/'backup.db').exists())
+                backend.return_value = None
+                script.run_apply('rehome', root/'backup.db', 10, 20, location='115', batch='mixed')
+                self.assertEqual([c.args[2]['source'] for c in backend.call_args_list], [r'B:\source'])
+
+    def _provider_batch(self, root, outcome):
+        """两条 115 目录操作；`outcome(source)` 决定第一条的改名结果。"""
+        script = self.script
+        ledger = fresh_ledger(root)
+        media = root / 'media'
+        def translate(path):
+            return media.joinpath(*PureWindowsPath(path).parts[1:])
+        operations = []
+        with closing(sqlite3.connect(ledger)) as db:
+            db.row_factory = sqlite3.Row
+            for aid in (1, 2):
+                source = rf'B:\src{aid}'
+                translate(source + r'\film.mp4').parent.mkdir(parents=True)
+                translate(source + r'\film.mp4').write_bytes(b'film')
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(?,?,?,?,?)',
+                           (aid, '115', source + r'\film.mp4', 'film.mp4', 'video'))
+                db.commit()
+                op = script.operation('rename', source, rf'B:\dst\src{aid}', script.snapshots(db, source), '已确认归属')
+                op['subtitles'], op['entities'] = [], script.entity_guard(db, source)
+                operations.append(op)
+        script.save(root/'rehome-provider-manifest.json',
+                    dict(format=1, stage='rehome', roots={'115': ['B:\\']}, operations=operations))
+        calls = []
+        def local(path):
+            return translate(path) if PureWindowsPath(path).drive.casefold() == 'b:' else Path(path)
+        def rename(old, new):
+            # 整目录移动的 `moves` 是本机路径，恢复与文件组是账本路径，两种都会进来。
+            calls.append(local(old).name)
+            if local(old) == translate(r'B:\src1') and local(new) == translate(r'B:\dst\src1'):
+                outcome(old)
+            local(new).parent.mkdir(parents=True, exist_ok=True)
+            local(old).rename(local(new))
+        patches = (mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root),
+                   mock.patch.object(script, 'translate_ledger_path', side_effect=translate),
+                   mock.patch.object(script, 'root_online', return_value=True),
+                   mock.patch.object(script.organize, '_rename', side_effect=rename))
+        return ledger, translate, calls, operations, patches
+
+    def test_provider_rejection_is_recorded_and_skipped_on_resume(self):
+        from peach.organize_clouddrive import MoveNotExecuted
+        script = self.script
+        def reject(source):
+            raise MoveNotExecuted('官方接口拒绝')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger, translate, calls, operations, patches = self._provider_batch(root, reject)
+            with patches[0], patches[1], patches[2], patches[3], patches[4], redirect_stdout(io.StringIO()):
+                script.run_apply('rehome', root/'backup1.db', 10, 20, batch='provider')
+                script.run_apply('rehome', root/'backup2.db', 10, 20, batch='provider')
+            receipt = json.loads((root/'rehome-provider-receipt.json').read_text(encoding='utf-8'))
+            self.assertEqual([f['key'] for f in receipt['failures']], [operations[0]['key']])
+            self.assertEqual([(e['key'], e['status']) for e in receipt['entries']],
+                             [(operations[0]['key'], 'restored'), (operations[1]['key'], 'committed')])
+            self.assertEqual(calls, ['src1', 'src2'])
+            self.assertEqual(translate(r'B:\src1\film.mp4').read_bytes(), b'film')
+            with closing(sqlite3.connect(ledger)) as db:
+                self.assertEqual(db.execute('SELECT path FROM asset ORDER BY id').fetchall(),
+                                 [(r'B:\src1\film.mp4',), (r'B:\dst\src2\film.mp4',)])
+
+    def test_unknown_provider_state_is_recorded_and_stops_the_batch(self):
+        script = self.script
+        def unknown(source):
+            raise script.UnconfirmedMove('移动状态未确认')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger, translate, calls, operations, patches = self._provider_batch(root, unknown)
+            with patches[0], patches[1], patches[2], patches[3], patches[4], redirect_stdout(io.StringIO()):
+                with self.assertRaises(script.UnconfirmedMove):
+                    script.run_apply('rehome', root/'backup1.db', 10, 20, batch='provider')
+                receipt = json.loads((root/'rehome-provider-receipt.json').read_text(encoding='utf-8'))
+                self.assertEqual(receipt['failures'][0]['key'], operations[0]['key'])
+                self.assertTrue(receipt['failures'][0]['unconfirmed'])
+                self.assertEqual([e['status'] for e in receipt['entries']], ['intent'])
+                self.assertEqual(calls, ['src1'])
+                script.run_apply('rehome', root/'backup2.db', 10, 20, batch='provider')
+            receipt = json.loads((root/'rehome-provider-receipt.json').read_text(encoding='utf-8'))
+            self.assertEqual([e['status'] for e in receipt['entries']], ['restored', 'committed'])
+            self.assertEqual(calls, ['src1', 'src2'])
+            with closing(sqlite3.connect(ledger)) as db:
+                self.assertEqual(db.execute('SELECT path FROM asset WHERE id=1').fetchone()[0], r'B:\src1\film.mp4')
 
     def test_fc2_promotional_prefixes_and_platform_named_parts(self):
         row = dict(code=None, studio=None, name='www.98T.la@FC2-1314799-CD1.mp4',

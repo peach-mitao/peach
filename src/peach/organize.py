@@ -17,13 +17,15 @@ import ntpath
 import os
 import sqlite3
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 
 from .catalog_rules import is_jav_code, is_uncensored_release, normalise_code_key, part_marker
 from .jobs import ACTIVE_ASSET_SQL
 from .organize_templates import MAX_PATH, TemplateError, render, validate_template
-from .platform import location_roots, resolve_root, root_online, translate_ledger_path
+from .platform import (is_windows_path, location_mounts, location_roots, resolve_root, root_online,
+                       translate_ledger_path, within_root)
 from .review_csv import write_rows
 
 #: 计划 CSV 的列。`reason` 只在 `action=skip` 时有值。
@@ -45,8 +47,55 @@ SKIP_CROSS_VOLUME = "跨盘"
 SKIP_TOO_LONG = "路径过长"
 
 
+#: 挂载上的 `os.rename` 证明不了云端真的改了名的来源：PikPak 挂载对大文件常报 WinError 50，
+#: 回报成功时官方目录也可能没变。这些来源的改名只交给显式注入的官方核验实现。
+VERIFIED_RENAME_LOCATIONS = frozenset({"pikpak"})
+_verified_renames: dict[str, Callable[[str, str], None]] = {}
+
+
 class OrganizeError(RuntimeError):
     """整理本身拒绝执行。消息直接给用户看。"""
+
+
+class UnverifiedRename(OSError):
+    """来源的改名须经官方核验，而当前进程没有注入核验通道。"""
+
+
+@contextmanager
+def verified_renames(location: str, rename: Callable[[str, str], None]):
+    """在这段上下文里，`location` 的改名交给 `rename`（它自己确认云端结果）。"""
+    if location in _verified_renames:
+        raise RuntimeError(f"来源 {location} 已注入核验改名")
+    _verified_renames[location] = rename
+    try:
+        yield
+    finally:
+        _verified_renames.pop(location, None)
+
+
+def _location_of(raw: str) -> str | None:
+    """账本路径或本机挂载路径属于哪个来源。"""
+    location, _index, _tail = resolve_root(raw, location_roots())
+    if location is None and not is_windows_path(raw):
+        local = Path(raw)
+        for name, mounts in location_mounts().items():
+            if any(within_root(local, mount) for mount in mounts):
+                return name
+    return location
+
+
+def unverified_location(location: str | None) -> bool:
+    """这个来源的改名须经官方核验，而当前进程没有注入。"""
+    return location in VERIFIED_RENAME_LOCATIONS and location not in _verified_renames
+
+
+def refuse_unverified(paths: Iterable[str]) -> None:
+    """整批动盘之前的门槛：涉及须核验来源而没有核验通道时整批拒绝，一个文件都不动。"""
+    blocked = sorted({location for location in map(_location_of, map(str, paths))
+                      if unverified_location(location)})
+    if blocked:
+        raise OrganizeError(f"来源 {'、'.join(blocked)} 的挂载改名无法核验云端结果，整批未执行；"
+                            "须经官方核验通道（如 organize_library_dirs.py --pikpak-webdav）")
 
 
 def _definition(width, height) -> str:
@@ -245,7 +294,17 @@ def latest_batch(root: Path | str) -> Path | None:
 
 
 def _rename(source: str, target: str) -> None:
-    """按账本路径改名，真正动盘时翻译成本机路径。"""
+    """按账本路径改名，真正动盘时翻译成本机路径。
+
+    须核验来源（`VERIFIED_RENAME_LOCATIONS`）交给注入的官方改名；没有注入时拒绝。
+    """
+    location = _location_of(str(source))
+    if location in VERIFIED_RENAME_LOCATIONS:
+        verified = _verified_renames.get(location)
+        if verified is None:
+            raise UnverifiedRename(f"来源 {location} 的挂载改名无法核验云端结果，须经官方核验通道")
+        verified(str(source), str(target))
+        return
     local_source = translate_ledger_path(source)
     local_target = translate_ledger_path(target)
     local_target.parent.mkdir(parents=True, exist_ok=True)
@@ -305,6 +364,7 @@ def apply_plan(connection: sqlite3.Connection, rows: Sequence[dict], *,
     `web_organize` 都是这么做的）。这里只负责动盘、写账本和留下批次日志。
     """
     movable = [row for row in rows if row.get("action") in {"rename", "move"}]
+    refuse_unverified(row["current_path"] for row in movable)
     entries: list[dict] = []
     failures: list[dict] = []
     log_path = batch_log_dir(generated_root) / (
@@ -337,6 +397,7 @@ def rollback_batch(connection: sqlite3.Connection, log_path: Path | str, *,
     path = Path(log_path)
     payload = json.loads(path.read_text(encoding="utf-8"))
     entries = list(payload.get("entries") or [])
+    refuse_unverified(entry["new_path"] for entry in entries)
     restored: list[dict] = []
     failures: list[dict] = []
     for index, entry in enumerate(reversed(entries), 1):
@@ -362,7 +423,8 @@ def rollback_batch(connection: sqlite3.Connection, log_path: Path | str, *,
 
 
 __all__ = [
-    "MAX_PATH", "PLAN_FIELDS", "PRESETS", "OrganizeError", "TemplateError",
-    "apply_plan", "batch_log_dir", "build_plan", "latest_batch", "placeholder_values",
-    "plan_path", "rollback_batch", "write_plan",
+    "MAX_PATH", "PLAN_FIELDS", "PRESETS", "VERIFIED_RENAME_LOCATIONS", "OrganizeError",
+    "TemplateError", "UnverifiedRename", "apply_plan", "batch_log_dir", "build_plan",
+    "latest_batch", "placeholder_values", "plan_path", "refuse_unverified", "rollback_batch",
+    "unverified_location", "verified_renames", "write_plan",
 ]
