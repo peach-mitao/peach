@@ -13,7 +13,7 @@ export function initBoardControls() {
   const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof Element){if(node.matches('input[type=range]'))syncBoardRange(node as HTMLInputElement);scan(node)}});
   observer.observe(document.body,{subtree:true,childList:true});
   document.addEventListener('input',event=>{if(event.target instanceof HTMLInputElement&&event.target.type==='range')syncBoardRange(event.target)});
-  const tip=document.createElement('div');tip.className='board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.popover='manual';tip.hidden=true;document.body.append(tip);
+  const tip=document.createElement('div');tip.className='ui-board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.popover='manual';tip.hidden=true;document.body.append(tip);
   let target:HTMLElement|null=null,title='',described:string|null=null,timer:ReturnType<typeof setTimeout>|undefined;
   const hide=()=>{clearTimeout(timer);if(tip.matches(':popover-open'))tip.hidePopover();tip.hidden=true;if(target){if(!target.hasAttribute('title'))target.title=title;if(described===null)target.removeAttribute('aria-describedby');else target.setAttribute('aria-describedby',described)}target=null};
   const show=(node:EventTarget|null,delay:number)=>{

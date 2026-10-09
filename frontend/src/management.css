@@ -27,3 +27,11 @@ section.ui-resourcesync>h2{margin:0;font:var(--board-heading);letter-spacing:0}
 .ui-linkstats small{color:var(--muted);font-size:var(--fs-xs)}
 .ui-linkhosts{margin-top:16px}
 .ui-linkhosts b{font-weight:500;font-size:var(--fs-sm);overflow-wrap:anywhere}
+/* 数据管理骨架顶上那排读数卡：五张在 1120 内一行摆下，窄了折两列、再折一列；卡面本身（`.board-plain-stat`）
+   与 Board 取证在 web/board.css。React 那一排的同一组折行在 `react/components/stat-card.tsx`。 */
+.ui-cleanupstats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
+.ui-board-plain-stat-head{display:flex;align-items:center;gap:8px;min-width:0;color:var(--color-text-secondary);font:var(--board-body-medium);white-space:nowrap}
+.ui-board-stat-tile{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:6px;background:var(--color-background-primary-default);color:var(--color-text-primary)}
+.ui-board-stat-tile svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:1119px){.ui-cleanupstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:559px){.ui-cleanupstats{grid-template-columns:minmax(0,1fr)}}

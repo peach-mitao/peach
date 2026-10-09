@@ -6,7 +6,7 @@ function jobProgressHtml(label: string, value: number, max: number): string {
   if (!Number.isFinite(max) || max <= 0) return '';
   const done = Math.max(0, Math.min(max, Number.isFinite(value) ? value : 0));
   const percent = done / max * 100;
-  return `<div class="board-job-progress" role="progressbar" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${done}"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle class="board-job-track" cx="18" cy="18" r="15"/><circle class="board-job-fill" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="${percent} ${100 - percent}" transform="rotate(-90 18 18)"/></svg><span>${esc(label)}<small>${Math.round(percent)}%</small></span></div>`;
+  return `<div class="ui-board-job-progress" role="progressbar" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${done}"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><circle class="ui-board-job-track" cx="18" cy="18" r="15"/><circle class="ui-board-job-fill" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="${percent} ${100 - percent}" transform="rotate(-90 18 18)"/></svg><span>${esc(label)}<small>${Math.round(percent)}%</small></span></div>`;
 }
 
 /** 后台任务查询只重试读状态；启动和写入请求由调用方单次提交。 */

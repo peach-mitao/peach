@@ -8,10 +8,10 @@ describe('数据管理首屏', () => {
     return root;
   };
   it('读数卡复用最终排版，名字与图标立即呈现，只有读数画占位', () => {
-    const stats = skeleton().querySelectorAll('.cleanupstats > .board-plain-stat');
-    expect([...stats].map(card => card.querySelector('.board-stat-tile use')?.getAttribute('href')))
+    const stats = skeleton().querySelectorAll('.ui-cleanupstats > .board-plain-stat');
+    expect([...stats].map(card => card.querySelector('.ui-board-stat-tile use')?.getAttribute('href')))
       .toEqual(['#i-square-check-big', '#i-sparkles', '#i-file-stack', '#i-file-archive', '#i-trash']);
-    expect([...stats].map(card => card.querySelector('.board-plain-stat-head')?.textContent))
+    expect([...stats].map(card => card.querySelector('.ui-board-plain-stat-head')?.textContent))
       .toEqual(['人工复核', '高清版', '重复文件', '垃圾文件', '回收站']);
     for (const card of stats) {
       expect(card.querySelector('strong > .skeleton-text')).not.toBeNull();

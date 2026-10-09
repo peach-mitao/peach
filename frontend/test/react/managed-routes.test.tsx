@@ -323,7 +323,7 @@ it('配置页打开返回的那一刻，页签条已经在容器里，选中的�
     const tabs = [...stats.querySelectorAll('.ui-configpage > .ui-board-local-nav[role="tablist"] > [role="tab"]')];
     expect(tabs.map((tab) => tab.textContent)).toEqual(['通用', '媒体', '网络与访问', '维护']);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
-    const active = stats.querySelector('.board-group-active');
+    const active = stats.querySelector('.ui-board-group-active');
     expect(active?.id).toBe(tabs[2].getAttribute('aria-controls'));
     expect(stats.querySelector('.ui-configpage')?.parentElement?.classList.contains('peach-react')).toBe(true);
   });

@@ -26663,9 +26663,9 @@ function TM() {
 	], t = `<span class="geist-button ui-organize-preset-skeleton">${bM}</span>`.repeat(3), n = (e) => `<div class="ui-organizefield"><span>${e}</span>
             <span class="geist-input ui-organize-input-skeleton">${bM}</span></div>`;
 	return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
-    <div class="cleanupstats">${e.map(([e, t]) => `
+    <div class="ui-cleanupstats">${e.map(([e, t]) => `
       <button type="button" class="board-plain-stat" disabled>
-        <span class="board-plain-stat-head"><span class="board-stat-tile">${L(t)}</span>${e}</span>
+        <span class="ui-board-plain-stat-head"><span class="ui-board-stat-tile">${L(t)}</span>${e}</span>
         <strong>${bM}</strong><span class="cleanupmeta">${bM}</span></button>`).join("")}</div>
     <div class="cleanupgrid">
       <div class="cleanupscraping">${Ude()}</div>
@@ -50130,7 +50130,7 @@ async function ebe(e) {
 var OR = "flex flex-col gap-6";
 function kR(e) {
 	return e ? {
-		className: e.active ? `${OR} board-group-active` : OR,
+		className: e.active ? `${OR} ui-board-group-active` : OR,
 		"data-board-group": String(e.index),
 		id: e.id,
 		role: "tabpanel",
@@ -54228,7 +54228,7 @@ function hSe() {
 }
 //#endregion
 //#region src/board-skeleton.ts
-var Cz = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, wz = () => `${Cz("80%")}${Cz("48%")}`, Tz = (e, t) => e.repeat(t), gSe = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${Cz("45%")}</b><small class="board-stat-footer">${Cz("60%")}</small></div>`).join("")}</div>`, _Se = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Ez = (e) => `<section class="ui-insightpanel"><header>${e}</header><div class="ui-insightpanelbody skeleton-lines">${Tz(wz(), 3)}</div></section>`, Dz = "disabled data-skeleton-action", Oz = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, kz = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, vSe = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", ySe = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
+var Cz = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, wz = () => `${Cz("80%")}${Cz("48%")}`, Tz = (e, t) => e.repeat(t), gSe = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${Cz("45%")}</b><small class="board-stat-footer">${Cz("60%")}</small></div>`).join("")}</div>`, _Se = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Ez = (e) => `<section class="ui-insightpanel"><header>${e}</header><div class="ui-insightpanelbody ui-skeleton-lines">${Tz(wz(), 3)}</div></section>`, Dz = "disabled data-skeleton-action", Oz = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, kz = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, vSe = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", ySe = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
 	"关注创作者",
 	"启用来源",
 	"检查失败",
@@ -54329,7 +54329,7 @@ var Cz = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, wz 
 	})}${i}${OSe(t, r)}</div></div></div></div></div>`;
 };
 function ASe() {
-	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${Cz("85%")}${Cz("65%")}${Tz(wz(), 4)}</div></aside></div>`;
+	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${Cz("85%")}${Cz("65%")}${Tz(wz(), 4)}</div></aside></div>`;
 }
 function jSe(e, t = {}) {
 	let n = "";
@@ -54339,17 +54339,17 @@ function jSe(e, t = {}) {
 		"口味维度",
 		"浏览候选",
 		"私有导出"
-	], "ui-tastesummaries")}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="ui-tastebars skeleton-lines">${Tz(wz(), 4)}</div></section>${Ez("口味分析")}<div class="board-activity-charts">${Ez("浏览活动")}${Ez("时间分布")}</div>${Ez("标签")}</div>`;
+	], "ui-tastesummaries")}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton ui-skeleton-radar"></div></div><div class="ui-tastebars ui-skeleton-lines">${Tz(wz(), 4)}</div></section>${Ez("口味分析")}<div class="ui-board-activity-charts">${Ez("浏览活动")}${Ez("时间分布")}</div>${Ez("标签")}</div>`;
 	else if (e === "/follow-manage") n = kSe(t);
 	else if (e === "/configuration") n = fSe();
 	else if (e === "/activity") n = `<div class="ui-activitypage">${[
 		"正在进行",
 		"被挡下的",
 		"最近完成"
-	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${Cz("35%")}${wz()}</div></article></div></section>`).join("")}</div>`;
+	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content ui-skeleton-lines">${Cz("35%")}${wz()}</div></article></div></section>`).join("")}</div>`;
 	else if (e === "/duplicates") n = mSe();
 	else if (e === "/quality-goals") n = hSe();
-	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${Cz("200px")}</div></header><div class="ui-playlistcards">${Tz(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${wz()}</div></div></article>`, 6)}</div></section>`;
+	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate ui-skeleton-lines"><span>新播放列表</span>${Cz("200px")}</div></header><div class="ui-playlistcards">${Tz(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy ui-skeleton-lines">${wz()}</div></div></article>`, 6)}</div></section>`;
 	else return "";
 	return `<div class="board-page-skeleton" data-skeleton="board${e}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${n}</div></div>`;
 }

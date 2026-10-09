@@ -72,8 +72,8 @@ const groups = (host: ParentNode) => [...host.querySelectorAll('.ui-configgroup'
 const tabs = (host: ParentNode) => [...host.querySelectorAll<HTMLButtonElement>('.ui-board-local-nav [role="tab"]')];
 const selected = (host: ParentNode) => tabs(host).filter((tab) => tab.getAttribute('aria-selected') === 'true')
   .map((tab) => tab.textContent);
-/** 此刻显示的那一组：带 `board-group-active` 的面板，按它的 `aria-labelledby` 找回页签名。 */
-const shown = (host: ParentNode) => [...host.querySelectorAll('[role="tabpanel"].board-group-active')]
+/** 此刻显示的那一组：带 `ui-board-group-active` 的面板，按它的 `aria-labelledby` 找回页签名。 */
+const shown = (host: ParentNode) => [...host.querySelectorAll('[role="tabpanel"].ui-board-group-active')]
   .map((panel) => host.querySelector(`#${panel.getAttribute('aria-labelledby')}`)?.textContent);
 const press = (target: Element, key: string) => act(async () => {
   target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));

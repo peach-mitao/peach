@@ -48,9 +48,9 @@ export function cleanupSkeletonHtml(): string {
   const organizeField = (label: string) => `<div class="ui-organizefield"><span>${label}</span>
             <span class="geist-input ui-organize-input-skeleton">${bar}</span></div>`;
   return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
-    <div class="cleanupstats">${stats.map(([title, glyph]) => `
+    <div class="ui-cleanupstats">${stats.map(([title, glyph]) => `
       <button type="button" class="board-plain-stat" disabled>
-        <span class="board-plain-stat-head"><span class="board-stat-tile">${icon(glyph!)}</span>${title}</span>
+        <span class="ui-board-plain-stat-head"><span class="ui-board-stat-tile">${icon(glyph!)}</span>${title}</span>
         <strong>${bar}</strong><span class="cleanupmeta">${bar}</span></button>`).join('')}</div>
     <div class="cleanupgrid">
       <div class="cleanupscraping">${scanCardSkeletonHtml()}</div>

@@ -13,3 +13,5 @@
 .ui-configpage:has(>.ui-board-local-nav){grid-template-columns:minmax(0,1fr);gap:20px}
 .ui-configpage>.ui-board-local-nav{grid-column:1;grid-row:1;position:static;flex-direction:row}
 .ui-configpage:has(>.ui-board-local-nav)>:not(.ui-board-local-nav):not(.ui-configgroup){grid-column:1;grid-row:2}}
+/* 按页签切分组时只显示选中的那一组（`configuration-panel.ts` 的 `groupRoot`）。 */
+[data-board-group]:not(.ui-board-group-active){display:none!important}
