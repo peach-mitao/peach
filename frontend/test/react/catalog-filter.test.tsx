@@ -44,6 +44,18 @@ describe('空馆藏', () => {
   });
 });
 
+describe('读数', () => {
+  it('取数期间是一条微光；这一趟失败时收起，不留着一直转的微光', async () => {
+    const waiting = await mount(<CatalogFilterPage {...props({ count: null })} />);
+    expect(count(waiting, '[data-skeleton="count"]')).toBe(1);
+    document.body.innerHTML = '';
+    const failed = await mount(<CatalogFilterPage {...props({ count: false })} />);
+    expect(count(failed, '[data-skeleton="count"]')).toBe(0);
+    expect(count(failed, '[data-count-readout]')).toBe(0);
+    expect(failed.querySelector('[data-catalog-readout]')?.textContent).toBe('');
+  });
+});
+
 describe('续页', () => {
   it('上一份名单要的那页还在路上时换了名单，新名单照样续页，旧的那页回来不进这一排', async () => {
     // 一排一枚铺不满一行：没溢出就一直停在右端，每次画完都要下一页。

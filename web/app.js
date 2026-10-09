@@ -3077,7 +3077,7 @@ function catalogGridProps(){
     mix:home&&!trash,
     /* JAV 模式不插竖屏带：主列表的 exclude_vertical 管不到它，它是独立请求、独立插入的。 */
     shorts:home&&!javActive()&&state.orient!=='竖屏'&&!trash,
-    countRow:$('#count'),onCount:paintCatalogCount,
+    countRow:$('#count'),onCount:paintCatalogCount,onCountFailed:()=>paintCatalogFilter({count:false}),
     emptyHtml:({trash:inTrash,libraryEmpty})=>inTrash
       ?emptyState('trash','回收站是空的','删掉的内容会先到这里；确认不再需要后再清空。')
       :catalogEmptyHtml({jav:javActive()&&!libraryEmpty,configurable:runtimeConfigurable,filtered:!libraryEmpty}),

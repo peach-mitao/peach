@@ -240,19 +240,18 @@ const sized = (media: FollowDetailMedia | null) => (media?.size ? { size: media.
 export function detailSlides(item: FollowDetailItem, media: DetailMedia): LightboxSlide[] {
   const { images, kind, src, selected } = media;
   if (images.length) {
-    return images.map((image, index) => ({
+    return images.map((image) => ({
       src: `/follow-stream?id=${item.id}&media=${image.index}`,
       thumb: image.thumb_url || item.thumb_url || `/follow-stream?id=${item.id}&media=${image.index}`,
       name: image.name || item.title, source: mediaSourceLabel(image, item), ...sized(image),
-      position: index + 1, total: images.length,
     }));
   }
   if (kind === 'image' && src) {
     return [{ src, thumb: item.thumb_url || src, name: item.title, source: mediaSourceLabel(selected, item),
-      ...sized(selected), position: 1, total: 1 }];
+      ...sized(selected) }];
   }
   return item.thumb_url ? [{ src: item.thumb_url, thumb: item.thumb_url, name: item.title,
-    source: item.provider_label || item.provider || '在线图片', position: 1, total: 1 }] : [];
+    source: item.provider_label || item.provider || '在线图片' }] : [];
 }
 
 /* ── 写完之后 ── */

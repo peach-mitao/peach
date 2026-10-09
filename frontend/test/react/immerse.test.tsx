@@ -295,6 +295,13 @@ describe('片单与起播', () => {
     expect(gets(fetcher, '/api/item?id=')).toBe(1);
   });
 
+  it('片名空着时标题写「未命名视频」', async () => {
+    serve({ draws: [[1, 2, 3].map((id) => row(id))] });
+    host.displayName.mockImplementation(() => '');
+    await open(1);
+    expect(q('[data-immerse-title]')!.textContent).toBe('未命名视频');
+  });
+
   it('深链的那一条不在这一批里：取它的详情插到最前，地址栏落回同一条', async () => {
     const fetcher = serve({ draws: [[1, 2, 3, 4, 5, 6].map((id) => row(id))] });
     await open(42);

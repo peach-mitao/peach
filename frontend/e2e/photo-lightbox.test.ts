@@ -23,9 +23,9 @@ async function stubImages(page: Page): Promise<void> {
   await page.route(/\/(?:photo-thumb|sample-thumb)\?|\/follow-thumb-stub\//, (route) => route.fulfill(svg(160, 120)));
 }
 
-/** 资料页照片档：一部作品两张样张加三张本地图，墙上五格。 */
-async function openWall(browser: Browser): Promise<Visit> {
-  const opened = await visit(browser, '/', DESKTOP);
+/** 资料页照片档：一部作品两张样张加 `locals` 张本地图（默认三张，墙上五格）。 */
+async function openWall(browser: Browser, viewport = DESKTOP, locals = 3): Promise<Visit> {
+  const opened = await visit(browser, '/', viewport);
   const { page } = opened;
   await page.route(/\/api\/entity\?/, (route) => route.fulfill({ json: {
     id: 90_001, kind: 'performer', canonical_name: NAME, aliases: [], display_aliases: [], user_aliases: [],
@@ -34,7 +34,7 @@ async function openWall(browser: Browser): Promise<Visit> {
   } }));
   await page.route(/\/api\/photos\?/, (route) => {
     const offset = Number(new URL(route.request().url()).searchParams.get('offset') || 0);
-    const items = offset ? [] : [100, 101, 102].map((id) => ({ id, name: `${id}.jpg`, size: 2_345_678, location: 'local' }));
+    const items = offset ? [] : Array.from({ length: locals }, (_, at) => ({ id: 100 + at, name: `${100 + at}.jpg`, size: 2_345_678, location: 'local' }));
     return route.fulfill({ json: {
       kind: 'performer', name: NAME, entity_id: 90_001, total: items.length, items, seed: '', has_more: false,
       sample_total: 2, sets: [{ id: 'code:SSIS-057', kind: 'code', code: 'SSIS-057', name: '雨の日',
@@ -215,7 +215,7 @@ describe('图片灯箱', () => {
     }
   });
 
-  it('关注详情的大图打开同一个灯箱：整组三张，在线图写来源、序号与分辨率，没有定位键', { timeout: 60_000 }, async () => {
+  it('关注详情的大图打开同一个灯箱：整组三张，在线图写来源与分辨率，没有定位键', { timeout: 60_000 }, async () => {
     const opened = await openFollowItem(browser);
     const { page } = opened;
     try {
@@ -229,11 +229,40 @@ describe('图片灯箱', () => {
       const panel = box.locator('[data-photo-detail]');
       await panel.waitFor({ state: 'visible' });
       assert.equal((await panel.locator('h2').innerText()).trim(), '帖子图 1.png');
-      assert.match(await panel.locator('[data-photo-detail-meta]').innerText(), /第 1 \/ 3 张 · 4000 × 3000/);
+      const meta = await panel.locator('[data-photo-detail-meta]').innerText();
+      assert.match(meta, /^pixivFANBOX · 4000 × 3000 · 121\sKB$/u);
+      assert.doesNotMatch(meta, /第/, '第几张只看底栏的页码，面板不另编一个号');
       assert.equal(await panel.locator('[data-photo-reveal]').isVisible(), false, '在线图不该有定位键');
       await labelled(box, '关闭').click();
       await box.waitFor({ state: 'detached' });
       assert.deepEqual(opened.problems, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('320 宽翻到上千张的最后一张：页码一行写完，底栏整条留在屏内', { timeout: 90_000 }, async () => {
+    const opened = await openWall(browser, { name: '320', width: 320, height: 720, mobile: true }, 1287);
+    const { page } = opened;
+    try {
+      await page.locator('[data-photo-cell]').first().click();
+      const box = lightbox(page);
+      await box.waitFor();
+      await page.evaluate(() => {
+        const main = document.querySelector('[data-photo-main]') as HTMLElement & { swiper: { slideTo(at: number, speed: number): void } };
+        main.swiper.slideTo(1288, 0);
+      });
+      const count = box.locator('[data-photo-count]');
+      await page.waitForFunction(() => document.querySelector('[data-photo-count]')?.textContent === '1289 / 1289');
+      const bar = await box.locator('[data-photo-bar]').evaluate((node) => ({
+        line: parseFloat(getComputedStyle(node.querySelector('[data-photo-count]')!).lineHeight) || 16,
+        count: node.querySelector('[data-photo-count]')!.getBoundingClientRect().height,
+        right: Math.max(...[...node.querySelectorAll('button, [data-photo-count]')].map((el) => el.getBoundingClientRect().right)),
+        view: document.documentElement.clientWidth,
+      }));
+      assert.ok(bar.count < bar.line * 2 + 16, `页码折行了：${JSON.stringify(bar)}`);
+      assert.ok(bar.right <= bar.view, `底栏越出视口：${JSON.stringify(bar)}`);
+      assert.equal(await count.isVisible(), true);
     } finally {
       await opened.close();
     }

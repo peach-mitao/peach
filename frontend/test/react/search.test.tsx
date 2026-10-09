@@ -38,6 +38,13 @@ describe('下拉栏里摆什么', () => {
     expect(one.options.map((o) => o.value)).toEqual(['七海の夏']);
   });
 
+  it('这个词的补全回来了却一条没有才算「没有找到」，还在路上的不算', () => {
+    expect(menuModel({ ...base, query: 'zzz', suggestFor: 'zzz' }).empty).toBe(true);
+    expect(menuModel({ ...base, query: 'zzz', suggestFor: 'zz' }).empty).toBe(false);
+    expect(menuModel({ ...base, query: '七海', suggestFor: '七海', groups: [performer] }).empty).toBe(false);
+    expect(menuModel({ ...base, query: '' }).empty).toBe(false);
+  });
+
   it('作品一类单独排在右栏；只命中一类时没有页签', () => {
     const model = menuModel({ ...base, query: 'ABW', suggestFor: 'ABW', groups: [asset], tabs: [asset] });
     expect([model.left.length, model.right[0]?.kind, model.tabs]).toEqual([0, 'asset', null]);

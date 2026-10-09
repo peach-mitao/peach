@@ -169,6 +169,12 @@ describe('作品卡', () => {
     expect([plain.onOpen, selecting.onOpen].every((fn) => fn.mock.calls.length === 0)).toBe(true);
   });
 
+  it('片名空着时标题与读屏名写「未命名视频」', async () => {
+    const { host } = await render(item(12, { name: '' }));
+    expect(host.querySelector('[data-media-title]')?.textContent).toBe('未命名视频');
+    expect(host.querySelector('[data-media-open]')?.getAttribute('aria-label')).toBe('打开 未命名视频详情');
+  });
+
   it('大小不明写「大小未知」，看过几次写出来，标签取作品自己的标签、至多三枚', async () => {
     const { host } = await render(item(11, { size: 0, play_count: 3, performers: ['甲'], tags: ['a', 'b', 'c', 'd'] }));
     expect(host.querySelector('[data-media-size]')?.textContent).toBe('大小未知');

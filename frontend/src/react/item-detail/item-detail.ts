@@ -433,14 +433,16 @@ const QUEUE_LABEL: Record<QueueKind, string> = { mix: 'Mix', parts: '分卷', ed
  *  标题栏又已经写着「版本」——三处说同一件事，这里只留数量。别的队列标题带真信息（播放列表名、
  *  Mix 种子），不能一起砍。 */
 export function queueCopy(queue: DetailQueue): { title: string; summary: string } {
-  const count = queue.items.length;
+  const count = queue.items.length.toLocaleString();
   const countLabel = queue.kind === 'parts' ? `${count} 卷` : queue.kind === 'editions' ? `${count} 个版本` : `${count} 个视频`;
   return { title: QUEUE_LABEL[queue.kind], summary: queue.kind === 'editions' ? countLabel : `${queue.title} · ${countLabel}` };
 }
 
 /** 同一部片的几卷共用文件名，标题、女优、厂牌逐字相同：详情标题不写卷号的话，在队列里换一卷，
- *  右侧整栏看上去纹丝不动。卷号说的是「第几份文件」而不是版次，用中性灰。 */
-export const partLabel = (label = '') => /^(?:\d+|[a-h])$/i.test(label) ? `第 ${label} 卷` : label;
+ *  右侧整栏看上去纹丝不动。卷号说的是「第几份文件」而不是版次，用中性灰。数字卷写「第 2 卷」，
+ *  字母卷照番号分卷后缀的写法大写成「A 卷」。 */
+export const partLabel = (label = '') => /^\d+$/.test(label) ? `第 ${label} 卷`
+  : /^[a-h]$/i.test(label) ? `${label.toUpperCase()} 卷` : label;
 export const partLabelHtml = (item: DetailItem, queue: DetailQueue | null) =>
   (queue?.kind === 'parts' && item.part_label ? `<small class="javedition partlabel">${esc(partLabel(item.part_label))}</small>` : '');
 

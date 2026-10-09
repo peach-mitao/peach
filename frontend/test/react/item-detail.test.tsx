@@ -122,10 +122,24 @@ describe('停在队列哪一条', () => {
     expect(host.textContent).not.toContain('第 特典');
   });
 
+  it('字母分卷照番号后缀大写成「A 卷」', async () => {
+    serve();
+    const ref = { kind: 'parts', seedId: 1 } as const;
+    queryClient.setQueryData(queueKey(ref), queue('parts', [1, 2], {
+      items: [row(1, { part_label: 'a' }), row(2, { part_label: 'B' })],
+    }));
+    const { host } = await show(item(1), { queue: ref });
+    expect(host.querySelector('[data-queue-item="1"]')?.textContent).toContain('A 卷');
+    expect(host.querySelector('[data-queue-item="2"]')?.textContent).toContain('B 卷');
+    expect(host.textContent).not.toContain('第 a 卷');
+  });
+
   it('队列头：版次队列只写数量，其余带上标题', () => {
     expect(queueCopy(queue('editions', [1, 2]))).toEqual({ title: '版本', summary: '2 个版本' });
     expect(queueCopy(queue('parts', [1, 2, 3], { title: '分卷 · PCH-021' }))).toEqual({ title: '分卷', summary: '分卷 · PCH-021 · 3 卷' });
     expect(queueCopy(queue('playlist', [1], { title: '周末片单' }))).toEqual({ title: '播放列表', summary: '周末片单 · 1 个视频' });
+    const many = Array.from({ length: 1284 }, (_, i) => i + 1);
+    expect(queueCopy(queue('parts', many, { title: '分卷' })).summary).toBe('分卷 · 1,284 卷');
   });
 
   it('拖动之后的新顺序：挪到目标前面或后面', () => {
@@ -407,6 +421,13 @@ describe('侧栏怎么读', () => {
     expect([...host.querySelectorAll('[data-stage-meta] [data-spec-item]')].map(glyph)).toEqual(['#i-monitor', '#i-hard-drive', '#i-calendar']);
     expect(host.querySelector('[data-stage-meta]')?.textContent).not.toContain('发行');
     expect(host.querySelector('#ratioTxt')?.textContent).toBe('0%');
+  });
+
+  it('没有宽高时规格行不写分辨率，大小没记下写「大小未知」', async () => {
+    serve();
+    const { host } = await show(item(1, { width: null, height: null, size: 0 } as Partial<DetailItem>));
+    expect([...host.querySelectorAll('[data-stage-meta] [data-spec-item]')].map(glyph)).toEqual(['#i-hard-drive']);
+    expect(host.querySelector('[data-stage-meta]')?.textContent).toBe('大小未知');
   });
 
   it('身份按类分组、组标题在上；没有实体 id 的只写名字；厂牌装了标识才要 icon 变体；系列是带图标的链接', async () => {

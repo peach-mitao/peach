@@ -96,8 +96,8 @@ export interface CatalogFilterProps {
   views: readonly CatalogView[];
   /** 当前视图：''、fresh、later、flagged、trash。 */
   state: string;
-  /** 读数。取数期间为空，换成一条微光。 */
-  count: { total: number; shown: number } | null;
+  /** 读数。取数期间为空，换成一条微光；`false` 是这一趟取数失败，读数收起，失败与重试由网格那条提示说。 */
+  count: { total: number; shown: number } | null | false;
   /** 回收站是待清理队列：读数挂在说明行上，这里没有下排。 */
   trash: boolean;
   sorts: EntitySortKey[];

@@ -183,7 +183,7 @@ describe('照片墙', () => {
     expect(slides).toHaveLength(7);
     expect(slides[3]).toEqual({
       src: '/sample-image?code=SSIS-001&n=1', thumb: '/sample-thumb?code=SSIS-001&n=1', name: 'SSIS-001 样张 1',
-      asset: null, source: 'DMM', position: 1, total: 2,
+      asset: null, source: 'DMM',
     });
     expect(slides[5]).toEqual({
       src: '/photo?id=101', thumb: '/photo-thumb?id=101', name: '101.jpg', asset: { id: 101, name: '101.jpg' },

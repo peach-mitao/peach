@@ -5,12 +5,12 @@ import {launch,requiredEnv,VIEWPORTS} from './harness.ts';
 
 const FRAMES='#grid [data-media-grid] > [data-media-card] [data-media-pic], #grid [data-mix-cover]';
 
-/** 首页铺 20 张纯白预览图的作品，`size` 是首页版式。 */
-async function openHome(page:Page,size:string){
+/** 首页铺 20 张纯白预览图的作品，`size` 是首页版式；`patch` 按序号改其中几张。 */
+async function openHome(page:Page,size:string,patch:(i:number)=>Record<string,unknown>=()=>({})){
  await page.addInitScript(size=>localStorage.setItem('peach.settings.v1',JSON.stringify({detailAutoplay:false,homeLayout:size})),size);
  await page.route('**/api/items?*',route=>route.fulfill({json:{items:Array.from({length:20},(_,i)=>({
   id:91000+i,name:`示例作品 ${i}`,creator:'示例创作者',is_jav:i%2===0,has_thumb:true,has_cover:false,
-  width:1600,height:900,location:'local',duration:120,
+  width:1600,height:900,location:'local',duration:120,...patch(i),
  })),total:20,has_more:false}}));
  await page.route('**/poster?*',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="white"/></svg>'}));
  await page.goto(requiredEnv('PEACH_E2E_ORIGIN')+'/',{waitUntil:'load'});
@@ -110,6 +110,57 @@ describe('混排作品的画面框',()=>{
    }finally{await context.close()}
   });
  }
+ it('多选态的勾选圆不压分卷徽标；番号带三枚版本徽标时整组留在标题框内',async()=>{
+  const context=await browser.newContext({viewport:{width:320,height:720}});
+  try{
+   const page=await context.newPage();
+   await openHome(page,'small',i=>i===0?{
+    name:'FC2-PPV-4728193 夏の終わり',code:'FC2-PPV-4728193',display_title:'夏の終わり',edition_badges:['中字','无码','无码破解'],
+    part_group:{key:'p',seed_id:91000,count:128},
+   }:{});
+   const first=page.locator('#grid [data-media-grid] > [data-media-card]').first();
+   await first.click({modifiers:['Control']});
+   await first.locator('[data-media-check]').waitFor();
+   const box=await first.evaluate(card=>{
+    const rect=(selector:string)=>card.querySelector(selector)!.getBoundingClientRect();
+    const title=rect('[data-media-title]');
+    return {
+     group:rect('[data-media-group]').right,check:rect('[data-media-check]').left,
+     count:card.querySelectorAll('[data-media-title] .javedition').length,title:title.right,badges:Math.max(...[...card.querySelectorAll('[data-media-title] .javedition')].map(node=>node.getBoundingClientRect().right)),
+    };
+   });
+   assert.equal(box.count,3);
+   assert.ok(box.group<=box.check,`勾选圆压住了分卷徽标：${JSON.stringify(box)}`);
+   assert.ok(box.badges<=box.title+0.5,`版本徽标越出标题框：${JSON.stringify(box)}`);
+  }finally{await context.close()}
+ });
+ it('十二位共演都没有头像图：网格卡五枚首字母都露在外面，竖屏卡只放两枚，标题照样有宽度',async()=>{
+  const context=await browser.newContext({viewport:{width:1280,height:900}});
+  try{
+   const page=await context.newPage();
+   const names=['七海ひな','桜井まい','白石りん','水瀬ゆい','藤原あや','J','K','L','M','N','O','P'];
+   await openHome(page,'small',()=>({creator:'',performers:names,performer_total:12}));
+   const short=page.locator('[data-media-card][data-variant="short"]').first();
+   await short.waitFor();
+   const measure=(card:Element)=>{
+    const avatars=[...card.querySelectorAll('[data-media-avatars] > [data-media-avatar]')]
+     .filter(node=>getComputedStyle(node).display!=='none');
+    const covered=avatars.filter(node=>{
+     const box=node.getBoundingClientRect();
+     return document.elementFromPoint(box.left+box.width/2,box.top+box.height/2)?.closest('[data-media-avatar]')!==node;
+    }).length;
+    return {shown:avatars.length,covered,text:Math.round(card.querySelector('[data-media-text]')!.getBoundingClientRect().width),card:Math.round(card.getBoundingClientRect().width)};
+   };
+   const grid=await page.locator('#grid [data-media-grid] > [data-media-card]').first().evaluate(measure);
+   assert.equal(grid.shown,5);
+   assert.equal(grid.covered,0,`有首字母被左邻盖住：${JSON.stringify(grid)}`);
+   await short.scrollIntoViewIfNeeded();
+   const portrait=await short.evaluate(measure);
+   assert.equal(portrait.shown,2);
+   assert.equal(portrait.covered,0,JSON.stringify(portrait));
+   assert.ok(portrait.text>=portrait.card*0.6,`竖屏卡的标题列被头像挤窄：${JSON.stringify(portrait)}`);
+  }finally{await context.close()}
+ });
  it('Shift 连选几张卡不把中间的文字刷成选区',async()=>{
   const context=await browser.newContext({viewport:{width:1280,height:900}});
   try{

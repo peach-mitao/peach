@@ -41,6 +41,9 @@ const Glyph = ({ name }: { name: string }) => (
 );
 const Html = ({ html }: { html: string }) => <span className="contents" dangerouslySetInnerHTML={{ __html: html }} />;
 
+/** 文件大小：没记下或记成 0 的写「大小未知」，同卡片上那一格。 */
+const sizeText = (size: unknown) => (Number(size) > 0 ? fmtSize(Number(size)) : '大小未知');
+
 export function ItemDetailPage(props: ItemDetailProps) {
   const { queue: ref, actions } = props;
   const queueResult = useQuery({
@@ -135,7 +138,7 @@ function MediaFrame({ item, gate, helpers, actions }: {
         ) : gate === 'metered' && !started ? (
           <div id="gate" data-item-gate="metered" onClick={() => setStarted('clicked')}>
             <Html html={badge} />
-            <span>点此开始拉流 · {fmtSize(item.size || 0)}</span>
+            <span>点此开始拉流 · {sizeText(item.size)}</span>
           </div>
         ) : null}
     </div>
@@ -308,8 +311,10 @@ function Side({ item, queue, write, helpers, actions }: {
         {online ? null : <span data-title-state="" aria-live="polite">{write.sourceState}</span>}
         <Rating item={item} write={write} />
         <div className="mono" data-stage-meta="" data-reveal-line="">
-          <span data-spec-item=""><Glyph name="monitor" /><span>{item.width || '?'}×{item.height || '?'}</span></span>
-          <span data-spec-item=""><Glyph name="hard-drive" /><span>{fmtSize(item.size || 0)}</span></span>
+          {item.width && item.height
+            ? <span data-spec-item=""><Glyph name="monitor" /><span>{item.width}×{item.height}</span></span>
+            : null}
+          <span data-spec-item=""><Glyph name="hard-drive" /><span>{sizeText(item.size)}</span></span>
           {item.release_date ? <span data-spec-item=""><Glyph name="calendar" /><span>{item.release_date}</span></span> : null}
           {item.region_label ? (
             <button type="button" data-spec-item="" data-open-region={item.region || ''}
@@ -530,7 +535,7 @@ function Tags({ item, write, helpers, actions }: {
     <div data-stage-tags="" id="detailTags" data-item-tags="">
       {tags.map((tag) => (
         <span key={tag.k} data-detail-tag="">
-          <button type="button" data-tag={tag.k} onClick={() => actions.openTag(tag.k)}>{helpers.tagLabel(tag.k)}</button>
+          <button type="button" data-tag={tag.k} title={helpers.tagLabel(tag.k)} onClick={() => actions.openTag(tag.k)}>{helpers.tagLabel(tag.k)}</button>
           <button type="button" data-remove-tag={tag.k} title="从此视频隐藏该标签"
             aria-label={`删除标签 ${helpers.tagLabel(tag.k)}`} {...write.busyAttrs(`tag:${tag.k}`)}
             onClick={() => write.removeTag(tag)}><Glyph name="x" /></button>

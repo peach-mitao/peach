@@ -523,6 +523,43 @@ describe('作品详情岛', () => {
     }
   });
 
+  it('取不到这一条：播放器格照 16:9 撑开，重试提示居中，不塌成一条窄条', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, `/item/${ITEM.plain}`, DESKTOP);
+    try {
+      const page = opened.page;
+      await page.route((url) => url.pathname === '/api/item', (route) => route.fulfill({ status: 500, json: { error: 'database is locked' } }));
+      await page.goto(new URL('/item/987654', page.url()).toString(), { waitUntil: 'load' });
+      await page.locator('#stage [data-item-placeholder] [data-media-error]').waitFor({ timeout: 15_000 });
+      const box = await page.evaluate(() => {
+        const frame = document.querySelector('#stage [data-item-placeholder]')!.getBoundingClientRect();
+        const note = document.querySelector('#stage [data-item-placeholder] [data-media-error]')!.getBoundingClientRect();
+        return { ratio: frame.width / frame.height, offset: Math.abs((note.top + note.bottom) / 2 - (frame.top + frame.bottom) / 2) };
+      });
+      assert.ok(Math.abs(box.ratio - 16 / 9) < 0.02, `播放器格不是 16:9：${JSON.stringify(box)}`);
+      assert.ok(box.offset < 2, `提示没有竖直居中：${JSON.stringify(box)}`);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('长标签单行省略，高度和别的标签一样', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
+    try {
+      const page = opened.page;
+      const heights = await page.evaluate(() => {
+        const tag = document.querySelector('#detailTags [data-tag]') as HTMLElement;
+        const before = tag.getBoundingClientRect().height;
+        tag.textContent = 'customer-feedback-from-enterprise-onboarding-customer-feedback-from-enterprise-onboarding';
+        return { before, after: tag.getBoundingClientRect().height, wide: tag.scrollWidth > tag.clientWidth };
+      });
+      assert.equal(heights.after, heights.before, `长标签折行了：${JSON.stringify(heights)}`);
+      assert.equal(heights.wide, true, '长标签应当被省略');
+      assert.deepEqual((await layout(page)).offenders, [], '长标签撑出视口');
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('手机 390：详情不横向溢出，侧栏排在播放区下面', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/item/${ITEM.plain}`, MOBILE);
     try {

@@ -140,7 +140,7 @@ body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,pa
    图片详情和合集详情右侧的背景一起截短。所有详情分支共用这层结构。 */
 [data-stage-side-content]{box-sizing:border-box;width:100%;height:100%;max-height:76vh;padding:18px;display:flex;gap:0;
   flex-direction:column;overflow-y:auto;overflow-x:hidden}
-[data-stage-title]{font-size:var(--fs-lg);line-height:1.4;word-break:break-all;margin-bottom:8px}
+[data-stage-title]{font-size:var(--fs-lg);line-height:1.4;overflow-wrap:anywhere;margin-bottom:8px}
 [data-stage-meta]{display:flex;gap:9px;flex-wrap:wrap;color:var(--muted);margin-bottom:18px}
 [data-stage-tags]{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 18px}
 [data-stage-actions]{display:flex;align-items:center;gap:0;margin:0 0 12px;padding:0;border:1px solid var(--border-10);border-radius:var(--control-radius);background:var(--overlay-5);width:max-content;overflow:hidden;flex:none}

@@ -623,7 +623,7 @@ function Caption({ shown }: { shown: Shown | null }) {
         <a href="#" onClick={openOwner}>{owner?.who ?? ''}</a>
         <span>{shown && item ? `· ${fmtDur(item.duration)} · ${item.ctx_orient || ''} · ${shown.index + 1}/${shown.length}` : ''}</span>
       </div>
-      <button type="button" data-immerse-title="" onClick={openTitle}>{item ? helpers.displayName(item) : ''}</button>
+      <button type="button" data-immerse-title="" onClick={openTitle}>{item ? helpers.displayName(item).trim() || '未命名视频' : ''}</button>
     </div>
   );
 }

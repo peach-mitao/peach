@@ -261,6 +261,8 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   -webkit-backdrop-filter: blur(10px);
   transition: opacity .15s ease;
 }
+/* 勾选圆亮出来时占住右上角那 26px：分卷与版本徽标往左让开，「128 卷」不被圆盖住。 */
+.peach-react :is([data-select-mode] [data-media-group], [data-media-card][data-selected] [data-media-group]) { right: 44px; }
 .peach-react [data-media-scrub] {
   position: absolute;
   right: 0;
@@ -506,8 +508,8 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
 .peach-react [data-media-avatars] > :is(:hover, :focus-visible) + * + * { --lift-y: -.81px; --lift-x: 20px; }
 .peach-react [data-media-avatars] > :is(:hover, :focus-visible) + * + * + * { --lift-x: 30px; }
 .peach-react [data-media-avatars] > :is(:hover, :focus-visible) + * + * + * + * { --lift-x: 40px; }
-/* 接着看那一排的窄卡只放两个头像：第三个挤掉的正好是署名那一行的宽度。 */
-.peach-react [data-variant="next"] [data-media-avatars] > :nth-child(n+3) { display: none; }
+/* 接着看那一排与竖屏带的窄卡只放两个头像：第三个挤掉的正好是署名那一行的宽度。 */
+.peach-react :is([data-variant="next"], [data-variant="short"]) [data-media-avatars] > :nth-child(n+3) { display: none; }
 
 .peach-react [data-media-text] { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
 /* 标题两行，高度另用 max-height 封住：番号块是 inline-flex，WebKit 的 line-clamp 遇到非行内
@@ -525,12 +527,17 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
   font-size: var(--fs-md);
   line-height: 1.35;
   text-align: left;
-  word-break: break-all;
+  overflow-wrap: anywhere;
   cursor: pointer;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 .peach-react span[data-media-title] { cursor: default; }
+/* 番号与版本徽标在别处是一个不折行的整块；卡片标题只有两行，整块比卡宽时会被直接切掉、
+ * 没有省略号。这里拆成行内的几枚徽标，放不下的折到下一行，第二行末尾照样由 line-clamp 收住。
+ * 这两枚类由 `core/jav-title.ts` 挂上，按 `[class~=…]` 认，权重与类选择器相同。 */
+.peach-react [data-media-title] [class~="javidentity"] { display: inline; white-space: normal; }
+.peach-react [data-media-title] [class~="javedition"] { margin-left: 5px; }
 .peach-react [data-media-byline] {
   display: flex;
   flex-wrap: wrap;
@@ -563,11 +570,12 @@ body[data-surface="/trash"] .peach-react [data-media-card] [data-media-title] { 
 .peach-react [data-flag="seen"] { background: var(--muted); }
 .peach-react [data-flag="dispose"] { background: var(--meter); }
 .peach-react [data-flag="later"] { background: var(--ink); }
+.peach-react [data-media-why] { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peach-react [data-variant="next"] [data-media-why] { color: var(--loupe); }
 .peach-react [data-variant="next"] [data-media-byline] { flex-wrap: nowrap; overflow: hidden; }
 .peach-react [data-variant="next"] [data-media-who] { flex: 0 1 auto; max-width: 55%; }
 .peach-react [data-variant="next"] [data-media-who-more] { flex: none; white-space: nowrap; }
-.peach-react [data-variant="next"] [data-media-why] { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peach-react [data-variant="next"] [data-media-why] { flex: 1 1 0; }
 .peach-react [data-variant="next"] :is([data-media-size], [data-media-watch-count]) { display: none; }
 
 /* 标签：宁可少放几颗，也要把名字写全。这一行可换行、只有一颗那么高，放不下的整颗落到第二行

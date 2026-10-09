@@ -23,6 +23,10 @@
   letter-spacing: .14em;
 }
 
+/* 这个词一条补全都没有时的那一行，排在搜索记录下面，字色同组标题。 */
+.peach-react [data-search-empty] { margin: 0; padding: 9px 10px; color: var(--muted); font-size: var(--fs-sm); }
+.peach-react [data-search-group] + [data-search-empty] { border-top: 1px solid var(--line-soft); margin-top: 7px; }
+
 .peach-react [data-search-option] {
   width: 100%;
   height: 38px;
@@ -137,9 +141,9 @@
 .peach-react [data-search-sub] { color: var(--muted); font-size: var(--fs-xs); }
 
 /* 小封面和卡片同一个 3:4 容器（壳给的 `.pic`，比例从这里继承），取景换算读的就是这个比例。
- * 宽 36 刚好排下不加字距的「无预览」：封面那一格里只有它是 span，图都是 <img>。 */
+ * 「无预览」在 36px 宽里按 10px、不加字距排，三个字两边各留一点边：封面那一格里只有它是 span，图都是 <img>。 */
 .peach-react [data-search-pic] { --card-ratio: .75; display: block; flex: none; border-radius: var(--badge-radius); }
-.peach-react [data-search-pic] > span > span { letter-spacing: 0; }
+.peach-react [data-search-pic] > span > span { font-size: 10px; letter-spacing: 0; }
 .peach-react [data-search-option="work"] > [data-search-pic] { width: 36px; }
 /* 行里的 span 一律截断裁切，这一排要让出焦点环。 */
 .peach-react [data-search-option] [data-search-peeks] {

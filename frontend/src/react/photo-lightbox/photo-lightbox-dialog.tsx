@@ -81,6 +81,8 @@ function PhotoLightbox({ slides, index, Swiper, host: actions }: {
   /* 大图的自然尺寸，到了才知道：面板上的分辨率读它。取不到原图的那几张换成缩略图。 */
   const [natural, setNatural] = useState<Record<number, [number, number]>>({});
   const [broken, setBroken] = useState<ReadonlySet<number>>(() => new Set());
+  /** 原图和缩略图都取不到的那几张：放一块占位，不露浏览器的破图标。 */
+  const [lost, setLost] = useState<ReadonlySet<number>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ at: number; text: string }>({ at: index, text: '' });
 
@@ -181,9 +183,12 @@ function PhotoLightbox({ slides, index, Swiper, host: actions }: {
     zoom.current?.loaded(img);
   };
   // 原图取不到时换上这张的缩略图：归档站的原文件主机会拦下代理（pawchive 的 file.
-  // 子域挂着 ddos-guard），缩略图由浏览器直接读公开主机。只换一次。
+  // 子域挂着 ddos-guard），缩略图由浏览器直接读公开主机。只换一次，缩略图也取不到就放占位。
   const failed = (at: number) => {
-    if (broken.has(at) || !slides[at].thumb || slides[at].thumb === slides[at].src) return;
+    if (broken.has(at) || !slides[at].thumb || slides[at].thumb === slides[at].src) {
+      setLost((prev) => new Set(prev).add(at));
+      return;
+    }
     setBroken((prev) => new Set(prev).add(at));
   };
   const apply = (raw: number | 'fit') => zoom.current?.apply(raw);
@@ -207,9 +212,11 @@ function PhotoLightbox({ slides, index, Swiper, host: actions }: {
           {slides.map((item, at) => (
             <div key={at} className="swiper-slide">
               <div className="swiper-zoom-container">
-                <img src={broken.has(at) ? item.thumb : item.src} alt={item.name ?? ''} loading="lazy"
-                  referrerPolicy="no-referrer" onLoad={(event) => loaded(at, event.currentTarget)}
-                  onError={() => failed(at)} />
+                {lost.has(at)
+                  ? <span data-photo-missing="">图片取不到</span>
+                  : <img src={broken.has(at) ? item.thumb : item.src} alt={item.name ?? ''} loading="lazy"
+                    referrerPolicy="no-referrer" onLoad={(event) => loaded(at, event.currentTarget)}
+                    onError={() => failed(at)} />}
               </div>
             </div>
           ))}

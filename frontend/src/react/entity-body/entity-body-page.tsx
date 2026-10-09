@@ -69,7 +69,7 @@ const thumbSrc = (item: EntityWallPhoto) => isSample(item)
 /** 墙上一格换成灯箱里的一张。本地图片整条当 asset 递进去，详情面板读来源与大小、定位读 id。 */
 const wallSlide = (item: EntityWallPhoto): LightboxSlide => isSample(item)
   ? { src: `/sample-image?${sampleQuery(item)}`, thumb: thumbSrc(item), name: item.name, asset: null,
-    source: item.source, position: item.position, total: item.total }
+    source: item.source }
   : { src: `/photo?id=${item.id}`, thumb: thumbSrc(item), name: item.name || '', asset: item };
 
 /** 照片视图：名下每部作品的官方样张按发行日从新到旧一段一段铺在前面，每段一行段头；本地图片

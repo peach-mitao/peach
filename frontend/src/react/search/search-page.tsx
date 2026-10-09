@@ -50,7 +50,7 @@ const modelOf = (s: Store): MenuModel => menuModel({
   query: s.query, history: s.history, picks: s.picks, suggestFor: s.suggestFor, groups: s.groups, tabs: s.tabs,
   kind: s.kind,
 });
-const hasContent = (m: MenuModel) => !!(m.tabs || m.recent || m.left.length || m.right.length);
+const hasContent = (m: MenuModel) => !!(m.tabs || m.recent || m.left.length || m.right.length || m.empty);
 
 const Sprite = ({ name }: { name: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>
@@ -125,6 +125,7 @@ export function SearchPage(props: SearchProps) {
       {model.tabs ? <Tabs tabs={model.tabs} kind={s.kind} onPick={op.pickKind} wire={props.helpers.wireScroller} /> : null}
       {model.recent ? section(model.recent) : null}
       {columns(model.left, model.right)}
+      {model.empty ? <p data-search-empty="" role="status">没有找到</p> : null}
     </div>
   );
 }
@@ -377,7 +378,7 @@ function Row({ entry, active, helpers, onPick, onPeek, onRemove }: {
     return (
       <div data-search-option="work" data-open-item={item.id} {...shared}>
         <Cover card={item.card} helpers={helpers} />
-        <span data-search-meta=""><span data-search-name="">{item.value}</span><span data-search-sub="">{byline}</span></span>
+        <span data-search-meta=""><span data-search-name=""><span>{item.value}</span></span><span data-search-sub="">{byline}</span></span>
       </div>
     );
   }

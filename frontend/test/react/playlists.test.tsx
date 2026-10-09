@@ -99,6 +99,22 @@ describe('首屏', () => {
     expect(queryClient.getQueryData<{ items: PlaylistRow[] }>(PLAYLISTS_KEY)?.items).toHaveLength(2);
   });
 
+  it('读取失败时页头与新建框照常在，列表的位置上是原因和重试键；重试成功后画出列表', async () => {
+    let fail = true;
+    serve({ 'GET /api/playlists': () => (fail ? { status: 500, body: { error: '数据库被锁住' } } : { body: { items: [row(1)] } }) });
+    const host = await mount(<QueryClientProvider client={queryClient}><Shell {...props()} /></QueryClientProvider>);
+    await settle();
+    expect(host.querySelector('h2')?.textContent).toBe('播放列表');
+    expect(host.querySelector('[data-playlist-create]')).not.toBeNull();
+    const note = host.querySelector('[data-media-error]')!;
+    expect(note.textContent).toContain('数据库被锁住');
+    fail = false;
+    await click(note.querySelector('[data-note-action]'));
+    await settle();
+    expect(card(host, 1)).not.toBeNull();
+    expect(host.querySelector('[data-media-error]')).toBeNull();
+  });
+
   it('没有列表时是整页空态，图标取播放列表字形', async () => {
     const host = await open([]);
     const empty = host.querySelector('[data-empty-state]')!;
@@ -109,6 +125,12 @@ describe('首屏', () => {
 });
 
 describe('卡片', () => {
+  it('名称只有空白时标题与读屏名写「未命名播放列表」', async () => {
+    const host = await open([row(1, { name: '   ' })]);
+    expect(card(host, 1).textContent).toContain('未命名播放列表');
+    expect(card(host, 1).querySelector('[data-mix-open]')?.getAttribute('aria-label')).toBe('打开播放列表 未命名播放列表');
+  });
+
   it('上千条的徽标带千分位', async () => {
     const host = await open([row(1, { item_count: 98765 })]);
     expect(card(host, 1).querySelector('[data-mix-badge]')?.textContent).toBe('98,765 个视频');
