@@ -23,6 +23,7 @@ from peach.follow_sources import FollowCandidate, SourceFetch
 from peach.follow_store import FollowStore
 from peach.http import HttpResponse
 from peach.migrations import upgrade
+from peach.scan import medium_of
 from support.ledger import fresh_ledger
 from peach.classification import is_probable_mainstream_release, is_structural_creator
 
@@ -385,6 +386,81 @@ class LibraryDirectoryTests(unittest.TestCase):
                     self.assertEqual(db.execute('SELECT path FROM asset WHERE id=3').fetchone()[0], target + r'\FC2-PPV-1234567.srt')
 
 
+    @staticmethod
+    def _media(root):
+        """`B:` 账本路径落到临时目录；整目录移动的回执记本机路径，原样使用。"""
+        media = root / 'media'
+        def translate(path):
+            if PureWindowsPath(path).drive.casefold() == 'b:':
+                return media.joinpath(*PureWindowsPath(path).parts[1:])
+            return Path(path)
+        def rename(old, new):
+            translate(new).parent.mkdir(parents=True, exist_ok=True)
+            translate(old).rename(translate(new))
+        return translate, rename
+
+    def _sidecar_batch(self, root, names, rows, stem):
+        """`B:\\pack` 里放好 `names`；`rows` 是 (id, 名字, 是否随本组移动) 的账本行。"""
+        script = self.script
+        ledger = fresh_ledger(root)
+        source, target = r'B:\pack', r'B:\日本\FC2\FC2-PPV-1234567'
+        translate, rename = self._media(root)
+        for name in names:
+            translate(source + '\\' + name).parent.mkdir(parents=True, exist_ok=True)
+            translate(source + '\\' + name).write_bytes(name.encode())
+        with closing(sqlite3.connect(ledger)) as db:
+            db.row_factory = sqlite3.Row
+            for aid, name, _ in rows:
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(?,?,?,?,?)',
+                           (aid, '115', source + '\\' + name, name, medium_of(name)))
+            db.commit()
+            ids = [aid for aid, _, moving in rows if moving]
+            op = script.operation('files', source, target, script.snapshots(db, source, ids), '已知作品')
+            op['subtitles'], op['entities'] = [], script.entity_guard(db, source, ids)
+        script.save(root / f'rehome-{stem}-manifest.json',
+                    dict(format=1, stage='rehome', roots={'115': ['B:\\']}, operations=[op]))
+        with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                mock.patch.object(script, 'translate_ledger_path', side_effect=translate), \
+                mock.patch.object(script, 'root_online', return_value=True), \
+                mock.patch.object(script.organize, '_rename', side_effect=rename), redirect_stdout(io.StringIO()):
+            script.run_apply('rehome', root / 'backup.db', 10, 20, batch=stem)
+        receipt = json.loads((root / f'rehome-{stem}-receipt.json').read_text(encoding='utf-8'))
+        return receipt['entries'][0], (lambda name: translate(source + '\\' + name)), \
+            (lambda name: translate(target + '\\' + name))
+
+    def test_file_group_takes_its_own_sidecars_and_reports_what_stays(self):
+        quarantine = 'peach-purge-' + '0' * 32 + '.peach-quarantine'
+        names = ['FC2-PPV-1234567.mp4', 'FC2-PPV-1234567-poster.jpg', 'FC2-PPV-1234567.nfo',
+                 'FC2-PPV-1234567-thumb.jpg', 'other.mp4', 'other-fanart.jpg', 'poster.jpg',
+                 r'extrafanart\1.jpg', quarantine]
+        rows = [(1, 'FC2-PPV-1234567.mp4', True), (2, 'other.mp4', False),
+                (3, 'FC2-PPV-1234567-thumb.jpg', False)]
+        with tempfile.TemporaryDirectory() as directory:
+            entry, old, new = self._sidecar_batch(Path(directory).resolve(), names, rows, 'partial')
+            self.assertEqual(entry['status'], 'committed')
+            for name in ('FC2-PPV-1234567.mp4', 'FC2-PPV-1234567-poster.jpg', 'FC2-PPV-1234567.nfo'):
+                self.assertTrue(new(name).is_file(), name)
+                self.assertFalse(old(name).exists(), name)
+            # 登记过的图、别的视频的附属、目录级附属与隔离文件都留在原处。
+            for name in ('FC2-PPV-1234567-thumb.jpg', 'other.mp4', 'other-fanart.jpg', 'poster.jpg',
+                         r'extrafanart\1.jpg', quarantine):
+                self.assertTrue(old(name).is_file(), name)
+            [cleanup] = entry['cleanup_errors']
+            self.assertEqual(cleanup['path'], r'B:\pack')
+            self.assertIn('poster.jpg', cleanup['remaining'])
+
+    def test_file_group_that_takes_every_video_empties_the_directory(self):
+        names = ['FC2-PPV-1234567.mp4', 'poster.jpg', 'movie.nfo', r'extrafanart\1.jpg',
+                 'FC2-PPV-1234567.mp4_thumbs.jpg']
+        with tempfile.TemporaryDirectory() as directory:
+            entry, old, new = self._sidecar_batch(Path(directory).resolve(), names,
+                                                  [(1, 'FC2-PPV-1234567.mp4', True)], 'whole')
+            self.assertEqual(entry['status'], 'committed')
+            for name in names:
+                self.assertTrue(new(name).is_file(), name)
+            self.assertFalse(old('').exists())
+            self.assertNotIn('cleanup_errors', entry)
+
     def test_supported_moves_reset_the_source_error_circuit(self):
         script=self.script
         for outcomes,expected in [([False,True,False,True,False,True],6),([False,False,False,True],3)]:
@@ -432,9 +508,7 @@ class LibraryDirectoryTests(unittest.TestCase):
         """两条 115 目录操作；`outcome(source)` 决定第一条的改名结果。"""
         script = self.script
         ledger = fresh_ledger(root)
-        media = root / 'media'
-        def translate(path):
-            return media.joinpath(*PureWindowsPath(path).parts[1:])
+        translate, move = self._media(root)
         operations = []
         with closing(sqlite3.connect(ledger)) as db:
             db.row_factory = sqlite3.Row
@@ -451,15 +525,11 @@ class LibraryDirectoryTests(unittest.TestCase):
         script.save(root/'rehome-provider-manifest.json',
                     dict(format=1, stage='rehome', roots={'115': ['B:\\']}, operations=operations))
         calls = []
-        def local(path):
-            return translate(path) if PureWindowsPath(path).drive.casefold() == 'b:' else Path(path)
         def rename(old, new):
-            # 整目录移动的 `moves` 是本机路径，恢复与文件组是账本路径，两种都会进来。
-            calls.append(local(old).name)
-            if local(old) == translate(r'B:\src1') and local(new) == translate(r'B:\dst\src1'):
+            calls.append(translate(old).name)
+            if translate(old) == translate(r'B:\src1') and translate(new) == translate(r'B:\dst\src1'):
                 outcome(old)
-            local(new).parent.mkdir(parents=True, exist_ok=True)
-            local(old).rename(local(new))
+            move(old, new)
         patches = (mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root),
                    mock.patch.object(script, 'translate_ledger_path', side_effect=translate),
                    mock.patch.object(script, 'root_online', return_value=True),
@@ -509,6 +579,31 @@ class LibraryDirectoryTests(unittest.TestCase):
             with closing(sqlite3.connect(ledger)) as db:
                 self.assertEqual(db.execute('SELECT path FROM asset WHERE id=1').fetchone()[0], r'B:\src1\film.mp4')
 
+    def test_committed_batch_rolls_back_in_reverse_and_reports_edited_rows(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger, translate, calls, operations, patches = self._provider_batch(root, lambda source: None)
+            with patches[0], patches[1], patches[2], patches[3], patches[4], redirect_stdout(io.StringIO()):
+                script.run_apply('rehome', root/'backup1.db', 10, 20, batch='provider')
+                with closing(sqlite3.connect(ledger)) as db:
+                    db.execute('UPDATE asset SET path=? WHERE id=2', (r'B:\elsewhere\film.mp4',))
+                    db.commit()
+                plan = script.run_rollback('rehome', 'provider')
+                self.assertEqual([(p['source'], bool(p['changed'])) for p in plan],
+                                 [(r'B:\dst\src2', True), (r'B:\dst\src1', False)])
+                self.assertTrue(translate(r'B:\dst\src1\film.mp4').is_file())
+                results = script.run_rollback('rehome', 'provider', root/'backup2.db', apply=True)
+                self.assertEqual([r['status'] for r in results], ['changed', 'rolled_back'])
+                script.run_apply('rehome', root/'backup3.db', 10, 20, batch='provider')
+            self.assertEqual(translate(r'B:\src1\film.mp4').read_bytes(), b'film')
+            self.assertTrue(translate(r'B:\dst\src2\film.mp4').is_file())
+            receipt = json.loads((root/'rehome-provider-receipt.json').read_text(encoding='utf-8'))
+            self.assertEqual([e['status'] for e in receipt['entries']], ['rolled_back', 'committed'])
+            with closing(sqlite3.connect(ledger)) as db:
+                self.assertEqual(db.execute('SELECT path FROM asset ORDER BY id').fetchall(),
+                                 [(r'B:\src1\film.mp4',), (r'B:\elsewhere\film.mp4',)])
+
     def test_fc2_promotional_prefixes_and_platform_named_parts(self):
         row = dict(code=None, studio=None, name='www.98T.la@FC2-1314799-CD1.mp4',
                    path=r'B:\番号\FC2-PPV\www.98T.la@FC2-1314799-CD1.mp4')
@@ -552,6 +647,85 @@ class LibraryDirectoryTests(unittest.TestCase):
             self.assertEqual(plan['skipped'],[dict(source=source+r'\unknown.mp4',reason='归属未确认，保留原位置')])
             with closing(sqlite3.connect(ledger)) as db:
                 self.assertIsNone(db.execute('SELECT creator FROM asset WHERE id=1').fetchone()[0])
+
+    def _rehome_plan(self, root, rows, creators=()):
+        """`rows` 是 (id, 路径, 番号, 厂牌)；`creators` 是 (资产 id, 创作者名)。返回冻结计划。"""
+        script = self.script
+        ledger = fresh_ledger(root)
+        with closing(sqlite3.connect(ledger)) as db:
+            for aid, path, code, studio in rows:
+                name = PureWindowsPath(path).name
+                db.execute('INSERT INTO asset(id,location,path,name,medium,code,studio) VALUES(?,?,?,?,?,?,?)',
+                           (aid, '115', path, name, 'video', code, studio))
+            entities = {name: eid for eid, name in enumerate(dict.fromkeys(name for _, name in creators), 100)}
+            for name, eid in entities.items():
+                db.execute("INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) VALUES(?,'creator',?,?,'2026-10-09','2026-10-09')",
+                           (eid, name, name.casefold()))
+            for aid, name in creators:
+                db.execute("INSERT INTO asset_entity(asset_id,entity_id,role,source) VALUES(?,?,'creator','test')", (aid, entities[name]))
+            db.commit()
+        with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                mock.patch.object(script, 'location_roots', return_value={'115': ['B:\\']}), \
+                mock.patch.object(script, 'root_online', return_value=True), redirect_stdout(io.StringIO()):
+            script.build_plan('rehome', 'example')
+        return json.loads((root / 'rehome-example-manifest.json').read_text(encoding='utf-8'))
+
+    def test_creator_targets_drop_containers_above_the_canonical_layer(self):
+        rows = [(1, r'B:\Downloads\sundome05\a.mp4', None, None),
+                (2, r'B:\Downloads\sundome05\2024\b.mp4', None, None),
+                (3, r'B:\Pack From Shared\kuroki collection\c.mp4', None, None)]
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self._rehome_plan(Path(directory).resolve(), rows,
+                                     [(1, 'sundome05'), (2, 'sundome05'), (3, 'kuroki')])
+        self.assertEqual(sorted((op['kind'], op['source'], op['target']) for op in plan['operations']),
+                         [('rename', r'B:\Downloads\sundome05', r'B:\创作者\sundome05'),
+                          ('rename', r'B:\Pack From Shared\kuroki collection', r'B:\创作者\kuroki\kuroki collection')])
+
+    def test_dated_release_joins_the_existing_equivalent_directory(self):
+        rows = [(1, r'B:\日本\一本道\092415_001\1pondo-092415_001-FHD.mp4', '092415_001', '一本道'),
+                (2, r'B:\incoming\1pon-092415-001-fhd\1pon-092415-001-fhd1_(new).mp4', '092415-001', '一本道'),
+                (3, r'B:\日本\一本道\092415-001\1pon-092415-001-fhd2_(new).mp4', '092415-001', '一本道')]
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self._rehome_plan(Path(directory).resolve(), rows)
+        self.assertEqual(sorted((op['source'], op['target']) for op in plan['operations']),
+                         [(r'B:\incoming\1pon-092415-001-fhd', r'B:\日本\一本道\092415_001'),
+                          (r'B:\日本\一本道\092415-001', r'B:\日本\一本道\092415_001')])
+
+    def test_release_whose_file_names_another_code_stays_for_review(self):
+        path = r'B:\incoming\122614-947\122614_001-1pon-whole1_hd.avi'
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self._rehome_plan(Path(directory).resolve(), [(1, path, '122614-947', '一本道')])
+        self.assertEqual(plan['operations'], [])
+        self.assertEqual(plan['skipped'], [dict(source=path, reason='账本番号与文件名编号不一致，待确认')])
+
+    def test_rename_into_an_existing_directory_merges_and_removes_the_source(self):
+        script = self.script
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            ledger = fresh_ledger(root)
+            source, target = r'B:\日本\一本道\092415-001', r'B:\日本\一本道\092415_001'
+            translate, rename = self._media(root)
+            for path in (source + r'\fhd2.mp4', target + r'\fhd1.mp4'):
+                translate(path).parent.mkdir(parents=True, exist_ok=True)
+                translate(path).write_bytes(PureWindowsPath(path).name.encode())
+            with closing(sqlite3.connect(ledger)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute('INSERT INTO asset(id,location,path,name,medium) VALUES(1,?,?,?,?)',
+                           ('115', source + r'\fhd2.mp4', 'fhd2.mp4', 'video'))
+                db.commit()
+                op = script.operation('rename', source, target, script.snapshots(db, source), '等价目录')
+                op['subtitles'], op['entities'] = [], script.entity_guard(db, source)
+            script.save(root / 'rehome-merge-manifest.json',
+                        dict(format=1, stage='rehome', roots={'115': ['B:\\']}, operations=[op]))
+            with mock.patch.object(script, 'DATABASE_PATH', ledger), mock.patch.object(script, 'OUT', root), \
+                    mock.patch.object(script, 'translate_ledger_path', side_effect=translate), \
+                    mock.patch.object(script, 'root_online', return_value=True), \
+                    mock.patch.object(script.organize, '_rename', side_effect=rename), redirect_stdout(io.StringIO()):
+                script.run_apply('rehome', root / 'backup.db', 10, 20, batch='merge')
+            self.assertEqual(sorted(p.name for p in translate(target).iterdir()), ['fhd1.mp4', 'fhd2.mp4'])
+            self.assertFalse(translate(source).exists())
+            with closing(sqlite3.connect(ledger)) as db:
+                self.assertEqual(db.execute('SELECT path FROM asset WHERE id=1').fetchone()[0], target + r'\fhd2.mp4')
 
 
 class OperationalScriptTests(unittest.TestCase):
