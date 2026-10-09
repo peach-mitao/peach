@@ -2,14 +2,26 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
+from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
 from .avatar_picker import Choice, MAX_ASSET_CHOICES, MAX_IMAGE_BYTES, PickerError, accept_image
 from .avatar_provider import inspect_avatar
 from .follow_avatar import profile_identities
 from .follow_identity import official_avatar_url
-from .follow_store import FollowStore
-from . import images, web_follow
+from .follow_store import FollowItemRow, FollowStore
+from . import images
+
+
+@dataclass(frozen=True)
+class MediaChoices:
+    """调用方确认可见的封面与图片序号；None 序号表示单图原图。"""
+    cover: str | None
+    images: tuple[int | None, ...]
+
+
+MediaProjection = Callable[[FollowItemRow], MediaChoices]
 
 
 def _profile(url: str) -> dict:
@@ -27,7 +39,7 @@ def _profile(url: str) -> dict:
     return {}
 
 
-def choices(connection: sqlite3.Connection, entity_id: int) -> list[Choice]:
+def choices(connection: sqlite3.Connection, entity_id: int, *, project: MediaProjection) -> list[Choice]:
     """列举只读本地元数据；图片仅在候选可见或用户进入框选时取。"""
     store = FollowStore(lambda: connection)
     result: list[Choice] = []
@@ -54,23 +66,22 @@ def choices(connection: sqlite3.Connection, entity_id: int) -> list[Choice]:
         item = store.item(item_id)
         if item is None:
             continue
+        projected = project(item)
         bases = []
-        if web_follow._thumb_url(item):
+        if projected.cover:
             bases.append(f"follow:{item.id}:cover")
-        bases += [f"follow:{item.id}:image{media['index']}" for media in web_follow._media_items(item)
-                  if media["media_kind"] == "image"][:9]
-        if (not web_follow._raw_media_items(item) and not item.hidden_media
-                and web_follow._media_kind(item) == "image" and item.media_url):
-            bases.append(f"follow:{item.id}:image")
+        bases += [f"follow:{item.id}:image{index if index is not None else ''}"
+                  for index in projected.images[:9]]
         if bases:
             result.append(Choice(ref=bases[0], source="online", label=item.title,
                                  crop=True, bases=tuple(bases)))
     return result
 
 
-def resolve(ref: str, connection: sqlite3.Connection, entity_id: int, *, image, avatar, media) -> tuple[bytes, dict]:
+def resolve(ref: str, connection: sqlite3.Connection, entity_id: int, *, project: MediaProjection,
+            image, avatar, media) -> tuple[bytes, dict]:
     """每次取图重新核对归属与可见媒体，不能借别人的条目或隐藏附件换头像。"""
-    listed = choices(connection, entity_id)
+    listed = choices(connection, entity_id, project=project)
     allowed = {base for choice in listed for base in (choice.bases or (choice.ref,))}
     if ref not in allowed:
         raise PickerError("这个候选不在这位创作者名下")
@@ -89,7 +100,7 @@ def resolve(ref: str, connection: sqlite3.Connection, entity_id: int, *, image, 
         _, item_id, base = ref.split(":")
         item = FollowStore(lambda: connection).item(int(item_id))
         if base == "cover":
-            body = image(item, web_follow._thumb_url(item))
+            body = image(item, project(item).cover)
         else:
             index = int(base[5:]) if base[5:] else None
             body = media(item, index)

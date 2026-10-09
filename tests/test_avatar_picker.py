@@ -14,7 +14,7 @@ from unittest import mock
 
 from PIL import Image, ImageDraw
 
-from peach import avatar_picker, gfriends, http as peach_http, jav_poster_crop
+from peach import avatar_online, avatar_picker, gfriends, http as peach_http, jav_poster_crop
 from peach.avatar_face import sidecar_path
 from peach.avatar_provider import AvatarCandidateCache, inspect_avatar, provenance_now
 from peach.http import HttpResponse
@@ -880,6 +880,39 @@ class AvatarPickerRouteTests(unittest.TestCase):
         self.assertEqual(online['bases'], [f'follow:{item}:cover', f'follow:{item}:image0'])
         self.assertTrue(any(choice['source'] == 'social' for choice in listing['choices']))
         self.assertNotIn('https://example.com', json.dumps(listing))
+
+    def test_online_domain_uses_the_injected_visible_media_and_cover(self):
+        item_id = self._online_creator()
+        project = mock.Mock(return_value=avatar_online.MediaChoices(
+            cover="https://example.com/policy-cover.jpg", images=(0,)))
+        image, avatar, media = mock.Mock(return_value=self.picture), mock.Mock(), mock.Mock()
+        with self.app.state.database.read_connection() as connection:
+            listed = avatar_online.choices(connection, 8892, project=project)
+            online = next(choice for choice in listed if choice.source == "online")
+            self.assertEqual(online.bases, (f"follow:{item_id}:cover", f"follow:{item_id}:image0"))
+            body, origin = avatar_online.resolve(f"follow:{item_id}:cover", connection, 8892,
+                project=project, image=image, avatar=avatar, media=media)
+        self.assertEqual(body, self.picture)
+        self.assertEqual(origin["external_id"], f"follow:{item_id}:cover")
+        self.assertEqual(image.call_args.args[0].id, item_id)
+        self.assertEqual(image.call_args.args[1], "https://example.com/policy-cover.jpg")
+        self.assertTrue(all(call.args[0].id == item_id for call in project.call_args_list))
+        avatar.assert_not_called()
+        media.assert_not_called()
+
+    def test_online_domain_rechecks_visibility_before_fetching_a_listed_candidate(self):
+        item_id = self._online_creator()
+        project = mock.Mock(return_value=avatar_online.MediaChoices(cover=None, images=(0,)))
+        fetch = mock.Mock(return_value=self.picture)
+        with self.app.state.database.read_connection() as connection:
+            online = next(choice for choice in avatar_online.choices(connection, 8892, project=project)
+                          if choice.source == "online")
+            self.assertEqual(online.ref, f"follow:{item_id}:image0")
+            project.return_value = avatar_online.MediaChoices(cover=None, images=())
+            with self.assertRaises(avatar_picker.PickerError):
+                avatar_online.resolve(online.ref, connection, 8892,
+                    project=project, image=fetch, avatar=fetch, media=fetch)
+        fetch.assert_not_called()
 
     def test_single_online_image_lists_its_original_content_alongside_the_cover(self):
         item = self._online_creator()

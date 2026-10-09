@@ -1136,6 +1136,16 @@ def _remember_library(providers_root: Path, body: bytes, origin: dict,
         cache.store(str(origin.get("upstream_url") or ""), body, inspected)
 
 
+def _picker_online_projection(item) -> avatar_online.MediaChoices:
+    """候选与关注卡共用可见媒体和封面策略，HTTP 地址由 web 层决定。"""
+    indexes = tuple(media["index"] for media in web_follow._media_items(item)
+                    if media["media_kind"] == "image")
+    if (not web_follow._raw_media_items(item) and not item.hidden_media
+            and web_follow._media_kind(item) == "image" and item.media_url):
+        indexes = (None,)
+    return avatar_online.MediaChoices(cover=web_follow._thumb_url(item), images=indexes)
+
+
 def _picker_online(request: Request, connection, entity_id: int):
     """复用关注代理的主机、凭据与有界封面判据，按候选缓存原图。"""
     state = request.app.state
@@ -1180,6 +1190,7 @@ def _picker_online(request: Request, connection, entity_id: int):
             return wrapped
         try:
             body, origin = avatar_online.resolve(ref, connection, entity_id,
+                project=_picker_online_projection,
                 image=remembered(image), avatar=remembered(avatar), media=remembered(media))
         except (OSError, httpx.HTTPError, FollowMediaUnavailable, FollowProxyError, FollowCoverUnavailable) as error:
             raise avatar_picker.PickerError("在线图片未取得") from error
@@ -1200,7 +1211,8 @@ def avatar_choices(request: Request, kind: str = "performer", id: int = 0,
             connection, providers_root, avatar_root, _picker_kind(kind), id,
             cover_root=state.cover_root)
         if kind == "creator":
-            listing["choices"] += [choice.as_dict() for choice in avatar_online.choices(connection, id)]
+            listing["choices"] += [choice.as_dict() for choice in avatar_online.choices(
+                connection, id, project=_picker_online_projection)]
         return JSONResponse(listing)
 
 
@@ -1283,7 +1295,7 @@ async def avatar_frame(request: Request, args: dict[str, str] = Depends(require_
             found, origin = avatar_picker.resolve(
                 ref, connection, providers_root, entity_id, transport,
                 _picker_artwork(request), online=_picker_online(request, connection, entity_id))
-            listed = avatar_online.choices(connection, entity_id) if ref.startswith("follow:") else []
+            listed = avatar_online.choices(connection, entity_id, project=_picker_online_projection) if ref.startswith("follow:") else []
         _remember_library(providers_root, found, origin, avatar_picker.accept_image(found))
         choice = avatar_picker.framed(ref, found, probe, source="", label="")
         if ref.startswith("follow:"):
