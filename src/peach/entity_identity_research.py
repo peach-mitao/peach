@@ -10,7 +10,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from .entities import resolve_entity, upsert_asset_entity
-from .entity_classification import write_claim
+from .entity_classification import trusted_sql, write_claim
 from .field_owners import is_protected, owner_of, write_owned_fields
 
 SOURCE = 'script:creator-identity-research'
@@ -23,7 +23,7 @@ LABEL_PAGE_CAST = 3
 def settled_sql(column='e.id'):
     """身份面上已有可信断言（任何来源、任何值）或已核实是发行厂牌的实体；这些不再去查。"""
     return (f"EXISTS (SELECT 1 FROM entity_classification ec WHERE ec.entity_id={column} "
-            "AND ec.status IN ('observed','approved') "
+            f"AND {trusted_sql('ec')} "
             "AND (ec.facet='identity' OR (ec.facet='account_role' AND ec.value='studio')))")
 
 
@@ -82,7 +82,8 @@ def wiki_finding(entity_id, name, keys, pages):
 
     `pages` 是站名到 `performer_alias_followup.WikiSitePages` 的映射：站上没有的页抛
     `LookupError`，其余取页失败抛 `RuntimeError`。同名页是多位出演者的作品一览就记
-    `identity=release` 的 observed，并否掉 `identity=unknown`；页都不存在时只更新 unknown 候选
+    `identity=release` 的 observed，并否掉 `identity=unknown`（查创作者身份后继照写；经 `apply()`
+    的清单人可以改过，一律降为 candidate）；页都不存在时只更新 unknown 候选
     的证据，写明实际问过哪几页。没有页以外的取页失败是未取得，交 None，不冻成「没有」。
     """
     from urllib.parse import quote

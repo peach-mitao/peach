@@ -1425,7 +1425,7 @@ def _entity_followups(database, config, watermark, covered=()):
     （`studio_followup.plan`），官网与标识在那一条里一起补。新女优另派一条补别名后继
     （`performer_alias_followup.plan`，ADR-0055）与一条补女优资料后继
     （`performer_profile_followup.plan`，ADR-0067）。新创作者派一条查身份后继
-    （`creator_identity_followup.plan`，ADR-0096）。
+    （`creator_identity_followup.plan`，ADR-0098）。
 
     这一轮的名额（`MAX_FOLLOWUPS`）先给新登记的，余下的给库里早就登记的存量（ADR-0053）：
     补别名与补女优资料各留出至多自己的 `STOCK_SHARE` 条，厂牌与创作者身份先各取至多自己的

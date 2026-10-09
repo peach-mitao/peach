@@ -6,7 +6,7 @@
 `performer_profile.source` 同样是批次号，后继登记的站上编号在 `entity_external_ref.metadata_json`
 里记 `source` 与 `batch`（ADR-0067），番号样张的 `code_sample_image.source` 也是批次号（ADR-0068），
 种子包补的所属事务所 `entity_membership.source` 与 label 的片商 `label_maker.source` 同样（ADR-0073、ADR-0075），
-查创作者身份后继写的身份断言 `entity_classification.source` 也是批次号（ADR-0096）。
+查创作者身份后继写的身份断言 `entity_classification.source` 也是批次号（ADR-0098）。
 判据错了一批，就按它们认出来一起撤掉，不必一条条找。
 
 复核队列的自动否决记在 `review_decision.note` 里（`auto_rejected` 与 `rule`，ADR-0079），

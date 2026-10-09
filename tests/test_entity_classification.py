@@ -338,7 +338,7 @@ class EntityClassificationTests(unittest.TestCase):
         self.assertEqual(classification.untrusted_observed(self.connection),
                          {'entity_classification':[],'entity_identity_link':[]})
 
-    def test_name_wiki_work_list_lands_as_observed_release_and_retires_unknown(self):
+    def test_name_wiki_work_list_through_the_research_list_lands_as_candidate_release(self):
         _,entity_id=self.entity('COSH こすっち')
         classification.write_claim(self.connection,entity_id=entity_id,facet='identity',value='unknown',
                                    source=research.SOURCE,evidence='公开身份来源未取得')
@@ -351,7 +351,8 @@ class EntityClassificationTests(unittest.TestCase):
             research.apply(self.connection,research.plan(self.connection,[finding]))
         claims={(row['value'],row['status']) for row in self.connection.execute(
             "SELECT value,status FROM entity_classification WHERE entity_id=? AND facet='identity'",(entity_id,))}
-        self.assertEqual(claims,{('release','observed'),('unknown','rejected')})
+        self.assertEqual([claim['status'] for claim in finding['claims']],['observed','rejected'])
+        self.assertEqual(claims,{('release','candidate'),('unknown','rejected')})
 
     def test_name_wiki_lookup_records_pages_asked_and_leaves_failed_fetches_unfetched(self):
         missing=research.wiki_finding(7,'lucky',['lucky'],{'sougouwiki':_Pages(),'av_neme':_Pages()})
