@@ -10,7 +10,7 @@ export function statsSkeleton(): string {
   const metrics = ['馆藏视频', '看过', '内容标签', '使用空间'].map((label, index) => `
     <div class="min-w-0 rounded-2xl shadow-card flex flex-col overflow-hidden pt-4 text-left ${index === 0 ? 'ring-2 ring-border-focus-ring bg-background-primary-default' : 'bg-background-secondary-default'}">
       <span class="flex min-w-0 items-center gap-2 px-4 text-body-regular text-text-secondary max-sm:gap-1.5 max-sm:px-3"><i class="${placeholder} size-7 max-sm:size-6"></i>${label}</span>
-      <b class="px-4 pt-3 pb-4 text-title-1-medium max-sm:px-3 max-sm:pb-3">${text('4em')}</b>
+      <b class="px-4 pt-3 pb-4 text-title-1-medium max-sm:px-3 max-sm:pb-3 max-sm:text-title-3-medium">${text('4em')}</b>
       <small class="mt-auto block min-h-9.5 bg-card-footer px-4 py-2.5 text-caption-1-regular max-sm:px-3 max-sm:py-2">${text('6em')}</small>
     </div>`).join('');
   const radial = (title: string) => `<section class="${chart}" data-stats-chart>

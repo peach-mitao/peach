@@ -203,7 +203,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     }
   });
 
-  it('播放列表卡：封面后压两层纸边、黑底封面、玻璃徽标、38px 头像叠 22px；标题 32/44，菜单键静止透明', { timeout: 60_000 }, async () => {
+  it('播放列表卡：封面后压两层纸边、黑底封面、玻璃徽标、38px 头像有图叠 22px、只有首字母叠 8px；标题 32/44，菜单键静止透明', { timeout: 60_000 }, async () => {
     const opened = await openPlaylistsPage(browser);
     try {
       const page = opened.page;
@@ -240,7 +240,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
         mid: ['1px', '0px 6px 4px', 'matrix(1, 0, 0, 1, 0, -4)', '0.78'],
         cover: ['rgb(0, 0, 0)', 'inset(0px round 14px)'],
         badge: ['rgba(12, 8, 8, 0.72)', 'blur(10px)', '28px', '10px', '9px', '9px'],
-        avatars: [['38px', '0px', '5'], ['38px', '-22px', '4'], ['38px', '-22px', '3']],
+        avatars: [['38px', '0px', '5'], ['38px', '-8px', '4'], ['38px', '-8px', '3']],
         menu: ['30px', '30px', '10px', 'rgba(0, 0, 0, 0)'],
         blank: ['1.44px', 'uppercase'],
       });
