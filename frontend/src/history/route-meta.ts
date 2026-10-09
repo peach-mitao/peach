@@ -1,0 +1,34 @@
+/* 路由树那一侧的路由元数据（ADR-0031「React Router 外壳阶段接管」）：标题、侧栏键、管理区身份与「换一批」的
+ * 行为，按精确路径登记。壳的读者（标题、侧栏高亮与跳转、管理区身份、换一批）先查这里，没有再回落到壳的
+ * `ROUTES` 表；一条路径只在一边登记。
+ *
+ * 放在 `@peach/history` 而不随 `managed-routes.tsx` 进 React 包：壳启动时就要读（冷启动的管理区页头、
+ * 第一次派发的标题），那时 React 包可能还没到。路由树经 `@peach/history` 读的也是这一份。
+ *
+ * 字段同壳的 `ROUTES` 表：`title` 是 document.title 用的标签；`nav` 是侧栏 `data-nav` 的键；`section` 是管理区
+ * 身份，同一身份按登记顺序取第一条作入口（数据管理排在重复文件与来源和凭证前面）；`refresh` 是列表栏
+ * 「换一批」在这一页的行为，`reopen` 重开自己、`skip` 不参与，不写则回统计页。 */
+
+export interface RouteMeta {
+  readonly title?: string;
+  readonly nav?: string;
+  readonly section?: string;
+  readonly refresh?: 'reopen' | 'skip';
+}
+
+export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
+  '/stats': { section: 'stats', title: '统计' },
+  '/taste': { section: 'taste', title: '口味', refresh: 'reopen' },
+  '/review': { section: 'review', title: '人工复核', refresh: 'reopen' },
+  '/data-cleanup': { section: 'cleanup', title: '数据管理' },
+  '/duplicates': { section: 'cleanup', title: '重复文件', refresh: 'reopen' },
+  '/quality-goals': { section: 'quality', title: '高清版', refresh: 'reopen' },
+  '/scraping': { section: 'cleanup', title: '来源和凭证', refresh: 'reopen' },
+  '/follow-manage': { section: 'follow', title: '关注管理', refresh: 'skip' },
+  '/configuration': { section: 'configuration', title: '配置', refresh: 'reopen' },
+  '/activity': { section: 'activity', title: '活动', refresh: 'reopen' },
+  '/diagnostics': { section: 'configuration', title: '系统诊断', refresh: 'reopen' },
+};
+
+/** 这条路径在路由树一侧登记的元数据；没登记是 `null`，由壳回落到自己的表。 */
+export const routeMetaOf = (path: string): RouteMeta | null => (Object.hasOwn(ROUTE_META, path) ? ROUTE_META[path]! : null);

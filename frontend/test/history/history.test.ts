@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 
 import * as islands from '../../src/islands';
-import { peachHistory, shellNavigate, type Navigation } from '../../src/history';
+import { peachHistory, routeMetaOf, shellNavigate, type Navigation } from '../../src/history';
 
 let seen: Navigation[] = [];
 let stop = () => {};
@@ -62,4 +62,20 @@ it('每一次变化领一个递增序号，后退前进也算', () => {
   expect([second! - first!, third! - second!]).toEqual([1, 1]);
   expect(peachHistory.navigation).toBe(seen.at(-1));
   expect(seen[1]!.location.pathname).toBe('/');
+});
+
+it('开次代次只在没人认领的变化上递增：壳认领的写地址不领，后退前进、路由树 push 与不认领的 shellNavigate 各领一个', () => {
+  const start = peachHistory.navigation.openEpoch;
+  shellNavigate('/stats');
+  shellNavigate('/stats?tab=1', { replace: true });
+  pop('/');
+  peachHistory.push('/tags');
+  shellNavigate('/follow', { claim: false });
+  expect(seen.map((n) => n.openEpoch - start)).toEqual([0, 0, 1, 2, 3]);
+});
+
+it('顶栏换一批的行为登记在路由元数据上：关注管理页跳过、口味页重开、统计页不登记', () => {
+  expect(routeMetaOf('/follow-manage')?.refresh).toBe('skip');
+  expect(routeMetaOf('/taste')?.refresh).toBe('reopen');
+  expect(routeMetaOf('/stats')?.refresh).toBeUndefined();
 });

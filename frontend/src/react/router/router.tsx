@@ -31,28 +31,40 @@ import {
 } from '@peach/history';
 
 import { Providers } from '../providers';
-import { ROUTED_PATHS, isManagedPath, isRoutedPath, managedPage } from './managed-routes';
+import {
+  BROWSE_ROUTES, CATALOG_PATHS, ENTITY_ROUTES, INDEX_ROUTES, MANAGED_ROUTES, isManagedPath, isRoutedPath, managedPage,
+} from './managed-routes';
 import type { ShellActions } from './shell-actions';
 
 /* 每次历史变化的序号。地址没变的 `popstate`（同一条目重放）不会让 Router 的 location 变，
  * 但壳一向在每个 `popstate` 上重开那一屏，所以派发跟的是这个序号，不是 location。 */
 const NavigationSeq = createContext(0);
+/* 开次代次（`@peach/history` 的 `openEpoch`）：没人认领的历史变化各领一个，认领的写地址不领。 */
+const OpenEpoch = createContext(0);
+
+/** 当前这一页是第几次打开：页面元素按它挂 key，重开就重挂，认领的写地址（页内 replace 写参数）不重挂。 */
+export const useOpenEpoch = (): number => useContext(OpenEpoch);
 
 /** 壳交进来的能力，管理区那几页经它回到壳。 */
 export const ShellActionsContext = createContext<ShellActions | null>(null);
 
+/** 路由根在历史变化的同一调用里同步提交（`flushSync`）：`shellNavigate` 与后退前进返回时，两组 `<Routes>`
+ *  的匹配已经换成新地址，上一页的元素已经卸掉，壳接着往同一个容器里写骨架不会撕掉 React 还管着的节点。
+ *  派发不在这一次提交里跑：`RouteDispatch` 把它排进提交之后的微任务。 */
 export function PeachRouter({ children }: { children: ReactNode }) {
   const [navigation, setNavigation] = useState<Navigation>(() => peachHistory.navigation);
   useLayoutEffect(() => {
     /* 从读初值到这里订阅之间有过变化的话，补上最新那一次。 */
     setNavigation(peachHistory.navigation);
-    return peachHistory.listen(setNavigation);
+    return peachHistory.listen((next) => { flushSync(() => setNavigation(next)) });
   }, []);
   return (
     <NavigationSeq.Provider value={navigation.seq}>
-      <Router location={navigation.location} navigationType={navigation.action} navigator={peachHistory}>
-        {children}
-      </Router>
+      <OpenEpoch.Provider value={navigation.openEpoch}>
+        <Router location={navigation.location} navigationType={navigation.action} navigator={peachHistory}>
+          {children}
+        </Router>
+      </OpenEpoch.Provider>
     </NavigationSeq.Provider>
   );
 }
@@ -75,9 +87,8 @@ function NavigateInto({ target }: { target: RefObject<NavigateFunction | null> }
   return null;
 }
 
-/** 管理区页面里的跳转：落在管理区那几页上的交给 React Router（派发照旧回到壳，打开次数与壳自己写地址
- * 再打开相同），别的路径交壳自己写地址、按路由表打开。播放列表页、关注页、索引页、资料页、目录与垃圾文件虽然也由
- * 路由树画，仍交壳：同一页换 search 必须由壳认领，跨页进来也是壳写地址再自己打开。 */
+/** 管理区页面里的跳转：落在管理区那几页上的交给 React Router，别的路径交 `actions.navigate`（壳写好标题与
+ * 侧栏）。两条路都不认领，各派发一次、领一个开次代次，打开次数与后退前进相同。 */
 export function managedGo(path: string, actions: ShellActions, navigate: NavigateFunction): void {
   const target = new URL(path, window.location.href);
   if (!isManagedPath(target.pathname)) { actions.navigate(path); return }
@@ -141,18 +152,48 @@ const ManagedPortal = memo(function ManagedPortal(
 });
 
 /* 页面组的 `location` 一直给（没有背景就给当前地址）：给与不给之间 `<Routes>` 会多包一层 `LocationContext`，
- * 来回切换就会把 `path="*"` 的元素拆掉重挂。 */
+ * 来回切换就会把 `path="*"` 的元素拆掉重挂。
+ * 两组按页面分段，段与段之间隔开几行：各组迁进来时只改自己那一段。 */
 function RouteGroups({ children }: { children?: ReactNode }) {
   const location = useLocation();
   const background = backgroundOf(location.state);
   return (
     <>
       <Routes location={background ?? location}>
-        {ROUTED_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
+        {/* ── 管理区 ── */}
+        {Object.keys(MANAGED_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
         {/* 旧直达地址：壳把它改写成 `/data-cleanup#resource-sync` 再打开数据管理页。 */}
         <Route path="/resource-sync" element={null} />
+
+
+
+        {/* ── 关注 ── */}
+        {Object.keys(BROWSE_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+
+
+
+        {/* ── 索引 ── */}
+        {Object.keys(INDEX_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+
+
+
+        {/* ── 资料 ── */}
+        {Object.keys(ENTITY_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+
+
+
+        {/* ── 目录 ── */}
+        {CATALOG_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
+
+
+
+        {/* ── 沉浸 ── `/immerse` 落在下面的 `path="*"`。 */}
         <Route path="*" element={children} />
       </Routes>
+
+
+
+      {/* ── 覆盖 ── */}
       <Routes>
         {OVERLAY_PATHS.map((path) => <Route key={path} path={path} element={null} />)}
         <Route path="*" element={null} />

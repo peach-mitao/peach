@@ -2949,8 +2949,9 @@ class FollowShellDecisionTests(unittest.TestCase):
     def test_follow_sits_before_immerse_and_neither_follow_page_joins_the_refresh(self):
         """左栏「关注」排在沉浸模式前面；顶栏换一批不重画两个关注页。
 
-        关注页重画要联网，联网只在按下「检查全部」时发生；`refreshAll` 认路由表上的
-        `refresh:'skip'` 跳过它们。
+        关注页重画要联网，联网只在按下「检查全部」时发生；`refreshAll` 认路由元数据上的
+        `refresh:'skip'` 跳过它们。关注页登记在路由表上；关注管理页登记在 `ROUTE_META`，
+        由 `frontend/test/history/history.test.ts` 钉住。
         """
         page = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
         rail = page[page.index("const SIDEBAR_ITEMS=["):]
@@ -2958,10 +2959,8 @@ class FollowShellDecisionTests(unittest.TestCase):
         self.assertIn("follow", keys)
         self.assertEqual(keys[keys.index("follow") + 1], "immerse",
                          "关注入口应当排在沉浸模式前面")
-        self.assertIn("if(hit?.route.refresh==='skip')return;", page)
-        for path in ("/follow", "/follow-manage"):
-            with self.subTest(path=path):
-                self.assertRegex(page, rf"\{{match:'{re.escape(path)}',[^{{}}]*refresh:'skip'")
+        self.assertIn("if(refresh==='skip')return;", page)
+        self.assertRegex(page, r"\{match:'/follow',[^{}]*refresh:'skip'")
 
 
 class FollowItemProjectionTests(unittest.TestCase):
