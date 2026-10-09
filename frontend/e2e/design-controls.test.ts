@@ -57,14 +57,54 @@ describe('设计决定：控件、状态与首页顶部', () => {
     }
   });
 
-  it('React 子树读 BoardUI 的 token 原值，不被 board.css 的同名定值盖掉', { timeout: 60_000 }, async () => {
+  it('岛外与 React 子树的语义色是同一份：board.css 根上的每个 --color-* 两边画出同一个像素', { timeout: 60_000 }, async () => {
     const opened = await openAccess(browser);
     try {
       const shell = await opened.form.locator('#access-password').evaluate(
         (element) => getComputedStyle(element.closest('[role="presentation"]')!).backgroundColor);
-      // BoardUI theme.css 浅色 neutral-200 是 #ebebeb；board.css 在 :root 上给的是 #e5e5e5。
+      // BoardUI theme.css 把浅色 neutral-200 改成了 #ebebeb，不是 Tailwind 默认的 #e5e5e5。
       assert.equal(shell, 'rgb(235, 235, 235)');
-      assert.equal(await tokenColor(opened.page, ':root', '--color-background-tertiary-default'), 'rgb(229, 229, 229)');
+      // 岛外的骨架读根上的值，接管后的组件读岛内的值；同一块面两帧要同色。岛内写 oklch、
+      // board.css 写十六进制或引用，字面不同，画成像素再比。
+      const drift = await opened.form.evaluate((island) => {
+        const sheet = [...document.styleSheets].find((candidate) => candidate.href?.includes('/board.css'))!;
+        const names = new Set<string>();
+        const walk = (rules: CSSRuleList) => {
+          for (const rule of rules) {
+            if ('cssRules' in rule) walk((rule as CSSGroupingRule).cssRules);
+            if (!(rule instanceof CSSStyleRule) || !rule.selectorText.includes(':root')) continue;
+            for (const name of rule.style) if (name.startsWith('--color-') && !name.startsWith('--color-accent-')) names.add(name);
+          }
+        };
+        walk(sheet.cssRules);
+        const paint = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+        const pixel = (host: Element, name: string) => {
+          const probe = host.appendChild(document.createElement('i'));
+          probe.style.color = `var(${name})`;
+          paint.clearRect(0, 0, 1, 1);
+          paint.fillStyle = getComputedStyle(probe).color;
+          paint.fillRect(0, 0, 1, 1);
+          probe.remove();
+          return [...paint.getImageData(0, 0, 1, 1).data].join(',');
+        };
+        const root = document.documentElement;
+        const before = { theme: root.dataset.theme, dark: root.classList.contains('dark') };
+        const drift: string[] = [];
+        for (const theme of ['light', 'dark']) {
+          root.dataset.theme = theme;
+          root.classList.toggle('dark', theme === 'dark');
+          for (const name of names) {
+            const page = pixel(document.body, name), inside = pixel(island, name);
+            if (page !== inside) drift.push(`${theme} ${name}：岛外 ${page}，岛内 ${inside}`);
+          }
+        }
+        if (before.theme === undefined) delete root.dataset.theme;
+        else root.dataset.theme = before.theme;
+        root.classList.toggle('dark', before.dark);
+        return { count: names.size, drift };
+      });
+      assert.ok(drift.count >= 15, `只从 board.css 根上读到 ${drift.count} 个语义色`);
+      assert.deepEqual(drift.drift, []);
       assert.deepEqual(opened.problems, []);
     } finally {
       await opened.close();
