@@ -5,7 +5,7 @@
  * 启动那一次不调 `adoptOverlayState`，覆盖元素什么时候接背景见 `test/react/pages/overlay.test.tsx`。 */
 import { beforeEach, expect, it } from 'vitest';
 
-import * as islands from '../../src/islands';
+import * as overlay from '../../src/history/overlay';
 import {
   adoptOverlayState, clearOverlayBackground, holdOverlayBackground, isOverlayPath, overlayState, peachHistory,
   retagOverlay, shellNavigate, takeOverlayReturn,
@@ -39,12 +39,12 @@ function revisit() {
   adoptOverlayState(usr());
 }
 
-it('壳从 peach-ui.js 取到的就是这一份', () => {
-  expect(islands.holdOverlayBackground).toBe(holdOverlayBackground);
-  expect(islands.overlayState).toBe(overlayState);
-  expect(islands.retagOverlay).toBe(retagOverlay);
-  expect(islands.adoptOverlayState).toBe(adoptOverlayState);
-  expect(islands.takeOverlayReturn).toBe(takeOverlayReturn);
+it('共享 history 入口与覆盖背景模块使用同一份绑定', () => {
+  expect(overlay.holdOverlayBackground).toBe(holdOverlayBackground);
+  expect(overlay.overlayState).toBe(overlayState);
+  expect(overlay.retagOverlay).toBe(retagOverlay);
+  expect(overlay.adoptOverlayState).toBe(adoptOverlayState);
+  expect(overlay.takeOverlayReturn).toBe(takeOverlayReturn);
 });
 
 it('覆盖层地址是作品详情、四种队列与关注详情，页面与沉浸不算', () => {

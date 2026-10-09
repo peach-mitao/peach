@@ -163,4 +163,30 @@ describe('实体与索引域控制', () => {
     expect(ports.pushEntity).toHaveBeenCalledWith({ photoSize: 'big', photoLayout: 'masonry', followImagesOnly: true });
     expect(ports.pushFollow).toHaveBeenCalledWith({ photoSize: 'big', photoLayout: 'masonry', imagesOnly: true });
   });
+
+  it('厂牌大位和圆框分别取 large 与 ring，标识可回落实体图但不能回落代表作', () => {
+    const company = { k: 'Peach & Co', n: 3, entity_id: 41, has_logo: true, logo_version: 'logo 2',
+      has_image: true, image_version: 'face 2', has_avatar: true, rep: 91,
+      avatar_focus: { axis: 'y', pct: 20 }, avatar_stand_in: true };
+    for (const big of [true, false]) {
+      const host = document.createElement('div');
+      host.innerHTML = personAvatar(company, 'studio', big).html;
+      const image = host.querySelector('img')!, url = new URL(image.src);
+      expect(url.pathname).toBe('/logo');
+      expect(url.searchParams.get('studio')).toBe(company.k);
+      expect(url.searchParams.get('variant')).toBe(big ? 'large' : 'ring');
+      expect(url.searchParams.get('v')).toBe('logo 2');
+      expect(image.getAttribute('data-fallbacks')).toContain('/entity-image?kind=studio');
+      expect(image.getAttribute('data-fallbacks')).not.toContain('/avatar');
+      expect(image.getAttribute('data-fallback-note')).toBeNull();
+      expect(image.style.objectPosition).toBe('');
+    }
+    const host = document.createElement('div');
+    host.innerHTML = entityPortraitImg('studio', { id: 41, canonical_name: company.k, asset_count: 3,
+      has_logo: true, logo_version: 'logo 2', has_image: true, image_version: 'face 2',
+      has_avatar: true, representative_asset_id: 91, avatar_stand_in: true });
+    const portrait = host.querySelector('img')!;
+    expect(new URL(portrait.src).searchParams.get('variant')).toBe('large');
+    expect(portrait.getAttribute('data-fallbacks')).not.toContain('/avatar');
+  });
 });

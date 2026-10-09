@@ -6,7 +6,7 @@ import { afterEach, expect, it } from 'vitest';
 
 import { queryClient } from '@peach/query';
 
-import * as islands from '../../src/islands';
+import { queryClient as sharedQueryClient } from '../../src/query/client';
 import { Providers } from '../../src/react/providers';
 import { queryClient as reactQueryClient } from '../../src/react/query';
 
@@ -23,7 +23,7 @@ it('React 岛里 useQueryClient() 拿到的就是壳那一个', async () => {
   await act(async () => { root.render(<Providers><Probe /></Providers>) });
   expect(seen).toBe(queryClient);
   expect(reactQueryClient).toBe(queryClient);
-  expect(islands.queryClient).toBe(queryClient);
+  expect(sharedQueryClient).toBe(queryClient);
   await act(async () => { root.unmount() });
 });
 

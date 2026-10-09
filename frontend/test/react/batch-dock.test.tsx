@@ -31,10 +31,9 @@ vi.mock(import('../../src/react/components/selection-dock'), async (importOrigin
   };
 });
 
-/* 壳那一侧的 `islands.ts` 按 `@peach/react` 引产物；React 子树的类型配置不映射这个名字（页面不该反过来引
-   自己所在的产物），所以这里不让类型检查跟进去，只按壳用的那两个入口取。运行时 Vitest 把它指到 `entry.tsx`。 */
+/* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
 type ShellIslands = { loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>; batchDockApi(): BatchDockApi | null };
-const ISLANDS_MODULE = '../../src/islands';
+const ISLANDS_MODULE = '../../src/react/application-residents';
 
 async function load() {
   vi.resetModules();
@@ -189,7 +188,7 @@ describe('常驻面', () => {
     const r = await load();
     await mountRouter(r);
     const host = dockHost();
-    expect(r.islands.batchDockApi(), '包回来之前没有句柄，壳只记着手上那份').toBeNull();
+    expect(r.islands.batchDockApi(), '常驻面尚未挂载时没有句柄，应用只记着当前那份').toBeNull();
     let api: BatchDockApi | null = null;
     await act(async () => { api = await r.islands.loadBatchDock(host) });
     expect(r.islands.batchDockApi()).toBe(api);

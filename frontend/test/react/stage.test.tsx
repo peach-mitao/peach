@@ -2,7 +2,7 @@
  * 画上之后才交出句柄、小窗节点在句柄交出时已经画好、`open` 里的几次绘制同步画完、换详情不换宿主、抛错只卸
  * 组件而句柄照调不抛。
  *
- * 每条用例照壳的启动顺序走一遍：重新装载模块、画路由树、接上取数，再经 `islands.ts` 的 `loadStage` 拿句柄。
+ * 每条用例照应用启动顺序走一遍：重新装载模块、画路由树、接上取数，再经 `application-residents` 的 `loadStage` 拿句柄。
  * 播放器换成一个记账的替身：这里看的是舞台这一面怎么画、什么时候交出句柄，真 Video.js、进出场与小窗的交接
  * 由 e2e 在浏览器里走一遍（`e2e/stage.test.ts`），播放器在两个位置之间的交接在 `stage-player.test.ts`。 */
 import { act } from 'react';
@@ -98,14 +98,13 @@ function request(id: number, patch: Partial<StageItemRequest> = {}): StageItemRe
   };
 }
 
-/* 壳那一侧的 `islands.ts` 按 `@peach/react` 引产物；React 子树的类型配置不映射这个名字，所以这里不让类型检查
-   跟进去，只按壳用的几个入口取。运行时 Vitest 把它指到 `entry.tsx`。 */
+/* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
 type ShellIslands = {
   loadStage(host: StageHost): Promise<StageApi>;
   stageApi(): StageApi | null;
   loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>;
 };
-const ISLANDS_MODULE = '../../src/islands';
+const ISLANDS_MODULE = '../../src/react/application-residents';
 
 async function load() {
   vi.resetModules();
