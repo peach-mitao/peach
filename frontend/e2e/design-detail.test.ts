@@ -91,6 +91,27 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     }
   });
 
+  it('关注详情标题：来源外链标与标题第一行同心，标题折行时仍贴第一行', { timeout: 60_000 }, async () => {
+    const opened = await openFollowFeed(browser, `/follow/item/${DETAIL.gallery}`, DESKTOP,
+      { ready: '#stage [data-follow-origin]' });
+    try {
+      const page = opened.page;
+      const measure = () => page.evaluate(() => {
+        const name = document.querySelector('#stage [data-follow-detail-name]')!;
+        const mark = document.querySelector('#stage [data-follow-origin] svg')!.getBoundingClientRect();
+        return { line: name.getBoundingClientRect().top + parseFloat(getComputedStyle(name).lineHeight) / 2,
+          mark: (mark.top + mark.bottom) / 2 };
+      });
+      const single = await measure();
+      assert.ok(Math.abs(single.mark - single.line) <= 0.5, `外链标与标题第一行不同心：${JSON.stringify(single)}`);
+      await page.evaluate(() => { document.querySelector('#stage [data-follow-detail-name]')!.textContent = '很长的标题'.repeat(12) });
+      const wrapped = await measure();
+      assert.ok(Math.abs(wrapped.mark - wrapped.line) <= 0.5, `标题折行后外链标离开了第一行：${JSON.stringify(wrapped)}`);
+    } finally {
+      await opened.close();
+    }
+  });
+
   /* 作品详情（`item-detail` 岛）。桩数据见 `item-fixture.ts`：普通那一条评了 3 星、两位出演、
      一个厂牌一个系列，都带实体 id。桩里的片源没有正片，播放器那一条 VIDEOJS 错误不算。 */
   const withoutPlayer = (problems: string[]) => problems.filter((line) => !line.includes('VIDEOJS'));
@@ -103,17 +124,21 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
         const text = document.querySelector('#stage [data-detail-title]')!;
         const badge = text.querySelector('[class~="srcbig"]')!;
         const style = getComputedStyle(badge);
+        const glyph = badge.querySelector('svg, img')!.getBoundingClientRect();
+        const line = text.getBoundingClientRect().top + parseFloat(getComputedStyle(text).lineHeight) / 2;
         return {
           clamp: getComputedStyle(text).webkitLineClamp,
           first: text.firstElementChild === badge,
           badge: { display: style.display, width: style.width, height: style.height, gap: style.marginRight },
+          centered: Math.abs((glyph.top + glyph.bottom) / 2 - line) <= 0.5,
           tools: document.querySelector('#stage [data-title-tools]')!.getBoundingClientRect().top
             >= text.getBoundingClientRect().bottom - 0.5,
         };
       });
       assert.deepEqual(title, {
-        clamp: '2', first: true, badge: { display: 'inline-grid', width: '17px', height: '28px', gap: '8px' }, tools: true,
-      }, '徽标是行内块、随文字一起被两行折叠裁住；那排键自成一行排在标题下面');
+        clamp: '2', first: true, badge: { display: 'inline-grid', width: '17px', height: '28px', gap: '8px' },
+        centered: true, tools: true,
+      }, '徽标是行内块、与第一行同心、随文字一起被两行折叠裁住；那排键自成一行排在标题下面');
 
       const stars = page.locator('#stage [data-rate]');
       const read = () => stars.evaluateAll((nodes) => nodes.map((node) => ({

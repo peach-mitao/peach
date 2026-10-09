@@ -4510,14 +4510,76 @@ function qo(e, t, n) {
     <div class="entitysection">${n}</div></div></section>`;
 }
 //#endregion
+//#region src/island-skeleton.ts
+var Jo = "inline-flex items-center justify-center gap-0.5 whitespace-nowrap overflow-hidden font-sans", Yo = {
+	medium: "h-9 rounded-2lg p-2 text-body-medium",
+	small: "h-8 rounded-lg px-2 py-1.5 text-body-medium"
+}, Xo = {
+	medium: Yo.medium,
+	small: "size-8 rounded-lg p-0 text-body-medium"
+}, Zo = {
+	medium: "size-5 shrink-0",
+	small: "size-[18px] shrink-0"
+}, Qo = {
+	medium: "inline-flex items-center justify-center px-1 shrink-0",
+	small: "inline-flex items-center justify-center px-0.5 shrink-0"
+}, $o = {
+	primary: "bg-button-primary text-text-white shadow-xs",
+	secondary: "bg-background-primary-default text-text-primary border border-border-button-default shadow-xs",
+	ghost: "bg-button-ghost-background text-button-ghost-foreground"
+}, es = (e, t) => `<svg class="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${e}"/></svg>`;
+function W({ variant: e = "primary", size: t = "medium", glyph: n, label: r, attrs: i = "", compact: a = !1 }) {
+	let o = r ? Yo[t] : Xo[t], s = n ? es(n, Zo[t]) : "", c = r ? `<span class="${Qo[t]}"${a ? " data-compact-label" : ""}>${r}</span>` : "";
+	return `<button type="button" class="${Jo} ${o} ${$o[e]}"${i ? ` ${i}` : ""}>${s}${c}</button>`;
+}
+var ts = {
+	md: {
+		box: "gap-1.5 px-2.5 py-2 text-body-medium",
+		value: "gap-[5px]",
+		chevron: "size-4"
+	},
+	sm: {
+		box: "gap-1 px-[7px] py-1 text-body-2-medium",
+		value: "gap-1",
+		chevron: "size-3.5"
+	}
+};
+function ns(e, { size: t = "md", className: n = "", attrs: r = "" } = {}) {
+	let i = ts[t];
+	return `<div class="group flex flex-col${n ? ` ${n}` : ""}"><button type="button" aria-haspopup="listbox"${r ? ` ${r}` : ""} class="flex w-full items-center justify-between rounded-2lg border border-border-button-default bg-background-primary-default shadow-xs text-text-primary ${i.box}"><span class="flex min-w-0 items-center truncate ${i.value}">${e}</span>${es("chevron-down", `shrink-0 text-text-secondary ${i.chevron}`)}</button></div>`;
+}
+var rs = "flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default", is = "flex min-w-0 flex-col gap-2", as = "text-body-regular text-text-secondary", os = "text-display-4-medium tabular-nums text-text-primary", ss = "relative inline-block h-8 w-24 rounded-2lg align-middle skeleton-sheen";
+function cs(e) {
+	return `<div data-collection-summary="" class="${rs}"><div class="${is}"><span class="${as}">${e}</span><strong class="${os}"><span data-skeleton="count" aria-hidden="true" class="${ss}"></span></strong></div></div>`;
+}
+//#endregion
+//#region src/identity-filter.ts
+var ls = [
+	["all", "全部"],
+	["japanese_av", "女优"],
+	["amateur", "素人"],
+	["western", "西方"],
+	["blogger", "网黄博主"],
+	["animation", "动画作者"]
+], us = "mb-4 flex flex-wrap gap-2";
+function ds(e) {
+	let t = ls.some(([t]) => t === e) ? e : "all";
+	return `<div class="peach-react"><div aria-label="身份分类" class="${us}">${ls.map(([e, n]) => W({
+		variant: e === t ? "primary" : "secondary",
+		size: "small",
+		label: n,
+		attrs: `aria-pressed="${e === t}"`
+	})).join("")}</div></div>`;
+}
+//#endregion
 //#region src/index-skeleton.ts
-var Jo = {
+var fs = {
 	performers: "艺人",
 	creators: "卖家",
 	studios: "厂牌",
 	agencies: "事务所",
 	tags: "标签"
-}, Yo = [[
+}, ps = [[
 	"big",
 	"大图 · 竖幅头像",
 	"maximize"
@@ -4525,7 +4587,7 @@ var Jo = {
 	"compact",
 	"紧凑 · 圆形头像",
 	"layout-grid"
-]], Xo = [[
+]], ms = [[
 	"big",
 	"大图 · 完整标识",
 	"maximize"
@@ -4533,7 +4595,7 @@ var Jo = {
 	"compact",
 	"紧凑 · 圆形标识",
 	"layout-grid"
-]], Zo = [[
+]], hs = [[
 	"studios",
 	"厂牌",
 	"clapperboard"
@@ -4541,7 +4603,7 @@ var Jo = {
 	"agencies",
 	"事务所",
 	"briefcase"
-]], Qo = [[
+]], gs = [[
 	"local",
 	"本地",
 	"hard-drive"
@@ -4549,7 +4611,7 @@ var Jo = {
 	"online",
 	"在线",
 	"rss"
-]], $o = [
+]], _s = [
 	[
 		"performers",
 		"艺人",
@@ -4565,7 +4627,7 @@ var Jo = {
 		"在线",
 		"rss"
 	]
-], es = [[
+], vs = [[
 	"cloud",
 	"标签云",
 	"tags"
@@ -4573,8 +4635,8 @@ var Jo = {
 	"alphabet",
 	"字母表",
 	"text-aa"
-]], ts = (e) => e === "compact" ? "compact" : "big";
-function ns(e, t) {
+]], ys = (e) => e === "compact" ? "compact" : "big";
+function bs(e, t) {
 	let n = new URLSearchParams(t);
 	return {
 		kind: e,
@@ -4584,7 +4646,7 @@ function ns(e, t) {
 		category: n.get("category") || "all"
 	};
 }
-var rs = (e, t, n) => a(e.map(([e, t, n]) => ({
+var xs = (e, t, n) => a(e.map(([e, t, n]) => ({
 	value: e,
 	label: t,
 	symbol: n
@@ -4592,36 +4654,37 @@ var rs = (e, t, n) => a(e.map(([e, t, n]) => ({
 	active: t,
 	label: n,
 	className: "indextabs"
-}), is = (e) => `<div class="board-filter-frame" data-filter-frame>
+}), Ss = (e) => `<div class="board-filter-frame" data-filter-frame>
     <div class="tagbar" data-filter-row="top" data-skeleton-tier="pill" aria-label="标签类型"></div>
     <div class="count" data-filter-row="bottom"><span class="mono"><span class="countskeleton"></span></span>
-      ${u("tag-view", "标签视图", es, e)}</div></div>`;
-function as({ kind: e, q: t, scope: n, view: r }, i) {
-	let a = Jo[e] || "标签", o = e !== "tags", s = e === "studios" || e === "agencies", c = o ? u("people-layout", a + "索引版式", s ? Xo : Yo, i) : "";
+      ${u("tag-view", "标签视图", vs, e)}</div></div>`;
+function Cs({ kind: e, q: t, scope: n, view: r, category: i }, a) {
+	let o = fs[e] || "标签", s = e !== "tags", c = e === "studios" || e === "agencies", l = s ? u("people-layout", o + "索引版式", c ? ms : ps, a) : "";
 	return `<div class="ihead">
-      <h2 class="disp indexheading">${a}</h2>
-      ${o ? "<span class=\"mono\" id=\"indexCount\"><span class=\"countskeleton\"></span></span>" : ""}${c}
+      <h2 class="disp indexheading">${o}</h2>
+      ${s ? "<span class=\"mono\" id=\"indexCount\"><span class=\"countskeleton\"></span></span>" : ""}${l}
       ${g({
-		label: "过滤" + a,
+		label: "过滤" + o,
 		value: t || ""
 	})}
     </div>
-    ${e === "tags" ? rs(Qo, n, "词表") : e === "performers" || e === "creators" ? rs($o, e === "performers" && n === "online" ? "online" : e, "人物名册") : s ? rs(Zo, e, "公司类型") : ""}
-    ${e === "tags" ? is(r) : ""}
+    ${e === "tags" ? xs(gs, n, "词表") : e === "performers" || e === "creators" ? xs(_s, e === "performers" && n === "online" ? "online" : e, "人物名册") : c ? xs(hs, e, "公司类型") : ""}
+    ${e === "tags" ? Ss(r) : ""}
+    ${e === "performers" && n !== "online" ? ds(i) : ""}
     ${d({
 		kind: e,
-		layout: i,
+		layout: a,
 		mode: r
 	})}`;
 }
-var os = (e) => e.match(/data-skeleton="([^"]*)"/)?.[1] || "";
-function ss(e, t, n) {
-	let r = as(t, n);
-	e.querySelector("[data-skeleton]")?.dataset.skeleton !== os(r) && (e.innerHTML = r, c(e));
+var ws = (e) => e.match(/data-skeleton="([^"]*)"/)?.[1] || "";
+function Ts(e, t, n) {
+	let r = Cs(t, n);
+	e.querySelector("[data-skeleton]")?.dataset.skeleton !== ws(r) && (e.innerHTML = r, c(e));
 }
 //#endregion
 //#region src/follow-sort.ts
-var cs = [
+var Es = [
 	["checked", "检查时间"],
 	["added", "添加时间"],
 	["name", "创作者名称"],
@@ -4629,7 +4692,7 @@ var cs = [
 	["source", "来源名称"],
 	["provider", "站点"],
 	["status", "状态"]
-], ls = "checked", us = {
+], Ds = "checked", Os = {
 	checked: "desc",
 	added: "desc",
 	name: "asc",
@@ -4637,76 +4700,33 @@ var cs = [
 	source: "asc",
 	provider: "asc",
 	status: "asc"
-}, ds = (e) => cs.some(([t]) => t === e);
-function fs(e, t) {
-	let n = ds(e) ? e : ls;
+}, ks = (e) => Es.some(([t]) => t === e);
+function As(e, t) {
+	let n = ks(e) ? e : Ds;
 	return {
 		sort: n,
-		dir: t === "asc" || t === "desc" ? t : us[n]
+		dir: t === "asc" || t === "desc" ? t : Os[n]
 	};
 }
 //#endregion
-//#region src/island-skeleton.ts
-var ps = "inline-flex items-center justify-center gap-0.5 whitespace-nowrap overflow-hidden font-sans", ms = {
-	medium: "h-9 rounded-2lg p-2 text-body-medium",
-	small: "h-8 rounded-lg px-2 py-1.5 text-body-medium"
-}, hs = {
-	medium: ms.medium,
-	small: "size-8 rounded-lg p-0 text-body-medium"
-}, gs = {
-	medium: "size-5 shrink-0",
-	small: "size-[18px] shrink-0"
-}, _s = {
-	medium: "inline-flex items-center justify-center px-1 shrink-0",
-	small: "inline-flex items-center justify-center px-0.5 shrink-0"
-}, vs = {
-	primary: "bg-button-primary text-text-white shadow-xs",
-	secondary: "bg-background-primary-default text-text-primary border border-border-button-default shadow-xs",
-	ghost: "bg-button-ghost-background text-button-ghost-foreground"
-}, ys = (e, t) => `<svg class="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${e}"/></svg>`;
-function W({ variant: e = "primary", size: t = "medium", glyph: n, label: r, attrs: i = "", compact: a = !1 }) {
-	let o = r ? ms[t] : hs[t], s = n ? ys(n, gs[t]) : "", c = r ? `<span class="${_s[t]}"${a ? " data-compact-label" : ""}>${r}</span>` : "";
-	return `<button type="button" class="${ps} ${o} ${vs[e]}"${i ? ` ${i}` : ""}>${s}${c}</button>`;
-}
-var bs = {
-	md: {
-		box: "gap-1.5 px-2.5 py-2 text-body-medium",
-		value: "gap-[5px]",
-		chevron: "size-4"
-	},
-	sm: {
-		box: "gap-1 px-[7px] py-1 text-body-2-medium",
-		value: "gap-1",
-		chevron: "size-3.5"
-	}
-};
-function xs(e, { size: t = "md", className: n = "", attrs: r = "" } = {}) {
-	let i = bs[t];
-	return `<div class="group flex flex-col${n ? ` ${n}` : ""}"><button type="button" aria-haspopup="listbox"${r ? ` ${r}` : ""} class="flex w-full items-center justify-between rounded-2lg border border-border-button-default bg-background-primary-default shadow-xs text-text-primary ${i.box}"><span class="flex min-w-0 items-center truncate ${i.value}">${e}</span>${ys("chevron-down", `shrink-0 text-text-secondary ${i.chevron}`)}</button></div>`;
-}
-var Ss = "flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default", Cs = "flex min-w-0 flex-col gap-2", ws = "text-body-regular text-text-secondary", Ts = "text-display-4-medium tabular-nums text-text-primary", Es = "relative inline-block h-8 w-24 rounded-2lg align-middle skeleton-sheen";
-function Ds(e) {
-	return `<div data-collection-summary="" class="${Ss}"><div class="${Cs}"><span class="${ws}">${e}</span><strong class="${Ts}"><span data-skeleton="count" aria-hidden="true" class="${Es}"></span></strong></div></div>`;
-}
-//#endregion
 //#region src/configuration-skeleton.ts
-var Os = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2"><p class="w-full px-3 text-body-2-medium text-text-secondary">${e}</p><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${t}<div class="-ml-3 flex flex-wrap items-center justify-end gap-3 rounded-b-2xl border-t border-separator-border bg-card-footer px-3 py-3">${W({
+var js = (e, t) => `<section aria-label="${e}" class="flex w-full flex-col gap-2"><p class="w-full px-3 text-body-2-medium text-text-secondary">${e}</p><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${t}<div class="-ml-3 flex flex-wrap items-center justify-end gap-3 rounded-b-2xl border-t border-separator-border bg-card-footer px-3 py-3">${W({
 	label: "保存配置",
 	attrs: "disabled data-skeleton-action"
 })}</div></div></section>`, G = (e, t = "", n = "ui-configuration-skeleton-toggle") => `<div class="flex min-h-[52px] w-full items-center justify-between gap-4 py-2.5 pr-2.5 border-b border-separator-border last:border-b-0"><div class="flex min-w-0 flex-col"><p class="text-body-regular text-text-primary">${e}</p>${t ? `<p class="text-body-2-regular text-text-secondary">${t}</p>` : ""}</div><span class="skeleton ${n}"></span></div>`;
-function ks() {
+function Ms() {
 	return `<div class="peach-react"><div class="ui-configpage">${`<div class="ui-board-local-nav" data-section-nav data-section-items>${[
 		"通用",
 		"媒体",
 		"下载",
 		"网络与访问",
 		"维护"
-	].map((e, t) => `<button type="button" tabindex="-1" aria-selected="${t === 0}">${e}</button>`).join("")}</div>`}<div class="flex flex-col gap-6">${Os("开机自启", `<div class="flex flex-col">${G("开机后启动 Peach")}${G("静默启动", "开机后只显示托盘图标，不打开网页。")}${G("在桌面创建快捷方式", "双击图标打开 Peach 网页。")}</div>`)}${Os("自动更新", `<div class="flex flex-col">${G("自动检查新版本")}${G("自动下载更新")}${G("检查频率", "", "ui-configuration-skeleton-select")}</div>`)}</div></div></div>`;
+	].map((e, t) => `<button type="button" tabindex="-1" aria-selected="${t === 0}">${e}</button>`).join("")}</div>`}<div class="flex flex-col gap-6">${js("开机自启", `<div class="flex flex-col">${G("开机后启动 Peach")}${G("静默启动", "开机后只显示托盘图标，不打开网页。")}${G("在桌面创建快捷方式", "双击图标打开 Peach 网页。")}</div>`)}${js("自动更新", `<div class="flex flex-col">${G("自动检查新版本")}${G("自动下载更新")}${G("检查频率", "", "ui-configuration-skeleton-select")}</div>`)}</div></div></div>`;
 }
 //#endregion
 //#region src/management-skeletons.ts
-var K = "relative overflow-hidden skeleton-sheen bg-background-tertiary-default rounded-lg", q = (e = "60%") => `<span class="${K} inline-block max-w-full align-middle" style="width:${e};height:1em"></span>`, As = "disabled data-skeleton-action", js = "min-w-0 rounded-2-5xl bg-background-secondary-default p-5 flex flex-col gap-4 max-sm:p-4";
-function Ms() {
+var K = "relative overflow-hidden skeleton-sheen bg-background-tertiary-default rounded-lg", q = (e = "60%") => `<span class="${K} inline-block max-w-full align-middle" style="width:${e};height:1em"></span>`, Ns = "disabled data-skeleton-action", Ps = "min-w-0 rounded-2-5xl bg-background-secondary-default p-5 flex flex-col gap-4 max-sm:p-4";
+function Fs() {
 	let e = [
 		"馆藏视频",
 		"看过",
@@ -4717,7 +4737,7 @@ function Ms() {
       <span class="flex min-w-0 items-center gap-2 px-4 text-body-regular text-text-secondary max-sm:gap-1.5 max-sm:px-3"><i class="${K} size-7 max-sm:size-6"></i>${e}</span>
       <b class="px-4 pt-3 pb-4 text-title-1-medium max-sm:px-3 max-sm:pb-3">${q("4em")}</b>
       <small class="mt-auto block min-h-9.5 bg-card-footer px-4 py-2.5 text-caption-1-regular max-sm:px-3 max-sm:py-2">${q("6em")}</small>
-    </div>`).join(""), t = (e) => `<section class="${js}" data-stats-chart>
+    </div>`).join(""), t = (e) => `<section class="${Ps}" data-stats-chart>
     <header class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1"><span class="flex min-w-0 flex-col gap-1"><h3 class="text-title-2-medium text-text-primary">${e}</h3><b class="text-display-4-medium">${q("4em")}</b></span><small class="text-caption-1-regular text-text-secondary">个视频</small></header>
     <svg class="h-75 w-full max-sm:h-65 text-background-tertiary-default" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="12">${[
 		76,
@@ -4734,7 +4754,7 @@ function Ms() {
 		"时长",
 		"画质",
 		"文件类型"
-	].map((e) => `<section class="${js}"><h3 class="text-title-2-medium">${e}</h3><div class="${K} h-64"></div></section>`).join("")}</div>
+	].map((e) => `<section class="${Ps}"><h3 class="text-title-2-medium">${e}</h3><div class="${K} h-64"></div></section>`).join("")}</div>
       </div>
     </div>
     <section class="rounded-surface bg-background-secondary-default dark:bg-background-primary-default">
@@ -4747,7 +4767,7 @@ function Ms() {
     </section>
   </div></div>`;
 }
-function Ns() {
+function Is() {
 	let e = `<div class="duplicate-row items-center gap-3 border-t border-separator-border px-5 py-4 max-compact:p-4">
     <span class="${K} row-span-2 inline-grid aspect-16/10 w-full rounded-2lg"></span>
     <span class="text-body-regular max-duplicate-narrow:col-start-2 max-duplicate-narrow:-col-end-1">${q("70%")}</span>
@@ -4764,18 +4784,18 @@ function Ns() {
 		variant: "secondary",
 		size: "small",
 		label: e,
-		attrs: As
+		attrs: Ns
 	})).join("")}</span>
     </div>${e.repeat(2)}</section>`;
 	return `<div class="peach-react"><div class="mx-auto w-full max-w-board pb-10.5">
     <div data-collection-summary class="mb-5 flex items-end justify-between gap-4 rounded-surface bg-background-secondary-default px-6 py-5 max-compact:flex-col max-compact:items-start max-compact:gap-3 max-compact:p-4 dark:bg-background-primary-default">
       <div class="flex min-w-0 flex-col gap-2"><span class="text-body-regular text-text-secondary">重复内容</span><strong class="text-display-4-medium">${q("4em")}</strong></div><p class="text-body-regular text-text-secondary">${q("12em")}</p>
     </div>
-    <div data-filter-glass data-glass-pane class="mb-5.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 px-4 py-2.5"><h3 class="mr-1 text-body-medium">批量保留</h3>${["全部保留最大", "全部保留最长"].map((e) => `<button ${As} class="h-7.5 rounded-full border border-separator-border px-3 text-body-2-medium">${e}</button>`).join("")}</div>
+    <div data-filter-glass data-glass-pane class="mb-5.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 px-4 py-2.5"><h3 class="mr-1 text-body-medium">批量保留</h3>${["全部保留最大", "全部保留最长"].map((e) => `<button ${Ns} class="h-7.5 rounded-full border border-separator-border px-3 text-body-2-medium">${e}</button>`).join("")}</div>
     ${t.repeat(2)}
   </div></div>`;
 }
-function Ps() {
+function Ls() {
 	let e = `<li class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card border border-separator-border flex flex-col gap-3 p-3">
     <div class="flex min-w-0 gap-4"><span class="${K} inline-grid w-card-cover shrink-0 aspect-card-cover rounded-2lg"></span>
       <div class="flex min-w-0 flex-1 flex-col gap-1.5"><h3 class="text-headline-medium">${q("80%")}</h3><p class="text-body-2-regular">${q("60%")}</p></div>
@@ -4784,31 +4804,31 @@ function Ps() {
 		variant: "secondary",
 		size: "small",
 		label: "查看版本",
-		attrs: As
+		attrs: Ns
 	})}</footer>
   </li>`;
 	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">
-    ${Ds("待升级")}
+    ${cs("待升级")}
     <ul class="card-grid-cover gap-5">${e.repeat(6)}</ul>
   </div></div>`;
 }
 //#endregion
 //#region src/board-skeleton.ts
-var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs = () => `${J("80%")}${J("48%")}`, Y = (e, t) => e.repeat(t), Is = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${J("45%")}</b><small class="board-stat-footer">${J("60%")}</small></div>`).join("")}</div>`, Ls = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Rs = (e) => `<section class="ui-insightpanel"><header>${e}</header><div class="ui-insightpanelbody ui-skeleton-lines">${Y(Fs(), 3)}</div></section>`, X = "disabled data-skeleton-action", Z = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Q = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, zs = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Bs = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
+var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Rs = () => `${J("80%")}${J("48%")}`, Y = (e, t) => e.repeat(t), zs = (e, t = "metricstrip") => `<div class="${t}">${e.map((e) => `<div class="tastesummary"><span class="board-stat-label">${e}</span><b class="board-stat-value">${J("45%")}</b><small class="board-stat-footer">${J("60%")}</small></div>`).join("")}</div>`, Bs = (e, t) => `<div class="${t} skeleton-segments" data-board-segments="true">${e.map((e, t) => `<span${t === 0 ? " class=\"skeleton-segment-selected\"" : ""}>${e}</span>`).join("")}</div>`, Vs = (e) => `<section class="ui-insightpanel"><header>${e}</header><div class="ui-insightpanelbody ui-skeleton-lines">${Y(Rs(), 3)}</div></section>`, X = "disabled data-skeleton-action", Z = (e) => `<span class="skeleton skeleton-text" style="width:${e}"></span>`, Q = (e, t, n = !1) => `<span class="skeleton" style="width:${e}px;height:${t}px;flex:none${n ? ";border-radius:50%" : ""}"></span>`, Hs = "min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4", Us = () => `<div class="inline-grid w-full grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-6">${[
 	"关注创作者",
 	"启用来源",
 	"检查失败",
 	"未看更新",
 	"JAV 订阅",
 	"未看新作"
-].map((e) => `<div class="${zs}"><span class="text-body-medium text-text-secondary">${e}</span><b class="text-title-1-medium tabular-nums text-text-primary">${Z("3em")}</b></div>`).join("")}</div>`, Vs = () => `<div data-section-nav data-section-items class="flex max-w-full flex-nowrap overflow-x-auto">${[
+].map((e) => `<div class="${Hs}"><span class="text-body-medium text-text-secondary">${e}</span><b class="text-title-1-medium tabular-nums text-text-primary">${Z("3em")}</b></div>`).join("")}</div>`, Ws = () => `<div data-section-nav data-section-items class="flex max-w-full flex-nowrap overflow-x-auto">${[
 	"关注列表",
 	"添加关注",
 	"JAV 订阅源",
 	"想要",
 	"来源和凭证"
-].map((e, t) => `<span class="whitespace-nowrap" aria-selected="${t === 0}">${e}</span>`).join("")}</div>`, Hs = (e = "") => `<span class="group inline-flex items-center select-none gap-2"><span class="flex shrink-0 items-center justify-center rounded-sm size-4 border bg-background-primary-default shadow-xs border-border-checkbox-default"></span>${e ? `<span class="text-body-medium text-text-primary">${e}</span>` : ""}</span>`, Us = ({ table: e, sort: t, dir: n }) => {
-	let r = cs.find(([e]) => e === t)[1];
+].map((e, t) => `<span class="whitespace-nowrap" aria-selected="${t === 0}">${e}</span>`).join("")}</div>`, Gs = (e = "") => `<span class="group inline-flex items-center select-none gap-2"><span class="flex shrink-0 items-center justify-center rounded-sm size-4 border bg-background-primary-default shadow-xs border-border-checkbox-default"></span>${e ? `<span class="text-body-medium text-text-primary">${e}</span>` : ""}</span>`, Ks = ({ table: e, sort: t, dir: n }) => {
+	let r = Es.find(([e]) => e === t)[1];
 	return `<div class="flex flex-wrap items-center gap-2 ui-follow-skeleton-toolbar"><h3 class="mr-auto text-title-2-medium text-text-primary">关注列表</h3><span class="text-body-2-regular text-text-secondary">${Z("132px")}</span>${W({
 		glyph: "refresh-cw",
 		label: "检查全部",
@@ -4822,7 +4842,7 @@ var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs =
 		variant: "ghost",
 		glyph: "table",
 		attrs: `aria-pressed="${e}"`
-	})}</span>${xs(r)}${W({
+	})}</span>${ns(r)}${W({
 		variant: "secondary",
 		glyph: n === "asc" ? "arrow-up" : "arrow-down"
 	})}${e ? "" : W({
@@ -4832,7 +4852,7 @@ var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs =
 		compact: !0,
 		attrs: X
 	})}</div>`;
-}, Ws = () => `<span class="flex shrink-0 items-center gap-1">${W({
+}, qs = () => `<span class="flex shrink-0 items-center gap-1">${W({
 	variant: "secondary",
 	size: "small",
 	glyph: "refresh-cw",
@@ -4842,7 +4862,7 @@ var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs =
 	size: "small",
 	glyph: "trash",
 	attrs: X
-})}</span>`, Gs = () => `<div class="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 follow-skeleton-source">${Hs()}<span class="flex min-w-0 grow flex-col gap-0.5"><span class="text-body-medium">${Z("8em")}</span></span><span class="flex shrink-0 items-center gap-1.5">${Q(14, 14)}</span>${Q(48, 24)}<span class="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary">${Z("113px")}</span>${Ws()}</div>`, Ks = (e) => `<section class="min-w-0 bg-background-primary-default rounded-2xl shadow-card flex flex-col overflow-hidden p-2 follow-skeleton-author"><div class="flex flex-wrap items-center gap-3 px-2 py-2.5" data-follow-author-header data-open>${Q(32, 32, !0)}<b class="min-w-0 grow text-body-medium break-words text-text-primary">${Z("92px")}</b>${W({
+})}</span>`, Js = () => `<div class="flex min-h-16 flex-wrap items-center gap-3 px-2 py-3 follow-skeleton-source">${Gs()}<span class="flex min-w-0 grow flex-col gap-0.5"><span class="text-body-medium">${Z("8em")}</span></span><span class="flex shrink-0 items-center gap-1.5">${Q(14, 14)}</span>${Q(48, 24)}<span class="shrink-0 text-body-2-regular whitespace-nowrap text-text-secondary">${Z("113px")}</span>${qs()}</div>`, Ys = (e) => `<section class="min-w-0 bg-background-primary-default rounded-2xl shadow-card flex flex-col overflow-hidden p-2 follow-skeleton-author"><div class="flex flex-wrap items-center gap-3 px-2 py-2.5" data-follow-author-header data-open>${Q(32, 32, !0)}<b class="min-w-0 grow text-body-medium break-words text-text-primary">${Z("92px")}</b>${W({
 	variant: "secondary",
 	size: "small",
 	glyph: "refresh-cw",
@@ -4859,13 +4879,13 @@ var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs =
 	glyph: "chevron-up",
 	label: "收起",
 	attrs: X
-})}</div><div data-source-divider>${Y(Gs(), e)}</div></section>`, qs = () => {
+})}</div><div data-source-divider>${Y(Js(), e)}</div></section>`, Xs = () => {
 	try {
 		return Number(JSON.parse(localStorage.getItem("peach.settings.v1") || "{}").followPageSize) || 20;
 	} catch {
 		return 20;
 	}
-}, Js = [
+}, Zs = [
 	["select", ""],
 	["author", "创作者"],
 	["source", "来源"],
@@ -4873,58 +4893,58 @@ var J = (e = "60%") => `<span class="skeleton" style="width:${e}"></span>`, Fs =
 	["status", "状态"],
 	["checked", "上次检查"],
 	["actions", ""]
-], Ys = {
+], Qs = {
 	name: "author",
 	source: "source",
 	provider: "provider",
 	status: "status",
 	checked: "checked"
-}, Xs = "<svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M12.7071 15.2929C12.3166 15.6834 11.6834 15.6834 11.2929 15.2929L7.70711 11.7071C7.07714 11.0771 7.52331 10 8.41421 10H15.5858C16.4767 10 16.9229 11.0771 16.2929 11.7071L12.7071 15.2929Z\" fill=\"currentColor\"/></svg>", Zs = (e, { sort: t, dir: n }) => `<div data-board-data-table data-follow-table class="follow-skeleton-table"><div class="w-full overflow-x-auto"><table class="bui-table bui-table-sm"><thead><tr>${Js.map(([e, r]) => r ? `<th><span class="flex items-center gap-0.5">${r}<span data-sort-indicator${Ys[t] === e ? ` data-direction="${n === "asc" ? "ascending" : "descending"}"` : ""}>${Xs}</span></span></th>` : "<th></th>").join("")}</tr></thead><tbody>${Y(`<tr>${[
-	Hs(),
+}, $s = "<svg viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M12.7071 15.2929C12.3166 15.6834 11.6834 15.6834 11.2929 15.2929L7.70711 11.7071C7.07714 11.0771 7.52331 10 8.41421 10H15.5858C16.4767 10 16.9229 11.0771 16.2929 11.7071L12.7071 15.2929Z\" fill=\"currentColor\"/></svg>", ec = (e, { sort: t, dir: n }) => `<div data-board-data-table data-follow-table class="follow-skeleton-table"><div class="w-full overflow-x-auto"><table class="bui-table bui-table-sm"><thead><tr>${Zs.map(([e, r]) => r ? `<th><span class="flex items-center gap-0.5">${r}<span data-sort-indicator${Qs[t] === e ? ` data-direction="${n === "asc" ? "ascending" : "descending"}"` : ""}>${$s}</span></span></th>` : "<th></th>").join("")}</tr></thead><tbody>${Y(`<tr>${[
+	Gs(),
 	`<span class="flex min-w-0 items-center gap-2">${Q(32, 32, !0)}${Z("5em")}</span>`,
 	Z("10em"),
 	`<span class="flex items-center gap-1.5">${Q(14, 14)}${Z("4em")}</span>`,
 	Q(48, 24),
 	Z("113px"),
-	Ws()
-].map((e) => `<td>${e}</td>`).join("")}</tr>`, e)}</tbody></table></div></div>`, Qs = (e, t) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-body-2-regular text-text-secondary">${Z("111px")}</span>${xs(`每页 ${t} ${e ? "条" : "位"}`, { size: "sm" })}${Q(204, 32)}</div>`, $s = (e) => {
-	let t = e.followLayout === "table", n = fs(e.followSort, e.followDir), r = e.followPageSize || qs(), i = t ? Zs(r, n) : `${Hs("全选本页")}<div class="flex flex-col gap-3">${Ks(3)}${Ks(4)}${Ks(3)}</div>`;
-	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${Bs()}<div class="flex flex-col gap-6">${Vs()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface" data-layout="${t ? "table" : "default"}">${Us({
+	qs()
+].map((e) => `<td>${e}</td>`).join("")}</tr>`, e)}</tbody></table></div></div>`, tc = (e, t) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="text-body-2-regular text-text-secondary">${Z("111px")}</span>${ns(`每页 ${t} ${e ? "条" : "位"}`, { size: "sm" })}${Q(204, 32)}</div>`, nc = (e) => {
+	let t = e.followLayout === "table", n = As(e.followSort, e.followDir), r = e.followPageSize || Xs(), i = t ? ec(r, n) : `${Gs("全选本页")}<div class="flex flex-col gap-3">${Ys(3)}${Ys(4)}${Ys(3)}</div>`;
+	return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${Us()}<div class="flex flex-col gap-6">${Ws()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface" data-layout="${t ? "table" : "default"}">${Ks({
 		table: t,
 		...n
-	})}${i}${Qs(t, r)}</div></div></div></div></div>`;
+	})}${i}${tc(t, r)}</div></div></div></div></div>`;
 };
-function ec() {
-	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${J("85%")}${J("65%")}${Y(Fs(), 4)}</div></aside></div>`;
+function rc() {
+	return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${J("85%")}${J("65%")}${Y(Rs(), 4)}</div></aside></div>`;
 }
-function tc() {
-	return `<div data-skeleton="detail" role="status" aria-label="正在读取作品详情">${ec()}</div>`;
+function ic() {
+	return `<div data-skeleton="detail" role="status" aria-label="正在读取作品详情">${rc()}</div>`;
 }
-function nc(e, t = {}) {
+function ac(e, t = {}) {
 	let n = "";
-	if (e === "/stats") n = Ms();
-	else if (e === "/taste") n = `<div class="tastepage"><header class="ui-tastehead">${Ls(["浏览器记录", "Peach 内部"], "insightswitch")}${J("24%")}</header><div class="ui-tastestate"></div>${Is([
+	if (e === "/stats") n = Fs();
+	else if (e === "/taste") n = `<div class="tastepage"><header class="ui-tastehead">${Bs(["浏览器记录", "Peach 内部"], "insightswitch")}${J("24%")}</header><div class="ui-tastestate"></div>${zs([
 		"浏览记录",
 		"口味维度",
 		"浏览候选",
 		"私有导出"
-	], "ui-tastesummaries")}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton ui-skeleton-radar"></div></div><div class="ui-tastebars ui-skeleton-lines">${Y(Fs(), 4)}</div></section>${Rs("口味分析")}<div class="ui-board-activity-charts">${Rs("浏览活动")}${Rs("时间分布")}</div>${Rs("标签")}</div>`;
-	else if (e === "/follow-manage") n = $s(t);
-	else if (e === "/configuration") n = ks();
+	], "ui-tastesummaries")}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton ui-skeleton-radar"></div></div><div class="ui-tastebars ui-skeleton-lines">${Y(Rs(), 4)}</div></section>${Vs("口味分析")}<div class="ui-board-activity-charts">${Vs("浏览活动")}${Vs("时间分布")}</div>${Vs("标签")}</div>`;
+	else if (e === "/follow-manage") n = nc(t);
+	else if (e === "/configuration") n = Ms();
 	else if (e === "/activity") n = `<div class="ui-activitypage">${[
 		"正在进行",
 		"被挡下的",
 		"最近完成"
-	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content ui-skeleton-lines">${J("35%")}${Fs()}</div></article></div></section>`).join("")}</div>`;
-	else if (e === "/duplicates") n = Ns();
-	else if (e === "/quality-goals") n = Ps();
-	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate ui-skeleton-lines"><span>新播放列表</span>${J("200px")}</div></header><div class="ui-playlistcards">${Y(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy ui-skeleton-lines">${Fs()}</div></div></article>`, 6)}</div></section>`;
+	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content ui-skeleton-lines">${J("35%")}${Rs()}</div></article></div></section>`).join("")}</div>`;
+	else if (e === "/duplicates") n = Is();
+	else if (e === "/quality-goals") n = Ls();
+	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate ui-skeleton-lines"><span>新播放列表</span>${J("200px")}</div></header><div class="ui-playlistcards">${Y(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy ui-skeleton-lines">${Rs()}</div></div></article>`, 6)}</div></section>`;
 	else return "";
 	return `<div class="board-page-skeleton" data-skeleton="board${e}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${n}</div></div>`;
 }
 //#endregion
 //#region src/catalog-onboarding.ts
-var rc = [
+var oc = [
 	"loc",
 	"creator",
 	"performer",
@@ -4942,9 +4962,9 @@ var rc = [
 	"jav",
 	"thumb"
 ];
-async function ic(e, t) {
+async function sc(e, t) {
 	let n = new URLSearchParams();
-	for (let t of rc) e[t] && n.set(t, e[t]);
+	for (let t of oc) e[t] && n.set(t, e[t]);
 	let [r, i] = await Promise.all([t("/api/facets?" + n), t("/api/items?" + n + "&limit=5")]), a = [...new Set([
 		...r.creators || [],
 		...r.tagperformers || [],
@@ -4955,7 +4975,7 @@ async function ic(e, t) {
 		return r.set("q", e), r.set("limit", "1"), (await t("/api/items?" + r)).total > 0 ? e : "";
 	}))).filter(Boolean);
 }
-function ac({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: r = !1, online: i = !1 } = {}) {
+function cc({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: r = !1, online: i = !1 } = {}) {
 	let a = r ? "<button class=\"geist-button primary\" data-empty-settings>添加内容</button>" : "", o = "<a class=\"geist-button" + (!r || i ? " primary" : "") + "\" href=\"/follow-manage?tab=add\">添加关注</a>";
 	if (t || n) return s("search", n ? "还没有符合条件的 JAV 作品" : "没有符合条件的内容", n ? "已扫描但尚未补充发行资料的视频可在全部内容中查看。" : "清除筛选或搜索条件后查看全部内容。", { actions: "<a class=\"geist-button primary\" href=\"/?loc=&thumb=0\">查看全部内容</a>" });
 	if (e !== "catalog") {
@@ -4976,56 +4996,56 @@ function ac({ kind: e = "catalog", filtered: t = !1, jav: n = !1, configurable: 
 }
 //#endregion
 //#region src/catalog-filter-skeleton.ts
-var oc = 64, sc = (e) => e.replace(/[&<>"]/g, (e) => ({
+var lc = 64, uc = (e) => e.replace(/[&<>"]/g, (e) => ({
 	"&": "&amp;",
 	"<": "&lt;",
 	">": "&gt;",
 	"\"": "&quot;"
-})[e]), cc = (e) => e.repeat(oc);
-function lc(e, t) {
-	let n = e.map((e) => `<a href="${sc(e.href)}" data-catalog-view="${sc(e.k)}" data-entity-press="" aria-pressed="${t === e.k}">${sc(e.label)}</a>`).join("");
-	return "<div class=\"peach-react\"><div class=\"contents\" data-catalog-root=\"\" data-loading=\"\"><div data-catalog-tiers=\"\" aria-busy=\"true\"><div data-catalog-tier=\"performers\" data-skeleton=\"tiers\">" + cc("<span data-catalog-placeholder=\"performer\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + "</div><div data-catalog-tier=\"studios\">" + cc("<span data-catalog-placeholder=\"studio\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + `</div></div><div role="group" aria-label="筛选与排序" data-filter-glass="" data-glass-pane="" data-filter-frame="" data-catalog-frame="" class="sticky top-topbar z-10 mb-5.5 flex flex-col mx-4"><div role="group" aria-label="视图与标签" data-filter-row="top" class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible"><div data-catalog-scroll=""><div role="group" aria-label="视图" data-catalog-views="">${n}<span data-entity-sep="" aria-hidden="true"></span></div><div data-catalog-tags=""><span data-catalog-placeholder="tag" aria-hidden="true">` + "<span></span>".repeat(oc) + "</span></div></div></div><div data-filter-row=\"bottom\" aria-busy=\"true\" class=\"flex min-w-0 items-center gap-3 px-3 py-2 min-h-12\"><span data-catalog-readout=\"\"><span data-skeleton=\"count\" aria-hidden=\"true\" class=\"relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen\"></span></span></div></div></div></div>";
+})[e]), dc = (e) => e.repeat(lc);
+function fc(e, t) {
+	let n = e.map((e) => `<a href="${uc(e.href)}" data-catalog-view="${uc(e.k)}" data-entity-press="" aria-pressed="${t === e.k}">${uc(e.label)}</a>`).join("");
+	return "<div class=\"peach-react\"><div class=\"contents\" data-catalog-root=\"\" data-loading=\"\"><div data-catalog-tiers=\"\" aria-busy=\"true\"><div data-catalog-tier=\"performers\" data-skeleton=\"tiers\">" + dc("<span data-catalog-placeholder=\"performer\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + "</div><div data-catalog-tier=\"studios\">" + dc("<span data-catalog-placeholder=\"studio\" aria-hidden=\"true\"><span></span><span>&nbsp;</span></span>") + `</div></div><div role="group" aria-label="筛选与排序" data-filter-glass="" data-glass-pane="" data-filter-frame="" data-catalog-frame="" class="sticky top-topbar z-10 mb-5.5 flex flex-col mx-4"><div role="group" aria-label="视图与标签" data-filter-row="top" class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible"><div data-catalog-scroll=""><div role="group" aria-label="视图" data-catalog-views="">${n}<span data-entity-sep="" aria-hidden="true"></span></div><div data-catalog-tags=""><span data-catalog-placeholder="tag" aria-hidden="true">` + "<span></span>".repeat(lc) + "</span></div></div></div><div data-filter-row=\"bottom\" aria-busy=\"true\" class=\"flex min-w-0 items-center gap-3 px-3 py-2 min-h-12\"><span data-catalog-readout=\"\"><span data-skeleton=\"count\" aria-hidden=\"true\" class=\"relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen\"></span></span></div></div></div></div>";
 }
 //#endregion
 //#region src/catalog-bars.ts
-var uc = 3e4, dc = 0, fc = (e, t = dc) => [
+var pc = 3e4, mc = 0, hc = (e, t = mc) => [
 	"facets",
 	e,
 	t
-], pc = (e, t, n = dc) => [
+], gc = (e, t, n = mc) => [
 	"tops",
 	e,
 	t,
 	n
-], mc = (e, t = dc) => [
+], _c = (e, t = mc) => [
 	"tops",
 	e,
 	t
 ];
-async function hc(t) {
+async function vc(t) {
 	let n = String(t), r = await e(`/api/tops?${n}`), i = new URLSearchParams(n);
 	return r.performers.length || r.studios.length || !i.has("state") ? r : (i.delete("state"), await e(`/api/tops?${i}`));
 }
-function gc(t, n) {
+function yc(t, n) {
 	return Promise.all([I.fetchQuery({
-		queryKey: fc(t),
+		queryKey: hc(t),
 		queryFn: () => e(`/api/facets${t ? `?${t}` : ""}`),
-		staleTime: uc
+		staleTime: pc
 	}), I.fetchQuery({
-		queryKey: pc(n, t),
-		queryFn: () => hc(n),
-		staleTime: uc
+		queryKey: gc(n, t),
+		queryFn: () => vc(n),
+		staleTime: pc
 	})]);
 }
-function _c(e) {
+function bc(e) {
 	return I.fetchQuery({
-		queryKey: mc(e),
-		queryFn: () => hc(e),
-		staleTime: uc
+		queryKey: _c(e),
+		queryFn: () => vc(e),
+		staleTime: pc
 	});
 }
-function vc() {
-	dc += 1;
+function xc() {
+	mc += 1;
 	let e = (e) => e.state.fetchStatus === "idle";
 	I.removeQueries({
 		queryKey: ["facets"],
@@ -5037,35 +5057,35 @@ function vc() {
 }
 //#endregion
 //#region src/management.ts
-var yc = "扫描媒体文件夹，导入已有资料，采集缺失信息。两段也可以分开跑：新盘刚接上时先只扫描，几万个文件登记完就能用；采集被网络拖住时只重跑采集，不必再扫一遍磁盘。", bc = "修缺时间戳表（播放卡顿）和缺索引（打不开）的 MP4。常看的片子先修。", $ = "<span class=\"skeleton skeleton-text\" aria-hidden=\"true\"></span>", xc = "type=\"button\" disabled data-skeleton-action", Sc = "disabled data-skeleton-action", Cc = "aria-disabled=\"true\"", wc = (e) => `<div class="peach-react"><div class="flex flex-col gap-4">${e}</div></div>`, Tc = (e, t) => `<div data-geist-fieldset-content>
+var Sc = "扫描媒体文件夹，导入已有资料，采集缺失信息。两段也可以分开跑：新盘刚接上时先只扫描，几万个文件登记完就能用；采集被网络拖住时只重跑采集，不必再扫一遍磁盘。", Cc = "修缺时间戳表（播放卡顿）和缺索引（打不开）的 MP4。常看的片子先修。", $ = "<span class=\"skeleton skeleton-text\" aria-hidden=\"true\"></span>", wc = "type=\"button\" disabled data-skeleton-action", Tc = "disabled data-skeleton-action", Ec = "aria-disabled=\"true\"", Dc = (e) => `<div class="peach-react"><div class="flex flex-col gap-4">${e}</div></div>`, Oc = (e, t) => `<div data-geist-fieldset-content>
           <h3 class="text-title-2-medium text-text-primary">${e}</h3>
           <p class="text-body-2-regular text-text-secondary">${t}</p></div>`;
-function Ec() {
-	return wc(`<section aria-label="扫描与采集" data-geist-fieldset data-cleanup-task data-cleanup-processing data-fieldset-stack>
-        ${Tc("扫描与采集", yc)}
-        <footer data-geist-fieldset-footer><a href="/scraping" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-sans rounded-sm text-body-medium text-accent-600"><span>来源和凭证</span>${ys("arrow-up", "size-[18px] shrink-0 rotate-90")}</a><span data-button-group data-split-button data-variant="primary">${W({
+function kc() {
+	return Dc(`<section aria-label="扫描与采集" data-geist-fieldset data-cleanup-task data-cleanup-processing data-fieldset-stack>
+        ${Oc("扫描与采集", Sc)}
+        <footer data-geist-fieldset-footer><a href="/scraping" class="inline-flex items-center justify-center gap-1 whitespace-nowrap font-sans rounded-sm text-body-medium text-accent-600"><span>来源和凭证</span>${es("arrow-up", "size-[18px] shrink-0 rotate-90")}</a><span data-button-group data-split-button data-variant="primary">${W({
 		glyph: "database",
 		label: "扫描并补全资料",
-		attrs: Sc
+		attrs: Tc
 	})}${W({
 		glyph: "chevron-down",
-		attrs: `${Sc} aria-label="更多扫描与采集方式"`
+		attrs: `${Tc} aria-label="更多扫描与采集方式"`
 	})}</span></footer>
       </section>`);
 }
-function Dc() {
-	return wc(`<section aria-label="媒体修复" data-geist-fieldset data-cleanup-task data-cleanup-processing>
-        ${Tc("媒体修复", bc)}
-        <footer data-geist-fieldset-footer>${xs($, {
+function Ac() {
+	return Dc(`<section aria-label="媒体修复" data-geist-fieldset data-cleanup-task data-cleanup-processing>
+        ${Oc("媒体修复", Cc)}
+        <footer data-geist-fieldset-footer>${ns($, {
 		className: "w-48",
-		attrs: Cc
+		attrs: Ec
 	})}${W({
 		label: "开始修复",
-		attrs: Sc
+		attrs: Tc
 	})}</footer>
       </section>`);
 }
-function Oc() {
+function jc() {
 	let e = [
 		["人工复核", "square-check-big"],
 		["高清版", "sparkles"],
@@ -5080,8 +5100,8 @@ function Oc() {
         <span class="ui-board-plain-stat-head"><span class="ui-board-stat-tile">${n(t)}</span>${e}</span>
         <strong>${$}</strong><span class="cleanupmeta">${$}</span></button>`).join("")}</div>
     <div class="cleanupgrid">
-      <div class="cleanupscraping">${Ec()}</div>
-      <div class="cleanupmediarepair">${Dc()}</div>
+      <div class="cleanupscraping">${kc()}</div>
+      <div class="cleanupmediarepair">${Ac()}</div>
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
@@ -5092,7 +5112,7 @@ function Oc() {
             <div class="ui-organizepresets">${t}</div>
             <p class="cleanupmeta">${$}</p>
           </div></div>
-        <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${xc}>预览</button></footer>
+        <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${wc}>预览</button></footer>
       </section></div>
     <section class="ui-resourcesync" aria-labelledby="cleanup-loading-links">
       <h2 id="cleanup-loading-links">链接管理</h2>
@@ -5104,19 +5124,19 @@ function Oc() {
 		"作品资料站"
 	].map((e) => `<div><span>${e}</span><b>${$}</b></div>`).join("")}</div>
           <div class="ui-linkhosts"><span>主要站点</span><b>${$}</b></div></div></div>
-        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${xc}>${n("unlink")}<span>检查死链</span></button></div>
+        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${wc}>${n("unlink")}<span>检查死链</span></button></div>
       </div></section>
     <section class="ui-resourcesync" aria-labelledby="cleanup-loading-sync">
       <h2 id="cleanup-loading-sync">资源同步</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">文件与记录核对</h3>
           <p>按馆藏记录逐条查找本地磁盘与网盘上的文件，列出文件已不存在的记录、空文件夹，以及不再被引用的缓存。</p></div>
-        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${xc}>${n("git-compare")}<span>检查文件</span></button></div>
+        <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${wc}>${n("git-compare")}<span>检查文件</span></button></div>
       </div></section></div>`;
 }
 //#endregion
 //#region src/management-placeholder.ts
-var kc = (e, { cards: t = !1, className: n = "", variant: r = "", count: i, fill: a, cardRatio: o, gridClass: s = "", gridSize: c = "" } = {}) => v(e, {
+var Mc = (e, { cards: t = !1, className: n = "", variant: r = "", count: i, fill: a, cardRatio: o, gridClass: s = "", gridSize: c = "" } = {}) => v(e, {
 	variant: r || (t ? "cards" : "panel"),
 	className: n,
 	gridClass: s,
@@ -5124,7 +5144,7 @@ var kc = (e, { cards: t = !1, className: n = "", variant: r = "", count: i, fill
 	...i ? { count: i } : {},
 	...a === void 0 ? {} : { fill: a },
 	...o ? { cardRatio: o } : {}
-}), Ac = [
+}), Nc = [
 	"元数据字段",
 	"创作者标签",
 	"厂牌 Logo",
@@ -5134,40 +5154,40 @@ var kc = (e, { cards: t = !1, className: n = "", variant: r = "", count: i, fill
 	"FC2 评论标记",
 	"FC2 跨号相似",
 	"片尾/出处证据"
-], jc = (e = "正在读取复核队列") => `<div class="review review-workspace review-skeleton" data-skeleton="review" aria-busy="true" aria-label="${t(e)}">
+], Pc = (e = "正在读取复核队列") => `<div class="review review-workspace review-skeleton" data-skeleton="review" aria-busy="true" aria-label="${t(e)}">
   <div class="reviewcontrols" data-section-nav><h2 class="review-category-title">复核分类</h2>
-    <div class="reviewtabs" data-section-items>${Ac.map((e, n) => `<button type="button" disabled aria-selected="${n === 0}">${t(e)}<span class="skeleton reviewcountskeleton" aria-hidden="true"></span></button>`).join("")}</div></div>
+    <div class="reviewtabs" data-section-items>${Nc.map((e, n) => `<button type="button" disabled aria-selected="${n === 0}">${t(e)}<span class="skeleton reviewcountskeleton" aria-hidden="true"></span></button>`).join("")}</div></div>
   <div class="reviewbulkbar reviewbulktoolbar" aria-hidden="true">${"<span class=\"skeleton reviewtoolskeleton\"></span>".repeat(3)}</div>
-  <section class="reviewsection"><div class="reviewlist">${"<div class=\"skeletoncard\" aria-hidden=\"true\"><i></i><b></b><em></em></div>".repeat(6)}</div></section></div>`, Mc = {
-	"/data-cleanup": () => Oc(),
-	"/resource-sync": () => Oc(),
-	"/review": () => jc(),
+  <section class="reviewsection"><div class="reviewlist">${"<div class=\"skeletoncard\" aria-hidden=\"true\"><i></i><b></b><em></em></div>".repeat(6)}</div></section></div>`, Fc = {
+	"/data-cleanup": () => jc(),
+	"/resource-sync": () => jc(),
+	"/review": () => Pc(),
 	"/diagnostics": () => o(),
 	"/scraping": () => `<div class="scraping-page"><p>高清图片可能要经代理才能下载，先检查连接。</p>
-    ${kc("正在读取采集来源", {
+    ${Mc("正在读取采集来源", {
 		cards: !0,
 		count: 4,
 		fill: !1,
 		className: "cleanup-skeleton"
 	})}</div>`
 };
-function Nc(e, { followLayout: t, followSort: n, followDir: r }) {
-	return nc(e, {
+function Ic(e, { followLayout: t, followSort: n, followDir: r }) {
+	return ac(e, {
 		followLayout: t,
 		...e === "/follow-manage" ? {
 			followSort: n,
 			followDir: r
 		} : {}
-	}) || (Mc[e] ?? (() => kc("正在读取页面")))();
+	}) || (Fc[e] ?? (() => Mc("正在读取页面")))();
 }
-var Pc = (e) => String(e).match(/data-skeleton="([^"]*)"/)?.[1] || "";
-function Fc(e, t) {
-	let n = e.querySelector("[data-skeleton]")?.dataset.skeleton || "", r = Pc(t);
+var Lc = (e) => String(e).match(/data-skeleton="([^"]*)"/)?.[1] || "";
+function Rc(e, t) {
+	let n = e.querySelector("[data-skeleton]")?.dataset.skeleton || "", r = Lc(t);
 	(!r || r !== n) && (e.innerHTML = t, c(e));
 }
 //#endregion
 //#region src/junk-queue.ts
-var Ic = [
+var zc = [
 	[
 		"",
 		"全部",
@@ -5203,117 +5223,117 @@ var Ic = [
 		"其它",
 		"hard-drive"
 	]
-], Lc = (e) => Ic.find(([t]) => t === e)?.[0] ?? "";
-function Rc(e) {
+], Bc = (e) => zc.find(([t]) => t === e)?.[0] ?? "";
+function Vc(e) {
 	let t = new URLSearchParams(e);
 	return {
-		kind: Lc(t.get("type")),
+		kind: Bc(t.get("type")),
 		view: t.get("view") === "dismissed" ? "dismissed" : "pending"
 	};
 }
-function zc(e = "", t = "pending") {
+function Hc(e = "", t = "pending") {
 	let n = new URLSearchParams();
 	e && n.set("type", e), t === "dismissed" && n.set("view", "dismissed");
 	let r = n.toString();
 	return `/junk-files${r ? `?${r}` : ""}`;
 }
-function Bc(e) {
+function Uc(e) {
 	return e === "dismissed" ? {
 		view: "pending",
 		label: "返回待判断",
 		glyph: "rotate-ccw",
-		href: zc("", "pending")
+		href: Hc("", "pending")
 	} : {
 		view: "dismissed",
 		label: "已排除",
 		glyph: "eye-off",
-		href: zc("", "dismissed")
+		href: Hc("", "dismissed")
 	};
 }
-var Vc = (e) => e === "dismissed" ? "已排除" : "待判断", Hc = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${e}"></use></svg>`;
-function Uc({ kind: e, view: n }) {
-	let r = Ic.map(([r, i, a]) => `<a href="${zc(r, n)}" data-junk-kind-link="${r}"${r === e ? " aria-current=\"page\"" : ""}>${Hc(a)}${t(i)}</a>`).join(""), i = Bc(n);
-	return `<div class="peach-react" data-junk-count-skeleton=""><div data-junk-count=""><div data-junk-summary="" aria-live="polite">${Ds(Vc(n))}</div><div data-junk-filters-frame="" data-filter-glass="" data-glass-pane=""><span data-view-glide="" aria-hidden="true" hidden></span><nav data-junk-filters="" aria-label="垃圾文件分类">${r}<i data-junk-divider="" aria-hidden="true"></i><a href="${i.href}" data-junk-view-link="${i.view}"${n === "dismissed" ? " aria-current=\"page\"" : ""}>${Hc(i.glyph)}${i.label}</a></nav></div></div></div>`;
+var Wc = (e) => e === "dismissed" ? "已排除" : "待判断", Gc = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${e}"></use></svg>`;
+function Kc({ kind: e, view: n }) {
+	let r = zc.map(([r, i, a]) => `<a href="${Hc(r, n)}" data-junk-kind-link="${r}"${r === e ? " aria-current=\"page\"" : ""}>${Gc(a)}${t(i)}</a>`).join(""), i = Uc(n);
+	return `<div class="peach-react" data-junk-count-skeleton=""><div data-junk-count=""><div data-junk-summary="" aria-live="polite">${cs(Wc(n))}</div><div data-junk-filters-frame="" data-filter-glass="" data-glass-pane=""><span data-view-glide="" aria-hidden="true" hidden></span><nav data-junk-filters="" aria-label="垃圾文件分类">${r}<i data-junk-divider="" aria-hidden="true"></i><a href="${i.href}" data-junk-view-link="${i.view}"${n === "dismissed" ? " aria-current=\"page\"" : ""}>${Gc(i.glyph)}${i.label}</a></nav></div></div></div>`;
 }
 //#endregion
 //#region src/player/controls.ts
-function Wc(e, t) {
+function qc(e, t) {
 	e?.closest(".video-js")?.querySelector(`.vjs-control-bar ${t}`)?.click();
 }
 //#endregion
 //#region src/player/playback.ts
-function Gc(e) {
+function Jc(e) {
 	e && (e.paused ? e.play()?.catch(() => {}) : e.pause());
 }
-function Kc(e, t) {
+function Yc(e, t) {
 	let n = e.duration, r = (e.currentTime || 0) + t;
 	e.currentTime = Number.isFinite(n) ? Math.max(0, Math.min(n, r)) : Math.max(0, r);
 }
 //#endregion
 //#region src/islands.ts
 ee(document);
-var qc = null;
-function Jc(e, t, n, r) {
-	qc ??= import("/dist/peach-react.js").then((n) => (n.mountToaster(e, t), n)), qc.then((e) => e.showToast(n, r));
+var Xc = null;
+function Zc(e, t, n, r) {
+	Xc ??= import("/dist/peach-react.js").then((n) => (n.mountToaster(e, t), n)), Xc.then((e) => e.showToast(n, r));
 }
-var Yc = null, Xc = null;
-function Zc(e) {
-	return Yc ??= import("/dist/peach-react.js").then(async (t) => {
+var Qc = null, $c = null;
+function el(e) {
+	return Qc ??= import("/dist/peach-react.js").then(async (t) => {
 		let n = t.configureStage(e), r = document.createElement("div");
-		return r.dataset.stageHost = "", await B("stage", r, (e) => (document.body.append(e), e)), Xc = n, n;
-	}), Yc;
+		return r.dataset.stageHost = "", await B("stage", r, (e) => (document.body.append(e), e)), $c = n, n;
+	}), Qc;
 }
-var Qc = () => Xc, $c = null, el = null;
-function tl(e) {
-	return $c ??= import("/dist/peach-react.js").then(async (t) => {
+var tl = () => $c, nl = null, rl = null;
+function il(e) {
+	return nl ??= import("/dist/peach-react.js").then(async (t) => {
 		let n = t.configureSettingsPanel(e), r = document.createElement("div");
-		return r.dataset.settingsHost = "", await B("settings-panel", r, (e) => (document.body.append(e), e)), el = n, n;
-	}), $c;
+		return r.dataset.settingsHost = "", await B("settings-panel", r, (e) => (document.body.append(e), e)), rl = n, n;
+	}), nl;
 }
-var nl = () => el, rl = null, il = null;
-function al(e) {
-	return rl ??= import("/dist/peach-react.js").then(async (t) => {
+var al = () => rl, ol = null, sl = null;
+function cl(e) {
+	return ol ??= import("/dist/peach-react.js").then(async (t) => {
 		let n = t.configureImmerse(e), r = document.createElement("div");
-		return r.dataset.immerseHost = "", await B("immerse", r, (e) => (document.body.append(e), e)), il = n, n;
-	}), rl;
+		return r.dataset.immerseHost = "", await B("immerse", r, (e) => (document.body.append(e), e)), sl = n, n;
+	}), ol;
 }
-var ol = () => il, sl = null, cl = null;
-function ll(e) {
-	return sl ??= import("/dist/peach-react.js").then(async (t) => {
+var ll = () => sl, ul = null, dl = null;
+function fl(e) {
+	return ul ??= import("/dist/peach-react.js").then(async (t) => {
 		let n = t.configureSidebar(e);
-		return await B("sidebar", e.scroll, (e) => (e.replaceChildren(), e)), e.attached(), cl = n, n;
-	}), sl;
+		return await B("sidebar", e.scroll, (e) => (e.replaceChildren(), e)), e.attached(), dl = n, n;
+	}), ul;
 }
-var ul = () => cl, dl = null, fl = null;
-function pl(e) {
-	return dl ??= import("/dist/peach-react.js").then(async (t) => {
+var pl = () => dl, ml = null, hl = null;
+function gl(e) {
+	return ml ??= import("/dist/peach-react.js").then(async (t) => {
 		let n = t.configureManageHeader(e);
-		return await B("manage-header", e.root, (e) => (e.replaceChildren(), e)), fl = n, n;
-	}), dl;
+		return await B("manage-header", e.root, (e) => (e.replaceChildren(), e)), hl = n, n;
+	}), ml;
 }
-var ml = () => fl, hl = null, gl = null;
-function _l(e) {
-	return hl ??= import("/dist/peach-react.js").then(async (t) => {
-		let n = t.configureBatchDock(e);
-		return await B("batch-dock", e.root), gl = n, n;
-	}), hl;
-}
-var vl = () => gl, yl = null;
+var _l = () => hl, vl = null, yl = null;
 function bl(e) {
-	return yl ??= import("/dist/peach-react.js").then(async (t) => {
-		t.configureGlowPicker(e), await B("glow-picker", e.root);
-	}), yl;
+	return vl ??= import("/dist/peach-react.js").then(async (t) => {
+		let n = t.configureBatchDock(e);
+		return await B("batch-dock", e.root), yl = n, n;
+	}), vl;
 }
-var xl = null;
+var xl = () => yl, Sl = null;
+function Cl(e) {
+	return Sl ??= import("/dist/peach-react.js").then(async (t) => {
+		t.configureGlowPicker(e), await B("glow-picker", e.root);
+	}), Sl;
+}
+var wl = null;
 ti(() => {
 	import("/dist/peach-react.js").catch(() => {});
 });
-function Sl(e) {
-	if (!xl) {
+function Tl(e) {
+	if (!wl) {
 		let t = import("/dist/peach-react.js").then((t) => (t.configureRouter(e), t));
-		ii(t.then((e) => e.prefetchManagedRoute)), xl = t.then(() => void 0);
+		ii(t.then((e) => e.prefetchManagedRoute)), wl = t.then(() => void 0);
 	}
-	return xl;
+	return wl;
 }
 //#endregion
-export { je as ACCENTS, Ut as ACCENT_CHOICES, ft as COVER_FRONT_RATIO, In as CancelledError, Me as DEFAULT_ACCENT, Ve as DEFAULT_HOME_GLOW, Qe as DEFAULT_SETTINGS, ye as DEFAULT_SIDEBAR_ORDER, za as FACE_CEILING, La as FACE_TARGET, Ze as FEED_COMPILATION_KEYS, Ye as FOLLOW_INITIAL_DAYS, Oe as GLASS_NATIVE_PRESET, De as GLOW_SPOT_LABELS, Ie as GLOW_SWATCHES, Fe as GLOW_SWATCH_FAMILIES, ke as HOME_GLOW_CHOICES, x as HOME_GLOW_PRESETS, Ee as HOME_GLOW_SPOTS, Jo as INDEX_TITLES, tr as InfiniteQueryObserver, lt as JAV_LAYOUTS, re as JAV_RELEASE_SORT, yr as MEDIA_SOURCES_KEY, vr as MEDIA_SOURCES_URL, Xe as METADATA_REFRESH_DAYS, Ra as MIN_FACE_PX, nr as Mutation, ir as MutationCache, or as MutationObserver, Vr as OVERLAY_PATHS, dt as PHOTO_LAYOUTS, ut as PHOTO_SIZES, cr as QueriesObserver, Gn as Query, lr as QueryCache, ur as QueryClient, Yn as QueryObserver, L as ROUTE_META, qe as SETTINGS_KEY, ne as SORTS, oe as SORT_ALIASES, ae as SORT_DIR_WORDS, ie as SORT_KEYS, Je as THEME_CHOICES, rt as THEME_OPTIONS, kt as TILES, Hi as activeQueue, Jr as adoptOverlayState, qa as advanceImageFallback, w as allowedSetting, E as appSettingsStore, Bt as applyAccent, Nt as applyDensity, zt as applyGlassFaces, Rt as applyHomeGlow, tt as applySyncedSettings, ot as applyTheme, Co as avatarFrame, oo as avatarInner, Ur as backgroundOf, Ai as barsContext, vl as batchDockApi, Ji as cameFromSetup, ho as cardArtwork, yo as cardIdentity, ht as cardLayoutFor, St as cardRatio, ac as catalogEmptyHtml, lc as catalogFilterSkeletonHtml, ic as catalogSuggestions, Gt as chooseAccent, Wt as chooseGlowPreset, Fa as clampPage, qr as clearOverlayBackground, Wc as clickPlayerControl, Ki as configurationRequestedSection, Vo as configureHoverPreview, ii as connectManagedRoutes, wo as coverAnchor, Eo as coverBackdrop, ko as coverFace, fo as coverImage, Oo as coverRatio, to as coverUrl, At as currentDensity, pr as dataTagErrorSymbol, fr as dataTagSymbol, jn as defaultScheduler, Dn as defaultShouldDehydrateMutation, On as defaultShouldDehydrateQuery, ce as defaultSortDir, kn as dehydrate, En as dehydrateQuery, Bi as detailOriginAbove, zi as detailOriginAnchor, vo as detailPosterUrl, ji as detailReturnBarsContext, Vi as detailReturnNeedsRestore, Ri as detailReturnPath, tc as detailSkeletonHtml, vc as dropBars, so as entityAvatar, ao as entityFaceImg, Xi as entityJavLayout, qo as entitySkeletonHtml, xn as environmentManager, dr as experimental_streamedQuery, uo as faceBoxAttrs, Ha as faceFrame, co as faceOrigin, lo as facePos, Ya as faceSourceScale, Va as faceZoom, mi as failManagedRoute, gc as fetchBars, br as fetchMediaSources, _c as fetchTopsPage, Fo as fitNativeImage, Sn as focusManager, Gi as followDetailReturnPath, Zi as followDiscoverySeed, Oa as followJobProgress, Ii as followLastSelectedId, Qi as followRevision, $i as followScrollY, Ni as followSelected, Po as frameCachedImages, Pe as glowAccent, Ue as glowChipFill, Ht as glowChips, Re as glowColor, C as glowPalette, Ae as glowPresetName, xt as gridLayout, Ba as hasFaceBox, j as hashKey, Kr as holdOverlayBackground, mt as homeLayout, An as hydrate, Ka as imageFallbackAttrs, ol as immerseApi, ns as indexParams, ca as initBoardControls, zo as installCardArt, Ln as isCancelledError, S as isNativeGlass, Hr as isOverlayPath, Zt as isServer, mo as javArtwork, pe as javImageKind, pt as javLayout, Ea as jobActivityHtml, Uc as junkCountSkeletonHtml, zc as junkPath, Rc as junkRoute, fn as keepPreviousData, Fi as lastSelectedId, ci as listenManagedEntry, _l as loadBatchDock, bl as loadGlowPicker, al as loadImmerse, pl as loadManageHeader, Sr as loadMediaSources, Sl as loadRouter, tl as loadSettingsPanel, ll as loadSidebar, Zc as loadStage, no as logoUrl, ml as manageHeaderApi, Ca as manageHeaderSkeletonHtml, ba as manageHeaderView, si as managedEntries, ai as managedEntry, oi as managedTaken, Nc as managementSkeletonHtml, nn as matchMutation, tn as matchQuery, go as mixFace, xo as mixLabel, Xa as nativeImageFit, le as nextSortState, k as noop, Ne as normalizeAccent, $e as normalizeAppSettings, He as normalizeHomeGlow, fe as normalizeJavImage, y as normalizeJavLayout, de as normalizeJavPreferences, Ce as normalizeSidebarOrder, F as notifyManager, ia as notifyShell, Nn as onlineManager, ui as openManagedRoute, B as openResidentSurface, Xr as overlayState, Pa as pageCount, Yi as pageOpens, kc as pageSkeletonHtml, Ia as paginationHtml, Ke as paintGlassFaces, qt as paintGlowButton, Ge as paintHomeGlow, It as paintHomeGlowNow, ss as paintIndexSkeleton, Fc as paintManagementPlaceholder, Ft as paintPhotoSizeButton, he as panelFrame, Ga as parseFallbacks, M as partialMatchKey, Si as peachHistory, Ui as pendingQueueRoute, ts as peopleLayoutOf, io as performerLabel, yt as photoLayout, vt as photoSize, ea as playlistsRevision, nt as postSearchHistoryLimit, To as posterPanel, ue as preferredDirection, ti as preloadManagedRoutes, Wi as presentedItem, I as queryClient, bo as queueAvatarHtml, _o as queueThumbHtml, et as readAppSettings, Io as refitNativeImages, Lo as relayoutCovers, _e as relayoutJavImages, Wo as releaseHover, Uo as releaseHoverPreviews, pi as releaseManagedRoute, Qa as rememberRepresentatives, on as replaceEqualDeep, $a as representativeOf, Kt as resetGlowColors, Oi as retagOverlay, Zr as routeMetaOf, Di as routeSeen, Ti as routingStarted, qi as runtimeConfigurable, Kc as seekVideoBy, ja as selectGroup, Pi as selectMode, ka as selectRange, Li as selectSurface, Mi as selected, Aa as selectionSummary, Go as setHoverState, nl as settingsPanelApi, No as settleImage, Ci as shellNavigate, oa as shellVersion, _n as shouldThrowError, Jc as showToast, ul as sidebarApi, we as sidebarHasCatalogContent, ga as sidebarSkeletonHtml, Te as sidebarTagCounts, Pc as skeletonKeyOf, hn as skipToken, se as sortDirWord, Qc as stageApi, Ei as startRouting, ki as state, Ct as storeHomeLayout, wt as storeJavLayout, Dt as storePhotoLayout, Et as storePhotoSize, Tt as storeVideoLayout, aa as subscribeShell, sa as syncBoardRange, ge as syncJavImages, Ma as syncSelectionToolbar, Yr as takeOverlayReturn, O as timeoutManager, Pt as toggleDensity, Gc as toggleVideoPlayback, ma as transitionTheme, mr as unsetMarker, fi as updateManagedRoute, Do as upgradeCover, Da as watchJob, Mo as watchPendingImages, ct as watchSystemTheme, Jt as wireGlowButton, Ko as wireHover, Ja as wireImageFallbacks, eo as withVersion, ra as writeShell };
+export { je as ACCENTS, Ut as ACCENT_CHOICES, ft as COVER_FRONT_RATIO, In as CancelledError, Me as DEFAULT_ACCENT, Ve as DEFAULT_HOME_GLOW, Qe as DEFAULT_SETTINGS, ye as DEFAULT_SIDEBAR_ORDER, za as FACE_CEILING, La as FACE_TARGET, Ze as FEED_COMPILATION_KEYS, Ye as FOLLOW_INITIAL_DAYS, Oe as GLASS_NATIVE_PRESET, De as GLOW_SPOT_LABELS, Ie as GLOW_SWATCHES, Fe as GLOW_SWATCH_FAMILIES, ke as HOME_GLOW_CHOICES, x as HOME_GLOW_PRESETS, Ee as HOME_GLOW_SPOTS, fs as INDEX_TITLES, tr as InfiniteQueryObserver, lt as JAV_LAYOUTS, re as JAV_RELEASE_SORT, yr as MEDIA_SOURCES_KEY, vr as MEDIA_SOURCES_URL, Xe as METADATA_REFRESH_DAYS, Ra as MIN_FACE_PX, nr as Mutation, ir as MutationCache, or as MutationObserver, Vr as OVERLAY_PATHS, dt as PHOTO_LAYOUTS, ut as PHOTO_SIZES, cr as QueriesObserver, Gn as Query, lr as QueryCache, ur as QueryClient, Yn as QueryObserver, L as ROUTE_META, qe as SETTINGS_KEY, ne as SORTS, oe as SORT_ALIASES, ae as SORT_DIR_WORDS, ie as SORT_KEYS, Je as THEME_CHOICES, rt as THEME_OPTIONS, kt as TILES, Hi as activeQueue, Jr as adoptOverlayState, qa as advanceImageFallback, w as allowedSetting, E as appSettingsStore, Bt as applyAccent, Nt as applyDensity, zt as applyGlassFaces, Rt as applyHomeGlow, tt as applySyncedSettings, ot as applyTheme, Co as avatarFrame, oo as avatarInner, Ur as backgroundOf, Ai as barsContext, xl as batchDockApi, Ji as cameFromSetup, ho as cardArtwork, yo as cardIdentity, ht as cardLayoutFor, St as cardRatio, cc as catalogEmptyHtml, fc as catalogFilterSkeletonHtml, sc as catalogSuggestions, Gt as chooseAccent, Wt as chooseGlowPreset, Fa as clampPage, qr as clearOverlayBackground, qc as clickPlayerControl, Ki as configurationRequestedSection, Vo as configureHoverPreview, ii as connectManagedRoutes, wo as coverAnchor, Eo as coverBackdrop, ko as coverFace, fo as coverImage, Oo as coverRatio, to as coverUrl, At as currentDensity, pr as dataTagErrorSymbol, fr as dataTagSymbol, jn as defaultScheduler, Dn as defaultShouldDehydrateMutation, On as defaultShouldDehydrateQuery, ce as defaultSortDir, kn as dehydrate, En as dehydrateQuery, Bi as detailOriginAbove, zi as detailOriginAnchor, vo as detailPosterUrl, ji as detailReturnBarsContext, Vi as detailReturnNeedsRestore, Ri as detailReturnPath, ic as detailSkeletonHtml, xc as dropBars, so as entityAvatar, ao as entityFaceImg, Xi as entityJavLayout, qo as entitySkeletonHtml, xn as environmentManager, dr as experimental_streamedQuery, uo as faceBoxAttrs, Ha as faceFrame, co as faceOrigin, lo as facePos, Ya as faceSourceScale, Va as faceZoom, mi as failManagedRoute, yc as fetchBars, br as fetchMediaSources, bc as fetchTopsPage, Fo as fitNativeImage, Sn as focusManager, Gi as followDetailReturnPath, Zi as followDiscoverySeed, Oa as followJobProgress, Ii as followLastSelectedId, Qi as followRevision, $i as followScrollY, Ni as followSelected, Po as frameCachedImages, Pe as glowAccent, Ue as glowChipFill, Ht as glowChips, Re as glowColor, C as glowPalette, Ae as glowPresetName, xt as gridLayout, Ba as hasFaceBox, j as hashKey, Kr as holdOverlayBackground, mt as homeLayout, An as hydrate, Ka as imageFallbackAttrs, ll as immerseApi, bs as indexParams, ca as initBoardControls, zo as installCardArt, Ln as isCancelledError, S as isNativeGlass, Hr as isOverlayPath, Zt as isServer, mo as javArtwork, pe as javImageKind, pt as javLayout, Ea as jobActivityHtml, Kc as junkCountSkeletonHtml, Hc as junkPath, Vc as junkRoute, fn as keepPreviousData, Fi as lastSelectedId, ci as listenManagedEntry, bl as loadBatchDock, Cl as loadGlowPicker, cl as loadImmerse, gl as loadManageHeader, Sr as loadMediaSources, Tl as loadRouter, il as loadSettingsPanel, fl as loadSidebar, el as loadStage, no as logoUrl, _l as manageHeaderApi, Ca as manageHeaderSkeletonHtml, ba as manageHeaderView, si as managedEntries, ai as managedEntry, oi as managedTaken, Ic as managementSkeletonHtml, nn as matchMutation, tn as matchQuery, go as mixFace, xo as mixLabel, Xa as nativeImageFit, le as nextSortState, k as noop, Ne as normalizeAccent, $e as normalizeAppSettings, He as normalizeHomeGlow, fe as normalizeJavImage, y as normalizeJavLayout, de as normalizeJavPreferences, Ce as normalizeSidebarOrder, F as notifyManager, ia as notifyShell, Nn as onlineManager, ui as openManagedRoute, B as openResidentSurface, Xr as overlayState, Pa as pageCount, Yi as pageOpens, Mc as pageSkeletonHtml, Ia as paginationHtml, Ke as paintGlassFaces, qt as paintGlowButton, Ge as paintHomeGlow, It as paintHomeGlowNow, Ts as paintIndexSkeleton, Rc as paintManagementPlaceholder, Ft as paintPhotoSizeButton, he as panelFrame, Ga as parseFallbacks, M as partialMatchKey, Si as peachHistory, Ui as pendingQueueRoute, ys as peopleLayoutOf, io as performerLabel, yt as photoLayout, vt as photoSize, ea as playlistsRevision, nt as postSearchHistoryLimit, To as posterPanel, ue as preferredDirection, ti as preloadManagedRoutes, Wi as presentedItem, I as queryClient, bo as queueAvatarHtml, _o as queueThumbHtml, et as readAppSettings, Io as refitNativeImages, Lo as relayoutCovers, _e as relayoutJavImages, Wo as releaseHover, Uo as releaseHoverPreviews, pi as releaseManagedRoute, Qa as rememberRepresentatives, on as replaceEqualDeep, $a as representativeOf, Kt as resetGlowColors, Oi as retagOverlay, Zr as routeMetaOf, Di as routeSeen, Ti as routingStarted, qi as runtimeConfigurable, Yc as seekVideoBy, ja as selectGroup, Pi as selectMode, ka as selectRange, Li as selectSurface, Mi as selected, Aa as selectionSummary, Go as setHoverState, al as settingsPanelApi, No as settleImage, Ci as shellNavigate, oa as shellVersion, _n as shouldThrowError, Zc as showToast, pl as sidebarApi, we as sidebarHasCatalogContent, ga as sidebarSkeletonHtml, Te as sidebarTagCounts, Lc as skeletonKeyOf, hn as skipToken, se as sortDirWord, tl as stageApi, Ei as startRouting, ki as state, Ct as storeHomeLayout, wt as storeJavLayout, Dt as storePhotoLayout, Et as storePhotoSize, Tt as storeVideoLayout, aa as subscribeShell, sa as syncBoardRange, ge as syncJavImages, Ma as syncSelectionToolbar, Yr as takeOverlayReturn, O as timeoutManager, Pt as toggleDensity, Jc as toggleVideoPlayback, ma as transitionTheme, mr as unsetMarker, fi as updateManagedRoute, Do as upgradeCover, Da as watchJob, Mo as watchPendingImages, ct as watchSystemTheme, Jt as wireGlowButton, Ko as wireHover, Ja as wireImageFallbacks, eo as withVersion, ra as writeShell };

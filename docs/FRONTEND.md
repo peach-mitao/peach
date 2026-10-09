@@ -91,7 +91,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 - 本地名册与词表读 `/api/index`，在线那一档读 `/api/follow/authors` 与 `/api/follow/tags`，键建在 `frontend/src/react/follow/online-vocab.ts`，归关注那一侧。四份都是 `useInfiniteQuery`，「载入更多」取下一页；打字过滤时新结果到手前留着上一份，不铺骨架。
 - 圆框里那段 HTML 由 `card-art/markup.ts` 的 `avatarInner` 拼，经壳的 `personAvatar` 递进来；原尺寸摆图、补底与首字母收起的规则在 `web/css/01-base.css` 的 `[data-person-ring]`，量图的是 `installCardArt()` 挂在文档上的 `load` 监听。
 - 顶栏选择键归壳，选择模式记在 `@peach/shell` 的 store 里：索引元素订阅它，推给画着的本地标签页；关掉时页面清空所选。所选标签的操作条三颗键都不写账本，「显示结果」回目录按所选标签筛选。
-- 数据回来之前的骨架由索引元素写进 `#index`，模板在 `frontend/src/index-skeleton.ts`（正文那段是 `ui-kit/skeleton.ts` 的 `indexSkeletonHtml`），页头骨架与页面同一组文字。
+- 数据回来之前的骨架由索引元素写进 `#index`，模板在 `frontend/src/index-skeleton.ts`（正文那段是 `ui-kit/skeleton.ts` 的 `indexSkeletonHtml`），页头骨架与页面同一组文字。本地艺人那一排身份分类在骨架里就是最终长相，词表与骨架都在 `frontend/src/identity-filter.ts`，页面与骨架模板共用。
 
 ### 资料页
 

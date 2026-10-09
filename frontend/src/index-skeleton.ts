@@ -1,12 +1,14 @@
 /* 索引五页（艺人、卖家、厂牌、事务所、标签）的进页骨架与地址解析。
  *
- * 页头那几样此刻就能给出最终样子：标题、读数的占位、版式开关、过滤框和页面级 Tabs，等的只有下面那块内容。
+ * 页头那几样此刻就能给出最终样子：标题、读数的占位、版式开关、过滤框、页面级 Tabs 和本地艺人那一排身份分类，
+ * 等的只有下面那块内容。
  * React 页取回首屏后整块换掉它，键和文字同页面那一份一致，换的那一下页头不跳。这里的控件不接线：骨架只在
  * 取数那一段露面。两处铺它：壳在冷启动落在索引页时先铺一遍（`renderInitialSurfaceLoading`），路由树的索引元素
  * 每次打开前再铺；屏幕上已经是同一张骨架就不重画。
  *
  * 版式偏好由调用方读好交进来：这个模块壳与 React 包各带一份，设置 store 只能有一份。 */
 import { boardTabsHtml, fitSkeleton, iconSwitchHtml, indexSkeletonHtml, searchInputHtml } from '@peach/legacy/ui';
+import { identityFilterSkeletonHtml } from './identity-filter';
 
 export type IndexPageKind = 'performers' | 'creators' | 'studios' | 'agencies' | 'tags';
 
@@ -57,7 +59,7 @@ const tagFilterSkeletonHtml = (view: string) => `<div class="board-filter-frame"
     <div class="count" data-filter-row="bottom"><span class="mono"><span class="countskeleton"></span></span>
       ${iconSwitchHtml('tag-view', '标签视图', TAG_VIEWS, view)}</div></div>`;
 
-export function indexPlaceholderHtml({ kind, q, scope, view }: IndexParams, layout: 'big' | 'compact'): string {
+export function indexPlaceholderHtml({ kind, q, scope, view, category }: IndexParams, layout: 'big' | 'compact'): string {
   const title = INDEX_TITLES[kind] || '标签', people = kind !== 'tags', company = kind === 'studios' || kind === 'agencies';
   const switcher = people
     ? iconSwitchHtml('people-layout', title + '索引版式', company ? COMPANY_LAYOUTS : PEOPLE_LAYOUTS, layout) : '';
@@ -70,6 +72,7 @@ export function indexPlaceholderHtml({ kind, q, scope, view }: IndexParams, layo
       ? tabs(PEOPLE_INDEX_TABS, kind === 'performers' && scope === 'online' ? 'online' : kind, '人物名册')
       : company ? tabs(MAKER_INDEX_KINDS, kind, '公司类型') : ''}
     ${kind === 'tags' ? tagFilterSkeletonHtml(view) : ''}
+    ${kind === 'performers' && scope !== 'online' ? identityFilterSkeletonHtml(category) : ''}
     ${indexSkeletonHtml({ kind, layout, mode: view })}`;
 }
 

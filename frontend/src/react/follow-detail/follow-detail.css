@@ -163,8 +163,12 @@
 }
 .peach-react [data-follow-detail] [data-follow-detail-title] > [data-follow-detail-name] { width: auto; max-width: calc(100% - 35px); margin: 0; }
 /* 来源外链与下面的资源链接：显示方式、内距、边框、字色与悬停归 `board.css` 的全站外链规则，
-   这里只给尺寸与那枚外链标。 */
-.peach-react [data-follow-detail] [data-follow-origin] { flex: none; width: 30px; height: 30px; min-width: 0; margin: 0; }
+   这里只给尺寸与那枚外链标。30px 的命中区比标题一行（`stage.css` 里 `[data-stage-title]` 的
+   1.5 倍行高）高，上下各让出一半差值，外链标就和标题第一行同心；标题折成几行都贴着第一行。 */
+.peach-react [data-follow-detail] [data-follow-origin] {
+  flex: none; width: 30px; height: 30px; min-width: 0;
+  margin: calc((var(--fs-lg) * 1.5 - 30px) / 2) 0;
+}
 .peach-react [data-follow-detail] :is([data-follow-origin], [data-follow-resources] a) svg { flex: none; width: 18px; height: 18px; }
 .peach-react [data-follow-detail] [data-follow-detail-identity] {
   display: flex;

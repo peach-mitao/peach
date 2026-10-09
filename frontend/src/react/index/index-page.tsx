@@ -17,6 +17,8 @@ import { indexSkeletonHtml } from '@peach/legacy/ui';
 import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { InputBase, TextField } from '@/components/base/input/input';
 
+import { IDENTITY_ROW_CLASS } from '../../identity-filter';
+
 import { BoardTabs, type BoardTab } from '../components/board-tabs';
 import { EmptyState } from '../components/empty-state';
 import { LoadingDots } from '../components/loading-dots';
@@ -158,13 +160,15 @@ export function IndexPage(props: IndexProps) {
   const more = !!result.hasNextPage && !result.isPlaceholderData;
   const readout = countText(items.length, !!result.hasNextPage);
   /* 分类计数只随名册、词表和过滤词变，与选中哪一类无关。换分类时新一页还没到，沿用同一份
-     名册上一次拿到的计数：分类按钮行不先塌成「全部」加当前项、等数据回来再弹开。 */
+     名册上一次拿到的计数：分类按钮行不先塌成「全部」加当前项、等数据回来再弹开。头一回
+     还没有计数时整排都摆出来，同壳铺的骨架那一排，计数到了再收掉空的那几类。 */
   const countsKey = `${kind}:${scope}:${q}`;
   const lastCounts = useRef<{ key: string; counts: Record<string, number> } | null>(null);
   const pageCounts = result.data?.pages[0]?.categories;
   if (pageCounts && !result.isPlaceholderData) lastCounts.current = { key: countsKey, counts: pageCounts };
   const categoryCounts = pageCounts ?? (lastCounts.current?.key === countsKey ? lastCounts.current.counts : undefined);
-  const hasEntries = ([key]: readonly [string, string]) => key === 'all' || Number(categoryCounts?.[key] || 0) > 0;
+  const waiting = result.isPending && !categoryCounts;
+  const hasEntries = ([key]: readonly [string, string]) => key === 'all' || waiting || Number(categoryCounts?.[key] || 0) > 0;
 
   /* 框换了大小，「这张图要不要补底」和人脸放大都得重算：图早加载完了，不会再自己发一次 load。
      赶在绘制之前，否则换版式那一帧是按旧框算的几何。 */
@@ -246,7 +250,7 @@ export function IndexPage(props: IndexProps) {
       ) : null}
       {tabs}
       {kind === 'performers' && scope === 'local' ? (
-        <div aria-label="身份分类" className="mb-4 flex flex-wrap gap-2">
+        <div aria-label="身份分类" className={IDENTITY_ROW_CLASS}>
           {IDENTITY_CATEGORIES.filter((entry) => entry[0] === category || hasEntries(entry)).map(([key, label]) => (
             <Button key={key} variant={category === key ? 'primary' : 'secondary'} size="small"
               aria-pressed={category === key} onClick={() => go({ category: key })}>{label}</Button>
