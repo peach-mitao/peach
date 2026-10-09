@@ -4901,14 +4901,14 @@ function Qs(e, t = {}) {
 	], "tastesummaries")}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${Y(js(), 4)}</div></section>${Ps("口味分析")}<div class="board-activity-charts">${Ps("浏览活动")}${Ps("时间分布")}</div>${Ps("标签")}</div>`;
 	else if (e === "/follow-manage") n = Ys(t);
 	else if (e === "/configuration") n = Ts();
-	else if (e === "/activity") n = `<div class="activitypage">${[
+	else if (e === "/activity") n = `<div class="ui-activitypage">${[
 		"正在进行",
 		"被挡下的",
 		"最近完成"
-	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${J("35%")}${js()}</div></article></div></section>`).join("")}</div>`;
+	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${J("35%")}${js()}</div></article></div></section>`).join("")}</div>`;
 	else if (e === "/duplicates") n = ks();
 	else if (e === "/quality-goals") n = As();
-	else if (e === "/playlists") n = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${J("200px")}</div></header><div class="playlistcards">${Y(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${js()}</div></div></article>`, 6)}</div></section>`;
+	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${J("200px")}</div></header><div class="ui-playlistcards">${Y(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${js()}</div></div></article>`, 6)}</div></section>`;
 	else return "";
 	return `<div class="board-page-skeleton" data-skeleton="board${e}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${n}</div></div>`;
 }
@@ -5062,9 +5062,9 @@ function wc() {
 		["重复文件", "file-stack"],
 		["垃圾文件", "file-archive"],
 		["回收站", "trash"]
-	], t = `<span class="geist-button organize-preset-skeleton">${$}</span>`.repeat(3), r = (e) => `<div class="organizefield"><span>${e}</span>
+	], t = `<span class="geist-button organize-preset-skeleton">${$}</span>`.repeat(3), r = (e) => `<div class="ui-organizefield"><span>${e}</span>
             <span class="geist-input organize-input-skeleton">${$}</span></div>`;
-	return `<div class="cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
+	return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
     <div class="cleanupstats">${e.map(([e, t]) => `
       <button type="button" class="board-plain-stat" disabled>
         <span class="board-plain-stat-head"><span class="board-stat-tile">${n(t)}</span>${e}</span>
@@ -5075,11 +5075,11 @@ function wc() {
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
-          <div class="organizefields">
+          <div class="ui-organizefields">
             <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${$}${n("chevron-down")}</span></span></div>
             ${r("文件名模板")}
             ${r("目录模板")}
-            <div class="organizepresets">${t}</div>
+            <div class="ui-organizepresets">${t}</div>
             <p class="cleanupmeta">${$}</p>
           </div></div>
         <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${_c}>预览</button></footer>

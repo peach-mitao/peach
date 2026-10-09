@@ -25,7 +25,6 @@
   .count>span:first-child{line-height:36px;white-space:nowrap}
   .count.junkcount{align-items:stretch;flex-direction:column;overflow:visible;padding-block:8px}
   .reviewtabs button{height:44px}
-  .playlistpage>header{align-items:stretch;flex-direction:column}
   /* 顶栏在窄屏会被搜索框撑破 —— 搜索收成一个按钮，点了才展开。只裁横向：竖向也裁的话，
      那几枚玻璃按钮往下落的投影在顶栏下沿被切平，头像那一排上方就多出一条横线。 */
   .top{gap:4px;padding:0 8px;overflow:clip visible}
@@ -82,7 +81,7 @@
   .stats h2{font-size:var(--fs-xl)}.stats .insightcopy h2{font-size:var(--fs-3xl)}
   /* 窄屏下标题也得一起缩。`/follow` 渲染在 `#stats` 里，上面那条 `.stats h2`
      会只把它打到 23px，页面标题要跟它同一档。 */
-  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-2xl)}
+  .pagetitle,.listtitle,.index .ihead h2{font-size:var(--fs-2xl)}
 }
 /* 这个 16px 是 iOS 的阈值，不是刻度里的一档：Safari 对小于 16px 的输入框会自动放大页面。
    所以它写死，不跟 --fs-lg 走——刻度改一档就把这个防放大保护悄悄破坏掉了。 */
@@ -91,7 +90,7 @@
    页面标题压得比它下面 24px 的指标数字还小，层级整个翻过来。24 这一档是 Geist
    自己就有的 Heading 24，不是新开的字号。 */
 @media (max-width:640px){
-  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-xl)}
+  .pagetitle,.listtitle,.index .ihead h2{font-size:var(--fs-xl)}
 }
 #searchBtn{display:none}
 .searchback{display:none}

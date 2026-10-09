@@ -1,0 +1,21 @@
+/* `board-skeleton.ts` 画的播放列表页与活动页骨架：遗留外壳在 React 子树接手之前铺的那一屏。
+   新建框占位、活动页分区与卡内那一列仍在 web/css/04-manage.css。 */
+/* 播放列表页：页头与卡片栅格。 */
+.ui-playlistpage{padding:4px 0 42px}.ui-playlistpage>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}.ui-playlistpage h2{margin:0 0 8px}.ui-playlistpage p{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+.ui-playlistcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+/* 活动页：窄列与数据管理同一条 812px，因为接手之后的正文也停在这条中线上。 */
+.ui-activitypage{width:min(812px,100%);margin:0 auto;display:grid;gap:32px}
+.ui-activity-runs{list-style:none;margin:0;padding:0;display:grid;gap:12px;min-width:0}
+.ui-playlistpage h2{
+  font-size:var(--fs-3xl);line-height:1.25;letter-spacing:-.01em;font-weight:600}
+@media (max-width:760px){
+  .ui-playlistpage>header{align-items:stretch;flex-direction:column}
+  .ui-playlistpage h2{font-size:var(--fs-2xl)}
+}
+@media (max-width:640px){
+  .ui-playlistpage h2{font-size:var(--fs-xl)}
+}
+.ui-activitypage{width:100%;max-width:var(--board-content)}
+/* 骨架落在 `#stats` 里，web/css/04-manage.css 的 `.stats h2` 与 `.ui-playlistpage h2` 同一档特指度，
+   这一条排在它前面，所以多写一级 `>header` 压过它的字号。 */
+.ui-playlistpage>header h2{font:var(--board-title);letter-spacing:0}

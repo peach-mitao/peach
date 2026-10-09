@@ -1,0 +1,12 @@
+/* 数据管理页的遗留骨架（`management.ts`）。卡片框体、统计条与操作条在 web/css/04-manage.css。 */
+/* 数据管理整页收进一条窄列（vercel.com/geist/fieldset 实测示例块宽 812px），
+   fieldset 一行一个，不再拼三列。 */
+.ui-cleanuppage{width:min(812px,100%);margin:0 auto;display:grid;gap:32px}
+/* 整理那张卡：两份模板、一排预设、一段结果。字段标签是块级、排在控件上方（Geist 的
+   Label 就是这个形状）；来源下拉靠框内前缀图标自报用途，同一行不再挂文字标签。 */
+.ui-organizefields{display:grid;gap:12px;margin-top:12px}
+.ui-organizefield{display:grid;gap:6px;min-width:0}
+.ui-organizefield>span{color:var(--ink-2);font-size:var(--fs-sm)}
+.ui-organizepresets{display:flex;flex-wrap:wrap;gap:8px}
+/* 正文跟管理区页头钉在同一条中线上（web/board.css 里 `.configpage` 那一条的说明）。 */
+.ui-cleanuppage{width:100%;max-width:var(--board-content)}

@@ -45,9 +45,9 @@ export function repairCardSkeletonHtml(): string {
 export function cleanupSkeletonHtml(): string {
   const stats = [['人工复核', 'square-check-big'], ['高清版', 'sparkles'], ['重复文件', 'file-stack'], ['垃圾文件', 'file-archive'], ['回收站', 'trash']];
   const presets = `<span class="geist-button organize-preset-skeleton">${bar}</span>`.repeat(3);
-  const organizeField = (label: string) => `<div class="organizefield"><span>${label}</span>
+  const organizeField = (label: string) => `<div class="ui-organizefield"><span>${label}</span>
             <span class="geist-input organize-input-skeleton">${bar}</span></div>`;
-  return `<div class="cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
+  return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
     <div class="cleanupstats">${stats.map(([title, glyph]) => `
       <button type="button" class="board-plain-stat" disabled>
         <span class="board-plain-stat-head"><span class="board-stat-tile">${icon(glyph!)}</span>${title}</span>
@@ -58,11 +58,11 @@ export function cleanupSkeletonHtml(): string {
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
-          <div class="organizefields">
+          <div class="ui-organizefields">
             <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${bar}${icon('chevron-down')}</span></span></div>
             ${organizeField('文件名模板')}
             ${organizeField('目录模板')}
-            <div class="organizepresets">${presets}</div>
+            <div class="ui-organizepresets">${presets}</div>
             <p class="cleanupmeta">${bar}</p>
           </div></div>
         <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${waiting}>预览</button></footer>

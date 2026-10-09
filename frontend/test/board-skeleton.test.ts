@@ -31,7 +31,7 @@ describe('Board 页面骨架', () => {
     ['/quality-goals', '.peach-react .card-grid-cover > li', 6],
     ['/follow-manage', '.peach-react .follow-skeleton-surface .follow-skeleton-author', 3],
     ['/configuration', '.peach-react .configpage section', 2],
-    ['/playlists', '.playlistcards > .playlistcard', 6],
+    ['/playlists', '.ui-playlistcards > .playlistcard', 6],
   ] as const)('%s 复用最终内容容器', (path, selector, count) => {
     const root = document.createElement('div');
     root.innerHTML = boardPageSkeleton(path);

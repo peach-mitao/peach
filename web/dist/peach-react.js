@@ -26660,9 +26660,9 @@ function TM() {
 		["重复文件", "file-stack"],
 		["垃圾文件", "file-archive"],
 		["回收站", "trash"]
-	], t = `<span class="geist-button organize-preset-skeleton">${bM}</span>`.repeat(3), n = (e) => `<div class="organizefield"><span>${e}</span>
+	], t = `<span class="geist-button organize-preset-skeleton">${bM}</span>`.repeat(3), n = (e) => `<div class="ui-organizefield"><span>${e}</span>
             <span class="geist-input organize-input-skeleton">${bM}</span></div>`;
-	return `<div class="cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
+	return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
     <div class="cleanupstats">${e.map(([e, t]) => `
       <button type="button" class="board-plain-stat" disabled>
         <span class="board-plain-stat-head"><span class="board-stat-tile">${L(t)}</span>${e}</span>
@@ -26673,11 +26673,11 @@ function TM() {
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
-          <div class="organizefields">
+          <div class="ui-organizefields">
             <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${bM}${L("chevron-down")}</span></span></div>
             ${n("文件名模板")}
             ${n("目录模板")}
-            <div class="organizepresets">${t}</div>
+            <div class="ui-organizepresets">${t}</div>
             <p class="cleanupmeta">${bM}</p>
           </div></div>
         <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${xM}>预览</button></footer>
@@ -54342,14 +54342,14 @@ function jSe(e, t = {}) {
 	], "tastesummaries")}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${Tz(wz(), 4)}</div></section>${Ez("口味分析")}<div class="board-activity-charts">${Ez("浏览活动")}${Ez("时间分布")}</div>${Ez("标签")}</div>`;
 	else if (e === "/follow-manage") n = kSe(t);
 	else if (e === "/configuration") n = fSe();
-	else if (e === "/activity") n = `<div class="activitypage">${[
+	else if (e === "/activity") n = `<div class="ui-activitypage">${[
 		"正在进行",
 		"被挡下的",
 		"最近完成"
-	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${Cz("35%")}${wz()}</div></article></div></section>`).join("")}</div>`;
+	].map((e) => `<section class="activitysection"><h3 class="geist-fieldset-title">${e}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${Cz("35%")}${wz()}</div></article></div></section>`).join("")}</div>`;
 	else if (e === "/duplicates") n = mSe();
 	else if (e === "/quality-goals") n = hSe();
-	else if (e === "/playlists") n = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${Cz("200px")}</div></header><div class="playlistcards">${Tz(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${wz()}</div></div></article>`, 6)}</div></section>`;
+	else if (e === "/playlists") n = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${Cz("200px")}</div></header><div class="ui-playlistcards">${Tz(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${wz()}</div></div></article>`, 6)}</div></section>`;
 	else return "";
 	return `<div class="board-page-skeleton" data-skeleton="board${e}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${n}</div></div>`;
 }

@@ -225,9 +225,10 @@ body{background:var(--page)}
 
 /* Task entry cards and editing panels have different information density. */
 /* 管理区每一页的正文跟标题走同一条中线。标题由页头岛（`react/manage-header/`）钉在 1120 上，
-   正文也得钉到同一个数：`.scraping-page` 和 `.activitypage` 自己声明的 812 窄列比标题
-   每边窄 154px，读起来就是正文整块往右缩了一截。 */
-.cleanuppage,.configpage,.scraping-page,.activitypage{width:100%;max-width:var(--board-content)}
+   正文也得钉到同一个数：`.scraping-page` 和 `.ui-activitypage` 自己声明的 812 窄列比标题
+   每边窄 154px，读起来就是正文整块往右缩了一截。数据管理与活动页骨架的同一条在
+   frontend/src 的 management.css 与 board-skeleton.css。 */
+.configpage,.scraping-page{width:100%;max-width:var(--board-content)}
 .cleanupgrid{gap:16px}
 .cleanupfieldset{border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px #00000003}
 .cleanupfieldset>.geist-fieldset-content{padding:20px 20px 16px;min-height:120px}
@@ -613,7 +614,7 @@ button,input,select,textarea{font-family:inherit}
    面板、筛选条、交集条和标签骨架都从它取值，一处改完五处一起走。 */
 :root{--tag-radius:8px}
 body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
-.pagetitle,.listtitle,.index .ihead h2,.indexheading,.playlistpage h2{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer{font:var(--board-caption);letter-spacing:.15px}
+.pagetitle,.listtitle,.index .ihead h2,.indexheading{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3,.resourcesync>h2{font:var(--board-heading);letter-spacing:0}.metricstrip>button .board-stat-value,.tastesummary>.board-stat-value{font:var(--board-figure);letter-spacing:0}.board-library-rows button{font:var(--board-body)}.board-stat-footer{font:var(--board-caption);letter-spacing:.15px}
 .geist-button,.resourceaction{background-color:var(--color-background-primary-default);border-color:var(--color-border-button-default);color:var(--color-text-primary);transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 /* 悬停只抬填充，那圈线一步不动：按钮静止态已经带一圈 1px，悬停再把它加深，
    鼠标扫过一排次级键就是一排边框忽明忽暗，而键本身并没有变化。 */
