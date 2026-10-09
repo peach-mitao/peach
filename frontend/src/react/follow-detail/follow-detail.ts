@@ -59,14 +59,19 @@ export const FOLLOW_ITEM_URL = (id: number) => `/api/follow?item=${encodeURIComp
 export const FOLLOW_SAVE_URL = '/api/follow/save';
 export const FOLLOW_MEDIA_HIDE_URL = '/api/follow/media/hide';
 
-/** 单条取：响应只含这一条所在的组。条目已不存在时服务端回空组，这里报成一次失败。 */
+/** 条目已不存在：重试也取不回来，详情给的是「回到关注」而不是重试。 */
+export class FollowItemGone extends Error {
+  constructor() { super('这条关注内容已不存在') }
+}
+
+/** 单条取：响应只含这一条所在的组。条目已不存在时服务端回空组，这里报成 `FollowItemGone`。 */
 export async function fetchFollowItem(id: number, signal?: AbortSignal): Promise<FollowDetailData> {
   const page = await apiGet<FollowPage>(FOLLOW_ITEM_URL(id), signal);
   for (const group of page.groups || []) {
     const item = collectionItems(group).find((member) => member.id === id);
     if (item) return { item: item as FollowDetailItem, group, sources: page.sources || [], aliases: page.author_aliases || [] };
   }
-  throw new Error('这条关注内容已不存在');
+  throw new FollowItemGone();
 }
 
 /** 首屏：列表缓存里有就直接用（关掉详情回列表也不重取），没有才单条取；凭据没取过才取。 */

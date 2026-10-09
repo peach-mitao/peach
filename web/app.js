@@ -238,7 +238,7 @@ function renderCatalogLoading(label='正在读取作品'){
    挂上时也铺它，键相同就不重画。关注管理的视图偏好经 `followListLayout()` 取：偏好那份存储声明在本行下面，
    直接读它就是声明前引用，会提升的函数声明才能从这里回去问。排序与方向照地址栏上的那一档。 */
 const managementPlaceholder=path=>managementSkeletonHtml(path,{followLayout:followListLayout(),
-  ...(({sort,dir})=>({followSort:sort,followDir:dir}))(followManageParams())});
+  ...(({sort,dir,tab})=>({followSort:sort,followDir:dir,followTab:tab}))(followManageParams())});
 /* 顶部三层只属于首页。深链启动时先画一遍再由路由收起来，等于向管理页和索引页
    承诺了三条永远不会到货的横条。 */
 function hideDiscoveryBars(){$('#catalogFilter').style.display='none';syncCatalogFilterScreen()}
@@ -1581,16 +1581,19 @@ function feedNewCardHtml(item){
     .join('<span aria-hidden="true">·</span>');
   const cover=feedNewCoverHtml(item);
   // 番号与标题排在同一个两行的标题块里，和资产卡一样：番号加粗打头，标题接在后面截断。
-  const heading=javTitleHtml({is_jav:true,code:item.code,name:item.code,display_title:item.title||''});
+  const name=item.code||String(item.title||'').trim()||'未命名新作';
+  const heading=item.code
+    ?javTitleHtml({is_jav:true,code:item.code,name:item.code,display_title:item.title||''})
+    :esc(name);
   /* 点击区用自己的类 `.feednewopen`：这一条通向别人的站，不是站内跳转。 */
   const open=item.link
-    ?`<a class="feednewopen" href="${esc(item.link)}" target="_blank" rel="noreferrer" aria-label="打开 ${esc(item.code)} 的作品页"></a>`:'';
+    ?`<a class="feednewopen" href="${esc(item.link)}" target="_blank" rel="noreferrer" aria-label="打开 ${esc(name)} 的作品页"></a>`:'';
   return `<article class="card feednewcard${item.read?' isread':''}" data-feed-id="${item.id}">
     ${open}<div class="pic" style="--card-ratio:${COVER_FRONT_RATIO}">${cover}
       <div class="hovertools feednewtools">
-        <button type="button" data-feed-action="${item.wanted?'unwant':'want'}" aria-pressed="${!!item.wanted}" title="${item.wanted?'取消想要':'想要'}" aria-label="想要 ${esc(item.code)}">${icon('star')}</button>
-        <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${esc(item.code)}">${icon('x')}</button>
-        <button type="button" data-feed-action="read" title="标为已看过" aria-label="标为已看过 ${esc(item.code)}">${icon('check')}</button></div></div>
+        <button type="button" data-feed-action="${item.wanted?'unwant':'want'}" aria-pressed="${!!item.wanted}" title="${item.wanted?'取消想要':'想要'}" aria-label="想要 ${esc(name)}">${icon('star')}</button>
+        <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${esc(name)}">${icon('x')}</button>
+        <button type="button" data-feed-action="read" title="标为已看过" aria-label="标为已看过 ${esc(name)}">${icon('check')}</button></div></div>
     <div class="meta"><div class="mtext"><span class="t">${heading}</span>
       <div class="s mono">${label||(item.title?'':'资料还没取到')}</div></div></div></article>`;
 }
@@ -1812,10 +1815,10 @@ function openConfigurationSection(section){
    `@peach/shell` 里：壳写，路由树的关注元素打开时读。 */
 /* 关注页一次取一屏。counts 是全库口径（「未看 2292」），groups 只有这一页——
    两个数并排显示时看起来像自相矛盾，实际是两个口径，所以列表底部要能继续加载。 */
-const FOLLOW_PAGE=300;
+const FOLLOW_PAGE=100;
 /* 创作者、来源和标签一起交给服务端。只让状态走服务端、这三个在浏览器里筛的话，
    药丸上的数字（全库口径）和列表（筛过的这几页）就是两套口径，换个筛选条件
-   数字纹丝不动；而且选个冷门创作者，一页 300 条里可能只剩两条，得反复点加载更多。 */
+   数字纹丝不动；而且选个冷门创作者，一页 100 条里可能只剩两条，得反复点加载更多。 */
 const followPageUrl=offset=>
   `/api/follow?limit=${FOLLOW_PAGE}&offset=${offset}`
   +(followFilter?`&status=${followFilter}`:'')

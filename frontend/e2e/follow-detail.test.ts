@@ -316,4 +316,36 @@ describe('关注详情岛', () => {
       await opened.close();
     }
   });
+
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`长摘要收在八行内、不被侧栏压扁，长串标题与媒体报错不撑宽侧栏（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openDetail(browser, DETAIL.long, viewport);
+      try {
+        const page = opened.page;
+        const measure = () => page.evaluate(() => {
+          const side = document.querySelector('#stage [data-stage-side-content]')!;
+          const summary = document.querySelector<HTMLElement>('#stage [data-follow-detail-summary]')!;
+          const lineHeight = parseFloat(getComputedStyle(summary).lineHeight);
+          const right = side.getBoundingClientRect().right;
+          const inside = ['[data-follow-detail-name]', '[data-follow-detail-summary]', '[data-follow-media-issue]']
+            .map((selector) => document.querySelector(`#stage ${selector}`)!.getBoundingClientRect().right)
+            .every((edge) => edge <= right + 1);
+          return { lines: summary.clientHeight / lineHeight, inside, scroll: side.scrollWidth, width: side.clientWidth };
+        });
+        const folded = await measure();
+        assert.ok(folded.lines >= 7.5 && folded.lines <= 8.5, `收起的摘要不是八行：${JSON.stringify(folded)}`);
+        assert.ok(folded.inside && folded.scroll <= folded.width, `侧栏被撑宽：${JSON.stringify(folded)}`);
+        const toggle = page.locator('#stage [data-follow-summary-toggle]');
+        assert.equal((await toggle.innerText()).trim(), '展开');
+        await toggle.click();
+        const open = await measure();
+        assert.ok(open.lines > 20, `展开后摘要没有全部露出：${JSON.stringify(open)}`);
+        assert.ok(open.inside && open.scroll <= open.width, `展开后侧栏被撑宽：${JSON.stringify(open)}`);
+        assert.deepEqual((await layout(page)).offenders, [], '详情里有元素越出视口右边');
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
 });

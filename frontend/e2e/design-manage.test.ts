@@ -753,6 +753,31 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     });
   }
 
+  for (const viewport of [DESKTOP, { ...MOBILE, name: 'narrow', width: 320 }]) {
+    it(`七位数的读数留在卡里，来源行的时间、开关与操作键不越出行（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await openFollowManage(browser, viewport, { new: 1284000, seen: 22000, saved: 0, ignored: 0 });
+      try {
+        const spill = await opened.page.evaluate(() => {
+          const out = (node: Element, frame: Element) => node.getBoundingClientRect().right > frame.getBoundingClientRect().right + 1;
+          const readings = [...document.querySelectorAll('[data-follow-reading]')]
+            .filter((node) => [...node.children].some((part) => out(part, node.parentElement!)))
+            .map((node) => node.textContent);
+          const rows = [...document.querySelectorAll('[data-follow-source-row]')]
+            .filter((row) => row.scrollWidth > row.clientWidth + 1 || [...row.querySelectorAll('button, [role="switch"], input')]
+              .some((control) => out(control, row)))
+            .map((row) => row.textContent);
+          return { readings, rows, text: document.querySelector('[data-follow-reading]')?.parentElement?.parentElement?.textContent };
+        });
+        assert.ok(spill.text?.includes('1,284,000'), `读数没有用上七位数：${spill.text}`);
+        assert.deepEqual(spill.readings, [], '读数越出了卡片');
+        assert.deepEqual(spill.rows, [], '来源行的控件越出了行');
+        assert.deepEqual(opened.problems, []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
+
   it('凭据的四种处境四副底色：待办和完成一眼分得开', { timeout: 60_000 }, async () => {
     const opened = await openFollowManage(browser);
     try {

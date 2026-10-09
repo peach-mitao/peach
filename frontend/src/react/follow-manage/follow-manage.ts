@@ -244,6 +244,22 @@ export function statusText(source: FollowSource): string {
 export const isBroken = (source: FollowSource): boolean =>
   source.last_status === 'error' || source.last_status === 'unauthorized';
 
+/** 订阅源的拉取频率：一小时以内按分钟，两天以内按小时，再长按天。 */
+export function feedIntervalText(minutes: number): string {
+  const value = Number(minutes) || 0;
+  if (value >= 2880) return `每 ${Math.round(value / 1440).toLocaleString()} 天`;
+  if (value >= 60) return `每 ${Math.round(value / 60)} 小时`;
+  return `每 ${value} 分钟`;
+}
+
+/** 一段报错在列表里只露的那一行。Python traceback 的第一行永远是「Traceback (most recent call
+ *  last):」，说明不了什么，取最后一行的异常类型与消息；别的取第一行非空。 */
+export function errorHeadline(text: string): string {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  return /^Traceback \(most recent call last\)/.test(lines[0]!) ? lines[lines.length - 1]! : lines[0]!;
+}
+
 const byLabel = (a: FollowSource, b: FollowSource) =>
   String(a.label || '').localeCompare(String(b.label || ''), 'zh-CN', { numeric: true });
 

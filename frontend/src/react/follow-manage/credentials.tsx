@@ -113,11 +113,11 @@ function CredentialForm({ row, readOnly, toast }:
 function CredentialSection({ row, readOnly, toast }:
 { row: CredentialRow; readOnly: boolean; toast(message: string): void }) {
   const head = (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className="flex min-w-0 flex-wrap items-center gap-2">
       <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
         <SourceIcon provider={row.provider} />
       </span>
-      <b className="text-body-medium text-text-primary">{row.provider_label}</b>
+      <b className="min-w-0 text-body-medium wrap-anywhere text-text-primary">{row.provider_label}</b>
       <StateChip row={row} />
       {row.missing.length
         ? <Chip variant="caption" color="rose">{`缺 ${row.missing.join('、')}`}</Chip>

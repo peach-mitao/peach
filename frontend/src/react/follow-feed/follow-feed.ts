@@ -13,7 +13,7 @@
  * （`findFollowItem`），扫不到才单独取。侧栏仍归壳画：岛每取到一版列表就经 `actions.loaded`
  * 交回这一视图可见条目的标签计数、全库口径的来源与时长有无。 */
 import { keepPreviousData, type InfiniteData, type QueryKey } from '@tanstack/react-query';
-import { seededRank } from '@peach/legacy/core';
+import { foldName, seededRank } from '@peach/legacy/core';
 
 import { apiGet } from '../../api';
 import { FOLLOW_CREDENTIALS_URL } from '../follow-manage/follow-manage';
@@ -51,8 +51,14 @@ export interface FollowView {
   seed: number;
 }
 
-/** 关注页一次取一屏。`counts` 是全库口径，`groups` 只是这一页，所以列表底部要能继续加载。 */
-export const FOLLOW_PAGE = 300;
+/** 关注页一次取一屏。`counts` 是全库口径，`groups` 只是这一页，所以列表底部要能继续加载。
+ *  一页 100 组：一张卡三四十个节点，一次挂几百张就是首屏一秒多的长任务。 */
+export const FOLLOW_PAGE = 100;
+/** 已经摆出这么多组以后，滚到底不再自己接下一页，要点「加载更多」：一直滚下去页面就一直变重，
+ *  滚过头的那一下不该悄悄再挂几百张卡。 */
+export const FOLLOW_AUTO_LOAD_LIMIT = 500;
+/** 创作者那一排一次露出几位，同题材那一排；其余的用这一排前面的搜索框找。 */
+export const FOLLOW_AUTHORS_FIRST = 24;
 
 /** 这一页第 `offset` 组起的请求地址，参数拼法同壳里 `followPageUrl`：默认那一档不写进去。 */
 export function followPageUrl(view: FollowView, offset: number): string {
@@ -230,6 +236,14 @@ export function mergedPage(data: InfiniteData<FollowPage> | undefined): FollowPa
 export function randomOrder<T>(rows: readonly T[], key: (row: T) => string, seed: number): T[] {
   return [...rows].sort((a, b) =>
     seededRank(seed, key(a)) - seededRank(seed, key(b)) || String(key(a)).localeCompare(String(key(b))));
+}
+
+/** 创作者那一排露出哪几位：按种子取样的前 `FOLLOW_AUTHORS_FIRST` 位；有搜索词时从全部创作者里
+ *  按名字找，不取样。按下的那位不在其中时排到最前，页面不能停在一个看不见按下项的筛选里。 */
+export function authorRow(order: readonly string[], nameOf: (key: string) => string, query: string, pressed: string): string[] {
+  const needle = foldName(query);
+  const rows = (needle ? order.filter((key) => foldName(nameOf(key)).includes(needle)) : order).slice(0, FOLLOW_AUTHORS_FIRST);
+  return pressed && order.includes(pressed) && !rows.includes(pressed) ? [pressed, ...rows] : rows;
 }
 
 /** 题材那一排露出几个，同首页那排厂牌（壳的 `ROW_FIRST`）。 */

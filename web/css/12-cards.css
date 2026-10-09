@@ -286,6 +286,9 @@ body[data-density="dense"] .card .meta .size{flex:none;white-space:nowrap}
 /* 「想要」按下时星形填实：同一颗键既是开关也是读数。 */
 .feednewtools button[aria-pressed="true"] svg{fill:currentColor}
 .feednewcard .meta .t{font-size:var(--fs-sm)}
+/* 番号整段不折行；比卡还宽的长串在卡边收成省略号，不被标题块的溢出裁成半个字。 */
+.feednewcard .javidentity{max-width:100%;min-width:0}
+.feednewcard .javcode{min-width:0;overflow:hidden;text-overflow:ellipsis}
 /* 女优名加发行日一行放完，放不下截掉女优名的尾巴：折成两行时断在日期中间，读成两个数。 */
 .feednewcard .meta .s{flex-wrap:nowrap;white-space:nowrap;min-height:1lh}
 .feednewcard .meta .s>span{flex:none}

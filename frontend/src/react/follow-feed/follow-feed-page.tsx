@@ -15,6 +15,7 @@ import { tagLabel } from '@peach/legacy/tags';
 import { emptyStateHtml, spinnerHtml } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
+import { InputBase, TextField } from '@/components/base/input/input';
 
 import { apiGet, apiSend } from '../../api';
 import { LoadMore } from '../catalog-grid/catalog-grid-page';
@@ -28,9 +29,10 @@ import { FOLLOW_CHECK_URL, FOLLOW_STATUS_URL, sourceIconUrl } from '../follow-ma
 import { sidebarTagCounts } from '../../sidebar';
 import { queryClient } from '../query';
 import { FollowCard } from './follow-card';
-import { authorAvatarHtml, followAuthorName, sourceIcon } from './follow-marks';
+import { authorAvatarHtml, followAuthorName, sourceMark } from './follow-marks';
 import {
-  FOLLOW_CREDENTIALS_KEY, FOLLOW_FEED_SORTS, FOLLOW_FILTERS, FOLLOW_TAGS_FIRST, FOLLOW_WORKS_FIRST,
+  FOLLOW_AUTHORS_FIRST, FOLLOW_AUTO_LOAD_LIMIT, FOLLOW_CREDENTIALS_KEY, FOLLOW_FEED_SORTS, FOLLOW_FILTERS, FOLLOW_TAGS_FIRST,
+  FOLLOW_WORKS_FIRST, authorRow,
   collectionItems, dropCondition, fetchFollowCredentials, followConditions, followFeedQuery, groupMediaKinds, groupTagType, itemForMedia,
   mergedPage, nextSort, randomOrder, sortAriaLabel, backfillState, withStatus,
   type FollowCondition, type FollowContext, type FollowDrawer, type FollowFeedProps, type FollowGroup, type FollowPage, type FollowSource,
@@ -41,6 +43,7 @@ const Sep = () => <span data-entity-sep="" aria-hidden="true" />;
 const SETTINGS = spriteGlyph('settings');
 const CHEVRON_DOWN = spriteGlyph('chevron-down');
 const HISTORY = spriteGlyph('history');
+const SEARCH = spriteGlyph('search');
 
 /** 照片墙那一排的图片布局两档，同壳里 `PHOTO_LAYOUTS`。 */
 export const FOLLOW_PHOTO_LAYOUTS: readonly SegmentOption[] = [
@@ -132,8 +135,14 @@ export function FollowFeedPage(props: FollowFeedProps) {
   const job = useFollowJob(props, !!data);
 
   if (!data) {
+    /* 取不到列表时页头照画：这时候最用得上的就是去管理页看来源出了什么事。 */
     if (result.isError) {
-      return <RetryNote message={requestErrorMessage(result.error)} onRetry={() => void result.refetch()} />;
+      return (
+        <div data-follow-feed="">
+          <Head onManage={actions.openManage} />
+          <RetryNote message={requestErrorMessage(result.error)} onRetry={() => void result.refetch()} />
+        </div>
+      );
     }
     return null;
   }
@@ -151,23 +160,17 @@ export function FollowFeedPage(props: FollowFeedProps) {
       {/* 进度那一格归 `followJobProgress`：它自己往里插面板、自己开合，React 只给一个空节点。 */}
       <div key={job.generation} ref={job.host} data-follow-progress="" />
       <div data-follow-feed="" data-select-mode={props.selectMode ? '' : undefined}>
-        <div data-follow-head="">
-          <h2 data-follow-title="">关注</h2>
-          <span data-follow-head-actions="">
-            <Button variant="secondary" leadingIcon={SETTINGS} data-follow-manage="" onClick={actions.openManage}>
-              管理关注
+        <Head onManage={actions.openManage}>
+          {facets.sources.length ? (
+            <Button variant="primary" data-follow-recheck="" aria-label="检查每个来源的更新"
+              aria-busy={job.busy || undefined}
+              onClick={() => void job.start(false)}>
+              {job.starting === 'check'
+                ? <span className="contents" dangerouslySetInnerHTML={{ __html: spinnerHtml('检查中') }} />
+                : '检查更新'}
             </Button>
-            {facets.sources.length ? (
-              <Button variant="primary" data-follow-recheck="" aria-label="检查每个来源的更新"
-                aria-busy={job.busy || undefined}
-                onClick={() => void job.start(false)}>
-                {job.starting === 'check'
-                  ? <span className="contents" dangerouslySetInnerHTML={{ __html: spinnerHtml('检查中') }} />
-                  : '检查更新'}
-              </Button>
-            ) : null}
-          </span>
-        </div>
+          ) : null}
+        </Head>
         <Authors facets={facets} pressed={facets.author} context={context} props={props}
           onPick={(key) => route({ author: facets.author === key ? '' : key })} />
         <Works rows={facets.workRows} pressed={view.work} props={props}
@@ -182,10 +185,16 @@ export function FollowFeedPage(props: FollowFeedProps) {
           <div data-follow-pagination="">
             {data.has_more ? (
               <span data-follow-page-action="">
-                <LoadMore key={result.data?.pages.length} entity enabled={() => !job.busyRef.current}
-                  load={async () => { await result.fetchNextPage({ throwOnError: true }) }}>
-                  <CHEVRON_DOWN className="size-3.5" />加载更多
-                </LoadMore>
+                {data.groups.length < FOLLOW_AUTO_LOAD_LIMIT ? (
+                  <LoadMore key={result.data?.pages.length} entity enabled={() => !job.busyRef.current}
+                    load={async () => { await result.fetchNextPage({ throwOnError: true }) }}>
+                    <CHEVRON_DOWN className="size-3.5" />加载更多
+                  </LoadMore>
+                ) : (
+                  <ManualMore busy={result.isFetchingNextPage}
+                    error={result.isFetchNextPageError ? requestErrorMessage(result.error) : ''}
+                    load={() => { if (!job.busyRef.current && !result.isFetchingNextPage) void result.fetchNextPage() }} />
+                )}
               </span>
             ) : null}
             {canBackfill ? (
@@ -203,6 +212,34 @@ export function FollowFeedPage(props: FollowFeedProps) {
           </div>
         ) : null}
       </div>
+    </>
+  );
+}
+
+/** 页头：标题与「管理关注」恒在，检查更新那枚键要等来源读到才摆（`children`）。 */
+function Head({ onManage, children }: { onManage(): void; children?: ReactNode }) {
+  return (
+    <div data-follow-head="">
+      <h2 data-follow-title="">关注</h2>
+      <span data-follow-head-actions="">
+        <Button variant="secondary" leadingIcon={SETTINGS} data-follow-manage="" onClick={onManage}>
+          管理关注
+        </Button>
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/** 摆满 `FOLLOW_AUTO_LOAD_LIMIT` 组以后的「加载更多」：外观同 `LoadMore` 那枚，只是滚到它不会自己接，
+ *  要点一下。失败时原位留原因与重试。 */
+function ManualMore({ busy, error, load }: { busy: boolean; error: string; load(): void }) {
+  return (
+    <>
+      <button type="button" data-entity-more="" aria-busy={busy || undefined} aria-disabled={busy || undefined} onClick={load}>
+        <CHEVRON_DOWN className="size-3.5" />加载更多
+      </button>
+      {error ? <RetryNote message={error} onRetry={load} /> : null}
     </>
   );
 }
@@ -284,19 +321,34 @@ function Authors({ facets, pressed, context, props, onPick }: {
   facets: Facets; pressed: string; context: FollowContext; props: FollowFeedProps; onPick(key: string): void;
 }) {
   const row = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
   useEffect(() => { props.helpers.wireDrag(row.current) }, [props.helpers]);
+  const nameOf = (key: string) => followAuthorName(facets.authorSources.get(key) || [], context);
+  const searchable = facets.authorOrder.length > FOLLOW_AUTHORS_FIRST;
+  const keys = authorRow(facets.authorOrder, nameOf, searchable ? query : '', pressed);
   if (!facets.authorOrder.length) return null;
+  /* 搜索框在横滚那一排外面：拖动监听挂在那一排上，框放进去的话按下去就被当成拖动吃掉。 */
   return (
-    <div ref={row} data-follow-authors="" aria-label="按创作者筛选">
-      {facets.authorOrder.map((key) => {
-        const list = facets.authorSources.get(key) || [];
-        return (
-          <button key={key} type="button" data-follow-author={key} aria-pressed={pressed === key} onClick={() => onPick(key)}>
-            <span data-follow-ring="" dangerouslySetInnerHTML={{ __html: authorAvatarHtml(list, followAuthorName(list, context)) }} />
-            <span data-follow-name="">{followAuthorName(list, context)}</span>
-          </button>
-        );
-      })}
+    <div data-follow-authors-bar="">
+      {searchable ? (
+        <div data-follow-author-search="">
+          <TextField aria-label="搜索创作者" value={query} onChange={setQuery}>
+            <InputBase type="search" leadingIcon={SEARCH} placeholder="搜索创作者" spellCheck={false} autoComplete="off" />
+          </TextField>
+        </div>
+      ) : null}
+      <div ref={row} data-follow-authors="" aria-label="按创作者筛选">
+        {keys.map((key) => {
+          const list = facets.authorSources.get(key) || [];
+          return (
+            <button key={key} type="button" data-follow-author={key} aria-pressed={pressed === key} onClick={() => onPick(key)}>
+              <span data-follow-ring="" dangerouslySetInnerHTML={{ __html: authorAvatarHtml(list, nameOf(key)) }} />
+              <span data-follow-name="">{nameOf(key)}</span>
+            </button>
+          );
+        })}
+        {!keys.length ? <span data-follow-author-none="">没有名字含「{query.trim()}」的创作者</span> : null}
+      </div>
     </div>
   );
 }
@@ -392,7 +444,7 @@ function Glass({ facets, view, total, busy, props, route }: {
               <button key={key} type="button" data-follow-provider={key} data-entity-press=""
                 aria-pressed={facets.provider === key} title={label} aria-label={`来源：${label}`}
                 onClick={() => route({ provider: facets.provider === key ? '' : key })}
-                dangerouslySetInnerHTML={{ __html: sourceIcon(key) }} />
+                dangerouslySetInnerHTML={{ __html: sourceMark(key, label) }} />
             ))}
             {providers.length && facets.tagRows.length ? <Sep /> : null}
             {facets.tagRows.map(([tag, n]) => (
@@ -519,7 +571,7 @@ function Cards({ facets, data, context, props, images }: {
       );
     });
   } else {
-    body = <Empty data={data} />;
+    body = <Empty data={data} filtered={!!(view.status || facets.author || facets.provider || view.work || view.tags.length)} />;
   }
   return (
     <div data-follow-list="" data-follow-wall={images ? '' : undefined} {...wall}>
@@ -533,11 +585,15 @@ function cardId(group: FollowGroup, view: FollowView): number {
   return itemForMedia(group, view.media).id;
 }
 
-function Empty({ data }: { data: FollowPage }) {
+/** 空列表分四种：这一页有组只是媒体类型没对上；设了筛选没筛出东西；有来源但一条都还没抓到；
+ *  一个来源都没有。没设筛选时不叫人去改筛选。 */
+function Empty({ data, filtered }: { data: FollowPage; filtered: boolean }) {
   const html = (data.groups || []).length
     ? emptyStateHtml('search-x', '当前筛选下没有更新', '切换媒体类型、创作者、来源、时长或标签后再试。')
     : (data.sources || []).length
-      ? emptyStateHtml('rss', '没有符合条件的更新', '切换状态或来源筛选后再试。')
+      ? filtered
+        ? emptyStateHtml('rss', '没有符合条件的更新', '切换状态或来源筛选后再试。')
+        : emptyStateHtml('rss', '还没有更新', '点「检查更新」去各个来源取一遍；来源有新内容时会集中显示在这里。')
       : emptyStateHtml('rss', '还没有关注任何来源', '添加创作者或订阅来源后，更新会集中显示在这里。',
         { actions: '<a class="geist-button primary" href="/follow-manage?tab=add">添加关注</a>' });
   return <div data-follow-empty="" className="contents" dangerouslySetInnerHTML={{ __html: html }} />;

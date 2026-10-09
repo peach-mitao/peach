@@ -47,6 +47,17 @@
 @media (max-width: 640px) {
   .peach-react [data-follow-authors] { margin-right: -12px; }
 }
+/* 创作者多于一排能摆下的（`FOLLOW_AUTHORS_FIRST`）时，排上方一枚搜索框，搜的是全部创作者。 */
+.peach-react [data-follow-author-search] { width: min(240px, 100%); margin: 0 0 6px; }
+.peach-react [data-follow-author-none] {
+  display: flex;
+  align-items: center;
+  min-height: 84px;
+  padding: 0 4px;
+  color: var(--color-text-tertiary);
+  font: var(--board-body);
+  overflow-wrap: anywhere;
+}
 .peach-react :is([data-follow-authors], [data-follow-works]) > button {
   flex: none;
   border: 0;
@@ -333,6 +344,18 @@
   font-size: var(--fs-xs);
 }
 .peach-react :is([data-media-badge], [data-follow-nothumb]) > img { width: 18px; height: 18px; margin: 0; border-radius: var(--badge-radius); object-fit: contain; }
+/* 站标取不到或没登记时那枚站名首字（`sourceMark`）：和图标同一个 18px 方块，筛选键、卡角与空卡面通用。
+   图坏了时回落脚本换上的 span 只带这个类名，接不住 `data-*`。 */
+.peach-react .follow-site-initial {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--badge-radius);
+  background: var(--overlay-5);
+  color: var(--muted);
+  font: 600 11px/1 var(--board-font);
+}
 .peach-react [data-follow-image] [data-media-pic] { aspect-ratio: 4 / 3; min-height: 0; background: var(--sunk); }
 .peach-react [data-follow-image] [data-media-pic] > img { background: var(--sunk); }
 .peach-react [data-follow-image] :is([data-mix-faces], [data-mix-face] img) { background: var(--sunk); }
@@ -344,6 +367,13 @@
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] > img[width][height] {
   position: static;
   height: auto;
+}
+/* 极端竖长的图（长条漫画、200×4000 那种）最高到列宽的 2.5 倍，多出来的裁掉：按固有比例摆的话
+   一张就占满一整列，瀑布流的分列全被它打乱。量的是列宽，所以封面格自己当尺寸容器。 */
+.peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic]:has(> img[width][height]) { container-type: inline-size; }
+.peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] > img[width][height] {
+  max-height: 250cqi;
+  object-fit: cover;
 }
 
 /* 右上角：合并计数与主页卡片的版本角标同一个位置，右下角只留给时长。
@@ -417,6 +447,9 @@
 }
 @media (hover: none), (pointer: coarse) {
   .peach-react [data-follow-item] [data-follow-actions] { opacity: 1; pointer-events: auto; }
+  /* 触屏上没有悬停，键是常驻的；图片墙的格子小，三枚圆键会盖住大半张图，只留「保存到账本」，
+     已看与忽略到详情里点。 */
+  .peach-react [data-follow-wall] [data-follow-item] [data-follow-actions] > :not([data-follow-save]) { display: none; }
 }
 
 /* 元信息区：署名行一行排开，作者名可截断、时间不收；署名含那一行弱于作者名。 */
@@ -504,5 +537,5 @@
 .peach-react [data-follow-item] [data-media-tag][data-tag-cat="r34-character"] { --tag-color: #68c76f; }
 .peach-react [data-follow-item] [data-media-tag][data-tag-cat="r34-copyright"] { --tag-color: #d675d6; }
 .peach-react [data-follow-item] [data-media-tag][data-tag-cat="r34-metadata"] { --tag-color: #f5a24a; }
-.peach-react [data-follow-issue] { display: block; margin: 18px 0 8px; color: var(--drop); font-size: var(--fs-sm); line-height: 1.7; }
+.peach-react [data-follow-issue] { display: block; margin: 18px 0 8px; color: var(--drop); font-size: var(--fs-sm); line-height: 1.7; overflow-wrap: anywhere; }
 .peach-react [data-follow-state] { flex: 1 1 100%; color: var(--drop); font-size: var(--fs-xs); }

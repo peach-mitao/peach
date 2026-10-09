@@ -11,7 +11,7 @@ import * as legacyUi from '@peach/legacy/ui';
 import { JOB_RUNNING_POLL_MS } from '../../src/react/background-job';
 import { queryClient } from '../../src/react/query';
 import {
-  authorAvatar, authorGroups, authorInitial, authorName, checkSummary, FEEDS_CHECK_URL, FEED_SOURCE_URL,
+  authorAvatar, authorGroups, authorInitial, authorName, checkSummary, errorHeadline, feedIntervalText, FEEDS_CHECK_URL, FEED_SOURCE_URL,
   FEEDS_LOOKUP_URL, FEEDS_URL, FOLLOW_CHECK_URL,
   FOLLOW_CREDENTIAL_URL, FOLLOW_CREDENTIALS_URL, FOLLOW_RESOLVE_URL, FOLLOW_SOURCE_URL,
   FOLLOW_SUGGEST_URL, FOLLOW_URL, pageWindow, prefetchFollowManage,
@@ -568,6 +568,45 @@ it('还有未看时卡底给出计数和三颗动作键，没有未看就整条�
   expect(buttonNamed('全部忽略', quiet.host)).toBeNull();
 });
 
+it('读数、列表头与卡底的计数都带千分位，六位数以上的读数换小一号字', async () => {
+  const counts = { new: 1284000, seen: 22000, saved: 0, ignored: 0 };
+  const { host } = await open({ data: follow({ counts }) });
+  const readings = [...host.querySelectorAll('[data-follow-reading]')];
+  const big = readings.find((node) => node.textContent === '1,284,000 条')!;
+  expect(big.className).toContain('text-title-3-medium');
+  expect(big.querySelector('small')?.className).toContain('whitespace-nowrap');
+  expect(readings.find((node) => node.textContent?.startsWith('0'))?.className).toContain('text-title-1-medium');
+  expect(host.textContent).toContain('4 个来源 · 1,284,000 条未看');
+  expect(host.textContent).toContain('未看 1,284,000 · 已看 22,000');
+});
+
+it('报错只露一行：traceback 取最后那行的异常，「查看详情」原地展开全文', async () => {
+  const trace = 'Traceback (most recent call last):\n  File "kemono.py", line 412, in fetch_page\n'
+    + 'peach.follow_providers.ProviderError: HTTP 403';
+  const { host } = await open({ data: follow({ sources: [source({ id: 9, last_status: 'error', last_error: trace })] }) });
+  const line = host.querySelector('[data-error-line]')!;
+  expect(line.textContent).toBe('peach.follow_providers.ProviderError: HTTP 403');
+  const toggle = host.querySelector('[data-error-line-toggle]')!;
+  expect(toggle.textContent).toBe('查看详情');
+  await click(toggle);
+  expect(host.querySelector('[data-error-line]')?.textContent).toBe(trace);
+  expect(host.querySelector('[data-error-line-toggle]')?.textContent).toBe('收起详情');
+});
+
+it('报错的那一行：traceback 取异常行，别的取第一行非空', () => {
+  expect(errorHeadline('Traceback (most recent call last):\n  File "a.py"\nValueError: 坏了\n')).toBe('ValueError: 坏了');
+  expect(errorHeadline('\n  HTTP 429 Too Many Requests\nRetry-After: 60')).toBe('HTTP 429 Too Many Requests');
+  expect(errorHeadline('')).toBe('');
+});
+
+it('订阅源频率：一小时以内按分钟，两天以内按小时，再长按天', () => {
+  expect(feedIntervalText(30)).toBe('每 30 分钟');
+  expect(feedIntervalText(720)).toBe('每 12 小时');
+  expect(feedIntervalText(2879)).toBe('每 48 小时');
+  expect(feedIntervalText(2880)).toBe('每 2 天');
+  expect(feedIntervalText(525600)).toBe('每 365 天');
+});
+
 it('一条来源都没有时说清这里会显示什么', async () => {
   const { host } = await open({ data: follow({ sources: [] }) });
   expect(host.textContent).toContain('还没有关注来源');
@@ -647,7 +686,8 @@ it('地址栏指着订阅源时首屏就带着清单，开关、移除与立即�
   const second = checkboxNamed(host, '选择 乙 的新作')!.closest('[role="row"]')!;
   expect(second.querySelector('[role="rowheader"] img')).toBeNull();
   expect(second.querySelector('[role="rowheader"] [aria-hidden]')?.textContent).toBe('乙');
-  expect(host.textContent).toContain('乙 的新作 拉取失败');
+  expect(host.textContent).toContain('1 条订阅源拉取失败');
+  expect(host.textContent).toContain('乙 的新作：站点 503');
   expect(host.textContent).toContain('2 个订阅源 · 3 条未看');
   expect(host.textContent).not.toContain('正在读订阅源');
   expect(feedReads(fetcher)).toBe(1);

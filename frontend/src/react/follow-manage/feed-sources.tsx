@@ -40,7 +40,8 @@ import { localTime } from '../time';
 import { AddFeed } from './add-feed';
 import { Pagination } from './source-list';
 import {
-  checkFeeds, FEEDS_KEY, fetchFeeds, removeFeed, setFeedEnabled, PAGE_SIZES, pageWindow, type FeedSource,
+  checkFeeds, errorHeadline, FEEDS_KEY, feedIntervalText, fetchFeeds, removeFeed, setFeedEnabled,
+  PAGE_SIZES, pageWindow, type FeedSource,
 } from './follow-manage';
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -62,9 +63,6 @@ const reload = () => queryClient.invalidateQueries({ queryKey: FEEDS_KEY, exact:
 
 const feedName = (source: FeedSource) => source.name || source.url;
 
-const intervalText = (minutes: number) => (minutes >= 60
-  ? `每 ${Math.round(minutes / 60)} 小时`
-  : `每 ${minutes} 分钟`);
 
 /** 来源那一格只摆站名：地址整条写出来会把这张表撑到一屏之外，点开就是原页面。 */
 function originHost(url: string): string {
@@ -261,7 +259,7 @@ export function FeedSources({ readOnly, toast }: {
         header: label('status'),
         cell: (context) => <StatusChip source={context.row.original} />,
       }),
-      column.accessor((row) => intervalText(row.interval_minutes), {
+      column.accessor((row) => feedIntervalText(row.interval_minutes), {
         id: 'interval',
         header: label('interval'),
         cell: (context) => <span className="whitespace-nowrap">{context.getValue()}</span>,
@@ -339,18 +337,26 @@ export function FeedSources({ readOnly, toast }: {
         className={cardClass({ padding: 'none', className: 'flex flex-col gap-4 px-6 py-5 max-sm:px-4' })}>
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="mr-auto text-title-2-medium text-text-primary">JAV 订阅源</h3>
-        <span className="text-body-2-regular text-text-secondary">{`${sources.length} 个订阅源 · ${data.unread} 条未看`}</span>
+        <span className="text-body-2-regular text-text-secondary">{`${sources.length.toLocaleString()} 个订阅源 · ${(Number(data.unread) || 0).toLocaleString()} 条未看`}</span>
         <Button onClick={check} disabled={readOnly} {...busyProps(action.busy === 'check')}>立即拉取</Button>
       </div>
 
       {failing.length || action.error ? (
         <div className="flex flex-col gap-3">
-          {/* 拉不动的源各自把原因摆出来：一条源坏掉不该让整张表看起来都坏了。 */}
-          {failing.map((source) => (
-            <Note key={source.id} tone="error" title={`${feedName(source)} 拉取失败`}>
-              {source.last_error}
+          {/* 拉不动的源并成一条：每条源一行「源名：报错首行」，几条源同时坏也不把表格推出首屏；
+              表格里那一行的状态徽章同时标着「拉取失败」。 */}
+          {failing.length ? (
+            <Note tone="error" title={`${failing.length.toLocaleString()} 条订阅源拉取失败`}
+              extra={<ul className="flex flex-col gap-0.5 text-body-2-regular">
+                {failing.map((source) => (
+                  <li key={source.id} className="min-w-0 truncate" title={source.last_error || ''}>
+                    {`${feedName(source)}：${errorHeadline(source.last_error || '') || '未说明原因'}`}
+                  </li>
+                ))}
+              </ul>}>
+              这些订阅源这一轮没有取到新条目。
             </Note>
-          ))}
+          ) : null}
           {action.error ? <ErrorText>{action.error}</ErrorText> : null}
         </div>
       ) : null}
@@ -399,7 +405,7 @@ export function FeedSources({ readOnly, toast }: {
       )}
       {sources.length ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-body-2-regular text-text-secondary">{`${win.start + 1}–${win.end} / ${win.total} 个订阅源`}</span>
+          <span className="text-body-2-regular text-text-secondary">{`${(win.start + 1).toLocaleString()}–${win.end.toLocaleString()} / ${win.total.toLocaleString()} 个订阅源`}</span>
           <Select aria-label="每页显示数量" size="sm" selectedKey={String(pageSize)}
             onSelectionChange={(key) => { if (key !== null) { setPageSize(Number(key)); setPage(1) } }}>
             {PAGE_SIZES.map((size) => <SelectItem key={size} id={String(size)}>{`每页 ${size} 条`}</SelectItem>)}
@@ -409,7 +415,7 @@ export function FeedSources({ readOnly, toast }: {
       ) : null}
       <footer className="-mx-6 -mb-5 flex flex-wrap items-center gap-2 border-t border-separator-border rounded-b-2xl bg-card-footer px-6 py-4 max-sm:-mx-4 max-sm:px-4">
         <span role="status" className="mr-auto text-body-2-regular text-text-secondary">
-          {`未看 ${data.unread} · 已启用 ${sources.filter((source) => source.enabled).length} / ${sources.length}`}
+          {`未看 ${(Number(data.unread) || 0).toLocaleString()} · 已启用 ${sources.filter((source) => source.enabled).length.toLocaleString()} / ${sources.length.toLocaleString()}`}
         </span>
       </footer>
       </section>

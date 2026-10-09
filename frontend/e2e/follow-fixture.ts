@@ -70,9 +70,10 @@ const gallery = (id: number, count: number, title: string) => item(id, 1, {
   title, media_kind: 'image', thumb_url: `/stub-thumb/${id}-0`, duration: null, media_type: 'image/jpeg', width: 600,
   height: 800, media_items: Array.from({ length: count }, (_, index) => still(id, index)),
 });
-/** 多图轮播、视频合集（另一版加另一站的同一条）、一帖多媒体、带两张已隐藏图的帖子，以及一条
- *  没有任何预览、标签六种类型各一枚的帖子。 */
-export const DETAIL = { gallery: 5001, collection: 5101, media: 5201, hidden: 5301, bare: 5401 } as const;
+/** 多图轮播、视频合集（另一版加另一站的同一条）、一帖多媒体、带两张已隐藏图的帖子、一条
+ *  没有任何预览、标签六种类型各一枚的帖子，以及摘要、标题与媒体报错都是不换行长串的帖子。 */
+export const DETAIL = { gallery: 5001, collection: 5101, media: 5201, hidden: 5301, bare: 5401, long: 5501 } as const;
+const UNBROKEN = 'abcdef0123456789'.repeat(12);
 const TYPED_TAGS = { ow: 'copyright', tracer: 'character', kou: 'artist', solo: 'general', animated: 'metadata', odd: 'unknown' };
 const DETAIL_GROUPS = [
   group(gallery(5001, 3, '三张图的帖子 5001')),
@@ -88,6 +89,11 @@ const DETAIL_GROUPS = [
     title: '只有文字的帖子 5401', thumb_url: null, has_media: false, media_kind: 'external', playable: false,
     media_type: null, duration: null, tags: Object.keys(TYPED_TAGS), detail_tags: Object.keys(TYPED_TAGS),
     tag_types: TYPED_TAGS,
+  })),
+  group(item(5501, 0, {
+    title: `长串帖子_${UNBROKEN}`,
+    summary: [...Array.from({ length: 20 }, (_, at) => `第 ${at + 1} 段说明文字。`), `下载：https://example.invalid/${UNBROKEN}`].join('\n'),
+    media_error: `403 Forbidden: https://n1.example.invalid/data/${UNBROKEN}.mp4`,
   })),
 ];
 const members = (row: (typeof DETAIL_GROUPS)[number]) => [row.primary, ...row.variants, ...row.duplicates];

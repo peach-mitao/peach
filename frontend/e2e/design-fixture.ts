@@ -443,16 +443,17 @@ export const followCredential = (provider: string, requirement: string, present:
 
 /** 关注管理页按一份造好的来源与凭据打开：演示库没有关注来源，也凑不齐四种凭据处境。
  *  站标同 `openScraping`：造出来的来源取不到图标，给一张能加载完的图。 */
-export async function openFollowManage(browser: Browser, viewport = DESKTOP): Promise<Visit> {
+export async function openFollowManage(browser: Browser, viewport = DESKTOP, counts?: Record<string, number>): Promise<Visit> {
   const opened = await visit(browser, '/follow-manage', viewport);
-  await stubFollowManage(opened.page);
+  await stubFollowManage(opened.page, counts);
   await opened.page.reload({ waitUntil: 'load' });
   await opened.page.locator('section[aria-label="kou 的关注来源"]').waitFor({ timeout: 15_000 });
   await settle(opened.page);
   return opened;
 }
 
-export async function stubFollowManage(page: Page): Promise<void> {
+export async function stubFollowManage(page: Page,
+  counts: Record<string, number> = { new: 0, seen: 0, saved: 0, ignored: 0 }): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await page.route('**/api/follow?summary=1', (route) => route.fulfill(json({
     sources: [
@@ -460,7 +461,7 @@ export async function stubFollowManage(page: Page): Promise<void> {
       followSource(2, 'kou', 'Pawchive', 'kou · Pawchive'),
       followSource(3, 'mira', 'Kemono', 'mira · Kemono', 'error'),
     ],
-    counts: { new: 0, seen: 0, saved: 0, ignored: 0 },
+    counts,
     author_aliases: [{ canonical_key: 'kou', canonical_name: 'kou', aliases: [{ key: 'kou_art', name: 'kou_art' }] }],
     alias_suggestions: [],
     suggestions: [],

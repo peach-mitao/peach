@@ -7,7 +7,7 @@ import { act, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  backfillState, dropCondition, followConditions, followPageUrl, followStack, groupMediaKinds, itemForMedia,
+  FOLLOW_AUTHORS_FIRST, FOLLOW_AUTO_LOAD_LIMIT, authorRow, backfillState, dropCondition, followConditions, followPageUrl, followStack, groupMediaKinds, itemForMedia,
   nextSort, prefetchFollowFeed, randomOrder, sortAriaLabel, withStatus,
   type FollowFeedActions, type FollowFeedHelpers, type FollowFeedProps, type FollowGroup, type FollowItem,
   type FollowPage, type FollowSource, type FollowStackInfo, type FollowView,
@@ -15,7 +15,7 @@ import {
 import { FollowFeedPage } from '../../src/react/follow-feed/follow-feed-page';
 import { learnFollowDims } from '../../src/react/follow-feed/follow-marks';
 import { queryClient } from '../../src/react/query';
-import { click, mount, settle } from './render';
+import { click, mount, settle, type } from './render';
 
 /* 回写尺寸那一批由 `follow-marks.test.ts` 量；这里只看卡片在什么时候报。 */
 vi.mock(import('../../src/react/follow-feed/follow-marks'), async (importOriginal) => ({
@@ -43,12 +43,12 @@ const source = (id: number, author: string, extra: Partial<FollowSource> = {}): 
 
 describe('请求地址', () => {
   it('默认那一档不写进去，标签按逗号拼，种子只跟着随机排序走', () => {
-    expect(followPageUrl(VIEW, 0)).toBe('/api/follow?limit=300&offset=0');
+    expect(followPageUrl(VIEW, 0)).toBe('/api/follow?limit=100&offset=0');
     const url = new URL(followPageUrl(view({
       status: 'saved', author: 'name:kou', provider: 'kemono', tags: ['3d', 'loop'], work: 'zelda', sort: 'hot', dir: 'asc',
-    }), 300), 'http://peach.test');
+    }), 100), 'http://peach.test');
     expect(Object.fromEntries(url.searchParams)).toEqual({
-      limit: '300', offset: '300', status: 'saved', author: 'name:kou', provider: 'kemono', tag: '3d,loop', work: 'zelda',
+      limit: '100', offset: '100', status: 'saved', author: 'name:kou', provider: 'kemono', tag: '3d,loop', work: 'zelda',
       sort: 'hot', dir: 'asc',
     });
     expect(new URL(followPageUrl(view({ sort: 'rand', seed: 42 }), 0), 'http://peach.test').searchParams.get('seed')).toBe('42');
@@ -90,6 +90,16 @@ describe('取样', () => {
     expect(randomOrder(keys, (key) => key, 11)).toEqual(once);
     expect(randomOrder(keys, (key) => key, 12)).not.toEqual(once);
     expect([...once].sort()).toEqual([...keys].sort());
+  });
+
+  it('创作者排露出前 24 位；有搜索词时在全部创作者里按名字找，按下的那位总在排上', () => {
+    const order = Array.from({ length: 400 }, (_, index) => `k${index}`);
+    const nameOf = (key: string) => (key === 'k399' ? 'Ｍｉｒａ' : `作者${key}`);
+    expect(authorRow(order, nameOf, '', '')).toEqual(order.slice(0, FOLLOW_AUTHORS_FIRST));
+    expect(authorRow(order, nameOf, ' mira ', '')).toEqual(['k399']);
+    expect(authorRow(order, nameOf, 'mira', 'k5')).toEqual(['k5', 'k399']);
+    expect(authorRow(order, nameOf, '', 'k300')).toEqual(['k300', ...order.slice(0, FOLLOW_AUTHORS_FIRST)]);
+    expect(authorRow(order, nameOf, '没有这个人', '')).toEqual([]);
   });
 });
 
@@ -329,6 +339,57 @@ describe('页面', () => {
     expect(host.querySelector('[data-follow-list]')?.hasAttribute('data-follow-wall')).toBe(true);
     // 取到一版就交给壳：详情读的是它。
     expect(given.actions.loaded).toHaveBeenCalled();
+  });
+
+  it('列表取不到时页头照画：标题与「管理关注」都在，失败原因下面给重试', async () => {
+    const fetcher = vi.fn(async (url: string) => (url.startsWith('/api/follow?')
+      ? { ok: false, status: 500, json: async () => ({ error: '服务端出错' }) }
+      : { ok: true, status: 200, json: async () => ({ providers: [] }) }));
+    vi.stubGlobal('fetch', fetcher);
+    const given = props();
+    const host = await open(given);
+    expect(host.querySelector('[data-follow-title]')?.textContent).toBe('关注');
+    await click(host.querySelector('[data-follow-manage]'));
+    expect(given.actions.openManage).toHaveBeenCalled();
+    expect(host.querySelector('[data-media-error] [data-note-action]')?.textContent).toBe('重试');
+  });
+
+  it('有来源、一条更新都还没有：没设筛选时说还没有更新，设了筛选才叫人换筛选', async () => {
+    serve(feed([]));
+    const bare = await open(props());
+    expect(bare.querySelector('[data-follow-empty]')?.textContent).toContain('还没有更新');
+    expect(bare.querySelector('[data-follow-empty]')?.textContent).not.toContain('筛选');
+    queryClient.clear();
+    serve(feed([]));
+    const filtered = await open(props({ view: view({ status: 'saved' }), revision: 2 }));
+    expect(filtered.querySelector('[data-follow-empty]')?.textContent).toContain('切换状态或来源筛选后再试');
+  });
+
+  it('创作者多于一排时出搜索框，搜的是全部创作者', async () => {
+    const many = Array.from({ length: FOLLOW_AUTHORS_FIRST + 6 }, (_, index) => `a${index}`);
+    const sources = many.map((author, index) => source(index + 1, author, { author_name: author === 'a29' ? 'Zed Lastone' : author }));
+    serve(feed([group(item(1))], { sources, facets: { authors: many.map((author) => `name:${author}`), providers: ['kemono'] } }));
+    const host = await open(props());
+    expect(authorOrder(host)).toHaveLength(FOLLOW_AUTHORS_FIRST);
+    await type(host.querySelector<HTMLInputElement>('[data-follow-author-search] input'), 'lastone');
+    expect(authorOrder(host)).toEqual(['name:a29']);
+    await type(host.querySelector<HTMLInputElement>('[data-follow-author-search] input'), '没有这个人');
+    expect(authorOrder(host)).toEqual([]);
+    expect(host.querySelector('[data-follow-author-none]')?.textContent).toContain('没有这个人');
+  });
+
+  it(`摆满 ${FOLLOW_AUTO_LOAD_LIMIT} 组以后「加载更多」要点一下才接下一页`, async () => {
+    const groups = Array.from({ length: FOLLOW_AUTO_LOAD_LIMIT }, (_, index) => group(item(index + 1)));
+    const fetcher = serve(feed(groups, { has_more: true }));
+    const host = await open(props());
+    const more = host.querySelector('[data-follow-pagination] button[data-entity-more]');
+    expect(more?.textContent).toBe('加载更多');
+    const before = fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/follow?')).length;
+    await click(more);
+    await settle();
+    const pages = fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/follow?'));
+    expect(pages).toHaveLength(before + 1);
+    expect(new URL(String(pages.at(-1)![0]), 'http://peach.test').searchParams.get('offset')).toBe('100');
   });
 
   it('没有关注任何来源时指到添加关注', async () => {

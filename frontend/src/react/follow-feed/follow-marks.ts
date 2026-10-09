@@ -26,6 +26,21 @@ export function sourceIcon(provider: string, label = ''): string {
     : '';
 }
 
+/** 站标那一格只有图标、旁边没有文字时用它：筛选条的来源键、卡角的来源角标、没缩略图的卡面。
+ *  没登记图标的站直接写站名首字；图标取不到时由回落脚本换成同一枚首字，那一格不会空着。
+ *  名字由外层的 `aria-label`／`title` 说，这里的字与图都只作装饰。 */
+export function sourceMark(provider: string, label = ''): string {
+  const initial = esc(authorInitial(label || provider));
+  const url = sourceIconUrl(provider);
+  return url
+    ? `<img data-follow-site-icon="" src="${url}" alt="" loading="lazy" data-drop="initial" data-initial="${initial}" data-drop-class="follow-site-initial">`
+    : `<span class="follow-site-initial" aria-hidden="true">${initial}</span>`;
+}
+
+/** 标题为空时卡片、详情与队列都写这一句。 */
+export const FOLLOW_UNTITLED = '未命名内容';
+export const followTitle = (item: { title?: unknown }): string => text(item.title).trim() || FOLLOW_UNTITLED;
+
 /** 这一版列表里一位创作者的名字（别名合并后的统称优先）。 */
 export const followAuthorName = (sources: readonly FollowSource[], context: FollowContext): string =>
   authorName(sources, aliasesOf(context));
@@ -98,9 +113,42 @@ export function followMediaIssue(item: FollowItem, context: FollowContext): stri
   return '';
 }
 
+/** 晚于此刻一天以上的发布时间：来源的时钟或时区写错了，照实标出来，不当作正常的最新一条。 */
+const FUTURE_SLACK_MS = 24 * 3600_000;
+const isFuture = (iso: string, now: number): boolean => {
+  const at = new Date(/[Zz]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`).getTime();
+  return Number.isFinite(at) && at - now > FUTURE_SLACK_MS;
+};
+
+/** 发布时间的三段：精度前缀、按看的人所在时区写的时间、晚于现在的标记。来源只给了相对时间
+ *  （`published_precision` 为 `approximate`，如「3 years ago」换算来的）时只写到日并加「约」，
+ *  时分是换算出来的，写出来就是假精度。 */
+function whenParts(item: FollowItem, now: number) {
+  const iso = text(item.published_at);
+  if (!iso) return null;
+  const approximate = item.published_precision === 'approximate';
+  const full = localTime(iso);
+  return {
+    prefix: approximate ? '约 ' : '',
+    full: approximate ? full.slice(0, 10) : full,
+    suffix: isFuture(iso, now) ? ' · 晚于现在' : '',
+  };
+}
+
 /** 发布时间，按看的人所在时区显示；来源没给就明说。 */
-export const followWhen = (item: FollowItem): string =>
-  (item.published_at ? localTime(item.published_at) : '时间未取得');
+export function followWhen(item: FollowItem, now = Date.now()): string {
+  const parts = whenParts(item, now);
+  return parts ? `${parts.prefix}${parts.full}${parts.suffix}` : '时间未取得';
+}
+
+/** 列表里时间只写到日：今年的去掉年份，往年的留着。悬停读得到 `followWhen` 的完整写法。 */
+export function followCompactWhen(item: FollowItem, now = Date.now()): string {
+  const parts = whenParts(item, now);
+  if (!parts) return '时间未取得';
+  if (!/^\d{4}-/.test(parts.full)) return `${parts.prefix}${parts.full}${parts.suffix}`;
+  const day = parts.full.startsWith(String(new Date(now).getFullYear())) ? parts.full.slice(5, 10) : parts.full.slice(0, 10);
+  return `${parts.prefix}${day}${parts.suffix}`;
+}
 
 /* 这次会话里已经回写过的图，`条目:媒体序号`。回写只补空缺，服务端本来就会忽略已有尺寸的
    条目，但每次重渲染都把同一批再发一遍是白跑。攒 800ms 一批、一批至多 200 条。 */

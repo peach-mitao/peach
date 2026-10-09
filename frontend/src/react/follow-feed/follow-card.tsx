@@ -22,17 +22,12 @@ import {
   type FollowGroup, type FollowMedia, type FollowSource,
 } from './follow-feed';
 import {
-  followBadges, followIdentity, followMediaIssue, followTitleMarks, followWhen, learnFollowDims, sourceIcon,
+  followBadges, followCompactWhen, followIdentity, followMediaIssue, followTitle, followTitleMarks, followWhen,
+  learnFollowDims, sourceMark,
 } from './follow-marks';
 
 /** 时长只在是真时长时写：来源没给、给了 0 或给了一个明显是占位的数，都不出这一格。 */
 const realDuration = (value: unknown) => Number(value) > 0;
-
-/** 列表里时间只写到日：今年的去掉年份，往年的留着。悬停读得到完整时间。 */
-function compactWhen(when: string): string {
-  if (!/^\d{4}-/.test(when)) return when;
-  return when.startsWith(String(new Date().getFullYear())) ? when.slice(5, 10) : when.slice(0, 10);
-}
 
 export interface FollowCardProps {
   group: FollowGroup;
@@ -50,13 +45,19 @@ export interface FollowCardProps {
   onSave(id: number): void;
 }
 
-/** 卡面图片直连失败时尝试原图代理，每个入口只尝试一次。 */
-function Thumb({ src, fallback, width, height, onLearn }: {
-  src: string; fallback?: string; width?: number; height?: number; onLearn?: (width: number, height: number) => void;
+/** 卡面没有画面时的那一格：来源的站标居中，和本来就没给缩略图的卡同一个样子。 */
+const NoThumb = ({ provider }: { provider: string }) => (
+  <span data-follow-nothumb="" dangerouslySetInnerHTML={{ __html: sourceMark(provider) }} />
+);
+
+/** 卡面图片直连失败时尝试原图代理，每个入口只尝试一次；都取不到就换成没缩略图的那一格。 */
+function Thumb({ src, fallback, width, height, provider, onLearn }: {
+  src: string; fallback?: string; width?: number; height?: number; provider: string;
+  onLearn?: (width: number, height: number) => void;
 }) {
   const [broken, setBroken] = useState(false);
   const [proxied, setProxied] = useState(false);
-  if (broken) return null;
+  if (broken) return <NoThumb provider={provider} />;
   return (
     <img src={proxied ? fallback : src} alt="" loading="lazy" referrerPolicy="no-referrer" width={width} height={height}
       onError={() => {
@@ -114,7 +115,8 @@ function FollowCardView(props: FollowCardProps) {
   }, []);
 
   const identity = followIdentity(item, authorSources, context);
-  const when = followWhen(item);
+  const title = followTitle(item);
+  const picProvider = item.resource_provider || item.provider;
   const tags = (item.tags || []).slice(0, 3);
   const issue = followMediaIssue(item, context);
   const badges = followBadges(group, item);
@@ -139,11 +141,12 @@ function FollowCardView(props: FollowCardProps) {
       data-selected={selected ? '' : undefined} onClick={click} onMouseDown={suppressShiftTextSelection}
       onMouseEnter={flip.onPointerEnter} onMouseLeave={flip.onPointerLeave}>
       <div data-follow-visual="" data-mix-stack={stack.isMix ? '' : undefined}>
-        <button type="button" data-follow-open="" aria-label={`打开 ${item.title} 详情`} />
+        <button type="button" data-follow-open="" aria-label={`打开 ${title} 详情`} />
         <div data-media-pic="">
           {thumbUrl
-            ? <Thumb key={thumbUrl} src={thumbUrl} fallback={imageFallback} width={sized?.width} height={sized?.height} onLearn={learn} />
-            : <span data-follow-nothumb="" dangerouslySetInnerHTML={{ __html: sourceIcon(item.resource_provider || item.provider) }} />}
+            ? <Thumb key={thumbUrl} src={thumbUrl} fallback={imageFallback} width={sized?.width} height={sized?.height}
+                provider={picProvider} onLearn={learn} />
+            : <NoThumb provider={picProvider} />}
           {stack.faces.length > 1 ? (
             <div data-mix-faces="" hidden={!flip.faces.length}>
               {flip.faces.map((src, index) => (
@@ -153,8 +156,9 @@ function FollowCardView(props: FollowCardProps) {
               ))}
             </div>
           ) : null}
-          <span data-media-badge="" title={item.provider_label} aria-label={`来源：${item.provider_label || ''}`}
-            dangerouslySetInnerHTML={{ __html: sourceIcon(item.provider) }} />
+          <span data-media-badge="" title={item.provider_label || item.provider}
+            aria-label={`来源：${item.provider_label || item.provider}`}
+            dangerouslySetInnerHTML={{ __html: sourceMark(item.provider, item.provider_label) }} />
           <span data-media-check="" onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -199,10 +203,10 @@ function FollowCardView(props: FollowCardProps) {
           dangerouslySetInnerHTML={{ __html: identity.avatar }} />
         <div data-media-text="">
           <button type="button" data-media-title=""
-            dangerouslySetInnerHTML={{ __html: followTitleMarks(group, item) + esc(item.title) }} />
+            dangerouslySetInnerHTML={{ __html: followTitleMarks(group, item) + esc(title) }} />
           <div data-follow-byline="">
             <span data-follow-author="" title={identity.author}>{identity.author}</span>
-            <time dateTime={item.published_at || ''} title={when}>{compactWhen(when)}</time>
+            <time dateTime={item.published_at || ''} title={followWhen(item)}>{followCompactWhen(item)}</time>
           </div>
           {identity.credited
             ? <div data-follow-credit="" title={`署名含 ${identity.credited}`}>{`署名含 ${identity.credited}`}</div>

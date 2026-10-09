@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FollowContext, FollowGroup, FollowItem, FollowSource } from '../../src/react/follow-feed/follow-feed';
 import {
-  authorAvatarHtml, followAuthorName, followBadges, followIdentity, followMediaIssue, followTitleMarks, followWhen,
-  learnFollowDims, sourceIcon,
+  FOLLOW_UNTITLED, authorAvatarHtml, followAuthorName, followBadges, followCompactWhen, followIdentity, followMediaIssue,
+  followTitle, followTitleMarks, followWhen, learnFollowDims, sourceIcon, sourceMark,
 } from '../../src/react/follow-feed/follow-marks';
 
 const item = (id: number, extra: Partial<FollowItem> = {}): FollowItem =>
@@ -28,6 +28,13 @@ describe('来源图标', () => {
     expect(sourceIcon('f95zone', 'F95 <zone>')).toBe('<img data-follow-site-icon="" src="/source-icon?provider=f95zone" '
       + 'alt="F95 &lt;zone&gt;" title="F95 &lt;zone&gt;" loading="lazy" data-drop="self">');
     expect(sourceIcon('nowhere', '某站')).toBe('');
+  });
+
+  it('只有图标一格的站标：图取不到时由回落脚本换成站名首字，没登记的站直接写首字', () => {
+    expect(sourceMark('gofile', 'Gofile')).toBe('<img data-follow-site-icon="" src="/source-icon?provider=gofile" alt="" '
+      + 'loading="lazy" data-drop="initial" data-initial="G" data-drop-class="follow-site-initial">');
+    expect(sourceMark('itchio', 'itch.io')).toBe('<span class="follow-site-initial" aria-hidden="true">I</span>');
+    expect(sourceMark('itchio')).toBe('<span class="follow-site-initial" aria-hidden="true">I</span>');
   });
 });
 
@@ -111,6 +118,36 @@ describe('标题前后的字样', () => {
     expect(when).not.toContain('约');
     /* 账本存 UTC：没带时区标记的串也按 UTC 读，不按本机时区读，否则 UTC+8 的人每个时间都早 8 小时。 */
     expect(followWhen(item(3, { published_at: '2026-09-04T00:00:00' }))).toBe(when);
+  });
+
+  it('来源只给了相对时间（approximate）时只写到日并加「约」，不写换算出来的时分', () => {
+    const now = Date.parse('2026-10-08T12:00:00Z');
+    const old = item(1, { published_at: '2009-03-01T12:00:00Z', published_precision: 'approximate' });
+    expect(followWhen(old, now)).toBe('约 2009-03-01');
+    expect(followCompactWhen(old, now)).toBe('约 2009-03-01');
+    expect(followWhen({ ...old, published_precision: 'exact' }, now)).toMatch(/^2009-03-01 \d\d:\d\d$/);
+  });
+
+  it('晚于此刻一天以上的时间照写，后面标「晚于现在」；一天以内的时钟误差不标', () => {
+    const now = Date.parse('2026-10-08T12:00:00Z');
+    const future = item(1, { published_at: '2031-01-01T12:00:00Z' });
+    expect(followWhen(future, now)).toMatch(/^2031-01-01 \d\d:\d\d · 晚于现在$/);
+    expect(followCompactWhen(future, now)).toBe('2031-01-01 · 晚于现在');
+    expect(followWhen(item(2, { published_at: '2026-10-08T20:00:00Z' }), now)).not.toContain('晚于现在');
+  });
+
+  it('列表里的短写法：今年的去掉年份，往年的留着', () => {
+    const now = Date.parse('2026-10-08T12:00:00Z');
+    expect(followCompactWhen(item(1, { published_at: '2026-09-04T12:00:00Z' }), now)).toBe('09-04');
+    expect(followCompactWhen(item(2, { published_at: '2024-09-04T12:00:00Z' }), now)).toBe('2024-09-04');
+    expect(followCompactWhen(item(3), now)).toBe('时间未取得');
+  });
+
+  it('标题为空或只有空白时写同一句「未命名内容」', () => {
+    expect(followTitle(item(1, { title: '' }))).toBe(FOLLOW_UNTITLED);
+    expect(followTitle(item(2, { title: '   ' }))).toBe('未命名内容');
+    expect(followTitle({})).toBe('未命名内容');
+    expect(followTitle(item(3, { title: ' 正题 ' }))).toBe('正题');
   });
 });
 
