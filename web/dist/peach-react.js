@@ -82761,12 +82761,12 @@ var YQe = {
 	[
 		"performers",
 		"艺人",
-		"user"
+		"user-round"
 	],
 	[
 		"creators",
 		"卖家",
-		"user"
+		"user-round"
 	],
 	[
 		"online",

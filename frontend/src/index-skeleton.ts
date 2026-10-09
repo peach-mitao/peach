@@ -32,7 +32,7 @@ const PEOPLE_LAYOUTS =[['big', '大图 · 竖幅头像', 'maximize'], ['compact'
 const COMPANY_LAYOUTS = [['big', '大图 · 完整标识', 'maximize'], ['compact', '紧凑 · 圆形标识', 'layout-grid']] as const;
 const MAKER_INDEX_KINDS = [['studios', '厂牌', 'clapperboard'], ['agencies', '事务所', 'briefcase']] as const;
 const INDEX_SCOPES = [['local', '本地', 'hard-drive'], ['online', '在线', 'rss']] as const;
-const PEOPLE_INDEX_TABS = [['performers', '艺人', 'user'], ['creators', '卖家', 'user'], ['online', '在线', 'rss']] as const;
+const PEOPLE_INDEX_TABS = [['performers', '艺人', 'user-round'], ['creators', '卖家', 'user-round'], ['online', '在线', 'rss']] as const;
 const TAG_VIEWS = [['cloud', '标签云', 'tags'], ['alphabet', '字母表', 'text-aa']] as const;
 
 /** 存着的版式偏好，认不出的回到大图。 */
