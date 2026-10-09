@@ -142,7 +142,7 @@ describe('设计决定：控件、状态与首页顶部', () => {
       }));
       assert.equal(box.width, '150px');
       assert.equal(box.ratio.replaceAll(' ', ''), '16/10');
-      // 中间截断由 `web/js/middle-truncate.js` 的 MutationObserver 接手：React 插进来的
+      // 中间截断由 `peach-ui.js` 入口启动的 MutationObserver 接手：React 插进来的
       // 节点不经过遗留层的渲染函数，观察器认不出它就只剩尾部省略。
       const title = opened.page.locator('li[data-goal-id="1"] h3 button');
       await title.waitFor({ timeout: 5_000 });

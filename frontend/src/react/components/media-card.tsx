@@ -10,11 +10,11 @@
  *
  * 封面、头像与悬停预览取自 `@peach/card-art`，它们在这张卡上做三件 React 看不见的事，状态
  * 因此都写成属性而不是类名（类名归 React 管，重画一次就被冲掉）：
- * - 悬停预览（`wireHover`）往封面格里插 `video.hv`／`img.hvframes`，在卡上切
+ * - 悬停预览（`wireHover`）往封面格里插 `video.hv`／`img.ui-hvframes`，在卡上切
  *   `data-previewing`／`data-longhover`，并在卡上挂 `_stopHover` 让滚动与换页时收掉。
  * - 封面取景（`coverAnchor`）改的是封面格里那张图，所以图以 HTML 片段交给封面格；
  *   大图／小图也在那张图上原地换，见 `./art-slot.tsx`。
- * - 图片微光（`PENDING_IMAGES`）在 `[data-media-art]` 上加 `imgwait`／`imgdone`。
+ * - 图片微光（`PENDING_IMAGES`）在 `[data-media-art]` 上加 `imgwait`／`ui-imgdone`。
  *
  * 点击的分流：多选与修饰键优先，然后是打开、实体链接、未归属、
  * 标签，其余落到整张卡上就是打开。 */

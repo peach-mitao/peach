@@ -292,7 +292,7 @@ function Group({ title, kind, active, index, epoch, children }: {
     node.open = want;
     collapse.inert = !want;
     collapse.style.height = '';
-    if (collapse.classList.contains('fcollapse')) collapse.classList.toggle('fcollapse-settled', want);
+    if (collapse.classList.contains('ui-fcollapse')) collapse.classList.toggle('ui-fcollapse-settled', want);
     setOpen(want);
   }, [epoch]);
   const toggle = (event?: MouseEvent) => {
@@ -380,7 +380,7 @@ function MoreList({ epoch, title, rows, latest, limit, filterKey, selected, coun
     const hold = () => { run.scroller.scrollTop = run.keep };
     if (expanded) {
       const details = run.body.closest('details');
-      run.body.classList.add('fcollapse');
+      run.body.classList.add('ui-fcollapse');
       growCollapse(run.body, run.before, () => !!details?.open && !run.body.inert);
     }
     hold();

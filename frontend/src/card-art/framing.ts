@@ -191,11 +191,11 @@ export function settleImage(img: HTMLImageElement): void {
   const box = img.parentElement;
   if (!box?.classList.contains('imgwait')) return;
   if (performance.now() - (pendingSince.get(box) ?? NaN) < SKELETON_REVEAL_DELAY) { box.classList.remove('imgwait'); return; }
-  box.classList.replace('imgwait', 'imgdone');
+  box.classList.replace('imgwait', 'ui-imgdone');
   let timer: ReturnType<typeof setTimeout> | undefined;
   const drop = (event?: Event) => {
     if (event && (event.target !== box || (event as TransitionEvent).pseudoElement !== '::after')) return;
-    box.removeEventListener('transitionend', drop); clearTimeout(timer); box.classList.remove('imgdone');
+    box.removeEventListener('transitionend', drop); clearTimeout(timer); box.classList.remove('ui-imgdone');
   };
   box.addEventListener('transitionend', drop);
   // 兜底：面板藏在后台或动效归零时 `transitionend` 不会来。

@@ -16,8 +16,8 @@ describe('中文错误反馈',()=>{
 describe('持久提示控件',()=>{
   it('配置骨架标题和卡片共用真实页面网格与正文底栏',()=>{
     const host=document.createElement('div');host.innerHTML=configurationSkeletonHtml();
-    const page=host.querySelector('.configpage')!;
-    expect(page.querySelectorAll(':scope > .configgroup')).toHaveLength(5);
+    const page=host.querySelector('.ui-configpage')!;
+    expect(page.querySelectorAll(':scope > .ui-configgroup')).toHaveLength(5);
     expect(page.querySelectorAll(':scope > .configfieldset')).toHaveLength(12);
     for(const card of page.querySelectorAll('.configfieldset')){
       expect(card.querySelector(':scope > .geist-fieldset-content')).not.toBeNull();
@@ -27,7 +27,7 @@ describe('持久提示控件',()=>{
   });
   it.each([[79,'normal'],[80,'warning'],[94,'warning'],[95,'error']])('容量 %s 使用一致阈值', (value,level)=>{
     const host=document.createElement('div');host.innerHTML=gaugeHtml('空间使用率',value,100,{usage:true});
-    expect(host.querySelector('.geist-gauge')?.getAttribute('data-level')).toBe(level);
+    expect(host.querySelector('.ui-geist-gauge')?.getAttribute('data-level')).toBe(level);
     expect(gaugeHtml('完成率',value,100)).toContain('data-level="normal"');
   });
   it('失败提示包含一个内部操作按钮',()=>{
@@ -50,7 +50,7 @@ describe('持久提示控件',()=>{
   });
   it('Project Banner 包含处理入口且没有关闭键',()=>{
     const host=document.createElement('div');host.innerHTML=projectBannerHtml('扫描未完成',{variant:'warning',href:'/data-cleanup',label:'查看并处理'});
-    expect(host.querySelector('.project-banner-warning')).not.toBeNull();
+    expect(host.querySelector('.ui-project-banner-warning')).not.toBeNull();
     expect(host.querySelector('a')?.getAttribute('href')).toBe('/data-cleanup');
     expect(host.querySelector('button')).toBeNull();
   });

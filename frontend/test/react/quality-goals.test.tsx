@@ -42,7 +42,7 @@ const payload = (items: QualityGoal[], total = items.length): QualityGoalsData =
 const legacyProps = () => ({
   toast: vi.fn(),
   openItem: vi.fn<(id: number) => void>(),
-  javTitleHtml: (item: QualityGoal) => `<strong class="javcode">${item.name}</strong>`,
+  javTitleHtml: (item: QualityGoal) => `<strong class="ui-javcode">${item.name}</strong>`,
   javDisplayName: (item: QualityGoal) => `名称 ${item.name}`,
   srcBadge: (location: string, cost: string) => `<span class="src ${cost}" data-location="${location}"></span>`,
 });
@@ -99,7 +99,7 @@ it('每条目标一张卡片，读数走遗留层同一套格式化口径', asyn
     .toEqual(['', '115', '1:02:05', '2.0 GB']);
   expect(card.querySelector('.src')?.getAttribute('data-location')).toBe('115');
   expect(card.querySelector('.src')?.classList.contains('metered')).toBe(true);
-  expect(card.querySelector('h3 .javcode')?.textContent).toBe('one.mp4');
+  expect(card.querySelector('h3 .ui-javcode')?.textContent).toBe('one.mp4');
   expect(card.querySelector('h3 button')?.hasAttribute('data-middle-truncate')).toBe(true);
   expect([...card.querySelectorAll('p')].at(-1)?.textContent).toBe('只有 720p');
 });

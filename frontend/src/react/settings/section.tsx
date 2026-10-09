@@ -106,7 +106,7 @@ export function Fact({ term, children }: { term: ReactNode; children: ReactNode 
 }
 
 /** 展开正文。原生 `details` 给键盘与无障碍语义；开合交给共用 Collapse 的 `setCollapseOpen`，
- *  它给正文外层挂上旧样式表的 `.fcollapse` 让高度过渡。内边距放在里层，高度才能收到 0。 */
+ *  它给正文外层挂上 `ui-kit/collapse.css` 的 `.ui-fcollapse` 让高度过渡。内边距放在里层，高度才能收到 0。 */
 export function Disclosure(
   { summary, defaultOpen = false, children }:
   { summary: string; defaultOpen?: boolean; children: ReactNode },

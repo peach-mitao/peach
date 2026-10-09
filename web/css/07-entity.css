@@ -27,7 +27,7 @@
   display:grid;place-items:center;font-size:var(--fs-4xl);color:var(--muted);max-width:100%;
   position:relative}
 .entityportrait.square{border-radius:var(--floating-radius)}
-.entityidentity{min-width:0;max-width:100%}.entityhero h2{font-size:var(--fs-2xl);font-weight:500;
+.entityhero h2{font-size:var(--fs-2xl);font-weight:500;
   line-height:1.25;letter-spacing:0;margin:0 0 9px;overflow-wrap:anywhere}
 /* 标题那一行的下边距归到行上，标题自己不再留。 */
 .entitytitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0 0 9px}

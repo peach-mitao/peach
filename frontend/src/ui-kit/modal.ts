@@ -20,18 +20,18 @@ export function formModal({title,description='',body='',confirmLabel,cancelLabel
 }={}):{dialog:HTMLDialogElement;confirmButton:any;done:Promise<{confirmed:boolean;result?:unknown}>;close:()=>void}{
   const trigger=document.activeElement;
   const dialog=document.createElement('dialog');
-  dialog.className='geist-modal';
+  dialog.className='ui-geist-modal';
   const titleId=`geist-form-title-${++formModalSeq}`;
   dialog.setAttribute('aria-labelledby',titleId);
-  dialog.innerHTML=`<form class="geist-modal-form" novalidate>
-      <div class="geist-modal-body"><h3 id="${titleId}"></h3>${description?'<p></p>':''}
-        <div class="geist-modal-fields">${body}</div><div data-modal-error></div></div>
+  dialog.innerHTML=`<form class="ui-geist-modal-form" novalidate>
+      <div class="ui-geist-modal-body"><h3 id="${titleId}"></h3>${description?'<p></p>':''}
+        <div class="ui-geist-modal-fields">${body}</div><div data-modal-error></div></div>
       <footer class="geist-modal-footer">
         <div><button type="button" class="geist-button" data-modal-cancel></button></div>
         <div><button type="submit" class="geist-button primary" data-modal-confirm></button></div>
       </footer></form>`;
   dialog.querySelector('h3')!.textContent=title as string;
-  if(description)dialog.querySelector('.geist-modal-body p')!.textContent=description;
+  if(description)dialog.querySelector('.ui-geist-modal-body p')!.textContent=description;
   const cancel:any=dialog.querySelector('[data-modal-cancel]');
   const accept:any=dialog.querySelector('[data-modal-confirm]');
   const failure:any=dialog.querySelector('[data-modal-error]');
@@ -64,7 +64,7 @@ export function formModal({title,description='',body='',confirmLabel,cancelLabel
   };
   dialog.showModal();
   playUiSound('pop');
-  (dialog.querySelector<HTMLElement>('.geist-modal-fields input:not([type="checkbox"])')||accept).focus();
+  (dialog.querySelector<HTMLElement>('.ui-geist-modal-fields input:not([type="checkbox"])')||accept).focus();
   return {dialog,confirmButton:accept,done,close:()=>dialog.close()};
 }
 
@@ -89,17 +89,17 @@ export function confirmModal({title,body,confirmLabel,cancelLabel='取消',onCon
 }={}):Promise<{confirmed:boolean;result?:unknown}>{
   const trigger=document.activeElement;
   const dialog=document.createElement('dialog');
-  dialog.className='geist-modal';
+  dialog.className='ui-geist-modal';
   const titleId=`geist-modal-title-${++modalSeq}`;
   dialog.setAttribute('aria-labelledby',titleId);
-  dialog.innerHTML=`<div class="geist-modal-body">
+  dialog.innerHTML=`<div class="ui-geist-modal-body">
       <h3 id="${titleId}"></h3><p></p><div data-modal-error></div></div>
     <footer class="geist-modal-footer">
       <div><button type="button" class="geist-button" data-modal-cancel></button></div>
       <div><button type="button" class="geist-button primary" data-modal-confirm></button></div>
     </footer>`;
   dialog.querySelector('h3')!.textContent=title as string;
-  dialog.querySelector('.geist-modal-body p')!.textContent=body as string;
+  dialog.querySelector('.ui-geist-modal-body p')!.textContent=body as string;
   const cancel:any=dialog.querySelector('[data-modal-cancel]');
   const accept:any=dialog.querySelector('[data-modal-confirm]');
   if(danger){accept.classList.remove('primary');accept.classList.add('danger')}

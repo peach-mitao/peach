@@ -52,12 +52,12 @@ export function noteHtml(message:any,{variant='secondary',label='',className='',
     ${icon(symbol)}<p>${label?`<b>${esc(label)}</b>`:''}<span>${esc(kind==='error'?requestErrorMessage(message):message)}</span></p>${action}${details?noteDetailsHtml(details):''}</div>`;
 }
 
-const PROJECT_BANNER_CLASSES:Record<string,string>={gray:'project-banner-gray',success:'project-banner-success',warning:'project-banner-warning',error:'project-banner-error'};
+const PROJECT_BANNER_CLASSES:Record<string,string>={gray:'project-banner-gray',success:'ui-project-banner-success',warning:'ui-project-banner-warning',error:'ui-project-banner-error'};
 export function projectBannerHtml(message:unknown,{variant='gray',href,label,value,max}:{
   variant?: string; href?: string; label?: string; value?: unknown; max?: unknown;
 }={}):string{
   const kind=['gray','success','warning','error'].includes(variant)?variant:'gray';
-  return `<aside class="project-banner ${PROJECT_BANNER_CLASSES[kind]}" role="${kind==='error'?'alert':'status'}"><div>${Number(max)>0?gaugeHtml('任务完成率',value,max):icon(kind==='error'||kind==='warning'?'alert':'info')}<p>${esc(message)}</p></div><a href="${esc(href)}">${esc(label)}</a></aside>`;
+  return `<aside class="ui-project-banner ${PROJECT_BANNER_CLASSES[kind]}" role="${kind==='error'?'alert':'status'}"><div>${Number(max)>0?gaugeHtml('任务完成率',value,max):icon(kind==='error'||kind==='warning'?'alert':'info')}<p>${esc(message)}</p></div><a href="${esc(href)}">${esc(label)}</a></aside>`;
 }
 
 export function gaugeHtml(label:string,value:unknown,max:unknown=100,{usage=false,compact=false}={}):string{
@@ -66,7 +66,7 @@ export function gaugeHtml(label:string,value:unknown,max:unknown=100,{usage=fals
   const percent=Math.max(0,Math.min(100,current/ceiling*100));
   const level=usage?(percent>=95?'error':percent>=80?'warning':'normal'):'normal';
   const status=usage?(level==='error'?'空间即将用满':level==='warning'?'空间使用偏高':'空间充足'):'';
-  return `<span class="geist-gauge" data-level="${level}" role="progressbar" aria-label="${esc(label+(status?'：'+status:''))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${percent} 100"/></svg></span>${status&&!compact?`<span class="gauge-status">${status}</span>`:''}`;
+  return `<span class="ui-geist-gauge" data-level="${level}" role="progressbar" aria-label="${esc(label+(status?'：'+status:''))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${percent} 100"/></svg></span>${status&&!compact?`<span class="ui-gauge-status">${status}</span>`:''}`;
 }
 
 /** Determinate progress only. Callers supply real units instead of a decorative width. */
@@ -76,9 +76,9 @@ export function progressHtml(label:string,value:unknown,max:unknown=100,{variant
   const ceiling=Math.max(0,Number(max)||0);
   const current=Math.max(0,Math.min(Number(value)||0,ceiling));
   const percent=ceiling?current/ceiling*100:0;
-  return `<div class="geist-progress" role="progressbar" aria-label="${esc(label)}"
+  return `<div class="ui-geist-progress" role="progressbar" aria-label="${esc(label)}"
     aria-valuemin="0" aria-valuemax="${ceiling}" aria-valuenow="${current}"
-    style="--progress-value:${percent}%;--progress-color:var(${variant==='error'?'--drop':variant==='warning'?'--meter':'--feedback-success'})"><i></i>${stops.filter(stop=>Number(stop.value)>0&&Number(stop.value)<ceiling&&stop.label).map(stop=>`<span class="geist-progress-stop" style="left:${Number(stop.value)/ceiling*100}%" role="img" aria-label="${esc(stop.label)}"></span>`).join('')}</div>`;
+    style="--progress-value:${percent}%;--progress-color:var(${variant==='error'?'--drop':variant==='warning'?'--meter':'--feedback-success'})"><i></i>${stops.filter(stop=>Number(stop.value)>0&&Number(stop.value)<ceiling&&stop.label).map(stop=>`<span class="ui-geist-progress-stop" style="left:${Number(stop.value)/ceiling*100}%" role="img" aria-label="${esc(stop.label)}"></span>`).join('')}</div>`;
 }
 
 /**
@@ -94,7 +94,7 @@ export function progressHtml(label:string,value:unknown,max:unknown=100,{variant
 export function spinnerHtml(label='加载中'):string{
   const bars=Array.from({length:10},(_,index)=>
     `<i aria-hidden="true" style="--spinner-angle:${index*36}deg;--spinner-delay:${index*100-900}ms"></i>`).join('');
-  return `<span class="geist-spinner" role="status" aria-label="${esc(label)}">${bars}</span>`;
+  return `<span class="ui-geist-spinner" role="status" aria-label="${esc(label)}">${bars}</span>`;
 }
 
 /**
@@ -123,8 +123,8 @@ export function searchInputHtml({label,id='',name='',value='',placeholder='',att
 
 /** Geist Loading Dots: indeterminate work continuing in the background. */
 export function loadingDotsHtml(label='正在处理', {className=''}={}):string{
-  return `<span class="geist-loading${className?` ${esc(className)}`:''}" role="status">
-    <span class="geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+  return `<span class="ui-geist-loading${className?` ${esc(className)}`:''}" role="status">
+    <span class="ui-geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span>${esc(label)}</span></span>`;
 }
 
@@ -133,7 +133,7 @@ export function loadingDotsHtml(label='正在处理', {className=''}={}):string{
  *
  * 索引页用它切厂牌／事务所与本地／在线两套词表：两档各是一条地址。它回答的是页面层级的
  * 「在哪一页」，不是给当前这批加一条筛选——筛选归玻璃条上的药丸。
- * 每一枚都是 `role=tab`，当前项写 `aria-selected`；滑动的 2px 蓝线由 `board-local-nav`
+ * 每一枚都是 `role=tab`，当前项写 `aria-selected`；滑动的 2px 蓝线由 `ui-board-local-nav`
  * 那条共用规则和 `wireBoardTabs` 提供，这里只出 DOM。计数是可选的尾随徽标，口径由调用方
  * 给：Tabs 自己不算数。前置字形也是可选的，只在它指向对象（厂牌、事务所、本地、订阅源）
  * 时出现。
@@ -144,20 +144,20 @@ export function boardTabsHtml(items:{value:unknown;label:unknown;count?:unknown;
   }={}):string{
   const tabs=items.map(({value,label:text,count,symbol})=>{
     const selected=String(value)===String(active);
-    const badge=count==null?'':`<span class="board-tab-count">${esc(Number(count).toLocaleString())}</span>`;
+    const badge=count==null?'':`<span class="ui-board-tab-count">${esc(Number(count).toLocaleString())}</span>`;
     return `<button type="button" role="tab" ${attr}="${esc(value)}" aria-selected="${selected}"${
       panel?` aria-controls="${esc(panel)}"`:''}>${symbol?icon(symbol):''}${esc(text)}${badge}</button>`;
   }).join('');
-  return `<div class="board-local-nav board-tabs${className?` ${esc(className)}`:''}" role="tablist" aria-label="${esc(label)}">${tabs}</div>`;
+  return `<div class="ui-board-local-nav ui-board-tabs${className?` ${esc(className)}`:''}" role="tablist" aria-label="${esc(label)}">${tabs}</div>`;
 }
 
 /** Geist Empty State: icon tile, title and explanatory copy stay one semantic unit. */
 /** Geist Empty State：图标、标题与说明同处一个组件内。 */
 export function emptyStateHtml(iconName:string,title:unknown,description:unknown,{className='',actions=''}={}):string{
-  return `<div class="emptystate${className?` ${esc(className)}`:''}" data-geist-empty-state role="status">
-    <div class="es-icon" aria-hidden="true">${icon(iconName)}</div>
-    <div class="es-copy"><h3>${esc(title)}</h3><p>${esc(description)}</p></div>
-    ${actions?`<div class="es-actions">${actions}</div>`:''}
+  return `<div class="ui-emptystate${className?` ${esc(className)}`:''}" data-geist-empty-state role="status">
+    <div class="ui-es-icon" aria-hidden="true">${icon(iconName)}</div>
+    <div class="ui-es-copy"><h3>${esc(title)}</h3><p>${esc(description)}</p></div>
+    ${actions?`<div class="ui-es-actions">${actions}</div>`:''}
   </div>`;
 }
 
@@ -166,8 +166,8 @@ export function emptyStateHtml(iconName:string,title:unknown,description:unknown
  * `accent-color` 也只能改选中色，未选中态连悬停反馈都给不了。所以自绘一份，关注
  * 列表、来源筛选、候选清单、标签匹配和设置项共用它。
  */
-export function badgeHtml(text:unknown):string{return `<span class="geist-badge">${esc(text)}</span>`}
+export function badgeHtml(text:unknown):string{return `<span class="ui-geist-badge">${esc(text)}</span>`}
 
 export function checkboxHtml(inputAttrs=''):string{
-  return `<span class="pcheck"><input type="checkbox" ${inputAttrs}><span aria-hidden="true">${icon('check')}</span></span>`;
+  return `<span class="ui-pcheck"><input type="checkbox" ${inputAttrs}><span aria-hidden="true">${icon('check')}</span></span>`;
 }

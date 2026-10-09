@@ -10,7 +10,7 @@
   给不出可锁定的单文件哈希。要复核就按上面的方式重开配方页读一遍 CSS 标签页。
 - 许可：上游仓库没有 LICENSE 文件，页面只写「copy and paste them」，没有给出明确授权
   条款。因此 Peach 只借形态与参数，类名与变量名一律自拟：不使用它的 `t-*` 类名，
-  也不使用它的 `:root` 变量名。落地代码在 `web/css/25-motion.css` 与 `web/board.css`。
+  也不使用它的 `:root` 变量名。落地代码在 `frontend/src/ui-kit/motion.css`、`web/css/25-motion.css` 与 `web/board.css`。
 - **未取得**：上游各条配方所依据的设计原始稿、参数取值理由和许可条款均未取得；
   上游没有公布 spring 参数，它的「弹」一律由带超调控制点的 `cubic-bezier` 近似。
 

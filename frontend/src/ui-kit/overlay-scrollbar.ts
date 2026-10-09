@@ -30,9 +30,9 @@ export function attachOverlayScrollbar(
   // 局部纵向滚动统一显示边缘提示，整页使用粘性导航层次。
   const edges=root?null:document.createElement('div');
   if(edges){
-    edges.className='ov-edges';
+    edges.className='ui-ov-edges';
     edges.setAttribute('aria-hidden','true');
-    edges.innerHTML='<span class="ov-edge-top"></span><span class="ov-edge-bottom"></span>';
+    edges.innerHTML='<span class="ui-ov-edge-top"></span><span class="ui-ov-edge-bottom"></span>';
     host.append(edges);
   }
   const axes:Lane['axis'][]=root?['y']:['y','x'];
@@ -85,8 +85,8 @@ export function attachOverlayScrollbar(
       if(state!==edgeState){
         edgeState=state;
         edges.hidden=!above&&!below;
-        edges.classList.toggle('can-scroll-top',above);
-        edges.classList.toggle('can-scroll-bottom',below);
+        edges.classList.toggle('ui-can-scroll-top',above);
+        edges.classList.toggle('ui-can-scroll-bottom',below);
         if(above||below){
           container.style.setProperty('--scroll-edge-top',above?'16px':'0px');
           container.style.setProperty('--scroll-edge-bottom',below?'16px':'0px');

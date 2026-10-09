@@ -8,10 +8,10 @@ describe('数据管理首屏', () => {
     return root;
   };
   it('读数卡复用最终排版，名字与图标立即呈现，只有读数画占位', () => {
-    const stats = skeleton().querySelectorAll('.cleanupstats > .board-plain-stat');
-    expect([...stats].map(card => card.querySelector('.board-stat-tile use')?.getAttribute('href')))
+    const stats = skeleton().querySelectorAll('.ui-cleanupstats > .board-plain-stat');
+    expect([...stats].map(card => card.querySelector('.ui-board-stat-tile use')?.getAttribute('href')))
       .toEqual(['#i-square-check-big', '#i-sparkles', '#i-file-stack', '#i-file-archive', '#i-trash']);
-    expect([...stats].map(card => card.querySelector('.board-plain-stat-head')?.textContent))
+    expect([...stats].map(card => card.querySelector('.ui-board-plain-stat-head')?.textContent))
       .toEqual(['人工复核', '高清版', '重复文件', '垃圾文件', '回收站']);
     for (const card of stats) {
       expect(card.querySelector('strong > .skeleton-text')).not.toBeNull();
@@ -55,8 +55,8 @@ describe('数据管理首屏', () => {
   });
   it('链接管理与资源同步的标题、正文立即呈现，不预留同步面板', () => {
     const root = skeleton();
-    expect(Array.from(root.querySelectorAll('.resourcesync > h2'), title => title.textContent)).toEqual(['链接管理', '资源同步']);
-    expect([...root.querySelectorAll('.linkstats > div > span')].map(term => term.textContent))
+    expect(Array.from(root.querySelectorAll('.ui-resourcesync > h2'), title => title.textContent)).toEqual(['链接管理', '资源同步']);
+    expect([...root.querySelectorAll('.ui-linkstats > div > span')].map(term => term.textContent))
       .toEqual(['链接总数', '官网/事务所', '社交账号', '作品资料站']);
     expect(root.querySelector('#resource-sync')).toBeNull();
   });

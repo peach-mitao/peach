@@ -17,6 +17,7 @@ export default mergeConfig(base, defineConfig({
       '@peach/legacy/jav-title': source('core/jav-title.ts'),
       '@peach/legacy/tags': source('core/tags.ts'),
       '@peach/legacy/ui-sounds': source('ui-kit/sounds.ts'),
+      '@peach/legacy/middle-truncate': source('ui-kit/middle-truncate.ts'),
       '@peach/legacy/ui': stub('legacy-ui.ts'),
       // `/js/*.js` 垫片（含 `/js/ui-components.js`）从入口包原名转出；测试里那条绝对路径落到入口包的源码。
       '/dist/peach-entry.js': source('entry/index.ts'),

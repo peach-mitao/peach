@@ -32,7 +32,7 @@ export function revealSkeleton(container:any,write:()=>void):void{
 
 export function configurationSkeletonHtml():string{
   const groups:[string,number][]=[['通用',2],['媒体',2],['下载',2],['网络与访问',3],['维护',3]];
-  return `<div class="configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${groups.map(([label,count])=>`<h2 class="configgroup" aria-hidden="true">${label}</h2>${Array.from({length:count},()=>`<div class="configfieldset config-skeleton-card" aria-hidden="true"><div class="geist-fieldset-content"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><footer class="geist-fieldset-footer"><span class="skeleton"></span></footer></div>`).join('')}`).join('')}</div>`;
+  return `<div class="ui-configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${groups.map(([label,count])=>`<h2 class="ui-configgroup" aria-hidden="true">${label}</h2>${Array.from({length:count},()=>`<div class="configfieldset config-skeleton-card" aria-hidden="true"><div class="geist-fieldset-content"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><footer class="geist-fieldset-footer"><span class="skeleton"></span></footer></div>`).join('')}`).join('')}</div>`;
 }
 
 /** Geist Skeleton: reserve a large content region while its structure is loading. */
@@ -48,11 +48,11 @@ export function skeletonHtml(label='正在读取内容',{className='',variant='p
     :kind==='dashboard'
       /* 指标带是统计与口味两页真正的第一屏内容，四格的位置和高度都是定死的。
          骨架从大区开始画，等数据到货再从上面挤进一条 96px 的带子，整页往下跳一次。 */
-      ?`<span class="skeletondashstrip">${Array.from({length:4},
+      ?`<span class="ui-skeletondashstrip">${Array.from({length:4},
           ()=>`<span><i></i><b></b><em></em></span>`).join('')}</span>
-        <span class="skeletondashhero"><i></i><b></b></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>`
+        <span class="ui-skeletondashhero"><i></i><b></b></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>`
     :`<span class="skeleton" style="width:38%"></span>
       <span class="skeleton" style="width:100%"></span>
       <span class="skeleton" style="width:100%"></span>
@@ -73,14 +73,14 @@ export function indexSkeletonHtml({kind,layout='big',mode='alphabet'}:{kind?:str
   const cell=people
     ?'<span class="icell"><span class="ring skeleton"></span><span class="nm skeleton">&nbsp;</span><span class="n skeleton">&nbsp;</span></span>'
     :'<span class="alphatag"><span class="skeleton"></span><span class="n skeleton"></span></span>';
-  const grid=people?`igrid" data-cells="${company?'company':'people'}" data-layout="${esc(layout)}`:'alphalist';
+  const grid=people?`igrid" data-cells="${company?'company':'people'}" data-layout="${esc(layout)}`:'ui-alphalist';
   /* 字母表是一组一张卡：每组两行占位，铺三组，形状同页面落地后开头那几组；
      它不走 `data-fill`——那条补的是单张网格，一组补到视口下沿反而不像。 */
   const body=!people&&mode==='cloud'
     ?`<div class="tagwall index-tags">${Array.from({length:60},(_,i)=>
       `<span class="tg skeleton" style="width:${[92,128,76,108,144][i%5]}px">&nbsp;</span>`).join('')}</div>`
     :people?`<div class="${grid}">${cell.repeat(12)}</div>`
-    :`<section class="alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${grid}">${cell.repeat(10)}</div></section>`.repeat(3);
+    :`<section class="ui-alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${grid}">${cell.repeat(10)}</div></section>`.repeat(3);
   const label='正在读取索引';
   return `<div class="skeletonpanel index-skeleton" data-skeleton="index/${esc(kind)}/${esc(layout)}/${esc(mode)}"${people?' data-fill=""':''}
     role="status" aria-label="${label}"><span class="sr-only">${label}</span><section aria-hidden="true">${body}</section></div>`;

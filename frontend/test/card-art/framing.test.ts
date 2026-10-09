@@ -186,7 +186,7 @@ describe('加载微光', () => {
     expect(img.parentElement!.classList.contains('imgwait')).toBe(true);
     settleImage(img);
     expect(img.parentElement!.classList.contains('imgwait')).toBe(false);
-    expect(img.parentElement!.classList.contains('imgdone')).toBe(false);
+    expect(img.parentElement!.classList.contains('ui-imgdone')).toBe(false);
   });
 
   it('等过门槛的淡出完再摘；动效不来时一秒兜底', () => {
@@ -197,9 +197,9 @@ describe('加载微光', () => {
     watchPendingImages(host);
     vi.advanceTimersByTime(500);
     settleImage(img);
-    expect(img.parentElement!.classList.contains('imgdone')).toBe(true);
+    expect(img.parentElement!.classList.contains('ui-imgdone')).toBe(true);
     vi.advanceTimersByTime(1000);
-    expect(img.parentElement!.classList.contains('imgdone')).toBe(false);
+    expect(img.parentElement!.classList.contains('ui-imgdone')).toBe(false);
   });
 });
 

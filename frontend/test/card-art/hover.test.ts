@@ -69,11 +69,11 @@ describe('远端源只扫接触印相', () => {
     wireHover(el, { id: 7, location: 'pikpak', has_thumb: true });
     expect(el.dataset.hoverMode).toBe('frames');
     enter(el);
-    const layer = el.querySelector<HTMLImageElement>('img.hvframes');
+    const layer = el.querySelector<HTMLImageElement>('img.ui-hvframes');
     expect(layer?.getAttribute('src')).toBe('/poster?id=7&c=4');
     expect(el.querySelector('img.cover')?.getAttribute('src')).toBe('/cover?code=A');
     leave(el);
-    expect(el.querySelector('img.hvframes')).toBeNull();
+    expect(el.querySelector('img.ui-hvframes')).toBeNull();
   });
 
   it('下一格先拉到手再换上去；没到手就停在当前这格，取图失败也放开闸', () => {
@@ -83,7 +83,7 @@ describe('远端源只扫接触印相', () => {
     const el = card();
     wireHover(el, { id: 7, location: 'pikpak', has_thumb: true });
     enter(el);
-    const layer = el.querySelector<HTMLImageElement>('img.hvframes')!;
+    const layer = el.querySelector<HTMLImageElement>('img.ui-hvframes')!;
     vi.advanceTimersByTime(430);
     expect(preloads.map(img => img.getAttribute('src'))).toEqual(['/poster?id=7&c=5']);
     vi.advanceTimersByTime(430);
@@ -103,7 +103,7 @@ describe('远端源只扫接触印相', () => {
     const el = card();
     wireHover(el, { id: 7, location: 'pikpak', has_thumb: false });
     enter(el);
-    expect(el.querySelector('img.hvframes')).toBeNull();
+    expect(el.querySelector('img.ui-hvframes')).toBeNull();
   });
 
   it('多选或遮挡时不起', () => {
@@ -111,11 +111,11 @@ describe('远端源只扫接触印相', () => {
     wireHover(el, { id: 7, location: 'pikpak', has_thumb: true });
     settings.selecting = true;
     enter(el);
-    expect(el.querySelector('img.hvframes')).toBeNull();
+    expect(el.querySelector('img.ui-hvframes')).toBeNull();
     settings.selecting = false;
     settings.censored = true;
     enter(el);
-    expect(el.querySelector('img.hvframes')).toBeNull();
+    expect(el.querySelector('img.ui-hvframes')).toBeNull();
   });
 });
 
@@ -174,16 +174,16 @@ describe('收掉预览', () => {
     enter(kept);
     enter(dropped);
     releaseHoverPreviews(document, kept);
-    expect(kept.querySelector('img.hvframes')).not.toBeNull();
-    expect(dropped.querySelector('img.hvframes')).toBeNull();
+    expect(kept.querySelector('img.ui-hvframes')).not.toBeNull();
+    expect(dropped.querySelector('img.ui-hvframes')).toBeNull();
     releaseHover(kept);
-    expect(kept.querySelector('img.hvframes')).toBeNull();
+    expect(kept.querySelector('img.ui-hvframes')).toBeNull();
   });
 
   it('卡片重画过、回调跟着旧元素走了，留在画面上的扫视图照样收掉', () => {
     const el = card();
-    el.querySelector('[data-media-pic]')!.innerHTML = '<img class="hvframes" src="/poster?id=1&c=4">';
+    el.querySelector('[data-media-pic]')!.innerHTML = '<img class="ui-hvframes" src="/poster?id=1&c=4">';
     releaseHoverPreviews();
-    expect(el.querySelector('img.hvframes')).toBeNull();
+    expect(el.querySelector('img.ui-hvframes')).toBeNull();
   });
 });

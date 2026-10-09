@@ -19303,7 +19303,7 @@ var Ep = (e) => Tp(Sp, { signal: e }, "没能读取设置题目"), Dp = (e) => T
 	body: JSON.stringify({ initial: e })
 }, "没能打开文件夹对话框")).path, kp = (e) => e instanceof Error && e.message || "请求失败，请重试", Ap = 8e3, jp = /* @__PURE__ */ new WeakMap();
 function Mp(e, t, n) {
-	t.classList.add("fcollapse");
+	t.classList.add("ui-fcollapse");
 	let r = (jp.get(t) || 0) + 1;
 	jp.set(t, r);
 	let i = () => jp.get(t) === r;
@@ -19311,7 +19311,7 @@ function Mp(e, t, n) {
 		t.inert = !1;
 		let n = e.open ? t.getBoundingClientRect().height : 0;
 		e.open = !0, Pp(t, n, i);
-	} else t.inert = !0, t.classList.remove("fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Np(t, () => {
+	} else t.inert = !0, t.classList.remove("ui-fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Np(t, () => {
 		i() && (e.open = !1, t.style.height = "");
 	});
 }
@@ -19322,8 +19322,8 @@ function Np(e, t) {
 	e.addEventListener("transitionend", i), r = setTimeout(i, 260);
 }
 function Pp(e, t, n = () => !0) {
-	e.classList.remove("fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Np(e, () => {
-		n() && (e.style.height = "auto", e.classList.add("fcollapse-settled"));
+	e.classList.remove("ui-fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Np(e, () => {
+		n() && (e.style.height = "auto", e.classList.add("ui-fcollapse-settled"));
 	});
 }
 //#endregion

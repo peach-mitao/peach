@@ -13,7 +13,7 @@ export function initBoardControls() {
   const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof Element){if(node.matches('input[type=range]'))syncBoardRange(node as HTMLInputElement);scan(node)}});
   observer.observe(document.body,{subtree:true,childList:true});
   document.addEventListener('input',event=>{if(event.target instanceof HTMLInputElement&&event.target.type==='range')syncBoardRange(event.target)});
-  const tip=document.createElement('div');tip.className='board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.popover='manual';tip.hidden=true;document.body.append(tip);
+  const tip=document.createElement('div');tip.className='ui-board-tooltip';tip.id='board-control-tooltip';tip.role='tooltip';tip.popover='manual';tip.hidden=true;document.body.append(tip);
   let target:HTMLElement|null=null,title='',described:string|null=null,timer:ReturnType<typeof setTimeout>|undefined;
   const hide=()=>{clearTimeout(timer);if(tip.matches(':popover-open'))tip.hidePopover();tip.hidden=true;if(target){if(!target.hasAttribute('title'))target.title=title;if(described===null)target.removeAttribute('aria-describedby');else target.setAttribute('aria-describedby',described)}target=null};
   const show=(node:EventTarget|null,delay:number)=>{
@@ -41,7 +41,7 @@ const tabPositions=new Map<string,{left:number;width:number}>();
 /** 全站的下划线 Tabs 共用一条会滑的 2px 蓝色指示条（boardui tabs.tsx：transform 与 width
     各 200ms ease）。复核分类是药丸、统计与口味的维度是分段控件，选中都靠填充，不进这条。 */
 export function wireBoardTabs(root:ParentNode){
-  const selector='.board-local-nav:not([data-section-nav])';
+  const selector='.ui-board-local-nav:not([data-section-nav])';
   const groups=[...root.querySelectorAll<HTMLElement>(selector)];
   if(root instanceof HTMLElement&&root.matches(selector))groups.push(root);
   groups.forEach(group=>{
@@ -50,7 +50,7 @@ export function wireBoardTabs(root:ParentNode){
     const paint=(position:{left:number;width:number})=>{group.style.setProperty('--tab-x',`${position.left}px`);group.style.setProperty('--tab-width',`${position.width}px`)};
     const measure=()=>{const selected=group.querySelector<HTMLElement>('button[aria-selected=true],button[aria-pressed=true]');if(!selected||!selected.offsetWidth)return;const position={left:selected.offsetLeft,width:selected.offsetWidth};paint(position);tabPositions.set(key,position)};
     const previous=tabPositions.get(key);if(previous)paint(previous);else measure();
-    requestAnimationFrame(()=>{group.classList.add('board-tabs-ready');requestAnimationFrame(measure)});
+    requestAnimationFrame(()=>{group.classList.add('ui-board-tabs-ready');requestAnimationFrame(measure)});
     const mutation=new MutationObserver(measure);mutation.observe(group,{subtree:true,attributes:true,attributeFilter:['aria-selected','aria-pressed']});
     const resize=new ResizeObserver(()=>{if(!group.isConnected){resize.disconnect();mutation.disconnect();return}measure()});resize.observe(group);
   });

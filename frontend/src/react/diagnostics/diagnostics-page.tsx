@@ -72,11 +72,11 @@ export function DiagnosticsPage(props: DiagnosticsProps) {
     return response.data;
   }, () => setRefreshError(''), cause => setRefreshError(errorMessage(cause)));
   const data = query.data;
-  if (!data) return <div className="configpage"><Note tone="error" title="诊断读取失败"
+  if (!data) return <div className="ui-configpage"><Note tone="error" title="诊断读取失败"
     action={<Button variant="secondary" onClick={refresh} {...busyProps(action.busy === 'refresh')}>重新检查</Button>}>
     {query.error ? errorMessage(query.error) : '诊断报告未取得。'}
   </Note></div>;
-  return <div className="configpage flex flex-col gap-6">
+  return <div className="ui-configpage flex flex-col gap-6">
     <div className="flex justify-end"><Button variant="secondary" onClick={refresh} {...busyProps(action.busy === 'refresh')}>重新检查</Button></div>
     {refreshError ? <Note tone="error">{refreshError}</Note> : null}
     <Section title="库健康"><Stack>

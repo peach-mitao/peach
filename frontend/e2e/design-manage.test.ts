@@ -577,9 +577,9 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
         targets: ['[data-skeleton] .reviewtabs button', '[data-skeleton] .skeletoncard'] },
       { path: '/follow', ready: '.followauthors .avskeleton',
         targets: ['.followauthors .avskeleton', '.followworks .brandskeleton', '[data-skeleton^="cards/"] > div > *'] },
-      { path: '/follow-manage', ready: '[data-skeleton="board/follow-manage"] .follow-skeleton-toolbar',
-        targets: ['[data-skeleton] .follow-skeleton-toolbar > button:nth-of-type(2)',
-          '[data-skeleton] .follow-skeleton-toolbar > button:nth-of-type(1)'] },
+      { path: '/follow-manage', ready: '[data-skeleton="board/follow-manage"] .ui-follow-skeleton-toolbar',
+        targets: ['[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(2)',
+          '[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(1)'] },
     ];
     for (const { path, ready, targets, prepare } of pages) {
       const opened = await visit(browser, '/', DESKTOP);

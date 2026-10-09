@@ -28,4 +28,3 @@
   .followlist.followphotowall[data-size="big"]{--photo-columns:1}}
 @media(max-width:640px){.followlist.followphotowall[data-size]{--photo-columns:2}
   .followlist.followphotowall[data-size="big"]{--photo-columns:1}}
-[data-layout="masonry"]>.emptystate{column-span:all}

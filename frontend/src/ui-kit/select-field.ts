@@ -35,7 +35,7 @@ export function selectFieldHtml(
   const rows=options.map(([value,text,mark])=>
     `<button type="button" role="option" data-select-option="${esc(value)}"
       aria-selected="${String(value)===String(chosen[0])}" tabindex="-1"><span data-select-content>${content([value,text,mark])}</span></button>`).join('');
-  return `<div class="gselect${className?` ${esc(className)}`:''}" ${attr}>
+  return `<div class="ui-gselect${className?` ${esc(className)}`:''}" ${attr}>
     <button type="button" class="gselectfield" data-select-trigger aria-haspopup="listbox"
       aria-expanded="false" aria-label="${esc(label)}"><span data-select-label>${content(chosen)}</span>${icon('chevron-down')}</button>
     <div class="popmenu gselectmenu" role="listbox" aria-label="${esc(label)}" popover="manual" data-select-menu hidden>${rows}</div></div>`;

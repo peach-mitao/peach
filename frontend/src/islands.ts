@@ -15,8 +15,14 @@ export { transitionTheme } from './theme-transition';
 export { sidebarSkeletonHtml } from './sidebar-skeleton';
 export { manageHeaderSkeletonHtml, manageHeaderView } from './manage-header';
 
+import { initMiddleTruncate } from '@peach/legacy/middle-truncate';
 import type * as ReactBundle from '@peach/react';
 import { connectManagedRoutes, openResidentSurface, preloadManagedRoutes } from './history';
+
+/* 中段截断（`data-middle-truncate`）的全文档观察者随入口启动：壳拼的 HTML 与 React 子树画的元素都由它接手。
+ * 观察者是模块级状态，经 `@peach/legacy/middle-truncate` 落到入口包那一份实例。module 脚本等同 defer，
+ * 求值时 body 已经在了。 */
+initMiddleTruncate(document);
 
 export { watchJob, followJobProgress, jobActivityHtml } from './jobs';
 export { selectRange, selectionSummary, selectGroup, syncSelectionToolbar } from './selection';

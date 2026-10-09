@@ -26,8 +26,8 @@ export function clampPage(page: number, pages: number): number {
 export function paginationHtml(page: number, pages: number, label: string): string {
   if (pages <= 1) return '';
   const cells = paginationRange(page, pages).map(item => item === DOTS
-    ? '<li class="board-page-dots" aria-hidden="true">…</li>'
-    : `<li><button type="button" class="board-page" data-page="${item}" aria-label="第 ${item} 页"${item === page ? ' aria-current="page"' : ''}>${item}</button></li>`).join('');
+    ? '<li class="ui-board-page-dots" aria-hidden="true">…</li>'
+    : `<li><button type="button" class="ui-board-page" data-page="${item}" aria-label="第 ${item} 页"${item === page ? ' aria-current="page"' : ''}>${item}</button></li>`).join('');
   return `<nav class="board-pagination" aria-label="${label}">
     <button type="button" class="geist-button" data-page="${page - 1}"${page <= 1 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"></use></svg>上一页</button>
     <ul>${cells}</ul>

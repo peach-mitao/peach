@@ -13,6 +13,10 @@
  * 那条，当前 Chromium 不认，模糊整条丢掉。 */
 
 /* ── 画面框与 Video.js 外观 ── */
+/* Video.js 的样式表随播放器一起装（`videojs.ts`），画面框先挂上的那几帧里裸 `<video class="video-js">`
+   还没有它。这一条照抄样式表 `.video-js` 里决定盒子位置的四项，样式表到场前后画面框不跳；初始化后
+   Video.js 把这个元素的类换成 `vjs-tech`，这条就不再命中。 */
+video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial,Helvetica,sans-serif}
 [data-stage-media]{background:#000;position:relative;display:flex;align-items:center;justify-content:center;isolation:isolate}
 [data-ambient-canvas]{position:absolute;z-index:0;inset:-34px;width:calc(100% + 68px);height:calc(100% + 68px);
   filter:blur(46px) saturate(1.45);opacity:.42;transform:scale(1.06);pointer-events:none;

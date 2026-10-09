@@ -206,7 +206,7 @@ it('折叠开合走共用 Collapse：点开长到内容高度，收起时高度�
   await click(summary);
   expect(details.open).toBe(true);
   expect(summary.getAttribute('aria-expanded')).toBe('true');
-  expect(body.classList.contains('fcollapse')).toBe(true);
+  expect(body.classList.contains('ui-fcollapse')).toBe(true);
   expect(body.inert).toBe(false);
   await act(async () => { vi.advanceTimersByTime(260); });
   expect(body.style.height).toBe('auto');

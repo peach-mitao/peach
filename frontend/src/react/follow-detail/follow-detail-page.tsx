@@ -38,8 +38,8 @@ const realDuration = (value: unknown) => Number(value) > 0;
 const Glyph = ({ name }: { name: string }) => (
   <span className="contents" dangerouslySetInnerHTML={{ __html: icon(name) }} />
 );
-/** 外链那一枚：描边由全站 `svg.externalmark` 给，这一页的 18px 尺寸在 `follow-detail.css`。 */
-const EXTERNAL_MARK = icon('external-link', 'externalmark');
+/** 外链那一枚：描边由全站 `svg.ui-externalmark`（`core/core.css`）给，这一页的 18px 尺寸在 `follow-detail.css`。 */
+const EXTERNAL_MARK = icon('external-link', 'ui-externalmark');
 
 export function FollowDetailPage(props: FollowDetailProps) {
   const { id, actions } = props;

@@ -1,0 +1,28 @@
+/* 下划线页签条：`boardTabsHtml`（`ui-kit/markup.ts`）画的那一排，以及配置页与配置骨架的分区页签。
+   这里是按钮、计数徽标、前置字形与滑动蓝线的过渡；`wireBoardTabs`（同目录 `board-controls.ts`）挂上
+   `data-board-tabs` 与 `.ui-board-tabs-ready`，蓝线本身（`[data-board-tabs]::before`）在 web/board.css。
+   React 页签是另一份（`react/components/board-tabs.tsx`）。 */
+.ui-board-local-nav{display:flex;gap:4px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);margin:0 0 24px;padding:0;scrollbar-width:none}
+.ui-board-local-nav button{flex:none;background-color:transparent;background-image:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:20px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.ui-board-local-nav button[aria-selected="true"]{border-bottom-color:var(--tungsten);color:var(--tungsten);font-weight:500}
+.ui-board-local-nav button:focus-visible{outline:2px solid var(--tungsten);outline-offset:-3px}
+/* 计数徽标照 tabs.tsx：`rounded-sm px-1 py-px text-caption-1-medium`，未选中黑 10% 底半透明，
+   选中换成强调色 12% 底、强调色字。字母表分组卡的字头旁挂的也是这一枚。 */
+.ui-board-tab-count{display:inline-block;margin-left:6px;padding:1px 4px;border-radius:4px;font:var(--board-caption);font-weight:500;line-height:16px;
+  background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);opacity:.5;vertical-align:1px}
+.ui-board-local-nav button[aria-selected="true"] .ui-board-tab-count{background:color-mix(in srgb,var(--tungsten) 12%,transparent);color:var(--tungsten);opacity:1}
+/* 前置字形 16px。 */
+.ui-board-tabs button svg{width:16px;height:16px;margin-right:6px;vertical-align:-3px;stroke:currentColor;fill:none;stroke-width:2}
+@media(max-width:760px){.ui-board-local-nav{gap:0}.ui-board-local-nav button{padding:10px 9px;font-size:13px}}
+/* 这条指示条也是「当前落在哪一个」，位移跟着同一条弹簧走。它是伪元素，没法像那几块
+   底板一样再挂一段独立的形变——冲过落点再荡回来这一下有，抻开那一下没有。
+   宽度另走匀速：跟着弹簧过冲的话，它会在停下之前先抻出邻居的边界。 */
+[data-board-tabs].ui-board-tabs-ready::before{
+  transition:transform calc(var(--spring-pane-ms,200) * 1ms) var(--spring-pane,ease),
+             width calc(var(--spring-pane-ms,200) * 1ms) ease}
+@media(prefers-reduced-motion:reduce){[data-board-tabs].ui-board-tabs-ready::before{transition:none}}
+/* 控件悬停提示（`initBoardControls` 建在 body 上的那一枚 popover）：替掉原生 title，跟按钮同一套描边与阴影。 */
+.ui-board-tooltip{box-sizing:border-box;max-width:240px;padding:6px 10px;border:1px solid var(--color-border-button-default);border-radius:8px;background:var(--color-background-primary-default);color:var(--color-text-primary);font:var(--board-caption);white-space:normal;box-shadow:var(--elevation-dropdown)}
+.ui-board-tooltip{position:fixed;inset:auto;margin:0;width:max-content;max-width:min(240px,calc(100vw - 16px));z-index:var(--layer-tooltip);pointer-events:none}
+.ui-board-tooltip[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.ui-board-tooltip{transition:none}}

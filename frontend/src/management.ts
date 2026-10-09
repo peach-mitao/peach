@@ -44,13 +44,13 @@ export function repairCardSkeletonHtml(): string {
 /** 首屏复用读数卡、三张任务卡、链接管理与资源同步的最终容器；静态标题、正文和键立即呈现。 */
 export function cleanupSkeletonHtml(): string {
   const stats = [['人工复核', 'square-check-big'], ['高清版', 'sparkles'], ['重复文件', 'file-stack'], ['垃圾文件', 'file-archive'], ['回收站', 'trash']];
-  const presets = `<span class="geist-button organize-preset-skeleton">${bar}</span>`.repeat(3);
-  const organizeField = (label: string) => `<div class="organizefield"><span>${label}</span>
-            <span class="geist-input organize-input-skeleton">${bar}</span></div>`;
-  return `<div class="cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
-    <div class="cleanupstats">${stats.map(([title, glyph]) => `
+  const presets = `<span class="geist-button ui-organize-preset-skeleton">${bar}</span>`.repeat(3);
+  const organizeField = (label: string) => `<div class="ui-organizefield"><span>${label}</span>
+            <span class="geist-input ui-organize-input-skeleton">${bar}</span></div>`;
+  return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
+    <div class="ui-cleanupstats">${stats.map(([title, glyph]) => `
       <button type="button" class="board-plain-stat" disabled>
-        <span class="board-plain-stat-head"><span class="board-stat-tile">${icon(glyph!)}</span>${title}</span>
+        <span class="ui-board-plain-stat-head"><span class="ui-board-stat-tile">${icon(glyph!)}</span>${title}</span>
         <strong>${bar}</strong><span class="cleanupmeta">${bar}</span></button>`).join('')}</div>
     <div class="cleanupgrid">
       <div class="cleanupscraping">${scanCardSkeletonHtml()}</div>
@@ -58,24 +58,24 @@ export function cleanupSkeletonHtml(): string {
       <section class="cleanupfieldset cleanuporganize" data-geist-fieldset data-cleanup-task aria-labelledby="cleanup-loading-organize">
         <div class="geist-fieldset-content"><h3 class="geist-fieldset-title" id="cleanup-loading-organize">整理</h3>
           <p>按模板给文件改名并归入目录。先预览，确认后执行；执行过的一批可以整批退回。</p>
-          <div class="organizefields">
-            <div class="organizesource"><span class="gselect"><span class="gselectfield organize-source-skeleton">${bar}${icon('chevron-down')}</span></span></div>
+          <div class="ui-organizefields">
+            <div class="organizesource"><span class="ui-gselect"><span class="gselectfield organize-source-skeleton">${bar}${icon('chevron-down')}</span></span></div>
             ${organizeField('文件名模板')}
             ${organizeField('目录模板')}
-            <div class="organizepresets">${presets}</div>
+            <div class="ui-organizepresets">${presets}</div>
             <p class="cleanupmeta">${bar}</p>
           </div></div>
         <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${waiting}>预览</button></footer>
       </section></div>
-    <section class="resourcesync" aria-labelledby="cleanup-loading-links">
+    <section class="ui-resourcesync" aria-labelledby="cleanup-loading-links">
       <h2 id="cleanup-loading-links">链接管理</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task data-fieldset-stack>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">站外链接</h3>
-          <div class="linksummary"><div class="linkstats"><div><span>链接总数</span><b>${bar}</b><small>${bar}</small></div>${['官网/事务所', '社交账号', '作品资料站'].map(title => `<div><span>${title}</span><b>${bar}</b></div>`).join('')}</div>
-          <div class="linkhosts"><span>主要站点</span><b>${bar}</b></div></div></div>
+          <div class="linksummary"><div class="ui-linkstats"><div><span>链接总数</span><b>${bar}</b><small>${bar}</small></div>${['官网/事务所', '社交账号', '作品资料站'].map(title => `<div><span>${title}</span><b>${bar}</b></div>`).join('')}</div>
+          <div class="ui-linkhosts"><span>主要站点</span><b>${bar}</b></div></div></div>
         <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${waiting}>${icon('unlink')}<span>检查死链</span></button></div>
       </div></section>
-    <section class="resourcesync" aria-labelledby="cleanup-loading-sync">
+    <section class="ui-resourcesync" aria-labelledby="cleanup-loading-sync">
       <h2 id="cleanup-loading-sync">资源同步</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">文件与记录核对</h3>

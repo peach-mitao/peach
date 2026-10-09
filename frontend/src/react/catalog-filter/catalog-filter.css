@@ -374,7 +374,7 @@
 }
 /* 头像框上那层「图还在路上」的微光（遗留层 `watchPendingImages` 标的类）也画在 `::after` 上，已经收尾的框
  * 别把它一起藏掉。那枚类名不归岛管，这里按属性认它。 */
-.peach-react [data-refreshing] [data-tier-ring][class~="imgdone"]::after {
+.peach-react [data-refreshing] [data-tier-ring][class~="ui-imgdone"]::after {
   opacity: 1;
   filter: none;
   visibility: visible;

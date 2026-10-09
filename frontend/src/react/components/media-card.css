@@ -801,7 +801,7 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-media
 .peach-react [data-entity-more][aria-busy] { cursor: wait; opacity: .5; }
 
 /* 占位换成真内容：骨架那一屏抬成盖在网格上的一层淡出，新内容同时从模糊里清晰起来。取值同
- * `web/css/25-motion.css` 的 `.skelreveal`；动画名 `skel-reveal-in` 是那边的全局定义。 */
+ * `src/ui-kit/motion.css` 的 `.skelreveal`；动画名 `skel-reveal-in` 是那边的全局定义。 */
 .peach-react [data-grid-reveal] { position: relative; }
 .peach-react [data-grid-reveal] > [data-grid-fade] {
   position: absolute;

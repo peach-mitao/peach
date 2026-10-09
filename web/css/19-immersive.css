@@ -4,25 +4,6 @@
    `frontend/src/react/immerse/immerse.css`。 */
 .loadmore{min-height:42px;margin:18px auto 0;text-align:center;color:var(--muted);padding:12px}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
-/* Geist Scroller：内容只沿指定轴滚动，边缘渐隐负责提示仍有内容。 */
-.geist-scroller{position:relative;min-width:0;min-height:0;overflow:hidden}
-.geist-scroller-container{box-sizing:border-box;width:100%;height:100%;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.geist-scroller-container::-webkit-scrollbar{display:none}
-.geist-scroller-container[data-overflow="y"]{overflow:hidden auto}.geist-scroller-container[data-overflow="x"]{overflow:auto hidden}.geist-scroller-container[data-overflow="both"]{overflow:auto}
-.geist-scroller-overlay{position:absolute;z-index:2;inset:0;pointer-events:none}
-.geist-scroller-overlay::before,.geist-scroller-overlay::after{content:'';position:absolute;left:0;right:0;height:40px;opacity:0;transition:opacity .18s ease}
-.geist-scroller-overlay::before{top:0;background:linear-gradient(to bottom,var(--surface),transparent)}
-.geist-scroller-overlay::after{bottom:0;background:linear-gradient(to top,var(--surface),transparent)}
-.geist-scroller-overlay.can-scroll-top::before,.geist-scroller-overlay.can-scroll-bottom::after{opacity:1}
-/* Geist Empty State：标题和说明是一个组件；外层容器只负责与上方工具条保持 16px。 */
-.emptystate{grid-column:1/-1;display:grid;justify-items:center;align-content:center;gap:8px;box-sizing:border-box;width:100%;min-height:320px;padding:48px 24px;text-align:center;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}
-.emptystate .es-icon{display:grid;place-items:center;box-sizing:border-box;width:54px;height:54px;padding:10px;border-radius:var(--floating-radius);border:1px solid var(--border-15);color:var(--muted);margin-bottom:8px}
-.emptystate .es-icon svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.emptystate .es-copy{display:grid;justify-items:center;gap:8px}
-.emptystate h3{margin:0;font-size:var(--fs-md);font-weight:600;color:var(--ink)}
-.emptystate p{margin:0;max-width:340px;font-size:var(--fs-sm);line-height:1.55;color:var(--muted)}
-.emptystate .es-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
-
 @media (max-width:760px){
   .brand .sub{display:none}
   :root{--tile:168px;--topH:52px;--sortH:60px}
@@ -35,7 +16,6 @@
   .count>span:first-child{line-height:36px;white-space:nowrap}
   .count.junkcount{align-items:stretch;flex-direction:column;overflow:visible;padding-block:8px}
   .reviewtabs button{height:44px}
-  .playlistpage>header{align-items:stretch;flex-direction:column}
   /* 顶栏在窄屏会被搜索框撑破 —— 搜索收成一个按钮，点了才展开。只裁横向：竖向也裁的话，
      那几枚玻璃按钮往下落的投影在顶栏下沿被切平，头像那一排上方就多出一条横线。 */
   .top{gap:4px;padding:0 8px;overflow:clip visible}
@@ -81,7 +61,6 @@
   .entityprofile{grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;justify-items:center;text-align:center}
   /* 单列时头像上下各是一整行，没有「右边那列有多高」可跟，尺寸就还是钉住的 96px。 */
   .entityportrait{height:96px;min-height:96px;max-height:96px;width:96px}.entityhero h2{font-size:var(--fs-xl)}
-  .entityidentity{width:100%}
   .entityfoot{padding:10px 16px}
   /* 标题行是 flex，`text-align:center` 管不到它，得自己居中。 */
   .entitytitle{justify-content:center}
@@ -92,7 +71,7 @@
   .stats h2{font-size:var(--fs-xl)}.stats .insightcopy h2{font-size:var(--fs-3xl)}
   /* 窄屏下标题也得一起缩。`/follow` 渲染在 `#stats` 里，上面那条 `.stats h2`
      会只把它打到 23px，页面标题要跟它同一档。 */
-  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-2xl)}
+  .pagetitle,.listtitle,.index .ihead h2{font-size:var(--fs-2xl)}
 }
 /* 这个 16px 是 iOS 的阈值，不是刻度里的一档：Safari 对小于 16px 的输入框会自动放大页面。
    所以它写死，不跟 --fs-lg 走——刻度改一档就把这个防放大保护悄悄破坏掉了。 */
@@ -101,28 +80,13 @@
    页面标题压得比它下面 24px 的指标数字还小，层级整个翻过来。24 这一档是 Geist
    自己就有的 Heading 24，不是新开的字号。 */
 @media (max-width:640px){
-  .pagetitle,.listtitle,.index .ihead h2,.playlistpage h2{font-size:var(--fs-xl)}
+  .pagetitle,.listtitle,.index .ihead h2{font-size:var(--fs-xl)}
 }
 #searchBtn{display:none}
 .searchback{display:none}
 
 .iconswitch{min-width:0;margin:0;padding:3px;border:1px solid var(--line-soft);border-radius:var(--surface-radius);background:var(--overlay-5)}.iconswitch label{position:relative;display:inline-grid;width:34px;height:28px;place-items:center;border-radius:var(--control-radius);color:var(--muted);cursor:pointer}.iconswitch input{position:absolute;inline-size:1px;block-size:1px;opacity:0}.iconswitch label:hover{color:var(--ink)}.iconswitch label:has(input:checked){background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #0005}.iconswitch label:has(input:focus-visible){outline:2px solid var(--tungsten);outline-offset:2px}.iconswitch svg{display:block;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
 
-/* 共用勾选框：站内此前一半地方用原生 checkbox（只调了 accent-color，未选中态由浏览器
-   自绘、没有悬停反馈），另一半用关注列表自绘的那份，两种画法并排出现。统一成这一份。
-   悬停只抬填充不提边，与按钮同口径。 */
-.pcheck{position:relative;display:grid;place-items:center;width:20px;height:20px;flex:none;cursor:pointer}
-.pcheck input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.pcheck>span{box-sizing:border-box;width:16px;height:16px;border:1px solid var(--border-15);border-radius:var(--badge-radius);
-  display:grid;place-items:center;background:var(--ground);color:transparent;transition:.14s ease}
-.pcheck>span svg{display:block;width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}
-.pcheck:hover>span,label:hover>.pcheck>span{background:var(--hover)}
-.pcheck input:checked+span{border-color:var(--ink-2);color:var(--ink)}
-.pcheck input:focus-visible+span{outline:2px solid var(--tungsten);outline-offset:2px}
-.pcheck input:disabled+span{cursor:not-allowed;border-color:var(--line)}
-.pcheck input:disabled:checked+span{color:var(--muted)}
-.pcheck:has(input:disabled){cursor:not-allowed}
-.pcheck:has(input:disabled)>span{background:var(--ground)}
 /* 取景：正封模式下，整张封套要把镜头推到右半边；本身就是竖版正封的则整张用；
    16:9 官方剧照没有「正封那一块」，只能按人脸取。
    判据是图片自己的宽高比，由 onload 写进 data-frame。

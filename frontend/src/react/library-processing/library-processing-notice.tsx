@@ -17,7 +17,7 @@ import { useLibraryProcessingJob } from './use-library-processing';
 
 type Tone = 'gray' | 'warning' | 'error';
 
-/* 旧 `.project-banner`：通栏一条，只有上下两条线、没有圆角也没有左右边——它压在目录页
+/* 同遗留层 `.ui-project-banner`（`ui-kit/markup.css`）：通栏一条，只有上下两条线、没有圆角也没有左右边——它压在目录页
  * 内容上方，圆角卡会把自己读成页面上的一块内容，而它说的是「别处有件事在进行」。 */
 const BANNER = 'flex min-h-10 flex-wrap items-center justify-center gap-x-4 gap-y-2'
   + ' border-y px-6 py-2 max-sm:justify-start';

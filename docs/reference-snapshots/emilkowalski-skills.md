@@ -60,7 +60,7 @@ Peach 已有 `-webkit-tap-highlight-color`、`viewport-fit=cover`、按主题更
 
 | 上游规则 | 原因 |
 | --- | --- |
-| 永远不从 `scale(0)` 起 | 计数徽标的弹出形态取自 transitions.dev 实测，见 `web/css/25-motion.css` |
+| 永远不从 `scale(0)` 起 | 计数徽标的弹出形态取自 transitions.dev 实测，见 `frontend/src/ui-kit/motion.css` |
 | 按下缩放到 `0.97`、按压过渡 100–160ms | Geist Button 按下不缩放 |
 | 减弱动态效果时保留淡入淡出 | Peach 在全局 `prefers-reduced-motion` 规则里关掉全部动画与过渡 |
 | 自定义强缓动曲线（`cubic-bezier(0.23,1,0.32,1)` 等） | 时长与缓动只读 board.css 的 motion token |

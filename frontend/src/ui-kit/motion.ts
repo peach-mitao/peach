@@ -1,7 +1,8 @@
 /* 原地换态的一组辅助：字形互换、文字换行、读数错峰、清空输入框、计数徽标与标题逐行揭示。
    随 `peach-entry.js` 发出，`/js/ui-components.js` 原名转出；计数徽标上一次的值是模块级状态，只有一份。
 
-   形状和 CSS 在 `web/css/25-motion.css`，那里也写着每一条的来源与取值。这一层只负责
+   形状和 CSS 在同目录的 `motion.css`（文字换行那一条在 `web/css/25-motion.css`），那里也写着每一条的
+   来源与取值。这一层只负责
    「什么时候换」：动画本身一律交给 CSS，JS 不读也不写具体的毫秒数。 */
 import { esc, icon } from '../core';
 

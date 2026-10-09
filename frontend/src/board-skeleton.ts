@@ -9,7 +9,7 @@ const lines = () => `${line('80%')}${line('48%')}`;
 const repeat = (html: string, count: number) => html.repeat(count);
 const metrics = (labels: string[], className = 'metricstrip') => `<div class="${className}">${labels.map(label => `<div class="tastesummary"><span class="board-stat-label">${label}</span><b class="board-stat-value">${line('45%')}</b><small class="board-stat-footer">${line('60%')}</small></div>`).join('')}</div>`;
 const segments = (labels: string[], className: string) => `<div class="${className} skeleton-segments" data-board-segments="true">${labels.map((label,index) => `<span${index===0?' class="skeleton-segment-selected"':''}>${label}</span>`).join('')}</div>`;
-const panel = (title: string) => `<section class="insightpanel"><header>${title}</header><div class="insightpanelbody skeleton-lines">${repeat(lines(), 3)}</div></section>`;
+const panel = (title: string) => `<section class="ui-insightpanel"><header>${title}</header><div class="ui-insightpanelbody ui-skeleton-lines">${repeat(lines(), 3)}</div></section>`;
 /* 关注管理整页归 React，骨架整块画在 `.peach-react` 里，容器与按键都取 React 那侧渲染出的同一串
    类名（`react/follow-manage/`、`react/components/` 与 `island-skeleton.ts`）：页面那一列、读数带、
    分段控件、关注列表那张填充卡、创作者卡、来源行和表格外框。只有等数据的读数画占位条。
@@ -32,7 +32,7 @@ const followCheck = (label = '') => `<span class="group inline-flex items-center
 interface FollowToolbar { table: boolean; sort: SortKey; dir: SortDir }
 const followToolbar = ({ table, sort, dir }: FollowToolbar) => {
   const name = SORT_OPTIONS.find(([key]) => key === sort)![1];
-  return `<div class="flex flex-wrap items-center gap-2 follow-skeleton-toolbar"><h3 class="mr-auto text-title-2-medium text-text-primary">关注列表</h3><span class="text-body-2-regular text-text-secondary">${text('132px')}</span>${islandButton({ glyph: 'refresh-cw', label: '检查全部', compact: true, attrs: WAITING })}<span data-button-group role="group">${islandButton({ variant: 'ghost', glyph: 'layout-grid', attrs: `aria-pressed="${!table}"` })}${islandButton({ variant: 'ghost', glyph: 'table', attrs: `aria-pressed="${table}"` })}</span>${islandSelect(name)}${islandButton({ variant: 'secondary', glyph: dir === 'asc' ? 'arrow-up' : 'arrow-down' })}${table ? '' : islandButton({ variant: 'secondary', glyph: 'chevron-up', label: '全部收起', compact: true, attrs: WAITING })}</div>`;
+  return `<div class="flex flex-wrap items-center gap-2 ui-follow-skeleton-toolbar"><h3 class="mr-auto text-title-2-medium text-text-primary">关注列表</h3><span class="text-body-2-regular text-text-secondary">${text('132px')}</span>${islandButton({ glyph: 'refresh-cw', label: '检查全部', compact: true, attrs: WAITING })}<span data-button-group role="group">${islandButton({ variant: 'ghost', glyph: 'layout-grid', attrs: `aria-pressed="${!table}"` })}${islandButton({ variant: 'ghost', glyph: 'table', attrs: `aria-pressed="${table}"` })}</span>${islandSelect(name)}${islandButton({ variant: 'secondary', glyph: dir === 'asc' ? 'arrow-up' : 'arrow-down' })}${table ? '' : islandButton({ variant: 'secondary', glyph: 'chevron-up', label: '全部收起', compact: true, attrs: WAITING })}</div>`;
 };
 /** 行尾那对动作键：检查这一条的更新、移除这一条，与 React `SourceRow` 同为小号次级纯图标键。 */
 const followRowActions = () => `<span class="flex shrink-0 items-center gap-1">${islandButton({ variant: 'secondary', size: 'small', glyph: 'refresh-cw', attrs: WAITING })}${islandButton({ variant: 'secondary', size: 'small', glyph: 'trash', attrs: WAITING })}</span>`;
@@ -71,13 +71,13 @@ const followList = (options: { followLayout?: string; followPageSize?: number; f
   const content = table
     ? followTable(size, order)
     : `${followCheck('全选本页')}<div class="flex flex-col gap-3">${followAuthor(3)}${followAuthor(4)}${followAuthor(3)}</div>`;
-  return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${followReadings()}<div class="flex flex-col gap-6">${followTabs()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 follow-skeleton-surface" data-layout="${table ? 'table' : 'default'}">${followToolbar({ table, ...order })}${content}${followPager(table, size)}</div></div></div></div></div>`;
+  return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${followReadings()}<div class="flex flex-col gap-6">${followTabs()}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface" data-layout="${table ? 'table' : 'default'}">${followToolbar({ table, ...order })}${content}${followPager(table, size)}</div></div></div></div></div>`;
 };
 
 /** 详情骨架外层 `[data-skeleton="detail"]` 里面那一格：舞台岛自己画外层，里面照这一份写。格子与详情栏
  *  的几何是舞台的（`react/stage/stage.css`），骨架的底色与行距是壳的 `skeleton` 一族。 */
 export function detailSkeletonBody(): string {
-  return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
+  return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
 }
 
 export function detailSkeletonHtml(): string {
@@ -91,19 +91,19 @@ export function boardPageSkeleton(
   if (path === '/stats') {
     body = statsSkeleton();
   } else if (path === '/taste') {
-    body = `<div class="tastepage"><header class="tastehead">${segments(['浏览器记录', 'Peach 内部'], 'insightswitch')}${line('24%')}</header><div class="tastestate"></div>${metrics(['浏览记录', '口味维度', '浏览候选', '私有导出'], 'tastesummaries')}<section class="tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton skeleton-radar"></div></div><div class="tastebars skeleton-lines">${repeat(lines(), 4)}</div></section>${panel('口味分析')}<div class="board-activity-charts">${panel('浏览活动')}${panel('时间分布')}</div>${panel('标签')}</div>`;
+    body = `<div class="tastepage"><header class="ui-tastehead">${segments(['浏览器记录', 'Peach 内部'], 'insightswitch')}${line('24%')}</header><div class="ui-tastestate"></div>${metrics(['浏览记录', '口味维度', '浏览候选', '私有导出'], 'ui-tastesummaries')}<section class="ui-tastehero"><div class="insightcopy"><span>浏览器画像</span><div class="skeleton ui-skeleton-radar"></div></div><div class="ui-tastebars ui-skeleton-lines">${repeat(lines(), 4)}</div></section>${panel('口味分析')}<div class="ui-board-activity-charts">${panel('浏览活动')}${panel('时间分布')}</div>${panel('标签')}</div>`;
   } else if (path === '/follow-manage') {
     body = followList(options);
   } else if (path === '/configuration') {
     body = configurationSkeleton();
   } else if (path === '/activity') {
-    body = `<div class="activitypage">${['正在进行', '被挡下的', '最近完成'].map(title => `<section class="activitysection"><h3 class="geist-fieldset-title">${title}</h3><div class="activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content skeleton-lines">${line('35%')}${lines()}</div></article></div></section>`).join('')}</div>`;
+    body = `<div class="ui-activitypage">${['正在进行', '被挡下的', '最近完成'].map(title => `<section class="activitysection"><h3 class="geist-fieldset-title">${title}</h3><div class="ui-activity-runs"><article class="cleanupfieldset activity-run"><div class="geist-fieldset-content ui-skeleton-lines">${line('35%')}${lines()}</div></article></div></section>`).join('')}</div>`;
   } else if (path === '/duplicates') {
     body = duplicatesSkeleton();
   } else if (path === '/quality-goals') {
     body = qualityGoalsSkeleton();
   } else if (path === '/playlists') {
-    body = `<section class="playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate skeleton-lines"><span>新播放列表</span>${line('200px')}</div></header><div class="playlistcards">${repeat(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy skeleton-lines">${lines()}</div></div></article>`, 6)}</div></section>`;
+    body = `<section class="ui-playlistpage"><header><div><h2>播放列表</h2><p>保存 Mix，按自己的顺序继续播放。</p></div><div class="playlistcreate ui-skeleton-lines"><span>新播放列表</span>${line('200px')}</div></header><div class="ui-playlistcards">${repeat(`<article class="card playlistcard"><div class="mixstack"><div class="pic skeleton"></div></div><div class="mixmeta"><span class="mav skeleton"></span><div class="mixcopy ui-skeleton-lines">${lines()}</div></div></article>`, 6)}</div></section>`;
   } else return '';
   return `<div class="board-page-skeleton" data-skeleton="board${path}" role="status" aria-label="正在读取页面"><div aria-hidden="true" inert>${body}</div></div>`;
 }

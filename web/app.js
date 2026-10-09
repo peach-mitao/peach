@@ -8,7 +8,6 @@ import { MEDIA_SOURCE_ICONS } from './js/ui-components.js';
 import { detailSkeletonHtml, initBoardControls } from './dist/peach-ui.js';
 import { javDisplayName, javTitleHtml } from './js/jav-title.js';
 import { matchRoute, routeLabel } from './js/routes.js';
-import { initMiddleTruncate } from './js/middle-truncate.js';
 import { tagLabel } from './js/tags.js';
 import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js';
 import { appSettingsStore, applySyncedSettings, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
@@ -43,7 +42,6 @@ import {
   nextPostSetupTutorialRequest, isCurrentPostSetupTutorialRequest, resetPostSetupTutorialState,
 } from './js/ui-components.js';
 
-initMiddleTruncate(document);
 initBoardControls();
 wireBusyActions(document);
 attachOverlayScrollbar(document.documentElement,{variant:'page'});

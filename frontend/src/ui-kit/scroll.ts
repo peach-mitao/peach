@@ -246,18 +246,18 @@ export function moveGlidePane(
 /** Geist Scroller: one-axis overflow with edge fades as the scroll affordance. */
 export function scrollerHtml(content:string,{className='',label='可滚动内容',overflow='y'}={}){
   const axis=new Set(['x','y','both']).has(overflow)?overflow:'y';
-  return `<div class="geist-scroller${className?` ${esc(className)}`:''}" data-geist-scroller>
-    <div class="geist-scroller-overlay" aria-hidden="true"></div>
-    <div class="geist-scroller-container" data-overflow="${axis}" tabindex="0" aria-label="${esc(label)}">${content}</div>
+  return `<div class="ui-geist-scroller${className?` ${esc(className)}`:''}" data-geist-scroller>
+    <div class="ui-geist-scroller-overlay" aria-hidden="true"></div>
+    <div class="ui-geist-scroller-container" data-overflow="${axis}" tabindex="0" aria-label="${esc(label)}">${content}</div>
   </div>`;
 }
 
 function updateScroller(wrapper:Element){
-  const container=wrapper.querySelector(':scope > .geist-scroller-container');
-  const overlay=wrapper.querySelector(':scope > .geist-scroller-overlay');
+  const container=wrapper.querySelector(':scope > .ui-geist-scroller-container');
+  const overlay=wrapper.querySelector(':scope > .ui-geist-scroller-overlay');
   if(!container||!overlay)return;
-  overlay.classList.toggle('can-scroll-top',container.scrollTop>1);
-  overlay.classList.toggle('can-scroll-bottom',container.scrollTop+container.clientHeight<container.scrollHeight-1);
+  overlay.classList.toggle('ui-can-scroll-top',container.scrollTop>1);
+  overlay.classList.toggle('ui-can-scroll-bottom',container.scrollTop+container.clientHeight<container.scrollHeight-1);
   overlay.classList.toggle('can-scroll-left',container.scrollLeft>1);
   overlay.classList.toggle('can-scroll-right',container.scrollLeft+container.clientWidth<container.scrollWidth-1);
 }
@@ -265,7 +265,7 @@ function updateScroller(wrapper:Element){
 /** Wire newly rendered scrollers without duplicating listeners after a rerender. */
 export function wireScrollers(root:ParentNode=document):void{
   root.querySelectorAll('[data-geist-scroller]').forEach(wrapper=>{
-    const container=wrapper.querySelector<HTMLElement>(':scope > .geist-scroller-container');
+    const container=wrapper.querySelector<HTMLElement>(':scope > .ui-geist-scroller-container');
     if(!container)return;
     if(!container.dataset.scrollerWired){
       container.dataset.scrollerWired='true';
@@ -284,9 +284,9 @@ export function wireScrollers(root:ParentNode=document):void{
 const OVERLAY_SCROLLERS=[
   '[data-stage-side-content]','[data-stage-scroll]','.tagpickbody','[data-mix-list]','.playlistpicklist',
   '[data-player-stats]',
-  '.vjs-peach-settings-menu','.geist-scroller-container','.metricstrip','.tastesummaries',
-  '.skeletondashstrip','.followpagination',
-  '.reviewtabs','.ftablewrap','.board-local-nav','[data-manage-menu]',
+  '.vjs-peach-settings-menu','.ui-geist-scroller-container','.metricstrip','.ui-tastesummaries',
+  '.ui-skeletondashstrip','.followpagination',
+  '.reviewtabs','.ftablewrap','.ui-board-local-nav','[data-manage-menu]',
   '.follow-workspace-switch','.fmanagenav','[role="listbox"]',
 ].join(',');
 /* Board 层里会超宽的横向滚动层：两端按滚动位置渐隐说明「那边还有」，鼠标停在上面时竖向
@@ -295,7 +295,7 @@ const OVERLAY_SCROLLERS=[
    点名的清单，漏登记就是「看得见、够不着」：一排分区在 390px 下溢出两百多像素，
    却既没有渐隐也不接滚轮。组件自己量溢出，不溢出的宽度上登记等于空转，所以按可能
    溢出的层登记，不按某一个断点登记。React 档的页面自己用 `overflow-x-auto`，不进这份清单。 */
-const BOARD_EDGE_SCROLLERS='.reviewtabs,.ftablewrap,.board-local-nav,[data-manage-menu],'
+const BOARD_EDGE_SCROLLERS='.reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],'
   +'.follow-workspace-switch,.fmanagenav';
 
 /** 把这一批 DOM 里所有该有覆盖式滚动条的容器接上；重复调用只接新出现的那些。 */

@@ -232,7 +232,7 @@ function ge(e, t = e?.name) {
 	let { code: n, title: r, badges: i = [] } = w(e, t);
 	if (!n) return m(r);
 	let a = i.map((e) => `<small class="javedition ${e === "中字" ? "subtitle" : e === "无码" ? "uncensored" : "cracked"}">${m(e)}</small>`).join("");
-	return `<span class="javidentity"><strong class="javcode">${m(n)}</strong>${a}</span>${r ? ` <span class="javtitle">${m(r)}</span>` : ""}`;
+	return `<span class="ui-javidentity"><strong class="ui-javcode">${m(n)}</strong>${a}</span>${r ? ` <span class="ui-javtitle">${m(r)}</span>` : ""}`;
 }
 //#endregion
 //#region src/ui-kit/sounds.ts
@@ -451,7 +451,7 @@ function Fe(e, { variant: t = "" } = {}) {
 	if (!r) return null;
 	e.dataset.overlayScrollbar = "true", !n && getComputedStyle(r).position === "static" && (r.style.position = "relative");
 	let i = n ? null : document.createElement("div");
-	i && (i.className = "ov-edges", i.setAttribute("aria-hidden", "true"), i.innerHTML = "<span class=\"ov-edge-top\"></span><span class=\"ov-edge-bottom\"></span>", r.append(i));
+	i && (i.className = "ui-ov-edges", i.setAttribute("aria-hidden", "true"), i.innerHTML = "<span class=\"ui-ov-edge-top\"></span><span class=\"ui-ov-edge-bottom\"></span>", r.append(i));
 	let a = (n ? ["y"] : ["y", "x"]).map((e) => {
 		let n = document.createElement("div");
 		n.className = `ovtrack ${e === "y" ? "ov-y" : "ov-x"}${t ? ` ${t}` : ""}`;
@@ -486,7 +486,7 @@ function Fe(e, { variant: t = "" } = {}) {
 		let t = e.scrollTop, n = e.scrollLeft;
 		if (i) {
 			let n = c > 1 && t > 1, r = c > 1 && t < c - 1, a = `${n}:${r}`;
-			a !== l && (l = a, i.hidden = !n && !r, i.classList.toggle("can-scroll-top", n), i.classList.toggle("can-scroll-bottom", r), n || r ? (e.style.setProperty("--scroll-edge-top", n ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", r ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", n || r));
+			a !== l && (l = a, i.hidden = !n && !r, i.classList.toggle("ui-can-scroll-top", n), i.classList.toggle("ui-can-scroll-bottom", r), n || r ? (e.style.setProperty("--scroll-edge-top", n ? "16px" : "0px"), e.style.setProperty("--scroll-edge-bottom", r ? "16px" : "0px")) : (e.style.removeProperty("--scroll-edge-top"), e.style.removeProperty("--scroll-edge-bottom")), e.toggleAttribute("data-scroll-edges", n || r));
 		}
 		a.forEach(({ axis: e, thumb: r, range: i, travel: a }) => {
 			if (i <= 1) return;
@@ -545,9 +545,9 @@ function Fe(e, { variant: t = "" } = {}) {
 //#region src/ui-kit/collapse.ts
 function Ie(e, t, n, r = "summary") {
 	e?.querySelectorAll(t).forEach((e, t) => {
-		if (e.querySelector(":scope > .fcollapse")) return;
+		if (e.querySelector(":scope > .ui-fcollapse")) return;
 		let i = document.createElement("div");
-		i.className = "fcollapse";
+		i.className = "ui-fcollapse";
 		let a = document.createElement("div");
 		a.className = "fcollapsebody", [...e.children].forEach((e) => {
 			e.tagName !== "SUMMARY" && a.appendChild(e);
@@ -555,14 +555,14 @@ function Ie(e, t, n, r = "summary") {
 		let o = e.querySelector(r);
 		r !== "summary" && e.querySelector("summary").addEventListener("click", (e) => e.preventDefault());
 		let s = e.open;
-		i.id = `${n}-${t}`, i.inert = !s, s && i.classList.add("fcollapse-settled"), o.setAttribute("aria-controls", i.id), o.setAttribute("aria-expanded", String(s)), o.addEventListener("click", (t) => {
+		i.id = `${n}-${t}`, i.inert = !s, s && i.classList.add("ui-fcollapse-settled"), o.setAttribute("aria-controls", i.id), o.setAttribute("aria-expanded", String(s)), o.addEventListener("click", (t) => {
 			t.preventDefault(), s = !s, o.setAttribute("aria-expanded", String(s)), Le(e, i, s);
 		});
 	});
 }
 var F = /* @__PURE__ */ new WeakMap();
 function Le(e, t, n) {
-	t.classList.add("fcollapse");
+	t.classList.add("ui-fcollapse");
 	let r = (F.get(t) || 0) + 1;
 	F.set(t, r);
 	let i = () => F.get(t) === r;
@@ -570,7 +570,7 @@ function Le(e, t, n) {
 		t.inert = !1;
 		let n = e.open ? t.getBoundingClientRect().height : 0;
 		e.open = !0, ze(t, n, i);
-	} else t.inert = !0, t.classList.remove("fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Re(t, () => {
+	} else t.inert = !0, t.classList.remove("ui-fcollapse-settled"), t.style.height = t.getBoundingClientRect().height + "px", t.getBoundingClientRect(), t.style.height = "0px", Re(t, () => {
 		i() && (e.open = !1, t.style.height = "");
 	});
 }
@@ -581,8 +581,8 @@ function Re(e, t) {
 	e.addEventListener("transitionend", i), r = setTimeout(i, 260);
 }
 function ze(e, t, n = () => !0) {
-	e.classList.remove("fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Re(e, () => {
-		n() && (e.style.height = "auto", e.classList.add("fcollapse-settled"));
+	e.classList.remove("ui-fcollapse-settled"), e.style.height = t + "px", e.getBoundingClientRect(), e.style.height = e.scrollHeight + "px", Re(e, () => {
+		n() && (e.style.height = "auto", e.classList.add("ui-fcollapse-settled"));
 	});
 }
 //#endregion
@@ -664,7 +664,7 @@ function qe(e, t, { label: r = "", attr: i = "", className: a = "" } = {}) {
 		t,
 		n
 	])}</span></button>`).join("");
-	return `<div class="gselect${a ? ` ${m(a)}` : ""}" ${i}>
+	return `<div class="ui-gselect${a ? ` ${m(a)}` : ""}" ${i}>
     <button type="button" class="gselectfield" data-select-trigger aria-haspopup="listbox"
       aria-expanded="false" aria-label="${m(r)}"><span data-select-label>${s(o)}</span>${n("chevron-down")}</button>
     <div class="popmenu gselectmenu" role="listbox" aria-label="${m(r)}" popover="manual" data-select-menu hidden>${c}</div></div>`;
@@ -733,9 +733,9 @@ function z(e, { variant: t = "secondary", label: i = "", className: a = "", size
 }
 var $e = {
 	gray: "project-banner-gray",
-	success: "project-banner-success",
-	warning: "project-banner-warning",
-	error: "project-banner-error"
+	success: "ui-project-banner-success",
+	warning: "ui-project-banner-warning",
+	error: "ui-project-banner-error"
 };
 function et(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}) {
 	let s = [
@@ -744,23 +744,23 @@ function et(e, { variant: t = "gray", href: r, label: i, value: a, max: o } = {}
 		"warning",
 		"error"
 	].includes(t) ? t : "gray";
-	return `<aside class="project-banner ${$e[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? tt("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
+	return `<aside class="ui-project-banner ${$e[s]}" role="${s === "error" ? "alert" : "status"}"><div>${Number(o) > 0 ? tt("任务完成率", a, o) : n(s === "error" || s === "warning" ? "alert" : "info")}<p>${m(e)}</p></div><a href="${m(r)}">${m(i)}</a></aside>`;
 }
 function tt(e, t, n = 100, { usage: r = !1, compact: i = !1 } = {}) {
 	let a = Number(n), o = Number(t);
 	if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(o)) return `<span>${m(e)}：未取得</span>`;
 	let s = Math.max(0, Math.min(100, o / a * 100)), c = r ? s >= 95 ? "error" : s >= 80 ? "warning" : "normal" : "normal", l = r ? c === "error" ? "空间即将用满" : c === "warning" ? "空间使用偏高" : "空间充足" : "";
-	return `<span class="geist-gauge" data-level="${c}" role="progressbar" aria-label="${m(e + (l ? "：" + l : ""))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${s} 100"/></svg></span>${l && !i ? `<span class="gauge-status">${l}</span>` : ""}`;
+	return `<span class="ui-geist-gauge" data-level="${c}" role="progressbar" aria-label="${m(e + (l ? "：" + l : ""))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s}"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="13" pathLength="100" stroke-dasharray="${s} 100"/></svg></span>${l && !i ? `<span class="ui-gauge-status">${l}</span>` : ""}`;
 }
 function nt(e, t, n = 100, { variant: r = "active", stops: i = [] } = {}) {
 	let a = Math.max(0, Number(n) || 0), o = Math.max(0, Math.min(Number(t) || 0, a)), s = a ? o / a * 100 : 0;
-	return `<div class="geist-progress" role="progressbar" aria-label="${m(e)}"
+	return `<div class="ui-geist-progress" role="progressbar" aria-label="${m(e)}"
     aria-valuemin="0" aria-valuemax="${a}" aria-valuenow="${o}"
-    style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
+    style="--progress-value:${s}%;--progress-color:var(${r === "error" ? "--drop" : r === "warning" ? "--meter" : "--feedback-success"})"><i></i>${i.filter((e) => Number(e.value) > 0 && Number(e.value) < a && e.label).map((e) => `<span class="ui-geist-progress-stop" style="left:${Number(e.value) / a * 100}%" role="img" aria-label="${m(e.label)}"></span>`).join("")}</div>`;
 }
 function rt(e = "加载中") {
 	let t = Array.from({ length: 10 }, (e, t) => `<i aria-hidden="true" style="--spinner-angle:${t * 36}deg;--spinner-delay:${t * 100 - 900}ms"></i>`).join("");
-	return `<span class="geist-spinner" role="status" aria-label="${m(e)}">${t}</span>`;
+	return `<span class="ui-geist-spinner" role="status" aria-label="${m(e)}">${t}</span>`;
 }
 function it({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a = "", attrs: o = "" } = {}) {
 	let s = [
@@ -778,29 +778,29 @@ function it({ label: e, id: t = "", name: r = "", value: i = "", placeholder: a 
     <input ${s}></div>`;
 }
 function at(e = "正在处理", { className: t = "" } = {}) {
-	return `<span class="geist-loading${t ? ` ${m(t)}` : ""}" role="status">
-    <span class="geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+	return `<span class="ui-geist-loading${t ? ` ${m(t)}` : ""}" role="status">
+    <span class="ui-geist-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span>${m(e)}</span></span>`;
 }
 function ot(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图", className: a = "", panel: o = "" } = {}) {
 	let s = e.map(({ value: e, label: i, count: a, symbol: s }) => {
-		let c = String(e) === String(t), l = a == null ? "" : `<span class="board-tab-count">${m(Number(a).toLocaleString())}</span>`;
+		let c = String(e) === String(t), l = a == null ? "" : `<span class="ui-board-tab-count">${m(Number(a).toLocaleString())}</span>`;
 		return `<button type="button" role="tab" ${r}="${m(e)}" aria-selected="${c}"${o ? ` aria-controls="${m(o)}"` : ""}>${s ? n(s) : ""}${m(i)}${l}</button>`;
 	}).join("");
-	return `<div class="board-local-nav board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
+	return `<div class="ui-board-local-nav ui-board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
 }
 function st(e, t, r, { className: i = "", actions: a = "" } = {}) {
-	return `<div class="emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
-    <div class="es-icon" aria-hidden="true">${n(e)}</div>
-    <div class="es-copy"><h3>${m(t)}</h3><p>${m(r)}</p></div>
-    ${a ? `<div class="es-actions">${a}</div>` : ""}
+	return `<div class="ui-emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
+    <div class="ui-es-icon" aria-hidden="true">${n(e)}</div>
+    <div class="ui-es-copy"><h3>${m(t)}</h3><p>${m(r)}</p></div>
+    ${a ? `<div class="ui-es-actions">${a}</div>` : ""}
   </div>`;
 }
 function ct(e) {
-	return `<span class="geist-badge">${m(e)}</span>`;
+	return `<span class="ui-geist-badge">${m(e)}</span>`;
 }
 function lt(e = "") {
-	return `<span class="pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
+	return `<span class="ui-pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
 }
 //#endregion
 //#region src/ui-kit/motion.ts
@@ -916,36 +916,36 @@ function vt(e, t) {
 	}, 1e3);
 }
 function yt() {
-	return `<div class="configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
+	return `<div class="ui-configpage" data-skeleton="configuration" role="status" aria-label="正在读取配置">${[
 		["通用", 2],
 		["媒体", 2],
 		["下载", 2],
 		["网络与访问", 3],
 		["维护", 3]
-	].map(([e, t]) => `<h2 class="configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
+	].map(([e, t]) => `<h2 class="ui-configgroup" aria-hidden="true">${e}</h2>${Array.from({ length: t }, () => "<div class=\"configfieldset config-skeleton-card\" aria-hidden=\"true\"><div class=\"geist-fieldset-content\"><span class=\"skeleton\"></span><span class=\"skeleton\"></span><span class=\"skeleton\"></span></div><footer class=\"geist-fieldset-footer\"><span class=\"skeleton\"></span></footer></div>").join("")}`).join("")}</div>`;
 }
 function bt(e = "正在读取内容", { className: t = "", variant: n = "panel", count: r = 6, fill: i = !0, gridClass: a = "", gridSize: o = "", cardRatio: s = 0 } = {}) {
 	let c = (/* @__PURE__ */ new Set([
 		"panel",
 		"cards",
 		"dashboard"
-	])).has(n) ? n : "panel", l = c === "cards" ? Array.from({ length: Math.max(1, r) }, () => "<span class=\"skeletoncard\"><i></i><s></s><b></b><em></em><u></u></span>").join("") : c === "dashboard" ? `<span class="skeletondashstrip">${Array.from({ length: 4 }, () => "<span><i></i><b></b><em></em></span>").join("")}</span>
-        <span class="skeletondashhero"><i></i><b></b></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>` : "<span class=\"skeleton\" style=\"width:38%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:72%\"></span>";
+	])).has(n) ? n : "panel", l = c === "cards" ? Array.from({ length: Math.max(1, r) }, () => "<span class=\"skeletoncard\"><i></i><s></s><b></b><em></em><u></u></span>").join("") : c === "dashboard" ? `<span class="ui-skeletondashstrip">${Array.from({ length: 4 }, () => "<span><i></i><b></b><em></em></span>").join("")}</span>
+        <span class="ui-skeletondashhero"><i></i><b></b></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>` : "<span class=\"skeleton\" style=\"width:38%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:72%\"></span>";
 	return `<div class="skeletonpanel skeleton-${c}${t ? ` ${m(t)}` : ""}"
     data-skeleton="${m(c)}${t ? `/${m(t)}` : ""}"${c === "cards" && i ? " data-fill=\"\"" : ""}
     role="status" aria-label="${m(e)}"><span class="sr-only">${m(e)}</span>
     <div${a ? ` class="${m(a)}"` : ""}${o ? ` data-size="${m(o)}"` : ""}${c === "cards" && Number(s) > 0 ? ` style="--skeleton-card-ratio:${Number(s)}"` : ""} aria-hidden="true">${l}</div></div>`;
 }
 function xt({ kind: e, layout: t = "big", mode: n = "alphabet" } = {}) {
-	let r = e !== "tags", i = e === "studios" || e === "agencies", a = r ? "<span class=\"icell\"><span class=\"ring skeleton\"></span><span class=\"nm skeleton\">&nbsp;</span><span class=\"n skeleton\">&nbsp;</span></span>" : "<span class=\"alphatag\"><span class=\"skeleton\"></span><span class=\"n skeleton\"></span></span>", o = r ? `igrid" data-cells="${i ? "company" : "people"}" data-layout="${m(t)}` : "alphalist", s = !r && n === "cloud" ? `<div class="tagwall index-tags">${Array.from({ length: 60 }, (e, t) => `<span class="tg skeleton" style="width:${[
+	let r = e !== "tags", i = e === "studios" || e === "agencies", a = r ? "<span class=\"icell\"><span class=\"ring skeleton\"></span><span class=\"nm skeleton\">&nbsp;</span><span class=\"n skeleton\">&nbsp;</span></span>" : "<span class=\"alphatag\"><span class=\"skeleton\"></span><span class=\"n skeleton\"></span></span>", o = r ? `igrid" data-cells="${i ? "company" : "people"}" data-layout="${m(t)}` : "ui-alphalist", s = !r && n === "cloud" ? `<div class="tagwall index-tags">${Array.from({ length: 60 }, (e, t) => `<span class="tg skeleton" style="width:${[
 		92,
 		128,
 		76,
 		108,
 		144
-	][t % 5]}px">&nbsp;</span>`).join("")}</div>` : r ? `<div class="${o}">${a.repeat(12)}</div>` : `<section class="alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${o}">${a.repeat(10)}</div></section>`.repeat(3), c = "正在读取索引";
+	][t % 5]}px">&nbsp;</span>`).join("")}</div>` : r ? `<div class="${o}">${a.repeat(12)}</div>` : `<section class="ui-alphagroup"><span class="indexletterskeleton skeleton"></span><div class="${o}">${a.repeat(10)}</div></section>`.repeat(3), c = "正在读取索引";
 	return `<div class="skeletonpanel index-skeleton" data-skeleton="index/${m(e)}/${m(t)}/${m(n)}"${r ? " data-fill=\"\"" : ""}
     role="status" aria-label="${c}"><span class="sr-only">${c}</span><section aria-hidden="true">${s}</section></div>`;
 }
@@ -1250,18 +1250,18 @@ function Gt(e, { className: t = "", label: n = "可滚动内容", overflow: r = 
 		"y",
 		"both"
 	])).has(r) ? r : "y";
-	return `<div class="geist-scroller${t ? ` ${m(t)}` : ""}" data-geist-scroller>
-    <div class="geist-scroller-overlay" aria-hidden="true"></div>
-    <div class="geist-scroller-container" data-overflow="${i}" tabindex="0" aria-label="${m(n)}">${e}</div>
+	return `<div class="ui-geist-scroller${t ? ` ${m(t)}` : ""}" data-geist-scroller>
+    <div class="ui-geist-scroller-overlay" aria-hidden="true"></div>
+    <div class="ui-geist-scroller-container" data-overflow="${i}" tabindex="0" aria-label="${m(n)}">${e}</div>
   </div>`;
 }
 function J(e) {
-	let t = e.querySelector(":scope > .geist-scroller-container"), n = e.querySelector(":scope > .geist-scroller-overlay");
-	!t || !n || (n.classList.toggle("can-scroll-top", t.scrollTop > 1), n.classList.toggle("can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
+	let t = e.querySelector(":scope > .ui-geist-scroller-container"), n = e.querySelector(":scope > .ui-geist-scroller-overlay");
+	!t || !n || (n.classList.toggle("ui-can-scroll-top", t.scrollTop > 1), n.classList.toggle("ui-can-scroll-bottom", t.scrollTop + t.clientHeight < t.scrollHeight - 1), n.classList.toggle("can-scroll-left", t.scrollLeft > 1), n.classList.toggle("can-scroll-right", t.scrollLeft + t.clientWidth < t.scrollWidth - 1));
 }
 function Kt(e = document) {
 	e.querySelectorAll("[data-geist-scroller]").forEach((e) => {
-		let t = e.querySelector(":scope > .geist-scroller-container");
+		let t = e.querySelector(":scope > .ui-geist-scroller-container");
 		t && (t.dataset.scrollerWired || (t.dataset.scrollerWired = "true", t.addEventListener("scroll", () => J(e), { passive: !0 }), t.addEventListener("load", () => J(e), !0)), requestAnimationFrame(() => J(e)));
 	});
 }
@@ -1273,19 +1273,19 @@ var qt = [
 	".playlistpicklist",
 	"[data-player-stats]",
 	".vjs-peach-settings-menu",
-	".geist-scroller-container",
+	".ui-geist-scroller-container",
 	".metricstrip",
-	".tastesummaries",
-	".skeletondashstrip",
+	".ui-tastesummaries",
+	".ui-skeletondashstrip",
 	".followpagination",
 	".reviewtabs",
 	".ftablewrap",
-	".board-local-nav",
+	".ui-board-local-nav",
 	"[data-manage-menu]",
 	".follow-workspace-switch",
 	".fmanagenav",
 	"[role=\"listbox\"]"
-].join(","), Jt = ".reviewtabs,.ftablewrap,.board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
+].join(","), Jt = ".reviewtabs,.ftablewrap,.ui-board-local-nav,[data-manage-menu],.follow-workspace-switch,.fmanagenav";
 function Yt(e = document) {
 	e.querySelectorAll(qt).forEach((e) => {
 		if (e.matches(Jt)) {
@@ -1322,17 +1322,17 @@ function Qt(e, t, n) {
 var $t = 9;
 function en({ value: e = 0, min: t = 0, max: n = 100, step: r = 1, label: i = "", suffix: a = "%", attr: o = "", className: s = "" } = {}) {
 	let c = n > t ? (e - t) / (n - t) * 100 : 0, l = `${e}${a}`;
-	return `<div class="dial${s ? ` ${m(s)}` : ""}" ${o}>
-    <div class="dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${m(i)}"
+	return `<div class="ui-dial${s ? ` ${m(s)}` : ""}" ${o}>
+    <div class="ui-dial-slider" data-dial-slider role="slider" tabindex="0" aria-label="${m(i)}"
       aria-valuemin="${t}" aria-valuemax="${n}" aria-valuenow="${e}" aria-valuetext="${m(l)}"
       data-dial-step="${r}" style="--dial-at:${c}%">
-      <span class="dial-track" aria-hidden="true"><span class="dial-fill"></span></span>
-      <span class="dial-ticks" aria-hidden="true">${"<span></span>".repeat($t)}</span>
-      <span class="dial-handle" aria-hidden="true"></span>
-    </div><b class="dial-value mono" data-dial-value>${m(l)}</b></div>`;
+      <span class="ui-dial-track" aria-hidden="true"><span class="ui-dial-fill"></span></span>
+      <span class="ui-dial-ticks" aria-hidden="true">${"<span></span>".repeat($t)}</span>
+      <span class="ui-dial-handle" aria-hidden="true"></span>
+    </div><b class="ui-dial-value mono" data-dial-value>${m(l)}</b></div>`;
 }
 function tn(e, { onInput: t = () => {}, onChange: n = () => {}, suffix: r = "%" } = {}) {
-	let i = e.querySelector("[data-dial-slider]"), a = e.querySelector("[data-dial-value]"), o = e.querySelector(".dial-track"), s = +i.getAttribute("aria-valuemin"), c = +i.getAttribute("aria-valuemax"), l = +i.dataset.dialStep || 1, u = +i.getAttribute("aria-valuenow"), d = (e) => Math.min(c, Math.max(s, Math.round(e / l) * l)), f = () => {
+	let i = e.querySelector("[data-dial-slider]"), a = e.querySelector("[data-dial-value]"), o = e.querySelector(".ui-dial-track"), s = +i.getAttribute("aria-valuemin"), c = +i.getAttribute("aria-valuemax"), l = +i.dataset.dialStep || 1, u = +i.getAttribute("aria-valuenow"), d = (e) => Math.min(c, Math.max(s, Math.round(e / l) * l)), f = () => {
 		let e = `${u}${r}`;
 		i.style.setProperty("--dial-at", `${c > s ? (u - s) / (c - s) * 100 : 0}%`), i.setAttribute("aria-valuenow", String(u)), i.setAttribute("aria-valuetext", e), a && (a.textContent = e);
 	}, p = (e, n) => {
@@ -1426,15 +1426,15 @@ function rn(e, { selector: t, attribute: n, onMove: r } = {}) {
 var an = 0;
 function on({ title: e, description: t = "", body: n = "", confirmLabel: r, cancelLabel: i = "取消", onConfirm: a = null, confirmDisabled: o = !1 } = {}) {
 	let s = document.activeElement, c = document.createElement("dialog");
-	c.className = "geist-modal";
+	c.className = "ui-geist-modal";
 	let l = `geist-form-title-${++an}`;
-	c.setAttribute("aria-labelledby", l), c.innerHTML = `<form class="geist-modal-form" novalidate>
-      <div class="geist-modal-body"><h3 id="${l}"></h3>${t ? "<p></p>" : ""}
-        <div class="geist-modal-fields">${n}</div><div data-modal-error></div></div>
+	c.setAttribute("aria-labelledby", l), c.innerHTML = `<form class="ui-geist-modal-form" novalidate>
+      <div class="ui-geist-modal-body"><h3 id="${l}"></h3>${t ? "<p></p>" : ""}
+        <div class="ui-geist-modal-fields">${n}</div><div data-modal-error></div></div>
       <footer class="geist-modal-footer">
         <div><button type="button" class="geist-button" data-modal-cancel></button></div>
         <div><button type="submit" class="geist-button primary" data-modal-confirm></button></div>
-      </footer></form>`, c.querySelector("h3").textContent = e, t && (c.querySelector(".geist-modal-body p").textContent = t);
+      </footer></form>`, c.querySelector("h3").textContent = e, t && (c.querySelector(".ui-geist-modal-body p").textContent = t);
 	let u = c.querySelector("[data-modal-cancel]"), d = c.querySelector("[data-modal-confirm]"), f = c.querySelector("[data-modal-error]");
 	u.textContent = i, d.textContent = r, d.disabled = !!o, document.body.append(c);
 	let p = null, m = !1, h = new Promise((e) => c.addEventListener("close", () => {
@@ -1464,7 +1464,7 @@ function on({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 				m = !1;
 			}
 		}
-	}, c.showModal(), O("pop"), (c.querySelector(".geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
+	}, c.showModal(), O("pop"), (c.querySelector(".ui-geist-modal-fields input:not([type=\"checkbox\"])") || d).focus(), {
 		dialog: c,
 		confirmButton: d,
 		done: h,
@@ -1474,14 +1474,14 @@ function on({ title: e, description: t = "", body: n = "", confirmLabel: r, canc
 var sn = 0;
 function cn({ title: e, body: t, confirmLabel: n, cancelLabel: r = "取消", onConfirm: i = null, danger: a = !1 } = {}) {
 	let o = document.activeElement, s = document.createElement("dialog");
-	s.className = "geist-modal";
+	s.className = "ui-geist-modal";
 	let c = `geist-modal-title-${++sn}`;
-	s.setAttribute("aria-labelledby", c), s.innerHTML = `<div class="geist-modal-body">
+	s.setAttribute("aria-labelledby", c), s.innerHTML = `<div class="ui-geist-modal-body">
       <h3 id="${c}"></h3><p></p><div data-modal-error></div></div>
     <footer class="geist-modal-footer">
       <div><button type="button" class="geist-button" data-modal-cancel></button></div>
       <div><button type="button" class="geist-button primary" data-modal-confirm></button></div>
-    </footer>`, s.querySelector("h3").textContent = e, s.querySelector(".geist-modal-body p").textContent = t;
+    </footer>`, s.querySelector("h3").textContent = e, s.querySelector(".ui-geist-modal-body p").textContent = t;
 	let l = s.querySelector("[data-modal-cancel]"), u = s.querySelector("[data-modal-confirm]");
 	a && (u.classList.remove("primary"), u.classList.add("danger"));
 	let d = s.querySelector("[data-modal-error]");

@@ -29,22 +29,8 @@
 .geist-note-details li>span,.geist-note-details li>code,.geist-note-details p{color:var(--muted)}
 .geist-note-details li>code{font-size:var(--fs-xs)}
 .geist-note-details p{margin:8px 0 0;overflow-wrap:anywhere}
-.project-banner{--feedback-color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px 16px;flex-wrap:wrap;padding:8px 24px;min-height:40px;border-block:1px solid color-mix(in srgb,var(--feedback-color) 30%,var(--ground));background:color-mix(in srgb,var(--feedback-color) 5%,var(--ground));color:var(--feedback-color);font-size:var(--fs-md);line-height:20px}
-.project-banner>div{display:flex;align-items:center;gap:8px;min-width:0}.project-banner p{margin:0;overflow-wrap:anywhere}
-/* 圆头端点是这枚字形的一部分：alert 与 info 圆圈里那个点是长度 .01 的路径，
-   butt 端点会把它渲染成看不见的薄片，横幅上只剩上半截竖杠，警告读成了半个符号。
-   只认直接子元素：带进度时横幅里那一枚是 `.geist-gauge` 的圆环，它的端点是弧的
-   两头而不是字形笔画，跟着一起圆掉就成了另一种控件的长相。 */
-.project-banner>div>svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round}
-.project-banner>a{color:inherit;text-decoration:underline;text-underline-offset:5px;font-weight:500;flex:none}
-.project-banner-error{--feedback-color:var(--drop)}.project-banner-warning{--feedback-color:var(--meter)}.project-banner-success{--feedback-color:var(--feedback-success)}
 .context-card{position:fixed;inset:auto;margin:0;width:320px;max-width:calc(100vw - 16px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px;border:1px solid var(--line);border-radius:var(--floating-radius);background:var(--ground);color:var(--ink);box-shadow:var(--elevation-dropdown);font-size:var(--fs-md);line-height:1.5;overflow-wrap:anywhere;z-index:var(--layer-popover);pointer-events:auto}
 .context-card[hidden]{display:none}.context-card h3{margin:0 0 8px;font-size:var(--fs-md)}.context-card dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;margin:0}.context-card dt{color:var(--muted)}.context-card dd{margin:0}
-/* 窄屏上说明从左边起，动作靠右端：`auto` 而不是定值缩进，说明长短不一时那个链接才
-   总在同一条竖线上，换行之后也还在这一横条的右端。 */
-@media(max-width:600px){.project-banner{justify-content:flex-start}.project-banner>a{margin-left:auto}}
-
 /* 检查失败明细持续保留到状态解决，复用 Note 的边界、图标和语义色。 */
 .fwarn{grid-template-columns:16px minmax(0,1fr);margin:10px 0 14px}
 .fwarn>span{min-width:0}
@@ -69,20 +55,6 @@
 /* 资源标识统一由 MiddleTruncate 计算可见文本。星号让本规则与「类 + 元素」的末尾省略
    选择器同权重，并凭源码顺序覆盖，避免两套省略同时生效。 */
 *[data-middle-truncate]{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:clip}
-/* 链接管理骨架的概览格与主要站点一行。
-   正文归 React 子树（ADR-0031），这几条只服务骨架。 */
-.linkstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 32px;margin-top:16px}
-.linkstats>div,.linkhosts{display:grid;gap:2px;min-width:0}
-.linkstats span,.linkhosts span{color:var(--muted);font-size:var(--fs-xs)}
-.linkstats b{font-size:var(--fs-xl);font-variant-numeric:tabular-nums}
-.linkstats small{color:var(--muted);font-size:var(--fs-xs)}
-.linkhosts{margin-top:16px}.linkhosts b{font-weight:500;font-size:var(--fs-sm);overflow-wrap:anywhere}
-
-.geist-gauge{display:inline-flex;width:32px;height:32px;flex:none;vertical-align:middle;margin-inline-end:8px}.geist-gauge svg{width:100%;height:100%;fill:none;stroke-width:3}.geist-gauge circle:first-child{stroke:var(--line-soft)}.geist-gauge circle:last-child{stroke:var(--feedback-success);transform:rotate(-90deg);transform-origin:center}.geist-progress{position:relative}.geist-progress i{background:var(--progress-color,var(--feedback-success))}.geist-progress-stop{position:absolute;top:0;bottom:0;width:2px;background:var(--ground);transform:translateX(-50%)}
 .geist-note:has(>[data-note-action]){grid-template-columns:16px minmax(0,1fr) auto;align-items:center}
 .geist-note>[data-note-action]{margin:0;white-space:nowrap}
-.geist-gauge[data-level="warning"] circle:last-child{stroke:var(--meter)}
-.geist-gauge[data-level="error"] circle:last-child{stroke:var(--drop)}
-.gauge-status{margin-inline-end:8px;font-size:var(--fs-xs)}
-@media(prefers-reduced-motion:no-preference){.geist-progress i{transition:width .2s ease-out,background-color .2s ease-out}.geist-gauge circle:last-child{transition:stroke-dasharray .2s ease-out,stroke .2s ease-out}}
 @media(max-width:600px){.geist-note:has(>[data-note-action]){grid-template-columns:16px minmax(0,1fr)}.geist-note>[data-note-action]{grid-column:2;justify-self:start}}

@@ -7,9 +7,9 @@ export const emptyStateHtml = (
   title: string,
   description: string,
   options: { actions?: string } = {},
-): string => `<div class="emptystate" data-geist-empty-state role="status">`
-  + `<div class="es-icon" data-icon="${iconName}"></div>`
-  + `<div class="es-copy"><h3>${title}</h3><p>${description}</p></div>${options.actions || ''}</div>`;
+): string => `<div class="ui-emptystate" data-geist-empty-state role="status">`
+  + `<div class="ui-es-icon" data-icon="${iconName}"></div>`
+  + `<div class="ui-es-copy"><h3>${title}</h3><p>${description}</p></div>${options.actions || ''}</div>`;
 
 // 索引页进页骨架的页头（Tabs 与过滤框）用正式模板。
 export {boardTabsHtml, searchInputHtml} from '../../src/ui-kit';
@@ -23,7 +23,7 @@ export {configurationSkeletonHtml, revealSkeleton, SKELETON_REVEAL_DELAY, skelet
 export const fitSkeleton = (_root: Element | null): void => {};
 export const loadingDotsHtml = (label: string): string => `<span>${label}</span>`;
 export const spinnerHtml = (label: string): string => `<span role="status" aria-label="${label}"></span>`;
-export const checkboxHtml = (attrs = ''): string => `<span class="pcheck"><input type="checkbox" ${attrs}></span>`;
+export const checkboxHtml = (attrs = ''): string => `<span class="ui-pcheck"><input type="checkbox" ${attrs}></span>`;
 export const progressHtml = (label: string, value: number, max = 100): string =>
   `<progress role="progressbar" aria-label="${label}" value="${value}" max="${max}" aria-valuenow="${value}" aria-valuemax="${max}"></progress>`;
 export const confirmModal = async (_options: unknown) => ({confirmed:false});
@@ -39,7 +39,7 @@ export const MEDIA_SOURCE_ICONS: Record<string,string> = {local:'hard-drive','11
 export const selectOptionIconHtml = (mark?: string): string => mark ? `<i data-source-icon="${mark}"></i>` : '';
 
 export const selectFieldHtml = (items: string[][], value: string, options: { label?: string } = {}): string =>
-  `<div class="gselect" data-value="${value}"><button type="button" aria-haspopup="listbox" aria-label="${options.label}">${items.find(item => item[0] === value)?.[1]}</button></div>`;
+  `<div class="ui-gselect" data-value="${value}"><button type="button" aria-haspopup="listbox" aria-label="${options.label}">${items.find(item => item[0] === value)?.[1]}</button></div>`;
 export const wireSelectField = (root: HTMLElement) => {
   Object.defineProperty(root, 'value', { get: () => root.dataset.value, set: (value: string) => { root.dataset.value = value; } });
   return root as HTMLElement & { value: string; disabled: boolean };
@@ -71,4 +71,4 @@ export const setActionBusy = (control: Element | null, busy = true): void => {
 // 使用正式 Note 验证内部操作。
 export {noteHtml} from '../../src/ui-kit';
 
-export const badgeHtml = (text: string): string => `<span class="geist-badge">${text}</span>`;
+export const badgeHtml = (text: string): string => `<span class="ui-geist-badge">${text}</span>`;

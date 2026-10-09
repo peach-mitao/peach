@@ -290,7 +290,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       assert.deepEqual(await machine.locator('dt').allTextContents(), ['媒体库', '端口', '更新']);
       assert.equal(await machine.locator('input, textarea, select, form, [role="switch"], [aria-haspopup="listbox"]').count(), 0,
         '摘要卡里出现了可编辑的控件');
-      assert.equal(await panel.locator('.configpage').count(), 0, '设置弹层里又挂了一份配置页');
+      assert.equal(await panel.locator('.ui-configpage').count(), 0, '设置弹层里又挂了一份配置页');
       for (const text of ['媒体修复', '订阅源', '保持登录时间']) {
         assert.equal(await panel.getByText(text, { exact: true }).count(), 0, `设置弹层里还有「${text}」`);
       }
@@ -673,7 +673,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
           pills: document.querySelectorAll(`${glassSelector} [data-filter-row="top"] > *`).length,
           view: rect(`${glassSelector} [data-filter-row="bottom"] ${viewSelector}`) };
       }, [glass, group, view] as const);
-      const skeleton = await measure('#index .board-filter-frame', '#index [data-skeleton] .alphagroup', '.iconswitch');
+      const skeleton = await measure('#index .board-filter-frame', '#index [data-skeleton] .ui-alphagroup', '.iconswitch');
       release();
       await page.locator('#index [data-alphabet]').waitFor({ timeout: 15_000 });
       await settle(page);

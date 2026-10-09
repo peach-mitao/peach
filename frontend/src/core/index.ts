@@ -9,7 +9,7 @@ const $=(s:string)=>document.querySelector(s);
 /* 方形槽位里塞不进 1.4:1 的字形：按宽度对齐它就矮一截，挨着满格的 Lucide
    图标看就是小一号。这几枚外层 viewBox 跟着 symbol 的比例走，槽位由 CSS 按高定宽。 */
 const WIDE_ICONS:Record<string,number>={'text-aa':1.435,'mark-javdb':326/111};
-/** 雪碧图字形的 SVG 片段；`cls` 是挂在 `<svg>` 上的类（如 `externalmark`）。 */
+/** 雪碧图字形的 SVG 片段；`cls` 是挂在 `<svg>` 上的类（如 `ui-externalmark`）。 */
 const icon=(name:string,cls='')=>{
   const ratio=WIDE_ICONS[name],classes=[ratio?'iconwide':'',cls].filter(Boolean).join(' ');
   const box=ratio?`0 0 ${(24*ratio).toFixed(2)} 24`:'0 0 24 24';

@@ -184,11 +184,11 @@ describe('设计决定：作品卡、管理页与复核', () => {
         '回收站资源卡封面格里的字形没有居中或不是次要文字色');
       assert.deepEqual([trash.kind?.display, trash.kind?.place, trash.kind?.color], ['grid', 'center center', trash.text.color],
         '回收站资源卡头像位的字形没有居中或不是正文色');
-      /* 悬停扫视层是壳插进封面格的 `img.hvframes`：待删卡的灰化要连它一起，否则悬停时整卡「复活」成正常色。 */
+      /* 悬停扫视层是壳插进封面格的 `img.ui-hvframes`：待删卡的灰化要连它一起，否则悬停时整卡「复活」成正常色。 */
       const scan = await page.locator('#grid [data-media-card][data-pending-delete]:not([data-variant="resource"]) [data-media-pic]')
         .first().evaluate((pic) => {
           const layer = document.createElement('img');
-          layer.className = 'hvframes';
+          layer.className = 'ui-hvframes';
           pic.append(layer);
           const filter = getComputedStyle(layer).filter;
           layer.remove();
@@ -636,13 +636,13 @@ describe('设计决定：作品卡、管理页与复核', () => {
         content.dataset.scrollTest = '';
         node.append(content);
       });
-      const edges = scroller.locator('..').locator('.ov-edges');
-      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .can-scroll-bottom'));
-      assert.equal(await edges.evaluate((node) => node.classList.contains('can-scroll-top')), false);
+      const edges = scroller.locator('..').locator('.ui-ov-edges');
+      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .ui-can-scroll-bottom'));
+      assert.equal(await edges.evaluate((node) => node.classList.contains('ui-can-scroll-top')), false);
       await scroller.evaluate((node) => { node.scrollTop = 100 });
-      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .can-scroll-top.can-scroll-bottom'));
+      await opened.page.waitForFunction(() => !!document.querySelector('[data-review-key] .ui-can-scroll-top.ui-can-scroll-bottom'));
       assert.equal(await edges.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
-      assert.equal(await edges.locator('.ov-edge-top').evaluate((node) => getComputedStyle(node).backdropFilter), 'blur(2px)');
+      assert.equal(await edges.locator('.ui-ov-edge-top').evaluate((node) => getComputedStyle(node).backdropFilter), 'blur(2px)');
       const track = scroller.locator('..').locator('.ovtrack.ov-y');
       for (const viewport of [DESKTOP, MOBILE]) {
         await opened.page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -664,7 +664,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
       await opened.page.mouse.up();
       assert.ok(await scroller.evaluate((node) => node.scrollTop > 100), '右侧轨道拖动没有滚动正文');
       await scroller.evaluate((node) => { node.scrollTop = node.scrollHeight });
-      await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] .can-scroll-bottom'));
+      await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] .ui-can-scroll-bottom'));
       await scroller.locator('[data-scroll-test]').evaluate((node) => node.remove());
       await opened.page.waitForFunction(() => !document.querySelector('[data-review-key] [data-scroll-edges]'));
       const spacing = await card.getByRole('region', { name: '当前信息' }).evaluate((node) => {
@@ -959,8 +959,8 @@ describe('设计决定：作品卡、管理页与复核', () => {
         await stubFollowManage(page);
         const release = await holdApi(page);
         await page.reload({ waitUntil: 'load' });
-        await page.locator('[data-skeleton="board/follow-manage"] .follow-skeleton-toolbar').waitFor({ timeout: 15_000 });
-        const toolbar = '[data-skeleton] .follow-skeleton-toolbar';
+        await page.locator('[data-skeleton="board/follow-manage"] .ui-follow-skeleton-toolbar').waitFor({ timeout: 15_000 });
+        const toolbar = '[data-skeleton] .ui-follow-skeleton-toolbar';
         const skeleton = await controlFaces(page, {
           检查全部: `${toolbar} > button:nth-of-type(1)`,
           默认视图: `${toolbar} > [data-button-group] > button:first-child`,

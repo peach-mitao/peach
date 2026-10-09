@@ -2,7 +2,7 @@
  * 五个分区各占一格页签，一次只摆一组；服务端按两道门放行，不能编辑时「媒体」那一组只留
  * 一句原因。设置弹层里只有一张摘要卡指到这里（ADR-0050）。
  *
- * `.configpage` 的第一层：最前面是页签条（`.board-local-nav`），后面每组一个 `h2.configgroup` 小标题
+ * `.ui-configpage` 的第一层：最前面是页签条（`.ui-board-local-nav`），后面每组一个 `h2.ui-configgroup` 小标题
  * 紧跟这一组的根节点，根节点就是那一格页签面板。小标题在样式里不显示，它的字已经写在页签上；
  * 没有内容的组连标题与页签一起省略。页签条第一帧就在，和整页同一次提交画出来。 */
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ export function ConfigurationPage({ receipt, reopenTutorial, section = '' }: Con
   const data = config.data;
   if (!data) {
     return (
-      <div className="configpage">
+      <div className="ui-configpage">
         <Note tone="error" title="配置读取失败">
           {config.error ? errorMessage(config.error) : '未取得配置，请刷新页面重试。'}
         </Note>
@@ -79,8 +79,8 @@ function ConfigurationGroups(
     buttons.current[next]?.focus();
   };
   return (
-    <div className="configpage">
-      <div className="board-local-nav" role="tablist" aria-label="配置分区" data-section-nav="" data-section-items=""
+    <div className="ui-configpage">
+      <div className="ui-board-local-nav" role="tablist" aria-label="配置分区" data-section-nav="" data-section-items=""
         aria-orientation="horizontal">
         {groups.map(({ title }, i) => (
           <button key={title} ref={(node) => { buttons.current[i] = node }} type="button" role="tab"
@@ -92,7 +92,7 @@ function ConfigurationGroups(
       </div>
       {groups.map(({ title, body }, i) => (
         <Fragment key={title}>
-          <h2 className="configgroup">{title}</h2>
+          <h2 className="ui-configgroup">{title}</h2>
           {body({ index: i, id: `${prefix}-panel-${i}-0`, labelledBy: `${prefix}-tab-${i}`, active: i === at })}
         </Fragment>
       ))}
