@@ -63,6 +63,7 @@ import { prefetchStats } from '../stats/stats';
 import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
+import { CatalogMatch } from './pages/catalog';
 import { FollowMatch, PlaylistsMatch } from './pages/follow';
 import { EntityMatch, IndexMatch } from './pages/index-entity';
 import { ManagedMatch, ResourceSyncRedirect } from './pages/managed';
@@ -264,10 +265,12 @@ export const ENTITY_ROUTES: EntityRouteTable = {
    骨架，不重挂。 */
 export const CATALOG_ROUTES: CatalogRouteTable = {
   '/': {
+    element: <CatalogMatch />,
     prefetch: (open, signal) => prefetchCatalogGrid(open, signal),
     page: (open) => <CatalogGridPage {...open} />,
   },
   '/junk-files': {
+    element: <CatalogMatch />,
     prefetch: async () => {},
     page: (open) => <JunkQueuePage {...open} />,
   },

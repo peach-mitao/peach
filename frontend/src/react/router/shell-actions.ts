@@ -97,6 +97,10 @@ export interface ShellActions {
   // ── 关注与播放列表用（`pages/follow.tsx`）──
   /** 关注页那几样仍在壳里的东西。 */
   readonly follow?: FollowFeedShell;
+
+  // ── 目录用（`pages/catalog.tsx`）：来源在线表、搜索框、顶部三层与取数都还在壳里 ──
+  /** 首页、三个筛选态、回收站与垃圾文件打开与重取时回到壳的那几步。 */
+  readonly catalog?: CatalogShell;
 }
 
 /** 关注页元素打开时回到壳的那几步。筛选的那一份由壳从地址读进自己的变量（回到关注页时按它写地址，侧栏、标签
@@ -109,6 +113,20 @@ export interface FollowFeedShell {
   skeleton(): string;
   /** 整页打开交给页面的 props：筛选、取样种子与刷新代次、选择集、照片墙偏好，以及壳里那一份助手与动作。 */
   props(): FollowFeedProps;
+}
+
+/** 目录元素回到壳的那几步。筛选由元素按地址写进 `@peach/shell` 的 `state`，之后的事归壳。 */
+export interface CatalogShell {
+  /** 地址没写 `loc` 时的来源：缺省那几个里摘掉此刻脱盘的（壳在启动与重新检测时记下的那一份）。 */
+  defaultLoc(): string;
+  /** 按刚写好的 `state` 打开这一页：从别处回到首页（`entering`）先作废顶部三层的缓存；回收站清空搜索框并铺开首页
+   *  那一侧，其余页把搜索框对齐 `state.q`；再同步侧栏与顶栏、重画顶部三层、取目录。`retitle`：地址刚由元素改写，
+   *  标题与教程状态跟着重读。 */
+  open(path: string, options?: { entering?: boolean; retitle?: boolean }): void;
+  /** 筛选与地址已经由壳写好：按它们重取目录。 */
+  load(): void;
+  /** 离开目录：收起 `#grid` 那一页、首页新作行与处理横幅。 */
+  release(): void;
 }
 
 /** 资料页元素打开时回到壳的那几步。骨架里可有可无的几块按形状名单画，名单、目录卡片的比例与新作骨架都在壳里；

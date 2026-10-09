@@ -5,8 +5,9 @@ ADR-0022 的迁移方向是逐屏搬出 app.js，可 2026-09-13 盘点时它已�
 拦得住的是「旧壳里登记了哪些页面」。
 
 冻结的是页面全集，按归属分成三列：壳打开的（app.js `ROUTES` 的字面 match）、路由树用元素画的
-（`managed-routes.tsx` 各张路由表里带 `element` 的条目）、覆盖组按真实地址匹配的详情与队列
-（`OVERLAY_PATHS`）。一页搬进路由树就从 app.js 的 `ROUTES` 里删掉，三列互不相交、并起来仍是这张全集。
+（`managed-routes.tsx` 各张路由表里带 `element` 的条目；目录表按页面分键，带了元素就算 `CATALOG_PATHS`
+那几条路径）、覆盖组按真实地址匹配的详情与队列（`OVERLAY_PATHS`）。一页搬进路由树就从 app.js 的 `ROUTES`
+里删掉，三列互不相交、并起来仍是这张全集。
 """
 import pathlib
 import re
@@ -19,9 +20,10 @@ APP = REPO / "web" / "app.js"
 FRONTEND_SRC = REPO / "frontend" / "src"
 ROUTE_TABLES = FRONTEND_SRC / "react" / "router" / "managed-routes.tsx"
 OVERLAY = FRONTEND_SRC / "history" / "overlay.ts"
+CORE = FRONTEND_SRC / "core" / "index.ts"
 
-#: 以字面量写出的页面路径；壳里由 `STATE_ROUTES` 展开的那一组不在此列，组数由下面的 `SPREADS` 钉住。
-#: 资料页由路由树按模式（`TREE_PATTERNS`）登记，同样不在此列。
+#: 以字面量写出的页面路径；`STATE_ROUTES` 那一组筛选态（三个筛选态与垃圾文件）不在此列，壳的 `ROUTES` 里
+#: 展开的组数由下面的 `SPREADS` 钉住。资料页由路由树按模式（`TREE_PATTERNS`）登记，同样不在此列。
 FROZEN_ROUTES = frozenset({
     "/", "/trash", "/playlists", "/playlists/:playlist/:item", "/mix/:seed/:item",
     "/parts/:seed/:item", "/editions/:seed/:item", "/item/:id", "/follow/item/:id",
@@ -30,7 +32,7 @@ FROZEN_ROUTES = frozenset({
     "/scraping", "/follow", "/follow-manage", "/configuration", "/activity", "/immerse",
     "/diagnostics",
 })
-SPREADS = 1
+SPREADS = 0
 #: 路由树按模式登记的资料页，一个实体种类一条。
 TREE_PATTERNS = frozenset({"/performers/*", "/studios/*", "/creators/*", "/series/*", "/agencies/*"})
 
@@ -84,17 +86,23 @@ def top_level_entries(body: str) -> dict[str, str]:
     return entries
 
 
+def quoted_list(source: str, name: str) -> set[str]:
+    """`export const NAME = [...] as const` 里的字符串字面量。"""
+    return set(re.findall(r"'([^']*)'", source.split(f"export const {name}", 1)[1].split("] as const", 1)[0]))
+
+
 def tree_routes(source: str) -> set[str]:
-    """路由树用元素画的页面：各张 `*_ROUTES` 表里带 `element` 的条目（值是共用常量的，看那个常量）。"""
+    """路由树用元素画的页面：各张 `*_ROUTES` 表里带 `element` 的条目（值是共用常量的，看那个常量）。
+    目录表按页面分键，任一页带了元素，页面组就按 `CATALOG_PATHS` 的每一条路径挂它。"""
     source = without_comments(source)
     found = set()
-    for table in re.finditer(r"export const \w+_ROUTES\b[^=]*=\s*\{", source):
+    for table in re.finditer(r"export const (\w+_ROUTES)\b[^=]*=\s*\{", source):
         for path, value in top_level_entries(braced(source, table.end() - 1)).items():
             if not value.startswith("{"):
                 shared = re.search(rf"const {re.escape(value)}\b[^=]*=\s*\{{", source)
                 value = braced(source, shared.end() - 1)
             if re.search(r"\belement\s*:", value):
-                found.add(path)
+                found |= quoted_list(source, "CATALOG_PATHS") if table.group(1) == "CATALOG_ROUTES" else {path}
     return found
 
 
@@ -102,11 +110,11 @@ class LegacyShellRouteTests(unittest.TestCase):
     def setUp(self):
         self.source = APP.read_text(encoding="utf-8")
         self.table = routes_table(self.source)
-        self.overlay = set(re.findall(r"'([^']*)'", OVERLAY.read_text(encoding="utf-8").split(
-            "export const OVERLAY_PATHS", 1)[1].split("] as const", 1)[0]))
+        self.overlay = quoted_list(OVERLAY.read_text(encoding="utf-8"), "OVERLAY_PATHS")
         tree = tree_routes(ROUTE_TABLES.read_text(encoding="utf-8"))
         self.patterns = {path for path in tree if path.endswith("/*")}
-        self.tree = tree - self.patterns
+        state_routes = CORE.read_text(encoding="utf-8").split("const STATE_ROUTES", 1)[1].split("};", 1)[0]
+        self.tree = tree - self.patterns - set(re.findall(r":'([^']*)'", state_routes))
         self.shell = set(re.findall(r"match:\s*'([^']*)'", self.table)) - self.overlay
 
     def test_the_three_owners_partition_the_frozen_pages(self):

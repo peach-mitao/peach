@@ -49,3 +49,17 @@ export function nextSortState(
 export function preferredDirection(sort: string, preferredSort: string, direction: unknown): string {
   return sort === 'seed' ? '' : sort === preferredSort && direction === 'asc' ? 'asc' : 'desc';
 }
+
+/** 地址上的 `sort` 与 `dir` 一次解成列和方向。旧键自带方向；`dir` 显式写了就听它的；写了列、没写方向是那一列的
+ *  默认方向（目录地址省掉的正是它）；两样都没写按浏览偏好。随机没有方向。认不出的列换成 `fallback`。 */
+export function sortFromAddress(
+  rawSort: string | null, rawDir: string | null, preferredSort: string, direction: unknown, fallback = preferredSort,
+): { sort: string; dir: string } {
+  const alias = rawSort ? SORT_ALIASES[rawSort] : undefined;
+  const key = alias ? alias[0] : rawSort;
+  const sort = key && SORT_KEYS.includes(key) ? key : fallback;
+  if (!SORT_DIR_WORDS[sort]) return { sort, dir: '' };
+  const dir = rawDir === 'asc' || rawDir === 'desc' ? rawDir
+    : alias ? alias[1] : rawSort ? 'desc' : preferredDirection(sort, preferredSort, direction);
+  return { sort, dir };
+}

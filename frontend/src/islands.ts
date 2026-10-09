@@ -5,6 +5,7 @@
  * 常驻表的那几座由入口在路由树里打开（`openResidentSurface`）；其余导出是壳仍在用的助手。 */
 export {
   defaultSortDir, JAV_RELEASE_SORT, nextSortState, preferredDirection, SORT_ALIASES, SORT_DIR_WORDS, SORT_KEYS, SORTS, sortDirWord,
+  sortFromAddress,
 } from './sort-preferences';
 export * from './appearance';
 export * from './query';
