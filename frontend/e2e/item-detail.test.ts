@@ -15,7 +15,8 @@ import { CATALOG, ITEM, NAMES, PLAYLIST, RELATED, openItemPage } from './item-fi
 const DESKTOP = VIEWPORTS.find((viewport) => !viewport.mobile)!;
 const MOBILE = VIEWPORTS.find((viewport) => viewport.mobile)!;
 const DETAIL_READY = '#stage[open] [data-item-side]';
-const PART_CARD = `#grid [data-media-card][data-id="${ITEM.part}"] [data-media-title]`;
+/** 只点卡片正文的主标题按钮，标题内带 data-media-title 的徽标不作为点击目标。 */
+const PART_CARD = `#grid [data-media-card][data-id="${ITEM.part}"] [data-media-text] > button[data-media-title][data-open]`;
 /** 桩里的片源没有正片，播放器拿到空响应会报一条 VIDEOJS 错误；量的不是它。 */
 const withoutPlayer = (problems: string[]) => problems.filter((line) => !line.includes('VIDEOJS'));
 const pathIs = (page: Page, path: string) => page.waitForFunction(
