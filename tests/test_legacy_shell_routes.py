@@ -21,8 +21,8 @@ FRONTEND_SRC = REPO / "frontend" / "src"
 ROUTE_TABLES = FRONTEND_SRC / "react" / "router" / "managed-routes.tsx"
 OVERLAY = FRONTEND_SRC / "history" / "overlay.ts"
 
-#: 以字面量写出的页面路径；由 `STATE_ROUTES`、`ROUTE_ENTITIES` 展开的那两组不在此列，
-#: 它们的数量由下面的 `SPREADS` 钉住。
+#: 以字面量写出的页面路径；壳里由 `STATE_ROUTES` 展开的那一组不在此列，组数由下面的 `SPREADS` 钉住。
+#: 资料页由路由树按模式（`TREE_PATTERNS`）登记，同样不在此列。
 FROZEN_ROUTES = frozenset({
     "/", "/trash", "/playlists", "/playlists/:playlist/:item", "/mix/:seed/:item",
     "/parts/:seed/:item", "/editions/:seed/:item", "/item/:id", "/follow/item/:id",
@@ -31,7 +31,9 @@ FROZEN_ROUTES = frozenset({
     "/scraping", "/follow", "/follow-manage", "/configuration", "/activity", "/immerse",
     "/diagnostics",
 })
-SPREADS = 2
+SPREADS = 1
+#: 路由树按模式登记的资料页，一个实体种类一条。
+TREE_PATTERNS = frozenset({"/performers/*", "/studios/*", "/creators/*", "/series/*", "/agencies/*"})
 
 #: 字符串排在注释前面：`'/performers/*'` 里的 `/*` 不是注释。
 _STRING_OR_COMMENT = re.compile(r"""('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|/\*.*?\*/|//[^\n]*""", re.S)
@@ -113,7 +115,9 @@ class LegacyShellRouteTests(unittest.TestCase):
         self.table = routes_table(self.source)
         self.overlay = set(re.findall(r"'([^']*)'", OVERLAY.read_text(encoding="utf-8").split(
             "export const OVERLAY_PATHS", 1)[1].split("] as const", 1)[0]))
-        self.tree = tree_routes(ROUTE_TABLES.read_text(encoding="utf-8"))
+        tree = tree_routes(ROUTE_TABLES.read_text(encoding="utf-8"))
+        self.patterns = {path for path in tree if path.endswith("/*")}
+        self.tree = tree - self.patterns
         literal = set(re.findall(r"match:\s*'([^']*)'", self.table)) | registered_routes()
         self.shell = literal - self.overlay
 
@@ -128,6 +132,10 @@ class LegacyShellRouteTests(unittest.TestCase):
                          "并把它加进 FROZEN_ROUTES：" + "、".join(added))
         gone = sorted(FROZEN_ROUTES - union)
         self.assertEqual(gone, [], "这些页面三列里都找不到了，删掉了的话请从 FROZEN_ROUTES 里删掉：" + "、".join(gone))
+
+    def test_the_tree_registers_exactly_the_entity_patterns(self):
+        self.assertEqual(sorted(self.patterns), sorted(TREE_PATTERNS),
+                         "路由树按模式登记的页面变了；新增一种同样算加页面")
 
     def test_the_shell_table_keeps_its_spreads_and_registers_nothing_itself(self):
         self.assertEqual(self.table.count("...Object.entries("), SPREADS,

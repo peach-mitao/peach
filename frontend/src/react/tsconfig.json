@@ -21,7 +21,8 @@
       "@peach/card-art": ["../card-art/index.ts"],
       "@peach/appearance": ["../appearance/index.ts"],
       "@peach/query": ["../query/index.ts"],
-      "@peach/history": ["../history/index.ts"]
+      "@peach/history": ["../history/index.ts"],
+      "@peach/shell": ["../shell/index.ts"]
     }
   },
   "include": ["./", "../../test/react"],

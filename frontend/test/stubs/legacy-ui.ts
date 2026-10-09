@@ -11,6 +11,8 @@ export const emptyStateHtml = (
   + `<div class="es-icon" data-icon="${iconName}"></div>`
   + `<div class="es-copy"><h3>${title}</h3><p>${description}</p></div>${options.actions || ''}</div>`;
 
+// 索引页进页骨架的页头（Tabs 与过滤框）用正式模板。
+export {boardTabsHtml, searchInputHtml} from '../../src/ui-kit';
 // 索引骨架复用正式模板，折叠开合、覆盖式滚动条、徽标与读数弹跳、换字、滚动判据与补充信息卡用正式实现。
 export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, swapText, wireContextCard} from '../../src/ui-kit';
 // 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。

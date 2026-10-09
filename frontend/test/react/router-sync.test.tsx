@@ -1,5 +1,5 @@
 /* 路由基座（`src/react/router/router.tsx` 与 `src/history/`）：路由根在历史变化的同一调用里同步提交；没人认领的
- * 历史变化各领一个开次代次，按代次挂 key 的元素随之重挂，认领的写地址不重挂；路由元数据覆盖管理区那几页。
+ * 历史变化各领一个开次代次，按代次挂 key 的元素随之重挂，认领的写地址不重挂；路由元数据覆盖管理区、索引与资料那几页。
  *
  * 历史对象与派发状态都是模块级的，每条用例重新装载 `src/history` 与 `src/react/router`（同 `router.test.tsx`）。 */
 import { act, useEffect } from 'react';
@@ -99,7 +99,8 @@ it('没人认领的历史变化各领一个开次代次、按代次挂的元素�
   expect(new Set(seen.epochs).size).toBe(4);
 });
 
-it('路由元数据登记的就是管理区那几页', async () => {
+it('路由元数据登记的就是管理区、索引与资料那几页', async () => {
   const r = await load();
-  expect(new Set(Object.keys(r.ROUTE_META))).toEqual(new Set(Object.keys(r.MANAGED_ROUTES)));
+  expect(new Set(Object.keys(r.ROUTE_META))).toEqual(new Set([
+    ...Object.keys(r.MANAGED_ROUTES), ...Object.keys(r.INDEX_ROUTES), ...Object.keys(r.ENTITY_ROUTES)]));
 });

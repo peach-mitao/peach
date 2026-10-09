@@ -605,7 +605,7 @@ it('索引页：页内写地址、存版式、头像与去处都接到壳的那�
   expect((props.tagLabel as (tag: string) => string)('JK制服')).toBe('JK');
 });
 
-it('索引页的路径不走 React Router：同页换 search 与跨页进来都交壳', async () => {
+it('索引页的路径不经 React Router 的 navigate：同页换 search 与跨页进来都交壳写地址', async () => {
   const r = await load('/');
   const actions = shellActions();
   const navigate = vi.fn();

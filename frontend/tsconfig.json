@@ -30,7 +30,8 @@
       "@peach/card-art": ["./src/card-art/index.ts"],
       "@peach/appearance": ["./src/appearance/index.ts"],
       "@peach/query": ["./src/query/index.ts"],
-      "@peach/history": ["./src/history/index.ts"]
+      "@peach/history": ["./src/history/index.ts"],
+      "@peach/shell": ["./src/shell/index.ts"]
     }
   },
   "include": ["src", "test", "vite.config.ts", "vite.react.config.ts", "vite.entry.config.ts", "vite.pages.config.ts", "vite.agentation.config.ts", "vitest.config.ts"],
