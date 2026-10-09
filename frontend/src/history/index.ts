@@ -113,6 +113,6 @@ export {
 export { ROUTE_META, routeMetaOf, type RouteMeta } from './route-meta';
 export {
   connectManagedRoutes, failManagedRoute, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
-  openResidentSurface, preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,
+  openResidentSurface, preloadManagedRoutes, releaseAllManagedRoutes, releaseManagedRoute, updateManagedRoute,
   type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
 } from './managed';

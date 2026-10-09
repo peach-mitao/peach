@@ -184,6 +184,12 @@ export function releaseManagedRoute(container: Element, ...more: Element[]): voi
   for (const shown of removed) if (!shown.resident) shown.host.remove();
 }
 
+/** 应用卸载收起全部登记，并中止尚未成为页面的首屏请求。 */
+export function releaseAllManagedRoutes(): void {
+  const [first, ...rest] = new Set([...entries.keys(), ...pending.keys()]);
+  if (first) releaseManagedRoute(first, ...rest);
+}
+
 /** 某一面渲染抛错、路由树的错误边界接住之后调：只撤这一面的登记与宿主，别的面照画。之后
  *  `managedTaken` 回 false、`updateManagedRoute` 对它是空操作，壳下一次打开就重开。代次对不上（这一格
  *  已经收起或重开过）是空操作：过期的那一面不能撤掉壳刚开的新一面。常驻面的宿主是壳的节点，只卸组件、

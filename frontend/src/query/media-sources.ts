@@ -33,11 +33,15 @@ const stopped = (error: unknown) => (error as { name?: unknown } | null)?.name =
  *  查询函数不读 Query 交给它的 `signal`：读了它，页面上最后一个观察者卸载时 Query 会撤回这一趟，
  *  壳拿到的是上一份旧数据。同时在途的同一请求由 Query 合并成一次；合并上的若是页面那一趟，
  *  它带着页面自己的 `signal`，页面中止时这一趟以中止收场，壳就自己再发一次。 */
-export async function loadMediaSources(): Promise<MediaSourcesData> {
-  const fetchOnce = () => queryClient.fetchQuery({ queryKey: MEDIA_SOURCES_KEY, queryFn: () => fetchMediaSources() });
+export async function loadMediaSources(signal?: AbortSignal): Promise<MediaSourcesData> {
+  signal?.throwIfAborted();
+  const fetchOnce = () => queryClient.fetchQuery({ queryKey: MEDIA_SOURCES_KEY, queryFn: () => fetchMediaSources(signal) });
   try {
-    return await fetchOnce();
+    const data = await fetchOnce();
+    signal?.throwIfAborted();
+    return data;
   } catch (error) {
+    signal?.throwIfAborted();
     if (!stopped(error)) throw error;
     return await fetchOnce();
   }
