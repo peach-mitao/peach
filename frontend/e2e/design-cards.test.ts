@@ -963,12 +963,12 @@ describe('设计决定：作品卡、管理页与复核', () => {
         const toolbar = '[data-skeleton] .ui-follow-skeleton-toolbar';
         const skeleton = await controlFaces(page, {
           检查全部: `${toolbar} > button:nth-of-type(1)`,
-          默认视图: `${toolbar} > [data-button-group] > button:first-child`,
-          表格视图: `${toolbar} > [data-button-group] > button:last-child`,
+          默认视图: `${toolbar} [data-button-group] > button:first-child`,
+          表格视图: `${toolbar} [data-button-group] > button:last-child`,
           排序框: `${toolbar} button[aria-haspopup="listbox"]`,
-          方向键: `${toolbar} > button:nth-of-type(2)`,
-          全部收起: `${toolbar} > button:nth-of-type(3)`,
-          移除来源: '[data-skeleton] .follow-skeleton-source > span:last-child > button:last-child',
+          方向键: `${toolbar} [data-follow-toolbar-controls] > button:nth-of-type(1)`,
+          全部收起: `${toolbar} [data-follow-toolbar-controls] > button:nth-of-type(2)`,
+          移除来源: '[data-skeleton] .follow-skeleton-source [data-follow-source-controls] > span:last-child > button:last-child',
         });
         const expected = await disabledTokens(page);
         const waiting = await waitingActionFaces(page, '[data-skeleton] [data-skeleton-action]');
@@ -984,7 +984,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
           排序框: 'button[aria-label="关注列表排序"]',
           方向键: 'button[aria-label^="按检查时间"]',
           全部收起: 'button[aria-label="全部收起"]',
-          移除来源: '[data-source-divider] > div > span:last-child > button:last-child',
+          移除来源: '[data-source-divider] [data-follow-source-controls] > span:last-child > button:last-child',
         });
         const waitsForData = new Set(['检查全部', '全部收起', '移除来源']);
         for (const name of Object.keys(final)) {

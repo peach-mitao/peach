@@ -607,7 +607,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       { path: '/follow', ready: '.followauthors .avskeleton',
         targets: ['.followauthors .avskeleton', '.followworks .brandskeleton', '[data-skeleton^="cards/"] > div > *'] },
       { path: '/follow-manage', ready: '[data-skeleton="board/follow-manage"] .ui-follow-skeleton-toolbar',
-        targets: ['[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(2)',
+        targets: ['[data-skeleton] .ui-follow-skeleton-toolbar [data-follow-toolbar-controls] > button:nth-of-type(1)',
           '[data-skeleton] .ui-follow-skeleton-toolbar > button:nth-of-type(1)'] },
     ];
     for (const { path, ready, targets, prepare } of pages) {
@@ -754,7 +754,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
   }
 
   for (const viewport of [DESKTOP, { ...MOBILE, name: 'narrow', width: 320 }]) {
-    it(`七位数的读数留在卡里；长名字与长报错的来源行不越出行，桌面上操作键和名字同一行（${viewport.name}）`, { timeout: 60_000 }, async () => {
+    it(`七位数的读数和单位留在卡里同一行；长名字与长报错的来源行不越出行，桌面上操作键和名字同一行（${viewport.name}）`, { timeout: 60_000 }, async () => {
       const long = 'ThisIsAVeryLongUsernameThatPatreonAllowsWithoutAnySpaces2024';
       const opened = await openFollowManage(browser, viewport, {
         counts: { new: 1284000, seen: 22000, saved: 0, ignored: 0 },
@@ -770,6 +770,10 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
           const readings = [...document.querySelectorAll('[data-follow-reading]')]
             .filter((node) => [...node.children].some((part) => out(part, node.parentElement!)))
             .map((node) => node.textContent);
+          const wrapped = [...document.querySelectorAll('[data-follow-reading]')].filter((node) => {
+            const [figure, unit] = [...node.children].map((part) => part.getBoundingClientRect());
+            return unit!.top >= figure!.bottom - 1;
+          }).map((node) => node.textContent);
           const rows = [...document.querySelectorAll('[data-follow-source-row]')];
           const spilled = rows
             .filter((row) => row.scrollWidth > row.clientWidth + 1 || [...row.querySelectorAll('button, [role="switch"], input')]
@@ -782,12 +786,13 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
             const middle = (last.top + last.bottom) / 2;
             return middle < name.top - 1 || middle > name.bottom + 1;
           }).map((row) => row.textContent);
-          return { readings, spilled, split, rows: rows.length,
+          return { readings, wrapped, spilled, split, rows: rows.length,
             text: document.querySelector('[data-follow-reading]')?.parentElement?.parentElement?.textContent };
         });
         assert.ok(spill.text?.includes('1,284,000'), `读数没有用上七位数：${spill.text}`);
         assert.equal(spill.rows, 5, '造的五条来源没有全部画出来');
         assert.deepEqual(spill.readings, [], '读数越出了卡片');
+        assert.deepEqual(spill.wrapped, [], '七位数的读数把单位挤到了下一行');
         assert.deepEqual(spill.spilled, [], '来源行的控件越出了行');
         if (!viewport.mobile) assert.deepEqual(spill.split, [], '桌面上来源行的操作键掉到了名字下面');
         assert.deepEqual(opened.problems, []);

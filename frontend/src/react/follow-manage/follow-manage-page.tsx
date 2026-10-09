@@ -50,9 +50,9 @@ function Reading({ term, figure, unit }: { term: string; figure: number; unit: s
   return (
     <div className={cardClass({ padding: 'none', className: 'flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4' })}>
       <span className="text-body-medium text-text-secondary">{term}</span>
-      {/* 六位数以上换小一号字，单位放不下时落到下一行，读数不顶出卡片。 */}
+      {/* 六位数起小一号字、七位数起再小一号，六卡并排时读数和单位仍在一行；更长时单位落到下一行，不顶出卡片。 */}
       <b data-follow-reading="" className={`flex min-w-0 flex-wrap items-baseline gap-x-1 tabular-nums text-text-primary ${
-        figure >= 100000 ? 'text-title-3-medium' : 'text-title-1-medium'}`}>
+        figure >= 1000000 ? 'text-headline-medium' : figure >= 100000 ? 'text-title-3-medium' : 'text-title-1-medium'}`}>
         <span className="min-w-0 wrap-anywhere">{figure.toLocaleString()}</span>
         <small className="whitespace-nowrap text-body-2-regular text-text-secondary">{` ${unit}`}</small>
       </b>

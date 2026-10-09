@@ -568,12 +568,12 @@ it('还有未看时卡底给出计数和三颗动作键，没有未看就整条�
   expect(buttonNamed('全部忽略', quiet.host)).toBeNull();
 });
 
-it('读数、列表头与卡底的计数都带千分位，六位数以上的读数换小一号字', async () => {
+it('读数、列表头与卡底的计数都带千分位，六位数起读数小一号字、七位数起再小一号', async () => {
   const counts = { new: 1284000, seen: 22000, saved: 0, ignored: 0 };
   const { host } = await open({ data: follow({ counts }) });
   const readings = [...host.querySelectorAll('[data-follow-reading]')];
   const big = readings.find((node) => node.textContent === '1,284,000 条')!;
-  expect(big.className).toContain('text-title-3-medium');
+  expect(big.className).toContain('text-headline-medium');
   expect(big.querySelector('small')?.className).toContain('whitespace-nowrap');
   expect(readings.find((node) => node.textContent?.startsWith('0'))?.className).toContain('text-title-1-medium');
   expect(host.textContent).toContain('4 个来源 · 1,284,000 条未看');
