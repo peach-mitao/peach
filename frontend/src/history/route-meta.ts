@@ -46,6 +46,9 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   '/creators/*': { reload: 'reopen' },
   '/series/*': { reload: 'reopen' },
   '/agencies/*': { reload: 'reopen' },
+  '/playlists': { nav: 'playlists', title: '播放列表', refresh: 'reopen' },
+  // 关注页重画要联网取一遍卡面，「换一批」只由页面自己的按钮触发。
+  '/follow': { nav: 'follow', title: '关注', refresh: 'skip' },
 };
 
 /** 这条路径在路由树一侧登记的元数据；没登记是 `null`，由壳回落到自己的表。 */

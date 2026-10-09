@@ -74,8 +74,10 @@ it('开次代次只在没人认领的变化上递增：壳认领的写地址不�
   expect(seen.map((n) => n.openEpoch - start)).toEqual([0, 0, 1, 2, 3]);
 });
 
-it('顶栏换一批的行为登记在路由元数据上：关注管理页跳过、口味页重开、统计页不登记', () => {
+it('顶栏换一批的行为登记在路由元数据上：关注页与关注管理页跳过、口味页与播放列表页重开、统计页不登记', () => {
+  expect(routeMetaOf('/follow')?.refresh).toBe('skip');
   expect(routeMetaOf('/follow-manage')?.refresh).toBe('skip');
+  expect(routeMetaOf('/playlists')?.refresh).toBe('reopen');
   expect(routeMetaOf('/taste')?.refresh).toBe('reopen');
   expect(routeMetaOf('/stats')?.refresh).toBeUndefined();
 });

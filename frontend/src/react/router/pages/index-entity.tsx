@@ -34,8 +34,8 @@ const readSelectMode = () => selectMode;
 const indexHost = () => document.getElementById('index');
 
 /** 这一格什么时候按地址打开。`run(fresh, live)`：`fresh` 为真是整页打开（挂上、壳要求重开），为假是同一个
- *  元素领了新代次；`live()` 在元素卸下或又开了一次之后回 false。 */
-function usePageOpen(epoch: number, run: (fresh: boolean, live: () => boolean) => void): void {
+ *  元素领了新代次；`live()` 在元素卸下或又开了一次之后回 false。关注页与播放列表页的元素也用它。 */
+export function usePageOpen(epoch: number, run: (fresh: boolean, live: () => boolean) => void): void {
   const opens = useSyncExternalStore(subscribeShell, readOpens);
   const seen = useRef({ mounted: true, epoch: -1, opens: -1, run: 0 });
   const latest = useRef(run);

@@ -1,8 +1,9 @@
 /* 播放列表页与关注页由路由树画进 `#stats`（`BROWSE_ROUTES`）：骨架留到首屏取齐，换成整页落在同一批变化里
- * （关注页的骨架经 `revealSkeleton` 抬成淡出层）；停在这一页时壳经 `updateManagedRoute` 推刷新代次或筛选，
- * 页面只重取、不重挂，代次不变；页面里的去处与回执接到壳的那一组上；这两条路径不交给 React Router。
+ * （关注页的骨架经 `revealSkeleton` 抬成淡出层）；停在这一页时经 `updateManagedRoute` 推刷新代次或筛选，
+ * 页面只重取、不重挂，代次不变；页面里的去处与回执接到壳的那一组上；管理区跳到这两条路径时交壳写地址。
  *
- * 页内取数、写操作与卡面由 `playlists.test.tsx`、`follow-feed.test.tsx` 管，这里看的是路由树这一层。 */
+ * 页内取数、写操作与卡面由 `playlists.test.tsx`、`follow-feed.test.tsx` 管，什么时候打开由
+ * `pages/follow.test.tsx` 管，这里看的是路由树这一层。 */
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';

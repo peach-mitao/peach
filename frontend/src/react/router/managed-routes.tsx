@@ -63,6 +63,7 @@ import { prefetchStats } from '../stats/stats';
 import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
+import { FollowMatch, PlaylistsMatch } from './pages/follow';
 import { EntityMatch, IndexMatch } from './pages/index-entity';
 import { ManagedMatch, ResourceSyncRedirect } from './pages/managed';
 import type {
@@ -200,12 +201,14 @@ export const REDIRECT_ROUTES: Readonly<Record<string, { element: ReactElement }>
   '/resource-sync': { element: <ResourceSyncRedirect /> },
 };
 
-/* 播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要看得到）。停在这一页时壳要求重读，
-   经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。点开一份进舞台、翻页门槛与回执都归壳。
+/* 两页都由元素按匹配打开（`pages/follow.tsx`）。播放列表页：首屏每次都向服务端重取（首页刚存的 Mix 进来就要
+   看得到）。停在这一页时壳要求重读，元素经 `updateManagedRoute` 推一个新的 `revision`，页面只重取、不重挂。点开
+   一份进舞台、翻页门槛与回执都归壳。
    关注页：首屏是列表第一页与凭据两趟并行，挂上就是最终样子；之后换筛选、换一批、选择模式与照片版式都由
    壳经 `updateManagedRoute` 推进来，页面按新键只重取列表、不重挂。 */
 export const BROWSE_ROUTES: BrowseRouteTable = {
   '/playlists': {
+    element: <PlaylistsMatch />,
     prefetch: (_open, signal) => prefetchPlaylists(signal),
     page: (open, actions) => (
       <PlaylistsPage revision={open.revision} openPlaylist={actions.openPlaylist} openEntity={actions.openEntity}
@@ -213,6 +216,7 @@ export const BROWSE_ROUTES: BrowseRouteTable = {
     ),
   },
   '/follow': {
+    element: <FollowMatch />,
     prefetch: (open, signal) => prefetchFollowFeed(open, signal),
     page: (open) => <FollowFeedPage {...open} />,
   },

@@ -93,6 +93,22 @@ export interface ShellActions {
   surfaceShown?(kind: 'index' | 'entity', path: string): void;
   /** 资料页那几样仍在壳里的东西。 */
   readonly entity?: EntityPageShell;
+
+  // ── 关注与播放列表用（`pages/follow.tsx`）──
+  /** 关注页那几样仍在壳里的东西。 */
+  readonly follow?: FollowFeedShell;
+}
+
+/** 关注页元素打开时回到壳的那几步。筛选的那一份由壳从地址读进自己的变量（回到关注页时按它写地址，侧栏、标签
+ *  抽屉与关注详情也读它），选择集、照片墙偏好与页面借用的助手和动作也都在壳里；进页骨架与冷启动铺的是同一张。 */
+export interface FollowFeedShell {
+  /** 按地址读一遍筛选。关注页还画在 `#stats` 里（资料页压过来时只藏起来）就铺开它，把筛选、取样种子与一个新的
+   *  刷新代次推过去，照片墙跟上、回到顶上，回 true；没画着回 false，由元素整页打开。 */
+  refresh(): boolean;
+  /** 进页骨架。 */
+  skeleton(): string;
+  /** 整页打开交给页面的 props：筛选、取样种子与刷新代次、选择集、照片墙偏好，以及壳里那一份助手与动作。 */
+  props(): FollowFeedProps;
 }
 
 /** 资料页元素打开时回到壳的那几步。骨架里可有可无的几块按形状名单画，名单、目录卡片的比例与新作骨架都在壳里；
@@ -134,10 +150,11 @@ export interface ManagedOpenProps {
 
 export type ManagedPath = keyof ManagedOpenProps;
 
-/** 播放列表页与关注页同样画进 `#stats`，但不是管理区：跨页进来一律由壳写地址再自己打开（关注页从
- *  侧栏进来还要重掷取样种子、回到干净的 `/follow`），所以不进 `ManagedPath`。每次打开交进来的值同样按
- *  页面分，之后的开关经 `updateManagedRoute` 推进来。关注页的助手与动作是壳里各一份、身份不变的对象
- *  （卡片按引用比较），跟着打开走：它们拼的 HTML、碰的 DOM 与写的地址都还在壳里。 */
+/** 播放列表页与关注页同样画进 `#stats`，但不是管理区：由路由树的元素按匹配打开（`pages/follow.tsx`），从壳里
+ *  进来由壳认领写地址再要求重开（关注页回到时带上离开时的筛选，重新进入还要重掷取样种子、回到干净的
+ *  `/follow`），所以不进 `ManagedPath`。每次打开交进来的值同样按页面分，之后的开关经 `updateManagedRoute`
+ *  推进来。关注页的助手与动作是壳里各一份、身份不变的对象（卡片按引用比较），跟着打开走：它们拼的 HTML、
+ *  碰的 DOM 与写的地址都还在壳里。 */
 export interface BrowseOpenProps {
   '/playlists': { revision: number };
   '/follow': FollowFeedProps;

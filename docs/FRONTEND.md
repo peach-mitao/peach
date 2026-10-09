@@ -107,17 +107,17 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 - 读 `/api/playlists`，首屏 `prefetch` 写明 `staleTime: 0`：首页刚存的 Mix 进来就要看得到。新建、改名、删除都 POST `/api/playlist`，写完让列表键重取，不拿回话拼缓存。
 - 删除先过遗留层 `confirmModal`，删之前 GET `?id=` 取回内容，撤销按原内容与来源重建一份；取不到就不给撤销。回执与撤销失败的说法归 `actionReceipt`。
-- 停在这一页、表面没换过时壳要求重读（顶栏「换一批」），`openPlaylists(false)` 经 `updateManagedRoute` 把 `revision` 加一，页面只重取、不重挂。中间写过地址或经派发重开过（从播放队列返回、后退前进）时照地址重开一次。
+- 页面画着时壳要求重读（顶栏「换一批」），壳把 `@peach/shell` 的 `playlistsRevision` 加一，页面只重取、不重挂。从播放队列返回、后退前进与侧栏进来都整页打开一次。
 - 每份列表是共用的 Mix 卡 `components/mix-card.tsx`：纸边、黑底封面、玻璃徽标、叠放头像，几何写在 `styles.css` 的 `[data-mix-*]`；悬停翻页是 `components/use-stack-flip.ts`（关注页卡叠也用它），时序钉在 `use-stack-flip.test.tsx`，翻页门槛（多选、遮挡、减少动效、滚动中）由壳经 `ShellActions.canFlip` 递进来。
 - 改名弹层、换头像与裁剪封面共用 `components/modal-frame.tsx` 的外壳，`form` 档 540px 同 `.geist-modal`。
 
 ### 关注页
 
-`/follow` 列表页整个是 React（`frontend/src/react/follow-feed/`，入口 `follow-feed-page.tsx`），登记在 `BROWSE_ROUTES`，由路由树画进 `#stats`。它不进 `isManagedPath`：侧栏进来要重掷种子、回到干净的 `/follow`，这一步归壳的 `openFollow`。
+`/follow` 列表页整个是 React（`frontend/src/react/follow-feed/`，入口 `follow-feed-page.tsx`），登记在 `BROWSE_ROUTES`，由路由树画进 `#stats`。它不进 `isManagedPath`，由 `frontend/src/react/router/pages/follow.tsx` 的元素按匹配打开；重新进入时重掷种子由壳写进 store，元素按 store 的代次重取。
 
 - 地址栏是筛选的唯一真相。页面改筛选、排序、换一批调 `actions.route`，壳的 `routeFollowFeed` 写好地址并认领，再经 `pushFollowFeed` 把新的 `view`／`seed` 用 `updateManagedRoute` 推进画着的那一页：代次不变、不重挂。判据是 `#stats` 的 `managedEntry` 记着 `/follow`。
 - 助手与动作是壳里各一份、身份不变的对象（卡片按引用比较），跟着打开交进来，不进 `ShellActions`。标签的界面名称列表页与卡片直接从 `@peach/legacy/tags` import。
-- 骨架淡出：`openFollow` 经 `place` 交 `revealRoutedPage`（目录网格共用这一个），它在 `revealSkeleton` 的 write 里只放空宿主，页面紧接着在同一个任务里画进去，骨架淡出时底下已是整页。
+- 骨架淡出：关注页元素经 `place` 交自己的 `reveal`，它在 `revealSkeleton` 的 write 里只放空宿主，页面紧接着在同一个任务里画进去，骨架淡出时底下已是整页。
 - 深链 `/follow/item/:id` 开在舞台里：壳的 `renderForDetail` 只让出列表区，回到列表时才画；`followDetailActions`、`openFollowDetail`、`closeFollowDetail` 按「列表页还画着」决定就地关还是重开。
 
 ### 馆藏网格
