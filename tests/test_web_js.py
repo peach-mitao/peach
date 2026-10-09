@@ -301,12 +301,12 @@ class WebJsBehaviourTests(unittest.TestCase):
             ("jav-title.js", "javTitleHtml",
              [{"is_jav": True, "code": "ABC-123", "display_title": "<b>x</b>",
                "name": "ABC-123"}],
-             '<span class="javidentity"><strong class="javcode">ABC-123</strong>'
-             '</span> <span class="javtitle">&lt;b&gt;x&lt;/b&gt;</span>'),
+             '<span class="ui-javidentity"><strong class="ui-javcode">ABC-123</strong>'
+             '</span> <span class="ui-javtitle">&lt;b&gt;x&lt;/b&gt;</span>'),
             ("jav-title.js", "javTitleHtml",
              [{"is_jav": True, "code": "ABC-123", "display_title": "",
                "name": "ABC-123", "edition_badges": ["无码"]}],
-             '<span class="javidentity"><strong class="javcode">ABC-123</strong>'
+             '<span class="ui-javidentity"><strong class="ui-javcode">ABC-123</strong>'
              '<small class="javedition uncensored">无码</small></span>'),
         ])
 

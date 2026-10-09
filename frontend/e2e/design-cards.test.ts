@@ -184,11 +184,11 @@ describe('设计决定：作品卡、管理页与复核', () => {
         '回收站资源卡封面格里的字形没有居中或不是次要文字色');
       assert.deepEqual([trash.kind?.display, trash.kind?.place, trash.kind?.color], ['grid', 'center center', trash.text.color],
         '回收站资源卡头像位的字形没有居中或不是正文色');
-      /* 悬停扫视层是壳插进封面格的 `img.hvframes`：待删卡的灰化要连它一起，否则悬停时整卡「复活」成正常色。 */
+      /* 悬停扫视层是壳插进封面格的 `img.ui-hvframes`：待删卡的灰化要连它一起，否则悬停时整卡「复活」成正常色。 */
       const scan = await page.locator('#grid [data-media-card][data-pending-delete]:not([data-variant="resource"]) [data-media-pic]')
         .first().evaluate((pic) => {
           const layer = document.createElement('img');
-          layer.className = 'hvframes';
+          layer.className = 'ui-hvframes';
           pic.append(layer);
           const filter = getComputedStyle(layer).filter;
           layer.remove();

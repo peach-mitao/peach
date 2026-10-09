@@ -4412,7 +4412,7 @@ function zo(e = document, t = null) {
 		e !== t && e._stopHover && e._stopHover();
 	}), e.querySelectorAll("video.hv").forEach((e) => {
 		e.closest(Io) !== t && (e._hop && clearInterval(e._hop), e.pause(), e.removeAttribute("src"), e.load(), e.remove());
-	}), e.querySelectorAll("img.hvframes").forEach((e) => {
+	}), e.querySelectorAll("img.ui-hvframes").forEach((e) => {
 		e.closest(Io) !== t && (e.removeAttribute("src"), e.remove());
 	}));
 }
@@ -4437,7 +4437,7 @@ function Ho(e, t) {
 		if (!t.has_thumb) return;
 		let i, s = 4, c = null, l = !1;
 		e.addEventListener("mouseenter", () => {
-			U.selecting() || U.censored() || (a(), c || (c = document.createElement("img"), c.className = "hvframes", c.alt = "", c.src = `/poster?id=${t.id}&c=${s}`, r.appendChild(c)), clearInterval(i), i = setInterval(() => {
+			U.selecting() || U.censored() || (a(), c || (c = document.createElement("img"), c.className = "ui-hvframes", c.alt = "", c.src = `/poster?id=${t.id}&c=${s}`, r.appendChild(c)), clearInterval(i), i = setInterval(() => {
 				if (!c || l) return;
 				let e = (s + 1) % 9, n = new Image();
 				l = !0, n.onload = () => {
@@ -5084,7 +5084,7 @@ function wc() {
           </div></div>
         <footer class="geist-fieldset-footer" data-geist-fieldset-footer><button class="geist-button primary" ${_c}>预览</button></footer>
       </section></div>
-    <section class="resourcesync" aria-labelledby="cleanup-loading-links">
+    <section class="ui-resourcesync" aria-labelledby="cleanup-loading-links">
       <h2 id="cleanup-loading-links">链接管理</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task data-fieldset-stack>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">站外链接</h3>
@@ -5096,7 +5096,7 @@ function wc() {
           <div class="linkhosts"><span>主要站点</span><b>${$}</b></div></div></div>
         <div class="resourcesyncfooter geist-fieldset-footer" data-geist-fieldset-footer><button class="resourceaction primary" ${_c}>${n("unlink")}<span>检查死链</span></button></div>
       </div></section>
-    <section class="resourcesync" aria-labelledby="cleanup-loading-sync">
+    <section class="ui-resourcesync" aria-labelledby="cleanup-loading-sync">
       <h2 id="cleanup-loading-sync">资源同步</h2>
       <div class="resourcesyncbox" data-geist-fieldset data-cleanup-task>
         <div class="resourcesyncbody geist-fieldset-content"><h3 class="geist-fieldset-title">文件与记录核对</h3>

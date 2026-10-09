@@ -46,7 +46,7 @@ export function releaseHoverPreviews(root: ParentNode | null = document, except:
   });
   // 远端源那一层和视频同样要兜一遍：卡片被重画过的话，旧元素上的 `_stopHover`
   // 已经跟着旧 DOM 走了，只靠上面那轮回调收不到它留在画面上的扫视图。
-  root.querySelectorAll('img.hvframes').forEach(im => {
+  root.querySelectorAll('img.ui-hvframes').forEach(im => {
     if (im.closest(HOVER_CARDS) === except) return;
     im.removeAttribute('src'); im.remove();
   });
@@ -86,7 +86,7 @@ export function wireHover(el: HTMLElement, it: HoverItem): void {
       if (config.selecting() || config.censored()) return; armLong();
       if (!layer) {
         layer = document.createElement('img');
-        layer.className = 'hvframes'; layer.alt = '';
+        layer.className = 'ui-hvframes'; layer.alt = '';
         layer.src = `/poster?id=${it.id}&c=${i}`;
         pic.appendChild(layer);
       }

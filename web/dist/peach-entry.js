@@ -232,7 +232,7 @@ function ge(e, t = e?.name) {
 	let { code: n, title: r, badges: i = [] } = w(e, t);
 	if (!n) return m(r);
 	let a = i.map((e) => `<small class="javedition ${e === "中字" ? "subtitle" : e === "无码" ? "uncensored" : "cracked"}">${m(e)}</small>`).join("");
-	return `<span class="javidentity"><strong class="javcode">${m(n)}</strong>${a}</span>${r ? ` <span class="javtitle">${m(r)}</span>` : ""}`;
+	return `<span class="ui-javidentity"><strong class="ui-javcode">${m(n)}</strong>${a}</span>${r ? ` <span class="ui-javtitle">${m(r)}</span>` : ""}`;
 }
 //#endregion
 //#region src/ui-kit/sounds.ts

@@ -55,7 +55,7 @@ describe('数据管理首屏', () => {
   });
   it('链接管理与资源同步的标题、正文立即呈现，不预留同步面板', () => {
     const root = skeleton();
-    expect(Array.from(root.querySelectorAll('.resourcesync > h2'), title => title.textContent)).toEqual(['链接管理', '资源同步']);
+    expect(Array.from(root.querySelectorAll('.ui-resourcesync > h2'), title => title.textContent)).toEqual(['链接管理', '资源同步']);
     expect([...root.querySelectorAll('.linkstats > div > span')].map(term => term.textContent))
       .toEqual(['链接总数', '官网/事务所', '社交账号', '作品资料站']);
     expect(root.querySelector('#resource-sync')).toBeNull();
