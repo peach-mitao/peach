@@ -146,7 +146,10 @@ function inert(control:Element){
 }
 
 /** 挂到 document 上：用捕获阶段，哪个页面在自己那层 stopPropagation 都拦不住这一声。 */
+const soundRoots=new WeakSet<Document|Element>();
 export function wireUiSounds(root:Document|Element=document):void{
+  if(soundRoots.has(root))return;
+  soundRoots.add(root);
   root.addEventListener('click',event=>{
     const control=(event.target as Element|null)?.closest?.(CLICKABLE);
     if(!control||inert(control))return;

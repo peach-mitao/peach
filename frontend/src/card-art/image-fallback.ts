@@ -85,7 +85,10 @@ export function advanceImageFallback(image: HTMLImageElement | null | undefined)
    捕获监听能接住任何后代图片，不必给每个 `<img>` 各挂一个——逐个绑的话，
    资料页外链的站点圆标每次重绘都要重新绑一轮。
    只认 `<img>`：同一个事件名也会从 `<video>`、`<source>`、`<script>` 上发出来。 */
+const fallbackRoots = new WeakSet<EventTarget>();
 export function wireImageFallbacks(root: EventTarget): void {
+  if (fallbackRoots.has(root)) return;
+  fallbackRoots.add(root);
   root.addEventListener('error', event => {
     if (event.target instanceof HTMLImageElement) advanceImageFallback(event.target);
   }, true);

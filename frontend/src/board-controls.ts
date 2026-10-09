@@ -7,7 +7,10 @@ export function syncBoardRange(input: HTMLInputElement) {
   input.style.setProperty('--board-range-value',`${percent}%`);
 }
 
+const boardDocuments = new WeakSet<Document>();
 export function initBoardControls() {
+  if(boardDocuments.has(document))return;
+  boardDocuments.add(document);
   const scan=(root:ParentNode)=>{root.querySelectorAll<HTMLInputElement>('input[type=range]').forEach(syncBoardRange);wireBoardSegments(root);wireBoardTabs(root)};
   scan(document);
   const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof Element){if(node.matches('input[type=range]'))syncBoardRange(node as HTMLInputElement);scan(node)}});

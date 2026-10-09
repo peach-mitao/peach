@@ -66,7 +66,7 @@ export function scrollMovesAnchor(event: Event, anchor: Node): boolean {
 export function wireAnchoredMenu(
   mount: HTMLElement, toggle: HTMLElement, menu: HTMLElement,
   { side = false, align = 'end' }: { side?: boolean; align?: 'start' | 'end' } = {},
-): { setOpen(next: boolean): void; isOpen(): boolean } {
+): { setOpen(next: boolean): void; isOpen(): boolean; dispose(): void } {
   const position=()=>{
     // 宽度读 offsetWidth：进场动画起手是 scale(.95)，getBoundingClientRect 量到的是缩过的框。
     const anchor=toggle.getBoundingClientRect(),width=menu.offsetWidth;
@@ -102,8 +102,9 @@ export function wireAnchoredMenu(
   const inTopLayer=menu.hasAttribute('popover');
   /* 开着没开着记在这里，不看 `hidden`：退场那 150ms 里面板还在、hidden 还是 false，
      按 hidden 判会把「正在收」当成「开着」，再点一下触发钮就关了个已经在关的。 */
-  let open=false;
+  let open=false,disposed=false;
   const setOpen=(next:boolean)=>{
+    if(disposed)return;
     if(next){
       if(openedMenu&&openedMenu.mount!==mount)openedMenu.setOpen(false);
       open=true;presentMenu(menu);if(inTopLayer&&!menu.matches(':popover-open'))menu.showPopover();position();
@@ -118,8 +119,23 @@ export function wireAnchoredMenu(
     }
     toggle.setAttribute('aria-expanded',String(next));
     openedMenu=next?{mount,menu,toggle,setOpen}:(openedMenu&&openedMenu.mount===mount?null:openedMenu)};
-  toggle.addEventListener('click',event=>{event.stopPropagation();setOpen(!open)});
-  mount.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&open){event.stopPropagation();setOpen(false);toggle.focus()}});
-  return {setOpen,isOpen:()=>open};
+  const click=(event:MouseEvent)=>{event.stopPropagation();setOpen(!open)};
+  const keydown=(event:KeyboardEvent)=>{
+    if(event.key==='Escape'&&open){event.stopPropagation();setOpen(false);toggle.focus()}};
+  toggle.addEventListener('click',click);
+  mount.addEventListener('keydown',keydown);
+  const dispose=()=>{
+    if(disposed)return;
+    disposed=true;open=false;
+    toggle.removeEventListener('click',click);
+    mount.removeEventListener('keydown',keydown);
+    window.removeEventListener('resize',position);
+    window.removeEventListener('scroll',closeFromViewport,true);
+    if(openedMenu?.menu===menu)openedMenu=null;
+    leavingMenus.delete(menu);menu.classList.remove('leaving');menu.hidden=true;
+    if(inTopLayer&&menu.matches(':popover-open'))menu.hidePopover();
+    menu.style.left='';menu.style.top='';menu.style.maxHeight='';
+    toggle.setAttribute('aria-expanded','false');
+  };
+  return {setOpen,isOpen:()=>open,dispose};
 }
