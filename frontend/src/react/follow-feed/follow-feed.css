@@ -337,12 +337,13 @@
 .peach-react [data-follow-image] [data-media-pic] > img { background: var(--sunk); }
 .peach-react [data-follow-image] :is([data-mix-faces], [data-mix-face] img) { background: var(--sunk); }
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] { aspect-ratio: 1; }
-/* 只有带 width/height 属性的图才放开高度按固有比例占位：没有尺寸的保持 1:1 框，列从首帧起稳定。 */
+/* 只有带 width/height 属性的图才放开高度按固有比例占位：没有尺寸的保持 1:1 框，列从首帧起稳定。
+ * 图上不写 `aspect-ratio`：比例来自浏览器按这两个属性映射的 `auto w / h`，作者样式里任何一句
+ * `aspect-ratio` 都会盖掉它，图落地前就退回按那一句占位，加载完再按真比例撑开，整列跟着跳。 */
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic]:has(> img[width][height]) { aspect-ratio: auto; }
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] > img[width][height] {
   position: static;
   height: auto;
-  aspect-ratio: auto 1;
 }
 
 /* 右上角：合并计数与主页卡片的版本角标同一个位置，右下角只留给时长。
