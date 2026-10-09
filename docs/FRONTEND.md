@@ -73,9 +73,9 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 
 配置好之后改文件夹与端口的那张页整个是 React（`frontend/src/react/settings/`，入口 `configuration-page.tsx`）。`/configuration` 是唯一的编辑页，进管理菜单；媒体库选单、统计页与首次配置引导都指向它。
 
-- 结构：一条窄列里排「通用 / 媒体 / 下载 / 网络与访问 / 维护」五组，每组一个 `h2.configgroup` 小标题，没有内容的组连标题一起省略。页面自己画顶上那排页签（`.board-local-nav`，`role="tablist"`，方向键与 Home／End 在整排里走），一组一格，一次只显示选中的那一组；页签条和整页同一次提交画出，第一帧就在。
+- 结构：一条窄列里排「通用 / 媒体 / 下载 / 网络与访问 / 维护」五组，每组一个 `h2.ui-configgroup` 小标题，没有内容的组连标题一起省略。页面自己画顶上那排页签（`.ui-board-local-nav`，`role="tablist"`，方向键与 Home／End 在整排里走），一组一格，一次只显示选中的那一组；页签条和整页同一次提交画出，第一帧就在。
 - 数据契约是 `/api/configuration`（`src/peach/routes_configuration.py`）。端点字符串只在 `frontend/src/configuration-endpoints.ts` 声明一次，整页和设置弹层的摘要卡读同一个 `queryKey`。
-- 第一帧必须同步：壳挂完这一页紧接着按地址里的 `#peachProxy` 滚到那一块，所以路由树用 `flushSync` 画第一帧，往后的更新照常异步。`.configpage` 的第一层依次是页签条、各组的小标题与面板；每组的根节点就是那一格 `role="tabpanel"`，选中的那一组带 `board-group-active`。
+- 第一帧必须同步：壳挂完这一页紧接着按地址里的 `#peachProxy` 滚到那一块，所以路由树用 `flushSync` 画第一帧，往后的更新照常异步。`.ui-configpage` 的第一层依次是页签条、各组的小标题与面板；每组的根节点就是那一格 `role="tabpanel"`，选中的那一组带 `ui-board-group-active`。
 - 跳到某一组：别处（统计页「添加媒体文件夹」、空库提示、媒体库选单「管理媒体库」、诊断页）把组名记进壳单例 `configurationRequestedSection`（路由树里的页面经 `actions.requestConfigurationSection`），壳打开这一页时作为 `open.section` 交进去、页面画上之后清空；页面只拿它定第一帧选中哪一格。
 - 设置弹层「这台电脑」一格只挂 `configuration-summary`（`configuration-summary.tsx`）：媒体库数、端口、更新状态和「打开配置页」，不放可编辑的控件（ADR-0050）。媒体库数取 `/api/configuration` 的 `library_count`，由服务端按 `media_libraries.libraries` 分组数好，页面不自己归并。
 - 相邻的两处不在这页：媒体修复是数据管理页 React 子树里的一张卡（`frontend/src/react/media-repair/`），订阅源是关注管理页的「订阅源」页签（`follow-manage/feed-sources.tsx`，读 `/api/feeds`）。
@@ -109,7 +109,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 - 删除先过遗留层 `confirmModal`，删之前 GET `?id=` 取回内容，撤销按原内容与来源重建一份；取不到就不给撤销。回执与撤销失败的说法归 `actionReceipt`。
 - 页面画着时壳要求重读（顶栏「换一批」），壳把 `@peach/shell` 的 `playlistsRevision` 加一，页面只重取、不重挂。从播放队列返回、后退前进与侧栏进来都整页打开一次。
 - 每份列表是共用的 Mix 卡 `components/mix-card.tsx`：纸边、黑底封面、玻璃徽标、叠放头像，几何写在 `styles.css` 的 `[data-mix-*]`；悬停翻页是 `components/use-stack-flip.ts`（关注页卡叠也用它），时序钉在 `use-stack-flip.test.tsx`，翻页门槛（多选、遮挡、减少动效、滚动中）由壳经 `ShellActions.canFlip` 递进来。
-- 改名弹层、换头像与裁剪封面共用 `components/modal-frame.tsx` 的外壳，`form` 档 540px 同 `.geist-modal`。
+- 改名弹层、换头像与裁剪封面共用 `components/modal-frame.tsx` 的外壳，`form` 档 540px 同 `ui-kit/modal.css` 的 `.ui-geist-modal`。
 
 ### 关注页
 
@@ -129,7 +129,7 @@ Peach 按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 逐页接入 R
 - `entity` 由资料页正文 `entity-body`（`frontend/src/react/entity-body/`）直接渲染在它的作品视图里，不另挂岛：第一页随资料页首屏一起取来，续页由资料页按查询键取。同一块的另两个视图是名册（索引页的 `PeopleGrid`）与照片墙（样张分段在前、本地图片在后；直接打开 React 灯箱（`photo-lightbox/`），定位源文件调 `actions.revealSource`）。
 - `items` 挂在 `#nrow` 上：壳手上已有那一批，岛只画卡。
 - 版式、选中态与快进秒数经 `updateManagedRoute`（资料页作品区经 `pushEntityPage`）推进来：换版式只重画，已载入的分页原样保留。`selected` 每次推一个新的 `Set`。
-- 卡上的悬停预览、封面取景与图片微光都在 `frontend/src/card-art/`：卡片直接调 `wireHover`／`releaseHover`（状态写在卡的 `data-previewing`／`data-longhover` 上）与 `relayoutCovers`，微光由 `installCardArt` 装的监听按 `PENDING_IMAGES` 认 `[data-media-art]>img`；壳只经 `configureHoverPreview` 告诉悬停预览多选态、打码与延迟。卡片的结构钩子全是 `data-media-*`；悬停预览插进封面格的 `video.hv`、`img.hvframes` 与封套 `img.poster` 用自己的类名，样式在 `12-cards.css`。
+- 卡上的悬停预览、封面取景与图片微光都在 `frontend/src/card-art/`：卡片直接调 `wireHover`／`releaseHover`（状态写在卡的 `data-previewing`／`data-longhover` 上）与 `relayoutCovers`，微光由 `installCardArt` 装的监听按 `PENDING_IMAGES` 认 `[data-media-art]>img`；壳只经 `configureHoverPreview` 告诉悬停预览多选态、打码与延迟。卡片的结构钩子全是 `data-media-*`；悬停预览插进封面格的 `video.hv`、`img.ui-hvframes` 与封套 `img.poster` 用自己的类名；`.ui-hvframes` 的样式在同目录的 `card-art.css`，另两样在 `12-cards.css`。
 - 离场：去目录、回收站与垃圾文件以外的页面时由 `clearCatalogGrid` 收 `#grid` 那一页（`claimSurface` 只收 `#stats` 与 `#index`）；资料页正文随资料页由 `releaseManagedRoute` 收起；接着看是作品详情里的子组件，随舞台的内容一起卸。
 - 屏外卡用 `content-visibility` 跳过封面与元信息区的渲染，不做虚拟列表。
 - 单卡写操作都由用户点击触发：稍后看走 `actions.watchLater`，回收站卡的还原走 `actions.resourceOperation`，做完给撤销；彻底删除只在批量条上，先过 `confirmModal` 的危险档。
@@ -474,13 +474,14 @@ BoardUI 的 `chart-*` 档。点一个内容标签是「回目录并按它筛选�
    再 `npm --prefix frontend run build` 并把 `web/dist/` 一起提交。
 
 遗留骨架与 `web/app.js` 画的那些页继续用 `web/css/` 下的分区，`peach-ui.js` 不出样式表。
+只由 `frontend/src` 产出标记的规则（含 `ui-kit` 模板与骨架拼的 HTML）住在组件旁的 css，类名带 `ui-` 前缀，经 `react/styles.css` 引入、随 `peach-react.css` 加载；壳也拼的类和尚未搬的类仍在 `web/css/` 与 `web/board.css`。原地换态的动效类在 `ui-kit/motion.css`。Video.js 的样式表不进首屏，由 `player/videojs.ts` 随播放器插到第一张样式表之前。
 React 子树的样式是 Tailwind v4 加 BoardUI 主题，产物 `peach-react.css`；它与旧样式表同处一页的
 三条约束（工具类不分层、只扫描 `src/react/`、Preflight 限定在 `.peach-react` 里）写在
 `frontend/src/react/styles.css` 开头，逐字复制与没有复制的上游文件见 `frontend/src/react/boardui/ORIGIN.md`。
 Preflight 给每张 img `max-width:100%`；`card-art` 拼的人脸头像由 `avatarFrame` 在图上内联撤掉这条，
 岛里放这种头像的容器不必再各写 `max-width:none`。封面与带脸框的头像取景完才显示（`09-skeleton.css`）。
-`.oxlintrc.json` 里的例外也在那儿定：`configpage`、`configgroup` 是旧样式表的类名，
-React 页要按原名输出壳才拆得出分区；`swiper`、`swiper-wrapper`、`swiper-slide`、
+`.oxlintrc.json` 里的例外也在那儿定：`ui-configpage`、`ui-configgroup`、`ui-board-local-nav` 是配置页自己的类名，
+骨架（`configuration-skeleton.ts`）与 React 页输出同一组类名，样式在组件旁的 `configuration-page.css` 与 `board-controls.css`，这条规则不读这些样式表；`swiper`、`swiper-wrapper`、`swiper-slide`、
 `swiper-zoom-container` 是 Swiper 核心 API 认的结构类名（图片灯箱），不写它就找不到轮播的
 容器与每一张；`mono` 是 `01-base.css` 的等宽数字字体栈，和 Tailwind 的 `font-mono` 不是同一组字体；
 `javedition` 与色调（`censored` 等）是目录卡片也用的版次徽章；`chip` 是 `18-chips.css` 的标签按钮，壳的产地选择用它，作品详情里脱盘与在线说明块的按钮沿用它（侧栏的筛选键归侧栏组件，不用这个类）；`geist-button`、`primary` 是
