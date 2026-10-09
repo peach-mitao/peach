@@ -837,7 +837,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       const mark = opened.page.locator('[data-entry-marks] a[data-entry-mark]').first();
       await mark.waitFor({ timeout: 15_000 });
       await settle(opened.page);
-      // 浅色下 `--hover` 与资料卡的 `--ground` 同是 #f5f5f5，垫上去等于没垫。
+      // 浅色下 `--hover` 与资料卡的 `--ground` 同是 #f7f7f7，垫上去等于没垫。
       await opened.page.evaluate(() => {
         document.documentElement.dataset.theme = 'light';
         document.documentElement.classList.remove('dark');

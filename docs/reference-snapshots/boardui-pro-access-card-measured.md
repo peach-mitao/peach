@@ -59,7 +59,7 @@ BoardUI 的 76 个组件里没有图片网格或 gallery 控件，只有 carouse
 - **按钮悬停只换填充，不动那圈线**。判据取的是 BoardUI 的强调档而不是 secondary：用户要
   「不应该有线，应该有高亮」，而 primary 与 ghost 两档正是这么做的（见下节）。Peach 的
   次级按钮因此在 `web/board.css` 的 Board secondary 那一条上走
-  `background:var(--control-hover)`——浅色 #e5e5e5、暗色 #404040，都是同一套面色里的下一档
+  `background:var(--control-hover)`——浅色 #ebebeb、暗色 #404040，都是同一套面色里的下一档
   实色。不照抄 BoardUI secondary 的 `hover:border-border-button-hover`：那一档要同时点亮边，
   是因为它的悬停填充在暗色里只是 60% 的 #404040 压在 #262626 上，差几个色阶不够看。
   `web/css/01-base.css` 里的 Geist 静止态不动：那一层记的是 Geist 的实测值，BoardUI 带来的
@@ -138,5 +138,5 @@ BoardUI 的 76 个组件里没有图片网格或 gallery 控件，只有 carouse
   四边等距时两侧字贴着边。上游 `active` 那一下的 0.98 缩放（`transform .42s`）没有跟，
   按下换渐变已经读得出来。
 - 分体按钮的分隔线按上游的做法交给右半的 `border-left`，上下顶满；两半的悬停走 Peach 自己的
-  `--control-hover`（浅色 #e5e5e5、暗色 #404040）而不是上游的 `background-primary-hover`，
+  `--control-hover`（浅色 #ebebeb、暗色 #404040）而不是上游的 `background-primary-hover`，
   理由与次级按钮那一条相同，见上一节。
