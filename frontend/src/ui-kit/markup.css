@@ -16,3 +16,49 @@
 .ui-geist-progress{height:8px;margin-top:7px;overflow:hidden;border-radius:var(--pill-radius);background:var(--line-soft)}.ui-geist-progress i{display:block;width:var(--progress-value);height:100%;border-radius:inherit;background:var(--tungsten)}
 .ui-geist-progress{position:relative}.ui-geist-progress i{background:var(--progress-color,var(--feedback-success))}
 @media(prefers-reduced-motion:no-preference){.ui-geist-progress i{transition:width .2s ease-out,background-color .2s ease-out}}
+
+/* Geist Empty State（`emptyStateHtml`）：图标、标题与说明同处一个组件；外层容器只负责与上方工具条保持 16px。 */
+.ui-emptystate{grid-column:1/-1;display:grid;justify-items:center;align-content:center;gap:8px;box-sizing:border-box;width:100%;min-height:320px;padding:48px 24px;text-align:center;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}
+.ui-emptystate .ui-es-icon{display:grid;place-items:center;box-sizing:border-box;width:54px;height:54px;padding:10px;border-radius:var(--floating-radius);border:1px solid var(--border-15);color:var(--muted);margin-bottom:8px}
+.ui-emptystate .ui-es-icon svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ui-emptystate .ui-es-copy{display:grid;justify-items:center;gap:8px}
+.ui-emptystate h3{margin:0;font-size:var(--fs-md);font-weight:600;color:var(--ink)}
+.ui-emptystate p{margin:0;max-width:340px;font-size:var(--fs-sm);line-height:1.55;color:var(--muted)}
+.ui-emptystate .ui-es-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
+/* 共用勾选框：站内此前一半地方用原生 checkbox（只调了 accent-color，未选中态由浏览器
+   自绘、没有悬停反馈），另一半用关注列表自绘的那份，两种画法并排出现。统一成这一份。
+   悬停只抬填充不提边，与按钮同口径。 */
+.ui-pcheck{position:relative;display:grid;place-items:center;width:20px;height:20px;flex:none;cursor:pointer}
+.ui-pcheck input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ui-pcheck>span{box-sizing:border-box;width:16px;height:16px;border:1px solid var(--border-15);border-radius:var(--badge-radius);
+  display:grid;place-items:center;background:var(--ground);color:transparent;transition:.14s ease}
+.ui-pcheck>span svg{display:block;width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}
+.ui-pcheck:hover>span,label:hover>.ui-pcheck>span{background:var(--hover)}
+.ui-pcheck input:checked+span{border-color:var(--ink-2);color:var(--ink)}
+.ui-pcheck input:focus-visible+span{outline:2px solid var(--tungsten);outline-offset:2px}
+.ui-pcheck input:disabled+span{cursor:not-allowed;border-color:var(--line)}
+.ui-pcheck input:disabled:checked+span{color:var(--muted)}
+.ui-pcheck:has(input:disabled){cursor:not-allowed}
+.ui-pcheck:has(input:disabled)>span{background:var(--ground)}
+/* 瀑布流里空态横跨所有列。 */
+[data-layout="masonry"]>.ui-emptystate{column-span:all}
+/* Board 的那一层（boardui checkbox-glyph.tsx）：未选 1px 边线加 shadow-xs，悬停边线深一档；选中蓝渐变加内嵌高光，
+   勾 2px 圆头 200ms 从零画出。边线 token `--color-border-checkbox-*` 在 web/board.css。 */
+.ui-pcheck{vertical-align:middle;align-self:center}
+.ui-pcheck>span{position:relative;width:16px;height:16px;border:1px solid var(--color-border-button-default);border-radius:4px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs);transition:background .15s,border-color .15s,box-shadow .15s}
+.ui-pcheck input:is(:checked,:indeterminate)+span{color:#fff;border-color:transparent;background:var(--board-blue);box-shadow:inset 0 1px 0 #ffffff40,0 1px 2px #0450e229}
+.ui-pcheck input:indeterminate+span svg{visibility:hidden}
+.ui-pcheck input:indeterminate+span::after{content:'';position:absolute;top:6px;left:3px;width:8px;height:2px;border-radius:1px;background:#fff}
+.ui-pcheck input:disabled+span{opacity:.5}
+.ui-pcheck>span svg{width:14px;height:14px;stroke-width:2}
+.ui-pcheck:hover>span{border-color:var(--color-border-button-hover)}
+input[type=checkbox]:not([data-toggle]):not(.ui-pcheck input):not(.peach-react input){accent-color:var(--color-accent-600);width:16px;height:16px;vertical-align:middle;margin:0;flex:none}
+.ui-pcheck>span{border-color:var(--color-border-checkbox-default);box-shadow:var(--elevation-xs);transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
+.ui-pcheck:hover>span,label:hover>.ui-pcheck>span{border-color:var(--color-border-checkbox-hover);background:var(--color-background-primary-default)}
+.ui-pcheck input:is(:checked,:indeterminate)+span{border-color:transparent;background:var(--board-blue);box-shadow:inset 0 2px 0 0 #ffffff40,inset 0 0 0 1px #3b82f6}
+.ui-pcheck:hover input:is(:checked,:indeterminate)+span,label:hover>.ui-pcheck input:is(:checked,:indeterminate)+span{border-color:transparent;background:linear-gradient(180deg,#60a5fa,#3b82f6);box-shadow:inset 0 2px 0 0 #ffffff40,inset 0 0 0 1px #3b82f6}
+@keyframes board-check-draw{from{stroke-dashoffset:23px}to{stroke-dashoffset:0}}
+.ui-pcheck>span svg{stroke-dasharray:23;stroke-dashoffset:0}
+.ui-pcheck input:checked+span svg{animation:board-check-draw .2s cubic-bezier(.65,0,.35,1) forwards}
+@media(prefers-reduced-motion:reduce){
+.ui-pcheck input:checked+span svg{animation:none;stroke-dashoffset:0}}

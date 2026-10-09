@@ -790,17 +790,17 @@ function ot(e, { active: t = "", attr: r = "data-tab", label: i = "页面视图"
 	return `<div class="board-local-nav board-tabs${a ? ` ${m(a)}` : ""}" role="tablist" aria-label="${m(i)}">${s}</div>`;
 }
 function st(e, t, r, { className: i = "", actions: a = "" } = {}) {
-	return `<div class="emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
-    <div class="es-icon" aria-hidden="true">${n(e)}</div>
-    <div class="es-copy"><h3>${m(t)}</h3><p>${m(r)}</p></div>
-    ${a ? `<div class="es-actions">${a}</div>` : ""}
+	return `<div class="ui-emptystate${i ? ` ${m(i)}` : ""}" data-geist-empty-state role="status">
+    <div class="ui-es-icon" aria-hidden="true">${n(e)}</div>
+    <div class="ui-es-copy"><h3>${m(t)}</h3><p>${m(r)}</p></div>
+    ${a ? `<div class="ui-es-actions">${a}</div>` : ""}
   </div>`;
 }
 function ct(e) {
 	return `<span class="ui-geist-badge">${m(e)}</span>`;
 }
 function lt(e = "") {
-	return `<span class="pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
+	return `<span class="ui-pcheck"><input type="checkbox" ${e}><span aria-hidden="true">${n("check")}</span></span>`;
 }
 //#endregion
 //#region src/ui-kit/motion.ts

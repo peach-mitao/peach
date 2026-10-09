@@ -202,7 +202,7 @@ Radial Chart Card、Bar List Card、Heatmap 与 Sankey 的 Pro 源码**未取得
 | 上游 | Peach |
 | --- | --- |
 | CheckboxCard：10px 圆角、1px `border-button-default`、pl 16 / pr 20 / py 12，悬停 `background-primary-hover` 150ms，整卡可点 | 关注列表的每条来源行；勾选框在左（Peach 的行右边是检查、移除两枚动作键）；选中行沿用焦点环色的边，上游只亮勾选框 |
-| Checkbox 16px、4px 圆角；未选 `border-checkbox-default`（亮 neutral-300、暗 neutral-700）+ `shadow-xs`；悬停边线到 neutral-400／500，底不变 | `.pcheck` 同值；旧版层的悬停换底被 Board 层压掉 |
+| Checkbox 16px、4px 圆角；未选 `border-checkbox-default`（亮 neutral-300、暗 neutral-700）+ `shadow-xs`；悬停边线到 neutral-400／500，底不变 | `.ui-pcheck` 同值；旧版层的悬停换底被 Board 层压掉 |
 | 选中 blue-500→600 渐变 + `inset 0 2px 0 0 #ffffff40, inset 0 0 0 1px accent-500`；悬停渐变提到 400→500 | 同值，渐变取 `--board-blue` |
 | 勾 2px 圆头，`pathLength=1`，`check-draw` 200ms cubic-bezier(.65,0,.35,1) 从零画出；减少动态效果时直接显示 | 勾是雪碧图的 `check`，无法写 pathLength，按路径实长 23 写 dasharray；其余同值 |
 | 页面上卡片摆在 primary 面上 | 关注列表整段是一只 `--ground` 卡（与「添加关注」同一只），作者卡是 primary 面，来源行才是 CheckboxCard；这样悬停的 primary-hover 才不与底同色 |

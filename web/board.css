@@ -719,11 +719,6 @@ body button.danger.danger:not(:disabled):active::before{opacity:0}
 .card:hover .pic::after,.card.selected .pic::after{box-sizing:border-box;border-radius:var(--pic-radius)}.card.selected .pic::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;border:2px solid var(--on-media)}.card.selected .pic,.card.selected:hover .pic{box-shadow:none}
 
 /* Board 公开基础控件：尺寸与来源登记在 docs/BOARD_UI.md。 */
-.pcheck{vertical-align:middle;align-self:center}.pcheck>span{position:relative;width:16px;height:16px;border:1px solid var(--color-border-button-default);border-radius:4px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs);transition:background .15s,border-color .15s,box-shadow .15s}
-.pcheck input:is(:checked,:indeterminate)+span{color:#fff;border-color:transparent;background:var(--board-blue);box-shadow:inset 0 1px 0 #ffffff40,0 1px 2px #0450e229}
-.pcheck input:indeterminate+span svg{visibility:hidden}.pcheck input:indeterminate+span::after{content:'';position:absolute;top:6px;left:3px;width:8px;height:2px;border-radius:1px;background:#fff}
-.pcheck input:disabled+span{opacity:.5}.pcheck>span svg{width:14px;height:14px;stroke-width:2}.pcheck:hover>span{border-color:var(--color-border-button-hover)}
-input[type=checkbox]:not([data-toggle]):not(.pcheck input):not(.peach-react input){accent-color:var(--color-accent-600);width:16px;height:16px;vertical-align:middle;margin:0;flex:none}
 body .vjs-peach-speed-range::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border:1px solid var(--color-border-button-default);border-radius:50%;background:radial-gradient(circle at center,#fff 3px,#e5e5e5 3.5px,#fff 4px);box-shadow:0 2px 4px light-dark(#0000001a,#00000080),inset 0 1px 0 #ffffffcc;cursor:grab;transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press),box-shadow .15s}
 /* 抓住的时候手柄涨一圈，松开按同一条弹簧收回去。位置不参与任何过渡——手柄要贴着
    指针走，给它加一段缓动就是让它落在指针后面，滑块立刻变成拖不准的东西。 */
@@ -900,18 +895,11 @@ html.board-high-contrast :is(.card .badge,[data-glass-pane]){background:var(--gr
 /* ── 勾选框（boardui checkbox-glyph.tsx）：未选 1px border-checkbox-default 加 shadow-xs，悬停边线深一档、底不变；
    选中蓝渐变 + 内嵌高光；勾 2px 圆头，200ms cubic-bezier(.65,0,.35,1) 从零画出。tokens：亮 neutral-300／400，暗 neutral-600／500。
    暗档的默认边线比上游 theme.css 的 neutral-700 亮一档：这颗框的底就是卡面色，形状全靠那 1px 说话，
-   而 #404040 压在 #262626 上只差 11 个 CIE 明度（浅色那对是 15），细线在低亮度那头当场消失。 ── */
+   而 #404040 压在 #262626 上只差 11 个 CIE 明度（浅色那对是 15），细线在低亮度那头当场消失。
+   勾选框本身（`.ui-pcheck`）在 frontend/src/ui-kit/markup.css。 ── */
 :root,:root[data-theme="light"]{--color-border-checkbox-default:#d4d4d4;--color-border-checkbox-hover:#a3a3a3}
 :root[data-theme="dark"]{--color-border-checkbox-default:#525252;--color-border-checkbox-hover:#737373}
 @media(prefers-color-scheme:dark){:root:not([data-theme]){--color-border-checkbox-default:#525252;--color-border-checkbox-hover:#737373}}
-.pcheck>span{border-color:var(--color-border-checkbox-default);box-shadow:var(--elevation-xs);transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}
-.pcheck:hover>span,label:hover>.pcheck>span{border-color:var(--color-border-checkbox-hover);background:var(--color-background-primary-default)}
-.pcheck input:is(:checked,:indeterminate)+span{border-color:transparent;background:var(--board-blue);box-shadow:inset 0 2px 0 0 #ffffff40,inset 0 0 0 1px #3b82f6}
-.pcheck:hover input:is(:checked,:indeterminate)+span,label:hover>.pcheck input:is(:checked,:indeterminate)+span{border-color:transparent;background:linear-gradient(180deg,#60a5fa,#3b82f6);box-shadow:inset 0 2px 0 0 #ffffff40,inset 0 0 0 1px #3b82f6}
-.pcheck>span svg{stroke-dasharray:23;stroke-dashoffset:0}
-@keyframes board-check-draw{from{stroke-dashoffset:23px}to{stroke-dashoffset:0}}
-.pcheck input:checked+span svg{animation:board-check-draw .2s cubic-bezier(.65,0,.35,1) forwards}
-@media(prefers-reduced-motion:reduce){.pcheck input:checked+span svg{animation:none;stroke-dashoffset:0}}
 
 /* 安装后教程：BoardUI NotificationViewport 把教程固定在右下角，内部任务沿用 RareUI
    Task List 的真实状态、完成项后移与打勾，不占当前页面正文的布局空间。

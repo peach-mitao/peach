@@ -10,7 +10,7 @@ import type { ComponentType, ReactNode } from 'react';
 type Glyph = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
 
 /* 卡片里的空态不描边：外面那张卡已经是一个框，再套一层就是框中框。
- * - `page`：整屏就它一个，自己收一条边，同旧 `.emptystate`（`web/css/19-immersive.css`）：
+ * - `page`：整屏就它一个，自己收一条边，同遗留层 `.ui-emptystate`（`frontend/src/ui-kit/markup.css`）：
  *   沉一档底色、浮层圆角、至少 320px 高，内容竖向居中；图标装进 54px 的描边方框。
  * - `plain`：落在一张卡或一块面板里，只留内边距，同旧 `.insightempty{padding:16px}`。
  * - `inset`：占住卡里图区那块地方，沉一档底色，读起来仍是「这里本该有东西」。 */

@@ -154,10 +154,10 @@ export function boardTabsHtml(items:{value:unknown;label:unknown;count?:unknown;
 /** Geist Empty State: icon tile, title and explanatory copy stay one semantic unit. */
 /** Geist Empty State：图标、标题与说明同处一个组件内。 */
 export function emptyStateHtml(iconName:string,title:unknown,description:unknown,{className='',actions=''}={}):string{
-  return `<div class="emptystate${className?` ${esc(className)}`:''}" data-geist-empty-state role="status">
-    <div class="es-icon" aria-hidden="true">${icon(iconName)}</div>
-    <div class="es-copy"><h3>${esc(title)}</h3><p>${esc(description)}</p></div>
-    ${actions?`<div class="es-actions">${actions}</div>`:''}
+  return `<div class="ui-emptystate${className?` ${esc(className)}`:''}" data-geist-empty-state role="status">
+    <div class="ui-es-icon" aria-hidden="true">${icon(iconName)}</div>
+    <div class="ui-es-copy"><h3>${esc(title)}</h3><p>${esc(description)}</p></div>
+    ${actions?`<div class="ui-es-actions">${actions}</div>`:''}
   </div>`;
 }
 
@@ -169,5 +169,5 @@ export function emptyStateHtml(iconName:string,title:unknown,description:unknown
 export function badgeHtml(text:unknown):string{return `<span class="ui-geist-badge">${esc(text)}</span>`}
 
 export function checkboxHtml(inputAttrs=''):string{
-  return `<span class="pcheck"><input type="checkbox" ${inputAttrs}><span aria-hidden="true">${icon('check')}</span></span>`;
+  return `<span class="ui-pcheck"><input type="checkbox" ${inputAttrs}><span aria-hidden="true">${icon('check')}</span></span>`;
 }

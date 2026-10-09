@@ -200,7 +200,7 @@
      跟标题同一行绰绰有余，跟着换行只是白占一行高度。 */
 @media (max-width:600px){[data-settings-panel] [data-setting-row]:has(input[type="checkbox"]){grid-template-columns:minmax(0,1fr) auto;gap:12px}}
 @media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=ui-gselect]{width:100%;min-width:0}}
-@media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=pcheck]{justify-self:start}}
+@media (max-width:600px){[data-settings-panel] [data-setting-row] [class~=ui-pcheck]{justify-self:start}}
 [data-settings-panel] [data-sidebar-add-row] [data-sidebar-add-menu] button{justify-items:start}
 
 [data-settings-panel] [data-number-control]:has([aria-invalid="true"]){animation:field-shake var(--board-motion)}

@@ -4,15 +4,6 @@
    `frontend/src/react/immerse/immerse.css`。 */
 .loadmore{min-height:42px;margin:18px auto 0;text-align:center;color:var(--muted);padding:12px}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
-/* Geist Empty State：标题和说明是一个组件；外层容器只负责与上方工具条保持 16px。 */
-.emptystate{grid-column:1/-1;display:grid;justify-items:center;align-content:center;gap:8px;box-sizing:border-box;width:100%;min-height:320px;padding:48px 24px;text-align:center;border:1px solid var(--line-soft);border-radius:var(--floating-radius);background:var(--ground)}
-.emptystate .es-icon{display:grid;place-items:center;box-sizing:border-box;width:54px;height:54px;padding:10px;border-radius:var(--floating-radius);border:1px solid var(--border-15);color:var(--muted);margin-bottom:8px}
-.emptystate .es-icon svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.emptystate .es-copy{display:grid;justify-items:center;gap:8px}
-.emptystate h3{margin:0;font-size:var(--fs-md);font-weight:600;color:var(--ink)}
-.emptystate p{margin:0;max-width:340px;font-size:var(--fs-sm);line-height:1.55;color:var(--muted)}
-.emptystate .es-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
-
 @media (max-width:760px){
   .brand .sub{display:none}
   :root{--tile:168px;--topH:52px;--sortH:60px}
@@ -96,21 +87,6 @@
 
 .iconswitch{min-width:0;margin:0;padding:3px;border:1px solid var(--line-soft);border-radius:var(--surface-radius);background:var(--overlay-5)}.iconswitch label{position:relative;display:inline-grid;width:34px;height:28px;place-items:center;border-radius:var(--control-radius);color:var(--muted);cursor:pointer}.iconswitch input{position:absolute;inline-size:1px;block-size:1px;opacity:0}.iconswitch label:hover{color:var(--ink)}.iconswitch label:has(input:checked){background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #0005}.iconswitch label:has(input:focus-visible){outline:2px solid var(--tungsten);outline-offset:2px}.iconswitch svg{display:block;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
 
-/* 共用勾选框：站内此前一半地方用原生 checkbox（只调了 accent-color，未选中态由浏览器
-   自绘、没有悬停反馈），另一半用关注列表自绘的那份，两种画法并排出现。统一成这一份。
-   悬停只抬填充不提边，与按钮同口径。 */
-.pcheck{position:relative;display:grid;place-items:center;width:20px;height:20px;flex:none;cursor:pointer}
-.pcheck input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.pcheck>span{box-sizing:border-box;width:16px;height:16px;border:1px solid var(--border-15);border-radius:var(--badge-radius);
-  display:grid;place-items:center;background:var(--ground);color:transparent;transition:.14s ease}
-.pcheck>span svg{display:block;width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5}
-.pcheck:hover>span,label:hover>.pcheck>span{background:var(--hover)}
-.pcheck input:checked+span{border-color:var(--ink-2);color:var(--ink)}
-.pcheck input:focus-visible+span{outline:2px solid var(--tungsten);outline-offset:2px}
-.pcheck input:disabled+span{cursor:not-allowed;border-color:var(--line)}
-.pcheck input:disabled:checked+span{color:var(--muted)}
-.pcheck:has(input:disabled){cursor:not-allowed}
-.pcheck:has(input:disabled)>span{background:var(--ground)}
 /* 取景：正封模式下，整张封套要把镜头推到右半边；本身就是竖版正封的则整张用；
    16:9 官方剧照没有「正封那一块」，只能按人脸取。
    判据是图片自己的宽高比，由 onload 写进 data-frame。
