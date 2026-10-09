@@ -464,7 +464,7 @@ describe('设计决定：控件、状态与首页顶部', () => {
     try {
       await opened.page.emulateMedia({ reducedMotion: 'no-preference' });
       const result = await opened.page.evaluate(async () => {
-        const { popCount } = await import('/js/ui-components.js');
+        const { popCount } = await import('/dist/peach-app.js');
         const host = document.createElement('span');
         document.body.append(host);
         popCount(host, '12');
