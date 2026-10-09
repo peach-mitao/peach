@@ -128,7 +128,7 @@ let followDurMin=0,followDurMax=0;
    各自抄的那几条。加一屏只改这张表；同一份知识散成七处时，漏一处的症状还各不相同：URL 能进但侧栏不亮、
    点进去了但「换一批」把你扔回统计页、批量操作后回到首页而不是刚才那一屏。
 
-   条目按页面分组（目录、关注、覆盖、资料、索引、管理区、沉浸），每组前一行组名、组与组之间空开两行：
+   条目按页面分组（目录、播放列表、覆盖、关注、沉浸），每组前一行组名、组与组之间空开两行：
    各组迁进路由树时只删自己那几行。 */
 const ROUTES=[
   // ── 目录 ──
@@ -141,7 +141,7 @@ const ROUTES=[
   {match:'/trash',section:'trash',open:(params,push)=>openTrash(push)},
 
 
-  // ── 关注 ──
+  // ── 播放列表 ──
   {match:'/playlists',nav:'playlists',title:'播放列表',refresh:'reopen',
     open:(params,push)=>openPlaylists(push)},
 
