@@ -12,8 +12,9 @@
  * `openManagedRoute`，每个容器一条），详情舞台压在上面、地址换成 `/item/:id` 时它留在原处。
  *
  * 路由分两组：页面组按条目自己记的背景（`usr.backgroundLocation`）匹配，详情压在哪一页上就还匹配那一页；
- * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。两组的具体路由都只声明路径，`path="*"`
- * 不按路径设 key，同一个实例在非管理区地址之间从头活到尾。
+ * 覆盖组按真实地址匹配详情与队列那几条（`OVERLAY_PATHS`）。页面组里索引与资料两组挂着按地址打开那一页的
+ * 元素（`pages/index-entity.tsx`），其余具体路由只声明路径；`path="*"` 不按路径设 key，同一个实例在非管理区
+ * 地址之间从头活到尾。
  *
  * 一处渲染错误只带走抛错的那一面：每一面各套一层错误边界（`SurfaceBoundary`），根上不套，派发点与两组
  * `<Routes>` 不随某一面卸掉。错误经根的 `onCaughtError` 交给 `reportError`，每次一条。 */
@@ -173,12 +174,12 @@ function RouteGroups({ children }: { children?: ReactNode }) {
 
 
         {/* ── 索引 ── */}
-        {Object.keys(INDEX_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+        {Object.entries(INDEX_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
 
 
 
         {/* ── 资料 ── */}
-        {Object.keys(ENTITY_ROUTES).map((path) => <Route key={path} path={path} element={null} />)}
+        {Object.entries(ENTITY_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
 
 
 

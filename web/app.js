@@ -11,7 +11,7 @@ import { matchRoute, routeLabel } from './js/routes.js';
 import { initMiddleTruncate } from './js/middle-truncate.js';
 import { tagLabel } from './js/tags.js';
 import { playUiSound, setUiSoundsEnabled, wireUiSounds } from './js/ui-sounds.js';
-import { appSettingsStore, applySyncedSettings, allowedSetting, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
+import { appSettingsStore, applySyncedSettings, applyTheme, watchSystemTheme, THEME_OPTIONS, applyDensity, toggleDensity, paintPhotoSizeButton } from './dist/peach-ui.js';
 import { applyAccent, applyGlassFaces, applyHomeGlow, paintHomeGlowNow, wireGlowButton, loadGlowPicker } from './dist/peach-ui.js';
 import { JAV_LAYOUTS, PHOTO_LAYOUTS, COVER_FRONT_RATIO, cardLayoutFor, cardRatio, gridLayout, javLayout, photoLayout, photoSize, storeHomeLayout, storeJavLayout, storePhotoLayout, storePhotoSize, storeVideoLayout } from './dist/peach-ui.js';
 import { SORTS, JAV_RELEASE_SORT, SORT_KEYS, SORT_ALIASES, SORT_DIR_WORDS, defaultSortDir, nextSortState, sortDirWord } from './dist/peach-ui.js';
@@ -23,16 +23,17 @@ import { loadRouter, managedEntry, managedTaken, openManagedRoute, peachHistory,
 import { ROUTE_META, registerDiagnosticsRoute, routeMetaOf } from './dist/peach-ui.js';
 import { state, barsContext, detailReturnBarsContext, selected, followSelected, selectMode, lastSelectedId, followLastSelectedId, selectSurface } from './dist/peach-ui.js';
 import { detailReturnPath, detailOriginAnchor, detailOriginAbove, detailReturnNeedsRestore, activeQueue, pendingQueueRoute, presentedItem, followDetailReturnPath } from './dist/peach-ui.js';
-import { configurationRequestedSection, notifyShell, writeShell } from './dist/peach-ui.js';
+import { configurationRequestedSection, entityJavLayout, notifyShell, pageOpens, writeShell } from './dist/peach-ui.js';
+import { INDEX_TITLES, indexParams, paintIndexSkeleton, peopleLayoutOf } from './dist/peach-ui.js';
 import { adoptOverlayState, clearOverlayBackground, holdOverlayBackground, overlayState, retagOverlay, takeOverlayReturn } from './dist/peach-ui.js';
 import { javImageKind, syncJavImages, entitySkeletonHtml } from './dist/peach-ui.js';
 import { avatarInner, configureHoverPreview, coverAnchor, coverImage, entityFaceImg, faceBoxAttrs, faceOrigin, facePos, imageFallbackAttrs, installCardArt, logoUrl, refitNativeImages, releaseHoverPreviews, rememberRepresentatives, setHoverState, upgradeCover, wireImageFallbacks } from './dist/peach-ui.js';
 import { clickPlayerControl, immerseApi, loadImmerse, loadStage, seekVideoBy, stageApi, toggleVideoPlayback } from './dist/peach-ui.js';
 import {
   attachOverlayScrollbar, checkboxHtml, confirmModal, dismissMenu, emptyStateHtml,
-  fitSkeleton, formModal, iconSwitchHtml, indexSkeletonHtml, loadingDotsHtml,
+  fitSkeleton, formModal, indexSkeletonHtml, loadingDotsHtml,
   dissolveValue, popBadges, revealSkeleton, revealTexts,
-  boardTabsHtml, moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml, searchInputHtml,
+  moveGlidePane, glideEase, collectionHeaderHtml, wireHorizontalScroller, noteHtml, presentMenu, gaugeHtml, scrollerHtml,
   setActionBusy, skeletonHtml, spinnerHtml, growCollapse, wireAnchoredMenu, wireBusyActions, wireCollapse, wireDragReorder,
   wireOverlayScrollbars, wireScrollers, configurationSkeletonHtml, wireAutoScroll, stopAutoScroll, scrollMovesAnchor,
   postSetupTutorialMarker, setPostSetupTutorialMarker, postSetupTutorialCollapsed, setPostSetupTutorialCollapsed,
@@ -159,35 +160,6 @@ const ROUTES=[
     await openFollowDetail(params.id,push)}},
 
 
-  // ── 资料 ──
-  /* 实体资料页。四种实体只有 kind 不同，名字里可能带斜杠，所以吃掉剩下全部段。 */
-  ...Object.entries(ROUTE_ENTITIES).map(([segment,kind])=>({
-    match:`/${segment}/:name*`,title:params=>params.name,
-    open:(params,push)=>openEntity(kind,params.name,push)})),
-
-
-  // ── 索引 ──
-  /* 索引页的状态全在地址栏上（过滤词、范围、视图、类型由页面自己写回），所以就地重取
-     与刷新都是按当前地址重开一次。 */
-  {match:'/performers',nav:'performers',title:'艺人',
-    open:(params,push)=>openIndex('performers',push),
-    reload:()=>openIndex('performers',false)},
-  {match:'/creators',title:'卖家',
-    open:(params,push)=>openIndex('creators',push),
-    reload:()=>openIndex('creators',false)},
-  /* 厂牌出片、事务所出人，是两种实体，所以是两条路径；页内那个
-     开关只是在两条路径之间走，不是同一份数据的两种筛选。 */
-  {match:'/studios',nav:'studios',title:'厂牌',
-    open:(params,push)=>openIndex('studios',push),
-    reload:()=>openIndex('studios',false)},
-  {match:'/agencies',title:'事务所',
-    open:(params,push)=>openIndex('agencies',push),
-    reload:()=>openIndex('agencies',false)},
-  {match:'/tags',nav:'tags',title:'标签',
-    open:(params,push)=>openIndex('tags',push),
-    reload:()=>openIndex('tags',false)},
-
-
   // ── 管理区 ──
   {match:'/stats',open:(params,push)=>openStats(push)},
   {match:'/taste',open:(params,push)=>openTaste(push)},
@@ -226,11 +198,17 @@ window.peachRegisterRoute=registerRoute;
 registerDiagnosticsRoute(openDiagnostics);
 /* 路由元数据的读法：路由树那一侧登记了的用它的（`ROUTE_META`），没有回落到 `ROUTES`；返回与 `matchRoute`
    同形的 `{route,params}`。按身份或侧栏键找入口路径时同样先查路由树、再查表：一个键只登记在一边。
-   打开那一屏的 `open` 仍在 `ROUTES` 里，按找到的路径取。 */
+   打开那一屏的 `open` 仍在 `ROUTES` 里，按找到的路径取；不在表里的是路由树按匹配打开的索引页（侧栏只通到它们）：
+   从导航进来退出选择模式、回到本地与字母表。 */
 const routeMeta=path=>{const meta=routeMetaOf(path);return meta?{route:meta,params:{}}:matchRoute(ROUTES,path)};
 const routePathOf=(key,value)=>Object.keys(ROUTE_META).find(path=>ROUTE_META[path][key]===value)
   ??ROUTES.find(spec=>spec[key]===value)?.match;
-const openRoutePath=path=>{const hit=matchRoute(ROUTES,path);hit.route.open(hit.params,true)};
+const openRoutePath=path=>{
+  const hit=matchRoute(ROUTES,path);
+  if(hit){hit.route.open(hit.params,true);return}
+  setSelectMode(false,true);
+  openRoutedPage(indexPath({kind:path.slice(1),q:'',scope:'local',view:'alphabet',category:'all'}));
+};
 
 const pageSkeletonHtml=(label,{cards=false,className='',variant='',count,fill,cardRatio,gridClass='',gridSize=''}={})=>
   skeletonHtml(label,{variant:variant||(cards?'cards':'panel'),className,gridClass,gridSize,
@@ -402,8 +380,8 @@ function renderInitialSurfaceLoading(){
     return;
   }
   if(/^\/(performers|creators|studios|agencies|tags)$/.test(path)){
-    hideDiscoveryBars();
-    showIndexSkeleton(indexRoute(path.slice(1)));
+    hideDiscoveryBars();showIndexContainer();
+    paintIndexSkeleton($('#index'),indexParams(path.slice(1),location.search),peopleIndexLayout());
     return;
   }
   if(/^\/(?:performers|creators|studios|agencies)\//.test(path)){
@@ -488,10 +466,9 @@ const claimSurface=path=>{
   surfaceRequests?.abort();
   surfaceRequests=new AbortController();
   surfaceEpoch++;return surfaceToken(path)};
-/* 由路由树画的那几页：管理区画进 `#stats`，索引页画进 `#index`，目录网格画进 `#grid`（`paintGridPage`）；
-   取数期间壳换了页就不画。 */
+/* 由壳打开、路由树画的那几页：管理区画进 `#stats`，目录网格画进 `#grid`（`paintGridPage`）；
+   取数期间壳换了页就不画。索引页与资料页由路由树的元素打开，见 `frontend/src/react/router/pages/index-entity.tsx`。 */
 const managedSurface=token=>({container:$('#stats'),isCurrent:()=>surfaceCurrent(token)});
-const indexSurface=token=>({container:$('#index'),isCurrent:()=>surfaceCurrent(token)});
 /* 表面级读请求：带上这个表面的 signal，被取消时返回 null 而不是抛错。
    取消只可能由 claimSurface 触发，而它已经推进了 epoch，所以调用点紧随其后的
    `surfaceCurrent()` 必然为假、走的是同一条过期分支——不用给每个表面套一层
@@ -512,6 +489,11 @@ const route=(path,replace=false,state,{claim=true}={})=>{
    同步照 `route()` 做，只是这一次不认领。路由树像后退前进一样报给派发器、领一个开次代次：迁进路由树的页面由它的元素
    打开，其余由 `restoreRoute` 按 `ROUTES` 打开。 */
 const navigatePath=path=>route(path,false,undefined,{claim:false});
+/* 从壳里进路由树按匹配打开的那几页（索引页、资料页）：认领写地址，再让 `pageOpens` 加一。换了一页时挂上的元素
+   按地址打开，两件事合成一次；地址落在画着的同一页上时元素不重挂，靠这一下从头重开。 */
+function openRoutedPage(path){
+  route(path);writeShell({pageOpens:pageOpens+1});
+}
 
 /* ── 脱盘模式 ─────────────────────────────────────────────────────────────────
    脱盘是来源级的：外置盘拔掉只影响 local，115/PikPak 照常可播；反过来也一样。
@@ -1076,14 +1058,13 @@ function paintSelection(){
   /* 浮条宿主在 `#main` 外面，玻璃贴图的观察器看不到它长出来，画完补扫一遍。 */
   if(batchDockApi()){batchDockApi().render(batchDockProps);syncGlassOptics()}
 }
-/* 标签页的多选归 React 页面自己记：键在壳里，所以开关一变就推给正画着的那一页，关掉时
-   页面随之清空所选。别的页面上 `#index` 里没有画着的索引页，`updateManagedRoute` 是空操作。 */
+/* 选择键在壳里。标签页的多选归 React 页面自己记：路由树里的索引元素订阅这个键，一变就推给画着的那一页。 */
 function setSelectMode(on,clear=false){
   if(on&&!selectMode)writeShell({selectSurface:currentSelectSurface()});
   writeShell({selectMode:!!on});if(!selectMode)writeShell({selectSurface:''});document.body.classList.toggle('select-mode',selectMode);
   if(selectMode)releaseHoverPreviews();
   $('#selectMode').setAttribute('aria-pressed',selectMode);if(clear){selected.clear();followSelected.clear();writeShell({lastSelectedId:null,followLastSelectedId:null})}paintSelection();
-  if(location.pathname==='/tags')updateManagedRoute($('#index'),{selectMode})}
+}
 /* 只取网格直属卡片：竖屏条是嵌在网格里的横向滚动条，不该被 Shift 范围选中顺带框进来。 */
 function visibleCardIds(){return [...gridCards()].map(card=>+card.dataset.id)}
 function toggleSelection(id,range=false){
@@ -1393,7 +1374,7 @@ function commitContextFilter(mutate){
       mutate(target.filters);
       // 详情下面那一页通常还挂着，推新筛选就够；深链进的详情下面没有它，照新地址重开。
       if(routeEntityPage(target.kind,target.name,target.filters))buildBars();
-      else void openEntity(target.kind,target.name,false);
+      else writeShell({pageOpens:pageOpens+1});
       return
     }
     mutate(state);writeShell({barsContext:{type:'home',filters:state}});route(homePath());showHomeSurfaces();
@@ -2440,19 +2421,11 @@ document.addEventListener('click',event=>{
 });
 
 /* ── 全部艺人 / 创作者 / 厂牌 / 事务所 / 标签索引页 ──
-   整页在 React（`frontend/src/react/index/`）。壳做三件事：从地址栏读出这一页的状态、铺骨架、
-   把遗留层唯一那一份取图链与去处当 props 递进去。换档（厂牌↔事务所、本地↔在线、类型、视图、
-   过滤词）由页面经 `route` 写回地址栏，不经过这里重挂。 */
-const INDEX_TITLES={performers:'艺人',creators:'卖家',studios:'厂牌',
-                    agencies:'事务所',tags:'标签'};
-/* 艺人索引版式，思路同 JAV 大图：列宽不变、只把图从圆框拉成竖幅，一屏里的人数
-   不变而每张脸更大；紧凑就是圆头像那一屏。资料页的名册读的是同一个设置值。 */
-const PEOPLE_LAYOUTS=[['big','大图 · 竖幅头像','maximize'],['compact','紧凑 · 圆形头像','layout-grid']];
-/* 公司那一格摆的是方形标识而不是脸，说法跟着换；档位仍是同一个设置值。 */
-const COMPANY_LAYOUTS=[['big','大图 · 完整标识','maximize'],['compact','紧凑 · 圆形标识','layout-grid']];
-function peopleIndexLayout(){
-  return allowedSetting(appSettings.peopleLayout,PEOPLE_LAYOUTS.map(([k])=>k),'big');
-}
+   整页在 React（`frontend/src/react/index/`），由路由树里的索引元素按地址打开（`pages/index-entity.tsx`）。
+   壳留的是遗留层唯一那一份取图链与去处（经 `shellActions` 递进去）、地址的写法，和存着的版式偏好。换档
+   （厂牌↔事务所、本地↔在线、类型、视图、过滤词）由页面经 `routeIndex` 写回地址栏并认领，不重挂。 */
+/* 艺人索引的版式偏好，资料页的名册读的是同一个设置值。 */
+const peopleIndexLayout=()=>peopleLayoutOf(appSettings.peopleLayout);
 /* 一格人的圆框里那段：有图走图、没图退首字母。索引页（React）和资料页名册摆的是同一格，
    所以取图只有这一份。
 
@@ -2484,12 +2457,6 @@ function onlineAuthorRingHtml(x){
     imageFallbackAttrs({fallbacks:[x.avatar_fallback||'']})}>`:'';
   return `<span class="ini">${esc(initial)}</span>${image}`;
 }
-/* 地址栏上的那几项。范围与视图只认两个值；类型由页面按这一套词表核对，认不出的回到全部。 */
-function indexRoute(kind){
-  const params=new URLSearchParams(location.search);
-  return {kind,q:params.get('q')||'',scope:params.get('scope')==='online'?'online':'local',
-    view:params.get('view')==='cloud'?'cloud':'alphabet',category:params.get('category')||'all'};
-}
 function indexPath({kind,q,scope,view,category}){
   const params=new URLSearchParams();if(q)params.set('q',q);
   if(kind==='tags'){
@@ -2500,47 +2467,10 @@ function indexPath({kind,q,scope,view,category}){
   if(kind==='performers'&&scope!=='online'&&category!=='all')params.set('category',category);
   return '/'+kind+(params.size?'?'+params:'');
 }
-/* 页头那几样此刻就能给出最终样子：标题、读数的占位、版式开关、过滤框和页面级 Tabs，
-   等的只有下面那块内容。React 页取回首屏后整块换掉它，键和文字同页面那一份一致，换的
-   那一下页头不跳。这里的控件不接线：骨架只在取数那一段露面。 */
-const MAKER_INDEX_KINDS=[['studios','厂牌','clapperboard'],['agencies','事务所','briefcase']];
-const INDEX_SCOPES=[['local','本地','hard-drive'],['online','在线','rss']];
-const PEOPLE_INDEX_TABS=[['performers','艺人','user'],['creators','卖家','user'],['online','在线','rss']];
-const TAG_VIEWS=[['cloud','标签云','tags'],['alphabet','字母表','text-aa']];
-/* 标签页 Tabs 下面还有一块两排的筛选玻璃（React 的 `FilterGlassRows`）：上排是类型药丸，
-   下排是读数、按首字跳转和视图切换。药丸有哪几枚、读数多少、有哪些首字都要等数据，
-   视图切换此刻就是最终那一档；块高与下边距同旧 `.board-filter-frame`，页面落地时它原地
-   换成真的那一块，下面的内容不下跳。 */
-const tagFilterSkeletonHtml=view=>`<div class="board-filter-frame" data-filter-frame>
-    <div class="tagbar" data-filter-row="top" data-skeleton-tier="pill" aria-label="标签类型"></div>
-    <div class="count" data-filter-row="bottom"><span class="mono"><span class="countskeleton"></span></span>
-      ${iconSwitchHtml('tag-view','标签视图',TAG_VIEWS,view)}</div></div>`;
-function indexPlaceholderHtml({kind,q,scope,view}){
-  const title=INDEX_TITLES[kind]||'标签',people=kind!=='tags',company=kind==='studios'||kind==='agencies';
-  const layout=peopleIndexLayout();
-  const tabs=(items,active,label)=>boardTabsHtml(items.map(([value,text,symbol])=>({value,label:text,symbol})),
-    {active,label,className:'indextabs'});
-  const switcher=people?iconSwitchHtml('people-layout',title+'索引版式',company?COMPANY_LAYOUTS:PEOPLE_LAYOUTS,layout):'';
-  return `<div class="ihead">
-      <h2 class="disp indexheading">${title}</h2>
-      ${people?'<span class="mono" id="indexCount"><span class="countskeleton"></span></span>':''}${switcher}
-      ${searchInputHtml({label:'过滤'+title,value:q||''})}
-    </div>
-    ${kind==='tags'?tabs(INDEX_SCOPES,scope,'词表'):kind==='performers'||kind==='creators'
-      ?tabs(PEOPLE_INDEX_TABS,kind==='performers'&&scope==='online'?'online':kind,'人物名册')
-      :company?tabs(MAKER_INDEX_KINDS,kind,'公司类型'):''}
-    ${kind==='tags'?tagFilterSkeletonHtml(view):''}
-    ${indexSkeletonHtml({kind,layout,mode:view})}`;
-}
-/* 屏幕上已经是同一张骨架就别重画：深链冷启动时首屏骨架先铺过一遍，innerHTML 换新节点会把
-   shimmer 从头放一遍。 */
-function showIndexSkeleton(params){
+/* 索引页与资料页铺在 `#index`：管理区正文藏起，目录网格、筛选芯片、读数与续页哨兵收掉。 */
+function showIndexContainer(){
   $('#stats').hidden=true;$('#index').hidden=false;clearCatalogGrid();hideCatalogCombo();
   $('#count').textContent='';$('#loadSentinel').hidden=true;
-  const placeholder=indexPlaceholderHtml(params);
-  if($('#index').querySelector('[data-skeleton]')?.dataset.skeleton!==skeletonKeyOf(placeholder)){
-    $('#index').innerHTML=placeholder;fitSkeleton($('#index'));
-  }
 }
 /* 回目录按标签筛选：点一枚是「只看这一枚」，按所选显示结果是照匹配方式拼几枚。 */
 function showIndexTags(tags,match){
@@ -2561,47 +2491,21 @@ function openFollowTagFromIndex(tag){
   followTags=new Set([tag]);
   $('#index').hidden=true;route(followViewPath());openFollow(false);
 }
-/* `push=true` 是从导航点进来：退出选择模式、不带过滤词，回到本地与字母表。
-   `push=false` 是地址栏已经在这一屏（刷新、前进后退、批量操作后的就地重取）：状态全从地址读。 */
-async function openIndex(kind,push=true){
-  releaseHoverPreviews();
-  document.body.classList.remove('entity-open');
-  delete $('#index').dataset.entityKind;delete $('#index').dataset.entityName;
-  const params=push?{kind,q:'',scope:'local',view:'alphabet',category:'all'}:indexRoute(kind);
-  if(push){setSelectMode(false,true);route(indexPath(params))}
-  const surface=claimSurface('/'+kind);
-  showHomeSurfaces();
-  // 必须在 showHomeSurfaces 之后加：它会清掉这两个类并恢复顶部横条，
-  // 写在前面等于自己加完自己删。
-  document.body.classList.add('index-open');syncCatalogFilterScreen();
-  disposeStage(false);
-  showIndexSkeleton(params);
-  /* 由路由树画：页内换档、存版式、退出选择、头像与去处都在 `shellActions` 里，跟着打开走的只有地址上
-     那四项与此刻的版式、选择键和配置权限。 */
-  await openManagedRoute('/'+kind,{...params,layout:peopleIndexLayout(),selectMode,
-    configurable:!!runtimeConfigurable},indexSurface(surface));
-  if(!surfaceCurrent(surface))return;
-  syncNavigation();scheduleStickySurfaces();
-}
-
-let entityRequestSeq=0,entityJavLayout=false;
 /* 资料页整页归 React，由路由树画进 `#index`（`ENTITY_ROUTES`，按 `/performers/*` 这样的模式登记）：
    资料卡、筛选浮层、新作那一行与正文是同一页，`/api/entity`、作品、照片与新作都由页面按查询键取
-   （`frontend/src/react/entity-page/`）。壳只写地址、排框架、递 props：地址栏是这一页筛选与媒体视图的
+   （`frontend/src/react/entity-page/`）。路由树的资料页元素（`frontend/src/react/router/pages/index-entity.tsx`）
+   按地址打开这一页、排框架；壳经 `shellActions.entity` 铺骨架、递 props。地址栏是这一页筛选与媒体视图的
    唯一真相源，页面改筛选调 `actions.route`，壳写好地址再经 `routeEntityPage` 把新的 `filters`／`media`
-   推回去（`updateManagedRoute`，不重挂）。页面画进资料卡那一格（`[data-entity-hero]`）；浮层、新作与
-   正文三块由壳在 `#index` 里排好，页面用 portal 画进去——浮层吸顶要它的父盒就是 `#index`，新作那一行
-   是遗留层的卡片。 */
-let entityPageHost=null,entityBodyHost=null,entityPageView='',entityPageRevision=0;
-const entityRoutePath=kind=>`/${ENTITY_ROUTES[kind]||kind}/*`;
+   推回去（`updateManagedRoute`，不重挂）。 */
+let entityPageView='',entityPageRevision=0;
 /* 画在 `#index` 里的那一页是资料页时就是它的登记项（路径加交进去的 props），否则 null。 */
 function entityPageEntry(){
   const entry=managedEntry($('#index'));
   return entry&&entry.path.endsWith('/*')&&entry.host.isConnected?entry:null;
 }
 const entityPageCurrent=()=>!!entityPageEntry();
-const entityPageLive=(kind,name)=>entityPageCurrent()&&!$('#index').hidden
-  &&$('#index').dataset.entityKind===kind&&$('#index').dataset.entityName===name;
+const entityPageLive=(kind,name)=>{const entry=entityPageEntry();
+  return !!entry&&!$('#index').hidden&&entry.props.kind===kind&&entry.props.name===name};
 function pushEntityPage(patch){if(entityPageCurrent())updateManagedRoute($('#index'),patch)}
 /* 筛选条现在服务的语境。作品详情开着时是变量里那一份（`openItem` 记下的）；`#index` 里画着资料页时
    按那一页推：种类与名字来自打开时交进去的 props，筛选是壳最近一次推过去的那一份；其余是变量
@@ -2636,13 +2540,10 @@ function routeEntityPage(kind,name,filters,media=EMPTY_ENTITY_MEDIA,{push=true}=
   /* 资料页的语境由画着的那一页推（`currentBarsContext`），变量只记首页那一份，免得停在作品详情上。 */
   writeShell({barsContext:{type:'home',filters:state}});
   if(!entityPageLive(kind,name))return false;
-  releaseHoverPreviews(entityBodyHost);
+  releaseHoverPreviews($('#index [data-entity-body]'));
   pushEntityPage({filters:{...filters},media:{...media},seed:String(state.seed||''),jav:state.jav==='1'});
   return true;
 }
-/* 名册一格的取图同索引页；卡片的助手与动作就是目录那一份，身份不变。照片墙多一样：灯箱里
-   定位本地图片的源文件。 */
-const entityCard={helpers:{...gridHelpers,personAvatar},actions:{...gridActions,revealSource:revealForIsland}};
 const entityBodyCanLoadMore=()=>!$('#index').hidden&&$('#stats').hidden;
 const entityBodySkeleton=()=>catalogSkeletonHtml();
 /* 资料页里仍由遗留层拼的 HTML 与接线：头像的 `<img>`（兜底链、人脸放大与等待微光都直接改这个
@@ -2692,10 +2593,10 @@ function entityPageActions(kind,name){
       state.seed=rollSeed();notifyShell();routeEntityPage(kind,name,{...live(),sort:'seed'});return String(state.seed)},
     setJavLayout:value=>{setJavLayout(value);pushEntityPage({javLayout:javLayout()})},
     setPhotoLayout:value=>{storePhotoLayout(value);syncPhotoWalls()},
+    /* 换成另一位：就地换名字时只换地址，路由树的资料页元素按新名字重挂、按地址打开。 */
     openEntity:(target,to,replace=false)=>{
-      if(replace){route(entityPath(target,to)+location.search,true);void openEntity(target,to,false)}
-      else void openEntity(target,to)},
-    javContext:on=>{entityJavLayout=!!on},
+      if(replace)route(entityPath(target,to)+location.search,true);
+      else openEntity(target,to)},
     painted:view=>{
       const wasPhotos=photoViewActive();entityPageView=view;
       if(photoViewActive()!==wasPhotos)syncDensityControl();
@@ -2707,16 +2608,17 @@ function entityPageActions(kind,name){
     avatarChanged:()=>dropBars(),
   };
 }
-/* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。 */
-function entityPageProps(kind,name,filters,media,hosts){
-  return {kind,name,filters,media,hosts,
+/* 卡片网格原样要的那几样与展示设置随打开带上现值，之后由各自的开关经 `updateManagedRoute` 推最新值。
+   宿主与卡片的助手由路由树的资料页元素补上。 */
+function entityPageProps(kind,name,filters,media){
+  return {kind,name,filters,media,
     jav:state.jav==='1',seed:String(state.seed||''),revision:entityPageRevision,feedRevision,
     photoSize:photoSize(),photoLayout:photoLayout(),photoLayouts:PHOTO_LAYOUTS,
     javLayout:javLayout(),javLayouts:JAV_LAYOUTS,states:VIEW_PILLS,peopleLayout:peopleIndexLayout(),
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:appSettings.seekSeconds,
     groupCollapse:appSettings.groupCollapse,wireDrag,skeletonHtml:entityBodySkeleton,
     canLoadMore:entityBodyCanLoadMore,
-    card:entityCard,helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
+    helpers:entityPageHelpers,actions:entityPageActions(kind,name)};
 }
 /* 资料页与关注页那面墙都由 React 异步画，刚推过去的这一刻 DOM 里还没有它：按视图状态判，不查墙。
    资料页的视图由页面每次画完报回来（`painted`）。剩下那一条认的是进页骨架里借照片墙网格的那一块。 */
@@ -2900,65 +2802,10 @@ function showEntityMissing(kind){
   const actions=INDEX_TITLES[index]?`<a class="geist-button primary" href="/${index}">返回${title}列表</a>`:'';
   $('#index').innerHTML=emptyState('search-x',`找不到这个${title}`,'名字可能拼错了，或者已经合并到别的名字下；回列表里重新找。',{actions});
 }
-/* 资料页的路由入口：写地址、铺骨架、交给路由树画。取数与页内状态都在页面里，打开时首屏取数把资料
-   （连同新作）、作品第一页与照片取齐，骨架与整页一次换掉。前进后退落在同一位的另一份筛选上时
-   这一页还画着，只把地址上的新筛选推过去，不重挂。 */
-async function openEntity(kind,name,push=true){
-  const filters=push?emptyEntityFilters():parseEntityFilters(location.search);
-  if(kind==='creator')filters.creator='';
-  // 深链和前进后退要能直接落到照片视图；点进来的新页面一律从作品开始。
-  const media=push?EMPTY_ENTITY_MEDIA:parseMediaView(location.search);
-  const shown=currentBarsContext();
-  if(!push&&shown.type==='entity'&&shown.kind===kind&&shown.name===name
-    &&routeEntityPage(kind,name,filters,media,{push:false})){
-    applyFilterStateInPlace(filters);refreshFacetCounts(currentBarsContext());return;
-  }
-  releaseHoverPreviews();
-  const expectedPath=entityPath(kind,name);
-  const search=entityViewSearch(filters,media);
-  if(push)route(expectedPath+(search?'?'+search:''));
-  writeShell({barsContext:{type:'home',filters:state}});
-  showHomeSurfaces();
-  disposeStage(false);
-  document.body.classList.add('entity-open');syncCatalogFilterScreen();
-  $('#stats').hidden=true;$('#index').hidden=false;clearCatalogGrid();hideCatalogCombo();
-  $('#count').textContent='';$('#loadSentinel').hidden=true;
-  const seq=++entityRequestSeq;
-  /* 名单启动时就在取；深链直接落在资料页时它可能还在路上，稍等一下再画骨架，画出来
-     就是最终的形状。等不到就先画，名单到了再补那两块。 */
-  if(!entityShapes){
-    await waitEntityShapes();
-    if(seq!==entityRequestSeq)return;
-  }
-  showEntityLoading(kind,name);
-  writeShell({detailReturnBarsContext:null});
-  entityJavLayout=false;entityPageView='';
-  // 名单每进一页重取一遍，下一页用的就是服务端的现状。
-  void loadEntityShapes().then(()=>{if(seq===entityRequestSeq)syncEntitySkeletonParts(kind,name)});
-  /* 卡外面依次是交集条与玻璃浮层、新作和正文，顶到底一条线。四块宿主先在文档外排好，首屏取齐
-     那一刻才换掉骨架（`place`）：换掉与画出整页落在同一个任务里。资料卡、浮层与正文各带一层
-     `.peach-react`（React 子树的样式范围）；新作那一行是遗留层的卡片，宿主不进这个范围。 */
-  const frame=document.createElement('template');
-  frame.innerHTML=`<div data-entity-hero><div class="peach-react"></div></div>
-    <div data-entity-filter><div class="peach-react"></div></div>
-    <section class="feednew" data-feed-new aria-label="未入库的新作" hidden></section>
-    <div data-entity-body><div class="peach-react"></div></div>`;
-  const parts=[...frame.content.childNodes];
-  const heroHost=frame.content.querySelector('[data-entity-hero]');
-  const hosts={filter:frame.content.querySelector('[data-entity-filter]>.peach-react'),
-    feed:frame.content.querySelector('[data-feed-new]'),
-    body:frame.content.querySelector('[data-entity-body]>.peach-react')};
-  entityPageHost=heroHost;entityBodyHost=hosts.body.parentElement;
-  const isCurrent=()=>seq===entityRequestSeq&&
-    decodeURIComponent(location.pathname)===decodeURIComponent(expectedPath);
-  const painted=await openManagedRoute(entityRoutePath(kind),entityPageProps(kind,name,filters,media,hosts),
-    {container:$('#index'),isCurrent,
-      place:container=>{container.replaceChildren(...parts);return heroHost.firstElementChild}});
-  if(!painted||!isCurrent()||!entityPageCurrent())return;
-  $('#index').dataset.entityKind=kind;$('#index').dataset.entityName=name;
-  buildBars();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+/* 点进一位：认领写地址，再要路由树按地址从头打开（点开的正是画着的那一位时元素不重挂，也要整页重开）。
+   点进来的新页面一律从作品、空筛选开始，不读用户的默认排序；深链和前进后退按地址上的筛选与视图打开。 */
+let freshEntityPath='';
+function openEntity(kind,name){const path=entityPath(kind,name);freshEntityPath=path;openRoutedPage(path)}
 
 /* 关注页与关注详情的侧栏。标签计数由调用方给：列表是岛那一版可见条目的（`loaded`），详情是这一条
    自己的（`present`）。来源与时长只有列表给：来源按全库列，时长看库里有没有读数；详情只铺标签。
@@ -3254,15 +3101,12 @@ async function reloadAfterWrite(){
    实体资料页、索引页和管理区各有自己的取数路径，`loadCatalog()` 只会重建首页网格，
    于是在女优页选一批进回收站后会被莫名其妙地扔回首页。 */
 async function reloadCurrentSurface(){
-  const index=$('#index');
-  const kind=index?.dataset.entityKind,name=index?.dataset.entityName;
-  if(kind&&name&&!index.hidden){
-    // 换一个代次，岛按地址上的筛选重取作品；照片与名册不受批量操作影响。还没挂上就照地址重开。
-    if(entityPageLive(kind,name))pushEntityPage({revision:++entityPageRevision});
-    else await openEntity(kind,name,false);
-    return;
-  }
-  const hit=routeMeta(decodeURIComponent(location.pathname));
+  // 资料页换一个代次，岛按地址上的筛选重取作品；照片与名册不受批量操作影响。
+  if(entityPageCurrent()&&!$('#index').hidden){pushEntityPage({revision:++entityPageRevision});return}
+  const path=decodeURIComponent(location.pathname);
+  // 路由树按匹配打开的索引页与还没画上的资料页：要路由树按地址从头重开。
+  if(routeMetaOf(path)?.reload==='reopen'){writeShell({pageOpens:pageOpens+1});return}
+  const hit=routeMeta(path);
   if(hit?.route.reload){await hit.route.reload();return}
   await loadCatalog();
 }
@@ -3469,7 +3313,7 @@ function repaintCatalogGrid(){
     pushGridPage({layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
   }
   if(!entityPageCurrent())return;
-  releaseHoverPreviews(entityPageHost);
+  releaseHoverPreviews($('#index [data-entity-hero]'));
   pushEntityPage({layout:catalogGridLayout(),seekSeconds:appSettings.seekSeconds});
 }
 function catalogGridProps(){
@@ -4001,6 +3845,8 @@ function immerseStartId(){
 
 /* `origin` 由 `startRouting` 给：启动那一次是 'boot'，后退前进是 'history'；壳自己写完地址再调时不给。 */
 async function restoreRoute(origin){
+  // 路由树里按匹配打开的页面等这一下才开始打开：壳的状态到这时才齐。
+  if(origin==='boot')writeShell({pageOpens:1});
   surfaceEpoch++;
   barsRequestSeq++;
   syncPageTitle(location.href);
@@ -4021,6 +3867,8 @@ async function restoreRoute(origin){
   const hit=matchRoute(ROUTES,path);
   try{
     if(hit)await hit.route.open(hit.params,false);
+    /* 索引页与资料页由路由树按匹配打开：后退前进与启动时元素自己开；壳直接调来重开当前地址时要它从头再开。 */
+    else if(routeMetaOf(path)?.reload==='reopen'){if(!origin)writeShell({pageOpens:pageOpens+1})}
     else{showHomeSurfaces();disposeStage(false)}
   }finally{lastRoutePath=path}
 }
@@ -4057,7 +3905,7 @@ const shellActions={
     saveSettings();
   },
   srcBadge:(location,cost)=>srcBadge(location,cost),
-  /* 索引页：同一页换 search 由壳认领、不重挂；后退前进到另一份 search 时 `restoreRoute` 照旧重开。 */
+  /* 索引页：同一页换 search 由壳认领、不重挂；后退前进到另一份 search 时路由树的索引元素按地址重开。 */
   routeIndex:(next,{replace=false}={})=>route(indexPath(next),replace),
   savePeopleLayout:({layout})=>{appSettings.peopleLayout=layout;saveSettings()},
   exitSelectMode:()=>setSelectMode(false,false),
@@ -4070,14 +3918,53 @@ const shellActions={
   canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!reduceMotion(),
   /* 页面元素挂上、开始取数之前报一次：收起上一页留下的面，再铺开这一页那一侧。 */
   surfaceChanged:(kind,path)=>{
+    /* 索引页与资料页画进 `#index`。`showHomeSurfaces` 会清掉 `index-open`／`entity-open` 并恢复顶部横条，
+       这两个类要在它之后加。资料页的语境由画着的那一页推（`currentBarsContext`），变量只记首页那一份。 */
+    if(kind==='entity'){
+      releaseHoverPreviews();writeShell({barsContext:{type:'home',filters:state}});showHomeSurfaces();
+      document.body.classList.add('entity-open');syncCatalogFilterScreen();showIndexContainer();return;
+    }
+    if(kind==='index'){
+      releaseHoverPreviews();document.body.classList.remove('entity-open');claimSurface(path);showHomeSurfaces();
+      document.body.classList.add('index-open');syncCatalogFilterScreen();showIndexContainer();return;
+    }
     releaseHoverPreviews();claimSurface(path);
-    if(kind==='index'||kind==='entity'||kind==='catalog'){showHomeSurfaces();return}
+    if(kind==='catalog'){showHomeSurfaces();return}
     enterManagementSurface();showManagementBody({manage:kind==='management'});
   },
   clearSearch:()=>clearSearchField(),
   openImmerse:id=>void openTok(id,false),
   closeStage:()=>disposeStage(false),
   grid:{helpers:gridHelpers,actions:gridActions},
+
+  // 索引页与资料页的元素用。
+  configurable:()=>!!runtimeConfigurable,
+  /* 整页画上之后：索引页重读侧栏按下态、重排吸顶；资料页重拉侧栏与顶部横条。 */
+  surfaceShown:kind=>{if(kind==='index'){syncNavigation();scheduleStickySurfaces()}else buildBars()},
+  entity:{
+    /* 名单启动时就在取；深链直接落在资料页时它可能还在路上，稍等一下再画骨架，画出来就是最终的形状。等不到
+       就先画，名单到了再补那两块。名单每进一页重取一遍，下一页用的就是服务端的现状。 */
+    loading:async(kind,name,current)=>{
+      if(!entityShapes){await waitEntityShapes();if(!current())return}
+      showEntityLoading(kind,name);
+      writeShell({detailReturnBarsContext:null});entityPageView='';
+      void loadEntityShapes().then(()=>{if(current())syncEntitySkeletonParts(kind,name)});
+    },
+    props:(kind,name,search)=>{
+      const fresh=freshEntityPath===entityPath(kind,name)&&!search;freshEntityPath='';
+      const filters=fresh?emptyEntityFilters():parseEntityFilters(search);
+      if(kind==='creator')filters.creator='';
+      return entityPageProps(kind,name,filters,fresh?EMPTY_ENTITY_MEDIA:parseMediaView(search));
+    },
+    /* 后退前进落在同一位的另一份筛选上：这一页还画着就只把地址上的新筛选推过去。 */
+    refresh:(kind,name,search)=>{
+      const filters=parseEntityFilters(search);if(kind==='creator')filters.creator='';
+      const shown=currentBarsContext();
+      if(shown.type!=='entity'||shown.kind!==kind||shown.name!==name)return false;
+      if(!routeEntityPage(kind,name,filters,parseMediaView(search),{push:false}))return false;
+      applyFilterStateInPlace(filters);refreshFacetCounts(currentBarsContext());return true;
+    },
+  },
 };
 loadRouter(shellActions).catch(error=>console.error('客户端导航装载失败',error));
 mountManageHeader();

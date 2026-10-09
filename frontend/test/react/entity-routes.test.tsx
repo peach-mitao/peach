@@ -1,7 +1,9 @@
-/* 资料页由路由树画进 `#index`（`ENTITY_ROUTES`，按 `/performers/*` 这样的模式登记）：框架由壳排、经
+/* 资料页由路由树画进 `#index`（`ENTITY_ROUTES`，按 `/performers/*` 这样的模式登记）：框架由资料页元素排、经
  * `place` 在首屏取齐那一刻换进容器，骨架与整页落在同一批变化里；壳之后的开关经 `updateManagedRoute`
  * 合进去，页面按新键重取、不重挂；名字带斜杠、百分号、空格或日文时，地址两种写法读出来的名字、标题、
- * 链接与首屏请求都对得上；资料页的路径不交给 React Router。
+ * 链接与首屏请求都对得上；页内跳到资料页交壳写地址，不经 React Router 的 `navigate`。
+ *
+ * 元素什么时候打开、怎么从地址解出这一位由 `pages/index-entity.test.tsx` 管。
  *
  * 页内取数、写操作与各块怎么画由 `entity-page.test.tsx` 与各块自己的用例管，这里看的是路由树这一层。 */
 import { act } from 'react';
@@ -9,10 +11,10 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 
 // 用正式模块：链接怎么拼、地址段对哪一类实体，与浏览器里那一份是同一份。
-import { ROUTE_ENTITIES, entityPath } from '../../src/core';
-// @ts-expect-error 用壳的正式路由匹配：地址读出哪个名字、标题写什么，都由它定。
-import { matchRoute, routeLabel } from '../../../web/js/routes.js';
+import { entityPath } from '../../src/core';
+import { routeMetaOf } from '../../src/history/route-meta';
 import type { EntityPageProps } from '../../src/react/entity-page/entity-page';
+import { entityTarget } from '../../src/react/router/pages/index-entity';
 import type { ShellActions } from '../../src/react/router/shell-actions';
 
 // 首次导入会编译路由表带进来的整棵页面子树，编译等待使用独立的有限窗口；之后每条用例重新装载只重跑模块。
@@ -103,7 +105,7 @@ function indexSurface() {
   return { index, skeleton: index.firstElementChild! };
 }
 
-/** 壳排的四块框架（`openEntity`），连同交给 `openManagedRoute` 的 `place`。 */
+/** 资料页元素排的四块框架（`pages/index-entity.tsx` 的 `openEntity`），连同交给 `openManagedRoute` 的 `place`。 */
 function entityFrame() {
   const frame = document.createElement('template');
   frame.innerHTML = `<div data-entity-hero><div class="peach-react"></div></div>
@@ -167,7 +169,7 @@ async function until(ok: () => boolean, what: string): Promise<void> {
 const NAME = '篠田ゆう';
 const heroPainted = (index: Element) => index.querySelector('[data-entity-hero] > .peach-react > *');
 
-it('冷启动深链资料页：骨架留到首屏取齐，壳排的框架与整页在同一批变化里换上', async () => {
+it('冷启动深链资料页：骨架留到首屏取齐，元素排的框架与整页在同一批变化里换上', async () => {
   const r = await load(entityPath('performer', NAME));
   const { index, skeleton } = indexSurface();
   await mount(r);
@@ -187,7 +189,7 @@ it('冷启动深链资料页：骨架留到首屏取齐，壳排的框架与整�
   expect(batches[0], '骨架撤下的那一批变化里资料卡已经画好').toEqual({ skeleton: false, painted: true });
   expect([...index.children].map((el) => el.getAttribute('data-entity-hero') ?? el.getAttribute('data-entity-filter')
     ?? el.getAttribute('data-feed-new') ?? el.getAttribute('data-entity-body'))).toEqual(['', '', '', '']);
-  expect(hosts.filter.childElementCount, '浮层经 portal 画进壳排的那一块').toBeGreaterThan(0);
+  expect(hosts.filter.childElementCount, '浮层经 portal 画进元素排的那一块').toBeGreaterThan(0);
   expect(hosts.body.querySelectorAll('[data-media-card]')).toHaveLength(2);
   expect(r.managedEntry(index)).toMatchObject({ path: '/performers/*', host: index.querySelector('[data-entity-hero] > .peach-react') });
   act(() => { r.releaseManagedRoute(index) });
@@ -221,12 +223,9 @@ it('资料页就地更新：换筛选只重取作品、换版式一次都不取�
   expect(r.managedEntry(index)?.props).toMatchObject({ kind: 'performer', name: NAME, filters: { tag: '巨乳' } });
 });
 
-/* 女优名字里有斜杠，所以地址吃掉剩下全部段；壳先 `decodeURIComponent` 再匹配。链接按
+/* 女优名字里有斜杠，所以地址吃掉剩下全部段；元素先 `decodeURIComponent` 再按段切。链接按
    `encodeURIComponent` 拼（斜杠写成 `%2F`），手敲或别处来的地址可能把斜杠原样留着（`encodeURI`），
-   两种都要读出同一个名字。 */
-const ENTITY_TABLE = Object.entries(ROUTE_ENTITIES).map(([segment, kind]) => ({
-  match: `/${segment}/:name*`, title: (params: { name: string }) => params.name, kind,
-}));
+   两种都要读出同一个名字。标题按解码后的路径查路由元数据。 */
 const NAMES = ['A/B', '100%', 'Mia Nix', '三上悠亜', 'ラ/ブ 50%'];
 
 it('名字带斜杠、百分号、空格与日文：两种写法读出同一个名字，标题、链接与首屏请求都是它', async () => {
@@ -234,18 +233,17 @@ it('名字带斜杠、百分号、空格与日文：两种写法读出同一个�
     const href = entityPath('performer', name);
     expect(href).toBe(`/performers/${encodeURIComponent(name)}`);
     for (const written of [href, `/performers/${encodeURI(name)}`]) {
-      const path = decodeURIComponent(written);
-      const hit = matchRoute(ENTITY_TABLE, path);
-      expect(hit?.params.name, `${written} 读出的名字`).toBe(name);
-      expect(hit?.route.kind).toBe('performer');
-      expect(routeLabel(ENTITY_TABLE, path), `${written} 的标题`).toBe(name);
+      const hit = entityTarget(written);
+      expect(hit?.name, `${written} 读出的名字`).toBe(name);
+      expect(hit?.kind).toBe('performer');
+      expect(routeMetaOf(decodeURIComponent(written))?.title, `${written} 的标题`).toBe(name);
       const r = await load(written);
       const { index } = indexSurface();
       await mount(r);
       const fetch = entityFetch();
       const { hosts, place } = entityFrame();
       await act(async () => {
-        await r.openManagedRoute('/performers/*', entityProps(hit!.params.name, hosts), { container: index, isCurrent: () => true, place });
+        await r.openManagedRoute('/performers/*', entityProps(hit!.name, hosts), { container: index, isCurrent: () => true, place });
       });
       expect(fetch.calls('/api/entity')[0]?.searchParams.get('name'), `${written} 的首屏请求`).toBe(name);
       expect(r.managedEntry(index)?.props).toMatchObject({ kind: 'performer', name });
@@ -255,7 +253,7 @@ it('名字带斜杠、百分号、空格与日文：两种写法读出同一个�
   }
 });
 
-it('资料页的路径不走 React Router：同页换 search、换一位与两种写法都交壳', async () => {
+it('资料页的路径不经 React Router 的 navigate：同页换 search、换一位与两种写法都交壳写地址', async () => {
   const r = await load('/');
   const actions = shellActions();
   const navigate = vi.fn();

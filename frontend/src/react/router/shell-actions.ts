@@ -8,6 +8,7 @@
 import type { LibraryProcessingProps } from '../bundle';
 import type { CatalogFilterProps } from '../catalog-filter/catalog-filter';
 import type { CatalogGridProps, MediaCardActions, MediaCardHelpers } from '../catalog-grid/types';
+import type { EntityPageProps } from '../entity-page/entity-page';
 import type { FeedNewProps } from '../feed-new/feed-new';
 import type { OnlineAuthor } from '../follow/online-vocab';
 import type { FollowFeedProps } from '../follow-feed/follow-feed';
@@ -83,6 +84,29 @@ export interface ShellActions {
   closeStage(): void;
   /** 目录网格卡片的助手与动作：壳里各一份、身份不变（卡片按引用比较），资料页作品区与目录共用。 */
   readonly grid: { helpers: MediaCardHelpers; actions: MediaCardActions };
+
+  // ── 索引页与资料页的元素用（`pages/index-entity.tsx`）：取的都是只有壳才有的状态 ──
+  /** 本机能不能改配置：壳启动时探过一次的那个值，索引页交给页面。 */
+  configurable?(): boolean;
+  /** 元素打开的那一页首屏画上之后报一次：索引页让壳同步侧栏与顶栏、排吸顶；资料页让壳按这一页的语境重画顶部
+   *  三层。 */
+  surfaceShown?(kind: 'index' | 'entity', path: string): void;
+  /** 资料页那几样仍在壳里的东西。 */
+  readonly entity?: EntityPageShell;
+}
+
+/** 资料页元素打开时回到壳的那几步。骨架里可有可无的几块按形状名单画，名单、目录卡片的比例与新作骨架都在壳里；
+ *  筛选按地址解出要用壳的排序偏好；就地推要动壳的顶部三层与侧栏。 */
+export interface EntityPageShell {
+  /** 铺进页骨架：形状名单还在路上时先等它一下，`current` 回 false 就不铺了；铺完重取一遍名单，回来时补齐骨架
+   *  里那几块。 */
+  loading(kind: string, name: string, current: () => boolean): Promise<void>;
+  /** 这一次打开交给页面的 props：筛选与视图按地址上的查询串解出（从别处点进来的那一次一律从头），展示设置、
+   *  助手与写操作都是壳的那一份。卡片与宿主由元素补上。 */
+  props(kind: string, name: string, search: string): Omit<EntityPageProps, 'card' | 'hosts'>;
+  /** 后退前进落在画着的同一位的另一份地址上：把地址上的筛选与视图推给画着的那一页，顶部三层与侧栏跟着就地改。
+   *  这一页没画着时回 false，由元素整页重开。 */
+  refresh(kind: string, name: string, search: string): boolean;
 }
 
 /** 页面组里一页的种类，壳按它决定铺哪一侧（`surfaceChanged`）。 */

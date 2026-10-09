@@ -74,6 +74,13 @@ export let followDetailReturnPath = '/follow';
 /** 配置页下一次打开要选中的那一组页签名，选中之后清空。 */
 export let configurationRequestedSection = '';
 
+/** 壳要路由树按地址打开页面的次数。启动派发那一次记 1：在那之前来源、设置与形状名单还没读完，路由树里按匹配
+ *  挂上的页面元素只挂着、不打开。之后壳每要求一次「按当前地址把这一页从头重开」（批量写回之后、设置变了要重取、
+ *  点开的正是画着的那一位）就加一。后退前进与跨页由开次代次（`@peach/history` 的 `openEpoch`）管，不经这里。 */
+export let pageOpens = 0;
+/** 资料页按第一页作品推出来的 JAV 语境（壳的 `javActive` 读）：页面推上来，资料页每打开一次先清掉。 */
+export let entityJavLayout = false;
+
 /** `writeShell` 能整体换掉的那几项。两个选择集是常驻实例，不在其中。 */
 export interface ShellFields {
   state: CatalogFilters | undefined;
@@ -92,6 +99,8 @@ export interface ShellFields {
   presentedItem: PresentedItem | null;
   followDetailReturnPath: string;
   configurationRequestedSection: string;
+  pageOpens: number;
+  entityJavLayout: boolean;
 }
 
 type Listener = () => void;
@@ -117,6 +126,8 @@ export function writeShell(patch: Partial<ShellFields>): void {
   if (has('presentedItem')) presentedItem = patch.presentedItem!;
   if (has('followDetailReturnPath')) followDetailReturnPath = patch.followDetailReturnPath!;
   if (has('configurationRequestedSection')) configurationRequestedSection = patch.configurationRequestedSection!;
+  if (has('pageOpens')) pageOpens = patch.pageOpens!;
+  if (has('entityJavLayout')) entityJavLayout = patch.entityJavLayout!;
   notifyShell();
 }
 

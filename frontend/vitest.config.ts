@@ -27,6 +27,7 @@ export default mergeConfig(base, defineConfig({
       '@peach/appearance': source('appearance/index.ts'),
       '@peach/query': source('query/index.ts'),
       '@peach/history': source('history/index.ts'),
+      '@peach/shell': source('shell/index.ts'),
       '@/registry': source('react/evilcharts/registry'),
       '@/lib/utils': source('react/charts/cn.ts'),
       '@': source('react/boardui'),

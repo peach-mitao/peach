@@ -7,13 +7,19 @@
  *
  * 字段同壳的 `ROUTES` 表：`title` 是 document.title 用的标签；`nav` 是侧栏 `data-nav` 的键；`section` 是管理区
  * 身份，同一身份按登记顺序取第一条作入口（数据管理排在重复文件与来源和凭证前面）；`refresh` 是列表栏
- * 「换一批」在这一页的行为，`reopen` 重开自己、`skip` 不参与，不写则回统计页。 */
+ * 「换一批」在这一页的行为，`reopen` 重开自己、`skip` 不参与，不写则回统计页；`reload` 是批量写回之后的就地
+ * 重取，`reopen` 让这一页按当前地址从头重开（索引页与资料页）。
+ *
+ * 资料页按模式登记（`/performers/*`，同 `ENTITY_ROUTES`），标题是地址上的名字。`routeMetaOf` 先查精确路径，
+ * 没有再按去掉空段之后的各段找：只剩一段查那一段的精确路径（`/performers/`），多于一段按第一段找模式，名字是
+ * 剩下各段连起来的那一串（读者交进来的是解码过的路径），同壳的 `matchPath`。 */
 
 export interface RouteMeta {
   readonly title?: string;
   readonly nav?: string;
   readonly section?: string;
   readonly refresh?: 'reopen' | 'skip';
+  readonly reload?: 'reopen';
 }
 
 export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
@@ -28,7 +34,24 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   '/configuration': { section: 'configuration', title: '配置', refresh: 'reopen' },
   '/activity': { section: 'activity', title: '活动', refresh: 'reopen' },
   '/diagnostics': { section: 'configuration', title: '系统诊断', refresh: 'reopen' },
+  '/performers': { nav: 'performers', title: '艺人', reload: 'reopen' },
+  '/creators': { title: '卖家', reload: 'reopen' },
+  '/studios': { nav: 'studios', title: '厂牌', reload: 'reopen' },
+  '/agencies': { title: '事务所', reload: 'reopen' },
+  '/tags': { nav: 'tags', title: '标签', reload: 'reopen' },
+  '/performers/*': { reload: 'reopen' },
+  '/studios/*': { reload: 'reopen' },
+  '/creators/*': { reload: 'reopen' },
+  '/series/*': { reload: 'reopen' },
+  '/agencies/*': { reload: 'reopen' },
 };
 
 /** 这条路径在路由树一侧登记的元数据；没登记是 `null`，由壳回落到自己的表。 */
-export const routeMetaOf = (path: string): RouteMeta | null => (Object.hasOwn(ROUTE_META, path) ? ROUTE_META[path]! : null);
+export function routeMetaOf(path: string): RouteMeta | null {
+  if (Object.hasOwn(ROUTE_META, path)) return ROUTE_META[path]!;
+  const [segment, ...rest] = path.split('/').filter(Boolean);
+  if (!segment) return null;
+  if (!rest.length) return Object.hasOwn(ROUTE_META, `/${segment}`) ? ROUTE_META[`/${segment}`]! : null;
+  const pattern = `/${segment}/*`;
+  return Object.hasOwn(ROUTE_META, pattern) ? { ...ROUTE_META[pattern], title: rest.join('/') } : null;
+}

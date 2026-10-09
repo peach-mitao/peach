@@ -63,6 +63,7 @@ import { prefetchStats } from '../stats/stats';
 import { StatsPage } from '../stats/stats-page';
 import { DEFAULT_WINDOW, prefetchTaste } from '../taste/taste';
 import { TastePage } from '../taste/taste-page';
+import { EntityMatch, IndexMatch } from './pages/index-entity';
 import type {
   BrowseOpenProps, BrowseRoutePath, CatalogOpenProps, CatalogPagePath, EntityRoutePath, IndexOpenProps,
   IndexOpenPropsTable, IndexRoutePath, ManagedOpenProps, ManagedPath, ResidentName, ResidentOpenProps, ShellActions,
@@ -72,6 +73,8 @@ import type {
 interface ManagedRoute<P> {
   prefetch(open: P, signal: AbortSignal): Promise<void>;
   page(open: P, actions: ShellActions, go: (path: string) => void): ReactElement;
+  /** 页面组里这条路由的元素：按地址打开这一页（`pages/`）。没有的那几页仍由壳打开。 */
+  element?: ReactElement;
 }
 
 type ManagedRouteTable = { [Path in ManagedPath]: ManagedRoute<ManagedOpenProps[Path]> };
@@ -199,9 +202,10 @@ export const BROWSE_ROUTES: BrowseRouteTable = {
 };
 const isBrowsePath = (path: string): path is BrowseRoutePath => Object.hasOwn(BROWSE_ROUTES, path);
 
-/* 索引页：地址栏上的四项由壳从地址读出、跟着这一次打开交进来；页内换档经 `routeIndex` 由壳写地址并认领，
-   不重挂（后退前进到同一页的另一份 search 时，壳照旧按地址重开一次）。首屏只取第一页。 */
+/* 索引页：地址栏上的四项由元素从地址读出、跟着这一次打开交进来；页内换档经 `routeIndex` 由壳写地址并认领，
+   不重挂（后退前进到同一页的另一份 search 时领新的开次代次，元素按地址重开一次）。首屏只取第一页。 */
 const indexRoute: ManagedRoute<IndexOpenProps> = {
+  element: <IndexMatch />,
   prefetch: (open, signal) => prefetchIndex(open, signal),
   page: (open, actions) => (
     <IndexPage {...open} route={actions.routeIndex} savePreference={actions.savePeopleLayout}
@@ -214,12 +218,13 @@ export const INDEX_ROUTES: IndexRouteTable = {
   '/performers': indexRoute, '/creators': indexRoute, '/studios': indexRoute, '/agencies': indexRoute, '/tags': indexRoute,
 };
 
-/* 资料页：资料卡、筛选浮层、新作那一行与正文是同一页的四块。框架由壳排好（`openManagedRoute` 的
+/* 资料页：资料卡、筛选浮层、新作那一行与正文是同一页的四块。框架由元素排好（`openManagedRoute` 的
    `place`），页面画进资料卡那一格，再经 portal 画进另外三块。首屏把资料（连同新作与头几张封面）、
    作品第一页与照片取齐再画；换头像的候选不在首屏里，资料页每进一次就打一遍图库的话，多数时候没人
    点开它。壳交进来的筛选、视图与展示设置之后经 `updateManagedRoute` 推进来，页面按新键重取、不重挂。卡片与
    遗留层拼的 HTML（头像、新作那一行、源文件键）都是壳的那一份，跟着打开走。 */
 const entityRoute: ManagedRoute<EntityPageProps> = {
+  element: <EntityMatch />,
   prefetch: (open) => prefetchEntityPage(open),
   page: (open) => <EntityPage {...open} />,
 };
