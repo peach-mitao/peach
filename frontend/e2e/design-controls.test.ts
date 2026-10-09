@@ -504,6 +504,9 @@ describe('设计决定：控件、状态与首页顶部', () => {
         assert.ok(firstSpread[index] > before[index], `首枚悬停时第 ${index + 1} 枚没有向标题方向展开`);
       }
 
+      /* 第三枚要从静止位置指上去：首枚悬停时它被推开 20px，直接移过去，它让回原位后指针会落到右邻上。 */
+      await opened.page.mouse.move(0, 0);
+      await waitForAvatarMotion();
       await avatars.nth(2).hover();
       await waitForAvatarMotion();
       const after = await avatars.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().x));
