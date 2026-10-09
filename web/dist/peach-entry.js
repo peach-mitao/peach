@@ -929,10 +929,10 @@ function bt(e = "正在读取内容", { className: t = "", variant: n = "panel",
 		"panel",
 		"cards",
 		"dashboard"
-	])).has(n) ? n : "panel", l = c === "cards" ? Array.from({ length: Math.max(1, r) }, () => "<span class=\"skeletoncard\"><i></i><s></s><b></b><em></em><u></u></span>").join("") : c === "dashboard" ? `<span class="skeletondashstrip">${Array.from({ length: 4 }, () => "<span><i></i><b></b><em></em></span>").join("")}</span>
-        <span class="skeletondashhero"><i></i><b></b></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>` : "<span class=\"skeleton\" style=\"width:38%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:72%\"></span>";
+	])).has(n) ? n : "panel", l = c === "cards" ? Array.from({ length: Math.max(1, r) }, () => "<span class=\"skeletoncard\"><i></i><s></s><b></b><em></em><u></u></span>").join("") : c === "dashboard" ? `<span class="ui-skeletondashstrip">${Array.from({ length: 4 }, () => "<span><i></i><b></b><em></em></span>").join("")}</span>
+        <span class="ui-skeletondashhero"><i></i><b></b></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>` : "<span class=\"skeleton\" style=\"width:38%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:100%\"></span>\n      <span class=\"skeleton\" style=\"width:72%\"></span>";
 	return `<div class="skeletonpanel skeleton-${c}${t ? ` ${m(t)}` : ""}"
     data-skeleton="${m(c)}${t ? `/${m(t)}` : ""}"${c === "cards" && i ? " data-fill=\"\"" : ""}
     role="status" aria-label="${m(e)}"><span class="sr-only">${m(e)}</span>
@@ -1276,7 +1276,7 @@ var qt = [
 	".ui-geist-scroller-container",
 	".metricstrip",
 	".ui-tastesummaries",
-	".skeletondashstrip",
+	".ui-skeletondashstrip",
 	".followpagination",
 	".reviewtabs",
 	".ftablewrap",

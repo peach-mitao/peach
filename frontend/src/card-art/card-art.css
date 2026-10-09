@@ -1,0 +1,8 @@
+/* `framing.ts` 收尾那一下：图到手后框上的微光淡出并糊掉，淡完转 `visibility:hidden` 不再占合成层。
+   等图那一段（`.imgwait`，晚 180ms 淡入）在 web/css/09-skeleton.css，`@starting-style` 也在那里。 */
+.ui-imgdone::after{content:'';position:absolute;inset:0;right:-200%;z-index:5;
+  pointer-events:none;border-radius:inherit;
+  background:linear-gradient(to right,var(--hover),var(--skeleton-sheen) 50%,var(--hover)) 0 0/50% 100%,
+    var(--ground);
+  opacity:0;filter:blur(2px);visibility:hidden;
+  transition:opacity var(--motion-reveal),filter var(--motion-reveal),visibility 0s var(--motion-reveal)}

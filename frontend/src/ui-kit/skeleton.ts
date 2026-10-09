@@ -48,11 +48,11 @@ export function skeletonHtml(label='正在读取内容',{className='',variant='p
     :kind==='dashboard'
       /* 指标带是统计与口味两页真正的第一屏内容，四格的位置和高度都是定死的。
          骨架从大区开始画，等数据到货再从上面挤进一条 96px 的带子，整页往下跳一次。 */
-      ?`<span class="skeletondashstrip">${Array.from({length:4},
+      ?`<span class="ui-skeletondashstrip">${Array.from({length:4},
           ()=>`<span><i></i><b></b><em></em></span>`).join('')}</span>
-        <span class="skeletondashhero"><i></i><b></b></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>
-        <span class="skeletondashpanel"><i></i><b></b><em></em></span>`
+        <span class="ui-skeletondashhero"><i></i><b></b></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>
+        <span class="ui-skeletondashpanel"><i></i><b></b><em></em></span>`
     :`<span class="skeleton" style="width:38%"></span>
       <span class="skeleton" style="width:100%"></span>
       <span class="skeleton" style="width:100%"></span>

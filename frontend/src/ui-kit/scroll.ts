@@ -285,7 +285,7 @@ const OVERLAY_SCROLLERS=[
   '[data-stage-side-content]','[data-stage-scroll]','.tagpickbody','[data-mix-list]','.playlistpicklist',
   '[data-player-stats]',
   '.vjs-peach-settings-menu','.ui-geist-scroller-container','.metricstrip','.ui-tastesummaries',
-  '.skeletondashstrip','.followpagination',
+  '.ui-skeletondashstrip','.followpagination',
   '.reviewtabs','.ftablewrap','.board-local-nav','[data-manage-menu]',
   '.follow-workspace-switch','.fmanagenav','[role="listbox"]',
 ].join(',');

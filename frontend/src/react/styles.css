@@ -47,6 +47,8 @@
 @import "../ui-kit/skeleton.css";
 @import "../entity-skeleton.css";
 @import "../ui-kit/collapse.css";
+@import "../card-art/card-art.css";
+@import "../configuration-skeleton.css";
 
 @source "./";
 /* 独立页面包（`pages/`）有自己的产物 `peach-pages.css`，它用到的工具类不进这一份。 */

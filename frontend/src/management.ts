@@ -44,9 +44,9 @@ export function repairCardSkeletonHtml(): string {
 /** 首屏复用读数卡、三张任务卡、链接管理与资源同步的最终容器；静态标题、正文和键立即呈现。 */
 export function cleanupSkeletonHtml(): string {
   const stats = [['人工复核', 'square-check-big'], ['高清版', 'sparkles'], ['重复文件', 'file-stack'], ['垃圾文件', 'file-archive'], ['回收站', 'trash']];
-  const presets = `<span class="geist-button organize-preset-skeleton">${bar}</span>`.repeat(3);
+  const presets = `<span class="geist-button ui-organize-preset-skeleton">${bar}</span>`.repeat(3);
   const organizeField = (label: string) => `<div class="ui-organizefield"><span>${label}</span>
-            <span class="geist-input organize-input-skeleton">${bar}</span></div>`;
+            <span class="geist-input ui-organize-input-skeleton">${bar}</span></div>`;
   return `<div class="ui-cleanuppage" data-skeleton="cleanup" aria-busy="true" aria-label="正在读取数据管理状态">
     <div class="cleanupstats">${stats.map(([title, glyph]) => `
       <button type="button" class="board-plain-stat" disabled>
