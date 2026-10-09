@@ -180,8 +180,9 @@ export interface BrowseOpenProps {
 
 export type BrowseRoutePath = keyof BrowseOpenProps;
 
-/** 目录网格与垃圾队列画进 `#grid`，同样不算管理区：进目录要由壳按地址重建筛选（`openCatalog`，进首页
- *  还要重掷种子、作废顶部三层的缓存），回收站要把筛选钉成 `trash`，这些只有壳做得到。表按页面分键，不按
+/** 目录网格与垃圾队列画进 `#grid`，同样不算管理区：目录元素（`pages/catalog.tsx`）按地址把筛选写进壳的
+ *  `state`，进首页还要重掷种子，回收站把筛选钉成 `trash`；作废顶部三层的缓存、摆搜索框与取数经
+ *  `ShellActions.catalog` 回到壳。表按页面分键，不按
  *  地址：目录各路径与回收站画的都是 `/` 这一页，网格在 `/trash` 打开之后去 `/` 是就地推；`/junk-files`
  *  是垃圾队列那一页，`?state=ads` 落在 `/` 上时画的也是它。打开时交进来的是壳那一整份 props（筛选或
  *  分类、版式、选择态与卡片的助手和动作），之后的换筛选、换版式、选择模式与刷新代次经
