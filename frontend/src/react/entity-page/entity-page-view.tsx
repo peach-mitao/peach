@@ -177,6 +177,11 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
       (current) => (current ? { ...current, feed: { ...current.feed, following: on } } : current)),
   });
 
+  const bindFollow = useMutation({
+    mutationFn: (key: string) => api('/api/follow/creator',
+      { method: 'POST', body: JSON.stringify({ entity_id: entityId, key }) }),
+  });
+
   const heroActions = useMemo<EntityHeroActions>(() => ({
     openEntity: actions.openEntity,
     /* 换统称要重写整条实体的扁平投影，先把代价说清再问。确认键、标题和成功回执共用「更改统称」这一个
@@ -229,7 +234,19 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         if (alive.current) setAvatarEpoch((epoch) => epoch + 1);
       });
     },
-  }), [actions, alias, entity, entityId, follow, helpers, kind, name, refreshEntity, rename]);
+    openFollowAuthor: actions.openFollowAuthor,
+    /* 认过之后那组来源的更新都记到这位名下：资料重取，读数与提示跟着换。 */
+    confirmFollowAuthor: async (key, author) => {
+      try {
+        await bindFollow.mutateAsync(key);
+      } catch (error) {
+        helpers.failure('绑定关注作者', error);
+        throw error;
+      }
+      helpers.receipt(`已把关注里的 ${author} 记到 ${entity.canonical_name} 名下`);
+      await refreshEntity();
+    },
+  }), [actions, alias, bindFollow, entity, entityId, follow, helpers, kind, name, refreshEntity, rename]);
   const heroHelpers = useMemo<EntityHeroHelpers>(() => ({
     portraitImg: () => helpers.portraitImg(kind, entity),
     wireScroller: helpers.wireDrag,

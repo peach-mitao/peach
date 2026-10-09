@@ -11,6 +11,7 @@ import html
 import json
 import os
 import re
+import sqlite3
 import time
 import threading
 import uuid
@@ -18,7 +19,7 @@ import urllib.parse
 
 from pathlib import Path
 
-from . import avatar_face, follow_assets, follow_providers, wants
+from . import avatar_face, follow_assets, follow_creators, follow_providers, wants
 from .follow import FollowSourceError
 from .follow_faces import annotate_group
 from .follow_check import plan_check, run_check
@@ -29,18 +30,20 @@ from .follow_discovery import (
     discovery_plan, no_backoff, suggest_term, tag_suggestions,
 )
 from .follow_image_dims import positive_dims
+from .follow_identity import (
+    author_display_name, author_key, author_name, name_key, official_avatar_url, source_metadata,
+)
 from .follow_secrets import (
     CREDENTIAL_GUIDE, CredentialError, CredentialStore, credential_store_for,
 )
 from .follow_stream import proxyable
-from .follow_avatar import MAX_PROFILE_IDENTITIES, profile_identities
 from .follow_sources import (
     CONNECTORS, KemonoConnector, Rule34VideoConnector, build_connector,
     canonical_source_ref, display_thumb_url, f95_attachment_media_items, f95_discussion_image,
     is_history_end_error, media_content_hash, parse_source_url, resource_links,
 )
 from .follow_store import (
-    FollowStore, ReleaseGroup, author_display_text, normalized_author_name,
+    FollowStore, ReleaseGroup, normalized_author_name,
 )
 from .taste_history import read_creator_candidates
 from .web_state import path_version
@@ -1095,54 +1098,6 @@ def _content_hashes(group: ReleaseGroup) -> dict[tuple[int, int | None], str]:
     return hashes
 
 
-def _author_display_name(row) -> str:
-    """一条追更来源上那个可读的作者拼写。
-
-    名字怎么算「同一个人」由 `follow_store` 定义（那是别名表的主键口径）；
-    这里只决定「这一行显示哪个字段」。
-    """
-    if row["entity_id"] and row["entity_name"]:
-        return str(row["entity_name"])
-    return author_display_text(row["label"] or row["ref"] or "",
-                               provider=str(row["provider"] or ""))
-
-
-def _source_metadata(row) -> dict:
-    try:
-        payload = json.loads(row["metadata_json"] or "{}")
-    except (KeyError, TypeError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def author_key(row, aliases: dict[str, str] | None = None) -> str:
-    """把一条来源归到「哪个作者」。
-
-    这跟 ADR-0019 的变体分组**不是同一个轴**：那个是同一条发布的多个变体，
-    这个是同一个作者在不同站点上的多条来源。用户在 Kemono 和 Pawchive 上关注的
-    `LazyProcrastinator · fanbox`、在 Rule34Video 和 Rule34.xxx 上关注的
-    `lazyprocrastinator`，是四条来源、一个人。
-
-    实体已经绑上就用实体 id——那是规范身份，比名字可靠。没绑才退回名字归一化：
-    去掉「· 服务名」后缀，再去掉大小写、空格、连字符这些不影响身份的噪声。
-    归一化只做到这一步，不做模糊匹配：把两个碰巧相似的名字并成一个人，
-    比让用户自己看到两行严重得多。
-    """
-    entity = row["entity_id"]
-    if entity:
-        return f"entity:{entity}"
-    recorded = str(_source_metadata(row).get("author_key") or "").strip()
-    if recorded:
-        normalized = recorded
-    else:
-        label = str(row["label"] or row["ref"] or "")
-        normalized = normalized_author_name(label, provider=str(row["provider"] or ""))
-    if normalized:
-        normalized = (aliases or {}).get(normalized, normalized)
-        return f"name:{normalized}"
-    return f"source:{row['id']}"
-
-
 def group_authors(source_rows, aliases: dict[str, str] | None = None,
                   ) -> dict[int, tuple[str, frozenset[str]]]:
     """每条来源的作者键，连同这位作者在各个来源上的全部名字写法。
@@ -1151,17 +1106,20 @@ def group_authors(source_rows, aliases: dict[str, str] | None = None,
     与 `author_key` 同一口径：来源标签、来源记下的作者键、别名表里指向同一人的键。
     """
     keys = {int(row["id"]): author_key(row, aliases) for row in source_rows}
+    # 别名表写的是名字键；绑了实体的那组键换成了 `entity:`，别名要跟着找到它。
+    grouped_as = {name_key(row, aliases): keys[int(row["id"])] for row in source_rows}
     names: dict[str, set[str]] = {}
     for row in source_rows:
         spellings = names.setdefault(keys[int(row["id"])], set())
         for raw in (normalized_author_name(str(row["label"] or row["ref"] or ""),
                                            provider=str(row["provider"] or "")),
-                    str(_source_metadata(row).get("author_key") or "").strip()):
+                    str(source_metadata(row).get("author_key") or "").strip()):
             if raw:
                 spellings.update((raw, (aliases or {}).get(raw, raw)))
     for alias, canonical in (aliases or {}).items():
-        if f"name:{canonical}" in names:
-            names[f"name:{canonical}"].add(alias)
+        key = grouped_as.get(f"name:{canonical}")
+        if key in names:
+            names[key].add(alias)
     return {source_id: (key, frozenset(names.get(key, ()))) for source_id, key in keys.items()}
 
 
@@ -1184,11 +1142,11 @@ def _profile_link_suggestions(rows, aliases: dict[str, str]) -> list[dict]:
         # 也不能再把它展示成身份合并建议。
         if row["entity_id"] or row["provider"] != "f95zone":
             continue
-        canonical = _author_display_name(row)
+        canonical = author_display_name(row)
         canonical_key = normalized_author_name(canonical)
         if not canonical_key:
             continue
-        for link in _source_metadata(row).get("official_links") or ():
+        for link in source_metadata(row).get("official_links") or ():
             if not isinstance(link, dict):
                 continue
             service = str(link.get("service") or "")
@@ -1227,10 +1185,10 @@ def _follow_alias_suggestions(rows, aliases: dict[str, str]) -> list[dict]:
         if not raw_key or raw_key.startswith("source:"):
             continue
         identity = identities.setdefault(raw_key, {
-            "key": raw_key, "name": _author_display_name(row), "providers": set(),
+            "key": raw_key, "name": author_display_name(row), "providers": set(),
         })
         identity["providers"].add(str(row["provider"]))
-        candidate_name = _author_display_name(row)
+        candidate_name = author_display_name(row)
         if candidate_name and len(candidate_name) < len(identity["name"]):
             identity["name"] = candidate_name
 
@@ -1268,74 +1226,6 @@ def _avatar_url(provider: str, ref: str) -> str | None:
     return "/follow-avatar?" + urllib.parse.urlencode({"provider": provider, "ref": ref})
 
 
-def _official_fanbox_identity(metadata: dict) -> str:
-    """名片链接里的 FANBOX 创作者 id，没有就回空串。
-
-    它直接就是 `creator.get` 的参数，一个请求到头像，所以单独走一格。pixiv 的数字
-    id 不在这里：有 pixiv 不等于开了 FANBOX，由 `_official_profile_identities` 和
-    X、Patreon 并排试。SubscribeStar 没有不带凭据就能读的头像接口，**未取得**，
-    只当身份证据用。
-    """
-    links = metadata.get("official_links")
-    if not isinstance(links, list):
-        return ""
-    handles = {str(link.get("service") or ""): str(link.get("handle") or "")
-               for link in links if isinstance(link, dict)}
-    return handles.get("fanbox") or ""
-
-
-def _official_profile_identities(metadata: dict) -> str:
-    """名片上 X、Patreon 与 pixiv 的手柄，拼成 `/follow-avatar?service=profile` 的 id。
-
-    几家都交给服务端，由它各取最大一档再留像素最多的那张；形状不合法的那条直接略过。
-    """
-    links = metadata.get("official_links")
-    pairs = [f"{link.get('service')}:{link.get('handle')}"
-             for link in (links if isinstance(links, list) else ())
-             if isinstance(link, dict)]
-    usable = [pair for pair in dict.fromkeys(pairs) if profile_identities(pair)]
-    return ",".join(usable[:MAX_PROFILE_IDENTITIES])
-
-
-def _official_avatar_url(row) -> str | None:
-    """Local resolver for an avatar from the creator's official profile.
-
-    FANBOX archive refs carry the Pixiv user id, which is enough for Peach's fixed-host
-    resolver to locate the public FANBOX profile and its official ``user.iconUrl``.
-    A forum source has no such ref, so it goes through the profile links parsed out of
-    the opening post instead.  Services without a verified resolver keep the archive
-    fallback, and sources with neither fall back to the author initial.
-    """
-    provider = str(row["provider"] or "")
-    if provider in KemonoConnector.HOSTS:
-        service, _, user = str(row["ref"] or "").partition("/")
-        if service != "fanbox" or not user.isdigit():
-            return None
-        return "/follow-avatar?" + urllib.parse.urlencode(
-            {"service": service, "id": user})
-    metadata = _source_metadata(row)
-    if provider != "f95zone":
-        expected = {
-            normalized_author_name(str(row["ref"] or "")),
-            normalized_author_name(str(metadata.get("author_key") or "")),
-        }
-        links = metadata.get("official_links")
-        metadata = {**metadata, "official_links": [
-            link for link in (links if isinstance(links, list) else ())
-            if isinstance(link, dict)
-            and normalized_author_name(str(link.get("handle") or "")) in expected
-        ]}
-    identity = _official_fanbox_identity(metadata)
-    if identity:
-        return "/follow-avatar?" + urllib.parse.urlencode(
-            {"service": "fanbox", "id": identity})
-    profiles = _official_profile_identities(metadata)
-    if not profiles:
-        return None
-    return "/follow-avatar?" + urllib.parse.urlencode(
-        {"service": "profile", "id": profiles})
-
-
 def _source_payload(row, aliases: dict[str, str] | None = None) -> dict:
     history_exhausted = _legacy_history_end(row)
     return {
@@ -1347,9 +1237,9 @@ def _source_payload(row, aliases: dict[str, str] | None = None) -> dict:
         # 标签是这条来源在站上的名字，作者名是从它推出来的人名。两者在论坛上差得
         # 很远（`Strauzek Collection [2026-09-04] [Mr_Strauz]` vs `Mr_Strauz`），
         # 而怎么推是站点知识，页面自己再推一遍迟早和这里漂移。
-        "author_name": _author_display_name(row),
+        "author_name": author_display_name(row),
         "author_key": author_key(row, aliases),
-        "official_avatar_url": _official_avatar_url(row),
+        "official_avatar_url": official_avatar_url(row),
         "avatar_url": _avatar_url(row["provider"], row["ref"]),
         "url": row["url"],
         "semantics": row["semantics"],
@@ -1543,36 +1433,31 @@ def q_follow_authors(contract, args) -> dict:
             if not key or key not in counts:
                 continue
             entry = grouped.setdefault(key, {"k": "", "key": key, "n": counts[key],
-                                             "avatar": "", "avatar_fallback": "",
-                                             "providers": [], "_entity": "",
-                                             "_official": "", "_labels": []})
-            if row["entity_id"] and row["entity_name"]:
-                entry["_entity"] = str(row["entity_name"])
-            name = _author_display_name(row)
-            official = _official_avatar_url(row)
+                                             "entity_id": None, "avatar": "",
+                                             "avatar_fallback": "", "providers": [],
+                                             "_rows": []})
+            entry["_rows"].append(row)
+            if row["entity_id"]:
+                entry["entity_id"] = int(row["entity_id"])
+            official = official_avatar_url(row)
             mirror = _avatar_url(row["provider"], row["ref"])
-            if official:
-                if not entry["avatar"]:
-                    entry["avatar"] = official
-                if name and not entry["_official"]:
-                    entry["_official"] = name
+            if official and not entry["avatar"]:
+                entry["avatar"] = official
             if mirror and not entry["avatar_fallback"]:
                 entry["avatar_fallback"] = mirror
-            if name:
-                entry["_labels"].append(name)
             provider = str(row["provider"] or "")
             if provider and provider not in entry["providers"]:
                 entry["providers"].append(provider)
+        # 和本地某位创作者同名、等人确认的那几位：格子上标出来，点开去那位的资料页确认。
+        held = {landing.key: landing.entity_id for landing in follow_creators.plan(connection)
+                if landing.action == "hold" and landing.entity_id is not None}
+        held_names = {int(row[0]): str(row[1]) for row in connection.execute(
+            f"SELECT id,canonical_name FROM entity WHERE id IN ({','.join('?' * len(held))})",
+            tuple(held.values()))} if held else {}
         rows = []
         for key, entry in grouped.items():
-            # 挑名字的次序跟关注页那一份分组标题一致：实体名最可靠，其次是别名表定的
-            # 规范名，再次是有官方主页那条来源的写法；都没有才在各条标签里选大写最多的
-            # 那个——`LazyProcrastinator` 比 `lazyprocrastinator` 更像作者自己写的名字。
-            labels, entity, official = (entry.pop("_labels"), entry.pop("_entity"),
-                                        entry.pop("_official"))
-            best = max(labels, key=lambda text: sum(ch.isupper() for ch in text),
-                       default="")
-            entry["k"] = entity or canonical.get(key) or official or best or key
+            entry["held_by"] = held_names.get(held.get(key, 0), "")
+            entry["k"] = author_name(entry.pop("_rows"), key, canonical)
             if entry["avatar_fallback"] == entry["avatar"]:
                 entry["avatar_fallback"] = ""
             if not entry["avatar"]:
@@ -1704,8 +1589,8 @@ def _followed_names(rows, alias_groups) -> dict[str, str]:
 
     for row in rows:
         add(row["entity_name"])
-        add(_author_display_name(row))
-        for link in _source_metadata(row).get("official_links") or ():
+        add(author_display_name(row))
+        for link in source_metadata(row).get("official_links") or ():
             if isinstance(link, dict):
                 add(link.get("handle"))
     for group in alias_groups:
@@ -2166,7 +2051,7 @@ def _backfill_profile_links(row, credentials, writer) -> None:
     但什么都没找到会写下空清单，那是「问过了，他没留主页」，不该每次检查再问一遍。
     """
     provider = str(row["provider"] or "")
-    if provider != "f95zone" or "official_links" in _source_metadata(row):
+    if provider != "f95zone" or "official_links" in source_metadata(row):
         return
     links = _profile_links(provider, str(row["ref"] or ""),
                            credentials.load(provider))
@@ -2242,7 +2127,7 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
     for row in rows:
         if job_id and contract.follow_job.snapshot() is None:
             break
-        current = {"source": row["id"], "label": _author_display_name(row),
+        current = {"source": row["id"], "label": author_display_name(row),
                    "provider": PROVIDER_LABELS.get(row["provider"], row["provider"])}
         def progress(*, current=current, **fields):
             if job_id:
@@ -2274,10 +2159,17 @@ def _run_follow_check(contract, body, job_id=None) -> dict:
                     connector_factory=build_connector, older=True, progress=progress,
                     initial_days=initial_days, cooldown=cooldown))
                 rounds += 1
-        result["author"] = _author_display_name(row)
+        result["author"] = author_display_name(row)
         results.append(result)
         progress()
-    return {"ok": True, "checked": len(results), "results": results}
+    # 还没建档的关注作者交给建档后继（ADR-0096）。后继由结果声明、调度端统一派
+    # （ADR-0040）；这里判不出来只是这一轮不派，检查本身的结论不受影响。
+    try:
+        with contract.database.read_connection() as connection:
+            followups = follow_creators.declare(connection)
+    except sqlite3.Error:
+        followups = []
+    return {"ok": True, "checked": len(results), "results": results, "followups": followups}
 
 
 def q_follow_schedule(contract, _args) -> dict:
@@ -2433,6 +2325,55 @@ def w_follow_source(contract, body) -> dict:
     return {"ok": True, "source": source_id, "provider": parsed.provider,
             "ref": parsed.ref, "label": label, "checked": outcome,
             "author_aliases_learned": learned}
+
+
+def _author_updates(store, rows) -> int:
+    """几条来源一共多少项更新，与关注页作者读数同一个口径：启用来源、去掉排除项的条目数。"""
+    return sum(1 for row in rows if row["enabled"]
+               for item in store.items(source_id=int(row["id"]), limit=_ALL_ITEMS)
+               if not _excluded_item(item))
+
+
+def entity_follow(contract, connection, entity_id: int) -> dict | None:
+    """创作者资料页上的关注那一块（ADR-0096）：绑在他名下的来源，和同名等确认的那几组。
+
+    都没有就是 `None`，页面不画这一块。`key` 是关注页的作者键，页面拿它去关注页筛这一位。
+    """
+    store = _store(contract, connection)
+    sources = store.sources()
+    bound = [row for row in sources if row["entity_id"] == int(entity_id)]
+    held = follow_creators.held_for(connection, entity_id)
+    if not bound and not held:
+        return None
+    by_id = {int(row["id"]): row for row in sources}
+    official = next((url for row in bound if (url := official_avatar_url(row))), "")
+    archive = next((url for row in bound if (url := _avatar_url(row["provider"], row["ref"]))), "")
+    return {
+        "key": f"entity:{int(entity_id)}" if bound else "",
+        "n": _author_updates(store, bound),
+        "providers": list(dict.fromkeys(
+            PROVIDER_LABELS.get(row["provider"], row["provider"]) for row in bound)),
+        "avatar": official or archive,
+        "avatar_fallback": archive if official else "",
+        "held": [{
+            "key": landing.key, "name": landing.name,
+            "providers": [PROVIDER_LABELS.get(provider, provider)
+                          for provider in landing.providers],
+            "n": _author_updates(store, [by_id[source_id] for source_id in landing.source_ids]),
+            "links": [link["url"] for link in landing.links],
+        } for landing in held],
+    }
+
+
+def w_follow_creator(contract, body) -> dict:
+    """资料页上「是同一个人」：把同名等确认的那组关注作者绑到这位创作者名下。"""
+    entity_id, key = body.get("entity_id"), str(body.get("key") or "")
+    if type(entity_id) is not int or not key.startswith("name:"):
+        raise ValueError("entity_id 与 key 都要给")
+    with contract.database.write_transaction() as connection:
+        written = follow_creators.confirm(connection, entity_id, key)
+    contract.cache_bust()
+    return {"ok": True, **written}
 
 
 def w_follow_author_alias(contract, body) -> dict:

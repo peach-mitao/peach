@@ -10,11 +10,14 @@ import { apiGet } from '../../api';
 export const FOLLOW_AUTHORS_URL = '/api/follow/authors';
 export const FOLLOW_TAGS_URL = '/api/follow/tags';
 
-/** 来源上的一位创作者。`key` 是关注页筛选用的那套创作者键，不是实体 id：这个人还没进账本。 */
+/** 来源上的一位创作者。`key` 是关注页筛选用的那套创作者键：建过档的是 `entity:<id>`，
+ *  还没建档的按名字归组。`held_by` 是账本里同名的那位创作者，等用户在那一页认过才绑定。 */
 export interface OnlineAuthor {
   k: string;
   key: string;
   n: number;
+  entity_id: number | null;
+  held_by: string;
   /** 官方主页上的头像；取不到时是空串。 */
   avatar: string;
   /** 归档站的头像，主页那张失败时换它。 */

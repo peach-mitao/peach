@@ -39,10 +39,10 @@ export interface AliasManagerProps {
 const suggestionKey = (item: AliasSuggestion) => item.alias;
 
 function authorSources(sources: FollowSource[], name: string, canonicalKey?: string) {
+  /* 建过档的作者键是 `entity:<id>`，别名表上记的仍是名字键：按名字键找不到就按名字认。 */
   const expected = canonicalKey ? `name:${canonicalKey}` : '';
-  const anchor = expected
-    ? sources.find((source) => source.author_key === expected)
-    : sources.find((source) => source.author_name === name || source.entity_name === name);
+  const anchor = (expected && sources.find((source) => source.author_key === expected))
+    || sources.find((source) => source.author_name === name || source.entity_name === name);
   return anchor ? sources.filter((source) => source.author_key === anchor.author_key) : [];
 }
 

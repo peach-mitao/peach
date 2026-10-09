@@ -14,7 +14,8 @@ import time
 
 from urllib.parse import urlsplit
 
-from . import company_profiles, entry_links, feeds, link_status, performer_header, web_feeds
+from . import (company_profiles, entry_links, feeds, link_status, performer_header, web_feeds,
+               web_follow)
 from .catalog_rules import (LENGTH_TAGS, dir_expr, photo_set_title, solo_performer_clause, tag_cat)
 from .entities import normalize_entity_name, resolve_entity, rewrite_flat_projection
 from .social_links import ARCHIVE_HOSTS, is_archive
@@ -207,6 +208,8 @@ def q_entity(contract: WebContract, args):
             d.update(performer_header.header(c, d["id"], d["canonical_name"]))
         elif kind in {'studio', 'agency'}:
             d['company_profile'] = company_profiles.public_profile(metadata)
+        # 创作者在关注里的那一面（ADR-0096）：绑在名下的来源和同名等确认的那几组。
+        d["follow"] = web_follow.entity_follow(contract, c, d["id"]) if kind == "creator" else None
         scope = scope_predicate(kind, "ae.entity_id")
         count, rep = c.execute(
             "SELECT count(DISTINCT " + video_work_key(contract) + "),"

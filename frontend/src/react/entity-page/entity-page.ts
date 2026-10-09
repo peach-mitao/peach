@@ -81,6 +81,8 @@ export interface EntityPageActions {
   missing(): void;
   /** 换过头像：壳丢掉自己缓存着的那几排头像（顶部三条），下次画时按新版本号重取。 */
   avatarChanged(): void;
+  /** 去关注页，只看这一位名下来源的更新（名册在线档那一格点开的同一个入口）。 */
+  openFollowAuthor(key: string): void;
 }
 
 /** 仍由遗留层拼的 HTML 与接线。 */

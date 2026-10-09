@@ -76,8 +76,9 @@ export function PeopleGrid(
   );
 }
 
-/** 在线那一档：关注来源里的创作者。这个人还没进账本，没有资料页可去；他名下那批东西全在
- *  关注页上，所以点开等于「关注 · 这个人」。`data-follow-author` 挂的是关注页那套创作者键。 */
+/** 在线那一档：关注来源里的创作者。建过档的点开去他的创作者资料页；还没建档的名下那批东西
+ *  全在关注页上，点开等于「关注 · 这个人」；账本里有同名创作者、等用户认的，读数带「待确认」，
+ *  点开去那位的资料页，认人的按钮在那里。`data-follow-author` 挂的是关注页那套创作者键。 */
 export function OnlineAuthors(
   { items, layout, props }: { items: OnlineAuthor[]; layout: PeopleLayout; props: IndexProps },
 ) {
@@ -86,7 +87,12 @@ export function OnlineAuthors(
     <div data-index-grid="" data-layout={layout} data-cells="people" className="index-grid-person gap-3">
       {items.map((author) => (
         <Cell key={author.key} data-follow-author={author.key} data-kind="performer" name={author.k}
-          readout={`${author.n.toLocaleString()} 项更新`} big={big} onPress={() => props.openFollowAuthor(author.key)}>
+          readout={`${author.n.toLocaleString()} 项更新${author.held_by ? ' · 待确认' : ''}`} big={big}
+          onPress={() => {
+            if (author.entity_id) props.openEntity('creator', author.k);
+            else if (author.held_by) props.openEntity('creator', author.held_by);
+            else props.openFollowAuthor(author.key);
+          }}>
           <Ring html={props.authorAvatar(author)} company={false} big={big} />
         </Cell>
       ))}

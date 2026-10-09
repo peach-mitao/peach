@@ -29,7 +29,8 @@ const performer = (extra: Partial<EntityHeroData> = {}): EntityHeroData => ({
 function actions(patch: Partial<EntityHeroActions> = {}): EntityHeroActions {
   return {
     openEntity: vi.fn(), chooseName: vi.fn(), addAlias: vi.fn(), follow: vi.fn(async () => {}),
-    refreshFeedAfterCheck: vi.fn(), feedAction: vi.fn(async () => {}), avatarPicked: vi.fn(), ...patch,
+    refreshFeedAfterCheck: vi.fn(), feedAction: vi.fn(async () => {}), avatarPicked: vi.fn(),
+    openFollowAuthor: vi.fn(), confirmFollowAuthor: vi.fn(async () => {}), ...patch,
   };
 }
 
@@ -273,6 +274,41 @@ describe('点下去交给壳', () => {
     await click(host.querySelector('[data-namepick-toggle]'));
     await click(document.querySelector('[data-namepick-alias]'));
     expect(acts.addAlias).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('关注里的来源', () => {
+  const creator = (follow: EntityHeroData['follow']): EntityHeroData => ({
+    id: 51, canonical_name: 'Auxtasy', asset_count: 0, follow,
+  });
+  const held = { key: 'name:auxtasy', name: 'Auxtasy', providers: ['Kemono', 'Patreon'], n: 37, links: [] };
+
+  it('绑了来源的创作者写还没入库的更新数，点开交给壳去关注页筛这一位', async () => {
+    const acts = actions();
+    const host = await open(props({ kind: 'creator', name: 'Auxtasy', actions: acts, entity: creator({
+      key: 'entity:51', n: 12, providers: ['Kemono'], avatar: '', avatar_fallback: '', held: [] }) }));
+    const link = host.querySelector<HTMLAnchorElement>('[data-entity-follow] a')!;
+    expect(link.textContent).toBe('12 项更新');
+    await click(link);
+    expect(acts.openFollowAuthor).toHaveBeenCalledWith('entity:51');
+    expect(host.querySelector('[data-entity-held]')).toBeNull();
+  });
+
+  it('同名的那组只问不绑：按下「是同一个人」才交给壳，等的这一下键上是等待态', async () => {
+    let finish: () => void = () => {};
+    const acts = actions({ confirmFollowAuthor: vi.fn(() => new Promise<void>((resolve) => { finish = resolve })) });
+    const host = await open(props({ kind: 'creator', name: 'Auxtasy', actions: acts, entity: creator({
+      key: '', n: 0, providers: [], avatar: '', avatar_fallback: '', held: [held] }) }));
+    expect(host.querySelector('[data-entity-follow]')).toBeNull();
+    const note = host.querySelector('[data-entity-held]')!;
+    expect(note.textContent).toContain('关注里有同名作者 Auxtasy');
+    expect(note.textContent).toContain('Kemono · Patreon · 37 项更新');
+    const button = note.querySelector('button')!;
+    await click(button);
+    expect(acts.confirmFollowAuthor).toHaveBeenCalledWith('name:auxtasy', 'Auxtasy');
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    await act(async () => { finish() });
+    expect(button.getAttribute('aria-busy')).toBeNull();
   });
 });
 

@@ -484,8 +484,9 @@ MAX_PROFILE_THREADS = 2
 #: 名片手柄最多拿几个去其余来源再查一遍。每个手柄都要把名字类来源重问一轮。
 MAX_PROFILE_HANDLES = 4
 #: 名片上不当作者别名的服务。论坛账号名常常是搬运工自己的账号，
-#: 而 pixiv 的身份是一串数字，当别名只会在列表里多出一个数字「作者」。
-PROFILE_ALIAS_SKIP_SERVICES = frozenset({"pixiv", "f95zone", "simpcity"})
+#: 而 pixiv、Fantia 的身份是一串数字，当别名只会在列表里多出一个数字「作者」；
+#: Bluesky 的手柄连着域名，不是名字。
+PROFILE_ALIAS_SKIP_SERVICES = frozenset({"pixiv", "fantia", "bsky", "f95zone", "simpcity"})
 #: 名片手柄会拿去再查一遍的来源：按名字、id 或标签查的那几家。
 _HANDLE_SEARCH_PROVIDERS = frozenset({"kemono", "coomer", "pawchive", "rule34video",
                                       "rule34xxx", "simpcity"})
