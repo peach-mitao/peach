@@ -1316,13 +1316,12 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         connection.close()
 
     async def test_metadata_tag_approval_promotes_an_existing_tag_to_official_source(self):
-        connection = sqlite3.connect(self.db)
-        connection.execute("UPDATE asset SET code='ABC-001' WHERE id=1")
-        connection.execute(
-            "INSERT INTO asset_tag(asset_id,tag,confidence,source) "
-            "VALUES(1,'美乳',0.4,'filename')"
-        )
-        connection.commit(); connection.close()
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("UPDATE asset SET code='ABC-001' WHERE id=1")
+            connection.execute(
+                "INSERT INTO asset_tag(asset_id,tag,confidence,source) "
+                "VALUES(1,'美乳',0.4,'filename')"
+            )
         candidate = {
             "candidate_key": "ABC-001:tags:r18dev:abc", "source": "r18dev",
             "source_url": "https://r18.dev/example", "confidence": 0.9,
@@ -1345,15 +1344,14 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
             "candidate_key": candidate["candidate_key"], "status": "approved",
         })
         self.assertEqual(approved.status_code, 200, approved.text)
-        connection = sqlite3.connect(self.db)
-        self.assertEqual(connection.execute(
-            "SELECT tag,confidence,source FROM asset_tag WHERE asset_id=1 "
-            "AND tag IN ('美乳','颜射') ORDER BY tag"
-        ).fetchall(), [
-            ("美乳", 0.9, "javinizer:r18dev:tag"),
-            ("颜射", 0.9, "javinizer:r18dev:tag"),
-        ])
-        connection.close()
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(connection.execute(
+                "SELECT tag,confidence,source FROM asset_tag WHERE asset_id=1 "
+                "AND tag IN ('美乳','颜射') ORDER BY tag"
+            ).fetchall(), [
+                ("美乳", 0.9, "javinizer:r18dev:tag"),
+                ("颜射", 0.9, "javinizer:r18dev:tag"),
+            ])
 
     async def _tags_candidate_with_unmapped_genres(self, candidate: dict) -> None:
         fields = ["item_key", "code", "query", "field", "field_label", "current_value",

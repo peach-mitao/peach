@@ -35,7 +35,8 @@ class JavDBResourceTests(unittest.TestCase):
         <a href="/tags?c=4">單體作品</a></span></div>'''
         page = Page("https://javdb.com/v/demo", html.encode())
         record = JavDBSource().parse(page, "ABW-220")
-        self.assertEqual(record.genres, ("高跟鞋", "絲襪、過膝襪", "尚未收錄的分類", "單體作品"))
+        self.assertEqual(record.tags, ("高跟鞋", "絲襪、過膝襪", "尚未收錄的分類", "單體作品"))
+        self.assertEqual(record.payload()["genres"], ["高跟鞋", "絲襪、過膝襪", "尚未收錄的分類", "單體作品"])
         fields = extract_peach_fields(record.payload())
         self.assertEqual(fields["tags"]["value"], ["高跟", "丝袜"])
         self.assertEqual(fields["tags"]["unmapped_genres"], ["尚未收錄的分類"])
