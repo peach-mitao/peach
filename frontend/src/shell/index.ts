@@ -84,6 +84,14 @@ export let cameFromSetup = false;
 export let pageOpens = 0;
 /** 资料页按第一页作品推出来的 JAV 语境（壳的 `javActive` 读）：页面推上来，资料页每打开一次先清掉。 */
 export let entityJavLayout = false;
+/** 关注页这一次进入的取样种子：创作者、题材、标签三排露出哪些由它定，列表按它取样。重新进入与「换一批」时重掷。 */
+export let followDiscoverySeed = Math.floor(Math.random() * 0xffffffff);
+/** 关注页的刷新代次：画着时要求重读（回到这一页、批量标记之后）推一个新代次让列表重取，不重挂。 */
+export let followRevision = 0;
+/** 关注列表停在哪：停在 `/follow` 上滚动时随手记下，列表要从头画时照它滚回去；重新进入时清零。 */
+export let followScrollY = 0;
+/** 播放列表页的刷新代次：停在这一页时要求重读（顶栏「换一批」）推一个新代次，页面重取、不重挂。 */
+export let playlistsRevision = 0;
 
 /** `writeShell` 能整体换掉的那几项。两个选择集是常驻实例，不在其中。 */
 export interface ShellFields {
@@ -105,6 +113,10 @@ export interface ShellFields {
   configurationRequestedSection: string;
   pageOpens: number;
   entityJavLayout: boolean;
+  followDiscoverySeed: number;
+  followRevision: number;
+  followScrollY: number;
+  playlistsRevision: number;
   runtimeConfigurable: boolean | null;
   cameFromSetup: boolean;
 }
@@ -134,6 +146,10 @@ export function writeShell(patch: Partial<ShellFields>): void {
   if (has('configurationRequestedSection')) configurationRequestedSection = patch.configurationRequestedSection!;
   if (has('pageOpens')) pageOpens = patch.pageOpens!;
   if (has('entityJavLayout')) entityJavLayout = patch.entityJavLayout!;
+  if (has('followDiscoverySeed')) followDiscoverySeed = patch.followDiscoverySeed!;
+  if (has('followRevision')) followRevision = patch.followRevision!;
+  if (has('followScrollY')) followScrollY = patch.followScrollY!;
+  if (has('playlistsRevision')) playlistsRevision = patch.playlistsRevision!;
   if (has('runtimeConfigurable')) runtimeConfigurable = patch.runtimeConfigurable!;
   if (has('cameFromSetup')) cameFromSetup = patch.cameFromSetup!;
   notifyShell();

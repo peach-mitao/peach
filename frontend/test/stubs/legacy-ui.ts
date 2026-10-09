@@ -17,8 +17,8 @@ export {boardTabsHtml, searchInputHtml} from '../../src/ui-kit';
 export {attachOverlayScrollbar, growCollapse, iconSwapHtml, indexSkeletonHtml, popBadges, popCount, revealTexts, scrollMovesAnchor, setCollapseOpen, setIconSwap, swapText, wireContextCard} from '../../src/ui-kit';
 // 设置面板沿用的互斥视图、拉条、锚定菜单与横向滚动层用正式实现。
 export {closeAnchoredMenu, dialSliderHtml, iconSwitchHtml, wireAnchoredMenu, wireDialSlider, wireHorizontalScroller, wireIconSwitch} from '../../src/ui-kit';
-// 骨架露面的等待门槛用正式那一个数；管理区的加载态用正式模板。
-export {configurationSkeletonHtml, SKELETON_REVEAL_DELAY, skeletonHtml} from '../../src/ui-kit';
+// 骨架露面的等待门槛用正式那一个数；管理区的加载态用正式模板，骨架交给整页的淡出用正式实现。
+export {configurationSkeletonHtml, revealSkeleton, SKELETON_REVEAL_DELAY, skeletonHtml} from '../../src/ui-kit';
 /* 测试环境没有布局，骨架补齐量不出东西，这里什么都不做。 */
 export const fitSkeleton = (_root: Element | null): void => {};
 export const loadingDotsHtml = (label: string): string => `<span>${label}</span>`;
