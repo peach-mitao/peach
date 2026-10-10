@@ -46,6 +46,7 @@ FRONTEND = ROOT / "frontend"
 BROWSER_LOGS = ROOT / "build" / "agent-verification" / "browser"
 SERVER_START_SECONDS = 60
 E2E_SECONDS = 600
+SERIAL_E2E_BATCH_FILES = 12
 
 
 def chrome_executable() -> str | None:
@@ -120,7 +121,7 @@ def e2e_batches(frontend: Path, concurrency: int) -> tuple[tuple[tuple[str, ...]
     """把 `frontend/e2e` 下全部 `*.test.ts`（含子目录）分批，每批带自己的并发数，限时 600 秒。
 
     并发时分两批：其余文件一次并发跑完，CPU 敏感的文件随后串行。并发为 1 时整轮是串行的，
-    按设计决定、交互回归与路由冒烟分三批，每批都落在限时之内。
+    按设计决定、交互回归与路由冒烟分组，每批最多 12 个文件。
     """
     files = tuple(sorted(path.relative_to(frontend).as_posix()
                          for path in (frontend / "e2e").rglob("*.test.ts")))
@@ -130,7 +131,9 @@ def e2e_batches(frontend: Path, concurrency: int) -> tuple[tuple[tuple[str, ...]
         design = tuple(path for path in files if path.startswith("e2e/design-"))
         routes = tuple(path for path in files if path == "e2e/smoke.test.ts")
         interactions = tuple(path for path in files if path not in design + routes)
-        return tuple((batch, 1) for batch in (design, interactions, routes) if batch)
+        return tuple((group[start:start + SERIAL_E2E_BATCH_FILES], 1)
+                     for group in (design, interactions, routes)
+                     for start in range(0, len(group), SERIAL_E2E_BATCH_FILES))
     sensitive = tuple(path for path in files if path in CPU_SENSITIVE_SUITES)
     shared = tuple(path for path in files if path not in sensitive)
     return tuple(batch for batch in ((shared, concurrency), (sensitive, 1)) if batch[0])
@@ -464,10 +467,10 @@ class MissingPrerequisiteTests(unittest.TestCase):
     PATHS = ("e2e/design-cards.test.ts", "e2e/design-detail.test.ts", "e2e/smoke.test.ts",
              "e2e/nested/feature.test.ts", "e2e/sidebar-motion.test.ts")
 
-    def batches_for(self, concurrency: int):
+    def batches_for(self, concurrency: int, paths=None):
         with tempfile.TemporaryDirectory() as folder:
             frontend = Path(folder).resolve()
-            for name in (*self.PATHS, "e2e/harness.ts"):
+            for name in (*(self.PATHS if paths is None else paths), "e2e/harness.ts"):
                 path = frontend / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
@@ -494,6 +497,15 @@ class MissingPrerequisiteTests(unittest.TestCase):
             ("e2e/nested/feature.test.ts", "e2e/sidebar-motion.test.ts"),
             ("e2e/smoke.test.ts",),
         ])
+        self.assertEqual({lanes for _, lanes in batches}, {1})
+
+    def test_serial_batches_bound_large_groups_and_run_each_file_once(self):
+        paths = (tuple(f"e2e/design-{index:02}.test.ts" for index in range(13))
+                 + tuple(f"e2e/feature-{index:02}.test.ts" for index in range(25))
+                 + ("e2e/smoke.test.ts",))
+        batches = self.batches_for(1, paths=paths)
+        self.assertCountEqual(tuple(path for files, _ in batches for path in files), paths)
+        self.assertEqual([len(files) for files, _ in batches], [12, 1, 12, 12, 1, 1])
         self.assertEqual({lanes for _, lanes in batches}, {1})
 
     def test_browser_batches_require_at_least_one_suite(self):
