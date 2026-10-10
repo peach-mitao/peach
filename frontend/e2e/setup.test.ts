@@ -15,6 +15,7 @@ import { launch, layout, VIEWPORTS } from './harness.ts';
 const origin = process.env.PEACH_E2E_SETUP_ORIGIN ?? '';
 const media = process.env.PEACH_E2E_SETUP_MEDIA ?? '';
 const dataRoot = process.env.PEACH_E2E_SETUP_DATA ?? '';
+const ledgerRoot = process.env.PEACH_E2E_SETUP_LEDGER_ROOT ?? '';
 
 /** 填错那一轮的 400 是预期内的：Chrome 会把它同时记成一条控制台错误和一条 4xx 响应。 */
 const expectedRejection = (problem: string) =>
@@ -45,6 +46,11 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       await heading.waitFor({ state: 'visible', timeout: 15_000 });
       const folder = page.getByRole('textbox', { name: '媒体库 1' });
       await folder.waitFor({ state: 'visible', timeout: 15_000 });
+      const windowsRoot = page.getByRole('textbox', { name: 'Windows 中的对应路径' });
+      if (await windowsRoot.count()) {
+        assert.ok(ledgerRoot, '非 Windows 首启需要账本中的声明根');
+        await windowsRoot.fill(ledgerRoot);
+      }
       await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 15_000 });
       const host = page.getByRole('radiogroup');
       assert.equal(await host.count(), 0, '局域网单选收在高级设置里，首屏不露出');
@@ -90,7 +96,8 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       const accepted = page.waitForResponse((response) => response.url().endsWith('/api/setup')
         && response.request().method() === 'POST');
       await page.getByRole('button', { name: '完成设置' }).click();
-      assert.equal((await accepted).status(), 200);
+      const acceptedResponse = await accepted;
+      assert.equal(acceptedResponse.status(), 200, await acceptedResponse.text());
 
       // 完成态：入口链接拿到焦点，扫描没有排队，运行信息收起，口令不在页面上。
       await page.getByRole('heading', { name: '设置完成' }).waitFor({ state: 'visible' });
