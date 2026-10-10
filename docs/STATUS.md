@@ -16,7 +16,7 @@
 - 产地是独立维度、JAV 是其投影：`region` 空时按厂牌、创作者、番号逐层推断，不落库；韩国 MIB 不算 JAV。
 - Windows 托盘自动恢复，重启用 `restart_windows_tray.py --source`；代码与数据在内置盘，媒体在外置盘。
 - 托盘须普通权限启动：提权令牌看不到 CloudDrive 的 `A:`/`B:`，误报脱盘。
-- Windows：80 跳 HTTPS，LAN:443；`peach-win`、`0.37.0`。10-10 重启，CA、健康、前端产物通过。
+- Windows：80 跳 HTTPS，LAN:443；`peach-win`、`0.38.0`。10-10 重启，CA、健康、前端产物通过。
 - 主界面 `peach-app.js/css`，登录、配置页 `peach-pages.js/css`；Application 管理路由与资源，域控制器适配原生宿主。
 - `/healthz` 报 `configurable=true`；配置与选目录共用连接判据，托盘管理 HTTPS 地址、端口及重载。
 - 首启、配置页列缺失依赖（CloudDrive、挂载驱动、FFmpeg/ffprobe、OpenSSL）；Windows 识别 CloudDrive、WinFsp。
