@@ -1,7 +1,7 @@
-/* `@peach/legacy/ui`（浏览器里是 `/js/ui-components.js`）在测试里的替身（vitest.config.ts 里做 alias）。
+/* `@peach/legacy/ui`（主界面指向 `src/ui-kit/index.ts`）在测试里的替身（vitest.config.ts 里做 alias）。
  *
  * 只保留断言真正依赖的结构标记（`data-geist-empty-state`、`geist-note-error`）；要用正式实现的那几样从
- * `src/ui-kit` 转出，与入口包源码是同一个模块实例。完整页面的结构和样式由 `frontend/e2e` 使用真实模块验证。 */
+ * `src/ui-kit` 转出，与主界面共享源码是同一个模块实例。完整页面的结构和样式由 `frontend/e2e` 使用真实模块验证。 */
 export const emptyStateHtml = (
   iconName: string,
   title: string,
@@ -38,12 +38,8 @@ export const dismissMenu = (menu: HTMLElement, finish?: () => void): void => {
 export const MEDIA_SOURCE_ICONS: Record<string,string> = {local:'hard-drive','115':'fixture-115',pikpak:'fixture-pikpak'};
 export const selectOptionIconHtml = (mark?: string): string => mark ? `<i data-source-icon="${mark}"></i>` : '';
 
-export const selectFieldHtml = (items: string[][], value: string, options: { label?: string } = {}): string =>
-  `<div class="ui-gselect" data-value="${value}"><button type="button" aria-haspopup="listbox" aria-label="${options.label}">${items.find(item => item[0] === value)?.[1]}</button></div>`;
-export const wireSelectField = (root: HTMLElement) => {
-  Object.defineProperty(root, 'value', { get: () => root.dataset.value, set: (value: string) => { root.dataset.value = value; } });
-  return root as HTMLElement & { value: string; disabled: boolean };
-};
+// 设置面板的选项、change 与持久化回归使用正式下拉控件。
+export {selectFieldHtml, wireSelectField} from '../../src/ui-kit';
 export const wireCollapse = (_root: ParentNode, _selector: string, _idPrefix: string): void => {};
 /* 只落位，不动画：jsdom 没有布局，量出来处处是零，那段弹簧也就没有什么可跑的。
    动作本身由 `frontend/e2e/design-*.test.ts` 在浏览器中验证。 */

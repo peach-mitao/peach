@@ -37,7 +37,7 @@
 | `globals`（`693885494e6f229637fe118852efbfb3df820dd8d174a2a7e47f65dadfcd96bf`） | 不复制整份；用到的 `check-draw` 动画、根元素的字体平滑和 `.bui-table` 那一组规则逐字搬进 `../styles.css`，作用域是 `.peach-react` | 整份 `@import "tailwindcss"` 会把 Preflight 和 `html`、`body` 的底色铺到整页，未迁移页面仍由旧样式表绘制。`table` 条目的外观全在 `globals.css` 里（React Aria 的集合组件包不进自定义组件），不搬就只剩一张没有边线和字阶的裸表 |
 | `data-table`（`7bb73a6cd099b9b16390e5fe00f8ba2d55b5ef96c1e8f90a056168cd2e3235e6`） | 不复制；表格视图用 `table` 条目的 `Table` 配 `@tanstack/react-table`，列定义、排序、行选择与分页写在 `../follow-manage/` 里 | 该条目是 `registry:block`，只有一份 `docs/examples/data-table-example.tsx` 示例，依赖的 avatar、segmented-control、status-dot、tooltip 等条目 Peach 都没有；它演示的正是「`table` 加 TanStack Table」这套接法 |
 | Tailwind Preflight | `../preflight-scoped.css` 逐字包进 `@scope (.peach-react)` | 同上 |
-| 深色模式 | 上游读 `<html class="dark">`；`web/app.js` 的 `applyTheme()` 与 `index.html` 首帧脚本按实际深浅加减这个类 | Peach 的主题选择写在 `data-theme`，跟随系统时不写属性 |
+| 深色模式 | 上游读 `<html class="dark">`；`appearance/theme.ts` 的 `applyTheme()` 与 `index.html` 首帧脚本按实际深浅加减这个类 | Peach 的主题选择写在 `data-theme`，跟随系统时不写属性 |
 | 与 `web/board.css` 同名的 `--color-*` token | `:root` 上由 `board.css` 定值；`../styles.css` 在 `.peach-react` 与 `.dark .peach-react` 上按 `theme.css` 原文重新声明 | 未迁移页面的颜色保持不变，React 子树读到上游值 |
 | 深色的 `--color-border-checkbox-default` | 两份定值都抬到 `neutral-600`，不取上游的 `neutral-700`；`tests/test_frontend_build.py` 的 `LOCAL_TOKEN_VALUES` 记着这一条 | 未选中的勾选框底色就是卡面色，形状全靠那 1px 边线说话。`neutral-700` 压在 `neutral-800` 上只差 11 个 CIE 明度，浅色那一对有 15，低亮度那头的细线当场消失，暗色下看着就是没有框 |
 | 深色的 `--color-separator-border` | 两份定值都抬到 `neutral-700`，不取上游的 `neutral-800`；`tests/test_frontend_build.py` 的 `LOCAL_TOKEN_VALUES` 记着这一条 | 深色的 `--color-background-primary-default` 也是 `neutral-800`，两者同色。复核卡的外框、候选块与它下面那段证据之间的线、卡片脚注带的上边线全画在那种面上，明度差是 0.0，不是弱而是没有。`neutral-700` 在卡面上差 11.9，浅色那一对是 9.1；再亮一档就成了抢眼的白线 |
@@ -52,7 +52,7 @@
 | 等待点 | `../components/loading-dots.tsx` 三颗点，错相由 `../styles.css` 的 `dot-wave-*` 给 | 注册表里没有等待态组件，没有总量时也不画进度条 |
 | 分区标题与任务卡 | `../activity/activity-page.tsx` 自己用 `title-*` 字阶和 `separator-border` 的圆角框排，失败那张换成 `border-error-default` | 注册表里没有分区标题；卡片条目都带自己的头尾结构与操作区 |
 | 汇总行与卡片网格 | `../quality-goals/quality-goals-page.tsx` 的汇总一行用 `title-2-semibold` 配正文字阶排；网格取 `../styles.css` 的 `card-grid`，封面取 `w-card-cover` 与 `aspect-card-cover` | 注册表里没有列表页的汇总行；`auto-fill` 网格与定宽封面在工具类里没有对应档位，写成 `@utility` 与 `@theme` 而不是任意值 |
-| 折叠 | `../settings/section.tsx` 的 `Disclosure` 用原生 `details`，开合调 `/js/ui-components.js` 的 `setCollapseOpen`，高度按共用 Collapse 的 `.ui-fcollapse` 过渡（`.2s ease-in-out`） | 注册表里没有折叠组件；原生 `details` 不过渡高度 |
+| 折叠 | `../settings/section.tsx` 的 `Disclosure` 用原生 `details`，开合调共享源码 `ui-kit/collapse.ts` 的 `setCollapseOpen`，高度按共用 Collapse 的 `.ui-fcollapse` 过渡（`.2s ease-in-out`） | 注册表里没有折叠组件；原生 `details` 不过渡高度 |
 | 图标选择 | `../settings/library-icon-picker.tsx` 用 React Aria 的 `Popover`、`RadioGroup` 组合，面板取 `menu-styles.ts` 的外观 | 注册表里没有网格单选的弹出面板 |
 | 二选一切换 | `../scraping/scraping-page.tsx` 提供 Cookie 的两种方式用 React Aria 的 `RadioGroup`，选中项取 `background-tertiary-default` 配 `text-primary` | 注册表里 `tabs` 是页面级导航、`segmented-control` 没有条目；这里切的是同一个字段的两种填法，不是两块内容 |
 | 选文件 | 同上：原生 `input[type=file]` 只留着接文件，点它的是一颗 `secondary` 按钮，选中的文件名跟在旁边 | 注册表里没有文件选择组件；原生控件的按钮长相由浏览器决定，改不动 |

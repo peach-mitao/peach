@@ -1,6 +1,5 @@
-/* 页面包里 `@peach/legacy/ui` 的落点（`vite.pages.config.ts` 的别名）。
- *
- * 主界面里这个名字是 `/js/ui-components.js`，它从入口包原名转出 `src/ui-kit/` 的共用控件。独立页面
- * 不加载遗留层，共用件读到的这几样直接取同一份源码；少导出一个，构建就会报缺名。 */
+/* 独立页面包的 @peach/legacy/ui 别名落点（vite.pages.config.ts）。
+ * 主界面的同名别名指向 ui-kit/index.ts；独立页面只直接打包实际使用的折叠与来源站标。
+ * 导出清单缺名时由构建检查拒绝。 */
 export { setCollapseOpen } from '../../ui-kit/collapse';
 export { MEDIA_SOURCE_ICONS } from '../../ui-kit/media-source-icons';

@@ -49,7 +49,8 @@
       "role": "报告与证据型页面的版式、层级、语言和数据表达参考；Peach 仅复用可迁移原则。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/taste/taste-page.tsx",
+        "frontend/src/react/follow-manage/follow-manage-page.tsx",
         "tests/test_follow_web.py"
       ]
     },
@@ -64,7 +65,7 @@
       "role": "统计页使用空间语义表格与标签排行密度的项目级依据；未取得的 Vercel DOM 和像素不作复刻证据。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/stats/stats-page.tsx",
         "tests/test_web_ui.py"
       ]
     },
@@ -85,7 +86,8 @@
       "consumers": [
         "web/index.html",
         "web/css/",
-        "web/app.js",
+        "frontend/src/application/chrome.js",
+        "frontend/src/application/layout.js",
         "tests/test_web_ui.py"
       ]
     },
@@ -116,7 +118,8 @@
         "src/peach/follow_sources.py",
         "src/peach/web_follow.py",
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/follow-feed/follow-feed-page.tsx",
+        "frontend/src/react/follow-detail/follow-detail-page.tsx",
         "tests/test_follow_sources.py",
         "tests/test_follow_web.py"
       ]
@@ -132,7 +135,8 @@
       "role": "F95 Cookie 解掩码、文件站目标校验、Gofile 文件列表未取得说明与 Mix 计数边界。",
       "consumers": [
         "src/peach/follow_sources.py",
-        "web/app.js",
+        "frontend/src/react/follow-feed/follow-feed-page.tsx",
+        "frontend/src/react/components/mix-card.tsx",
         "tests/test_follow_sources.py",
         "tests/test_follow_web.py"
       ]
@@ -151,7 +155,7 @@
         "src/peach/follow_sources.py",
         "src/peach/follow_stream.py",
         "src/peach/web_follow.py",
-        "web/app.js",
+        "frontend/src/react/follow-detail/follow-detail-page.tsx",
         "tests/test_follow_sources.py",
         "tests/test_follow_store.py",
         "tests/test_follow_stream.py",
@@ -193,7 +197,9 @@
       "role": "女优、厂牌与关注页的无标题信息轨道参考；资料页以单个 32px PicsIcon 在标签左侧切换视频与照片，合集详情按 Peach 现有详情结构适配。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/entity-page/entity-page-view.tsx",
+        "frontend/src/react/follow-feed/follow-feed-page.tsx",
+        "frontend/src/application/entity.js",
         "web/index.html",
         "tests/test_follow_web.py",
         "tests/test_web_ui.py"
@@ -211,7 +217,8 @@
       "consumers": [
         "frontend/src/ui-kit/",
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/review/review-page.tsx",
+        "frontend/src/application/navigation.js",
         "tests/test_web_ui.py"
       ]
     },
@@ -227,7 +234,9 @@
       "consumers": [
         "frontend/src/ui-kit/",
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/settings-panel/settings-panel.tsx",
+        "frontend/src/react/search/search-page.tsx",
+        "frontend/src/application/receipts.js",
         "tests/test_follow_web.py",
         "tests/test_web_ui.py"
       ]
@@ -244,7 +253,7 @@
       "role": "口味页底部补充说明的中性 Note 结构依据；信息图标使用 2px 圆端描边，无真实动作时不伪造链接。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/taste/taste-page.tsx",
         "tests/test_web_ui.py"
       ]
     },
@@ -260,7 +269,9 @@
       "role": "实际 YouTube e937390a DOM、CSS、JS 与用户截图锁定播放器几何、状态和设置面板；官方帮助锁定氛围模式和影院模式语义。；窄屏折叠门槛与统一悬停提示取自播放器 9470c977 的 www-player.css 与 base.js。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/player/controls.ts",
+        "frontend/src/player/menu.ts",
+        "frontend/src/application/media.js",
         "web/index.html",
         "tests/test_follow_web.py",
         "tests/test_web_ui.py"
@@ -300,7 +311,7 @@
       "role": "播放统计中的连接速度、网络活动和缓冲健康滚动历史图参考；Peach 保留自己的播放器、色彩与数据口径。时间轴不采用本条，见快照的移植说明。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/player/stats.ts",
         "tests/test_web_ui.py"
       ]
     },
@@ -315,7 +326,8 @@
       "role": "分类切换条的组件归属、条数上限、计数徽标与可访问性语义；secondary 变体是 Peach 现有 chip 条的规范原型。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/entity-filter/entity-filter-page.tsx",
+        "frontend/src/application/catalog.js",
         "tests/test_web_ui.py"
       ]
     },
@@ -330,7 +342,8 @@
       "role": "判定分段器只用于 2–3 项互斥视图、超过 3 项或长标签改用 Tabs 的分界线。",
       "consumers": [
         "web/css/",
-        "web/app.js",
+        "frontend/src/react/components/segmented.tsx",
+        "frontend/src/react/settings-panel/settings-panel.tsx",
         "tests/test_web_ui.py"
       ]
     },

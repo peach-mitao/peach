@@ -14,8 +14,8 @@
  * 目录网格（目录元素），关注详情只让出 `#stats`（`FollowDetailGround`），不画列表。
  *
  * 打开、收起与让位都排进微任务：路由根在历史变化的同一次调用里同步提交，壳打开舞台要同步画，在提交阶段里画会
- * 出 flushSync 告警。壳在路由根之前订阅历史，它的标题与侧栏那一轮排在前面。 */
-import { useContext, useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
+ * 出 flushSync 告警。历史通知同步更新壳的标题与侧栏，页面取数随后领取当前代次。 */
+import { useContext, useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 
 import {
   adoptOverlayState, bootEntry, clearOverlayBackground, isOverlayPath, overlayTarget, peachHistory, type OverlayPath,
@@ -69,6 +69,8 @@ export function useRouteOpen(run: (boot: boolean) => void, claimedOpens = false)
 /* 一条覆盖地址的元素：挂上按地址打开那一条，卸下去处不再是覆盖地址就收起舞台（正在放的视频照旧进小窗）。 */
 function OverlayOpen() {
   const actions = useContext(ShellActionsContext);
+  const latestActions = useRef(actions);
+  useLayoutEffect(() => { latestActions.current = actions }, [actions]);
   useRouteOpen((boot) => {
     const target = overlayTarget(peachHistory.navigation.location.pathname);
     if (!actions || !target) return;
@@ -78,7 +80,7 @@ function OverlayOpen() {
   }, true);
   useEffect(() => () => {
     queueMicrotask(() => {
-      if (!isOverlayPath(peachHistory.navigation.location.pathname)) actions?.closeStage();
+      if (!isOverlayPath(peachHistory.navigation.location.pathname)) latestActions.current?.closeStage();
     });
   }, []);
   return null;

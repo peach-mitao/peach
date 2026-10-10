@@ -82,8 +82,8 @@ def build(destination: Path, tray: Path) -> Path:
     return app
 
 
-def build_island_bundle() -> None:
-    """重建 `web/dist/` 里的 island 产物（ADR-0022）。
+def build_frontend_bundles() -> None:
+    """重建 `web/dist/` 里的主界面与独立页面产物（ADR-0031）。
 
     这个 .app 外壳本身不打包 `web/`：它只踢 LaunchAgent，托盘从仓库检出里取页面。
     但那份检出就是 macOS 用户真正跑的东西，所以出包前仍要把产物重建一遍——运行时
@@ -92,13 +92,14 @@ def build_island_bundle() -> None:
     """
     npm = shutil.which("npm")
     if npm is None:
-        raise SystemExit("找不到 npm：island 产物（frontend/）出包前必须重建，请先装 Node 24+")
+        raise SystemExit("找不到 npm：前端产物（frontend/）出包前必须重建，请先装 Node 24+")
     frontend = PROJECT_ROOT / "frontend"
     subprocess.run([npm, "--prefix", str(frontend), "ci"], check=True)
     subprocess.run([npm, "--prefix", str(frontend), "run", "build"], check=True)
-    bundle = PROJECT_ROOT / "web" / "dist" / "peach-ui.js"
-    if not bundle.is_file():
-        raise SystemExit(f"构建之后仍然没有 {bundle}")
+    for name in ("peach-app.js", "peach-app.css", "peach-pages.js", "peach-pages.css"):
+        bundle = PROJECT_ROOT / "web" / "dist" / name
+        if not bundle.is_file():
+            raise SystemExit(f"构建之后仍然没有 {bundle}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -111,7 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
 def run(args: argparse.Namespace) -> int:
     if not args.tray.is_file():
         raise SystemExit(f"找不到 peach-tray：{args.tray}（先 pip install -e .）")
-    build_island_bundle()
+    build_frontend_bundles()
     args.destination.mkdir(parents=True, exist_ok=True)
     app = build(args.destination, args.tray)
     print(f"已生成 {app}")

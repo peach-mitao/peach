@@ -1763,7 +1763,7 @@ class LibraryNfoTests(unittest.TestCase):
 
     def test_management_controls_keep_credentials_and_empty_sections_visible(self):
         root = Path(__file__).resolve().parents[1]
-        source = (root / 'web/app.js').read_text(encoding='utf-8')
+        source = (root / 'frontend/src/application/catalog.js').read_text(encoding='utf-8')
         # 关注管理那一屏在 React 里：能加来源的站才进候选，缺必填凭据的那一行默认展开，
         # 一个站都没配也照样把整块列出来（空清单不等于这块不存在）。
         follow = root / 'frontend/src/react/follow-manage'

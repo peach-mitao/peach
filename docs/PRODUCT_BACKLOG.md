@@ -51,14 +51,14 @@
 
 ## BoardUI 正式前端迁移
 
-页面与详情由 React 路由树渲染，`web/app.js` 保留应用外壳、首帧骨架与动作接线。后续按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 分域收口状态、动作与入口，再清退无消费者的样式和桥接；每步独立集成并验证行为。控件映射见 [Board 适配](BOARD_UI.md)。迁移不包含版本号或其他分支发布工作。
+主界面由 `frontend/src/react/bootstrap.tsx` 启动 Application，页面、详情与常驻面由 React 路由树渲染。目录、关注、实体和选择控制器按域组织，命令式 DOM 适配器保留在 `frontend/src/application/`，共享历史、查询与设置只初始化一份。后续按 [ADR-0031](adr/0031-frontend-react-boardui-tailwind.md) 清退无消费者的样式和 DOM 适配器。控件映射见 [Board 适配](BOARD_UI.md)。迁移不包含版本号或其他分支发布工作。
 
 - 前端基础库随页面引入，取舍与时机见 ADR-0031「前端基础库」一节。TanStack Query、TanStack Table 与 React Router 已在用，路由共用一份浏览器历史；馆藏网格已在 React 里、不用 TanStack Virtual，屏外卡靠 `content-visibility` 跳过渲染；要不要上虚拟列表按下一条的实测决定。
 - `bg-card-footer` 与 `bg-card-hover` 取的是 `.peach-react` 里的真值，数据管理页整理卡、统计、活动、关注管理与设置的卡片页脚带都有底色，这几页还要逐页截图核对。
 - 索引页取 BoardUI 的控件尺寸：过滤框 36px 高、底色与边框是 BoardUI 输入框那一档，遗留页的 Geist 搜索框是 38px；版式切换 66px 宽，遗留页的同类开关是 78px；名册格悬停掺 5% 主文字色，资料页名册格掺 6%。读数的逐位滚动（`frontend/src/ui-kit/motion.ts` 的 `popCount`）、骨架换内容的淡入（`ui-kit/skeleton.ts` 的 `revealSkeleton`）与版式切换的弹簧滑块还没接进 React 那一侧。
 - React 子树深色下的次要文字取 BoardUI 的 neutral-500（115），遗留页的 `--muted`、`--ink-2` 是 163 与 212。已迁各页都是这一档，要不要把 `text-secondary` 调亮是一次全局决定，不在单页里改。
 - Remix Icon 候选在预览页 `/icon-review.html` 审查，用户筛选完之前保留现有已选图标。
-- 安装后教程：右下角那张卡和清单渲染仍在 `web/app.js`，状态层（三个本地键、签名、请求代际）在 `frontend/src/onboarding/post-setup-tutorial.ts`。迁移时整块接管渲染，删掉遗留那一段。
+- 安装后教程：右下角那张卡和清单由 `frontend/src/application/tutorial.js` 的 DOM 适配器渲染，状态层（三个本地键、签名、请求代际）在 `frontend/src/onboarding/post-setup-tutorial.ts`。后续将渲染接入 React 组件。
 - 厂牌资料页视频视图卡片多时（如 Prestige，339 张卡），侧栏展开那一帧最长约 37ms。屏外卡已跳过封面与元信息区的渲染，剩下的开销在卡片盒本身的排版；作品区已在 `catalog-grid` island 里，要上虚拟列表就在岛里做。
 
 ## 已有骨架、尚未完成（7 项）

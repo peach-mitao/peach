@@ -563,7 +563,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
         /* 回执走真的入口发一条不会自己消失的，等栈里每一条都进场停稳再量。演示库刚跑完扫描，
            「扫描与资料采集已完成」随时可能也进栈，所以判据是栈里每一条都在卡上沿之上。 */
         await opened.page.evaluate(async () => {
-          const entry = '/dist/peach-ui.js';
+          const entry = '/dist/peach-app.js';
           const ui = await import(entry);
           ui.showToast(document.getElementById('toasts'), { success: '', error: '' }, 'e2e-tutorial-lift',
             { html: '已保存配置', alert: false, timeout: 0, action: null });

@@ -1,10 +1,7 @@
-/* 界面偏好的出厂值、启动归一化与那一份 store（`peach.settings.v1`）。
- *
- * store 是整页唯一一份：模块在 `peach-ui.js` 里，壳从那里取，React 包按 `@peach/appearance` 引用、构建时
- * 改写回同一份产物，所以壳、设置面板、侧栏与配色弹层读写的是同一个对象。第一次 `appSettingsStore()`
- * 时从 localStorage 读回、归一化并建好；壳在模块体里同步调它，第一帧之前就已就位。
- *
- * 归一化的判据是「读回存量时只信形状对、范围对的值」：认不出的一项退回出厂那一档，不整份丢掉。 */
+/* 界面偏好的默认值、启动归一化与唯一 store（peach.settings.v1）。
+ * Application、设置面板、侧栏与配色弹层通过共享源码读写同一个对象。
+ * 首次 appSettingsStore() 从 localStorage 读取、归一化并创建实例，启动阶段同步就位。
+ * 存量只接受形状与范围合法的值，单项非法时取该项默认值。 */
 import { api } from '@peach/legacy/core';
 
 import { normalizeJavPreferences } from '../jav-artwork';

@@ -2,7 +2,7 @@
  * 重复文件页要知道哪些网盘值得给一颗「优先保留」。
  *
  * 地址、查询键与取数函数和壳共用，声明在 `src/query/media-sources.ts`，按 `@peach/query` 引用，
- * 产物里是 `/dist/peach-ui.js` 那一份。服务端定期探测；页面进入时读取最新快照。 */
+ * 主包里的实例只有一份。服务端定期探测；页面进入时读取最新快照。 */
 import { fetchMediaSources, MEDIA_SOURCES_KEY, type MediaSourcesData, type MediaSourceStatus } from '@peach/query';
 
 import { queryClient } from './query';

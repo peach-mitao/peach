@@ -1,7 +1,7 @@
 /* 卡片版式与照片墙尺寸：存的是哪一档、读回来按哪一档算、写进去之后落盘。
  *
  * 首页与 JAV 各存一份卡片版式（`homeLayout` / `javLayout`）。「现在在首页还是在 JAV」是路由与目录状态的
- * 判据，归壳（`web/app.js` 的 `javActive` / `homeLayoutActive`），这里只收它算好的布尔值。 */
+ * 判据，归壳（`application/layout.js` 的 `javActive` / `homeLayoutActive`），这里只收它算好的布尔值。 */
 import { normalizeJavLayout, type JavLayout } from '../jav-artwork';
 import type { SettingsStore } from '../settings-store';
 import { allowedSetting, appSettingsStore, type AppSettings } from './settings';

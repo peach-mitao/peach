@@ -2,7 +2,7 @@
  * 都从同一个对象分发。 */
 import { afterEach, beforeEach, expect, it } from 'vitest';
 
-import * as islands from '../../src/islands';
+import * as sharedHistory from '@peach/history';
 import { peachHistory, routeMetaOf, shellNavigate, type Navigation } from '../../src/history';
 
 let seen: Navigation[] = [];
@@ -20,9 +20,9 @@ function pop(path: string) {
   window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
 }
 
-it('壳从 peach-ui.js 取到的就是这一份', () => {
-  expect(islands.peachHistory).toBe(peachHistory);
-  expect(islands.shellNavigate).toBe(shellNavigate);
+it('共享 history 入口与真实浏览器历史模块使用同一份绑定', () => {
+  expect(sharedHistory.peachHistory).toBe(peachHistory);
+  expect(sharedHistory.shellNavigate).toBe(shellNavigate);
 });
 
 it('push 加一条历史，replace 不加', () => {

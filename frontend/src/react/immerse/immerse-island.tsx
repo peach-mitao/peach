@@ -2,7 +2,7 @@
  * 动作键、作者与标题都在这一面里。
  *
  * 常驻面 `immerse`（`router/managed-routes.tsx` 的常驻表）：路由树把它画进 body 末尾的常驻宿主
- * `[data-immerse-host]`，宿主就是那个节点本身，第一次打开沉浸模式时由 `islands.ts` 的 `loadImmerse` 建好、
+ * `[data-immerse-host]`，宿主就是那个节点本身，第一次打开沉浸模式时由 `application-residents.ts` 的 `loadImmerse` 建好、
  * 在画首帧的同一个任务里挂进文档。首帧就是藏着的外框。壳只拿 `configureImmerse` 给的命令式入口：沉浸
  * 模式盖在所有页面之上，壳的键盘、换批与播放快捷键要随时同步问它开没开、当前是哪一个 video。句柄写本模块
  * 的 store 再 `flushSync` 通知，`open(startId)` 里骨架、列表与播放器那几次绘制都在返回之前画完，紧跟着读

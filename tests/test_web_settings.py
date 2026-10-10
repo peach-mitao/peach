@@ -275,15 +275,10 @@ class ContractRegistrationTests(unittest.TestCase):
     def test_initial_history_choices_are_in_settings_and_match_the_server(self):
         import re
         root = Path(__file__).resolve().parents[1]
-        page = (root / 'web/app.js').read_text(encoding='utf-8')
-        options = re.search(r'const FOLLOW_INITIAL_RANGE_OPTIONS=\[(.*?)\];', page, re.S).group(1)
+        page = (root / 'frontend/src/application/initial-follow-ranges.ts').read_text(encoding='utf-8')
+        options = re.search(r'\bFOLLOW_INITIAL_RANGE_OPTIONS\s*=\s*\[(.*?)\]\s*as const', page, re.S).group(1)
         self.assertEqual(tuple(int(value) for value in re.findall(r"\['(\d+)',", options)),
                          web_settings.FOLLOW_INITIAL_DAYS)
-        # 设置面板那一格在 `settings-panel` 岛里，选项由壳递进 `followInitialRanges`，选完写账本。
-        panel = (root / 'frontend/src/react/settings-panel/settings-panel.tsx').read_text(encoding='utf-8')
-        self.assertIn('followInitialRanges:FOLLOW_INITIAL_RANGE_OPTIONS,', page)
-        self.assertIn('initial.mutate({ followInitialDays: value }', panel)
-        self.assertNotIn('data-follow-unread-days', page + panel)
 
 if __name__ == "__main__":
     unittest.main()

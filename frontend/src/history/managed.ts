@@ -61,8 +61,8 @@ interface Pending { revision: number; controller: AbortController }
 let connect: (ready: Promise<ManagedPrefetch>) => void = () => {};
 const prefetcher = new Promise<ManagedPrefetch>((resolve) => { connect = resolve });
 prefetcher.catch(() => {});
-/* 第一次打开时就发出 React 包的请求：壳排在路由树装载之前的那几次打开（搜索下拉、首屏骨架里的筛选条）
- * 不该等到 `loadRouter` 才开始取包。装载入口由构建入口登记，只调一次。 */
+/* 首次打开时调用应用登记的就绪入口，让搜索下拉与首屏筛选条等待路由树连接后取数。
+ * 页面代码已在主包中，就绪入口只调用一次。 */
 let preload: (() => void) | null = null;
 export function preloadManagedRoutes(load: () => void): void {
   preload = load;
@@ -182,6 +182,12 @@ export function releaseManagedRoute(container: Element, ...more: Element[]): voi
   if (!removed.length) return;
   notify(true);
   for (const shown of removed) if (!shown.resident) shown.host.remove();
+}
+
+/** 应用卸载收起全部登记，并中止尚未成为页面的首屏请求。 */
+export function releaseAllManagedRoutes(): void {
+  const [first, ...rest] = new Set([...entries.keys(), ...pending.keys()]);
+  if (first) releaseManagedRoute(first, ...rest);
 }
 
 /** 某一面渲染抛错、路由树的错误边界接住之后调：只撤这一面的登记与宿主，别的面照画。之后

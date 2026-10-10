@@ -2,8 +2,8 @@
 
    只复用已验证的行为：按容器宽度保留首尾、使用单个省略号、宽度变化后重算、复制与无障碍名称
    仍提供完整原文。调用方只需给文件名、路径、URL 或 ID 加 data-middle-truncate；标题和说明继续
-   使用末尾省略。随 `/dist/peach-entry.js` 发出，`/js/middle-truncate.js` 原名转出：全文档只有一个
-   观察者，由 `peach-ui.js` 的入口（`src/islands.ts`）启动，壳拼的 HTML 与 React 子树写的属性都归它管。 */
+   使用末尾省略。随 `peach-app.js` 发出，由 Application 启动与清理全文档的唯一观察者，
+   原生宿主与 React 子树写的属性都归它管。 */
 
 interface TruncateState { full: string; rendered: string; raf: number }
 
@@ -12,8 +12,10 @@ const segmenter=typeof Intl.Segmenter==='function'
   ? new Intl.Segmenter(undefined,{granularity:'grapheme'})
   : null;
 const states=new WeakMap<Element,TruncateState>();
-const observed=new WeakSet<Element>();
+let observed=new WeakSet<Element>();
 let resizeObserver:ResizeObserver|null=null;
+let disposeTruncation:(()=>void)|null=null;
+let tracked=new Set<Element>();
 
 const graphemes=(value:unknown)=>segmenter
   ? [...segmenter.segment(String(value??''))].map(part=>part.segment)
@@ -95,6 +97,7 @@ const bind=(element:Element)=>{
   if(!states.has(element))states.set(element,{full:element.textContent||'',rendered:element.textContent||'',raf:0});
   if(!observed.has(element)){
     observed.add(element);
+    tracked.add(element);
     /* 按父级量的元素跟着父级的尺寸重算：它自己的盒子只会随文字变，不会随窗口变。 */
     if(element.dataset.middleTruncateWithin!==undefined&&element.parentElement)resizeObserver?.observe(element.parentElement);
     else resizeObserver?.observe(element);
@@ -109,13 +112,20 @@ const scan=(node:Node)=>{
   element.querySelectorAll('[data-middle-truncate]').forEach(bind);
 };
 
-function initMiddleTruncate(root:Document|Element=document):void{
+function initMiddleTruncate(root:Document|Element=document):()=>void{
+  disposeTruncation?.();
+  observed=new WeakSet<Element>();tracked=new Set<Element>();
+  const elements=tracked;
+  let live=true;
   resizeObserver=new ResizeObserver(entries=>entries.forEach(entry=>{
+    if(!live)return;
     schedule(entry.target);
     entry.target.querySelectorAll?.(':scope>[data-middle-truncate-within]').forEach(schedule);
   }));
+  const resize=resizeObserver;
   scan((root as Document).documentElement||root);
   const mutations=new MutationObserver(records=>records.forEach(record=>{
+    if(!live)return;
     record.addedNodes.forEach(scan);
     const element=record.target.nodeType===Node.TEXT_NODE?record.target.parentElement:record.target as Element;
     const target=element?.closest?.('[data-middle-truncate]') as HTMLElement|null|undefined;
@@ -128,8 +138,8 @@ function initMiddleTruncate(root:Document|Element=document):void{
     }
   }));
   mutations.observe((root as Document).body||root,{childList:true,characterData:true,subtree:true});
-  document.fonts?.ready?.then(()=>root.querySelectorAll('[data-middle-truncate]').forEach(schedule));
-  root.addEventListener('copy',event=>{
+  document.fonts?.ready?.then(()=>{if(live)root.querySelectorAll('[data-middle-truncate]').forEach(schedule)});
+  const copy:EventListener=event=>{
     const selection=document.getSelection();
     if(!selection||selection.isCollapsed)return;
     const anchor=selection.anchorNode?.nodeType===Node.ELEMENT_NODE?selection.anchorNode as Element:selection.anchorNode?.parentElement;
@@ -137,7 +147,17 @@ function initMiddleTruncate(root:Document|Element=document):void{
     const state=target&&states.get(target);
     if(!state||!target.contains(selection.focusNode)||!(event as ClipboardEvent).clipboardData)return;
     (event as ClipboardEvent).clipboardData?.setData('text/plain',state.full);event.preventDefault();
-  });
+  };
+  root.addEventListener('copy',copy);
+  const dispose=()=>{
+    if(!live)return;live=false;
+    resize.disconnect();mutations.disconnect();root.removeEventListener('copy',copy);
+    for(const element of elements){const state=states.get(element);if(state?.raf){cancelAnimationFrame(state.raf);state.raf=0}}
+    elements.clear();
+    if(disposeTruncation===dispose){disposeTruncation=null;resizeObserver=null}
+  };
+  disposeTruncation=dispose;
+  return dispose;
 }
 
 export { initMiddleTruncate, middleTruncateText };

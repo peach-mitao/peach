@@ -21,15 +21,16 @@ class DevCopyTests(unittest.TestCase):
 
     def test_save_preserves_code_and_records_the_original_file(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "web").mkdir()
-            path = root / "web/app.js"
+            root = Path(tmp).resolve()
+            (root / "frontend/src/application").mkdir(parents=True)
+            path = root / "frontend/src/application/tutorial.js"
             path.write_text("const label='示例文字';", encoding="utf-8")
             candidate, = dev_copy.candidates(root, "示例文字")
             result = dev_copy.save(root, {"original": "示例文字", "replacement": "新的'文字", "candidate": candidate})
             self.assertTrue(result["ok"])
+            self.assertTrue(result["needs_build"])
             self.assertEqual(path.read_text(encoding="utf-8"), "const label='新的\\'文字';")
-            self.assertEqual(len(list((root / "build/copy-editor/backups").rglob("app.js"))), 1)
+            self.assertEqual(len(list((root / "build/copy-editor/backups").rglob("tutorial.js"))), 1)
             with self.assertRaises(ValueError):
                 dev_copy.save(root, {"original": "示例文字", "replacement": "错误", "candidate": candidate})
 

@@ -33,20 +33,22 @@ if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot 'resources\peach.ico') 
     throw 'Brand assets are missing. Run scripts/generate_brand_assets.py first.'
 }
 
-# The island bundle ships inside `--add-data web;web` and the runtime has no Node, so it
+# Frontend bundles ship inside `--add-data web;web` and the runtime has no Node, so they
 # must be rebuilt here: web/dist is committed to Git, but packaging reads the working tree,
 # and a stale bundle would be shipped without any signal. See ADR-0022.
 $FrontendPath = Join-Path $ProjectRoot 'frontend'
 $Npm = Get-Command npm -ErrorAction SilentlyContinue
 if (-not $Npm) {
-    throw 'npm not found. The island bundle (frontend/) must be rebuilt before packaging; install Node 24+.'
+    throw 'npm not found. Frontend bundles must be rebuilt before packaging; install Node 24+.'
 }
 & $Npm.Source --prefix $FrontendPath ci
 if ($LASTEXITCODE -ne 0) { throw 'npm ci failed in frontend/.' }
 & $Npm.Source --prefix $FrontendPath run build
-if ($LASTEXITCODE -ne 0) { throw 'Island bundle build failed (frontend/).' }
-if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot 'web\dist\peach-ui.js') -PathType Leaf)) {
-    throw 'web/dist/peach-ui.js is missing after the frontend build.'
+if ($LASTEXITCODE -ne 0) { throw 'Frontend bundle build failed (frontend/).' }
+foreach ($FrontendAsset in @('peach-app.js', 'peach-app.css', 'peach-pages.js', 'peach-pages.css')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot "web\dist\$FrontendAsset") -PathType Leaf)) {
+        throw "web/dist/$FrontendAsset is missing after the frontend build."
+    }
 }
 
 $BuildPath = Join-Path $ProjectRoot 'build\windows'

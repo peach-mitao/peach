@@ -35,12 +35,13 @@ describe('本地与在线艺人共用名册布局', () => {
         const page = await context.newPage();
         let release!: () => void;
         const gate = new Promise<void>(resolve => { release = resolve });
-        await page.route('**/dist/peach-react.js*', async route => {
+        await page.route(url => url.pathname === '/api/index' || url.pathname === '/api/follow/authors', async route => {
           await gate;
           await route.continue();
         });
         try {
-          await page.goto(requiredEnv('PEACH_E2E_ORIGIN') + path, { waitUntil: 'domcontentloaded' });
+          // 主模块先铺索引骨架，首屏数据暂缓；标题行与名册入口在等待时已经完整可见。
+          await page.goto(requiredEnv('PEACH_E2E_ORIGIN') + path, { waitUntil: 'commit' });
           await page.locator('#index [data-skeleton]').first().waitFor();
           assert.equal(await page.locator('#index [role="tablist"]').count(), 1);
           assert.deepEqual(await page.locator('#index [role="tab"]').allTextContents(), ['艺人', '卖家', '在线']);

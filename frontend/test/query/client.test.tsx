@@ -1,4 +1,4 @@
-/* 全站那一个 `QueryClient`（`src/query/`）：壳从 `peach-ui.js` 取，React 岛经 `Providers` 读到的是同一个。 */
+/* 全站唯一 QueryClient（src/query/）：Application 与 Providers 直接引用共享源码，读写同一缓存。 */
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -6,7 +6,7 @@ import { afterEach, expect, it } from 'vitest';
 
 import { queryClient } from '@peach/query';
 
-import * as islands from '../../src/islands';
+import { queryClient as sharedQueryClient } from '../../src/query/client';
 import { Providers } from '../../src/react/providers';
 import { queryClient as reactQueryClient } from '../../src/react/query';
 
@@ -23,7 +23,7 @@ it('React 岛里 useQueryClient() 拿到的就是壳那一个', async () => {
   await act(async () => { root.render(<Providers><Probe /></Providers>) });
   expect(seen).toBe(queryClient);
   expect(reactQueryClient).toBe(queryClient);
-  expect(islands.queryClient).toBe(queryClient);
+  expect(sharedQueryClient).toBe(queryClient);
   await act(async () => { root.unmount() });
 });
 

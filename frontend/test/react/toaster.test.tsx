@@ -1,7 +1,7 @@
 import { act } from 'react';
-import { beforeAll, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 
-import { mountToaster, showToast } from '../../src/react/toaster';
+import { mountToaster, showToast, unmountToaster } from '../../src/react/toaster';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -11,6 +11,7 @@ beforeAll(async () => {
   document.body.append(host);
   await act(async () => mountToaster(host, { success: '<svg data-glyph="check"></svg>', error: '<svg data-glyph="alert"></svg>' }));
 });
+afterAll(async () => { await act(async () => unmountToaster()); host.remove(); });
 
 const toastsWith = (text: string) => [...host.querySelectorAll<HTMLElement>('[data-sonner-toast]')]
   .filter((node) => node.textContent?.includes(text));
@@ -48,4 +49,16 @@ it('成功的勾画出来，失败的圈不画，正文按调用点给的 HTML �
   expect(ok.querySelector('b')?.textContent).toBe('3');
   expect(bad.dataset.type).toBe('error');
   expect(bad.querySelector('[data-toast-glyph="still"] [data-glyph="alert"]')).not.toBeNull();
+});
+
+it('同宿主重复挂载共用栈，卸载后可重挂，换宿主撤下原栈', async () => {
+  const next = document.createElement('div'); document.body.append(next);
+  const icons = { success: '', error: '' };
+  await act(async () => mountToaster(next, icons));
+  const original = next.firstElementChild;
+  expect(original).not.toBeNull(); expect(host.children).toHaveLength(0);
+  await act(async () => mountToaster(next, icons)); expect(next.firstElementChild).toBe(original);
+  await act(async () => { unmountToaster(); unmountToaster(); }); expect(next.children).toHaveLength(0);
+  await act(async () => mountToaster(next, icons)); expect(next.firstElementChild).not.toBe(original);
+  await act(async () => unmountToaster()); next.remove();
 });

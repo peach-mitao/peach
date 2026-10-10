@@ -5,7 +5,7 @@
  * `web/css/17-overlay.css` 的 `#toasts` 一节。宿主不带 `.peach-react`：那一层的 Preflight 会把
  * Sonner 自己的按钮样式清掉，而这里用到的 Board token 本来就挂在 `:root` 上。 */
 import type { CSSProperties } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { Toaster, toast } from 'sonner';
 
 import type * as Bundle from './bundle';
@@ -16,14 +16,23 @@ const glyph = (html: string, draw: boolean) => (
   <span data-toast-glyph={draw ? 'draw' : 'still'} aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
 );
 
-let mounted = false;
+let mounted: { host: Element; root: Root } | null = null;
+
+/** 应用卸载时撤下 Sonner 的订阅与计时；同一宿主之后可重新挂载。 */
+export function unmountToaster(): void {
+  const current = mounted;
+  mounted = null;
+  current?.root.unmount();
+}
 
 export const mountToaster: typeof Bundle.mountToaster = (host, icons) => {
-  if (mounted) return;
-  mounted = true;
+  if (mounted?.host === host) return;
+  unmountToaster();
+  const root = createRoot(host);
+  mounted = { host, root };
   /* 底边读 `--toast-bottom`：教程卡在右下角时，遗留层把它写成卡上沿之上的位置；没写就是
      Sonner 的默认边距。宽度和教程卡同宽，两块叠在一列里左右对齐。 */
-  createRoot(host).render(
+  root.render(
     <Toaster position="bottom-right" closeButton gap={8}
       style={{ '--width': '400px' } as CSSProperties}
       offset={{ right: 24, bottom: 'var(--toast-bottom, 24px)' }}

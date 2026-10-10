@@ -1,8 +1,7 @@
 /* 全站唯一的浏览器历史（`@peach/history`）。
  *
- * 壳（`web/app.js`）从 `peach-ui.js` 取，React 包按 `@peach/history` 写，构建时改写成 `/dist/peach-ui.js`，
- * 实例全站只有一个。壳在启动路径上就要写地址（清理启动地址、垃圾页重定向），那时 `peach-react.js`
- * 可能还没到，所以它跟 `QueryClient` 一样建在这一份产物里，不等 React 包。
+ * Application 与 React 路由树直接引用本模块，随 peach-app.js 发出同一个历史实例。
+ * 启动地址清理与重定向使用 shellNavigate，Router 的 navigator 也读这一份。
  *
  * 实现是 React Router 自己的 `createBrowserHistory`（`v5Compat` 档：push / replace 也通知监听者），
  * 和它的 `<Router>` 读写的是同一种 `{usr, key, idx}` 历史条目，不另引一份 history 库。它只收一个
@@ -114,6 +113,6 @@ export {
 export { ROUTE_META, routeMetaOf, type RouteMeta } from './route-meta';
 export {
   connectManagedRoutes, failManagedRoute, listenManagedEntry, managedEntries, managedEntry, managedTaken, openManagedRoute,
-  openResidentSurface, preloadManagedRoutes, releaseManagedRoute, updateManagedRoute,
+  openResidentSurface, preloadManagedRoutes, releaseAllManagedRoutes, releaseManagedRoute, updateManagedRoute,
   type ManagedEntry, type ManagedOpenOptions, type ManagedPrefetch,
 } from './managed';

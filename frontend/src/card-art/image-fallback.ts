@@ -1,12 +1,5 @@
-/* 图片回退链：一份声明式契约，替掉散在模板里的内联 `onerror`。
-
-   每个 `<img>` 自带一小段 `onerror="…"` 的 JS 时，同一条「取不到就换下一张、
-   都取不到就把 `<img>` 拿掉」的链在 app.js 里有四种版本。代价是实打实的：
-   URL 要同时穿过 HTML 属性转义和 JS 字符串两层，错一层不报错，只是这张图从此
-   再也不回退；改一次行为要照着二十多处各改一遍；将来上 CSP 时
-   `unsafe-inline` 是这些属性唯一的活路。
-
-   现在模板里只写数据，行为归 `wireImageFallbacks()` 那一条委托监听：
+/* 图片回退链：模板只声明数据，行为归 wireImageFallbacks() 的全站委托监听。
+   Application 与 React 页面引用同一模块，候选依次尝试，全部不可用时按 data-drop 处理。
 
    - `data-drop`：必填，也是这套机制的开关。没有它的 `<img>` 一概不管——页面上
      另有一批靠 CSS 或父节点兜底的图（厂牌 `.mk`），把它们删掉反而是错的。
@@ -92,7 +85,10 @@ export function advanceImageFallback(image: HTMLImageElement | null | undefined)
    捕获监听能接住任何后代图片，不必给每个 `<img>` 各挂一个——逐个绑的话，
    资料页外链的站点圆标每次重绘都要重新绑一轮。
    只认 `<img>`：同一个事件名也会从 `<video>`、`<source>`、`<script>` 上发出来。 */
+const fallbackRoots = new WeakSet<EventTarget>();
 export function wireImageFallbacks(root: EventTarget): void {
+  if (fallbackRoots.has(root)) return;
+  fallbackRoots.add(root);
   root.addEventListener('error', event => {
     if (event.target instanceof HTMLImageElement) advanceImageFallback(event.target);
   }, true);

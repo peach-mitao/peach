@@ -7,7 +7,7 @@
  *
  * 四枚视图由 state 决定，这一趟取数不改它们，所以现在就画成最终样子：`href` 是真地址，壳在宿主上
  * 委托接住点击。头像与标签只画占位，读数是一条宽度定死的微光。 */
-import type { CatalogView } from '@peach/react';
+import type { CatalogView } from './react/catalog-filter/catalog-filter';
 
 /** 每排摆多少格，同岛里空馆藏占位的 `EMPTY_SLOTS`，由容器裁到可用宽度。 */
 const EMPTY_SLOTS = 64;

@@ -101,10 +101,10 @@ it('退订之后不再收到通知；版本号单调递增', () => {
   expect(shell.shellVersion()).toBe(3);
 });
 
-it('peach-ui.js 的入口交出的是同一份绑定：从入口写，单例这边当场读到', async () => {
-  const islands = await import('../../src/islands');
-  islands.writeShell({ configurationRequestedSection: '网络与访问' });
+it('共享 shell 入口交出同一份活绑定：从入口写，状态模块当场读到', async () => {
+  const sharedShell = await import('@peach/shell');
+  sharedShell.writeShell({ configurationRequestedSection: '网络与访问' });
   expect(shell.configurationRequestedSection).toBe('网络与访问');
-  expect(islands.selected).toBe(shell.selected);
-  expect(islands.configurationRequestedSection).toBe('网络与访问');
+  expect(sharedShell.selected).toBe(shell.selected);
+  expect(sharedShell.configurationRequestedSection).toBe('网络与访问');
 });

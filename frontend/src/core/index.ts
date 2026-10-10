@@ -1,10 +1,7 @@
-/* 前端最底层：DOM 取元素、请求、转义、格式化、路由常量。
-
-   随 `/dist/peach-entry.js` 发出，`/js/core.js` 原名转出这里的导出：壳、入口包与 React 子树在浏览器里
-   读到的是同一个模块实例，`LOC`、`fmtDur` 这类语义契约只有一份。这一层不许 import 任何别的前端模块：
-   它被所有域引用，一旦反向依赖就会绕成环。
-
-   `route()` 没有放进来：它要调 syncHeaderActions/paintListTitle，那是 UI 层的事。 */
+/* 前端底层：DOM 取元素、请求、转义、格式化与路由常量。
+ * Application 与 React 页面直接引用共享源码，LOC、fmtDur 等语义契约只有一份。
+ * 本层不引入其他前端模块，避免被所有域引用的基础层反向依赖。
+ * route() 留在应用导航域，因为它还要同步标题与界面动作。 */
 const $=(s:string)=>document.querySelector(s);
 /* 方形槽位里塞不进 1.4:1 的字形：按宽度对齐它就矮一截，挨着满格的 Lucide
    图标看就是小一号。这几枚外层 viewBox 跟着 symbol 的比例走，槽位由 CSS 按高定宽。 */

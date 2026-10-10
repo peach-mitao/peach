@@ -456,7 +456,7 @@ def create_app(
         return response
 
     # JSON 契约、页面脚本与样式是仅有的几类大文本响应，压下去省的字节最多：
-    # `/api/items` 一页几十 KB，`app.js` 435KB、`app.css` 232KB。
+    # `/api/items`、主界面 bundle 与样式都通过内容类型选择压缩。
     # `add_middleware` 是 `insert(0)`，最后加的在最外层，所以压缩看到的是上面
     # `no_store` 补完 Cache-Control 之后的最终响应头。
     # 自己写内容类型闸门的 ASGI 中间件是重复劳动：Starlette 这个已经按 Content-Type

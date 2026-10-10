@@ -80,3 +80,25 @@ it('取不到时照常抛出，由壳落成空表', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })));
   await expect(loadMediaSources()).rejects.toThrow();
 });
+
+it('应用取消信号中止真实来源请求且不再重试', async () => {
+  const calls = pendingFetch(), application = new AbortController();
+  const request = loadMediaSources(application.signal);
+  const rejection = expect(request).rejects.toMatchObject({ name: 'AbortError' });
+  await flush(); expect(calls[0]!.signal).toBe(application.signal);
+  application.abort(); await rejection; await flush();
+  expect(calls).toHaveLength(1);
+});
+
+it('已取消应用不发来源请求，页面合并请求取消也不恢复已卸载应用', async () => {
+  const calls = pendingFetch(), application = new AbortController();
+  application.abort(); await expect(loadMediaSources(application.signal)).rejects.toMatchObject({ name: 'AbortError' });
+  expect(calls).toHaveLength(0);
+  const pageScope = new AbortController(), applicationScope = new AbortController();
+  const page = prefetchMediaSources(pageScope.signal);
+  await flush(); const app = loadMediaSources(applicationScope.signal);
+  const pageRejection = expect(page).rejects.toMatchObject({ name: 'AbortError' });
+  const appRejection = expect(app).rejects.toMatchObject({ name: 'AbortError' });
+  applicationScope.abort(); pageScope.abort(); await Promise.all([pageRejection, appRejection]); await flush();
+  expect(calls).toHaveLength(1);
+});

@@ -163,8 +163,6 @@ def targets(root: Path) -> list[Path]:
     picked.extend(sorted((root / "docs").glob("*.md")))
     picked.extend(sorted((root / ".claude" / "skills").glob("*/SKILL.md")))
     picked.extend(sorted((root / "web").glob("*.html")))
-    picked.append(root / "web" / "app.js")
-    picked.extend(sorted((root / "web" / "js").glob("*.js")))
     for suffix in ("*.ts", "*.tsx", "*.js"):
         picked.extend(sorted((root / "frontend" / "src").rglob(suffix)))
     for directory in ("src", "scripts", "tests"):

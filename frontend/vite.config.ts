@@ -1,31 +1,22 @@
-/* Peach island 层的构建配置。
- *
- * 输出是**一个**确定名字的 ES module：`web/dist/peach-ui.js`。不加内容哈希，
- * 因为引用它的是 Peach 自己服务的 `web/app.js`（文件顶部的 `import … from './dist/peach-ui.js'`），
- * 那份文件不经过任何构建，没法在构建时被改写；哈希文件名只会让它指向一个不存在的路径。
- * 缓存由服务端的 `Cache-Control: no-store` 负责，和 index.html／app.js 同一口径。
- *
- * 已经由 Peach 服务的遗留 ES module 保持外部依赖：它们在浏览器里是 `/js/*.js`，
- * 打进 bundle 会出现两份实现，`LOC`、`fmtDur` 这种语义契约就会各走一份。
- * 源码里用 `@peach/legacy/*` 引用，`output.paths` 在产物里改写回真实路径。
- */
+/* 主界面构建：Application 与路由、常驻面、共享状态打进 peach-app.js。
+ * 固定文件名由 index.html 引用；服务端以 ETag 校验内容并要求每次重新验证缓存。
+ * 模块别名直接指向唯一源码，浏览器仅在启用开发取证时请求独立的 agentation 模块。 */
+import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-export const LEGACY_MODULES = {
-  '@peach/legacy/core': '/js/core.js',
-  '@peach/legacy/ui': '/js/ui-components.js',
-  '@peach/legacy/jav-title': '/js/jav-title.js',
-  '@peach/legacy/tags': '/js/tags.js',
-  '@peach/legacy/ui-sounds': '/js/ui-sounds.js',
-  '@peach/legacy/middle-truncate': '/js/middle-truncate.js',
-} as const;
-
-/** React 子树的产物（`vite.react.config.ts`）。island 只在挂 React 子树时动态 import 它。 */
-export const REACT_BUNDLE = {
-  '@peach/react': '/dist/peach-react.js',
-} as const;
+const source = (name: string) => fileURLToPath(new URL(`./src/${name}`, import.meta.url));
 
 export default defineConfig({
+  plugins: [tailwindcss()],
+  resolve: { alias: {
+    '@peach/legacy/core': source('core/index.ts'), '@peach/legacy/ui': source('ui-kit/index.ts'),
+    '@peach/legacy/jav-title': source('core/jav-title.ts'), '@peach/legacy/tags': source('core/tags.ts'),
+    '@peach/legacy/ui-sounds': source('ui-kit/sounds.ts'), '@peach/legacy/middle-truncate': source('ui-kit/middle-truncate.ts'),
+    '@peach/card-art': source('card-art/index.ts'), '@peach/appearance': source('appearance/index.ts'),
+    '@peach/query': source('query/index.ts'), '@peach/history': source('history/index.ts'), '@peach/shell': source('shell/index.ts'),
+    '@/registry': source('react/evilcharts/registry'), '@/lib/utils': source('react/charts/cn.ts'), '@': source('react/boardui'),
+  } },
   // 库模式不替换 `process.env.NODE_ENV`。`QueryClient`（`@tanstack/query-core`）随这份产物发出，它的开发期
   // 告警按这个值判断，不替换的话浏览器里读到一个不存在的 `process`，整个模块加载失败。
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
@@ -34,22 +25,22 @@ export default defineConfig({
     // 产物进 Git，所以目录必须只剩当前构建的东西；残留文件会被一起提交。
     emptyOutDir: true,
     target: 'es2022',
+    cssTarget: ['chrome111','edge111','firefox128','safari16.4','ios16.4'],
     // Vite 8 的内核是 rolldown，压缩走 oxc；写 'esbuild' 会落到已废弃的转译插件上。
     minify: 'oxc',
     sourcemap: false,
     cssCodeSplit: false,
     lib: {
-      entry: 'src/islands.ts',
+      entry: 'src/react/bootstrap.tsx',
       formats: ['es'],
-      fileName: () => 'peach-ui.js',
+      fileName: () => 'peach-app.js',
     },
     rollupOptions: {
-      external: [...Object.keys(LEGACY_MODULES), ...Object.keys(REACT_BUNDLE)],
+      external: ['/dev/agentation.js'],
       output: {
-        paths: { ...LEGACY_MODULES, ...REACT_BUNDLE },
         // island 之间不做代码分割：入口是浏览器直接 import 的单一模块。
         codeSplitting: false,
-        assetFileNames: 'peach-ui.[ext]',
+        assetFileNames: 'peach-app.[ext]',
       },
     },
   },

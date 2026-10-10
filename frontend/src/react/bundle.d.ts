@@ -1,10 +1,7 @@
-/* `web/dist/peach-react.js` 的对外契约。
- *
- * `frontend/src/islands.ts` 按 `@peach/react` 引用这份产物，构建时改写成 `/dist/peach-react.js`；
- * `entry.tsx` 按这里的签名实现，两边的类型检查各自对照同一份声明。
- * 配置数据的形状以 `/api/configuration`（`src/peach/routes_configuration.py`）为准。 */
+/* 内部常驻面与页面的类型契约。
+ * application-residents.ts 与 entry.tsx 在主界面同一源码图内组合这些接口，不发布独立运行时桥包。
+ * 配置数据以 /api/configuration（src/peach/routes_configuration.py）为准。 */
 import type { QualityGoal } from './quality-goals/quality-goals';
-import type { ShellActions } from './router/shell-actions';
 import type { IndexProps } from './index/index-data';
 import type { CatalogGridProps } from './catalog-grid/types';
 import type { JunkQueueProps } from './junk-queue/junk-queue';
@@ -301,7 +298,7 @@ export interface QualityGoalsProps {
 
 /** 统计页仍由遗留层提供的能力。都是纯函数或导航，页面不持有它们的状态。 */
 export interface StatsProps {
-  /** 标签键到界面上的名称（`web/js/tags.js` 的 `tagLabel`）。 */
+  /** 标签键到界面上的名称（`core/tags.ts` 的 `tagLabel`）。 */
   tagLabel(key: string): string;
   /** 点一个内容标签：回目录并按它筛选。整页换成目录由遗留壳做。 */
   onTag(key: string): void;
@@ -472,7 +469,7 @@ export interface ToastRequest {
 
 export type { StageApi, StageHost, StagePatch, StageRequest } from './stage/stage-api';
 
-/** 接上壳给的宿主，拿回舞台的命令式入口（`stage/stage.tsx`）。只调一次；这一面由 `islands.ts` 的
+/** 接上壳给的宿主，拿回舞台的命令式入口（`stage/stage.tsx`）。只调一次；这一面由 `application-residents.ts` 的
  *  `loadStage` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureStage(host: StageHost): StageApi;
 
@@ -481,20 +478,20 @@ export type {
 } from './settings-panel/settings-panel-api';
 
 /** 接上壳给的宿主，拿回设置面板的命令式入口（`settings-panel/settings-panel.tsx`）。只调一次；这一面由
- *  `islands.ts` 的 `loadSettingsPanel` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
+ *  `application-residents.ts` 的 `loadSettingsPanel` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureSettingsPanel(host: SettingsPanelHost): SettingsPanelApi;
 
 export type { ImmerseApi, ImmerseHost } from './immerse/immerse-api';
 
 /** 接上壳给的宿主，拿回沉浸模式的命令式入口（`immerse/immerse-island.tsx`）。只调一次；这一面由
- *  `islands.ts` 的 `loadImmerse` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
+ *  `application-residents.ts` 的 `loadImmerse` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureImmerse(host: ImmerseHost): ImmerseApi;
 
 export type {
   SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
 } from './sidebar/sidebar-api';
 
-/** 接上壳给的宿主，拿回侧栏的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次；这一面由 `islands.ts` 的
+/** 接上壳给的宿主，拿回侧栏的命令式入口（`sidebar/sidebar-island.tsx`）。只调一次；这一面由 `application-residents.ts` 的
  *  `loadSidebar` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureSidebar(host: SidebarHost): SidebarApi;
 
@@ -503,7 +500,7 @@ export type {
 } from './manage-header/manage-header-api';
 
 /** 接上壳给的宿主，拿回管理区页头的命令式入口（`manage-header/manage-header-island.tsx`）。只调一次；这一面由
- *  `islands.ts` 的 `loadManageHeader` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
+ *  `application-residents.ts` 的 `loadManageHeader` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureManageHeader(host: ManageHeaderHost): ManageHeaderApi;
 
 export type {
@@ -511,20 +508,16 @@ export type {
 } from './batch-dock/batch-dock-api';
 
 /** 接上壳给的宿主，拿回批量条的命令式入口（`batch-dock/batch-dock-island.tsx`）。只调一次；这一面由
- *  `islands.ts` 的 `loadBatchDock` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
+ *  `application-residents.ts` 的 `loadBatchDock` 接着经常驻表的 `openResidentSurface` 在路由树里打开。 */
 export declare function configureBatchDock(host: BatchDockHost): BatchDockApi;
 
 export type { GlowPickerHost } from './glow-picker/glow-picker-api';
 
-/** 接上壳给的宿主（`glow-picker/glow-picker-island.tsx`）。只调一次；卡的内容由 `islands.ts` 的
+/** 接上壳给的宿主（`glow-picker/glow-picker-island.tsx`）。只调一次；卡的内容由 `application-residents.ts` 的
  *  `loadGlowPicker` 接着经常驻表的 `openResidentSurface` 在路由树里画。 */
 export declare function configureGlowPicker(host: GlowPickerHost): void;
 
 export type { ManagedOpenProps, ManagedPath, ShellActions } from './router/shell-actions';
-
-/** 挂上客户端导航（`router/router.tsx`）：React Router 接管 `@peach/history`，每一页、沉浸与详情都由它按匹配打开；
- * 管理区、索引页与资料页由它画，经 `actions` 回到壳。重复调用是空操作。 */
-export declare function configureRouter(actions: ShellActions): void;
 
 /** 路由树那几页的首屏取数（`@peach/history` 的 `openManagedRoute` 经 `connectManagedRoutes` 调它）。 */
 export declare function prefetchManagedRoute(path: string, open: object, signal: AbortSignal): Promise<void>;

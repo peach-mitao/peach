@@ -16,6 +16,7 @@ import type {
   PanelSettings, SettingsEffect, SettingsPanelApi, SettingsPanelHost,
 } from '../../src/react/settings-panel/settings-panel-api';
 import { createSettingsStore } from '../../src/settings-store';
+import { FOLLOW_INITIAL_RANGE_OPTIONS } from '../../src/application/initial-follow-ranges';
 
 import { click, settle } from './render';
 
@@ -41,14 +42,13 @@ vi.mock(import('../../src/react/settings-panel/icon'), async (importOriginal) =>
   };
 });
 
-/* 壳那一侧的 `islands.ts` 按 `@peach/react` 引产物；React 子树的类型配置不映射这个名字，所以这里不让类型检查
-   跟进去，只按壳用的几个入口取。运行时 Vitest 把它指到 `entry.tsx`。 */
-type ShellIslands = {
+/* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
+type ShellIslands = { connectApplication(next: (actions: ShellActions) => void): () => void;
   loadSettingsPanel(host: SettingsPanelHost): Promise<SettingsPanelApi>;
   settingsPanelApi(): SettingsPanelApi | null;
   loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>;
 };
-const ISLANDS_MODULE = '../../src/islands';
+const ISLANDS_MODULE = '../../src/react/application-residents';
 
 async function load() {
   vi.resetModules();
@@ -94,8 +94,9 @@ function shellActions(): ShellActions {
   };
 }
 
-/** 壳启动时先画路由树（根的选项与 `configureRouter` 同一份）；接上取数单独一步，用例可以把它往后放。 */
+/** 壳启动时先画路由树（根的选项与 `mountApplication` 同一份）；接上取数单独一步，用例可以把它往后放。 */
 async function mountRouter(r: Loaded) {
+  unmounts.push(r.islands.connectApplication(() => {}));
   const root = createRoot(document.createElement('div'), r.ROUTER_ROOT_OPTIONS);
   await act(async () => { root.render(<r.RouterRoot actions={shellActions()} />) });
   unmounts.push(() => root.unmount());
@@ -126,7 +127,7 @@ function panelHost() {
     navCatalog: [['', '首页', 'house']],
     themeOptions: [['system', '跟随系统', 'monitor'], ['light', '浅色', 'sun'], ['dark', '深色', 'moon']],
     videoLayouts: [['small', '小'], ['large', '大']],
-    followInitialRanges: [['30', '30 天']],
+    followInitialRanges: FOLLOW_INITIAL_RANGE_OPTIONS,
     videoLayout: () => 'small', setVideoLayout: () => {},
     censored: () => false, setCensored: () => {}, highContrast: () => false, setHighContrast,
     receipt: () => {}, failure: () => {}, syncRemote: () => {}, openConfiguration: () => {}, attached,
@@ -170,6 +171,38 @@ function watchReports() {
 }
 
 describe('设置面板与壳的接缝', () => {
+  it('首次采集范围选择写入设置接口，成功后保存服务端值并给出回执', async () => {
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => ({
+      ok: true, status: 200,
+      json: async () => init?.method === 'POST' ? { followInitialDays: 7 } : {},
+    }));
+    vi.stubGlobal('fetch', fetcher);
+    const current = await setup();
+    const receipt = vi.fn();
+    current.host.receipt = receipt;
+    const panel = await open(current, '关注');
+    const field = panel.querySelector<HTMLElement>('#followInitialDaysSetting .ui-gselect')!;
+    expect([...field.querySelectorAll('[role="option"]')].map((option) => option.textContent))
+      .toEqual(['不限时间', '最近 7 天', '最近 30 天', '最近 90 天']);
+    current.save.mockClear();
+    // happy-dom 不实现浏览器顶层弹出 API；选项与 change 使用正式控件。
+    const menu = field.querySelector<HTMLElement>('[data-select-menu]')!;
+    menu.showPopover = vi.fn();
+    menu.hidePopover = vi.fn();
+    await click(field.querySelector('[data-select-trigger]'));
+    await click(field.querySelector('[data-select-option="7"]'));
+    await settle();
+    const posts = fetcher.mock.calls.filter(([url, init]) => url === '/api/settings' && init?.method === 'POST');
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(String(posts[0]![1]!.body))).toEqual({ followInitialDays: 7 });
+    expect(current.value.followInitialDays).toBe(7);
+    expect(current.save).toHaveBeenCalledTimes(1);
+    expect(receipt).toHaveBeenCalledWith('已保存首次采集历史范围');
+    expect(field.querySelector('[data-select-label]')?.textContent).toBe('最近 7 天');
+    expect(panel.textContent).toContain('已保存，适用于尚未开始采集的来源。');
+    await close(current);
+  });
+
   it('每一个开关只落一次盘、只报自己那一个效果名', async () => {
     const current = await setup();
     const panel = await open(current);

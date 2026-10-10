@@ -33,14 +33,13 @@ vi.mock(import('../../src/react/settings-panel/icon'), async (importOriginal) =>
   };
 });
 
-/* 壳那一侧的 `islands.ts` 按 `@peach/react` 引产物；React 子树的类型配置不映射这个名字，所以这里不让类型检查
-   跟进去，只按壳用的几个入口取。运行时 Vitest 把它指到 `entry.tsx`。 */
-type ShellIslands = {
+/* 常驻面适配层直接读取同一包内的配置函数；测试只接本场景的句柄契约。 */
+type ShellIslands = { connectApplication(next: (actions: ShellActions) => void): () => void;
   loadManageHeader(host: ManageHeaderHost): Promise<ManageHeaderApi>;
   manageHeaderApi(): ManageHeaderApi | null;
   loadBatchDock(host: BatchDockHost): Promise<BatchDockApi>;
 };
-const ISLANDS_MODULE = '../../src/islands';
+const ISLANDS_MODULE = '../../src/react/application-residents';
 
 async function load() {
   vi.resetModules();
@@ -78,8 +77,9 @@ function shellActions(): ShellActions {
   };
 }
 
-/** 壳启动时先画路由树（根的选项与 `configureRouter` 同一份）；接上取数单独一步，用例可以把它往后放。 */
+/** 壳启动时先画路由树（根的选项与 `mountApplication` 同一份）；接上取数单独一步，用例可以把它往后放。 */
 async function mountRouter(r: Loaded) {
+  unmounts.push(r.islands.connectApplication(() => {}));
   const root = createRoot(document.createElement('div'), r.ROUTER_ROOT_OPTIONS);
   await act(async () => { root.render(<r.RouterRoot actions={shellActions()} />) });
   unmounts.push(() => root.unmount());
@@ -127,7 +127,7 @@ function watchReports() {
 const title = (root: ParentNode) => root.querySelector('[data-manage-title]')?.textContent;
 
 describe('换手', () => {
-  it('包回来之前宿主里是骨架、句柄为 null；画上之后句柄才交出，画出来的是同一份结构', async () => {
+  it('预取未接上时宿主里是骨架、句柄为 null；画上之后句柄才交出，画出来的是同一份结构', async () => {
     const first = props('cleanup', '/junk-files');
     const skeleton = document.createElement('div');
     skeleton.innerHTML = manageHeaderSkeletonHtml(first);

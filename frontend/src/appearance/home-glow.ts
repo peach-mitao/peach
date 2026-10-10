@@ -1,14 +1,8 @@
-/* 外观配色的纯数据层：光晕的参数模型、预设、命名色板、强调色清单、读回存量的规范化，
-   以及把颜色写到指定元素上的那两次绘制。没有页面装配，也不认识偏好对象：当前设置和目标元素
-   由外观应用层（`./glow.ts`、`./settings.ts`）递进来。
-
-   随 `peach-ui.js` 发出，经 `@peach/appearance` 转出：壳从 `peach-ui.js` 取，React 包按
-   `@peach/appearance` 引用、构建时改写回同一份产物，同一张预设表、同一套色板和同一段规范化只有一份。
-   `glowNumber` 与它的 `boundedPreference`（`frontend/src/number-setting.ts`）判据相同：
-   整数且落在区间里才算数，否则退回默认那一档。
-
-   `paintHomeGlow` 只写传进来的那枚元素。写在 <html> 上整棵树都要重算样式，实测每帧
-   15ms 上下，拖拉条时帧预算当场就超；量法记在 web/css/01-base.css 那条规则上面。 */
+/* 外观配色的纯数据层：光晕参数、预设、命名色板、强调色清单与存量规范化。
+ * 当前设置与目标元素由 glow.ts、settings.ts 递进来，paintHomeGlow 只写目标元素。
+ * @peach/appearance 直接解析到共享源码，主界面只发布一份预设表和规范化实现。
+ * glowNumber 与 number-setting.ts 的 boundedPreference 都要求整数落在区间内，否则取默认值。
+ * 光晕写在局部元素，避免拖动时触发整棵文档的样式重算；实测记录见 web/css/01-base.css。 */
 
 export interface GlowSpot { color: string; alpha: number }
 /** 一份光晕设置。 */

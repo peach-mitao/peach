@@ -10,8 +10,7 @@ const VIDEOJS = '/vendor/videojs/8.24.1/';
 const STYLESHEET = `${VIDEOJS}video-js.min.css`;
 
 const loadScript = (src: string): Promise<void> => new Promise((resolve, reject) => {
-  /* 两份产物（`peach-ui.js` 与 `peach-react.js`）各带一份这个加载器：另一份已经插过的脚本
-     不再插第二次，等它自己落地；已经落地的（`data-loaded`）不会再发 `load`，直接算好。 */
+  /* 已插入的脚本复用加载状态，不重复请求；data-loaded 表示已完成。 */
   const existing = document.head.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
   if (existing?.dataset.loaded) { resolve(); return }
   const script = existing ?? document.createElement('script');
@@ -20,9 +19,8 @@ const loadScript = (src: string): Promise<void> => new Promise((resolve, reject)
   if (!existing) { script.src = src; document.head.appendChild(script) }
 });
 
-/* 样式表插在页面第一张样式表前面，占住它在 `<head>` 里的层叠位置：`peach-react.css` 里的 `player.css`
-   与 `/app.css`、`/board.css` 按同样的特指度覆盖 Video.js 的默认样式，靠的是排在它后面。另一份产物已经
-   插过的不插第二次；已经生效的（`sheet` 在）直接算好。样式表取不回来不拦播放器，控件照样挂上。 */
+/* 样式表插在页面第一张样式表前面，占住它在 `<head>` 里的层叠位置：`peach-app.css` 里的 `player.css`
+   与 `/app.css`、`/board.css` 按同样的特指度覆盖 Video.js 的默认样式，靠的是排在它后面。已插入的不重复添加；已经生效的（`sheet` 在）直接算好。样式表取不回来不拦播放器，控件照样挂上。 */
 const loadStylesheet = (href: string): Promise<void> => new Promise((resolve) => {
   const existing = document.head.querySelector<HTMLLinkElement>(`link[rel="stylesheet"][href="${href}"]`);
   if (existing?.sheet) { resolve(); return }
