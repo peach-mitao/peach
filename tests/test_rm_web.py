@@ -13,6 +13,7 @@ from unittest import mock
 from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_playlists, web_stats
 from peach import web_contract as rm_web
 from peach.previews import entity_image_key, logo_key
+from peach.web_catalog import q_editions, q_items, q_parts
 from support.ledger import fresh_ledger
 
 
@@ -3261,6 +3262,101 @@ class PhotoSetTests(unittest.TestCase):
         self.assertEqual(rm_web.q_photo_set(self.contract, {"id": ids[0]})["seed"], "")
 
 
+
+
+class CatalogVersionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.db = fresh_ledger(Path(self.tmp.name).resolve())
+        self.contract = rm_web.WebContract(self.db)
+
+    def add(self, aid, name, duration, height=1080, code='FC2-PPV-1110408'):
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute(
+                'INSERT INTO asset(id,location,path,name,medium,code,size,duration,width,height,first_seen) '
+                "VALUES(?,'115',?,?,'video',?,1000000,?,?,?,'2026-01-01')",
+                (aid, f'B:\\{aid}\\{name}', name, code, duration, height * 16 // 9, height))
+
+    def test_related_keeps_one_version_card_when_a_later_part_ranks_first(self):
+        self.add(1, 'FC-1110408.mp4', 3213)
+        self.add(2, 'FC2-PPV-1110408-1-4K修复.mp4', 3013, 2160)
+        self.add(3, 'FC2-PPV-1110408-2-4K修复.mp4', 200, 2160)
+        rows = {row['id']: row for row in web_catalog._catalog_group_rows(self.contract)}
+        candidates = [rows[3], rows[1], rows[2]]
+        kept = web_catalog._one_card_per_release(self.contract, 'ABW-999', candidates)
+        self.assertEqual([row['id'] for row in kept], [3])
+        self.assertEqual(web_catalog._one_card_per_release(
+            self.contract, 'FC2-PPV-1110408', candidates), [])
+
+    def test_full_release_and_repaired_parts_share_two_versions(self):
+        self.add(1, 'FC-1110408.mp4', 3213.802667)
+        self.add(2, 'FC2-PPV-1110408-1-4K修复.mp4', 3013.577233, 2160)
+        self.add(3, 'FC2-PPV-1110408-2-4K修复.mp4', 199.8997, 2160)
+        result = q_items(self.contract, {'q': '1110408'})
+        self.assertEqual(result['work_total'], 1)
+        self.assertEqual({row['edition_group']['count'] for row in result['items']}, {2})
+        versions = q_editions(self.contract, {'id': 3})
+        self.assertEqual(versions['count'], 2)
+        self.assertEqual([row['id'] for row in versions['items']], [1, 2, 3])
+        self.assertEqual([row.get('part_label') for row in versions['items']], [None, '1', '2'])
+        self.assertEqual([row['id'] for row in q_parts(self.contract, {'id': 3})['items']], [2, 3])
+
+    def test_two_multipart_encodes_keep_independent_part_queues(self):
+        for aid, name, duration, height in (
+            (1, 'FC-1110408_1.mp4', 3013, 1080), (2, 'FC-1110408_2.mp4', 200, 1080),
+            (3, 'FC2-PPV-1110408-1-4K修复.mp4', 3013, 2160),
+            (4, 'FC2-PPV-1110408-2-4K修复.mp4', 200, 2160),
+        ):
+            self.add(aid, name, duration, height)
+        result = q_items(self.contract, {'q': '1110408'})
+        self.assertEqual(result['work_total'], 1)
+        self.assertEqual({row['edition_group']['count'] for row in result['items']}, {2})
+        self.assertEqual([row['id'] for row in q_parts(self.contract, {'id': 2})['items']], [1, 2])
+        self.assertEqual([row['id'] for row in q_parts(self.contract, {'id': 4})['items']], [3, 4])
+
+    def test_full_file_and_same_quality_parts_have_two_playable_forms(self):
+        self.add(1, 'FC-1110408.mp4', 3213)
+        self.add(2, 'FC2-PPV-1110408-CD1.mp4', 3013)
+        self.add(3, 'FC2-PPV-1110408-CD2.mp4', 200)
+        self.assertEqual(q_editions(self.contract, {'id': 1})['count'], 2)
+
+    def test_resolution_versions_use_normalized_codes(self):
+        self.add(1, 'ABW-251.mp4', 12044, 720, 'ABW-251')
+        self.add(2, 'abw251.mp4', 12044, 1080, 'abw251')
+        result = q_items(self.contract, {'q': '251'})
+        self.assertEqual({row['edition_group']['count'] for row in result['items']}, {2})
+        self.assertEqual(q_editions(self.contract, {'id': 1})['count'], 2)
+
+    def test_clips_and_unknown_specifications_stay_unfolded(self):
+        self.add(1, 'FC2-PPV-1110408.mp4', 3000, 1080)
+        self.add(2, 'FC2-PPV-1110408.mp4', 200, 720)
+        self.assertTrue(all('edition_group' not in row for row in q_items(self.contract, {})['items']))
+
+    def test_matching_copies_are_not_presented_as_resolution_versions(self):
+        self.add(1, 'FC2-PPV-1110408.mp4', 3000)
+        self.add(2, 'FC2-PPV-1110408.MP4', 3000)
+        self.assertEqual(q_editions(self.contract, {'id': 1}), {'error': 'edition group not found'})
+
+    def test_duplicate_full_files_share_one_version_without_part_labels(self):
+        self.add(1, 'FC2-PPV-1110408.mp4', 3213)
+        self.add(2, 'FC2-PPV-1110408.MP4', 3213)
+        self.add(3, 'FC2-PPV-1110408-CD1.mp4', 3013)
+        self.add(4, 'FC2-PPV-1110408-CD2.mp4', 200)
+        versions = q_editions(self.contract, {'id': 1})
+        self.assertEqual(versions['count'], 2)
+        self.assertEqual({row['version_id'] for row in versions['items']}, {1, 3})
+        self.assertTrue(all('part_label' not in row for row in versions['items'][:2]))
+
+    def test_missing_fc2_codes_are_projected_without_ledger_writes(self):
+        self.add(1, 'FC2-PPV-1110408-1.mp4', 3000, code=None)
+        self.add(2, 'FC2-PPV-1110408-2.mp4', 3000, code=None)
+        result = q_items(self.contract, {'q': '1110408'})
+        self.assertEqual(result['work_total'], 1)
+        self.assertEqual({row['part_group']['count'] for row in result['items']}, {2})
+        self.assertEqual([row['id'] for row in q_parts(self.contract, {'id': 2})['items']], [1, 2])
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(connection.execute('SELECT code FROM asset ORDER BY id').fetchall(), [(None,), (None,)])
 
 
 if __name__ == "__main__":

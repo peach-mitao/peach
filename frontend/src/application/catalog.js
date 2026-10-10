@@ -73,8 +73,8 @@ export function mixRelated(seedId){
 
 export function openGridCard(it,anchor){
   if(stageApi()?.miniplayerTakesCard(it)){stageApi().miniplayerPlay(it.id);return}
-  if(it.part_group){openParts(it.part_group.seed_id,it.id,true,anchor);return}
   if(it.edition_group){openEditions(it.edition_group.seed_id,it.id,true,anchor);return}
+  if(it.part_group){openParts(it.part_group.seed_id,it.id,true,anchor);return}
   openItem(it.id,true,null,anchor);
 }
 

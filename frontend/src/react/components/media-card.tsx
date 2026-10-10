@@ -204,7 +204,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
       <div data-media-badge="" dangerouslySetInnerHTML={{ __html: helpers.badgeHtml(item.location || '', item.cost || '') }} />
       <span data-media-check=""><Icon name="check" /></span>
       <span data-media-trash-mark=""><Icon name="trash" /><b>回收站</b></span>
-      {parts ? <span data-media-group="">{`${Number(parts.count).toLocaleString()} 卷`}</span> : null}
+      {parts && !editions ? <span data-media-group="">{`${Number(parts.count).toLocaleString()} 卷`}</span> : null}
       {editions
         ? <span data-media-group="" title={editions.editions.join(' · ')}>{`${Number(editions.count).toLocaleString()} 个版本`}</span>
         : null}
@@ -241,7 +241,7 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
       onClick={click} onMouseDown={suppressShiftTextSelection}>
       <button type="button" data-media-open="" data-open=""
-        aria-label={`打开 ${shownName}${parts ? '分卷' : editions ? '版本' : '详情'}`} />
+        aria-label={`打开 ${shownName}${editions ? '版本' : parts ? '分卷' : '详情'}`} />
       {stacked ? <div data-media-stack="">{pic}</div> : pic}
       <div data-media-meta="">
         {avatar}

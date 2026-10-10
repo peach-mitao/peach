@@ -63,13 +63,13 @@ export interface DetailItem extends Omit<CardFields, 'tags'> {
 }
 
 /** 队列里的一条：卡片那一份，外加版次与卷标。 */
-export interface QueueItem extends MediaItem { edition_label?: string; part_label?: string }
+export interface QueueItem extends MediaItem { edition_label?: string; part_label?: string; version_id?: number }
 
 export type QueueKind = 'mix' | 'parts' | 'editions' | 'playlist';
 
 /** 壳递进来的队列引用。`fresh` 为真表示这一下是从外面进这个队列，要重取；同一个队列里
  *  换一条时为假，读缓存。播放列表每次都重取：它的顺序和内容别处也在改。 */
-export interface QueueRef { kind: QueueKind; seedId?: number; playlistId?: number; fresh?: boolean }
+export interface QueueRef { kind: QueueKind; seedId?: number; playlistId?: number; fresh?: boolean; autoplay?: boolean }
 
 export interface DetailQueue {
   kind: QueueKind;
@@ -79,6 +79,7 @@ export interface DetailQueue {
   items: QueueItem[];
   /** 播放列表记下的续播位置。 */
   currentAssetId?: number | null;
+  versionCount?: number;
 }
 
 /** `/api/playlist` 的写操作都回整份列表（`web_playlists.w_playlist`）。 */
@@ -113,7 +114,7 @@ export async function fetchItem(id: number, signal?: AbortSignal): Promise<Detai
   return item;
 }
 
-interface GroupPayload { error?: string; title?: string; items?: QueueItem[] }
+interface GroupPayload { error?: string; title?: string; items?: QueueItem[]; count?: number }
 
 /** 一个队列的全部条目。Mix 是种子加上它的相关作品（相关那一份每个种子只取一次，和目录里
  *  Mix 卡的悬停翻页共用）；分卷与版本是同一个番号下的几个可播条目；播放列表按它自己的顺序。 */
@@ -136,6 +137,7 @@ export async function fetchQueue(ref: QueueRef, helpers: ItemDetailHelpers, sign
   return {
     kind: ref.kind, seedId: ref.seedId!, title: `${ref.kind === 'parts' ? '分卷' : '版本'} · ${group.title || ''}`,
     items: group.items,
+    versionCount: ref.kind === 'editions' ? group.count : undefined,
   };
 }
 
@@ -162,9 +164,19 @@ export function chooseItem(queue: DetailQueue, requested: number | null): number
 /** 卷标只有分卷队列知道：`/api/item` 是单条口径，它答不出「这是第几卷」。不补的话标题栏里的
  *  卷号在深链进来和点开队列另一条时都不出现。 */
 export function withPartLabel(item: DetailItem, queue: DetailQueue | null): DetailItem {
-  if (queue?.kind !== 'parts') return item;
+  if (queue?.kind !== 'parts' && queue?.kind !== 'editions') return item;
   const part_label = queue.items.find((part) => part.id === item.id)?.part_label || '';
   return item.part_label === part_label ? item : { ...item, part_label };
+}
+
+/** 播完一卷只接同一版本的下一卷；选另一个版本由用户发起。 */
+export function nextPart(queue: DetailQueue | null, id: number): QueueItem | null {
+  if (!queue || (queue.kind !== 'parts' && queue.kind !== 'editions')) return null;
+  const index = queue.items.findIndex((row) => row.id === id);
+  const current = queue.items[index];
+  const next = queue.items[index + 1];
+  if (!current?.part_label || !next?.part_label) return null;
+  return queue.kind === 'parts' || (current.version_id != null && current.version_id === next.version_id) ? next : null;
 }
 
 /** 首屏：先定队列（这一下要不要重取由壳说），再定停在哪一条，最后取那一条。要转走的几种情形
@@ -433,7 +445,7 @@ const QUEUE_LABEL: Record<QueueKind, string> = { mix: 'Mix', parts: '分卷', ed
  *  标题栏又已经写着「版本」——三处说同一件事，这里只留数量。别的队列标题带真信息（播放列表名、
  *  Mix 种子），不能一起砍。 */
 export function queueCopy(queue: DetailQueue): { title: string; summary: string } {
-  const count = queue.items.length.toLocaleString();
+  const count = (queue.kind === 'editions' ? queue.versionCount ?? queue.items.length : queue.items.length).toLocaleString();
   const countLabel = queue.kind === 'parts' ? `${count} 卷` : queue.kind === 'editions' ? `${count} 个版本` : `${count} 个视频`;
   return { title: QUEUE_LABEL[queue.kind], summary: queue.kind === 'editions' ? countLabel : `${queue.title} · ${countLabel}` };
 }
@@ -444,7 +456,7 @@ export function queueCopy(queue: DetailQueue): { title: string; summary: string 
 export const partLabel = (label = '') => /^\d+$/.test(label) ? `第 ${label} 卷`
   : /^[a-h]$/i.test(label) ? `${label.toUpperCase()} 卷` : label;
 export const partLabelHtml = (item: DetailItem, queue: DetailQueue | null) =>
-  (queue?.kind === 'parts' && item.part_label ? `<small class="javedition partlabel">${esc(partLabel(item.part_label))}</small>` : '');
+  ((queue?.kind === 'parts' || queue?.kind === 'editions') && item.part_label ? `<small class="javedition partlabel">${esc(partLabel(item.part_label))}</small>` : '');
 
 /** 拖动之后的新顺序：`from` 挪到 `target` 的前面或后面。 */
 export function movedOrder(ids: readonly number[], from: number, target: number, after: boolean): number[] {

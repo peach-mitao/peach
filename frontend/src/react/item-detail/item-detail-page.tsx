@@ -28,7 +28,7 @@ import { queryClient } from '../query';
 import {
   CAST_SHOWN, EDITION_TONE, FEEDBACK_URL, ITEM_TAG_URL, PLAYLIST_URL, PREFERENCE_URL, QUALITY_GOAL_URL,
   RELATED_URL, WATCH_LATER_URL, chooseItem, clampRating, detailTags, feedbackReceipt, fetchItem, fetchQueue,
-  hasTag, identityGroups, isVanished, itemKey, mediaGate, movedOrder, nextRating, partLabel, partLabelHtml, pickerSections, playlistQueue,
+  hasTag, identityGroups, isVanished, itemKey, mediaGate, movedOrder, nextPart, nextRating, partLabel, partLabelHtml, pickerSections, playlistQueue,
   queueCopy, queueKey, ratingStars, ratingText, realWatched, recentTags, relatedKey, rememberTag, sameOrder,
   withPartLabel, withTag, withoutTag,
   type DetailEntityRef, type DetailItem, type DetailQueue, type DetailTag, type ItemDetailActions,
@@ -95,10 +95,15 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
   }, []);
 
   const gate = mediaGate(item, helpers.sourceOffline(item.location || ''));
+  const next = nextPart(queue, item.id);
+  const continuePart = () => {
+    if (next && queue) actions.openQueueItem({ kind: queue.kind, seedId: queue.seedId, autoplay: true }, next.id);
+  };
   return (
     <>
       <div data-stage-grid="" data-with-queue={queue ? '' : undefined} data-item-detail="">
-        <MediaFrame item={item} gate={gate} helpers={helpers} actions={actions} />
+        <MediaFrame item={item} gate={gate} helpers={helpers} actions={actions}
+          autoplay={props.queue?.autoplay} onEnded={continuePart} />
         {queue ? <Queue queue={queue} itemId={item.id} helpers={helpers} actions={actions} /> : null}
         <Side item={item} queue={queue} write={write} helpers={helpers} actions={actions} />
       </div>
@@ -109,8 +114,9 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
 
 /* ── 播放区 ── */
 
-function MediaFrame({ item, gate, helpers, actions }: {
+function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
   item: DetailItem; gate: MediaGate; helpers: ItemDetailHelpers; actions: ItemDetailActions;
+  autoplay?: boolean; onEnded(): void;
 }) {
   /* 计费来源先挡一层说明，点了才拉流；没挂载与在线拦截的那两种不挂播放器。 */
   const [started, setStarted] = useState<'auto' | 'clicked' | ''>(gate ? '' : 'auto');
@@ -118,10 +124,16 @@ function MediaFrame({ item, gate, helpers, actions }: {
      整个实例还要搬进来，那一截 DOM 不归 React。 */
   const frameRef = useRef<HTMLDivElement>(null);
   const mounting = useRef(item);
+  const ended = useRef(onEnded);
+  ended.current = onEnded;
   useLayoutEffect(() => {
     const node = frameRef.current;
     if (!node || !started) return;
-    return actions.mountPlayer(node, mounting.current, null, started === 'clicked' ? { autoplay: true } : undefined);
+    const complete = () => ended.current();
+    node.addEventListener('ended', complete, true);
+    const unmount = actions.mountPlayer(node, mounting.current, null,
+      started === 'clicked' || autoplay ? { autoplay: true } : undefined);
+    return () => { node.removeEventListener('ended', complete, true); unmount() };
   }, [actions, started]);
   const badge = helpers.badgeHtml(item.location || '', item.cost || '', 'srcbig');
   return (
@@ -224,7 +236,8 @@ function Queue({ queue, itemId, helpers, actions }: {
             ) : null}>
             <span data-queue-head="">{edition}<b data-middle-truncate="">{helpers.displayName(row)}</b></span>
             <span data-truncate-end="">{gone ? '已消失 · 文件已不在盘上'
-              : queue.kind === 'parts' ? partLabel(row.part_label) : mixLabel(row, helpers.tagLabel)}</span>
+              : queue.kind === 'parts' || (queue.kind === 'editions' && row.part_label)
+                ? partLabel(row.part_label) : mixLabel(row, helpers.tagLabel)}</span>
           </MixQueueRow>
         );
       })}

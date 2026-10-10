@@ -21,12 +21,13 @@ from .catalog_rules import (
     jav_display_metadata,
     names_without_shared_part_tail,
     normalise_code_key,
-    ordered_multipart_items,
+    release_code_from_filename,
     part_marker,
     solo_performer_clause,
     tag_cat,
 )
 from .entities import normalize_entity_name, upsert_asset_entity
+from .catalog_versions import foldable_versions, partition_versions, version_labels
 from .field_owners import parse_owners
 from .metadata_policy import SOURCE_SPECS
 from .regions import infer_region, normalize_region, region_label
@@ -77,20 +78,26 @@ def attach_jav_display_fields(row: dict, tags=(), entity_kinds=()) -> None:
     # 产地取查询算好的那一列。取不到时退到番号推断——比直接读 `a.region` 强：那一列
     # 绝大多数行是空的，读它等于说「全都没判过」，韩国片又会原样回到 JAV 版式上。
     # 退化路径拿不到实体那一层，所以列表与详情的查询都把 `effective_region` 选出来。
+    code = row.get('code') or _filename_fc2_code(row.get('name'))
     stored = normalize_region(row.get("region"))
     region = normalize_region(row.get("effective_region"))
     if not region:
-        region = infer_region(row.get("code"), row.get("name"))
+        region = infer_region(code, row.get("name"))
     row["region"] = region
     row["region_label"] = region_label(region)
     # 详情页要能分开「这条是你定的」和「这是按番号猜的」，后者才需要请人确认。
     row["region_settled"] = bool(stored)
     row["is_jav"] = is_jav_asset(
-        row.get("code"), row.get("studio"), row.get("release_date"), entity_kinds,
+        code, row.get("studio"), row.get("release_date"), entity_kinds,
         region,
     )
     if row["is_jav"]:
-        row.update(jav_display_metadata(row.get("name"), row.get("code"), tags))
+        row.update(jav_display_metadata(row.get("name"), code, tags))
+
+
+def _filename_fc2_code(name) -> str:
+    code = release_code_from_filename(name) or ''
+    return code if code.startswith('FC2-PPV-') else ''
 
 
 def tag_is_not_a_performer_name(tag: str) -> str:
@@ -563,57 +570,69 @@ def _edition_label(row: dict, tags: tuple[str, ...] = ()) -> str:
 
 
 def _edition_rows(contract: WebContract, codes) -> list[dict]:
-    raw_codes = sorted({str(code) for code in codes if str(code or "").strip()})
-    if not raw_codes:
-        return []
-    placeholders = ",".join("?" * len(raw_codes))
+    keys = {normalise_code_key(code) for code in codes if str(code or '').strip()}
+    return [row for row in _catalog_group_rows(contract)
+            if normalise_code_key(row.get('code')) in keys and row.get('disposal') is None]
+
+
+def _catalog_group_rows(contract: WebContract) -> list[dict]:
+    """规范番号、版次、探测规格共用一次全库只读快照。"""
+    return contract.cached_until_changed('catalog-group-rows', lambda: _read_group_rows(contract))
+
+
+def _read_group_rows(contract: WebContract) -> list[dict]:
     with contract.read_connection() as connection:
         rows = [dict(row) for row in connection.execute(
-            "SELECT id,name,code,size,duration FROM asset "
-            f"WHERE medium='video' AND code IN ({placeholders}) "
-            "AND disposal IS NULL",
-            raw_codes,
+            "SELECT id,name,code,size,duration,width,height,disposal FROM asset "
+            "WHERE medium='video' "
+            "AND COALESCE(disposal,'')<>'vanished' ORDER BY id",
         )]
         if not rows:
             return []
         # 版次判据同时看文件名和标签（`无码` 可能只登记在标签上），所以标签要一起取。
-        marks = ",".join("?" * len(rows))
         tags: dict[int, list[str]] = {}
         for row in connection.execute(
                 "SELECT ae.asset_id aid, e.canonical_name name FROM asset_entity ae "
                 "JOIN entity e ON e.id=ae.entity_id "
-                f"WHERE e.kind='tag' AND ae.asset_id IN ({marks})",
-                [row["id"] for row in rows]):
+                "WHERE e.kind='tag'"):
             tags.setdefault(int(row["aid"]), []).append(str(row["name"]))
+    coded = []
     for row in rows:
+        row['raw_code'] = row['code']
+        row['code'] = row['code'] or _filename_fc2_code(row['name'])
+        if not row['code']:
+            continue
         row["edition"] = _edition_label(row, tuple(tags.get(int(row["id"]), ())))
-    return rows
+        coded.append(row)
+    return coded
 
 
 def _edition_groups(contract: WebContract, codes) -> dict[str, list[dict]]:
-    """按番号聚合，只保留版次真的不同的那些。
+    """播放版本按规范番号归组，分卷属于各自的版本。"""
+    keys = {normalise_code_key(code) for code in codes}
+    return {code: group for code, group in contract.cached_until_changed(
+        'catalog-edition-groups', lambda: _derive_edition_groups(contract)).items() if code in keys}
 
-    同番号多文件不等于多版本：实测 158 个同番号多文件的番号里，84 个是分卷、
-    还有一批是同名重复（`ABP-442.avi` 出现两次、`.MP4` 与 `.mp4` 各一份）。把它们
-    一并当版本，会把「该去重复文件页处理的东西」伪装成「可选的版本」。
-    """
+
+def _derive_edition_groups(contract: WebContract) -> dict[str, list[dict]]:
     candidates: dict[str, list[dict]] = {}
-    for row in _edition_rows(contract, codes):
-        candidates.setdefault(normalise_code_key(row.get("code")), []).append(row)
+    for row in _catalog_group_rows(contract):
+        if row.get('disposal') is None:
+            candidates.setdefault(normalise_code_key(row.get("code")), []).append(row)
     groups: dict[str, list[dict]] = {}
     for code, items in candidates.items():
         if len(items) < 2:
             continue
-        if ordered_multipart_items(items):
-            continue                      # 分卷由 attach_multipart_groups 负责，含裸名首卷
-        if len({item["edition"] for item in items}) < 2:
-            continue                      # 版次相同就是重复文件，不是版本
-        groups[code] = sorted(
-            items,
-            key=lambda item: (EDITION_ORDER.index(item["edition"])
-                              if item["edition"] in EDITION_ORDER else len(EDITION_ORDER),
-                              -int(item.get("size") or 0), int(item["id"])),
-        )
+        versions = partition_versions(items)
+        if not foldable_versions(versions):
+            continue
+        versions.sort(key=lambda version: (
+            EDITION_ORDER.index(version['signature'][0])
+            if version['signature'][0] in EDITION_ORDER else len(EDITION_ORDER), version['id']))
+        labels = version_labels(versions)
+        groups[code] = [dict(row, version_id=version['id'], version_label=label,
+                             version_multipart=version['multipart'])
+                        for version, label in zip(versions, labels) for row in version['items']]
     return groups
 
 
@@ -625,19 +644,19 @@ def attach_edition_groups(contract: WebContract, rows) -> None:
     """
     if not rows:
         return
-    groups = _edition_groups(contract, [row.get("code") for row in rows])
+    groups = _edition_groups(contract, [row.get("code") or _filename_fc2_code(row.get('name')) for row in rows])
     for row in rows:
-        code = normalise_code_key(row.get("code"))
+        code = normalise_code_key(row.get("code") or _filename_fc2_code(row.get('name')))
         group = groups.get(code)
         if not group or not any(item["id"] == row["id"] for item in group):
             continue
         row["edition_group"] = {
             "key": code,
             "title": code or str(row.get("code") or "多版本作品"),
-            "count": len(group),
+            "count": len({item['version_id'] for item in group}),
             "seed_id": group[0]["id"],
             "item_ids": [item["id"] for item in group],
-            "editions": [item["edition"] for item in group],
+            "editions": list(dict.fromkeys(item['version_label'] for item in group)),
         }
 
 
@@ -646,22 +665,27 @@ def q_editions(contract: WebContract, args):
     asset_id = int(args["id"])
     with contract.read_connection() as connection:
         seed = connection.execute(
-            "SELECT id,code FROM asset WHERE id=? AND medium='video' "
+            "SELECT id,code,name FROM asset WHERE id=? AND medium='video' "
             "AND disposal IS NULL",
             (asset_id,),
         ).fetchone()
-    if not seed or not seed["code"]:
+    if not seed:
         return {"error": "edition group not found"}
-    code = normalise_code_key(seed["code"])
-    group = _edition_groups(contract, [seed["code"]]).get(code, [])
+    code = normalise_code_key(seed['code'] or _filename_fc2_code(seed['name']))
+    group = _edition_groups(contract, [code]).get(code, [])
     if not group or not any(item["id"] == asset_id for item in group):
         return {"error": "edition group not found"}
     items = []
     for row in group:
         item = q_item(contract, row["id"])
-        item["edition_label"] = row["edition"]
+        item["edition_label"] = row['version_label']
+        item['version_id'] = row['version_id']
+        parts = [member for member in group if member['version_id'] == row['version_id']]
+        if row['version_multipart']:
+            item['part_label'] = _part_labels(parts)[row['id']]
         items.append(item)
-    return {"title": code or str(seed["code"]), "count": len(items), "items": items}
+    return {"title": code or str(seed["code"]),
+            "count": len({row['version_id'] for row in group}), "items": items}
 
 
 def multipart_groups(contract: WebContract) -> dict[str, list[dict]]:
@@ -674,15 +698,18 @@ def multipart_groups(contract: WebContract) -> dict[str, list[dict]]:
     """
     def derive():
         candidates: dict[str, list[dict]] = {}
-        with contract.read_connection() as connection:
-            for row in connection.execute(
-                    "SELECT id,name,code,size,duration,disposal FROM asset WHERE medium='video' "
-                    "AND COALESCE(disposal,'')<>'vanished' AND COALESCE(code,'')<>''"):
-                code = normalise_code_key(row["code"])
-                if code:
-                    candidates.setdefault(code, []).append(dict(row))
-        return {code: ordered for code, items in candidates.items()
-                if (ordered := ordered_multipart_items(items))}
+        for row in _catalog_group_rows(contract):
+            code = normalise_code_key(row['code'])
+            if code:
+                candidates.setdefault(code, []).append(row)
+        groups = {}
+        for code, items in candidates.items():
+            versions = partition_versions(items)
+            for version in versions:
+                if version['multipart']:
+                    key = code if len(versions) == 1 else f"{code}:{version['id']}"
+                    groups[key] = version['items']
+        return groups
     return contract.cached_until_changed("catalog-multipart-groups", derive)
 
 
@@ -693,9 +720,14 @@ def _live_parts(group) -> list[dict]:
 
 
 def video_work_key(contract: WebContract) -> str:
-    """分卷作品按一部计数（判据见 `multipart_groups`），其余文件各自计数。"""
+    """分卷与版本按一部作品计数，其余文件各自计数。"""
     def derive():
+        editions = _edition_groups(contract, [row['code'] for row in _catalog_group_rows(contract)])
         cases = [
+            f"WHEN a.id IN ({','.join(str(int(item['id'])) for item in group)}) "
+            f"THEN 'edition:{int(group[0]['id'])}'"
+            for group in editions.values()
+        ] + [
             f"WHEN a.id IN ({','.join(str(int(item['id'])) for item in group)}) "
             f"THEN 'multipart:{int(group[0]['id'])}'"
             for group in multipart_groups(contract).values()
@@ -708,14 +740,15 @@ def attach_multipart_groups(contract: WebContract, rows) -> None:
     """Annotate list cards with one derived multipart release, without ledger writes."""
     if not rows:
         return
-    groups = multipart_groups(contract)
+    groups = _parts_by_asset(contract)
     for row in rows:
-        code = normalise_code_key(row.get("code"))
-        group = _live_parts(groups.get(code, ()))
+        key, all_parts = groups.get(int(row['id']), ('', []))
+        code = normalise_code_key(all_parts[0]['code']) if all_parts else ''
+        group = _live_parts(all_parts)
         if not any(item["id"] == row["id"] for item in group):
             continue
         row["part_group"] = {
-            "key": code,
+            "key": key,
             "title": code or str(row.get("code") or "分卷作品"),
             "count": len(group),
             "seed_id": group[0]["id"],
@@ -734,30 +767,43 @@ def q_parts(contract: WebContract, args):
             "AND disposal IS NULL",
             (asset_id,),
         ).fetchone()
-    if not seed or not seed["code"]:
+    if not seed:
         return {"error": "multipart release not found"}
-    code = normalise_code_key(seed["code"])
-    group = multipart_groups(contract).get(code, [])
+    group = _parts_by_asset(contract).get(asset_id, ('', []))[1]
+    code = normalise_code_key(group[0]['code']) if group else ''
     live = {item["id"] for item in _live_parts(group)}
     if asset_id not in live:
         return {"error": "multipart release not found"}
     items = []
+    labels = _part_labels(group)
+    for row in group:
+        if row['id'] not in live:
+            continue
+        item = q_item(contract, row['id'])
+        item['part_label'] = labels[row['id']]
+        items.append(item)
+    return {"title": code or str(seed["code"]), "count": len(items), "items": items}
+
+
+def _parts_by_asset(contract: WebContract) -> dict[int, tuple[str, list[dict]]]:
+    return contract.cached_until_changed('catalog-parts-by-asset', lambda: {
+        int(row['id']): (key, group) for key, group in multipart_groups(contract).items() for row in group})
+
+
+def _part_labels(group: list[dict]) -> dict[int, str]:
     # 卷号后面还挂着版次或修复标记时（`PPT-018-1-uncensored.mp4`），剥掉组内共有的
     # 那段尾缀才取得到卷标；这一步和分组用的是同一个判据。卷标按整套算，进了回收站
     # 的那一卷只是不进队列，后面几卷的卷标不跟着前移。
     stripped = names_without_shared_part_tail(group) or [""] * len(group)
     has_bonus = any(fc2_collection_label(row).startswith("特典 ") for row in group)
+    labels = {}
     for position, (row, bare) in enumerate(zip(group, stripped), 1):
-        if row["id"] not in live:
-            continue
-        item = q_item(contract, row["id"])
         marker = part_marker(bare) or part_marker(str(row.get("name") or ""))
         # 裸名首卷没有标记，卷标按队列位置给；有标记时沿用文件名里的写法。
         label = fc2_collection_label(row)
-        item["part_label"] = (label if has_bonus and label else
+        labels[row['id']] = (label if has_bonus and label else
                               (marker.upper() if marker.isalpha() else marker) or str(position))
-        items.append(item)
-    return {"title": code or str(seed["code"]), "count": len(items), "items": items}
+    return labels
 
 def label_makers(contract: WebContract, c, aid) -> dict[int, dict]:
     """这部作品上哪些厂牌是某家片商旗下的 label（ADR-0049），键是 label 的实体 id。
@@ -899,6 +945,8 @@ def q_item(contract: WebContract, aid):
         [kind for kind, values in d["entities"].items() if values],
     )
     d.pop("snapshot_path", None); d.pop("path", None)
+    attach_multipart_groups(contract, [d])
+    attach_edition_groups(contract, [d])
     return d
 
 def _one_card_per_release(contract: WebContract, source_code, rows: list[dict]) -> list[dict]:
@@ -906,12 +954,21 @@ def _one_card_per_release(contract: WebContract, source_code, rows: list[dict]) 
 
     接着看按共享实体排序，同一部片的几卷实体完全一样，不收拢就会并排占满前几格。
     """
-    groups = multipart_groups(contract)
+    groups = _parts_by_asset(contract)
+    editions = _edition_groups(contract, [row.get('code') or _filename_fc2_code(row.get('name')) for row in rows])
+    seen = set()
     source_key = normalise_code_key(source_code) if source_code else ""
     kept = []
     for row in rows:
-        key = normalise_code_key(row.get("code")) if row.get("code") else ""
-        group = _live_parts(groups.get(key, ()))
+        key = normalise_code_key(row.get('code') or _filename_fc2_code(row.get('name')))
+        edition = editions.get(key, [])
+        if any(item['id'] == row['id'] for item in edition):
+            if key == source_key or key in seen:
+                continue
+            seen.add(key)
+            kept.append(row)
+            continue
+        group = _live_parts(groups.get(int(row['id']), ('', []))[1])
         if any(item["id"] == row["id"] for item in group) and (
                 key == source_key or row["id"] != group[0]["id"]):
             continue
@@ -924,7 +981,7 @@ def q_related(contract: WebContract, aid, limit=24):
 
     with contract.read_connection() as c:
         source_row = c.execute(
-            "SELECT id,code,duration,release_date FROM asset WHERE id=?", (aid,),
+            "SELECT id,code,name,duration,release_date FROM asset WHERE id=?", (aid,),
         ).fetchone()
         if not source_row:
             return {"items": []}
@@ -949,7 +1006,8 @@ def q_related(contract: WebContract, aid, limit=24):
             "ORDER BY count(DISTINCT shared.entity_id) DESC,a.id LIMIT 4000",
             (aid, *source_entity_ids),
         )]
-        candidate_rows = _one_card_per_release(contract, source_row["code"], candidate_rows)
+        candidate_rows = _one_card_per_release(
+            contract, source_row['code'] or _filename_fc2_code(source_row['name']), candidate_rows)
         ids = [aid, *(row["id"] for row in candidate_rows)]
         entities = {asset_id: {} for asset_id in ids}
         for offset in range(0, len(ids), 800):
@@ -979,6 +1037,7 @@ def q_related(contract: WebContract, aid, limit=24):
             row.pop("year", None)
     attach_card_performers(contract, picked)
     attach_multipart_groups(contract, picked)
+    attach_edition_groups(contract, picked)
     related_tags: dict[int, list[str]] = {}
     if picked:
         related_ids = [row["id"] for row in picked]

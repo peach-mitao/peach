@@ -10,7 +10,7 @@ import type { GridPage } from '../../src/react/catalog-grid/catalog-grid';
 import type { MediaItem } from '../../src/react/catalog-grid/types';
 import {
   chooseItem, detailTags, identityGroups, itemKey, mediaGate, movedOrder, nextRating, pickerSections, prefetchItemDetail,
-  queueCopy, queueKey, ratingText, withPartLabel,
+  nextPart, queueCopy, queueKey, ratingText, withPartLabel,
   type DetailItem, type DetailQueue, type ItemDetailActions, type ItemDetailHelpers, type ItemDetailProps, type QueueItem,
 } from '../../src/react/item-detail/item-detail';
 import { ItemDetailPage } from '../../src/react/item-detail/item-detail-page';
@@ -84,6 +84,21 @@ async function show(shown: DetailItem, patch: Partial<ItemDetailProps> = {}) {
 }
 
 describe('停在队列哪一条', () => {
+  it('分卷接同一版本的下一卷，版本边界保持停止', async () => {
+    const versions = queue('editions', [1, 2, 3], {
+      versionCount: 2,
+      items: [row(1, { version_id: 1 }), row(2, { version_id: 2, part_label: '1' }),
+        row(3, { version_id: 2, part_label: '2' })],
+    });
+    expect(nextPart(versions, 1)).toBeNull();
+    expect(nextPart(versions, 2)?.id).toBe(3);
+    expect(nextPart(versions, 3)).toBeNull();
+    queryClient.setQueryData(queueKey({ kind: 'editions', seedId: 1 }), versions);
+    const { host, actions: acts } = await show(item(2), { queue: { kind: 'editions', seedId: 1 } });
+    const media = host.querySelector('[data-item-media]')!;
+    media.dispatchEvent(new Event('ended', { bubbles: false }));
+    expect(acts.openQueueItem).toHaveBeenCalledWith({ kind: 'editions', seedId: 1, autoplay: true }, 3);
+  });
   it('Mix 就是点的那一条；分卷与版本点的不在组里退到第一条；播放列表退到续播位置', () => {
     expect(chooseItem(queue('mix', [1, 2]), 9)).toBe(9);
     expect(chooseItem(queue('parts', [1, 2]), 2)).toBe(2);
@@ -136,6 +151,13 @@ describe('停在队列哪一条', () => {
 
   it('队列头：版次队列只写数量，其余带上标题', () => {
     expect(queueCopy(queue('editions', [1, 2]))).toEqual({ title: '版本', summary: '2 个版本' });
+    const versions = queue('editions', [1, 2, 3], {
+      versionCount: 2,
+      items: [row(1, { version_id: 1 }), row(2, { version_id: 2, part_label: '1' }),
+        row(3, { version_id: 2, part_label: '2' })],
+    });
+    expect(queueCopy(versions).summary).toBe('2 个版本');
+    expect(withPartLabel(item(3), versions).part_label).toBe('2');
     expect(queueCopy(queue('parts', [1, 2, 3], { title: '分卷 · PCH-021' }))).toEqual({ title: '分卷', summary: '分卷 · PCH-021 · 3 卷' });
     expect(queueCopy(queue('playlist', [1], { title: '周末片单' }))).toEqual({ title: '播放列表', summary: '周末片单 · 1 个视频' });
     const many = Array.from({ length: 1284 }, (_, i) => i + 1);
