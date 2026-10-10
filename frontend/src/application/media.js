@@ -40,7 +40,7 @@ export function disposeStage(push=false,preserveInlineOrigin=false,{miniplayer=t
 
 export function repaintDetailPoster(){stageApi()?.repaintPoster()}
 
-export function openQueue(kind,key,itemId,push,anchor=null){
+export function openQueue(kind,key,itemId,push,anchor=null,options={}){
   key=+key;
   const same=activeQueue?.kind===kind&&(kind==='playlist'?activeQueue.playlistId:activeQueue.seedId)===key;
   /* 同一个队列里换条，来处保持打开队列那一刻的那一页：播放列表关掉回列表页并重读。 */
@@ -48,6 +48,7 @@ export function openQueue(kind,key,itemId,push,anchor=null){
   /* 队列地址取完数才推（`present`），背景按此刻记；同队列换条在详情地址上，沿用上一条的背景。 */
   if(push)holdOverlayBackground();
   const queue=kind==='playlist'?{kind,playlistId:key,fresh:true}:{kind,seedId:key,fresh:!same};
+  if(options.autoplay)queue.autoplay=true;
   if(push){
     cancelQueueRequest();
     const request=navigationState.queueOpenRequest={seq:peachHistory.navigation.seq,cancelled:false};
@@ -197,7 +198,7 @@ mediaState.itemDetailActions = {
     if(to.kind==='playlists'){if(push||location.pathname!=='/playlists')openRoutedPage('/playlists');else rereadPlaylists();return}
     disposeStage(false);
   },
-  openQueueItem:(queue,id,push=true)=>void openQueue(queue.kind,queue.kind==='playlist'?queue.playlistId:queue.seedId,id,push),
+  openQueueItem:(queue,id,push=true)=>void openQueue(queue.kind,queue.kind==='playlist'?queue.playlistId:queue.seedId,id,push,null,{autoplay:queue.autoplay}),
   // 盘回来了就按正常路径重开，不在半路挂播放器；开着的队列跟着留下。
   reopen:()=>{
     const it=presentedItem;

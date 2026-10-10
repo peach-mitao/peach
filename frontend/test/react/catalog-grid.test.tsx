@@ -211,6 +211,12 @@ describe('作品卡', () => {
     expect(group.card.dataset.partSeed).toBe('14');
     expect(group.card.hasAttribute('data-stacked')).toBe(true);
     expect(group.host.querySelector('[data-media-group]')?.textContent).toBe('2 卷');
+    const versions = await render(item(16, {
+      part_group: { key: 'P', seed_id: 14, count: 2 },
+      edition_group: { key: 'E', seed_id: 13, count: 2, editions: ['1080p', '4K 修复'] },
+    }));
+    expect([...versions.host.querySelectorAll('[data-media-group]')].map((node) => node.textContent)).toEqual(['2 个版本']);
+    expect(versions.host.querySelector('[data-media-open]')?.getAttribute('aria-label')).toMatch(/版本$/);
   });
 
   it('待删的作品留在原位，标上回收站', async () => {

@@ -499,6 +499,55 @@ describe('作品详情岛', () => {
     }
   });
 
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.name}完整文件与修复分卷共用一张卡，版本队列只续播同版下一卷`, { timeout: 60_000 }, async () => {
+      const opened = await openItemPage(browser, '/', viewport, { catalogIds: [ITEM.edition], ready: '#grid [data-media-card]' });
+      try {
+        const page = opened.page;
+        const full = await page.evaluate(async id => (await fetch(`/api/item?id=${id}`)).json(), ITEM.edition);
+        const repair = await page.evaluate(async () => (await fetch('/api/item?id=32')).json());
+        const edition_group = { key: 'PCH-031', seed_id: 31, count: 2, editions: ['1080p', '4K 修复'] };
+        const part_group = { key: 'PCH-031:32', seed_id: 32, count: 2 };
+        const files = [
+          { ...full, edition_group, edition_label: '1080p', version_id: 31 },
+          { ...repair, edition_group, part_group, edition_label: '4K 修复', version_id: 32, part_label: '1' },
+          { ...repair, id: 33, edition_group, part_group, edition_label: '4K 修复', version_id: 32, part_label: '2' },
+        ];
+        await page.route(url => url.pathname === '/api/item', route => {
+          const file = files.find(row => row.id === Number(new URL(route.request().url()).searchParams.get('id')));
+          return file ? route.fulfill({ json: file }) : route.fallback();
+        });
+        await page.route(url => url.pathname === '/api/editions', route => route.fulfill({ json: { title: 'PCH-031', count: 2, items: files } }));
+        await page.route(url => url.pathname === '/api/items', route => route.fulfill({ json: {
+          items: [files[2], files[0], files[1]].map(row => ({ ...row, tags: row.tags.map((tag: { k: string }) => tag.k) })),
+          total: 3, work_total: 1, has_more: false,
+        } }));
+        await page.reload({ waitUntil: 'load' });
+        const card = page.locator('#grid [data-media-card][data-variant="grid"]');
+        await card.first().waitFor();
+        assert.equal(await card.count(), 1);
+        assert.deepEqual(await card.locator('[data-media-group]').allTextContents(), ['2 个版本']);
+        await card.locator('[data-media-title]').click();
+        await pathIs(page, '/editions/31/33');
+        await page.locator('#stage [data-queue-item="33"][aria-current="true"]').waitFor();
+        assert.equal(await page.locator('#stage [data-queue-item]').count(), 3);
+        assert.equal(await page.locator('#stage').getByText('2 个版本', { exact: true }).count(), 1);
+        await page.locator('#stage [data-queue-item="32"]').click();
+        await page.locator('#stage [data-queue-item="32"][aria-current="true"]').waitFor();
+        await page.locator('#stage video').dispatchEvent('ended');
+        await pathIs(page, '/editions/31/33');
+        await page.locator('#stage [data-queue-item="33"][aria-current="true"]').waitFor();
+        await page.locator('#stage video').dispatchEvent('ended');
+        assert.equal(new URL(page.url()).pathname, '/editions/31/33');
+        const bounds = await layout(page);
+        assert.ok(bounds.scrollWidth <= bounds.viewportWidth + 1, JSON.stringify(bounds));
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally {
+        await opened.close();
+      }
+    });
+  }
+
   for (const [kind, path, next, wanted] of [
     ['Mix', `/mix/${ITEM.plain}/${ITEM.plain}`, 14, `/mix/${ITEM.plain}/14`],
     ['分卷', `/parts/${ITEM.part}/22`, 23, `/parts/${ITEM.part}/23`],
