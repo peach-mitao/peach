@@ -468,6 +468,9 @@ describe('关注页岛', () => {
       assert.match(await page.locator('[data-follow-older]').innerText(), /抓取中/);
       await page.locator('[data-follow-recheck][aria-busy="true"]').waitFor();
       assert.deepEqual(opened.stub.writes, [{ url: '/api/follow/check', body: { older: true, background: true } }]);
+      // 忙态包含请求中的阶段；任务编号在响应返回后写入。
+      await page.waitForFunction(() => sessionStorage.getItem('peach-follow-job') === 'job-1',
+        undefined, { timeout: 10_000 });
       assert.equal(await page.evaluate(() => sessionStorage.getItem('peach-follow-job')), 'job-1');
       assert.deepEqual(opened.problems, []);
     } finally {
