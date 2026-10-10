@@ -7,7 +7,7 @@ import { act, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  FOLLOW_AUTHORS_FIRST, FOLLOW_AUTO_LOAD_LIMIT, authorRow, backfillState, dropCondition, followConditions, followPageUrl, followStack, groupMediaKinds, itemForMedia,
+  FOLLOW_AUTO_LOAD_LIMIT, backfillState, dropCondition, followConditions, followPageUrl, followStack, groupMediaKinds, itemForMedia,
   nextSort, prefetchFollowFeed, randomOrder, sortAriaLabel, withStatus,
   type FollowFeedActions, type FollowFeedHelpers, type FollowFeedProps, type FollowGroup, type FollowItem,
   type FollowPage, type FollowSource, type FollowStackInfo, type FollowView,
@@ -15,7 +15,7 @@ import {
 import { FollowFeedPage } from '../../src/react/follow-feed/follow-feed-page';
 import { learnFollowDims } from '../../src/react/follow-feed/follow-marks';
 import { queryClient } from '../../src/react/query';
-import { click, mount, settle, type } from './render';
+import { click, mount, settle } from './render';
 
 /* 回写尺寸那一批由 `follow-marks.test.ts` 量；这里只看卡片在什么时候报。 */
 vi.mock(import('../../src/react/follow-feed/follow-marks'), async (importOriginal) => ({
@@ -92,15 +92,6 @@ describe('取样', () => {
     expect([...once].sort()).toEqual([...keys].sort());
   });
 
-  it('创作者排露出前 24 位；有搜索词时在全部创作者里按名字找，按下的那位总在排上', () => {
-    const order = Array.from({ length: 400 }, (_, index) => `k${index}`);
-    const nameOf = (key: string) => (key === 'k399' ? 'Ｍｉｒａ' : `作者${key}`);
-    expect(authorRow(order, nameOf, '', '')).toEqual(order.slice(0, FOLLOW_AUTHORS_FIRST));
-    expect(authorRow(order, nameOf, ' mira ', '')).toEqual(['k399']);
-    expect(authorRow(order, nameOf, 'mira', 'k5')).toEqual(['k5', 'k399']);
-    expect(authorRow(order, nameOf, '', 'k300')).toEqual(['k300', ...order.slice(0, FOLLOW_AUTHORS_FIRST)]);
-    expect(authorRow(order, nameOf, '没有这个人', '')).toEqual([]);
-  });
 });
 
 describe('媒体与一叠', () => {
@@ -226,7 +217,7 @@ function helpers(): FollowFeedHelpers {
 
 function actions(): FollowFeedActions {
   return {
-    route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openManage: vi.fn(), toggleSelection: vi.fn(),
+    route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openAuthor: vi.fn(), openManage: vi.fn(), toggleSelection: vi.fn(),
     setImagesOnly: vi.fn(), setPhotoLayout: vi.fn(), canFlip: () => false, toast: vi.fn(), failure: vi.fn(), checkReport: vi.fn(),
   };
 }
@@ -365,17 +356,14 @@ describe('页面', () => {
     expect(filtered.querySelector('[data-follow-empty]')?.textContent).toContain('切换状态或来源筛选后再试');
   });
 
-  it('创作者多于一排时出搜索框，搜的是全部创作者', async () => {
-    const many = Array.from({ length: FOLLOW_AUTHORS_FIRST + 6 }, (_, index) => `a${index}`);
+  it('全部创作者可从同一横滚行访问', async () => {
+    const many = Array.from({ length: 30 }, (_, index) => `a${index}`);
     const sources = many.map((author, index) => source(index + 1, author, { author_name: author === 'a29' ? 'Zed Lastone' : author }));
     serve(feed([group(item(1))], { sources, facets: { authors: many.map((author) => `name:${author}`), providers: ['kemono'] } }));
     const host = await open(props());
-    expect(authorOrder(host)).toHaveLength(FOLLOW_AUTHORS_FIRST);
-    await type(host.querySelector<HTMLInputElement>('[data-follow-author-search] input'), 'lastone');
-    expect(authorOrder(host)).toEqual(['name:a29']);
-    await type(host.querySelector<HTMLInputElement>('[data-follow-author-search] input'), '没有这个人');
-    expect(authorOrder(host)).toEqual([]);
-    expect(host.querySelector('[data-follow-author-none]')?.textContent).toContain('没有这个人');
+    expect(authorOrder(host)).toHaveLength(many.length);
+    expect(authorOrder(host)).toContain('name:a29');
+    expect(host.querySelector('input[type="search"]')).toBeNull();
   });
 
   it(`摆满 ${FOLLOW_AUTO_LOAD_LIMIT} 组以后「加载更多」要点一下才接下一页`, async () => {

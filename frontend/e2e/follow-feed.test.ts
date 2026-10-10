@@ -36,6 +36,101 @@ describe('关注页岛', () => {
   });
 
   for (const viewport of [DESKTOP, MOBILE]) {
+    it(`${viewport.name} 已建档作者的头像与署名进入作者页，多位作者保持一排`, { timeout: 60_000 }, async () => {
+      const opened = await openFollowFeed(browser, '/follow', viewport);
+      try {
+        const page = opened.page;
+        const payload = await page.evaluate(async () => {
+          const data = await (await fetch('/api/follow')).json();
+          data.sources[0].entity_id = 90101;
+          data.sources[0].entity_name = 'Kou';
+          for (let at = 7; at <= 30; at++) {
+            const name = `Creator ${at}`;
+            data.sources.push({ ...data.sources[1], id: at, author_name: name, author_key: `name:creator-${at}` });
+            data.facets.authors.push(`name:creator-${at}`);
+          }
+          return data;
+        });
+        await page.route((url) => url.pathname === '/api/follow' && !url.searchParams.has('item'),
+          (route) => route.fulfill({ json: payload }));
+        await page.route(/\/api\/entity\?/, (route) => route.fulfill({ json: {
+          id: 90101, kind: 'creator', canonical_name: 'Kou', asset_count: 0, tags: [], links: [], metadata: {},
+          aliases: [], related_performers: [], has_image: false, has_avatar: false, feed: null,
+        } }));
+        await page.route((url) => url.pathname === '/api/items', (route) =>
+          route.fulfill({ json: { items: [], total: 0, has_more: false } }));
+        await page.reload({ waitUntil: 'networkidle' });
+        assert.equal(await page.getByRole('searchbox', { name: '搜索创作者' }).count(), 0);
+        const author = page.locator('[data-follow-authors] a[data-follow-author="name:kou"]');
+        assert.equal(await author.count(), 1);
+        assert.equal(await author.getAttribute('href'), '/creators/Kou');
+        assert.equal(await author.getAttribute('aria-pressed'), null);
+        const card = page.locator('[data-follow-item="1000"]');
+        assert.equal(await card.locator('a[data-follow-author]').getAttribute('href'), '/creators/Kou');
+        assert.equal(await card.locator('a[data-follow-avatar]').getAttribute('href'), '/creators/Kou');
+        await card.locator('a[data-follow-author]').click();
+        await page.waitForURL('**/creators/Kou');
+        assert.equal(await page.locator('#stage[open]').count(), 0);
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close(); }
+    });
+
+    it(`${viewport.name} 筛选条件与卡片悬停面保持间距`, { timeout: 60_000 }, async () => {
+      const opened = await openFollowFeed(browser, '/follow?tag=loop', viewport);
+      try {
+        const gap = await opened.page.evaluate(() => {
+          const chip = document.querySelector('[data-follow-combo]')!.getBoundingClientRect();
+          const card = document.querySelector('[data-follow-list] [data-media-card]')!.getBoundingClientRect();
+          return card.top - chip.bottom - 8;
+        });
+        assert.ok(gap >= 16, `筛选条件距卡片悬停面只有 ${gap}px`);
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close(); }
+    });
+
+    it(`${viewport.name} 筛选浮层恢复可见时两块玻璃自动落位`, { timeout: 60_000 }, async () => {
+      const opened = await openFollowFeed(browser, '/follow', viewport);
+      try {
+        const page = opened.page;
+        await page.locator('[data-follow-feed]').evaluate((node) => { (node as HTMLElement).style.display = 'none' });
+        await page.waitForTimeout(100);
+        await page.locator('[data-follow-feed]').evaluate((node) => {
+          const media = node.querySelector<HTMLElement>('[data-entity-media]')!;
+          media.style.gap = '24px';
+          (node as HTMLElement).style.display = '';
+        });
+        await page.waitForTimeout(100);
+        const pairs = await page.evaluate(() => [
+          ['[data-view-glide=""]', '[data-follow-filter][aria-pressed="true"]'],
+          ['[data-view-glide="round"]', '[data-media-view][aria-pressed="true"]'],
+        ].map(([glass, key]) => {
+          const host = document.querySelector('[data-follow-filter-glass]')!;
+          const rect = (selector: string) => {
+            const node = host.querySelector<HTMLElement>(selector)!;
+            const box = node.getBoundingClientRect();
+            return { hidden: node.hidden, left: box.left, top: box.top, width: box.width, height: box.height };
+          };
+          return { glass: rect(glass!), key: rect(key!) };
+        }));
+        for (const pair of pairs) {
+          assert.equal(pair.glass.hidden, false);
+          for (const side of ['left', 'top', 'width', 'height'] as const) {
+            assert.ok(Math.abs(pair.glass[side] - pair.key[side]) <= 1, JSON.stringify(pair));
+          }
+        }
+        const animations = await page.locator('[data-follow-filter-glass] [data-view-glide=""]').evaluate(async (node) => {
+          node.animate([{ translate: '0px 0px' }, { translate: '100px 0px' }], { duration: 10_000 });
+          window.dispatchEvent(new Event('resize'));
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          return node.getAnimations().length;
+        });
+        assert.equal(animations, 0, '重新落位后仍有动画覆盖玻璃位置');
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close(); }
+    });
+  }
+
+  for (const viewport of [DESKTOP, MOBILE]) {
     it(`${viewport.name} 图片卡的键盘焦点环在封面裁切层之外`, { timeout: 60_000 }, async () => {
       const opened = await openFollowFeed(browser, '/follow?media=images', viewport,
         { settings: { followImagesOnly: true } });

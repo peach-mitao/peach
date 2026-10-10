@@ -197,7 +197,7 @@ function followHelpers(): FollowFeedHelpers {
 }
 function followActions(): FollowFeedActions {
   return {
-    route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openManage: vi.fn(), toggleSelection: vi.fn(),
+    route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openAuthor: vi.fn(), openManage: vi.fn(), toggleSelection: vi.fn(),
     setImagesOnly: vi.fn(), setPhotoLayout: vi.fn(), canFlip: () => false, toast: vi.fn(), failure: vi.fn(), checkReport: vi.fn(),
   };
 }

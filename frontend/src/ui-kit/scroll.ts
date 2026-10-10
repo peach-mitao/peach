@@ -220,14 +220,13 @@ export function moveGlidePane(
   box:{x:number;y:number;w:number;h:number},
   axis:'x'|'y'='x',
 ):void{
+  /* 原地重量也要撤掉还在跑的位移与形变，动画不能继续覆盖新落点。 */
+  pane.getAnimations().forEach(a=>a.cancel());
   pane.style.width=`${box.w}px`;pane.style.height=`${box.h}px`;
   const span=axis==='y'?'h':'w',head=axis==='y'?'y':'x';
   const settled=`${box.x}px ${box.y}px`;
   if(from&&from[head]!==box[head]&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
     const ease=glideEase();
-    /* 先撤掉还在跑的那两段：一块上叠着两段位移，晚建的那段从头起跑，先建的还在往它
-       自己的终点走，合出来的位置两边都不是。 */
-    pane.getAnimations().forEach(a=>a.cancel());
     pane.animate([{translate:axis==='y'?`${box.x}px ${from.y}px`:`${from.x}px ${box.y}px`},
       {translate:settled}],{duration:ease.duration,easing:ease.easing,fill:'none'});
     /* 一块被拽着走的软东西，跑起来在跑的方向上抻开，停下来收回去。抻多少按这一跳跨了

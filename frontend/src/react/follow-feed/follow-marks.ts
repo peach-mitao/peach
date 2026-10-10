@@ -45,6 +45,13 @@ export const followTitle = (item: { title?: unknown }): string => text(item.titl
 export const followAuthorName = (sources: readonly FollowSource[], context: FollowContext): string =>
   authorName(sources, aliasesOf(context));
 
+/** 作者入口只认来源已经绑定的唯一实体。 */
+export function followAuthorEntity(sources: readonly FollowSource[]): string {
+  const bound = sources.filter((source) => source.entity_id && source.entity_name);
+  const ids = new Set(bound.map((source) => source.entity_id));
+  return ids.size === 1 ? text(bound[0]?.entity_name) : '';
+}
+
 /** 创作者圆框里那段：官方头像优先，归档站回退，都取不到时换成首字母。 */
 export function authorAvatarHtml(sources: readonly FollowSource[], name: string): string {
   const { src, fallback } = authorAvatar(sources);
@@ -66,13 +73,13 @@ export function followIdentity(item: FollowItem, authorSources: readonly FollowS
   if (!poster) {
     const name = authorName(authorSources, aliases);
     return { author: name || text(item.author) || text(item.source_label) || '创作者未取得',
-      avatar: authorAvatarHtml(authorSources, name), credited: '' };
+      avatar: authorAvatarHtml(authorSources, name), credited: '', entityName: followAuthorEntity(authorSources) };
   }
   const key = (value: unknown) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const own = context.sources.find((row) => key(row.ref) === key(poster));
   const group = own?.author_key ? context.sources.filter((row) => row.author_key === own.author_key) : own ? [own] : [];
   const author = (group.length && authorName(group, aliases)) || poster;
-  return { author, avatar: authorAvatarHtml(group, author), credited: credit.credited || '' };
+  return { author, avatar: authorAvatarHtml(group, author), credited: credit.credited || '', entityName: followAuthorEntity(group) };
 }
 
 /** 说「这一条是哪个版本」的字样，排在标题前面，与主页标题里的版次字样同一个控件。WIP 说的是

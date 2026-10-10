@@ -147,7 +147,7 @@ function entityProps(name: string, hosts: EntityPageProps['hosts']): EntityPageP
     follow: {
       helpers: { workMark: () => '', tagLabel: (tag) => tag, wireDrag: vi.fn(), wireScroller: vi.fn(),
         listSkeletonHtml: () => '<div data-test-follow-skeleton></div>', jobProgress: vi.fn() },
-      actions: { route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openManage: vi.fn(),
+      actions: { route: vi.fn(), shuffle: vi.fn(), loaded: vi.fn(), openDetail: vi.fn(), openAuthor: vi.fn(), openManage: vi.fn(),
         toggleSelection: vi.fn(), setImagesOnly: vi.fn(), setPhotoLayout: vi.fn(), canFlip: () => false, toast: vi.fn(),
         failure: vi.fn(), checkReport: vi.fn() },
     },

@@ -93,6 +93,18 @@ describe('首页筛选条', () => {
   before(async () => { browser = await launch(); });
   after(async () => { await browser?.close(); });
 
+  for (const viewport of [DESKTOP, PHONE]) {
+    it(`${viewport.name} 筛选条件与作品卡片悬停面保持间距`, { timeout: 60_000 }, async () => {
+      const opened = await openHome(browser, '/?studio=Peach%20Studio', viewport);
+      try {
+        const gap = await opened.page.evaluate(() => document.querySelector('#grid [data-media-card]')!.getBoundingClientRect().top
+          - document.querySelector('#combo [data-entity-combo]')!.getBoundingClientRect().bottom - 8);
+        assert.ok(gap >= 16, `筛选条件距卡片悬停面只有 ${gap}px`);
+        assert.deepEqual(withoutPlayer(opened.problems), []);
+      } finally { await opened.close(); }
+    });
+  }
+
   it('点头像条一格打开那一位的资料页；地址里的厂牌筛选出一颗交集条，撤掉它重取一次列表', { timeout: 60_000 }, async () => {
     const opened = await openHome(browser, '/?studio=Peach%20Studio');
     try {

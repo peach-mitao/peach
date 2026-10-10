@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FollowContext, FollowGroup, FollowItem, FollowSource } from '../../src/react/follow-feed/follow-feed';
 import {
-  FOLLOW_UNTITLED, authorAvatarHtml, followAuthorName, followBadges, followCompactWhen, followIdentity, followMediaIssue,
+  FOLLOW_UNTITLED, authorAvatarHtml, followAuthorEntity, followAuthorName, followBadges, followCompactWhen, followIdentity, followMediaIssue,
   followTitle, followTitleMarks, followWhen, learnFollowDims, sourceIcon, sourceMark,
 } from '../../src/react/follow-feed/follow-marks';
 
@@ -39,6 +39,18 @@ describe('来源图标', () => {
 });
 
 describe('创作者', () => {
+  it('作者导航只认唯一实体，并跟随实际发布者', () => {
+    const bound = source(1, { entity_id: 90, entity_name: 'Kou', author_key: 'entity:90', author_name: 'Kou' });
+    expect(followAuthorEntity([bound, source(2)])).toBe('Kou');
+    expect(followAuthorEntity([source(2)])).toBe('');
+    expect(followAuthorEntity([bound, source(3, { entity_id: 91, entity_name: 'Mira' })])).toBe('');
+    expect(followIdentity(item(1), [bound], context()).entityName).toBe('Kou');
+    const poster = source(4, { entity_id: 92, entity_name: 'Poster', ref: 'poster', author_key: 'entity:92' });
+    expect(followIdentity(item(2, { credit: { poster: 'poster' } }), [bound],
+      context({ sources: [bound, poster] })).entityName).toBe('Poster');
+    expect(followIdentity(item(3, { credit: { poster: 'stranger' } }), [bound],
+      context({ sources: [bound] })).entityName).toBe('');
+  });
   it('名字按别名合并后的统称、官方来源的写法依次取', () => {
     const sources = [source(1, { author_key: 'name:lazy', label: 'lazyprocrastinator · fanbox' }),
       source(2, { author_key: 'name:lazy', label: 'LazyProcrastinator Collection', official_avatar_url: '/a.png' })];
@@ -65,7 +77,7 @@ describe('创作者', () => {
     const credited = item(3, { credit: { poster: 'poster-one', credited: 'kou' } });
     const known = followIdentity(credited, followed, context({ sources: [...followed, poster] }));
     expect(known).toEqual({ author: 'Poster One', avatar: '<span class="favatar none" title="没有可用头像">P</span>',
-      credited: 'kou' });
+        credited: 'kou', entityName: '' });
     const stranger = followIdentity(item(4, { credit: { poster: 'someone' } }), followed, context({ sources: followed }));
     expect(stranger.author).toBe('someone');
     expect(stranger.avatar).toBe('<span class="favatar none" title="没有可用头像">S</span>');

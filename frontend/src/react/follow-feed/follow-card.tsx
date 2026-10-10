@@ -11,7 +11,7 @@
  *
  * 一叠（`isMix`）悬停时逐张翻过组里彼此不同的画面，时序与门槛同 Mix 卡（`../components/use-stack-flip.ts`）。
  * 翻的是卡片渲染时就在手上的缩略图，悬停不为动画再发请求；第一张是静止封面本身。 */
-import { memo, useCallback, useRef, useState, type MouseEvent } from 'react';
+import { memo, useCallback, useRef, useState, type ComponentPropsWithoutRef, type MouseEvent } from 'react';
 import { esc, fmtDur, icon } from '@peach/legacy/core';
 import { tagLabel } from '@peach/legacy/tags';
 
@@ -28,6 +28,17 @@ import {
 
 /** 时长只在是真时长时写：来源没给、给了 0 或给了一个明显是占位的数，都不出这一格。 */
 const realDuration = (value: unknown) => Number(value) > 0;
+
+export function FollowAuthorLink({ name, actions, children, ...attrs }: {
+  name: string; actions: Pick<FollowFeedActions, 'openAuthor'>;
+} & Omit<ComponentPropsWithoutRef<'a'>, 'href' | 'onClick'>) {
+  return <a {...attrs} href={`/creators/${encodeURIComponent(name)}`} onClick={(event) => {
+    event.stopPropagation();
+    if (event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    actions.openAuthor(name);
+  }}>{children}</a>;
+}
 
 export interface FollowCardProps {
   group: FollowGroup;
@@ -199,13 +210,20 @@ function FollowCardView(props: FollowCardProps) {
         </div>
       </div>
       <div data-media-meta="">
-        <span data-media-avatar="" data-follow-avatar="" title="创作者头像"
-          dangerouslySetInnerHTML={{ __html: identity.avatar }} />
+        {identity.entityName ? (
+          <FollowAuthorLink name={identity.entityName} actions={actions} data-media-avatar="" data-follow-avatar=""
+            aria-label={`查看 ${identity.author} 的作者页`} dangerouslySetInnerHTML={{ __html: identity.avatar }} />
+        ) : <span data-media-avatar="" data-follow-avatar="" title="创作者头像"
+          dangerouslySetInnerHTML={{ __html: identity.avatar }} />}
         <div data-media-text="">
           <button type="button" data-media-title=""
             dangerouslySetInnerHTML={{ __html: followTitleMarks(group, item) + esc(title) }} />
           <div data-follow-byline="">
-            <span data-follow-author="" title={identity.author}>{identity.author}</span>
+            {identity.entityName ? (
+              <FollowAuthorLink name={identity.entityName} actions={actions} data-follow-author="" title={identity.author}>
+                {identity.author}
+              </FollowAuthorLink>
+            ) : <span data-follow-author="" title={identity.author}>{identity.author}</span>}
             <time dateTime={item.published_at || ''} title={followWhen(item)}>{followCompactWhen(item)}</time>
           </div>
           {identity.credited

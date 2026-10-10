@@ -141,6 +141,7 @@ followState.followFeedHelpers = createFollowFeedHelpers({wireDrag:row=>{if(row)w
 followState.followFeedActions = {
   loaded:drawer=>renderFollowDrawer(drawer),
   openDetail:id=>openFollowDetail(id),
+  openAuthor:name=>navigationState.navigatePath(`/creators/${encodeURIComponent(name)}`),
   openManage:()=>navigationState.navigatePath(followManageEntry()),
   toggleSelection:(id,range)=>toggleFollowSelection(id,range),
   setImagesOnly:on=>{preferencesState.appSettings.followImagesOnly=!!on;preferencesState.saveSettings();syncPhotoWalls()},
