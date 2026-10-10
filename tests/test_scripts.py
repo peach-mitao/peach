@@ -111,6 +111,9 @@ class EnglishNameSpacingTests(unittest.TestCase):
     def test_recompute_batch_plans_only_mis_split_rows_and_apply_accepts_it(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
+            declared = PureWindowsPath('R:/media')
+            canonical = lambda path: str(declared.joinpath(*path.relative_to(root).parts))
+            translate = lambda path: root.joinpath(*PureWindowsPath(path).relative_to(declared).parts)
             db = fresh_ledger(root)
             wrong = root / "29_Could n't resist her.mp4"
             right = root / '02_Throat fucking.mp4'
@@ -120,19 +123,19 @@ class EnglishNameSpacingTests(unittest.TestCase):
             with closing(sqlite3.connect(db)) as connection:
                 for asset_id, path in ((1, wrong), (2, right), (3, root / 'elsewhere' / moved.name)):
                     connection.execute('INSERT INTO asset(id,location,path,name,medium,size) VALUES(?,?,?,?,?,?)',
-                                       (asset_id, 'local', str(path), path.name, 'video', 5))
+                                       (asset_id, 'local', canonical(path), path.name, 'video', 5))
                 connection.commit()
             log = root / 'organize-batch.json'
             # 第 1 条在批次之后被目录整理从 New 搬到了 root：按 asset_id 找当前行。
             log.write_text(json.dumps({'entries': [
-                {'asset_id': 1, 'old_path': str(root / 'New' / "29_Couldn'tresisther.mp4"),
-                 'new_path': str(root / 'New' / wrong.name)},
-                {'asset_id': 2, 'old_path': str(root / '02_Throatfucking.mp4'), 'new_path': str(right)},
-                {'asset_id': 3, 'old_path': str(root / '03_Sloppythroatt.mp4'), 'new_path': str(moved)},
+                {'asset_id': 1, 'old_path': canonical(root / 'New' / "29_Couldn'tresisther.mp4"),
+                 'new_path': canonical(root / 'New' / wrong.name)},
+                {'asset_id': 2, 'old_path': canonical(root / '02_Throatfucking.mp4'), 'new_path': canonical(right)},
+                {'asset_id': 3, 'old_path': canonical(root / '03_Sloppythroatt.mp4'), 'new_path': canonical(moved)},
             ]}), encoding='utf-8')
             review = root / 'recompute.csv'
             with redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(self.script.main(['--db', str(db), '--root', str(root),
+                self.assertEqual(self.script.main(['--db', str(db), '--root', str(declared),
                                                    '--recompute-batch', str(log), '--out', str(review)]), 0)
             report = json.loads(output.getvalue())
             self.assertEqual(report['planned'], 1)
@@ -142,31 +145,38 @@ class EnglishNameSpacingTests(unittest.TestCase):
                              [('1', "29_Couldn't resist her.mp4")])
             self.assertTrue(wrong.exists())
 
-            with mock.patch.object(self.script, 'location_roots', return_value={'local': [str(root)]}), \
+            with mock.patch.object(self.script, 'location_roots', return_value={'local': [str(declared)]}), \
+                    mock.patch.object(self.script, 'translate_ledger_path', side_effect=translate), \
+                    mock.patch.object(self.script.organize, 'translate_ledger_path', side_effect=translate), \
                     mock.patch.object(self.script, 'GENERATED_DIR', root / 'generated'), \
                     redirect_stdout(io.StringIO()):
-                self.assertEqual(self.script.main(['--db', str(db), '--root', str(root), '--review-csv', str(review),
+                self.assertEqual(self.script.main(['--db', str(db), '--root', str(declared), '--review-csv', str(review),
                                                    '--apply', '--backup', str(root / 'backup.db')]), 0)
             self.assertFalse(wrong.exists())
             self.assertTrue((root / "29_Couldn't resist her.mp4").exists())
 
     def test_apply_rejects_character_changes_before_opening_writer(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
+            declared = PureWindowsPath('R:/media')
+            canonical = lambda path: str(declared.joinpath(*path.relative_to(root).parts))
+            translate = lambda path: root.joinpath(*PureWindowsPath(path).relative_to(declared).parts)
             db = fresh_ledger(root)
             source = root / 'original.mp4'
             source.write_bytes(b'media')
             with closing(sqlite3.connect(db)) as connection:
                 connection.execute('INSERT INTO asset(id,location,path,name,medium,size) VALUES(1,?,?,?,?,?)',
-                                   ('local', str(source), source.name, 'video', 5))
+                                   ('local', canonical(source), source.name, 'video', 5))
                 connection.commit()
             review = root / 'names.csv'
-            row = dict(asset_id=1, location='local', current_path=str(source), target_path=str(root / 'invented.mp4'),
+            row = dict(asset_id=1, location='local', current_path=canonical(source), target_path=canonical(root / 'invented.mp4'),
                        action='rename', reason='', size=5, original_name=source.name, new_name='invented.mp4')
             self.script.write_rows(review, self.script.FIELDS, [row])
-            with mock.patch.object(self.script, 'open_for_write') as writer, mock.patch.object(self.script, 'location_roots', return_value={'local':[str(root)]}):
+            with mock.patch.object(self.script, 'open_for_write') as writer, \
+                    mock.patch.object(self.script, 'location_roots', return_value={'local': [str(declared)]}), \
+                    mock.patch.object(self.script, 'translate_ledger_path', side_effect=translate):
                 with self.assertRaisesRegex(ValueError, '改变了内容字符'):
-                    self.script.main(['--db', str(db), '--root', str(root), '--review-csv', str(review),
+                    self.script.main(['--db', str(db), '--root', str(declared), '--review-csv', str(review),
                                       '--apply', '--backup', str(root / 'backup.db')])
                 writer.assert_not_called()
             self.assertEqual(source.read_bytes(), b'media')
@@ -393,7 +403,7 @@ class LibraryDirectoryTests(unittest.TestCase):
         def translate(path):
             if PureWindowsPath(path).drive.casefold() == 'b:':
                 return media.joinpath(*PureWindowsPath(path).parts[1:])
-            return Path(path)
+            return Path(PureWindowsPath(path).as_posix())
         def rename(old, new):
             translate(new).parent.mkdir(parents=True, exist_ok=True)
             translate(old).rename(translate(new))

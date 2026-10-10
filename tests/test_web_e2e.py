@@ -342,6 +342,7 @@ class SetupE2ETests(unittest.TestCase):
         cls.data = cls.root / "peach-data"
         cls.media = cls.root / "media"
         cls.media.mkdir()
+        cls.ledger_root = str(cls.media) if os.name == "nt" else "R:\\media"
         cls.port = free_port()
         cls.origin = f"http://127.0.0.1:{cls.port}"
         env = dict(os.environ, PEACH_DATA_ROOT=str(cls.data), PYTHONIOENCODING="utf-8")
@@ -393,7 +394,8 @@ class SetupE2ETests(unittest.TestCase):
     def test_the_first_run_page_writes_errors_back_and_finishes(self):
         self.assertFalse((self.data / settings_file.SETTINGS_FILENAME).exists())
         env = dict(os.environ, PEACH_E2E_SETUP_ORIGIN=self.origin, PEACH_E2E_SETUP_MEDIA=str(self.media),
-                   PEACH_E2E_SETUP_DATA=str(self.data), PEACH_E2E_CHROME=self.chrome)
+                   PEACH_E2E_SETUP_DATA=str(self.data), PEACH_E2E_SETUP_LEDGER_ROOT=self.ledger_root,
+                   PEACH_E2E_CHROME=self.chrome)
         BROWSER_LOGS.mkdir(parents=True, exist_ok=True)
         log_path = BROWSER_LOGS / "setup.tap"
         try:
@@ -415,7 +417,9 @@ class SetupE2ETests(unittest.TestCase):
         # 改对的那一次提交在临时数据根里落了设置文件，媒体库就是传进去的那个目录。
         written = settings_file.load_config(environ={settings_file.DATA_ROOT_ENV: str(self.data)})
         self.assertTrue(written.present)
-        self.assertEqual([Path(path) for path in written.locations.get("local", ())], [self.media])
+        self.assertEqual(list(written.locations.get("local", ())), [self.ledger_root])
+        if os.name != "nt":
+            self.assertEqual([Path(path) for path in written.mounts.get("local", ())], [self.media])
 
 
 class MissingPrerequisiteTests(unittest.TestCase):
