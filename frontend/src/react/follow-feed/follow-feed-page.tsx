@@ -15,7 +15,6 @@ import { tagLabel } from '@peach/legacy/tags';
 import { emptyStateHtml, spinnerHtml } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
-import { InputBase, TextField } from '@/components/base/input/input';
 
 import { apiGet, apiSend } from '../../api';
 import { LoadMore } from '../catalog-grid/catalog-grid-page';
@@ -28,11 +27,11 @@ import type { SegmentOption } from '../entity-filter/entity-filter';
 import { FOLLOW_CHECK_URL, FOLLOW_STATUS_URL, sourceIconUrl } from '../follow-manage/follow-manage';
 import { sidebarTagCounts } from '../../sidebar';
 import { queryClient } from '../query';
-import { FollowCard } from './follow-card';
-import { authorAvatarHtml, followAuthorName, sourceMark } from './follow-marks';
+import { FollowAuthorLink, FollowCard } from './follow-card';
+import { authorAvatarHtml, followAuthorEntity, followAuthorName, sourceMark } from './follow-marks';
 import {
-  FOLLOW_AUTHORS_FIRST, FOLLOW_AUTO_LOAD_LIMIT, FOLLOW_CREDENTIALS_KEY, FOLLOW_FEED_SORTS, FOLLOW_FILTERS, FOLLOW_TAGS_FIRST,
-  FOLLOW_WORKS_FIRST, authorRow,
+  FOLLOW_AUTO_LOAD_LIMIT, FOLLOW_CREDENTIALS_KEY, FOLLOW_FEED_SORTS, FOLLOW_FILTERS, FOLLOW_TAGS_FIRST,
+  FOLLOW_WORKS_FIRST,
   collectionItems, dropCondition, fetchFollowCredentials, followConditions, followFeedQuery, groupMediaKinds, groupTagType, itemForMedia,
   mergedPage, nextSort, randomOrder, sortAriaLabel, backfillState, withStatus,
   type FollowCondition, type FollowContext, type FollowDrawer, type FollowFeedProps, type FollowGroup, type FollowPage, type FollowSource,
@@ -43,7 +42,6 @@ const Sep = () => <span data-entity-sep="" aria-hidden="true" />;
 const SETTINGS = spriteGlyph('settings');
 const CHEVRON_DOWN = spriteGlyph('chevron-down');
 const HISTORY = spriteGlyph('history');
-const SEARCH = spriteGlyph('search');
 
 /** 照片墙那一排的图片布局两档，同壳里 `PHOTO_LAYOUTS`。 */
 export const FOLLOW_PHOTO_LAYOUTS: readonly SegmentOption[] = [
@@ -321,33 +319,28 @@ function Authors({ facets, pressed, context, props, onPick }: {
   facets: Facets; pressed: string; context: FollowContext; props: FollowFeedProps; onPick(key: string): void;
 }) {
   const row = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState('');
   useEffect(() => { props.helpers.wireDrag(row.current) }, [props.helpers]);
   const nameOf = (key: string) => followAuthorName(facets.authorSources.get(key) || [], context);
-  const searchable = facets.authorOrder.length > FOLLOW_AUTHORS_FIRST;
-  const keys = authorRow(facets.authorOrder, nameOf, searchable ? query : '', pressed);
   if (!facets.authorOrder.length) return null;
-  /* 搜索框在横滚那一排外面：拖动监听挂在那一排上，框放进去的话按下去就被当成拖动吃掉。 */
   return (
     <div data-follow-authors-bar="">
-      {searchable ? (
-        <div data-follow-author-search="">
-          <TextField aria-label="搜索创作者" value={query} onChange={setQuery}>
-            <InputBase type="search" leadingIcon={SEARCH} placeholder="搜索创作者" spellCheck={false} autoComplete="off" />
-          </TextField>
-        </div>
-      ) : null}
-      <div ref={row} data-follow-authors="" aria-label="按创作者筛选">
-        {keys.map((key) => {
+      <div ref={row} data-follow-authors="" aria-label="创作者">
+        {facets.authorOrder.map((key) => {
           const list = facets.authorSources.get(key) || [];
-          return (
+          const entity = followAuthorEntity(list);
+          const content = <>
+            <span data-follow-ring="" dangerouslySetInnerHTML={{ __html: authorAvatarHtml(list, nameOf(key)) }} />
+            <span data-follow-name="">{nameOf(key)}</span>
+          </>;
+          return entity ? (
+            <FollowAuthorLink key={key} name={entity} actions={props.actions} data-follow-author={key}
+              aria-label={`查看 ${nameOf(key)} 的作者页`}>{content}</FollowAuthorLink>
+          ) : (
             <button key={key} type="button" data-follow-author={key} aria-pressed={pressed === key} onClick={() => onPick(key)}>
-              <span data-follow-ring="" dangerouslySetInnerHTML={{ __html: authorAvatarHtml(list, nameOf(key)) }} />
-              <span data-follow-name="">{nameOf(key)}</span>
+              {content}
             </button>
           );
         })}
-        {!keys.length ? <span data-follow-author-none="">没有名字含「{query.trim()}」的创作者</span> : null}
       </div>
     </div>
   );

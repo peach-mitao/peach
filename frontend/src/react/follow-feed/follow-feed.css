@@ -47,30 +47,20 @@
 @media (max-width: 640px) {
   .peach-react [data-follow-authors] { margin-right: -12px; }
 }
-/* 创作者多于一排能摆下的（`FOLLOW_AUTHORS_FIRST`）时，排上方一枚搜索框，搜的是全部创作者。 */
-.peach-react [data-follow-author-search] { width: min(240px, 100%); margin: 0 0 6px; }
-.peach-react [data-follow-author-none] {
-  display: flex;
-  align-items: center;
-  min-height: 84px;
-  padding: 0 4px;
-  color: var(--color-text-tertiary);
-  font: var(--board-body);
-  overflow-wrap: anywhere;
-}
-.peach-react :is([data-follow-authors], [data-follow-works]) > button {
+.peach-react :is([data-follow-authors], [data-follow-works]) > :is(button, a) {
   flex: none;
   border: 0;
   background: transparent;
   color: var(--color-text-secondary);
   font: var(--board-body-medium);
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
   transition: transform var(--lift-motion, var(--board-motion)), scale calc(var(--spring-press-ms) * 1ms) var(--spring-press),
     background-color .2s ease-out, color .2s ease-out;
 }
-.peach-react :is([data-follow-authors], [data-follow-works]) > button:active { scale: .96; transition: scale .06s ease-out; }
-.peach-react :is([data-follow-authors], [data-follow-works]) > button:hover {
+.peach-react :is([data-follow-authors], [data-follow-works]) > :is(button, a):active { scale: .96; transition: scale .06s ease-out; }
+.peach-react :is([data-follow-authors], [data-follow-works]) > :is(button, a):hover {
   background: var(--color-background-primary-hover);
   color: var(--color-text-primary);
 }
@@ -78,11 +68,11 @@
   background: var(--color-background-tertiary-default);
   color: var(--color-text-primary);
 }
-.peach-react :is([data-follow-authors], [data-follow-works]) > button:focus-visible {
+.peach-react :is([data-follow-authors], [data-follow-works]) > :is(button, a):focus-visible {
   outline: 2px solid var(--tungsten);
   outline-offset: 2px;
 }
-.peach-react [data-follow-authors] > button[data-follow-author] {
+.peach-react [data-follow-authors] > [data-follow-author] {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -455,6 +445,12 @@
 /* 元信息区：署名行一行排开，作者名可截断、时间不收；署名含那一行弱于作者名。 */
 .peach-react [data-follow-avatar] { display: grid; place-items: center; cursor: default; background: var(--overlay-5); border: 1px solid var(--line-soft); }
 .peach-react [data-follow-avatar] > img { border-radius: 50%; }
+.peach-react a[data-follow-avatar] { cursor: pointer; }
+.peach-react a:is([data-follow-avatar], [data-follow-author]):focus-visible {
+  outline: 2px solid var(--tungsten);
+  outline-offset: 2px;
+}
+.peach-react [data-follow-byline] > a[data-follow-author]:hover { text-decoration: underline; }
 /* 作品卡的首字母用 Bahnschrift，关注卡同遗留层 `.fsourceavatar .favatar.none` 走正文字体。 */
 .peach-react [data-follow-avatar] > span:first-child {
   display: grid;

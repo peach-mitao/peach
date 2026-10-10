@@ -45,7 +45,7 @@ const helpers: FollowFeedHelpers = {
   listSkeletonHtml: () => '<div data-test-skeleton>骨架</div>', jobProgress: () => {},
 };
 const feedActions: FollowFeedActions = {
-  route: () => {}, shuffle: () => {}, loaded: () => {}, openDetail: () => {}, openManage: () => {}, toggleSelection: () => {},
+  route: () => {}, shuffle: () => {}, loaded: () => {}, openDetail: () => {}, openAuthor: () => {}, openManage: () => {}, toggleSelection: () => {},
   setImagesOnly: () => {}, setPhotoLayout: () => {}, canFlip: () => false, toast: () => {}, failure: () => {}, checkReport: () => {},
 };
 

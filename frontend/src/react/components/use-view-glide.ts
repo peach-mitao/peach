@@ -21,6 +21,9 @@ interface Box { x: number; y: number; w: number; h: number }
 
 type Axis = 'x' | 'y';
 
+const sameBox = (first: Box, second: Box) =>
+  (['x', 'y', 'w', 'h'] as const).every((side) => first[side] === second[side]);
+
 function geometry(pill: HTMLElement, host: HTMLElement, axis: Axis): Box | null {
   if (!host.contains(pill)) return null;
   let x = 0;
@@ -63,14 +66,18 @@ export function useViewGlide(
     if (!glass) return;
     const active = line && line.offsetWidth ? target ?? line.querySelector<HTMLElement>(pressed) : null;
     const box = active && host ? geometry(active, host, axis) : null;
-    if (!box || !box.w) {
+    if (!box || !box.w || !box.h) {
+      glass.getAnimations().forEach((animation) => animation.cancel());
       glass.hidden = true;
+      last.current = null;
       return;
     }
     /* 从收起到出现是第一次落位，不从上一次的旧坐标飞进来。 */
     const from = glass.hidden ? null : last.current;
     glass.hidden = false;
     last.current = box;
+    /* 同一落点在切页取数时可重复上报，保留它正在完成的位移。 */
+    if (animate && from && sameBox(from, box)) return;
     moveGlidePane(glass, animate ? from : null, box, axis);
   }, [pane, row, pressed, axis]);
 
@@ -93,12 +100,34 @@ export function useViewGlide(
     };
     host?.addEventListener('scroll', remeasure, { capture: true, passive: true });
     addEventListener('resize', remeasure, { passive: true });
+    /* 浮层可以随页面收起，也可以在取数后补进另一组控件。尺寸恢复与相邻组变宽都会改变落点。 */
+    const observer = new ResizeObserver(() => {
+      const line = row.current;
+      const active = line?.offsetWidth ? line.querySelector<HTMLElement>(pressed) : null;
+      const box = active && host ? geometry(active, host, axis) : null;
+      const previous = last.current;
+      if (!box || !previous || !sameBox(box, previous)) {
+        remeasure();
+      }
+    });
+    const line = row.current;
+    if (line && host) {
+      observer.observe(line);
+      for (let node = line.parentElement; node; node = node.parentElement) {
+        observer.observe(node);
+        for (const child of node.children) {
+          if (!child.hasAttribute('data-view-glide')) observer.observe(child);
+        }
+        if (node === host) break;
+      }
+    }
     return () => {
+      observer.disconnect();
       cancelAnimationFrame(frame);
       host?.removeEventListener('scroll', remeasure, { capture: true });
       removeEventListener('resize', remeasure);
     };
-  }, [pane, place]);
+  }, [pane, row, place, key]);
 
   const hover = useCallback((event: PointerEvent<HTMLElement>) => {
     if (event.pointerType !== 'touch') place(event.currentTarget, true);
