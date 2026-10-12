@@ -248,6 +248,19 @@ wheels = [
 ]
 
 [[package]]
+name = "call-sleep"
+version = "0.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-asynctools" },
+    { name = "python-decotools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/14/5aaf87237a35b02a045601d6d16ee39e54676c81505f80a427fef307d8d8/call_sleep-0.0.1.tar.gz", hash = "sha256:3a7fbeb91fd406d919d3ac013c151a1f3536dcf6fc235f05090bdba8e03578b4", size = 2888, upload-time = "2026-09-29T05:13:13.508Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/96/b1308a7feb75a02988816cfea4f1d62e233d3162e5237553433a64936420/call_sleep-0.0.1-py3-none-any.whl", hash = "sha256:b5c4515e07bc42a0c74350cdcd7d9087675ae51681fdaa2a07c82f04849076a1", size = 3595, upload-time = "2026-09-29T05:13:14.642Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.7.22"
 source = { registry = "https://pypi.org/simple" }
@@ -1139,10 +1152,11 @@ wheels = [
 
 [[package]]
 name = "p115client"
-version = "0.0.9.6.5.1"
+version = "0.0.9.7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachedict" },
+    { name = "call-sleep" },
     { name = "ed2k" },
     { name = "errno2" },
     { name = "filelock" },
@@ -1152,7 +1166,6 @@ dependencies = [
     { name = "integer-tool" },
     { name = "iter-collect" },
     { name = "iterdir" },
-    { name = "orjson" },
     { name = "p115cipher" },
     { name = "p115oss" },
     { name = "p115pickcode" },
@@ -1180,9 +1193,9 @@ dependencies = [
     { name = "urllib3-future-request" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/15/abb3ef3f565fd2fc3a4834da817dc8a4b8c47f56c98a11058090c693f68e/p115client-0.0.9.6.5.1.tar.gz", hash = "sha256:64b73432e47844ac97beff9fe1f48b1c9566165cebf3af837f295213fabfed4c", size = 263765, upload-time = "2026-07-22T09:08:00.698Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/f1/dd0d531547dd89f939d715038b22a1614fc5252e9475b4a47442297feae7/p115client-0.0.9.7.2.tar.gz", hash = "sha256:b8fa273aa12b68cb8b9badbc889e59eac125cbf4cf433f8a1bd41486de11cbdd", size = 256070, upload-time = "2026-09-29T18:32:41.769Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/f5/d32b2747719d9e61c0dcc20046d9bde4838d30e08ee62ce968fca5865445/p115client-0.0.9.6.5.1-py3-none-any.whl", hash = "sha256:f89345e6816077836fccf4c6ad991b909bc3696fc9fc2601eefb37a9abd14bb3", size = 289277, upload-time = "2026-07-22T09:08:02.321Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/af/af7083c5b55ea9bbb1aa0da4edcdbf1736ea1d7d63a3d2ac288b55ea3cd7/p115client-0.0.9.7.2-py3-none-any.whl", hash = "sha256:aa5fac78f79d3976e9b81dc630f4efa8dff51024afd955951d9147d71080909e", size = 282776, upload-time = "2026-09-29T18:32:43.587Z" },
 ]
 
 [[package]]
@@ -1296,7 +1309,7 @@ requires-dist = [
     { name = "numpy", marker = "extra == 'vision'", specifier = "==2.5.3" },
     { name = "opencc", marker = "extra == 'naming'", specifier = "==1.4.2" },
     { name = "opencv-python-headless", marker = "extra == 'vision'", specifier = "==5.0.0.93" },
-    { name = "p115client", marker = "extra == 'maintenance-115'", specifier = "==0.0.9.6.5.1" },
+    { name = "p115client", marker = "extra == 'maintenance-115'", specifier = "==0.0.9.7.2" },
     { name = "pillow", specifier = "==12.3.0" },
     { name = "protobuf", specifier = "==7.36.2" },
     { name = "psutil", marker = "extra == 'dev'", specifier = "==7.2.2" },
@@ -1803,16 +1816,16 @@ wheels = [
 
 [[package]]
 name = "python-concurrenttools"
-version = "0.1.8"
+version = "0.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-argtools" },
     { name = "python-asynctools" },
     { name = "python-decotools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/36/ac/7ae8447a8256f3ca6a50300a88af1f1d61e603a4fecd0d6997ece92ae7d9/python_concurrenttools-0.1.8.tar.gz", hash = "sha256:ccebd08fdff97b7dec9b65886c8fb84c849bcd8bb48be8c440928faa90019ca6", size = 10032, upload-time = "2026-07-19T15:50:05.431Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/5c/2948762dff04a62f38106eb28434c251b97713cf20d1cacb3375281fa8e5/python_concurrenttools-0.1.9.tar.gz", hash = "sha256:931ed5aa903f5741190a515f9020b6fcac652a526241d8a24d3bed2a3daf3a8b", size = 9914, upload-time = "2026-09-29T13:25:56.887Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/e5/f9b1ada1f0db7f51c47c725de06128a9f39afcd5caeb9435ff10bb007920/python_concurrenttools-0.1.8-py3-none-any.whl", hash = "sha256:90f558254f3b51b3a9bd08904dbea43c4bd0e78ac505a0d1633cd7ff899a25d4", size = 13215, upload-time = "2026-07-19T15:50:06.545Z" },
+    { url = "https://files.pythonhosted.org/packages/90/6d/b8c7814388a2bf79751233f056d33d1efd27543c998a0b0fff6bfdb3dff5/python_concurrenttools-0.1.9-py3-none-any.whl", hash = "sha256:6c9bf48271077f0a8cd5c4c6c8417c1cf9370cc79abf8a2a649aa1db1e3ed22b", size = 13003, upload-time = "2026-09-29T13:25:58.789Z" },
 ]
 
 [[package]]
