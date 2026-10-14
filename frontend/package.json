@@ -22,10 +22,10 @@
     "@tanstack/react-table": "9.3.1",
     "clsx": "2.1.1",
     "d3-sankey": "0.12.3",
-    "motion": "14.0.0",
+    "motion": "14.1.0",
     "react": "19.3.0",
-    "react-aria": "3.53.0",
-    "react-aria-components": "1.22.0",
+    "react-aria": "3.53.1",
+    "react-aria-components": "1.22.1",
     "react-dom": "19.3.0",
     "react-router": "8.4.0",
     "recharts": "3.10.1",
@@ -33,7 +33,7 @@
     "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
-    "@shadcn/lint": "0.2.0",
+    "@shadcn/lint": "0.2.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/d3-sankey": "0.12.5",
     "@types/react": "19.3.0",
