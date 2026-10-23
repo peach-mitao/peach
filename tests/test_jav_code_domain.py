@@ -153,6 +153,32 @@ class ScrapeGateTests(unittest.TestCase):
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_mpg_filenames_keep_the_release_code(self):
+        for name in ("LAF-41.mpg", "LAF-041.MPG", "LAF-41-CD1.mpg",
+                     "[98t.tv]LAF-41.mpg"):
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), "LAF-041")
+
+    def test_kirari_codes_are_extracted_from_text(self):
+        for code in ("MKBD-S94", "MKD-S94", "mkbd-s118", "mkd-s89"):
+            with self.subTest(code=code):
+                self.assertEqual(release_code_from_text(code), code.upper())
+
+    def test_kirari_filenames_keep_the_release_code(self):
+        for name, code in (("MKBD-S94.mkv", "MKBD-S94"),
+                           ("mkd-s89.MPG", "MKD-S89"),
+                           ("MKBD-S94-CD1.mkv", "MKBD-S94"),
+                           ("MKBD-S94-1080p.mkv", "MKBD-S94"),
+                           ("[98t.tv]MKBD-S94-C.mkv", "MKBD-S94")):
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), code)
+
+    def test_kirari_lookalikes_are_not_extracted(self):
+        for code in ("ABC-S94", "MKBD-S1", "MKBD-S12345", "MKBD-S94-extra"):
+            with self.subTest(code=code):
+                self.assertIsNone(release_code_from_text(code))
+                self.assertIsNone(release_code_from_filename(f"{code}.mkv"))
+
     def test_named_volume_suffix_preserves_the_release_code(self):
         for suffix in ('CD1', 'disc02', 'Part-3', 'DVD4', 'Vol_5'):
             with self.subTest(suffix=suffix):
