@@ -1562,6 +1562,60 @@ class WebDataTests(unittest.TestCase):
         self.assertTrue(kept.exists(), "不在回收站的媒体一个都不能碰")
         self.assertIsNotNone(self.row(2))
 
+    def test_rclone_mount_detection_uses_the_most_specific_mountpoint(self):
+        mountinfo = Path(self.tmp.name) / "mountinfo"
+        mountinfo.write_text(
+            "36 25 0:41 / /media rw - ext4 /dev/root rw\n"
+            "37 36 0:62 / /media/115 rw - fuse.rclone remote:library rw\n"
+            "38 37 0:63 / /media/115/local rw - ext4 /dev/data rw\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(web_batch, "MOUNTINFO_PATH", mountinfo):
+            self.assertTrue(web_batch._is_rclone_mount(Path("/media/115/movie.mp4")))
+            self.assertFalse(web_batch._is_rclone_mount(Path("/media/115-old/movie.mp4")))
+            self.assertFalse(web_batch._is_rclone_mount(Path("/media/115/local/movie.mp4")))
+
+    def test_empty_trash_unlinks_115_rclone_media_without_remote_rename(self):
+        media = self.stage_media(2, "rclone-115.mp4")
+        media.write_bytes(b"x" * (1024 * 1024 + 1))
+        rm_web.w_feedback(self.contract, {"id": 2, "kind": "dispose"})
+
+        with mock.patch.object(web_batch, "_is_rclone_mount", return_value=True), \
+                mock.patch.object(web_batch.os, "rename") as rename:
+            result = rm_web.w_empty_trash(self.contract)
+
+        self.assertEqual((result["purged"], result["blocked"]), (1, []))
+        self.assertFalse(media.exists())
+        self.assertIsNone(self.row(2))
+        rename.assert_not_called()
+
+    def test_rclone_unlink_database_failure_leaves_a_retryable_trash_row(self):
+        media = self.stage_media(2, "rclone-commit-failure.mp4")
+        rm_web.w_feedback(self.contract, {"id": 2, "kind": "dispose"})
+
+        @contextmanager
+        def fail_after_body():
+            connection = self.contract.database.connect(write=True)
+            try:
+                yield connection
+                connection.rollback()
+                raise sqlite3.OperationalError("simulated commit failure")
+            finally:
+                connection.close()
+
+        with mock.patch.object(web_batch, "_is_rclone_mount", return_value=True), \
+                mock.patch.object(self.contract, "write_transaction", fail_after_body):
+            with self.assertRaisesRegex(sqlite3.OperationalError, "commit failure"):
+                rm_web.w_empty_trash(self.contract)
+
+        self.assertFalse(media.exists(), "远端删除已完成，数据库失败时不能假称文件已恢复")
+        self.assertEqual(self.row(2)["disposal"], "trash")
+
+        retry = rm_web.w_empty_trash(self.contract)
+        self.assertEqual((retry["purged"], retry["blocked"]), (1, []))
+        self.assertIsNone(self.row(2), "重试应只清理已不存在媒体对应的回收站记录")
+
     def test_undeletable_media_keeps_its_row_in_the_bin_instead_of_orphaning_the_file(self):
         """文件删不掉时保留账本行：留一条能重试的回收站条目，好过留一个没人认领的文件。"""
         blocked_path = Path(self.tmp.name) / "locked"

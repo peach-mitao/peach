@@ -5,8 +5,8 @@
 判定与执行分家的话，「命中推广词」和「可以删」之间那道界线就没人守了——
 剥掉推广词后还剩内容的文件不是广告，这条只有把判据和删除放在一起看才成立。
 
-物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处；文件隔离加数据库失败回滚
-（`_restore_staged_media`）是这个模块最不能出错的部分：删错的文件找不回来。
+物理删除要清的引用表只写在 `personal_records.ASSET_REFERENCE_TABLES` 一处。本地文件先隔离，
+账本失败时可以恢复；rclone FUSE 挂载直接删除，账本失败时保留回收站行供重试。
 """
 from __future__ import annotations
 
@@ -37,6 +37,9 @@ from .web_catalog import attach_card_performers
 from .media_sources import cost_for
 from .web_resource_sync import clean_resource_orphans
 from .web_state import WebContract
+
+# Linux 容器可从 mountinfo 识别媒体实际所在的 FUSE 文件系统。
+MOUNTINFO_PATH = Path("/proc/self/mountinfo")
 
 #: 批量操作在活动页上的名字。表里存 `operation`，人看的是这一列。
 BATCH_LABELS = {
@@ -561,6 +564,37 @@ def _restore_staged_media(staged):
                 os.rename(quarantine, original)
 
 
+def _mountinfo_field(value: str) -> str:
+    """Decode the octal escapes used for whitespace and backslashes in mountinfo."""
+    return re.sub(r"\\([0-7]{3})", lambda match: chr(int(match.group(1), 8)), value)
+
+
+def _is_rclone_mount(path: Path) -> bool:
+    """Return whether the most specific mounted filesystem containing path is rclone."""
+    try:
+        lines = MOUNTINFO_PATH.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+
+    target = Path(path).absolute()
+    matches = []
+    for order, line in enumerate(lines):
+        before, separator, after = line.partition(" - ")
+        if not separator:
+            continue
+        fields = before.split()
+        filesystem = after.split(maxsplit=1)
+        if len(fields) < 5 or not filesystem:
+            continue
+        mountpoint = Path(_mountinfo_field(fields[4]))
+        try:
+            target.relative_to(mountpoint)
+        except ValueError:
+            continue
+        matches.append((len(mountpoint.parts), order, filesystem[0]))
+    return bool(matches) and max(matches)[2] == "fuse.rclone"
+
+
 def _quarantine_media(original: Path, *, location: str | None = None) -> Path:
     """同目录改名不支持时，小文件先保留本地完整备份再删除原文件。"""
     key = uuid.uuid4().hex
@@ -694,11 +728,12 @@ def _finish_purge(outcome):
 
 
 def purge_assets(connection, rows, *, missing_only: bool = False):
-    """Quarantine media, delete ledger rows, and leave final removal to the caller.
+    """Remove media, delete ledger rows, and leave final cleanup to the caller.
 
-    Renaming beside the source is reversible and stays on the same filesystem. The
-    caller restores the quarantined names if commit fails, then permanently removes
-    them only after the SQLite transaction has committed.
+    Renaming beside a local source is reversible and stays on the same filesystem.
+    rclone FUSE mounts use direct unlink because remote rename may fall back to a slow
+    server-side copy and fail; if the ledger transaction then fails, its trash row
+    remains and a retry can remove that now-missing row.
 
     ``missing_only`` 删的只是账本行：文件还在（或答不上在不在）的行进 ``blocked``。
     """
@@ -742,8 +777,11 @@ def purge_assets(connection, rows, *, missing_only: bool = False):
                 if original.exists() and not original.is_file():
                     raise OSError("not a regular file")
                 if original.is_file():
-                    quarantine = _quarantine_media(original, location=row['location'] if 'location' in row.keys() else None)
-                    staged.append((original, quarantine))
+                    if _is_rclone_mount(original):
+                        original.unlink()
+                    else:
+                        quarantine = _quarantine_media(original, location=row['location'] if 'location' in row.keys() else None)
+                        staged.append((original, quarantine))
             except OSError as error:
                 blocked.append({"id": row["id"], "path": media,
                                 "reason": error.strerror or str(error)})

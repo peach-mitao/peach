@@ -46,7 +46,7 @@ Peach 保留页面粗提取与身份冲突提示，服务端复用 `catalog_rule
 
 STRM 采用文本指针、播放时解析的通用行为，参考 SmartStrm 文档、OpenList 的 `drivers/strm` 与 Jellyfin 的 STRM 探测入口；固定 revision、许可证与实际读取位置见 [取证记录](reference-snapshots/strm-source-evidence.md)。SmartStrm 核心闭源，源码未取得。Peach 独立实现受限 HTTP(S) 指针，复用 HTTPX、现有 Range 传输、`m3u8` 解析与播放器计划；无新增运行依赖，也不复制上游应用代码。
 
-光鸭、OneDrive 与其他网盘复用声明挂载根、路径翻译、扫描、文件整理与回滚、隔离删除和空目录清理。所有挂载来源统一开放读写，底层权限或不支持的操作由挂载工具报错；网盘登录与平台 API 由 CloudDrive2 或 OpenList 等挂载工具提供，不新增 SDK 或依赖。临时文件与账本回归覆盖三个来源的整理、回滚、删除、权限拒绝和空目录清理；真实账号兼容性见待办。挂载目录可单独设置代理流量保护，成本投影与批处理使用同一规则。STRM、ISO 跳过后台媒体读取，普通媒体保留按来源策略执行的探测；九宫格和时间轴共用本机视频预览开关。
+光鸭、OneDrive 与其他网盘复用声明挂载根、路径翻译、扫描、文件整理与回滚、隔离删除和空目录清理。所有挂载来源统一开放读写，底层权限或不支持的操作由挂载工具报错；网盘登录与平台 API 由 CloudDrive2 或 OpenList 等挂载工具提供，不新增 SDK 或依赖。本地文件先隔离再提交账本；rclone FUSE 通过挂载表识别并直接删除，避免远端改名触发复制，账本事务失败时保留可重试的回收站记录。临时文件与账本回归覆盖三个来源的整理、回滚、删除、权限拒绝和空目录清理；真实账号兼容性见待办。挂载目录可单独设置代理流量保护，成本投影与批处理使用同一规则。STRM、ISO 跳过后台媒体读取，普通媒体保留按来源策略执行的探测；九宫格和时间轴共用本机视频预览开关。
 
 Actions 工作流静态检查复用 actionlint 1.7.12（MIT，`rhysd/actionlint:1.7.12` 官方 Docker 镜像），由本地 Docker action 使用，独立 Docker 目录纳入 Dependabot 与接管入口。GitHub Actions 生态不更新 `docker://` 镜像引用。Windows 官方二进制按发布校验和完成本地 POC；CI 在 Linux 容器检查语法、表达式、任务依赖与脚本。Python 与浏览器回归继续使用现有统一入口及 Playwright；六片浏览器权重来自 [已通过的 CI](https://github.com/peach-mitao/peach/actions/runs/38981261189) 的 69 份 TAP，记录在 `scripts/ci-browser-timings.json`，没有新增应用运行依赖。
 
