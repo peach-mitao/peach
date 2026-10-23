@@ -10,6 +10,48 @@ describe('扫描与采集控制', () => {
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
   for (const viewport of VIEWPORTS) {
+    it(`${viewport.name}：停止确认与取消续跑`, async () => {
+      let state = { status: 'paused', job_id: 'stop-one', checked: 3, total: 10, speed_mode: 'standard' };
+      const writes: unknown[] = [];
+      const opened = await visit(browser, '/data-cleanup', viewport, async page => {
+        await page.route('**/api/library-processing', async route => {
+          if (route.request().method() === 'POST') {
+            writes.push(route.request().postDataJSON());
+            state = { ...state, status: 'stopping' };
+          }
+          await route.fulfill({ json: state });
+        });
+      });
+      const { page } = opened;
+      try {
+        const card = page.getByRole('region', { name: '扫描与采集', exact: true });
+        await card.getByRole('button', { name: '停止任务', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: '停止扫描与采集', exact: true });
+        await dialog.waitFor();
+        assert.match(await dialog.innerText(), /已处理结果保留/);
+        await dialog.getByRole('button', { name: '取消', exact: true }).click();
+        assert.equal(writes.length, 0);
+        await card.getByRole('button', { name: '停止任务', exact: true }).click();
+        await dialog.getByRole('button', { name: '停止任务', exact: true }).click();
+        await card.getByRole('button', { name: '正在停止', exact: true }).waitFor();
+        assert.equal(await card.getByRole('button', { name: '正在停止', exact: true }).isDisabled(), true);
+        await card.getByText('正在停止，等待当前步骤结束', { exact: true }).waitFor();
+        const measured = await layout(page);
+        assert.ok(measured.scrollWidth <= measured.viewportWidth, JSON.stringify(measured));
+        assert.deepEqual(measured.offenders, []);
+        const artifacts = path.resolve('..', 'build', 'agent-verification', 'processing-controls');
+        await mkdir(artifacts, { recursive: true });
+        await card.screenshot({ path: path.join(artifacts, `${viewport.name}-stopping.png`) });
+        state = { ...state, status: 'cancelled' };
+        await page.getByText('已停止扫描与采集', { exact: true }).waitFor({ timeout: 10_000 });
+        assert.equal(await card.getByRole('button', { name: '继续', exact: true }).count(), 0);
+        assert.deepEqual(writes, [{ action: 'stop', job_id: 'stop-one' }]);
+        await page.reload();
+        await card.getByRole('button', { name: '同步媒体库', exact: true }).waitFor();
+        assert.equal(writes.length, 1);
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close() }
+    });
     it(`${viewport.name}：资源提示、粗估、模式切换与暂停继续`, async () => {
       let state = { status: 'idle', job_id: '', checked: 0, total: 100, speed_mode: 'standard',
         steps: [{ id: 'sources', label: '扫描文件', status: 'complete' },
@@ -41,14 +83,14 @@ describe('扫描与采集控制', () => {
         await card.waitFor();
         await settle(page);
         await card.getByRole('button', { name: '同步媒体库', exact: true }).click();
-        const dialog = page.getByRole('dialog', { name: '同步媒体库', exact: true });
+        const dialog = page.getByRole('dialog', { name: '新任务', exact: true });
         await dialog.waitFor();
         assert.match(await dialog.innerText(), /可能让电脑变慢/);
         assert.equal(writes.length, 0);
         const modalLayout = await layout(page);
         assert.ok(modalLayout.scrollWidth <= modalLayout.viewportWidth, JSON.stringify(modalLayout));
         assert.deepEqual(modalLayout.offenders, []);
-        const optionFits = await dialog.locator('label').evaluateAll(labels => labels.every(label => {
+        const optionFits = await dialog.locator('.iconswitch label').evaluateAll(labels => labels.every(label => {
           const text = label.querySelector('span[aria-hidden="true"]')!.getBoundingClientRect();
           const box = label.getBoundingClientRect();
           return text.top >= box.top && text.bottom <= box.bottom && text.right <= box.right;
@@ -56,7 +98,7 @@ describe('扫描与采集控制', () => {
         assert.equal(optionFits, true, '处理模式文字应保持单行并落在控件内');
         await dialog.screenshot({ path: path.join(artifacts, `${viewport.name}-startup.png`) });
         await dialog.getByRole('radio', { name: '低占用', exact: true }).check();
-        await dialog.getByRole('button', { name: '同步媒体库', exact: true }).click();
+        await dialog.getByRole('button', { name: '开始任务', exact: true }).click();
         await card.getByText('预计剩余约 20–40 分钟（粗估）', { exact: true }).waitFor();
         assert.equal(writes[0]?.speed_mode, 'low');
         const dock = page.locator('#toasts [data-processing-dock]');

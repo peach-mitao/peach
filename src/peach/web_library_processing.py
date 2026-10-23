@@ -3,16 +3,21 @@ import json
 
 from . import settings_file
 from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
-                                METADATA_STAGE, PREVIEWS_STAGE, _asset_selection,
+                                METADATA_STAGE, PREVIEWS_STAGE, PROBE_STAGE, COVERS_STAGE, _asset_selection,
                                 decorate, issues_path, process_library, snapshot)
 from .processing_control import control_for, initial_estimate, valid_mode, mode_ratio
 
-ACTIVE = ('running', 'pausing', 'paused')
+ACTIVE = ('running', 'pausing', 'paused', 'stopping')
 
 
 def _current(contract):
     live = contract.library_processing_job.snapshot()
-    return live if live and live.get('status') in ACTIVE else snapshot(settings_file.active())
+    if live and live.get('status') in ACTIVE:
+        return live
+    saved = snapshot(settings_file.active())
+    if live and live.get('status') == 'cancelled' and saved.get('job_id') in (None, '', live.get('job_id')):
+        return live
+    return saved
 
 
 def q_library_processing(contract, _args):
@@ -20,6 +25,8 @@ def q_library_processing(contract, _args):
     control = control_for(settings_file.active())
     control.refresh(force=True)
     state['speed_mode'] = control.mode
+    if state.get('job_id') == control.job_id and control.stopped and state.get('status') in ACTIVE:
+        state['status'] = 'stopping'
     from .media_processing_policy import metadata_only
     state['metadata_only'] = metadata_only(settings_file.active().directory('state'))
     from .job_recovery import read
@@ -37,7 +44,7 @@ def q_library_processing(contract, _args):
 
 def _control_action(contract, config, body):
     action = body['action']
-    if action not in ('pause', 'resume', 'set_speed'):
+    if action not in ('pause', 'resume', 'stop', 'set_speed'):
         raise ValueError('处理动作无效')
     previous = _current(contract)
     job_id = body.get('job_id')
@@ -46,23 +53,17 @@ def _control_action(contract, config, body):
     if job_id and str(job_id) != str(previous.get('job_id') or ''):
         raise ValueError('任务已变化，请刷新页面后重试')
     if action != 'set_speed' and previous.get('status') not in ACTIVE:
-        raise ValueError('当前没有可暂停或继续的任务')
+        raise ValueError('当前没有可控制的任务')
     control = control_for(config)
     control.refresh(force=True)
     if job_id:
         control.select_job(str(job_id))
+    if action == 'stop':
+        return _stop_processing(contract, config, control, previous, str(job_id))
+    if control.stopped and job_id:
+        raise ValueError('任务正在停止，请等待结束后重新发起任务')
     if action == 'set_speed':
-        mode = valid_mode(body.get('speed_mode'))
-        control.request(action, mode=mode)
-        if previous.get('status') in ACTIVE:
-            ratio = mode_ratio(mode, previous.get('speed_mode') or 'standard')
-            fields = dict(speed_mode=mode, eta_initial=True)
-            if previous.get('speed_mode') != mode:
-                for key in ('eta_seconds_min', 'eta_seconds_max'):
-                    if isinstance(previous.get(key), (int, float)):
-                        fields[key] = max(0, int(previous[key] * ratio))
-            contract.library_processing_job.update(previous['job_id'], **fields)
-        return q_library_processing(contract, {})
+        return _set_processing_speed(contract, control, previous, body.get('speed_mode'))
     status = ('paused' if previous.get('status') == 'paused' else 'pausing') if action == 'pause' else 'running'
     _announce_control(contract.library_processing_job, str(job_id), status)
     control.request(action, str(job_id))
@@ -74,7 +75,7 @@ def _control_action(contract, config, body):
         identity = current_job_id.set(str(job_id))
         run = current_run.set(recovery.get('run_id'))
         try:
-            return w_library_processing(contract, {
+            return w_library_processing(contract, {**recovery.get('request', {}),
                 'stage': previous.get('requested_stage') or ALL_STAGES,
                 **({'asset_ids': previous['asset_ids']} if previous.get('asset_ids') else {}),
                 'speed_mode': control.mode}, resume=True)
@@ -85,6 +86,38 @@ def _control_action(contract, config, body):
     if not live and result.get('status') in ACTIVE:
         result['status'] = status
     return result
+
+
+def _stop_processing(contract, config, control, previous, job_id):
+    """撤销恢复意图，在写入者退出后结算这一趟任务。"""
+    from .job_recovery import cancel
+    from .library_processing import _save, state_path
+    import time
+    control.request('stop', job_id)
+    thread = getattr(contract.library_processing_job, 'thread', None)
+    executing = bool(thread is not None and thread.is_alive()) or _writer_active(config)
+    cancel(contract.db_path, 'library-processing', finish_run=not executing)
+    if not executing:
+        result = {**previous, 'status': 'cancelled', 'stage': '已停止', 'error': '',
+                  'followups': [], 'waiting_for_update': False, 'completed_at': time.time()}
+        _save(state_path(config), result)
+        contract.library_processing_job.stop(timeout=0, resume=False)
+    return q_library_processing(contract, {})
+
+
+def _set_processing_speed(contract, control, previous, value):
+    """保存处理强度，并按模式比例调整当前任务的耗时范围。"""
+    mode = valid_mode(value)
+    control.request('set_speed', mode=mode)
+    if previous.get('status') in ACTIVE:
+        ratio = mode_ratio(mode, previous.get('speed_mode') or 'standard')
+        fields = dict(speed_mode=mode, eta_initial=True)
+        if previous.get('speed_mode') != mode:
+            for key in ('eta_seconds_min', 'eta_seconds_max'):
+                if isinstance(previous.get(key), (int, float)):
+                    fields[key] = max(0, int(previous[key] * ratio))
+        contract.library_processing_job.update(previous['job_id'], **fields)
+    return q_library_processing(contract, {})
 
 
 def _announce_control(job, job_id, status):
@@ -164,7 +197,7 @@ def _processing_request(contract, config, previous, body):
     if stage not in STAGES:
         raise ValueError('处理阶段无效')
     from .media_processing_policy import metadata_only
-    if stage == PREVIEWS_STAGE and metadata_only(config.directory('state')):
+    if stage == PREVIEWS_STAGE and 'tasks' not in (body or {}) and metadata_only(config.directory('state')):
         raise ValueError('视频预览生成已关闭，请先在媒体库设置中开启')
     return retry_ids, asset_ids, stage
 
@@ -181,6 +214,10 @@ def w_library_processing(contract, body, *, resume=False):
         return previous
     mode = valid_mode(control_for(config).mode if resume else
                       (body or {}).get('speed_mode') or control_for(config).mode)
+    from .library_processing_tasks import selection_for
+    selection = selection_for(config, stage, (body or {}).get('tasks'), asset_ids or retry_ids,
+        (body or {}).get('execution_mode', 'sequential'), (body or {}).get('defer_suspected_duplicates', False))
+    selected_options = _selection_options(selection)
     control_for(config).request('set_speed', mode=mode)
     def work(job_id):
         try:
@@ -191,6 +228,7 @@ def w_library_processing(contract, body, *, resume=False):
                 database=contract.database,
                 resume_state=previous if resume else None,
                 speed_mode=control_for(config).mode,
+                **selected_options,
                 active=lambda: (contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
                 report=lambda state: contract.library_processing_job.update(job_id, **{
                     key: value for key, value in state.items() if key != 'job_id'}))
@@ -200,9 +238,29 @@ def w_library_processing(contract, body, *, resume=False):
     # 起步那行字按这一趟真正要做的事写：点了「只扫描」却看到「读取本地资料」，
     # 人会以为点错了。
     labels = {ALL_STAGES: '准备处理', SCAN_STAGE: '准备扫描文件', COLLECT_STAGE: '准备采集资料',
-              METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图'}
+              METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图',
+              PROBE_STAGE: '准备读取媒体属性', COVERS_STAGE: '准备补全封面'}
     return contract.library_processing_job.start(
         work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
-                                    **initial_estimate(config, contract.db_path, stage, asset_ids or retry_ids, mode)},
-        recovery={'stage': stage, 'speed_mode': mode, **({'asset_ids': asset_ids or retry_ids}
+                                    **_selection_state(selection),
+                                    **initial_estimate(config, contract.db_path, stage, asset_ids or retry_ids, mode,
+                                                       tasks=selected_options.get('tasks'))},
+        recovery={'stage': stage, 'speed_mode': mode, **selected_options, **({'asset_ids': asset_ids or retry_ids}
                                     if asset_ids is not None or retry_ids is not None else {})})
+
+
+def _selection_state(selection):
+    if not selection:
+        return {}
+    return dict(requested_tasks=selection['tasks'], execution_mode=selection['execution_mode'],
+                defer_suspected_duplicates=selection['defer_suspected_duplicates'])
+
+
+def _selection_options(selection):
+    options = dict(execution_mode=selection['execution_mode'],
+                   defer_suspected_duplicates=selection['defer_suspected_duplicates'])
+    if not selection['legacy_policy']:
+        return dict(tasks=selection['tasks'], **options)
+    if options == dict(execution_mode='sequential', defer_suspected_duplicates=False):
+        return {}
+    return options

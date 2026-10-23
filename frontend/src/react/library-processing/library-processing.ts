@@ -24,8 +24,12 @@ export interface LibraryProcessingIssue {
 
 /** 一趟扫描与采集的快照。字段以 `q_library_processing`（`src/peach/web_library_processing.py`）为准。 */
 export interface LibraryProcessingData {
+  requested_tasks?: ProcessingTask[];
+  execution_mode?: 'sequential' | 'parallel';
+  defer_suspected_duplicates?: boolean;
+  work_progress?: Partial<Record<ProcessingTask, { status: string; done: number; total: number; failed: number; deferred: number }>>;
   metadata_only?: boolean;
-  /** `idle` | `running` | `pausing` | `paused` | `complete` | `failed`。 */
+  /** `idle` | `running` | `pausing` | `paused` | `stopping` | `cancelled` | `complete` | `failed`。 */
   status: string;
   speed_mode?: ProcessingSpeed;
   eta_seconds_min?: number | null;
@@ -41,6 +45,7 @@ export interface LibraryProcessingData {
   total?: number;
   scanned?: number;
   scanned_bytes?: number;
+  probed?: number;
   identified?: number;
   candidates?: number;
   auto_applied?: number;
@@ -72,24 +77,29 @@ export interface LibraryProcessingData {
 
 /** 一次写操作的请求体：指定处理阶段与影片，或者按任务号重试失败项。 */
 export type ProcessingSpeed = 'low' | 'standard' | 'high';
+export type ProcessingTask = 'scan' | 'probe' | 'metadata' | 'covers' | 'previews';
 export interface LibraryProcessingCommand {
-  stage?: 'scan' | 'collect' | 'previews' | 'metadata';
+  stage?: 'scan' | 'collect' | 'previews' | 'metadata' | 'probe' | 'covers';
+  tasks?: ProcessingTask[];
+  execution_mode?: 'sequential' | 'parallel';
+  defer_suspected_duplicates?: boolean;
   asset_ids?: number[];
   job_id?: string;
   retry?: number[];
   speed_mode?: ProcessingSpeed;
 }
 export type ProcessingControlCommand =
-  | { action: 'pause' | 'resume'; job_id: string }
+  | { action: 'pause' | 'resume' | 'stop'; job_id: string }
   | { action: 'set_speed'; speed_mode: ProcessingSpeed; job_id?: string };
 
 /** 暂停中的任务仍占用同一份处理范围，可继续并持续读取状态。 */
 export const processingActive = (state?: LibraryProcessingData) =>
-  !!state && ['running', 'pausing', 'paused'].includes(state.status);
+  !!state && ['running', 'pausing', 'paused', 'stopping'].includes(state.status);
 
 /** 时间向分钟取整；区间两端始终使用同一单位。 */
 export function remainingTime(state: LibraryProcessingData): string {
   if (!processingActive(state)) return '';
+  if (state.status === 'stopping') return '正在停止，等待当前步骤结束';
   if (state.status === 'paused') return '已暂停，继续后更新预估';
   if (state.status === 'pausing') return '正在暂停，当前步骤结束后暂停';
   if (state.stalled) return '等待当前文件响应，剩余时间待更新';
@@ -159,6 +169,8 @@ export function notesLine(notes: Record<string, number>): string {
 
 /** 此刻在做什么：哪个文件、哪一步、等了多久。 */
 export function currentLine(state: LibraryProcessingData): string {
+  if (state.status === 'stopping') return '正在停止';
+  if (state.status === 'cancelled') return '已停止';
   if (state.status === 'paused') return '已暂停';
   if (state.status === 'pausing') return '正在暂停';
   const action = ACTION_LABELS[state.current_action || ''] || state.stage || '正在处理';
@@ -208,6 +220,20 @@ export function issueDetails(state: LibraryProcessingData): IssueDetails | null 
 const ANNOUNCED_KEY = 'peach.library-processing.announced';
 const FRESH_COMPLETION_SECONDS = 120;
 
+export function processingResultText(state: LibraryProcessingData): string {
+  const tasks = state.requested_tasks;
+  if (!tasks?.length) return '';
+  const parts = [];
+  if (tasks.includes('scan')) parts.push(`已扫描 ${state.scanned || 0} 个文件`);
+  if (tasks.includes('probe')) parts.push(`读取 ${state.probed || 0} 部视频属性`);
+  if (tasks.includes('metadata')) parts.push(`整理 ${state.candidates || 0} 组资料结果，自动保存 ${state.auto_applied || 0} 条`);
+  if (tasks.includes('covers')) parts.push(`取得 ${state.covers || 0} 张封面`);
+  if (tasks.includes('previews')) parts.push(`生成 ${state.previews || 0} 部视频预览`);
+  const deferred = Object.values(state.work_progress || {}).reduce((count, task) => count + (task?.deferred || 0), 0);
+  if (deferred) parts.push(`待确认预览 ${deferred} 项`);
+  return parts.join('，') + '。';
+}
+
 export function freshProcessingResult(state: LibraryProcessingData): boolean {
   const age = state.completed_at == null ? Infinity : Date.now() / 1000 - state.completed_at;
   return !!state.job_id && age >= 0 && age < FRESH_COMPLETION_SECONDS;
@@ -216,13 +242,20 @@ export function freshProcessingResult(state: LibraryProcessingData): boolean {
 export function announceCompletion(
   state: LibraryProcessingData, toast: (message: string) => void, witnessed: boolean,
 ): void {
-  if (state.status !== 'complete') return;
+  if (state.status !== 'complete' && state.status !== 'cancelled') return;
+  if (state.status === 'cancelled' && !witnessed) return;
   if (!witnessed && !freshProcessingResult(state)) return;
   try {
     if (state.job_id && localStorage.getItem(ANNOUNCED_KEY) === state.job_id) return;
     if (state.job_id) localStorage.setItem(ANNOUNCED_KEY, state.job_id);
   } catch { /* 存储不可用时照常提示，最多重复一次 */ }
-  if (state.requested_stage === 'previews') {
+  if (state.status === 'cancelled') {
+    toast('已停止扫描与采集，已保留处理结果');
+    return;
+  } else if (state.requested_tasks?.length) {
+    toast(processingResultText(state));
+    return;
+  } else if (state.requested_stage === 'previews') {
     toast(`视频预览已生成：${state.previews || 0} 部`);
     return;
   }
