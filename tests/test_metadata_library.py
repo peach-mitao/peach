@@ -6,7 +6,9 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier, local
 from types import SimpleNamespace
 from unittest.mock import DEFAULT, Mock, patch
 from contextlib import closing
@@ -2280,6 +2282,95 @@ class LibraryNfoTests(unittest.TestCase):
         self.assertNotIn("'/api/library-processing'", configuration)
         page = (root / 'frontend/src/react/data-cleanup/data-cleanup-page.tsx').read_text(encoding='utf-8')
         self.assertIn('<LibraryProcessingCard toast={notify} monitor onComplete={refreshReadings} />', page)
+
+
+class LibraryStatePersistenceTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.path = self.root / 'state/library-processing.json'
+        self.path.parent.mkdir()
+        self.previous = {'status': 'running', 'job_id': 'one', 'title': '处理进度'}
+        self.path.write_text(json.dumps(self.previous, ensure_ascii=False), encoding='utf-8')
+
+    def test_state_save_retries_temporary_replace_denial(self):
+        from peach.library_processing import _save
+        replace = os.replace
+        attempts = []
+        current = {**self.previous, 'processed': 2}
+
+        def busy_reader(source, destination):
+            attempts.append(source)
+            if len(attempts) <= 2:
+                self.assertEqual(json.loads(self.path.read_text(encoding='utf-8')), self.previous)
+                self.assertEqual(json.loads(Path(source).read_text(encoding='utf-8')), current)
+                raise PermissionError(13, '目标文件正在读取', str(destination))
+            return replace(source, destination)
+
+        with patch('os.replace', side_effect=busy_reader):
+            _save(self.path, current)
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(json.loads(self.path.read_text(encoding='utf-8')), current)
+        self.assertEqual(list(self.path.parent.iterdir()), [self.path])
+
+    def test_state_save_reports_persistent_denial_and_cleans_staging(self):
+        from peach.library_processing import _save
+        denied = PermissionError(13, '目标文件不可替换', str(self.path))
+        with patch('os.replace', side_effect=denied), patch('peach.fsutil.READER_WAIT', 0):
+            with self.assertRaises(PermissionError) as raised:
+                _save(self.path, {**self.previous, 'processed': 2})
+        self.assertIs(raised.exception, denied)
+        self.assertEqual(json.loads(self.path.read_text(encoding='utf-8')), self.previous)
+        self.assertEqual(list(self.path.parent.iterdir()), [self.path])
+
+    def test_concurrent_state_saves_publish_complete_payloads(self):
+        from peach.library_processing import _save
+        replace = os.replace
+        ready = Barrier(2)
+        writer = local()
+        staging = []
+        payloads = [{**self.previous, 'processed': index, 'details': '进度' * 1024} for index in (1, 2)]
+
+        def interleaved_replace(source, destination):
+            if not getattr(writer, 'ready', False):
+                staging.append(Path(source))
+                writer.ready = True
+                ready.wait(timeout=5)
+            return replace(source, destination)
+
+        with patch('os.replace', side_effect=interleaved_replace), ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(_save, self.path, payload) for payload in payloads]
+            for future in futures:
+                future.result(timeout=10)
+        self.assertEqual(len(set(staging)), 2)
+        self.assertTrue(all(path.parent == self.path.parent for path in staging))
+        self.assertIn(json.loads(self.path.read_text(encoding='utf-8')), payloads)
+        self.assertEqual(list(self.path.parent.iterdir()), [self.path])
+
+    @unittest.skipUnless(os.name == 'nt', '需要 Windows 文件共享语义')
+    def test_state_save_waits_for_a_windows_reader_to_close(self):
+        from peach.library_processing import _save
+        replace = os.replace
+        reader = self.path.open(encoding='utf-8')
+        self.addCleanup(reader.close)
+        blocked = []
+
+        def replace_while_reading(source, destination):
+            try:
+                return replace(source, destination)
+            except PermissionError as error:
+                blocked.append(error)
+                reader.close()
+                raise
+
+        current = {**self.previous, 'processed': 2}
+        with patch('os.replace', side_effect=replace_while_reading):
+            _save(self.path, current)
+        self.assertEqual(len(blocked), 1)
+        self.assertIn(blocked[0].winerror, (5, 32))
+        self.assertEqual(json.loads(self.path.read_text(encoding='utf-8')), current)
+        self.assertEqual(list(self.path.parent.iterdir()), [self.path])
 
 
 class LibraryWatchdogTests(unittest.TestCase):

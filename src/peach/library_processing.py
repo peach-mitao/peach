@@ -704,10 +704,7 @@ def misses_path(config):
 
 
 def _save(path, payload):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix('.tmp')
-    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
-    temporary.replace(path)
+    atomic_write_text(path, json.dumps(payload, ensure_ascii=False))
 
 
 def decorate(state, *, now=None):

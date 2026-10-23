@@ -697,6 +697,8 @@ Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.17.0，版本
 
 当前树、扫描与采集的 Git 历史，以及现有任务队列均已核对；不引入新的调度或工作流依赖。项目已固定的 APScheduler 3.11.3（MIT）负责派发，其持久 job store 记录调度任务，不能保存函数执行到哪一条影片或来源页，见[上游调度说明](https://apscheduler.readthedocs.io/en/3.x/userguide.html#adding-jobs)。结果替换沿用 Python 3.14 标准库 [`os.replace`](https://docs.python.org/3.14/library/os.html#os.replace)（PSF），锁沿用项目固定的 `filelock`，没有新增运行时体积或平台要求。隔离实证覆盖目录与目录内批次中断、关注回抓游标、固定来源集合、原任务标识与计数、候选 CSV 保留及同批整理日志；不读取真实媒体、不访问外部采集来源，也不写真实 ledger。
 
+媒体处理进度、来源未收录缓存与资料证据边车通过 `library_processing._save` 复用 `fsutil.atomic_write_text`。临时文件使用同目录随机名称，替换时沿用十秒有界重试；持续失败会保留目标内容、清理临时文件并抛出原始异常。隔离回归覆盖短暂拒绝访问、持续拒绝、并发发布完整 JSON，以及 Windows 读句柄占用。复用已有 Python 3.14 标准库实现，无需新增原子写入依赖；状态字段、任务锁和账本事务保持原有契约。
+
 扫描、探测、资料请求和九宫格复用 `process_library`、`scan_location`、`SourceTransport`、`frame_capture` 与已有影片检查点；任务恢复沿用 `BackgroundJob`、`job_recovery` 和 `task_run`，用户暂停意图单独持久保存。当前树及 `library_processing.py` 的 Git 历史已核对，安装暂停只用于安装事务，不能直接代表用户暂停。Python 标准库 `threading.Event` 与 `contextvars.ContextVar` 提供等待唤醒和当前任务隔离，沿用项目 Python 版本，跨 Windows 与 macOS，无额外依赖体积；许可证为 PSF，官方文档与实现见 [threading](https://docs.python.org/3/library/threading.html) 和 [contextvars](https://docs.python.org/3/library/contextvars.html)。现有 APScheduler 3.11.3 用于定时派发，不能暂停已进入媒体读取的函数，因此不承担安全停点。隔离测试使用临时账本、暂停线程与模拟时钟验证安全停点、跨重启意图、低占用间隔和暂停预算补偿，不读取真实媒体、不发外部请求。
 
 `processing_control` 保留 Peach 的阶段、模式与估时策略：启动仅汇总账本文件数和大小，优先使用本机同类完成耗时；未知新增明确不在初始范围内。整趟剩余时间合计当前阶段和待执行阶段；当前阶段采用最近 20 次完成增量，后续阶段使用保守粗估。无番号、无 NFO 的文件完成同目录检查后不计入外部采集数量；任务停滞时读接口撤下旧估时。处理强度为低占用、标准和高强度：低占用采用单线程 FFmpeg 与较大单项间隔，标准采用两个解码、滤镜和编码线程与短间隔，高强度采用工具自动线程且没有额外间隔。amane 低占用逐站查询，其余沿用现有调度；各档均遵守来源限流，单资产流水线与暂停检查点共用。强度只作用于当前任务，历史耗时按档位系数归一，初始与切换时的范围属于粗估，实际样本继续校准。持久状态不修改 ledger schema，不改变生产入口。
