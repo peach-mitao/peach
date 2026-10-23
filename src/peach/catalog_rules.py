@@ -289,7 +289,8 @@ _FORUM_URL_WRAPPER = re.compile(r"^\[url\](.+)\[\|?/?url\]$", re.I)
 _TITLED_CODE_HEAD = re.compile(r"^((?:\d{3})?[A-Za-z]{2,8}-\d{2,5})(?=[\u3040-\u30ff\u3400-\u9fff])")
 _REMUX_CODE_TAIL = re.compile(r"\(([A-Za-z]{2,8}-\d{2,5})\)\[BD[ ._-]Remux\]$", re.I)
 _KIRARI_FILENAME = re.compile(r"^(MKB?D-S\d{2,4})(?:\s+KIRARI(?:\s|$)|$)", re.I)
-_INLINE_STUDIO_CODE = re.compile(r"(?<![A-Za-z0-9])(?:\d{3})?[A-Za-z]{2,8}-\d{2,5}(?![A-Za-z0-9])")
+_INLINE_STUDIO_CODE = re.compile(
+    r"(?<![A-Za-z0-9])(?:(?:\d{3})?[A-Za-z]{2,8}-\d{2,5}|MKB?D-S\d{2,4})(?![A-Za-z0-9])", re.I)
 
 #: DMM 自己交付的文件名：四位发行日（`0112` 是 1 月 12 日）顶在番号前面，编码写在后面。
 #: 四位是判据的关键——素人系的前缀恰好三位（`259LUXU-1007`），放宽到「若干位数字」

@@ -181,6 +181,7 @@ class ExtractionTests(unittest.TestCase):
                      'EP2_000.mp4', 'ABW-358日本語 ABW-359.mp4',
                      'ABW-358 (ABW-359)[BD Remux].mkv',
                      'title (ABW-358) commentary.mkv', 'MKBD-S50 unknown title.mp4',
+                     'MKBD-S50 KIRARI MKBD-S51.mp4',
                      '91CM-158.TS', 'heydouga-4030-2345.mp4'):
             with self.subTest(name=name):
                 self.assertIsNone(release_code_from_filename(name))
