@@ -79,9 +79,12 @@ describe('播放器皮肤', () => {
           const play = container.querySelector('media-play-button')!.getBoundingClientRect();
           const full = container.querySelector('media-fullscreen-button')!.getBoundingClientRect();
           return { frame: [frame.width, frame.height], viewport: [innerWidth, innerHeight],
+            fit: getComputedStyle(container.querySelector('.vjs-tech')!).objectFit,
             controlsInside: play.y >= 0 && full.right <= innerWidth && play.bottom <= innerHeight };
         });
         assert.deepEqual(fullscreen.frame, fullscreen.viewport);
+        // 全屏的画面框铺满窗口，画面本身必须留在框里：cover 会把宽高比和屏幕不一致的片子放大裁边。
+        assert.equal(fullscreen.fit, 'contain', '全屏不裁画面的边缘');
         assert.equal(fullscreen.controlsInside, true);
         await page.locator('#stage media-fullscreen-button').click();
         await page.waitForFunction(() => !document.fullscreenElement);
