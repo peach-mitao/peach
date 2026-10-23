@@ -6,6 +6,7 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { apiGet, apiSend, errorMessage } from '../../api';
+import { randomId } from '../../random-id';
 import { LoadingDots } from '../components/loading-dots';
 import { Disclosure, ErrorText, ExternalLink, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
@@ -66,7 +67,7 @@ function IndexerForm({ initial, receipt }: { initial: State; receipt(message: st
       </Stack>
       <Footer>
         <Button variant="secondary" type="button" disabled={Boolean(action.busy) || rows.length >= initial.max_indexers}
-          onClick={() => setRows([...rows, { key: crypto.randomUUID(), name: '', url: '', enabled: true, api_key_set: false }])}>
+          onClick={() => setRows([...rows, { key: randomId(), name: '', url: '', enabled: true, api_key_set: false }])}>
           添加索引器
         </Button>
         <Button type="submit" {...busyProps(action.busy === 'save')}>保存配置</Button>

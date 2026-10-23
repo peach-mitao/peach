@@ -1,5 +1,11 @@
 # 复用清单
 
+## 浏览器随机标识
+
+索引器草稿、播放器容器与播放会话共用 `frontend/src/random-id.ts`。安全上下文复用浏览器原生 `crypto.randomUUID()`；普通 HTTP 复用 [`crypto.getRandomValues()`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues) 生成 16 字节随机值，按 Web Crypto 的 v4 UUID 格式设置版本与变体。该随机源可用于非安全上下文，不增加浏览器来源白名单要求。浏览器标准能力无需固定 npm 版本，也不增加运行时依赖；UUID 库在这些消费者上没有额外能力收益，因此不引入。
+
+Peach 只保留三处消费者与共享格式转换。当前树和 Git 历史的复用检索已覆盖随机标识入口；回归验证原生调用、普通 HTTP 的 UUID 格式和独立会话，以及非安全来源下桌面与手机的配置编辑、保存与播放器挂载。测试使用隔离演示库，不写真实 ledger，不切换生产入口。
+
 ## 检查输入与源码文案
 
 测试差异复用 Git 文件快照、Python AST、标准库 TOML/JSON 解析器及现有 filelock。Python 注释和清单说明字段通过有效内容比较识别；真实依赖、执行模式和无法解析的输入保留完整验证。完整批次按测试文件保存结果，仅补齐受影响范围，不延长结果有效期。
