@@ -11,7 +11,7 @@ import shutil
 
 REQUIRED_FILES = {"bin/ffmpeg.exe", "bin/ffprobe.exe", "LICENSE.txt", "NOTICE.md", "buildconf.txt"}
 POLICIES = {
-    "ffmpeg": (REQUIRED_FILES, {"ffmpeg", "x264", "nv-codec-headers", "dav1d"}, "GPL-3.0-or-later"),
+    "ffmpeg": (REQUIRED_FILES, {"ffmpeg", "x264", "nv-codec-headers", "dav1d", "amf"}, "GPL-3.0-or-later"),
     "untrunc": ({"untrunc.exe", "LICENSE.txt", "NOTICE.md", "buildconf.txt"},
                 {"untrunc", "ffmpeg"}, "GPL-2.0-or-later"),
 }

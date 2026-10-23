@@ -84,7 +84,7 @@ Linux 首次重编码时会探测实际可用的硬件编码器，整片 MP4 与
 
 | 环境变量 | 值与用途 |
 | --- | --- |
-| `PEACH_TRANSCODE_BACKEND` | 默认 `auto`；可设为 `vaapi`、`nvenc` 或 `software`。指定硬件后端仍会验证能否编码，失败回退软件。 |
+| `PEACH_TRANSCODE_BACKEND` | 默认 `auto`；容器可设为 `vaapi`、`nvenc` 或 `software`。Windows AMD 使用 `amf`，见[运行与配置](OPERATIONS.md)。指定硬件后端仍会验证能否编码，失败回退软件。 |
 | `PEACH_VAAPI_DEVICE` | 指定容器内渲染节点；留空时按名称依次探测 `/dev/dri/renderD*`，使用第一个可用节点。 |
 
 VAAPI 尝试顺序为硬件解码加 `scale_vaapi` / `h264_vaapi`、软件解码加 `hwupload` / `h264_vaapi`、`libx264`。解码能力还受 GPU 型号、片源编码与位深限制；硬件编码可用不能证明每个片源都能硬件解码。NVIDIA 透传还需宿主机驱动及 NVIDIA Container Toolkit，Mesa 不提供 CUDA / NVENC。

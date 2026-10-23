@@ -350,7 +350,9 @@ untrunc 按相同顺序查找，对应目录为 `tools/untrunc`。独立程序�
 播放时：
 
 - 浏览器不支持的 AVI、MKV 等格式，Peach 会转成兼容的 MP4 缓存起来再播放，**不会改动原始文件**。第一次播放前会先探测文件，最长 20 秒。
-- 能保留的码流尽量保留：H.264（`yuv420p`／`yuvj420p`）视频不重新编码，AAC 音频直接复制，其他音频转成 AAC。需要重新编码视频时，Windows 优先用 NVIDIA 显卡（`scale_cuda` + NVENC），失败才改用 CPU（`libx264 veryfast`）；macOS 直接用 CPU。
+- 能保留的码流尽量保留：H.264（`yuv420p`／`yuvj420p`）视频不重新编码，AAC 音频直接复制，其他音频转成 AAC。需要重新编码视频时，Windows 依次探测 NVIDIA NVENC、AMD AMF；Linux 探测 NVENC 与 VAAPI；不可用时使用 CPU（`libx264 veryfast`），macOS 默认使用 CPU。
+- Windows AMD 使用 AMF 硬件编码：软件解码并转换为 NV12 后，交给 `h264_amf` 输出 H.264。整片 MP4 与 HLS 分片共用后端探测和失败回退。安装支持该显卡的 AMD 驱动；源码部署的 FFmpeg 必须包含 `h264_amf`，Windows 发行工具已启用 AMF。`ffmpeg -encoders` 只能核对构建能力，实际可用性由首次重编码时的合成帧探测确认。
+- `PEACH_TRANSCODE_BACKEND` 默认 `auto`，可指定 `amf`、`nvenc`、`vaapi` 或 `software`。指定硬件后端仍会探测，失败回退软件；探测结果在当前服务进程内缓存，调整驱动或 FFmpeg 后需重启服务。AMF 硬件编码通过不代表硬件解码通过；Linux AMD 设备透传见 [Docker 硬件转码](DOCKER.md#硬件转码amd--intel-vaapi)。
 - 同时最多进行 2 个转码或探测，单次最长 1 小时，关掉播放页会取消对应的任务。
 - 115 和 PikPak 的视频通过 CloudDrive2 挂载的 `B:`、`A:` 播放。能不能播，以在 Peach 里实际打开一个已知视频为准。
 

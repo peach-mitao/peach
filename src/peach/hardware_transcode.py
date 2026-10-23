@@ -37,6 +37,13 @@ class HardwareEncoder:
                 "cuda-nvenc", ("-hwaccel", "cuda", "-hwaccel_output_format", "cuda"),
                 ("-vf", "scale_cuda=format=nv12") + output,
             ), software_decode)
+        if self.backend == "amf":
+            # 软件解码统一转成 NV12，交给 AMD 驱动完成 H.264 编码。
+            return (HardwareAttempt(
+                "amf", (), ("-vf", "format=nv12", "-c:v", "h264_amf",
+                            "-usage", "transcoding", "-quality", "speed", "-rc", "cqp",
+                            "-qp_i", "21", "-qp_p", "21", "-qp_b", "21"),
+            ),)
         device = ("-vaapi_device", self.device)
         output = ("-c:v", "h264_vaapi", "-qp", "21")
         return (
@@ -56,8 +63,8 @@ class HardwareTranscoder:
     def __init__(self, *, enabled: bool = True):
         self.enabled = enabled
         self.backend = os.environ.get("PEACH_TRANSCODE_BACKEND", "auto").strip().lower()
-        if self.backend not in {"auto", "software", "nvenc", "vaapi"}:
-            raise ValueError("PEACH_TRANSCODE_BACKEND 必须为 auto、software、nvenc 或 vaapi")
+        if self.backend not in {"auto", "software", "nvenc", "amf", "vaapi"}:
+            raise ValueError("PEACH_TRANSCODE_BACKEND 必须为 auto、software、nvenc、amf 或 vaapi")
         self.device = os.environ.get("PEACH_VAAPI_DEVICE", "").strip()
         self._encoders: dict[Path, tuple[HardwareEncoder, ...]] = {}
         self._lock = threading.Lock()
@@ -69,6 +76,8 @@ class HardwareTranscoder:
             or Path("/proc/driver/nvidia/version").exists()
         )):
             candidates.append(HardwareEncoder("nvenc"))
+        if self.backend == "amf" or (self.backend == "auto" and sys.platform == "win32"):
+            candidates.append(HardwareEncoder("amf"))
         if self.backend == "vaapi" or (self.backend == "auto" and sys.platform.startswith("linux")):
             devices = [self.device] if self.device else sorted(p.as_posix() for p in Path("/dev/dri").glob("renderD*"))
             candidates.extend(HardwareEncoder("vaapi", device) for device in devices)

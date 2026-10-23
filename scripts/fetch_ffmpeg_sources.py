@@ -21,8 +21,8 @@ def digest(path: Path) -> str:
 
 def load_sources(path: Path = LOCK_PATH) -> dict:
     lock = json.loads(path.read_text(encoding="utf-8"))
-    if {source["name"] for source in lock["sources"]} != {"ffmpeg", "x264", "nv-codec-headers", "dav1d"}:
-        raise ValueError("源码清单必须包含全部四个依赖")
+    if {source["name"] for source in lock["sources"]} != {"ffmpeg", "x264", "nv-codec-headers", "dav1d", "amf"}:
+        raise ValueError("源码清单必须包含全部五个依赖")
     for source in lock["sources"]:
         if len(source["sha256"]) != 64 or any(c not in "0123456789abcdef" for c in source["sha256"]):
             raise ValueError(f"无效源码 SHA256: {source['name']}")
@@ -73,13 +73,21 @@ def finish(output: Path, lock: dict) -> dict:
     if not header_notices:
         raise ValueError("未取得 NVIDIA 头文件许可证")
     (bundle / "LICENSE-nv-codec-headers.txt").write_text("\n".join(header_notices), encoding="utf-8")
+    amf_notices = []
+    for header in sorted((work / "amf/AMF").rglob("*.h")):
+        text = header.read_text(encoding="utf-8")
+        notice = text.partition("\n#")[0]
+        amf_notices.append(f"{header.relative_to(work / 'amf').as_posix()}\n{notice}\n")
+    if not amf_notices:
+        raise ValueError("未取得 AMD AMF 头文件许可证")
+    (bundle / "LICENSE-amf.txt").write_text("\n".join(amf_notices), encoding="utf-8")
     notice = (
         "# FFmpeg Windows x64\n\n"
         "FFmpeg 9.0.2 与 libx264 按 GPL-3.0-or-later 分发。\n"
         "版权与完整许可证见本目录 LICENSE 文件及对应源码归档。\n"
         "编解码使用 FFmpeg 内置实现、静态 libx264 与 BSD-2-Clause 许可的 dav1d AV1 软件解码器；NVIDIA 接口使用 nv-codec-headers。\n"
-        "Windows 系统库由操作系统提供；NVIDIA 驱动由用户环境提供。\n"
-        "支持 NVENC、CUVID、NVDEC、D3D11VA、DXVA2 与 Schannel HTTPS。\n"
+        "AMD 编码接口使用 MIT 许可的 AMF 头文件；Windows 系统库由操作系统提供，显卡驱动由用户环境提供。\n"
+        "支持 AMF、NVENC、CUVID、NVDEC、D3D11VA、DXVA2 与 Schannel HTTPS。\n"
         "包含 CUDA LLVM 与 scale_cuda；CUDA 解码和 NVENC 可用性取决于本机驱动。\n"
         "完整对应源码、固定 revision、SHA256 与构建步骤见同版本 ffmpeg-corresponding-source.zip。\n"
         "本目录的 manifest.json 记录二进制、许可证、构建配置及源码归档的 SHA256。\n"
@@ -89,7 +97,7 @@ def finish(output: Path, lock: dict) -> dict:
     archive = output / "ffmpeg-corresponding-source.zip"
     instructions = (
         "# Windows x64 FFmpeg 对应源码\n\n"
-        "包含四份未经修改的上游源码归档和构建脚本。\n"
+        "包含五份未经修改的上游源码归档和构建脚本。\n"
         "Linux/Ubuntu 安装：sudo apt-get install build-essential gcc-mingw-w64-x86-64-posix "
         "mingw-w64-x86-64-dev nasm pkg-config python3 clang meson ninja-build ca-certificates xz-utils\n\n"
         '在此目录执行：bash scripts/build_ffmpeg_windows.sh "$PWD/rebuilt"\n'

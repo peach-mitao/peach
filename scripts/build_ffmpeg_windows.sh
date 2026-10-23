@@ -35,6 +35,8 @@ cd "$work/x264"
 make -j"$(nproc)"
 make install
 make -C "$work/nv-codec-headers" PREFIX="$prefix" install
+mkdir -p "$prefix/include/AMF"
+cp -R "$work/amf/AMF/." "$prefix/include/AMF/"
 cd "$work/ffmpeg"
 ./configure --prefix="$output/ffmpeg" --target-os=mingw32 --arch=x86_64 \
     --cross-prefix=x86_64-w64-mingw32- --enable-cross-compile \
@@ -43,7 +45,7 @@ cd "$work/ffmpeg"
     --enable-gpl --enable-version3 --disable-nonfree --enable-libx264 --enable-libdav1d \
     --enable-cuda-llvm \
     --enable-ffnvcodec --enable-cuda --enable-cuvid --enable-nvenc --enable-nvdec \
-    --enable-d3d11va --enable-dxva2 --enable-schannel \
+    --enable-amf --enable-d3d11va --enable-dxva2 --enable-schannel \
     --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib -static" \
     --pkg-config=pkg-config --pkg-config-flags=--static
 make -j"$(nproc)"

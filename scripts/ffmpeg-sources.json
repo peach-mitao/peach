@@ -3,6 +3,13 @@
   "license": "GPL-3.0-or-later",
   "sources": [
     {
+      "name": "amf",
+      "revision": "v1.5.3",
+      "url": "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/releases/download/v1.5.3/AMF-headers-v1.5.3.tar.gz",
+      "sha256": "0f521ad98041f8001147cded4a660127f18b1c27a801a5cd691bda1fa48381be",
+      "archive": "AMF-headers-v1.5.3.tar.gz"
+    },
+    {
       "name": "dav1d",
       "revision": "1.5.4",
       "url": "https://download.videolan.org/pub/videolan/dav1d/1.5.4/dav1d-1.5.4.tar.xz",

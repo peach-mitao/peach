@@ -85,6 +85,110 @@ class HardwareDetectionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "PEACH_TRANSCODE_BACKEND"):
                 HardwareTranscoder()
 
+    def test_windows_自动探测选择可编码的_AMD_后端并缓存结果(self):
+        commands = []
+
+        def run(command, **kwargs):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0 if "h264_amf" in command else 1,
+                                               stderr=b"encoder unavailable")
+
+        with patch("peach.hardware_transcode.sys.platform", "win32"), \
+                patch("peach.hardware_transcode.subprocess.run", side_effect=run):
+            hardware = HardwareTranscoder()
+            self.assertEqual(hardware.encoders(Path("ffmpeg")), (HardwareEncoder("amf"),))
+            self.assertEqual(hardware.encoders(Path("ffmpeg")), (HardwareEncoder("amf"),))
+        self.assertEqual(len(commands), 2)
+        self.assertIn("h264_nvenc", commands[0])
+        self.assertIn("h264_amf", commands[1])
+        self.assertIn("format=nv12", commands[1])
+        self.assertEqual(commands[1][-2:], ("null", "-"))
+
+    def test_显式_AMF_只探测_AMD_编码且失败结果被缓存(self):
+        for returncode in (0, 1):
+            with self.subTest(returncode=returncode), \
+                    patch.dict(os.environ, {"PEACH_TRANSCODE_BACKEND": "amf"}), \
+                    patch("peach.hardware_transcode.subprocess.run",
+                          return_value=Mock(returncode=returncode, stderr=b"no AMD driver")) as run:
+                hardware = HardwareTranscoder()
+                expected = (HardwareEncoder("amf"),) if returncode == 0 else ()
+                self.assertEqual(hardware.encoders(Path("ffmpeg")), expected)
+                self.assertEqual(hardware.encoders(Path("ffmpeg")), expected)
+                run.assert_called_once()
+                self.assertIn("h264_amf", run.call_args.args[0])
+
+
+class AmfConsumerTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.source = self.root / "clip.mkv"
+        self.source.write_bytes(b"source")
+        self.resolver = Mock(ffmpeg=lambda: BinaryChoice(Path("ffmpeg"), "test"), ffprobe=lambda: None)
+        environment = patch.dict(os.environ, {"PEACH_TRANSCODE_BACKEND": "amf"})
+        environment.start()
+        self.addCleanup(environment.stop)
+        probe = patch.object(HardwareTranscoder, "_probe", return_value=True)
+        probe.start()
+        self.addCleanup(probe.stop)
+
+    def test_整片_AMF_编码与失败后的软件回退(self):
+        for failures in (0, 1):
+            with self.subTest(failures=failures):
+                service = TranscodeService(self.resolver, self.root / f"cache{failures}")
+                captured = []
+
+                def execute(command, *, captured=captured, failures=failures, **kwargs):
+                    captured.append((kwargs["label"], command))
+                    if len(captured) <= failures:
+                        return 1, b"", b"AMF failed"
+                    Path(command[-1]).write_bytes(b"mp4")
+                    return 0, b"", b""
+
+                with patch.object(service, "_probe", return_value=_MediaProfile("hevc", "yuv420p10le", "aac")), \
+                        patch.object(service, "_execute", side_effect=execute):
+                    target, converted = service.browser_path(96, self.source)
+                self.assertTrue(converted)
+                self.assertEqual(target.read_bytes(), b"mp4")
+                self.assertEqual([name for name, _ in captured], ["amf", "libx264"][:failures + 1])
+                self.assertIn("format=nv12", captured[0][1])
+                self.assertIn("h264_amf", captured[0][1])
+                for _, command in captured:
+                    self.assertIn("+faststart", command)
+
+    def test_HLS_AMF_回退保留时间戳与音轨(self):
+        async def drive(failures):
+            service = HlsSegmentService(self.resolver, self.root / f"hls{failures}",
+                                        hardware=HardwareTranscoder())
+            captured = []
+
+            async def run(command, session, registry):
+                captured.append(command)
+                if len(captured) <= failures:
+                    return 1, b"AMF failed"
+                Path(command[-1]).write_bytes(b"ts")
+                return 0, b""
+
+            with patch.object(service, "_run", side_effect=run), \
+                    patch.object(service, "video_codec", return_value="hevc"):
+                target = await service.generate(self.source, 12, 6, asset_id=96, index=2,
+                                                session="test", registry=StreamSessionRegistry(), transcode=True)
+            self.assertEqual(target.read_bytes(), b"ts")
+            self.assertEqual(len(captured), failures + 1)
+            self.assertIn("h264_amf", captured[0])
+            self.assertIn("format=nv12", captured[0])
+            if failures:
+                self.assertIn("libx264", captured[1])
+            for command in captured:
+                for option, value in (("-ss", "12.000"), ("-t", "6.000"),
+                                      ("-output_ts_offset", "12.000"), ("-c:a", "aac"), ("-f", "mpegts")):
+                    self.assertEqual(command[command.index(option) + 1], value)
+
+        for failures in (0, 1):
+            with self.subTest(failures=failures):
+                asyncio.run(drive(failures))
+
 
 class VaapiConsumerTests(unittest.TestCase):
     def setUp(self):

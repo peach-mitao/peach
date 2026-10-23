@@ -23,8 +23,9 @@ class FFmpegSourceBuildTests(unittest.TestCase):
         lock = builder.load_sources()
         self.assertEqual(lock["version"], "9.0.2")
         self.assertEqual(lock["license"], "GPL-3.0-or-later")
-        self.assertEqual(len(lock["sources"]), 4)
+        self.assertEqual(len(lock["sources"]), 5)
         self.assertIn('dav1d', {source['name'] for source in lock['sources']})
+        self.assertIn('amf', {source['name'] for source in lock['sources']})
 
     def make_sources(self, output):
         lock = builder.load_sources()
@@ -70,6 +71,9 @@ class FFmpegSourceBuildTests(unittest.TestCase):
             headers = output / "work/nv-codec-headers/include/ffnvcodec"
             headers.mkdir(parents=True)
             (headers / "test.h").write_text("/* MIT license */\ncode", encoding="utf-8")
+            amf_headers = output / "work/amf/AMF/core"
+            amf_headers.mkdir(parents=True)
+            (amf_headers / "Factory.h").write_text("// MIT license\n#ifndef AMF_FACTORY_H\ncode", encoding="utf-8")
             (output / "ffmpeg/bin").mkdir(parents=True)
             for name in ("ffmpeg", "ffprobe"):
                 (output / f"ffmpeg/bin/{name}.exe").write_bytes(b"MZ fixture")
@@ -85,6 +89,8 @@ class FFmpegSourceBuildTests(unittest.TestCase):
                 self.assertTrue({"scripts/build_ffmpeg_windows.sh", "scripts/fetch_ffmpeg_sources.py",
                                  "scripts/ffmpeg-sources.json", "README.md", "buildconf.txt"} <= names)
                 self.assertFalse(any("manifest.json" in name for name in names))
+                self.assertIn(b"// MIT license", package.read("licenses/LICENSE-amf.txt"))
+                self.assertNotIn(b"code", package.read("licenses/LICENSE-amf.txt"))
             stored = json.loads((output / "ffmpeg/manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(stored, manifest)
 

@@ -78,6 +78,9 @@ def assert_bundled_media_tools(application: Path) -> None:
             assert hashlib.file_digest(stream, "sha256").hexdigest() == expected, name
     assert_public_resources(application)
     ffmpeg, ffprobe = tools / "bin/ffmpeg.exe", tools / "bin/ffprobe.exe"
+    encoders = subprocess.run([str(ffmpeg), "-hide_banner", "-encoders"], capture_output=True,
+                              text=True, encoding="utf-8", timeout=15, check=True)
+    assert "h264_amf" in encoders.stdout, "发行工具缺少 AMD AMF 编码器"
     with tempfile.TemporaryDirectory(prefix="peach-media-smoke-") as directory:
         root = Path(directory).resolve()
         video, image = root / "sample.mp4", root / "frame.jpg"
