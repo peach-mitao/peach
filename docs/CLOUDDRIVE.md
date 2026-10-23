@@ -113,7 +113,7 @@ Peach 不实时监视网盘目录，因为每列一次目录都是一次网络�
 
 注意事项：
 
-- 配置里的地址是 Peach 所在电脑的局域网地址。Peach 只接受本机和私有网络发来的通知，来自公网的请求一律忽略。
+- 配置里的地址是 Peach 所在电脑的局域网地址，协议和端口与接收通知的服务一致。Windows 独立版使用 HTTP，例如 `http://192.0.2.10:8900`；启用 TLS 的服务使用 HTTPS。Peach 只接受本机和私有网络发来的通知，来自公网的请求一律忽略。
 - Windows 版 CloudDrive2 的编辑框会把换行存坏，列表里显示「无效」。解决办法：把这段配置存成一个 `.toml` 文件，放进 `%LOCALAPPDATA%\CloudDrive.WinUI\webhooks\`，然后重启 CloudDrive2。Webhooks 页的「刷新」不会重新读取这个文件夹。
 - CloudDrive2 发通知时也走它自己的代理设置，代理要让局域网地址直连。
 

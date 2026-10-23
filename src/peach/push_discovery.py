@@ -201,8 +201,7 @@ body = '{"data": []}'
 def clouddrive_config(origin: str, secret: str) -> str:
     """整段抄进 CloudDrive2 的配置文本。两样缺一样就给空串，页面据此说还不能抄。
 
-    地址只能是 HTTPS。80 口上那条服务对 `POST` 回的是 426 而不是重定向——跨 origin
-    的 307 会让 CloudDrive2 把密钥和正文原样再发一遍到另一个地址上。
+    地址由配置接口按服务的 HTTP 或 HTTPS 监听设置生成，直接指向接收通知的服务。
 
     正文只留 Peach 要读的那四个字段，默认模板里的设备名、事件时间那些一概不要：
     `parse_notification` 本来就忽略它们，少发一样东西就少一处能对不上的地方。

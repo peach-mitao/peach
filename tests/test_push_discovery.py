@@ -164,17 +164,36 @@ class ConfigPagePayloadTests(unittest.TestCase):
         payload = self._payload(self._request(port=8443))
         self.assertEqual(payload["origin"], "https://192.0.2.10:8443")
 
-    def test_without_tls_or_an_address_the_block_is_withheld_rather_than_guessed(self):
-        """HTTP 的地址发出去就是白发：80 口那条服务对写请求回 426，不替它转发。"""
-        for request in (self._request(tls=False), self._request(declared="", port=443)):
-            with self.subTest(request=request):
+    def test_http_notifications_use_the_published_address_and_service_port(self):
+        for port, origin in ((80, "http://198.51.100.7"),
+                             (8900, "http://198.51.100.7:8900"),
+                             (443, "http://198.51.100.7:443")):
+            with self.subTest(port=port):
+                payload = self._payload(self._request(tls=False, published="198.51.100.7", port=port))
+                self.assertEqual(payload["origin"], origin)
+                config = tomllib.loads(payload["config_toml"])
+                self.assertEqual(config["global_params"]["base_url"], origin)
+                self.assertEqual(config["file_system_watcher"]["headers"][push.SECRET_HEADER], "tok")
+
+    def test_without_an_address_the_block_is_withheld(self):
+        for tls in (True, False):
+            with self.subTest(tls=tls):
+                request = self._request(tls=tls, declared="", port=8900)
                 payload = self._payload(request)
                 self.assertEqual(payload["origin"], "")
                 self.assertEqual(payload["config_toml"], "")
 
     def test_a_machine_that_never_published_an_address_falls_back_to_the_declared_one(self):
-        payload = self._payload(self._request(published=None))
-        self.assertEqual(payload["origin"], "https://192.0.2.10")
+        for tls, port, origin in ((True, 443, "https://192.0.2.10"),
+                                  (False, 8900, "http://192.0.2.10:8900")):
+            with self.subTest(tls=tls):
+                payload = self._payload(self._request(tls=tls, port=port, published=None))
+                self.assertEqual(payload["origin"], origin)
+
+    def test_without_a_secret_the_address_is_available_and_the_block_is_empty(self):
+        payload = self._payload(self._request(tls=False, port=8900), secret="")
+        self.assertEqual(payload["origin"], "http://192.0.2.10:8900")
+        self.assertEqual(payload["config_toml"], "")
 
 
 class IgnoreAndSourceTests(unittest.TestCase):

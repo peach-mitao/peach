@@ -235,8 +235,7 @@ def push_discovery_payload(request: Request, payload: dict[str, Any] | None = No
 
     地址不取这次请求的 origin：配置页多半是从回环地址打开的，而 TLS 那条服务只绑在
     局域网地址上，把 `127.0.0.1` 抄过去 CloudDrive2 连不上。取这台机器对外公布的那个
-    地址，也就是 mDNS 登记的同一个。没开 TLS 或者不知道自己的地址时给空串，页面据此
-    说这段现在给不出来，而不是发一段填了也不通的配置出去。
+    地址，也就是 mDNS 登记的同一个。协议与端口按服务公布的设置生成；没有地址时给空串。
     """
     if payload is None:
         payload = request.app.state.push_discovery.snapshot(reveal=True)
@@ -245,8 +244,10 @@ def push_discovery_payload(request: Request, payload: dict[str, Any] | None = No
     address = str(getattr(mdns, "address", "") or settings.mdns_address or "").strip()
     port = int(settings.mdns_port or 0)
     origin = ""
-    if settings.tls_enabled and address:
-        origin = f"https://{address}" if port in (0, 443) else f"https://{address}:{port}"
+    if address:
+        scheme = "https" if settings.tls_enabled else "http"
+        default_port = 443 if settings.tls_enabled else 80
+        origin = f"{scheme}://{address}" if port in (0, default_port) else f"{scheme}://{address}:{port}"
     payload["origin"] = origin
     payload["config_toml"] = push_discovery.clouddrive_config(origin, payload.get("secret", ""))
     return payload

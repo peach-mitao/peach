@@ -96,7 +96,7 @@ export function PushDiscoveryForm({ initial, receipt }: {
             ? '贴进 CloudDrive2「设置 → Webhooks」，需要会员；更换密钥后要重贴。'
             : live.origin
               ? '还没有共享密钥，保存配置后生成。'
-              : '要先有 CloudDrive2 能访问的 HTTPS 地址才能生成。'}>
+              : '要先有 CloudDrive2 能访问的 Peach 地址才能生成。'}>
           </SettingsRow>
         ) : null}
       </Rows>
