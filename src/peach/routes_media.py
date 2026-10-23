@@ -28,6 +28,7 @@ from fastapi.responses import (
     FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response,
 )
 from starlette.staticfiles import StaticFiles
+from starlette.requests import ClientDisconnect
 
 from . import (
     avatar_face, avatar_online, avatar_picker, avatar_provider, follow_assets, follow_providers, images,
@@ -52,7 +53,9 @@ from .remote_media_cache import AVATAR_REFRESH_SECONDS, FAVICON_REFRESH_SECONDS,
 from .preview_cache import PreviewCache
 from .routes_auth import require_auth
 from .segments import SegmentCancelled, SegmentUnavailable, build_hls_playlist
-from .streaming import BufferedFileResponse, CancellableFileResponse, SplicedMp4Response
+from .streaming import (
+    BufferedFileResponse, CancellableFileResponse, SplicedMp4Response, run_until_disconnect,
+)
 from .transcodes import TranscodeCancelled, TranscodeUnavailable
 
 router = APIRouter()
@@ -368,6 +371,14 @@ async def hls_segment(request: Request, id: int, index: int, session: str = "", 
         return JSONResponse({"error": "invalid session"}, status_code=400)
     if state.stream_sessions.is_cancelled(session):
         return Response(status_code=410, headers={"Cache-Control": "no-store"})
+    try:
+        return await run_until_disconnect(_hls_segment(request, id, index, session), request.receive)
+    except ClientDisconnect:
+        return Response(status_code=410, headers={"Cache-Control": "no-store"})
+
+
+async def _hls_segment(request: Request, id: int, index: int, session: str):
+    state = request.app.state
     try:
         loop = asyncio.get_running_loop()
         resolved = await loop.run_in_executor(

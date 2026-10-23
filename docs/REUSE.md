@@ -14,6 +14,10 @@ Peach 负责独立数据目录、首启、构建身份和资源清单。arm64 �
 
 ## 硬件转码后端
 
+HLS 分片请求复用 Range 传输的 ASGI 断开监听、Python 3.14 的 `asyncio.wait` 与既有 `HlsSegmentService._run` 清理：请求断开时取消该请求的生成任务，终止并等待子进程退出，再移除临时分片。取消以单个请求为单位，同一播放会话的其他请求可继续生成；排队请求退出后不启动转码。
+
+进程管理沿用标准库的 [`asyncio.subprocess`](https://docs.python.org/3.14/library/asyncio-subprocess.html)（PSF 许可，无新增安装体积），不引入进程扫描库或 FFmpeg 命令包装层。当前树、REUSE 与 Git 历史的复用检索确认，分片和整片已具备会话取消，断开监听由传输层提供。临时文件与真实 Python 子进程回归覆盖断开退出、并发隔离、排队取消及同会话重试；macOS 的临时 HTTP 服务用合成 HEVC 和 FFmpeg 8.1.1 实测，断连后子进程退出、临时分片与登记清理完成。Windows 报告环境与真实 GPU 播放验收未取得。无新增依赖、生产入口或真实 ledger 写入。
+
 整片 MP4 与 HLS 复用现有 FFmpeg 的 CUDA / NVENC、VAAPI、`scale_vaapi` 与 `hwupload`，不引入 Python 命令包装库。Windows 发行工具固定为 FFmpeg 9.0.2（GPL-3.0-or-later，来源清单见 `scripts/ffmpeg-sources.json`）；Linux 镜像使用 Debian trixie 的 FFmpeg、`mesa-va-drivers` 与 `vainfo`，随 Debian 安全更新取得版本，不另行复制驱动代码。Mesa 按上游各组件许可证分发，驱动增加的镜像体积由构建决定，AMD 需要宿主机 amdgpu 与固件。设备参数和硬件解码接口依据 [FFmpeg 官方文档](https://ffmpeg.org/ffmpeg.html#Advanced-Video-options)，驱动范围依据 [Debian VAAPI 说明](https://wiki.debian.org/HardwareVideoAcceleration)。
 
 Peach 只保留设备选择、一次性合成帧探测、命令尝试顺序与失败回退；探测结果由两个服务共享。复用检索覆盖当前 NVENC 链、媒体工具解析器与 Git 历史，没有独立 VAAPI 路径。FFmpeg 已覆盖编解码与滤镜，ffmpeg-python 一类包装层不提供设备驱动或硬件可用性判定，因此沿用项目 subprocess 入口，不新增 Python 依赖。回归用合成输入与进程替身验证 Linux 节点选择、权限和超时、10-bit 转 NV12、整片及分片回退。2026-10-19 的 Windows NVENC 实测使用 640×360 合成帧完成探测，合成 10-bit HEVC 经整片 MP4 与 HLS 两条 CUDA / NVENC 路径输出 H.264 `yuv420p`；128×128 不满足该编码器的最低尺寸，因此探测统一用 640×360。目标 AMD GPU 的驱动初始化、解码与播放验收未取得。无生产入口或真实 ledger 写入。
