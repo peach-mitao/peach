@@ -461,6 +461,8 @@ javdb 判的是「这个出口发得太快」，不是「你是不是机器人�
 - 社区来源的图只出自一个图源时照样装上，`.scraping.json` 的 `verified_by` 为空即未经印证（IPX-060 只有 javdb）。
 - JavBus 有年龄门，番号页不带 Cookie 回答题式年龄验证页；javdb 有登录墙。两家的 Cookie 由用户在浏览器里过门
   或登录后贴进采集设置，公开采集随请求带上。
+- JavBus 的共享来源传输发送 `Accept-Language: zh-CN,zh;q=0.9`，连接检查与作品采集共用这一语言偏好。
+  年龄验证仍由用户在浏览器完成；请求头不代替登录或年龄确认。
 - `sources/metadata/javinizer-go/` 下的 JavBus、javdb 旧快照只借厂牌选官方渠道，封面不当官方候选：JavBus 搜不到
   原番号时返回的是别的作品。
 

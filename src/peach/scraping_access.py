@@ -429,6 +429,11 @@ class SourceTransport:
         """闸门到顶的三句话都写「本趟」和「再跑一次接着采」：这三条按任务重新计数，
         读的人要据以决定的是「现在重跑一遍」，不是去查哪里还有配额。"""
         source = source_for(request.url)
+        if source == "javbus":
+            # 中文作品解析与连接检查使用同一语言，不沿用通用封面请求的日英偏好。
+            headers = {key: value for key, value in request.headers.items() if key.lower() != "accept-language"}
+            request = HttpRequest(request.method, request.url,
+                                  {**headers, "Accept-Language": "zh-CN,zh;q=0.9"}, request.body)
         if self.max_requests and self.requests >= self.max_requests:
             raise SourcePaused("本趟采集次数已用完，再跑一次接着采；已有图片保留")
         if self.deadline:
