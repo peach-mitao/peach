@@ -153,6 +153,38 @@ class ScrapeGateTests(unittest.TestCase):
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_resolution_wrappers_and_numbered_stream_marker(self):
+        samples = {
+            'hhd800.com@SSIS-549-C_X1080X.mp4': 'SSIS-549',
+            '169bbs.com@MEYD-951_[4K].mkv': 'MEYD-951',
+            'MIDA-590.restored_apf2_prob4.mp4': 'MIDA-590',
+            'SONE-054_000.mp4': 'SONE-054',
+            'SNOS-334-4K60_restored.mp4': 'SNOS-334',
+        }
+        for name, code in samples.items():
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), code)
+
+    def test_explicit_code_beside_a_title_or_remux_label(self):
+        samples = {
+            'AVOP-464栄光からの転落…100億の負債_restored.mp4': 'AVOP-464',
+            'LaForet Girl 41 Angel and Devil (LAFBD-41)[BD Remux].mkv': 'LAFBD-041',
+            'MKBD-S50 KIRARI 50 ～セレブ妻の生活～.mp4': 'MKBD-S50',
+            'MKBD-S50.mp4': 'MKBD-S50',
+        }
+        for name, code in samples.items():
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), code)
+
+    def test_title_and_resolution_noise_do_not_choose_between_releases(self):
+        for name in ('ABW-358-C_X1080X_notes.mp4', 'IMG_3092_[4K].mp4',
+                     'EP2_000.mp4', 'ABW-358日本語 ABW-359.mp4',
+                     'ABW-358 (ABW-359)[BD Remux].mkv',
+                     'title (ABW-358) commentary.mkv', 'MKBD-S50 unknown title.mp4',
+                     '91CM-158.TS', 'heydouga-4030-2345.mp4'):
+            with self.subTest(name=name):
+                self.assertIsNone(release_code_from_filename(name))
+
     def test_processing_suffixes_preserve_the_release_identity(self):
         samples = {
             'SONE-852_^WM_iris3.mp4': 'SONE-852',
