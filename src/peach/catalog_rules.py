@@ -279,6 +279,12 @@ _STANDS_ALONE = re.compile(r"[-_ ]|\d{3}")
 #: 番号主体：可选的三位素人前缀 + 字母厂牌 + 序号。
 _CODE_BODY = re.compile(r"^(?:\d{3})?[A-Za-z]{2,8}[-_. ]?\d{2,5}$")
 
+#: 修复与增强版的处理标记只在词尾按封闭词表剥离；任意标题或第二个番号不属于噪声。
+_PROCESSING_TOKEN = r"(?:restored\d*|wm|iris\d+|prob\d+|apo\d+|4k60(?:fps)?)"
+_PROCESSING_TAIL = re.compile(
+    rf"[._ ^-]+{_PROCESSING_TOKEN}(?:[._ ^-]+(?:{_PROCESSING_TOKEN}|s|\d{{1,2}}))*$", re.I)
+_FORUM_URL_WRAPPER = re.compile(r"^\[url\](.+)\[\|?/?url\]$", re.I)
+
 #: DMM 自己交付的文件名：四位发行日（`0112` 是 1 月 12 日）顶在番号前面，编码写在后面。
 #: 四位是判据的关键——素人系的前缀恰好三位（`259LUXU-1007`），放宽到「若干位数字」
 #: 就会把它的厂牌段吃掉。编码词也逐个列出，不写成「任意后缀」：那等于允许番号后面
@@ -771,8 +777,15 @@ def release_code_from_filename(name: str | None) -> str | None:
     `WX-017`；真番号的分卷（`abp762-1`、`ABW-358-2`）剥完仍是完整番号。
     """
     stem = _ASSET_EXTENSION.sub("", str(name or "").strip())
+    wrapper = _FORUM_URL_WRAPPER.fullmatch(stem)
+    if wrapper:
+        return release_code_from_filename(wrapper.group(1))
     if western_release_identity(stem):
         return None
+    cleaned = strip_promo_markers(stem)
+    processed = _PROCESSING_TAIL.sub("", cleaned)
+    if processed != cleaned:
+        return release_code_from_filename(processed + ".mp4")
     partless = _ASSET_EXTENSION.sub("", _PART_MARKER.sub("", str(name or "").strip()))
     stripped = _FILE_NOISE.sub("", strip_promo_markers(partless))
     code = release_code_from_text(stem) or (

@@ -153,6 +153,41 @@ class ScrapeGateTests(unittest.TestCase):
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_processing_suffixes_preserve_the_release_identity(self):
+        samples = {
+            'SONE-852_^WM_iris3.mp4': 'SONE-852',
+            'MIDA-574.restored_prob4.mp4': 'MIDA-574',
+            'PPPE-296.restored.mp4': 'PPPE-296',
+            'FNS-244_restored.mp4': 'FNS-244',
+            'ADN-400^WM_prob4.mp4': 'ADN-400',
+            'JUR-096_restored-S_2_prob4.mp4': 'JUR-096',
+            'MIDA-234_WM_apo8_iris2.mp4': 'MIDA-234',
+            'NSFS-466_4K60.restored.mp4': 'NSFS-466',
+            'START-326^WM_prob4-S.mp4': 'START-326',
+            'SSIS-959_4K60fps.restored.mp4': 'SSIS-959',
+            'OLM-332E.restored.mp4': 'OLM-332',
+            'ABW-358-C.restored2.mp4': 'ABW-358',
+            '092415_001.restored.mp4': '092415_001',
+            '092415-001.restored.mp4': '092415-001',
+        }
+        for name, code in samples.items():
+            for prefix in ('', 'www.98T.la@'):
+                with self.subTest(name=name, prefix=prefix):
+                    self.assertEqual(release_code_from_filename(prefix + name), code)
+
+    def test_forum_url_wrapper_contains_a_filename(self):
+        for ending in ('[|url]', '[/url]'):
+            name = '[url]www.98t.la@JUR-615.restored2.mp4' + ending + '.mp4'
+            self.assertEqual(release_code_from_filename(name), 'JUR-615')
+
+    def test_processing_suffixes_require_a_complete_code_and_known_tokens(self):
+        for name in ('holiday.restored.mp4', 'iris3.mp4', 'WM_prob4.mp4',
+                     'IMG_3092.restored.mp4', 'ABW-358_some-title.mp4',
+                     'ABW-358_restored-notes.mp4', 'ABW-358_WM_ABW-359.mp4',
+                     'ABW-358_iris3_extra.mp4'):
+            with self.subTest(name=name):
+                self.assertIsNone(release_code_from_filename(name))
+
     def test_named_volume_suffix_preserves_the_release_code(self):
         for suffix in ('CD1', 'disc02', 'Part-3', 'DVD4', 'Vol_5'):
             with self.subTest(suffix=suffix):
