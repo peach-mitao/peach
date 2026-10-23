@@ -153,6 +153,74 @@ class ScrapeGateTests(unittest.TestCase):
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_resolution_wrappers_and_numbered_stream_marker(self):
+        samples = {
+            'hhd800.com@SSIS-549-C_X1080X.mp4': 'SSIS-549',
+            '169bbs.com@MEYD-951_[4K].mkv': 'MEYD-951',
+            'MIDA-590.restored_apf2_prob4.mp4': 'MIDA-590',
+            'SONE-054_000.mp4': 'SONE-054',
+            'SNOS-334-4K60_restored.mp4': 'SNOS-334',
+        }
+        for name, code in samples.items():
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), code)
+
+    def test_explicit_code_beside_a_title_or_remux_label(self):
+        samples = {
+            'AVOP-464栄光からの転落…100億の負債_restored.mp4': 'AVOP-464',
+            'LaForet Girl 41 Angel and Devil (LAFBD-41)[BD Remux].mkv': 'LAFBD-041',
+            'MKBD-S50 KIRARI 50 ～セレブ妻の生活～.mp4': 'MKBD-S50',
+            'MKBD-S50.mp4': 'MKBD-S50',
+        }
+        for name, code in samples.items():
+            with self.subTest(name=name):
+                self.assertEqual(release_code_from_filename(name), code)
+
+    def test_title_and_resolution_noise_do_not_choose_between_releases(self):
+        for name in ('ABW-358-C_X1080X_notes.mp4', 'IMG_3092_[4K].mp4',
+                     'EP2_000.mp4', 'ABW-358日本語 ABW-359.mp4',
+                     'ABW-358 (ABW-359)[BD Remux].mkv',
+                     'title (ABW-358) commentary.mkv', 'MKBD-S50 unknown title.mp4',
+                     'MKBD-S50 KIRARI MKBD-S51.mp4',
+                     '91CM-158.TS', 'heydouga-4030-2345.mp4'):
+            with self.subTest(name=name):
+                self.assertIsNone(release_code_from_filename(name))
+
+    def test_processing_suffixes_preserve_the_release_identity(self):
+        samples = {
+            'SONE-852_^WM_iris3.mp4': 'SONE-852',
+            'MIDA-574.restored_prob4.mp4': 'MIDA-574',
+            'PPPE-296.restored.mp4': 'PPPE-296',
+            'FNS-244_restored.mp4': 'FNS-244',
+            'ADN-400^WM_prob4.mp4': 'ADN-400',
+            'JUR-096_restored-S_2_prob4.mp4': 'JUR-096',
+            'MIDA-234_WM_apo8_iris2.mp4': 'MIDA-234',
+            'NSFS-466_4K60.restored.mp4': 'NSFS-466',
+            'START-326^WM_prob4-S.mp4': 'START-326',
+            'SSIS-959_4K60fps.restored.mp4': 'SSIS-959',
+            'OLM-332E.restored.mp4': 'OLM-332',
+            'ABW-358-C.restored2.mp4': 'ABW-358',
+            '092415_001.restored.mp4': '092415_001',
+            '092415-001.restored.mp4': '092415-001',
+        }
+        for name, code in samples.items():
+            for prefix in ('', 'www.98T.la@'):
+                with self.subTest(name=name, prefix=prefix):
+                    self.assertEqual(release_code_from_filename(prefix + name), code)
+
+    def test_forum_url_wrapper_contains_a_filename(self):
+        for ending in ('[|url]', '[/url]'):
+            name = '[url]www.98t.la@JUR-615.restored2.mp4' + ending + '.mp4'
+            self.assertEqual(release_code_from_filename(name), 'JUR-615')
+
+    def test_processing_suffixes_require_a_complete_code_and_known_tokens(self):
+        for name in ('holiday.restored.mp4', 'iris3.mp4', 'WM_prob4.mp4',
+                     'IMG_3092.restored.mp4', 'ABW-358_some-title.mp4',
+                     'ABW-358_restored-notes.mp4', 'ABW-358_WM_ABW-359.mp4',
+                     'ABW-358_iris3_extra.mp4'):
+            with self.subTest(name=name):
+                self.assertIsNone(release_code_from_filename(name))
+
     def test_named_volume_suffix_preserves_the_release_code(self):
         for suffix in ('CD1', 'disc02', 'Part-3', 'DVD4', 'Vol_5'):
             with self.subTest(suffix=suffix):

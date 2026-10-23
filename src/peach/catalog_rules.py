@@ -272,12 +272,25 @@ _ASSET_EXTENSION = re.compile(
     r"\.(?:mp4|mkv|avi|wmv|ts|mov|m4v|jpg|jpeg|png|webp)$", re.I)
 #: 文件名尾部的分卷、画质和重复计数；剥掉才能和目录名对齐。
 _FILE_NOISE = re.compile(
-    r"(?:[-_. ]?(?:1080p?|720p?|2160p?|4k|fhd|hd|uc|sub|ch|c|u)"
-    r"|[-_. ]\d{1,2}|\(\d{1,2}\)|[a-z])+$", re.I)
+    r"(?:[-_. ]?(?:x(?:720|1080|2160)x|\[(?:4k|2160p?|1080p?|720p?|fhd|hd)\]"
+    r"|1080p?|720p?|2160p?|4k|fhd|hd|uc|sub|ch|c|u)"
+    r"|_000|[-_. ]\d{1,2}|\(\d{1,2}\)|[a-z])+$", re.I)
 #: 剥掉 `_FILE_NOISE` 之后的主干还像一个完整番号：有分隔符，或序号至少三位。
 _STANDS_ALONE = re.compile(r"[-_ ]|\d{3}")
 #: 番号主体：可选的三位素人前缀 + 字母厂牌 + 序号。
 _CODE_BODY = re.compile(r"^(?:\d{3})?[A-Za-z]{2,8}[-_. ]?\d{2,5}$")
+
+#: 修复与增强版的处理标记只在词尾按封闭词表剥离；任意标题或第二个番号不属于噪声。
+_PROCESSING_TOKEN = r"(?:restored\d*|wm|iris\d+|prob\d+|apo\d+|apf\d+|4k60(?:fps)?)"
+_PROCESSING_TAIL = re.compile(
+    rf"[._ ^-]+{_PROCESSING_TOKEN}(?:[._ ^-]+(?:{_PROCESSING_TOKEN}|s|\d{{1,2}}))*$", re.I)
+_FORUM_URL_WRAPPER = re.compile(r"^\[url\](.+)\[\|?/?url\]$", re.I)
+#: 明写在文件名中的身份：片头番号与日文标题相接，或 BD Remux 前的括号番号。
+_TITLED_CODE_HEAD = re.compile(r"^((?:\d{3})?[A-Za-z]{2,8}-\d{2,5})(?=[\u3040-\u30ff\u3400-\u9fff])")
+_REMUX_CODE_TAIL = re.compile(r"\(([A-Za-z]{2,8}-\d{2,5})\)\[BD[ ._-]Remux\]$", re.I)
+_KIRARI_FILENAME = re.compile(r"^(MKB?D-S\d{2,4})(?:\s+KIRARI(?:\s|$)|$)", re.I)
+_INLINE_STUDIO_CODE = re.compile(
+    r"(?<![A-Za-z0-9])(?:(?:\d{3})?[A-Za-z]{2,8}-\d{2,5}|MKB?D-S\d{2,4})(?![A-Za-z0-9])", re.I)
 
 #: DMM 自己交付的文件名：四位发行日（`0112` 是 1 月 12 日）顶在番号前面，编码写在后面。
 #: 四位是判据的关键——素人系的前缀恰好三位（`259LUXU-1007`），放宽到「若干位数字」
@@ -771,8 +784,21 @@ def release_code_from_filename(name: str | None) -> str | None:
     `WX-017`；真番号的分卷（`abp762-1`、`ABW-358-2`）剥完仍是完整番号。
     """
     stem = _ASSET_EXTENSION.sub("", str(name or "").strip())
+    wrapper = _FORUM_URL_WRAPPER.fullmatch(stem)
+    if wrapper:
+        return release_code_from_filename(wrapper.group(1))
     if western_release_identity(stem):
         return None
+    cleaned = strip_promo_markers(stem)
+    processed = _PROCESSING_TAIL.sub("", cleaned)
+    if processed != cleaned:
+        return release_code_from_filename(processed + ".mp4")
+    explicit = (_TITLED_CODE_HEAD.search(cleaned) or _REMUX_CODE_TAIL.search(cleaned)
+                or _KIRARI_FILENAME.match(cleaned))
+    if explicit and len(_INLINE_STUDIO_CODE.findall(cleaned)) <= 1:
+        candidate = normalise_code_key(explicit.group(1))
+        if is_jav_code(candidate):
+            return candidate
     partless = _ASSET_EXTENSION.sub("", _PART_MARKER.sub("", str(name or "").strip()))
     stripped = _FILE_NOISE.sub("", strip_promo_markers(partless))
     code = release_code_from_text(stem) or (
