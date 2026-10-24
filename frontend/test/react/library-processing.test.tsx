@@ -26,6 +26,22 @@ const buttonNamed = (name: string, root: ParentNode = document) =>
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 // 报过的任务号记在 `localStorage` 里，也要清，否则下一条用例的通知被当成重复的。
 beforeEach(() => localStorage.setItem(RESOURCE_NOTICE_KEY, 'seen'));
+
+it('translates Docker preview actions and hour estimates before inserting filenames', () => {
+  const language = localStorage.getItem('peach.language');
+  localStorage.setItem('peach.language', 'en');
+  try {
+    const state: LibraryProcessingData = { status: 'running', current_action: 'generating_preview',
+      current_asset_name: 'Example.{1}.mp4', waited_seconds: 2, total: 28189, checked: 1757,
+      eta_seconds_min: 30240, eta_seconds_max: 48240, eta_initial: true, eta_scope: '整趟任务' };
+    expect(processingLine(state)).toContain('Example.{1}.mp4 · Generate video preview');
+    expect(processingLine(state)).not.toMatch(/[\u3400-\u9fff]/);
+    expect(remainingTime(state)).toBe('Estimated remaining: 8.4–13.4 hours (rough estimate) · Entire task');
+  } finally {
+    if (language === null) localStorage.removeItem('peach.language');
+    else localStorage.setItem('peach.language', language);
+  }
+});
 afterEach(() => {
   queryClient.clear();
   localStorage.clear();
@@ -430,6 +446,15 @@ it('暂停与继续使用同一个任务号，暂停不是完成，暂停时仍�
   await click(buttonNamed('继续', host));
   expect(served.posts()).toEqual([{ action: 'pause', job_id: 'one' }, { action: 'resume', job_id: 'one' }]);
   expect(buttonNamed('暂停', host)).not.toBeNull();
+});
+
+it('停止扫描按当前任务号提交并保留取消回执', async () => {
+  const served = await open({ status: 'running', job_id: 'one' }, () => ({ status: 'cancelled', job_id: 'one' }));
+  const host = await mount(card({ toast: vi.fn() }));
+  await click(buttonNamed('停止扫描', host));
+  expect(served.posts()).toEqual([{ action: 'stop', job_id: 'one' }]);
+  expect(host.textContent).toContain('已保留完成的工作。');
+  expect(buttonNamed('停止扫描', host)).toBeNull();
 });
 
 it('首屏暂停状态在卡片和横幅中保留进度与继续入口', async () => {

@@ -14,6 +14,7 @@ import { Button } from '@/components/base/buttons/button';
 import { LinkButton } from '@/components/base/buttons/link-button';
 
 import { apiSend, errorMessage } from '../../api';
+import { translate } from '../../i18n';
 import { SCAN_CARD_TEXT } from '../../management';
 import type { LibraryProcessingProps } from '../bundle';
 import { Fieldset, FieldsetTitle } from '../components/fieldset';
@@ -53,7 +54,10 @@ const receiptText = (state: LibraryProcessingData) =>
   : `已扫描 ${state.scanned || 0} 个文件，识别 ${state.identified || 0} 个番号，`
   + `整理 ${state.candidates || 0} 组资料结果，自动保存 ${state.auto_applied || 0} 条。`
   + (state.previews ? `已生成 ${state.previews} 部视频预览。` : '')
-  + profileText(state);
+  + profileText(state)
+  + (state.stashdb_applied !== undefined ? ' ' + translate('StashDB: {0} applied, {1} awaiting review, {2} already up to date.')
+    .replace('{0}', String(state.stashdb_applied || 0)).replace('{1}', String(state.stashdb_review || 0))
+    .replace('{2}', String(state.stashdb_skipped || 0)) : '');
 
 /** 卡片外面那一块：这一趟怎么了。逐条明细要展开才读，完整清单在状态给出的日志文件里。 */
 function Outcome(
@@ -118,6 +122,9 @@ function Outcome(
         : null}
       {settled?.status === 'complete'
         ? <Note tone="success" title="处理完成">{receiptText(settled)}</Note>
+        : null}
+      {settled?.status === 'cancelled'
+        ? <Note tone="neutral" title="Scan stopped">Completed work has been kept. Start a new scan when ready.</Note>
         : null}
       {!processingActive(state) && notes
         ? <Note tone="neutral"
