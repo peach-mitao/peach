@@ -31962,7 +31962,7 @@ function Ude(e, t, n, r = () => t.duration, i = !0) {
 			a.axis = Math.abs(o) > Math.abs(l) * 1.2 ? "seek" : t && a.x - e.getBoundingClientRect().left > a.width / 2 ? "volume" : "scroll";
 		}
 		if (a.axis === "seek") {
-			if (n.preventDefault(), a.to = x(a.from + o / a.width * 600) ?? void 0, a.to === void 0) {
+			if (n.preventDefault(), a.to = x(a.from + o / a.width * 1200) ?? void 0, a.to === void 0) {
 				y("时长尚未取得，暂时无法跳转", !0);
 				return;
 			}
