@@ -155,6 +155,19 @@ def e2e_batches(frontend: Path, concurrency: int, selected: tuple[str, ...] = ()
     return tuple(batches)
 
 
+class PlayerFramingE2ETests(unittest.TestCase):
+    def test_fullscreen_framing_without_library(self):
+        node, chrome = shutil.which("node"), chrome_executable()
+        if not node or not chrome or not (FRONTEND / "node_modules/playwright-core").is_dir():
+            missing_prerequisite("全屏画面测试需要 Node、playwright-core 与测试浏览器")
+        environment = dict(os.environ, PEACH_E2E_CHROME=chrome)
+        result = subprocess.run(
+            [node, "--test", "e2e/player-fit.test.ts"], cwd=FRONTEND, env=environment,
+            capture_output=True, text=True, encoding="utf-8", timeout=150,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 @windows_ledger_roots
 class WebE2ESmokeTests(unittest.TestCase):
     @classmethod
