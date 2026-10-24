@@ -1,5 +1,6 @@
 /* Peach 播放会话：Video.js 10 的媒体、原生事件与自有控制条共用同一枚 video。 */
 import type { PlayerEvents, PlayerSource, QualityLevelList, VideojsFactory, VjsPlayer } from './types';
+import { wirePlayerInteractions } from './touch-controls';
 
 interface HlsEngine {
   bandwidthEstimate: number;
@@ -57,19 +58,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
   const cleanup = new AbortController();
   const signal = cleanup.signal;
   let disposed = false, sourceGeneration = 0, playGeneration = 0, expectedDuration = 0, source: PlayerSource = { src: '', type: '' }, failure: unknown = null;
-  let idle: ReturnType<typeof setTimeout> | undefined;
-  const active = () => {
-    root.classList.add('vjs-user-active'); root.classList.remove('vjs-user-inactive');
-    if (idle) clearTimeout(idle);
-    if (!video.paused) idle = setTimeout(() => {
-      if (root.matches(':focus-within,:hover') && root.querySelector('[aria-expanded="true"]')) return;
-      root.classList.remove('vjs-user-active'); root.classList.add('vjs-user-inactive');
-    }, 2500);
-  };
-  root.addEventListener('pointermove', active, { signal });
-  root.addEventListener('focusin', active, { signal });
-  video.addEventListener('click', () => { if (video.paused) void video.play().catch(() => {}); else video.pause() }, { signal });
-  video.addEventListener('dblclick', () => root.querySelector<HTMLElement>('media-fullscreen-button')?.click(), { signal });
+  const { active, cancel } = wirePlayerInteractions(root, video, signal, () => expectedDuration || video.duration, options.controls !== false);
   const update = () => {
     root.classList.toggle('vjs-paused', video.paused); root.classList.toggle('vjs-playing', !video.paused);
     root.classList.toggle('vjs-ended', video.ended); root.classList.toggle('vjs-has-started', video.currentTime > 0 || !video.paused);
@@ -141,7 +130,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     isDisposed: () => disposed,
     dispose: () => {
       if (disposed) return;
-      emit('dispose'); disposed = true; cleanup.abort(); if (idle) clearTimeout(idle);
+      emit('dispose'); disposed = true; cleanup.abort();
       media.adapter.destroy(); video.pause(); video.removeAttribute('src'); video.load(); root.remove();
     },
     trigger: emit,
@@ -163,6 +152,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     isFullscreen: () => !!document.fullscreenElement && root.contains(document.fullscreenElement),
     poster: (url: string) => { video.poster = url },
     src: (next: PlayerSource) => {
+      cancel();
       source = next; failure = null; root.classList.remove('vjs-error');
       sourceGeneration++; playGeneration++; selectionQueued = false; enabledLevels = []; levels.length = 0;
       const tag = next.type.toLowerCase().includes('dash') ? 'dash-video' : 'hlsjs-video';
