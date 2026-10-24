@@ -52,6 +52,20 @@ def composition_times(moov: bytes, sample_delta: int) -> list[int]:
     return [index * sample_delta + offset for index, offset in enumerate(offsets)]
 
 
+def tail_mp4() -> bytes:
+    """把正常布局里的 moov 搬到媒体后，并把块偏移改到新的媒体起点。"""
+    blob = minimal_mp4(timescale=1000, sample_delta=400, samples=len(DECODE_TO_DISPLAY),
+                       keyframe_every=6)
+    moov_span = next((body - 8, stop) for kind, body, stop in _iter_boxes(blob, 0, len(blob))
+                     if kind == b"moov")
+    start, stop = moov_span
+    moov = blob[start:stop]
+    tree = mp4repair._parse(moov, 8, len(moov))
+    root = mp4repair._Box(b"moov", None, tree)
+    mp4repair._shift_chunk_offsets(root, -len(moov))
+    return blob[:start] + blob[stop:] + root.serialize()
+
+
 class Mp4HeaderRepairTests(unittest.TestCase):
     def setUp(self) -> None:
         self._temporary = TemporaryDirectory()
@@ -102,6 +116,36 @@ class Mp4HeaderRepairTests(unittest.TestCase):
         self.assertEqual(after[0][0], len(header.prefix))
         self.assertEqual(after[-1][0],
                          header.size - SAMPLE_SIZE, "最后一个块没落在文件末尾那一段上")
+
+    def test_a_tail_moov_is_moved_ahead_of_the_media_without_rewriting_samples(self):
+        source = self.root / "tail.mp4"
+        source.write_bytes(tail_mp4())
+        header = self.repair(source)
+        blob = source.read_bytes()
+
+        self.assertEqual(blob[header.payload_start:header.payload_end],
+                         sample_bytes(len(DECODE_TO_DISPLAY)))
+        self.assertEqual(header.suffix, b"")
+        moov = moov_of(header.prefix)
+        self.assertEqual(next(_iter_boxes(moov, 0, len(moov)))[0], b"mvhd")
+
+    def test_tail_layout_chunk_offsets_point_into_the_spliced_media(self):
+        source = self.root / "tail.mp4"
+        source.write_bytes(tail_mp4())
+        header = self.repair(source)
+        after = entries(table(moov_of(header.prefix), b"stco"), ">I")
+
+        self.assertEqual(after[0][0], len(header.prefix))
+        self.assertEqual(after[-1][0], header.size - SAMPLE_SIZE)
+
+    def test_other_tail_boxes_stay_after_the_media_when_moov_moves(self):
+        source = self.root / "tail.mp4"
+        media = tail_mp4()
+        moov_start = media.rfind(b"moov") - 4
+        source.write_bytes(media[:moov_start] + b"\x00\x00\x00\x10freeABCDEFGH" + media[moov_start:])
+        header = self.repair(source)
+
+        self.assertEqual(header.suffix, b"\x00\x00\x00\x10freeABCDEFGH")
 
     def test_an_edit_list_that_already_compensates_the_shift_is_left_alone(self):
         """封装器为 ctts 补过的那一刀要原样留着，再补一次会真的切掉开头那两帧。"""
