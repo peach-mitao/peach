@@ -649,8 +649,8 @@ class TaskRunStore:
     def prune(self, task_key: str, keep: int = DEFAULT_KEEP) -> int:
         """每个 task_key 只留最近 `keep` 条终态记录，返回删掉多少条。
 
-        活跃行一条都不动：它们不是历史。阈值用 `LIMIT 1 OFFSET keep` 取「第 keep+1 新
-        的那条 id」，不用窗口函数——这张表上要的只是一个分界点。
+        活跃任务保留，指向已清退历史的父任务和根任务关联由删除触发器置空。
+        阈值用 `LIMIT 1 OFFSET keep` 取「第 keep+1 新的那条 id」。
         """
         if not self.enabled or keep < 0:
             return 0
