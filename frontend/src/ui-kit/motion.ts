@@ -5,6 +5,7 @@
    来源与取值。这一层只负责
    「什么时候换」：动画本身一律交给 CSS，JS 不读也不写具体的毫秒数。 */
 import { esc, icon } from '../core';
+import { translateText } from '../i18n';
 
 /**
  * 两枚字形叠在一格里，换态只改容器上的 `data-icon-state`。
@@ -60,9 +61,11 @@ export function swapText(el:any,text:unknown,{html=false}={}):void{
  */
 export function popCount(el:any,text:unknown):void{
   if(!el)return;
-  const next=String(text??''),previous=el.dataset.popCount;
-  if(previous===next&&el.firstElementChild)return;
-  el.dataset.popCount=next;
+  const raw=String(text??''),previous=el.dataset.popCount;
+  if(previous===raw&&el.firstElementChild)return;
+  el.dataset.popCount=raw;
+  /* 拆成单字之后整句就查不到译文了，拆之前先换。比较与登记仍用原文。 */
+  const next=translateText(raw);
   let at=-1;
   el.innerHTML=`<span class="digits">${[...next].map(ch=>{
     if(/\d/.test(ch))at+=1;
@@ -70,7 +73,7 @@ export function popCount(el:any,text:unknown):void{
   }).join('')}</span>`;
   /* 上一个值没登记过（这一格第一次出现）或压根没变，就只把字写上去。调用点整块重绘时
      把上一次的读数写回 `dataset.popCount` 再调，这一格才知道自己是换了值还是刚建出来。 */
-  if(previous===undefined||previous===next)return;
+  if(previous===undefined||previous===raw)return;
   const group=el.firstElementChild;
   group.getBoundingClientRect();
   group.classList.add('popping');

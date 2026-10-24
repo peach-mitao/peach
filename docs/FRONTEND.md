@@ -257,6 +257,35 @@ React 子树读到 BoardUI 的 token 原值、持久警示是状态色块、一�
 BoardUI 组件上的间距或外观，处理办法是在组件外面套一层普通元素，不给规则加例外。
 `src/react/boardui/` 只加不改，`UPSTREAM.sha256` 记着复制时每个文件的哈希，由 `tests/test_frontend_build.py` 比对。
 
+## 界面语言
+
+源码里的界面文字只写中文。设置面板「外观与导航」的「界面语言」选中文、日文或跟随浏览器，
+偏好存在这台浏览器的 `peach.locale`，切换后整页重载。跟随浏览器时取语言列表里最先出现的中文或日文，两样都没有用中文。
+
+日文由 `src/i18n/` 在渲染出来的 DOM 上换：主界面与独立页面挂载前调 `installUiLocale()`，
+之后文档观察器按原文查 `src/i18n/ja.json`，覆盖文本节点和 `title`、`aria-label`、`placeholder`、`alt`、`label` 等可读属性。
+查表依次是整句、带 `{0}` 的句式、按标点或空白切段；查不到的原样显示中文。`translate="no"`、可编辑区与代码块不翻译，
+放用户数据、又可能和界面词撞上的地方可加 `translate="no"`。写进 DOM 前就要拆开的文字（`popCount` 的逐字读数）先经 `translateText()` 换。
+日文界面下 `<html lang="ja">`，样式表里点名的 `PingFang SC`、`Microsoft YaHei UI` 由同名 `@font-face` 指到冬青黑体与 Yu Gothic UI，汉字按日文字形画。
+
+新增或改了界面文字后列出缺译：
+
+```powershell
+node frontend/scripts/i18n-extract.mjs
+```
+
+原文按渲染形状收：空白折叠，模板与 JSX 表达式写成 `{0}`，HTML 片段按标签切开。缺项照原文作键补进 `ja.json`，
+译文保留全部占位符（`test/i18n.test.ts` 检查）。
+
+服务端写进响应的提示、标签与错误也查同一张表，改了 `src/peach` 的文案后列出缺译：
+
+```powershell
+python -X utf8 scripts/i18n_server_strings.py
+```
+
+它用 `ast` 收含汉字的字符串与 `resources/media-sources.json` 的来源名称，形状同上；文档字符串、日志与终端输出、正则不收。
+词表、番号规则、站点解析等模块里的中文是馆藏数据，列在脚本的 `DATA_MODULES` 里不收，译了会把标签等数据在页面上一起换掉；托盘与命令行的文字不进浏览器。
+
 ## 界面标注
 
 指认界面上的某一块时，用 [Agentation](https://agentation.com) 在页面上点中元素、写下意见，

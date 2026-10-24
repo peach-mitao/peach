@@ -684,6 +684,14 @@ Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.17.0，版本
 
 公开预览复用 HTTPX 0.28.1 的流式响应与已安装的 `curl_cffi` 0.16.3（MIT）浏览器传输。`preview_transport` 只适配响应生命周期与 TLS 连接失败，逐跳主机判据仍复用 `open_upstream`；HTTP 拒绝状态不切换传输。已读取固定版本 SDK 的 `Session.request`、`Response.iter_content` 和 `close`，实际公开 MP4 范围请求取得 206，无新增依赖。HLS 根与嵌套清单使用来源地址作为代际，5 分钟后按需刷新，浏览器核对本机清单；分片、密钥与初始化段继续复用持久缓存。MIKR-122 的来源新清单包含可用的当前签名；作品资料及评论的发行日期缓存独立保存。缓存与协议证据沿用 [媒体缓存](MEDIA_CACHE.md) 中现有 `m3u8` 和 Hishel 评估。
 
+## 界面译文
+
+日文界面复用浏览器原生 `MutationObserver`、`TreeWalker` 与 `@font-face` 的 `local()`，原文清单复用已固定的开发依赖 `oxc-parser@0.154.0`（MIT），不新增运行时依赖；`src/i18n/` 只保留原文查表、句式匹配与 React 文本节点的原文登记，用法见 `docs/FRONTEND.md`「界面语言」。
+i18next、react-intl 与 react-aria 的 `LocalizedStringFormatter` 都按键取文，要把约 4,200 处中文字面量改成调用，主界面里壳模板与 React 两套写法还得各接一遍，上游每次改文案都会冲突，未采用。
+translate.js 一类 DOM 机翻库默认把页面文字发给在线翻译服务，与馆藏隐私边界冲突，未采用。译文表 2026-10-25 按当时源码收齐前端原文与服务端写进响应的原文，由智能体按统一术语表翻译，未经人工校对。
+服务端原文清单 `scripts/i18n_server_strings.py` 复用 Python 标准库 `ast`（PSF），不新增依赖；词表与站点解析模块的中文是数据，不进译文表。
+隔离验证用 vitest 覆盖查表、整段文本节点与属性的原位翻译，并在临时空库的本机服务上逐页核对。无生产入口或真实 ledger 写入。
+
 ## 原位改字
 
 `scripts/dev/copy-editor.js` 复用官网本地预览的 `edit-client.js` 交互：文字范围提示、原位编辑、按钮文字就近输入、回车和失焦保存、Esc 取消。

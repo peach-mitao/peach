@@ -14,7 +14,7 @@ import tempfile
 import time
 import unittest
 from collections.abc import Iterable
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 
@@ -136,7 +136,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
             "test_legacy_shell_routes.py",
             "test_web_perf.py", "test_copy_final_state.py",
             "test_agency_entity.py", "test_label_maker.py", "test_dependency_policy.py",
-            "test_desktop_settings.py", "test_dev_copy.py",
+            "test_desktop_settings.py", "test_dev_copy.py", "test_i18n_server_strings.py",
             "test_fastapi_api.py", "test_follow_assets.py", "test_follow_web.py",
             "test_metadata_library.py", "test_processing_control.py", "test_studio_icon_variants.py", "test_web_settings.py", "test_web_library_shortcuts.py", "test_company_profiles.py"),
     "core": ("test_access.py", "test_auth.py", "test_config.py", "test_field_owners.py",
@@ -180,6 +180,8 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/preview_transport.py": ("catalog", "media", "web"),
     "src/peach/dev_copy.py": ("web",),
     "scripts/dev/copy-editor.js": ("web",),
+    # 服务端原文清单服务界面译文表，由 web 域的 `test_i18n_server_strings.py` 验。
+    "scripts/i18n_server_strings.py": ("web",),
     # 路由页面同时被目录、工具与前端三个域的测试读源码。
     "src/peach/routes_pages.py": ("catalog", "tooling", "web"),
     # 托盘既是 sync 域的服务编排，也被版本与桌面设置那些 tooling 测试读源码。
@@ -721,6 +723,26 @@ def environment_preflight(scopes: tuple[str, ...], timings: Path | None = None,
     raise SystemExit(3)
 
 
+@contextmanager
+def isolated_data_root():
+    """用例运行期间把 Peach 数据目录指到一份空的临时目录，结束后删掉并恢复原值。
+
+    不少用例只替换了数据库，日志、工具与生成物仍落在默认数据目录：主检出旁边是真实的 `peach-data`，
+    没有数据目录的检出里则落到检出旁边，留下未登记目录。只包住跑用例的那一段，`PEACH_` 变量进环境指纹，
+    签发与核对记录时必须看不到它。"""
+    previous = os.environ.get("PEACH_DATA_ROOT")
+    root = tempfile.mkdtemp(prefix="peach-test-data-")
+    os.environ["PEACH_DATA_ROOT"] = root
+    try:
+        yield Path(root)
+    finally:
+        if previous is None:
+            os.environ.pop("PEACH_DATA_ROOT", None)
+        else:
+            os.environ["PEACH_DATA_ROOT"] = previous
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def run_local_suite(scopes: tuple[str, ...], jobs: int) -> tuple[bool, int, list]:
     """按调用方选择的并发运行，串行全量通过分片释放测试缓存。"""
     chosen = {path for scope in scopes for path in selected_files(scope)}
@@ -728,7 +750,8 @@ def run_local_suite(scopes: tuple[str, ...], jobs: int) -> tuple[bool, int, list
         shard_count = min(len(chosen), 4 * jobs)
         print(f"本机分片：{shard_count} 片、同时 {min(jobs, shard_count)} 个子进程", flush=True)
         return run_shards(scopes, jobs=jobs, shard_count=shard_count)
-    result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(build_suite(*scopes))
+    with isolated_data_root():
+        result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(build_suite(*scopes))
     return result.wasSuccessful() and result.testsRun > 0, result.testsRun, result.timings
 
 
@@ -780,8 +803,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Peach test scope: {' '.join(scopes)} ({len(files)} files)", flush=True)
     if args.shard_count > 1:
         # CI 的每片独立 runner；局部分片绝不签发本机全量证明。
-        result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(
-            build_suite(*scopes, shard_index=args.shard_index, shard_count=args.shard_count))
+        with isolated_data_root():
+            result = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult).run(
+                build_suite(*scopes, shard_index=args.shard_index, shard_count=args.shard_count))
         success = result.wasSuccessful() and result.testsRun > 0
         if args.timings is not None:
             args.timings.write_text(json.dumps({"success": success, "count": result.testsRun,

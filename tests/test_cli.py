@@ -577,8 +577,10 @@ class ReplicationAssemblyTests(unittest.TestCase):
         args = argparse.Namespace(shared_db=Path("/nonexistent/shared.db"))
         settings = mock.Mock(db_path=Path("/nonexistent/local.db"))
         output = io.StringIO()
+        # 本机标识也替换掉：真的 `device_id` 会在 Peach 数据目录的 state 下生成文件，没有数据目录的检出里就落到检出旁边。
         with mock.patch.object(cli, "REPLICATION_ENABLED", enabled), \
                 mock.patch.object(cli, "LedgerSync") as ledger_sync, \
+                mock.patch.object(cli, "device_id", return_value="test-device"), \
                 redirect_stdout(output):
             sync = cli._build_sync(args, settings)
         return sync, ledger_sync, output.getvalue()
