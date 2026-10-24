@@ -31841,10 +31841,20 @@ async function Rde(e, t) {
 	if (n) return n;
 	try {
 		let n = await Lt(`/api/stream-plan?id=${e.id}&session=${encodeURIComponent(t)}`);
-		if (n?.src) return {
-			src: n.src,
-			type: n.mime_type || (n.protocol === "hls" ? "application/vnd.apple.mpegurl" : "video/mp4")
-		};
+		if (n?.src) {
+			let e = {
+				src: n.src,
+				type: n.mime_type || "application/vnd.apple.mpegurl"
+			};
+			return n.original_src ? {
+				src: n.original_src,
+				type: n.original_mime_type || "video/mp4",
+				fallback: e
+			} : {
+				src: n.src,
+				type: n.mime_type || (n.protocol === "hls" ? "application/vnd.apple.mpegurl" : "video/mp4")
+			};
+		}
 	} catch {}
 	return rD(e, t);
 }
@@ -32012,8 +32022,8 @@ var sD = (e) => typeof e == "string" ? [e] : e, Ude = (e, t) => {
 				a = document.createElement(r), t.replaceWith(a), a.append(e), t.adapter.destroy(), a.addEventListener("error", () => y(a.error || e.error), { signal: c }), S = [], b.length = 0;
 			}
 			a.source = {
-				...t,
-				src: new URL(t.src, location.href).href
+				src: new URL(t.src, location.href).href,
+				type: t.type
 			}, T();
 		},
 		currentSrc: () => p.src,
@@ -32070,12 +32080,12 @@ function qde(e, t) {
 	let { item: n, session: r } = t, i = null, a = !1;
 	return Promise.all([Rde(n, r), lD().catch(() => null)]).then(([o, s]) => {
 		if (a) return;
-		let c = rD(n, r), l = String(o.type || "").includes("mpegurl");
+		let c = rD(n, r), l = String(o.type || "").includes("mpegurl"), u = o.fallback ?? (l ? c : null);
 		if (!s) e.src = (l ? c : o).src;
 		else {
 			let t = s(e, Kde);
-			i = t, l && t.one("error", () => {
-				a || t.src(c);
+			i = t, u && t.one("error", () => {
+				a || t.src(u);
 			}), t.src(o);
 		}
 		Pde(n, e, t.onEnded ? { onEnded: t.onEnded } : {}), t.onLoaded?.();
@@ -32188,17 +32198,17 @@ async function Xde(e, t, n, r = {}) {
 		"durationchange",
 		"error"
 	], _);
-	let b = !1, x = !1, S = () => {
+	let b = !1, x = !1, S = null, C = () => {
 		let n = y.chrome?.netBadge;
 		if (!n || l.isDisposed()) return;
 		let r = v();
 		r || p.sample(t);
 		let i = ade(l, e.id, zde(), r ? null : p), a = r ? JE(i) : ode(i, Zue(t));
 		n.innerHTML = `${z("gauge")}<span class="sr-only">加载速度</span><span>${B(a)}</span>`;
-	}, C = () => {
-		let e = y.chrome?.netBadge;
-		e && e.isConnected && (e.hidden = !1, S(), dD && clearInterval(dD), dD = setInterval(S, 500));
 	}, w = () => {
+		let e = y.chrome?.netBadge;
+		e && e.isConnected && (e.hidden = !1, C(), dD && clearInterval(dD), dD = setInterval(C, 500));
+	}, T = () => {
 		let e = y.chrome?.netBadge;
 		e && (fD && clearTimeout(fD), fD = setTimeout(() => {
 			e.hidden = !0, dD &&= (clearInterval(dD), null);
@@ -32209,10 +32219,16 @@ async function Xde(e, t, n, r = {}) {
 		"progress",
 		"waiting",
 		"stalled"
-	], C), l.on(["canplay", "playing"], () => {
-		S(), w();
+	], w), l.on(["canplay", "playing"], () => {
+		C(), T();
 	}), l.on("error", () => {
-		b && !x && !l.isDisposed() ? (x = !0, b = !1, l.src(Vde(e)), n && l.play()?.catch(() => {})) : r.checkSourceStatus !== !1 && a.loadSourceStatus().then((t) => {
+		if (S && !x && !l.isDisposed()) {
+			x = !0;
+			let e = t.currentTime, r = S;
+			S = null, b = String(r.type || "").includes("mpegurl"), e > 0 && l.one("loadedmetadata", () => {
+				l.isDisposed() || l.currentTime(e);
+			}), l.src(r), n && l.play()?.catch(() => {});
+		} else r.checkSourceStatus !== !1 && a.loadSourceStatus().then((t) => {
 			t[String(e.location)] !== !1 || l.isDisposed() || l.error({
 				code: 2,
 				message: `媒体目录无法访问 · ${a.offlineReason(String(e.location))}`
@@ -32227,12 +32243,12 @@ async function Xde(e, t, n, r = {}) {
 			let r = Number(t?.size) || 0;
 			r > 0 && !f && (f = r, p.bitrate = ede(r, e.duration));
 		}).catch(() => {}), wde(l, e, { thumbnail: !r.source }), Tde(l, e), Ede(l), r.source || Dde(l, e.id), y.ready = !0, y.chrome?.statsButton && (y.chrome.statsButton.hidden = !1);
-	}), s().then((e) => {
-		g() && (b = String(e.type || "").includes("mpegurl"), o && o.time > 0 && l.one("loadedmetadata", () => {
+	}), s().then((t) => {
+		g() && (b = String(t.type || "").includes("mpegurl"), S = t.fallback ?? (b ? Vde(e) : null), o && o.time > 0 && l.one("loadedmetadata", () => {
 			if (l.isDisposed()) return;
 			let e = an(l.el().querySelector("video")?.duration) || an(l.duration());
 			l.currentTime(Math.min(o.time, e || o.time));
-		}), l.src(e), _(), setTimeout(_, 0), setTimeout(_, 250), n && l.play()?.catch(() => {}));
+		}), l.src(t), _(), setTimeout(_, 0), setTimeout(_, 250), n && l.play()?.catch(() => {}));
 	}).catch(() => {}), l;
 }
 var Zde = "<canvas data-ambient-canvas=\"\" width=\"32\" height=\"18\"></canvas>";

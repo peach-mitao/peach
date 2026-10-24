@@ -237,7 +237,8 @@ def external_playlist(request: Request, id: int, ticket: str, origin: str = ''):
 
 
 @router.api_route("/stream", methods=["GET", "HEAD"])
-def stream(request: Request, id: int, session: str = "", args: dict[str, str] = Depends(require_auth)):
+def stream(request: Request, id: int, session: str = "", original: bool = False,
+           args: dict[str, str] = Depends(require_auth)):
     state = request.app.state
     asset = state.media_engine.asset(id)
     path = state.media_engine.filesystem.file_for(asset, thumbnail=False)
@@ -251,6 +252,13 @@ def stream(request: Request, id: int, session: str = "", args: dict[str, str] = 
         return SplicedMp4Response(
             path, header, session=session, registry=state.stream_sessions,
         )
+    if original:
+        media_type = 'video/webm' if path.suffix.lower() == '.webm' else 'video/mp4'
+        response = CancellableFileResponse(
+            path, session=session, registry=state.stream_sessions, media_type=media_type,
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
     try:
         path, transcoded = state.transcode_service.browser_path(
             id, path, session=session, registry=state.stream_sessions,
@@ -297,10 +305,16 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", ar
     if source_path.suffix.lower() in strm.DISC_SUFFIXES:
         return JSONResponse({'error': 'ISO 原盘请使用作品详情中的外部播放器打开'}, status_code=415)
     conversion = _needs_conversion(state, id, source_path, session)
+    original_trial = (
+        conversion
+        and source_path.suffix.lower() in {".mp4", ".m4v"}
+        and not state.transcode_service.decode_order_timestamps(
+            source_path, session=session, registry=state.stream_sessions)
+    )
     resolved = (_hls_plan(state, id, session, conversion)
                 if conversion or plan.protocol == "hls" else None)
     if resolved and session:
-        return {
+        result = {
             "id": id,
             "protocol": "hls",
             "mime_type": "application/vnd.apple.mpegurl",
@@ -310,6 +324,10 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", ar
             "src": f"/stream/hls/{id}/index.m3u8?session={quote(session, safe='')}",
             "reason": plan.reason,
         }
+        if original_trial:
+            result["original_src"] = f"/stream?id={id}&original=1&session={quote(session, safe='')}"
+            result["original_mime_type"] = "video/mp4"
+        return result
     source = f"/stream?id={id}"
     if session:
         source += f"&session={quote(session, safe='')}"

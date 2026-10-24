@@ -11,7 +11,12 @@ export interface QualityLevelList {
   on?(events: PlayerEvents, handler: () => void): void;
 }
 
-export interface PlayerSource { src: string; type: string }
+export interface PlayerSource {
+  src: string;
+  type: string;
+  /** 主片源解码失败时的一次性回退；视频元素真正拒绝后才使用。 */
+  fallback?: PlayerSource | undefined;
+}
 
 export interface VjsPlayer {
   /** 挂载时记下的条目：右键菜单复制网址按它取 id。 */
