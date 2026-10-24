@@ -2688,13 +2688,29 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         con.commit()
         con.close()
         with patch.object(self.app.state.transcode_service, 'requires_conversion', return_value=True), \
+                patch.object(self.app.state.transcode_service, 'decode_order_timestamps', return_value=False), \
                 patch.object(self.app.state.transcode_service, 'browser_path',
                              side_effect=AssertionError('whole movie conversion')):
             response = await self.client.get('/api/stream-plan?id=1&session=s&t=secret')
             self.assertEqual(response.json()['protocol'], 'hls')
+            self.assertEqual(response.json()['original_src'], '/stream?id=1&original=1&session=s')
+            self.assertEqual(response.json()['original_mime_type'], 'video/mp4')
             playlist = await self.client.get('/stream/hls/1/index.m3u8?session=s&t=secret')
             self.assertEqual(playlist.status_code, 200)
             self.assertIn('#EXTINF:0.280', playlist.text)
+
+    async def test_original_stream_bypasses_browser_transcoding(self):
+        """原画试播要真正读原文件；兼容性转码只能由回退请求触发。"""
+        with patch.object(self.app.state.transcode_service, 'browser_path',
+                          side_effect=AssertionError('original trial started transcoding')):
+            response = await self.client.get(
+                '/stream?id=1&original=1&session=original-trial',
+                headers={'X-Token': 'secret', 'Range': 'bytes=0-3'},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.content, b'0123')
+        self.assertEqual(response.headers['content-type'], 'video/mp4')
+        self.assertNotIn('x-peach-transcoded', response.headers)
 
     async def test_unknown_ledger_duration_still_slices_by_the_probed_duration(self):
         """账本没记时长（或记成 -1）的 HEVC MP4 也按片切：时长取 ffprobe 报的，不走整片转码。"""
@@ -2807,6 +2823,7 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
             plan = (await self.client.get("/api/stream-plan?id=1&session=s&t=secret")).json()
 
         self.assertEqual(plan["protocol"], "hls")
+        self.assertNotIn("original_src", plan)
         self.assertEqual(asked, [1])
 
     async def test_transcoded_stream_has_browser_mime_and_marker(self):

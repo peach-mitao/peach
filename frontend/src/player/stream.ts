@@ -24,15 +24,21 @@ function followStreamSource(item: PlayerItem): PlayerSource | null {
     ? { src: `/follow-stream?id=${item.follow_item_id}`, type: 'video/mp4' } : null;
 }
 
-/** 起播片源只有这一个判据，详情和沉浸模式共用：服务端说要转码分片就给分片，否则直读。
- *  有 B 帧却缺 ctts 的 MP4 直读时浏览器按错的显示顺序丢帧，整片持续卡顿。 */
+/** 起播片源只有这一个判据，详情和沉浸模式共用。编码兼容性转码附带原画试播地址，
+ *  让当前浏览器自己做最终判断；缺 ctts 的文件不走试播，先等文件头修复或兼容分片。 */
 export async function playableStreamSource(item: PlayerItem, session: string): Promise<PlayerSource> {
   const proxied = followStreamSource(item);
   if (proxied) return proxied;
   try {
     const plan = await api(`/api/stream-plan?id=${item.id}&session=${encodeURIComponent(session)}`) as
-      { protocol?: string; src?: string; mime_type?: string } | null;
-    if (plan?.src) return { src: plan.src, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
+      { protocol?: string; src?: string; mime_type?: string; original_src?: string; original_mime_type?: string } | null;
+    if (plan?.src) {
+      const segmented = { src: plan.src, type: plan.mime_type || 'application/vnd.apple.mpegurl' };
+      if (plan.original_src) {
+        return { src: plan.original_src, type: plan.original_mime_type || 'video/mp4', fallback: segmented };
+      }
+      return { src: plan.src, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
+    }
   } catch { /* 取不到计划就直读 */ }
   return directStreamSource(item, session);
 }

@@ -55,6 +55,16 @@ describe('片源判据', () => {
     expect(directStreamSource({ id: 4 }, 'x').type).toBe('video/mp4');
   });
 
+  it('兼容转码时先让浏览器试原画，失败再回退分片', async () => {
+    stubFetch(() => ({ protocol: 'hls', src: '/stream/hls/3/index.m3u8', mime_type: 'application/vnd.apple.mpegurl',
+      original_src: '/stream?id=3&session=s3', original_mime_type: 'video/mp4' }));
+
+    expect(await playableStreamSource({ id: 3 }, 's3')).toEqual({
+      src: '/stream?id=3&session=s3', type: 'video/mp4',
+      fallback: { src: '/stream/hls/3/index.m3u8', type: 'application/vnd.apple.mpegurl' },
+    });
+  });
+
   it('详情这一路共用一个会话，取消时按会话通知服务端并清空', async () => {
     const calls = stubFetch(() => ({ cancelled: 1 }));
     await detailStreamSource({ id: 5 });
@@ -151,6 +161,21 @@ describe('沉浸模式的每一格', () => {
     expect(made[0]!.disposed).toBe(true);
     const cancels = calls.filter((call) => call.url.startsWith('/api/stream-cancel'));
     expect(cancels.map((call) => call.url)).toEqual(['/api/stream-cancel?session=imm-1']);
+  });
+
+  it('浏览器拒绝原画后，沉浸格改挂服务端给的分片回退', async () => {
+    stubFetch(() => ({ protocol: 'hls', src: '/stream/hls/8/index.m3u8', mime_type: 'application/vnd.apple.mpegurl',
+      original_src: '/stream?id=8&session=imm-3', original_mime_type: 'video/mp4' }));
+    const { made } = fakeVideojs();
+    const dispose = mountPlayer(document.createElement('video'), {
+      kind: 'immerse', item: { id: 8 }, session: 'imm-3',
+    });
+    await flush(); await flush();
+    expect(made[0]!.sources[0]).toEqual({ src: '/stream?id=8&session=imm-3', type: 'video/mp4',
+      fallback: { src: '/stream/hls/8/index.m3u8', type: 'application/vnd.apple.mpegurl' } });
+    made[0]!.error!();
+    expect(made[0]!.sources.at(-1)).toEqual({ src: '/stream/hls/8/index.m3u8', type: 'application/vnd.apple.mpegurl' });
+    dispose();
   });
 
   it('片源还没解析出来就拆掉：不再挂播放器，也不回调', async () => {
