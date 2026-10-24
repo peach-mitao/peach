@@ -1,5 +1,6 @@
 """匿名协议、身份核对、图片包装与只读详情投影。"""
 import io
+import hashlib
 import json
 import tempfile
 import threading
@@ -11,7 +12,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from peach.http import HttpResponse
-from peach.javdb_public import PublicAPI, PublicSourceUnavailable, decode_image, preview_video_url
+from peach.javdb_public import PublicAPI, PublicSourceUnavailable, decode_image, preview_video_url, signature_parts
 from peach.javdb_public import PublicBudgetExceeded, PublicRequestBudget, actor_gender
 from peach.web_jav_detail import q_jav_detail, q_jav_image, q_jav_reviews, q_jav_resources
 from peach.web_state import WebContract
@@ -19,7 +20,42 @@ from peach.web_router import dispatch_api_get
 from support.ledger import fresh_ledger
 
 
+def signing_bundle(middle='S1', suffix='E1', builder='sign'):
+    return (
+        f'const {middle}="test-middle",{suffix}="test-suffix";'
+        f'function {builder}(){{const t=Math.floor(Date.now()/1e3).toString();'
+        f'return`${{t}}.${{{middle}}}.${{md5(t+{suffix})}}`}}'
+        f'const headers={{jdsignature:{builder}()}};'
+    )
+
+
 class PublicProtocolTests(unittest.TestCase):
+    def test_signature_follows_header_builder_and_renamed_constants(self):
+        for names in [('S1', 'E1', 'sign'), ('V1', 'H1', 'Y1'), ('$mid', '_salt', '$build')]:
+            with self.subTest(names=names):
+                self.assertEqual(signature_parts(signing_bundle(*names)), ('test-middle', 'test-suffix'))
+
+    def test_signature_ignores_unreferenced_named_decoys(self):
+        script = 'const S1="decoy",E1="decoy-salt";' + signing_bundle('a', 'b', 'build')
+        self.assertEqual(signature_parts(script), ('test-middle', 'test-suffix'))
+
+    def test_signature_decodes_json_string_literals(self):
+        script = signing_bundle().replace('test-middle', r'test\u002dmiddle')
+        self.assertEqual(signature_parts(script), ('test-middle', 'test-suffix'))
+
+    def test_signature_rejects_ambiguous_or_unrecognised_inputs(self):
+        scripts = [
+            'const S1="middle",E1="salt";',
+            signing_bundle() + 'const more={jdsignature:other()};',
+            signing_bundle() + 'const S1="different";',
+            signing_bundle().replace('md5(t+E1)', 'md5(E1+t)'),
+            signing_bundle().replace('test-suffix', r'test\nvalue'),
+        ]
+        for script in scripts:
+            with self.subTest(script=script):
+                with self.assertRaises(ValueError):
+                    signature_parts(script)
+
     def test_api_and_image_cooldowns_have_independent_scope(self):
         requests = []
         def transport(request, *_):
@@ -129,7 +165,7 @@ class PublicProtocolTests(unittest.TestCase):
         self.assertEqual(api.movie('EXM-001')['id'], 'Exact')
         self.assertTrue(any('/v2/search' in request.url for request in self.requests))
 
-    def api(self, *, wrong_code=False, blocked=False):
+    def api(self, *, wrong_code=False, blocked=False, bundle=None):
         self.requests = []
 
         def transport(request, timeout, max_bytes):
@@ -137,7 +173,7 @@ class PublicProtocolTests(unittest.TestCase):
             if request.url.endswith('/'):
                 body = b'<script src="/assets/index-test.js"></script>'
             elif '/assets/' in request.url:
-                body = b'const S1="test-middle",E1="test-suffix";'
+                body = (bundle or signing_bundle()).encode()
             else:
                 if blocked:
                     return HttpResponse(429, {}, b'')
@@ -163,6 +199,14 @@ class PublicProtocolTests(unittest.TestCase):
             self.assertNotIn('Cookie', request.headers)
         self.assertEqual(api.peek_movie('exm001')['id'], 'Exact')
         self.assertIsNone(api.peek_movie('EXM-999'))
+
+    def test_renamed_bundle_signs_api_requests_with_referenced_values(self):
+        api = self.api(bundle=signing_bundle('V1', 'H1', 'Y1'))
+        with patch('peach.javdb_public.time.time', return_value=123):
+            self.assertEqual(api.movie('EXM-001')['id'], 'Exact')
+        expected = '123.test-middle.' + hashlib.md5(b'123test-suffix', usedforsecurity=False).hexdigest()
+        for request in self.requests[2:]:
+            self.assertEqual(request.headers['jdsignature'], expected)
 
     def test_mismatched_detail_is_rejected(self):
         with self.assertRaisesRegex(PublicSourceUnavailable, '身份不匹配'):
@@ -325,7 +369,7 @@ class DetailProjectionTests(unittest.TestCase):
             elif request.url.endswith('/'):
                 body = b'<script src="/assets/index-test.js"></script>'
             elif '/assets/' in request.url:
-                body = b'const S1="test-middle",E1="test-suffix";'
+                body = signing_bundle().encode()
             else:
                 body = json.dumps({'success': 1, 'data': {'movie': {'id': 'Exact', 'number': 'EXM-001',
                     'actors': [{'id': 'Person', 'name': '甲', 'gender': 0,
