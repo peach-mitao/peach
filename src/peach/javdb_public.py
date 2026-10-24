@@ -88,6 +88,38 @@ class PublicSourceUnavailable(ValueError):
     """公开来源当前未取得。"""
 
 
+def signature_parts(script: str) -> tuple[str, str]:
+    """按请求头调用关系读取时间戳签名所引用的两个字符串，不执行脚本。"""
+    identifier = r"[A-Za-z_$][A-Za-z0-9_$]*"
+    builders = set(re.findall(r'\bjdsignature\s*:\s*(' + identifier + r')\(\)', script))
+    if len(builders) != 1:
+        raise ValueError("签名入口不唯一")
+    builder = re.escape(builders.pop())
+    pattern = (
+        r'\bfunction\s+' + builder + r'\(\)\s*\{\s*(?:const|let|var)\s+'
+        r'(?P<stamp>' + identifier + r')\s*=\s*Math\.floor\(Date\.now\(\)\s*/\s*'
+        r'(?:1e3|1000)\)\.toString\(\)\s*;\s*return\s*'
+        r'`\$\{(?P=stamp)\}\.\$\{(?P<middle>' + identifier + r')\}\.'
+        r'\$\{' + identifier + r'\((?P=stamp)\s*\+\s*(?P<suffix>' + identifier + r')\)\}`\s*;?\s*\}'
+    )
+    functions = list(re.finditer(pattern, script))
+    if len(functions) != 1:
+        raise ValueError("签名表达式未识别")
+    values = []
+    for name in (functions[0]['middle'], functions[0]['suffix']):
+        literals = re.findall(
+            r'(?<![\w$])' + re.escape(name) + r'\s*=\s*("(?:\\.|[^"\\]){1,1024}")\s*(?=[,;])',
+            script,
+        )
+        if len(literals) != 1:
+            raise ValueError("签名常量不唯一")
+        value = json.loads(literals[0])
+        if not 1 <= len(value) <= 256 or any(ord(char) < 32 for char in value):
+            raise ValueError("签名常量无效")
+        values.append(value)
+    return values[0], values[1]
+
+
 class PublicBudgetExceeded(PublicSourceUnavailable):
     """本轮匿名资料请求预算已用完。"""
 
@@ -199,12 +231,12 @@ class PublicAPI:
             self.paused_until = self.clock() + 60
             raise PublicSourceUnavailable("作品资料来源格式未识别")
         js = response_text(self._get(WEB + entry[1]))
-        middle = re.search(r'\bS1="([^"\r\n]{1,256})"', js)
-        suffix = re.search(r'\bE1="([^"\r\n]{1,256})"', js)
-        if not middle or not suffix:
+        try:
+            parts = signature_parts(js)
+        except ValueError:
             self.paused_until = self.clock() + 60
-            raise PublicSourceUnavailable("作品资料来源格式未识别")
-        self.signature_parts = middle[1], suffix[1]
+            raise PublicSourceUnavailable("作品资料来源格式未识别") from None
+        self.signature_parts = parts
         self.signature_until = self.clock() + 24 * 3600
         return self.signature_parts
 
