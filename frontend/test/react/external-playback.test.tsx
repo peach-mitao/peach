@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ExternalPlayback } from '../../src/react/item-detail/external-playback';
+import { ExternalPlayback, mpvLink } from '../../src/react/item-detail/external-playback';
 import { choose, click, mount, settle } from './render';
 
 beforeEach(() => {
@@ -46,8 +46,27 @@ it('播放器菜单只列检测到的程序和通用网络播放方式', async (
   expect(host.querySelector('[data-select-trigger]')?.textContent?.trim()).toBe('系统默认播放器');
   await click(host.querySelector('[aria-label="外部播放器"]'));
   expect([...document.querySelectorAll('[role="option"]')].map(node => node.textContent?.trim())).toEqual([
-    '系统默认播放器', 'PotPlayer', 'M3U 播放列表', '网络播放地址 / VR',
+    '系统默认播放器', 'PotPlayer', 'M3U 播放列表', 'mpv', '网络播放地址 / VR',
   ]);
+});
+
+it('mpv 用当前浏览器的协议打开限时播放地址', async () => {
+  const fetcher = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/local-players'
+    ? { players: [] }
+    : { url: '/external-stream/4?ticket=short', playlist: '/external-playlist/4.m3u?ticket=short' })));
+  vi.stubGlobal('fetch', fetcher);
+  let opened = '';
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    opened = this.href;
+  });
+  const host = await mount(<ExternalPlayback id={4} />);
+  await settle();
+  await choose(host.querySelector('[aria-label="外部播放器"]'), 'mpv');
+  await click(host.querySelector('[aria-label="使用外部播放器打开"]'));
+  await settle();
+  const stream = new URL('/external-stream/4?ticket=short', location.origin).href;
+  expect(opened).toBe(mpvLink(stream));
+  expect(host.querySelector('input')?.value).toBe(stream);
 });
 
 it('本机可选择已安装播放器并在打开成功后回执，失败保留原因', async () => {

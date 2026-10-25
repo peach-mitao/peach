@@ -7,7 +7,11 @@ import { ErrorText, Help } from '../settings/section';
 import { busyProps, useAction } from '../settings/use-action';
 
 const TARGET_KEY = 'peach.playback-target.v1';
-const NETWORK_TARGETS = [['m3u', 'M3U 播放列表'], ['url', '网络播放地址 / VR']] as const;
+const NETWORK_TARGETS = [['m3u', 'M3U 播放列表'], ['mpv', 'mpv'], ['url', '网络播放地址 / VR']] as const;
+
+export function mpvLink(url: string) {
+  return `mpv://play/${encodeURIComponent(url)}`;
+}
 
 function savedTarget() {
   try { return localStorage.getItem(TARGET_KEY) || `local:${localStorage.getItem('peach.local-player.v1') || 'default'}` }
@@ -55,11 +59,12 @@ export function ExternalPlayback({ id, onOpened }: { id: number; onOpened?(): vo
     setLinks(result);
     if (player === 'url') return;
     const link = document.createElement('a');
-    link.href = result.playlist;
+    link.href = player === 'mpv' ? mpvLink(result.url) : result.playlist;
     link.rel = 'noreferrer';
     document.body.append(link);
     link.click();
     link.remove();
+    if (player === 'mpv') document.querySelector<HTMLVideoElement>('#stage video')?.pause();
   });
   return <div data-local-playback="">
     <div data-local-playback-row="">
@@ -79,7 +84,7 @@ export function ExternalPlayback({ id, onOpened }: { id: number; onOpened?(): vo
       onClick={() => { setLoadError(''); setPlayers(null); setEpoch(value => value + 1) }}>重新检测播放器</Button> : null}
     {links ? <>
       <Input label="网络播放地址" value={links.url} isReadOnly />
-      <Help>链接有效期为 6 小时。VR 播放器可使用网络播放地址；另一台设备需要能访问当前 Peach 地址。</Help>
+      <Help>链接有效期为 6 小时。VR 播放器可使用网络播放地址；另一台设备需要能访问当前 Peach 地址。{player === 'mpv' ? ' mpv 由正在浏览的这台电脑打开，浏览器需要已登记 mpv:// 协议。' : ''}</Help>
     </> : null}
   </div>;
 }

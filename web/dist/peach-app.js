@@ -70850,7 +70850,7 @@ function rOe(e, t) {
 }
 //#endregion
 //#region src/react/item-detail/external-playback.tsx
-var M2 = "peach.playback-target.v1", N2 = [["m3u", "M3U 播放列表"], ["url", "网络播放地址 / VR"]];
+var M2 = "peach.playback-target.v1", N2 = [["m3u", "M3U 播放列表"], ["mpv", "mpv"], ["url", "网络播放地址 / VR"]];
 function iOe() {
 	try {
 		return localStorage.getItem(M2) || `local:${localStorage.getItem("peach.local-player.v1") || "default"}`;
@@ -70882,7 +70882,8 @@ function P2({ id: e, onOpened: t }) {
 		}
 		if (s(e), i === "url") return;
 		let n = document.createElement("a");
-		n.href = e.playlist, n.rel = "noreferrer", document.body.append(n), n.click(), n.remove();
+		n.href = i === "mpv" ? `mpv://play/${encodeURIComponent(e.url)}` : e.playlist, n.rel = "noreferrer", document.body.append(n), n.click(), n.remove();
+		if (i === "mpv") document.querySelector("#stage video")?.pause();
 	});
 	return /* @__PURE__ */ (0, I.jsxs)("div", {
 		"data-local-playback": "",
@@ -70924,7 +70925,7 @@ function P2({ id: e, onOpened: t }) {
 				label: "网络播放地址",
 				value: o.url,
 				isReadOnly: !0
-			}), /* @__PURE__ */ (0, I.jsx)(JH, { children: "链接有效期为 6 小时。VR 播放器可使用网络播放地址；另一台设备需要能访问当前 Peach 地址。" })] }) : null
+			}), /* @__PURE__ */ (0, I.jsx)(JH, { children: "链接有效期为 6 小时。VR 播放器可使用网络播放地址；另一台设备需要能访问当前 Peach 地址。" + (i === "mpv" ? " mpv 由正在浏览的这台电脑打开，浏览器需要已登记 mpv:// 协议。" : "") })] }) : null
 		]
 	});
 }
