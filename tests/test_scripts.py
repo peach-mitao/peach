@@ -1877,8 +1877,6 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertEqual(floor, "3.14")
         self.assertEqual((ROOT / ".python-version").read_text(encoding="utf-8").strip(), floor)
         self.assertIn(f"Programming Language :: Python :: {floor}", project["classifiers"])
-        workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
-        self.assertIn("fromJSON(needs.plan.outputs.matrix)", workflow)
         from scripts.ci_plan import plan
         self.assertEqual({row["python"] for row in plan("workflow_dispatch", [])["matrix"]["include"]}, {floor})
         self.assertIn(f"Python {floor} 或更高", (ROOT / "README.md").read_text(encoding="utf-8"))

@@ -280,22 +280,6 @@ class FrontendManifestTests(unittest.TestCase):
         dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
         self.assertIn("directory: /frontend", dependabot)
 
-    def test_ci_owns_the_only_gate_that_can_catch_a_stale_bundle(self):
-        """本机验不了「产物是否由当前源码构建」，这道门槛只在 CI。
-
-        它一旦被删掉，源码和 `web/dist/` 就能无声地分叉，而所有本地测试照样全绿——
-        那正是这条断言要拦的。`git add --intent-to-add` 不能省：光 `git diff` 只看
-        已跟踪的文件，构建新出的产物是未跟踪的，会被直接放过。
-        """
-        workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
-        for step in ("actions/setup-node", "npm --prefix frontend ci",
-                     "npm --prefix frontend run typecheck", "npm --prefix frontend run lint",
-                     "npm --prefix frontend test",
-                     "npm --prefix frontend run build",
-                     "git add --intent-to-add -- web/dist",
-                     "git diff --exit-code --stat -- web/dist"):
-            self.assertIn(step, workflow, f"CI 缺了 {step}")
-
     def test_the_bundle_is_committed_and_the_toolchain_is_not(self):
         tracked = subprocess.run(
             ["git", "-C", str(ROOT), "check-ignore", "web/dist/peach-app.js"],
@@ -389,45 +373,6 @@ class VitestTests(unittest.TestCase):
         counted = re.search(r"Tests\s+(\d+) passed", plain)
         assert counted is not None
         self.assertGreaterEqual(int(counted.group(1)), 10, output)
-
-
-class BrowserSuiteWorkflowTests(unittest.TestCase):
-    """CI 里的浏览器冒烟与设计决定断言只能执行或失败，不能静默跳过。
-
-    缺前置条件在 CI 判失败（`tests/support/conditions.py`）只做了一半：工作流还得真的装齐
-    Node、依赖、ffmpeg 与 Chrome，并让结果进入 `verified` 的汇总。任一处被删掉，冒烟就回到
-    从未在 CI 执行的状态，或者让 `python` 矩阵的全量行判失败。
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
-
-    def job(self, name: str) -> str:
-        found = re.search(rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  \S|\Z)", self.workflow)
-        self.assertIsNotNone(found, f"CI 没有 {name} job")
-        return found.group(1)
-
-    def test_the_browser_job_installs_every_prerequisite_and_runs_the_web_scope(self):
-        job = self.job("web-e2e")
-        for step in ("runs-on: windows-latest", "actions/setup-node", 'node-version: "24"',
-                     "npm --prefix frontend ci", "FedericoCarboni/setup-ffmpeg",
-                     'ffmpeg-version: "9.0.1"',
-                     "PEACH_E2E_CHROME=", "& .\\scripts\\test.ps1 -Scope web"):
-            self.assertIn(step, job, f"web-e2e job 缺了 {step}")
-
-    def test_the_summary_requires_browser_and_frontend_jobs(self):
-        needs = re.search(r"(?ms)^  verified:\n.*?^    needs: \[([^\]]*)\]", self.workflow)
-        self.assertIsNotNone(needs, "verified job 没有 needs 列表")
-        for required in ("web-e2e", "web-bundle"):
-            self.assertIn(required, [name.strip() for name in needs.group(1).split(",")])
-
-    def test_matrix_rows_beyond_core_install_what_the_node_suites_need(self):
-        job = self.job("python")
-        for step in ("actions/setup-node", "npm --prefix frontend ci",
-                     "FedericoCarboni/setup-ffmpeg", 'ffmpeg-version: "9.0.1"',
-                     "PEACH_E2E_CHROME="):
-            self.assertIn(step, job, f"python 矩阵缺了 {step}，全量行上的用例会判失败")
 
 
 if __name__ == "__main__":

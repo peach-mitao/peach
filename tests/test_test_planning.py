@@ -115,8 +115,7 @@ class TestPlanningTests(unittest.TestCase):
                                                      contents={'tests/support/ledger.py': content})[0], ('full',))
 
     def test_ci_jobs_follow_their_own_inputs(self):
-        for path in ('tests/test_follow_store.py', 'tests/test_metadata_sources.py',
-                     '.github/workflows/project-board.yml'):
+        for path in ('tests/test_follow_store.py', 'tests/test_metadata_sources.py'):
             with self.subTest(path=path):
                 plan = ci_plan.plan('pull_request', [path])
                 self.assertFalse(plan['browser'])
@@ -126,8 +125,6 @@ class TestPlanningTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(ci_plan.plan('pull_request', [path])['browser'])
         self.assertFalse(ci_plan.plan('pull_request', ['.github/workflows/docker-package.yml'])['wide'])
-        self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/release.yml'])['wheel'])
-        self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/upgrade-smoke.yml'])['wheel'])
         self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/unknown.yml'])['wide'])
 
     def setUp(self):

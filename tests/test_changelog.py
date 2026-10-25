@@ -201,14 +201,6 @@ class NotesTests(unittest.TestCase):
         self.assertTrue(out.getvalue().startswith("Release 正文未生成："), out.getvalue())
         self.assertNotIn("变更日志未更新", out.getvalue())
 
-    def test_the_release_workflow_reads_the_notes_it_does_not_inline_them(self):
-        """固定文案只活在 `INSTALL_NOTE` 一处；工作流在标签提交上生成文件再交给 gh。"""
-        workflow = (Path(changelog.ROOT) / ".github/workflows/release.yml").read_text(encoding="utf-8")
-        self.assertIn("scripts/changelog.py --notes", workflow)
-        self.assertIn("--to release/RELEASE_NOTES.md", workflow)
-        self.assertIn("--notes-file RELEASE_NOTES.md", workflow)
-        self.assertNotIn("--notes 'Windows", workflow)
-
 
 class DueTests(unittest.TestCase):
     """该不该发下一版。判据只看使用者那一侧，不看集成了多少次。"""

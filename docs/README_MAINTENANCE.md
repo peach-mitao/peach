@@ -13,7 +13,7 @@ README 面向初次访问项目的人，依次讲它是什么、介绍视频与�
 | --- | --- |
 | Python 与桌面命令 | `pyproject.toml`、`src/peach/cli.py`、`src/peach/tray.py` |
 | 前端工具与产物 | `frontend/package.json`、[docs/FRONTEND.md](FRONTEND.md) |
-| 桌面包与平台范围 | [docs/TESTING_DESKTOP.md](TESTING_DESKTOP.md)、`.github/workflows/release.yml` |
+| 桌面包与平台范围 | [docs/TESTING_DESKTOP.md](TESTING_DESKTOP.md) |
 | 当前行为与已部署范围 | 实现与测试、[运行与配置](OPERATIONS.md)、[公开路线图](https://github.com/orgs/peach-mitao/projects/7) |
 | 来源、配置与数据边界 | [docs/SOURCING.md](SOURCING.md)、[docs/OPERATIONS.md](OPERATIONS.md)、[docs/CLOUDDRIVE.md](CLOUDDRIVE.md) |
 

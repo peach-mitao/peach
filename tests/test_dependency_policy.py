@@ -213,11 +213,6 @@ class DependencyPolicyTests(unittest.TestCase):
         dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
         for ecosystem in ("uv", "npm", "github-actions"):
             self.assertIn(f"package-ecosystem: {ecosystem}", dependabot)
-        workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(
-            encoding="utf-8")
-        self.assertIn("npm run check:vendor", workflow)
-        self.assertIn("& .\\scripts\\test.ps1", workflow)
-        self.assertIn("./scripts/test.sh", workflow)
 
     def test_every_npm_manifest_under_dependabot_has_a_takeover_recipe(self):
         """带派生产物的清单，`adopt_dependency_bump.py` 必须认得。
@@ -388,17 +383,6 @@ class DependencyPolicyTests(unittest.TestCase):
         version_file = f"src/{module.replace('.', '/')}/__init__.py"
         keys = {entry.get('file') for entry in self.pyproject['tool']['uv']['cache-keys']}
         self.assertTrue({'pyproject.toml', 'setup.py', version_file} <= keys)
-        workflow = (ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8")
-        release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
-        for source in (workflow, release):
-            self.assertIn("astral-sh/setup-uv@", source)
-            self.assertIn("cache-dependency-glob: uv.lock", source)
-            self.assertIn("uv sync --locked", source)
-            self.assertIn("uv pip check --python .venv/Scripts/python.exe", source)
-            self.assertIn("if ($LASTEXITCODE -ne 0)", source)
-        self.assertIn("uv pip check --python .venv/bin/python", workflow)
-        self.assertIn("uv build --wheel --out-dir wheelhouse", workflow)
-        self.assertIn("python -m pip install --no-cache-dir wheelhouse/*.whl", workflow)
 
 
 class AmaneBridgeManifestTests(unittest.TestCase):
