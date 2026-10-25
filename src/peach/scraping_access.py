@@ -412,7 +412,15 @@ class SourceTransport:
         for _ in range(6):
             from .processing_control import checkpoint
             checkpoint('network')
-            response = self._request(request, timeout, max_bytes)
+            from .processing_traffic import CURRENT, download_route
+            if CURRENT.get() is None:
+                response = self._request(request, timeout, max_bytes)
+            else:
+                source = source_for(request.url)
+                direct = bool(source and values_for(self.root, source).get('network') == 'direct')
+                options = {'trust_env': False} if direct else peach_proxy.client_options(self.root)
+                with download_route(bool(options.get('proxy') or options.get('trust_env', True))):
+                    response = self._request(request, timeout, max_bytes)
             if response.status not in {301, 302, 303, 307, 308} or not response.headers.get("location"):
                 return response
             target = urljoin(request.url, response.headers["location"])
@@ -429,6 +437,11 @@ class SourceTransport:
         """闸门到顶的三句话都写「本趟」和「再跑一次接着采」：这三条按任务重新计数，
         读的人要据以决定的是「现在重跑一遍」，不是去查哪里还有配额。"""
         source = source_for(request.url)
+        if source == "javbus":
+            # 中文作品解析与连接检查共用语言偏好，封面请求也遵循来源策略。
+            headers = {key: value for key, value in request.headers.items() if key.lower() != "accept-language"}
+            request = HttpRequest(request.method, request.url,
+                                  {**headers, "Accept-Language": "zh-CN,zh;q=0.9"}, request.body)
         if self.max_requests and self.requests >= self.max_requests:
             raise SourcePaused("本趟采集次数已用完，再跑一次接着采；已有图片保留")
         if self.deadline:

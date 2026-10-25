@@ -1,7 +1,6 @@
 # Peach 智能体工作契约
 
-本文件是 Codex 与 Claude 共用的唯一项目入口，只保留「每个任务都必须成立」的边界与索引。
-`README.md` 讲项目与运行方式；本文件讲改动前的约定。
+本文件是 Codex 与 Claude 共用的唯一项目约定入口；项目与运行方式见 `README.md`。
 分层判据、写作规范与清退机制见 `docs/adr/0015-agent-context-layering.md`，不要默认追加到本文件。
 
 公开文档与项目技能正文统一使用中文。
@@ -46,7 +45,7 @@
 | 长跑批处理、刮削、限流、磁盘与流量预算 | `.claude/skills/peach-batch-jobs/SKILL.md` |
 | JAV 封面、高清封面、缺封面、封面刮削、重探与来源比较 | `.claude/skills/peach-jav-cover-workflow/SKILL.md` |
 | 模仿、参考或对齐外部产品的界面与行为 | `.claude/skills/peach-reference-evidence/SKILL.md` |
-| 新增、修改或复核页面、控件、提示、数据面板与响应式布局 | `.claude/skills/peach-web-ui/SKILL.md` |
+| 界面必读：`~/.codex/skills/peach-ui-consistency/SKILL.md` 及本行技能 | `.claude/skills/peach-web-ui/SKILL.md` |
 | 在 macOS 上开工、改路径解析或挂载判定、git status 与 diff 不一致 | `.claude/skills/peach-cross-platform/SKILL.md` |
 | 写 PowerShell 或 Bash 命令、交给用户跑命令、拼多行内容、测试里造临时目录 | `.claude/skills/peach-shell-commands/SKILL.md` |
 | 新增、修改或清退智能体规则、入口与技能 | `.claude/skills/peach-context-rules/SKILL.md` |
@@ -58,6 +57,7 @@
 - ledger 路径统一为 Windows 形态（`R:\Media\...`、`A:\...`、`B:\...`），由 `src/peach/platform.py` 读取时转换；不得改写成 POSIX 路径或在 macOS 写 `asset.path`。
 - `peach-data/database/ledger.db` 是真相源，真实写入按 `peach-ledger-write`。代码判据确定、可按来源整批撤回的结果直接落库（ADR-0052）；LLM 输出、打分、冲突与多候选只产生带来源与置信度的候选。测试只用临时数据库，可直接运行并修复本次改动造成的失败。
 - 保留真实媒体、ledger 行、行为历史、凭据、网络与防火墙状态及无关长跑任务。
+- 预览先读项目记忆，真实小样本须过 `scripts/check_ui_preview.py`。
 - 编辑前核对 `git status`；涉及服务、端口或重启时核对监听与进程归属。生产结论须有实际切换与核验证据。
 - Peach 是单人自托管应用；替代实现验证通过后移除无用代码和兼容层，历史由 Git 保存。
 - 架构边界：模块化单体与磁盘分界（ADR-0017）、Stash 适配器关闭（0021）、前端迁往 React + BoardUI（0031）、分发阶段（0023）；改变决策须新增 ADR。

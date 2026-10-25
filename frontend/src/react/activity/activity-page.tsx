@@ -1,8 +1,9 @@
 /* 活动页：任务中心那张表的唯一界面。
  *
  * 这一屏要回答三个问题，顺序就是它们的紧迫程度：现在有什么在跑、有哪一轮被挡下了、
- * 刚跑完的那些怎么样。三段共用 `/api/tasks` 一次请求的结果。末尾的「云下载」段是网盘离线
- * 任务，取数与轮询都在 `downloads-panel.tsx` 里，和这三段互不牵连。
+ * 刚跑完的那些怎么样。三段共用 `/api/tasks` 一次请求的结果。最前面的「需要处理」是后台服务
+ * 此刻的问题，末尾的「云下载」段是网盘离线任务，两者各自取数与轮询（`background-issues.tsx`、
+ * `downloads-panel.tsx`），和这三段互不牵连。
  *
  * 轮询交给 Query 的 `refetchInterval`：间隔按上一次拿到的内容算，有东西在跑两秒一次，
  * 全是终态十秒一次。它是后台刷新，不写 `aria-busy`——页面上的内容一直是完整的，写了
@@ -13,14 +14,16 @@
  * 轮询只管第一页，翻过的那些不会被下一次刷新冲掉。 */
 import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
-import { RiArrowDownSLine, RiHistoryLine } from '@remixicon/react';
+import { RiArrowDownSLine, RiArrowRightLine, RiHistoryLine } from '@remixicon/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { Chip } from '@/components/base/badges/chip';
 import { Button } from '@/components/base/buttons/button';
+import { LinkButton } from '@/components/base/buttons/link-button';
 
 import { errorMessage } from '../../api';
 import { cardClass } from '../components/card';
+import { CodeBlock } from '../components/code-block';
 import { EmptyState } from '../components/empty-state';
 import { LoadingDots } from '../components/loading-dots';
 import { Note } from '../components/note';
@@ -28,21 +31,27 @@ import { Page } from '../components/page';
 import { Progress } from '../components/progress';
 import { busyProps } from '../settings/use-action';
 import { Disclosure } from '../settings/section';
+import { BackgroundIssues } from './background-issues';
 import { DownloadsPanel } from './downloads-panel';
-import { ErrorExcerpt } from './error-excerpt';
+import { ErrorDetails, ErrorExcerpt } from './error-excerpt';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldRoutine, followupDetail, groupFollowups, isActive,
-  isRoutine, mergeFinished, momentText, pollInterval, progressText, statusLabel, summaryText, TASKS_KEY, TRIGGER_LABELS, type TaskRunPayload,
+  hasResultProblems, isRoutine, latestOfKind, mergeFinished, momentText, pollInterval, problemDestination, progressText,
+  statusLabel, summaryItems, taskIssues, TASKS_KEY, TRIGGER_LABELS, type TaskRunPayload,
 } from './tasks';
 
-/* 状态徽章只有三档颜色：成功是绿、失败是红、被叫停与被打断是黄，其余留中性底。
-   BoardUI 的 Chip 把这三档写成 lime／rose／yellow，第四种颜色不存在。 */
-const BADGE_COLORS: Record<string, 'lime' | 'rose' | 'yellow'> = {
-  succeeded: 'lime', failed: 'rose', cancelled: 'yellow', interrupted: 'yellow',
+/* 完成绿、失败红、进行中蓝、意外中断黄，主动取消和排队为中性。 */
+const BADGE_COLORS: Record<string, 'lime' | 'rose' | 'yellow' | 'blue' | 'neutral'> = {
+  succeeded: 'lime', failed: 'rose', cancelled: 'neutral', interrupted: 'yellow', running: 'blue', pending: 'neutral',
 };
 
-function StatusBadge({ status }: { status: string }) {
-  return <Chip color={BADGE_COLORS[status] ?? 'neutral'}>{statusLabel(status)}</Chip>;
+function StatusBadge({ run }: { run: TaskRunPayload }) {
+  const partial = run.status === 'failed' && run.task_key === 'library-processing'
+    && run.result_summary?.outcome === 'partial';
+  const problems = partial || run.status === 'succeeded' && hasResultProblems(run);
+  return <Chip color={problems ? 'yellow' : BADGE_COLORS[run.status] ?? 'neutral'}>
+    {partial ? '部分项目需处理' : problems ? '发现问题' : statusLabel(run.status)}
+  </Chip>;
 }
 
 /** 一轮任务派出的后继（ADR-0040）。挂在父任务卡里，一条一行。
@@ -61,10 +70,16 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
             <span className="min-w-0 break-words text-caption-1-regular text-text-primary">
               {row.task_label}
             </span>
-            <StatusBadge status={row.status} />
+            <StatusBadge run={row} />
             {detail
               ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
               : null}
+            <div className="w-full min-w-0">
+              <Disclosure summary="技术详情" contentClassName="pb-2.5">
+                <CodeBlock code={JSON.stringify(row.result_summary, null, 2)} language="json"
+                  label={`${row.task_label}技术详情`} />
+              </Disclosure>
+            </div>
           </li>
         );
       })}
@@ -80,7 +95,8 @@ function RunCard(
     followups?: TaskRunPayload[] },
 ) {
   return (
-    <li data-status={run.status} data-task-key={run.task_key} data-run-id={run.id}
+    // `id` 让「需要处理」那一行的「查看失败记录」能直接滚到这张卡。
+    <li id={`run-${run.id}`} data-status={run.status} data-task-key={run.task_key} data-run-id={run.id}
       className={cardClass({
         padding: 'none',
         bordered: 'line',
@@ -89,15 +105,22 @@ function RunCard(
       <div className="flex flex-col gap-1.5 px-5 pt-5 pb-4">
         <div className="flex flex-wrap items-center gap-2">
           <strong className="min-w-0 break-words text-title-1-medium text-text-primary">{run.task_label}</strong>
-          <StatusBadge status={run.status} />
+          <StatusBadge run={run} />
         </div>
         <p className="text-caption-1-regular text-text-secondary">{meta}</p>
         {children}
       </div>
       {followups?.length ? <div className="border-t border-separator-border px-5 py-2.5">
         <Disclosure summary={`任务明细 · ${followups.length} 项`}
-          defaultOpen={followups.some((row) => isActive(row) || row.status === 'failed')}>
+          contentClassName="pb-2.5"
+          defaultOpen={followups.some((row) => isActive(row))}>
           <FollowupList rows={followups} />
+        </Disclosure>
+      </div> : null}
+      {Object.keys(run.result_summary || {}).length ? <div className="border-t border-separator-border px-5 py-2.5">
+        <Disclosure summary="技术详情" contentClassName="pb-2.5">
+          <CodeBlock code={JSON.stringify(run.result_summary, null, 2)} language="json"
+            label={`${run.task_label}技术详情`} />
         </Disclosure>
       </div> : null}
       {footer
@@ -129,11 +152,16 @@ function RunningRun({ run, followups }: { run: TaskRunPayload; followups?: TaskR
 }
 
 /** 跑完的一轮。`runs` 多于一条时是折叠起来的几轮例行任务：时间写成从最早到最新那一段，
- *  摘要取最新那一轮——例行轮次的摘要本来就一样，逐条列出来只是同一行抄 N 遍。 */
+ *  摘要取最新那一轮——例行轮次的摘要本来就一样，逐条列出来只是同一行抄 N 遍。
+ *  任务卡只记这一轮的历史：此刻还没解决的问题和「立即重试」在页顶「需要处理」那一块。
+ *  `latest` 说它是不是同一种任务最新的那一轮：有些任务只有那一轮还有处理入口。 */
 function SettledRun(
-  { run, followups, runs }: { run: TaskRunPayload; followups?: TaskRunPayload[]; runs?: TaskRunPayload[] },
+  { run, followups, runs, latest }:
+  { run: TaskRunPayload; followups?: TaskRunPayload[]; runs?: TaskRunPayload[]; latest: boolean },
 ) {
-  const summary = summaryText(run.result_summary);
+  const summary = summaryItems(run.result_summary).filter((line) => line !== run.error);
+  const issues = taskIssues(run);
+  const destination = problemDestination(run, latest);
   const elapsed = elapsedText(run.elapsed_seconds);
   const oldest = runs && runs.length > 1 ? runs[runs.length - 1] : undefined;
   const meta = (oldest
@@ -143,7 +171,25 @@ function SettledRun(
        elapsed && `用时 ${elapsed}`]).filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} footer={run.error} followups={followups}>
-      {summary ? <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{summary}</p> : null}
+      {summary.length ? <ul className="list-disc space-y-1 pl-5 text-caption-1-regular text-text-secondary wrap-anywhere">
+        {summary.map((line, index) => <li key={index}>{line}</li>)}
+      </ul> : null}
+      {issues.length ? <Disclosure summary={`问题详情 · ${issues.length} 项`} contentClassName="pt-2">
+        <ErrorDetails label="任务问题详情">
+        <ul className="flex min-w-0 flex-col gap-3" data-task-issues="">
+          {issues.map((issue, index) => <li key={`${issue.source}-${index}`} className="flex min-w-0 flex-col gap-1 text-body-2-regular wrap-anywhere">
+            <p className="text-body-regular text-text-primary">{[issue.label, issue.provider, issue.kind].filter(Boolean).join(' · ')}</p>
+            <ErrorExcerpt text={issue.error} className="text-text-primary" />
+          </li>)}
+        </ul>
+        </ErrorDetails>
+      </Disclosure> : hasResultProblems(run) && ['follow-check', 'feed-check'].includes(run.task_key)
+        ? <p className="text-body-2-regular text-text-secondary">未取得本轮逐项详情，可到来源列表查看检查结果。</p> : null}
+      {destination
+        ? <LinkButton href={destination.href} size="small" trailingIcon={RiArrowRightLine}
+            className="self-start">
+            {destination.label}
+          </LinkButton> : null}
     </RunCard>
   );
 }
@@ -218,6 +264,7 @@ export function ActivityPage() {
     && !skipped.some((row) => row.id === run.id));
   // 每小时一轮的定时检查什么也没发生时一条条摆出来，一页就被同一句「已检查 83」占满。
   const folds = foldRoutine(finished, (run) => isRoutine(run) && !byParent.get(run.id)?.length);
+  const newest = latestOfKind(allRuns);
   const quiet = !running.length && !working.length && !skipped.length && !finished.length;
   return (
     <Page>
@@ -225,8 +272,10 @@ export function ActivityPage() {
       {data.available === false
         ? <Note tone="warning">{data.message || '数据库尚未准备好任务记录表'}</Note>
         : null}
+      {/* 后台服务此刻的问题排在最前：它们不会自己跑完，要人去处理。 */}
+      <BackgroundIssues />
       {quiet
-        ? <EmptyState shell="plain" icon={RiHistoryLine} title="还没有任务记录">
+        ? <EmptyState icon={RiHistoryLine} title="还没有任务记录">
             扫描、追更检查、批量操作和命令行批处理跑起来之后，这里会显示它们的进度与结果。
           </EmptyState>
         : <>
@@ -236,23 +285,23 @@ export function ActivityPage() {
                     {running.map((run) => (
                       <RunningRun key={run.id} run={run} followups={byParent.get(run.id)} />))}
                     {working.map((run) => (
-                      <SettledRun key={run.id} run={run} followups={byParent.get(run.id)} />))}
+                      <SettledRun key={run.id} run={run} latest={newest.has(run.id)} followups={byParent.get(run.id)} />))}
                   </RunList>
                 : <Note tone="neutral">没有任务在跑。</Note>}
             </Section>
             {/* 「刚才那一轮为什么没跑」只有这一段答得出：定时触发撞上在跑的那一轮会
                 安静跳过，不留记录的话它在界面上和从没触发过一模一样。 */}
             {skipped.length
-              ? <Section title="被挡下的">
+              ? <Section title="本次未执行">
                   <RunList>{skipped.map((run) => (
-                    <SettledRun key={run.id} run={run} followups={byParent.get(run.id)} />))}</RunList>
+                    <SettledRun key={run.id} run={run} latest={newest.has(run.id)} followups={byParent.get(run.id)} />))}</RunList>
                 </Section>
               : null}
             {finished.length || hasEarlier
               ? <Section title="最近完成">
                   {finished.length
                     ? <RunList>{folds.map(({ run, runs }) => (
-                        <SettledRun key={run.id} run={run} runs={runs}
+                        <SettledRun key={run.id} run={run} runs={runs} latest={newest.has(run.id)}
                           followups={byParent.get(run.id)} />))}</RunList>
                     : null}
                   {more.error ? <Note tone="error">{errorMessage(more.error)}</Note> : null}

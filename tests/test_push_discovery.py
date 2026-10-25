@@ -16,6 +16,7 @@ import threading
 import time
 import tomllib
 import unittest
+from dataclasses import replace
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest import mock
@@ -164,11 +165,21 @@ class ConfigPagePayloadTests(unittest.TestCase):
         payload = self._payload(self._request(port=8443))
         self.assertEqual(payload["origin"], "https://192.0.2.10:8443")
 
-    def test_without_tls_or_an_address_the_block_is_withheld_rather_than_guessed(self):
-        """HTTP 的地址发出去就是白发：80 口那条服务对写请求回 426，不替它转发。"""
-        for request in (self._request(tls=False), self._request(declared="", port=443)):
-            with self.subTest(request=request):
-                payload = self._payload(request)
+    def test_http_service_uses_its_published_address_and_listening_port(self):
+        for port, origin in ((38473, "http://198.51.100.7:38473"),
+                             (80, "http://198.51.100.7"),
+                             (443, "http://198.51.100.7:443")):
+            with self.subTest(port=port):
+                payload = self._payload(self._request(tls=False, published="198.51.100.7", port=port))
+                self.assertEqual(payload["origin"], origin)
+                config = tomllib.loads(payload["config_toml"])
+                self.assertEqual(config["global_params"]["base_url"], origin)
+                self.assertEqual(config["file_system_watcher"]["headers"][push.SECRET_HEADER], "tok")
+
+    def test_without_an_address_the_block_is_withheld(self):
+        for tls in (True, False):
+            with self.subTest(tls=tls):
+                payload = self._payload(self._request(tls=tls, declared=""))
                 self.assertEqual(payload["origin"], "")
                 self.assertEqual(payload["config_toml"], "")
 
@@ -376,13 +387,27 @@ class IngestPathTests(_ServiceCase):
     def test_a_scraper_sidecar_is_found_but_not_registered(self):
         folder = self.media / "ABC-123"
         (folder / "extrafanart").mkdir(parents=True)
-        for name in ("ABC-123.mp4", "ABC-123.nfo", "poster.jpg", "extrafanart/1.jpg"):
+        for name in ("ABC-123.mp4", "ABC-123.nfo", "poster.jpg", "extrafanart/1.jpg", "ABC-123-trailer.mp4"):
             (folder / name).write_bytes(b"0" * 4)
         kwargs = {"declared_roots": self.declared, "mounts": self.mounts}
-        for parts in (("ABC-123.nfo",), ("poster.jpg",), ("extrafanart", "1.jpg")):
+        for parts in (("ABC-123.nfo",), ("poster.jpg",), ("extrafanart", "1.jpg"), ("ABC-123-trailer.mp4",)):
             result = scan.ingest_path(self.db, "local", self.ledger("local", "ABC-123", *parts),
                                       **kwargs)
             self.assertEqual((result.found, result.sidecar), (True, True), parts)
+        self.assertEqual(self.rows(), {})
+
+    def test_extra_suffixes_and_nested_folders_are_found_without_ledger_writes(self):
+        relative = ('Film/Interview-interview2.mkv', 'Film/Extras/Trailers/Teaser.mp4',
+                    'Film/deleted scenes/Ending.mp4', 'Film/backdrops/Menu.mkv',
+                    'Film/theme-music/Score.flac')
+        for value in relative:
+            target = self.media / value
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b'clip')
+        for value in relative:
+            result = scan.ingest_path(self.db, 'local', self.ledger('local', *value.split('/')),
+                                     declared_roots=self.declared, mounts=self.mounts)
+            self.assertEqual((result.found, result.sidecar, result.asset_id), (True, True, None), value)
         self.assertEqual(self.rows(), {})
 
     def test_a_slow_directory_listing_does_not_hold_the_ledger_write_lock(self):
@@ -577,6 +602,36 @@ class WebhookRouteTests(_ServiceCase):
 
     def test_a_request_with_the_shared_secret_is_accepted(self):
         self.assertEqual(self.post(secret=self.secret).status_code, 204)
+        path = self.ledger("115", "a.mp4")
+        _wait_for(lambda: path in self.rows())
+        self.assertEqual(self.rows().get(path), ("video", 5))
+
+    def test_http_configuration_saves_rotates_and_delivers_a_notification(self):
+        from fastapi.testclient import TestClient
+        origin = "http://127.0.0.1:38473"
+        self.app.state.settings = replace(
+            self.app.state.settings, mdns_address="127.0.0.1", mdns_port=38473, tls_enabled=False)
+        client = TestClient(self.app, base_url=origin, client=("127.0.0.1", 9000))
+        saved = client.post("/api/configuration/push-discovery", json={
+            "enabled": True, "watch_local": False, "cloud": True,
+            "prefixes": [{"prefix": "/115", "root": self.declared["115"][0]}]})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()["origin"], origin)
+        rotated = client.post("/api/configuration/push-discovery/secret")
+        self.assertEqual(rotated.status_code, 200, rotated.text)
+        payload = rotated.json()
+        config = tomllib.loads(payload["config_toml"])
+        self.assertEqual(config["global_params"]["base_url"], origin)
+        self.assertNotEqual(payload["secret"], saved.json()["secret"])
+        self.assertEqual(self.post(secret=saved.json()["secret"]).status_code, 404)
+        watcher = config["file_system_watcher"]
+        body = watcher["body"]
+        for placeholder, value in (("{action}", "create"), ("{is_dir}", "false"),
+                                   ("{source_file}", "/115/a.mp4"), ("{destination_file}", "")):
+            body = body.replace(placeholder, value)
+        response = client.post(watcher["url"].replace("{base_url}", origin),
+                               headers=watcher["headers"], json=json.loads(body))
+        self.assertEqual(response.status_code, 204)
         path = self.ledger("115", "a.mp4")
         _wait_for(lambda: path in self.rows())
         self.assertEqual(self.rows().get(path), ("video", 5))

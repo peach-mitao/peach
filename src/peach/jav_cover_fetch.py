@@ -191,17 +191,21 @@ class CoverConnectError(Unavailable):
 
 
 class HostLimitedTransport:
-    """把请求间隔按主机分别计算；不同官方站点互不阻塞。"""
+    """把请求间隔按主机分别计算；不同官方站点互不阻塞。
+
+    给了 `limiter` 就按它等：几个传输共用一份间隔，同时跑的任务问同一主机也不会叠在一起。
+    """
 
     def __init__(self, inner: HttpxTransport, interval: float, *,
                  intervals: dict[str, float] | None = None,
-                 clock=time.monotonic, sleeper=time.sleep) -> None:
+                 clock=time.monotonic, sleeper=time.sleep,
+                 limiter: HostLimiter | None = None) -> None:
         self.inner = inner
         self.interval = max(0.0, interval)
         self.clock = clock
         self.sleeper = sleeper
-        self.limiter = HostLimiter(dict(intervals or {}), default_interval=self.interval,
-                                   clock=clock, sleeper=sleeper)
+        self.limiter = limiter or HostLimiter(dict(intervals or {}), default_interval=self.interval,
+                                              clock=clock, sleeper=sleeper)
 
     def __call__(self, request: HttpRequest, timeout: float, limit: int):
         self.limiter.wait(request.url)
@@ -426,6 +430,21 @@ def official_image_candidates(url: str) -> list[Candidate]:
     if urlparse(clean).netloc.lower().endswith("mgstage.com"):
         return [candidate_for(clean)]
     return []
+
+
+#: 库外卡片经 `/cover-image` 取图时放行的主机后缀，与 `official_image_candidates` 认的两家一致；
+#: 代理跟重定向的每一跳也按它核对。
+COVER_PROXY_HOSTS = ("dmm.co.jp", "dmm.com", "mgstage.com")
+
+
+def proxyable_cover_url(url: str) -> bool:
+    """能经 Peach 代理显示的封面地址：https、官方图片主机、官方图路径。"""
+    clean = str(url or "").strip()
+    parsed = urlparse(clean)
+    host = (parsed.hostname or "").casefold()
+    return (parsed.scheme == "https" and not parsed.username and not parsed.password
+            and any(host == suffix or host.endswith("." + suffix) for suffix in COVER_PROXY_HOSTS)
+            and bool(official_image_candidates(clean)))
 
 
 def content_id_images(content_id: str) -> list[Candidate]:

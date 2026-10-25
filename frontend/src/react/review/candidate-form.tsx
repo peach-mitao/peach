@@ -109,7 +109,7 @@ export function CandidateChoices(
       onChange={onChange} className="flex flex-col gap-2">
       {candidates.map((candidate) => (
         <Radio key={candidate.candidate_key} value={candidate.candidate_key}
-          className="group flex cursor-pointer items-center gap-2 overflow-hidden rounded-surface border border-separator-border bg-background-secondary-default outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring data-selected:border-border-button-active data-disabled:cursor-not-allowed">
+          className="relative group flex cursor-pointer items-center gap-2 overflow-hidden rounded-surface border border-separator-border bg-background-secondary-default outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring data-selected:border-border-button-active data-disabled:cursor-not-allowed">
           <CandidateBody candidate={candidate} selectable />
         </Radio>
       ))}
@@ -180,9 +180,14 @@ export function PendingGenres(
   return (
     <div role="group" aria-label="未收录 genre" className="flex flex-col gap-2 rounded-surface border border-separator-border bg-background-primary-default px-4 py-3">
       <h5 className="text-body-2-medium text-text-secondary">{`未收录 genre · ${genres.length}`}</h5>
-      {genres.map((genre) => (
-        <GenreRow key={genre} genre={genre} tags={tags} locked={locked} toast={toast} />
-      ))}
+      <div role="list" className="flex flex-col">
+        {genres.map((genre, index) => (
+          <div key={genre} role="listitem"
+            className={`py-3 first:pt-0 last:pb-0 ${index ? 'border-t border-separator-border' : ''}`}>
+            <GenreRow genre={genre} tags={tags} locked={locked} toast={toast} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

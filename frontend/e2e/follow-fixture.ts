@@ -7,6 +7,7 @@
 import type { Page, Route } from 'playwright-core';
 
 import { settle, visit, type Viewport, type Visit } from './harness.ts';
+import { mockSubtitleMemory } from './subtitle-fixture.ts';
 
 export const AUTHORS = ['Kou', 'Mira', 'Opal', 'Remi', 'Nanase', 'Lazy'];
 const PROVIDERS = [['kemono', 'Kemono'], ['rule34xxx', 'Rule34.xxx'], ['fanbox', 'pixivFANBOX']] as const;
@@ -151,6 +152,7 @@ export interface FollowStub {
 }
 
 async function stub(page: Page, bindAuthors = false): Promise<FollowStub> {
+  await mockSubtitleMemory(page);
   const held: { route: Route; url: URL }[] = [];
   const statuses = new Map<number, string>();
   const hidden = new Map([[DETAIL.hidden, new Set([3, 4])]]);
@@ -172,6 +174,7 @@ async function stub(page: Page, bindAuthors = false): Promise<FollowStub> {
     return route.fulfill({ json: payload(url, statuses, bindAuthors) });
   });
   await page.route('**/api/follow/credentials', (route) => route.fulfill({ json: { providers: [] } }));
+  await page.route('**/api/tag-management**', route => route.fulfill({ json: { items: [], total:0, categories:{}, duplicate_groups: [] } }));
   // 起过一趟之后 GET 一直报「在跑」：画面停在忙态，量得到两枚键一起忙。
   let started = false;
   await page.route('**/api/follow/check', (route) => {

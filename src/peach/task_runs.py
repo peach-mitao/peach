@@ -93,20 +93,28 @@ TASK_LABELS = {
     "resource-apply": "资源同步清理",
     "scraping-cover": "封面采集",
     "media-repair": "媒体修复",
+    "upgrade-repairs": "自动修复",
+    "upgrade-library": "自动修复资料",
     "organize": "按模板整理",
     "batch": "批量操作",
     "scrape-codes": "番号资料刮削",
     "jav-covers": "封面批量抓取",
     "entity-avatar": "补全资料图片",
+    "performer-profile": "补全女优资料",
+    "performer-alias": "补全女优别名",
     "studio-mark": "补厂牌官网与标识",
     "creator-identity": "查创作者身份",
     "code-samples": "补番号样张",
     "feed-check": "订阅源拉取",
     "feed-scrape": "取新作资料",
+    "feed-cover": "补新作封面",
     "want-scrape": "取想要的资料",
     "timeline-thumbnails": "视频缩略图采集",
     "download-postprocess": "云下载后处理",
     "seed-import": "导入初始资料",
+    "follow-creator": "关注作者建档",
+    "amane-bridge": "重建 amane 桥",
+    "face-models": "下载人脸模型",
 }
 
 
@@ -518,30 +526,32 @@ class TaskRunStore:
                 return None
         return int(cursor.lastrowid)
 
-    def claim_followup(self, task_keys) -> TaskRun | None:
+    def claim_followup(self, task_keys, first=()) -> TaskRun | None:
         from .update_tasks import admission, UpdateBusy
         try:
             with admission(self.database.db_path):
-                return self._claim_followup(task_keys)
+                return self._claim_followup(task_keys, first)
         except UpdateBusy:
             return None
 
-    def _claim_followup(self, task_keys) -> TaskRun | None:
+    def _claim_followup(self, task_keys, first=()) -> TaskRun | None:
         """领走这几类里最早的一条待跑后继并标 `running`；没有就返回 None。
 
-        `task_keys` 是调用方这条通道负责的任务种类。按 id 升序领：后继之间没有优先级
-        （ADR-0040 未决），先声明的先跑是唯一说得清的顺序。
+        `task_keys` 是调用方这条通道负责的任务种类，`first` 是其中插队先领的那几类
+        （ADR-0114）。同一档里按 id 升序领，先声明的先跑。
         """
         keys = tuple(dict.fromkeys(str(key) for key in task_keys or ()))
         if not self.enabled or not keys:
             return None
+        ahead = tuple(dict.fromkeys(str(key) for key in first or ())) or ("",)
         marks = ",".join("?" * len(keys))
         moment = stamp()
         with self.database.write_transaction(notify=False) as connection:
             row = connection.execute(
                 f"SELECT id FROM task_run WHERE followup_key IS NOT NULL "
-                f"AND status='pending' AND task_key IN ({marks}) ORDER BY id LIMIT 1",
-                keys).fetchone()
+                f"AND status='pending' AND task_key IN ({marks}) "
+                f"ORDER BY task_key IN ({','.join('?' * len(ahead))}) DESC, id LIMIT 1",
+                (*keys, *ahead)).fetchone()
             if row is None:
                 return None
             run_id = int(row["id"])

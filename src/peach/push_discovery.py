@@ -201,8 +201,8 @@ body = '{"data": []}'
 def clouddrive_config(origin: str, secret: str) -> str:
     """整段抄进 CloudDrive2 的配置文本。两样缺一样就给空串，页面据此说还不能抄。
 
-    地址只能是 HTTPS。80 口上那条服务对 `POST` 回的是 426 而不是重定向——跨 origin
-    的 307 会让 CloudDrive2 把密钥和正文原样再发一遍到另一个地址上。
+    地址由配置接口按应用服务的协议与端口生成。源码部署的 HTTPS 应用入口与 HTTP
+    跳转入口分开，后者对 `POST` 回 426；独立版的 HTTP 应用入口直接接收通知。
 
     正文只留 Peach 要读的那四个字段，默认模板里的设备名、事件时间那些一概不要：
     `parse_notification` 本来就忽略它们，少发一样东西就少一处能对不上的地方。
@@ -694,6 +694,9 @@ class PushDiscoveryService:
                 directory = walk_root_for(
                     "local", root, declared_roots=self.declared_roots, mounts=self.mounts)
             except ValueError:
+                continue
+            from .smb_media import SmbResource
+            if isinstance(directory, SmbResource):
                 continue
             if directory.is_dir():
                 found.append(("local", root, directory))

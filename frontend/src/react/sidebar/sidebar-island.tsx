@@ -112,8 +112,12 @@ function Navigation({ host: at, epoch, version }: { host: SidebarHost; epoch: nu
     const head = scroll.querySelector<HTMLElement>(':scope > [data-sidebar-head]');
     const resize = new ResizeObserver(() => sync());
     [drawer, scroll, head].forEach((node) => { if (node) resize.observe(node) });
-    document.addEventListener('board:sidebar', sync);
-    return () => { resize.disconnect(); document.removeEventListener('board:sidebar', sync) };
+    /* 开合事件在点击回调里同步发出，那一刻整页样式刚因开合类名变脏，当场量就是一次整树重算；
+       挪到下一帧和尺寸观察器一起量。 */
+    let frame = 0;
+    const later = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; sync() }) };
+    document.addEventListener('board:sidebar', later);
+    return () => { resize.disconnect(); cancelAnimationFrame(frame); document.removeEventListener('board:sidebar', later) };
   }, [at, sync]);
 
   const [dragging, setDragging] = useState<string | null>(null);
@@ -152,7 +156,9 @@ function Navigation({ host: at, epoch, version }: { host: SidebarHost; epoch: nu
             data-dragging={dragging === key ? '' : undefined}
             data-drop={drop?.key === key ? (drop.after ? 'after' : 'before') : undefined}
             onClick={() => at.navTo(key)} onPointerEnter={glide.hover} {...drag(key)}>
-            {key === '' ? <img data-sidebar-home-logo="" src="/peach-logo.png" alt="" /> : <Icon name={glyph} />}
+            {key === '' ? <img data-sidebar-home-logo="" src="/peach-logo-64.png"
+              srcSet="/peach-logo-64.png 64w, /peach-logo-128.png 128w" sizes="24px" width={24} height={24} alt=""
+              decoding="async" /> : <Icon name={glyph} />}
             <span>{label}</span>
           </button>
         ))}

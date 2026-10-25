@@ -46,8 +46,8 @@ function Cell(
         className: `${CELL} ${big ? 'items-stretch text-left' : 'items-center text-center'}`,
       })}>
       {children}
-      {following ? <span data-index-feed="" role="img" aria-label="已订阅新作" className="absolute top-4 right-4 z-2 inline-flex">
-        <Chip variant="caption" color="blue"><Rss /></Chip>
+      {following ? <span data-index-feed="" role="img" aria-label="已订阅新作" className="index-feed-mark absolute top-4 right-4 z-2 inline-flex">
+        <Chip variant="caption" color="soft"><Rss /></Chip>
       </span> : null}
       <span data-index-name="" className="text-body-medium wrap-anywhere text-text-primary">{name}</span>
       <span data-index-readout="" className="text-caption-1-regular">{readout}</span>

@@ -18,6 +18,7 @@ import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from .smb_media import input_url
 
 from .mp4index import _iter_boxes
 
@@ -149,7 +150,7 @@ def _display_order(ffprobe: Path, source: Path, decode_times: list[int]) -> list
     command = (
         str(ffprobe), "-v", "error", "-threads", "0",
         "-ignore_editlist", "1", "-select_streams", "v:0",
-        "-show_entries", "frame=pts", "-of", "csv=p=0", str(source),
+        "-show_entries", "frame=pts", "-of", "csv=p=0", input_url(source),
     )
     try:
         completed = subprocess.run(command, capture_output=True, timeout=PROBE_TIMEOUT_SECONDS,
@@ -288,7 +289,8 @@ def _layout(source: Path) -> tuple[bytes, _Span, _Span]:
     拼接只换头、原样接上 `mdat`，所以 `mdat` 必须是最后一个盒子，前面的东西也得
     一次读得完。不满足就抛 `RepairUnavailable`，让调用方回到转码那条路。
     """
-    with open(source, "rb") as handle:
+    from .smb_media import SmbResource
+    with (source.open() if isinstance(source, SmbResource) else open(source, 'rb')) as handle:
         boxes = _top_level(handle)
         kinds = {kind for kind, *_ in boxes}
         if not {b"moov", b"mdat"} <= kinds:

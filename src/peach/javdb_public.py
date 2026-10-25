@@ -26,8 +26,37 @@ WEB = "https://catembylegacy.fastcdn.dpdns.org"
 API = "https://jdforrepam.com/api"
 PAGE_SIZE = 10
 MAX_REVIEW_PAGES = 8
+_JS_IDENTIFIER = r'[A-Za-z_$][A-Za-z0-9_$]*'
 _CACHE_ROOT = ContextVar('jav_public_cache_root', default=None)
 _CACHE_READS = ContextVar('jav_public_cache_reads', default=None)
+
+
+def public_signature_parts(script: str) -> tuple[str, str] | None:
+    """从公开请求头的签名计算式读取常量，不执行来源脚本。"""
+    call = re.search(r'\bjdsignature\s*:\s*(' + _JS_IDENTIFIER + r')\s*\(\s*\)', script)
+    if not call:
+        return None
+    recipe = re.search(
+        r'\bfunction\s+' + re.escape(call[1]) + r'\s*\(\s*\)\s*\{[^{}]{0,512}?\breturn\s*'
+        r'`\$\{(?P<stamp>' + _JS_IDENTIFIER + r')\}\.\$\{(?P<middle>' + _JS_IDENTIFIER + r')\}\.'
+        r'\$\{' + _JS_IDENTIFIER + r'\(\s*(?P=stamp)\s*\+\s*(?P<suffix>' + _JS_IDENTIFIER + r')\s*\)\}`\s*;?\s*\}',
+        script,
+    )
+    if not recipe:
+        return None
+    values = []
+    for name in (recipe['middle'], recipe['suffix']):
+        assignments = re.findall(r'(?<![\w$])' + re.escape(name) + r'\s*=\s*("(?:\\.|[^"\\]){1,512}")\s*[,;]', script)
+        if len(assignments) != 1:
+            return None
+        try:
+            value = json.loads(assignments[0])
+        except ValueError:
+            return None
+        if not isinstance(value, str) or not 1 <= len(value) <= 256:
+            return None
+        values.append(value)
+    return values[0], values[1]
 
 
 @contextmanager
@@ -199,12 +228,11 @@ class PublicAPI:
             self.paused_until = self.clock() + 60
             raise PublicSourceUnavailable("作品资料来源格式未识别")
         js = response_text(self._get(WEB + entry[1]))
-        middle = re.search(r'\bS1="([^"\r\n]{1,256})"', js)
-        suffix = re.search(r'\bE1="([^"\r\n]{1,256})"', js)
-        if not middle or not suffix:
+        parts = public_signature_parts(js)
+        if parts is None:
             self.paused_until = self.clock() + 60
             raise PublicSourceUnavailable("作品资料来源格式未识别")
-        self.signature_parts = middle[1], suffix[1]
+        self.signature_parts = parts
         self.signature_until = self.clock() + 24 * 3600
         return self.signature_parts
 
@@ -334,7 +362,9 @@ class PublicAPI:
         canonical = normalise_code_key(code)
 
         def identify():
-            rows = self._rows("/v2/search", "movies", {"q": canonical, "type": "movie", "page": 1})
+            product = re.fullmatch(r'FC2-PPV-(\d+)', canonical)
+            query = product[1] if product else canonical
+            rows = self._rows("/v2/search", "movies", {"q": query, "type": "movie", "page": 1})
             match = next((row for row in rows if isinstance(row, dict)
                           and normalise_code_key(row.get("number")) == canonical), None)
             if not match or not isinstance(match.get("id"), str) or not re.fullmatch(r"[A-Za-z0-9]+", match["id"]):

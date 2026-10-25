@@ -5,7 +5,7 @@ description: 在 macOS 上开工、改动路径解析或挂载判定、遇到 gi
 
 # 跨 Windows / macOS 双机开发
 
-最后复核：2026-10-18
+最后复核：2026-10-24
 证据来源：`src/peach/platform.py`、ADR-0017、2026-08-19 的 macOS 迁移实测、
 2026-08-21 的 Windows 现状核对，以及 2026-09-14 用 junction 复现的临时目录别名。
 
@@ -16,8 +16,8 @@ description: 在 macOS 上开工、改动路径解析或挂载判定、遇到 gi
 
 ## 路径口径
 
-账本里的 `asset.path` **一律是 Windows 形态**：`R:\Media\...`（本地硬盘）、
-`B:\...`（115）、`A:\...`（PikPak）。
+账本里的 `asset.path` **一律是 Windows 形态**，例如 `R:\Media\...`。
+盘符与目录由媒体来源配置声明，来源与盘符没有固定对应关系。
 
 不要为了 macOS 把账本改写成 POSIX 路径。翻译只发生在读取期，收敛在
 `src/peach/platform.py` 一处；写回账本的索引脚本仍只在 Windows 上跑，路径口径
@@ -38,7 +38,7 @@ CloudDrive 在 Windows 是盘符、在 macOS 是 macFUSE 挂载点，这层不�
   判定。
 - **挂载点「在不在」的判据是能否列出第一个条目**，不是 `is_dir()`。CloudDrive 掉线后
   挂载点目录仍然存在，读一个条目才会报 `Device not configured`。见 `root_online`。
-- **磁盘闸门看系统盘**：Windows `C:`、macOS `/`，用 `system_volume()`。CloudDrive 的
+- **磁盘闸门看系统盘**：Windows 从系统目录查询所在卷、macOS 使用 `/`，用 `system_volume()`。CloudDrive 的
   下载块缓存在两个平台都落在系统盘；写死 `C:/` 会让 macOS 侧直接抛 `FileNotFoundError`。
 
 另外 `PidFileLock._running` 要吞掉 `OverflowError`：Windows 写下的 PID 可能超出 POSIX

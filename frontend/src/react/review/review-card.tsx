@@ -126,7 +126,7 @@ export function ReviewCard(props: ReviewCardProps) {
         ? <AssetPicker assets={assets} picked={choice.assets} locked={locked}
             onPicked={(next) => onChoice({ ...choice, assets: next })} />
         /* 空白一片会被当成界面坏了。真实原因是这些作品还没抽帧，说清楚比留白好。 */
-        : <EmptyState shell="inset" icon={RiImageLine} title="这批作品尚未抽帧">
+        : <EmptyState size="compact" icon={RiImageLine} title="这批作品尚未抽帧">
             {`${row.video_count || ''} 条作品还没有可用预览；批准后仍会按所选资料写入标签。`}
           </EmptyState>)
       : category === 'fc2_similarity'

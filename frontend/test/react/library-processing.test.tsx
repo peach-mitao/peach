@@ -6,7 +6,7 @@
  * `getComputedStyle` 断言；这里只看结构、文字与请求。 */
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 
 import { queryClient } from '../../src/react/query';
 import {
@@ -14,10 +14,10 @@ import {
 } from '../../src/react/library-processing/library-processing';
 import { LibraryProcessingCard } from '../../src/react/library-processing/library-processing-card';
 import { LibraryProcessingNotice } from '../../src/react/library-processing/library-processing-notice';
-import { RESOURCE_NOTICE_KEY } from '../../src/react/library-processing/processing-actions';
+import { setProcessingNoticeVisible } from '../../src/react/library-processing/processing-notice-visibility';
 import type { LibraryProcessingProps } from '../../src/react/bundle';
 
-import { buttonNamed as textButtonNamed, click, mount, mountRoot, submit } from './render';
+import { actionOrder, buttonNamed as textButtonNamed, click, mount, mountRoot, submit } from './render';
 
 const buttonNamed = (name: string, root: ParentNode = document) =>
   [...root.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === name)
@@ -25,10 +25,10 @@ const buttonNamed = (name: string, root: ParentNode = document) =>
 
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 // 报过的任务号记在 `localStorage` 里，也要清，否则下一条用例的通知被当成重复的。
-beforeEach(() => localStorage.setItem(RESOURCE_NOTICE_KEY, 'seen'));
 afterEach(() => {
   queryClient.clear();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 /* Query 派发更新用的是它自己抓住的那个真 `setTimeout(0)`，假时钟推不动它：推完时钟
@@ -43,6 +43,13 @@ type Reply = (method: string, body: unknown) => LibraryProcessingData;
 function serve(reply: Reply) {
   const calls: { method: string; body: unknown }[] = [];
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
+    if (path.startsWith('/api/library-processing?')) return {
+      ok: true, status: 200, json: async () => ({ traffic: {
+        used_bytes: 0, estimated_min_bytes: 1024, estimated_max_bytes: 2048,
+        metered_used_bytes: 0, metered_estimated_min_bytes: 1024, metered_estimated_max_bytes: 2048,
+        sources: [], partial: false, unknown_files: true,
+      } }),
+    };
     if (path !== '/api/library-processing') throw new Error(`用例没有给 ${path} 造数据`);
     const method = init?.method ?? 'GET';
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
@@ -69,11 +76,30 @@ const notice = (props: LibraryProcessingProps) => (
   <QueryClientProvider client={queryClient}><LibraryProcessingNotice {...props} /></QueryClientProvider>
 );
 
+it('隐藏任务提示后卡片提供恢复入口，恢复不提交业务请求', async () => {
+  const { posts } = await open({ status: 'paused', job_id: 'restore-from-card', checked: 2, total: 10 });
+  setProcessingNoticeVisible('restore-from-card', false);
+  const host = await mount(card({ toast: vi.fn() }));
+  await click(buttonNamed('显示进度浮窗', host));
+  expect(buttonNamed('显示进度浮窗', host)).toBeNull();
+  expect(posts()).toEqual([]);
+});
+
 /** 轮询是 Query 的定时器，推进时钟会引起重画，得在 act 里推。 */
 const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) });
 
 const menuItem = (label: string) =>
-  [...document.querySelectorAll('[role="dialog"] button')].find((item) => item.textContent?.trim() === label);
+  [...document.querySelectorAll('[role="dialog"] button')].find((item) => item.querySelector('span > span')?.textContent === label);
+
+const startFrom = async (element: Element | null | undefined) => {
+  await click(element);
+  await submit(document.querySelector('dialog form'));
+};
+const chooseLow = () => act(async () => {
+  const slider = document.querySelector('dialog input[type="range"]')!;
+  slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+  slider.dispatchEvent(new KeyboardEvent('keyup', { key: 'Home', bubbles: true }));
+});
 
 it('来源说没有只报一个数，不算问题也不提供失败重试', async () => {
   await open({
@@ -91,24 +117,46 @@ it('来源说没有只报一个数，不算问题也不提供失败重试', asyn
   expect(record.closest('.text-text-secondary')).not.toBeNull();
   expect(record.closest('.border-t')!.className).toContain('border-current/20');
   expect(host.querySelector('[role="alert"]')).toBeNull();
-  expect(buttonNamed('重试未完成项')).toBeNull();
+  expect(buttonNamed('立即重试未完成项')).toBeNull();
   expect(host.querySelector('details')).toBeNull();
+});
+
+it('已结束的部分结果提供浏览与定向重试，中断保持错误提示', async () => {
+  const state: LibraryProcessingData = { status: 'failed', outcome: 'partial', job_id: 'partial',
+    issue_count: 2, error: '2 项需要处理', retryable_asset_ids: [7],
+    issue_preview: [{ asset_id: 7, message: '视频抽帧超时' }] };
+  const served = await open(state, method => method === 'POST' ? { status: 'running', job_id: 'retry' } : state);
+  const host = await mount(card({ toast: vi.fn() }));
+  const banner = await mount(notice({ toast: vi.fn(), mode: 'notice' }));
+  for (const surface of [host, banner]) {
+    expect(surface.textContent).toContain('处理已结束，部分项目需处理');
+    expect(surface.textContent).toContain('已入库的视频可在全部内容中浏览');
+    expect(surface.querySelector('a[href="/?loc=&thumb=0"]')?.textContent).toBe('查看全部内容');
+    expect(surface.querySelector('[role="alert"]')).toBeNull();
+  }
+  expect(banner.querySelector('[data-processing-tone]')?.getAttribute('data-processing-tone')).toBe('warning');
+  await click(buttonNamed('立即重试未完成项', host));
+  expect(served.posts()).toEqual([{ job_id: 'partial', retry: [7] }]);
+  await act(async () => { queryClient.setQueryData(LIBRARY_PROCESSING_KEY,
+    { ...state, outcome: 'interrupted', error: '处理被中断' }); });
+  expect(banner.querySelector('[role="alert"]')?.textContent).toContain('扫描与采集已中断');
+  expect(banner.querySelector('a[href="/?loc=&thumb=0"]')).toBeNull();
 });
 
 it('扫描与补全方式共用一颗主键加一个下拉，各自交自己的阶段', async () => {
   const served = await open({ status: 'idle' }, () => ({ status: 'complete' }));
   const host = await mount(card({ toast: vi.fn() }));
 
-  await click(buttonNamed('同步媒体库', host));
+  await startFrom(buttonNamed('同步媒体库', host));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
-  expect(menuItem('同步媒体库')).not.toBeNull();
-  await click(menuItem('仅扫描文件'));
+  expect(menuItem('同步媒体库')).toBeUndefined();
+  await startFrom(menuItem('仅扫描文件'));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
-  await click(menuItem('仅同步已入库影片'));
+  await startFrom(menuItem('仅补全已入库影片'));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
-  await click(menuItem('仅生成视频预览'));
+  await startFrom(menuItem('仅补全预览图'));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
-  await click(menuItem('仅补全资料'));
+  await startFrom(menuItem('仅补全影片资料'));
 
   expect(served.posts()).toEqual([{}, { stage: 'scan' }, { stage: 'collect' }, { stage: 'previews' }, { stage: 'metadata' }]);
   expect(host.querySelector('a[href="/sources"]')?.textContent).toContain('来源和凭证');
@@ -123,7 +171,7 @@ it('启动只提交一次，进度用 GET 读回来，完成后给出回执与�
       : { status: 'complete', job_id: 'one', scanned: 9, identified: 4, candidates: 2 },
   );
   const host = await mount(card({ toast }));
-  await click(buttonNamed('同步媒体库', host));
+  await startFrom(buttonNamed('同步媒体库', host));
 
   expect(served.calls.map((call) => call.method)).toEqual(['POST', 'GET']);
   expect(host.querySelector('a[href="/review"]')).not.toBeNull();
@@ -131,7 +179,7 @@ it('启动只提交一次，进度用 GET 读回来，完成后给出回执与�
   const receipt = host.querySelector('[role="status"]');
   expect(receipt?.textContent).toContain('处理完成');
   expect(receipt?.textContent).toContain(
-    '已扫描 9 个文件，识别 4 个番号，整理 2 组资料结果，自动保存 0 条。');
+    '已扫描 9 个文件，识别 4 个番号，取得 2 组作品资料，自动保存 0 条。');
   // 这一趟没补任何女优资料，回执里就不出现那句话。
   expect(receipt?.textContent).not.toContain('补齐女优资料');
 });
@@ -148,11 +196,11 @@ it('补齐女优资料的读数进回执，冲突和未取得各自点名', asyn
         },
   );
   const host = await mount(card({ toast: vi.fn() }));
-  await click(buttonNamed('同步媒体库', host));
+  await startFrom(buttonNamed('同步媒体库', host));
 
   expect(served.posts()).toEqual([{}]);
   expect(host.querySelector('[role="status"]')?.textContent).toContain(
-    '补齐女优资料：别名 5 个，头像 3 张，1 个同名冲突交回人工，2 张头像未取得。');
+    '补齐女优资料：别名 5 个，头像 3 张，1 项同名人物资料需要确认是否为同一人，2 张头像未取得。');
 });
 
 it('首屏读到的上一趟终态不冒充这一次的回执', async () => {
@@ -215,9 +263,10 @@ it('失败时把问题清单折叠进错误提示，重试只交失败的那些�
   // 补上没做完的那些是这一趟的事，重新跑一整批是下一趟的事：页脚那颗留着，各答各的问题。
   expect(buttonNamed('同步媒体库', host)?.textContent).toBe('同步媒体库');
 
-  // 重试键属于错误提示，问题清单收起时仍可操作。
-  const retry = buttonNamed('重试未完成项')!;
-  expect(retry.className).toContain('bg-button-primary');
+  // 重试键属于错误提示，和别处 Note 的恢复动作一样是次级键；问题清单收起时仍可操作。
+  const retry = buttonNamed('立即重试未完成项')!;
+  expect(retry.textContent).toBe('立即重试');
+  expect(retry.className).not.toContain('bg-button-primary');
   expect(alert!.contains(retry)).toBe(true);
   expect(details.contains(retry)).toBe(false);
 
@@ -234,7 +283,7 @@ it('有可重试项时页脚那颗发的仍是整批，不夹带上一趟的失�
   }, () => ({ status: 'running', job_id: 'two' }));
   const host = await mount(card({ toast: vi.fn() }));
 
-  await click(buttonNamed('同步媒体库', host));
+  await startFrom(buttonNamed('同步媒体库', host));
   expect(served.posts()).toEqual([{}]);
 });
 
@@ -244,7 +293,7 @@ it('失败项都不可重试时仍能重新发起整批任务', async () => {
     retryable_asset_ids: [], issue_preview: [{ asset_id: 1, message: '未识别到番号' }],
   });
   const host = await mount(card({ toast: vi.fn() }));
-  expect(buttonNamed('重试未完成项')).toBeNull();
+  expect(buttonNamed('立即重试未完成项')).toBeNull();
   expect(buttonNamed('同步媒体库', host)?.textContent).toBe('同步媒体库');
 });
 
@@ -314,7 +363,7 @@ it('刚结束的任务横幅第一次读到也报，同一个任务号只报一�
   }
   expect(toast).toHaveBeenCalledTimes(1);
   expect(toast).toHaveBeenNthCalledWith(
-    1, '扫描与资料采集已完成：识别 3 个番号，整理 2 组资料结果，自动保存 0 条');
+    1, '扫描与资料采集已完成：识别 3 个番号，取得 2 组作品资料，自动保存 0 条');
 });
 
 it('两个容器读同一趟任务：一个周期只问一次，撤掉一个另一个照常', async () => {
@@ -388,8 +437,7 @@ it('来源说没有的计数带千分位，等待时长按分、时、天进位'
     .toBe('采集缺失封面 · 已等待 3 天 0 小时');
 });
 
-it('首次整库任务先说明资源影响，确认模式后才启动，取消不启动', async () => {
-  localStorage.removeItem(RESOURCE_NOTICE_KEY);
+it('整库任务先显示流量预估，确认模式后才启动，取消不启动', async () => {
   const served = await open({ status: 'idle', speed_mode: 'standard' }, () => ({ status: 'running', job_id: 'one' }));
   const host = await mount(card({ toast: vi.fn() }));
   await click(buttonNamed('同步媒体库', host));
@@ -398,10 +446,11 @@ it('首次整库任务先说明资源影响，确认模式后才启动，取消�
   await click(buttonNamed('取消', document.querySelector('dialog')!));
   expect(served.posts()).toEqual([]);
   await click(buttonNamed('同步媒体库', host));
-  await click(document.querySelector('dialog input[value="low"]'));
+  expect(document.querySelector('dialog [aria-label="流量预估"]')?.textContent).toContain('预计流量');
+  expect(host.querySelector('[data-processing-controls]')).toBeNull();
+  await chooseLow();
   await submit(document.querySelector('dialog form'));
   expect(served.posts()).toEqual([{ speed_mode: 'low' }]);
-  expect(localStorage.getItem(RESOURCE_NOTICE_KEY)).toBe('seen');
   expect(document.querySelector('dialog')).toBeNull();
 });
 
@@ -417,8 +466,12 @@ it('暂停与继续使用同一个任务号，暂停不是完成，暂停时仍�
     }
     return state;
   });
-  const host = await mount(card({ toast, onComplete }));
+  const host = await mount(notice({ toast, onComplete, mode: 'notice' }));
   expect(host.textContent).toContain('预计剩余约 20–40 分钟（粗估）');
+  // 去任务详情的链接在左，暂停这类原地控制在右。
+  const bar = actionOrder(host.querySelector('a[href="/data-cleanup#libraryProcessing"]')!.parentElement);
+  expect(bar[0]).toBe('任务详情');
+  expect(bar.indexOf('暂停')).toBeGreaterThan(0);
   await click(buttonNamed('暂停', host));
   expect(host.textContent).toContain('正在暂停，当前步骤结束后暂停');
   state = { ...state, status: 'paused' };
@@ -432,13 +485,13 @@ it('暂停与继续使用同一个任务号，暂停不是完成，暂停时仍�
   expect(buttonNamed('暂停', host)).not.toBeNull();
 });
 
-it('首屏暂停状态在卡片和横幅中保留进度与继续入口', async () => {
+it('首屏暂停状态在卡片保留进度，在任务面提供继续入口', async () => {
   await open({ status: 'paused', job_id: 'one', checked: 2, total: 10 });
   const host = await mount(card({ toast: vi.fn() }));
   const banner = await mount(notice({ toast: vi.fn(), mode: 'notice' }));
   expect(host.textContent).toContain('已暂停');
   expect(banner.textContent).toContain('已暂停');
-  expect(buttonNamed('继续', host)).not.toBeNull();
+  expect(buttonNamed('继续', host)).toBeNull();
   expect(buttonNamed('继续', banner)).not.toBeNull();
   expect(buttonNamed('标准', banner)).not.toBeNull();
   expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('2');
@@ -449,7 +502,7 @@ it('模式切换失败保留服务端选中值和原位错误，可重试', asyn
   vi.stubGlobal('fetch', vi.fn(async (_path: string, init?: RequestInit) => init?.method === 'POST'
     ? { ok: false, status: 409, json: async () => ({ error: '任务已变化，请刷新后重试' }) }
     : { ok: true, status: 200, json: async () => ({ status: 'running', job_id: 'one', speed_mode: 'standard' }) }));
-  const host = await mount(card({ toast: vi.fn() }));
+  const host = await mount(notice({ toast: vi.fn(), mode: 'notice' }));
   await click(buttonNamed('标准', host));
   const slider = document.querySelector<HTMLInputElement>('input[type="range"]')!;
   await act(async () => {
@@ -493,17 +546,15 @@ it('扫描总量未知时显示已发现文件数，已知阶段显示完成数'
 });
 
 it('启动失败时提示弹窗保留模式选择和重试入口', async () => {
-  localStorage.removeItem(RESOURCE_NOTICE_KEY);
   await open({ status: 'idle' });
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
     ? { ok: false, status: 400, json: async () => ({ error: '媒体目录不可用' }) }
     : { ok: true, status: 200, json: async () => ({ status: 'idle' }) }));
   const host = await mount(card({ toast: vi.fn() }));
   await click(buttonNamed('同步媒体库', host));
-  await click(document.querySelector('dialog input[value="low"]'));
+  await chooseLow();
   await submit(document.querySelector('dialog form'));
   expect(document.querySelector('dialog')?.textContent).toContain('媒体目录不可用');
-  expect(document.querySelector<HTMLInputElement>('dialog input[value="low"]')?.checked).toBe(true);
-  expect(localStorage.getItem(RESOURCE_NOTICE_KEY)).toBeNull();
+  expect(document.querySelector<HTMLInputElement>('dialog input[type="range"]')?.value).toBe('0');
   expect(document.querySelector('[data-modal-confirm]')?.getAttribute('aria-busy')).toBeNull();
 });

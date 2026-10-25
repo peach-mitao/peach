@@ -17,7 +17,7 @@ export interface SetupQuestion {
   default: string;
   required: boolean;
   advanced: boolean;
-  input: 'folders' | 'choice' | 'text' | 'number';
+  input: 'folders' | 'folder' | 'choice' | 'text' | 'number';
   prefix: string;
   suffix: string;
   options?: SetupOption[];
@@ -27,6 +27,8 @@ export interface SetupQuestion {
 export interface MountDependency { name: string; message: string; download_url: string; download_label: string }
 
 export interface SetupQuestions {
+  peach_proxy?: import('../../bundle').PeachProxyState;
+  docker?: boolean;
   remote_reporting?: import('../../settings/remote-reporting-settings').RemoteReportingState;
   windows: boolean;
   standalone: boolean;
@@ -54,7 +56,7 @@ export interface SetupDone {
 
 export type SetupErrors = Partial<Record<string, string | string[]>>;
 
-export interface SetupFolder { path: string; location: string; root: string; cost?: 'free' | 'metered' | '' }
+export interface SetupFolder { path: string; location: string; root: string; library_id?: string; library?: string; cost?: 'free' | 'metered' | '' }
 
 export interface SetupSubmission {
   media_dir: SetupFolder[];

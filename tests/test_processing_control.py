@@ -17,6 +17,57 @@ from support.ledger import fresh_ledger
 
 
 class ProcessingControlTests(unittest.TestCase):
+    def test_skip_intent_is_shared_scoped_and_cleared_before_next_asset(self):
+        from peach.processing_control import ItemSkipped, processing_item
+        control = ProcessingControl(self.root / 'skip-control.json')
+        with control.bind('job', publish=lambda **values: None, active=lambda: True, db_path=self.db):
+            with self.assertRaises(ItemSkipped), processing_item(1):
+                other = ProcessingControl(control.path)
+                other.skip_current('job', 1)
+                control.refresh(force=True)
+                checkpoint('network')
+            with processing_item(2):
+                checkpoint('network')
+            self.assertIsNone(ProcessingControl(control.path).skip_asset_id)
+            with self.assertRaises(ValueError):
+                control.skip_current('stale', 2)
+
+    def test_skip_action_rejects_stale_asset_and_local_work(self):
+        contract = SimpleNamespace(library_processing_job=Mock())
+        state = {'job_id': 'current', 'status': 'running', 'current_asset_id': 1, 'current_action': 'querying_metadata'}
+        contract.library_processing_job.snapshot.return_value = state
+        with patch('peach.web_library_processing.settings_file.active', return_value=self.config):
+            for body in ({'asset_id': 2}, {'asset_id': True}, {'asset_id': '1'}):
+                with self.assertRaises(ValueError):
+                    w_library_processing(contract, {'action': 'skip_current', 'job_id': 'current', **body})
+            state['current_action'] = 'generating_preview'
+            with self.assertRaises(ValueError):
+                w_library_processing(contract, {'action': 'skip_current', 'job_id': 'current', 'asset_id': 1})
+
+    def test_skip_preserves_published_results_and_records_retryable_item(self):
+        from peach.processing_control import processing_item
+        from peach.library_processing import _collect_allowed
+        control = ProcessingControl(self.root / 'partial-skip.json')
+        remote, traffic = Mock(), Mock()
+        published, issues = [], []
+        def collect(*args, **options):
+            options['received']([('javdb', {'title': '已取得的资料'}, self.root / 'evidence.json')])
+            control.skip_current('job', 1)
+            checkpoint('network')
+        remote.collect.side_effect = collect
+        with control.bind('job', publish=lambda **values: None, active=lambda: True, db_path=self.db):
+            result = _collect_allowed(remote, traffic, {'id': 1}, 'ABC-123', ['title'], {'metadata'},
+                self.root, [], update=lambda **values: None,
+                issue=lambda row, message, **values: issues.append(values), answered=(),
+                received=published.extend, succeeded=lambda: not issues)
+            self.assertEqual(result, ([], 0))
+            self.assertEqual(published[0][1]['title'], '已取得的资料')
+            self.assertEqual(issues[0], {'action': 'skipped', 'retryable': True})
+            remote.reset.assert_called_once()
+            traffic.finish_work.assert_called_with('metadata', 'ABC-123', successful=False)
+            with processing_item(2):
+                checkpoint('network')
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -499,7 +550,7 @@ class ProcessingControlTests(unittest.TestCase):
         def scan(*_args, **kwargs):
             kwargs['progress'](1, 10)
             kwargs['progress'](2, 30)
-            return SimpleNamespace(files=2, total_bytes=30, new_ids=[])
+            return SimpleNamespace(files=2, total_bytes=30, new_ids=[], junk_isolated=1)
         with patch('peach.library_processing.scan_location', side_effect=scan), \
                 patch('peach.library_processing._online_source_root', return_value=self.root), \
                 patch('peach.library_processing._ffprobe_path', return_value=None), \
@@ -513,3 +564,4 @@ class ProcessingControlTests(unittest.TestCase):
         self.assertEqual([row['scanned_bytes'] for row in discovering], [10, 30, 40, 60])
         self.assertTrue(all(row['total'] == 0 for row in discovering))
         self.assertEqual((result.scanned, result.scanned_bytes), (4, 60))
+        self.assertEqual(result.junk_isolated, 2)

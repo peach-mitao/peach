@@ -189,6 +189,12 @@ class MetadataProviderTests(unittest.TestCase):
         }})
 
 class SourceIdentityTests(unittest.TestCase):
+    def test_explicit_release_suffix_is_not_satisfied_by_a_plain_or_different_product(self):
+        self.assertTrue(identifies_code("DANDY-851C", {"content_id": "1dandy00851c"}))
+        self.assertFalse(identifies_code("DANDY-851C", {"content_id": "1dandy00851"}))
+        self.assertFalse(identifies_code("DANDY-851C", {"content_id": "1dandy00851ch"}))
+        self.assertFalse(identifies_code("DANDY-851", {"content_id": "1dandy00851c"}))
+
     def test_prefixed_release_requires_matching_product_evidence(self):
         dvd = {"id": "JAC-040", "content_id": "118jac040",
                "source_url": "https://www.dmm.co.jp/mono/dvd/-/detail/=/cid=118jac040/"}

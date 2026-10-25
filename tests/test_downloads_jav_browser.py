@@ -3,19 +3,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import subprocess
 import tempfile
 import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
 from peach import downloads as dl
 from peach.api import create_app
 from peach.config import PROJECT_ROOT, PeachSettings
-from peach.jav_browser import CREDENTIAL, JavBrowser, code_key, source_page, source_sites
+from peach.jav_browser import CREDENTIAL, JavBrowser, code_key, identify_source, source_page, source_sites
 from support.ledger import fresh_ledger
+from support.conditions import missing_prerequisite
+from support.browser import chrome_executable
 
 HASH = "c9e15763f722f23e98a29decdfae341b98d53056"
 MAGNET = f"magnet:?xt=urn:btih:{HASH}&dn=ABC-123"
@@ -36,6 +41,8 @@ class BrowserTests(unittest.TestCase):
         self.remote = Mock()
         self.remote.submit.return_value = dl.RemoteStatus(dl.RUNNING, "remote-1", "ABC-123")
         self.downloads.providers = lambda key: self.remote
+        self.downloads.channel_catalog = lambda: {
+            "providers": [self.downloads._provider_state(key) for key in dl.PROVIDER_LABELS], "problems": []}
         self.downloads.config = dl.DownloadConfig("http://127.0.0.1:19798", {"115": "/115/Movies"})
         self.downloads.credentials.save(dl.CLOUDDRIVE_CREDENTIAL, {"token": "cloud-secret"})
         self.service.search = Mock(return_value={"items": [{"name": "ABC-123 1080p", "uri": MAGNET}]})
@@ -155,6 +162,35 @@ class BrowserTests(unittest.TestCase):
         self.downloads.store.save(task)
         self.assertEqual(self.status().json()["state"], "failed")
 
+    def test_status_projects_remote_progress_and_postprocessing_without_private_task_fields(self):
+        self.add()
+        self.service.process_one()
+        task = self.downloads.store.get(self.status().json()["task_id"])
+        for state, progress, label in ((dl.REMOTE_RUNNING, .425, "网盘下载中"),
+                                       (dl.REMOTE_RUNNING, None, "网盘下载中"),
+                                       (dl.REMOTE_DONE, 1.0, "网盘下载完成"),
+                                       (dl.LANDED, 1.0, "文件已可访问"),
+                                       (dl.INGESTED, 1.0, "已入库")):
+            task.state, task.progress = state, progress
+            task.postprocess_state = dl.POSTPROCESS_RUNNING
+            self.downloads.store.save(task)
+            status = self.status().json()
+            detail = status["download"]
+            self.assertEqual((detail["state"], detail["progress"], detail["label"]), (state, progress, label))
+            self.assertEqual(detail["postprocess_label"], "整理中")
+            self.assertEqual(detail["phase"], "organize" if state == dl.INGESTED else "ingest"
+                             if state in {dl.REMOTE_DONE, dl.LANDED} else "download")
+            self.assertEqual(set(detail), {"state", "label", "phase", "progress", "postprocess_state", "postprocess_label", "updated_at"})
+        tracked = self.service.rows.copy()
+        self.service.rows.clear()
+        task.state = dl.REMOTE_RUNNING
+        self.downloads.store.save(task)
+        self.assertEqual(self.status().json()["download"]["progress"], 1.0)
+        self.service.rows.update(tracked)
+        task.state, task.remote_done_at = dl.FAILED, "2026-10-24T13:25:00+00:00"
+        self.downloads.store.save(task)
+        self.assertEqual(self.status().json()["download"]["phase"], "ingest")
+
     def test_disable_and_rotation_revoke_tokens(self):
         rotated = self.configure("rotate").json()["token"]
         self.assertEqual(self.status().status_code, 401)
@@ -193,6 +229,101 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.add().status_code, 400)
         self.assertEqual(self.configure("enable").status_code, 400)
         self.service.search.assert_not_called()
+
+    def test_add_queues_without_remote_channel_probe_and_worker_validates(self):
+        self.downloads.channel_catalog = Mock(side_effect=ValueError("channel unavailable"))
+        self.assertEqual(self.add().json()["state"], "queued")
+        self.downloads.channel_catalog.assert_not_called()
+        self.service.process_one()
+        self.assertEqual(self.status().json()["state"], "failed")
+        self.service.search.assert_not_called()
+        self.remote.submit.assert_not_called()
+
+    def test_slow_submission_allows_status_and_retains_inflight_task_when_disabled(self):
+        self.add()
+        started, finish, queried = threading.Event(), threading.Event(), threading.Event()
+        states = []
+        def submit(*args):
+            started.set()
+            if not finish.wait(10):
+                raise RuntimeError("submission fixture did not finish")
+            return dl.RemoteStatus(dl.RUNNING, "remote-1", "ABC-123")
+        def query():
+            states.append(self.service.status("ABC-123")["state"])
+            queried.set()
+        self.remote.submit.side_effect = submit
+        worker = threading.Thread(target=self.service.process_one)
+        reader = threading.Thread(target=query)
+        worker.start()
+        try:
+            self.assertTrue(started.wait(5))
+            reader.start()
+            self.assertTrue(queried.wait(2), "status waited for remote submission")
+            self.assertEqual(states, ["searching"])
+            self.assertEqual(self.service.status("ABC-123")["stage"], "submitting")
+            self.assertEqual(self.add().json()["state"], "searching")
+            self.assertEqual(self.configure("disable").status_code, 200)
+        finally:
+            finish.set()
+            worker.join(5)
+            if reader.ident is not None:
+                reader.join(5)
+        self.assertFalse(worker.is_alive())
+        self.assertFalse(reader.is_alive())
+        status = self.service.status("ABC-123")
+        self.assertEqual(status["state"], "submitted")
+        self.remote.submit.assert_called_once()
+        self.assertEqual(len(self.downloads.store.submissions(status["task_id"])), 1)
+
+    def report(self, events, **kwargs):
+        return self.client.post("/api/jav-browser/errors", headers=self.script_headers,
+                                json={"events": events}, **kwargs)
+
+    def diagnostic(self, **changes):
+        return {"id": "7d58618d-b9b9-430e-bc28-1e9a81aa2e11", "at": "2026-10-24T13:25:00Z",
+                "kind": "timeout", "operation": "POST", "site": "missav", "code": "ABC-123",
+                "script_version": "0.4.1", "elapsed_ms": 60000, "status": 0, **changes}
+
+    def test_script_reports_are_scoped_bounded_deduplicated_and_use_local_logs(self):
+        import io
+        import zipfile
+        from peach import error_reporting, support_bundle
+        from peach.settings_file import PeachConfig
+        clock = patch("peach.jav_browser_diagnostics.time", Mock(monotonic=lambda: 100.0))
+        clock.start()
+        self.addCleanup(clock.stop)
+        path = "/api/jav-browser/errors"
+        self.assertEqual(self.client.post(path, json={"events": [self.diagnostic()]}).status_code, 401)
+        self.assertEqual(self.client.post(path, headers=self.script_headers, content=b"x" * 17000).status_code, 413)
+        with patch.object(error_reporting, "_log_dir", self.root / "logs"), patch("peach.remote_reporting.capture") as remote:
+            row = self.diagnostic(message="private-message", token="private-token", source_url=PAGE)
+            self.assertEqual(self.report([row]).json(), {"recorded": 1})
+            self.assertEqual(self.report([row]).json(), {"recorded": 0})
+            remote.assert_not_called()
+            log = next((self.root / "logs").glob("errors-*.log"))
+            text = log.read_text(encoding="utf-8")
+            value = json.loads(text)
+            self.assertEqual((value["stage"], value["kind"], value["code"], value["elapsed_ms"]),
+                             ("userscript", "timeout", "ABC-123", 60000))
+            for private in ("private-message", "private-token", PAGE, self.token, "cloud-secret"):
+                self.assertNotIn(private, text)
+            config = PeachConfig(self.root, self.root / "config.toml")
+            with zipfile.ZipFile(io.BytesIO(support_bundle.bundle_bytes(config=config))) as archive:
+                content = archive.read(next(name for name in archive.namelist() if name.endswith(log.name))).decode()
+                self.assertIn('"stage": "userscript"', content)
+        for change in ({"kind": []}, {"site": "https://private.example"}, {"code": "not a code"},
+                       {"elapsed_ms": True}, {"status": 999}, {"script_version": "secret"}, {"at": "yesterday"}):
+            self.assertEqual(self.report([self.diagnostic(**change)]).status_code, 400)
+        self.assertEqual(self.report([self.diagnostic()] * 11).status_code, 400)
+        with patch.object(error_reporting, "local_event", return_value=self.root / "log") as event:
+            for number in range(20):
+                row = self.diagnostic(id=f"00000000-0000-4000-8000-{number:012d}")
+                response = self.report([row])
+                if number < 19:
+                    self.assertEqual(response.status_code, 200)
+                else:
+                    self.assertEqual(response.status_code, 429)
+            self.assertEqual(event.call_count, 19)
 
     def test_read_only_instance_cannot_accept_jobs(self):
         self.downloads.available = False
@@ -265,6 +396,36 @@ class BrowserTests(unittest.TestCase):
         self.service.process_one()
         self.assertEqual(self.status().json()["state"], "failed")
 
+    def test_library_cloud_channel_submits_to_its_mapped_target(self):
+        key = "clouddrive:guangya:test-library"
+        self.downloads.channel_catalog = lambda: {"providers": [{
+            "key": key, "label": "收藏 · 光鸭云盘", "configured": True, "target": "/duck/收藏"}], "problems": []}
+        response = self.configure("rotate", key)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.script_headers["Authorization"] = "Bearer " + response.json()["token"]
+        self.add()
+        self.service.process_one()
+        task = self.downloads.store.get(self.status().json()["task_id"])
+        self.assertEqual((task.provider, task.target), (key, "/duck/收藏"))
+        self.assertEqual(self.downloads.snapshot()["tasks"][0]["provider_label"], "收藏 · 光鸭云盘")
+        with self.assertRaisesRegex(ValueError, "所选媒体库"):
+            self.downloads.submit(source=MAGNET, provider=key, target="/other")
+
+    def test_empty_or_removed_library_channel_does_not_choose_a_fixed_provider(self):
+        self.downloads.channel_catalog = lambda: {"providers": [], "problems": []}
+        state = self.service.settings()
+        self.assertEqual((state["provider"], state["providers"], state["active_provider"]), ("", [], "115"))
+        self.assertEqual(self.configure("rotate", "115").status_code, 400)
+
+    def test_product_identity_uses_the_registered_domains_and_detail_pattern(self):
+        dmm = dict(next(site for site in source_sites() if site["id"] == "dmm"))
+        dmm["domains"] = ["publisher.example"]
+        with patch("peach.jav_browser.source_sites", return_value=[dmm]):
+            self.assertEqual(identify_source("https://video.publisher.example/av/content/?id=ssis00519"), "SSIS-519")
+            self.assertEqual(identify_source("https://publisher.example/digital/videoa/-/detail/=/cid=ssis00519/"), "SSIS-519")
+            with self.assertRaises(ValueError):
+                identify_source("https://publisher.example/unrelated/ssis00519")
+
     def test_installer_is_available_without_an_admin_token(self):
         response = self.client.get("/integrations/peach-jav.user.js")
         self.assertEqual(response.status_code, 200)
@@ -280,6 +441,134 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(response.content).hexdigest(), release["files"]["peach-jav.user.js"])
         self.assertEqual(hashlib.sha256((directory / "jav-sites.json").read_bytes()).hexdigest(),
                          release["files"]["jav-sites.json"])
+
+    def test_official_product_identification_is_read_only_and_uses_catalog_rules(self):
+        cases = {
+            "https://video.dmm.co.jp/av/content/?id=ssis00519": "SSIS-519",
+            "https://video.dmm.co.jp/av/content/?id=1dandy00899": "DANDY-899",
+            "https://video.dmm.co.jp/av/content/?id=1fns00061": "FNS-061",
+            "https://video.dmm.co.jp/av/content/?id=1ssis00519": "SSIS-519",
+            "https://video.dmm.co.jp/av/content/?id=118abw00220": "ABW-220",
+            "https://video.dmm.co.jp/av/content/?id=1dandy00851c": "DANDY-851C",
+            "https://video.dmm.co.jp/av/content/?id=48midv00012ai": "MIDV-012AI",
+            "https://www.dmm.co.jp/digital/videoa/-/detail/=/cid=ssis00057/": "SSIS-057",
+            "https://www.dmm.co.jp/mono/dvd/-/detail/=/cid=h_086iqqq00026/": "IQQQ-026",
+            "https://www.mgstage.com/product/product_detail/300MIUM-1239/": "300MIUM-1239",
+            "https://www.mgstage.com/product/product_detail/259LUXU-1475/": "259LUXU-1475",
+            "https://www.mgstage.com/product/product_detail/104DANDY-851C/": "104DANDY-851C",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(identify_source(source), expected)
+                result = self.client.get("/api/jav-browser/identify", params={"source_url": source}, headers=self.script_headers)
+                self.assertEqual(result.status_code, 200, result.text)
+                self.assertEqual(result.json()["code"], expected)
+                self.assertEqual(result.json()["state"], "idle")
+        self.service.search.assert_not_called()
+        self.remote.submit.assert_not_called()
+        self.assertEqual(self.service.rows, {})
+        for source in ("https://video.dmm.co.jp/av/content/?id=opaque_cid", "https://video.dmm.co.jp/av/content/?id=ssis00519&id=abw00123",
+                       "https://unrelated.invalid/av/content/?id=ssis00519", "https://www.mgstage.com/search/?q=300MIUM-1239"):
+            with self.subTest(source=source):
+                result = self.client.get("/api/jav-browser/identify", params={"source_url": source}, headers=self.script_headers)
+                self.assertEqual(result.status_code, 400, result.text)
+        self.assertEqual(self.client.get("/api/jav-browser/identify", params={"source_url": next(iter(cases))}).status_code, 401)
+
+    def test_product_page_number_must_agree_with_the_registered_product(self):
+        source = "https://video.dmm.co.jp/av/content/?id=1dandy00899"
+        for hint, status in (("DANDY-899", 200), ("DANDY-899C", 400), ("ABW-899", 400)):
+            result = self.client.get("/api/jav-browser/identify", headers=self.script_headers,
+                                     params={"source_url": source, "code": hint})
+            self.assertEqual(result.status_code, status, result.text)
+        self.assertFalse(self.service.rows)
+        self.service.search.assert_not_called()
+        self.remote.submit.assert_not_called()
+
+    def test_explicit_product_suffix_is_preserved_through_the_download_submission(self):
+        code = "104DANDY-851C"
+        self.service.search.return_value = {"items": [
+            {"name": "104DANDY-851 1080p", "uri": MAGNET},
+            {"name": "104DANDY-851CH 1080p", "uri": MAGNET},
+            {"name": "104DANDY-851C 1080p", "uri": MAGNET}]}
+        self.assertEqual(self.add(code).status_code, 200)
+        self.service.process_one()
+        self.assertEqual(self.service.rows[code]["state"], "submitted")
+        self.service.search.assert_called_once_with(self.app.state.web_contract, {"code": code, "goal": "quality"})
+        self.assertEqual(self.downloads.store.get(self.service.rows[code]["task_id"]).code, code)
+
+    def test_explicit_product_suffix_does_not_adopt_the_plain_release(self):
+        self.service.search.return_value = {"items": [{"name": "DANDY-851 1080p", "uri": MAGNET}]}
+        self.add("DANDY-851C")
+        self.service.process_one()
+        self.assertEqual(self.service.rows["DANDY-851C"]["state"], "no_match")
+        self.remote.submit.assert_not_called()
+
+    def test_resource_identity_keeps_the_date_separator(self):
+        self.service.search.return_value = {"items": [{"name": "092415-001 1080p", "uri": MAGNET}]}
+        self.add("092415_001")
+        self.service.process_one()
+        self.assertEqual(self.service.rows["092415_001"]["state"], "no_match")
+        self.remote.submit.assert_not_called()
+
+    def test_resource_title_does_not_override_a_conflicting_primary_number(self):
+        self.service.search.return_value = {"items": [{"name": "XYZ-999 DANDY-851C 1080p", "uri": MAGNET}]}
+        self.add("DANDY-851C")
+        self.service.process_one()
+        self.assertEqual(self.service.rows["DANDY-851C"]["state"], "no_match")
+        self.remote.submit.assert_not_called()
+
+    def test_supported_explicit_numbers_use_the_same_status_contract(self):
+        for code in ("MKBD-S123", "MKD-S123", "092415_01", "092415_0001", "DANDY-851C", "MIDV-012AI"):
+            response = self.client.get("/api/jav-browser", params={"code": code}, headers=self.script_headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["code"], code)
+
+    def test_complete_userscript_uses_the_real_identification_endpoint(self):
+        node, chrome = shutil.which("node"), chrome_executable()
+        if not node or not chrome or not (PROJECT_ROOT / "frontend/node_modules/playwright-core").is_dir():
+            missing_prerequisite("用户脚本联合验收需要 Node、Chrome 和前端锁定依赖")
+        client, headers = self.client, self.script_headers
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if not self.path.startswith("/api/jav-browser/identify?"):
+                    self.send_error(404)
+                    return
+                response = client.get(self.path, headers=headers)
+                self.send_response(response.status_code)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(response.content)
+
+            def log_message(self, *_args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            result = subprocess.run([node, str(PROJECT_ROOT / "frontend/e2e/jav-userscript-contract.mjs"),
+                                     f"http://127.0.0.1:{server.server_port}",
+                                     str(PROJECT_ROOT / "web/integrations/peach-jav.user.js"), chrome],
+                                    capture_output=True, text=True, encoding="utf-8", timeout=120)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=5)
+        self.assertFalse(self.service.rows)
+        self.service.search.assert_not_called()
+        self.remote.submit.assert_not_called()
+
+    def test_userscript_bridge_requires_the_peach_session_and_contains_no_credential(self):
+        path = "/integrations/peach-userscript-bridge"
+        self.assertEqual(self.client.get(path).status_code, 401)
+        response = self.client.get(path, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(response.headers["x-frame-options"], "SAMEORIGIN")
+        self.assertNotIn(self.token, response.text)
+        self.assertNotIn("admin-secret", response.text)
 
     def test_shutdown_waits_for_search_and_leaves_a_resumable_job(self):
         self.add()

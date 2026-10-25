@@ -1,15 +1,18 @@
 ---
 name: peach-web-ui
-description: 在新增、修改或复核 Peach 页面、控件、提示、错误、数据面板、响应式布局或视觉样式时使用。
+description: 在新增、修改、预览或复核 Peach 页面、控件、提示、错误、数据面板、响应式布局或视觉样式时使用。
 ---
 
 # Peach Web UI 复用门槛
 
-最后复核：2026-10-18
-证据来源：现有 UI 契约、`docs/TESTING.md`、2026-09-19 本机会话工具记录、jakubkrehel/skills 与 emilkowalski/skills 摘录、`docs/reference-snapshots/open-claude-ui.md`。
+最后复核：2026-10-25
+证据来源：现有 UI 契约、`docs/TESTING.md`、本机重复文案与异步轮询回归记录、jakubkrehel/skills 与 emilkowalski/skills 摘录、`docs/reference-snapshots/open-claude-ui.md`、用户真实小样本预览、明确确认后测试及所有预览默认接入 `?edit` 的约定。
 
 ## 开工顺序
 
+先完整读取用户级 `peach-ui-consistency`（`~/.codex/skills/peach-ui-consistency/SKILL.md`），统一生产应用、官网与演示站的共用能力和验收。交付每个页面时，同时提供普通预览链接与启用编辑器的链接；两者指向同一代码、数据和路由，分别核对查看与编辑能力。
+
+0. 先检索项目记忆“界面预览与真实样本”，读取已有入口及覆盖清单。用户验收预览只用真实小样本及现有缓存；来源核验与交付门槛见 `docs/UI_PREVIEW.md`、`scripts/check_ui_preview.py`。来源未取得就停止交付，合成夹具仅用于隔离自动化测试。
 1. 读取相关页面、`frontend/src/ui-kit/`、`web/css/` 与 `tests/test_web_ui.py`，先找现成控件、token 和行为；按 `docs/DESIGN_GUIDELINES.md` 对应章节核对层级、容器、输入、滚动、手势与反馈，验收参数仍以本技能和现有契约为准。
 2. 外部产品被称为参考时同时执行 `peach-reference-evidence`；没有当前可复现证据就写 `未取得`，不补动画、间距或交互猜测。
 3. 视觉与交互先过 `docs/reference-snapshots/vercel-web-interface-guidelines.md` 的 Focus States、Forms、Animation、Content 四节，以及 `vercel-report-design.md`（即 `vercel.com/design.md`）的「Reject generated-design reflexes」；第三方逆向测量的 DESIGN.md（如 design-bites）不作证据。
@@ -47,6 +50,7 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 - 优先扩展 `frontend/src/ui-kit/`，不要为同一语义复制一次性 class 和模板。
 - 数据表统一用 TanStack Table 驱动 BoardUI `Table`，具备全集排序、分页、跨页选择与批量操作；工具栏、分页和批量栏按关注列表复用 `data-table.tsx`、`table-controls.tsx`、`DataTableFrame` 与 `SelectionDock`，默认每页 20 条，同页只保留当前表格的选择。
 - 管理页单面板分区的标题放在面板内，不在框外重复；多卡片分组可用框外标题。同级分区标题用 `text-title-2-medium`，加载态与内容态共用 500 字重、20px 字号和 26px 行高。
+- 控件高度只取 `--control-h-inline`／`-compact`／`--control-h`／`-large` 四档，同一行的同类控件同档；与文字同行的图标用 `--icon-inline`，单独图标按控件档取固定值；下拉不点开也要看得出在选什么（上方标签、触发键前缀或格子选择器的弹层标题三选一）。判据与坏例见 `docs/DESIGN_GUIDELINES.md` 第 2、10、11 节。
 - 颜色、字号、圆角、浮层层级只用 `:root` 已有 token；新 token 必须证明现有词汇无法表达。
 - 字重只有 400／500／600 三档，标题按既定层级选择 medium 或 semibold；圆角只用 `--badge-radius`／`--control-radius`／`--surface-radius`／`--floating-radius`／`--pill-radius` 加 `50%` 与 `0`，带边框容器里的头尾条用 `calc(… - 1px)` 保持同心。两者的字面值由 `tests/test_web_ui.py` 拒绝，归属判据见 `:root` 注释。
 - 单色优先：`--tungsten` 只给焦点环、链接、进度／数据与 Toggle 开态。主动作用 `--ink` 底 `--ground` 字且每屏最多一个。标题悬停下划线不变蓝，计数徽章中性灰。其它选择器引用 `--tungsten` 由 `tests/test_web_ui.py` 拒绝；实测见 `vercel-geist-semantics-measured.md`「选中态与开关色」「Button 全变体与状态」。
@@ -84,6 +88,10 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 
 ## 验收门槛
 
+- 监听预览端口前由启动入口调用 `check_ui_preview.py`，取得成功的 `real-ledger-subset` 报告；提供地址时说明已读约定、实际样本与已查看场景。缺少清单、伪造字段或关联、图像缓存缺失均拒收，不以进程就绪代替实图验收。
+- 交给用户的预览同时提供普通版和 `edit` 版链接，普通版在前；覆盖首次设置、登录、错误页、主界面及演示站。复用现有编辑器，按 `docs/UI_PREVIEW.md`「文案编辑」核对工作树归属、浮条与保存生效链路。
+- 预览前核对标题、说明、持久提示与操作回执的职责，同一事实只在承担该职责的位置说明；检查加载、空态、错误和完成态，避免重复说明与残余内容。
+- 界面改动先构建并保留可访问的预览，提供地址；只有用户明确确认当前预览后才能运行测试，确认绑定该预览与范围，范围内沿用。发出地址、用户继续纠正和等待超时都不算确认；收到界面新纠正时停止本任务运行中及排队的测试，修好后重新等待确认。确认前只做实现、预览构建与视觉查看；用户明确只要图片时才仅提供截图。
 - UI 标签、身份、反馈状态和搜索推荐属于语义契约：按实际影响验证数据层、组件或浏览器行为。
   推荐词上线前对真实 `/api/items` 验证至少一个命中，说明性后缀不得
   混入搜索词（坏例 `ABW 番号`，好例 `ABW`）。
@@ -92,13 +100,13 @@ description: 在新增、修改或复核 Peach 页面、控件、提示、错误
 相关分片通过且代码不再变化后运行一次 `auto`；它选择 `full` 时，不为每次局部修复重复全量测试。
 环境或资源失败先修环境并重跑失败域，最后只保留一次覆盖最终代码的有效 `auto`／`full` 记录。
 
-1. 先确认失败模式与现有覆盖，再选择组件、API／数据层或浏览器测试。纯文案、等价重构不补源码文本断言；通用规范由 lint 或集中扫描检查，具体分工见 `docs/TESTING.md`。
+1. 先确认失败模式与现有覆盖，再选择组件、API／数据层或浏览器测试；检查关闭后停止轮询时，在关闭及相关导航完成后记录请求基线，再观察有无新请求。纯文案、等价重构不补源码文本断言；通用规范由 lint 或集中扫描检查，具体分工见 `docs/TESTING.md`。
 2. Windows 从隔离 worktree 根运行 `& .\scripts\test.ps1`，默认 `auto`；按影响域补测，规则见 `peach-worktree`。
 3. 桌面与 390×844 的通用不变量（无横向溢出、无越出视口的元素、等待态会结束、控制台无错误、无失败请求）由 `web` 域的 `tests/test_web_e2e.py` 执行，不再逐页手测；新路由加进 `frontend/e2e/smoke.test.ts` 的 `ROUTES`，分区 tab 由用例逐格切过去再测。用例靠 `aria-busy` 与 `data-skeleton` 判断页面稳定，React 子树也要写：BoardUI 组件不带加载态，由 Peach 包装件补上。浏览器里发现的可判定问题（几何、computed style、状态切换），先在 `frontend/e2e/` 写出失败用例再修。页面迁到 React 时，旧源码断言按 ADR-0031 分三类再删：设计决定进 `frontend/e2e/design-*.test.ts` 或 lint，行为进 vitest，布局与运行期进冒烟。
 4. 浏览器取证只留给用例表达不了的：新布局首次成形、对齐外部参考、hover／focus 与观感判断。默认用 `agent-browser`（全局 CLI，装法 `npm i -g agent-browser`；
    环境变量 `AGENT_BROWSER_EXECUTABLE_PATH` 指向本机 Chrome，`AGENT_BROWSER_SESSION=<任务名>` 隔离会话）：`open <url>` → `wait <选择器>` → `snapshot -i -c -s <选择器>`／`get styles <选择器>`／`eval <js>`／`screenshot <文件>`，验完 `close`。
    Bash 工具里每条命令加 `</dev/null` 或把输出重定向到文件：接管道时 CLI 会等 stdin 直到工具超时。残留守护进程核对任务归属后按 PID 清理，不按进程名批量结束。
-   托盘服务发的是主检出的 `web/`：从 worktree 根另起实例，`python -m peach serve --host 127.0.0.1 --port 8099 --no-mdns --no-ledger-sync`（`PYTHONPATH=<worktree>/src`），验完停掉。点第一下之前先把 `peach.settings.v1` 的 `detailAutoplay` 置 false：用户就在这台机器旁，点进详情会出声。
+   托盘服务发的是主检出的 `web/`；界面预览复用项目记忆登记的启动入口，指定当前代码工作树及独立真实样本，通过来源核验后才监听端口。不要直接启动连接原账本的服务。进入详情前关闭 `peach.settings.v1.detailAutoplay`，避免发声。
 5. 接口字段、sidecar 取值和锚点算术走 Python 严格 HTTPS（项目 CA 加 `ProxyHandler({})`）核对，不进浏览器。浏览器只留给布局后才成立的事实：`getComputedStyle`、真实裁切几何、hover／focus 态和实际像素；用读源码顶替这几样是降精度。
 6. 一轮验收要读的页面状态先列全，再合成一次 `agent-browser eval` 取回一个 JSON。桌面应用的 Browser 面板只在要让用户当场看画面时才开：私有网络主机（`.local` 与 `10.`／`172.16-31.`／`192.168.` 段的局域网 IP 归同一类）在那里只能逐次授权，站点级放行只给只读工具，点击与执行 JS 拿不到常驻许可，每多发一次调用就多一次弹窗。
 7. 按 `peach-surfaces` 报告数据层、API、页面、契约、测试与文档各影响面；未部署不得称为生产已生效。

@@ -6,7 +6,7 @@
 import { RiCheckDoubleLine } from '@remixicon/react';
 
 import { Button } from '@/components/base/buttons/button';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 import { SelectionDock } from '../components/selection-dock';
 import type { DecisionStatus, ReviewGroup, ReviewGrouping, ReviewRow } from './review';
 import { commonReviewSources } from './review';
@@ -60,10 +60,10 @@ export function BulkToolbar(props: BulkToolbarProps) {
         </Select>
         {/* 只有一组时没什么可筛的：一个「全部分类」的下拉读起来像坏了。 */}
         {groups.length > 1 ? (
-          <Select aria-label={groupBy === 'field' ? '筛选字段分类' : '筛选当前分类'} size="sm"
+          <Select aria-label={groupBy === 'field' ? '筛选字段分类' : '筛选当前分类'} size="sm" prefix="分类"
             selectedKey={filter || '*'}
             onSelectionChange={(key) => { if (key !== null) onFilter(String(key) === '*' ? '' : String(key)) }}>
-            <SelectItem id="*">全部分类</SelectItem>
+            <SelectItem id="*">全部</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group.key} id={group.key}>
                 {`${group.title} · ${group.rows.length}`}
@@ -86,10 +86,10 @@ export function BulkToolbar(props: BulkToolbarProps) {
               {sources.map((source) => <SelectItem key={source} id={source}>{source}</SelectItem>)}
             </Select>
           ) : null}
-          <Button variant="primary" size="small" disabled={busy || !selected.size || !approvable}
-            onClick={() => onRun('approved')}>通过所选</Button>
           <Button variant="danger" size="small" disabled={busy || !selected.size}
             onClick={() => onRun('rejected')}>拒绝所选</Button>
+          <Button variant="primary" size="small" disabled={busy || !selected.size || !approvable}
+            onClick={() => onRun('approved')}>通过所选</Button>
           <Button variant="ghost" size="small" disabled={busy}
             onClick={() => onSelected(new Set())}>取消选择</Button>
           {feedback

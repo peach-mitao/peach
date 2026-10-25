@@ -17,6 +17,81 @@ from tests.support.gitrepo import seed_repository
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class NpmInstallTests(unittest.TestCase):
+    def test_transport_errors_retry_the_same_locked_install(self):
+        from scripts import npm_ci
+        for style in ("error", "ERR!"):
+            for code in ("ECONNRESET", "ETIMEDOUT", "EAI_AGAIN"):
+                with self.subTest(style=style, code=code):
+                    interrupted = subprocess.CompletedProcess([], 152, "", f"npm {style} code {code}\n")
+                    clean = subprocess.CompletedProcess([], 0, "installed\n", "")
+                    run, sleep = mock.Mock(side_effect=[interrupted, clean]), mock.Mock()
+                    self.assertEqual(npm_ci.install(ROOT, ignore_scripts=True, runner=run, sleep=sleep), 0)
+                    self.assertEqual(run.call_count, 2)
+                    self.assertEqual(run.call_args_list[0], run.call_args_list[1])
+                    self.assertIn("--ignore-scripts", run.call_args.args[0])
+                    self.assertEqual(run.call_args.kwargs["cwd"], ROOT)
+                    sleep.assert_called_once_with(5)
+
+    def test_transport_exhaustion_keeps_the_failure(self):
+        from scripts import npm_ci
+        run = mock.Mock(return_value=subprocess.CompletedProcess([], 152, "", "npm error code ECONNRESET\n"))
+        sleep = mock.Mock()
+        self.assertEqual(npm_ci.install(ROOT, runner=run, sleep=sleep), 152)
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [mock.call(5), mock.call(10)])
+
+    def test_lock_and_lifecycle_failures_are_not_retried(self):
+        from scripts import npm_ci
+        for code in ("EUSAGE", "ELIFECYCLE", "EINTEGRITY"):
+            with self.subTest(code=code):
+                run = mock.Mock(return_value=subprocess.CompletedProcess(
+                    [], 1, "a lifecycle mentioned ECONNRESET", f"npm error code {code}\n"))
+                sleep = mock.Mock()
+                self.assertEqual(npm_ci.install(ROOT, runner=run, sleep=sleep), 1)
+                run.assert_called_once()
+                sleep.assert_not_called()
+
+
+def _docker_context_includes(rules, relative):
+    """按 .dockerignore 末条命中者为准判定路径是否进入构建上下文，父目录命中也算。"""
+    parts = relative.split('/')
+    included = True
+    for negated, pattern in rules:
+        if any(pattern.fullmatch('/'.join(parts[:depth])) for depth in range(1, len(parts) + 1)):
+            included = negated
+    return included
+
+
+class DockerBuildContextTests(unittest.TestCase):
+    def test_build_stage_receives_every_bundled_runtime_resource(self):
+        from peach.bundle_resources import data_files
+        rules = []
+        for line in (ROOT / '.dockerignore').read_text(encoding='utf-8').splitlines():
+            if line.strip() and not line.startswith('#'):
+                negated, pattern = line.startswith('!'), line.lstrip('!').rstrip('/')
+                regex = re.escape(pattern).replace(r'\*\*', '.*').replace(r'\*', '[^/]*')
+                rules.append((negated, re.compile(regex)))
+        stage = (ROOT / 'Dockerfile').read_text(encoding='utf-8').split(' AS build\n', 1)[1].split('\nFROM ', 1)[0]
+        with tempfile.TemporaryDirectory() as folder:
+            app = Path(folder)
+            for line in stage.splitlines():
+                words = line.split()
+                if not words or words[0] != 'COPY' or words[1].startswith('--'):
+                    continue
+                *sources, destination = words[1:]
+                for source in sources:
+                    origin = ROOT / source
+                    files = [origin] if origin.is_file() else [p for p in origin.rglob('*') if p.is_file()]
+                    for path in files:
+                        if not _docker_context_includes(rules, path.relative_to(ROOT).as_posix()):
+                            continue
+                        target = app / destination / (path.name if origin.is_file() else path.relative_to(origin))
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(b'')
+            data_files(app)
+
+
 class NpmAuditTests(unittest.TestCase):
     def test_docker_dependency_updates_have_a_takeover_recipe(self):
         for manifest in ('Dockerfile', '.github/actions/actionlint/Dockerfile'):
@@ -120,8 +195,11 @@ class DependencyPolicyTests(unittest.TestCase):
             "pystray": "pystray",
             "resvg_py": "resvg-py",
             "sentry_sdk": "sentry-sdk",
+            "smbclient": "smbprotocol",
+            "smbprotocol": "smbprotocol",
             "starlette": "starlette",
             "torznab": "torznab",
+            "tzlocal": "tzlocal",
             "uvicorn": "uvicorn",
             "watchdog": "watchdog",
             "wordninja_enhanced": "wordninja-enhanced",

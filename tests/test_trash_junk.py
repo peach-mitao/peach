@@ -10,6 +10,7 @@ from unittest import mock
 from pathlib import Path
 
 from support.ledger import fresh_ledger
+from peach import web_batch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -149,7 +150,8 @@ class TrashJunkTests(unittest.TestCase):
         self.addCleanup(connection.close)
         if candidates is None:
             candidates = {int(row["id"]) for row in rows}
-        with mock.patch.object(self.trash_junk, "LOCATION_ROOT_DECLARATIONS", {"local": (str(self.root),)}):
+        with mock.patch.object(self.trash_junk, "LOCATION_ROOT_DECLARATIONS", {"local": (str(self.root),)}), \
+                mock.patch.object(web_batch, "LOCATION_ROOT_DECLARATIONS", {"local": (str(self.root),)}):
             return self.trash_junk.purge_reviewed(connection, rows, candidates)
 
     def execute(self, sql, *params):
@@ -308,17 +310,26 @@ class TrashJunkTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(),b'confirmed promotion')
         self.assertFalse(quarantine.exists())
 
-    def test_a_drive_isolation_uses_a_bounded_normal_component(self):
+    def test_pikpak_isolation_uses_a_bounded_normal_component(self):
         from pathlib import PureWindowsPath
         from peach import web_batch
-        original=PureWindowsPath('a:\\作品\\'+'长'*200+'.jpg')
+        original=PureWindowsPath('p:\\作品\\'+'长'*200+'.jpg')
         with mock.patch.object(web_batch.os,'rename') as rename:
-            quarantine=web_batch._quarantine_media(original)
+            quarantine=web_batch._quarantine_media(original,location='pikpak')
         self.assertEqual(quarantine.parent,original.parent)
         self.assertLess(len(quarantine.name),80)
         self.assertFalse(quarantine.name.startswith('.'))
         self.assertEqual(quarantine.suffix,'.peach-quarantine')
         rename.assert_called_once_with(original,quarantine)
+
+    def test_local_a_drive_does_not_select_pikpak_isolation(self):
+        from pathlib import PureWindowsPath
+        from peach import web_batch
+        original = PureWindowsPath('A:\\Movies\\attachment.jpg')
+        with mock.patch.object(web_batch.os, 'rename'):
+            quarantine = web_batch._quarantine_media(original, location='local')
+        self.assertTrue(quarantine.name.startswith('.attachment.jpg.peach-purge-'))
+        self.assertEqual(quarantine.suffix, '.tmp')
 
     def test_only_exact_tool_quarantine_names_are_skipped(self):
         from peach import scan
@@ -326,7 +337,7 @@ class TrashJunkTests(unittest.TestCase):
             self.assertFalse(scan.is_sidecar(name,frozenset()))
 
     def test_download_site_navigation_images_keep_content_attachments(self):
-        from peach.web_batch import _promo_name_reason
+        from peach.junk import _promo_name_reason
         self.assertIn('须核验视频内容', _promo_name_reason('.mp4', 'A:\\作品\\社 區 最 新 情 報.mp4', 15089802))
         self.assertEqual(_promo_name_reason('.mp4', 'A:\\作品\\社区最新情报合集.mp4', 15089802), '')
         self.assertEqual(_promo_name_reason('.mp4', 'A:\\作品\\社區最新情報.mp4', 32 * 1024**2), '')
@@ -340,7 +351,7 @@ class TrashJunkTests(unittest.TestCase):
             self.assertEqual(_promo_name_reason(Path(name).suffix, 'B:\\作品\\' + name, 50000), '')
 
     def test_tiny_promotion_cards_require_exact_names_and_content_review(self):
-        from peach.web_batch import _promo_name_reason
+        from peach.junk import _promo_name_reason
         for name in ('51风流', '代开实习证明', '扫码约炮', '探花社区'):
             self.assertIn('须核验图片内容', _promo_name_reason('.png', 'A:\\作品\\'+name+'.png', 1400))
             self.assertFalse(_promo_name_reason('.png', 'A:\\作品\\'+name+'.png', 4097))
@@ -348,7 +359,7 @@ class TrashJunkTests(unittest.TestCase):
             self.assertFalse(_promo_name_reason('.mp4', 'A:\\作品\\'+name+'.mp4', 1400))
 
     def test_site_cards_require_matching_parent_and_small_png_content_review(self):
-        from peach.web_batch import _promo_name_reason
+        from peach.junk import _promo_name_reason
         name='｜91porn｜真实国产原创亚洲最火成人网站，强势回归｜'
         source='A:\\待确认\\My Pack\\213\\'+name+'\\'+name+'.png'
         self.assertIn('须核验图片内容', _promo_name_reason('.png', source, 49130))
@@ -360,7 +371,7 @@ class TrashJunkTests(unittest.TestCase):
             self.assertFalse(_promo_name_reason(suffix,path,size))
 
     def test_information_wmv_requires_exact_name_size_and_content_review(self):
-        from peach.web_batch import JUNK_VIDEO_MAX_BYTES, _promo_name_reason
+        from peach.junk import JUNK_VIDEO_MAX_BYTES, _promo_name_reason
         for name in ('最新情報', '最 新 情 报'):
             source = 'B:\\云下载\\DOCP-324\\' + name + '.wmv'
             self.assertIn('须核验视频内容', _promo_name_reason('.wmv', source, 90867046))
@@ -419,7 +430,7 @@ class TrashJunkTests(unittest.TestCase):
         self.assertEqual(trashable, {4, 5})
 
     def test_promotion_names_come_from_the_lexicon_file(self):
-        from peach import web_batch
+        from peach import junk as web_batch
         lexicon = self.root / 'promo_attachment_names.json'
         lexicon.write_text('{"rules": [{"reason": "测试推广卡，须核验图片内容", "suffixes": [".png"], '
                            '"max_bytes": 4096, "names": ["测试推广卡"]}]}', encoding='utf-8')

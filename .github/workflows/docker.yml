@@ -1,0 +1,41 @@
+name: Docker
+
+# 只验收不发布：镜像的版本号与 edge 由 release.yml 在 GitHub Release 成功后推送，
+# edge 始终指向最新发布的版本（ADR-0121）。
+on:
+  pull_request:
+    paths: [Dockerfile, .dockerignore, compose.yaml, 'src/**', 'migrations/**', 'web/**', 'resources/**', pyproject.toml, uv.lock, setup.py, MANIFEST.in, scripts/smoke_docker.py, .github/workflows/docker.yml]
+  push:
+    branches: [master]
+    paths: [Dockerfile, .dockerignore, compose.yaml, 'src/**', 'migrations/**', 'web/**', 'resources/**', pyproject.toml, uv.lock, setup.py, MANIFEST.in, scripts/smoke_docker.py, .github/workflows/docker.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    name: Linux amd64 镜像验收
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - uses: docker/setup-buildx-action@v4
+      - name: 构建候选镜像
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: longmeidao/peach:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: 验收临时容器
+        run: python3 scripts/smoke_docker.py longmeidao/peach:test

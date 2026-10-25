@@ -1,10 +1,12 @@
 # Docker 部署
 
-Peach 的 Docker 镜像用于单人 VPS 与 NAS，通过浏览器管理。发布镜像在 GitHub Container Registry，地址是 [ghcr.io/peach-mitao/peach](https://github.com/peach-mitao/peach/pkgs/container/peach)，标签为 `latest`。当前镜像目标为 `linux/amd64`；ARM NAS 尚未验收。2026-10-15 在 WSL 的独立 Docker Engine 中，用正式锁定依赖通过空数据卷初始化、非 root、鉴权、配置保存、合成视频扫描、HTTP Range、配置重载与重启持久化验收。
+Peach 的 Docker 镜像用于单人 VPS 与 NAS，通过浏览器管理，镜像仓库为 [longmeidao/peach](https://hub.docker.com/r/longmeidao/peach)。每次发布推送版本号标签，并把 `edge` 更新为同一镜像；版本号标签对应发布提交。当前镜像目标为 `linux/amd64`；ARM NAS 尚未验收。2026-10-15 在 WSL 的独立 Docker Engine 中，用正式锁定依赖通过空数据卷初始化、非 root、鉴权、配置保存、合成视频扫描、HTTP Range、配置重载与重启持久化验收。
 
 Docker 不使用桌面托盘。在网页配置中添加媒体目录时，只需填写容器内实际目录，例如 `/media`；Peach 自动保存所需的路径配置。Windows 安装包、macOS 源码运行和 Docker 的入口分别见 [README](../README.md#下载与使用)。
 
 ## 数据与媒体
+
+NAS 的 SMB 共享也可作为[SMB 媒体来源](SMB.md)直接连接，按账号权限读写，无需挂入媒体目录；Peach 数据卷仍单独保留。
 
 `/data` 保存配置、SQLite 数据库、凭据和图片缓存，必须使用数据卷保存，重建容器时保留该卷。媒体目录单独挂到 `/media`；默认只读，扫描和播放不需要媒体写权限。整理、移动与删除需要使用者明确提供可写挂载。
 
@@ -16,9 +18,27 @@ CloudDrive2 与 Peach 分别运行。NAS 已有 CloudDrive2 时直接复用；�
 
 ## 首次运行与访问
 
+### 飞牛、其他 NAS 与局域网访问
+
+浏览器在另一台电脑上时，访问地址使用 NAS 的局域网 IP。Compose 默认的 `127.0.0.1` 只允许宿主机访问；容器显示运行成功不代表局域网端口已开放。
+
+在 `compose.yaml` 同目录创建 `.env`，将下面的示例 IP 和目录换成 NAS 的实际值。`PEACH_PORT` 是浏览器使用的宿主机端口，可自行选择：
+
+```dotenv
+PEACH_BIND=192.0.2.10
+PEACH_PORT=8900
+PEACH_MEDIA_ROOT=/srv/videos
+```
+
+`192.0.2.10` 是文档示例地址，不能直接用于部署。NAS 管理界面支持 Compose 环境变量时，也可在那里填写这三个值。应用配置并重新创建容器后，打开 `http://<NAS 局域网 IP>:<PEACH_PORT>`。不要在另一台电脑上用 `127.0.0.1` 访问 NAS。
+
+登录口令由 Peach 随机生成，没有通用初始密码。在 NAS 的容器管理界面打开 Peach 容器终端，运行 `peach token` 查看；通过宿主机 Compose 终端时运行 `docker compose exec peach peach token`。登录后设置访问密码。
+
+### 初始化与管理
+
 使用 Compose 启动后，Peach 会为全新数据卷创建配置、数据库和随机登录口令。已有配置保持原值；如果已有数据库但缺少配置文件，服务拒绝启动，需要恢复配置文件。初始化日志只显示口令文件位置。
 
-在容器终端运行 `peach token` 取得登录口令，在浏览器登录后设置访问密码。配置页要求登录，并且连接必须来自容器本机或私有网络。反向代理不需要填写地址：直接连入的回环或私有地址就是被信任的那一跳，页面上的 https 来源用这一跳给出的协议和主机，配置请求仍要求它身后的客户端在私有网络。公网直连送来的转发头不采用。通过配置页保存后，服务自动读取配置；勾选扫描时会启动资料处理。
+在容器终端运行 `peach token` 取得登录口令，在浏览器登录后设置访问密码。配置页要求登录，并且连接必须来自容器本机或私有网络；携带代理转发头的管理请求会被拒绝。通过配置页保存后，服务自动读取配置；勾选扫描时会启动资料处理。
 
 容器内 HTTP 端口固定为 8900，访问端口在 Compose 设置。默认只发布到宿主机 `127.0.0.1`，远程访问使用私有 VPN 或 SSH 隧道。需要局域网访问时，通过 `PEACH_BIND` 绑定宿主机的局域网地址，并设置访问密码。公网托管边界见 [安全说明](../SECURITY.md)。Docker 镜像不提供多人账号或租户隔离。
 
@@ -37,6 +57,8 @@ docker compose exec peach python -c "from peach import settings_file as s; print
 默认模板只包含初始值，不包含已有部署的媒体目录和自定义设置。用默认模板整份替换会同时替换这些值，可能使已有影片无法读取。只更新说明时可以替换注释，保留配置值；需要替换整个文件时，先备份并逐项核对差异。
 
 以下说明供手动编辑配置或在多台 Peach 之间对应已有媒体目录时参考。网页保存时会处理 `[media.locations]` 和 `[media.mounts]`：前者保存数据库中的路径前缀，后者保存实际读取文件的目录。Peach 数据库在所有系统上都使用 Windows 格式保存影片路径；Linux 无需创建相同的盘符或目录。
+
+全新配置不预设媒体目录。盘符不决定来源，115 与 PikPak 均可选择任意已挂载目录；容器内填写实际路径即可。文档中的盘符只是数据库路径示例。
 
 以下三个路径各有用途。假设宿主机媒体目录为 `/srv/videos`，Compose 将它挂到容器 `/media`：
 
@@ -66,7 +88,9 @@ local = '/media'
 
 ## 硬件转码（AMD / Intel VAAPI）
 
-Linux 首次重编码时会探测实际可用的硬件编码器，整片 MP4 与 HLS 分片共享探测结果。Intel 优先用 QSV 硬解再编码；探测不到 QSV 时，AMD / Intel 使用 VAAPI。存在 NVIDIA 设备时探测 NVENC。探测失败的后端在当前服务进程内不再尝试，重启服务后重新探测。封装复制不需要硬件探测。
+Linux 首次重编码时会探测实际可用的硬件编码器，整片 MP4 与 HLS 分片共享探测结果。AMD / Intel 使用 VAAPI；存在 NVIDIA 设备时探测 NVENC。探测失败的后端在当前服务进程内不再尝试，重启服务后重新探测。封装复制不需要硬件探测。
+
+镜像自带 OpenCV（`vision` 依赖组）和头像取景与比对用的人脸模型（YuNet 为 MIT，SFace 为 Apache-2.0，许可证在同一目录），位于 `/app/tools/face-models`，由 `PEACH_FACE_MODELS` 指向，容器不联网也能用。构建镜像时按固定地址下载并校验 SHA-256。
 
 镜像包含 Debian FFmpeg、Mesa VAAPI 驱动与 `vainfo`。AMD 宿主机需加载 `amdgpu` 和对应固件，并提供 `/dev/dri/renderD*`。Intel 需在自定义镜像内安装适配设备的 VAAPI 驱动；Mesa 驱动不代表已覆盖全部 Intel GPU。将下面的条目合入 Compose 的 `services.peach`，设备路径按宿主机调整：
 
@@ -84,15 +108,40 @@ Linux 首次重编码时会探测实际可用的硬件编码器，整片 MP4 与
 
 | 环境变量 | 值与用途 |
 | --- | --- |
-| `PEACH_TRANSCODE_BACKEND` | 默认 `auto`；可设为 `qsv`、`vaapi`、`nvenc` 或 `software`。指定硬件后端仍会验证能否编码，失败回退软件。 |
-| `PEACH_QSV_DEVICE` | QSV 使用的渲染节点。留空时沿用 `PEACH_VAAPI_DEVICE`，再留空则按名称依次探测 `/dev/dri/renderD*`。 |
+| `PEACH_TRANSCODE_BACKEND` | 默认 `auto`；可设为 `vaapi`、`nvenc` 或 `software`。指定硬件后端仍会验证能否编码，失败回退软件。 |
 | `PEACH_VAAPI_DEVICE` | 指定容器内渲染节点；留空时按名称依次探测 `/dev/dri/renderD*`，使用第一个可用节点。 |
 
-QSV 只对 H.264、HEVC、VP9、AV1 与 MPEG-2 使用硬解，顺序为 `h264_qsv` 硬解加 `scale_qsv`、软件解码加 `hwupload` / `h264_qsv`。其余编码从软件解码加 QSV 编码开始。VAAPI 尝试顺序为硬件解码加 `scale_vaapi` / `h264_vaapi`、软件解码加 `hwupload` / `h264_vaapi`、`libx264`。解码能力还受 GPU 型号、片源编码与位深限制；硬件编码可用不能证明每个片源都能硬件解码。QSV 需要容器内的 Intel Media Driver 与 oneVPL，并把宿主机 `/dev/dri` 交给容器；Debian 自带的 Mesa 驱动不提供 QSV。NVIDIA 透传还需宿主机驱动及 NVIDIA Container Toolkit，Mesa 不提供 CUDA / NVENC。
+VAAPI 尝试顺序为硬件解码加 `scale_vaapi` / `h264_vaapi`、软件解码加 `hwupload` / `h264_vaapi`、`libx264`。解码能力还受 GPU 型号、片源编码与位深限制；硬件编码可用不能证明每个片源都能硬件解码。NVIDIA 透传还需宿主机驱动及 NVIDIA Container Toolkit，Mesa 不提供 CUDA / NVENC。
 
-出现 CPU 高占用时，先查看日志中的「转码硬件后端」和「转码硬件探测失败」。完成日志「整片转码完成」或「HLS 分片完成」后的 `qsv` 表示使用 QSV 硬解和编码，`qsv-encode` 表示软件解码加 QSV 编码，`vaapi` 表示使用 VAAPI 硬解和编码，`vaapi-encode` 表示软件解码加 VAAPI 编码，`libx264` 表示软件转码。再在同一容器、同一用户下检查设备权限与 `vainfo --display drm --device /dev/dri/renderD128` 的结果。`No VA display found` 需结合驱动和设备权限排查，不能仅凭节点存在排除权限问题。
+出现 CPU 高占用时，先查看日志中的「转码硬件后端」和「转码硬件探测失败」。完成日志「整片转码完成」或「HLS 分片完成」后的 `vaapi` 表示使用硬件解码和编码，`vaapi-encode` 表示软件解码加硬件编码，`libx264` 表示软件转码。再在同一容器、同一用户下检查设备权限与 `vainfo --display drm --device /dev/dri/renderD128` 的结果。`No VA display found` 需结合驱动和设备权限排查，不能仅凭节点存在排除权限问题。
 
 `ffmpeg -hwaccels` 列出构建支持的硬件加速方式，`ffmpeg -h decoder=h264` 等列出对应解码器支持的硬件设备。VAAPI 解码通过普通解码器的硬件加速接口启用，`ffmpeg -decoders` 中没有名为 `vaapi` 的解码器不代表缺少 VAAPI 解码支持。参数含义见 [FFmpeg 官方文档](https://ffmpeg.org/ffmpeg.html#Advanced-Video-options)。目标 GPU 的实际解码、GPU 占用与播放效果需要在部署机器上验证。
+
+## amane 刮削站点
+
+镜像随附按 `tools/amane-bridge/uv.lock` 构建的 amane `0.20.0` 独立环境，位于 `/app/amane-runtime`，通过 `PEACH_AMANE_RUNTIME` 定位。全新 `/data` 卷可直接调用刮削站点，无需在首次运行时安装依赖。桥通过独立子进程调用，站点请求仍使用所选连接方式。
+
+运行环境与镜像一起更新，`manifest.json` 记录固定 revision、版本和解释器相对路径。镜像构建阶段与最终运行阶段都会执行 `bridge.py --self-check`，离线载入运行时与全部 Peach 开放站点类。此检查不发站点请求；来源网络是否可达需在部署环境验证。环境损坏时重新拉取并创建对应镜像，保留 `/data` 卷。
+
+`/app/amane-runtime` 同时包含 GPL-3.0 许可证、来源说明和 `amane-corresponding-source.zip`；归档包含固定 revision 的完整 amane 源码、Peach 桥、锁文件、构建入口，以及 zhconv 和 certifi 的固定源码。依赖许可证保留在独立环境内。
+
+## 导出诊断报告
+
+Docker 部署使用网页「Peach 配置 → 系统诊断 → 下载诊断报告」，无需桌面托盘。已登录的私有网络客户端可以下载；通过反向代理或公网访问时，改用容器内导出。
+
+网页不可用时，在 Compose 文件所在目录执行下面的命令，在正在运行的 `peach` 服务容器中生成脱敏 ZIP。目标文件已存在会拒绝覆盖；再次导出时同时更换两条命令中的文件名。
+
+```text
+docker compose exec peach python -m peach.support_bundle /tmp/peach-support.zip
+```
+
+将 ZIP 复制到当前目录：
+
+```text
+docker compose cp peach:/tmp/peach-support.zip ./peach-support.zip
+```
+
+报告包含版本、运行日志和任务状态，不包含数据库、媒体或配置原文。发送前检查内容，脱敏范围见 [日志与诊断](DIAGNOSTICS.md)。容器不连接宿主机桌面托盘；管理与诊断入口均在网页和 CLI 中提供。
 
 ## 更新与范围
 
@@ -102,6 +151,6 @@ Linux 容器不读取用户电脑上的浏览历史，也不包含交互式浏�
 
 ## 镜像发布
 
-构建使用官方 Python `3.14.8-slim-trixie` 与 uv `0.13.1`，依赖由 `uv.lock` 锁定，应用以非 editable 包安装，包含 Web 与迁移资源。镜像以 UID/GID 1000 运行，内置 FFmpeg、FFprobe 和 OpenSSL。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
+构建使用官方 Python `3.14.8-slim-trixie` 与 uv `0.13.1`，应用依赖与 amane 独立依赖分别由各自的 `uv.lock` 锁定。应用以非 editable 包安装，包含 Web 与迁移资源。镜像以 UID/GID 1000 运行，内置 FFmpeg、FFprobe、OpenSSL 和 amane 独立环境。uv 与 Git 只用于构建阶段。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
 
-手动运行 GitHub Actions 的 `Docker 打包`：先构建并运行临时卷验收，通过后把镜像推到 `ghcr.io/peach-mitao/peach:latest`。这次发布使用工作流的 `GITHUB_TOKEN`。ARM 镜像需通过同等运行验收后再加入发布。
+GitHub Actions 的 `Docker` 工作流先构建并运行临时卷验收，通过后发布。仓库变量 `DOCKERHUB_USERNAME` 和机密 `DOCKERHUB_TOKEN` 用于 Docker Hub 发布；机密只保存在 GitHub，不进入项目文件。未配置发布身份时仍执行构建验收。ARM 镜像需通过同等运行验收后再加入发布。

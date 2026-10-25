@@ -52,7 +52,26 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 15_000 });
       const host = page.getByRole('radiogroup');
       assert.equal(await host.count(), 0, '局域网单选收在高级设置里，首屏不露出');
+      // 数据目录决定占用哪块磁盘，首屏就露出，并带选择文件夹的键。
+      // 落盘位置跟着服务进程的 PEACH_DATA_ROOT 走；不是临时 Peach 数据目录就不往下提交。
+      assert.equal(await page.locator('#f-data_root').inputValue(), dataRoot);
+      await page.getByRole('button', { name: '选择数据目录' }).waitFor({ state: 'visible' });
       assert.deepEqual((await layout(page)).offenders, []);
+
+      const proxyMode = page.locator('[aria-labelledby="setup-proxy-title"] button[aria-haspopup="listbox"]');
+      await proxyMode.scrollIntoViewIfNeeded();
+      await proxyMode.focus();
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await proxyMode.click();
+      await page.getByRole('option', { name: '自定义', exact: true }).waitFor();
+      await page.getByRole('option', { name: '自定义', exact: true }).click();
+      await page.locator('[data-trigger="Select"]').waitFor({ state: 'detached' });
+      const proxy = page.getByLabel('代理地址', { exact: true });
+      await proxy.fill('http://proxy.invalid');
+      const mobileForm = VIEWPORTS.find((candidate) => candidate.name === 'mobile')!;
+      await page.setViewportSize({ width: mobileForm.width, height: mobileForm.height });
+      assert.deepEqual((await layout(page)).offenders, []);
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
       // React Aria 的原生 input 是视觉隐藏的，点击落在外面那层画出来的开关上，所以按状态设值。
       await page.getByRole('switch', { name: '访问密码' }).setChecked(false, { force: true });
@@ -65,8 +84,6 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       const port = page.locator('#f-port');
       await port.waitFor({ state: 'visible' });
       const defaultPort = await port.inputValue();
-      // 落盘位置跟着服务进程的 PEACH_DATA_ROOT 走；不是临时 Peach 数据目录就不往下提交。
-      assert.equal(await page.locator('#f-data_root').inputValue(), dataRoot);
       await port.fill('70000');
       // 折叠关上，验证出错时它自己展开。
       await page.getByText('高级设置', { exact: true }).click();
@@ -84,6 +101,9 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       await port.waitFor({ state: 'visible' });
       assert.equal(await port.getAttribute('aria-invalid'), 'true');
       assert.equal(await port.inputValue(), '70000');
+      assert.equal(await proxy.getAttribute('aria-invalid'), 'true');
+      assert.equal(await proxy.inputValue(), 'http://proxy.invalid');
+      await page.getByText('请填写带端口的 HTTP 或 SOCKS 代理地址', { exact: true }).waitFor({ state: 'visible' });
       await page.getByText(/目录不存在/).first().waitFor({ state: 'visible' });
       await page.getByText('端口要是 1 到 65535 之间的整数').waitFor({ state: 'visible' });
       await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '媒体库 1');
@@ -91,6 +111,7 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       // 改对：已有目录、默认端口，不扫描。
       await folder.fill(media);
       await port.fill(defaultPort);
+      await proxy.fill('socks5h://user:private-proxy@127.0.0.1:17890');
       const selectedData = join(dataRoot, 'custom-data');
       await page.locator('#f-data_root').fill(selectedData);
       const accepted = page.waitForResponse((response) => response.url().endsWith('/api/setup')
@@ -98,9 +119,13 @@ describe('首次运行页', { skip: origin && media && dataRoot ? false : '只�
       await page.getByRole('button', { name: '完成设置' }).click();
       const acceptedResponse = await accepted;
       assert.equal(acceptedResponse.status(), 200, await acceptedResponse.text());
+      assert.deepEqual(JSON.parse(await readFile(join(selectedData, 'secrets/follow/peach-proxy.json'), 'utf8')), {
+        mode: 'proxy', proxy: 'socks5h://user:private-proxy@127.0.0.1:17890',
+      });
 
       // 完成态：入口链接拿到焦点，扫描没有排队，运行信息收起，口令不在页面上。
       await page.getByRole('heading', { name: '设置完成' }).waitFor({ state: 'visible' });
+      assert.equal((await page.content()).includes('private-proxy'), false);
       const entry = page.getByRole('link', { name: '进入 Peach' });
       await entry.waitFor({ state: 'visible' });
       assert.ok(await entry.evaluate((element) => element === document.activeElement), '入口链接拿到焦点');

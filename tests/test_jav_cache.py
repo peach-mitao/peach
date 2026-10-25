@@ -1,6 +1,7 @@
 """公开快照的发行边界、磁盘复用和并发原子读取。"""
 from datetime import date, datetime, timezone
 import tempfile
+import json
 from pathlib import Path
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +20,17 @@ def stamp(day):
 class PublicationCacheTests(unittest.TestCase):
     def api(self, root, now):
         return PublicAPI(cache_root=root, wallclock=lambda: now[0], clock=lambda: now[0], sleeper=lambda _: None)
+
+    def test_legacy_rule_snapshot_is_not_reused_or_deleted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = PublicSnapshots(Path(directory).resolve(), clock=lambda: 100)
+            store.save('movie:EXM-001', {'id':'Exact'}, '2020-01-01')
+            path = store.path('movie:EXM-001')
+            saved = json.loads(path.read_text(encoding='utf-8'))
+            saved['version'] = 1
+            path.write_text(json.dumps(saved), encoding='utf-8')
+            self.assertIsNone(store.load('movie:EXM-001'))
+            self.assertTrue(path.is_file())
 
     def test_public_api_reuses_movie_comments_and_resources_after_restart(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -207,8 +207,9 @@ def exit_code(report: dict) -> int:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--number", required=True, help="规范化番号")
-    parser.add_argument("--sites", required=True, help="逗号分隔的站名，见 SITES")
+    parser.add_argument("--self-check", action="store_true", help="离线载入运行时与全部站点类")
+    parser.add_argument("--number", default="", help="规范化番号")
+    parser.add_argument("--sites", default="", help="逗号分隔的站名，见 SITES")
     parser.add_argument("--language", default="jp", choices=(*LANGUAGES, ""),
                         help="amane 的 Language；空串表示不指定")
     parser.add_argument("--proxy", default=None,
@@ -227,6 +228,18 @@ def main(argv: list[str] | None = None, runtime: Runtime | None = None,
         args = parse_args(argv)
     except SystemExit as exc:
         return EXIT_USAGE if exc.code else 0
+    if args.self_check:
+        try:
+            active = runtime or load_runtime()
+            for site in SITES:
+                active.crawler(site)
+            report = {"ok": True, "amane": {"version": active.version}, "sites": list(SITES)}
+            code = EXIT_FOUND
+        except Exception as error:
+            report = {"ok": False, "error": f"amane 加载失败：{type(error).__name__}: {error}"}
+            code = EXIT_FAILED
+        print(json.dumps(report, ensure_ascii=False), file=out, flush=True)
+        return code
     number = str(args.number or "").strip()
     sites = [part.strip() for part in str(args.sites).split(",") if part.strip()]
     unknown = [site for site in sites if site not in SITES]

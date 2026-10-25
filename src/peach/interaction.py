@@ -57,39 +57,6 @@ def _windows_reveal(path: Path) -> None:
             ole32.CoUninitialize()
 
 
-def mpv_executable() -> str | None:
-    """本机 mpv。先看 PATH，Windows 再看安装器常用目录。"""
-    import shutil
-    found = shutil.which("mpv")
-    if found:
-        return found
-    if os.name != "nt":
-        return None
-    local = os.environ.get("LOCALAPPDATA", "")
-    program = os.environ.get("ProgramFiles", "")
-    for candidate in (Path(local) / "Programs" / "mpv" / "mpv.exe", Path(program) / "mpv" / "mpv.exe"):
-        if candidate.is_file():
-            return str(candidate)
-    return None
-
-
-def launch_mpv(target: str, *, executable: str | None = None) -> None:
-    """在运行 Peach 的电脑上用 mpv 打开一个文件或播放地址。
-
-    参数只有可执行文件和这一个目标，不经过 shell。窗口留在服务端那台机器上。
-    """
-    program = mpv_executable() if executable is None else executable
-    if not program:
-        raise FileNotFoundError("这台电脑上没有找到 mpv")
-    kwargs: dict = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL,
-                    "stderr": subprocess.DEVNULL, "close_fds": True}
-    if os.name == "nt":
-        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        kwargs["start_new_session"] = True
-    subprocess.Popen([program, target], **kwargs)
-
-
 def reveal_path(path: Path) -> bool:
     """在本机文件管理器中定位文件；不支持的平台返回 False。"""
     if os.name == "nt":

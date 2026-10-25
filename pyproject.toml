@@ -51,9 +51,11 @@ dependencies = [
   "socksio==1.0.0",
   "starlette==1.8.0",
   "torznab==0.2.1",
+  "tzlocal==5.4.4",
   "uvicorn==0.54.0",
   "watchdog==6.0.0",
   "zeroconf==0.151.5",
+  "smbprotocol==1.17.0",
 ]
 
 [project.urls]

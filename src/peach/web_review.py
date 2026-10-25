@@ -17,9 +17,9 @@ from typing import Protocol
 from urllib.parse import quote
 
 from .avatar_provider import install_entity_avatar
-from .catalog_rules import is_korean_mib_code, normalise_code_key
+from .catalog_rules import current_tags, is_korean_mib_code, normalise_code_key
 from .code_creators import collect
-from .entities import normalize_entity_name, resolve_entity, resolve_entity_id
+from .entities import resolve_entity, resolve_entity_id, upsert_asset_entity
 from .field_owners import (
     EXPECTED_REVISION_FIELD,
     owner_label,
@@ -920,6 +920,7 @@ def w_review_decision(contract: ReviewContract, body):
             claimed_tags = [tag.strip() for tag in str(body.get("tags", "")).split("|") if tag.strip()]
             if (claimed_creator and claimed_creator != creator) or (claimed_tags and claimed_tags != tags):
                 raise ValueError("提交内容与所选资料不一致，未保存")
+            tags = current_tags(tags)
             if not creator or not tags:
                 raise ValueError("approved creator review requires creator and tags")
             entity = resolve_entity(connection, "creator", creator)
@@ -946,25 +947,15 @@ def w_review_decision(contract: ReviewContract, body):
                         f"{REVIEW_APPLY_LIMIT}，请在页面上显式勾选后再通过"
                     )
             payload = json.dumps({"review_item": item_key}, ensure_ascii=False)
-            connection.executemany(
-                "INSERT OR IGNORE INTO asset_tag(asset_id,tag,confidence,source) "
-                "VALUES(?,?,0.6,'vision_creator_review')",
-                [(asset_id, tag) for asset_id in asset_ids for tag in tags],
-            )
             for tag in tags:
-                # 标签实体只解析一次，关系走 executemany。
-                # 逐条调用 upsert_asset_entity 会在持写锁期间跑上千次往返，把其它写入全挡住。
-                normalized = normalize_entity_name(tag)
-                connection.execute(
-                    "INSERT INTO entity(kind,canonical_name,normalized_name,metadata_json,"
-                    "created_at,updated_at) VALUES('tag',?,?,'{}',?,?) "
-                    "ON CONFLICT(kind,normalized_name) DO UPDATE SET "
-                    "canonical_name=excluded.canonical_name,updated_at=excluded.updated_at",
-                    (tag, normalized, now, now),
-                )
-                entity_id = connection.execute(
-                    "SELECT id FROM entity WHERE kind='tag' AND normalized_name=?", (normalized,),
-                ).fetchone()[0]
+                # 每种标签只解析一次，批量关系沿用同一身份与统一名称。
+                entity_id = upsert_asset_entity(connection, kind='tag', name=tag, asset_id=asset_ids[0], role='tag',
+                    source='vision_creator_review', confidence=0.6, metadata={'review_item': item_key},
+                    now=now, update_entity_metadata=False)
+                canonical = connection.execute('SELECT canonical_name FROM entity WHERE id=?', (entity_id,)).fetchone()[0]
+                connection.executemany(
+                    "INSERT OR IGNORE INTO asset_tag(asset_id,tag,confidence,source) VALUES(?,?,0.6,'vision_creator_review')",
+                    [(asset_id, canonical) for asset_id in asset_ids])
                 connection.executemany(
                     "INSERT INTO asset_entity(asset_id,entity_id,role,source,confidence,"
                     "metadata_json,first_seen_at,last_seen_at) "

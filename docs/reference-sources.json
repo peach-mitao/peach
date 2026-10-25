@@ -260,12 +260,13 @@
     },
     {
       "id": "fiu758-studio-logo-discovery",
-      "cadence": "monthly",
+      "cadence": "manual",
+      "volatile": true,
       "name": "AV研究所厂牌分类与 Logo 发现证据",
       "url": "https://fiu758.com/?cat=37",
       "snapshot": "docs/reference-snapshots/fiu758-studio-logo-discovery.md",
       "checked_on": "2026-08-27",
-      "sha256": "18c384344c0889885ba236081d75db5675902f78d88859230290b57c8ed3d427",
+      "sha256": "30c61c9894e465badf897451248d1103cffdcac6d2c8b4dcab6bdced2b721c1f",
       "role": "只作厂牌日文分类名和 Logo 候选发现；第三方博客不直接升级为 Peach 真相或已安装素材。",
       "consumers": [
         "scripts/normalize_studio_logos.py"
@@ -273,12 +274,12 @@
     },
     {
       "id": "rule34-follow-tags-and-collections",
-      "cadence": "monthly",
+      "cadence": "manual",
       "name": "Rule34 标签类型与 Rule34Video 合集证据",
       "url": "https://rule34.xxx/css/desktop.css?46",
       "snapshot": "docs/reference-snapshots/rule34-follow-tags-and-collections.md",
       "checked_on": "2026-09-08",
-      "sha256": "ecb09c351d934ac18f1cb8f335d4e20102a3e4f57a7922c58e157b8cc8f70197",
+      "sha256": "b301be02d6c547866363128f48345d5721b809b4ea64de171926802c3df9fc63",
       "role": "关注页标签类型配色、Rule34Video 内容标签补全与跨作者合集排除证据。",
       "consumers": [
         "src/peach/follow_sources.py",
@@ -292,12 +293,12 @@
     },
     {
       "id": "f95-masked-gofile-media",
-      "cadence": "monthly",
+      "cadence": "manual",
       "name": "F95 掩码链接与 Gofile 文件列表证据",
       "url": "https://f95zone.to/assets/js/masked.js",
       "snapshot": "docs/reference-snapshots/f95-masked-gofile-media.md",
       "checked_on": "2026-08-28",
-      "sha256": "b4fa8a7c397f330ed2f2880fe0dbc1bc7a34e47bb91d935e5f42f2c9502f206d",
+      "sha256": "0bcd972cb7c89880151d84d976c4c29ffaa5b5b8122c8aa6ac41111afdc37911",
       "role": "F95 Cookie 解掩码、文件站目标校验、Gofile 文件列表未取得说明与 Mix 计数边界。",
       "consumers": [
         "src/peach/follow_sources.py",

@@ -46,7 +46,7 @@ export function SetupPage() {
     <AuthCard title="欢迎使用 Peach" lede="添加媒体库，开始整理馆藏。" busy={view.kind === 'loading'}>
       {view.kind === 'denied' ? <Note tone="error">请在运行 Peach 的这台电脑上打开设置。</Note> : null}
       {view.kind === 'failed'
-        ? <Note tone="error" action={<Button variant="secondary" onClick={retry}>重试</Button>}>{view.message}</Note>
+        ? <Note tone="error" action={<Button variant="secondary" onClick={retry}>立即重试</Button>}>{view.message}</Note>
         : null}
       {view.kind === 'form' ? <>
         <Button variant="secondary" className="self-start" onClick={() => setRestoring((current) => !current)}>

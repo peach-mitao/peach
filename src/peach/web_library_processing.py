@@ -9,6 +9,26 @@ from .processing_control import control_for, initial_estimate, valid_mode, mode_
 
 ACTIVE = ('running', 'pausing', 'paused')
 
+#: 回给页面的状态字段：`frontend/src/react/library-processing/library-processing.ts` 的
+#: `LibraryProcessingData`，加上对应任务中心那一行的 `run_id`。状态文件里另有续跑用的 `local_metadata`（带完整媒体路径）、
+#: `asset_ids`、`completed_metadata` 等大字段，页面一个都不读；照发的话每页每 10 秒轮询一次
+#: 就是两兆多，还把媒体路径交给了浏览器。续跑与重试读的是 `_current()`，不经过这里。
+PUBLIC_FIELDS = frozenset({
+    'run_id', 'metadata_only', 'status', 'outcome', 'speed_mode', 'eta_seconds_min', 'eta_seconds_max', 'eta_kind',
+    'eta_scope', 'eta_initial', 'job_id', 'stage', 'requested_stage', 'steps', 'checked', 'total',
+    'scanned', 'scanned_bytes', 'identified', 'candidates', 'auto_applied', 'covers', 'previews',
+    'performer_aliases', 'performer_avatars', 'performer_profile_conflicts',
+    'performer_profile_failed', 'error', 'issue_count', 'paused_count', 'issue_preview',
+    'issues_log', 'issues_truncated', 'retryable_asset_ids', 'notes', 'current_asset_id',
+    'current_asset_name', 'current_action', 'current_started_at', 'last_progress_at', 'stalled',
+    'waited_seconds', 'completed_at', 'current_source', 'skip_requested',
+})
+
+
+def public_state(state):
+    """任务状态的页面投影：只留 `PUBLIC_FIELDS`。"""
+    return {key: value for key, value in state.items() if key in PUBLIC_FIELDS}
+
 
 def _current(contract):
     live = contract.library_processing_job.snapshot()
@@ -16,28 +36,48 @@ def _current(contract):
 
 
 def q_library_processing(contract, _args):
+    if _args.get('estimate') == '1':
+        config = settings_file.active()
+        body = {'stage': _args.get('stage') or ALL_STAGES}
+        if 'asset_ids' in _args:
+            body['asset_ids'] = json.loads(_args['asset_ids'])
+        _, asset_ids, stage = _processing_request(contract, config, {}, body)
+        from .processing_inventory import preview
+        return {'traffic': preview(config, contract.db_path, stage, asset_ids, _args.get('inventory'))}
     state = decorate(_current(contract))
     control = control_for(settings_file.active())
     control.refresh(force=True)
     state['speed_mode'] = control.mode
+    state['skip_requested'] = (state.get('status') == 'running' and state.get('current_asset_id') is not None
+                               and control.skip_asset_id == state.get('current_asset_id'))
     from .media_processing_policy import metadata_only
     state['metadata_only'] = metadata_only(settings_file.active().directory('state'))
     from .job_recovery import read
     recovery = read(contract.db_path, 'library-processing')
     if state.get('status') not in ACTIVE and recovery.get('status') == 'blocked':
-        state.update(status='failed', error=f"任务未能自动恢复：{recovery.get('error') or '请重新发起任务'}")
+        state.update(status='failed', outcome='interrupted', error=f"任务未能自动恢复：{recovery.get('error') or '请重新发起任务'}")
     # 上一趟任务的状态文件里没有这个字段，而它那份完整清单还在磁盘上：按 job_id
     # 推出地址补回去，界面才有得可给。
     if state.get('issue_count') and state.get('job_id') and not state.get('issues_log'):
         path = issues_path(settings_file.active(), str(state['job_id']))
         if path.is_file():
             state['issues_log'] = str(path)
-    return state
+    return public_state(state)
+
+
+def _request_skip(control, previous, body):
+    asset_id = body.get('asset_id')
+    if (isinstance(asset_id, bool) or not isinstance(asset_id, int)
+            or previous.get('status') != 'running'
+            or previous.get('current_asset_id') != asset_id
+            or previous.get('current_action') not in ('querying_metadata', 'fetching_cover')):
+        raise ValueError('当前影片已变化或不在采集外部资料，请刷新后重试')
+    control.skip_current(str(body['job_id']), asset_id)
 
 
 def _control_action(contract, config, body):
     action = body['action']
-    if action not in ('pause', 'resume', 'set_speed'):
+    if action not in ('pause', 'resume', 'set_speed', 'skip_current'):
         raise ValueError('处理动作无效')
     previous = _current(contract)
     job_id = body.get('job_id')
@@ -51,6 +91,9 @@ def _control_action(contract, config, body):
     control.refresh(force=True)
     if job_id:
         control.select_job(str(job_id))
+    if action == 'skip_current':
+        _request_skip(control, previous, body)
+        return q_library_processing(contract, {})
     if action == 'set_speed':
         mode = valid_mode(body.get('speed_mode'))
         control.request(action, mode=mode)
@@ -175,10 +218,10 @@ def w_library_processing(contract, body, *, resume=False):
         return _control_action(contract, config, body)
     previous = _current(contract)
     if previous.get('status') in ACTIVE and not resume:
-        return previous
+        return public_state(previous)
     retry_ids, asset_ids, stage = _processing_request(contract, config, previous, body)
     if retry_ids is not None and not retry_ids:
-        return previous
+        return public_state(previous)
     mode = valid_mode(control_for(config).mode if resume else
                       (body or {}).get('speed_mode') or control_for(config).mode)
     control_for(config).request('set_speed', mode=mode)
@@ -201,8 +244,8 @@ def w_library_processing(contract, body, *, resume=False):
     # 人会以为点错了。
     labels = {ALL_STAGES: '准备处理', SCAN_STAGE: '准备扫描文件', COLLECT_STAGE: '准备采集资料',
               METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图'}
-    return contract.library_processing_job.start(
+    return public_state(contract.library_processing_job.start(
         work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
                                     **initial_estimate(config, contract.db_path, stage, asset_ids or retry_ids, mode)},
         recovery={'stage': stage, 'speed_mode': mode, **({'asset_ids': asset_ids or retry_ids}
-                                    if asset_ids is not None or retry_ids is not None else {})})
+                                    if asset_ids is not None or retry_ids is not None else {})}))

@@ -61,15 +61,15 @@ POSTPROCESS_RUNNING = "running"
 POSTPROCESS_COMPLETE = "complete"
 POSTPROCESS_FAILED = "failed"
 POSTPROCESS_LABELS = {
-    POSTPROCESS_NOT_REQUESTED: "未开始", POSTPROCESS_PENDING: "待后处理",
-    POSTPROCESS_QUEUED: "已排队", POSTPROCESS_RUNNING: "后处理中",
-    POSTPROCESS_COMPLETE: "后处理完成", POSTPROCESS_FAILED: "后处理失败",
+    POSTPROCESS_NOT_REQUESTED: "整理未开始", POSTPROCESS_PENDING: "等待整理",
+    POSTPROCESS_QUEUED: "整理已排队", POSTPROCESS_RUNNING: "整理中",
+    POSTPROCESS_COMPLETE: "整理完成", POSTPROCESS_FAILED: "整理失败",
 }
 
 STATE_LABELS = {
-    CANDIDATE: "候选", SELECTED: "已选定", SUBMITTED: "已提交", REMOTE_RUNNING: "远端进行中",
-    REMOTE_DONE: "远端完成", LANDED: "已落地", INGESTED: "已入库",
-    FAILED: "失败", CANCELLED: "已取消", STALLED: "停滞",
+    CANDIDATE: "待选择的资源", SELECTED: "已选定", SUBMITTED: "已提交", REMOTE_RUNNING: "网盘下载中",
+    REMOTE_DONE: "网盘下载完成", LANDED: "文件已可访问", INGESTED: "已入库",
+    FAILED: "失败", CANCELLED: "已取消", STALLED: "长时间未完成",
 }
 #: 轮询要看的状态。远端完成与已落地还在等账本里出现那个文件。
 TRACKED_STATES = frozenset({SUBMITTED, REMOTE_RUNNING, REMOTE_DONE, LANDED})
@@ -85,15 +85,15 @@ class FailureKind:
 
 
 FAILURE_KINDS: dict[str, FailureKind] = {kind.key: kind for kind in (
-    FailureKind("config", "配置与认证"),
-    FailureKind("quota", "配额耗尽"),
-    FailureKind("rejected", "资源被拒"),
+    FailureKind("config", "配置或登录有误"),
+    FailureKind("quota", "下载额度已用完"),
+    FailureKind("rejected", "网盘拒绝下载该资源"),
     FailureKind("invalid_link", "链接无效"),
-    FailureKind("no_source", "无源或停滞"),
-    FailureKind("duplicate", "重复"),
-    FailureKind("not_landed", "落地未见"),
-    FailureKind("mismatch", "内容不符"),
-    FailureKind("network", "瞬时网络", retryable=True),
+    FailureKind("no_source", "没有可用下载源或进度长时间未更新"),
+    FailureKind("duplicate", "下载任务已存在"),
+    FailureKind("not_landed", "目标目录中未找到下载文件"),
+    FailureKind("mismatch", "下载内容与目标作品不符"),
+    FailureKind("network", "网络暂时不可用", retryable=True),
 )}
 
 
@@ -289,17 +289,39 @@ class DownloadTask:
     postprocess_run_id: int | None = None
     postprocessed_at: str | None = None
 
+    @property
+    def location(self) -> str:
+        """渠道关联的媒体来源。"""
+        return self.provider.split(":", 2)[1] if self.provider.startswith("clouddrive:") else self.provider
+
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "DownloadTask":
         return cls(**{name: row[name] for name in row.keys()})
 
-    def payload(self) -> dict:
+    def payload(self, asset: dict | None = None) -> dict:
+        from .catalog_rules import jav_fallback_title, release_code_from_filename, same_release_code
+        from .media_sources import SOURCES
+
         kind = FAILURE_KINDS.get(self.failure or "")
+        codes = {code for name in (self.remote_name, self.display_name, self.title)
+                 if name and (code := release_code_from_filename(name))}
+        display_code = self.code or (asset or {}).get("code") or (next(iter(codes)) if len(codes) == 1 else None)
+        matched_asset = asset if asset and (not display_code or not asset.get("code")
+                                            or same_release_code(display_code, asset["code"])) else {}
+        display_title = next((str(matched_asset.get(field) or "").strip()
+                              for field in ("catalog_title", "original_title")
+                              if str(matched_asset.get(field) or "").strip()), "")
+        if not display_title:
+            display_title = (self.title or "").strip() if jav_fallback_title(self.title, display_code) else ""
+        if not display_title:
+            display_title = next((title for name in (self.display_name, self.remote_name)
+                                  if (title := jav_fallback_title(name, display_code))), "")
         return {
             "id": self.id, "info_hash": self.info_hash, "provider": self.provider,
-            "provider_label": PROVIDER_LABELS.get(self.provider, self.provider),
+            "provider_label": SOURCES[self.location].name if self.location in SOURCES else self.provider,
             "source_uri": self.source_uri, "display_name": self.display_name,
             "target": self.target, "code": self.code, "title": self.title, "origin": self.origin,
+            "display_code": display_code, "display_title": display_title,
             "state": self.state, "state_label": STATE_LABELS.get(self.state, self.state),
             "failure": self.failure, "failure_label": kind.label if kind else None,
             "failure_detail": self.failure_detail,
@@ -362,6 +384,26 @@ class DownloadStore:
                 "SELECT * FROM download_task ORDER BY updated_at DESC, id DESC LIMIT ?",
                 (max(1, min(int(limit), 500)),)).fetchall()
         return [DownloadTask.from_row(row) for row in rows]
+
+    def page(self, limit: int, before_id: int | None = None) -> list[DownloadTask]:
+        """按提交顺序读取一页；状态更新时间不影响分页位置。"""
+        where = " WHERE id<?" if before_id is not None else ""
+        args = (before_id, limit) if before_id is not None else (limit,)
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM download_task{where} ORDER BY id DESC LIMIT ?", args).fetchall()
+        return [DownloadTask.from_row(row) for row in rows]
+
+    def display_assets(self, tasks: list[DownloadTask]) -> dict[int, dict]:
+        """一页任务已绑定作品的只读标题资料。"""
+        ids = sorted({task.asset_id for task in tasks if task.asset_id is not None})
+        if not ids:
+            return {}
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                "SELECT id,code,catalog_title,original_title FROM asset "
+                f"WHERE id IN ({','.join('?' for _ in ids)})", ids).fetchall()
+        return {row["id"]: dict(row) for row in rows}
 
     def due(self, now: float) -> list[DownloadTask]:
         states = tuple(sorted(TRACKED_STATES))
@@ -488,6 +530,7 @@ class DownloadConfig:
     #: PikPak 根目录对应的数据库路径前缀；115 使用推送发现中配置的云端路径前缀。
     pikpak_root: str = ""
     wait_hours: int = DEFAULT_WAIT_HOURS
+    problems: tuple[str, ...] = ()
 
     def payload(self) -> dict:
         return {"clouddrive_address": self.clouddrive_address, "targets": dict(self.targets),
@@ -500,10 +543,19 @@ def clean_address(raw) -> str:
         return ""
     if "://" not in text:
         text = "http://" + text
-    parts = urlsplit(text)
+    message = "CloudDrive2 地址只写协议、主机和端口，例如 http://127.0.0.1:19798"
+    if len(text) > 2048 or "\\" in text or any(char.isspace() or ord(char) < 32 for char in text):
+        raise ValueError(message)
+    try:
+        parts = urlsplit(text)
+        port = parts.port
+    except ValueError:
+        raise ValueError("CloudDrive2 地址的端口必须是 1–65535 的整数，IPv6 地址须放在方括号内") from None
     if parts.scheme not in {"http", "https"} or not parts.hostname or parts.path not in {"", "/"} \
-            or parts.query or parts.username or parts.password:
-        raise ValueError("CloudDrive2 地址只写协议、主机和端口，例如 http://127.0.0.1:19798")
+            or parts.query or parts.fragment or parts.username is not None or parts.password is not None:
+        raise ValueError(message)
+    if port == 0 or parts.netloc.endswith(":"):
+        raise ValueError("CloudDrive2 地址的端口必须是 1–65535 的整数")
     return f"{parts.scheme}://{parts.netloc}"
 
 
@@ -520,19 +572,20 @@ class DownloadSettings:
             return DownloadConfig()
         except (OSError, ValueError):
             LOGGER.warning("云下载设置读不出来，按默认值跑：%s", self.path)
-            return DownloadConfig()
+            return DownloadConfig(problems=("云下载设置无法读取，请检查设置文件或重新填写。",))
         if not isinstance(payload, dict):
-            return DownloadConfig()
+            return DownloadConfig(problems=("云下载设置格式不符，请检查设置文件或重新填写。",))
         try:
-            return self._parse(payload, declared_roots=None)
+            return self._parse(payload, declared_roots=None, saved=True)
         except ValueError:
             LOGGER.warning("云下载设置有不合法的值，按默认值跑：%s", self.path)
-            return DownloadConfig()
+            return DownloadConfig(problems=("云下载设置含有无效值，请检查目标目录和等待上限。",))
 
-    def _parse(self, body: dict, *, declared_roots) -> DownloadConfig:
+    def _parse(self, body: dict, *, declared_roots, saved: bool = False) -> DownloadConfig:
+        from .media_sources import SOURCE_REGISTRY
         targets = {}
         raw_targets = body.get("targets") if isinstance(body.get("targets"), dict) else {}
-        for key in PROVIDER_LABELS:
+        for key in (source.id for source in SOURCE_REGISTRY if source.cloud):
             value = str(raw_targets.get(key) or "").strip()
             if value:
                 targets[key] = normalise_target(value)
@@ -549,7 +602,15 @@ class DownloadSettings:
             raise ValueError("等待上限要写成小时数") from error
         if not 1 <= hours <= MAX_WAIT_HOURS:
             raise ValueError(f"等待上限在 1 到 {MAX_WAIT_HOURS} 小时之间")
-        return DownloadConfig(clean_address(body.get("clouddrive_address")), targets, root, hours)
+        problems = ()
+        try:
+            address = clean_address(body.get("clouddrive_address"))
+        except ValueError as error:
+            if not saved:
+                raise
+            address = str(body.get("clouddrive_address") or "").strip()
+            problems = (str(error),)
+        return DownloadConfig(address, targets, root, hours, problems)
 
     def save(self, body: dict, declared_roots) -> DownloadConfig:
         if not isinstance(body, dict):
@@ -588,6 +649,7 @@ class DownloadService:
         providers: Callable[[str], OfflineProvider], landing: "Landing",
         available: bool = True, clock: Callable[[], float] = time.time,
         after_ingest: Callable[[DownloadTask], None] | None = None,
+        channel_catalog: Callable[[], dict] | None = None,
     ):
         self.store = DownloadStore(database)
         self.settings = DownloadSettings(state_root)
@@ -597,6 +659,7 @@ class DownloadService:
         self.available = bool(available)
         self.clock = clock
         self.after_ingest = after_ingest
+        self.channel_catalog = channel_catalog
         self.config = self.settings.load()
         self._submit_lock = threading.Lock()
         self._wake = threading.Event()
@@ -611,9 +674,14 @@ class DownloadService:
         if not self.available:
             raise ValueError("云下载只在允许修改数据库的设备上可用")
         magnet = parse_magnet(source)
-        if provider not in PROVIDER_LABELS:
-            raise ValueError("请选择 115 或 PikPak")
-        folder = normalise_target(target or self.config.targets.get(provider, ""))
+        channels = self.channel_snapshot()["providers"]
+        channel = next((row for row in channels if row["key"] == provider), None)
+        if channel is None or (self.channel_catalog is not None and not channel["configured"]):
+            raise ValueError("请选择媒体库中可用的云下载渠道")
+        folder = normalise_target(target or channel["target"])
+        if provider.startswith("clouddrive:") and not (
+                folder == channel["target"] or folder.startswith(channel["target"].rstrip("/") + "/")):
+            raise ValueError("下载目标目录必须位于所选媒体库内")
         with self._submit_lock:
             now = self.clock()
             if dedupe_code and code and (existing := self.store.active_by_code(code)) is not None:
@@ -691,13 +759,32 @@ class DownloadService:
         self.store.save(task)
         return task
 
-    def snapshot(self, limit: int = 100) -> dict:
-        tasks = self.store.recent(limit)
+    def snapshot(self, limit: int = 100, *, before_id: int | None = None) -> dict:
+        limit = max(1, min(int(limit), 500))
+        rows = self.store.page(limit + 1, before_id)
+        tasks = rows[:limit]
+        has_more = len(rows) > limit
+        assets = self.store.display_assets(tasks)
+        catalog = self.channel_snapshot()
+        labels = {row["key"]: row["label"] for row in catalog["providers"]}
+        uncancellable = {row["key"] for row in catalog["providers"] if row.get("can_cancel") is False}
+        payloads = [task.payload(assets.get(task.asset_id)) for task in tasks]
+        for payload in payloads:
+            payload["provider_label"] = labels.get(payload["provider"], payload["provider_label"])
+            if payload["provider"] in uncancellable and payload["state"] in {SUBMITTED, REMOTE_RUNNING}:
+                payload["cancellable"] = False
         return {
             "available": self.available,
-            "providers": [self._provider_state(key) for key in PROVIDER_LABELS],
-            "tasks": [task.payload() for task in tasks],
+            **catalog,
+            "tasks": payloads,
+            "has_more": has_more,
+            "next_before_id": tasks[-1].id if has_more else None,
         }
+
+    def channel_snapshot(self) -> dict:
+        if self.channel_catalog is not None:
+            return self.channel_catalog()
+        return {"providers": [self._provider_state(key) for key in PROVIDER_LABELS], "problems": []}
 
     def retry_postprocess(self, task_id: int) -> DownloadTask:
         task = self.store.get(int(task_id))
@@ -792,11 +879,11 @@ class DownloadService:
         return now - started > self.config.wait_hours * 3600.0
 
     def _reschedule(self, task: DownloadTask, now: float, detail: str | None = None) -> None:
+        """隔一段再查。`detail` 是这一次暂时性故障的原因；没带就是这一次查通了，旧原因作废。"""
         task.checks += 1
         task.updated_at = iso(now)
         task.next_check_at = iso(now + poll_delay(task.checks))
-        if detail is not None:
-            task.failure_detail = detail
+        task.failure_detail = detail
         self.store.save(task)
 
     def _follow_remote(self, task: DownloadTask, now: float) -> None:
@@ -835,8 +922,7 @@ class DownloadService:
         if mapped is None:
             raise DownloadError(
                 "not_landed",
-                "目标目录对应不到媒体目录。115 在「推送发现」里配置云端路径前缀；"
-                "PikPak 在「云下载」设置里选 PikPak 根目录对应的媒体目录")
+                "目标目录对应不到媒体目录，请检查媒体库挂载和云端路径前缀关联")
         location, ledger_path = mapped
         task.ledger_path = ledger_path
         asset_id = self.store.asset_under(location, ledger_path, task.code)
@@ -899,6 +985,7 @@ class Landing:
 
     def __init__(self, push_discovery, *, mounts=None, declared_roots=None):
         self.push_discovery = push_discovery
+        self.channel_catalog = None
         self.mounts = mounts if mounts is not None else getattr(push_discovery, "mounts", {})
         self.declared_roots = (declared_roots if declared_roots is not None
                                else getattr(push_discovery, "declared_roots", {}))
@@ -920,6 +1007,10 @@ class Landing:
             remote = "/pikpak" + remote
         else:
             prefixes = tuple(self.push_discovery.config.prefixes)
+            if self.channel_catalog:
+                channel = next((row for row in self.channel_catalog()["providers"] if row["key"] == task.provider), None)
+                if channel and channel.get("cloud_root"):
+                    prefixes = (CloudPrefix(channel["cloud_root"], channel["root"]),)
         try:
             path = map_cloud_path(remote, prefixes)
         except CloudPathError:

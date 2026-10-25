@@ -31,8 +31,9 @@ export async function loadSourceStatus(){
   try{
     const d=await loadMediaSources(effects.signal);
     if(!effects.isActive)return preferencesState.sourceOnline;
-    preferencesState.sourceOnline=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.online]));
-    preferencesState.sourceProblems=Object.fromEntries((d.sources||[]).map(s=>[s.location,s.message||'']));
+    const roots=(d.sources||[]).flatMap(s=>s.roots||[]).filter(r=>r.root_id);
+    preferencesState.sourceOnline=Object.fromEntries([...(d.sources||[]).map(s=>[s.location,s.online]),...roots.map(r=>[r.root_id,r.online])]);
+    preferencesState.sourceProblems=Object.fromEntries([...(d.sources||[]).map(s=>[s.location,s.message||'']),...roots.map(r=>[r.root_id,r.message||''])]);
   }catch{if(!effects.isActive)return preferencesState.sourceOnline;preferencesState.sourceOnline={};preferencesState.sourceProblems={}}
   document.body.classList.toggle('offline-source',Object.values(preferencesState.sourceOnline).includes(false));
   dropOfflineFromDefaultLoc();
@@ -182,6 +183,7 @@ preferencesState.settingsEffects = {
   /* 折叠是在渲染时做的，不重取的话已经被跳过的那些卡不会自己冒出来。 */
   groupCollapse:()=>reloadCurrentSurface(),
   feedAutoScroll:()=>syncFeedAutoScroll(),
+  feedLimit:()=>refreshFeedRows(),
   feedCompilations:()=>refreshFeedRows(),
   /* 设置说的是「离开详情不再进小窗」，已经开着的那个小窗留着反而像没生效。 */
   miniplayer:()=>{if(!preferencesState.appSettings.miniplayer)stageApi()?.closeMiniplayer()},

@@ -16,7 +16,7 @@ import {
 } from '../../src/react/review/review';
 import { ReviewPage } from '../../src/react/review/review-page';
 
-import { choose, click, mountRoot, settle } from './render';
+import { actionOrder, choose, click, mountRoot, settle } from './render';
 
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 afterEach(() => queryClient.clear());
@@ -206,6 +206,8 @@ it('批量判定把成功的摘掉，没写成的留下来等重试', async () =
   await choose(host.querySelector('button[aria-label="筛选当前分类"]'), '单一来源 · 3');
   await click(buttonIn(host, '全选当前分类'));
   expect(statusText(host)).toContain('已选 3 项');
+  expect(actionOrder(buttonIn(host, '通过所选')!.parentElement).filter((name) => name.endsWith('所选') || name === '取消选择'))
+    .toEqual(['拒绝所选', '通过所选', '取消选择']);
   await click(buttonIn(host, '通过所选'));
   await settle();
   expect(props.toast).toHaveBeenCalledWith('已通过 2 项，1 项未完成');
@@ -294,7 +296,7 @@ it('队列读取失败时说读取失败、给重试键，和空队列分得开�
   expect(host.textContent).toContain('复核队列读取失败');
   expect(host.textContent).not.toContain('此分类没有待复核项目');
   fail = false;
-  await click(buttonIn(host, '重试'));
+  await click(buttonIn(host, '立即重试'));
   await settle();
   expect(host.textContent).not.toContain('复核队列读取失败');
   expect(cards(host)).toHaveLength(REVIEW_PAGE_SIZE);

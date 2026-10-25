@@ -339,6 +339,136 @@ class TestPlanningTests(unittest.TestCase):
         self.assertFalse(set(shards[0]) & set(shards[1]))
         self.assertCountEqual(serial, shards[0] + shards[1])
 
+    def test_modules_without_a_namesake_test_run_where_their_importers_are_tested(self):
+        """按名字推不出测试的模块，跟着直接导入它的测试与源码文件选域；推不出时仍是 full。"""
+        index = (
+            {'test_follow_web.py': frozenset({'hub', 'ring_b'})},
+            {'src/peach/hub.py': frozenset(), 'src/peach/web_reader.py': frozenset({'hub'}),
+             'src/peach/lonely.py': frozenset(), 'src/peach/orphan_user.py': frozenset({'lonely'}),
+             'src/peach/ring_a.py': frozenset({'ring_b'}), 'src/peach/ring_b.py': frozenset({'ring_a'}),
+             'src/peach/shared.py': frozenset(), 'src/peach/web_ring.py': frozenset({'ring_a'})},
+            frozenset({'shared'}),
+        )
+
+        def scopes(path):
+            return runner.scopes_for_changes([path])[0]
+        with patch.object(runner, '_import_index', return_value=index):
+            # 测试 test_follow_web（follow、web）直接导入；源码 web_reader 按前缀归 catalog。
+            self.assertEqual(scopes('src/peach/hub.py'), ('follow', 'catalog', 'web'))
+            # 唯一的导入者自己也推不出域：未知面。
+            self.assertEqual(scopes('src/peach/lonely.py'), ('full',))
+            # 互相导入的一组合起来算：ring_b 的测试与 ring_a 的外部导入者都算进来。
+            self.assertEqual(scopes('src/peach/ring_a.py'), ('follow', 'catalog', 'web'))
+            self.assertEqual(scopes('src/peach/ring_b.py'), ('follow', 'catalog', 'web'))
+            # 共享测试设施导入的模块影响所有用例。
+            self.assertEqual(scopes('src/peach/shared.py'), ('full',))
+        self.assertEqual(scopes('tests/test_ledger_revision.py'), ('core',))
+        self.assertEqual(scopes('.gitlab-ci.yml'), ('tooling', 'packaging'))
+        self.assertEqual(scopes('src/peach/not_a_module.py'), ('full',))
+
+    def test_relative_and_absolute_imports_name_the_peach_module(self):
+        with tempfile.TemporaryDirectory() as directory:
+            nested = runner.ROOT / 'src' / 'peach' / 'sources'
+            path = Path(directory) / 'sample.py'
+            path.write_text('from peach import alpha, beta\nimport peach.gamma.sub\n'
+                            'def later():\n    from peach.delta import thing\n', encoding='utf-8')
+            self.assertEqual(runner._imported_modules(path), {'alpha', 'beta', 'gamma', 'delta'})
+        # 包内相对导入按文件深度回到 `peach`；子包里的单点相对导入指子包自己，不算。
+        with patch.object(Path, 'read_text', return_value='from . import alpha\nfrom .. import beta\nfrom ..gamma import x\n'):
+            self.assertEqual(runner._imported_modules(nested / 'example.py'), {'beta', 'gamma'})
+            self.assertEqual(runner._imported_modules(runner.ROOT / 'src' / 'peach' / 'example.py'), {'alpha'})
+
+    def test_timed_shard_plan_covers_every_file_once_and_starts_with_the_longest(self):
+        names = [f'test_{letter}.py' for letter in 'abcdefg'] + ['test_web_e2e.py']
+        seconds = {'test_a': 300.0, 'test_b': 120.0, 'test_c': 100.0, 'test_d': 90.0, 'test_e': 10.0,
+                   'test_f': 10.0, 'test_g': 50.0, 'test_web_e2e': 1000.0}
+        plan = runner.shard_plan(names, 4, seconds)
+        self.assertEqual(len(plan), 4)
+        self.assertCountEqual([name for shard in plan for name in shard], names)
+        self.assertEqual(plan[0], ['test_web_e2e.py'], '最重的文件独占一片并第一个派发')
+
+        def total(shard):
+            return sum(seconds[name.removesuffix('.py')] for name in shard)
+        totals = [total(shard) for shard in plan]
+        self.assertEqual(totals, sorted(totals, reverse=True))
+        self.assertLessEqual(max(totals[1:]) - min(totals[1:]), 120.0)
+        # 本机还没有实测表：按个数均分，浏览器冒烟照样独占首片。
+        empty = runner.shard_plan(names, 4, {})
+        self.assertEqual(empty[0], ['test_web_e2e.py'])
+        self.assertEqual(sorted(len(shard) for shard in empty[1:]), [2, 2, 3])
+
+    def test_zero_duration_files_fill_each_shard_and_run_once(self):
+        for size in (2, 5, 9):
+            names = [f'test_{index}.py' for index in range(size)]
+            seconds = {name.removesuffix('.py'): 0.0 for name in names}
+            for count in (1, 2, 4, 12):
+                with self.subTest(size=size, count=count):
+                    plan = runner.shard_plan(names, count, seconds)
+                    self.assertEqual(len(plan), min(size, count))
+                    self.assertTrue(all(plan))
+                    self.assertCountEqual([name for group in plan for name in group], names)
+                    self.assertLessEqual(max(map(len, plan)) - min(map(len, plan)), 1)
+            seconds['test_0'] = 10.0
+            plan = runner.shard_plan(names, size, seconds)
+            self.assertTrue(all(plan))
+            self.assertCountEqual([name for group in plan for name in group], names)
+
+    def test_planned_shards_cover_every_case_once_and_reject_foreign_files(self):
+        def ids(suite):
+            for case in suite:
+                if isinstance(case, unittest.TestSuite):
+                    yield from ids(case)
+                else:
+                    yield case.id()
+        scopes = ('follow', 'tooling')
+        serial = list(ids(runner.build_suite(*scopes)))
+        names = {path.name for scope in scopes for path in runner.selected_files(scope)}
+        plan = runner.shard_plan(names, 3, {'test_scripts': 500.0})
+        shards = [list(ids(runner.build_suite(*scopes, shard_index=index, shard_count=3,
+                                              assigned_names=plan[index]))) for index in range(3)]
+        self.assertCountEqual(serial, [case for shard in shards for case in shard])
+        with self.assertRaisesRegex(ValueError, '范围以外'):
+            runner.build_suite('checks', assigned_names=['test_scripts.py'])
+
+    def test_a_planned_shard_runs_the_files_its_parent_assigned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan = Path(directory) / 'plan.json'
+            plan.write_text(json.dumps([['test_scripts.py'], ['test_http.py', 'test_follow_web.py']]),
+                            encoding='utf-8')
+            report = Path(directory) / 'shard.json'
+            suite = unittest.TestSuite([unittest.FunctionTestCase(lambda: None)])
+            with patch.object(runner, 'build_suite', return_value=suite) as build, \
+                 contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(runner.main(['--scope', 'follow', '--scope', 'tooling',
+                                              '--shard-index', '1', '--shard-count', '2',
+                                              '--timings', str(report), '--shard-plan', str(plan)]), 0)
+            build.assert_called_once_with('follow', 'tooling', shard_index=1, shard_count=2,
+                                          assigned_names=['test_http.py', 'test_follow_web.py'])
+
+    def test_parallel_shards_hand_every_child_the_same_plan_in_dispatch_order(self):
+        class Done:
+            returncode = 0
+
+            def poll(self):
+                return 0
+
+        seen = []
+
+        def spawn(command, *, stdout, stderr, cwd):
+            index = int(command[command.index('--shard-index') + 1])
+            plan = json.loads(Path(command[command.index('--shard-plan') + 1]).read_text(encoding='utf-8'))
+            seen.append((index, plan[index]))
+            Path(command[command.index('--timings') + 1]).write_text(
+                json.dumps({'complete': True, 'success': True, 'count': 1, 'timings': []}), encoding='utf-8')
+            return Done()
+
+        plan = [['test_web_e2e.py'], ['test_a.py', 'test_b.py'], ['test_c.py']]
+        with contextlib.redirect_stdout(io.StringIO()):
+            runner.run_shards(('full',), jobs=1, shard_count=3, spawn=spawn, plan=plan)
+        self.assertEqual(seen, list(enumerate(plan)))
+        with self.assertRaisesRegex(ValueError, '片数'):
+            runner.run_shards(('full',), jobs=1, shard_count=2, spawn=spawn, plan=plan)
+
     def test_partial_run_does_not_issue_verification_record(self):
         with patch.object(runner, 'build_suite', return_value=unittest.TestSuite([unittest.FunctionTestCase(lambda: None)])), \
              patch.object(runner.test_evidence, 'inputs', side_effect=AssertionError('分片不能签发证据')):
@@ -377,8 +507,9 @@ class TestPlanningTests(unittest.TestCase):
                 launched.append(command)
                 index = int(command[command.index('--shard-index') + 1])
                 report = Path(command[command.index('--timings') + 1])
-                report.write_text(json.dumps({'success': index != failing, 'count': 10 + index,
-                                              'timings': [[0.5, f'test_{index}']]}), encoding='utf-8')
+                report.write_text(json.dumps({'complete': True, 'success': index != failing, 'count': 10 + index,
+                                              'timings': [[0.5, f'test_{index}']],
+                                              'files': {f'test_{index}': 1.0 + index}}), encoding='utf-8')
                 stdout.write(f'分片 {index} 的输出\n')
                 return Done(0 if index != failing else 1)
             return launched, spawn
@@ -386,10 +517,12 @@ class TestPlanningTests(unittest.TestCase):
         slots = tempfile.TemporaryDirectory()
         self.addCleanup(slots.cleanup)
         launched, spawn = launcher(failing=None)
+        measured = {}
         with contextlib.redirect_stdout(io.StringIO()) as output:
             passed, count, timings = runner.run_shards(('follow', 'tooling'), jobs=2, shard_count=3,
-                                                       spawn=spawn)
+                                                       spawn=spawn, measured=measured)
         self.assertTrue(passed)
+        self.assertEqual(measured, {'test_0': 1.0, 'test_1': 2.0, 'test_2': 3.0})
         self.assertEqual(count, 10 + 11 + 12)
         self.assertEqual(sorted(name for _, name in timings), ['test_0', 'test_1', 'test_2'])
         self.assertEqual(sorted(int(c[c.index('--shard-index') + 1]) for c in launched), [0, 1, 2])
@@ -406,6 +539,29 @@ class TestPlanningTests(unittest.TestCase):
                                                  spawn=spawn)
         self.assertFalse(passed)
         self.assertEqual(count, 10 + 11 + 12, '失败那片的用例数也要算进总数，记录里的 count 才是实跑数')
+
+    def test_file_wall_time_includes_class_setup_and_merges_into_the_table(self):
+        """分片均衡按整份文件占多久排：类级准备发生在首条用例开始前，也要算进它的文件。"""
+        def case(module):
+            return type('Case', (unittest.TestCase,), {'__module__': module, 'test_x': lambda self: None})('test_x')
+        first, second = case('test_alpha'), case('test_beta')
+        # 构造 0；开跑 0；alpha 的类准备到 5 才开始首条，6 结束；beta 的类准备 6→9，10 结束。
+        clock = iter([0.0, 0.0, 5.0, 6.0, 9.0, 10.0])
+        with patch.object(runner.time, 'monotonic', side_effect=lambda: next(clock)):
+            result = runner.TimedResult(unittest.runner._WritelnDecorator(io.StringIO()), True, 0)
+            result.startTestRun()
+            for test in (first, second):
+                result.startTest(test)
+                result.stopTest(test)
+        self.assertEqual(result.files, {'test_alpha': 6.0, 'test_beta': 4.0})
+        self.assertEqual([seconds for seconds, _ in result.timings], [1.0, 1.0])
+        with tempfile.TemporaryDirectory() as directory:
+            table = Path(directory) / 'timings.json'
+            runner.save_file_seconds({'test_alpha': 6.0, 'test_beta': 4.0}, table)
+            runner.save_file_seconds({'test_alpha': 2.5}, table)
+            self.assertEqual(runner.load_file_seconds(table), {'test_alpha': 2.5, 'test_beta': 4.0})
+            table.write_text('不是 JSON', encoding='utf-8')
+            self.assertEqual(runner.load_file_seconds(table), {})
 
     def test_jobs_accepts_auto_or_a_positive_integer(self):
         self.assertEqual(runner.resolve_jobs('3'), 3)
@@ -450,3 +606,96 @@ class TestPlanningTests(unittest.TestCase):
                         self.assertIsNone(connection.execute("SELECT name FROM sqlite_master WHERE name='isolation_probe'").fetchone())
                 finally:
                     connection.close()
+
+
+class GateAndFlakyRerunTests(unittest.TestCase):
+    """全量先过秒级门槛；全量里失败的少数文件单独重跑，过了记为偶发，并排整机锁。"""
+
+    @staticmethod
+    def fail(test_id):
+        return {'id': test_id, 'outcome': 'fail', 'seconds': 1.0, 'message': 'x'}
+
+    def test_failed_rows_name_the_files_to_rerun_and_refuse_what_cannot_be_isolated(self):
+        rows = [self.fail('e2e:e2e/folder-layout.test.ts > 目录 > 滚到底'),
+                self.fail('test_web_e2e.WebE2ESmokeTests.test_every_route_holds_the_layout_and_runtime_invariants'),
+                self.fail('vitest:test/react/follow-feed.test.tsx > 页面 > 加载更多'),
+                self.fail(runner.VITEST_CONTAINER),
+                self.fail('test_feeds_web.FeedsWebTests.test_second_round'),
+                {'id': 'test_ok.Case.test_pass', 'outcome': 'pass', 'seconds': 0.1}]
+        self.assertEqual(runner.rerun_selectors(rows), [
+            'test_feeds_web.FeedsWebTests.test_second_round', 'frontend/e2e/folder-layout.test.ts',
+            'frontend/test/react/follow-feed.test.tsx'])
+        self.assertEqual(runner.rerun_selectors([self.fail('setUpClass (test_web_e2e.WebE2ESmokeTests)')]),
+                         ['test_web_e2e'], '类级准备失败选择所属模块')
+        self.assertIsNone(runner.rerun_selectors([self.fail(
+            'test_web_e2e.WebE2ESmokeTests.test_every_route_holds_the_layout_and_runtime_invariants')]),
+            '浏览器容器失败却没有逐条结果：说不清是哪个文件')
+        many = [self.fail(f'e2e:e2e/page-{index}.test.ts > 用例') for index in range(runner.RERUN_LIMIT + 1)]
+        self.assertIsNone(runner.rerun_selectors(many), '失败面大多半是真回归，不再重跑一轮')
+        self.assertIsNone(runner.rerun_selectors([]))
+
+    def test_a_rerun_that_passes_is_recorded_as_flaky_and_one_that_fails_stays_red(self):
+        class Done:
+            def __init__(self, code):
+                self.returncode = code
+
+        rows = [self.fail('e2e:e2e/folder-layout.test.ts > 目录 > 滚到底')]
+        commands = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(runner.rerun_failures(rows, spawn=lambda command, **_: commands.append(command) or Done(0)))
+        self.assertEqual(runner.FLAKY, ['frontend/e2e/folder-layout.test.ts'])
+        self.assertIn('--machine-lock-held', commands[0], '父进程已持有整机锁，重跑不能再去等它')
+        self.assertEqual(commands[0][-2:], ['--focus', 'frontend/e2e/folder-layout.test.ts'])
+        runner.FLAKY.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertFalse(runner.rerun_failures(rows, spawn=lambda command, **_: Done(1)))
+        self.assertEqual(runner.FLAKY, [])
+
+    def test_the_gate_runs_first_and_a_red_gate_skips_the_other_shards(self):
+        files = [runner.TESTS / name for name in ('test_script_policy.py', 'test_media.py', 'test_scan.py')]
+        plans = []
+
+        def shards(scopes, *, jobs, shard_count, measured, plan, outcomes):
+            plans.append(plan)
+            return (False, 1, []) if plan == [['test_script_policy.py']] else (True, 2, [])
+
+        with patch.object(runner, 'selected_files', return_value=files), \
+             patch.object(runner, 'run_shards', side_effect=shards), \
+             patch.object(runner, 'save_file_seconds'), patch.object(runner.test_history, 'append'), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.run_local_suite(('full',), jobs=2), (False, 1, []))
+        self.assertEqual(plans, [[['test_script_policy.py']]], '门槛没过就不起其余分片')
+
+        plans.clear()
+        with patch.object(runner, 'selected_files', return_value=files), \
+             patch.object(runner, 'run_shards', side_effect=lambda *a, **k: plans.append(k['plan']) or (True, 2, [])), \
+             patch.object(runner, 'save_file_seconds'), patch.object(runner.test_history, 'append'), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(runner.run_local_suite(('full',), jobs=2)[0])
+        self.assertEqual(plans[0], [['test_script_policy.py']])
+        self.assertEqual(sorted(name for shard in plans[1] for name in shard), ['test_media.py', 'test_scan.py'],
+                         '门槛里的文件不再进后面的分片')
+
+    def test_heavy_runs_queue_on_the_machine_lock_except_nested_or_already_held(self):
+        args = runner.argparse.Namespace(machine_lock_held=False, lock_timeout=5)
+        for ci, wait in (('', 5), ('true', runner.CI_MACHINE_LOCK_SECONDS)):
+            with self.subTest(ci=ci), patch.object(runner.test_evidence, 'held') as held, \
+                    patch.object(runner.test_history, 'nested', return_value=False), \
+                    patch.dict(os.environ, {'CI': ci}):
+                runner.machine_guard(args, True, scope='full')
+            self.assertEqual(held.call_args.args[0], runner.test_evidence.machine_lock_path())
+            self.assertEqual(held.call_args.kwargs['wait_seconds'], wait, 'CI 作业按自己的时限等，本机按 --lock-timeout')
+        for light, nested, already in ((True, False, False), (False, True, False), (False, False, True)):
+            with self.subTest(light=light, nested=nested, already=already), \
+                    patch.object(runner.test_evidence, 'held') as held, \
+                    patch.object(runner.test_history, 'nested', return_value=nested):
+                runner.machine_guard(runner.argparse.Namespace(machine_lock_held=already, lock_timeout=5), not light)
+                held.assert_not_called()
+
+    def test_focus_accepts_vitest_files_and_hands_them_to_the_island_suite(self):
+        from scripts import test_focus
+        suite, browsers, islands = test_focus.selection(runner.ROOT, ['frontend/test/jav-card-title.test.ts'])
+        self.assertEqual((browsers, islands), ((), ('test/jav-card-title.test.ts',)))
+        self.assertEqual([test.id() for test in suite], [test_focus.VITEST_SUITE])
+        with self.assertRaises(ValueError):
+            test_focus.selection(runner.ROOT, ['frontend/test/../../scripts/test_runner.py'])

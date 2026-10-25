@@ -413,7 +413,8 @@ class BackgroundJob:
         return ""
 
     def _summary(self, state: dict) -> dict:
-        """结算摘要：只留标量，明细留在各域自己的状态与日志里。"""
+        """结算摘要保留标量与领域定义的问题清单。"""
+        from .task_results import result_counts
         summary: dict[str, object] = {}
         for key, value in state.items():
             if key in self.BULKY_STATE_KEYS or key == self.id_key:
@@ -422,7 +423,7 @@ class BackgroundJob:
                 summary[key] = value
             elif isinstance(value, str) and 0 < len(value) <= 200:
                 summary[key] = value
-        return summary
+        return {**summary, **result_counts(self.task_key, state)}
 
     def start(self, fn: Callable[[str], None], *, initial: dict | None = None,
               restart: bool = False, trigger: str = "manual", recovery: dict | None = None) -> dict:

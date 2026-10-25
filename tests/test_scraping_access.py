@@ -74,6 +74,65 @@ class ScrapingAccessTests(unittest.TestCase):
             self.assertEqual(factory.call_count, 2)
             self.assertEqual(fake.close.call_count, 2)
 
+    def test_javbus_language_preference_reaches_checks_and_work_pages(self):
+        from peach.sources import JavBusSource, Session
+
+        save(self.root, "javbus", {"network": "direct", "cookie": "PHPSESSID=test-session"})
+        seen = []
+
+        def respond(request):
+            seen.append(request.url.path)
+            if request.headers.get("Accept-Language") != "zh-CN,zh;q=0.9":
+                return httpx.Response(200, text="<title>Age Verification JavBus</title>")
+            self.assertIn("PHPSESSID=test-session", request.headers.get("cookie", ""))
+            return httpx.Response(200, text=(
+                '<h3>ABW-123 测试作品</h3>'
+                '<p><span class="header">識別碼:</span> ABW-123</p>'
+                '<a class="bigImage" href="/imgs/cover/test.jpg"></a>'))
+
+        def client(root, source, **kwargs):
+            return client_for(root, source, transport=httpx.MockTransport(respond), **kwargs)
+
+        with patch("peach.scraping_access.client_for", side_effect=client):
+            check = w_scraping_check(SimpleNamespace(follow_secrets_root=self.root), {"source": "javbus"})
+            self.assertTrue(check["results"][0]["ok"])
+            transport = SourceTransport(self.root)
+            self.addCleanup(transport.close)
+            record = JavBusSource().query("ABW-123", session=Session(transport))
+        self.assertEqual(record.code, "ABW-123")
+        self.assertEqual(record.cover_urls, ("https://www.javbus.com/imgs/cover/test.jpg",))
+        self.assertEqual(seen, ["/", "/ABW-123"])
+
+    def test_javbus_cover_language_overrides_caller_headers_without_changing_other_sources(self):
+        from peach.jav_cover_fetch import _fetch
+
+        for source in ("javbus", "javdb"):
+            save(self.root, source, {"network": "direct"})
+        seen = []
+
+        def respond(request):
+            seen.append(request)
+            return httpx.Response(200, content=b"cover")
+
+        def client(root, source, **kwargs):
+            return client_for(root, source, transport=httpx.MockTransport(respond), **kwargs)
+
+        transport = SourceTransport(self.root)
+        self.addCleanup(transport.close)
+        with patch("peach.scraping_access.client_for", side_effect=client):
+            self.assertEqual(_fetch(transport, "https://www.javbus.com/imgs/cover/test.jpg",
+                referer="https://www.javbus.com/ABW-123", limit=1024, ranged=True), b"cover")
+            transport(HttpRequest("GET", "https://www.javbus.com/ABW-123",
+                {"accept-language": "en-US", "X-Test": "preserved"}), 1, 1024)
+            self.assertEqual(_fetch(transport, "https://javdb.com/test.jpg",
+                referer="https://javdb.com/", limit=1024), b"cover")
+        self.assertEqual([request.headers["Accept-Language"] for request in seen],
+                         ["zh-CN,zh;q=0.9", "zh-CN,zh;q=0.9", "ja,en;q=0.9"])
+        self.assertEqual(seen[0].headers["Range"], "bytes=0-65535")
+        self.assertEqual(seen[0].headers["Referer"], "https://www.javbus.com/ABW-123")
+        self.assertEqual(seen[1].headers.get_list("Accept-Language"), ["zh-CN,zh;q=0.9"])
+        self.assertEqual(seen[1].headers["X-Test"], "preserved")
+
     def test_browser_obeys_global_direct_proxy_and_environment_modes(self):
         transport = SourceTransport(self.root)
         self.addCleanup(transport.close)

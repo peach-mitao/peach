@@ -32,6 +32,8 @@ const questions = (over: Partial<SetupQuestions> = {}): SetupQuestions => ({
   access_enabled: true,
   scan_now: true,
   history_guide: false,
+  peach_proxy: { mode: 'environment', proxy_saved: false, needs_selection: false },
+  docker: false,
   ...over,
 });
 
@@ -148,6 +150,53 @@ describe('访问密码', () => {
   });
 });
 
+describe('Peach 代理', () => {
+  const proxyMode = (host: ParentNode) => host.querySelector('[aria-labelledby="setup-proxy-title"] [aria-haspopup="listbox"]');
+
+  it('跟随环境为初始值，自定义地址随设置提交，直连不携带隐藏地址', async () => {
+    const { host, sent } = await open({}, { [SETUP_URL]: { status: 400, body: { error: '稍后重试' } } });
+    expect(proxyMode(host)?.textContent).toContain('跟随环境');
+    expect(host.querySelector('#setupProxyAddress')).toBeNull();
+    await submitForm(host);
+    expect(sent(SETUP_URL).peach_proxy).toEqual({ mode: 'environment', proxy: '' });
+    await choose(proxyMode(host), '自定义');
+    const address = host.querySelector<HTMLInputElement>('#setupProxyAddress');
+    expect(address?.type).toBe('password');
+    await type(address, 'socks5h://user:private@127.0.0.1:7890');
+    await submitForm(host);
+    expect(sent(SETUP_URL, 1).peach_proxy).toEqual({ mode: 'proxy', proxy: 'socks5h://user:private@127.0.0.1:7890' });
+    await choose(proxyMode(host), '直连');
+    expect(host.querySelector('#setupProxyAddress')).toBeNull();
+    await submitForm(host);
+    expect(sent(SETUP_URL, 2).peach_proxy).toEqual({ mode: 'direct', proxy: '' });
+  });
+
+  it('代理地址校验原位报错并保留输入', async () => {
+    const message = '请填写带端口的 HTTP 或 SOCKS 代理地址';
+    const { host } = await open({ peach_proxy: { mode: 'proxy', proxy_saved: true, needs_selection: false } },
+      { [SETUP_URL]: { status: 400, body: { error: '有几项需要修改', errors: { peach_proxy: message } } } });
+    const address = host.querySelector<HTMLInputElement>('#setupProxyAddress');
+    expect(address?.placeholder).toBe('已保存，留空保留');
+    await type(address, 'http://proxy.invalid');
+    await submitForm(host);
+    expect(address?.value).toBe('http://proxy.invalid');
+    expectAnnounced(host, address, message);
+    expect(document.activeElement).toBe(address);
+  });
+
+  it.each([true, false])('Docker 回环提示只适用于容器中的自定义回环地址：%s', async (docker) => {
+    const { host } = await open({ docker });
+    await choose(proxyMode(host), '自定义');
+    const address = host.querySelector<HTMLInputElement>('#setupProxyAddress');
+    await type(address, 'http://127.0.0.1:7890');
+    expect(host.textContent?.includes('回环地址指向容器自身')).toBe(docker);
+    await type(address, 'http://host.docker.internal:7890');
+    expect(host.textContent).not.toContain('回环地址指向容器自身');
+    await choose(proxyMode(host), '跟随环境');
+    expect(host.textContent).not.toContain('回环地址指向容器自身');
+  });
+});
+
 describe('媒体库', () => {
   it('首次设置网盘时必须明确选择读取策略', async () => {
     const { host, sent } = await open({}, { [SETUP_URL]: { status: 200, body: done() } });
@@ -158,14 +207,14 @@ describe('媒体库', () => {
     expect(host.textContent).toContain('请选择媒体读取策略');
     await choose(policy, '正常读取');
     await submitForm(host);
-    expect(sent(SETUP_URL).media_dir).toEqual([
+    expect(sent(SETUP_URL).media_dir).toMatchObject([
       { path: 'D:\\Videos', location: 'onedrive', root: '', cost: 'free' },
     ]);
   });
 
   it('加一行、删一行，扫描说明跟着行数走，提交按行带上来源', async () => {
     const { host, sent } = await open({}, { [SETUP_URL]: { status: 200, body: done() } });
-    await click(buttonNamed('添加媒体库', host));
+    await click(buttonNamed('添加文件夹', host));
     expect(rows(host)).toHaveLength(2);
     expect(document.activeElement).toBe(paths(host)[1]);
     await type(paths(host)[1], 'E:\\More');
@@ -174,7 +223,7 @@ describe('媒体库', () => {
     expect(paths(host).map((input) => input.value)).toEqual(['E:\\More']);
     expect(rows(host)[0]!.querySelector('button[aria-label="移除这个文件夹"]')).toBeNull();
     await submitForm(host);
-    expect(sent(SETUP_URL).media_dir).toEqual([{ path: 'E:\\More', location: 'local', root: '', cost: 'free' }]);
+    expect(sent(SETUP_URL).media_dir).toMatchObject([{ path: 'E:\\More', location: 'local', root: '', cost: 'free' }]);
   });
 
   it('选择文件夹让这台电脑弹对话框，选中的路径填回这一行', async () => {
@@ -228,7 +277,7 @@ describe('填错时原位标错', () => {
   it('整表不成立的那一句写在目录区上方，不挂到某一行', async () => {
     const { host } = await open({}, { [SETUP_URL]: { status: 400, body: {
       error: '有几项需要修改', errors: { media_dir: ['请添加 1 到 100 个媒体目录'] } } } });
-    await click(buttonNamed('添加媒体库', host));
+    await click(buttonNamed('添加文件夹', host));
     await submitForm(host);
     const [alert, ...more] = alertsWith(host, '请添加 1 到 100 个媒体目录');
     expect(alert).toBeDefined();
@@ -317,7 +366,7 @@ it('读题失败时给原因和重试', async () => {
   const host = await mount(<SetupPage />);
   await settle();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('服务出错了');
-  await click(buttonNamed('重试', host));
+  await click(buttonNamed('立即重试', host));
   await settle();
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(paths(host)).toHaveLength(1);

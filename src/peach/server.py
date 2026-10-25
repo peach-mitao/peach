@@ -34,6 +34,20 @@ def stop_process(process: subprocess.Popen | None) -> None:
 def initialize() -> None:
     config = settings_file.load_config()
     if config.present:
+        if not (config.directory('database') / 'ledger.db').is_file():
+            raise RuntimeError('已有配置但缺少数据库，请恢复数据库后启动')
+        from .runtime_prepare import configured_ledger_writer
+        writer, _reason = configured_ledger_writer(config)
+        if not writer:
+            return
+        migrate = launch("migrate", "upgrade", "--yes", "--db",
+                         str(config.directory("database") / "ledger.db"))
+        try:
+            code = migrate.wait(timeout=180)
+            if code:
+                raise RuntimeError(f"数据库升级失败，退出码 {code}；服务未启动")
+        finally:
+            stop_process(migrate)
         return
     if config.directory("database").joinpath("ledger.db").exists():
         raise RuntimeError("已有数据库但缺少配置文件，请恢复 config.toml 后启动")
@@ -84,6 +98,10 @@ def main(argv: list[str] | None = None) -> int:
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_: stopping.set())
     initialize()
+    print(f"Peach 服务监听：{args.host}:{args.port}。容器外部访问地址以宿主机端口映射为准。", flush=True)
+    print("首次登录：在运行 Peach 的环境中执行 peach token 查看口令，登录后设置访问密码。", flush=True)
+    if os.environ.get('PEACH_DISTRIBUTION') == 'docker':
+        print("NAS / 局域网访问：Compose 的 PEACH_BIND 应为宿主机局域网 IP；127.0.0.1 只允许宿主机访问。", flush=True)
     return supervise(args.host, args.port, stopping)
 
 

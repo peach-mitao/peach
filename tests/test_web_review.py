@@ -793,7 +793,7 @@ class ReviewQueueTests(unittest.TestCase):
             {"item_key": "ABW", "field": "title", "current": "",
              "candidates": ["涼森れむ流 HOW TO SEX！！"], "code": "ABW-358", "source": "local_nfo"},
             {"item_key": "ABX", "field": "title", "current": "",
-             "candidates": ["涼森れむ流", {"value": "Remu Style", "source": "r18dev"}],
+             "candidates": ["涼森れむ流", {"value": "涼森れむスタイル", "source": "r18dev"}],
              "code": "ABW-359", "source": "local_nfo"},
         ])
         self.assertEqual(self._auto()["applied"], 2)
@@ -814,7 +814,7 @@ class ReviewQueueTests(unittest.TestCase):
         # 被压下的说法要留痕：事后得答得出当时还有哪个值、为什么没选它。
         self.assertEqual(json.loads(notes["ABX"])["rule"], "adr-0038-chain-local_nfo")
         self.assertEqual(json.loads(notes["ABX"])["overruled"],
-                         [{"source": "r18dev", "value": "Remu Style"}])
+                         [{"source": "r18dev", "value": "涼森れむスタイル"}])
         self.assertEqual(self.queue_keys("metadata_fields"), [])
 
     def test_the_chain_settles_a_disagreement_between_two_official_sources(self):
@@ -2735,6 +2735,21 @@ class ReviewQueueTests(unittest.TestCase):
             "SELECT catalog_title FROM asset WHERE id=1"
         ).fetchone()[0], "正式作品标题")
         con.close()
+
+    def test_r18_english_title_without_original_evidence_is_not_written(self):
+        self._asset(890, 'PCH-890', 'PCH-890.mp4')
+        candidate = {'candidate_key':'PCH-890:title:r18dev:old', 'source':'r18dev',
+                     'source_url':'https://r18.dev/example','provider_id':'PCH-890',
+                     'confidence':0.9,'value':'English translated title','display_value':'English translated title'}
+        self.write_metadata_candidates([{'item_key':'PCH-890:title','code':'PCH-890','query':'PCH-890',
+            'field':'title','field_label':'标题','current_value':'','candidates_json':json.dumps([candidate]),
+            'source_count':'1','status':'candidate','size_gb':'1','videos':'1','fetched_at':'now'}])
+        self.assertEqual(self._auto()['applied'], 0)
+        with self.assertRaisesRegex(ValueError, '原文证据未取得'):
+            rm_review.w_review_decision(self.contract, {'category':'metadata_fields','item_key':'PCH-890:title',
+                'candidate_key':candidate['candidate_key'],'status':'approved'})
+        with contextlib.closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertFalse(connection.execute('SELECT catalog_title FROM asset WHERE id=890').fetchone()[0])
 
     def test_metadata_approval_rejects_repeated_name_even_if_csv_is_tampered(self):
         con = sqlite3.connect(self.db_path)

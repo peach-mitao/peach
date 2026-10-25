@@ -19,7 +19,7 @@ class EnsureModelTests(unittest.TestCase):
             target.write_bytes(payload)
             with patch.object(face_match, "MODEL_SHA256",
                               hashlib.sha256(payload).hexdigest()), \
-                 patch.object(face_detect.urllib.request, "urlopen") as opener:
+                 patch.object(face_detect, "read_url") as opener:
                 self.assertEqual(face_match.ensure_model(target), target)
             opener.assert_not_called()
 

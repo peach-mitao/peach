@@ -12,6 +12,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { entityFaceImg, facePos } from '@peach/card-art';
 import { entityPath, esc, firstGrapheme, icon } from '@peach/legacy/core';
+import { textLang } from '../../core/text-lang';
 
 import { Button } from '@/components/base/buttons/button';
 
@@ -165,7 +166,7 @@ function AliasLine({ kind, entity, actions }: { kind: string; entity: EntityHero
         {line ? (
           <div data-meta-item="names">
             <Glyph name="id-card" />
-            <span data-alias-names="" title="别名">{line.names.map((one, at) => <span key={at}>{one}</span>)}</span>
+            <span data-alias-names="" title="别名">{line.names.map((one, at) => <span key={at} lang={textLang(one)}>{one}</span>)}</span>
             {line.rest > 0 ? (
               <MorePop id="entityAliasPop" hook="alias" rest={line.rest} label={`另外 ${line.rest.toLocaleString()} 个别名`}
                 heading={`${line.total.toLocaleString()} 个别名`}>
@@ -279,7 +280,7 @@ function NameGroup({ label, names }: { label?: string; names: { name: string; re
       {label ? <dt>{label}</dt> : null}
       <dd data-wide={label ? undefined : ''}>
         {names.map((entry, at) => (
-          <span key={at} data-pop-name="">{entry.name}{entry.reading ? <small>{entry.reading}</small> : null}</span>
+          <span key={at} data-pop-name="" lang={textLang(entry.name)}>{entry.name}{entry.reading ? <small>{entry.reading}</small> : null}</span>
         ))}
       </dd>
     </>
@@ -317,7 +318,7 @@ function FactTags({ tags }: { tags: string[] }) {
 function LinkIcon({ mark }: { mark: LinkMark }) {
   if ('brand' in mark) return <span data-link-icon="brand"><Glyph name={mark.brand} /></span>;
   const html = icon('globe') + ('site' in mark
-    ? `<img src="${esc(mark.site)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-drop="self">` : '');
+    ? `<img src="${esc(mark.site)}" alt="" width="20" height="20" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-drop="self">` : '');
   return <span data-link-icon="" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -327,7 +328,7 @@ function HeroLinkView({ link }: { link: LinkView }) {
   switch (link.type) {
     case 'icon':
       return (
-        <a data-link="icon" href={link.url} target="_blank" rel="noreferrer" title={link.title} aria-label={link.title}>
+        <a data-link="icon" href={link.url} target="_blank" rel="noopener noreferrer" title={link.title} aria-label={link.title}>
           <LinkIcon mark={link.mark} />
         </a>
       );
@@ -347,8 +348,9 @@ function HeroLinkView({ link }: { link: LinkView }) {
       );
     default:
       return (
-        <a data-link="url" href={link.url} target="_blank" rel="noreferrer" title={link.title}>
+        <a data-link="url" href={link.url} target="_blank" rel="noopener noreferrer" title={link.title}>
           <LinkIcon mark={link.mark} /><span data-link-label="">{link.text}</span>
+          <svg className="ui-externalmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external-link" /></svg>
         </a>
       );
   }
@@ -388,7 +390,7 @@ function EntryMarks({ entity, actions, helpers }: {
   return (
     <div data-entry-marks="">
       {entryMarks(entity).map((mark, at) => (
-        <a key={at} data-entry-mark="" href={mark.url} target="_blank" rel="noreferrer" title={mark.label} aria-label={mark.label}>
+        <a key={at} data-entry-mark="" href={mark.url} target="_blank" rel="noopener noreferrer" title={mark.label} aria-label={mark.label}>
           {mark.mark ? <Glyph name={mark.mark} /> : <span data-missav-mark=""><span>MISS</span><span>AV</span></span>}
           {mark.ordinal ? <span data-entry-ordinal="">{mark.ordinal}</span> : null}
         </a>

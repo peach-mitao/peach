@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { RiCheckboxCircleLine } from '@remixicon/react';
-import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
+import { Tab, TabPanel, Tabs } from 'react-aria-components';
 
 import { Button } from '@/components/base/buttons/button';
 import type { ReviewProps } from '../bundle';
@@ -21,7 +21,8 @@ import { DOTS, paginationRange } from '../../pagination';
 import { EmptyState } from '../components/empty-state';
 import { Note } from '../components/note';
 import { Page } from '../components/page';
-import { useHorizontalScroller } from '../components/use-horizontal-scroller';
+import { PillAriaTabList } from '../components/pill-aria-tab-list';
+import { ExternalLink } from '../settings/section';
 import { BulkToolbar } from './bulk-toolbar';
 import { GenreTagList } from './candidate-form';
 import { ReviewCard } from './review-card';
@@ -42,10 +43,10 @@ function Pagination(
 ) {
   if (pages <= 1) return null;
   return (
-    <nav aria-label="复核分页" className="flex w-full flex-wrap items-center justify-between gap-2">
+    <nav aria-label="复核分页" data-pagination-layout="" className="inline-grid w-full min-w-0 items-center gap-2">
       <Button variant="secondary" size="small" disabled={page <= 1}
         onClick={() => onPage(page - 1)}>上一页</Button>
-      <ul className="flex flex-wrap items-center gap-1">
+      <ul className="flex min-w-0 flex-wrap items-center justify-center gap-1">
         {paginationRange(page, pages).map((item, at) => (
           <li key={item === DOTS ? `dots-${at}` : item}>
             {item === DOTS
@@ -64,7 +65,6 @@ function Pagination(
 
 export function ReviewPage(props: ReviewProps) {
   const [narrow, setNarrow] = useState(() => matchMedia('(max-width:900px)').matches);
-  const categoryScroll = useHorizontalScroller<HTMLDivElement>(undefined, narrow);
   useEffect(() => {
     const query = matchMedia('(max-width:900px)');
     const update = () => setNarrow(query.matches);
@@ -231,9 +231,7 @@ export function ReviewPage(props: ReviewProps) {
         <Note tone="warning" title="本机只能浏览"
           extra={writerUrl
             ? <p className="text-body-2-regular">
-                <a href={writerUrl} className="text-text-primary underline underline-offset-2">
-                  前往写入端复核
-                </a>
+                <ExternalLink href={writerUrl}>前往写入端复核</ExternalLink>
               </p>
             : undefined}>
           {mirror}
@@ -248,12 +246,13 @@ export function ReviewPage(props: ReviewProps) {
       }} className="flex flex-col gap-5 review-split:flex-row review-split:items-start review-split:gap-6">
         <div data-section-nav className="w-full min-w-0 review-split:sticky review-split:top-topbar review-split:w-review-tabs review-split:shrink-0">
           <h2 id="reviewcategories">复核分类</h2>
-          <TabList ref={categoryScroll} aria-labelledby="reviewcategories" data-section-items
+          <PillAriaTabList scrollable={narrow} aria-labelledby="reviewcategories" data-section-items
             className="flex review-split:flex-col review-split:items-stretch">
             {REVIEW_CATEGORIES.map((key) => {
               const count = Number(data.counts[key] || 0);
               return (
-                <Tab key={key} id={key} className={TAB_CLASS}>
+                <Tab key={key} id={key} className={TAB_CLASS}
+                  data-pill-selected={category === key ? '' : undefined} data-pill-variant="gray">
                   {REVIEW_LABELS[key]}
                   {/* 计数走独立徽标，为 0 时整枚去掉，不留一个「0」占位。 */}
                   {count
@@ -264,7 +263,7 @@ export function ReviewPage(props: ReviewProps) {
                 </Tab>
               );
             })}
-          </TabList>
+          </PillAriaTabList>
         </div>
 
         <TabPanel id={category} className="flex min-w-0 flex-1 flex-col gap-5">
@@ -328,12 +327,17 @@ export function ReviewPage(props: ReviewProps) {
           )) : review.isError && !review.data ? (
             /* 读不到队列和队列是空的不是一回事：说清楚是读取失败，给一颗重试键。 */
             <Note tone="error" title="复核队列读取失败" action={
-              <Button variant="secondary" size="small" disabled={review.isFetching} onClick={() => void review.refetch()}>重试</Button>
+              <Button variant="secondary" size="small" disabled={review.isFetching} onClick={() => void review.refetch()}>立即重试</Button>
             }>
               {errorMessage(review.error)}
             </Note>
           ) : (
-            <EmptyState icon={RiCheckboxCircleLine} title="此分类没有待复核项目">
+            <EmptyState icon={RiCheckboxCircleLine} title="此分类没有待复核项目"
+              actions={REVIEW_CATEGORIES.some(key => key !== category && Number(data.counts[key] || 0) > 0)
+                ? <Button size="small" onClick={() => {
+                    const next = REVIEW_CATEGORIES.find(key => key !== category && Number(data.counts[key] || 0) > 0);
+                    if (next) goCategory(next);
+                  }}>查看其他分类</Button> : undefined}>
               可切换分类查看其他待确认资料。
             </EmptyState>
           )}

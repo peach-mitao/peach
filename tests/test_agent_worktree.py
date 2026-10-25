@@ -295,6 +295,31 @@ class PruneTests(_WorktreeCase):
                          _git(self.repo, "branch", "--list", "agent/codex/reclaimable").stdout,
                          "已并入的分支也应一并删掉")
 
+    def test_a_worktree_with_files_under_build_is_kept_even_when_clean_and_merged(self):
+        """`build/` 被 Git 忽略，`status` 看不见它；里面却是会话的日志、报告和派单，删了没有备份。"""
+        (self.repo / ".git" / "info").mkdir(exist_ok=True)
+        (self.repo / ".git" / "info" / "exclude").write_text("build/\n", encoding="utf-8")
+        worker = self._integrated("has-build")
+        (worker / "build").mkdir()
+        (worker / "build" / "report.md").write_text("复盘报告\n", encoding="utf-8")
+        report = prune(self.repo, apply=True)
+        self.assertTrue((worker / "build" / "report.md").is_file())
+        self.assertEqual(report["reclaimed"], [])
+        self.assertIn("build/", next(row["why"] for row in report["kept"] if row["path"] == str(worker)))
+
+    def test_a_worktree_a_process_is_working_in_is_kept(self):
+        """会话、终端或预览服务还开在里面的工作树不回收：分支合入了，人还在用。"""
+        worker = self._integrated("in-use")
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], cwd=worker)
+        try:
+            report = prune(self.repo, apply=True)
+        finally:
+            process.kill()
+            process.wait(timeout=15)
+        self.assertTrue(worker.is_dir())
+        why = next(row["why"] for row in report["kept"] if row["path"] == str(worker))
+        self.assertIn(str(process.pid), why)
+
     def test_a_dirty_worktree_is_refused_even_when_its_branch_is_merged(self):
         """分支已合入不等于工作区里没东西。
 

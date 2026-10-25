@@ -12,6 +12,10 @@ MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
 
 
 class MigrationTests(unittest.TestCase):
+    def test_missing_database_status_does_not_create_a_file(self):
+        self.assertTrue(plan(self.db, MIGRATIONS)[1])
+        self.assertFalse(self.db.exists())
+
     def test_disposal_reason_migration_preserves_assets_tags_and_unknown_reasons(self):
         prior = self.root.resolve() / 'prior'
         prior.mkdir()
@@ -24,7 +28,7 @@ class MigrationTests(unittest.TestCase):
             connection.execute("INSERT INTO asset(id,location,path,medium,disposal) VALUES(1,'local','sample.mp4','video','trash')")
             connection.execute("INSERT INTO asset_tag(asset_id,tag,source) VALUES(1,'示例','user')")
             connection.commit()
-            self.assertEqual([migration.version for migration in upgrade(self.db, MIGRATIONS)], ['0046', '0047'])
+            self.assertEqual([migration.version for migration in upgrade(self.db, MIGRATIONS)], ['0046', '0047', '0048'])
             self.assertEqual(connection.execute("SELECT disposal,disposal_reason FROM asset WHERE id=1").fetchone(), ('trash', None))
             self.assertEqual(connection.execute("SELECT tag,source FROM asset_tag WHERE asset_id=1").fetchall(), [('示例', 'user')])
             self.assertEqual(connection.execute("SELECT count(*) FROM asset").fetchone()[0], 1)
@@ -43,7 +47,7 @@ class MigrationTests(unittest.TestCase):
         sqlite3.connect(self.db).close()
         backup = self.root / "before.db"
         done = upgrade(self.db, MIGRATIONS, backup)
-        self.assertEqual([m.version for m in done], [f'{number:04d}' for number in range(48)])
+        self.assertEqual([m.version for m in done], [f'{number:04d}' for number in range(49)])
         self.assertTrue(backup.exists())
         con = sqlite3.connect(self.db)
         tables = {row[0] for row in con.execute(
@@ -61,7 +65,7 @@ class MigrationTests(unittest.TestCase):
                          "asset_tag_preference", "asset_search", "follow_playback",
                          "genre_decision", "asset_subtitle", "task_run", "performer_profile", "code_sample_image",
                          "entity_classification", "entity_identity_link", "seed_pack_history", "schema_migration"} <= tables)
-        self.assertEqual(versions, [f'{number:04d}' for number in range(48)])
+        self.assertEqual(versions, [f'{number:04d}' for number in range(49)])
         self.assertEqual(upgrade(self.db, MIGRATIONS), [])
         self.assertEqual(plan(self.db, MIGRATIONS)[1], [])
 

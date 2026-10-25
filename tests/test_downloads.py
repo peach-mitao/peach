@@ -67,6 +67,17 @@ class Clock:
 
 
 class MagnetTests(unittest.TestCase):
+    def test_payload_exposes_a_display_code_without_changing_the_task(self):
+        task = dl.DownloadTask(id=1, info_hash=HASH, provider="115", source_uri=MAGNET,
+                               display_name="ABC-123.mp4", target="/cloud", state=dl.SUBMITTED)
+        self.assertEqual(task.payload()["display_code"], "ABC-123")
+        self.assertIsNone(task.code)
+        task.remote_name = "XYZ-999.mp4"
+        self.assertIsNone(task.payload()["display_code"])
+        task.remote_name = None
+        task.display_name = "无编号作品.mp4"
+        self.assertIsNone(task.payload()["display_code"])
+
     def test_hex_and_base32_spellings_are_one_key(self):
         base32 = "ZHQVOY7XELZD5GFCTXWN7LRUDOMNKMCW"
         self.assertEqual(dl.normalise_info_hash(base32), HASH)
@@ -230,6 +241,17 @@ class PollingTests(_Deployment):
         task = self.service.store.get(task_id)
         self.assertEqual((task.state, task.failure), (dl.FAILED, "rejected"))
 
+    def test_a_network_blip_reason_lasts_only_until_the_next_good_poll(self):
+        task_id = self.submit()["task"]["id"]
+        self.provider.statuses = [dl.DownloadError("network", "连不上"), dl.RemoteStatus(dl.MISSING)]
+        self.tick(10)
+        task = self.service.store.get(task_id)
+        self.assertEqual((task.state, task.failure, task.failure_detail), (dl.SUBMITTED, None, "连不上"))
+        # 远端列表里暂时没有、还在宽限期里：这一次查通了，上一次的连不上不再是现状。
+        self.tick(30)
+        task = self.service.store.get(task_id)
+        self.assertEqual((task.state, task.failure_detail), (dl.SUBMITTED, None))
+
     def test_a_block_seen_while_polling_also_blacklists(self):
         task_id = self.submit()["task"]["id"]
         self.provider.statuses = [dl.RemoteStatus(dl.ERROR, "r1", "", None, "50038")]
@@ -378,6 +400,46 @@ class LandingTests(_Deployment):
 
 
 class SettingsTests(_Deployment):
+    def test_service_addresses_validate_ports_and_preserve_supported_hosts(self):
+        for address in ("http://127.0.0.1:abc", "http://localhost:0", "http://localhost:65536",
+                        "http://localhost:", "http://localhost:19798#fragment", "http://[::1",
+                        "http://127.0.0.1:19 798", "http://@localhost:19798", "http://localhost\x00:19798",
+                        "C:\\CloudDrive2\\CloudDrive2.exe"):
+            with self.subTest(address=address), self.assertRaises(ValueError):
+                dl.clean_address(address)
+        for source, expected in (("localhost:19798", "http://localhost:19798"),
+                                 ("http://[::1]:19798", "http://[::1]:19798"),
+                                 ("https://example.test", "https://example.test")):
+            with self.subTest(source=source):
+                self.assertEqual(dl.clean_address(source), expected)
+
+    def test_invalid_saved_address_is_editable_and_preserves_other_preferences(self):
+        path = self.service.settings.path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        stored = {"clouddrive_address": "http://localhost:bad-port", "targets": {"115": "/115/Movies"},
+                  "pikpak_root": "P:\\", "wait_hours": 48}
+        payload = json.dumps(stored).encode()
+        path.write_bytes(payload)
+        loaded = self.service.settings.load()
+        self.assertEqual(loaded.payload(), stored)
+        self.assertIn("端口", loaded.problems[0])
+        self.assertEqual(path.read_bytes(), payload)
+        corrected = self.service.settings.save({**stored, "clouddrive_address": "localhost:19798"}, None)
+        self.assertEqual(corrected.problems, ())
+        self.assertEqual(corrected.targets, stored["targets"])
+
+    def test_snapshot_hides_remote_cancel_when_the_channel_cannot_cancel(self):
+        task_id = self.submit()["task"]["id"]
+        self.service.channel_catalog = lambda: {"providers": [{
+            "key": "115", "label": "影片库", "can_cancel": False}], "problems": []}
+        task = self.service.snapshot()["tasks"][0]
+        self.assertEqual(task["provider_label"], "影片库")
+        self.assertFalse(task["cancellable"])
+        stored = self.service.store.get(task_id)
+        stored.state = dl.REMOTE_DONE
+        self.service.store.save(stored)
+        self.assertTrue(self.service.snapshot()["tasks"][0]["cancellable"])
+
     def test_settings_hold_no_credentials_and_check_the_pikpak_root(self):
         with self.assertRaisesRegex(ValueError, "不是已声明的 PikPak 媒体根"):
             self.service.save_settings({"pikpak_root": "Z:\\"}, self.declared)
@@ -400,6 +462,23 @@ class SettingsTests(_Deployment):
         self.credentials.save(dl.CLOUDDRIVE_CREDENTIAL, {"token": "t"})
         providers = {row["key"]: row["configured"] for row in self.service.snapshot()["providers"]}
         self.assertEqual(providers, {"115": True, "pikpak": False})
+
+    def test_snapshot_pages_keep_submission_order_during_status_updates(self):
+        for number in range(5):
+            self.service.store.save(dl.DownloadTask(
+                id=0, info_hash=f"{number:040x}", provider="115", source_uri=MAGNET,
+                display_name="ABC-123", target="/cloud", state=dl.SUBMITTED))
+        first = self.service.snapshot(2)
+        self.assertEqual([row["id"] for row in first["tasks"]], [5, 4])
+        self.assertTrue(first["has_more"])
+        changed = self.service.store.get(3)
+        changed.updated_at = "2099-01-01T00:00:00Z"
+        self.service.store.save(changed)
+        second = self.service.snapshot(2, before_id=first["next_before_id"])
+        self.assertEqual([row["id"] for row in second["tasks"]], [3, 2])
+        last = self.service.snapshot(2, before_id=second["next_before_id"])
+        self.assertEqual([row["id"] for row in last["tasks"]], [1])
+        self.assertFalse(last["has_more"])
 
 
 class CredentialSaveTests(unittest.TestCase):

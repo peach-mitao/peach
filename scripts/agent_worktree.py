@@ -346,6 +346,27 @@ def processes(repo: Path) -> dict[str, object]:
     return report
 
 
+def _in_use(path: Path) -> str:
+    """还在用的工作树不回收：返回保留的理由，空串表示可以回收。
+
+    分支已合入、工作区干净，不等于没人在用。2026-10-24 一次 `prune --apply` 回收了一个
+    Claude 会话正开着的工作树：它的分支早已并入 master，被 Git 忽略的 `build/` 里却放着
+    那个会话的协调脚本、几十份测试与流水线日志和复盘报告，`git worktree remove` 连同它们
+    一起删了，没有备份。所以 `build/` 里有文件、或者还有进程在里面（会话、终端、预览服务），
+    一律留着报出来。判断不了有没有进程时也留着：删错了没法撤回。
+    """
+    build = path / "build"
+    if build.is_dir() and any(child.is_file() for child in build.rglob("*")):
+        return "build/ 里还有过程文件（日志、报告、派单），确认不要了再手动删"
+    holders = processes_under([path])
+    if isinstance(holders, str):
+        return f"无法判断是否有进程在用（{holders}）"
+    others = [row for row in holders if not row["caller"]]
+    if others:
+        return "还有进程在用（PID " + "、".join(str(row["pid"]) for row in others[:5]) + "），多半是会话、终端或服务"
+    return ""
+
+
 def _reclaim(main: Path, path: Path, branch: str) -> tuple[str, dict[str, str]]:
     """回收单个工作树，把结果归到 reclaimed / residue / failed 之一。
 
@@ -457,6 +478,10 @@ def prune(repo: Path, target_branch: str = "master", *,
         if _git(main, "-C", str(path), "status", "--porcelain",
                 check=False).stdout.strip():
             dirty.append({"path": str(path), "branch": branch, "why": "工作区有未提交改动"})
+            continue
+        busy = _in_use(path)
+        if busy:
+            kept.append({"path": str(path), "branch": branch, "why": busy})
             continue
         if not apply:
             reclaimed.append(str(path))

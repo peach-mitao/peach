@@ -724,6 +724,31 @@ def _auto_apply_rule(candidate: dict, agreed: int) -> str:
     return f"adr-0018-empty-field-single-{kind}-source"
 
 
+def _original_title_candidate(field: str, candidate: dict, code: str = '') -> bool:
+    """r18 拉丁字母标题须能在快照的原文侧精确复核，适用于持久候选重放。"""
+    if field not in {'title', 'original_title'} or candidate.get('source') != 'r18dev':
+        return True
+    value = ' '.join(str(candidate.get('value') or '').split())
+    if not re.search(r'[A-Za-z]', value) or re.search(r'[\u3040-\u30ff\u3400-\u9fff]', value):
+        return True
+    snapshot = candidate.get('raw_snapshot')
+    if not snapshot:
+        return False
+    try:
+        payload = json.loads(Path(snapshot).read_text(encoding='utf-8'))
+        if isinstance(payload, dict) and isinstance(payload.get('result'), dict):
+            payload = payload['result']
+        if not isinstance(payload, dict):
+            return False
+        from .metadata import extract_peach_fields, identifies_code
+        if code and not identifies_code(code, payload):
+            return False
+        original = extract_peach_fields(payload).get(field, {}).get('value')
+        return bool(original) and ' '.join(str(original).split()) == value
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def _evidence_candidates(row: dict, field: str = "") -> list[dict]:
     """能当补空证据的候选：已登记来源与本地 NFO，去掉这个字段上被拉黑的来源。
 
@@ -736,7 +761,8 @@ def _evidence_candidates(row: dict, field: str = "") -> list[dict]:
     return [c for c in row.get("candidates") or []
             if (str(c.get("source") or "").strip() in SOURCE_SPECS
                 or str(c.get("source") or "").strip() == LOCAL_NFO_SOURCE)
-            and not blacklisted(field, str(c.get("source") or "").strip())]
+            and not blacklisted(field, str(c.get("source") or "").strip())
+            and _original_title_candidate(field, c, str(row.get('code') or ''))]
 
 
 def _unmasked_titles(field: str, candidates: list[dict], current: str = "") -> list[dict]:
@@ -1029,6 +1055,8 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
 def _approved_entity_name(value: object, kind: str) -> str:
     name = str(value or "").strip()
     cleaned = canonicalize_entity_name(kind, name)
+    if kind == 'tag' and name and cleaned and collapse_repeated_entity_name(name) == name:
+        return cleaned
     if kind not in {"creator", "performer"}:
         cleaned = collapse_repeated_entity_name(cleaned)
     if not name or not cleaned or cleaned != name:
@@ -1261,6 +1289,8 @@ def _apply_metadata_candidate(
     marks = ",".join("?" * len(asset_ids))
 
     if field in {"title", "original_title"}:
+        if not _original_title_candidate(field, candidate, code):
+            raise ValueError('r18 标题原文证据未取得，请重新采集资料')
         raw_value = str(candidate.get("value") or "")
         value = " ".join(raw_value.split())
         if (not value or len(value) > 1000

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from peach.library_nfo import read_nfo
 from peach.metadata_routes import route_for_code
+from peach import artifact_rules, upgrade_rules
 
 
 def seed_metadata_cache(media: Path, sources: Path) -> None:
@@ -16,5 +17,7 @@ def seed_metadata_cache(media: Path, sources: Path) -> None:
         if not code:
             continue
         for source in route_for_code(code):
-            (target / f'{code}-{source}.json').write_text(
+            snapshot = target / f'{code}-{source}.json'
+            snapshot.write_text(
                 json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+            artifact_rules.remember(snapshot, str(upgrade_rules.PROVIDER_EVIDENCE))
