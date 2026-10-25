@@ -23,7 +23,7 @@ import {
   averageBitrate, bufferedAhead, createBufferMeter, fmtLoadRate, fmtSpeed, PLAYER_PANEL_EVENT,
   playerSpeedBits, playerStatsOverlayHtml, playerStatsPlot, pushPlayerStat, streamEntries,
 } from './stats';
-import { detailStreamSession, detailStreamSource, directDetailSource } from './stream';
+import { detailStreamSession, detailStreamSource, directDetailSource, streamFallbackChain } from './stream';
 import { stopTelemetry, wireFollowTelemetry, wireTelemetry } from './telemetry';
 import type { MediaFacts, PlayerItem, PlayerSource, SourceQuality, VjsPlayer } from './types';
 import { ensureVideojs } from './videojs';
@@ -181,7 +181,8 @@ export async function mountDetailPlayer(
       `<dt>${esc(key)}</dt><dd${plot ? ' data-player-stats-metric=""' : ''}>${plot || ''}<span>${esc(value)}</span></dd>`).join('')}</dl>`;
   };
   player.on(['loadstart', 'loadedmetadata', 'durationchange', 'error'], enforceDuration);
-  let segmentedSource = false, fallbackUsed = false, fallbackSource: PlayerSource | null = null;
+  let segmentedSource = false;
+  let takeFallback: (error: unknown) => PlayerSource | null = () => null;
   const updateNet = () => {
     const netBadge = session.chrome?.netBadge;
     if (!netBadge || player.isDisposed()) return;
@@ -207,10 +208,9 @@ export async function mountDetailPlayer(
   player.on(['loadstart', 'progress', 'waiting', 'stalled'], showNet);
   player.on(['canplay', 'playing'], () => { updateNet(); hideNet() });
   player.on('error', () => {
-    if (fallbackSource && !fallbackUsed && !player.isDisposed()) {
-      fallbackUsed = true;
-      const at = video.currentTime, next = fallbackSource;
-      fallbackSource = null;
+    const next = !player.isDisposed() ? takeFallback(player.error()) : null;
+    if (next) {
+      const at = video.currentTime;
       segmentedSource = String(next.type || '').includes('mpegurl');
       if (at > 0) player.one('loadedmetadata', () => { if (!player.isDisposed()) player.currentTime(at) });
       player.src(next);
@@ -243,7 +243,8 @@ export async function mountDetailPlayer(
   source().then((next) => {
     if (!live()) return;
     segmentedSource = String(next.type || '').includes('mpegurl');
-    fallbackSource = next.fallback ?? (segmentedSource ? directDetailSource(item) : null);
+    takeFallback = streamFallbackChain({ ...next,
+      fallback: next.fallback ?? (segmentedSource ? directDetailSource(item) : undefined) });
     if (resume && resume.time > 0) player.one('loadedmetadata', () => {
       if (player.isDisposed()) return;
       const duration = realDuration(player.el().querySelector('video')?.duration) || realDuration(player.duration());

@@ -154,7 +154,8 @@ def _needs_conversion(state, asset_id: int, source: Path, session: str) -> bool:
     return True
 
 
-def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None = None):
+def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None = None,
+              force_transcode: bool = False):
     """解析 HLS 的片源路径与分片计划；任何一步不成立就返回 None 走 Range。
 
     要重编码的片源按固定 6 秒切，时长先看账本，账本没记或记成负数就用 ffprobe 报的；
@@ -169,16 +170,23 @@ def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None =
     choice = state.media_engine.stream_plan(asset_id, mode="hls")
     source = state.media_engine.filesystem.file_for(asset, thumbnail=False)
     duration = asset.duration if asset.duration and asset.duration > 0 else 0.0
-    if conversion if conversion is not None else state.transcode_service.requires_conversion(
-            source, session=session, registry=state.stream_sessions):
+    needs_conversion = (conversion if conversion is not None else state.transcode_service.requires_conversion(
+        source, session=session, registry=state.stream_sessions))
+    if force_transcode or needs_conversion:
         duration = duration or state.transcode_service.media_duration(
             source, session=session, registry=state.stream_sessions)
+        mode = ("transcode" if force_transcode else state.transcode_service.hls_mode(
+            source, session=session, registry=state.stream_sessions))
+        if mode != "transcode" and duration > 0:
+            plan = state.hls_service.plan(source, duration)
+            if plan:
+                return asset, source, plan, mode
         plan = state.hls_service.conversion_plan(duration) if duration > 0 else []
-        return (asset, source, plan, True) if plan else None
+        return (asset, source, plan, "transcode") if plan else None
     if choice.protocol != "hls" or duration <= 0:
         return None
     plan = state.hls_service.plan(source, duration)
-    return None if not plan else (asset, source, plan, False)
+    return None if not plan else (asset, source, plan, "copy")
 
 
 @router.post("/api/external-playback")
@@ -253,7 +261,7 @@ def stream(request: Request, id: int, session: str = "", original: bool = False,
             path, header, session=session, registry=state.stream_sessions,
         )
     if original:
-        media_type = 'video/webm' if path.suffix.lower() == '.webm' else 'video/mp4'
+        media_type = {'.webm': 'video/webm', '.mkv': 'video/x-matroska'}.get(path.suffix.lower(), 'video/mp4')
         response = CancellableFileResponse(
             path, session=session, registry=state.stream_sessions, media_type=media_type,
         )
@@ -307,7 +315,7 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", ar
     conversion = _needs_conversion(state, id, source_path, session)
     original_trial = (
         conversion
-        and source_path.suffix.lower() in {".mp4", ".m4v"}
+        and source_path.suffix.lower() in {".mp4", ".m4v", ".mkv"}
         and not state.transcode_service.decode_order_timestamps(
             source_path, session=session, registry=state.stream_sessions)
     )
@@ -326,15 +334,22 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", ar
         }
         if original_trial:
             result["original_src"] = f"/stream?id={id}&original=1&session={quote(session, safe='')}"
-            result["original_mime_type"] = "video/mp4"
+            result["original_mime_type"] = ('video/x-matroska' if source_path.suffix.lower() == '.mkv'
+                                            else 'video/mp4')
+        result["processing"] = resolved[3]
+        if resolved[3] != "transcode":
+            result["fallback_src"] = f"/stream/hls/{id}/index.m3u8?session={quote(session, safe='')}&transcode=1"
         return result
     source = f"/stream?id={id}"
     if session:
         source += f"&session={quote(session, safe='')}"
+    if original_trial:
+        source += "&original=1"
     return {
         "id": id,
         "protocol": "range",
-        "mime_type": plan.mime_type,
+        "mime_type": ('video/x-matroska' if original_trial and source_path.suffix.lower() == '.mkv'
+                      else plan.mime_type),
         "duration": asset.duration,
         "src": source,
         "reason": plan.reason,
@@ -356,7 +371,8 @@ def strm_resource(request: Request, id: int, key: str, session: str = '',
 
 
 @router.get("/stream/hls/{id}/index.m3u8")
-def hls_playlist(request: Request, id: int, session: str = "", args: dict[str, str] = Depends(require_auth)):
+def hls_playlist(request: Request, id: int, session: str = "", transcode: bool = False,
+                 args: dict[str, str] = Depends(require_auth)):
     state = request.app.state
     # 分片必须带 session 才能被取消，播放列表这层就要求它；
     # 否则会生成一份每个分片都必然 400 的目录。
@@ -365,12 +381,14 @@ def hls_playlist(request: Request, id: int, session: str = "", args: dict[str, s
     if state.stream_sessions.is_cancelled(session):
         return PlainTextResponse("stream cancelled", status_code=410)
     try:
-        resolved = _hls_plan(state, id, session)
+        resolved = _hls_plan(state, id, session, force_transcode=transcode)
     except (MediaUnavailable, TranscodeUnavailable):
         return PlainTextResponse("hls unavailable", status_code=404)
     if resolved is None:
         return PlainTextResponse("hls unavailable", status_code=404)
     query = f"?session={quote(session, safe='')}"
+    if transcode:
+        query += "&transcode=1"
     playlist = build_hls_playlist(
         resolved[2], lambda index: f"/stream/hls/{id}/{index}.ts{query}",
     )
@@ -380,7 +398,8 @@ def hls_playlist(request: Request, id: int, session: str = "", args: dict[str, s
 
 
 @router.get("/stream/hls/{id}/{index}.ts")
-async def hls_segment(request: Request, id: int, index: int, session: str = "", args: dict[str, str] = Depends(require_auth)):
+async def hls_segment(request: Request, id: int, index: int, session: str = "", transcode: bool = False,
+                      args: dict[str, str] = Depends(require_auth)):
     state = request.app.state
     if not session or len(session) > 128:
         return JSONResponse({"error": "invalid session"}, status_code=400)
@@ -389,18 +408,19 @@ async def hls_segment(request: Request, id: int, index: int, session: str = "", 
     try:
         loop = asyncio.get_running_loop()
         resolved = await loop.run_in_executor(
-            state.hls_plan_executor, partial(_hls_plan, state, id, session),
+            state.hls_plan_executor, partial(_hls_plan, state, id, session, force_transcode=transcode),
         )
         if resolved is None:
             return JSONResponse({"error": "hls unavailable"}, status_code=404)
-        _, source, plan, conversion = resolved
+        _, source, plan, processing = resolved
         if index < 0 or index >= len(plan):
             return JSONResponse({"error": "invalid segment"}, status_code=416)
         start, duration = plan[index]
         path = await state.hls_service.generate(
             source, start, duration, asset_id=id, index=index,
             session=session, registry=state.stream_sessions,
-            **({"transcode": True} if conversion else {}),
+            **({"transcode": True} if processing == "transcode" else
+               {"audio_transcode": True} if processing == "audio" else {}),
         )
     except SegmentCancelled:
         return Response(status_code=410, headers={"Cache-Control": "no-store"})

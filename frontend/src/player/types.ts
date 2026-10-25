@@ -14,7 +14,7 @@ export interface QualityLevelList {
 export interface PlayerSource {
   src: string;
   type: string;
-  /** 主片源解码失败时的一次性回退；视频元素真正拒绝后才使用。 */
+  /** 媒体不兼容时的下一条片源，按链顺序尝试。 */
   fallback?: PlayerSource | undefined;
 }
 

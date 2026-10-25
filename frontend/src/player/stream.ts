@@ -11,9 +11,24 @@ export function newStreamSession(): string {
 }
 
 export function directStreamSource(item: PlayerItem, session: string): PlayerSource {
+  const mkv = String(item.name || '').toLowerCase().endsWith('.mkv');
   return {
-    src: `/stream?id=${item.id}&session=${encodeURIComponent(session)}`,
-    type: String(item.name || '').toLowerCase().endsWith('.webm') ? 'video/webm' : 'video/mp4',
+    src: `/stream?id=${item.id}&session=${encodeURIComponent(session)}${mkv ? '&original=1' : ''}`,
+    type: mkv ? 'video/x-matroska' : String(item.name || '').toLowerCase().endsWith('.webm') ? 'video/webm' : 'video/mp4',
+  };
+}
+
+/** 媒体不兼容时顺次取下一条片源，同一地址只尝试一次；网络故障不消耗兼容回退。 */
+export function streamFallbackChain(source: PlayerSource): (error: unknown) => PlayerSource | null {
+  const tried = new Set([source.src]);
+  let next = source.fallback;
+  return (error) => {
+    const code = Number((error as { code?: number } | null)?.code);
+    if (![3, 4].includes(code) || !next || tried.has(next.src)) return null;
+    const selected = next;
+    tried.add(selected.src);
+    next = selected.fallback;
+    return selected;
   };
 }
 
@@ -31,13 +46,15 @@ export async function playableStreamSource(item: PlayerItem, session: string): P
   if (proxied) return proxied;
   try {
     const plan = await api(`/api/stream-plan?id=${item.id}&session=${encodeURIComponent(session)}`) as
-      { protocol?: string; src?: string; mime_type?: string; original_src?: string; original_mime_type?: string } | null;
+      { protocol?: string; src?: string; mime_type?: string; original_src?: string; original_mime_type?: string;
+        fallback_src?: string } | null;
     if (plan?.src) {
-      const segmented = { src: plan.src, type: plan.mime_type || 'application/vnd.apple.mpegurl' };
+      const segmented: PlayerSource = { src: plan.src, type: plan.mime_type || 'application/vnd.apple.mpegurl' };
+      if (plan.fallback_src) segmented.fallback = { src: plan.fallback_src, type: 'application/vnd.apple.mpegurl' };
       if (plan.original_src) {
         return { src: plan.original_src, type: plan.original_mime_type || 'video/mp4', fallback: segmented };
       }
-      return { src: plan.src, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
+      return { ...segmented, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
     }
   } catch { /* 取不到计划就直读 */ }
   return directStreamSource(item, session);
