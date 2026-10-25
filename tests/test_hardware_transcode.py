@@ -26,6 +26,8 @@ class HardwareDetectionTests(unittest.TestCase):
         def run(command, **kwargs):
             commands.append(command)
             self.assertEqual(kwargs["timeout"], 10)
+            if "-qsv_device" in command:
+                return subprocess.CompletedProcess(command, 1, stderr=b"no qsv")
             device = command[command.index("-vaapi_device") + 1]
             return subprocess.CompletedProcess(command, int(device.endswith("128")), stderr=b"no display")
 
@@ -37,9 +39,10 @@ class HardwareDetectionTests(unittest.TestCase):
             encoders = hardware.encoders(Path("ffmpeg"))
             self.assertEqual(encoders, (HardwareEncoder("vaapi", "/dev/dri/renderD129"),))
             self.assertEqual(hardware.encoders(Path("ffmpeg")), encoders)
-        self.assertEqual(len(commands), 2)
-        self.assertTrue(all("h264_vaapi" in command for command in commands))
-        self.assertTrue(all("format=nv12,hwupload" in command for command in commands))
+        self.assertEqual(len(commands), 4)
+        self.assertEqual(sum("-qsv_device" in command for command in commands), 2)
+        self.assertEqual(sum("h264_vaapi" in command for command in commands), 2)
+        self.assertTrue(all("format=nv12,hwupload" in command for command in commands if "h264_vaapi" in command))
         self.assertTrue(all(command[-2:] == ("null", "-") for command in commands))
 
     def test_explicit_device_and_backend_are_probed_without_gpu_listing(self):
@@ -79,6 +82,28 @@ class HardwareDetectionTests(unittest.TestCase):
                 patch("peach.hardware_transcode.subprocess.run", return_value=Mock(returncode=0)) as run:
             self.assertEqual(HardwareTranscoder().encoders(Path("ffmpeg")), (HardwareEncoder("nvenc"),))
         self.assertIn("h264_nvenc", run.call_args.args[0])
+
+    def test_qsv_decodes_supported_codecs_and_keeps_software_decode(self):
+        encoder = HardwareEncoder("qsv", "/dev/dri/renderD128")
+        full, encode = encoder.attempts("hevc")
+        self.assertEqual(full.name, "qsv")
+        self.assertIn("-hwaccel", full.before_input)
+        self.assertIn("qsv", full.before_input)
+        self.assertIn("scale_qsv=format=nv12", full.output)
+        self.assertIn("h264_qsv", full.output)
+        self.assertEqual(encode.name, "qsv-encode")
+        self.assertNotIn("-hwaccel", encode.before_input)
+        self.assertEqual(encoder.attempts("vc1"), (encode,))
+
+    def test_explicit_qsv_uses_its_device_before_vaapi(self):
+        with patch.dict(os.environ, {"PEACH_TRANSCODE_BACKEND": "qsv", "PEACH_QSV_DEVICE": "/dev/dri/renderD131"}):
+            hardware = HardwareTranscoder()
+        with patch("peach.hardware_transcode.subprocess.run", return_value=Mock(returncode=0)) as run:
+            self.assertEqual(hardware.encoders(Path("ffmpeg")), (HardwareEncoder("qsv", "/dev/dri/renderD131"),))
+        command = run.call_args.args[0]
+        self.assertIn("h264_qsv", command)
+        self.assertIn("/dev/dri/renderD131", command)
+        self.assertNotIn("h264_vaapi", command)
 
     def test_invalid_backend_has_an_actionable_error(self):
         with patch.dict(os.environ, {"PEACH_TRANSCODE_BACKEND": "typo"}):

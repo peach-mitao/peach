@@ -11,6 +11,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 CUDA_DECODE_CODECS = frozenset({"h264", "hevc", "vp9", "av1"})
+QSV_DECODE_CODECS = frozenset({"h264", "hevc", "vp9", "av1", "mpeg2video"})
 PROBE_TIMEOUT_SECONDS = 10
 
 
@@ -37,6 +38,19 @@ class HardwareEncoder:
                 "cuda-nvenc", ("-hwaccel", "cuda", "-hwaccel_output_format", "cuda"),
                 ("-vf", "scale_cuda=format=nv12") + output,
             ), software_decode)
+        if self.backend == "qsv":
+            output = ("-c:v", "h264_qsv", "-global_quality", "21")
+            device = ("-qsv_device", self.device) if self.device else ()
+            software_decode = HardwareAttempt(
+                "qsv-encode", device,
+                ("-vf", "format=nv12,hwupload=extra_hw_frames=64") + output,
+            )
+            if codec not in QSV_DECODE_CODECS:
+                return (software_decode,)
+            return (HardwareAttempt(
+                "qsv", device + ("-hwaccel", "qsv", "-hwaccel_output_format", "qsv"),
+                ("-vf", "scale_qsv=format=nv12") + output,
+            ), software_decode)
         device = ("-vaapi_device", self.device)
         output = ("-c:v", "h264_vaapi", "-qp", "21")
         return (
@@ -56,9 +70,10 @@ class HardwareTranscoder:
     def __init__(self, *, enabled: bool = True):
         self.enabled = enabled
         self.backend = os.environ.get("PEACH_TRANSCODE_BACKEND", "auto").strip().lower()
-        if self.backend not in {"auto", "software", "nvenc", "vaapi"}:
-            raise ValueError("PEACH_TRANSCODE_BACKEND 必须为 auto、software、nvenc 或 vaapi")
+        if self.backend not in {"auto", "software", "nvenc", "qsv", "vaapi"}:
+            raise ValueError("PEACH_TRANSCODE_BACKEND 必须为 auto、software、nvenc、qsv 或 vaapi")
         self.device = os.environ.get("PEACH_VAAPI_DEVICE", "").strip()
+        self.qsv_device = os.environ.get("PEACH_QSV_DEVICE", "").strip() or self.device
         self._encoders: dict[Path, tuple[HardwareEncoder, ...]] = {}
         self._lock = threading.Lock()
 
@@ -69,9 +84,13 @@ class HardwareTranscoder:
             or Path("/proc/driver/nvidia/version").exists()
         )):
             candidates.append(HardwareEncoder("nvenc"))
+        render_nodes = [self.device] if self.device else sorted(
+            path.as_posix() for path in Path("/dev/dri").glob("renderD*"))
+        qsv_nodes = [self.qsv_device] if self.qsv_device else render_nodes
+        if self.backend == "qsv" or (self.backend == "auto" and sys.platform.startswith("linux") and qsv_nodes):
+            candidates.extend(HardwareEncoder("qsv", device) for device in (qsv_nodes or [""]))
         if self.backend == "vaapi" or (self.backend == "auto" and sys.platform.startswith("linux")):
-            devices = [self.device] if self.device else sorted(p.as_posix() for p in Path("/dev/dri").glob("renderD*"))
-            candidates.extend(HardwareEncoder("vaapi", device) for device in devices)
+            candidates.extend(HardwareEncoder("vaapi", device) for device in render_nodes)
         return tuple(candidates)
 
     def encoders(self, ffmpeg: Path) -> tuple[HardwareEncoder, ...]:
@@ -80,12 +99,14 @@ class HardwareTranscoder:
         with self._lock:
             if ffmpeg not in self._encoders:
                 available = []
+                seen = set()
                 for encoder in self._candidates():
+                    if encoder.backend in seen:
+                        continue
                     if self._probe(ffmpeg, encoder):
                         available.append(encoder)
-                        # 一个可用 VAAPI 节点足以服务这条链，避免重复尝试同类设备。
-                        if encoder.backend == "vaapi":
-                            break
+                        # 同一类设备成功一次即可，换节点不再重复探测。
+                        seen.add(encoder.backend)
                 self._encoders[ffmpeg] = tuple(available)
                 logger.info("转码硬件后端：%s", ", ".join(
                     item.backend + (f" ({item.device})" if item.device else "")
