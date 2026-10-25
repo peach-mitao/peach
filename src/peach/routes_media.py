@@ -181,6 +181,25 @@ def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None =
     return None if not plan else (asset, source, plan, False)
 
 
+@router.post("/api/external-playback/mpv")
+def open_local_mpv(request: Request, id: int, args: dict[str, str] = Depends(require_auth)):
+    """在运行 Peach 的电脑上用 mpv 打开这一条。路径只由资产编号解析。"""
+    from fastapi import HTTPException
+    from .interaction import launch_mpv
+    state = request.app.state
+    asset = state.media_engine.asset(id)
+    path = state.media_engine.filesystem.file_for(asset, thumbnail=False)
+    from . import strm
+    try:
+        target = strm.read_target(path) if strm.is_pointer(path) else str(path)
+        launch_mpv(target)
+    except FileNotFoundError as error:
+        raise HTTPException(404, str(error)) from None
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    return JSONResponse({"opened": True}, headers={"Cache-Control": "no-store"})
+
+
 @router.post("/api/external-playback")
 def external_playback(request: Request, id: int, args: dict[str, str] = Depends(require_auth)):
     from .external_playback import TTL_SECONDS, issue

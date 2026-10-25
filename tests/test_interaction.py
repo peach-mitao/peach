@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from peach.interaction import _windows_reveal, reveal_path
+from peach.interaction import _windows_reveal, launch_mpv, reveal_path
 
 
 class RevealPathTests(unittest.TestCase):
@@ -54,3 +54,19 @@ class RevealPathTests(unittest.TestCase):
         with (patch("peach.interaction.os.name", "posix"),
               patch("peach.interaction.sys.platform", "linux")):
             self.assertFalse(reveal_path(Path("/srv/a.mp4")))
+
+
+class LaunchMpvTests(unittest.TestCase):
+    def test_launch_passes_the_target_as_one_argument(self):
+        with patch("peach.interaction.subprocess.Popen") as popen, \
+             patch("peach.interaction.os.name", "posix"):
+            launch_mpv(r"D:\media\a,b.mp4", executable=r"C:\mpv\mpv.exe")
+        argv = popen.call_args.args[0]
+        self.assertEqual(argv, [r"C:\mpv\mpv.exe", r"D:\media\a,b.mp4"])
+        self.assertNotIn("shell", popen.call_args.kwargs)
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_missing_mpv_is_reported(self):
+        with patch("peach.interaction.mpv_executable", return_value=None):
+            with self.assertRaisesRegex(FileNotFoundError, "没有找到 mpv"):
+                launch_mpv(r"D:\media\a.mp4")

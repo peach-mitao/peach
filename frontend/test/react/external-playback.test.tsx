@@ -3,6 +3,7 @@ import { ExternalPlayback, playerLink } from '../../src/react/item-detail/extern
 import { click, mount, settle } from './render';
 
 it('外部播放器只在用户请求后签发链接，并保留网络地址供 VR 播放器使用', async () => {
+  localStorage.removeItem('peach.external-player.v1');
   const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({
     url: '/external-stream/1?ticket=short', playlist: '/external-playlist/1.m3u?ticket=short',
   }) }));
@@ -14,6 +15,18 @@ it('外部播放器只在用户请求后签发链接，并保留网络地址供 
   expect(fetcher.mock.calls).toHaveLength(1);
   expect(host.querySelector('a')?.getAttribute('href')).toContain('/external-playlist/1.m3u?ticket=short');
   expect(host.querySelector('input')?.value).toContain('/external-stream/1?ticket=short');
+});
+
+it('本地 mpv 让服务端打开文件，不签发网络地址', async () => {
+  localStorage.setItem('peach.external-player.v1', 'mpv');
+  const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ opened: true }) }));
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<ExternalPlayback id={4} />);
+  await click(Array.from(host.querySelectorAll('button')).find(button => button.textContent === '用 mpv 打开')!);
+  await settle();
+  expect(String(fetcher.mock.calls[0]?.[0])).toContain('/api/external-playback/mpv?id=4');
+  expect(host.textContent).toContain('已用本机 mpv 打开。');
+  expect(host.querySelector('a')).toBeNull();
 });
 
 it('专属协议只编码服务端播放地址', () => {

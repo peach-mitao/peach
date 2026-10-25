@@ -2579,6 +2579,20 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
                                              headers={'X-Token': 'secret'})
             self.assertEqual(removed.json(), {'items': []})
 
+    async def test_local_mpv_opens_the_resolved_file(self):
+        denied = await self.client.post('/api/external-playback/mpv?id=1')
+        self.assertEqual(denied.status_code, 401)
+        with patch('peach.interaction.launch_mpv') as launch:
+            opened = await self.client.post('/api/external-playback/mpv?id=1', headers={'X-Token': 'secret'})
+        self.assertEqual(opened.status_code, 200, opened.text)
+        self.assertEqual(opened.json(), {'opened': True})
+        self.assertEqual(Path(launch.call_args.args[0]), self.media_file)
+        self.assertNotIn('secret', opened.text)
+        launch.side_effect = FileNotFoundError('这台电脑上没有找到 mpv')
+        missing = await self.client.post('/api/external-playback/mpv?id=1', headers={'X-Token': 'secret'})
+        self.assertEqual(missing.status_code, 404)
+        self.assertIn('mpv', missing.json()['detail'])
+
     async def test_external_player_links_authorize_only_one_asset_and_support_ranges(self):
         denied = await self.client.post('/api/external-playback?id=1', json={})
         self.assertEqual(denied.status_code, 401)

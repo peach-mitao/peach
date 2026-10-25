@@ -77937,6 +77937,7 @@ function eRe(e, t) {
 //#region src/react/item-detail/external-playback.tsx
 var pq = "peach.external-player.v1", mq = [
 	["m3u", "M3U 播放列表"],
+	["mpv", "本地 mpv"],
 	["vlc-ios", "VLC（iPhone / iPad）"],
 	["iina", "IINA（Mac）"]
 ];
@@ -77950,7 +77951,7 @@ function hq({ id: e }) {
 		} catch {
 			return "m3u";
 		}
-	}), [r, i] = (0, S.useState)(null), a = wA();
+	}), [r, i] = (0, S.useState)(null), [l, c] = (0, S.useState)(!1), a = wA();
 	return /* @__PURE__ */ (0, C.jsxs)("details", { children: [/* @__PURE__ */ (0, C.jsx)("summary", { children: "外部播放器 / VR" }), /* @__PURE__ */ (0, C.jsxs)(MA, { children: [
 		/* @__PURE__ */ (0, C.jsx)(oG, {
 			id: `external-player-${e}`,
@@ -77961,12 +77962,18 @@ function hq({ id: e }) {
 			onPick: (e) => {
 				let t = mq.find(([t]) => t === e)?.[0] || "m3u";
 				n(t);
+				c(!1);
 				try {
 					localStorage.setItem(pq, t);
 				} catch {}
 			}
 		}),
-		/* @__PURE__ */ (0, C.jsx)(q, {
+		t === "mpv" ? /* @__PURE__ */ (0, C.jsx)(q, {
+			variant: "secondary",
+			...Y(a.busy === "mpv"),
+			onClick: () => void a.run("mpv", (t) => U(`/api/external-playback/mpv?id=${e}`, {}, "POST", t), () => c(!0)),
+			children: "用 mpv 打开"
+		}) : /* @__PURE__ */ (0, C.jsx)(q, {
 			variant: "secondary",
 			...Y(a.busy === "prepare"),
 			onClick: () => void a.run("prepare", (t) => U(`/api/external-playback?id=${e}`, {}, "POST", t), (e) => i({
@@ -77976,7 +77983,8 @@ function hq({ id: e }) {
 			children: "生成播放链接"
 		}),
 		a.error ? /* @__PURE__ */ (0, C.jsx)(FA, { children: a.error }) : null,
-		r ? /* @__PURE__ */ (0, C.jsxs)(C.Fragment, { children: [
+		t === "mpv" && l && !a.error ? /* @__PURE__ */ (0, C.jsx)(PA, { children: "已用本机 mpv 打开。" }) : null,
+		t !== "mpv" && r ? /* @__PURE__ */ (0, C.jsxs)(C.Fragment, { children: [
 			/* @__PURE__ */ (0, C.jsx)("a", {
 				href: tRe(t, r.url, r.playlist),
 				rel: "noreferrer",

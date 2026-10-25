@@ -6,8 +6,11 @@
 | 选项 | 使用方式 |
 | --- | --- |
 | M3U 播放列表 | 用支持网络地址的外部播放器打开下载的 `.m3u` |
+| 本地 mpv | 在运行 Peach 的电脑上直接用 mpv 打开这个文件。电脑需要能运行 `mpv` |
 | VLC（iPhone / iPad） | 调用 VLC 的 `vlc-x-callback` 协议 |
 | IINA（Mac） | 调用 IINA 的 `iina://weblink` 协议 |
+
+本地 mpv 由 `POST /api/external-playback/mpv?id=…` 在服务端启动，打开的是这一条解析后的文件；STRM 打开其中的播放地址。窗口出现在运行 Peach 的电脑上。找不到 mpv 时接口返回 404。
 
 播放器选择只保存在当前浏览器。另一台设备需要能访问当前 Peach 地址；电脑上用 `localhost`
 生成的地址不能供手机访问。HTTPS 使用项目证书时，外部设备也需要信任该证书。
