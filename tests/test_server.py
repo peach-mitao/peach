@@ -31,6 +31,56 @@ class ServerTests(unittest.TestCase):
                 with self.subTest(peer=peer, headers=headers):
                     self.assertEqual(local_client(request), allowed)
 
+    def test_a_private_proxy_hop_is_trusted_without_an_allow_list(self):
+        from fastapi import HTTPException
+        from peach.routes_auth import same_origin
+        from peach.routes_configuration import apply_trusted_proxy, local_client
+        app = SimpleNamespace(state=SimpleNamespace(
+            tunnel=None, settings=SimpleNamespace(mdns_name="peach", tunnel_mode=""),
+        ))
+
+        def request(peer, forwarded_for):
+            return Request({
+                "type": "http", "http_version": "1.1", "method": "POST", "scheme": "http",
+                "path": "/api/configuration", "raw_path": b"/api/configuration", "query_string": b"",
+                "client": (peer, 443), "server": ("0.0.0.0", 8900), "app": app,
+                "headers": [
+                    (b"host", b"172.17.0.2:8900"),
+                    (b"origin", b"https://media.example.com"),
+                    (b"x-forwarded-for", forwarded_for),
+                    (b"x-forwarded-proto", b"https"),
+                    (b"x-forwarded-host", b"media.example.com"),
+                ],
+            })
+
+        with patch.dict("os.environ", {"PEACH_HEADLESS_MANAGED": "1"}):
+            for proxy in ("10.4.0.8", "172.18.0.3", "127.0.0.1"):
+                private = request(proxy, f"10.1.1.8, {proxy}".encode())
+                apply_trusted_proxy(private)
+                self.assertEqual(private.client.host, "10.1.1.8", proxy)
+                self.assertEqual((private.url.scheme, private.url.hostname), ("https", "media.example.com"))
+                self.assertNotIn("x-forwarded-for", private.headers)
+                self.assertTrue(local_client(private))
+                same_origin(private)
+
+            public = request("172.18.0.3", b"8.8.8.8")
+            apply_trusted_proxy(public)
+            self.assertEqual(public.client.host, "8.8.8.8")
+            self.assertFalse(local_client(public))
+            same_origin(public)
+
+            direct = request("8.8.8.8", b"192.168.1.20")
+            apply_trusted_proxy(direct)
+            self.assertEqual(direct.client.host, "8.8.8.8")
+            self.assertFalse(local_client(direct))
+
+            unchanged = request("10.4.0.8", b"10.4.0.8")
+            apply_trusted_proxy(unchanged)
+            self.assertEqual(unchanged.client.host, "10.4.0.8")
+            self.assertFalse(local_client(unchanged))
+            with self.assertRaises(HTTPException):
+                same_origin(unchanged)
+
     def test_cli_without_mdns_or_tunnel_needs_no_network_route(self):
         from peach import cli
         with patch.object(cli, "_require_readable_settings"), \

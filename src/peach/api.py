@@ -520,6 +520,7 @@ def create_app(
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):
+        routes_configuration.apply_trusted_proxy(request)
         response = await call_next(request)
         if request.url.path.startswith("/vendor/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
