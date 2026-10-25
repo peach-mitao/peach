@@ -125,6 +125,7 @@ class TestPlanningTests(unittest.TestCase):
                      'tests/test_web_e2e.py', 'frontend/e2e/setup.test.ts'):
             with self.subTest(path=path):
                 self.assertTrue(ci_plan.plan('pull_request', [path])['browser'])
+        self.assertFalse(ci_plan.plan('pull_request', ['.github/workflows/docker-package.yml'])['wide'])
         self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/release.yml'])['wheel'])
         self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/upgrade-smoke.yml'])['wheel'])
         self.assertTrue(ci_plan.plan('pull_request', ['.github/workflows/unknown.yml'])['wide'])

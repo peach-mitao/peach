@@ -1,6 +1,6 @@
 services:
   peach:
-    image: longmeidao/peach:${PEACH_VERSION:-edge}
+    image: ghcr.io/peach-mitao/peach:latest
     build: .
     init: true
     restart: unless-stopped

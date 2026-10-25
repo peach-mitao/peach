@@ -1,6 +1,6 @@
 # Docker 部署
 
-Peach 的 Docker 镜像用于单人 VPS 与 NAS，通过浏览器管理，镜像仓库为 [longmeidao/peach](https://hub.docker.com/r/longmeidao/peach)。`edge` 随 `master` 分支构建更新，版本号标签对应发布提交。当前镜像目标为 `linux/amd64`；ARM NAS 尚未验收。2026-10-15 在 WSL 的独立 Docker Engine 中，用正式锁定依赖通过空数据卷初始化、非 root、鉴权、配置保存、合成视频扫描、HTTP Range、配置重载与重启持久化验收。
+Peach 的 Docker 镜像用于单人 VPS 与 NAS，通过浏览器管理。发布镜像在 GitHub Container Registry，地址是 [ghcr.io/peach-mitao/peach](https://github.com/peach-mitao/peach/pkgs/container/peach)，标签为 `latest`。当前镜像目标为 `linux/amd64`；ARM NAS 尚未验收。2026-10-15 在 WSL 的独立 Docker Engine 中，用正式锁定依赖通过空数据卷初始化、非 root、鉴权、配置保存、合成视频扫描、HTTP Range、配置重载与重启持久化验收。
 
 Docker 不使用桌面托盘。在网页配置中添加媒体目录时，只需填写容器内实际目录，例如 `/media`；Peach 自动保存所需的路径配置。Windows 安装包、macOS 源码运行和 Docker 的入口分别见 [README](../README.md#下载与使用)。
 
@@ -103,4 +103,4 @@ Linux 容器不读取用户电脑上的浏览历史，也不包含交互式浏�
 
 构建使用官方 Python `3.14.8-slim-trixie` 与 uv `0.13.1`，依赖由 `uv.lock` 锁定，应用以非 editable 包安装，包含 Web 与迁移资源。镜像以 UID/GID 1000 运行，内置 FFmpeg、FFprobe 和 OpenSSL。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
 
-GitHub Actions 的 `Docker` 工作流先构建并运行临时卷验收，通过后发布。仓库变量 `DOCKERHUB_USERNAME` 和机密 `DOCKERHUB_TOKEN` 用于 Docker Hub 发布；机密只保存在 GitHub，不进入项目文件。未配置发布身份时仍执行构建验收。ARM 镜像需通过同等运行验收后再加入发布。
+GitHub Actions 的 `Docker` 工作流只构建并运行临时卷验收，不上传镜像。手动运行 `Docker 打包`，验收通过后把镜像推到 `ghcr.io/peach-mitao/peach:latest`。这次发布使用工作流的 `GITHUB_TOKEN`。ARM 镜像需通过同等运行验收后再加入发布。
