@@ -11,9 +11,24 @@ export function newStreamSession(): string {
 }
 
 export function directStreamSource(item: PlayerItem, session: string): PlayerSource {
+  const mkv = String(item.name || '').toLowerCase().endsWith('.mkv');
   return {
-    src: `/stream?id=${item.id}&session=${encodeURIComponent(session)}`,
-    type: String(item.name || '').toLowerCase().endsWith('.webm') ? 'video/webm' : 'video/mp4',
+    src: `/stream?id=${item.id}&session=${encodeURIComponent(session)}${mkv ? '&original=1' : ''}`,
+    type: mkv ? 'video/x-matroska' : String(item.name || '').toLowerCase().endsWith('.webm') ? 'video/webm' : 'video/mp4',
+  };
+}
+
+/** 媒体不兼容时顺次取下一条片源，同一地址只尝试一次；网络故障不消耗兼容回退。 */
+export function streamFallbackChain(source: PlayerSource): (error: unknown) => PlayerSource | null {
+  const tried = new Set([source.src]);
+  let next = source.fallback;
+  return (error) => {
+    const code = Number((error as { code?: number } | null)?.code);
+    if (![3, 4].includes(code) || !next || tried.has(next.src)) return null;
+    const selected = next;
+    tried.add(selected.src);
+    next = selected.fallback;
+    return selected;
   };
 }
 
@@ -24,15 +39,23 @@ function followStreamSource(item: PlayerItem): PlayerSource | null {
     ? { src: `/follow-stream?id=${item.follow_item_id}`, type: 'video/mp4' } : null;
 }
 
-/** 起播片源只有这一个判据，详情和沉浸模式共用：服务端说要转码分片就给分片，否则直读。
- *  有 B 帧却缺 ctts 的 MP4 直读时浏览器按错的显示顺序丢帧，整片持续卡顿。 */
+/** 起播片源只有这一个判据，详情和沉浸模式共用。编码兼容性转码附带原画试播地址，
+ *  让当前浏览器自己做最终判断；缺 ctts 的文件不走试播，先等文件头修复或兼容分片。 */
 export async function playableStreamSource(item: PlayerItem, session: string): Promise<PlayerSource> {
   const proxied = followStreamSource(item);
   if (proxied) return proxied;
   try {
     const plan = await api(`/api/stream-plan?id=${item.id}&session=${encodeURIComponent(session)}`) as
-      { protocol?: string; src?: string; mime_type?: string } | null;
-    if (plan?.src) return { src: plan.src, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
+      { protocol?: string; src?: string; mime_type?: string; original_src?: string; original_mime_type?: string;
+        fallback_src?: string } | null;
+    if (plan?.src) {
+      const segmented: PlayerSource = { src: plan.src, type: plan.mime_type || 'application/vnd.apple.mpegurl' };
+      if (plan.fallback_src) segmented.fallback = { src: plan.fallback_src, type: 'application/vnd.apple.mpegurl' };
+      if (plan.original_src) {
+        return { src: plan.original_src, type: plan.original_mime_type || 'video/mp4', fallback: segmented };
+      }
+      return { ...segmented, type: plan.mime_type || (plan.protocol === 'hls' ? 'application/vnd.apple.mpegurl' : 'video/mp4') };
+    }
   } catch { /* 取不到计划就直读 */ }
   return directStreamSource(item, session);
 }

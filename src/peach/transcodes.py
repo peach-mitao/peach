@@ -81,6 +81,17 @@ class TranscodeService:
         profile = self._profile_for(source, session, registry)
         return profile is None or not self._browser_compatible(source, profile)
 
+    def hls_mode(self, source: Path, *, session: str = "", registry=None) -> str:
+        """分片所需处理：兼容视频保留码流，音轨单独判断。"""
+        if self.resolver.ffprobe() is None:
+            return "transcode"
+        profile = self._profile_for(source, session, registry)
+        if (profile is None or profile.video_codec != "h264"
+                or profile.pixel_format not in DIRECT_MP4_PIXEL_FORMATS
+                or profile.decode_order_timestamps):
+            return "transcode"
+        return "copy" if profile.audio_codec in {"", "aac", "mp3"} else "audio"
+
     def decode_order_timestamps(self, source: Path, *, session: str = "", registry=None) -> bool:
         """是不是只有时间戳错乱的那一类：有 B 帧却没有 ctts，码流本身浏览器解得出来。
 

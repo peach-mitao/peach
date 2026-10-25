@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import os
@@ -13,6 +14,7 @@ from pathlib import Path
 from .ffmpeg import FFmpegResolver
 from .hardware_transcode import HardwareTranscoder
 from .mp4index import keyframe_seconds, segment_plan
+from .mkvindex import keyframe_seconds as mkv_keyframe_seconds
 from .streaming import StreamSessionRegistry
 
 HLS_SEGMENT_SECONDS = 6
@@ -22,6 +24,22 @@ PLAN_CACHE_LIMIT = 256
 CODEC_CACHE_LIMIT = 256
 PROBE_TIMEOUT_SECONDS = 20
 logger = logging.getLogger(__name__)
+
+
+def _first_video_pts(ffprobe: Path, source: Path) -> float:
+    """只检查本地临时片段开头的视频包，取得封装器使用的时间轴起点。"""
+    result = subprocess.run([
+        str(ffprobe), "-v", "error", "-read_intervals", "%+#64", "-select_streams", "v:0",
+        "-show_entries", "packet=pts_time,flags", "-of", "json", str(source),
+    ], capture_output=True, timeout=PROBE_TIMEOUT_SECONDS,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    packets = json.loads(result.stdout).get("packets", []) if result.returncode == 0 else []
+    if not packets or "K" not in packets[0].get("flags", ""):
+        raise SegmentUnavailable("remux source has no leading keyframe")
+    timestamp = float(packets[0]["pts_time"])
+    if not math.isfinite(timestamp):
+        raise SegmentUnavailable("invalid remux timestamp")
+    return timestamp
 
 
 def _probe_video_codec(ffprobe: Path, source: Path) -> str:
@@ -129,18 +147,21 @@ class HlsSegmentService:
         if cached is not None:
             self._plans.move_to_end(key)
             return cached or None
-        keyframes = keyframe_seconds(source)
+        keyframes = (mkv_keyframe_seconds(source) if source.suffix.lower() == ".mkv"
+                     else keyframe_seconds(source))
         result = segment_plan(keyframes, duration, self.segment_seconds) if keyframes else []
         while len(self._plans) >= PLAN_CACHE_LIMIT:
             self._plans.popitem(last=False)
         self._plans[key] = result
         return result or None
 
-    def cached_path(self, source: Path, asset_id: int, index: int, *, transcode: bool = False) -> Path:
+    def cached_path(self, source: Path, asset_id: int, index: int, *, transcode: bool = False,
+                    audio_transcode: bool = False) -> Path:
         _, size, mtime = self.fingerprint(source)
         # 版本号跟着转码命令走：命令一变，磁盘上按另一套命令转出来的片段就得失效，
         # 否则换了解码器，播放器拿到的仍是缓存里那些绿帧。
-        flavor = '-h264-v2' if transcode else ''
+        flavor = ('-h264-v2' if transcode else '-aac-v2' if audio_transcode else
+                  '-mkv-v1' if source.suffix.lower() == '.mkv' else '')
         return self.work_root / str(asset_id) / f"{size}-{mtime}-{self.segment_seconds}{flavor}" / f"{index}.ts"
 
     def conversion_plan(self, duration: float) -> list[tuple[float, float]]:
@@ -181,8 +202,10 @@ class HlsSegmentService:
         session: str,
         registry: StreamSessionRegistry,
         transcode: bool = False,
+        audio_transcode: bool = False,
     ) -> Path:
-        target = self.cached_path(source, asset_id, index, transcode=transcode)
+        target = self.cached_path(source, asset_id, index, transcode=transcode,
+                                  **({"audio_transcode": True} if audio_transcode else {}))
         if target.is_file() and target.stat().st_size:
             os.utime(target, None)      # 命中即续期，淘汰按最后访问时间
             return target
@@ -196,6 +219,7 @@ class HlsSegmentService:
                 return await self._generate_uncached(
                     source, start, duration, target,
                     session=session, registry=registry, transcode=transcode,
+                    audio_transcode=audio_transcode,
                 )
         finally:
             if not lock.locked():
@@ -204,6 +228,7 @@ class HlsSegmentService:
     async def _generate_uncached(
         self, source: Path, start: float, duration: float, target: Path, *,
         session: str, registry: StreamSessionRegistry, transcode: bool,
+        audio_transcode: bool = False,
     ) -> Path:
         choice = self.resolver.ffmpeg()
         if choice is None:
@@ -216,12 +241,15 @@ class HlsSegmentService:
         async with self._gate():
             attempts = await asyncio.to_thread(
                 self._attempts, choice.path, source, start, duration, transcode, codec,
+                audio_transcode=audio_transcode,
             )
             for name, build in attempts:
                 temporary = target.with_name(f"{uuid.uuid4().hex}.tmp.ts")
                 try:
                     returncode, stderr = await self._run(build(temporary), session, registry)
                     if returncode == 0 and temporary.is_file() and temporary.stat().st_size:
+                        if not transcode and source.suffix.lower() == ".mkv":
+                            await self._align_remux(choice.path, temporary, start, duration, session, registry)
                         temporary.replace(target)
                         logger.info("HLS 分片完成：%s", name)
                         self._evict()
@@ -243,8 +271,41 @@ class HlsSegmentService:
                     temporary.unlink(missing_ok=True)
         raise SegmentUnavailable(detail)
 
+    async def _align_remux(self, ffmpeg: Path, source: Path, start: float, duration: float,
+                           session: str, registry: StreamSessionRegistry) -> None:
+        """用 FFmpeg segment muxer 在关键帧上裁掉本地片段的定位预卷和结束关键帧。"""
+        probe = self.resolver.ffprobe()
+        if probe is None:
+            raise SegmentUnavailable("ffprobe unavailable")
+        try:
+            first = await asyncio.to_thread(_first_video_pts, probe.path, source)
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            raise SegmentUnavailable("remux timestamp unavailable") from exc
+        offset = start - first
+        if offset < -0.001 and start > 0:
+            raise SegmentUnavailable("remux starts after the requested keyframe")
+        boundaries = ([offset] if offset > 0.001 else []) + [offset + duration]
+        pattern = source.with_name(source.stem + ".split-%d.ts")
+        selected = source.with_name(source.stem + f".split-{1 if len(boundaries) == 2 else 0}.ts")
+        try:
+            command = [str(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+                       "-copyts", "-i", str(source), "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy",
+                       "-avoid_negative_ts", "disabled", "-f", "segment", "-segment_times",
+                       ",".join(f"{value:.6f}" for value in boundaries),
+                       "-segment_time_delta", "0.000001", "-segment_format", "mpegts", "-reset_timestamps", "0",
+                       "-segment_format_options", "mpegts_copyts=1:avoid_negative_ts=disabled", str(pattern)]
+            returncode, _ = await self._run(command, session, registry)
+            if registry.is_cancelled(session):
+                raise SegmentCancelled(session)
+            if returncode or not selected.is_file() or not selected.stat().st_size:
+                raise SegmentUnavailable("keyframe remux failed")
+            selected.replace(source)
+        finally:
+            for part in source.parent.glob(source.stem + ".split-*.ts"):
+                part.unlink(missing_ok=True)
+
     def _attempts(self, ffmpeg: Path, source: Path, start: float, duration: float,
-                  transcode: bool, codec: str = ""):
+                  transcode: bool, codec: str = "", *, audio_transcode: bool = False):
         """依次尝试的命令，每项是 (名字, 接收临时文件路径的构造函数)。
 
         封装复制只有一种。重编码与整片转码共享可用硬件后端，最后回退 libx264。
@@ -265,7 +326,11 @@ class HlsSegmentService:
             # 保留原始时间戳，让每段接着上一段走。用 -avoid_negative_ts make_zero
             # 把每段归零的话，每段都自称从 0 秒开始，拖动进度条时容易跳错位置。
             window = ["-ss", f"{start:.3f}", "-i", str(source), "-to", f"{start + duration:.3f}"]
-            return [("copy", lambda out: prefix + window + mapping + ["-c", "copy", "-copyts"] + mux + [str(out)])]
+            codecs = (["-c:v", "copy", "-c:a", "aac", "-b:a", "160k"]
+                      if audio_transcode else ["-c", "copy"])
+            return [("audio" if audio_transcode else "copy", lambda out:
+                     prefix + window + mapping + codecs + ["-copyts", "-avoid_negative_ts", "disabled",
+                                                          "-mpegts_copyts", "1"] + mux + [str(out)])]
         window = ["-ss", f"{start:.3f}", "-i", str(source), "-t", f"{duration:.3f}"]
         audio = ["-c:a", "aac", "-b:a", "160k", "-output_ts_offset", f"{start:.3f}"]
         attempts = []

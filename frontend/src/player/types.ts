@@ -11,7 +11,12 @@ export interface QualityLevelList {
   on?(events: PlayerEvents, handler: () => void): void;
 }
 
-export interface PlayerSource { src: string; type: string }
+export interface PlayerSource {
+  src: string;
+  type: string;
+  /** 媒体不兼容时的下一条片源，按链顺序尝试。 */
+  fallback?: PlayerSource | undefined;
+}
 
 export interface VjsPlayer {
   /** 挂载时记下的条目：右键菜单复制网址按它取 id。 */
