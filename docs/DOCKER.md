@@ -103,4 +103,4 @@ Linux 容器不读取用户电脑上的浏览历史，也不包含交互式浏�
 
 构建使用官方 Python `3.14.8-slim-trixie` 与 uv `0.13.1`，依赖由 `uv.lock` 锁定，应用以非 editable 包安装，包含 Web 与迁移资源。镜像以 UID/GID 1000 运行，内置 FFmpeg、FFprobe 和 OpenSSL。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
 
-GitHub Actions 的 `Docker` 工作流只构建并运行临时卷验收，不上传镜像。手动运行 `Docker 打包`，验收通过后把镜像推到 `ghcr.io/peach-mitao/peach:latest`。这次发布使用工作流的 `GITHUB_TOKEN`。ARM 镜像需通过同等运行验收后再加入发布。
+手动运行 GitHub Actions 的 `Docker 打包`：先构建并运行临时卷验收，通过后把镜像推到 `ghcr.io/peach-mitao/peach:latest`。这次发布使用工作流的 `GITHUB_TOKEN`。ARM 镜像需通过同等运行验收后再加入发布。
