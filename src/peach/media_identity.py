@@ -10,6 +10,9 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 POLICIES = ("auto", "local", "custom")
 #: 处理步骤：读取视频信息、联网补资料、联网补封面、联网补人物图片、生成九宫格预览。
 STAGES = ("probe", "metadata", "cover", "people", "preview")
+#: 只在自定义里出现。自动补全不整理，避免没填模板就把新文件改名。
+ORGANIZE_STAGE = "organize"
+_CONFIGURABLE_STAGES = (*STAGES, ORGANIZE_STAGE)
 _LOCAL_STAGES = frozenset({"probe", "preview"})
 #: 来源色取界面强调色的键名；具体色值由界面按键名取，这里只校验写法。
 _COLOR = re.compile(r"[a-z]{2,16}")
@@ -25,7 +28,7 @@ def library_stages(library):
     if policy == "local":
         return _LOCAL_STAGES
     if policy == "custom":
-        return frozenset(stage for stage in library.get("stages", "").split(",") if stage in STAGES)
+        return frozenset(stage for stage in library.get("stages", "").split(",") if stage in _CONFIGURABLE_STAGES)
     return frozenset(STAGES)
 
 
@@ -110,8 +113,19 @@ def _validate_library(value):
     if policy not in ("", *POLICIES):
         raise ValueError("请选择列表中的处理方式")
     stages = [stage for stage in value.get("stages", "").split(",") if stage]
-    if any(stage not in STAGES for stage in stages) or (stages and policy != "custom"):
+    if any(stage not in _CONFIGURABLE_STAGES for stage in stages) or (stages and policy != "custom"):
         raise ValueError("处理步骤无效")
+    from .organize_templates import TemplateError, validate_template
+    for key, directory in (("organize_file", False), ("organize_dir", True)):
+        text = value.get(key, "")
+        if not text:
+            continue
+        if not isinstance(text, str):
+            raise ValueError("整理模板无效")
+        try:
+            validate_template(text, directory=directory)
+        except TemplateError as error:
+            raise ValueError(str(error)) from error
 
 
 def validate_catalog(libraries, roots):
@@ -186,9 +200,26 @@ def _library_value(row, known, name):
         value["policy"] = policy
     if policy == "custom":
         chosen = str(row.get("library_stages", known.get("stages", ""))).split(",")
-        if any(stage and stage not in STAGES for stage in chosen):
+        if any(stage and stage not in _CONFIGURABLE_STAGES for stage in chosen):
             raise ValueError("处理步骤无效")
-        value["stages"] = ",".join(stage for stage in STAGES if stage in chosen)
+        value["stages"] = ",".join(stage for stage in _CONFIGURABLE_STAGES if stage in chosen)
+    if "organize_file" in row or "organize_dir" in row:
+        file_template = str(row.get("organize_file") or "")
+        dir_template = str(row.get("organize_dir") or "")
+    else:
+        file_template = str(known.get("organize_file") or "")
+        dir_template = str(known.get("organize_dir") or "")
+    if file_template or dir_template:
+        from .organize_templates import TemplateError, validate_template
+        try:
+            file_template = validate_template(file_template)
+            dir_template = validate_template(dir_template, directory=True)
+        except TemplateError as error:
+            raise ValueError(str(error)) from error
+        if file_template:
+            value["organize_file"] = file_template
+        if dir_template:
+            value["organize_dir"] = dir_template
     return value
 
 

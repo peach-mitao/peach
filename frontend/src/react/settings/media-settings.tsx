@@ -32,7 +32,7 @@ import { sourceDefaultCost, type SourceCost } from '../../core/media-sources';
 import { randomId } from '../../core/random-id';
 import { libraryAutoChoice, LibraryIconPicker } from './library-icon-picker';
 import {
-  AUTO_STAGES, LibraryColorPicker, PolicyLegend, PresetSelect, StageChooser, type Preset, type Stage,
+  AUTO_STAGES, LibraryColorPicker, OrganizeTemplateFields, PolicyLegend, PresetSelect, STAGES, StageChooser, type Preset, type Stage,
 } from './library-policy-settings';
 import { PushDiscoveryForm } from './push-discovery-settings';
 import { rememberShape } from '../../configuration-skeleton';
@@ -54,21 +54,24 @@ interface MediaRow {
   transport: 'smb' | 'filesystem';
   smb_username?: string; smb_password?: string; smb_encrypt?: boolean; smb_clear?: boolean; smb_password_saved?: boolean;
   path: string; location: string; root: string; root_id?: string; library_id: string; library: string; library_icon: string;
-  library_color: string; library_policy: Preset; library_stages: string; cost: SourceCost | ''; change_mode?: string;
+  library_color: string; library_policy: Preset; library_stages: string; organize_file: string; organize_dir: string;
+  cost: SourceCost | ''; change_mode?: string;
 }
 /** 媒体库这一级的字段：同一媒体库的各行一起改、一起跟随。 */
 const libraryFields = (row: MediaRow) => ({
   library_id: row.library_id, library: row.library, library_icon: row.library_icon,
   library_color: row.library_color, library_policy: row.library_policy, library_stages: row.library_stages,
+  organize_file: row.organize_file, organize_dir: row.organize_dir,
 });
+const STAGE_KEYS = STAGES.map(([key]) => key);
 const stagesOf = (row: MediaRow): readonly Stage[] =>
-  row.library_stages ? AUTO_STAGES.filter(stage => row.library_stages.split(',').includes(stage)) : [];
+  row.library_stages ? STAGE_KEYS.filter(stage => row.library_stages.split(',').includes(stage)) : [];
 interface FieldErrors { media_dirs?: string[]; port?: string }
 interface SaveResult { saved: boolean; url: string; revision: string }
 
 const blankRow = (path = ''): MediaRow => ({
   path, transport: path.startsWith('smb://') ? 'smb' : 'filesystem', location: 'local', root: '', library_id: randomId(), library: '', library_icon: '',
-  library_color: '', library_policy: 'auto', library_stages: '', cost: 'free',
+  library_color: '', library_policy: 'auto', library_stages: '', organize_file: '', organize_dir: '', cost: 'free',
 });
 
 function initialRows(data: ConfigurationData): MediaRow[] {
@@ -80,6 +83,7 @@ function initialRows(data: ConfigurationData): MediaRow[] {
       smb_password_saved: row.smb_password_saved,
       path: row.path, location: row.location, root: row.root, library: row.library || '', library_icon: row.library_icon || '',
       library_color: row.library_color || '', library_policy: row.library_policy || 'auto', library_stages: row.library_stages || '',
+      organize_file: row.organize_file || '', organize_dir: row.organize_dir || '',
       root_id: row.root_id, library_id: row.library_id || randomId(),
       cost: row.cost ?? sourceDefaultCost(row.location),
     }));
@@ -155,7 +159,8 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
       return;
     }
     const created = randomId();
-    edit(index, { library_id: created, library: '', library_icon: '', library_color: '', library_policy: 'auto', library_stages: '' });
+    edit(index, { library_id: created, library: '', library_icon: '', library_color: '', library_policy: 'auto', library_stages: '',
+      organize_file: '', organize_dir: '' });
     setNamed(created);
   };
 
@@ -243,7 +248,11 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                 </div>
                 {preset === 'custom'
                   ? <StageChooser name={name} value={stagesOf(library)}
-                    onChange={(value) => editLibrary(first, { library_stages: AUTO_STAGES.filter(stage => value.includes(stage)).join(',') })} />
+                    onChange={(value) => editLibrary(first, { library_stages: STAGE_KEYS.filter(stage => value.includes(stage)).join(',') })} />
+                  : null}
+                {preset === 'custom' && stagesOf(library).includes('organize')
+                  ? <OrganizeTemplateFields name={name} file={library.organize_file} dir={library.organize_dir}
+                    onChange={({ file, dir }) => editLibrary(first, { organize_file: file, organize_dir: dir })} />
                   : null}
                 <div data-library-folders="" role="group" aria-label={`${name} 的文件夹`}>
                 {members.map(({ row, index }) => (

@@ -129,12 +129,31 @@ describe('媒体目录', () => {
     await click(policy?.matches('[aria-haspopup]') ? policy : policy?.querySelector('[aria-haspopup="listbox"]'));
     await click([...document.querySelectorAll('[role="option"]')].find(node => node.textContent?.startsWith('自定义')));
     const steps = host.querySelector('[aria-label="JAV 处理步骤"]');
+    expect(steps?.querySelectorAll('label')).toHaveLength(6);
     expect(steps?.querySelectorAll('input:checked')).toHaveLength(5);
     await click([...steps!.querySelectorAll('label')].find(node => node.textContent?.includes('生成九宫格预览')));
     await submit(host.querySelector('form'));
     const expected = { library_id: 'library-one', library_color: 'amber', library_policy: 'custom',
       library_stages: 'probe,metadata,cover,people' };
     expect(sentBody(fetcher).media_sources).toMatchObject([expected, expected]);
+  });
+
+  it('勾选整理文件后填写模板，保存时写进这一媒体库', async () => {
+    const fetcher = fetchMock(200, { saved: true, url: '/', revision: 'rev-2' });
+    vi.stubGlobal('fetch', fetcher);
+    const host = await open({ windows: true, media_sources: [
+      { location: 'local', root: 'D:\\JAV', path: 'D:\\JAV', root_id: 'root-one', library_id: 'library-one', library: 'JAV',
+        cost: 'free', library_policy: 'custom', library_stages: 'probe,metadata' },
+    ] });
+    expect(host.querySelector('[data-organize-templates]')).toBeNull();
+    const steps = host.querySelector('[aria-label="JAV 处理步骤"]');
+    await click([...steps!.querySelectorAll('label')].find(node => node.textContent?.includes('整理文件')));
+    expect(host.querySelector('[aria-label="JAV 文件名模板"]')).not.toBeNull();
+    await click([...host.querySelectorAll('button')].find(node => node.textContent === '仅番号'));
+    await submit(host.querySelector('form'));
+    expect(sentBody(fetcher).media_sources[0]).toMatchObject({
+      library_policy: 'custom', library_stages: 'probe,metadata,organize', organize_file: '{code}', organize_dir: '',
+    });
   });
 
   it('目录重定位保留账本前缀，添加另一目录交由服务端生成身份', async () => {

@@ -136,6 +136,23 @@ class MediaIdentityTests(unittest.TestCase):
         self.assertEqual(media_identity.library_stages({"policy": "local"}), frozenset({"probe", "preview"}))
         self.assertEqual(media_identity.library_stages({}), frozenset(media_identity.STAGES))
         self.assertEqual(media_identity.library_stages({"policy": "custom", "stages": ""}), frozenset())
+        self.assertNotIn("organize", media_identity.library_stages({}))
+        self.assertEqual(media_identity.library_stages({"policy": "custom", "stages": "organize"}), frozenset({"organize"}))
+
+    def test_organize_template_stays_on_the_library_that_opted_in(self):
+        config = settings_file.upgrade_media_identity(self.config)
+        rows = media_configuration.rows(config, windows=True)
+        for row in rows:
+            row.update(library_policy="custom", library_stages="probe,organize",
+                       organize_file="{code}[ {title}]", organize_dir="{studio}")
+        settings_file.write(media_identity.configure_sources(config, rows, windows=True), force=True)
+        loaded = settings_file.load_config(environ=self.env)
+        [library] = loaded.library_catalog.values()
+        self.assertEqual(library["organize_file"], "{code}[ {title}]")
+        self.assertEqual(library["organize_dir"], "{studio}")
+        self.assertIn("organize", media_identity.library_stages(library))
+        echoed = media_configuration.rows(loaded, windows=True)[0]
+        self.assertEqual((echoed["organize_file"], echoed["organize_dir"]), ("{code}[ {title}]", "{studio}"))
 
     def test_invalid_color_policy_or_stages_are_rejected(self):
         config = settings_file.upgrade_media_identity(self.config)

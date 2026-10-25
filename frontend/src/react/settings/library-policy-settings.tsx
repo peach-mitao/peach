@@ -5,7 +5,9 @@ import { useRef, useState } from 'react';
 import { Dialog, Popover, VisuallyHidden } from 'react-aria-components';
 import { UNSAFE_PortalProvider } from 'react-aria';
 
+import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { Input } from '@/components/base/input/input';
 import { MENU_POPOVER_SURFACE } from '@/components/base/dropdown/menu-styles';
 import { Select, SelectItem } from '../components/select';
 import { ACCENT_CHOICES } from '@peach/appearance';
@@ -23,9 +25,19 @@ export const STAGES = [
   ['cover', '联网补封面'],
   ['people', '联网补人物图片'],
   ['preview', '生成九宫格预览'],
+  ['organize', '整理文件'],
 ] as const;
 export type Stage = (typeof STAGES)[number][0];
+/** 切到自定义时默认勾上的步骤。整理要另选模板，不预勾。 */
 export const AUTO_STAGES: readonly Stage[] = ['probe', 'metadata', 'cover', 'people', 'preview'];
+export const ORGANIZE_PRESETS: readonly (readonly [string, string, string])[] = [
+  ['仅番号', '{code}', ''],
+  ['番号和标题', '{code}[ {title}]', ''],
+  ['番号和画质', '{code}[ {definition}]', ''],
+  ['按厂牌建文件夹', '{code}[ {title}]', '{studio}'],
+  ['按出演者建文件夹', '{code}[ {title}]', '{actors}'],
+  ['按发行年建文件夹', '{code}[ {title}]', '{year}'],
+];
 const PRESETS: readonly (readonly [Preset, string, string])[] = [
   ['auto', '自动补全', '缺什么联网补什么'],
   ['local', '仅使用本地资料', '不联网，只用本地 NFO 和图片'],
@@ -81,6 +93,28 @@ export function StageChooser({ name, value, onChange }: { name: string; value: r
         ))}
       </div>
     </Disclosure>
+  );
+}
+
+/** 勾了「整理文件」之后出现：新入库的视频按这两行模板改名或移动。 */
+export function OrganizeTemplateFields({ name, file, dir, onChange }: {
+  name: string; file: string; dir: string; onChange(value: { file: string; dir: string }): void;
+}) {
+  return (
+    <div data-organize-templates="" className="flex flex-col gap-2 px-1">
+      <Help>新入库的视频按这个模板整理。已在馆藏里的文件不会自动移动。标题、厂牌等要等这一轮资料写入后才会出现在文件名里。</Help>
+      <Input aria-label={`${name} 文件名模板`} label="文件名模板" placeholder="{code}[ {title}]" value={file}
+        spellCheck={false} onChange={(value) => onChange({ file: value, dir })} />
+      <Input aria-label={`${name} 目录模板`} label="目录模板" placeholder="留空表示原地改名" value={dir}
+        spellCheck={false} onChange={(value) => onChange({ file, dir: value })} />
+      <div role="group" aria-label={`${name} 套用模板`} className="flex flex-wrap gap-2">
+        {ORGANIZE_PRESETS.map(([label, presetFile, presetDir]) => (
+          <Button key={label} variant="secondary" size="small" onClick={() => onChange({ file: presetFile, dir: presetDir })}>
+            {label}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 

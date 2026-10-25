@@ -76,6 +76,8 @@ def rows(config, *, windows: bool, probe: bool = False) -> list[dict[str, Any]]:
                            "library_color": library.get("color", ""),
                            "library_policy": library.get("policy", "") or "auto",
                            "library_stages": library.get("stages", ""),
+                           "organize_file": library.get("organize_file", ""),
+                           "organize_dir": library.get("organize_dir", ""),
                            "cost": cost_for(location, root, config),
                            "transport": value.get('transport', 'filesystem'),
                            "online": _online(root, mount, probe, config), **smb_fields})

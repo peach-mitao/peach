@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from contextlib import closing
 from contextvars import copy_context
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PureWindowsPath
 from urllib.parse import urlparse
 
@@ -1871,6 +1871,7 @@ class _SourceScan:
     probed: int = 0
     scanned_bytes: int = 0
     junk_isolated: int = 0
+    new_ids: list = field(default_factory=list)
 
 
 def _scan_sources(config, db_path, *, locations, asset_ids, stage, guard, update, issue,
@@ -1904,10 +1905,12 @@ def _scan_sources(config, db_path, *, locations, asset_ids, stage, guard, update
                                            read_directory=directory_entries,
                                            onerror=lambda error: issue(None, str(error), action='scanning_files'),
                                            resume_state=scan_checkpoints.get(key), save_checkpoint=remember,
+                                           organize_new=stage == SCAN_STAGE,
                                            progress=lambda files, size: update(
                                                stage='扫描文件', scanned=result.scanned + files,
                                                scanned_bytes=result.scanned_bytes + size,
                                                checked=0, total=0, current_action='scanning_files'))
+                result.new_ids.extend(int(item) for item in registered.new_ids)
                 result.scanned += registered.files
                 result.scanned_bytes += registered.total_bytes
                 result.junk_isolated += registered.junk_isolated
@@ -2805,6 +2808,9 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                 people=_people_allowed(config))
             summary['auto_applied'] = summary.get('auto_applied', 0) + state['auto_applied']
             summary['auto_rejected'] = summary.get('auto_rejected', 0) + state['auto_rejected']
+            if sources.new_ids and stage != SCAN_STAGE:
+                from .organize import auto_new_ids
+                auto_new_ids(db_path, sources.new_ids)
             finish_step('collect')
             update(status='failed' if state['issue_count'] else 'complete', stage='处理结束',
                    outcome='partial' if state['issue_count'] else 'complete',

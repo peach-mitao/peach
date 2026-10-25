@@ -11,6 +11,7 @@ export const POLICY_MATRIX: readonly (readonly [step: string, auto: string, loca
   ['联网补资料', '✓', '—', '可选'],
   ['联网补封面', '✓', '—', '可选'],
   ['联网补人物图片', '✓', '—', '可选'],
+  ['整理新文件', '—', '—', '可选'],
 ];
 export const POLICY_COVER_NOTE = '本地只有竖版海报时：自动补全会联网找完整封套（FC2 商品图除外），仅使用本地资料直接用竖版。';
 

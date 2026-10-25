@@ -18,7 +18,8 @@ def libraries(config):
              "icon": catalog[key].get("icon") if catalog[key].get("icon") in LIBRARY_ICONS else (
                  roots[0]["location"] if len({item["location"] for item in roots}) == 1 else "database"),
              "color": catalog[key].get("color", ""), "policy": catalog[key].get("policy", "") or "auto",
-             "stages": sorted(media_identity.library_stages(catalog[key]), key=media_identity.STAGES.index)}
+             "stages": sorted(media_identity.library_stages(catalog[key]),
+                              key=(*media_identity.STAGES, media_identity.ORGANIZE_STAGE).index)}
             for key, roots in groups.items()]
 
 

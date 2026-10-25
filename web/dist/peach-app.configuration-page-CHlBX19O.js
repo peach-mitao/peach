@@ -1912,7 +1912,8 @@ var zn = [
 	["metadata", "联网补资料"],
 	["cover", "联网补封面"],
 	["people", "联网补人物图片"],
-	["preview", "生成九宫格预览"]
+	["preview", "生成九宫格预览"],
+	["organize", "整理文件"]
 ], Bn = [
 	"probe",
 	"metadata",
@@ -1990,6 +1991,45 @@ function Un({ name: e, value: t, onChange: n }) {
 				})]
 			})
 		}, e))
+	});
+}
+var organizePresets = [
+	["仅番号", "{code}", ""],
+	["番号和标题", "{code}[ {title}]", ""],
+	["番号和画质", "{code}[ {definition}]", ""],
+	["按厂牌建文件夹", "{code}[ {title}]", "{studio}"],
+	["按出演者建文件夹", "{code}[ {title}]", "{actors}"],
+	["按发行年建文件夹", "{code}[ {title}]", "{year}"]
+];
+function organizeTemplateFields({ name: e, file: t, dir: n, onChange: r }) {
+	return /* @__PURE__ */ (0, $.jsxs)("div", {
+		"data-organize-templates": "",
+		className: "flex flex-col gap-2 px-1",
+		children: [/* @__PURE__ */ (0, $.jsx)(j, { children: "新入库的视频按这个模板整理。已在馆藏里的文件不会自动移动。标题、厂牌等要等这一轮资料写入后才会出现在文件名里。" }), /* @__PURE__ */ (0, $.jsx)(M, {
+			"aria-label": `${e} 文件名模板`,
+			label: "文件名模板",
+			placeholder: "{code}[ {title}]",
+			value: t,
+			spellCheck: !1,
+			onChange: (t) => r({ file: t, dir: n })
+		}), /* @__PURE__ */ (0, $.jsx)(M, {
+			"aria-label": `${e} 目录模板`,
+			label: "目录模板",
+			placeholder: "留空表示原地改名",
+			value: n,
+			spellCheck: !1,
+			onChange: (n) => r({ file: t, dir: n })
+		}), /* @__PURE__ */ (0, $.jsx)("div", {
+			role: "group",
+			"aria-label": `${e} 套用模板`,
+			className: "flex flex-wrap gap-2",
+			children: organizePresets.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(d, {
+				variant: "secondary",
+				size: "small",
+				onClick: () => r({ file: t, dir: n }),
+				children: e
+			}, e))
+		})]
 	});
 }
 function Wn({ name: e, value: t, onChange: n }) {
@@ -2276,8 +2316,10 @@ var Yn = (e) => Et.find(([t]) => t === e)?.[1] ?? e, Xn = [...Et, ["smb", "SMB �
 	library_icon: e.library_icon,
 	library_color: e.library_color,
 	library_policy: e.library_policy,
-	library_stages: e.library_stages
-}), er = (e) => e.library_stages ? Bn.filter((t) => e.library_stages.split(",").includes(t)) : [], tr = (e = "") => ({
+	library_stages: e.library_stages,
+	organize_file: e.organize_file,
+	organize_dir: e.organize_dir
+}), er = (e) => e.library_stages ? zn.map(([e]) => e).filter((t) => e.library_stages.split(",").includes(t)) : [], tr = (e = "") => ({
 	path: e,
 	transport: e.startsWith("smb://") ? "smb" : "filesystem",
 	location: "local",
@@ -2288,6 +2330,8 @@ var Yn = (e) => Et.find(([t]) => t === e)?.[1] ?? e, Xn = [...Et, ["smb", "SMB �
 	library_color: "",
 	library_policy: "auto",
 	library_stages: "",
+	organize_file: "",
+	organize_dir: "",
 	cost: "free"
 });
 function nr(e) {
@@ -2306,6 +2350,8 @@ function nr(e) {
 		library_color: e.library_color || "",
 		library_policy: e.library_policy || "auto",
 		library_stages: e.library_stages || "",
+		organize_file: e.organize_file || "",
+		organize_dir: e.organize_dir || "",
 		root_id: e.root_id,
 		library_id: e.library_id || ot(),
 		cost: e.cost ?? mt(e.location)
@@ -2382,7 +2428,9 @@ function ar({ data: e, receipt: t }) {
 			library_icon: "",
 			library_color: "",
 			library_policy: "auto",
-			library_stages: ""
+			library_stages: "",
+			organize_file: "",
+			organize_dir: ""
 		}), k(a);
 	};
 	(0, Z.useEffect)(() => {
@@ -2487,7 +2535,13 @@ function ar({ data: e, receipt: t }) {
 							f === "custom" ? /* @__PURE__ */ (0, $.jsx)(Wn, {
 								name: p,
 								value: er(e),
-								onChange: (e) => E(t, { library_stages: Bn.filter((t) => e.includes(t)).join(",") })
+								onChange: (n) => E(t, { library_stages: zn.map(([e]) => e).filter((e) => n.includes(e)).join(",") })
+							}) : null,
+							f === "custom" && er(e).includes("organize") ? /* @__PURE__ */ (0, $.jsx)(organizeTemplateFields, {
+								name: p,
+								file: e.organize_file || "",
+								dir: e.organize_dir || "",
+								onChange: ({ file: n, dir: r }) => E(t, { organize_file: n, organize_dir: r })
 							}) : null,
 							/* @__PURE__ */ (0, $.jsxs)("div", {
 								"data-library-folders": "",

@@ -13,6 +13,7 @@ CSV 于是变成一份不准的清单。
 from __future__ import annotations
 
 import json
+import logging
 import ntpath
 import os
 import sqlite3
@@ -20,6 +21,8 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import contextmanager
 from pathlib import Path, PureWindowsPath
+
+LOGGER = logging.getLogger(__name__)
 
 from .catalog_rules import is_jav_code, is_uncensored_release, normalise_code_key, part_marker
 from .jobs import ACTIVE_ASSET_SQL
@@ -500,9 +503,111 @@ def rollback_batch(connection: sqlite3.Connection, log_path: Path | str, *,
             "batch": path.name}
 
 
+def _organize_rules(location: str) -> list[tuple[str, str, str]]:
+    """勾了「整理文件」的媒体库：账本根、文件名模板、目录模板。根按长度倒序，方便匹配子目录。"""
+    from . import media_identity
+    from .settings_file import active
+    libraries, roots = media_identity.catalog(active())
+    rules = []
+    for value in roots.values():
+        if value.get("location") != location:
+            continue
+        library = libraries.get(value.get("library_id"), {})
+        if media_identity.ORGANIZE_STAGE not in media_identity.library_stages(library):
+            continue
+        file_template = str(library.get("organize_file") or "")
+        dir_template = str(library.get("organize_dir") or "")
+        if not file_template and not dir_template:
+            continue
+        rules.append((media_identity.path_key(value["root"]), file_template, dir_template))
+    rules.sort(key=lambda item: len(item[0]), reverse=True)
+    return rules
+
+
+def _rule_for(path: str, rules: list[tuple[str, str, str]]) -> tuple[str, str] | None:
+    from .media_identity import path_key
+    key = path_key(path)
+    for root, file_template, dir_template in rules:
+        if key == root or key.startswith(root.rstrip("\\") + "\\"):
+            return file_template, dir_template
+    return None
+
+
+def auto_new(db_path, location: str, asset_ids) -> dict:
+    """按媒体库勾选的整理模板整理这次新登记的视频。没勾、没填模板、或来源不能核验改名时不动文件。"""
+    ids = tuple(dict.fromkeys(int(item) for item in asset_ids if item))
+    if not ids or unverified_location(location):
+        return {"moved": 0}
+    try:
+        rules = _organize_rules(location)
+        if not rules:
+            return {"moved": 0, "skipped": "未配置整理模板"}
+        from .settings_file import active
+        from .ledger_backups import organize_backup
+        generated = active().directory("generated")
+        placeholders = ",".join("?" for _ in ids)
+        connection = sqlite3.connect(db_path, timeout=30)
+        try:
+            rows = connection.execute(
+                f"SELECT id, path FROM asset WHERE medium='video' AND disposal IS NULL AND id IN ({placeholders})",
+                ids).fetchall()
+            grouped: dict[tuple[str, str], list[int]] = {}
+            for asset_id, path in rows:
+                matched = _rule_for(str(path), rules)
+                if matched:
+                    grouped.setdefault(matched, []).append(int(asset_id))
+            plans = []
+            for (file_template, dir_template), videos in grouped.items():
+                plan = build_plan(connection, location=location, file_template=file_template,
+                                  dir_template=dir_template, asset_ids=videos)
+                plans.extend(row for row in plan["rows"] if row.get("action") in {"rename", "move"})
+        finally:
+            connection.close()
+        if not plans:
+            return {"moved": 0, "skipped": "无需整理"}
+        with organize_backup(Path(db_path), generated,
+                             f"ledger.pre-auto-organize-{time.strftime('%Y%m%d-%H%M%S')}.db"), \
+                sqlite3.connect(db_path, timeout=30) as writing:
+            writing.execute("PRAGMA journal_mode=WAL")
+            result = apply_plan(writing, plans, generated_root=generated)
+            writing.commit()
+    except Exception:
+        LOGGER.exception("新文件自动整理失败：%s", location)
+        return {"moved": 0, "skipped": "自动整理失败"}
+    moved = int(result.get("moved") or 0)
+    if moved:
+        LOGGER.info("新文件已按模板整理：%s %s 个", location, moved)
+    return result
+
+
+def auto_new_ids(db_path, asset_ids) -> dict:
+    """按作品所属来源分组，整理这次新登记的视频。"""
+    ids = tuple(dict.fromkeys(int(item) for item in asset_ids if item))
+    if not ids:
+        return {"moved": 0}
+    placeholders = ",".join("?" for _ in ids)
+    try:
+        connection = sqlite3.connect(db_path, timeout=30)
+        try:
+            rows = connection.execute(
+                f"SELECT location, id FROM asset WHERE id IN ({placeholders})", ids).fetchall()
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        LOGGER.exception("新文件自动整理失败")
+        return {"moved": 0, "skipped": "自动整理失败"}
+    grouped: dict[str, list[int]] = {}
+    for location, asset_id in rows:
+        grouped.setdefault(str(location), []).append(int(asset_id))
+    moved = 0
+    for location, group in grouped.items():
+        moved += int(auto_new(db_path, location, group).get("moved") or 0)
+    return {"moved": moved}
+
+
 __all__ = [
     "MAX_PATH", "PLAN_FIELDS", "PRESETS", "VERIFIED_RENAME_LOCATIONS", "OrganizeError",
     "TemplateError", "UnverifiedRename", "apply_plan", "batch_log_dir", "build_plan",
     "latest_batch", "placeholder_values", "plan_path", "refuse_unverified", "rollback_batch",
-    "unverified_location", "verified_renames", "write_plan",
+    "unverified_location", "verified_renames", "write_plan", "auto_new", "auto_new_ids",
 ]

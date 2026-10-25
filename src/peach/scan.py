@@ -539,7 +539,7 @@ def _scan_location(
     progress: Callable[[int, int], None] = lambda files, total_bytes: None,
     resume_state: dict | None = None,
     save_checkpoint: Callable[[dict], None] = lambda state: None,
-    read_directory=None, onerror=lambda error: None,
+    read_directory=None, onerror=lambda error: None, organize_new: bool = True,
 ) -> ScanResult:
     """遍历 `root`（数据库中的路径格式）对应的本机目录，把文件元数据 upsert 进 `asset`。
 
@@ -653,6 +653,9 @@ def _scan_location(
     finally:
         connection.close()
     checked = junk.isolate(db_path, roots=[(location, root)])
+    if organize_new and new_ids:
+        from .organize import auto_new
+        auto_new(db_path, location, new_ids)
     result = ScanResult(location, root, files, total, time.time() - started, gone,
                         tracks, orphans, skipped, new_ids, reattached, acquired,
                         checked['isolated'], checked['review'])

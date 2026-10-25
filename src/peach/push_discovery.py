@@ -633,7 +633,7 @@ class PushDiscoveryService:
         except (OSError, ValueError):
             return None
 
-    def _ingest(self, location: str, path: str) -> bool:
+    def _ingest(self, location: str, path: str, *, organize_new: bool = True) -> bool:
         from .record_rehome import reattach_in
         from .scan import ingest_path
         result = ingest_path(self.db_path, location, path,
@@ -643,6 +643,9 @@ class PushDiscoveryService:
             self._measure(location, path)
             # 登记时已按番号接回过一轮；探到时长之后，要靠时长分辨的那几条再判一次。
             reattach_in(self.db_path, [result.asset_id] if result.new else [])
+            if result.new and organize_new and result.asset_id:
+                from .organize import auto_new
+                auto_new(self.db_path, location, [result.asset_id])
         if result.found and self.after_ingest:
             self.after_ingest()
         return result.found
@@ -669,7 +672,7 @@ class PushDiscoveryService:
         """
         if ignored(PureWindowsPath(path).name):
             return False
-        return self._ingest(location, path)
+        return self._ingest(location, path, organize_new=False)
 
     def submit_cloud(self, cloud_path: str) -> str:
         """webhook 收到一条云端路径：映射成账本路径再进队列，返回那条账本路径。"""
