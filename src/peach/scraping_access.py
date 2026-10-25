@@ -21,7 +21,7 @@ import httpx
 from .follow_secrets import CredentialStore
 from . import browser_transport, peach_proxy
 from .http import HttpRequest, HttpxTransport
-from .scripting import USER_AGENT, host_under, hostname_of
+from .scripting import host_under, hostname_of
 from .fsutil import atomic_write_text
 
 LOGGER = logging.getLogger(__name__)
@@ -386,10 +386,11 @@ def browser_profile(root: Path) -> Path:
 
 
 def client_for(root: Path, source: str, *, session: bool = False, **kwargs) -> httpx.Client:
+    from .metadata_preferences import load
     values = values_for(root, source)
     network = {"trust_env": False} if values.get("network") == "direct" else peach_proxy.client_options(root)
     options = {**network, "follow_redirects": True,
-               "headers": {"User-Agent": USER_AGENT}}
+               "headers": {"User-Agent": load(root)['user_agent']}}
     if session:
         options["cookies"] = cookie_jar(values, source)
     options.update(kwargs)
@@ -556,8 +557,9 @@ class SourceTransport:
             client = client_for(self.root, source, session=bool(SOURCES[source].get("session")),
                                 follow_redirects=False)
         else:
+            from .metadata_preferences import load
             client = httpx.Client(**peach_proxy.client_options(self.root), follow_redirects=False,
-                                  headers={"User-Agent": USER_AGENT})
+                                  headers={"User-Agent": load(self.root)['user_agent']})
         return HttpxTransport(client, owns_client=True)
 
     def renew(self):

@@ -94,9 +94,11 @@ const quiet = (overrides: Partial<Source> = {}) => ({
   'GET /api/scraping/cover': () => ({ body: { status: 'idle' } }),
   'GET /api/scraping/amane-bridge': () => ({ body: BRIDGE }),
   'GET /api/custom-metadata': () => ({ body: { items: [] } }),
+  'GET /api/metadata-preferences': () => ({ body: { user_agent: 'Chrome', default_user_agent: 'Chrome', routes: {},
+    types: [{ id: 'fc2', sources: [{ id: 'fc2', label: 'FC2' }, { id: 'fc2cmadb', label: 'FC2CMADB' }] }] } }),
 });
 /** 首屏来源与任务数据的请求顺序，和 `prefetchScraping` 一致。 */
-const FIRST_SCREEN = ['/api/scraping', '/api/scraping/cover', '/api/scraping/amane-bridge', '/api/custom-metadata'];
+const FIRST_SCREEN = ['/api/scraping', '/api/scraping/cover', '/api/scraping/amane-bridge', '/api/custom-metadata', '/api/metadata-preferences'];
 
 const password = (root: ParentNode) => root.querySelector<HTMLInputElement>('input[type=password]');
 const radio = (value: string) => document.querySelector<HTMLInputElement>(`input[type=radio][value="${value}"]`);
@@ -115,7 +117,7 @@ it('首屏用 prefetch 缓存画出来源与任务，挂载时不重复请求', 
   expect(buttonNamed('重新安装', bridge!)).not.toBeNull();
   // 连接方式是 BoardUI 的 Select，画出来的是按钮；原生 select 是 React Aria 藏在后面
   // 供表单取值的那一个，不是这一行的长相。
-  expect(host.querySelector('[aria-haspopup=listbox]')?.textContent?.trim()).toBe('Peach 代理');
+  expect(section(host, 'JavBus')?.querySelector('[aria-haspopup=listbox]')?.textContent?.trim()).toBe('Peach 代理');
   expect(host.querySelector<HTMLAnchorElement>('a[href="/settings/library#peachProxy"]')?.textContent)
     .toContain('配置 Peach 代理');
   expect(host.querySelector<HTMLAnchorElement>('a[href="https://www.javbus.com/"]')?.target).toBe('_blank');
