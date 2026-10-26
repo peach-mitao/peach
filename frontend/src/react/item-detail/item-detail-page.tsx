@@ -32,6 +32,7 @@ import { CatalogPicture } from './catalog-picture';
 import { fetchJavDetail, javDetailKey } from '../jav-detail/jav-detail';
 import { busyProps } from '../settings/use-action';
 import { ExternalPlayback } from './external-playback';
+import { ItemEdit } from './item-edit';
 import { CoverCrop } from '../cover-crop/cover-crop-page';
 import { queryClient } from '../query';
 import { LibraryCompletionPrompt, missingPreviewIds } from '../library-processing/library-completion';
@@ -94,6 +95,7 @@ const CloseStage = ({ onClose }: { onClose(): void }) => (
 function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue | null }) {
   const { item, queue, actions, helpers } = props;
   const write = useDetailWrite(item, actions, helpers.tagLabel);
+  const [editing, setEditing] = useState(false);
 
   /* 画出来的是哪一条只报一次：写完换进来的是同一条的新对象，不能因此重推地址、重画顶栏。 */
   const presented = useRef(item);
@@ -112,9 +114,9 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
   return (
     <>
       <div data-stage-grid="" data-with-queue={queue ? '' : undefined} data-item-detail="">
-        <MediaFrame item={item} gate={gate} helpers={helpers} actions={actions}
+        <MediaFrame item={item} gate={gate} helpers={helpers} actions={actions} editing={editing}
           autoplay={props.queue?.autoplay} onEnded={continuePart} />
-        <Side item={item} queue={queue} write={write} helpers={helpers} actions={actions} />
+        <Side item={item} queue={queue} write={write} helpers={helpers} actions={actions} onEditChange={setEditing} />
       </div>
       <DetailContinuation editionCards={queue?.kind === 'editions' ? queue.items.length : undefined}
         queue={queue ? <Queue queue={queue} itemId={item.id} helpers={helpers} actions={actions} /> : null}>
@@ -127,9 +129,9 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
 
 /* ── 播放区 ── */
 
-function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
+function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded, editing }: {
   item: DetailItem; gate: MediaGate; helpers: ItemDetailHelpers; actions: ItemDetailActions;
-  autoplay?: boolean; onEnded(): void;
+  autoplay?: boolean; onEnded(): void; editing: boolean;
 }) {
   /* 计费来源先挡一层说明，点了才拉流；没挂载与在线拦截的那两种不挂播放器。 */
   const [started, setStarted] = useState<'auto' | 'clicked' | ''>(gate ? '' : 'auto');
@@ -156,17 +158,18 @@ function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
     setImage(index);
   };
   const mounting = useRef(item);
+  mounting.current = item;
   const ended = useRef(onEnded);
   ended.current = onEnded;
   useLayoutEffect(() => {
     const node = frameRef.current;
-    if (!node || !started) return;
+    if (!node || !started || editing) return;
     const complete = () => ended.current();
     node.addEventListener('ended', complete, true);
     const unmount = actions.mountPlayer(node, mounting.current, null,
       started === 'clicked' || autoplay ? { autoplay: true } : undefined);
     return () => { node.removeEventListener('ended', complete, true); unmount() };
-  }, [actions, started]);
+  }, [actions, started, editing]);
   const badge = helpers.badgeHtml(item.location || '', item.cost || '', 'srcbig');
   return (
     <div ref={frameRef} data-stage-media="" data-item-media={gate || 'video'} data-item-gallery={hasPictures ? '' : undefined}
@@ -362,8 +365,9 @@ function usePlaylistReorder(queue: DetailQueue, itemId: number, actions: ItemDet
 
 /* ── 侧栏 ── */
 
-function Side({ item, queue, write, helpers, actions }: {
+function Side({ item, queue, write, helpers, actions, onEditChange }: {
   item: DetailItem; queue: DetailQueue | null; write: DetailWrite; helpers: ItemDetailHelpers; actions: ItemDetailActions;
+  onEditChange(open: boolean): void;
 }) {
   const online = item.location === 'online';
   const busy = write.busyAttrs;
@@ -374,6 +378,7 @@ function Side({ item, queue, write, helpers, actions }: {
         <DetailTitle item={item} queue={queue} helpers={helpers} actions={actions} onStatus={write.setSourceState} />
         {online ? null : <span data-title-state="" aria-live="polite">{write.sourceState}</span>}
         <Rating item={item} write={write} />
+        <ItemEdit item={item} actions={actions} onOpenChange={onEditChange} />
         <div className="mono" data-stage-meta="" data-reveal-line="">
           {item.width && item.height
             ? <span data-spec-item=""><Glyph name="monitor" /><span>{item.width}×{item.height}</span></span>

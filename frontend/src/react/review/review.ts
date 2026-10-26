@@ -261,6 +261,9 @@ export const pendingGenres = (row: ReviewRow): string[] =>
 /** 一行此刻的选择：选了哪个来源值、勾了哪几条作品。 */
 export interface RowChoice { candidateKey: string; assets: number[] }
 
+export const hasChosenCandidate = (row: ReviewRow, choice: RowChoice): boolean =>
+  !!choice.candidateKey && !!row.candidates?.some((candidate) => candidate.candidate_key === choice.candidateKey);
+
 /** 还没动过的行按默认值算：只有一个候选时它就是选中的那个，作品样本默认全勾。 */
 export function defaultChoice(row: ReviewRow): RowChoice {
   const candidates = row.candidates || [];
@@ -279,6 +282,9 @@ export type DecisionStatus = 'approved' | 'rejected' | 'skipped';
 export function decisionPayload(
   category: ReviewCategory, row: ReviewRow, status: DecisionStatus, choice: RowChoice,
 ): Record<string, unknown> {
+  if (category === 'metadata_fields' && status === 'approved' && !hasChosenCandidate(row, choice)) {
+    throw new Error('请先选择一个来源值。');
+  }
   const pinned = !!row.asset_path && row.asset_mutation_revision != null;
   return {
     category,

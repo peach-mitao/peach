@@ -36,7 +36,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                 "test_content_region.py",
                 "test_duplicate_identity_merge.py",
                 "test_entity_classification.py", "test_company_profiles.py", "test_fc2_sellers.py",
-                "test_entity_merge.py", "test_entity_redirect.py", "test_fastapi_api.py", "test_field_owners.py",
+                "test_entity_merge.py", "test_entity_redirect.py", "test_fastapi_api.py", "test_field_owners.py", "test_item_edit.py",
                 "test_migrations.py",
                 "test_review_mirror.py", "test_rm_web.py",
                 "test_entity_link_install.py", "test_web_links.py", "test_entry_links.py",
@@ -132,6 +132,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     # 所以本域也要登记它们：改了 `web/app.js` 却漏跑读它的测试，`test_test_planning.py`
     # 的域映射门槛会在本地就红。
     "web": ("test_frontend_build.py", "test_web_ui.py", "test_web_js.py", "test_web_e2e.py",
+            "test_item_edit.py",
             "test_subtitle_search.py",
             "test_legacy_shell_routes.py",
             "test_web_perf.py", "test_copy_final_state.py",
@@ -167,6 +168,7 @@ SCOPE_TEST_IDS: dict[str, tuple[str, ...]] = {
 # 一个文件可以落到多个域：读它的测试登记在哪个域，改它就得跑到哪个域。
 # `tests/test_test_planning.py` 按测试源码里真实读到的路径反查这两张表，漏一条本地就红。
 AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
+    "src/peach/web_item_edit.py": ("catalog", "web"),
     "scripts/fetch_ffmpeg_sources.py": ("tooling", "packaging"),
     "scripts/ffmpeg-sources.json": ("tooling", "packaging"),
     "scripts/build_ffmpeg_windows.sh": ("tooling", "packaging"),

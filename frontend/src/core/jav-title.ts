@@ -15,6 +15,7 @@ export interface JavTitleSource {
   original_title?: string | null;
   display_title?: string | null;
   edition_badges?: string[] | null;
+  field_owners?: Record<string, string>;
   width?: number | null;
   height?: number | null;
 }
@@ -31,12 +32,13 @@ export const hasJapaneseText=(value:unknown)=>/[぀-ヿ㐀-鿿]/.test(String(val
 
 export const javPreferredTitle=(it:Item)=>{
   const titles=[it?.catalog_title,it?.original_title].map(value=>String(value||'').trim()).filter(Boolean);
+  if (/^(?:user|review):/.test(it?.field_owners?.catalog_title||'') && it?.catalog_title) return String(it.catalog_title).trim();
   return titles.find(hasJapaneseText)||titles[0]||'';
 };
 
 export function javTitleParts(it:Item,value=it?.name):{code:string;title:string;badges?:string[]}{
   const name=javFileDisplayName(it,value),code=String(it?.code||'').trim().toUpperCase();
-  if(!it?.is_jav||!code)return {code:'',title:name};
+  if(!it?.is_jav||!code)return {code:'',title:String(it?.display_title||name)};
   const displayCode=String(it?.display_code||code).trim().toUpperCase();
   const upper=name.toUpperCase(),hasPrefix=upper===code||upper===displayCode
     ||(upper.startsWith(code)&&/^[\s._\-[\]]/.test(name.slice(code.length)))

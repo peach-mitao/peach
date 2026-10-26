@@ -18,7 +18,7 @@ import { CandidateChoices, PendingGenres } from './candidate-form';
 import { AssetPicker, EntityHead, IdentityEvidence, OriginAsset, SourceImage } from './review-evidence';
 import type { DecisionStatus, ReviewCategory, ReviewRow, RowChoice } from './review';
 import {
-  canApprove, ENTITY_REVIEW_KINDS, rowEvidence, rowFieldName, rowSubject, rowTags, rowTitle,
+  canApprove, ENTITY_REVIEW_KINDS, hasChosenCandidate, rowEvidence, rowFieldName, rowSubject, rowTags, rowTitle,
 } from './review';
 
 /* 队列里的卡是一圈细描边围着一层浅底：判定状态靠卡内的东西表达，整卡不换色，所以卡面
@@ -85,6 +85,7 @@ export function ReviewCard(props: ReviewCardProps) {
   const evidence = rowEvidence(row);
   const tags = rowTags(row);
   const approvable = canApprove(category, row);
+  const needsSource = metadata && approvable && !hasChosenCandidate(row, choice);
   const comparison = row.comparison_assets || [];
   const assets = row.preview_assets || [];
   const decided = String(row.decision || 'pending') !== 'pending';
@@ -219,10 +220,10 @@ export function ReviewCard(props: ReviewCardProps) {
         <Button variant="secondary" size="small" disabled={locked} {...busyProps(busy)}
           onClick={() => onDecide('skipped')}>跳过</Button>
         {/* 没有可采纳的候选时这颗键灰着，字面说它为什么点不了，和旁边的「跳过」分得开。 */}
-        <Button variant="primary" size="small" disabled={locked || !approvable} {...busyProps(busy)}
-          title={approvable ? undefined : '没有可采用的资料，只能拒绝或跳过'}
+        <Button variant="primary" size="small" disabled={locked || !approvable || needsSource} {...busyProps(busy)}
+          title={needsSource ? '请先选择一个来源值。' : approvable ? undefined : '没有可采用的资料，只能拒绝或跳过'}
           onClick={() => onDecide('approved')}>
-          {approvable ? '通过' : '不可通过'}
+          {needsSource ? '先选择来源' : approvable ? '通过' : '不可通过'}
         </Button>
         {problem
           ? <p role="status" className="w-full text-body-2-regular text-text-error-primary">{problem}</p>

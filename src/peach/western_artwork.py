@@ -31,6 +31,19 @@ def artwork_key(asset_id: int, code: str | None) -> str:
     return normalise_code_key(code) or f'ASSET-ID-{int(asset_id)}'
 
 
+def resolved_artwork_key(asset_id: int, code: str | None, name: str | None, has_cover) -> str:
+    """本地封面键供卡片与库健康共用；候选键只有确有图片时才参与投影。"""
+    from .catalog_rules import local_cover_code
+    from .metadata import provider_code
+    key = artwork_key(asset_id, code)
+    if has_cover(key):
+        return key
+    asset_key = artwork_key(asset_id, None)
+    if has_cover(asset_key):
+        return asset_key
+    return artwork_key(asset_id, local_cover_code(name)) if not provider_code(code) else key
+
+
 def artwork_cast_size(cover: Path, ledger_count: int) -> int:
     """发行方的完整出演名单也参与合演保护，不靠馆藏名单推断只有一个人。"""
     try:

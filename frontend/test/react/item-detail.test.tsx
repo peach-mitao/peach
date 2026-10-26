@@ -84,6 +84,51 @@ async function show(shown: DetailItem, patch: Partial<ItemDetailProps> = {}) {
   return { host, props: given, actions: given.actions as ActionMocks };
 }
 
+describe('单片手动编辑', () => {
+  it('打开和取消编辑不发送写入', async () => {
+    const edit = {
+      id: 1, filename: 'MDS-685r.mp4', title: '作品', performers: ['演员甲'],
+      mutation_revision: 3, subtitled: true, uncensored: false,
+    };
+    const fetcher = serve(undefined, { '/api/item-edit': edit });
+    const { host } = await show(item(1));
+    expect(host.querySelector('[data-item-edit]')).not.toBeNull();
+    await click(host.querySelector('[data-item-edit]'));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[name="filename"]')?.value).toBe('MDS-685r.mp4');
+    await click(document.querySelector('[data-item-edit-cancel]'));
+    expect(posts(fetcher)).toHaveLength(0);
+    edit.filename = 'MDS-685 [中字].mp4';
+    edit.mutation_revision = 4;
+    await click(host.querySelector('[data-item-edit]'));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[name="filename"]')?.value).toBe(edit.filename);
+    await click(document.querySelector('[data-item-edit-cancel]'));
+  });
+
+  it('更新资料只提交当前视频', async () => {
+    const fetcher = serve(() => ({ job_id: 'single', status: 'running', asset_ids: [1], requested_stage: 'metadata', refresh_metadata: true }), {
+      '/api/library-processing': { status: 'idle' },
+    });
+    const { host } = await show(item(1));
+    expect(host.querySelector('[data-item-update]')).not.toBeNull();
+    await click(host.querySelector('[data-item-update]'));
+    await settle();
+    expect(posts(fetcher)).toEqual([['/api/library-processing', { stage: 'metadata', asset_ids: [1], refresh: true }]]);
+  });
+
+  it('并发启动的其他范围任务不能冒充单片更新', async () => {
+    serve(() => ({ job_id: 'other', status: 'running', asset_ids: [2], requested_stage: 'metadata', refresh_metadata: true }), {
+      '/api/library-processing': { status: 'idle' },
+    });
+    const { host } = await show(item(1));
+    await click(host.querySelector('[data-item-update]'));
+    await settle();
+    expect(host.textContent).toContain('资料任务已由其他操作启动');
+    expect(host.textContent).not.toContain('已开始更新此视频');
+  });
+});
+
 describe('标签身份', () => {
   it('详情显示完整制服名与角色名', async () => {
     serve();

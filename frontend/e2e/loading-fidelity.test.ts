@@ -45,8 +45,10 @@ describe('页面等待态的结构', () => {
         assert.ok(await frame.locator('[data-entity-layout]').count(), '版式键没有立即显示');
         assert.ok(await frame.locator('[data-entity-sort]').count(), '排序键没有立即显示');
         const styles = await frame.evaluate(node => ({ filter: getComputedStyle(node).backdropFilter,
-          background: getComputedStyle(node).backgroundColor }));
-        assert.notEqual(styles.filter, 'none', '筛选框等待时失去了玻璃材质');
+          background: getComputedStyle(node).backgroundColor,
+          reduced: matchMedia('(prefers-reduced-transparency: reduce)').matches }));
+        if (styles.reduced) assert.equal(styles.filter, 'none');
+        else assert.notEqual(styles.filter, 'none', '筛选框等待时失去了玻璃材质');
         assert.notEqual(styles.background, 'rgba(0, 0, 0, 0)');
       } finally { release(); await context.close() }
     });

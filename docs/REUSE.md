@@ -714,3 +714,23 @@ Python 复用 MIT 许可的 [Ruff](https://docs.astral.sh/ruff/) 0.17.0，版本
 站点强调色检查覆盖进度、焦点、选中态、操作按钮与流光：旧 `--feedback-success` 引用既有强调色色阶；RSS 订阅保留橙色，信息、成功、警告、错误、品牌与图表分类保留语义色。
 
 普通 Toast 与扫描任务卡共用 Agent Progress 外框，16px 半径由通知栈内的既有 token 解析，细边框与接触阴影分别复用 `border-button-default`、`elevation-xs`，不改变内容排版。浏览器回归核对桌面、手机和明暗主题下的外框一致性，并以同一任务、同一内容回放外框基线生成对比图。
+
+## 跨目录本地封面
+
+`LocalCoverIndex.match_all` 在 SQLite 记录上按现有缓存键选出所选视频及共享版本，再读取配套文件和图片；不逐个探测无关视频。冲突与来源优先级仍由同一个共同判定流程处理，进度回调只使用所选视频。
+
+卡片与库健康复用 `western_artwork.resolved_artwork_key`，保持账本番号、资产键与本地文件名推导键的优先级一致；图片来源排除复用 `cover_artwork.has_javdb_source`。库健康使用一次目录盘点识别正式封面和抽帧，不按每部视频遍历缓存。标题序号过滤属于本地番号策略，沿用标准库正则，不新增依赖。
+
+番号提取、前导零与发行身份复用 `catalog_rules`；NFO 图片引用和同目录配套复用 `library_nfo`。任务级索引只查询已有 `asset` 图片记录，以配置根目录限定范围，不创建表，不另行递归遍历图片库。多个同级候选通过项目固定的 Pillow 12.3.0（HPND）完整解码、检查静态帧数并比较 RGBA 像素摘要；PNG、JPEG 与 WebP 解码及跨平台支持均由已有 Pillow 提供，无新增依赖。选择与缓存优先级属于 Peach 的领域策略，不引入外部图库服务或近似图像模型。缓存安装复用 `cover_artwork.install_cover` 的原子事务与取景边车，候选冲突和只读重放使用现有 CSV 口径。维护入口见[本地封面匹配](LOCAL_COVERS.md)。
+
+带标题文件名的首段提取属于同一套本地身份策略：版本标记、推广域名、FC2、日期式编号和官方交付形态复用已有判据，图片交付后缀保留 `pl`。清噪器只接收有界语法确认的编号片段；首个番号与第二身份共用空白及前导零归一。卡片、视频和图片索引共用此入口，不新增依赖或在线提取路径。
+
+## 单片手动编辑
+
+共用配套文件的使用者由既有 `SidecarIndex` 判断，独立副本使用 `fsutil.atomic_path` 与标准库 `shutil.copyfile`，失败恢复仍归 `ExitStack`。NFO 身份元素与字节解析由 `library_nfo.identity_elements`、`parse_nfo` 共用，改号保留其他体系 ID 并先回读确认。自动与复核多值写入在原事务中比较关系真值集合，仅取值变化推进资产版本；作品演员的来源只写关系留痕，人物全局资料保持独立。单片候选的批准前检查与实际落库使用相同资产范围。
+
+详情编辑沿用 `organize._rename`、`_update_row` 与 `sanitise_component`，保留资产身份与个人记录；文件名版本与番号继续由 `catalog_rules` 判定。NFO 复用 `library_nfo.read_nfo` 的解析与归属，标准库 `xml.etree.ElementTree` 仅改所填字段与配套引用。演员使用现有 `entity`、`asset_entity` 和 `review_decision`，单值字段使用 `write_owned_fields` 与 `check_revision`，不新增字段保护体系或表。
+
+图片复用已有 Pillow 解码、静态帧检查和 JPEG 转换，安装仍走 `cover_artwork.install_cover`；文件原子写入使用 `fsutil.atomic_write_bytes`，当前保存用标准库 `ExitStack` 登记反向恢复。UI 使用现有 BoardUI 输入、按钮、Checkbox、ModalFrame 与 TanStack Query，单片刷新复用 `process_library` 的所选资产和重试来源路径。当前树和现有改名、NFO、封面、版本目标与接回机制的 Git 历史已核对；无新依赖、服务或表。用法及版本替换边界见[单片资料编辑](MANUAL_EDITING.md)。
+
+`GET /api/item-edit?id=…` 读取当前番号、文件名、标题、演员、文件名版本与 `mutation_revision`；POST 使用同一路径，携带 `id`、`expected_revision`、`expected_name`、`filename`、`title`、`performers`，可选修改后的 `code`、`edition` 和静态图片数据 `cover`。番号校验与文件名同步复用 `normalise_code_key`、`release_code_from_text`、`_jav_code_pattern` 和 `same_release_code`，保留既有特殊身份边界。人工片名显示复用 `field_owners`，列表、详情和相关推荐共用投影，不建立额外保护字段。仅实际修改的标题、演员及显式提交的番号产生人工字段决定；保存本身推进条目版本。单片更新使用既有 `/api/library-processing` 的 `stage=metadata`、唯一 `asset_ids` 与 `refresh=true`；返回范围在初始快照即明确，页面校验实际任务范围并显示目标。

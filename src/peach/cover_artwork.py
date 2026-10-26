@@ -145,9 +145,16 @@ def _sidecars(code: str, payload: bytes, size: tuple[int, int], detector=None, e
             for suffix, record in records.items()}
 
 
+def _confirmed_local(target: Path) -> bool:
+    try:
+        return json.loads(target.with_suffix('.scraping.json').read_text(encoding='utf-8')).get('source') == 'local_cover'
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def install_cover(target: Path, code: str, payload: bytes, size: tuple[int, int], *,
-                  evidence: dict | None = None, detector=None) -> None:
-    """准备完成后安装整组文件；失败时还原旧组，避免图片与取景跨版本。"""
+                  evidence: dict | None = None, detector=None, replace_existing: bool = True) -> bool:
+    """安装整组缓存并返回是否安装；锁内保留已确认的本地图，失败时还原旧组。"""
     if evidence and is_javdb_image(evidence.get('source_url'), evidence.get('source')):
         raise Unavailable('未取得无 JavDB 水印的封面')
     target = Path(target)
@@ -170,6 +177,10 @@ def install_cover(target: Path, code: str, payload: bytes, size: tuple[int, int]
             staged[target.with_suffix(suffix)] = temporary
         with _INSTALL_LOCK, FileLock(
                 str(target.parent / ".cover-install.lock"), thread_local=False):
+            if not replace_existing and target.exists():
+                raise FileExistsError('正式封面已存在')
+            if target.exists() and _confirmed_local(target) and (evidence or {}).get('source') != 'local_cover':
+                return False
             try:
                 for current in managed:
                     if current.exists():
@@ -186,6 +197,7 @@ def install_cover(target: Path, code: str, payload: bytes, size: tuple[int, int]
                 raise
             for backup in backups.values():
                 backup.unlink(missing_ok=True)
+        return True
     finally:
         for temporary in staged.values():
             temporary.unlink(missing_ok=True)

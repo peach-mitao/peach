@@ -98,6 +98,7 @@ TIMING_SENSITIVE_SUITES = frozenset({
     "e2e/sidebar-motion.test.ts",  # 开合过渡 300ms 里的帧数
     "e2e/sidebar.test.ts",         # 当前项那块玻璃 900ms 内要经过中间位置
     "e2e/design-cards.test.ts",     # 紧凑密度切换的即时样式
+    "e2e/design-controls.test.ts",  # 清空输入的溶解残影只保留一秒
     "e2e/design-follow-alignment.test.ts",  # 等待标题与内容标题的替换
 })
 

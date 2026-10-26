@@ -68,6 +68,49 @@ class GenreTaxonomyTests(unittest.TestCase):
     def test_public_javdb_simplified_categories_share_verified_targets(self):
         self.assertEqual(map_genres(['蕩婦', '荡妇', '戀腿癖', '恋腿癖']), (['痴女', '恋腿'], []))
 
+    def test_japanese_source_spellings_and_compounds_share_existing_tags(self):
+        aliases = (
+            ('アナルプレイ', 'Anal Play', '屁眼'),
+            ('拘束されて', '拘束', '捆绑'),
+            ('輪姦・複数セックス', 'Gangbang', '多人'),
+            ('主観視点・ハメ撮り', 'ハメ撮り', '主观视角'),
+            ('背面騎乗位', 'Reverse Cowgirl', '骑乘'),
+            ('マッサージ・リフレ', 'Massage', '按摩'),
+            ('真性M女', 'M女', '调教'),
+            ('ソープランド', 'Soapland', '风俗店'),
+            ('未亡人', '寡婦', '寡妇角色'),
+            ('複数', 'Group Sex', '多人'),
+            ('スリム', 'Slim', '苗条'),
+            ('巨乳フェチ', 'Big Tits Lover', '巨乳'),
+            ('巨乳・爆乳', '爆乳', '巨乳'),
+            ('浴衣・着物', '和服・浴衣', '和服浴衣'),
+            ('裸エプロン', '裸體圍裙', '裸体围裙'),
+            ('女戦士', '女戰士', '女战士'),
+            ('時間停止', '妄想族', '妄想剧情'),
+            ('スワッピング・夫婦交換', '夫妻交換', '换妻换夫'),
+            ('放尿・失禁', 'お漏らし', '放尿'),
+            ('拷問', 'Torture', '调教'),
+            ('喉奥', 'Deepthroat', '深喉'),
+            ('日焼け', '曬黑', '晒黑肤色'),
+            ('競泳・スクール水着', 'School Swimsuits', '泳装'),
+            ('3P、4P', '3P・4P', '3P多人'),
+            ('女医', '女醫生', '女医生'),
+            ('調教・奴隷', 'Slave', '调教'),
+            ('残虐表現', '殘忍畫面', '残虐表现'),
+            ('ミニスカート', '迷你裙', '迷你裙'),
+        )
+        for raw, existing, target in aliases:
+            with self.subTest(raw=raw):
+                self.assertIn(target, _catalog_vocabulary())
+                self.assertEqual(map_genres([raw, existing, raw]), ([target], []))
+
+    def test_source_spelling_aliases_keep_ambiguous_and_negative_words_unmapped(self):
+        raw = ['アナルプレイ以外', 'アナルプレイなし', '主観視点・未知カテゴリ',
+               'エプロン', '10代', 'ピンク', 'H*******m']
+        self.assertEqual(map_genres(raw), ([], raw))
+        self.assertEqual(map_genres(['アナルプレイ', 'Anal Play'],
+                                   {normalise_genre('アナルプレイ'): None}), (['屁眼'], []))
+
     def test_anal_region_is_distinct_from_anal_intercourse(self):
         for raw in ("Anal", "Anal Play", "アナル", "アナル責め", "アナルシリーズ", "肛門・肛交"):
             with self.subTest(raw=raw):

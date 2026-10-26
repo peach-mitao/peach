@@ -30,13 +30,13 @@ from .catalog_rules import (
 )
 from .entities import normalize_entity_name, resolve_entity, upsert_asset_entity
 from .catalog_versions import foldable_versions, partition_versions, version_labels
-from .field_owners import parse_owners
+from .field_owners import is_protected, parse_owners
 from .metadata_policy import SOURCE_SPECS
 from .media_sources import cost_for
 from .regions import infer_region, normalize_region, region_label
 from .web_activity import DEFAULT_PROFILE_ID
 from .web_state import WebContract
-from .western_artwork import artwork_key
+from .western_artwork import resolved_artwork_key
 
 
 GROUP_TABLES = ('asset', 'asset_entity', 'entity')
@@ -53,7 +53,7 @@ def attach_artwork_fields(contract: WebContract, item: dict) -> None:
     if is_pointer(item.get('path') or item.get('name') or ''):
         item['size'] = None
         item['is_strm'] = True
-    key = artwork_key(item['id'], item.get('code'))
+    key = resolved_artwork_key(item['id'], item.get('code'), item.get('name'), contract.has_cover)
     item['has_cover'] = contract.has_cover(key)
     item['cover_key'] = key if item['has_cover'] else ''
     if item['has_cover']:
@@ -83,6 +83,7 @@ SORT_COLUMNS = {
 
 def attach_jav_display_fields(row: dict, tags=(), entity_kinds=()) -> None:
     """Add one canonical display projection while retaining raw file identity fields."""
+    row['field_owners'] = parse_owners(row.get('field_owners'))
     # 产地取查询算好的那一列。取不到时退到番号推断——比直接读 `a.region` 强：那一列
     # 绝大多数行是空的，读它等于说「全都没判过」，韩国片又会原样回到 JAV 版式上。
     # 退化路径拿不到实体那一层，所以列表与详情的查询都把 `effective_region` 选出来。
@@ -101,6 +102,8 @@ def attach_jav_display_fields(row: dict, tags=(), entity_kinds=()) -> None:
     )
     if row["is_jav"]:
         row.update(jav_display_metadata(row.get("name"), code, tags))
+    if row.get('catalog_title') and is_protected(row['field_owners'].get('catalog_title')):
+        row['display_title'] = row['catalog_title']
 
 
 def _filename_fc2_code(name) -> str:
@@ -344,7 +347,7 @@ def q_items(contract: WebContract, args):
     include_total = args.get("count", "1") != "0"
     fetch_limit = lim if include_total else lim + 1
     sql = ("SELECT a.id,a.location,a.path,a.name,a.catalog_title,a.original_title,a.medium,"
-           "a.creator,a.studio,a.code,a.release_date,a.size,"
+           "a.creator,a.studio,a.code,a.release_date,a.size,a.field_owners,"
            "a.duration,a.width,a.height,a.ctx_length,a.ctx_orient,a.snapshot_path,"
            "a.play_count,a.leave_ratio,a.feedback,a.disposal,a.disposal_reason,a.rating,a.o_count,"
            "a.play_seconds,a.max_reached,a.seek_count,a.region,"
@@ -1047,7 +1050,7 @@ def q_related(contract: WebContract, aid, limit=24):
         ))
         if not source_entities:
             return {"items": []}
-        COLS = ("id,location,path,name,catalog_title,original_title,creator,studio,code,size,duration,width,height,"
+        COLS = ("id,location,path,name,catalog_title,original_title,creator,studio,code,size,duration,width,height,field_owners,"
                 "ctx_orient,snapshot_path,play_count,leave_ratio,feedback,disposal,o_count")
         source_entity_ids = [row[0] for row in source_entities]
         source_marks = ",".join("?" * len(source_entity_ids))
