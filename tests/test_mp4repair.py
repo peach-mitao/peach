@@ -160,6 +160,35 @@ class Mp4HeaderRepairTests(unittest.TestCase):
             with self.assertRaises(RepairUnavailable):
                 mp4repair._display_order(Path("ffprobe"), Path("movie.mp4"), [0, 400, 800])
 
+    def test_a_lone_undecodable_frame_in_a_long_film_goes_before_its_successor(self):
+        """长片里坏掉一个样本：排在它解码序后继的显示位置之前，并留一条警告。"""
+        times = [index * 400 for index in range(UNDECODABLE_SAMPLES)]
+        # 解码序 P B B，显示序 B B P；样本 4（第二组的第一个 B）解不出来。
+        display = [index for group in range(0, len(times), 3)
+                   for index in (group + 1, group + 2, group) if index < len(times)]
+        output = "\n".join(str(times[index]) for index in display if index != 4).encode()
+        with patch.object(mp4repair.subprocess, "run",
+                          lambda *args, **options: _Probe(output + b"\n")):
+            with self.assertLogs(mp4repair.LOGGER, "WARNING"):
+                order = mp4repair._display_order(Path("ffprobe"), Path("movie.mp4"), times)
+
+        expected = [0] * len(times)
+        for position, index in enumerate(display):
+            expected[index] = position
+        self.assertEqual(order, expected)
+
+    def test_more_undecodable_frames_than_allowed_are_still_refused(self):
+        times = [index * 400 for index in range(UNDECODABLE_SAMPLES)]
+        output = "\n".join(str(value) for value in times[2:]).encode()
+        with patch.object(mp4repair.subprocess, "run",
+                          lambda *args, **options: _Probe(output + b"\n")):
+            with self.assertRaises(RepairUnavailable):
+                mp4repair._display_order(Path("ffprobe"), Path("movie.mp4"), times)
+
+
+#: 一万个样本时正好容忍一个解不出来的。
+UNDECODABLE_SAMPLES = 10000
+
 
 class SidecarTests(unittest.TestCase):
     def setUp(self) -> None:
