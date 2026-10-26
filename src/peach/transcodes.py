@@ -20,6 +20,9 @@ BROWSER_NATIVE_SUFFIXES = frozenset({".mp4", ".m4v", ".webm", ".ogv", ".ogg"})
 DIRECT_MP4_PIXEL_FORMATS = frozenset({"yuv420p", "yuvj420p"})
 TRANSCODE_TIMEOUT_SECONDS = 3600
 PROBE_TIMEOUT_SECONDS = 20
+#: 整片软件转码最多占一半核。不设上限时 libx264 在 8 核 M1 上实测吃到 ~600% CPU，
+#: 同时在播的 HLS 分片、Safari 解码和 Jellyfin 都被它挤慢。
+SOFTWARE_TRANSCODE_THREADS = max(2, (os.cpu_count() or 4) // 2)
 logger = logging.getLogger(__name__)
 
 
@@ -331,7 +334,8 @@ class TranscodeService:
             "libx264",
             prefix + ("-i", str(source)) + mapping + (
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+                "-pix_fmt", "yuv420p", "-threads", str(SOFTWARE_TRANSCODE_THREADS),
+                "-c:a", "aac", "-b:a", "160k",
             ) + finish,
         )
 
