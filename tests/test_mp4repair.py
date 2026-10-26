@@ -160,6 +160,14 @@ class Mp4HeaderRepairTests(unittest.TestCase):
             with self.assertRaises(RepairUnavailable):
                 mp4repair._display_order(Path("ffprobe"), Path("movie.mp4"), [0, 400, 800])
 
+    def test_an_edit_list_within_half_a_frame_of_the_shift_is_left_alone(self):
+        """40039 对 40041 这种舍入差：已经补过的那一刀原样留着，不再叠加。"""
+        source = self.broken_mp4(self.root / "broken.mp4", edit_list=(5200, 398))
+        header = self.repair(source)
+
+        self.assertEqual(entries(self.edit_list(header), ">IiI"), [(5200, 398, 1 << 16)])
+
+
 
 class SidecarTests(unittest.TestCase):
     def setUp(self) -> None:
