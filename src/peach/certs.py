@@ -83,6 +83,19 @@ def subject_alt_names(cert: Path) -> tuple[set[str], set[str]]:
     return set(_SAN_DNS.findall(text)), set(_SAN_IP.findall(text))
 
 
+def has_authority_key_identifier(cert: Path) -> bool:
+    """叶子证书带不带颁发者密钥标识（AKI）。
+
+    Python 3.13+ 的默认 TLS 上下文开启 VERIFY_X509_STRICT，缺 AKI 的证书会被拒绝，托盘的
+    HTTPS 健康检查随之一直失败。读不出来就当成没有，调用方会据此重签。
+    """
+    try:
+        text = _openssl("x509", "-in", str(cert), "-noout", "-text")
+    except (RuntimeError, OSError):
+        return False
+    return "Authority Key Identifier" in text
+
+
 def not_after(cert: Path) -> datetime | None:
     try:
         text = _openssl("x509", "-in", str(cert), "-noout", "-enddate")
@@ -102,6 +115,8 @@ def reissue_reason(
     """需要重签就返回原因，不需要返回 None。"""
     if not files.cert.is_file() or not files.key.is_file():
         return "服务器证书不存在"
+    if not has_authority_key_identifier(files.cert):
+        return "证书缺少颁发者密钥标识"
     have_names, have_addresses = subject_alt_names(files.cert)
     missing = (names - have_names) | (addresses - have_addresses)
     if missing:
@@ -132,6 +147,10 @@ def reissue(
         "keyUsage = critical, digitalSignature, keyEncipherment\n"
         "extendedKeyUsage = serverAuth\n"
         "basicConstraints = critical, CA:FALSE\n"
+        # 显式写出密钥标识：LibreSSL（macOS 自带的 openssl）不会自动加，Python 3.13+
+        # 默认的 VERIFY_X509_STRICT 会拒绝缺少颁发者密钥标识的叶子证书。
+        "subjectKeyIdentifier = hash\n"
+        "authorityKeyIdentifier = keyid, issuer\n"
     )
     with tempfile.TemporaryDirectory() as raw:
         work = Path(raw)

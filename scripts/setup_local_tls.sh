@@ -60,6 +60,8 @@ subjectAltName = ${SAN}
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 basicConstraints = critical, CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid, issuer
 CNF
 
 openssl req -new -newkey rsa:2048 -nodes \

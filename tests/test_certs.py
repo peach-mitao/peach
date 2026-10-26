@@ -8,7 +8,9 @@ from unittest import mock
 from peach.certs import (
     CERT_DAYS,
     CertificateFiles,
+    create_local_ca,
     ensure_certificate,
+    has_authority_key_identifier,
     not_after,
     reissue,
     reissue_reason,
@@ -81,6 +83,49 @@ class CertificateTests(unittest.TestCase):
             reissue_reason(self.files, {"peach.local"}, {"127.0.0.1", "192.0.2.10"}))
         reason = reissue_reason(self.files, {"peach.local"}, {"127.0.0.1", "198.51.100.7"})
         self.assertIn("198.51.100.7", reason or "")
+
+    def test_reissue_writes_key_identifiers_for_strict_verification(self):
+        """Python 3.13+ 默认严格校验，缺颁发者密钥标识的叶子证书会被拒绝。
+
+        LibreSSL 不会自动加这两项，所以签发配置里必须显式写出。
+        """
+        files = CertificateFiles.under(Path(self._tmp.name) / "strict")
+        create_local_ca(files)
+        reissue(files, "peach.local", {"peach.local"}, {"127.0.0.1"})
+        text = subprocess.run(["openssl", "x509", "-in", str(files.cert), "-noout", "-text"],
+                              check=True, capture_output=True, text=True, encoding="utf-8").stdout
+        self.assertIn("Authority Key Identifier", text)
+        self.assertIn("Subject Key Identifier", text)
+        self.assertTrue(has_authority_key_identifier(files.cert))
+        verified = subprocess.run(["openssl", "verify", "-x509_strict", "-CAfile",
+                                   str(files.ca_cert), str(files.cert)],
+                                  capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(verified.returncode, 0, verified.stdout + verified.stderr)
+
+    def test_a_certificate_without_key_identifier_triggers_reissue(self):
+        """早先用 LibreSSL 签出的证书没有颁发者密钥标识，托盘要能自己把它换掉。"""
+        work = Path(self._tmp.name)
+        (work / "leaf.cnf").write_text(
+            "[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = peach.local\n"
+            "[ext]\nsubjectAltName = DNS:peach.local,DNS:localhost,IP:127.0.0.1\n"
+            "basicConstraints = critical, CA:FALSE\n"
+            "subjectKeyIdentifier = none\nauthorityKeyIdentifier = none\n", encoding="utf-8")
+        subprocess.run(["openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
+                        "-keyout", str(self.files.key), "-out", str(work / "leaf.csr"),
+                        "-config", str(work / "leaf.cnf")], check=True, capture_output=True)
+        signed = subprocess.run(
+            ["openssl", "x509", "-req", "-in", str(work / "leaf.csr"), "-CA", str(self.files.ca_cert),
+             "-CAkey", str(self.files.ca_key), "-CAcreateserial", "-out", str(self.files.cert),
+             "-days", "30", "-extfile", str(work / "leaf.cnf"), "-extensions", "ext"],
+            capture_output=True)
+        if signed.returncode != 0 or has_authority_key_identifier(self.files.cert):
+            self.skipTest("本机 openssl 无法签出不带密钥标识的证书")
+        self.assertEqual(
+            reissue_reason(self.files, {"peach.local", "localhost"}, {"127.0.0.1"},
+                           now=datetime.now(timezone.utc)),
+            "证书缺少颁发者密钥标识")
+        ensure_certificate(self.tls, "peach.local", set())
+        self.assertTrue(has_authority_key_identifier(self.files.cert))
 
     def test_near_expiry_triggers_reissue(self):
         reissue(self.files, "peach.local", {"peach.local"}, {"127.0.0.1"})
