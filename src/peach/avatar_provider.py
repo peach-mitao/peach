@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from filelock import FileLock
 from PIL import Image, UnidentifiedImageError
 
 from .avatar_face import FaceProbe, drop_sidecar, write_sidecar
@@ -104,20 +105,23 @@ def install_entity_avatar(avatar_root: Path, kind: str, entity_id: int, body: by
     """
     from .previews import entity_image_key
 
-    destination = atomic_write_bytes(
-        avatar_root / f"{entity_image_key(kind, entity_id)}.img", body)
-    Path(f"{destination}.ct").write_text(content_type, encoding="utf-8")
-    record = FaceProbe()(destination) if probe_face and face is None else face
-    if record:
-        write_sidecar(destination, record)
-    else:
-        drop_sidecar(destination)
-    Path(f"{destination}.provenance.json").write_text(
-        json.dumps({**provenance,
-                    "imported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "purpose": "local performer identity cache"},
-                   ensure_ascii=False, indent=2),
-        encoding="utf-8")
+    destination = avatar_root / f"{entity_image_key(kind, entity_id)}.img"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    # 所有安装入口按实体共用进程间锁；取图与候选缓存留在锁外。
+    with FileLock(destination.with_suffix(".install.lock"), timeout=30):
+        atomic_write_bytes(destination, body)
+        Path(f"{destination}.ct").write_text(content_type, encoding="utf-8")
+        record = FaceProbe()(destination) if probe_face and face is None else face
+        if record:
+            write_sidecar(destination, record)
+        else:
+            drop_sidecar(destination)
+        Path(f"{destination}.provenance.json").write_text(
+            json.dumps({**provenance,
+                        "imported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "purpose": "local performer identity cache"},
+                       ensure_ascii=False, indent=2),
+            encoding="utf-8")
     return destination
 
 
