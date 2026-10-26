@@ -25,6 +25,9 @@ PROBE_TIMEOUT_SECONDS = 20
 PROBE_FAILURE_SECONDS = 300
 PROFILE_CACHE_LIMIT = 512
 _UNKNOWN = object()
+#: 整片软件转码最多占一半核。不设上限时 libx264 在 8 核 M1 上实测吃到 ~600% CPU，
+#: 同时在播的 HLS 分片、Safari 解码和 Jellyfin 都被它挤慢。
+SOFTWARE_TRANSCODE_THREADS = max(2, (os.cpu_count() or 4) // 2)
 logger = logging.getLogger(__name__)
 
 
@@ -432,7 +435,8 @@ class TranscodeService:
 
         software = (
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+            "-pix_fmt", "yuv420p", "-threads", str(SOFTWARE_TRANSCODE_THREADS),
+            "-c:a", "aac", "-b:a", "160k",
         )
         decode = self.hardware.decode_options(ffmpeg, codec)
         if decode:
