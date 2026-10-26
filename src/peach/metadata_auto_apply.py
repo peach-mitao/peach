@@ -53,8 +53,8 @@ from .metadata_alias_resolve import (
     stage_name as _stage_name,
 )
 from .metadata_policy import (
-    CHAIN_OFFICIAL, FALLBACK_SOURCES, LOCAL_NFO_SOURCE, SOURCE_SPECS,
-    blacklisted, chain_rank, preferred_tag_source, source_tier,
+    CHAIN_OFFICIAL, FALLBACK_SOURCES, LOCAL_NFO_SOURCE, PREFERRED_COMMUNITY_SOURCE,
+    SOURCE_SPECS, blacklisted, chain_rank, preferred_tag_source, source_tier,
 )
 from .review_csv import read_candidates
 from .sources import fc2
@@ -938,11 +938,12 @@ def _may_replace_current(candidates: list[dict], *, field: str = "", code: str =
     写的那页。ADR-0035 让官方来源替换现值时用的就是这条界线，ADR-0038 只是把本地
     NFO 一并纳进来：它在链上排在官方前面，没有理由反而不能替换。
 
-    有码作品的 JavDB 内容标签可以替换自动元数据标签；人工批准走并集，其他来源归属保留。
-    其他社区字段只补空（ADR-0033）。兜底来源连挑战都不算：javbus 搜不到就给首个
-    近似命中，`259LUXU-891` 它答的是 `259LUXU-1891`。
+    官方来源没有取值时，javdb、其次 javbus 也可以改掉非用户字段：这两家有值就不再
+    进人工复核。其余社区来源仍然只补空。
     """
     sources = {str(c.get("source") or "").strip() for c in candidates}
+    if sources and sources <= {PREFERRED_COMMUNITY_SOURCE, *FALLBACK_SOURCES}:
+        return True
     if field == "tags" and preferred_tag_source(code) in sources:
         return True
     return bool(sources) and all(
@@ -961,19 +962,93 @@ def _auto_apply_targets(connection, row: dict, code: str, field: str):
     return targets
 
 
+def _source_name(candidate: dict) -> str:
+    return str(candidate.get("source") or "").strip()
+
+
+def _with_display_value(candidates: list[dict]) -> list[dict]:
+    return [candidate for candidate in candidates
+            if str(candidate.get("display_value") or "").strip()]
+
+
+def _auto_priority_groups(candidates: list[dict]) -> list[list[dict]]:
+    """免复核按档取舍：本地 NFO 与官方来源，没有再用 javdb，再用 javbus。
+
+    官方来源指 `source_tier` 为官方的那一档，含官方镜像。这一档有取值时不看
+    javdb 和 javbus。两家社区索引都没有取值时返回空，其余社区来源不代劳，交给人工。
+    """
+    valued = _with_display_value(candidates)
+    nfo = [candidate for candidate in valued if _source_name(candidate) == LOCAL_NFO_SOURCE]
+    official = [candidate for candidate in valued
+                if source_tier(_source_name(candidate)) == CHAIN_OFFICIAL]
+    groups = []
+    if nfo or official:
+        groups.append(nfo + official)
+    javdb = [candidate for candidate in valued
+             if _source_name(candidate) == PREFERRED_COMMUNITY_SOURCE]
+    if javdb:
+        groups.append(javdb)
+    javbus = [candidate for candidate in valued
+              if _source_name(candidate) in FALLBACK_SOURCES]
+    if javbus:
+        groups.append(javbus)
+    return groups
+
+
+def _agreeing_evidence(connection, field: str, code: str, prepared: list[dict],
+                       chosen: list[dict], winning_group: list[dict],
+                       resolve) -> tuple[list[dict], list[dict]]:
+    """同一取值的其他来源计入一致数；不同取值记成被压下的说法。
+
+    胜出那一档内部的取舍已经记过，这里只看档外的来源。
+    """
+    group_ids = {id(candidate) for candidate in winning_group}
+    keys = {id(candidate): _candidate_value_key(connection, field, candidate, resolve)
+            for candidate in chosen}
+    chosen_keys = {key for key in keys.values() if key is not None}
+    support, overruled = [], []
+    seen = set()
+    for candidate in prepared:
+        if id(candidate) in group_ids:
+            continue
+        key = _candidate_value_key(connection, field, candidate, resolve)
+        if key is not None and key in chosen_keys:
+            support.append(candidate)
+            continue
+        item = {"source": _source_name(candidate),
+                "value": str(candidate.get("display_value") or "").strip()}
+        if item["value"] and (item["source"], item["value"]) not in seen:
+            seen.add((item["source"], item["value"]))
+            overruled.append(item)
+    return support, overruled
+
+
+def _tied_source_values(connection, field: str, code: str, group: list[dict], resolve) -> bool:
+    """同一档里没有更优先的来源能分开两个不同的值。这种行不落到下一档，交给人工。"""
+    keys = {id(candidate): _candidate_value_key(connection, field, candidate, resolve)
+            for candidate in group}
+    if len({key for key in keys.values() if key is not None}) <= 1:
+        return False
+    ranks = {id(candidate): chain_rank(field, _source_name(candidate), code=code)
+             for candidate in group}
+    winner = min(group, key=lambda candidate: ranks[id(candidate)])
+    return any(ranks[id(candidate)] == ranks[id(winner)]
+               and keys[id(candidate)] != keys[id(winner)]
+               for candidate in group)
+
+
 def metadata_auto_apply_candidate(connection, row: dict, *,
                                   snapshot_root=None) -> dict | None:
     """这一行能否不经复核直接落库；不能就返回 None。
 
     三项必须同时成立，缺一项就仍然走人工：
 
-    1. 候选**取值**按字段优先级链结算后只剩一个（`_settled_candidates`）。取值一致
-       是最强的证据，数的是取值不是候选条数（ADR-0025）；取值不一时按链取第一位
-       （ADR-0038），被压下的说法记进 note。两种取舍走在链之前：日期式番号的发行日期
-       只认番号自己写的那天（ADR-0034），兜底来源在别家在场时退开（ADR-0035）；
-    2. 目标字段当前为空，或者结算下来的来源不是兜底那一家——补空之外，链首那家的
-       取值直接替换现值。发行方自己那页就是这部片的出处，账本里那个来路不明的旧值
-       没有理由压住它；用户改过的格子归属受保护，仍然不碰；
+    1. 候选按档取舍（`_auto_priority_groups`）：本地 NFO 与官方来源有取值就只用这一档；
+       官方来源为空再用 javdb；javdb 也没有再用 javbus。同一档里取值不一时按字段链
+       取第一位，同一来源自己给出两个值则交给人工。这三档都没有取值，或者只剩
+       AVBase 等其余社区来源，不自动落库。日期式番号的发行日期仍只认番号自己写的那天；
+    2. 官方、javdb、javbus 选定的取值可以补空，也可以改掉非用户字段。用户改过的格子
+       归属受保护，仍然不碰；
     3. 该番号名下有资产的文件名认得出这个番号，认不出的那些也没有指向别的番号
        （`_group_identifies_code`）——逐字出现，或按编目规则解析出来就是它；整组文件名
        都读不出番号时，父目录逐字写着番号、文件名带着番号里三位以上那段数字也算。
@@ -1016,14 +1091,26 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
     evidence, _echoes = _with_honorific_echoes(
         connection, code, field, _evidence_candidates(row, field), resolve)
     evidence, descriptive = _without_descriptive_performers(code, field, evidence, resolve)
-    candidates, settled_by, overruled = _settled_candidates(
-        connection, field, code, _unmasked_titles(
-            field, evidence, str(row.get("current_value") or "")), resolve)
+    prepared = _unmasked_titles(field, evidence, str(row.get("current_value") or ""))
+    candidates, settled_by, overruled = [], None, []
+    winning_group: list[dict] = []
+    for group in _auto_priority_groups(prepared):
+        if _tied_source_values(connection, field, code, group, resolve):
+            return None
+        candidates, settled_by, overruled = _settled_candidates(
+            connection, field, code, group, resolve)
+        if candidates:
+            winning_group = group
+            break
     if not candidates:
         return None
     replaces_current = bool(str(row.get("current_value") or "").strip())
     if replaces_current and not _may_replace_current(candidates, field=field, code=code):
         return None
+    support, extra_overruled = _agreeing_evidence(
+        connection, field, code, prepared, candidates, winning_group, resolve)
+    candidates = [*candidates, *support]
+    overruled = [*overruled, *extra_overruled]
     candidate = _preferred_candidate(field, candidates, code=code)
     # 韩国 MIB 的番号问 JAV 目录站必错，这类候选一条都不该走自动批准。第 3 条对它们
     # 全部成立——文件名就叫 `AR-101 Ari....mp4`——但它保证的是「候选属于这个文件」，

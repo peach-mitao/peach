@@ -2,10 +2,10 @@
 
 分工先说清楚。本模块只管**问**：番号的内容类型、该类型的有序来源链、以及一档取到
 必填标量字段之后不再问下一档。取回来的值怎么排序、怎么结算分歧、哪个字段听谁的，
-在 `metadata_policy`（`FIELD_SOURCE_ORDER`、`PREFERRED_COMMUNITY_SOURCE`、
-`FALLBACK_SOURCES`）与落库那一侧，两条轴不要混：javbus 在结算上是兜底
-（ADR-0035），在查询上却排在 javdb 前面——javdb 按出口 IP 计配额、主机间隔 3 秒
-（`library_processing.SOURCE_INTERVALS`），先问便宜的那两家不影响结算，只影响谁先撞上限流。
+在 `metadata_policy` 与落库那一侧，两条轴不要混：结算在官方来源为空时先用
+javdb、再用 javbus，其余社区来源交给人工。查询上 javbus 仍排在 javdb 前面——javdb
+按出口 IP 计配额、主机间隔 3 秒（`library_processing.SOURCE_INTERVALS`），先问便宜
+的那两家不影响结算，只影响谁先撞上限流。
 
 链的取舍参考 amane 的 `docs/dev/content-routes.md`（证据登记在
 `docs/reference-sources.json` 的 `amane-content-routes`），原则照搬三条：类型专属源

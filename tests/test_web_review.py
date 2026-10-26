@@ -893,9 +893,8 @@ class ReviewQueueTests(unittest.TestCase):
             con.close()
         self.assertEqual(note["rule"], "adr-0038-chain-mgstage")
 
-    def test_a_fallback_source_does_not_challenge_a_value_the_ledger_has(self):
-        """兜底来源改不动账本已有的值，也不必让人看一眼（ADR-0038）。
-        """
+    def test_javbus_fills_when_official_and_javdb_have_no_value(self):
+        """官方来源和 javdb 都没有取值时，用 javbus 写上，不再进人工复核。"""
         self._asset(124, "TRE-080", "TRE-080.mp4")
         con = sqlite3.connect(self.db_path)
         con.execute("UPDATE asset SET series='真实系列' WHERE id=124")
@@ -904,11 +903,11 @@ class ReviewQueueTests(unittest.TestCase):
             {"item_key": "FALL", "field": "series", "current": "真实系列", "code": "TRE-080",
              "candidates": [{"value": "别的片的系列", "source": "javbus"}]},
         ])
-        self.assertEqual(self._auto()["applied"], 0)
+        self.assertEqual(self._auto()["applied"], 1)
         con = sqlite3.connect(self.db_path)
         try:
             self.assertEqual(
-                con.execute("SELECT series FROM asset WHERE id=124").fetchone()[0], "真实系列")
+                con.execute("SELECT series FROM asset WHERE id=124").fetchone()[0], "别的片的系列")
         finally:
             con.close()
         self.assertEqual(self.queue_keys("metadata_fields"), [])
@@ -1043,9 +1042,8 @@ class ReviewQueueTests(unittest.TestCase):
             self.assertEqual(stage_name(name), name)
 
     def test_an_fc2_row_lands_the_named_source_when_the_other_gave_only_a_description(self):
-        """一家给真名、另一家只给描述性称呼时，后者不算证据，真名照常按判据落库。
-
-        被剔掉的那家记在 note 里：事后要答得出「javdb 那条为什么没算」。
+        """javdb 只给描述性称呼时，它不算取值。fc2cmadb 的真名不在 javdb、javbus
+        或官方来源里，这一行交给人工，不自动落库。
         """
         self._asset(131, "FC2-PPV-1396747", "FC2-PPV-1396747.mp4")
         self.write_metadata_rows([
@@ -1053,12 +1051,10 @@ class ReviewQueueTests(unittest.TestCase):
                                     ("fc2cmadb", "大村阿美香"), ("javdb", "145cm色白お嬢様")),
         ])
         result = self._auto_without_snapshots()
-        self.assertEqual((result["applied"], result["auto_rejected"]), (1, 0))
-        self.assertEqual(self._performers_of(131), ["大村阿美香"])
-        status, note = self._decision("NAMED")
-        self.assertEqual(status, "approved")
-        self.assertEqual(json.loads(note)["descriptive_dropped"],
-                         [{"source": "javdb", "value": "145cm色白お嬢様"}])
+        self.assertEqual((result["applied"], result["auto_rejected"]), (0, 0))
+        self.assertEqual(self._performers_of(131), [])
+        self.assertEqual(self.queue_keys("metadata_fields"), ["NAMED"])
+        self.assertIsNone(self._decision("NAMED"))
 
     def test_fc2_rows_that_still_need_a_person_to_pick_a_name_stay_in_review(self):
         """四种行不替人决定。
