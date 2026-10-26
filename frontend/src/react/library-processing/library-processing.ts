@@ -115,6 +115,8 @@ export const fetchProcessingEstimate = (command: LibraryProcessingCommand, signa
 export type ProcessingSpeed = 'low' | 'standard' | 'high';
 export interface LibraryProcessingCommand {
   stage?: 'scan' | 'collect' | 'previews' | 'metadata';
+  /** 重新扫描并重新询问外部来源，不看 7 天内不再问和已有资料。 */
+  force?: boolean;
   asset_ids?: number[];
   job_id?: string;
   retry?: number[];

@@ -115,7 +115,7 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
   return (
     <>
       <div data-stage-grid="" data-with-queue={queue ? '' : undefined} data-item-detail="">
-        <MediaFrame item={item} gate={gate} helpers={helpers} actions={actions}
+        <MediaFrame key={item.id} item={item} gate={gate} helpers={helpers} actions={actions}
           autoplay={props.queue?.autoplay} onEnded={continuePart} />
         <Side item={item} queue={queue} write={write} helpers={helpers} actions={actions} />
       </div>
@@ -134,12 +134,14 @@ function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
   item: DetailItem; gate: MediaGate; helpers: ItemDetailHelpers; actions: ItemDetailActions;
   autoplay?: boolean; onEnded(): void;
 }) {
-  /* 计费来源先挡一层说明，点了才拉流；没挂载与在线拦截的那两种不挂播放器。 */
-  const [started, setStarted] = useState<'auto' | 'clicked' | ''>(gate ? '' : 'auto');
+  /* 计费来源先挡一层说明，点了才拉流；没挂载与在线拦截的那两种不挂播放器。
+     有封面时先看封面，正片等点开再挂。续播下一条仍直接播。 */
+  const openOnCover = !autoplay && !!item.has_cover;
+  const [started, setStarted] = useState<'auto' | 'clicked' | ''>(gate || openOnCover ? '' : 'auto');
   /* 播放器挂在这块框里，`<video>` 由舞台建：Video.js 会把它包进自己的 div，从小窗展开回来时
      整个实例还要搬进来，那一截 DOM 不归 React。 */
   const frameRef = useRef<HTMLDivElement>(null);
-  const [image, setImage] = useState(-2);
+  const [image, setImage] = useState(openOnCover ? -1 : -2);
   const refreshSamples = useRef(false);
   const source = useQuery({ queryKey: javDetailKey(item.code || ''),
     queryFn: ({ signal }) => {
@@ -156,6 +158,7 @@ function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
   const hasPictures = media.length > 1;
   const selectImage = (index: number) => {
     if (index !== -2) frameRef.current?.querySelector('video')?.pause();
+    if (index === -2) setStarted(current => current || 'clicked');
     setImage(index);
   };
   const mounting = useRef(item);

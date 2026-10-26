@@ -1358,15 +1358,15 @@ class _MetadataResults:
 class _RemoteSession:
     """一个任务共用的外部来源连接，加上来源说过「没有」的记忆。"""
 
-    def __init__(self, config, provider_factory, misses, *, retrying, routes=None):
+    def __init__(self, config, provider_factory, misses, *, retrying, routes=None, ignore_memory=False):
         self._config = config
         self._factory = provider_factory
         self._provider = None
         self.misses = misses
         #: 用户对每种内容类型的来源链覆盖，形状见 `metadata_routes.parse_route_overrides`。
         self._routes = routes or None
-        # 「重试未完成项」按上一任务的失败集合强制重试，不看记忆；答复仍照记。
-        self._consult = not retrying
+        # 「重试未完成项」和强制重新同步不看「没有」的记忆与新鲜快照；答复仍照记。
+        self._consult = not retrying and not ignore_memory
         self._task_evidence = {}
         self._task_absent = set()
 
@@ -2537,7 +2537,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                     report=lambda state: None, provider_factory=None, job_id=None,
                     retry_ids=None, active=lambda: True, stage=ALL_STAGES,
                     database=None, route_overrides=None, state_file=None, asset_ids=None,
-                    resume_state=None, speed_mode=None, protected_ids=(), recheck_existing=False):
+                    resume_state=None, speed_mode=None, protected_ids=(), recheck_existing=False,
+                    force=False):
     """登记文件与确定的番号，外部资料保留为可复核候选。
 
     `retry_ids` 为 `None` 时处理整个馆藏；给定时只处理这些项目（上一任务记录的
@@ -2554,6 +2555,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
     `route_overrides` 覆盖某几种内容类型的来源链，形状与判据见
     `metadata_routes.parse_route_overrides`；不给就用内建那张表。
     `state_file` 给后台定向任务保存独立进度，共享候选写入仍使用全库处理锁。
+    `force` 重新询问外部来源：不看 7 天内「没有」的记忆和新鲜快照，已有字段也再核对。
     """
     selected_ids = _validate_processing_request(config, db_path, stage, asset_ids, retry_ids, database)
     from .repository import LedgerDatabase
@@ -2587,7 +2589,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                      checked=0, total=0, scanned=0, scanned_bytes=0, probed=0, identified=0, candidates=0, covers=0, previews=0,
                      requested_stage=stage, asset_ids=scope_ids,
                      issue_count=0, paused_count=0, issue_preview=[], issues_truncated=False,
-                     notes={}, retryable_asset_ids=[],
+                     notes={}, retryable_asset_ids=[], force=bool(force),
                      last_progress_at=time.time(), progress_seq=0,
                      current_asset_id=None, current_asset_name='', current_action='',
                      current_started_at=None, current_deadline_at=None,
@@ -2642,7 +2644,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
 
         update()
         remote = _RemoteSession(config, provider_factory, _MissCache(misses_path(config)),
-                                retrying=retrying, routes=routes)
+                                retrying=retrying, ignore_memory=bool(force), routes=routes)
         flush_candidates = lambda force=False: None
 
         try:
@@ -2734,7 +2736,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                 if local is None:
                     continue
                 code, verify_existing, payload, entries = local
-                verify_existing = bool(verify_existing or recheck_existing)
+                verify_existing = bool(verify_existing or recheck_existing or force)
                 local_fields = _fields(payload, genre_decisions) if payload else {}
                 publish(row, code, local_fields, verify_existing, entries)
                 if code or payload:

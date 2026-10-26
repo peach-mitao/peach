@@ -67,6 +67,7 @@ export function ProcessingActions({ busy, scan = false, metadataOnly = false, sp
     ...(scan ? [{ label: '仅补全已入库影片', description: metadataOnly ? '补已有影片的资料和视频属性' : '补资料和视频属性，生成本地预览图', command: { stage: 'collect' as const } }] : []),
     { label: '仅补全影片资料', description: '补影片资料、封面和人物资料', command: { stage: 'metadata' as const } },
     { label: '仅补全预览图', description: '为已入库的本地视频生成九宫格', command: { stage: 'previews' as const } },
+    ...(scan ? [{ label: '强制重新同步', description: '重新扫描并重新询问外部来源，不看 7 天内不再问', command: { force: true } }] : []),
   ];
   const run = (command: LibraryProcessingCommand) => {
     if (busy) return;
@@ -78,9 +79,10 @@ export function ProcessingActions({ busy, scan = false, metadataOnly = false, sp
     if (prompt.current) return;
     selectedSpeed.current = speedMode;
     const previews = command.stage === 'previews';
-    const title = previews ? '补全预览图' : command.stage === 'scan' ? '扫描文件'
+    const title = command.force ? '强制重新同步' : previews ? '补全预览图' : command.stage === 'scan' ? '扫描文件'
       : command.stage === 'metadata' ? '补全影片资料' : command.stage === 'collect' ? '补全已入库影片' : '同步媒体库';
-    const work = previews ? '为本地视频补全九宫格预览图，会读取视频并占用处理器'
+    const work = command.force ? '重新扫描目录，并重新询问外部来源。不看 7 天内不再问，已有资料也会再核对'
+      : previews ? '为本地视频补全九宫格预览图，会读取视频并占用处理器'
       : command.stage === 'scan' ? '扫描目录并登记文件，按目录设置读取视频时长和分辨率'
       : command.stage === 'metadata' ? '读取配套资料，补全影片资料、封面和人物资料'
       : `${command.stage === 'collect' ? '为已入库影片补全资料和视频属性' : '扫描目录发现文件，再补全资料和视频属性'}${metadataOnly ? '' : '，并生成本地预览图'}`;

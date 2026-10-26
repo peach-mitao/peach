@@ -137,8 +137,8 @@ describe('扫描与采集控制', () => {
         await card.getByRole('button', { name: '更多同步方式', exact: true }).click();
         const menu = page.getByRole('dialog', { name: '同步方式', exact: true });
         assert.equal(await menu.locator('svg').count(), 0);
-        assert.equal(await menu.getByRole('button').count(), 4);
-        for (const label of ['仅扫描文件', '仅补全已入库影片', '仅补全影片资料', '仅补全预览图']) {
+        assert.equal(await menu.getByRole('button').count(), 5);
+        for (const label of ['仅扫描文件', '仅补全已入库影片', '仅补全影片资料', '仅补全预览图', '强制重新同步']) {
           await menu.getByText(label, { exact: true }).waitFor();
         }
         await menu.getByText('为已入库的本地视频生成九宫格', { exact: true }).waitFor();

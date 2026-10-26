@@ -1981,6 +1981,9 @@ class LibraryNfoTests(unittest.TestCase):
         cache = _MissCache(misses_path(config), now=lambda: time.time() + 8 * 24 * 3600)
         self.assertFalse(cache.fresh('r18dev', 'STP-26232'), '7 天后再问一次')
         self.assertFalse(_MissCache(self.root / 'missing.json').fresh('r18dev', 'STP-26232'))
+        forced = run(force=True)
+        self.assertEqual((provider.query.call_count, provider.community.call_count), (3, 3), '强制重新同步不看 7 天记忆')
+        self.assertTrue(forced['force'])
 
     @windows_ledger_roots
     def test_a_source_that_already_answered_within_the_week_is_not_asked_again(self):

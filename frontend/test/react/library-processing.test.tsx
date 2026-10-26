@@ -157,8 +157,10 @@ it('扫描与补全方式共用一颗主键加一个下拉，各自交自己的�
   await startFrom(menuItem('仅补全预览图'));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
   await startFrom(menuItem('仅补全影片资料'));
+  await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
+  await startFrom(menuItem('强制重新同步'));
 
-  expect(served.posts()).toEqual([{}, { stage: 'scan' }, { stage: 'collect' }, { stage: 'previews' }, { stage: 'metadata' }]);
+  expect(served.posts()).toEqual([{}, { stage: 'scan' }, { stage: 'collect' }, { stage: 'previews' }, { stage: 'metadata' }, { force: true }]);
   expect(host.querySelector('a[href="/sources"]')?.textContent).toContain('来源和凭证');
 });
 

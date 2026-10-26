@@ -120,6 +120,7 @@ def _control_action(contract, config, body):
             return w_library_processing(contract, {
                 'stage': previous.get('requested_stage') or ALL_STAGES,
                 **({'asset_ids': previous['asset_ids']} if previous.get('asset_ids') else {}),
+                **({'force': True} if previous.get('force') else {}),
                 'speed_mode': control.mode}, resume=True)
         finally:
             current_job_id.reset(identity)
@@ -222,13 +223,14 @@ def w_library_processing(contract, body, *, resume=False):
     retry_ids, asset_ids, stage = _processing_request(contract, config, previous, body)
     if retry_ids is not None and not retry_ids:
         return public_state(previous)
+    force = bool((body or {}).get('force') or (resume and previous.get('force')))
     mode = valid_mode(control_for(config).mode if resume else
                       (body or {}).get('speed_mode') or control_for(config).mode)
     control_for(config).request('set_speed', mode=mode)
     def work(job_id):
         try:
             result = process_library(config, contract.db_path, contract.candidate_root, contract.cover_root,
-                job_id=job_id, retry_ids=retry_ids, stage=stage, asset_ids=asset_ids,
+                job_id=job_id, retry_ids=retry_ids, stage=stage, asset_ids=asset_ids, force=force,
                 # 自动落库与页面写的是同一个 `LedgerDatabase`：进程内写锁在实例上，
                 # 另建一个就是在同一个进程里开第二条写入路径。
                 database=contract.database,
@@ -245,7 +247,8 @@ def w_library_processing(contract, body, *, resume=False):
     labels = {ALL_STAGES: '准备处理', SCAN_STAGE: '准备扫描文件', COLLECT_STAGE: '准备采集资料',
               METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图'}
     return public_state(contract.library_processing_job.start(
-        work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
+        work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage, 'force': force,
                                     **initial_estimate(config, contract.db_path, stage, asset_ids or retry_ids, mode)},
-        recovery={'stage': stage, 'speed_mode': mode, **({'asset_ids': asset_ids or retry_ids}
-                                    if asset_ids is not None or retry_ids is not None else {})}))
+        recovery={'stage': stage, 'speed_mode': mode, 'force': force,
+                  **({'asset_ids': asset_ids or retry_ids}
+                     if asset_ids is not None or retry_ids is not None else {})}))

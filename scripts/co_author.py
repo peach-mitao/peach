@@ -11,6 +11,7 @@ from .check_readme_impact import git, trailers, unpublished
 VENDORS = {
     "Claude Code": "noreply@anthropic.com",
     "Codex": "noreply@openai.com",
+    "Cursor": "noreply@cursor.com",
     "opencode": "noreply@opencode.ai",
 }
 
@@ -20,6 +21,9 @@ FORM = re.compile(r"(?P<tool>[^()<>]+) \((?P<model>[^()]+)\) <(?P<mail>[^<>\s]+)
 HUMAN_FORM = re.compile(r"(?P<name>[^()<>\r\n]+) <(?P<mail>[^<>\s@]+@[^<>\s@]+)>")
 
 EXAMPLE = "Co-Authored-By: Claude Code (Opus 5) <noreply@anthropic.com>"
+
+#: Cursor 提交时会另附这一行。它不代替带模型的署名，只是不把那次提交判失败。
+CURSOR_AGENT = "Cursor <cursoragent@cursor.com>"
 
 
 def values(repo: Path, head: str = "HEAD") -> list[str]:
@@ -41,6 +45,8 @@ def problems(label: str, found: list[str]) -> list[str]:
     problems = []
     has_agent = False
     for value in found:
+        if value == CURSOR_AGENT:
+            continue
         parsed = FORM.fullmatch(value)
         human = HUMAN_FORM.fullmatch(value)
         if (parsed is None and human is not None and human["name"].strip()
