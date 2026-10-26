@@ -77,6 +77,26 @@ class TemplateRenderTests(unittest.TestCase):
                 self.assertEqual("/".join(filter(None, (directory, filename + ".mp4"))), preset["example"])
 
 
+class DiscMarkerTests(unittest.TestCase):
+    def test_subtitle_edition_c_is_not_a_disc(self):
+        row = {"code": "MIDE-950", "name": "MIDE-950-C.mp4", "catalog_title": "",
+               "original_title": "", "release_date": "", "studio": "", "series": "",
+               "width": 1920, "height": 1080}
+        self.assertEqual(organize.placeholder_values(row)["cd"], "")
+
+    def test_disc_letter_before_subtitle_edition_stays(self):
+        row = {"code": "ABP-601", "name": "ABP-601A-C.mp4", "catalog_title": "",
+               "original_title": "", "release_date": "", "studio": "", "series": "",
+               "width": 0, "height": 0}
+        self.assertEqual(organize.placeholder_values(row)["cd"], "A")
+
+    def test_explicit_cd_number_stays(self):
+        row = {"code": "ABC-123", "name": "ABC-123-CD2.mp4", "catalog_title": "",
+               "original_title": "", "release_date": "", "studio": "", "series": "",
+               "width": 0, "height": 0}
+        self.assertEqual(organize.placeholder_values(row)["cd"], "2")
+
+
 class SanitiseTests(unittest.TestCase):
     def test_filename_symbols_and_invalid_unicode_are_removed(self):
         cases = {

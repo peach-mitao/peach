@@ -16,6 +16,7 @@ import json
 import logging
 import ntpath
 import os
+import re
 import sqlite3
 import time
 from collections.abc import Callable, Iterable, Sequence
@@ -126,6 +127,16 @@ def _definition(width, height) -> str:
     return ""
 
 
+#: 文件名结尾的 `-C` 是中文字幕版次，不是光盘序号。`ABP-601-C.mp4` 没有分卷；
+#: `ABP-601A-C.mp4` 的卷号是 A，字幕标记贴在后面。
+_SUBTITLE_EDITION_C = re.compile(r"-c(?=\.[a-z0-9]{2,4}$)", re.I)
+
+
+def disc_marker(name: str) -> str:
+    """整理用的光盘序号。先去掉结尾的字幕版次 `-C`，再认 CD、part 和字母卷。"""
+    return part_marker(_SUBTITLE_EDITION_C.sub("", name or ""))
+
+
 def placeholder_values(row, performers: Sequence[str] = ()) -> dict[str, str]:
     """一行资产的占位符取值，全部来自 approved 真相字段。
 
@@ -135,7 +146,7 @@ def placeholder_values(row, performers: Sequence[str] = ()) -> dict[str, str]:
     name = str(row["name"] or "")
     title = str(row["catalog_title"] or "") or str(row["original_title"] or "")
     release_date = str(row["release_date"] or "")
-    marker = part_marker(name)
+    marker = disc_marker(name)
     return {
         "code": normalise_code_key(code) if is_jav_code(code) else code.strip(),
         "title": title.strip(),
