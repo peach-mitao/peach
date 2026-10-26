@@ -36,6 +36,8 @@ export interface LibraryProcessingData {
   job_id?: string;
   stage?: string;
   requested_stage?: string;
+  asset_ids?: number[] | null;
+  refresh_metadata?: boolean;
   steps?: { id: string; label: string; status: 'pending' | 'current' | 'complete' }[];
   checked?: number;
   total?: number;
@@ -73,6 +75,7 @@ export interface LibraryProcessingData {
 /** 一次写操作的请求体：指定处理阶段与影片，或者按任务号重试失败项。 */
 export type ProcessingSpeed = 'low' | 'standard' | 'high';
 export interface LibraryProcessingCommand {
+  refresh?: boolean;
   stage?: 'scan' | 'collect' | 'previews' | 'metadata';
   asset_ids?: number[];
   job_id?: string;

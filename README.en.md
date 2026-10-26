@@ -37,6 +37,7 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 - **Pick from the video wall**: drag through a full-screen cover wall and play in place, with versions and parts of the same title grouped together.
 - **Player subtitles**: load local subtitles, search SubtitleCat for simplified and traditional Chinese subtitles by video code, then adjust fonts, size, colors and backgrounds. No API key is required; results may include machine translations.
 - **Bring your existing collection**: read NFO files and posters, and match local covers by video code across registered image folders and subfolders. Existing covers are kept and ambiguous images require review; external sources fill remaining metadata. See [local cover matching](docs/LOCAL_COVERS.md).
+- **Edit one video**: correct its code, filename, title, performers and cover, then refresh metadata for that video. File changes take effect when you save. See [single-video editing](docs/MANUAL_EDITING.md).
 - **Follow across sites**: combine a creator's updates from FANBOX, Patreon, Kemono and other sites, with matching posts grouped into one card.
 - **Find your next watch**: subscribe to performers' new releases, discover titles based on your taste and save them to your want list.
 - **Cloud download**: search by video code or paste a magnet link, send it to 115 or PikPak and organize the downloaded video into your library automatically.
@@ -108,7 +109,7 @@ See [Docker deployment](docs/DOCKER.md) for setup and supported configurations.
 
 ## FAQ
 
-- **Will it change my files?** Scanning and filling in details leave originals untouched. Manual organization renames or moves files; emptying the trash deletes files, and resource-sync cleanup removes empty folders. Each requires confirmation.
+- **Will it change my files?** Scanning and filling in details leave originals untouched. Saving edits to a video can rename it and write its NFO and cover. Manual organization renames or moves files; emptying the trash deletes files, and resource-sync cleanup removes empty folders. Each requires confirmation.
 - **Which cloud drives work?** Drives mounted as local folders through tools such as CloudDrive2; see [cloud drive mounts](docs/CLOUDDRIVE.md). Cloud download supports 115 and PikPak, with sign-in tokens stored locally.
 - **How do I watch on my phone?** Allow devices on the same network during setup, connect your phone to that network, open the address shown and set an access password.
 - **Where is my data?** In the local `peach-data` folder. The Windows build defaults to `%LOCALAPPDATA%\Peach\peach-data`.

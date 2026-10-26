@@ -22,6 +22,7 @@ from .web_activity import (
 )
 from .web_batch import q_ads, q_duplicates, w_batch, w_empty_trash
 from .taste_history import history_source_count
+from .web_item_edit import q_item_edit, w_item_edit
 from .web_catalog import (
     catalog_filter,
     q_editions,
@@ -317,6 +318,7 @@ def _post_empty_trash(contract, _body):
 
 
 GET_HANDLERS = {
+    "/api/item-edit": q_item_edit,
     "/api/media-processing": q_media_processing,
     "/api/folders": q_folders,
     "/api/tasks": q_tasks,
@@ -384,6 +386,7 @@ GET_HANDLERS = {
 }
 
 POST_HANDLERS = {
+    "/api/item-edit": w_item_edit,
     "/api/media-processing": w_media_processing,
     "/api/folders/preview": w_folder_preview,
     "/api/folders/rule": w_folder_rule,
