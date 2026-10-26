@@ -4,6 +4,20 @@
 
 <h1 align="center">Peach</h1>
 
+Custom build: RSS downloads in Manage following show illustrated posts with a main thumbnail, every preview image, and inline AllDebrid/Real-Debrid download icons. Each feed can hide unsupported links. Configure a provider under Download providers; choose a container-visible folder for server downloads or leave it blank for browser downloads. See [test-build instructions](TEST-PACKAGE.en.md).
+
+Following → All includes RSS updates. Each RSS feed has its own automatic-update switch and interval, defaulting to 6 hours; turning it off keeps saved posts and allows manual refresh.
+
+Each RSS feed can keep saved posts forever or for a number of days, months or years, measured from first save. Repeated item IDs or article URLs combine into one post with merged links and previews. Expiry removes post content while retaining minimal duplicate-prevention records; downloaded files stay intact. Images and links remain addresses served by their original hosts.
+
+Debrid downloads use the existing background-task popup across pages, with transfer/import status, cancellation and import retry. Each provider can enable **Scan and import after download** for a folder inside a configured media library; use container paths in Docker. Completed files enter a persistent, file-specific import. Metadata failure keeps the file and queued work survives restart. Browser downloads remain browser-managed; byte progress and automatic import apply to server-folder downloads.
+
+Each provider has a maximum concurrent server-folder downloads setting, defaulting to 3 with a range of 1–10. Waiting files start as slots open. Single-file RSS download requests persist on the server and continue with the page closed; browser downloads remain controlled by the browser.
+
+Saving the download limit verifies the value read back from the server. The popup keeps completed statuses; **Clear finished** hides terminal records while keeping files and download receipts. Imports in progress remain visible. RSS defaults to 20 posts per page, with choices of 10, 20, 50 or 100 and Previous/Next navigation; the browser remembers the choice.
+
+Browsing and Playback includes separate, opt-in beta controls for local video buffering and faster repeat navigation. Controlled players remember volume and mute across videos, and configured seek steps also apply while the timeline has focus. See [performance research and limits](docs/PERFORMANCE.md); beta video buffering may use more network and memory.
+
 <p align="center">A private video library: local drives, cloud drives and the creators you follow, all in one place.</p>
 
 <p align="center">
@@ -120,6 +134,14 @@ Check [user feedback](https://github.com/peach-mitao/peach/issues), or [open an 
 ## Documentation
 
 [Operations](docs/OPERATIONS.md) · [Sourcing](docs/SOURCING.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Changelog](CHANGELOG.md)
+
+Interface languages, StashDB and playback options: [Feature changelog](docs/CUSTOM-CHANGELOG.en.md) · [Test package guide](TEST-PACKAGE.en.md) · [StashDB setup](docs/STASHDB.md)
+
+Scanning and acquisition includes a Stop scan button that preserves completed work. With StashDB scene pictures disabled, automatic matching only looks up existing actors and studios; the setup guide explains filename recognition and scene-based cast correction.
+
+Data management defaults to **Scan All (Find new)**. It lists folders and registers files, then probes media, generates missing previews, fetches metadata and matches StashDB only for videos added during that scan. With no new videos it finishes immediately after discovery. Choose **Scan All (Fresh)** in the menu and confirm to process all videos while preserving saved metadata, pictures and history; usable previews are reused. Targeted metadata, preview and failed-item actions remain available. Directory discovery still counts all files, without reading every video's contents. Missing local files retain safe disappearance handling; remote sources retain resource-sync reconciliation.
+
+Actor pages include editable profile details on the right, birthdate-based ages and aliases with spaces. Sources & subscriptions → StashDB offers separate Resync Actors and Resync Studios actions that refresh existing identities without searching scenes.
 
 Contributing: [Development guide](AGENTS.md) · [Testing and dependencies](docs/TESTING.md)
 

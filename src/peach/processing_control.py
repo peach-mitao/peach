@@ -64,6 +64,8 @@ def checkpoint_values(values):
 
 
 def interrupted_state(control):
+    if control is not None and control.cancelled:
+        return dict(status='cancelled', error='', completed_at=time.time(), followups=[])
     return dict(status='paused', error='', completed_at=None) if control is not None and control.paused else {}
 
 
@@ -147,6 +149,7 @@ class ProcessingControl:
         self.mode = data.get('speed_mode') if data.get('speed_mode') in MODES else 'standard'
         self.job_id = data.get('job_id')
         self.paused = data.get('paused') is True
+        self.cancelled = data.get('cancelled') is True
         self.event = threading.Event()
         self.event.set()
         self.publish = None
@@ -166,6 +169,7 @@ class ProcessingControl:
             if data.get('job_id') == self.job_id or self.publish is None:
                 self.job_id = data.get('job_id', self.job_id)
                 self.paused = data.get('paused', self.paused)
+                self.cancelled = data.get('cancelled', self.cancelled)
                 mode = data.get('speed_mode', self.mode)
                 if mode in MODES and self.mode != mode:
                     self.mode = mode
@@ -173,7 +177,7 @@ class ProcessingControl:
 
     def _save(self):
         atomic_write_text(self.path, json.dumps(dict(
-            speed_mode=self.mode, job_id=self.job_id, paused=self.paused)) + '\n')
+            speed_mode=self.mode, job_id=self.job_id, paused=self.paused, cancelled=self.cancelled)) + '\n')
 
     def request(self, action, job_id=None, mode=None):
         with self.lock:
@@ -184,6 +188,7 @@ class ProcessingControl:
                 self.next_work.clear()
             else:
                 self.paused = action == 'pause'
+                self.cancelled = action == 'stop'
             self._save()
             self.event.set()
 
@@ -192,6 +197,7 @@ class ProcessingControl:
         with self.lock:
             if self.job_id != job_id:
                 self.job_id, self.paused, self.paused_seconds = job_id, False, 0.0
+                self.cancelled = False
 
     @contextmanager
     def bind(self, job_id, *, publish, active, db_path, mode=None):
@@ -215,7 +221,7 @@ class ProcessingControl:
         while True:
             check_pause(self.db_path)
             self.refresh()
-            if not self.active():
+            if self.cancelled or not self.active():
                 raise InterruptedError('处理任务已停止')
             with self.lock:
                 paused, mode = self.paused, self.mode
@@ -249,6 +255,13 @@ def user_paused(db_path, job_id):
 
 def initial_estimate(config, db_path, stage, asset_ids=None, mode=None):
     """仅使用账本统计，不在启动 HTTP 请求里遍历媒体目录。"""
+    if stage == 'find_new' and asset_ids is None:
+        return dict(speed_mode=mode or control_for(config).mode, eta_initial=True,
+            estimate_file_count=0, estimate_bytes=0, eta_scope='本趟处理',
+            eta_seconds_min=None, eta_seconds_max=None, eta_kind='estimating')
+    if stage in ('stashdb_actors', 'stashdb_studios'):
+        return dict(speed_mode=mode or control_for(config).mode, eta_initial=True,
+            estimate_file_count=0, estimate_bytes=0, eta_scope='本趟处理')
     mode = mode or control_for(config).mode
     query = "SELECT COUNT(*), COALESCE(SUM(size),0) FROM asset WHERE medium='video' AND disposal IS NULL"
     parameters = []
@@ -265,7 +278,8 @@ def initial_estimate(config, db_path, stage, asset_ids=None, mode=None):
     # 抽帧只读取局部数据；文件总大小仅作为编解码复杂度的温和修正，不按全量读取估时。
     size_factor = min(2.0, max(0.8, (size / max(1, count) / 1024**3) ** 0.15))
     seconds = {'scan': 0.2, 'metadata': 8.0, 'previews': 12.0 * size_factor,
-               'collect': 20.0 * size_factor, 'all': 20.2 * size_factor}[stage]
+               'collect': 20.0 * size_factor, 'all': 20.2 * size_factor,
+               'find_new': 20.2 * size_factor}[stage]
     history = _read(config.directory('state') / 'library-processing-timing.json')
     sample = history.get(stage)
     historical = isinstance(sample, (int, float)) and math.isfinite(sample) and sample > 0

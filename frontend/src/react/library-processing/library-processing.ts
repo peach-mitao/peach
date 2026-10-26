@@ -4,6 +4,7 @@
  * 轮询也由 Query 合成一份，进度、失败与完成状态由服务端统一提供。
  * 端点在 `frontend/src` 里只在这里声明一次（`tests/test_frontend_build.py` 盯着）。 */
 import { apiGet } from '../../api';
+import { formatTranslation, translate } from '../../i18n';
 import { elapsedText, progressText } from '../activity/tasks';
 import { queryClient } from '../query';
 
@@ -25,7 +26,7 @@ export interface LibraryProcessingIssue {
 /** 一趟扫描与采集的快照。字段以 `q_library_processing`（`src/peach/web_library_processing.py`）为准。 */
 export interface LibraryProcessingData {
   metadata_only?: boolean;
-  /** `idle` | `running` | `pausing` | `paused` | `complete` | `failed`。 */
+  /** `idle` | `running` | `pausing` | `paused` | `stopping` | `cancelled` | `complete` | `failed`。 */
   status: string;
   speed_mode?: ProcessingSpeed;
   eta_seconds_min?: number | null;
@@ -44,6 +45,9 @@ export interface LibraryProcessingData {
   identified?: number;
   candidates?: number;
   auto_applied?: number;
+  stashdb_applied?: number;
+  stashdb_review?: number;
+  stashdb_skipped?: number;
   covers?: number;
   previews?: number;
   /* 落库之后补齐女优资料那一步的四个读数：别名、头像、交回人工的冲突、没取到的头像。 */
@@ -73,23 +77,24 @@ export interface LibraryProcessingData {
 /** 一次写操作的请求体：指定处理阶段与影片，或者按任务号重试失败项。 */
 export type ProcessingSpeed = 'low' | 'standard' | 'high';
 export interface LibraryProcessingCommand {
-  stage?: 'scan' | 'collect' | 'previews' | 'metadata';
+  stage?: 'find_new' | 'all' | 'scan' | 'collect' | 'previews' | 'metadata';
   asset_ids?: number[];
   job_id?: string;
   retry?: number[];
   speed_mode?: ProcessingSpeed;
 }
 export type ProcessingControlCommand =
-  | { action: 'pause' | 'resume'; job_id: string }
+  | { action: 'pause' | 'resume' | 'stop'; job_id: string }
   | { action: 'set_speed'; speed_mode: ProcessingSpeed; job_id?: string };
 
 /** 暂停中的任务仍占用同一份处理范围，可继续并持续读取状态。 */
 export const processingActive = (state?: LibraryProcessingData) =>
-  !!state && ['running', 'pausing', 'paused'].includes(state.status);
+  !!state && ['running', 'pausing', 'paused', 'stopping'].includes(state.status);
 
 /** 时间向分钟取整；区间两端始终使用同一单位。 */
 export function remainingTime(state: LibraryProcessingData): string {
   if (!processingActive(state)) return '';
+  if (state.status === 'stopping') return 'Stopping scan…';
   if (state.status === 'paused') return '已暂停，继续后更新预估';
   if (state.status === 'pausing') return '正在暂停，当前步骤结束后暂停';
   if (state.stalled) return '等待当前文件响应，剩余时间待更新';
@@ -103,8 +108,9 @@ export function remainingTime(state: LibraryProcessingData): string {
   const start = Math.max(1 / precision, Math.floor(low / unit * precision) / precision);
   const end = Math.max(start, Math.ceil(high / unit * precision) / precision);
   const span = start === end ? `${end}` : `${start}–${end}`;
-  const rough = state.eta_initial || state.eta_kind !== 'measured' ? '（粗估）' : '';
-  return `预计剩余约 ${span} ${label}${rough}${state.eta_scope ? ` · ${state.eta_scope}` : ''}`;
+  const rough = state.eta_initial || state.eta_kind !== 'measured' ? translate('（粗估）') : '';
+  return formatTranslation('预计剩余约 {0} {1}{2}{3}', span, translate(label), rough,
+    state.eta_scope ? ` · ${translate(state.eta_scope)}` : '');
 }
 
 export const fetchLibraryProcessing = (signal?: AbortSignal) =>
@@ -161,18 +167,18 @@ export function notesLine(notes: Record<string, number>): string {
 export function currentLine(state: LibraryProcessingData): string {
   if (state.status === 'paused') return '已暂停';
   if (state.status === 'pausing') return '正在暂停';
-  const action = ACTION_LABELS[state.current_action || ''] || state.stage || '正在处理';
-  const waited = state.waited_seconds ? ` · 已等待 ${elapsedText(state.waited_seconds)}` : '';
+  const action = translate(ACTION_LABELS[state.current_action || ''] || state.stage || '正在处理');
+  const waited = state.waited_seconds ? ` · ${translate('Waiting {0}').replace('{0}', elapsedText(state.waited_seconds))}` : '';
   return state.current_asset_name
-    ? `当前：${state.current_asset_name} · ${action}${waited}`
+    ? formatTranslation('当前：{0} · {1}{2}', state.current_asset_name, action, waited)
     : action + waited;
 }
 
 /** 已知总量显示实际完成数；扫描目录期间显示持续发现的文件数。 */
 export function processingLine(state: LibraryProcessingData): string {
-  const count = state.total ? `${progressText(state.checked, state.total)} 项`
+  const count = state.total ? formatTranslation('{0} 项', progressText(state.checked, state.total))
     : state.current_action === 'scanning_files' || state.stage === '扫描文件'
-      ? `已发现 ${(state.scanned || 0).toLocaleString()} 个文件` : '';
+      ? formatTranslation('已发现 {0} 个文件', (state.scanned || 0).toLocaleString()) : '';
   return currentLine(state) + (count ? ` · ${count}` : '');
 }
 
@@ -216,12 +222,16 @@ export function freshProcessingResult(state: LibraryProcessingData): boolean {
 export function announceCompletion(
   state: LibraryProcessingData, toast: (message: string) => void, witnessed: boolean,
 ): void {
-  if (state.status !== 'complete') return;
+  if (state.status !== 'complete' && state.status !== 'cancelled') return;
   if (!witnessed && !freshProcessingResult(state)) return;
   try {
     if (state.job_id && localStorage.getItem(ANNOUNCED_KEY) === state.job_id) return;
     if (state.job_id) localStorage.setItem(ANNOUNCED_KEY, state.job_id);
   } catch { /* 存储不可用时照常提示，最多重复一次 */ }
+  if (state.status === 'cancelled') {
+    toast('Scan stopped');
+    return;
+  }
   if (state.requested_stage === 'previews') {
     toast(`视频预览已生成：${state.previews || 0} 部`);
     return;

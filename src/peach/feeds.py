@@ -230,7 +230,7 @@ def normalize_url(value: object) -> str:
 
 
 def add_source(connection: sqlite3.Connection, *, url: str, name: str = "",
-               entity_id: int | None = None) -> int:
+               entity_id: int | None = None, kind: str = KIND_JAVDB_ACTOR) -> int:
     """登记一条 JavDB 演员页订阅。地址重复直接拒绝——同一个源订两遍只会让同一条新作出现两次。"""
     address = normalize_url(url)
     if connection.execute("SELECT 1 FROM feed_source WHERE url=?", (address,)).fetchone():
@@ -238,7 +238,7 @@ def add_source(connection: sqlite3.Connection, *, url: str, name: str = "",
     cursor = connection.execute(
         "INSERT INTO feed_source(kind,name,url,entity_id,enabled,interval_minutes,"
         "created_at) VALUES(?,?,?,?,1,?,?)",
-        (KIND_JAVDB_ACTOR, str(name or "").strip(), address, entity_id,
+        (kind, str(name or "").strip(), address, entity_id,
          DEFAULT_INTERVAL_MINUTES, stamp()))
     return int(cursor.lastrowid)
 
@@ -284,6 +284,7 @@ def remove_source(connection: sqlite3.Connection, source_id: int) -> None:
     `PRAGMA foreign_keys` 是 OFF，库自己不会做。
     """
     source_id = int(source_id)
+    connection.execute("DELETE FROM rss_item_identity WHERE source_id=?", (source_id,))
     connection.execute("DELETE FROM feed_item WHERE source_id=?", (source_id,))
     connection.execute("UPDATE feed_discovery SET source_id=NULL WHERE source_id=?", (source_id,))
     connection.execute("DELETE FROM feed_source WHERE id=?", (source_id,))
@@ -303,7 +304,7 @@ def sources(connection: sqlite3.Connection) -> list[dict]:
     同一个人的几页挨在一起，不被页名拆开。"""
     rows = connection.execute(
         "SELECT s.*, e.canonical_name AS entity_name,"
-        " (SELECT count(*) FROM feed_item i WHERE i.source_id=s.id) AS seen"
+        " (SELECT count(*) FROM feed_item i WHERE i.source_id=s.id AND i.rss_expired_at IS NULL AND i.rss_merged_into IS NULL) AS seen"
         " FROM feed_source s LEFT JOIN entity e ON e.id=s.entity_id"
         " ORDER BY s.kind, coalesce(e.canonical_name, s.name), s.id").fetchall()
     return [{
@@ -316,6 +317,9 @@ def sources(connection: sqlite3.Connection) -> list[dict]:
         "entity_id": row["entity_id"],
         "entity_name": row["entity_name"],
         "enabled": bool(row["enabled"]),
+        "hide_unsupported": bool(row["hide_unsupported"]),
+        "rss_retention_count": row["rss_retention_count"],
+        "rss_retention_unit": row["rss_retention_unit"],
         "interval_minutes": int(row["interval_minutes"]),
         "last_fetched_at": row["last_fetched_at"],
         "next_fetch_at": row["next_fetch_at"],

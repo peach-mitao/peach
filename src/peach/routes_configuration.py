@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import replace
 from collections import deque
 import hashlib
-import ipaddress
 import os
 import shutil
 import threading
@@ -26,6 +25,7 @@ from . import (access, distribution, entry_links, folder_picker, media_libraries
                push_discovery, settings_file, media_configuration, tunnel, web_downloads)
 from .routes_auth import require_auth, require_authenticated_client, same_origin
 from .web_entry import runtime_fact_entries
+from .web_configuration_access import local_client, local_only, managed_configuration, tunnel_forwarded as tunnel_forwarded
 from . import release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall
 
 router = APIRouter()
@@ -33,12 +33,6 @@ _SAVE_LOCK = threading.Lock()
 RELOAD_NAME = onboarding.RELOAD_NAME
 #: 直接由 CLI 管理的服务使用设置文件。
 FILE_MANAGED_NOTICE = "这个部署由配置文件管理服务；在本机编辑下方的设置文件。"
-
-
-def managed_configuration() -> bool:
-    """托盘或无桌面入口负责消费配置保存后的重载标记。"""
-    return (distribution.standalone() or os.environ.get("PEACH_TRAY_MANAGED") == "1"
-            or os.environ.get("PEACH_HEADLESS_MANAGED") == "1")
 
 
 def dev_environment() -> bool:
@@ -53,54 +47,6 @@ def dev_environment() -> bool:
 
 def revision(config) -> str:
     return hashlib.sha256(config.path.read_bytes()).hexdigest()
-
-
-def tunnel_forwarded(request: Request) -> bool:
-    """隧道在跑时，带 Cloudflare 转发头的请求一律按公网来源处理。
-
-    cloudflared 从本机回环连进来，源 IP 与本机浏览器完全一样；转发头是唯一能把
-    两者分开的证据，宁可把伪造了这些头的本机请求挡在配置页外面。
-    """
-    return tunnel.from_edge(getattr(request.app.state, "tunnel", None), request.headers)
-
-
-def local_client(request: Request) -> bool:
-    """按 IP 检查管理请求；桌面限本机，Docker 允许本机与私有网络，拒绝代理转发。"""
-    if not request.client or tunnel_forwarded(request):
-        return False
-    server = request.scope.get("server")
-    try:
-        peer = ipaddress.ip_address(request.client.host)
-        bound = ipaddress.ip_address(server[0]) if server else None
-    except ValueError:
-        # ASGI 测试或非 IP 绑定没有可比较的服务端 IP；回环客户端仍可识别。
-        bound = None
-        try:
-            peer = ipaddress.ip_address(request.client.host)
-        except ValueError:
-            return False
-    if os.environ.get("PEACH_HEADLESS_MANAGED") == "1":
-        if any(header.startswith("x-forwarded-") or header in {"forwarded", "cf-connecting-ip"}
-               for header in request.headers):
-            return False
-        return peer.is_loopback or (peer.is_private and not any((
-            peer.is_link_local, peer.is_reserved, peer.is_unspecified, peer.is_multicast,
-        )))
-    if not peer.is_loopback and (peer != bound or peer.is_unspecified):
-        return False
-    if managed_configuration():
-        name = request.app.state.settings.mdns_name.lower().removesuffix(".local")
-        hosts = {"127.0.0.1", "localhost", "::1", f"{name}.local"}
-        if bound and not bound.is_unspecified:
-            hosts.add(str(bound))
-        if (request.url.hostname or "").lower().rstrip(".") not in hosts:
-            return False
-    return True
-
-
-def local_only(request: Request) -> None:
-    if not local_client(request):
-        raise HTTPException(403, "请在运行 Peach 的电脑上打开配置")
 
 
 @router.get("/api/diagnostics")
@@ -178,9 +124,11 @@ def configurable(request: Request) -> bool:
 def snapshot(config) -> dict[str, Any]:
     """配置页首屏要的一切：当前值、修订号、可写与否，以及这台机器的运行信息。"""
     editable = managed_configuration()
-    from . import remote_reporting, library_sharing
+    from . import remote_reporting, library_sharing, filename_matching, stashdb_client
     media = config.mounts.get("local") or config.locations.get("local", ())
     return {
+        "filename_matching": filename_matching.read(config.directory("state")),
+        "stashdb": stashdb_client.settings(config),
         "remote_reporting": remote_reporting.snapshot(config),
         "library_sharing": library_sharing.snapshot(config),
         "startup": desktop_startup.snapshot(config),
@@ -201,6 +149,7 @@ def snapshot(config) -> dict[str, Any]:
         "mount_dependencies": media_configuration.mount_dependencies(),
         "windows": os.name == "nt",
         "port": config.server.port,
+        "host": config.server.host,
         "port_editable": distribution.standalone(),
         "facts": runtime_fact_entries(config),
     }
@@ -337,6 +286,85 @@ def save_entry_links(request: Request, body: dict = Body(...), _args=Depends(req
         return entry_links.save(settings_file.load_config().directory("state"), body)
     except (ValueError, OSError, Timeout) as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/filename-matching")
+def save_filename_matching(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    from . import filename_matching
+    try:
+        return filename_matching.save(settings_file.load_config().directory("state"), body)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get('/api/configuration/stashdb/library')
+def stashdb_library(request: Request, query: str = '', kind: str = 'scene', _args=Depends(require_auth)):
+    local_only(request)
+    from . import stashdb
+    try:
+        return stashdb.library(request.app.state.web_contract.database, query, kind)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post('/api/configuration/interface-language')
+def interface_language(request: Request, body: dict = Body(default_factory=dict), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    from . import native_i18n
+    from .fsutil import atomic_write_text
+    import json
+    language = body.get('language')
+    if language not in native_i18n.LANGUAGES:
+        raise HTTPException(400, 'Choose a supported interface language.')
+    atomic_write_text(settings_file.load_config().directory('state') / 'interface-language.json', json.dumps({'language': language}))
+    return {'language': language}
+
+
+@router.post('/api/configuration/stashdb/{action}')
+def configure_stashdb(request: Request, action: str, body: dict = Body(default_factory=dict), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    from . import stashdb, stashdb_client
+    config = settings_file.load_config()
+    contract = request.app.state.web_contract
+    if action in ('apply', 'dismiss') and bool(getattr(getattr(request.app.state, 'sync', None), 'read_only', False)):
+        raise HTTPException(403, 'This library is read-only.')
+    try:
+        if action == 'settings':
+            return stashdb_client.save_settings(config, body, database=contract.database)
+        if action == 'check':
+            client = stashdb_client.Client(config)
+            try:
+                account = client.check()
+                return {'ok': bool(account), 'account': account.get('name', '')}
+            finally:
+                client.close()
+        if action in ('preview', 'apply', 'dismiss'):
+            field = 'performer_id' if body.get('performer_id') else 'asset_id'
+            if type(body.get(field)) is not int or body[field] < 1:
+                raise ValueError('Choose a scene or actor from your library.')
+            if action == 'dismiss':
+                if field != 'asset_id':
+                    raise ValueError('Choose a scene or actor from your library.')
+                return stashdb.dismiss(config, contract.database, body[field], body.get('token'))
+            if action == 'preview':
+                return stashdb.preview(config, contract.database, body)
+            if field == 'performer_id':
+                return stashdb.apply_performer(config, contract.database, body[field], body.get('stashdb_id'))
+            return stashdb.apply_scene(config, contract.database, body[field], body.get('stashdb_id'), body.get('token'))
+        raise HTTPException(404, 'Unknown StashDB action.')
+    except (ValueError, OSError) as exc:
+        raise HTTPException(429 if isinstance(exc, stashdb_client.RateLimited) else 400, str(exc)) from exc
+
+
+@router.get('/api/configuration/stashdb/review')
+def stashdb_review_queue(request: Request, _args=Depends(require_auth)):
+    local_only(request)
+    from . import stashdb
+    return stashdb.review_queue(settings_file.load_config(), request.app.state.web_contract.database)
 
 
 @router.post("/api/configuration/push-discovery")
@@ -594,6 +622,13 @@ def _validate(body: dict[str, Any], config) -> tuple[dict[str, Any], dict[str, A
         validated["port"] = port
     except ValueError as exc:
         errors["port"] = str(exc)
+    try:
+        host = onboarding.validate_host(str(body.get('host', config.server.host)))
+        if not distribution.standalone() and host != config.server.host:
+            raise ValueError('访问范围由启动配置管理')
+        validated['host'] = host
+    except ValueError as exc:
+        errors['host'] = str(exc)
     return errors, validated
 
 
@@ -821,7 +856,7 @@ def save_configuration(request: Request, body: dict[str, Any] = Body(default_fac
                            library_names=validated.get("library_names", config.library_names),
                            library_icons=validated.get("library_icons", config.library_icons),
                            media_costs=validated.get("media_costs", config.media_costs),
-                           server=replace(config.server, port=validated["port"]))
+                           server=replace(config.server, port=validated["port"], host=validated.get('host', config.server.host)))
         temporary = config.path.with_suffix(".pending.toml")
         try:
             shutil.copy2(config.path, config.path.with_suffix(".previous.toml"))

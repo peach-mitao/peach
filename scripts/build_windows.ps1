@@ -132,7 +132,7 @@ if ($Standalone) {
     --distpath $BuildDestination --workpath $WorkPath --specpath $BuildPath `
     --paths (Join-Path $ProjectRoot 'src') --python-option 'X utf8' `
     --collect-all curl_cffi --collect-all resvg_py `
-    --copy-metadata sentry-sdk `
+    --copy-metadata sentry-sdk --copy-metadata feedparser --copy-metadata sgmllib3k `
     --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto `
     --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto `
     --hidden-import uvicorn.lifespan.on `
@@ -140,6 +140,10 @@ if ($Standalone) {
     --add-data "$(Join-Path $ProjectRoot 'web');web" `
     --add-data "$(Join-Path $ProjectRoot 'migrations');migrations" `
     --add-data "$(Join-Path $ProjectRoot 'resources');resources" `
+    --add-data "$(Join-Path $ProjectRoot 'frontend/src/i18n');i18n" `
+    --add-data "$(Join-Path $ProjectRoot 'tools/amane-bridge/bridge.py');tools/amane-bridge" `
+    --add-data "$(Join-Path $ProjectRoot 'tools/amane-bridge/pyproject.toml');tools/amane-bridge" `
+    --add-data "$(Join-Path $ProjectRoot 'tools/amane-bridge/uv.lock');tools/amane-bridge" `
     --add-data "${BuildInfoPath};." `
     --add-data "${SentryConfigPath};." `
     (Join-Path $ProjectRoot 'scripts\build_app_entry.py')

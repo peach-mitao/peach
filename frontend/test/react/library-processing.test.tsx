@@ -7,6 +7,8 @@
 import { act } from 'react';
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import * as legacyUi from '../stubs/legacy-ui';
+import { confirmModal as realConfirmModal } from '../../src/ui-kit/modal';
 
 import { queryClient } from '../../src/react/query';
 import {
@@ -26,6 +28,22 @@ const buttonNamed = (name: string, root: ParentNode = document) =>
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 // 报过的任务号记在 `localStorage` 里，也要清，否则下一条用例的通知被当成重复的。
 beforeEach(() => localStorage.setItem(RESOURCE_NOTICE_KEY, 'seen'));
+
+it('translates Docker preview actions and hour estimates before inserting filenames', () => {
+  const language = localStorage.getItem('peach.language');
+  localStorage.setItem('peach.language', 'en');
+  try {
+    const state: LibraryProcessingData = { status: 'running', current_action: 'generating_preview',
+      current_asset_name: 'Example.{1}.mp4', waited_seconds: 2, total: 28189, checked: 1757,
+      eta_seconds_min: 30240, eta_seconds_max: 48240, eta_initial: true, eta_scope: '整趟任务' };
+    expect(processingLine(state)).toContain('Example.{1}.mp4 · Generate video preview');
+    expect(processingLine(state)).not.toMatch(/[\u3400-\u9fff]/);
+    expect(remainingTime(state)).toBe('Estimated remaining: 8.4–13.4 hours (rough estimate) · Entire task');
+  } finally {
+    if (language === null) localStorage.removeItem('peach.language');
+    else localStorage.setItem('peach.language', language);
+  }
+});
 afterEach(() => {
   queryClient.clear();
   localStorage.clear();
@@ -99,9 +117,9 @@ it('扫描与补全方式共用一颗主键加一个下拉，各自交自己的�
   const served = await open({ status: 'idle' }, () => ({ status: 'complete' }));
   const host = await mount(card({ toast: vi.fn() }));
 
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
-  expect(menuItem('同步媒体库')).not.toBeNull();
+  expect(menuItem('扫描全部（查找新增）')).not.toBeNull();
   await click(menuItem('仅扫描文件'));
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
   await click(menuItem('仅同步已入库影片'));
@@ -110,8 +128,25 @@ it('扫描与补全方式共用一颗主键加一个下拉，各自交自己的�
   await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
   await click(menuItem('仅补全资料'));
 
-  expect(served.posts()).toEqual([{}, { stage: 'scan' }, { stage: 'collect' }, { stage: 'previews' }, { stage: 'metadata' }]);
+  expect(served.posts()).toEqual([{ stage: 'find_new' }, { stage: 'scan' }, { stage: 'collect' }, { stage: 'previews' }, { stage: 'metadata' }]);
   expect(host.querySelector('a[href="/sources"]')?.textContent).toContain('来源和凭证');
+});
+
+it('完整扫描必须在菜单选择并确认，取消保持待命', async () => {
+  vi.spyOn(legacyUi, 'confirmModal').mockImplementation(realConfirmModal as typeof legacyUi.confirmModal);
+  const served = await open({ status: 'idle' }, () => ({ status: 'complete' }));
+  const host = await mount(card({ toast: vi.fn() }));
+  const choose = async () => {
+    await click(host.querySelector('[data-split-button] [aria-haspopup="dialog"]'));
+    await click(menuItem('扫描全部（完整扫描）'));
+  };
+  await choose();
+  expect(served.posts()).toEqual([]);
+  await click(document.querySelector('dialog [data-modal-cancel]'));
+  expect(served.posts()).toEqual([]);
+  await choose();
+  await click(document.querySelector('dialog [data-modal-confirm]'));
+  expect(served.posts()).toEqual([{ stage: 'all' }]);
 });
 
 it('启动只提交一次，进度用 GET 读回来，完成后给出回执与复核入口', async () => {
@@ -123,7 +158,7 @@ it('启动只提交一次，进度用 GET 读回来，完成后给出回执与�
       : { status: 'complete', job_id: 'one', scanned: 9, identified: 4, candidates: 2 },
   );
   const host = await mount(card({ toast }));
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
 
   expect(served.calls.map((call) => call.method)).toEqual(['POST', 'GET']);
   expect(host.querySelector('a[href="/review"]')).not.toBeNull();
@@ -148,9 +183,9 @@ it('补齐女优资料的读数进回执，冲突和未取得各自点名', asyn
         },
   );
   const host = await mount(card({ toast: vi.fn() }));
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
 
-  expect(served.posts()).toEqual([{}]);
+  expect(served.posts()).toEqual([{ stage: 'find_new' }]);
   expect(host.querySelector('[role="status"]')?.textContent).toContain(
     '补齐女优资料：别名 5 个，头像 3 张，1 个同名冲突交回人工，2 张头像未取得。');
 });
@@ -179,7 +214,7 @@ it('运行态说清当前项目、动作与等待时长，处理慢只提示不�
   expect(host.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
   expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('2');
 
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
   expect(served.posts()).toEqual([]);
 });
 
@@ -213,7 +248,7 @@ it('失败时把问题清单折叠进错误提示，重试只交失败的那些�
   expect(log.closest('.text-text-secondary')).not.toBeNull();
   expect(details.querySelector('button[aria-label="在资源管理器中显示"]')).not.toBeNull();
   // 补上没做完的那些是这一趟的事，重新跑一整批是下一趟的事：页脚那颗留着，各答各的问题。
-  expect(buttonNamed('同步媒体库', host)?.textContent).toBe('同步媒体库');
+  expect(buttonNamed('扫描全部（查找新增）', host)?.textContent).toBe('扫描全部（查找新增）');
 
   // 重试键属于错误提示，问题清单收起时仍可操作。
   const retry = buttonNamed('重试未完成项')!;
@@ -234,8 +269,8 @@ it('有可重试项时页脚那颗发的仍是整批，不夹带上一趟的失�
   }, () => ({ status: 'running', job_id: 'two' }));
   const host = await mount(card({ toast: vi.fn() }));
 
-  await click(buttonNamed('同步媒体库', host));
-  expect(served.posts()).toEqual([{}]);
+  await click(buttonNamed('扫描全部（查找新增）', host));
+  expect(served.posts()).toEqual([{ stage: 'find_new' }]);
 });
 
 it('失败项都不可重试时仍能重新发起整批任务', async () => {
@@ -245,7 +280,7 @@ it('失败项都不可重试时仍能重新发起整批任务', async () => {
   });
   const host = await mount(card({ toast: vi.fn() }));
   expect(buttonNamed('重试未完成项')).toBeNull();
-  expect(buttonNamed('同步媒体库', host)?.textContent).toBe('同步媒体库');
+  expect(buttonNamed('扫描全部（查找新增）', host)?.textContent).toBe('扫描全部（查找新增）');
 });
 
 it('读不回来时留住已有进度，只在旁边说一句连接中断', async () => {
@@ -392,15 +427,15 @@ it('首次整库任务先说明资源影响，确认模式后才启动，取消�
   localStorage.removeItem(RESOURCE_NOTICE_KEY);
   const served = await open({ status: 'idle', speed_mode: 'standard' }, () => ({ status: 'running', job_id: 'one' }));
   const host = await mount(card({ toast: vi.fn() }));
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
   expect(served.posts()).toEqual([]);
   expect(document.querySelector('dialog')?.textContent).toContain('可能让电脑变慢');
   await click(buttonNamed('取消', document.querySelector('dialog')!));
   expect(served.posts()).toEqual([]);
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
   await click(document.querySelector('dialog input[value="low"]'));
   await submit(document.querySelector('dialog form'));
-  expect(served.posts()).toEqual([{ speed_mode: 'low' }]);
+  expect(served.posts()).toEqual([{ stage: 'find_new', speed_mode: 'low' }]);
   expect(localStorage.getItem(RESOURCE_NOTICE_KEY)).toBe('seen');
   expect(document.querySelector('dialog')).toBeNull();
 });
@@ -430,6 +465,15 @@ it('暂停与继续使用同一个任务号，暂停不是完成，暂停时仍�
   await click(buttonNamed('继续', host));
   expect(served.posts()).toEqual([{ action: 'pause', job_id: 'one' }, { action: 'resume', job_id: 'one' }]);
   expect(buttonNamed('暂停', host)).not.toBeNull();
+});
+
+it('停止扫描按当前任务号提交并保留取消回执', async () => {
+  const served = await open({ status: 'running', job_id: 'one' }, () => ({ status: 'cancelled', job_id: 'one' }));
+  const host = await mount(card({ toast: vi.fn() }));
+  await click(buttonNamed('停止扫描', host));
+  expect(served.posts()).toEqual([{ action: 'stop', job_id: 'one' }]);
+  expect(host.textContent).toContain('已保留完成的工作。');
+  expect(buttonNamed('停止扫描', host)).toBeNull();
 });
 
 it('首屏暂停状态在卡片和横幅中保留进度与继续入口', async () => {
@@ -499,7 +543,7 @@ it('启动失败时提示弹窗保留模式选择和重试入口', async () => {
     ? { ok: false, status: 400, json: async () => ({ error: '媒体目录不可用' }) }
     : { ok: true, status: 200, json: async () => ({ status: 'idle' }) }));
   const host = await mount(card({ toast: vi.fn() }));
-  await click(buttonNamed('同步媒体库', host));
+  await click(buttonNamed('扫描全部（查找新增）', host));
   await click(document.querySelector('dialog input[value="low"]'));
   await submit(document.querySelector('dialog form'));
   expect(document.querySelector('dialog')?.textContent).toContain('媒体目录不可用');

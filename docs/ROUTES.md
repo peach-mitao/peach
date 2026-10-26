@@ -1,5 +1,19 @@
 # 页面路由
 
+「浏览与播放」的 `betaFastVideo`、`betaFastUI` 是当前浏览器的默认关闭偏好。普通本地 `GET/HEAD /stream` 可携带 `beta_fast=true` 请求五分钟私有缓存，仍要求鉴权并保持 Range；其他响应策略不变。客户端只为非计费本地片源附加此参数。实验行为及验证范围见[实验性能选项](PERFORMANCE.md)。
+
+`/follow` 的「全部」在无创作者、来源、题材、标签或时长筛选的视频视图中展示 RSS 更新，复用 RSS 图片、预览、下载入口及分页；`/api/follow` 返回 `rss_count` 供总数展示。RSS 配置仍在 `/subscriptions?tab=rss`。
+
+`POST /api/rss/source` 的 `action=schedule` 接受来源 `id`、布尔 `enabled` 与整数 `interval_minutes`，范围 15–10080 分钟。读接口返回每个来源的开关、间隔与下次检查时间，默认自动开启、360 分钟；手工检查包含关闭自动更新的来源。
+
+RSS 条目中的 `images.main` 是主缩略图，`images.previews` 是带独立 `src` 与 `href` 的预览数组。`POST /api/rss/source` 的 `action=filter` 接收来源 `id` 和布尔 `hide_unsupported`，读取来源时返回该偏好；筛选只影响显示，准备下载仍使用原始 `link_index`。
+
+`/subscriptions?tab=rss` 展示 RSS 下载订阅与新条目，`/settings/downloads` 配置 AllDebrid 和 Real-Debrid。`GET /api/rss` 分页返回条目、来源和本机任务；`POST /api/rss/{source,check,resolve,download,cancel}` 分别管理来源、更新列表、准备链接、目录下载和取消。链接准备只接受已保存的 RSS 条目与链接序号。渠道配置通过 `GET /api/configuration/debrid` 和 `POST /api/configuration/debrid/{provider}/{settings,check}`，不返回密钥。全部接口要求登录，写操作检查同源与只读状态，渠道配置沿用配置页访问边界。
+
+渠道设置读写整数 `max_concurrent_downloads`（每个渠道默认 3，范围 1–10），限制服务端同时传输的文件数。`POST /api/rss/resolve` 可传布尔 `auto_download` 保存下载意图，单文件链接就绪后自动进入目录下载队列；多文件结果保留文件选择。准备链接使用独立单槽，等待中的传输在空位出现时继续。浏览器下载不受服务端并发设置控制。
+
+`GET /api/rss` 接收 `offset` 与 `limit`，每页默认 20，接口将数量限制在 1–100。下载快照以 `parent_id`、`file_index` 与文件的 `download_id` 关联链接准备和传输，完整保留结束状态。`POST /api/rss/clear-finished` 将已结束且没有待办导入的下载标为 `dismissed`；文件、历史凭据和重试依据保留，写者与同源门槛适用。
+
 列表使用一层路径，详情使用两层路径。查询参数表达筛选、排序与播放上下文；名称只用于展示和检索。
 
 ## 详情对象
@@ -109,3 +123,15 @@
 `/api/*`、`/stream`、`/follow-stream`、封面、图片及其他媒体端点使用各自的服务契约。实体只读接口 `/api/entity`、`/api/photos` 支持 `kind` 加 `id`，也接受 `kind` 加 `name`。鉴权与本机写入权限由服务端检查。
 
 启用接口文档时，`/docs`、`/docs/oauth2-redirect` 和 `/openapi.json` 是服务文档入口；首次运行表单由未配置状态下的首页展示。
+
+### 演员资料与实体同步
+
+`POST /api/actor-details` 接受 `entity_id` 与 `values`，返回保存后的 `actor_details`；`GET /api/entity` 在演员响应中提供同一资料。字段值为空字符串表示手工留空，`null` 表示使用来源值。写入沿用鉴权、同源与只读端门槛。
+
+`POST /api/library-processing` 的 `stashdb_actors` 与 `stashdb_studios` 阶段只同步当前演员或厂牌，沿用任务状态查询、暂停、恢复与停止接口；不扫描媒体或查询作品。
+
+`POST /api/library-processing` 未提供 `stage` 时使用 `find_new`：目录发现完成后，将本趟新增视频标识固定为处理范围，后续本地资料、探测、预览、候选结算、StashDB 和后继任务均沿用该范围；新增集合为空时直接完成。显式 `stage=all` 处理全库，其他阶段与定向重试保留各自范围。扫描断点持久保存起始资产标识水位，续跑沿用该水位，同秒发起的独立扫描互不混入新增集合。
+
+`POST /api/rss/source` 的 `retention` 动作接收来源 `id`、`count` 与 `unit`（`days`／`months`／`years`）；`count=null` 表示永久保存，整数限制为 1 天至 100 年。`GET /api/rss` 的来源返回 `rss_retention_count` 和 `rss_retention_unit`，条目及关注总数均排除已合并或已到期内容。稳定身份映射保留以阻止重复或到期条目重新出现。
+
+`GET /api/rss/jobs` 返回已鉴权的 debrid 任务、无密钥的渠道配置及只读状态，供常驻下载浮层观察。下载渠道设置支持布尔 `auto_import`；启用须配置媒体根内的下载目录。下载任务返回独立 `import_state`、`import_error` 和可选 `imported_asset_id`。`POST /api/rss/import` 接收完成下载的 `id` 以重试定向导入；已有取消接口同时支持取消待办导入。所有写操作沿用同源、鉴权及写者门槛。
