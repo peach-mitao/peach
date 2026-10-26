@@ -42,6 +42,7 @@ from . import distribution, onboarding, settings_file
 from .config import PROJECT_ROOT
 from .diagnostic_browser import BUNDLE_CHUNK_NAME
 from .entities import resolve_entity, resolve_entity_id
+from .media_libraries import LIBRARY_ICONS
 from .routes_auth import query_auth_redirect, require_asset_auth, require_page_auth, set_auth_cookie
 from .web_entry import page_shell, runtime_fact_entries
 from .web_state import FAVICON
@@ -56,15 +57,16 @@ ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
 #: 回环地址的三种写法。既用来判提交端点的调用方，也用来判「只有这台电脑」那个监听选择。
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 
-#: 首启页从主界面雪碧图里借的字形：「选择文件夹」与媒体来源的站标兜底。
-_SETUP_SYMBOLS = re.compile(r'<symbol id="i-(?:folder-search|hard-drive|database)"[^>]*>.*?</symbol>')
+#: 首启页共用的文件夹与媒体库图标。
+_SETUP_SYMBOLS = re.compile(r'<symbol id="i-(?:' + '|'.join(sorted({"folder-search", *LIBRARY_ICONS}))
+                           + r')"[^>]*>.*?</symbol>')
 
 #: 键 -> 页面上的题目与一句说明。顺序、默认值与校验仍然来自 `onboarding.questions()`，
 #: 这里只决定同一道题在浏览器里怎么称呼：命令行那份题面要把可选值写进去，页面用控件表达。
 _SETUP_COPY = {
     "data_root": ("数据目录", "Peach 数据库、封面、预览图和缓存都放在这里，馆藏较大时会占用数十 GB。"
                               "系统盘空间紧张时，请选择其他磁盘上的文件夹；之后也可在设置页迁移。"),
-    "media_dir": ("媒体库", "Peach 从媒体库读取视频和图片。请选择已存在的文件夹，也可以使用外置硬盘。"),
+    "media_dir": ("媒体目录", "选择存放视频和图片的现有文件夹，也可以使用外置硬盘。"),
     "host": ("谁可以访问", ""),
     "port": ("端口", "浏览器地址里冒号后面的数字，一般不用改。"),
     "mdns_name": ("局域网访问地址", "选了「同一局域网的设备」之后，其他设备在浏览器里输入这个地址就能打开 Peach。"),
@@ -448,12 +450,11 @@ def setup_questions(request: Request):
         item: dict[str, object] = {
             "key": question.key, "label": view["label"],
             "help": [line for line in (view["help"], note) if line],
-            "default": question.default,
+            "default": "" if question.key == "media_dir" else question.default,
             # 星号与 `required` 跟着输入框走：两段式单选总有一项选中，不标。
             "required": question.key != "host",
-            # 媒体库和数据目录露在外面：数据目录决定占用哪块磁盘，装完再改要整体迁移。
-            # 其余三项都有能直接用的默认值，折进「高级设置」。
-            "advanced": question.key not in {"media_dir", "data_root"},
+            # 目录和访问范围属于首次设置主流程，端口与局域网名称按需展开。
+            "advanced": question.key not in {"media_dir", "data_root", "host"},
             "input": view["input"], "prefix": view["prefix"], "suffix": view["suffix"],
         }
         if question.key == "host":
@@ -492,7 +493,8 @@ def _submitted_media_rows(rows: object) -> dict[str, list]:
         "media_location": [_json_text(row.get("location", "local")) for row in rows],
         "media_root": [_json_text(row.get("root")) for row in rows],
         "media_cost": [row.get("cost") for row in rows],
-        "media_identity": [{key: row[key] for key in ("root_id", "library_id", "library", "library_icon", "change_mode")
+        "media_identity": [{key: row[key] for key in ("root_id", "library_id", "library", "library_icon", "change_mode",
+                                                     "library_color", "library_policy", "library_stages")
                             if key in row} for row in rows],
     }
 
@@ -526,7 +528,8 @@ async def setup_submit_json(request: Request):
         for key in ("data_root", "host", "port", "mdns_name", "access_password", "access_confirm")
         if body.get(key) is not None}
     submitted.update(_submitted_media_rows(body.get("media_dir")))
-    scan_now = body.get("scan_now") is True
+    submitted["skip_media"] = body.get("skip_media") is True
+    scan_now = body.get("scan_now") is True and not submitted["skip_media"]
     history_guide = body.get("history_guide") is True
     windows = os.name == "nt"
     answers, errors = _read_answers(settings_file.active(), submitted, windows=windows)
@@ -573,14 +576,17 @@ async def setup_submit_json(request: Request):
     remote_reporting.save(reporting, applied.config)
     if scan_now:
         onboarding.request_first_scan(applied.config, "configured" if answers.media_sources is not None else "local")
-    return _setup_done(applied.config, scan_now=scan_now, history_guide=history_guide)
+    return _setup_done(applied.config, scan_now=scan_now, history_guide=history_guide,
+                       skip_media=submitted["skip_media"])
 
 
-def _setup_done(config, *, scan_now: bool = False, history_guide: bool = False, restored: bool = False):
-    destination = _setup_destination(config, history_guide=history_guide)
+def _setup_done(config, *, scan_now: bool = False, history_guide: bool = False, restored: bool = False,
+                skip_media: bool = False):
+    destination = _normal_url(config) if restored else _setup_destination(config, history_guide=history_guide)
     return JSONResponse({
         "url": destination,
         "scan_requested": scan_now,
+        "skip_media": skip_media,
         "history_guide": history_guide,
         "restored": restored,
         "standalone": distribution.standalone(),
@@ -648,8 +654,11 @@ def _read_answers(
     errors: dict[str, object] = {}
     for question in onboarding.questions(config, windows=windows):
         if question.key == "media_dir":
+            if submitted.get("skip_media") is True:
+                values.update(media_dirs=(), media_sources=[])
+                continue
             from . import media_configuration
-            dirs = _media_dir_values(submitted, question.default)
+            dirs = _media_dir_values(submitted, "")
             kinds = submitted.get("media_location", [])
             roots = submitted.get("media_root", [])
             costs = submitted.get("media_cost", [])

@@ -81,6 +81,13 @@ RECIPES = {
         "commands": (),
         "checks": (("uv", "lock", "--check"),),
     },
+    "amane": {
+        "label": "amane 桥的独立 Python 依赖",
+        "manifests": ("tools/amane-bridge/pyproject.toml", "tools/amane-bridge/uv.lock"),
+        "derived": (),
+        "commands": (),
+        "checks": (("uv", "lock", "--project", "tools/amane-bridge", "--check"),),
+    },
     "actions": {
         "label": "GitHub Actions 工作流",
         "manifests": (".github/workflows/",),
@@ -278,7 +285,8 @@ def adopted(number: int, branch: str, *, root: Path = ROOT) -> bool:
     """
     base = run(("git", "merge-base", "HEAD", f"origin/{branch}"), root=root).strip()
     log = run(("git", "log", "--format=%B", f"{base}..HEAD"), root=root)
-    return re.search(rf"Dependabot PR #{number}(?!\d)", log) is not None
+    return re.search(rf"^Dependabot PR #{number}(?!\d) (?:只改了 manifest 与 lock|没有派生产物)",
+                     log, re.M) is not None
 
 
 def adopt(pr: dict, *, apply: bool, signature: str, root: Path = ROOT) -> dict:

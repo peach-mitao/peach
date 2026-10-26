@@ -10,7 +10,7 @@
   <a href="https://peach.video">Website</a> ·
   <a href="https://peach.video/#download">Download installers</a> ·
   <a href="https://demo.peach.video">Live demo</a> ·
-  <a href="https://github.com/peach-mitao/peach/releases/tag/intro-video">Intro video</a> ·
+  <a href="https://peach.video/#live">Interface tour</a> ·
   <a href="https://github.com/peach-mitao/peach/issues">Report a problem</a> ·
   <a href="https://github.com/orgs/peach-mitao/projects/7/views/1">Requests board</a> ·
   <a href="https://github.com/orgs/peach-mitao/projects/7/views/3">Roadmap</a> ·
@@ -27,9 +27,9 @@
   <img src="https://img.shields.io/badge/18%2B-adult%20content-critical" alt="18+ adult content">
 </p>
 
-https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
+> Use Peach to manage media you own or are authorized to use. Adult content is for adults only and remains subject to applicable laws, copyright and source-platform terms. Peach does not provide video resources or access to paid content.
 
-> **18+** For adults managing their own adult-content collections. The repository includes a seed of public textual metadata and brand marks, without collection media or user databases. Access to outside sites requires the appropriate accounts and permissions.
+Public screenshots use movie demo data with documented sources and licenses, without personal collection media; see [asset credits and licenses](https://peach.video/en/credits/). The repository includes a seed of public textual metadata and brand marks, without collection media or user databases. Access to outside sites requires the appropriate accounts and permissions.
 
 ## Features
 
@@ -40,11 +40,11 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 - **Bring your existing collection**: read NFO files and posters, then fill missing titles, performers, studios and covers from multiple sources while keeping your edits.
 - **Preview while seeking**: reuse Jellyfin Trickplay, Emby/Plex BIF exports, WebVTT, HLS and DASH image previews beside your videos to avoid extracting the same frames again. See [formats and naming](docs/VIDEO_PREVIEWS.md).
 - **Reduce repeated scraping**: public textual metadata ships with each version. After scanning, Peach supplements recognized performers and studios with aliases, source IDs and profiles while keeping your edits. See [seed data and updates](docs/SEED.md).
-- **Follow across sites**: combine a creator's updates from FANBOX, Patreon, Kemono and other sites, subscribe to creators' videos on Iwara, and group matching posts into one card.
+- **Follow across sites**: combine creator updates from configured sources and group matching posts into one card. See [sources and access requirements](docs/SOURCING.md).
 - **Manage tags**: local and online details share controls for adding, renaming and removing tags. Follow management supports merging tags, hiding tags in batches, and blocking or restoring content by tag. Names are preserved as aliases. See [tag management](docs/TAG_MANAGEMENT.md).
 - **Find your next watch**: subscribe to performers' new releases, discover titles based on your taste and save them to your want list.
-- **Cloud download**: search by video code or paste a magnet link, send it to a library with cloud download support and organize the downloaded video automatically. Channels follow configured libraries and provider capabilities, through CloudDrive2 or a direct PikPak connection.
-- **Add JAV from your browser**: detect or select a video code on DMM, MGS, JavDB, MissAV, Jable and other sites, then send it to Peach for cloud download and library ingestion. The [userscript](https://github.com/peach-mitao/peach-userscript) is maintained independently; see [installation and pairing](docs/JAV_BROWSER.md).
+- **Cloud download**: search by video code or paste a magnet link, send it to a library with cloud download support and organize the downloaded video automatically. Channels follow configured libraries and provider capabilities, through CloudDrive2 or a direct PikPak connection. Confirm your rights to access and use the content before submitting it.
+- **Add JAV from your browser**: detect or select a video code on a supported metadata page, then send it to Peach for cloud download and library ingestion. The [userscript](https://github.com/peach-mitao/peach-userscript) is maintained independently; see [supported sources, installation and pairing](docs/JAV_BROWSER.md).
 - **Taste preferences**: combine viewing, feedback, your library, browser history, bookmarks and follows to understand your preferences. Read history and bookmarks from supported local browsers in one action, or import HTML bookmarks and Chromium Bookmarks JSON. Stop reading a source or remove it when needed. See [taste data sources](docs/TASTE_SOURCES.md).
 
 Watch history, favorites and settings stay on your computer. Scanning leaves original files untouched; manual organization offers a preview and an undo for the last batch. Release codes are recognized even when the file name carries a title; for other naming schemes, add [recognition rules](docs/OPERATIONS.md#配置页) on the configuration page instead of renaming files.
@@ -67,30 +67,30 @@ Sharing library and taste details is a separate option in the installer and sett
 
 ## Screenshots
 
-Try search, filters and profiles in the [read-only demo](https://demo.peach.video). Click a screenshot for the original image.
+Try search, filters and profiles in the [live demo](https://demo.peach.video). Its data is for demonstration, and playback controls do not load a video. Screenshots show the movie demo library with illustrative numbers; click for the original PNG. See [asset credits and licenses](https://peach.video/en/credits/) for the sources, attribution and licenses of movie images and profiles.
 
 <table>
   <tr>
-    <td width="50%"><a href="https://peach.video/assets/screenshots/home-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/home-20261014.webp" alt="Library filters and video cards" width="600"></a></td>
-    <td width="50%"><a href="https://peach.video/assets/screenshots/profile-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/profile-20261014.webp" alt="Performer portrait, profile and videos" width="600"></a></td>
+    <td width="50%"><a href="https://peach.video/assets/screenshots/home-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp" alt="Movie demo library filters and video cards" width="600"></a></td>
+    <td width="50%"><a href="https://peach.video/assets/screenshots/profile-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/profile-wide-20261025-2-1280.webp" alt="Charlie Chaplin's profile and films in the demo library" width="600"></a></td>
   </tr>
   <tr>
     <td align="center">Library: browse by performer, source and tag</td>
-    <td align="center">Performer profile: details, aliases and all videos</td>
+    <td align="center">Person profile: details and films</td>
   </tr>
   <tr>
-    <td><a href="https://peach.video/assets/screenshots/follow-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/follow-20261014.webp" alt="Creator navigation and image updates" width="600"></a></td>
-    <td><a href="https://peach.video/assets/screenshots/stats-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/stats-20261014.webp" alt="Library, storage and content statistics" width="600"></a></td>
+    <td><a href="https://peach.video/assets/screenshots/follow-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/follow-wide-20261025-2-1280.webp" alt="Creator follows and film updates in the demo library" width="600"></a></td>
+    <td><a href="https://peach.video/assets/screenshots/stats-wide-20261025-3.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/stats-wide-20261025-3-1280.webp" alt="Illustrative library and storage statistics in the movie demo" width="600"></a></td>
   </tr>
   <tr>
     <td align="center">Following: creator updates across sites</td>
     <td align="center">Statistics: storage and watch history</td>
   </tr>
   <tr>
-    <td colspan="2"><a href="https://peach.video/assets/screenshots/wall-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/wall-20261014-readme.webp" alt="Full-screen video cover wall" width="1200"></a></td>
+    <td colspan="2"><a href="https://peach.video/assets/screenshots/play-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/play-wide-20261025-2-1280.webp" alt="Big Buck Bunny player interface in the movie demo library" width="1200"></a></td>
   </tr>
   <tr>
-    <td colspan="2" align="center">Video wall: drag to browse, play in place</td>
+    <td colspan="2" align="center">Player: film details and playback controls</td>
   </tr>
 </table>
 

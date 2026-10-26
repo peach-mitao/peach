@@ -144,10 +144,12 @@ describe('播放器皮肤', () => {
           const play = container.querySelector('media-play-button')!.getBoundingClientRect();
           const full = container.querySelector('media-fullscreen-button')!.getBoundingClientRect();
           return { frame: [frame.width, frame.height], viewport: [innerWidth, innerHeight],
+            fit: getComputedStyle(container.querySelector('video')!).objectFit,
             controlsInside: play.y >= 0 && full.right <= innerWidth && play.bottom <= innerHeight };
         });
         assert.deepEqual(fullscreen.frame, fullscreen.viewport);
         assert.equal(fullscreen.controlsInside, true);
+        assert.equal(fullscreen.fit, 'contain', '全屏保留完整视频画面');
         await page.locator('#stage media-fullscreen-button').click();
         await page.waitForFunction(() => !document.fullscreenElement);
         assert.deepEqual(problems, []);

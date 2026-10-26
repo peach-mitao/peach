@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs, quote, urlsplit
 
 from peach import __version__
+from support.amane import write_amane_metadata
 from support.ledger import fresh_ledger
 from support.mp4 import minimal_mp4
 
@@ -431,16 +432,12 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(served["build_commit"], "c0ffee1234")
 
     async def test_background_issues_reads_app_and_contract_services_behind_auth(self):
-        from peach.metadata_amane import bridge_home, bridge_python, pinned_revision
+        from peach.metadata_amane import bridge_python
         # amane 桥装好的样子：解释器与包元数据都在，「需要处理」里才不会多出未安装那一项。
         python = bridge_python(self.root / "tools")
         python.parent.mkdir(parents=True)
         python.write_bytes(b"")
-        package = bridge_home(self.root / "tools") / ".venv" / "Lib" / "site-packages" / "amane-0.20.0.dist-info"
-        package.mkdir(parents=True)
-        (package / "METADATA").write_text("Metadata-Version: 2.1\nName: amane\nVersion: 0.20.0\n", encoding="utf-8")
-        (bridge_home(self.root / 'tools') / 'installed.json').write_text(json.dumps({
-            'revision': pinned_revision(), 'version': '0.20.0'}), encoding='utf-8')
+        write_amane_metadata(self.root / "tools", ready=True)
         self.app.state.web_contract.tools_root = self.root / "tools"
         # 夹具账本没有云下载那张表；云下载的判据由 test_background_issues 单独覆盖。
         self.app.state.web_contract.downloads = None
@@ -1925,6 +1922,16 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         detail = await self.client.get("/api/item?t=secret&id=1")
         self.assertTrue(detail.json()["liked"])
         self.assertEqual(detail.json()["like_reason"], "镜头自然")
+
+    async def test_item_detail_exposes_stored_medium(self):
+        for medium in ("video", "image", "archive", "audio", "other"):
+            with self.subTest(medium=medium):
+                with closing(sqlite3.connect(self.db)) as connection:
+                    connection.execute("UPDATE asset SET medium=? WHERE id=1", (medium,))
+                    connection.commit()
+                response = await self.client.get("/api/item?t=secret&id=1")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["medium"], medium)
 
     async def test_item_detail_exposes_official_title_and_official_tag_marker(self):
         connection = sqlite3.connect(self.db)

@@ -1524,6 +1524,32 @@ class LibraryNfoTests(unittest.TestCase):
                 self.assertRaises(NotFound):
             provider.cover('ORETD-618', covers)
 
+    def test_catalog_connection_failure_preserves_installed_cover_and_provenance(self):
+        from peach import jav_cover_fetch
+        from peach.library_processing import LibraryMetadataProvider
+        provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+        provider.transport = Mock(return_value=Mock(status=404, body=b''))
+        candidate = jav_cover_fetch.candidate_for('https://official.example/missing.jpg')
+        provider._official_candidates = Mock(return_value=(candidate,))
+        provider.community = Mock(side_effect=NotFound('社区来源都没有这个番号'))
+        covers = self.root / 'covers'
+        covers.mkdir()
+        target = covers / 'SSIS-057.jpg'
+        buffer = io.BytesIO()
+        Image.new('RGB', (800, 540), 'gray').save(buffer, format='JPEG')
+        target.write_bytes(buffer.getvalue())
+        provenance = target.with_suffix('.scraping.json')
+        saved = json.dumps({'source_url': 'https://official.example/installed.jpg', 'checked_at': 1})
+        provenance.write_text(saved, encoding='utf-8')
+        with patch.object(jav_cover_fetch, 'dmm_evidence', side_effect=jav_cover_fetch.httpx.ConnectError('TLS EOF')), \
+                patch.object(jav_cover_fetch, 'r18_evidence', return_value=jav_cover_fetch.MetadataEvidence()):
+            with self.assertRaises(jav_cover_fetch.Unavailable) as caught:
+                provider.cover('SSIS-057', covers)
+        self.assertNotIsInstance(caught.exception, NotFound)
+        provider.community.assert_called_once()
+        self.assertEqual(target.read_bytes(), buffer.getvalue())
+        self.assertEqual(provenance.read_text(encoding='utf-8'), saved)
+
     def test_a_thumbnail_on_disk_is_asked_again_and_only_a_wider_cover_replaces_it(self):
         """缩略图不算有了封面：发行方那里常常还留着原图，问来的更宽才换。"""
         from peach.jav_cover_fetch import Candidate
@@ -2386,12 +2412,36 @@ class LibraryNfoTests(unittest.TestCase):
             'cover': {'STP-26232': stamp}, 'fc2cmadb-cast': {'FC2-PPV-1': stamp}}}), encoding='utf-8')
         cache = _MissCache(path)
         self.assertTrue(cache.fresh('r18dev', 'STP-26232'))
-        self.assertTrue(cache.fresh('cover', 'STP-26232', ('mgstage', 'javdb', 'r18dev')))
+        self.assertFalse(cache.fresh('cover', 'STP-26232', ('mgstage', 'javdb', 'r18dev')))
         self.assertTrue(cache.fresh('fc2cmadb-cast', 'FC2-PPV-1'), 'FC2 演员复核脚本记的键照旧作数')
         self.assertFalse(cache.fresh('community', 'STP-26232'))
 
         path.write_text(json.dumps({'r18dev': {'STP-26232': stamp}}), encoding='utf-8')
         self.assertFalse(_MissCache(path).fresh('r18dev', 'STP-26232'))
+
+    def test_official_cover_catalog_misses_use_the_current_rule_generation(self):
+        from peach import upgrade_rules
+        from peach.library_processing import MISS_FORMAT, _MissCache
+        path = self.root / 'cover-misses.json'
+        old = {'format': MISS_FORMAT, 'sites': ['dmm', 'r18dev', 'fc2'], 'joined': {},
+               'misses': {'cover': {'SSIS-057': 1000.0, 'FC2-PPV-1': 1000.0},
+                          'dmm': {'SSIS-057': 1000.0}, 'r18dev': {'SSIS-057': 1000.0}}}
+        for generation in (None, upgrade_rules.OFFICIAL_COVER_CATALOG_MISSES - 1):
+            with self.subTest(generation=generation):
+                path.write_text(json.dumps({**old, 'cover_catalog_rules': generation}), encoding='utf-8')
+                cache = _MissCache(path, now=lambda: 1100.0)
+                self.assertFalse(cache.fresh('cover', 'SSIS-057'))
+                self.assertTrue(cache.fresh('cover', 'FC2-PPV-1'))
+                self.assertTrue(cache.fresh('dmm', 'SSIS-057'))
+                self.assertTrue(cache.fresh('r18dev', 'SSIS-057'))
+                self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['misses'], old['misses'])
+                cache.record('cover', 'SSIS-057')
+                restored = _MissCache(path, now=lambda: 1200.0)
+                self.assertTrue(restored.fresh('cover', 'SSIS-057'))
+                self.assertTrue(restored.fresh('cover', 'FC2-PPV-1'))
+                self.assertTrue(restored.fresh('dmm', 'SSIS-057'))
+                saved = json.loads(path.read_text(encoding='utf-8'))
+                self.assertEqual(saved['cover_catalog_rules'], upgrade_rules.OFFICIAL_COVER_CATALOG_MISSES)
 
     @windows_ledger_roots
     def test_a_stage_asks_only_the_sites_that_have_not_said_no(self):

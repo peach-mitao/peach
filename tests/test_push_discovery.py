@@ -16,6 +16,7 @@ import threading
 import time
 import tomllib
 import unittest
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
@@ -367,6 +368,28 @@ class IngestPathTests(_ServiceCase):
         (self.media / "a.mp4").write_bytes(b"0" * 9)
         scan.ingest_path(self.db, "local", path, **kwargs)
         self.assertEqual(self.rows(), {path: ("video", 9)})
+
+    def test_a_conflict_in_the_directory_does_not_block_a_different_new_file(self):
+        (self.media / 'copy.mp4').write_bytes(b'copy')
+        (self.media / 'copy.srt').write_text('subtitle', encoding='utf-8')
+        (self.media / 'new.mp4').write_bytes(b'new')
+        path = self.ledger('local', 'copy.mp4')
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            for value in (path, path.upper()):
+                connection.execute("INSERT INTO asset(location,path,name,medium,rating,play_count) "
+                                   "VALUES('local',?,'copy.mp4','video',4,7)", (value,))
+        result = scan.ingest_path(self.db, 'local', self.ledger('local', 'new.mp4'),
+                                  declared_roots=self.declared, mounts=self.mounts)
+        self.assertTrue(result.new)
+        self.assertEqual(len(self.rows()), 3)
+        with self.assertRaises(scan.ScanPathConflict) as caught:
+            scan.ingest_path(self.db, 'local', path,
+                             declared_roots=self.declared, mounts=self.mounts)
+        self.assertEqual(caught.exception.asset_ids, (1, 2))
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(list(connection.execute(
+                'SELECT rating,play_count FROM asset WHERE id<=2 ORDER BY id')), [(4, 7), (4, 7)])
+            self.assertEqual(connection.execute('SELECT count(*) FROM asset_subtitle').fetchone()[0], 0)
 
     def test_a_subtitle_next_to_its_video_is_paired_in_the_same_pass(self):
         (self.media / "a.mp4").write_bytes(b"0" * 4)

@@ -28,14 +28,15 @@ class CIFrontendOwnershipTests(unittest.TestCase):
 
     def frontend_ids(self, environment, **shard):
         with patch.dict(os.environ, environment, clear=True), \
-             patch.object(runner, 'selected_files', return_value=(runner.TESTS / 'test_frontend_build.py',)):
+             patch.object(runner, 'selected_files', return_value=(runner.TESTS / 'test_frontend_build.py',
+                                                                  runner.TESTS / 'test_frontend_preflight.py')):
             return list(self.ids(runner.build_suite('web', **shard)))
 
     def test_only_known_ci_jobs_delegate_exactly_three_frontend_tools(self):
         local = set(self.frontend_ids({}))
-        delegated = {f'test_frontend_build.VitestTests.{name}' for name in (
-            'test_the_frontend_sources_typecheck', 'test_frontend_sources_and_tests_pass_lint',
-            'test_the_island_suite_passes')}
+        delegated = {'test_frontend_build.VitestTests.test_the_island_suite_passes',
+                     'test_frontend_preflight.FrontendPreflightTests.test_the_frontend_sources_typecheck',
+                     'test_frontend_preflight.FrontendPreflightTests.test_frontend_sources_and_tests_pass_lint'}
         self.assertLessEqual(delegated, local)
         for job in ('python', 'web-e2e'):
             with self.subTest(job=job):

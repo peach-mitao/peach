@@ -10,7 +10,7 @@
   <a href="https://peach.video">官网</a> ·
   <a href="https://peach.video/#download">下载安装包</a> ·
   <a href="https://demo.peach.video">在线演示</a> ·
-  <a href="https://github.com/peach-mitao/peach/releases/tag/intro-video">介绍视频</a> ·
+  <a href="https://peach.video/#live">界面导览</a> ·
   <a href="https://github.com/peach-mitao/peach/issues">问题反馈</a> ·
   <a href="https://github.com/orgs/peach-mitao/projects/7/views/1">需求看板</a> ·
   <a href="https://github.com/orgs/peach-mitao/projects/7/views/3">路线图</a> ·
@@ -27,9 +27,9 @@
   <img src="https://img.shields.io/badge/18%2B-adult%20content-critical" alt="18+ 成人内容">
 </p>
 
-https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
+> 仅用于管理自行持有或获授权使用的媒体。涉及成人内容时仅限成年人，并遵守适用法律、版权与来源平台条款；Peach 不提供影片资源或付费内容访问权。
 
-> **18+** 仅供成年人管理自己的成人内容馆藏。仓库包含用于补齐资料的公开文字事实种子与品牌标识，不包含馆藏媒体和用户账本；连接外部站点需有相应账号和访问权。
+公开截图使用有来源与许可记录的电影演示资料，不含个人馆藏，见[素材来源与许可](https://peach.video/credits/)。仓库包含用于补齐资料的公开文字事实种子与品牌标识，不包含馆藏媒体和用户数据库；连接外部站点需有相应账号和访问权。
 
 ## 能做什么
 
@@ -37,14 +37,14 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 - **播放墙挑片**：拖动全屏封面墙，点开原位播放；同一番号的不同版本与分卷集中切换。
 - **播放器字幕**：自动识别视频同目录的配对字幕，也可手动加载字幕，按番号搜索 SubtitleCat 简繁中文字幕并选择加载，调整字体、字号、颜色与背景。每个视频保留加载过的字幕和最后选择，关闭字幕也会记住，再次播放时恢复。在线搜索无需 API Key，来源可能包含机翻。
 - **按习惯播放**：网页播放器支持画面旋转，并按视频在服务端记住旋转、倍速、字幕选择和外观；Windows、macOS 本机可用系统默认播放器或已安装播放器打开，Docker 和远程设备可用网络播放地址与 M3U。见[外部播放器](docs/EXTERNAL_PLAYERS.md)。
-- **接手已有收藏**：直接读取 NFO 和海报，缺少的标题、女优、厂牌与封面可从多个来源补齐，保留手动修改。
+- **接手已有收藏**：直接读取 NFO 和海报，缺少的标题、人物、厂牌与封面可从多个来源补齐，保留手动修改。
 - **进度条看画面**：复用视频旁已有的 Jellyfin Trickplay、Emby／Plex 导出的 BIF、WebVTT、HLS 和 DASH 图片预览，减少重复抽帧。见[格式与命名](docs/VIDEO_PREVIEWS.md)。
 - **减少重复刮削**：随版本附带公开文字资料，扫描后为已识别的人物和厂牌补充别名、来源编号与资料，保留手动修改。见[种子数据边界与更新](docs/SEED.md)。
 - **管理标签**：本地与在线详情共用标签的添加、改名和删除入口；关注管理可合并标签、批量隐藏标签或按标签屏蔽内容并恢复。旧名称留作别名。见[标签管理](docs/TAG_MANAGEMENT.md)。
-- **跨站关注**：同一创作者在 FANBOX、Patreon、Kemono 等站点的更新汇到一起，支持订阅 Iwara 创作者的视频，同一作品合成一张卡。
-- **追新作、找想看的**：按女优订阅新作，按口味发现作品，用「想要」清单留住待找的片子。
-- **云下载**：按番号查找资源或粘贴磁力，提交到支持云下载的媒体库，落地后自动整理入库。渠道随媒体库与网盘能力生成，支持 CloudDrive2 和 PikPak 直连。
-- **浏览器添加 JAV**：在 DMM、MGS、JavDB、MissAV、Jable 等站点识别或选中番号，一键交给 Peach 云下载入库。[用户脚本](https://github.com/peach-mitao/peach-userscript)独立维护，见[安装与配对](docs/JAV_BROWSER.md)。
+- **跨站关注**：按已配置的来源汇总创作者更新，同一作品合成一张卡；来源支持和访问条件见[来源采集](docs/SOURCING.md)。
+- **追新作、找想看的**：按人物订阅新作，按口味发现作品，用「想要」清单留住待找的片子。
+- **云下载**：按番号查找或粘贴磁力，提交到支持云下载的媒体库，落地后自动整理入库。渠道随媒体库与网盘能力生成，支持 CloudDrive2 和 PikPak 直连；提交前须确认具有相应访问与使用权。
+- **浏览器添加 JAV**：在支持的资料页识别或选中番号，一键交给 Peach 云下载入库。[用户脚本](https://github.com/peach-mitao/peach-userscript)独立维护，来源范围与使用条件见[安装与配对](docs/JAV_BROWSER.md)。
 - **口味**：结合观看、反馈、馆藏、浏览历史、书签与关注关系分析偏好。一次读取本机浏览器的历史和书签，也可导入 HTML 书签或 Chromium Bookmarks JSON；来源可停止读取或删除。见[口味数据来源](docs/TASTE_SOURCES.md)。
 
 观看记录、收藏和设置保存在本机。扫描不动原文件；手动整理先预览，可撤回上一批。文件名带片名也能识别番号，特殊命名可在配置页补写[识别规则](docs/OPERATIONS.md#配置页)，不必为 Peach 改名。
@@ -67,30 +67,30 @@ https://github.com/user-attachments/assets/a5610874-e611-41bb-be22-7d99f0d64b62
 
 ## 截图
 
-[在线演示](https://demo.peach.video) 可直接体验搜索、筛选和资料页，操作不会保存。点击截图查看原图。
+[在线演示](https://demo.peach.video) 可体验搜索、筛选和资料页；数据仅供演示，播放操作不加载影片。截图使用电影演示库，数字为示例，点击可查看 PNG 原图。作品、图片与人物资料的来源、署名和许可见[素材来源与许可](https://peach.video/credits/)。
 
 <table>
   <tr>
-    <td width="50%"><a href="https://peach.video/assets/screenshots/home-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/home-20261014.webp" alt="馆藏：首页筛选与作品卡片" width="600"></a></td>
-    <td width="50%"><a href="https://peach.video/assets/screenshots/profile-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/profile-20261014.webp" alt="女优页：人像、资料与全部作品" width="600"></a></td>
+    <td width="50%"><a href="https://peach.video/assets/screenshots/home-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp" alt="电影演示库：影片筛选与作品卡片" width="600"></a></td>
+    <td width="50%"><a href="https://peach.video/assets/screenshots/profile-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/profile-wide-20261025-2-1280.webp" alt="电影演示库：查理·卓别林的资料与作品" width="600"></a></td>
   </tr>
   <tr>
-    <td align="center">馆藏：按人物、来源和标签找片</td>
-    <td align="center">女优页：资料、别名和全部作品</td>
+    <td align="center">馆藏：按人物、来源和标签浏览影片</td>
+    <td align="center">人物页：资料与作品</td>
   </tr>
   <tr>
-    <td><a href="https://peach.video/assets/screenshots/follow-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/follow-20261014.webp" alt="关注：创作者导航与图片更新" width="600"></a></td>
-    <td><a href="https://peach.video/assets/screenshots/stats-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/stats-20261014.webp" alt="统计：馆藏、存储与内容分布" width="600"></a></td>
+    <td><a href="https://peach.video/assets/screenshots/follow-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/follow-wide-20261025-2-1280.webp" alt="电影演示库：创作者关注与作品更新" width="600"></a></td>
+    <td><a href="https://peach.video/assets/screenshots/stats-wide-20261025-3.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/stats-wide-20261025-3-1280.webp" alt="电影演示库：示例馆藏与存储统计" width="600"></a></td>
   </tr>
   <tr>
     <td align="center">关注：创作者的跨站更新</td>
-    <td align="center">统计：片子存在哪、看了多少</td>
+    <td align="center">统计：馆藏、存储与观看汇总</td>
   </tr>
   <tr>
-    <td colspan="2"><a href="https://peach.video/assets/screenshots/wall-20261014.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/wall-20261014-readme.webp" alt="播放墙：全屏作品封面与浏览控件" width="1200"></a></td>
+    <td colspan="2"><a href="https://peach.video/assets/screenshots/play-wide-20261025-2.png" target="_blank" rel="noopener"><img src="https://peach.video/assets/screenshots/play-wide-20261025-2-1280.webp" alt="电影演示库：Big Buck Bunny 的播放器界面" width="1200"></a></td>
   </tr>
   <tr>
-    <td colspan="2" align="center">播放墙：拖动挑片，原位播放</td>
+    <td colspan="2" align="center">播放器：影片资料与播放控件示意</td>
   </tr>
 </table>
 

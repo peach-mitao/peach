@@ -116,9 +116,18 @@ class BridgeContractTests(unittest.TestCase):
         self.assertEqual(code, bridge.EXIT_NOT_FOUND)
         self.assertEqual(seen, {"airav": None, "freejavbt": "http://127.0.0.1:7890"})
 
-    def test_the_failure_reasons_are_the_upstream_sixteen(self):
-        self.assertEqual(len(bridge.FAILURE_REASONS), 17)
-        self.assertEqual(len(set(bridge.FAILURE_REASONS)), 17)
+    def test_failure_reasons_have_unique_values(self):
+        self.assertEqual(len(bridge.FAILURE_REASONS), 18)
+        self.assertEqual(len(set(bridge.FAILURE_REASONS)), 18)
+
+    def test_a_login_requirement_keeps_its_failure_reason(self):
+        runtime = make_runtime({"airav": FakeSourceError("login_required", detail="login page")})
+        code, lines = run_main(["--number", "ABW-032", "--sites", "airav"], runtime)
+        self.assertEqual(code, bridge.EXIT_FAILED)
+        record = json.loads(lines[0])["sites"]["airav"]
+        self.assertEqual(record["status"], "failed")
+        self.assertEqual(record["reason"], "login_required")
+        self.assertEqual(record["detail"], "login page")
 
     def test_a_hit_prints_one_json_line_and_exits_zero(self):
         runtime = make_runtime({
@@ -247,8 +256,8 @@ class RuntimePackagingTests(unittest.TestCase):
 
     def test_locked_runtime_uses_the_existing_revision_and_build_toolchain(self):
         facts = self.builder.locked_amane()
-        self.assertEqual(facts, {"revision": "cc42cee6ecf290cf05af1caa347d2dc2d5aeffcd",
-                                 "version": "0.20.0"})
+        self.assertEqual(facts, {"revision": "fd9294fbe5b4aa88ce1df84d534f6816ad9460d5",
+                                 "version": "0.22.1"})
         requirements = self.builder.build_requirements()
         self.assertIn("pyinstaller==6.22.3", requirements)
         self.assertTrue(all("==" in item for item in requirements))

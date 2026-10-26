@@ -2,15 +2,26 @@
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from . import test_evidence as evidence, test_resume as resume
+
+
+@contextmanager
+def phase(timings, name):
+    started = time.monotonic()
+    try:
+        yield
+    finally:
+        timings[name] = timings.get(name, 0) + time.monotonic() - started
 
 
 class RunProgress:
     def __init__(self, root, context, scopes, select, resolve, scope_names, *, supplements=None,
                  force=False, records=(), previous=None, cohort=None):
         self.root, self.context, self.scopes = root, context, scopes
+        self.phases = {}
         self.select, self.resolve = select, resolve
         self.scope_names, self.supplements = tuple(scope_names), supplements or {}
         records = list(records)
@@ -104,7 +115,7 @@ class RunProgress:
         prior = {**self.previous, 'validated': validated, 'failed_scopes': sorted(failed)}
         evidence.write(self.root, self.context['state'], (), success=final and success, previous=prior,
                        context=self.context, cohort=self.cohort, coverage=coverage, units=self.units,
-                       elapsed=elapsed, slowest=slowest or [], count=count, flaky=flaky,
+                       elapsed=elapsed, slowest=slowest or [], count=count, flaky=flaky, phases=self.phases,
                        baseline={'state': self.sources[0], 'validated': {}} if self.sources else None)
 
     def child_plan(self, scopes=None):
@@ -117,15 +128,16 @@ class RunProgress:
             proof = self.units.get('case:' + case, self.units.get(resume.owner('case:' + case), {}))
             if proof.get('outcome') == 'pass':
                 case_cached[case] = proof
-        expected = {module: sorted(resume.external_files(self.root, module)) for module in self.external}
+        external = resume.external_plan(self.root, self.external, self.units)
+        expected = {module: sorted(resume.external_files(self.root, module)) for module in external}
         cached = {name: self.units[name] for names in expected.values() for name in names
                   if name in resume.passed_units(self.units)}
         containers = {case: proof for case, proof in case_cached.items() if case in resume.CONTAINERS}
-        active = set().union(*map(set, self.external.values())) if self.external else set()
+        active = set().union(*map(set, external.values())) if external else set()
         skipped = [case for case in containers if resume.container_files(self.root, case)
                    and resume.container_files(self.root, case) <= cached.keys()
                    and not resume.container_files(self.root, case) & active]
-        return {'state': self.context['state'], 'external': self.external, 'expected': expected,
+        return {'state': self.context['state'], 'external': external, 'expected': expected,
                 'cached': cached, 'containers': containers, 'skip_cases': skipped, 'case_universe': sorted(cases),
                 'case_cached': case_cached, 'cases': sorted(cases - case_cached.keys())}
 

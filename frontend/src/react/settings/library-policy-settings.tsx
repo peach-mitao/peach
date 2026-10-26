@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { MENU_POPOVER_SURFACE } from '@/components/base/dropdown/menu-styles';
 import { Select, SelectItem } from '../components/select';
-import { ACCENT_CHOICES } from '@peach/appearance';
+import { ACCENTS as ACCENT_CHOICES } from '../../appearance/home-glow';
 import { previewLibraryColor } from '../components/library-tint';
 import { overlayHost } from '../components/overlay-host';
 import { Disclosure, Help } from './section';
@@ -127,7 +127,7 @@ export function LibraryColorPicker({ id, name, value: color, onChange }: {
   const label = ACCENT_CHOICES.find(([key]) => key === color)?.[1] || '无颜色';
   const choose = (next: string) => { onChange(next); previewLibraryColor(id, next); setOpen(false) };
   return <>
-    <button ref={trigger} type="button" data-glow-chip="" data-library-color-trigger="" aria-haspopup="dialog"
+    <button ref={trigger} type="button" className="text-body-medium" data-glow-chip="" data-library-color-trigger="" aria-haspopup="dialog"
       aria-expanded={open} aria-label={`${name || '未命名媒体库'} 来源色：${label}`} title={label} onClick={() => setOpen(true)}>
       <span aria-hidden className="text-text-tertiary">来源色</span>
       {color

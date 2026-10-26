@@ -19,6 +19,8 @@ CONTAINERS = {
     'test_frontend_build.VitestTests.test_the_island_suite_passes': 'frontend/test/',
 }
 OUTCOMES = frozenset({'pass', 'fail', 'unknown'})
+SETUP_PREFIXES = ('frontend/src/react/pages/setup/', 'resources/setup/')
+PAGE_BUNDLES = frozenset({'web/dist/peach-pages.js', 'web/dist/peach-pages.css'})
 
 
 def external_files(root: Path, module: str) -> set[str]:
@@ -54,7 +56,7 @@ def scope_units(root: Path, scope: str, select, supplements=None) -> set[str]:
     return units
 
 
-def test_importers(root: Path, module: str) -> set[str]:
+def import_graph(root: Path) -> dict[str, set[str]]:
     graph = {}
     for path in (root / 'tests').glob('test_*.py'):
         try:
@@ -70,35 +72,69 @@ def test_importers(root: Path, module: str) -> set[str]:
                 if node.module in (None, 'tests'):
                     imports.update(alias.name for alias in node.names)
         graph[path.name] = {name + '.py' for name in imports if name.startswith('test_')}
+    return graph
+
+
+def test_importers(root: Path, module: str, graph=None) -> set[str]:
+    graph = import_graph(root) if graph is None else graph
     found = {module}
     while additions := {name for name, imports in graph.items() if imports & found} - found:
         found.update(additions)
     return found
 
 
-def affected(root: Path, record: dict, context: dict, all_units: set[str], resolve, select) -> set[str]:
+class ImpactPlan:
+    """一次输入快照内复用域、测试依赖和路径影响；跨快照重新规划。"""
+
+    def __init__(self, root, all_units, resolve, select):
+        self.root, self.all_units, self.resolve, self.select = root, all_units, resolve, select
+        self.scopes, self.paths = {}, {}
+        self.graph = None
+
+    def scope(self, name):
+        if name not in self.scopes:
+            self.scopes[name] = scope_units(self.root, name, self.select)
+        return self.scopes[name]
+
+    def path(self, path, kind):
+        key = (path, kind)
+        if key not in self.paths:
+            invalid = self.calculate(path, kind)
+            invalid.update(name for name in self.all_units if name.startswith('case:') and owner(name) in invalid)
+            if kind != 'unsafe' and (path.startswith(SETUP_PREFIXES) or path in PAGE_BUNDLES):
+                # 独立页面不加载主应用；Python 契约、打包、组件与 setup 浏览器检查仍执行。
+                invalid.difference_update(name for name in self.all_units
+                                          if name.startswith('frontend/e2e/') and name != 'frontend/e2e/setup.test.ts')
+                invalid.discard('case:test_web_e2e.WebE2ESmokeTests.test_every_route_holds_the_layout_and_runtime_invariants')
+            self.paths[key] = invalid
+        return self.paths[key]
+
+    def calculate(self, path, kind):
+        if kind not in {'unsafe', 'prose'} and path.startswith('tests/test_') and path.endswith('.py'):
+            if self.graph is None:
+                self.graph = import_graph(self.root)
+            modules = test_importers(self.root, Path(path).name, self.graph)
+            return {unit for unit in self.all_units if owner(unit) in modules} | self.scope('checks')
+        if kind != 'unsafe' and path.startswith(tuple(EXTERNAL)) and path.endswith(('.test.ts', '.test.tsx')):
+            return ({path, owner(path), 'test_frontend_build.py'} | self.scope('checks')
+                    | {'case:' + case for case in CONTAINERS if path in container_files(self.root, case)})
+        scopes, _ = self.resolve([path], kinds={path: kind} if kind else {})
+        return set().union(*(self.scope(scope) for scope in scopes))
+
+
+def affected(root: Path, record: dict, context: dict, all_units: set[str], resolve, select, *, plan=None) -> set[str]:
     if record.get('environment') != context['environment']:
         return set(all_units)
     paths, kinds = change_impact.delta(record['manifest'], context['manifest'])
+    plan = plan or ImpactPlan(root, all_units, resolve, select)
     invalid = set()
     for path in paths:
-        if kinds.get(path) not in {'unsafe', 'prose'} and path.startswith('tests/test_') and path.endswith('.py'):
-            modules = test_importers(root, Path(path).name)
-            invalid.update(unit for unit in all_units if owner(unit) in modules)
-            invalid.update(scope_units(root, 'checks', select))
-        elif kinds.get(path) != 'unsafe' and path.startswith(tuple(EXTERNAL)) and path.endswith(('.test.ts', '.test.tsx')):
-            invalid.update({path, owner(path), 'test_frontend_build.py'})
-            invalid.update('case:' + case for case in CONTAINERS if path in container_files(root, case))
-            invalid.update(scope_units(root, 'checks', select))
-        else:
-            scopes, _ = resolve([path], kinds={path: kinds[path]} if path in kinds else {})
-            invalid.update(unit for scope in scopes for unit in scope_units(root, scope, select))
-    invalid.update(name for name in all_units if name.startswith('case:') and owner(name) in invalid)
+        invalid.update(plan.path(path, kinds.get(path)))
     return invalid & all_units
 
 
-def eligible(root: Path, record: dict, context: dict, all_units: set[str], resolve, select) -> dict:
-    invalid = affected(root, record, context, all_units, resolve, select)
+def eligible(root: Path, record: dict, context: dict, all_units: set[str], resolve, select, *, plan=None) -> dict:
+    invalid = affected(root, record, context, all_units, resolve, select, plan=plan)
     units = dict(record.get('units', {}))
     if not units:
         cohort = record.get('cohort')
@@ -128,8 +164,9 @@ def recorded_scope(root, scope, select):
 
 def combine(root: Path, records, context: dict, all_units: set[str], resolve, select) -> dict:
     merged = {}
+    plan = ImpactPlan(root, all_units, resolve, select)
     for record in records:
-        for name, row in eligible(root, record, context, all_units, resolve, select).items():
+        for name, row in eligible(root, record, context, all_units, resolve, select, plan=plan).items():
             previous = merged.get(name)
             rank = (row['at'], row['outcome'] != 'pass')
             if previous is None or rank > (previous['at'], previous['outcome'] != 'pass'):

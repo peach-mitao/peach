@@ -85,25 +85,41 @@ class ScanTargetError(ValueError):
     """来源与扫描根对不上，或者来源在本机没有落点。消息可以直接给人看。"""
 
 
+class ScanPathConflict(ScanTargetError):
+    """同一规范路径的既有记录须由用户复核，摄取不选择或合并身份。"""
+
+    def __init__(self, entries):
+        self.asset_ids = tuple(entry[0] for entry in entries)
+        self.paths = tuple(entry[1] for entry in entries)
+        ids = '、'.join(str(value) for value in self.asset_ids)
+        super().__init__(f'同一规范路径有多条文件记录（记录 {ids}）：{self.paths[0]}；'
+                         '已保留全部记录，请复核；其他文件继续处理')
+
+
 def _registered_paths(connection, location, root):
-    """保留既有文件路径写法；有歧义时拒绝自动合并个人记录。"""
+    """既有路径按 Windows 语义分组，歧义记录单列供复核。"""
     declared = PureWindowsPath(root)
-    result = {}
-    for (path,) in connection.execute("SELECT path FROM asset WHERE location=? AND path IS NOT NULL", (location,)):
+    groups = {}
+    for asset_id, path in connection.execute(
+            "SELECT id,path FROM asset WHERE location=? AND path IS NOT NULL ORDER BY id", (location,)):
         target = PureWindowsPath(path)
         if not target.is_relative_to(declared):
             continue
         key = str(target).casefold()
-        if key in result and result[key] != path:
-            raise ScanTargetError("同一规范路径有多条文件记录，请先复核重复记录")
-        result[key] = path
-    return result
+        groups.setdefault(key, []).append((asset_id, path))
+    return ({key: entries[0][1] for key, entries in groups.items() if len(entries) == 1},
+            {key: ScanPathConflict(entries) for key, entries in groups.items() if len(entries) > 1})
 
 
-def _upsert_records(connection, batch, registered):
+def _upsert_records(connection, batch, registered, conflicts):
     rows = []
     for location, path, *values in batch:
         key = str(PureWindowsPath(path)).casefold()
+        if key in conflicts:
+            # 枚举确认文件仍在，只刷新观测时间；身份、处置与个人资料保持各自原值。
+            connection.executemany('UPDATE asset SET last_seen=? WHERE id=?',
+                                   [(values[-1], asset_id) for asset_id in conflicts[key].asset_ids])
+            continue
         stored = registered.setdefault(key, path)
         rows.append((location, stored, *values))
     connection.executemany(_UPSERT, rows)
@@ -335,21 +351,21 @@ def ingest_path(
     tracks = 0
     # 列目录在开连接之前做完：写事务从 upsert 开始一直持有写锁，网盘挂载卡住的那几十秒
     # 不能落在锁里，否则同一账本的其他写入者全部跟着超时。
-    pairing = None
+    here = None
     if medium == "video" or subtitles.subtitle_format(name):
         here = _directory_stats(directory)
-        pairing = subtitles.directory_sidecars(
-            ledger_dir, here, [entry for entry in here if medium_of(entry) == "video"])
     # 忙等时长与 `LedgerDatabase.connect` 一致。
     connection = sqlite3.connect(db_path, timeout=30)
     try:
         connection.execute("PRAGMA journal_mode=WAL")
-        registered = _registered_paths(connection, location, str(ledger_dir))
+        registered, conflicts = _registered_paths(connection, location, str(ledger_dir))
+        if str(ledger_path).casefold() in conflicts:
+            raise conflicts[str(ledger_path).casefold()]
         _upsert_records(connection, [(location, str(ledger_path), name, medium,
-                                     stat.st_size, mtime, now, now)], registered)
+                                     stat.st_size, mtime, now, now)], registered, conflicts)
         stored_path = registered[str(ledger_path).casefold()]
-        if pairing is not None:
-            tracks = subtitles.record(connection, location, pairing, now)[0]
+        if here is not None:
+            tracks = _record_directory_subtitles(connection, location, ledger_dir, here, conflicts, now)[0]
         asset_id, first_seen = connection.execute(
             "SELECT id,first_seen FROM asset WHERE location=? AND path=?",
             (location, stored_path)).fetchone()
@@ -387,13 +403,15 @@ class ScanResult:
     acquired: int = 0
     junk_isolated: int = 0
     junk_review: int = 0
+    path_conflicts: int = 0
 
     def summary(self) -> str:
         return (f"✓ {self.location}: {self.files:,} 文件 / "
                 f"{self.total_bytes / 1024 ** 4:.2f} TB / 耗时 {self.seconds:.0f}s；"
                 f"附属文件未登记 {self.sidecars:,} 个；清单中已消失 {self.gone:,} 个；"
                 f"字幕 {self.subtitles:,} 条（孤立 {self.orphan_subtitles:,} 条）；"
-                f"垃圾移入回收站 {self.junk_isolated:,} 个，待复核 {self.junk_review:,} 个")
+                f"垃圾移入回收站 {self.junk_isolated:,} 个，待复核 {self.junk_review:,} 个；"
+                f"路径重复待复核 {self.path_conflicts:,} 组")
 
 
 def _walk(top: Path, pending: list[str] | None = None, *, onerror=lambda error: None, read_directory=None):
@@ -532,6 +550,15 @@ def _scan_resume_state(walk_root, resume_state):
     return mapping, previous, completed
 
 
+def _record_directory_subtitles(connection, location, directory, here, conflicts, now):
+    """只给身份唯一的文件配对字幕，断点中的目录资料遵守相同判据。"""
+    sidecars = subtitles.directory_sidecars(
+        directory, here, [name for name in here if medium_of(name) == 'video'])
+    unambiguous = [sidecar for sidecar in sidecars if sidecar.path.casefold() not in conflicts
+                   and (not sidecar.video or sidecar.video.casefold() not in conflicts)]
+    return subtitles.record(connection, location, unambiguous, now)
+
+
 def _scan_location(
     db_path: str | os.PathLike[str], location: str, root: str, *,
     declared_roots: Mapping[str, str], mounts: Mapping[str, str | Path] | None = None,
@@ -582,7 +609,10 @@ def _scan_location(
     connection = sqlite3.connect(db_path, timeout=30)
     try:
         connection.execute("PRAGMA journal_mode=WAL")
-        registered = _registered_paths(connection, location, root)
+        registered, conflicts = _registered_paths(connection, location, root)
+        for conflict in conflicts.values():
+            onerror(conflict)
+            report(str(conflict))
         for directory, entries in _walk(walk_root, pending, read_directory=read_directory, onerror=onerror):
             checkpoint('scan')
             relative = _relative_directory(directory, walk_root)
@@ -618,25 +648,23 @@ def _scan_location(
                 total += stat.st_size
                 progress(files, total)
                 if len(batch) >= BATCH_SIZE:
-                    _upsert_records(connection, batch, registered)
+                    _upsert_records(connection, batch, registered, conflicts)
                     connection.commit()
                     batch.clear()
                     save_directory(directory, name, here)
                     report(f"  {time.time() - started:5.0f}s  {files:,} 文件  "
                            f"{total / 1024 ** 4:.2f} TB")
-            sidecars = subtitles.directory_sidecars(
-                ledger_root.joinpath(*relative), here,
-                [name for name in here if medium_of(name) == "video"])
             if batch:
-                _upsert_records(connection, batch, registered)
+                _upsert_records(connection, batch, registered, conflicts)
                 batch.clear()
-            directory_tracks, directory_orphans = subtitles.record(connection, location, sidecars, now)
+            directory_tracks, directory_orphans = _record_directory_subtitles(
+                connection, location, ledger_root.joinpath(*relative), here, conflicts, now)
             connection.commit()
             tracks += directory_tracks
             orphans += directory_orphans
             save_directory()
         if batch:
-            _upsert_records(connection, batch, registered)
+            _upsert_records(connection, batch, registered, conflicts)
         connection.commit()
         # 只有 INSERT 那一支写 `first_seen`，等于本次时刻的就是这一轮新建的行。
         from .media_folders import path_predicate
@@ -658,7 +686,7 @@ def _scan_location(
         auto_new(db_path, location, new_ids)
     result = ScanResult(location, root, files, total, time.time() - started, gone,
                         tracks, orphans, skipped, new_ids, reattached, acquired,
-                        checked['isolated'], checked['review'])
+                        checked['isolated'], checked['review'], len(conflicts))
     save_checkpoint({'mapping': mapping, 'result': asdict(result)})
     progress(files, total, force=True)
     report(result.summary())

@@ -332,7 +332,7 @@ def write(root: Path, state: str, scopes: tuple[str, ...], *, success: bool,
           elapsed: float, slowest: list, count: int, previous: dict | None = None,
           context: dict | None = None, baseline: dict | None = None,
           cohort: str | None = None, coverage: dict | None = None, flaky: list | None = None,
-          units: dict | None = None) -> None:
+          units: dict | None = None, phases: dict | None = None) -> None:
     folder = evidence_dir(root)
     folder.mkdir(parents=True, exist_ok=True)
     prior = previous if previous is not None else read(root, state)
@@ -354,7 +354,7 @@ def write(root: Path, state: str, scopes: tuple[str, ...], *, success: bool,
               'units': ({} if scopes else prior.get('units', {})) if units is None else units,
               "baseline": baseline.get("state") if baseline else None,
               "failed_scopes": sorted(failed),
-              "elapsed": elapsed, "count": count, "slowest": slowest,
+              "elapsed": elapsed, "count": count, "slowest": slowest, "phases": dict(phases or {}),
               # 全量里失败、单独重跑通过的用例；记录照样算通过，但名字留在这里可查。
               "flaky": list(flaky or [])}
     temporary = folder / f"{state}.{os.getpid()}.tmp"

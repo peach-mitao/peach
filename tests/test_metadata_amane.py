@@ -22,23 +22,13 @@ from peach.metadata_policy import SOURCE_SPECS
 from peach.metadata_routes import AMANE_OFFICIAL_STAGE, AMANE_STAGE
 from peach.scraping_access import SourcePaused, cooldown_state, paused_until, pause_source
 from peach.sources import REASON_KINDS, FailureReason, SiteRecord
+from support.amane import write_amane_metadata
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def completed(stdout, returncode=0, stderr=""):
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
-
-
-def write_amane_metadata(tools, version, *, ready=False):
-    package = metadata_amane.bridge_home(tools) / ".venv" / "Lib" / "site-packages" / f"amane-{version}.dist-info"
-    package.mkdir(parents=True, exist_ok=True)
-    (package / "METADATA").write_text(f"Metadata-Version: 2.1\nName: amane\nVersion: {version}\n", encoding="utf-8")
-    (package / "direct_url.json").write_text(json.dumps({
-        "vcs_info": {"commit_id": metadata_amane.pinned_revision()}}), encoding="utf-8")
-    if ready:
-        (metadata_amane.bridge_home(tools) / 'installed.json').write_text(json.dumps({
-            'revision': metadata_amane.pinned_revision(), 'version': version}), encoding='utf-8')
 
 
 def report(**sites):
@@ -94,7 +84,7 @@ class ManifestTests(unittest.TestCase):
         reasons = set(__import__("re").findall(r'"([a-z_]+)",?\s', (
             metadata_amane.BRIDGE_SCRIPT).read_text(encoding="utf-8").split("FAILURE_REASONS = (", 1)[1]
             .split(")", 1)[0]))
-        self.assertEqual(len(reasons), 17)
+        self.assertEqual(len(reasons), 18)
         self.assertEqual(reasons - set(metadata_amane.AMANE_REASONS), set())
         for upstream, reason in metadata_amane.AMANE_REASONS.items():
             with self.subTest(upstream=upstream):
@@ -102,14 +92,14 @@ class ManifestTests(unittest.TestCase):
                 self.assertIn(REASON_KINDS[reason], {"auth", "unavailable", "not_found"})
 
     def test_the_three_tier_classification_of_every_upstream_reason(self):
-        """十七档各落到哪一档是冷却与重试的依据，逐条钉住；契约表改了这里要跟着改。"""
+        """上游原因所属分类是冷却与重试的依据，契约表决定各档行为。"""
         expected = {
             "not_found": "not_found", "no_usable_metadata": "not_found",
             "rate_limited": "unavailable", "server_error": "unavailable", "timeout": "unavailable",
             "network": "unavailable", "http_error": "unavailable", "api_error": "unavailable", "empty_response": "unavailable",
             "unexpected": "unavailable", "crawler_unavailable": "unavailable", "parse_error": "unavailable",
             "cloudflare_challenge": "auth", "cloudflare_blocked": "auth", "ip_banned": "auth",
-            "geo_restricted": "auth", "age_verification": "auth",
+            "geo_restricted": "auth", "age_verification": "auth", "login_required": "auth",
         }
         self.assertEqual({upstream: REASON_KINDS[reason] for upstream, reason in metadata_amane.AMANE_REASONS.items()},
                          expected)
@@ -156,8 +146,8 @@ class RebuildTests(unittest.TestCase):
                                      getattr(subprocess, 'CREATE_NO_WINDOW', 0))
                     python.parent.mkdir(parents=True, exist_ok=True)
                     python.write_text("", encoding="utf-8")
-                    write_amane_metadata(tools, "0.20.0")
-                    return completed(json.dumps({"ok": True, "amane": {"version": "0.20.0"},
+                    write_amane_metadata(tools, "0.22.1")
+                    return completed(json.dumps({"ok": True, "amane": {"version": "0.22.1"},
                                                  "sites": list(metadata_amane.SITES)}))
 
                 done = metadata_amane.rebuild(tools, runner=build)
@@ -372,8 +362,33 @@ class PreparationTests(unittest.TestCase):
             python.parent.mkdir(parents=True)
             python.write_text("", encoding="utf-8")
             self.assertFalse(metadata_amane.describe(tools)["installed"])
-            write_amane_metadata(tools, "0.20.0", ready=True)
+            write_amane_metadata(tools, "0.22.1", ready=True)
             self.assertTrue(metadata_amane.describe(tools)["installed"])
+
+    def test_runtime_receipts_require_the_current_dependency_lock(self):
+        for recorded_hash in (None, "0" * 64):
+            with self.subTest(recorded_hash=recorded_hash), tempfile.TemporaryDirectory() as holder:
+                tools = Path(holder).resolve()
+                python = metadata_amane.bridge_python(tools)
+                python.parent.mkdir(parents=True)
+                python.write_text("", encoding="utf-8")
+                write_amane_metadata(tools, metadata_amane.locked_version(), ready=True)
+                self.assertTrue(metadata_amane.installed(tools))
+                marker = metadata_amane.bridge_home(tools) / "installed.json"
+                receipt = json.loads(marker.read_text(encoding="utf-8"))
+                if recorded_hash is None:
+                    receipt.pop("lock_sha256")
+                else:
+                    receipt["lock_sha256"] = recorded_hash
+                marker.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertFalse(metadata_amane.installed(tools))
+                runner = Mock(return_value=completed(json.dumps({"ok": True,
+                    "amane": {"version": metadata_amane.locked_version()}, "sites": list(metadata_amane.SITES)})))
+                with patch.object(metadata_amane, "find_uv", return_value=Path("uv.exe")):
+                    result = metadata_amane.rebuild(tools, runner=runner, force=False)
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(runner.call_count, 2)
+                self.assertTrue(metadata_amane.installed(tools))
 
     def test_the_upstream_tag_is_never_guessed(self):
         class Client:
@@ -687,7 +702,7 @@ class FailureMappingTests(unittest.TestCase):
             metadata_amane.failure_error("avsox", {"reason": "ip_banned"})), "blocked")
         self.assertEqual(metadata_amane.cooldown_action(
             metadata_amane.failure_error("avsox", {"reason": "rate_limited"})), "rate_limited")
-        for reason in ("not_found", "timeout", "server_error", "parse_error", "age_verification"):
+        for reason in ("not_found", "timeout", "server_error", "parse_error", "age_verification", "login_required"):
             self.assertEqual(metadata_amane.cooldown_action(
                 metadata_amane.failure_error("avsox", {"reason": reason})), "")
         self.assertEqual(metadata_amane.cooldown_action(MetadataProviderError("plain")), "")

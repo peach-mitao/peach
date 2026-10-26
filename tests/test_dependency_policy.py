@@ -17,6 +17,19 @@ from tests.support.gitrepo import seed_repository
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class NativeTransportSecurityTests(unittest.TestCase):
+    def test_bundled_brotli_has_the_security_fix(self):
+        from curl_cffi import Curl
+        curl = Curl()
+        try:
+            native = curl.version().decode("ascii")
+        finally:
+            curl.close()
+        version = re.search(r"\bbrotli/(\d+)\.(\d+)\.(\d+)", native)
+        self.assertIsNotNone(version, native)
+        self.assertGreaterEqual(tuple(map(int, version.groups())), (1, 2, 1), native)
+
+
 class NpmInstallTests(unittest.TestCase):
     def test_transport_errors_retry_the_same_locked_install(self):
         from scripts import npm_ci
@@ -381,6 +394,13 @@ class DependencyPolicyTests(unittest.TestCase):
                 adopt.bring_over("dep", ("package.json",), root=repo)
             self.assertEqual(caught.exception.files, ["package.json"])
 
+    def test_bridge_dependencies_are_isolated_from_application_dependencies(self):
+        key, recipe = adopt.recipe_for(["tools/amane-bridge/uv.lock"])
+        self.assertEqual(key, "amane")
+        self.assertEqual(recipe["checks"], (("uv", "lock", "--project", "tools/amane-bridge", "--check"),))
+        with self.assertRaises(RuntimeError):
+            adopt.recipe_for(["uv.lock", "tools/amane-bridge/uv.lock"])
+
     def test_adopting_every_open_pr_stops_at_a_conflict_and_resumes_after_it(self):
         """`--all-open` 一个 PR 一个提交；改到相邻行的那个停下报文件，解完再跑只剩收尾。
 
@@ -422,6 +442,23 @@ class DependencyPolicyTests(unittest.TestCase):
             self.assertEqual(git(repo, "status", "--porcelain", "--untracked-files=no"), "")
             closing = [step for step in resumed["next"] if step.startswith("gh pr close")]
             self.assertEqual([step.split()[3] for step in closing], ["1", "2", "3"])
+
+    def test_a_reference_to_a_pr_keeps_its_dependency_update_pending(self):
+        with tempfile.TemporaryDirectory() as holder:
+            repo = seed_repository(Path(holder).resolve() / "repo",
+                                   {".github/workflows/test.yml": b"a: 1\n"}, "base")
+            takeover_repository(repo)
+            branch = "dependabot/example"
+            dependabot_branch(repo, branch, {".github/workflows/test.yml": b"a: 2\n"})
+            adopt.fetch(branch, root=repo)
+            git(repo, "commit", "--allow-empty", "-qm", "fix(deps): 核对独立依赖清单",
+                "-m", "来源为 Dependabot PR #133 的实际文件范围")
+            self.assertFalse(adopt.adopted(133, branch, root=repo))
+            result = adopt.adopt({"number": 133, "headRefName": branch}, apply=True,
+                                 signature="Codex (GPT-6) <noreply@openai.com>", root=repo)
+            self.assertTrue(result["applied"])
+            self.assertTrue(adopt.adopted(133, branch, root=repo))
+            self.assertEqual((repo / ".github/workflows/test.yml").read_bytes(), b"a: 2\n")
 
     def test_the_takeover_commit_message_passes_the_readme_impact_gate(self):
         """`README-Impact` 与 `Co-Authored-By` 必须同一个 trailer 块、中间不空行。

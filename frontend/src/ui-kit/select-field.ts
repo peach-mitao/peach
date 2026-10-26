@@ -78,7 +78,7 @@ export function wireSelectField(root: HTMLElement): SelectField {
   });
   if(current())current()!.tabIndex=0;
   Object.defineProperty(root,'value',{configurable:true,
-    get:()=>current()?.dataset.selectOption??'',set:(value:string)=>choose(value)});
+    get:()=>current()?.dataset.selectOption??'',set:(value:string)=>{choose(value)}});
   Object.defineProperty(root,'disabled',{configurable:true,
     get:()=>trigger.disabled,set:(value:unknown)=>{trigger.disabled=!!value;if(value)anchored.setOpen(false)}});
   return root as SelectField;

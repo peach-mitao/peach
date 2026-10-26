@@ -33,11 +33,11 @@
   display: inline-flex; width: auto; height: 36px; gap: 8px; padding: 0 10px 0 7px;
   border: 1px solid var(--color-border-button-default); border-radius: 10px;
   background: var(--color-background-primary-default); box-shadow: var(--shadow-xs);
-  color: var(--color-text-primary); font-size: var(--fs-md); white-space: nowrap;
+  color: var(--color-text-primary); white-space: nowrap;
 }
 .peach-react [data-library-color-trigger]:hover { background: var(--color-background-primary-hover); }
 .peach-react [data-library-color-trigger] [data-glow-ball] { width: 20px; height: 20px; }
 .peach-react [data-library-colors] { grid-template-columns: repeat(7, 28px); padding: 0; }
 .peach-react [data-glow-ball][data-library-none] {
-  --glow-chip: linear-gradient(135deg, transparent 46%, var(--muted) 46% 54%, transparent 54%), var(--sunk);
+  --glow-chip: linear-gradient(135deg, transparent 46%, var(--color-text-tertiary) 46% 54%, transparent 54%), var(--color-background-tertiary-default);
 }

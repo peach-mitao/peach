@@ -23,14 +23,13 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tempfile
 import unittest
 
 from peach.diagnostic_browser import BUNDLE_CHUNK_NAME
 from scripts import test_history
-from support.conditions import missing_prerequisite
+from test_frontend_preflight import frontend_npm
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
@@ -350,51 +349,14 @@ class SharedStateContractTests(unittest.TestCase):
 
 
 class VitestTests(unittest.TestCase):
-    """vitest、tsc 与 lint 走同一个测试入口，但缺 Node 时跳过而不是红。
-
-    三者互不覆盖：vitest 经 Vite 转译时只剥掉类型、不做检查，类型错误照样跑绿；
-    裸色值、任意值和在 BoardUI 组件上改样式，类型和行为测试都看不见。
-    """
-
-    def _npm(self, tool: str, package: str) -> str:
-        npm = shutil.which("npm")
-        if npm is None:
-            missing_prerequisite(f"跳过 {tool}：本机没有 npm。装 Node 24+ 后 `-Scope web` 会带上它")
-        if not (FRONTEND / "node_modules" / package).is_dir():
-            missing_prerequisite(f"跳过 {tool}：frontend/node_modules 还没装，先 `npm --prefix frontend ci`")
-        return npm
-
-    def test_the_frontend_sources_typecheck(self):
-        npm = self._npm("tsc", "typescript")
-        completed = subprocess.run(
-            [npm, "--prefix", str(FRONTEND), "run", "typecheck", "--silent"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=str(FRONTEND), check=False)
-        self.assertEqual(completed.returncode, 0, f"{completed.stdout}\n{completed.stderr}")
+    """Vitest 的行为回归与独立的类型、样式检查共同构成前端验收。"""
 
     def test_the_island_suite_has_a_bounded_worker_pool(self):
         config = (FRONTEND / "vitest.config.ts").read_text(encoding="utf-8")
         self.assertIn("maxWorkers: 4", config)
 
-    def test_frontend_sources_and_tests_pass_lint(self):
-        """`@shadcn/lint` 挡住裸色值、任意值、内联样式和在 BoardUI 组件上改样式（ADR-0031）。"""
-        npm = self._npm("lint", "oxlint")
-        completed = subprocess.run(
-            [npm, "--prefix", str(FRONTEND), "run", "lint", "--silent", "--", "--format=json"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=str(FRONTEND), check=False)
-        output = f"{completed.stdout}\n{completed.stderr}"
-        self.assertEqual(completed.returncode, 0, output)
-        report = json.loads(completed.stdout)
-        self.assertEqual(report["diagnostics"], [], output)
-        # 没有问题时 Oxlint 什么都不打印，路径写错查了 0 个文件也照样退出 0。
-        self.assertGreater(report["number_of_files"], 0, output)
-        copy = subprocess.run([npm, "--prefix", str(FRONTEND), "run", "check:copy"],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=FRONTEND)
-        self.assertEqual(copy.returncode, 0, copy.stdout + copy.stderr)
-
     def test_the_island_suite_passes(self):
-        npm = self._npm("vitest", "vitest")
+        npm = frontend_npm("vitest", "vitest")
         # 定向入口（含全量失败后的单独重跑）只跑指定的几个文件，路径相对 frontend/。
         selected = json.loads(os.environ.get("PEACH_VITEST_FILES", "[]"))
         # 另挂一个 JSON 报告器，把逐条结果交给测试结果历史；控制台输出与判据不变。

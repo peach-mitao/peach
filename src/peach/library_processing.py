@@ -1301,6 +1301,12 @@ class _MissCache:
             if isinstance(codes, dict):
                 self._entries[source] = {code: float(stamp) for code, stamp in codes.items()
                                          if isinstance(stamp, (int, float))}
+        if ('cover' in self._entries
+                and loaded.get('cover_catalog_rules') != upgrade_rules.OFFICIAL_COVER_CATALOG_MISSES):
+            # FC2 商品图不查询官方综合目录，单站答复与这一目录判据无关。
+            self._entries['cover'] = {
+                code: stamp for code, stamp in self._entries.get('cover', {}).items()
+                if code.upper().startswith('FC2-PPV-')}
 
     def fresh(self, source, code, lineup=()):
         """`source` 对 `code` 说过「没有」且还在期内。`lineup` 是这条记忆当时应当问过的几站：
@@ -1314,6 +1320,7 @@ class _MissCache:
         self._entries.setdefault(source, {})[code] = now
         _save(self._path, {
             'format': MISS_FORMAT, 'sites': self._sites,
+            'cover_catalog_rules': upgrade_rules.OFFICIAL_COVER_CATALOG_MISSES,
             'joined': {site: stamp for site, stamp in self._joined.items() if now - stamp < self._ttl},
             'misses': {name: {key: stamp for key, stamp in codes.items() if now - stamp < self._ttl}
                        for name, codes in self._entries.items()}})

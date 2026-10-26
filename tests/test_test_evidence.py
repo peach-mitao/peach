@@ -37,6 +37,43 @@ def fixture_process(command, root, env):
 
 
 class ParallelShardTests(unittest.TestCase):
+    def test_nested_parallel_containers_have_separate_batches_without_losing_files(self):
+        names = ['test_frontend_preflight.py', 'test_reference_updates.py', 'test_frontend_build.py',
+                 'test_web_e2e.py', 'test_catalog.py', 'test_media.py']
+        with mock.patch.object(runner, 'load_file_seconds', return_value={}):
+            batches = runner.local_batches(names, 7)
+        self.assertCountEqual([name for _, plan, _ in batches for shard in plan for name in shard], names)
+        self.assertEqual(set(batches[0][1][0]), {'test_frontend_preflight.py', 'test_reference_updates.py'})
+        self.assertEqual(batches[1][2], 7)
+        for _, plan, jobs in batches[2:]:
+            self.assertEqual((len(plan), len(plan[0]), jobs), (1, 1, 1))
+
+    def test_failed_gate_stops_serial_and_parallel_behavior_tests(self):
+        names = [Path('test_frontend_preflight.py'), Path('test_web_e2e.py')]
+        for jobs in (1, 4):
+            with self.subTest(jobs=jobs), mock.patch.object(runner, 'selected_files', return_value=names), \
+                    mock.patch.object(runner, 'run_shards', return_value=(False, 2, [])) as execute, \
+                    mock.patch.object(runner, 'run_serial_suite', return_value=(False, 2, [])) as serial, \
+                    mock.patch.object(runner, 'save_file_seconds'), mock.patch.object(runner.test_history, 'append'), \
+                    redirect_stdout(io.StringIO()):
+                self.assertEqual(runner.run_local_suite(('web',), jobs), (False, 2, []))
+            if jobs == 1:
+                serial.assert_called_once()
+                self.assertEqual(serial.call_args.args[1], {Path('test_frontend_preflight.py')})
+                execute.assert_not_called()
+            else:
+                execute.assert_called_once()
+                self.assertEqual(execute.call_args.kwargs['plan'], [['test_frontend_preflight.py']])
+
+    def test_phase_timings_include_failed_work(self):
+        timings = {}
+        with mock.patch.object(test_run_progress.time, 'monotonic', side_effect=[10, 12, 20, 23]):
+            with test_run_progress.phase(timings, '规划'):
+                pass
+            with self.assertRaises(ValueError), test_run_progress.phase(timings, '规划'):
+                raise ValueError('失败仍计时')
+        self.assertEqual(timings, {'规划': 5})
+
     def test_checkpoint_exit_status_must_match_the_report(self):
         def exercise(success, code):
             observed = []
@@ -261,6 +298,52 @@ class ReceiptFixture:
 
 
 class ReceiptTests(ReceiptFixture, unittest.TestCase):
+    def test_history_planning_parses_each_test_once_and_rebuilds_for_new_inputs(self):
+        tests = self.root / 'tests'
+        tests.mkdir()
+        (tests / 'test_catalog.py').write_text('VALUE = 1\n', encoding='utf8')
+        consumer = tests / 'test_web.py'
+        consumer.write_text('VALUE = 2\n', encoding='utf8')
+        old = {'files': {'tests/test_catalog.py': [1, 'old', '100644']}, 'signatures': {}}
+        current = {'files': {'tests/test_catalog.py': [1, 'new', '100644']}, 'signatures': {}}
+        records = [self.record({'test_catalog.py': self.unit(), 'test_web.py': self.unit()}, manifest=old)] * 30
+        with mock.patch.object(test_resume.ast, 'parse', wraps=test_resume.ast.parse) as parse:
+            kept = test_resume.combine(self.root, records, {**self.context, 'manifest': current},
+                                      {'test_catalog.py', 'test_web.py'}, self.resolve, self.mapping.__getitem__)
+        self.assertEqual(parse.call_count, 2)
+        self.assertEqual(set(kept), {'test_web.py'})
+        consumer.write_text('import test_catalog\n', encoding='utf8')
+        kept = test_resume.combine(self.root, records, {**self.context, 'manifest': current},
+                                  {'test_catalog.py', 'test_web.py'}, self.resolve, self.mapping.__getitem__)
+        self.assertEqual(kept, {})
+
+    def test_isolated_pages_keep_main_browser_proof_and_shared_changes_invalidate_it(self):
+        for name in ('setup', 'smoke'):
+            path = self.root / 'frontend/e2e' / f'{name}.test.ts'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('', encoding='utf8')
+        mapping = {'web': (Path('test_web_e2e.py'), Path('test_frontend_build.py')), 'checks': ()}
+        units = test_resume.scope_units(self.root, 'web', mapping.__getitem__)
+        main = 'case:test_web_e2e.WebE2ESmokeTests.test_every_route_holds_the_layout_and_runtime_invariants'
+        resolve = lambda *args, **kwargs: (('web',), '')
+        setup = 'frontend/src/react/pages/setup/setup.css'
+        for paths, mode, environment, preserved in (
+                ([setup], '100644', 'same', True),
+                (['resources/setup/macbook.png', 'web/dist/peach-pages.js'], '100644', 'same', True),
+                ([setup, 'web/dist/peach-app.css'], '100644', 'same', False),
+                ([setup], '100755', 'same', False),
+                ([setup], '100644', 'changed', False)):
+            with self.subTest(paths=paths, mode=mode, environment=environment):
+                old = {'files': {path: [1, 'old', '100644'] for path in paths}, 'signatures': {}}
+                current = {'files': {path: [1, 'new', mode] for path in paths}, 'signatures': {}}
+                record = self.record({unit: self.unit() for unit in units}, manifest=old)
+                kept = test_resume.combine(self.root, [record], {**self.context, 'manifest': current,
+                                            'environment': environment}, units, resolve, mapping.__getitem__)
+                self.assertEqual('frontend/e2e/smoke.test.ts' in kept, preserved)
+                self.assertEqual(main in kept, preserved)
+                self.assertNotIn('frontend/e2e/setup.test.ts', kept)
+                self.assertNotIn('test_frontend_build.py', kept)
+
     def test_a_failed_file_preserves_successful_sibling_files(self):
         report = {'success': False, 'count': 2, 'results': [
             {'id': 'test_catalog.Suite.test_value', 'outcome': 'pass'},
@@ -494,6 +577,28 @@ class CheckpointTests(ReceiptFixture, unittest.TestCase):
                     {**plan, 'cached': {name: {**row, 'at': self.now - 86401} for name, row in proof.items()}}):
             with self.subTest(plan=bad), self.assertRaises(ValueError):
                 test_resume.validate_child_plan(self.root, bad, state=self.context['state'], valid_seconds=86400)
+
+    def test_completed_container_updates_the_next_stage_plan_without_refreshing_its_proof(self):
+        for name in ('frontend/test/component.test.ts', 'frontend/e2e/smoke.test.ts', 'frontend/e2e/setup.test.ts'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('export {};', encoding='utf8')
+        self.mapping['full'] = self.mapping['web'] = (Path('test_frontend_build.py'), Path('test_web_e2e.py'))
+        progress = self.progress()
+        progress.start()
+        for module in ('test_frontend_build.py', 'test_web_e2e.py'):
+            plan = progress.child_plan()
+            test_resume.validate_child_plan(self.root, plan, state=self.context['state'], valid_seconds=86400)
+            report = {'complete': True, 'success': True, 'count': 1, 'results': [
+                {'id': case, 'outcome': 'pass'} for case in test_resume.CONTAINERS
+                if test_resume.owner('case:' + case) == module]}
+            self.assertTrue(progress.checkpoint([module], report, True))
+            stamp = progress.units['frontend/test/component.test.ts']['at']
+            updated = progress.child_plan()
+            test_resume.validate_child_plan(self.root, updated, state=self.context['state'], valid_seconds=86400)
+            self.assertEqual(updated['external'][module], [])
+            self.assertEqual(updated['cached']['frontend/test/component.test.ts']['at'], stamp)
+        self.assertTrue(progress.complete())
 
     def test_unrelated_python_failure_survives_browser_aggregation(self):
         smoke = next(case for case in runner.CI_BROWSER_TESTS if '.WebE2E' in case)
@@ -1338,8 +1443,10 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "ROOT", self.repo), \
                 mock.patch.object(runner, "build_suite", side_effect=self.scope_suite) as build:
             self.assertEqual(runner.main(["--scope", "checks"]), 0)
+            calls = build.call_count
             self.assertEqual(runner.main(["--scope", "checks"]), 0)
-            self.assertEqual(build.call_count, 1)
+            self.assertGreater(calls, 0)
+            self.assertEqual(build.call_count, calls)
             def failing(*scopes, **planned):
                 return self.scope_suite(*scopes, fail=True, **planned)
             build.side_effect = failing
@@ -1380,12 +1487,16 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "GATE_TESTS", frozenset()), \
                 mock.patch.object(runner, "run_shards", return_value=(True, 7, [])) as shards:
             self.assertEqual(runner.main(["--scope", "full", "--jobs", "1"]), 0)
-        shards.assert_called_once()
-        self.assertEqual(shards.call_args.kwargs["jobs"], 1)
-        self.assertEqual(shards.call_args.kwargs["shard_count"], 4)
+        self.assertEqual([call.kwargs['shard_count'] for call in shards.call_args_list], [4, 1, 1])
+        self.assertTrue(all(call.kwargs['jobs'] == 1 for call in shards.call_args_list))
+        self.assertCountEqual([name for call in shards.call_args_list for group in call.kwargs['plan'] for name in group],
+                              [path.name for path in runner.selected_files('full')])
         record = evidence.read(self.repo, evidence.key(self.repo))
         self.assertTrue(evidence.covers(record, ("full",)))
-        self.assertEqual(record["count"], 7)
+        self.assertEqual(record["count"], 21)
+        self.assertLessEqual({'输入快照', '历史记录', '恢复规划', '测试执行', '结束核验'}, record['phases'].keys())
+        self.assertGreaterEqual(record['elapsed'], sum(record['phases'][name] for name in
+                                                     ('输入快照', '历史记录', '恢复规划', '测试执行', '结束核验')))
 
     def test_a_failure_that_passes_alone_signs_the_record_and_names_the_flaky_file(self):
         """全量里挂、单独重跑过的：记录照样算通过，偶发的文件名留在记录里；单独也挂就没有记录。"""
@@ -1418,7 +1529,8 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "resolve_auto_scope", return_value=(("full",), "fixture")), \
                 mock.patch.object(runner, "build_suite", side_effect=self.scope_suite) as build:
             self.assertEqual(runner.main(["--scope", "auto"]), 0)
-        build.assert_called_once_with("checks", "tooling")
+        self.assertTrue(build.called)
+        self.assertTrue(all(call.args == ('checks', 'tooling') for call in build.call_args_list))
         record = evidence.read(self.repo, evidence.key(self.repo))
         self.assertEqual(record["baseline"], original)
         self.assertEqual(record["validated"]["full"], stamp)
@@ -1443,10 +1555,11 @@ class VerificationTests(unittest.TestCase):
                 mock.patch.object(runner, "resolve_auto_scope", return_value=(("checks",), "fixture")), \
                 mock.patch.object(runner, "build_suite", side_effect=self.scope_suite) as build:
             self.assertEqual(runner.main(["--scope", "auto"]), 0)
-        self.assertEqual(build.call_count, 1)
-        self.assertEqual(build.call_args.args, ('checks',))
-        self.assertLessEqual(set(build.call_args.kwargs.get('assigned_names', ())),
-                             {path.name for path in runner.selected_files('checks')})
+        self.assertTrue(build.called)
+        for call in build.call_args_list:
+            self.assertEqual(call.args, ('checks',))
+            self.assertLessEqual(set(call.kwargs.get('assigned_names', ())),
+                                {path.name for path in runner.selected_files('checks')})
 
     def test_baseline_distinguishes_version_assignment_and_package_logic(self):
         self.certify(self.repo, ("full",))

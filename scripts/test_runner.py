@@ -32,7 +32,7 @@ from . import change_impact, test_evidence, test_history, test_resume, test_run_
 COMMON_PATTERNS = ("test_context_budget.py", "test_test_collection.py", "test_complexity_ratchet.py",
                    "test_source_assertion_ratchet.py", "test_python_lint.py")
 SCOPES: dict[str, tuple[str, ...]] = {
-    "checks": ("test_copy_final_state.py", "test_dependency_policy.py", "test_repo_hygiene.py", "test_test_planning.py",
+    "checks": ("test_copy_final_state.py", "test_dependency_policy.py", "test_repo_hygiene.py", "test_test_planning.py", "test_reference_updates.py",
                "test_complexity_ratchet.py", "test_source_assertion_ratchet.py", "test_python_lint.py"),
     "follow": ("test_follow*.py", "test_http.py", "test_migrations.py", "test_wants_web.py"),
     "catalog": ("test_ad_judgement.py", "test_composite_name_split.py", "test_media_libraries.py", "test_media_folders.py",
@@ -136,7 +136,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     # 后面七个文件的主体不在这一层，但各有一段断言读 `web/` 或 `frontend/` 的源码，
     # 所以本域也要登记它们：改了 `web/app.js` 却漏跑读它的测试，`test_test_planning.py`
     # 的域映射门槛会在本地就红。
-    "web": ("test_frontend_build.py", "test_web_ui.py", "test_web_js.py", "test_web_e2e.py",
+    "web": ("test_frontend_build.py", "test_frontend_preflight.py", "test_web_ui.py", "test_web_js.py", "test_web_e2e.py",
             "test_tag_management.py",
             "test_subtitle_search.py", "test_subtitle_memory.py",
             "test_legacy_shell_routes.py",
@@ -152,7 +152,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
              "test_folder_picker.py", "test_fsutil.py", "test_runtime_consistency.py",
              "test_subprocess_encoding.py", "test_outbound_proxy_policy.py", "test_windows_update.py", "test_buildinfo.py"),
     "packaging": ("test_dependency_policy.py", "test_buildinfo.py", "test_onboarding.py", "test_macos_standalone.py",
-                  "test_cli.py", "test_server.py", "test_versioning.py", "test_frontend_build.py",
+                  "test_cli.py", "test_server.py", "test_versioning.py", "test_frontend_build.py", "test_frontend_preflight.py",
                   "test_cloudflared_packaging.py", "test_desktop_installer.py",
                   "test_ffmpeg_build.py", "test_ffmpeg_bundle.py", "test_untrunc_build.py", "test_macos_media.py",
                   "test_face_models_bundle.py", "test_metadata_amane_bridge.py"),
@@ -360,6 +360,7 @@ AUTO_SCOPE_PREFIXES: tuple[tuple[str, str | tuple[str, ...]], ...] = (
     ("resources/licenses/", ("packaging", "tooling")),
     # 应用图标：页面站标（web）、托盘与菜单栏（sync）、安装包与 DMG（packaging），
     # `test_scripts.py` 读 `peach-logo.png`（tooling）。
+    ("resources/setup/", ("web", "packaging")),
     ("resources/", ("sync", "tooling", "web", "packaging")),
     ("web/", "web"),
     ("frontend/", "web"),
@@ -635,8 +636,8 @@ def resolve_auto_scope() -> tuple[tuple[str, ...], str]:
 
 
 CI_FRONTEND_TESTS = frozenset({
-    "test_frontend_build.VitestTests.test_the_frontend_sources_typecheck",
-    "test_frontend_build.VitestTests.test_frontend_sources_and_tests_pass_lint",
+    "test_frontend_preflight.FrontendPreflightTests.test_the_frontend_sources_typecheck",
+    "test_frontend_preflight.FrontendPreflightTests.test_frontend_sources_and_tests_pass_lint",
     "test_frontend_build.VitestTests.test_the_island_suite_passes",
 })
 
@@ -1000,6 +1001,7 @@ GATE_TESTS = frozenset({
     "test_script_policy", "test_subprocess_encoding", "test_copy_final_state", "test_context_budget",
     "test_source_assertion_ratchet", "test_complexity_ratchet", "test_python_lint",
     "test_outbound_proxy_policy", "test_repo_hygiene", "test_dependency_policy",
+    "test_reference_updates", "test_frontend_preflight",
 })
 #: 失败后单独重跑的文件数上限。失败面更大多半是真回归，重跑只会再白等一轮。
 RERUN_LIMIT = 6
@@ -1054,6 +1056,18 @@ def rerun_failures(rows: list[dict], spawn=subprocess.run) -> bool:
     return True
 
 
+def local_batches(names, jobs):
+    """快速检查、普通分片和内部并行的容器分别执行，文件只分配一次。"""
+    gate = sorted(name for name in names if name.removesuffix('.py') in GATE_TESTS)
+    heavy = sorted(name for name in names if name.removesuffix('.py') in HEAVY_FILES and name not in gate)
+    light = sorted(set(names) - set(gate) - set(heavy))
+    batches = [('快速门槛', [gate], 1)] if gate else []
+    if light:
+        batches.append(('普通测试', shard_plan(light, min(len(light), 4 * jobs), load_file_seconds()), jobs))
+    batches.extend((name.removesuffix('.py'), [[name]], 1) for name in heavy)
+    return batches
+
+
 def run_local_suite(scopes: tuple[str, ...], jobs: int, label: str | None = None,
                     *, progress=None) -> tuple[bool, int, list]:
     """按调用方选择的并发运行，串行全量通过分片释放测试缓存。"""
@@ -1064,36 +1078,34 @@ def run_local_suite(scopes: tuple[str, ...], jobs: int, label: str | None = None
         chosen = {path for path in chosen if path.name in progress.modules}
         progress_args = {'checkpoint': progress.checkpoint, 'resume_plan': progress.child_plan(scopes)}
     FLAKY.clear()
-    if (jobs > 1 or "full" in scopes) and len(chosen) > 1:
-        names = sorted(path.name for path in chosen)
-        gate = [name for name in names if name.removesuffix(".py") in GATE_TESTS]
-        rest = [name for name in names if name not in gate] if gate and len(gate) < len(names) else names
+    if len(chosen) > 1:
         measured: dict[str, float] = {}
         rows: list[dict] = []
-        count, timings = 0, []
-        if rest is not names:
-            print(f"快速门槛：先跑 {len(gate)} 个秒级检查，有一项不过就不起其余分片", flush=True)
-            passed, count, timings = run_shards(scopes, jobs=1, shard_count=1, measured=measured,
-                                                plan=[gate], outcomes=rows, **progress_args)
-            if not passed:
+        passed, count, timings = True, 0, []
+        for stage, plan, concurrency in local_batches([path.name for path in chosen], jobs):
+            print(f'{stage}：{len(plan)} 片、同时 {min(concurrency, len(plan))} 个子进程', flush=True)
+            with test_run_progress.phase(progress.phases if progress is not None else {}, stage):
+                if jobs == 1 and 'full' not in scopes:
+                    assigned = {path for path in chosen if path.name in {name for group in plan for name in group}}
+                    ok, more, slow = run_serial_suite(scopes, assigned, original, progress, label)
+                else:
+                    ok, more, slow = run_shards(scopes, jobs=concurrency, shard_count=len(plan), measured=measured,
+                                                plan=plan, outcomes=rows, **progress_args)
+            passed, count, timings = passed and ok, count + more, [*timings, *slow]
+            if not ok and stage == '快速门槛':
                 print("快速门槛未通过，其余测试本轮不跑。", flush=True)
                 save_file_seconds(measured)
                 test_history.append(ROOT, scope=label or " ".join(scopes), rows=rows,
-                                    files=[name.removesuffix(".py") for name in gate])
+                                    files=[name.removesuffix(".py") for name in plan[0]])
                 return False, count, timings
             if progress is not None:
                 progress_args['resume_plan'] = progress.child_plan(scopes)
-        shard_count = min(len(rest), 4 * jobs)
-        print(f"本机分片：{shard_count} 片、同时 {min(jobs, shard_count)} 个子进程，按实测耗时先长后短", flush=True)
-        plan = shard_plan(rest, shard_count, load_file_seconds())
-        passed, more, slow = run_shards(scopes, jobs=jobs, shard_count=shard_count, measured=measured, plan=plan,
-                                        outcomes=rows, **progress_args)
         save_file_seconds(measured)
         test_history.append(ROOT, scope=label or " ".join(scopes), rows=rows,
                             files=[path.stem for path in sorted(chosen)])
-        if not passed:
+        if not passed and rows:
             passed = rerun_failures(rows)
-        return passed, count + more, [*timings, *slow]
+        return passed, count, timings
     return run_serial_suite(scopes, chosen, original, progress, label)
 
 
@@ -1275,38 +1287,47 @@ def busy(error) -> int:
 
 def verified_run(args, requested, scopes, files) -> int:
     """在调用方持有的全量锁内取得快照、验证并签发记录。"""
+    started = time.monotonic()
+    phases = {}
     force = args.fresh or ('full' in requested and not args.resume)
-    context = test_evidence.inputs(ROOT)
+    with test_run_progress.phase(phases, '输入快照'):
+        context = test_evidence.inputs(ROOT)
     state = context["state"]
     with test_evidence.run_lock(ROOT, state, scope=" ".join(scopes), root=str(ROOT)):
         if not force and test_evidence.covers(
                 test_evidence.read(ROOT, state), scopes):
             print("复用本机测试记录：代码、依赖环境和范围匹配（24 小时内）。", flush=True)
             return 0
-        previous = test_evidence.read(ROOT, state)
-        records = list(test_evidence.candidates(ROOT, context))
-        progress = test_run_progress.RunProgress(ROOT, context, scopes, selected_files, scopes_for_changes, SCOPES,
-                   supplements=SCOPE_TEST_IDS, records=records, previous=previous,
-                   force=force)
-        if requested == ('auto',) and not force:
-            choices = ('full', *SCOPES) if 'full' in scopes else scopes
-            scopes = test_resume.choose_scopes(progress.pending, progress.requirements, choices)
+        with test_run_progress.phase(phases, '历史记录'):
+            previous = test_evidence.read(ROOT, state)
+            records = list(test_evidence.candidates(ROOT, context))
+        with test_run_progress.phase(phases, '恢复规划'):
+            progress = test_run_progress.RunProgress(ROOT, context, scopes, selected_files, scopes_for_changes, SCOPES,
+                       supplements=SCOPE_TEST_IDS, records=records, previous=previous,
+                       force=force)
+            if requested == ('auto',) and not force:
+                choices = ('full', *SCOPES) if 'full' in scopes else scopes
+                scopes = test_resume.choose_scopes(progress.pending, progress.requirements, choices)
+        progress.phases = phases
         actual = len(progress.modules)
         print(f"实际运行：{' '.join(scopes) or '无需补测'}（{actual} 个测试文件）", flush=True)
         if records and not force:
             print(f'单项覆盖：复用 {len(progress.required) - len(progress.pending)} 项，待验证 {len(progress.pending)} 项。', flush=True)
         progress.start()
         FLAKY.clear()
-        started = time.monotonic()
-        passed, count, timings = run_local_suite(scopes, args.jobs, f"{' '.join(requested)}:{' '.join(scopes)}",
-                                                progress=progress) if progress.pending else (True, 0, [])
+        with test_run_progress.phase(phases, '测试执行'):
+            passed, count, timings = run_local_suite(scopes, args.jobs, f"{' '.join(requested)}:{' '.join(scopes)}",
+                                                    progress=progress) if progress.pending else (True, 0, [])
         if passed:
             progress.accept_success(FLAKY)
-        stable = state == test_evidence.key(ROOT)
-        success = passed and stable and progress.complete()
+        with test_run_progress.phase(phases, '结束核验'):
+            stable = state == test_evidence.key(ROOT)
+            success = passed and stable and progress.complete()
         slowest = sorted(timings, reverse=True)[:20]
         progress.persist(final=True, success=success, elapsed=time.monotonic() - started,
                          slowest=slowest, count=count, flaky=FLAKY if success else None)
+        print('分阶段耗时（测试执行包含各测试阶段）：' + '；'.join(
+            f'{name} {seconds:.2f}s' for name, seconds in phases.items()), flush=True)
         for seconds, name in slowest[:5]:
             print(f"慢测试 {seconds:.3f}s：{name}", flush=True)
         if not stable:

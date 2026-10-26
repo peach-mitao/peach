@@ -138,6 +138,70 @@ class PosixShapeTests(_ScanCase):
         with closing(sqlite3.connect(self.db)) as connection, connection:
             self.assertEqual(list(connection.execute("SELECT id,path,rating,play_count FROM asset ORDER BY id")), before)
 
+    def test_conflicting_paths_preserve_each_record_and_allow_other_files_to_register(self):
+        paths = ('R:\\media\\copy.mp4', 'r:/MEDIA/COPY.MP4')
+        (self.media / 'copy.mp4').write_bytes(b'present')
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            for path, rating, plays, disposal in zip(paths, (2, 5), (3, 9), ('vanished', 'trash')):
+                connection.execute(
+                    'INSERT INTO asset(location,path,name,medium,size,first_seen,last_seen,rating,play_count,disposal) '
+                    "VALUES('local',?,'copy.mp4','video',99,'2000-01-01','2000-01-01',?,?,?)",
+                    (path, rating, plays, disposal))
+            before = list(connection.execute('SELECT id,path,size,rating,play_count,disposal FROM asset ORDER BY id'))
+        issues = []
+        with patch.object(scan, 'BATCH_SIZE', 1):
+            result, output = self._scan('R:\\media', declared_roots={'local': ('R:\\media',)},
+                                       mounts={'local': (self.media,)}, windows=False, onerror=issues.append)
+        self.assertEqual((result.files, result.path_conflicts, result.gone), (3, 1, 0))
+        self.assertEqual(len(result.new_ids), 2)
+        self.assertEqual(len(issues), 1)
+        self.assertIsInstance(issues[0], scan.ScanPathConflict)
+        self.assertEqual(issues[0].paths, paths)
+        self.assertEqual(issues[0].asset_ids, (1, 2))
+        self.assertIn('路径重复待复核 1 组', output)
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(list(connection.execute(
+                'SELECT id,path,size,rating,play_count,disposal FROM asset WHERE id<=2 ORDER BY id')), before)
+            self.assertEqual(connection.execute('SELECT count(*) FROM asset').fetchone()[0], 4)
+            self.assertTrue(all(row[0] > '2000-01-01' for row in connection.execute(
+                'SELECT last_seen FROM asset WHERE id<=2')))
+
+    def test_missing_conflict_records_remain_unobserved_and_do_not_block_another_root(self):
+        (self.root / 'other').mkdir()
+        (self.root / 'other' / 'new.mp4').write_bytes(b'new')
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            for path in ('R:\\media\\missing.mp4', 'r:\\MEDIA\\MISSING.mp4'):
+                connection.execute("INSERT INTO asset(location,path,name,medium,last_seen) "
+                                   "VALUES('local',?,'missing.mp4','video','2000-01-01')", (path,))
+        options = dict(declared_roots={'local': ('R:\\media', 'S:\\other')},
+                       mounts={'local': (self.media, self.root / 'other')}, windows=False)
+        first, _ = self._scan('R:\\media', **options)
+        second, _ = self._scan('S:\\other', **options)
+        self.assertEqual((first.path_conflicts, first.gone), (1, 2))
+        self.assertEqual((second.path_conflicts, second.files, second.gone), (0, 1, 0))
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(list(connection.execute('SELECT last_seen FROM asset WHERE id<=2')),
+                             [('2000-01-01',), ('2000-01-01',)])
+
+    def test_subtitles_do_not_choose_between_conflicting_video_records(self):
+        (self.media / 'copy.mp4').write_bytes(b'present')
+        (self.media / 'copy.srt').write_text('subtitle', encoding='utf-8')
+        options = dict(declared_roots={'local': ('R:\\media',)}, mounts={'local': (self.media,)}, windows=False)
+        self._scan('R:\\media', **options)
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            before = list(connection.execute('SELECT id,asset_id,path,pairing FROM asset_subtitle'))
+            self.assertEqual(len(before), 1)
+            connection.execute("INSERT INTO asset(location,path,name,medium) "
+                               "VALUES('local','r:\\MEDIA\\COPY.mp4','copy.mp4','video')")
+        (self.media / 'copy.en.srt').write_text('another subtitle', encoding='utf-8')
+        result, _ = self._scan('R:\\media', **options)
+        self.assertEqual(result.path_conflicts, 1)
+        self._scan('R:\\media', **options, resume_state={'mapping': str(self.media), 'pending': [],
+                       'current_directory': str(self.media), 'cursor': 'copy.srt',
+                       'here': {'copy.mp4': (7, '2000-01-01'), 'copy.srt': (8, '2000-01-01')}})
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(list(connection.execute('SELECT id,asset_id,path,pairing FROM asset_subtitle')), before)
+
     def test_relocated_mount_restarts_traversal_and_preserves_file_id(self):
         saved = []
         options = dict(declared_roots={'local': ('R:\\media',)}, mounts={'local': (self.media,)}, windows=False)
@@ -192,6 +256,21 @@ class PosixShapeTests(_ScanCase):
         with patch.object(scan.os, 'scandir', side_effect=AssertionError('已完成的根不应再次枚举')):
             second, _ = self._scan('R:\\media', resume_state=json.loads(json.dumps(saved[-1])), **options)
         self.assertEqual(second, first)
+
+    def test_release_checkpoint_without_conflict_count_preserves_completed_work(self):
+        saved = []
+        options = dict(declared_roots={'local': ('R:\\media',)}, mounts={'local': (self.media,)}, windows=False)
+        first, _ = self._scan('R:\\media', save_checkpoint=lambda value: saved.append(value), **options)
+        released = json.loads(json.dumps(saved[-1]))
+        del released['result']['path_conflicts']
+        with closing(sqlite3.connect(self.db)) as connection:
+            before = list(connection.execute('SELECT id,path,first_seen,last_seen FROM asset ORDER BY id'))
+        with patch.object(scan.os, 'scandir', side_effect=AssertionError('已完成目录保留扫描结果')):
+            resumed, _ = self._scan('R:\\media', resume_state=released, **options)
+        self.assertEqual(resumed, first)
+        self.assertEqual(resumed.path_conflicts, 0)
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(list(connection.execute('SELECT id,path,first_seen,last_seen FROM asset ORDER BY id')), before)
 
     def test_file_batch_cursor_resumes_inside_a_directory(self):
         saved = {}

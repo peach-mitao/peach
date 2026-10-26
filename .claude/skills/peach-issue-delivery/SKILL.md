@@ -5,7 +5,7 @@ description: 处理 Peach 的 GitHub issue、关联修复 PR、合并交付或�
 
 # Issue 交付与验证
 
-最后复核：2026-10-19
+最后复核：2026-10-26
 证据来源：用户确认的 issue 沟通与验收约定、[issue #95](https://github.com/peach-mitao/peach/issues/95)、[PR #96](https://github.com/peach-mitao/peach/pull/96)、[项目看板状态判据](../../../scripts/project_board.py)。
 
 ## 沟通与标记

@@ -11,6 +11,20 @@ from peach import dev_copy
 
 
 class DevCopyTests(unittest.TestCase):
+    def test_setup_copy_sources_can_be_saved_with_digest_protection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / 'src/peach').mkdir(parents=True)
+            for name in ('routes_pages.py', 'onboarding.py', 'media_sources.py'):
+                with self.subTest(name=name):
+                    path = root / 'src/peach' / name
+                    path.write_text("LABEL = '设置说明'", encoding='utf-8')
+                    candidate = next(row for row in dev_copy.candidates(root, '设置说明') if row['file'].endswith(name))
+                    dev_copy.save(root, {'original': '设置说明', 'replacement': '媒体设置说明', 'candidate': candidate})
+                    self.assertEqual(path.read_text(encoding='utf-8'), "LABEL = '媒体设置说明'")
+                    with self.assertRaises(ValueError):
+                        dev_copy.save(root, {'original': '设置说明', 'replacement': '无效修改', 'candidate': candidate})
+
     def test_status_recovers_from_a_short_read_lock_and_preserves_persistent_denial(self):
         from peach import dev_copy_runtime as runtime
         with tempfile.TemporaryDirectory() as tmp:

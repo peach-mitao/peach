@@ -159,11 +159,16 @@ def review(root: Path, repo: str, *, public_github: bool = False,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default="peach-mitao/peach")
+    parser.add_argument("--public-github", action="store_true",
+                        help="通过匿名官方 API 读取 GitHub 元数据，不调用 GitHub CLI")
     parser.add_argument("--reference-evidence", action="append", default=[], metavar="SOURCE=FILE",
                         help="本次检查使用用户手动提供的正文，报告保留取证渠道")
     args = parser.parse_args()
     try:
-        print(json.dumps(review(ROOT, args.repo, reference_evidence=local_reference_files(args.reference_evidence)), ensure_ascii=False))
+        options = {"public_github": True} if args.public_github else {}
+        print(json.dumps(review(ROOT, args.repo,
+                                reference_evidence=local_reference_files(args.reference_evidence),
+                                **options), ensure_ascii=False))
         return 0
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print(str(exc), file=sys.stderr)

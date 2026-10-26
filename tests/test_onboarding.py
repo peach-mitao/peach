@@ -711,11 +711,12 @@ class SetupJsonContractTests(_SetupHttpCase):
         asked = onboarding.questions(self.config, windows=NATIVE_WINDOWS)
         questions = data["questions"]
         self.assertEqual([item["key"] for item in questions], [question.key for question in asked])
-        self.assertEqual([item["default"] for item in questions], [question.default for question in asked])
-        self.assertEqual([item["label"] for item in questions], ["数据目录", "媒体库", "谁可以访问", "端口", "局域网访问地址"])
+        self.assertEqual([item["default"] for item in questions],
+                         ["" if question.key == "media_dir" else question.default for question in asked])
+        self.assertEqual([item["label"] for item in questions], ["数据目录", "媒体目录", "谁可以访问", "端口", "局域网访问地址"])
         by_key = {item["key"]: item for item in questions}
         self.assertEqual([key for key, item in by_key.items() if not item["required"]], ["host"])
-        self.assertEqual([key for key, item in by_key.items() if not item["advanced"]], ["data_root", "media_dir"])
+        self.assertEqual([key for key, item in by_key.items() if not item["advanced"]], ["data_root", "media_dir", "host"])
         self.assertEqual(by_key["data_root"]["input"], "folder")
         self.assertEqual(by_key["host"]["options"], [{"value": "2", "label": "同一局域网的设备"},
                                                      {"value": "1", "label": "只有这台电脑"}])
@@ -747,6 +748,61 @@ class SetupJsonContractTests(_SetupHttpCase):
         self.assertEqual(set(loaded.locations), {"onedrive"})
         self.assertEqual(set(loaded.media_costs.values()), {"free"})
         self.assertEqual(loaded.media_costs[next(iter(loaded.locations["onedrive"]))], "free")
+
+    def test_setup_saves_local_processing_for_the_first_scan(self):
+        rows = self._rows(self.media)
+        rows[0].update(library="我的媒体库", library_policy="local")
+        self._submit(media_dir=rows)
+        loaded = self._loaded()
+        self.assertEqual(next(iter(loaded.library_catalog.values()))["policy"], "local")
+        self.assertEqual(onboarding.take_first_scan_request(loaded), "configured")
+
+    def test_setup_saves_library_icon_color_and_processing_policy(self):
+        row = self._rows(self.media)[0]
+        library_id = "1637b835-a627-4c1e-a667-52f9276cbe18"
+        row.update(library_id=library_id, library="电影", library_icon="film", library_color="emerald",
+                   library_policy="custom", library_stages="probe,metadata")
+        self._submit(media_dir=[row], scan_now=False)
+        self.assertEqual(self._loaded().library_catalog[library_id], {
+            "name": "电影", "icon": "film", "color": "emerald", "policy": "custom", "stages": "probe,metadata"})
+
+    def test_setup_can_skip_media_without_registering_roots_or_requesting_a_scan(self):
+        done = self._submit(media_dir=[], skip_media=True, scan_now=True)
+        saved = self._loaded()
+        self.assertEqual(saved.locations, {})
+        self.assertEqual(saved.storage_roots, {})
+        self.assertEqual(saved.library_catalog, {})
+        self.assertFalse(done["scan_requested"])
+        self.assertTrue(done["skip_media"])
+        self.assertIsNone(onboarding.take_first_scan_request(saved))
+
+    def test_setup_requires_a_media_path_unless_explicitly_skipped(self):
+        for rows in ([], self._rows("")):
+            with self.subTest(rows=rows):
+                self.assertIn("media_dir", self._errors(self._body(media_dir=rows)))
+
+    def test_setup_only_accepts_boolean_true_as_explicit_media_skip(self):
+        for skipped in (False, "true", 1, None):
+            with self.subTest(skipped=skipped):
+                self.assertIn("media_dir", self._errors(self._body(media_dir=[], skip_media=skipped)))
+
+    def test_setup_saves_custom_processing_without_starting_a_scan(self):
+        rows = self._rows(self.media)
+        rows[0].update(library_policy="custom", library_stages="cover,probe")
+        self._submit(media_dir=rows, scan_now=False)
+        loaded = self._loaded()
+        library = next(iter(loaded.library_catalog.values()))
+        self.assertEqual(library["policy"], "custom")
+        self.assertEqual(library["stages"], "probe,cover")
+        self.assertIsNone(onboarding.take_first_scan_request(loaded))
+
+    def test_setup_rejects_invalid_processing_choices_before_writing(self):
+        for policy, stages in (("unknown", ""), ("custom", "download")):
+            with self.subTest(policy=policy, stages=stages):
+                rows = self._rows(self.media)
+                rows[0].update(library_policy=policy, library_stages=stages)
+                errors = self._errors(self._body(media_dir=rows))
+                self.assertTrue(errors["media_dir"])
 
     def test_the_questions_list_missing_mount_software_with_download_links(self):
         rows = [{"name": "CloudDrive", "available": True, "download_url": "https://www.clouddrive2.com/download.html"},
@@ -817,6 +873,8 @@ class SetupJsonContractTests(_SetupHttpCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertTrue(response.json()["restored"])
         self.assertFalse(response.json()["scan_requested"])
+        self.assertEqual(response.json()["url"], "http://127.0.0.1:8900/")
+        self.assertFalse(response.json()["history_guide"])
         self.assertEqual(self._loaded().data_root, selected)
         self.assertEqual(before, {path: path.read_bytes() for path in selected.rglob("*") if path.is_file()})
 

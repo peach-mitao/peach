@@ -565,3 +565,34 @@ class ProcessingControlTests(unittest.TestCase):
         self.assertTrue(all(row['total'] == 0 for row in discovering))
         self.assertEqual((result.scanned, result.scanned_bytes), (4, 60))
         self.assertEqual(result.junk_isolated, 2)
+
+    def test_library_scan_reports_conflicting_records_and_processes_both_roots(self):
+        import sqlite3
+        from peach.library_processing import _scan_sources
+        first, second = self.root / 'first', self.root / 'second'
+        first.mkdir()
+        second.mkdir()
+        (first / 'copy.mp4').write_bytes(b'copy')
+        (first / 'new.mp4').write_bytes(b'new')
+        (second / 'other.mp4').write_bytes(b'other')
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': ('R:\\Media', 'S:\\Other')},
+                             mounts={'local': (str(first), str(second))})
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            for path in ('R:\\Media\\copy.mp4', 'r:\\MEDIA\\COPY.MP4'):
+                connection.execute("INSERT INTO asset(location,path,name,medium) "
+                                   "VALUES('local',?,'copy.mp4','video')", (path,))
+        issues = []
+        with patch('peach.library_processing._online_source_root', return_value=first), \
+                patch('peach.library_processing._ffprobe_path', return_value=None), \
+                patch('peach.library_processing.probe_unmeasured', return_value=0):
+            result = _scan_sources(config, self.db, locations=config.locations, asset_ids=None,
+                                   stage='scan', guard=Mock(), update=lambda **values: None,
+                                   issue=lambda row, message, **values: issues.append((message, values)))
+        self.assertEqual((result.scanned, result.scanned_bytes), (3, 12))
+        self.assertEqual(len(issues), 1)
+        self.assertIn('记录 1、2', issues[0][0])
+        self.assertEqual(issues[0][1]['action'], 'scanning_files')
+        with closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(connection.execute('SELECT count(*) FROM asset').fetchone()[0], 4)
+            self.assertIsNotNone(connection.execute("SELECT id FROM asset WHERE path='S:\\Other\\other.mp4'").fetchone())

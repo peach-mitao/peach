@@ -8,13 +8,14 @@
 三档，上游原样的 reason 留在 `detail` 里给冷却与快照回溯用。链上 `LibraryMetadataProvider` 拿到的
 形状因此与自写站一致。
 
-0.20.0 的站点字段、失败分档与总时限复核见 `docs/reference-snapshots/upstream-review.md`。
+站点字段、失败分档与总时限复核见 `docs/reference-snapshots/upstream-review.md`。
 
 聚合不在这里：一站一份 payload 交给 `metadata_policy` / ADR-0038 的结算，不复制 amane 的
 `aggregate`。升级也不在这里：钉的 sha 只在 `pyproject.toml` 一处，本模块读它，不另存一份。
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -68,7 +69,7 @@ SITES: dict[str, str] = {name: config.label for name, config in SITE_CONFIGS.ite
 #: 都是 2020-12-11、2025-07-18。它不当 `release_date` 候选，只记在 `extra['delivery_date']`，发行日留给链上下一档。
 DELIVERY_DATE_SITES = frozenset({"prestige"})
 
-#: amane 的 `FailureReason`（桥脚本 `FAILURE_REASONS` 那十七档）→ 契约的 `FailureReason`，一对一。
+#: amane 的 `FailureReason`（桥脚本 `FAILURE_REASONS`）→ 契约的 `FailureReason`，一对一。
 #: 三档分类、冷却动作与可否重试都由契约那张表定（`sources.base.REASON_KINDS` 等），这里只做名字翻译：
 #: `cloudflare_blocked`（无挑战的 Ray ID 拦截页）与 `ip_banned` 同属出口被封，上游先认挑战页标记，带 Ray ID
 #: 的挑战页报 `cloudflare_challenge`，两档冷却同为 `blocked`；`age_verification` 是要 Cookie 的门；
@@ -92,10 +93,12 @@ AMANE_REASONS: dict[str, FailureReason] = {
     "ip_banned": FailureReason.IP_BANNED,
     "geo_restricted": FailureReason.GEO_RESTRICTED,
     "age_verification": FailureReason.AUTH_REQUIRED,
+    "login_required": FailureReason.AUTH_REQUIRED,
 }
 #: `auth` 一档的措辞，按上游 reason 写。
 AUTH_MESSAGES: dict[str, str] = {
     "age_verification": "站方要求年龄验证",
+    "login_required": "站点要求登录，凭据缺失或已失效",
     "geo_restricted": "站方按地区拒绝了这个出口",
     "cloudflare_challenge": "撞上 Cloudflare 挑战页",
     "cloudflare_blocked": "被 Cloudflare 拦下",
@@ -145,6 +148,11 @@ def bridge_home(tools_root: Path) -> Path:
     return Path(tools_root) / BRIDGE_TOOL_NAME
 
 
+def lock_fingerprint(root: Path = BRIDGE_ROOT) -> str:
+    """独立运行环境所需的完整依赖锁标识。"""
+    return hashlib.sha256((root / "uv.lock").read_bytes()).hexdigest()
+
+
 def bridge_python(tools_root: Path) -> Path:
     home = bridge_home(tools_root) / ".venv"
     return home / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
@@ -183,16 +191,18 @@ def packaged_runtime(*, root: Path | None = None) -> tuple[Path, str] | None:
     return None
 
 
-def _ready(tools_root: Path) -> bool:
-    if packaged_runtime():
+def _ready(tools_root: Path, *, root: Path | None = None) -> bool:
+    root = root or BRIDGE_ROOT
+    if packaged_runtime(root=root):
         return True
     if _requires_packaged_runtime():
         return False
-    if not bridge_python(tools_root).is_file() or installed_version(tools_root) != locked_version():
+    if not bridge_python(tools_root).is_file() or installed_version(tools_root) != locked_version(root):
         return False
     try:
         data = json.loads((bridge_home(tools_root) / "installed.json").read_text(encoding="utf-8"))
-        return data.get("revision") == pinned_revision()
+        return (data.get("revision") == pinned_revision(root)
+                and data.get("lock_sha256") == lock_fingerprint(root))
     except (OSError, ValueError, TypeError, AttributeError):
         pass
     return False
@@ -270,7 +280,7 @@ def rebuild(tools_root: Path, *, runner: Runner = subprocess.run, timeout: int =
     try:
         home.mkdir(parents=True, exist_ok=True)
         with FileLock(str(home / "install.lock"), timeout=timeout):
-            if not force and _ready(tools_root):
+            if not force and _ready(tools_root, root=root):
                 return {"ok": True, "result": "amane 运行环境已就绪", **describe(tools_root, root=root)}
             return _rebuild(tools_root, runner=runner, timeout=timeout, root=root,
                             proxy_options=proxy_options)
@@ -321,7 +331,8 @@ def _rebuild(tools_root, *, runner, timeout, root, proxy_options):
         return {"ok": False, "error": "amane 运行环境自检未完成，请在来源和凭证中重试"}
     from .fsutil import atomic_write_text
     atomic_write_text(bridge_home(tools_root) / "installed.json", json.dumps({
-        "revision": pinned_revision(root), "version": installed_version(tools_root)}))
+        "revision": pinned_revision(root), "version": installed_version(tools_root),
+        "lock_sha256": lock_fingerprint(root)}))
     return {"ok": True, "result": f"amane 桥已按 {pinned_revision(root)[:12]} 重建",
             **describe(tools_root, root=root)}
 
@@ -359,16 +370,16 @@ def describe(tools_root: Path, *, root: Path = BRIDGE_ROOT) -> dict:
         "problem": problem,
         "revision": "" if problem else pinned_revision(root),
         "version": "" if problem else locked_version(root),
-        "installed": installed(tools_root),
+        "installed": installed(tools_root, root=root),
         "installed_version": installed_version(tools_root),
         "python": str(python),
         "sites": [{"source": name, "label": label} for name, label in SITES.items()],
     }
 
 
-def installed(tools_root: Path) -> bool:
+def installed(tools_root: Path, *, root: Path | None = None) -> bool:
     """随包清单须匹配；本地环境须有解释器、固定版本与自检成功回执。"""
-    return _ready(tools_root)
+    return _ready(tools_root, root=root)
 
 
 def _site_paths(tools_root):
