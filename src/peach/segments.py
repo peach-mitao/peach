@@ -8,12 +8,13 @@ import os
 import subprocess
 import uuid
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .ffmpeg import FFmpegResolver
 from .hardware_transcode import HardwareTranscoder
 from .mp4index import keyframe_seconds, segment_plan
-from .streaming import StreamSessionRegistry
+from .streaming import StreamSessionRegistry, _cancel_and_wait, _wait_for_tasks
 
 HLS_SEGMENT_SECONDS = 6
 # 片段缓存上限。超了按最后访问时间淘汰；片段可再生，丢了只是重跑一次 FFmpeg。
@@ -21,6 +22,7 @@ DEFAULT_CACHE_BYTES = 2 << 30
 PLAN_CACHE_LIMIT = 256
 CODEC_CACHE_LIMIT = 256
 PROBE_TIMEOUT_SECONDS = 20
+GENERATION_TIMEOUT_SECONDS = 120
 logger = logging.getLogger(__name__)
 
 
@@ -42,6 +44,13 @@ class SegmentUnavailable(RuntimeError):
 
 class SegmentCancelled(RuntimeError):
     pass
+
+
+@dataclass
+class _Generation:
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    users: int = 0
+    task: asyncio.Task[Path] | None = None
 
 
 def build_hls_playlist(plan: list[tuple[float, float]], segment_url) -> str:
@@ -90,7 +99,7 @@ class HlsSegmentService:
         self._codecs: OrderedDict[tuple, str] = OrderedDict()
         # 同一分片常被并发请求：播放器预取、重连、多设备同看都会撞上同一个目标文件。
         # 同目标只放一个生成者，后到者等它完事后直接用缓存，不再各起一个 FFmpeg 重读网盘。
-        self._generation_locks: dict[Path, asyncio.Lock] = {}
+        self._generation_locks: dict[Path, _Generation] = {}
 
     def _gate(self) -> asyncio.Semaphore:
         if self._semaphore is None:
@@ -186,20 +195,46 @@ class HlsSegmentService:
         if target.is_file() and target.stat().st_size:
             os.utime(target, None)      # 命中即续期，淘汰按最后访问时间
             return target
-        lock = self._generation_locks.setdefault(target, asyncio.Lock())
+        consumer = asyncio.current_task()
+        if consumer is None or not registry.register(session, consumer):
+            raise SegmentCancelled(session)
+        entry = self._generation_locks.setdefault(target, _Generation())
+        entry.users += 1
         try:
-            async with lock:
-                # 等到锁的可能是排在生成者后面的请求，先看缓存再决定要不要自己跑。
-                if target.is_file() and target.stat().st_size:
-                    os.utime(target, None)
-                    return target
-                return await self._generate_uncached(
-                    source, start, duration, target,
-                    session=session, registry=registry, transcode=transcode,
-                )
+            if entry.task is not None and entry.task.cancelling():
+                await _wait_for_tasks(entry.task)
+            if entry.task is None or entry.task.done():
+                entry.task = asyncio.create_task(self._generate_locked(
+                    entry.lock, source, start, duration, target,
+                    registry=registry, transcode=transcode))
+            return await asyncio.shield(entry.task)
         finally:
-            if not lock.locked():
-                self._generation_locks.pop(target, None)
+            registry.unregister(session, consumer)
+            entry.users -= 1
+            if entry.users == 0:
+                try:
+                    if entry.task is not None:
+                        await _cancel_and_wait(entry.task)
+                finally:
+                    if entry.users == 0 and self._generation_locks.get(target) is entry:
+                        self._generation_locks.pop(target, None)
+
+    async def _generate_locked(
+        self, lock: asyncio.Lock, source: Path, start: float, duration: float, target: Path, *,
+        registry: StreamSessionRegistry, transcode: bool,
+    ) -> Path:
+        # 引用包含持有者与等待者；清理期间到达的新任务仍使用同一把锁。
+        async with lock:
+            if target.is_file() and target.stat().st_size:
+                os.utime(target, None)
+                return target
+            try:
+                async with asyncio.timeout(GENERATION_TIMEOUT_SECONDS):
+                    return await self._generate_uncached(
+                        source, start, duration, target, session=f"hls-{uuid.uuid4().hex}",
+                        registry=registry, transcode=transcode)
+            except TimeoutError as error:
+                raise SegmentUnavailable("segment generation timed out") from error
 
     async def _generate_uncached(
         self, source: Path, start: float, duration: float, target: Path, *,
@@ -296,11 +331,12 @@ class HlsSegmentService:
             _kill_process(process)
             await process.communicate()
             raise SegmentCancelled(session)
+        communication = asyncio.create_task(process.communicate())
         try:
-            _, stderr = await process.communicate()
+            _, stderr = await asyncio.shield(communication)
         except asyncio.CancelledError:
             _kill_process(process)
-            await process.communicate()
+            await _wait_for_tasks(communication)
             raise
         finally:
             registry.unregister_process(session, process)

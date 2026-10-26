@@ -559,6 +559,11 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   backdrop-filter: blur(16px) saturate(145%); color: var(--color-text-secondary); font: var(--board-caption);
   pointer-events: auto;
 }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .peach-react [data-follow-sources] [data-follow-seealso] {
+    background: var(--ground); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}
 .peach-react [data-follow-sources] [data-follow-site-icon] { width: 18px; height: 18px; }
 /* 卡上的标签：线与底取类型色，没记类型的按 general 那一档蓝。 */
 .peach-react [data-follow-item] [data-media-tag] {
