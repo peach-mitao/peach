@@ -466,16 +466,28 @@ describe('首页筛选条', () => {
       assert.ok(bottom.height <= 56 && bottom.room > 100 && bottom.overflow === 'auto', JSON.stringify(bottom));
       await controls.evaluate(element => { element.scrollLeft = 300 });
       assert.ok(await controls.evaluate(element => element.scrollLeft > 100));
-      for (const width of [430, 390, 760, 761, 390]) {
-        await page.setViewportSize({ width, height: 844 });
-        const glass = await page.locator(`${FILTER} [data-filter-glass]`).evaluate(async element => {
-          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-          const style = getComputedStyle(element);
-          return { filter: style.backdropFilter, width: element.getBoundingClientRect().width,
-            viewport: document.documentElement.clientWidth };
-        });
-        assert.ok(glass.filter.includes('blur(') && glass.width < glass.viewport, JSON.stringify(glass));
+      const media = await page.context().newCDPSession(page);
+      for (const preference of ['no-preference', 'reduce']) {
+        await media.send('Emulation.setEmulatedMedia', { features: [
+          { name: 'prefers-reduced-transparency', value: preference },
+          { name: 'prefers-contrast', value: 'no-preference' },
+          { name: 'prefers-reduced-motion', value: 'reduce' },
+        ] });
+        for (const width of [430, 390, 760, 761, 390]) {
+          await page.setViewportSize({ width, height: 844 });
+          const glass = await page.locator(`${FILTER} [data-filter-glass]`).evaluate(async element => {
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const style = getComputedStyle(element);
+            return { filter: style.backdropFilter, width: element.getBoundingClientRect().width,
+              viewport: document.documentElement.clientWidth,
+              reduced: matchMedia('(prefers-reduced-transparency: reduce)').matches };
+          });
+          assert.equal(glass.reduced, preference === 'reduce');
+          assert.ok((glass.reduced ? glass.filter === 'none' : glass.filter.includes('blur('))
+            && glass.width < glass.viewport, JSON.stringify(glass));
+        }
       }
+      await media.detach();
       const measured = await layout(page);
       assert.deepEqual(measured.offenders, [], `筛选条把页面撑宽了：${measured.offenders.join('、')}`);
       assert.deepEqual(withoutPlayer(opened.problems), []);

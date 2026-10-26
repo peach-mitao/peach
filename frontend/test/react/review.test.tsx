@@ -9,7 +9,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 import { queryClient } from '../../src/react/query';
 import {
-  commonReviewSources, filterReviewRows, groupReviewRows, prefetchReview, REVIEW_DECISION_URL,
+  commonReviewSources, decisionPayload, defaultChoice, filterReviewRows, groupReviewRows, prefetchReview, REVIEW_DECISION_URL,
   REVIEW_KEY, REVIEW_PAGE_SIZE, REVIEW_URL, reviewGroupingOptions,
   reviewWindow, type ReviewCandidate, type ReviewData, type ReviewRow,
   type DecisionResult,
@@ -114,6 +114,19 @@ const noteText = (root: ParentNode) =>
     .map((node) => node.textContent);
 const queueOf = () => queryClient.getQueryData<ReviewData>(REVIEW_KEY)!;
 
+it('字段批准请求验证来源键，拒绝和跳过不要求选值，单一来源自动选择', () => {
+  const multiple = row(1);
+  for (const candidateKey of ['', 'expired-key']) {
+    const choice = { candidateKey, assets: [] };
+    expect(() => decisionPayload('metadata_fields', multiple, 'approved', choice)).toThrow('请先选择一个来源值。');
+    expect(decisionPayload('metadata_fields', multiple, 'rejected', choice).status).toBe('rejected');
+    expect(decisionPayload('metadata_fields', multiple, 'skipped', choice).status).toBe('skipped');
+  }
+  const single = row(2, ['nfo']);
+  expect(decisionPayload('metadata_fields', single, 'approved', defaultChoice(single)).candidate_key)
+    .toBe(single.candidates![0]!.candidate_key);
+});
+
 /** Shift 要从触发勾选的那一下事件里取：按下先于变更。 */
 const pickRange = (box: Element | null | undefined) => act(async () => {
   if (!box) throw new Error('勾选框没有画出来');
@@ -181,6 +194,7 @@ it('判过的行从缓存里摘掉并同步计数，不为一次判定重取整�
   const { host, fetcher, props } = await open();
   const reads = () => fetcher.mock.calls.filter(([url]) => String(url) === REVIEW_URL).length;
   expect(reads()).toBe(1);
+  await click(cards(host)[0]!.querySelector('input[type="radio"]'));
   await click(buttonIn(cards(host)[0]!, '通过'));
   await settle();
   expect(props.toast).toHaveBeenCalledWith('已通过资料');
@@ -192,11 +206,33 @@ it('判过的行从缓存里摘掉并同步计数，不为一次判定重取整�
 
 it('服务端拒绝这次判定时说出原因，那一行留在屏幕上', async () => {
   const { host, props } = await open({ decisions: [{ ok: false, error: '字段已有值' }] });
+  await click(cards(host)[0]!.querySelector('input[type="radio"]'));
   await click(buttonIn(cards(host)[0]!, '通过'));
   await settle();
   expect(cards(host)[0]?.textContent).toContain('字段已有值');
   expect(props.toast).not.toHaveBeenCalled();
   expect(queueOf().sections.metadata_fields).toHaveLength(QUEUE.length);
+});
+
+it('多来源字段必须明确选择来源才允许逐项通过，提交包含所选来源键', async () => {
+  const { host, fetcher } = await open();
+  const card = cards(host)[0]!;
+  const waiting = buttonIn(card, '先选择来源');
+  expect(waiting).not.toBeNull();
+  expect(waiting?.disabled).toBe(true);
+  await click(waiting);
+  expect(fetcher.mock.calls.filter(([url]) => url === REVIEW_DECISION_URL)).toHaveLength(0);
+  const selected = QUEUE[0]!.candidates![1]!;
+  await click(card.querySelectorAll('input[type="radio"]')[1]);
+  expect(buttonIn(card, '通过')?.disabled).toBe(false);
+  await click(buttonIn(card, '通过'));
+  await settle();
+  const requests = fetcher.mock.calls.filter(([url]) => url === REVIEW_DECISION_URL);
+  expect(requests).toHaveLength(1);
+  expect(JSON.parse(String(requests[0]![1]?.body))).toMatchObject({
+    category: 'metadata_fields', item_key: QUEUE[0]!.item_key,
+    status: 'approved', candidate_key: selected.candidate_key,
+  });
 });
 
 it('批量判定把成功的摘掉，没写成的留下来等重试', async () => {
@@ -250,13 +286,30 @@ it('批量通过逐条沿用服务端版本回执，并保留其他写入造成�
   expect(cards(host)[0]?.textContent).toContain('资产资料已更改');
 });
 
-it('多来源候选没选来源就批量通过时先说清楚，不替人按下判断', async () => {
-  const { host } = await open();
+it('多来源候选没选来源时禁用批量通过并说明下一步', async () => {
+  const { host, fetcher } = await open();
   await click(buttonIn(host, '全选本页'));
+  expect(buttonIn(host, '通过所选')).toHaveProperty('disabled', true);
   await click(buttonIn(host, '通过所选'));
   await settle();
   expect(statusText(host)).toContain('请先为所选资料选择要采用的来源。');
   expect(queueOf().sections.metadata_fields).toHaveLength(QUEUE.length);
+  expect(sentDecisions(fetcher)).toHaveLength(0);
+});
+
+it('所选多来源候选明确选值后允许批量通过，每条提交对应的来源键', async () => {
+  const selectedRows = [row(1), row(2)];
+  const { host, fetcher } = await open({ data: review({
+    sections: { metadata_fields: selectedRows }, counts: { metadata_fields: 2 },
+  }) });
+  await click(buttonIn(host, '全选本页'));
+  expect(buttonIn(host, '通过所选')).toHaveProperty('disabled', true);
+  for (const card of cards(host)) await click(card.querySelectorAll('input[type="radio"]')[1]);
+  expect(buttonIn(host, '通过所选')).toHaveProperty('disabled', false);
+  await click(buttonIn(host, '通过所选'));
+  await settle();
+  expect(sentDecisions(fetcher).map((body) => body.candidate_key))
+    .toEqual(selectedRows.map((item) => item.candidates![1]!.candidate_key));
 });
 
 it('只读数据库上判定与批量都不给点', async () => {
@@ -269,7 +322,7 @@ it('只读数据库上判定与批量都不给点', async () => {
   // 勾选与批量操作整条都不出现：没有可写的东西，工具条只是一排点不动的按钮。
   expect(boxOf(host, 0)).toBeFalsy();
   expect(buttonIn(host, '全选本页')).toBeNull();
-  for (const name of ['通过', '拒绝', '跳过']) {
+  for (const name of ['先选择来源', '拒绝', '跳过']) {
     expect(buttonIn(cards(host)[0]!, name)).toHaveProperty('disabled', true);
   }
 });

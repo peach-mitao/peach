@@ -6,7 +6,7 @@ from datetime import date
 from urllib.parse import urlsplit
 
 from .catalog_rules import (
-    same_release_code, code_query_variants, normalise_code_key, tokyo_hot_code)
+    same_release_code, code_query_variants, is_jav_code, normalise_code_key, tokyo_hot_code)
 from .genre_taxonomy import map_genres, unmapped_genre_warning
 from .http import body_text
 from .javdb import LOGIN as JAVDB_LOGIN_PAGE
@@ -131,6 +131,16 @@ def auth_error(source: str, reason: str, *, status_code: int = 0,
         f"{source} 需要登录或已被拒绝：{reason}", kind="auth",
         status_code=status_code, retryable=False, temporary=True, detail=detail,
     )
+
+
+def provider_code(raw) -> str:
+    """通过发行番号身份限制的规范键；目录名和创作者自编号返回空串。"""
+    if not is_jav_code(raw):
+        return ''
+    try:
+        return validate_provider_code(normalise_code_key(raw))
+    except ValueError:
+        return ''
 
 
 def validate_provider_code(code: str) -> str:

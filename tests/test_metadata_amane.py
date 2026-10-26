@@ -215,6 +215,38 @@ class BridgeQueryTests(unittest.TestCase):
         self.python.parent.mkdir(parents=True)
         self.python.write_text("", encoding="utf-8")
 
+    def test_heyzo_query_uses_four_digits_without_changing_the_returned_identity(self):
+        calls = []
+        found = {**FOUND, 'metadata': {**FOUND['metadata'], 'number': 'HEYZO-0783',
+            'source_url': 'https://example.test/HEYZO-0783'}}
+
+        def runner(command, **kwargs):
+            calls.append(command)
+            return completed(report(avsox=found))
+
+        bridge = metadata_amane.AmaneBridge.create(self.tools, runner=runner)
+        for code, expected in (('HEYZO-783', 'HEYZO-0783'), ('heyzo-783', 'HEYZO-0783'),
+                               ('HEYZO-00783', 'HEYZO-0783'), ('HEYZO-0566', 'HEYZO-0566'),
+                               ('HEYZO-10000', 'HEYZO-10000')):
+            with self.subTest(code=code):
+                response = bridge.query(code, ['avsox'])
+                self.assertEqual(calls[-1][calls[-1].index('--number') + 1], expected)
+                self.assertEqual(response['sites']['avsox']['metadata']['number'], 'HEYZO-0783')
+
+    def test_heyzo_query_formatting_keeps_other_release_systems_unchanged(self):
+        calls = []
+
+        def runner(command, **kwargs):
+            calls.append(command)
+            return completed(report(avsox=FOUND))
+
+        bridge = metadata_amane.AmaneBridge.create(self.tools, runner=runner)
+        for code in ('FC2-PPV-1065588', '030317_385', '030317-385', '259LUXU-1475',
+                     'ABW-232', 'GACHI-1151', 'SKY-227', 'n0744'):
+            with self.subTest(code=code):
+                bridge.query(code, ['avsox'])
+                self.assertEqual(calls[-1][calls[-1].index('--number') + 1], code)
+
     def test_create_refuses_when_the_venv_is_missing(self):
         with tempfile.TemporaryDirectory() as empty:
             with self.assertRaises(MetadataProviderError) as caught:

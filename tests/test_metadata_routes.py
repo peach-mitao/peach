@@ -16,6 +16,17 @@ def amane_sites(code, *hints, overrides=None):
 
 
 class ClassifyTests(unittest.TestCase):
+    def test_registered_sky_and_gachi_prefixes_reach_the_uncensored_index(self):
+        for code in ('SKY-227', 'sky-062', 'GACHI-1151'):
+            with self.subTest(code=code):
+                self.assertEqual(classify(code), 'uncensored')
+                self.assertEqual(route_for_code(code), ('avbase', 'javbus', 'javdb', 'avsox'))
+
+    def test_similar_specialist_prefixes_keep_their_own_routes(self):
+        for code in ('SKYHD-227', 'GACHIP-365', 'CWP-050', 'ABW-227', 'FC2-PPV-1065588'):
+            with self.subTest(code=code):
+                self.assertNotEqual(classify(code), 'uncensored')
+
     def test_the_shape_of_the_code_decides_the_type(self):
         """判定只看番号形状：等元数据到齐再判，该问的那家就永远轮不到。"""
         for code, expected in (

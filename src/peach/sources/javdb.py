@@ -38,6 +38,9 @@ _ACTRESS = re.compile(r'<a\s([^>]*)>([^<]+)</a>')
 #: 取名字时顺手带出来——另走一趟演员页只是把同一页再取一遍，而 javdb 的配额最紧。
 _ACTOR_HREF = re.compile(r'href="/actors/([A-Za-z0-9]+)"')
 _JAPANESE = re.compile(r"[぀-ヿ一-鿿]")
+_COUNTRY_RESTRICTION = re.compile(
+    r'access\s+to\s+this\s+site\s+is\s+prohibited\s+in\s+the\s+country|'
+    r'由[於于]版[權权]限制.{0,40}所在[國国]家', re.I)
 
 
 def actresses(value: str) -> list[dict]:
@@ -118,6 +121,8 @@ class JavDBSource(SiteSource):
 
     def _page(self, url: str, *, session: Session) -> Page:
         page = session.get(url, config=self.config)
+        if _COUNTRY_RESTRICTION.search(page.text[:4096]):
+            raise SourceFailure(FailureReason.GEO_RESTRICTED, 'javdb 按地区限制了当前网络出口')
         if LOGIN.search(page.text):
             raise SourceFailure(FailureReason.AUTH_REQUIRED, "javdb 要求登录")
         return page

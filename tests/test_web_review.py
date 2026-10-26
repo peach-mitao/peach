@@ -6,6 +6,7 @@ patch 会静默失效——不报错，一路跑到断言才炸。
 """
 import contextlib
 import csv
+from contextlib import closing
 import importlib.util
 import io
 import json
@@ -604,6 +605,39 @@ class ReviewQueueTests(unittest.TestCase):
         note = self._full_decision("MIAD-573:tags")[1]
         self.assertEqual((note["pending_genres"], note["collected_genres"], note["added_tags"]),
                          (["まだ知らない分類"], ["まだ知らない分類"], ["苗条"]))
+        again = self._auto()
+        self.assertEqual((again["applied"], again["refreshed"]), (0, 0))
+        self.assertEqual(self.queue_keys("metadata_fields"), [])
+
+    def test_a_recorded_word_from_an_empty_tag_source_joins_the_landed_fallback(self):
+        self._asset(96, "ABW-232", "ABW-232.mp4")
+        self.write_metadata_rows([{
+            "item_key": "ABW-232:tags", "code": "ABW-232", "field": "tags", "current": "",
+            "candidates": [
+                {"source": "r18dev", "value": [], "display": "", "unmapped_genres": ["未知原词501"]},
+                {"source": "dmm", "value": [], "display": "", "unmapped_genres": ["未知原词502"]},
+                {"source": "avbase", "value": ["巨乳"], "display": "巨乳"}]}])
+        self.assertEqual(self._auto()["applied"], 1)
+        self.assertEqual(self.queue_keys("metadata_fields"), ["ABW-232:tags"])
+        rm_review.w_review_genre(self.contract, {"genre": "未知原词501", "tag": "制服"})
+        rm_review.w_review_genre(self.contract, {"genre": "未知原词502", "tag": "丝袜"})
+        result = self._auto()
+        self.assertEqual(result["applied"], 1)
+        self.assertEqual(result["items"][0]["value"], "制服、丝袜")
+        linked, flat = self._tags_of(96)
+        self.assertEqual(flat, {"巨乳", "制服", "丝袜"})
+        self.assertTrue(linked["制服"].startswith("auto:metadata-tags@"))
+        note = self._full_decision("ABW-232:tags")[1]
+        self.assertEqual((note["collected_genres"], note["added_tags"]),
+                         (["未知原词501", "未知原词502"], ["制服", "丝袜"]))
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            evidence = {name: json.loads(raw) for name, raw in connection.execute(
+                "SELECT e.canonical_name,ae.metadata_json FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
+                "WHERE ae.asset_id=96 AND e.canonical_name IN ('制服','丝袜')")}
+        self.assertEqual((evidence["制服"]["source"], evidence["制服"]["candidate_key"]),
+                         ("r18dev", "ABW-232:tags:0"))
+        self.assertEqual((evidence["丝袜"]["source"], evidence["丝袜"]["candidate_key"]),
+                         ("dmm", "ABW-232:tags:1"))
         again = self._auto()
         self.assertEqual((again["applied"], again["refreshed"]), (0, 0))
         self.assertEqual(self.queue_keys("metadata_fields"), [])

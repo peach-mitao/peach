@@ -28,7 +28,7 @@ import { ReviewCard } from './review-card';
 import type { DecisionStatus, ReviewCategory, ReviewData, ReviewGrouping, ReviewRow, RowChoice } from './review';
 import {
   canApprove, currentReviewRow, DEFAULT_CATEGORY, decisionPayload, decisionReceipt, defaultChoice,
-  dropReviewRows, fetchReview, filterReviewRows, groupReviewRows, isReviewCategory, mirrorText,
+  dropReviewRows, fetchReview, filterReviewRows, groupReviewRows, hasChosenCandidate, isReviewCategory, mirrorText,
   REVIEW_CATEGORIES, REVIEW_KEY, REVIEW_LABELS, reviewGroupingOptions,
   reviewWindow, selectReviewRange, submitDecision,
 } from './review';
@@ -115,6 +115,7 @@ export function ReviewPage(props: ReviewProps) {
 
   const choiceOf = (row: ReviewRow): RowChoice => choices.get(row.item_key) || defaultChoice(row);
   const selectedRows = queue.filter((row) => selected.has(row.item_key));
+  const needsSource = metadata && selectedRows.some((row) => !hasChosenCandidate(row, choiceOf(row)));
 
   const forget = (keys: string[]) => {
     const gone = new Set(keys);
@@ -187,7 +188,7 @@ export function ReviewPage(props: ReviewProps) {
   const runBulk = (status: 'approved' | 'rejected') => {
     if (bulk.isPending || !selectedRows.length) return;
     if (status === 'approved' && metadata
-      && selectedRows.some((row) => !choiceOf(row).candidateKey)) {
+      && selectedRows.some((row) => !hasChosenCandidate(row, choiceOf(row)))) {
       setFeedback('请先为所选资料选择要采用的来源。');
       return;
     }
@@ -275,8 +276,8 @@ export function ReviewPage(props: ReviewProps) {
               onFilter={(next) => { setFilter(next); setPage(1) }}
               pageKeys={pageKeys} selected={selected} onSelected={setSelected}
               selectedRows={selectedRows} metadata={metadata}
-              approvable={selectedRows.every((row) => canApprove(category, row))}
-              busy={bulk.isPending} feedback={feedback}
+              approvable={!needsSource && selectedRows.every((row) => canApprove(category, row))}
+              busy={bulk.isPending} feedback={feedback || (needsSource ? '请先为所选资料选择要采用的来源。' : '')}
               onUnifySource={unifySource} onRun={runBulk} />
           ) : null}
 

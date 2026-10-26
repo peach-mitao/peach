@@ -123,7 +123,8 @@ def _fetch_cover(contract, code):
                     "raw_sha256": hashlib.sha256(data).hexdigest(),
                     "installed_sha256": hashlib.sha256(data).hexdigest(),
                     "checked_at": time.time(), "resolver": "peach-jav-cover-v1"}
-        install_cover(target, code, data, size, evidence=evidence)
+        if install_cover(target, code, data, size, evidence=evidence) is False:
+            return {"ok": True, "code": code, "reason": "kept_existing", "result": "已保留本地封面。"}
         return {"ok": True, "code": code, "result": "高清封面已保存", "width": size[0],
                 "height": size[1], "requests": raw.requests, "bytes": raw.bytes}
     except Unavailable as exc:
