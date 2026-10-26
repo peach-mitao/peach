@@ -520,7 +520,8 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
         const header = getComputedStyle(head);
         const code = getComputedStyle(head.querySelector('b')!);
         return {
-          glass: { filter: glass.backdropFilter, padding: glass.padding, height: glass.height },
+          glass: { filter: glass.backdropFilter, padding: glass.padding, height: glass.height,
+            reduced: matchMedia('(prefers-reduced-transparency: reduce)').matches },
           card: { radius: card.borderRadius, overflow: card.overflow, face: card.backgroundColor },
           head: { padding: header.padding, face: header.backgroundColor, size: code.fontSize, weight: code.fontWeight },
           rows: [...group.querySelectorAll('.duplicate-row')].map((row) => {
@@ -529,7 +530,8 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
           }),
         };
       });
-      assert.match(faces.glass.filter, /blur\(/, '汇总条没有背景模糊，不是玻璃面');
+      if (faces.glass.reduced) assert.equal(faces.glass.filter, 'none');
+      else assert.match(faces.glass.filter, /blur\(/, '汇总条没有背景模糊，不是玻璃面');
       assert.deepEqual([faces.glass.padding, faces.glass.height], ['10px 16px', '50px']);
       assert.deepEqual([faces.card.radius, faces.card.overflow], ['14px', 'hidden'], '组卡圆角或裁切不对');
       assert.notEqual(faces.head.face, faces.card.face, '组头和组卡同色，番号那一行分不出来');

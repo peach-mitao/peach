@@ -1294,7 +1294,7 @@ class WebDataTests(unittest.TestCase):
         con.commit(); con.close()
         groups = rm_web._edition_groups(self.contract, ["ABF-234"])
         self.assertEqual(list(groups), ["ABF-234"])
-        self.assertEqual([item["edition"] for item in groups["ABF-234"]], ["有码", "无码"])
+        self.assertEqual([item["edition"] for item in groups["ABF-234"]], ["有码", "无码破解"])
         # 正片在前只是要一个稳定的锚点：次序一变，卡片标题就跟着换。
         self.assertEqual(groups["ABF-234"][0]["id"], 9001)
 
@@ -2330,7 +2330,7 @@ class JavModeAndCoverTests(unittest.TestCase):
         })
         self.assertEqual(advertised["display_title"], "")
         self.assertEqual(uncensored["display_title"], "Hinata Mio")
-        self.assertEqual(uncensored["edition_badges"], ["无码"])
+        self.assertEqual(uncensored["edition_badges"], ["无码破解"])
         self.assertEqual(cracked["edition_badges"], ["无码破解"])
 
     def test_uncensored_release_names_are_not_shown_as_titles(self):
@@ -2406,7 +2406,7 @@ class JavModeAndCoverTests(unittest.TestCase):
         # `-UN` 和 `-U`／`-UC` 是同一个意思；标题判空后不认它就等于丢掉这条信息。
         self.assertEqual(
             rm_web.jav_display_metadata("ABF-158-UN.mp4", "ABF-158")["edition_badges"],
-            ["无码"])
+            ["无码破解"])
         # 相邻字母不能被当成版次标记吞掉。
         self.assertEqual(
             rm_web.jav_display_metadata("ABC-123CHAPTER.mp4", "ABC-123")["edition_badges"], [])

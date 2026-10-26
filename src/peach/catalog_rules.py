@@ -260,7 +260,7 @@ _QUALITY_HEAD = re.compile(r"^(?:hd|fhd|sd|uhd|4k|2160p?|1080p?|720p?)[-_. ]+", 
 #: 版本标记：`-C`/`-CH` 是中文字幕版，`-UC` 是无码流出，画质词也可能落在词尾。
 #: token 单独列成一份，字幕 sidecar 配对要剥掉同一批后缀（`subtitles.py`）；各写一份
 #: 的话，哪天多认一个版次标记，字幕就配不上那一批文件。
-VERSION_TAIL_TOKENS = ("ch", "sub", "uc", "fhd", "4k", "hd", "c", "u")
+VERSION_TAIL_TOKENS = ("ch", "sub", "uc", "fhd", "4k", "hd", "c", "u", "r")
 VERSION_TAIL = re.compile(r"[-_. ]?(?:" + "|".join(VERSION_TAIL_TOKENS) + r")$", re.I)
 #: 一本道、加勒比是「日期+序号」体系，没有字母番号主体。分隔符进捕获组，原样带出去。
 _DATE_CODE = re.compile(rf"(?<!\d)({_MMDDYY})([-_])(\d{{3}})(?!\d)")
@@ -791,6 +791,89 @@ def release_code_from_filename(name: str | None) -> str | None:
     return None
 
 
+def _local_cover_token(name: str | None) -> str | None:
+    """单个本地番号，统一零填充与既有特殊编号的提取。"""
+    stem = _QUALITY_HEAD.sub('', strip_promo_markers(_ASSET_EXTENSION.sub('', str(name or '').strip())))
+    stem = re.sub(r'([-_.])\s+(?=\d)', r'\1', stem)
+    stem = re.sub(r'(?:\(\d{1,2}\))+$', '', stem).rstrip()
+    head = _LOCAL_COVER_HEAD.fullmatch(stem)
+    delivery, heyzo, mib = _DMM_DELIVERY.fullmatch(stem), _HEYZO_FILENAME.search(stem), _KOREAN_MIB_FILENAME.match(stem)
+    if heyzo and re.match(r'[a-z0-9]', stem[heyzo.end():], re.I):
+        heyzo = None
+    special = delivery or heyzo or (mib if mib and mib.group(1).upper() in KOREAN_MIB_PREFIXES else None)
+    date = _DATE_CODE.search(stem)
+    if date and (re.search(r'[a-z0-9]$', stem[:date.start()], re.I)
+                 or re.match(r'[a-z0-9]', stem[date.end():], re.I)):
+        date = None
+    tokyo = _TOKYO_HOT_INLINE.search(stem) if _TOKYO_HOT_SITE.search(stem) else None
+    if not head and not special and not date and not tokyo:
+        return None
+    # 清噪入口只接收完整语法确认的番号或官方交付片段。
+    token = (head.group('code') if head else special.group(0) if special
+             else date.group(0) if date else tokyo.group(1))
+    code = release_code_from_filename(token)
+    if not code and _KIRARI_CODE.fullmatch(token.upper()):
+        code = token.upper()
+    padded = re.fullmatch(r'((?:\d{3})?[A-Za-z]{2,8})[-_. ]?(0+\d{2,5})', token)
+    if not code and padded:
+        code = release_code_from_text(f'{padded.group(1)}-{int(padded.group(2)):03d}')
+    return code
+
+
+# 本地标题的头部须是完整番号；版次、图片交付后缀与分卷不参与作品身份。
+_LOCAL_COVER_NUMBER = (
+    rf'(?:{_FC2_ID.pattern[1:-1]}|{_KIRARI_CODE.pattern[1:-1]}|'
+    rf'{_CODE_DATE.pattern[1:-1]}|{_TOKYO_HOT_BODY.pattern[1:-1]}|'
+    r'(?:\d{3})?[A-Za-z]{2,8}(?:[-_.]\s*| )?0*\d{2,5})')
+_LOCAL_COVER_VERSION = (
+    r'(?:' + '|'.join(token for token in VERSION_TAIL_TOKENS if len(token) > 1)
+    + r'|uncensored|2160p?|1080p?|720p?|pl|[a-hru])')
+_LOCAL_COVER_PART = r'(?:part|pt|cd|disc|disk|dvd|vol)[-_]?\d{1,2}'
+_LOCAL_COVER_SUFFIX = (
+    rf'(?:{_LOCAL_COVER_PART}|{_LOCAL_COVER_VERSION})?'
+    rf'(?:[-_.](?:{_LOCAL_COVER_PART}|c?\d{{1,2}}[a-hru]?|{_LOCAL_COVER_VERSION}))*')
+_LOCAL_COVER_HEAD = re.compile(
+    rf'^(?P<code>{_LOCAL_COVER_NUMBER}){_LOCAL_COVER_SUFFIX}'
+    r'(?=$|[\s_\[【(（\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3])', re.I)
+_LOCAL_COVER_IDENTITIES = re.compile(
+    rf'(?<![a-z0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3])'
+    rf'(?P<code>{_LOCAL_COVER_NUMBER}){_LOCAL_COVER_SUFFIX}(?![a-z0-9])', re.I)
+_LOCAL_COVER_DECORATION = re.compile(r'^(?:(?:\[高清\]|【高清】)\s*|!\s+)+')
+_LOCAL_COVER_REPEATED = re.compile(
+    rf'^(?P<code>{_LOCAL_COVER_NUMBER})(?P=code)'
+    r'(?=$|[\s_\[【(（\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3])', re.I)
+_LOCAL_COVER_TITLE_COUNTER = re.compile(
+    r'(?<![a-z0-9])(?:file[ .]+\d{1,3}|episode[-. ]+\d{1,3}|'
+    r's model[ .]+\d{1,3}|special sp[ .]+\d{1,3}|'
+    r'water[ .]+pole[ .]+\d{1,3})(?![a-z0-9])', re.I)
+
+
+def local_cover_code(name: str | None) -> str | None:
+    """本地图片与视频的唯一番号；标题前的编号须独立成词，保留已有身份限制。"""
+    stem = strip_promo_markers(_MEDIA_EXTENSION.sub('', _ASSET_EXTENSION.sub('', str(name or '').strip())))
+    stem = _LOCAL_COVER_DECORATION.sub('', stem)
+    stem = _LOCAL_COVER_REPEATED.sub(lambda match: match.group('code'), stem, count=1)
+    if _UUID_LIKE.search(stem) or western_release_identity(stem):
+        return None
+    code = _local_cover_token(stem)
+    head = _LOCAL_COVER_HEAD.match(stem)
+    if not code and head:
+        code = _local_cover_token(head.group('code'))
+    if code:
+        identities = {release_identity(code)}
+        identity_text = (stem[:head.end()] + _LOCAL_COVER_TITLE_COUNTER.sub(' ', stem[head.end():])
+                         if head else stem)
+        tokens = re.split(r'[\s\[\]【】()（）]+', identity_text)
+        tokens.extend(match.group('code') for match in _LOCAL_COVER_IDENTITIES.finditer(identity_text))
+        for token in tokens:
+            value = _local_cover_token(token)
+            if value:
+                identities.add(release_identity(value))
+        if len(identities) != 1:
+            return None
+    return code
+
+
 def _jav_code_pattern(code: str | None) -> str:
     """Return one regex fragment matching compact and separated forms of a canonical code."""
     canonical = normalise_code_key(code)
@@ -820,10 +903,11 @@ def _jav_code_pattern(code: str | None) -> str:
 
 #: 无码片商自己的编号法：Caribbeancom／1Pondo／10musume／Pacopacomama 走日期式
 #: （形状与分隔符含义见 `_CODE_DATE`，同一份实现），HEYZO 用 `HEYZO-1380`，
-#: Tokyo-Hot 用 `n1234`（见 `_TOKYO_HOT_BODY`）。有码片商不用这三种形状。
+#: Tokyo-Hot 用 `n1234`（见 `_TOKYO_HOT_BODY`），SKY 与 GACHI 保留字母发行前缀。
 UNCENSORED_CODE_SHAPES = (
     _CODE_DATE,
     re.compile(r"^HEYZO-\d{2,5}$", re.I),
+    re.compile(r"^(?:SKY|GACHI)-\d{2,5}$", re.I),
     _TOKYO_HOT_BODY,
 )
 #: 文件名里的发行站标记。番号形状认不出来时，这是另一条本机就能核验的证据。
@@ -835,7 +919,7 @@ _UNCENSORED_SITE = re.compile(
 )
 #: 版次标记有时和番号粘在一起，中间没有分隔符：`PPPD-937CH.mp4`、`MIDV-751CH.mp4`。
 #: 只认带分隔符的写法，这些文件既拿不到「中字」徽章，番号本身还会被当标题显示。
-_GLUED_EDITION = r"(?:CH|C|SUB|UC|U)"
+_GLUED_EDITION = r"(?:UC|UN|CH|SUB|C|U|R)"
 
 
 def is_uncensored_code(code: str | None) -> bool:
@@ -864,6 +948,16 @@ def is_uncensored_release(name: str | None, code: str | None) -> bool:
     return is_uncensored_code(code) or bool(_UNCENSORED_SITE.search(str(name or "")))
 
 
+def clear_jav_edition_markers(stem: str, code: str | None) -> str:
+    """清除贴在番号、方括号或文件名尾部的明确版本标记，保留正文。"""
+    pattern = _jav_code_pattern(code)
+    if pattern:
+        stem = re.sub(rf'({pattern}){_GLUED_EDITION}(?=$|[\s._\-\[])', r'\1', stem, flags=re.I)
+    token = r'(?:中文字幕|中字|无码\s*破解|無碼\s*破解|AI\s*去码|破解|无修正|無修正|uncen(?:sored)?|UC|UN|CH|SUB|C|U|R)'
+    stem = re.sub(rf'\[\s*{token}\s*\]', '', stem, flags=re.I).strip()
+    return re.sub(rf'(?:[-_.\s]+{token})+$', '', stem, flags=re.I).strip()
+
+
 def jav_edition_badges(name: str | None, code: str | None,
                        tags: tuple[str, ...] | list[str] = ()) -> list[str]:
     """Project filename/tag evidence into compact edition badges beside the code."""
@@ -882,6 +976,8 @@ def jav_edition_badges(name: str | None, code: str | None,
         bool(re.search(r"无码\s*破解|無碼\s*破解|AI\s*去码|"
                        r"(?:^|[-_.\s\[])破解(?:$|[-_.\s\]])", text, re.I))
         or "ai去码" in tag_set or "无码破解" in tag_set
+        or bool(re.search(r"(?:^|[-_.\s\[])(?:uc|un|u|uncen(?:sored)?|无修正)"
+                          r"(?:$|[-_.\s\]])", suffix, re.I))
     )
     uncensored = (
         cracked
@@ -897,7 +993,7 @@ def jav_edition_badges(name: str | None, code: str | None,
     )
     subtitled = (
         bool({"中文字幕", "内嵌字幕", "外挂字幕", "中字"}.intersection(tag_set))
-        or bool(re.search(r"(?:^|[-_.\s\[])(?:c|ch|sub|中字|中文字幕)"
+        or bool(re.search(r"(?:^|[-_.\s\[])(?:uc|c|r|ch|sub|中字|中文字幕)"
                           r"(?:$|[-_.\s\]])", suffix, re.I))
     )
     badges = []

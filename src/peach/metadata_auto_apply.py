@@ -24,6 +24,7 @@ from .catalog_rules import (
     is_jav_code,
     is_korean_mib_code,
     normalise_code_key,
+    local_cover_code,
     release_code_from_filename,
     same_release_code,
     strip_scrape_mark,
@@ -777,6 +778,8 @@ def _settled_candidates(connection, field: str, code: str, candidates: list[dict
     答得出「当时还有哪些说法、为什么没选它」，那句话只能落在这里。
     """
     settled_by = None
+    if field == "tags":
+        candidates = [candidate for candidate in candidates if candidate.get("value")]
     date = code_release_date(code) if field == "release_date" else None
     if date is not None:
         matching = [c for c in candidates if str(c.get("display_value") or "").strip() == date]
@@ -825,7 +828,7 @@ def _filename_carries_code(code: str, name: str) -> bool:
     product = _FC2_PRODUCT.search(code)
     if product:
         return bool(re.search(rf"(?<!\d){product.group(1)}(?!\d)", name))
-    parsed = release_code_from_filename(name)
+    parsed = local_cover_code(name)
     return bool(parsed) and same_release_code(code, parsed)
 
 
@@ -873,11 +876,13 @@ def _group_identifies_code(code: str, targets) -> bool:
     """
     names = [str(target["name"] or "") for target in targets]
     if not any(_filename_carries_code(code, name) for name in names):
-        if any(release_code_from_filename(name) for name in names):
+        if any(local_cover_code(name) or release_code_from_filename(name) for name in names):
             return False
         return any(_folder_carries_code(code, target) for target in targets)
+    # 较宽的旧解析只保留否决证据，不能替文件确认当前作品身份。
     return not any(
-        (parsed := release_code_from_filename(name)) and not same_release_code(code, parsed)
+        (parsed := local_cover_code(name) or release_code_from_filename(name))
+        and not same_release_code(code, parsed)
         for name in names if not _filename_carries_code(code, name))
 
 
@@ -924,9 +929,16 @@ def _may_replace_current(candidates: list[dict], *, field: str = "", code: str =
 
 
 def _auto_apply_targets(connection, row: dict, code: str, field: str):
-    """核对番号组的文件身份与字段归属，返回可供自动补全的资产。"""
+    """核对候选作用范围内的文件身份与字段归属。"""
     query = str(row.get("query") or code).strip()
-    targets = _codes_matching(connection, [code, query], "code,name,path,field_owners")
+    if row.get('asset_path'):
+        targets = connection.execute(
+            "SELECT code,name,path,field_owners FROM asset WHERE id=? AND path=? "
+            "AND medium='video' AND disposal IS NULL",
+            (row.get('asset_id'), row['asset_path']),
+        ).fetchall()
+    else:
+        targets = _codes_matching(connection, [code, query], "code,name,path,field_owners")
     if not targets or not _group_identifies_code(code, targets):
         return []
     column = METADATA_FIELD_COLUMNS.get(field)
@@ -1017,7 +1029,7 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
             **({"settled_by": settled_by} if settled_by else {}),
             **({"chain_winner": str(candidate.get("source") or "").strip(),
                 "overruled": overruled} if overruled else {}),
-            **({"pending_genres": found} if (found := pending_genres(candidates)) else {}),
+            **({"pending_genres": found} if (found := pending_genres(evidence)) else {}),
             **_honorific_agreement(candidates),
             **({"descriptive_dropped": [
                 {"source": str(c.get("source") or "").strip(),
@@ -1138,6 +1150,7 @@ def _apply_performer_candidate(connection, asset_ids: list[int], candidate: dict
                 external_provider=_performer_external_provider(
                     performer, source, external_id),
                 external_id=(external_id or None), metadata=metadata, now=now,
+                update_entity_metadata=False,
             )
             # 企划名义解出主艺名时，把封面上印的那个称呼留成别名（ADR-0038）：
             # 账本里写的是 `目黒めぐみ`，用户搜的多半是 `めぐみ 28歳 パパ活女子`
@@ -1241,6 +1254,30 @@ def _landing_scope(connection, group: dict, candidate: dict,
     return asset_ids, source, confidence, metadata
 
 
+def _multi_value_state(connection, asset_ids: list[int], role: str) -> dict[int, set]:
+    """多值真值和兼容投影的集合快照，不把来源留痕变化算作取值变化。"""
+    marks = ','.join('?' * len(asset_ids))
+    values = {asset_id: set() for asset_id in asset_ids}
+    for asset_id, name in connection.execute(
+            f"SELECT ae.asset_id,e.normalized_name FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
+            f"WHERE ae.asset_id IN ({marks}) AND ae.role=?", (*asset_ids, role)):
+        values[asset_id].add(('entity', name))
+    predicate = "LIKE" if role == 'performer' else "NOT LIKE"
+    for asset_id, tag in connection.execute(
+            f"SELECT asset_id,tag FROM asset_tag WHERE asset_id IN ({marks}) AND tag {predicate} '演员:%'",
+            asset_ids):
+        values[asset_id].add(('tag', normalize_entity_name(tag)))
+    return values
+
+
+def _advance_multi_value_revision(connection, asset_ids: list[int], role: str, before: dict) -> None:
+    after = _multi_value_state(connection, asset_ids, role)
+    changed = [asset_id for asset_id in asset_ids if before[asset_id] != after[asset_id]]
+    if changed:
+        marks = ','.join('?' * len(changed))
+        connection.execute(f"UPDATE asset SET mutation_revision=mutation_revision+1 WHERE id IN ({marks})", changed)
+
+
 def _apply_metadata_candidate(
     connection, group: dict, candidate: dict, now: str, owner: str, *,
     expected_revision: int | None = None,
@@ -1303,9 +1340,11 @@ def _apply_metadata_candidate(
         return len(asset_ids)
 
     if field == "performers":
+        before = _multi_value_state(connection, asset_ids, 'performer')
         _apply_performer_candidate(
             connection, asset_ids, candidate, source=source, confidence=confidence,
             metadata=metadata, now=now)
+        _advance_multi_value_revision(connection, asset_ids, 'performer', before)
         return len(asset_ids)
 
     raw_tags = candidate.get("value")
@@ -1316,6 +1355,7 @@ def _apply_metadata_candidate(
     tags = current_tags(_approved_entity_name(tag, "tag") for tag in raw_tags)
     if not tags:
         raise ValueError("标签候选为空")
+    before = _multi_value_state(connection, asset_ids, 'tag')
     # 整套换掉的时候，并集补进来的那几个（`_extend_approved_tags`）一起清：它们是
     # 上一套候选的一部分，留下来就成了哪一套都不属于的标签。
     connection.execute(
@@ -1342,6 +1382,7 @@ def _apply_metadata_candidate(
                 source=f"javinizer:{source}:tag", confidence=confidence,
                 metadata=metadata, now=now, update_entity_metadata=False,
             )
+    _advance_multi_value_revision(connection, asset_ids, 'tag', before)
     return len(asset_ids)
 
 
@@ -1382,6 +1423,7 @@ def _extend_approved_tags(connection, row: dict, candidate: dict, batch: str,
              and (only is None or normalize_entity_name(tag) in only)]
     if not added:
         return []
+    before = _multi_value_state(connection, asset_ids, 'tag')
     metadata = {**metadata, "batch": batch}
     for asset_id in asset_ids:
         for tag in added:
@@ -1390,7 +1432,9 @@ def _extend_approved_tags(connection, row: dict, candidate: dict, batch: str,
                 (asset_id, tag, confidence, batch))
             upsert_asset_entity(
                 connection, kind="tag", name=tag, asset_id=asset_id, role="tag",
-                source=batch, confidence=confidence, metadata=metadata, now=now)
+                source=batch, confidence=confidence, metadata=metadata, now=now,
+                update_entity_metadata=False)
+    _advance_multi_value_revision(connection, asset_ids, 'tag', before)
     return added
 
 
@@ -1674,6 +1718,17 @@ def _approved_candidate(note: dict, row: dict) -> dict | None:
                  if str(c.get("candidate_key") or "").strip() in keys), None)
 
 
+def _collected_genre_evidence(row: dict, words: list[str]):
+    """待收录原词的真实来源候选；身份失效或证据消失时不借用别家的署名。"""
+    code = str(row.get("code") or "")
+    candidates = _evidence_candidates({**row, "candidates": _parsed_candidates(row)}, "tags")
+    for word in words:
+        origins = [candidate for candidate in candidates
+                   if word in _unmapped_genres(candidate) and _candidate_identifies_code(code, candidate)]
+        if origins:
+            yield word, _preferred_candidate("tags", origins, code=code)
+
+
 def _land_collected_genres(connection, item_key: str, decision: dict | None, row: dict,
                            genre_decisions: dict, *, batch: str, now: str) -> list[str] | None:
     """自动落库时留下生词的那一行，词收录了之后把收录出的标签补进账本（ADR-0082）。
@@ -1683,7 +1738,7 @@ def _land_collected_genres(connection, item_key: str, decision: dict | None, row
 
     不走整套重落：标签落过一次，现值就不空了，而非官方来源（javbus 这类）不能改非空
     的现值——整套重落的路对它们一条都走不通，收录出的标签就只在页面上消失、不进账本。
-    这里用落库时那条候选（按 `candidate_key` 认，genre 已按现在的决定折过）走并集那一条，
+    自动批准决定确认这一行可补空；新增词按真实原词候选逐项核验身份和来源，再走并集那一条。
     只插账本没有的，归属是 `batch`，与人批准标签的并集补齐同一套撤回口径。
 
     `pending_genres` 原样留着，复核页按现在的决定逐个重查（`genres_still_pending`）；
@@ -1694,15 +1749,18 @@ def _land_collected_genres(connection, item_key: str, decision: dict | None, row
     if decision and _preferred_tags_changed(decision, row.get("candidates") or [], code=row.get("code") or ""):
         return None
     newly = _newly_collected_genres(decision, note, genre_decisions)
-    candidate = _approved_candidate(note, row) if newly else None
-    if candidate is None:
+    if not newly or _approved_candidate(note, row) is None:
         return None
-    resolved = [resolve_genre(word, genre_decisions) for word in newly]
-    wanted = {normalize_entity_name(tag) for tag in current_tags(tag for tag in resolved if tag)}
-    added = _extend_approved_tags(connection, row, candidate, batch, now, only=wanted)
-    if added is None:
-        return None
-    done = {*map(str, note.get("collected_genres") or []), *newly}
+    done = set(map(str, note.get("collected_genres") or []))
+    added = []
+    for word, candidate in _collected_genre_evidence(row, newly):
+        tag = resolve_genre(word, genre_decisions)
+        values = current_tags([tag]) if tag else []
+        grown = _extend_approved_tags(connection, row, {**candidate, "value": values}, batch, now,
+                                      only={normalize_entity_name(value) for value in values})
+        if grown is not None:
+            done.add(word)
+            added.extend(grown)
     note = {**note, "collected_genres": [str(word) for word in note["pending_genres"]
                                          if str(word) in done]}
     if added:

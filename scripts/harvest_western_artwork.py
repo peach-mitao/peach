@@ -134,10 +134,10 @@ def run(args) -> dict:
                             record['preserved_existing'] = True
                         else:
                             # 官方横版剧照不使用 JAV 双联封套判据。
-                            install_cover(target, '', body, (inspected.width, inspected.height),
+                            installed = install_cover(target, '', body, (inspected.width, inspected.height),
                                           evidence={**record, 'provider': 'western-official',
                                                     'source': SOURCE, 'batch': args.batch})
-                            record['installed'] = str(target)
+                            record.update({'preserved_existing': True} if installed is False else {'installed': str(target)})
                 except Exception as error:
                     record['issue'] = str(error)
                 finally:

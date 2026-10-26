@@ -57,11 +57,11 @@ def upgrade(path, known, transport, report, *, live=False, metadata_root=None):
         if original.exists() and not saved.exists():
             shutil.copy2(original, saved)
     digest = hashlib.sha256(data).hexdigest()
-    install_cover(path, path.stem, data, size, evidence=dict(source=candidate.source,
+    installed = install_cover(path, path.stem, data, size, evidence=dict(source=candidate.source,
         source_url=candidate.url, title=artwork_title(known) or previous.get('title', ''), width=size[0], height=size[1],
         raw_sha256=digest, installed_sha256=digest, checked_at=time.time(),
         resolver='official-live-upgrade-v1' if live else 'official-snapshot-upgrade-v1', verified_by=[]))
-    return {**result, 'status': 'installed'}
+    return {**result, 'status': 'kept' if installed is False else 'installed'}
 
 
 def failure_result(code, error, transport):

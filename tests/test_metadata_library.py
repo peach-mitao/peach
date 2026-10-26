@@ -40,7 +40,7 @@ def stub_provider():
     provider = Mock()
 
     def dmm_has_nothing(code, source='r18dev', **_):
-        if source in ('dmm', 'javdb'):
+        if source in ('dmm', 'javdb', 'avbase', 'javbus'):
             raise NotFound('HTTP 404')
         return DEFAULT
 
@@ -86,6 +86,251 @@ def _archive_pages(url):
 
 
 class LibraryNfoTests(unittest.TestCase):
+    @windows_ledger_roots
+    def test_single_refresh_queries_sources_even_without_missing_fields(self):
+        media = self.root / 'media'
+        media.mkdir()
+        (media / 'ABW-232.mp4').write_bytes(b'video')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True, locations={'local': (str(media),)})
+        process_library(config, db, self.root / 'generated', self.root / 'covers', stage='scan')
+        provider = stub_provider()
+        provider.query.return_value = {'id': 'ABW-232', 'title': '外部作品', 'maker': 'Prestige',
+            'release_date': '2022-05-13', 'actresses': [{'japanese_name': '演员甲'}], 'genres': ['剧情']}
+        with patch('peach.library_processing._missing_fields', return_value=[]):
+            process_library(config, db, self.root / 'generated', self.root / 'covers', stage='metadata',
+                asset_ids=[1], refresh_metadata=True, provider_factory=lambda: provider)
+        self.assertGreater(provider.query.call_count, 0)
+
+    @windows_ledger_roots
+    def test_missing_content_tags_use_another_source_when_javdb_is_unavailable(self):
+        from peach.scraping_access import SourcePaused
+        media = self.root / 'media'
+        media.mkdir()
+        for name in ('ABW-232-CD1.mp4', 'ABW-232-CD2.mp4'):
+            (media / name).write_bytes(b'original video')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': (str(media),)})
+        process_library(config, db, self.root / 'generated', self.root / 'covers', stage='scan')
+        provider = stub_provider()
+        def query(code, source='r18dev', **kwargs):
+            if source == 'javdb':
+                raise SourcePaused('地区限制')
+            if source == 'avbase':
+                return {'id': code, 'genres': ['巨乳', 'ドラマ']}
+            return {'id': code, 'title': '作品', 'maker': 'Prestige', 'release_date': '2022-05-13',
+                    'actresses': [{'japanese_name': '涼森れむ'}], 'genres': ['单体作品', '未知内容原词']}
+        provider.query.side_effect = query
+        provider.cover.return_value = False
+        with patch('peach.library_processing._enrich_finished_performers',
+                   return_value={'aliases': 0, 'avatars': 0, 'conflicts': 0, 'failed': 0}):
+            process_library(config, db, self.root / 'generated', self.root / 'covers',
+                stage='metadata', database=LedgerDatabase(db), provider_factory=lambda: provider,
+                route_overrides='censored=r18dev,avbase,javdb')
+        with closing(sqlite3.connect(db)) as connection:
+            tags = list(connection.execute("SELECT asset_id,tag FROM asset_tag WHERE source='javinizer:avbase:tag' ORDER BY asset_id,tag"))
+        self.assertEqual(tags, [(1, '剧情'), (1, '巨乳'), (2, '剧情'), (2, '巨乳')],
+                         provider.query.call_args_list)
+        asked = [call for call in provider.query.call_args_list if call.args[:2] == ('ABW-232', 'avbase')]
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(sum(call.args[1] == 'javdb' for call in provider.query.call_args_list), 1)
+        candidates = read_rows(self.root / 'generated/library-metadata-field-candidates.csv')
+        self.assertTrue(any('未知内容原词' in entry.get('unmapped_genres', [])
+            for row in candidates for entry in json.loads(row['candidates_json'])))
+        with closing(sqlite3.connect(db)) as connection:
+            notes = [json.loads(row[0]) for row in connection.execute(
+                "SELECT note FROM review_decision WHERE item_key LIKE '%:tags'")]
+        self.assertEqual(len(notes), 2)
+        self.assertTrue(all('未知内容原词' in note.get('pending_genres', []) for note in notes))
+
+    def test_content_tag_failures_are_shared_within_a_task_and_remain_retryable(self):
+        from peach.library_processing import _MissCache, _RemoteSession
+        from peach.scraping_access import SourcePaused
+        from peach.jav_cover_fetch import DeadlineExceeded, Unavailable
+        row = dict(id=1, name='ABW-232.mp4', path='R:/media/ABW-232.mp4')
+        for error in (SourcePaused('地区限制'), Unavailable('网络失败'), DeadlineExceeded('本项超时')):
+            with self.subTest(error=type(error).__name__):
+                root = self.root / type(error).__name__
+                config = PeachConfig(root, root / 'config.toml', present=True)
+                misses = _MissCache(root / 'misses.json')
+                provider = Mock()
+                provider.query.side_effect = error
+                issues = Mock()
+                options = dict(issue=issues, deadline=time.monotonic() + 30)
+                session = _RemoteSession(config, lambda provider=provider: provider, misses, retrying=False,
+                                         routes={'censored': ('avbase',)})
+                for _ in range(2):
+                    self.assertEqual(session._fallback_tags(row, 'ABW-232', ['tags'], [], (), **options), [])
+                self.assertEqual(provider.query.call_count, 1)
+                self.assertFalse(misses.fresh('avbase', 'ABW-232'))
+                self.assertTrue(all(call.kwargs['retryable'] for call in issues.call_args_list))
+                another = _RemoteSession(config, lambda provider=provider: provider, misses, retrying=False,
+                                         routes={'censored': ('avbase',)})
+                another._fallback_tags(row, 'ABW-232', ['tags'], [], (), **options)
+                self.assertEqual(provider.query.call_count, 2)
+
+    def test_content_tag_fallback_checks_release_identity_and_remembers_only_not_found(self):
+        from peach.library_processing import _MissCache, _RemoteSession
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        misses = _MissCache(self.root / 'misses.json')
+        provider = Mock()
+        def query(code, source, **kwargs):
+            if source == 'avbase':
+                return {'id': 'ABW-233', 'genres': ['巨乳']}
+            if source == 'javbus':
+                return {'id': code, 'genres': ['ドラマ']}
+            raise NotFound('没有这个番号')
+        provider.query.side_effect = query
+        session = _RemoteSession(config, lambda: provider, misses, retrying=False,
+                                 routes={'censored': ('avbase', 'javbus')})
+        row = dict(id=1, name='ABW-232.mp4', path='R:/media/ABW-232.mp4')
+        options = dict(issue=Mock(), deadline=time.monotonic() + 30)
+        found = session._fallback_tags(row, 'ABW-232', ['tags'], [], (), **options)
+        self.assertEqual([source for source, _, _ in found], ['avbase', 'javbus'])
+        provider.query.reset_mock()
+        session._fallback_tags(row, 'ABW-232', ['tags'], [found[-1]], (), **options)
+        provider.query.assert_not_called()
+        session._routes = {'censored': ('javdb',)}
+        session._preferred_tags(row, 'ABW-232', ['tags'], ('javdb',), [], (),
+                                update=Mock(), **options)
+        self.assertTrue(misses.fresh('javdb', 'ABW-232'))
+        session._preferred_tags(row, 'ABW-232', ['tags'], ('javdb',), [], (),
+                                update=Mock(), **options)
+        self.assertEqual(provider.query.call_count, 1)
+
+    def test_partial_community_cache_leaves_unasked_tag_sources_available(self):
+        from peach.library_processing import _MissCache, _RemoteSession
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        provider = Mock()
+        def query(code, source, **kwargs):
+            if source == 'javbus':
+                return {'id': code, 'genres': ['ドラマ']}
+            raise NotFound('没有这个番号')
+        provider.query.side_effect = query
+        session = _RemoteSession(config, lambda: provider, _MissCache(self.root / 'misses.json'),
+            retrying=False, routes={'censored': ('avbase', 'javbus', 'javdb')})
+        session._evidence('avbase', 'ABW-232', {'id': 'ABW-232', 'genres': ['未知缓存分类']})
+        row = dict(id=1, name='ABW-232.mp4', path='R:/media/ABW-232.mp4')
+        entries = session._metadata(row, 'ABW-232', ['tags'], update=Mock(), issue=Mock())
+        self.assertEqual([source for source, _, _ in entries], ['avbase', 'javbus'])
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb', 'javbus'])
+        provider.community.assert_not_called()
+
+    def test_a_sibling_with_a_fresh_budget_can_pass_a_cached_tag_source_timeout(self):
+        from peach.library_processing import _MissCache, _RemoteSession
+        from peach.jav_cover_fetch import DeadlineExceeded
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        provider = Mock()
+        def query(code, source, **kwargs):
+            if source == 'avbase':
+                raise DeadlineExceeded('本项超时')
+            return {'id': code, 'genres': ['ドラマ']}
+        provider.query.side_effect = query
+        session = _RemoteSession(config, lambda: provider, _MissCache(self.root / 'misses.json'),
+            retrying=False, routes={'censored': ('avbase', 'javbus')})
+        row = dict(id=1, name='ABW-232.mp4', path='R:/media/ABW-232.mp4')
+        options = dict(issue=Mock(), deadline=time.monotonic() + 30)
+        self.assertEqual(session._fallback_tags(row, 'ABW-232', ['tags'], [], (), **options), [])
+        entries = session._fallback_tags(row, 'ABW-232', ['tags'], [], (), **options)
+        self.assertEqual([source for source, _, _ in entries], ['javbus'])
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['avbase', 'javbus'])
+
+    @windows_ledger_roots
+    def test_safe_filename_number_reaches_source_and_lands_cast_and_content_tags(self):
+        media = self.root / 'media'
+        media.mkdir()
+        video = media / 'abw000000232 测试作品.mp4'
+        video.write_bytes(b'original video')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': (str(media),)})
+        process_library(config, db, self.root / 'generated', self.root / 'covers', stage='scan')
+        provider = stub_provider()
+        provider.query.return_value = {
+            'id': 'ABW-232', 'title': '测试作品', 'maker': 'Prestige', 'release_date': '2022-05-13',
+            'actresses': [{'japanese_name': '涼森れむ'}], 'genres': ['巨乳', 'ドラマ']}
+        provider.cover.return_value = False
+        database = LedgerDatabase(db)
+        with patch('peach.library_processing._enrich_finished_performers',
+                   return_value={'aliases': 0, 'avatars': 0, 'conflicts': 0, 'failed': 0}):
+            result = process_library(config, db, self.root / 'generated', self.root / 'covers',
+                stage='metadata', database=database, provider_factory=lambda: provider,
+                route_overrides='censored=r18dev')
+        with database.read_connection() as connection:
+            row = connection.execute('SELECT code,catalog_title,field_owners FROM asset').fetchone()
+            cast = {value[0] for value in connection.execute(
+                "SELECT e.canonical_name FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
+                "WHERE ae.asset_id=1 AND e.kind='performer'")}
+            tags = {value[0] for value in connection.execute(
+                "SELECT tag FROM asset_tag WHERE asset_id=1 AND source='javinizer:r18dev:tag'")}
+        self.assertEqual(row[0:2], ('ABW-232', '测试作品'))
+        self.assertEqual(owner_of(row[2], 'code'), 'scan:filename')
+        self.assertEqual(cast, {'涼森れむ'})
+        self.assertEqual(tags, {'巨乳', '剧情'})
+        self.assertEqual(result['identified'], 1)
+        self.assertTrue(any(call.args[:2] == ('ABW-232', 'r18dev') for call in provider.query.call_args_list))
+        self.assertEqual(video.read_bytes(), b'original video')
+
+    @windows_ledger_roots
+    def test_unidentified_nfo_checkpoint_can_collect_a_safe_filename_number(self):
+        media = self.root / 'media'
+        media.mkdir()
+        video = media / 'abw000000232.mp4'
+        video.write_bytes(b'original video')
+        nfo = media / 'abw000000232.nfo'
+        nfo.write_text('<movie><title>本地作品</title></movie>', encoding='utf-8')
+        original_nfo = nfo.read_bytes()
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': (str(media),)})
+        process_library(config, db, self.root / 'generated', self.root / 'covers', stage='scan')
+        provider = stub_provider()
+        provider.query.return_value = {
+            'id': 'ABW-232', 'title': '本地作品', 'maker': 'Prestige', 'release_date': '2022-05-13',
+            'actresses': [{'japanese_name': '涼森れむ'}], 'genres': ['巨乳']}
+        provider.cover.return_value = False
+        factory = Mock(return_value=provider)
+        options = dict(stage='metadata', provider_factory=factory, route_overrides='censored=r18dev')
+        with patch('peach.library_processing.local_cover_code', return_value=None, create=True):
+            saved = process_library(config, db, self.root / 'generated', self.root / 'covers', **options)
+        self.assertEqual(len(saved['completed_metadata']), 1)
+        factory.assert_not_called()
+        with patch('peach.library_processing._enrich_finished_performers',
+                   return_value={'aliases': 0, 'avatars': 0, 'conflicts': 0, 'failed': 0}):
+            result = process_library(config, db, self.root / 'generated', self.root / 'covers',
+                database=LedgerDatabase(db), resume_state=saved, **options)
+            calls = provider.query.call_count
+            process_library(config, db, self.root / 'generated', self.root / 'covers',
+                database=LedgerDatabase(db), resume_state=result, **options)
+        self.assertGreater(calls, 0)
+        self.assertEqual(provider.query.call_count, calls)
+        groups = read_rows(self.root / 'generated/library-metadata-field-candidates.csv')
+        self.assertEqual({row['code'] for row in groups}, {'ABW-232'})
+        with closing(sqlite3.connect(db)) as connection:
+            self.assertEqual(connection.execute('SELECT code,catalog_title FROM asset').fetchone(),
+                             ('ABW-232', '本地作品'))
+        self.assertEqual(video.read_bytes(), b'original video')
+        self.assertEqual(nfo.read_bytes(), original_nfo)
+
+    def test_compact_numbers_keep_distinct_releases_out_of_one_auto_apply_group(self):
+        from peach.metadata_auto_apply import _group_identifies_code
+        first = dict(name='abw000000232 测试作品.mp4', path='R:/media/first.mp4')
+        same = dict(name='abw232-part2.mp4', path='R:/media/second.mp4')
+        other = dict(name='ipx123 测试作品.mp4', path='R:/media/other.mp4')
+        self.assertTrue(_group_identifies_code('ABW-232', [first]))
+        self.assertTrue(_group_identifies_code('ABW-232', [first, same]))
+        self.assertFalse(_group_identifies_code('ABW-232', [first, other]))
+
+    def test_rejected_local_names_still_veto_a_different_release_in_the_group(self):
+        from peach.metadata_auto_apply import _group_identifies_code
+        first = dict(name='ABW-232.mp4', path='R:/media/first.mp4')
+        for name in ('carib-011015-780 sample.mp4', 'watch 071616-209.mp4',
+                     'heyzo0661（081916_671）.mp4'):
+            with self.subTest(name=name):
+                other = dict(name=name, path='R:/media/other.mp4')
+                self.assertFalse(_group_identifies_code('ABW-232', [first, other]))
+
     def test_task_sidecar_index_does_not_walk_the_folder_for_each_video(self):
         from peach.library_nfo import SidecarIndex
         class CountedFiles(dict):
@@ -930,7 +1175,8 @@ class LibraryNfoTests(unittest.TestCase):
         candidates.unlink()
         process_library(config, db, self.root / 'generated', self.root / 'covers', provider_factory=factory)
         self.assertEqual(list(read_rows(candidates, missing_ok=True)), [])
-        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['r18dev', 'javdb'])
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list],
+                         ['r18dev', 'javdb', 'avbase', 'javbus'])
 
     @windows_ledger_roots
     def test_a_performer_marker_is_not_a_content_tag_the_ledger_already_has(self):
@@ -1837,7 +2083,7 @@ class LibraryNfoTests(unittest.TestCase):
         run = lambda **extra: process_library(config, db, self.root / 'generated', self.root / 'covers',
                                               provider_factory=Mock(return_value=provider), **extra)
         result = run()
-        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb'])
+        self.assertEqual([call.args[1] for call in provider.query.call_args_list], ['javdb', 'avbase', 'javbus'])
         provider.community.assert_not_called()
         self.assertEqual((result['status'], result['issue_count']), ('complete', 0))
         rows = {row['field']: json.loads(row['candidates_json'])
@@ -1848,7 +2094,7 @@ class LibraryNfoTests(unittest.TestCase):
         run(retry_ids=[1])
         # r18dev 的整份答复已在待批候选表；重试不重复该来源。DMM 尚未给过候选，
         # 社区档在重试时可以再查此前只说过「没有」的 JavDB。
-        retry_sources = [call.args[1] for call in provider.query.call_args_list[1:]]
+        retry_sources = [call.args[1] for call in provider.query.call_args_list[3:]]
         self.assertEqual(retry_sources, ['dmm'])
         provider.community.assert_called_once()
         self.assertIn('javdb', provider.community.call_args.kwargs['route'])
@@ -2022,6 +2268,187 @@ class LibraryNfoTests(unittest.TestCase):
         self.assertIsNone(_official_evidence([]))
         self.assertEqual(_official_evidence([], {'r18dev'}).sources, frozenset({'r18dev'}))
         self.assertIsNone(_official_evidence([('r18dev', {'id': 'X-1'})]), '没有作品 JSON 也没有图址的快照不算证据')
+
+    def test_registered_bridge_snapshot_supplies_a_cover_while_other_sites_are_paused(self):
+        from peach.library_processing import LibraryMetadataProvider
+        from peach.scraping_access import SourcePaused
+        provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+        provider._official_candidates = Mock(return_value=())
+        provider.site = Mock(side_effect=SourcePaused('来源正在冷却'))
+        data = io.BytesIO()
+        Image.new('RGB', (960, 540), 'gray').save(data, 'JPEG')
+        url = 'https://file.netcdn.space/storage/caribbeancom/moviepages/071616-209/images/l_l.jpg'
+        provider.transport = Mock(side_effect=lambda request, _timeout, _limit:
+                                  HttpResponse(200, {}, data.getvalue(), request.url))
+        covers = self.root / 'bridge-covers'
+        with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+            self.assertTrue(provider.cover('071616-209', covers, snapshots=[('avsox', {
+                'id': '071616-209', 'cover_urls': [url], 'title': '作品',
+            })]))
+        self.assertEqual(provider.transport.call_args.args[0].url, url)
+        installed = json.loads((covers / '071616-209.scraping.json').read_text(encoding='utf-8'))
+        self.assertEqual(installed['source_url'], url)
+        self.assertEqual(installed['verified_by'], [], '单一图源不伪装成互相印证')
+        self.assertNotIn('avsox', [call.args[0] for call in provider.site.call_args_list])
+
+    def test_bridge_cover_path_spaces_are_encoded_without_changing_source_evidence(self):
+        from peach.library_processing import LibraryMetadataProvider
+        from peach.scraping_access import SourcePaused
+        provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+        provider._official_candidates = Mock(return_value=())
+        provider.site = Mock(side_effect=SourcePaused('来源正在冷却'))
+        data = io.BytesIO()
+        Image.new('RGB', (960, 540), 'gray').save(data, 'JPEG')
+        url = 'https://file.netcdn.space/storage/tokyohot/n0744bn 1280x720/cover.jpg'
+        encoded = url.replace(' ', '%20')
+        provider.transport = Mock(side_effect=lambda request, _timeout, _limit:
+                                  HttpResponse(200, {}, data.getvalue(), request.url))
+        payload = {'id': 'n0744', 'cover_urls': [url]}
+        covers = self.root / 'bridge-space-covers'
+        with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+            self.assertTrue(provider.cover('n0744', covers, snapshots=[('avsox', payload)]))
+        self.assertEqual(provider.transport.call_args.args[0].url, encoded)
+        installed = json.loads((covers / 'n0744.scraping.json').read_text(encoding='utf-8'))
+        self.assertEqual(installed['source_url'], encoded)
+        self.assertEqual(payload['cover_urls'], [url])
+
+    def test_bridge_cover_snapshots_require_a_registered_source_and_exact_release_identity(self):
+        from peach.library_processing import LibraryMetadataProvider
+        from peach.scraping_access import SourcePaused
+        url = 'https://file.netcdn.space/storage/caribbeancom/moviepages/071616-209/images/l_l.jpg'
+        for source, payload in (
+                ('avsox', {'id': '071616_209', 'cover_urls': [url]}),
+                ('avsox', {'id': '071616-210', 'cover_urls': [url]}),
+                ('avsox', {'cover_urls': [url]}),
+                ('unregistered', {'id': '071616-209', 'cover_urls': [url]})):
+            with self.subTest(source=source, payload=payload):
+                provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+                provider._official_candidates = Mock(return_value=())
+                provider.site = Mock(side_effect=SourcePaused('来源正在冷却'))
+                provider.transport = Mock()
+                with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+                    with self.assertRaises(SourcePaused):
+                        provider.cover('071616-209', self.root / 'rejected-covers', snapshots=[(source, payload)])
+                provider.transport.assert_not_called()
+                self.assertFalse((self.root / 'rejected-covers/071616-209.jpg').exists())
+
+    def test_conflicting_bridge_cover_origins_do_not_install_an_image(self):
+        from peach.library_processing import LibraryMetadataProvider
+        provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+        provider._official_candidates = Mock(return_value=())
+        provider.site = Mock(side_effect=NotFound('没有这个番号'))
+        images = []
+        for size in ((960, 540), (600, 900)):
+            data = io.BytesIO()
+            Image.new('RGB', size, 'gray').save(data, 'JPEG')
+            images.append(data.getvalue())
+        urls = ('https://one.example/cover.jpg', 'https://two.example/cover.jpg')
+        provider.transport = Mock(side_effect=lambda request, _timeout, _limit:
+            HttpResponse(200, {}, images[urls.index(request.url)], request.url))
+        snapshots = [(source, {'id': '071616-209', 'cover_urls': [url]})
+                     for source, url in zip(('avsox', 'airav'), urls)]
+        with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+            with self.assertRaises(NotFound):
+                provider.cover('071616-209', self.root / 'conflicting-covers', snapshots=snapshots)
+        self.assertEqual(provider.transport.call_count, 2)
+        self.assertFalse((self.root / 'conflicting-covers/071616-209.jpg').exists())
+
+    def test_bridge_cover_identity_keeps_special_release_boundaries(self):
+        from peach.library_processing import _community_evidence
+        for code, returned, accepted in (
+                ('ABW-232', 'abw000000232', True),
+                ('FC2-PPV-123456', '123456', True),
+                ('FC2-PPV-123456', '123457', False),
+                ('259LUXU-891', 'LUXU-891', True),
+                ('390JAC-040', 'JAC-040', False),
+                ('HEYDOUGA4030-1932', 'HEYDOUGA4030-1933', False),
+                ('071616-209', '071616_209', False)):
+            with self.subTest(code=code, returned=returned):
+                snapshot = ('avsox', {'id': returned, 'cover_urls': ['https://one.example/cover.jpg']})
+                self.assertEqual(_community_evidence(code, [snapshot]), [snapshot] if accepted else [])
+
+    def test_unusable_bridge_images_preserve_other_sources_transient_failures(self):
+        from peach.library_processing import LibraryMetadataProvider, is_missing
+        from peach.jav_cover_fetch import Unavailable
+        from peach.scraping_access import SourcePaused
+        for urls, requests in (([], 0), (['http://one.example/cover.jpg'], 0),
+                               (['https://one.example/cover.jpg'], 1)):
+            with self.subTest(urls=urls):
+                provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+                provider._official_candidates = Mock(return_value=())
+                provider.site = Mock(side_effect=SourcePaused('来源正在冷却'))
+                provider.transport = Mock(side_effect=lambda request, _timeout, _limit:
+                    HttpResponse(200, {}, b'broken image', request.url))
+                with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+                    with self.assertRaises((SourcePaused, Unavailable)) as failed:
+                        provider.cover('071616-209', self.root / 'unusable-covers', snapshots=[('avsox', {
+                            'id': '071616-209', 'cover_urls': urls,
+                        })])
+                self.assertIn('冷却', str(failed.exception))
+                self.assertFalse(is_missing(failed.exception), '临时来源失败不进入七天缺失记忆')
+                self.assertEqual(provider.transport.call_count, requests)
+                self.assertFalse((self.root / 'unusable-covers/071616-209.jpg').exists())
+
+    def test_cover_only_retry_reuses_fresh_bridge_evidence_without_reusing_stale_snapshots(self):
+        from peach.library_processing import LibraryMetadataProvider, _MissCache, _RemoteSession, MISS_TTL_SECONDS
+        from peach.scraping_access import SourcePaused
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        code = '071616-209'
+        url = 'https://file.netcdn.space/storage/caribbeancom/moviepages/071616-209/images/l_l.jpg'
+        payload = {'id': code, 'cover_urls': [url]}
+        row = dict(id=1, code=code, name=code + '.mp4', path=str(self.root / (code + '.mp4')), studio=None)
+        data = io.BytesIO()
+        Image.new('RGB', (960, 540), 'gray').save(data, 'JPEG')
+        for label, age, expected in (('fresh', 0, 1), ('expired', MISS_TTL_SECONDS + 60, 0)):
+            with self.subTest(label=label):
+                misses = _MissCache(self.root / f'{label}-misses.json')
+                seed = _RemoteSession(config, None, misses, retrying=False)
+                snapshot = seed._evidence('avsox', code, payload)[2]
+                stamp = time.time() - age
+                os.utime(snapshot, (stamp, stamp))
+                provider = LibraryMetadataProvider.__new__(LibraryMetadataProvider)
+                provider._official_candidates = Mock(return_value=())
+                provider.site = Mock(side_effect=SourcePaused('来源正在冷却'))
+                provider.query = Mock()
+                provider.transport = Mock(side_effect=lambda request, _timeout, _limit:
+                    HttpResponse(200, {}, data.getvalue(), request.url))
+                remote = _RemoteSession(config, lambda provider=provider: provider, misses, retrying=True)
+                with patch('peach.jav_cover_fetch.best_cover', side_effect=NotFound('没有官方候选')):
+                    entries, installed = remote.collect(row, code, [], self.root / label,
+                                                         update=Mock(), issue=Mock())
+                self.assertEqual(installed, expected)
+                self.assertEqual(entries, [])
+                self.assertEqual(provider.transport.call_count, expected)
+                provider.query.assert_not_called()
+                self.assertEqual((self.root / label / (code + '.jpg')).is_file(), bool(expected))
+
+    def test_cover_retry_keeps_disk_evidence_separate_from_fresh_metadata_answers(self):
+        from peach.library_processing import _MissCache, _RemoteSession
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True)
+        code = '071616-209'
+        row = dict(id=1, code=code, name=code + '.mp4', path=str(self.root / (code + '.mp4')), studio=None)
+        old = {'id': code, 'actresses': [{'japanese_name': '磁盘演员'}],
+               'cover_urls': ['https://one.example/cover.jpg']}
+        fresh = {'id': code, 'actresses': [{'japanese_name': '本次演员'}]}
+        misses = _MissCache(self.root / 'retry-misses.json')
+        seed = _RemoteSession(config, None, misses, retrying=False)
+        seed._evidence('avsox', code, old)
+        provider = Mock()
+        provider.cover.return_value = False
+        provider.amane.return_value = [('avsox', fresh)]
+        remote = _RemoteSession(config, lambda: provider, misses, retrying=True,
+                                routes={'uncensored': ('avsox',)})
+        remote.collect(row, code, [], self.root / 'retry-covers', update=Mock(), issue=Mock())
+        self.assertEqual(provider.cover.call_args.kwargs['snapshots'], [('avsox', old)])
+        provider.amane.assert_not_called()
+        entries, _ = remote.collect({**row, 'id': 2}, code, ['performers'], self.root / 'retry-covers',
+                                    update=Mock(), issue=Mock())
+        self.assertEqual([(source, payload) for source, payload, _ in entries], [('avsox', fresh)])
+        self.assertEqual(provider.amane.call_count, 1)
+        entries, _ = remote.collect({**row, 'id': 3}, code, ['performers'], self.root / 'retry-covers',
+                                    update=Mock(), issue=Mock())
+        self.assertEqual([(source, payload) for source, payload, _ in entries], [('avsox', fresh)])
+        self.assertEqual(provider.amane.call_count, 1)
 
     def test_maker_snapshot_supplies_its_own_cover_candidate(self):
         from peach.library_processing import _official_evidence
@@ -2622,7 +3049,7 @@ class LibraryWatchdogTests(unittest.TestCase):
         for site in metadata_routes.route_for_code('ABW-205'):
             misses.record(site, 'ABW-205')
         (media / 'ABW-205.mp4').unlink()
-        with patch('peach.library_processing.sidecars') as listing:
+        with patch('peach.library_processing._DirectoryIndex.sidecars') as listing:
             state = process_library(config, db, self.root / 'generated', self.root / 'covers',
                                     stage='collect', provider_factory=lambda: provider)
         listing.assert_not_called()
@@ -2662,6 +3089,31 @@ class LibraryWatchdogTests(unittest.TestCase):
         self.assertEqual(written.call_count, 1)
         rows = read_rows(self.root / 'generated' / 'library-metadata-field-candidates.csv')
         self.assertEqual(len({row['asset_id'] for row in rows}), 3)
+
+    def test_single_refresh_is_explicit_and_stays_scoped(self):
+        from peach.web_library_processing import w_library_processing
+        database_root = self.root / 'database'
+        database_root.mkdir()
+        db = fresh_ledger(database_root)
+        media = self.root / 'media'
+        media.mkdir()
+        with closing(sqlite3.connect(db)) as connection, connection:
+            connection.execute("INSERT INTO asset(id,location,path,name,medium) VALUES(1,'local',?,'one.mp4','video')",
+                               (str(media / 'one.mp4'),))
+        contract = SimpleNamespace(db_path=db, candidate_root=self.root / 'generated',
+            cover_root=self.root / 'covers', cache_bust=lambda: None, database=Mock(),
+            library_processing_job=SimpleNamespace(snapshot=lambda: None,
+                start=lambda work, restart, initial, recovery: (work('job'), initial)[1],
+                update=lambda job_id, **values: None))
+        with patch('peach.web_library_processing.settings_file.active', return_value=self._config(media)), \
+             patch('peach.web_library_processing.process_library', return_value={'status': 'complete'}) as run:
+            w_library_processing(contract, {'stage': 'metadata', 'asset_ids': [1], 'refresh': True})
+            self.assertTrue(run.call_args.kwargs.get('refresh_metadata'))
+            self.assertEqual(run.call_args.kwargs['asset_ids'], [1])
+            with self.assertRaises(ValueError):
+                w_library_processing(contract, {'stage': 'metadata', 'refresh': True})
+            with self.assertRaises(ValueError):
+                w_library_processing(contract, {'stage': 'all', 'asset_ids': [1], 'refresh': True})
 
     def test_the_stage_asked_for_is_the_stage_that_runs(self):
         """页面点哪一段就跑哪一段，不认识的段数拒绝掉。

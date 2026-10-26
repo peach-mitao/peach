@@ -25,6 +25,20 @@ DEMO = SiteConfig(name="demo", label="Demo", provider="demo-page", base_url="htt
 
 
 class JavDBResourceTests(unittest.TestCase):
+    def test_country_restriction_is_not_a_missing_release(self):
+        from peach.sources.javdb import JavDBSource
+        for text in (
+            'Due to copyright restrictions, access to this site is prohibited in the country where your internet is located.',
+            '由於版權限制，本站禁止了你的網路所在國家的訪問。',
+        ):
+            with self.subTest(text=text):
+                def transport(request, timeout, limit, body=text):
+                    return HttpResponse(200, {}, ('<html><body>' + body + '</body></html>').encode(), request.url)
+                with self.assertRaises(SourceFailure) as raised:
+                    JavDBSource().query('ABW-232', session=Session(transport))
+                self.assertEqual(raised.exception.reason, FailureReason.GEO_RESTRICTED)
+                self.assertNotEqual(raised.exception.kind, 'not_found')
+
     def test_categories_keep_raw_words_and_deduplicate_links_after_identity_check(self):
         from peach.sources.javdb import JavDBSource
         from peach.metadata import extract_peach_fields

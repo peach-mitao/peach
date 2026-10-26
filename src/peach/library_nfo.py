@@ -18,8 +18,12 @@ def directory_files(directory: Path) -> dict[str, Path]:
         return {entry.name.casefold(): Path(entry.path) for entry in entries if entry.is_file()}
 
 
-POSTER_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.tbn')
+POSTER_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.webp', '.tbn')
 _NUMBERED = re.compile(r'(.*\D|)(\d+)(\D*)')
+
+
+class NfoIdentityConflict(ValueError):
+    """NFO 声明了互相冲突的发行番号。"""
 
 
 class SidecarIndex:
@@ -90,6 +94,22 @@ def read_nfo(path: Path):
     """保留完整原文；拒绝 DTD，并限制 XML 的输入体积。"""
     with path.open('rb') as handle:
         raw = handle.read(1024 * 1024 + 1)
+    return parse_nfo(raw), raw
+
+
+def identity_elements(root):
+    """读取和显式改号共用的 JAV 身份节点；其他编号体系的标识保留。"""
+    for node in root:
+        value = (node.text or '').strip()
+        typed = node.tag == 'uniqueid' and node.get('type', '').lower() in {'javboss', 'jav', 'javid', 'dvdid', 'num'}
+        explicit = node.tag in {'id', 'uniqueid'} and re.fullmatch(
+            r'(?:[A-Za-z]{2,12}[-_]\d{2,8}|FC2[-_](?:PPV[-_])?\d+)', value, re.I)
+        if (typed or node.tag in {'num', 'sorttitle'} or explicit) and release_code_from_text(value):
+            yield node
+
+
+def parse_nfo(raw: bytes):
+    """按本地 NFO 的同一套体积、安全和身份判据解析待写入或已读取的字节。"""
     # XML 的 UTF-16/32 编码包含零字节；声明检查同样覆盖这些编码。
     declarations = raw.replace(b'\x00', b'').upper()
     if len(raw) > 1024 * 1024 or b'<!DOCTYPE' in declarations or b'<!ENTITY' in declarations:
@@ -100,16 +120,9 @@ def read_nfo(path: Path):
     def text(*keys):
         return next(((root.findtext(key) or '').strip() for key in keys
                      if (root.findtext(key) or '').strip()), '')
-    identifiers = [node.text for node in root.findall('uniqueid')
-                   if node.get('type', '').lower() in {'javboss', 'jav', 'javid', 'dvdid', 'num'}]
-    identifiers.extend([text('num'), text('sorttitle')])
-    # 通用 id 常是 IMDb/TMDb；仅明确的番号形状参与 JAV 身份识别。
-    for value in [text('id'), *(node.text or '' for node in root.findall('uniqueid'))]:
-        if re.fullmatch(r'(?:[A-Za-z]{2,12}[-_]\d{2,8}|FC2[-_](?:PPV[-_])?\d+)', value.strip(), re.I):
-            identifiers.append(value)
-    codes = {code for value in identifiers if (code := release_code_from_text(value or ''))}
+    codes = {release_code_from_text(node.text or '') for node in identity_elements(root)}
     if len(codes) > 1:
-        raise ValueError('NFO 包含多个不同番号')
+        raise NfoIdentityConflict('NFO 包含多个不同番号')
     genres = list(dict.fromkeys(node.text.strip() for key in ('genre', 'tag')
                   for node in root.findall(key) if node.text and node.text.strip()))
     payload = dict(id=next(iter(codes), ''), title=text('title', 'localtitle', 'name'),
@@ -121,7 +134,7 @@ def read_nfo(path: Path):
                    for node in root.findall('actor')], genres=genres, local_tags=genres,
         nfo_kind=root.tag, source_generator=text('generator'),
         local_art=text('art/poster', 'thumb[@aspect="poster"]', 'thumb'))
-    return payload, raw
+    return payload
 
 
 def local_art(video: Path, payload: dict):

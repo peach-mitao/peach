@@ -184,6 +184,13 @@ describe('作品详情岛', () => {
     try {
       const page = opened.page;
       await page.emulateMedia({reducedMotion:'no-preference'});
+      // 这一项验证实际运动的暂停；减少透明度模式会把背景动画直接关闭。
+      const media = await page.context().newCDPSession(page);
+      await media.send('Emulation.setEmulatedMedia', { features: [
+        { name: 'prefers-reduced-motion', value: 'no-preference' },
+        { name: 'prefers-reduced-transparency', value: 'no-preference' },
+        { name: 'prefers-contrast', value: 'no-preference' },
+      ] });
       await page.route(/\/api\/item\?/, async route => {
         await new Promise(resolve => setTimeout(resolve, 400));
         await route.fallback();
@@ -201,6 +208,8 @@ describe('作品详情岛', () => {
       const backgroundPlayState=()=>page.locator('.top .search').first().evaluate(
         node=>getComputedStyle(node).animationPlayState);
       const initialPlayState=await backgroundPlayState();
+      assert.notEqual(await page.locator('.top .search').first().evaluate(
+        node=>getComputedStyle(node).animationName), 'none', '背景动画必须实际启用');
       await page.locator(`#grid [data-media-card][data-id="${ITEM.plain}"] [data-media-title]`).first().click();
       await pathIs(page, `/assets/${ITEM.plain}`);
       await page.locator(DETAIL_READY).waitFor();

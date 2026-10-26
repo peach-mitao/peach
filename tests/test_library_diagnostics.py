@@ -73,6 +73,23 @@ class LibraryDiagnosticsTests(unittest.TestCase):
         self.assertEqual(row['size'], 1048576)
         self.assertEqual(before, self.db.read_bytes())
 
+    def test_cover_health_uses_filename_asset_keys_and_frame_fallback_for_every_video(self):
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("UPDATE asset SET name='abw000000232 sample.mp4' WHERE id=2")
+        (self.root / 'covers/ASSET-ID-1.jpg').write_bytes(b'image')
+        (self.root / 'covers/ABW-232.jpg').write_bytes(b'image')
+        (self.root / 'posters/3_4.jpg').write_bytes(b'image')
+        before = self.db.read_bytes()
+        self.assertEqual(diagnostics.library(self.settings, self.config)['groups']['cover']['count'], 0)
+        self.assertEqual(before, self.db.read_bytes())
+
+    def test_cover_health_rejects_excluded_sources_and_does_not_hide_missing_images(self):
+        (self.root / 'covers/ABC-123.jpg').write_bytes(b'image')
+        (self.root / 'covers/ABC-123.scraping.json').write_text(
+            json.dumps({'source_url': 'https://javdb.com/v/sample', 'provider': 'javdb'}), encoding='utf-8')
+        self.assertEqual([row['id'] for row in diagnostics.library(self.settings, self.config)
+                          ['groups']['cover']['items']], [1, 2, 3])
+
     def test_missing_database_and_broken_or_oversized_logs_are_unknown(self):
         self.db.unlink()
         self.assertTrue(all(row['count'] is None for row in diagnostics.library(self.settings, self.config)['groups'].values()))

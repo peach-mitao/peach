@@ -8,12 +8,15 @@ import sqlite3
 import time
 from contextlib import closing
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from .catalog_rules import normalise_code_key, release_code_from_text
+from .cover_artwork import has_javdb_source
 from .metadata_policy import MAKER_SOURCES
 from .metadata_routes import AMANE_STAGE, ROUTES
 from .scraping_access import SOURCES, cooldown_state, source_checks
+from .western_artwork import resolved_artwork_key
 
 LIMIT = 500
 MAX_LOG_BYTES = 8 * 1024 * 1024
@@ -31,10 +34,12 @@ def timestamp(value):
         return None
 
 
-def inventory(root):
+def inventory(root, *, covers=False):
     try:
         with os.scandir(root) as entries:
-            return {entry.name[:-4].casefold() for entry in entries if entry.name.endswith(".jpg")}
+            return {entry.name[:-4].casefold() for entry in entries
+                    if entry.name.endswith(".jpg") and entry.is_file()
+                    and (not covers or not has_javdb_source(Path(entry.path)))}
     except FileNotFoundError:
         return set()
     except OSError:
@@ -110,11 +115,13 @@ def library(settings, config):
         return {"groups": groups, "issue_at": None}
     assets = {row[0]: _library_item(row) for row in rows}
     groups["duration"] = group("缺时长", [assets[row[0]] for row in rows if not row[2] or row[2] <= 0])
-    covers, posters = inventory(settings.cover_root), inventory(settings.poster_root)
+    covers, posters = inventory(settings.cover_root, covers=True), inventory(settings.poster_root)
     if covers is not None and posters is not None:
+        def has_cover(key):
+            return normalise_code_key(key).casefold() in covers
         missing = [assets[row[0]] for row in rows
-                   if (normalise_code_key(row[1]).casefold() not in covers if row[1]
-                       else f"{row[0]}_4" not in posters)]
+                   if not has_cover(resolved_artwork_key(row[0], row[1], row[3], has_cover))
+                   and f"{row[0]}_4" not in posters]
         groups["cover"] = group("缺封面", missing)
     failed, issue_at = failures(config)
     if failed is not None:
