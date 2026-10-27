@@ -1422,18 +1422,20 @@ def q_facets(
             f"SELECT {EFFECTIVE_REGION_SQL} AS k,count(*) AS n FROM asset a "
             "WHERE a.medium='video' " + scope + "GROUP BY k ORDER BY n DESC",
             scope_params))
+        # Keep asset predicates outside the entity join: inaccurate statistics can
+        # otherwise evaluate them for every entity/video pair before testing links.
+        facet_assets = "SELECT a.id FROM asset a WHERE a.medium='video' " + scope
         out["creators"] = [dict(r) for r in c.execute(
             "SELECT e.canonical_name AS k,count(DISTINCT ae.asset_id) AS n "
             "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
-            "JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND e.kind='creator' " + scope +
-        
+            "WHERE e.kind='creator' AND ae.asset_id IN (" + facet_assets + ") "
             "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT 60", scope_params)]
         # 标签要分层 —— 一锅端会让「演员:一个ren」和「1080P」「足交」混在一起。
         # 三类分开：技术规格（画质/时长/画幅，筛选价值低）、内容维度（真正有用的）、演员（另立一栏）。
         rows = [dict(r) for r in c.execute(
             "SELECT e.canonical_name AS k, count(DISTINCT ae.asset_id) AS n "
             "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
-            "JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND e.kind='tag' " + scope +
+            "WHERE e.kind='tag' AND ae.asset_id IN (" + facet_assets + ") "
             "AND " + tag_not_hidden('ae.asset_id', 'e.normalized_name') + ' ' +
             "AND " + tag_is_not_a_performer_name("e.normalized_name") + " "
             "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT 400", scope_params)]
@@ -1449,8 +1451,7 @@ def q_facets(
         out["tagperformers"] = [dict(r) for r in c.execute(
             "SELECT e.canonical_name AS k,count(DISTINCT ae.asset_id) AS n "
             "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
-            "JOIN asset a ON a.id=ae.asset_id WHERE a.medium='video' AND e.kind='performer' " + scope +
-        
+            "WHERE e.kind='performer' AND ae.asset_id IN (" + facet_assets + ") "
             "GROUP BY e.id,e.canonical_name ORDER BY n DESC LIMIT 20", scope_params)]
         st = c.execute(
             "SELECT count(*) total, COALESCE(sum(size),0) bytes, "
