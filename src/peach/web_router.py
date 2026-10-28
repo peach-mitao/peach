@@ -203,6 +203,8 @@ def _get_facets(contract, args):
         'len', 'dur_min', 'dur_max', 'orient', 'region', 'exclude_vertical', 'q', 'thumb',
         'library', 'folder', 'folder_recursive', 'year',
     ) if args.get(key)}
+    if not filters.get("tag"):
+        filters.pop("tag_match", None)
     scope_key += repr(sorted(filters.items()))
     compute = lambda: q_facets(  # noqa: E731
         contract,

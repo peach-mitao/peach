@@ -215,6 +215,104 @@ class WebDataTests(unittest.TestCase):
         con.close()
         return row
 
+    def test_facets_bound_asset_predicate_work_with_inaccurate_statistics(self):
+        asset_count = 400
+        with self.contract.write_transaction() as connection:
+            connection.executemany(
+                "INSERT INTO asset(id,location,path,name,medium,size) VALUES(?,'local',?,?,'video',1)",
+                [(1000 + i, f"R:/Media/demo-{i}.mp4", f"demo-{i}.mp4")
+                 for i in range(asset_count)])
+            connection.executemany(
+                "INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) "
+                "VALUES(?,?,?,?, '2026-01-01','2026-01-01')",
+                [(1000 + kind_index * 120 + i, kind, f"Demo {kind} {i}", f"demo {kind} {i}")
+                 for kind_index, kind in enumerate(("performer", "creator", "tag"))
+                 for i in range(120)])
+            connection.executemany(
+                "INSERT INTO asset_entity(asset_id,entity_id,role,source,confidence) VALUES(?,?,?,'test',1)",
+                [(1000 + i, 1000 + kind_index * 120 + i % 20, kind)
+                 for kind_index, kind in enumerate(("performer", "creator", "tag"))
+                 for i in range(asset_count)])
+            # Duplicate provenance must still count each asset only once.
+            connection.execute(
+                "INSERT INTO asset_entity(asset_id,entity_id,role,source,confidence) "
+                "VALUES(1000,1000,'performer','second-source',1)")
+            connection.execute("ANALYZE")
+
+        filters = {"loc": "local,115", "tag_match": "all", "thumb": "0"}
+        expected = rm_web.q_facets(self.contract, filters=filters)
+        with self.contract.write_transaction() as connection:
+            # Some SQLite builds retain samples that override sqlite_stat1 estimates.
+            if connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='sqlite_stat4'").fetchone():
+                connection.execute("DELETE FROM sqlite_stat4")
+            connection.executemany("UPDATE sqlite_stat1 SET stat=? WHERE idx=?", [
+                ("2957 1439", "idx_asset_location"),
+                ("2957 1439 1", "sqlite_autoindex_asset_1"),
+                ("0 0", "idx_asset_region"),
+                ("0 0 0", "idx_asset_disposal_id"),
+                ("2957 1", "idx_asset_name"),
+                ("2957 1", "idx_asset_size"),
+                ("2957 1439 1439", "idx_asset_hash"),
+                ("12861 131 131", "idx_asset_entity_entity_role"),
+                ("12861 10 1 1 1", "sqlite_autoindex_asset_entity_1"),
+                ("1847 360 1", "sqlite_autoindex_entity_1"),
+            ])
+
+        calls = 0
+
+        def counted_extra(name, path, **kwargs):
+            nonlocal calls
+            calls += 1
+            return catalog_rules.is_local_extra(name, path, **kwargs)
+
+        with mock.patch("peach.repository.is_local_extra", counted_extra):
+            actual = rm_web.q_facets(self.contract, filters=filters)
+        # A work budget is deterministic across machines; elapsed-time limits are not.
+        self.assertLess(calls, asset_count * 40, f"asset predicate calls: {calls}")
+        for key in expected:
+            with self.subTest(field=key):
+                if isinstance(expected[key], list):
+                    self.assertEqual(sorted(actual[key], key=repr), sorted(expected[key], key=repr))
+                else:
+                    self.assertEqual(actual[key], expected[key])
+        self.assertEqual(next(row["n"] for row in actual["tagperformers"]
+                              if row["k"] == "Demo performer 0"), 20)
+
+    def test_facets_ignore_unused_tag_match_and_keep_revision_invalidation(self):
+        args = {"loc": "local,115", "thumb": "0", "tag_match": "all"}
+        with mock.patch("peach.web_state.time.monotonic", return_value=100):
+            first = rm_web.dispatch_api_get(self.contract, "/api/facets", args)
+        with mock.patch("peach.web_state.time.monotonic", return_value=500):
+            for mode in ("all", "any", ""):
+                with self.subTest(tag_match=mode):
+                    self.assertIs(rm_web.dispatch_api_get(
+                        self.contract, "/api/facets", {**args, "tag_match": mode}), first)
+            # A separate writer exercises ledger revisions without cache_bust().
+            with closing(sqlite3.connect(self.db_path)) as connection, connection:
+                connection.execute(
+                    "INSERT INTO asset_entity(asset_id,entity_id,role,source,confidence) "
+                    "VALUES(2,11,'performer','test',1)")
+            refreshed = rm_web.dispatch_api_get(self.contract, "/api/facets", args)
+            self.assertIsNot(refreshed, first)
+            self.assertEqual(refreshed["tagperformers"], [{"k": "Canonical Alice", "n": 2}])
+
+    def test_facets_preserve_tag_match_modes_when_tags_are_selected(self):
+        with self.contract.write_transaction() as connection:
+            connection.executemany(
+                "INSERT INTO entity(id,kind,canonical_name,normalized_name,created_at,updated_at) "
+                "VALUES(?,'tag',?,?,'2026-01-01','2026-01-01')",
+                [(201, "Demo A", "demo a"), (202, "Demo B", "demo b")])
+            connection.executemany(
+                "INSERT INTO asset_entity(asset_id,entity_id,role,source,confidence) "
+                "VALUES(?,?,'tag','test',1)", [(1, 201), (1, 202), (2, 201)])
+        args = {"tag": "Demo A,Demo B", "tag_match": "all"}
+        both = rm_web.dispatch_api_get(self.contract, "/api/facets", args)
+        either = rm_web.dispatch_api_get(self.contract, "/api/facets", {**args, "tag_match": "any"})
+        self.assertEqual(both["stats"]["total"], 1)
+        self.assertEqual(either["stats"]["total"], 2)
+        self.assertIs(rm_web.dispatch_api_get(self.contract, "/api/facets", args), both)
+
     def test_home_aggregates_recompute_only_when_the_tables_they_read_change(self):
         """顶栏候选池、统计、名册、筛选项各按自己读的表缓存：换种子、搜一次不重算，作品变了就重算。"""
         # 存储卷一节读真实挂载的根目录，与这里要验的缓存无关。
