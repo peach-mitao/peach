@@ -205,13 +205,17 @@ def _ctts(offsets: list[int]) -> bytes:
     return body + b"".join(struct.pack(">II", run, offset) for run, offset in runs)
 
 
-def _retimed_edit_list(elst: bytes | None, shift: int, segment_duration: int) -> bytes:
+def _retimed_edit_list(elst: bytes | None, shift: int, segment_duration: int,
+                       tolerance: int = 0) -> bytes:
     """让编辑列表跟上 ctts 的整体平移。
 
     平移把每一帧的显示时刻都推后 `shift`，起播点要跟着推同样多，否则音画差这么多。
     已有的 media_time 正好等于 `shift` 时原样保留：那说明原封装本来就为 ctts 补过这一刀，
     表丢了而这行留着，加回去就复原了；写成两倍反而会真的切掉两帧。
     空编辑（media_time 为 -1）是延迟起播，跟显示顺序无关，原样放过。
+
+    「正好等于」放宽到差半帧以内（`tolerance`）：帧长 40040/40041 交替的片子，封装器
+    写的 40039 和这里算出的 40041 只差两个刻度，按不等处理会写成 80080，多切一帧。
     """
     if elst is not None and len(elst) >= 8:
         version = elst[0]
@@ -223,12 +227,18 @@ def _retimed_edit_list(elst: bytes | None, shift: int, segment_duration: int) ->
             for index in range(count):
                 base = 8 + index * width
                 segment, media_time = struct.unpack_from(layout, elst, base)
-                if media_time >= 0 and media_time != shift:
+                if media_time >= 0 and abs(media_time - shift) > tolerance:
                     media_time += shift
                 entries.append(struct.pack(layout, segment, media_time)
                                + elst[base + width - 4:base + width])
             return elst[:8] + b"".join(entries)
     return struct.pack(">IIIiI", 0, 1, segment_duration, shift, 1 << 16)
+
+
+def _half_frame(decode_times: list[int]) -> int:
+    """最短帧长的一半，媒体刻度。"""
+    gaps = [later - earlier for earlier, later in zip(decode_times, decode_times[1:]) if later > earlier]
+    return min(gaps) // 2 if gaps else 0
 
 
 def _timed_field(payload: bytes, short_offset: int, long_offset: int) -> int:
@@ -333,7 +343,8 @@ def repaired_header(source: Path, ffprobe: Path) -> RepairedHeader:
     edts = video.find(b"edts")
     elst = edts.find(b"elst") if edts else None
     payload = _retimed_edit_list(
-        elst.payload if elst and elst.payload else None, shift, _track_duration(root, video))
+        elst.payload if elst and elst.payload else None, shift, _track_duration(root, video),
+        _half_frame(decode_times))
     if elst is not None:
         elst.payload = payload
     elif edts is not None:
