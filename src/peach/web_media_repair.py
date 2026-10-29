@@ -30,6 +30,8 @@ from .platform import translate_ledger_path
 
 #: 判定结论的落盘位置，放在边车自己的目录里：它们同生同灭，清缓存时一起走。
 SCAN_CACHE_NAME = "mp4-repair-scan.json"
+#: 修法变了就进位：旧版本的 UNAVAILABLE 结论在读入时作废。2 = 容忍个别解不出来的样本。
+SCAN_CACHE_VERSION = 2
 
 #: 文件身份对应的判定缓存；修复产物由边车或新文件核验。
 CLEAN = "clean"
@@ -53,7 +55,14 @@ def _load_cache(contract) -> dict[str, str]:
     except (OSError, ValueError):
         return {}
     entries = payload.get("entries") if isinstance(payload, dict) else None
-    return {str(key): str(value) for key, value in entries.items()} if isinstance(entries, dict) else {}
+    if not isinstance(entries, dict):
+        return {}
+    loaded = {str(key): str(value) for key, value in entries.items()}
+    if payload.get("version") != SCAN_CACHE_VERSION:
+        # 旧版本记下的「修不了」可能只是那时还修不了的片源（例如个别样本解不出来），
+        # 换了修法就该再试一次；「干净」的结论与修法无关，照旧沿用。
+        loaded = {key: value for key, value in loaded.items() if value != UNAVAILABLE}
+    return loaded
 
 
 def _save_cache(contract, entries: dict[str, str]) -> None:
@@ -61,7 +70,7 @@ def _save_cache(contract, entries: dict[str, str]) -> None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(path.name + ".tmp")
-        temporary.write_text(json.dumps({"version": 1, "entries": entries}), encoding="utf-8")
+        temporary.write_text(json.dumps({"version": SCAN_CACHE_VERSION, "entries": entries}), encoding="utf-8")
         temporary.replace(path)
     except OSError:
         # 结论缓存丢了只是下次重扫一遍，不该让整轮任务失败。

@@ -29,6 +29,10 @@ CONTAINERS = frozenset({b"moov", b"trak", b"mdia", b"minf", b"stbl", b"edts"})
 #: 头部盒子加起来的上限；超过这个数就不是我们认识的片源，宁可不修。
 HEADER_LIMIT = 64 << 20
 PROBE_TIMEOUT_SECONDS = 900
+#: 码流里个别样本坏到解码器认不出（实测一块约 16 KiB 的坏数据吃掉一个 B 帧），
+#: 最多容忍这么多个，且不超过样本数的万分之一；再多就说明表和码流真的对不上。
+MAX_UNDECODABLE = 3
+UNDECODABLE_RATIO = 10000
 SIDECAR_MAGIC = b"PEACHMP4\x01"
 SIDECAR_SUFFIX = ".mp4hdr"
 
@@ -176,9 +180,36 @@ def _display_order(ffprobe: Path, source: Path, decode_times: list[int]) -> list
             raise RepairUnavailable("同一帧被输出了两次")
         rank[index] = seen
         seen += 1
-    if seen != len(decode_times):
-        raise RepairUnavailable(f"解码出 {seen} 帧，样本表里有 {len(decode_times)} 个")
+    missing = [index for index, value in enumerate(rank) if value < 0]
+    if missing:
+        allowed = min(MAX_UNDECODABLE, len(decode_times) // UNDECODABLE_RATIO)
+        if len(missing) > allowed:
+            raise RepairUnavailable(f"解码出 {seen} 帧，样本表里有 {len(decode_times)} 个")
+        rank = _place_undecodable(rank, missing)
+        LOGGER.warning("mp4 header repair: %d undecodable sample(s) %s placed before their "
+                       "decode-order successor", len(missing), missing)
     return rank
+
+
+def _place_undecodable(rank: list[int], missing: list[int]) -> list[int]:
+    """解不出来的样本没有显示名次，排在它解码序下一个样本的显示位置之前。
+
+    坏掉的多半是不被参考的 B 帧：连续几个 B 帧之间显示序等于解码序，B 组最后一个排在
+    紧随其后的 P 之前也正好对。找不到后继（坏在最后一帧）就排到最后。
+    """
+    display = sorted((index for index, value in enumerate(rank) if value >= 0),
+                     key=rank.__getitem__)
+    for index in sorted(missing):
+        successor = next((position for position, other in enumerate(display) if other == index + 1),
+                         None)
+        if successor is None:
+            later = [position for position, other in enumerate(display) if other > index]
+            successor = min(later, key=lambda position: display[position]) if later else len(display)
+        display.insert(successor, index)
+    placed = [0] * len(rank)
+    for position, index in enumerate(display):
+        placed[index] = position
+    return placed
 
 
 def _composition_offsets(decode_times: list[int], rank: list[int]) -> tuple[list[int], int]:

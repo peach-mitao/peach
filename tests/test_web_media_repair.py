@@ -4,6 +4,7 @@
 修好之后文件和账本落成什么样。重建头的算术在 `test_mp4repair` 里，重建索引的判据在
 `test_mp4recover` 里。
 """
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -237,6 +238,21 @@ class MediaRepairRunTests(unittest.TestCase):
 
         self.assertEqual((first["repaired"], first["failed"]), (2, 1))
         self.assertEqual(self.store.repaired.count(2), 1)
+
+    def test_an_unavailable_verdict_from_an_older_repair_version_is_tried_again(self):
+        """修法升级（例如开始容忍个别解不出来的样本）之后，旧版本记下的「修不了」要作废。"""
+        self.store.failing.add(2)
+        self.run_once()
+        cache = self.root / "cache" / rm_repair.SCAN_CACHE_NAME
+        payload = json.loads(cache.read_text(encoding="utf-8"))
+        self.assertEqual(payload["version"], rm_repair.SCAN_CACHE_VERSION)
+        self.assertIn(rm_repair.UNAVAILABLE, payload["entries"].values())
+        payload["version"] = 1
+        cache.write_text(json.dumps(payload), encoding="utf-8")
+        self.store.failing.clear()
+        self.run_once()
+
+        self.assertEqual(self.store.repaired.count(2), 2)
 
     def test_a_changed_file_is_judged_again(self):
         """结论跟着文件的大小和改动时间走：换了内容，上一轮的结论就不作数。"""
