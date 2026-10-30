@@ -2,7 +2,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "0703fa25-dd57-449b-a81e-fa2dc6f79403", e._sentryDebugIdIdentifier = "sentry-dbid-0703fa25-dd57-449b-a81e-fa2dc6f79403");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "60a35f4d-58a3-4d77-a857-bfe091d8e290", e._sentryDebugIdIdentifier = "sentry-dbid-60a35f4d-58a3-4d77-a857-bfe091d8e290");
 	} catch {}
 })();
 var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescriptor, r = Object.getOwnPropertyNames, i = Object.getPrototypeOf, a = Object.prototype.hasOwnProperty, o = (e, t) => () => (t || (e((t = { exports: {} }).exports, t, t.exports), e = null), t.exports), s = (e, n) => {
@@ -30533,235 +30533,235 @@ Ble = {
 	expand: "Roztáhnout"
 };
 // node_modules/react-aria/dist/private/intl/tree/da-DK.mjs
-var lA = {};
-lA = {
+var Vle = {};
+Vle = {
 	collapse: "Skjul",
 	expand: "Udvid"
 };
 // node_modules/react-aria/dist/private/intl/tree/de-DE.mjs
-var uA = {};
-uA = {
+var lA = {};
+lA = {
 	collapse: "Reduzieren",
 	expand: "Erweitern"
 };
 // node_modules/react-aria/dist/private/intl/tree/el-GR.mjs
-var dA = {};
-dA = {
+var uA = {};
+uA = {
 	collapse: "Σύμπτυξη",
 	expand: "Ανάπτυξη"
 };
 // node_modules/react-aria/dist/private/intl/tree/en-US.mjs
-var fA = {};
-fA = {
+var dA = {};
+dA = {
 	expand: "Expand",
 	collapse: "Collapse"
 };
 // node_modules/react-aria/dist/private/intl/tree/es-ES.mjs
-var pA = {};
-pA = {
+var fA = {};
+fA = {
 	collapse: "Contraer",
 	expand: "Expandir"
 };
 // node_modules/react-aria/dist/private/intl/tree/et-EE.mjs
-var mA = {};
-mA = {
+var pA = {};
+pA = {
 	collapse: "Ahenda",
 	expand: "Laienda"
 };
 // node_modules/react-aria/dist/private/intl/tree/fi-FI.mjs
-var hA = {};
-hA = {
+var mA = {};
+mA = {
 	collapse: "Pienennä",
 	expand: "Laajenna"
 };
 // node_modules/react-aria/dist/private/intl/tree/fr-FR.mjs
-var gA = {};
-gA = {
+var hA = {};
+hA = {
 	collapse: "Réduire",
 	expand: "Développer"
 };
 // node_modules/react-aria/dist/private/intl/tree/he-IL.mjs
-var _A = {};
-_A = {
+var gA = {};
+gA = {
 	collapse: "כווץ",
 	expand: "הרחב"
 };
 // node_modules/react-aria/dist/private/intl/tree/hr-HR.mjs
-var vA = {};
-vA = {
+var _A = {};
+_A = {
 	collapse: "Sažmi",
 	expand: "Proširi"
 };
 // node_modules/react-aria/dist/private/intl/tree/hu-HU.mjs
-var yA = {};
-yA = {
+var vA = {};
+vA = {
 	collapse: "Összecsukás",
 	expand: "Kibontás"
 };
 // node_modules/react-aria/dist/private/intl/tree/it-IT.mjs
-var bA = {};
-bA = {
+var yA = {};
+yA = {
 	collapse: "Comprimi",
 	expand: "Espandi"
 };
 // node_modules/react-aria/dist/private/intl/tree/ja-JP.mjs
-var xA = {};
-xA = {
+var bA = {};
+bA = {
 	collapse: "折りたたむ",
 	expand: "展開"
 };
 // node_modules/react-aria/dist/private/intl/tree/ko-KR.mjs
-var SA = {};
-SA = {
+var xA = {};
+xA = {
 	collapse: "접기",
 	expand: "펼치기"
 };
 // node_modules/react-aria/dist/private/intl/tree/lt-LT.mjs
-var CA = {};
-CA = {
+var SA = {};
+SA = {
 	collapse: "Sutraukti",
 	expand: "Išskleisti"
 };
 // node_modules/react-aria/dist/private/intl/tree/lv-LV.mjs
-var wA = {};
-wA = {
+var CA = {};
+CA = {
 	collapse: "Sakļaut",
 	expand: "Izvērst"
 };
 // node_modules/react-aria/dist/private/intl/tree/nb-NO.mjs
-var TA = {};
-TA = {
+var wA = {};
+wA = {
 	collapse: "Skjul",
 	expand: "Utvid"
 };
 // node_modules/react-aria/dist/private/intl/tree/nl-NL.mjs
-var EA = {};
-EA = {
+var TA = {};
+TA = {
 	collapse: "Samenvouwen",
 	expand: "Uitvouwen"
 };
 // node_modules/react-aria/dist/private/intl/tree/pl-PL.mjs
-var DA = {};
-DA = {
+var EA = {};
+EA = {
 	collapse: "Zwiń",
 	expand: "Rozwiń"
 };
 // node_modules/react-aria/dist/private/intl/tree/pt-BR.mjs
-var OA = {};
-OA = {
+var DA = {};
+DA = {
 	collapse: "Recolher",
 	expand: "Expandir"
 };
 // node_modules/react-aria/dist/private/intl/tree/pt-PT.mjs
-var kA = {};
-kA = {
+var OA = {};
+OA = {
 	collapse: "Colapsar",
 	expand: "Expandir"
 };
 // node_modules/react-aria/dist/private/intl/tree/ro-RO.mjs
-var AA = {};
-AA = {
+var kA = {};
+kA = {
 	collapse: "Restrângeți",
 	expand: "Extindeți"
 };
 // node_modules/react-aria/dist/private/intl/tree/ru-RU.mjs
-var jA = {};
-jA = {
+var AA = {};
+AA = {
 	collapse: "Свернуть",
 	expand: "Развернуть"
 };
 // node_modules/react-aria/dist/private/intl/tree/sk-SK.mjs
-var MA = {};
-MA = {
+var jA = {};
+jA = {
 	collapse: "Zbaliť",
 	expand: "Rozbaliť"
 };
 // node_modules/react-aria/dist/private/intl/tree/sl-SI.mjs
-var NA = {};
-NA = {
+var MA = {};
+MA = {
 	collapse: "Strni",
 	expand: "Razširi"
 };
 // node_modules/react-aria/dist/private/intl/tree/sr-SP.mjs
-var PA = {};
-PA = {
+var NA = {};
+NA = {
 	collapse: " Skupi",
 	expand: "Proširi"
 };
 // node_modules/react-aria/dist/private/intl/tree/sv-SE.mjs
-var FA = {};
-FA = {
+var PA = {};
+PA = {
 	collapse: "Dölj",
 	expand: "Expandera"
 };
 // node_modules/react-aria/dist/private/intl/tree/tr-TR.mjs
-var IA = {};
-IA = {
+var FA = {};
+FA = {
 	collapse: "Daralt",
 	expand: "Genişlet"
 };
 // node_modules/react-aria/dist/private/intl/tree/uk-UA.mjs
-var LA = {};
-LA = {
+var IA = {};
+IA = {
 	collapse: "Згорнути",
 	expand: "Розгорнути"
 };
 // node_modules/react-aria/dist/private/intl/tree/zh-CN.mjs
-var RA = {};
-RA = {
+var LA = {};
+LA = {
 	collapse: "折叠",
 	expand: "扩展"
 };
 // node_modules/react-aria/dist/private/intl/tree/zh-TW.mjs
-var zA = {};
-zA = {
+var RA = {};
+RA = {
 	collapse: "收合",
 	expand: "展開"
 };
 // node_modules/react-aria/dist/private/tree/intlStrings.mjs
-var BA = {};
-BA = {
+var zA = {};
+zA = {
 	"ar-AE": Rle,
 	"bg-BG": zle,
 	"cs-CZ": Ble,
-	"da-DK": lA,
-	"de-DE": uA,
-	"el-GR": dA,
-	"en-US": fA,
-	"es-ES": pA,
-	"et-EE": mA,
-	"fi-FI": hA,
-	"fr-FR": gA,
-	"he-IL": _A,
-	"hr-HR": vA,
-	"hu-HU": yA,
-	"it-IT": bA,
-	"ja-JP": xA,
-	"ko-KR": SA,
-	"lt-LT": CA,
-	"lv-LV": wA,
-	"nb-NO": TA,
-	"nl-NL": EA,
-	"pl-PL": DA,
-	"pt-BR": OA,
-	"pt-PT": kA,
-	"ro-RO": AA,
-	"ru-RU": jA,
-	"sk-SK": MA,
-	"sl-SI": NA,
-	"sr-SP": PA,
-	"sv-SE": FA,
-	"tr-TR": IA,
-	"uk-UA": LA,
-	"zh-CN": RA,
-	"zh-TW": zA
+	"da-DK": Vle,
+	"de-DE": lA,
+	"el-GR": uA,
+	"en-US": dA,
+	"es-ES": fA,
+	"et-EE": pA,
+	"fi-FI": mA,
+	"fr-FR": hA,
+	"he-IL": gA,
+	"hr-HR": _A,
+	"hu-HU": vA,
+	"it-IT": yA,
+	"ja-JP": bA,
+	"ko-KR": xA,
+	"lt-LT": SA,
+	"lv-LV": CA,
+	"nb-NO": wA,
+	"nl-NL": TA,
+	"pl-PL": EA,
+	"pt-BR": DA,
+	"pt-PT": OA,
+	"ro-RO": kA,
+	"ru-RU": AA,
+	"sk-SK": jA,
+	"sl-SI": MA,
+	"sr-SP": NA,
+	"sv-SE": PA,
+	"tr-TR": FA,
+	"uk-UA": IA,
+	"zh-CN": LA,
+	"zh-TW": RA
 };
 // node_modules/react-aria/dist/private/tree/useTreeItem.mjs
-function Vle(e) {
+function Hle(e) {
 	return e && e.__esModule ? e.default : e;
 }
-function VA(e, t, n) {
-	let { node: r } = e, i = Oce(e, t, n), a = i.rowProps["aria-expanded"] === !0, o = Pw(Vle(BA), "@react-aria/tree"), s = {
+function BA(e, t, n) {
+	let { node: r } = e, i = Oce(e, t, n), a = i.rowProps["aria-expanded"] === !0, o = Pw(Hle(zA), "@react-aria/tree"), s = {
 		onPress: () => {
 			i.isDisabled || (t.toggleKey(r.key), t.selectionManager.setFocused(!0), t.selectionManager.setFocusedKey(r.key));
 		},
@@ -30779,15 +30779,15 @@ function VA(e, t, n) {
 	};
 }
 // src/react/components/selection-dock.tsx
-var HA = "(prefers-reduced-motion: reduce)", Hle = () => matchMedia(HA).matches, Ule = (e) => {
-	let t = matchMedia(HA);
+var VA = "(prefers-reduced-motion: reduce)", Ule = () => matchMedia(VA).matches, Wle = (e) => {
+	let t = matchMedia(VA);
 	return t.addEventListener("change", e), () => t.removeEventListener("change", e);
-}, UA = /* @__PURE__ */ new Map(), WA = () => {
+}, HA = /* @__PURE__ */ new Map(), UA = () => {
 	let e = document.documentElement;
-	UA.size ? e.style.setProperty("--selection-dock-space", `${Math.max(...UA.values())}px`) : e.style.removeProperty("--selection-dock-space");
+	HA.size ? e.style.setProperty("--selection-dock-space", `${Math.max(...HA.values())}px`) : e.style.removeProperty("--selection-dock-space");
 };
-function Wle({ children: e, count: t, label: n }) {
-	let r = (0, I.useRef)(null), i = bx(), a = (0, I.useSyncExternalStore)(Ule, Hle, () => !1), { isFocusVisible: o } = yC(), s = a || o, c = {
+function Gle({ children: e, count: t, label: n }) {
+	let r = (0, I.useRef)(null), i = bx(), a = (0, I.useSyncExternalStore)(Wle, Ule, () => !1), { isFocusVisible: o } = yC(), s = a || o, c = {
 		opacity: 0,
 		transform: "translate(-50%, 8px)"
 	};
@@ -30795,10 +30795,10 @@ function Wle({ children: e, count: t, label: n }) {
 		let e = r.current;
 		if (!e || !i) return;
 		let t = () => {
-			UA.set(e, Math.ceil(e.offsetHeight + (parseFloat(getComputedStyle(e).bottom) || 0) + 16)), WA();
+			HA.set(e, Math.ceil(e.offsetHeight + (parseFloat(getComputedStyle(e).bottom) || 0) + 16)), UA();
 		}, n = new ResizeObserver(t);
 		return n.observe(e), window.addEventListener("resize", t), t(), () => {
-			n.disconnect(), window.removeEventListener("resize", t), UA.delete(e), WA();
+			n.disconnect(), window.removeEventListener("resize", t), HA.delete(e), UA();
 		};
 	}, [i]), /* @__PURE__ */ (0, L.jsxs)(aS.div, {
 		ref: r,
@@ -30833,17 +30833,17 @@ function Wle({ children: e, count: t, label: n }) {
 		}), e]
 	});
 }
-function GA({ visible: e, ...t }) {
-	return /* @__PURE__ */ (0, L.jsx)(Cx, { children: e ? /* @__PURE__ */ (0, L.jsx)(Wle, { ...t }, "selection") : null });
+function WA({ visible: e, ...t }) {
+	return /* @__PURE__ */ (0, L.jsx)(Cx, { children: e ? /* @__PURE__ */ (0, L.jsx)(Gle, { ...t }, "selection") : null });
 }
 // src/react/batch-dock/batch-dock-api.ts
-var KA = {
+var GA = {
 	group: "clear",
 	operation: "clear",
 	label: "取消",
 	glyph: "x"
 };
-function Gle(e, t = !1) {
+function Kle(e, t = !1) {
 	switch (e) {
 		case "trash": return [
 			{
@@ -30859,7 +30859,7 @@ function Gle(e, t = !1) {
 				glyph: "trash",
 				danger: !0
 			},
-			KA
+			GA
 		];
 		case "junk": return [
 			t ? {
@@ -30880,7 +30880,7 @@ function Gle(e, t = !1) {
 				glyph: "trash",
 				danger: !0
 			},
-			KA
+			GA
 		];
 		case "follow": return [
 			{
@@ -30901,7 +30901,7 @@ function Gle(e, t = !1) {
 				label: "忽略",
 				glyph: "eye-off"
 			},
-			KA
+			GA
 		];
 		default: return [
 			{
@@ -30935,38 +30935,38 @@ function Gle(e, t = !1) {
 				glyph: "trash",
 				danger: !0
 			},
-			KA
+			GA
 		];
 	}
 }
 // src/react/batch-dock/batch-dock-island.tsx
-var qA = null, JA = {
+var KA = null, qA = {
 	count: 0,
 	context: "catalog",
 	junkDismissed: !1
-}, YA = /* @__PURE__ */ new Set();
-function Kle(e) {
-	return YA.add(e), () => {
-		YA.delete(e);
+}, JA = /* @__PURE__ */ new Set();
+function qle(e) {
+	return JA.add(e), () => {
+		JA.delete(e);
 	};
 }
-function qle() {
-	for (let e of [...YA]) e();
+function Jle() {
+	for (let e of [...JA]) e();
 }
-var Jle = { render(e) {
-	JA = e, (0, Lt.flushSync)(qle);
+var Yle = { render(e) {
+	qA = e, (0, Lt.flushSync)(Jle);
 } };
-function Yle(e) {
-	return qA = e, Jle;
+function Xle(e) {
+	return KA = e, Yle;
 }
-function Xle() {
-	let e = (0, I.useSyncExternalStore)(Kle, () => JA);
-	return qA ? /* @__PURE__ */ (0, L.jsx)(Zle, {
-		host: qA,
+function Zle() {
+	let e = (0, I.useSyncExternalStore)(qle, () => qA);
+	return KA ? /* @__PURE__ */ (0, L.jsx)(Qle, {
+		host: KA,
 		props: e
 	}) : null;
 }
-function Zle({ host: e, props: t }) {
+function Qle({ host: e, props: t }) {
 	let n = t.count > 0;
 	return (0, I.useLayoutEffect)(() => {
 		document.body.toggleAttribute("data-batch-dock-open", n);
@@ -30976,11 +30976,11 @@ function Zle({ host: e, props: t }) {
 		className: "peach-react",
 		"data-batch-scope": "",
 		"data-context": t.context,
-		children: /* @__PURE__ */ (0, L.jsx)(GA, {
+		children: /* @__PURE__ */ (0, L.jsx)(WA, {
 			label: "所选项目操作",
 			visible: t.count > 0,
 			count: `已选 ${t.count.toLocaleString()} 项`,
-			children: Gle(t.context, t.junkDismissed).map((t) => /* @__PURE__ */ (0, L.jsxs)("button", {
+			children: Kle(t.context, t.junkDismissed).map((t) => /* @__PURE__ */ (0, L.jsxs)("button", {
 				type: "button",
 				"data-batch-group": t.group,
 				"data-batch-action": t.operation,
@@ -30996,11 +30996,11 @@ function Zle({ host: e, props: t }) {
 	});
 }
 // src/number-setting.ts
-function XA(e, t, n, r) {
+function YA(e, t, n, r) {
 	return Number.isInteger(e) && e >= t && e <= n ? e : r;
 }
 // src/settings-store.ts
-function Qle(e, t) {
+function $le(e, t) {
 	let n = /* @__PURE__ */ new Set(), r = 0, i = () => {
 		r += 1, n.forEach((e) => e());
 	};
@@ -31019,7 +31019,7 @@ function Qle(e, t) {
 	};
 }
 // src/application/navigation-items.ts
-var ZA = [
+var XA = [
 	[
 		"",
 		"首页",
@@ -31070,7 +31070,7 @@ var ZA = [
 		"管理",
 		"wrench"
 	]
-], QA = [
+], ZA = [
 	[
 		"stats",
 		"统计",
@@ -31116,7 +31116,7 @@ var ZA = [
 		"Peach 配置",
 		"folder-cog"
 	]
-], $A = [
+], QA = [
 	"stats",
 	"taste",
 	"cleanup",
@@ -31124,14 +31124,14 @@ var ZA = [
 	"activity",
 	"configuration"
 ];
-function ej(e) {
-	return [.../* @__PURE__ */ new Set([...(Array.isArray(e) ? e : []).filter((e) => $A.includes(e)), ...$A])];
+function $A(e) {
+	return [.../* @__PURE__ */ new Set([...(Array.isArray(e) ? e : []).filter((e) => QA.includes(e)), ...QA])];
 }
-var $le = (e, t) => ej(t).flatMap((t) => t === "configuration" && !e ? [] : QA.filter(([e]) => e === t)), tj = QA.flatMap(([e, t, n]) => e === "configuration" ? [] : [[
+var eue = (e, t) => $A(t).flatMap((t) => t === "configuration" && !e ? [] : ZA.filter(([e]) => e === t)), ej = ZA.flatMap(([e, t, n]) => e === "configuration" ? [] : [[
 	e === "follow" ? "follow-manage" : e === "cleanup" ? "data-cleanup" : e,
 	t,
 	n
-]]), eue = [...ZA, ...tj], tue = {
+]]), tue = [...XA, ...ej], nue = {
 	stats: "stats",
 	review: "review",
 	"data-cleanup": "cleanup",
@@ -31139,7 +31139,7 @@ var $le = (e, t) => ej(t).flatMap((t) => t === "configuration" && !e ? [] : QA.f
 	"follow-manage": "follow",
 	quality: "quality",
 	activity: "activity"
-}, nj = {
+}, tj = {
 	review: {
 		label: "复核分类",
 		items: [
@@ -31209,22 +31209,22 @@ var $le = (e, t) => ej(t).flatMap((t) => t === "configuration" && !e ? [] : QA.f
 			["content", "内容显示"]
 		]
 	}
-}, rj = (e) => nj[e].items.map(([e]) => e), ij = (e) => e === "favorites" ? ["all"] : [];
-function aj(e, t) {
-	let n = rj(e), r = Array.isArray(t) ? t.filter((e) => typeof e == "string" && n.includes(e)) : [];
+}, nj = (e) => tj[e].items.map(([e]) => e), rj = (e) => e === "favorites" ? ["all"] : [];
+function ij(e, t) {
+	let n = nj(e), r = Array.isArray(t) ? t.filter((e) => typeof e == "string" && n.includes(e)) : [];
 	return [.../* @__PURE__ */ new Set([
-		...ij(e),
+		...rj(e),
 		...r,
 		...n
 	])];
 }
-function oj(e) {
+function aj(e) {
 	if (!e || typeof e != "object" || Array.isArray(e)) return {};
 	let t = e;
-	return Object.fromEntries(Object.keys(nj).filter((e) => Array.isArray(t[e])).map((e) => [e, aj(e, t[e])]));
+	return Object.fromEntries(Object.keys(tj).filter((e) => Array.isArray(t[e])).map((e) => [e, ij(e, t[e])]));
 }
 // src/sort-preferences.ts
-var sj = [
+var oj = [
 	["seed", "随机"],
 	["rating", "评分"],
 	["o", "高潮计数"],
@@ -31233,7 +31233,7 @@ var sj = [
 	["size", "体积"],
 	["new", "入库时间"],
 	["played", "观看时间"]
-], cj = ["release", "发行时间"], lj = [...sj, cj].map(([e]) => e), uj = {
+], sj = ["release", "发行时间"], cj = [...oj, sj].map(([e]) => e), lj = {
 	rating: ["从高到低", "从低到高"],
 	o: ["从多到少", "从少到多"],
 	plays: ["从多到少", "从少到多"],
@@ -31242,43 +31242,43 @@ var sj = [
 	new: ["从新到旧", "从旧到新"],
 	played: ["从近到远", "从远到近"],
 	release: ["从新到旧", "从旧到新"]
-}, dj = {
+}, uj = {
 	big: ["size", "desc"],
 	short: ["dur", "asc"],
 	long: ["dur", "desc"]
-}, fj = (e, t, n = uj) => (n[e] || [])[+(t === "asc")] || "", pj = (e, t = uj) => t[e] ? "desc" : "";
-function mj(e, t, n, r = uj) {
+}, dj = (e, t, n = lj) => (n[e] || [])[+(t === "asc")] || "", fj = (e, t = lj) => t[e] ? "desc" : "";
+function pj(e, t, n, r = lj) {
 	return e === t ? r[e] ? {
 		sort: e,
 		dir: n === "asc" ? "desc" : "asc"
 	} : null : {
 		sort: e,
-		dir: pj(e, r)
+		dir: fj(e, r)
 	};
 }
-function hj(e, t, n) {
+function mj(e, t, n) {
 	return e === "seed" ? "" : e === t && n === "asc" ? "asc" : "desc";
 }
-function gj(e, t, n, r, i = n) {
-	let a = e ? dj[e] : void 0, o = a ? a[0] : e, s = o && lj.includes(o) ? o : i;
-	return uj[s] ? {
+function hj(e, t, n, r, i = n) {
+	let a = e ? uj[e] : void 0, o = a ? a[0] : e, s = o && cj.includes(o) ? o : i;
+	return lj[s] ? {
 		sort: s,
-		dir: t === "asc" || t === "desc" ? t : a ? a[1] : e ? "desc" : hj(s, n, r)
+		dir: t === "asc" || t === "desc" ? t : a ? a[1] : e ? "desc" : mj(s, n, r)
 	} : {
 		sort: s,
 		dir: ""
 	};
 }
 // src/appearance/home-glow.ts
-var _j = [
+var gj = [
 	"spot1",
 	"spot2",
 	"spot3"
-], nue = [
+], rue = [
 	"光晕一",
 	"光晕二",
 	"光晕三"
-], vj = "native", yj = [
+], _j = "native", vj = [
 	[
 		"ash",
 		"灰雾",
@@ -31584,7 +31584,7 @@ var _j = [
 		"rose"
 	],
 	[
-		vj,
+		_j,
 		"玻璃原色",
 		{
 			spot1: {
@@ -31602,7 +31602,7 @@ var _j = [
 		},
 		"blue"
 	]
-], bj = (e) => e === vj, xj = [...yj.map(([e, t]) => [e, t]), ["custom", "自定义"]], rue = (e) => (xj.find(([t]) => t === e) || xj[0])[1], Sj = (e) => structuredClone((yj.find(([t]) => t === e) || yj[0])[2]), Cj = [
+], yj = (e) => e === _j, bj = [...vj.map(([e, t]) => [e, t]), ["custom", "自定义"]], iue = (e) => (bj.find(([t]) => t === e) || bj[0])[1], xj = (e) => structuredClone((vj.find(([t]) => t === e) || vj[0])[2]), Sj = [
 	["red", "红"],
 	["orange", "橙"],
 	["amber", "琥珀"],
@@ -31615,7 +31615,7 @@ var _j = [
 	["violet", "紫罗兰"],
 	["fuchsia", "品红"],
 	["rose", "玫红"]
-], wj = "blue", Tj = (e) => Cj.some(([t]) => t === e) ? e : wj, iue = (e) => (yj.find(([t]) => t === e) || [])[3] || "blue", aue = [
+], Cj = "blue", wj = (e) => Sj.some(([t]) => t === e) ? e : Cj, aue = (e) => (vj.find(([t]) => t === e) || [])[3] || "blue", oue = [
 	["all", "全部"],
 	["gray", "灰"],
 	["red", "红"],
@@ -31625,7 +31625,7 @@ var _j = [
 	["blue", "蓝"],
 	["purple", "紫"],
 	["brown", "棕"]
-], oue = [
+], sue = [
 	[
 		"gray",
 		"云灰",
@@ -32021,11 +32021,11 @@ var _j = [
 		"霁蓝",
 		"#6686b8"
 	]
-], Ej = (e, t, n, r) => Number.isInteger(e) && e >= t && e <= n ? e : r, Dj = (e, t) => /^#[0-9a-f]{6}$/i.test(String(e)) ? String(e).toLowerCase() : t, sue = (e, t) => `rgba(${[
+], Tj = (e, t, n, r) => Number.isInteger(e) && e >= t && e <= n ? e : r, Ej = (e, t) => /^#[0-9a-f]{6}$/i.test(String(e)) ? String(e).toLowerCase() : t, cue = (e, t) => `rgba(${[
 	1,
 	3,
 	5
-].map((t) => parseInt(e.slice(t, t + 2), 16)).join(",")},${(t / 100).toFixed(2)})`, cue = {
+].map((t) => parseInt(e.slice(t, t + 2), 16)).join(",")},${(t / 100).toFixed(2)})`, lue = {
 	strength: [
 		0,
 		100,
@@ -32051,7 +32051,7 @@ var _j = [
 		100,
 		50
 	]
-}, Oj = {
+}, Dj = {
 	on: !0,
 	preset: "ash",
 	strength: 100,
@@ -32059,56 +32059,56 @@ var _j = [
 	speed: 100,
 	soften: 50,
 	size: 50,
-	...Sj("ash")
+	...xj("ash")
 };
-function kj(e) {
-	let t = e && typeof e == "object" ? e : {}, n = xj.some(([e]) => e === t.preset), r = n ? t.preset : "ash", i = Sj(r === "custom" ? "ash" : r), a = {
+function Oj(e) {
+	let t = e && typeof e == "object" ? e : {}, n = bj.some(([e]) => e === t.preset), r = n ? t.preset : "ash", i = xj(r === "custom" ? "ash" : r), a = {
 		on: t.on !== !1,
 		preset: r
 	};
-	for (let [e, [n, r, i]] of Object.entries(cue)) a[e] = Ej(+t[e], n, r, i);
-	for (let e of _j) {
+	for (let [e, [n, r, i]] of Object.entries(lue)) a[e] = Tj(+t[e], n, r, i);
+	for (let e of gj) {
 		let r = n && t[e] && typeof t[e] == "object" ? t[e] : {}, o = i[e];
 		a[e] = {
-			color: Dj(r.color, o.color),
-			alpha: Ej(+r.alpha, 0, 100, o.alpha)
+			color: Ej(r.color, o.color),
+			alpha: Tj(+r.alpha, 0, 100, o.alpha)
 		};
 	}
 	return a;
 }
-var lue = (e) => `conic-gradient(from -90deg,${e.map((t, n) => `${t} ${(n * 100 / e.length).toFixed(3)}% ${((n + 1) * 100 / e.length).toFixed(3)}%`).join(",")})`, Aj = /* @__PURE__ */ new WeakMap();
-function uue(e, t) {
-	if (!e) return;
-	let n = Aj.get(e);
-	n || (n = /* @__PURE__ */ new Map(), Aj.set(e, n));
-	let r = t.on && !bj(t.preset), i = (t, r) => {
-		n.get(t) !== r && (n.set(t, r), e.style.setProperty(t, r));
-	};
-	i("--glow-strength", String(r ? t.strength / 100 : 0)), i("--glow-noise", String(r ? t.noise / 100 : 0)), i("--glow-soften", (.7 + t.soften / 100 * .6).toFixed(3)), i("--glow-size", (.5 + t.size / 100).toFixed(3)), i("--glow-drift-scale", t.speed ? (100 / t.speed).toFixed(3) : "1"), i("--glow-drift-play", t.speed ? "running" : "paused"), _j.forEach((e, n) => {
-		let r = t[e];
-		i(`--glow-spot-${n + 1}-color`, sue(r.color, r.alpha));
-	});
-}
+var uue = (e) => `conic-gradient(from -90deg,${e.map((t, n) => `${t} ${(n * 100 / e.length).toFixed(3)}% ${((n + 1) * 100 / e.length).toFixed(3)}%`).join(",")})`, kj = /* @__PURE__ */ new WeakMap();
 function due(e, t) {
 	if (!e) return;
-	let n = !t.on || bj(t.preset);
+	let n = kj.get(e);
+	n || (n = /* @__PURE__ */ new Map(), kj.set(e, n));
+	let r = t.on && !yj(t.preset), i = (t, r) => {
+		n.get(t) !== r && (n.set(t, r), e.style.setProperty(t, r));
+	};
+	i("--glow-strength", String(r ? t.strength / 100 : 0)), i("--glow-noise", String(r ? t.noise / 100 : 0)), i("--glow-soften", (.7 + t.soften / 100 * .6).toFixed(3)), i("--glow-size", (.5 + t.size / 100).toFixed(3)), i("--glow-drift-scale", t.speed ? (100 / t.speed).toFixed(3) : "1"), i("--glow-drift-play", t.speed ? "running" : "paused"), gj.forEach((e, n) => {
+		let r = t[e];
+		i(`--glow-spot-${n + 1}-color`, cue(r.color, r.alpha));
+	});
+}
+function fue(e, t) {
+	if (!e) return;
+	let n = !t.on || yj(t.preset);
 	e.toggleAttribute("data-glow-native", n), e.style.setProperty("--glow-drift-scale", t.speed ? (100 / t.speed).toFixed(3) : "1"), e.style.setProperty("--glow-drift-play", t.speed ? "running" : "paused"), n ? (e.style.removeProperty("--glass-tint-a"), e.style.removeProperty("--glass-tint-b")) : (e.style.setProperty("--glass-tint-a", t.spot1.color), e.style.setProperty("--glass-tint-b", t.spot2.color));
 }
 // src/appearance/settings.ts
-var fue = "peach.settings.v1", pue = [
+var pue = "peach.settings.v1", mue = [
 	"system",
 	"light",
 	"dark"
-], jj = [
+], Aj = [
 	0,
 	7,
 	30,
 	90
-], mue = [
+], hue = [
 	"feedHideGroupCompilations",
 	"feedHideSoloCompilations",
 	"feedHideExcerpts"
-], Mj = {
+], jj = {
 	batchSize: 60,
 	defaultSort: "seed",
 	sortDefaultsVersion: 3,
@@ -32129,66 +32129,66 @@ var fue = "peach.settings.v1", pue = [
 	theme: "system",
 	groupCollapse: !0,
 	sidebarOrder: [...Gl],
-	manageOrder: [...$A],
-	homeGlow: Oj,
-	accent: wj,
+	manageOrder: [...QA],
+	homeGlow: Dj,
+	accent: Cj,
 	performerNameLanguage: "zh-CN",
 	navigationOrders: {},
 	libraryOrder: []
-}, Nj = (e, t, n) => t.includes(e) ? e : n;
-function hue(e) {
+}, Mj = (e, t, n) => t.includes(e) ? e : n;
+function gue(e) {
 	let t = e && typeof e == "object" ? e : {}, n = {
-		...Mj,
+		...jj,
 		...t
 	};
-	n.followInitialDays = jj.includes(+n.followInitialDays) ? +n.followInitialDays : 30, delete n.rotateMinutes;
+	n.followInitialDays = Aj.includes(+n.followInitialDays) ? +n.followInitialDays : 30, delete n.rotateMinutes;
 	let r = !1, i = +n.sortDefaultsVersion || 0;
 	i < 2 && n.defaultSort === "new" && (n.defaultSort = "seed", r = !0);
-	let a = dj[n.defaultSort];
-	return i < 3 && a && (n.defaultSort = a[0], r = !0), n.sortDefaultsVersion = 3, n.batchSize = XA(+n.batchSize, 1, 200, 60), n.defaultSort = Nj(n.defaultSort, lj, "seed"), n.hoverDelaySeconds = XA(+n.hoverDelaySeconds, 0, 60, 5), n.seekSeconds = XA(+n.seekSeconds, 1, 300, 10), delete n.loginDays, delete n.metadataRefreshDays, n.ambientMode = n.ambientMode !== !1, n.theaterMode = n.theaterMode === !0, n.groupCollapse = n.groupCollapse !== !1, n.detailAutoplay = n.detailAutoplay !== !1, n.miniplayer = n.miniplayer !== !1, n.uiSounds = n.uiSounds !== !1, n.feedAutoScroll = n.feedAutoScroll !== !1, n.feedHideGroupCompilations = n.feedHideGroupCompilations !== !1, n.feedHideSoloCompilations = n.feedHideSoloCompilations === !0, n.feedHideExcerpts = n.feedHideExcerpts !== !1, n.searchHistoryLimit = XA(+n.searchHistoryLimit, 0, 50, 10), n.relatedLimit = XA(+n.relatedLimit, 0, 60, 20), n.feedLimit = XA(+n.feedLimit, 1, 100, 12), Object.assign(n, $a(n)), n.theme = Nj(n.theme, pue, "system"), n.performerNameLanguage = Nj(n.performerNameLanguage, ["zh-CN", "ja"], "zh-CN"), n.homeGlow = kj(n.homeGlow), n.accent = Tj(n.accent), n.sidebarOrder = Xl(n.sidebarOrder), n.manageOrder = ej(n.manageOrder), n.navigationOrders = oj(n.navigationOrders), n.libraryOrder = Array.isArray(n.libraryOrder) ? [...new Set(n.libraryOrder.filter((e) => typeof e == "string"))] : [], {
+	let a = uj[n.defaultSort];
+	return i < 3 && a && (n.defaultSort = a[0], r = !0), n.sortDefaultsVersion = 3, n.batchSize = YA(+n.batchSize, 1, 200, 60), n.defaultSort = Mj(n.defaultSort, cj, "seed"), n.hoverDelaySeconds = YA(+n.hoverDelaySeconds, 0, 60, 5), n.seekSeconds = YA(+n.seekSeconds, 1, 300, 10), delete n.loginDays, delete n.metadataRefreshDays, n.ambientMode = n.ambientMode !== !1, n.theaterMode = n.theaterMode === !0, n.groupCollapse = n.groupCollapse !== !1, n.detailAutoplay = n.detailAutoplay !== !1, n.miniplayer = n.miniplayer !== !1, n.uiSounds = n.uiSounds !== !1, n.feedAutoScroll = n.feedAutoScroll !== !1, n.feedHideGroupCompilations = n.feedHideGroupCompilations !== !1, n.feedHideSoloCompilations = n.feedHideSoloCompilations === !0, n.feedHideExcerpts = n.feedHideExcerpts !== !1, n.searchHistoryLimit = YA(+n.searchHistoryLimit, 0, 50, 10), n.relatedLimit = YA(+n.relatedLimit, 0, 60, 20), n.feedLimit = YA(+n.feedLimit, 1, 100, 12), Object.assign(n, $a(n)), n.theme = Mj(n.theme, mue, "system"), n.performerNameLanguage = Mj(n.performerNameLanguage, ["zh-CN", "ja"], "zh-CN"), n.homeGlow = Oj(n.homeGlow), n.accent = wj(n.accent), n.sidebarOrder = Xl(n.sidebarOrder), n.manageOrder = $A(n.manageOrder), n.navigationOrders = aj(n.navigationOrders), n.libraryOrder = Array.isArray(n.libraryOrder) ? [...new Set(n.libraryOrder.filter((e) => typeof e == "string"))] : [], {
 		settings: n,
 		migrated: r
 	};
 }
-function gue(e) {
+function _ue(e) {
 	let t = {};
 	try {
 		t = JSON.parse(e.getItem("peach.settings.v1") || "{}");
 	} catch {}
-	return hue(t);
+	return gue(t);
 }
-var Pj = null;
-function Fj() {
-	if (Pj) return Pj;
-	let { settings: e, migrated: t } = gue(localStorage);
-	return Pj = Qle(fue, e), t && Pj.save(), Pj;
+var Nj = null;
+function Pj() {
+	if (Nj) return Nj;
+	let { settings: e, migrated: t } = _ue(localStorage);
+	return Nj = $le(pue, e), t && Nj.save(), Nj;
 }
-function Ij(e, t, n = Fj()) {
+function Fj(e, t, n = Pj()) {
 	let r = n.value, i = e?.performerNameLanguage;
 	(i === "zh-CN" || i === "ja") && i !== r.performerNameLanguage && (r.performerNameLanguage = i, n.save(), t("performerNameLanguage"));
 	let a = e && e.followInitialDays;
-	jj.includes(a) && (r.followInitialDays = a, n.save());
-	for (let t of mue) typeof e?.[t] == "boolean" && e[t] !== r[t] && (r[t] = e[t], n.save());
+	Aj.includes(a) && (r.followInitialDays = a, n.save());
+	for (let t of hue) typeof e?.[t] == "boolean" && e[t] !== r[t] && (r[t] = e[t], n.save());
 	let o = e && e.searchHistoryLimit;
-	if (Number.isInteger(o) && o >= 0 && o <= 50 ? o !== r.searchHistoryLimit && (r.searchHistoryLimit = XA(o, 0, 50, 10), n.save(), t("searchHistoryLimit")) : e && e.searchHistoryLimit === null && r.searchHistoryLimit !== Mj.searchHistoryLimit && _ue(n), Array.isArray(e?.manageOrder)) {
-		let t = ej(e.manageOrder);
+	if (Number.isInteger(o) && o >= 0 && o <= 50 ? o !== r.searchHistoryLimit && (r.searchHistoryLimit = YA(o, 0, 50, 10), n.save(), t("searchHistoryLimit")) : e && e.searchHistoryLimit === null && r.searchHistoryLimit !== jj.searchHistoryLimit && vue(n), Array.isArray(e?.manageOrder)) {
+		let t = $A(e.manageOrder);
 		t.join(",") !== r.manageOrder.join(",") && (r.manageOrder = t, n.save());
 	}
 	let s = Array.isArray(e && e.sidebarOrder) ? e.sidebarOrder : null;
 	if (Array.isArray(e?.libraryOrder) && e.libraryOrder.every((e) => typeof e == "string") && e.libraryOrder.join(",") !== r.libraryOrder.join(",") && (r.libraryOrder = e.libraryOrder, n.save()), e?.navigationOrders) {
-		let t = oj(e.navigationOrders);
+		let t = aj(e.navigationOrders);
 		JSON.stringify(t) !== JSON.stringify(r.navigationOrders) && (r.navigationOrders = t, n.save());
 	}
 	s && s.length && s.join(",") !== r.sidebarOrder.join(",") && (r.sidebarOrder = s, n.save());
 }
-function _ue(e = Fj()) {
+function vue(e = Pj()) {
 	return wn("/api/settings", {
 		method: "POST",
 		body: JSON.stringify({ searchHistoryLimit: e.value.searchHistoryLimit })
 	}).catch(() => {});
 }
 // src/appearance/theme.ts
-var vue = [
+var yue = [
 	[
 		"system",
 		"跟随系统",
@@ -32204,31 +32204,39 @@ var vue = [
 		"深色",
 		"moon"
 	]
-], yue = null, Lj = () => yue ??= matchMedia("(prefers-color-scheme: dark)"), Rj = null;
-function bue() {
-	return Rj || (Rj = document.createElement("style"), Rj.textContent = "*:not(.board-theme-thumb),*::before,*::after{transition:none!important}"), Rj.isConnected || document.head.append(Rj), () => {
+], bue = null, Ij = () => bue ??= matchMedia("(prefers-color-scheme: dark)"), Lj = null;
+function xue() {
+	return Lj || (Lj = document.createElement("style"), Lj.textContent = "*:not(.board-theme-thumb),*::before,*::after{transition:none!important}"), Lj.isConnected || document.head.append(Lj), () => {
 		getComputedStyle(document.documentElement).opacity;
 		let e = () => {
-			cancelAnimationFrame(t), clearTimeout(n), Rj?.remove();
+			cancelAnimationFrame(t), clearTimeout(n), Lj?.remove();
 		}, t = requestAnimationFrame(e), n = setTimeout(e, 100);
 	};
 }
-function zj(e = Fj().value.theme) {
-	let t = bue(), n = document.documentElement;
+function Rj(e = Pj().value.theme) {
+	let t = xue(), n = document.documentElement;
 	e === "system" ? delete n.dataset.theme : n.dataset.theme = e;
-	let r = e === "dark" || e === "system" && Lj().matches;
+	let r = e === "dark" || e === "system" && Ij().matches;
 	n.classList.toggle("dark", r), document.querySelectorAll("[data-board-theme]").forEach((e) => e.setAttribute("aria-pressed", String(e.dataset.boardTheme === "dark" === r))), document.querySelector(".board-theme-toggle")?.classList.toggle("is-dark", r), document.querySelectorAll("meta[data-theme-color]").forEach((e) => {
 		e.media = e.dataset.themeColor === "dark" === r ? "all" : "not all";
 	}), t();
 }
-var Bj = !1;
-function xue() {
-	Bj || (Bj = !0, Lj().addEventListener("change", () => {
-		Fj().value.theme === "system" && zj();
+var zj = !1;
+function Sue() {
+	zj || (zj = !0, Ij().addEventListener("change", () => {
+		Pj().value.theme === "system" && Rj();
 	}));
 }
 // src/appearance/layout.ts
-var Vj = [[
+var Bj = [[
+	"big",
+	"大图",
+	"maximize"
+], [
+	"small",
+	"小图",
+	"layout-grid"
+]], Vj = [[
 	"big",
 	"大图",
 	"maximize"
@@ -32237,14 +32245,6 @@ var Vj = [[
 	"小图",
 	"layout-grid"
 ]], Hj = [[
-	"big",
-	"大图",
-	"maximize"
-], [
-	"small",
-	"小图",
-	"layout-grid"
-]], Uj = [[
 	"fixed",
 	"固定比例",
 	"layout-grid"
@@ -32252,127 +32252,127 @@ var Vj = [[
 	"masonry",
 	"瀑布流",
 	"columns-2"
-]], Wj = .75, Gj = () => Fj().value, Kj = (e = Gj()) => Qa(e.javLayout), Sue = (e = Gj()) => Qa(e.homeLayout), qj = (e, t = Gj()) => e ? Sue(t) : Kj(t), Jj = Hj.map(([e]) => e), Yj = Uj.map(([e]) => e), Xj = (e = Gj()) => Nj(e.photoSize, Jj, "small"), Zj = (e = Gj()) => Nj(e.photoLayout, Yj, "masonry"), Qj = null;
-function $j(e, t = Gj()) {
+]], Uj = .75, Wj = () => Pj().value, Gj = (e = Wj()) => Qa(e.javLayout), Cue = (e = Wj()) => Qa(e.homeLayout), Kj = (e, t = Wj()) => e ? Cue(t) : Gj(t), qj = Vj.map(([e]) => e), Jj = Hj.map(([e]) => e), Yj = (e = Wj()) => Mj(e.photoSize, qj, "small"), Xj = (e = Wj()) => Mj(e.photoLayout, Jj, "masonry"), Zj = null;
+function Qj(e, t = Wj()) {
 	let n = {
 		active: e.active,
-		size: qj(e.home, t),
+		size: Kj(e.home, t),
 		portrait: e.portrait,
 		javImage: t.javImage
-	}, r = Qj;
-	return (!r || Object.keys(n).some((e) => n[e] !== r[e])) && (Qj = n), Qj;
+	}, r = Zj;
+	return (!r || Object.keys(n).some((e) => n[e] !== r[e])) && (Zj = n), Zj;
 }
-function eM(e) {
-	return e.portrait ? 9 / 16 : e.active && e.size === "big" ? Wj : 16 / 9;
+function $j(e) {
+	return e.portrait ? 9 / 16 : e.active && e.size === "big" ? Uj : 16 / 9;
 }
-function Cue(e, t = Fj()) {
+function wue(e, t = Pj()) {
 	t.value.homeLayout = Qa(e), t.save();
 }
-function tM(e, t = Fj()) {
+function eM(e, t = Pj()) {
 	t.value.javLayout = Qa(e), t.save();
 }
-function wue(e, t = Fj()) {
+function Tue(e, t = Pj()) {
 	t.value.homeLayout = t.value.javLayout = Qa(e), t.save();
 }
-function Tue(e, t = Fj()) {
-	t.value.photoSize = Nj(e, Jj, "small"), t.save();
+function Eue(e, t = Pj()) {
+	t.value.photoSize = Mj(e, qj, "small"), t.save();
 }
-function nM(e, t = Fj()) {
-	t.value.photoLayout = Nj(e, Yj, "masonry"), t.save();
+function tM(e, t = Pj()) {
+	t.value.photoLayout = Mj(e, Jj, "masonry"), t.save();
 }
 // src/appearance/density.ts
-var rM = "density", iM = {
+var nM = "density", rM = {
 	big: "336px",
 	dense: "168px"
-}, aM = () => localStorage.getItem(rM) === "dense" ? "dense" : "big";
-function oM(e, t) {
-	let [n, r] = Hj;
+}, iM = () => localStorage.getItem(nM) === "dense" ? "dense" : "big";
+function aM(e, t) {
+	let [n, r] = Vj;
 	if (e.querySelector("[data-icon-swap]")) Js(e, t === r[0] ? "b" : "a");
 	else {
 		let i = e.querySelector(":scope > [data-glass-drift]");
 		e.innerHTML = qs(n[2], r[2], t === r[0] ? "b" : "a"), i && e.append(i);
 	}
-	sM(e, "aria-label", t === "big" ? "切换为小图" : "切换为大图");
+	oM(e, "aria-label", t === "big" ? "切换为小图" : "切换为大图");
 }
-function sM(e, t, n) {
+function oM(e, t, n) {
 	e.getAttribute(t) !== n && e.setAttribute(t, n);
 }
-var cM = () => document.querySelector("#density");
-function lM(e = aM()) {
+var sM = () => document.querySelector("#density");
+function cM(e = iM()) {
 	let t = document.documentElement;
-	t.style.getPropertyValue("--tile") !== iM[e] && t.style.setProperty("--tile", iM[e]), sM(document.body, "data-density", e);
-	let n = cM();
-	n && (sM(n, "aria-pressed", String(e === "dense")), sM(n, "title", "当前：" + (e === "big" ? "大图" : "密集")), oM(n, e === "big" ? "big" : "small"));
+	t.style.getPropertyValue("--tile") !== rM[e] && t.style.setProperty("--tile", rM[e]), oM(document.body, "data-density", e);
+	let n = sM();
+	n && (oM(n, "aria-pressed", String(e === "dense")), oM(n, "title", "当前：" + (e === "big" ? "大图" : "密集")), aM(n, e === "big" ? "big" : "small"));
 }
-function Eue() {
-	let e = aM() === "big" ? "dense" : "big";
-	localStorage.setItem(rM, e), lM(e);
+function Due() {
+	let e = iM() === "big" ? "dense" : "big";
+	localStorage.setItem(nM, e), cM(e);
 }
-function Due(e) {
-	let t = cM();
-	t && (sM(t, "aria-pressed", String(e === "small")), sM(t, "title", "当前：" + (e === "big" ? "大图" : "小图")), oM(t, e));
+function Oue(e) {
+	let t = sM();
+	t && (oM(t, "aria-pressed", String(e === "small")), oM(t, "title", "当前：" + (e === "big" ? "大图" : "小图")), aM(t, e));
 }
 // src/appearance/glow.ts
-function uM(e = Fj()) {
-	uue(document.querySelector(".glowlayer"), e.value.homeGlow);
+function lM(e = Pj()) {
+	due(document.querySelector(".glowlayer"), e.value.homeGlow);
 }
-var dM = 0;
-function fM(e = Fj()) {
-	dM ||= requestAnimationFrame(() => {
-		dM = 0, uM(e);
+var uM = 0;
+function dM(e = Pj()) {
+	uM ||= requestAnimationFrame(() => {
+		uM = 0, lM(e);
 	});
 }
-function pM(e = Fj()) {
-	due(document.documentElement, e.value.homeGlow);
+function fM(e = Pj()) {
+	fue(document.documentElement, e.value.homeGlow);
 }
-function mM(e = Fj()) {
+function pM(e = Pj()) {
 	document.documentElement.dataset.accent = e.value.accent;
 }
-var hM = (e, t, n) => ({
+var mM = (e, t, n) => ({
 	key: e,
 	label: t,
-	native: bj(e),
-	fill: bj(e) ? "" : lue(n)
+	native: yj(e),
+	fill: yj(e) ? "" : uue(n)
 });
-function Oue(e) {
-	let t = yj.map(([e, t, n]) => hM(e, t, _j.map((e) => n[e].color)));
-	return e.preset === "custom" && t.push(hM("custom", "自定义", _j.map((t) => e[t].color))), t;
+function kue(e) {
+	let t = vj.map(([e, t, n]) => mM(e, t, gj.map((e) => n[e].color)));
+	return e.preset === "custom" && t.push(mM("custom", "自定义", gj.map((t) => e[t].color))), t;
 }
-var kue = Cj;
-function Aue(e, t = Fj()) {
+var Aue = Sj;
+function jue(e, t = Pj()) {
 	if (e === "custom") return;
 	let n = t.value.homeGlow;
-	n.preset = e, Object.assign(n, Sj(e)), t.value.accent = iue(e), t.save(), fM(t), pM(t), mM(t);
+	n.preset = e, Object.assign(n, xj(e)), t.value.accent = aue(e), t.save(), dM(t), fM(t), pM(t);
 }
-function jue(e, t = Fj()) {
-	t.value.accent = Tj(e), t.save(), mM(t);
+function Mue(e, t = Pj()) {
+	t.value.accent = wj(e), t.save(), pM(t);
 }
-function Mue(e = Fj()) {
+function Nue(e = Pj()) {
 	let t = e.value.homeGlow;
-	t.preset = Oj.preset, Object.assign(t, Sj(t.preset)), e.value.accent = wj, e.save(), fM(e), pM(e), mM(e);
+	t.preset = Dj.preset, Object.assign(t, xj(t.preset)), e.value.accent = Cj, e.save(), dM(e), fM(e), pM(e);
 }
-function gM(e, t) {
-	e.style.setProperty("--glow-swatch", t.on ? t.spot1.color : "var(--color-accent-500)"), e.toggleAttribute("data-glow-native", t.on && bj(t.preset)), e.toggleAttribute("data-glow-off", !t.on);
+function hM(e, t) {
+	e.style.setProperty("--glow-swatch", t.on ? t.spot1.color : "var(--color-accent-500)"), e.toggleAttribute("data-glow-native", t.on && yj(t.preset)), e.toggleAttribute("data-glow-off", !t.on);
 }
-function Nue(e, t = Fj()) {
-	return gM(e, t.value.homeGlow), t.subscribe(() => gM(e, t.value.homeGlow));
+function Pue(e, t = Pj()) {
+	return hM(e, t.value.homeGlow), t.subscribe(() => hM(e, t.value.homeGlow));
 }
 // src/react/components/glow-preset-grid.tsx
-function _M({ store: e, label: t, hidden: n }) {
+function gM({ store: e, label: t, hidden: n }) {
 	let r = e.value.homeGlow;
 	return /* @__PURE__ */ (0, L.jsx)("div", {
 		"data-glow-grid": "",
 		role: "group",
 		"aria-label": t,
 		hidden: n,
-		children: Oue(r).map((t) => /* @__PURE__ */ (0, L.jsx)("button", {
+		children: kue(r).map((t) => /* @__PURE__ */ (0, L.jsx)("button", {
 			type: "button",
 			"data-glow-chip": "",
 			"data-glow-preset": t.key,
 			"aria-pressed": t.key === r.preset,
 			title: t.label,
 			"aria-label": t.label,
-			onClick: () => Aue(t.key, e),
+			onClick: () => jue(t.key, e),
 			children: /* @__PURE__ */ (0, L.jsx)("span", {
 				"data-glow-ball": "",
 				"aria-hidden": "true",
@@ -32383,14 +32383,14 @@ function _M({ store: e, label: t, hidden: n }) {
 	});
 }
 // src/react/glow-picker/glow-picker-island.tsx
-var vM = null;
-function Pue(e) {
-	vM = e;
+var _M = null;
+function Fue(e) {
+	_M = e;
 }
-function Fue() {
-	return vM ? /* @__PURE__ */ (0, L.jsx)(Iue, { host: vM }) : null;
+function Iue() {
+	return _M ? /* @__PURE__ */ (0, L.jsx)(Lue, { host: _M }) : null;
 }
-function Iue({ host: e }) {
+function Lue({ host: e }) {
 	let { store: t } = e;
 	(0, I.useSyncExternalStore)(t.subscribe, t.version);
 	let { homeGlow: n, accent: r } = t.value;
@@ -32402,11 +32402,11 @@ function Iue({ host: e }) {
 			children: [/* @__PURE__ */ (0, L.jsx)("span", { children: "光晕" }), /* @__PURE__ */ (0, L.jsx)("button", {
 				type: "button",
 				"data-glow-preset-reset": "",
-				onClick: () => Mue(t),
+				onClick: () => Nue(t),
 				children: "重置"
 			})]
 		}),
-		/* @__PURE__ */ (0, L.jsx)(_M, {
+		/* @__PURE__ */ (0, L.jsx)(gM, {
 			store: t,
 			label: "光晕",
 			hidden: !n.on
@@ -32420,14 +32420,14 @@ function Iue({ host: e }) {
 			"data-accent-grid": "",
 			role: "group",
 			"aria-label": "强调色",
-			children: kue.map(([e, n]) => /* @__PURE__ */ (0, L.jsx)("button", {
+			children: Aue.map(([e, n]) => /* @__PURE__ */ (0, L.jsx)("button", {
 				type: "button",
 				"data-glow-chip": "",
 				"data-accent": e,
 				"aria-pressed": e === r,
 				title: n,
 				"aria-label": n,
-				onClick: () => jue(e, t),
+				onClick: () => Mue(e, t),
 				children: /* @__PURE__ */ (0, L.jsx)("span", {
 					"data-glow-ball": "",
 					"aria-hidden": "true",
@@ -32445,31 +32445,31 @@ function Iue({ host: e }) {
 	] });
 }
 // src/player/host.ts
-var yM = null;
-function Lue(e) {
-	yM = e;
+var vM = null;
+function Rue(e) {
+	vM = e;
 }
-function bM() {
-	if (!yM) throw Error("播放器还没有接上宿主（configurePlayer）");
-	return yM;
+function yM() {
+	if (!vM) throw Error("播放器还没有接上宿主（configurePlayer）");
+	return vM;
 }
 // src/player/menu.ts
-var xM = null;
-function Rue(e) {
-	xM = e;
+var bM = null;
+function zue(e) {
+	bM = e;
 }
-function zue() {
+function Bue() {
 	let e = document.getElementById("playerMenu");
 	return e || (e = document.createElement("div"), e.className = "popmenu", e.setAttribute("data-player-context-menu", ""), e.id = "playerMenu", e.setAttribute("role", "menu"), e.setAttribute("aria-label", "播放器菜单"), e.hidden = !0, document.body.append(e)), e;
 }
-var SM = null, CM = (e, t) => t ? e.replace("<svg", `<svg ${t}=""`) : e;
-function wM() {
+var xM = null, SM = (e, t) => t ? e.replace("<svg", `<svg ${t}=""`) : e;
+function CM() {
 	let e = document.getElementById("playerMenu");
 	e?.matches(":popover-open") && e.hidePopover(), e && e.parentElement !== document.body && document.body.append(e), e && ls(e, () => {
 		e.innerHTML = "";
-	}), SM &&= (SM(), null);
+	}), xM &&= (xM(), null);
 }
-async function Bue(e) {
+async function Vue(e) {
 	try {
 		return await navigator.clipboard.writeText(e), !0;
 	} catch {
@@ -32482,8 +32482,8 @@ async function Bue(e) {
 		return t.remove(), n;
 	}
 }
-function Vue(e) {
-	let t = !!xM?.inMiniplayer(e), n = e.peachItem, r = xM?.kind(e) ?? "item", i = (t) => {
+function Hue(e) {
+	let t = !!bM?.inMiniplayer(e), n = e.peachItem, r = bM?.kind(e) ?? "item", i = (t) => {
 		let i = new URL(r === "follow" ? `/posts/${n?.id}` : `/assets/${n?.id}`, location.origin);
 		if (r !== "follow" && location.pathname === i.pathname) {
 			let e = new URLSearchParams(location.search);
@@ -32499,7 +32499,7 @@ function Vue(e) {
 		}
 		return t && i.searchParams.set("t", String(Math.floor(e.currentTime() || 0))), i.href;
 	}, a = (e, t) => {
-		Bue(i(e)).then((e) => bM().toast(e ? t : "复制失败，请手动复制地址栏", {
+		Vue(i(e)).then((e) => yM().toast(e ? t : "复制失败，请手动复制地址栏", {
 			timeout: 4e3,
 			warn: !e
 		}));
@@ -32511,11 +32511,11 @@ function Vue(e) {
 	}, t ? {
 		icon: "maximize-2",
 		label: "展开",
-		run: () => xM?.expand()
+		run: () => bM?.expand()
 	} : {
 		icon: "picture-in-picture-2",
 		label: "迷你播放器",
-		run: () => xM?.toMiniplayer()
+		run: () => bM?.toMiniplayer()
 	}];
 	document.pictureInPictureEnabled && o.push({
 		icon: "player-pip",
@@ -32538,29 +32538,29 @@ function Vue(e) {
 		run: () => s.click()
 	}), o;
 }
-function Hue(e, t, n) {
-	let r = zue();
-	wM();
-	let i = bM().stage();
+function Uue(e, t, n) {
+	let r = Bue();
+	CM();
+	let i = yM().stage();
 	i instanceof HTMLDialogElement && i.open && i.append(r), r.setAttribute("popover", "manual");
-	let a = Vue(e);
+	let a = Hue(e);
 	r.innerHTML = a.map((e, t) => {
 		let n = e.checked !== void 0;
-		return `<button type="button" role="${n ? "menuitemcheckbox" : "menuitem"}"${n ? ` aria-checked="${e.checked}"` : ""} data-player-menu="${t}">${CM(z(e.icon), e.fill ? "data-player-menu-fill" : "")}<span>${B(e.label)}</span>${n ? CM(z("check"), "data-player-menu-check") : ""}</button>`;
+		return `<button type="button" role="${n ? "menuitemcheckbox" : "menuitem"}"${n ? ` aria-checked="${e.checked}"` : ""} data-player-menu="${t}">${SM(z(e.icon), e.fill ? "data-player-menu-fill" : "")}<span>${B(e.label)}</span>${n ? SM(z("check"), "data-player-menu-check") : ""}</button>`;
 	}).join(""), cs(r), r.showPopover(), r.style.left = `${Math.max(8, Math.min(t, innerWidth - r.offsetWidth - 8))}px`, r.style.top = `${Math.max(8, Math.min(n, innerHeight - r.offsetHeight - 8))}px`;
 	let o = [...r.querySelectorAll("[data-player-menu]")];
 	o.forEach((e) => {
 		e.onclick = (t) => {
 			t.stopPropagation();
 			let n = a[Number(e.dataset.playerMenu)];
-			wM(), n?.run();
+			CM(), n?.run();
 		};
 	});
 	let s = (e) => {
-		r.contains(e.target) || wM();
+		r.contains(e.target) || CM();
 	}, c = (e) => {
 		if (e.key === "Escape") {
-			e.preventDefault(), e.stopPropagation(), wM();
+			e.preventDefault(), e.stopPropagation(), CM();
 			return;
 		}
 		if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -32568,49 +32568,49 @@ function Hue(e, t, n) {
 		let t = o.indexOf(document.activeElement);
 		o[(t + (e.key === "ArrowDown" ? 1 : -1) + o.length) % o.length]?.focus();
 	}, l = (t) => {
-		ds(t, e.el()) && wM();
+		ds(t, e.el()) && CM();
 	};
 	setTimeout(() => {
 		document.addEventListener("pointerdown", s, !0), document.addEventListener("keydown", c, !0), window.addEventListener("scroll", l, {
 			capture: !0,
 			passive: !0
 		});
-	}, 0), SM = () => {
+	}, 0), xM = () => {
 		document.removeEventListener("pointerdown", s, !0), document.removeEventListener("keydown", c, !0), window.removeEventListener("scroll", l, !0);
 	}, o[0]?.focus();
 }
-function Uue(e) {
+function Wue(e) {
 	e.el().addEventListener("contextmenu", (t) => {
-		t.target.closest(".vjs-peach-settings-menu") || (t.preventDefault(), Hue(e, t.clientX, t.clientY));
-	}), e.on("dispose", wM);
+		t.target.closest(".vjs-peach-settings-menu") || (t.preventDefault(), Uue(e, t.clientX, t.clientY));
+	}), e.on("dispose", CM);
 }
 // src/player/registry.ts
-var TM = null, EM = () => TM;
-function DM(e) {
-	TM = e;
+var wM = null, TM = () => wM;
+function EM(e) {
+	wM = e;
 }
-function OM(e) {
+function DM(e) {
 	e && !e.isDisposed() && requestAnimationFrame(() => {
 		e.isDisposed() || e.trigger("resize");
 	});
 }
 // src/player/stats.ts
-function kM(e) {
+function OM(e) {
 	let t = e.currentTime || 0;
 	for (let n = 0; n < e.buffered.length; n++) if (e.buffered.start(n) <= t && e.buffered.end(n) >= t) return Math.max(0, e.buffered.end(n) - t);
 	return 0;
 }
-function Wue(e) {
+function Gue(e) {
 	let t = e.currentTime || 0;
 	for (let n = 0; n < e.buffered.length; n++) if (e.buffered.start(n) <= t + .25 && e.buffered.end(n) >= t) return e.buffered.end(n);
 	return e.buffered.length ? e.buffered.end(e.buffered.length - 1) : 0;
 }
-var AM = 3e3;
-function jM(e, t) {
+var kM = 3e3;
+function AM(e, t) {
 	let n = Number(e) || 0, r = Kn(t) || 0;
 	return n > 0 && r > 0 ? n * 8 / r : 0;
 }
-function Gue(e) {
+function Kue(e) {
 	let t = [], n = null, r = 0, i = 0;
 	return {
 		bitrate: Number(e) || 0,
@@ -32625,10 +32625,10 @@ function Gue(e) {
 		},
 		sample(e) {
 			if (!e) return i;
-			let a = performance.now(), o = Wue(e), s = e.currentTime || 0;
+			let a = performance.now(), o = Gue(e), s = e.currentTime || 0;
 			if (n) {
 				let e = (a - n.at) / 1e3, i = Math.abs(s - n.ct) > e * 4 + 1, c = o - n.frontier;
-				!i && c > 0 && (r += c), e * 1e3 > AM * 2 && (t.length = 0);
+				!i && c > 0 && (r += c), e * 1e3 > kM * 2 && (t.length = 0);
 			}
 			for (n = {
 				at: a,
@@ -32637,55 +32637,55 @@ function Gue(e) {
 			}, t.push({
 				at: a,
 				advanced: r
-			}); t.length > 2 && a - t[0].at > AM;) t.shift();
+			}); t.length > 2 && a - t[0].at > kM;) t.shift();
 			let c = t[0], l = (a - c.at) / 1e3, u = r - c.advanced;
 			return l >= .5 && u > 0 && this.bitrate > 0 && (i = u * this.bitrate / l), i;
 		}
 	};
 }
-var MM = 24;
-function NM(e, t) {
-	e.push(Number.isFinite(t) && t > 0 ? t : 0), e.length > MM && e.splice(0, e.length - MM);
+var jM = 24;
+function MM(e, t) {
+	e.push(Number.isFinite(t) && t > 0 ? t : 0), e.length > jM && e.splice(0, e.length - jM);
 }
-var PM = "peach-player-panel";
-function FM(e, t, n, r) {
-	let i = [...Array(Math.max(0, MM - e.length)).fill(null), ...e], a = Math.max(1, n || 0), o = i.map((e) => {
+var NM = "peach-player-panel";
+function PM(e, t, n, r) {
+	let i = [...Array(Math.max(0, jM - e.length)).fill(null), ...e], a = Math.max(1, n || 0), o = i.map((e) => {
 		if (e === null) return "<i aria-hidden=\"true\"></i>";
 		let n = e <= 0 ? 0 : Math.max(.08, Math.min(1, e / a));
 		return `<i data-bar="${t === "buffer" ? e < 5 ? "low" : e < 15 ? "mid" : "good" : "on"}" style="height:${(n * 100).toFixed(1)}%" aria-hidden="true"></i>`;
 	}).join("");
 	return `<span data-player-stats-plot="${t}" role="img" aria-label="${B(r)}">${o}</span>`;
 }
-function Kue() {
+function que() {
 	return `<button data-player-stats-button="" id="playerStatsBtn" aria-label="播放统计" title="播放统计" aria-pressed="false" hidden>${z("chart")}</button>
        <div data-player-net="" id="playerNet" role="status" aria-live="polite" hidden></div>
        <div data-player-stats="" id="playerStats" role="status" hidden></div>`;
 }
-function IM(e, t = "") {
+function FM(e, t = "") {
 	let n = t ? encodeURIComponent(t) : "";
 	return performance.getEntriesByType("resource").filter((t) => t.name.includes("/stream") && (t.name.includes(`/stream?id=${e}`) || t.name.includes(`/stream/hls/${e}/`)) && (!n || t.name.includes(`session=${n}`)));
 }
-function LM(e, t = "") {
-	let n = IM(e, t), r = n.reduce((e, t) => e + (t.transferSize || t.encodedBodySize || 0), 0), i = n.reduce((e, t) => e + (t.duration || 0), 0) / 1e3;
+function IM(e, t = "") {
+	let n = FM(e, t), r = n.reduce((e, t) => e + (t.transferSize || t.encodedBodySize || 0), 0), i = n.reduce((e, t) => e + (t.duration || 0), 0) / 1e3;
 	return r > 0 && i > 0 ? r * 8 / i : 0;
 }
-function RM(e, t, n = "", r = null) {
+function LM(e, t, n = "", r = null) {
 	let i = 0;
 	try {
 		i = Number(e?.bandwidth?.()) || 0;
 	} catch {}
-	return i > 0 ? i : r ? Number(r.bits) || 0 : LM(t, n);
+	return i > 0 ? i : r ? Number(r.bits) || 0 : IM(t, n);
 }
-function zM(e) {
+function RM(e) {
 	if (!Number.isFinite(e) || e <= 0) return "加载中…";
 	let t = e / 8;
 	return t >= 1048576 ? `${(t / 1048576).toFixed(1)} MB/s` : `${Math.max(1, Math.round(t / 1024))} KB/s`;
 }
-function que(e, t) {
-	return e > 0 ? zM(e) : t > 0 ? `已缓冲 ${Math.round(t)} 秒` : zM(0);
+function Jue(e, t) {
+	return e > 0 ? RM(e) : t > 0 ? `已缓冲 ${Math.round(t)} 秒` : RM(0);
 }
 // src/player/subtitle-style.ts
-var BM = {
+var zM = {
 	font: {
 		label: "字体",
 		values: [
@@ -32788,7 +32788,7 @@ var BM = {
 			["shadow", "阴影"]
 		]
 	}
-}, VM = {
+}, BM = {
 	font: "sans",
 	size: "100",
 	color: "white",
@@ -32798,7 +32798,7 @@ var BM = {
 	window: "black",
 	windowOpacity: "0",
 	edge: "shadow"
-}, HM = "peach.caption-style.v1", Jue = {
+}, VM = "peach.caption-style.v1", Yue = {
 	white: "255,255,255",
 	yellow: "255,255,0",
 	green: "0,255,0",
@@ -32807,7 +32807,7 @@ var BM = {
 	magenta: "255,0,255",
 	red: "255,0,0",
 	black: "0,0,0"
-}, Yue = {
+}, Xue = {
 	sans: "Arial,sans-serif",
 	mono: "Consolas,monospace",
 	serif: "Georgia,serif",
@@ -32815,28 +32815,28 @@ var BM = {
 	casual: "\"Comic Sans MS\",sans-serif",
 	cursive: "cursive",
 	"small-caps": "Arial,sans-serif"
-}, Xue = {
+}, Zue = {
 	none: "none",
 	raised: "-1px -1px 0 #ddd,1px 1px 0 #222",
 	depressed: "1px 1px 0 #ddd,-1px -1px 0 #222",
 	outline: "-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000",
 	shadow: "2px 2px 3px #000"
 };
-function Zue() {
+function Que() {
 	let e = {};
 	try {
-		e = JSON.parse(localStorage.getItem(HM) || "{}") || {};
+		e = JSON.parse(localStorage.getItem(VM) || "{}") || {};
 	} catch {}
-	return Object.fromEntries(Object.entries(VM).map(([t, n]) => [t, BM[t].values.some(([n]) => n === e[t]) ? e[t] : n]));
+	return Object.fromEntries(Object.entries(BM).map(([t, n]) => [t, zM[t].values.some(([n]) => n === e[t]) ? e[t] : n]));
 }
-function UM(e, t, n, r) {
-	let i = Zue(), a = /* @__PURE__ */ new Set(), o = document.createElement("div");
+function HM(e, t, n, r) {
+	let i = Que(), a = /* @__PURE__ */ new Set(), o = document.createElement("div");
 	o.className = "vjs-peach-captions", o.setAttribute("aria-hidden", "true");
 	let s = document.createElement("div");
 	s.className = "vjs-peach-caption-window", o.append(s), e.querySelector("media-container").append(o), e.dataset.peachCaptions = "";
 	let c = () => {
-		let t = (e, t) => `rgba(${Jue[e]},${Number(t) / 100})`;
-		e.style.setProperty("--peach-caption-font", Yue[i.font]), e.style.setProperty("--peach-caption-scale", String(Number(i.size) / 100)), e.style.setProperty("--peach-caption-color", t(i.color, i.opacity)), e.style.setProperty("--peach-caption-background", t(i.background, i.backgroundOpacity)), e.style.setProperty("--peach-caption-window", t(i.window, i.windowOpacity)), e.style.setProperty("--peach-caption-edge", Xue[i.edge]), e.style.setProperty("--peach-caption-variant", i.font === "small-caps" ? "small-caps" : "normal");
+		let t = (e, t) => `rgba(${Yue[e]},${Number(t) / 100})`;
+		e.style.setProperty("--peach-caption-font", Xue[i.font]), e.style.setProperty("--peach-caption-scale", String(Number(i.size) / 100)), e.style.setProperty("--peach-caption-color", t(i.color, i.opacity)), e.style.setProperty("--peach-caption-background", t(i.background, i.backgroundOpacity)), e.style.setProperty("--peach-caption-window", t(i.window, i.windowOpacity)), e.style.setProperty("--peach-caption-edge", Zue[i.edge]), e.style.setProperty("--peach-caption-variant", i.font === "small-caps" ? "small-caps" : "normal");
 	}, l = () => {
 		s.replaceChildren();
 		for (let e of t.textTracks) if (e.mode === "showing" && ["subtitles", "captions"].includes(e.kind)) for (let t of Array.from(e.activeCues || [])) {
@@ -32852,15 +32852,15 @@ function UM(e, t, n, r) {
 		if (!n.aborted) {
 			if (e.caption_style) {
 				let t = {
-					...VM,
+					...BM,
 					...e.caption_style
 				};
-				for (let e of Object.keys(VM)) a.has(e) || (i[e] = t[e]);
+				for (let e of Object.keys(BM)) a.has(e) || (i[e] = t[e]);
 				c();
 			} else {
 				let e = !1;
 				try {
-					e = !!localStorage.getItem(HM);
+					e = !!localStorage.getItem(VM);
 				} catch {}
 				e && !a.size && r.save({ caption_style: i }).catch(() => {});
 			}
@@ -32868,18 +32868,18 @@ function UM(e, t, n, r) {
 	}), {
 		current: () => i,
 		set(e, t) {
-			BM[e].values.some(([e]) => e === t) && (a.add(e), i = {
+			zM[e].values.some(([e]) => e === t) && (a.add(e), i = {
 				...i,
 				[e]: t
 			}, c(), r?.save({ caption_style: { [e]: t } }).catch(() => {}));
 		},
 		reset() {
-			Object.keys(VM).forEach((e) => a.add(e)), i = { ...VM }, c(), r?.save({ caption_style: i }).catch(() => {});
+			Object.keys(BM).forEach((e) => a.add(e)), i = { ...BM }, c(), r?.save({ caption_style: i }).catch(() => {});
 		}
 	};
 }
 // src/player/memory.ts
-var WM = /* @__PURE__ */ new Map(), GM = /* @__PURE__ */ new WeakMap(), Que = class {
+var UM = /* @__PURE__ */ new Map(), WM = /* @__PURE__ */ new WeakMap(), $ue = class {
 	cleanup = new AbortController();
 	reading;
 	listeners = /* @__PURE__ */ new Set();
@@ -32907,7 +32907,7 @@ var WM = /* @__PURE__ */ new Map(), GM = /* @__PURE__ */ new WeakMap(), Que = cl
 	}
 	load() {
 		return this.url ? this.reading ||= (async () => {
-			await WM.get(this.url)?.catch(() => {});
+			await UM.get(this.url)?.catch(() => {});
 			let e = await wn(this.url, { signal: this.cleanup.signal });
 			return this.cleanup.signal.aborted || (this.restored = e, this.restorers.forEach((t) => t(e)), this.changed()), e;
 		})().catch((e) => {
@@ -32919,7 +32919,7 @@ var WM = /* @__PURE__ */ new Map(), GM = /* @__PURE__ */ new WeakMap(), Que = cl
 	}
 	save(e) {
 		if (!this.url) return Promise.resolve();
-		let t = (WM.get(this.url) || Promise.resolve()).catch(() => {}).then(async () => {
+		let t = (UM.get(this.url) || Promise.resolve()).catch(() => {}).then(async () => {
 			let t = {
 				...this.unsaved,
 				...e,
@@ -32946,8 +32946,8 @@ var WM = /* @__PURE__ */ new Map(), GM = /* @__PURE__ */ new WeakMap(), Que = cl
 				this.changed();
 			}
 		});
-		return WM.set(this.url, t), t.finally(() => {
-			WM.get(this.url) === t && WM.delete(this.url);
+		return UM.set(this.url, t), t.finally(() => {
+			UM.get(this.url) === t && UM.delete(this.url);
 		}).catch(() => {}), t;
 	}
 	async retry() {
@@ -32956,12 +32956,12 @@ var WM = /* @__PURE__ */ new Map(), GM = /* @__PURE__ */ new WeakMap(), Que = cl
 		} catch {}
 	}
 };
-function KM(e) {
-	let t = GM.get(e);
-	return t || (t = new Que(e), GM.set(e, t)), t;
+function GM(e) {
+	let t = WM.get(e);
+	return t || (t = new $ue(e), WM.set(e, t)), t;
 }
-function qM(e, t) {
-	let n = KM(e), r = Number(e.playbackRate()) || 1, i = !1, a = () => {
+function KM(e, t) {
+	let n = GM(e), r = Number(e.playbackRate()) || 1, i = !1, a = () => {
 		t.defaultPlaybackRate = r, Number(e.playbackRate()) !== r && e.playbackRate(r);
 	};
 	return n.restore((t) => {
@@ -32974,7 +32974,7 @@ function qM(e, t) {
 	};
 }
 // src/player/subtitle-memory.ts
-var JM = class {
+var qM = class {
 	player;
 	video;
 	changed;
@@ -32985,7 +32985,7 @@ var JM = class {
 	ready;
 	error = "";
 	constructor(e, t, n = () => {}) {
-		this.player = e, this.video = t, this.changed = n, this.memory = KM(e);
+		this.player = e, this.video = t, this.changed = n, this.memory = GM(e);
 		let r = this.cleanup.signal;
 		t.textTracks.addEventListener("addtrack", () => {
 			this.apply(), this.changed();
@@ -33082,7 +33082,7 @@ var JM = class {
 			throw a.remove(), URL.revokeObjectURL(i), e;
 		}
 	}
-}, YM = () => "<svg viewBox=\"0 0 36 36\" aria-hidden=\"true\"><path d=\"M11,11 C9.89,11 9,11.9 9,13 L9,23 C9,24.1 9.89,25 11,25 L25,25 C26.1,25 27,24.1 27,23 L27,13 C27,11.9 26.1,11 25,11 L11,11 Z M17,17 L15.5,17 L15.5,16.5 L13.5,16.5 L13.5,19.5 L15.5,19.5 L15.5,19 L17,19 L17,20 C17,20.55 16.55,21 16,21 L13,21 C12.45,21 12,20.55 12,20 L12,16 C12,15.45 12.45,15 13,15 L16,15 C16.55,15 17,15.45 17,16 L17,17 L17,17 Z M24,17 L22.5,17 L22.5,16.5 L20.5,16.5 L20.5,19.5 L22.5,19.5 L22.5,19 L24,19 L24,20 C24,20.55 23.55,21 23,21 L20,21 C19.45,21 19,20.55 19,20 L19,16 C19,15.45 19.45,15 20,15 L23,15 C23.55,15 24,15.45 24,16 L24,17 L24,17 Z\"/></svg>", $ue = class {
+}, JM = () => "<svg viewBox=\"0 0 36 36\" aria-hidden=\"true\"><path d=\"M11,11 C9.89,11 9,11.9 9,13 L9,23 C9,24.1 9.89,25 11,25 L25,25 C26.1,25 27,24.1 27,23 L27,13 C27,11.9 26.1,11 25,11 L11,11 Z M17,17 L15.5,17 L15.5,16.5 L13.5,16.5 L13.5,19.5 L15.5,19.5 L15.5,19 L17,19 L17,20 C17,20.55 16.55,21 16,21 L13,21 C12.45,21 12,20.55 12,20 L12,16 C12,15.45 12.45,15 13,15 L16,15 C16.55,15 17,15.45 17,16 L17,17 L17,17 Z M24,17 L22.5,17 L22.5,16.5 L20.5,16.5 L20.5,19.5 L22.5,19.5 L22.5,19 L24,19 L24,20 C24,20.55 23.55,21 23,21 L20,21 C19.45,21 19,20.55 19,20 L19,16 C19,15.45 19.45,15 20,15 L23,15 C23.55,15 24,15.45 24,16 L24,17 L24,17 Z\"/></svg>", ede = class {
 	player;
 	video;
 	panels;
@@ -33101,7 +33101,7 @@ var JM = class {
 	more = !1;
 	searched = !1;
 	constructor(e, t, n) {
-		this.player = e, this.video = t, this.panels = n, this.styles = UM(e.el(), t, this.cleanup.signal, KM(e)), this.cc = e.el().querySelector(".vjs-subtitles-control > button"), this.cc.innerHTML = YM(), this.cc.onclick = () => {
+		this.player = e, this.video = t, this.panels = n, this.styles = HM(e.el(), t, this.cleanup.signal, GM(e)), this.cc = e.el().querySelector(".vjs-subtitles-control > button"), this.cc.innerHTML = JM(), this.cc.onclick = () => {
 			let e = this.tracks().find((e) => e.mode === "showing");
 			e ? (this.last = e, this.select(null)) : this.tracks().length ? this.select(this.last && this.tracks().includes(this.last) ? this.last : this.tracks()[0]) : this.show();
 		}, this.input.type = "file", this.input.accept = ".srt,.ass,.ssa,.vtt", this.input.hidden = !0, this.input.setAttribute("aria-label", "加载字幕文件"), e.el().append(this.input), this.input.addEventListener("change", () => {
@@ -33111,7 +33111,7 @@ var JM = class {
 			this.sync(), this.page === "tracks" && this.show(0);
 		}, { signal: this.cleanup.signal }), e.on("dispose", () => {
 			this.hide(), this.cleanup.abort();
-		}), this.session = new JM(e, t, () => {
+		}), this.session = new qM(e, t, () => {
 			this.sync(), this.page === "tracks" && this.show(0);
 		}), this.sync();
 	}
@@ -33159,7 +33159,7 @@ var JM = class {
 	}
 	options(e = 1) {
 		this.page = "options";
-		let t = this.styles.current(), n = this.panel(this.header("字幕选项") + `<div class="vjs-peach-panel-menu">${Object.entries(BM).map(([e, n]) => {
+		let t = this.styles.current(), n = this.panel(this.header("字幕选项") + `<div class="vjs-peach-panel-menu">${Object.entries(zM).map(([e, n]) => {
 			let r = n.values.find(([n]) => n === t[e])?.[1] || "";
 			return `<button type="button" class="vjs-peach-caption-setting" data-subtitle-style="${e}"><span>${B(n.label)}</span><b>${B(r)}</b>${z("player-menu-next")}</button>`;
 		}).join("")}<button type="button" class="vjs-peach-caption-action" data-subtitle-reset>重置</button></div>`, () => this.show(-1), e);
@@ -33171,7 +33171,7 @@ var JM = class {
 	}
 	styleOptions(e) {
 		this.page = "style";
-		let t = BM[e];
+		let t = zM[e];
 		this.panel(this.header(t.label) + `<div class="vjs-peach-panel-menu">${t.values.map(([t, n]) => {
 			let r = this.styles.current()[e] === t;
 			return `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" aria-checked="${r}" data-subtitle-value="${B(t)}"><span class="vjs-peach-option-check">${r ? z("check") : ""}</span><span class="vjs-peach-option-label">${B(n)}</span></button>`;
@@ -33287,7 +33287,7 @@ var JM = class {
 	}
 };
 // src/player/timeline.ts
-function ede(e, t) {
+function tde(e, t) {
 	if (!Number.isFinite(e) || e < 0 || t.frames <= 0) return null;
 	if (!t.cues?.length) return t.interval > 0 ? Math.min(t.frames - 1, Math.floor(e / t.interval)) : null;
 	let n = 0, r = t.cues.length;
@@ -33298,8 +33298,8 @@ function ede(e, t) {
 	let i = n - 1, a = t.cues[i];
 	return !a || e >= a[1] && (i !== t.cues.length - 1 || e !== a[1]) ? null : i;
 }
-function tde(e, t) {
-	let n = ede(e, t);
+function nde(e, t) {
+	let n = tde(e, t);
 	if (n === null) return null;
 	let r = t.columns || 10, i = r * (t.rows || 10), a = Math.floor(n / i);
 	return {
@@ -33309,15 +33309,15 @@ function tde(e, t) {
 		rows: Math.ceil(Math.min(i, t.frames - a * i) / r)
 	};
 }
-function nde(e, t, n, r = 0) {
+function rde(e, t, n, r = 0) {
 	return n + r * 2 >= t ? t / 2 : Math.min(t - r - n / 2, Math.max(r + n / 2, e));
 }
-function rde(e) {
+function ide(e) {
 	if (!e || (e.source || "peach") !== "peach" || e.cues?.length || !(e.interval > 0) || e.frames <= 0) return 0;
 	let t = Math.ceil(e.frames / ((e.columns || 10) * (e.rows || 10)));
 	return t <= 12 ? t : 0;
 }
-function XM(e, t, n = {}) {
+function YM(e, t, n = {}) {
 	let r = !!t?.id && n.thumbnail !== !1, i = document.createElement("div");
 	i.className = "vjs-peach-seek-preview", i.dataset.playerSeekPreview = "", i.hidden = !0, i.innerHTML = `${r ? "<i class=\"vjs-peach-seek-frame\" hidden><img alt=\"\"></i>" : ""}<span class="mono">0:00</span>`, e.append(i);
 	let a = i.querySelector(".vjs-peach-seek-frame"), o = i.querySelector("img"), s = i.querySelector("span"), c = encodeURIComponent(String(t?.id ?? "")), l = (e, t) => {
@@ -33327,9 +33327,9 @@ function XM(e, t, n = {}) {
 	let u = null, d = "", f = !1, p = -1, m = !1, h = !1, g = !1, _ = 0, v = 0, y = () => {
 		if (i.hidden = h || !g || !a || a.hidden || !o?.complete || !o.naturalWidth, i.hidden) return;
 		let t = e.getBoundingClientRect().width;
-		i.style.left = `${nde(_ * t, t, i.offsetWidth, n.inset)}px`;
+		i.style.left = `${rde(_ * t, t, i.offsetWidth, n.inset)}px`;
 	}, b = t?.has_thumb !== !0, x = [], S = (e, t) => `/timeline?id=${c}&s=${t}&source=${encodeURIComponent(e.source || "peach")}`, C = () => {
-		if (m && u) for (let e of [u, u.fallback]) for (let t = 0; t < rde(e); t++) {
+		if (m && u) for (let e of [u, u.fallback]) for (let t = 0; t < ide(e); t++) {
 			let n = S(e, t);
 			if (x.some((e) => e.dataset.source === n)) continue;
 			let r = new Image();
@@ -33340,7 +33340,7 @@ function XM(e, t, n = {}) {
 		!h && e && e.frames > 0 && (e.interval > 0 || e.cues?.length) && (u = e, C(), g && E(_, v));
 	}).catch(() => {});
 	let w = (e, n) => {
-		let r = tde(e, n);
+		let r = nde(e, n);
 		if (!r || !a || !o) return !1;
 		f = !!n.cues, !f && t?.width && t.height && l(t.width, t.height);
 		let i = S(n, r.page);
@@ -33381,8 +33381,8 @@ function XM(e, t, n = {}) {
 	};
 }
 // src/player/rotation.ts
-function ZM(e, t) {
-	let n = 0, r = !1, i = KM(e), a = e.el(), o = a.querySelector("media-container") || a, s = [
+function XM(e, t) {
+	let n = 0, r = !1, i = GM(e), a = e.el(), o = a.querySelector("media-container") || a, s = [
 		"width",
 		"height",
 		"inset",
@@ -33410,7 +33410,7 @@ function ZM(e, t) {
 	};
 }
 // src/player/pip.ts
-function ide(e, t, n, r) {
+function ade(e, t, n, r) {
 	let i = e.el().querySelector("video");
 	if (!i || !t) return;
 	let a = t, o = !!document.pictureInPictureEnabled && typeof i.requestPictureInPicture == "function" || typeof i.webkitSetPresentationMode == "function";
@@ -33442,7 +33442,7 @@ function ide(e, t, n, r) {
 	});
 }
 // src/player/controls.ts
-function QM(e, t, n = "") {
+function ZM(e, t, n = "") {
 	if (!e) return () => {};
 	let r = e.querySelector(":scope>.vjs-peach-tooltip");
 	r || (r = document.createElement("span"), r.className = "vjs-peach-tooltip", r.setAttribute("role", "tooltip"), r.innerHTML = "<span class=\"vjs-peach-tooltip-text\"></span><kbd hidden></kbd>", e.append(r));
@@ -33453,27 +33453,27 @@ function QM(e, t, n = "") {
 	};
 	return o(), o;
 }
-function $M(e, t) {
+function QM(e, t) {
 	e?.closest(".video-js")?.querySelector(`.vjs-control-bar ${t}`)?.click();
 }
-function ade(e, t = !0) {
-	let n = bM(), r = n.settings();
+function ode(e, t = !0) {
+	let n = yM(), r = n.settings();
 	r.ambientMode = !!e, t && n.saveSettings(), n.stage()?.toggleAttribute("data-ambient", r.ambientMode), document.dispatchEvent(new CustomEvent("peachambientchange", { detail: { enabled: r.ambientMode } }));
 }
-var eN = /* @__PURE__ */ new WeakMap();
-function tN(e) {
+var $M = /* @__PURE__ */ new WeakMap();
+function eN(e) {
 	if (!e) return;
-	let t = bM().settings().theaterMode;
-	e.setAttribute("aria-pressed", String(t)), e.querySelector("use")?.setAttribute("href", t ? "#i-theater-exit" : "#i-theater-enter"), eN.get(e)?.(t ? "默认视图" : "影院模式");
+	let t = yM().settings().theaterMode;
+	e.setAttribute("aria-pressed", String(t)), e.querySelector("use")?.setAttribute("href", t ? "#i-theater-exit" : "#i-theater-enter"), $M.get(e)?.(t ? "默认视图" : "影院模式");
 }
-function nN(e, t = !0) {
-	let n = bM(), r = n.settings();
+function tN(e, t = !0) {
+	let n = yM(), r = n.settings();
 	r.theaterMode = !!e, t && n.saveSettings();
 	let i = n.stage();
-	i?.toggleAttribute("data-theater", r.theaterMode), tN(i?.querySelector("[data-player-theater]")), OM(EM());
+	i?.toggleAttribute("data-theater", r.theaterMode), eN(i?.querySelector("[data-player-theater]")), DM(TM());
 }
-function ode(e) {
-	let t = bM().stage(), n = t?.querySelector("[data-ambient-canvas]");
+function sde(e) {
+	let t = yM().stage(), n = t?.querySelector("[data-ambient-canvas]");
 	if (!t || !n) return () => {};
 	let r = n.getContext("2d", { alpha: !1 });
 	if (!r) return () => {};
@@ -33496,9 +33496,9 @@ function ode(e) {
 	}, u = (t) => {
 		e.requestVideoFrameCallback ? e.requestVideoFrameCallback((e) => d(t, e)) : requestAnimationFrame((e) => d(t, e));
 	}, d = (t, n) => {
-		i || t !== o || (bM().settings().ambientMode ? e.paused || (!document.hidden && n - a > 480 && (a = n, l()), u(t)) : c());
+		i || t !== o || (yM().settings().ambientMode ? e.paused || (!document.hidden && n - a > 480 && (a = n, l()), u(t)) : c());
 	}, f = () => {
-		!i && bM().settings().ambientMode && (l(), e.paused || u(++o));
+		!i && yM().settings().ambientMode && (l(), e.paused || u(++o));
 	}, p = (e) => {
 		let n = !!e.detail.enabled;
 		t.toggleAttribute("data-ambient", n), n ? f() : (o++, c());
@@ -33507,7 +33507,7 @@ function ode(e) {
 		i = !0, o++, document.removeEventListener("peachambientchange", p), e.removeEventListener("play", f), e.removeEventListener("loadeddata", f), c();
 	};
 }
-function rN(e, t, n = 0, r = null) {
+function nN(e, t, n = 0, r = null) {
 	let i = e.el().querySelector(".vjs-control-bar");
 	if (!i || i.querySelector("[data-player-quality]")) return;
 	let a = document.createElement("div");
@@ -33517,8 +33517,8 @@ function rN(e, t, n = 0, r = null) {
 	let o = i.querySelector(".vjs-fullscreen-control");
 	i.insertBefore(a, o || null);
 	let s = a.querySelector("button"), c = a.querySelector("[data-player-quality-badge]");
-	QM(s, "设置");
-	let l = a.querySelector(".vjs-peach-settings-menu"), u = ZM(e, t), d = qM(e, t), f = KM(e), p, m = typeof e.qualityLevels == "function" ? e.qualityLevels() : null, h = r, g = "auto", _ = (e, t) => {
+	ZM(s, "设置");
+	let l = a.querySelector(".vjs-peach-settings-menu"), u = XM(e, t), d = KM(e, t), f = GM(e), p, m = typeof e.qualityLevels == "function" ? e.qualityLevels() : null, h = r, g = "auto", _ = (e, t) => {
 		let n = [Number(e), Number(t)].filter((e) => e > 0);
 		return n.length ? Math.min(...n) : 0;
 	}, v = () => {
@@ -33557,11 +33557,11 @@ function rN(e, t, n = 0, r = null) {
 			active: n
 		};
 	}, b = () => l.getAttribute("aria-hidden") !== "true", x = (e) => {
-		l.setAttribute("aria-hidden", String(!e)), s.setAttribute("aria-expanded", String(e)), e || p?.hide(), e && document.dispatchEvent(new CustomEvent(PM, { detail: "settings" }));
+		l.setAttribute("aria-hidden", String(!e)), s.setAttribute("aria-expanded", String(e)), e || p?.hide(), e && document.dispatchEvent(new CustomEvent(NM, { detail: "settings" }));
 	}, S = () => x(!1), C = (e) => {
 		e.detail !== "settings" && S();
 	};
-	document.addEventListener(PM, C);
+	document.addEventListener(NM, C);
 	let w = null, T = 0, E = (e, t) => {
 		let n = ++T;
 		w && (clearTimeout(w), w = null, l.classList.remove("vjs-peach-popup-animating"), l.style.height = ""), l.querySelectorAll(".vjs-peach-panel-leaving").forEach((e) => e.remove()), l.scrollTop = 0;
@@ -33577,15 +33577,15 @@ function rN(e, t, n = 0, r = null) {
 		}), i;
 	}, D = (e, t) => e.querySelector(t), O = "main", k = (e = 0) => {
 		O = "main";
-		let { active: t } = y(), n = d.current(), r = E(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${bM().settings().ambientMode}">
+		let { active: t } = y(), n = d.current(), r = E(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${yM().settings().ambientMode}">
       ${z("player-ambient")}<span>氛围模式</span><i class="vjs-peach-switch" aria-hidden="true"></i></button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-speed>${z("player-speed")}<span>播放速度</span><b>${n === 1 ? "正常" : `${n}×`}</b>${z("player-menu-next")}</button>
-      <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-subtitles><span class="vjs-peach-menu-cc" aria-hidden="true">${YM()}</span><span>字幕</span><b>${B(p?.label() || "关闭")}</b>${z("player-menu-next")}</button>
+      <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-subtitles><span class="vjs-peach-menu-cc" aria-hidden="true">${JM()}</span><span>字幕</span><b>${B(p?.label() || "关闭")}</b>${z("player-menu-next")}</button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-rotation>${z("rotate-cw", "vjs-peach-menu-line-icon")}<span>画面旋转</span><b>${u.angle()}°</b>${z("player-menu-next")}</button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-quality-view>${z("player-quality")}<span>清晰度</span><b>${B(t.label)}</b>${z("player-menu-next")}</button>
       <div data-player-memory-error hidden><p class="vjs-peach-subtitle-status" role="status"></p><button type="button" class="vjs-peach-menu-row" data-player-memory-retry>重试保存播放记忆</button></div></div>`, e);
 		D(r, "[data-player-ambient]").onclick = () => {
-			ade(!bM().settings().ambientMode), k();
+			ode(!yM().settings().ambientMode), k();
 		}, D(r, "[data-player-speed]").onclick = () => P(), D(r, "[data-player-subtitles]").onclick = () => p?.show(), D(r, "[data-player-quality-view]").onclick = () => te(), D(r, "[data-player-rotation]").onclick = () => j(), D(r, "[data-player-memory-retry]").onclick = () => {
 			f.retry();
 		}, A();
@@ -33689,8 +33689,8 @@ function rN(e, t, n = 0, r = null) {
 		A(), ne();
 	});
 	return e.on("dispose", () => {
-		L(), t.removeEventListener("loadedmetadata", ne), t.removeEventListener("resize", ne), t.removeEventListener("ratechange", ne), T++, document.removeEventListener("pointerdown", I), document.removeEventListener(PM, C), w && clearTimeout(w);
-	}), p = new $ue(e, t, {
+		L(), t.removeEventListener("loadedmetadata", ne), t.removeEventListener("resize", ne), t.removeEventListener("ratechange", ne), T++, document.removeEventListener("pointerdown", I), document.removeEventListener(NM, C), w && clearTimeout(w);
+	}), p = new ede(e, t, {
 		render: E,
 		open: () => {
 			O = "subtitles", x(!0);
@@ -33699,21 +33699,21 @@ function rN(e, t, n = 0, r = null) {
 		back: () => {
 			p?.hide(), k(-1);
 		}
-	}), y(), sde(e, a), cde(e), (e) => {
+	}), y(), cde(e, a), lde(e), (e) => {
 		h = e?.length ? e : null, ne();
 	};
 }
-function sde(e, t) {
+function cde(e, t) {
 	let n = e.el().querySelector(".vjs-control-bar");
 	if (!n || n.querySelector("[data-player-theater]")) return;
-	let r = bM().settings().theaterMode, i = document.createElement("div");
+	let r = yM().settings().theaterMode, i = document.createElement("div");
 	i.className = "vjs-peach-theater vjs-control", i.innerHTML = `<button type="button" data-player-theater aria-pressed="${r}">${z(r ? "theater-exit" : "theater-enter")}</button>`, n.insertBefore(i, t.nextSibling);
 	let a = i.querySelector("button");
-	eN.set(a, QM(a, "影院模式", "T")), tN(a), a.onclick = (e) => {
-		e.stopPropagation(), nN(!bM().settings().theaterMode);
+	$M.set(a, ZM(a, "影院模式", "T")), eN(a), a.onclick = (e) => {
+		e.stopPropagation(), tN(!yM().settings().theaterMode);
 	};
 }
-function cde(e) {
+function lde(e) {
 	let t = e.el().querySelector(".vjs-control-bar");
 	if (!t || t.querySelector(".vjs-peach-right-controls")) return;
 	let n = t.querySelector(":scope>.vjs-play-control");
@@ -33725,7 +33725,7 @@ function cde(e) {
 		e.dataset.peachExplicitIcon = "";
 		let r = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		return r.setAttribute("viewBox", n.getAttribute("viewBox") || ""), r.setAttribute("aria-hidden", "true"), r.setAttribute("class", "vjs-peach-control-icon vjs-peach-morph-icon"), r.innerHTML = n.innerHTML, e.append(r), r;
-	}, a = (e) => [...document.getElementById(`i-${e}`)?.querySelectorAll("path") || []], o = i(n, "player-play")?.querySelector("path"), s = a("player-play")[0]?.getAttribute("d") || "", c = a("player-pause")[0]?.getAttribute("d") || "", l = QM(n, "播放", "K"), u = CSS.supports("d", "path(\"M0 0\")"), d = () => {
+	}, a = (e) => [...document.getElementById(`i-${e}`)?.querySelectorAll("path") || []], o = i(n, "player-play")?.querySelector("path"), s = a("player-play")[0]?.getAttribute("d") || "", c = a("player-pause")[0]?.getAttribute("d") || "", l = ZM(n, "播放", "K"), u = CSS.supports("d", "path(\"M0 0\")"), d = () => {
 		let t = e.paused() || e.ended(), n = t ? s : c;
 		o && (u ? o.style.setProperty("d", `path("${n}")`) : o.setAttribute("d", n)), l(t ? "播放" : "暂停");
 	};
@@ -33736,7 +33736,7 @@ function cde(e) {
 	], d), d();
 	let f = t.querySelector(":scope>.vjs-volume-panel"), p = f?.querySelector(":scope>.vjs-mute-control"), m = i(p, "player-volume");
 	m && a("player-volume-muted").forEach((e) => m.append(e.cloneNode(!0)));
-	let h = QM(p, "静音", "M"), g = () => {
+	let h = ZM(p, "静音", "M"), g = () => {
 		let t = e.muted() || e.volume() === 0;
 		m && (m.dataset.silent = String(t), m.dataset.loud = String(!t && e.volume() > .5)), h(t ? "取消静音" : "静音");
 	};
@@ -33762,7 +33762,7 @@ function cde(e) {
 	});
 	let x = document.createElement("button"), S = !1;
 	x.type = "button", x.className = "vjs-peach-time vjs-control", x.dataset.playerTime = "", x.innerHTML = "<span class=\"vjs-peach-time-text\"></span>";
-	let C = x.querySelector(".vjs-peach-time-text"), w = QM(x, "显示剩余时间"), T = () => {
+	let C = x.querySelector(".vjs-peach-time-text"), w = ZM(x, "显示剩余时间"), T = () => {
 		let t = Math.max(0, Number(e.currentTime()) || 0), n = Math.max(0, Number(e.duration()) || 0), r = Jn(Math.max(0, n - t));
 		C.textContent = `${S ? `-${r}` : Jn(t)} / ${Jn(n)}`, x.dataset.remaining = String(S), w(S ? "显示已播放时间" : "显示剩余时间", S ? `剩余 ${r}，总时长 ${Jn(n)}；点击显示已播放时间` : `已播放 ${Jn(t)}，总时长 ${Jn(n)}；点击显示剩余时间`);
 	};
@@ -33774,10 +33774,10 @@ function cde(e) {
 		"loadedmetadata"
 	], T), T(), f ? f.insertAdjacentElement("afterend", x) : t.append(x);
 	let E = t.querySelector(":scope>.vjs-picture-in-picture-control");
-	QM(t.querySelector(".vjs-subtitles-control>button"), "字幕"), r(E, "player-pip"), ide(e, E, QM(E, "画中画"), (e) => bM().toast(e, { warn: !0 }));
-	let D = t.querySelector(":scope>.vjs-fullscreen-control"), O = r(D, "player-fullscreen-enter"), k = QM(D, "全屏", "F"), A = () => {
+	ZM(t.querySelector(".vjs-subtitles-control>button"), "字幕"), r(E, "player-pip"), ade(e, E, ZM(E, "画中画"), (e) => yM().toast(e, { warn: !0 }));
+	let D = t.querySelector(":scope>.vjs-fullscreen-control"), O = r(D, "player-fullscreen-enter"), k = ZM(D, "全屏", "F"), A = () => {
 		let t = !!e.isFullscreen();
-		e.el().toggleAttribute("data-peach-fullscreen", t), O?.setAttribute("href", t ? "#i-player-fullscreen-exit" : "#i-player-fullscreen-enter"), k(t ? "退出全屏" : "全屏"), OM(e);
+		e.el().toggleAttribute("data-peach-fullscreen", t), O?.setAttribute("href", t ? "#i-player-fullscreen-exit" : "#i-player-fullscreen-enter"), k(t ? "退出全屏" : "全屏"), DM(e);
 	};
 	e.on([
 		"fullscreenchange",
@@ -33798,7 +33798,7 @@ function cde(e) {
 	});
 	let ee = document.createElement("div");
 	ee.className = "vjs-peach-expand vjs-control", ee.innerHTML = `<button type="button" data-player-expand aria-expanded="false">${z("player-expand")}</button><span class="vjs-peach-hover" aria-hidden="true"></span>`, M.prepend(ee);
-	let N = ee.querySelector("button"), P = QM(N, "展开控件"), F = (t) => {
+	let N = ee.querySelector("button"), P = ZM(N, "展开控件"), F = (t) => {
 		e.el().classList.toggle("vjs-peach-right-expanded", t), N.setAttribute("aria-expanded", String(t)), P(t ? "收起控件" : "展开控件");
 	};
 	N.onclick = (t) => {
@@ -33810,10 +33810,10 @@ function cde(e) {
 	}, ne = new ResizeObserver(te);
 	ne.observe(e.el()), e.on("dispose", () => ne.disconnect()), F(!1), te();
 }
-function iN(e, t, n = {}) {
+function rN(e, t, n = {}) {
 	let r = e.el().querySelector(".vjs-control-bar .vjs-progress-control");
 	if (!r || r.querySelector("[data-player-seek-preview]")) return;
-	let i = XM(r, t, n), a = (n) => {
+	let i = YM(r, t, n), a = (n) => {
 		let a = Kn(e.duration()) || Kn(t?.duration);
 		if (!a) return;
 		let o = r.getBoundingClientRect();
@@ -33833,13 +33833,13 @@ function iN(e, t, n = {}) {
 		i.dispose();
 	});
 }
-function lde(e, t) {
+function ude(e, t) {
 	let n = navigator.mediaSession;
 	if (!n || typeof n.setActionHandler != "function") return;
 	let r = () => Kn(e.duration()) || Kn(t.duration) || 0, i = (t) => {
 		let n = r();
 		e.currentTime(Math.max(0, n ? Math.min(n, t) : t));
-	}, a = () => Math.max(1, Number(bM().settings().seekSeconds) || 10), o = [
+	}, a = () => Math.max(1, Number(yM().settings().seekSeconds) || 10), o = [
 		["play", () => {
 			e.play();
 		}],
@@ -33880,11 +33880,11 @@ function lde(e, t) {
 		} catch {}
 	});
 }
-function aN(e) {
+function iN(e) {
 	let t = e.el().querySelector(".vjs-loading-spinner");
 	t && !t.querySelector(".vjs-peach-spinner-container") && (t.innerHTML = "<span class=\"vjs-peach-spinner-container\"><span class=\"vjs-peach-spinner-rotator\"><span class=\"vjs-peach-spinner-left\"><span class=\"vjs-peach-spinner-circle\"></span></span><span class=\"vjs-peach-spinner-right\"><span class=\"vjs-peach-spinner-circle\"></span></span></span></span>");
 }
-function oN(e, t) {
+function aN(e, t) {
 	wn(`/api/assets/${t}/subtitles`).then((t) => {
 		e && !e.isDisposed() && (t?.subtitles || []).filter((e) => e.playable).forEach((t) => {
 			e.addRemoteTextTrack({
@@ -33900,35 +33900,35 @@ function oN(e, t) {
 	}).catch(() => {});
 }
 // src/player/progress.ts
-var sN = "peach.playback-position.v1", cN = /* @__PURE__ */ new WeakMap();
-function lN(e) {
-	cN.get(e)?.(), cN.delete(e);
+var oN = "peach.playback-position.v1", sN = /* @__PURE__ */ new WeakMap();
+function cN(e) {
+	sN.get(e)?.(), sN.delete(e);
 }
-function uN(e, t, n = null) {
+function lN(e, t, n = null) {
 	let r = e === "follow" ? t.id : t.location === "online" ? t.follow_item_id : null;
 	return r ? `follow:${r}:${n ?? "main"}` : `item:${t.id}`;
 }
-function ude(e) {
+function dde(e) {
 	try {
-		let t = localStorage.getItem(`${sN}:${e}`), n = t === null || !t.trim() ? NaN : Number(t);
+		let t = localStorage.getItem(`${oN}:${e}`), n = t === null || !t.trim() ? NaN : Number(t);
 		return Number.isFinite(n) && n >= 0 ? n : null;
 	} catch {
 		return null;
 	}
 }
-function dde(e, t) {
-	let n = ude(e);
+function fde(e, t) {
+	let n = dde(e);
 	if (n !== null) return n;
 	let r = Number(t.leave_ratio);
 	return r > 0 && r < 1 ? r * Kn(t.duration) : 0;
 }
-function fde(e, t) {
-	lN(t);
+function pde(e, t) {
+	cN(t);
 	let n = t.readyState >= 1, r = () => {
 		if (!n || !Number.isFinite(t.currentTime)) return;
 		let r = t.ended ? 0 : Math.max(0, t.currentTime);
 		try {
-			localStorage.setItem(`${sN}:${e}`, String(r));
+			localStorage.setItem(`${oN}:${e}`, String(r));
 		} catch {}
 	}, i = () => {
 		n = !0;
@@ -33942,7 +33942,7 @@ function fde(e, t) {
 		"pause",
 		"ended"
 	]) t.addEventListener(e, r);
-	window.addEventListener("pagehide", r), document.addEventListener("visibilitychange", r), cN.set(t, () => {
+	window.addEventListener("pagehide", r), document.addEventListener("visibilitychange", r), sN.set(t, () => {
 		r(), t.removeEventListener("loadedmetadata", i), t.removeEventListener("emptied", a);
 		for (let e of [
 			"timeupdate",
@@ -33954,19 +33954,19 @@ function fde(e, t) {
 	});
 }
 // src/player/telemetry.ts
-var dN = /* @__PURE__ */ new WeakMap(), fN = "peach-playback-progress";
-function pN(e) {
-	dN.get(e)?.(), dN.delete(e);
+var uN = /* @__PURE__ */ new WeakMap(), dN = "peach-playback-progress";
+function fN(e) {
+	uN.get(e)?.(), uN.delete(e);
 }
-function mN(e, t, n, r) {
+function pN(e, t, n, r) {
 	let i = () => t(!1), a = () => {
 		n(), t(!1);
 	};
-	e.addEventListener("seeking", r), e.addEventListener("emptied", a), window.addEventListener("pagehide", i), dN.set(e, () => {
+	e.addEventListener("seeking", r), e.addEventListener("emptied", a), window.addEventListener("pagehide", i), uN.set(e, () => {
 		n(), t(!1), e.onplay = null, e.ontimeupdate = null, e.onpause = null, e.onended = null, e.removeEventListener("seeking", r), e.removeEventListener("emptied", a), window.removeEventListener("pagehide", i);
 	});
 }
-function hN(e, t, n = {}) {
+function mN(e, t, n = {}) {
 	if (!t) return;
 	let r = 0, i = 0, a = 0, o = null, s = (e) => e ? document.querySelector(e) : null, c = () => {
 		let r = Kn(e.duration) || Kn(t.duration);
@@ -33993,7 +33993,7 @@ function hN(e, t, n = {}) {
 					play_seconds: t.play_seconds,
 					...t.leave_ratio == null ? {} : { leave_ratio: t.leave_ratio }
 				};
-				document.dispatchEvent(new CustomEvent(fN, { detail: n }));
+				document.dispatchEvent(new CustomEvent(dN, { detail: n }));
 			}
 			let n = document.getElementById("realTxt");
 			if (n && t && t.real_ratio != null) {
@@ -34015,11 +34015,11 @@ function hN(e, t, n = {}) {
 		u(), l(!1);
 	}, t.onended = () => {
 		u(), l(!0), n.onEnded?.();
-	}, mN(t, l, u, () => {
+	}, pN(t, l, u, () => {
 		a++;
 	}), c();
 }
-function pde(e, t) {
+function mde(e, t) {
 	let n = 0, r = 0, i = !1, a = null, o = (n) => {
 		let i = Kn(e.duration) || Kn(t.duration);
 		(r || n) && (wn("/api/follow/activity", {
@@ -34050,22 +34050,22 @@ function pde(e, t) {
 		s(), o(!1);
 	}, t.onended = () => {
 		s(), o(!0);
-	}, mN(t, o, s, () => {});
+	}, pN(t, o, s, () => {});
 }
 // src/player/dispose.ts
-function gN(e) {
+function hN(e) {
 	if (!e || e.isDisposed()) return;
 	let t = e.el()?.querySelector("video");
 	try {
 		e.pause();
 	} catch {}
-	t && (lN(t), pN(t));
+	t && (cN(t), fN(t));
 	try {
 		e.dispose();
 	} catch {}
 }
 // src/core/random-id.ts
-function _N() {
+function gN() {
 	if (typeof crypto.randomUUID == "function") return crypto.randomUUID();
 	let e = crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
 	e[6] = e[6] & 15 | 64, e[8] = e[8] & 63 | 128;
@@ -34073,23 +34073,23 @@ function _N() {
 	return `${t.slice(0, 8)}-${t.slice(8, 12)}-${t.slice(12, 16)}-${t.slice(16, 20)}-${t.slice(20)}`;
 }
 // src/player/stream.ts
-function vN() {
-	return _N();
+function _N() {
+	return gN();
 }
-function yN(e, t) {
+function vN(e, t) {
 	return {
 		src: `/stream?id=${e.id}&session=${encodeURIComponent(t)}`,
 		type: String(e.name || "").toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"
 	};
 }
-function mde(e) {
+function hde(e) {
 	return e.location === "online" && e.follow_item_id ? {
 		src: `/follow-stream?id=${e.follow_item_id}`,
 		type: "video/mp4"
 	} : null;
 }
-async function bN(e, t) {
-	let n = mde(e);
+async function yN(e, t) {
+	let n = hde(e);
 	if (n) return n;
 	try {
 		let n = await wn(`/api/stream-plan?id=${e.id}&session=${encodeURIComponent(t)}`);
@@ -34098,9 +34098,9 @@ async function bN(e, t) {
 			type: n.mime_type || (n.protocol === "hls" ? "application/vnd.apple.mpegurl" : "video/mp4")
 		};
 	} catch {}
-	return yN(e, t);
+	return vN(e, t);
 }
-function xN(e) {
+function bN(e) {
 	e && fetch(`/api/stream-cancel?session=${encodeURIComponent(e)}`, {
 		method: "POST",
 		credentials: "same-origin",
@@ -34109,22 +34109,22 @@ function xN(e) {
 		document.documentElement.dataset.peachStreamCancel = JSON.stringify(e);
 	}).catch(() => {});
 }
-var SN = "";
+var xN = "";
+function SN() {
+	return xN;
+}
 function CN() {
-	return SN;
+	return xN ||= _N(), xN;
 }
+var gde = (e) => vN(e, CN()), _de = (e) => yN(e, CN());
 function wN() {
-	return SN ||= vN(), SN;
-}
-var hde = (e) => yN(e, wN()), gde = (e) => bN(e, wN());
-function TN() {
-	let e = SN;
-	e && (SN = "", xN(e));
+	let e = xN;
+	e && (xN = "", bN(e));
 }
 // src/player/v10-player.ts
-var EN = (e) => typeof e == "string" ? [e] : e, _de = (e, t) => {
+var TN = (e) => typeof e == "string" ? [e] : e, vde = (e, t) => {
 	let n = document.createElement("div"), r = document.createElement("video-player");
-	n.className = "video-js vjs-paused vjs-user-active", n.id = e.id || `peach-player-${_N()}`, n.setAttribute("lang", "zh-CN");
+	n.className = "video-js vjs-paused vjs-user-active", n.id = e.id || `peach-player-${gN()}`, n.setAttribute("lang", "zh-CN");
 	let i = document.createElement("media-container"), a = document.createElement("hlsjs-video");
 	e.parentNode?.replaceChild(n, e), e.removeAttribute("id"), e.className = "vjs-tech", e.slot = "media", e.controls = !1, e.preload = t.preload === "auto" ? "auto" : t.preload === "none" ? "none" : "metadata", t.poster && (e.poster = String(t.poster)), a.append(e), i.append(a), r.append(i), n.append(r), t.controls !== !1 && i.insertAdjacentHTML("beforeend", "<div class=\"vjs-loading-spinner\" aria-label=\"正在缓冲\"></div>\n      <div class=\"vjs-error-display\"><div class=\"vjs-modal-dialog-content\" role=\"alert\"></div></div>\n      <div class=\"vjs-control-bar\">\n        <media-play-button class=\"vjs-play-control vjs-control vjs-button\" label=\"播放\"></media-play-button>\n        <div class=\"vjs-volume-panel vjs-control vjs-volume-panel-horizontal\">\n          <media-mute-button class=\"vjs-mute-control vjs-control vjs-button\" label=\"静音\"></media-mute-button>\n          <div class=\"vjs-volume-control vjs-volume-horizontal\"><media-volume-slider class=\"vjs-volume-bar vjs-slider vjs-slider-horizontal\" label=\"音量\">\n            <media-slider-track><media-slider-fill class=\"vjs-volume-level\"></media-slider-fill></media-slider-track>\n            <media-slider-thumb class=\"vjs-volume-thumb\"></media-slider-thumb>\n            <media-slider-value class=\"vjs-volume-tooltip\"></media-slider-value>\n          </media-volume-slider></div>\n        </div>\n        <div class=\"vjs-progress-control vjs-control\"><media-time-slider class=\"vjs-progress-holder vjs-slider vjs-slider-horizontal\" label=\"播放进度\">\n          <media-slider-track><media-slider-buffer class=\"vjs-load-progress\"></media-slider-buffer><media-slider-fill class=\"vjs-play-progress\"></media-slider-fill></media-slider-track>\n          <media-slider-thumb class=\"vjs-progress-thumb\"></media-slider-thumb>\n        </media-time-slider></div>\n        <div class=\"vjs-subtitles-control vjs-control\"><button type=\"button\" class=\"vjs-button\" aria-label=\"开启字幕\" aria-pressed=\"false\">CC</button></div>\n        <media-pip-button class=\"vjs-picture-in-picture-control vjs-control vjs-button\" label=\"画中画\"></media-pip-button>\n        <media-fullscreen-button class=\"vjs-fullscreen-control vjs-control vjs-button\" label=\"全屏\"></media-fullscreen-button>\n      </div>");
 	let o = new EventTarget(), s = new AbortController(), c = s.signal, l = !1, u = 0, d = 0, f = 0, p = {
@@ -34219,9 +34219,9 @@ var EN = (e) => typeof e == "string" ? [e] : e, _de = (e, t) => {
 		e && Array.isArray(e.levels) && !x.has(e) && (x.add(e), e.on("hlsManifestParsed", w), e.on("hlsLevelSwitched", w)), w();
 	};
 	return e.addEventListener("loadedmetadata", T, { signal: c }), {
-		on: (e, t) => EN(e).forEach((e) => o.addEventListener(e, t, { signal: c })),
-		off: (e, t) => EN(e).forEach((e) => o.removeEventListener(e, t)),
-		one: (e, t) => EN(e).forEach((e) => o.addEventListener(e, t, {
+		on: (e, t) => TN(e).forEach((e) => o.addEventListener(e, t, { signal: c })),
+		off: (e, t) => TN(e).forEach((e) => o.removeEventListener(e, t)),
+		one: (e, t) => TN(e).forEach((e) => o.addEventListener(e, t, {
 			once: !0,
 			signal: c
 		})),
@@ -34276,7 +34276,7 @@ var EN = (e) => typeof e == "string" ? [e] : e, _de = (e, t) => {
 			n.id = String(t.id || ""), t.legacyId && (n.dataset.subtitleAlias = String(t.legacyId)), n.kind = String(t.kind || "subtitles"), n.src = String(t.src || ""), n.srclang = String(t.srclang || ""), n.label = String(t.label || ""), e.append(n);
 		}
 	};
-}, vde = "/vendor/videojs/10.3.0/", yde = [
+}, yde = "/vendor/videojs/10.3.0/", bde = [
 	"video-player.js",
 	"media/hlsjs-video.js",
 	"media/dash-video.js",
@@ -34294,17 +34294,17 @@ var EN = (e) => typeof e == "string" ? [e] : e, _de = (e, t) => {
 	"ui/slider-value.js",
 	"i18n.js",
 	"locales/zh-CN.js"
-], DN = null;
-function ON() {
-	return DN ??= Promise.all(yde.map((e) => import(
+], EN = null;
+function DN() {
+	return EN ??= Promise.all(bde.map((e) => import(
 		/* @vite-ignore */
-		`${vde}${e}`
-))).then(() => _de).catch((e) => {
-		throw DN = null, e;
-	}), DN;
+		`${yde}${e}`
+))).then(() => vde).catch((e) => {
+		throw EN = null, e;
+	}), EN;
 }
 // src/player/immerse-player.ts
-var bde = {
+var xde = {
 	controls: !1,
 	preload: "auto",
 	posterImage: !1,
@@ -34316,45 +34316,45 @@ var bde = {
 	errorDisplay: !1,
 	textTrackSettings: !1
 };
-function xde(e, t) {
+function Sde(e, t) {
 	let { item: n, session: r } = t, i = null, a = !1;
-	return Promise.all([bN(n, r), ON().catch(() => null)]).then(([o, s]) => {
+	return Promise.all([yN(n, r), DN().catch(() => null)]).then(([o, s]) => {
 		if (a) return;
-		let c = yN(n, r), l = String(o.type || "").includes("mpegurl");
+		let c = vN(n, r), l = String(o.type || "").includes("mpegurl");
 		if (!s) e.src = (l ? c : o).src;
 		else {
-			let t = s(e, bde);
-			i = t, t.peachItem = n, t.peachPlaybackKey = uN("item", n);
+			let t = s(e, xde);
+			i = t, t.peachItem = n, t.peachPlaybackKey = lN("item", n);
 			let r = new AbortController();
-			UM(t.el(), e, r.signal, KM(t)), ZM(t, e), qM(t, e), t.on("dispose", () => r.abort()), new JM(t, e), oN(t, n.id), l && t.one("error", () => {
+			HM(t.el(), e, r.signal, GM(t)), XM(t, e), KM(t, e), t.on("dispose", () => r.abort()), new qM(t, e), aN(t, n.id), l && t.one("error", () => {
 				a || t.src(c);
 			}), t.src(o);
 		}
-		hN(n, e, t.onEnded ? { onEnded: t.onEnded } : {}), t.onLoaded?.();
+		mN(n, e, t.onEnded ? { onEnded: t.onEnded } : {}), t.onLoaded?.();
 	}), () => {
-		a || (a = !0, xN(r), i ? gN(i) : (e.pause(), pN(e), e.removeAttribute("src"), e.load()));
+		a || (a = !0, bN(r), i ? hN(i) : (e.pause(), fN(e), e.removeAttribute("src"), e.load()));
 	};
 }
 // src/player/guide-preview.ts
-var kN = !1, AN = () => kN;
-function Sde() {
-	return kN = !0, () => {
-		kN = !1;
+var ON = !1, kN = () => ON;
+function Cde() {
+	return ON = !0, () => {
+		ON = !1;
 	};
 }
 // src/player/detail-player.ts
-var jN = /* @__PURE__ */ new WeakMap(), MN = null, NN = null, PN = null;
-function FN() {
-	MN &&= (clearInterval(MN), null), NN &&= (clearInterval(NN), null), PN &&= (clearTimeout(PN), null);
+var AN = /* @__PURE__ */ new WeakMap(), jN = null, MN = null, NN = null;
+function PN() {
+	jN &&= (clearInterval(jN), null), MN &&= (clearInterval(MN), null), NN &&= (clearTimeout(NN), null);
 }
-async function Cde(e, t, n, r = {}) {
-	let i = EM();
+async function wde(e, t, n, r = {}) {
+	let i = TM();
 	if (i && !i.isDisposed()) return i;
-	let a = bM(), o = r.resume ?? null;
+	let a = yM(), o = r.resume ?? null;
 	o?.autoplay && (n = !0), r.guidePreview && (n = !1);
-	let s = () => r.source ? Promise.resolve(r.source) : gde(e), c;
+	let s = () => r.source ? Promise.resolve(r.source) : _de(e), c;
 	try {
-		c = await ON();
+		c = await DN();
 	} catch {
 		return t.controls = !0, r.guidePreview || s().then((e) => {
 			t.addEventListener("loadedmetadata", () => {
@@ -34380,7 +34380,7 @@ async function Cde(e, t, n, r = {}) {
 			} }
 		}
 	});
-	DM(l), l.peachItem = e, l.peachPlaybackKey = r.playbackKey || uN("item", e), Uue(l), l.on("loadedmetadata", () => {
+	EM(l), l.peachItem = e, l.peachPlaybackKey = r.playbackKey || lN("item", e), Wue(l), l.on("loadedmetadata", () => {
 		let e = l.el()?.querySelector("video");
 		e?.videoWidth && e.videoHeight && l.el().style.setProperty("--peach-video-ratio", `${e.videoWidth}/${e.videoHeight}`);
 	});
@@ -34388,7 +34388,7 @@ async function Cde(e, t, n, r = {}) {
 		speed: [],
 		activity: [],
 		buffer: []
-	}, f = Number(r.size ?? e.size) || 0, p = Gue(jM(f, e.duration)), m = 0, h = !1, g = () => EM() === l && !l.isDisposed(), _ = () => {
+	}, f = Number(r.size ?? e.size) || 0, p = Kue(AM(f, e.duration)), m = 0, h = !1, g = () => TM() === l && !l.isDisposed(), _ = () => {
 		if (!u || h || !g()) return;
 		let e = Number(l.duration());
 		(!Number.isFinite(e) || Math.abs(e - u) > Math.max(2, u * .001)) && (h = !0, l.duration(u), queueMicrotask(() => {
@@ -34399,15 +34399,15 @@ async function Cde(e, t, n, r = {}) {
 		ready: !1,
 		updateStats: () => {}
 	};
-	jN.set(l, y), y.updateStats = () => {
+	AN.set(l, y), y.updateStats = () => {
 		let n = y.chrome?.statsPanel;
 		if (!n || n.hidden || !g()) return;
-		let i = t.getVideoPlaybackQuality ? t.getVideoPlaybackQuality() : null, a = t.getBoundingClientRect(), o = `${t.videoWidth || e.width || "?"}×${t.videoHeight || e.height || "?"}`, s = v(), c = CN(), h = s ? IM(e.id, c) : [], _ = h.reduce((e, t) => e + (t.transferSize || t.encodedBodySize || 0), 0), b = h.reduce((e, t) => e + (t.duration || 0), 0) / 1e3;
+		let i = t.getVideoPlaybackQuality ? t.getVideoPlaybackQuality() : null, a = t.getBoundingClientRect(), o = `${t.videoWidth || e.width || "?"}×${t.videoHeight || e.height || "?"}`, s = v(), c = SN(), h = s ? FM(e.id, c) : [], _ = h.reduce((e, t) => e + (t.transferSize || t.encodedBodySize || 0), 0), b = h.reduce((e, t) => e + (t.duration || 0), 0) / 1e3;
 		p.sample(t);
-		let x = RM(l, e.id, c, s ? null : p) || (b > 0 ? _ * 8 / b : 0), S = s ? _ : p.bitrate > 0 ? p.bytes() : p.seconds, C = Math.max(0, S - m);
+		let x = LM(l, e.id, c, s ? null : p) || (b > 0 ? _ * 8 / b : 0), S = s ? _ : p.bitrate > 0 ? p.bytes() : p.seconds, C = Math.max(0, S - m);
 		m = S;
-		let w = kM(t);
-		NM(d.speed, x), NM(d.activity, C), NM(d.buffer, w);
+		let w = OM(t);
+		MM(d.speed, x), MM(d.activity, C), MM(d.buffer, w);
 		let T = String(e.name || ""), E = (T.includes(".") ? T.split(".").pop() || "" : s ? "" : String(l.currentSource()?.type || "").split("/").pop() || "").toUpperCase() || "—", D = x ? `${(x / 1e6).toFixed(1)} Mbps` : "—", O = s || p.bitrate > 0, k = s ? [
 			"网络活动",
 			`${_ ? Yn(_) : "—"} · ${h.length} 请求`,
@@ -34425,17 +34425,17 @@ async function Cde(e, t, n, r = {}) {
 			[
 				"连接速度",
 				D,
-				FM(d.speed, "speed", Math.max(1e7, ...d.speed), `连接速度 ${D === "—" ? "暂无数据" : D}`)
+				PM(d.speed, "speed", Math.max(1e7, ...d.speed), `连接速度 ${D === "—" ? "暂无数据" : D}`)
 			],
 			[
 				k[0],
 				k[1],
-				FM(d.activity, "activity", Math.max(1, ...d.activity), k[2])
+				PM(d.activity, "activity", Math.max(1, ...d.activity), k[2])
 			],
 			[
 				"缓冲健康",
 				`${w.toFixed(1)} 秒`,
-				FM(d.buffer, "buffer", 30, `当前可连续播放 ${w.toFixed(1)} 秒`)
+				PM(d.buffer, "buffer", 30, `当前可连续播放 ${w.toFixed(1)} 秒`)
 			],
 			["播放时间", `${Jn(t.currentTime)} / ${Jn(u || l.duration())}`],
 			["日期", (/* @__PURE__ */ new Date()).toLocaleString()]
@@ -34451,15 +34451,15 @@ async function Cde(e, t, n, r = {}) {
 		if (!n || l.isDisposed()) return;
 		let r = v();
 		r || p.sample(t);
-		let i = RM(l, e.id, CN(), r ? null : p), a = r ? zM(i) : que(i, kM(t));
+		let i = LM(l, e.id, SN(), r ? null : p), a = r ? RM(i) : Jue(i, OM(t));
 		n.innerHTML = `${z("gauge")}<span class="sr-only">加载速度</span><span>${B(a)}</span>`;
 	}, C = () => {
 		let e = y.chrome?.netBadge;
-		e && e.isConnected && (e.hidden = !1, S(), NN && clearInterval(NN), NN = setInterval(S, 500));
+		e && e.isConnected && (e.hidden = !1, S(), MN && clearInterval(MN), MN = setInterval(S, 500));
 	}, w = () => {
 		let e = y.chrome?.netBadge;
-		e && (PN && clearTimeout(PN), PN = setTimeout(() => {
-			e.hidden = !0, NN &&= (clearInterval(NN), null);
+		e && (NN && clearTimeout(NN), NN = setTimeout(() => {
+			e.hidden = !0, MN &&= (clearInterval(MN), null);
 		}, 1400));
 	};
 	return l.on([
@@ -34470,7 +34470,7 @@ async function Cde(e, t, n, r = {}) {
 	], C), l.on(["canplay", "playing"], () => {
 		S(), w();
 	}), l.on("error", () => {
-		b && !x && !l.isDisposed() ? (x = !0, b = !1, l.src(hde(e)), n && l.play()?.catch(() => {})) : r.checkSourceStatus !== !1 && a.loadSourceStatus().then((t) => {
+		b && !x && !l.isDisposed() ? (x = !0, b = !1, l.src(gde(e)), n && l.play()?.catch(() => {})) : r.checkSourceStatus !== !1 && a.loadSourceStatus().then((t) => {
 			t[String(e.root_id || e.location)] !== !1 || l.isDisposed() || l.error({
 				code: 2,
 				message: `媒体目录无法访问 · ${a.offlineReason(String(e.root_id || e.location))}`
@@ -34478,13 +34478,13 @@ async function Cde(e, t, n, r = {}) {
 		});
 	}), l.ready(() => {
 		_();
-		let n = rN(l, t, e.height, r.qualities ?? null);
+		let n = nN(l, t, e.height, r.qualities ?? null);
 		r.mediaPromise?.then((t) => {
 			if (!g()) return;
 			n?.(t?.qualities?.length ? t.qualities : null);
 			let r = Number(t?.size) || 0;
-			r > 0 && !f && (f = r, p.bitrate = jM(r, e.duration));
-		}).catch(() => {}), iN(l, e, { thumbnail: !r.source }), r.guidePreview || lde(l, e), aN(l), r.source || oN(l, e.id), y.ready = !0, y.chrome?.statsButton && (y.chrome.statsButton.hidden = !1);
+			r > 0 && !f && (f = r, p.bitrate = AM(r, e.duration));
+		}).catch(() => {}), rN(l, e, { thumbnail: !r.source }), r.guidePreview || ude(l, e), iN(l), r.source || aN(l, e.id), y.ready = !0, y.chrome?.statsButton && (y.chrome.statsButton.hidden = !1);
 	}), r.guidePreview || s().then((e) => {
 		g() && (b = String(e.type || "").includes("mpegurl"), o && o.time > 0 && l.one("loadedmetadata", () => {
 			if (l.isDisposed()) return;
@@ -34493,16 +34493,16 @@ async function Cde(e, t, n, r = {}) {
 		}), l.src(e), _(), setTimeout(_, 0), setTimeout(_, 250), n && l.play()?.catch(() => {}));
 	}).catch(() => {}), l;
 }
-var wde = "<canvas data-ambient-canvas=\"\" width=\"32\" height=\"18\"></canvas>";
-function IN(e, t = null) {
-	if (e.querySelector(":scope > [data-ambient-canvas]") || e.insertAdjacentHTML("afterbegin", wde), e.querySelector("#playerStatsBtn")) return;
+var Tde = "<canvas data-ambient-canvas=\"\" width=\"32\" height=\"18\"></canvas>";
+function FN(e, t = null) {
+	if (e.querySelector(":scope > [data-ambient-canvas]") || e.insertAdjacentHTML("afterbegin", Tde), e.querySelector("#playerStatsBtn")) return;
 	let n = document.createElement("template");
-	n.innerHTML = Kue();
+	n.innerHTML = que();
 	let r = e.querySelector(":scope > [data-player-toolbar]");
 	r && (r.querySelector("[data-player-stats-slot]").append(n.content.querySelector("#playerStatsBtn")), r.querySelector("[data-player-net-slot]").append(n.content.querySelector("#playerNet"))), e.insertBefore(n.content, t);
 }
-function LN(e, t) {
-	let n = jN.get(e);
+function IN(e, t) {
+	let n = AN.get(e);
 	if (!n || e.isDisposed()) return () => {};
 	let r = (e) => t.querySelector(`#${e}`), i = {
 		statsButton: r("playerStatsBtn"),
@@ -34514,30 +34514,30 @@ function LN(e, t) {
 	if (a && o) {
 		a.hidden = !n.ready;
 		let e = () => {
-			o.hidden || (o.hidden = !0, a.setAttribute("aria-pressed", "false"), MN &&= (clearInterval(MN), null));
+			o.hidden || (o.hidden = !0, a.setAttribute("aria-pressed", "false"), jN &&= (clearInterval(jN), null));
 		};
 		a.onclick = () => {
-			o.hidden ? (document.dispatchEvent(new CustomEvent(PM, { detail: "stats" })), o.hidden = !1, a.setAttribute("aria-pressed", "true"), n.updateStats(), MN && clearInterval(MN), MN = setInterval(n.updateStats, 1e3)) : e();
+			o.hidden ? (document.dispatchEvent(new CustomEvent(NM, { detail: "stats" })), o.hidden = !1, a.setAttribute("aria-pressed", "true"), n.updateStats(), jN && clearInterval(jN), jN = setInterval(n.updateStats, 1e3)) : e();
 		};
 		let t = (t) => {
 			t.detail !== "stats" && e();
 		};
-		document.addEventListener(PM, t), s = () => document.removeEventListener(PM, t);
+		document.addEventListener(NM, t), s = () => document.removeEventListener(NM, t);
 	}
-	let c = e.el().querySelector("video"), l = c ? ode(c) : () => {}, u = !0, d = () => {
-		u && (u = !1, s(), l(), n.chrome === i && (n.chrome = null, FN()));
+	let c = e.el().querySelector("video"), l = c ? sde(c) : () => {}, u = !0, d = () => {
+		u && (u = !1, s(), l(), n.chrome === i && (n.chrome = null, PN()));
 	};
 	return e.one("dispose", d), d;
 }
-function RN(e, t) {
-	if (t.kind === "immerse") return xde(e, t);
-	let { kind: n, item: r, media: i = null, handedOff: a, onPlayer: o } = t, s = AN(), c = bM(), l = t.chrome === !1 ? null : e.parentElement;
-	l && IN(l, e);
-	let u = uN(n, r, i?.index ?? null), d = {
+function LN(e, t) {
+	if (t.kind === "immerse") return Sde(e, t);
+	let { kind: n, item: r, media: i = null, handedOff: a, onPlayer: o } = t, s = kN(), c = yM(), l = t.chrome === !1 ? null : e.parentElement;
+	l && FN(l, e);
+	let u = lN(n, r, i?.index ?? null), d = {
 		guidePreview: s,
 		playbackKey: u,
 		resume: s ? null : t.resume ?? {
-			time: dde(u, r),
+			time: fde(u, r),
 			autoplay: !1
 		}
 	};
@@ -34557,36 +34557,36 @@ function RN(e, t) {
 		t && (e.poster = t);
 	}
 	let f = null, p = !1, m = () => {}, h = e, g = () => {
-		m(), !(f && a?.(f)) && (lN(h), f ? (EM() === f && (DM(null), FN()), gN(f)) : pN(h));
+		m(), !(f && a?.(f)) && (cN(h), f ? (TM() === f && (EM(null), PN()), hN(f)) : fN(h));
 	};
-	return Cde(r, e, s ? !1 : t.autoplay ?? c.settings().detailAutoplay, d).then((t) => {
-		f = t, p ? g() : (h = t?.el().querySelector("video") ?? e, s ? (t?.el().setAttribute("data-player-guide", ""), o?.(t)) : (fde(u, h), n === "follow" ? pde(r, h) : (h.addEventListener("play", () => {
+	return wde(r, e, s ? !1 : t.autoplay ?? c.settings().detailAutoplay, d).then((t) => {
+		f = t, p ? g() : (h = t?.el().querySelector("video") ?? e, s ? (t?.el().setAttribute("data-player-guide", ""), o?.(t)) : (pde(u, h), n === "follow" ? mde(r, h) : (h.addEventListener("play", () => {
 			wn("/api/play", {
 				method: "POST",
 				body: JSON.stringify({ id: r.id })
 			}).catch(() => {});
-		}, { once: !0 }), hN(r, h, {
+		}, { once: !0 }), mN(r, h, {
 			watched: "#watched",
 			mark: "#mark",
 			ratio: "#ratioTxt"
-		})), t ? (l && (m = LN(t, l)), o?.(t)) : o?.(null)));
+		})), t ? (l && (m = IN(t, l)), o?.(t)) : o?.(null)));
 	}), () => {
 		p = !0, g();
 	};
 }
 // src/player/playback.ts
-function zN(e) {
+function RN(e) {
 	e && (e.paused ? e.play()?.catch(() => {}) : e.pause());
 }
-function BN(e, t) {
+function zN(e, t) {
 	let n = e.duration, r = (e.currentTime || 0) + t;
 	e.currentTime = Number.isFinite(n) ? Math.max(0, Math.min(n, r)) : Math.max(0, r);
 }
 // src/player/preview-player.ts
-function Tde(e, t, n) {
+function Ede(e, t, n) {
 	e.controls = !1;
 	let r = !1, i = null;
-	return ON().then((a) => {
+	return DN().then((a) => {
 		if (r) return;
 		i = a(e, {
 			controls: !0,
@@ -34611,30 +34611,30 @@ function Tde(e, t, n) {
 		o.on("error", () => {
 			r || n();
 		}), o.ready(() => {
-			r || o.isDisposed() || (rN(o, e), iN(o, null, { thumbnail: !1 }), aN(o));
+			r || o.isDisposed() || (nN(o, e), rN(o, null, { thumbnail: !1 }), iN(o));
 		}), o.src(t);
 	}).catch(() => {
 		r || n();
 	}), () => {
-		r = !0, gN(i), i || (e.pause(), e.removeAttribute("src"), e.load(), e.remove());
+		r = !0, hN(i), i || (e.pause(), e.removeAttribute("src"), e.load(), e.remove());
 	};
 }
-function VN(e, t) {
+function BN(e, t) {
 	let n = new URLSearchParams(Object.entries(e).filter(([, e]) => e));
 	return t && n.set("exclude_vertical", "1"), n.toString();
 }
-var Ede = (e, t) => [
+var Dde = (e, t) => [
 	"catalog-grid",
 	"catalog",
 	e,
 	t
-], Dde = (e, t) => [
+], Ode = (e, t) => [
 	"catalog-grid",
 	"entity",
 	e,
 	t
 ];
-async function Ode(e, t, n, r, i, a = !0) {
+async function kde(e, t, n, r, i, a = !0) {
 	let o = new URLSearchParams(e);
 	o.set("limit", String(n)), o.set("offset", String(t)), (t || !a) && o.set("count", "0");
 	let s = await V(`/api/items?${o}`, i), c = {
@@ -34645,37 +34645,37 @@ async function Ode(e, t, n, r, i, a = !0) {
 	};
 	return t || c.items.length || r || (c.libraryEmpty = (await V("/api/items?limit=1&thumb=0", i)).total === 0), c;
 }
-var kde = (e) => (t) => t.has_more ?? t.items.length < (t.total || 0) ? t.offset + (t.batch ?? e) : void 0;
-function Ade(e, t, n, r, i) {
+var Ade = (e) => (t) => t.has_more ?? t.items.length < (t.total || 0) ? t.offset + (t.batch ?? e) : void 0;
+function jde(e, t, n, r, i) {
 	return Math.max(1, Math.min(i, Math.max(1, e) * Math.max(1, Math.ceil((t + r) / (n + r)))));
 }
-function jde(e) {
+function Mde(e) {
 	let t = document.querySelector("#grid .skeletonpanel[data-fill]>div, #grid [data-media-grid]"), n = t?.firstElementChild;
 	if (!t || !n) return Math.min(e, 18);
 	let r = getComputedStyle(t), i = n.getBoundingClientRect().height;
-	return !i || r.display !== "grid" ? Math.min(e, 18) : Ade(r.gridTemplateColumns.split(" ").filter(Boolean).length, window.innerHeight - t.getBoundingClientRect().top, i, parseFloat(r.rowGap) || 0, e);
+	return !i || r.display !== "grid" ? Math.min(e, 18) : jde(r.gridTemplateColumns.split(" ").filter(Boolean).length, window.innerHeight - t.getBoundingClientRect().top, i, parseFloat(r.rowGap) || 0, e);
 }
-function Mde(e, t) {
+function Nde(e, t) {
 	let n = new URLSearchParams(e);
 	return n.set("summary_only", "1"), V(`/api/items?${n}`, t);
 }
-var Nde = (e, t) => {
+var Pde = (e, t) => {
 	let n = t.reduce((e, t) => e + t.items.length, 0);
 	return (e.has_more == null ? n < (e.total || 0) : e.has_more) ? n : void 0;
 };
-function HN(e) {
-	let t = VN(e.filters || {}, !!e.excludeVertical), n = e.batchSize || 60, r = e.filters?.state === "trash", i = !r && !e.wall;
+function VN(e) {
+	let t = BN(e.filters || {}, !!e.excludeVertical), n = e.batchSize || 60, r = e.filters?.state === "trash", i = !r && !e.wall;
 	return {
-		queryKey: Ede(t, e.revision || 0),
-		queryFn: ({ pageParam: e, signal: a }) => Ode(t, e, i && !e ? jde(n) : n, r, a, !i),
+		queryKey: Dde(t, e.revision || 0),
+		queryFn: ({ pageParam: e, signal: a }) => kde(t, e, i && !e ? Mde(n) : n, r, a, !i),
 		initialPageParam: 0,
-		getNextPageParam: kde(n)
+		getNextPageParam: Ade(n)
 	};
 }
-async function Pde(e, t, n) {
+async function Fde(e, t, n) {
 	if (e.mode === "items" || e.mode === "entity" || t === "list" && !e.wall) return;
-	let r = HN(e);
-	U.getQueryData(r.queryKey) === void 0 && ((e.restoreNavigation || e.wall) && UN(r.queryKey) || await U.fetchInfiniteQuery({
+	let r = VN(e);
+	U.getQueryData(r.queryKey) === void 0 && ((e.restoreNavigation || e.wall) && HN(r.queryKey) || await U.fetchInfiniteQuery({
 		queryKey: r.queryKey,
 		queryFn: ({ pageParam: e }) => r.queryFn({
 			pageParam: e,
@@ -34685,9 +34685,9 @@ async function Pde(e, t, n) {
 		getNextPageParam: r.getNextPageParam
 	}));
 }
-function Fde(e) {
+function Ide(e) {
 	return {
-		queryKey: Dde(e.entityKey || "", e.revision || 0),
+		queryKey: Ode(e.entityKey || "", e.revision || 0),
 		queryFn: async ({ pageParam: t, signal: n }) => {
 			if (!e.fetchPage) return {
 				items: [],
@@ -34702,14 +34702,14 @@ function Fde(e) {
 			};
 		},
 		initialPageParam: 0,
-		getNextPageParam: Nde
+		getNextPageParam: Pde
 	};
 }
-function UN(e) {
+function HN(e) {
 	let t = JSON.stringify(e);
 	return U.getQueryCache().findAll({ queryKey: e.slice(0, -1) }).filter((e) => JSON.stringify(e.queryKey) !== t && !e.state.isInvalidated && Array.isArray(e.state.data?.pages)).sort((e, t) => t.state.dataUpdatedAt - e.state.dataUpdatedAt)[0]?.state.data;
 }
-function WN(e, t, n) {
+function UN(e, t, n) {
 	return n ? e.filter((e) => {
 		let n = e.part_group?.key;
 		if (n) {
@@ -34724,24 +34724,24 @@ function WN(e, t, n) {
 		return !0;
 	}) : [...e];
 }
-var GN = (e, t) => !!e && !!to(e, t);
-function Ide(e, t) {
-	let n = (e) => GN(e, t) && !!(e.creator || (e.performers || []).length || e.studio);
-	return e.slice(15).find(n) || e.slice(8).find(n) || e.slice(8).find((e) => GN(e, t)) || e[e.length - 1];
+var WN = (e, t) => !!e && !!to(e, t);
+function Lde(e, t) {
+	let n = (e) => WN(e, t) && !!(e.creator || (e.performers || []).length || e.studio);
+	return e.slice(15).find(n) || e.slice(8).find(n) || e.slice(8).find((e) => WN(e, t)) || e[e.length - 1];
 }
-function Lde(e, { collapse: t, mix: n, javImage: r }) {
+function Rde(e, { collapse: t, mix: n, javImage: r }) {
 	let i = {
 		parts: /* @__PURE__ */ new Set(),
 		editions: /* @__PURE__ */ new Set()
 	}, a = /* @__PURE__ */ new Set(), o = [], s = [];
 	for (let c of e) {
 		s.push(o.length);
-		let e = WN(c.items.filter((e) => !a.has(e.id) && !!a.add(e.id)), i, t), l = e.map((e) => ({
+		let e = UN(c.items.filter((e) => !a.has(e.id) && !!a.add(e.id)), i, t), l = e.map((e) => ({
 			kind: "card",
 			item: e
 		}));
 		if (o.push(...l), n) {
-			let t = !o.some((e) => e.kind === "mix"), n = t ? o.flatMap((e) => e.kind === "card" ? [e.item] : []) : e, i = n.length >= 8 ? Ide(n, r) : void 0;
+			let t = !o.some((e) => e.kind === "mix"), n = t ? o.flatMap((e) => e.kind === "card" ? [e.item] : []) : e, i = n.length >= 8 ? Lde(n, r) : void 0;
 			i && o.splice(t ? 7 : s.at(-1) + 7, 0, {
 				kind: "mix",
 				seed: i
@@ -34753,16 +34753,16 @@ function Lde(e, { collapse: t, mix: n, javImage: r }) {
 		pageStarts: s
 	};
 }
-function Rde(e, t, n) {
+function zde(e, t, n) {
 	let r = Math.max(1, n), i = [];
 	for (let n = Math.max(r, Math.ceil(Math.max(0, t) / r) * r); n < e; n += r) i.push(n);
 	return i;
 }
-function zde(e, t) {
+function Bde(e, t) {
 	let n = new URLSearchParams(Object.entries(e).filter(([, e]) => e));
 	return n.set("orient", "竖屏"), n.set("limit", "18"), n.set("offset", String(t)), n.toString();
 }
-function Bde(e, t) {
+function Vde(e, t) {
 	let n = [...t].sort((e, t) => e.at - t.at), r = [], i = 0;
 	for (let t of n) r.push({
 		start: i,
@@ -34775,10 +34775,10 @@ function Bde(e, t) {
 		strip: null
 	}), r;
 }
-function KN(e, t) {
-	qN((t) => t.id === e, t);
+function GN(e, t) {
+	KN((t) => t.id === e, t);
 }
-function qN(e, t) {
+function KN(e, t) {
 	U.setQueriesData({ queryKey: ["catalog-short-layout"] }, (n) => !n || !n.cuts.some((t) => t.items.some(e)) ? n : {
 		...n,
 		cuts: n.cuts.map((n) => ({
@@ -34808,34 +34808,34 @@ function qN(e, t) {
 		} : n)
 	});
 }
-var JN = (e) => Math.min(Math.max(e || 0, 0), 100), YN = (e) => Math.round(JN(e) / 20), Vde = (e) => {
-	let t = YN(e);
+var qN = (e) => Math.min(Math.max(e || 0, 0), 100), JN = (e) => Math.round(qN(e) / 20), Hde = (e) => {
+	let t = JN(e);
 	return t ? `${t} 星` : "未评分";
-}, XN = (e, t) => t === YN(e) ? 0 : t * 20, ZN = (e) => ["item", e], QN = (e) => [
+}, YN = (e, t) => t === JN(e) ? 0 : t * 20, XN = (e) => ["item", e], ZN = (e) => [
 	"item-queue",
 	e.kind,
 	e.kind === "playlist" ? e.playlistId : e.seedId
-], Hde = (e, t) => [
+], Ude = (e, t) => [
 	"item-related",
 	e,
 	t
-], Ude = (e) => `/api/item?id=${e}`, Wde = (e, t) => `/api/related?id=${e}&limit=${t}`, $N = "/api/playlist", eP = "/api/feedback", tP = "/api/item-tag", nP = "/api/watch-later", rP = "/api/quality-goal", iP = "/api/preference", aP = class extends Error {};
-async function oP(e, t) {
-	let n = await V(Ude(e), t);
-	if (n.error) throw new aP(n.error);
+], Wde = (e) => `/api/item?id=${e}`, Gde = (e, t) => `/api/related?id=${e}&limit=${t}`, QN = "/api/playlist", $N = "/api/feedback", eP = "/api/item-tag", tP = "/api/watch-later", nP = "/api/quality-goal", rP = "/api/preference", iP = class extends Error {};
+async function aP(e, t) {
+	let n = await V(Wde(e), t);
+	if (n.error) throw new iP(n.error);
 	return n;
 }
-async function sP(e, t, n) {
+async function oP(e, t, n) {
 	if (e.kind === "mix") {
-		let r = e.seedId, [i, a] = await Promise.all([oP(r, n), t.mixRelated(r)]);
-		return U.setQueryData(ZN(i.id), i), {
+		let r = e.seedId, [i, a] = await Promise.all([aP(r, n), t.mixRelated(r)]);
+		return U.setQueryData(XN(i.id), i), {
 			kind: "mix",
 			seedId: r,
 			title: `Mix · ${Mo(i, t.tagLabel)}`,
 			items: [i, ...a.filter((e) => e.id !== i.id)]
 		};
 	}
-	if (e.kind === "playlist") return cP(await V(`${$N}?id=${e.playlistId}`, n));
+	if (e.kind === "playlist") return sP(await V(`${QN}?id=${e.playlistId}`, n));
 	let r = await V(`/api/${e.kind}?id=${e.seedId}`, n);
 	if (r.error || !r.items?.length) throw Error(r.error || "这一组已不存在");
 	return {
@@ -34846,19 +34846,19 @@ async function sP(e, t, n) {
 		versionCount: e.kind === "editions" ? r.count : void 0
 	};
 }
-var cP = (e) => ({
+var sP = (e) => ({
 	kind: "playlist",
 	playlistId: e.id,
 	title: e.name,
 	items: e.items || [],
 	currentAssetId: e.current_asset_id
-}), lP = (e) => e.disposal === "vanished";
-function uP(e, t) {
+}), cP = (e) => e.disposal === "vanished";
+function lP(e, t) {
 	if (e.kind === "mix") return t;
-	let n = e.kind === "playlist" ? e.items.filter((e) => !lP(e)) : e.items;
+	let n = e.kind === "playlist" ? e.items.filter((e) => !cP(e)) : e.items;
 	return n.length ? t != null && n.some((e) => e.id === t) ? t : e.kind === "playlist" && n.some((t) => t.id === e.currentAssetId) ? e.currentAssetId : n[0].id : null;
 }
-function Gde(e, t) {
+function Kde(e, t) {
 	if (t?.kind !== "parts" && t?.kind !== "editions") return e;
 	let n = t.items.find((t) => t.id === e.id)?.part_label || "";
 	return e.part_label === n ? e : {
@@ -34866,20 +34866,20 @@ function Gde(e, t) {
 		part_label: n
 	};
 }
-function dP(e, t) {
+function uP(e, t) {
 	if (!e || e.kind !== "parts" && e.kind !== "editions") return null;
 	let n = e.items.findIndex((e) => e.id === t), r = e.items[n], i = e.items[n + 1];
 	return !r?.part_label || !i?.part_label ? null : e.kind === "parts" || r.version_id != null && r.version_id === i.version_id ? i : null;
 }
-async function fP(e, t) {
+async function dP(e, t) {
 	let { queue: n, actions: r } = e, i = null, a = !1;
 	if (n) {
-		let o = QN(n);
+		let o = ZN(n);
 		try {
 			let r = n.fresh ? void 0 : U.getQueryData(o);
 			a = !r && n.kind === "mix", i = r || await U.fetchQuery({
 				queryKey: o,
-				queryFn: () => sP(n, e.helpers, t),
+				queryFn: () => oP(n, e.helpers, t),
 				staleTime: 0
 			});
 		} catch (n) {
@@ -34891,21 +34891,21 @@ async function fP(e, t) {
 			return;
 		}
 	}
-	let o = i ? uP(i, e.id) : e.id;
+	let o = i ? lP(i, e.id) : e.id;
 	if (o == null) {
 		r.redirect(i?.kind === "playlist" ? { kind: "playlists" } : { kind: "gone" });
 		return;
 	}
-	let s, c = a && o === i?.seedId ? U.getQueryData(ZN(o)) : void 0;
+	let s, c = a && o === i?.seedId ? U.getQueryData(XN(o)) : void 0;
 	try {
 		s = c || await U.fetchQuery({
-			queryKey: ZN(o),
-			queryFn: () => oP(o, t),
+			queryKey: XN(o),
+			queryFn: () => aP(o, t),
 			staleTime: 0
 		});
 	} catch (e) {
 		if (t.aborted) throw e;
-		if (e instanceof aP) {
+		if (e instanceof iP) {
 			r.redirect({ kind: "gone" });
 			return;
 		}
@@ -34916,7 +34916,7 @@ async function fP(e, t) {
 		id: Number(s.follow_item_id)
 	});
 }
-function Kde(e) {
+function qde(e) {
 	let t = e.entity_refs || {}, n = /* @__PURE__ */ new Set(), r = (e) => {
 		let t = Hn(e.name);
 		return !e.name || n.has(t) ? !1 : (n.add(t), !0);
@@ -34938,35 +34938,35 @@ function Kde(e) {
 		unowned: !i.length && !c.length && !String(e.creator || "").trim()
 	};
 }
-function qde(e, t) {
+function Jde(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	return (e.tags || []).filter((e) => !t.isDurationTag(e.k)).forEach((e) => {
 		let r = Hn(t.tagLabel(e.k)), i = n.get(r);
 		(!i || Hn(e.k) === r && Hn(i.k) !== r) && n.set(r, e);
 	}), [...n.values()].slice(0, 40);
 }
-var pP = (e, t) => (e.tags || []).some((e) => Hn(e.k) === Hn(t)), mP = (e, t) => ({
+var fP = (e, t) => (e.tags || []).some((e) => Hn(e.k) === Hn(t)), pP = (e, t) => ({
 	...e,
 	tags: (e.tags || []).filter((e) => Hn(e.k) !== Hn(t))
-}), hP = (e, t) => pP(e, t.k) ? e : {
+}), mP = (e, t) => fP(e, t.k) ? e : {
 	...e,
 	tags: [...e.tags || [], t]
-}, gP = "peach.recentTags";
-function _P() {
+}, hP = "peach.recentTags";
+function gP() {
 	try {
-		let e = JSON.parse(localStorage.getItem(gP) || "[]");
+		let e = JSON.parse(localStorage.getItem(hP) || "[]");
 		return Array.isArray(e) ? e.map(String) : [];
 	} catch {
 		return [];
 	}
 }
-function vP(e) {
+function _P(e) {
 	try {
-		let t = _P().filter((t) => Hn(t) !== Hn(e));
-		localStorage.setItem(gP, JSON.stringify([e, ...t].slice(0, 12)));
+		let t = gP().filter((t) => Hn(t) !== Hn(e));
+		localStorage.setItem(hP, JSON.stringify([e, ...t].slice(0, 12)));
 	} catch {}
 }
-function Jde(e, t, n) {
+function Yde(e, t, n) {
 	let r = Hn(e), i = new Map(t.map((e) => [Hn(e.k), e])), a = t.filter((e) => !r || Hn(e.k).includes(r)).slice(0, 120), o = r ? [] : n.map((e) => i.get(Hn(e)) || {
 		k: e,
 		n: 0
@@ -34977,73 +34977,73 @@ function Jde(e, t, n) {
 		create: r && !s ? e.trim() : ""
 	};
 }
-var Yde = {
+var Xde = {
 	中字: "subtitle",
 	无码: "uncensored",
 	无码流出: "leaked",
 	无码破解: "cracked",
 	有码: "censored"
-}, Xde = {
+}, Zde = {
 	mix: "Mix",
 	parts: "分卷",
 	editions: "版本",
 	playlist: "播放列表"
 };
-function Zde(e) {
+function Qde(e) {
 	let t = (e.kind === "editions" ? e.versionCount ?? e.items.length : e.items.length).toLocaleString(), n = e.kind === "parts" ? `${t} 卷` : e.kind === "editions" ? `${t} 个版本` : `${t} 个视频`;
 	return {
-		title: Xde[e.kind],
+		title: Zde[e.kind],
 		summary: e.kind === "editions" ? n : `${e.title} · ${n}`
 	};
 }
-var yP = (e = "") => /^\d+$/.test(e) ? `第 ${e} 卷` : /^[a-h]$/i.test(e) ? `${e.toUpperCase()} 卷` : e, Qde = (e, t) => (t?.kind === "parts" || t?.kind === "editions") && e.part_label ? `<small class="javedition partlabel">${B(yP(e.part_label))}</small>` : "";
-function $de(e, t, n, r) {
+var vP = (e = "") => /^\d+$/.test(e) ? `第 ${e} 卷` : /^[a-h]$/i.test(e) ? `${e.toUpperCase()} 卷` : e, $de = (e, t) => (t?.kind === "parts" || t?.kind === "editions") && e.part_label ? `<small class="javedition partlabel">${B(vP(e.part_label))}</small>` : "";
+function efe(e, t, n, r) {
 	let i = e.filter((e) => e !== t), a = i.indexOf(n);
 	return i.splice(a + +!!r, 0, t), i;
 }
-var efe = (e, t) => e.length === t.length && e.every((e, n) => e === t[n]);
-function tfe(e, t) {
+var tfe = (e, t) => e.length === t.length && e.every((e, n) => e === t[n]);
+function nfe(e, t) {
 	return t ? "offline" : String(e.name || "").toLowerCase().endsWith(".iso") ? "disc" : e.location === "online" && !e.follow_item_id ? "online" : e.cost === "metered" && e.location !== "online" ? "metered" : "";
 }
-function nfe(e) {
+function rfe(e) {
 	let t = Number(e.duration) > 0 ? Number(e.duration) : 0;
 	return !e.play_seconds || !t ? null : Math.min(Number(e.play_seconds) / t, 1) * 100;
 }
-function bP(e, t) {
+function yP(e, t) {
 	return e === "dislike" ? t.feedback === "dislike" ? "已标记不合口味" : "已取消不合口味" : e === "seen" ? t.feedback === "seen" ? "已标记看过" : "已取消看过" : e === "dispose" ? t.disposal === "trash" ? "已移入回收站" : "已移出回收站" : "已记录一次高潮";
 }
 // src/react/immerse/immerse.ts
-var rfe = (e, t, n) => [
+var ife = (e, t, n) => [
 	"immerse-list",
 	e,
 	t,
 	n
 ];
-function ife(e) {
+function afe(e) {
 	let t = new URLSearchParams();
 	for (let [n, r] of Object.entries(e)) r && t.set(n, String(r));
 	return t.delete("orient"), t.set("sort", "rand"), t.set("limit", "60"), t.set("offset", "0"), t.set("thumb", ""), t.toString();
 }
-var afe = (e, t) => e.cost !== "metered" && !!e.duration && !t(String(e.root_id || e.location || ""));
-function ofe(e, t = Math.random) {
+var ofe = (e, t) => e.cost !== "metered" && !!e.duration && !t(String(e.root_id || e.location || ""));
+function sfe(e, t = Math.random) {
 	for (let n = e.length - 1; n > 0; n--) {
 		let r = Math.floor(t() * (n + 1));
 		[e[n], e[r]] = [e[r], e[n]];
 	}
 	return e;
 }
-async function sfe(e, t) {
-	return ofe(((await V(`/api/items?${e}`)).items || []).filter((e) => afe(e, t)));
+async function cfe(e, t) {
+	return sfe(((await V(`/api/items?${e}`)).items || []).filter((e) => ofe(e, t)));
 }
-var xP = (e) => U.ensureQueryData({
-	queryKey: ZN(e),
-	queryFn: ({ signal: t }) => oP(e, t)
+var bP = (e) => U.ensureQueryData({
+	queryKey: XN(e),
+	queryFn: ({ signal: t }) => aP(e, t)
 });
-function cfe(e, t) {
+function lfe(e, t) {
 	let n = new Set(e.map((e) => e.id));
 	return e.concat(t.filter((e) => !n.has(e.id)));
 }
-function lfe(e) {
+function ufe(e) {
 	let t = e.performers || [], n = t.length ? t.slice(0, 3).join("、") + (t.length > 3 ? ` 等 ${t.length} 人` : "") : e.creator || "未归属", r = t.length ? "performer" : e.creator ? "creator" : "";
 	return {
 		who: n,
@@ -35052,313 +35052,313 @@ function lfe(e) {
 		ref: r && e.entity_refs?.[r]?.[0] || null
 	};
 }
-function ufe(e, t, n) {
+function dfe(e, t, n) {
 	if (!e || !t || !n || !Number.isFinite(n)) return null;
 	let r = e / t;
 	return (r > n ? r / n : n / r) > 1.05 ? "contain" : "cover";
 }
-function dfe(e, t) {
+function ffe(e, t) {
 	return e.videoWidth && e.videoHeight ? e.videoWidth >= e.videoHeight : !!(t.width && t.height && t.width > 0 && t.height > 0 && t.width >= t.height);
 }
-var ffe = 15e3, SP = {
+var pfe = 15e3, xP = {
 	open: !1,
 	idle: !1,
 	wide: !1,
 	loading: null,
 	shown: null
-}, CP = null, wP = null, TP = SP, EP = /* @__PURE__ */ new Set(), DP = 0, OP = 0, kP = 0, AP = "", jP = [], MP = 0, NP = !1, PP = !1, FP = null, IP = /* @__PURE__ */ new Set(), LP = "", RP = null, zP = 0, BP = null, VP = !1, HP = null;
-function UP() {
-	if (!CP) throw Error("沉浸模式还没有接上宿主（configureImmerse）");
-	return CP;
+}, SP = null, CP = null, wP = xP, TP = /* @__PURE__ */ new Set(), EP = 0, DP = 0, OP = 0, kP = "", AP = [], jP = 0, MP = !1, NP = !1, PP = null, FP = /* @__PURE__ */ new Set(), IP = "", LP = null, RP = 0, zP = null, BP = !1, VP = null;
+function HP() {
+	if (!SP) throw Error("沉浸模式还没有接上宿主（configureImmerse）");
+	return SP;
 }
-function pfe(e) {
-	return EP.add(e), () => {
-		EP.delete(e);
+function mfe(e) {
+	return TP.add(e), () => {
+		TP.delete(e);
 	};
 }
-function mfe() {
-	for (let e of [...EP]) e();
+function hfe() {
+	for (let e of [...TP]) e();
+}
+function UP() {
+	(0, Lt.flushSync)(hfe);
 }
 function WP() {
-	(0, Lt.flushSync)(mfe);
+	let e = LP ? IM(LP.id) : 0;
+	return e ? `${IP} · ${RM(e)}` : IP;
 }
-function GP() {
-	let e = RP ? LM(RP.id) : 0;
-	return e ? `${LP} · ${zM(e)}` : LP;
-}
-function KP(e, t = null) {
-	clearInterval(zP), zP = 0, e === null ? (TP = {
-		...TP,
+function GP(e, t = null) {
+	clearInterval(RP), RP = 0, e === null ? (wP = {
+		...wP,
 		loading: null
-	}, WP()) : (LP = e, RP = t, TP = {
-		...TP,
-		loading: GP()
-	}, WP(), zP = window.setInterval(() => {
-		RP = jP[MP] ?? null, TP = {
-			...TP,
-			loading: GP()
-		}, WP();
+	}, UP()) : (IP = e, LP = t, wP = {
+		...wP,
+		loading: WP()
+	}, UP(), RP = window.setInterval(() => {
+		LP = AP[jP] ?? null, wP = {
+			...wP,
+			loading: WP()
+		}, UP();
 	}, 500));
 }
-function hfe(e) {
+function gfe(e) {
 	let t = document.createElement("div");
 	t.dataset.immerseSlide = "", e && (t.style.transform = `translateY(${e}%)`);
 	let n = document.createElement("video");
-	n.className = "video-js", n.playsInline = !0, n.preload = "auto", t.append(n), wP.track.append(t);
-	let r = vN(), i = () => {}, a = {
+	n.className = "video-js", n.playsInline = !0, n.preload = "auto", t.append(n), CP.track.append(t);
+	let r = _N(), i = () => {}, a = {
 		el: t,
 		video: n,
 		session: r,
-		release: () => xN(r),
+		release: () => bN(r),
 		disposed: !1,
 		gone: new Promise((e) => {
 			i = e;
 		}),
 		leave: i
 	};
-	return IP.add(a), a;
+	return FP.add(a), a;
 }
-function gfe(e, t) {
+function _fe(e, t) {
 	return new Promise((n) => {
-		e.release = RN(e.video, {
+		e.release = LN(e.video, {
 			kind: "immerse",
 			item: t,
 			session: e.session,
 			onLoaded: n,
 			onEnded: () => {
-				TP.open && eF(1);
+				wP.open && $P(1);
 			}
 		}), e.gone.then(n);
 	});
 }
-function qP(e) {
-	e && !e.disposed && (e.disposed = !0, IP.delete(e), e.leave(), e.release(), e.el.remove(), FP === e && (FP = null));
+function KP(e) {
+	e && !e.disposed && (e.disposed = !0, FP.delete(e), e.leave(), e.release(), e.el.remove(), PP === e && (PP = null));
 }
-var JP = [
+var qP = [
 	"loadeddata",
 	"canplay",
 	"error"
 ];
-function _fe(e) {
+function vfe(e) {
 	let { video: t } = e;
 	return t.readyState >= 3 ? Promise.resolve() : new Promise((n) => {
 		let r = !1, i = () => {
-			r || (r = !0, clearTimeout(a), JP.forEach((e) => t.removeEventListener(e, i)), n());
+			r || (r = !0, clearTimeout(a), qP.forEach((e) => t.removeEventListener(e, i)), n());
 		};
-		JP.forEach((e) => t.addEventListener(e, i, { once: !0 }));
-		let a = setTimeout(i, ffe);
+		qP.forEach((e) => t.addEventListener(e, i, { once: !0 }));
+		let a = setTimeout(i, pfe);
 		e.gone.then(i);
 	});
 }
-function YP(e) {
-	let t = e.closest("[data-immerse-track]"), n = t && t.clientWidth && t.clientHeight ? t.clientWidth / t.clientHeight : window.innerWidth / window.innerHeight, r = ufe(e.videoWidth, e.videoHeight, n);
+function JP(e) {
+	let t = e.closest("[data-immerse-track]"), n = t && t.clientWidth && t.clientHeight ? t.clientWidth / t.clientHeight : window.innerWidth / window.innerHeight, r = dfe(e.videoWidth, e.videoHeight, n);
 	r === "contain" ? e.dataset.fit = "contain" : r && delete e.dataset.fit;
 }
-var XP = () => wP?.track.querySelectorAll("video").forEach(YP);
-function vfe(e) {
-	delete e.dataset.fit, e.readyState >= 1 ? YP(e) : e.addEventListener("loadedmetadata", () => YP(e), { once: !0 });
-}
+var YP = () => CP?.track.querySelectorAll("video").forEach(JP);
 function yfe(e) {
-	TP = {
-		...TP,
-		wide: e
-	}, WP(), XP();
+	delete e.dataset.fit, e.readyState >= 1 ? JP(e) : e.addEventListener("loadedmetadata", () => JP(e), { once: !0 });
 }
-var ZP = () => {
-	let e = AP;
+function bfe(e) {
+	wP = {
+		...wP,
+		wide: e
+	}, UP(), YP();
+}
+var XP = () => {
+	let e = kP;
 	return U.fetchQuery({
-		queryKey: rfe(e, OP, kP),
-		queryFn: () => sfe(e, UP().sourceOffline),
+		queryKey: ife(e, DP, OP),
+		queryFn: () => cfe(e, HP().sourceOffline),
 		staleTime: Infinity
 	});
 };
-function bfe(e, t) {
+function xfe(e, t) {
 	let n = () => Kn(e.duration) || Kn(t.duration);
 	e.addEventListener("timeupdate", () => {
 		let t = n();
-		t && wP && (wP.progress.style.width = `${(e.currentTime / t * 100).toFixed(2)}%`);
-	}), BP = {
+		t && CP && (CP.progress.style.width = `${(e.currentTime / t * 100).toFixed(2)}%`);
+	}), zP = {
 		video: e,
 		duration: n
-	}, HP?.dispose(), HP = wP ? XM(wP.bar, t, { inset: 12 }) : null;
+	}, VP?.dispose(), VP = CP ? YM(CP.bar, t, { inset: 12 }) : null;
 }
-function QP(e) {
-	let t = BP?.duration();
-	HP && t && (HP.prime(), HP.show(e, t));
+function ZP(e) {
+	let t = zP?.duration();
+	VP && t && (VP.prime(), VP.show(e, t));
 }
-async function $P(e = 0) {
-	let t = jP[MP];
-	if (!t || NP) return;
-	let n = DP;
-	UP().route(t.id), NP = !0, KP(e ? "切换中" : "加载中", t);
+async function QP(e = 0) {
+	let t = AP[jP];
+	if (!t || MP) return;
+	let n = EP;
+	HP().route(t.id), MP = !0, GP(e ? "切换中" : "加载中", t);
 	let r = null;
 	try {
-		if (await xP(t.id).catch((e) => {
-			if (!(e instanceof aP)) throw e;
-		}), n !== DP) return;
-		let i = FP, a = !!(e && i);
-		a || qP(i);
-		let o = hfe(a ? e > 0 ? 100 : -100 : 0);
-		if (r = o, vfe(o.video), await gfe(o, t), await _fe(o), o.disposed || (yfe(dfe(o.video, t)), a && i && (requestAnimationFrame(() => requestAnimationFrame(() => {
+		if (await bP(t.id).catch((e) => {
+			if (!(e instanceof iP)) throw e;
+		}), n !== EP) return;
+		let i = PP, a = !!(e && i);
+		a || KP(i);
+		let o = gfe(a ? e > 0 ? 100 : -100 : 0);
+		if (r = o, yfe(o.video), await _fe(o, t), await vfe(o), o.disposed || (bfe(ffe(o.video, t)), a && i && (requestAnimationFrame(() => requestAnimationFrame(() => {
 			i.el.style.transform = `translateY(${e > 0 ? -100 : 100}%)`, o.el.style.transform = "";
-		})), await new Promise((e) => setTimeout(e, 210)), qP(i), o.el.style.transform = ""), o.disposed)) return;
-		FP = o, r = null, o.video.play()?.catch(() => {}), TP = {
-			...TP,
+		})), await new Promise((e) => setTimeout(e, 210)), KP(i), o.el.style.transform = ""), o.disposed)) return;
+		PP = o, r = null, o.video.play()?.catch(() => {}), wP = {
+			...wP,
 			idle: !1,
 			shown: {
 				item: t,
-				index: MP,
-				length: jP.length
+				index: jP,
+				length: AP.length
 			}
-		}, bfe(o.video, t), H("/api/play", { id: t.id }).catch(() => {}), KP(null);
+		}, xfe(o.video, t), H("/api/play", { id: t.id }).catch(() => {}), GP(null);
 	} catch {
-		qP(r), n === DP && KP(null);
+		KP(r), n === EP && GP(null);
 	} finally {
-		n === DP && (NP = !1);
+		n === EP && (MP = !1);
 	}
 }
-async function eF(e) {
-	if (NP || !TP.open) return;
-	let t = DP;
-	if (MP += e, KP("切换中", jP[MP] ?? null), MP >= jP.length - 3 && !PP) {
-		PP = !0;
+async function $P(e) {
+	if (MP || !wP.open) return;
+	let t = EP;
+	if (jP += e, GP("切换中", AP[jP] ?? null), jP >= AP.length - 3 && !NP) {
+		NP = !0;
 		try {
-			kP += 1;
-			let e = await ZP();
-			t === DP && (jP = cfe(jP, e));
+			OP += 1;
+			let e = await XP();
+			t === EP && (AP = lfe(AP, e));
 		} catch {} finally {
-			PP = !1;
+			NP = !1;
 		}
 	}
-	t === DP && (MP >= jP.length && (MP = 0), MP < 0 && (MP = jP.length - 1), await $P(e));
+	t === EP && (jP >= AP.length && (jP = 0), jP < 0 && (jP = AP.length - 1), await QP(e));
 }
-async function xfe(e) {
-	let t = ++DP;
-	tF(), OP += 1, kP = 0, AP = ife(UP().filters()), U.removeQueries({ queryKey: ["immerse-list"] }), TP = {
-		...TP,
+async function Sfe(e) {
+	let t = ++EP;
+	eF(), DP += 1, OP = 0, kP = afe(HP().filters()), U.removeQueries({ queryKey: ["immerse-list"] }), wP = {
+		...wP,
 		open: !0,
 		idle: !0,
 		shown: null
-	}, document.body.setAttribute("data-immerse-open", ""), KP("加载内容");
+	}, document.body.setAttribute("data-immerse-open", ""), GP("加载内容");
 	try {
-		let n = await ZP();
+		let n = await XP();
 		if (e && !n.some((t) => t.id === e)) {
-			let t = await xP(e).catch((e) => {
-				if (e instanceof aP) return null;
+			let t = await bP(e).catch((e) => {
+				if (e instanceof iP) return null;
 				throw e;
 			});
 			t?.id && (n = [t, ...n.filter((t) => t.id !== e)]);
 		}
-		if (t !== DP) return;
-		if (jP = n, !jP.length) {
-			nF(), UP().warn("当前筛选下没有可直接播放的内容");
+		if (t !== EP) return;
+		if (AP = n, !AP.length) {
+			tF(), HP().warn("当前筛选下没有可直接播放的内容");
 			return;
 		}
-		MP = Math.max(0, jP.findIndex((t) => t.id === e)), await $P();
+		jP = Math.max(0, AP.findIndex((t) => t.id === e)), await QP();
 	} catch {
-		if (t !== DP) return;
-		KP(null), nF();
+		if (t !== EP) return;
+		GP(null), tF();
 	}
+}
+function eF() {
+	clearInterval(RP), RP = 0, sF(), aF = null, zP = null, BP = !1, VP?.dispose(), VP = null, [...FP].forEach(KP), MP = !1;
 }
 function tF() {
-	clearInterval(zP), zP = 0, cF(), oF = null, BP = null, VP = !1, HP?.dispose(), HP = null, [...IP].forEach(qP), NP = !1;
+	wP.open && (EP++, eF(), wP = xP, document.body.removeAttribute("data-immerse-open"), UP(), HP().closed());
 }
-function nF() {
-	TP.open && (DP++, tF(), TP = SP, document.body.removeAttribute("data-immerse-open"), WP(), UP().closed());
+var nF = 0, rF = null, iF = 0, aF = null, oF = 0;
+function sF() {
+	clearTimeout(nF), nF = 0, rF = null;
 }
-var rF = 0, iF = null, aF = 0, oF = null, sF = 0;
-function cF() {
-	clearTimeout(rF), rF = 0, iF = null;
-}
-function Sfe(e) {
-	let t = FP?.video;
+function Cfe(e) {
+	let t = PP?.video;
 	if (!t) return;
 	let n = e < window.innerWidth / 2 ? -1 : 1, r = Date.now();
-	iF && iF.side === n && r - iF.at <= 280 ? (cF(), BN(t, UP().seekSeconds() * n)) : (rF && (clearTimeout(rF), rF = 0, zN(t)), iF = {
+	rF && rF.side === n && r - rF.at <= 280 ? (sF(), zN(t, HP().seekSeconds() * n)) : (nF && (clearTimeout(nF), nF = 0, RN(t)), rF = {
 		side: n,
 		at: r
-	}, rF = window.setTimeout(() => {
-		rF = 0, iF = null, TP.open && zN(FP?.video);
+	}, nF = window.setTimeout(() => {
+		nF = 0, rF = null, wP.open && RN(PP?.video);
 	}, 280));
 }
-function Cfe() {
-	Date.now() < aF || zN(FP?.video);
+function wfe() {
+	Date.now() < iF || RN(PP?.video);
 }
-var lF = (e) => wP?.bar.toggleAttribute("data-scrubbing", e);
+var cF = (e) => CP?.bar.toggleAttribute("data-scrubbing", e);
+function lF(e) {
+	CP && (CP.progress.style.width = `${(e * 100).toFixed(2)}%`);
+}
 function uF(e) {
-	wP && (wP.progress.style.width = `${(e * 100).toFixed(2)}%`);
-}
-function dF(e) {
 	let t = e.target;
 	if (e.touches.length !== 1 || !t?.closest("[data-immerse-track]")) {
-		oF = null;
+		aF = null;
 		return;
 	}
-	let n = FP?.video;
-	oF = {
+	let n = PP?.video;
+	aF = {
 		x: e.touches[0].clientX,
 		y: e.touches[0].clientY,
 		axis: "",
 		from: n && n.currentTime || 0
 	};
 }
-function fF(e) {
-	if (!oF || e.touches.length !== 1) return;
-	let t = e.touches[0].clientX - oF.x, n = e.touches[0].clientY - oF.y;
-	if (!oF.axis) {
+function dF(e) {
+	if (!aF || e.touches.length !== 1) return;
+	let t = e.touches[0].clientX - aF.x, n = e.touches[0].clientY - aF.y;
+	if (!aF.axis) {
 		if (Math.abs(t) < 12 && Math.abs(n) < 12) return;
-		oF.axis = Math.abs(t) > Math.abs(n) ? "x" : "y", oF.axis === "x" && lF(!0);
+		aF.axis = Math.abs(t) > Math.abs(n) ? "x" : "y", aF.axis === "x" && cF(!0);
 	}
-	if (oF.axis !== "x") return;
-	let r = FP?.video, i = r && r.duration || 0;
-	i && (e.preventDefault(), oF.to = Math.min(i, Math.max(0, oF.from + t / window.innerWidth * i)), uF(oF.to / i), QP(oF.to / i));
+	if (aF.axis !== "x") return;
+	let r = PP?.video, i = r && r.duration || 0;
+	i && (e.preventDefault(), aF.to = Math.min(i, Math.max(0, aF.from + t / window.innerWidth * i)), lF(aF.to / i), ZP(aF.to / i));
 }
-function pF(e) {
-	if (!oF) return;
-	let t = oF;
-	if (oF = null, aF = Date.now() + 700, lF(!1), HP?.hide(), t.axis === "x") {
-		let e = FP?.video;
+function fF(e) {
+	if (!aF) return;
+	let t = aF;
+	if (aF = null, iF = Date.now() + 700, cF(!1), VP?.hide(), t.axis === "x") {
+		let e = PP?.video;
 		e && t.to != null && (e.currentTime = t.to);
 		return;
 	}
 	let n = e.changedTouches[0], r = n.clientX - t.x, i = t.y - n.clientY;
-	Math.abs(i) > 60 ? (cF(), eF(i > 0 ? 1 : -1)) : Math.abs(r) <= 14 && Math.abs(i) <= 14 && (e.preventDefault(), Sfe(n.clientX));
+	Math.abs(i) > 60 ? (sF(), $P(i > 0 ? 1 : -1)) : Math.abs(r) <= 14 && Math.abs(i) <= 14 && (e.preventDefault(), Cfe(n.clientX));
 }
-function mF() {
-	oF = null, lF(!1), HP?.hide();
+function pF() {
+	aF = null, cF(!1), VP?.hide();
+}
+function mF(e) {
+	let t = Date.now();
+	t - oF < 260 || (oF = t, $P(e.deltaY > 0 ? 1 : -1));
 }
 function hF(e) {
-	let t = Date.now();
-	t - sF < 260 || (sF = t, eF(e.deltaY > 0 ? 1 : -1));
-}
-function gF(e) {
-	let t = wP.bar.getBoundingClientRect();
+	let t = CP.bar.getBoundingClientRect();
 	return Math.min(1, Math.max(0, (e.clientX - t.left) / t.width));
 }
-function wfe(e) {
-	BP?.duration() && (VP = !0, lF(!0), e.currentTarget.setPointerCapture(e.pointerId), uF(gF(e)), QP(gF(e)), e.preventDefault());
-}
 function Tfe(e) {
-	VP && uF(gF(e)), QP(gF(e));
+	zP?.duration() && (BP = !0, cF(!0), e.currentTarget.setPointerCapture(e.pointerId), lF(hF(e)), ZP(hF(e)), e.preventDefault());
 }
 function Efe(e) {
-	if (e.pointerType !== "mouse" && HP?.hide(), !VP) return;
-	VP = !1, lF(!1);
-	let t = BP?.duration();
-	BP && t && (BP.video.currentTime = t * gF(e));
+	BP && lF(hF(e)), ZP(hF(e));
 }
-function Dfe() {
-	VP = !1, lF(!1), HP?.hide();
+function Dfe(e) {
+	if (e.pointerType !== "mouse" && VP?.hide(), !BP) return;
+	BP = !1, cF(!1);
+	let t = zP?.duration();
+	zP && t && (zP.video.currentTime = t * hF(e));
 }
 function Ofe() {
-	VP || HP?.hide();
+	BP = !1, cF(!1), VP?.hide();
 }
-async function _F(e, t) {
-	let n = await H(eP, {
+function kfe() {
+	BP || VP?.hide();
+}
+async function gF(e, t) {
+	let n = await H($N, {
 		id: e,
 		kind: t
-	}), r = U.getQueryData(ZN(e));
-	if (!r) return KN(e, {
+	}), r = U.getQueryData(XN(e));
+	if (!r) return GN(e, {
 		feedback: n.feedback ?? void 0,
 		o_count: n.o_count
 	}), n;
@@ -35367,7 +35367,7 @@ async function _F(e, t) {
 		feedback: n.feedback ?? void 0,
 		o_count: n.o_count
 	};
-	return U.setQueryData(ZN(e), i), KN(e, {
+	return U.setQueryData(XN(e), i), GN(e, {
 		feedback: i.feedback,
 		disposal: i.disposal,
 		watch_later: i.watch_later,
@@ -35375,7 +35375,7 @@ async function _F(e, t) {
 		o_count: i.o_count
 	}), n;
 }
-var kfe = [
+var Afe = [
 	{
 		kind: "dislike",
 		glyph: "thumbs-down",
@@ -35392,31 +35392,31 @@ var kfe = [
 		label: "记一次高潮"
 	}
 ];
-function vF(e) {
+function _F(e) {
 	return Pt({
-		queryKey: ZN(e ?? 0),
-		queryFn: ({ signal: t }) => oP(e, t),
+		queryKey: XN(e ?? 0),
+		queryFn: ({ signal: t }) => aP(e, t),
 		enabled: e != null,
 		staleTime: Infinity
 	}).data;
 }
-function Afe({ kind: e, glyph: t, label: n, id: r }) {
-	let i = vF(r), a = Ft({
+function jfe({ kind: e, glyph: t, label: n, id: r }) {
+	let i = _F(r), a = Ft({
 		mutationFn: async (t) => {
-			let n = U.getQueryData(ZN(t))?.feedback || null;
+			let n = U.getQueryData(XN(t))?.feedback || null;
 			return {
-				result: await _F(t, e),
+				result: await gF(t, e),
 				before: n
 			};
 		},
 		onSuccess: ({ result: t, before: n }, r) => {
-			UP().toast(bP(e, t), { undo: async () => {
-				e === "o" ? await _F(r, "o-undo") : (t.feedback && await _F(r, t.feedback), n && await _F(r, n));
+			HP().toast(yP(e, t), { undo: async () => {
+				e === "o" ? await gF(r, "o-undo") : (t.feedback && await gF(r, t.feedback), n && await gF(r, n));
 			} }), e === "dislike" && t.feedback === "dislike" && setTimeout(() => {
-				eF(1);
+				$P(1);
 			}, 260);
 		},
-		onError: (e) => UP().failure("更新反馈", e)
+		onError: (e) => HP().failure("更新反馈", e)
 	}), o = a.isPending, s = e !== "o" && i ? i.feedback === e ? "true" : "false" : void 0;
 	return /* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-immerse-action": "",
@@ -35447,11 +35447,11 @@ function Afe({ kind: e, glyph: t, label: n, id: r }) {
 		})]
 	});
 }
-function jfe({ shown: e }) {
-	let t = e?.item ?? null, n = vF(t?.id ?? null), r = n ? lfe(n) : null, i = UP(), a = (e) => {
-		e.preventDefault(), n && (nF(), n.performers?.[0] ? i.openEntity("performer", n.performers[0]) : n.creator ? i.openEntity("creator", n.creator) : i.openUnowned());
+function Mfe({ shown: e }) {
+	let t = e?.item ?? null, n = _F(t?.id ?? null), r = n ? ufe(n) : null, i = HP(), a = (e) => {
+		e.preventDefault(), n && (tF(), n.performers?.[0] ? i.openEntity("performer", n.performers[0]) : n.creator ? i.openEntity("creator", n.creator) : i.openUnowned());
 	}, o = () => {
-		t && (nF(), i.openItem(t.id));
+		t && (tF(), i.openItem(t.id));
 	}, s = r ? _o(r.name, r.ref, Za(r.name), r.kind || "performer") : "";
 	return /* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-immerse-ui": "",
@@ -35480,18 +35480,18 @@ function jfe({ shown: e }) {
 		})]
 	});
 }
-var Mfe = { __html: Vs("媒体加载中") };
-function Nfe({ view: e }) {
+var Nfe = { __html: Vs("媒体加载中") };
+function Pfe({ view: e }) {
 	let t = (0, I.useRef)(null), n = (0, I.useRef)(null), r = (0, I.useRef)(null), i = (0, I.useRef)(null);
 	(0, I.useLayoutEffect)(() => {
 		let e = t.current;
-		return wP = {
+		return CP = {
 			root: e,
 			track: n.current,
 			bar: r.current,
 			progress: i.current
-		}, e.addEventListener("touchstart", dF, { passive: !0 }), e.addEventListener("touchmove", fF, { passive: !1 }), e.addEventListener("touchend", pF, { passive: !1 }), e.addEventListener("touchcancel", mF, { passive: !0 }), e.addEventListener("wheel", hF, { passive: !0 }), () => {
-			e.removeEventListener("touchstart", dF), e.removeEventListener("touchmove", fF), e.removeEventListener("touchend", pF), e.removeEventListener("touchcancel", mF), e.removeEventListener("wheel", hF), wP = null;
+		}, e.addEventListener("touchstart", uF, { passive: !0 }), e.addEventListener("touchmove", dF, { passive: !1 }), e.addEventListener("touchend", fF, { passive: !1 }), e.addEventListener("touchcancel", pF, { passive: !0 }), e.addEventListener("wheel", mF, { passive: !0 }), () => {
+			e.removeEventListener("touchstart", uF), e.removeEventListener("touchmove", dF), e.removeEventListener("touchend", fF), e.removeEventListener("touchcancel", pF), e.removeEventListener("wheel", mF), CP = null;
 		};
 	}, []);
 	let a = e.shown?.item.id ?? null, o = (e) => e ? "" : void 0;
@@ -35508,10 +35508,10 @@ function Nfe({ view: e }) {
 				children: [/* @__PURE__ */ (0, L.jsx)("div", {
 					ref: n,
 					"data-immerse-track": "",
-					onClick: Cfe
+					onClick: wfe
 				}), /* @__PURE__ */ (0, L.jsx)("div", {
 					"data-immerse-actions": "",
-					children: kfe.map((e) => /* @__PURE__ */ (0, L.jsx)(Afe, {
+					children: Afe.map((e) => /* @__PURE__ */ (0, L.jsx)(jfe, {
 						...e,
 						id: a
 					}, e.kind))
@@ -35524,7 +35524,7 @@ function Nfe({ view: e }) {
 				hidden: e.loading === null,
 				children: [/* @__PURE__ */ (0, L.jsx)("span", {
 					"data-immerse-spinner": "",
-					dangerouslySetInnerHTML: Mfe
+					dangerouslySetInnerHTML: Nfe
 				}), /* @__PURE__ */ (0, L.jsx)("span", { children: e.loading ?? "" })]
 			}),
 			/* @__PURE__ */ (0, L.jsx)("button", {
@@ -35532,7 +35532,7 @@ function Nfe({ view: e }) {
 				"data-immerse-close": "",
 				title: "关闭",
 				"aria-label": "关闭",
-				onClick: nF,
+				onClick: tF,
 				children: /* @__PURE__ */ (0, L.jsx)("svg", {
 					viewBox: "0 0 24 24",
 					children: /* @__PURE__ */ (0, L.jsx)("use", { href: "#i-x" })
@@ -35541,42 +35541,42 @@ function Nfe({ view: e }) {
 			/* @__PURE__ */ (0, L.jsx)("div", {
 				ref: r,
 				"data-immerse-bar": "",
-				onPointerDown: wfe,
-				onPointerMove: Tfe,
-				onPointerUp: Efe,
-				onPointerCancel: Dfe,
-				onPointerLeave: Ofe,
+				onPointerDown: Tfe,
+				onPointerMove: Efe,
+				onPointerUp: Dfe,
+				onPointerCancel: Ofe,
+				onPointerLeave: kfe,
 				children: /* @__PURE__ */ (0, L.jsx)("i", { ref: i })
 			}),
-			/* @__PURE__ */ (0, L.jsx)(jfe, { shown: e.shown })
+			/* @__PURE__ */ (0, L.jsx)(Mfe, { shown: e.shown })
 		]
 	});
 }
-var Pfe = {
-	open: xfe,
-	close: nF,
-	isOpen: () => TP.open,
-	activeVideo: () => TP.open ? FP?.video ?? null : null
+var Ffe = {
+	open: Sfe,
+	close: tF,
+	isOpen: () => wP.open,
+	activeVideo: () => wP.open ? PP?.video ?? null : null
 };
-function Ffe(e) {
-	if (!TP.open) return;
-	let t = e.target;
-	t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey || (e.key === "ArrowDown" && eF(1), e.key === "ArrowUp" && eF(-1));
-}
 function Ife(e) {
-	let t = !CP;
-	return CP = e, t && (document.addEventListener("keydown", Ffe), addEventListener("resize", () => {
-		TP.open && XP();
-	}), addEventListener("pagehide", () => {
-		IP.forEach((e) => xN(e.session));
-	})), Pfe;
+	if (!wP.open) return;
+	let t = e.target;
+	t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey || (e.key === "ArrowDown" && $P(1), e.key === "ArrowUp" && $P(-1));
 }
-function Lfe() {
-	let e = (0, I.useSyncExternalStore)(pfe, () => TP);
-	return CP ? /* @__PURE__ */ (0, L.jsx)(Nfe, { view: e }) : null;
+function Lfe(e) {
+	let t = !SP;
+	return SP = e, t && (document.addEventListener("keydown", Ife), addEventListener("resize", () => {
+		wP.open && YP();
+	}), addEventListener("pagehide", () => {
+		FP.forEach((e) => bN(e.session));
+	})), Ffe;
+}
+function Rfe() {
+	let e = (0, I.useSyncExternalStore)(mfe, () => wP);
+	return SP ? /* @__PURE__ */ (0, L.jsx)(Pfe, { view: e }) : null;
 }
 // src/manage-header.ts
-var yF = {
+var vF = {
 	...ip,
 	"/junk-files": "垃圾文件",
 	"/duplicates": "重复文件",
@@ -35585,104 +35585,104 @@ var yF = {
 	"/quality-goals": "高清版",
 	"/sources": "来源和凭证",
 	[If]: "修复与迁移"
-}, Rfe = {
+}, zfe = {
 	key: "cleanup",
 	label: "数据管理",
 	href: "/data-cleanup"
-}, zfe = { [If]: {
+}, Bfe = { [If]: {
 	key: "configuration",
 	label: "应用与维护",
 	href: "/settings/maintenance"
-} }, bF = (e) => zfe[e] ?? Rfe, Bfe = /* @__PURE__ */ new Set(["/data-cleanup", "/sources"]);
-function Vfe(e) {
-	let t = yF[e.path] ? bF(e.path).key : e.section;
+} }, yF = (e) => Bfe[e] ?? zfe, Vfe = /* @__PURE__ */ new Set(["/data-cleanup", "/sources"]);
+function Hfe(e) {
+	let t = vF[e.path] ? yF(e.path).key : e.section;
 	return e.menu.some(([e]) => e === t) ? t : "";
 }
-var Hfe = ({ total: e, shown: t }) => `${e.toLocaleString()} 个符合 · 显示 ${t.toLocaleString()}`;
-function xF(e) {
+var Ufe = ({ total: e, shown: t }) => `${e.toLocaleString()} 个符合 · 显示 ${t.toLocaleString()}`;
+function bF(e) {
 	let t = e.sections.find(([t]) => t === e.section);
 	if (!t) return null;
-	let n = yF[e.path] ?? "";
+	let n = vF[e.path] ?? "";
 	return {
-		title: e.section === bF(e.path).key && n || t[1],
-		pressed: Vfe(e),
+		title: e.section === yF(e.path).key && n || t[1],
+		pressed: Hfe(e),
 		crumb: n,
-		parent: bF(e.path),
-		compact: Bfe.has(e.path) || e.section === "configuration",
+		parent: yF(e.path),
+		compact: Vfe.has(e.path) || e.section === "configuration",
 		lede: e.section === "trash" ? e.trash ? {
 			kind: "count",
-			text: Hfe(e.trash),
+			text: Ufe(e.trash),
 			total: e.trash.total
 		} : { kind: "skeleton" } : { kind: "none" }
 	};
 }
-var SF = (e) => e.replace(/[&<>"']/g, (e) => ({
+var xF = (e) => e.replace(/[&<>"']/g, (e) => ({
 	"&": "&amp;",
 	"<": "&lt;",
 	">": "&gt;",
 	"\"": "&quot;",
 	"'": "&#39;"
-})[e]), CF = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${SF(e)}"/></svg>`, wF = "<span class=\"skeleton\" data-trash-lede-skeleton=\"text\" aria-hidden=\"true\"></span><span class=\"skeleton\" data-trash-lede-skeleton=\"action\" aria-hidden=\"true\"></span>";
-function Ufe(e) {
-	let t = xF(e);
+})[e]), SF = (e) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${xF(e)}"/></svg>`, CF = "<span class=\"skeleton\" data-trash-lede-skeleton=\"text\" aria-hidden=\"true\"></span><span class=\"skeleton\" data-trash-lede-skeleton=\"action\" aria-hidden=\"true\"></span>";
+function Wfe(e) {
+	let t = bF(e);
 	if (!t) return "";
 	let n = e.menu.map(([e, n, r]) => {
 		let i = e === t.pressed;
-		return `<button type="button" data-manage="${SF(e)}" aria-label="${SF(n)}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight" data-pill-variant="gray" aria-pressed="${i}"${i ? " aria-current=\"page\" data-pill-selected=\"\"" : ""}>${CF(r)}<span>${SF(n)}</span></button>`;
-	}).join(""), r = t.crumb ? `<nav data-manage-crumb="" aria-label="Breadcrumb"><ol><li><a href="${SF(t.parent.href)}">${SF(t.parent.label)}</a>${CF("chevron-right")}</li><li aria-current="true"><span>${SF(t.crumb)}</span></li></ol></nav>` : "", i = t.lede.kind === "none" ? "" : `<p class="mono" data-manage-lede="">${t.lede.kind === "skeleton" ? wF : `<span data-lede-text="">${SF(t.lede.text)}</span>${t.lede.total ? Wfe : ""}`}</p>`;
-	return `<nav data-manage-bar="" aria-label="管理"><div data-manage-menu="" data-pill-nav="" role="group">${n}</div>${ej(e.menu.map(([e]) => e)).join(",") === $A.join(",") ? "" : `<button type="button" disabled data-navigation-menu="" aria-label="管理顶部菜单排序设置" aria-haspopup="dialog" aria-expanded="false">${CF("ellipsis")}</button>`}<span data-manage-order-status="" role="status" aria-live="polite"></span></nav>` + r + `<h2 data-manage-title=""${t.compact ? " data-compact=\"\"" : ""}>${SF(t.title)}</h2>` + i;
+		return `<button type="button" data-manage="${xF(e)}" aria-label="${xF(n)}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight" data-pill-variant="gray" aria-pressed="${i}"${i ? " aria-current=\"page\" data-pill-selected=\"\"" : ""}>${SF(r)}<span>${xF(n)}</span></button>`;
+	}).join(""), r = t.crumb ? `<nav data-manage-crumb="" aria-label="Breadcrumb"><ol><li><a href="${xF(t.parent.href)}">${xF(t.parent.label)}</a>${SF("chevron-right")}</li><li aria-current="true"><span>${xF(t.crumb)}</span></li></ol></nav>` : "", i = t.lede.kind === "none" ? "" : `<p class="mono" data-manage-lede="">${t.lede.kind === "skeleton" ? CF : `<span data-lede-text="">${xF(t.lede.text)}</span>${t.lede.total ? Gfe : ""}`}</p>`;
+	return `<nav data-manage-bar="" aria-label="管理"><div data-manage-menu="" data-pill-nav="" role="group">${n}</div>${$A(e.menu.map(([e]) => e)).join(",") === QA.join(",") ? "" : `<button type="button" disabled data-navigation-menu="" aria-label="管理顶部菜单排序设置" aria-haspopup="dialog" aria-expanded="false">${SF("ellipsis")}</button>`}<span data-manage-order-status="" role="status" aria-live="polite"></span></nav>` + r + `<h2 data-manage-title=""${t.compact ? " data-compact=\"\"" : ""}>${xF(t.title)}</h2>` + i;
 }
-var Wfe = "<button type=\"button\" data-empty-trash=\"\" title=\"永久删除回收站内容\">清空回收站</button>", TF = "/api/settings", EF = "/api/follow/schedule", DF = "/api/feeds/schedule", OF = "/api/thumbnail-jobs", kF = ["settings"], AF = ["follow-schedule"], jF = ["feed-schedule"], MF = ["thumbnail-jobs"], NF = "/api/media-processing", Gfe = ["media-processing"], Kfe = (e) => V(NF, e), PF = (e) => V(TF, e), qfe = (e) => V(EF, e), Jfe = (e) => V(DF, e), Yfe = (e) => V(OF, e);
-function Xfe(e = U) {
+var Gfe = "<button type=\"button\" data-empty-trash=\"\" title=\"永久删除回收站内容\">清空回收站</button>", wF = "/api/settings", TF = "/api/follow/schedule", EF = "/api/feeds/schedule", DF = "/api/thumbnail-jobs", OF = ["settings"], kF = ["follow-schedule"], AF = ["feed-schedule"], jF = ["thumbnail-jobs"], MF = "/api/media-processing", Kfe = ["media-processing"], qfe = (e) => V(MF, e), NF = (e) => V(wF, e), Jfe = (e) => V(TF, e), Yfe = (e) => V(EF, e), Xfe = (e) => V(DF, e);
+function Zfe(e = U) {
 	return e.fetchQuery({
-		queryKey: kF,
-		queryFn: ({ signal: e }) => PF(e),
+		queryKey: OF,
+		queryFn: ({ signal: e }) => NF(e),
 		staleTime: 0
 	}).catch(() => null);
 }
-function FF(e) {
+function PF(e) {
 	return Ft({
 		scope: e ? { id: e } : void 0,
-		mutationFn: (e) => H(TF, e),
-		onSuccess: (e) => U.setQueryData(kF, e)
+		mutationFn: (e) => H(wF, e),
+		onSuccess: (e) => U.setQueryData(OF, e)
 	}, U);
 }
-function Zfe() {
+function Qfe() {
 	return Ft({
-		mutationFn: (e) => H(EF, {
+		mutationFn: (e) => H(TF, {
 			enabled: e > 0,
 			interval_minutes: e || 60
 		}),
-		onSuccess: (e) => U.setQueryData(AF, e)
+		onSuccess: (e) => U.setQueryData(kF, e)
 	});
 }
-var Qfe = {
+var $fe = {
 	follow: {
-		url: `${EF}/run`,
-		key: AF
+		url: `${TF}/run`,
+		key: kF
 	},
 	feed: {
-		url: `${DF}/run`,
-		key: jF
+		url: `${EF}/run`,
+		key: AF
 	}
 };
-function $fe(e) {
-	let { url: t, key: n } = Qfe[e];
+function epe(e) {
+	let { url: t, key: n } = $fe[e];
 	return Ft({
 		mutationFn: () => H(t, {}),
 		onSuccess: (e) => U.setQueryData(n, e)
 	});
 }
-var epe = (e) => e?.running ? 3e3 : !1;
-function tpe() {
+var tpe = (e) => e?.running ? 3e3 : !1;
+function npe() {
 	return Ft({
-		mutationFn: (e) => H(OF, { mode: e }),
-		onSuccess: (e) => U.setQueryData(MF, e)
+		mutationFn: (e) => H(DF, { mode: e }),
+		onSuccess: (e) => U.setQueryData(jF, e)
 	});
 }
 // src/react/sidebar/sidebar-order.ts
-function IF(e, t = "sidebarOrder") {
-	let { mutate: n } = FF("navigation-order");
+function FF(e, t = "sidebarOrder") {
+	let { mutate: n } = PF("navigation-order");
 	return (0, I.useCallback)((r) => {
 		e.value[t] = r, e.save(), n({ [t]: r }, { onError: () => {} });
 	}, [
@@ -35691,7 +35691,7 @@ function IF(e, t = "sidebarOrder") {
 		t
 	]);
 }
-function LF(e, t, n, r) {
+function IF(e, t, n, r) {
 	if (t === n) return null;
 	let i = [...e], a = i.indexOf(t);
 	if (a < 0) return null;
@@ -35700,7 +35700,7 @@ function LF(e, t, n, r) {
 	return o < 0 ? null : (i.splice(o + +!!r, 0, t), i);
 }
 // src/react/sidebar/use-sidebar-reorder.ts
-function npe(e) {
+function rpe(e) {
 	let t = e.getBoundingClientRect();
 	for (let n = e.parentElement; n; n = n.parentElement) {
 		let e = getComputedStyle(n);
@@ -35719,7 +35719,7 @@ function npe(e) {
 		width: t.width
 	};
 }
-function RF(e, t, n, r, i = "y", a = "nav", o = []) {
+function LF(e, t, n, r, i = "y", a = "nav", o = []) {
 	let [s, c] = (0, I.useState)(null), [l, u] = (0, I.useState)(""), d = (0, I.useRef)(null), f = (0, I.useRef)(null), p = (0, I.useRef)(!1), m = (0, I.useRef)({
 		order: t,
 		commit: n,
@@ -35754,7 +35754,7 @@ function RF(e, t, n, r, i = "y", a = "nav", o = []) {
 	let _ = (t) => {
 		let n = d.current;
 		if (!n || (d.current = null, !n.started)) return;
-		let r = m.current.picked, i = n.keys.filter((e) => e !== n.key), a = t ? r.slot : null, o = a === null || a === r.origin ? null : LF(m.current.order, n.key, i[Math.min(a, i.length - 1)], a === i.length);
+		let r = m.current.picked, i = n.keys.filter((e) => e !== n.key), a = t ? r.slot : null, o = a === null || a === r.origin ? null : IF(m.current.order, n.key, i[Math.min(a, i.length - 1)], a === i.length);
 		g(), e.current.style.minHeight = n.minHeight, document.body.style.cursor = n.cursor, n.node.style.removeProperty("--sidebar-drag-x"), n.node.style.removeProperty("--sidebar-drag-y"), p.current = !0, (0, Lt.flushSync)(() => {
 			c(null), o && m.current.commit(o), u(o ? `${n.node.ariaLabel}，已移动到第 ${a + 1} 项` : t && a === r.origin ? "顺序未变" : "已取消排序");
 		}), m.current.settled();
@@ -35793,7 +35793,7 @@ function RF(e, t, n, r, i = "y", a = "nav", o = []) {
 		if (!n.started) {
 			if (Math.hypot(r, a) < 6) return;
 			n.started = !0, g(), e.current.style.minHeight = `${e.current.offsetHeight}px`, document.body.style.cursor = "grabbing";
-			let t = i === "x" ? n.node.offsetLeft : n.node.offsetTop, { left: o, top: s, width: l } = npe(n.node), u = n.keys.indexOf(n.key);
+			let t = i === "x" ? n.node.offsetLeft : n.node.offsetTop, { left: o, top: s, width: l } = rpe(n.node), u = n.keys.indexOf(n.key);
 			(0, Lt.flushSync)(() => c({
 				key: n.key,
 				offset: t,
@@ -35824,7 +35824,7 @@ function RF(e, t, n, r, i = "y", a = "nav", o = []) {
 		e.preventDefault(), e.stopPropagation();
 		let d = h().map((e) => e.dataset[a]), f = d.indexOf(s), p = e.key === l, m = d[f + (p ? 1 : -1)];
 		if (m === void 0 || o.includes(s) || o.includes(m)) return;
-		let _ = LF(t, s, m, p);
+		let _ = IF(t, s, m, p);
 		_ && (g(), (0, Lt.flushSync)(() => n(_)), u(`${e.currentTarget.ariaLabel}，已移动到第 ${f + (p ? 2 : 0)} 项`), r());
 	}, x = s ? h().filter((e) => e.dataset[a] !== s.key) : [], S = !!s && s.slot !== null && s.slot !== s.origin, C = (e) => i === "x" ? e.offsetLeft : e.offsetTop;
 	return {
@@ -35863,7 +35863,7 @@ function RF(e, t, n, r, i = "y", a = "nav", o = []) {
 	};
 }
 // src/react/settings-panel/icon.tsx
-function zF({ name: e }) {
+function RF({ name: e }) {
 	let { wide: t, viewBox: n } = Sn(e);
 	return /* @__PURE__ */ (0, L.jsx)("svg", {
 		viewBox: n,
@@ -35872,7 +35872,7 @@ function zF({ name: e }) {
 		children: /* @__PURE__ */ (0, L.jsx)("use", { href: `#i-${e}` })
 	});
 }
-function rpe({ name: e }) {
+function ipe({ name: e }) {
 	return /* @__PURE__ */ (0, L.jsx)("svg", {
 		viewBox: "0 0 24 24",
 		"aria-hidden": "true",
@@ -35880,88 +35880,88 @@ function rpe({ name: e }) {
 	});
 }
 // node_modules/tailwind-merge/dist/bundle-mjs.mjs
-var ipe = (e, t) => {
+var ape = (e, t) => {
 	let n = Array(e.length + t.length);
 	for (let t = 0; t < e.length; t++) n[t] = e[t];
 	for (let r = 0; r < t.length; r++) n[e.length + r] = t[r];
 	return n;
-}, ape = (e, t) => ({
+}, ope = (e, t) => ({
 	classGroupId: e,
 	validator: t
-}), BF = (e = /* @__PURE__ */ new Map(), t = null, n) => ({
+}), zF = (e = /* @__PURE__ */ new Map(), t = null, n) => ({
 	nextPart: e,
 	validators: t,
 	classGroupId: n
-}), VF = "-", HF = [], ope = "arbitrary..", spe = (e) => {
-	let t = lpe(e), { conflictingClassGroups: n, conflictingClassGroupModifiers: r } = e;
+}), BF = "-", VF = [], spe = "arbitrary..", cpe = (e) => {
+	let t = upe(e), { conflictingClassGroups: n, conflictingClassGroupModifiers: r } = e;
 	return {
 		getClassGroupId: (e) => {
-			if (e.startsWith("[") && e.endsWith("]")) return cpe(e);
-			let n = e.split(VF);
-			return UF(n, +(n[0] === "" && n.length > 1), t);
+			if (e.startsWith("[") && e.endsWith("]")) return lpe(e);
+			let n = e.split(BF);
+			return HF(n, +(n[0] === "" && n.length > 1), t);
 		},
 		getConflictingClassGroupIds: (e, t) => {
 			if (t) {
 				let t = r[e], i = n[e];
-				return t ? i ? ipe(i, t) : t : i || HF;
+				return t ? i ? ape(i, t) : t : i || VF;
 			}
-			return n[e] || HF;
+			return n[e] || VF;
 		}
 	};
-}, UF = (e, t, n) => {
+}, HF = (e, t, n) => {
 	if (e.length - t === 0) return n.classGroupId;
 	let r = e[t], i = n.nextPart.get(r);
 	if (i) {
-		let n = UF(e, t + 1, i);
+		let n = HF(e, t + 1, i);
 		if (n) return n;
 	}
 	let a = n.validators;
 	if (a === null) return;
-	let o = t === 0 ? e.join(VF) : e.slice(t).join(VF), s = a.length;
+	let o = t === 0 ? e.join(BF) : e.slice(t).join(BF), s = a.length;
 	for (let e = 0; e < s; e++) {
 		let t = a[e];
 		if (t.validator(o)) return t.classGroupId;
 	}
-}, cpe = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
+}, lpe = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
 	let t = e.slice(1, -1), n = t.indexOf(":"), r = t.slice(0, n);
-	return r ? ope + r : void 0;
-})(), lpe = (e) => {
+	return r ? spe + r : void 0;
+})(), upe = (e) => {
 	let { theme: t, classGroups: n } = e;
-	return upe(n, t);
-}, upe = (e, t) => {
-	let n = BF();
+	return dpe(n, t);
+}, dpe = (e, t) => {
+	let n = zF();
 	for (let r in e) {
 		let i = e[r];
-		WF(i, n, r, t);
+		UF(i, n, r, t);
 	}
 	return n;
-}, WF = (e, t, n, r) => {
+}, UF = (e, t, n, r) => {
 	let i = e.length;
 	for (let a = 0; a < i; a++) {
 		let i = e[a];
-		dpe(i, t, n, r);
+		fpe(i, t, n, r);
 	}
-}, dpe = (e, t, n, r) => {
-	typeof e == "string" ? fpe(e, t, n) : typeof e == "function" ? ppe(e, t, n, r) : mpe(e, t, n, r);
-}, fpe = (e, t, n) => {
-	let r = e === "" ? t : GF(t, e);
+}, fpe = (e, t, n, r) => {
+	typeof e == "string" ? ppe(e, t, n) : typeof e == "function" ? mpe(e, t, n, r) : hpe(e, t, n, r);
+}, ppe = (e, t, n) => {
+	let r = e === "" ? t : WF(t, e);
 	r.classGroupId = n;
-}, ppe = (e, t, n, r) => {
-	hpe(e) ? WF(e(r), t, n, r) : (t.validators === null && (t.validators = []), t.validators.push(ape(n, e)));
 }, mpe = (e, t, n, r) => {
+	gpe(e) ? UF(e(r), t, n, r) : (t.validators === null && (t.validators = []), t.validators.push(ope(n, e)));
+}, hpe = (e, t, n, r) => {
 	let i = Object.entries(e), a = i.length;
 	for (let e = 0; e < a; e++) {
 		let [a, o] = i[e];
-		WF(o, GF(t, a), n, r);
+		UF(o, WF(t, a), n, r);
 	}
-}, GF = (e, t) => {
-	let n = e, r = t.split(VF), i = r.length;
+}, WF = (e, t) => {
+	let n = e, r = t.split(BF), i = r.length;
 	for (let e = 0; e < i; e++) {
 		let t = r[e], i = n.nextPart.get(t);
-		i || (i = BF(), n.nextPart.set(t, i)), n = i;
+		i || (i = zF(), n.nextPart.set(t, i)), n = i;
 	}
 	return n;
-}, hpe = (e) => "isThemeGetter" in e && e.isThemeGetter === !0, gpe = (e) => {
+}, gpe = (e) => "isThemeGetter" in e && e.isThemeGetter === !0, _pe = (e) => {
 	if (e < 1) return {
 		get: () => void 0,
 		set: () => {}
@@ -35979,19 +35979,19 @@ var ipe = (e, t) => {
 			e in n ? n[e] = t : i(e, t);
 		}
 	};
-}, KF = "!", qF = ":", _pe = [], JF = (e, t, n, r, i) => ({
+}, GF = "!", KF = ":", vpe = [], qF = (e, t, n, r, i) => ({
 	modifiers: e,
 	hasImportantModifier: t,
 	baseClassName: n,
 	maybePostfixModifierPosition: r,
 	isExternal: i
-}), vpe = (e) => {
+}), ype = (e) => {
 	let { prefix: t, experimentalParseClassName: n } = e, r = (e) => {
 		let t = [], n = 0, r = 0, i = 0, a, o = e.length;
 		for (let s = 0; s < o; s++) {
 			let o = e[s];
 			if (n === 0 && r === 0) {
-				if (o === qF) {
+				if (o === KF) {
 					t.push(e.slice(i, s)), i = s + 1;
 					continue;
 				}
@@ -36003,13 +36003,13 @@ var ipe = (e, t) => {
 			o === "[" ? n++ : o === "]" ? n-- : o === "(" ? r++ : o === ")" && r--;
 		}
 		let s = t.length === 0 ? e : e.slice(i), c = s, l = !1;
-		s.endsWith(KF) ? (c = s.slice(0, -1), l = !0) : s.startsWith(KF) && (c = s.slice(1), l = !0);
+		s.endsWith(GF) ? (c = s.slice(0, -1), l = !0) : s.startsWith(GF) && (c = s.slice(1), l = !0);
 		let u = a && a > i ? a - i : void 0;
-		return JF(t, l, c, u);
+		return qF(t, l, c, u);
 	};
 	if (t) {
-		let e = t + qF, n = r;
-		r = (t) => t.startsWith(e) ? n(t.slice(e.length)) : JF(_pe, !1, t, void 0, !0);
+		let e = t + KF, n = r;
+		r = (t) => t.startsWith(e) ? n(t.slice(e.length)) : qF(vpe, !1, t, void 0, !0);
 	}
 	if (n) {
 		let e = r;
@@ -36019,7 +36019,7 @@ var ipe = (e, t) => {
 		});
 	}
 	return r;
-}, ype = (e) => {
+}, bpe = (e) => {
 	let t = /* @__PURE__ */ new Map();
 	return e.orderSensitiveModifiers.forEach((e, n) => {
 		t.set(e, 1e6 + n);
@@ -36031,18 +36031,18 @@ var ipe = (e, t) => {
 		}
 		return r.length > 0 && (r.sort(), n.push(...r)), n;
 	};
-}, bpe = (e) => ({
-	cache: gpe(e.cacheSize),
-	parseClassName: vpe(e),
-	sortModifiers: ype(e),
-	postfixLookupClassGroupIds: xpe(e),
-	...spe(e)
-}), xpe = (e) => {
+}, xpe = (e) => ({
+	cache: _pe(e.cacheSize),
+	parseClassName: ype(e),
+	sortModifiers: bpe(e),
+	postfixLookupClassGroupIds: Spe(e),
+	...cpe(e)
+}), Spe = (e) => {
 	let t = Object.create(null), n = e.postfixLookupClassGroups;
 	if (n) for (let e = 0; e < n.length; e++) t[n[e]] = !0;
 	return t;
-}, Spe = /\s+/, Cpe = (e, t) => {
-	let { parseClassName: n, getClassGroupId: r, getConflictingClassGroupIds: i, sortModifiers: a, postfixLookupClassGroupIds: o } = t, s = [], c = e.trim().split(Spe), l = "";
+}, Cpe = /\s+/, wpe = (e, t) => {
+	let { parseClassName: n, getClassGroupId: r, getConflictingClassGroupIds: i, sortModifiers: a, postfixLookupClassGroupIds: o } = t, s = [], c = e.trim().split(Cpe), l = "";
 	for (let e = c.length - 1; e >= 0; --e) {
 		let t = c[e], { isExternal: u, modifiers: d, hasImportantModifier: f, baseClassName: p, maybePostfixModifierPosition: m } = n(t);
 		if (u) {
@@ -36062,7 +36062,7 @@ var ipe = (e, t) => {
 			}
 			h = !1;
 		}
-		let _ = d.length === 0 ? "" : d.length === 1 ? d[0] : a(d).join(":"), v = f ? _ + KF : _, y = v + g;
+		let _ = d.length === 0 ? "" : d.length === 1 ? d[0] : a(d).join(":"), v = f ? _ + GF : _, y = v + g;
 		if (s.indexOf(y) > -1) continue;
 		s.push(y);
 		let b = i(g, h);
@@ -36073,34 +36073,34 @@ var ipe = (e, t) => {
 		l = t + (l.length > 0 ? " " + l : l);
 	}
 	return l;
-}, wpe = (...e) => {
+}, Tpe = (...e) => {
 	let t = 0, n, r, i = "";
-	for (; t < e.length;) (n = e[t++]) && (r = YF(n)) && (i && (i += " "), i += r);
+	for (; t < e.length;) (n = e[t++]) && (r = JF(n)) && (i && (i += " "), i += r);
 	return i;
-}, YF = (e) => {
+}, JF = (e) => {
 	if (typeof e == "string") return e;
 	let t, n = "";
-	for (let r = 0; r < e.length; r++) e[r] && (t = YF(e[r])) && (n && (n += " "), n += t);
+	for (let r = 0; r < e.length; r++) e[r] && (t = JF(e[r])) && (n && (n += " "), n += t);
 	return n;
-}, XF = (e, ...t) => {
-	let n, r, i, a, o = (o) => (n = bpe(t.reduce((e, t) => t(e), e())), r = n.cache.get, i = n.cache.set, a = s, s(o)), s = (e) => {
+}, YF = (e, ...t) => {
+	let n, r, i, a, o = (o) => (n = xpe(t.reduce((e, t) => t(e), e())), r = n.cache.get, i = n.cache.set, a = s, s(o)), s = (e) => {
 		let t = r(e);
 		if (t) return t;
-		let a = Cpe(e, n);
+		let a = wpe(e, n);
 		return i(e, a), a;
 	};
-	return a = o, (...e) => a(wpe(...e));
-}, Tpe = [], ZF = (e) => {
-	let t = (t) => t[e] || Tpe;
+	return a = o, (...e) => a(Tpe(...e));
+}, Epe = [], XF = (e) => {
+	let t = (t) => t[e] || Epe;
 	return t.isThemeGetter = !0, t.themeKey = e, t;
-}, QF = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, $F = /^\((?:(\w[\w-]*):)?(.+)\)$/i, Epe = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Dpe = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Ope = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, kpe = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix|color|light-dark)\(.+\)$/, Ape = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, jpe = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, eI = (e) => Epe.test(e), tI = (e) => !!e && !Number.isNaN(Number(e)), nI = (e) => !!e && Number.isInteger(Number(e)), rI = (e) => e.endsWith("%") && tI(e.slice(0, -1)), iI = (e) => Dpe.test(e), aI = () => !0, Mpe = (e) => Ope.test(e) && !kpe.test(e), oI = () => !1, Npe = (e) => Ape.test(e), Ppe = (e) => jpe.test(e), Fpe = (e) => !sI(e) && !fI(e), Ipe = (e) => e.startsWith("@container") && (e[10] === "/" && e[11] !== void 0 || e[11] === "s" && e[16] !== void 0 && e.startsWith("-size/", 10) || e[11] === "n" && e[18] !== void 0 && e.startsWith("-normal/", 10)), Lpe = (e) => gI(e, bI, oI), sI = (e) => QF.test(e), cI = (e) => gI(e, xI, Mpe), lI = (e) => gI(e, Gpe, tI), Rpe = (e) => gI(e, CI, aI), zpe = (e) => gI(e, SI, oI), uI = (e) => gI(e, vI, oI), Bpe = (e) => gI(e, yI, Ppe), dI = (e) => gI(e, wI, Npe), fI = (e) => $F.test(e), pI = (e) => _I(e, xI), Vpe = (e) => _I(e, SI), mI = (e) => _I(e, vI), Hpe = (e) => _I(e, bI), Upe = (e) => _I(e, yI), hI = (e) => _I(e, wI, !0), Wpe = (e) => _I(e, CI, !0), gI = (e, t, n) => {
-	let r = QF.exec(e);
+}, ZF = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, QF = /^\((?:(\w[\w-]*):)?(.+)\)$/i, Dpe = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Ope = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, kpe = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Ape = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix|color|light-dark)\(.+\)$/, jpe = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, Mpe = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, $F = (e) => Dpe.test(e), eI = (e) => !!e && !Number.isNaN(Number(e)), tI = (e) => !!e && Number.isInteger(Number(e)), nI = (e) => e.endsWith("%") && eI(e.slice(0, -1)), rI = (e) => Ope.test(e), iI = () => !0, Npe = (e) => kpe.test(e) && !Ape.test(e), aI = () => !1, Ppe = (e) => jpe.test(e), Fpe = (e) => Mpe.test(e), Ipe = (e) => !oI(e) && !dI(e), Lpe = (e) => e.startsWith("@container") && (e[10] === "/" && e[11] !== void 0 || e[11] === "s" && e[16] !== void 0 && e.startsWith("-size/", 10) || e[11] === "n" && e[18] !== void 0 && e.startsWith("-normal/", 10)), Rpe = (e) => hI(e, yI, aI), oI = (e) => ZF.test(e), sI = (e) => hI(e, bI, Npe), cI = (e) => hI(e, Kpe, eI), zpe = (e) => hI(e, SI, iI), Bpe = (e) => hI(e, xI, aI), lI = (e) => hI(e, _I, aI), Vpe = (e) => hI(e, vI, Fpe), uI = (e) => hI(e, CI, Ppe), dI = (e) => QF.test(e), fI = (e) => gI(e, bI), Hpe = (e) => gI(e, xI), pI = (e) => gI(e, _I), Upe = (e) => gI(e, yI), Wpe = (e) => gI(e, vI), mI = (e) => gI(e, CI, !0), Gpe = (e) => gI(e, SI, !0), hI = (e, t, n) => {
+	let r = ZF.exec(e);
 	return r ? r[1] ? t(r[1]) : n(r[2]) : !1;
-}, _I = (e, t, n = !1) => {
-	let r = $F.exec(e);
+}, gI = (e, t, n = !1) => {
+	let r = QF.exec(e);
 	return r ? r[1] ? t(r[1]) : n : !1;
-}, vI = (e) => e === "position" || e === "percentage", yI = (e) => e === "image" || e === "url", bI = (e) => e === "length" || e === "size" || e === "bg-size", xI = (e) => e === "length", Gpe = (e) => e === "number", SI = (e) => e === "family-name", CI = (e) => e === "number" || e === "weight", wI = (e) => e === "shadow", TI = () => {
-	let e = ZF("color"), t = ZF("font"), n = ZF("text"), r = ZF("font-weight"), i = ZF("tracking"), a = ZF("leading"), o = ZF("breakpoint"), s = ZF("container"), c = ZF("spacing"), l = ZF("radius"), u = ZF("shadow"), d = ZF("inset-shadow"), f = ZF("text-shadow"), p = ZF("drop-shadow"), m = ZF("blur"), h = ZF("perspective"), g = ZF("aspect"), _ = ZF("ease"), v = ZF("animate"), y = () => [
+}, _I = (e) => e === "position" || e === "percentage", vI = (e) => e === "image" || e === "url", yI = (e) => e === "length" || e === "size" || e === "bg-size", bI = (e) => e === "length", Kpe = (e) => e === "number", xI = (e) => e === "family-name", SI = (e) => e === "number" || e === "weight", CI = (e) => e === "shadow", wI = () => {
+	let e = XF("color"), t = XF("font"), n = XF("text"), r = XF("font-weight"), i = XF("tracking"), a = XF("leading"), o = XF("breakpoint"), s = XF("container"), c = XF("spacing"), l = XF("radius"), u = XF("shadow"), d = XF("inset-shadow"), f = XF("text-shadow"), p = XF("drop-shadow"), m = XF("blur"), h = XF("perspective"), g = XF("aspect"), _ = XF("ease"), v = XF("animate"), y = () => [
 		"auto",
 		"avoid",
 		"all",
@@ -36125,8 +36125,8 @@ var ipe = (e, t) => {
 		"left-bottom"
 	], x = () => [
 		...b(),
-		fI,
-		sI
+		dI,
+		oI
 	], S = () => [
 		"auto",
 		"hidden",
@@ -36138,43 +36138,43 @@ var ipe = (e, t) => {
 		"contain",
 		"none"
 	], w = () => [
-		fI,
-		sI,
+		dI,
+		oI,
 		c
 	], T = () => [
-		eI,
+		$F,
 		"full",
 		"auto",
 		...w()
 	], E = () => [
-		nI,
+		tI,
 		"none",
 		"subgrid",
-		fI,
-		sI
+		dI,
+		oI
 	], D = () => [
 		"auto",
 		{ span: [
 			"full",
-			nI,
-			fI,
-			sI
+			tI,
+			dI,
+			oI
 		] },
-		nI,
-		fI,
-		sI
+		tI,
+		dI,
+		oI
 	], O = () => [
-		nI,
+		tI,
 		"auto",
-		fI,
-		sI
+		dI,
+		oI
 	], k = () => [
 		"auto",
 		"min",
 		"max",
 		"fr",
-		fI,
-		sI
+		dI,
+		oI
 	], A = () => [
 		"start",
 		"end",
@@ -36194,7 +36194,7 @@ var ipe = (e, t) => {
 		"center-safe",
 		"end-safe"
 	], M = () => ["auto", ...w()], ee = () => [
-		eI,
+		$F,
 		"auto",
 		"full",
 		"dvw",
@@ -36209,7 +36209,7 @@ var ipe = (e, t) => {
 		...w()
 	], N = () => [
 		s,
-		eI,
+		$F,
 		"screen",
 		"full",
 		"dvw",
@@ -36220,7 +36220,7 @@ var ipe = (e, t) => {
 		"fit",
 		...w()
 	], P = () => [
-		eI,
+		$F,
 		"screen",
 		"full",
 		"lh",
@@ -36233,13 +36233,13 @@ var ipe = (e, t) => {
 		...w()
 	], F = () => [
 		e,
-		fI,
-		sI
+		dI,
+		oI
 	], te = () => [
 		...b(),
-		mI,
-		uI,
-		{ position: [fI, sI] }
+		pI,
+		lI,
+		{ position: [dI, oI] }
 	], ne = () => ["no-repeat", { repeat: [
 		"",
 		"x",
@@ -36250,25 +36250,25 @@ var ipe = (e, t) => {
 		"auto",
 		"cover",
 		"contain",
-		Hpe,
-		Lpe,
-		{ size: [fI, sI] }
+		Upe,
+		Rpe,
+		{ size: [dI, oI] }
 	], L = () => [
-		rI,
-		pI,
-		cI
+		nI,
+		fI,
+		sI
 	], re = () => [
 		"",
 		"none",
 		"full",
 		l,
-		fI,
-		sI
+		dI,
+		oI
 	], ie = () => [
 		"",
-		tI,
-		pI,
-		cI
+		eI,
+		fI,
+		sI
 	], ae = () => [
 		"solid",
 		"dashed",
@@ -36292,32 +36292,32 @@ var ipe = (e, t) => {
 		"color",
 		"luminosity"
 	], se = () => [
-		tI,
-		rI,
-		mI,
-		uI
+		eI,
+		nI,
+		pI,
+		lI
 	], ce = () => [
 		"",
 		"none",
 		m,
-		fI,
-		sI
+		dI,
+		oI
 	], le = () => [
 		"none",
-		tI,
-		fI,
-		sI
+		eI,
+		dI,
+		oI
 	], ue = () => [
 		"none",
-		tI,
-		fI,
-		sI
-	], de = () => [
-		tI,
-		fI,
-		sI
-	], fe = () => [
 		eI,
+		dI,
+		oI
+	], de = () => [
+		eI,
+		dI,
+		oI
+	], fe = () => [
+		$F,
 		"full",
 		...w()
 	];
@@ -36331,17 +36331,17 @@ var ipe = (e, t) => {
 				"bounce"
 			],
 			aspect: ["video"],
-			blur: [iI],
-			breakpoint: [iI],
-			color: [aI],
-			container: [iI],
-			"drop-shadow": [iI],
+			blur: [rI],
+			breakpoint: [rI],
+			color: [iI],
+			container: [rI],
+			"drop-shadow": [rI],
 			ease: [
 				"in",
 				"out",
 				"in-out"
 			],
-			font: [Fpe],
+			font: [Ipe],
 			"font-weight": [
 				"thin",
 				"extralight",
@@ -36353,7 +36353,7 @@ var ipe = (e, t) => {
 				"extrabold",
 				"black"
 			],
-			"inset-shadow": [iI],
+			"inset-shadow": [rI],
 			leading: [
 				"none",
 				"tight",
@@ -36370,11 +36370,11 @@ var ipe = (e, t) => {
 				"distant",
 				"none"
 			],
-			radius: [iI],
-			shadow: [iI],
-			spacing: ["px", tI],
-			text: [iI],
-			"text-shadow": [iI],
+			radius: [rI],
+			shadow: [rI],
+			spacing: ["px", eI],
+			text: [rI],
+			"text-shadow": [rI],
 			tracking: [
 				"tighter",
 				"tight",
@@ -36388,9 +36388,9 @@ var ipe = (e, t) => {
 			aspect: [{ aspect: [
 				"auto",
 				"square",
-				eI,
-				sI,
-				fI,
+				$F,
+				oI,
+				dI,
 				g
 			] }],
 			container: ["container"],
@@ -36398,15 +36398,15 @@ var ipe = (e, t) => {
 				"",
 				"normal",
 				"size",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
-			"container-named": [Ipe],
+			"container-named": [Lpe],
 			columns: [{ columns: [
-				tI,
+				eI,
 				"auto",
-				sI,
-				fI,
+				oI,
+				dI,
 				s
 			] }],
 			"break-after": [{ "break-after": y() }],
@@ -36503,13 +36503,13 @@ var ipe = (e, t) => {
 				"collapse"
 			],
 			z: [{ z: [
-				nI,
+				tI,
 				"auto",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			basis: [{ basis: [
-				eI,
+				$F,
 				"full",
 				"auto",
 				s,
@@ -36527,32 +36527,32 @@ var ipe = (e, t) => {
 				"wrap-reverse"
 			] }],
 			flex: [{ flex: [
-				tI,
 				eI,
+				$F,
 				"auto",
 				"initial",
 				"none",
-				sI
+				oI
 			] }],
 			grow: [{ grow: [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			shrink: [{ shrink: [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			order: [{ order: [
-				nI,
+				tI,
 				"first",
 				"last",
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"grid-cols": [{ "grid-cols": E() }],
 			"col-start-end": [{ col: D() }],
@@ -36659,15 +36659,15 @@ var ipe = (e, t) => {
 			"font-size": [{ text: [
 				"base",
 				n,
-				pI,
-				cI
+				fI,
+				sI
 			] }],
 			"font-smoothing": ["antialiased", "subpixel-antialiased"],
 			"font-style": ["italic", "not-italic"],
 			"font-weight": [{ font: [
 				r,
-				Wpe,
-				Rpe
+				Gpe,
+				zpe
 			] }],
 			"font-stretch": [{ "font-stretch": [
 				"ultra-condensed",
@@ -36679,15 +36679,15 @@ var ipe = (e, t) => {
 				"expanded",
 				"extra-expanded",
 				"ultra-expanded",
-				rI,
-				sI
+				nI,
+				oI
 			] }],
 			"font-family": [{ font: [
-				Vpe,
-				zpe,
+				Hpe,
+				Bpe,
 				t
 			] }],
-			"font-features": [{ "font-features": [sI] }],
+			"font-features": [{ "font-features": [oI] }],
 			"fvn-normal": ["normal-nums"],
 			"fvn-ordinal": ["ordinal"],
 			"fvn-slashed-zero": ["slashed-zero"],
@@ -36696,14 +36696,14 @@ var ipe = (e, t) => {
 			"fvn-fraction": ["diagonal-fractions", "stacked-fractions"],
 			tracking: [{ tracking: [
 				i,
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"line-clamp": [{ "line-clamp": [
-				tI,
+				eI,
 				"none",
-				fI,
-				lI
+				dI,
+				cI
 			] }],
 			leading: [{ leading: [
 				"none",
@@ -36712,16 +36712,16 @@ var ipe = (e, t) => {
 			] }],
 			"list-image": [{ "list-image": [
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"list-style-position": [{ list: ["inside", "outside"] }],
 			"list-style-type": [{ list: [
 				"disc",
 				"decimal",
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"text-alignment": [{ text: [
 				"left",
@@ -36741,18 +36741,18 @@ var ipe = (e, t) => {
 			],
 			"text-decoration-style": [{ decoration: [...ae(), "wavy"] }],
 			"text-decoration-thickness": [{ decoration: [
-				tI,
+				eI,
 				"from-font",
 				"auto",
-				fI,
-				cI
+				dI,
+				sI
 			] }],
 			"text-decoration-color": [{ decoration: F() }],
 			"underline-offset": [{ "underline-offset": [
-				tI,
+				eI,
 				"auto",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"text-transform": [
 				"uppercase",
@@ -36773,9 +36773,9 @@ var ipe = (e, t) => {
 			] }],
 			indent: [{ indent: w() }],
 			"tab-size": [{ tab: [
-				nI,
-				fI,
-				sI
+				tI,
+				dI,
+				oI
 			] }],
 			"vertical-align": [{ align: [
 				"baseline",
@@ -36786,8 +36786,8 @@ var ipe = (e, t) => {
 				"text-bottom",
 				"sub",
 				"super",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			whitespace: [{ whitespace: [
 				"normal",
@@ -36815,8 +36815,8 @@ var ipe = (e, t) => {
 			] }],
 			content: [{ content: [
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"bg-attachment": [{ bg: [
 				"fixed",
@@ -36851,24 +36851,24 @@ var ipe = (e, t) => {
 							"l",
 							"tl"
 						] },
-						nI,
-						fI,
-						sI
+						tI,
+						dI,
+						oI
 					],
 					radial: [
 						"",
-						fI,
-						sI
+						dI,
+						oI
 					],
 					conic: [
 						"",
-						nI,
-						fI,
-						sI
+						tI,
+						dI,
+						oI
 					]
 				},
-				Upe,
-				Bpe
+				Wpe,
+				Vpe
 			] }],
 			"bg-color": [{ bg: F() }],
 			"gradient-from-pos": [{ from: L() }],
@@ -36935,15 +36935,15 @@ var ipe = (e, t) => {
 				"hidden"
 			] }],
 			"outline-offset": [{ "outline-offset": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"outline-w": [{ outline: [
 				"",
-				tI,
-				pI,
-				cI
+				eI,
+				fI,
+				sI
 			] }],
 			"outline-color": [{ outline: F() }],
 			shadow: [{ shadow: [
@@ -36951,35 +36951,35 @@ var ipe = (e, t) => {
 				"inner",
 				"none",
 				u,
-				hI,
-				dI
+				mI,
+				uI
 			] }],
 			"shadow-color": [{ shadow: F() }],
 			"inset-shadow": [{ "inset-shadow": [
 				"none",
 				d,
-				hI,
-				dI
+				mI,
+				uI
 			] }],
 			"inset-shadow-color": [{ "inset-shadow": F() }],
 			"ring-w": [{ ring: ie() }],
 			"ring-w-inset": ["ring-inset"],
 			"ring-color": [{ ring: F() }],
-			"ring-offset-w": [{ "ring-offset": [tI, cI] }],
+			"ring-offset-w": [{ "ring-offset": [eI, sI] }],
 			"ring-offset-color": [{ "ring-offset": F() }],
 			"inset-ring-w": [{ "inset-ring": ie() }],
 			"inset-ring-color": [{ "inset-ring": F() }],
 			"text-shadow": [{ "text-shadow": [
 				"none",
 				f,
-				hI,
-				dI
+				mI,
+				uI
 			] }],
 			"text-shadow-color": [{ "text-shadow": F() }],
 			opacity: [{ opacity: [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"mix-blend": [{ "mix-blend": [
 				...oe(),
@@ -37001,7 +37001,7 @@ var ipe = (e, t) => {
 				"intersect",
 				"exclude"
 			] }],
-			"mask-image-linear-pos": [{ "mask-linear": [tI] }],
+			"mask-image-linear-pos": [{ "mask-linear": [eI] }],
 			"mask-image-linear-from-pos": [{ "mask-linear-from": se() }],
 			"mask-image-linear-to-pos": [{ "mask-linear-to": se() }],
 			"mask-image-linear-from-color": [{ "mask-linear-from": F() }],
@@ -37030,7 +37030,7 @@ var ipe = (e, t) => {
 			"mask-image-y-to-pos": [{ "mask-y-to": se() }],
 			"mask-image-y-from-color": [{ "mask-y-from": F() }],
 			"mask-image-y-to-color": [{ "mask-y-to": F() }],
-			"mask-image-radial": [{ "mask-radial": [fI, sI] }],
+			"mask-image-radial": [{ "mask-radial": [dI, oI] }],
 			"mask-image-radial-from-pos": [{ "mask-radial-from": se() }],
 			"mask-image-radial-to-pos": [{ "mask-radial-to": se() }],
 			"mask-image-radial-from-color": [{ "mask-radial-from": F() }],
@@ -37041,7 +37041,7 @@ var ipe = (e, t) => {
 				farthest: ["side", "corner"]
 			}] }],
 			"mask-image-radial-pos": [{ "mask-radial-at": b() }],
-			"mask-image-conic-pos": [{ "mask-conic": [tI] }],
+			"mask-image-conic-pos": [{ "mask-conic": [eI] }],
 			"mask-image-conic-from-pos": [{ "mask-conic-from": se() }],
 			"mask-image-conic-to-pos": [{ "mask-conic-to": se() }],
 			"mask-image-conic-from-color": [{ "mask-conic-from": F() }],
@@ -37065,111 +37065,111 @@ var ipe = (e, t) => {
 			"mask-type": [{ "mask-type": ["alpha", "luminance"] }],
 			"mask-image": [{ mask: [
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			filter: [{ filter: [
 				"",
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			blur: [{ blur: ce() }],
 			brightness: [{ brightness: [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			contrast: [{ contrast: [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"drop-shadow": [{ "drop-shadow": [
 				"",
 				"none",
 				p,
-				hI,
-				dI
+				mI,
+				uI
 			] }],
 			"drop-shadow-color": [{ "drop-shadow": F() }],
 			grayscale: [{ grayscale: [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"hue-rotate": [{ "hue-rotate": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			invert: [{ invert: [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			saturate: [{ saturate: [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			sepia: [{ sepia: [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-filter": [{ "backdrop-filter": [
 				"",
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"backdrop-blur": [{ "backdrop-blur": ce() }],
 			"backdrop-brightness": [{ "backdrop-brightness": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-contrast": [{ "backdrop-contrast": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-grayscale": [{ "backdrop-grayscale": [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-hue-rotate": [{ "backdrop-hue-rotate": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-invert": [{ "backdrop-invert": [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-opacity": [{ "backdrop-opacity": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-saturate": [{ "backdrop-saturate": [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"backdrop-sepia": [{ "backdrop-sepia": [
 				"",
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			"border-collapse": [{ border: ["collapse", "separate"] }],
 			"border-spacing": [{ "border-spacing": w() }],
@@ -37185,39 +37185,39 @@ var ipe = (e, t) => {
 				"shadow",
 				"transform",
 				"none",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"transition-behavior": [{ transition: ["normal", "discrete"] }],
 			duration: [{ duration: [
-				tI,
+				eI,
 				"initial",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			ease: [{ ease: [
 				"linear",
 				"initial",
 				_,
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			delay: [{ delay: [
-				tI,
-				fI,
-				sI
+				eI,
+				dI,
+				oI
 			] }],
 			animate: [{ animate: [
 				"none",
 				v,
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			backface: [{ backface: ["hidden", "visible"] }],
 			perspective: [{ perspective: [
 				h,
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"perspective-origin": [{ "perspective-origin": x() }],
 			rotate: [{ rotate: le() }],
@@ -37233,8 +37233,8 @@ var ipe = (e, t) => {
 			"skew-x": [{ "skew-x": de() }],
 			"skew-y": [{ "skew-y": de() }],
 			transform: [{ transform: [
-				fI,
-				sI,
+				dI,
+				oI,
 				"",
 				"none",
 				"gpu",
@@ -37248,9 +37248,9 @@ var ipe = (e, t) => {
 			"translate-z": [{ "translate-z": fe() }],
 			"translate-none": ["translate-none"],
 			zoom: [{ zoom: [
-				nI,
-				fI,
-				sI
+				tI,
+				dI,
+				oI
 			] }],
 			accent: [{ accent: F() }],
 			appearance: [{ appearance: ["none", "auto"] }],
@@ -37300,8 +37300,8 @@ var ipe = (e, t) => {
 				"nwse-resize",
 				"zoom-in",
 				"zoom-out",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			"field-sizing": [{ "field-sizing": ["fixed", "content"] }],
 			"pointer-events": [{ "pointer-events": ["auto", "none"] }],
@@ -37387,15 +37387,15 @@ var ipe = (e, t) => {
 				"scroll",
 				"contents",
 				"transform",
-				fI,
-				sI
+				dI,
+				oI
 			] }],
 			fill: [{ fill: ["none", ...F()] }],
 			"stroke-w": [{ stroke: [
-				tI,
-				pI,
-				cI,
-				lI
+				eI,
+				fI,
+				sI,
+				cI
 			] }],
 			stroke: [{ stroke: ["none", ...F()] }],
 			"forced-color-adjust": [{ "forced-color-adjust": ["auto", "none"] }]
@@ -37653,16 +37653,16 @@ var ipe = (e, t) => {
 			"selection"
 		]
 	};
-}, Kpe = (e, { cacheSize: t, prefix: n, experimentalParseClassName: r, extend: i = {}, override: a = {} }) => (EI(e, "cacheSize", t), EI(e, "prefix", n), EI(e, "experimentalParseClassName", r), DI(e.theme, a.theme), DI(e.classGroups, a.classGroups), DI(e.conflictingClassGroups, a.conflictingClassGroups), DI(e.conflictingClassGroupModifiers, a.conflictingClassGroupModifiers), EI(e, "postfixLookupClassGroups", a.postfixLookupClassGroups), EI(e, "orderSensitiveModifiers", a.orderSensitiveModifiers), OI(e.theme, i.theme), OI(e.classGroups, i.classGroups), OI(e.conflictingClassGroups, i.conflictingClassGroups), OI(e.conflictingClassGroupModifiers, i.conflictingClassGroupModifiers), kI(e, i, "postfixLookupClassGroups"), kI(e, i, "orderSensitiveModifiers"), e), EI = (e, t, n) => {
+}, qpe = (e, { cacheSize: t, prefix: n, experimentalParseClassName: r, extend: i = {}, override: a = {} }) => (TI(e, "cacheSize", t), TI(e, "prefix", n), TI(e, "experimentalParseClassName", r), EI(e.theme, a.theme), EI(e.classGroups, a.classGroups), EI(e.conflictingClassGroups, a.conflictingClassGroups), EI(e.conflictingClassGroupModifiers, a.conflictingClassGroupModifiers), TI(e, "postfixLookupClassGroups", a.postfixLookupClassGroups), TI(e, "orderSensitiveModifiers", a.orderSensitiveModifiers), DI(e.theme, i.theme), DI(e.classGroups, i.classGroups), DI(e.conflictingClassGroups, i.conflictingClassGroups), DI(e.conflictingClassGroupModifiers, i.conflictingClassGroupModifiers), OI(e, i, "postfixLookupClassGroups"), OI(e, i, "orderSensitiveModifiers"), e), TI = (e, t, n) => {
 	n !== void 0 && (e[t] = n);
+}, EI = (e, t) => {
+	if (t) for (let n in t) TI(e, n, t[n]);
 }, DI = (e, t) => {
-	if (t) for (let n in t) EI(e, n, t[n]);
-}, OI = (e, t) => {
-	if (t) for (let n in t) kI(e, t, n);
-}, kI = (e, t, n) => {
+	if (t) for (let n in t) OI(e, t, n);
+}, OI = (e, t, n) => {
 	let r = t[n];
 	r !== void 0 && (e[n] = e[n] ? e[n].concat(r) : r);
-}, qpe = (e, ...t) => typeof e == "function" ? XF(TI, e, ...t) : XF(() => Kpe(TI(), e), ...t), Jpe = [
+}, Jpe = (e, ...t) => typeof e == "function" ? YF(wI, e, ...t) : YF(() => qpe(wI(), e), ...t), Ype = [
 	"large-title",
 	"display-1",
 	"display-2",
@@ -37676,17 +37676,17 @@ var ipe = (e, t) => {
 	"body-2",
 	"caption-1",
 	"caption-2"
-], Ype = [
+], Xpe = [
 	"regular",
 	"medium",
 	"semibold",
 	"bold"
-], J = qpe({ extend: { classGroups: { "font-size": [{ text: Jpe.flatMap((e) => Ype.map((t) => `${e}-${t}`)) }] } } });
-function AI(e) {
+], J = Jpe({ extend: { classGroups: { "font-size": [{ text: Ype.flatMap((e) => Xpe.map((t) => `${e}-${t}`)) }] } } });
+function kI(e) {
 	return e;
 }
 // src/react/components/pill-tab.tsx
-var Xpe = typeof window < "u" ? I.useLayoutEffect : I.useEffect, jI = AI({
+var Zpe = typeof window < "u" ? I.useLayoutEffect : I.useEffect, AI = kI({
 	radius: {
 		blue: "rounded-full",
 		gray: "rounded-2lg"
@@ -37708,9 +37708,9 @@ var Xpe = typeof window < "u" ? I.useLayoutEffect : I.useEffect, jI = AI({
 		gray: "text-text-primary"
 	}
 });
-function MI({ children: e, className: t, ref: n, container: r, ...i }) {
+function jI({ children: e, className: t, ref: n, container: r, ...i }) {
 	let a = (0, I.useRef)(null), [o, s] = (0, I.useState)(null);
-	Xpe(() => {
+	Zpe(() => {
 		let e = r === void 0 ? a.current : r;
 		if (!e) return;
 		let t = () => {
@@ -37746,7 +37746,7 @@ function MI({ children: e, className: t, ref: n, container: r, ...i }) {
 	}, l = o && /* @__PURE__ */ (0, L.jsx)("span", {
 		"aria-hidden": !0,
 		"data-pill-thumb": "",
-		className: J("pointer-events-none absolute left-0 top-0", jI.radius[o.variant], jI.thumb[o.variant]),
+		className: J("pointer-events-none absolute left-0 top-0", AI.radius[o.variant], AI.thumb[o.variant]),
 		style: {
 			"--pill-left": `${o.left}px`,
 			"--pill-top": `${o.top}px`,
@@ -37763,12 +37763,12 @@ function MI({ children: e, className: t, ref: n, container: r, ...i }) {
 	}) : r ? (0, Lt.createPortal)(l, r) : null;
 }
 // node_modules/react-aria-components/dist/private/utils.mjs
-var NI = Symbol("default");
-function PI({ values: e, children: t }) {
+var MI = Symbol("default");
+function NI({ values: e, children: t }) {
 	for (let [n, r] of e) t = /*#__PURE__*/ I.createElement(n.Provider, { value: r }, t);
 	return t;
 }
-function FI(e) {
+function PI(e) {
 	let { className: t, style: n, children: r, defaultClassName: i, defaultChildren: a, defaultStyle: o, values: s, render: c } = e;
 	return (0, I.useMemo)(() => {
 		let e, l, u;
@@ -37802,11 +37802,11 @@ function FI(e) {
 		c
 	]);
 }
-function II(e, t) {
+function FI(e, t) {
 	let n = (0, I.useContext)(e);
 	if (t === null) return null;
 	if (n && typeof n == "object" && "slots" in n && n.slots) {
-		let e = t || NI;
+		let e = t || MI;
 		if (!n.slots[e]) {
 			let e = new Intl.ListFormat().format(Object.keys(n.slots).map((e) => `"${e}"`)), r = t ? `Invalid slot "${t}".` : "A slot prop is required.";
 			throw Error(`${r} Valid slot names are ${e}.`);
@@ -37815,8 +37815,8 @@ function II(e, t) {
 	}
 	return n;
 }
-function LI(e, t, n) {
-	let { ref: r, ...i } = II(n, e.slot) || {}, a = UC((0, I.useMemo)(() => PC(t, r), [t, r])), o = q(i, e);
+function II(e, t, n) {
+	let { ref: r, ...i } = FI(n, e.slot) || {}, a = UC((0, I.useMemo)(() => PC(t, r), [t, r])), o = q(i, e);
 	return "style" in i && i.style && "style" in e && e.style && (o.style = typeof i.style == "function" || typeof e.style == "function" ? (t) => {
 		let n = typeof i.style == "function" ? i.style(t) : i.style, r = {
 			...t.defaultStyle,
@@ -37834,7 +37834,7 @@ function LI(e, t, n) {
 		...e.style
 	}), [o, a];
 }
-function RI(e = !0) {
+function LI(e = !0) {
 	let [t, n] = (0, I.useState)(e), r = (0, I.useRef)(!1), i = (0, I.useCallback)((e) => {
 		r.current = !0, n(!!e);
 	}, []);
@@ -37842,12 +37842,12 @@ function RI(e = !0) {
 		r.current || n(!1);
 	}, []), [i, t];
 }
-function zI(e) {
+function RI(e) {
 	let t = /^(data-.*)$/, n = {};
 	for (let r in e) t.test(r) || (n[r] = e[r]);
 	return n;
 }
-function Zpe(e, t, n) {
+function Qpe(e, t, n) {
 	let { render: r, ...i } = t, a = (0, I.useRef)(null), o = (0, I.useMemo)(() => PC(n, a), [n, a]);
 	MS(() => {}, [e, r]);
 	let s = {
@@ -37856,19 +37856,19 @@ function Zpe(e, t, n) {
 	};
 	return r ? r(s, void 0) : /*#__PURE__*/ I.createElement(e, s);
 }
-var BI = {}, VI = new Proxy({}, { get(e, t) {
+var zI = {}, BI = new Proxy({}, { get(e, t) {
 	if (typeof t != "string") return;
-	let n = BI[t];
-	return n || (n = /*#__PURE__*/ (0, I.forwardRef)(Zpe.bind(null, t)), BI[t] = n), n;
-} }), HI = /*#__PURE__*/ (0, I.createContext)(null), UI = /*#__PURE__*/ (0, I.createContext)(null), WI = /*#__PURE__*/ (0, I.createContext)(null), GI = {
+	let n = zI[t];
+	return n || (n = /*#__PURE__*/ (0, I.forwardRef)(Qpe.bind(null, t)), zI[t] = n), n;
+} }), VI = /*#__PURE__*/ (0, I.createContext)(null), HI = /*#__PURE__*/ (0, I.createContext)(null), UI = /*#__PURE__*/ (0, I.createContext)(null), WI = {
 	CollectionRoot({ collection: e, renderDropIndicator: t }) {
-		return KI(e, null, t);
+		return GI(e, null, t);
 	},
 	CollectionBranch({ collection: e, parent: t, renderDropIndicator: n }) {
-		return KI(e, t, n);
+		return GI(e, t, n);
 	}
 };
-function KI(e, t, n) {
+function GI(e, t, n) {
 	return mS({
 		items: t ? e.getChildren(t.key) : e,
 		dependencies: [n],
@@ -37879,11 +37879,11 @@ function KI(e, t, n) {
 				type: "item",
 				key: t.key,
 				dropPosition: "before"
-			}), r, Qpe(e, t, n));
+			}), r, $pe(e, t, n));
 		}
 	});
 }
-function Qpe(e, t, n) {
+function $pe(e, t, n) {
 	let r = t.key, i = e.getKeyAfter(r), a = i == null ? null : e.getItem(i);
 	for (; a != null && a.type !== "item";) i = e.getKeyAfter(a.key), a = i == null ? null : e.getItem(i);
 	let o = t.nextKey == null ? null : e.getItem(t.nextKey);
@@ -37902,23 +37902,23 @@ function Qpe(e, t, n) {
 	}
 	return s;
 }
-var qI = /*#__PURE__*/ (0, I.createContext)(GI);
-function JI(e) {
+var KI = /*#__PURE__*/ (0, I.createContext)(WI);
+function qI(e) {
 	return (0, I.useMemo)(() => e == null ? null : /* @__PURE__ */ new Set([e]), [e]);
 }
 // node_modules/react-aria-components/dist/private/Label.mjs
-var YI = /*#__PURE__*/ (0, I.createContext)({}), XI = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, YI);
-	let { elementType: n = "label", ...r } = e, i = VI[n];
+var JI = /*#__PURE__*/ (0, I.createContext)({}), YI = /*#__PURE__*/ JC(function(e, t) {
+	[e, t] = II(e, t, JI);
+	let { elementType: n = "label", ...r } = e, i = BI[n];
 	return /*#__PURE__*/ I.createElement(i, {
 		className: "react-aria-Label",
 		...r,
 		ref: t
 	});
-}), $pe = /*#__PURE__*/ (0, I.createContext)(null), ZI = /*#__PURE__*/ (0, I.createContext)({}), QI = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, ZI);
+}), eme = /*#__PURE__*/ (0, I.createContext)(null), XI = /*#__PURE__*/ (0, I.createContext)({}), ZI = /*#__PURE__*/ JC(function(e, t) {
+	[e, t] = II(e, t, XI);
 	let n = e, { isPending: r } = n, { buttonProps: i, isPressed: a } = sse(e, t);
-	i = tme(i, r);
+	i = nme(i, r);
 	let { focusProps: o, isFocused: s, isFocusVisible: c } = vD(e), { hoverProps: l, isHovered: u } = xD({
 		...e,
 		isDisabled: e.isDisabled || r
@@ -37929,7 +37929,7 @@ var YI = /*#__PURE__*/ (0, I.createContext)({}), XI = /*#__PURE__*/ JC(function(
 		isFocusVisible: c,
 		isDisabled: e.isDisabled || !1,
 		isPending: r ?? !1
-	}, f = FI({
+	}, f = PI({
 		...e,
 		values: d,
 		defaultClassName: "react-aria-Button"
@@ -37946,7 +37946,7 @@ var YI = /*#__PURE__*/ (0, I.createContext)({}), XI = /*#__PURE__*/ JC(function(
 		p
 	]);
 	let _ = Iw(e, { global: !0 });
-	return delete _.onClick, /*#__PURE__*/ I.createElement(VI.button, {
+	return delete _.onClick, /*#__PURE__*/ I.createElement(BI.button, {
 		...q(_, f, i, o, l),
 		type: i.type === "submit" && r ? "button" : i.type,
 		id: p,
@@ -37960,61 +37960,61 @@ var YI = /*#__PURE__*/ (0, I.createContext)({}), XI = /*#__PURE__*/ JC(function(
 		"data-focused": s || void 0,
 		"data-pending": r || void 0,
 		"data-focus-visible": c || void 0
-	}, /*#__PURE__*/ I.createElement($pe.Provider, { value: { id: m } }, f.children));
-}), eme = /Focus|Blur|Hover|Pointer(Enter|Leave|Over|Out)|Mouse(Enter|Leave|Over|Out)/;
-function tme(e, t) {
+	}, /*#__PURE__*/ I.createElement(eme.Provider, { value: { id: m } }, f.children));
+}), tme = /Focus|Blur|Hover|Pointer(Enter|Leave|Over|Out)|Mouse(Enter|Leave|Over|Out)/;
+function nme(e, t) {
 	if (t) {
-		for (let t in e) t.startsWith("on") && !eme.test(t) && (e[t] = void 0);
+		for (let t in e) t.startsWith("on") && !tme.test(t) && (e[t] = void 0);
 		e.href = void 0, e.target = void 0;
 	}
 	return e;
 }
 // node_modules/react-aria-components/dist/private/Heading.mjs
-var $I = /*#__PURE__*/ (0, I.createContext)({}), eL = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, $I);
-	let { children: n, level: r = 3, className: i, ...a } = e, o = VI[`h${r}`];
+var QI = /*#__PURE__*/ (0, I.createContext)({}), $I = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	[e, t] = II(e, t, QI);
+	let { children: n, level: r = 3, className: i, ...a } = e, o = BI[`h${r}`];
 	return /*#__PURE__*/ I.createElement(o, {
 		...a,
 		ref: t,
 		className: i ?? "react-aria-Heading"
 	}, n);
-}), tL = /*#__PURE__*/ (0, I.createContext)({}), nme = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, tL);
-	let { elementType: n = "span", ...r } = e, i = VI[n];
+}), eL = /*#__PURE__*/ (0, I.createContext)({}), rme = /*#__PURE__*/ JC(function(e, t) {
+	[e, t] = II(e, t, eL);
+	let { elementType: n = "span", ...r } = e, i = BI[n];
 	return /*#__PURE__*/ I.createElement(i, {
 		className: "react-aria-Text",
 		...r,
 		ref: t
 	});
-}), nL = /*#__PURE__*/ (0, I.createContext)(null), rL = /*#__PURE__*/ (0, I.createContext)(null), iL = /*#__PURE__*/ (0, I.createContext)(null), aL = /*#__PURE__*/ (0, I.createContext)(null), rme = /*#__PURE__*/ (0, I.createContext)(null), oL = /*#__PURE__*/ (0, I.createContext)(null);
-function ime(e, t) {
-	let { validationBehavior: n } = II(rL) || {}, r = e.validationBehavior ?? n ?? "native", i = (0, I.useContext)(rme), a = UC((0, I.useMemo)(() => PC(t, e.inputRef === void 0 ? null : e.inputRef), [t, e.inputRef])), o = {
-		...zI(e),
+}), tL = /*#__PURE__*/ (0, I.createContext)(null), nL = /*#__PURE__*/ (0, I.createContext)(null), rL = /*#__PURE__*/ (0, I.createContext)(null), iL = /*#__PURE__*/ (0, I.createContext)(null), ime = /*#__PURE__*/ (0, I.createContext)(null), aL = /*#__PURE__*/ (0, I.createContext)(null);
+function ame(e, t) {
+	let { validationBehavior: n } = FI(nL) || {}, r = e.validationBehavior ?? n ?? "native", i = (0, I.useContext)(ime), a = UC((0, I.useMemo)(() => PC(t, e.inputRef === void 0 ? null : e.inputRef), [t, e.inputRef])), o = {
+		...RI(e),
 		children: typeof e.children == "function" || e.children,
 		value: e.value,
 		validationBehavior: r
 	};
 	return [i ? Ase(o, i, a) : WT(o, YT(e), a), a];
 }
-var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+var ome = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	let { inputRef: n = null, ...r } = e;
-	[e, t] = LI(r, t, iL);
-	let [i, a] = ime(e, n);
-	return /*#__PURE__*/ I.createElement(oL.Provider, { value: {
+	[e, t] = II(r, t, rL);
+	let [i, a] = ame(e, n);
+	return /*#__PURE__*/ I.createElement(aL.Provider, { value: {
 		...i,
 		inputRef: a,
 		defaultClassName: "react-aria-Checkbox",
 		isIndeterminate: e.isIndeterminate,
 		isRequired: e.isRequired
-	} }, /*#__PURE__*/ I.createElement(ome, {
+	} }, /*#__PURE__*/ I.createElement(sme, {
 		...e,
 		ref: t
 	}));
-}), ome = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { labelProps: n, inputProps: r, isSelected: i, isDisabled: a, isReadOnly: o, isPressed: s, isInvalid: c, inputRef: l, defaultClassName: u, isIndeterminate: d, isRequired: f } = (0, I.useContext)(oL), { isFocused: p, isFocusVisible: m, focusProps: h } = vD(), g = a || o, { hoverProps: _, isHovered: v } = xD({
+}), sme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	let { labelProps: n, inputProps: r, isSelected: i, isDisabled: a, isReadOnly: o, isPressed: s, isInvalid: c, inputRef: l, defaultClassName: u, isIndeterminate: d, isRequired: f } = (0, I.useContext)(aL), { isFocused: p, isFocusVisible: m, focusProps: h } = vD(), g = a || o, { hoverProps: _, isHovered: v } = xD({
 		...e,
 		isDisabled: g
-	}), y = FI({
+	}), y = PI({
 		...e,
 		defaultClassName: u,
 		values: {
@@ -38030,7 +38030,7 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 			isRequired: f || !1
 		}
 	}), b = Iw(e, { global: !0 });
-	return delete b.id, delete b.onClick, /*#__PURE__*/ I.createElement(VI.label, {
+	return delete b.id, delete b.onClick, /*#__PURE__*/ I.createElement(BI.label, {
 		...q(b, n, _, y),
 		ref: t,
 		slot: e.slot || void 0,
@@ -38048,8 +38048,8 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		...q(r, h),
 		ref: l
 	})), y.children);
-}), sL = /*#__PURE__*/ (0, I.createContext)({}), cL = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, sL);
+}), oL = /*#__PURE__*/ (0, I.createContext)({}), sL = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	[e, t] = II(e, t, oL);
 	let { isDisabled: n, isInvalid: r, isReadOnly: i, onHoverStart: a, onHoverChange: o, onHoverEnd: s, ...c } = e;
 	n ??= !!e["aria-disabled"] && e["aria-disabled"] !== "false", r ??= !!e["aria-invalid"] && e["aria-invalid"] !== "false";
 	let { hoverProps: l, isHovered: u } = xD({
@@ -38057,7 +38057,7 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		onHoverChange: o,
 		onHoverEnd: s,
 		isDisabled: n
-	}), { isFocused: d, isFocusVisible: f, focusProps: p } = vD({ within: !0 }), m = FI({
+	}), { isFocused: d, isFocusVisible: f, focusProps: p } = vD({ within: !0 }), m = PI({
 		...e,
 		values: {
 			isHovered: u,
@@ -38068,7 +38068,7 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		},
 		defaultClassName: "react-aria-Group"
 	});
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...q(c, p, l),
 		...m,
 		ref: t,
@@ -38081,18 +38081,18 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		"data-invalid": r || void 0,
 		"data-readonly": i || void 0
 	}, m.children);
-}), lL = /*#__PURE__*/ (0, I.createContext)({}), sme = (e) => {
+}), cL = /*#__PURE__*/ (0, I.createContext)({}), cme = (e) => {
 	let { onHoverStart: t, onHoverChange: n, onHoverEnd: r, ...i } = e;
 	return i;
-}, cme = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, lL);
+}, lme = /*#__PURE__*/ JC(function(e, t) {
+	[e, t] = II(e, t, cL);
 	let { hoverProps: n, isHovered: r } = xD({
 		...e,
 		isDisabled: e.disabled
 	}), { isFocused: i, isFocusVisible: a, focusProps: o } = vD({
 		isTextInput: !0,
 		autoFocus: e.autoFocus
-	}), s = !!e["aria-invalid"] && e["aria-invalid"] !== "false", c = FI({
+	}), s = !!e["aria-invalid"] && e["aria-invalid"] !== "false", c = PI({
 		...e,
 		values: {
 			isHovered: r,
@@ -38103,8 +38103,8 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		},
 		defaultClassName: "react-aria-Input"
 	});
-	return /*#__PURE__*/ I.createElement(VI.input, {
-		...q(sme(e), o, n),
+	return /*#__PURE__*/ I.createElement(BI.input, {
+		...q(cme(e), o, n),
 		...c,
 		ref: t,
 		"data-focused": i || void 0,
@@ -38113,9 +38113,9 @@ var ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 		"data-focus-visible": a || void 0,
 		"data-invalid": s || void 0
 	});
-}), lme = 0, ume = 100, dme = 1;
-function fme(e) {
-	let { isDisabled: t = !1, minValue: n = lme, maxValue: r = ume, numberFormatter: i, step: a = dme, orientation: o = "horizontal" } = e, s = (0, I.useMemo)(() => {
+}), ume = 0, dme = 100, fme = 1;
+function pme(e) {
+	let { isDisabled: t = !1, minValue: n = ume, maxValue: r = dme, numberFormatter: i, step: a = fme, orientation: o = "horizontal" } = e, s = (0, I.useMemo)(() => {
 		let e = (r - n) / 10;
 		return e = QT(e, 0, e + a, a), Math.max(e, a);
 	}, [
@@ -38126,11 +38126,11 @@ function fme(e) {
 		n,
 		r,
 		a
-	]), l = (0, I.useMemo)(() => c(dL(e.value)), [e.value, c]), u = (0, I.useMemo)(() => c(dL(e.defaultValue) ?? [n]), [
+	]), l = (0, I.useMemo)(() => c(uL(e.value)), [e.value, c]), u = (0, I.useMemo)(() => c(uL(e.defaultValue) ?? [n]), [
 		e.defaultValue,
 		n,
 		c
-	]), d = fL(e.value, e.defaultValue, e.onChange), f = fL(e.value, e.defaultValue, e.onChangeEnd), [p, m] = JT(l, u, d), [h] = (0, I.useState)(p), [g, _] = (0, I.useState)(Array(p.length).fill(!1)), v = (0, I.useRef)(Array(p.length).fill(!0)), [y, b] = (0, I.useState)(void 0), x = (0, I.useRef)(p), S = (0, I.useRef)(g), C = (e) => {
+	]), d = dL(e.value, e.defaultValue, e.onChange), f = dL(e.value, e.defaultValue, e.onChangeEnd), [p, m] = JT(l, u, d), [h] = (0, I.useState)(p), [g, _] = (0, I.useState)(Array(p.length).fill(!1)), v = (0, I.useRef)(Array(p.length).fill(!0)), [y, b] = (0, I.useState)(void 0), x = (0, I.useRef)(p), S = (0, I.useRef)(g), C = (e) => {
 		x.current = e, m(e);
 	}, w = (e) => {
 		S.current = e, _(e);
@@ -38154,14 +38154,14 @@ function fme(e) {
 		if (t || !O(e)) return;
 		let r = E(e), i = D(e);
 		n = QT(n, r, i, a);
-		let o = uL(x.current, e, n);
+		let o = lL(x.current, e, n);
 		C(o);
 	}
 	function j(e, n) {
 		if (t || !O(e)) return;
 		n && (x.current = p);
 		let r = S.current[e];
-		S.current = uL(S.current, e, n), w(S.current), f && r && !S.current.some(Boolean) && f(x.current);
+		S.current = lL(S.current, e, n), w(S.current), f && r && !S.current.some(Boolean) && f(x.current);
 	}
 	let M = (0, I.useRef)(null);
 	function ee(e = p) {
@@ -38219,31 +38219,31 @@ function fme(e) {
 		isDisabled: t
 	};
 }
-function uL(e, t, n) {
+function lL(e, t, n) {
 	return e[t] === n ? e : [
 		...e.slice(0, t),
 		n,
 		...e.slice(t + 1)
 	];
 }
-function dL(e) {
+function uL(e) {
 	if (e != null) return Array.isArray(e) ? e : [e];
 }
-function fL(e, t, n) {
+function dL(e, t, n) {
 	return (r) => {
 		typeof e == "number" || typeof t == "number" ? n?.(r[0]) : n?.(r);
 	};
 }
 // node_modules/react-aria-components/dist/private/Slider.mjs
-var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.createContext)(null), mL = /*#__PURE__*/ (0, I.createContext)(null), mme = /*#__PURE__*/ (0, I.createContext)(null), hme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, pme);
-	let n = (0, I.useRef)(null), r = Fse(e.formatOptions), i = fme({
+var mme = /*#__PURE__*/ (0, I.createContext)(null), fL = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.createContext)(null), hme = /*#__PURE__*/ (0, I.createContext)(null), gme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	[e, t] = II(e, t, mme);
+	let n = (0, I.useRef)(null), r = Fse(e.formatOptions), i = pme({
 		...e,
 		numberFormatter: r
-	}), [a, o] = RI(!e["aria-label"] && !e["aria-labelledby"]), { groupProps: s, trackProps: c, labelProps: l, outputProps: u } = Ise({
+	}), [a, o] = LI(!e["aria-label"] && !e["aria-labelledby"]), { groupProps: s, trackProps: c, labelProps: l, outputProps: u } = Ise({
 		...e,
 		label: o
-	}, i, n), d = FI({
+	}, i, n), d = PI({
 		...e,
 		values: {
 			orientation: i.orientation,
@@ -38252,31 +38252,31 @@ var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.cre
 		},
 		defaultClassName: "react-aria-Slider"
 	}), f = Iw(e, { global: !0 });
-	return delete f.id, /*#__PURE__*/ I.createElement(PI, { values: [
-		[pL, i],
-		[mL, {
+	return delete f.id, /*#__PURE__*/ I.createElement(NI, { values: [
+		[fL, i],
+		[pL, {
 			...c,
 			ref: n
 		}],
-		[mme, u],
-		[YI, {
+		[hme, u],
+		[JI, {
 			...l,
 			ref: a
 		}]
-	] }, /*#__PURE__*/ I.createElement(VI.div, {
+	] }, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(f, d, s),
 		ref: t,
 		slot: e.slot || void 0,
 		"data-orientation": i.orientation,
 		"data-disabled": i.isDisabled || void 0
 	}));
-}), gme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, mL);
-	let n = (0, I.useContext)(pL), { onHoverStart: r, onHoverEnd: i, onHoverChange: a, ...o } = e, { hoverProps: s, isHovered: c } = xD({
+}), _me = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	[e, t] = II(e, t, pL);
+	let n = (0, I.useContext)(fL), { onHoverStart: r, onHoverEnd: i, onHoverChange: a, ...o } = e, { hoverProps: s, isHovered: c } = xD({
 		onHoverStart: r,
 		onHoverEnd: i,
 		onHoverChange: a
-	}), l = FI({
+	}), l = PI({
 		...e,
 		defaultClassName: "react-aria-SliderTrack",
 		values: {
@@ -38286,7 +38286,7 @@ var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.cre
 			state: n
 		}
 	});
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...q(o, s),
 		...l,
 		ref: t,
@@ -38294,14 +38294,14 @@ var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.cre
 		"data-orientation": n.orientation || void 0,
 		"data-disabled": n.isDisabled || void 0
 	});
-}), _me = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { inputRef: n = null } = e, r = (0, I.useContext)(pL), { ref: i } = II(mL), { index: a = 0 } = e, o = (0, I.useRef)(null), s = n || o, [c, l] = RI(!e["aria-label"] && !e["aria-labelledby"]), { thumbProps: u, inputProps: d, labelProps: f, isDragging: p, isFocused: m, isDisabled: h } = Lse({
+}), vme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
+	let { inputRef: n = null } = e, r = (0, I.useContext)(fL), { ref: i } = FI(pL), { index: a = 0 } = e, o = (0, I.useRef)(null), s = n || o, [c, l] = LI(!e["aria-label"] && !e["aria-labelledby"]), { thumbProps: u, inputProps: d, labelProps: f, isDragging: p, isFocused: m, isDisabled: h } = Lse({
 		...e,
 		index: a,
 		trackRef: i,
 		inputRef: s,
 		label: l
-	}, r), { focusProps: g, isFocusVisible: _ } = vD(), { hoverProps: v, isHovered: y } = xD(e), b = FI({
+	}, r), { focusProps: g, isFocusVisible: _ } = vD(), { hoverProps: v, isHovered: y } = xD(e), b = PI({
 		...e,
 		defaultClassName: "react-aria-SliderThumb",
 		values: {
@@ -38313,7 +38313,7 @@ var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.cre
 			isDisabled: h
 		}
 	}), x = Iw(e, { global: !0 });
-	return delete x.id, /*#__PURE__*/ I.createElement(VI.div, {
+	return delete x.id, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(x, u, v),
 		...b,
 		ref: t,
@@ -38329,186 +38329,194 @@ var pme = /*#__PURE__*/ (0, I.createContext)(null), pL = /*#__PURE__*/ (0, I.cre
 	}, /*#__PURE__*/ I.createElement(iE, null, /*#__PURE__*/ I.createElement("input", {
 		ref: s,
 		...q(d, g)
-	})), /*#__PURE__*/ I.createElement(PI, { values: [[YI, {
+	})), /*#__PURE__*/ I.createElement(NI, { values: [[JI, {
 		...f,
 		ref: c
 	}]] }, b.children));
-}), hL = {};
-hL = {
+}), mL = {};
+mL = {
 	colorSwatchPicker: "تغييرات الألوان",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "حدد عنصرًا",
 	tableResizer: "أداة تغيير الحجم"
 };
 // node_modules/react-aria-components/dist/private/intl/bg-BG.mjs
-var gL = {};
-gL = {
+var hL = {};
+hL = {
 	colorSwatchPicker: "Цветови мостри",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Изберете предмет",
 	tableResizer: "Преоразмерител"
 };
 // node_modules/react-aria-components/dist/private/intl/cs-CZ.mjs
-var _L = {};
-_L = {
+var gL = {};
+gL = {
 	colorSwatchPicker: "Vzorky barev",
 	dropzoneLabel: "Místo pro přetažení",
 	selectPlaceholder: "Vyberte položku",
 	tableResizer: "Změna velikosti"
 };
 // node_modules/react-aria-components/dist/private/intl/da-DK.mjs
-var vL = {};
-vL = {
+var _L = {};
+_L = {
 	colorSwatchPicker: "Farveprøver",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Vælg et element",
 	tableResizer: "Størrelsesændring"
 };
 // node_modules/react-aria-components/dist/private/intl/de-DE.mjs
-var yL = {};
-yL = {
+var vL = {};
+vL = {
 	colorSwatchPicker: "Farbfelder",
 	dropzoneLabel: "Ablegebereich",
 	selectPlaceholder: "Element wählen",
 	tableResizer: "Größenanpassung"
 };
 // node_modules/react-aria-components/dist/private/intl/el-GR.mjs
-var bL = {};
-bL = {
+var yL = {};
+yL = {
 	colorSwatchPicker: "Χρωματικά δείγματα",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Επιλέξτε ένα αντικείμενο",
 	tableResizer: "Αλλαγή μεγέθους"
 };
 // node_modules/react-aria-components/dist/private/intl/en-US.mjs
-var xL = {};
-xL = {
+var bL = {};
+bL = {
 	selectPlaceholder: "Select an item",
 	tableResizer: "Resizer",
 	dropzoneLabel: "DropZone",
 	colorSwatchPicker: "Color swatches"
 };
 // node_modules/react-aria-components/dist/private/intl/es-ES.mjs
-var SL = {};
-SL = {
+var xL = {};
+xL = {
 	colorSwatchPicker: "Muestras de colores",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Seleccionar un artículo",
 	tableResizer: "Cambiador de tamaño"
 };
 // node_modules/react-aria-components/dist/private/intl/et-EE.mjs
-var CL = {};
-CL = {
+var SL = {};
+SL = {
 	colorSwatchPicker: "Värvinäidised",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Valige üksus",
 	tableResizer: "Suuruse muutja"
 };
 // node_modules/react-aria-components/dist/private/intl/fi-FI.mjs
-var wL = {};
-wL = {
+var CL = {};
+CL = {
 	colorSwatchPicker: "Värimallit",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Valitse kohde",
 	tableResizer: "Koon muuttaja"
 };
 // node_modules/react-aria-components/dist/private/intl/fr-FR.mjs
-var TL = {};
-TL = {
+var wL = {};
+wL = {
 	colorSwatchPicker: "Échantillons de couleurs",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Sélectionner un élément",
 	tableResizer: "Redimensionneur"
 };
 // node_modules/react-aria-components/dist/private/intl/he-IL.mjs
-var EL = {};
-EL = {
+var TL = {};
+TL = {
 	colorSwatchPicker: "דוגמיות צבע",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "בחר פריט",
 	tableResizer: "שינוי גודל"
 };
 // node_modules/react-aria-components/dist/private/intl/hr-HR.mjs
-var DL = {};
-DL = {
+var EL = {};
+EL = {
 	colorSwatchPicker: "Uzorci boja",
 	dropzoneLabel: "Zona spuštanja",
 	selectPlaceholder: "Odaberite stavku",
 	tableResizer: "Promjena veličine"
 };
 // node_modules/react-aria-components/dist/private/intl/hu-HU.mjs
-var OL = {};
-OL = {
+var DL = {};
+DL = {
 	colorSwatchPicker: "Színtárak",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Válasszon ki egy elemet",
 	tableResizer: "Átméretező"
 };
 // node_modules/react-aria-components/dist/private/intl/it-IT.mjs
-var kL = {};
-kL = {
+var OL = {};
+OL = {
 	colorSwatchPicker: "Campioni di colore",
 	dropzoneLabel: "Zona di rilascio",
 	selectPlaceholder: "Seleziona un elemento",
 	tableResizer: "Ridimensionamento"
 };
 // node_modules/react-aria-components/dist/private/intl/ja-JP.mjs
-var AL = {};
-AL = {
+var kL = {};
+kL = {
 	colorSwatchPicker: "カラースウォッチ",
 	dropzoneLabel: "ドロップゾーン",
 	selectPlaceholder: "項目を選択",
 	tableResizer: "サイズ変更ツール"
 };
 // node_modules/react-aria-components/dist/private/intl/ko-KR.mjs
-var jL = {};
-jL = {
+var AL = {};
+AL = {
 	colorSwatchPicker: "색상 견본",
 	dropzoneLabel: "드롭 영역",
 	selectPlaceholder: "항목 선택",
 	tableResizer: "크기 조정기"
 };
 // node_modules/react-aria-components/dist/private/intl/lt-LT.mjs
-var ML = {};
-ML = {
+var jL = {};
+jL = {
 	colorSwatchPicker: "Spalvų pavyzdžiai",
 	dropzoneLabel: "„DropZone“",
 	selectPlaceholder: "Pasirinkite elementą",
 	tableResizer: "Dydžio keitiklis"
 };
 // node_modules/react-aria-components/dist/private/intl/lv-LV.mjs
-var NL = {};
-NL = {
+var ML = {};
+ML = {
 	colorSwatchPicker: "Krāsu paraugi",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Izvēlēties vienumu",
 	tableResizer: "Izmēra mainītājs"
 };
 // node_modules/react-aria-components/dist/private/intl/nb-NO.mjs
-var PL = {};
-PL = {
+var NL = {};
+NL = {
 	colorSwatchPicker: "Fargekart",
 	dropzoneLabel: "Droppsone",
 	selectPlaceholder: "Velg et element",
 	tableResizer: "Størrelsesendrer"
 };
 // node_modules/react-aria-components/dist/private/intl/nl-NL.mjs
-var FL = {};
-FL = {
+var PL = {};
+PL = {
 	colorSwatchPicker: "kleurstalen",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Selecteer een item",
 	tableResizer: "Resizer"
 };
 // node_modules/react-aria-components/dist/private/intl/pl-PL.mjs
-var IL = {};
-IL = {
+var FL = {};
+FL = {
 	colorSwatchPicker: "Próbki kolorów",
 	dropzoneLabel: "Strefa upuszczania",
 	selectPlaceholder: "Wybierz element",
 	tableResizer: "Zmiana rozmiaru"
 };
 // node_modules/react-aria-components/dist/private/intl/pt-BR.mjs
+var IL = {};
+IL = {
+	colorSwatchPicker: "Amostras de cores",
+	dropzoneLabel: "DropZone",
+	selectPlaceholder: "Selecione um item",
+	tableResizer: "Redimensionador"
+};
+// node_modules/react-aria-components/dist/private/intl/pt-PT.mjs
 var LL = {};
 LL = {
 	colorSwatchPicker: "Amostras de cores",
@@ -38516,89 +38524,81 @@ LL = {
 	selectPlaceholder: "Selecione um item",
 	tableResizer: "Redimensionador"
 };
-// node_modules/react-aria-components/dist/private/intl/pt-PT.mjs
+// node_modules/react-aria-components/dist/private/intl/ro-RO.mjs
 var RL = {};
 RL = {
-	colorSwatchPicker: "Amostras de cores",
-	dropzoneLabel: "DropZone",
-	selectPlaceholder: "Selecione um item",
-	tableResizer: "Redimensionador"
-};
-// node_modules/react-aria-components/dist/private/intl/ro-RO.mjs
-var zL = {};
-zL = {
 	colorSwatchPicker: "Specimene de culoare",
 	dropzoneLabel: "Zonă de plasare",
 	selectPlaceholder: "Selectați un element",
 	tableResizer: "Instrument de redimensionare"
 };
 // node_modules/react-aria-components/dist/private/intl/ru-RU.mjs
-var BL = {};
-BL = {
+var zL = {};
+zL = {
 	colorSwatchPicker: "Цветовые образцы",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Выберите элемент",
 	tableResizer: "Средство изменения размера"
 };
 // node_modules/react-aria-components/dist/private/intl/sk-SK.mjs
-var VL = {};
-VL = {
+var BL = {};
+BL = {
 	colorSwatchPicker: "Vzorkovníky farieb",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Vyberte položku",
 	tableResizer: "Nástroj na zmenu veľkosti"
 };
 // node_modules/react-aria-components/dist/private/intl/sl-SI.mjs
-var HL = {};
-HL = {
+var VL = {};
+VL = {
 	colorSwatchPicker: "Barvne palete",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Izberite element",
 	tableResizer: "Spreminjanje velikosti"
 };
 // node_modules/react-aria-components/dist/private/intl/sr-SP.mjs
-var UL = {};
-UL = {
+var HL = {};
+HL = {
 	colorSwatchPicker: "Uzorci boje",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Izaberite stavku",
 	tableResizer: "Promena veličine"
 };
 // node_modules/react-aria-components/dist/private/intl/sv-SE.mjs
-var WL = {};
-WL = {
+var UL = {};
+UL = {
 	colorSwatchPicker: "Färgrutor",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Välj en artikel",
 	tableResizer: "Storleksändrare"
 };
 // node_modules/react-aria-components/dist/private/intl/tr-TR.mjs
-var GL = {};
-GL = {
+var WL = {};
+WL = {
 	colorSwatchPicker: "Renk örnekleri",
 	dropzoneLabel: "Bırakma Bölgesi",
 	selectPlaceholder: "Bir öğe seçin",
 	tableResizer: "Yeniden boyutlandırıcı"
 };
 // node_modules/react-aria-components/dist/private/intl/uk-UA.mjs
-var KL = {};
-KL = {
+var GL = {};
+GL = {
 	colorSwatchPicker: "Зразки кольорів",
 	dropzoneLabel: "DropZone",
 	selectPlaceholder: "Виберіть елемент",
 	tableResizer: "Засіб змінення розміру"
 };
 // node_modules/react-aria-components/dist/private/intl/zh-CN.mjs
-var qL = {};
-qL = {
+var KL = {};
+KL = {
 	colorSwatchPicker: "颜色色板",
 	dropzoneLabel: "放置区域",
 	selectPlaceholder: "选择一个项目",
 	tableResizer: "尺寸调整器"
 };
 // node_modules/react-aria-components/dist/private/intl/zh-TW.mjs
-var vme = {};
-vme = {
+var qL = {};
+qL = {
 	colorSwatchPicker: "色票",
 	dropzoneLabel: "放置區",
 	selectPlaceholder: "選取項目",
@@ -38607,40 +38607,40 @@ vme = {
 // node_modules/react-aria-components/dist/private/intlStrings.mjs
 var JL = {};
 JL = {
-	"ar-AE": hL,
-	"bg-BG": gL,
-	"cs-CZ": _L,
-	"da-DK": vL,
-	"de-DE": yL,
-	"el-GR": bL,
-	"en-US": xL,
-	"es-ES": SL,
-	"et-EE": CL,
-	"fi-FI": wL,
-	"fr-FR": TL,
-	"he-IL": EL,
-	"hr-HR": DL,
-	"hu-HU": OL,
-	"it-IT": kL,
-	"ja-JP": AL,
-	"ko-KR": jL,
-	"lt-LT": ML,
-	"lv-LV": NL,
-	"nb-NO": PL,
-	"nl-NL": FL,
-	"pl-PL": IL,
-	"pt-BR": LL,
-	"pt-PT": RL,
-	"ro-RO": zL,
-	"ru-RU": BL,
-	"sk-SK": VL,
-	"sl-SI": HL,
-	"sr-SP": UL,
-	"sv-SE": WL,
-	"tr-TR": GL,
-	"uk-UA": KL,
-	"zh-CN": qL,
-	"zh-TW": vme
+	"ar-AE": mL,
+	"bg-BG": hL,
+	"cs-CZ": gL,
+	"da-DK": _L,
+	"de-DE": vL,
+	"el-GR": yL,
+	"en-US": bL,
+	"es-ES": xL,
+	"et-EE": SL,
+	"fi-FI": CL,
+	"fr-FR": wL,
+	"he-IL": TL,
+	"hr-HR": EL,
+	"hu-HU": DL,
+	"it-IT": OL,
+	"ja-JP": kL,
+	"ko-KR": AL,
+	"lt-LT": jL,
+	"lv-LV": ML,
+	"nb-NO": NL,
+	"nl-NL": PL,
+	"pl-PL": FL,
+	"pt-BR": IL,
+	"pt-PT": LL,
+	"ro-RO": RL,
+	"ru-RU": zL,
+	"sk-SK": BL,
+	"sl-SI": VL,
+	"sr-SP": HL,
+	"sv-SE": UL,
+	"tr-TR": WL,
+	"uk-UA": GL,
+	"zh-CN": KL,
+	"zh-TW": qL
 };
 // node_modules/react-aria-components/dist/private/DragAndDrop.mjs
 var YL = /*#__PURE__*/ (0, I.createContext)({}), XL = /*#__PURE__*/ (0, I.createContext)(null), yme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
@@ -38697,10 +38697,10 @@ var eR = /*#__PURE__*/ (0, I.createContext)({ isSelected: !1 }), tR = /*#__PURE_
 		return null;
 	}
 }, function(e, t) {
-	[e, t] = LI(e, t, tR);
+	[e, t] = II(e, t, tR);
 	let { elementType: n, orientation: r, style: i, className: a, slot: o, ...s } = e, c = n || "hr";
 	c === "hr" && r === "vertical" && (c = "div");
-	let l = VI[c], { separatorProps: u } = fle({
+	let l = BI[c], { separatorProps: u } = fle({
 		...s,
 		elementType: n,
 		orientation: r
@@ -39240,7 +39240,7 @@ function uR(e, t) {
 }
 // node_modules/react-aria-components/dist/private/ListBox.mjs
 var dR = /*#__PURE__*/ (0, I.createContext)(null), fR = /*#__PURE__*/ (0, I.createContext)(null), Ame = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, dR);
+	[e, t] = II(e, t, dR);
 	let n = (0, I.useContext)(fR);
 	return n ? /*#__PURE__*/ I.createElement(pR, {
 		state: n,
@@ -39259,7 +39259,7 @@ function jme({ props: e, listBoxRef: t, collection: n }) {
 		children: null,
 		items: null
 	};
-	let { layoutDelegate: r } = (0, I.useContext)(qI), i = cR({
+	let { layoutDelegate: r } = (0, I.useContext)(KI), i = cR({
 		...e,
 		layoutDelegate: r
 	});
@@ -39270,11 +39270,11 @@ function jme({ props: e, listBoxRef: t, collection: n }) {
 	});
 }
 function pR({ state: e, props: t, listBoxRef: n }) {
-	[t, n] = LI(t, n, HI);
+	[t, n] = II(t, n, VI);
 	let { dragAndDropHooks: r, layout: i = "stack", orientation: a = "vertical", filter: o } = t, s = kme(e, o), { collection: c, selectionManager: l } = s, u = !!r?.useDraggableCollectionState, d = !!r?.useDroppableCollectionState, { direction: f } = Ow(), { disabledBehavior: p, disabledKeys: m } = l, h = hD({
 		usage: "search",
 		sensitivity: "base"
-	}), { isVirtualized: g, layoutDelegate: _, dropTargetDelegate: v, CollectionRoot: y } = (0, I.useContext)(qI), b = (0, I.useMemo)(() => t.keyboardDelegate || new _E({
+	}), { isVirtualized: g, layoutDelegate: _, dropTargetDelegate: v, CollectionRoot: y } = (0, I.useContext)(KI), b = (0, I.useMemo)(() => t.keyboardDelegate || new _E({
 		collection: c,
 		collator: h,
 		ref: n,
@@ -39335,7 +39335,7 @@ function pR({ state: e, props: t, listBoxRef: n }) {
 		layout: t.layout || "stack",
 		orientation: a,
 		state: s
-	}, ee = FI({
+	}, ee = PI({
 		...t,
 		children: void 0,
 		defaultClassName: "react-aria-ListBox",
@@ -39346,7 +39346,7 @@ function pR({ state: e, props: t, listBoxRef: n }) {
 		style: { display: "contents" }
 	}, t.renderEmptyState(M)));
 	let P = Iw(t, { global: !0 });
-	return /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(P, ee, x, O, w?.collectionProps),
 		ref: n,
 		slot: t.slot || void 0,
@@ -39357,7 +39357,7 @@ function pR({ state: e, props: t, listBoxRef: n }) {
 		"data-focus-visible": A || void 0,
 		"data-layout": t.layout || "stack",
 		"data-orientation": a
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[dR, t],
 		[fR, s],
 		[YL, {
@@ -39367,7 +39367,7 @@ function pR({ state: e, props: t, listBoxRef: n }) {
 		}],
 		[tR, { elementType: "div" }],
 		[XL, { render: Pme }],
-		[WI, {
+		[UI, {
 			name: "ListBoxSection",
 			render: Mme
 		}]
@@ -39379,17 +39379,17 @@ function pR({ state: e, props: t, listBoxRef: n }) {
 	}))), N, E));
 }
 function Mme(e, t, n, r = "react-aria-ListBoxSection") {
-	let i = (0, I.useContext)(fR), { dragAndDropHooks: a, dropState: o } = (0, I.useContext)(YL), { CollectionBranch: s } = (0, I.useContext)(qI), [c, l] = RI(), { headingProps: u, groupProps: d } = Nce({
+	let i = (0, I.useContext)(fR), { dragAndDropHooks: a, dropState: o } = (0, I.useContext)(YL), { CollectionBranch: s } = (0, I.useContext)(KI), [c, l] = LI(), { headingProps: u, groupProps: d } = Nce({
 		heading: l,
 		"aria-label": e["aria-label"] ?? void 0
-	}), f = FI({
+	}), f = PI({
 		...e,
 		id: void 0,
 		children: void 0,
 		defaultClassName: r,
 		values: void 0
 	}), p = Iw(e, { global: !0 });
-	return delete p.id, /*#__PURE__*/ I.createElement(VI.section, {
+	return delete p.id, /*#__PURE__*/ I.createElement(BI.section, {
 		...q(p, f, d),
 		ref: t
 	}, /*#__PURE__*/ I.createElement(bme.Provider, { value: {
@@ -39421,7 +39421,7 @@ var Nme = /*#__PURE__*/ nw(lS, function(e, t, n) {
 		key: n.key,
 		dropPosition: "on"
 	} }, s, r));
-	let y = o && o.isDragging(n.key), b = FI({
+	let y = o && o.isDragging(n.key), b = PI({
 		...e,
 		id: void 0,
 		children: e.children,
@@ -39439,7 +39439,7 @@ var Nme = /*#__PURE__*/ nw(lS, function(e, t, n) {
 	(0, I.useEffect)(() => {
 		n.textValue;
 	}, [n.textValue]);
-	let x = e.href ? VI.a : VI.div, S = Iw(e, { global: !0 });
+	let x = e.href ? BI.a : BI.div, S = Iw(e, { global: !0 });
 	return delete S.id, delete S.onClick, e.href && l.tabIndex == null && (l.tabIndex = -1), /*#__PURE__*/ I.createElement(x, {
 		...q(S, b, l, p, h, g, _?.dragProps, v?.dropProps),
 		ref: r,
@@ -39453,8 +39453,8 @@ var Nme = /*#__PURE__*/ nw(lS, function(e, t, n) {
 		"data-dragging": y || void 0,
 		"data-drop-target": v?.isDropTarget || void 0,
 		"data-selection-mode": i.selectionManager.selectionMode === "none" ? void 0 : i.selectionManager.selectionMode
-	}, /*#__PURE__*/ I.createElement(PI, { values: [[tL, { slots: {
-		[NI]: u,
+	}, /*#__PURE__*/ I.createElement(NI, { values: [[eL, { slots: {
+		[MI]: u,
 		label: u,
 		description: d
 	} }], [eR, { isSelected: f.isSelected }]] }, b.children));
@@ -39470,12 +39470,12 @@ function Pme(e, t) {
 	});
 }
 function Fme(e, t) {
-	let { dropIndicatorProps: n, isDropTarget: r, ...i } = e, a = FI({
+	let { dropIndicatorProps: n, isDropTarget: r, ...i } = e, a = PI({
 		...i,
 		defaultClassName: "react-aria-DropIndicator",
 		values: { isDropTarget: r }
 	});
-	return /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...n,
 		...a,
 		role: "option",
@@ -39496,7 +39496,7 @@ nw(cS, function(e, t, n) {
 		o,
 		r?.collection
 	]), c);
-	let l = FI({
+	let l = PI({
 		...s,
 		id: void 0,
 		children: n.rendered,
@@ -39518,7 +39518,7 @@ nw(cS, function(e, t, n) {
 			height: 1,
 			width: 1
 		}
-	})), i && l.children && /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(VI.div, {
+	})), i && l.children && /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(Iw(e, { global: !0 }), { tabIndex: -1 }),
 		...l,
 		role: "option",
@@ -39597,7 +39597,7 @@ function _R(e, t, n, r) {
 }
 // node_modules/react-aria-components/dist/private/Popover.mjs
 var vR = /*#__PURE__*/ (0, I.createContext)(null), yR = /*#__PURE__*/ (0, I.createContext)(null), bR = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, vR);
+	[e, t] = II(e, t, vR);
 	let n = (0, I.useContext)(MR), r = mR(e), i = e.isOpen != null || e.defaultOpen != null || !n ? r : n, a = gR(t, i.isOpen), o = e.isExiting || !e.shouldSkipAnimation && a || !1, s = YC(), { direction: c } = Ow();
 	if (s) {
 		let t = e.children;
@@ -39624,7 +39624,7 @@ function Rme({ state: e, isExiting: t, UNSTABLE_portalContainer: n, clearContext
 		offset: i.offset ?? 8,
 		arrowRef: a,
 		groupRef: c ? s : o
-	}, e), g = i.popoverRef, _ = hR(g, !!m && l), v = i.isEntering || !i.shouldSkipAnimation && _ || !1, y = FI({
+	}, e), g = i.popoverRef, _ = hR(g, !!m && l), v = i.isEntering || !i.shouldSkipAnimation && _ || !1, y = PI({
 		...i,
 		defaultClassName: "react-aria-Popover",
 		values: {
@@ -39661,7 +39661,7 @@ function Rme({ state: e, isExiting: t, UNSTABLE_portalContainer: n, clearContext
 		"--trigger-width": y.style?.["--trigger-width"] || w
 	};
 	MS(() => GO(() => u(!0)), []);
-	let O = /*#__PURE__*/ I.createElement(VI.div, {
+	let O = /*#__PURE__*/ I.createElement(BI.div, {
 		...q(Iw(i, { global: !0 }), d),
 		...y,
 		id: x ? i.id : void 0,
@@ -39802,7 +39802,7 @@ function Hme(e) {
 		...e,
 		type: "menu"
 	}, t, n), a = (0, I.useRef)(null);
-	return YC() ? null : /*#__PURE__*/ I.createElement(PI, { values: [
+	return YC() ? null : /*#__PURE__*/ I.createElement(NI, { values: [
 		[CR, {
 			...i,
 			ref: a
@@ -39838,23 +39838,23 @@ var Ume = /*#__PURE__*/ (0, I.createContext)(null);
 	}
 });
 var Wme = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	return [e, t] = LI(e, t, CR), /*#__PURE__*/ I.createElement($C, { content: /*#__PURE__*/ I.createElement(ow, e) }, (n) => /*#__PURE__*/ I.createElement(Gme, {
+	return [e, t] = II(e, t, CR), /*#__PURE__*/ I.createElement($C, { content: /*#__PURE__*/ I.createElement(ow, e) }, (n) => /*#__PURE__*/ I.createElement(Gme, {
 		props: e,
 		collection: n,
 		menuRef: t
 	}));
 });
 function Gme({ props: e, collection: t, menuRef: n }) {
-	[e, n] = LI(e, n, HI);
+	[e, n] = II(e, n, VI);
 	let { filter: r, ...i } = e, a = (0, I.useMemo)(() => r ? t.filter(r) : t, [t, r]), o = SR({
 		...e,
 		collection: a,
 		children: void 0
-	}), s = (0, I.useContext)(TR), { isVirtualized: c, CollectionRoot: l } = (0, I.useContext)(qI), { menuProps: u } = Fce({
+	}), s = (0, I.useContext)(TR), { isVirtualized: c, CollectionRoot: l } = (0, I.useContext)(KI), { menuProps: u } = Fce({
 		...e,
 		isVirtualized: c,
 		onClose: e.onClose || s?.close
-	}, o, n), d = FI({
+	}, o, n), d = PI({
 		...e,
 		children: void 0,
 		defaultClassName: "react-aria-Menu",
@@ -39865,16 +39865,16 @@ function Gme({ props: e, collection: t, menuRef: n }) {
 		style: { display: "contents" }
 	}, e.renderEmptyState()));
 	let p = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(p, d, u),
 		ref: n,
 		slot: e.slot || void 0,
 		"data-empty": o.collection.size === 0 || void 0,
 		onScroll: e.onScroll
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[wR, o],
 		[tR, { elementType: "div" }],
-		[WI, {
+		[UI, {
 			name: "MenuSection",
 			render: DR
 		}],
@@ -39883,13 +39883,13 @@ function Gme({ props: e, collection: t, menuRef: n }) {
 			shouldUseVirtualFocus: i?.shouldUseVirtualFocus
 		}],
 		[kR, { shouldCloseOnSelect: e.shouldCloseOnSelect }],
+		[VI, null],
 		[HI, null],
-		[UI, null],
 		[ER, o.selectionManager],
 		[TR, s ?? xR({})]
 	] }, /*#__PURE__*/ I.createElement($L, null, /*#__PURE__*/ I.createElement(l, {
 		collection: o.collection,
-		persistedKeys: JI(o.selectionManager.focusedKey),
+		persistedKeys: qI(o.selectionManager.focusedKey),
 		scrollRef: n
 	}))), f));
 }
@@ -39914,10 +39914,10 @@ var Kme = class extends aR {
 	}
 };
 function DR(e, t, n, r = "react-aria-MenuSection") {
-	let i = (0, I.useContext)(wR), { CollectionBranch: a } = (0, I.useContext)(qI), [o, s] = RI(), { headingProps: c, groupProps: l } = Lce({
+	let i = (0, I.useContext)(wR), { CollectionBranch: a } = (0, I.useContext)(KI), [o, s] = LI(), { headingProps: c, groupProps: l } = Lce({
 		heading: s,
 		"aria-label": n.props["aria-label"] ?? void 0
-	}), u = FI({
+	}), u = PI({
 		...e,
 		id: void 0,
 		children: void 0,
@@ -39925,11 +39925,11 @@ function DR(e, t, n, r = "react-aria-MenuSection") {
 		className: n.props?.className,
 		style: n.props?.style,
 		values: void 0
-	}), d = (0, I.useContext)(ER), f = iR(e), p = e.selectionMode == null ? d : new Kme(d, f), m = II(kR)?.shouldCloseOnSelect, h = Iw(e, { global: !0 });
-	return delete h.id, /*#__PURE__*/ I.createElement(VI.section, {
+	}), d = (0, I.useContext)(ER), f = iR(e), p = e.selectionMode == null ? d : new Kme(d, f), m = FI(kR)?.shouldCloseOnSelect, h = Iw(e, { global: !0 });
+	return delete h.id, /*#__PURE__*/ I.createElement(BI.section, {
 		...q(h, u, l),
 		ref: t
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[bme, {
 			...c,
 			ref: o
@@ -39942,14 +39942,14 @@ function DR(e, t, n, r = "react-aria-MenuSection") {
 	})));
 }
 var OR = /*#__PURE__*/ rw(Dae, DR), kR = /*#__PURE__*/ (0, I.createContext)(null), AR = /*#__PURE__*/ nw(lS, function(e, t, n) {
-	[e, t] = LI(e, t, kR);
-	let r = II(kR)?.id, i = (0, I.useContext)(wR), a = UC(t), o = (0, I.useContext)(ER), { isVirtualized: s } = (0, I.useContext)(qI), { menuItemProps: c, labelProps: l, descriptionProps: u, keyboardShortcutProps: d, ...f } = Ice({
+	[e, t] = II(e, t, kR);
+	let r = FI(kR)?.id, i = (0, I.useContext)(wR), a = UC(t), o = (0, I.useContext)(ER), { isVirtualized: s } = (0, I.useContext)(KI), { menuItemProps: c, labelProps: l, descriptionProps: u, keyboardShortcutProps: d, ...f } = Ice({
 		...e,
 		id: r,
 		key: n.key,
 		selectionManager: o,
 		isVirtualized: s
-	}, i, a), { hoverProps: p, isHovered: m } = xD({ isDisabled: f.isDisabled }), h = FI({
+	}, i, a), { hoverProps: p, isHovered: m } = xD({ isDisabled: f.isDisabled }), h = PI({
 		...e,
 		id: void 0,
 		children: n.rendered,
@@ -39963,7 +39963,7 @@ var OR = /*#__PURE__*/ rw(Dae, DR), kR = /*#__PURE__*/ (0, I.createContext)(null
 			hasSubmenu: !!e["aria-haspopup"],
 			isOpen: e["aria-expanded"] === "true"
 		}
-	}), g = e.href ? VI.a : VI.div, _ = Iw(e, { global: !0 });
+	}), g = e.href ? BI.a : BI.div, _ = Iw(e, { global: !0 });
 	return delete _.id, delete _.onClick, /*#__PURE__*/ I.createElement(g, {
 		...q(_, h, c, p),
 		ref: a,
@@ -39976,9 +39976,9 @@ var OR = /*#__PURE__*/ rw(Dae, DR), kR = /*#__PURE__*/ (0, I.createContext)(null
 		"data-selection-mode": o.selectionMode === "none" ? void 0 : o.selectionMode,
 		"data-has-submenu": !!e["aria-haspopup"] || void 0,
 		"data-open": e["aria-expanded"] === "true" || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
-		[tL, { slots: {
-			[NI]: l,
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
+		[eL, { slots: {
+			[MI]: l,
 			label: l,
 			description: u
 		} }],
@@ -39998,7 +39998,7 @@ nw(cS, function(e, t, n) {
 		o,
 		r?.collection
 	]), c);
-	let l = FI({
+	let l = PI({
 		...s,
 		id: void 0,
 		children: n.rendered,
@@ -40020,7 +40020,7 @@ nw(cS, function(e, t, n) {
 			height: 1,
 			width: 1
 		}
-	})), i && l.children && /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(VI.div, {
+	})), i && l.children && /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(Iw(e, { global: !0 }), { tabIndex: -1 }),
 		...l,
 		role: "menuitem",
@@ -40030,38 +40030,38 @@ nw(cS, function(e, t, n) {
 // node_modules/react-aria-components/dist/private/Dialog.mjs
 var jR = /*#__PURE__*/ (0, I.createContext)(null), MR = /*#__PURE__*/ (0, I.createContext)(null), NR = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	let n = e["aria-labelledby"];
-	[e, t] = LI(e, t, jR);
+	[e, t] = II(e, t, jR);
 	let { dialogProps: r, titleProps: i, contentProps: a } = tce({
 		...e,
 		"aria-labelledby": n
 	}, t), o = (0, I.useContext)(MR);
 	!r["aria-label"] && !r["aria-labelledby"] && e["aria-labelledby"] && (r["aria-labelledby"] = e["aria-labelledby"]);
-	let s = FI({
+	let s = PI({
 		defaultClassName: "react-aria-Dialog",
 		className: e.className,
 		style: e.style,
 		children: e.children,
 		values: { close: o?.close || (() => {}) }
 	}), c = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(VI.section, {
+	return /*#__PURE__*/ I.createElement(BI.section, {
 		...q(c, s, r),
 		render: e.render,
 		ref: t,
 		slot: e.slot || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
-		[$I, { slots: {
-			[NI]: {},
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
+		[QI, { slots: {
+			[MI]: {},
 			title: {
 				...i,
 				level: 2
 			}
 		} }],
-		[tL, { slots: {
-			[NI]: {},
+		[eL, { slots: {
+			[MI]: {},
 			description: a
 		} }],
-		[ZI, { slots: {
-			[NI]: {},
+		[XI, { slots: {
+			[MI]: {},
 			close: { onPress: () => o?.close() }
 		} }]
 	] }, s.children));
@@ -40118,7 +40118,7 @@ var Jme = /*#__PURE__*/ (0, I.createContext)(null), IR = /*#__PURE__*/ (0, I.cre
 	}, s));
 });
 function Xme(e, t) {
-	[e, t] = LI(e, t, Jme);
+	[e, t] = II(e, t, Jme);
 	let n = (0, I.useContext)(MR), r = mR(e), i = e.isOpen != null || e.defaultOpen != null || !n ? r : n, a = UC(t), o = (0, I.useRef)(null), s = gR(a, i.isOpen, e.onExit), c = (0, I.useRef)(null), l = gR(o, i.isOpen, (e) => c.current?.(e)), u = s || l || e.isExiting || !1, d = eC();
 	return !i.isOpen && !u || d ? null : /*#__PURE__*/ I.createElement(Zme, {
 		...e,
@@ -40134,7 +40134,7 @@ function Zme({ UNSTABLE_portalContainer: e, UNSTABLE_deferUntilEntered: t, ...n 
 	let r = n.modalRef, { state: i } = n, [a, o] = (0, I.useState)(!1), s = hR(n.overlayRef, a, n.onEnter) || n.isEntering || !1, c = !!t && (!a || s), { modalProps: l, underlayProps: u } = Jce({
 		...n,
 		isEntering: c
-	}, i, r), d = (0, I.useContext)(jR), f = t ? Qme(d, { isEntering: c }) : d, p = FI({
+	}, i, r), d = (0, I.useContext)(jR), f = t ? Qme(d, { isEntering: c }) : d, p = PI({
 		...n,
 		defaultClassName: "react-aria-ModalOverlay",
 		values: {
@@ -40157,14 +40157,14 @@ function Zme({ UNSTABLE_portalContainer: e, UNSTABLE_deferUntilEntered: t, ...n 
 	return MS(() => GO(() => o(!0)), []), /*#__PURE__*/ I.createElement(_D, {
 		isExiting: n.isExiting,
 		portalContainer: e
-	}, /*#__PURE__*/ I.createElement(VI.div, {
+	}, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(Iw(n, { global: !0 }), u),
 		...p,
 		style: _,
 		ref: n.overlayRef,
 		"data-entering": s || void 0,
 		"data-exiting": n.isExiting || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[IR, {
 			modalProps: l,
 			modalRef: r,
@@ -40195,7 +40195,7 @@ function Qme(e, t) {
 	};
 }
 function RR(e) {
-	let { modalProps: t, modalRef: n, isExiting: r, onExitRef: i, isDismissable: a, isOpen: o } = (0, I.useContext)(IR), s = (0, I.useContext)(MR), c = UC((0, I.useMemo)(() => PC(e.modalRef, n), [e.modalRef, n])), l = hR(c, o, e.onEnter), u = FI({
+	let { modalProps: t, modalRef: n, isExiting: r, onExitRef: i, isDismissable: a, isOpen: o } = (0, I.useContext)(IR), s = (0, I.useContext)(MR), c = UC((0, I.useMemo)(() => PC(e.modalRef, n), [e.modalRef, n])), l = hR(c, o, e.onEnter), u = PI({
 		...e,
 		defaultClassName: "react-aria-Modal",
 		values: {
@@ -40206,7 +40206,7 @@ function RR(e) {
 	});
 	return MS(() => {
 		i && (i.current = e.onExit);
-	}), /*#__PURE__*/ I.createElement(VI.div, {
+	}), /*#__PURE__*/ I.createElement(BI.div, {
 		...q(Iw(e, { global: !0 }), t),
 		...u,
 		ref: c,
@@ -40240,15 +40240,15 @@ function the(e) {
 }
 // node_modules/react-aria-components/dist/private/RadioGroup.mjs
 var nhe = /*#__PURE__*/ (0, I.createContext)(null), rhe = /*#__PURE__*/ (0, I.createContext)(null), zR = /*#__PURE__*/ (0, I.createContext)(null), BR = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, nhe);
-	let { validationBehavior: n } = II(rL) || {}, r = e.validationBehavior ?? n ?? "native", i = the({
+	[e, t] = II(e, t, nhe);
+	let { validationBehavior: n } = FI(nL) || {}, r = e.validationBehavior ?? n ?? "native", i = the({
 		...e,
 		validationBehavior: r
-	}), [a, o] = RI(!e["aria-label"] && !e["aria-labelledby"]), { radioGroupProps: s, labelProps: c, descriptionProps: l, errorMessageProps: u, ...d } = cle({
+	}), [a, o] = LI(!e["aria-label"] && !e["aria-labelledby"]), { radioGroupProps: s, labelProps: c, descriptionProps: l, errorMessageProps: u, ...d } = cle({
 		...e,
 		label: o,
 		validationBehavior: r
-	}, i), f = FI({
+	}, i), f = PI({
 		...e,
 		values: {
 			orientation: e.orientation || "vertical",
@@ -40260,7 +40260,7 @@ var nhe = /*#__PURE__*/ (0, I.createContext)(null), rhe = /*#__PURE__*/ (0, I.cr
 		},
 		defaultClassName: "react-aria-RadioGroup"
 	}), p = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...q(p, f, s),
 		ref: t,
 		slot: e.slot || void 0,
@@ -40269,24 +40269,24 @@ var nhe = /*#__PURE__*/ (0, I.createContext)(null), rhe = /*#__PURE__*/ (0, I.cr
 		"data-disabled": i.isDisabled || void 0,
 		"data-readonly": i.isReadOnly || void 0,
 		"data-required": i.isRequired || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[zR, i],
-		[YI, {
+		[JI, {
 			...c,
 			ref: a,
 			elementType: "span"
 		}],
-		[tL, { slots: {
+		[eL, { slots: {
 			description: l,
 			errorMessage: u
 		} }],
-		[nL, d]
+		[tL, d]
 	] }, /*#__PURE__*/ I.createElement($L, null, f.children)));
 }), VR = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	let { inputRef: n = null, ...r } = e;
-	[e, t] = LI(r, t, rhe);
+	[e, t] = II(r, t, rhe);
 	let i = I.useContext(zR), a = UC((0, I.useMemo)(() => PC(n, e.inputRef === void 0 ? null : e.inputRef), [n, e.inputRef])), o = sle({
-		...zI(e),
+		...RI(e),
 		children: typeof e.children == "function" || e.children
 	}, i, a);
 	return /*#__PURE__*/ I.createElement(HR.Provider, { value: {
@@ -40301,7 +40301,7 @@ var nhe = /*#__PURE__*/ (0, I.createContext)(null), rhe = /*#__PURE__*/ (0, I.cr
 	let { labelProps: n, inputProps: r, isSelected: i, isDisabled: a, isPressed: o, defaultClassName: s, inputRef: c } = (0, I.useContext)(HR), l = I.useContext(zR), { isFocused: u, isFocusVisible: d, focusProps: f } = vD(), p = a || l.isReadOnly, { hoverProps: m, isHovered: h } = xD({
 		...e,
 		isDisabled: p
-	}), g = FI({
+	}), g = PI({
 		...e,
 		defaultClassName: s,
 		values: {
@@ -40316,7 +40316,7 @@ var nhe = /*#__PURE__*/ (0, I.createContext)(null), rhe = /*#__PURE__*/ (0, I.cr
 			isRequired: l.isRequired
 		}
 	}), _ = Iw(e, { global: !0 });
-	return delete _.id, delete _.onClick, /*#__PURE__*/ I.createElement(VI.label, {
+	return delete _.id, delete _.onClick, /*#__PURE__*/ I.createElement(BI.label, {
 		...q(_, n, m, g),
 		ref: t,
 		"data-selected": i || void 0,
@@ -40401,7 +40401,7 @@ function she(e) {
 	return e && e.__esModule ? e.default : e;
 }
 var UR = /*#__PURE__*/ (0, I.createContext)(null), WR = /*#__PURE__*/ (0, I.createContext)(null), che = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, UR);
+	[e, t] = II(e, t, UR);
 	let { children: n, isDisabled: r = !1, isInvalid: i = !1, isRequired: a = !1 } = e, o = (0, I.useMemo)(() => typeof n == "function" ? n({
 		isOpen: !1,
 		isDisabled: r,
@@ -40422,18 +40422,18 @@ var UR = /*#__PURE__*/ (0, I.createContext)(null), WR = /*#__PURE__*/ (0, I.crea
 		selectRef: t
 	}));
 }), lhe = [
-	YI,
-	ZI,
-	tL
+	JI,
+	XI,
+	eL
 ];
 function uhe({ props: e, selectRef: t, collection: n }) {
-	let { validationBehavior: r } = II(rL) || {}, i = e.validationBehavior ?? r ?? "native", a = ahe({
+	let { validationBehavior: r } = FI(nL) || {}, i = e.validationBehavior ?? r ?? "native", a = ahe({
 		...e,
 		collection: n,
 		children: void 0,
 		validationBehavior: i
-	}), { isFocusVisible: o, focusProps: s } = vD({ within: !0 }), c = (0, I.useRef)(null), [l, u] = RI(!e["aria-label"] && !e["aria-labelledby"]), { labelProps: d, triggerProps: f, valueProps: p, menuProps: m, descriptionProps: h, errorMessageProps: g, hiddenSelectProps: _, ...v } = lle({
-		...zI(e),
+	}), { isFocusVisible: o, focusProps: s } = vD({ within: !0 }), c = (0, I.useRef)(null), [l, u] = LI(!e["aria-label"] && !e["aria-labelledby"]), { labelProps: d, triggerProps: f, valueProps: p, menuProps: m, descriptionProps: h, errorMessageProps: g, hiddenSelectProps: _, ...v } = lle({
+		...RI(e),
 		label: u,
 		validationBehavior: i
 	}, a, c), y = (0, I.useMemo)(() => ({
@@ -40450,23 +40450,23 @@ function uhe({ props: e, selectRef: t, collection: n }) {
 		e.isDisabled,
 		v.isInvalid,
 		e.isRequired
-	]), b = FI({
+	]), b = PI({
 		...e,
 		values: y,
 		defaultClassName: "react-aria-Select"
 	}), x = Iw(e, { global: !0 });
 	delete x.id;
 	let S = (0, I.useRef)(null);
-	return /*#__PURE__*/ I.createElement(PI, { values: [
+	return /*#__PURE__*/ I.createElement(NI, { values: [
 		[UR, e],
 		[WR, a],
 		[GR, p],
-		[YI, {
+		[JI, {
 			...d,
 			ref: l,
 			elementType: "span"
 		}],
-		[ZI, {
+		[XI, {
 			...f,
 			ref: c,
 			isPressed: a.isOpen,
@@ -40486,12 +40486,12 @@ function uhe({ props: e, selectRef: t, collection: n }) {
 			ref: S
 		}],
 		[fR, a],
-		[tL, { slots: {
+		[eL, { slots: {
 			description: h,
 			errorMessage: g
 		} }],
-		[nL, v]
-	] }, /*#__PURE__*/ I.createElement(VI.div, {
+		[tL, v]
+	] }, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(x, b, s),
 		ref: t,
 		slot: e.slot || void 0,
@@ -40507,8 +40507,8 @@ function uhe({ props: e, selectRef: t, collection: n }) {
 	})));
 }
 for (var GR = /*#__PURE__*/ (0, I.createContext)(null), dhe = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, GR);
-	let n = (0, I.useContext)(WR), { placeholder: r } = II(UR), i = n.selectedItems.map((e) => {
+	[e, t] = II(e, t, GR);
+	let n = (0, I.useContext)(WR), { placeholder: r } = FI(UR), i = n.selectedItems.map((e) => {
 		let t = e.props?.children;
 		return typeof t == "function" && (t = t({
 			isHovered: !1,
@@ -40535,7 +40535,7 @@ for (var GR = /*#__PURE__*/ (0, I.createContext)(null), dhe = /*#__PURE__*/ JC(f
 		a,
 		o,
 		i
-	]), u = Pw(she(JL), "react-aria-components"), d = FI({
+	]), u = Pw(she(JL), "react-aria-components"), d = PI({
 		...e,
 		defaultChildren: l ?? r ?? u.format("selectPlaceholder"),
 		defaultClassName: "react-aria-SelectValue",
@@ -40547,20 +40547,20 @@ for (var GR = /*#__PURE__*/ (0, I.createContext)(null), dhe = /*#__PURE__*/ JC(f
 			state: n
 		}
 	}), f = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(VI.span, {
+	return /*#__PURE__*/ I.createElement(BI.span, {
 		ref: t,
 		...f,
 		...d,
 		"data-placeholder": n.selectedItems.length === 0 || void 0
-	}, /*#__PURE__*/ I.createElement(tL.Provider, { value: void 0 }, d.children));
+	}, /*#__PURE__*/ I.createElement(eL.Provider, { value: void 0 }, d.children));
 }), fhe = /*#__PURE__*/ (0, I.createContext)(null), KR = /*#__PURE__*/ (0, I.createContext)(null), phe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	let { inputRef: n = null, ...r } = e;
-	[e, t] = LI(r, t, fhe);
+	[e, t] = II(r, t, fhe);
 	let i = UC((0, I.useMemo)(() => PC(n, e.inputRef === void 0 ? null : e.inputRef), [n, e.inputRef])), a = YT(e), o = ple({
-		...zI(e),
+		...RI(e),
 		children: typeof e.children == "function" || e.children
 	}, a, i);
-	return /*#__PURE__*/ I.createElement(PI, { values: [[KR, a], [qR, {
+	return /*#__PURE__*/ I.createElement(NI, { values: [[KR, a], [qR, {
 		...o,
 		inputRef: i,
 		defaultClassName: "react-aria-Switch"
@@ -40572,7 +40572,7 @@ for (var GR = /*#__PURE__*/ (0, I.createContext)(null), dhe = /*#__PURE__*/ JC(f
 	let { labelProps: n, inputProps: r, isSelected: i, isDisabled: a, isReadOnly: o, isPressed: s, isInvalid: c, inputRef: l, defaultClassName: u, isRequired: d } = (0, I.useContext)(qR), { isFocused: f, isFocusVisible: p, focusProps: m } = vD(), h = a || o, g = (0, I.useContext)(KR), { hoverProps: _, isHovered: v } = xD({
 		...e,
 		isDisabled: h
-	}), y = FI({
+	}), y = PI({
 		...e,
 		defaultClassName: u,
 		values: {
@@ -40588,7 +40588,7 @@ for (var GR = /*#__PURE__*/ (0, I.createContext)(null), dhe = /*#__PURE__*/ JC(f
 			state: g
 		}
 	}), b = Iw(e, { global: !0 });
-	return delete b.id, delete b.onClick, /*#__PURE__*/ I.createElement(VI.label, {
+	return delete b.id, delete b.onClick, /*#__PURE__*/ I.createElement(BI.label, {
 		...q(b, n, _, y),
 		ref: t,
 		slot: e.slot || void 0,
@@ -41404,7 +41404,7 @@ var Ohe = class extends uS {
 		e.onResize,
 		e.onResizeEnd
 	]);
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		render: e.render,
 		...Iw(e, { global: !0 }),
 		ref: n,
@@ -41413,7 +41413,7 @@ var Ohe = class extends uS {
 		onScroll: e.onScroll
 	}, /*#__PURE__*/ I.createElement(rz.Provider, { value: s }, e.children));
 }), Ahe = /*#__PURE__*/ (0, I.createContext)(null), iz = /*#__PURE__*/ (0, I.createContext)(null), az = /*#__PURE__*/ (0, I.createContext)(null), jhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, Ahe);
+	[e, t] = II(e, t, Ahe);
 	let n = iR(e), { selectionBehavior: r, selectionMode: i, disallowEmptySelection: a } = n, o = !!e.dragAndDropHooks?.useDraggableCollectionState, s = (0, I.useMemo)(() => ({
 		selectionBehavior: i === "none" ? null : r,
 		selectionMode: i,
@@ -41435,11 +41435,11 @@ var Ohe = class extends uS {
 		collection: r
 	}));
 }), Mhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.table, {
+	}) : /*#__PURE__*/ I.createElement(BI.table, {
 		...e,
 		ref: t
 	});
@@ -41454,7 +41454,7 @@ var Ohe = class extends uS {
 	}
 };
 function Nhe({ props: e, forwardedRef: t, selectionState: n, collection: r }) {
-	[e, t] = LI(e, t, HI);
+	[e, t] = II(e, t, VI);
 	let { shouldUseVirtualFocus: i, disallowTypeAhead: a, filter: o, ...s } = e, c = (0, I.useContext)(rz);
 	t = UC((0, I.useMemo)(() => PC(t, c?.tableRef), [t, c?.tableRef]));
 	let [l, u] = JT(e.expandedKeys ? new Set(e.expandedKeys) : void 0, e.defaultExpandedKeys ? new Set(e.defaultExpandedKeys) : /* @__PURE__ */ new Set(), e.onExpandedChange);
@@ -41466,7 +41466,7 @@ function Nhe({ props: e, forwardedRef: t, selectionState: n, collection: r }) {
 		UNSAFE_selectionState: n,
 		expandedKeys: l,
 		onExpandedChange: u
-	}), f = Ehe(d, o), { isVirtualized: p, layoutDelegate: m, dropTargetDelegate: h, CollectionRoot: g } = (0, I.useContext)(qI), { dragAndDropHooks: _ } = e, { gridProps: v } = vle({
+	}), f = Ehe(d, o), { isVirtualized: p, layoutDelegate: m, dropTargetDelegate: h, CollectionRoot: g } = (0, I.useContext)(KI), { dragAndDropHooks: _ } = e, { gridProps: v } = vle({
 		...s,
 		layoutDelegate: m,
 		isVirtualized: p
@@ -41512,7 +41512,7 @@ function Nhe({ props: e, forwardedRef: t, selectionState: n, collection: r }) {
 			}
 		}, C, t), T = C.isDropTarget({ type: "root" });
 	}
-	let { focusProps: A, isFocused: j, isFocusVisible: M } = vD(), ee = FI({
+	let { focusProps: A, isFocused: j, isFocusVisible: M } = vD(), ee = PI({
 		...e,
 		children: void 0,
 		defaultClassName: "react-aria-Table",
@@ -41529,7 +41529,7 @@ function Nhe({ props: e, forwardedRef: t, selectionState: n, collection: r }) {
 		width: "min-content"
 	}));
 	let te = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(PI, { values: [
+	return /*#__PURE__*/ I.createElement(NI, { values: [
 		[iz, f],
 		[az, F],
 		[YL, {
@@ -41538,8 +41538,8 @@ function Nhe({ props: e, forwardedRef: t, selectionState: n, collection: r }) {
 			dropState: C
 		}],
 		[XL, { render: Whe }],
-		[HI, null],
-		[UI, null]
+		[VI, null],
+		[HI, null]
 	] }, /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(Mhe, {
 		...q(te, ee, v, A, w?.collectionProps),
 		style: P,
@@ -41561,11 +41561,11 @@ var Phe = /*#__PURE__*/ (0, I.createContext)(null), sz = class extends oS {
 		this.type = "tableheader";
 	}
 }, Fhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.thead, {
+	}) : /*#__PURE__*/ I.createElement(BI.thead, {
 		...e,
 		ref: t
 	});
@@ -41582,7 +41582,7 @@ var Phe = /*#__PURE__*/ (0, I.createContext)(null), sz = class extends oS {
 		onHoverStart: e.onHoverStart,
 		onHoverChange: e.onHoverChange,
 		onHoverEnd: e.onHoverEnd
-	}), s = FI({
+	}), s = PI({
 		...e,
 		children: void 0,
 		defaultClassName: "react-aria-TableHeader",
@@ -41598,7 +41598,7 @@ var Phe = /*#__PURE__*/ (0, I.createContext)(null), sz = class extends oS {
 	dependencies: e.dependencies,
 	items: e.columns
 }, e.children)), Ihe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
+	let { isVirtualized: n } = (0, I.useContext)(KI);
 	return n ? /*#__PURE__*/ I.createElement("div", {
 		...e,
 		ref: t
@@ -41608,14 +41608,14 @@ var Phe = /*#__PURE__*/ (0, I.createContext)(null), sz = class extends oS {
 	});
 });
 function Lhe({ item: e }) {
-	let t = (0, I.useRef)(null), n = (0, I.useContext)(iz), { isVirtualized: r, CollectionBranch: i } = (0, I.useContext)(qI), { rowProps: a } = wle({
+	let t = (0, I.useRef)(null), n = (0, I.useContext)(iz), { isVirtualized: r, CollectionBranch: i } = (0, I.useContext)(KI), { rowProps: a } = wle({
 		node: e,
 		isVirtualized: r
 	}, n, t), { checkboxProps: o } = jle(n);
 	return /*#__PURE__*/ I.createElement(Ihe, {
 		...a,
 		ref: t
-	}, /*#__PURE__*/ I.createElement(PI, { values: [[iL, { slots: { selection: o } }], [aL, { slots: { selection: o } }]] }, /*#__PURE__*/ I.createElement(i, {
+	}, /*#__PURE__*/ I.createElement(NI, { values: [[rL, { slots: { selection: o } }], [iL, { slots: { selection: o } }]] }, /*#__PURE__*/ I.createElement(i, {
 		collection: n.collection,
 		parent: e
 	})));
@@ -41625,23 +41625,23 @@ var Rhe = class extends oS {
 		this.type = "column";
 	}
 }, zhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.th, {
+	}) : /*#__PURE__*/ I.createElement(BI.th, {
 		...e,
 		ref: t
 	});
 }), lz = /*#__PURE__*/ nw(Rhe, (e, t, n) => {
-	let r = UC(t), i = (0, I.useContext)(iz), { isVirtualized: a } = (0, I.useContext)(qI), { columnHeaderProps: o, isPressed: s } = xle({
+	let r = UC(t), i = (0, I.useContext)(iz), { isVirtualized: a } = (0, I.useContext)(KI), { columnHeaderProps: o, isPressed: s } = xle({
 		node: n,
 		isVirtualized: a,
 		focusMode: e.focusMode,
 		allowsArrowNavigation: e.allowsArrowNavigation
 	}, i, r), { isFocused: c, isFocusVisible: l, focusProps: u } = vD(), d = (0, I.useContext)(az), f = !1;
 	d && (f = d.resizingColumn === n.key);
-	let { hoverProps: p, isHovered: m } = xD({ isDisabled: !e.allowsSorting }), h = FI({
+	let { hoverProps: p, isHovered: m } = xD({ isDisabled: !e.allowsSorting }), h = PI({
 		...e,
 		id: void 0,
 		children: n.rendered,
@@ -41680,10 +41680,10 @@ var Rhe = class extends oS {
 		"data-resizing": f || void 0,
 		"data-allows-sorting": n.props.allowsSorting || void 0,
 		"data-sort-direction": i.sortDescriptor?.column === n.key ? i.sortDescriptor.direction : void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [[uz, {
+	}, /*#__PURE__*/ I.createElement(NI, { values: [[uz, {
 		column: n,
 		triggerRef: r
-	}], [qI, GI]] }, h.children));
+	}], [KI, WI]] }, h.children));
 }), uz = /*#__PURE__*/ (0, I.createContext)(null), Bhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	let n = (0, I.useContext)(az);
 	if (!n) throw Error("Wrap your <Table> in a <ResizableTableContainer> to enable column resizing");
@@ -41702,7 +41702,7 @@ var Rhe = class extends oS {
 		let e = window.getComputedStyle(C.current);
 		T(e.cursor);
 	}, [C, S]);
-	let E = FI({
+	let E = PI({
 		...e,
 		defaultClassName: "react-aria-ColumnResizer",
 		values: {
@@ -41713,7 +41713,7 @@ var Rhe = class extends oS {
 			resizableDirection: S
 		}
 	}), D = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		ref: C,
 		role: "presentation",
 		...q(D, E, u, _),
@@ -41741,19 +41741,19 @@ var Rhe = class extends oS {
 		this.type = "tablebody";
 	}
 }, Vhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.tbody, {
+	}) : /*#__PURE__*/ I.createElement(BI.tbody, {
 		...e,
 		ref: t
 	});
 }), fz = /*#__PURE__*/ rw(dz, (e, t, n) => {
-	let r = (0, I.useContext)(iz), { isVirtualized: i } = (0, I.useContext)(qI), a = r.collection, { CollectionBranch: o } = (0, I.useContext)(qI), { dragAndDropHooks: s, dropState: c } = (0, I.useContext)(YL), l = !!s?.useDroppableCollectionState && !c?.isDisabled, u = l && !!c && (c.isDropTarget({ type: "root" }) ?? !1), d = a.size === 0, f = {
+	let r = (0, I.useContext)(iz), { isVirtualized: i } = (0, I.useContext)(KI), a = r.collection, { CollectionBranch: o } = (0, I.useContext)(KI), { dragAndDropHooks: s, dropState: c } = (0, I.useContext)(YL), l = !!s?.useDroppableCollectionState && !c?.isDisabled, u = l && !!c && (c.isDropTarget({ type: "root" }) ?? !1), d = a.size === 0, f = {
 		isDropTarget: u,
 		isEmpty: d
-	}, p = FI({
+	}, p = PI({
 		...e,
 		id: void 0,
 		children: void 0,
@@ -41801,16 +41801,16 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 		return null;
 	}
 }, mz = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.tr, {
+	}) : /*#__PURE__*/ I.createElement(BI.tr, {
 		...e,
 		ref: t
 	});
 }), hz = /*#__PURE__*/ rw(Hhe, (e, t, n) => {
-	let r = UC(t), i = (0, I.useContext)(iz), { dragAndDropHooks: a, dragState: o, dropState: s } = (0, I.useContext)(YL), { isVirtualized: c, CollectionBranch: l } = (0, I.useContext)(qI), u = o && !(o.isDisabled || o.selectionManager.isDisabled(n.key)), { rowProps: d, expandButtonProps: f, ...p } = Dle({
+	let r = UC(t), i = (0, I.useContext)(iz), { dragAndDropHooks: a, dragState: o, dropState: s } = (0, I.useContext)(YL), { isVirtualized: c, CollectionBranch: l } = (0, I.useContext)(KI), u = o && !(o.isDisabled || o.selectionManager.isDisabled(n.key)), { rowProps: d, expandButtonProps: f, ...p } = Dle({
 		node: n,
 		shouldSelectOnPressUp: !!o,
 		isVirtualized: c
@@ -41834,7 +41834,7 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 	(0, I.useEffect)(() => {
 		o && E.current;
 	}, []);
-	let D = o && o.isDragging(n.key), { children: O, ...k } = e, A = e.hasChildItems || i.collection.getItem(n.lastChildKey)?.type !== "cell", j = A && i.expandedKeys.has(n.key), M = FI({
+	let D = o && o.isDragging(n.key), { children: O, ...k } = e, A = e.hasChildItems || i.collection.getItem(n.lastChildKey)?.type !== "cell", j = A && i.expandedKeys.has(n.key), M = PI({
 		...k,
 		id: void 0,
 		defaultClassName: "react-aria-Row",
@@ -41884,17 +41884,17 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 		"data-expanded": j || void 0,
 		"data-has-child-items": A || void 0,
 		"data-level": n.level + 1
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
+		[rL, { slots: {
+			[MI]: {},
+			selection: x
+		} }],
 		[iL, { slots: {
-			[NI]: {},
+			[MI]: {},
 			selection: x
 		} }],
-		[aL, { slots: {
-			[NI]: {},
-			selection: x
-		} }],
-		[ZI, { slots: {
-			[NI]: {},
+		[XI, { slots: {
+			[MI]: {},
 			chevron: f,
 			drag: {
 				...S?.dragButtonProps,
@@ -41921,16 +41921,16 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 		this.type = "cell";
 	}
 }, gz = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.td, {
+	}) : /*#__PURE__*/ I.createElement(BI.td, {
 		...e,
 		ref: t
 	});
 }), _z = /*#__PURE__*/ nw(Uhe, (e, t, n) => {
-	let r = UC(t), i = (0, I.useContext)(iz), { dragState: a } = (0, I.useContext)(YL), { isVirtualized: o } = (0, I.useContext)(qI);
+	let r = UC(t), i = (0, I.useContext)(iz), { dragState: a } = (0, I.useContext)(YL), { isVirtualized: o } = (0, I.useContext)(KI);
 	n.column = i.collection.columns[n.index];
 	let { gridCellProps: s, isPressed: c } = yle({
 		node: n,
@@ -41938,7 +41938,7 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 		isVirtualized: o,
 		focusMode: e.focusMode,
 		allowsArrowNavigation: e.allowsArrowNavigation
-	}, i, r), { isFocused: l, isFocusVisible: u, focusProps: d } = vD(), { hoverProps: f, isHovered: p } = xD({}), { isFocusVisibleWithinRow: m } = (0, I.useContext)(pz), h = n.parentKey != null && i.selectionManager.isSelected(n.parentKey), g = n.colIndex || n.index, _ = i.collection.getItem(n.parentKey), v = _.props.hasChildItems || i.collection.getItem(_.lastChildKey)?.type !== "cell", y = v && i.expandedKeys.has(n.parentKey), b = i.selectionManager.isDisabled(n.parentKey), x = FI({
+	}, i, r), { isFocused: l, isFocusVisible: u, focusProps: d } = vD(), { hoverProps: f, isHovered: p } = xD({}), { isFocusVisibleWithinRow: m } = (0, I.useContext)(pz), h = n.parentKey != null && i.selectionManager.isSelected(n.parentKey), g = n.colIndex || n.index, _ = i.collection.getItem(n.parentKey), v = _.props.hasChildItems || i.collection.getItem(_.lastChildKey)?.type !== "cell", y = v && i.expandedKeys.has(n.parentKey), b = i.selectionManager.isDisabled(n.parentKey), x = PI({
 		...e,
 		id: void 0,
 		defaultClassName: "react-aria-Cell",
@@ -41972,7 +41972,7 @@ var pz = /*#__PURE__*/ (0, I.createContext)({ isFocusVisibleWithinRow: !1 }), Hh
 		"data-level": _.level + 1,
 		"data-tree-column": n.column.key === i.treeColumn || void 0,
 		"data-disabled": b || void 0
-	}, /*#__PURE__*/ I.createElement(qI.Provider, { value: GI }, x.children));
+	}, /*#__PURE__*/ I.createElement(KI.Provider, { value: WI }, x.children));
 });
 function Whe(e, t) {
 	t = UC(t);
@@ -41989,26 +41989,26 @@ function Whe(e, t) {
 	});
 }
 var Ghe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.tr, {
+	}) : /*#__PURE__*/ I.createElement(BI.tr, {
 		...e,
 		ref: t
 	});
 }), Khe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	let { isVirtualized: n } = (0, I.useContext)(qI);
-	return n ? /*#__PURE__*/ I.createElement(VI.div, {
+	let { isVirtualized: n } = (0, I.useContext)(KI);
+	return n ? /*#__PURE__*/ I.createElement(BI.div, {
 		...e,
 		ref: t
-	}) : /*#__PURE__*/ I.createElement(VI.td, {
+	}) : /*#__PURE__*/ I.createElement(BI.td, {
 		...e,
 		ref: t
 	});
 });
 function qhe(e, t) {
-	let { dropIndicatorProps: n, isDropTarget: r, buttonRef: i, level: a, ...o } = e, s = (0, I.useContext)(iz), { visuallyHiddenProps: c } = rE(), l = FI({
+	let { dropIndicatorProps: n, isDropTarget: r, buttonRef: i, level: a, ...o } = e, s = (0, I.useContext)(iz), { visuallyHiddenProps: c } = rE(), l = PI({
 		...o,
 		defaultClassName: "react-aria-DropIndicator",
 		defaultStyle: { "--table-row-level": a + 1 },
@@ -42051,7 +42051,7 @@ function Yhe() {
 	})));
 }
 nw(cS, function(e, t, n) {
-	let r = (0, I.useContext)(iz), { isVirtualized: i } = (0, I.useContext)(qI), { isLoading: a, onLoadMore: o, scrollOffset: s, ...c } = e, l = r.collection.columns.length, u = (0, I.useRef)(null);
+	let r = (0, I.useContext)(iz), { isVirtualized: i } = (0, I.useContext)(KI), { isLoading: a, onLoadMore: o, scrollOffset: s, ...c } = e, l = r.collection.columns.length, u = (0, I.useRef)(null);
 	uR((0, I.useMemo)(() => ({
 		onLoadMore: o,
 		collection: r?.collection,
@@ -42062,7 +42062,7 @@ nw(cS, function(e, t, n) {
 		s,
 		r?.collection
 	]), u);
-	let d = FI({
+	let d = PI({
 		...c,
 		id: void 0,
 		children: n.rendered,
@@ -42148,7 +42148,7 @@ function vz(e, t) {
 }
 // node_modules/react-aria-components/dist/private/Tabs.mjs
 var yz = /*#__PURE__*/ (0, I.createContext)(null), bz = /*#__PURE__*/ (0, I.createContext)(null), Qhe = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, yz);
+	[e, t] = II(e, t, yz);
 	let { children: n, orientation: r = "horizontal" } = e;
 	return n = (0, I.useMemo)(() => typeof n == "function" ? n({
 		orientation: r,
@@ -42172,12 +42172,12 @@ function $he({ props: e, tabsRef: t, collection: n }) {
 		r,
 		o,
 		s
-	]), l = FI({
+	]), l = PI({
 		...e,
 		defaultClassName: "react-aria-Tabs",
 		values: c
 	}), u = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...q(u, l, a),
 		ref: t,
 		slot: e.slot || void 0,
@@ -42185,7 +42185,7 @@ function $he({ props: e, tabsRef: t, collection: n }) {
 		"data-orientation": r,
 		"data-focus-visible": s || void 0,
 		"data-disabled": i.isDisabled || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [[yz, e], [bz, i]] }, l.children));
+	}, /*#__PURE__*/ I.createElement(NI, { values: [[yz, e], [bz, i]] }, l.children));
 }
 var xz = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	return (0, I.useContext)(bz) ? /*#__PURE__*/ I.createElement(ege, {
@@ -42194,11 +42194,11 @@ var xz = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
 	}) : /*#__PURE__*/ I.createElement(ow, e);
 });
 function ege({ props: e, forwardedRef: t }) {
-	let n = (0, I.useContext)(bz), { CollectionRoot: r } = (0, I.useContext)(qI), { orientation: i = "horizontal", keyboardActivation: a = "automatic" } = II(yz), o = UC(t), { tabListProps: s } = Fle({
+	let n = (0, I.useContext)(bz), { CollectionRoot: r } = (0, I.useContext)(KI), { orientation: i = "horizontal", keyboardActivation: a = "automatic" } = FI(yz), o = UC(t), { tabListProps: s } = Fle({
 		...e,
 		orientation: i,
 		keyboardActivation: a
-	}, n, o), c = FI({
+	}, n, o), c = PI({
 		...e,
 		children: null,
 		defaultClassName: "react-aria-TabList",
@@ -42207,13 +42207,13 @@ function ege({ props: e, forwardedRef: t }) {
 			state: n
 		}
 	}), l = Iw(e, { global: !0 });
-	return delete l.id, /*#__PURE__*/ I.createElement(VI.div, {
+	return delete l.id, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(l, c, s),
 		ref: o,
 		"data-orientation": i || void 0
 	}, /*#__PURE__*/ I.createElement($L, null, /*#__PURE__*/ I.createElement(r, {
 		collection: n.collection,
-		persistedKeys: JI(n.selectionManager.focusedKey)
+		persistedKeys: qI(n.selectionManager.focusedKey)
 	})));
 }
 var tge = /*#__PURE__*/ nw(class extends oS {
@@ -42229,7 +42229,7 @@ var tge = /*#__PURE__*/ nw(class extends oS {
 		onHoverStart: e.onHoverStart,
 		onHoverEnd: e.onHoverEnd,
 		onHoverChange: e.onHoverChange
-	}), m = FI({
+	}), m = PI({
 		...e,
 		id: void 0,
 		children: n.rendered,
@@ -42242,7 +42242,7 @@ var tge = /*#__PURE__*/ nw(class extends oS {
 			isPressed: c,
 			isHovered: p
 		}
-	}), h = n.props.href ? VI.a : VI.div, g = Iw(e, { global: !0 });
+	}), h = n.props.href ? BI.a : BI.div, g = Iw(e, { global: !0 });
 	return delete g.id, delete g.onClick, /*#__PURE__*/ I.createElement(h, {
 		...q(g, m, a, l, f),
 		ref: i,
@@ -42265,7 +42265,7 @@ var tge = /*#__PURE__*/ nw(class extends oS {
 	});
 });
 function rge(e) {
-	let t = (0, I.useContext)(bz), { id: n, tabPanelRef: r, isInitiallySelected: i, isExiting: a, ...o } = e, { tabPanelProps: s } = Ile(e, t, r), { focusProps: c, isFocused: l, isFocusVisible: u } = vD(), d = t.selectedKey === e.id, f = hR(r) && !i, p = FI({
+	let t = (0, I.useContext)(bz), { id: n, tabPanelRef: r, isInitiallySelected: i, isExiting: a, ...o } = e, { tabPanelProps: s } = Ile(e, t, r), { focusProps: c, isFocused: l, isFocusVisible: u } = vD(), d = t.selectedKey === e.id, f = hR(r) && !i, p = PI({
 		...e,
 		defaultClassName: "react-aria-TabPanel",
 		values: {
@@ -42279,7 +42279,7 @@ function rge(e) {
 	}), m = Iw(o, { global: !0 });
 	delete m.id;
 	let h = d ? q(m, s, c, p) : q(m, p);
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...h,
 		ref: r,
 		"data-focused": l || void 0,
@@ -42288,18 +42288,18 @@ function rge(e) {
 		"data-inert": d ? void 0 : "true",
 		"data-entering": f || void 0,
 		"data-exiting": a || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [[yz, null], [bz, null]] }, /*#__PURE__*/ I.createElement(qI.Provider, { value: GI }, p.children)));
+	}, /*#__PURE__*/ I.createElement(NI, { values: [[yz, null], [bz, null]] }, /*#__PURE__*/ I.createElement(KI.Provider, { value: WI }, p.children)));
 }
 // node_modules/react-aria-components/dist/private/TextArea.mjs
 var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 	let { onHoverStart: t, onHoverChange: n, onHoverEnd: r, ...i } = e;
 	return i;
 }, age = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	[e, t] = LI(e, t, Sz);
+	[e, t] = II(e, t, Sz);
 	let { hoverProps: n, isHovered: r } = xD(e), { isFocused: i, isFocusVisible: a, focusProps: o } = vD({
 		isTextInput: !0,
 		autoFocus: e.autoFocus
-	}), s = !!e["aria-invalid"] && e["aria-invalid"] !== "false", c = FI({
+	}), s = !!e["aria-invalid"] && e["aria-invalid"] !== "false", c = PI({
 		...e,
 		values: {
 			isHovered: r,
@@ -42310,7 +42310,7 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 		},
 		defaultClassName: "react-aria-TextArea"
 	});
-	return /*#__PURE__*/ I.createElement(VI.textarea, {
+	return /*#__PURE__*/ I.createElement(BI.textarea, {
 		...q(ige(e), o, n),
 		...c,
 		ref: t,
@@ -42321,17 +42321,17 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 		"data-invalid": s || void 0
 	});
 }), oge = /*#__PURE__*/ (0, I.createContext)(null), sge = /*#__PURE__*/ JC(function(e, t) {
-	[e, t] = LI(e, t, oge);
-	let { validationBehavior: n } = II(rL) || {}, r = e.validationBehavior ?? n ?? "native", i = (0, I.useRef)(null);
-	[e, i] = LI(e, i, UI);
-	let [a, o] = RI(!e["aria-label"] && !e["aria-labelledby"]), [s, c] = (0, I.useState)("input"), { labelProps: l, inputProps: u, descriptionProps: d, errorMessageProps: f, ...p } = Pse({
-		...zI(e),
+	[e, t] = II(e, t, oge);
+	let { validationBehavior: n } = FI(nL) || {}, r = e.validationBehavior ?? n ?? "native", i = (0, I.useRef)(null);
+	[e, i] = II(e, i, HI);
+	let [a, o] = LI(!e["aria-label"] && !e["aria-labelledby"]), [s, c] = (0, I.useState)("input"), { labelProps: l, inputProps: u, descriptionProps: d, errorMessageProps: f, ...p } = Pse({
+		...RI(e),
 		inputElementType: s,
 		label: o,
 		validationBehavior: r
 	}, i), m = (0, I.useCallback)((e) => {
 		i.current = e, e && c(e instanceof HTMLTextAreaElement ? "textarea" : "input");
-	}, [i]), h = FI({
+	}, [i]), h = PI({
 		...e,
 		values: {
 			isDisabled: e.isDisabled || !1,
@@ -42341,7 +42341,7 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 		},
 		defaultClassName: "react-aria-TextField"
 	}), g = Iw(e, { global: !0 });
-	return delete g.id, /*#__PURE__*/ I.createElement(VI.div, {
+	return delete g.id, /*#__PURE__*/ I.createElement(BI.div, {
 		...g,
 		...h,
 		ref: t,
@@ -42350,12 +42350,12 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 		"data-invalid": p.isInvalid || void 0,
 		"data-readonly": e.isReadOnly || void 0,
 		"data-required": e.isRequired || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
-		[YI, {
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
+		[JI, {
 			...l,
 			ref: a
 		}],
-		[lL, {
+		[cL, {
 			...u,
 			ref: m
 		}],
@@ -42363,16 +42363,16 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 			...u,
 			ref: m
 		}],
-		[sL, {
+		[oL, {
 			role: "presentation",
 			isInvalid: p.isInvalid,
 			isDisabled: e.isDisabled || !1
 		}],
-		[tL, { slots: {
+		[eL, { slots: {
 			description: d,
 			errorMessage: f
 		} }],
-		[nL, p]
+		[tL, p]
 	] }, h.children));
 }), cge = class e extends uS {
 	withExpandedKeys(t, n) {
@@ -42447,7 +42447,7 @@ var Sz = /*#__PURE__*/ (0, I.createContext)({}), ige = (e) => {
 		super(...e), this.expandedKeys = /* @__PURE__ */ new Set();
 	}
 }, lge = /*#__PURE__*/ (0, I.createContext)(null), Cz = /*#__PURE__*/ (0, I.createContext)(null), uge = /*#__PURE__*/ (0, I.forwardRef)(function(e, t) {
-	return [e, t] = LI(e, t, lge), /*#__PURE__*/ I.createElement($C, {
+	return [e, t] = II(e, t, lge), /*#__PURE__*/ I.createElement($C, {
 		content: /*#__PURE__*/ I.createElement(ow, e),
 		createCollection: () => new cge()
 	}, (n) => /*#__PURE__*/ I.createElement(dge, {
@@ -42473,7 +42473,7 @@ function dge({ props: e, collection: t, treeRef: n }) {
 	(0, I.useEffect)(() => {
 		c.current !== o && console.warn("Drag hooks were provided during one render, but not another. This should be avoided as it may produce unexpected behavior."), l.current !== s && console.warn("Drop hooks were provided during one render, but not another. This should be avoided as it may produce unexpected behavior.");
 	}, [o, s]);
-	let { selectionMode: u = "none", expandedKeys: d, defaultExpandedKeys: f, onExpandedChange: p, disabledBehavior: m = "all" } = e, { CollectionRoot: h, isVirtualized: g, layoutDelegate: _, dropTargetDelegate: v } = (0, I.useContext)(qI), [y, b] = JT(d ? new Set(d) : void 0, f ? new Set(f) : /* @__PURE__ */ new Set(), p), [x, S] = (0, I.useState)(t), [C, w] = (0, I.useState)(y), [T, E] = (0, I.useState)(() => t.withExpandedKeys(C, y));
+	let { selectionMode: u = "none", expandedKeys: d, defaultExpandedKeys: f, onExpandedChange: p, disabledBehavior: m = "all" } = e, { CollectionRoot: h, isVirtualized: g, layoutDelegate: _, dropTargetDelegate: v } = (0, I.useContext)(KI), [y, b] = JT(d ? new Set(d) : void 0, f ? new Set(f) : /* @__PURE__ */ new Set(), p), [x, S] = (0, I.useState)(t), [C, w] = (0, I.useState)(y), [T, E] = (0, I.useState)(() => t.withExpandedKeys(C, y));
 	vge(C, y) && t === x || (E(t.withExpandedKeys(C, y)), S(t), w(y));
 	let D = SR({
 		...e,
@@ -42540,7 +42540,7 @@ function dge({ props: e, collection: t, treeRef: n }) {
 		selectionMode: D.selectionManager.selectionMode,
 		allowsDragging: !!F,
 		state: D
-	}, ie = FI({
+	}, ie = PI({
 		...e,
 		children: void 0,
 		defaultClassName: "react-aria-Tree",
@@ -42558,7 +42558,7 @@ function dge({ props: e, collection: t, treeRef: n }) {
 		}, r));
 	}
 	let oe = Iw(e, { global: !0 });
-	return /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(I.Fragment, null, /*#__PURE__*/ I.createElement(oT, null, /*#__PURE__*/ I.createElement(BI.div, {
 		...q(oe, ie, O, te, j?.collectionProps),
 		ref: n,
 		slot: e.slot || void 0,
@@ -42568,7 +42568,7 @@ function dge({ props: e, collection: t, treeRef: n }) {
 		"data-focus-visible": L || void 0,
 		"data-selection-mode": D.selectionManager.selectionMode === "none" ? void 0 : D.selectionManager.selectionMode,
 		"data-allows-dragging": !!F || void 0
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
 		[Cz, D],
 		[YL, {
 			dragAndDropHooks: r,
@@ -42588,11 +42588,11 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 		this.type = "content";
 	}
 }, function(e) {
-	let t = (0, I.useContext)(Tz), n = FI({
+	let t = (0, I.useContext)(Tz), n = PI({
 		children: e.children,
 		values: t
 	});
-	return /*#__PURE__*/ I.createElement(qI.Provider, { value: GI }, n.children);
+	return /*#__PURE__*/ I.createElement(KI.Provider, { value: WI }, n.children);
 }), Tz = /*#__PURE__*/ (0, I.createContext)(null), pge = /*#__PURE__*/ rw(class extends oS {
 	static {
 		this.type = "item";
@@ -42600,7 +42600,7 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 }, (e, t, n) => {
 	let r = (0, I.useContext)(Cz);
 	t = UC(t);
-	let { dragAndDropHooks: i, dragState: a, dropState: o } = (0, I.useContext)(YL), s = a && !(a.isDisabled || a.selectionManager.isDisabled(n.key)), { rowProps: c, gridCellProps: l, expandButtonProps: u, descriptionProps: d, ...f } = VA({
+	let { dragAndDropHooks: i, dragState: a, dropState: o } = (0, I.useContext)(YL), s = a && !(a.isDisabled || a.selectionManager.isDisabled(n.key)), { rowProps: c, gridCellProps: l, expandButtonProps: u, descriptionProps: d, ...f } = BA({
 		node: n,
 		shouldSelectOnPressUp: !!a,
 		focusMode: e.focusMode,
@@ -42654,7 +42654,7 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 		A,
 		M,
 		j
-	]), N = FI({
+	]), N = PI({
 		...e,
 		id: void 0,
 		children: n.rendered,
@@ -42704,7 +42704,7 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 		"aria-labelledby": `${te} ${c.id}`,
 		tabIndex: -1,
 		ref: D
-	}))), /*#__PURE__*/ I.createElement(VI.div, {
+	}))), /*#__PURE__*/ I.createElement(BI.div, {
 		...q(ne, c, y, g, x, C?.dragProps),
 		...N,
 		ref: t,
@@ -42724,17 +42724,17 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 	}, /*#__PURE__*/ I.createElement("div", {
 		...l,
 		style: { display: "contents" }
-	}, /*#__PURE__*/ I.createElement(PI, { values: [
+	}, /*#__PURE__*/ I.createElement(NI, { values: [
+		[rL, { slots: {
+			[MI]: {},
+			selection: S
+		} }],
 		[iL, { slots: {
-			[NI]: {},
+			[MI]: {},
 			selection: S
 		} }],
-		[aL, { slots: {
-			[NI]: {},
-			selection: S
-		} }],
-		[ZI, { slots: {
-			[NI]: {},
+		[XI, { slots: {
+			[MI]: {},
 			chevron: {
 				...u,
 				ref: T
@@ -42750,7 +42750,7 @@ var fge = /*#__PURE__*/ nw(class extends oS {
 	] }, F))));
 });
 nw(cS, function(e, t, n) {
-	let { isVirtualized: r } = (0, I.useContext)(qI), i = (0, I.useContext)(Cz), { isLoading: a, onLoadMore: o, scrollOffset: s, ...c } = e, l = (0, I.useRef)(null);
+	let { isVirtualized: r } = (0, I.useContext)(KI), i = (0, I.useContext)(Cz), { isLoading: a, onLoadMore: o, scrollOffset: s, ...c } = e, l = (0, I.useRef)(null);
 	uR((0, I.useMemo)(() => ({
 		onLoadMore: o,
 		collection: i?.collection,
@@ -42761,10 +42761,10 @@ nw(cS, function(e, t, n) {
 		s,
 		i?.collection
 	]), l), t = UC(t);
-	let { rowProps: u, gridCellProps: d } = VA({ node: n }, i, t), f = u["aria-level"] || 1, p = {
+	let { rowProps: u, gridCellProps: d } = BA({ node: n }, i, t), f = u["aria-level"] || 1, p = {
 		role: "row",
 		"aria-level": u["aria-level"]
-	}, m = FI({
+	}, m = PI({
 		...c,
 		id: void 0,
 		children: n.rendered,
@@ -42786,7 +42786,7 @@ nw(cS, function(e, t, n) {
 			height: 1,
 			width: 1
 		}
-	})), a && m.children && /*#__PURE__*/ I.createElement(VI.div, {
+	})), a && m.children && /*#__PURE__*/ I.createElement(BI.div, {
 		ref: t,
 		...q(Iw(e), p),
 		...m,
@@ -42811,7 +42811,7 @@ function mge(e, t) {
 	});
 }
 function hge(e, t) {
-	let { dropIndicatorProps: n, isDropTarget: r, buttonRef: i, level: a, ...o } = e, { visuallyHiddenProps: s } = rE(), c = FI({
+	let { dropIndicatorProps: n, isDropTarget: r, buttonRef: i, level: a, ...o } = e, { visuallyHiddenProps: s } = rE(), c = PI({
 		...o,
 		defaultClassName: "react-aria-DropIndicator",
 		defaultStyle: {
@@ -42820,7 +42820,7 @@ function hge(e, t) {
 		},
 		values: { isDropTarget: r }
 	});
-	return /*#__PURE__*/ I.createElement(VI.div, {
+	return /*#__PURE__*/ I.createElement(BI.div, {
 		...c,
 		role: "row",
 		"aria-level": a,
@@ -42853,7 +42853,7 @@ function vge(e, t) {
 	return !0;
 }
 // src/react/boardui/components/base/dropdown/menu-styles.ts
-var Ez = "max-w-[calc(100vw-32px)] overflow-y-auto rounded-2xl border border-border-button-default bg-background-primary-default p-2.5 shadow-dropdown transition duration-150 ease-out data-[entering]:opacity-0 data-[entering]:scale-95 data-[entering]:blur-[2px] data-[exiting]:opacity-0 data-[exiting]:scale-95 data-[exiting]:blur-[2px] data-[placement=bottom]:origin-top-left data-[placement=top]:origin-bottom-left data-[placement=left]:origin-right data-[placement=right]:origin-left", yge = "w-[266px]", bge = "flex w-full flex-col gap-1 outline-none", Dz = "flex w-full cursor-pointer items-center gap-2 rounded-2lg p-2 text-left text-text-primary outline-none transition-colors", Oz = "hover:bg-dropdown-item-hover-background focus-visible:bg-dropdown-item-hover-background", kz = AI({
+var Ez = "max-w-[calc(100vw-32px)] overflow-y-auto rounded-2xl border border-border-button-default bg-background-primary-default p-2.5 shadow-dropdown transition duration-150 ease-out data-[entering]:opacity-0 data-[entering]:scale-95 data-[entering]:blur-[2px] data-[exiting]:opacity-0 data-[exiting]:scale-95 data-[exiting]:blur-[2px] data-[placement=bottom]:origin-top-left data-[placement=top]:origin-bottom-left data-[placement=left]:origin-right data-[placement=right]:origin-left", yge = "w-[266px]", bge = "flex w-full flex-col gap-1 outline-none", Dz = "flex w-full cursor-pointer items-center gap-2 rounded-2lg p-2 text-left text-text-primary outline-none transition-colors", Oz = "hover:bg-dropdown-item-hover-background focus-visible:bg-dropdown-item-hover-background", kz = kI({
 	base: "inline-flex items-center justify-center gap-0.5 whitespace-nowrap overflow-hidden font-sans select-none cursor-pointer button-press-motion outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring disabled:cursor-not-allowed aria-disabled:cursor-not-allowed",
 	size: {
 		medium: "h-9 rounded-2lg p-2 text-body-medium",
@@ -43005,7 +43005,7 @@ function Nz({ className: e, triggerClassName: t, popoverClassName: n, size: r = 
 		isOpen: d,
 		onOpenChange: (e) => p(e) && f(e),
 		className: J("group flex flex-col", e),
-		children: ({ isOpen: e }) => /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsxs)(QI, {
+		children: ({ isOpen: e }) => /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsxs)(ZI, {
 			ref: l,
 			className: J("flex w-full cursor-pointer items-center justify-between rounded-2lg", "border border-border-button-default bg-background-primary-default shadow-xs", "text-text-primary", "transition-[background-color,border-color,box-shadow,padding,font-size] duration-200 ease", "hover:bg-background-primary-hover hover:border-border-button-hover", "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring", "disabled:cursor-not-allowed disabled:bg-background-primary-disabled disabled:text-text-tertiary disabled:shadow-none", r === "sm" ? "gap-1 px-[7px] py-1 text-body-2-medium" : "gap-1.5 px-2.5 py-2 text-body-medium", t),
 			children: [/* @__PURE__ */ (0, L.jsx)(dhe, {
@@ -43878,7 +43878,7 @@ function iB({ tabs: e, value: t, label: n, onChange: r, className: i = "mb-5.5",
 			let n = t.offsetLeft, r = n + t.offsetWidth;
 			n < e.scrollLeft ? e.scrollLeft = n : r > e.scrollLeft + e.clientWidth && (e.scrollLeft = r - e.clientWidth);
 		})();
-	}, [t]), /* @__PURE__ */ (0, L.jsxs)(MI, {
+	}, [t]), /* @__PURE__ */ (0, L.jsxs)(jI, {
 		ref: h,
 		role: "tablist",
 		"aria-label": n,
@@ -44041,15 +44041,15 @@ function vB({ names: e = !1 } = {}) {
 // src/react/components/navigation-order.tsx
 var o_e = tB("ellipsis"), s_e = tB("grip-vertical"), c_e = tB("chevron-up"), l_e = tB("chevron-down");
 function yB(e) {
-	let t = Fj();
+	let t = Pj();
 	(0, I.useSyncExternalStore)(t.subscribe, t.version);
-	let n = FF("navigation-order"), r = aj(e, t.value.navigationOrders[e]);
+	let n = PF("navigation-order"), r = ij(e, t.value.navigationOrders[e]);
 	return {
-		label: nj[e].label,
+		label: tj[e].label,
 		keys: r,
-		defaults: rj(e),
+		defaults: nj(e),
 		commit(r) {
-			let i = aj(e, r);
+			let i = ij(e, r);
 			t.value.navigationOrders = {
 				...t.value.navigationOrders,
 				[e]: i
@@ -44107,7 +44107,7 @@ function xB({ order: e }) {
 	})] });
 }
 function SB({ order: e, labels: t, fixed: n = [], reset: r = !0 }) {
-	let i = (0, I.useRef)(null), a = RF(i, e.keys, e.commit, () => {}, "y", "tab", n), o = (t, n) => {
+	let i = (0, I.useRef)(null), a = LF(i, e.keys, e.commit, () => {}, "y", "tab", n), o = (t, n) => {
 		let r = [...e.keys];
 		r.splice(t + n, 0, r.splice(t, 1)[0]), e.commit(r);
 	};
@@ -44177,22 +44177,22 @@ function u_e({ group: e }) {
 	let t = yB(e);
 	return /* @__PURE__ */ (0, L.jsx)(SB, {
 		order: t,
-		labels: Object.fromEntries(nj[e].items),
-		fixed: ij(e)
+		labels: Object.fromEntries(tj[e].items),
+		fixed: rj(e)
 	});
 }
 function d_e() {
-	let e = Fj();
+	let e = Pj();
 	(0, I.useSyncExternalStore)(e.subscribe, e.version);
-	let t = IF(e, "manageOrder");
+	let t = FF(e, "manageOrder");
 	return /* @__PURE__ */ (0, L.jsx)(SB, {
 		order: {
 			label: "管理顶部菜单",
 			keys: e.value.manageOrder,
-			defaults: $A,
+			defaults: QA,
 			commit: t
 		},
-		labels: Object.fromEntries(QA.map(([e, t]) => [e, t]))
+		labels: Object.fromEntries(ZA.map(([e, t]) => [e, t]))
 	});
 }
 function f_e() {
@@ -44214,9 +44214,9 @@ function f_e() {
 						id: "libraries",
 						children: "媒体库"
 					}),
-					Object.keys(nj).map((e) => /* @__PURE__ */ (0, L.jsx)(Pz, {
+					Object.keys(tj).map((e) => /* @__PURE__ */ (0, L.jsx)(Pz, {
 						id: e,
-						children: nj[e].label
+						children: tj[e].label
 					}, e))
 				]
 			}), e === "manage" ? /* @__PURE__ */ (0, L.jsx)(d_e, {}) : e === "libraries" ? /* @__PURE__ */ (0, L.jsx)(p_e, {}) : /* @__PURE__ */ (0, L.jsx)(u_e, { group: e }, e)]
@@ -44224,9 +44224,9 @@ function f_e() {
 	});
 }
 function p_e() {
-	let e = Fj();
+	let e = Pj();
 	(0, I.useSyncExternalStore)(e.subscribe, e.version);
-	let t = [...vB({ names: !0 }).values()].filter((e) => e.name), n = FF("library-order");
+	let t = [...vB({ names: !0 }).values()].filter((e) => e.name), n = PF("library-order");
 	return /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(SB, {
 		order: {
 			label: "媒体库",
@@ -44246,7 +44246,7 @@ function m_e(e, t, n, r = "tab") {
 	let i = yB(e);
 	return {
 		order: i,
-		reorder: RF(t, i.keys, i.commit, () => {}, n, r, ij(e))
+		reorder: LF(t, i.keys, i.commit, () => {}, n, r, rj(e))
 	};
 }
 function CB({ reorder: e }) {
@@ -44305,7 +44305,7 @@ function y_e() {
 	}) : null;
 }
 function b_e({ host: e, props: t }) {
-	let n = xF(t);
+	let n = bF(t);
 	return n ? /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [
 		/* @__PURE__ */ (0, L.jsx)(x_e, {
 			host: e,
@@ -44331,7 +44331,7 @@ function b_e({ host: e, props: t }) {
 function x_e({ host: e, pressed: t, menu: n }) {
 	let r = (0, I.useRef)(null);
 	(0, I.useSyncExternalStore)(e.store.subscribe, e.store.version);
-	let i = ej(e.store.value.manageOrder), a = IF(e.store, "manageOrder"), o = RF(r, i, a, () => {}, "x", "manage"), s = i.flatMap((e) => n.filter(([t]) => t === e));
+	let i = $A(e.store.value.manageOrder), a = FF(e.store, "manageOrder"), o = LF(r, i, a, () => {}, "x", "manage"), s = i.flatMap((e) => n.filter(([t]) => t === e));
 	return (0, I.useLayoutEffect)(() => {
 		let e = r.current, t = e?.querySelector("button[aria-pressed=\"true\"]");
 		if (!e || !t) return;
@@ -44345,7 +44345,7 @@ function x_e({ host: e, pressed: t, menu: n }) {
 		"data-manage-bar": "",
 		"aria-label": "管理",
 		children: [
-			/* @__PURE__ */ (0, L.jsxs)(MI, {
+			/* @__PURE__ */ (0, L.jsxs)(jI, {
 				ref: r,
 				"data-manage-menu": "",
 				"data-pill-nav": "",
@@ -44372,7 +44372,7 @@ function x_e({ host: e, pressed: t, menu: n }) {
 						"data-pill-selected": a ? "" : void 0,
 						"data-pill-variant": "gray",
 						onClick: () => e.openManage(n),
-						children: [/* @__PURE__ */ (0, L.jsx)(zF, { name: i }), /* @__PURE__ */ (0, L.jsx)("span", { children: r })]
+						children: [/* @__PURE__ */ (0, L.jsx)(RF, { name: i }), /* @__PURE__ */ (0, L.jsx)("span", { children: r })]
 					}, n);
 				}), o.hint ? /* @__PURE__ */ (0, L.jsx)("span", {
 					"data-manage-drop-line": "",
@@ -44384,7 +44384,7 @@ function x_e({ host: e, pressed: t, menu: n }) {
 			/* @__PURE__ */ (0, L.jsx)(xB, { order: {
 				label: "管理顶部菜单",
 				keys: i,
-				defaults: $A,
+				defaults: QA,
 				commit: a
 			} }),
 			/* @__PURE__ */ (0, L.jsx)("span", {
@@ -44406,7 +44406,7 @@ function S_e({ host: e, label: t, parent: n }) {
 				t.metaKey || t.ctrlKey || t.shiftKey || t.altKey || t.button || (t.preventDefault(), e.openPath(n.href));
 			},
 			children: n.label
-		}), /* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-right" })] }), /* @__PURE__ */ (0, L.jsx)("li", {
+		}), /* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-right" })] }), /* @__PURE__ */ (0, L.jsx)("li", {
 			"aria-current": "true",
 			children: /* @__PURE__ */ (0, L.jsx)("span", { children: t })
 		})] })
@@ -44418,7 +44418,7 @@ function C_e({ host: e, lede: t }) {
 		"data-manage-lede": "",
 		children: t.kind === "skeleton" ? /* @__PURE__ */ (0, L.jsx)("span", {
 			"data-trash-lede-skeletons": "",
-			dangerouslySetInnerHTML: { __html: wF }
+			dangerouslySetInnerHTML: { __html: CF }
 		}) : /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(w_e, { text: t.text }), t.total ? /* @__PURE__ */ (0, L.jsx)("button", {
 			type: "button",
 			"data-empty-trash": "",
@@ -44815,7 +44815,7 @@ function JB({ text: e, busy: t, placeholder: n }) {
 	});
 }
 // src/react/boardui/components/base/buttons/icon-button.tsx
-var YB = AI({
+var YB = kI({
 	base: "relative inline-flex shrink-0 items-center justify-center overflow-visible rounded-2lg bg-background-primary-default text-foreground-icon-primary border border-border-button-default shadow-xs select-none cursor-pointer transition-[background-color,border-color,box-shadow,color] duration-150 ease outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring hover:bg-background-primary-hover hover:border-border-button-hover active:bg-background-primary-active active:border-border-button-active disabled:cursor-not-allowed disabled:bg-background-primary-disabled disabled:border-border-button-default disabled:text-icon-button-disabled-foreground disabled:opacity-60 disabled:shadow-none",
 	size: {
 		medium: "size-9",
@@ -45814,7 +45814,7 @@ var dve = ({ color: e = "currentColor", size: t = 24, className: n, ...r }) => I
 }, I.createElement("path", { d: "M8.00008 6V9H5.00008V6H8.00008ZM3.00008 4V11H10.0001V4H3.00008ZM13.0001 4H21.0001V6H13.0001V4ZM13.0001 11H21.0001V13H13.0001V11ZM13.0001 18H21.0001V20H13.0001V18ZM10.7072 16.2071L9.29297 14.7929L6.00008 18.0858L4.20718 16.2929L2.79297 17.7071L6.00008 20.9142L10.7072 16.2071Z" }));
 // src/react/boardui/components/base/input/label.tsx
 function WV({ isRequired: e = !1, isInvalid: t, tooltip: n, className: r, children: i, ...a }) {
-	return /* @__PURE__ */ (0, L.jsxs)(XI, {
+	return /* @__PURE__ */ (0, L.jsxs)(YI, {
 		"data-label": "true",
 		...a,
 		className: J("flex cursor-default items-center gap-0.5", "text-body-medium text-text-primary", r),
@@ -45834,7 +45834,7 @@ function WV({ isRequired: e = !1, isInvalid: t, tooltip: n, className: r, childr
 }
 // src/react/boardui/components/base/input/hint-text.tsx
 function GV({ isInvalid: e = !1, className: t, ...n }) {
-	return /* @__PURE__ */ (0, L.jsx)(nme, {
+	return /* @__PURE__ */ (0, L.jsx)(rme, {
 		slot: e ? "errorMessage" : "description",
 		...n,
 		className: J("pt-px text-caption-1-medium text-text-secondary", e && "text-text-error-primary", t)
@@ -45858,7 +45858,7 @@ function qV({ size: e = "medium", fieldClassName: t, inputClassName: n, classNam
 	});
 }
 qV.displayName = "TextField";
-var JV = AI({
+var JV = kI({
 	field: "relative flex w-full items-center rounded-2lg bg-background-tertiary-default text-foreground-icon-tertiary ring-2 ring-inset ring-transparent transition-[background-color,box-shadow,color] duration-[var(--input-transition-ms)] ease",
 	fieldSize: {
 		medium: "p-2",
@@ -45875,7 +45875,7 @@ var JV = AI({
 });
 function YV({ size: e, leadingIcon: t, trailingIcon: n, leadingAddon: r, fieldClassName: i, className: a, ref: o, groupRef: s, ...c }) {
 	let l = (0, I.useContext)(KV), u = e ?? l.size ?? "medium", d = r != null;
-	return /* @__PURE__ */ (0, L.jsx)(cL, {
+	return /* @__PURE__ */ (0, L.jsx)(sL, {
 		ref: s,
 		className: ({ isFocusWithin: e, isHovered: t, isDisabled: n, isInvalid: r }) => J(JV.field, d ? JV.fieldWithAddonSize[u] : JV.fieldSize[u], t && !e && !n && !r && "ring-border-button-hover", e && !n && !r && "ring-border-button-active", n && "bg-input-disabled-background text-input-disabled-foreground", r && "bg-background-tertiary-error text-foreground-icon-error", l.fieldClassName, i),
 		children: /* @__PURE__ */ (0, L.jsxs)("div", {
@@ -45885,7 +45885,7 @@ function YV({ size: e, leadingIcon: t, trailingIcon: n, leadingAddon: r, fieldCl
 				children: [d ? r : t ? /* @__PURE__ */ (0, L.jsx)(t, {
 					className: JV.icon,
 					"aria-hidden": !0
-				}) : null, /* @__PURE__ */ (0, L.jsx)(cme, {
+				}) : null, /* @__PURE__ */ (0, L.jsx)(lme, {
 					ref: o,
 					...c,
 					className: J(JV.input, l.inputClassName, a)
@@ -46068,7 +46068,7 @@ function nH({ title: e, items: t, save: n, close: r }) {
 		children: /* @__PURE__ */ (0, L.jsxs)("div", {
 			className: "flex min-h-0 flex-col",
 			children: [
-				/* @__PURE__ */ (0, L.jsx)(eL, {
+				/* @__PURE__ */ (0, L.jsx)($I, {
 					slot: "title",
 					className: "p-5 text-title-2-semibold text-text-primary",
 					children: e
@@ -46293,7 +46293,7 @@ function yye({ currentHref: e, kind: t, close: n }) {
 		let e = matchMedia("(max-width: 760px)"), t = () => _(e.matches);
 		return e.addEventListener("change", t), () => e.removeEventListener("change", t);
 	}, []);
-	let v = (0, I.useRef)(null), y = yB("favorites"), b = y.keys.flatMap((e) => mH.filter(([t]) => t === e)), x = (0, I.useRef)(null), S = (0, I.useRef)(s), C = (0, I.useRef)(null), w = (0, I.useRef)(null), T = (0, I.useRef)(null), E = aV(C, v, "[role=\"tab\"][aria-selected=\"true\"]", `${s}:${y.keys.join(",")}`, { axis: g ? "x" : "y" }), D = RF(v, y.keys, y.commit, () => requestAnimationFrame(E.sync), g ? "x" : "y", "tab", ["all"]);
+	let v = (0, I.useRef)(null), y = yB("favorites"), b = y.keys.flatMap((e) => mH.filter(([t]) => t === e)), x = (0, I.useRef)(null), S = (0, I.useRef)(s), C = (0, I.useRef)(null), w = (0, I.useRef)(null), T = (0, I.useRef)(null), E = aV(C, v, "[role=\"tab\"][aria-selected=\"true\"]", `${s}:${y.keys.join(",")}`, { axis: g ? "x" : "y" }), D = LF(v, y.keys, y.commit, () => requestAnimationFrame(E.sync), g ? "x" : "y", "tab", ["all"]);
 	(0, I.useLayoutEffect)(() => {
 		w.current && (T.current = Ro(w.current) || null);
 	}, []), (0, I.useLayoutEffect)(() => {
@@ -46675,7 +46675,7 @@ function yH() {
 }
 // src/react/boardui/components/base/tree-view/tree-view.tsx
 function Cye({ size: e = "md", showGuides: t = !0, selectionMode: n = "single", renderEmptyState: r = () => "No items.", className: i, onKeyDownCapture: a, ref: o, ...s }) {
-	let c = yH(), l = (0, I.useContext)(qI), u = l === GI && !s.dragAndDropHooks ? xH : l;
+	let c = yH(), l = (0, I.useContext)(KI), u = l === WI && !s.dragAndDropHooks ? xH : l;
 	return /* @__PURE__ */ (0, L.jsx)("div", {
 		className: "contents",
 		onKeyDownCapture: (e) => {
@@ -46692,7 +46692,7 @@ function Cye({ size: e = "md", showGuides: t = !0, selectionMode: n = "single", 
 				}
 			}
 		},
-		children: /* @__PURE__ */ (0, L.jsx)(qI.Provider, {
+		children: /* @__PURE__ */ (0, L.jsx)(KI.Provider, {
 			value: u,
 			children: /* @__PURE__ */ (0, L.jsx)(uge, {
 				...s,
@@ -46730,7 +46730,7 @@ function bH({ label: e, textValue: t = e, icon: n, expandedIcon: r, iconClassNam
 				}),
 				/* @__PURE__ */ (0, L.jsxs)("span", {
 					className: "flex shrink-0 items-center gap-1",
-					children: [t ? /* @__PURE__ */ (0, L.jsx)(QI, {
+					children: [t ? /* @__PURE__ */ (0, L.jsx)(ZI, {
 						slot: "chevron",
 						isDisabled: s,
 						className: "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-foreground-icon-tertiary outline-none transition-colors hover:text-foreground-icon-primary data-[focus-visible]:ring-2 data-[focus-visible]:ring-border-focus-ring",
@@ -46759,7 +46759,7 @@ function bH({ label: e, textValue: t = e, icon: n, expandedIcon: r, iconClassNam
 	});
 }
 var xH = {
-	...GI,
+	...WI,
 	CollectionRoot: wye
 };
 function wye({ collection: e, ...t }) {
@@ -46770,7 +46770,7 @@ function wye({ collection: e, ...t }) {
 			state: n,
 			children: e.render?.(e)
 		}, e.key))
-	}) : /* @__PURE__ */ (0, L.jsx)(GI.CollectionRoot, {
+	}) : /* @__PURE__ */ (0, L.jsx)(WI.CollectionRoot, {
 		collection: e,
 		...t
 	});
@@ -46925,7 +46925,7 @@ function CH({ state: e, size: t = "md" }) {
 // src/react/boardui/components/base/checkbox/checkbox.tsx
 function wH({ className: e, children: t, size: n = "md", ref: r, ...i }) {
 	let a = SH[n];
-	return /* @__PURE__ */ (0, L.jsx)(ame, {
+	return /* @__PURE__ */ (0, L.jsx)(ome, {
 		ref: r,
 		...i,
 		className: (t) => J("group inline-flex items-center select-none", a.gap, t.isDisabled ? "cursor-not-allowed" : "cursor-pointer", typeof e == "function" ? e(t) : e),
@@ -47069,7 +47069,7 @@ function Bye(e, t, n) {
 	}
 }
 // src/react/boardui/components/base/buttons/link-button.tsx
-var HH = AI({
+var HH = kI({
 	base: "inline-flex items-center justify-center gap-1 whitespace-nowrap font-sans select-none cursor-pointer rounded-sm underline-offset-3 hover:underline transition-colors duration-150 ease outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus-ring disabled:cursor-not-allowed disabled:no-underline aria-disabled:cursor-not-allowed aria-disabled:no-underline",
 	size: {
 		medium: "text-body-medium",
@@ -47286,7 +47286,7 @@ function XH({ value: e, busy: t, onChange: n, animate: r = !0 }) {
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, L.jsxs)(hme, {
+			/* @__PURE__ */ (0, L.jsxs)(gme, {
 				"aria-label": "处理速度",
 				minValue: 0,
 				maxValue: 2,
@@ -47298,7 +47298,7 @@ function XH({ value: e, busy: t, onChange: n, animate: r = !0 }) {
 					e !== i && n(GH[e]);
 				},
 				className: "processing-effort-slider",
-				children: [/* @__PURE__ */ (0, L.jsx)(XI, {
+				children: [/* @__PURE__ */ (0, L.jsx)(YI, {
 					className: "processing-effort-label",
 					children: "处理速度"
 				}), /* @__PURE__ */ (0, L.jsxs)("div", {
@@ -47319,9 +47319,9 @@ function XH({ value: e, busy: t, onChange: n, animate: r = !0 }) {
 							]
 						}),
 						a === 2 ? /* @__PURE__ */ (0, L.jsx)(Wye, { animate: r }) : null,
-						/* @__PURE__ */ (0, L.jsx)(gme, {
+						/* @__PURE__ */ (0, L.jsx)(_me, {
 							className: "processing-effort-hit",
-							children: /* @__PURE__ */ (0, L.jsx)(_me, {
+							children: /* @__PURE__ */ (0, L.jsx)(vme, {
 								"aria-label": KH[a],
 								className: "processing-effort-thumb"
 							})
@@ -47855,10 +47855,10 @@ function sbe({ site: e, label: t }) {
 	});
 }
 function _U({ source: e, label: t }) {
-	let n = hU(e);
+	let n = hU(e), r = n === "local" || n === "qbittorrent";
 	return /* @__PURE__ */ (0, L.jsxs)("span", {
 		className: "inline-flex min-w-0 items-center gap-1.5",
-		children: [/* @__PURE__ */ (0, L.jsx)(mU, { mark: _s[n] || (n === "local" ? "hard-drive" : "database") }), /* @__PURE__ */ (0, L.jsx)("span", {
+		children: [/* @__PURE__ */ (0, L.jsx)(mU, { mark: _s[n] || (r ? "hard-drive" : "database") }), /* @__PURE__ */ (0, L.jsx)("span", {
 			className: "min-w-0 truncate",
 			children: t
 		})]
@@ -50253,7 +50253,7 @@ function Xbe({ navigate: e }) {
 	}, d), a);
 }
 // src/react/boardui/components/base/badges/chip.tsx
-var uW = AI({
+var uW = kI({
 	base: "inline-flex items-center justify-center rounded-md px-1.5 whitespace-nowrap transition-[padding,font-size] duration-200 ease",
 	variant: {
 		bold: "py-0.5 text-body-medium",
@@ -50778,7 +50778,7 @@ function lxe() {
 			/* @__PURE__ */ (0, L.jsx)("h3", {
 				id: e,
 				className: "text-title-2-medium text-text-primary",
-				children: "云下载"
+				children: "下载任务"
 			}),
 			a.error ? /* @__PURE__ */ (0, L.jsx)($V, {
 				tone: "error",
@@ -50855,7 +50855,7 @@ function uxe({ task: e, writable: t }) {
 				children: [/* @__PURE__ */ (0, L.jsxs)("div", {
 					"data-download-cover": "",
 					"data-media-pic": "",
-					style: { "--card-ratio": String(Wj) },
+					style: { "--card-ratio": String(Uj) },
 					className: "w-20 shrink-0 self-start text-caption-1-regular text-text-secondary sm:w-32",
 					children: [
 						c?.has_cover ? null : /* @__PURE__ */ (0, L.jsx)("span", {
@@ -51176,9 +51176,9 @@ function pxe({ initialCode: e, reason: t, choose: n, onSearch: r, onWork: i }) {
 }
 // src/react/activity/cloud-download-dialog.tsx
 var mxe = {
-	submitted: "已提交离线下载，进度在任务中心",
+	submitted: "已提交下载，进度在任务中心",
 	adopted: "这个磁力已有任务，没有重复提交",
-	adopted_remote: "网盘中已有相同的下载任务，Peach 已开始跟踪进度",
+	adopted_remote: "下载器里已有相同的任务，Peach 已开始跟踪进度",
 	deferred: "网盘暂时没有响应，Peach 会自动重新提交，进度在任务中心"
 };
 function FW({ prefill: e, close: t, receipt: n, provider: r }) {
@@ -51203,7 +51203,7 @@ function hxe({ prefill: e, close: t, receipt: n, provider: r }) {
 		refetchInterval: (e) => kW(e.state.data)
 	}), a = i.data, o = /* @__PURE__ */ (0, L.jsxs)("div", {
 		className: "flex items-center justify-between gap-4 px-5 pt-5",
-		children: [/* @__PURE__ */ (0, L.jsx)(eL, {
+		children: [/* @__PURE__ */ (0, L.jsx)($I, {
 			slot: "title",
 			className: "text-title-2-semibold text-text-primary",
 			children: "查找资源"
@@ -51349,7 +51349,7 @@ function gxe({ header: e, snapshot: t, prefill: n, close: r, receipt: i, provide
 					}),
 					t.available ? null : /* @__PURE__ */ (0, L.jsx)($V, {
 						tone: "neutral",
-						children: "云下载只在允许修改数据库的设备上可用。"
+						children: "下载只在允许修改数据库的设备上可用。"
 					}),
 					s.length ? null : /* @__PURE__ */ (0, L.jsxs)($V, {
 						tone: "neutral",
@@ -51437,7 +51437,7 @@ var HW = [
 	],
 	[
 		"release_date",
-		cj[1],
+		sj[1],
 		"按发行日期排序"
 	],
 	[
@@ -51458,7 +51458,7 @@ var HW = [
 ], UW = [
 	[
 		"release_date",
-		cj[1],
+		sj[1],
 		"按发行日期排序"
 	],
 	[
@@ -55805,7 +55805,7 @@ function qxe(e, t, n, r) {
 		state: "trash",
 		q: ""
 	};
-	let o = new URLSearchParams(t), { defaultSort: s, defaultSortDirection: c } = Fj().value;
+	let o = new URLSearchParams(t), { defaultSort: s, defaultSortDirection: c } = Pj().value;
 	return {
 		...i,
 		loc: o.get("loc") ?? r.defaultLoc(),
@@ -55819,7 +55819,7 @@ function qxe(e, t, n, r) {
 		dur_max: o.get("dur_max") || "",
 		orient: o.get("orient") || "",
 		state: On[e] || o.get("state") || "",
-		...gj(o.get("sort"), o.get("dir"), s, c),
+		...hj(o.get("sort"), o.get("dir"), s, c),
 		seed: o.get("seed") || (n ? rr() : i.seed || rr()),
 		q: o.get("q") || "",
 		jav: o.get("jav") || "",
@@ -56200,7 +56200,7 @@ function fSe({ folder: e, rule: t, revision: n, close: r }) {
 					className: "flex items-start justify-between gap-4 border-b border-separator-border p-5",
 					children: [/* @__PURE__ */ (0, L.jsxs)("div", {
 						className: "min-w-0",
-						children: [/* @__PURE__ */ (0, L.jsx)(eL, {
+						children: [/* @__PURE__ */ (0, L.jsx)($I, {
 							slot: "title",
 							className: "text-title-2-medium",
 							children: "设置目录用途"
@@ -57875,7 +57875,7 @@ function jK({ item: e, actions: t }) {
 	}) : null] });
 }
 function MK(e, t, n) {
-	return t === "short" ? OK : eM(n);
+	return t === "short" ? OK : $j(n);
 }
 function NK(e) {
 	let { kind: t, name: n, coStarred: r, performers: i, refs: a, total: o } = Ao(e), s = i[0] || "", c = ho(e);
@@ -58972,14 +58972,14 @@ function xCe({ items: e, activeId: t, kind: n, label: r, choose: i, close: a }) 
 				"data-wall-source": e.id,
 				"aria-label": [
 					e.edition_label,
-					e.part_label ? yP(e.part_label) : "",
+					e.part_label ? vP(e.part_label) : "",
 					r(e)
 				].filter(Boolean).join(" · "),
 				onClick: () => i(e),
 				pic: /* @__PURE__ */ (0, L.jsx)(EW, { artwork: To(e, "small", !0, "cover") }),
 				children: [/* @__PURE__ */ (0, L.jsx)("b", { children: r(e) }), /* @__PURE__ */ (0, L.jsx)("span", { children: [
 					e.edition_label,
-					e.part_label ? yP(e.part_label) : "",
+					e.part_label ? vP(e.part_label) : "",
 					qn(e.duration)
 				].filter(Boolean).join(" · ") })]
 			}, e.id))
@@ -59044,16 +59044,16 @@ function CCe({ items: e, finite: t, hasMore: n, busy: r, loading: i = !1, error:
 		kind: "parts",
 		seedId: w.part_group.seed_id
 	} : null, ee = Pt({
-		queryKey: QN(M || {
+		queryKey: ZN(M || {
 			kind: "parts",
 			seedId: 0
 		}),
 		enabled: !!M,
-		queryFn: ({ signal: e }) => sP(M, {
+		queryFn: ({ signal: e }) => oP(M, {
 			tagLabel: u.tagLabel,
 			mixRelated: async () => []
 		}, e)
-	}), N = M ? ee.data : void 0, P = N?.items.find((e) => e.id === uP(N, O || w?.id || null)) || w, F = hCe(e.length, t && !!e.length, m?.camera || {
+	}), N = M ? ee.data : void 0, P = N?.items.find((e) => e.id === lP(N, O || w?.id || null)) || w, F = hCe(e.length, t && !!e.length, m?.camera || {
 		x: 0,
 		y: 0,
 		scale: innerWidth < 640 ? .68 : 1
@@ -59167,7 +59167,7 @@ function CCe({ items: e, finite: t, hasMore: n, busy: r, loading: i = !1, error:
 			C.current === t && ue(!1);
 		}
 	}, He = () => {
-		let e = dP(N || null, ae || 0);
+		let e = uP(N || null, ae || 0);
 		e && (k(e.id), Ve(e));
 	};
 	(0, I.useEffect)(() => {
@@ -59318,7 +59318,7 @@ function CCe({ items: e, finite: t, hasMore: n, busy: r, loading: i = !1, error:
 				}),
 				Ze.code ? /* @__PURE__ */ (0, L.jsx)("strong", { children: Xe(Ze).startsWith(Ze.code) ? Xe(Ze).slice(Ze.code.length).trim() : Xe(Ze) }) : null,
 				/* @__PURE__ */ (0, L.jsx)("span", { children: Ze.performers?.join(" · ") || Ze.creator || "未归属" }),
-				N ? /* @__PURE__ */ (0, L.jsx)("small", { children: [Ze.edition_label, Ze.part_label ? yP(Ze.part_label) : ""].filter(Boolean).join(" · ") }) : null
+				N ? /* @__PURE__ */ (0, L.jsx)("small", { children: [Ze.edition_label, Ze.part_label ? vP(Ze.part_label) : ""].filter(Boolean).join(" · ") }) : null
 			]
 		}),
 		/* @__PURE__ */ (0, L.jsx)("button", {
@@ -62510,8 +62510,8 @@ function fY({ value: e, onRate: t, busyStar: n, busyAttrs: r }) {
 }
 // src/react/catalog-grid/catalog-table-controls.tsx
 function fEe({ item: e, actions: t }) {
-	let { rating: n } = e, r = tH(), i = (0, I.useRef)(0), a = YN(n), o = n == null ? "未评分" : `评分 ${a} / 5`, s = (t) => {
-		KN(e.id, { rating: t }), U.setQueryData(["item", e.id], (e) => e && {
+	let { rating: n } = e, r = tH(), i = (0, I.useRef)(0), a = JN(n), o = n == null ? "未评分" : `评分 ${a} / 5`, s = (t) => {
+		GN(e.id, { rating: t }), U.setQueryData(["item", e.id], (e) => e && {
 			...e,
 			rating: t
 		});
@@ -62728,7 +62728,7 @@ var pEe = Xq({
 	}
 ], xY = /* @__PURE__ */ new Map();
 function hEe(e) {
-	let t = dEe(), n = vB(), r = VN(e.filters || {}, !1), [i] = (0, I.useState)(() => {
+	let t = dEe(), n = vB(), r = BN(e.filters || {}, !1), [i] = (0, I.useState)(() => {
 		let t = new URLSearchParams(r);
 		return new URLSearchParams(location.search).has("seed") || t.delete("seed"), `${e.mode}:${e.listScope || e.entityKey || ""}:${t}`;
 	}), [a, o] = (0, I.useState)(() => xY.get(i) || {
@@ -63184,7 +63184,7 @@ function vEe({ item: e, props: t }) {
 function SY(e) {
 	let t = UG();
 	if (e.mode === "items") return /* @__PURE__ */ (0, L.jsx)(bEe, { ...e });
-	let n = e.mode === "entity" ? `entity:${e.entityKey || ""}:${e.revision}` : `catalog:${VN(e.filters || {}, !!e.excludeVertical)}:${e.batchSize || 60}:${e.revision}`;
+	let n = e.mode === "entity" ? `entity:${e.entityKey || ""}:${e.revision}` : `catalog:${BN(e.filters || {}, !!e.excludeVertical)}:${e.batchSize || 60}:${e.revision}`;
 	if (t === "list" && !e.wall) return /* @__PURE__ */ (0, L.jsx)(hEe, { ...e }, n);
 	let r = e.mode === "entity" ? "entity" : `catalog:${!!e.wall}`;
 	return /* @__PURE__ */ (0, L.jsx)(TEe, { ...e }, r);
@@ -63247,15 +63247,15 @@ function wEe() {
 	(0, I.useEffect)(() => {
 		let e = (e) => {
 			let { id: t, ...n } = e.detail;
-			KN(t, n);
+			GN(t, n);
 		};
-		return document.addEventListener(fN, e), () => {
-			document.removeEventListener(fN, e);
+		return document.addEventListener(dN, e), () => {
+			document.removeEventListener(dN, e);
 		};
 	}, []);
 }
 function TEe(e) {
-	let { helpers: t, actions: n, layout: r } = e, i = e.mode === "entity", a = !i && e.filters?.state === "trash", o = i ? Fde(e) : HN(e), [s] = (0, I.useState)(() => e.wall ? UN(o.queryKey) : void 0), c = JSON.stringify(o.queryKey), l = (0, I.useMemo)(() => e.restoreNavigation ? UN(o.queryKey) : void 0, [c, e.restoreNavigation]) || s || (i && e.initial ? {
+	let { helpers: t, actions: n, layout: r } = e, i = e.mode === "entity", a = !i && e.filters?.state === "trash", o = i ? Ide(e) : VN(e), [s] = (0, I.useState)(() => e.wall ? HN(o.queryKey) : void 0), c = JSON.stringify(o.queryKey), l = (0, I.useMemo)(() => e.restoreNavigation ? HN(o.queryKey) : void 0, [c, e.restoreNavigation]) || s || (i && e.initial ? {
 		pages: [{
 			...e.initial,
 			items: e.initial.items || [],
@@ -63276,13 +63276,13 @@ function TEe(e) {
 		subscribed: !u
 	});
 	wEe();
-	let f = !i && !a && !e.wall, p = VN(e.filters || {}, !!e.excludeVertical), m = Pt({
+	let f = !i && !a && !e.wall, p = BN(e.filters || {}, !!e.excludeVertical), m = Pt({
 		queryKey: [
 			"catalog-summary",
 			p,
 			e.revision || 0
 		],
-		queryFn: ({ signal: e }) => Mde(p, e),
+		queryFn: ({ signal: e }) => Nde(p, e),
 		enabled: f && !!d.data
 	}), h = (0, I.useRef)(null);
 	(0, I.useEffect)(() => {
@@ -63292,7 +63292,7 @@ function TEe(e) {
 		d.isPlaceholderData,
 		e.revision
 	]);
-	let { tiles: g, pageStarts: _ } = (0, I.useMemo)(() => Lde(d.data?.pages || [], {
+	let { tiles: g, pageStarts: _ } = (0, I.useMemo)(() => Rde(d.data?.pages || [], {
 		collapse: e.groupCollapse !== !1,
 		mix: !!e.mix && !a,
 		javImage: r.javImage
@@ -63352,7 +63352,7 @@ function TEe(e) {
 		onOpen: a ? O : D
 	}, i.item.id), M = () => {
 		if (x && e.wall) return /* @__PURE__ */ (0, L.jsx)(CCe, {
-			sessionKey: i ? `entity:${e.entityKey || ""}` : `catalog:${VN(e.filters || {}, !!e.excludeVertical)}`,
+			sessionKey: i ? `entity:${e.entityKey || ""}` : `catalog:${BN(e.filters || {}, !!e.excludeVertical)}`,
 			items: S,
 			finite: b,
 			hasMore: !!d.hasNextPage,
@@ -63392,7 +63392,7 @@ function TEe(e) {
 		return /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)("div", {
 			"data-media-sections": "",
 			"data-select-mode": e.selectMode ? "" : void 0,
-			children: Bde(g, T).map((t) => /* @__PURE__ */ (0, L.jsxs)(I.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(CY, { children: t.tiles.map(j) }), t.strip ? /* @__PURE__ */ (0, L.jsx)(DEe, {
+			children: Vde(g, T).map((t) => /* @__PURE__ */ (0, L.jsxs)(I.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(CY, { children: t.tiles.map(j) }), t.strip ? /* @__PURE__ */ (0, L.jsx)(DEe, {
 				cut: t.strip,
 				props: e,
 				onOpen: k
@@ -63485,12 +63485,12 @@ function wY({ entity: e, load: t, enabled: n, children: r }) {
 	}) : null] });
 }
 function EEe(e, t, n, r, i) {
-	let a = ["catalog-short-layout", VN(e.filters || {}, !!e.excludeVertical)], o = `${a[1]}:${e.revision}`, s = () => {
+	let a = ["catalog-short-layout", BN(e.filters || {}, !!e.excludeVertical)], o = `${a[1]}:${e.revision}`, s = () => {
 		let t = e.restoreNavigation ? U.getQueryData(a) : void 0, n = {
 			parts: /* @__PURE__ */ new Set(),
 			editions: /* @__PURE__ */ new Set()
 		};
-		return t && WN(t.cuts.flatMap((e) => e.items), n, e.groupCollapse !== !1), {
+		return t && UN(t.cuts.flatMap((e) => e.items), n, e.groupCollapse !== !1), {
 			stamp: o,
 			cuts: t?.cuts || [],
 			offset: t?.offset || 0,
@@ -63516,7 +63516,7 @@ function EEe(e, t, n, r, i) {
 		let r = new AbortController();
 		p.controllers.push(r);
 		let i = n - 1;
-		V(`/api/items?${zde(e.filters || {}, p.offset)}`, r.signal).then((e) => {
+		V(`/api/items?${Bde(e.filters || {}, p.offset)}`, r.signal).then((e) => {
 			if (c.current !== p || r.signal.aborted) return;
 			let t = e.items || [];
 			t.length ? f({
@@ -63530,9 +63530,9 @@ function EEe(e, t, n, r, i) {
 	}, [t, p]), (0, I.useLayoutEffect)(() => {
 		if (!d || d.stamp !== o) return;
 		f(null);
-		let t = m.reduce((e, t) => Math.max(e, t.at), 0), s = i.current?.querySelectorAll("[data-media-sections] > [data-media-grid]"), c = s?.[s.length - 1], l = c ? Math.max(1, getComputedStyle(c).gridTemplateColumns.split(" ").length) : 1, h = Math.max(0, (r[d.page] ?? 0) - t), g = Rde(n.length - t, h, l);
+		let t = m.reduce((e, t) => Math.max(e, t.at), 0), s = i.current?.querySelectorAll("[data-media-sections] > [data-media-grid]"), c = s?.[s.length - 1], l = c ? Math.max(1, getComputedStyle(c).gridTemplateColumns.split(" ").length) : 1, h = Math.max(0, (r[d.page] ?? 0) - t), g = zde(n.length - t, h, l);
 		if (!g.length) return;
-		let _ = WN(d.items, p.groups, e.groupCollapse !== !1);
+		let _ = UN(d.items, p.groups, e.groupCollapse !== !1);
 		if (p.offset = d.more ? p.offset + 18 : 0, !_.length) return;
 		let v = t + (g[Math.floor(Math.random() * g.length)] ?? 0), y = [...m, {
 			at: v,
@@ -63592,7 +63592,7 @@ function OEe({ seed: e, layout: t, helpers: n, actions: r }) {
 	let i = (0, I.useRef)(/* @__PURE__ */ new Map()), a = (0, I.useRef)(t);
 	a.current = t;
 	let o = Mo(e, n.tagLabel), s = (0, I.useCallback)(async () => {
-		let t = a.current, n = [e, ...await r.mixRelated(e.id)].filter((e) => GN(e, t.javImage)).slice(0, 9);
+		let t = a.current, n = [e, ...await r.mixRelated(e.id)].filter((e) => WN(e, t.javImage)).slice(0, 9);
 		return i.current = new Map(n.map((e) => [String(e.id), TY(e, t, !0).html])), n.map((e) => String(e.id));
 	}, [e, r]), c = t.active && e.is_jav ? t.size : "small", l = TY(e, t, !1);
 	return /* @__PURE__ */ (0, L.jsx)(zK, {
@@ -63986,7 +63986,7 @@ async function BDe(e) {
 		templates: e
 	});
 	try {
-		await H(TF, { organizeTemplates: e });
+		await H(wF, { organizeTemplates: e });
 	} catch {}
 }
 var VDe = (e, t) => e && {
@@ -64147,7 +64147,7 @@ async function yOe(e, t) {
 // src/react/feed-new/feed-new.ts
 var IX = (e) => ["feed-new", e ?? "home"];
 async function bOe(e, t) {
-	let n = new URLSearchParams({ limit: String(Fj().value.feedLimit) });
+	let n = new URLSearchParams({ limit: String(Pj().value.feedLimit) });
 	e && n.set("entity", String(e));
 	let r = await wn(`/api/feeds/discoveries?${n}`);
 	if (r.error) throw Error(r.error);
@@ -66976,7 +66976,7 @@ function mAe({ kind: e, entityId: t, name: n, onPicked: r, close: i }) {
 				children: [
 					/* @__PURE__ */ (0, L.jsxs)("div", {
 						className: "flex flex-wrap items-center gap-2",
-						children: [/* @__PURE__ */ (0, L.jsx)(eL, {
+						children: [/* @__PURE__ */ (0, L.jsx)($I, {
 							slot: "title",
 							className: "text-title-3-semibold text-text-primary",
 							children: d ? "框出头像那一块" : "更换头像"
@@ -67410,7 +67410,7 @@ function vQ({ code: e, person: t, detail: n = !1 }) {
 	}) : o;
 }
 // src/feed-new-skeleton.ts
-var yQ = (e = 8) => `<div class="feednewrow srow" data-skeleton="feed/new" aria-hidden="true">${`<article class="card feednewcard feednewskeleton"><div class="pic imgwait" style="--card-ratio:${Wj}"></div>
+var yQ = (e = 8) => `<div class="feednewrow srow" data-skeleton="feed/new" aria-hidden="true">${`<article class="card feednewcard feednewskeleton"><div class="pic imgwait" style="--card-ratio:${Uj}"></div>
     <div class="meta"><div class="mtext"><span class="t"><span class="skeleton"></span></span>
       <div class="s mono"><span class="skeleton">&#8203;</span></div></div></div></article>`.repeat(e)}</div>`;
 // src/react/components/cover-queue.tsx
@@ -67696,7 +67696,7 @@ function bAe({ current: e, choices: t, onChoose: n, onAddAlias: r }) {
 	}, []), /* @__PURE__ */ (0, L.jsxs)(Hme, {
 		isOpen: i,
 		onOpenChange: a,
-		children: [/* @__PURE__ */ (0, L.jsx)(QI, {
+		children: [/* @__PURE__ */ (0, L.jsx)(ZI, {
 			ref: o,
 			"data-namepick-toggle": "",
 			"aria-label": "名字与别名",
@@ -69345,7 +69345,7 @@ function XQ({ categories: e, category: t, online: n, readout: r, letters: i, vie
 	});
 }
 function tje({ count: e, match: t, onMatch: n, onClear: r, onApply: i }) {
-	return /* @__PURE__ */ (0, L.jsxs)(GA, {
+	return /* @__PURE__ */ (0, L.jsxs)(WA, {
 		visible: e > 0,
 		label: "所选标签操作",
 		count: `已选 ${e.toLocaleString()} 个标签`,
@@ -69496,7 +69496,7 @@ function nje({ operation: e, selected: t, dialog: n, update: r }) {
 	});
 }
 // src/react/index/tag-manager.tsx
-function rje({ search: e, category: t = "all", view: n = "cloud", onCategory: r, onView: i, onJump: a, scope: o = "local" }) {
+function n$({ search: e, category: t = "all", view: n = "cloud", onCategory: r, onView: i, onJump: a, scope: o = "local" }) {
 	let s = o === "online", c = (0, I.useRef)(null), [l, u] = (0, I.useState)(""), [d, f] = (0, I.useState)(t), [p, m] = (0, I.useState)(n), h = r ? t : d, g = i ? n : p, _ = e ?? l, [v, y] = (0, I.useState)(!1), [b, x] = (0, I.useState)(!1), S = JSON.stringify([
 		o,
 		_,
@@ -69649,7 +69649,7 @@ function rje({ search: e, category: t = "all", view: n = "cloud", onCategory: r,
 				tone: "error",
 				children: M.error
 			}) : null,
-			/* @__PURE__ */ (0, L.jsxs)(GA, {
+			/* @__PURE__ */ (0, L.jsxs)(WA, {
 				label: "标签管理操作",
 				count: `已选 ${k.size} 个标签`,
 				visible: k.size > 0,
@@ -69701,7 +69701,7 @@ function rje({ search: e, category: t = "all", view: n = "cloud", onCategory: r,
 	});
 }
 // src/react/index/index-page.tsx
-var ije = [
+var rje = [
 	{
 		value: "studios",
 		label: "厂牌",
@@ -69717,7 +69717,7 @@ var ije = [
 		label: "事务所",
 		symbol: "briefcase"
 	}
-], aje = [{
+], ije = [{
 	value: "local",
 	label: "本地",
 	symbol: "hard-drive"
@@ -69725,7 +69725,7 @@ var ije = [
 	value: "online",
 	label: "在线",
 	symbol: "rss"
-}], oje = [
+}], aje = [
 	{
 		value: "performers",
 		label: "艺人",
@@ -69741,7 +69741,7 @@ var ije = [
 		label: "在线",
 		symbol: "rss"
 	}
-], sje = {
+], oje = {
 	people: [[
 		"big",
 		"大图 · 竖幅头像",
@@ -69770,7 +69770,7 @@ var ije = [
 		"layout-grid"
 	]]
 };
-function cje({ kind: e, layout: t, onChange: n }) {
+function sje({ kind: e, layout: t, onChange: n }) {
 	return /* @__PURE__ */ (0, L.jsx)(jU, {
 		"aria-label": `${QX[e]}索引版式`,
 		orientation: "horizontal",
@@ -69778,7 +69778,7 @@ function cje({ kind: e, layout: t, onChange: n }) {
 		onChange: (e) => n(e),
 		"data-index-layout": "",
 		className: `flex-none ${MU}`,
-		children: sje[e === "series" ? "series" : rZ(e) ? "company" : "people"].map(([e, t, n]) => {
+		children: oje[e === "series" ? "series" : rZ(e) ? "company" : "people"].map(([e, t, n]) => {
 			let r = tB(n);
 			return /* @__PURE__ */ (0, L.jsx)(VR, {
 				value: e,
@@ -69793,7 +69793,7 @@ function cje({ kind: e, layout: t, onChange: n }) {
 		})
 	});
 }
-function lje(e) {
+function cje(e) {
 	let [t, n] = (0, I.useState)(!1), [r, i] = (0, I.useState)(() => iZ({
 		kind: e.kind,
 		q: e.q,
@@ -69876,7 +69876,7 @@ function lje(e) {
 		l(t), e.savePreference({ layout: t });
 	}, oe = h === "tags" ? /* @__PURE__ */ (0, L.jsx)(wB, {
 		group: "tags",
-		tabs: aje,
+		tabs: ije,
 		value: _,
 		label: "词表",
 		onChange: (e) => {
@@ -69887,7 +69887,7 @@ function lje(e) {
 			});
 		}
 	}) : rZ(h) || h === "series" ? /* @__PURE__ */ (0, L.jsx)(iB, {
-		tabs: ije,
+		tabs: rje,
 		value: h,
 		label: "资料类型",
 		onChange: (e) => C({ kind: e })
@@ -69923,7 +69923,7 @@ function lje(e) {
 							})
 						})
 					}) : null,
-					nZ(h) ? /* @__PURE__ */ (0, L.jsx)(cje, {
+					nZ(h) ? /* @__PURE__ */ (0, L.jsx)(sje, {
 						kind: h,
 						layout: c,
 						onChange: ae
@@ -69952,7 +69952,7 @@ function lje(e) {
 				]
 			}),
 			h === "performers" || h === "creators" ? /* @__PURE__ */ (0, L.jsx)(iB, {
-				tabs: oje,
+				tabs: aje,
 				value: S ? "online" : h,
 				label: "人物名册",
 				onChange: (t) => {
@@ -69964,7 +69964,7 @@ function lje(e) {
 				}
 			}) : null,
 			oe,
-			t && h === "tags" ? /* @__PURE__ */ (0, L.jsx)(rje, {
+			t && h === "tags" ? /* @__PURE__ */ (0, L.jsx)(n$, {
 				scope: _,
 				search: g,
 				category: y,
@@ -70025,7 +70025,7 @@ function lje(e) {
 								}),
 								children: bn(D.error)
 							});
-							if (!O.length) return /* @__PURE__ */ (0, L.jsx)(dje, {
+							if (!O.length) return /* @__PURE__ */ (0, L.jsx)(uje, {
 								kind: h,
 								filtered: !!g || y !== "all",
 								online: x || S,
@@ -70101,7 +70101,7 @@ function lje(e) {
 		]
 	});
 }
-var uje = {
+var lje = {
 	tags: "标签",
 	performers: "艺人",
 	creators: "卖家",
@@ -70109,7 +70109,7 @@ var uje = {
 	agencies: "事务所",
 	series: "系列"
 };
-function dje({ kind: e, filtered: t, online: n, onClear: r }) {
+function uje({ kind: e, filtered: t, online: n, onClear: r }) {
 	if (t) return /* @__PURE__ */ (0, L.jsx)(rH, {
 		icon: tB("search"),
 		title: "没有符合条件的内容",
@@ -70120,7 +70120,7 @@ function dje({ kind: e, filtered: t, online: n, onClear: r }) {
 		}),
 		children: "清除筛选或搜索条件后查看全部内容。"
 	});
-	let i = n && e === "performers" ? "创作者" : uje[e], a = /* @__PURE__ */ (0, L.jsx)(Az, {
+	let i = n && e === "performers" ? "创作者" : lje[e], a = /* @__PURE__ */ (0, L.jsx)(Az, {
 		size: "small",
 		variant: n ? "primary" : "secondary",
 		href: "/subscriptions?tab=add",
@@ -70137,14 +70137,14 @@ function dje({ kind: e, filtered: t, online: n, onClear: r }) {
 		children: n ? `添加关注来源并获取内容后，这里会显示来源上的${i}。` : "添加内容并补充资料后，这里会显示对应信息。"
 	});
 }
-var n$ = {
+var dje = {
 	video: ["视频", "play"],
 	image: ["图片", "pics"],
 	archive: ["压缩包", "file-archive"],
 	audio: ["音频", "file-audio"],
 	url: ["网址快捷方式", "globe"],
 	other: ["其它文件", "hard-drive"]
-}, fje = (e) => n$[e.junk_kind || "other"] || n$.other;
+}, fje = (e) => dje[e.junk_kind || "other"] || dje.other;
 function pje(e) {
 	return e === "dismissed" ? {
 		operation: "reconsider-junk",
@@ -70835,7 +70835,7 @@ function Bje(e, t) {
 }
 // src/react/components/library-order.ts
 function j$(e, t) {
-	let n = Fj();
+	let n = Pj();
 	return (0, I.useSyncExternalStore)(n.subscribe, n.version), aB(e, n.value.libraryOrder, t);
 }
 // src/react/library-processing/library-processing-card.tsx
@@ -71700,7 +71700,7 @@ function xMe({ tabs: e, kind: t, onPick: n, wire: r }) {
 		onClick: () => n(e),
 		children: [r, i ? /* @__PURE__ */ (0, L.jsx)(rB, { value: i }) : null]
 	}, e || "all");
-	return /* @__PURE__ */ (0, L.jsxs)(MI, {
+	return /* @__PURE__ */ (0, L.jsxs)(jI, {
 		ref: i,
 		"data-search-tabs": "",
 		"data-pill-nav": "",
@@ -71990,7 +71990,7 @@ var TMe = [
 	]
 ];
 function EMe({ host: e, spot: t, index: n, glow: r }) {
-	let i = nue[n], a = (0, I.useRef)(null), o = (0, I.useRef)(null), s = (0, I.useRef)(null), c = TH(), [l, u] = (0, I.useState)("all");
+	let i = rue[n], a = (0, I.useRef)(null), o = (0, I.useRef)(null), s = (0, I.useRef)(null), c = TH(), [l, u] = (0, I.useState)("all");
 	(0, I.useLayoutEffect)(() => {
 		let [e, t, n] = [
 			a.current,
@@ -72003,7 +72003,7 @@ function EMe({ host: e, spot: t, index: n, glow: r }) {
 	}, []);
 	let d = r[t].color, f = (n) => {
 		let r = e.store.value.homeGlow;
-		r[t].color = Dj(n, r[t].color), r.preset = "custom", e.store.save(), e.changed("glow"), os(), o.current?.focus();
+		r[t].color = Ej(n, r[t].color), r.preset = "custom", e.store.save(), e.changed("glow"), os(), o.current?.focus();
 	};
 	return /* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-glow-stop": t,
@@ -72028,7 +72028,7 @@ function EMe({ host: e, spot: t, index: n, glow: r }) {
 						children: d
 					})]
 				}),
-				/* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-down" })
+				/* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-down" })
 			]
 		}), /* @__PURE__ */ (0, L.jsxs)("div", {
 			className: "popmenu",
@@ -72040,7 +72040,7 @@ function EMe({ host: e, spot: t, index: n, glow: r }) {
 				"data-glow-pills": "",
 				role: "group",
 				"aria-label": "色系",
-				children: aue.map(([e, t]) => /* @__PURE__ */ (0, L.jsx)("button", {
+				children: oue.map(([e, t]) => /* @__PURE__ */ (0, L.jsx)("button", {
 					type: "button",
 					"data-glow-pill": e,
 					"aria-pressed": e === l,
@@ -72054,7 +72054,7 @@ function EMe({ host: e, spot: t, index: n, glow: r }) {
 					"data-glow-palette": "",
 					role: "radiogroup",
 					"aria-label": `${i}颜色`,
-					children: oue.map(([e, t, n]) => /* @__PURE__ */ (0, L.jsx)("button", {
+					children: sue.map(([e, t, n]) => /* @__PURE__ */ (0, L.jsx)("button", {
 						type: "button",
 						role: "radio",
 						"aria-checked": n === d,
@@ -72072,7 +72072,7 @@ function EMe({ host: e, spot: t, index: n, glow: r }) {
 	});
 }
 function DMe({ host: e }) {
-	let t = e.store.value.homeGlow, n = bj(t.preset);
+	let t = e.store.value.homeGlow, n = yj(t.preset);
 	return /* @__PURE__ */ (0, L.jsxs)("section", {
 		"data-glow-setting": "",
 		id: "homeGlowControls",
@@ -72091,10 +72091,10 @@ function DMe({ host: e }) {
 						"data-glow-current": "",
 						children: ["当前配色", /* @__PURE__ */ (0, L.jsx)("b", {
 							"data-glow-preset-name": "",
-							children: rue(t.preset)
+							children: iue(t.preset)
 						})]
 					}),
-					/* @__PURE__ */ (0, L.jsx)(_M, {
+					/* @__PURE__ */ (0, L.jsx)(gM, {
 						store: e.store,
 						label: "光晕配色"
 					}),
@@ -72126,7 +72126,7 @@ function DMe({ host: e }) {
 							className: "geist-button",
 							"data-glow-reset": "",
 							onClick: () => {
-								e.store.value.homeGlow = kj(null), e.store.save(), e.changed("glow");
+								e.store.value.homeGlow = Oj(null), e.store.save(), e.changed("glow");
 							},
 							children: "恢复默认"
 						})
@@ -72145,7 +72145,7 @@ function DMe({ host: e }) {
 				"data-glow-colour-card": "",
 				children: /* @__PURE__ */ (0, L.jsx)("div", {
 					"data-glow-stops": "",
-					children: _j.map((n, r) => /* @__PURE__ */ (0, L.jsx)(EMe, {
+					children: gj.map((n, r) => /* @__PURE__ */ (0, L.jsx)(EMe, {
 						host: e,
 						spot: n,
 						index: r,
@@ -72212,7 +72212,7 @@ function g1(e, t) {
 }
 function _1({ id: e, label: t, value: n, disabled: r = !1, onApply: i }) {
 	let a = OMe[e], { min: o, max: s, unit: c, fallback: l } = a, u = a.optional === !0, d = (0, I.useRef)(0);
-	d.current ||= XA(Number(localStorage.getItem(h1(e))), o, s, n && n > 0 ? n : l);
+	d.current ||= YA(Number(localStorage.getItem(h1(e))), o, s, n && n > 0 ? n : l);
 	let [f, p] = (0, I.useState)(n ?? 0), [m, h] = (0, I.useState)(String(n && n > 0 ? n : d.current)), [g, _] = (0, I.useState)(""), v = (0, I.useRef)(null), y = (0, I.useRef)(i);
 	y.current = i, (0, I.useLayoutEffect)(() => {
 		n !== null && (p(n), n > 0 && h(String(n)));
@@ -72501,7 +72501,7 @@ function zMe({ current: e, onChange: t }) {
 // src/react/settings-panel/sidebar-order.tsx
 var BMe = "__home__", k1 = (e) => e === "" ? BMe : e;
 function VMe({ host: e }) {
-	let t = IF(e.store), n = e.store.value.sidebarOrder, r = new Map(e.navCatalog.map((e) => [e[0], e])), i = n.map((e) => r.get(e)).filter((e) => e !== void 0), a = e.navCatalog.filter(([e]) => !n.includes(e)), o = Yl(n), [s, c] = (0, I.useState)(null), [l, u] = (0, I.useState)(!1), d = (0, I.useRef)(null), f = RF(d, n, t, () => {}, "y", "tab"), p = (0, I.useRef)(null), m = (0, I.useRef)(null), h = (e, r) => {
+	let t = FF(e.store), n = e.store.value.sidebarOrder, r = new Map(e.navCatalog.map((e) => [e[0], e])), i = n.map((e) => r.get(e)).filter((e) => e !== void 0), a = e.navCatalog.filter(([e]) => !n.includes(e)), o = Yl(n), [s, c] = (0, I.useState)(null), [l, u] = (0, I.useState)(!1), d = (0, I.useRef)(null), f = LF(d, n, t, () => {}, "y", "tab"), p = (0, I.useRef)(null), m = (0, I.useRef)(null), h = (e, r) => {
 		let i = n.indexOf(e), a = i + r;
 		if (i < 0 || a < 0 || a >= n.length) return;
 		let o = [...n];
@@ -72557,9 +72557,9 @@ function VMe({ host: e }) {
 							/* @__PURE__ */ (0, L.jsx)("i", {
 								"data-sidebar-grip": "",
 								"aria-hidden": "true",
-								children: /* @__PURE__ */ (0, L.jsx)(zF, { name: "grip-vertical" })
+								children: /* @__PURE__ */ (0, L.jsx)(RF, { name: "grip-vertical" })
 							}),
-							/* @__PURE__ */ (0, L.jsx)(zF, { name: a ?? "" }),
+							/* @__PURE__ */ (0, L.jsx)(RF, { name: a ?? "" }),
 							/* @__PURE__ */ (0, L.jsx)("b", { children: r })
 						]
 					}), /* @__PURE__ */ (0, L.jsxs)("span", {
@@ -72573,7 +72573,7 @@ function VMe({ host: e }) {
 								title: "上移",
 								disabled: o === 0,
 								onClick: () => h(e, -1),
-								children: /* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-up" })
+								children: /* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-up" })
 							}),
 							/* @__PURE__ */ (0, L.jsx)("button", {
 								type: "button",
@@ -72583,7 +72583,7 @@ function VMe({ host: e }) {
 								title: "下移",
 								disabled: o === i.length - 1,
 								onClick: () => h(e, 1),
-								children: /* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-down" })
+								children: /* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-down" })
 							}),
 							/* @__PURE__ */ (0, L.jsx)("button", {
 								type: "button",
@@ -72595,7 +72595,7 @@ function VMe({ host: e }) {
 								onClick: () => {
 									n.length > 1 && t(n.filter((t) => t !== e));
 								},
-								children: /* @__PURE__ */ (0, L.jsx)(zF, { name: "eye-off" })
+								children: /* @__PURE__ */ (0, L.jsx)(RF, { name: "eye-off" })
 							})
 						]
 					})]
@@ -72622,13 +72622,13 @@ function VMe({ host: e }) {
 						ref: p,
 						onClick: v,
 						children: g ? /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [
-							/* @__PURE__ */ (0, L.jsx)(zF, { name: g[2] ?? "" }),
+							/* @__PURE__ */ (0, L.jsx)(RF, { name: g[2] ?? "" }),
 							/* @__PURE__ */ (0, L.jsx)("span", {
 								"data-sidebar-add-label": "",
 								children: g[1]
 							}),
-							/* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-down" })
-						] }) : /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(zF, { name: "check" }), /* @__PURE__ */ (0, L.jsx)("span", { children: "全部页面都已显示" })] })
+							/* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-down" })
+						] }) : /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(RF, { name: "check" }), /* @__PURE__ */ (0, L.jsx)("span", { children: "全部页面都已显示" })] })
 					}), a.length ? /* @__PURE__ */ (0, L.jsx)("div", {
 						className: "popmenu",
 						"data-sidebar-add-menu": "",
@@ -72646,7 +72646,7 @@ function VMe({ host: e }) {
 							onClick: () => {
 								c(k1(e)), _(), p.current?.focus();
 							},
-							children: [/* @__PURE__ */ (0, L.jsx)(zF, { name: n ?? "" }), /* @__PURE__ */ (0, L.jsx)("span", { children: t })]
+							children: [/* @__PURE__ */ (0, L.jsx)(RF, { name: n ?? "" }), /* @__PURE__ */ (0, L.jsx)("span", { children: t })]
 						}, k1(e)))
 					}) : null]
 				}), /* @__PURE__ */ (0, L.jsx)("button", {
@@ -72774,7 +72774,7 @@ function XMe(e = "") {
 		return;
 	}
 	os(), N1 += 1, P1 ||= document.activeElement, t.sound("whoosh"), document.documentElement.style.overflow = "hidden", document.body.classList.add("settings-open");
-	let r = Xfe();
+	let r = Zfe();
 	I1({
 		open: !0,
 		closing: !1,
@@ -72850,7 +72850,7 @@ function tNe({ tab: e, epoch: t, configurable: n, openConfiguration: r, onSelect
 		d.current = r, Gc(n, t ? i : null, r, "y");
 	}, h = (0, I.useRef)(m);
 	h.current = m;
-	let g = RF(a, o.keys, o.commit, () => requestAnimationFrame(() => h.current(p.current[f.current], !1)), c ? "x" : "y", "tab");
+	let g = LF(a, o.keys, o.commit, () => requestAnimationFrame(() => h.current(p.current[f.current], !1)), c ? "x" : "y", "tab");
 	(0, I.useLayoutEffect)(() => {
 		let e = a.current;
 		if (!e) return;
@@ -72929,7 +72929,7 @@ function tNe({ tab: e, epoch: t, configurable: n, openConfiguration: r, onSelect
 				onPointerEnter: (e) => {
 					e.pointerType !== "touch" && m(e.currentTarget, !0);
 				},
-				children: [r === "jav" ? /* @__PURE__ */ (0, L.jsx)(zF, { name: r }) : /* @__PURE__ */ (0, L.jsx)(rpe, { name: r }), n]
+				children: [r === "jav" ? /* @__PURE__ */ (0, L.jsx)(RF, { name: r }) : /* @__PURE__ */ (0, L.jsx)(ipe, { name: r }), n]
 			}, n)),
 			/* @__PURE__ */ (0, L.jsx)(CB, { reorder: g }),
 			/* @__PURE__ */ (0, L.jsx)(iE, {
@@ -72947,9 +72947,9 @@ function tNe({ tab: e, epoch: t, configurable: n, openConfiguration: r, onSelect
 					onClick: r,
 					title: n === !1 ? "请在运行 Peach 的设备上打开 Peach 配置" : void 0,
 					children: [
-						/* @__PURE__ */ (0, L.jsx)(zF, { name: "folder-cog" }),
+						/* @__PURE__ */ (0, L.jsx)(RF, { name: "folder-cog" }),
 						"Peach 配置",
-						/* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-right" })
+						/* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-right" })
 					]
 				})
 			})
@@ -73305,7 +73305,7 @@ function iNe({ host: e, tab: t, epoch: n }) {
 						label: "悬停预览延迟",
 						value: r.hoverDelaySeconds,
 						onApply: (t) => {
-							r.hoverDelaySeconds = XA(t, 0, 60, 5), i(), e.changed("hoverDelay");
+							r.hoverDelaySeconds = YA(t, 0, 60, 5), i(), e.changed("hoverDelay");
 						}
 					}, n)
 				})
@@ -73365,7 +73365,7 @@ function aNe({ host: e, tab: t, epoch: n }) {
 						label: "新作显示数量",
 						value: r.feedLimit,
 						onApply: (t) => {
-							r.feedLimit = XA(t, 1, 100, 12), i(), e.changed("feedLimit");
+							r.feedLimit = YA(t, 1, 100, 12), i(), e.changed("feedLimit");
 						}
 					}, n)
 				})
@@ -73390,10 +73390,10 @@ function aNe({ host: e, tab: t, epoch: n }) {
 }
 function oNe({ host: e, epoch: t }) {
 	let n = Pt({
-		queryKey: kF,
-		queryFn: ({ signal: e }) => PF(e),
+		queryKey: OF,
+		queryFn: ({ signal: e }) => NF(e),
 		staleTime: 0
-	}), r = FF(), [i, a] = (0, I.useState)(null), o = n.data?.performerNameLanguage;
+	}), r = PF(), [i, a] = (0, I.useState)(null), o = n.data?.performerNameLanguage;
 	return /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsx)(H1, {
 		title: "女优名称",
 		description: /* @__PURE__ */ (0, L.jsx)("small", {
@@ -73424,7 +73424,7 @@ function oNe({ host: e, epoch: t }) {
 	}) : null] });
 }
 function sNe({ host: e, id: t, settingKey: n, label: r, title: i }) {
-	let a = FF(), [o, s] = (0, I.useState)(null), c = (0, I.useRef)(null), l = e.store.value, u = (t) => {
+	let a = PF(), [o, s] = (0, I.useState)(null), c = (0, I.useRef)(null), l = e.store.value, u = (t) => {
 		s(t), Zc(c.current), a.mutate({ [n]: t }, {
 			onSuccess: (i) => {
 				l[n] = i[n] === !0, e.store.save(), e.changed("feedCompilations"), e.receipt(t ? `新作已收起${r}` : `新作已列出${r}`);
@@ -73484,7 +73484,7 @@ function cNe({ host: e, epoch: t }) {
 	] });
 }
 function lNe({ host: e, epoch: t }) {
-	let n = e.store.value, r = FF();
+	let n = e.store.value, r = PF();
 	return /* @__PURE__ */ (0, L.jsx)(H1, {
 		title: "搜索记录数量",
 		children: /* @__PURE__ */ (0, L.jsx)("div", {
@@ -73494,7 +73494,7 @@ function lNe({ host: e, epoch: t }) {
 				label: "搜索记录",
 				value: n.searchHistoryLimit,
 				onApply: (t) => {
-					n.searchHistoryLimit = XA(t, 0, 50, 10), e.store.save(), e.changed("searchHistoryLimit"), r.mutate({ searchHistoryLimit: n.searchHistoryLimit }, { onError: () => {} });
+					n.searchHistoryLimit = YA(t, 0, 50, 10), e.store.save(), e.changed("searchHistoryLimit"), r.mutate({ searchHistoryLimit: n.searchHistoryLimit }, { onError: () => {} });
 				}
 			}, t)
 		})
@@ -73571,7 +73571,7 @@ function hNe({ host: e, props: t, epoch: n }) {
 	] });
 }
 function gNe({ host: e, epoch: t, version: n }) {
-	let r = IF(e.store), i = e.store.value.sidebarOrder, a = new Map(e.navCatalog.map((e) => [e[0], e])), o = i.map((e) => a.get(e)).filter((e) => e !== void 0), s = o.map(([t]) => e.navOn(t)), c = (0, I.useRef)(null), l = (0, I.useRef)(null), u = aV(l, c, "[data-nav][aria-pressed=\"true\"]", `${t}:${n}:${o.map(([e], t) => s[t] ? e || U1 : "").join(",")}`, { axis: "y" }), { sync: d } = u;
+	let r = FF(e.store), i = e.store.value.sidebarOrder, a = new Map(e.navCatalog.map((e) => [e[0], e])), o = i.map((e) => a.get(e)).filter((e) => e !== void 0), s = o.map(([t]) => e.navOn(t)), c = (0, I.useRef)(null), l = (0, I.useRef)(null), u = aV(l, c, "[data-nav][aria-pressed=\"true\"]", `${t}:${n}:${o.map(([e], t) => s[t] ? e || U1 : "").join(",")}`, { axis: "y" }), { sync: d } = u;
 	(0, I.useEffect)(() => {
 		let t = e.scroll, n = t.parentElement, r = t.querySelector(":scope > [data-sidebar-head]"), i = new ResizeObserver(() => d());
 		[
@@ -73590,7 +73590,7 @@ function gNe({ host: e, epoch: t, version: n }) {
 			i.disconnect(), cancelAnimationFrame(a), document.removeEventListener("board:sidebar", o);
 		};
 	}, [e, d]);
-	let f = RF(c, i, r, () => requestAnimationFrame(d)), p = e.scroll.parentElement;
+	let f = LF(c, i, r, () => requestAnimationFrame(d)), p = e.scroll.parentElement;
 	return /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-sidebar-nav": "",
 		ref: c,
@@ -73626,7 +73626,7 @@ function gNe({ host: e, epoch: t, version: n }) {
 						alt: "",
 						decoding: "async",
 						draggable: !1
-					}) : /* @__PURE__ */ (0, L.jsx)(zF, { name: r }), /* @__PURE__ */ (0, L.jsx)("span", { children: n })]
+					}) : /* @__PURE__ */ (0, L.jsx)(RF, { name: r }), /* @__PURE__ */ (0, L.jsx)("span", { children: n })]
 				}, t || U1);
 			}),
 			f.hint ? /* @__PURE__ */ (0, L.jsx)("span", {
@@ -73831,7 +73831,7 @@ function xNe({ title: e, kind: t, active: n, index: r, epoch: i, children: a }) 
 			"aria-expanded": c,
 			"aria-controls": f,
 			onClick: d,
-			children: [/* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-right" }), /* @__PURE__ */ (0, L.jsx)("span", { children: e })]
+			children: [/* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-right" }), /* @__PURE__ */ (0, L.jsx)("span", { children: e })]
 		}), /* @__PURE__ */ (0, L.jsx)("div", {
 			ref: s,
 			"data-sidebar-collapse": "",
@@ -73853,7 +73853,7 @@ function xNe({ title: e, kind: t, active: n, index: r, epoch: i, children: a }) 
 }
 var Z1 = (0, I.createContext)(() => {});
 function SNe({ dot: e }) {
-	return e ? e.kind === "glyph" ? /* @__PURE__ */ (0, L.jsx)(zF, { name: e.name }) : e.kind === "image" ? /* @__PURE__ */ (0, L.jsx)("img", {
+	return e ? e.kind === "glyph" ? /* @__PURE__ */ (0, L.jsx)(RF, { name: e.name }) : e.kind === "image" ? /* @__PURE__ */ (0, L.jsx)("img", {
 		"data-sidebar-source-icon": "",
 		src: e.src,
 		alt: ""
@@ -73932,7 +73932,7 @@ function CNe({ epoch: e, title: t, rows: n, latest: r, limit: i, filterKey: a, s
 				all: !_
 			}), _ && u());
 		},
-		children: /* @__PURE__ */ (0, L.jsx)(zF, { name: "chevron-down" })
+		children: /* @__PURE__ */ (0, L.jsx)(RF, { name: "chevron-down" })
 	}) : null] });
 }
 function $1({ rows: e, host: t, selected: n, badges: r }) {
@@ -74278,11 +74278,11 @@ var VNe = () => {
   <p class="text-body-2-regular text-text-secondary">${i0}</p>
   ${e.cloud ? RNe : ""}<span class="text-body-medium text-text-primary">${m0("15em")}</span>`), y0("保存配置"), { status: "保存后 Peach 会重新启动。" }) + (e.cloud ? R0() : "") + BNe() + S0("番号识别规则", x0(`${m0("90%")}${m0("60%")}<span class="skeleton ui-configuration-skeleton-input" style="width:100%;height:88px"></span>`), y0("保存配置")) + S0("视频预览", w0("生成视频预览", "为本地视频生成九宫格与时间轴预览；关闭后仍按入库规则探测时长与分辨率。") + w0("时间轴预览", "按所选间隔抽帧，仅处理本机磁盘上的视频。", "ui-configuration-skeleton-select") + w0("抽帧解码方式", "用于生成封面、九宫格和时间轴。", "ui-configuration-skeleton-select"));
 }, HNe = () => `<div>${y0("采集来源与登录状态", "secondary")}</div>` + P0() + S0("关注采集", C0("自动检查更新", "", "<span class=\"flex items-center gap-2\"><span class=\"skeleton ui-configuration-skeleton-toggle\"></span><span class=\"skeleton ui-configuration-skeleton-input\" style=\"width:96px\"></span></span>") + T0("订阅源拉取") + w0("首次采集范围", "新关注的来源第一次回看多久以前的内容。", "ui-configuration-skeleton-select") + T0("头像刷新", "重新获取关注创作者的头像。") + T0("favicon 刷新", "重新获取来源站点的图标。")) + F0() + S0("作品资料站点", x0(`<p class="text-body-2-regular text-text-secondary">${a0}</p>${O0(j0("JavDB 地址"), o0)}${O0(j0("MISSAV 地址"), o0)}`), y0("保存配置")), UNe = () => {
-	let e = l0("downloads"), t = u0(e?.pikpak), n = u0(e?.pikpakRoots) ? k0(j0("PikPak 根目录对应的媒体目录")) : `<div class="flex flex-col gap-1">${D0(j0("PikPak 根目录对应的媒体目录"))}${E0("先在「媒体库与入库」添加 PikPak 挂载文件夹。")}</div>`, r = u0(e?.cloud) ? S0("云下载", x0(O0("CloudDrive2 地址") + O0("CloudDrive2 API 令牌", "需要离线任务权限。") + (u0(e?.has115) ? O0(j0("115 目标目录"), "应位于自动入库的云端路径前缀内。") : "") + (t ? O0(j0("PikPak 目标目录"), "目录要已经存在。") + n : "") + O0("等待上限（小时）", m0("14em"))), y0("检查连接", "secondary") + y0("保存配置")) : "", i = u0(e?.pikpakLoggedIn);
-	return r + (t ? S0("PikPak 账号", i ? N0(["账号", m0("4em")]) : x0(O0("账号") + O0("密码") + A0("保存密码，登录过期时自动重新登录")), i ? y0("登出", "secondary") : (u0(e?.browserLogin) ? y0("用浏览器登录", "secondary") : "") + y0("登录"), {
+	let e = l0("downloads"), t = u0(e?.pikpak), n = u0(e?.pikpakRoots) ? k0(j0("PikPak 根目录对应的媒体目录")) : `<div class="flex flex-col gap-1">${D0(j0("PikPak 根目录对应的媒体目录"))}${E0("先在「媒体库与入库」添加 PikPak 挂载文件夹。")}</div>`, r = u0(e?.cloud) ? S0("云下载", x0(O0("CloudDrive2 地址") + O0("CloudDrive2 API 令牌", "需要离线任务权限。") + (u0(e?.has115) ? O0(j0("115 目标目录"), "应位于自动入库的云端路径前缀内。") : "") + (t ? O0(j0("PikPak 目标目录"), "目录要已经存在。") + n : "") + O0("等待上限（小时）", m0("14em"))), y0("检查连接", "secondary") + y0("保存配置")) : "", i = u0(e?.pikpakLoggedIn), a = t ? S0("PikPak 账号", i ? N0(["账号", m0("4em")]) : x0(O0("账号") + O0("密码") + A0("保存密码，登录过期时自动重新登录")), i ? y0("登出", "secondary") : (u0(e?.browserLogin) ? y0("用浏览器登录", "secondary") : "") + y0("登录"), {
 		aside: _0(),
 		mark: !0
-	}) : "") + I0();
+	}) : "", o = u0(e?.localDownload) ? S0("本地下载", x0(E0("用应用中心的 qBittorrent。下载完成后文件留在下载器那台机器上，Peach 通过下面的映射读取。") + O0("qBittorrent 地址") + O0("用户名") + O0("密码") + O0("下载器保存目录") + k0(j0("对应媒体库目录"))), y0("检查", "secondary") + y0("保存配置")) : "";
+	return r + a + o + I0();
 }, B0 = {
 	legacy: "当前使用系统生成的访问口令。改设自己的密码，或关闭登录要求。",
 	locked: "访问设置无法读取，请在本机检查配置文件。",
@@ -74336,7 +74336,7 @@ function JNe(e) {
 	}
 }
 function YNe(e = "媒体库与入库") {
-	return `<div class="peach-react"><div class="ui-configpage">${`<div class="ui-board-local-nav" data-section-nav data-section-items>${aj("configuration", Fj().value.navigationOrders.configuration).map((e) => nj.configuration.items.find(([t]) => t === e)[1]).map((t) => `<button type="button" tabindex="-1" aria-selected="${t === e}">${t}</button>`).join("")}</div>`}<div class="flex min-w-0 flex-col gap-6">${JNe(e)}</div></div></div>`;
+	return `<div class="peach-react"><div class="ui-configpage">${`<div class="ui-board-local-nav" data-section-nav data-section-items>${ij("configuration", Pj().value.navigationOrders.configuration).map((e) => tj.configuration.items.find(([t]) => t === e)[1]).map((t) => `<button type="button" tabindex="-1" aria-selected="${t === e}">${t}</button>`).join("")}</div>`}<div class="flex min-w-0 flex-col gap-6">${JNe(e)}</div></div></div>`;
 }
 // src/filter-controls-skeleton.ts
 var U0 = (e) => e.startsWith("ri-") ? `<svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><use href="#${e}"/></svg>` : Ts(e, "size-4 shrink-0"), W0 = "inert aria-disabled=\"true\" tabindex=\"-1\" data-skeleton-control", G0 = (e, t, n) => `<span data-entity-layout="" class="${PU}" role="radiogroup" aria-label="${B(e)}">${n.map(([e, n, r]) => `<span class="${FU}" role="radio" aria-label="${B(n)}" aria-checked="${e === t}" data-glass-segment=""${e === t ? " data-selected=\"\"" : ""} ${W0}>${U0(r)}</span>`).join("")}</span>`;
@@ -74458,10 +74458,10 @@ function t2() {
 		"w-24"
 	].map((e) => `<span data-skeleton="tag" aria-hidden="true" class="skeleton-sheen relative block h-8 flex-none rounded-(--tag-radius) ${e}"></span>`).join("");
 }
-function n2(e, t = Kj()) {
+function n2(e, t = Gj()) {
 	if (e === "wants") return `<div class="flex w-full flex-col gap-8" data-skeleton="jav-wants">${$0("5em")}${Array.from({ length: 3 }, () => `<div class="flex min-w-0 gap-4 rounded-2lg bg-background-secondary-default p-6">${nPe("block w-card-cover shrink-0 aspect-card-cover rounded-2lg max-sm:w-24")}<div class="flex min-w-0 flex-1 flex-col gap-3">${$0("80%")}${$0("60%")}${$0("40%")}</div></div>`).join("")}</div>`;
-	let n = eM({
-		...$j({
+	let n = $j({
+		...Qj({
 			active: !0,
 			home: !1,
 			portrait: !1
@@ -74511,14 +74511,14 @@ function aPe() {
       ${K0(r, {
 		name: "jav-layout",
 		label: "JAV 卡片版式",
-		value: Kj(),
-		options: Vj
+		value: Gj(),
+		options: Bj
 	}, { folders: !1 })}
     </div>
   </div>`;
 }
 function oPe() {
-	let e = (e, t) => `<button type="button" data-entity-tag="${e}" data-entity-press="" aria-pressed="${e === "external"}" class="flex h-8 flex-none items-center gap-1.75 rounded-lg border border-dashed border-(--glass-low) bg-transparent px-2.5 text-body-2-regular leading-5 whitespace-nowrap text-inherit">${t}</button>`, t = (e, t) => `<span data-glass-segment="" ${Kj() === e ? "data-selected=\"true\"" : ""} class="flex size-8 flex-none items-center justify-center rounded-lg text-(--glass-text)/62">${Ts(t, "size-4")}</span>`;
+	let e = (e, t) => `<button type="button" data-entity-tag="${e}" data-entity-press="" aria-pressed="${e === "external"}" class="flex h-8 flex-none items-center gap-1.75 rounded-lg border border-dashed border-(--glass-low) bg-transparent px-2.5 text-body-2-regular leading-5 whitespace-nowrap text-inherit">${t}</button>`, t = (e, t) => `<span data-glass-segment="" ${Gj() === e ? "data-selected=\"true\"" : ""} class="flex size-8 flex-none items-center justify-center rounded-lg text-(--glass-text)/62">${Ts(t, "size-4")}</span>`;
 	return `<div data-filter-glass data-glass-pane data-filter-frame data-jav-filter data-catalog-frame class="sticky top-topbar z-10 mb-5.5 flex flex-col">
     <div data-filter-row="top" class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible">
       <div data-catalog-scroll><div data-catalog-views>${e("external", "库外发现")}${e("library", "馆藏探索")}<span data-entity-sep aria-hidden="true"></span></div><div data-catalog-tags>${t2()}</div></div>
@@ -75181,7 +75181,7 @@ var K2 = (e, { cards: t = !1, className: n = "", variant: r = "", count: i, fill
 	...i ? { count: i } : {},
 	...a === void 0 ? {} : { fill: a },
 	...o ? { cardRatio: o } : {}
-}), QPe = () => aj("review", Fj().value.navigationOrders.review).map((e) => nj.review.items.find(([t]) => t === e)[1]), $Pe = (e = "正在读取复核队列") => `<div class="review review-workspace review-skeleton" data-skeleton="review" aria-busy="true" aria-label="${B(e)}">
+}), QPe = () => ij("review", Pj().value.navigationOrders.review).map((e) => tj.review.items.find(([t]) => t === e)[1]), $Pe = (e = "正在读取复核队列") => `<div class="review review-workspace review-skeleton" data-skeleton="review" aria-busy="true" aria-label="${B(e)}">
   <div class="reviewcontrols" data-section-nav><h2 class="review-category-title">复核分类</h2>
     <div class="reviewtabs" data-section-items>${QPe().map((e, t) => `<button type="button" disabled aria-selected="${t === 0}">${B(e)}<span class="skeleton reviewcountskeleton" aria-hidden="true"></span></button>`).join("")}</div></div>
   <div class="reviewbulkbar reviewbulktoolbar" aria-hidden="true">${"<span class=\"skeleton reviewtoolskeleton\"></span>".repeat(3)}</div>
@@ -75587,7 +75587,7 @@ function sFe({ tags: e, candidates: t, label: n, onAdd: r, adding: i, scope: a, 
 		_,
 		t.length
 	]);
-	let w = p ? Jde(_, t, _P()) : {
+	let w = p ? Yde(_, t, gP()) : {
 		recent: [],
 		results: [],
 		create: ""
@@ -75749,7 +75749,7 @@ function cFe({ item: e, label: t, actions: n }) {
 			}, "POST", t);
 			a(n), await i();
 		}, () => {
-			o === "add" && vP(s);
+			o === "add" && _P(s);
 			let r = o === "add" ? "remove" : e.custom_tags?.includes(s) ? "add" : "restore";
 			n.toast(o === "add" ? `已添加标签「${t(s)}」` : `已删除标签「${t(s)}」`, { undo: async () => {
 				let t = await H("/api/follow/tag", {
@@ -76678,7 +76678,7 @@ function v4({ id: e, onOpened: t }) {
 	});
 }
 // src/react/boardui/components/base/switch/switch.tsx
-var CFe = AI({
+var CFe = kI({
 	sm: {
 		track: "h-4 w-7",
 		trackRadius: {
@@ -76836,7 +76836,7 @@ function OFe({ code: e, coverUrl: t, box: n, onSaved: r, close: i }) {
 				/* @__PURE__ */ (0, L.jsxs)("div", {
 					className: "flex min-w-0 flex-1 flex-col gap-2",
 					children: [
-						/* @__PURE__ */ (0, L.jsx)(eL, {
+						/* @__PURE__ */ (0, L.jsx)($I, {
 							slot: "title",
 							className: "text-title-3-semibold text-text-primary",
 							children: "裁剪封面"
@@ -76916,12 +76916,12 @@ var x4 = ({ name: e }) => /* @__PURE__ */ (0, L.jsx)("span", {
 }), C4 = (e) => Number(e) > 0 ? Yn(Number(e)) : "大小未知";
 function kFe(e) {
 	let { queue: t, actions: n } = e, r = Pt({
-		queryKey: t ? QN(t) : ["item-queue", "none"],
-		queryFn: ({ signal: n }) => sP(t, e.helpers, n),
+		queryKey: t ? ZN(t) : ["item-queue", "none"],
+		queryFn: ({ signal: n }) => oP(t, e.helpers, n),
 		enabled: !!t
-	}), i = t && r.data || null, a = i ? uP(i, e.id) : t ? null : e.id, o = Pt({
-		queryKey: ZN(a ?? 0),
-		queryFn: ({ signal: e }) => oP(a, e),
+	}), i = t && r.data || null, a = i ? lP(i, e.id) : t ? null : e.id, o = Pt({
+		queryKey: XN(a ?? 0),
+		queryFn: ({ signal: e }) => aP(a, e),
 		enabled: a != null
 	});
 	if (!o.data || t && !i) {
@@ -76946,7 +76946,7 @@ function kFe(e) {
 	}
 	return /* @__PURE__ */ (0, L.jsx)(AFe, {
 		...e,
-		item: Gde(o.data, i),
+		item: Kde(o.data, i),
 		queue: i
 	}, o.data.id);
 }
@@ -76964,13 +76964,13 @@ function AFe(e) {
 	(0, I.useLayoutEffect)(() => {
 		r.present(o.current, n);
 	}, [r]), (0, I.useEffect)(() => {
-		n?.kind === "playlist" && H($N, {
+		n?.kind === "playlist" && H(QN, {
 			action: "progress",
 			id: n.playlistId,
 			asset_id: t.id
 		}).catch(() => {});
 	}, []);
-	let s = AN() ? "" : tfe(t, i.sourceOffline(String(t.root_id || t.location || ""))), c = dP(n, t.id);
+	let s = kN() ? "" : nfe(t, i.sourceOffline(String(t.root_id || t.location || ""))), c = uP(n, t.id);
 	return /* @__PURE__ */ (0, L.jsxs)(L.Fragment, { children: [/* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-stage-grid": "",
 		"data-with-queue": n ? "" : void 0,
@@ -77178,7 +77178,7 @@ function MFe({ item: e, badge: t, helpers: n, actions: r }) {
 	});
 }
 function NFe({ queue: e, itemId: t, helpers: n, actions: r }) {
-	let i = Zde(e), a = (0, I.useRef)(null), o = FFe(e, t, r), s = (0, I.useRef)(o);
+	let i = Qde(e), a = (0, I.useRef)(null), o = FFe(e, t, r), s = (0, I.useRef)(o);
 	s.current = o;
 	let c = (0, I.useCallback)((t) => {
 		a.current = t, t && (n.wireDrag(t), e.kind === "playlist" && n.wireDragReorder(t, {
@@ -77214,10 +77214,10 @@ function NFe({ queue: e, itemId: t, helpers: n, actions: r }) {
 		listRef: c,
 		children: e.items.map((i) => {
 			let a = e.kind === "editions" && i.edition_label ? /* @__PURE__ */ (0, L.jsx)("i", {
-				className: `javedition ${Yde[i.edition_label] || "censored"}`,
+				className: `javedition ${Xde[i.edition_label] || "censored"}`,
 				"data-queue-edition": "",
 				children: i.edition_label
-			}) : null, s = e.kind === "playlist" && lP(i);
+			}) : null, s = e.kind === "playlist" && cP(i);
 			return /* @__PURE__ */ (0, L.jsxs)(WK, {
 				current: i.id === t,
 				"data-queue-item": i.id,
@@ -77257,14 +77257,14 @@ function NFe({ queue: e, itemId: t, helpers: n, actions: r }) {
 					})]
 				}), /* @__PURE__ */ (0, L.jsx)("span", {
 					"data-truncate-end": "",
-					children: s ? "已消失 · 文件已不在盘上" : e.kind === "parts" || e.kind === "editions" && i.part_label ? yP(i.part_label) : Mo(i, n.tagLabel)
+					children: s ? "已消失 · 文件已不在盘上" : e.kind === "parts" || e.kind === "editions" && i.part_label ? vP(i.part_label) : Mo(i, n.tagLabel)
 				})]
 			}, i.id);
 		})
 	});
 }
 function PFe(e, t) {
-	let n = Ft({ mutationFn: (t) => H($N, {
+	let n = Ft({ mutationFn: (t) => H(QN, {
 		action: "create",
 		name: t,
 		asset_ids: e.items.map((e) => e.id),
@@ -77278,10 +77278,10 @@ function PFe(e, t) {
 	});
 }
 function FFe(e, t, n) {
-	let r = QN({
+	let r = ZN({
 		kind: "playlist",
 		playlistId: e.playlistId
-	}), i = (e) => (U.setQueryData(r, cP(e)), e), a = (t) => H($N, {
+	}), i = (e) => (U.setQueryData(r, sP(e)), e), a = (t) => H(QN, {
 		id: e.playlistId,
 		...t
 	}).then((e) => e.playlist), o = Ft({
@@ -77297,8 +77297,8 @@ function FFe(e, t, n) {
 	return {
 		move: async (t, r, c) => {
 			if (e.kind !== "playlist") return;
-			let l = $de(s, t, r, c);
-			if (efe(l, s)) return;
+			let l = efe(s, t, r, c);
+			if (tfe(l, s)) return;
 			let u = s;
 			await o.mutateAsync(l), n.toast("已调整播放顺序", { undo: async () => {
 				i(await a({
@@ -77413,7 +77413,7 @@ function IFe({ item: e, queue: t, write: n, helpers: r, actions: i }) {
 				/* @__PURE__ */ (0, L.jsx)(tq, {
 					assetIds: eq([e], r.javImage()),
 					onComplete: () => {
-						U.invalidateQueries({ queryKey: ZN(e.id) });
+						U.invalidateQueries({ queryKey: XN(e.id) });
 					}
 				}),
 				/* @__PURE__ */ (0, L.jsx)(HFe, { item: e }),
@@ -77535,7 +77535,7 @@ function IFe({ item: e, queue: t, write: n, helpers: r, actions: i }) {
 	});
 }
 function LFe({ item: e, queue: t, helpers: n, actions: r, onStatus: i }) {
-	let { text: a, expanded: o, foldable: s, toggle: c } = d4(String(e.title || e.name || "")), l = n.badgeHtml(e.location || "", e.cost || "", "srcbig") + n.titleHtml(e) + Qde(e, t);
+	let { text: a, expanded: o, foldable: s, toggle: c } = d4(String(e.title || e.name || "")), l = n.badgeHtml(e.location || "", e.cost || "", "srcbig") + n.titleHtml(e) + $de(e, t);
 	return /* @__PURE__ */ (0, L.jsx)("div", {
 		"data-item-title": "",
 		children: /* @__PURE__ */ (0, L.jsxs)("div", {
@@ -77572,9 +77572,9 @@ function LFe({ item: e, queue: t, helpers: n, actions: r, onStatus: i }) {
 							box: e.poster_box || null,
 							onSaved: (t) => {
 								U.invalidateQueries({
-									queryKey: ZN(e.id),
+									queryKey: XN(e.id),
 									exact: !0
-								}), qN((t) => (t.cover_key || t.code) === (e.cover_key || e.code), { poster_box: t });
+								}), KN((t) => (t.cover_key || t.code) === (e.cover_key || e.code), { poster_box: t });
 							}
 						})
 					}) : null,
@@ -77622,13 +77622,13 @@ function RFe({ id: e, actions: t, onStatus: n }) {
 	})] });
 }
 function zFe({ item: e, write: t }) {
-	let n = YN(e.rating);
+	let n = JN(e.rating);
 	return /* @__PURE__ */ (0, L.jsxs)("div", {
 		id: "detailRating",
 		role: "group",
 		"data-item-rating": "",
 		"aria-label": "评分",
-		"data-value": JN(e.rating),
+		"data-value": qN(e.rating),
 		children: [/* @__PURE__ */ (0, L.jsx)(fY, {
 			value: n,
 			onRate: (e) => t.rate(e),
@@ -77643,12 +77643,12 @@ function zFe({ item: e, write: t }) {
 		}), /* @__PURE__ */ (0, L.jsx)("span", {
 			"data-rating-value": "",
 			"aria-live": "polite",
-			children: Vde(e.rating)
+			children: Hde(e.rating)
 		})]
 	});
 }
 function BFe({ item: e, actions: t }) {
-	let n = (0, I.useMemo)(() => Kde(e), [e]), [r, i] = (0, I.useState)(!1), a = Math.max(0, n.cast.length - 8), o = (e, n, i) => {
+	let n = (0, I.useMemo)(() => qde(e), [e]), [r, i] = (0, I.useState)(!1), a = Math.max(0, n.cast.length - 8), o = (e, n, i) => {
 		let a = e === "performer" && i >= 8 && !r;
 		return /* @__PURE__ */ (0, L.jsx)(l4, {
 			kind: e,
@@ -77724,7 +77724,7 @@ function VFe({ item: e, write: t, helpers: n, actions: r }) {
 		"data-item-tags": "",
 		children: /* @__PURE__ */ (0, L.jsx)(t4, {
 			id: "detailTags",
-			tags: qde(e, n),
+			tags: Jde(e, n),
 			candidates: n.tagCandidates(),
 			label: n.tagLabel,
 			adding: [...t.busy].some((e) => e.startsWith("add:")),
@@ -77736,7 +77736,7 @@ function VFe({ item: e, write: t, helpers: n, actions: r }) {
 	});
 }
 function HFe({ item: e }) {
-	let t = nfe(e);
+	let t = rfe(e);
 	return /* @__PURE__ */ (0, L.jsxs)("div", {
 		"data-item-trace": "",
 		children: [/* @__PURE__ */ (0, L.jsxs)("div", {
@@ -77811,8 +77811,8 @@ function UFe({ item: e, open: t, write: n }) {
 }
 function WFe(e) {
 	let { item: t, relatedLimit: n, helpers: r, grid: i } = e, a = Pt({
-		queryKey: Hde(t.id, n),
-		queryFn: async ({ signal: e }) => (await V(Wde(t.id, n), e)).items || []
+		queryKey: Ude(t.id, n),
+		queryFn: async ({ signal: e }) => (await V(Gde(t.id, n), e)).items || []
 	}), [o] = (0, I.useState)(() => r.relatedSkeletonHtml());
 	return /* @__PURE__ */ (0, L.jsx)(X2, {
 		wireDrag: r.wireDrag,
@@ -77839,7 +77839,7 @@ function WFe(e) {
 	});
 }
 function GFe(e, t, n) {
-	let r = e.id, i = ZN(r), [a, o] = (0, I.useState)(() => /* @__PURE__ */ new Set()), [s, c] = (0, I.useState)(""), [l, u] = (0, I.useState)(""), d = (e, t) => o((n) => {
+	let r = e.id, i = XN(r), [a, o] = (0, I.useState)(() => /* @__PURE__ */ new Set()), [s, c] = (0, I.useState)(""), [l, u] = (0, I.useState)(""), d = (e, t) => o((n) => {
 		let r = new Set(n);
 		return t ? r.add(e) : r.delete(e), r;
 	}), f = () => U.getQueryData(i) || e, p = (e) => {
@@ -77855,7 +77855,7 @@ function GFe(e, t, n) {
 			rating: t.rating,
 			o_count: t.o_count
 		};
-		return KN(r, n), t;
+		return GN(r, n), t;
 	}, m = (e, t) => H(e, {
 		id: r,
 		...t
@@ -77870,7 +77870,7 @@ function GFe(e, t, n) {
 			run: n
 		}));
 	}, _ = async (e, t) => {
-		let n = await m(eP, t === void 0 ? { kind: e } : {
+		let n = await m($N, t === void 0 ? { kind: e } : {
 			kind: e,
 			value: t
 		});
@@ -77890,21 +77890,21 @@ function GFe(e, t, n) {
 			"aria-disabled": !0
 		} : {},
 		rate: (e) => g(`rate:${e}`, "评分", async () => {
-			let n = f().rating || 0, r = XN(n, e);
-			await _("rate", r), t.toast(r ? `已评 ${YN(r)} 星` : "已取消评分", { undo: async () => {
+			let n = f().rating || 0, r = YN(n, e);
+			await _("rate", r), t.toast(r ? `已评 ${JN(r)} 星` : "已取消评分", { undo: async () => {
 				await _("rate", n);
 			} });
 		}),
 		feedback: (e) => g(e, "操作", async () => {
 			let n = { feedback: f().feedback || null }, r = await _(e);
-			t.toast(bP(e, r), { undo: async () => {
+			t.toast(yP(e, r), { undo: async () => {
 				e === "o" ? await _("o-undo") : e === "dispose" ? await _("dispose") : (r.feedback && await _(r.feedback), n.feedback && await _(n.feedback)), await t.trashChanged(f().disposal || null, !0);
 			} }), e === "dispose" && await t.trashChanged(r.disposal || null, !1);
 		}),
 		later: () => g("later", "更新稍后看", async () => {
-			let e = await m(nP, {});
+			let e = await m(tP, {});
 			p({ watch_later: e.watch_later }), t.toast(e.watch_later ? "已加入稍后看" : "已移出稍后看", { undo: async () => {
-				p({ watch_later: (await m(nP, {})).watch_later });
+				p({ watch_later: (await m(tP, {})).watch_later });
 			} });
 		}),
 		quality: () => g("quality", "更新版本需求", async () => {
@@ -77914,9 +77914,9 @@ function GFe(e, t, n) {
 			}, n = (e) => p({
 				better_version: e.better_version,
 				better_version_reason: e.better_version_reason || ""
-			}), r = await m(rP, { wanted: !e.wanted });
+			}), r = await m(nP, { wanted: !e.wanted });
 			n(r), t.toast(r.better_version ? "已标记寻找更好版本" : "已取消寻找更好版本", { undo: async () => {
-				n(await m(rP, e));
+				n(await m(nP, e));
 			} });
 		}),
 		preference: ({ liked: e, reason: n }) => {
@@ -77930,7 +77930,7 @@ function GFe(e, t, n) {
 				});
 				u("保存中…");
 				try {
-					o(await m(iP, {
+					o(await m(rP, {
 						liked: a,
 						reason: i
 					}));
@@ -77940,7 +77940,7 @@ function GFe(e, t, n) {
 				u("已保存"), setTimeout(() => u((e) => e === "已保存" ? "" : e), 1400);
 				let s = f();
 				t.toast(s.liked ? "已保存喜欢偏好" : "已取消喜欢", { undo: async () => {
-					o(await m(iP, r));
+					o(await m(rP, r));
 				} });
 			});
 		},
@@ -77949,30 +77949,30 @@ function GFe(e, t, n) {
 				operation: "remove",
 				tag: e.k
 			})).ok) throw Error("标签未删除");
-			p((t) => mP(t, e.k)), t.toast(`已删除标签「${n(e.k)}」`, { undo: async () => {
-				await m(tP, {
+			p((t) => pP(t, e.k)), t.toast(`已删除标签「${n(e.k)}」`, { undo: async () => {
+				await m(eP, {
 					operation: "add",
 					tag: e.k
-				}), p((t) => hP(t, e));
+				}), p((t) => mP(t, e));
 			} });
 		}),
 		addTag: (e) => {
 			let r = e.trim();
 			r && g(`add:${r}`, "添加标签", async () => {
-				let e = await m(tP, {
+				let e = await m(eP, {
 					operation: "add",
 					tag: r
 				});
 				if (!e.ok) return;
 				let i = e.tag || r;
-				pP(f(), i) ? t.toast(`标签「${n(i)}」已存在`) : (p((e) => hP(e, {
+				fP(f(), i) ? t.toast(`标签「${n(i)}」已存在`) : (p((e) => mP(e, {
 					k: i,
 					cat: "general"
-				})), vP(i), t.toast(`已添加标签「${n(i)}」`, { undo: async () => {
-					await m(tP, {
+				})), _P(i), t.toast(`已添加标签「${n(i)}」`, { undo: async () => {
+					await m(eP, {
 						operation: "remove",
 						tag: i
-					}), p((e) => mP(e, i));
+					}), p((e) => pP(e, i));
 				} }));
 			});
 		}
@@ -78641,7 +78641,7 @@ function aIe({ src: e }) {
 	return (0, I.useLayoutEffect)(() => {
 		if (n) return;
 		let i = t.current, a = document.createElement("video");
-		return a.className = "video-js vjs-big-play-centered", a.controls = !0, a.setAttribute("playsinline", ""), a.setAttribute("aria-label", "视频预览"), i.append(a), Tde(a, {
+		return a.className = "video-js vjs-big-play-centered", a.controls = !0, a.setAttribute("playsinline", ""), a.setAttribute("aria-label", "视频预览"), i.append(a), Ede(a, {
 			src: e,
 			type: /\.m3u8(?:\?|$)/i.test(e) ? "application/x-mpegURL" : "video/mp4"
 		}, () => r(!0));
@@ -78824,15 +78824,15 @@ function sIe({ item: e, actions: t, readOnly: n }) {
 // src/react/stage/stage-player.ts
 var V4 = null, H4 = null, U4 = null, W4 = null, G4 = null, K4 = !1, q4 = 0, J4 = null, Y4 = () => !1, X4 = (e, t, n) => `${e}:${t}:${n ?? ""}`;
 function cIe(e, t) {
-	V4 = e, Y4 = () => t.isOpen(), J4 = () => t.requestClose(), Lue({
+	V4 = e, Y4 = () => t.isOpen(), J4 = () => t.requestClose(), Rue({
 		...e.player,
 		stage: () => document.getElementById("stage")
-	}), Rue({
+	}), zue({
 		inMiniplayer: (e) => H4?.player === e,
 		kind: (e) => H4?.player === e ? H4.kind : U4?.kind ?? W4?.kind ?? "item",
 		expand: () => g3(),
 		toMiniplayer: () => _3()
-	}), Z4 || (Z4 = !0, addEventListener("pagehide", () => TN()));
+	}), Z4 || (Z4 = !0, addEventListener("pagehide", () => wN()));
 }
 var Z4 = !1;
 function Q4() {
@@ -78857,7 +78857,7 @@ function e3(e, t) {
 	U4 = o;
 	let s = document.createElement("video");
 	t.id && (s.id = t.id), s.className = "video-js vjs-big-play-centered", s.controls = !1, s.setAttribute("playsinline", ""), s.preload = "metadata", t.poster && (s.poster = t.poster), t.onError && s.addEventListener("error", t.onError), e.append(s);
-	let c = RN(s, {
+	let c = LN(s, {
 		kind: n,
 		item: r,
 		media: i,
@@ -78870,7 +78870,7 @@ function e3(e, t) {
 	});
 	return () => {
 		let e = !!o.player && H4?.player === o.player;
-		U4 === o && (U4 = null), c(), !e && (o.player || (s.pause(), s.removeAttribute("src"), s.load()), TN());
+		U4 === o && (U4 = null), c(), !e && (o.player || (s.pause(), s.removeAttribute("src"), s.load()), wN());
 	};
 }
 async function uIe(e, t, n) {
@@ -78899,7 +78899,7 @@ async function uIe(e, t, n) {
 }
 function dIe(e, t) {
 	let { player: n } = t;
-	p3(t), H4 = null, m3(), n.el().classList.remove("vjs-peach-mini"), IN(e), e.append(n.el()), DM(n);
+	p3(t), H4 = null, m3(), n.el().classList.remove("vjs-peach-mini"), FN(e), e.append(n.el()), EM(n);
 	let r = {
 		player: n,
 		kind: t.kind,
@@ -78908,9 +78908,9 @@ function dIe(e, t) {
 		key: t.key
 	};
 	U4 = r;
-	let i = LN(n, e);
-	return OM(n), () => {
-		U4 === r && (U4 = null), i(), H4?.player !== n && (EM() === n && DM(null), gN(n), TN());
+	let i = IN(n, e);
+	return DM(n), () => {
+		U4 === r && (U4 = null), i(), H4?.player !== n && (TM() === n && EM(null), hN(n), wN());
 	};
 }
 var t3 = () => {
@@ -79020,13 +79020,13 @@ function hIe(e, t) {
 		off: [],
 		pending: !1
 	};
-	H4 = n, q4++, e.player.el().classList.add("vjs-peach-mini"), G4.frame.prepend(e.player.el()), o3(t), f3(n), mIe(), OM(e.player);
+	H4 = n, q4++, e.player.el().classList.add("vjs-peach-mini"), G4.frame.prepend(e.player.el()), o3(t), f3(n), mIe(), DM(e.player);
 }
 function h3() {
 	let e = H4;
 	e && p3(e), H4 = null, q4++;
 	let t = e?.player ?? null;
-	t && EM() === t && DM(null), gN(t), t && TN(), G4?.frame.querySelectorAll(".video-js,video").forEach((e) => e.remove()), wM(), m3();
+	t && TM() === t && EM(null), hN(t), t && wN(), G4?.frame.querySelectorAll(".video-js,video").forEach((e) => e.remove()), CM(), m3();
 }
 function g3() {
 	if (!a3() || !H4) return;
@@ -79058,7 +79058,7 @@ async function _Ie(e) {
 		return;
 	}
 	let r = H4;
-	p3(r), EM() === r.player && DM(null), gN(r.player), TN(), G4.frame.querySelectorAll(".video-js,video").forEach((e) => e.remove());
+	p3(r), TM() === r.player && EM(null), hN(r.player), wN(), G4.frame.querySelectorAll(".video-js,video").forEach((e) => e.remove());
 	let i = document.createElement("video");
 	i.className = "video-js", i.setAttribute("playsinline", ""), i.preload = "metadata", G4.frame.prepend(i);
 	let a = {
@@ -79067,14 +79067,14 @@ async function _Ie(e) {
 		title: String(n.title || n.name || ""),
 		sub: String(n.performers?.[0] || n.creator || "未归属")
 	};
-	o3(a), RN(i, {
+	o3(a), LN(i, {
 		kind: "item",
 		item: n,
 		autoplay: !0,
 		chrome: !1,
 		onPlayer: (r) => {
 			if (t !== q4) {
-				r && EM() === r && DM(null), gN(r);
+				r && TM() === r && EM(null), hN(r);
 				return;
 			}
 			if (!r) {
@@ -79486,7 +79486,7 @@ async function OIe(e) {
 		content: i,
 		phase: "skeleton"
 	};
-	let a = i.kind === "item" ? fP(i.props, r.signal) : i.kind === "jav" ? h4(i.props, r.signal) : T2(i.props, r.signal);
+	let a = i.kind === "item" ? dP(i.props, r.signal) : i.kind === "jav" ? h4(i.props, r.signal) : T2(i.props, r.signal);
 	if (n !== E3 || C3?.request !== e) {
 		await a.catch(() => {});
 		return;
@@ -79519,10 +79519,10 @@ async function OIe(e) {
 function kIe(e) {
 	if (e.kind === "jav") return !!U.getQueryData(p4(e.props.code));
 	if (e.kind === "follow") return !!U.getQueryData(S2(e.props.id));
-	let { queue: t, id: n } = e.props, r = t ? U.getQueryData(QN(t)) : null;
+	let { queue: t, id: n } = e.props, r = t ? U.getQueryData(ZN(t)) : null;
 	if (t && !r) return !1;
-	let i = r ? uP(r, n) : n;
-	return i != null && !!U.getQueryData(ZN(i));
+	let i = r ? lP(r, n) : n;
+	return i != null && !!U.getQueryData(XN(i));
 }
 async function AIe(e, t) {
 	let n = ++E3;
@@ -79531,12 +79531,12 @@ async function AIe(e, t) {
 	D3 = r, k3 = !1;
 	let i = R3(e);
 	try {
-		i.kind === "item" ? await fP(i.props, r.signal) : i.kind === "jav" ? await h4(i.props, r.signal) : await T2(i.props, r.signal);
+		i.kind === "item" ? await dP(i.props, r.signal) : i.kind === "jav" ? await h4(i.props, r.signal) : await T2(i.props, r.signal);
 	} catch {
 		if (r.signal.aborted) return;
 	}
 	if (n !== E3 || !C3 || z3(e.kind) !== t) return;
-	e.kind === "jav" ? h3() : r3(e.kind, e.id ?? NaN), Rl(t), wM(), C3 = {
+	e.kind === "jav" ? h3() : r3(e.kind, e.id ?? NaN), Rl(t), CM(), C3 = {
 		...C3,
 		request: e,
 		content: i,
@@ -79560,7 +79560,7 @@ function jIe() {
 function B3({ miniplayer: e = !0 } = {}) {
 	if (E3++, D3?.abort(), D3 = null, n3(e), !C3) return;
 	let t = A3();
-	t && Rl(t), wM(), x2(null), t?.open && t.close(), C3 = null, O3 = !1, k3 = !1, M3(), $4(null), document.body.removeAttribute("data-detail-open");
+	t && Rl(t), CM(), x2(null), t?.open && t.close(), C3 = null, O3 = !1, k3 = !1, M3(), $4(null), document.body.removeAttribute("data-detail-open");
 	let n = w3;
 	w3 = null;
 	let r = () => {
@@ -79609,7 +79609,7 @@ var PIe = {
 	activeVideo: () => pIe(),
 	mountWallPlayer: uIe,
 	toggleTheater: () => {
-		C3 && nN(!j3().player.settings().theaterMode);
+		C3 && tN(!j3().player.settings().theaterMode);
 	},
 	toggleMiniplayer: () => _3(),
 	closeMiniplayer: () => h3(),
@@ -80412,7 +80412,7 @@ function T6(e, t, n = {}) {
 async function eRe(e, t, n, r) {
 	let i = w6();
 	if (!i) return;
-	let a = `/${t}`, o = x6(t, n), s = b6(Fj().value.peopleLayout), c = !!i.querySelector("[data-index-page]") && !i.hidden;
+	let a = `/${t}`, o = x6(t, n), s = b6(Pj().value.peopleLayout), c = !!i.querySelector("[data-index-page]") && !i.hidden;
 	c || (e.surfaceChanged("index", a), C6(i, o, s), Tm(r, i, { pending: !0 })), await Dp(a, {
 		...o,
 		layout: s,
@@ -80640,7 +80640,7 @@ function _Re() {
 	return /* @__PURE__ */ (0, L.jsx)(gRe, {}, MG());
 }
 // src/react/router/pages/managed.tsx
-var vRe = () => yu > 0, A6 = () => (0, I.useSyncExternalStore)(Au, vRe), j6 = () => Fj().value.followLayout === "table" ? "table" : "default", M6 = () => new URLSearchParams(window.location.search);
+var vRe = () => yu > 0, A6 = () => (0, I.useSyncExternalStore)(Au, vRe), j6 = () => Pj().value.followLayout === "table" ? "table" : "default", M6 = () => new URLSearchParams(window.location.search);
 function N6(e) {
 	return wn("/healthz", { signal: e.controller.signal }).catch((e) => {
 		if (Tn(e)) return null;
@@ -80683,7 +80683,7 @@ async function yRe(e, t) {
 	if (e === "/subscriptions") {
 		let e = BZ("?" + M6().toString()), n = await N6(t);
 		if (!t.live) return null;
-		let r = Fj().value;
+		let r = Pj().value;
 		return {
 			...e,
 			pageSize: Number(r.followPageSize) || 20,
@@ -80827,8 +80827,8 @@ async function z6(e, t) {
 	if (r.status === "rejected") throw r.reason;
 	if (n.status === "rejected") throw n.reason;
 }
-var B6 = R6(() => import("./peach-app.jav-page-CV1WHJ07.js")), V6 = R6(() => import("./peach-app.stats-page-Domc7MK7.js")), H6 = R6(() => import("./peach-app.taste-page-D8aVa0Ys.js")), U6 = R6(() => import("./peach-app.review-page-mxNMAWqs.js")), W6 = R6(() => import("./peach-app.data-cleanup-page-DvKa90pv.js")), G6 = R6(() => import("./peach-app.duplicates-page-BHkh7UmS.js")), K6 = R6(() => import("./peach-app.quality-goals-page-Deoy7rhD.js")), q6 = R6(() => import("./peach-app.scraping-page-CB9JSWuk.js")), J6 = R6(async () => {
-	let [{ ConfigurationPage: e }, { DiagnosticsPage: t }] = await Promise.all([import("./peach-app.configuration-page-D9M4omqy.js"), import("./peach-app.diagnostics-page-CGRTA2_Z.js")]);
+var B6 = R6(() => import("./peach-app.jav-page-C-EM3BHJ.js")), V6 = R6(() => import("./peach-app.stats-page-Domc7MK7.js")), H6 = R6(() => import("./peach-app.taste-page-D8aVa0Ys.js")), U6 = R6(() => import("./peach-app.review-page-mxNMAWqs.js")), W6 = R6(() => import("./peach-app.data-cleanup-page-DvKa90pv.js")), G6 = R6(() => import("./peach-app.duplicates-page-BHkh7UmS.js")), K6 = R6(() => import("./peach-app.quality-goals-page-Deoy7rhD.js")), q6 = R6(() => import("./peach-app.scraping-page-CB9JSWuk.js")), J6 = R6(async () => {
+	let [{ ConfigurationPage: e }, { DiagnosticsPage: t }] = await Promise.all([import("./peach-app.configuration-page-oCi57tD4.js"), import("./peach-app.diagnostics-page-CGRTA2_Z.js")]);
 	return {
 		ConfigurationPage: e,
 		DiagnosticsPage: t
@@ -81027,7 +81027,7 @@ var $6 = (e) => ({
 }, r8 = (e) => Object.hasOwn(n8, e), i8 = {
 	element: /* @__PURE__ */ (0, L.jsx)(rRe, {}),
 	prefetch: (e, t) => LOe(e, t),
-	page: (e, t) => /* @__PURE__ */ (0, L.jsx)(lje, {
+	page: (e, t) => /* @__PURE__ */ (0, L.jsx)(cje, {
 		...e,
 		route: t.routeIndex,
 		savePreference: t.savePeopleLayout,
@@ -81061,7 +81061,7 @@ var $6 = (e) => ({
 }, c8 = {
 	"/": {
 		element: /* @__PURE__ */ (0, L.jsx)(OG, {}),
-		prefetch: (e, t) => Pde(e, HG(), t),
+		prefetch: (e, t) => Fde(e, HG(), t),
 		page: (e) => /* @__PURE__ */ (0, L.jsx)(SY, { ...e })
 	},
 	"/junk-files": {
@@ -81089,11 +81089,11 @@ var $6 = (e) => ({
 }, d8 = (e) => Object.hasOwn(u8, e), f8 = {
 	"batch-dock": {
 		prefetch: async () => {},
-		page: () => /* @__PURE__ */ (0, L.jsx)(Xle, {})
+		page: () => /* @__PURE__ */ (0, L.jsx)(Zle, {})
 	},
 	"glow-picker": {
 		prefetch: async () => {},
-		page: () => /* @__PURE__ */ (0, L.jsx)(Fue, {})
+		page: () => /* @__PURE__ */ (0, L.jsx)(Iue, {})
 	},
 	"manage-header": {
 		prefetch: async () => {},
@@ -81101,7 +81101,7 @@ var $6 = (e) => ({
 	},
 	immerse: {
 		prefetch: async () => {},
-		page: () => /* @__PURE__ */ (0, L.jsx)(Lfe, {})
+		page: () => /* @__PURE__ */ (0, L.jsx)(Rfe, {})
 	},
 	"settings-panel": {
 		prefetch: async () => {},
@@ -81175,7 +81175,7 @@ function w8(e) {
 var T8 = () => C8, E8 = null, D8 = null;
 function FRe(e) {
 	return E8 ??= (async () => {
-		let t = Ife(e), n = document.createElement("div");
+		let t = Lfe(e), n = document.createElement("div");
 		return n.dataset.immerseHost = "", await x8("immerse", n, (e) => (document.body.append(e), e)), D8 = t, t;
 	})(), E8;
 }
@@ -81203,14 +81203,14 @@ function RRe(e) {
 var L8 = () => I8, R8 = null, z8 = null;
 function zRe(e) {
 	return R8 ??= (async () => {
-		let t = Yle(e);
+		let t = Xle(e);
 		return await x8("batch-dock", e.root), z8 = t, t;
 	})(), R8;
 }
 var B8 = () => z8, V8 = null;
 function BRe(e) {
 	return V8 ??= (async () => {
-		Pue(e), await x8("glow-picker", e.root);
+		Fue(e), await x8("glow-picker", e.root);
 	})(), V8;
 }
 function H8(e, t, n, r) {
@@ -81292,7 +81292,7 @@ var HRe = [
 	"folder_recursive"
 ];
 function W8(e, t, n, r = n.defaultSort) {
-	return gj(e, t, n.defaultSort, n.defaultSortDirection, r);
+	return hj(e, t, n.defaultSort, n.defaultSortDirection, r);
 }
 function URe(e, t, n) {
 	let r = decodeURIComponent(e.pathname), i = new URLSearchParams(e.search), a = An(r) || r === "/trash", o = (e) => a ? i.get(e) : null;
@@ -81327,7 +81327,7 @@ function GRe(e) {
 	let t = Dn[e.state ?? ""] || "/", n = new URLSearchParams();
 	for (let t of HRe) {
 		let r = e[t];
-		!r || t === "tag_match" && r === "all" || t === "dir" && r === pj(e.sort ?? "") || n.set(t, r);
+		!r || t === "tag_match" && r === "all" || t === "dir" && r === fj(e.sort ?? "") || n.set(t, r);
 	}
 	return !Dn[e.state ?? ""] && e.state && n.set("state", e.state), t + (n.size ? `?${n}` : "");
 }
@@ -81347,7 +81347,7 @@ function KRe(e, t, n) {
 		year: "",
 		state: "",
 		sort: t.defaultSort,
-		dir: hj(t.defaultSort, t.defaultSort, t.defaultSortDirection),
+		dir: mj(t.defaultSort, t.defaultSort, t.defaultSortDirection),
 		seed: n(),
 		q: "",
 		jav: "",
@@ -81629,12 +81629,12 @@ function a5(e, t) {
 	for (let e of zX) e !== "sort" && e !== "dir" && (r[e] = n.get(e) || "");
 	return {
 		...r,
-		...gj(n.get("sort"), n.get("dir"), t.sort, t.dir, "new")
+		...hj(n.get("sort"), n.get("dir"), t.sort, t.dir, "new")
 	};
 }
 function o5(e) {
 	let t = new URLSearchParams();
-	for (let n of zX) !e[n] || n === "sort" && e[n] === "new" || n === "dir" && e[n] === pj(e.sort || "") || t.set(n, e[n]);
+	for (let n of zX) !e[n] || n === "sort" && e[n] === "new" || n === "dir" && e[n] === fj(e.sort || "") || t.set(n, e[n]);
 	return t.toString();
 }
 function s5(e) {
@@ -81730,7 +81730,7 @@ function sze(e, t, n) {
 				e.tag = "", e.creator = "", e.studio = "", e.owner = "";
 			}),
 			setSort: (e) => {
-				let n = c(), i = mj(e, n.sort || "new", n.dir || "");
+				let n = c(), i = pj(e, n.sort || "new", n.dir || "");
 				i && r(t, a, {
 					...n,
 					...i
@@ -81866,7 +81866,7 @@ function fze(e) {
 		display_title: e.title || ""
 	}) : B(r), a = e.code ? `<a class="feednewopen" href="/works/${encodeURIComponent(e.code)}" aria-label="打开 ${B(r)} 的作品详情"></a>` : "";
 	return `<article class="card feednewcard${e.read ? " isread" : ""}" data-feed-id="${e.id}">
-    ${a}<div class="pic" style="--card-ratio:${Wj}">${n}
+    ${a}<div class="pic" style="--card-ratio:${Uj}">${n}
       <div class="hovertools feednewtools">
         <button type="button" data-feed-action="${e.wanted ? "unwant" : "want"}" aria-pressed="${!!e.wanted}" title="${e.wanted ? "取消想要" : "想要"}" aria-label="想要 ${B(r)}">${z("star")}</button>
         <button type="button" data-feed-action="ignore" title="不想看" aria-label="不想看 ${B(r)}">${z("x")}</button>
@@ -81913,7 +81913,7 @@ function hze(e, t) {
 	});
 }
 function h5(e, t = "") {
-	let n = e && !e.error && e.items || [], r = t && n.length ? `<a class="feednewall" href="${B(t)}" style="--card-ratio:${Wj}"><span>查看全部新作</span>${z("chevron-right")}</a>` : "";
+	let n = e && !e.error && e.items || [], r = t && n.length ? `<a class="feednewall" href="${B(t)}" style="--card-ratio:${Uj}"><span>查看全部新作</span>${z("chevron-right")}</a>` : "";
 	return hze(e?.cover_network, n) + `<div class="feednewrow srow">${n.map(fze).join("")}${r}</div>`;
 }
 function g5(e) {
@@ -82020,13 +82020,13 @@ function w5() {
 }
 function T5(e, t, n = S7()) {
 	return pBe(n).map(([n, r]) => {
-		let i = e === n, a = mj(n, e, t);
+		let i = e === n, a = pj(n, e, t);
 		return {
 			key: n,
 			label: r,
 			pressed: i,
-			dir: i && fj(n, t) ? t === "asc" ? "asc" : "desc" : "",
-			ariaLabel: a ? `按${r}${a.dir ? fj(a.sort, a.dir) : ""}排序` : ""
+			dir: i && dj(n, t) ? t === "asc" ? "asc" : "desc" : "",
+			ariaLabel: a ? `按${r}${a.dir ? dj(a.sort, a.dir) : ""}排序` : ""
 		};
 	});
 }
@@ -82047,7 +82047,7 @@ function O5() {
 	x5.photos.sync();
 }
 function k5() {
-	D5() ? Due(Xj()) : lM();
+	D5() ? Oue(Yj()) : cM();
 }
 function xze(e) {
 	x5.photos.setSize(e);
@@ -82155,12 +82155,12 @@ function N5(e, t) {
 	let n = ["performer", "studio"].includes(e) && l5.hasEntityPart(e, t, "jav"), r = `<div data-filter-row="bottom" class="flex min-w-0 items-center gap-3 px-3 py-2 min-h-12"><h3 data-entity-readout><span data-skeleton="count" class="relative inline-block h-3.5 w-24 rounded-md align-middle skeleton-sheen"></span></h3>${Es()}${e === "agency" ? "" : K0(T5(W.sort, W.dir, n), n ? {
 		name: "jav-layout",
 		label: "JAV 卡片版式",
-		value: Kj(),
-		options: Vj
+		value: Gj(),
+		options: Bj
 	} : null)}</div>`, i = e === "agency" ? "" : `<div data-entity-media><button type="button" data-media-view="videos" aria-label="视频" aria-pressed="true" ${W0}>${z("play")}</button><button type="button" data-media-view="photos" data-media-icon="image" aria-label="照片" ${W0}>${z("pics")}</button></div><span data-entity-sep></span><div data-entity-scroll><div data-entity-states>${X.catalogViews().map((e) => `<button type="button" data-entity-state="${B(e.k)}" aria-pressed="${W.state === e.k}" ${W0}>${B(e.label)}</button>`).join("")}<span data-entity-sep></span></div>`, a = bze(e, r, e === "agency" ? sc({
 		kind: "performers",
 		layout: Y5.peopleIndexLayout()
-	}) : oY("正在读取作品", eM($j({
+	}) : oY("正在读取作品", $j(Qj({
 		active: n,
 		home: !1,
 		portrait: !1
@@ -82274,12 +82274,12 @@ function Oze() {
 			preferences: () => ({
 				revision: x5.entityPageRevision,
 				feedRevision: l5.feedRevision,
-				photoSize: Xj(),
-				photoLayout: Zj(),
-				photoLayouts: Uj,
+				photoSize: Yj(),
+				photoLayout: Xj(),
+				photoLayouts: Hj,
 				followImagesOnly: !!Z.appSettings.followImagesOnly,
-				javLayout: Kj(),
-				javLayouts: Vj,
+				javLayout: Gj(),
+				javLayouts: Bj,
 				states: X.VIEW_PILLS,
 				peopleLayout: Y5.peopleIndexLayout(),
 				layout: u9(),
@@ -82301,8 +82301,8 @@ function Oze() {
 				W.seed = e, ku();
 			},
 			setJavLayout: T7,
-			javLayout: Kj,
-			setPhotoLayout: nM,
+			javLayout: Gj,
+			setPhotoLayout: tM,
 			syncPhotoWalls: O5,
 			openEntity: I5,
 			photoViewActive: D5,
@@ -82327,15 +82327,15 @@ function Oze() {
 		},
 		photos: {
 			preferences: () => ({
-				size: Xj(),
-				layout: Zj(),
+				size: Yj(),
+				layout: Xj(),
 				imagesOnly: !!Z.appSettings.followImagesOnly
 			}),
 			walls: () => document.querySelectorAll(".followphotowall"),
 			pushEntity: C5,
 			pushFollow: N9,
 			syncDensity: k5,
-			storeSize: Tue
+			storeSize: Eue
 		},
 		helpers: x5.entityPageHelpers,
 		actions: {
@@ -82736,8 +82736,8 @@ function Uze() {
 		junk: Vze,
 		clear: () => K5(!1, !0)
 	}, r5.handler(R("#density"), "onclick", () => {
-		D5() ? xze(Xj() === "big" ? "small" : "big") : Eue();
-	}), lM(), Il({
+		D5() ? xze(Yj() === "big" ? "small" : "big") : Due();
+	}), cM(), Il({
 		selecting: () => iu,
 		censored: () => g9(),
 		delaySeconds: () => Z.appSettings.hoverDelaySeconds
@@ -82883,7 +82883,7 @@ function nBe() {
 		cards: !0,
 		className: "follow-content-skeleton postercard-skeleton",
 		gridClass: e === "images" ? "followlist followphotowall" : "",
-		gridSize: Xj()
+		gridSize: Yj()
 	}), $.followSkeletonHtml = (e = "正在读取关注内容") => `<div class="peach-react"><div class="follow" data-follow-feed>
   <div data-follow-head><h2 data-follow-title>关注</h2></div>
   <div class="tier followauthors" data-skeleton-tier="av"></div>
@@ -83086,7 +83086,7 @@ async function uBe() {
 	} catch {
 		return;
 	}
-	e.isActive && Ij(t, (e) => Z.settingsEffects[e]?.());
+	e.isActive && Fj(t, (e) => Z.settingsEffects[e]?.());
 }
 function m7() {
 	return Q.routeMeta(decodeURIComponent(location.pathname))?.route.section || (W.state === "ads" ? "cleanup" : "");
@@ -83109,10 +83109,10 @@ function g7(e = m7()) {
 	let t = dBe(e), n = L8();
 	if (n) n.render(t);
 	else {
-		let e = Ufe(t);
+		let e = Wfe(t);
 		e !== i7.manageHeaderSkeleton && (i7.manageHeaderSkeleton = e, i7.manageHeaderRoot().innerHTML = e);
 	}
-	let r = xF(t)?.title || "";
+	let r = bF(t)?.title || "";
 	r !== i7.lastManagePageLabel && (i7.lastManagePageLabel = r, r && nc(i7.manageHeaderRoot(), "[data-manage-title],[data-manage-lede]"));
 }
 function fBe() {
@@ -83178,20 +83178,20 @@ function S7() {
 	return e === "/" ? W.jav === "1" : e.startsWith("/performers/") || e.startsWith("/studios/") ? W.jav === "1" || xu : !1;
 }
 function pBe(e = S7()) {
-	let t = sj.filter(([e]) => e !== "seed");
-	return e ? [cj, ...t] : t;
+	let t = oj.filter(([e]) => e !== "seed");
+	return e ? [sj, ...t] : t;
 }
 function C7() {
 	return decodeURIComponent(location.pathname) === "/" && W.jav !== "1";
 }
 function w7() {
-	return qj(C7());
+	return Kj(C7());
 }
 function mBe(e) {
-	Cue(e), E7(), R("#grid").hidden || p9();
+	wue(e), E7(), R("#grid").hidden || p9();
 }
 function T7(e) {
-	tM(e), E7(), p9();
+	eM(e), E7(), p9();
 }
 function E7() {
 	document.querySelectorAll("[data-video-layout]").forEach((e) => {
@@ -83199,7 +83199,7 @@ function E7() {
 	}), X.catalogFilterProps && U7({ layout: G7() });
 }
 function hBe(e) {
-	wue(e), E7(), p9();
+	Tue(e), E7(), p9();
 }
 async function D7() {
 	Y8(), X.mixRelatedCache.clear(), await Promise.all([O7(), Z7()]);
@@ -83294,7 +83294,7 @@ function vBe() {
 		provider: [...$.followProviders][0] || "",
 		dur_min: $.followDurMin || "",
 		dur_max: $.followDurMax || ""
-	}), r5.handler(R("#filterBtn"), "onclick", () => d7(!R("#drawer").classList.contains("open"))), i7.SIDEBAR_ITEMS = ZA, i7.MANAGE_SECTIONS = QA, i7.MANAGE_MENU_SECTIONS = $A, i7.manageMenuSections = () => $le(_u === !0, Z.appSettings.manageOrder), i7.OPTIONAL_SIDEBAR_ITEMS = tj, i7.NAV_CATALOG = eue, i7.DIRECT_MANAGE_NAV = tue, i7.settingsHost = () => ({
+	}), r5.handler(R("#filterBtn"), "onclick", () => d7(!R("#drawer").classList.contains("open"))), i7.SIDEBAR_ITEMS = XA, i7.MANAGE_SECTIONS = ZA, i7.MANAGE_MENU_SECTIONS = QA, i7.manageMenuSections = () => eue(_u === !0, Z.appSettings.manageOrder), i7.OPTIONAL_SIDEBAR_ITEMS = ej, i7.NAV_CATALOG = tue, i7.DIRECT_MANAGE_NAV = nue, i7.settingsHost = () => ({
 		selectSection: (e) => Vp(Hf(e), {
 			replace: !0,
 			state: G.navigation.location.state
@@ -83304,8 +83304,8 @@ function vBe() {
 		changed: (e) => Z.settingsEffects[e]?.(),
 		sound: (e) => Qo(e),
 		navCatalog: i7.NAV_CATALOG,
-		themeOptions: vue,
-		videoLayouts: Vj,
+		themeOptions: yue,
+		videoLayouts: Bj,
 		followInitialRanges: Q8,
 		videoLayout: () => w7(),
 		setVideoLayout: hBe,
@@ -83317,7 +83317,7 @@ function vBe() {
 		setHighContrast: WBe,
 		receipt: (e) => U8.actionReceipt(e),
 		failure: U8.actionFailure,
-		syncRemote: (e) => Ij(e, (e) => Z.settingsEffects[e]?.()),
+		syncRemote: (e) => Fj(e, (e) => Z.settingsEffects[e]?.()),
 		openConfiguration: () => Q.navigatePath("/settings/library"),
 		attached: () => Z.syncGlassOptics(),
 		configurable: () => wn("/healthz").then((e) => (Ou({ runtimeConfigurable: !!e.configurable }), _u)).catch(() => null)
@@ -83436,7 +83436,7 @@ async function wBe(e, t) {
 	}
 }
 async function TBe(e, t, n, r) {
-	let i = Number(e.rating) || 0, a = XN(i, t), o = async (t, r) => {
+	let i = Number(e.rating) || 0, a = YN(i, t), o = async (t, r) => {
 		let i = (await wn("/api/feedback", {
 			method: "POST",
 			body: JSON.stringify({
@@ -83450,7 +83450,7 @@ async function TBe(e, t, n, r) {
 	};
 	try {
 		let e = await o(a, r);
-		U8.actionReceipt(e ? `已评 ${YN(e)} 星` : "已取消评分", { undo: () => o(i) });
+		U8.actionReceipt(e ? `已评 ${JN(e)} 星` : "已取消评分", { undo: () => o(i) });
 	} catch (e) {
 		throw r?.aborted || U8.actionFailure("评分", e), e;
 	}
@@ -83568,7 +83568,7 @@ function W7() {
 			e.tag = "", e.creator = "", e.studio = "", e.owner = "";
 		}),
 		setSort: (e) => {
-			let t = mj(e, W.sort, W.dir);
+			let t = pj(e, W.sort, W.dir);
 			t && (W.sort = t.sort, W.dir = t.dir, ku(), h9());
 		},
 		reshuffle: () => zBe(),
@@ -83587,13 +83587,13 @@ function G7() {
 	return S7() ? {
 		name: "jav-layout",
 		label: "JAV 卡片版式",
-		value: Kj(),
-		options: Vj
+		value: Gj(),
+		options: Bj
 	} : C7() ? {
 		name: "home-layout",
 		label: "首页卡片版式",
 		value: w7(),
-		options: Vj
+		options: Bj
 	} : null;
 }
 function K7() {
@@ -83823,7 +83823,7 @@ function l9(e, t, n, r = {}) {
 }
 function u9() {
 	let e = C7();
-	return $j({
+	return Qj({
 		active: S7() || e,
 		home: e,
 		portrait: W.orient === "竖屏"
@@ -83833,7 +83833,7 @@ function d9(e = "正在读取作品") {
 	return oY(e, f9());
 }
 function f9() {
-	return W ? eM(u9()) : 16 / 9;
+	return W ? $j(u9()) : 16 / 9;
 }
 function p9() {
 	s9() && (Rl(R("#grid")), c9({
@@ -84192,26 +84192,26 @@ function qBe() {
 		local: "无法读取媒体目录，请检查目录是否存在及读取权限。",
 		115: "无法读取 115 媒体目录，请检查目录权限及网盘挂载工具是否正常运行。",
 		pikpak: "无法读取 PikPak 媒体目录，请检查目录权限及网盘挂载工具是否正常运行。"
-	}, Z.offlineReason = (e) => Z.sourceProblems[e] || Z.OFFLINE_REASON[e] || "无法读取这个来源的媒体目录，请检查目录权限及挂载状态。", Z.settingsStore = Fj(), Z.appSettings = Z.settingsStore.value, Xt(Z.appSettings.performerNameLanguage), Z.saveSettings = () => Z.settingsStore.save(), document.documentElement.style.setProperty("--hover-delay", `${Z.appSettings.hoverDelaySeconds}s`), Zo(Z.appSettings.uiSounds), rs(), zj(), xue(), uM(), pM(), mM(), Z.catalogLoadWaiters = [], Z.nextCatalogLoad = () => new Promise((e) => Z.catalogLoadWaiters.push(e)), Z.handOff = (e) => (Z.catalogLoadWaiters.splice(0).forEach((t) => t(e)), e), Z.settingsEffects = {
+	}, Z.offlineReason = (e) => Z.sourceProblems[e] || Z.OFFLINE_REASON[e] || "无法读取这个来源的媒体目录，请检查目录权限及挂载状态。", Z.settingsStore = Pj(), Z.appSettings = Z.settingsStore.value, Xt(Z.appSettings.performerNameLanguage), Z.saveSettings = () => Z.settingsStore.save(), document.documentElement.style.setProperty("--hover-delay", `${Z.appSettings.hoverDelaySeconds}s`), Zo(Z.appSettings.uiSounds), rs(), Rj(), Sue(), lM(), fM(), pM(), Z.catalogLoadWaiters = [], Z.nextCatalogLoad = () => new Promise((e) => Z.catalogLoadWaiters.push(e)), Z.handOff = (e) => (Z.catalogLoadWaiters.splice(0).forEach((t) => t(e)), e), Z.settingsEffects = {
 		performerNameLanguage: () => {
 			Xt(Z.appSettings.performerNameLanguage), $5.syncPageTitle(location.href), X.barsRendered = "", Z7();
 		},
-		theme: () => zj(),
+		theme: () => Rj(),
 		uiSounds: () => {
 			Zo(Z.appSettings.uiSounds), Z.appSettings.uiSounds && Qo("toggle-on");
 		},
-		glowFrame: () => fM(),
+		glowFrame: () => dM(),
 		glow: () => {
-			fM(), pM();
+			dM(), fM();
 		},
 		batchSize: () => {
 			location.pathname === "/" && n9();
 		},
 		defaultSort: () => {
-			W.sort = Z.appSettings.defaultSort, W.dir = hj(W.sort, Z.appSettings.defaultSort, Z.appSettings.defaultSortDirection), ku(), location.pathname === "/" && h9();
+			W.sort = Z.appSettings.defaultSort, W.dir = mj(W.sort, Z.appSettings.defaultSort, Z.appSettings.defaultSortDirection), ku(), location.pathname === "/" && h9();
 		},
 		sortDirection: () => {
-			W.dir = hj(W.sort, Z.appSettings.defaultSort, Z.appSettings.defaultSortDirection), ku(), location.pathname === "/" && h9();
+			W.dir = mj(W.sort, Z.appSettings.defaultSort, Z.appSettings.defaultSortDirection), ku(), location.pathname === "/" && h9();
 		},
 		hoverDelay: () => {
 			Z.appSettings.hoverDelaySeconds || document.querySelectorAll("[data-previewing],[data-longhover]").forEach((e) => {
@@ -84766,7 +84766,7 @@ function bVe() {
 			Z.appSettings.followImagesOnly = !!e, Z.saveSettings(), O5();
 		},
 		setPhotoLayout: (e) => {
-			nM(e), O5();
+			tM(e), O5();
 		},
 		canFlip: () => !iu && !g9() && !window.__scrolling && !X.reduceMotion(),
 		toast: (e, { undo: t } = {}) => U8.actionReceipt(e, { undo: t }),
@@ -84809,8 +84809,8 @@ function xVe() {
 		preferences: () => ({
 			selectMode: iu,
 			selected: ru,
-			photoSize: Xj(),
-			photoLayout: Zj(),
+			photoSize: Yj(),
+			photoLayout: Xj(),
 			imagesOnly: !!Z.appSettings.followImagesOnly
 		}),
 		live: M9,
@@ -85184,19 +85184,19 @@ function FVe() {
 				return;
 			}
 			if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-				e.preventDefault(), BN(t, Z.appSettings.seekSeconds * (e.key === "ArrowRight" ? 1 : -1));
+				e.preventDefault(), zN(t, Z.appSettings.seekSeconds * (e.key === "ArrowRight" ? 1 : -1));
 				return;
 			}
 			if (e.key === " " || e.key === "k" || e.key === "K") {
-				e.preventDefault(), zN(t);
+				e.preventDefault(), RN(t);
 				return;
 			}
 			if (e.key === "m" || e.key === "M") {
-				e.preventDefault(), $M(t, ".vjs-mute-control");
+				e.preventDefault(), QM(t, ".vjs-mute-control");
 				return;
 			}
 			if (e.key === "f" || e.key === "F") {
-				e.preventDefault(), $M(t, ".vjs-fullscreen-control");
+				e.preventDefault(), QM(t, ".vjs-fullscreen-control");
 				return;
 			}
 			if (e.key === "i" || e.key === "I") {
@@ -85461,7 +85461,7 @@ function zVe() {
 			})), e.handler(l.querySelector("[data-library-manage]"), "onclick", () => {
 				u.setOpen(!1), d7(!1), B5("媒体库与入库");
 			});
-			let d = l.querySelector(".board-library-rows"), f = [...d.querySelectorAll("[data-library]")], m = Fj(), h = () => {
+			let d = l.querySelector(".board-library-rows"), f = [...d.querySelectorAll("[data-library]")], m = Pj(), h = () => {
 				aB(f, ["", ...m.value.libraryOrder], (e) => e.dataset.library).forEach((e) => d.append(e)), p(!1);
 			};
 			h(), e.own(m.subscribe(h)), e.listen(d, "pointerover", (e) => {
@@ -85479,13 +85479,13 @@ function zVe() {
 		let g = document.createElement("div");
 		g.className = "board-sidebar-foot", e.own(() => g.remove()), g.innerHTML = `<div class="board-theme-toggle" role="group" aria-label="明暗主题"><span class="board-theme-thumb" aria-hidden="true"></span><button type="button" data-board-theme="light" aria-label="浅色主题">${z("sun")}</button><button type="button" data-board-theme="dark" aria-label="深色主题">${z("moon")}</button></div>`, g.insertAdjacentHTML("beforeend", "<div class=\"board-foot-actions\"><button type=\"button\" class=\"board-glow-toggle\" id=\"boardGlowBtn\" aria-label=\"光晕配色\" aria-haspopup=\"dialog\" aria-expanded=\"false\" aria-controls=\"boardGlowMenu\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><use href=\"#ri-palette-line\"/></svg><span class=\"board-glow-mark\" aria-hidden=\"true\"><span class=\"board-glow-mark-glow\"></span><span class=\"board-glow-mark-accent\"></span></span></button></div>"), g.querySelector(".board-foot-actions").append(document.querySelector("#settingsBtn")), document.querySelector("#drawer").append(g), g.querySelectorAll("[data-board-theme]").forEach((t) => e.handler(t, "onclick", () => {
 			t.getAttribute("aria-pressed") !== "true" && RVe(t, () => {
-				Z.appSettings.theme = t.dataset.boardTheme, Z.saveSettings(), zj();
+				Z.appSettings.theme = t.dataset.boardTheme, Z.saveSettings(), Rj();
 			});
-		})), zj();
+		})), Rj();
 		let _ = document.createElement("div");
 		_.className = "popmenu board-glow-menu", _.id = "boardGlowMenu", _.hidden = !0, _.setAttribute("popover", "manual"), _.setAttribute("role", "dialog"), _.setAttribute("aria-label", "配色"), document.body.append(_), e.own(() => _.remove());
 		let v = g.querySelector("#boardGlowBtn"), y = fs(g, v, _);
-		e.own(y.dispose), e.own(Nue(v)), BRe({
+		e.own(y.dispose), e.own(Pue(v)), BRe({
 			root: _,
 			store: Z.settingsStore,
 			openDetails: () => {
@@ -86010,6 +86010,6 @@ O();
 var DHe = document.getElementById("appRoot");
 if (!DHe) throw Error("主界面宿主缺失");
 EHe(DHe);
-export { eL as $2ec61d1d4f780267$export$a8a3e93435678ff9, cL as $3a442827418ebe87$export$eb2fcfdbd7ba97d4, bR as $542a13ca2fa5b484$export$5b6b19405a83ff9d, gD as $72abaeab4d80592f$export$78efe591171d7d45, fz as $76d00c5a4edb230a$export$76ccd210b9029917, lz as $76d00c5a4edb230a$export$816b5d811295e6bc, hz as $76d00c5a4edb230a$export$b59bdbef9ce70de2, _z as $76d00c5a4edb230a$export$f6f0c3fe4ec306ea, cz as $76d00c5a4edb230a$export$f850895b287ef28e, nge as $b4f18e3395fe64d7$export$3d96ec278d3efce4, tge as $b4f18e3395fe64d7$export$3e41faf802a29e71, Qhe as $b4f18e3395fe64d7$export$b2539bed5023c21c, xz as $b4f18e3395fe64d7$export$e51a686c67fdaa2d, age as $bd263d78e9bf3c56$export$f5c9f3c2c4054eec, iE as $ea3928288112382f$export$439d29a4e110a164, NR as $f2ff30fde7b014be$export$3ddf2d174ce01153, BR as $fe21c36db05242bb$export$a98f0dcb43a68a25, VR as $fe21c36db05242bb$export$d7b12c4107be0d61, Rve as $l, Cj as ACCENTS, sMe as AMANE_BRIDGE_CHECK_URL, K$ as AMANE_BRIDGE_KEY, cMe as AMANE_BRIDGE_REBUILD_URL, or as ApiError, EW as ArtSlot, I2 as BATCH_DELETE_TEXT, Y as Button, Az as ButtonLink, NV as Bx, G$ as CHECK_ALL_KEY, p$ as CLEANUP_ENTRY, f$ as CLEANUP_ENTRY_GRID, ap as CLEANUP_HASH_REDIRECTS, rp as CLEANUP_TOOLS, _n as CLOUD_LOCATIONS, s0 as CLOUD_PROXY_HELP, Gr as COLUMN_SORT, u1 as CONFIGURATION_KEY, sX as CONFIGURATION_URL, lMe as COOKIE_TEXT_LIMIT, W$ as COVER_JOB_KEY, Al as COVER_STATE_TITLE, Yi as CREDENTIAL_STATE, z$ as CUSTOM_SOURCES_KEY, R$ as CUSTOM_SOURCES_URL, WG as CatalogViewToggle, wH as Checkbox, CH as CheckboxGlyph, jz as ChevronSortDown, dW as Chip, FW as CloudDownloadDialog, oU as CollapseChevron, aU as CollapseRegion, o$ as CollectionSummary, ebe as CommandSteps, bQ as CoverQueue, eDe as DEFAULT_CATEGORY, ur as DEFAULT_SORT, BQ as DIAGNOSTICS_KEY, HDe as DIRECTORY_TEMPLATE_ERROR, HW as DISCOVERY_SORTS, OW as DOWNLOADS_KEY, DW as DOWNLOADS_URL, DY as DUPLICATES_KEY, TW as DataTableFooter, sY as DataTableFrame, wW as DataTableSort, pU as Disclosure, lxe as DownloadsPanel, Eve as E3, tDe as ENTITY_REVIEW_KINDS, a0 as ENTRY_LINKS_HELP, o0 as ENTRY_LINKS_HINT, TV as Ea, hye as EmptyFocusButton, rH as EmptyState, uU as ErrorText, iye as Eu, fU as ExternalLink, Br as FEEDS_KEY, jF as FEED_SCHEDULE_KEY, u$ as FIELDSET_FOOT, RLe as FLOW_LABEL_X, g6 as FLOW_VIEWBOX, Rr as FOLLOW_CHECK_KEY, Lr as FOLLOW_CREDENTIALS_KEY, Q8 as FOLLOW_INITIAL_RANGE_OPTIONS, Ir as FOLLOW_MANAGE_KEY, RZ as FOLLOW_MANAGE_NAV, zr as FOLLOW_RESOLVE_KEY, AF as FOLLOW_SCHEDULE_KEY, rbe as Fact, nbe as FactList, dU as FieldLabel, D$ as Fieldset, E$ as FieldsetTitle, cve as FilterGlass, eV as FilterGlassRows, $B as FilterIconButton, tV as FilterPill, $ye as Footer, AV as Gg, nV as GlassPill, LV as HN, lU as Help, GV as HintText, ALe as IDLE_POLL_MS, HEe as IDLE_REPAIR, XB as IconButton, HQ as IndexSearch, XV as Input, YV as InputBase, k$ as IssueRow, Vj as JAV_LAYOUTS, e2 as JAV_RECOMMENDATION_GRID, X8 as JAV_SELECTION_EVENT, kX as JUNK_KEY, tG as JavHeader, IEe as KEEP_LABELS, pve as L1, Hr as LAYOUTS, i0 as LIBRARY_FOLDER_HELP, DH as LIBRARY_PROCESSING_KEY, $Y as LINKS_KEY, eX as LINK_CHECK_KEY, TDe as LINK_KINDS, tX as LINK_PRUNE_KEY, tr as LOC, WV as Label, P$ as LibraryProcessingCard, _H as LibraryShortcuts, UH as LinkButton, Bve as Lo, eU as LoadingDots, Ove as M6, Gfe as MEDIA_PROCESSING_KEY, NF as MEDIA_PROCESSING_URL, MY as MEDIA_REPAIR_KEY, jY as MEDIA_REPAIR_URL, vr as MEDIA_SOURCES_KEY, _s as MEDIA_SOURCE_ICONS, hn as MEDIA_SOURCE_OPTIONS, Dz as MENU_ITEM, Oz as MENU_ITEM_INTERACTIVE, Ez as MENU_POPOVER_SURFACE, Hve as Ma, $z as MenuDialog, zK as MixCard, ZV as ModalFrame, hx as MotionConfigContext, VV as NR, O$ as NameLink, $V as Note, HV as OA, lX as ORGANIZE_KEY, N2 as ORGANIZE_PARAMETER_HINT, M2 as ORGANIZE_SCOPE_HINT, j2 as ORGANIZE_TEXT, fX as ORPHAN_RECORDS_KEY, F2 as ORPHAN_RECORDS_TEXT, OV, nH as ObjectOrderDialog, pV as P7, EX as PERFORMER_DELETE_KEY, vxe as PHASES, cX as PICK_FOLDER_URL, h$ as PLAIN_STAT_STRIP, I$ as PLAYLISTS_KEY, wNe as POLICY_COLUMNS, ENe as POLICY_COVER_NOTE, TNe as POLICY_MATRIX, r0 as POLICY_SUMMARY, A$ as PathLine, zV as Pf, Mje as PlainStat, ZH as ProcessingMode, nU as Progress, LY as QUALITY_GOALS_KEY, RV as RB, Z0 as RELEASE_COLUMN_VISIBILITY_KEY, X0 as RELEASE_COLUMN_WIDTHS_KEY, pW as RELEASE_NOTICE_EVENT, ZW as RELEASE_PAGE_SIZES, UW as RELEASE_SORTS, ePe as RELEASE_SORT_COLUMNS, RQ as REPAIRS_KEY, _$ as REPAIR_CARD_TEXT, LQ as REPAIR_CENTER_INTRO, If as REPAIR_CENTER_PATH, NY as REPAIR_LIBRARIES_KEY, _X as RESOURCE_APPLY_KEY, gX as RESOURCE_SCAN_KEY, P2 as RESOURCE_SYNC_TEXT, w$ as RESULT_PANEL, T$ as RESULT_SECTION, $Ee as REVIEW_CATEGORIES, OX as REVIEW_COUNTS_KEY, nDe as REVIEW_DECISION_LABELS, BY as REVIEW_KEY, VY as REVIEW_LABELS, UY as REVIEW_QUEUES, WY as REVIEW_QUEUE_LABELS, yK as RetryNote, cye as Rf, UV as Rk, Xye as Rows, V$ as SCRAPING_CHECK_ALL_URL, aMe as SCRAPING_CHECK_URL, H$ as SCRAPING_COVER_URL, U$ as SCRAPING_KEY, iMe as SCRAPING_SETTINGS_URL, NU as SEGMENT, MU as SEGMENTED_TRACK, kF as SETTINGS_KEY, TF as SETTINGS_URL, dr as SORT_DEFAULT_DIR, lr as SORT_OPTIONS, vn as SOURCE_LABELS, V3 as STATS_KEY, Aje as STAT_STRIP, jje as STAT_STRIP_SIX, Yye as Section, Ije as SectionHeading, Qye as SectionSkeleton, jU as SegmentedRadioGroup, vbe as SegmentedTabList, fK as Segments, xW as Select, Nz as Select$1, m1 as SelectField, Pz as SelectItem, mY as SelectionActions, GA as SelectionDock, hY as SelectionPopover, sU as SettingsCard, Jye as SettingsRow, cU as SettingsSectionLabel, pK as Shuffle, sbe as SiteLabel, CW as SortDirectionIcon, mK as SortKeys, wB as SortableBoardTabs, vQ as SourceAvatar, _U as SourceLabel, mU as SourceMark, Zye as Stack, Nje as StatCard, fW as StatusLabel, aye as Su, y4 as Switch, NB as TASKS_KEY, yLe as TASTE_REFRESH_KEY, bLe as TASTE_WINDOWS, MF as THUMBNAIL_JOBS_KEY, jX as TRASH_KEY, V_e as TRIGGER_LABELS, XJ as Table, gY as TableColumnControls, _Y as TableColumnResizer, yY as TableSelectionHeader, rje as TagManager, tbe as TaskCenterLink, rU as TaskProgress, qV as TextField, KV as TextFieldContext, EV as Un, lye as Uz, LW as WANTS_KEY, P4 as WantMagnets, Jg as WithPromise, _V as Wt, wV as Xc, BV as Xf, yV as Xl, vV as Xt, hV as _8, o as __commonJSMin, s as __exportAll, l as __toESM, IV as _p, sye as aB, Ti as addAlias, wi as addSource, zW as addWant, iS as animate, V as apiGet, H as apiSend, Fj as appSettingsStore, sOe as applyConfirmText, TX as applyLeftovers, oOe as applyPlanText, lOe as applyText, zj as applyTheme, yy as asNumber, YDe as attachOrphan, si as authorAvatar, li as authorGroups, oi as authorInitial, ai as authorName, Rq as autoResetPageIndex, _o as avatarInner, q3 as bandRows, UDe as baseName, VEe as batchOperate, Sde as beginPlayerGuidePreview, XA as boundedPreference, REe as bulkCloudPreferences, eH as busyProps, oye as cB, JFe as cachedMagnetStates, Wg as calcGeneratorVelocity, lDe as canApprove, yg as cancelFrame, eOe as candidateText, ZU as cardClass, eM as cardRatio, iY as catalogListSkeletonCellHtml, CV as cc, Gi as checkEvidenceGap, Wi as checkFailures, Pi as checkFeeds, kDe as checkLine, Hi as checkReceipt, Ui as checkSummary, dMe as checkText, Ki as checkedText, EK as clickedBlank, f7 as closeDrawerAfterNav, kEe as cloudLocations, R0 as cloudProxySkeleton, LC as clsx, Gve as cn, cv as collectMotionValues, iJ as columnVisibilityFeature, GJ as column_getCanSort, VJ as column_getSortFn, sDe as commonReviewSources, PW as composingKey, Rf as configurationSection, wLe as configureTasteBrowser, ul as confirmModal, R_e as controlTask, bq as copyInstancePropertiesWithoutMemos, kxe as coverArrived, Dxe as coverFetching, Ml as coverFetchingHtml, jl as coverStateAction, lo as coverUrl, Yq as createColumnHelper, Xje as createPlaylist, Xi as credentialDone, P0 as credentialsSkeleton, vDe as currentReviewRow, J as cx, kve as d6, MV as dZ, hDe as decisionPayload, gDe as decisionReceipt, mDe as defaultChoice, dOe as deletePerformerVideos, Qje as deletePlaylist, H0 as devicesSkeleton, x as diagnosticHeaders, n0 as diagnosticsSkeleton, Axe as discoveryArtwork, YW as discoveryKey, wxe as discoveryScore, y9 as disposeStage, PEe as distinctName, Bi as dropSources, rye as du, zEe as duplicateVictims, VB as elapsedText, tn as entityDisplayName, go as entityFaceImg, Nn as entityPath, ei as errorHeadline, cr as errorMessage, B as esc, Lq as expandRowModel, oV as f1, bo as facePos, $r as feedIntervalText, X$ as fetchAmaneBridge, Y$ as fetchCheckAllJob, _i as fetchCheckJob, d1 as fetchConfiguration, J$ as fetchCoverJob, JW as fetchCoverNow, gi as fetchCredentials, B$ as fetchCustomSources, DX as fetchDeletePerformers, uOe as fetchDeletePlan, VQ as fetchDiagnostics, XW as fetchDiscoveries, kY as fetchDuplicates, Jfe as fetchFeedSchedule, ji as fetchFeeds, hi as fetchFollow, qfe as fetchFollowSchedule, NX as fetchJunkSummary, FH as fetchLibraryProcessing, iX as fetchLinkCheck, aX as fetchLinkPrune, rX as fetchLinkStats, Kfe as fetchMediaProcessing, PY as fetchMediaRepair, yr as fetchMediaSources, uX as fetchOrganize, FDe as fetchOrganizeExample, pX as fetchOrphanRecords, Ai as fetchPending, $je as fetchPlaylist, L$ as fetchPlaylists, RY as fetchQualityGoals, eG as fetchReleases, FY as fetchRepairLibraries, zQ as fetchRepairs, vi as fetchResolveJob, yX as fetchResourceApply, vX as fetchResourceScan, XY as fetchReview, MX as fetchReviewCounts, PF as fetchSettings, q$ as fetchSources, H3 as fetchStats, yi as fetchSuggestions, IB as fetchTasks, p6 as fetchTaste, TLe as fetchTasteJob, Yfe as fetchThumbnailJobs, PX as fetchTrashSummary, RW as fetchWants, aDe as filterReviewRows, $n as firstGrapheme, nq as flexRender, BLe as flowGraph, VLe as flowLabel, zIe as fmtCount, qn as fmtDur, Yn as fmtSize, P_e as foldByKind, Z_e as foldRoutine, Ii as followFeedByName, Li as followFeedEntity, Vr as followSuggestKey, $_e as followupDetail, N_e as followupTally, vg as frame, dV as g4, sJ as getDefaultPaginationState, $j as gridLayout, ci as groupByAuthor, X_e as groupFollowups, qY as groupReviewRows, iOe as hasChanges, bX as hasResourceRoots, RB as hasResultProblems, jLe as historySpan, sV as i2, kLe as importTasteExport, F0 as indexersSkeleton, Bg as interpolate, VW as invalidateWants, BB as isActive, Qr as isBroken, Kr as isLayout, yv as isMotionValue, HY as isReviewCategory, Q_e as isRoutine, I0 as javBrowserSkeleton, n2 as javContentSkeleton, Kj as javLayout, t2 as javTagSkeleton, gOe as junkBreakdown, jEe as keepGroup, tMe as keepPlaylist, Oe as keepPreviousData, fi as keepSelected, U3 as known, fve as l1, xve as l7, Y_e as latestOfKind, Qn as leadingGraphemes, ZIe as lengthRows, Sr as localTime, po as logoUrl, Fi as lookupFeedActor, fV as m7, jV as mM, En as mapLimit, ki as markItem, J3 as max, YIe as mediumRows, Y3 as min, CDe as mirrorText, GEe as missingToolText, AY as mixedCloudPreferences, GB as momentText, aS as motion, uv as motionValue, nn as nameFallback, He as notifyManager, Ave as oe, GDe as organizeOutcome, y2 as overlayHost, qr as pageSizeOf, di as pageWindow, zi as patchSource, G as peachHistory, G as peachHistory$1, pDe as pendingGenres, VIe as percentText, RDe as pickOrganizeFolder, m$ as plainStatClass, WDe as planSummary, W3 as playedFor, UIe as playedItemUrl, F_e as pollInterval, Xs as popCount, Yje as posterUrl, i_e as previewLibraryColor, LDe as previewOrganize, JEe as previewUrl, q_e as problemDestination, AH as processingActive, HB as progressText, gU as providerIcon, ODe as pruneText, SX as purgeCount, XDe as purgeOrphan, PV as pv, nye as qE, U as queryClient, cV as r2, LLe as radarRows, KIe as radialArc, qIe as radialBarSize, GIe as radialCeiling, WIe as radialSlices, _N as randomId, FLe as rankDetail, ILe as rankShares, K3 as reachedShare, UB as readableErrorHeadline, Txe as recommendationScore, yDe as recordGenre, QDe as recordsText, nMe as recreatePlaylist, qje as refreshPlaylists, Dl as relayoutCovers, Q0 as releaseColumns, QW as releaseFilters, $W as releaseKey, Vi as reloadFollowManage, SDe as reloadReview, kNe as rememberShape, BDe as rememberTemplates, Ei as removeAlias, Ni as removeFeed, Ci as removeSource, OLe as removeTasteSource, BW as removeWants, Di as renameAliasGroup, Zje as renamePlaylist, eMe as reorderPlaylist, s2 as repairCenterPanelSkeleton, xe as replaceEqualDeep, $Ie as replayRows, ne as require_jsx_runtime, A as require_react, N as require_react_dom, gq as require_with_selector, xxe as resetWants, pr as resolveFollowSort, qg as resolveStartTime, Mye as restartEffectText, Jje as resumeAssetId, iDe as reviewGroupingOptions, KY as reviewQueueData, GY as reviewQueueOf, hOe as reviewSummary, oDe as reviewWindow, dDe as rowEvidence, YY as rowFieldName, mJ as rowPaginationFeature, FJ as rowSelectionFeature, JJ as rowSortingFeature, JY as rowSubject, fDe as rowTags, uDe as rowTitle, vve as s5, Oi as saveCredential, aOe as scanLine, epe as schedulePollInterval, Cxe as searchNote, zY as selectRange, cDe as selectReviewRange, pi as selectionState, YEe as selectionSummary, Mi as setFeedEnabled, Si as setSourceEnabled, z_e as setTaskSpeed, Hf as settingsPath, xDe as settleReviewRows, NEe as sharedNamePrefix, Vp as shellNavigate, H8 as showToast, Zz as showToast$1, zn as siteMarkUrl, Oq as skipFirstRun, AI as sortCx, Yr as sortLabel, yn as sourceDefaultCost, Ji as sourceIconUrl, cOe as sourceMeta, Vs as spinnerHtml, Rg as spring, tB as spriteGlyph, bi as startCheck, EDe as startLinkCheck, DDe as startLinkPrune, zDe as startOrganize, xi as startResolve, nOe as startResourceApply, tOe as startResourceScan, DLe as startTasteRefresh, kje as statCardClass, U_e as statusLabel, WEe as statusLine, Zr as statusText, tM as storeJavLayout, _De as submitDecision, KB as summaryItems, DK as suppressShiftTextSelection, Xq as tableFeatures, kq as tableMemo, ui as tableRows, K_e as taskIssues, J_e as taskSubject, m6 as tasteDate, NLe as tasteDimensions, MLe as tasteHours, f6 as tasteKey, SLe as tasteRefetchInterval, CLe as tasteTime, OB as textLang, Y0 as tierPlaceholdersHtml, hh as time, Ive as tl, mi as toggleGroup, h6 as topScores, qve as um, Vve as uo, tH as useAction, NZ as useBackgroundJob, UG as useCatalogView, lW as useClientUpdates, Dm as useConstant, qB as useEntityNames, Om as useIsomorphicLayoutEffect, vB as useLibraryTints, Ft as useMutation, yB as useNavigationOrder, j$ as useOrderedLibraries, TH as useOverlayScrollbar, Pt as useQuery, ie as useQueryClient, qx as useReducedMotion, $fe as useRunSchedule, Zfe as useSaveFollowSchedule, FF as useSaveSettings, tpe as useSaveThumbnailMode, YJ as useTable, uY as useTablePreferences, aV as useViewGlide, BEe as victimBytes, Lve as vl, Sxe as wantName, HIe as watchNote, G3 as watchedShare, jve as we, jc as wireHorizontalScroller, VDe as withOrganizeJob, Exe as writeJavQuery, Dve as z3 };
+export { $I as $2ec61d1d4f780267$export$a8a3e93435678ff9, sL as $3a442827418ebe87$export$eb2fcfdbd7ba97d4, bR as $542a13ca2fa5b484$export$5b6b19405a83ff9d, gD as $72abaeab4d80592f$export$78efe591171d7d45, fz as $76d00c5a4edb230a$export$76ccd210b9029917, lz as $76d00c5a4edb230a$export$816b5d811295e6bc, hz as $76d00c5a4edb230a$export$b59bdbef9ce70de2, _z as $76d00c5a4edb230a$export$f6f0c3fe4ec306ea, cz as $76d00c5a4edb230a$export$f850895b287ef28e, nge as $b4f18e3395fe64d7$export$3d96ec278d3efce4, tge as $b4f18e3395fe64d7$export$3e41faf802a29e71, Qhe as $b4f18e3395fe64d7$export$b2539bed5023c21c, xz as $b4f18e3395fe64d7$export$e51a686c67fdaa2d, age as $bd263d78e9bf3c56$export$f5c9f3c2c4054eec, iE as $ea3928288112382f$export$439d29a4e110a164, NR as $f2ff30fde7b014be$export$3ddf2d174ce01153, BR as $fe21c36db05242bb$export$a98f0dcb43a68a25, VR as $fe21c36db05242bb$export$d7b12c4107be0d61, Rve as $l, Sj as ACCENTS, sMe as AMANE_BRIDGE_CHECK_URL, K$ as AMANE_BRIDGE_KEY, cMe as AMANE_BRIDGE_REBUILD_URL, or as ApiError, EW as ArtSlot, I2 as BATCH_DELETE_TEXT, Y as Button, Az as ButtonLink, NV as Bx, G$ as CHECK_ALL_KEY, p$ as CLEANUP_ENTRY, f$ as CLEANUP_ENTRY_GRID, ap as CLEANUP_HASH_REDIRECTS, rp as CLEANUP_TOOLS, _n as CLOUD_LOCATIONS, s0 as CLOUD_PROXY_HELP, Gr as COLUMN_SORT, u1 as CONFIGURATION_KEY, sX as CONFIGURATION_URL, lMe as COOKIE_TEXT_LIMIT, W$ as COVER_JOB_KEY, Al as COVER_STATE_TITLE, Yi as CREDENTIAL_STATE, z$ as CUSTOM_SOURCES_KEY, R$ as CUSTOM_SOURCES_URL, WG as CatalogViewToggle, wH as Checkbox, CH as CheckboxGlyph, jz as ChevronSortDown, dW as Chip, FW as CloudDownloadDialog, oU as CollapseChevron, aU as CollapseRegion, o$ as CollectionSummary, ebe as CommandSteps, bQ as CoverQueue, eDe as DEFAULT_CATEGORY, ur as DEFAULT_SORT, BQ as DIAGNOSTICS_KEY, HDe as DIRECTORY_TEMPLATE_ERROR, HW as DISCOVERY_SORTS, OW as DOWNLOADS_KEY, DW as DOWNLOADS_URL, DY as DUPLICATES_KEY, TW as DataTableFooter, sY as DataTableFrame, wW as DataTableSort, pU as Disclosure, lxe as DownloadsPanel, Eve as E3, tDe as ENTITY_REVIEW_KINDS, a0 as ENTRY_LINKS_HELP, o0 as ENTRY_LINKS_HINT, TV as Ea, hye as EmptyFocusButton, rH as EmptyState, uU as ErrorText, iye as Eu, fU as ExternalLink, Br as FEEDS_KEY, AF as FEED_SCHEDULE_KEY, u$ as FIELDSET_FOOT, RLe as FLOW_LABEL_X, g6 as FLOW_VIEWBOX, Rr as FOLLOW_CHECK_KEY, Lr as FOLLOW_CREDENTIALS_KEY, Q8 as FOLLOW_INITIAL_RANGE_OPTIONS, Ir as FOLLOW_MANAGE_KEY, RZ as FOLLOW_MANAGE_NAV, zr as FOLLOW_RESOLVE_KEY, kF as FOLLOW_SCHEDULE_KEY, rbe as Fact, nbe as FactList, dU as FieldLabel, D$ as Fieldset, E$ as FieldsetTitle, cve as FilterGlass, eV as FilterGlassRows, $B as FilterIconButton, tV as FilterPill, $ye as Footer, AV as Gg, nV as GlassPill, LV as HN, lU as Help, GV as HintText, ALe as IDLE_POLL_MS, HEe as IDLE_REPAIR, XB as IconButton, HQ as IndexSearch, XV as Input, YV as InputBase, k$ as IssueRow, Bj as JAV_LAYOUTS, e2 as JAV_RECOMMENDATION_GRID, X8 as JAV_SELECTION_EVENT, kX as JUNK_KEY, tG as JavHeader, IEe as KEEP_LABELS, pve as L1, Hr as LAYOUTS, i0 as LIBRARY_FOLDER_HELP, DH as LIBRARY_PROCESSING_KEY, $Y as LINKS_KEY, eX as LINK_CHECK_KEY, TDe as LINK_KINDS, tX as LINK_PRUNE_KEY, tr as LOC, WV as Label, P$ as LibraryProcessingCard, _H as LibraryShortcuts, UH as LinkButton, Bve as Lo, eU as LoadingDots, Ove as M6, Kfe as MEDIA_PROCESSING_KEY, MF as MEDIA_PROCESSING_URL, MY as MEDIA_REPAIR_KEY, jY as MEDIA_REPAIR_URL, vr as MEDIA_SOURCES_KEY, _s as MEDIA_SOURCE_ICONS, hn as MEDIA_SOURCE_OPTIONS, Dz as MENU_ITEM, Oz as MENU_ITEM_INTERACTIVE, Ez as MENU_POPOVER_SURFACE, Hve as Ma, $z as MenuDialog, zK as MixCard, ZV as ModalFrame, hx as MotionConfigContext, VV as NR, O$ as NameLink, $V as Note, HV as OA, lX as ORGANIZE_KEY, N2 as ORGANIZE_PARAMETER_HINT, M2 as ORGANIZE_SCOPE_HINT, j2 as ORGANIZE_TEXT, fX as ORPHAN_RECORDS_KEY, F2 as ORPHAN_RECORDS_TEXT, OV, nH as ObjectOrderDialog, pV as P7, EX as PERFORMER_DELETE_KEY, vxe as PHASES, cX as PICK_FOLDER_URL, h$ as PLAIN_STAT_STRIP, I$ as PLAYLISTS_KEY, wNe as POLICY_COLUMNS, ENe as POLICY_COVER_NOTE, TNe as POLICY_MATRIX, r0 as POLICY_SUMMARY, A$ as PathLine, zV as Pf, Mje as PlainStat, ZH as ProcessingMode, nU as Progress, LY as QUALITY_GOALS_KEY, RV as RB, Z0 as RELEASE_COLUMN_VISIBILITY_KEY, X0 as RELEASE_COLUMN_WIDTHS_KEY, pW as RELEASE_NOTICE_EVENT, ZW as RELEASE_PAGE_SIZES, UW as RELEASE_SORTS, ePe as RELEASE_SORT_COLUMNS, RQ as REPAIRS_KEY, _$ as REPAIR_CARD_TEXT, LQ as REPAIR_CENTER_INTRO, If as REPAIR_CENTER_PATH, NY as REPAIR_LIBRARIES_KEY, _X as RESOURCE_APPLY_KEY, gX as RESOURCE_SCAN_KEY, P2 as RESOURCE_SYNC_TEXT, w$ as RESULT_PANEL, T$ as RESULT_SECTION, $Ee as REVIEW_CATEGORIES, OX as REVIEW_COUNTS_KEY, nDe as REVIEW_DECISION_LABELS, BY as REVIEW_KEY, VY as REVIEW_LABELS, UY as REVIEW_QUEUES, WY as REVIEW_QUEUE_LABELS, yK as RetryNote, cye as Rf, UV as Rk, Xye as Rows, V$ as SCRAPING_CHECK_ALL_URL, aMe as SCRAPING_CHECK_URL, H$ as SCRAPING_COVER_URL, U$ as SCRAPING_KEY, iMe as SCRAPING_SETTINGS_URL, NU as SEGMENT, MU as SEGMENTED_TRACK, OF as SETTINGS_KEY, wF as SETTINGS_URL, dr as SORT_DEFAULT_DIR, lr as SORT_OPTIONS, vn as SOURCE_LABELS, V3 as STATS_KEY, Aje as STAT_STRIP, jje as STAT_STRIP_SIX, Yye as Section, Ije as SectionHeading, Qye as SectionSkeleton, jU as SegmentedRadioGroup, vbe as SegmentedTabList, fK as Segments, xW as Select, Nz as Select$1, m1 as SelectField, Pz as SelectItem, mY as SelectionActions, WA as SelectionDock, hY as SelectionPopover, sU as SettingsCard, Jye as SettingsRow, cU as SettingsSectionLabel, pK as Shuffle, sbe as SiteLabel, CW as SortDirectionIcon, mK as SortKeys, wB as SortableBoardTabs, vQ as SourceAvatar, _U as SourceLabel, mU as SourceMark, Zye as Stack, Nje as StatCard, fW as StatusLabel, aye as Su, y4 as Switch, NB as TASKS_KEY, yLe as TASTE_REFRESH_KEY, bLe as TASTE_WINDOWS, jF as THUMBNAIL_JOBS_KEY, jX as TRASH_KEY, V_e as TRIGGER_LABELS, XJ as Table, gY as TableColumnControls, _Y as TableColumnResizer, yY as TableSelectionHeader, n$ as TagManager, tbe as TaskCenterLink, rU as TaskProgress, qV as TextField, KV as TextFieldContext, EV as Un, lye as Uz, LW as WANTS_KEY, P4 as WantMagnets, Jg as WithPromise, _V as Wt, wV as Xc, BV as Xf, yV as Xl, vV as Xt, hV as _8, o as __commonJSMin, s as __exportAll, l as __toESM, IV as _p, sye as aB, Ti as addAlias, wi as addSource, zW as addWant, iS as animate, V as apiGet, H as apiSend, Pj as appSettingsStore, sOe as applyConfirmText, TX as applyLeftovers, oOe as applyPlanText, lOe as applyText, Rj as applyTheme, yy as asNumber, YDe as attachOrphan, si as authorAvatar, li as authorGroups, oi as authorInitial, ai as authorName, Rq as autoResetPageIndex, _o as avatarInner, q3 as bandRows, UDe as baseName, VEe as batchOperate, Cde as beginPlayerGuidePreview, YA as boundedPreference, REe as bulkCloudPreferences, eH as busyProps, oye as cB, JFe as cachedMagnetStates, Wg as calcGeneratorVelocity, lDe as canApprove, yg as cancelFrame, eOe as candidateText, ZU as cardClass, $j as cardRatio, iY as catalogListSkeletonCellHtml, CV as cc, Gi as checkEvidenceGap, Wi as checkFailures, Pi as checkFeeds, kDe as checkLine, Hi as checkReceipt, Ui as checkSummary, dMe as checkText, Ki as checkedText, EK as clickedBlank, f7 as closeDrawerAfterNav, kEe as cloudLocations, R0 as cloudProxySkeleton, LC as clsx, Gve as cn, cv as collectMotionValues, iJ as columnVisibilityFeature, GJ as column_getCanSort, VJ as column_getSortFn, sDe as commonReviewSources, PW as composingKey, Rf as configurationSection, wLe as configureTasteBrowser, ul as confirmModal, R_e as controlTask, bq as copyInstancePropertiesWithoutMemos, kxe as coverArrived, Dxe as coverFetching, Ml as coverFetchingHtml, jl as coverStateAction, lo as coverUrl, Yq as createColumnHelper, Xje as createPlaylist, Xi as credentialDone, P0 as credentialsSkeleton, vDe as currentReviewRow, J as cx, kve as d6, MV as dZ, hDe as decisionPayload, gDe as decisionReceipt, mDe as defaultChoice, dOe as deletePerformerVideos, Qje as deletePlaylist, H0 as devicesSkeleton, x as diagnosticHeaders, n0 as diagnosticsSkeleton, Axe as discoveryArtwork, YW as discoveryKey, wxe as discoveryScore, y9 as disposeStage, PEe as distinctName, Bi as dropSources, rye as du, zEe as duplicateVictims, VB as elapsedText, tn as entityDisplayName, go as entityFaceImg, Nn as entityPath, ei as errorHeadline, cr as errorMessage, B as esc, Lq as expandRowModel, oV as f1, bo as facePos, $r as feedIntervalText, X$ as fetchAmaneBridge, Y$ as fetchCheckAllJob, _i as fetchCheckJob, d1 as fetchConfiguration, J$ as fetchCoverJob, JW as fetchCoverNow, gi as fetchCredentials, B$ as fetchCustomSources, DX as fetchDeletePerformers, uOe as fetchDeletePlan, VQ as fetchDiagnostics, XW as fetchDiscoveries, kY as fetchDuplicates, Yfe as fetchFeedSchedule, ji as fetchFeeds, hi as fetchFollow, Jfe as fetchFollowSchedule, NX as fetchJunkSummary, FH as fetchLibraryProcessing, iX as fetchLinkCheck, aX as fetchLinkPrune, rX as fetchLinkStats, qfe as fetchMediaProcessing, PY as fetchMediaRepair, yr as fetchMediaSources, uX as fetchOrganize, FDe as fetchOrganizeExample, pX as fetchOrphanRecords, Ai as fetchPending, $je as fetchPlaylist, L$ as fetchPlaylists, RY as fetchQualityGoals, eG as fetchReleases, FY as fetchRepairLibraries, zQ as fetchRepairs, vi as fetchResolveJob, yX as fetchResourceApply, vX as fetchResourceScan, XY as fetchReview, MX as fetchReviewCounts, NF as fetchSettings, q$ as fetchSources, H3 as fetchStats, yi as fetchSuggestions, IB as fetchTasks, p6 as fetchTaste, TLe as fetchTasteJob, Xfe as fetchThumbnailJobs, PX as fetchTrashSummary, RW as fetchWants, aDe as filterReviewRows, $n as firstGrapheme, nq as flexRender, BLe as flowGraph, VLe as flowLabel, zIe as fmtCount, qn as fmtDur, Yn as fmtSize, P_e as foldByKind, Z_e as foldRoutine, Ii as followFeedByName, Li as followFeedEntity, Vr as followSuggestKey, $_e as followupDetail, N_e as followupTally, vg as frame, dV as g4, sJ as getDefaultPaginationState, Qj as gridLayout, ci as groupByAuthor, X_e as groupFollowups, qY as groupReviewRows, iOe as hasChanges, bX as hasResourceRoots, RB as hasResultProblems, jLe as historySpan, sV as i2, kLe as importTasteExport, F0 as indexersSkeleton, Bg as interpolate, VW as invalidateWants, BB as isActive, Qr as isBroken, Kr as isLayout, yv as isMotionValue, HY as isReviewCategory, Q_e as isRoutine, I0 as javBrowserSkeleton, n2 as javContentSkeleton, Gj as javLayout, t2 as javTagSkeleton, gOe as junkBreakdown, jEe as keepGroup, tMe as keepPlaylist, Oe as keepPreviousData, fi as keepSelected, U3 as known, fve as l1, xve as l7, Y_e as latestOfKind, Qn as leadingGraphemes, ZIe as lengthRows, Sr as localTime, po as logoUrl, Fi as lookupFeedActor, fV as m7, jV as mM, En as mapLimit, ki as markItem, J3 as max, YIe as mediumRows, Y3 as min, CDe as mirrorText, GEe as missingToolText, AY as mixedCloudPreferences, GB as momentText, aS as motion, uv as motionValue, nn as nameFallback, He as notifyManager, Ave as oe, GDe as organizeOutcome, y2 as overlayHost, qr as pageSizeOf, di as pageWindow, zi as patchSource, G as peachHistory, G as peachHistory$1, pDe as pendingGenres, VIe as percentText, RDe as pickOrganizeFolder, m$ as plainStatClass, WDe as planSummary, W3 as playedFor, UIe as playedItemUrl, F_e as pollInterval, Xs as popCount, Yje as posterUrl, i_e as previewLibraryColor, LDe as previewOrganize, JEe as previewUrl, q_e as problemDestination, AH as processingActive, HB as progressText, gU as providerIcon, ODe as pruneText, SX as purgeCount, XDe as purgeOrphan, PV as pv, nye as qE, U as queryClient, cV as r2, LLe as radarRows, KIe as radialArc, qIe as radialBarSize, GIe as radialCeiling, WIe as radialSlices, gN as randomId, FLe as rankDetail, ILe as rankShares, K3 as reachedShare, UB as readableErrorHeadline, Txe as recommendationScore, yDe as recordGenre, QDe as recordsText, nMe as recreatePlaylist, qje as refreshPlaylists, Dl as relayoutCovers, Q0 as releaseColumns, QW as releaseFilters, $W as releaseKey, Vi as reloadFollowManage, SDe as reloadReview, kNe as rememberShape, BDe as rememberTemplates, Ei as removeAlias, Ni as removeFeed, Ci as removeSource, OLe as removeTasteSource, BW as removeWants, Di as renameAliasGroup, Zje as renamePlaylist, eMe as reorderPlaylist, s2 as repairCenterPanelSkeleton, xe as replaceEqualDeep, $Ie as replayRows, ne as require_jsx_runtime, A as require_react, N as require_react_dom, gq as require_with_selector, xxe as resetWants, pr as resolveFollowSort, qg as resolveStartTime, Mye as restartEffectText, Jje as resumeAssetId, iDe as reviewGroupingOptions, KY as reviewQueueData, GY as reviewQueueOf, hOe as reviewSummary, oDe as reviewWindow, dDe as rowEvidence, YY as rowFieldName, mJ as rowPaginationFeature, FJ as rowSelectionFeature, JJ as rowSortingFeature, JY as rowSubject, fDe as rowTags, uDe as rowTitle, vve as s5, Oi as saveCredential, aOe as scanLine, tpe as schedulePollInterval, Cxe as searchNote, zY as selectRange, cDe as selectReviewRange, pi as selectionState, YEe as selectionSummary, Mi as setFeedEnabled, Si as setSourceEnabled, z_e as setTaskSpeed, Hf as settingsPath, xDe as settleReviewRows, NEe as sharedNamePrefix, Vp as shellNavigate, H8 as showToast, Zz as showToast$1, zn as siteMarkUrl, Oq as skipFirstRun, kI as sortCx, Yr as sortLabel, yn as sourceDefaultCost, Ji as sourceIconUrl, cOe as sourceMeta, Vs as spinnerHtml, Rg as spring, tB as spriteGlyph, bi as startCheck, EDe as startLinkCheck, DDe as startLinkPrune, zDe as startOrganize, xi as startResolve, nOe as startResourceApply, tOe as startResourceScan, DLe as startTasteRefresh, kje as statCardClass, U_e as statusLabel, WEe as statusLine, Zr as statusText, eM as storeJavLayout, _De as submitDecision, KB as summaryItems, DK as suppressShiftTextSelection, Xq as tableFeatures, kq as tableMemo, ui as tableRows, K_e as taskIssues, J_e as taskSubject, m6 as tasteDate, NLe as tasteDimensions, MLe as tasteHours, f6 as tasteKey, SLe as tasteRefetchInterval, CLe as tasteTime, OB as textLang, Y0 as tierPlaceholdersHtml, hh as time, Ive as tl, mi as toggleGroup, h6 as topScores, qve as um, Vve as uo, tH as useAction, NZ as useBackgroundJob, UG as useCatalogView, lW as useClientUpdates, Dm as useConstant, qB as useEntityNames, Om as useIsomorphicLayoutEffect, vB as useLibraryTints, Ft as useMutation, yB as useNavigationOrder, j$ as useOrderedLibraries, TH as useOverlayScrollbar, Pt as useQuery, ie as useQueryClient, qx as useReducedMotion, epe as useRunSchedule, Qfe as useSaveFollowSchedule, PF as useSaveSettings, npe as useSaveThumbnailMode, YJ as useTable, uY as useTablePreferences, aV as useViewGlide, BEe as victimBytes, Lve as vl, Sxe as wantName, HIe as watchNote, G3 as watchedShare, jve as we, jc as wireHorizontalScroller, VDe as withOrganizeJob, Exe as writeJavQuery, Dve as z3 };
 
-//# debugId=0703fa25-dd57-449b-a81e-fa2dc6f79403
+//# debugId=60a35f4d-58a3-4d77-a857-bfe091d8e290

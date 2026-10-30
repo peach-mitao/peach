@@ -1,4 +1,4 @@
-# ADR-0130：本地下载接入 qBittorrent Web API
+# ADR-0155：本地下载接入 qBittorrent Web API
 
 - 状态：Accepted；真实 fnOS 联调待验证
 - 日期：2026-10-29

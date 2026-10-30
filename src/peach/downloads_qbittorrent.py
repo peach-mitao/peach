@@ -63,9 +63,10 @@ class QbittorrentClient:
         self._http: httpx.Client | None = None
 
     def __enter__(self) -> "QbittorrentClient":
+        # qBittorrent 是本机或局域网里的下载器，直连它，不读系统代理。
         self._http = httpx.Client(
             base_url=self.address, transport=self.transport, timeout=self.timeout,
-            follow_redirects=False,
+            follow_redirects=False, trust_env=False,
             headers={"Referer": self.address, "Origin": self.address})
         try:
             self._login()
@@ -181,7 +182,8 @@ class QbittorrentProvider:
                 status = _status(existing)
                 if status.state != ERROR:
                     return RemoteStatus(status.state, status.remote_id, status.name,
-                                        status.progress, adopted=True)
+                                        status.progress, adopted=True,
+                                        target=str(existing.get("save_path") or ""))
                 # qB 会保留失败任务；同一个 infohash 再提交前先清掉旧行。
                 client.delete(magnet.info_hash)
             client.add(magnet, target)
