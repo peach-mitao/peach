@@ -7,11 +7,11 @@
       "mismatch": "Download doesn't match the target video",
       "network": "Network temporarily unavailable",
       "no_source": "No download source, or progress stopped updating",
-      "not_accepted": "The cloud drive didn't accept the task",
+      "not_accepted": "The downloader didn't accept the task",
       "not_landed": "Downloaded file not found in the target directory",
       "quota": "Download quota used up",
       "rejected": "The cloud drive refused this download",
-      "removed": "Cloud drive task was deleted",
+      "removed": "The task was deleted from the downloader",
       "storage": "Cloud drive storage is full"
     },
     "postprocess": {
@@ -33,7 +33,11 @@
       "selected": "Selected",
       "stalled": "Stalled",
       "submit_pending": "Waiting to resubmit",
-      "submitted": "Submitted"
+      "submitted": "Submitted",
+      "local": {
+        "remote_done": "Download complete",
+        "remote_running": "Downloading"
+      }
     }
   },
   "http": {
@@ -1464,9 +1468,9 @@
       "magnetRequired": "Paste a magnet link",
       "magnetNotBittorrent": "The magnet link has no urn:btih; Peach only accepts BitTorrent magnet links",
       "targetIsRoot": "The target directory must be a specific directory in the cloud drive, not its root",
-      "addressFormat": "Enter only the scheme, host, and port for the CloudDrive2 address, for example http://127.0.0.1:19798",
-      "addressPortInvalidIpv6": "The CloudDrive2 port must be an integer from 1 to 65535; put IPv6 addresses in square brackets",
-      "addressPortInvalid": "The CloudDrive2 port must be an integer from 1 to 65535",
+      "addressFormat": "Enter only the scheme, host, and port for the {{label}} address, for example http://127.0.0.1:19798",
+      "addressPortInvalidIpv6": "The {{label}} port must be an integer from 1 to 65535; put IPv6 addresses in square brackets",
+      "addressPortInvalid": "The {{label}} port must be an integer from 1 to 65535",
       "notPikpakRoot": "{{root}} is not a declared PikPak root; known roots: {{known}}",
       "notPikpakRootNoneDeclared": "{{root}} is not a declared PikPak root; the settings file has no pikpak storage",
       "waitHoursNotNumber": "Enter the wait limit in hours",
@@ -1490,7 +1494,12 @@
       "notAccepted": "The cloud drive did not accept this task: it never appeared in the cloud download list after submission, and there are no files in the target directory",
       "remoteRemoved": "This task disappeared from the cloud drive: it is not in the cloud download list, and there are no files in the target directory",
       "targetNotMapped": "The target directory does not map to a library directory. Check the library mounts and the cloud path mapping",
-      "notLanded": "Finished on the remote side, but {{path}} never appeared in the mounted directory"
+      "notLanded": "Finished on the remote side, but {{path}} never appeared in the mounted directory",
+      "localNotAccepted": "The downloader never took the task: it never appeared in the list after submission, and no file is in the target directory",
+      "localTargetInvalid": "Enter a specific directory in the downloader as the save path, for example /vol1/media/Peach",
+      "notLocalRoot": "{{root}} is not a declared local media root; known roots: {{known}}",
+      "notLocalRootNoneDeclared": "{{root}} is not a declared local media root; the settings file has no local storage",
+      "localTargetMismatch": "qBittorrent already has this magnet, saved at {{target}}, outside the current download root {{root}}. Delete it in qBittorrent first, then submit again."
     },
     "followStore": {
       "aliasNamesRequired": "Both the canonical creator name and the platform alias are required",
@@ -2910,6 +2919,20 @@
     "followBackfill": {
       "credentialMissing": "Add your rule34.xxx API credentials in the followed sources first.",
       "running": "Backfilling. Wait for this run to finish."
+    },
+    "downloadsQbittorrent": {
+      "addressMissing": "Enter the qBittorrent address first",
+      "credentialsMissing": "Enter the qBittorrent username and password first",
+      "unreachable": "Could not connect to qBittorrent while {{action}}: {{details}}",
+      "forbidden": "qBittorrent refused the request while {{action}}. Check the sign-in state",
+      "apiNotFound": "The qBittorrent Web API was not found while {{action}}. Check the address and port",
+      "serverError": "qBittorrent returned HTTP {{status}} while {{action}}",
+      "rejected": "HTTP {{status}} while {{action}}: {{details}}",
+      "badJson": "qBittorrent returned unparseable data while {{action}}",
+      "loginFailed": "qBittorrent sign-in failed. Check the username and password",
+      "addRejected": "qBittorrent did not accept this magnet. Check the resource or the download directory permissions",
+      "cancelNoInfohash": "This task has no infohash, so it cannot be canceled",
+      "taskFailed": "qBittorrent reported the task as failed ({{state}})"
     }
   },
   "jobMessage": {
@@ -3227,7 +3250,9 @@
       "tokenNeedsOffline": "The CloudDrive2 token needs permission to submit and view cloud download tasks.",
       "libraryCapabilityUnavailable": "Could not get cloud download support for {{name}}.",
       "clouddriveCapabilityUnavailable": "Could not get CloudDrive2 cloud download support. Check the connection and the token.",
-      "libraryNotMapped": "{{name}} is not linked to a cloud directory yet. Check the mounts or the Push discovery settings."
+      "libraryNotMapped": "{{name}} is not linked to a cloud directory yet. Check the mounts or the Push discovery settings.",
+      "qbittorrentCredentialsUnreadable": "Cannot read the qBittorrent sign-in. Enter it again.",
+      "qbittorrentCredentialsMissing": "The qBittorrent username and password are not filled in yet."
     },
     "downloadsPikpakBrowser": {
       "waiting": "The browser window is open. Sign in to PikPak there",
@@ -4407,6 +4432,22 @@
     "followBackfill": {
       "rule34-details": "Fill in rule34.xxx details",
       "rule34video-characters": "Record rule34video characters"
+    },
+    "downloadsQbittorrent": {
+      "addressMissing": "Enter the qBittorrent address first",
+      "credentialsMissing": "Enter the qBittorrent username and password first",
+      "savePathMissing": "Enter the qBittorrent save path first",
+      "mediaRootMissing": "Choose the matching library root first",
+      "savePathUnavailable": "Could not get the default save path: {{details}}",
+      "action": {
+        "login": "signing in",
+        "readVersion": "reading the version",
+        "readWebapiVersion": "reading the Web API version",
+        "readPreferences": "reading qBittorrent preferences",
+        "readTorrents": "reading qBittorrent torrents",
+        "addTorrent": "submitting the torrent",
+        "deleteTorrent": "canceling the torrent"
+      }
     }
   },
   "taste": {
@@ -4480,6 +4521,10 @@
     "refreshWarning": "{{browser}} · {{profile}}: {{reason}}",
     "bookmarkProfile": "{{profile}} · Bookmarks",
     "volume": {
+      "115": {
+        "name": "115 cloud drive",
+        "numbered": "115 cloud drive {{index}}"
+      },
       "system": {
         "name": "System drive",
         "numbered": "System drive {{index}}"
@@ -4487,10 +4532,6 @@
       "local": {
         "name": "Media drive",
         "numbered": "Media drive {{index}}"
-      },
-      "115": {
-        "name": "115 cloud drive",
-        "numbered": "115 cloud drive {{index}}"
       },
       "pikpak": {
         "name": "PikPak cloud drive",

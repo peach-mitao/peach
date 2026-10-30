@@ -1244,7 +1244,7 @@
     "added": "Added to Wants: {{name}}",
     "alreadyAdded": "{{name}} is already in Wants",
     "backToSearching": "{{name}} moved back to Searching",
-    "cloudPrimaryOnly": "Cloud download is only available on the primary computer.",
+    "cloudPrimaryOnly": "Downloads are only available on the primary computer.",
     "codePlaceholder": "Enter a code, e.g. SSIS-950",
     "dockLabel": "Actions for selected wants",
     "downloadSettingsFailed": "Couldn't load download settings",

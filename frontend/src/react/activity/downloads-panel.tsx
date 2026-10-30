@@ -1,4 +1,4 @@
-/* 活动页「云下载」段：提交过的离线下载任务。提交在各页原地的弹层里（`cloud-download-dialog.tsx`）。
+/* 活动页「下载任务」段：提交过的云下载与本地下载任务。提交在各页原地的弹层里（`cloud-download-dialog.tsx`）。
  *
  * 任务表是 `/api/downloads` 自己的一份，不并进 `/api/tasks`：离线任务跑在网盘那头，一跑
  * 几小时到几天，是一条带远端编号的提交记录，不是这台电脑上的一轮批处理。所以这一段自己取数、
@@ -61,7 +61,8 @@ const taskName = (task: DownloadTask) => {
 
 /** 状态、失败类别与整理状态按 id 取当前界面语言；没有译文的照用服务端的中文名。
  *  整理状态排了自动重试时服务端给 `postprocess_label_code`（第几次），优先用它。 */
-const stateLabel = (task: DownloadTask) => serverLabel(`download.state.${task.state}`, task.state_label);
+const stateLabel = (task: DownloadTask) =>
+  serverLabel(task.state_label_code || `download.state.${task.state}`, task.state_label);
 const postprocessLabel = (task: DownloadTask) =>
   serverLabel(task.postprocess_label_code || `download.postprocess.${task.postprocess_state}`, task.postprocess_label,
     task.postprocess_label_params);

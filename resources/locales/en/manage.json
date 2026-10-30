@@ -94,7 +94,7 @@
   },
   "cloudDownloadDialog": {
     "adopted": "This magnet link already has a task, so it wasn't submitted again.",
-    "adoptedRemote": "The cloud drive already has this download. Peach is now tracking its progress.",
+    "adoptedRemote": "The downloader already has this task. Peach is now tracking its progress.",
     "closePanel": "Close torrent search",
     "deferred": "The cloud drive isn't responding. Peach will resubmit automatically; track it in Tasks.",
     "downloadTo": "Download to",
@@ -105,11 +105,11 @@
     "minutes_other": "{{count, number}} min",
     "noMetadata": "Video metadata not found",
     "optional": "Optional",
-    "primaryOnly": "Cloud download is only available on the primary computer.",
+    "primaryOnly": "Downloads are only available on the primary computer.",
     "quotaHint": "Each submission, including resubmissions, uses one offline download from your quota.",
     "refused": "This torrent was flagged as prohibited and won't be submitted.",
     "submit": "Submit download",
-    "submitted": "Cloud download submitted. Track it in Tasks.",
+    "submitted": "Download submitted. Track it in Tasks.",
     "targetDirectory": "Target directory",
     "targetPlaceholder": "/Cloud downloads"
   },
