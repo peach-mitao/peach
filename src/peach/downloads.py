@@ -90,8 +90,8 @@ FAILURE_KINDS: dict[str, FailureKind] = {kind.key: kind for kind in (
     FailureKind("rejected", "网盘拒绝下载该资源"),
     FailureKind("invalid_link", "链接无效"),
     FailureKind("no_source", "没有可用下载源或进度长时间未更新"),
-    FailureKind("not_accepted", "网盘没有收下任务"),
-    FailureKind("removed", "网盘任务被删除"),
+    FailureKind("not_accepted", "下载器没有收下任务"),
+    FailureKind("removed", "下载器里的任务已删除"),
     FailureKind("duplicate", "下载任务已存在"),
     FailureKind("not_landed", "目标目录中未找到下载文件"),
     FailureKind("mismatch", "下载内容与目标作品不符"),
@@ -236,6 +236,8 @@ class RemoteStatus:
     message: str = ""
     #: 提交时远端目录里已有同一 infohash 的任务，接过来跟踪，没有调提交接口。
     adopted: bool = False
+    #: 接管时远端任务的实际保存目录；新提交留空，由调用方用自己的目标。
+    target: str = ""
 
 
 RUNNING, DONE, ERROR, MISSING = "running", "done", "error", "missing"
@@ -275,6 +277,8 @@ def parse_iso(text: str | None) -> float | None:
 
 #: 提交后第一次看的间隔，之后按这张表退避，最后一档封顶。JavBoss 提交后 10 秒查一次。
 POLL_DELAYS = (10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 900.0)
+#: 本地下载器完成即入库，退避封顶设短，避免下完十几分钟后才开始登记。
+LOCAL_POLL_CEILING = 60.0
 #: 远端完成后先等推送发现登记；过了这一段账本里还没有，才定向登记一次。
 LANDING_GRACE = 60.0
 #: 远端完成之后最多等这么久让文件出现在挂载目录、进入账本，超过算「落地未见」。
@@ -290,8 +294,9 @@ MAX_WAIT_HOURS = 24 * 60
 MAX_LANDED_FILES = 500
 
 
-def poll_delay(checks: int) -> float:
-    return POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+def poll_delay(checks: int, ceiling: float | None = None) -> float:
+    delay = POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+    return min(delay, ceiling) if ceiling else delay
 
 
 # ---------------------------------------------------------------- 任务表
@@ -799,6 +804,22 @@ class DownloadService:
                 return SubmitResult("failed", task)
             task.remote_id = status.remote_id or task.remote_id
             task.remote_name = status.name or task.remote_name
+            if channel.get("kind") == "local" and status.adopted and status.target:
+                try:
+                    actual = normalise_local_target(status.target)
+                except ValueError:
+                    actual = ""
+                root = str(channel["target"]).rstrip("/")
+                if not (actual == root or actual.startswith(root + "/")):
+                    error = DownloadError(
+                        "mismatch",
+                        f"qBittorrent 里已有这个磁力，但保存在 {status.target}，"
+                        f"不在当前下载目录 {root} 内；请先在 qBittorrent 里删除它再提交")
+                    self._fail(task, error, now)
+                    self.store.record_submission(task=task, outcome="failed", now=now,
+                                                 failure=error.failure, detail=error.detail)
+                    return SubmitResult("failed", task)
+                task.target = actual
             task.state = SUBMITTED
             task.next_check_at = iso(now + POLL_DELAYS[0])
             self.store.save(task)
@@ -988,7 +1009,8 @@ class DownloadService:
         """隔一段再查。`detail` 是这一次暂时性故障的原因；没带就是这一次查通了，旧原因作废。"""
         task.checks += 1
         task.updated_at = iso(now)
-        task.next_check_at = iso(now + poll_delay(task.checks))
+        ceiling = LOCAL_POLL_CEILING if task.location == "local" else None
+        task.next_check_at = iso(now + poll_delay(task.checks, ceiling))
         task.failure_detail = detail
         self.store.save(task)
 

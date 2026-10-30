@@ -181,7 +181,8 @@ class QbittorrentProvider:
                 status = _status(existing)
                 if status.state != ERROR:
                     return RemoteStatus(status.state, status.remote_id, status.name,
-                                        status.progress, adopted=True)
+                                        status.progress, adopted=True,
+                                        target=str(existing.get("save_path") or ""))
                 # qB 会保留失败任务；同一个 infohash 再提交前先清掉旧行。
                 client.delete(magnet.info_hash)
             client.add(magnet, target)

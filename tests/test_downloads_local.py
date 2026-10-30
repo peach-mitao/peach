@@ -24,9 +24,13 @@ class FakeProvider:
     def __init__(self):
         self.submitted: list[tuple[str, str]] = []
         self.status_result = dl.RemoteStatus(dl.RUNNING, name="ABC-123", progress=0.1)
+        self.adopt_target = ""
 
     def submit(self, magnet, target):
         self.submitted.append((magnet.info_hash, target))
+        if self.adopt_target:
+            return dl.RemoteStatus(dl.RUNNING, name=magnet.name, adopted=True,
+                                   target=self.adopt_target)
         return dl.RemoteStatus(dl.RUNNING, name=magnet.name)
 
     def status(self, task):
@@ -169,6 +173,31 @@ class SubmitTests(unittest.TestCase):
         task = self.service.store.get(result["task"]["id"])
         self.assertEqual(task.state, dl.REMOTE_DONE)
         self.assertIsNone(task.failure)
+
+    def test_a_local_task_polls_at_most_a_minute_apart(self):
+        result = dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent")
+        task = self.service.store.get(result["task"]["id"])
+        task.state, task.checks = dl.REMOTE_RUNNING, 7
+        task.next_check_at = dl.iso(self.clock.now)
+        self.service.store.save(task)
+        self.clock.advance(1)
+        self.service.poll_once()
+        task = self.service.store.get(result["task"]["id"])
+        self.assertEqual(dl.parse_iso(task.next_check_at) - self.clock.now,
+                         dl.LOCAL_POLL_CEILING)
+
+    def test_an_adopted_task_records_the_actual_save_path(self):
+        self.provider.adopt_target = QB_SAVE + "/Other"
+        result = dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent")
+        self.assertEqual(result["outcome"], "adopted_remote")
+        self.assertEqual(result["task"]["target"], QB_SAVE + "/Other")
+
+    def test_an_adopted_task_outside_the_download_directory_fails(self):
+        self.provider.adopt_target = "/other/Peach"
+        result = dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent")
+        self.assertEqual(result["outcome"], "failed")
+        self.assertEqual(result["task"]["failure"], "mismatch")
+        self.assertIn("/other/Peach", result["task"]["failure_detail"])
 
 
 if __name__ == "__main__":
