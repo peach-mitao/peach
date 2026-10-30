@@ -62,7 +62,7 @@ function BrowserForm({ initial, receipt }: { initial: State; receipt(message: st
           <SourceLabel source={item.key} label={item.label} />
         </SelectItem>)}
       </Select></div>
-      {!ready ? <Help>请在媒体库中添加支持云下载的网盘，并配置账号与目标目录。</Help> : null}
+      {!ready ? <Help>请在下载渠道中配置云下载或本地下载，并填写目标目录。</Help> : null}
       {state.problems?.map(problem => <Help key={problem}>{problem}</Help>)}
       {state.enabled && state.active_provider && !state.providers.some(item => item.key === state.active_provider)
         ? <Help>已启用的下载渠道不可用，请选择渠道并更新令牌。</Help> : null}

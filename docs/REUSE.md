@@ -956,6 +956,8 @@ CloudDrive2 配置生成复用现有 TOML 模板、mDNS 公布地址和应用服
 
 云下载服务地址统一通过 `downloads.clean_address` 校验协议、主机、端口及凭据隔离；设置保存、gRPC 目标与本机自动发现共用该入口，解析失败转成 `DownloadError`。已保存的无效地址按原值呈现在配置表单，其余有效偏好保留，读取不写文件；修正保存后清除提示。渠道发现分别处理 CloudDrive2 与 PikPak 凭据错误，健康渠道继续提供。
 
+本地下载复用 qBittorrent Web API v2（2026-10-29 对 fnOS 应用中心的 qBittorrent 4.6.4 / WebAPI 2.9.3 只读核对登录、版本与偏好）：登录、`torrents/info`、`torrents/add`、`torrents/delete` 由 `peach.downloads_qbittorrent` 直接调用，不引入 `qbittorrent-api` 等第三方 SDK，沿用现有 `httpx`。跨机路径由 `local_root` 与 `root` 两项显式映射，落地读取复用 `scan.iter_files` 与本地、SMB 或 WebDAV 媒体根；不新增依赖或迁移。
+
 配置读取复用 `_read_section` 隔离可选区域，以 `section_errors` 返回区域名称、操作提示和诊断编号；异常交给现有 `error_reporting.event` 留痕。页面复用 TanStack Query 重新读取和 BoardUI Note、Button，在对应分区提供重试；未知媒体来源或计数时隐藏依赖它们的媒体表单。鉴权、本机访问检查及核心设置校验仍由配置入口执行。无新增依赖、ledger 迁移或后台重试。
 
 依赖的第一个消费者及其隔离测试必须在同一改动落地，否则不引入依赖。

@@ -494,6 +494,18 @@ def _relative_directory(directory, top):
             if isinstance(top, SmbResource) else Path(directory).relative_to(top).parts)
 
 
+def iter_files(root):
+    """遍历本地或 SMB 目录，按相对路径元组产出文件。
+
+    落地登记只需要文件层级，不读目录元数据；SMB 资源没有 `rglob`，统一走扫描层
+    的遍历器，跨机下载和本机下载才用同一段代码。
+    """
+    for directory, files in _walk(root):
+        base = _relative_directory(directory, root)
+        for entry in files:
+            yield base + (entry.name,)
+
+
 def _walk_smb(top, pending, onerror):
     from types import SimpleNamespace
     stack = pending if pending is not None else [str(top)]

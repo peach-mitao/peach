@@ -26,7 +26,7 @@ export interface IndexersShape { open: boolean[] }
 export interface JavBrowserShape { enabled: boolean; ready: boolean }
 /** 每个网盘账号一项：[数据代理走代理, API 代理走代理]，走代理时多出地址、端口与认证三行。 */
 export interface CloudProxyShape { configured: boolean; accounts: [boolean, boolean][]; unlinked: number }
-export interface DownloadsShape { cloud: boolean; has115: boolean; pikpak: boolean; pikpakRoots: boolean; pikpakLoggedIn: boolean; browserLogin: boolean }
+export interface DownloadsShape { cloud: boolean; has115: boolean; pikpak: boolean; pikpakRoots: boolean; pikpakLoggedIn: boolean; browserLogin: boolean; localDownload: boolean }
 export interface NetworkShape { port: boolean; addresses?: number; networkEditable?: boolean; lan?: boolean; proxyAddress: boolean; access: string; tunnelNamed: boolean; tunnelNamedMode: boolean; tunnelNote: boolean }
 export interface MaintenanceShape {
   releaseFacts: number; releaseNotes: number; autoUpdateHelp: boolean; startupNote: boolean; desktopNote: boolean;
@@ -265,7 +265,12 @@ const downloads = () => {
   const loggedIn = on(shape?.pikpakLoggedIn);
   const account = pikpak ? section('PikPak 账号', loggedIn ? facts(['账号', text('4em')]) : stack(inputField('账号') + inputField('密码') + check('保存密码，登录过期时自动重新登录')),
     loggedIn ? button('登出', 'secondary') : (on(shape?.browserLogin) ? button('用浏览器登录', 'secondary') : '') + button('登录'), { aside: chip(), mark: true }) : '';
-  return cloud + account + javBrowserSkeleton();
+  const local = on(shape?.localDownload) ? section('本地下载', stack(
+    help('用应用中心的 qBittorrent。下载完成后文件留在下载器那台机器上，Peach 通过下面的映射读取。')
+    + inputField('qBittorrent 地址') + inputField('用户名') + inputField('密码')
+    + inputField('下载器保存目录') + selectField(marked('对应媒体库目录'))),
+  button('检查', 'secondary') + button('保存配置')) : '';
+  return cloud + account + local + javBrowserSkeleton();
 };
 
 /* ---------- 网络与访问 ---------- */

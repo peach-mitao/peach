@@ -329,9 +329,9 @@ class BrowserTests(unittest.TestCase):
         self.add()
         self.service.process_one()
         task = self.downloads.store.get(self.status().json()["task_id"])
-        for state, progress, label in ((dl.REMOTE_RUNNING, .425, "网盘下载中"),
-                                       (dl.REMOTE_RUNNING, None, "网盘下载中"),
-                                       (dl.REMOTE_DONE, 1.0, "网盘下载完成"),
+        for state, progress, label in ((dl.REMOTE_RUNNING, .425, "下载中"),
+                                       (dl.REMOTE_RUNNING, None, "下载中"),
+                                       (dl.REMOTE_DONE, 1.0, "下载完成"),
                                        (dl.LANDED, 1.0, "文件已可访问"),
                                        (dl.INGESTED, 1.0, "已入库")):
             task.state, task.progress = state, progress

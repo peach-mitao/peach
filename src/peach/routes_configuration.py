@@ -574,6 +574,29 @@ def check_downloads(request: Request, body: dict = Body(default={}), _args=Depen
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.get("/api/configuration/downloads/qbittorrent/check")
+def check_saved_qbittorrent(request: Request, _args=Depends(require_auth)):
+    """按已保存的地址、账号与目录检查 qBittorrent；只登录读版本，不提交任务。"""
+    local_only(request)
+    service, roots = _downloads(request)
+    try:
+        return web_downloads.check_qbittorrent(service, {}, roots)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/api/configuration/downloads/qbittorrent/check")
+def check_qbittorrent(request: Request, body: dict = Body(default={}), _args=Depends(require_auth)):
+    """按页面上此刻填的 qBittorrent 值检查；没带的字段取已保存的值。"""
+    local_only(request)
+    same_origin(request)
+    service, roots = _downloads(request)
+    try:
+        return web_downloads.check_qbittorrent(service, body, roots)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @router.post("/api/configuration/downloads/folder")
 def create_download_folder(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
     """调 CloudDrive2 的 `CreateFolder` 建 115 目标目录。只在用户点「新建这个目录」时发。"""
