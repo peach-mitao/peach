@@ -377,7 +377,15 @@ def create_app(
     from .mount_reachability import source_roots
     mount_reachability = MountReachability(source_roots())
     from .network_reachability import NetworkReachability
-    network_reachability = NetworkReachability()
+    from .web_library_processing import retry_after_network_recovery
+
+    def network_recovered():
+        # 只读端不发起处理：路由层会拒的写入，从探测线程绕进来也不该做。
+        if sync is None or not sync.read_only:
+            retry_after_network_recovery(contract)
+    network_reachability = NetworkReachability(on_recovered=network_recovered)
+    # 处理任务在外部采集前按它判断网（`library_processing._network_gate`）。
+    contract.network_reachability = network_reachability
     resolver = FFmpegResolver(settings.ffmpeg_root)
     http_transport = HttpxTransport()
     follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(

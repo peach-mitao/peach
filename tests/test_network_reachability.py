@@ -38,6 +38,19 @@ class NetworkReachabilityTests(unittest.TestCase):
         monitor, _ = self.monitor(False, False)
         self.assertEqual(monitor.tick(), "offline")
 
+    def test_recovery_from_offline_fires_once(self):
+        monitor, calls = self.monitor(True, False, False, None, True, True)
+        recovered = []
+        monitor.on_recovered = lambda: recovered.append(monitor.summary()["state"])
+        self.assertEqual(monitor.tick(), "online")
+        self.assertEqual(monitor.tick(), "offline")
+        self.assertEqual(monitor.tick(), "unknown")
+        self.assertEqual(recovered, [])
+        self.assertEqual(monitor.tick(), "online")
+        self.assertEqual(monitor.tick(), "online")
+        self.assertEqual(recovered, ["online"])
+        self.assertEqual(calls, [])
+
     def test_undecidable_settings_and_errors_are_unknown(self):
         monitor, _ = self.monitor(None)
         self.assertEqual(monitor.tick(), "unknown")

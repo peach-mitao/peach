@@ -1,6 +1,7 @@
 """统一处理任务的启动、只读状态查询与失败项重试。"""
 import json
 import hashlib
+import logging
 
 from . import settings_file
 from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
@@ -9,6 +10,7 @@ from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
 from .processing_control import control_for, initial_estimate, valid_mode, mode_ratio
 
 ACTIVE = ('running', 'pausing', 'paused', 'stopping')
+LOGGER = logging.getLogger(__name__)
 
 #: 回给页面的状态字段：`frontend/src/react/library-processing/library-processing.ts` 的
 #: `LibraryProcessingData`，加上对应任务中心那一行的 `run_id`。状态文件里另有续跑用的 `local_metadata`（带完整媒体路径）、
@@ -321,6 +323,24 @@ def _processing_request(contract, config, previous, body):
     return retry_ids, asset_ids, stage
 
 
+def retry_after_network_recovery(contract):
+    """外网判回联网时，上一趟因断网跳过的外部资料自动补一次，等于替人点「立即重试」。
+
+    只认最近一趟以失败收尾、记过断网跳过（`offline_skipped`）且还有可重试项的；在跑的、
+    只是别的原因失败的都不碰。由 `NetworkReachability.on_recovered` 在探测线程里调，
+    这里的任何异常都只记日志：只读端会被拒，探测线程不能因此停掉。
+    """
+    try:
+        previous = _current(contract)
+        if (previous.get('status') != 'failed' or not previous.get('offline_skipped')
+                or not previous.get('retryable_asset_ids')):
+            return None
+        return w_library_processing(contract, {'job_id': previous.get('job_id'), 'retry': []})
+    except Exception:
+        LOGGER.warning('联网恢复后自动重试未完成项失败', exc_info=True)
+        return None
+
+
 def w_library_processing(contract, body, *, resume=False):
     config = settings_file.active()
     if (body or {}).get('action'):
@@ -349,7 +369,8 @@ def w_library_processing(contract, body, *, resume=False):
                 database=contract.database,
                 resume_state=previous if resume else None,
                 speed_mode=control_for(config).mode,
-                active=lambda: (contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
+                network=getattr(contract, 'network_reachability', None),
+                active=lambda:(contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
                 report=lambda state: contract.library_processing_job.update(job_id, **{
                     key: value for key, value in state.items() if key != 'job_id'}))
             contract.library_processing_job.update(job_id, **{key: value for key, value in result.items() if key != 'job_id'})
