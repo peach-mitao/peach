@@ -870,13 +870,15 @@ class LibraryNfoTests(unittest.TestCase):
 
     def test_network_recovery_retries_only_a_run_that_skipped_rows_offline(self):
         from peach.web_library_processing import retry_after_network_recovery
+        skipped = {'status': 'failed', 'offline_skipped': 2, 'retryable_asset_ids': [1, 2]}
+        writer, reader = SimpleNamespace(read_only=False), SimpleNamespace(read_only=True)
         cases = {
-            'skipped offline': ({'status': 'failed', 'offline_skipped': 2, 'retryable_asset_ids': [1, 2]}, True),
-            'failed for other reasons': ({'status': 'failed', 'offline_skipped': 0, 'retryable_asset_ids': [1]}, False),
-            'still running': ({'status': 'running', 'offline_skipped': 2, 'retryable_asset_ids': [1]}, False),
-            'nothing left': ({'status': 'failed', 'offline_skipped': 2, 'retryable_asset_ids': []}, False),
+            'skipped offline': (skipped, writer, True),
+            'failed for other reasons': ({**skipped, 'offline_skipped': 0}, writer, False),
+            'nothing left': ({**skipped, 'retryable_asset_ids': []}, writer, False),
+            'read-only device': (skipped, reader, False),
         }
-        for name, (live, expected) in cases.items():
+        for name, (live, sync, expected) in cases.items():
             with self.subTest(name):
                 contract = Mock()
                 contract.library_processing_job.thread = None
@@ -884,11 +886,17 @@ class LibraryNfoTests(unittest.TestCase):
                 with patch('peach.web_library_processing.settings_file.active'), \
                         patch('peach.web_library_processing.snapshot', return_value={}), \
                         patch('peach.web_library_processing.w_library_processing') as start:
-                    retry_after_network_recovery(contract)
+                    retry_after_network_recovery(contract, sync)
                 if expected:
                     start.assert_called_once_with(contract, {'job_id': 'one', 'retry': []})
                 else:
                     start.assert_not_called()
+        # 断网那一趟还在收尾：这次恢复不算用掉，留给探测器下一次判回联网。
+        contract = Mock()
+        contract.library_processing_job.snapshot.return_value = {**skipped, 'status': 'running', 'job_id': 'one'}
+        with patch('peach.web_library_processing.w_library_processing') as start:
+            self.assertIs(retry_after_network_recovery(contract, writer), False)
+        start.assert_not_called()
 
     @windows_ledger_roots
     def test_processing_auto_applies_safe_nfo_fields_before_it_finishes(self):

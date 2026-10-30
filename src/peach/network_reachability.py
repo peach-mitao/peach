@@ -43,7 +43,7 @@ class NetworkReachability:
     """后台线程按节律探测；`refresh()` 让下一轮立即开始，用于代理设置刚保存时。
 
     `on_recovered` 在判过 `offline` 之后第一次判回 `online` 时调一次，在探测所在的线程里跑；
-    中间夹着的 `unknown` 不算恢复也不算断开。
+    中间夹着的 `unknown` 不算恢复也不算断开。它回 `False` 时这次恢复不算用掉。
     """
 
     def __init__(self, *, check=probe, wall_clock=time.time, retry_delay=1.0, on_recovered=None):
@@ -93,9 +93,10 @@ class NetworkReachability:
             recovered = self._down and state == "online"
             if state != "unknown":
                 self._down = state == "offline"
-        # 回调在锁外：它多半要回头读 `summary()`。
-        if recovered and self.on_recovered is not None:
-            self.on_recovered()
+        # 回调在锁外：它多半要回头读 `summary()`。回 False 表示现在接不了，下次判回联网再通知。
+        if recovered and self.on_recovered is not None and self.on_recovered() is False:
+            with self._lock:
+                self._down = True
         return state
 
     def summary(self) -> dict:

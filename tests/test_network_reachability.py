@@ -51,6 +51,13 @@ class NetworkReachabilityTests(unittest.TestCase):
         self.assertEqual(recovered, ["online"])
         self.assertEqual(calls, [])
 
+    def test_a_declined_recovery_is_offered_again_on_the_next_online(self):
+        monitor, _ = self.monitor(False, False, True, True, True)
+        answers = [False, None]
+        monitor.on_recovered = lambda: answers.pop(0)
+        self.assertEqual([monitor.tick() for _ in range(4)], ["offline", "online", "online", "online"])
+        self.assertEqual(answers, [])
+
     def test_undecidable_settings_and_errors_are_unknown(self):
         monitor, _ = self.monitor(None)
         self.assertEqual(monitor.tick(), "unknown")

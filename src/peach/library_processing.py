@@ -1476,9 +1476,9 @@ class _RemoteSession:
         if self._provider is not None and hasattr(self._provider, 'close'):
             self._provider.close()
 
-    def prepare(self, prepared, stages_of, update, *, cover_root=None, groups=None):
-        """只为本趟实际需要的来源准备工具，不消费单片查询预算。"""
-        if self._factory:
+    def prepare(self, prepared, stages_of, update, *, cover_root=None, groups=None, offline=lambda: False):
+        """只为本趟实际需要的来源准备工具，不消费单片查询预算。断网时不准备：装 amane 本身要联网。"""
+        if self._factory or offline():
             return
         from . import metadata_amane
         from .scraping_access import paused_until
@@ -2098,28 +2098,50 @@ def _people_allowed(config):
     return any('people' in stages for stages in media_identity.stages_by_root(config).values())
 
 
-def _network_gate(network, update):
-    """外部采集开始前当场探一次外网，返回之后每一行用的判定：读探测器最近的快照。
+class _NetworkGate:
+    """外部采集用的断网判定，`network` 是 `NetworkReachability`，不给就永远算联网。
 
     只有两次探测都连不上（`offline`）才算断网；代理设置待选（`unknown`）照常采集，判不准的
-    结论不拦。快照可能是十分钟前的，所以开头不读旧快照而是同步探一次，断网时最多等约 20 秒。
-    探测线程顺带拉起：断网首扫之后没人打开页面，联网恢复也要有人发现。
+    结论不拦。`skipped` 是这一趟因断网跳过的行数，续跑时接着上次的数。
     """
-    if network is None:
-        return lambda: False
-    update(stage='检查外网连接', current_action='', current_started_at=None, current_deadline_at=None)
-    network.tick()
-    network.start()
-    return lambda: network.summary().get('state') == 'offline'
+
+    def __init__(self, network, skipped=0):
+        self.network, self.skipped = network, skipped
+
+    def probe(self, update):
+        """外部采集开始前当场探一次。快照可能是十分钟前的，断网时这一下最多等约 20 秒。
+
+        探测线程顺带拉起：断网首扫之后没人打开页面，联网恢复也要有人发现。"""
+        if self.network is None:
+            return
+        update(stage='检查外网连接', current_action='', current_started_at=None, current_deadline_at=None)
+        self.network.tick()
+        self.network.start()
+
+    def offline(self):
+        return self.network is not None and self.network.summary().get('state') == 'offline'
+
+    def skips(self, remote, row, code, missing, allowed, cover_root, *, answered, issue):
+        """断网时这一行要出网就不去问，记成可重试的未取得；不出网的行照常走完。"""
+        if not self.offline() or not remote.asks(row, code, missing if 'metadata' in allowed else [],
+                                                 cover_root, answered=answered,
+                                                 fetch_cover='cover' in allowed):
+            return False
+        issue(row, OFFLINE_MESSAGE, action='network_offline', retryable=True)
+        self.skipped += 1
+        return True
 
 
 def _collect_allowed(remote, traffic, row, code, missing, allowed, cover_root, covered, *,
-                     update, issue, answered, received, succeeded):
+                     update, issue, answered, received, succeeded, gate=_NetworkGate(None)):
     """按这一行所属媒体库的处理方式问外部来源（ADR-0116），返回 (证据条目, 新落盘的封面数)。
 
     关掉的联网步骤不问：不补资料时不带缺失字段，不补封面时不找封面，两样都关就整行不联网。
-    不补人物图片的媒体库，这一行换上的封面不记进 `covered`，不因此派补头像后继。"""
+    不补人物图片的媒体库，这一行换上的封面不记进 `covered`，不因此派补头像后继。
+    断网（`gate`）时要出网的行一家都不问，留一条问题项，不进断点。"""
     found, covers = [], 0
+    if gate.skips(remote, row, code, missing, allowed, cover_root, answered=answered, issue=issue):
+        return found, covers
     if allowed & {'metadata', 'cover'}:
         traffic.start_metadata(code)
         try:
@@ -2956,11 +2978,12 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             _check_processing_junk(judgement_database, locations, sources.online_roots,
                                    scope_ids, protected_ids, state, update)
             prepared = _active_prepared(judgement_database, prepared)
-            offline = _network_gate(network, update)
+            gate = _NetworkGate(network, state['offline_skipped'])
+            gate.probe(update)
             from .metadata_amane import PreparationError
             try:
-                if not offline():
-                    remote.prepare(prepared, stages_of, update, cover_root=cover_root, groups=groups)
+                remote.prepare(prepared, stages_of, update, cover_root=cover_root, groups=groups,
+                               offline=gate.offline)
             except PreparationError as error:
                 message = f'采集工具准备失败：{error}'
                 issue(None, message, action='preparing_sources')
@@ -2978,21 +3001,14 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                        current_asset_name=Path(str(row['name'] or '')).name)
                 target_key = f"asset:{row['id']}"
                 missing = list(COLLECTED_FIELDS) if verify_existing else _missing_fields(row, local_fields)
-                answered = () if verify_existing else _answered_sources(groups, target_key, missing)
-                allowed = stages_of(row['path'])
-                if offline() and remote.asks(row, code, missing if 'metadata' in allowed else [], cover_root,
-                                             answered=answered, fetch_cover='cover' in allowed):
-                    # 不进断点：这一行这一趟没做完，末尾也不从待补全集合里摘掉。
-                    issue(row, OFFLINE_MESSAGE, action='network_offline', retryable=True)
-                    update(offline_skipped=state['offline_skipped'] + 1, checked=completed_count + position + 1,
-                           current_asset_id=None, current_asset_name='', current_action='')
-                    continue
                 found, covers = _collect_allowed(
-                    remote, traffic, row, code, missing, allowed, cover_root, covered,
-                    update=update, issue=issue, answered=answered,
+                    remote, traffic, row, code, missing, stages_of(row['path']), cover_root, covered,
+                    update=update, issue=issue,
+                    answered=() if verify_existing else _answered_sources(groups, target_key, missing),
                     received=lambda entries, row=row, code=code, fields=local_fields, verify=verify_existing:
                         publish(row, code, fields, verify, entries),
-                    succeeded=lambda before=issues_before: state['issue_count'] == before)
+                    succeeded=lambda before=issues_before: state['issue_count'] == before, gate=gate)
+                state['offline_skipped'] = gate.skipped
                 state['covers'] += covers
                 update(stage='保存待确认资料', current_action='writing_candidates',
                        current_started_at=time.time(), current_deadline_at=None)
@@ -3008,7 +3024,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             summary = _finish_collection(
                 config, database, candidate_root, cover_root, groups, remote, asset_ids=scope_ids,
                 active=active, update=update, issue=issue, watermark=entity_watermark, covered=covered,
-                people=_people_allowed(config), offline=offline())
+                people=_people_allowed(config), offline=gate.offline())
             finish_step('collect')
             _settle_collection_state(state, summary, rows, update)
         except Exception:

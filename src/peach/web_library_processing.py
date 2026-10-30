@@ -323,15 +323,20 @@ def _processing_request(contract, config, previous, body):
     return retry_ids, asset_ids, stage
 
 
-def retry_after_network_recovery(contract):
+def retry_after_network_recovery(contract, sync=None):
     """外网判回联网时，上一趟因断网跳过的外部资料自动补一次，等于替人点「立即重试」。
 
-    只认最近一趟以失败收尾、记过断网跳过（`offline_skipped`）且还有可重试项的；在跑的、
-    只是别的原因失败的都不碰。由 `NetworkReachability.on_recovered` 在探测线程里调，
-    这里的任何异常都只记日志：只读端会被拒，探测线程不能因此停掉。
+    只认最近一趟以失败收尾、记过断网跳过（`offline_skipped`）且还有可重试项的；只是别的原因
+    失败的不碰。任务还在跑时回 `False`，探测器据此把这次恢复留到下一次判回联网再通知：断网
+    那一趟可能正在收尾。只读端（`sync.read_only`）不发起，路由层会拒的写入从探测线程绕进来也不该做。
+    由 `NetworkReachability.on_recovered` 在探测线程里调，这里的任何异常都只记日志。
     """
+    if sync is not None and sync.read_only:
+        return None
     try:
         previous = _current(contract)
+        if previous.get('status') in ACTIVE:
+            return False
         if (previous.get('status') != 'failed' or not previous.get('offline_skipped')
                 or not previous.get('retryable_asset_ids')):
             return None
