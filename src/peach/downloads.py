@@ -92,8 +92,8 @@ FAILURE_KINDS: dict[str, FailureKind] = {kind.key: kind for kind in (
     FailureKind("rejected", "网盘拒绝下载该资源"),
     FailureKind("invalid_link", "链接无效"),
     FailureKind("no_source", "没有可用下载源或进度长时间未更新"),
-    FailureKind("not_accepted", "网盘没有收下任务"),
-    FailureKind("removed", "网盘任务被删除"),
+    FailureKind("not_accepted", "下载器没有收下任务"),
+    FailureKind("removed", "下载器里的任务已删除"),
     FailureKind("duplicate", "下载任务已存在"),
     FailureKind("not_landed", "目标目录中未找到下载文件"),
     FailureKind("mismatch", "下载内容与目标作品不符"),
@@ -238,6 +238,8 @@ class RemoteStatus:
     message: str = ""
     #: 提交时远端目录里已有同一 infohash 的任务，接过来跟踪，没有调提交接口。
     adopted: bool = False
+    #: 接管时远端任务的实际保存目录；新提交留空，由调用方用自己的目标。
+    target: str = ""
 
 
 RUNNING, DONE, ERROR, MISSING = "running", "done", "error", "missing"
@@ -280,6 +282,8 @@ POLL_DELAYS = (10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 900.0)
 #: 提交时网盘暂时没应答（如 CloudDrive2 刷新 115 离线列表超时），从第一次提交起按 `POLL_DELAYS`
 #: 再交，这么久还没交上才算失败。
 SUBMIT_RETRY_WINDOW = 3600.0
+#: 本地下载器完成即入库，退避封顶设短，避免下完十几分钟后才开始登记。
+LOCAL_POLL_CEILING = 60.0
 #: 远端完成后先等推送发现登记；过了这一段账本里还没有，才定向登记一次。
 LANDING_GRACE = 60.0
 #: 远端完成之后最多等这么久让文件出现在挂载目录、进入账本，超过算「落地未见」。
@@ -307,8 +311,9 @@ def _stall_cutoff(now: float) -> float:
 MAX_LANDED_FILES = 500
 
 
-def poll_delay(checks: int) -> float:
-    return POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+def poll_delay(checks: int, ceiling: float | None = None) -> float:
+    delay = POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+    return min(delay, ceiling) if ceiling else delay
 
 
 # ---------------------------------------------------------------- 任务表
@@ -827,20 +832,48 @@ class DownloadService:
                 self.store.record_submission(task=task, outcome=outcome, now=now,
                                              failure=error.failure, detail=error.detail)
             else:
-                self._accepted(task, status, now)
+                error = self._accepted(task, status, now)
+                if error:
+                    self._fail(task, error, now)
+                    self.store.record_submission(task=task, outcome="failed", now=now,
+                                                 failure=error.failure, detail=error.detail)
+                    return SubmitResult("failed", task)
                 outcome = "adopted_remote" if status.adopted else "submitted"
                 self.store.record_submission(task=task, outcome=outcome, now=now)
         self._wake.set()
         return SubmitResult(outcome, task)
 
-    def _accepted(self, task: DownloadTask, status: RemoteStatus, now: float) -> None:
+    def _accepted(self, task: DownloadTask, status: RemoteStatus, now: float) -> DownloadError | None:
         task.remote_id = status.remote_id or task.remote_id
         task.remote_name = status.name or task.remote_name
+        if status.adopted and status.target:
+            error = self._local_target_error(task, status)
+            if error:
+                return error
         task.state = SUBMITTED
         task.checks = 0
         task.failure_detail = None
         task.next_check_at = iso(now + POLL_DELAYS[0])
         self.store.save(task)
+        return None
+
+    def _local_target_error(self, task: DownloadTask, status: RemoteStatus) -> DownloadError | None:
+        channel = next((row for row in self.channel_snapshot()["providers"]
+                        if row["key"] == task.provider), None)
+        if channel is None or channel.get("kind") != "local":
+            return None
+        try:
+            actual = normalise_local_target(status.target)
+        except ValueError:
+            actual = ""
+        root = str(channel["target"]).rstrip("/")
+        if not (actual == root or actual.startswith(root + "/")):
+            return DownloadError(
+                "mismatch",
+                f"qBittorrent 里已有这个磁力，但保存在 {status.target}，"
+                f"不在当前下载目录 {root} 内；请先在 qBittorrent 里删除它再提交")
+        task.target = actual
+        return None
 
     def _retry_submit(self, task: DownloadTask, now: float) -> None:
         """再交一次提交时网盘没应答的磁力。远端收下后从这一刻起按新提交对账。"""
@@ -865,8 +898,14 @@ class DownloadService:
             latest = self.store.get(task.id)
             if latest is None or latest.state != SUBMIT_PENDING:
                 return  # 再交的这段时间里任务被取消了。
+            task = latest
             task.submitted_at = iso(now)
-            self._accepted(task, status, now)
+            error = self._accepted(task, status, now)
+            if error:
+                self._fail(task, error, now)
+                self.store.record_submission(task=task, outcome="failed", now=now,
+                                             failure=error.failure, detail=error.detail)
+                return
             self.store.record_submission(task=task, outcome="adopted_remote" if status.adopted else "submitted",
                                          now=now)
 
@@ -1079,7 +1118,8 @@ class DownloadService:
         """隔一段再查。`detail` 是这一次暂时性故障的原因；没带就是这一次查通了，旧原因作废。"""
         task.checks += 1
         task.updated_at = iso(now)
-        task.next_check_at = iso(now + poll_delay(task.checks))
+        ceiling = LOCAL_POLL_CEILING if task.location == "local" else None
+        task.next_check_at = iso(now + poll_delay(task.checks, ceiling))
         task.failure_detail = detail
         self.store.save(task)
 

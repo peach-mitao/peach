@@ -101,7 +101,14 @@ class ProviderTests(unittest.TestCase):
         status = self.provider(handler).submit(parse_magnet(MAGNET), TARGET)
         self.assertTrue(status.adopted)
         self.assertEqual(status.state, DONE)
+        self.assertEqual(status.target, TARGET)
         self.assertEqual(handler.calls("/api/v2/torrents/add"), [])
+
+    def test_an_adopted_torrent_reports_the_save_path_it_already_uses(self):
+        handler = _Handler(torrents=[_torrent(save_path="/vol1/media/Peach/Other")])
+        status = self.provider(handler).submit(parse_magnet(MAGNET), TARGET)
+        self.assertTrue(status.adopted)
+        self.assertEqual(status.target, "/vol1/media/Peach/Other")
 
     def test_a_failed_existing_torrent_is_replaced(self):
         handler = _Handler(torrents=[_torrent(state="error", progress=0)])
