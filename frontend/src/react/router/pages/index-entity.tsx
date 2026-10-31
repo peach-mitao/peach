@@ -245,7 +245,11 @@ function EntityOpen({ target }: { target: { segment: string; kind: string; name:
           { replace: true, state: peachHistory.navigation.location.state });
         return;
       }
-      if (!entity?.id || entity.error) { shell.missing(target.kind); return }
+      if (!entity?.id || entity.error) {
+        shell.missing(target.kind);
+        void pageNavigationReady(live);
+        return;
+      }
       const name = String(entity.canonical_name || target.name);
       const path = entityPath(target.kind, name, Number(entity.id));
       if (path !== location.pathname) {

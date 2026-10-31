@@ -3,6 +3,7 @@ import { after, before, describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
 import { launch, VIEWPORTS } from './harness.ts';
 import { openItemPage } from './item-fixture.ts';
+import { openFollowFeed } from './follow-fixture.ts';
 
 describe('页面滚动定位', () => {
   let browser: Browser;
@@ -10,6 +11,51 @@ describe('页面滚动定位', () => {
   after(async () => { await browser?.close() });
   for (const viewport of VIEWPORTS) {
     for (const reduced of [false, true]) {
+      it(`${viewport.name}：首次进入关注页时短骨架不截断回顶，减少动态效果=${reduced}`, { timeout: 60_000 }, async () => {
+        const opened = await openFollowFeed(browser, '/', viewport, { ready: '#catalogFilter [data-filter-frame]' });
+        const { page } = opened;
+        let release!: () => void;
+        const waiting = new Promise<void>(resolve => { release = resolve });
+        try {
+          await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+          await page.route(url => url.pathname === '/api/follow', async route => {
+            await waiting;
+            await route.fallback();
+          });
+          const previousHeight = await page.evaluate(() => {
+            // 长度只放在离开的列表内，导航清空列表时会一起移除。
+            const tail = document.createElement('div');
+            tail.style.height = '3000px';
+            document.getElementById('grid')!.append(tail);
+            window.scrollTo({ top: 500, behavior: 'instant' });
+            const frames: number[] = [];
+            const tracking = { frames, running: true };
+            Object.assign(window, { coldFollowScroll: tracking });
+            const record = () => {
+              frames.push(scrollY);
+              if (tracking.running) requestAnimationFrame(record);
+            };
+            requestAnimationFrame(record);
+            return document.documentElement.style.minHeight;
+          });
+          if (viewport.mobile) await page.locator('header button[aria-label="展开侧栏"]').click();
+          await page.locator('#drawer [data-nav="follow"]').click();
+          await page.waitForURL('**/follow');
+          await page.waitForFunction(() => scrollY === 0);
+          const frames = await page.evaluate(() => {
+            const tracking = (window as unknown as { coldFollowScroll: { frames: number[]; running: boolean } }).coldFollowScroll;
+            tracking.running = false;
+            return tracking.frames;
+          });
+          if (!reduced) assert.ok(frames.some(y => y > 2 && y < 490), '首次切换应经过中间位置，不能先被短骨架夹到顶部');
+          release();
+          await page.locator('[data-follow-list] > [data-follow-item]').first().waitFor();
+          await page.waitForFunction(height => document.documentElement.style.minHeight === height
+            && !document.documentElement.hasAttribute('data-page-navigation-pending'), previousHeight);
+          assert.equal(await page.evaluate(() => scrollY), 0);
+          assert.deepEqual(opened.problems, []);
+        } finally { release(); await opened.close() }
+      });
       it(`${viewport.name}：内容就绪后定位，减少动态效果=${reduced}`, { timeout: 60_000 }, async () => {
         const opened = await openItemPage(browser, '/', viewport, { ready: '#grid [data-media-card]' });
         const { page } = opened;

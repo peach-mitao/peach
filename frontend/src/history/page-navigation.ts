@@ -19,10 +19,18 @@ let requestedTop = -1;
 let refreshing = false;
 let installed = false;
 let anchorStyle: string | undefined;
+let heightStyle: string | undefined;
+let contentReady = false;
+let scrolling = false;
 
 function holdScrollAnchor(): void {
   const root = document.documentElement;
   anchorStyle ??= root.style.overflowAnchor;
+  heightStyle ??= root.style.minHeight;
+  // 收起旧页面时，短骨架不能先把当前位置夹到顶部。
+  root.style.minHeight = `${root.scrollHeight}px`;
+  contentReady = false;
+  scrolling = false;
   root.style.overflowAnchor = 'none';
   root.setAttribute('data-page-navigation-pending', '');
   // 取消上一页尚未结束的平滑滚动，下一页只接受自己的定位。
@@ -30,12 +38,32 @@ function holdScrollAnchor(): void {
 }
 
 function releaseScrollAnchor(seq: number): void {
-  document.documentElement.removeAttribute('data-page-navigation-pending');
+  if (!contentReady || scrolling || anchorStyle === undefined) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (peachHistory.navigation.seq !== seq || anchorStyle === undefined) return;
-    document.documentElement.style.overflowAnchor = anchorStyle;
+    if (peachHistory.navigation.seq !== seq || !contentReady || scrolling || anchorStyle === undefined) return;
+    const root = document.documentElement;
+    root.style.minHeight = heightStyle!;
+    root.style.overflowAnchor = anchorStyle;
+    root.removeAttribute('data-page-navigation-pending');
+    heightStyle = undefined;
     anchorStyle = undefined;
   }));
+}
+
+function scrollPage(options: ScrollToOptions): void {
+  scrolling = options.behavior === 'smooth'
+    && (Math.abs((options.top ?? window.scrollY) - window.scrollY) > 0.5
+      || Math.abs((options.left ?? window.scrollX) - window.scrollX) > 0.5);
+  window.scrollTo(options);
+}
+
+function trackElementScroll(target: Element | null): void {
+  if (!target?.getClientRects().length) { scrolling = false; return }
+  const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+  const top = Math.max(0, Math.min(target.getBoundingClientRect().top + window.scrollY - padding - margin,
+    document.documentElement.scrollHeight - window.innerHeight));
+  scrolling = routeScrollBehavior() === 'smooth' && Math.abs(top - window.scrollY) > 0.5;
 }
 
 const page = (path: string) => !isOverlayPath(path) && !isPreferencePath(path) && path !== '/immerse' && path !== '/wall';
@@ -79,11 +107,20 @@ function installPageNavigation(): void {
   active = peachHistory.navigation;
   from = active.location;
   window.history.scrollRestoration = 'manual';
+  document.addEventListener('scrollend', event => {
+    if (event.target !== document) return;
+    scrolling = false;
+    releaseScrollAnchor(peachHistory.navigation.seq);
+  });
   peachHistory.listen(next => {
     from = active.location;
     departure = { left: window.scrollX, top: window.scrollY };
     if (page(next.location.pathname)) holdScrollAnchor();
-    else releaseScrollAnchor(next.seq);
+    else {
+      contentReady = true;
+      scrolling = false;
+      releaseScrollAnchor(next.seq);
+    }
     if (page(from.pathname)) {
       const saved = visits.get(from.key) ?? { ...departure, state: new Map<string, unknown>() };
       Object.assign(saved, departure);
@@ -134,7 +171,7 @@ export function requestPageTop(): void {
   requestedTop = peachHistory.navigation.seq;
   if (positioned !== requestedTop) return;
   requestedTop = -1;
-  window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+  scrollPage({ top: 0, behavior: routeScrollBehavior() });
 }
 
 /** 新页面骨架就位即可开始导航；历史位置等待内容高度恢复，锚点等待目标出现。 */
@@ -151,8 +188,8 @@ export async function pageNavigationReady(isCurrent: () => boolean, results?: El
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     if (!current()) return;
   }
-  if (!pending) releaseScrollAnchor(seq);
-  if (positioned === seq) return;
+  if (!pending) contentReady = true;
+  if (positioned === seq) { releaseScrollAnchor(seq); return }
   if (pending && restoring) return;
   if (pending && navigation.location.hash) {
     let target: Element | null;
@@ -163,25 +200,31 @@ export async function pageNavigationReady(isCurrent: () => boolean, results?: El
   if (requestedTop === seq) {
     requestedTop = -1;
     restoring = undefined;
-    window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+    scrollPage({ top: 0, behavior: routeScrollBehavior() });
   } else if (restoring) {
     const behavior = routeScrollBehavior();
     if (behavior === 'smooth') {
       window.scrollTo({ ...departure, behavior: 'instant' });
     }
-    window.scrollTo({ left: restoring.left, top: restoring.top, behavior });
+    scrollPage({ left: restoring.left, top: restoring.top, behavior });
     restoring = undefined;
   } else if (navigation.location.hash) {
     await scrollToAnchor(navigation.location.hash, current);
+    if (!current()) return;
+    let target: Element | null = null;
+    try { target = document.getElementById(decodeURIComponent(navigation.location.hash.slice(1))) } catch { /* 无效锚点不定位 */ }
+    trackElementScroll(target);
   } else if (navigation.action === 'REPLACE' && identity(from) === identity(navigation.location)) {
     window.scrollTo({ ...departure, behavior: 'instant' });
   } else if (results?.getClientRects().length && identity(from) === identity(navigation.location)
     && from.search !== navigation.location.search) {
     const inset = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
     if (results.getBoundingClientRect().top < inset) {
+      trackElementScroll(results);
       results.scrollIntoView({ block: 'start', behavior: routeScrollBehavior() });
     }
   } else if (seq > 0) {
-    window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+    scrollPage({ top: 0, behavior: routeScrollBehavior() });
   }
+  releaseScrollAnchor(seq);
 }
