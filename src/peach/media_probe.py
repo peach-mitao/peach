@@ -136,8 +136,8 @@ def probe_unmeasured(
     if asset_ids is not None:
         if not asset_ids:
             return 0
-        selected = ' AND id IN (' + ','.join('?' * len(asset_ids)) + ')'
-        parameters += tuple(asset_ids)
+        selected = ' AND id IN (SELECT value FROM json_each(?))'
+        parameters += (json.dumps(list(asset_ids)),)
     with closing(sqlite3.connect(db_path, timeout=30)) as connection:
         rows = connection.execute(
             f"SELECT id,path FROM asset WHERE {_UNMEASURED} AND (path=? OR substr(path,1,?)=?){selected} ORDER BY id",
