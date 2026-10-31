@@ -17,7 +17,7 @@ class GpuCounters:
         self.collected = False
         self.error = '当前平台未提供逐进程 GPU 计数器'
         if sys.platform == 'darwin':
-            self.error = 'macOS 未提供本功能可用的逐进程 GPU 引擎计数；系统整体 GPU 占用不能归属到任务'
+            self.error = '当前版本尚未接入 macOS 的逐进程 GPU 计数；不能使用整机占用代替任务占用'
         if os.name != 'nt':
             return
         try:

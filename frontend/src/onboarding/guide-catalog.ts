@@ -1,11 +1,11 @@
 import { PREFERENCE_SECTIONS, CONFIGURATION_SECTIONS } from '../history/settings-route';
-import type { BrowseRoutePath, CatalogPagePath, IndexRoutePath, ManagedPath } from '../react/router/shell-actions';
+import type { RegisteredRoutePath } from '../history/route-meta';
 import { javPath } from '../react/jav/jav-navigation';
 
 /** 沿用应用的路由类型，页面移除或改名会在类型检查中指出教程的旧链接。 */
-type GuidePath = ManagedPath | BrowseRoutePath | CatalogPagePath | IndexRoutePath | '/trash' | `/settings/${keyof typeof PREFERENCE_SECTIONS}`;
+type GuidePath = RegisteredRoutePath;
 export type GuideRoute = GuidePath | `${GuidePath}?${string}` | `${GuidePath}#${string}`;
-export interface GuideStep { id: string; title: string; body: string; route?: GuideRoute; target?: string; surface?: 'detail' | 'player' | 'subtitles'; scope?: string; details?: readonly [string, string][] }
+export interface GuideStep { id: string; title: string; body: string; route?: GuideRoute | undefined; target?: string | undefined; surface?: 'detail' | 'player' | 'subtitles'; scope?: string | undefined; details?: readonly [string, string][] | undefined }
 export interface GuideChapter { id: string; title: string; summary: string; kind: 'interface' | 'settings'; steps: GuideStep[] }
 const step = (id: string, title: string, body: string, route?: GuideRoute, target?: string, scope?: string): GuideStep => ({ id, title, body, route, target, scope });
 const page = (id: string, title: string, body: string, route: GuideRoute, target?: string) => step(id, title, body, route, target);
@@ -303,8 +303,8 @@ export function sectionGuide(title: string): GuideStep | undefined {
   return id ? SETTING_CHAPTERS.flatMap(chapter => chapter.steps).find(item => item.id === id) : undefined;
 }
 export function contextualChapter(path: string): GuideChapter {
-  if (path === '/') return INTERFACE_CHAPTERS[0];
+  if (path === '/') return INTERFACE_CHAPTERS[0]!;
   return SETTING_CHAPTERS.find(chapter => chapter.steps[0]?.route === path)
     || INTERFACE_CHAPTERS.find(chapter => chapter.id !== 'basics' && chapter.steps.some(item => item.route === path))
-    || INTERFACE_CHAPTERS[0];
+    || INTERFACE_CHAPTERS[0]!;
 }

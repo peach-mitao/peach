@@ -8,7 +8,6 @@ import { isPlayerGuidePreview } from '../src/player/guide-preview';
 
 const mocks = vi.hoisted(() => ({ driver: vi.fn(), unlisten: vi.fn(), listen: vi.fn(), popover: vi.fn(() => vi.fn()), disposeStage: vi.fn() }));
 vi.mock('driver.js', () => ({ driver: mocks.driver }));
-vi.mock('../src/react/onboarding/guide-popover', () => ({ mountGuidePopover: mocks.popover }));
 vi.mock('../src/history', () => ({ peachHistory: { listen: mocks.listen } }));
 vi.mock('../src/application/layout', () => ({ closeDrawerAfterNav: vi.fn() }));
 vi.mock('../src/application/media', () => ({ disposeStage: mocks.disposeStage }));
@@ -30,7 +29,7 @@ describe('章节进度', () => {
     chapter.steps.forEach((step, index) => { progress = recordGuideStep(progress, chapter.id, step.id, index + 1, index === 1) });
     expect(guideChapterComplete(progress, chapter)).toBe(false);
     expect(guideResumePosition(progress, chapter)).toBe(1);
-    progress = recordGuideStep(progress, chapter.id, chapter.steps[1].id, 2, false);
+    progress = recordGuideStep(progress, chapter.id, chapter.steps[1]!.id, 2, false);
     expect(guideChapterComplete(progress, chapter)).toBe(true);
     expect(guideResumePosition(progress, chapter)).toBe(0);
   });
@@ -68,7 +67,7 @@ describe('章节进度', () => {
     expect(reread.chapters.basics).toEqual({ next: 1, read: ['search'], skipped: [] });
     expect(reread.chapters.settings).toEqual(original.chapters.settings);
     expect(original.chapters.basics).toBeUndefined();
-    expect(recordGuideStep(read, 'basics', 'search', 1, true).chapters.basics.read).toEqual([]);
+    expect(recordGuideStep(read, 'basics', 'search', 1, true).chapters.basics!.read).toEqual([]);
   });
   it('换页后仍读取账本进度，不采用旧浏览器进度', async () => {
     const saved = { ...recordGuideStep(emptyProgress(), 'basics', 'search', 1, false), campaign: 'welcome-1', invited: true };
@@ -118,7 +117,7 @@ describe('章节进度', () => {
 
 describe('只读导览会话', () => {
   const step = { id: 'search', title: '搜索馆藏', body: '输入关键词。', target: '#guide-target' };
-  const callbacks = () => ({ navigate: vi.fn(), next: vi.fn(), previous: vi.fn(), close: vi.fn() });
+  const callbacks = () => ({ mountPopover: mocks.popover, navigate: vi.fn(), next: vi.fn(), previous: vi.fn(), close: vi.fn() });
   const visibleTarget = () => {
     const target = document.createElement('button'); target.id = 'guide-target'; document.body.append(target);
     vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 100, height: 40 }));
@@ -131,13 +130,13 @@ describe('只读导览会话', () => {
     const actions = callbacks(), session = createGuideSession({ ...actions, invitation: true });
     try {
       await session.show({ id: 'tutorial-entry', title: '打开教程', body: '认识入口', target: '#tutorialBtn' }, 0, 1);
-      expect(instance.highlight.mock.calls[0][0].element).toBe(entry);
-      expect(mocks.driver.mock.calls[0][0].disableActiveInteraction).toBe(false);
+      expect(instance.highlight.mock.calls[0]![0].element).toBe(entry);
+      expect(mocks.driver.mock.calls[0]![0].disableActiveInteraction).toBe(false);
       const panel = document.createElement('div'); panel.className = 'peach-guide-popover'; document.body.append(panel);
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
       entry.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(false);
-      mocks.driver.mock.calls[0][0].overlayClickBehavior();
+      mocks.driver.mock.calls[0]![0].overlayClickBehavior();
       expect(actions.close).toHaveBeenCalledOnce();
       expect(actions.next).not.toHaveBeenCalled();
     } finally { session.stop() }
@@ -193,11 +192,11 @@ describe('只读导览会话', () => {
       await session.show({ ...step, route: '/tasks', title: '<搜索>', body: 'A & B' }, 0, 2);
       expect(actions.navigate).toHaveBeenCalledWith('/tasks');
       expect(mocks.driver).toHaveBeenCalledWith(expect.objectContaining({ disableActiveInteraction: true, allowKeyboardControl: false }));
-      expect(instance.highlight.mock.calls[0][0]).toMatchObject({ element: target, popover: { side: 'bottom' } });
-      mocks.driver.mock.calls[0][0].onPopoverRender({ wrapper: document.createElement('div'), arrow: document.createElement('div') });
+      expect(instance.highlight.mock.calls[0]![0]).toMatchObject({ element: target, popover: { side: 'bottom' } });
+      mocks.driver.mock.calls[0]![0].onPopoverRender({ wrapper: document.createElement('div'), arrow: document.createElement('div') });
       expect(mocks.popover).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ step: expect.objectContaining({ title: '<搜索>', body: 'A & B' }), missing: false }));
-      mocks.driver.mock.calls[0][0].onNextClick(); expect(actions.next).toHaveBeenCalledWith(false);
-      mocks.driver.mock.calls[0][0].overlayClickBehavior(); expect(actions.close).toHaveBeenCalledOnce();
+      mocks.driver.mock.calls[0]![0].onNextClick(); expect(actions.next).toHaveBeenCalledWith(false);
+      mocks.driver.mock.calls[0]![0].overlayClickBehavior(); expect(actions.close).toHaveBeenCalledOnce();
       expect(clicked).not.toHaveBeenCalled(); expect(fetcher).not.toHaveBeenCalled();
     } finally { session.stop() }
     expect(instance.destroy).toHaveBeenCalledOnce(); expect(mocks.unlisten).toHaveBeenCalledOnce();
@@ -233,10 +232,10 @@ describe('只读导览会话', () => {
     const actions = callbacks(), session = createGuideSession(actions);
     try {
       const showing = session.show(step, 0, 2); await vi.advanceTimersByTimeAsync(4000); await showing;
-      expect(instance.highlight.mock.calls[0][0].element).toBeUndefined();
-      mocks.driver.mock.calls[0][0].onPopoverRender({ wrapper: document.createElement('div'), arrow: document.createElement('div') });
+      expect(instance.highlight.mock.calls[0]![0].element).toBeUndefined();
+      mocks.driver.mock.calls[0]![0].onPopoverRender({ wrapper: document.createElement('div'), arrow: document.createElement('div') });
       expect(mocks.popover).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ missing: true }));
-      mocks.driver.mock.calls[0][0].onNextClick(); expect(actions.next).toHaveBeenCalledWith(true);
+      mocks.driver.mock.calls[0]![0].onNextClick(); expect(actions.next).toHaveBeenCalledWith(true);
     } finally { session.stop() }
   });
   it('框选设置标签和控件所在整行，不只框选开关', () => {

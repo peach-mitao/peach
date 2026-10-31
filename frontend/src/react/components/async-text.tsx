@@ -14,10 +14,10 @@ export function AsyncText({ text, busy, placeholder }: { text: string | undefine
     previous.current = text;
   }, [text, shown]);
   return <span data-async-text="" aria-busy={busy || undefined} className="relative inline-grid align-baseline">
-    <span ref={node} data-async-text-value="" aria-hidden={busy || undefined} style={{ opacity: busy && shown !== undefined ? 0 : 1 }}>
+    <span ref={node} data-async-text-value="" aria-hidden={busy && shown !== undefined || undefined}>
       {shown === undefined ? placeholder : shown}
     </span>
-    {shown !== undefined ? <span aria-hidden="true" data-async-text-skeleton="" style={{ opacity: busy ? 1 : 0 }}
-      className="skeleton-sheen pointer-events-none absolute inset-x-0 top-1/2 h-[0.65em] -translate-y-1/2 rounded-md" /> : null}
+    {shown !== undefined ? <span aria-hidden="true" data-async-text-skeleton=""
+      className="async-text-skeleton skeleton-sheen pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-md" /> : null}
   </span>;
 }

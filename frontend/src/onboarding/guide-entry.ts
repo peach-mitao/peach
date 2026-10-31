@@ -17,7 +17,7 @@ export function guideEntry(step: GuideStep): GuideEntry | undefined {
     return { path: ['首页', '点击作品卡片', '作品详情'] };
   }
   if (!step.route) return undefined;
-  const [pathname, query = ''] = step.route.split('#')[0].split('?');
+  const [pathname = '/', query = ''] = step.route.split('#')[0]!.split('?');
   const key = pathname.split('/')[2];
   if (pathname.startsWith('/settings/')) {
     const preference = PREFERENCE_SECTIONS[key as keyof typeof PREFERENCE_SECTIONS];
@@ -45,7 +45,7 @@ export function guideEntry(step: GuideStep): GuideEntry | undefined {
     return sidebar('首页');
   }
   if (['/review', '/quality-goals', '/trash'].includes(pathname)) {
-    return sidebar('管理', ROUTE_META['/data-cleanup'].title!, pathname === '/trash' ? '回收站' : ROUTE_META[pathname].title!);
+    return sidebar('管理', ROUTE_META['/data-cleanup']!.title!, pathname === '/trash' ? '回收站' : ROUTE_META[pathname]!.title!);
   }
   const meta = ROUTE_META[pathname];
   if (meta?.nav && meta.title) {

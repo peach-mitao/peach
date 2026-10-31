@@ -1,4 +1,5 @@
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import type { RemixiconComponentType } from '@remixicon/react';
 import { RiArrowRightSLine, RiBookmarkLine, RiCompass3Line, RiFolderLine, RiSearchLine, RiPlayCircleLine, RiSettings3Line, RiPaletteLine, RiRssLine, RiDatabase2Line, RiUser3Line, RiFilmLine, RiBarChartLine, RiDownloadCloudLine, RiSmartphoneLine, RiToolsLine, RiEyeLine, RiPulseLine } from '@remixicon/react';
 import { Button } from '@/components/base/buttons/button';
 import { InputBase, TextField } from '@/components/base/input/input';
@@ -8,8 +9,9 @@ import { guideChapterComplete, type GuideProgress } from '../../onboarding/guide
 import { RiCheckboxCircleLine } from '@remixicon/react';
 import { Disclosure } from '../settings/section';
 import { EmptyState } from '../components/empty-state';
+import { cardClass } from '../components/card';
 
-type Glyph = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+type Glyph = RemixiconComponentType;
 const ICONS: Record<string, Glyph> = {
   browse: RiSearchLine, collect: RiBookmarkLine, watch: RiPlayCircleLine, manage: RiFolderLine,
   experience: RiPaletteLine, discovery: RiRssLine, storage: RiDatabase2Line, system: RiSettings3Line,
@@ -32,7 +34,7 @@ export function ChapterIcon({ chapter, className = 'size-5' }: { chapter: string
 export function GuideBanner({ icon: Icon, title, description, children, completed = false }: {
   icon: Glyph; title: string; description: string; children: ReactNode; completed?: boolean;
 }) {
-  return <section data-guide-banner="" data-guide-completed={completed || undefined} className="flex flex-col gap-4 rounded-2xl border border-separator-border bg-background-secondary-default p-5" aria-label={title}>
+  return <section data-guide-banner="" data-guide-completed={completed || undefined} className={cardClass({ radius: 'plain', bordered: 'soft', className: 'flex flex-col gap-4' })} aria-label={title}>
     <div className="flex items-start gap-3"><span className="peach-guide-topic-icon"><Icon aria-hidden className="size-5" /></span><div className="flex min-w-0 flex-col gap-1"><h3 className="text-title-2-medium text-text-primary">{title}</h3><p className="text-body-2-regular text-text-secondary">{description}</p></div></div>
     <div className="flex flex-wrap items-center justify-between gap-3">{children}</div>
   </section>;
@@ -43,7 +45,7 @@ function ChapterRow({ chapter, progress, loading, start }: {
 }) {
   const completed = guideChapterComplete(progress, chapter);
   const resume = !completed && Boolean(progress.chapters[chapter.id]);
-  return <button type="button" disabled={loading} data-guide-completed={completed || undefined} className="peach-guide-chapter-row flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left outline-none hover:bg-background-tertiary-default focus-visible:ring-2 focus-visible:ring-border-focus-ring disabled:cursor-wait" onClick={() => start(chapter, resume)}>
+  return <button type="button" disabled={loading} data-guide-completed={completed || undefined} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left outline-none hover:bg-background-tertiary-default focus-visible:ring-2 focus-visible:ring-border-focus-ring disabled:cursor-wait" onClick={() => start(chapter, resume)}>
     <span className="peach-guide-topic-icon"><ChapterIcon chapter={chapter.id} /></span>
     <span className="flex min-w-0 flex-1 flex-col gap-1"><strong className="text-body-medium text-text-primary">{chapter.title}</strong><span className="text-body-2-regular text-text-secondary">{chapter.summary}</span></span>
     {completed ? <CompletedLabel /> : <span className="shrink-0 text-caption-1-regular tabular-nums text-text-secondary">{resume ? '继续 · ' : ''}{chapter.steps.length} 步</span>}

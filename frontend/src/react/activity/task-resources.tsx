@@ -1,20 +1,20 @@
 /* 每轮任务的实测读数。高占用仅改变 Chip 强调程度，不调整任务资源使用。 */
 import { fmtSize } from '@peach/legacy/core';
-import { Chip } from '@/components/base/badges/chip';
+import { ResourceChip } from './resource-chip';
 
 import { isActive, type TaskResourceState, type TaskRunPayload } from './tasks';
 
 const METRICS = {
   cpu: {
-    name: 'CPU', color: 'blue', high: 'bg-status-blue-text text-background-primary-default',
-    description: 'CPU 使用率以本机总计算容量为 100%。达到 50% 时加深显示。',
+    name: 'CPU', color: 'blue',
+    description: 'CPU 使用率以执行端可用容量为 100%，容器按可见 CPU 配额计算。达到 50% 时加深显示。',
   },
   gpu: {
-    name: 'GPU', color: 'purple', high: 'bg-status-purple-text text-background-primary-default',
+    name: 'GPU', color: 'purple',
     description: 'GPU 使用率显示该任务最忙的 GPU 引擎。达到 50% 时加深显示。',
   },
   network: {
-    name: '网络', color: 'cyan', high: 'bg-status-cyan-text text-background-primary-default',
+    name: '网络', color: 'cyan',
     description: '网络速率显示该任务已观测的下载速度，达到 10 MiB/s 时加深显示。挂载盘或无法准确归属的传输显示未取得。',
   },
 } as const;
@@ -40,13 +40,13 @@ export function TaskResources({ run, active = isActive(run) || Boolean(run.contr
         : unavailable(metric.state);
       const explanation = [metric.reason, high ? '当前为高占用。' : '', appearance.description, resources.detail]
         .filter(Boolean).join('\n');
-      return <Chip key={key} variant="caption" color={appearance.color}
-        className={high ? appearance.high : undefined} tabIndex={0} title={explanation}
+      return <ResourceChip key={key} color={appearance.color} high={high}
+        tabIndex={0} title={explanation}
         data-task-resource={key} data-resource-state={metric.state} data-resource-high={high || undefined}
         data-copy-ignore=""
         data-tooltip-copy-key={!metric.reason && !resources.detail && !high ? `tasks.resources.${key}.description` : undefined}>
         {appearance.name} {label}
-      </Chip>;
+      </ResourceChip>;
     })}
   </div>;
 }

@@ -235,11 +235,11 @@ describe('续页', () => {
       await until(() => shorts(host).length > 0, '竖屏带插进网格');
       if (collapse) {
         expect(groupBadges(shorts(host))).toEqual([
-          ['4', '2 卷', '25:00', true], ['43', '', '—', false], ['9', '', '5:00', false],
+          ['4', '2 卷', '25:00', true], ['43', '', '尚未探查', false], ['9', '', '5:00', false],
         ]);
       } else {
         expect(groupBadges(shorts(host)), '合并关着各竖屏卷各自成卡').toEqual([
-          ['4', '', '10:00', false], ['43', '', '—', false], ['5', '', '15:00', false], ['9', '', '5:00', false],
+          ['4', '', '10:00', false], ['43', '', '尚未探查', false], ['5', '', '15:00', false], ['9', '', '5:00', false],
         ]);
       }
     }

@@ -96,7 +96,7 @@ function GridBody(props: CatalogGridProps) {
     initialPageParam: 0,
     getNextPageParam: query.getNextPageParam,
     initialData,
-    staleTime: props.restoreNavigation ? Infinity : 0,
+    staleTime: entity || props.restoreNavigation ? Infinity : 0,
     refetchOnMount: entity && retained ? 'always' : false,
   });
 

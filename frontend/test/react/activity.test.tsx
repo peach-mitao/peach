@@ -19,6 +19,11 @@ import { queryClient } from '../../src/react/query';
 
 import { buttonNamed, click, mount, mountRoot, pending, settle } from './render';
 
+vi.mock('@peach/legacy/ui', async (original) => ({
+  ...await original<typeof import('@peach/legacy/ui')>(),
+  confirmModal: (await import('../../src/ui-kit/modal')).confirmModal,
+}));
+
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 afterEach(() => queryClient.clear());
 
@@ -236,9 +241,9 @@ it('活动主任务和后继持续显示各自的CPU、GPU与实测网速', asyn
   expect(main.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 2 MB/s');
   expect(nested.querySelector('[data-task-resource="cpu"]')?.textContent).toBe('CPU 3%');
   expect(nested.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 1 KB/s');
-  expect(main.querySelector('[data-task-resource="cpu"]')?.getAttribute('title')).toContain('本机总计算容量');
+  expect(main.querySelector('[data-task-resource="cpu"]')?.getAttribute('title')).toContain('容器按可见 CPU 配额计算');
   expect(main.querySelector('[data-task-resource="gpu"]')?.getAttribute('title')).toContain('最忙的 GPU 引擎');
-  expect(main.querySelector('[data-task-resource="network"]')?.getAttribute('title')).toContain('该任务实测传输量');
+  expect(main.querySelector('[data-task-resource="network"]')?.getAttribute('title')).toContain('该任务已观测的下载速度');
   expect([...main.querySelectorAll('[data-task-resource]')].every(node => node.getAttribute('tabindex') === '0')).toBe(true);
 });
 
@@ -1051,7 +1056,7 @@ it('缺人脸模型跑完的后继标成发现问题，不是已完成', async (
   const parent = run({ id: 4, status: 'succeeded', task_label: '扫描与采集', progress_total: null,
                        finished_at: '2026-09-11T10:03:00Z', result_summary: { followups: 1 } });
   const { host } = await open(payload({ finished: [parent, settled] }));
-  expect([...host.querySelectorAll('[data-followup-key] > span')].map((node) => node.textContent))
+  expect([...host.querySelectorAll('[data-followup-key] > div:first-child > div:first-child > span')].map((node) => node.textContent))
     .toEqual(['补全资料图片', '发现问题', `涼森れむ · ${down.outcome}`]);
 });
 

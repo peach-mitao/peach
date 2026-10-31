@@ -130,8 +130,8 @@ const configurationRoute = (path: ConfigurationPath): ManagedRoute<ManagedOpenPr
   },
 });
 
-export const MANAGED_ROUTES: ManagedRouteTable = {
-  ...(Object.fromEntries(CLEANUP_TOOLS.map(tool => [tool.path, {
+const cleanupRoutes = CLEANUP_TOOLS.reduce((routes, tool) => {
+  routes[tool.path] = {
     element: <ManagedMatch path={tool.path} />,
     prefetch: (_open: Record<string, never>, signal: AbortSignal) =>
       withPage(dataCleanupPage, prefetchDataCleanupTool(tool.key, signal)),
@@ -141,7 +141,12 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
         toast={(message, { warning = false } = {}) => (
           warning ? actions.toast({ text: message }, { sound: 'warning' }) : actions.receipt(message))} />;
     },
-  }])) as Pick<ManagedRouteTable, CleanupToolPath>),
+  };
+  return routes;
+}, {} as Pick<ManagedRouteTable, CleanupToolPath>);
+
+export const MANAGED_ROUTES: ManagedRouteTable = {
+  ...cleanupRoutes,
   '/jav': {
     element: <ManagedMatch path="/jav" />,
     prefetch: (open, signal) => withPage(javPage, prefetchJav(open.tab, signal)),

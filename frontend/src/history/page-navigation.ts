@@ -77,6 +77,7 @@ const address = (location: typeof active.location) => {
   query.sort();
   return location.pathname + (query.size ? `?${query}` : '') + location.hash;
 };
+const visitKey = (location: typeof active.location) => `${location.key}:${address(location)}`;
 function columnKeys(location: typeof active.location): string[] {
   if (!page(location.pathname)) return [];
   if (location.pathname === '/') {
@@ -122,24 +123,24 @@ function installPageNavigation(): void {
       releaseScrollAnchor(next.seq);
     }
     if (page(from.pathname)) {
-      const saved = visits.get(from.key) ?? { ...departure, state: new Map<string, unknown>() };
+      const saved = visits.get(visitKey(from)) ?? { ...departure, state: new Map<string, unknown>() };
       Object.assign(saved, departure);
-      visits.set(from.key, saved);
+      visits.set(visitKey(from), saved);
       addresses.set(address(from), saved);
       rememberColumns();
     }
     if (next.action === 'REPLACE') {
-      const previous = visits.get(from.key);
-      if (previous) visits.set(next.location.key, { ...previous, state: new Map(previous.state) });
-      if (restoring) restoring = visits.get(next.location.key);
+      const previous = visits.get(visitKey(from));
+      if (previous) visits.set(visitKey(next.location), { ...previous, state: new Map(previous.state) });
+      if (restoring) restoring = visits.get(visitKey(next.location));
     } else {
-      restoring = next.action === 'POP' ? visits.get(next.location.key) : addresses.get(address(next.location));
+      restoring = next.action === 'POP' ? visits.get(visitKey(next.location)) : addresses.get(address(next.location));
     }
     if (refreshing) restoring = undefined;
     refreshing = false;
     if (restoring) {
       restoring = { ...restoring, state: new Map(restoring.state) };
-      visits.set(next.location.key, restoring);
+      visits.set(visitKey(next.location), restoring);
     }
     active = next;
   });
@@ -149,11 +150,11 @@ function installPageNavigation(): void {
 export function rememberPageState<T>(name: string, value: T): void {
   installPageNavigation();
   if (!page(active.location.pathname)) return;
-  const saved = visits.get(active.location.key) ?? {
+  const saved = visits.get(visitKey(active.location)) ?? {
     left: window.scrollX, top: window.scrollY, state: new Map<string, unknown>(),
   };
   saved.state.set(name, value);
-  visits.set(active.location.key, saved);
+  visits.set(visitKey(active.location), saved);
   rememberColumns();
 }
 

@@ -134,7 +134,7 @@ function Navigation({ host: at, epoch, version }: { host: SidebarHost; epoch: nu
           <button type="button" key={key || HOME} data-nav={key} aria-pressed={pressed[index]} aria-label={label}
             data-dragging={reorder.picked?.key === key ? '' : undefined}
             aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-            style={{ top: reorder.picked?.key === key ? reorder.picked.top : undefined,
+            style={{ '--sidebar-picked-top': reorder.picked?.key === key ? `${reorder.picked.top}px` : undefined,
               '--sidebar-nudge': `${nudge.distance}px`, '--sidebar-delay': `${nudge.delay}ms` } as CSSProperties}
             onClick={() => at.navTo(key)} onDoubleClick={() => at.navToTop()} onPointerEnter={glide.hover}
             {...reorder.bindings(key)}>
@@ -145,7 +145,7 @@ function Navigation({ host: at, epoch, version }: { host: SidebarHost; epoch: nu
           </button>
         )})}
         {reorder.hint ? <span data-sidebar-drop-line="" aria-hidden="true"
-          style={{ transform: `translateY(${reorder.lineTop}px)` }}><span /></span> : null}
+          style={{ '--sidebar-line-top': `${reorder.lineTop}px` } as CSSProperties}><span /></span> : null}
         <span role="status" aria-live="polite" data-sidebar-order-status="">{reorder.announcement}</span>
       </div>
       {drawer ? createPortal(<span data-sidebar-glide="" aria-hidden="true" ref={pane} />, drawer) : null}

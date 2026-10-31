@@ -135,6 +135,25 @@ def _request(store, run_id, action):
     return store.get(run_id)
 
 
+def _suspend_tree(process, suspended):
+    """暂停仍存活的媒体进程树，逐个登记供退出停点时恢复。"""
+    try:
+        owner = psutil.Process(process.pid)
+    except psutil.NoSuchProcess:
+        return False
+    try:
+        children = owner.children(recursive=True)
+    except psutil.NoSuchProcess:
+        children = []
+    for child in [owner, *children]:
+        try:
+            child.suspend()
+            suspended.append(child)
+        except psutil.NoSuchProcess:
+            pass
+    return True
+
+
 class Control:
     def __init__(self, store, run_id, *, recoverable=False):
         self.store, self.run_id = store, run_id
@@ -199,20 +218,8 @@ class Control:
                         if self._paused_at is None:
                             self._paused_at = started
                     if process is not None and process.poll() is None:
-                        try:
-                            owner = psutil.Process(process.pid)
-                        except psutil.NoSuchProcess:
+                        if not _suspend_tree(process, suspended):
                             return
-                        try:
-                            children = owner.children(recursive=True)
-                        except psutil.NoSuchProcess:
-                            children = []
-                        for child in [owner, *children]:
-                            try:
-                                child.suspend()
-                                suspended.append(child)
-                            except psutil.NoSuchProcess:
-                                pass
                     with self.lock:
                         parked = [key for key, owner in self.owners.items()
                                   if owner == threading.get_ident()]
@@ -343,6 +350,7 @@ def run(command, *, capture_output=False, timeout=None, check=False, input=None,
         control.owners[id(process)] = threading.get_ident()
     started = time.monotonic()
     paused = 0.0
+    timeout_error = None
     try:
         control.usage.enter_process(process)
         while True:
@@ -354,7 +362,8 @@ def run(command, *, capture_output=False, timeout=None, check=False, input=None,
                 input = None
                 elapsed = time.monotonic() - started - paused
                 if timeout is not None and elapsed >= timeout:
-                    raise subprocess.TimeoutExpired(command, timeout, output=error.output, stderr=error.stderr) from None
+                    timeout_error = subprocess.TimeoutExpired(command, timeout, output=error.output, stderr=error.stderr)
+                    raise timeout_error from None
         checkpoint()
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
         if check:
@@ -384,7 +393,10 @@ def run(command, *, capture_output=False, timeout=None, check=False, input=None,
                     pass
             close_job(job)
             try:
-                process.communicate()
+                stdout, stderr = process.communicate()
+                if timeout_error is not None:
+                    timeout_error.output = stdout
+                    timeout_error.stderr = stderr
             finally:
                 with control.lock:
                     control.operations.pop(id(process), None)

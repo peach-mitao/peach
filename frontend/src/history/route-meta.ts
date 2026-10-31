@@ -15,7 +15,7 @@
 import { overlayMatch } from './overlay';
 import { entityLinkName } from '../core/entity-links';
 import { entityDisplayName } from '../core/entity-names';
-import { CLEANUP_CRUMB_PAGES } from '../cleanup-tools';
+import { CLEANUP_CRUMB_PAGES, type CleanupToolPath } from '../cleanup-tools';
 import { PREFERENCE_SECTIONS, CONFIGURATION_SECTIONS } from './settings-route';
 
 export interface RouteMeta {
@@ -26,7 +26,7 @@ export interface RouteMeta {
   readonly reload?: 'reopen';
 }
 
-export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
+const ROUTE_ENTRIES = {
   '/settings': { title: '设置', refresh: 'skip' },
   ...Object.fromEntries(Object.entries(PREFERENCE_SECTIONS).map(([key, title]) => [`/settings/${key}`, { title, refresh: 'skip' }])),
   ...Object.fromEntries(Object.entries(CONFIGURATION_SECTIONS).map(([key, title]) => [`/settings/${key}`, { title, section: 'configuration', refresh: 'reopen' }])),
@@ -73,7 +73,12 @@ export const ROUTE_META: Readonly<Record<string, RouteMeta>> = {
   // 沉浸模式进页面组，不算覆盖。
   '/immerse': { nav: 'immerse', title: '沉浸模式' },
   '/wall': { nav: 'wall', title: '播放墙' },
-};
+} satisfies Readonly<Record<string, RouteMeta>>;
+
+export type RegisteredRoutePath = keyof typeof ROUTE_ENTRIES
+  | `/settings/${keyof typeof PREFERENCE_SECTIONS | keyof typeof CONFIGURATION_SECTIONS}`
+  | CleanupToolPath;
+export const ROUTE_META: Readonly<Record<string, RouteMeta>> = ROUTE_ENTRIES;
 
 /** 这条路径登记的元数据；没登记是 `null`。 */
 export function routeMetaOf(path: string): RouteMeta | null {

@@ -130,8 +130,8 @@ async function openPage(sources: MediaSourcesData = withRoots, patch: Record<str
   return { host, open, navigate, server };
 }
 
-async function openTool(tool: CleanupToolKey, sources: MediaSourcesData = withRoots) {
-  const server = serve(pageRoutes(sources));
+async function openTool(tool: CleanupToolKey, sources: MediaSourcesData = withRoots, patch: Record<string, Route> = {}) {
+  const server = serve({ ...pageRoutes(sources), ...patch });
   await prefetchDataCleanupTool(tool, new AbortController().signal);
   const host = await wrap(<DataCleanupToolPage tool={tool} toast={vi.fn()} failure={vi.fn()} />);
   await settle();
@@ -364,7 +364,7 @@ describe('资源同步', () => {
 
 describe('链接管理', () => {
   it('主要站点分别链接到主页并通过本站读取 favicon，图标失败时保留链接', async () => {
-    const { host } = await openPage(withRoots, {
+    const { host } = await openTool('links', withRoots, {
       '/api/links': { total: 8, entities: 3, by_kind: {}, top_hosts: [['example.com', 5], ['example.org', 3]], top_host_link_ids: { 'example.com': 8, 'example.org': 9 } },
     });
     const link = host.querySelector<HTMLAnchorElement>('#link-manager a[href="https://example.com"]')!;
@@ -507,9 +507,10 @@ describe('孤儿记录', () => {
     ],
   };
 
-  it('没有已消失的作品时整块不出现', async () => {
-    const { host, server } = await openPage();
-    expect(host.querySelector('#orphan-records')).toBeNull();
+  it('没有已消失的作品时二级页保留空表和零计数', async () => {
+    const { host, server } = await openTool('orphan-records');
+    expect(host.querySelector('#orphan-records')?.textContent).toContain('0 条作品');
+    expect(host.querySelectorAll('#orphan-records tbody tr[data-row-id]')).toHaveLength(0);
     expect(server.calls.map((call) => call.path)).toContain('/api/orphan-records');
   });
 

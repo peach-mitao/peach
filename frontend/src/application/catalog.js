@@ -7,7 +7,7 @@ import { nextSortState } from './../sort-preferences';
 import { $, STATE_ROUTES, api, esc, firstGrapheme, isCatalogPath, leadingGraphemes } from '../core';
 import { barsContext, detailReturnBarsContext, notifyShell, pageOpens, runtimeConfigurable, selectMode, selected, state, writeShell } from './../shell/index';
 import { receiptsState } from './receipts.js';
-import { dropBars, fetchBars, fetchTopsPage } from './../catalog-bars';
+import { fetchBars, fetchTopsPage } from './../catalog-bars';
 import { confirmModal, dissolveValue, fitSkeleton, wireHorizontalScroller } from '../ui-kit';
 import { navigationState, paintSidebar, syncNavigation } from './navigation.js';
 import { disposeStage, mediaState, openEditions, openItem, openMix, openParts, openTok } from './media.js';

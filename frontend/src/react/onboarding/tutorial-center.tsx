@@ -16,7 +16,7 @@ import { GuideBanner, GuideDirectory } from './guide-directory';
 import { Note } from '../components/note';
 import { useOverlayScrollbar } from '../components/overlay-scrollbar';
 import { SettingsDialogClose } from '../components/settings-dialog-close';
-import './tutorial.css';
+import { mountGuidePopover } from './guide-popover';
 import { stageApi } from '../application-residents';
 
 interface ProgressCounts {
@@ -40,7 +40,7 @@ function GettingStarted({ go }: { go(path: string): void }) {
   const required = data?.credentials.providers.filter(row => row.requirement === 'required' && sources.some(source => source.provider === row.provider)) || [];
   const ready = sources.length > 0 && required.every(row => row.present && !row.missing?.length);
   const reviews = Object.values(data?.review.counts || {}).reduce((total, value) => total + Number(value || 0), 0);
-  return <div className="peach-guide-start flex flex-col gap-4">
+  return <div className="flex flex-col gap-4">
     <GuideBanner icon={RiRocketLine} title="从第一份收藏开始" description="连接媒体目录，查看入库结果，再打开馆藏。">
       <span className="text-body-2-regular text-text-secondary">3 个入口 · 按当前进度选择</span>
       <Button onClick={() => go('/settings/library')}>连接媒体目录</Button>
@@ -135,6 +135,7 @@ export function TutorialCenter({ actions }: { actions: ShellActions }) {
     void import('../../onboarding/guide-driver').then(({ createGuideSession }) => {
       if (cancelled) return;
       intro = createGuideSession({
+        mountPopover: mountGuidePopover,
         invitation: true, navigate: actions.navigate, previous: () => {}, close: dismissInvite,
         next: () => { dismissInvite(); setOpen(true) },
       });
@@ -235,6 +236,7 @@ export function TutorialCenter({ actions }: { actions: ShellActions }) {
         void session.current?.show(chapter.steps[position.current], position.current, chapter.steps.length);
       };
       session.current = createGuideSession({
+        mountPopover: mountGuidePopover,
         navigate: actions.navigate,
         close: () => { stop(true); setTab(chapter.kind) },
         leave: () => stop(),

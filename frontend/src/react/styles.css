@@ -39,6 +39,7 @@
 @import "./settings-panel/settings-panel.css";
 @import "./immerse/immerse.css";
 @import "./sidebar/sidebar.css";
+@import "./onboarding/tutorial.css";
 @import "./base.css";
 @import "../ui-kit/motion.css";
 @import "../core/core.css";
@@ -62,6 +63,13 @@
 @import "../pagination.css";
 
 @source "./";
+
+@utility async-text-skeleton {
+  height: .65em;
+}
+[data-async-text-value][aria-hidden="true"] { opacity: 0; }
+[data-async-text-skeleton] { opacity: 0; }
+[data-async-text][aria-busy="true"] > [data-async-text-skeleton] { opacity: 1; }
 /* 独立页面包（`pages/`）有自己的产物 `peach-pages.css`，它用到的工具类不进这一份。 */
 @source not "./pages";
 @source "../management-skeletons.ts";

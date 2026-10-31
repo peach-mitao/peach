@@ -5,7 +5,11 @@ import { closeDrawerAfterNav } from '../application/layout';
 import { disposeStage } from '../application/media';
 import { beginPlayerGuidePreview } from '../player/guide-preview';
 import type { GuideStep } from './guide-catalog';
-import { mountGuidePopover } from '../react/onboarding/guide-popover';
+export interface GuidePopoverProps {
+  step: GuideStep; position: number; total: number; missing: boolean;
+  invitation?: boolean;
+  next(skipped?: boolean): void; previous(): void; close(): void;
+}
 
 function available(node: HTMLElement): boolean {
   const rect = node.getBoundingClientRect();
@@ -47,6 +51,7 @@ export interface GuideSession {
 }
 
 export function createGuideSession(options: {
+  mountPopover(wrapper: HTMLElement, arrow: HTMLElement, props: GuidePopoverProps): () => void;
   navigate(path: string): void; next(skipped?: boolean): void; previous(): void; close(): void; leave?(): void;
   invitation?: boolean;
 }): GuideSession {
@@ -143,12 +148,12 @@ export function createGuideSession(options: {
           }
           popover.wrapper.setAttribute('role', 'dialog');
           popover.wrapper.setAttribute('aria-modal', 'true');
-          unmount = mountGuidePopover(popover.wrapper, popover.arrow, { step, position, total, missing, ...options });
+          unmount = options.mountPopover(popover.wrapper, popover.arrow, { step, position, total, missing, ...options });
         },
         onNextClick: () => options.next(missing), onDoneClick: () => options.next(missing),
         onPrevClick: () => options.previous(), onCloseClick: () => options.close(),
       });
-      const highlight = () => active?.highlight({ element, popover: {
+      const highlight = () => active?.highlight({ ...(element ? { element } : {}), popover: {
         // 内容由 Peach 的 React 组件输出；定位、边缘避让与箭头复用 Driver。
         side: 'bottom', align: 'center', showButtons: [],
       } });

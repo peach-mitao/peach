@@ -12,7 +12,7 @@ export function GuideHelp({ chapter, section }: { chapter?: string; section?: st
   const item = section ? sectionGuide(section) : undefined;
   const group = GUIDE_CHAPTERS.find(row => row.id === chapter);
   if (!item && !group) return null;
-  return <div className="peach-guide-help text-body-2-regular text-text-secondary">
+  return <div data-guide-help="" className="text-body-2-regular text-text-secondary">
     <Disclosure summary={section ? '设置说明' : '了解这些设置'}>
       {item ? <><p>{item.body}</p><GuideFieldDetails details={item.details} /><p>{item.scope}</p></> : <>
         <p>{group!.summary}</p>
