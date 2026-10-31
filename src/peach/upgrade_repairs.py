@@ -420,7 +420,7 @@ def _media_run(contract, key: str, handle) -> dict:
         if not active():
             raise JobPaused('服务重启后继续') from None
         raise
-    if result.get('status') not in ('complete', 'succeeded') or result.get('issue_count'):
+    if result.get('status') not in ('complete', 'succeeded') and result.get('outcome') != 'partial':
         raise RuntimeError(result.get('error') or '影片升级补全未完成，请在任务中心查看后重试')
     return {'outcome': '影片升级补全完成', 'name': title, 'asset_id': asset_id}
 
