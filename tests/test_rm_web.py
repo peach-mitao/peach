@@ -3091,6 +3091,10 @@ class JavModeAndCoverTests(unittest.TestCase):
         (self.covers / "ABW-232.jpg").unlink()
         self.assertFalse(rm_web.q_item(self.contract, 1)["has_cover"])
 
+    def test_item_detail_reports_the_medium(self):
+        """详情页按 medium 决定给不给外部播放器入口，单条详情必须带上这一格。"""
+        self.assertEqual(rm_web.q_item(self.contract, 1)["medium"], "video")
+
     def test_missing_cover_resolves_to_none_not_a_broken_path(self):
         self.assertIsNone(self.contract.cover_path("ABW-232"))
         self.assertIsNone(self.contract.cover_path(None))
