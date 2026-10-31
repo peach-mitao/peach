@@ -23,7 +23,7 @@ const answer = (items: JunkItem[], extra: Partial<JunkPage> = {}): JunkPage =>
 
 function actions(patch: Partial<JunkQueueActions> = {}): JunkQueueActions {
   return {
-    navigate: vi.fn(), toggleSelection: vi.fn(), open: vi.fn(),
+    navigate: vi.fn(), toggleSelection: vi.fn(), setSelectMode: vi.fn(), selectAll: vi.fn(), open: vi.fn(),
     reveal: vi.fn(async () => ''), operate: vi.fn(async () => {}), ...patch,
   };
 }
@@ -163,6 +163,60 @@ describe('计数行', () => {
     expect(p.countRow!.querySelector('[data-collection-summary] strong')?.textContent).toBe('—');
     expect(host.querySelector('[data-media-error] [data-note-action]')?.textContent).toBe('立即重试');
     expect(cards(host)).toHaveLength(0);
+  });
+});
+
+describe('批量入口', () => {
+  it('「选择文件」等数据时就在，读数到货也不改它的样子', async () => {
+    const waiting = pending<unknown>();
+    vi.stubGlobal('fetch', vi.fn(() => waiting.answer));
+    const p = props();
+    await open(p);
+    const batch = p.countRow!.querySelector('[data-collection-summary-actions] [data-junk-batch]');
+    expect(batch).not.toBeNull();
+    expect(batch!.getAttribute('role')).toBe('group');
+    expect(batch!.getAttribute('aria-label')).toBe('批量选择');
+    expect([...batch!.querySelectorAll('button')].map((el) => el.textContent)).toEqual(['选择文件']);
+    const waitingShape = batch!.outerHTML;
+    await waiting.release({ ok: true, status: 200, json: async () => answer([junk(1), junk(2)]) });
+    await settle();
+    const ready = p.countRow!.querySelector('[data-collection-summary-actions] [data-junk-batch]');
+    expect(ready!.outerHTML).toBe(waitingShape);
+    // 全选要 id，读数没到时没有这一枚。
+    expect(p.countRow!.querySelector('[data-junk-select-all]')).toBeNull();
+  });
+
+  it('点「选择文件」进多选，再点交回退出', async () => {
+    vi.stubGlobal('fetch', fetchMock(200, answer([junk(1)])));
+    const setSelectMode = vi.fn();
+    const p = props({ actions: actions({ setSelectMode }) });
+    const { update } = await open(p);
+    const toggle = () => p.countRow!.querySelector<HTMLButtonElement>('[data-junk-select-mode]')!;
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    await click(toggle());
+    expect(setSelectMode).toHaveBeenCalledWith(true);
+    await update({ selectMode: true });
+    expect(toggle().getAttribute('aria-pressed')).toBe('true');
+    expect(toggle().textContent).toBe('取消选择');
+    await click(toggle());
+    expect(setSelectMode).toHaveBeenLastCalledWith(false);
+  });
+
+  it('进了多选多一枚全选：按这一屏的 id 交出去，全选之后同一枚换成清空', async () => {
+    vi.stubGlobal('fetch', fetchMock(200, answer([junk(7), junk(8), junk(9)])));
+    const selectAll = vi.fn();
+    const p = props({ actions: actions({ selectAll }) });
+    const { update } = await open(p);
+    expect(p.countRow!.querySelector('[data-junk-select-all]')).toBeNull();
+    await update({ selectMode: true });
+    const key = () => p.countRow!.querySelector<HTMLButtonElement>('[data-junk-select-all]')!;
+    expect(key().textContent).toBe('全选 3 项');
+    await click(key());
+    expect(selectAll).toHaveBeenCalledWith([7, 8, 9], true);
+    await update({ selectMode: true, selected: new Set([7, 8, 9]) });
+    expect(key().textContent).toBe('清空选择');
+    await click(key());
+    expect(selectAll).toHaveBeenLastCalledWith([7, 8, 9], false);
   });
 });
 

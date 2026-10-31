@@ -12,7 +12,7 @@ import { confirmModal, dissolveValue, fitSkeleton, wireHorizontalScroller } from
 import { navigationState, paintSidebar, syncNavigation } from './navigation.js';
 import { disposeStage, mediaState, openEditions, openItem, openMix, openParts, openTok } from './media.js';
 import { buildManageBar, cardLayout, homeLayoutActive, javActive, layoutState, setHomeLayout, setJavLayout, showHomeSurfaces } from './layout.js';
-import { selectionState, setSelectMode, toggleSelection } from './selection.js';
+import { selectionState, selectMany, setSelectMode, toggleSelection } from './selection.js';
 import { javDisplayName, javTitleHtml } from '../core/jav-title';
 import { tagLabel } from '../core/tags';
 import { entityDisplayName } from '../core/entity-names';
@@ -632,6 +632,9 @@ catalogState.junkQueueActions = {
   /* 换分类、换视图：先收起多选，再改地址，由目录元素重读。 */
   navigate:path=>{if(selectMode)setSelectMode(false,true);navigationState.route(path)},
   toggleSelection:(id,range)=>toggleSelection(id,range),
+  /* 计数行上的批量入口：进出多选（退出时清空已选），以及「全选本屏／清空选择」。 */
+  setSelectMode:on=>setSelectMode(Boolean(on),on?false:true),
+  selectAll:(ids,checked)=>selectMany(ids,checked),
   open:(it,anchor)=>it.junk_kind==='image'
     ?window.open('/photo?id='+it.id,'_blank','noopener'):openItem(it.id,true,null,anchor),
   /* 定位成功由 Toast 报，卡上状态行留空；失败把原因写回状态行。 */

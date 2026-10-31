@@ -56,10 +56,12 @@ export function JunkQueuePage(props: JunkQueueProps) {
     if (host && query.data) popBadges(host, 'junk');
   }, [host, query.data]);
 
-  const { navigate } = props.actions;
+  const { navigate, setSelectMode, selectAll } = props.actions;
   const count = host
     ? createPortal(
-      <JunkCount route={route} page={query.data} failed={query.isError && !query.data} onNavigate={navigate} />, host)
+      <JunkCount route={route} page={query.data} failed={query.isError && !query.data}
+        selectMode={props.selectMode} selected={props.selected}
+        onNavigate={navigate} onSelectMode={setSelectMode} onSelectAll={selectAll} />, host)
     : null;
   return (
     <>

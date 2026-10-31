@@ -73,12 +73,16 @@ export interface JunkQueueHelpers {
   badgeHtml(location: string, cost: string): string;
 }
 
-/** 卡片与分类条上的动作。写 ledger、打开详情与换页都归壳。 */
+/** 卡片、分类条与批量键上的动作。写 ledger、打开详情、换页与选择集都归壳。 */
 export interface JunkQueueActions {
   /** 分类条上的一项被点了（普通左键）：壳收起多选、改地址、重读。修饰键与中键照浏览器默认。 */
   navigate(path: string): void;
   /** 切换一张的选中；`range` 是按住 Shift 连选。 */
   toggleSelection(id: number, range: boolean): void;
+  /** 计数行上那枚「选择文件／取消选择」：进出多选。退出时壳清空选择集。 */
+  setSelectMode(on: boolean): void;
+  /** 计数行上那枚「全选 N 项／清空选择」：把这几个 id 一起加入或移出选择集。 */
+  selectAll(ids: readonly number[], checked: boolean): void;
   /** 点标题打开：视频进详情，本地图片在新标签页看原图。 */
   open(item: JunkItem, anchor: HTMLElement): void;
   /** 「打开位置」：在资源管理器里显示。回话是要写在卡片状态行里的一句，成功为空。 */

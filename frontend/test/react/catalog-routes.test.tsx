@@ -120,7 +120,8 @@ function junkOpen(patch: Partial<JunkQueueProps> = {}): JunkQueueProps {
   document.body.append(countRow);
   return {
     kind: '', view: 'pending', helpers: { badgeHtml: () => '' },
-    actions: { navigate: vi.fn(), toggleSelection: vi.fn(), open: vi.fn(), reveal: vi.fn(async () => ''), operate: vi.fn(async () => {}) },
+    actions: { navigate: vi.fn(), toggleSelection: vi.fn(), setSelectMode: vi.fn(), selectAll: vi.fn(),
+      open: vi.fn(), reveal: vi.fn(async () => ''), operate: vi.fn(async () => {}) },
     batchSize: 60, revision: 0, selectMode: false, selected: new Set(), countRow,
     skeletonHtml: () => '<div class="grid"><div class="skeletoncard"></div></div>', settled: vi.fn(), ...patch,
   };
