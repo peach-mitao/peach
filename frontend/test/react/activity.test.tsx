@@ -96,6 +96,8 @@ function serve(...responses: (ActivityData | null)[]) {
 }
 
 const page = () => <QueryClientProvider client={queryClient}><ActivityPage /></QueryClientProvider>;
+const controlButton = (name: string, root: ParentNode = document) =>
+  root.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
 
 it('扫描各阶段已结束且留有问题时显示部分结果状态', async () => {
   serve(payload({ finished: [run({ task_key: 'library-processing', task_label: '扫描与采集',
@@ -231,13 +233,13 @@ it('活动任务按服务端给出的动作暂停、继续和取消，并重新�
   });
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
-  await click(buttonNamed('暂停', host));
-  await vi.waitFor(() => expect(buttonNamed('继续', host)).not.toBeNull());
+  await click(controlButton('暂停', host));
+  await vi.waitFor(() => expect(controlButton('继续', host)).not.toBeNull());
   expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain('已暂停');
   expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('3');
-  await click(buttonNamed('继续', host));
-  await vi.waitFor(() => expect(buttonNamed('暂停', host)).not.toBeNull());
-  await click(buttonNamed('取消', host));
+  await click(controlButton('继续', host));
+  await vi.waitFor(() => expect(controlButton('暂停', host)).not.toBeNull());
+  await click(controlButton('取消', host));
   await vi.waitFor(() => expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain('正在取消'));
   expect(host.textContent).not.toContain('已取消');
   expect(host.querySelector('[data-task-controls]')).toBeNull();
@@ -246,6 +248,90 @@ it('活动任务按服务端给出的动作暂停、继续和取消，并重新�
     ['/api/tasks/1/control', { action: 'resume' }],
     ['/api/tasks/1/control', { action: 'cancel' }],
   ]);
+});
+
+it('主任务和后继使用带准确名称、提示和编辑键的图标控制', async () => {
+  const child = followup(1, { status: 'running', finished_at: null,
+    control: { state: 'paused', actions: ['resume', 'cancel'] } });
+  const { host } = await open(payload({ running: [run({ control: { state: 'running', actions: ['pause', 'cancel'] } }), child] }));
+  for (const [identity, labels] of [[1, ['暂停', '取消']], [90, ['继续', '取消']]] as const) {
+    const controls = host.querySelector(`[data-task-controls="${identity}"]`)!;
+    for (const label of labels) {
+      const button = controlButton(label, controls)!;
+      expect(button).not.toBeNull();
+      expect(button.textContent).toBe('');
+      expect(button.querySelector('svg')).not.toBeNull();
+      expect(button.getAttribute('title')).toBe(label);
+      expect(button.getAttribute('data-tooltip-copy-key')).toMatch(/^tasks\.control\.action\./);
+      expect(button.hasAttribute('data-copy-key')).toBe(false);
+    }
+  }
+});
+
+it.each(['pause', 'resume'] as const)('取消优先于在途的 %s 请求，迟到回执不覆盖真实取消结果', async (action) => {
+  const changeResponse = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+  const cancelResponse = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+  const posts: string[] = [];
+  let current = run({ control: { state: action === 'pause' ? 'running' : 'paused', actions: [action, 'cancel'] } });
+  stubFetch(async (_input, init) => {
+    if (init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      posts.push(body.action);
+      return body.action === 'cancel' ? cancelResponse.answer : changeResponse.answer;
+    }
+    return { ok: true, status: 200, json: async () => payload(current.status === 'cancelled'
+      ? { finished: [current] } : { running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(controlButton(action === 'pause' ? '暂停' : '继续', host));
+  expect(controlButton('取消', host)?.getAttribute('aria-disabled')).toBeNull();
+  await click(controlButton('取消', host));
+  expect(posts).toEqual([action, 'cancel']);
+  current = { ...current, control: { state: 'cancelling', actions: [] } };
+  await cancelResponse.release({ ok: true, status: 200, json: async () => ({ ok: true }) });
+  await vi.waitFor(() => expect(host.querySelector('#run-1')?.textContent).toContain('正在取消'));
+  expect(host.querySelector('#run-1')?.getAttribute('data-status')).toBe('running');
+  current = { ...current, status: 'cancelled', control: undefined, finished_at: '2026-10-31T07:00:00Z' };
+  await changeResponse.release({ ok: false, status: 409,
+    json: async () => ({ message: '任务正在取消，不能再暂停或继续' }) });
+  await vi.waitFor(() => expect(host.querySelector('#run-1')?.getAttribute('data-status')).toBe('cancelled'));
+  expect(host.querySelector('#run-1')?.textContent).toContain('已取消');
+  expect(host.querySelector('[data-task-control-feedback]')).toBeNull();
+  expect(sections(host)).toContain('最近完成');
+});
+
+it('取消请求未被接受时，任务自然完成和原卡卸载后仍保留原因', async () => {
+  const response = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+  let current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (_input, init) => {
+    if (init?.method === 'POST') return response.answer;
+    return { ok: true, status: 200, json: async () => payload(current.status === 'succeeded'
+      ? { finished: [current] } : { running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(controlButton('取消', host));
+  current = { ...current, status: 'succeeded', control: undefined, finished_at: '2026-10-31T07:00:00Z' };
+  await act(async () => { await queryClient.invalidateQueries({ queryKey: ['tasks'] }) });
+  expect(host.querySelector('[data-task-controls]')).toBeNull();
+  await response.release({ ok: false, status: 409, json: async () => ({ message: '这轮任务已经结束' }) });
+  await vi.waitFor(() => expect(host.querySelector('[data-task-control-feedback]')?.textContent).toContain('取消未完成'));
+  expect(host.querySelector('[data-task-control-feedback]')?.textContent).toContain('这轮任务已经结束');
+  expect(host.querySelector('#run-1')?.textContent).toContain('已完成');
+  expect(host.querySelector('#run-1')?.textContent).not.toContain('已取消');
+});
+
+it('父任务的后继取消后在卡片上直接显示取消状态及数量', async () => {
+  const parent = run({ status: 'succeeded', finished_at: '2026-10-31T07:00:00Z' });
+  const child = followup(parent.id, { status: 'cancelled' });
+  const { host } = await open(payload({ finished: [parent, child], followup_counts: { '1': { cancelled: 120 } } }));
+  const card = host.querySelector('#run-1')!;
+  expect(card.textContent).toContain('后续任务已取消');
+  expect(card.textContent).toContain('后续任务已取消 120 项');
+  expect(card.querySelector('details')?.open).toBe(false);
+  expect(card.querySelector('[data-task-controls]')).toBeNull();
+  expect(card.getAttribute('data-status')).toBe('succeeded');
 });
 
 it.each([
@@ -257,8 +343,8 @@ it.each([
     control: { state, actions: [...actions] } })] }));
   expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain(label);
   expect(host.querySelector('[role="status"]')).toBeNull();
-  expect(buttonNamed('暂停', host)).toBeNull();
-  expect(Boolean(buttonNamed('继续', host))).toBe(state !== 'cancelling');
+  expect(controlButton('暂停', host)).toBeNull();
+  expect(Boolean(controlButton('继续', host))).toBe(state !== 'cancelling');
 });
 
 it('任务控制请求等待时保持按钮焦点并阻止重复提交', async () => {
@@ -274,14 +360,13 @@ it('任务控制请求等待时保持按钮焦点并阻止重复提交', async (
   });
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
-  const pause = buttonNamed('暂停', host)!;
+  const pause = controlButton('暂停', host)!;
   pause.focus();
   await click(pause);
   expect(pause.hasAttribute('disabled')).toBe(false);
   expect(pause.getAttribute('aria-busy')).toBe('true');
   expect(document.activeElement).toBe(pause);
   await click(pause);
-  await click(buttonNamed('取消', host));
   expect(posts).toEqual(['/api/tasks/1/control']);
   await response.release({ ok: true, status: 200, json: async () => ({ ok: true }) });
 });
@@ -298,10 +383,10 @@ it('任务控制失败保留原状态和原因，可以在原位重试', async (
   });
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
-  await click(buttonNamed('暂停', host));
-  expect(host.querySelector('[data-task-controls] [role="alert"]')?.textContent).toContain('任务已变化');
-  expect(buttonNamed('继续', host)).toBeNull();
-  await click(buttonNamed('暂停', host));
+  await click(controlButton('暂停', host));
+  await vi.waitFor(() => expect(host.querySelector('[data-task-control-feedback] [role="alert"]')?.textContent).toContain('任务已变化'));
+  expect(controlButton('继续', host)).toBeNull();
+  await click(controlButton('暂停', host));
   expect(attempts).toBe(2);
 });
 
@@ -319,7 +404,7 @@ it('后继任务使用自身任务号控制，服务端未提供能力的父任�
   expect(host.querySelector('[data-task-controls="1"]')).toBeNull();
   const controls = host.querySelector('[data-task-controls="90"]')!;
   expect(controls).not.toBeNull();
-  await click(buttonNamed('继续', controls));
+  await click(controlButton('继续', controls));
   expect(posts).toEqual(['/api/tasks/90/control']);
 });
 
@@ -343,12 +428,12 @@ it('父任务结束后仍可控制整批后继，未展示的后继也属于同�
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
   expect(host.querySelector('#run-1')?.textContent).toContain('列出其中 1 项');
-  await click(buttonNamed('暂停后续任务', host));
-  await vi.waitFor(() => expect(buttonNamed('继续后续任务', host)).not.toBeNull());
+  await click(controlButton('暂停后续任务', host));
+  await vi.waitFor(() => expect(controlButton('继续后续任务', host)).not.toBeNull());
   expect(host.querySelector('#run-1')?.textContent).toContain('已暂停');
-  await click(buttonNamed('继续后续任务', host));
-  await vi.waitFor(() => expect(buttonNamed('暂停后续任务', host)).not.toBeNull());
-  await click(buttonNamed('取消后续任务', host));
+  await click(controlButton('继续后续任务', host));
+  await vi.waitFor(() => expect(controlButton('暂停后续任务', host)).not.toBeNull());
+  await click(controlButton('取消后续任务', host));
   await vi.waitFor(() => expect(host.querySelector('#run-1')?.textContent).toContain('正在取消'));
   expect(posts).toEqual([
     ['/api/tasks/1/control', { action: 'pause' }],
@@ -371,8 +456,8 @@ it('同类父任务有独立控制范围时分别显示，按钮只提交对应�
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
   expect(host.querySelectorAll('[data-task-key="follow-check"]')).toHaveLength(2);
-  await click(buttonNamed('继续后续任务', host.querySelector('#run-1')!));
-  await click(buttonNamed('暂停后续任务', host.querySelector('#run-2')!));
+  await click(controlButton('继续后续任务', host.querySelector('#run-1')!));
+  await click(controlButton('暂停后续任务', host.querySelector('#run-2')!));
   expect(posts).toEqual(['/api/tasks/1/control', '/api/tasks/2/control']);
 });
 
@@ -512,8 +597,9 @@ it('后继挂在派出它的那一轮下面，不另占一张卡', async () => {
   expect(host.querySelectorAll('[data-task-key]')).toHaveLength(1);
   const row = host.querySelector('[data-followup-key]')!;
   expect(host.querySelector('[data-task-key=follow-check]')!.contains(row)).toBe(true);
-  expect([...row.querySelectorAll(':scope > span')].map((node) => node.textContent))
-    .toEqual(['补全资料图片', '已完成', '涼森れむ · 已保存资料图片']);
+  expect(row.textContent).toContain('补全资料图片');
+  expect(row.textContent).toContain('已完成');
+  expect(row.textContent).toContain('涼森れむ · 已保存资料图片');
   expect(host.textContent).toContain('已安排 1 项补充任务');
 });
 
@@ -554,8 +640,9 @@ it('后继还在跑时，派出它的那一轮整张卡留在正在进行，那�
   const { host } = await open(payload({ running: [scraping], finished: [parent] }));
   expect(sections(host)).toEqual(['正在进行']);
   const row = host.querySelector('[data-followup-key]')!;
-  expect([...row.querySelectorAll(':scope > span')].map((node) => node.textContent))
-    .toEqual(['取新作资料', '进行中', 'MIZD-441 · 13 / 22 项']);
+  expect(row.textContent).toContain('取新作资料');
+  expect(row.textContent).toContain('进行中');
+  expect(row.textContent).toContain('MIZD-441 · 13 / 22 项');
 });
 
 it('连着几轮什么也没发生的定时任务按种类各并成一张卡，有事的那一轮截断并单独摆', async () => {

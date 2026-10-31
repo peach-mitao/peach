@@ -65,15 +65,16 @@ export interface FinishedPage {
 
 /** 几轮派出的后继合在一起数：共几条、结束了几条、还有几条在排或在跑。 */
 export function followupTally(counts: FollowupCounts | undefined, runs: TaskRunPayload[]) {
-  let total = 0, active = 0, failed = 0;
+  let total = 0, active = 0, failed = 0, cancelled = 0;
   for (const run of runs) {
     for (const [status, count] of Object.entries(counts?.[String(run.id)] || {})) {
       total += count;
       if (status === 'pending' || status === 'running') active += count;
       if (status === 'failed' || status === 'interrupted') failed += count;
+      if (status === 'cancelled') cancelled += count;
     }
   }
-  return { total, active, failed, settled: total - active };
+  return { total, active, failed, cancelled, settled: total - active };
 }
 
 /** 同一种任务连着派出的几轮合成一件事：自动修复每分钟派一批，一屏十几张「已完成」卡说的是同一件事。

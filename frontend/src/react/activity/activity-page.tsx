@@ -34,7 +34,7 @@ import { Disclosure } from '../settings/section';
 import { BackgroundIssues } from './background-issues';
 import { DownloadsPanel } from './downloads-panel';
 import { ErrorDetails, ErrorExcerpt } from './error-excerpt';
-import { TaskControls } from './task-controls';
+import { TaskControlFeedback, TaskControls } from './task-controls';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldByKind, foldRoutine, followupDetail, followupTally, groupFollowups, isActive,
   hasResultProblems, isRoutine, latestOfKind, mergeFinished, momentText, pollInterval, problemDestination, progressText,
@@ -82,16 +82,19 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
         const detail = followupDetail(row);
         return (
           <li key={row.id} data-status={row.status} data-followup-key={row.followup_key}
-            className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 border-t border-separator-border px-5 py-2.5">
-            <span className="min-w-0 break-words text-caption-1-regular text-text-primary">
-              {row.task_label}
-            </span>
-            <StatusBadge run={row} />
-            {detail
-              ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
-              : null}
-            {row.control?.actions.length
-              ? <div className="w-full min-w-0"><TaskControls run={row} /></div> : null}
+            className="flex min-w-0 flex-col gap-1 border-t border-separator-border px-5 py-2.5">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="min-w-0 break-words text-caption-1-regular text-text-primary">
+                  {row.task_label}
+                </span>
+                <StatusBadge run={row} />
+                {detail
+                  ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
+                  : null}
+              </div>
+              <TaskControls run={row} />
+            </div>
             {/* 排队中的那些还没有结果：空的「技术详情」展开只有一对花括号。 */}
             {Object.keys(row.result_summary || {}).length
               ? <div className="w-full min-w-0">
@@ -133,13 +136,15 @@ function RunCard(
       })}>
       {/* 卡片标题比分段标题（「正在进行」）低一档，标题、时间与摘要之间同一个行距。 */}
       <div className="flex flex-col gap-2 px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <strong className="min-w-0 break-words text-title-3-medium text-text-primary">{run.task_label}</strong>
-          {badge ?? <StatusBadge run={run} />}
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <strong className="min-w-0 break-words text-title-3-medium text-text-primary">{run.task_label}</strong>
+            {badge ?? <StatusBadge run={run} />}
+          </div>
+          <TaskControls run={run} />
         </div>
         <p className="text-caption-1-regular text-text-secondary">{meta}</p>
         {children}
-        <TaskControls run={run} />
       </div>
       {shown ? <div className="border-t border-separator-border px-5 py-2.5">
         <Disclosure summary={`任务明细 · ${total.toLocaleString()} 项`}
@@ -193,9 +198,9 @@ function RunningRun({ run, followups }: { run: TaskRunPayload; followups?: TaskR
  *  任务卡只记这一轮的历史：此刻还没解决的问题和「立即重试」在页顶「需要处理」那一块。
  *  `latest` 说它是不是同一种任务最新的那一轮：有些任务只有那一轮还有处理入口。 */
 function SettledRun(
-  { run, followups, runs, latest, followupTotal, followupFailed = 0 }:
+  { run, followups, runs, latest, followupTotal, followupFailed = 0, followupCancelled = 0 }:
   { run: TaskRunPayload; followups?: TaskRunPayload[]; runs?: TaskRunPayload[]; latest: boolean;
-    followupTotal?: number; followupFailed?: number },
+    followupTotal?: number; followupFailed?: number; followupCancelled?: number },
 ) {
   /* 几批派发并成一张时，最新那一批的「已安排 64 项」说不清整件事：改说一共处理了几项、失败几项，
      有失败时徽章写发现问题，失败的那几条在任务明细里排在前面。 */
@@ -215,7 +220,14 @@ function SettledRun(
        elapsed && `用时 ${elapsed}`]).filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} footer={run.error} followups={followups} followupTotal={followupTotal}
-      badge={batches && followupFailed ? <Chip color="yellow">发现问题</Chip> : undefined}>
+      badge={followupCancelled && run.status === 'succeeded'
+        ? <Chip color="neutral"><span data-copy-key={`tasks.followups.cancelled.${followupCancelled === followupTotal ? 'all' : 'partial'}`}>
+            {followupCancelled === followupTotal ? '后续任务已取消' : '部分后续任务已取消'}
+          </span></Chip>
+        : batches && followupFailed ? <Chip color="yellow">发现问题</Chip> : undefined}>
+      {followupCancelled ? <p className="text-caption-1-regular text-text-secondary">
+        后续任务已取消 {followupCancelled.toLocaleString()} 项
+      </p> : null}
       {/* 只有一句摘要时不加项目符号：单独一个圆点读起来像漏了下文。 */}
       {summary.length === 1
         ? <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{summary[0]}</p>
@@ -367,6 +379,7 @@ export function ActivityPage() {
   return (
     <Page>
       {problem ? <Note tone="error">{problem}</Note> : null}
+      <TaskControlFeedback />
       {data.available === false
         ? <Note tone="warning">{data.message || '数据库尚未准备好任务记录表'}</Note>
         : null}
@@ -401,7 +414,8 @@ export function ActivityPage() {
                     ? <RunList>{folds.map(({ run, runs }) => {
                         const tally = followupTally(counts, runs);
                         return <SettledRun key={run.id} run={run} runs={runs} latest={newest.has(run.id)}
-                          followups={childrenOf(runs)} followupTotal={tally.total} followupFailed={tally.failed} />;
+                          followups={childrenOf(runs)} followupTotal={tally.total} followupFailed={tally.failed}
+                          followupCancelled={tally.cancelled} />;
                       })}</RunList>
                     : null}
                   {more.error ? <Note tone="error">{errorMessage(more.error)}</Note> : null}

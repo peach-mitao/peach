@@ -83,5 +83,37 @@ describe('共享提示的文字与锚点', () => {
         assert(Math.abs(geometry.tip.y + geometry.tip.h + 8 - geometry.icon.y) <= 1, JSON.stringify(geometry));
       } finally { await opened.close() }
     });
+    it(`${viewport.name} 任务图标的可见提示保留独立编辑键，关闭后不串给其他控件`, async () => {
+      const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
+      try {
+        await opened.page.evaluate(() => {
+          const probe = document.createElement('div');
+          probe.style.cssText = 'position:fixed;left:30px;top:200px;z-index:9999;display:flex;gap:20px';
+          probe.innerHTML = '<div data-copy-bar hidden></div><button id="tip-task-control" aria-label="暂停后续任务" title="暂停后续任务" data-tooltip-copy-key="tasks.control.action.followups.pause" style="width:32px;height:32px"><svg width="16" height="16"><path d="M4 2v12M12 2v12"/></svg></button><button id="tip-other-control" aria-label="其他操作" title="其他操作" style="width:32px;height:32px">…</button>';
+          document.body.append(probe);
+        });
+        await opened.page.locator('#tip-task-control').focus();
+        const tip = opened.page.locator('#board-control-tooltip');
+        await tip.waitFor({ state: 'visible' });
+        assert.equal(await tip.textContent(), '暂停后续任务');
+        assert.equal(await tip.getAttribute('data-copy-key'), 'tasks.control.action.followups.pause');
+        assert.equal(await opened.page.locator('#tip-task-control').getAttribute('data-copy-key'), null);
+        assert.equal(await tip.evaluate(node => getComputedStyle(node).pointerEvents), 'auto');
+        await tip.hover();
+        await opened.page.waitForTimeout(300);
+        assert.equal(await tip.isVisible(), true);
+        await opened.page.keyboard.press('Escape');
+        await tip.waitFor({ state: 'hidden' });
+        assert.equal(await tip.getAttribute('data-copy-key'), null);
+        await opened.page.locator('#tip-other-control').focus();
+        await tip.waitFor({ state: 'visible' });
+        assert.equal(await tip.textContent(), '其他操作');
+        assert.equal(await tip.getAttribute('data-copy-key'), null);
+        await opened.page.keyboard.press('Escape');
+        await opened.page.locator('#tip-task-control').hover();
+        await tip.waitFor({ state: 'visible' });
+        assert.equal(await tip.getAttribute('data-copy-key'), 'tasks.control.action.followups.pause');
+      } finally { await opened.close() }
+    });
   }
 });

@@ -1,39 +1,98 @@
 /* 任务动作由服务端逐轮给出；收到控制请求不代表后台已经停稳，状态仍以轮询为准。 */
-import { useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
+import { RiPauseLine, RiPlayLine, RiStopLine } from '@remixicon/react';
+import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/base/buttons/button';
 
+import { errorMessage } from '../../api';
 import { Note } from '../components/note';
-import { busyProps, useAction } from '../settings/use-action';
+import { busyProps } from '../settings/use-action';
 import { controlTask, isActive, TASKS_KEY, type TaskControlAction, type TaskRunPayload } from './tasks';
+
+const CONTROL_KEY = ['task-control'] as const;
+const ICONS = { pause: RiPauseLine, resume: RiPlayLine, cancel: RiStopLine };
+const LABELS = { pause: '暂停', resume: '继续', cancel: '取消' };
+const FOLLOWUP_LABELS = { pause: '暂停后续任务', resume: '继续后续任务', cancel: '取消后续任务' };
+
+interface ControlCommand { id: number; label: string; action: TaskControlAction; followups: boolean }
+
+/** 请求结果属于任务中心，任务转入终态、卸载原卡片后仍保留未接受的操作及原因。 */
+export function TaskControlFeedback() {
+  const mutations = useMutationState({
+    filters: { mutationKey: CONTROL_KEY },
+    select: (mutation) => ({
+      id: mutation.mutationId,
+      command: mutation.state.variables as ControlCommand | undefined,
+      status: mutation.state.status,
+      error: mutation.state.error,
+    }),
+  });
+  const latest = new Map<number, { id: number; command: ControlCommand; status: string; error: unknown }>();
+  for (const mutation of mutations) {
+    const command = mutation.command;
+    if (!command) continue;
+    const previous = latest.get(command.id);
+    if (!previous || previous.id < mutation.id) latest.set(command.id, { ...mutation, command });
+  }
+  const failed = [...latest.values()].filter((mutation) => mutation.status === 'error');
+  if (!failed.length) return null;
+  return <div data-task-control-feedback="" className="flex min-w-0 flex-col gap-2">
+    {failed.map(({ command, error }) => <Note key={command.id} tone="error"
+      title={`${command.label}：${(command.followups ? FOLLOWUP_LABELS : LABELS)[command.action]}未完成`}>
+      {errorMessage(error)}
+    </Note>)}
+  </div>;
+}
 
 export function TaskControls({ run }: { run: TaskRunPayload }) {
   const client = useQueryClient();
-  const request = useAction();
+  const pending = useRef({ change: false, cancel: false });
+  const refresh = () => { void client.invalidateQueries({ queryKey: TASKS_KEY }) };
+  const send = (command: ControlCommand) => controlTask(command.id, command.action);
+  const change = useMutation({
+    mutationKey: [...CONTROL_KEY, run.id, 'change'],
+    mutationFn: send,
+    onSettled: () => { pending.current.change = false; refresh() },
+  });
+  const cancellation = useMutation({
+    mutationKey: [...CONTROL_KEY, run.id, 'cancel'],
+    mutationFn: send,
+    onSettled: () => { pending.current.cancel = false; refresh() },
+  });
   const actions = run.control?.actions || [];
   const followups = !isActive(run);
+  const cancelling = cancellation.isPending || cancellation.isSuccess;
   if (!actions.length) return null;
 
   const submit = (action: TaskControlAction) => {
-    void request.run(action, (signal) => controlTask(run.id, action, signal), () => {
-      void client.invalidateQueries({ queryKey: TASKS_KEY });
-    });
+    const command = { id: run.id, label: run.task_label, action, followups };
+    if (action === 'cancel') {
+      if (pending.current.cancel || cancellation.isSuccess) return;
+      pending.current.cancel = true;
+      cancellation.mutate(command);
+    } else {
+      if (pending.current.change || pending.current.cancel || cancelling) return;
+      pending.current.change = true;
+      change.mutate(command);
+    }
   };
 
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-task-controls={run.id}>
+    <div className="ml-auto shrink-0" data-task-controls={run.id}>
       <div role="group" aria-label={`${run.task_label}${followups ? '后续任务' : '任务'}控制`}
-        className="flex flex-wrap items-center gap-2">
-        {actions.map((action) => <Button key={action} type="button" variant="secondary" size="small"
-          {...busyProps(request.busy === action)} aria-disabled={Boolean(request.busy) || undefined}
-          onClick={() => submit(action)}
-          data-copy-key={`tasks.control.action.${followups ? 'followups.' : ''}${action}`}>
-          {followups
-            ? action === 'pause' ? '暂停后续任务' : action === 'resume' ? '继续后续任务' : '取消后续任务'
-            : action === 'pause' ? '暂停' : action === 'resume' ? '继续' : '取消'}
-        </Button>)}
+        className="flex items-center justify-end gap-2">
+        {actions.map((action) => {
+          const label = (followups ? FOLLOWUP_LABELS : LABELS)[action];
+          const busy = action === 'cancel' ? cancellation.isPending : change.isPending && change.variables?.action === action;
+          const unavailable = action === 'cancel' ? cancelling : change.isPending || cancelling;
+          return <Button key={action} type="button" variant="secondary" size="small" iconOnly
+            leadingIcon={ICONS[action]} aria-label={label} title={label}
+            {...busyProps(busy)} aria-disabled={unavailable || undefined}
+            onClick={() => submit(action)}
+            data-tooltip-copy-key={`tasks.control.action.${followups ? 'followups.' : ''}${action}`} />;
+        })}
       </div>
-      {request.error ? <Note tone="error">{request.error}</Note> : null}
     </div>
   );
 }
