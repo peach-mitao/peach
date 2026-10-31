@@ -417,7 +417,7 @@ def create_app(
     )
     mdns = create_mdns_publisher(
         settings.mdns_name, settings.mdns_port, secure=settings.tls_enabled,
-        address=settings.mdns_address,
+        address=settings.mdns_address, ipv6=settings.mdns_ipv6,
     ) if settings.mdns_enabled else None
     providers = default_registry()
     opencode_go = OpenCodeGoClient(transport=http_transport)
@@ -721,6 +721,7 @@ def create_app(
                 "mdns_service": mdns.name if mdns is not None else None,
                 "mdns_service_host": mdns.hostname if mdns is not None else None,
                 "mdns_address": mdns.address if mdns is not None else None,
+                "mdns_ipv6_addresses": list(getattr(mdns, "ipv6_addresses", ())),
                 "ledger_sync": sync.status if sync is not None else "disabled",
                 "ledger_read_only": read_only,
                 "ledger_read_only_message": sync.read_only_message if read_only else None,

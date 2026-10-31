@@ -29,7 +29,7 @@ from . import (access, data_storage, distribution, entry_links, error_reporting,
 from .routes_auth import require_auth, require_authenticated_client, same_origin
 from .web_entry import runtime_fact_entries
 from .web_local_access import local_client, managed_configuration
-from . import release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall
+from . import release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall, listening
 
 router = APIRouter()
 _SAVE_LOCK = threading.Lock()
@@ -320,10 +320,7 @@ def network_payload(request: Request, config) -> dict[str, Any]:
     """连接地址来自实际监听信息，编辑值来自托盘配置。"""
     settings = request.app.state.settings
     standalone = distribution.standalone()
-    try:
-        local = ipaddress.ip_address(settings.host).is_loopback
-    except ValueError:
-        local = settings.host.lower() == 'localhost'
+    local = listening.is_loopback(settings.host)
     scheme = 'https' if settings.tls_enabled else 'http'
     port = settings.mdns_port if settings.mdns_enabled else settings.port
     suffix = '' if port == (443 if settings.tls_enabled else 80) else f':{port}'
@@ -340,7 +337,8 @@ def network_payload(request: Request, config) -> dict[str, Any]:
     return {'editable': managed_configuration() and standalone,
             'host': config.server.host, 'mdns_name': config.server.mdns_name,
             'scope': 'local' if local else 'lan',
-            'local_url': f'http://127.0.0.1:{settings.port}/' if standalone else str(request.base_url),
+            'local_url': (f'http://{listening.loopback_origin_host(settings.host)}:{settings.port}/'
+                          if standalone else str(request.base_url)),
             'lan_url': f'{scheme}://{hostname}.local{suffix}/' if not local and settings.mdns_enabled else '',
             'ip_url': f'{scheme}://{address}{suffix}/' if not local and address and not settings.tls_enabled else ''}
 

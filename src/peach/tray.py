@@ -33,6 +33,7 @@ from .config import (
     SECRETS_DIR, SHARED_DATABASE_PATH, SHARED_SMB_HOST, SHARED_SMB_SHARE,
     SHARED_SMB_USER, STATE_DIR,
 )
+from .listening import is_loopback, loopback_origin_host
 from .mdns import lan_ipv4
 from .netwatch import NetworkChangeWatcher
 from .mount import mount_share as mount_smb_share
@@ -732,6 +733,9 @@ def build_macos_service_specs(
     证书缺失时**只是不起 HTTPS**，不像 Windows 那样直接报错——macOS 这份是开发环境，
     没有本机 CA 也应该能用。
 
+    两条服务都 `--ipv4-only`：pf 的 80/443 转发规则只写了 `inet`，IPv6 客户端连
+    `peach.local:443` 不会被转到 8443，发布 AAAA 记录只会让它连到一个没人监听的端口。
+
     `mdns_hostname` 是明文口跳转的目标主机名，缺省取 `MDNS_HOSTNAME`；首次设置之后
     必须由调用方传入新鲜读到的名字，理由见 `build_service_specs`。
     """
@@ -754,7 +758,7 @@ def build_macos_service_specs(
     if all(path.is_file() for path in (ca, cert, key)):
         specs[0] = ServiceSpec(
             "http", f"http://127.0.0.1:{MACOS_PORT}/healthz",
-            (peach, "serve", "--host", "0.0.0.0", "--port", str(MACOS_PORT),
+            (peach, "serve", "--host", "0.0.0.0", "--ipv4-only", "--port", str(MACOS_PORT),
              "--redirect-origin", redirect_origin), True,
         )
         specs.append(ServiceSpec(
@@ -765,7 +769,7 @@ def build_macos_service_specs(
             # （见 scripts/setup_local_tls.sh），主机名校验照样成立。
             f"https://127.0.0.1:{MACOS_TLS_PORT}/healthz",
             (
-                peach, "serve", "--host", "0.0.0.0", "--port", str(MACOS_TLS_PORT),
+                peach, "serve", "--host", "0.0.0.0", "--ipv4-only", "--port", str(MACOS_TLS_PORT),
                 "--no-ledger-sync",
                 "--ssl-certfile", str(cert), "--ssl-keyfile", str(key),
             ),
@@ -785,6 +789,9 @@ def build_service_specs(
     `mdns_hostname` 缺省取 `MDNS_HOSTNAME`，那是 import 期就按当时的设置文件定型的。
     首次设置刚让人填过 `[server].mdns_name`，托盘进程里的常量却还是旧值，跳转会把人
     送到一个不存在的 `.local` 名下——所以 `SetupGate.poll` 必须传入新鲜读到的名字。
+
+    HTTPS 监听所有网卡（IPv4 与 IPv6 双栈），`--mdns-address` 只钉住发布的 IPv4；
+    同网卡的 IPv6 由 mDNS 以 AAAA 记录一并发布。健康检查仍走局域网 IPv4，证书覆盖它。
     """
     if sys.platform == "darwin":
         return build_macos_service_specs(tls_dir=tls_dir, mdns_hostname=mdns_hostname)
@@ -812,7 +819,7 @@ def build_service_specs(
             "https",
             f"https://{address}/healthz",
             (
-                peach, "serve", "--host", address, "--port", "443", "--mdns-address", address,
+                peach, "serve", "--host", "0.0.0.0", "--port", "443", "--mdns-address", address,
                 "--no-ledger-sync",
                 "--ssl-certfile", str(cert), "--ssl-keyfile", str(key),
             ),
@@ -865,7 +872,7 @@ def build_setup_service_specs(config) -> tuple[ServiceSpec, ...]:
 
 
 def setup_url(config) -> str:
-    return f"http://127.0.0.1:{config.server.port}/"
+    return f"http://{loopback_origin_host(config.server.host)}:{config.server.port}/"
 
 
 def normal_hostname(config) -> str:
@@ -901,7 +908,7 @@ def configured_service_specs(config) -> tuple[ServiceSpec, ...]:
     return (ServiceSpec("http", setup_url(config) + "healthz",
                         (str(_peach_executable()), "serve", "--host", config.server.host,
                          "--port", str(config.server.port),
-                         *(("--no-mdns",) if config.server.host == "127.0.0.1" else ()),
+                         *(("--no-mdns",) if is_loopback(config.server.host) else ()),
                          "--no-ledger-sync"),
                         True),)
 
