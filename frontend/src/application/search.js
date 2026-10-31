@@ -1,4 +1,5 @@
 /* search 域控制器：本域状态与动作，启动由 Application 的生命周期统一安装。 */
+import { installHoldSpeed } from '../player/hold-speed';
 import { javImageKind } from './../jav-artwork';
 import { preferencesState } from './preferences.js';
 import { coverImage } from './../card-art/markup';
@@ -115,6 +116,12 @@ applicationEffects.listen($('#q'), 'pointerdown', e=>{if(e.currentTarget.value)c
 }
 
 export function installSearch22() {
+applicationEffects.own(installHoldSpeed({
+  activeVideo:()=>!applicationEffects.isActive || settingsPanelApi()?.isOpen()
+    || document.querySelector('#stage[open] [data-media-carousel]:not([data-carousel-video-active])')
+    ? null : activeVideo(),
+  seek:video=>seekVideoBy(video,preferencesState.appSettings.seekSeconds),
+}));
 searchState.searchMorph = null;
 searchState.searchMorphViewport = innerWidth;
 applicationEffects.listen.bind(applicationEffects, window)('resize',()=>{
@@ -153,7 +160,7 @@ applicationEffects.listen(document, 'keydown', e=>{
     return;
   }
   // 输入态不抢键：搜索框、标签弹窗和任何可编辑区域里的按键归它们自己处理。
-  if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.defaultPrevented||isTypingTarget(e.target)||e.target.closest?.('select,[role="menu"],.vjs-peach-settings-menu,media-volume-slider')||e.ctrlKey||e.metaKey||e.altKey)return;
   if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
     const imageStep=document.querySelector(`#stage[open] [data-media-carousel]:not([data-carousel-video-active]) [data-follow-image-step="${e.key==='ArrowRight'?1:-1}"]`);
     if(imageStep){e.preventDefault();imageStep.click();return}
