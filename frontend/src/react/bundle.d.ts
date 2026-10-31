@@ -470,6 +470,7 @@ export type DataCleanupSection = 'review' | 'quality' | 'duplicates' | 'ads' | '
 
 /** 数据管理页仍由遗留层提供的能力：回执和换页。 */
 export interface DataCleanupProps {
+  navigate(path: string): void;
   /** 操作回执（遗留层 `actionReceipt`）。`warning` 是做完了但有一部分要留意，走警告音效。 */
   toast(message: string, options?: { warning?: boolean }): void;
   /** 失败回执（遗留层 `actionFailure`）：`action` 是没做成的那件事。 */

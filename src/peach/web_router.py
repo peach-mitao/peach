@@ -22,6 +22,7 @@ from .web_activity import (
     w_watch_later,
 )
 from .web_batch import q_ads, q_duplicates, w_batch, w_empty_trash
+from .web_performer_delete import q_performer_delete_candidates, q_performer_delete_plan, w_performer_delete
 from .web_tags import q_tag_management, w_tag_management, w_tag_preview
 from .taste_history import history_source_count
 from .web_catalog import (
@@ -387,6 +388,8 @@ GET_HANDLERS = {
     "/api/parts": q_parts,
     "/api/editions": q_editions,
     "/api/entity": q_entity,
+    "/api/performer/delete-plan": q_performer_delete_plan,
+    "/api/performer/delete-candidates": q_performer_delete_candidates,
     "/api/entity/shapes": _get_entity_shapes,
     "/api/links": w_links,
     "/api/photos": q_entity_photos,
@@ -476,6 +479,7 @@ POST_HANDLERS = {
     "/api/settings": w_settings,
     "/api/library-shortcuts": w_library_shortcuts,
     "/api/entity-name": w_entity_name,
+    "/api/performer/delete": w_performer_delete,
     "/api/entity-alias": w_entity_alias,
     "/api/face-models": _post_face_models,
 }

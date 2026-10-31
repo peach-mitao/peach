@@ -13,6 +13,7 @@
  * 等下一次认领表面才收。收起排进微任务：卸载发生在路由根同步提交的那一次里。 */
 import { useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router';
+import { CLEANUP_TOOLS } from '../../../cleanup-tools';
 
 import { appSettingsStore } from '@peach/appearance';
 import { followManageParams } from '../../follow-manage/manage-route';
@@ -115,7 +116,7 @@ async function openProps(path: ManagedPath, run: Run): Promise<object | null> {
 }
 
 const scrollTop = (): void => { window.scrollTo({ top: 0, behavior: routeScrollBehavior() }) };
-const SCROLL_TOP = new Set<ManagedPath>(['/stats', '/taste', '/review', '/quality-goals', '/tasks', '/subscriptions']);
+const SCROLL_TOP = new Set<ManagedPath>(['/stats', '/taste', '/review', '/quality-goals', '/tasks', '/subscriptions', ...CLEANUP_TOOLS.map(tool => tool.path)]);
 
 async function openPage(path: ManagedPath, actions: ShellActions, run: Run): Promise<void> {
   const seq = peachHistory.navigation.seq;
@@ -206,7 +207,7 @@ function ManagedPage({ path, covered }: { path: ManagedPath; covered: boolean })
   return null;
 }
 
-/** 旧直达地址 `/resource-sync`：改写成数据管理页的资源同步锚点，不加历史条目，再由数据管理页的元素打开。 */
+/** 资源同步的旧直达地址转到二级页，不增加历史条目。 */
 export function ResourceSyncRedirect() {
   const started = useRoutingStarted();
   const done = useRef(false);
@@ -216,7 +217,7 @@ export function ResourceSyncRedirect() {
     let live = true;
     queueMicrotask(() => {
       if (!live) return;
-      shellNavigate('/data-cleanup#resource-sync', { replace: true });
+      shellNavigate('/data-cleanup/resource-sync', { replace: true });
     });
     return () => { live = false };
   }, [started]);
