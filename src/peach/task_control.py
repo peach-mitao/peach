@@ -149,6 +149,8 @@ class Control:
         run = store.get(run_id)
         self.ancestors = (run.parent_run_id, run.root_run_id)
         self._observed = None
+        from .task_resources import Usage
+        self.usage = Usage(self.db, run_id)
 
     @property
     def paused_seconds(self):
@@ -172,6 +174,7 @@ class Control:
         parked = []
         try:
             while True:
+                self.usage.publish()
                 from .update_tasks import check_pause
                 check_pause(self.db if self.recoverable else None)
                 if self.stopping.is_set():
@@ -242,13 +245,18 @@ def bind(store, run_id, *, recoverable=False):
     with _LOCK:
         _LIVE[key] = control
     token = CURRENT.set(control)
+    control.usage.enter_thread()
     try:
         control.checkpoint()
         yield control
     finally:
-        CURRENT.reset(token)
-        with _LOCK:
-            _LIVE.pop(key, None)
+        try:
+            control.usage.leave_thread()
+        finally:
+            control.usage.close()
+            CURRENT.reset(token)
+            with _LOCK:
+                _LIVE.pop(key, None)
 
 
 def shutdown(db, run_id):
@@ -282,6 +290,7 @@ def operation():
         yield
         return
     marker = object()
+    control.usage.enter_thread()
     with control.lock:
         control.operations[id(marker)] = False
         control.owners[id(marker)] = threading.get_ident()
@@ -292,6 +301,7 @@ def operation():
         with control.lock:
             control.operations.pop(id(marker), None)
             control.owners.pop(id(marker), None)
+        control.usage.leave_thread()
 
 
 @contextmanager
@@ -334,6 +344,7 @@ def run(command, *, capture_output=False, timeout=None, check=False, input=None,
     started = time.monotonic()
     paused = 0.0
     try:
+        control.usage.enter_process(process)
         while True:
             paused += control.checkpoint(process) or 0.0
             try:
@@ -378,3 +389,4 @@ def run(command, *, capture_output=False, timeout=None, check=False, input=None,
                 with control.lock:
                     control.operations.pop(id(process), None)
                     control.owners.pop(id(process), None)
+                control.usage.leave_process(process)

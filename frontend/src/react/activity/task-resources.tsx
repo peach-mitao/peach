@@ -15,7 +15,7 @@ const METRICS = {
   },
   network: {
     name: '网络', color: 'cyan', high: 'bg-status-cyan-text text-background-primary-default',
-    description: '网络速率是该任务实测传输量，达到 10 MiB/s 时加深显示。挂载盘或无法准确归属的传输显示未取得。',
+    description: '网络速率显示该任务已观测的下载速度，达到 10 MiB/s 时加深显示。挂载盘或无法准确归属的传输显示未取得。',
   },
 } as const;
 

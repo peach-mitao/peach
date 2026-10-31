@@ -50,6 +50,8 @@ def capture_frame(ffmpeg: str, path: str, timestamp: float, destination: Path, *
     那个时间点，两小时的片子抽最后一帧要几分钟。
     """
     destination.unlink(missing_ok=True)
+    from .task_resources import media_input
+    media_input(path)
     from .smb_media import input_url
     path = input_url(path)
     from .processing_traffic import CURRENT as TRAFFIC, media_statistics

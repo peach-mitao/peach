@@ -9,6 +9,7 @@ import threading
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from .task_control import run as run_task_process
 
 logger = logging.getLogger(__name__)
 CUDA_DECODE_CODECS = frozenset({"h264", "hevc", "vp9", "av1"})
@@ -44,7 +45,7 @@ def _run_probe(ffmpeg: Path, label: str, arguments: tuple[str, ...]) -> bool:
     command = (str(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", *arguments,
                "-f", "null", "-")
     try:
-        result = subprocess.run(
+        result = run_task_process(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE, timeout=PROBE_TIMEOUT_SECONDS,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,

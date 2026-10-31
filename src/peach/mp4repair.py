@@ -150,6 +150,8 @@ def _display_order(ffprobe: Path, source: Path, decode_times: list[int]) -> list
     `-threads 0` 不是调参，是补上 ffprobe 默认没开的解码线程：6297 上实测 300 秒内容
     从 27 秒降到 4 秒，整片从十几分钟降到一两分钟。
     """
+    from .task_resources import media_input
+    media_input(source)
     command = (
         str(ffprobe), "-v", "error", "-threads", "0",
         "-ignore_editlist", "1", "-select_streams", "v:0",

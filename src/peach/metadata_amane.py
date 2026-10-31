@@ -275,6 +275,8 @@ def rebuild(tools_root: Path, *, runner: Runner = run_task_process, timeout: int
             root: Path = BRIDGE_ROOT, proxy_options: Mapping[str, object] | None = None,
             force: bool = True) -> dict:
     """重建桥 venv，返回给设置页的回执。首次要下载约 98 MB，之后只校验。"""
+    from .task_resources import unobserved_network
+    unobserved_network('独立采集工具的网络传输未提供逐任务计量')
     if packaged_runtime(root=root):
         return {"ok": True, "result": "采集工具已随 Peach 安装，无需另行准备",
                 **describe(tools_root, root=root)}
