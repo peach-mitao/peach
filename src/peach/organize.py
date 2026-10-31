@@ -15,19 +15,23 @@ from __future__ import annotations
 import json
 import ntpath
 import os
+import re
 import sqlite3
 import time
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import contextmanager
 from pathlib import Path, PureWindowsPath
 
-from .catalog_rules import is_jav_code, is_uncensored_release, normalise_code_key, part_marker
+from .catalog_rules import (VERSION_TAIL_TOKENS, is_jav_code, is_uncensored_release,
+                            normalise_code_key, part_marker)
 from .jobs import ACTIVE_ASSET_SQL
-from .organize_templates import MAX_PATH, TemplateError, clean_filename, render, validate_template
+from .organize_templates import (MAX_PATH, TemplateError, clean_filename, render, template_fields,
+                                 validate_template)
 from .platform import (is_windows_path, location_mounts, location_roots, resolve_root, root_online,
                        translate_ledger_path, within_root)
 from .review_csv import write_rows
 from .fsutil import atomic_write_text
+from .subtitles import LANGUAGE_TOKENS
 
 #: 计划 CSV 的列。`reason` 只在 `action=skip` 时有值。
 PLAN_FIELDS = ["asset_id", "location", "current_path", "target_path", "action", "reason"]
@@ -123,7 +127,36 @@ def _definition(width, height) -> str:
     return ""
 
 
-def placeholder_values(row, performers: Sequence[str] = ()) -> dict[str, str]:
+def _subtitle_values(name: str, languages: Sequence[str]) -> dict[str, str]:
+    """字幕记录与文件名末尾的明确标记参与命名；语言未知时只保留有字幕的事实。"""
+    known = {str(language).lower() for language in languages if language}
+    present = bool(languages)
+    markers = {"c": "zh", "e": "en", "k": "ko", "j": "ja"}
+    tokens = re.split(r"[-_.\s]+", ntpath.splitext(name)[0].lower())
+    for token in reversed(tokens[1:]):
+        language = markers.get(token) or LANGUAGE_TOKENS.get(token, ("", ""))[0]
+        if language:
+            known.add(language.lower())
+            present = True
+        elif token == "sub":
+            present = True
+        elif token not in VERSION_TAIL_TOKENS and not re.fullmatch(r"\d{3,4}p|sd|uhd", token):
+            break
+    short = {"zh": "C", "en": "E", "ko": "K", "ja": "J"}
+    codes = set()
+    for language in known:
+        base = language.split("-", 1)[0]
+        if base in short:
+            codes.add(short[base])
+        elif base not in {"und", "zxx"} and re.fullmatch(r"[a-z]{2,3}(?:-[a-z0-9]{2,8})*", language):
+            codes.add(language.upper())
+    order = {code: index for index, code in enumerate(short.values())}
+    return {"subtitle": "-".join(sorted(codes, key=lambda code: (order.get(code, 4), code))),
+            "has_subtitle": "有字幕" if present else ""}
+
+
+def placeholder_values(row, performers: Sequence[str] = (),
+                       subtitle_languages: Sequence[str] = ()) -> dict[str, str]:
     """一行资产的占位符取值，全部来自 approved 真相字段。
 
     候选表一个都不查：整理会改文件系统，而文件系统上没有地方记「这个名字是猜的」。
@@ -146,6 +179,7 @@ def placeholder_values(row, performers: Sequence[str] = ()) -> dict[str, str]:
         # 在普通片上整段消失，而不是写上一个猜出来的「有码」。
         "mosaic": "无码" if is_uncensored_release(name, code) else "",
         "definition": _definition(row["width"], row["height"]),
+        **_subtitle_values(name, subtitle_languages),
     }
 
 
@@ -180,6 +214,18 @@ def _rows(connection: sqlite3.Connection, location: str,
         f"AND medium='video' AND path IS NOT NULL AND trim(path)<>''{selected} ORDER BY id",
         (location, *ids),
     ).fetchall()
+
+
+def _subtitle_languages(connection: sqlite3.Connection, location: str) -> dict[int, list[str]]:
+    """按资产读取已配对字幕；孤立字幕不表示任何视频有字幕。"""
+    found: dict[int, list[str]] = {}
+    for asset_id, language in connection.execute(
+        "SELECT s.asset_id,s.language FROM asset_subtitle s JOIN asset a ON a.id=s.asset_id "
+        "WHERE a.location=? AND s.location=a.location AND s.pairing<>'orphan' ORDER BY s.id",
+        (location,),
+    ):
+        found.setdefault(int(asset_id), []).append(str(language or ""))
+    return found
 
 
 def _extension(name: str) -> str:
@@ -256,6 +302,9 @@ def build_plan(connection: sqlite3.Connection, *, location: str,
         return {"rows": plan, "counts": counts, "reasons": reasons}
 
     performers = _performers(connection, location)
+    fields = template_fields(file_template) | template_fields(dir_template)
+    subtitle_languages = _subtitle_languages(connection, location) \
+        if fields & {"subtitle", "has_subtitle"} else {}
     # 目标撞名先按账本已知的路径判一遍：同一批里两行算出同一个名字，或者目标位置上
     # 已经躺着另一条记录，都在预览里就说清楚，而不是等执行到一半才报一行失败。
     claimed = {str(path).casefold(): int(aid) for aid, path in connection.execute(
@@ -271,7 +320,9 @@ def build_plan(connection: sqlite3.Connection, *, location: str,
         if root_states is not None and not root_states[index]:
             skip(row, SKIP_OFFLINE)
             continue
-        values = placeholder_values(row, performers.get(int(row["id"]), []))
+        asset_id = int(row["id"])
+        values = placeholder_values(row, performers.get(asset_id, []),
+                                    subtitle_languages.get(asset_id, []))
         current_dir = ntpath.dirname(path)
         target_dir = current_dir
         missing: set[str] = set()

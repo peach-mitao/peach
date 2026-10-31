@@ -60,6 +60,12 @@ class TemplateRenderTests(unittest.TestCase):
         self.assertEqual(missing, frozenset({"title"}))
         self.assertEqual(text, "ABC-123")
 
+    def test_subtitle_example_uses_optional_suffix(self):
+        from peach.organize_templates import example_path
+
+        self.assertEqual(example_path("{code}[-{subtitle}]", "{has_subtitle}"),
+                         {"ok": True, "example": "有字幕/ABC-123-C.mp4"})
+
     def test_optional_field_is_not_required(self):
         _text, missing = render("{number}[ {title}]", {**VALUES, "title": ""})
         self.assertEqual(missing, frozenset())
@@ -167,6 +173,57 @@ class PlanTests(unittest.TestCase):
         self.holder = Path(tempfile.mkdtemp(prefix="peach-organize-")).resolve()
         self.addCleanup(lambda: __import__("shutil").rmtree(self.holder, ignore_errors=True))
         self.db_path = fresh_ledger(self.holder)
+
+    def test_subtitle_suffixes_follow_filename_language_markers(self):
+        for marker, suffix in (("C", "C"), ("E", "E"), ("K", "K"), ("J", "J"),
+                               ("chs", "C"), ("cht", "C"), ("eng", "E"),
+                               ("C-E-1080p", "C-E"), ("sub", ""), ("UC", ""), ("", "")):
+            with self.subTest(marker=marker):
+                with sqlite3.connect(self.db_path) as connection:
+                    connection.execute("DELETE FROM asset")
+                name = "ABC-123" + ("-" + marker if marker else "") + ".mp4"
+                _seed(self.db_path, [{"id": 1, "path": "R:\\media\\old.mp4",
+                                      "name": name, "code": "ABC-123"}])
+                plan = _plan(self.db_path, file_template="{code}[-{subtitle}]",
+                             dir_template="[{has_subtitle} ]馆藏")
+                expected = "ABC-123" + ("-" + suffix if suffix else "") + ".mp4"
+                self.assertEqual(PureWindowsPath(plan["rows"][0]["target_path"]).name, expected)
+                directory = "馆藏" if marker in {"UC", ""} else "有字幕 馆藏"
+                self.assertEqual(PureWindowsPath(plan["rows"][0]["target_path"]).parent.name,
+                                 directory)
+
+    def test_registered_subtitles_are_per_asset_and_language_order_is_stable(self):
+        _seed(self.db_path, [
+            {"id": 1, "path": r"R:\media\one.mp4", "name": "one.mp4", "code": "ABC-123"},
+            {"id": 2, "path": r"R:\media\two.mp4", "name": "two.mp4", "code": "ABC-124"},
+            {"id": 3, "path": r"R:\media\three.mp4", "name": "three.mp4", "code": "ABC-125"},
+        ])
+        with sqlite3.connect(self.db_path) as connection:
+            for index, (asset_id, language) in enumerate(((1, "ja"), (1, "zh-Hant"),
+                                                         (1, "en"), (1, "zh-Hans"),
+                                                         (1, "ko"), (1, "fr"), (2, ""))):
+                connection.execute(
+                    "INSERT INTO asset_subtitle(asset_id,location,path,name,language,format,"
+                    "pairing,first_seen,last_seen) VALUES(?,'local',?,?,?,'srt','suffix','now','now')",
+                    (asset_id, f"R:\\media\\track{index}.srt", f"track{index}.srt", language))
+            connection.execute(
+                "INSERT INTO asset_subtitle(location,path,name,language,format,pairing,first_seen,last_seen) "
+                "VALUES('local','R:\\media\\orphan.srt','orphan.srt','en','srt','orphan','now','now')")
+        plan = _plan(self.db_path, file_template="{code}[-{subtitle}]",
+                     dir_template="[{has_subtitle} ]馆藏")
+        self.assertEqual([row["target_path"] for row in plan["rows"]], [
+            r"R:\media\有字幕 馆藏\ABC-123-C-E-K-J-FR.mp4",
+            r"R:\media\有字幕 馆藏\ABC-124.mp4",
+            r"R:\media\馆藏\ABC-125.mp4",
+        ])
+
+    def test_missing_subtitle_language_obeys_required_and_optional_fields(self):
+        _seed(self.db_path, [{"id": 1, "path": r"R:\media\old.mp4", "name": "old.mp4",
+                              "code": "ABC-123", "title": "中文 English 日本語"}])
+        required = _plan(self.db_path, file_template="{code}-{subtitle}")
+        self.assertEqual(required["rows"][0]["reason"], organize.SKIP_MISSING_FIELD)
+        optional = _plan(self.db_path, file_template="{code}[-{subtitle}]")
+        self.assertEqual(optional["rows"][0]["target_path"], r"R:\media\ABC-123.mp4")
 
     def test_online_root_does_not_hide_another_roots_offline_state(self):
         _seed(self.db_path, [
@@ -590,6 +647,8 @@ class EndpointTests(unittest.TestCase):
         self.assertTrue(payload["presets"])
         self.assertIn("code", [item["key"] for item in payload["placeholders"]])
         self.assertNotIn("number", [item["key"] for item in payload["placeholders"]])
+        self.assertIn({"key": "subtitle", "label": "字幕"}, payload["placeholders"])
+        self.assertIn({"key": "has_subtitle", "label": "是否有字幕"}, payload["placeholders"])
 
     def test_custom_template_example_uses_the_registered_read_route(self):
         from peach.web_router import dispatch_api_get

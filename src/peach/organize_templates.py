@@ -33,11 +33,14 @@ PLACEHOLDERS: dict[str, str] = {
     "cd": "分片号",
     "mosaic": "有码无码",
     "definition": "画质",
+    "subtitle": "字幕",
+    "has_subtitle": "是否有字幕",
 }
 
 EXAMPLE_VALUES = {
     "code": "ABC-123", "title": "标题", "studio": "厂牌", "series": "系列",
     "year": "2024", "actors": "甲、乙", "cd": "2", "mosaic": "无码", "definition": "1080p",
+    "subtitle": "C", "has_subtitle": "有字幕",
 }
 
 #: 单个路径组件的长度上限。Windows 的组件上限是 255 个字符，但长名字在资源管理器、
