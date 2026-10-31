@@ -97,10 +97,12 @@ const SUMMARY_LABEL = 'text-body-regular text-text-secondary';
 const SUMMARY_FIGURE = 'text-display-4-medium tabular-nums text-text-primary';
 const SUMMARY_PENDING = 'relative inline-block h-8 w-24 rounded-2lg align-middle skeleton-sheen';
 
-/** `CollectionSummary` 带 `flush`、等数据时的那一版：名目此刻就有，大数那一格是微光占位。 */
-export function islandSummary(label: string): string {
+/** `CollectionSummary` 带 `flush`、等数据时的那一版：名目此刻就有，大数那一格是微光占位。
+ *  `actions` 是右端那一排键的 HTML（垃圾文件的「选择文件」）：它此刻就在，不随读数到货才长出来，
+ *  所以骨架里也要有——不然摘要面在接管那一刻换高度，下面的卡片跟着跳一行。 */
+export function islandSummary(label: string, actions = ''): string {
   return `<div data-collection-summary="" class="${SUMMARY_CLASS}"><div class="${SUMMARY_TERMS}">`
     + `<span class="${SUMMARY_LABEL}">${label}</span>`
     + `<strong class="${SUMMARY_FIGURE}"><span data-skeleton="count" aria-hidden="true" class="${SUMMARY_PENDING}"></span></strong>`
-    + `</div></div>`;
+    + `</div>${actions}</div>`;
 }

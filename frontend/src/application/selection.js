@@ -44,6 +44,13 @@ export function toggleSelection(id,range=false) {
     setSelectMode(true);
   }
 
+/* 垃圾队列的「全选本屏／清空选择」：一次点名若干 id，不经 Shift 连选那套锚点。
+ * 加满了就进多选；清空之后停在多选里，好接着点卡片。 */
+export function selectMany(ids,checked) {
+    for(const id of ids){if(checked)selected.add(id);else selected.delete(id)}
+    setSelectMode(true,false);
+  }
+
 export function visibleFollowIds(){return [...document.querySelectorAll('[data-follow-list] > [data-follow-item]')]
   .map(card=>+card.dataset.followItem)}
 

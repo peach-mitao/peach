@@ -11,6 +11,7 @@ from .check_readme_impact import git, trailers, unpublished
 #: 已登记的工具与它厂商的 noreply 地址。换用别的智能体就在这里加一行，别散着写。
 VENDORS = {
     "Claude Code": "noreply@anthropic.com",
+    "DeepSeek Harness": "noreply@deepseek.com",
     "Codex": "noreply@openai.com",
     "opencode": "noreply@opencode.ai",
 }

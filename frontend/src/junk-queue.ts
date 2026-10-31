@@ -52,6 +52,14 @@ export const junkSummaryLabel = (view: JunkView) => (view === 'dismissed' ? '已
 
 const glyph = (name: string) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
 
+/** 摘要面右端那一组批量键，等待态只有「选择文件」这一枚（此刻还没进多选，也没有 id 可选）。
+ *  与 `junk-queue/junk-count.tsx` 的 `BatchKeys` 在 `selectMode=false`、`ids=[]` 时的输出逐字对应；
+ *  它不随读数到货才出现，所以骨架里也要有，否则接管那一刻摘要面换高度。 */
+const batchSkeleton = `<div data-collection-summary-actions="" class="flex flex-none items-center gap-2">`
+  + `<div data-junk-batch="" role="group" aria-label="批量选择">`
+  + `<button type="button" data-junk-select-mode="" aria-pressed="false" title="进入多选，点卡片挑选要处置的文件">`
+  + `${glyph('square-check-big')}<span>选择文件</span></button></div></div>`;
+
 /** 壳在 React 包加载之前铺的计数行：摘要面与分类条，读数与计数徽标留空。滑动玻璃由 island
  *  量着放，这一版里它收着，当前那一类自己垫一块同料的玻璃（`junk-queue.css`）。 */
 export function junkCountSkeletonHtml({ kind, view }: JunkRoute): string {
@@ -59,7 +67,7 @@ export function junkCountSkeletonHtml({ kind, view }: JunkRoute): string {
     `<a href="${junkPath(key, view)}" data-junk-kind-link="${key}"${key === kind ? ' aria-current="page"' : ''}>${glyph(icon)}${esc(label)}</a>`).join('');
   const other = junkViewLink(view);
   return `<div class="peach-react" data-junk-count-skeleton=""><div data-junk-count="">`
-    + `<div data-junk-summary="" aria-live="polite">${islandSummary(junkSummaryLabel(view))}</div>`
+    + `<div data-junk-summary="" aria-live="polite">${islandSummary(junkSummaryLabel(view), batchSkeleton)}</div>`
     + `<div data-junk-filters-frame="" data-filter-glass="" data-glass-pane=""><span data-view-glide="" aria-hidden="true" hidden></span>`
     + `<nav data-junk-filters="" aria-label="垃圾文件分类">${links}<i data-junk-divider="" aria-hidden="true"></i>`
     + `<a href="${other.href}" data-junk-view-link="${other.view}"${view === 'dismissed' ? ' aria-current="page"' : ''}>${glyph(other.glyph)}${other.label}</a>`

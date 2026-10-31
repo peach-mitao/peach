@@ -79,6 +79,48 @@
 /* 分隔线同首页与资料页那一条（`../entity-filter/entity-filter.css` 的 `[data-entity-sep]`）。 */
 .peach-react [data-junk-divider] { flex: none; width: 1px; height: 19px; margin: 0 3px; background: var(--field-ring-hover); }
 
+/* ── 摘要面右端的批量入口 ──
+ * 「选择文件」与进了多选之后的「全选 N 项」：32px 紧凑档，与分类条上的键同高；安静地待在
+ * 摘要面右端，不抢读数。按下多选的那一枚自己留一层底，好看出此刻在不在多选里。 */
+.peach-react [data-junk-batch] { display: flex; flex: none; align-items: center; gap: 8px; }
+.peach-react [data-junk-batch] button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h-compact);
+  min-height: var(--control-h-compact);
+  padding: 0 10px;
+  border: 1px solid var(--color-border-button-default);
+  border-radius: 8px;
+  background: var(--color-background-primary-default);
+  box-shadow: var(--elevation-xs);
+  color: var(--ink);
+  font: var(--board-body-medium);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.peach-react [data-junk-batch] button:hover { background: var(--inset); color: var(--ink); }
+.peach-react [data-junk-batch] button:focus-visible { outline: 2px solid var(--tungsten); outline-offset: 2px; }
+/* 按下的那一枚：换一档填充与描边，和悬停分开。 */
+.peach-react [data-junk-batch] button[aria-pressed="true"] {
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--field-ring-hover);
+  color: var(--ink);
+}
+.peach-react [data-junk-batch] button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ── 网格与卡片 ──
  * 卡片最窄 280px，放不下就退成一列；卡是一块有边的面，预览格贴边，元信息区四周 20px，
  * 键行沉一档底色。卡片不做悬停面：卡上能点的是标题和三颗键，整张卡不是点击区。 */
@@ -216,6 +258,9 @@ body[data-density="dense"] .peach-react [data-junk-actions] [data-junk-label] { 
   .peach-react [data-junk-filters] a { height: 44px; }
   .peach-react [data-junk-actions] button { min-height: 44px; }
   .peach-react [data-junk-actions] button[data-junk-action="dispose"] { padding-inline: 7px; }
+  /* 批量入口同档：一颗键 44px，折到摘要下面一行时靠左，跟名目对齐。 */
+  .peach-react [data-junk-batch] button { height: 44px; min-height: 44px; }
+  .peach-react [data-collection-summary-actions] { align-self: stretch; }
 }
 
 /* 键行按自己的宽度判：卡片窄到三格放不下「图标＋五个字」时（单列手机上约 290px 宽的卡）
