@@ -39,6 +39,10 @@ def _current(contract):
     if live and live.get('status') in ACTIVE:
         return live
     stored = snapshot(settings_file.active())
+    from .job_recovery import read
+    recovery = read(contract.db_path, 'library-processing')
+    if recovery.get('status') == 'active' and recovery.get('job_id') == stored.get('job_id'):
+        stored['run_id'] = recovery.get('run_id')
     if live and live.get('job_id') == stored.get('job_id'):
         return {**stored, **live}
     if live and live.get('started_at', 0) > stored.get('started_at', 0):
@@ -61,7 +65,15 @@ def q_library_processing(contract, _args):
         from .processing_inventory import preview
         return {'traffic': preview(config, contract.db_path, stage, asset_ids, _args.get('inventory'),
                                    incremental=body.get('incremental', False))}
-    state = decorate(_current(contract))
+    state = _current(contract)
+    if state.get('status') in ACTIVE and state.get('run_id') is not None:
+        from .task_control import projection
+        run = contract.task_runs.get(state['run_id'])
+        control_state = projection(contract.task_runs, run) if run is not None else None
+        if control_state is not None:
+            status = control_state['state']
+            state['status'] = 'stopping' if status == 'cancelling' else status
+    state = decorate(state)
     control = control_for(settings_file.active())
     control.refresh(force=True)
     state['speed_mode'] = control.mode

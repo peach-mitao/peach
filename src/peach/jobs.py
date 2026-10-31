@@ -328,6 +328,7 @@ class BackgroundJob:
         self._run_ids: dict[str, int] = {}
         self._activity_files: dict[str, Path] = {}
         self._recoverable: set[str] = set()
+        self._cancelled_stops: set[str] = set()
         self._paused_stops: set[str] = set()
         #: 摘 run id 与把那一行写成结束是同一件事：只摘不写完就放手的话，另一个线程
         #: 看见 id 没了以为已经收过尾，紧接着开的下一轮会撞上那一行还没释放的互斥键。
@@ -590,7 +591,9 @@ class BackgroundJob:
         if db is not None and run_id is not None:
             from . import task_control
             if not resume:
-                task_control.request(self.runs, run_id, 'cancel')
+                with _mutex(state_for(db)):
+                    task_control.request(self.runs, run_id, 'cancel')
+                    self._cancelled_stops.add(current[self.id_key])
                 thread = self.thread
                 if thread is not None and thread is not threading.current_thread():
                     thread.join(timeout)
@@ -702,11 +705,16 @@ class BackgroundJob:
                     checkpoint(db, self.task_key, job_id, state)
                     finish(db, self.task_key, job_id,
                            state['status'] if state.get('status') in ('failed', 'cancelled') else 'complete')
+                if db is not None and job_id in self._cancelled_stops:
+                    from .job_recovery import cancel, read
+                    if read(db, self.task_key).get('job_id') == job_id:
+                        cancel(db, self.task_key)
             finally:
                 activity = self._activity_files.pop(job_id, None)
                 if activity is not None:
                     activity.unlink(missing_ok=True)
                 self._recoverable.discard(job_id)
+                self._cancelled_stops.discard(job_id)
                 self._paused_stops.discard(job_id)
 
     def _settle(self, job_id: str) -> None:
