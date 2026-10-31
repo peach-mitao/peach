@@ -162,7 +162,8 @@ export type SurfaceKind = 'management' | 'index' | 'entity' | 'catalog' | 'follo
 
 /** 管理区那几页每次打开时交给页面的值，由页面元素从地址、偏好与壳的状态算（`pages/managed.tsx`），按页面分。
  *  管理区那几页画进 `#stats`。 */
-export interface ManagedOpenProps extends Record<ConfigurationPath, { section?: string }> {
+export interface ManagedOpenProps extends Record<ConfigurationPath, { section?: string }>,
+  Record<import('../../cleanup-tools').CleanupToolPath, Record<string, never>> {
   '/jav': { tab: string; readOnly: boolean };
   '/stats': Record<string, never>;
   '/taste': { onboarding: boolean };

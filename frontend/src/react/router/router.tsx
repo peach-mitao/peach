@@ -159,7 +159,7 @@ function RouteGroups({ children }: { children?: ReactNode }) {
       <Routes location={background ?? location}>
         {/* ── 管理区 ── */}
         {Object.entries(MANAGED_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
-        {/* 旧直达地址：元素把它改写成 `/data-cleanup#resource-sync`，由数据管理页的元素打开。 */}
+        {/* 资源同步的旧直达地址转到数据管理下的二级页。 */}
         {Object.entries(REDIRECT_ROUTES).map(([path, route]) => <Route key={path} path={path} element={route.element} />)}
 
 

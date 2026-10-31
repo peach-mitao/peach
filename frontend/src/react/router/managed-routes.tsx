@@ -22,7 +22,8 @@ import type { DataCleanupSection, LibraryProcessingProps } from '../bundle';
 import { CatalogFilterPage } from '../catalog-filter/catalog-filter-page';
 import { prefetchCatalogGrid } from '../catalog-grid/catalog-grid';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
-import { prefetchDataCleanup } from '../data-cleanup/data-cleanup';
+import { prefetchDataCleanup, prefetchDataCleanupTool } from '../data-cleanup/data-cleanup';
+import { CLEANUP_TOOLS, type CleanupToolPath } from '../../cleanup-tools';
 import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-page';
 import { EntityPage } from '../entity-page/entity-page-view';
 import { prefetchDuplicates } from '../duplicates/duplicates';
@@ -131,6 +132,17 @@ const configurationRoute = (path: ConfigurationPath): ManagedRoute<ManagedOpenPr
 });
 
 export const MANAGED_ROUTES: ManagedRouteTable = {
+  ...(Object.fromEntries(CLEANUP_TOOLS.map(tool => [tool.path, {
+    element: <ManagedMatch path={tool.path} />,
+    prefetch: (_open: Record<string, never>, signal: AbortSignal) =>
+      withPage(dataCleanupPage, prefetchDataCleanupTool(tool.key, signal)),
+    page: (_open: Record<string, never>, actions: ShellActions) => {
+      const { DataCleanupToolPage } = dataCleanupPage.get();
+      return <DataCleanupToolPage tool={tool.key} failure={actions.failure}
+        toast={(message, { warning = false } = {}) => (
+          warning ? actions.toast({ text: message }, { sound: 'warning' }) : actions.receipt(message))} />;
+    },
+  }])) as Pick<ManagedRouteTable, CleanupToolPath>),
   '/jav': {
     element: <ManagedMatch path="/jav" />,
     prefetch: (open, signal) => withPage(javPage, prefetchJav(open.tab, signal)),
@@ -169,13 +181,13 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
         revealSource={actions.revealSource} toast={(message) => actions.receipt(message)} />;
     },
   },
-  /* 首屏等顶上那排读数里自己的几份、两张后台任务卡与整理卡；复核、高清版与链接各读各的。 */
+  /* 首页只展开日常扫描；维护工具各自预取自己的二级页数据。 */
   '/data-cleanup': {
     element: <ManagedMatch path="/data-cleanup" />,
     prefetch: (_open, signal) => withPage(dataCleanupPage, prefetchDataCleanup(signal)),
     page: (_open, actions, go) => {
       const { DataCleanupPage } = dataCleanupPage.get();
-      return <DataCleanupPage failure={actions.failure} open={(section) => openCleanupSection(section, actions, go)}
+      return <DataCleanupPage navigate={go} failure={actions.failure} open={(section) => openCleanupSection(section, actions, go)}
         toast={(message, { warning = false } = {}) => (
           warning ? actions.toast({ text: message }, { sound: 'warning' }) : actions.receipt(message))} />;
     },

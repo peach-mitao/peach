@@ -971,6 +971,12 @@ def entity_route(request: Request, name: str,
 @router.api_route("/review", methods=["GET", "HEAD"])
 @router.api_route("/taste", methods=["GET", "HEAD"])
 @router.api_route("/data-cleanup", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/organize", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/resource-sync", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/orphan-records", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/media-repair", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/links", methods=["GET", "HEAD"])
+@router.api_route("/data-cleanup/batch-delete", methods=["GET", "HEAD"])
 @router.api_route("/duplicates", methods=["GET", "HEAD"])
 @router.api_route("/quality-goals", methods=["GET", "HEAD"])
 # 任务中心那一屏（island），数据走 `/api/tasks`。深链要能直接打开：定时任务被挡下时

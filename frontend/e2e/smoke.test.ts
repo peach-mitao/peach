@@ -112,8 +112,14 @@ const ROUTES: readonly Route[] = [
     // 挂载前的遗留骨架用 heading，最终 React 卡片用带名字的 section；等最终语义才能证明挂载完成。
     body: (page) => [heading(page, '#main', '数据管理'),
       page.locator('#stats section[aria-label="扫描与采集"]'),
-      page.locator('#stats section[aria-label="媒体修复"]')],
+      page.locator('#cleanup-pending'), page.locator('#cleanup-maintenance'), page.locator('#cleanup-deletion')],
   },
+  { path: '/data-cleanup/organize', body: page => [heading(page, '#main', '整理文件'), page.locator('#stats #organize')] },
+  { path: '/data-cleanup/media-repair', body: page => [heading(page, '#main', '媒体修复'), page.locator('#stats section[aria-label="媒体修复"]')] },
+  { path: '/data-cleanup/resource-sync', body: page => [heading(page, '#main', '资源同步'), page.locator('#stats #resource-sync')] },
+  { path: '/data-cleanup/orphan-records', body: page => [heading(page, '#main', '文件已丢失的记录'), page.locator('#stats #orphan-records')] },
+  { path: '/data-cleanup/links', body: page => [heading(page, '#main', '链接管理'), page.locator('#stats #link-manager')] },
+  { path: '/data-cleanup/batch-delete', body: page => [heading(page, '#main', '批量删除'), page.locator('#stats #batch-delete')] },
   {
     // 演示库里没有垃圾候选，等到的是垃圾队列那一页的空态标题；壳铺的骨架只有卡片占位。
     path: '/junk-files',
@@ -125,9 +131,9 @@ const ROUTES: readonly Route[] = [
     body: (page) => [heading(page, '#main', '重复文件'), page.locator('#stats').getByText('重复内容', { exact: true })],
   },
   {
-    // 旧直达地址落到数据管理页的锚点上；骨架里那一段没有 `id`，带 `id` 的只有演示库配了根目录后的真卡片。
+    // 旧直达地址进入资源同步二级页。
     path: '/resource-sync',
-    body: (page) => [heading(page, '#main', '数据管理'), page.locator('#stats section#resource-sync')],
+    body: (page) => [heading(page, '#main', '资源同步'), page.locator('#stats section#resource-sync')],
   },
   {
     path: '/quality-goals',
