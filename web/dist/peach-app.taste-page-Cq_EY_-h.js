@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "62f24d84-b5ed-47a6-8679-31d01dffdedc", e._sentryDebugIdIdentifier = "sentry-dbid-62f24d84-b5ed-47a6-8679-31d01dffdedc");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "4fbbe643-ff6c-465b-a97d-81e30ac11bd5", e._sentryDebugIdIdentifier = "sentry-dbid-4fbbe643-ff6c-465b-a97d-81e30ac11bd5");
 	} catch {}
 })();
 import { ActivePoints as e, AnimatedItems as t, CHART_CARD as n, CHART_COLORS as r, CartesianLabelListContextProvider as i, CategoryTick as a, ChartBackground as o, ChartContainer as s, ChartHead as c, ChartLegend as l, ChartLegendContent as u, ChartTip as d, ChartTooltip as f, ChartTooltipContent as p, DefaultZIndexes as m, Dots as h, EvilBarChart as g, LabelListFromLabelProp as _, Layer as v, LoadingIndicator as y, PolarChart as b, PolarLabelContextProvider as x, PolarLabelFromLabelProp as S, RegisterGraphicalItemId as C, SetPolarGraphicalItem as ee, SetPolarLegendPayload as w, SetTooltipEntrySettings as te, Text as T, ZIndexLayer as E, adaptEventsOfChild as ne, addRadiusAxis as re, arrayTooltipSearcher as ie, categoryAxisWidth as ae, cn as oe, createSelector as D, defaultPolarChartProps as se, defaultPolarRadiusAxisProps as ce, fitLabel as le, getAxisTypeBasedOnLayout as ue, getBandSizeOfAxis as de, getClassNameFromUnknown as fe, getColorsCount as pe, getTooltipNameProp as me, getValueByDataKey as he, identity as ge, interpolate as _e, isArrayLike as ve, isCategoricalAxis as ye, isNullish as be, iteratee as xe, matchAnimationItems as Se, matchByIndex as Ce, noop as we, polarToCartesian as O, removeRadiusAxis as Te, resolveDefaultProps as Ee, selectAngleAxis as De, selectChartDataAndAlwaysIgnoreIndexes as Oe, selectChartLayout as ke, selectPolarViewBox as Ae, selectRadiusAxis as je, selectUnfilteredPolarItems as Me, svgPropertiesAndEvents as Ne, svgPropertiesNoEvents as k, svgPropertiesNoEventsFromUnknown as Pe, tone as Fe, useAnimationCallbacks as Ie, useAnimationStartSnapshot as Le, useAppDispatch as Re, useAppSelector as A, useIsPanorama as ze, usePolarChartLayout as Be } from "./peach-app.chart-tip-CRxYp6KT.js";
@@ -2738,6 +2738,7 @@ function fa({ busy: e, onRefresh: t, onImport: n, onImportBookmarks: r }) {
 		o(!1), e();
 	};
 	return /* @__PURE__ */ (0, X.jsxs)(X.Fragment, { children: [/* @__PURE__ */ (0, X.jsxs)("span", {
+		"data-guide-target": "history-import",
 		"data-button-group": !0,
 		"data-split-button": !0,
 		"data-variant": "primary",
@@ -3309,4 +3310,4 @@ function ha({ term: e, value: t, rest: n }) {
 }
 export { ra as TASTE_GUIDE_KEY, ma as TastePage };
 
-//# debugId=62f24d84-b5ed-47a6-8679-31d01dffdedc
+//# debugId=4fbbe643-ff6c-465b-a97d-81e30ac11bd5

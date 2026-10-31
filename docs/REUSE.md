@@ -1,5 +1,9 @@
 # 复用清单
 
+## 教程中心与界面导览
+
+复用 [Driver.js](https://driverjs.com/) `1.10.2`（MIT）的遮罩、箭头和边缘避让，正文与操作复用 Peach 的 React、BoardUI 和弹层组件。步骤绑定组件锚点，布局变化调用 `refresh()`；设置路由复用当前路由定义。教程状态复用账本 `profile.settings_json` 和现有读写事务，通过 `/api/tutorial-progress` 按动作更新，所有设备共用。入口、提示版本与维护边界见 [教程中心](ONBOARDING.md)。
+
 ## 首页筛选聚合与缓存
 
 采用 bbingz 的 [PR #205](https://github.com/peach-mitao/peach/pull/205)，固定来源提交 `bbf5aac8e9562211c324c2019bff35888266df84`，许可证沿用本项目 AGPL-3.0-or-later。作品筛选集合先在独立子查询中求出，创作者、标签和演员按既有关系聚合，保留去重计数与标签可见性。没有选中标签时移除无效 `tag_match`，复用既有修订缓存、同键锁与跨连接写入失效机制，不在线改写 SQLite 统计或增加索引迁移。

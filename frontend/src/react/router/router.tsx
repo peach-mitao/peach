@@ -36,6 +36,7 @@ import {
 import { Providers } from '../providers';
 import { LibraryProcessingDock } from '../library-processing/library-processing-dock';
 import { NetworkBanner } from '../network-banner';
+import { TutorialCenter } from '../onboarding/tutorial-center';
 import { ClientUpdateBanner } from '../client-updates';
 import { SettingsMatch } from './pages/settings';
 import {
@@ -230,6 +231,7 @@ export function RouterRoot({ children, actions = null, background, processing = 
           {processing && actions ? <LibraryProcessingDock toast={actions.toast} /> : null}
           {processing && actions ? <NetworkBanner /> : null}
           {processing && actions ? <ClientUpdateBanner navigate={actions.navigate} /> : null}
+          {processing && actions ? <TutorialCenter actions={actions} /> : null}
           <RouteGroups>{children}</RouteGroups>
         </PeachRouter>
       </ShellActionsContext.Provider>

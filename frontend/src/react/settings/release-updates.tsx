@@ -89,7 +89,7 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
     ? `${((job.downloaded || 0) / 1048576).toFixed(1)} / ${(job.total / 1048576).toFixed(1)} MB`
     : `${job.progress}%`;
   return (
-    <Section id="releaseUpdates" title="检查更新" aside={<StatusLabel tone={error || data.state === 'error' || job.state === 'error' ? 'error' : running ? 'progress' : data.state === 'available' ? 'warning' : data.state === 'unchecked' ? 'neutral' : 'success'}>
+    <Section id="releaseUpdates" guide="updates" title="检查更新" aside={<StatusLabel tone={error || data.state === 'error' || job.state === 'error' ? 'error' : running ? 'progress' : data.state === 'available' ? 'warning' : data.state === 'unchecked' ? 'neutral' : 'success'}>
       {error || data.state === 'error' || job.state === 'error' ? '检查未完成' : running ? '准备更新中' : job.state === 'ready' ? '可安装' : data.state === 'available' ? '有可用更新' : data.state === 'unchecked' ? '尚未检查' : '检查完成'}</StatusLabel>}>
       <FactList>
         <Fact term="当前版本">{data.current_version}</Fact>

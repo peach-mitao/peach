@@ -83,15 +83,8 @@ describe('折叠正文与箭头共用动画', () => {
         const taskButtons = '[data-library-completion] [data-split-button] > button[aria-busy="true"]';
         await settle(opened.page, 'body', { except: taskButtons });
         await motion(opened.page, opened.page.locator('#toasts [data-processing-dock] button[aria-controls]'));
-        await opened.page.evaluate(() => {
-          localStorage.setItem('peach.post-setup-tutorial.v1', 'pending');
-          localStorage.removeItem('peach.post-setup-tutorial-collapsed.v1');
-          localStorage.removeItem('peach.post-setup-tutorial-skipped.v1');
-        });
-        await opened.page.reload({ waitUntil: 'load' });
-        await opened.page.locator('#postSetupTutorial .post-setup-notification').waitFor();
-        await settle(opened.page, 'body', { except: taskButtons });
-        await motion(opened.page, opened.page.locator('[data-tutorial-collapse]'));
+        await opened.page.locator('#tutorialBtn').click();
+        await motion(opened.page, opened.page.getByRole('button', { name: /查找与发现/ }));
         assert.deepEqual(opened.problems, []);
       } finally { await opened.close() }
     });
