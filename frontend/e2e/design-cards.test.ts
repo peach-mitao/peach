@@ -268,8 +268,10 @@ describe('设计决定：作品卡、管理页与复核', () => {
         return [Math.round(rect.top), Math.round(rect.height)];
       };
       const lede = document.querySelector<HTMLElement>('[data-manage-lede]');
-      const card = document.querySelector('#grid .catalog-skeleton .skeletoncard')
-        || document.querySelector('#grid [data-media-card][data-variant="resource"]');
+      const card = [...document.querySelectorAll(
+        '#grid .catalog-skeleton .skeletoncard, #grid [data-media-card][data-variant="resource"]',
+      )].find(node => !node.closest('[data-content-skeleton][aria-hidden="true"], [data-content-current][aria-hidden="true"]')
+        && getComputedStyle(node).visibility === 'visible') ?? null;
       /* 读数与「清空回收站」各自的竖直中线：两者说的是同一批文件，同在说明行一行里。 */
       const middle = (element: Element | null | undefined) => {
         if (!element) return null;
