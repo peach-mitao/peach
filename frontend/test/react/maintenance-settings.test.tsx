@@ -16,7 +16,7 @@ const release: ReleaseState = {
 };
 const uninstall = { available: true, full_available: true, message: '', data_root: 'fixture', directories: ['fixture', 'fixture/cache'] };
 
-it('分区依次是运行信息、安装教程、卸载；缺依赖的那条运行信息带下载链接，系统诊断入口在运行信息底栏', async () => {
+it('分区依次是运行信息、新手教程、卸载；缺依赖的运行信息带下载链接', async () => {
   const data: ConfigurationData = {
     editable: true, notice: '', revision: 'r', media_dirs: [], library_count: 0, port: 9123,
     automatic_updates: automatic, updates: release, uninstall,
@@ -27,7 +27,7 @@ it('分区依次是运行信息、安装教程、卸载；缺依赖的那条运�
   };
   const host = await mount(<MaintenanceSettings data={data} receipt={vi.fn()} reopenTutorial={vi.fn()} />);
   expect([...host.firstElementChild!.children].map((node) => node.getAttribute('aria-label')))
-    .toEqual(['运行信息', '安装教程', '卸载 Peach']);
+    .toEqual(['运行信息', '新手教程', '卸载 Peach']);
   const facts = section(host, '运行信息')!;
   expect([...facts.querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(['版本', 'FFmpeg']);
   const link = facts.querySelector('a[href="https://ffmpeg.org/download.html"]');
@@ -169,24 +169,25 @@ it('卸载默认保留数据，勾选完全卸载后确认文案点名要删的�
   expect(buttonNamed('卸载 Peach', area)?.disabled).toBe(true);
 });
 
-describe('安装教程', () => {
-  it('按下去调遗留层那一半，成功后发回执', async () => {
+describe('新手教程', () => {
+  it('打开教程仅调用入口，不发送写入请求或操作回执', async () => {
     const reopenTutorial = vi.fn(async () => {});
     const receipt = vi.fn();
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     const host = await mount(<TutorialSettings receipt={receipt} reopenTutorial={reopenTutorial} />);
-    await click(buttonNamed('重新打开教程', host));
+    await click(buttonNamed('重新打开', host));
     expect(reopenTutorial).toHaveBeenCalledTimes(1);
-    expect(receipt).toHaveBeenCalledWith('已重新打开安装教程');
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(receipt).not.toHaveBeenCalled();
   });
 
-  it('写入失败时原因留在原位，不发回执', async () => {
+  it('反复打开可重新进入同一教程入口', async () => {
     const receipt = vi.fn();
-    const host = await mount(
-      <TutorialSettings receipt={receipt} reopenTutorial={vi.fn(async () => { throw new Error('数据库写入失败') })} />,
-    );
-    await click(buttonNamed('重新打开教程', host));
-    await settle();
-    expect(host.querySelector('[role="alert"]')?.textContent).toBe('数据库写入失败');
+    const reopenTutorial = vi.fn(async () => {});
+    const host = await mount(<TutorialSettings receipt={receipt} reopenTutorial={reopenTutorial} />);
+    await click(buttonNamed('重新打开', host));
+    await click(buttonNamed('重新打开', host));
+    expect(reopenTutorial).toHaveBeenCalledTimes(2);
     expect(receipt).not.toHaveBeenCalled();
   });
 });

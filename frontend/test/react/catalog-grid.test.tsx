@@ -344,6 +344,21 @@ describe('作品卡', () => {
     return { host, actions, onOpen, card: host.querySelector<HTMLElement>('[data-media-card]')! };
   };
 
+  it.each([
+    [{ duration: null }, '尚未探查'],
+    [{ duration: -1 }, '探查错误'],
+    [{ duration: 0 }, '时长未取得'],
+    [{ duration: null, cost: 'metered' }, '流量保护 · 未探查'],
+    [{ duration: -1, cost: 'metered' }, '探查错误'],
+    [{ duration: null, is_strm: true }, 'STRM 不自动探查'],
+    [{ duration: null, name: '作品.ISO' }, 'ISO 不自动探查'],
+    [{ duration: null, location: 'online' }, '来源未提供时长'],
+    [{ duration: 60 }, '1:00'],
+  ] as [Partial<MediaItem>, string][])('时长角标按已有记录区分缺失原因 %j', async (fields, expected) => {
+    const { host } = await render(item(7, fields));
+    expect(host.querySelector('[data-media-duration]')?.textContent).toBe(expected);
+  });
+
   it('点标题打开，点署名进资料页，点「未归属」进那一批，点标签在这一屏筛它', async () => {
     const credited = await render(item(7, { creator: '某某', tags: ['苗条'] }));
     await click(credited.host.querySelector('[data-media-title]'));

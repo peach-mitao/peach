@@ -337,7 +337,7 @@ const maintenance = () => {
     button('更改位置', 'secondary') + button(storageRows ? '重新统计' : '统计占用'))
     + (reporting || sharing ? section('数据上传', reporting + sharing) : '')
     + section('运行信息', facts(runtime.length ? runtime : RUNTIME_FACTS))
-    + `<section aria-label="安装教程" class="w-full"><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${controlRow('安装教程', '', button('重新打开教程', 'secondary'))}</div></section>`
+    + `<section aria-label="新手教程" class="w-full"><div class="flex w-full flex-col rounded-2xl bg-background-secondary-default pl-3">${controlRow('新手教程', '开始使用、界面导览与设置说明', button('打开新手教程', 'secondary'))}</div></section>`
     + (given(shape?.uninstall) ? section('卸载 Peach', (on(shape?.uninstallHelp) ? stack(help('卸载移除 Peach 程序本身，原始媒体文件保留。')) : '')
       + row('完全卸载', '同时删除设置、本地数据库、观看记录、凭据和缓存') + stack(summary('数据目录'), true), button('卸载 Peach'), { status: text('16em') }) : '');
 };
