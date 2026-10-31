@@ -502,7 +502,7 @@ class TasksEndpointTests(unittest.TestCase):
         """迁移是单独一步，升级后第一次打开活动页撞上这张表不存在是正常路径。"""
         bare = Path(self.tmp.name) / "bare.db"
         sqlite3.connect(bare).close()
-        contract = types.SimpleNamespace(task_runs=TaskRunStore(LedgerDatabase(bare)))
+        contract = web_contract.WebContract(bare)
         payload = web_tasks.q_tasks(contract, {})
         self.assertFalse(payload["available"])
         self.assertEqual(payload["running"], [])

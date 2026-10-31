@@ -207,7 +207,7 @@ it('关注元素：后退回到关注页时列表已被收掉就整页打开，�
   const calls = serve();
   let scrollTop = 0;
   vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollTop);
-  const scrolled = vi.spyOn(window, 'scrollTo').mockImplementation(options => {
+  const scrolled = vi.spyOn(window, 'scrollTo').mockImplementation((options: number | ScrollToOptions | undefined) => {
     if (typeof options === 'object') scrollTop = options.top ?? scrollTop;
   });
   const { actions } = shellActions(r);
