@@ -171,6 +171,40 @@ class PlanTests(StudioFollowupCase):
                        studio_followup.stock(connection, self.logos, attempts, limit=10)]
         self.assertEqual(planned, [studio_followup.followup_key(studio)])
 
+    def test_stock_tries_again_a_day_after_no_candidate_answered(self):
+        """候选官网全连不上（断网）只挡一天；回了 HTTP 状态的未取得照旧等实体变。"""
+        import time
+
+        from peach.followups import Attempts, attempts_root
+
+        studio = self.entity("studio", "OLDLABEL")
+        with self.database.write_transaction(notify=False) as connection:
+            connection.execute("INSERT INTO asset(id,location,path,name,medium,code,size)"
+                               " VALUES(1,'R:','R:\\media\\a.mp4','a.mp4','video','OLD-1',1)")
+            connection.execute("INSERT INTO asset_entity(asset_id,entity_id,role,source)"
+                               " VALUES(1,?,'studio','test')", (studio,))
+        key = studio_followup.followup_key(studio)
+
+        def planned(after: float) -> list[str]:
+            attempts = Attempts(attempts_root(self.contract.candidate_root),
+                                clock=lambda: time.time() + after)
+            with self.database.read_connection() as connection:
+                return [item.key for item in
+                        studio_followup.stock(connection, self.logos, attempts, limit=10)]
+
+        unreached = {**site_row("未取得"), "status": "", "note": "取不到：ConnectError"}
+        with mock.patch.object(studio_followup.studio_sites, "discover",
+                               return_value=(unreached, 0.0)):
+            self.run_followup(studio)
+        self.assertEqual(planned(0), [])
+        self.assertEqual(planned(studio_followup.RETRY_UNREACHED + 60), [key])
+
+        answered = {**site_row("未取得"), "status": 404, "note": "HTTP 404"}
+        with mock.patch.object(studio_followup.studio_sites, "discover",
+                               return_value=(answered, 0.0)):
+            self.run_followup(studio)
+        self.assertEqual(planned(studio_followup.RETRY_UNREACHED + 60), [])
+
     def test_stock_studios_are_not_crowded_out_by_avatarless_performers(self):
         """没头像的女优再多，存量厂牌也有自己那一份名额。"""
         from peach import (avatar_followup, library_processing, performer_alias_followup,

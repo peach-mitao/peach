@@ -256,6 +256,8 @@ MISS_MESSAGES = {'querying_metadata': '外部来源没有这部片的资料，7 
                  'fetching_cover': '外部来源没有这部片的封面，7 天内不再问'}
 #: 日志里的写法反查回上面的键，界面按键取自己的短标签。
 NOTE_KEYS = {message: key for key, message in MISS_MESSAGES.items()}
+#: 外网不通时要出网的那些行不去问，直接记这一句；联网之后可以重试（`network_reachability`）。
+OFFLINE_MESSAGE = '外部资料未取得：连不上外网'
 
 #: 状态文件与候选 CSV 的落盘节流。页面轮询读的是内存里的任务快照，文件只为进程没了
 #: 之后还能看到最后状态；候选 CSV 随处理进度越写越大，每条资产都重写一遍是平方级开销。
@@ -1474,9 +1476,9 @@ class _RemoteSession:
         if self._provider is not None and hasattr(self._provider, 'close'):
             self._provider.close()
 
-    def prepare(self, prepared, stages_of, update, *, cover_root=None, groups=None):
-        """只为本趟实际需要的来源准备工具，不消费单片查询预算。"""
-        if self._factory:
+    def prepare(self, prepared, stages_of, update, *, cover_root=None, groups=None, offline=lambda: False):
+        """只为本趟实际需要的来源准备工具，不消费单片查询预算。断网时不准备：装 amane 本身要联网。"""
+        if self._factory or offline():
             return
         from . import metadata_amane
         from .scraping_access import paused_until
@@ -1524,10 +1526,7 @@ class _RemoteSession:
         if not _scrapes_as_jav(row, code):
             return entries, covers
         chain = self._chain(code, *_studio_evidence(row))
-        # 链上剩下的站都给过候选或说过没有、且至少有一家给过候选：这一行不是「没取到」，
-        # 只是没有新的可问，不进告知项。
-        if missing and chain and (self._askable(chain, code, answered)
-                                  or not set(answered).intersection(chain)):
+        if self._asks_metadata(chain, code, missing, answered):
             entries = self._metadata(row, code, missing, update=update, issue=issue, answered=answered,
                                      received=received)
         if fetch_cover and _asks_cover(code, *_studio_evidence(row)) and not cover_settled(cover_root / (code + '.jpg')):
@@ -1535,6 +1534,21 @@ class _RemoteSession:
             covers = self._cover(row, code, cover_root, update=update, issue=issue,
                                  snapshots=snapshots, absent=absent)
         return entries, covers
+
+    def asks(self, row, code, missing, cover_root, *, answered=(), fetch_cover=True):
+        """`collect` 这一行会不会去问外部来源，判据与它逐条相同。断网时只把要问的行记成未取得。"""
+        if not _scrapes_as_jav(row, code):
+            return False
+        chain = self._chain(code, *_studio_evidence(row))
+        return (self._asks_metadata(chain, code, missing, answered)
+                or bool(fetch_cover and _asks_cover(code, *_studio_evidence(row))
+                        and not cover_settled(cover_root / (code + '.jpg'))))
+
+    def _asks_metadata(self, chain, code, missing, answered):
+        # 链上剩下的站都给过候选或说过没有、且至少有一家给过候选：这一行不是「没取到」，
+        # 只是没有新的可问，不进告知项。
+        return bool(missing and chain and (self._askable(chain, code, answered)
+                                           or not set(answered).intersection(chain)))
 
     def _cover_inputs(self, code, chain, entries):
         """封面那一步不必再问的：手上已有的快照 `[(来源, 资料)]`，与说过没有或不在链上的站。
@@ -2084,13 +2098,50 @@ def _people_allowed(config):
     return any('people' in stages for stages in media_identity.stages_by_root(config).values())
 
 
+class _NetworkGate:
+    """外部采集用的断网判定，`network` 是 `NetworkReachability`，不给就永远算联网。
+
+    只有两次探测都连不上（`offline`）才算断网；代理设置待选（`unknown`）照常采集，判不准的
+    结论不拦。`skipped` 是这一趟因断网跳过的行数，续跑时接着上次的数。
+    """
+
+    def __init__(self, network, skipped=0):
+        self.network, self.skipped = network, skipped
+
+    def probe(self, update):
+        """外部采集开始前当场探一次。快照可能是十分钟前的，断网时这一下最多等约 20 秒。
+
+        探测线程顺带拉起：断网首扫之后没人打开页面，联网恢复也要有人发现。"""
+        if self.network is None:
+            return
+        update(stage='检查外网连接', current_action='', current_started_at=None, current_deadline_at=None)
+        self.network.tick()
+        self.network.start()
+
+    def offline(self):
+        return self.network is not None and self.network.summary().get('state') == 'offline'
+
+    def skips(self, remote, row, code, missing, allowed, cover_root, *, answered, issue):
+        """断网时这一行要出网就不去问，记成可重试的未取得；不出网的行照常走完。"""
+        if not self.offline() or not remote.asks(row, code, missing if 'metadata' in allowed else [],
+                                                 cover_root, answered=answered,
+                                                 fetch_cover='cover' in allowed):
+            return False
+        issue(row, OFFLINE_MESSAGE, action='network_offline', retryable=True)
+        self.skipped += 1
+        return True
+
+
 def _collect_allowed(remote, traffic, row, code, missing, allowed, cover_root, covered, *,
-                     update, issue, answered, received, succeeded):
+                     update, issue, answered, received, succeeded, gate=_NetworkGate(None)):
     """按这一行所属媒体库的处理方式问外部来源（ADR-0116），返回 (证据条目, 新落盘的封面数)。
 
     关掉的联网步骤不问：不补资料时不带缺失字段，不补封面时不找封面，两样都关就整行不联网。
-    不补人物图片的媒体库，这一行换上的封面不记进 `covered`，不因此派补头像后继。"""
+    不补人物图片的媒体库，这一行换上的封面不记进 `covered`，不因此派补头像后继。
+    断网（`gate`）时要出网的行一家都不问，留一条问题项，不进断点。"""
     found, covers = [], 0
+    if gate.skips(remote, row, code, missing, allowed, cover_root, answered=answered, issue=issue):
+        return found, covers
     if allowed & {'metadata', 'cover'}:
         traffic.start_metadata(code)
         try:
@@ -2190,14 +2241,16 @@ def _candidate_scope(groups, asset_ids):
 
 
 def _finish_collection(config, database, candidate_root, cover_root, groups, remote, *,
-                       asset_ids, active, update, issue, watermark, covered, people=True):
+                       asset_ids, active, update, issue, watermark, covered, people=True, offline=False):
     """结算本趟候选并补人物资料，全库任务同时推进存量后继。
 
-    `people` 为假（没有哪个媒体库的处理方式联网补人物图片）时不补人物资料，也不派实体后继。"""
+    `people` 为假（没有哪个媒体库的处理方式联网补人物图片）时不补人物资料，也不派实体后继。
+    `offline` 为真时只跳过补人物资料：后继照派，这一趟登记的实体过了这一趟就不再算新登记，
+    恢复后的重试趟派不到它们。"""
     auto_apply = _apply_finished_candidates(database, candidate_root, active, asset_ids)
     profiles = (_enrich_finished_performers(
         database, _candidate_scope(groups, asset_ids), config, candidate_root, remote, active, update, issue)
-        if people else dict(aliases=0, avatars=0, conflicts=0, failed=0))
+        if people and not offline else dict(aliases=0, avatars=0, conflicts=0, failed=0))
     followups = [] if asset_ids is not None else sample_followup.plan(database, config, cover_root)
     if people:
         followups += _entity_followups(database, config, watermark, covered, include_stock=asset_ids is None)
@@ -2576,7 +2629,8 @@ def _restore_processing_counts(state, previous):
     """同一处理任务沿用累计数、问题清单和已保存证据索引。"""
     previous = previous or {}
     for key in ('started_at', 'identified', 'covers', 'previews', 'probed', 'issue_count', 'paused_count',
-                'issue_preview', 'issues_truncated', 'notes', 'retryable_asset_ids', 'junk_isolated', 'junk_review'):
+                'issue_preview', 'issues_truncated', 'notes', 'retryable_asset_ids', 'junk_isolated', 'junk_review',
+                'offline_skipped'):
         if key in previous:
             state[key] = previous[key]
     for key in ('scan_checkpoints', 'local_metadata'):
@@ -2679,7 +2733,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                     retry_ids=None, active=lambda: True, stage=ALL_STAGES,
                     database=None, route_overrides=None, state_file=None, asset_ids=None,
                     resume_state=None, speed_mode=None, protected_ids=(), recheck_existing=False,
-                    incremental=False):
+                    incremental=False, network=None):
     """登记文件与确定的番号，外部资料保留为可复核候选。
 
     `retry_ids` 为 `None` 时处理整个馆藏；给定时只处理这些项目（上一任务记录的
@@ -2696,6 +2750,9 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
     `route_overrides` 覆盖某几种内容类型的来源链，形状与判据见
     `metadata_routes.parse_route_overrides`；不给就用内建那张表。
     `state_file` 给后台定向任务保存独立进度，共享候选写入仍使用全库处理锁。
+    `network` 是 `NetworkReachability`：外部采集开始前当场探一次，判成断网时要出网的行记为
+    可重试的「外部资料未取得」、补人物资料整段跳过，本地那几步照常做完；之后每一行读它的快照。
+    不给就不判，命令行走这条。
     """
     selected_ids = _validate_processing_request(config, db_path, stage, asset_ids, retry_ids, database)
     from .repository import LedgerDatabase
@@ -2732,7 +2789,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                      last_progress_at=time.time(), progress_seq=0,
                      current_asset_id=None, current_asset_name='', current_action='',
                      current_started_at=None, current_deadline_at=None,
-                     followups=[],
+                     followups=[], offline_skipped=0,
                      junk_isolated=0, junk_review=0,
                      started_at=time.time(), error='')
         state.update(initial_estimate(config, db_path, stage, initial_ids, speed_mode))
@@ -2923,9 +2980,12 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             _check_processing_junk(judgement_database, locations, sources.online_roots,
                                    scope_ids, protected_ids, state, update)
             prepared = _active_prepared(judgement_database, prepared)
+            gate = _NetworkGate(network, state['offline_skipped'])
+            gate.probe(update)
             from .metadata_amane import PreparationError
             try:
-                remote.prepare(prepared, stages_of, update, cover_root=cover_root, groups=groups)
+                remote.prepare(prepared, stages_of, update, cover_root=cover_root, groups=groups,
+                               offline=gate.offline)
             except PreparationError as error:
                 message = f'采集工具准备失败：{error}'
                 issue(None, message, action='preparing_sources')
@@ -2949,7 +3009,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                     answered=() if verify_existing else _answered_sources(groups, target_key, missing),
                     received=lambda entries, row=row, code=code, fields=local_fields, verify=verify_existing:
                         publish(row, code, fields, verify, entries),
-                    succeeded=lambda before=issues_before: state['issue_count'] == before)
+                    succeeded=lambda before=issues_before: state['issue_count'] == before, gate=gate)
+                state['offline_skipped'] = gate.skipped
                 state['covers'] += covers
                 update(stage='保存待确认资料', current_action='writing_candidates',
                        current_started_at=time.time(), current_deadline_at=None)
@@ -2965,7 +3026,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             summary = _finish_collection(
                 config, database, candidate_root, cover_root, groups, remote, asset_ids=scope_ids,
                 active=active, update=update, issue=issue, watermark=entity_watermark, covered=covered,
-                people=_people_allowed(config))
+                people=_people_allowed(config), offline=gate.offline())
             finish_step('collect')
             _settle_collection_state(state, summary, rows, update)
         except Exception:

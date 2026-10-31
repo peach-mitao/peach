@@ -377,7 +377,11 @@ def create_app(
     from .mount_reachability import source_roots
     mount_reachability = MountReachability(source_roots())
     from .network_reachability import NetworkReachability
-    network_reachability = NetworkReachability()
+    from .web_library_processing import retry_after_network_recovery
+    network_reachability = NetworkReachability(
+        on_recovered=lambda: retry_after_network_recovery(contract, sync))
+    # 处理任务在外部采集前按它判断网（`library_processing._network_gate`）。
+    contract.network_reachability = network_reachability
     resolver = FFmpegResolver(settings.ffmpeg_root)
     http_transport = HttpxTransport()
     follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(

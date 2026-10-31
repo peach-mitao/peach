@@ -868,6 +868,36 @@ class LibraryNfoTests(unittest.TestCase):
             self.assertEqual(q_library_processing(contract, {})['job_id'], 'one')
             worker.assert_not_called()
 
+    def test_network_recovery_retries_only_a_run_that_skipped_rows_offline(self):
+        from peach.web_library_processing import retry_after_network_recovery
+        skipped = {'status': 'failed', 'offline_skipped': 2, 'retryable_asset_ids': [1, 2]}
+        writer, reader = SimpleNamespace(read_only=False), SimpleNamespace(read_only=True)
+        cases = {
+            'skipped offline': (skipped, writer, True),
+            'failed for other reasons': ({**skipped, 'offline_skipped': 0}, writer, False),
+            'nothing left': ({**skipped, 'retryable_asset_ids': []}, writer, False),
+            'read-only device': (skipped, reader, False),
+        }
+        for name, (live, sync, expected) in cases.items():
+            with self.subTest(name):
+                contract = Mock()
+                contract.library_processing_job.thread = None
+                contract.library_processing_job.snapshot.return_value = {**live, 'job_id': 'one', 'started_at': 1}
+                with patch('peach.web_library_processing.settings_file.active'), \
+                        patch('peach.web_library_processing.snapshot', return_value={}), \
+                        patch('peach.web_library_processing.w_library_processing') as start:
+                    retry_after_network_recovery(contract, sync)
+                if expected:
+                    start.assert_called_once_with(contract, {'job_id': 'one', 'retry': []})
+                else:
+                    start.assert_not_called()
+        # 断网那一趟还在收尾：这次恢复不算用掉，留给探测器下一次判回联网。
+        contract = Mock()
+        contract.library_processing_job.snapshot.return_value = {**skipped, 'status': 'running', 'job_id': 'one'}
+        with patch('peach.web_library_processing.w_library_processing') as start:
+            self.assertIs(retry_after_network_recovery(contract, writer), False)
+        start.assert_not_called()
+
     @windows_ledger_roots
     def test_processing_auto_applies_safe_nfo_fields_before_it_finishes(self):
         media = self.root / 'media'
@@ -1116,6 +1146,59 @@ class LibraryNfoTests(unittest.TestCase):
         process_library(config, db, self.root / 'generated', self.root / 'covers', provider_factory=factory)
         self.assertEqual((provider.query.call_count, provider.community.call_count, provider.amane.call_count),
                          asked)
+
+    @windows_ledger_roots
+    def test_offline_scan_finishes_locally_and_leaves_only_remote_rows_for_retry(self):
+        """断网首扫：NFO 资料照落，要出网的行记成可重试，一个来源都不问；联网后重试补齐。
+
+        有 NFO 的作品联网时也要拿外部来源核对一遍，所以它同样留给重试；不出网的行不记。"""
+        from PIL import Image
+        from peach.library_processing import OFFLINE_MESSAGE
+        from peach.network_reachability import NetworkReachability
+        media = self.root / 'media'
+        media.mkdir()
+        (media / 'ABW-358.mp4').write_bytes(b'video')
+        (media / 'ABW-358.nfo').write_text(
+            '<movie><title>Local title</title><sorttitle>ABW-358</sorttitle><studio>Studio</studio>'
+            '<premiered>2023-05-26</premiered><actor><name>涼森れむ</name></actor><tag>自定义标签</tag></movie>',
+            encoding='utf-8')
+        Image.new('RGB', (600, 900), 'blue').save(media / 'ABW-358-poster.jpg')
+        (media / 'SSIS-057.mp4').write_bytes(b'video')
+        # 文件名读不出番号的本地作品：有 NFO 也不问外部来源，断网时不进重试。
+        (media / 'holiday.mp4').write_bytes(b'video')
+        (media / 'holiday.nfo').write_text('<movie><title>假期</title></movie>', encoding='utf-8')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True, locations={'local': (str(media),)})
+        provider = stub_provider()
+        provider.query.return_value = {'id': 'SSIS-057', 'title': '作品资料'}
+        provider.cover.return_value = False
+        factory = Mock(return_value=provider)
+        generated, covers = self.root / 'generated', self.root / 'covers'
+        offline = NetworkReachability(check=lambda: False, retry_delay=0)
+        self.addCleanup(offline.stop)
+
+        # 只看资料：测试里的假视频生成不了预览，那一步的失败会混进重试集合。
+        process_library(config, db, generated, covers, stage='scan')
+        result = process_library(config, db, generated, covers, provider_factory=factory, stage='metadata',
+                                 database=LedgerDatabase(db), network=offline)
+
+        self.assertEqual(provider.method_calls, [])
+        self.assertEqual((result['status'], result['offline_skipped']), ('failed', 2))
+        with closing(sqlite3.connect(db)) as connection:
+            ids = dict(connection.execute('SELECT name,id FROM asset'))
+            title = connection.execute("SELECT catalog_title FROM asset WHERE code='ABW-358'").fetchone()[0]
+        self.assertEqual(title, 'Local title')
+        self.assertEqual(sorted(result['retryable_asset_ids']), sorted([ids['ABW-358.mp4'], ids['SSIS-057.mp4']]))
+        self.assertIn('holiday.mp4', ids)
+        self.assertEqual({issue['message'] for issue in result['issue_preview']}, {OFFLINE_MESSAGE})
+
+        online = NetworkReachability(check=lambda: True, retry_delay=0)
+        self.addCleanup(online.stop)
+        retried = process_library(config, db, generated, covers, provider_factory=factory,
+                                  database=LedgerDatabase(db), network=online,
+                                  retry_ids=result['retryable_asset_ids'])
+        self.assertEqual(retried['offline_skipped'], 0)
+        self.assertEqual({call.args[0] for call in provider.query.call_args_list}, {'ABW-358', 'SSIS-057'})
 
     @windows_ledger_roots
     def test_local_nfo_fields_keep_remote_differences_for_review(self):

@@ -48,6 +48,9 @@ ICON_INTERVAL, ICON_TIMEOUT = 1.5, 20.0
 #: 派出去过，`変態紳士倶楽部` 官网 09-23 登记后一直没图。没图的厂牌只有二三十家，几轮就轮遍。
 STOCK_SHARE = 8
 
+#: 候选官网全都连不上时，过多久存量补派再派这一家。与补女优资料「未取得」的那一档同为一天。
+RETRY_UNREACHED = 24 * 3600
+
 
 def followup_key(entity_id: int) -> str:
     return f"{TASK_KEY}:{int(entity_id)}"
@@ -131,14 +134,17 @@ def run(contract, key: str, handle) -> dict:
 
     人像闸取不到模型的那一次不记：结论取决于那天有没有网，记下来就要等到这家多一部
     作品或多一条链接才会再试，活动中心「立即重试」取回模型之后也补不回来。
+    候选官网一个都连不上的那次照记，但只保 `RETRY_UNREACHED`：同样是那天有没有网的事。
     """
     summary = _run(contract, key, handle)
     if summary.get("face_match_unavailable"):
         return summary
     with contract.database.read_connection() as connection:
         current = fingerprint(connection, parse_key(key))
+    site = summary.get("site") or {}
     Attempts(attempts_root(contract.candidate_root)).record(
-        key, current, str(summary.get("outcome", "")))
+        key, current, str(summary.get("outcome", "")),
+        retry_after=RETRY_UNREACHED if site.get("unreached") else None)
     return summary
 
 
@@ -180,8 +186,12 @@ def _land_site(contract, entity_id: int, name: str, aliases, batch: str) -> dict
     verdict = str(row["verdict"])
     if verdict != "ok":
         # `weak` 与 `未取得` 都不写：前者要人看，后者是没有证据。
-        return {"outcome": "待人确认" if verdict == "weak" else "未取得",
-                "verdict": verdict, "note": str(row["note"])[:200]}
+        result = {"outcome": "待人确认" if verdict == "weak" else "未取得",
+                  "verdict": verdict, "note": str(row["note"])[:200]}
+        # 试过候选却没有一个回了 HTTP 状态：全是传输层失败，多半是断网，不是这家没有官网。
+        if row.get("candidate_url") and not row.get("status"):
+            result["unreached"] = True
+        return result
     url = str(row["final_url"] or row["candidate_url"])
     now = datetime.now(timezone.utc).isoformat()
     metadata = {"source": SOURCE, "batch": batch, "verdict": verdict, "installed_at": now,
