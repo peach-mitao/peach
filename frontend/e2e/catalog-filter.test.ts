@@ -93,6 +93,30 @@ describe('首页筛选条', () => {
   before(async () => { browser = await launch(); });
   after(async () => { await browser?.close(); });
 
+  it('JAV 读数尚未返回时保持两行骨架，内容就绪后再决定合行', { timeout: 60_000 }, async () => {
+    const opened = await openHome(browser, '/?jav=1');
+    const { page } = opened;
+    let release!: () => void;
+    const waiting = new Promise<void>(resolve => { release = resolve });
+    try {
+      await page.route((url) => url.pathname === '/api/facets', async route => {
+        const response = await route.fetch();
+        await route.fulfill({ json: { ...await response.json(), tags: TAGS.slice(0, 1) } });
+      });
+      await page.route((url) => url.pathname === '/api/items', async route => { await waiting; await route.fallback() });
+      await page.setViewportSize({ width: 1920, height: 900 });
+      await page.reload();
+      const frame = page.locator(`${FILTER} [data-catalog-frame]`);
+      await frame.locator('[data-catalog-tag]').first().waitFor();
+      assert.equal(await frame.getAttribute('data-single-row'), null);
+      assert.equal(await frame.evaluate(node => node.getBoundingClientRect().height), 96);
+      release();
+      await page.locator(READOUT, { hasText: '个符合' }).waitFor();
+      await page.locator(`${FILTER} [data-catalog-frame][data-single-row]`).waitFor();
+      assert.deepEqual(opened.problems, []);
+    } finally { release(); await opened.close() }
+  });
+
   it('少量筛选项与右侧操作按容器宽度同行或分行', { timeout: 60_000 }, async () => {
     const opened = await openHome(browser);
     const { page } = opened;
