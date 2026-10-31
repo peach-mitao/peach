@@ -34,10 +34,11 @@ import { Disclosure } from '../settings/section';
 import { BackgroundIssues } from './background-issues';
 import { DownloadsPanel } from './downloads-panel';
 import { ErrorDetails, ErrorExcerpt } from './error-excerpt';
+import { TaskControls } from './task-controls';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldByKind, foldRoutine, followupDetail, followupTally, groupFollowups, isActive,
   hasResultProblems, isRoutine, latestOfKind, mergeFinished, momentText, pollInterval, problemDestination, progressText,
-  statusLabel, summaryItems, taskIssues, TASKS_KEY, TRIGGER_LABELS, type FollowupCounts, type TaskRunPayload,
+  statusLabel, summaryItems, taskIssues, TASKS_KEY, TRIGGER_LABELS, type FollowupCounts, type TaskControlState, type TaskRunPayload,
 } from './tasks';
 
 /** 一张卡里最多列多少条后继。几批合成一张卡时会有上千条，全画出来一屏都是同一句。 */
@@ -50,7 +51,15 @@ const BADGE_COLORS: Record<string, 'lime' | 'rose' | 'yellow' | 'blue' | 'neutra
   succeeded: 'lime', failed: 'rose', cancelled: 'neutral', interrupted: 'yellow', running: 'blue', pending: 'neutral',
 };
 
+const CONTROL_LABELS: Record<TaskControlState, string> = {
+  running: '进行中', pausing: '正在暂停', paused: '已暂停', cancelling: '正在取消',
+};
+
 function StatusBadge({ run }: { run: TaskRunPayload }) {
+  const control = isActive(run) ? run.control?.state : undefined;
+  if (control && control !== 'running') {
+    return <Chip color="neutral"><span data-copy-key={`tasks.control.state.${control}`}>{CONTROL_LABELS[control]}</span></Chip>;
+  }
   const partial = run.status === 'failed' && run.task_key === 'library-processing'
     && run.result_summary?.outcome === 'partial';
   const problems = partial || run.status === 'succeeded' && hasResultProblems(run);
@@ -79,6 +88,8 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
             {detail
               ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
               : null}
+            {isActive(row) && row.control?.actions.length
+              ? <div className="w-full min-w-0"><TaskControls run={row} /></div> : null}
             {/* 排队中的那些还没有结果：空的「技术详情」展开只有一对花括号。 */}
             {Object.keys(row.result_summary || {}).length
               ? <div className="w-full min-w-0">
@@ -126,6 +137,7 @@ function RunCard(
         </div>
         <p className="text-caption-1-regular text-text-secondary">{meta}</p>
         {children}
+        <TaskControls run={run} />
       </div>
       {shown ? <div className="border-t border-separator-border px-5 py-2.5">
         <Disclosure summary={`任务明细 · ${total.toLocaleString()} 项`}
@@ -155,7 +167,9 @@ function RunCard(
 function RunningRun({ run, followups }: { run: TaskRunPayload; followups?: TaskRunPayload[] }) {
   const total = run.progress_total || 0;
   const current = run.progress_current || 0;
-  const label = run.progress_label || '正在进行';
+  const control = run.control?.state;
+  const stopping = control && control !== 'running';
+  const label = stopping ? CONTROL_LABELS[control] : run.progress_label || '正在进行';
   const elapsed = elapsedText(run.elapsed_seconds);
   const meta = [TRIGGER_LABELS[run.trigger] || run.trigger, elapsed && `已跑 ${elapsed}`]
     .filter(Boolean).join(' · ');
@@ -166,7 +180,8 @@ function RunningRun({ run, followups }: { run: TaskRunPayload; followups?: TaskR
             <Progress label={label} value={Math.min(current, total)} max={total} />
             <p className="text-caption-1-regular text-text-secondary wrap-anywhere">{label} · {progressText(current, total)} 项</p>
           </div>
-        : <LoadingDots label={label} />}
+        : stopping ? <p data-copy-key={`tasks.control.state.${control}`}
+            className="text-caption-1-regular text-text-secondary">{label}</p> : <LoadingDots label={label} />}
     </RunCard>
   );
 }

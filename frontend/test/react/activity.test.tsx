@@ -17,7 +17,7 @@ import type { ActivityData, FinishedPage, TaskRunPayload } from '../../src/react
 import type { DownloadsSnapshot } from '../../src/react/bundle';
 import { queryClient } from '../../src/react/query';
 
-import { buttonNamed, click, mount, mountRoot, settle } from './render';
+import { buttonNamed, click, mount, mountRoot, pending, settle } from './render';
 
 // 客户端是模块级的单例（所有 React 根共用一个），用例之间不清就互相喂数据。
 afterEach(() => queryClient.clear());
@@ -212,6 +212,120 @@ it('总量未知时不画假进度条，只说正在做什么', async () => {
   const { host } = await open(payload({ running: [run({ progress_total: null, progress_current: null })] }));
   expect(host.querySelector('[role=progressbar]')).toBeNull();
   expect(host.querySelector('[role=status]')?.textContent).toContain('正在查第三个来源');
+});
+
+it('活动任务按服务端给出的动作暂停、继续和取消，并重新读取进度', async () => {
+  const posts: [string, unknown][] = [];
+  let current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (input, init) => {
+    if (init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      posts.push([input, body]);
+      current = body.action === 'pause'
+        ? { ...current, control: { state: 'paused', actions: ['resume', 'cancel'] } }
+        : body.action === 'resume'
+          ? { ...current, control: { state: 'running', actions: ['pause', 'cancel'] } }
+          : { ...current, control: { state: 'cancelling', actions: [] } };
+    }
+    return { ok: true, status: 200, json: async () => payload({ running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(buttonNamed('暂停', host));
+  await vi.waitFor(() => expect(buttonNamed('继续', host)).not.toBeNull());
+  expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain('已暂停');
+  expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('3');
+  await click(buttonNamed('继续', host));
+  await vi.waitFor(() => expect(buttonNamed('暂停', host)).not.toBeNull());
+  await click(buttonNamed('取消', host));
+  await vi.waitFor(() => expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain('正在取消'));
+  expect(host.textContent).not.toContain('已取消');
+  expect(host.querySelector('[data-task-controls]')).toBeNull();
+  expect(posts).toEqual([
+    ['/api/tasks/1/control', { action: 'pause' }],
+    ['/api/tasks/1/control', { action: 'resume' }],
+    ['/api/tasks/1/control', { action: 'cancel' }],
+  ]);
+});
+
+it.each([
+  ['pausing', '正在暂停', ['resume', 'cancel']],
+  ['paused', '已暂停', ['resume', 'cancel']],
+  ['cancelling', '正在取消', []],
+] as const)('未知总量的任务处于 %s 时展示真实状态，不显示推进动画', async (state, label, actions) => {
+  const { host } = await open(payload({ running: [run({ progress_total: null, progress_current: null,
+    control: { state, actions: [...actions] } })] }));
+  expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain(label);
+  expect(host.querySelector('[role="status"]')).toBeNull();
+  expect(buttonNamed('暂停', host)).toBeNull();
+  expect(Boolean(buttonNamed('继续', host))).toBe(state !== 'cancelling');
+});
+
+it('任务控制请求等待时保持按钮焦点并阻止重复提交', async () => {
+  const response = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+  const posts: string[] = [];
+  const current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (input, init) => {
+    if (init?.method === 'POST') {
+      posts.push(input);
+      return response.answer;
+    }
+    return { ok: true, status: 200, json: async () => payload({ running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  const pause = buttonNamed('暂停', host)!;
+  pause.focus();
+  await click(pause);
+  expect(pause.hasAttribute('disabled')).toBe(false);
+  expect(pause.getAttribute('aria-busy')).toBe('true');
+  expect(document.activeElement).toBe(pause);
+  await click(pause);
+  await click(buttonNamed('取消', host));
+  expect(posts).toEqual(['/api/tasks/1/control']);
+  await response.release({ ok: true, status: 200, json: async () => ({ ok: true }) });
+});
+
+it('任务控制失败保留原状态和原因，可以在原位重试', async () => {
+  let attempts = 0;
+  const current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (_input, init) => {
+    if (init?.method === 'POST') {
+      attempts += 1;
+      return { ok: false, status: 409, json: async () => ({ message: '任务已变化，请刷新后重试' }) };
+    }
+    return { ok: true, status: 200, json: async () => payload({ running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(buttonNamed('暂停', host));
+  expect(host.querySelector('[data-task-controls] [role="alert"]')?.textContent).toContain('任务已变化');
+  expect(buttonNamed('继续', host)).toBeNull();
+  await click(buttonNamed('暂停', host));
+  expect(attempts).toBe(2);
+});
+
+it('后继任务使用自身任务号控制，已结束任务没有控制按钮', async () => {
+  const child = followup(1, { id: 90, status: 'pending', finished_at: null,
+    control: { state: 'paused', actions: ['resume', 'cancel'] } });
+  const ended = run({ status: 'succeeded', control: { state: 'running', actions: ['pause', 'cancel'] } });
+  const posts: string[] = [];
+  stubFetch(async (input, init) => {
+    if (init?.method === 'POST') posts.push(input);
+    return { ok: true, status: 200, json: async () => payload({ running: [child], finished: [ended] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  expect(host.querySelector('[data-task-controls="1"]')).toBeNull();
+  const controls = host.querySelector('[data-task-controls="90"]')!;
+  expect(controls).not.toBeNull();
+  await click(buttonNamed('继续', controls));
+  expect(posts).toEqual(['/api/tasks/90/control']);
+});
+
+it('服务端未给出控制能力时不按任务种类自行增加按钮', async () => {
+  const { host } = await open(payload({ running: [run()] }));
+  expect(host.querySelector('[data-task-controls]')).toBeNull();
 });
 
 it('被挡下的那一轮单独成段，不在最近完成里再出现一次', async () => {
