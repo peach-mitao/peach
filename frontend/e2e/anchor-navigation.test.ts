@@ -4,7 +4,7 @@ import type { Browser } from 'playwright-core';
 import { launch, VIEWPORTS } from './harness.ts';
 import { openItemPage } from './item-fixture.ts';
 
-describe('跨页锚点定位', () => {
+describe('页面滚动定位', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
@@ -79,6 +79,44 @@ describe('跨页锚点定位', () => {
           assert.deepEqual(navigations, []);
           assert.deepEqual(opened.problems, []);
         } finally { release(); await opened.close() }
+      });
+      it(`${viewport.name}：栏目位置平滑往返，双击导航回顶，减少动态效果=${reduced}`, { timeout: 60_000 }, async () => {
+        const opened = await openItemPage(browser, '/', viewport, { ready: '#grid [data-media-card]' });
+        const { page } = opened;
+        try {
+          await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+          await page.evaluate(() => {
+            document.getElementById('main')!.style.minHeight = '6000px';
+            const scroll = window.scrollTo.bind(window);
+            const calls: ScrollToOptions[] = [];
+            Object.assign(window, { pageScrolls: calls });
+            window.scrollTo = (options: ScrollToOptions | number, y?: number) => {
+              if (typeof options === 'number') scroll(options, y ?? 0);
+              else { calls.push(options); scroll(options) }
+            };
+          });
+          const move = async (name: string, path: string, top: number, double = false) => {
+            await page.evaluate(() => { (window as unknown as { pageScrolls: ScrollToOptions[] }).pageScrolls.length = 0 });
+            if (viewport.mobile) await page.locator('header button[aria-label="展开侧栏"]').click();
+            const nav = page.locator('#drawer [data-nav]').getByText(name, { exact: true });
+            if (double) await nav.dblclick(); else await nav.click();
+            await page.waitForURL(url => url.pathname + url.search === path);
+            await page.waitForFunction(({ behavior, top }) => {
+              const calls = (window as unknown as { pageScrolls: ScrollToOptions[] }).pageScrolls;
+              return calls.some(call => call.top === top && call.behavior === behavior) && scrollY === top;
+            }, { top, behavior: reduced ? 'instant' : 'smooth' });
+          };
+          await page.evaluate(() => window.scrollTo({ top: 700, behavior: 'instant' }));
+          await move('JAV', '/?jav=1', 0);
+          await page.evaluate(() => window.scrollTo({ top: 1000, behavior: 'instant' }));
+          await move('首页', '/', 700);
+          await move('首页', '/', 0, true);
+          await page.evaluate(() => window.scrollTo({ top: 700, behavior: 'instant' }));
+          await move('JAV', '/?jav=1', 1000);
+          await move('首页', '/', 700);
+          await move('艺人', '/performers', 0);
+          assert.deepEqual(opened.problems, []);
+        } finally { await opened.close() }
       });
     }
   }

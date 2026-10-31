@@ -20,7 +20,6 @@ import { prefetchTasks } from '../activity/tasks';
 import { BatchDockSurface } from '../batch-dock/batch-dock-island';
 import type { DataCleanupSection, LibraryProcessingProps } from '../bundle';
 import { CatalogFilterPage } from '../catalog-filter/catalog-filter-page';
-import { prefetchCatalogGrid } from '../catalog-grid/catalog-grid';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { prefetchDataCleanup } from '../data-cleanup/data-cleanup';
 import { prefetchEntityPage, type EntityPageProps } from '../entity-page/entity-page';
@@ -307,13 +306,13 @@ export const ENTITY_ROUTES: EntityRouteTable = {
    网格、用 `/junk-files` 打开队列，槽里记的路径说的是画着哪一页、不是地址。按地址分键会在三处出错：网格在
    `/trash` 打开之后去 `/` 是就地推，槽里的路径不跟着变；`?state=ads` 落在 `/` 上，画的是垃圾队列；冷启动
    落在详情地址上时，网格在 `/assets/:id` 底下补画。
-   网格首屏取第一页再画；队列不在打开前等，画上就铺自己那份骨架（`junk-queue-page.tsx` 开头）。之后换
+   网格与队列都不在打开前等，画上即取数并显示各自的骨架。之后换
    筛选或分类、换版式、选择模式与刷新代次都由壳经 `updateManagedRoute` 推进来，页面按新键重取、自己铺
    骨架，不重挂。 */
 export const CATALOG_ROUTES: CatalogRouteTable = {
   '/': {
     element: <CatalogMatch />,
-    prefetch: (open, signal) => prefetchCatalogGrid(open, signal),
+    prefetch: async () => {},
     page: (open) => <CatalogGridPage {...open} />,
   },
   '/junk-files': {

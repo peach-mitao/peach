@@ -1,0 +1,187 @@
+import { peachHistory, isOverlayPath, isPreferencePath, routeMetaOf, type Navigation } from './index';
+import { routeScrollBehavior, scrollToAnchor } from '../ui-kit/anchor-scroll';
+
+interface Visit {
+  left: number;
+  top: number;
+  state: Map<string, unknown>;
+}
+
+const visits = new Map<string, Visit>();
+const addresses = new Map<string, Visit>();
+const columns = new Map<string, string>();
+let active: Navigation;
+let from: Navigation['location'];
+let departure = { left: window.scrollX, top: window.scrollY };
+let restoring: Visit | undefined;
+let positioned = -1;
+let requestedTop = -1;
+let refreshing = false;
+let installed = false;
+let anchorStyle: string | undefined;
+
+function holdScrollAnchor(): void {
+  const root = document.documentElement;
+  anchorStyle ??= root.style.overflowAnchor;
+  root.style.overflowAnchor = 'none';
+  root.setAttribute('data-page-navigation-pending', '');
+  // 取消上一页尚未结束的平滑滚动，下一页只接受自己的定位。
+  window.scrollTo({ left: window.scrollX, top: window.scrollY, behavior: 'instant' });
+}
+
+function releaseScrollAnchor(seq: number): void {
+  document.documentElement.removeAttribute('data-page-navigation-pending');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (peachHistory.navigation.seq !== seq || anchorStyle === undefined) return;
+    document.documentElement.style.overflowAnchor = anchorStyle;
+    anchorStyle = undefined;
+  }));
+}
+
+const page = (path: string) => !isOverlayPath(path) && !isPreferencePath(path) && path !== '/immerse' && path !== '/wall';
+const identity = (location: typeof active.location) => {
+  const query = new URLSearchParams(location.search);
+  return `${location.pathname}:${query.get('jav') === '1'}:${query.get('orient') === '竖屏'}`;
+};
+const address = (location: typeof active.location) => {
+  const query = new URLSearchParams(location.search);
+  query.delete('edit');
+  query.sort();
+  return location.pathname + (query.size ? `?${query}` : '') + location.hash;
+};
+function columnKeys(location: typeof active.location): string[] {
+  if (!page(location.pathname)) return [];
+  if (location.pathname === '/') {
+    const query = new URLSearchParams(location.search);
+    return [query.get('jav') === '1' ? 'jav' : query.get('orient') === '竖屏' ? 'shorts' : ''];
+  }
+  const meta = routeMetaOf(location.pathname);
+  return [...(meta?.nav ? [meta.nav] : []), ...(meta?.section ? ['manage', meta.section] : [])];
+}
+function rememberColumns(): void {
+  const location = active.location;
+  for (const key of columnKeys(location)) columns.set(key, location.pathname + location.search + location.hash);
+}
+
+/** 同一标签页再次进入栏目，沿用最后一次的地址；已在该栏目时保持当前视图。 */
+export function rememberedSidebarPath(key: string): string | undefined {
+  installPageNavigation();
+  return columnKeys(active.location).includes(key)
+    ? active.location.pathname + active.location.search + active.location.hash : columns.get(key);
+}
+
+/** 主动刷新和已启用的自动换批按原刷新入口取新内容，不认领旧视图。 */
+export function refreshPageNavigation(): void { installPageNavigation(); refreshing = true }
+
+function installPageNavigation(): void {
+  if (installed) return;
+  installed = true;
+  active = peachHistory.navigation;
+  from = active.location;
+  window.history.scrollRestoration = 'manual';
+  peachHistory.listen(next => {
+    from = active.location;
+    departure = { left: window.scrollX, top: window.scrollY };
+    if (page(next.location.pathname)) holdScrollAnchor();
+    else releaseScrollAnchor(next.seq);
+    if (page(from.pathname)) {
+      const saved = visits.get(from.key) ?? { ...departure, state: new Map<string, unknown>() };
+      Object.assign(saved, departure);
+      visits.set(from.key, saved);
+      addresses.set(address(from), saved);
+      rememberColumns();
+    }
+    if (next.action === 'REPLACE') {
+      const previous = visits.get(from.key);
+      if (previous) visits.set(next.location.key, { ...previous, state: new Map(previous.state) });
+      if (restoring) restoring = visits.get(next.location.key);
+    } else {
+      restoring = next.action === 'POP' ? visits.get(next.location.key) : addresses.get(address(next.location));
+    }
+    if (refreshing) restoring = undefined;
+    refreshing = false;
+    if (restoring) {
+      restoring = { ...restoring, state: new Map(restoring.state) };
+      visits.set(next.location.key, restoring);
+    }
+    active = next;
+  });
+}
+
+/** 只保留当前历史条目的阅读状态，不写入地址、用户配置或账本。 */
+export function rememberPageState<T>(name: string, value: T): void {
+  installPageNavigation();
+  if (!page(active.location.pathname)) return;
+  const saved = visits.get(active.location.key) ?? {
+    left: window.scrollX, top: window.scrollY, state: new Map<string, unknown>(),
+  };
+  saved.state.set(name, value);
+  visits.set(active.location.key, saved);
+  rememberColumns();
+}
+
+/** 栏目往返、后退前进及其规范地址重定向，读取离开时保存的状态。 */
+export function restoredPageState<T>(name: string): T | undefined {
+  installPageNavigation();
+  return restoring?.state.get(name) as T | undefined;
+}
+
+export const restoringPage = (): boolean => { installPageNavigation(); return !!restoring };
+
+/** 双击导航回顶；目标页还在打开时，由它的就绪回调消费这一次请求。 */
+export function requestPageTop(): void {
+  installPageNavigation();
+  requestedTop = peachHistory.navigation.seq;
+  if (positioned !== requestedTop) return;
+  requestedTop = -1;
+  window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+}
+
+/** 新页面骨架就位即可开始导航；历史位置等待内容高度恢复，锚点等待目标出现。 */
+export async function pageNavigationReady(isCurrent: () => boolean, results?: Element | null,
+  { pending = false }: { pending?: boolean } = {}): Promise<void> {
+  installPageNavigation();
+  const navigation = peachHistory.navigation;
+  const seq = navigation.seq;
+  const current = () => isCurrent() && peachHistory.navigation.seq === seq;
+  if (!page(navigation.location.pathname) || !current()) return;
+  rememberColumns();
+  if (!pending && restoring) {
+    await document.fonts?.ready;
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (!current()) return;
+  }
+  if (!pending) releaseScrollAnchor(seq);
+  if (positioned === seq) return;
+  if (pending && restoring) return;
+  if (pending && navigation.location.hash) {
+    let target: Element | null;
+    try { target = document.getElementById(decodeURIComponent(navigation.location.hash.slice(1))) } catch { return }
+    if (!target?.getClientRects().length) return;
+  }
+  positioned = seq;
+  if (requestedTop === seq) {
+    requestedTop = -1;
+    restoring = undefined;
+    window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+  } else if (restoring) {
+    const behavior = routeScrollBehavior();
+    if (behavior === 'smooth') {
+      window.scrollTo({ ...departure, behavior: 'instant' });
+    }
+    window.scrollTo({ left: restoring.left, top: restoring.top, behavior });
+    restoring = undefined;
+  } else if (navigation.location.hash) {
+    await scrollToAnchor(navigation.location.hash, current);
+  } else if (navigation.action === 'REPLACE' && identity(from) === identity(navigation.location)) {
+    window.scrollTo({ ...departure, behavior: 'instant' });
+  } else if (results?.getClientRects().length && identity(from) === identity(navigation.location)
+    && from.search !== navigation.location.search) {
+    const inset = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    if (results.getBoundingClientRect().top < inset) {
+      results.scrollIntoView({ block: 'start', behavior: routeScrollBehavior() });
+    }
+  } else if (seq > 0) {
+    window.scrollTo({ top: 0, behavior: routeScrollBehavior() });
+  }
+}
