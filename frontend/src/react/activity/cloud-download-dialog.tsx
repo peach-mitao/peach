@@ -25,9 +25,9 @@ export interface DownloadPrefill { code?: string; title?: string; origin?: strin
   cover?: string; performers?: string; release_date?: string; duration?: number | null; studio?: string }
 
 const RECEIPTS: Partial<Record<DownloadSubmitResult['outcome'], string>> = {
-  submitted: '已提交离线下载，进度在任务中心',
+  submitted: '已提交下载，进度在任务中心',
   adopted: '这个磁力已有任务，没有重复提交',
-  adopted_remote: '网盘中已有相同的下载任务，Peach 已开始跟踪进度',
+  adopted_remote: '下载器里已有相同的任务，Peach 已开始跟踪进度',
 };
 
 export function CloudDownloadDialog({ prefill, close, receipt, provider }: {
@@ -144,7 +144,7 @@ function SubmitForm({ header, snapshot, prefill, close, receipt, provider: prefe
           </Select>
           {provider === '115' ? <Help>每提交一次扣一条离线配额，重新提交也算。</Help> : null}
         </div>
-        {!snapshot.available ? <Note tone="neutral">云下载只在允许修改数据库的设备上可用。</Note> : null}
+        {!snapshot.available ? <Note tone="neutral">下载只在允许修改数据库的设备上可用。</Note> : null}
         {!configured.length ? <Note tone="neutral">尚未配置下载渠道。<a href={'/settings/library?section=' + encodeURIComponent('下载渠道')}>下载渠道设置</a></Note> : null}
         <Input label="目标目录" placeholder="/云下载" autoComplete="off" maxLength={300}
           value={target} onChange={setTarget} />

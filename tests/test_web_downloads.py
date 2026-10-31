@@ -234,6 +234,38 @@ class RouteTests(_App):
 class SettingsBlockTests(_App):
     """CloudDrive2 那一侧换成 `self.answer`；没有令牌时走真的 `check`，它在连网之前就停。"""
 
+    def test_qbittorrent_password_is_stored_but_never_returned(self):
+        from peach import web_downloads
+        self.app.state.push_discovery.declared_roots = {"local": ("R:\\media",)}
+        self.service.channel_catalog = lambda: {"providers": [], "problems": []}
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        with mock.patch.object(web_downloads, "check_qbittorrent", return_value={
+                "ok": True, "address": "http://192.0.2.10:8085", "version": "v4.6.4",
+                "webapi_version": "2.9.3", "save_path": "/vol1/media/Peach",
+                "media_root": "R:\\media", "problems": []}):
+            response = client.post("/api/configuration/downloads", json={
+                "qbittorrent_address": "http://192.0.2.10:8085",
+                "qbittorrent_save_path": "/vol1/media/Peach",
+                "qbittorrent_media_root": "R:\\media",
+                "qbittorrent_username": "admin",
+                "qbittorrent_password": "test-only-password",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["qbittorrent"]["username"], "admin")
+        self.assertTrue(body["qbittorrent"]["password_set"])
+        self.assertEqual(body["qbittorrent"]["save_path"], "/vol1/media/Peach")
+        self.assertNotIn("test-only-password", response.text)
+        self.assertIn("test-only-password", self.secrets()["download-qbittorrent.json"])
+
+    def test_qbittorrent_check_without_configuration_reports_the_missing_fields(self):
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        response = client.get("/api/configuration/downloads/qbittorrent/check")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertIn("地址", " ".join(body["problems"]))
+
     def test_invalid_service_address_is_refused_before_settings_or_token_are_saved(self):
         self.service.save_settings({"clouddrive_address": "localhost:19798", "wait_hours": 48}, self.roots())
         before = self.service.settings.path.read_bytes()

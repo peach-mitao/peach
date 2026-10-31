@@ -46,7 +46,7 @@
 - **本地与网盘**：统一浏览本地硬盘、SMB、已挂载网盘和 PikPak 媒体库。
 - **播放与记录**：网页与外部播放器、字幕、倍速、旋转、续播和时间轴预览。
 - **关注与发现**：订阅人物与创作者更新，发现作品，管理「想要」清单。
-- **云下载**：按影片编号查找或提交磁力，下载完成后整理入库。
+- **云下载与本地下载**：按影片编号查找或提交磁力，可交给 115、PikPak 或 qBittorrent，下载完成后整理入库。
 - **馆藏管理**：管理标签、重复文件、多版本与分卷；资料和观看记录保存在本机。
 
 ## 下载与使用
@@ -62,7 +62,7 @@
 
 ## 文档
 
-[运行与配置](docs/OPERATIONS.md) · [来源支持](docs/SOURCING.md) · [外部播放器](docs/EXTERNAL_PLAYERS.md) · [诊断与数据分享](docs/DIAGNOSTICS.md) · [更新日志](CHANGELOG.md)
+[运行与配置](docs/OPERATIONS.md) · [来源支持](docs/SOURCING.md) · [本地下载](docs/LOCAL_DOWNLOAD.md) · [外部播放器](docs/EXTERNAL_PLAYERS.md) · [诊断与数据分享](docs/DIAGNOSTICS.md) · [更新日志](CHANGELOG.md)
 
 参与开发：[贡献说明](CONTRIBUTING.md) · [开发约定](AGENTS.md) · [测试](docs/TESTING.md)
 

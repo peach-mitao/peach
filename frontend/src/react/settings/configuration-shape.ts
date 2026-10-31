@@ -15,6 +15,7 @@ export function downloadsShape(data: ConfigurationData): DownloadsShape | null {
     pikpakRoots: state.pikpak_roots.length > 0,
     pikpakLoggedIn: state.pikpak.logged_in,
     browserLogin: state.pikpak_browser.available,
+    localDownload: true,
   };
 }
 

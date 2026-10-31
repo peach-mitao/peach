@@ -21,6 +21,8 @@ const downloads: DownloadSettingsState = {
   available: true, config: { clouddrive_address: '', targets: {}, pikpak_root: '', wait_hours: 168 },
   token_set: false, pikpak: { logged_in: false, username: '', remember: false, method: 'password' },
   pikpak_browser: { available: true, state: 'idle', message: '' }, pikpak_roots: [],
+  local_roots: [],
+  qbittorrent: { address: '', save_path: '', media_root: '', username: '', password_set: false },
   providers: [{ key: '115', label: '115' }, { key: 'pikpak', label: 'PikPak' }], max_wait_hours: 1440,
 };
 const full = () => data({ downloads, startup: {

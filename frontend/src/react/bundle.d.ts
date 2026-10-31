@@ -127,7 +127,7 @@ export interface AutomaticUpdateState {
 }
 
 /** 媒体库中可用的直连渠道与 CloudDrive2 路径渠道。 */
-export type DownloadProviderKey = '115' | 'pikpak' | `clouddrive:${string}:${string}`;
+export type DownloadProviderKey = '115' | 'pikpak' | 'qbittorrent' | `clouddrive:${string}:${string}`;
 
 export interface DownloadConfig {
   clouddrive_address: string;
@@ -135,6 +135,10 @@ export interface DownloadConfig {
   /** PikPak 根目录对应的数据库路径前缀，空串表示还没选。 */
   pikpak_root: string;
   wait_hours: number;
+  /** 本地 qBittorrent：地址、下载器保存目录、对应媒体库根目录。 */
+  qbittorrent_address?: string;
+  qbittorrent_save_path?: string;
+  qbittorrent_media_root?: string;
 }
 
 export type PikPakBrowserState = 'idle' | 'waiting' | 'done' | 'cancelled' | 'timeout' | 'failed';
@@ -151,6 +155,12 @@ export interface DownloadSettingsState {
   /** 浏览器登录（ADR-0093）：这台电脑有没有 Chrome 或 Edge，登录窗口此刻在哪一步。 */
   pikpak_browser: { available: boolean; state: PikPakBrowserState; message: string };
   pikpak_roots: string[];
+  /** 可作为本地下载目标的媒体根；`root` 是账本路径，`label` 是媒体库名。 */
+  local_roots: { root: string; label: string }[];
+  /** 本地 qBittorrent 设置；密码只报存没存过。 */
+  qbittorrent: {
+    address: string; save_path: string; media_root: string; username: string; password_set: boolean;
+  };
   providers: { key: DownloadProviderKey; label: string }[];
   max_wait_hours: number;
 }
@@ -158,6 +168,20 @@ export interface DownloadSettingsState {
 /** 「保存配置」的响应：设置块加一份按已保存配置做的检查报告，没有令牌时为 null。 */
 export interface DownloadSaveResult extends DownloadSettingsState {
   report?: DownloadCheckReport | null;
+  qbittorrent_report?: QbittorrentCheckReport | null;
+}
+
+/** 本地 qBittorrent 的只读检查结果。 */
+export interface QbittorrentCheckReport {
+  ok: boolean;
+  address: string;
+  version: string;
+  webapi_version: string;
+  /** 页面填写的保存目录；留空时可能带出 qB 的默认保存目录。 */
+  save_path: string;
+  /** 与保存目录对应的媒体库账本路径。 */
+  media_root: string;
+  problems: string[];
 }
 
 /** 检查的结果：每一项各自报，一项失败不挡住其余几项。 */

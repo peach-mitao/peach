@@ -40,7 +40,7 @@
 
 配置和首次设置的媒体行接受 `root_id`、`library_id`；新增媒体库使用独立 ID，同名不合并。既有根目录更改实际位置必须附 `change_mode: "relocate"`，保留 `root` 账本前缀；添加另一目录省略根目录身份。名称与图标在同一 `library_id` 的行间必须一致。非法路径、归属或身份通过原字段错误契约返回，不写配置。详见 [媒体库与存储根目录](OPERATIONS.md#媒体库与存储根目录)。
 
-`GET /api/configuration` 的可选区域独立读取。区域失败时省略该字段，在 `section_errors[区域键]` 提供 `title`、`message`、`error_id`；其余成功字段继续返回。页面按分区显示提示并支持重新读取，依赖未取得媒体来源的配置表单暂停显示。`downloads.problems` 列出地址、凭据及渠道探测的问题，`downloads.config` 保留可修正的已保存地址及有效偏好；下载配置写入对地址严格校验，非法端口返回 400，并保留设置文件与凭据。
+`GET /api/configuration` 的可选区域独立读取。区域失败时省略该字段，在 `section_errors[区域键]` 提供 `title`、`message`、`error_id`；其余成功字段继续返回。页面按分区显示提示并支持重新读取，依赖未取得媒体来源的配置表单暂停显示。`downloads.problems` 列出地址、凭据及渠道探测的问题，`downloads.config` 保留可修正的已保存地址及有效偏好；下载配置写入对地址严格校验，非法端口返回 400，并保留设置文件与凭据。`downloads.qbittorrent` 只返回用户名与密码是否已保存，不回密码；`GET/POST /api/configuration/downloads/qbittorrent/check` 只登录读取版本和默认保存目录，不提交任务。本地下载的保存目录与媒体根映射见 [本地下载](LOCAL_DOWNLOAD.md)。
 
 | 地址 | 用途 |
 | --- | --- |
@@ -97,7 +97,7 @@
 | `/settings/diagnostics` | 系统诊断：系统检查、库健康、来源会话与后台诊断、刮削记录导出 |
 | `/subscriptions` | 关注管理：关注列表统一管理创作者来源与 JAV 订阅；添加关注提供创作者、女优入口和别名管理，标签管理支持在线标签分页与批量操作 |
 | `/sources` | 来源和凭证：采集来源、访问方式与凭据状态 |
-| `/tasks` | 任务中心与云下载进度 |
+| `/tasks` | 任务中心与下载进度 |
 | `/stats` | 统计 |
 | `/taste` | 口味分析 |
 | `/review` | 人工复核 |

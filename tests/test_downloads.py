@@ -231,6 +231,7 @@ class SubmitTests(_Deployment):
 class PollingTests(_Deployment):
     def test_the_poll_interval_backs_off_and_caps(self):
         self.assertEqual([dl.poll_delay(n) for n in (0, 1, 2, 6, 40)], [10, 30, 60, 900, 900])
+        self.assertEqual(dl.poll_delay(40, ceiling=dl.LOCAL_POLL_CEILING), 60)
         task_id = self.submit()["task"]["id"]
         for _ in range(4):
             self.tick(dl.POLL_DELAYS[-1])
