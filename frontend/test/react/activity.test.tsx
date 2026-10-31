@@ -13,7 +13,7 @@ import { ErrorExcerpt } from '../../src/react/activity/error-excerpt';
 import {
   elapsedText, errorHeadline, followupDetail, hasResultProblems, isRoutine, prefetchTasks, progressText, summaryItems, summaryText, TASKS_URL,
 } from '../../src/react/activity/tasks';
-import type { ActivityData, FinishedPage, TaskRunPayload } from '../../src/react/activity/tasks';
+import type { ActivityData, FinishedPage, TaskResourcesPayload, TaskRunPayload } from '../../src/react/activity/tasks';
 import type { DownloadsSnapshot } from '../../src/react/bundle';
 import { queryClient } from '../../src/react/query';
 
@@ -60,6 +60,12 @@ const followup = (parent: number, overrides: Partial<TaskRunPayload> = {}): Task
 
 const payload = (overrides: Partial<ActivityData> = {}): ActivityData => ({
   available: true, running: [], skipped: [], finished: [], ...overrides,
+});
+const resources = (overrides: Partial<TaskResourcesPayload> = {}): TaskResourcesPayload => ({
+  cpu: { state: 'ready', percent: 12.5, high: false },
+  gpu: { state: 'ready', percent: 0, high: false },
+  network: { state: 'ready', bytes_per_second: 2 * 1024 * 1024, high: false },
+  sampled_at: '2026-10-31T08:00:00Z', ...overrides,
 });
 
 /* 云下载段自己取 `/api/downloads`，「需要处理」自己取 `/api/background-issues`。这里的用例只数
@@ -215,6 +221,72 @@ it('总量未知时不画假进度条，只说正在做什么', async () => {
   const { host } = await open(payload({ running: [run({ progress_total: null, progress_current: null })] }));
   expect(host.querySelector('[role=progressbar]')).toBeNull();
   expect(host.querySelector('[role=status]')?.textContent).toContain('正在查第三个来源');
+});
+
+it('活动主任务和后继持续显示各自的CPU、GPU与实测网速', async () => {
+  const child = followup(1, { status: 'running', resources: resources({
+    cpu: { state: 'ready', percent: 3, high: false },
+    network: { state: 'ready', bytes_per_second: 1024, high: false },
+  }) });
+  const { host } = await open(payload({ running: [run({ resources: resources() }), child] }));
+  const main = host.querySelector('[data-task-resources="1"]')!;
+  const nested = host.querySelector('[data-task-resources="90"]')!;
+  expect(main.querySelector('[data-task-resource="cpu"]')?.textContent).toBe('CPU 12.5%');
+  expect(main.querySelector('[data-task-resource="gpu"]')?.textContent).toBe('GPU 0%');
+  expect(main.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 2 MB/s');
+  expect(nested.querySelector('[data-task-resource="cpu"]')?.textContent).toBe('CPU 3%');
+  expect(nested.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 1 KB/s');
+  expect(main.querySelector('[data-task-resource="cpu"]')?.getAttribute('title')).toContain('本机总计算容量');
+  expect(main.querySelector('[data-task-resource="gpu"]')?.getAttribute('title')).toContain('最忙的 GPU 引擎');
+  expect(main.querySelector('[data-task-resource="network"]')?.getAttribute('title')).toContain('该任务实测传输量');
+  expect([...main.querySelectorAll('[data-task-resource]')].every(node => node.getAttribute('tabindex') === '0')).toBe(true);
+});
+
+it('资源采样中和未取得分别显示，原因优先说明，不把null填成零', async () => {
+  const { host } = await open(payload({ running: [run({ resources: resources({
+    cpu: { state: 'sampling', percent: null, high: false, reason: '正在建立采样基线' },
+    gpu: { state: 'unavailable', percent: null, high: false, reason: '当前系统无法归属GPU引擎' },
+    network: { state: 'unavailable', bytes_per_second: null, high: false, reason: '挂载盘传输无法准确归属' },
+  }) })] }));
+  const metrics = host.querySelector('[data-task-resources="1"]')!;
+  expect(metrics.querySelector('[data-task-resource="cpu"]')?.textContent).toBe('CPU 采样中');
+  expect(metrics.querySelector('[data-task-resource="gpu"]')?.textContent).toBe('GPU 未取得');
+  expect(metrics.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 未取得');
+  expect(metrics.textContent).not.toContain('0%');
+  expect(metrics.textContent).not.toContain('0 B/s');
+  expect(metrics.querySelector('[data-task-resource="network"]')?.getAttribute('title')).toMatch(/^挂载盘传输无法准确归属/);
+});
+
+it('真实零读数可见，高占用由该指标的真实high状态强调', async () => {
+  const { host } = await open(payload({ running: [run({ resources: resources({
+    cpu: { state: 'ready', percent: 0, high: false },
+    gpu: { state: 'ready', percent: 70.1, high: true },
+    network: { state: 'ready', bytes_per_second: 0, high: false },
+  }) })] }));
+  const metrics = host.querySelector('[data-task-resources="1"]')!;
+  expect(metrics.querySelector('[data-task-resource="cpu"]')?.textContent).toBe('CPU 0%');
+  expect(metrics.querySelector('[data-task-resource="network"]')?.textContent).toBe('网络 0 B/s');
+  const gpu = metrics.querySelector('[data-task-resource="gpu"]')!;
+  expect(gpu.textContent).toBe('GPU 70.1%');
+  expect(gpu.getAttribute('title')).toContain('当前为高占用');
+  expect(gpu.getAttribute('data-resource-high')).toBe('true');
+  expect(metrics.querySelector('[data-task-resource="cpu"]')?.hasAttribute('data-resource-high')).toBe(false);
+});
+
+it('父任务已结束而后继仍在活动时展示后端聚合读数，历史终态不展示旧采样', async () => {
+  const parent = run({ id: 1, status: 'succeeded', resources: resources({ detail: '统计这轮仍在活动的全部后继' }) });
+  const historical = run({ id: 2, status: 'cancelled', resources: resources() });
+  const { host } = await open(payload({ running: [followup(1, { status: 'pending' })],
+    finished: [parent, historical], followup_counts: { '1': { pending: 100 } } }));
+  expect(host.querySelector('[data-task-resources="1"]')).not.toBeNull();
+  expect(host.querySelector('[data-task-resources="1"] [data-task-resource="cpu"]')?.getAttribute('title'))
+    .toContain('全部后继');
+  expect(host.querySelector('[data-task-resources="2"]')).toBeNull();
+});
+
+it('旧快照未提供resources时不伪造资源指标', async () => {
+  const { host } = await open(payload({ running: [run()] }));
+  expect(host.querySelector('[data-task-resources]')).toBeNull();
 });
 
 it('活动任务按服务端给出的动作暂停、继续和取消，并重新读取进度', async () => {

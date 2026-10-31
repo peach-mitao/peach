@@ -35,6 +35,7 @@ import { BackgroundIssues } from './background-issues';
 import { DownloadsPanel } from './downloads-panel';
 import { ErrorDetails, ErrorExcerpt } from './error-excerpt';
 import { TaskControlFeedback, TaskControls } from './task-controls';
+import { TaskResources } from './task-resources';
 import {
   elapsedText, fetchEarlier, fetchTasks, foldByKind, foldRoutine, followupDetail, followupTally, groupFollowups, isActive,
   hasResultProblems, isRoutine, latestOfKind, mergeFinished, momentText, pollInterval, problemDestination, progressText,
@@ -46,9 +47,9 @@ const FOLLOWUP_ROWS = 50;
 /** 自己只负责派发后继的任务：一轮只是「安排了几项」，要看的是那几项的结果。 */
 const DISPATCHERS = new Set(['upgrade-repairs']);
 
-/* 完成绿、失败红、进行中蓝、意外中断黄，主动取消和排队为中性。 */
+/* 完成绿、失败与已取消红、进行中蓝、意外中断黄，排队为中性。 */
 const BADGE_COLORS: Record<string, 'lime' | 'rose' | 'yellow' | 'blue' | 'neutral'> = {
-  succeeded: 'lime', failed: 'rose', cancelled: 'neutral', interrupted: 'yellow', running: 'blue', pending: 'neutral',
+  succeeded: 'lime', failed: 'rose', cancelled: 'rose', interrupted: 'yellow', running: 'blue', pending: 'neutral',
 };
 
 const CONTROL_LABELS: Record<TaskControlState, string> = {
@@ -95,6 +96,7 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
               </div>
               <TaskControls run={row} />
             </div>
+            <TaskResources run={row} />
             {/* 排队中的那些还没有结果：空的「技术详情」展开只有一对花括号。 */}
             {Object.keys(row.result_summary || {}).length
               ? <div className="w-full min-w-0">
@@ -114,9 +116,9 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
 /** 一轮任务一张卡。失败时整张卡的框线换成 danger 色，不给结束原因那行字上色——
  *  一屏十几行里逐行读红字，比看一眼哪张卡的框是红的慢得多。 */
 function RunCard(
-  { run, meta, children, footer, followups, followupTotal = 0, badge }:
+  { run, meta, children, footer, followups, followupTotal = 0, badge, resourceActive }:
   { run: TaskRunPayload; meta: string; children?: ReactNode; footer?: string;
-    followups?: TaskRunPayload[]; followupTotal?: number; badge?: ReactNode },
+    followups?: TaskRunPayload[]; followupTotal?: number; badge?: ReactNode; resourceActive?: boolean },
 ) {
   /* 一轮派出上千条后继时只下发最近几十条，合并的几批又可能各带几十条：标题写全数，
      列表先列在跑与排队的、再列最近结束的，最多 `FOLLOWUP_ROWS` 条，并说清只列了其中几条。 */
@@ -144,6 +146,7 @@ function RunCard(
           <TaskControls run={run} />
         </div>
         <p className="text-caption-1-regular text-text-secondary">{meta}</p>
+        <TaskResources run={run} active={resourceActive} />
         {children}
       </div>
       {shown ? <div className="border-t border-separator-border px-5 py-2.5">
@@ -221,7 +224,7 @@ function SettledRun(
   return (
     <RunCard run={run} meta={meta} footer={run.error} followups={followups} followupTotal={followupTotal}
       badge={followupCancelled && run.status === 'succeeded'
-        ? <Chip color="neutral"><span data-copy-key={`tasks.followups.cancelled.${followupCancelled === followupTotal ? 'all' : 'partial'}`}>
+        ? <Chip color="rose"><span data-copy-key={`tasks.followups.cancelled.${followupCancelled === followupTotal ? 'all' : 'partial'}`}>
             {followupCancelled === followupTotal ? '后续任务已取消' : '部分后续任务已取消'}
           </span></Chip>
         : batches && followupFailed ? <Chip color="yellow">发现问题</Chip> : undefined}>
@@ -273,7 +276,7 @@ function WorkingRun(
     runs.length > 1 ? `${runs.length} 批` : '',
     `${momentText(oldest.started_at || oldest.finished_at)} 开始`].filter(Boolean).join(' · ');
   return (
-    <RunCard run={run} meta={meta} followups={followups} followupTotal={total}
+    <RunCard run={run} meta={meta} followups={followups} followupTotal={total} resourceActive
       badge={run.control ? <StatusBadge run={run} /> : <Chip color="blue">进行中</Chip>}>
       <div className="flex flex-col gap-1.5">
         <Progress label={`${run.task_label}进度`} value={settled} max={total} />

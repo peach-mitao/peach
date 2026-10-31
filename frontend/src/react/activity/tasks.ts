@@ -13,6 +13,16 @@ export const TASKS_KEY = ['tasks'] as const;
 
 export type TaskControlAction = 'pause' | 'resume' | 'cancel';
 export type TaskControlState = 'running' | 'pausing' | 'paused' | 'cancelling';
+export type TaskResourceState = 'ready' | 'sampling' | 'unavailable';
+export interface TaskResourceMetric { state: TaskResourceState; high: boolean; reason?: string }
+export interface TaskPercentMetric extends TaskResourceMetric { percent: number | null }
+export interface TaskResourcesPayload {
+  cpu: TaskPercentMetric;
+  gpu: TaskPercentMetric;
+  network: TaskResourceMetric & { bytes_per_second: number | null };
+  sampled_at: string;
+  detail?: string;
+}
 
 export interface TaskRunPayload {
   id: number;
@@ -37,6 +47,8 @@ export interface TaskRunPayload {
   followup_depth: number;
   /** 服务端给出当前控制状态与可用动作，界面不按任务种类推断。 */
   control?: { state: TaskControlState; actions: TaskControlAction[] };
+  /** 只投影可归属的实测读数；缺失字段代表该快照未提供资源采样。 */
+  resources?: TaskResourcesPayload;
 }
 
 export interface ActivityData {
