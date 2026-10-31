@@ -324,6 +324,7 @@ export function readableErrorHeadline(text: string | null | undefined): string {
 
 const OUTCOME_LABELS: Record<string, string> = {
   partial: '处理已结束，部分项目需处理', complete: '处理完成', interrupted: '处理已中断',
+  cancelled: '已取消',
   '没有新写法': '未发现新别名', '已装上': '已保存资料图片',
   '已装着认得准的小图': '已保留身份核对通过的小尺寸图片',
   '档案已不存在': '资料记录已不存在', '资料未过期': '现有资料仍在有效期内',
