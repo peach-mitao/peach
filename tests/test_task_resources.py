@@ -53,6 +53,9 @@ class Process:
     def children(self, *, recursive=False):
         return self.members
 
+    def cpu_affinity(self):
+        return list(range(4))
+
 
 class GpuReader:
     def __init__(self, values=None, *, state='ready', reason=''):
@@ -87,6 +90,14 @@ class TaskResourceTests(unittest.TestCase):
         capacity_patch = patch('peach.task_resources.psutil.cpu_count', return_value=4)
         self.capacity = capacity_patch.start()
         self.addCleanup(capacity_patch.stop)
+        threads_patch = patch('peach.task_resources.thread_times',
+                              side_effect=lambda process, wanted: {t.id: t.user_time + t.system_time
+                                  for t in process.threads() if t.id in wanted})
+        threads_patch.start()
+        self.addCleanup(threads_patch.stop)
+        quota_patch = patch('peach.resource_platform.cgroup_capacity', return_value=None)
+        quota_patch.start()
+        self.addCleanup(quota_patch.stop)
 
     def process(self, pid=None):
         identity = self.root_process.pid if pid is None else int(pid)

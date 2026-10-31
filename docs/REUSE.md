@@ -1,5 +1,11 @@
 # 复用清单
 
+## 跨平台任务资源计量
+
+继续使用 psutil 7.2.2 读取进程 CPU 时间和身份。该版本的 macOS 线程列表使用序号，不能与 Python 原生线程 ID 对应；因此使用系统 `libproc` 的 `PROC_PIDTHREADID64INFO` 取得指定线程的纳秒时间，接口与单位见 [XNU 实现](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/bsd_kern.c)。Linux 的可用 CPU 容量复用亲和性、控制组成员和挂载信息，按可见 cgroup v1/v2 配额归一化。
+
+Linux GPU 读取 [DRM fdinfo 标准](https://docs.kernel.org/gpu/drm-usage-stats.html)的客户端、设备和引擎忙碌时间；重复描述符去重，计数回退保持高水位，进程重用重新采样。容器沿用当前设备与 PID 命名空间，不要求宿主 PID 权限。macOS 和未提供该计数的 Linux 驱动明确显示未取得，不使用整机 GPU 占用替代任务。实现只调用系统接口，无新增依赖；测试覆盖平台接口、配额、权限、重复客户端和原生线程时间增长。
+
 ## 数据管理层级
 
 数据管理首页按待处理事项看板、扫描与采集、整理与维护、清理与删除排列。日常扫描直接操作，其余工具在独立二级页展开表单和清单；首页只读摘要。工具名称、顺序和地址由 `frontend/src/cleanup-tools.ts` 供首页、路由、面包屑与加载态共用。已分享的工具锚点转到对应二级页，保留查询参数。

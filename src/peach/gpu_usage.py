@@ -5,6 +5,7 @@ import ctypes
 import math
 import os
 import re
+import sys
 from ctypes import wintypes
 
 
@@ -15,6 +16,8 @@ class GpuCounters:
         self.counter = ctypes.c_void_p()
         self.collected = False
         self.error = '当前平台未提供逐进程 GPU 计数器'
+        if sys.platform == 'darwin':
+            self.error = 'macOS 未提供本功能可用的逐进程 GPU 引擎计数；系统整体 GPU 占用不能归属到任务'
         if os.name != 'nt':
             return
         try:

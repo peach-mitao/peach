@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ import psutil
 
 from .fsutil import atomic_write_text
 from .gpu_usage import GpuCounters
+from .resource_platform import cpu_capacity, thread_times
 from .update_tasks import state_for
 
 _LIVE = {}
@@ -180,8 +182,8 @@ class Monitor:
             if root.create_time() != owners['created']:
                 return empty
             wanted = set(owners['threads'])
-            cpu = {f't:{root.pid}:{thread.id}': thread.user_time + thread.system_time
-                   for thread in root.threads() if thread.id in wanted}
+            cpu = {f't:{root.pid}:{identity}': value
+                   for identity, value in thread_times(root, wanted).items()}
             children = {}
             for pid, created in owners['processes'].items():
                 try:
@@ -209,9 +211,10 @@ class Monitor:
             network_metric = _metric('sampling', 'bytes_per_second')
         else:
             elapsed = max(.001, now - previous[0])
-            capacity = psutil.cpu_count()
-            if capacity is None:
-                cpu_metric = _metric('unavailable', 'percent', reason='本机 CPU 总容量未取得')
+            try:
+                capacity = cpu_capacity(root)
+            except (psutil.Error, OSError, ValueError) as error:
+                cpu_metric = _metric('unavailable', 'percent', reason=f'执行端 CPU 可用容量未取得：{error}')
             else:
                 parts = {key: 100 * max(0, value - previous[1].get(key, value)) / elapsed / capacity
                          for key, value in cpu.items()}
@@ -220,6 +223,12 @@ class Monitor:
             network_metric = _metric('ready', 'bytes_per_second', round(rate), threshold=NETWORK_HIGH)
         if owners.get('network_error'):
             network_metric = _metric('unavailable', 'bytes_per_second', reason=owners['network_error'])
+        if hasattr(self.gpu, 'sample_processes'):
+            try:
+                identities = {root.pid: root.create_time(), **{pid: child.create_time() for pid, child in children.items()}}
+                gpu, gpu_state, gpu_error = self.gpu.sample_processes(identities)
+            except psutil.Error as error:
+                gpu, gpu_state, gpu_error = None, 'unavailable', f'GPU 进程身份未取得：{type(error).__name__}'
         gpu_metric = _metric(gpu_state, 'percent', reason=gpu_error)
         engines = {}
         gpu_parts = {}
@@ -247,11 +256,15 @@ class Monitor:
                 self.rows, self.previous, self.sampled_at = {}, {}, now
                 return self.rows
             if self.gpu is None:
-                self.gpu = GpuCounters()
+                if sys.platform.startswith('linux'):
+                    from .gpu_linux import LinuxGpuCounters
+                    self.gpu = LinuxGpuCounters()
+                else:
+                    self.gpu = GpuCounters()
             gpu, state, reason = self.gpu.sample()
             stamp = datetime.now(timezone.utc).isoformat()
             self.rows = {run.id: {**self._sample(run, now, gpu, state, reason), 'sampled_at': stamp,
-                         'detail': 'CPU 按已登记工作线程及子进程计量，占本机总容量；GPU 为所属子进程最忙引擎；网络为已观测下载速率。'}
+                         'detail': 'CPU 按已登记工作线程及子进程计量，占执行端可用容量（容器按可见 CPU 配额）；GPU 为所属子进程最忙引擎；网络为已观测下载速率。'}
                          for run in runs}
             active = {run.id for run in runs}
             self.previous = {key: value for key, value in self.previous.items() if key in active}
@@ -280,7 +293,7 @@ class Monitor:
                    'network': _metric('unavailable', 'bytes_per_second', reason='执行端的传输读数未取得')}
         samples = [waiting if row['status'] == 'pending' else rows.get(row['id'], unknown) for row in family]
         result = {'sampled_at': datetime.now(timezone.utc).isoformat(),
-                  'detail': 'CPU 为已登记工作线程及所属子进程占本机总容量，未包含无法归属的共享原生线程；GPU 为所属子进程最忙引擎；网络为已观测下载速率，未取得时不报告零值。颜色加深阈值：CPU/GPU 50%，网络 10 MiB/s，仅作显示提示。'}
+                  'detail': 'CPU 为已登记工作线程及所属子进程占执行端可用容量（容器按可见 CPU 配额），未包含无法归属的共享原生线程；GPU 为所属子进程最忙引擎；网络为已观测下载速率，未取得时不报告零值。颜色加深阈值：CPU/GPU 50%，网络 10 MiB/s，仅作显示提示。'}
         for name, field, threshold in (('cpu', 'percent', CPU_HIGH), ('gpu', 'percent', GPU_HIGH),
                                        ('network', 'bytes_per_second', NETWORK_HIGH)):
             values = [sample[name] for sample in samples]
