@@ -145,10 +145,12 @@ export async function entityAliasForm(mine,write){
     receiptsState.actionReceipt(`已撤销别名 ${gone}`,{undo:async()=>{await write({alias:gone})}});
   }));
   const {confirmed,result}=await form.done;
-  if(!confirmed)return;
+  if(!confirmed)return undefined;
+  if(result?.conflict)return result;
   if(result?.added)receiptsState.actionReceipt(`已添加别名 ${result.alias}`,{undo:async()=>{
     await write({alias:result.alias,remove:true})}});
   else receiptsState.actionReceipt(`${result?.alias} 已经是这份档案中的名字`);
+  return result;
 }
 
 export function showEntityLoading(kind,name){
