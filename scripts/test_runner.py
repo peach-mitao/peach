@@ -144,7 +144,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
             "test_legacy_shell_routes.py",
             "test_web_perf.py", "test_copy_final_state.py",
             "test_agency_entity.py", "test_label_maker.py", "test_dependency_policy.py",
-            "test_desktop_settings.py", "test_dev_copy.py",
+            "test_desktop_settings.py", "test_dev_copy.py", "test_i18n_server_strings.py",
             "test_fastapi_api.py", "test_follow_assets.py", "test_follow_web.py",
             "test_metadata_library.py", "test_processing_control.py", "test_processing_traffic.py", "test_processing_inventory.py", "test_clouddrive_proxy.py", "test_studio_icon_variants.py", "test_web_settings.py", "test_web_library_shortcuts.py", "test_company_profiles.py"),
     "core": ("test_access.py", "test_auth.py", "test_config.py", "test_field_owners.py",
@@ -199,6 +199,8 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/preview_transport.py": ("catalog", "media", "web"),
     "src/peach/dev_copy.py": ("web",),
     "scripts/dev/copy-editor.js": ("web",),
+    # 服务端原文清单服务界面译文表，由 web 域的 `test_i18n_server_strings.py` 验。
+    "scripts/i18n_server_strings.py": ("web",),
     # 路由页面同时被目录、工具与前端三个域的测试读源码。
     "src/peach/routes_pages.py": ("catalog", "tooling", "web"),
     # 托盘既是 sync 域的服务编排，也被版本与桌面设置那些 tooling 测试读源码。
@@ -1131,15 +1133,36 @@ def run_local_suite(scopes: tuple[str, ...], jobs: int, label: str | None = None
     return run_serial_suite(scopes, chosen, original, progress, label)
 
 
+@contextmanager
+def isolated_data_root():
+    """用例运行期间把 Peach 数据目录指到一份空的临时目录，结束后删掉并恢复原值。
+
+    不少用例只替换了数据库，日志、工具与生成物仍落在默认数据目录：主检出旁边是真实的 `peach-data`，
+    没有数据目录的检出里则落到检出旁边，留下未登记目录。只包住加载与运行用例的那一段，`PEACH_` 变量进环境指纹，
+    签发与核对记录时必须看不到它。"""
+    previous = os.environ.get("PEACH_DATA_ROOT")
+    root = tempfile.mkdtemp(prefix="peach-test-data-")
+    os.environ["PEACH_DATA_ROOT"] = root
+    try:
+        yield Path(root)
+    finally:
+        if previous is None:
+            os.environ.pop("PEACH_DATA_ROOT", None)
+        else:
+            os.environ["PEACH_DATA_ROOT"] = previous
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def run_serial_suite(scopes, chosen, original, progress, label):
     """串行执行同一恢复计划，提交与分片相同的文件结果。"""
     selection = progress.child_plan(scopes) if progress is not None else {}
     planned = {'assigned_names': [path.name for path in sorted(chosen)]} if chosen != original else {}
-    suite = build_suite(*scopes, **planned)
-    if progress is not None:
-        suite = test_resume.filter_suite(suite, selection, {path.name for path in chosen}, unittest.TestSuite)
-    with test_history.running():
-        result = unittest.TextTestRunner(verbosity=2, resultclass=partial(TimedResult, selection=selection)).run(suite)
+    with isolated_data_root():
+        suite = build_suite(*scopes, **planned)
+        if progress is not None:
+            suite = test_resume.filter_suite(suite, selection, {path.name for path in chosen}, unittest.TestSuite)
+        with test_history.running():
+            result = unittest.TextTestRunner(verbosity=2, resultclass=partial(TimedResult, selection=selection)).run(suite)
     save_file_seconds(result.files)
     rows = result.results + test_history.take_external()
     test_history.append(ROOT, scope=label or " ".join(scopes), rows=rows,
@@ -1171,11 +1194,12 @@ def run_shard_child(args, requested, scopes, files) -> int:
                        if test_resume.owner('case:' + case) in {path.name for path in files})
         if not set(selection.get('case_universe', ())) <= allowed:
             raise ValueError('恢复计划包含本次范围外的补充用例')
-    suite = build_suite(*scopes, shard_index=args.shard_index, shard_count=args.shard_count, **planned)
-    if selection:
-        suite = test_resume.filter_suite(suite, selection, set(planned.get('assigned_names', ())), unittest.TestSuite)
-    with test_history.running():
-        result = unittest.TextTestRunner(verbosity=2, resultclass=partial(TimedResult, selection=selection)).run(suite)
+    with isolated_data_root():
+        suite = build_suite(*scopes, shard_index=args.shard_index, shard_count=args.shard_count, **planned)
+        if selection:
+            suite = test_resume.filter_suite(suite, selection, set(planned.get('assigned_names', ())), unittest.TestSuite)
+        with test_history.running():
+            result = unittest.TextTestRunner(verbosity=2, resultclass=partial(TimedResult, selection=selection)).run(suite)
     success = result.wasSuccessful() and result.testsRun > 0
     rows = result.results + test_history.take_external()
     if args.timings is not None:

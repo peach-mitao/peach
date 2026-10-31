@@ -68,13 +68,20 @@ export async function launch(): Promise<Browser> {
     args.push(`--log-net-log=${join(networkLogs, filename)}`, '--net-log-capture-mode=HeavilyRedacted');
     console.info(`浏览器网络事件日志：${filename}`);
   }
-  return chromium.launch({
+  const browser = await chromium.launch({
     headless: true,
     executablePath: requiredEnv('PEACH_E2E_CHROME'),
     args,
     // Windows 首次加载浏览器与系统组件使用独立的启动预算，页面等待由各用例限定。
     timeout: 60_000,
   });
+  /* 用例按中文界面写断言，而界面语言跟随浏览器：不固定的话日文系统上的 Chrome 会把页面换成日文。
+     macOS 的 Chrome 不认 `--lang`，所以每个上下文都经 Playwright 的 `locale` 定成中文，用例显式传的仍优先。 */
+  const newContext = browser.newContext.bind(browser);
+  const newPage = browser.newPage.bind(browser);
+  browser.newContext = (options = {}) => newContext({ locale: 'zh-CN', ...options });
+  browser.newPage = (options = {}) => newPage({ locale: 'zh-CN', ...options });
+  return browser;
 }
 
 /** 失败时保留焦点、输入和弹层现场；成功路径不额外查询页面。 */

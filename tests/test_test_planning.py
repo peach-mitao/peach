@@ -795,6 +795,20 @@ class TestPlanningTests(unittest.TestCase):
                 selected = {chosen.name for scope in scopes for chosen in runner.selected_files(scope)}
                 self.assertIn(path.name, selected, f'{path.name} 读 {item}，但 {why} 选不到它')
 
+    def test_cases_run_against_an_empty_data_root_that_never_reaches_the_fingerprint(self):
+        """用例写日志、工具与生成物时落进临时数据目录；跑完删掉，环境指纹仍按调用方原来的变量算。"""
+        for previous in (None, '/caller/peach-data'):
+            with self.subTest(previous=previous), patch.dict(os.environ, {}, clear=False):
+                os.environ.pop('PEACH_DATA_ROOT', None)
+                if previous:
+                    os.environ['PEACH_DATA_ROOT'] = previous
+                with runner.isolated_data_root() as root:
+                    self.assertEqual(os.environ['PEACH_DATA_ROOT'], str(root))
+                    self.assertEqual(list(root.iterdir()), [])
+                    (root / 'logs').mkdir()
+                self.assertFalse(root.exists())
+                self.assertEqual(os.environ.get('PEACH_DATA_ROOT'), previous)
+
     def test_template_copies_have_independent_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

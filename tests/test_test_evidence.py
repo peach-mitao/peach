@@ -1114,10 +1114,13 @@ class VerificationTests(unittest.TestCase):
 
     def test_known_python_file_execute_mode_requires_full(self):
         name = "src/peach/web_follow.py"
-        (self.repo / name).write_text("value = 1\n", encoding="utf-8")
+        path = self.repo / name
+        path.write_text("value = 1\n", encoding="utf-8")
         self.git("add", "--", name)
         self.git("commit", "-m", "test: fixture")
         self.git("update-index", "--chmod=+x", name)
+        # 选测比较的是 HEAD 与工作区；`core.fileMode` 打开的 POSIX 检出按磁盘上的权限位读，只改索引看不出变化。
+        path.chmod(path.stat().st_mode | 0o111)
         contents = runner.changed_contents(self.repo, "HEAD", [name])
         self.assertEqual(runner.scopes_for_changes([name], contents=contents)[0], ("full",))
 

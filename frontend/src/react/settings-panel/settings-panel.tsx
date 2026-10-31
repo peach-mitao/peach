@@ -24,6 +24,7 @@ import {
   setActionBusy, setIconSwap, wireHorizontalScroller,
 } from '@peach/legacy/ui';
 
+import { localePreference, setLocalePreference, type LocalePreference } from '../../i18n';
 import { normalizeJavImage } from '../../jav-artwork';
 import { boundedPreference } from '../../number-setting';
 import { GlowSettings } from './glow-settings';
@@ -48,6 +49,8 @@ const SORT_OPTIONS: readonly Choice[] = [
   ['dur', '时长'], ['size', '体积'], ['new', '入库时间'], ['played', '观看时间'],
 ];
 const DIRECTION_OPTIONS: readonly Choice[] = [['desc', '降序'], ['asc', '升序']];
+/* 两种语言的名字各用自己的写法，选错了语言也认得出回去的那一项；译文表里这两项照抄原文。 */
+const LOCALE_OPTIONS: readonly Choice[] = [['auto', '跟随浏览器'], ['zh', '中文（简体）'], ['ja', '日本語']];
 const JAV_IMAGE_OPTIONS: readonly Choice[] = [['cover', '官方封面', ''], ['thumbnail', '预览图', '']];
 /* 新作那一行收不收合集由服务端按数据库里的设置筛，这里的开关只是镜像：真相在 `/api/settings`。 */
 const FEED_COMPILATIONS = [
@@ -346,6 +349,10 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
               <IconSwitch id="themeSetting" name="theme" legend="主题" options={current.themeOptions} value={settings.theme}
                 attr="data-theme-choice" variant="themeswitch" epoch={epoch}
                 onChoose={(choice) => { settings.theme = choice; save(); current.changed('theme') }} />
+            </Row>
+            <Row title="界面语言" description="跟随浏览器时按浏览器的首选语言显示中文或日文。">
+              <SelectField id="localeSetting" label="界面语言" options={LOCALE_OPTIONS} value={localePreference()} epoch={epoch}
+                onPick={(value) => { setLocalePreference(value as LocalePreference); location.reload() }} />
             </Row>
             <div data-setting-row="">
               <label htmlFor="glassContrastSetting"><b>增加对比度</b></label>
