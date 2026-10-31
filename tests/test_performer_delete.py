@@ -7,6 +7,7 @@ from unittest import mock
 from support.ledger import fresh_ledger
 from peach.web_performer_delete import q_performer_delete_candidates, q_performer_delete_plan, w_performer_delete
 from peach.web_state import WebContract
+from peach import task_control
 
 
 class PerformerDeleteTests(unittest.TestCase):
@@ -60,6 +61,23 @@ class PerformerDeleteTests(unittest.TestCase):
             self.delete(plan)
         self.assertTrue(first.exists())
         self.assertTrue(second.exists())
+
+    def test_cancel_before_deletion_keeps_media_and_records_cancelled(self):
+        path = self.add(1)
+        plan = self.plan()
+        start = self.contract.task_runs.start
+
+        def cancel_started(*args, **kwargs):
+            run = start(*args, **kwargs)
+            task_control.request(self.contract.task_runs, run.id, 'cancel')
+            return run
+
+        with mock.patch.object(self.contract.task_runs, 'start', side_effect=cancel_started):
+            with self.assertRaises(task_control.Cancelled):
+                self.delete(plan)
+        self.assertTrue(path.exists())
+        self.assertEqual(self.plan()['total'], 1)
+        self.assertEqual(self.contract.task_runs.query(limit=1)[0].status, 'cancelled')
 
     def test_more_than_200_files_delete_together_and_keep_profile_photos_and_unrelated_media(self):
         for asset_id in range(1, 202):

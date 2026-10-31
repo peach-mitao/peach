@@ -5,6 +5,7 @@ import hashlib
 import json
 
 from .task_runs import TaskRunHandle
+from .task_control import bind, Cancelled
 from .web_batch import _finish_purge, _restore_staged_media, purge_assets
 from .web_entity import _decorate_index
 from .web_resource_sync import clean_resource_orphans
@@ -83,22 +84,29 @@ def w_performer_delete(contract, body):
     handle = TaskRunHandle(contract.task_runs, run.id if run else None)
     outcome = None
     try:
-        with contract.write_transaction() as connection:
-            connection.execute('BEGIN IMMEDIATE')
-            _people, rows, token = _selection(connection, ids)
-            if token != body['plan']:
-                raise ValueError("影片清单已变化，请关闭确认窗口后重新查看")
-            if not rows:
-                raise ValueError("没有可删除的影片")
-            outcome = purge_assets(connection, rows)
+        with bind(contract.task_runs, handle.run_id):
+            try:
+                with contract.write_transaction() as connection:
+                    connection.execute('BEGIN IMMEDIATE')
+                    _people, rows, token = _selection(connection, ids)
+                    if token != body['plan']:
+                        raise ValueError("影片清单已变化，请关闭确认窗口后重新查看")
+                    if not rows:
+                        raise ValueError("没有可删除的影片")
+                    outcome = purge_assets(connection, rows)
+            except BaseException:
+                if outcome is not None:
+                    _restore_staged_media(outcome['_staged'])
+                raise
+            contract.cache_bust()
+            result = {'ok': True, 'entity_ids': ids, **_finish_purge(outcome)}
+            result.update(clean_resource_orphans(contract))
+    except Cancelled:
+        handle.finish('cancelled', summary={'cancelled_by_user': True})
+        raise
     except BaseException as error:
-        if outcome is not None:
-            _restore_staged_media(outcome['_staged'])
         handle.finish('failed', error=f'{type(error).__name__}: {error}')
         raise
-    contract.cache_bust()
-    result = {'ok': True, 'entity_ids': ids, **_finish_purge(outcome)}
-    result.update(clean_resource_orphans(contract))
     handle.finish('succeeded', summary={'operation': 'performer-delete',
                                        'changed': result['purged'], 'blocked': len(result['blocked'])})
     return result

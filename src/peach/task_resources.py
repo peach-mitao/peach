@@ -222,9 +222,11 @@ class Monitor:
             network_metric = _metric('unavailable', 'bytes_per_second', reason=owners['network_error'])
         gpu_metric = _metric(gpu_state, 'percent', reason=gpu_error)
         engines = {}
+        gpu_parts = {}
         if gpu is not None:
             for pid in children:
                 for engine, value in gpu.get(pid, {}).items():
+                    gpu_parts[(pid, engine)] = value
                     engines[engine] = engines.get(engine, 0.0) + value
             shared = max(gpu.get(root.pid, {}).values(), default=0.0)
             if shared:
@@ -232,7 +234,7 @@ class Monitor:
             else:
                 gpu_metric = _metric('ready', 'percent', round(min(100.0, max(engines.values(), default=0.0)), 1), threshold=GPU_HIGH)
         return {'cpu': cpu_metric, 'gpu': gpu_metric, 'network': network_metric,
-                '_cpu_parts': parts, '_gpu_engines': engines}
+                '_cpu_parts': parts, '_gpu_parts': gpu_parts}
 
     def snapshot(self):
         with self.lock:
@@ -295,10 +297,13 @@ class Monitor:
                             parts[key] = max(parts.get(key, 0.0), value)
                     value = round(min(100.0, sum(parts.values())), 1)
                 elif name == 'gpu':
-                    engines = {}
+                    parts = {}
                     for sample in samples:
-                        for key, value in sample.get('_gpu_engines', {}).items():
-                            engines[key] = engines.get(key, 0.0) + value
+                        for key, value in sample.get('_gpu_parts', {}).items():
+                            parts[key] = max(parts.get(key, 0.0), value)
+                    engines = {}
+                    for (_pid, engine), value in parts.items():
+                        engines[engine] = engines.get(engine, 0.0) + value
                     value = round(min(100.0, max(engines.values(), default=0.0)), 1)
                 else:
                     value = sum(value[field] for value in values)

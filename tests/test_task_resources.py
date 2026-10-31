@@ -237,6 +237,18 @@ class TaskResourceTests(unittest.TestCase):
         self.assertEqual(monitor.for_run(parent)['cpu']['percent'], 50.0)
         self.assertEqual(monitor.for_run(child_run)['cpu']['percent'], 25.0)
 
+    def test_parent_gpu_counts_each_owned_process_engine_once_across_descendants(self):
+        parent = self.new_run('parent')
+        self.store.enqueue_followups(parent.id, [('child:1', 'child', '子任务')])
+        child_run = self.store.claim_followup(['child'])
+        shared, separate = self.child(5001), self.child(5002)
+        self.usage(parent, processes=(shared.pid,))
+        self.usage(child_run, processes=(shared.pid, separate.pid))
+        monitor = self.monitor(GpuReader({shared.pid: {'engine-0': 40, 'engine-1': 60},
+                                          separate.pid: {'engine-0': 30}}))
+        self.assertEqual(monitor.for_run(parent)['gpu']['percent'], 70.0)
+        self.assertEqual(monitor.for_run(child_run)['gpu']['percent'], 70.0)
+
     def test_finished_parent_still_shows_live_descendants_but_pure_history_has_no_resources(self):
         parent = self.new_run('parent')
         child_id = self.store.enqueue_followups(parent.id, [('child:1', 'child', '子任务')])['queued'][0]
