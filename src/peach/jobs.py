@@ -375,6 +375,8 @@ class BackgroundJob:
         退出时把进度同步进 `task_run`，写库在锁外：那一步要拿数据库的写锁，套在本类
         的锁里面就多了一组取锁顺序，而进度本来不需要和状态原子。节流由 store 做。
         """
+        from .task_control import checkpoint
+        checkpoint()
         if job_id in self._recoverable:
             from .update_tasks import check_pause
             check_pause(self._database_path())
@@ -583,6 +585,17 @@ class BackgroundJob:
         """
         from .update_tasks import _mutex, state_for
         db = self._database_path()
+        current = self.snapshot() or {}
+        run_id = self._run_ids.get(current.get(self.id_key))
+        if db is not None and run_id is not None:
+            from . import task_control
+            if not resume:
+                task_control.request(self.runs, run_id, 'cancel')
+                thread = self.thread
+                if thread is not None and thread is not threading.current_thread():
+                    thread.join(timeout)
+                return
+            task_control.shutdown(db, run_id)
         with _mutex(state_for(db)) if db is not None else nullcontext():
             if not resume and db is not None:
                 from .job_recovery import cancel
@@ -633,10 +646,19 @@ class BackgroundJob:
         parent_run = current_run.set(None)
         parent_job = current_job_id.set(None)
         context = current_db.set(self._database_path() if job_id in self._recoverable else None)
+        from .task_control import Cancelled as TaskCancelled
         try:
             from .update_tasks import check_pause
-            check_pause(current_db.get())
-            fn(job_id)
+            from .task_control import bind, checkpoint
+            with bind(self.runs, self._run_ids.get(job_id), recoverable=job_id in self._recoverable) if self.runs is not None else nullcontext():
+                check_pause(current_db.get())
+                fn(job_id)
+                checkpoint()
+        except TaskCancelled:
+            with self.lock:
+                if self.state is not None and self.state.get(self.id_key) == job_id:
+                    self.state.update(status='cancelled', outcome='cancelled', error='',
+                                      followups=[], completed_at=time.time())
         except JobPaused:
             with self.lock:
                 if self.state is not None and self.state.get(self.id_key) == job_id:

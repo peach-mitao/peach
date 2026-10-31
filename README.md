@@ -48,6 +48,7 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 - **Follows and discovery**: track performer and creator updates, discover titles and manage a want list.
 - **Cloud download**: search by video code or submit a magnet link, then organize completed downloads into your library.
 - **Library management**: manage tags, duplicates, versions and parts; permanently delete videos by performer while keeping profiles and photos. Metadata and watch history are stored locally.
+- **Task center**: pause, resume or cancel local background tasks and view their CPU, GPU and download activity where available.
 
 ## Download and use
 
