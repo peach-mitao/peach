@@ -305,10 +305,10 @@ it('任务控制失败保留原状态和原因，可以在原位重试', async (
   expect(attempts).toBe(2);
 });
 
-it('后继任务使用自身任务号控制，已结束任务没有控制按钮', async () => {
+it('后继任务使用自身任务号控制，服务端未提供能力的父任务没有控制按钮', async () => {
   const child = followup(1, { id: 90, status: 'pending', finished_at: null,
     control: { state: 'paused', actions: ['resume', 'cancel'] } });
-  const ended = run({ status: 'succeeded', control: { state: 'running', actions: ['pause', 'cancel'] } });
+  const ended = run({ status: 'succeeded' });
   const posts: string[] = [];
   stubFetch(async (input, init) => {
     if (init?.method === 'POST') posts.push(input);
@@ -321,6 +321,59 @@ it('后继任务使用自身任务号控制，已结束任务没有控制按钮'
   expect(controls).not.toBeNull();
   await click(buttonNamed('继续', controls));
   expect(posts).toEqual(['/api/tasks/90/control']);
+});
+
+it('父任务结束后仍可控制整批后继，未展示的后继也属于同一操作范围', async () => {
+  const posts: [string, unknown][] = [];
+  let parent = run({ status: 'succeeded',
+    control: { state: 'running', actions: ['pause', 'cancel'] } });
+  const child = followup(1, { status: 'pending', finished_at: null });
+  stubFetch(async (input, init) => {
+    if (init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      posts.push([input, body]);
+      parent = { ...parent, control: body.action === 'pause'
+        ? { state: 'paused', actions: ['resume', 'cancel'] }
+        : body.action === 'resume' ? { state: 'running', actions: ['pause', 'cancel'] }
+          : { state: 'cancelling', actions: [] } };
+    }
+    return { ok: true, status: 200, json: async () => payload({ running: [child], finished: [parent],
+      followup_counts: { '1': { pending: 1000 } } }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  expect(host.querySelector('#run-1')?.textContent).toContain('列出其中 1 项');
+  await click(buttonNamed('暂停后续任务', host));
+  await vi.waitFor(() => expect(buttonNamed('继续后续任务', host)).not.toBeNull());
+  expect(host.querySelector('#run-1')?.textContent).toContain('已暂停');
+  await click(buttonNamed('继续后续任务', host));
+  await vi.waitFor(() => expect(buttonNamed('暂停后续任务', host)).not.toBeNull());
+  await click(buttonNamed('取消后续任务', host));
+  await vi.waitFor(() => expect(host.querySelector('#run-1')?.textContent).toContain('正在取消'));
+  expect(posts).toEqual([
+    ['/api/tasks/1/control', { action: 'pause' }],
+    ['/api/tasks/1/control', { action: 'resume' }],
+    ['/api/tasks/1/control', { action: 'cancel' }],
+  ]);
+});
+
+it('同类父任务有独立控制范围时分别显示，按钮只提交对应的父任务号', async () => {
+  const first = run({ id: 1, status: 'succeeded',
+    control: { state: 'paused', actions: ['resume', 'cancel'] } });
+  const second = run({ id: 2, status: 'succeeded',
+    control: { state: 'running', actions: ['pause', 'cancel'] } });
+  const children = [followup(1, { id: 90, status: 'pending' }), followup(2, { id: 91, status: 'pending' })];
+  const posts: string[] = [];
+  stubFetch(async (input, init) => {
+    if (init?.method === 'POST') posts.push(input);
+    return { ok: true, status: 200, json: async () => payload({ running: children, finished: [second, first] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  expect(host.querySelectorAll('[data-task-key="follow-check"]')).toHaveLength(2);
+  await click(buttonNamed('继续后续任务', host.querySelector('#run-1')!));
+  await click(buttonNamed('暂停后续任务', host.querySelector('#run-2')!));
+  expect(posts).toEqual(['/api/tasks/1/control', '/api/tasks/2/control']);
 });
 
 it('服务端未给出控制能力时不按任务种类自行增加按钮', async () => {

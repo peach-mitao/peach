@@ -56,9 +56,11 @@ const CONTROL_LABELS: Record<TaskControlState, string> = {
 };
 
 function StatusBadge({ run }: { run: TaskRunPayload }) {
-  const control = isActive(run) ? run.control?.state : undefined;
-  if (control && control !== 'running') {
-    return <Chip color="neutral"><span data-copy-key={`tasks.control.state.${control}`}>{CONTROL_LABELS[control]}</span></Chip>;
+  const control = run.control?.state;
+  if (control && (control !== 'running' || !isActive(run))) {
+    return <Chip color={control === 'running' ? 'blue' : 'neutral'}>
+      <span data-copy-key={`tasks.control.state.${control}`}>{CONTROL_LABELS[control]}</span>
+    </Chip>;
   }
   const partial = run.status === 'failed' && run.task_key === 'library-processing'
     && run.result_summary?.outcome === 'partial';
@@ -88,7 +90,7 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
             {detail
               ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
               : null}
-            {isActive(row) && row.control?.actions.length
+            {row.control?.actions.length
               ? <div className="w-full min-w-0"><TaskControls run={row} /></div> : null}
             {/* 排队中的那些还没有结果：空的「技术详情」展开只有一对花括号。 */}
             {Object.keys(row.result_summary || {}).length
@@ -260,7 +262,7 @@ function WorkingRun(
     `${momentText(oldest.started_at || oldest.finished_at)} 开始`].filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} followups={followups} followupTotal={total}
-      badge={<Chip color="blue">进行中</Chip>}>
+      badge={run.control ? <StatusBadge run={run} /> : <Chip color="blue">进行中</Chip>}>
       <div className="flex flex-col gap-1.5">
         <Progress label={`${run.task_label}进度`} value={settled} max={total} />
         <p className="text-caption-1-regular text-text-secondary">
@@ -355,6 +357,11 @@ export function ActivityPage() {
   };
   const folds = foldRoutine(finished, (run) => isRoutine(run)
     && (quietChildren(run) || DISPATCHERS.has(run.task_key)));
+  // 各父任务的控制范围独立：合成一张卡会让较早那批的后继没有对应操作入口。
+  const workingGroups = [
+    ...foldByKind(working.filter((run) => !run.control)),
+    ...working.filter((run) => run.control).map((run) => ({ run, runs: [run] })),
+  ].sort((left, right) => right.run.id - left.run.id);
   const newest = latestOfKind(allRuns);
   const quiet = !running.length && !working.length && !skipped.length && !finished.length;
   return (
@@ -375,7 +382,7 @@ export function ActivityPage() {
                 ? <RunList live>
                     {running.map((run) => (
                       <RunningRun key={run.id} run={run} followups={byParent.get(run.id)} />))}
-                    {foldByKind(working).map(({ run, runs }) => (
+                    {workingGroups.map(({ run, runs }) => (
                       <WorkingRun key={run.id} runs={runs} followups={childrenOf(runs)} counts={counts} />))}
                   </RunList>
                 : <Note tone="neutral">没有任务在跑。</Note>}
