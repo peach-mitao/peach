@@ -1942,11 +1942,10 @@ def _chosen_asset_paths(db_path, asset_ids):
     """
     if not asset_ids:
         return {}
-    placeholders = ','.join('?' * len(asset_ids))
     with closing(sqlite3.connect(db_path, timeout=30)) as connection:
         rows = connection.execute(
-            f"SELECT location,path FROM asset WHERE id IN ({placeholders}) "
-            "AND medium='video' AND disposal IS NULL", asset_ids).fetchall()
+            "SELECT location,path FROM asset WHERE id IN (SELECT value FROM json_each(?)) "
+            "AND medium='video' AND disposal IS NULL", (json.dumps(asset_ids),)).fetchall()
     chosen = {}
     for source, path in rows:
         chosen.setdefault(str(source), []).append(translate_ledger_path(path))
@@ -2156,8 +2155,8 @@ def _collection_rows(db_path, *, locations, online_roots, asset_ids):
     query = f"SELECT asset.*, {multi} FROM asset WHERE medium='video' AND disposal IS NULL"
     parameters = []
     if asset_ids is not None:
-        query += ' AND id IN (' + ','.join('?' * len(asset_ids)) + ')'
-        parameters = asset_ids
+        query += ' AND id IN (SELECT value FROM json_each(?))'
+        parameters = [json.dumps(asset_ids)]
     query += ' ORDER BY id'
     library_roots = tuple(root for roots in locations.values() for root in roots)
     with closing(sqlite3.connect(db_path, timeout=30)) as connection:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from itertools import islice
+import json
 import os
 import sqlite3
 from statistics import median
@@ -28,8 +29,8 @@ def ledger_rows(db_path, asset_ids=None, *, library_roots=()):
         FROM asset WHERE medium='video' AND disposal IS NULL"""
     parameters = []
     if asset_ids is not None:
-        query += ' AND id IN (' + ','.join('?' for _ in asset_ids) + ')'
-        parameters = asset_ids
+        query += ' AND id IN (SELECT value FROM json_each(?))'
+        parameters = [json.dumps(asset_ids)]
     with closing(sqlite3.connect(db_path, timeout=30)) as connection:
         connection.row_factory = sqlite3.Row
         return [dict(row) for row in connection.execute(query, parameters)

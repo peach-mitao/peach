@@ -3530,6 +3530,30 @@ class LibraryPreviewCompletionTests(unittest.TestCase):
                 with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                     _asset_selection(self.db, [2, 1, invalid])
 
+    def test_selected_processing_queries_fit_the_connection_parameter_limit(self):
+        from peach.library_processing import _chosen_asset_paths, _collection_rows
+        from peach.processing_control import initial_estimate
+        from peach.processing_traffic_plan import ledger_rows
+        connect = sqlite3.connect
+        def limited_connection(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            connection.setlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 3)
+            return connection
+        selection = [2, 1] * 4
+        with patch('peach.library_processing.sqlite3.connect', side_effect=limited_connection):
+            with self.subTest(query='paths'):
+                self.assertEqual(set(_chosen_asset_paths(self.db, selection)), {'local', 'pikpak'})
+            with self.subTest(query='collection'):
+                rows, _ = _collection_rows(self.db, locations=self.config.locations,
+                                           online_roots=(self.media,), asset_ids=selection)
+                self.assertEqual([row['id'] for row in rows], [1])
+            with self.subTest(query='estimate'):
+                estimate = initial_estimate(self.config, self.db, 'all', selection, mode='high')
+                self.assertEqual(estimate['estimate_file_count'], 2)
+            with self.subTest(query='traffic'):
+                self.assertEqual({row['id'] for row in ledger_rows(self.db, selection)}, {1, 2})
+                self.assertEqual(ledger_rows(self.db, []), [])
+
     def test_selected_assets_require_active_videos(self):
         for selection in ([], [True], [0], [-1], ['1'], '1', [99], [3], [4]):
             with self.subTest(selection=selection), self.assertRaises(ValueError), \

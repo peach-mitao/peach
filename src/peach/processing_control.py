@@ -316,8 +316,8 @@ def initial_estimate(config, db_path, stage, asset_ids=None, mode=None):
     query = "SELECT COUNT(*), COALESCE(SUM(size),0) FROM asset WHERE medium='video' AND disposal IS NULL"
     parameters = []
     if asset_ids is not None:
-        query += ' AND id IN (' + ','.join('?' * len(asset_ids)) + ')'
-        parameters += asset_ids
+        query += ' AND id IN (SELECT value FROM json_each(?))'
+        parameters.append(json.dumps(asset_ids))
     if stage == 'previews':
         query += " AND location='local' AND (snapshot_path IS NULL OR snapshot_path='')"
     if config.locations:
