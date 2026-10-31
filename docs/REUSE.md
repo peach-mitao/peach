@@ -1071,6 +1071,8 @@ Python 源文件纳入 `src/peach/library_sharing.py` 与 `src/peach/library_pro
 
 ## 馆藏处理控制与耗时预估
 
+任务中心的本机控制复用 `task_run` 的运行身份、`job_recovery` 的请求和检查点、`filelock` 与原子 JSON。`task_control` 保存逐轮控制意图；`BackgroundJob`、后继和命令行执行段共用安全停点。父任务的意图沿父子关联传递，排队任务领取前核对暂停与取消。媒体子进程使用固定版本 psutil 7.2.2（BSD-3-Clause）的暂停、继续、进程身份检查和所属子进程枚举，Windows 沿用已有 kill-on-close Job Object，macOS/Linux 使用专属会话的进程组；平台语义见 [psutil API](https://psutil.readthedocs.io/stable/) 和 [Python 子进程说明](https://docs.python.org/3.14/library/subprocess.html)。psutil 从开发依赖调整为运行依赖，没有新增调度器。网络和文件提交在安全停点响应，任务只有在在途工作退出后才结算取消。
+
 长时任务续跑复用 `job_recovery` 的本机原子记录、`BackgroundJob.checkpoint` 与 `TaskRunHandle.checkpoint`。主任务保留原 `job_id`、`run_id`、开始时间、处理范围和领域检查点；后继重排保留原进度。扫描复用现有 `os.scandir`、SQLite 批次提交、`filelock` 和 `fsutil.atomic_write_text`，保存遍历栈、文件名游标及字幕配对资料。本地资料按影片保存小份证据边车，候选成功落盘后才提交元数据完成集合；整理逐项原子保存同一批次的日志。`scrape_codes.py` 复用流式 CSV 与原始来源快照，续跑只保留已确认完成的番号，未完成番号可以重放。
 
 当前树、扫描与采集的 Git 历史，以及现有任务队列均已核对；不引入新的调度或工作流依赖。项目已固定的 APScheduler 3.11.3（MIT）负责派发，其持久 job store 记录调度任务，不能保存函数执行到哪一条影片或来源页，见[上游调度说明](https://apscheduler.readthedocs.io/en/3.x/userguide.html#adding-jobs)。结果替换沿用 Python 3.14 标准库 [`os.replace`](https://docs.python.org/3.14/library/os.html#os.replace)（PSF），锁沿用项目固定的 `filelock`，没有新增运行时体积或平台要求。隔离实证覆盖目录与目录内批次中断、关注回抓游标、固定来源集合、原任务标识与计数、候选 CSV 保留及同批整理日志；不读取真实媒体、不访问外部采集来源，也不写真实 ledger。

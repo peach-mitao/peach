@@ -12,7 +12,8 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from .processing_control import checkpoint, ffmpeg_options
+from .processing_control import checkpoint, deadline_after, ffmpeg_options
+from .task_control import run as run_task_process
 
 from PIL import Image
 
@@ -64,7 +65,7 @@ def capture_frame(ffmpeg: str, path: str, timestamp: float, destination: Path, *
         *ffmpeg_options(), str(destination),
     ]
     try:
-        completed = subprocess.run(command, capture_output=True, timeout=timeout,
+        completed = run_task_process(command, capture_output=True, timeout=timeout,
                                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except subprocess.TimeoutExpired as error:
         media_statistics(path, error.stderr)
@@ -96,7 +97,7 @@ def capture_with_retry(ffmpeg: str, path: str, timestamp: float, destination: Pa
     from .smb_media import input_url
     path = input_url(path)
     from .hardware_transcode import frame_decode_options
-    deadline = time.monotonic() + timeout
+    deadline = deadline_after(timeout)
     hardware = frame_decode_options(ffmpeg, path) if decode_options is None else decode_options
     attempts, detail, ok = [], {}, False
     for options in ((hardware, ()) if hardware else ((),)):
@@ -140,7 +141,7 @@ def tile_frames(ffmpeg: str, pattern: str, columns: int, rows: int, destination:
     destination.unlink(missing_ok=True)
     from .error_reporting import subprocess_failure
     try:
-        completed = subprocess.run(
+        completed = run_task_process(
             [ffmpeg, "-y", "-v", "error", *options, "-i", pattern,
              "-filter_complex", f"tile={int(columns)}x{int(rows)}", "-q:v", "4",
              *ffmpeg_options(), str(destination)],

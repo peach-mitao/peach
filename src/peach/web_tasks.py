@@ -123,6 +123,10 @@ def _payload_reader(contract):
 
     def payload(row):
         result = row.payload()
+        from .task_control import projection
+        control = projection(contract.task_runs, row)
+        if control is not None:
+            result['control'] = control
         if row.task_key not in RESULT_FIELDS or row.status not in ('succeeded', 'failed'):
             return result
         if all(field in row.result_summary for field in RESULT_FIELDS[row.task_key]):

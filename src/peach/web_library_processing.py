@@ -164,6 +164,9 @@ def _control_action(contract, config, body):
     if job_id:
         control.select_job(str(job_id))
     if action == 'cancel':
+        if previous.get('run_id') is not None:
+            from .task_control import request
+            request(contract.task_runs, previous['run_id'], action)
         return _cancel_processing(contract, config, control, previous, str(job_id))
     if previous.get('status') == 'stopping':
         raise ValueError('正在等待任务停止，请稍后重试')
@@ -172,6 +175,9 @@ def _control_action(contract, config, body):
         return q_library_processing(contract, {})
     if action == 'set_speed':
         return _set_processing_speed(contract, control, previous, body)
+    if previous.get('run_id') is not None:
+        from .task_control import request
+        request(contract.task_runs, previous['run_id'], action)
     status = ('paused' if previous.get('status') == 'paused' else 'pausing') if action == 'pause' else 'running'
     _announce_control(contract.library_processing_job, str(job_id), status)
     control.request(action, str(job_id))

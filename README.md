@@ -47,7 +47,7 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 - **Playback and history**: web and external players, subtitles, playback speed, rotation, resume and timeline previews.
 - **Follows and discovery**: track performer and creator updates, discover titles and manage a want list.
 - **Cloud download**: search by video code or submit a magnet link, then organize completed downloads into your library.
-- **Library management**: manage tags, duplicates, versions and parts; metadata and watch history are stored locally.
+- **Library management**: manage tags, duplicates, versions and parts; pause, resume or cancel local background tasks from the task center. Metadata and watch history are stored locally.
 
 ## Download and use
 
