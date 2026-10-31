@@ -3517,6 +3517,19 @@ class LibraryPreviewCompletionTests(unittest.TestCase):
         self.assertEqual(retried['issue_count'], 0)
         self.assertEqual(retried['retryable_asset_ids'], [])
 
+    def test_selected_assets_fit_the_connection_parameter_limit(self):
+        from peach.library_processing import _asset_selection
+        connect = sqlite3.connect
+        def limited_connection(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            connection.setlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 1)
+            return connection
+        with patch('peach.library_processing.sqlite3.connect', side_effect=limited_connection):
+            self.assertEqual(_asset_selection(self.db, [2, 1, 2]), [2, 1])
+            for invalid in (3, 4, 99):
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    _asset_selection(self.db, [2, 1, invalid])
+
     def test_selected_assets_require_active_videos(self):
         for selection in ([], [True], [0], [-1], ['1'], '1', [99], [3], [4]):
             with self.subTest(selection=selection), self.assertRaises(ValueError), \

@@ -2215,10 +2215,10 @@ def _asset_selection(db_path, asset_ids):
             type(value) is not int or value <= 0 for value in asset_ids):
         raise ValueError('请选择有效的视频项目')
     chosen = list(dict.fromkeys(asset_ids))
-    marks = ','.join('?' * len(chosen))
     with closing(sqlite3.connect(db_path, timeout=30)) as connection:
         found = {row[0] for row in connection.execute(
-            f"SELECT id FROM asset WHERE id IN ({marks}) AND medium='video' AND disposal IS NULL", chosen)}
+            "SELECT id FROM asset WHERE id IN (SELECT value FROM json_each(?)) "
+            "AND medium='video' AND disposal IS NULL", (json.dumps(chosen),))}
     if found != set(chosen):
         raise ValueError('所选视频已不存在或已移入回收站，请刷新后重试')
     return chosen
