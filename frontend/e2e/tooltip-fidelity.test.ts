@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { after, before, describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
 import { launch, VIEWPORTS } from './harness.ts';
@@ -113,6 +114,63 @@ describe('共享提示的文字与锚点', () => {
         await opened.page.locator('#tip-task-control').hover();
         await tip.waitFor({ state: 'visible' });
         assert.equal(await tip.getAttribute('data-copy-key'), 'tasks.control.action.followups.pause');
+      } finally { await opened.close() }
+    });
+    it(`${viewport.name} 提示在选择文案来源和编辑子节点期间保持可见，Esc先取消编辑`, async () => {
+      const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
+      try {
+        await opened.page.addScriptTag({ content: await readFile(new URL('../src/copy-editor-core.js', import.meta.url), 'utf8') });
+        await opened.page.evaluate(() => {
+          const button = document.createElement('button');
+          button.id = 'tip-edit-action'; button.title = '继续'; button.setAttribute('aria-label', '继续');
+          button.dataset.tooltipCopyKey = 'tasks.control.action.resume';
+          button.style.cssText = 'position:fixed;left:120px;top:240px;z-index:9999;width:32px;height:32px';
+          button.innerHTML = '<svg width="16" height="16"><path d="M4 2v12l10-6Z"/></svg>';
+          document.body.append(button);
+          const core = (globalThis as any).PeachCopyEditorCore;
+          const tools = core.createTools({ onToggle() {}, onExport() {}, onExit() {} });
+          core.create({
+            highlight: tools.highlight,
+            resolve(node: Text) { return node.parentElement?.closest('#board-control-tooltip') ? {} : null; },
+            onBusy: tools.setBusy,
+            onStatus: tools.say,
+            async prepare(edit: any) {
+              const range = document.createRange(); range.selectNodeContents(edit.node);
+              const candidate = await tools.choose([
+                { label: 'task-controls.tsx', value: { source: 'task-controls.tsx' } },
+                { label: 'other.tsx', value: { source: 'other.tsx' } },
+              ], range.getBoundingClientRect(), { label: '文案来源' });
+              return candidate ? { candidate } : null;
+            },
+            async save(_edit: any, replacement: string) { return { text: replacement }; },
+          });
+        });
+        await opened.page.locator('#tip-edit-action').hover();
+        const tip = opened.page.locator('#board-control-tooltip');
+        await tip.waitFor({ state: 'visible' });
+        await tip.click();
+        const choice = opened.page.locator('[data-copy-choice]');
+        await choice.waitFor({ state: 'visible' });
+        assert.equal(await tip.isVisible(), true);
+        assert.equal(await tip.getAttribute('data-copy-key'), 'tasks.control.action.resume');
+        await choice.selectOption('0');
+        const input = tip.locator('[data-copy-inline][aria-label="修改文字"]');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('临时继续');
+        await input.press('Escape');
+        assert.equal(await tip.locator('[data-copy-inline]').count(), 0);
+        assert.equal(await tip.isVisible(), true);
+        assert.equal(await tip.textContent(), '继续');
+        assert.equal(await tip.getAttribute('data-copy-key'), 'tasks.control.action.resume');
+        await opened.page.keyboard.press('Escape');
+        await tip.waitFor({ state: 'hidden' });
+        await opened.page.locator('#tip-edit-action').hover();
+        await tip.waitFor({ state: 'visible' });
+        await tip.click();
+        await choice.waitFor({ state: 'visible' });
+        await choice.press('Escape');
+        await choice.waitFor({ state: 'detached' });
+        assert.equal(await tip.isVisible(), true);
       } finally { await opened.close() }
     });
   }

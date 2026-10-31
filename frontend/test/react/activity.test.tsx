@@ -98,6 +98,7 @@ function serve(...responses: (ActivityData | null)[]) {
 const page = () => <QueryClientProvider client={queryClient}><ActivityPage /></QueryClientProvider>;
 const controlButton = (name: string, root: ParentNode = document) =>
   root.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+const confirmTaskCancellation = () => click(document.querySelector('[data-modal-confirm]'));
 
 it('扫描各阶段已结束且留有问题时显示部分结果状态', async () => {
   serve(payload({ finished: [run({ task_key: 'library-processing', task_label: '扫描与采集',
@@ -240,6 +241,7 @@ it('活动任务按服务端给出的动作暂停、继续和取消，并重新�
   await click(controlButton('继续', host));
   await vi.waitFor(() => expect(controlButton('暂停', host)).not.toBeNull());
   await click(controlButton('取消', host));
+  await confirmTaskCancellation();
   await vi.waitFor(() => expect(host.querySelector('[data-run-id="1"]')?.textContent).toContain('正在取消'));
   expect(host.textContent).not.toContain('已取消');
   expect(host.querySelector('[data-task-controls]')).toBeNull();
@@ -268,6 +270,77 @@ it('主任务和后继使用带准确名称、提示和编辑键的图标控制'
   }
 });
 
+it('取消任务先复用确认框，初始聚焦取消，未确认或关闭弹窗都不提交', async () => {
+  const posts: unknown[] = [];
+  const current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (_input, init) => {
+    if (init?.method === 'POST') posts.push(JSON.parse(String(init.body)));
+    return { ok: true, status: 200, json: async () => payload({ running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(controlButton('取消', host));
+  const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+  expect(dialog.open).toBe(true);
+  expect(dialog.querySelector('h3')?.textContent).toBe('取消任务「追更检查」');
+  expect(dialog.textContent).toContain('已保存的资料和结果会保留');
+  expect(dialog.textContent).toContain('取消后不能继续');
+  expect(document.activeElement).toBe(dialog.querySelector('[data-modal-cancel]'));
+  expect(posts).toEqual([]);
+  await click(dialog.querySelector('[data-modal-cancel]'));
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(posts).toEqual([]);
+  await click(controlButton('取消', host));
+  await confirmTaskCancellation();
+  await vi.waitFor(() => expect(posts).toEqual([{ action: 'cancel' }]));
+  await vi.waitFor(() => expect(document.querySelector('dialog')).toBeNull());
+});
+
+it('确认取消的请求忙态阻止重复提交，失败留在弹窗内供重试', async () => {
+  const answer = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
+  let attempts = 0;
+  const current = run({ control: { state: 'running', actions: ['pause', 'cancel'] } });
+  stubFetch(async (_input, init) => {
+    if (init?.method === 'POST') {
+      attempts += 1;
+      return attempts === 1 ? answer.answer : { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }
+    return { ok: true, status: 200, json: async () => payload({ running: [current] }) };
+  });
+  await prefetchTasks(new AbortController().signal);
+  const host = await mount(page());
+  await click(controlButton('取消', host));
+  const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+  const confirm = dialog.querySelector<HTMLButtonElement>('[data-modal-confirm]')!;
+  await click(confirm);
+  expect(confirm.getAttribute('aria-busy')).toBe('true');
+  expect(confirm.hasAttribute('disabled')).toBe(false);
+  await click(confirm);
+  await click(dialog.querySelector('[data-modal-cancel]'));
+  expect(attempts).toBe(1);
+  expect(dialog.open).toBe(true);
+  await answer.release({ ok: false, status: 409, json: async () => ({ message: '任务暂时无法停止' }) });
+  await vi.waitFor(() => expect(dialog.querySelector('[data-modal-error]')?.textContent).toContain('任务暂时无法停止'));
+  expect(dialog.open).toBe(true);
+  await click(confirm);
+  await vi.waitFor(() => expect(attempts).toBe(2));
+  await vi.waitFor(() => expect(document.querySelector('dialog')).toBeNull());
+});
+
+it('已结束父任务的取消确认明确覆盖全部正在处理和排队的后继', async () => {
+  const parent = run({ status: 'succeeded', control: { state: 'paused', actions: ['resume', 'cancel'] } });
+  const child = followup(1, { status: 'pending', finished_at: null });
+  const { fetcher, host } = await open(payload({ running: [child], finished: [parent],
+    followup_counts: { '1': { pending: 1200 } } }));
+  await click(controlButton('取消后续任务', host));
+  const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+  expect(dialog.querySelector('h3')?.textContent).toBe('取消「追更检查」的全部后续任务');
+  expect(dialog.textContent).toContain('全部后续任务，包括正在处理和排队的项目');
+  expect(dialog.querySelector('[data-modal-confirm]')?.textContent).toBe('取消后续任务');
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
+  await click(dialog.querySelector('[data-modal-cancel]'));
+});
+
 it.each(['pause', 'resume'] as const)('取消优先于在途的 %s 请求，迟到回执不覆盖真实取消结果', async (action) => {
   const changeResponse = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
   const cancelResponse = pending<{ ok: boolean; status: number; json: () => Promise<unknown> }>();
@@ -287,6 +360,8 @@ it.each(['pause', 'resume'] as const)('取消优先于在途的 %s 请求，迟�
   await click(controlButton(action === 'pause' ? '暂停' : '继续', host));
   expect(controlButton('取消', host)?.getAttribute('aria-disabled')).toBeNull();
   await click(controlButton('取消', host));
+  expect(posts).toEqual([action]);
+  await confirmTaskCancellation();
   expect(posts).toEqual([action, 'cancel']);
   current = { ...current, control: { state: 'cancelling', actions: [] } };
   await cancelResponse.release({ ok: true, status: 200, json: async () => ({ ok: true }) });
@@ -312,6 +387,7 @@ it('取消请求未被接受时，任务自然完成和原卡卸载后仍保留�
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
   await click(controlButton('取消', host));
+  await confirmTaskCancellation();
   current = { ...current, status: 'succeeded', control: undefined, finished_at: '2026-10-31T07:00:00Z' };
   await act(async () => { await queryClient.invalidateQueries({ queryKey: ['tasks'] }) });
   expect(host.querySelector('[data-task-controls]')).toBeNull();
@@ -434,6 +510,7 @@ it('父任务结束后仍可控制整批后继，未展示的后继也属于同�
   await click(controlButton('继续后续任务', host));
   await vi.waitFor(() => expect(controlButton('暂停后续任务', host)).not.toBeNull());
   await click(controlButton('取消后续任务', host));
+  await confirmTaskCancellation();
   await vi.waitFor(() => expect(host.querySelector('#run-1')?.textContent).toContain('正在取消'));
   expect(posts).toEqual([
     ['/api/tasks/1/control', { action: 'pause' }],

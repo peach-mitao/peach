@@ -2,6 +2,7 @@
 import { useRef } from 'react';
 import { RiPauseLine, RiPlayLine, RiStopLine } from '@remixicon/react';
 import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
+import { confirmModal } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
 
@@ -47,7 +48,7 @@ export function TaskControlFeedback() {
 
 export function TaskControls({ run }: { run: TaskRunPayload }) {
   const client = useQueryClient();
-  const pending = useRef({ change: false, cancel: false });
+  const pending = useRef({ change: false, cancel: false, confirmation: false });
   const refresh = () => { void client.invalidateQueries({ queryKey: TASKS_KEY }) };
   const send = (command: ControlCommand) => controlTask(command.id, command.action);
   const change = useMutation({
@@ -68,9 +69,22 @@ export function TaskControls({ run }: { run: TaskRunPayload }) {
   const submit = (action: TaskControlAction) => {
     const command = { id: run.id, label: run.task_label, action, followups };
     if (action === 'cancel') {
-      if (pending.current.cancel || cancellation.isSuccess) return;
-      pending.current.cancel = true;
-      cancellation.mutate(command);
+      if (pending.current.cancel || pending.current.confirmation || cancellation.isSuccess) return;
+      pending.current.confirmation = true;
+      void confirmModal({
+        title: followups ? `取消「${run.task_label}」的全部后续任务` : `取消任务「${run.task_label}」`,
+        body: followups
+          ? '将停止这轮已派出的全部后续任务，包括正在处理和排队的项目。已保存的资料和结果会保留。'
+            + '这批后续任务取消后不能继续，需要时重新发起。'
+          : '将停止这轮剩余的处理及其后续任务。已保存的资料和结果会保留。'
+            + '这轮任务取消后不能继续，需要时重新发起。',
+        confirmLabel: followups ? '取消后续任务' : '取消任务',
+        danger: true,
+        onConfirm: async () => {
+          pending.current.cancel = true;
+          return await cancellation.mutateAsync(command);
+        },
+      }).finally(() => { pending.current.confirmation = false });
     } else {
       if (pending.current.change || pending.current.cancel || cancelling) return;
       pending.current.change = true;
