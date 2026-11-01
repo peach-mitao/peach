@@ -4,7 +4,7 @@ import hashlib
 
 from . import settings_file
 from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
-                                METADATA_STAGE, PREVIEWS_STAGE, _asset_selection,
+                                METADATA_STAGE, PREVIEWS_STAGE, PROBE_STAGE, COVERS_STAGE, _asset_selection,
                                 decorate, issues_path, process_library, snapshot)
 from .processing_control import control_for, initial_estimate, valid_mode, mode_ratio
 
@@ -23,6 +23,8 @@ PUBLIC_FIELDS = frozenset({
     'issues_log', 'issues_truncated', 'retryable_asset_ids', 'notes', 'current_asset_id',
     'current_asset_name', 'current_action', 'current_started_at', 'last_progress_at', 'stalled',
     'waited_seconds', 'completed_at', 'current_source', 'skip_requested', 'archived', 'new_asset_count',
+    'requested_tasks', 'execution_mode', 'defer_suspected_duplicates', 'work_progress',
+    'deferred_asset_ids',
 })
 
 
@@ -201,7 +203,7 @@ def _control_action(contract, config, body):
         identity = current_job_id.set(str(job_id))
         run = current_run.set(recovery.get('run_id'))
         try:
-            return w_library_processing(contract, {
+            return w_library_processing(contract, {**recovery.get('request', {}),
                 'stage': previous.get('requested_stage') or ALL_STAGES,
                 **({'incremental': True} if previous.get('incremental') else
                    {'asset_ids': previous['asset_ids']} if previous.get('asset_ids') else {}),
@@ -334,29 +336,34 @@ def _processing_request(contract, config, previous, body):
     if body.get('incremental') and stage not in (ALL_STAGES, SCAN_STAGE):
         raise ValueError('新增文件发现只支持扫描或同步')
     from .media_processing_policy import metadata_only
-    if stage == PREVIEWS_STAGE and metadata_only(config.directory('state')):
+    if stage == PREVIEWS_STAGE and 'tasks' not in (body or {}) and metadata_only(config.directory('state')):
         raise ValueError('视频预览生成已关闭，请先在媒体库设置中开启')
     return retry_ids, asset_ids, stage
 
 
 def w_library_processing(contract, body, *, resume=False):
+    body = body or {}
     config = settings_file.active()
-    if (body or {}).get('action'):
+    if body.get('action'):
         return _control_action(contract, config, body)
     previous = _current(contract)
     if previous.get('status') in ACTIVE and not resume:
         return public_state(previous)
-    if (body or {}).get('retry') is not None:
+    if body.get('retry') is not None:
         previous['retryable_asset_ids'] = _remaining_retry_ids(contract, previous)
     retry_ids, asset_ids, stage = _processing_request(contract, config, previous, body)
-    incremental = (body or {}).get('incremental', False)
-    if (body or {}).get('scope') == 'new':
+    incremental = body.get('incremental', False)
+    if body.get('scope') == 'new':
         from .library_new_assets import remember
         remember(contract.db_path, asset_ids)
     if retry_ids is not None and not retry_ids:
         return public_state(previous)
     mode = valid_mode(control_for(config).mode if resume else
-                      (body or {}).get('speed_mode') or control_for(config).mode)
+                      body.get('speed_mode') or control_for(config).mode)
+    from .library_processing_tasks import selection_for
+    selection = selection_for(config, stage, body.get('tasks'), asset_ids or retry_ids,
+        body.get('execution_mode', 'sequential'), body.get('defer_suspected_duplicates', False))
+    selected_options = _selection_options(selection)
     control_for(config).request('set_speed', mode=mode)
     def work(job_id):
         try:
@@ -367,6 +374,7 @@ def w_library_processing(contract, body, *, resume=False):
                 database=contract.database,
                 resume_state=previous if resume else None,
                 speed_mode=control_for(config).mode,
+                **selected_options,
                 active=lambda: (contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
                 report=lambda state: contract.library_processing_job.update(job_id, **{
                     key: value for key, value in state.items() if key != 'job_id'}))
@@ -376,14 +384,30 @@ def w_library_processing(contract, body, *, resume=False):
     # 起步那行字按这一趟真正要做的事写：点了「只扫描」却看到「读取本地资料」，
     # 人会以为点错了。
     labels = {ALL_STAGES: '准备处理', SCAN_STAGE: '准备扫描文件', COLLECT_STAGE: '准备采集资料',
-              METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图'}
+              METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图',
+              PROBE_STAGE: '准备读取媒体属性', COVERS_STAGE: '准备补全封面'}
     estimate_ids = asset_ids if asset_ids is not None else retry_ids
     if incremental:
         from .library_new_assets import pending
         estimate_ids = pending(contract.db_path)
     return public_state(contract.library_processing_job.start(
         work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
+                                    **_selection_state(selection),
                                     **initial_estimate(config, contract.db_path, stage, estimate_ids, mode)},
-        recovery={'stage': stage, 'speed_mode': mode, 'incremental': incremental,
+        recovery={'stage': stage, 'speed_mode': mode,
+                  **({'incremental': incremental} if 'tasks' not in selected_options else {}), **selected_options,
                   **({'asset_ids': asset_ids or retry_ids}
                                     if asset_ids is not None or retry_ids is not None else {})}))
+
+
+def _selection_state(selection):
+    return dict(requested_tasks=selection['tasks'], execution_mode=selection['execution_mode'],
+                defer_suspected_duplicates=selection['defer_suspected_duplicates'])
+
+
+def _selection_options(selection):
+    options = dict(execution_mode=selection['execution_mode'],
+                   defer_suspected_duplicates=selection['defer_suspected_duplicates'])
+    if not selection['legacy_policy']:
+        return dict(tasks=selection['tasks'], **options)
+    return {} if options == dict(execution_mode='sequential', defer_suspected_duplicates=False) else options

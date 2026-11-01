@@ -13,6 +13,7 @@ import { errorMessage } from '../../api';
 import { fetchProcessingEstimate, type LibraryProcessingCommand, type ProcessingSpeed, type ProcessingTraffic } from './library-processing';
 import { ProcessingEffort } from './processing-effort';
 import { TrafficProgress } from './processing-traffic';
+import { processingTaskDialog } from './processing-task-dialog';
 
 interface ProcessingOption {
   label: string; description: string; command: LibraryProcessingCommand; disabled?: boolean;
@@ -160,6 +161,14 @@ export function ProcessingActions({ busy, scan = false, metadataOnly = false, sp
     <Popover triggerRef={trigger} isOpen={open} onOpenChange={setOpen} placement="bottom end" offset={4}
       className={MENU_POPOVER_SURFACE}>
       <Dialog aria-label="同步方式" className="flex w-80 flex-col gap-1 outline-none">
+        <button type="button" className={cx(MENU_ITEM, MENU_ITEM_INTERACTIVE, 'text-body-2-medium')}
+          onClick={() => {
+            if (busy || prompt.current) return;
+            setOpen(false);
+            const dialog = processingTaskDialog(scan ? {} : { stage: 'collect' }, { scan, metadataOnly, speedMode, onRun });
+            prompt.current = dialog;
+            void dialog.done.then(() => { if (prompt.current === dialog) prompt.current = null });
+          }}>自选工作项目</button>
         {scan ? <ProcessingMenuGroup label="日常同步">
           <p className="px-2 py-1 text-caption-1-medium text-text-secondary">日常同步</p>
           {dailyOptions.map(option => <ProcessingMenuOption key={option.label} option={option} metadataOnly={metadataOnly} onRun={run} />)}

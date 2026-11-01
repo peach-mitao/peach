@@ -13,6 +13,8 @@
 [![macOS DMG](https://img.shields.io/badge/macOS-DMG-555555?logo=apple&logoColor=white)](docs/OPERATIONS.md#macos-独立测试包)
 [![年龄限制](https://img.shields.io/badge/age-18%2B-555555)](#许可证)
 
+馆藏新任务可分别选择扫描、媒体属性、资料、封面和预览，支持依序或双通道并行；沿用官方暂停、取消与跳过单片操作。
+
 ## 截图
 
 [![影片馆藏：搜索、筛选与海报墙](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)
@@ -91,3 +93,5 @@
 [AGPL-3.0-or-later](LICENSE) · Copyright (C) 2026 The Peach contributors。第三方组件保留各自的许可证。Peach 名称与图标的使用见[名称与标识政策](docs/TRADEMARKS.md)。
 
 仅管理自行持有或获授权使用的媒体，遵守法律、版权及来源平台的访问、年龄和地区限制。Peach 不提供影片资源或付费内容访问权。
+
+「就绪即处理」使用两条有界通道，单档属性就绪即生成预览、资料就绪即补封面，不等待整批上一阶段。扫描登记先完成，疑似重复只暂缓预览，关闭选项可补齐。
