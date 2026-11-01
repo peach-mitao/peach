@@ -1,3 +1,4 @@
+import { ItemMetadata } from './item-metadata';
 /* 作品详情（ADR-0031）：舞台里那一整块——播放区、右侧队列、侧栏与下方的「接着看」。
  *
  * 舞台（`<dialog id="stage">`）、它的进出场、小窗与 Video.js 都归舞台岛（`../stage/`），关注详情
@@ -404,6 +405,7 @@ function Side({ item, queue, write, helpers, actions }: {
         <LibraryCompletionPrompt assetIds={missingPreviewIds([item], helpers.javImage())}
           onComplete={() => { void queryClient.invalidateQueries({ queryKey: itemKey(item.id) }) }} />
         <Trace item={item} />
+        {item.code && item.location !== 'online' ? <ItemMetadata key={item.id} id={item.id} onReceipt={actions.toast} /> : null}
         <div data-stage-actions="" data-item-feedback="">
           <button type="button" id="likeBtn" data-fb="like" aria-label={item.liked ? '取消喜欢' : '喜欢'} title="喜欢 · 记录口味偏好"
             aria-pressed={!!item.liked} {...busy('like')} onClick={() => write.preference({ liked: !item.liked })}><Glyph name="thumbs-up" /></button>

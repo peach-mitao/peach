@@ -6,7 +6,7 @@ import { LibraryCompletionPrompt, missingPreviewIds } from '../../src/react/libr
 import { LIBRARY_PROCESSING_KEY } from '../../src/react/library-processing/library-processing';
 import type { MediaItem } from '../../src/react/catalog-grid/types';
 import { queryClient } from '../../src/react/query';
-import { buttonNamed, click, mount, pending } from './render';
+import { buttonNamed, click, mount, pending, submit } from './render';
 
 notifyManager.setScheduler(notify => notify());
 afterEach(() => queryClient.clear());
@@ -58,11 +58,12 @@ it('默认补全与下拉分项都只提交当前缺图影片，菜单仅包含�
     const menu = document.querySelector('[role="dialog"]')!;
     expect(buttonNamed('同步这些影片', menu)).toBeNull();
     await click(menuItem(label));
+    if (label === '仅补全影片资料') await submit(document.querySelector('dialog form'));
   }
   expect(posts).toEqual([
     { stage: 'collect', asset_ids: [7, 8] },
     { stage: 'previews', asset_ids: [7, 8] },
-    { stage: 'metadata', asset_ids: [7, 8] },
+    { stage: 'metadata', metadata_fields: ['title', 'performers', 'studio', 'release_date', 'tags'], fill_other_metadata: true, asset_ids: [7, 8] },
   ]);
 });
 

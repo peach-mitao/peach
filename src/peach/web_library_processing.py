@@ -15,6 +15,7 @@ ACTIVE = ('running', 'pausing', 'paused', 'stopping')
 #: `asset_ids`、`completed_metadata` 等大字段，页面一个都不读；照发的话每页每 10 秒轮询一次
 #: 就是两兆多，还把媒体路径交给了浏览器。续跑与重试读的是 `_current()`，不经过这里。
 PUBLIC_FIELDS = frozenset({
+    'metadata_fields', 'fill_other_metadata', 'metadata_inspected', 'metadata_skipped_complete', 'metadata_eligible',
     'run_id', 'metadata_only', 'status', 'outcome', 'speed_mode', 'eta_seconds_min', 'eta_seconds_max', 'eta_kind',
     'eta_scope', 'eta_initial', 'job_id', 'stage', 'requested_stage', 'steps', 'checked', 'total',
     'scanned', 'scanned_bytes', 'identified', 'candidates', 'auto_applied', 'covers', 'previews',
@@ -349,6 +350,8 @@ def w_library_processing(contract, body, *, resume=False):
     if (body or {}).get('retry') is not None:
         previous['retryable_asset_ids'] = _remaining_retry_ids(contract, previous)
     retry_ids, asset_ids, stage = _processing_request(contract, config, previous, body)
+    from .metadata_selection import request_options
+    metadata_options = request_options(body or {}, previous if resume or retry_ids is not None else None)
     incremental = (body or {}).get('incremental', False)
     if (body or {}).get('scope') == 'new':
         from .library_new_assets import remember
@@ -366,7 +369,7 @@ def w_library_processing(contract, body, *, resume=False):
                 # 另建一个就是在同一个进程里开第二条写入路径。
                 database=contract.database,
                 resume_state=previous if resume else None,
-                speed_mode=control_for(config).mode,
+                speed_mode=control_for(config).mode, **metadata_options,
                 active=lambda: (contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
                 report=lambda state: contract.library_processing_job.update(job_id, **{
                     key: value for key, value in state.items() if key != 'job_id'}))
@@ -382,8 +385,8 @@ def w_library_processing(contract, body, *, resume=False):
         from .library_new_assets import pending
         estimate_ids = pending(contract.db_path)
     return public_state(contract.library_processing_job.start(
-        work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
+        work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage, **metadata_options,
                                     **initial_estimate(config, contract.db_path, stage, estimate_ids, mode)},
-        recovery={'stage': stage, 'speed_mode': mode, 'incremental': incremental,
+        recovery={'stage': stage, 'speed_mode': mode, 'incremental': incremental, **metadata_options,
                   **({'asset_ids': asset_ids or retry_ids}
                                     if asset_ids is not None or retry_ids is not None else {})}))

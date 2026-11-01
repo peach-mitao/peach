@@ -93,6 +93,7 @@ TASK_LABELS = {
     "resource-apply": "资源同步清理",
     "scraping-cover": "封面采集",
     "media-repair": "媒体修复",
+    "item-metadata": "单档资料查询",
     "mp4-header-repair": "播放文件头修复",
     'jav-discovery-metadata': '发现页资料读取',
     'diagnostic-export': '诊断导出',

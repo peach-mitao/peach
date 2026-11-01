@@ -6,6 +6,7 @@ import { Button } from '@/components/base/buttons/button';
 import { LinkButton } from '@/components/base/buttons/link-button';
 import { MENU_ITEM, MENU_ITEM_INTERACTIVE, MENU_POPOVER_SURFACE } from '@/components/base/dropdown/menu-styles';
 import { cx } from '@/utils/cx';
+import { metadataOptionsHtml, readMetadataOptions } from './metadata-options';
 import { formModal } from '@peach/legacy/ui';
 import { useMovingSurface } from '../components/use-moving-surface';
 import { busyProps } from '../settings/use-action';
@@ -108,6 +109,17 @@ export function ProcessingActions({ busy, scan = false, metadataOnly = false, sp
   const run = (command: LibraryProcessingCommand) => {
     if (busy) return;
     setOpen(false);
+    if (!scan && command.stage === 'metadata') {
+      if (prompt.current) return;
+      const dialog = formModal({ title: '补齐影片资料', confirmLabel: '开始任务',
+        description: '选择本次在意的缺失资料，已有内容保留。',
+        body: metadataOptionsHtml(command.metadata_fields, command.fill_other_metadata),
+        onConfirm: async () => { await onRun({ ...command, ...readMetadataOptions(dialog.dialog) }) },
+      });
+      prompt.current = dialog;
+      void dialog.done.then(() => { if (prompt.current === dialog) prompt.current = null });
+      return;
+    }
     if (!scan) {
       void Promise.resolve(onRun(command)).catch(() => { /* 错误由任务入口留在原位 */ });
       return;
@@ -130,11 +142,12 @@ export function ProcessingActions({ busy, scan = false, metadataOnly = false, sp
     const dialog = formModal({
       title,
       description: `${work}，可能让电脑变慢。需要同时使用电脑时，可选择低占用模式。`,
-      body: '<div class="peach-react" data-processing-prompt></div>',
+      body: '<div class="peach-react" data-processing-prompt></div>'
+        + (command.stage === 'metadata' ? metadataOptionsHtml(command.metadata_fields, command.fill_other_metadata) : ''),
       confirmLabel: title,
       confirmDisabled: true,
       onConfirm: async () => {
-        await onRun({ ...command, ...(selectedSpeed.current === speedMode ? {} : { speed_mode: selectedSpeed.current }) });
+        await onRun({ ...command, ...(command.stage === 'metadata' ? readMetadataOptions(dialog.dialog) : {}), ...(selectedSpeed.current === speedMode ? {} : { speed_mode: selectedSpeed.current }) });
       },
     });
     const footer = document.createElement('span');

@@ -1509,6 +1509,7 @@ class WebDataTests(unittest.TestCase):
 
     def test_contract_handler_registries_are_complete_and_unknown_routes_fail(self):
         self.assertEqual(set(rm_web.GET_HANDLERS), {
+            "/api/item-metadata", "/api/metadata-preferences",
             "/api/tag-management",
             "/api/tasks",
             "/api/library-processing",
@@ -1538,6 +1539,7 @@ class WebDataTests(unittest.TestCase):
             "/api/jav/detail", "/api/jav/reviews", "/api/jav/resources", "/api/jav/discoveries",
         })
         self.assertEqual(set(rm_web.POST_HANDLERS), {
+            "/api/item-metadata", "/api/metadata-preferences",
             "/api/tag-management", "/api/tag-management/preview", "/api/follow/tag",
             "/api/downloads", "/api/downloads/cancel", "/api/downloads/postprocess",
             "/api/library-processing", "/api/thumbnail-jobs", "/api/media-repair",

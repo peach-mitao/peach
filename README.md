@@ -13,6 +13,8 @@ A local-first video metadata scraper and media manager.
 [![macOS DMG](https://img.shields.io/badge/macOS-DMG-555555?logo=apple&logoColor=white)](docs/OPERATIONS.md#macos-独立测试包)
 [![Age restrictions](https://img.shields.io/badge/age-18%2B-555555)](#license)
 
+Single-item metadata supports source selection, per-field adoption and protection; library metadata jobs can filter by selected missing fields.
+
 ## Screenshots
 
 [![Video library with search, filters and posters](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)

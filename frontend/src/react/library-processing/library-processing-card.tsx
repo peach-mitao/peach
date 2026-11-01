@@ -1,3 +1,4 @@
+import { metadataFieldLabels } from './metadata-options';
 /* 数据管理页上的「扫描与采集」卡片。
  *
  * 卡片里讲的是那颗按钮此刻在做什么（进度或等待点）；结果和故障讲的是这一趟任务的下场，
@@ -233,6 +234,11 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
                 </Button> : null}
           </div>
           <p className="text-body-2-regular text-text-secondary">{SCAN_CARD_TEXT}</p>
+          {state.metadata_inspected !== undefined ? <p className="text-body-2-regular text-text-secondary tabular-nums" data-metadata-selection-summary="">
+            {state.metadata_fields?.length ? `筛选缺失资料：${metadataFieldLabels(state.metadata_fields)}。` : ''}
+            {state.fill_other_metadata === false ? '补齐所选字段。' : '顺带补齐其它空字段。'}
+            检查 {state.metadata_inspected} 部；所选资料已齐全，跳过 {state.metadata_skipped_complete || 0} 部；待补 {state.metadata_eligible || 0} 部。
+          </p> : null}
           {state.status === 'paused' && !state.total
             ? <span className="self-start"><StatusLabel>已暂停</StatusLabel></span>
             : processingActive(state)

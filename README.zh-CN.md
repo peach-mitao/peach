@@ -13,6 +13,8 @@
 [![macOS DMG](https://img.shields.io/badge/macOS-DMG-555555?logo=apple&logoColor=white)](docs/OPERATIONS.md#macos-独立测试包)
 [![年龄限制](https://img.shields.io/badge/age-18%2B-555555)](#许可证)
 
+单片资料支持多来源查询、逐字段采用与保护；全库采集可按指定缺失字段筛选影片，并选择顺带补齐其他空字段。
+
 ## 截图
 
 [![影片馆藏：搜索、筛选与海报墙](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)

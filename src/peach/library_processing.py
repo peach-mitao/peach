@@ -53,6 +53,7 @@ from .scripting import HostLimiter
 from .strm import skip_background_read
 from .record_rehome import reattach_in
 from .processing_traffic import ProcessingTraffic
+from .metadata_selection import DEFAULT_FIELDS, MetadataSelection
 from .processing_control import (task_control, bind_control, checkpoint_values,
                                  initial_estimate, ProcessingEstimate, interrupted_state,
                                  deadline_after, resume_fields, processing_item, ItemSkipped)
@@ -263,7 +264,7 @@ STATE_FLUSH_SECONDS = 0.5
 CANDIDATE_FLUSH_SECONDS = 5.0
 
 #: 采集要补的字段，以及它们在 `asset` 表里的列名（没列出的与字段同名或不在表里）。
-COLLECTED_FIELDS = ('title', 'performers', 'studio', 'release_date', 'tags')
+COLLECTED_FIELDS = DEFAULT_FIELDS
 COLUMN_OF = {'title': 'catalog_title'}
 
 #: 一趟任务向外部来源要的总量。三条闸门里谁先到谁生效，之后每部片只记「本趟…已用完」。
@@ -394,6 +395,7 @@ class LibraryMetadataProvider:
             if timeout <= 1.0:
                 raise DeadlineExceeded('外部资料在预算时间内未取得')
         try:
+            from .metadata_preferences import load as preferences
             tools = self.tools_root if self.tools_root is not None else TOOLS_DIR
             try:
                 bridge = metadata_amane.AmaneBridge.create(tools)
@@ -413,7 +415,8 @@ class LibraryMetadataProvider:
             direct_sites = [site for site in sites if values_for(self.secrets_root, site).get('network') == 'direct']
             report = bridge.query(code, sites, timeout=timeout,
                                   proxy_options={'trust_env': False} if len(direct_sites) == len(sites)
-                                  else peach_proxy.client_options(self.secrets_root), direct_sites=direct_sites)
+                                  else peach_proxy.client_options(self.secrets_root), direct_sites=direct_sites,
+                                  user_agent=preferences(self.secrets_root)['user_agent'])
         except Exception as error:  # noqa: BLE001 - 桥没装、venv 坏了、超时：整档未取得，原因给人看
             _raise_task_failure(error)
             return Unavailable(f'amane 桥：{str(error).strip() or describe_failure(error)}')
@@ -735,6 +738,7 @@ class LibraryMetadataProvider:
 
     def close(self):
         self.transport.close()
+
 
 
 def state_path(config):
@@ -1131,7 +1135,7 @@ def _candidate_review_mode(groups, row, field, source, value, local_fields, veri
 
 
 def _merge_candidates(groups, row, code, source, document, evidence_path, genre_decisions, local_fields=(),
-                      *, verify_existing=False):
+                      *, verify_existing=False, only_fields=None):
     """把 `document` 里认得出的字段并进 `groups`：同来源的旧候选换掉，别的来源保留。
 
     NFO 核查保留不同来源的取值；已有值的差异标记为覆盖复核。相同取值不重复生成候选。
@@ -1139,7 +1143,7 @@ def _merge_candidates(groups, row, code, source, document, evidence_path, genre_
     local = source == 'local_nfo'
     spec = SOURCE_SPECS.get(source)
     official = bool(spec and spec.official)
-    for field, value in _fields(document, genre_decisions).items():
+    for field, value in _selected_fields(document, genre_decisions, only_fields).items():
         key = f"asset:{row['id']}:{field}"
         if not local and field == 'performers' and field in local_fields:
             _merge_local_performer_profiles(groups, key, value, source)
@@ -1175,6 +1179,7 @@ def _merge_candidates(groups, row, code, source, document, evidence_path, genre_
         group.update(candidates_json=json.dumps(choices, ensure_ascii=False), source_count=len(choices),
                      fetched_at=time.strftime('%Y-%m-%d %H:%M:%S'))
         groups[key] = group
+
 
 
 def _merge_local_performer_profiles(groups, key, remote, source):
@@ -1453,7 +1458,8 @@ class _RemoteSession:
         self._provider = None
         self.misses = misses
         #: 用户对每种内容类型的来源链覆盖，形状见 `metadata_routes.parse_route_overrides`。
-        self._routes = routes or None
+        from .metadata_preferences import load
+        self._routes = {**load(config.directory('secrets'))['routes'], **(routes or {})} or None
         # 定向重试或明确重采不看旧记忆；本次答复仍照记。
         self._consult = not (retrying or recheck_existing)
         self._task_evidence = {}
@@ -1800,7 +1806,8 @@ class _RemoteSession:
         return 0
 
 
-def _apply_finished_candidates(database, candidate_root, active, asset_ids=None, candidate_rows=None):
+def _apply_finished_candidates(database, candidate_root, active, asset_ids=None, candidate_rows=None,
+                               **selection_options):
     """候选落盘后立即执行窄规则自动落库；没有账本实例时只采集候选。
 
     停止后一条都不再写：任务已经不属于这次运行，用户按下停止之后账本还在变，
@@ -1814,7 +1821,8 @@ def _apply_finished_candidates(database, candidate_root, active, asset_ids=None,
     # 一份定义，这里传它而不是再拼一次：两处各拼一份，改 Peach 数据目录时会有一处留在原地。
     return auto_apply_metadata(database, Path(candidate_root), active=active,
                                snapshot_root=DEFAULT_METADATA_ROOT, asset_ids=asset_ids,
-                               candidate_rows=candidate_rows)
+                               candidate_rows=candidate_rows, **selection_options)
+
 
 
 def _enrich_finished_performers(database, groups, config, candidate_root, remote, active,
@@ -2190,14 +2198,14 @@ def _candidate_scope(groups, asset_ids):
 
 
 def _finish_collection(config, database, candidate_root, cover_root, groups, remote, *,
-                       asset_ids, active, update, issue, watermark, covered, people=True):
-    """结算本趟候选并补人物资料，全库任务同时推进存量后继。
-
-    `people` 为假（没有哪个媒体库的处理方式联网补人物图片）时不补人物资料，也不派实体后继。"""
-    auto_apply = _apply_finished_candidates(database, candidate_root, active, asset_ids)
+                       asset_ids, active, update, issue, watermark, covered, metadata_selection=None, people=True):
+    """结算本趟候选并补人物资料，全库任务同时推进存量后继。"""
+    selection = metadata_selection or MetadataSelection()
+    selected = selection.groups(_candidate_scope(groups, asset_ids))
+    auto_apply = _apply_finished_candidates(database, candidate_root, active, asset_ids,
+                                            **selection.finish_options(selected))
     profiles = (_enrich_finished_performers(
-        database, _candidate_scope(groups, asset_ids), config, candidate_root, remote, active, update, issue)
-        if people else dict(aliases=0, avatars=0, conflicts=0, failed=0))
+        database, selected, config, candidate_root, remote, active, update, issue) if people else dict(aliases=0, avatars=0, conflicts=0, failed=0))
     followups = [] if asset_ids is not None else sample_followup.plan(database, config, cover_root)
     if people:
         followups += _entity_followups(database, config, watermark, covered, include_stock=asset_ids is None)
@@ -2205,6 +2213,7 @@ def _finish_collection(config, database, candidate_root, cover_root, groups, rem
                 auto_rejected=auto_apply['auto_rejected'], performer_aliases=profiles['aliases'],
                 performer_avatars=profiles['avatars'], performer_profile_conflicts=profiles['conflicts'],
                 performer_profile_failed=profiles['failed'])
+
 
 
 def _asset_selection(db_path, asset_ids):
@@ -2679,7 +2688,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                     retry_ids=None, active=lambda: True, stage=ALL_STAGES,
                     database=None, route_overrides=None, state_file=None, asset_ids=None,
                     resume_state=None, speed_mode=None, protected_ids=(), recheck_existing=False,
-                    incremental=False):
+                    incremental=False, metadata_fields=None, fill_other_metadata=True):
     """登记文件与确定的番号，外部资料保留为可复核候选。
 
     `retry_ids` 为 `None` 时处理整个馆藏；给定时只处理这些项目（上一任务记录的
@@ -2700,6 +2709,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
     selected_ids = _validate_processing_request(config, db_path, stage, asset_ids, retry_ids, database)
     from .repository import LedgerDatabase
     judgement_database = database if database is not None else LedgerDatabase(db_path)
+    metadata_selection = MetadataSelection(metadata_fields, fill_other_metadata)
     routes = metadata_routes.parse_route_overrides(route_overrides)
     path = Path(state_file) if state_file is not None else state_path(config)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2739,6 +2749,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
         if incremental:
             state['incremental_ids'] = initial_ids
             traffic.unknown_files = True
+        state.update(metadata_selection.options)
         state['steps'] = _processing_steps(stage, scope_ids,
             metadata_only_enabled=metadata_only(config.directory('state')))
         _restore_processing_counts(state, resume_state)
@@ -2840,7 +2851,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                 return state
             output = candidate_root / 'library-metadata-field-candidates.csv'
             groups = {row['item_key']: row for row in read_rows(output, missing_ok=True)}
-            scoped_groups = lambda: _candidate_scope(groups, scope_ids)
+            scoped_groups = lambda: metadata_selection.groups(_candidate_scope(groups, metadata_selection.scope(scope_ids)))
             listing = _DirectoryIndex()
             local_evidence = _LocalEvidenceCache(config, db_path, cover_root, listing, state, path)
             csv_dirty = False
@@ -2862,11 +2873,12 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                 row = _candidate_baseline(database, row, code, verify_existing)
                 for source, document, evidence_path in entries:
                     _merge_candidates(groups, row, code, source, document, evidence_path, genre_decisions,
-                                      local_fields, verify_existing=verify_existing)
+                                      local_fields, verify_existing=verify_existing, only_fields=metadata_selection.allowed)
                 csv_dirty = True
                 selected = [groups[key] for field in LABELS
                             if (key := f"asset:{row['id']}:{field}") in groups]
-                landed = _apply_finished_candidates(database, candidate_root, active, [row['id']], selected)
+                landed = _apply_finished_candidates(database, candidate_root, active, [row['id']], selected,
+                                                    **metadata_selection.apply_options)
                 state['auto_applied'] += landed['applied']
                 state['auto_rejected'] += landed['auto_rejected']
                 flush_candidates()
@@ -2874,8 +2886,9 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
 
             prepared = []
             poster_jobs = []
-            local_rows = list(checkpoints.remaining_metadata(rows))
-            completed_count = len(rows) - len(local_rows)
+            metadata_rows = metadata_selection.rows(rows, state, pending)
+            local_rows = list(checkpoints.remaining_metadata(metadata_rows))
+            completed_count = len(metadata_rows) - len(local_rows)
             for index, (_, row) in enumerate(local_rows):
                 guard.check()
                 issues_before = state['issue_count']
@@ -2883,11 +2896,11 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                        current_asset_id=row['id'], current_asset_name=Path(str(row['name'] or '')).name,
                        current_action='reading_local', current_started_at=time.time(),
                        current_deadline_at=None)
-                local = local_evidence.read(row, update, issue, poster_jobs)
+                local = local_evidence.read(row, update, issue, poster_jobs if metadata_selection.fields is None else [])
                 if local is None:
                     continue
                 code, verify_existing, payload, entries = local
-                verify_existing = bool(verify_existing or recheck_existing)
+                verify_existing = metadata_selection.verify(bool(verify_existing or recheck_existing))
                 local_fields = _fields(payload, genre_decisions) if payload else {}
                 publish(row, code, local_fields, verify_existing, entries)
                 if code or payload:
@@ -2942,11 +2955,12 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                        total=completed_count + len(prepared), current_asset_id=row['id'],
                        current_asset_name=Path(str(row['name'] or '')).name)
                 target_key = f"asset:{row['id']}"
-                missing = list(COLLECTED_FIELDS) if verify_existing else _missing_fields(row, local_fields)
+                missing = metadata_selection.wanted(row, local_fields, verify_existing, database=database, code=code)
                 found, covers = _collect_allowed(
-                    remote, traffic, row, code, missing, stages_of(row['path']), cover_root, covered,
+                    remote, traffic, row, code, missing,
+                    stages_of(row['path']) - ({'cover'} if metadata_selection.fields is not None else set()), cover_root, covered,
                     update=update, issue=issue,
-                    answered=() if verify_existing else _answered_sources(groups, target_key, missing),
+                    answered=metadata_selection.answered(groups, target_key, missing, verify_existing),
                     received=lambda entries, row=row, code=code, fields=local_fields, verify=verify_existing:
                         publish(row, code, fields, verify, entries),
                     succeeded=lambda before=issues_before: state['issue_count'] == before)
@@ -2963,9 +2977,9 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             # 候选完整落盘后立即执行调用方注入的窄规则，不再等人打开复核页才触发。
             # 核心处理层不反向依赖 Web 复核层；CLI 与 Web 两个组装入口都传入同一实现。
             summary = _finish_collection(
-                config, database, candidate_root, cover_root, groups, remote, asset_ids=scope_ids,
+                config, database, candidate_root, cover_root, groups, remote, asset_ids=metadata_selection.scope(scope_ids),
                 active=active, update=update, issue=issue, watermark=entity_watermark, covered=covered,
-                people=_people_allowed(config))
+                metadata_selection=metadata_selection, people=_people_allowed(config))
             finish_step('collect')
             _settle_collection_state(state, summary, rows, update)
         except Exception:
@@ -2982,3 +2996,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
         unfinished = set(state['retryable_asset_ids'])
         remember(db_path, completed=[row['id'] for row in rows if row['id'] not in unfinished])
         return state
+
+
+def _selected_fields(document, genre_decisions, only_fields):
+    fields = _fields(document, genre_decisions)
+    return fields if only_fields is None else {key: value for key, value in fields.items() if key in only_fields}
