@@ -1,5 +1,11 @@
 # 复用清单
 
+## 完整文件重复与人工保留
+
+完整内容摘要复用 Python 3.14 标准库 [hashlib.sha256](https://docs.python.org/3.14/library/hashlib.html)，PSF 许可证，无新增依赖或安装体积。按字节数预筛，只对同大小候选串行完整读取；使用分块 `update`，便于取消和反馈已读字节。复用 `BackgroundJob`、任务恢复与检查点、`filelock`、`atomic_write_text`、媒体目录授权与路径翻译。Peach 保留资产身份、同番号版本视图、校验前读取量确认和人工保留决定；不根据容量、时长、番號或样本哈希宣称内容相同。
+
+外部候选 [Czkawka/Krokiet](https://github.com/qarmin/czkawka) 提供多平台完整重复查找、缓存和独立 CLI，但 Rust 核心及额外发行包不适合当前仅需标准 SHA256 的 Python 消费者，因此不引入其二进制，也不复制算法源码。标准库支持本项目 Windows/Python 版本；实际风险在完整远端读取的流量、阻塞 I/O 和校验期间文件变化。成功证据存入本机状态目录并核对路径、账本大小/时间与文件 stat 身份；失败和中途停止不保存部分摘要，完成结果可续用。隔离行为测试覆盖同大小不同时长内容、不同内容、分卷与字幕命名、文件变化、读取失败、取消、保留与撤销；无需 ledger 迁移。
+
 ## 跨平台任务资源计量
 
 继续使用 psutil 7.2.2 读取进程 CPU 时间和身份。该版本的 macOS 线程列表使用序号，不能与 Python 原生线程 ID 对应；因此使用系统 `libproc` 的 `PROC_PIDTHREADID64INFO` 取得指定线程的纳秒时间，接口与单位见 [XNU 实现](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/bsd_kern.c)。Linux 的可用 CPU 容量复用亲和性、控制组成员和挂载信息，按可见 cgroup v1/v2 配额归一化。

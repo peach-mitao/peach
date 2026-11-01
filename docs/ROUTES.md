@@ -108,7 +108,7 @@
 | `/data-cleanup/media-repair` | 媒体修复 |
 | `/data-cleanup/links` | 链接检查与失效地址复核 |
 | `/data-cleanup/batch-delete` | 按女优批量永久删除关联影片 |
-| `/duplicates` | 重复文件 |
+| `/duplicates` | 完整文件重复、同番号版本与人工保留清单 |
 | `/quality-goals` | 高清版目标 |
 | `/login` | 登录 |
 
@@ -123,6 +123,8 @@
 `POST /api/configuration/smb/test` 接受共享地址及连接字段，验证只读目录访问，返回 `readable` 和最多 500 个可进入子目录名。接口要求本机管理权限与同源请求；地址无效返回 400，无读取权限返回 403，共享不可达返回 502，不回显密码。配置读取只返回账号、加密要求与密码是否已保存。
 
 ## 兼容地址与服务接口
+
+`GET /api/duplicates` 默认返回完整 SHA256 与字节数一致的分组；`mode=versions` 返回人工比较用的同番号版本，`kept=true` 查看整组保留决定。结果包含校验待办文件数、预估读取字节数与后台校验状态。`POST /api/duplicates/hash` 需 `confirm_full_read=true` 才启动完整校验，`stop=true` 停止；状态由同一 GET 返回。`POST /api/duplicates/keep` 接受当前组的 `key`、`mode` 与布尔 `keep`，组成员变化时拒绝旧 key。保留决定与校验证据写本机状态，逐项回收仍走 `/api/batch` 并可还原。
 
 | 兼容地址 | 规范去处 |
 | --- | --- |

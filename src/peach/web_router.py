@@ -22,6 +22,7 @@ from .web_activity import (
     w_watch_later,
 )
 from .web_batch import q_ads, q_duplicates, w_batch, w_empty_trash
+from .duplicate_files import w_duplicate_hash, w_duplicate_keep
 from .web_performer_delete import q_performer_delete_candidates, q_performer_delete_plan, w_performer_delete
 from .web_tags import q_tag_management, w_tag_management, w_tag_preview
 from .taste_history import history_source_count
@@ -476,6 +477,8 @@ POST_HANDLERS = {
     "/api/resource-sync/scan": w_resource_sync_scan,
     "/api/resource-sync/apply": w_resource_sync_apply,
     "/api/media-repair": w_media_repair,
+    "/api/duplicates/hash": w_duplicate_hash,
+    "/api/duplicates/keep": w_duplicate_keep,
     "/api/review/decision": w_review_decision,
     "/api/review/genre": w_review_genre,
     "/api/settings": w_settings,
@@ -492,6 +495,7 @@ POST_HANDLERS = {
 #: 不该拦它们——「查找」只联网、「存凭据」只写本机 secrets 文件，都不碰账本。
 #: 追更的「查找」在只读端被拦成 409 是实测踩到的。
 READ_ONLY_POST_ROUTES = frozenset({
+    "/api/duplicates/hash", "/api/duplicates/keep",
     "/api/tag-management/preview",
     "/api/media-processing",
     "/api/folders/preview",

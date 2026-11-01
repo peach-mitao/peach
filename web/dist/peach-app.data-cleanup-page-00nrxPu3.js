@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "6b8d56f0-ee85-4f37-be73-02bf9038ae04", e._sentryDebugIdIdentifier = "sentry-dbid-6b8d56f0-ee85-4f37-be73-02bf9038ae04");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "c2aaf5de-33d9-49de-9c80-f56f9220cf40", e._sentryDebugIdIdentifier = "sentry-dbid-c2aaf5de-33d9-49de-9c80-f56f9220cf40");
 	} catch {}
 })();
 import { Button as e, CLEANUP_ENTRY as t, CLEANUP_ENTRY_GRID as n, CLEANUP_HASH_REDIRECTS as r, CLEANUP_TOOLS as i, Chip as a, DIRECTORY_TEMPLATE_ERROR as o, DUPLICATES_KEY as s, Fieldset as c, FieldsetTitle as l, IDLE_REPAIR as u, IconButton as d, IndexSearch as f, Input as p, JUNK_KEY as m, LINKS_KEY as h, LINK_CHECK_KEY as g, LINK_KINDS as _, LINK_PRUNE_KEY as ee, LOC as v, LibraryProcessingCard as y, MEDIA_REPAIR_KEY as b, MEDIA_REPAIR_URL as x, MEDIA_SOURCES_KEY as S, MEDIA_SOURCE_ICONS as C, Note as w, ORGANIZE_KEY as T, ORPHAN_RECORDS_KEY as E, PERFORMER_DELETE_KEY as D, PLAIN_STAT_STRIP as O, PlainStat as k, Progress as te, QUALITY_GOALS_KEY as A, REPAIR_CARD_TEXT as j, REPAIR_LIBRARIES_KEY as ne, RESOURCE_APPLY_KEY as M, RESOURCE_SCAN_KEY as re, RESULT_PANEL as ie, RESULT_SECTION as N, REVIEW_COUNTS_KEY as P, SOURCE_LABELS as F, SectionHeading as I, Select as ae, SelectItem as oe, SourceMark as se, StatusLabel as ce, TRASH_KEY as L, TaskProgress as R, Wt as le, __toESM as ue, apiSend as z, applyConfirmText as de, applyLeftovers as fe, applyPlanText as pe, applyText as me, attachOrphan as B, baseName as he, busyProps as V, candidateText as H, checkLine as ge, confirmModal as U, cx as _e, deletePerformerVideos as ve, entityDisplayName as ye, entityFaceImg as be, entityPath as xe, errorMessage as W, esc as Se, fetchDeletePerformers as Ce, fetchDeletePlan as we, fetchDuplicates as Te, fetchJunkSummary as Ee, fetchLinkCheck as De, fetchLinkPrune as Oe, fetchLinkStats as ke, fetchMediaRepair as Ae, fetchMediaSources as je, fetchOrganize as Me, fetchOrganizeExample as Ne, fetchOrphanRecords as Pe, fetchQualityGoals as Fe, fetchRepairLibraries as Ie, fetchResourceApply as Le, fetchResourceScan as Re, fetchReviewCounts as ze, fetchTrashSummary as Be, firstGrapheme as Ve, fmtSize as G, hasChanges as He, hasResourceRoots as Ue, junkBreakdown as We, missingToolText as Ge, nameFallback as Ke, organizeOutcome as qe, pickOrganizeFolder as Je, plainStatClass as K, planSummary as Ye, previewOrganize as Xe, pruneText as Ze, purgeCount as Qe, purgeOrphan as $e, queryClient as q, recordsText as et, rememberTemplates as tt, require_jsx_runtime as nt, require_react as rt, reviewSummary as it, scanLine as at, shellNavigate as ot, sourceMeta as st, spriteGlyph as J, startLinkCheck as ct, startLinkPrune as lt, startOrganize as ut, startResourceApply as dt, startResourceScan as ft, statusLine as pt, useAction as mt, useBackgroundJob as Y, useEntityNames as ht, useMutation as gt, useQuery as X, withOrganizeJob as _t } from "./peach-app.js";
@@ -1650,7 +1650,10 @@ function vn({ toast: e, open: t, navigate: a }) {
 						value: ln(l, (e) => Number(e.total || 0) ? {
 							figure: `${Number(e.total).toLocaleString()} 组 · ${Number(e.files || 0).toLocaleString()} 个文件`,
 							meta: `可回收 ${G(e.reclaimable || 0)}`
-						} : { figure: "没有重复内容" })
+						} : {
+							figure: "尚未确认重复",
+							meta: `${e.pending_files || 0} 个同大小文件待校验`
+						})
 					}),
 					/* @__PURE__ */ (0, Q.jsx)(un, {
 						section: "ads",
@@ -1723,4 +1726,4 @@ function vn({ toast: e, open: t, navigate: a }) {
 }
 export { vn as DataCleanupPage, cn as DataCleanupToolPage };
 
-//# debugId=6b8d56f0-ee85-4f37-be73-02bf9038ae04
+//# debugId=c2aaf5de-33d9-49de-9c80-f56f9220cf40

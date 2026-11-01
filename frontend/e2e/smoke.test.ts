@@ -129,9 +129,9 @@ const ROUTES: readonly Route[] = [
     body: (page) => [heading(page, '#main', '垃圾文件'), heading(page, '#grid', '没有待判断的垃圾文件')],
   },
   {
-    // 骨架只写「正在比对重复内容」；汇总块上那一格「重复内容」有没有重复组都会画，只有真页面有。
+    // 已确认重复的汇总由真实页面提供。
     path: '/duplicates',
-    body: (page) => [heading(page, '#main', '重复文件'), page.locator('#stats').getByText('重复内容', { exact: true })],
+    body: (page) => [heading(page, '#main', '重复文件'), page.locator('#stats').getByText('已确认重复', { exact: true })],
   },
   {
     // 旧直达地址进入资源同步二级页。
