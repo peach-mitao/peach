@@ -13,6 +13,8 @@
 [![macOS DMG](https://img.shields.io/badge/macOS-DMG-555555?logo=apple&logoColor=white)](docs/OPERATIONS.md#macos-独立测试包)
 [![年龄限制](https://img.shields.io/badge/age-18%2B-555555)](#许可证)
 
+馆藏新任务可分别选择扫描、媒体属性、资料、封面和预览，支持依序或双通道并行；沿用官方暂停、取消与跳过单片操作。
+
 ## 截图
 
 [![影片馆藏：搜索、筛选与海报墙](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)

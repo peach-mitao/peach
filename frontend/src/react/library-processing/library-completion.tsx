@@ -66,10 +66,10 @@ function Completion({ assetIds, onComplete, className }: { assetIds: number[]; o
   const message = problem || (start.isPending ? '正在启动补全…'
     : outcome || `这批影片中有 ${assetIds.length.toLocaleString()} 部暂无预览，${processingActive(state) ? '当前任务结束后可单独补全。' : '可补全资料与图片。'}`);
   return <section aria-label="补全预览" aria-live="polite" data-library-completion="" className={cx('@container', className)}>
-    <Note tone={problem ? 'warning' : 'neutral'} action={<div className="flex flex-wrap items-center gap-2"><ProcessingActions busy={busy} metadataOnly={state?.metadata_only} onRun={command => {
+    <Note tone={problem ? 'warning' : 'neutral'} action={<div className="flex flex-wrap items-center gap-2"><ProcessingActions busy={busy} metadataOnly={state?.metadata_only} onRun={async command => {
       if (busy) return;
       setOutcome('');
-      start.mutate(command);
+      await start.mutateAsync(command);
     }} /></div>}>
       {message}{' '}<LinkButton href="/data-cleanup#libraryProcessing" size="small" trailingIcon={RiArrowRightLine}>
       {problem ? '打开扫描与采集' : '查看处理详情'}

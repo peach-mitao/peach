@@ -75,7 +75,8 @@ ISSUE_PREVIEW_LIMIT = 20
 #: 扫描、资料与预览共用的阶段名，同时用于接口和页面。
 SCAN_STAGE, COLLECT_STAGE, ALL_STAGES = 'scan', 'collect', 'all'
 METADATA_STAGE, PREVIEWS_STAGE = 'metadata', 'previews'
-STAGES = (ALL_STAGES, SCAN_STAGE, COLLECT_STAGE, METADATA_STAGE, PREVIEWS_STAGE)
+PROBE_STAGE, COVERS_STAGE = 'probe', 'covers'
+STAGES = (ALL_STAGES, SCAN_STAGE, COLLECT_STAGE, METADATA_STAGE, PREVIEWS_STAGE, PROBE_STAGE, COVERS_STAGE)
 
 #: 没有动作截止时间的阶段（本地读取）超过这么久没有心跳就在页面上预警。
 STALL_AFTER_SECONDS = 120.0
@@ -1302,7 +1303,9 @@ def _answered_sources(groups, target_key, fields):
 class _DirectoryIndex:
     """本趟任务内每个文件夹只列一次，交错处理的目录共享同一份索引。"""
 
-    def __init__(self):
+    def __init__(self, code_from_filename=release_code_from_filename, rule_key=''):
+        self.code_from_filename = code_from_filename
+        self.rule_key = rule_key
         self._cache: dict[str, dict[str, Path]] = {}
         self._errors: dict[str, OSError] = {}
         self._sidecars: dict[str, SidecarIndex] = {}
@@ -2414,8 +2417,9 @@ class _LibraryCheckpoints:
         self.state[phase] = sorted(self.completed[phase])
         flush(force=True)
 
-    def queue_metadata(self, row, entries, issues_before):
-        if entries and self.state['issue_count'] == issues_before:
+    def queue_metadata(self, row, entries, issues_before, *, issue_count=None):
+        observed = self.state['issue_count'] if issue_count is None else issue_count
+        if entries and observed == issues_before:
             self.pending_metadata.add(_checkpoint_key(row))
 
     def commit_metadata(self, flush):
@@ -2462,7 +2466,7 @@ def _candidate_baseline(database, row, code, verify_existing):
 
 
 def _read_local_metadata(config, db_path, row, cover_root, listing, state, update, issue, poster_jobs,
-                         code_patterns=()):
+                         code_patterns=(), *, include_covers=True):
     """读取一部影片的本地证据，返回可独立发布的资料与在线核查范围。
 
     `code_patterns` 是用户在设置里写的番号识别规则，已编译，先于内置规则试。"""
@@ -2477,7 +2481,8 @@ def _read_local_metadata(config, db_path, row, cover_root, listing, state, updat
     if video.name.casefold() not in files:
         issue(row, '媒体文件不可访问', action='reading_local', retryable=True)
         return None
-    code = _provider_code(row['code']) or release_code_from_filename(row['name'], patterns=code_patterns)
+    code = (_provider_code(row['code']) or
+            release_code_from_filename(row['name'], patterns=code_patterns) or listing.code_from_filename(row['name']))
     payload = None
     entries = []
     nfo, posters = listing.sidecars(video)
@@ -2498,9 +2503,10 @@ def _read_local_metadata(config, db_path, row, cover_root, listing, state, updat
         state['identified'] += 1
     try:
         poster_root = cover_root if code else config.directory('generated') / 'posters'
-        _queue_local_poster(video, code or f"{row['id']}_4", poster_root, payload, posters=posters,
-                            enqueue=lambda source, key, target: poster_jobs.append((row, source, key, target)),
-                            generated=not code)
+        if include_covers:
+            _queue_local_poster(video, code or f"{row['id']}_4", poster_root, payload, posters=posters,
+                                enqueue=lambda source, key, target: poster_jobs.append((row, source, key, target)),
+                                generated=not code)
     except InterruptedError:
         raise
     except (OSError, ValueError):
@@ -2526,8 +2532,11 @@ def _settle_collection_state(state, summary, rows, update):
            current_action='', current_started_at=None, current_deadline_at=None)
 
 
-def _processing_steps(stage, asset_ids, *, metadata_only_enabled):
+def _processing_steps(stage, asset_ids, *, metadata_only_enabled, tasks=None):
     """按本趟真实处理范围构造有序阶段清单。"""
+    if tasks is not None:
+        from .library_processing_tasks import LABELS
+        return [dict(id=task, label=LABELS[task], status='pending') for task in tasks]
     scanning = asset_ids is None and stage in (ALL_STAGES, SCAN_STAGE)
     steps = [('sources', '扫描文件' if scanning else '检查媒体目录')]
     steps.append(('inspect', '检查垃圾文件' if stage in (SCAN_STAGE, PREVIEWS_STAGE, METADATA_STAGE)
@@ -2556,8 +2565,10 @@ def _complete_processing_step(steps, key):
     return progress
 
 
-def _processing_workload(config, rows, stage, database, completed_previews):
+def _processing_workload(config, rows, stage, database, completed_previews, *, tasks=None):
     """按处理范围和已完成检查点建立各阶段的待处理数量。"""
+    if tasks is not None:
+        return _selected_workload(config, rows, tasks, completed_previews)
     pending = {}
     if stage not in (SCAN_STAGE, PREVIEWS_STAGE):
         pending.update(local=len(rows), metadata=len(rows))
@@ -2588,9 +2599,11 @@ def _restore_processing_counts(state, previous):
 class _LocalEvidenceCache:
     """保存已经读出的本地证据与待处理图片，供同一影片的后续阶段复用。"""
 
-    def __init__(self, config, db_path, cover_root, listing, state, path):
+    def __init__(self, config, db_path, cover_root, listing, state, path, *, include_covers=True, issue_count=None):
         self.config, self.db_path, self.cover_root = config, db_path, cover_root
         self.listing, self.state, self.path = listing, state, path
+        self.include_covers = include_covers
+        self.issue_count = issue_count or (lambda: self.state['issue_count'])
         with closing(sqlite3.connect(db_path, timeout=30)) as connection:
             stored = read_settings(connection).get('codePatterns')
         try:
@@ -2598,6 +2611,8 @@ class _LocalEvidenceCache:
         except ValueError:
             # 保存时已经校验过；被手改坏的规则当没设置过，不让整轮处理失败。
             self.code_patterns = ()
+        self.listing.code_from_filename = partial(release_code_from_filename, patterns=self.code_patterns)
+        self.listing.rule_key = hashlib.sha256(json.dumps(stored or []).encode()).hexdigest()
 
     def read(self, row, update, issue, poster_jobs):
         key = _checkpoint_key(row)
@@ -2606,17 +2621,20 @@ class _LocalEvidenceCache:
             cached = json.loads(Path(cached_path).read_text(encoding='utf-8')) if cached_path else None
         except (OSError, ValueError):
             cached = None
-        if cached is not None:
+        if cached is not None and cached.get('filename_rules', '') == self.listing.rule_key:
             code, verify, payload, entries = cached['local']
-            poster_jobs.extend((row, translate_ledger_path(source), name, Path(target))
-                               for source, name, target in cached['posters'])
+            if self.include_covers:
+                poster_jobs.extend((row, translate_ledger_path(source), name, Path(target))
+                                   for source, name, target in cached['posters'])
             return code, verify, payload, [(source, document, translate_ledger_path(path)) for source, document, path in entries]
-        offset, issues_before = len(poster_jobs), self.state['issue_count']
+        offset, issues_before = len(poster_jobs), self.issue_count()
         local = _read_local_metadata(self.config, self.db_path, row, self.cover_root, self.listing,
-                                     self.state, update, issue, poster_jobs, self.code_patterns)
-        if local is not None and self.state['issue_count'] == issues_before:
+                                     self.state, update, issue, poster_jobs, self.code_patterns,
+                                     include_covers=self.include_covers)
+        if local is not None and self.issue_count() == issues_before:
             code, verify, payload, entries = local
-            record = dict(local=[code, verify, payload, [(source, document, str(path)) for source, document, path in entries]],
+            record = dict(filename_rules=self.listing.rule_key,
+                          local=[code, verify, payload, [(source, document, str(path)) for source, document, path in entries]],
                           posters=[(str(source), name, str(target)) for _, source, name, target in poster_jobs[offset:]])
             encoded = json.dumps(record, ensure_ascii=False)
             digest = hashlib.sha256(encoded.encode()).hexdigest()
@@ -2679,7 +2697,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                     retry_ids=None, active=lambda: True, stage=ALL_STAGES,
                     database=None, route_overrides=None, state_file=None, asset_ids=None,
                     resume_state=None, speed_mode=None, protected_ids=(), recheck_existing=False,
-                    incremental=False):
+                    incremental=False, tasks=None, execution_mode='sequential',
+                    defer_suspected_duplicates=False):
     """登记文件与确定的番号，外部资料保留为可复核候选。
 
     `retry_ids` 为 `None` 时处理整个馆藏；给定时只处理这些项目（上一任务记录的
@@ -2697,6 +2716,15 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
     `metadata_routes.parse_route_overrides`；不给就用内建那张表。
     `state_file` 给后台定向任务保存独立进度，共享候选写入仍使用全库处理锁。
     """
+    from .library_processing_tasks import requested_selection, process_selected
+    selection = requested_selection(config, stage, tasks, asset_ids, execution_mode,
+                                    defer_suspected_duplicates, incremental)
+    if selection is not None:
+        return process_selected(config, db_path, candidate_root, cover_root, selection=selection,
+            location=location, report=report, provider_factory=provider_factory, job_id=job_id,
+            retry_ids=retry_ids, active=active, stage=stage, database=database, route_overrides=route_overrides,
+            state_file=state_file, asset_ids=asset_ids, resume_state=resume_state, speed_mode=speed_mode,
+            protected_ids=protected_ids, recheck_existing=recheck_existing)
     selected_ids = _validate_processing_request(config, db_path, stage, asset_ids, retry_ids, database)
     from .repository import LedgerDatabase
     judgement_database = database if database is not None else LedgerDatabase(db_path)
@@ -2798,11 +2826,7 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                                     scan_checkpoints=state['scan_checkpoints'],
                                     save_checkpoint=lambda: flush_state(force=True), initial_probed=state['probed'],
                                     incremental=incremental)
-            if incremental:
-                from .library_new_assets import _active_videos
-                scope_ids = _active_videos(db_path, sorted(set(initial_ids) | set(sources.new_ids)))
-                state['asset_ids'] = state['incremental_ids'] = scope_ids
-                traffic.asset_ids = scope_ids
+            scope_ids = _freeze_discovered_scope(db_path, initial_ids, sources, state, traffic)
             state.update(scanned=sources.scanned, scanned_bytes=sources.scanned_bytes, probed=sources.probed)
             state['junk_isolated'] = max(state['junk_isolated'], sources.junk_isolated)
             traffic.unknown_files = False
@@ -2982,3 +3006,37 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
         unfinished = set(state['retryable_asset_ids'])
         remember(db_path, completed=[row['id'] for row in rows if row['id'] not in unfinished])
         return state
+
+
+def _selected_workload(config, rows, tasks, completed_previews):
+    pending = dict.fromkeys(tasks, len(rows))
+    if 'probe' in pending:
+        pending['probe'] = sum(row['duration'] is None for row in rows
+            if not skip_background_read(row['path']) and cost_for(row['location'], row['path'], config) == 'free')
+    if 'previews' in pending:
+        pending['previews'] = sum(row['location'] == 'local' and not skip_background_read(row['path'])
+            and _checkpoint_key(row) not in completed_previews for row in rows)
+    return pending
+
+
+
+def _processing_issue_record(asset, message, action, retryable, paused):
+    asset = asset or {}
+    severity, retryable = _issue_classification(message, retryable, paused)
+    return dict(asset_id=asset.get('id'),
+                code=str(asset.get('code') or ''),
+                title=str(asset.get('catalog_title') or '') or Path(str(asset.get('name') or '')).name,
+                path=str(asset.get('path') or ''), message=message, severity=severity,
+                failed_action=action, retryable=retryable, last_failed_at=time.time())
+
+
+
+def _freeze_discovered_scope(db_path, initial_ids, sources, state, traffic):
+    """把增量发现结果冻结到断点和流量统计的同一资产范围。"""
+    if not state.get('incremental'):
+        return state['asset_ids']
+    from .library_new_assets import _active_videos
+    scope = _active_videos(db_path, sorted(set(initial_ids) | set(sources.new_ids)))
+    state['asset_ids'] = state['incremental_ids'] = scope
+    traffic.asset_ids = scope
+    return scope

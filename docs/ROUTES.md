@@ -1,5 +1,7 @@
 # 页面路由
 
+新任务可提交非空 `tasks` 数组（`scan`、`probe`、`metadata`、`covers`、`previews`），所选影片范围不能扫描。`execution_mode` 支持 `sequential` 或 `parallel`，`defer_suspected_duplicates` 控制暂缓疑似重复预览。`work_progress` 返回各工作完成、失败及暂缓数；恢复保留原工作表。显式工作表与 `incremental` 互斥，缺省阶段继续使用官方同步契约。取消及跳过单片使用现有动作。
+
 馆藏处理的 `POST /api/library-processing` 支持按 `job_id` 暂停、继续、取消及归档结束提示；`stopping` 仍占用当前范围，`cancelled` 不自动恢复。`scope=new` 在启动时解析成固定资产集合，不与 `asset_ids` 或失败重试混用。状态只返回新入库数量，不下发内部处理路径。
 
 `GET /api/library-processing/issues` 返回任务号、内容摘要 `revision`、总数、偏移和记录。导出后续页传入首份摘要；同任务追加、恢复或记录替换时拒绝混合读取。旧完整问题数组可分页读取，原始记录缺失或损坏作为失败返回。

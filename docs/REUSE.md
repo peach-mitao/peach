@@ -1,5 +1,9 @@
 # 复用清单
 
+## 自选馆藏工作与双通道
+
+自选工作复用官方取消、跳过单片、恢复记录、媒体库联网策略和安全停点。用户可独立选择扫描、媒体属性、资料、封面及预览；阶段入口沿用官方行为。显式工作表只补缺失项目，结果与人工资料保留。网络与媒体各使用一条 `ThreadPoolExecutor` 通道，逐项领取工作；共享停止上下文与持久快照锁，无新增依赖。疑似重复暂缓只跳过预览，不共享产物或删除文件；新任务可关闭暂缓以继续补齐。
+
 ## 跨平台任务资源计量
 
 继续使用 psutil 7.2.2 读取进程 CPU 时间和身份。该版本的 macOS 线程列表使用序号，不能与 Python 原生线程 ID 对应；因此使用系统 `libproc` 的 `PROC_PIDTHREADID64INFO` 取得指定线程的纳秒时间，接口与单位见 [XNU 实现](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/bsd_kern.c)。Linux 的可用 CPU 容量复用亲和性、控制组成员和挂载信息，按可见 cgroup v1/v2 配额归一化。

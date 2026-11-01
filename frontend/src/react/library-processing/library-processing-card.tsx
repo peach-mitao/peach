@@ -26,13 +26,13 @@ import { Disclosure } from '../settings/section';
 import { queryClient } from '../query';
 import {
   ALL_CONTENT_URL, DISCONNECTED_TEXT, issueDetails, LIBRARY_PROCESSING_KEY, LIBRARY_PROCESSING_URL, PARTIAL_RESULT_TEXT,
-  notesLine, processingActive, processingHasPartialResult, remainingTime, slowItem, type LibraryProcessingCommand, type LibraryProcessingData,
+  notesLine, processingActive, processingHasPartialResult, processingResultText, remainingTime, slowItem, type LibraryProcessingCommand, type LibraryProcessingData,
 } from './library-processing';
 import { SlowItemNote } from './slow-item';
 import { useLibraryProcessingJob } from './use-library-processing';
 import { setProcessingNoticeVisible, useProcessingNoticeVisibility } from './processing-notice-visibility';
 import { ProcessingActions } from './processing-actions';
-import { ProcessingProgress } from './processing-line';
+import { ProcessingProgress, WorkProgress } from './processing-line';
 import { TrafficProgress } from './processing-traffic';
 import { ProcessingControls } from './processing-controls';
 import { downloadIssueList, exportProcessingIssues } from './issue-export';
@@ -56,7 +56,8 @@ const profileText = (state: LibraryProcessingData) => {
 };
 
 const receiptText = (state: LibraryProcessingData) =>
-  state.requested_stage === 'previews' ? `已生成 ${state.previews || 0} 部视频预览。`
+  state.requested_tasks?.length ? processingResultText(state)
+  : state.requested_stage === 'previews' ? `已生成 ${state.previews || 0} 部视频预览。`
   : `已扫描 ${state.scanned || 0} 个文件，识别 ${state.identified || 0} 个番号，`
   + `取得 ${state.candidates || 0} 组作品资料，自动保存 ${state.auto_applied || 0} 条。`
   + (state.previews ? `已生成 ${state.previews} 部视频预览。` : '')
@@ -241,7 +242,7 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
           {processingActive(state) ? <p className="text-body-2-regular text-text-secondary tabular-nums" data-processing-eta="">
             {remainingTime(state)}
           </p> : null}
-          {processingActive(state) ? <TrafficProgress traffic={state.traffic} /> : null}
+          {processingActive(state) ? <><WorkProgress state={state} /><TrafficProgress traffic={state.traffic} /></> : null}
           {processingActive(state) ? <ProcessingControls state={state} /> : null}
         </div>
       </Fieldset>
