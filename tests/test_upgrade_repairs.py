@@ -494,6 +494,16 @@ class UpgradeRepairTests(unittest.TestCase):
             receipt['queued'] = {row.key: index for index, row in enumerate(batch)}
             self.assertEqual(len(self.service._plan(receipt)), 6)
 
+    def test_media_handler_finishes_when_only_media_issues_remain(self):
+        from peach.settings_file import load_config
+        self.contract.upgrade_config = load_config(environ={'PEACH_DATA_ROOT': str(self.root)})
+        with patch('peach.library_processing.process_library', return_value={
+                'status': 'failed', 'outcome': 'partial', 'issue_count': 2,
+                'retryable_asset_ids': [1]}):
+            result = upgrade_repairs._media_run(
+                self.contract, 'upgrade-library:processing-v2:1', Mock())
+        self.assertEqual(result['outcome'], '影片升级补全完成')
+
     def test_media_handler_resumes_its_own_checkpoint(self):
         from peach.settings_file import load_config
         self.contract.upgrade_config = load_config(environ={'PEACH_DATA_ROOT': str(self.root)})
