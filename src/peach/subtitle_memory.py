@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -21,7 +22,7 @@ CAPTION_VALUES = {
     "window": COLORS, "windowOpacity": {"0", "25", "50", "75", "100"},
     "edge": {"none", "raised", "depressed", "outline", "shadow"},
 }
-PREFERENCES = {"rotation", "rate", "caption_style"}
+PREFERENCES = {"rotation", "rate", "volume", "caption_style"}
 
 
 def _validate_patch(patch: dict) -> None:
@@ -34,6 +35,9 @@ def _validate_patch(patch: dict) -> None:
         raise ValueError("旋转角度无效")
     if "rate" in patch and (type(patch["rate"]) not in (int, float) or not .25 <= patch["rate"] <= 3):
         raise ValueError("播放速度无效")
+    if "volume" in patch and (type(patch["volume"]) not in (int, float)
+                              or not math.isfinite(patch["volume"]) or not 0 <= patch["volume"] <= 1):
+        raise ValueError("音量无效")
     if "caption_style" in patch:
         style = patch["caption_style"]
         if not isinstance(style, dict) or any(

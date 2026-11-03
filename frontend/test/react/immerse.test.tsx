@@ -29,7 +29,13 @@ type ActFlag = { IS_REACT_ACT_ENVIRONMENT?: boolean };
 
 beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
-interface Mounted { video: HTMLVideoElement; item: ImmerseItem; session: string; dispose: ReturnType<typeof vi.fn> }
+interface Mounted {
+  video: HTMLVideoElement;
+  item: ImmerseItem;
+  session: string;
+  defaultVolume?: number;
+  dispose: ReturnType<typeof vi.fn>;
+}
 
 const player = vi.hoisted(() => ({
   mounted: [] as Mounted[],
@@ -61,10 +67,14 @@ vi.mock('../../src/player', async (importOriginal) => {
     newStreamSession: () => `s${++player.sessions}`,
     cancelStreamSession: (session: string) => { player.cancelled.push(session) },
     streamSpeedBits: () => 0,
-    mountPlayer: (video: HTMLVideoElement, options: { item: ImmerseItem; session: string; onLoaded?: () => void }) => {
+    mountPlayer: (video: HTMLVideoElement, options: {
+      item: ImmerseItem; session: string; defaultVolume?: number; onLoaded?: () => void;
+    }) => {
       fakeMedia(video, player.dims.get(options.item.id) ?? [1080, 1920]);
       const dispose = vi.fn();
-      player.mounted.push({ video, item: options.item, session: options.session, dispose });
+      player.mounted.push({
+        video, item: options.item, session: options.session, defaultVolume: options.defaultVolume, dispose,
+      });
       queueMicrotask(() => options.onLoaded?.());
       return dispose;
     },
@@ -131,6 +141,7 @@ function makeHost(): HostMock {
   return {
     filters: vi.fn<ImmerseHost['filters']>(() => ({ q: '', orient: 'portrait', thumb: '0' })),
     seekSeconds: vi.fn<ImmerseHost['seekSeconds']>(() => 10),
+    defaultVolume: vi.fn<ImmerseHost['defaultVolume']>(() => 100),
     sourceOffline: vi.fn<ImmerseHost['sourceOffline']>((location) => location === 'gone'),
     displayName: vi.fn<ImmerseHost['displayName']>((item) => `片名 ${String(item.name)}`),
     route: vi.fn<ImmerseHost['route']>(),
@@ -297,6 +308,13 @@ describe('片单与起播', () => {
     expect(routed()).toEqual([3]);
     expect(meta()).toBe('· 1:00 · 竖屏 · 3/6');
     expect(gets(fetcher, '/api/item?id=')).toBe(1);
+  });
+
+  it('每一格拿到宿主设置里的默认音量百分比', async () => {
+    serve({ draws: [[row(1)]] });
+    host.defaultVolume.mockReturnValue(42);
+    await open();
+    expect(current().defaultVolume).toBe(.42);
   });
 
   it('片名空着时标题写「未命名视频」', async () => {

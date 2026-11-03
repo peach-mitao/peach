@@ -98,7 +98,7 @@ class LedgerFixture(unittest.TestCase):
             [(11, 18, STAMP), (12, 18, STAMP), (19, 20, STAMP), (29, 30, STAMP)],
         )
         self.con.commit()
-        self.contract = rm_web.WebContract(self.db)
+        self.contract = rm_web.WebContract(self.db, avatar_root=root / "avatars")
 
     def suggest(self, query, limit=5):
         return rm_web.q_suggest(self.contract, query, limit)
@@ -259,7 +259,7 @@ class SuggestCardTests(LedgerFixture):
                          " VALUES(4,11,'performer','test',1.0)")
         self.con.execute("UPDATE asset SET snapshot_path=? WHERE id=2", (str(snapshot),))
         self.con.commit()
-        self.contract = rm_web.WebContract(self.db, cover_root=covers)
+        self.contract = rm_web.WebContract(self.db, cover_root=covers, avatar_root=root / "avatars")
 
     def test_a_person_row_names_her_agency(self):
         self.assertEqual(self.group("涼森", "performer")[0]["agency"], "Capsule Agency")

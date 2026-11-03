@@ -108,7 +108,7 @@ async function connect(r: Loaded) {
 
 const settings = (): PanelSettings => ({
   theme: 'system', uiSounds: true, homeGlow: { ...normalizeHomeGlow(null), on: true, preset: 'ash' }, accent: 'blue',
-  sidebarOrder: [''], batchSize: 60, defaultSort: 'seed', defaultSortDirection: '', groupCollapse: true,
+  sidebarOrder: [''], batchSize: 60, defaultSort: 'seed', defaultSortDirection: '', defaultVolume: 100, groupCollapse: true,
   javImage: 'cover', performerNameLanguage: 'zh-CN', feedAutoScroll: true, feedLimit: 12, feedHideGroupCompilations: true, feedHideSoloCompilations: false,
   feedHideExcerpts: true, hoverDelaySeconds: 5, detailAutoplay: false, miniplayer: true, seekSeconds: 10,
   relatedLimit: 24, searchHistoryLimit: 10, followInitialDays: 30, avatarRefreshDays: 90, faviconRefreshDays: 365,
@@ -280,6 +280,24 @@ describe('设置面板与壳的接缝', () => {
     expect([current.value.feedLimit, current.save.mock.calls.length, effects(current.changed)]).toEqual([12, 0, []]);
     await commit('30');
     expect([current.value.feedLimit, current.save.mock.calls.length, effects(current.changed)]).toEqual([30, 1, ['feedLimit']]);
+    await close(current);
+  });
+
+  it('默认音量：失焦提交后只落盘，不改正在播放的实例', async () => {
+    const current = await setup();
+    const panel = await open(current, '浏览与播放');
+    const input = panel.querySelector<HTMLInputElement>('#defaultVolumeSetting input[type=number]')!;
+    const commit = (value: string) => act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    current.changed.mockClear();
+    current.save.mockClear();
+    await commit('101');
+    expect([current.value.defaultVolume, current.save.mock.calls.length, effects(current.changed)]).toEqual([100, 0, []]);
+    await commit('35');
+    expect([current.value.defaultVolume, current.save.mock.calls.length, effects(current.changed)]).toEqual([35, 1, []]);
     await close(current);
   });
 

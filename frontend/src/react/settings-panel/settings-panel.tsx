@@ -553,6 +553,12 @@ function PlaybackRows({ host: current, epoch }: Omit<GroupProps, 'tab'>) {
             onApply={(value) => { settings.seekSeconds = value || 10; save(); current.changed('seekSeconds') }} />
         </div>
       </Row>
+      <Row title="默认音量">
+        <div id="defaultVolumeSetting">
+          <NumberSetting key={epoch} id="defaultVolumeSetting" label="默认音量" value={settings.defaultVolume}
+            onApply={(value) => { settings.defaultVolume = boundedPreference(value, 1, 100, 100); save() }} />
+        </div>
+      </Row>
     </>
   );
 }

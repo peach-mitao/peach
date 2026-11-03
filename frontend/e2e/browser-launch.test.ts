@@ -25,3 +25,18 @@ it('回环网络规避只用于 Windows，且保留当前 Playwright 的全部�
   try { assert.deepEqual(await disabledFeatures(browser), expected); }
   finally { await browser.close(); }
 });
+
+it('测试页关闭系统继承的减少透明度，同时保留用例要求的减少动效', async () => {
+  const browser = await launch();
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  try {
+    const page = await context.newPage();
+    assert.deepEqual(await page.evaluate(() => ({
+      transparency: matchMedia('(prefers-reduced-transparency: no-preference)').matches,
+      motion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    })), { transparency: true, motion: true });
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});

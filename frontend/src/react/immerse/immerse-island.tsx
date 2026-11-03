@@ -164,7 +164,8 @@ function createSlide(offset: number): Slide {
 function loadSlide(slide: Slide, item: ImmerseItem): Promise<void> {
   return new Promise((resolve) => {
     slide.release = mountPlayer(slide.video, {
-      kind: 'immerse', item, session: slide.session, onLoaded: resolve,
+      kind: 'immerse', item, session: slide.session, defaultVolume: immerseHost().defaultVolume() / 100,
+      onLoaded: resolve,
       onEnded: () => { if (view.open) void step(1) },
     });
     void slide.gone.then(resolve);

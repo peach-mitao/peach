@@ -16,6 +16,9 @@ import {
 import { disposePlayer } from './dispose';
 import { playerHost } from './host';
 import { mountImmersePlayer, type ImmersePlayerOptions } from './immerse-player';
+import {
+  createPlaybackIntent, mountDetachedVolumeMemory, mountPreviewVolume, mountVolumeMemory, playWhenVolumeReady,
+} from './memory';
 import { wirePlayerContextMenu } from './menu';
 import { detailPlayer, setDetailPlayer } from './registry';
 import { playbackKey, playbackPosition, stopPlaybackPosition, trackPlaybackPosition } from './progress';
@@ -85,18 +88,27 @@ export async function mountDetailPlayer(
   const resume = options.resume ?? null;
   if (resume?.autoplay) autoplay = true;
   if (options.guidePreview) autoplay = false;
+  const autoplayIntent = createPlaybackIntent();
   const source = () => (options.source ? Promise.resolve(options.source) : detailStreamSource(item));
   /* 拉不到就退回原生 video，和「页面里没有 videojs」是同一个兜底出口。 */
   let videojs;
   try { videojs = await ensureVideojs() } catch {
     video.controls = true;
     if (options.guidePreview) return null;
+    let released = false;
+    const volume = mountDetachedVolumeMemory(video, options.playbackKey || playbackKey('item', item),
+      host.settings().defaultVolume / 100);
     source().then((next) => {
+      if (released || !video.isConnected) { volume.dispose(); return }
       video.addEventListener('loadedmetadata', () => {
         if (resume && resume.time > 0) video.currentTime = Math.min(resume.time, realDuration(video.duration) || resume.time);
       }, { once: true });
-      video.src = next.src; if (autoplay) video.play().catch(() => {});
+      video.src = next.src;
+      if (autoplay) void playWhenVolumeReady(video, volume.ready.then(() => mediaReady(video)),
+        () => video.play(), () => !released && video.isConnected, autoplayIntent).catch(() => {});
     }).catch(() => {});
+    video.addEventListener('emptied', () => { released = true }, { once: true });
+    video.addEventListener('emptied', volume.dispose, { once: true });
     return null;
   }
   const player = videojs(video, {
@@ -113,6 +125,11 @@ export async function mountDetailPlayer(
   setDetailPlayer(player);
   player.peachItem = item;
   player.peachPlaybackKey = options.playbackKey || playbackKey('item', item);
+  const defaultVolume = host.settings().defaultVolume / 100;
+  const volume = options.guidePreview
+    ? mountPreviewVolume(video, defaultVolume)
+    : mountVolumeMemory(player, video, defaultVolume);
+  if (options.guidePreview) player.on('dispose', volume.dispose);
   wirePlayerContextMenu(player);
   /* 手机上的画面格按视频自己的比例排（`--peach-video-ratio`）。 */
   player.on('loadedmetadata', () => {
@@ -216,7 +233,9 @@ export async function mountDetailPlayer(
     if (segmentedSource && !fallbackUsed && !player.isDisposed()) {
       fallbackUsed = true; segmentedSource = false;
       player.src(directDetailSource(item));
-      if (autoplay) player.play()?.catch(() => {});
+      if (autoplay) void playWhenVolumeReady(
+        video, volume.ready, () => player.play(), live, autoplayIntent,
+      ).catch(() => {});
       return;
     }
     // 播到一半掉盘时 video 元素只报通用错误；来源状态才分得清脱盘和文件损坏。
@@ -228,7 +247,7 @@ export async function mountDetailPlayer(
   });
   player.ready(() => {
     enforceDuration();
-    const updateQualities = mountPlayerQualityControl(player, video, item.height, options.qualities ?? null);
+    const updateQualities = mountPlayerQualityControl(player, video, item.height, options.qualities ?? null, volume);
     options.mediaPromise?.then((next) => {
       if (!live()) return;
       updateQualities?.(next?.qualities?.length ? next.qualities : null);
@@ -252,9 +271,33 @@ export async function mountDetailPlayer(
     });
     player.src(next);
     enforceDuration(); setTimeout(enforceDuration, 0); setTimeout(enforceDuration, 250);
-    if (autoplay) player.play()?.catch(() => {});
+    if (autoplay) void playWhenVolumeReady(
+      video, volume.ready, () => player.play(), live, autoplayIntent,
+    ).catch(() => {});
   }).catch(() => {});
   return player;
+}
+
+/** 片源已写入后等到可播，避免在 iOS 上对一个还没准备好媒体的元素调用 play。 */
+function mediaReady(video: HTMLVideoElement, timeout = 15_000): Promise<void> {
+  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const done = () => {
+      clearTimeout(timer);
+      video.removeEventListener('canplay', done);
+      video.removeEventListener('error', fail);
+      resolve();
+    };
+    const fail = () => {
+      clearTimeout(timer);
+      video.removeEventListener('canplay', done);
+      video.removeEventListener('error', fail);
+      reject(new Error('媒体没有准备好'));
+    };
+    const timer = setTimeout(fail, timeout);
+    video.addEventListener('canplay', done, { once: true });
+    video.addEventListener('error', fail, { once: true });
+  });
 }
 
 const AMBIENT_CANVAS = '<canvas data-ambient-canvas="" width="32" height="18"></canvas>';

@@ -21,6 +21,7 @@ export interface PanelSettings {
   batchSize: number;
   defaultSort: string;
   defaultSortDirection: string;
+  defaultVolume: number;
   groupCollapse: boolean;
   javImage: string;
   performerNameLanguage: 'zh-CN' | 'ja';

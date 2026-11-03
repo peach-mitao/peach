@@ -62,19 +62,22 @@ class SubtitleMemoryTests(unittest.TestCase):
         store = SubtitleMemory(self.root, "item:1")
         store.update("file:local", {"key": "file:local", "name": "字幕.srt", "text": VTT})
         with ThreadPoolExecutor() as executor:
-            list(executor.map(store.patch, [{"rotation": 90}, {"rate": 1.75},
+            list(executor.map(store.patch, [{"rotation": 90}, {"rate": 1.75}, {"volume": 0.4},
                                            {"caption_style": {"size": "150"}},
                                            {"caption_style": {"color": "yellow"}}]))
         saved = SubtitleMemory(self.root, "item:1").read()
-        self.assertEqual((saved["rotation"], saved["rate"]), (90, 1.75))
+        self.assertEqual((saved["rotation"], saved["rate"], saved["volume"]), (90, 1.75, 0.4))
         self.assertEqual(saved["caption_style"], {"size": "150", "color": "yellow"})
         self.assertEqual(saved["selected"], "file:local")
         self.assertEqual(store.track_path(saved["tracks"][0]["file"]).read_text(encoding="utf-8"), VTT)
         store.update(None)
         self.assertEqual(store.read()["rotation"], 90)
         self.assertNotIn("rotation", SubtitleMemory(self.root, "item:2").read())
-        store.patch({"rotation": 0, "rate": 1})
-        self.assertEqual((store.read()["rotation"], store.read()["rate"]), (0, 1))
+        self.assertNotIn("volume", SubtitleMemory(self.root, "item:2").read())
+        store.patch({"rotation": 0, "rate": 1, "volume": 0})
+        self.assertEqual((store.read()["rotation"], store.read()["rate"], store.read()["volume"]), (0, 1, 0))
+        store.patch({"volume": 1})
+        self.assertEqual(store.read()["volume"], 1)
 
     def test_invalid_preferences_cannot_change_saved_memory(self):
         store = SubtitleMemory(self.root, "item:1")
@@ -82,6 +85,8 @@ class SubtitleMemoryTests(unittest.TestCase):
         saved = store.manifest.read_bytes()
         for patch in ({}, {"rotation": True}, {"rotation": 45}, {"rate": True}, {"rate": 0},
                       {"rate": float("nan")}, {"rate": float("inf")}, {"rate": 3.1},
+                      {"volume": True}, {"volume": -0.1}, {"volume": 1.1}, {"volume": "0.5"},
+                      {"volume": float("nan")}, {"volume": float("inf")},
                       {"caption_style": {"color": "url(private)"}}, {"caption_style": {"size": []}},
                       {"caption_style": {"unknown": "white"}}, {"tracks": []}):
             with self.subTest(patch=patch), self.assertRaises(ValueError):
@@ -135,13 +140,17 @@ class SubtitleMemoryApiTests(unittest.TestCase):
     def test_player_memory_and_subtitle_routes_share_preferences_and_authorization(self):
         with self.client as client:
             url = "/api/player/memory?video=item:1"
-            self.assertEqual(client.put(url, json={"rotation": 270, "rate": 2}).status_code, 200)
+            self.assertEqual(client.put(url, json={"rotation": 270, "rate": 2, "volume": 0.5}).status_code, 200)
             subtitle_url = "/api/subtitles/memory?video=item:1"
             self.assertEqual(client.put(subtitle_url, json={"selected": "native:subtitles:zh:1"}).status_code, 200)
-            self.assertEqual(client.get(url).json(), {"rotation": 270, "rate": 2,
+            self.assertEqual(client.get(url).json(), {"rotation": 270, "rate": 2, "volume": 0.5,
                              "selected": "native:subtitles:zh:1", "tracks": []})
             self.assertEqual(client.put(url, json={"rotation": 360}).status_code, 400)
-            self.assertNotIn("rotation", client.get("/api/player/memory?video=item:2").json())
+            self.assertEqual(client.put(url, json={"volume": 1.1}).status_code, 400)
+            self.assertEqual(client.put(url, json={"volume": -0.1}).status_code, 400)
+            other = client.get("/api/player/memory?video=item:2").json()
+            self.assertNotIn("rotation", other)
+            self.assertNotIn("volume", other)
             self.assertEqual(client.put("/api/player/memory?video=item:999", json={"rate": 1}).status_code, 404)
             self.app.state.settings = replace(self.app.state.settings, token="private")
             self.assertEqual(client.get(url).status_code, 401)

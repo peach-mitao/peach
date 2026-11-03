@@ -267,6 +267,7 @@ mediaState.itemDetailActions = {
 mediaState.immerseHost = {
   filters:()=>state,
   seekSeconds:()=>preferencesState.appSettings.seekSeconds,
+  defaultVolume:()=>preferencesState.appSettings.defaultVolume,
   sourceOffline:key=>preferencesState.sourceOffline(key),
   displayName:it=>javDisplayName(it),
   /* 每换一条用 replace 写地址：每划一下都往历史里塞一条，后退键就废了。 */

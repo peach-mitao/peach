@@ -47,6 +47,54 @@ describe('Video.js 10 播放链', () => {
     } finally { await opened.close() }
   });
 
+  it('默认音量作用于新片，单片音量在详情与沉浸模式之间分别记忆', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/', VIEWPORTS[0]!, async page => {
+      await page.addInitScript(() => localStorage.setItem('peach.settings.v1',
+        JSON.stringify({ detailAutoplay: false, defaultVolume: 35 })));
+    });
+    const { page, problems } = opened;
+    try {
+      const items: { id: number; cost?: string; duration?: number }[] = await page.evaluate(async () =>
+        (await (await fetch('/api/items?limit=60&offset=0&thumb=')).json()).items
+          .filter((item: { cost?: string; duration?: number }) => item.duration && item.cost !== 'metered'));
+      const primary = Number(requiredEnv('PEACH_E2E_ITEM'));
+      const [first, second] = items.filter(item => item.id !== primary);
+      assert.ok(first && second, '演示库要另有两部可播放作品');
+
+      const tech = '#stage video.vjs-tech';
+      const open = async (id: number) => {
+        await page.goto(new URL(`/assets/${id}`, page.url()).href, { waitUntil: 'load' });
+        await page.locator(tech).waitFor();
+      };
+      const volumeIs = (want: number) => page.waitForFunction(({ selector, want }) => {
+        const video = document.querySelector<HTMLVideoElement>(selector);
+        return !!video && Math.abs(video.volume - want) < .001;
+      }, { selector: tech, want });
+
+      await open(first.id);
+      await volumeIs(.35);
+      const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/player/memory'
+        && response.request().method() === 'PUT'
+        && Math.abs(Number(response.request().postDataJSON().volume) - .62) < .001);
+      await page.locator(tech).evaluate((video: HTMLVideoElement) => { video.volume = .62 });
+      assert.equal((await saved).status(), 200);
+
+      await open(second.id);
+      await volumeIs(.35);
+      await open(first.id);
+      await volumeIs(.62);
+
+      await page.goto(new URL(`/immerse?id=${first.id}`, page.url()).href, { waitUntil: 'load' });
+      const immersive = '[data-immerse-track] video.vjs-tech';
+      await page.locator(immersive).waitFor();
+      await page.waitForFunction(selector => {
+        const video = document.querySelector<HTMLVideoElement>(selector);
+        return !!video && Math.abs(video.volume - .62) < .001;
+      }, immersive);
+      assert.deepEqual(problems, []);
+    } finally { await opened.close() }
+  });
+
   it('媒体解码失败保存本机浏览器上下文与原生错误', { timeout: 60_000 }, async () => {
     const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, VIEWPORTS[0]!);
     const { page } = opened;

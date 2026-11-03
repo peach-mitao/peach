@@ -29,7 +29,8 @@ function stubFetch(reply: (url: string) => unknown): FetchCall[] {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const host = (seekSeconds = 10): PlayerHost => ({
-  settings: () => ({ ambientMode: false, theaterMode: false, seekSeconds, miniplayer: true, detailAutoplay: false, javImage: 'cover' }),
+  settings: () => ({ ambientMode: false, theaterMode: false, seekSeconds, defaultVolume: 100,
+    miniplayer: true, detailAutoplay: false, javImage: 'cover' }),
   saveSettings: () => {},
   toast: () => {},
   loadSourceStatus: async () => ({}),
@@ -172,7 +173,29 @@ describe('沉浸模式的每一格', () => {
     return { factory, made };
   }
 
+  it('冷启动直接进沉浸模式不依赖舞台宿主，默认音量随这一格传入', async () => {
+    stubFetch(() => ({ selected: null, tracks: [] }));
+    const { factory } = fakeVideojs();
+    const video = document.createElement('video');
+    let volume = 1;
+    Object.defineProperty(video, 'volume', {
+      configurable: true,
+      get: () => volume,
+      set: (next: number) => { volume = next },
+    });
+    const onLoaded = vi.fn();
+    const dispose = mountPlayer(video, {
+      kind: 'immerse', item: { id: 10 }, session: 'imm-0', defaultVolume: .4, onLoaded,
+    });
+    await flush(); await flush();
+    expect(factory).toHaveBeenCalledOnce();
+    expect(video.volume).toBe(.4);
+    expect(onLoaded).toHaveBeenCalledOnce();
+    dispose();
+  });
+
   it('片源按 stream-plan 交给裸播放器，分片出错退回直读；拆这一格时按会话取消并拆播放器', async () => {
+    configurePlayer(host());
     const calls = stubFetch((url) => url.startsWith('/api/player/memory') ? { selected: null, tracks: [] }
       : url.startsWith('/api/stream-plan') ? { protocol: 'hls', src: '/stream/hls/8/index.m3u8' } : { cancelled: 1 });
     const { factory, made } = fakeVideojs();

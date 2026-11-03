@@ -12,7 +12,7 @@ import { SubtitleControls, subtitleIcon } from './subtitles';
 import { timelineFrame, type TimelineSheets } from './timeline';
 import { mountPlayerRotation } from './rotation';
 import { mountPlayerPipControl } from './pip';
-import { mountPlaybackRate, playerMemory } from './memory';
+import { mountPlaybackRate, mountVolumeMemory, playerMemory, type VolumeState } from './memory';
 
 type TooltipSync = (label?: string, aria?: string) => void;
 
@@ -127,6 +127,7 @@ export function mountPlayerAmbient(video: HTMLVideoElement): () => void {
  *  是四个各自独立的 mp4。所以由调用方查好再传进来。 */
 export function mountPlayerQualityControl(
   player: VjsPlayer, video: HTMLVideoElement, fallbackHeight: unknown = 0, initialSourceQualities: SourceQuality[] | null = null,
+  _volume: VolumeState = mountVolumeMemory(player, video, playerHost().settings().defaultVolume / 100),
 ): ((next: SourceQuality[] | null) => void) | undefined {
   const controlBar = player.el().querySelector<HTMLElement>('.vjs-control-bar');
   if (!controlBar || controlBar.querySelector('[data-player-quality]')) return undefined;

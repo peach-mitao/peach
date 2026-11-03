@@ -9,6 +9,8 @@ export interface PlayerSettings {
   ambientMode: boolean;
   theaterMode: boolean;
   seekSeconds: number;
+  /** 这台浏览器新挂载播放器时的默认音量百分比。 */
+  defaultVolume: number;
   miniplayer: boolean;
   detailAutoplay: boolean;
   /** 番号作品开播前那层封面取官方封面还是预览图（`card-art` 的 `detailPosterUrl` 按它挑）。 */
