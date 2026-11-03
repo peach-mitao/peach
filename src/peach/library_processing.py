@@ -683,7 +683,8 @@ class LibraryMetadataProvider:
             siblings = self._official_candidates(code, evidence, deadline=deadline, known=snapshots, absent=absent)
             official = best_cover(self.transport, code, 0, deadline=_extended(deadline, self.excused - mark),
                                   prior_candidates=siblings, minimum_width=SMALL_MIN_WIDTH,
-                                  known=_official_evidence(snapshots, absent))
+                                  known=_official_evidence(snapshots, absent),
+                                  path_hints=evidence)
         except NotFound:
             pass
         except (Unavailable, SourcePaused) as error:

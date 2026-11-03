@@ -456,6 +456,10 @@ KOREAN_MIB_PREFIXES = frozenset({
     "MOSA", "MOSY", "NOAH", "SJSK",
 })
 _KOREAN_MIB_CODE = re.compile(r"^([A-Z]{2,4})-\d+$")
+#: 同时是日本厂牌番号的字母段。YUJ 也是 r18.dev 上 Attackers 厂牌「誘女」的番号。
+AMBIGUOUS_MIB_PREFIXES = frozenset({"YUJ"})
+#: 韩国 MIB 馆藏目录。`韩国` 原样比对；`K-MIB` 去掉分隔符后是 `KMIB`。
+_KMIB_DIRECTORY_TOKENS = frozenset({"MIB", "KMIB", "KOREANMIB"})
 #: MIB 文件名常带站名方括号（`[K-MIB]NOAH-101(NOAH)(1)`）或用 `_` 分隔（`YUJ_103 片名`）。
 #: `_titled_release_code` 只看第一段、只认 `-`，第一段又是 `K-MIB`，两种都接不住，
 #: 所以 MIB 前缀单独开这条路，前缀之外的仍走通用规则。
@@ -631,15 +635,49 @@ def is_jav_code(code: str | None) -> bool:
     )
 
 
-def is_korean_mib_code(code: str | None) -> bool:
+def _directory_parts(hint: str | None) -> tuple[str, ...]:
+    """路径里的目录段。没有分隔符的（文件名、厂牌）不是路径；末段是文件，除非以分隔符结尾。"""
+    text = str(hint or "").strip()
+    if "\\" not in text and "/" not in text:
+        return ()
+    parts = [part for part in re.split(r"[\\/]+", text) if part and part != "."]
+    if parts and text[-1] not in "\\/":
+        parts = parts[:-1]
+    return tuple(parts)
+
+
+def _kmib_directory_name(part: str) -> bool:
+    """目录名是韩国 MIB 馆藏目录。`MIBX`、文件名里的 MIB、只是含有这几个字的名字都不算。"""
+    if part.strip() == "韩国":
+        return True
+    token = re.sub(r"[^A-Za-z0-9]+", "", part).upper()
+    return token in _KMIB_DIRECTORY_TOKENS
+
+
+def in_kmib_folder(*hints: str | None) -> bool:
+    """任一路径的目录段是韩国 MIB 目录。"""
+    return any(_kmib_directory_name(part) for hint in hints for part in _directory_parts(hint))
+
+
+def is_korean_mib_code(code: str | None, *hints: str | None) -> bool:
     """True 表示这个番号属于韩国 MIB，不适用 JAV 规则。
 
     只认 `<字母>-<数字>` 这一种写法下的前缀。素人系的三位数字前缀（`300MIUM-1239`）
     和 FC2 都不在此列：它们的字母段虽然可能撞上，但发行体系本来就不是 MIB。
+
+    `AMBIGUOUS_MIB_PREFIXES` 里的前缀要看路径：目录段落在韩国 MIB 目录里才算 MIB，
+    目录外按普通日本番号。没有带目录的路径时算 MIB，只拿番号的入口分不清文件在哪。
     """
     value = normalise_code_key(code)
     shape = _KOREAN_MIB_CODE.match(value)
-    return bool(shape and shape.group(1) in KOREAN_MIB_PREFIXES)
+    if not (shape and shape.group(1) in KOREAN_MIB_PREFIXES):
+        return False
+    if shape.group(1) not in AMBIGUOUS_MIB_PREFIXES:
+        return True
+    paths = tuple(hint for hint in hints if _directory_parts(hint))
+    if not paths:
+        return True
+    return in_kmib_folder(*paths)
 
 
 def code_query_variants(code: str | None) -> tuple[str, ...]:

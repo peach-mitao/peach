@@ -1032,7 +1032,7 @@ def metadata_auto_apply_candidate(connection, row: dict, *,
     # 全部成立——文件名就叫 `AR-101 Ari....mp4`——但它保证的是「候选属于这个文件」，
     # 保证不了「来源返回的是这个番号」，而 MIB 恰恰错在后者。只有候选全部来自 MIB
     # 官网时才放行：官网按番号列出的就是这部片本身。
-    if is_korean_mib_code(code) and not _only_mib_official(row):
+    if is_korean_mib_code(code, row.get("asset_path")) and not _only_mib_official(row):
         return None
     # 归属是用户判断的字段不走自动落库。ADR-0018 第 1 条只看取值空不空，而用户可以
     # 把一个字段判成空——那也是判断。没有这一道，「清空再等自动补回来」就成了

@@ -455,7 +455,8 @@ def build_plan(stage, batch=None):
             operations, skipped = flatten_operations(db,stem)
         else:
             creators, categories, unverified = classification_inputs(db)
-            db.create_function('infer_region',2,infer_region,deterministic=True)
+            # 第三参是文件路径，撞号前缀按目录名区分。
+            db.create_function('infer_region',-1,infer_region,deterministic=True)
             marks = ','.join('?' for _ in SCANNABLE_LOCATIONS)
             all_rows = [dict(r) for r in db.execute(
                 "SELECT a.*," + effective_region_sql() + " AS effective_region FROM asset a "

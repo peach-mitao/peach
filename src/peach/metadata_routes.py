@@ -178,7 +178,8 @@ def classify(code: str | None, *hints: str | None) -> str:
     value = str(code or "").strip()
     if not value:
         return "unknown"
-    if is_korean_mib_code(value):
+    # 撞号前缀要目录证据：没有带目录的路径时算韩国 MIB。
+    if is_korean_mib_code(value, *hints):
         return "kmib"
     # `FC-437689` 这类变体由 `catalog_rules.normalise_code_key` 在入库前统一成
     # `FC2-PPV-…`；没归一的短写法按 `_FC2_SHORT` 认。
