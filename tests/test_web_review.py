@@ -28,7 +28,9 @@ from peach.field_owners import (
     EXPECTED_REVISION_FIELD,
     USER_MANUAL,
     RevisionConflict,
+    auto_owner,
     owner_of,
+    review_owner,
     write_owned_fields,
 )
 
@@ -226,6 +228,22 @@ class ReviewQueueTests(unittest.TestCase):
         con.execute("INSERT INTO asset(id,location,path,name,medium,code) "
                     "VALUES(?,'local',?,?,'video',?)", (aid, f"{folder}/{name}", name, code))
         con.commit(); con.close()
+
+    def _owned(self, aid, code, owner, value="官方厂牌", field="studio", name=None):
+        self._asset(aid, code, name or f"{code}.mp4")
+        con = sqlite3.connect(self.db_path)
+        with con:
+            write_owned_fields(con, [aid], {field: value}, owner)
+        con.close()
+
+    def _challenge(self, code, field="studio", current="官方厂牌", candidates=None):
+        key = f"{code}:{field}"
+        self.write_metadata_rows([{
+            "item_key": key, "code": code, "field": field, "current": current,
+            "candidates": candidates or [
+                {"source": "javdb", "value": "社区写法", "requires_review": True}],
+        }])
+        return key
 
     def _auto(self):
         return auto_apply_metadata(self.contract.database, self.candidates)
@@ -2193,6 +2211,73 @@ class ReviewQueueTests(unittest.TestCase):
              "candidates": ["2016-09-09"], "code": "GGG-7", "source": "javbus"},
         ])
         self.assertEqual(self.queue_keys("metadata_fields"), ["GGG"])
+
+    def test_javdb_only_challenge_to_official_auto_value_is_dismissed(self):
+        """现值归 official 源自动写入时，社区源异议不进队列，也不写决定。"""
+        self._owned(500, "OFF-001", auto_owner("r18dev"))
+        self._challenge("OFF-001")
+        self.assertEqual(self.queue_keys("metadata_fields"), [])
+        con = sqlite3.connect(self.db_path)
+        try:
+            self.assertEqual(con.execute("SELECT count(*) FROM review_decision").fetchone()[0], 0)
+        finally:
+            con.close()
+
+    def test_release_date_from_makers_is_dismissed_too(self):
+        self._owned(501, "OFF-002", auto_owner("makers"), value="2024-01-02", field="release_date")
+        self._challenge("OFF-002", field="release_date", current="2024-01-02", candidates=[
+            {"source": "javdb", "value": "2024-01-05", "requires_review": True}])
+        self.assertEqual(self.queue_keys("metadata_fields"), [])
+
+    def test_user_review_community_and_unowned_values_stay_in_the_queue(self):
+        cases = (("OWN-001", USER_MANUAL), ("OWN-002", review_owner("javdb")),
+                 ("OWN-003", auto_owner("avbase")))
+        keys = []
+        for index, (code, owner) in enumerate(cases):
+            self._owned(510 + index, code, owner)
+            keys.append(f"{code}:studio")
+        self._asset(513, "OWN-004", "OWN-004.mp4")
+        con = sqlite3.connect(self.db_path)
+        with con:
+            con.execute("UPDATE asset SET studio='官方厂牌' WHERE id=513")
+        con.close()
+        keys.append("OWN-004:studio")
+        self.write_metadata_rows([{
+            "item_key": key, "code": key.split(":")[0], "field": "studio", "current": "官方厂牌",
+            "candidates": [{"source": "javdb", "value": "社区写法", "requires_review": True}],
+        } for key in keys])
+        self.assertEqual(sorted(self.queue_keys("metadata_fields")), sorted(keys))
+
+    def test_official_candidate_in_the_row_keeps_it_for_review(self):
+        self._owned(520, "OFF-003", auto_owner("r18dev"))
+        key = self._challenge("OFF-003", candidates=[
+            {"source": "javdb", "value": "社区写法", "requires_review": True},
+            {"source": "dmm", "value": "另一官方写法", "requires_review": True}])
+        self.assertEqual(self.queue_keys("metadata_fields"), [key])
+
+    def test_fields_without_owner_tracking_are_untouched(self):
+        self._asset(530, "OFF-004", "OFF-004.mp4")
+        key = self._challenge("OFF-004", field="performers", current="某人", candidates=[
+            {"source": "javdb", "value": "别人", "requires_review": True}])
+        self.assertIn(key, self.queue_keys("metadata_fields"))
+
+    def test_library_rows_check_the_owner_of_their_own_asset(self):
+        self._owned(540, "LIB-001", auto_owner("r18dev"), name="LIB-001 A.mp4")
+        self._owned(541, "LIB-001", USER_MANUAL, name="LIB-001 B.mp4")
+        rows = []
+        for aid in (540, 541):
+            key = f"asset:{aid}:studio"
+            rows.append({"item_key": key, "code": "LIB-001", "query": "LIB-001",
+                         "asset_id": str(aid), "asset_path": f"/x/{aid}.mp4", "field": "studio",
+                         "field_label": "studio", "current_value": "官方厂牌",
+                         "candidates_json": json.dumps([self._candidate(
+                             {"item_key": key, "code": "LIB-001"}, 0, "javdb",
+                             {"source": "javdb", "value": "社区写法", "requires_review": True})],
+                             ensure_ascii=False),
+                         "source_count": "1", "source_profile": "library", "status": "candidate",
+                         "size_gb": "", "videos": "1", "fetched_at": ""})
+        self.write_metadata_candidates(rows)
+        self.assertEqual(self.queue_keys("metadata_fields"), ["asset:541:studio"])
 
     def test_metadata_candidates_that_repeat_the_current_value_never_queue(self):
         """复核的成本是注意力：和现值一模一样的行会把真正要判的淹掉。
