@@ -117,7 +117,8 @@ def _code_prefix(code: str | None) -> str:
     return shape.group(1) if shape else ""
 
 
-def infer_region(code: str | None = None, name: str | None = None) -> str:
+def infer_region(code: str | None = None, name: str | None = None,
+                 path: str | None = None) -> str:
     """从番号和文件名推产地；推不出返回未判定。
 
     顺序是固定的，从最硬的证据往下走：韩国 MIB 的前缀名单有实测支撑（账本里这批
@@ -127,8 +128,10 @@ def infer_region(code: str | None = None, name: str | None = None) -> str:
     日本不在这里推。番号形态本身就是日本厂牌的写法，把「剩下的都算日本」写成规则
     会让每一个没收录的国产厂牌自动变成 JAV，正是这次要修的那个毛病。日本的产地
     由用户批准或按厂牌实体投影落下来。
+
+    给了 `path` 时，撞号前缀只在韩国 MIB 目录里算韩国；没有带目录的路径时按前缀名单算。
     """
-    if is_korean_mib_code(code):
+    if is_korean_mib_code(code, path):
         return KOREA
     prefix = _code_prefix(code)
     if prefix:

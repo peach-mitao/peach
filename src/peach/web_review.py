@@ -337,7 +337,8 @@ def _metadata_queue_rows(connection, rows: list[dict],
     # 这些值全是 JAV 目录站按错番号返回的别的作品，没有一条值得占用人的注意力。
     # MIB 官网（kmib）的候选是例外：那是这批番号自己的发行方。
     rows = [row for row in rows
-            if not is_korean_mib_code(str(row.get("code") or "")) or _only_mib_official(row)]
+            if not is_korean_mib_code(str(row.get("code") or ""), row.get("asset_path"))
+            or _only_mib_official(row)]
     overrides = {row['item_key'] for row in rows if overwrite_requires_review(connection, row)}
     filtered = _drop_community_challenges_to_official(connection, rows)
     filtered = _drop_fallback_challenges(_drop_shop_side_dissent(filtered))

@@ -96,7 +96,7 @@ def attach_jav_display_fields(row: dict, tags=(), entity_kinds=()) -> None:
     stored = normalize_region(row.get("region"))
     region = normalize_region(row.get("effective_region"))
     if not region:
-        region = infer_region(code, row.get("name"))
+        region = infer_region(code, row.get("name"), row.get("path"))
     row["region"] = region
     row["region_label"] = region_label(region)
     # 详情页要能分开「这条是你定的」和「这是按番号猜的」，后者才需要请人确认。
@@ -1210,7 +1210,7 @@ def effective_region_sql(alias: str = "a") -> str:
         f"WHERE region_ae.asset_id={alias}.id AND region_e.kind IN ('studio','creator') "
         "AND NULLIF(trim(COALESCE(region_e.region,'')),'') IS NOT NULL "
         "ORDER BY CASE region_e.kind WHEN 'studio' THEN 0 ELSE 1 END LIMIT 1),"
-        f"infer_region({alias}.code,{alias}.name),'')"
+        f"infer_region({alias}.code,{alias}.name,{alias}.path),'')"
     )
 
 

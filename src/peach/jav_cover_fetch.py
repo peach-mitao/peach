@@ -837,17 +837,19 @@ def best_cover(transport: HttpTransport, code: str, delay: float, *,
                deadline: float | None = None,
                diagnostics: dict[str, int] | None = None,
                known: MetadataEvidence | None = None,
+               path_hints: tuple = (),
                ) -> tuple[Candidate, tuple[int, int], bytes]:
     """官方封面择优：手上的候选、缓存快照里的候选，加上 r18.dev、MGS 或 Prestige 现问来的候选。
 
     `known` 是调用方这一趟已经取到的官方快照证据（例如 `r18_payload_evidence`），与 `metadata_root`
     那份缓存同等对待：`sources` 里有 `r18dev` 就不再问 r18.dev。所有可用官方候选一起量尺寸，
-    并按像素面积选择。
+    并按像素面积选择。`path_hints` 是文件路径等本机证据。撞号前缀没有带目录的路径时按韩国
+    MIB 拦，目录在韩国 MIB 馆藏目录里才拦。
     """
     # 韩国 MIB 的编号在 JAV 目录站上要么不存在、要么撞上番号相同的日本作品：
     # `HA-101`、`MY-102` 取回的都是那部日本片的封套，番号核验拦不住，因为番号本来
-    # 就一样。所以不是「找不到」，是根本不该去找。
-    if is_korean_mib_code(code):
+    # 就一样。所以不是「找不到」，是根本不该去找。撞号前缀只在韩国 MIB 目录里拦。
+    if is_korean_mib_code(code, *path_hints):
         raise Unavailable(MIB_NOT_JAV)
     # 来源一律记主机名。缓存、构造路径和官方页常指向同一个主机，记成多个名字
     # 会让覆盖率统计凭空多出「渠道」。
