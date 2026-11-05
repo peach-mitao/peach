@@ -70,12 +70,16 @@ def tracks(state, asset_id: int) -> list[dict]:
     result = []
     for index, row in enumerate(found):
         note = _note(state, asset, row)
+        language = row["language"]
+        named_language = subtitles.language_of(row["name"])
+        if not language or (language == "zh" and named_language.startswith("zh-")):
+            language = named_language or language
         result.append({
             "id": f"sidecar:{subtitles.file_key(row['name'])}",
             "legacy_id": f"sidecar:{row['id']}" if isinstance(row["id"], int) else None,
             "index": index, "name": row["name"], "format": row["format"],
-            "language": row["language"],
-            "label": subtitles.track_label(row["name"], row["language"], asset.name),
+            "language": language,
+            "label": subtitles.track_label(row["name"], language, asset.name),
             "pairing": row["pairing"], "note": note, "playable": not note,
             "src": f"/api/assets/{asset_id}/subtitles/{index}?track={subtitles.file_key(row['name'])}",
         })

@@ -40,11 +40,11 @@ SUBTITLE_FORMATS = {**TEXT_FORMATS, **GRAPHIC_FORMATS}
 #: `ch` 在这个库里既是「中文字幕版」的版次标记也是语言标记，两种含义指向同一个结论。
 LANGUAGE_TOKENS: dict[str, tuple[str, str]] = {
     token: ("zh-Hans", "简体中文")
-    for token in ("chs", "gb", "gbk", "sc", "zhcn", "zh-cn", "chi", "chn", "简体", "简中")
+    for token in ("chs", "gb", "gbk", "sc", "zhcn", "zh-cn", "zh-hans", "chi", "chn", "简体", "简中")
 }
 LANGUAGE_TOKENS.update({
     token: ("zh-Hant", "繁體中文")
-    for token in ("cht", "big5", "tc", "zhtw", "zh-tw", "zhhk", "zh-hk", "繁体", "繁體", "繁中")
+    for token in ("cht", "big5", "tc", "zhtw", "zh-tw", "zhhk", "zh-hk", "zh-hant", "繁体", "繁體", "繁中")
 })
 LANGUAGE_TOKENS.update({token: ("zh", "中文") for token in ("zh", "ch", "cn", "chinese", "中文", "中字")})
 LANGUAGE_TOKENS.update({token: ("en", "英语") for token in ("en", "eng", "english", "英文", "英语")})
@@ -56,6 +56,7 @@ LANGUAGE_TOKENS.update({token: ("ko", "韩语") for token in ("ko", "kor", "kore
 _STRIPPABLE = (frozenset(LANGUAGE_TOKENS) | frozenset(VERSION_TAIL_TOKENS)
                | {"forced", "sdh", "default"})
 _SEPARATORS = ".-_ "
+_COMPOUND_LANGUAGES = sorted((token for token in LANGUAGE_TOKENS if "-" in token), key=len, reverse=True)
 #: 一个 stem 最多剥几层：`ABP-758.chs.forced` 是两层，再多就不像是 sidecar 命名了。
 _MAX_STRIPS = 3
 
@@ -95,6 +96,11 @@ def _stem(name: str) -> str:
 
 def _split_tail(stem: str) -> tuple[str, str]:
     """切下 stem 末尾的一个分隔 token；切不动时后半是空串。"""
+    folded = stem.casefold()
+    for token in _COMPOUND_LANGUAGES:
+        start = len(stem) - len(token)
+        if start > 0 and stem[start - 1] in _SEPARATORS and folded.endswith(token):
+            return stem[:start - 1], stem[start:]
     index = max(stem.rfind(separator) for separator in _SEPARATORS)
     if index <= 0:
         return stem, ""
