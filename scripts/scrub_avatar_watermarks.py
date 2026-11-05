@@ -166,8 +166,11 @@ def annotate(image, marks, result, target: Path) -> None:
     tall = max(panel.shape[0] for panel in panels)
     pair = np.hstack([np.pad(panel, ((0, tall - panel.shape[0]), (0, 0), (0, 0)))
                       for panel in panels])
+    ok, buffer = cv2.imencode(".png", pair)
+    if not ok:
+        raise ValueError("头像预览图编码失败")
     target.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(target), pair)
+    target.write_bytes(buffer.tobytes())
 
 
 def plan_of(info: dict) -> str:
@@ -200,8 +203,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    import cv2
-
     args = build_parser().parse_args(argv)
     manual = read_marks(args.marks)
     detector = avatar_watermark.MarkDetector(args.model)
@@ -219,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
             summary["skipped"] += 1
             reasons.add("already_scrubbed")
             continue
-        image = cv2.imread(str(image_path))
+        image = face_detect.read_image(image_path)
         if image is None:
             summary["skipped"] += 1
             reasons.add("unreadable")
