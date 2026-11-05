@@ -234,6 +234,7 @@ class PullRequestIntegrationTests(_WorktreeCase):
         self.head = _git(self.worker, "rev-parse", "HEAD").stdout.strip()
         self.pr = {"url": "https://github.com/example/peach/pull/12", "state": "OPEN",
                    "headRefOid": self.head, "baseRefName": "master"}
+        _git(self.repo, "remote", "add", "origin", "https://github.com/example/peach.git")
 
     @contextmanager
     def github(self, stdout=None, returncode=0, stderr=""):
@@ -247,10 +248,10 @@ class PullRequestIntegrationTests(_WorktreeCase):
         with mock.patch.object(agent_worktree.subprocess, "run", side_effect=call):
             yield query
 
-    def assert_refused(self, message):
+    def assert_refused(self, message, *, pr_url=None):
         before = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
         with self.assertRaisesRegex(WorkspaceError, message):
-            integrate(self.repo, self.branch)
+            integrate(self.repo, self.branch, pr_url=pr_url)
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), before)
         self.assertEqual((self.repo / "worker.txt").read_text(encoding="utf-8"), "base\n")
         entry = next(row for row in agent_worktree._worktree_entries(self.repo) if row.get("branch") == self.branch)
@@ -271,6 +272,55 @@ class PullRequestIntegrationTests(_WorktreeCase):
         self.assertEqual(query.call_args.kwargs["cwd"], self.worker)
         self.assertEqual(_git(self.repo, "log", "-1", "--format=%B").stdout.strip(),
                          f"Merge branch '{self.branch}' (#12)")
+
+    def test_fork_branch_lookup_can_use_an_explicit_pull_request_url(self):
+        with self.github(returncode=1, stderr="no pull requests found for branch"):
+            self.assert_refused("未取得 PR")
+        with self.github() as query:
+            result = integrate(self.repo, self.branch, pr_url=self.pr['url'])
+        self.assertEqual(query.call_args.args[0][:4], ['gh', 'pr', 'view', self.pr['url']])
+        self.assertEqual(result['pull_request']['url'], self.pr['url'])
+        self.assertEqual(result['pull_request']['head'], self.head)
+        self.assertEqual((self.repo / 'worker.txt').read_text(encoding='utf-8'), 'worker\n')
+
+    def test_explicit_pull_request_keeps_head_target_and_open_state_requirements(self):
+        for field, value, message in (("headRefOid", "0" * 40, "提交.*不一致"),
+                                      ("baseRefName", "other", "目标分支"),
+                                      ("state", "CLOSED", "必须开放"),
+                                      ("state", "MERGED", "必须开放")):
+            with self.subTest(field=field, value=value), self.github(json.dumps({**self.pr, field: value})):
+                self.assert_refused(message, pr_url=self.pr['url'])
+
+    def test_explicit_url_must_be_a_complete_https_pull_request_in_the_target_repository(self):
+        for url in ('http://github.com/example/peach/pull/12',
+                    'https://github.com/example/peach/issues/12',
+                    'https://github.com/example/peach/pull/12?x=1',
+                    'https://other.invalid/example/peach/pull/12',
+                    'https://github.com/unrelated/peach/pull/12'):
+            with self.subTest(url=url), self.github() as query:
+                self.assert_refused('链接无效|目标仓库', pr_url=url)
+                query.assert_not_called()
+
+    def test_a_different_receipt_url_is_refused_even_with_a_matching_commit(self):
+        with self.github(json.dumps({**self.pr, 'url': self.pr['url'] + '3'})):
+            self.assert_refused('指定链接不一致', pr_url=self.pr['url'])
+
+    def test_explicit_url_uses_the_target_tracking_remote_and_accepts_ssh_urls(self):
+        _git(self.repo, 'remote', 'set-url', 'origin', 'https://github.com/contributor/peach.git')
+        _git(self.repo, 'remote', 'add', 'upstream', 'git@github.com:example/peach.git')
+        _git(self.repo, 'config', 'branch.master.remote', 'upstream')
+        with self.github():
+            result = integrate(self.repo, self.branch, pr_url=self.pr['url'])
+        self.assertEqual(result['pull_request']['url'], self.pr['url'])
+
+    def test_cli_passes_either_explicit_pull_request_option_to_the_integration_entry(self):
+        for option in ('--pr', '--pull-request'):
+            argv = ['agent_worktree.py', '--repo', str(self.repo), 'integrate',
+                    '--branch', self.branch, option, self.pr['url']]
+            with mock.patch.object(sys, 'argv', argv), redirect_stdout(io.StringIO()), \
+                    mock.patch.object(agent_worktree, 'integrate', return_value={'ok': True}) as entry:
+                self.assertEqual(agent_worktree.main(), 0)
+            entry.assert_called_once_with(self.repo, self.branch, 'master', pr_url=self.pr['url'])
 
     def test_issue_link_lines_in_the_body_follow_into_the_merge_commit(self):
         body = ("排查记录里顺带提到 #3，不算关联。\n\nRefs #45\r\n"
