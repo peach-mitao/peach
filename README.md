@@ -46,7 +46,7 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 - **Local and cloud libraries**: browse local drives, SMB, mounted cloud storage and PikPak libraries together.
 - **Playback and history**: web and external players, subtitles, playback speed, rotation, resume and timeline previews.
 - **Follows and discovery**: track performer and creator updates, discover titles and manage a want list.
-- **Cloud download**: search by video code or submit a magnet link, then organize completed downloads into your library.
+- **Cloud and local download**: search by video code or submit a magnet link to 115, PikPak or qBittorrent, then organize completed downloads into your library.
 - **Library management**: manage tags, duplicates, versions and parts; permanently delete videos by performer while keeping profiles and photos. Metadata and watch history are stored locally.
 - **Task center**: pause, resume or cancel local background tasks and view their CPU, GPU and download activity where available.
 - **Guided tours**: learn the interface and settings as needed; tutorial progress is shared across devices connected to the same instance.
@@ -64,7 +64,7 @@ Choose your media folders after installation, then scan to start browsing and pl
 
 ## Documentation
 
-[Operations](docs/OPERATIONS.md) · [Sources](docs/SOURCING.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Diagnostics and data sharing](docs/DIAGNOSTICS.md) · [Changelog](CHANGELOG.md)
+[Operations](docs/OPERATIONS.md) · [Sources](docs/SOURCING.md) · [Local download](docs/LOCAL_DOWNLOAD.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Diagnostics and data sharing](docs/DIAGNOSTICS.md) · [Changelog](CHANGELOG.md)
 
 Development: [Contributing](CONTRIBUTING.md) · [Development guide](AGENTS.md) · [Testing](docs/TESTING.md)
 

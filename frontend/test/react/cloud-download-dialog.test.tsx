@@ -80,7 +80,7 @@ it('带着番号与标题打开：标题行写番号与片名，搜索框与番�
   expect(posts).toEqual([{
     magnet: MAGNET, provider: '115', target: '/115/云下载', code: 'ABC-123', title: '一部作品', origin: 'asset:12',
   }]);
-  expect(receipt).toHaveBeenCalledWith('已提交离线下载，进度在任务中心');
+  expect(receipt).toHaveBeenCalledWith('已提交下载，进度在任务中心');
   expect(close).toHaveBeenCalled();
 });
 
@@ -167,7 +167,7 @@ it.each(['abf-258', 'ABF258', 'ABF-258'])('查询同番号 %s 保留已知作品
 it('只读端可查找资源，提交下载禁用', async () => {
   serve(snapshot({ available: false }));
   const { page } = await open({});
-  expect(page.textContent).toContain('云下载只在允许修改数据库的设备上可用');
+  expect(page.textContent).toContain('下载只在允许修改数据库的设备上可用');
   expect(section(page, '查找资源')).not.toBeNull();
   expect(buttonNamed('提交下载', page)?.disabled).toBe(true);
 });

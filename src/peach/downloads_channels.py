@@ -8,7 +8,9 @@ from pathlib import PureWindowsPath
 
 from google.protobuf.empty_pb2 import Empty
 
-from .downloads import CLOUDDRIVE_CREDENTIAL, PIKPAK_CREDENTIAL, DownloadError
+from .downloads import (
+    CLOUDDRIVE_CREDENTIAL, PIKPAK_CREDENTIAL, QBITTORRENT_CREDENTIAL, DownloadError,
+)
 from .downloads_clouddrive import CloudDriveClient, PROBE_TIMEOUT
 from .media_sources import SOURCES
 from .clouddrive_proxy import media_remote_path
@@ -50,9 +52,16 @@ class LibraryChannels:
             pikpak = {"fields": []}
             problems.append("PikPak 登录信息无法读取，请重新登录。")
         logged_in = "refresh_token" in pikpak["fields"]
+        try:
+            qb = service.credentials.load(QBITTORRENT_CREDENTIAL)
+        except CredentialError:
+            qb = None
+        qb_values = dict(qb.values) if qb else {}
+        qb_secret = (str(qb_values.get("username", "")) + "\0" + str(qb_values.get("password", ""))).encode()
         fingerprint = (repr(config.payload()), repr(roots), repr(prefixes), repr(names),
                        repr(getattr(service.landing, "mounts", {})), logged_in,
-                       hashlib.sha256(token.encode()).digest(), tuple(problems))
+                       hashlib.sha256(token.encode()).digest(),
+                       hashlib.sha256(qb_secret).digest(), tuple(problems))
         with self._lock:
             now = self.clock()
             if self._cached and self._cached[0] == fingerprint and now - self._cached[1] < 30:
@@ -105,7 +114,33 @@ class LibraryChannels:
                 local_event('download-channel-probe', error, operation=phase,
                             source='clouddrive', failure=error.failure)
                 problems.append("CloudDrive2 云下载能力未取得，请检查连接与令牌。")
+        qb = self._qbittorrent(config, problems)
+        if qb is not None:
+            rows.append(self._row(
+                "qbittorrent", "local", config.qbittorrent_media_root,
+                config.qbittorrent_save_path, names, kind="local",
+                local_root=config.qbittorrent_save_path))
         return {"providers": rows, "problems": list(dict.fromkeys(problems))}
+
+    def _qbittorrent(self, config, problems):
+        """配置和凭据齐全就给出渠道；不在每次列表轮询里登录。
+
+        qB 对连续失败登录会封禁来源，活动页每几秒取一次任务列表，渠道探测不能拿
+        用户填错的密码反复试。实际连通性由设置页的「检查」按用户动作验证一次。
+        """
+        if not (config.qbittorrent_address and config.qbittorrent_save_path
+                and config.qbittorrent_media_root):
+            return None
+        try:
+            values = self.service.credentials.load(QBITTORRENT_CREDENTIAL)
+        except CredentialError:
+            problems.append("qBittorrent 登录信息无法读取，请重新填写。")
+            return None
+        values = dict(values.values) if values else {}
+        if not str(values.get("username", "")) or not str(values.get("password", "")):
+            problems.append("qBittorrent 还没有填写用户名和密码。")
+            return None
+        return True
 
     def _candidates(self, roots, prefixes, mounts, direct, names, problems):
         candidates = []
@@ -130,10 +165,15 @@ class LibraryChannels:
         return candidates
 
     @staticmethod
-    def _row(key, source, root, target, names, *, cloud_root="", can_cancel=True):
+    def _row(key, source, root, target, names, *, cloud_root="", can_cancel=True,
+             kind="cloud", local_root=""):
         from . import media_identity, settings_file
         name = names.get(root_key(root)) or PureWindowsPath(root).name or root
-        label = name if name == SOURCES[source].name else f"{name} · {SOURCES[source].name}"
+        if key == "qbittorrent":
+            label = f"{name} · qBittorrent"
+        else:
+            label = name if name == SOURCES[source].name else f"{name} · {SOURCES[source].name}"
         return {"key": key, "source": source, "label": label, "configured": True,
-                "target": target, "root": root, "cloud_root": cloud_root, "can_cancel": can_cancel,
+                "target": target, "root": root, "cloud_root": cloud_root,
+                "kind": kind, "local_root": local_root, "can_cancel": can_cancel,
                 **media_identity.ownership(settings_file.active(), root)}

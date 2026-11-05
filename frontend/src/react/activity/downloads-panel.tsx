@@ -1,4 +1,4 @@
-/* 活动页「云下载」段：提交过的离线下载任务。提交在各页原地的弹层里（`cloud-download-dialog.tsx`）。
+/* 活动页「下载任务」段：提交过的云下载与本地下载任务。提交在各页原地的弹层里（`cloud-download-dialog.tsx`）。
  *
  * 任务表是 `/api/downloads` 自己的一份，不并进 `/api/tasks`：离线任务跑在网盘那头，一跑
  * 几小时到几天，是一条带远端编号的提交记录，不是这台电脑上的一轮批处理。所以这一段自己取数、
@@ -74,7 +74,7 @@ export function DownloadsPanel() {
   if (!tasks.length && !query.error) return null;
   return (
     <section id="cloudDownloads" aria-labelledby={id} className="flex min-w-0 flex-col gap-3">
-      <h3 id={id} className="text-title-2-medium text-text-primary">云下载</h3>
+      <h3 id={id} className="text-title-2-medium text-text-primary">下载任务</h3>
       {query.error ? <Note tone="error">{errorMessage(query.error)}</Note> : null}
       {tasks.length
         ? <ul aria-live="polite" className="flex min-w-0 flex-col gap-3">

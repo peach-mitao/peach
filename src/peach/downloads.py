@@ -30,11 +30,11 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Callable, Protocol
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from .follow_secrets import CredentialStore
+from .follow_secrets import CredentialError, CredentialStore
 from .fsutil import atomic_write_text
 from .push_discovery import CloudPathError, CloudPrefix, map_cloud_path, normalise_prefix
 from .repository import LedgerDatabase
@@ -69,8 +69,8 @@ POSTPROCESS_LABELS = {
 }
 
 STATE_LABELS = {
-    CANDIDATE: "待选择的资源", SELECTED: "已选定", SUBMITTED: "已提交", REMOTE_RUNNING: "网盘下载中",
-    REMOTE_DONE: "网盘下载完成", LANDED: "文件已可访问", INGESTED: "已入库",
+    CANDIDATE: "待选择的资源", SELECTED: "已选定", SUBMITTED: "已提交", REMOTE_RUNNING: "下载中",
+    REMOTE_DONE: "下载完成", LANDED: "文件已可访问", INGESTED: "已入库",
     FAILED: "失败", CANCELLED: "已取消", STALLED: "长时间未完成", SUBMIT_PENDING: "等待自动重新提交",
 }
 #: 轮询要看的状态。远端完成与已落地还在等账本里出现那个文件；等待重新提交的还要再交一次。
@@ -92,8 +92,8 @@ FAILURE_KINDS: dict[str, FailureKind] = {kind.key: kind for kind in (
     FailureKind("rejected", "网盘拒绝下载该资源"),
     FailureKind("invalid_link", "链接无效"),
     FailureKind("no_source", "没有可用下载源或进度长时间未更新"),
-    FailureKind("not_accepted", "网盘没有收下任务"),
-    FailureKind("removed", "网盘任务被删除"),
+    FailureKind("not_accepted", "下载器没有收下任务"),
+    FailureKind("removed", "下载器里的任务已删除"),
     FailureKind("duplicate", "下载任务已存在"),
     FailureKind("not_landed", "目标目录中未找到下载文件"),
     FailureKind("mismatch", "下载内容与目标作品不符"),
@@ -238,6 +238,8 @@ class RemoteStatus:
     message: str = ""
     #: 提交时远端目录里已有同一 infohash 的任务，接过来跟踪，没有调提交接口。
     adopted: bool = False
+    #: 接管时远端任务的实际保存目录；新提交留空，由调用方用自己的目标。
+    target: str = ""
 
 
 RUNNING, DONE, ERROR, MISSING = "running", "done", "error", "missing"
@@ -256,6 +258,8 @@ class OfflineProvider(Protocol):
 
 
 PROVIDER_LABELS = {"115": "115", "pikpak": "PikPak"}
+#: 本地下载器不参与云下载的默认渠道表；只在渠道发现里出现。
+LOCAL_PROVIDER_LABELS = {"qbittorrent": "qBittorrent"}
 
 # ---------------------------------------------------------------- 时间
 
@@ -278,6 +282,8 @@ POLL_DELAYS = (10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 900.0)
 #: 提交时网盘暂时没应答（如 CloudDrive2 刷新 115 离线列表超时），从第一次提交起按 `POLL_DELAYS`
 #: 再交，这么久还没交上才算失败。
 SUBMIT_RETRY_WINDOW = 3600.0
+#: 本地下载器完成即入库，退避封顶设短，避免下完十几分钟后才开始登记。
+LOCAL_POLL_CEILING = 60.0
 #: 远端完成后先等推送发现登记；过了这一段账本里还没有，才定向登记一次。
 LANDING_GRACE = 60.0
 #: 远端完成之后最多等这么久让文件出现在挂载目录、进入账本，超过算「落地未见」。
@@ -305,8 +311,9 @@ def _stall_cutoff(now: float) -> float:
 MAX_LANDED_FILES = 500
 
 
-def poll_delay(checks: int) -> float:
-    return POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+def poll_delay(checks: int, ceiling: float | None = None) -> float:
+    delay = POLL_DELAYS[min(max(checks, 0), len(POLL_DELAYS) - 1)]
+    return min(delay, ceiling) if ceiling else delay
 
 
 # ---------------------------------------------------------------- 任务表
@@ -345,7 +352,9 @@ class DownloadTask:
 
     @property
     def location(self) -> str:
-        """渠道关联的媒体来源。"""
+        """渠道关联的媒体来源。本地下载器写入的是本地来源。"""
+        if self.provider == "qbittorrent":
+            return "local"
         return self.provider.split(":", 2)[1] if self.provider.startswith("clouddrive:") else self.provider
 
     @classmethod
@@ -372,7 +381,9 @@ class DownloadTask:
                                   if (title := jav_fallback_title(name, display_code))), "")
         return {
             "id": self.id, "info_hash": self.info_hash, "provider": self.provider,
-            "provider_label": SOURCES[self.location].name if self.location in SOURCES else self.provider,
+            "provider_label": (PROVIDER_LABELS.get(self.provider)
+                               or LOCAL_PROVIDER_LABELS.get(self.provider)
+                               or (SOURCES[self.location].name if self.location in SOURCES else self.provider)),
             "source_uri": self.source_uri, "display_name": self.display_name,
             "target": self.target, "code": self.code, "title": self.title, "origin": self.origin,
             "display_code": display_code, "display_title": display_title,
@@ -573,6 +584,7 @@ SETTINGS_FILENAME = "downloads.json"
 #: 不登记进 `CREDENTIAL_GUIDE`，所以既不出现在追更凭据页，也没有可同步字段。
 CLOUDDRIVE_CREDENTIAL = "download-clouddrive2"
 PIKPAK_CREDENTIAL = "download-pikpak"
+QBITTORRENT_CREDENTIAL = "download-qbittorrent"
 
 
 def normalise_target(raw: str) -> str:
@@ -580,6 +592,14 @@ def normalise_target(raw: str) -> str:
     text = normalise_prefix(raw)
     if text == "/" or any(part in {".", ".."} for part in text.split("/")):
         raise ValueError("目标目录要写成网盘里的一个具体文件夹，不能是网盘根目录")
+    return text
+
+
+def normalise_local_target(raw: str) -> str:
+    """本地下载器看到的保存目录：POSIX 绝对路径，不接受根目录与 `..`。"""
+    text = normalise_prefix(raw)
+    if not raw or text == "/" or any(part in {".", ".."} for part in text.split("/")):
+        raise ValueError("保存目录要写成下载器里的一个具体文件夹，例如 /vol1/media/Peach")
     return text
 
 
@@ -591,31 +611,40 @@ class DownloadConfig:
     pikpak_root: str = ""
     wait_hours: int = DEFAULT_WAIT_HOURS
     problems: tuple[str, ...] = ()
+    #: 本地 qBittorrent：地址、下载器保存目录、对应媒体库根目录。
+    qbittorrent_address: str = ""
+    qbittorrent_save_path: str = ""
+    qbittorrent_media_root: str = ""
 
     def payload(self) -> dict:
-        return {"clouddrive_address": self.clouddrive_address, "targets": dict(self.targets),
-                "pikpak_root": self.pikpak_root, "wait_hours": self.wait_hours}
+        payload = {"clouddrive_address": self.clouddrive_address, "targets": dict(self.targets),
+                   "pikpak_root": self.pikpak_root, "wait_hours": self.wait_hours}
+        if self.qbittorrent_address or self.qbittorrent_save_path or self.qbittorrent_media_root:
+            payload.update(qbittorrent_address=self.qbittorrent_address,
+                           qbittorrent_save_path=self.qbittorrent_save_path,
+                           qbittorrent_media_root=self.qbittorrent_media_root)
+        return payload
 
 
-def clean_address(raw) -> str:
+def clean_address(raw, label: str = "CloudDrive2") -> str:
     text = str(raw or "").strip().rstrip("/")
     if not text:
         return ""
     if "://" not in text:
         text = "http://" + text
-    message = "CloudDrive2 地址只写协议、主机和端口，例如 http://127.0.0.1:19798"
+    message = f"{label} 地址只写协议、主机和端口，例如 http://127.0.0.1:19798"
     if len(text) > 2048 or "\\" in text or any(char.isspace() or ord(char) < 32 for char in text):
         raise ValueError(message)
     try:
         parts = urlsplit(text)
         port = parts.port
     except ValueError:
-        raise ValueError("CloudDrive2 地址的端口必须是 1–65535 的整数，IPv6 地址须放在方括号内") from None
+        raise ValueError(f"{label} 地址的端口必须是 1–65535 的整数，IPv6 地址须放在方括号内") from None
     if parts.scheme not in {"http", "https"} or not parts.hostname or parts.path not in {"", "/"} \
             or parts.query or parts.fragment or parts.username is not None or parts.password is not None:
         raise ValueError(message)
     if port == 0 or parts.netloc.endswith(":"):
-        raise ValueError("CloudDrive2 地址的端口必须是 1–65535 的整数")
+        raise ValueError(f"{label} 地址的端口必须是 1–65535 的整数")
     return f"{parts.scheme}://{parts.netloc}"
 
 
@@ -670,7 +699,33 @@ class DownloadSettings:
                 raise
             address = str(body.get("clouddrive_address") or "").strip()
             problems = (str(error),)
-        return DownloadConfig(address, targets, root, hours, problems)
+        qb_address = ""
+        try:
+            qb_address = clean_address(body.get("qbittorrent_address"), "qBittorrent")
+        except ValueError as error:
+            if not saved:
+                raise
+            qb_address = str(body.get("qbittorrent_address") or "").strip()
+            problems += (str(error),)
+        qb_save_path = ""
+        raw_save_path = str(body.get("qbittorrent_save_path") or "").strip()
+        if raw_save_path:
+            try:
+                qb_save_path = normalise_local_target(raw_save_path)
+            except ValueError as error:
+                if not saved:
+                    raise
+                qb_save_path = raw_save_path
+                problems += (str(error),)
+        qb_media_root = str(body.get("qbittorrent_media_root") or "").strip()
+        if qb_media_root and declared_roots is not None:
+            known = {str(item).casefold(): str(item) for item in declared_roots.get("local", ())}
+            if qb_media_root.casefold() not in known:
+                shown = "、".join(known.values()) or "（设置文件里没有 local 来源）"
+                raise ValueError(f"{qb_media_root} 不是已声明的本地媒体根；已知：{shown}")
+            qb_media_root = known[qb_media_root.casefold()]
+        return DownloadConfig(address, targets, root, hours, problems,
+                              qb_address, qb_save_path, qb_media_root)
 
     def save(self, body: dict, declared_roots) -> DownloadConfig:
         if not isinstance(body, dict):
@@ -738,10 +793,17 @@ class DownloadService:
         channel = next((row for row in channels if row["key"] == provider), None)
         if channel is None or (self.channel_catalog is not None and not channel["configured"]):
             raise ValueError("请选择媒体库中可用的云下载渠道")
-        folder = normalise_target(target or channel["target"])
-        if provider.startswith("clouddrive:") and not (
-                folder == channel["target"] or folder.startswith(channel["target"].rstrip("/") + "/")):
-            raise ValueError("下载目标目录必须位于所选媒体库内")
+        raw_target = target or channel["target"]
+        if channel.get("kind") == "local":
+            folder = normalise_local_target(raw_target)
+            if not (folder == channel["target"]
+                    or folder.startswith(str(channel["target"]).rstrip("/") + "/")):
+                raise ValueError("下载目标目录必须位于所选媒体库内")
+        else:
+            folder = normalise_target(raw_target)
+            if provider.startswith("clouddrive:") and not (
+                    folder == channel["target"] or folder.startswith(channel["target"].rstrip("/") + "/")):
+                raise ValueError("下载目标目录必须位于所选媒体库内")
         with self._submit_lock:
             now = self.clock()
             if dedupe_code and code and (existing := self.store.active_by_code(code)) is not None:
@@ -770,20 +832,48 @@ class DownloadService:
                 self.store.record_submission(task=task, outcome=outcome, now=now,
                                              failure=error.failure, detail=error.detail)
             else:
-                self._accepted(task, status, now)
+                error = self._accepted(task, status, now)
+                if error:
+                    self._fail(task, error, now)
+                    self.store.record_submission(task=task, outcome="failed", now=now,
+                                                 failure=error.failure, detail=error.detail)
+                    return SubmitResult("failed", task)
                 outcome = "adopted_remote" if status.adopted else "submitted"
                 self.store.record_submission(task=task, outcome=outcome, now=now)
         self._wake.set()
         return SubmitResult(outcome, task)
 
-    def _accepted(self, task: DownloadTask, status: RemoteStatus, now: float) -> None:
+    def _accepted(self, task: DownloadTask, status: RemoteStatus, now: float) -> DownloadError | None:
         task.remote_id = status.remote_id or task.remote_id
         task.remote_name = status.name or task.remote_name
+        if status.adopted and status.target:
+            error = self._local_target_error(task, status)
+            if error:
+                return error
         task.state = SUBMITTED
         task.checks = 0
         task.failure_detail = None
         task.next_check_at = iso(now + POLL_DELAYS[0])
         self.store.save(task)
+        return None
+
+    def _local_target_error(self, task: DownloadTask, status: RemoteStatus) -> DownloadError | None:
+        channel = next((row for row in self.channel_snapshot()["providers"]
+                        if row["key"] == task.provider), None)
+        if channel is None or channel.get("kind") != "local":
+            return None
+        try:
+            actual = normalise_local_target(status.target)
+        except ValueError:
+            actual = ""
+        root = str(channel["target"]).rstrip("/")
+        if not (actual == root or actual.startswith(root + "/")):
+            return DownloadError(
+                "mismatch",
+                f"qBittorrent 里已有这个磁力，但保存在 {status.target}，"
+                f"不在当前下载目录 {root} 内；请先在 qBittorrent 里删除它再提交")
+        task.target = actual
+        return None
 
     def _retry_submit(self, task: DownloadTask, now: float) -> None:
         """再交一次提交时网盘没应答的磁力。远端收下后从这一刻起按新提交对账。"""
@@ -808,8 +898,14 @@ class DownloadService:
             latest = self.store.get(task.id)
             if latest is None or latest.state != SUBMIT_PENDING:
                 return  # 再交的这段时间里任务被取消了。
+            task = latest
             task.submitted_at = iso(now)
-            self._accepted(task, status, now)
+            error = self._accepted(task, status, now)
+            if error:
+                self._fail(task, error, now)
+                self.store.record_submission(task=task, outcome="failed", now=now,
+                                             failure=error.failure, detail=error.detail)
+                return
             self.store.record_submission(task=task, outcome="adopted_remote" if status.adopted else "submitted",
                                          now=now)
 
@@ -898,6 +994,18 @@ class DownloadService:
         return self.store.get(task.id)
 
     def _provider_state(self, key: str) -> dict:
+        if key == "qbittorrent":
+            try:
+                fields = set(self.credentials.describe(QBITTORRENT_CREDENTIAL)["fields"])
+            except CredentialError:
+                fields = set()
+            configured = bool(
+                {"username", "password"} <= fields
+                and self.config.qbittorrent_address
+                and self.config.qbittorrent_save_path
+                and self.config.qbittorrent_media_root)
+            return {"key": key, "label": LOCAL_PROVIDER_LABELS[key], "configured": configured,
+                    "target": self.config.qbittorrent_save_path}
         credential = CLOUDDRIVE_CREDENTIAL if key == "115" else PIKPAK_CREDENTIAL
         needed = "token" if key == "115" else "refresh_token"
         described = self.credentials.describe(credential)
@@ -1010,7 +1118,8 @@ class DownloadService:
         """隔一段再查。`detail` 是这一次暂时性故障的原因；没带就是这一次查通了，旧原因作废。"""
         task.checks += 1
         task.updated_at = iso(now)
-        task.next_check_at = iso(now + poll_delay(task.checks))
+        ceiling = LOCAL_POLL_CEILING if task.location == "local" else None
+        task.next_check_at = iso(now + poll_delay(task.checks, ceiling))
         task.failure_detail = detail
         self.store.save(task)
 
@@ -1028,7 +1137,16 @@ class DownloadService:
         if status.state == ERROR:
             raise classify_remote_message(status.message)
         if status.state == MISSING:
-            if not provider.landed(task):
+            if getattr(provider, "completion_by_file", False):
+                started = parse_iso(task.submitted_at) or now
+                # 本地下载器完成并自动清理种子后列表里就没有了；只要它出现过，就把判定交给落地。
+                if never_seen(task):
+                    if now - started < UNSEEN_GRACE:
+                        self._reschedule(task, now)
+                        return
+                    raise DownloadError("not_accepted", "下载器没有收下这个任务：提交后列表里始终没有它，目标目录里也没有文件")
+                status = RemoteStatus(DONE, task.remote_id, task.remote_name, 1.0)
+            elif not provider.landed(task):
                 started = parse_iso(task.submitted_at) or now
                 # 磁力本身失败时 115 会把任务留在列表里标为离线失败；从没出现过说明网盘没有收下，
                 # 出现过又不见了说明任务在网盘一侧被删除或清理，两种都不是换磁力能解决的。
@@ -1136,6 +1254,19 @@ class Landing:
         remote = self.remote_path(task)
         if not remote:
             return None
+        channel = None
+        if self.channel_catalog:
+            channel = next((row for row in self.channel_catalog()["providers"]
+                            if row["key"] == task.provider), None)
+        if channel and channel.get("kind") == "local":
+            base = PurePosixPath(channel["local_root"])
+            path = PurePosixPath(remote)
+            if not path.is_relative_to(base):
+                return None
+            ledger = PureWindowsPath(channel["root"]).joinpath(*path.relative_to(base).parts)
+            from .platform import resolve_location
+            location = resolve_location(str(ledger), self.declared_roots)[0]
+            return (location, str(ledger)) if location else None
         if task.provider == "pikpak":
             if not config.pikpak_root:
                 return None
@@ -1143,10 +1274,8 @@ class Landing:
             remote = "/pikpak" + remote
         else:
             prefixes = tuple(self.push_discovery.config.prefixes)
-            if self.channel_catalog:
-                channel = next((row for row in self.channel_catalog()["providers"] if row["key"] == task.provider), None)
-                if channel and channel.get("cloud_root"):
-                    prefixes = (CloudPrefix(channel["cloud_root"], channel["root"]),)
+            if channel and channel.get("cloud_root"):
+                prefixes = (CloudPrefix(channel["cloud_root"], channel["root"]),)
         try:
             path = map_cloud_path(remote, prefixes)
         except CloudPathError:
@@ -1157,7 +1286,7 @@ class Landing:
 
     def ingest(self, location: str, ledger_path: str) -> bool:
         """定向登记。目录就逐个登记里面的文件；什么也没找到返回假。"""
-        from .scan import walk_root_for
+        from .scan import iter_files, walk_root_for
         parent = str(PureWindowsPath(ledger_path).parent)
         try:
             local_parent = walk_root_for(location, parent, declared_roots=self.declared_roots,
@@ -1171,13 +1300,11 @@ class Landing:
             if not local.is_dir():
                 return False
             found = False
-            for index, item in enumerate(sorted(local.rglob("*"))):
+            for index, relative in enumerate(iter_files(local)):
                 if index >= MAX_LANDED_FILES:
                     break
-                if item.is_file():
-                    relative = item.relative_to(local).parts
-                    path = str(PureWindowsPath(ledger_path).joinpath(*relative))
-                    found = self.push_discovery.ingest_now(location, path) or found
+                path = str(PureWindowsPath(ledger_path).joinpath(*relative))
+                found = self.push_discovery.ingest_now(location, path) or found
             return found
         except OSError:
             return False
