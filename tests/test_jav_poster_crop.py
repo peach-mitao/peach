@@ -866,6 +866,8 @@ class BatchScriptTests(unittest.TestCase):
     @unittest.skipUnless(opencv_available(), "缺 vision 依赖组")
     def test_a_centred_still_is_counted_in_its_own_bucket(self):
         """16:9 居中拼图是单独一档，批处理照样计数、写边车，不因为认不得这档停下。"""
+        self.root = self.root / "中文封面"
+        self.root.mkdir()
         still = self.root / "PASN-027.jpg"
         centred(1348, 758, 408, 940).save(still)
         self.assertEqual(self.run_script("--apply"), 0)

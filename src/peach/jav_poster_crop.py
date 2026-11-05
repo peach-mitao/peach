@@ -262,10 +262,12 @@ def file_gradient(path: Path | str) -> Callable[[], ColumnProfile | None]:
     """把一张封面包成惰性的列梯度来源：真要用到时才解码。"""
     def source() -> ColumnProfile | None:
         try:
-            import cv2
+            from .face_detect import read_image
+
+            image = read_image(path)
         except ImportError:                     # pragma: no cover - 缺 vision 依赖组
             return None
-        return column_gradient(cv2.imread(str(path)))
+        return column_gradient(image)
     return source
 
 
