@@ -585,7 +585,8 @@ class PruneTests(_WorktreeCase):
     def test_a_worktree_a_process_is_working_in_is_kept(self):
         """会话、终端或预览服务还开在里面的工作树不回收：分支合入了，人还在用。"""
         worker = self._integrated("in-use")
-        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], cwd=worker)
+        # 探针只用标准库，直接启动解释器，让 Popen.pid 就是占用目录的真实进程。
+        process = subprocess.Popen([sys._base_executable, "-c", "import time; time.sleep(60)"], cwd=worker)
         try:
             report = prune(self.repo, apply=True)
         finally:
@@ -746,7 +747,8 @@ class LeftoverProcessTests(_WorktreeCase):
 
     def sleeper(self, cwd: Path) -> subprocess.Popen:
         cwd.mkdir(parents=True, exist_ok=True)
-        child = subprocess.Popen([sys.executable, "-c", "import sys; sys.stdin.read()"],
+        # Windows venv 的启动器可能另建解释器进程；占用探针需要直接持有真实 PID。
+        child = subprocess.Popen([sys._base_executable, "-c", "import sys; sys.stdin.read()"],
                                  cwd=cwd, stdin=subprocess.PIPE)
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
@@ -757,7 +759,7 @@ class LeftoverProcessTests(_WorktreeCase):
         return child
 
     def stop(self, child: subprocess.Popen) -> None:
-        # EOF 让解释器自己退出；Windows venv 启动器也会等其子进程结束。
+        # EOF 让探针解释器自己退出。
         child.communicate(timeout=10)
 
     def test_a_process_working_in_a_worktree_is_listed_with_its_details(self):
