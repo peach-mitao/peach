@@ -44,7 +44,7 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 
 - **Metadata scraping**: recognize video codes, read NFO files and fill titles, performers, studios and covers from multiple sources while keeping your edits.
 - **Local and cloud libraries**: browse local drives, SMB, mounted cloud storage and PikPak libraries together.
-- **Playback and history**: web and external players, subtitles, playback speed, rotation, resume and timeline previews.
+- **Playback and history**: web and external players, subtitles, playback speed, rotation, resume and timeline previews. Chinese subtitles alongside a video turn on automatically on first opening; track selections and turning subtitles off are remembered per video.
 - **Person previews**: optional local frame selection favors a clear frontal face, then a full-body candidate, while preserving official artwork and manually selected images. See [setup](docs/OPERATIONS.md#人物代表帧).
 - **Follows and discovery**: track performer and creator updates, discover titles and manage a want list.
 - **Cloud download**: search by video code or submit a magnet link, then organize completed downloads into your library.

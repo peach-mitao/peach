@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from starlette.concurrency import run_in_threadpool
 
-from . import subtitle_memory, subtitle_search, subtitles
+from . import subtitle_memory, subtitle_search, subtitle_tracks, subtitles
 from .routes_auth import require_auth
 
 router = APIRouter(dependencies=[Depends(require_auth)])
@@ -47,9 +47,12 @@ def _memory(request: Request, video: str) -> subtitle_memory.SubtitleMemory:
     return subtitle_memory.SubtitleMemory(state.web_contract.follow_state_root / "player-subtitles", video)
 
 
-def _memory_payload(video: str, value: dict) -> dict:
+def _memory_payload(request: Request, video: str, value: dict) -> dict:
+    selected = value["selected"]
+    if not value["selection_explicit"] and video.startswith("item:"):
+        selected = subtitle_tracks.preferred_chinese(request.app.state, int(video.split(":")[1]))
     return {**{key: value[key] for key in subtitle_memory.PREFERENCES if key in value},
-            "selected": value["selected"], "tracks": [
+            "selected": selected, "tracks": [
         {"key": row["key"], "name": row["name"],
          "src": f"/api/subtitles/memory/track/{row['file']}?video={video}"}
         for row in value["tracks"]]}
@@ -58,7 +61,7 @@ def _memory_payload(video: str, value: dict) -> dict:
 @router.get("/api/subtitles/memory")
 @router.get("/api/player/memory")
 def remembered_subtitles(request: Request, video: str):
-    return JSONResponse(_memory_payload(video, _memory(request, video).read()),
+    return JSONResponse(_memory_payload(request, video, _memory(request, video).read()),
                         headers={"Cache-Control": "no-store"})
 
 
@@ -74,7 +77,8 @@ async def remember_subtitles(request: Request, video: str):
     try:
         value = json.loads(data)
         saved = await run_in_threadpool(memory.patch, value)
-        return JSONResponse(_memory_payload(video, saved), headers={"Cache-Control": "no-store"})
+        payload = await run_in_threadpool(_memory_payload, request, video, saved)
+        return JSONResponse(payload, headers={"Cache-Control": "no-store"})
     except (ValueError, TypeError) as error:
         return _error(error)
 

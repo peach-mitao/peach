@@ -420,12 +420,12 @@ class SubtitleApiTests(unittest.TestCase):
             self.assertEqual(client.get(original["src"]).status_code, 404)
 
     def test_discovery_stays_inside_authorized_media_roots(self):
-        from peach.routes_media import _subtitle_rows
+        from peach.subtitle_tracks import rows
         with self._client() as client:
             state = client.app.state
             state.media_engine.filesystem.allowed_roots = (self.outside,)
-            with mock.patch("peach.routes_media.subtitles.discover_sidecars") as discover:
-                _subtitle_rows(state, 1)
+            with mock.patch("peach.subtitle_tracks.subtitles.discover_sidecars") as discover:
+                rows(state, 1)
             discover.assert_not_called()
 
     def test_discovered_identity_is_stable_when_the_file_is_registered(self):

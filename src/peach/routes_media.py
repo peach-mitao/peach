@@ -35,7 +35,7 @@ from starlette.requests import ClientDisconnect
 from . import (
     avatar_face, avatar_online, avatar_picker, avatar_provider, error_reporting,
     follow_assets, follow_providers, images,
-    jav_poster_crop, link_marks, link_status, scraping_access, site_icons, social_links, subtitles,
+    jav_poster_crop, link_marks, link_status, scraping_access, site_icons, social_links, subtitle_tracks, subtitles,
     taste_history, timeline_sheets, web_follow, web_timeline_thumbnails,
 )
 from .config import GENERATED_DIR, PROJECT_ROOT
@@ -49,13 +49,11 @@ from .follow_store import FollowStore
 from .follow_stream import (
     FollowMediaUnavailable, FollowProxyError, ResolvedFollowMedia, open_upstream,
 )
-from .media import MediaOffline, MediaUnavailable, normalized_path
-from .platform import within_root
+from .media import MediaOffline, MediaUnavailable
 from .previews import ENTITY_THUMB_TYPE, PreviewUnavailable, entity_image_key
 from .remote_media_cache import AVATAR_REFRESH_SECONDS, FAVICON_REFRESH_SECONDS, cache_for
 from .preview_cache import PreviewCache
 from .routes_auth import require_auth
-from .scan import VIDEO
 from .segments import SegmentCancelled, SegmentUnavailable, build_hls_playlist
 from .streaming import (
     _cancel_and_wait, _wait_for_disconnect,
@@ -534,69 +532,6 @@ async def stream_cancel(request: Request, session: str, args: dict[str, str] = D
     return JSONResponse({"ok": True, "cancelled": cancelled})
 
 
-#: 单份字幕的读取上限。两小时的片子字幕撑死几百 KB；比这更大的多半不是字幕，
-#: 整份读进内存的代价不该由播放器那一次请求承担。
-SUBTITLE_BYTE_LIMIT = 4 * 1024 * 1024
-
-
-def _subtitle_rows(state, asset_id: int):
-    """资产本身加它的字幕行。资产不存在时抛 `MediaNotFound`，由 `api.py` 收口。"""
-    asset = state.media_engine.asset(asset_id)
-    with state.database.read_connection() as connection:
-        rows = [dict(row) for row in subtitles.subtitles_for(connection, asset_id)]
-    if asset.path:
-        video = normalized_path(asset.path)
-        if any(within_root(video, root) for root in state.media_engine.filesystem.allowed_roots):
-            known = {str(normalized_path(row["path"])).casefold() for row in rows}
-            rows.extend(row for row in subtitles.discover_sidecars(video, VIDEO)
-                        if row["path"].casefold() not in known)
-    return asset, rows
-
-
-def _subtitle_path(state, asset, row) -> Path | None:
-    """字幕文件在本机的位置；逃出正片所在目录或授权根一律拒绝。
-
-    路径来自账本或同目录发现，这一层仍核对当前媒体授权根。
-    """
-    if not asset.path:
-        return None
-    directory = normalized_path(asset.path).parent
-    path = normalized_path(row["path"])
-    if str(path.parent).casefold() != str(directory).casefold():
-        return None
-    if not any(within_root(path, root)
-               for root in state.media_engine.filesystem.allowed_roots):
-        return None
-    return path
-
-
-def _subtitle_bytes(state, asset, row) -> tuple[bytes | None, str]:
-    """字幕文件的内容，以及取不到时的原因。原因直接进列表给人看。"""
-    path = _subtitle_path(state, asset, row)
-    if path is None:
-        return None, "不在正片所在目录"
-    try:
-        if path.stat().st_size > SUBTITLE_BYTE_LIMIT:
-            return None, "文件过大"
-        return path.read_bytes(), ""
-    except OSError:
-        return None, "文件未找到"
-
-
-def _subtitle_note(state, asset, row) -> str:
-    """这一条为什么不能播；能播返回空串。"""
-    if not subtitles.is_playable_format(row["format"]):
-        return "图形字幕，播放器里不显示"
-    data, note = _subtitle_bytes(state, asset, row)
-    if data is None:
-        return note
-    try:
-        subtitles.decode(data)
-    except subtitles.SubtitleUndecodable:
-        return "编码未识别"
-    return ""
-
-
 @router.get("/api/assets/{id}/subtitles")
 def asset_subtitles(request: Request, id: int, args: dict[str, str] = Depends(require_auth)):
     """这个资产有哪些字幕轨，以及每一条能不能播。
@@ -604,25 +539,7 @@ def asset_subtitles(request: Request, id: int, args: dict[str, str] = Depends(re
     返回的 src 通过 track 参数绑定文件身份，序号用于无参数的按序读取。
     不能播的也列出来并说明原因：界面上「有三条字幕、只挂上两条」要能解释得清。
     """
-    state = request.app.state
-    asset, rows = _subtitle_rows(state, id)
-    tracks = []
-    for index, row in enumerate(rows):
-        note = _subtitle_note(state, asset, row)
-        tracks.append({
-            "id": f"sidecar:{subtitles.file_key(row['name'])}",
-            "legacy_id": f"sidecar:{row['id']}" if isinstance(row["id"], int) else None,
-            "index": index,
-            "name": row["name"],
-            "format": row["format"],
-            "language": row["language"],
-            "label": subtitles.track_label(row["name"], row["language"], asset.name),
-            "pairing": row["pairing"],
-            "note": note,
-            "playable": not note,
-            "src": f"/api/assets/{id}/subtitles/{index}?track={subtitles.file_key(row['name'])}",
-        })
-    return {"id": id, "subtitles": tracks}
+    return {"id": id, "subtitles": subtitle_tracks.tracks(request.app.state, id)}
 
 
 @router.api_route("/api/assets/{id}/subtitles/{index}", methods=["GET", "HEAD"])
@@ -631,14 +548,14 @@ def asset_subtitle_track(request: Request, id: int, index: int,
                          args: dict[str, str] = Depends(require_auth)):
     """一条字幕的 WebVTT。浏览器的 text track 只认这一种格式。"""
     state = request.app.state
-    asset, rows = _subtitle_rows(state, id)
+    asset, rows = subtitle_tracks.rows(state, id)
     if track:
         index = next((n for n, row in enumerate(rows)
                       if subtitles.file_key(row["name"]) == track), -1)
     if index < 0 or index >= len(rows):
         return JSONResponse({"error": "no such subtitle"}, status_code=404)
     row = rows[index]
-    data, _note = _subtitle_bytes(state, asset, row)
+    data, _note = subtitle_tracks.read(state, asset, row)
     if data is None:
         return JSONResponse({"error": "subtitle unavailable"}, status_code=404)
     try:
