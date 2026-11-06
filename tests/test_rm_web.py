@@ -665,8 +665,8 @@ class WebDataTests(unittest.TestCase):
         # 同一来源的几个根各占一行，用序号区分；单根来源不带序号。
         self.assertEqual(
             [(row["kind"], row["label"]) for row in stats["storage_volumes"]],
-            [("system", "系统盘"), ("local", "资源盘 1"), ("local", "资源盘 2"),
-             ("115", "115 网盘"), ("pikpak", "PikPak 网盘")],
+            [("system", "System"), ("local", "Local 1"), ("local", "Local 2"),
+             ("115", "115 Cloud"), ("pikpak", "PikPak Cloud")],
         )
         self.assertEqual(stats["storage_summary"], {
             "volumes": 5, "online": 5, "measured": 5,
@@ -2975,7 +2975,7 @@ class JavModeAndCoverTests(unittest.TestCase):
         )
         self.assertEqual(subtitled, {
             "display_code": "CJOD-175", "display_title": "",
-            "edition_badges": ["中字"],
+            "edition_badges": ["Chinese subs"],
         })
         self.assertEqual(advertised["display_title"], "")
         self.assertEqual(uncensored["display_title"], "Hinata Mio")
@@ -3038,7 +3038,7 @@ class JavModeAndCoverTests(unittest.TestCase):
             ("122614_001-1pon-whole1_hd.avi", "122614-947"),
         ):
             self.assertEqual(
-                rm_web.jav_display_metadata(name, code)["edition_badges"], ["无码"], name)
+                rm_web.jav_display_metadata(name, code)["edition_badges"], ["Uncensored"], name)
         # 有码番号不能因为这条判据凭空拿到徽章。
         for name, code in (("ABW-220.mp4", "ABW-220"), ("MIDE-925-4K.mp4", "MIDE-925")):
             self.assertEqual(
@@ -3052,7 +3052,7 @@ class JavModeAndCoverTests(unittest.TestCase):
         ):
             row = rm_web.jav_display_metadata(name, code)
             self.assertEqual(row["display_title"], "", name)
-            self.assertEqual(row["edition_badges"], ["中字"], name)
+            self.assertEqual(row["edition_badges"], ["Chinese subs"], name)
         # `-UN` 和 `-U`／`-UC` 是同一个意思；标题判空后不认它就等于丢掉这条信息。
         # 有码片商的番号上，它说的是破解版。
         self.assertEqual(
@@ -3946,7 +3946,7 @@ class DuplicateDetectionTests(unittest.TestCase):
         cases = {
             "完整版": [{"id": 1, "name": "TRE-080.mp4", "duration": 28900}, *parts],
             "广告片": [{"id": 1, "name": "TRE-080.mp4", "duration": 78}, *parts],
-            "缺时长": [{"id": 1, "name": "TRE-080.mp4", "duration": None}, *parts],
+            "Missing duration": [{"id": 1, "name": "TRE-080.mp4", "duration": None}, *parts],
             "两个裸名": [{"id": 1, "name": "TRE-080.mp4", "duration": 9163},
                          {"id": 4, "name": "tre-080.mp4", "duration": 9163}, *parts],
             "标记不从 2 起": [{"id": 1, "name": "TRE-080.mp4", "duration": 9163}, parts[1]],

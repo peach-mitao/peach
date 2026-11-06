@@ -1,4 +1,4 @@
-/* 常驻任务面：状态、计数与控件共用服务端快照。位置由全站通知栈管理。 */
+/* The resident task panel: status, counts, and controls share one server snapshot. Its position is managed by the site-wide notification stack. */
 import { useEffect, useId, useRef, useState } from 'react';
 import { VisuallyHidden } from 'react-aria';
 import { RiArrowRightLine, RiCheckLine, RiCheckboxBlankCircleLine, RiCloseLine, RiErrorWarningLine, RiInformationLine } from '@remixicon/react';
@@ -20,10 +20,10 @@ function expandedFor(jobId?: string): boolean {
   try { return !jobId || sessionStorage.getItem(COLLAPSE_KEY) !== jobId } catch { return true }
 }
 
-/** 圆环只表达当前阶段的实际完成率；未知总量使用静态任务图标。 */
+/** The ring shows only the current stage's real completion rate; an unknown total uses the static task icon. */
 function Gauge({ value, max }: { value: number; max: number }) {
   const percent = Math.max(0, Math.min(100, value / max * 100));
-  return <svg role="progressbar" aria-label="当前阶段完成率" aria-valuemin={0} aria-valuemax={100}
+  return <svg role="progressbar" aria-label="Current stage completion rate" aria-valuemin={0} aria-valuemax={100}
     aria-valuenow={percent} viewBox="0 0 32 32" fill="none" className="size-8 shrink-0 -rotate-90 text-border-focus-ring">
     <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="3" className="opacity-20" />
     <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="3" pathLength={100}
@@ -55,7 +55,7 @@ export function ProcessingNoticePanel({ state, problem = '', measure = false, on
     try {
       if (expanded && state?.job_id) sessionStorage.setItem(COLLAPSE_KEY, state.job_id);
       else sessionStorage.removeItem(COLLAPSE_KEY);
-    } catch { /* 会话存储不可用时当前页面仍可收起 */ }
+    } catch { /* When session storage is unavailable, the current page can still collapse */ }
     if (expanded) setTrafficExpanded(false);
     setExpanded(!expanded);
   };
@@ -100,9 +100,9 @@ export function ProcessingNoticePanel({ state, problem = '', measure = false, on
   if (!problem && !active && !failed && !partial) return null;
   const slow = problem ? null : slowItem(state);
   const warning = !!problem || !!state?.stalled || partial || !!slow;
-  const title = partial ? '处理已结束，部分项目需处理' : failed ? '扫描与采集已中断' : state?.status === 'paused' ? '扫描与采集已暂停' : '扫描与采集';
+  const title = partial ? 'Processing ended, some items still need work' : failed ? 'Scan and scrape were interrupted' : state?.status === 'paused' ? 'Scanning and collection paused' : 'Scan and scrape';
   return <aside ref={panel} data-processing-dock="" data-processing-tone={failed ? 'error' : warning ? 'warning' : 'neutral'}
-    aria-label="扫描任务" role={failed ? 'alert' : 'status'}
+    aria-label="Scan task" role={failed ? 'alert' : 'status'}
     className={cx('flex min-w-0 flex-col border bg-background-primary-default p-4',
       failed ? 'border-current/35 text-text-error-primary'
         : warning ? 'border-current/35 text-status-yellow-text'
@@ -119,7 +119,7 @@ export function ProcessingNoticePanel({ state, problem = '', measure = false, on
       <Button size="small" variant="secondary" iconOnly leadingIcon={CollapseChevron} data-processing-toggle="" data-collapse-upward=""
         aria-label={open ? '收起任务详情' : '展开任务详情'} aria-expanded={open} aria-controls={bodyId} onClick={toggle} />
       {onHide ? <Button size="small" variant="secondary" iconOnly leadingIcon={RiCloseLine}
-        aria-label="隐藏任务提示" onClick={onHide} /> : null}
+        aria-label="Hide the task note" onClick={onHide} /> : null}
     </div>
     {/* 收起时只留标题与文件计数；预估、步骤、原因与入口都在折叠区里。 */}
     <TrafficProgress traffic={state?.traffic} compact={!open} detailsOpen={trafficExpanded} onDetailsChange={setTrafficExpanded} />
@@ -128,33 +128,33 @@ export function ProcessingNoticePanel({ state, problem = '', measure = false, on
     </div>
     <CollapseRegion id={bodyId} open={open} data-processing-body=""><div className="pt-3"><div className={cx('flex min-w-0 flex-col gap-2 border-t pt-3',
       failed ? 'border-border-error-default/20' : warning ? 'border-current/20' : 'border-separator-border')}>
-      {state?.steps?.length ? <ol aria-label="处理步骤" className="flex min-w-0 flex-col gap-1.5">
+      {state?.steps?.length ? <ol aria-label="Processing steps" className="flex min-w-0 flex-col gap-1.5">
         {state.steps.map(step => <li key={step.id} data-processing-step={step.status}
           aria-current={step.status === 'current' ? 'step' : undefined}
           className={cx('flex min-h-8 items-center gap-2 text-body-2-regular',
             step.status === 'current' ? 'text-text-primary' : 'text-text-tertiary')}>
           {step.status === 'complete' ? <RiCheckLine aria-hidden className="size-(--icon-inline) shrink-0" />
             : <RiCheckboxBlankCircleLine aria-hidden className={cx('size-(--icon-inline) shrink-0', step.status === 'current' && 'text-border-focus-ring')} />}
-          <VisuallyHidden>{step.status === 'complete' ? '已完成：' : step.status === 'current' ? '当前：' : '待处理：'}</VisuallyHidden>
+          <VisuallyHidden>{step.status === 'complete' ? 'Completed: ' : step.status === 'current' ? 'Current:' : 'Pending: '}</VisuallyHidden>
           {step.status === 'complete' ? <s className="wrap-anywhere">{step.label}</s> : <span className="wrap-anywhere">{step.label}</span>}
         </li>)}
       </ol> : null}
-      <p className="text-body-2-regular wrap-anywhere">{problem || (failed || partial ? state?.error || '请查看并处理未完成项' : <ProcessingLine state={state!} />)}</p>
+      <p className="text-body-2-regular wrap-anywhere">{problem || (failed || partial ? state?.error || 'Review and handle the unfinished items' : <ProcessingLine state={state!} />)}</p>
       {partial ? <p className="text-body-2-regular wrap-anywhere">{PARTIAL_RESULT_TEXT}</p> : null}
       {active && state?.stage && !state.steps?.length ? <p className="text-caption-1-regular text-text-tertiary">当前阶段 · {state.stage}</p> : null}
       {state?.stalled && !problem && !slow ? <p className="text-caption-1-regular">当前步骤耗时较长，正在等待进展</p> : null}
     </div>
     <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
       <LinkButton href="/data-cleanup#libraryProcessing" variant="secondary" size="small" trailingIcon={RiArrowRightLine}>
-        {problem || failed || partial ? '打开扫描与采集' : '任务详情'}
+        {problem || failed || partial ? 'Open scan and capture' : 'Task details'}
       </LinkButton>
-      {partial ? <LinkButton href={ALL_CONTENT_URL} size="small" trailingIcon={RiArrowRightLine}>查看全部内容</LinkButton> : null}
+      {partial ? <LinkButton href={ALL_CONTENT_URL} size="small" trailingIcon={RiArrowRightLine}>View all content</LinkButton> : null}
       {active ? <ProcessingControls state={state!} disabled={!!problem} /> : null}
     </div></div></CollapseRegion>
   </aside>;
 }
 
-/** 独立任务面与数据管理卡片共享缓存和完成通知。 */
+/** The standalone task surface and the data management card share the cache and completion notifications. */
 export function LibraryProcessingNotice(props: LibraryProcessingProps) {
   const { job } = useLibraryProcessingJob(props);
   return <ProcessingNoticePanel state={job.data} problem={job.isError ? (job.data ? DISCONNECTED_TEXT : errorMessage(job.error)) : ''} />;

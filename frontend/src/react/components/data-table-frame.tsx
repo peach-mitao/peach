@@ -8,11 +8,11 @@ import './table-column-controls.css';
 import { clickedBlank } from './row-click';
 
 export interface DataTableFrameProps extends PropsWithChildren {
-  /** 关注来源表需要额外的排序图标规则；外框与行状态仍由这个共享组件负责。 */
+  /** The follows source table needs extra sort-icon rules; the outer frame and row states stay with this shared component. */
   follow?: boolean;
   preferences?: TablePreferences;
-  /** 给了就是整行可选：点在某一行的空白处时以那一行的 `data-key`（React Aria 写在 `tr` 上的
-   *  行 id）回调；点在行里的勾、键、链接上不算。 */
+  /** When set, the whole row is selectable: a click on a row's empty space calls back with that row's `data-key` (the row id React Aria writes on the `tr`);
+   *  clicks on a row's checkbox, buttons or links do not count. */
   onRowClick?(key: string): void;
 }
 

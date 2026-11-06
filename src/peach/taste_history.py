@@ -805,6 +805,12 @@ def preference_history_visits(store_path: Path) -> tuple[tuple[str, str, str], .
     return _PREFERENCE_VISITS[version]
 
 
+def utc_offset_label(moment: datetime) -> str:
+    """时区偏移写成 `UTC±HH:MM`：活动热力卡与统计页角落的读数共用这一种写法。"""
+    offset = moment.strftime("%z") or "+0000"
+    return f"UTC{offset[:3]}:{offset[3:]}"
+
+
 def _taste_visit(visited_at, url, title, moment, bookmark):
     """解析一条浏览器信号的域名、题材和本地时间维度。"""
     domain, row_tags, row_creators = _url_candidates(url, title)
@@ -813,7 +819,8 @@ def _taste_visit(visited_at, url, title, moment, bookmark):
     if moment is not None:
         if moment.tzinfo is None:
             moment = moment.replace(tzinfo=UTC)
-        moment = moment.astimezone(HONG_KONG_TIMEZONE)
+        # 分桶用本机时区：格子和热力卡角落的时区读数都跟看的人的钟走，统计页同一口径。
+        moment = moment.astimezone()
     categories = set()
     for tag in row_tags:
         compact = tag.replace(" ", "").replace("_", "")
@@ -903,7 +910,8 @@ def _history_dashboard_evidence(store_path: Path, since: str | None) -> dict[str
         "visits": 0, "bookmarks": 0, "sources": [], "range_start": None, "range_end": None,
         "tags": Counter(), "creators": Counter(), "categories": Counter(),
         "bookmark_tags": Counter(), "bookmark_creators": Counter(), "bookmark_domains": Counter(),
-        "domains": Counter(), "creator_domains": {}, "activity": {"days": [], "hours": []},
+        "domains": Counter(), "creator_domains": {},
+        "activity": {"timezone": utc_offset_label(datetime.now().astimezone()), "days": [], "hours": []},
     }
     if not store_path.is_file():
         return empty
@@ -951,7 +959,7 @@ def _history_dashboard_evidence(store_path: Path, since: str | None) -> dict[str
         "categories": categories,
         "domains": domains,
         "activity": {
-            "timezone": "UTC+08:00",
+            "timezone": utc_offset_label(datetime.now().astimezone()),
             "days": [{"date": day, "count": count} for day, count in sorted(activity_days.items())],
             "hours": [{"weekday": day, "hour": hour, "count": count}
                       for (day, hour), count in sorted(activity_hours.items())],
@@ -1673,7 +1681,7 @@ def analyze_history(store_path: Path, output_dir: Path, *, since: str | None = N
         def report_analysis():
             if progress:
                 progress(stage="analyzing", checked=total, total=ceiling,
-                         message=f"分析浏览记录：已处理 {total:,} / {ceiling:,} 条")
+                         message=f"Analyzing browser history: {total:,} / {ceiling:,} processed")
         report_analysis()
         for source_key, visited_at, url, browser, profile, title, bookmark in db.execute(query, params):
             total += 1

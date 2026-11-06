@@ -1,9 +1,10 @@
-/* 侧栏顺序的那一次写入，侧栏这一列的拖动与设置面板「侧栏」那一页共用。
+/* The sidebar order's single write is shared by the sidebar column's drag and the settings panel's "Sidebar" page.
  *
- * 顺序跟数据库走，不跟浏览器走：在 Windows 上排好，Mac 上就该是同一份。改完先落进本地那份
- * （`store.save()` 通知订阅者，侧栏当场按它重排），再写 `/api/settings`。写服务端失败不回滚也不
- * 打断：只读端会回 409，本地顺序照样已经生效，只是这次改动不跨机同步——那是只读端的既定约束，
- * 不是操作失败。 */
+ * Order follows the database, not the browser: arranged on Windows, it should be the same on a Mac. After changing, it lands
+ * in the local copy first (`store.save()` notifies subscribers and the sidebar reorders on the spot), then writes
+ * `/api/settings`. A failed server write neither rolls back nor interrupts: a read-only client answers 409, the local order
+ * already took effect, and this change simply does not sync across machines, which is the read-only client's standing
+ * constraint, not a failed operation. */
 import { useCallback } from 'react';
 
 import type { SettingsStore } from '../../settings-store';
@@ -19,7 +20,7 @@ export function useCommitSidebarOrder(store: SettingsStore<{ sidebarOrder: strin
   }, [store, mutate]);
 }
 
-/** 把 `key` 挪到 `target` 前面或后面；挪不了（同一项、任一项不在顺序里）时是 null。 */
+/** Moves `key` before or after `target`; null when it cannot be moved (same item, or either item missing from the order). */
 export function moveSidebarKey(order: readonly string[], key: string, target: string, after: boolean): string[] | null {
   if (key === target) return null;
   const next = [...order];

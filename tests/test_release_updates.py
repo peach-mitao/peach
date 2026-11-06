@@ -156,7 +156,7 @@ class ReleaseUpdateTests(unittest.TestCase):
     def test_standalone_tray_checks_releases_without_git(self):
         execute = Mock(side_effect=AssertionError("Git must not run"))
         with patch("peach.distribution.standalone", return_value=True), patch.object(
-                release_updates, "check", return_value=dict(state="available", latest_version="1.0.0", message="有新版本可下载。")) as check:
+                release_updates, "check", return_value=dict(state="available", latest_version="1.0.0", message="A new version is available.")) as check:
             result = VersionManager(execute=execute).check()
         check.assert_called_once()
         self.assertEqual(result.state, "available")

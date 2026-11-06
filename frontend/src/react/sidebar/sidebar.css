@@ -1,27 +1,27 @@
-/* 侧栏（常驻组件 `sidebar`，`frontend/src/react/sidebar/`）：抽屉 `#drawer` 里的导航列、筛选分组与玻璃。
+/* 侧栏（常驻组件 `sidebar`，`frontend/src/react/sidebar/`）: 抽屉 `#drawer` 里的导航列、筛选分组与玻璃.
  *
  * 抽屉本身（`#drawer`、`#scrim`）、覆盖式滚动条与底栏归壳；壳的元素上挂的是 `data-sidebar-drawer`、
  * `data-sidebar-scrim`、`data-sidebar-scroll`，开合态是壳挂的 `open` / `on` 类，按 `[class~=…]` 认，
- * 权重与类选择器相同。标题行里的品牌键与开合键也是壳挪进来的（`#brandHome`、`#filterBtn`），
- * 它们内部的 `mark`、`sub`、`board-library-chevron` 同样按 `[class~=…]` 认。与遗留层同名的类一条不写
- * （`test/legacy-class-names.test.ts`）。
+ * 权重与类选择器相同.标题行里的品牌键与开合键也是壳挪进来的（`#brandHome`、`#filterBtn`），
+ * 它们内部的 `mark`、`sub`、`board-library-chevron` 同样按 `[class~=…]` 认.与遗留层同名的类一条不写
+ * （`test/legacy-class-names.test.ts`）.
  *
- * 本文件按来源的先后排：基础几何在前，Board UI 的玻璃与面板在后，收起态与窄屏穿插在各自的来源位置；
- * 同权重时后写的胜出，这个顺序是外观的一部分。`peach-app.css` 先于 `/app.css` 加载，遗留层里同权重的
- * 规则会压过这里，所以 `body` 写成 `html>body`。
+ * 本文件按来源的先后排: 基础几何在前，Board UI 的玻璃与面板在后，收起态与窄屏穿插在各自的来源位置；
+ * 同权重时后写的胜出，这个顺序是外观的一部分.`peach-app.css` 先于 `/app.css` 加载，遗留层里同权重的
+ * 规则会压过这里，所以 `body` 写成 `html>body`.
  *
- * `backdrop-filter` 只写标准属性，前缀由构建补：同一条里手写 `-webkit-backdrop-filter`，构建会把两条折成
- * 只剩前缀那一条，Chrome 不认它，玻璃就没了。 */
+ * `backdrop-filter` 只写Standard属性，前缀由构建补: 同一条里手写 `-webkit-backdrop-filter`，构建会把两条折成
+ * 只剩前缀那一条，Chrome 不认它，玻璃就没了. */
 
-/* 落影随主题换浓淡。不写 `light-dark()`：构建会把它改写成依赖 `color-scheme` 声明的变量，这份样式表里
-   没有那一条，落影就整条失效。主题标记是 `<html>` 上的 `.dark`，和 `color-scheme` 同进退。 */
+/* 落影随主题换浓淡.不写 `light-dark()`: 构建会把它改写成依赖 `color-scheme` 声明的变量，这份样式表里
+   没有那一条，落影就整条失效.主题标记是 `<html>` 上的 `.dark`，和 `color-scheme` 同进退. */
 [data-sidebar-drawer]{--sidebar-drop:#0000000d;--sidebar-pick-drop:#00000014;--sidebar-thumb-drop:#0000001a}
 .dark [data-sidebar-drawer]{--sidebar-drop:#00000080;--sidebar-pick-drop:#0000008c;--sidebar-thumb-drop:#00000080}
 
 /* ── 基础几何 ── */
 [data-sidebar-chip][data-online]{border-color:color-mix(in srgb,#5AC8D8 42%,transparent);background:color-mix(in srgb,#5AC8D8 10%,transparent)}
 [data-sidebar-nav] button[data-nav]{position:relative}
-/* 页面正文给侧栏让出 `--railW`；`--railW` 本身由遗留层的 `:root` 给。 */
+/* 页面正文给侧栏让出 `--railW`；`--railW` 本身由遗留层的 `:root` 给. */
 html>body{padding-left:var(--railW)}
 @media (max-width:760px){
   html>body{padding-left:0}
@@ -32,7 +32,7 @@ html>body{padding-left:var(--railW)}
 [data-sidebar-drawer][class~=open]{transform:none;box-shadow:18px 0 60px -24px #000}
 [data-sidebar-nav] button{padding-left:0}
 [data-sidebar-nav] svg{width:24px;height:24px;margin:0 15px 0 24px}
-/* 标题行：品牌键在左、开合键在右。 */
+/* 标题行: 品牌键在左、开合键在右. */
 [data-sidebar-head]{display:flex;align-items:center;justify-content:space-between}
 [data-sidebar-nav]{--sidebar-reorder-ms:250;position:relative;display:flex;flex-direction:column;gap:3px;margin-bottom:18px}
 [data-sidebar-nav] button{padding-left:12px}
@@ -67,7 +67,7 @@ html>body{padding-left:var(--railW)}
 [data-sidebar-cost]{width:5px;height:5px;border-radius:50%;flex:none}
 [data-sidebar-cost=free]{background:var(--keep)}
 [data-sidebar-cost=metered]{background:var(--meter)}
-/* 时长双滑块：两条 range 叠在同一条轨上，轨与填充是两层 span，`--lo`、`--hi` 由岛写。 */
+/* 时长双滑块: 两条 range 叠在同一条轨上，轨与填充是两层 span，`--lo`、`--hi` 由岛写. */
 [data-sidebar-duration]{padding:3px 2px 8px}
 [data-sidebar-range]{position:relative;height:28px;--lo:0%;--hi:100%}
 [data-sidebar-range-base],[data-sidebar-range-fill]{position:absolute;left:0;right:0;top:12px;height:4px;border-radius:var(--pill-radius);background:var(--line)}
@@ -80,18 +80,18 @@ html>body{padding-left:var(--railW)}
 [data-sidebar-chip][data-offline]{opacity:.42;cursor:not-allowed;text-decoration:none}
 [data-sidebar-chip][data-offline] [data-sidebar-count]{text-decoration:none}
 
-/* ── Board UI：玻璃与面板 ── */
-/* 换主题时整页先截一张快照，玻璃在快照里画成实底，免得模糊层闪一下。 */
+/* ── Board UI: 玻璃与面板 ── */
+/* 换主题时整页先截一张快照，玻璃在快照里画成实底，免得模糊层闪一下. */
 html[data-theme-snapshot] :is([data-sidebar-drawer],[data-sidebar-glide]){backdrop-filter:none!important;background-color:var(--ground)!important;transition:none!important}
 [data-sidebar-drawer][data-sidebar-drawer],[data-sidebar-drawer][data-sidebar-drawer][class~=open]{background:var(--glass-drift-a),var(--glass-drift-b),linear-gradient(125deg,var(--glass-sheen),transparent 42%,var(--glass-low)),var(--glass-fill);background-size:200% 200%,200% 200%,auto;background-repeat:no-repeat,no-repeat,repeat;background-position:50% 20%,80% 70%,0 0;animation:glassdriftx calc(41s * var(--glow-drift-scale)) linear infinite,glassdrifty calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-drift-play);backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume);border:0;box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-shadow)}
-/* 抽屉这块玻璃上的反光归 `.glowlayer`：用户配得了色的三枚光晕按同一套 drift 在这里漂，自带那两团留着
-   就是两套光斑叠着走，亮的那一档会把配好的颜色冲淡成灰。「玻璃原色」那一档（根上挂 `data-glow-native`）
-   光晕整层算作 0，抽屉把自己那两团拿回来，否则它会是全场唯一一块不反光的玻璃。 */
+/* 抽屉这块玻璃上的反光归 `.glowlayer`: 用户配得了色的三枚Glow按同一套 drift 在这里漂，自带那两团留着
+   就是两套光斑叠着走，亮的那一档会把配好的颜色冲淡成灰.「玻璃原色」那一档（根上挂 `data-glow-native`）
+   Glow整层算作 0，抽屉把自己那两团拿回来，否则它会是全场唯一一块不反光的玻璃. */
 :root:not([data-glow-native]) [data-sidebar-drawer][data-sidebar-drawer]{--glass-drift-a:none;--glass-drift-b:none}
-/* 当前项底下那块玻璃：岛把它挂在抽屉上，由 `use-view-glide.ts` 在各项之间滑。当前项跟筛选条上滑动的
-   那一块是同一种东西，一块提亮的玻璃压在侧栏这块玻璃上；导航的当前项不靠颜色说话，靠它比邻居高出一层。
-   它住在滚动层外面、抽屉里面，圆角照按钮自己的 10px。`z-index:-1` 把它压回字底下：抽屉自带
-   `backdrop-filter`，已经是个层叠上下文，负层号只落到抽屉的面之上、那一列的字之下。 */
+/* 当前项底下那块玻璃: 岛把它挂在抽屉上，由 `use-view-glide.ts` 在各项之间滑.当前项跟筛选条上滑动的
+   那一块是同一种东西，一块提亮的玻璃压在侧栏这块玻璃上；导航的当前项不靠颜色说话，靠它比邻居高出一层.
+   它住在滚动层外面、抽屉里面，圆角照按钮自己的 10px.`z-index:-1` 把它压回字底下: 抽屉自带
+   `backdrop-filter`，已经是个层叠上下文，负层号只落到抽屉的面之上、那一列的字之下. */
 [data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide]{position:absolute;left:0;top:0;z-index:0;pointer-events:none;border-radius:8px;will-change:translate,scale;background:linear-gradient(180deg,var(--glass-sheen),transparent 62%),var(--glass-pick-fill);backdrop-filter:var(--glass-pick);box-shadow:inset 0 0 0 1px var(--glass-rim),var(--glass-pick-shadow)}
 [data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide][hidden]{display:none}
 [data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide]{border-radius:10px;z-index:-1}
@@ -99,9 +99,9 @@ html[data-theme-snapshot] :is([data-sidebar-drawer],[data-sidebar-glide]){backdr
 [data-sidebar-nav] button:active{scale:.96;transition:scale .06s ease-out}
 [data-sidebar-drawer][data-sidebar-drawer]{border-radius:26px}
 [data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] button:not([aria-pressed="true"]){color:var(--glass-text)}
-/* 按钮自己只管字色，填充归那块滑动的玻璃：两边都铺的话，静止态是一块不动的底压在滑过来的玻璃上。悬停也归
-   它，指到哪一格滑过去，离开这一列再滑回当前项。`filter:none` 压掉后面那条当前项的 `brightness(1.08)`，
-   否则这块玻璃连同身后的内容一起被推亮一档。 */
+/* 按钮自己只管字色，填充归那块滑动的玻璃: 两边都铺的话，静止态是一块不动的底压在滑过来的玻璃上.悬停也归
+   它，指到哪一格滑过去，离开这一列再滑回当前项.`filter:none` 压掉后面那条当前项的 `brightness(1.08)`，
+   否则这块玻璃连同身后的内容一起被推亮一档. */
 [data-sidebar-drawer][data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] button[aria-pressed="true"],[data-sidebar-drawer][data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] button[aria-pressed="true"]:hover,[data-sidebar-drawer][data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] button[aria-pressed="true"]:active{background:none;backdrop-filter:none;color:var(--glass-text);filter:none;box-shadow:none}
 [data-sidebar-drawer][data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] button:hover{background:none;color:var(--glass-text)}
 @supports not (backdrop-filter:blur(1px)){
@@ -131,7 +131,7 @@ body[class~=drawer-open]{--railW:296px}
 @media (max-width:760px){
   body[class~=drawer-open]{--railW:0px}
   [data-sidebar-drawer]{top:64px;bottom:12px;width:min(320px,calc(100vw - 24px));border-radius:20px;z-index:97}
-  /* 窄屏的抽屉盖在内容上面，身后常是整张视频封面：填充加厚到 --ground 的 86%，光斑、亮线和模糊照旧。 */
+  /* 窄屏的抽屉盖在内容上面，身后常是整张视频Cover: 填充加厚到 --ground 的 86%，光斑、亮线和模糊照旧. */
   [data-sidebar-drawer][data-sidebar-drawer]{--glass-fill:color-mix(in srgb,var(--ground) 86%,transparent)}
   [data-sidebar-scrim][class~=on]{display:block;top:56px}
 }
@@ -142,7 +142,7 @@ body[class~=drawer-open]{--railW:296px}
 [data-sidebar-drawer] [data-sidebar-head] #filterBtn svg{width:20px;height:20px;margin:0}
 [data-sidebar-drawer] [data-sidebar-head]{gap:8px;min-height:36px}
 [data-sidebar-drawer] [data-sidebar-nav] button span{white-space:nowrap;min-width:0;max-width:190px;overflow:hidden;opacity:1;filter:blur(0);transition:max-width var(--board-motion),opacity var(--board-motion),filter var(--board-motion)}
-/* 桌面：收起成一条 60 宽的图标列，展开到 260。 */
+/* 桌面: 收起成一条 60 宽的图标列，展开到 260. */
 @media (min-width:761px){
   [data-sidebar-drawer][data-sidebar-drawer]{width:60px;transform:none;transition:width var(--board-motion);border-radius:24px}
   [data-sidebar-drawer][data-sidebar-drawer][class~=open]{width:260px}
@@ -158,12 +158,12 @@ body[class~=drawer-open]{--railW:296px}
   [data-sidebar-drawer]:not([class~=open]) #brandHome h1{display:none}
   [data-sidebar-drawer]:not([class~=open]) [data-sidebar-head] #filterBtn{height:20px}
 }
-/* 手机：抽屉从左侧滑入，遮罩只在抽屉打开时出现。 */
+/* 手机: 抽屉从左侧滑入，遮罩只在抽屉Open时出现. */
 @media (max-width:760px){
   [data-sidebar-drawer][data-sidebar-drawer]{top:12px;bottom:12px;z-index:102;transform:translateX(calc(-100% - 16px));transition:transform var(--board-dialog-motion)}
   [data-sidebar-drawer][data-sidebar-drawer][class~=open]{transform:translateX(0)}
-  /* 暗色画在 ::before 上，遮罩本身 visibility:hidden：铺满视口的半透明层会被 iOS 26 的 Safari 当成压暗层
-     给状态栏取色，一开侧栏状态栏就整块变暗。::before 不计入外壳的可见内容，点在暗色上仍然落到遮罩身上。 */
+  /* 暗色画在 ::before 上，遮罩本身 visibility:hidden: 铺满视口的半透明层会被 iOS 26 的 Safari 当成压暗层
+     给状态栏取色，一开侧栏状态栏就整块变暗.::before 不计入外壳的可见内容，点在暗色上仍然落到遮罩身上. */
   [data-sidebar-scrim][data-sidebar-scrim][class~=on]{top:0;z-index:101;background:none;visibility:hidden}
   [data-sidebar-scrim][data-sidebar-scrim][class~=on]::before{content:'';position:absolute;inset:0;background:#0007;visibility:visible}
 }
@@ -183,14 +183,14 @@ body[class~=drawer-open]{--railW:296px}
   [data-sidebar-drawer]:not([class~=open]) #brandHome [class~=mark]{width:28px;height:28px}
   [data-sidebar-drawer]:not([class~=open]) [data-sidebar-nav] button{width:36px;height:36px;min-height:36px;padding:8px;justify-content:center}
 }
-/* 筛选分组：每组一个可折叠的 details，标题行是开合键。 */
+/* 筛选分组: 每组一个可折叠的 details，标题行是开合键. */
 [data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]{border:0;padding:0;margin:4px 0 0}
 [data-sidebar-toggle]{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:8px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 [data-sidebar-toggle]:hover{background:var(--hover)}
 [data-sidebar-head] #brandHome[aria-expanded=true]{box-shadow:0 0 0 2px var(--line);border-radius:var(--pill-radius)}
 [data-sidebar-head] #brandHome [class~=mark]{display:grid;place-items:center;background:none;border-radius:0}
 [data-sidebar-head] [class~=mark] svg{width:20px;height:20px;stroke-width:2}
-/* 导航条目是「图标＋名字」，字形随名字的字号缩放；收起成图标列时名字只是收窄到 0，字号不变，图标也不跳。 */
+/* 导航条目是「图标＋名字」，字形随名字的字号缩放；收起成图标列时名字只是收窄到 0，字号不变，图标也不跳. */
 [data-sidebar-drawer] [data-sidebar-nav] button svg{width:var(--icon-inline);height:var(--icon-inline);stroke-width:2}
 [data-sidebar-home-logo]{width:var(--icon-inline);height:var(--icon-inline);object-fit:contain;flex:none}
 [data-sidebar-drawer]:not([class~=open]) [data-sidebar-nav] button:has([data-sidebar-home-logo]){padding:6px}
@@ -205,7 +205,7 @@ body[class~=drawer-open]{--railW:296px}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip-label]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip] [data-sidebar-count]{margin-left:auto;flex:none;padding:1px 4px;border-radius:4px;background:var(--surface);color:var(--muted);font-size:12px;line-height:16px}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip] svg{flex:none;width:var(--icon-inline);height:var(--icon-inline)}
-/* 「展开全部」：分组超过首屏条数时，底部居中一枚小药丸。 */
+/* 「展开All」: 分组超过首屏条数时，底部居中一枚小药丸. */
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]{display:grid;place-items:center;width:40px;height:20px;margin:6px auto 2px;padding:0;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);box-shadow:var(--elevation-xs);transition:background-color .15s ease,color .15s ease}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]:hover{background:var(--hover);color:var(--ink)}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more] svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s cubic-bezier(0,0,.2,1)}
@@ -227,17 +227,17 @@ body[class~=drawer-open]{--railW:296px}
 [data-sidebar-range] [data-sidebar-range-base],[data-sidebar-range] [data-sidebar-range-fill]{height:6px;top:11px}
 [data-sidebar-range] [data-sidebar-range-base]{background:var(--color-background-tertiary-default);box-shadow:inset 0 1px 1px #0000000f}
 [data-sidebar-range] [data-sidebar-range-fill]{background:linear-gradient(90deg,var(--color-accent-400),var(--color-accent-600));box-shadow:inset 0 1px 0 #ffffff3d,0 1px 2px #0450e229}
-/* 前面带 `body` 是为了压过上面基础几何里的手柄。抓住的时候手柄涨一圈，松开按同一条弹簧收回去；
-   位置不参与任何过渡，手柄要贴着指针走。 */
+/* 前面带 `body` 是为了压过上面基础几何里的手柄.抓住的时候手柄涨一圈，松开按同一条弹簧收回去；
+   people置不参与任何过渡，手柄要贴着指针走. */
 body :is([data-sidebar-range] input)::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border:1px solid var(--color-border-button-default);border-radius:50%;background:radial-gradient(circle at center,#fff 3px,#e5e5e5 3.5px,#fff 4px);box-shadow:0 2px 4px var(--sidebar-thumb-drop),inset 0 1px 0 #ffffffcc;cursor:grab;transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press),box-shadow .15s}
 body :is([data-sidebar-range] input):active::-webkit-slider-thumb{scale:1.18;transition:scale .06s ease-out}
 body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;border:1px solid var(--color-border-button-default);border-radius:50%;background:radial-gradient(circle at center,#fff 3px,#e5e5e5 3.5px,#fff 4px);box-shadow:0 2px 4px var(--sidebar-thumb-drop)}
-/* 读数气泡对准手柄居中，越过轨道两端的那一截由岛写的 `--range-tip-shift` 收回来：侧栏只比轨道宽出一点点，
-   伸出去的半截会被裁掉。刚动过的那枚压在上面，两端拖到一起时底下那枚报的是自己停下的位置。 */
+/* 读数气泡对准手柄居中，越过轨道两端的那一截由岛写的 `--range-tip-shift` 收回来: 侧栏只比轨道宽出一点点，
+   伸出去的半截会被裁掉.刚动过的那枚压在上面，两端拖到一起时底下那枚报的是自己停下的位置. */
 [data-sidebar-range-tip]{position:absolute;z-index:1;bottom:calc(100% + 4px);transform:translateX(calc(-50% + var(--range-tip-shift,0px)));padding:4px 8px;border:1px solid var(--color-border-button-default);border-radius:8px;background:var(--color-background-primary-default);color:var(--color-text-primary);font:var(--board-caption);white-space:nowrap;box-shadow:var(--elevation-xs);pointer-events:none}
 [data-sidebar-range-tip][data-range-active]{z-index:2}
 [data-sidebar-range]{margin-top:36px}
-/* 切换器展开时自己带一圈 2px 描边，导航首项又会抬起底：间距留小了两块底色挨着，读起来像切换器压在第一项上。 */
+/* 切换器展开时自己带一圈 2px 描边，导航首项又会抬起底: 间距留小了两块底色挨着，读起来像切换器压在第一项上. */
 [data-sidebar-drawer] [data-sidebar-nav]{margin-top:12px;gap:4px}
 [data-sidebar-drawer] #brandHome{height:36px;min-height:36px;box-sizing:border-box}
 [data-sidebar-drawer] [data-sidebar-nav] button{height:36px;min-height:36px}
@@ -246,7 +246,7 @@ body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;bo
 @media (min-width:761px){
   [data-sidebar-drawer]:not([class~=open]) [data-sidebar-head]{gap:10px}
 }
-/* 品牌键：悬停或菜单打开时外圈描一道胶囊边。 */
+/* 品牌键: 悬停或菜单Open时外圈描一道胶囊边. */
 [data-sidebar-head] #brandHome{position:relative;flex:0 1 auto;max-width:calc(100% - 28px);gap:8px;padding:2px}
 [data-sidebar-head] #brandHome::before{content:'';position:absolute;inset:-5px -6px;border:2px solid var(--color-border-button-default);border-radius:999px;opacity:0;transition:opacity .15s ease;pointer-events:none}
 [data-sidebar-head] #brandHome:hover,[data-sidebar-head] #brandHome[aria-expanded=true]{background:none;box-shadow:none}

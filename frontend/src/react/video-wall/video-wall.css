@@ -1,4 +1,4 @@
-/* Folia wall.css 与用户截图的独立暗色表面；数值与差异见 folia-video-wall.md。 */
+/* Folia wall.css 与用户截图的独立暗色表面；数值与差异见 folia-video-wall.md. */
 html[data-wall-entry] body, body[data-wall-open] { overflow:hidden; background:#070707; }
 html[data-wall-entry] :is(body>header,[data-network-banner],#drawer,#main,#catalogPageHeading,#listTitle,#catalogFilter,#count,#javLibraryHeader,#feedNew),
 body[data-wall-open] :is(body>header,[data-network-banner],#drawer,#main,#catalogPageHeading,#listTitle,#catalogFilter,#count,#javLibraryHeader,#feedNew) { pointer-events:none; }

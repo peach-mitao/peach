@@ -417,7 +417,7 @@ class TokyoHotShapeTests(unittest.TestCase):
             name = f'MKBD{separator}S94-C 作品标题.mkv'
             self.assertEqual(jav_display_metadata(name, 'MKBD-S94'), {
                 'display_code': 'MKBD-S94', 'display_title': '作品标题',
-                'edition_badges': ['中字', '无码']})
+                'edition_badges': ['Chinese subs', 'Uncensored']})
         self.assertEqual(jav_fallback_title('MKD-S118.mp4', 'MKD-S118'), '')
 
     def test_uncensored_only_labels_get_the_uncensored_badge(self):

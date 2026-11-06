@@ -26,30 +26,30 @@ async function forwardHttp(page: Page, origin: string, service: string, signal: 
 async function closeHttp(opened: Pick<Visit, 'page' | 'close'>, forwards: AbortController,
   phase: (value: string) => void = () => {}): Promise<void> {
   try {
-    phase('离开播放器页面');
+    phase('Leaving the player page');
     await opened.page.goto('about:blank');
   } finally {
-    // route.fetch 使用独立的 API 请求；先取消它，再等待路由回调结束。
-    phase('取消请求转发');
+    // route.fetch issues its own API request; cancel it first, then wait for the route callback to finish.
+    phase('Cancel request forwarding');
     forwards.abort();
     try {
-      phase('等待请求转发结束');
+      phase('Wait for request forwarding to finish');
       await opened.page.unrouteAll({ behavior: 'wait' });
     } finally {
-      phase('关闭浏览器上下文');
+      phase('Close the browser context');
       await opened.close();
     }
   }
 }
 
-describe('普通 HTTP 的配置与播放', () => {
+describe('Plain HTTP configuration and playback', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
 
-  it('离开页面会取消尚未结束的转发响应并完成路由清理', { timeout: 10_000 }, async t => {
-    let phase = '准备受控响应';
-    t.after(() => { if (t.signal.aborted) t.diagnostic(`HTTP 取消回归超时阶段：${phase}`); });
+  it('Leaving the page cancels unfinished forwarded responses and completes route cleanup', { timeout: 10_000 }, async t => {
+    let phase = 'Prepare controlled response';
+    t.after(() => { if (t.signal.aborted) t.diagnostic(`HTTP cancel regression timed out at phase: ${phase}`); });
     let notify!: () => void;
     const started = new Promise<void>(resolve => { notify = resolve; });
     let disconnected!: () => void;
@@ -78,23 +78,23 @@ describe('普通 HTTP 的配置与播放', () => {
     await forwardHttp(page, origin, `http://127.0.0.1:${address.port}`, forwards.signal);
     await page.goto(origin);
     await page.evaluate(() => { void fetch('/pending').catch(() => {}); });
-    phase = '等待转发开始';
+    phase = 'Waiting for forwarding to start';
     await started;
     await closeHttp({ page, close: () => context.close() }, forwards, value => { phase = value; });
-    phase = '等待服务端断连';
+    phase = 'Waiting for the server to drop';
     await cancelled;
   });
 
   for (const viewport of VIEWPORTS) {
-    it(`${viewport.name}：非安全来源打开配置、编辑索引器并挂载播放器`, { timeout: 60_000 }, async t => {
-      let phase = '准备演示服务';
-      t.after(() => { if (t.signal.aborted) t.diagnostic(`HTTP 配置用例超时阶段：${phase}`); });
+    it(`${viewport.name}: opens configuration from an insecure origin, edits indexers, and mounts the player`, { timeout: 60_000 }, async t => {
+      let phase = 'Prepare demo server';
+      t.after(() => { if (t.signal.aborted) t.diagnostic(`HTTP config test case timed out at phase: ${phase}`); });
       const service = requiredEnv('PEACH_E2E_ORIGIN');
       const origin = 'http://peach-http.test';
       const forwards = new AbortController();
       const opened = await visit(browser, '/', viewport, async page => {
-        // 只将临时演示服务映射到普通 HTTP 来源；浏览器自行决定 Web Crypto 的可用性。
-        // 跳转与关页会取消浏览器请求；独立转发请求由 closeHttp 在等待路由回调前取消。
+        // Only the temporary demo service is mapped to a plain HTTP origin; the browser decides Web Crypto availability on its own.
+        // Navigating away and closing the page cancel the browser requests; the standalone forwarding requests are cancelled by closeHttp before it waits on the routing callback.
         await forwardHttp(page, origin, service, forwards.signal);
       });
       const { page, problems } = opened;
@@ -102,7 +102,7 @@ describe('普通 HTTP 的配置与播放', () => {
         const response = await page.request.get(`${service}/api/configuration`);
         assert.equal(response.status(), 200);
         const configuration = await response.json();
-        // 路由拦截只处理重定向的首个请求；别名契约在服务端读取，页面走正式入口。
+        // The route interceptor handles only the first redirected request; the alias contract is read server-side and the page uses the real entry.
         const alias = await page.request.get(`${service}/configuration`, { maxRedirects: 0 });
         assert.equal(alias.status(), 307);
         assert.equal(alias.headers().location, '/settings/library');
@@ -118,37 +118,37 @@ describe('普通 HTTP 的配置与播放', () => {
           if (response.url().startsWith(origin) && response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
         });
         for (const path of ['/settings/library', '/settings/subscriptions']) {
-          phase = `打开 ${path}`;
+          phase = `Open ${path}`;
           await page.goto(origin + path, { waitUntil: 'load' });
           assert.deepEqual(await page.evaluate(() => ({
             secure: isSecureContext, uuid: typeof crypto.randomUUID, random: typeof crypto.getRandomValues,
           })), { secure: false, uuid: 'undefined', random: 'function' });
-          phase = `等待 ${path} 配置主体`;
+          phase = `Waiting for ${path}'s configuration body`;
           await expectBody(page, path, configurationBody(page));
-          await page.getByRole('tab', { name: '来源与订阅', exact: true }).click();
-          const section = page.getByRole('form', { name: '资源搜索', exact: true });
-          phase = `编辑 ${path} 索引器`;
-          await section.getByRole('button', { name: '添加索引器', exact: true }).click();
-          await section.getByRole('button', { name: '添加索引器', exact: true }).click();
-          await section.getByRole('textbox', { name: /名称/ }).nth(1).fill('HTTP 测试');
+          await page.getByRole('tab', { name: 'Sources and subscriptions', exact: true }).click();
+          const section = page.getByRole('form', { name: 'Resource search', exact: true });
+          phase = `Edit the ${path} indexer`;
+          await section.getByRole('button', { name: 'Add indexer', exact: true }).click();
+          await section.getByRole('button', { name: 'Add indexer', exact: true }).click();
+          await section.getByRole('textbox', { name: /名称/ }).nth(1).fill('HTTP test');
           await section.getByRole('textbox', { name: /Torznab 地址/ }).nth(1).fill('https://indexer.example/api');
-          await section.getByRole('button', { name: '移除索引器 1', exact: true }).click();
-          phase = `保存 ${path} 索引器`;
+          await section.getByRole('button', { name: 'Remove indexer 1', exact: true }).click();
+          phase = `Save the ${path} indexer`;
           const saved = page.waitForResponse(response => response.url() === `${origin}/api/configuration/indexers`
             && response.request().method() === 'POST');
-          await section.getByRole('button', { name: '保存配置', exact: true }).click();
+          await section.getByRole('button', { name: 'Save configuration', exact: true }).click();
           assert.equal((await saved).status(), 200);
           assert.equal(writes.at(-1)!.indexers.length, 1);
-          assert.equal(writes.at(-1)!.indexers[0]!.name, 'HTTP 测试');
-          phase = `等待 ${path} 保存后布局`;
+          assert.equal(writes.at(-1)!.indexers[0]!.name, 'HTTP test');
+          phase = `Waiting for ${path} to save before layout`;
           await settle(page, '.ui-configpage');
           const bounds = await layout(page);
           assert.ok(bounds.scrollWidth <= bounds.viewportWidth);
           assert.deepEqual(bounds.offenders, []);
         }
-        phase = '打开播放器';
+        phase = 'Open the player';
         await page.goto(`${origin}/assets/${requiredEnv('PEACH_E2E_ITEM')}`, { waitUntil: 'load' });
-        phase = '等待播放器挂载';
+        phase = 'Waiting for the player to mount';
         await page.locator('#stage .video-js video.vjs-tech').waitFor();
         assert.deepEqual(problems, []);
       } finally {

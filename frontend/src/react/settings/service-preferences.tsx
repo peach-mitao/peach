@@ -1,4 +1,4 @@
-/* Peach 配置中的采集档位与来源更新偏好，读写复用设置接口和查询缓存。 */
+/* The collection tier and source-update preferences in Peach's config; reads and writes reuse the settings API and the query cache. */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -22,7 +22,7 @@ import {
 import { ErrorText, Help, Rows, Section, Stack, TaskCenterLink } from './section';
 import { busyProps } from './use-action';
 
-const THUMBNAIL_OPTIONS = [['off', '关闭'], ['precise', '每 10 秒一张'], ['coarse', '每 30 秒一张']] as const;
+const THUMBNAIL_OPTIONS = [['off', 'Off'], ['precise', 'One per 10 seconds'], ['coarse', 'One per 30 seconds']] as const;
 
 export function VideoThumbnailRow({ epoch = 0 }: { epoch?: number }) {
   return <Section guide="timeline" title="时间轴缩略图"><VideoThumbnailControls epoch={epoch} /></Section>;
@@ -38,9 +38,9 @@ export function VideoThumbnailControls({ epoch = 0, disabled = false }: { epoch?
   return (
     <>
       <Rows>
-        <SettingsRow label="时间轴预览" description="按所选间隔抽帧，仅处理本机磁盘上的视频。">
+        <SettingsRow label="Timeline preview" description="Extract frames at the chosen interval, processing only videos on local disks.">
           <div id="videoThumbnailSetting">
-            <Select aria-label="缩略图采集间隔" selectedKey={data?.mode || 'off'}
+            <Select aria-label="Thumbnail capture interval" selectedKey={data?.mode || 'off'}
               isDisabled={disabled || !data || status.isFetching || save.isPending}
               onSelectionChange={(key) => { if (key !== null) save.mutate(String(key)) }}>
               {THUMBNAIL_OPTIONS.map(([key, label]) => <SelectItem key={key} id={key}>{label}</SelectItem>)}
@@ -50,7 +50,7 @@ export function VideoThumbnailControls({ epoch = 0, disabled = false }: { epoch?
       </Rows>
       {save.isPending || data?.status === 'running'
         ? <Stack divided>
-            <Help role="status">{save.isPending ? '正在保存…' : '正在采集。'}</Help>
+            <Help role="status">{save.isPending ? 'Saving…' : 'Scraping.'}</Help>
             {save.isPending ? null : <TaskCenterLink />}
           </Stack>
         : null}
@@ -80,7 +80,7 @@ export function FollowPreferenceRows({ receipt }: { receipt(message: string): vo
                 initial.mutate({ followInitialDays: Number(key) }, { onSuccess: (saved) => {
                   if (typeof saved.followInitialDays === 'number') store.value.followInitialDays = saved.followInitialDays;
                   store.save();
-                  receipt('已保存首次采集范围');
+                  receipt('Initial collection scope saved');
                 } });
               }}>
               {FOLLOW_INITIAL_RANGE_OPTIONS.map(([key, label]) => <SelectItem key={key} id={key}>{label}</SelectItem>)}
@@ -137,46 +137,46 @@ function FollowScheduleRow() {
               value={draft} onChange={(value) => { setDraft(value); setInvalid(false) }} onBlur={commit}
               onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit() } }}
               isDisabled={blocked} isInvalid={invalid} />
-            <span className="text-body-2-regular text-text-secondary">分钟</span>
+            <span className="text-body-2-regular text-text-secondary">min</span>
           </div> : null}
         </div>
       </SettingsRow>
-      {invalid ? <Stack><ErrorText>请输入 15–10080 的整数（分钟）。</ErrorText></Stack> : null}
+      {invalid ? <Stack><ErrorText>Enter a whole number from 15 to 10080 (minutes).</ErrorText></Stack> : null}
       {save.isPending || data?.running
-        ? <Stack><Help role="status">{save.isPending ? '正在保存…' : '正在检查来源更新…'}</Help></Stack> : null}
-      <ScheduleFailure kind="follow" status={data} title="上次自动检查失败" />
+        ? <Stack><Help role="status">{save.isPending ? 'Saving…' : 'Checking source updates…'}</Help></Stack> : null}
+      <ScheduleFailure kind="follow" status={data} title="The last auto-check failed" />
       {error ? <Stack><ErrorText>{errorMessage(error)}</ErrorText></Stack> : null}
     </>
   );
 }
 
-/* 订阅源定时拉取没有可调的档位，这一行只读出间隔与上一轮的失败。 */
+/* Subscription polling has no adjustable tier; this row only reads out the interval and the last round's failure. */
 function FeedScheduleRow() {
   const status = useQuery({ queryKey: FEED_SCHEDULE_KEY, queryFn: ({ signal }) => fetchFeedSchedule(signal),
     refetchOnMount: 'always', refetchInterval: (query) => schedulePollInterval(query.state.data) });
   const data = status.data;
-  /* 首次读取时先占住这一行：读数回来再填字，下面的行不往下跳。 */
+  /* On first read, hold this line open: fill in the text once the numbers arrive so the rows below do not jump down. */
   if (!data) {
-    return status.isPending ? <SettingsRow label="订阅源拉取">
-      <span data-skeleton aria-busy="true" aria-label="正在读取订阅源拉取间隔"
+    return status.isPending ? <SettingsRow label="Follow source fetching">
+      <span data-skeleton aria-busy="true" aria-label="Reading the follow source fetch interval"
         className="block h-4 w-16 rounded-2lg bg-background-tertiary-default" />
     </SettingsRow> : null;
   }
   const minutes = data.interval_minutes;
-  const interval = minutes % 60 ? `每 ${minutes} 分钟` : `每 ${minutes / 60} 小时`;
+  const interval = minutes % 60 ? `Every ${minutes} minutes` : `Every ${minutes / 60} hours`;
   return (
     <>
-      <SettingsRow label="订阅源拉取">
-        <span id="feedScheduleSetting">{!data.available ? '只在写入端可用' : data.enabled ? interval : '已关闭'}</span>
+      <SettingsRow label="Follow source fetching">
+        <span id="feedScheduleSetting">{!data.available ? 'Only available on the writer instance' : data.enabled ? interval : 'Closed'}</span>
       </SettingsRow>
-      {data.running ? <Stack><Help role="status">正在拉取订阅源…</Help></Stack> : null}
-      <ScheduleFailure kind="feed" status={data} title="上次自动拉取失败" />
+      {data.running ? <Stack><Help role="status">Fetching follow sources…</Help></Stack> : null}
+      <ScheduleFailure kind="feed" status={data} title="The last auto-fetch failed" />
     </>
   );
 }
 
-/* 每轮开始时服务端清空上一轮的原因，所以正在跑的那一轮不显示；下一轮成功同样清空。
-   「立即重试」让调度自己提前跑一轮：手动检查不经过调度，跑完了这条原因也不会消失。 */
+/* At the start of each round the server Clears the previous round's reason, so the round currently running shows none; a successful next round Clears it the same way.
+   "Retry now" makes the scheduler run a round early: a manual check bypasses the scheduler and, once finished, does not clear this reason either. */
 function ScheduleFailure({ kind, status, title }: {
   kind: keyof typeof SCHEDULE_RUNS; status: FollowScheduleStatus | undefined; title: string;
 }) {
@@ -184,14 +184,14 @@ function ScheduleFailure({ kind, status, title }: {
   if (!status?.enabled || status.running || !status.last_error) return null;
   const failures = status.consecutive_failures ?? 0;
   const next = momentText(status.next_run_at);
-  const detail = [failures > 1 ? `已连续失败 ${failures} 次` : '', next ? `下一轮 ${next}` : '']
-    .filter(Boolean).join('，');
-  const reason = [status.last_error, detail, run.error ? `没有重试：${errorMessage(run.error)}` : '']
+  const detail = [failures > 1 ? `Failed ${failures} times in a row` : '', next ? `Next round ${next}` : '']
+    .filter(Boolean).join(', ');
+  const reason = [status.last_error, detail, run.error ? `No retry: ${errorMessage(run.error)}` : '']
     .filter(Boolean).join('\n');
   return (
     <Stack>
       <Note tone="error" title={title} action={<Button variant="secondary" size="small"
-        disabled={!status.available} {...busyProps(run.isPending)} onClick={() => run.mutate()}>立即重试</Button>}>
+        disabled={!status.available} {...busyProps(run.isPending)} onClick={() => run.mutate()}>Retry now</Button>}>
         {reason}
       </Note>
     </Stack>

@@ -5,12 +5,12 @@ import type { Browser } from 'playwright-core';
 import { openFollowFeed } from './follow-fixture.ts';
 import { launch, VIEWPORTS } from './harness.ts';
 
-describe('关注与馆藏共用卡片交互', () => {
+describe('Follows and the library share card interactions', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser.close() });
 
-  for (const viewport of VIEWPORTS) it(`${viewport.name}：关注标题在等待与内容态采用相同几何`, async () => {
+  for (const viewport of VIEWPORTS) it(`${viewport.name}: the follow title keeps the same geometry while waiting and with content`, async () => {
     const opened = await openFollowFeed(browser, '/follow', viewport);
     try {
       opened.stub.hold = () => true;
@@ -82,7 +82,7 @@ describe('关注与馆藏共用卡片交互', () => {
     } finally { await opened.close() }
   });
 
-  for (const viewport of VIEWPORTS) it(`${viewport.name}：详情动作与接着看采用共享几何`, async () => {
+  for (const viewport of VIEWPORTS) it(`${viewport.name}: details actions and Continue watching share geometry`, async () => {
     const opened = await openFollowFeed(browser, '/posts/1002', viewport,
       { ready: '#stage[open] [data-follow-detail-side]', bindAuthors: true });
     try {
@@ -141,8 +141,8 @@ describe('关注与馆藏共用卡片交互', () => {
       });
       await next.locator('[data-follow-open]').click();
       await page.waitForFunction(id => location.pathname === `/posts/${id}`, id);
-      await page.locator('#stage [data-follow-detail-name]').filter({ hasText: `演示更新 ${id}` }).waitFor();
-      assert.deepEqual(singleRequests, [], '接着看已有条目缓存却再次单条取数');
+      await page.locator('#stage [data-follow-detail-name]').filter({ hasText: `Demo update ${id}` }).waitFor();
+      assert.deepEqual(singleRequests, [], 'Continue watching had the entry cached yet did another single fetch');
       await page.locator('#closeStage').click();
       await page.waitForFunction(() => location.pathname === '/follow');
     } finally { await opened.close() }

@@ -1,4 +1,4 @@
-/* 资源查询按作品发行日缓存；浏览器重启后也可读取，最多保留 128 部。 */
+/* The Resources query is cached by the work's release date; it can also be read after a browser restart, keeping up to 128 works. */
 import type { MagnetResult } from './want-magnets';
 import type { Want } from './wants';
 import { publicationFresh, publicationLifetime } from '../publication-cache';
@@ -50,5 +50,5 @@ export function rememberResources(code: string, result: MagnetResult) {
     const rows = entries().filter((row) => row.code !== code);
     const checked = Date.parse(result.checked_at || '');
     localStorage.setItem(KEY, JSON.stringify([{ code, saved: Number.isFinite(checked) ? checked : Date.now(), result }, ...rows].slice(0, 128)));
-  } catch { /* 存储不可用时仍保留 TanStack Query 的内存缓存。 */ }
+  } catch { /* When storage is unavailable, still keep TanStack Query's in-memory cache. */ }
 }

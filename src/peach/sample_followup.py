@@ -116,7 +116,7 @@ def run(contract, key: str, handle, *, transport=None, clock=time.monotonic) -> 
             if code in checkpoint.completed:
                 continue
             if handle is not None:
-                handle.progress(current=max(index, len(checkpoint.completed)), total=len(codes), label=f"{TASK_LABEL}：{code}")
+                handle.progress(current=max(index, len(checkpoint.completed)), total=len(codes), label=f"{TASK_LABEL}: {code}")
             site, urls = "", []
             snapshot = sample_images.snapshot_samples(snapshots.get(code, ()))
             if snapshot:

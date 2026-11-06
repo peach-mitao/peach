@@ -1,8 +1,12 @@
-/* 主界面构建：Application、路由、常驻组件、首屏页面与共享状态打进入口 peach-app.js。
- * 入口用固定文件名，由 index.html 引用；服务端以 ETag 校验内容并要求每次重新验证缓存。
- * 低频页面由路由的 `routeChunk` 动态导入，拆成带内容哈希的 `peach-app.<名字>-<哈希>.js`，服务端按长期不变缓存
- * （ADR-0118）。首屏用得到的模块留在入口，chunk 从入口导入它们，同一模块只有一份实例。
- * 模块别名直接指向唯一源码，浏览器仅在启用开发取证时请求独立的 agentation 模块。 */
+/* Main UI build: Application, routing, resident components, first-screen pages and shared state are bundled into the entry
+ * peach-app.js.
+ * The entry uses a fixed file name referenced by index.html; the server validates content by ETag and requires revalidation
+ * every time.
+ * Low-frequency pages are dynamically imported by the router's `routeChunk`, split into `peach-app.<name>-<hash>.js` with
+ * content hashes, cached by the server as long-lived immutable (ADR-0118). Modules the first screen needs stay in the entry,
+ * chunks import them from the entry, and one module has one instance.
+ * Module aliases point directly at the single source, and the browser requests the separate agentation module only when dev
+ * instrumentation is enabled. */
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
@@ -21,19 +25,19 @@ export default defineConfig({
     '@peach/query': source('query/index.ts'), '@peach/history': source('history/index.ts'), '@peach/shell': source('shell/index.ts'),
     '@/registry': source('react/evilcharts/registry'), '@/lib/utils': source('react/charts/cn.ts'), '@': source('react/boardui'),
   } },
-  // 库模式不替换 `process.env.NODE_ENV`。`QueryClient`（`@tanstack/query-core`）随这份产物发出，它的开发期
-  // 告警按这个值判断，不替换的话浏览器里读到一个不存在的 `process`，整个模块加载失败。
+  // Library mode does not replace `process.env.NODE_ENV`. `QueryClient` (`@tanstack/query-core`) ships with this bundle, and its development
+  // Warnings are decided by this value; without the replacement the browser reads a nonexistent `process` and the whole module fails to load.
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: browserArtifacts,
-    // 私有目录保留 JavaScript 与 source maps；发布插件只把 JS 与 CSS 复制到 `web/dist/`。
+    // The private directory keeps JavaScript and source maps; the release plugin copies only JS and CSS into `web/dist/`.
     emptyOutDir: true,
     target: 'es2022',
     cssTarget: ['chrome111','edge111','firefox128','safari16.4','ios16.4'],
-    // Vite 8 的内核是 rolldown，压缩走 oxc；写 'esbuild' 会落到已废弃的转译插件上。
+    // Vite 8 runs on rolldown and minifies through oxc; specifying 'esbuild' lands on the deprecated transform plugin.
     minify: 'oxc',
     sourcemap: 'hidden',
-    // 样式仍是一份 peach-app.css：层叠顺序与旧样式表的先后由 index.html 决定，不随页面装载变化。
+    // The styles are still one peach-app.css: the cascade order relative to the legacy stylesheet is decided by index.html and does not change with page loads.
     cssCodeSplit: false,
     lib: {
       entry: 'src/react/bootstrap.tsx',
@@ -42,15 +46,15 @@ export default defineConfig({
     },
     rollupOptions: {
       external: ['/dev/agentation.js'],
-      // 库模式默认 `strict`：入口不许多出导出，入口与 chunk 共用的模块只能另拆成几十份公共 chunk，
-      // 首屏变成一串瀑布请求。放开扩展后共用模块留在入口，chunk 从入口导入。
+      // Library mode defaults to `strict`: the entry tolerates no extra exports, and modules shared between the entry and chunks can only be split off into dozens of common chunks,
+      // The first screen becomes a cascade of requests. Once the extension is unlocked, the shared module stays in the entry point and chunks import from the entry.
       preserveEntrySignatures: 'allow-extension',
       output: {
-        // chunk 与入口同前缀、平铺在 `web/dist/`：服务端只认这一种形态，名字里没有路径分隔符。
+        // Chunks share the entry's prefix and sit flat in `web/dist/`: the server only accepts this shape, with no path separators in names.
         chunkFileNames: 'peach-app.[name]-[hash].js',
         codeSplitting: { groups: [{ name: 'main', tags: ['$initial'] }] },
-        // 入口给 chunk 的导出用源码里的名字：压缩成单字母的话，入口里任何改动都会让导出名整体错位，
-        // 每个 chunk 的内容与哈希跟着变，一次小改动换掉 `web/dist/` 里全部 chunk。
+        // Entry re-exports of chunks use the source names: minified to single letters, any change in the entry would shift every export name,
+        // Every chunk's content and hash change together, so one small edit swaps out every chunk in `web/dist/`.
         minifyInternalExports: false,
         assetFileNames: 'peach-app.[ext]',
       },

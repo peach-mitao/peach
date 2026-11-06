@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "08049a4d-1354-4ab2-aae6-7fd0d8120a10", e._sentryDebugIdIdentifier = "sentry-dbid-08049a4d-1354-4ab2-aae6-7fd0d8120a10");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "539b6512-2d07-487d-aace-9e4caa16cbcd", e._sentryDebugIdIdentifier = "sentry-dbid-539b6512-2d07-487d-aace-9e4caa16cbcd");
 	} catch {}
 })();
 import { createPaginatedRowModel as e } from "./peach-app.createPaginatedRowModel-ClHnhG_T.js";
@@ -19,7 +19,7 @@ var M = /* @__PURE__ */ y(T(), 1), N = w(), P = k({
 function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T, onSelected: E, actions: D, title: O = e, titleId: k, description: F, footerActions: I, toolbarActions: L, panel: R = !0, unit: z = "条记录" }) {
 	let [B, V] = (0, M.useState)([]), H = (0, M.useMemo)(() => [{
 		id: "select",
-		label: "选择",
+		label: "Select",
 		width: 48,
 		min: 48,
 		max: 48,
@@ -39,11 +39,11 @@ function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T,
 			id: "select",
 			header: ({ table: t }) => /* @__PURE__ */ (0, N.jsx)(v, {
 				table: t,
-				label: `全选${e}`
+				label: `Select all ${e}`
 			}),
 			cell: ({ row: e }) => /* @__PURE__ */ (0, N.jsx)(l, {
 				slot: null,
-				"aria-label": `选择 ${w(e.original)}`,
+				"aria-label": `Select ${w(e.original)}`,
 				isSelected: e.getIsSelected(),
 				onChange: (t) => e.toggleSelected(t)
 			})
@@ -99,7 +99,7 @@ function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T,
 			/* @__PURE__ */ (0, N.jsxs)("div", {
 				"data-responsive-toolbar": "",
 				role: "toolbar",
-				"aria-label": `${e}工具栏`,
+				"aria-label": `${e} toolbar`,
 				children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 					"data-toolbar-heading": "",
 					children: [/* @__PURE__ */ (0, N.jsx)("h3", {
@@ -140,14 +140,14 @@ function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T,
 				children: F
 			}) : null,
 			/* @__PURE__ */ (0, N.jsxs)(m, {
-				label: `${e}批量操作`,
+				label: `${e} bulk actions`,
 				visible: Q.length > 0,
-				count: `已选 ${Q.length.toLocaleString()} ${z}`,
+				count: `Selected ${Q.length.toLocaleString()} ${z}`,
 				children: [D(Q, () => E([])), /* @__PURE__ */ (0, N.jsx)(c, {
 					variant: "ghost",
 					size: "small",
 					onClick: () => E([]),
-					children: "取消选择"
+					children: "Clear selection"
 				})]
 			}),
 			/* @__PURE__ */ (0, N.jsx)(f, {
@@ -180,12 +180,12 @@ function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T,
 						})] })
 					}, e.id)), /* @__PURE__ */ (0, N.jsx)(i, {
 						id: "remaining-space",
-						"aria-label": "行空白区域",
+						"aria-label": "Row empty space",
 						"data-table-space": "",
 						width: U.spaceWidth,
 						minWidth: 0
 					})] }), /* @__PURE__ */ (0, N.jsx)(r, {
-						renderEmptyState: () => "没有记录",
+						renderEmptyState: () => "No records",
 						children: Z.getRowModel().rows.map((e) => /* @__PURE__ */ (0, N.jsxs)(a, {
 							id: e.id,
 							"data-board-selected": e.getIsSelected() || void 0,
@@ -213,4 +213,4 @@ function F({ label: e, items: t, columns: y, rowId: x, rowLabel: w, selected: T,
 }
 export { F as DataTable };
 
-//# debugId=08049a4d-1354-4ab2-aae6-7fd0d8120a10
+//# debugId=539b6512-2d07-487d-aace-9e4caa16cbcd

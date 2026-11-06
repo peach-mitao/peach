@@ -1,4 +1,4 @@
-/* 字幕列表复用播放器的菜单、返回键、行高、选中标记与毛玻璃表面。 */
+/* 字幕列表复用Playback器的菜单、Back键、行高、选中标记与毛玻璃表面. */
 .video-js .vjs-subtitles-control>button{display:grid;place-items:center;position:relative;z-index:1}
 .video-js .vjs-subtitles-control>button>svg,.vjs-peach-menu-cc>svg{display:block;width:36px;height:36px;fill:currentColor;stroke:none;filter:drop-shadow(0 0 1px rgba(0,0,0,.8))}
 .video-js .vjs-subtitles-control>button[aria-pressed=true]:after{content:"";position:absolute;left:calc(50% - 9px);bottom:5px;width:18px;height:2px;background:var(--tungsten)}
@@ -21,7 +21,7 @@
 .vjs-peach-settings-menu .vjs-peach-subtitle-result{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 16px;text-align:left;line-height:1.4;overflow-wrap:anywhere}
 .vjs-peach-subtitle-result small{color:rgba(255,255,255,.7);font-size:var(--fs-sm)}
 .vjs-peach-settings-menu:has([data-subtitle-style]){overscroll-behavior:contain}
-/* 原生 TextTrack 保留时间轴与辅助技术语义，显示层按已选外观绘制。 */
+/* 原生 TextTrack 保留时间轴与辅助技术语义，显示层按已选外观绘制. */
 .video-js[data-peach-captions] video::cue{color:transparent;background:transparent;text-shadow:none}
 .video-js[data-peach-captions] video::-webkit-media-text-track-container{display:none}
 .vjs-peach-captions{position:absolute;z-index:1;left:5%;right:5%;bottom:80px;display:flex;justify-content:center;pointer-events:none;

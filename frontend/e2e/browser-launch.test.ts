@@ -1,4 +1,4 @@
-/* 真实浏览器启动契约：Windows 回环规避项与 Playwright 默认特性必须同时生效。 */
+/* Real browser launch contract: the Windows loopback workaround flags and Playwright's default features must take effect together. */
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 import { chromium, type Browser } from 'playwright-core';
@@ -10,12 +10,12 @@ async function disabledFeatures(browser: Browser): Promise<Set<string>> {
     await page.goto('chrome://version');
     const command = await page.locator('#command_line').innerText();
     const value = [...command.matchAll(/--disable-features=(\S+)/g)].at(-1);
-    assert.ok(value, 'Chrome 必须公开实际启动的禁用特性');
+    assert.ok(value, 'Chrome must expose the disable-features actually used at launch');
     return new Set(value[1].replaceAll('"', '').split(','));
   } finally { await page.close(); }
 }
 
-it('回环网络规避只用于 Windows，且保留当前 Playwright 的全部默认特性', async () => {
+it('Loopback network evasion applies only to Windows and keeps every current Playwright default feature', async () => {
   const baseline = await chromium.launch({ headless: true, executablePath: requiredEnv('PEACH_E2E_CHROME') });
   let expected: Set<string>;
   try { expected = await disabledFeatures(baseline); }

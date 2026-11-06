@@ -114,8 +114,13 @@ CREATE TABLE entity_membership(
 CREATE TABLE label_maker(
   label_id INTEGER PRIMARY KEY,maker_id INTEGER,source TEXT,
   confidence REAL DEFAULT 1.0,checked_at TEXT);
-CREATE TABLE performer_profile(entity_id INTEGER PRIMARY KEY,source TEXT,
-  raw_json TEXT DEFAULT '{}',tags_json TEXT DEFAULT '[]',source_url TEXT DEFAULT '');
+CREATE TABLE performer_profile(entity_id INTEGER PRIMARY KEY,kana TEXT,romaji TEXT,
+                               birth_date TEXT,height_cm INTEGER,bust_cm INTEGER,cup TEXT,
+                               waist_cm INTEGER,hip_cm INTEGER,blood_type TEXT,birthplace TEXT,
+                               hobbies TEXT,debut_year INTEGER,active_until INTEGER,
+                               debut_title TEXT,debut_date TEXT,blog_url TEXT,site_url TEXT,
+                               tags_json TEXT DEFAULT '[]',raw_json TEXT DEFAULT '{}',source TEXT,
+                               source_url TEXT DEFAULT '',fetched_at TEXT);
 CREATE TABLE watch_queue(profile_id TEXT,asset_id INTEGER,added_at TEXT,source TEXT,
   PRIMARY KEY(profile_id,asset_id));
 CREATE TABLE playlist(
@@ -4059,7 +4064,7 @@ class UnconfiguredMachineTests(unittest.IsolatedAsyncioTestCase):
             calls.append(kwargs['stage'])
             entered.set()
             checkpoint.wait(5)
-            kwargs['report']({'stage': '生成预览图'})
+            kwargs['report']({'stage': 'Generate preview images'})
             completed.set()
             return {'status': 'complete'}
         with patch('peach.settings_file.active', return_value=config), patch(

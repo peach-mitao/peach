@@ -1,4 +1,4 @@
-/* Video.js 10 浏览器模块按需从本地加载，全部相对导入由 vendor 入口固定。 */
+/* Video.js 10's browser modules are loaded from local on demand; All relative imports are pinned by the vendor entry. */
 import type { VideojsFactory } from './types';
 import { createV10Player } from './v10-player';
 

@@ -465,8 +465,13 @@ class TasteHistoryTests(unittest.TestCase):
             discovery_taste = build_taste_dashboard(store, db, exclude_disliked=True)
 
         self.assertEqual(dashboard["summary"]["history_visits"], 2)
-        self.assertEqual(dashboard["activity"]["days"], [{"date": "2023-11-15", "count": 2}])
-        self.assertEqual(dashboard["activity"]["hours"], [{"weekday": 2, "hour": 6, "count": 2}])
+        # 分桶跟本机时区走（同 test_rm_web 的播放热力卡）：期望值按同一条时刻在本机的落点算。
+        local = datetime.fromtimestamp(1700000000, UTC).astimezone()
+        self.assertEqual(local.date(), datetime.fromtimestamp(1700000200, UTC).astimezone().date())
+        self.assertEqual(dashboard["activity"]["days"], [{"date": local.date().isoformat(), "count": 2}])
+        self.assertEqual(dashboard["activity"]["hours"],
+                         [{"weekday": local.weekday(), "hour": local.hour, "count": 2}])
+        self.assertRegex(dashboard["activity"]["timezone"], r"^UTC[+-]\d{2}:\d{2}$")
         self.assertEqual(dashboard["creator_flows"], [{"source": "onlyfans.com", "target": "alice", "value": 1}])
         self.assertEqual(unrelated_traffic["creator_flows"], dashboard["creator_flows"])
         self.assertEqual(future["activity"]["days"], [])

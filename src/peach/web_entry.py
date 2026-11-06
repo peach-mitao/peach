@@ -60,14 +60,14 @@ def runtime_facts(config) -> tuple[tuple[str, str], ...]:
     from .mp4recover import untrunc_path
 
     available = FFmpegResolver(config.directory("tools") / "ffmpeg").ffmpeg() is not None
-    ffmpeg = "可用" if available else "未安装；MP4 可直接播放，转码和缩略图需要安装 FFmpeg。"
-    untrunc = "可用" if untrunc_path(config.directory("tools")) else "未安装；缺索引的 MP4 需要它才修得了。"
+    ffmpeg = "Available" if available else "Not installed; MP4 plays directly, transcoding and thumbnails need FFmpeg."
+    untrunc = "Available" if untrunc_path(config.directory("tools")) else "Not installed; MP4s with missing index need it to be repaired."
     return (
-        ("版本", __version__),
-        ("操作系统", system_platform.system()),
-        ("数据目录", str(config.data_root)),
-        ("设置文件", str(config.path)),
-        ("日志目录", str(config.directory("logs"))),
+        ("Version", __version__),
+        ("Operating system", system_platform.system()),
+        ("Data directory", str(config.data_root)),
+        ("Settings file", str(config.path)),
+        ("Log directory", str(config.directory("logs"))),
         ("FFmpeg", ffmpeg),
         ("untrunc", untrunc),
     )

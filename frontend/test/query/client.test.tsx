@@ -1,4 +1,4 @@
-/* 全站唯一 QueryClient（src/query/）：Application 与 Providers 直接引用共享源码，读写同一缓存。 */
+/* The site-wide single QueryClient (src/query/): Application and Providers both import the shared source directly, reading and writing one cache. */
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -14,7 +14,7 @@ import { queryClient as reactQueryClient } from '../../src/react/query';
 
 afterEach(() => { document.body.innerHTML = '' });
 
-it('React 岛里 useQueryClient() 拿到的就是壳那一个', async () => {
+it('useQueryClient() inside a React island returns the shell\'s own client', async () => {
   let seen: QueryClient | null = null;
   function Probe() { seen = useQueryClient(); return null }
   const host = document.createElement('div');
@@ -27,7 +27,7 @@ it('React 岛里 useQueryClient() 拿到的就是壳那一个', async () => {
   await act(async () => { root.unmount() });
 });
 
-it('壳写进去的那一份，岛里按同一个键直接读到', () => {
+it('The copy the shell writes is read directly inside the island under the same key', () => {
   queryClient.setQueryData(['probe'], { n: 1 });
   expect(reactQueryClient.getQueryData(['probe'])).toEqual({ n: 1 });
   queryClient.removeQueries({ queryKey: ['probe'] });

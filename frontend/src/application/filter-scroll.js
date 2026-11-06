@@ -1,4 +1,4 @@
-/** 窄屏滚动方向累计到 8px 才切换吸顶，顶端与控件交互保持显示。 */
+/** On narrow screens, sticky top toggles only after 8px cumulative scroll in a direction; the top and control interactions stay visible. */
 export function filterScrollState(previous,y,narrow,hold=false){
   y=Math.max(0,y);
   if(!previous||!narrow||hold||y<=8)return {y,origin:y,direction:0,free:false};

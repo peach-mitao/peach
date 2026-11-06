@@ -15,11 +15,11 @@ export function JavHeader({ tab, navigate, find, search }: {
       <Button variant="primary" className={search ? 'flex-none' : 'ml-auto flex-none'} onClick={find}>查找资源</Button>
     </div>
     <BoardTabs tabs={JAV_TABS.map(([value, label]) => ({ value, label }))} value={tab}
-      label="JAV 分区" className="" onChange={key => navigate(javPath(key))} />
+      label="JAV sections" className="" onChange={key => navigate(javPath(key))} />
   </div>;
 }
 
-/** 馆藏沿用目录的网格、筛选和搜索，分区导航与资源查找放在目录页头。 */
+/** The library reuses the catalog's grid, filters, and search; section navigation and resource lookup live in the catalog page header. */
 export function JavLibraryHeader({ navigate, receipt }: { navigate(path: string): void; receipt(message: string): void }) {
   const [download, setDownload] = useState<DownloadPrefill | null>(null);
   return <>

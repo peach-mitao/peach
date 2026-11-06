@@ -16,7 +16,7 @@ import {
 } from './library-processing';
 import { ProcessingActions } from './processing-actions';
 
-/** 缺图判据与卡面一致；本机影片可抽帧，有番号的挂载影片可补发行封面。 */
+/** Missing-image criteria match the card face; local videos can use frame extraction, and mounted videos with a code can backfill the release cover. */
 type PreviewItem = Pick<MediaItem, 'id' | 'name' | 'medium' | 'disposal' | 'location' | 'code' | 'is_jav'
   | 'has_cover' | 'cover_key' | 'has_thumb' | 'has_local_poster' | 'follow_thumb_url'>;
 
@@ -27,7 +27,7 @@ export function missingPreviewIds(items: PreviewItem[], javImage: string): numbe
     && !cardArtwork(item, 'small', false, javImage).html).map(item => item.id))];
 }
 
-/** 单独一行；`className` 交给所在布局定外边距，列表页由父级间距负责。 */
+/** Stands on its own row; `className` is left to the surrounding layout for margins, and list pages rely on parent spacing. */
 export function LibraryCompletionPrompt({ assetIds, onComplete, className = 'mb-4' }: { assetIds: number[]; onComplete?(): void; className?: string }) {
   return assetIds.length ? <Completion assetIds={assetIds} onComplete={onComplete} className={className} /> : null;
 }
@@ -54,25 +54,25 @@ function Completion({ assetIds, onComplete, className }: { assetIds: number[]; o
       || completed.current === started) return;
     completed.current = started;
     if (state.status === 'complete') {
-      setOutcome(`补全完成：取得 ${state.covers || 0} 张封面，生成 ${state.previews || 0} 部视频预览。`);
+      setOutcome(`Backfill complete: fetched ${state.covers || 0} ${(state.covers || 0) === 1 ? 'cover' : 'covers'} and generated ${state.previews || 0} video previews.`);
     }
     void queryClient.invalidateQueries({ queryKey: ['catalog-grid'] });
     onComplete?.();
   }, [state, started, onComplete]);
-  // 运行时保留缺图数量；新范围等待当前任务结束，不隐式追加或替换。
+  // Keep the missing-image count at runtime; a new scope waits for the current task to end rather than implicitly appending or replacing.
   const busy = start.isPending || processingActive(state);
   const problem = start.error ? errorMessage(start.error) : job.error ? DISCONNECTED_TEXT
-    : started && state?.job_id === started && state.status === 'failed' ? state.error || '补全未完成' : '';
-  const message = problem || (start.isPending ? '正在启动补全…'
-    : outcome || `这批影片中有 ${assetIds.length.toLocaleString()} 部暂无预览，${processingActive(state) ? '当前任务结束后可单独补全。' : '可补全资料与图片。'}`);
-  return <section aria-label="补全预览" aria-live="polite" data-library-completion="" className={cx('@container', className)}>
+    : started && state?.job_id === started && state.status === 'failed' ? state.error || 'Completion unfinished' : '';
+  const message = problem || (start.isPending ? 'Starting completion…'
+    : outcome || `${assetIds.length.toLocaleString()} of these videos ${assetIds.length === 1 ? 'has' : 'have'} no preview yet. ${processingActive(state) ? 'You can complete them individually after the current task finishes.' : 'You can complete profiles and images.'}`);
+  return <section aria-label="Complete previews" aria-live="polite" data-library-completion="" className={cx('@container', className)}>
     <Note tone={problem ? 'warning' : 'neutral'} action={<div className="flex flex-wrap items-center gap-2"><ProcessingActions busy={busy} metadataOnly={state?.metadata_only} onRun={command => {
       if (busy) return;
       setOutcome('');
       start.mutate(command);
     }} /></div>}>
       {message}{' '}<LinkButton href="/data-cleanup#libraryProcessing" size="small" trailingIcon={RiArrowRightLine}>
-      {problem ? '打开扫描与采集' : '查看处理详情'}
+      {problem ? 'Open scan and capture' : 'View processing details'}
     </LinkButton></Note>
   </section>;
 }

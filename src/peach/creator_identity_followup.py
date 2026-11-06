@@ -57,7 +57,7 @@ def parse_key(key: str) -> int:
 
 
 def _label(name: str) -> str:
-    return f"{TASK_LABEL}：{name}" if name else TASK_LABEL
+    return f"{TASK_LABEL}: {name}" if name else TASK_LABEL
 
 
 def _open(connection: sqlite3.Connection, where: str, params: tuple) -> list[tuple[int, str]]:

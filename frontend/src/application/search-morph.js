@@ -1,4 +1,4 @@
-/* 使用项目采样弹簧构造玻璃轮廓，限制在视口内；内容不做横向缩放。 */
+/* Build the glass outline using the project's sampling spring, constrained to the viewport; the content isn't scaled horizontally. */
 export function searchMorphFrames(from,to,base,paddingFrom,paddingTo,easing,viewportWidth){
   const values=easing.startsWith('linear(')?easing.slice(7,-1).split(',').map(Number):[0,1];
   return values.map((progress,index)=>{

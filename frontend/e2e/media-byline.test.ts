@@ -5,10 +5,10 @@ import type { Browser } from 'playwright-core';
 import { layout, settle, VIEWPORTS } from './harness.ts';
 import { installDesignBrowser, openCatalogFixture } from './design-fixture.ts';
 
-describe('作品卡片署名信息行', () => {
+describe('Video card byline row', () => {
   let browser: Browser;
   installDesignBrowser(next => { browser = next });
-  it('密集卡片放大文字后日期和体积仍完整，元信息不裁切', { timeout:60_000 }, async () => {
+  it('Dense cards keep date and size complete after text enlarges, with no meta clipping', { timeout:60_000 }, async () => {
     const opened = await openCatalogFixture(browser, payload => {
       Object.assign(payload.items[0], {is_jav:true,code:'MIAA-155',performers:['篠田优'],
         performer_total:1,release_date:'2019-09-13',size:6549825126});
@@ -60,9 +60,9 @@ describe('作品卡片署名信息行', () => {
     } finally { await opened.close() }
   });
   for (const viewport of VIEWPORTS) {
-    it(`${viewport.name} 姓名靠左，日期在窄卡片换行保留`, { timeout: 60_000 }, async () => {
+    it(`${viewport.name} names sit left, and dates wrap and stay on narrow cards`, { timeout: 60_000 }, async () => {
       const opened = await openCatalogFixture(browser, payload => {
-        Object.assign(payload.items[0], { is_jav: true, code: 'MIAA-155', name: '演示作品',
+        Object.assign(payload.items[0], { is_jav: true, code: 'MIAA-155', name: 'Demo video',
           performers: ['篠田优'], performer_total: 1, release_date: '2019-09-13', size: 6549825126 });
       });
       try {
@@ -73,11 +73,11 @@ describe('作品卡片署名信息行', () => {
           assert.equal(await card.locator(`[data-media-${field}] svg use`).getAttribute('href'), `#i-${glyph}`);
           const icon = card.locator(`[data-media-${field}] svg`);
           assert.equal(await icon.isVisible(), true);
-          // 与文字同行的图标取 `--icon-inline`（1.2em），按所在文字字号算出应有的边长。
+          // Icons inline with text take `--icon-inline` (1.2em), computing their edge length from the surrounding text's font size.
           {
             const [width, inline] = await icon.evaluate(node => [node.getBoundingClientRect().width,
               parseFloat(getComputedStyle(node).fontSize) * 1.2]);
-            assert.ok(Math.abs(width - inline) < 0.5, `${field} 图标 ${width}px，应为 ${inline}px`);
+            assert.ok(Math.abs(width - inline) < 0.5, `${field} icon is ${width}px, expected ${inline}px`);
           }
         }
         const geometry = await card.evaluate(element => {

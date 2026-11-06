@@ -1,18 +1,21 @@
-/* 全站唯一的浏览器历史（`@peach/history`）。
+/* The site-wide single browser history (`@peach/history`).
  *
- * Application 与 React 路由树直接引用本模块，随 peach-app.js 发出同一个历史实例。
- * 启动地址清理与重定向使用 shellNavigate，Router 的 navigator 也读这一份。
+ * Application and the React route tree import this module directly, and one history instance ships with peach-app.js.
+ * Startup address cleanup and redirects use shellNavigate, and the Router's navigator reads the same instance.
  *
- * 实现是 React Router 自己的 `createBrowserHistory`（`v5Compat` 档：push / replace 也通知监听者），
- * 和它的 `<Router>` 读写的是同一种 `{usr, key, idx}` 历史条目，不另引一份 history 库。它只收一个
- * 监听者，而且要有监听者才挂 `popstate`：这里一建好就由本模块接上，再分发给各个订阅者，所以页面
- * 一加载就在数后退与前进，不等谁来订阅。
+ * The implementation is React Router's own `createBrowserHistory` (`v5Compat` mode: push / replace also notify listeners),
+ * reading and writing the same `{usr, key, idx}` history entries as its `<Router>`, without pulling in a second history
+ * library. It accepts a single listener and only attaches `popstate` when one exists: this module attaches itself as soon as
+ * the history is built and then fans out to subscribers, so the page counts back and forward from the moment it loads, without
+ * waiting for anyone to subscribe.
  *
- * 每一次历史变化（壳写的、React 子树写的、后退前进）都领一个递增的序号 `seq`。壳写地址走 `shellNavigate`，
- * 那一次当场认领（`claimed`）：页面元素保持代次，覆盖元素接走这一次的打开请求。后退前进、React
- * 子树写的与壳经 `peachHistory` 直接写的那几次没人认领，另领一个页面打开序号（`openEpoch`）：每一次都要把那一页
- * 按地址重开一遍。代次在通知订阅者之前就定了，路由根同步提交那一次渲染里读到的已经是新代次，页面按它挂 key，
- * 一次打开只挂一次。判据用序号与代次不用地址：同一条目重放的 `popstate` 地址不变，那一页照样要重开。 */
+ * Every history change (written by the shell, written by the React subtree, back/forward) takes an increasing sequence number
+ * `seq`. Shell address writes go through `shellNavigate`, which claims them on the spot (`claimed`): page elements keep their
+ * generation and overlay elements take over that open request. Back/forward, React-subtree writes, and shell writes via
+ * `peachHistory` go unclaimed and each take a page-open epoch (`openEpoch`): every one of them reopens that page by address.
+ * The generation is decided before subscribers are notified, so what the router root's synchronous commit reads is already the
+ * new generation; pages key by it and one open mounts once. The criteria use sequence numbers and generations, not addresses:
+ * a replayed `popstate` of the same entry keeps the same address, and that page still has to reopen. */
 import { UNSAFE_createBrowserHistory, type Location, type NavigationType, type Navigator, type To } from 'react-router';
 
 import { backgroundOf, type BackgroundLocation } from './overlay';
@@ -21,7 +24,7 @@ import { settingsBackgroundOf, isPreferencePath } from './settings-route';
 export * from './settings-route';
 export { canonicalPath } from './canonical-path';
 
-/** 一次历史变化：动作、变化之后的地址、它领到的序号、到这一次为止的页面打开序号，和这一次是不是壳认领写的。 */
+/** One history change: the action, the URL after the change, the counter it drew, the page open counter as of this change, and whether this one was a shell-claimed write. */
 export interface Navigation {
   action: NavigationType;
   location: Location;
@@ -32,7 +35,7 @@ export interface Navigation {
 
 export type NavigationListener = (navigation: Navigation) => void;
 
-/** 给 `<Router navigator>` 用的那一份，外加当前这一次变化与订阅。 */
+/** The copy handed to `<Router navigator>`, plus the current change and its subscription. */
 export interface PeachHistory extends Navigator {
   readonly navigation: Navigation;
   listen(listener: NavigationListener): () => void;
@@ -43,9 +46,9 @@ let seq = 0;
 let openEpoch = 0;
 let current: Navigation = { action: browser.action, location: browser.location, seq, openEpoch, claimed: true };
 const listeners = new Set<NavigationListener>();
-/* `claiming` 只在 `shellNavigate` 写地址那一下为真。 */
+/* `claiming` is true only during the moment `shellNavigate` writes the address. */
 let claiming = false;
-/* 还停在页面加载时的那一条上：之后只经 replace 改写过（清理启动地址、页内写参数），没 push、没后退前进。 */
+/* Still on the entry from page load: since then only rewritten via replace (cleaning the startup address, in-page parameter writes), no push and no back/forward. */
 let onBootEntry = true;
 
 browser.listen(({ action, location }) => {
@@ -87,14 +90,14 @@ export const peachHistory: PeachHistory = {
 
 export interface ShellNavigateOptions {
   replace?: boolean;
-  /** 新条目的 `usr` 状态。清理地址时传 `peachHistory.navigation.location.state`，原样保住当前那一份。 */
+  /** The `usr` state of the new entry. When cleaning the address, pass `peachHistory.navigation.location.state` to preserve the current one intact. */
   state?: unknown;
 }
 
-/** 壳写地址：push 或 replace 一条，当场认领。
+/** The shell writes the address: push or replace one entry, claimed on the spot.
  *
- * 路径先按当前地址解析成绝对的：壳传进来的有相对路径、有只带查询串的，也有整条 href，
- * `history.pushState` 本来就是这样解析的；React Router 的 `To` 只认路径，`#x` 这种会丢掉查询串。 */
+ * Paths are first resolved against the current address into absolutes: what the shell passes in includes relative paths, query-string-only ones, and full hrefs;
+ * `history.pushState` already resolves them that way, while React Router's `To` only accepts paths, and `#x`-style ones would drop the query string. */
 export function shellNavigate(path: string | URL, { replace = false, state }: ShellNavigateOptions = {}): void {
   const url = new URL(path, window.location.href);
   const to: To = canonicalPath(`${url.pathname}${url.search}${url.hash}`);
@@ -107,11 +110,11 @@ export function shellNavigate(path: string | URL, { replace = false, state }: Sh
   }
 }
 
-/** 当前条目是不是页面加载时的那一条（刷新、新标签页、深链）。 */
+/** Whether the current entry is the one from page load (refresh, new tab, deep link). */
 export const bootEntry = (): boolean => onBootEntry;
 
-/** 页面组按它匹配的背景：当前条目在 `usr` 里记的那一页。启动那一条不读（ADR-0031「详情条目记下压在哪一页
- *  上」）：`usr` 跨刷新仍在，下面那一页却从没画过，刷新、新标签页与深链落在详情上一律当作没有背景。 */
+/** The page group matches its background: the page the current entry recorded in `usr`. The startup entry is not read (ADR-0031 "details entries record the page pressed beneath"):
+ *  `usr` survives refresh, but the page beneath was never painted, so refresh, new tabs, and deep links landing on details count as having no background. */
 export function navigationBackground(): BackgroundLocation | null {
   if (isPreferencePath(current.location.pathname)) {
     const settings = onBootEntry ? null : settingsBackgroundOf(current.location.state);

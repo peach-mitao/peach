@@ -1,7 +1,7 @@
-/* 数据管理页上的「扫描与采集」卡片。
+/* The "Scan and collect" card on the data management page.
  *
- * 卡片里讲的是那颗按钮此刻在做什么（进度或等待点）；结果和故障讲的是这一趟任务的下场，
- * 挂在卡片外面，和链接管理、资源同步那两块同一个写法。
+ * The card describes what that button is doing right now (progress or waiting dots); results and failures describe the run's
+ * outcome and hang outside the card, written the same way as the link management and resource sync blocks.
  *
  * 写操作是 `useMutation`：服务端回的就是这一趟的新快照，用 `setQueryData` 换进缓存，
  * 再让这个键立刻重读一次接上轮询的节律。首屏读到的旧终态不冒充新结果——任务关掉页面
@@ -39,31 +39,33 @@ import { ProcessingControls } from './processing-controls';
 import { downloadIssueList, exportProcessingIssues } from './issue-export';
 import { busyProps, useAction } from '../settings/use-action';
 
-/* 中文正文写成常量：JSX 里换行的文字会在接缝处多出一个空格，中文句子里看得见。
-   卡片正文与首屏骨架共用 `SCAN_CARD_TEXT`（`management.ts`）。 */
-const STALLED_TEXT = '这一项耗时较长，暂时没有新进展。任务结束后可以重试未完成的部分。';
-/* 补齐女优资料是落库之后的一步，一趟里常常什么都不用补，那时这句话不出现：
-   四个读数全是 0 还写一句「别名 0 个」，读的人分不清是没得补还是这一步没跑。 */
+/* Body text is kept in constants: text wrapped across JSX lines picks up an extra space at the seam, which shows in Chinese sentences.
+   The card body and the first-screen skeleton share `SCAN_CARD_TEXT` (`management.ts`). */
+const STALLED_TEXT = 'This one takes a while and has no fresh progress yet. After the task ends you can retry the unfinished parts.';
+/* Filling in performer profiles is a step after database entry, and a run often has nothing to fill; in that case this line does not appear:
+   with all four readouts at 0, a line like "0 aliases" leaves readers unable to tell whether there was nothing to fill or the step never ran. */
 const profileText = (state: LibraryProcessingData) => {
   const aliases = state.performer_aliases || 0;
   const avatars = state.performer_avatars || 0;
   const conflicts = state.performer_profile_conflicts || 0;
   const failed = state.performer_profile_failed || 0;
   if (!aliases && !avatars && !conflicts && !failed) return '';
-  const parts = [`补齐女优资料：别名 ${aliases} 个，头像 ${avatars} 张`];
-  if (conflicts) parts.push(`${conflicts} 项同名人物资料需要确认是否为同一人`);
-  if (failed) parts.push(`${failed} 张头像未取得`);
-  return `${parts.join('，')}。`;
+  const parts = [`Fill in performer profiles: ${aliases} aliases, ${avatars} avatars`];
+  if (conflicts) parts.push(`${conflicts} ${conflicts === 1 ? 'profile shares a name and needs' : 'profiles share a name and need'} confirmation they are the same person`);
+  if (failed) parts.push(`${failed} avatars could not be fetched`);
+  return `${parts.join(', ')}.`;
 };
 
-const receiptText = (state: LibraryProcessingData) =>
-  state.requested_stage === 'previews' ? `已生成 ${state.previews || 0} 部视频预览。`
-  : `已扫描 ${state.scanned || 0} 个文件，识别 ${state.identified || 0} 个番号，`
-  + `取得 ${state.candidates || 0} 组作品资料，自动保存 ${state.auto_applied || 0} 条。`
-  + (state.previews ? `已生成 ${state.previews} 部视频预览。` : '')
-  + profileText(state);
+const receiptText = (state: LibraryProcessingData) => {
+  if (state.requested_stage === 'previews') return `Generated ${state.previews || 0} video previews.`;
+  const profile = profileText(state);
+  return `Scanned ${state.scanned || 0} files, identified ${state.identified || 0} codes, `
+    + `fetched ${state.candidates || 0} sets of video details, auto-saved ${state.auto_applied || 0}.`
+    + (state.previews ? ` Generated previews for ${state.previews} videos.` : '')
+    + (profile ? ` ${profile}` : '');
+};
 
-/** 卡片外面那一块：这一趟怎么了。逐条明细要展开才读，完整清单在状态给出的日志文件里。 */
+/** The block outside the card: what happened in this run. Per-item details load on expand; the full list is in the log file the status names. */
 function Outcome(
   { state, problem, settled, onRetry, toast }:
   {
@@ -87,7 +89,7 @@ function Outcome(
   const archivable = !active && !!state.job_id && !state.archived;
   const log = state.issues_log || '';
   const slow = slowItem(state);
-  /* 清单是这一页唯一自己滚的块，原生滚动条在这儿就是一条系统灰柱子。 */
+  /* The manifest is the only self-scrolling block on this page, so its native scrollbar is just a plain system-gray column. */
   const list = useOverlayScrollbar<HTMLUListElement>();
   const setArchived = (archived: boolean) => void archive.run(archived ? 'archive' : 'unarchive',
     signal => apiSend<LibraryProcessingData>(LIBRARY_PROCESSING_URL,
@@ -106,12 +108,12 @@ function Outcome(
     ? [problem || state.error || '处理未完成，请重试', partial ? PARTIAL_RESULT_TEXT : '', notes].filter(Boolean).join('\n')
     : notes || `这一趟有 ${(state.issue_count || 0).toLocaleString()} 项问题。`;
   return (
-    /* 空着时整块收起：`aria-live` 的容器留着一条空轨道，卡片底下就凭空多出一个间距。 */
+    /* Collapse the whole block when empty: the `aria-live` container would otherwise leave an empty track and add a phantom gap under the card. */
     <div aria-live="polite" className="flex flex-col gap-4 empty:hidden">
       {slow
         ? <SlowItemNote state={state} slow={slow} />
         : state.status === 'running' && state.stalled
-        ? <Note tone="warning" title="处理较慢">{STALLED_TEXT}</Note>
+        ? <Note tone="warning" title="Processing slowly">{STALLED_TEXT}</Note>
         : null}
       {settled?.status === 'complete'
         ? <Note tone="success" title="处理完成">{receiptText(settled)}</Note>
@@ -178,12 +180,12 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
       apiSend<LibraryProcessingData>(LIBRARY_PROCESSING_URL, command),
     onSuccess: (next) => {
       forget();
-      // 回的就是这一趟的新快照，换进缓存即可；节律由这个键说了算，让它立刻重读一次接上。
+      // The response is this round's fresh snapshot, just swap it into the cache; the cadence belongs to this key, so have it refetch once immediately to catch up.
       queryClient.setQueryData(LIBRARY_PROCESSING_KEY, next);
       void queryClient.invalidateQueries({ queryKey: LIBRARY_PROCESSING_KEY });
     },
   });
-  // 这一趟跑完了就让遗留层重画数据管理页那几个计数：复核与候选的读数跟着它变。
+  // When this run finishes, have the legacy layer repaint the data management page counters: the review and candidate readings change with it.
   useEffect(() => { if (settled) onComplete?.() }, [settled, onComplete]);
 
   const state = job.data ?? { status: 'idle' };
@@ -206,12 +208,12 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Fieldset layout="stack" label="扫描与采集" footer={
+      <Fieldset layout="stack" label="Scan and scrape" footer={
         <>
-          <LinkButton href="/sources" size="small" trailingIcon={RiArrowRightLine}>来源和凭证</LinkButton>
-          <LinkButton href="/settings/diagnostics" size="small" trailingIcon={RiArrowRightLine}>诊断与日志</LinkButton>
+          <LinkButton href="/sources" size="small" trailingIcon={RiArrowRightLine}>Sources and credentials</LinkButton>
+          <LinkButton href="/settings/diagnostics" size="small" trailingIcon={RiArrowRightLine}>Diagnostics and logs</LinkButton>
           {state.candidates
-            ? <LinkButton href="/review" size="small" trailingIcon={RiArrowRightLine}>复核资料</LinkButton>
+            ? <LinkButton href="/review" size="small" trailingIcon={RiArrowRightLine}>Review details</LinkButton>
             : null}
           {/* 日常同步保留独立入口，原任务的定向重试只处理该任务的失败项。 */}
           <ProcessingActions scan busy={start.isPending} occupied={processingActive(state)} metadataOnly={state?.metadata_only}
@@ -221,19 +223,19 @@ export function LibraryProcessingCard(props: LibraryProcessingProps) {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <FieldsetTitle>扫描与采集</FieldsetTitle>
+              <FieldsetTitle>Scan and collect</FieldsetTitle>
               {state.new_asset_count ? <Chip variant="caption" color="blue">
-                <span className="tabular-nums">{state.new_asset_count.toLocaleString()} 部待补全</span>
+                <span className="tabular-nums">{state.new_asset_count.toLocaleString()} videos to complete</span>
               </Chip> : null}
             </div>
             {hidden && (processingActive(state) || state.status === 'failed' || job.isError)
               ? <Button variant="secondary" size="small" onClick={() => setProcessingNoticeVisible(noticeKey, true)}>
-                  显示进度浮窗
+                  Show progress window
                 </Button> : null}
           </div>
           <p className="text-body-2-regular text-text-secondary">{SCAN_CARD_TEXT}</p>
           {state.status === 'paused' && !state.total
-            ? <span className="self-start"><StatusLabel>已暂停</StatusLabel></span>
+            ? <span className="self-start"><StatusLabel>Paused</StatusLabel></span>
             : processingActive(state)
             ? <ProcessingProgress state={state} />
             : null}

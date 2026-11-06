@@ -1,4 +1,4 @@
-/** 标注工具里的字段有独立表单身份，现有 id/name 由工具自己管理。 */
+/** Fields in the annotation tool have their own form identity; the existing id/name are managed by the tool itself. */
 export function identifyAgentationFields(host: HTMLElement): () => void {
   let sequence = 0;
   const watched = new WeakSet<Node>();

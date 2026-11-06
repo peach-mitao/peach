@@ -265,8 +265,8 @@ class MediaConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             config = settings_file.load_config(environ={"PEACH_DATA_ROOT": str(Path(directory).resolve())})
             facts = dict(web_entry.runtime_facts(config))
-            self.assertIn('操作系统', facts)
-            self.assertIn('设置文件', facts)
+            self.assertIn('Operating system', facts)
+            self.assertIn('Settings file', facts)
 
     def test_runtime_fact_entries_list_dependencies_only_when_missing(self):
         from peach import web_entry

@@ -157,7 +157,7 @@ def check(*, transport=None, system: str | None = None, machine: str | None = No
                 continue
         if not releases:
             return dict(result, state="empty" if obtained else "error",
-                        message="暂未找到可下载的测试版。" if obtained else "未能取得版本信息，请重试。")
+                        message="No downloadable beta found yet." if obtained else "Couldn't get version info. Please retry.")
         version, tag, asset, full, directory, release_url = max(releases, key=lambda item: item[0])
         current = _version(result["current_version"])
         if current is None:
@@ -182,7 +182,7 @@ def check(*, transport=None, system: str | None = None, machine: str | None = No
                     full_digest=full.get("digest"),
                     release_url=release_url)
     except (OSError, ValueError, TypeError, TimeoutError, httpx.HTTPError):
-        return dict(result, state="error", message="未能取得版本信息，请重试。")
+        return dict(result, state="error", message="Couldn't get version info. Please retry.")
     finally:
         if transport is None:
             client.close()

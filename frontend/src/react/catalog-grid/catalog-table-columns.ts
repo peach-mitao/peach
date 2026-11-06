@@ -1,4 +1,4 @@
-/* 作品列表的列定义与本机列偏好的存放位置。不依赖 React：壳的首屏骨架与列表岛读同一份。 */
+/* Column definitions for the video list and where local column preferences are stored. No React dependency: the shell's first-screen skeleton and the list island read the same copy. */
 
 export const CATALOG_COLUMN_WIDTHS_KEY = 'peach.catalog-column-widths.v1';
 export const CATALOG_COLUMN_VISIBILITY_KEY = 'peach.catalog-column-visibility.v1';

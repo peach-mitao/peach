@@ -1,5 +1,5 @@
-/* 用户触发的请求：同一分区同一时刻只跑一个，离开页面取消等待，结果只交给仍挂载的组件。
- * 忙态落在触发它的那颗按钮上，同一分区里的几颗按 key 区分。 */
+/* User-triggered requests: only one runs at a time per section; leaving the page cancels the wait, and the result is only handed to components still mounted.
+ * The busy state lands on the button that triggered it, with several in the same section distinguished by key. */
 import { useEffect, useRef, useState } from 'react';
 
 import { errorMessage } from '../../api';

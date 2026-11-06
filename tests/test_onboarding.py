@@ -1283,7 +1283,7 @@ class StandaloneConfigurationTests(_Case):
             self.assertEqual(snapshot["media_dirs"], [str(self.media)])
             self.assertEqual(snapshot["port"], 9123)
             # 运行信息和首启完成页共用同一份 `runtime_facts`，不再各写一份。
-            self.assertIn("版本", [fact["term"] for fact in snapshot["facts"]])
+            self.assertIn("Version", [fact["term"] for fact in snapshot["facts"]])
             self.config.directory("state").mkdir(parents=True, exist_ok=True)
             response = client.post("/api/configuration", headers=headers, json={
                 "revision": snapshot["revision"], "media_dirs": [str(self.media)], "port": "9124"})

@@ -9,6 +9,8 @@
     ["[不别没](?:装|用|要|是|取)原样", "直接说明当前行为", "warning"],
     ["现在改|改回原", "直接说明当前行为", "warning"],
     ["\\bno longer\\b|\\bpreviously\\b|\\bformerly\\b|\\bused to\\b", "核对是否需要说明历史", "warning"],
+    ["\\bused to (?:live here|be the old implementation)\\b", "说明当前实现；变更过程写进提交记录", "error"],
+    ["\\bdouble-check\\b", "条件操作说明只提示核对", "warning"],
     ["(?:以前|原先|之前)这里(?:是|用)|(?:现在改成|改回原来的)(?:实现|写法)", "说明当前实现；变更过程写进提交记录", "error"]
   ],
   "test_names": [

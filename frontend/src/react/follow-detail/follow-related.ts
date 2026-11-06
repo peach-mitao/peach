@@ -9,7 +9,7 @@ import type { FollowDetailData } from './follow-detail';
 export const followRelatedKey = (id: number, media: FollowMedia, limit: number) =>
   ['follow-feed', 'related', id, media, limit] as const;
 
-/** 推荐认整组身份，排除当前组、已看与忽略；按共同标签排序，等分沿用取数顺序。 */
+/** Recommendations recognize the whole identity group, excluding the current group, watched and ignored; sorted by shared tags, ties keep the fetch order. */
 export function followRelatedGroups(pages: readonly FollowPage[], current: FollowDetailData, media: FollowMedia, limit: number): FollowGroup[] {
   const excluded = new Set((current.group ? collectionItems(current.group) : [current.item]).map(item => item.id));
   const seen = new Set<number>();

@@ -1,5 +1,5 @@
-/* 取数与缓存（@peach/query）：全站唯一 QueryClient，以及 Application 与 React 页面共读的来源查询。
- * 别名直接解析到本目录，实例、查询键与取数函数随主包发出一份。 */
+/* Data fetching and caching (@peach/query): the app-wide single QueryClient, plus the source queries shared by the Application and React pages.
+ * The alias resolves directly to this directory; the instance, query keys, and fetch functions ship once with the main bundle. */
 export { queryClient } from './client';
 export * from './media-sources';
 export * from '@tanstack/query-core';

@@ -1,6 +1,6 @@
-/* 外观与版式设置的应用层（@peach/appearance）：偏好 store、启动归一化、文档属性、CSS 变量与版式开关。
- * Application 与 React 页面引用同一份源码，随 peach-app.js 发出。
- * 路由与目录的 JAV、首页判据由 application/layout.js 计算后作为参数传入。 */
+/* The application layer of the Appearance and layout settings (@peach/appearance): the preference store, Start normalization, document properties, CSS variables, and layout toggles.
+ * Application and React pages reference the same source, shipping out with peach-app.js.
+ * The JAV and homepage criteria for routing and the catalog are computed by application/layout.js and passed in as parameters. */
 export {
   allowedSetting, appSettingsStore, applySyncedSettings, DEFAULT_SETTINGS, FEED_COMPILATION_KEYS, FOLLOW_INITIAL_DAYS,
   normalizeAppSettings, postSearchHistoryLimit, readAppSettings, SETTINGS_KEY, THEME_CHOICES,

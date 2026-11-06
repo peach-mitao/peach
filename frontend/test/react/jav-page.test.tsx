@@ -30,7 +30,7 @@ it('发现已有结果即时呈现，陈旧推荐在后台更新', async () => {
   await loaded;
 });
 
-it('想要已有清单立即返回，陈旧数据在后台更新', async () => {
+it('An existing want list returns immediately, with stale data refreshing in the background', async () => {
   const cached = { items: [], counts: {}, scraping: false };
   queryClient.setQueryData(WANTS_KEY, cached, { updatedAt: Date.now() - 60_000 });
   let finish!: (response: Response) => void;
@@ -59,36 +59,36 @@ it('JAV 分区导航有馆藏、新作、发现、想要四个入口，馆藏使
   expect(navigate).toHaveBeenLastCalledWith('/jav?tab=discover');
   await click(tabs[3]);
   expect(navigate).toHaveBeenLastCalledWith('/jav?tab=wants');
-  await click(buttonNamed('查找资源', host));
+  await click(buttonNamed('Find resources', host));
   expect(find).toHaveBeenCalledOnce();
 });
 
-it('从想要分区返回馆藏时打开 JAV 目录', async () => {
+it('Returning to the library from wants opens the JAV catalog', async () => {
   const navigate = vi.fn();
   const host = await mount(<JavHeader tab="wants" navigate={navigate} find={vi.fn()} />);
-  expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('想要');
+  expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Want');
   await click(host.querySelector('[role="tab"]'));
   expect(navigate).toHaveBeenCalledWith('/?jav=1');
 });
 
-it('发现按范围读取，清除文字和标签恢复列表，卡片打开对应详情', async () => {
+it('Discovery reads by scope, clearing text and tags restores the list, and cards open their details', async () => {
   const navigate = vi.fn();
-  const common = { title: '示例作品', performers: '女优', studio: '厂牌', has_cover: false,
-    release_date: '2010-01-01', wanted: false, reasons: ['常看的厂牌：厂牌'] };
+  const common = { title: 'Example video', performers: 'Performers', studio: 'Labels', has_cover: false,
+    release_date: '2010-01-01', wanted: false, reasons: ['Frequently watched label: Label'] };
   const fetcher = vi.fn(async (url: string) => ({ ok: true, status: 200, json: async () => ({
-    items: url.includes('scope=library') ? [{ ...common, id: 22, asset_id: 22, code: 'ABC-022', tags: ['恋足'] }]
-      : [{ ...common, id: 1, code: 'ABC-001', score: 1, tags: ['恋足'], link: 'https://example.test/work' },
-        { ...common, id: 2, code: 'ABC-002', score: 2, tags: ['剧情'] }],
+    items: url.includes('scope=library') ? [{ ...common, id: 22, asset_id: 22, code: 'ABC-022', tags: ['Foot fetish'] }]
+      : [{ ...common, id: 1, code: 'ABC-001', score: 1, tags: ['Foot fetish'], link: 'https://example.test/work' },
+        { ...common, id: 2, code: 'ABC-002', score: 2, tags: ['Drama'] }],
   }) }));
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<QueryClientProvider client={queryClient}><JavPage tab="discover" readOnly navigate={navigate} receipt={vi.fn()} /></QueryClientProvider>);
   await settle();
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(2);
-  expect(actionOrder(host.querySelector('[data-jav-card] [data-jav-actions]'))).toEqual(['作品来源', '想要', '查找资源']);
+  expect(actionOrder(host.querySelector('[data-jav-card] [data-jav-actions]'))).toEqual(['Video sources', 'Want', 'Find resources']);
   expect(host.querySelector('[data-jav-card] h3')?.textContent).toContain('ABC-001');
   await click(host.querySelector('[data-jav-card] [data-media-tag]'));
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(1);
-  await click(buttonNamed('清除筛选', host));
+  await click(buttonNamed('Clear filters', host));
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(2);
   await search(host, 'ABC-001');
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(1);
@@ -96,12 +96,12 @@ it('发现按范围读取，清除文字和标签恢复列表，卡片打开对�
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(2);
   await click(host.querySelector('[data-jav-card] h3'));
   expect(navigate).toHaveBeenLastCalledWith('/works/ABC-001');
-  await click(buttonNamed('馆藏探索', host));
+  await click(buttonNamed('Library explore', host));
   await settle();
   expect(fetcher.mock.calls.some(([url]) => url.includes('scope=library'))).toBe(true);
   await click(host.querySelector('[data-jav-card] h3'));
   expect(navigate).toHaveBeenLastCalledWith('/assets/22');
-  expect(buttonNamed('已入库', host)?.disabled).toBe(true);
+  expect(buttonNamed('In library', host)?.disabled).toBe(true);
 });
 
 it('新作分区的女优、厂牌、标签只列接口给的订阅新作筛选项，点了在本分区里筛并回到第 1 页', async () => {
@@ -195,8 +195,8 @@ it('没有推荐时空态的查看口味在左，主入口在右', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ items: [] }) })));
   const host = await mount(<QueryClientProvider client={queryClient}><JavPage tab="discover" readOnly navigate={vi.fn()} receipt={vi.fn()} /></QueryClientProvider>);
   await settle();
-  expect(actionOrder(host.querySelector('[data-empty-state]'))).toEqual(['查看口味', '浏览馆藏']);
-  const main = [...host.querySelectorAll('[data-empty-state] a')].find((link) => link.textContent === '浏览馆藏');
+  expect(actionOrder(host.querySelector('[data-empty-state]'))).toEqual(['View taste', 'Browse library']);
+  const main = [...host.querySelectorAll('[data-empty-state] a')].find((link) => link.textContent === 'Browse library');
   expect(main?.className).toContain('bg-button-primary');
 });
 

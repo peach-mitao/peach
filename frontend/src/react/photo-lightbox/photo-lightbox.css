@@ -1,17 +1,17 @@
-/* 图片灯箱（`photo-lightbox-dialog.tsx`）。
+/* 图片灯箱（`photo-lightbox-dialog.tsx`）.
  *
- * 选择器用 `data-*`：遗留样式表不分层、排在后面，写遗留类名会被接管。Swiper 的样式表按需加载、
+ * 选择器用 `data-*`: 遗留样式表不分层、排在后面，写遗留类名会被接管.Swiper 的样式表按需加载、
  * 排在所有样式表后面，`.swiper`、`.swiper-slide` 这类结构类名由它定默认值，这里的规则都比它多
- * 一档特指度。信息面板由遗留层的 `wireContextCard` 接管：它挂上 `.context-card`，进场、退场的
+ * 一档特指度.信息面板由遗留层的 `wireContextCard` 接管: 它挂上 `.context-card`，进场、退场的
  * 动效归 `web/board.css` 那一条；面、线、字色与定位写在这里，特指度压过 `22-followmanage.css`
- * 的 `.context-card`。
+ * 的 `.context-card`.
  *
  * 画布是黑底，工具条是压在图上的半透明黑片，颜色因此固定用白色系，不跟主题；翻页键与信息面板
- * 是 Board 的控件面，跟主题。 */
+ * 是 Board 的控件面，跟主题. */
 
 /* ── 画布 ──
- * 灯箱本体只负责固定视口；主图、底部工具和缩略图条各自绝对定位。三行 grid 会和动态后载的
- * Swiper 百分比高度形成循环，超宽视口下主图行收成 0。 */
+ * 灯箱本体只负责固定视口；主图、底部工具和Thumbnail条各自绝对定位.三行 grid 会和动态后载的
+ * Swiper 百分比高度形成循环，超宽视口下主图行收成 0. */
 .peach-react [data-photo-lightbox] {
   position: fixed;
   inset: 0;
@@ -19,14 +19,14 @@
   display: block;
   overflow: hidden;
   background: #000;
-  /* 字随页面正文（`web/board.css` 的 `body`），不取 React 容器上那套上游基线：页码、缩放读数和
-     信息面板要和壳里其余的读数同一副字。 */
+  /* 字随页面正文（`web/board.css` 的 `body`），不取 React 容器上那套上游基线: 页码、缩放读数和
+     信息面板要和壳里其余的读数同一副字. */
   font: var(--board-body);
   font-kerning: auto;
   font-variant-ligatures: normal;
   letter-spacing: 0;
-  /* 落影随主题换浓淡。不写 `light-dark()`：构建会把它改写成依赖 `color-scheme` 声明的变量，这份
-     样式表里没有那一条，落影就整条失效。主题标记是 `<html>` 上的 `.dark`，和 `color-scheme` 同进退。 */
+  /* 落影随主题换浓淡.不写 `light-dark()`: 构建会把它改写成依赖 `color-scheme` 声明的变量，这份
+     样式表里没有那一条，落影就整条失效.主题标记是 `<html>` 上的 `.dark`，和 `color-scheme` 同进退. */
   --photo-card-drop: rgba(0, 0, 0, .16);
   --photo-thumb-drop: #0000001a;
 }
@@ -45,15 +45,15 @@
   color: #fff;
 }
 
-/* 全站焦点环（`01-base.css`）把 React 子树排除在外，这里自己画同一副。 */
+/* 全站焦点环（`01-base.css`）把 React 子树排除在外，这里自己画同一副. */
 .peach-react [data-photo-lightbox] :focus-visible {
   outline: 2px solid var(--tungsten);
   outline-offset: 2px;
 }
 
-/* 主画布始终占满视口，安全内边距为底部工具、左右翻页和缩略图条留位；单图没有缩略图条，
- * 底部空间还给图片。Swiper 的 CSS 和脚本虽会一起等待，仍保留最小结构样式，避免缓存与首载的
- * 竞态把所有 slide 当普通块元素同时画出来。只限定主画布的直接子级，不影响缩略图条。 */
+/* 主画布始终占满视口，安全内边距为底部工具、左右翻页和Thumbnail条留位；单图没有Thumbnail条，
+ * 底部空间还给图片.Swiper 的 CSS 和脚本虽会一起等待，仍保留最小结构样式，避免缓存与首载的
+ * 竞态把所有 slide 当普通块元素同时画出来.只限定主画布的直接子级，不影响Thumbnail条. */
 .peach-react [data-photo-main] {
   position: absolute;
   inset: 0;
@@ -100,10 +100,10 @@
 }
 
 /* ── 圆钮 ──
- * 关闭与翻页同一副媒体圆钮的几何（沉浸岛 `immerse.css` 的 `[data-immerse-circle]`）：图标居中，玻璃压在图上。
- * 翻页键再换成 Board 的控件面，36px 圆角方钮。控件面读 `web/board.css` 根上的别名（`--surface`、
- * `--line`、`--ink-2`、`--hover`、`--inset`）：React 容器按 BoardUI 上游原文重新声明了同名的
- * `--color-*`，直接读会拿到另一套值。 */
+ * Off与翻页同一副媒体圆钮的几何（沉浸岛 `immerse.css` 的 `[data-immerse-circle]`）: 图标居中，玻璃压在图上.
+ * 翻页键再换成 Board 的控件面，36px 圆角方钮.控件面读 `web/board.css` 根上的别名（`--surface`、
+ * `--line`、`--ink-2`、`--hover`、`--inset`）: React 容器按 BoardUI 上游原文重新声明了同名的
+ * `--color-*`，直接读会拿到另一套值. */
 .peach-react :is([data-photo-close], [data-photo-nav]) {
   box-sizing: border-box;
   position: absolute;
@@ -169,20 +169,20 @@
 .peach-react [data-photo-nav="fwd"] svg {
   transform: rotate(180deg);
 }
-/* 到头的那一枚整个让开：留一枚半透明的键在那儿，点下去什么都不发生。 */
+/* 到头的那一枚整个让开: 留一枚半透明的键在那儿，点下去什么都不发生. */
 .peach-react [data-photo-nav].swiper-button-disabled {
   visibility: hidden;
   opacity: .4;
   pointer-events: none;
 }
-/* 只有一张时两枚都不画（Swiper 的 `.swiper-button-lock`，这里的圆钮规则比它高一档）。 */
+/* 只有一张时两枚都不画（Swiper 的 `.swiper-button-lock`，这里的圆钮规则比它高一档）. */
 .peach-react [data-photo-nav].swiper-button-lock {
   display: none;
 }
 
 /* ── 底部工具条 ──
- * 详情、页码和缩放操作统一落在底部；多图时整体抬到缩略图条上方。 */
-/* 原图与缩略图都取不到时那一张的占位：一块暗面写一句话，字色同底栏。 */
+ * 详情、页码和缩放操作统一落在底部；多图时整体抬到Thumbnail条上方. */
+/* 原图与Thumbnail都取不到时那一张的占位: 一块暗面写一句话，字色同底栏. */
 .peach-react [data-photo-missing] {
   display: grid;
   place-items: center;
@@ -224,7 +224,7 @@
   backdrop-filter: blur(16px);
 }
 
-/* 页码点：当前那一颗拉长成胶囊，前后各留几颗，由 Swiper 的 `dynamicBullets` 缩放。 */
+/* 页码点: 当前那一颗拉长成胶囊，前后各留几颗，由 Swiper 的 `dynamicBullets` 缩放. */
 .peach-react [data-photo-pagination] {
   display: flex;
   align-items: center;
@@ -333,8 +333,8 @@
   text-align: right;
 }
 
-/* 缩放滑杆：Board 的 6px 细轨，已走过的那一段用强调色，手柄同侧栏时长滑块那一枚（侧栏的
- * `sidebar.css`）。走过的比例由 `syncBoardRange` 写在 `--board-range-value` 上。 */
+/* 缩放滑杆: Board 的 6px 细轨，已走过的那一段用Accent color，手柄同侧栏时长滑块那一枚（侧栏的
+ * `sidebar.css`）.走过的比例由 `syncBoardRange` 写在 `--board-range-value` 上. */
 .peach-react [data-photo-zoom] input {
   width: 116px;
   height: 20px;
@@ -379,7 +379,7 @@
 .peach-react [data-photo-zoom] input:hover::-webkit-slider-thumb {
   box-shadow: 0 0 0 4px rgba(255, 255, 255, .22);
 }
-/* 抓住的时候手柄涨一圈，松开按同一条弹簧收回去。位置不参与过渡：手柄要贴着指针走。 */
+/* 抓住的时候手柄涨一圈，松开按同一条弹簧收回去.位置不参与过渡: 手柄要贴着指针走. */
 .peach-react [data-photo-zoom] input:active::-webkit-slider-thumb {
   scale: 1.18;
   transition: scale .06s ease-out;
@@ -393,8 +393,8 @@
 }
 
 /* ── 信息面板 ──
- * 补充信息卡（`.context-card`）的那一副面：跟主题的底与字，定位由 `wireAnchoredMenu` 按触发键
- * 写在元素上。 */
+ * 补充信息卡（`.context-card`）的那一副面: 跟主题的底与字，定位由 `wireAnchoredMenu` 按触发键
+ * 写在元素上. */
 .peach-react [data-photo-detail] {
   box-sizing: border-box;
   position: fixed;
@@ -473,7 +473,7 @@
   stroke-width: 2;
 }
 
-/* ── 缩略图条 ── */
+/* ── Thumbnail条 ── */
 .peach-react [data-photo-strip] {
   position: absolute;
   right: 72px;
@@ -507,7 +507,7 @@
   box-shadow: 0 0 0 2px #fff inset;
 }
 
-/* 窄屏断点写在这一段之后：和上面同优先级，写在前面会被原样盖掉。 */
+/* 窄屏断点写在这一段之后: 和上面同优先级，写在前面会被原样盖掉. */
 @media (max-width: 640px) {
   .peach-react [data-photo-zoom] input {
     width: 72px;
@@ -553,7 +553,7 @@
     right: 8px;
   }
 }
-/* 手机最窄那一档放不下「1286 / 1289」加整条缩放：滑条收起，缩放只剩加减键、适应与 1:1。 */
+/* 手机最窄那一档放不下「1286 / 1289」加整条缩放: 滑条收起，缩放只剩加减键、适应与 1:1. */
 @media (max-width: 400px) {
   .peach-react [data-photo-zoom] input {
     display: none;

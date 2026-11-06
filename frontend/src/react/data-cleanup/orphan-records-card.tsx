@@ -1,8 +1,8 @@
-/* 数据管理页上的「孤儿记录」：文件已不在盘上、带着个人记录的作品（ADR-0087）。
+/* The "orphan records" block on the data management page: videos whose files are no longer on disk but still carry personal records (ADR-0087).
  *
- * 每行一条已消失的作品：快照图供认片，后面是它带的记录、在库里可能是它新版本的文件。
- * 选一个文件接过去，记录搬到那个文件上、旧行删掉，整批可按批次号撤回；彻底删除连记录一起
- * 删，过危险档确认弹层。没有已消失的作品时整块不出现。 */
+ * Each row is one missing video: a snapshot image for identification, then the records it carries and files in the library that may be its newer edition.
+ * Pick a file to adopt them onto; the records move to that file and the old row is deleted, and the whole batch can be reverted by batch number; permanent delete removes the records too,
+ * through a dangerous-action confirm popover. The whole block does not appear when there are no missing videos. */
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { confirmModal } from '@peach/legacy/ui';
@@ -34,7 +34,7 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
     mutationFn: () => attachOrphan(item.id, Number(target)),
     onSuccess: () => {
       const destination = item.candidates.find((candidate) => candidate.id === target);
-      toast(`已将「${item.name}」的个人记录转移到「${destination?.name ?? '所选文件'}」`);
+      toast(`Moved the personal records of "${item.name}" to "${destination?.name ?? 'the selected files'}"`);
       void refresh();
     },
     onError: (error) => toast(errorMessage(error)),
@@ -43,16 +43,16 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
     mutationFn: () => purgeOrphan(item.id),
     onSuccess: (data) => {
       toast(data.blocked.length
-        ? `「${item.name}」的文件已恢复，记录未删除；下次扫描后恢复为在库状态`
-        : `已删除「${item.name}」的作品记录及个人记录`);
+        ? `Files of "${item.name}" were restored, records not deleted; the next scan returns them to in-library status`
+        : `Deleted the video record and personal records of "${item.name}"`);
       void refresh();
     },
   });
   const remove = () => {
     void confirmModal({
-      title: '删除记录',
-      body: `将删除「${item.name}」的作品记录${recordsText(item.records) ? `及其个人记录（${recordsText(item.records)}）` : ''}。此操作不可撤销。`,
-      confirmLabel: '删除记录',
+      title: 'Delete records',
+      body: `Will delete the video records of "${item.name}"${recordsText(item.records) ? ` and their personal records (${recordsText(item.records)})` : ''}. This cannot be undone.`,
+      confirmLabel: 'Delete records',
       danger: true,
       onConfirm: () => purge.mutateAsync(),
     });
@@ -60,9 +60,9 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
   const busy = attach.isPending || purge.isPending;
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button variant="danger" size="small" {...busyProps(busy)} onClick={remove}>删除记录</Button>
+        <Button variant="danger" size="small" {...busyProps(busy)} onClick={remove}>Delete records</Button>
         {item.candidates.length
-          ? <Select aria-label={`选择接收 ${item.name} 个人记录的文件`} prefix="接收" className="w-52" selectedKey={target}
+          ? <Select aria-label={`Choose the file to receive ${item.name}'s personal records`} prefix="Receive" className="w-52" selectedKey={target}
               onSelectionChange={(key) => { if (key !== null) setTarget(Number(key)) }}>
               {item.candidates.map((candidate) => (
                 <SelectItem key={candidate.id} id={candidate.id} textValue={candidateText(candidate)}>
@@ -73,7 +73,7 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
           : null}
         {item.candidates.length
           ? <Button variant="primary" size="small" disabled={target === null} {...busyProps(busy)}
-              onClick={() => attach.mutate()}>转移记录</Button>
+              onClick={() => attach.mutate()}>Move records</Button>
           : null}
     </span>
   );
@@ -82,8 +82,8 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
 function OrphanIdentity({ item }: { item: OrphanRecord }) {
   return (
         <span className="flex min-w-0 items-center gap-3">
-          {/* 快照图供认片；没有图或取不到时留一格带描边的占位，和重复文件页的封面格同一个样子。
-              窄屏收起，把宽度让给名字与记录。 */}
+          {/* The snapshot image identifies the video; when there is none or it cannot be fetched, leave an outlined placeholder cell, the same look as the cover cell on the duplicate files page.
+              Collapses on narrow screens, giving the width to name and records. */}
           <span className="relative inline-grid aspect-16/10 w-24 flex-none place-items-center max-cleanup-tight:hidden overflow-hidden rounded-lg border border-separator-border bg-background-tertiary-default text-text-tertiary">
             <PLAY aria-hidden className="size-5" />
             {item.has_thumb
@@ -109,30 +109,30 @@ export function OrphanRecordsCard({ toast }: { toast(message: string): void }) {
   const purge = useMutation({
     mutationFn: (ids: number[]) => purgeOrphan(ids),
     onSuccess: (data) => {
-      toast(`已删除 ${data.purged} 条作品记录及其个人记录${data.blocked.length ? `；${data.blocked.length} 条文件已恢复，记录未删除` : ''}`);
+      toast(`Deleted ${data.purged} video ${data.purged === 1 ? 'record' : 'records'} and ${data.purged === 1 ? 'its' : 'their'} personal records${data.blocked.length ? `; ${data.blocked.length} file${data.blocked.length === 1 ? ' was' : 's were'} restored, records not deleted` : ''}`);
       setSelected([]); void refresh();
     },
   });
   const removeSelected = (chosen: OrphanRecord[]) => void confirmModal({
-    title: '删除所选记录',
-    body: `将删除以下 ${chosen.length} 条作品记录及其全部个人记录。此操作不可撤销。`,
+    title: 'Delete selected records',
+    body: `Will delete the following ${chosen.length} video records and all their personal records. This cannot be undone.`,
     items: chosen.map((item) => item.name),
-    confirmLabel: '删除所选记录', danger: true,
+    confirmLabel: 'Delete selected records', danger: true,
     onConfirm: () => purge.mutateAsync(chosen.map((item) => item.id)),
   });
   const columns: DataColumn<OrphanRecord>[] = [
-    { id: 'item', label: '作品', width: 480, min: 320, value: (item) => item.name, render: (item) => <OrphanIdentity item={item} /> },
-    { id: 'records', label: '个人记录', width: 176, min: 144, value: (item) => recordsText(item.records),
-      render: (item) => <span className="block min-w-0 whitespace-normal wrap-anywhere">{recordsText(item.records) || '无'}</span> },
-    { id: 'target', label: '操作', width: items.some(item => item.candidates.length) ? 360 : 128, min: 128, value: (item) => item.candidates.length,
+    { id: 'item', label: 'Videos', width: 480, min: 320, value: (item) => item.name, render: (item) => <OrphanIdentity item={item} /> },
+    { id: 'records', label: 'Personal records', width: 176, min: 144, value: (item) => recordsText(item.records),
+      render: (item) => <span className="block min-w-0 whitespace-normal wrap-anywhere">{recordsText(item.records) || 'none'}</span> },
+    { id: 'target', label: 'Actions', width: items.some(item => item.candidates.length) ? 360 : 128, min: 128, value: (item) => item.candidates.length,
       render: (item) => <OrphanActions item={item} toast={toast} /> },
   ];
   return (
     <section id="orphan-records" aria-labelledby="orphan-records-title" className="flex scroll-mt-20 flex-col gap-4">
         {query.isError
           ? <Fieldset layout="stack" labelledBy="orphan-records-title">
-              <FieldsetTitle id="orphan-records-title">文件已丢失的记录</FieldsetTitle>
-              <Note tone="error" title="读取文件已丢失的记录失败">{errorMessage(query.error)}</Note>
+              <FieldsetTitle id="orphan-records-title">Records with missing files</FieldsetTitle>
+              <Note tone="error" title="Failed to read records whose files are lost">{errorMessage(query.error)}</Note>
             </Fieldset>
           : <DataTable label="文件已消失的作品" items={items} columns={columns}
               title="文件已丢失的记录" titleId="orphan-records-title" unit="条作品"
@@ -141,7 +141,7 @@ export function OrphanRecordsCard({ toast }: { toast(message: string): void }) {
               selected={selected} onSelected={setSelected}
               actions={(chosen) => <Button variant="danger" size="small" disabled={!chosen.length}
                 {...busyProps(purge.isPending)} onClick={() => removeSelected(chosen)}>
-                {`删除所选记录（${chosen.length}）`}
+                {`Delete selected records (${chosen.length})`}
               </Button>} />}
     </section>
   );

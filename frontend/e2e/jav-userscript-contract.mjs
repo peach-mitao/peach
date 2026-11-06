@@ -8,10 +8,10 @@ const browser = await chromium.launch({ headless: true, executablePath });
 try {
   for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
     for (const [url, code, label] of [
-      ['https://video.dmm.co.jp/av/content/?id=1dandy00899', 'DANDY-899', 'メーカー品番：'],
-      ['https://video.dmm.co.jp/av/content/?id=1dandy00851c', 'DANDY-851C', 'メーカー品番：'],
-      ['https://video.dmm.co.jp/av/content/?id=118abw00220', 'ABW-220', 'メーカー品番：'],
-      ['https://www.mgstage.com/product/product_detail/104DANDY-851C/', '104DANDY-851C', '品番：'],
+      ['https://video.dmm.co.jp/av/content/?id=1dandy00899', 'DANDY-899', 'メーカー品番: '],
+      ['https://video.dmm.co.jp/av/content/?id=1dandy00851c', 'DANDY-851C', 'メーカー品番: '],
+      ['https://video.dmm.co.jp/av/content/?id=118abw00220', 'ABW-220', 'メーカー品番: '],
+      ['https://www.mgstage.com/product/product_detail/104DANDY-851C/', '104DANDY-851C', '品番: '],
     ]) {
       const context = await browser.newContext({ viewport });
       try {
@@ -48,12 +48,12 @@ try {
           const root = document.getElementById('peach-jav-action')?.shadowRoot;
           return root?.querySelector('.bar strong')?.textContent === expected
             && root.querySelector('[data-action="add"]')?.getAttribute('aria-busy') === 'false'
-            && root.querySelector('p')?.textContent === '可以加入 Peach 馆藏';
+            && root.querySelector('p')?.textContent === 'Ready to add to the Peach library';
         }, code, { timeout: 15000 });
         assert.equal(requests.length, 1);
         assert.deepEqual(problems, []);
       } finally { await context.close(); }
     }
   }
-  console.log('真实识别接口与完整用户脚本：8 个桌面和手机场景通过');
+  console.log('真实识别接口与完整用户脚本: 8 items桌面和手机场景通过');
 } finally { await browser.close(); }

@@ -19,7 +19,7 @@ from .media_probe import probe_unmeasured
 from .task_runs import declared_rows
 
 TASK_KEY = "download-postprocess"
-TASK_LABEL = "云下载后处理"
+TASK_LABEL = "Cloud download post-processing"
 
 
 def followup_key(task_id: int) -> str:
@@ -45,7 +45,7 @@ def enqueue(contract, task) -> int | None:
         return None
     result = contract.task_runs.enqueue_followups(parent.id, [(
         followup_key(task.id), TASK_KEY,
-        f"{TASK_LABEL}：{task.code or task.display_name or task.id}")])
+        f"{TASK_LABEL}: {task.code or task.display_name or task.id}")])
     active = contract.task_runs.blocking(followup_key(task.id))
     run_id = result["queued"][0] if result["queued"] else (active.id if active else None)
     contract.task_runs.finish(parent.id, "succeeded", summary={"followups": len(result["queued"])})

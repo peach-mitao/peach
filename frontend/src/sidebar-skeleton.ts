@@ -1,12 +1,13 @@
-/* 侧栏导航的骨架：壳启动时同步写进 `#drawerScroll`，路由树画上常驻组件 `sidebar`（`react/sidebar/`）的那一刻
- * 整块换掉。
+/* The sidebar nav's skeleton: the shell writes it synchronously into `#drawerScroll` at startup, and the moment the route
+ * tree renders the resident component `sidebar` (`react/sidebar/`) it is swapped wholesale.
  *
- * 左侧导航只认地址和本地设置，一个请求都不等；React 包装载回来之前这一列不能是空的。骨架与组件画的是
- * 同一份结构（标题行的空槽、导航那一列），两者之间换手没有位移。 */
+ * The left nav only reads the address and local settings and waits for no request; before the React bundle loads this column
+ * cannot be empty. The skeleton and the component render the same structure (the header row's empty slot, the nav column), so
+ * the handover between them has no shift. */
 const escape = (value: string) => value.replace(/[&<>"']/g, (char) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 
-/** `order` 是 `appSettings.sidebarOrder`，`catalog` 是 `[键, 名称, 字形]` 的全部入口，`pressed` 是壳的 `navOn`。 */
+/** `order` is `appSettings.sidebarOrder`, `catalog` is every entry as `[key, name, glyph]`, and `pressed` is the shell's `navOn`. */
 export function sidebarSkeletonHtml(
   order: readonly string[], catalog: readonly (readonly [string, string, string])[], pressed: (key: string) => boolean,
 ): string {

@@ -1,4 +1,4 @@
-/* 字形的宽高比属于图标本身；导航、骨架与正文共用，控件仍各自决定图标高度。 */
+/* The glyph's aspect ratio belongs to the icon itself; navigation, skeleton, and body share it, while controls each still decide the icon height. */
 const WIDE: Readonly<Record<string, number>> = { 'text-aa': 1.435, 'mark-javdb': 326 / 111 };
 
 export function iconGeometry(name: string) {

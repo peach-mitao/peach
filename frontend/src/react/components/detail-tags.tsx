@@ -1,4 +1,4 @@
-/* 本地与在线详情共用标签外观、选择器和标签名称编辑。 */
+/* Local and online details share tag styling, the selector, and tag name editing. */
 import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react';
@@ -37,7 +37,7 @@ export function DetailTags({ tags, candidates, scope = 'local', id, adding, labe
     const result = await queryClient.fetchQuery({ queryKey: ['tag-management', scope],
       queryFn: () => apiGet<{ items: ManagedTag[] }>(`/api/tag-management${scope === 'online' ? '?scope=online' : ''}`, signal) });
     const row = result.items.find(value => value.k === tag.k || value.aliases.includes(tag.k));
-    if (!row) throw new Error('标签已变化，请重新打开详情');
+    if (!row) throw new Error('Tags changed. Reopen the details.');
     return row;
   }, row => setEditing(row)) };
   const [open, setOpen] = useState(false);
@@ -51,9 +51,9 @@ export function DetailTags({ tags, candidates, scope = 'local', id, adding, labe
       {shown.map(tag => <span key={tag.k} data-detail-tag="" data-tag-cat={tag.cat}>
         <button type="button" data-tag={tag.k} data-follow-tag={scope === 'online' ? tag.k : undefined}
           title={label(tag.k)} onClick={() => onOpen(tag.k)}>{label(tag.k)}</button>
-        <button type="button" data-edit-tag={tag.k} title="修改标签名称" aria-label={`修改标签 ${label(tag.k)}`}
+        <button type="button" data-edit-tag={tag.k} title="Rename tag" aria-label={`Rename tag ${label(tag.k)}`}
           {...busyProps(!!action.busy)} onClick={() => rename(tag)}><Glyph name="pencil" /></button>
-        <button type="button" data-remove-tag={tag.k} title="从此内容隐藏该标签" aria-label={`删除标签 ${label(tag.k)}`}
+        <button type="button" data-remove-tag={tag.k} title="Hide this tag on this video" aria-label={`Delete tag ${label(tag.k)}`}
           {...busyAttrs(tag.k)} onClick={() => onRemove(tag)}><Glyph name="x" /></button>
       </span>)}
       {long ? <Button variant="secondary" size="small" data-tags-more="" aria-expanded={open}
@@ -63,15 +63,15 @@ export function DetailTags({ tags, candidates, scope = 'local', id, adding, labe
         onOpen={() => setAsked(true)} loading={inventory.isFetching} />
     </div>
     {action.error ? <Note tone="error">{action.error}</Note> : null}
-    {inventory.isError ? <Note tone="error" action={<Button variant="secondary" onClick={() => void inventory.refetch()}>立即重试</Button>}>无法读取标签候选</Note> : null}
+    {inventory.isError ? <Note tone="error" action={<Button variant="secondary" onClick={() => void inventory.refetch()}>Retry now</Button>}>Couldn't load tag suggestions</Note> : null}
     {editing ? <TagEditor operation="rename" selected={[editing]} scope={scope}
       close={() => setEditing(null)} done={() => setEditing(null)} /> : null}
   </>;
 }
 
-/* 标签选择器：最近使用 + 全部（或搜索结果），上下键挑、回车加，输入的词没有完全命中就多一格
-   「新建」。开合走全站菜单那一对口（`presentMenu`／`dismissMenu`），`hidden` 由它们管。
-   选字过程中框里是半截拼音，筛选按 `term` 走、组完字才跟上，不拿「zhon」去筛。 */
+/* Tag selector: Recently used + All (or search results), up/down keys pick, Enter adds; if the typed term doesn't fully match, add a "New" cell.
+   Open and close go through the site-wide menu pair (`presentMenu`/`dismissMenu`); `hidden` is managed by them.
+   While picking characters, the box holds half-finished pinyin; filtering follows `term` and only catches up after the characters are composed — don't filter by "zhon". */
 function TagPicker({ tags, candidates, label, onAdd, adding, scope, onOpen, loading }: Pick<DetailTagsProps, 'tags' | 'candidates' | 'label' | 'onAdd' | 'adding' | 'scope'> & { onOpen():void; loading:boolean }) {
   const plus = useRef<HTMLButtonElement>(null);
   const picker = useRef<HTMLDivElement>(null);
@@ -159,23 +159,23 @@ function TagPicker({ tags, candidates, label, onAdd, adding, scope, onOpen, load
   };
   return (
     <>
-      <button ref={plus} type="button" id="tagPlus" data-tag-plus="" title="添加标签" aria-label="添加标签" aria-expanded={open}
+      <button ref={plus} type="button" id="tagPlus" data-tag-plus="" title="Add tag" aria-label="Add tag" aria-expanded={open}
         {...busyProps(!!adding)}><Glyph name="plus" /></button>
-      <div ref={picker} id="tagPicker" data-tag-picker="" role="dialog" aria-label="添加标签" hidden>
+      <div ref={picker} id="tagPicker" data-tag-picker="" role="dialog" aria-label="Add tag" hidden>
         <label data-tag-search="">
-          {loading ? <span className="contents" dangerouslySetInnerHTML={{ __html:spinnerHtml('正在读取标签') }} /> : <Glyph name="search" />}
-          <input ref={search} id="tagPickSearch" maxLength={80} placeholder="搜索或输入新标签" autoComplete="off" value={query}
+          {loading ? <span className="contents" dangerouslySetInnerHTML={{ __html:spinnerHtml('Loading tags') }} /> : <Glyph name="search" />}
+          <input ref={search} id="tagPickSearch" maxLength={80} placeholder="Search or add a new tag" autoComplete="off" value={query}
             onChange={(event) => { setQuery(event.target.value); setActive(-1); if (!composing.current) setTerm(event.target.value) }}
             onCompositionStart={() => { composing.current = true }}
             onCompositionEnd={(event) => { composing.current = false; setTerm(event.currentTarget.value) }} onKeyDown={keydown} />
         </label>
         <div data-tag-scroll-frame=""><div ref={body} id="tagPickBody" data-tag-body="">
           {open && sections.recent.length ? (
-            <section data-tag-section=""><h4>最近使用</h4><div data-tag-grid="">{sections.recent.map(button)}</div></section>
+            <section data-tag-section=""><h4>Recently used</h4><div data-tag-grid="">{sections.recent.map(button)}</div></section>
           ) : null}
           {open ? (
             <section data-tag-section="">
-              <h4>{term.trim() ? '搜索结果' : '全部标签'}</h4>
+              <h4>{term.trim() ? 'Search results' : 'All tags'}</h4>
               <div data-tag-grid="">
                 {sections.results.map(button)}
                 {sections.create ? (() => {
@@ -184,7 +184,7 @@ function TagPicker({ tags, candidates, label, onAdd, adding, scope, onOpen, load
                   return (
                     <button key="create" type="button" data-pick={sections.create} data-active={at === active ? '' : undefined}
                       onClick={() => { close(); onAdd(sections.create) }}>
-                      <Glyph name="plus" /><span data-pick-name="">新建“{sections.create}”</span>
+                      <Glyph name="plus" /><span data-pick-name="">Create "{sections.create}"</span>
                     </button>
                   );
                 })() : null}

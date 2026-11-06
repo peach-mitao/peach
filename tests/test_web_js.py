@@ -30,6 +30,47 @@ SOURCES = {
 }
 NODE = shutil.which("node")
 
+# 驱动依赖 `module.registerHooks`（Node ≥ 23.5 / 22.15）与不带扩展名的 `.ts` 导入：PATH 上的 node
+# （比如旧的 fnm 默认版本）可能两者不满足，此时按序试机器上装着的其它 Node，取第一个真能跑通驱动的。
+def _node_candidates():
+    if NODE:
+        yield NODE
+    for fixed in (r"C:\Program Files\nodejs\node.exe", r"C:\Program Files (x86)\nodejs\node.exe"):
+        yield fixed
+    fnm = Path.home() / "AppData" / "Roaming" / "fnm" / "node-versions"
+    if fnm.is_dir():
+        for match in sorted(fnm.glob("*/node.exe"), reverse=True):
+            yield str(match)
+    volta = Path.home() / ".volta" / "tools" / "images" / "node"
+    if volta.is_dir():
+        for match in sorted(volta.glob("*/node.exe"), reverse=True):
+            yield str(match)
+
+
+def _select_node(driver):
+    """逐个候选用真实用例跑一次驱动，跑通（模块导入 + 真函数）才算数。"""
+    probe = [[SOURCES["jav-title.js"].as_posix(), "javFileDisplayName",
+              [{"is_jav": True, "name": "probe.mp4"}]]]
+    seen = set()
+    for candidate in _node_candidates():
+        if candidate in seen or not Path(candidate).exists():
+            continue
+        seen.add(candidate)
+        try:
+            done = subprocess.run([candidate, str(driver), json.dumps(probe)],
+                                  capture_output=True, text=True, encoding="utf-8", timeout=60)
+        except Exception:
+            continue
+        if done.returncode != 0:
+            continue
+        try:
+            result = json.loads(done.stdout)[0]
+        except Exception:
+            continue
+        if result.get("ok") and result.get("value") == "probe":
+            return candidate
+    return None
+
 # Node 那边的入口。模块按绝对 file:// URL 引入，所以驱动脚本放临时目录也能找到它们；
 # 用例从 argv 进来，期望值全留在 Python 这边，避免同一张表在两种语言里各写一份。
 # TS 源码靠 Node 自带的类型剥离直接跑；源码里不带扩展名的相对 import 按 Vite 的口径补 `.ts` 或 `/index.ts`。
@@ -125,6 +166,7 @@ class WebJsBehaviourTests(unittest.TestCase):
         cls._tmp = tempfile.TemporaryDirectory()
         cls._driver = Path(cls._tmp.name) / "driver.mjs"
         cls._driver.write_text(DRIVER, encoding="utf-8")
+        cls._node = _select_node(cls._driver)
 
     @classmethod
     def tearDownClass(cls):
@@ -132,9 +174,11 @@ class WebJsBehaviourTests(unittest.TestCase):
 
     def run_js(self, cases):
         """按顺序执行 `[模块, 导出名, 参数列表]`，返回结果列表。"""
+        if not self._node:
+            self.skipTest("PATH 上的 Node 太老（registerHooks/裸 .ts 导入），机器上也没有能跑驱动的 Node")
         located = [[SOURCES[module].as_posix(), fn, args] for module, fn, args in cases]
         done = subprocess.run(
-            [NODE, str(self._driver), json.dumps(located)],
+            [self._node, str(self._driver), json.dumps(located)],
             capture_output=True, text=True, encoding="utf-8", timeout=60)
         if done.returncode != 0:
             self.fail(f"Node 跑不起来（exit {done.returncode}）：{done.stderr.strip()[:2000]}")
@@ -237,17 +281,17 @@ class WebJsBehaviourTests(unittest.TestCase):
         self.assertJsResults([
             ("jav-title.js", "javTitleParts",
              [{"is_jav": True, "code": "ABC-123", "name": "ABC-123 标题",
-               "edition_badges": ["中字", "4K", "无码破解"]}],
-             {"code": "ABC-123", "title": "标题", "badges": ["中字", "无码破解"]}),
+               "edition_badges": ["Chinese subs", "4K", "Uncensored"]}],
+              {"code": "ABC-123", "title": "标题", "badges": ["Chinese subs", "Uncensored"]}),
             ("jav-title.js", "javDisplayName",
              [{"is_jav": True, "code": "ABC-123", "name": "ABC-123 标题",
-               "edition_badges": ["中字"]}],
-             "ABC-123 中字 标题"),
+               "edition_badges": ["Chinese subs"]}],
+              "ABC-123 Chinese subs 标题"),
             # 没标题就只剩番号，不留下尾随空格。
             ("jav-title.js", "javDisplayName",
              [{"is_jav": True, "code": "ABC-123", "display_title": "",
                "name": "ABC-123"}],
-             "ABC-123"),
+              "ABC-123"),
         ])
 
     def test_title_html_escapes_everything_it_interpolates(self):
@@ -263,9 +307,9 @@ class WebJsBehaviourTests(unittest.TestCase):
              '</span> <span class="ui-javtitle" lang="en">&lt;b&gt;x&lt;/b&gt;</span>'),
             ("jav-title.js", "javTitleHtml",
              [{"is_jav": True, "code": "ABC-123", "display_title": "",
-               "name": "ABC-123", "edition_badges": ["无码"]}],
+               "name": "ABC-123", "edition_badges": ["Uncensored"]}],
              '<span class="ui-javidentity"><strong class="ui-javcode">ABC-123</strong>'
-             '<small class="javedition uncensored">无码</small></span>'),
+             '<small class="javedition uncensored">Uncensored</small></span>'),
         ])
 
     # ── 标签显示名 ──────────────────────────────────────────────────────────
@@ -346,42 +390,42 @@ class WebJsBehaviourTests(unittest.TestCase):
         ])
 
     def test_a_company_page_calls_its_own_site_the_official_site(self):
-        """厂牌页与事务所页上指回自家站的链接写「官方网站」，指向别家的保留那家的名字；人物页照旧写名字。"""
+        """厂牌页与事务所页上指回自家站的链接写「Official site」，指向别家的保留那家的名字；人物页照旧写名字。"""
         light = {"url": "https://lightpro.jp/", "label": "LIGHT"}
         nax = {"url": "https://official.nax-pro.com/", "label": "New Actor eXperience"}
         self.assertJsResults([
             ("core.js", "officialLinkText",
              [{"url": "https://www.km-produce.com/", "label": "K M Produce"}, "studio",
-              ["K M Produce", "KMP"]], "官方网站"),
+              ["K M Produce", "KMP"]], "Official site"),
             ("core.js", "officialLinkText",
              [{"url": "https://cmore.jp/", "label": "C-more Entertainment"}, "studio",
-              ["C-more Entertainment"]], "官方网站"),
+              ["C-more Entertainment"]], "Official site"),
             # 别名也算自家：合并进来的旧名下装的链接。
             ("core.js", "officialLinkText",
              [{"url": "https://example.jp/", "label": "Studio CLAP"}, "studio",
-              ["C-more Entertainment", "Studio CLAP"]], "官方网站"),
+              ["C-more Entertainment", "Studio CLAP"]], "Official site"),
             # 短名是缩写时认 label；label 只是主机名等于没起名。
-            ("core.js", "officialLinkText", [nax, "studio", ["New Actor eXperience"]], "官方网站"),
+            ("core.js", "officialLinkText", [nax, "studio", ["New Actor eXperience"]], "Official site"),
             ("core.js", "officialLinkText",
-             [{"url": "http://www.ran-maru.com", "label": "www.ran-maru.com"}, "studio", ["乱丸"]], "官方网站"),
+             [{"url": "http://www.ran-maru.com", "label": "www.ran-maru.com"}, "studio", ["乱丸"]], "Official site"),
             ("core.js", "officialLinkText",
              [{"url": "https://kirakira-av.com/", "label": "www.kirakira-av.com"}, "studio",
-              ["kira*kira"]], "官方网站"),
+              ["kira*kira"]], "Official site"),
             ("core.js", "officialLinkText",
              [{"url": "https://bangbros.com/websites/BangBus", "label": "BangBros"}, "studio",
               ["BangBus"]], "BangBros"),
             ("core.js", "officialLinkText",
              [{"url": "https://www.prestige-av.com/goods/", "label": "Prestige"}, "studio",
               ["Jackson"]], "Prestige"),
-            ("core.js", "officialLinkText", [light, "agency", ["LIGHT", "RIGHT"]], "官方网站"),
-            ("core.js", "officialLinkText", [nax, "agency", ["New Actor eXperience"]], "官方网站"),
+            ("core.js", "officialLinkText", [light, "agency", ["LIGHT", "RIGHT"]], "Official site"),
+            ("core.js", "officialLinkText", [nax, "agency", ["New Actor eXperience"]], "Official site"),
             ("core.js", "officialLinkText",
              [{"url": "https://old-crew.blog.jp/", "label": "官方博客"}, "agency",
               ["Office Old Crew"]], "官方博客"),
             # 事务所页上链到别家（拆分出来的 EST 链着 LIGHT 的旧站）保留那家的名字。
             ("core.js", "officialLinkText", [light, "agency", ["EST", "エスト"]], "LIGHT"),
             ("core.js", "officialLinkText", [light, "performer", ["松本一香"]], "LIGHT"),
-            # 存档快照照写 label，厂牌页上也不改写成「官方网站」。
+            # 存档快照照写 label，厂牌页上也不改写成「Official site」。
             ("core.js", "officialLinkText",
              [{"url": "https://web.archive.org/web/20220512171503/https://ones-double.com/people/",
                "label": "官网存档（2022-05）"}, "studio", ["ONE'S DOUBLE"]],
@@ -467,10 +511,10 @@ class WebJsBehaviourTests(unittest.TestCase):
             ("core.js", "fmtDur", [59], "0:59"),
             ("core.js", "fmtDur", [61], "1:01"),
             ("core.js", "fmtDur", [3661], "1:01:01"),
-            # 48 小时起按天读：「1284:00:00」没人一眼读得出是五十多天。
-            ("core.js", "fmtDur", [48 * 3600 - 1], "47:59:59"),
-            ("core.js", "fmtDur", [48 * 3600], "2 天"),
-            ("core.js", "fmtDur", [4622400], "53 天 12 小时"),
+        # 48 小时起按天读：「1284:00:00」没人一眼读得出是五十多天。
+        ("core.js", "fmtDur", [48 * 3600 - 1], "47:59:59"),
+        ("core.js", "fmtDur", [48 * 3600], "2 days"),
+        ("core.js", "fmtDur", [4622400], "53 days 12 hours"),
             # fmtClock 是播放器时间轴，0 秒是真的 0 秒。
             ("core.js", "fmtClock", [0], "0:00"),
             ("core.js", "fmtClock", [-5], "0:00"),
@@ -481,11 +525,11 @@ class WebJsBehaviourTests(unittest.TestCase):
             # 不到 1 MB 写 KB，1 字节也至少是 1 KB，不读成「0 MB」。
             ("core.js", "fmtSize", [1], "1 KB"),
             ("core.js", "fmtSize", [512 * 1024], "512 KB"),
-            # 0 是真的 0（可回收空间、已下载量）；缺值与坏值是未知。
-            ("core.js", "fmtSize", [0], "0 B"),
-            ("core.js", "fmtSize", [None], "大小未知"),
-            ("core.js", "fmtSize", ["不是数字"], "大小未知"),
-            ("core.js", "fmtSize", [-1], "大小未知"),
+        # 0 是真的 0（可回收空间、已下载量）；缺值与坏值是未知。
+        ("core.js", "fmtSize", [0], "0 B"),
+        ("core.js", "fmtSize", [None], "Unknown size"),
+        ("core.js", "fmtSize", ["不是数字"], "Unknown size"),
+        ("core.js", "fmtSize", [-1], "Unknown size"),
             # 首字母按字素取：emoji、肤色与 ZWJ 组合整枚取，不劈成半个代理对。
             ("core.js", "firstGrapheme", ["🦊 Fox"], "🦊"),
             ("core.js", "firstGrapheme", ["👩🏽‍💻 Priya"], "👩🏽‍💻"),

@@ -10,8 +10,8 @@ const tokenInput = (root: ParentNode) => root.querySelector<HTMLInputElement>('i
 const alerts = (root: ParentNode) => [...root.querySelectorAll('[role="alert"]')];
 const entries = (root: ParentNode) => [...new FormData(root.querySelector('form')!).entries()];
 
-describe('登录页', () => {
-  it('原生表单提交 token、next 与勾选时的 days=30', async () => {
+describe('Login page', () => {
+  it('The native form submits token, next, and days=30 when checked', async () => {
     const host = await mount(<LoginPage data={{ next: '/stats?x=1' }} />);
     const form = host.querySelector('form')!;
     expect(form.getAttribute('method')).toBe('post');
@@ -31,12 +31,12 @@ describe('登录页', () => {
     expect(form.checkValidity()).toBe(true);
   });
 
-  it('没给 next 时回首页', async () => {
+  it('Fall back to home when next is absent', async () => {
     const host = await mount(<LoginPage data={{}} />);
     expect(entries(host)).toContainEqual(['next', '/']);
   });
 
-  it('口令不对时框标错、原因由读屏播报、焦点落在框里，改了内容就撤掉', async () => {
+  it('With a wrong passphrase the field is marked invalid, the reason is announced to screen readers, focus lands in the field, and editing clears it', async () => {
     const host = await mount(<LoginPage data={{ next: '/', invalid: 'true' }} />);
     const input = tokenInput(host)!;
     expect(document.activeElement).toBe(input);
@@ -51,8 +51,8 @@ describe('登录页', () => {
     expect(host.querySelector('form')!.checkValidity()).toBe(true);
   });
 
-  it('限流与参数错误的原因照同一处写', async () => {
-    for (const reason of ['尝试次数较多，请一分钟后重试', '请选择有效的保持登录时间']) {
+  it('Rate-limit and bad-param reasons write to the same place', async () => {
+    for (const reason of ['Too many attempts; retry in a minute', 'Pick a valid stay signed in duration']) {
       const host = await mount(<LoginPage data={{ next: '/', error: reason }} />);
       const input = tokenInput(host)!;
       expect(input.getAttribute('aria-invalid')).toBe('true');
@@ -143,21 +143,21 @@ describe('Docker 首次访问设置', () => {
 
 describe('错误页', () => {
   const cases = [
-    { status: '403', title: '这里不能打开', lede: '请在运行 Peach 的电脑上打开配置' },
-    { status: '404', title: '四〇四', lede: null },
-    { status: '409', title: '现在不能这样做', lede: '请先完成首次设置' },
-    { status: '500', title: '出了点问题', lede: '服务出错' },
+    { status: '403', title: 'Cannot open here', lede: 'Open the configuration on the computer running Peach' },
+    { status: '404', title: '404', lede: null },
+    { status: '409', title: 'Can\'t do that right now', lede: 'Finish first-time setup first' },
+    { status: '500', title: 'Something went wrong', lede: 'The service errored' },
   ];
   for (const { status, title, lede } of cases) {
-    it(`${status} 的标题与说明`, async () => {
-      const detail = lede ?? '这个地址下没有页面。';
+    it(`${status}'s title and note`, async () => {
+      const detail = lede ?? 'No page at this address.';
       const host = await mount(<ErrorPage data={{ status, detail }} />);
       expect(host.querySelector('h1')?.textContent).toBe(title);
       expect(document.title).toBe(`Peach · ${title}`);
       expect(host.textContent?.includes(detail)).toBe(lede !== null);
       const home = host.querySelector('a');
       expect(home?.getAttribute('href')).toBe('/');
-      expect(home?.textContent).toBe('返回首页');
+      expect(home?.textContent).toBe('Back to home');
     });
   }
 });

@@ -1,12 +1,14 @@
-/* 独立页面包的构建配置：`web/dist/peach-pages.js` 与 `web/dist/peach-pages.css`。
+/* Build configuration for the standalone pages bundle: `web/dist/peach-pages.js` and `web/dist/peach-pages.css`.
  *
- * 首启、登录与错误三页由服务端吐同一张薄壳，只加载这两份；它们不要会话就能取（ADR-0094）。
- * 它们自成一体：React、BoardUI 控件和用到的
- * `src/ui-kit/` 共用件都打进来，产物没有外部 import，页面不加载主包 `peach-app.js`，同一个模块在这一页上不会有第二份实例。
- * `@peach/legacy/ui` 落到 `src/react/pages/legacy-ui.ts`，只转出共用件真正读的那几样。
+ * The first-run, login and error pages are served by the server as the same thin shell that loads only these two files; they
+ * are fetchable without a session (ADR-0094). They are self-contained: React, BoardUI controls and the `src/ui-kit/` shared
+ * pieces they use are all bundled in, the output has no external imports, the pages do not load the main bundle
+ * `peach-app.js`, and one module never has a second instance on these pages. `@peach/legacy/ui` resolves to
+ * `src/react/pages/legacy-ui.ts`, exporting only the pieces the shared controls actually read.
  *
- * `npm run build` 里排在第一段之后（第一段会清空 web/dist）。不拆分、不加内容哈希：免登录只放行这两个固定名字。
- * Tailwind、`@` 别名、NODE_ENV 替换与 CSS 目标同 `vite.config.ts`。 */
+ * Ordered after the first stage in `npm run build` (that stage empties web/dist). No splitting, no content hashes: the
+ * no-login gate allowlists these two fixed names. Tailwind, the `@` alias, NODE_ENV replacement and the CSS target match
+ * `vite.config.ts`. */
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';

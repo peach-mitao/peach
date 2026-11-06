@@ -492,7 +492,7 @@ def clean_resource_orphans(contract: ResourceSyncContract, *, progress=None, che
     blocked = list(previous.get('cache_blocked') or [])
     for index, (kind, path, size) in enumerate(plan["files"]):
         if progress:
-            progress(checked=index, total=len(plan["files"]), message=f"清理缓存：已处理 {index} / {len(plan['files'])} 个")
+            progress(checked=index, total=len(plan["files"]), message=f"Clearing cache: {index} / {len(plan['files'])} processed")
         try:
             path.unlink(missing_ok=True)
             removed += 1

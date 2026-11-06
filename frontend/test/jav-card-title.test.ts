@@ -13,10 +13,10 @@ it('新作订阅还没入库，卡片只给番号与片名，不出版次与画�
 
 it('已确认的版本标签与 4K 位于标题，分辨率未取得时不添加画质标记', () => {
   const host = document.createElement('div');
-  const item = { is_jav: true, code: 'EXM-001', catalog_title: '示例作品', edition_badges: ['中字', '无码'] };
+  const item = { is_jav: true, code: 'EXM-001', catalog_title: 'Example video', edition_badges: ['Chinese subs', 'Uncensored'] };
   host.innerHTML = javTitleHtml({ ...item, width: 3840, height: 2160 });
-  expect([...host.querySelectorAll('.javedition')].map(node => node.textContent)).toEqual(['中字', '无码', '4K']);
-  expect(host.querySelector('.ui-javtitle')?.textContent).toBe('示例作品');
+  expect([...host.querySelectorAll('.javedition')].map(node => node.textContent)).toEqual(['Chinese subs', 'Uncensored', '4K']);
+  expect(host.querySelector('.ui-javtitle')?.textContent).toBe('Example video');
   for (const dimensions of [{}, { width: 1920, height: 1080 }, { width: 3840, height: 1080 }]) {
     host.innerHTML = javTitleHtml({ ...item, ...dimensions });
     expect(host.querySelector('.quality')).toBeNull();

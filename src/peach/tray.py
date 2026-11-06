@@ -375,9 +375,9 @@ class ServiceManager:
             parts = []
             for spec in self.specs:
                 ok, detail = self._last_health[spec.name]
-                state = (f"正常（{detail}）" if detail else "正常") if ok else f"异常（{detail}）" if detail else "异常"
+                state = (f"OK ({detail})" if detail else "OK") if ok else f"Unhealthy ({detail})" if detail else "Unhealthy"
                 if not ok and spec.name in self.starting_services():
-                    state = "启动中"
+                    state = "Starting up"
                 parts.append(f"{spec.name.upper()} {state}")
         return " · ".join(parts)
 
@@ -387,10 +387,10 @@ class ServiceManager:
             healthy = sum(self._last_health[spec.name][0] for spec in self.specs)
             warnings = set(value for spec in self.specs
                            for value in self._mount_warnings.get(spec.name, ()))
-            state = ("运行中" if healthy == len(self.specs) else "部分服务异常") if healthy else "服务未运行"
+            state = ("Running" if healthy == len(self.specs) else "Some services unhealthy") if healthy else "Services not running"
             if self.waiting_for_startup():
-                state = "启动中"
-        return f"{state} · {len(warnings)} 项提醒" if warnings else state
+                state = "Starting up"
+        return f"{state} · {len(warnings)} warnings" if warnings else state
 
     def status_details(self) -> tuple[str, ...]:
         """服务与挂载分行呈现，避免一行堆入所有来源。"""
@@ -398,9 +398,9 @@ class ServiceManager:
             services = []
             for spec in self.specs:
                 ok, detail = self._last_health[spec.name]
-                state = "正常" if ok else f"异常（{detail}）" if detail else "异常"
+                state = "OK" if ok else f"Unhealthy ({detail})" if detail else "Unhealthy"
                 if not ok and spec.name in self.starting_services():
-                    state = "启动中"
+                    state = "Starting up"
                 services.append(menu_text(f"{spec.name.upper()} {state}"))
             warnings = dict.fromkeys(value for spec in self.specs
                                      for value in self._mount_warnings.get(spec.name, ()))
@@ -1007,14 +1007,14 @@ class SetupGate:
         return self._waiting
 
     def open_label(self) -> str:
-        return "重新打开设置页" if self._waiting else "打开 Peach"
+        return "Reopen setup page" if self._waiting else "Open Peach"
 
     def open_url(self) -> str:
         return setup_url(self.config) if self._waiting else normal_url(self.config)
 
     def status_line(self) -> str:
         if self._waiting:
-            return "等待完成首次设置"
+            return "Waiting for initial setup"
         return self.manager.status_summary()
 
     def open(self) -> None:
@@ -1165,7 +1165,7 @@ class PeachTray:
             pystray.MenuItem(lambda _item: self.version.build_label, None, enabled=False),
             pystray.MenuItem(lambda _item: self.version.channel_label, None, enabled=False),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("检查更新", self.check_updates),
+            pystray.MenuItem("Check for updates", self.check_updates),
         )
         self.icon = pystray.Icon(
             "Peach",
@@ -1174,26 +1174,26 @@ class PeachTray:
             "Peach · 蜜桃",
             pystray.Menu(
                 pystray.MenuItem(lambda _item: self.gate.open_label(), self.open, default=True),
-                pystray.MenuItem("配置 Peach", lambda *_: webbrowser.open(self.gate.open_url() + "configuration")),
-                pystray.MenuItem(lambda _item: f"状态：{self.gate.status_line()}", pystray.Menu(
+                pystray.MenuItem("Configure Peach", lambda *_: webbrowser.open(self.gate.open_url() + "configuration")),
+                pystray.MenuItem(lambda _item: f"Status: {self.gate.status_line()}", pystray.Menu(
                     lambda: (
                         *(pystray.MenuItem(line, None, enabled=False)
                           for line in self.manager.status_details()),
-                        pystray.MenuItem(menu_text(f"地址：{self.gate.open_url()}"), self.open),
-                        pystray.MenuItem("查看完整配置", lambda *_: webbrowser.open(
+                        pystray.MenuItem(menu_text(f"Address: {self.gate.open_url()}"), self.open),
+                        pystray.MenuItem("View full configuration", lambda *_: webbrowser.open(
                             self.gate.open_url() + "configuration")),
                     ))),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem("同步开发进度", self.sync_source,
+                pystray.MenuItem("Sync development progress", self.sync_source,
                                  visible=lambda _: not standalone()),
                 *ledger_menu_items(
                     pystray.MenuItem, self.sync_ledger, self.take_ownership),
-                pystray.MenuItem("重启服务", self.restart),
-                pystray.MenuItem("查看日志", self.open_logs),
-                pystray.MenuItem("导出诊断报告", self.export_diagnostics),
-                pystray.MenuItem("版本与更新", version_menu),
+                pystray.MenuItem("Restart service", self.restart),
+                pystray.MenuItem("View logs", self.open_logs),
+                pystray.MenuItem("Export diagnostics report", self.export_diagnostics),
+                pystray.MenuItem("Version and updates", version_menu),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem("退出 Peach", self.exit),
+                pystray.MenuItem("Exit Peach", self.exit),
             ),
         )
 
@@ -1381,7 +1381,7 @@ class PeachTray:
                 except OSError as error:
                     show_message("Peach 诊断报告", f"诊断报告已保存：\n{path}\n\n窗口或打开操作未完成：{error}", error=True)
             except Exception as error:
-                show_message("Peach 诊断报告", error_reporting.failure_details("report-export", error), error=True)
+                show_message("Peach diagnostic report", error_reporting.failure_details("report-export", error), error=True)
             finally:
                 self._diagnostics_lock.release()
 
@@ -1392,14 +1392,14 @@ class PeachTray:
         if not self._action_lock.acquire(blocking=False):
             return
         tray_icon = icon or self.icon
-        tray_icon.notify("正在检查更新…", "Peach")
+        tray_icon.notify("Checking for updates…", "Peach")
 
         def work() -> None:
             try:
                 result = self.versions.check()
                 self.version = result.snapshot
                 tray_icon.update_menu()
-                tray_icon.notify(result.message, "Peach 版本与更新")
+                tray_icon.notify(result.message, "Peach Version and updates")
             finally:
                 self._action_lock.release()
 
@@ -1427,7 +1427,7 @@ class PeachTray:
         if not self._action_lock.acquire(blocking=False):
             return
         tray_icon = icon or self.icon
-        tray_icon.notify("正在检查更新通道…", "Peach 开发进度")
+        tray_icon.notify("Checking the update channel…", "Peach development progress")
 
         def work() -> None:
             try:
@@ -1755,7 +1755,7 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
 
         def work() -> None:
             try:
-                notify("正在检查更新通道…", "Peach 开发进度")
+                notify("Checking the update channel…", "Peach development progress")
                 result = versions.update()
                 state["snapshot"] = result.snapshot
                 if result.state != "updated":
@@ -1818,13 +1818,13 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
         "Peach · 蜜桃",
         [
             (gate.open_label, gate.open),
-            (lambda: f"状态：{gate.status_line()}", Submenu(lambda: [
+            (lambda: f"Status: {gate.status_line()}", Submenu(lambda: [
                 *((line, None) for line in manager.status_details()),
-                (menu_text(f"地址：{gate.open_url()}"), gate.open),
-                ("查看完整配置", open_configuration),
+                (menu_text(f"Address: {gate.open_url()}"), gate.open),
+                ("View full configuration", open_configuration),
             ])),
             (None, None),
-            *((("同步开发进度", sync_source),) if not standalone() else ()),
+            *((("Sync development progress", sync_source),) if not standalone() else ()),
             *ledger_menu_items(
                 lambda label, action: (label, action), sync_ledger, take_ownership),
             ("重启服务", restart),
@@ -1838,7 +1838,7 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
                 ("检查更新", updates.check),
             ])),
             (None, None),
-            ("退出 Peach", quit_now),
+            ("Exit Peach", quit_now),
         ],
     )
     app["app"] = menu
@@ -1997,7 +1997,7 @@ def _main(argv: list[str] | None = None) -> int:
             return 0
     except OSError as exc:
         details = error_reporting.failure_details("tray-handoff", exc)
-        show_message("Peach 启动失败", f"无法独立启动托盘：{details}", error=True)
+        show_message("Peach failed to start", f"The tray could not start on its own: {details}", error=True)
         return 1
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger().setLevel(logging.INFO)

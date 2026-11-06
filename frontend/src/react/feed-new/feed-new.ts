@@ -1,9 +1,10 @@
-/* 未入库的新作那一行（ADR-0042）：首页那一行与资料页那一行共用的取数、查询键与写操作。
+/* The new-releases row not yet added to the library (ADR-0042): fetching, query keys and write operations shared by the home
+ * row and the profile page row.
  *
- * 两行读同一个端点（`/api/feeds/discoveries`），资料页多带一个 `entity`；查询键同族
- * （`['feed-new', 实体 id | 'home']`），一处改了合集开关，按 `['feed-new']` 一次就能把两行都作废。
- * 卡片的 HTML 仍由壳拼（`feedRowHtml`）：封面取景、版次字样与那条连接方式的 Note 都是遗留层
- * 那一份，取图失败时的兜底链也直接改节点。 */
+ * Both rows read the same endpoint (`/api/feeds/discoveries`) with the profile page adding `entity`; the query keys are one
+ * family (`['feed-new', entity id | 'home']`), so flipping the compilation switch in one place invalidates both rows in one
+ * go by `['feed-new']`. Card HTML is still assembled by the shell (`feedRowHtml`): cover framing, the edition mark and the
+ * connection-method Note are the legacy layer's copies, and the image-failure fallback chain mutates nodes directly. */
 import { appSettingsStore } from '@peach/appearance';
 import type { CoverState } from '@peach/card-art';
 import { api } from '@peach/legacy/core';
@@ -26,14 +27,14 @@ export interface FeedNew {
 /** 壳拼的整段 HTML：连不上图片主机时的 Note 与一排卡（`feedNewCardHtml`）。 */
 export type FeedRowHtml = (data: FeedDiscoveries | null, allHref?: string) => string;
 
-/** 资料页那一行用实体 id，首页那一行不分人。 */
+/** The profile page row keys by entity id; the home page row does not distinguish people. */
 export const feedNewKey = (entityId: number | null) => ['feed-new', entityId ?? 'home'] as const;
 
 const FEED_SKELETON_CARDS = 8;
 const FEED_COVER_WAIT = 1500;
 
-/** 把一段 HTML 里头 `count` 张图先取进缓存，最多等 `ms` 毫秒。插进页面时它们已经 `complete`，
- *  遗留层的等待微光不再给它们挂上。 */
+/** Preloads `count` images from a fragment of HTML into the cache, waiting at most `ms` milliseconds. By the time the fragment enters the page they are `complete`,
+ *  so the legacy layer's waiting shimmer never attaches to them. */
 export function preloadImages(html: string, count: number, ms: number): Promise<unknown> {
   const probe = document.createElement('template');
   probe.innerHTML = html;
@@ -46,10 +47,13 @@ export function preloadImages(html: string, count: number, ms: number): Promise<
   return Promise.race([Promise.all(loads), new Promise((resolve) => { setTimeout(resolve, ms) })]);
 }
 
-/** 拉取由定时器做，页面只读已经发现的那些：进这一页顺手发一轮请求，等于把每次刷新都变成对别人
- *  服务器的一次拉取。骨架还占着时（首屏）先把头几张封面取到手再整行换掉：否则骨架退场、真卡进来，
- *  封面格里又是一轮微光，同一行等了两遍。慢的那几张不等满，到点照换。
- *  一行取几部按设置弹窗「新作显示数量」（`feedLimit`），改了由壳作废两行的查询重取。 */
+/** Pulling is the timer's job and pages only read what has been discovered: firing a round of requests on entering the page
+ *  would turn every refresh into a pull on someone else's server. While the skeleton still holds (first screen), the first
+ *  few covers are fetched before the whole row swaps: otherwise the skeleton exits, real cards enter, and the cover cells
+ *  shimmer a second time, the same row waited on twice. The slow few are not waited out to the end; at the deadline the row
+ *  swaps anyway.
+ *  How many videos a row takes follows the settings overlay's "new releases shown" (`feedLimit`); a change has the shell
+ *  invalidate both rows' queries and refetch. */
 export async function fetchFeedNew(entityId: number | null, rowHtml: FeedRowHtml, preload: boolean): Promise<FeedNew> {
   const query = new URLSearchParams({ limit: String(appSettingsStore().value.feedLimit) });
   if (entityId) query.set('entity', String(entityId));
@@ -69,31 +73,31 @@ export const feedNewOptions = (entityId: number | null, rowHtml: FeedRowHtml, pr
   refetchInterval: (query: { state: { data?: FeedNew } }) => query.state.data?.fetching ? 2000 : false,
 });
 
-/** 卡上那三颗键（想要、不想看、标为已看过）。都是标记，写失败了卡片照样换样子：这一行下次取数时
- *  会按服务端的现状重排。 */
+/** The three buttons on the card (Want, Not interested, Mark watched). All are marks; on write failure the card still changes look, since this row re-sorts by the server's
+ *  actual state at the next fetch. */
 export const postFeedAction = (feedId: number, action: string): Promise<void> =>
   (api('/api/feeds/discovery', { method: 'POST', body: JSON.stringify({ action, ids: [feedId] }) }) as Promise<unknown>)
     .then(() => undefined, () => undefined);
 
-/** 首页那一行（`feed-new` island）。宿主是 `index.html` 里那块常驻的 `#feedNew`：岛的根挂在它
- *  里面的 `.peach-react` 上，卡片 portal 回宿主本身，落在 Preflight 的范围外。 */
+/** The home row (`feed-new` island). The host is `index.html`'s resident `#feedNew`: the island's root hangs on its
+ *  `.peach-react`, cards portal back to the host itself, landing outside Preflight's scope. */
 export interface FeedNewProps {
   host: HTMLElement;
-  /** 合集开关改了就换一个代次，这一行照新的筛法重取。 */
+  /** Changing the compilation switch issues a new epoch; this row refetches with the new filter. */
   revision: number;
   helpers: {
     feedRowHtml: FeedRowHtml;
-    /** 拖动、滚轮，按设置接自动滚动。 */
+    /** Drag, wheel, and auto-scroll wired up per settings. */
     wireFeedRow(row: Element | null): void;
   };
   actions: {
-    /** 这一行有没有卡：取回来、或最后一张被收起时报一次，壳按它决定下次进首页铺不铺骨架。 */
+    /** Whether this row stalled: reported once when fetched, or when the last card is collapsed; the shell uses it to decide whether the next home page entry lays a skeleton. */
     settled(hasItems: boolean): void;
   };
 }
 
-/** 每次进目录页都是新的一趟（与资料页同一口径）：先清掉上一次的缓存，骨架还占着就连头几张
- *  封面一起等。 */
+/** Every entry into the catalog page is a fresh fetch (the same rule as the profile page): the previous cache is cleared first, and while the skeleton still holds,
+ *  the first few covers wait with it. */
 export async function prefetchFeedNew(props: FeedNewProps): Promise<void> {
   queryClient.removeQueries({ queryKey: feedNewKey(null) });
   await queryClient.fetchQuery(feedNewOptions(null, props.helpers.feedRowHtml,

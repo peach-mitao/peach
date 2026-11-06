@@ -14,7 +14,7 @@ export interface EntityApplicationPorts {
   sortPreference(): { sort: string; dir: string };
 }
 
-/** 资料页地址、动作、等待与照片墙共享一个生命周期；打开意图只消费一次。 */
+/** The profile page's address, actions, wait, and photo wall share one lifecycle; the Open intent is consumed only once. */
 export function createEntityApplication(ports: EntityApplicationPorts) {
   const entry = createEntityEntryState();
   const helpers: EntityPageHelpers = { ...ports.helpers, portraitImg: entityPortraitImg };

@@ -8,8 +8,8 @@ import { busyProps, useAction } from '../settings/use-action';
 import { EmptyState } from './empty-state';
 import type { JavDetail } from '../jav-detail/jav-detail';
 
-/** 来源图片（样张、来源封面、来源头像）的地址。服务端取过一次就落盘，回的是图片本身，
- *  浏览器按 ETag 与私有时效缓存；`attempt` 让重试换一个地址，不复用刚失败的那一次。 */
+/** URLs for source images (samples, source covers, source avatars). The server saves one on first fetch and returns the image itself,
+ *  cached by the browser via ETag and a private TTL; `attempt` lets a retry use a different URL instead of reusing the one that just failed. */
 export const javImageUrl = (code: string, image: string, attempt = 0): string =>
   `/jav-image?code=${encodeURIComponent(code)}&image=${encodeURIComponent(image)}${attempt ? `&attempt=${attempt}` : ''}`;
 
@@ -46,7 +46,7 @@ export function SourcePicture({ item, image, thumbnail = false }: {
   const picture = useRef<HTMLImageElement>(null);
   const local = image === 'cover' && item.has_cover;
   const remote = !local && (image !== 'cover' || item.source_image);
-  const alt = thumbnail ? '' : image === 'cover' ? `${item.code} 封面` : `${item.code} 预览 ${Number(image) + 1}`;
+  const alt = thumbnail ? '' : image === 'cover' ? `${item.code} cover` : `${item.code} preview ${Number(image) + 1}`;
   const src = remote ? javImageUrl(item.code, image, attempt) : local ? coverUrl(item, true) : item.cover_url || '';
   useLayoutEffect(() => {
     const node = picture.current;
@@ -68,8 +68,8 @@ export function SourcePicture({ item, image, thumbnail = false }: {
   };
   return <>
     {ready || loaded ? null : thumbnail
-      ? <span className="relative block h-full w-full skeleton-sheen" aria-label="正在读取预览" />
-      : <div data-jav-picture-wait="" data-skeleton="image" role="status" aria-label="正在读取图片"><span className="relative skeleton-sheen" /></div>}
+      ? <span className="relative block h-full w-full skeleton-sheen" aria-label="Loading preview" />
+      : <div data-jav-picture-wait="" data-skeleton="image" role="status" aria-label="Loading image"><span className="relative skeleton-sheen" /></div>}
     {!ready && loaded ? <img data-jav-picture={thumbnail ? undefined : ''} data-source-picture="" src={loaded.src}
       alt={loaded.alt} referrerPolicy="no-referrer" /> : null}
     <img ref={picture} data-jav-picture={thumbnail ? undefined : ''} data-source-picture="" src={src} alt={alt} referrerPolicy="no-referrer"

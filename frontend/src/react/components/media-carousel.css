@@ -1,4 +1,4 @@
-/* 翻页键固定在媒体区两侧，圆形悬停面与关闭键共用。 */
+/* 翻页键固定在媒体区两侧，圆形悬停面与Off键共用. */
 .peach-react [data-media-carousel] [data-follow-image-arrow] {
   box-sizing: border-box;
   position: absolute;

@@ -1,4 +1,4 @@
-/** 目录与筛选查询共用当前媒体库；显式查询范围优先。 */
+/** Catalog and filter queries share the current library; an explicit query range takes priority. */
 export function libraryScopedPath(path: string): string {
   if (!/^\/api\/(items|facets|search\/recommendations)([?#]|$)/.test(path)) return path;
   const fragment = path.indexOf('#');

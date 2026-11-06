@@ -126,7 +126,7 @@ TASK_LABELS = {
 
 #: 触发方式的中文名。跳过原因是给人看的一句话，里面不留英文枚举值。
 TRIGGER_LABELS = {
-    "manual": "手动", "scheduled": "定时", "startup": "启动", "cli": "命令行",
+    "manual": "Manual", "scheduled": "Scheduled", "startup": "Startup", "cli": "CLI",
 }
 
 

@@ -1,4 +1,4 @@
-/* 检查更新：当前与最新版本、下载安装进度，准备好之后确认重启。
+/* Update check: current and latest versions, download and install progress, and a confirm-to-restart once ready.
  *
  * 更新任务进行中每秒问一次状态，空闲时 30 秒一次；连续 120 次问不到就停下并说明原因。
  * Docker 镜像配好 Watchtower 时给「一键更新」，没配好时列出宿主机上的两步命令。 */
@@ -19,7 +19,7 @@ import { busyProps, useAction } from './use-action';
 const ACTIVE = new Set(['downloading', 'verifying', 'extracting', 'preparing', 'restarting', 'installing']);
 const STOPS = [65, 75, 90];
 const MAX_FAILURES = 120;
-/** 服务端没给发布页时的去处；检查到新版本后服务端给的是那一版自己的发布页。 */
+/** Where to go when the server provides no release page; after an update check the server gives that release's own page. */
 const RELEASES_URL = 'https://github.com/peach-mitao/peach/releases';
 
 export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState; initialJob?: UpdateJob | undefined }) {
@@ -49,8 +49,8 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
     if (mounted.current) setJob(result);
   };
   const confirmRestart = () => void confirmModal({
-    title: '更新已准备好', body: `Peach ${job.version || ''} 将在重启后安装。`,
-    confirmLabel: '立即重启', cancelLabel: '稍后', onConfirm: restart,
+    title: 'The update is ready', body: `Peach ${job.version || ''} will be installed after a restart.`,
+    confirmLabel: 'Restart now', cancelLabel: 'Later', onConfirm: restart,
   });
 
   useEffect(() => {
@@ -71,13 +71,13 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
         setJob(result);
         failures = 0;
         if (result.state === 'complete') {
-          setData((current) => ({ ...current, current_version: result.version || current.current_version, state: 'current', message: '已是最新测试版。' }));
+          setData((current) => ({ ...current, current_version: result.version || current.current_version, state: 'current', message: 'Already the latest beta.' }));
         }
         const automatic = await apiGet<{ result?: ReleaseState }>('/api/configuration/automatic-updates', controller.signal);
         if (!controller.signal.aborted && automatic.result) setData(automatic.result);
       } catch {
         failures += 1;
-        if (failures >= MAX_FAILURES && !controller.signal.aborted) setPollError('尚未连接到 Peach，请检查托盘后刷新页面。');
+        if (failures >= MAX_FAILURES && !controller.signal.aborted) setPollError('Not connected to Peach yet; check the tray, then refresh the page.');
       }
       if (!controller.signal.aborted && failures < MAX_FAILURES) timer = setTimeout(poll, delay);
     };
@@ -132,16 +132,16 @@ export function ReleaseUpdates({ initial, initialJob }: { initial: ReleaseState;
         {job.state === 'error' ? <ErrorText>{job.message}</ErrorText> : null}
         {job.state !== 'idle' && job.state !== 'error' ? (
           <div aria-live="polite" className="flex flex-col gap-2">
-            <Progress label="更新准备进度" value={job.progress} stops={STOPS} />
-            <Help>下载 → 校验 → 解压 → 准备安装 · {job.message}</Help>
+            <Progress label="'Update preparation progress'" value={job.progress} stops={STOPS} />
+            <Help>Download → verify → extract → preparing install · {job.message}</Help>
             <Help>{reading}</Help>
           </div>
         ) : null}
       </Stack>}
       <Footer status={<div className="flex flex-wrap items-center gap-3">
-        <ExternalLink href="https://peach.video/#download">官网</ExternalLink>
+        <ExternalLink href="https://peach.video/#download">Official site</ExternalLink>
         <ExternalLink href="https://github.com/peach-mitao/peach">GitHub</ExternalLink>
-        <ExternalLink href={data.release_url || RELEASES_URL}>查看发布页</ExternalLink>
+        <ExternalLink href={data.release_url || RELEASES_URL}>View release page</ExternalLink>
       </div>}>
         <Button variant={job.state === 'ready' || oneClick || (data.state === 'available' && data.installation === '独立测试包') ? 'secondary' : 'primary'}
           disabled={running || rebuilding} onClick={check} {...busyProps(action.busy === 'check')}>检查更新</Button>

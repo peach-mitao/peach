@@ -43,8 +43,8 @@
 .peach-react [data-catalog-table] [data-list-picture] [data-media-status] { left: 4px; bottom: 4px; gap: 4px; }
 .peach-react [data-catalog-table] [data-list-picture] [data-media-status] > span { width: 20px; height: 20px; }
 .peach-react [data-catalog-table] [data-list-picture] [data-media-status] svg { width: 11px; height: 11px; }
-/* 标签列：最多两行，放不下的收进行尾，不撑高整行。行里的标签取行内档，与同行评分、详情层标签同高；
- * 两行上限按这一档算，13px 是行间 5px 加上下各 4px 的焦点环余量。 */
+/* 标签列: 最多两行，放不下的收进行尾，不撑高整行.行里的标签取行内档，与同行评分、详情层标签同高；
+ * 两行上限按这一档算，13px 是行间 5px 加上下各 4px 的焦点环余量. */
 .peach-react [data-catalog-table] [data-list-tags] { height: auto; max-height: calc(var(--control-h-inline) * 2 + 13px); white-space: normal; }
 .peach-react [data-catalog-table] [data-list-tags] [data-media-tag] { box-sizing: border-box; height: var(--control-h-inline); padding-block: 0; line-height: calc(var(--control-h-inline) - 2px); }
 /* 列表骨架：壳的首屏与列表岛等数据时同一份格子，尺寸照真实行（缩略图 112×63、标题两行；艺人列头像 38、
@@ -52,7 +52,7 @@
 .peach-react [data-list-skeleton] { display: flex; flex-direction: column; gap: 16px; }
 .peach-react [data-list-skeleton-tools] { display: flex; justify-content: flex-end; }
 .peach-react [data-list-skeleton-tools] > i { display: block; width: 312px; max-width: 100%; height: 36px; border-radius: var(--control-radius); }
-/* 缺图提示行的预留：一行正文加默认档按钮，上下各 8px，与提示条同高。 */
+/* 缺图提示行的预留: 一行正文加默认档按钮，上下各 8px，与提示条同高. */
 .peach-react [data-completion-skeleton] { display: block; height: calc(var(--control-h) + 16px); border-radius: var(--radius-2lg, 10px); }
 .peach-react [data-list-skeleton-name] { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
 .peach-react [data-list-skeleton-name] > i { flex: none; width: 112px; height: 63px; margin-right: 4px; border-radius: var(--control-radius); }
@@ -64,7 +64,7 @@
 .peach-react [data-list-skeleton-name] > span > i { display: block; width: 72%; height: 14px; border-radius: 6px; }
 .peach-react [data-list-skeleton-name] > span > i + i { width: 44%; height: 12px; }
 .peach-react [data-list-skeleton-bar] { display: block; width: min(72%, 96px); height: 14px; border-radius: 6px; }
-/* 列表骨架挂在卡片网格容器里时占满整行；不按网格的类名写，免得和旧样式表同名。 */
+/* 列表骨架挂在卡片网格容器里时占满整行；不按网格的类名写，免得和旧样式表同名. */
 [data-skeleton="catalog/list"] { grid-column: 1 / -1; }
 @media(max-width:760px) {
   .peach-react [data-catalog-table] .bui-table :is(th,td):first-child { padding-inline: 8px; }

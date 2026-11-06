@@ -1,15 +1,15 @@
-/* 关注页（`follow-feed-page.tsx`、`follow-card.tsx`）。
+/* Follows页（`follow-feed-page.tsx`、`follow-card.tsx`）.
  *
- * 取值同遗留层：页头与两排取 `web/css/21-online.css` 的 `.follow`／`.followauthors`／
+ * 取值同遗留层: 页头与两排取 `web/css/21-online.css` 的 `.follow`／`.followauthors`／
  * `.followworks` 与 `web/board.css` 对 `.av`、`.brandpill` 的覆盖；卡片在作品卡（`../components/
- * media-card.css`）之上补关注卡自己多出来的几格，取 `21-online.css` 的 `.followitem` 一族。筛选浮层、
+ * media-card.css`）之上补Follows卡自己多出来的几格，取 `21-online.css` 的 `.followitem` 一族.筛选浮层、
  * 状态药丸、读数与排序键、交集条与资料页那一块同一套（`../entity-filter/entity-filter.css`），这里只补
- * 来源图标键、类型色标签、「仅显示图片」键与页脚那一行。
+ * 来源图标键、类型色标签、「仅显示图片」键与页脚那一行.
  *
  * 进页整块骨架由壳的 `followSkeletonHtml` 画，用的是遗留类名（`.follow`、`.tier`、`.board-filter-frame`），
- * 页头几何共用本文件的 `data-follow-head`、`data-follow-title`；其余骨架由共享布局样式占位。
+ * 页头几何共用本文件的 `data-follow-head`、`data-follow-title`；其余骨架由共享布局样式占位.
  *
- * 选择器全用 `data-*`：遗留样式表不分层、排在后面，写遗留类名会被接管。 */
+ * 选择器全用 `data-*`: 遗留样式表不分层、排在后面，写遗留类名会被接管. */
 
 /* ── 页 ── */
 .peach-react [data-follow-feed] { padding: 4px 0 42px; font: var(--board-body); }
@@ -20,19 +20,19 @@
   gap: 14px;
   margin-bottom: 20px;
 }
-/* 页头复用全站页面标题的字号与行高。 */
+/* 页头复用全站页面标题的字号与行高. */
 .peach-react [data-follow-title] { margin: 0; font: var(--board-title); letter-spacing: 0; }
 @media (max-width: 760px) {
   .peach-react [data-follow-title] { font: var(--board-figure); }
 }
 .peach-react [data-follow-head-actions] { display: inline-flex; flex: none; align-items: center; gap: 8px; }
-/* 「管理关注」「抓更早的一页」同遗留层 `.fbtn`：左边留 12px，图标与文字同行、随字号缩放，与文字隔 4px（文字自带的内边距）。 */
+/* 「管理Follows」「抓更早的一页」同遗留层 `.fbtn`: 左边留 12px，图标与文字同行、随字号缩放，与文字隔 4px（文字自带的内边距）. */
 .peach-react button:is([data-follow-manage], [data-follow-older]):has(> svg) { gap: 0; padding-left: 12px; }
 .peach-react button:is([data-follow-manage], [data-follow-older]) > svg { width: var(--icon-inline); height: var(--icon-inline); }
 
-/* ── 创作者行与题材行 ──
- * 同首页那两排（`catalog-filter.css` 的 `[data-tier-performer]`、`[data-tier-studio]`）：圆头像 48px、名字一行 Caption；题材是 40px 高的
- * 药丸，左端 28px 圆标。按下铺 tertiary 面，不描边。 */
+/* ── Creators行与题材行 ──
+ * 同首页那两排（`catalog-filter.css` 的 `[data-tier-performer]`、`[data-tier-studio]`）: 圆头像 48px、名字一行 Caption；题材是 40px 高的
+ * 药丸，左端 28px 圆标.按下铺 tertiary 面，不描边. */
 .peach-react :is([data-follow-authors], [data-follow-works]) {
   display: flex;
   align-items: center;
@@ -105,7 +105,7 @@
 }
 .peach-react [data-follow-ring] { width: 48px; height: 48px; font: 600 18px/24px var(--board-font); }
 .peach-react [data-follow-mark] { width: 28px; height: 28px; font: 600 12px/16px var(--board-font); }
-/* 圆里是外站头像或首字母，遗留层 `followAuthorAvatar` 拼的那一段。图铺满圆框。 */
+/* 圆里是外站头像或首字母，遗留层 `followAuthorAvatar` 拼的那一段.图铺满圆框. */
 .peach-react [data-follow-ring] > img,
 .peach-react [data-follow-mark] > img {
   position: absolute;
@@ -116,7 +116,7 @@
   height: 100%;
   object-fit: cover;
 }
-/* 题材圆标是一整张作品图：没检出脸的按上四分之一取景，检出了的由服务端写进 img 自己的 style。 */
+/* 题材圆标是一整张作品图: 没检出脸的按上四分之一取景，检出了的由服务端写进 img 自己的 style. */
 .peach-react [data-follow-mark] > img { object-position: 50% 25%; }
 .peach-react [data-follow-ring] > span {
   display: flex;
@@ -144,20 +144,20 @@
   outline-offset: 2px;
 }
 /* 图片视图的下排多出布局与「仅显示图片」几枚键，窄屏放不下时整排横滚，同遗留层 `.followcount`，
-   不把页面撑宽。 */
+   不把页面撑宽. */
 .peach-react [data-follow-filter-glass] > [data-filter-row="bottom"] {
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: none;
 }
 .peach-react [data-follow-filter-glass] > [data-filter-row="bottom"]::-webkit-scrollbar { display: none; }
-/* 窄屏里横滚的是整排，排序键那格不再裁落影，左边那 2px 留边收掉，换一批键贴着读数排。 */
+/* 窄屏里横滚的是整排，排序键那格不再裁落影，左边那 2px 留边收掉，换一批键贴着读数排. */
 @media (max-width: 760px) {
   .peach-react [data-follow-filter-glass] [data-entity-sorts] { padding-left: 0; }
 }
-/* 关注页这块浮层的药丸间距同首页（`03-filterbar.css` 的 `.viewpills`、`.tagscroll`）是 7px，资料页收到 6px。 */
+/* Follows页这块浮层的药丸间距同首页（`03-filterbar.css` 的 `.viewpills`、`.tagscroll`）是 7px，资料页收到 6px. */
 .peach-react [data-follow-filter-glass] :is([data-entity-scroll], [data-entity-states], [data-entity-tags]) { gap: 7px; }
-/* 来源键与视图控件使用同一尺寸。 */
+/* 来源键与视图控件使用同一尺寸. */
 .peach-react button[data-follow-provider] {
   display: inline-flex;
   flex: none;
@@ -178,8 +178,8 @@
   background: var(--picked);
 }
 .peach-react [data-follow-provider] > img { width: 18px; height: 18px; margin: 0; border-radius: var(--badge-radius); object-fit: contain; }
-/* 标签药丸按来源的类型着色，没记类型的按 general 那一档蓝。 */
-/* 名字与计数之间 6px，同遗留层 `.pill .n` 的左外边距。 */
+/* 标签药丸按来源的类型着色，没记类型的按 general 那一档蓝. */
+/* 名字与计数之间 6px，同遗留层 `.pill .n` 的左外边距. */
 .peach-react [data-follow-filter-glass] [data-follow-tag] { --tag-color: #55a7ff; gap: 6px; color: var(--glass-text); }
 .peach-react [data-follow-filter-glass] [data-follow-tag]:is([data-tag-cat="r34-artist"]) { --tag-color: #e36c6c; }
 .peach-react [data-follow-filter-glass] [data-follow-tag]:is([data-tag-cat="r34-character"]) { --tag-color: #68c76f; }
@@ -197,7 +197,7 @@
   font-family: "Cascadia Mono", Consolas, ui-monospace, "Microsoft YaHei UI", "PingFang SC", monospace;
   font-size: 11px;
 }
-/* 「仅显示图片」：一枚紧凑档的方键，按下时垫一块滑动玻璃那种料。 */
+/* 「仅显示图片」: 一枚紧凑档的方键，按下时垫一块滑动玻璃那种料. */
 .peach-react button[data-follow-images-only] {
   position: relative;
   display: grid;
@@ -224,7 +224,7 @@
   stroke-width: 2;
 }
 
-/* 读数是等宽字，同遗留层 `.followcount .mono`。 */
+/* 读数是等宽字，同遗留层 `.followcount .mono`. */
 .peach-react [data-follow-readout] {
   font-family: "Cascadia Mono", Consolas, ui-monospace, "Microsoft YaHei UI", "PingFang SC", monospace;
 }
@@ -251,10 +251,10 @@
 }
 .peach-react [data-follow-page-action] { display: inline-flex; align-items: center; gap: 12px; }
 .peach-react [data-follow-pagination] [data-entity-more] { gap: 4px; min-width: 0; margin: 0; }
-/* 忙态里转圈与「抓取中」隔开 4px，同遗留层 `.fbtn` 的间距。 */
+/* 忙态里转圈与「Scraping」隔开 4px，同遗留层 `.fbtn` 的间距. */
 .peach-react :is([data-follow-older], [data-follow-recheck]) > span { gap: 4px; }
-/* 任务在跑时两枚键只标 `aria-busy`，重复点击由 `start` 拦住：「检查更新」保持主键那块蓝，
-   「抓更早的一页」铺遗留层次级键的忙态面（`--ground` 底、`--line` 边、`--muted` 字、不带影），悬停也不变。 */
+/* 任务在跑时两枚键只标 `aria-busy`，重复点击由 `start` 拦住: 「Check updates」保持主键那块蓝，
+   「抓更早的一页」铺遗留层次级键的忙态面（`--ground` 底、`--line` 边、`--muted` 字、不带影），悬停也不变. */
 .peach-react button[data-follow-older][aria-busy] {
   border-color: var(--line);
   background: var(--ground);
@@ -263,7 +263,7 @@
 }
 .peach-react [data-follow-backfill] { color: var(--muted); font: var(--board-compact); }
 
-/* ── 列表 ── */
+/* ── List ── */
 .peach-react [data-follow-list] {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--tile)), 1fr));
@@ -271,7 +271,7 @@
 }
 .peach-react [data-follow-list]:not([data-follow-wall]) > [data-media-card] { align-self: stretch; }
 
-/* 图片墙：列数同资料页照片墙那一套，小图 5 列、大图 3 列，逐档收窄。 */
+/* 图片墙: 列数同资料页照片墙那一套，小图 5 列、大图 3 列，逐档收窄. */
 .peach-react [data-follow-wall] {
   --photo-columns: 5;
   grid-template-columns: repeat(var(--photo-columns), minmax(0, 1fr));
@@ -302,7 +302,7 @@
 .peach-react [data-follow-wall][data-images-only="true"] [data-follow-item] :is([data-media-meta], [data-media-badge], [data-follow-collection], [data-follow-state]) { display: none; }
 
 /* ── 卡片 ──
- * 图片墙的封面没有固定比例，高度取自图片本身，不跳过渲染：跳过时会按零高排版。 */
+ * 图片墙的Cover没有固定比例，高度取自图片本身，不Skip渲染: Skip时会按零高排版. */
 .peach-react [data-follow-wall] [data-media-card] :is([data-media-pic], [data-media-meta]) { content-visibility: visible; }
 .peach-react [data-follow-wall] [data-media-card] [data-media-meta] { margin: 0; padding: 0; pointer-events: auto; contain-intrinsic-block-size: none; }
 .peach-react [data-follow-item] [data-media-meta] {
@@ -322,7 +322,7 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   min-height: calc(var(--card-meta-block) + 16px);
   contain-intrinsic-block-size: auto var(--card-meta-block);
 }
-/* 窄屏关注卡按实际内容定高，紧凑视图的长标题保留两行。 */
+/* 窄屏Follows卡按实际内容定高，紧凑视图的长标题保留两行. */
 @media (max-width: 760px) {
   body .peach-react [data-follow-list] [data-follow-item] [data-media-meta] {
     min-height: 0; content-visibility: visible; contain-intrinsic-block-size: none;
@@ -339,11 +339,11 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
      密集档也一样，要压过密集档钉成 1.35em 的那条。 */
   body[data-density]:not([data-surface="/trash"]) .peach-react [data-follow-list] [data-follow-item] [data-media-byline] { height: auto; min-height: 20px; line-height: 20px; }
 }
-/* 已看的卡片保持原样：看过不等于不想再看，只有忽略的才淡下去。 */
+/* 已看的卡片保持原样: 看过不等于不想再看，只有Ignore的才淡下去. */
 .peach-react [data-follow-item][data-status="ignored"] { opacity: .62; }
 .peach-react [data-follow-visual] { position: relative; isolation: isolate; border-radius: var(--surface-radius); }
-/* 封面层整体放行指针，点到哪里都落在下面那颗「打开详情」键上；勾选框与来源角标自己接指针：
-   前者要点，后者的 `title` 要悬停才出得来。 */
+/* Cover层整体放行指针，点到哪里都落在下面那颗「Open详情」键上；勾选框与来源角标自己接指针: 
+   前者要点，后者的 `title` 要悬停才出得来. */
 .peach-react [data-follow-visual] > [data-media-pic] { z-index: 1; pointer-events: none; }
 .peach-react [data-follow-visual] :is([data-media-check], [data-media-badge]) { pointer-events: auto; }
 .peach-react [data-follow-open] {
@@ -367,8 +367,8 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   font-size: var(--fs-xs);
 }
 .peach-react :is([data-media-badge], [data-follow-nothumb]) > img { width: 18px; height: 18px; margin: 0; border-radius: var(--badge-radius); object-fit: contain; }
-/* 站标取不到或没登记时那枚站名首字（`sourceMark`）：和图标同一个 18px 方块，筛选键、卡角与空卡面通用。
-   图坏了时回落脚本换上的 span 只带这个类名，接不住 `data-*`。 */
+/* 站标取不到或没登记时那枚站名首字（`sourceMark`）: 和图标同一个 18px 方块，筛选键、卡角与空卡面通用.
+   图坏了时回落脚本换上的 span 只带这个类名，接不住 `data-*`. */
 .peach-react .follow-site-initial {
   display: inline-grid;
   place-items: center;
@@ -384,26 +384,26 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
 .peach-react [data-follow-image] :is([data-mix-faces], [data-mix-face] img) { background: var(--sunk); }
 .peach-react [data-follow-image] [data-mix-face] img { object-fit: cover; }
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] { aspect-ratio: 1; }
-/* 带 width/height 属性的图按固有比例占位，没有尺寸的使用 1:1 框，加载后立即使用固有尺寸。
- * 图上不写 `aspect-ratio`：比例来自浏览器按这两个属性映射的 `auto w / h`，作者样式里任何一句
- * `aspect-ratio` 都会盖掉它。固有尺寸决定图片高度，网格只调整所在列的后续卡片。 */
+/* 带 width/height 属性的图按固有比例占位，没有尺寸的使用 1:1 框，加载后立即使用固有尺寸.
+ * 图上不写 `aspect-ratio`: 比例来自浏览器按这两个属性映射的 `auto w / h`，作者样式里任何一句
+ * `aspect-ratio` 都会盖掉它.固有尺寸决定图片高度，网格只调整所在列的后续卡片. */
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic]:has(> img[width][height]) { aspect-ratio: auto; }
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] > img[width][height] {
   position: static;
   height: auto;
 }
-/* 极端竖长的图（长条漫画、200×4000 那种）最高到列宽的 2.5 倍，多出来的裁掉：按固有比例摆的话
-   一张就占满一整列，瀑布流的分列全被它打乱。量的是列宽，所以封面格自己当尺寸容器。 */
+/* 极端竖长的图（长条漫画、200×4000 那种）最高到列宽的 2.5 倍，多出来的裁掉: 按固有比例摆的话
+   一张就占满一整列，瀑布流的分列全被它打乱.量的是列宽，所以Cover格自己当尺寸容器. */
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic]:has(> img[width][height]) { container-type: inline-size; }
 .peach-react [data-follow-wall][data-layout="masonry"] [data-follow-image] [data-media-pic] > img[width][height] {
   max-height: 250cqi;
   object-fit: cover;
 }
 
-/* 右上角：合并计数与主页卡片的版本角标同一个位置，右下角只留给时长。
- * 能悬停的设备上计数和操作键叠在同一格：悬停或键盘聚焦时计数淡出、退出命中与 Tab 序，操作键
- * 淡入，写法与时长同作品卡的分卷／版本计数（`../components/media-card.css`）。触屏上操作键常驻，
- * 排在计数下面。 */
+/* 右上角: Merge计数与主页卡片的版本角标同一个位置，右下角只留给时长.
+ * 能悬停的设备上计数和操作键叠在同一格: 悬停或键盘聚焦时计数淡出、退出命中与 Tab 序，操作键
+ * 淡入，写法与时长同作品卡的分卷／版本计数（`../components/media-card.css`）.触屏上操作键常驻，
+ * 排在计数下面. */
 .peach-react [data-follow-corner] {
   position: absolute;
   top: 10px;
@@ -441,7 +441,7 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   pointer-events: none;
   transition: opacity .15s ease;
 }
-/* 卡片悬浮动作取紧凑档，与首页卡片上的稍后看、未入库卡的动作键同高。 */
+/* 卡片悬浮动作取紧凑档，与首页卡片上的Watch later、未入库卡的动作键同高. */
 .peach-react [data-follow-actions] button {
   display: grid;
   place-items: center;
@@ -472,8 +472,8 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
 }
 @media (hover: none), (pointer: coarse) {
   .peach-react [data-follow-item] [data-follow-actions] { opacity: 1; pointer-events: auto; }
-  /* 触屏上没有悬停，键是常驻的；图片墙的格子小，三枚圆键会盖住大半张图，只留「保存到账本」，
-     已看与忽略到详情里点。 */
+  /* 触屏上没有悬停，键是常驻的；图片墙的格子小，三枚圆键会盖住大半张图，只留「Save到账本」，
+     已看与Ignore到详情里点. */
   .peach-react [data-follow-wall] [data-follow-item] [data-follow-actions] > :not([data-follow-save]) { display: none; }
 }
 
@@ -489,7 +489,7 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   outline-offset: 2px;
 }
 .peach-react [data-follow-byline] a[data-follow-author]:hover { text-decoration: underline; }
-/* 作品卡的首字母用 Bahnschrift，关注卡同遗留层 `.fsourceavatar .favatar.none` 走正文字体。 */
+/* 作品卡的首字母用 Bahnschrift，Follows卡同遗留层 `.fsourceavatar .favatar.none` 走正文字体. */
 .peach-react [data-follow-avatar] > span:first-child {
   display: grid;
   place-items: center;
@@ -512,8 +512,8 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   font-style: italic;
 }
 .peach-react [data-follow-badges] { display: flex; flex: none; flex-wrap: nowrap; gap: 5px; min-width: 0; overflow: hidden; }
-/* 卡片、两排与详情共用的几处字样，HTML 由 `follow-marks.ts` 拼。站点图标在角标、来源条那几格里
-   另有尺寸，这里是行内默认的那一档。SFW 模式下它不跟着内容图一起糊，豁免写在 `17-overlay.css`。 */
+/* 卡片、两排与详情共用的几处字样，HTML 由 `follow-marks.ts` 拼.站点图标在角标、来源条那几格里
+   另有尺寸，这里是行内默认的那一档.SFW 模式下它不跟着内容图一起糊，豁免写在 `17-overlay.css`. */
 .peach-react [data-follow-site-icon] {
   width: var(--icon-inline);
   height: var(--icon-inline);
@@ -522,14 +522,14 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-follo
   object-fit: contain;
   vertical-align: -2px;
 }
-/* 标题前的版本字样，盒子是版次字样那一枚（`.javedition`）。「含 WIP」说的是同组还有一条半成品，
-   这一条本身不是，配色弱于 WIP 本体。配音版着色带底，无声版弱化加虚线框。 */
+/* 标题前的版本字样，盒子是版次字样那一枚（`.javedition`）.「含 WIP」说的是同组还有一条半成品，
+   这一条本身不是，配色弱于 WIP 本体.配音版着色带底，无声版弱化加虚线框. */
 .peach-react [data-follow-edition] { margin-right: 6px; color: var(--ink-2); }
 .peach-react [data-follow-edition="wip"] { color: var(--meter); }
 .peach-react [data-follow-edition="has-wip"] { color: var(--muted); }
 .peach-react [data-follow-edition="voiced"] { color: var(--keep); background: color-mix(in srgb, var(--keep) 16%, transparent); }
 .peach-react [data-follow-edition="silent"] { color: var(--muted); border-style: dashed; }
-/* 来源与另见共用左上角的玻璃标记。 */
+/* 来源与另见共用左上角的玻璃标记. */
 .peach-react [data-follow-sources] { position: absolute; top: 6px; left: 6px; z-index: 2; display: flex; gap: 4px; max-width: calc(100% - 120px); }
 .peach-react [data-follow-sources] [data-media-badge] { position: static; flex: none; }
 .peach-react [data-follow-sources] > [data-follow-badges] { flex: 0 1 auto; }

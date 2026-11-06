@@ -5,33 +5,33 @@ import type { Browser } from 'playwright-core';
 import { launch, VIEWPORTS } from './harness.ts';
 import { openItemPage } from './item-fixture.ts';
 
-describe('共享提示的文字与锚点', () => {
+describe('The shared note\'s text and anchor', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser.close() });
   for (const viewport of VIEWPORTS) {
-    it(`${viewport.name} 保存的筛选名称悬停时直接可读`, async () => {
+    it(`${viewport.name} saved filter names read directly on hover`, async () => {
       const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
       try {
         await opened.page.route('**/api/library-shortcuts', route => route.fulfill({ json: {
-          favorites: [], filters: [{ id: 'clear', name: '高清馆藏', href: '/?quality=hd' }],
+          favorites: [], filters: [{ id: 'clear', name: 'HD library', href: '/?quality=hd' }],
         } }));
         await opened.page.locator('[data-shortcuts-trigger]').click();
-        await opened.page.getByRole('tab', { name: '保存的筛选', exact: true }).click();
-        const saved = opened.page.getByRole('link', { name: '高清馆藏', exact: true });
+        await opened.page.getByRole('tab', { name: 'Saved filters', exact: true }).click();
+        const saved = opened.page.getByRole('link', { name: 'HD library', exact: true });
         await saved.hover();
         await opened.page.waitForTimeout(500);
         assert.equal(await saved.getAttribute('title'), null);
         assert.equal(await opened.page.locator('#board-control-tooltip:visible').count(), 0);
       } finally { await opened.close() }
     });
-    it(`${viewport.name} 完整文字无需提示，截断文字提供原文`, async () => {
+    it(`${viewport.name} full text needs no tooltip and truncated text offers the original`, async () => {
       const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
       try {
         await opened.page.evaluate(() => {
           const probe = document.createElement('div');
           probe.style.cssText = 'position:fixed;left:30px;top:200px;z-index:9999;background:white;display:grid;gap:20px;width:280px';
-          probe.innerHTML = '<a id="tip-readable" href="#" title="高清馆藏">高清馆藏</a><a id="tip-clipped" href="#" title="这是需要查看完整名称的收藏筛选" style="display:block;width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">这是需要查看完整名称的收藏筛选</a>';
+          probe.innerHTML = '<a id="tip-readable" href="#" title="HD library">HD library</a><a id="tip-clipped" href="#" title="This library filter needs the full name to be readable" style="display:block;width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">This library filter needs the full name to be readable</a>';
           document.body.append(probe);
         });
         await opened.page.locator('#tip-readable').focus();
@@ -41,35 +41,35 @@ describe('共享提示的文字与锚点', () => {
         assert.equal(await opened.page.locator('#tip-readable').getAttribute('aria-describedby'), null);
         await opened.page.locator('#tip-clipped').focus();
         await opened.page.locator('#board-control-tooltip').waitFor({ state: 'visible' });
-        assert.equal(await opened.page.locator('#board-control-tooltip').textContent(), '这是需要查看完整名称的收藏筛选');
-        assert.equal(await opened.page.locator('#tip-readable').getAttribute('title'), '高清馆藏');
+        assert.equal(await opened.page.locator('#board-control-tooltip').textContent(), 'This is a favorite filter that needs the full name visible');
+        assert.equal(await opened.page.locator('#tip-readable').getAttribute('title'), 'HD library');
       } finally { await opened.close() }
     });
-    it(`${viewport.name} 嵌套控件的补充提示按鼠标目标切换`, async () => {
+    it(`${viewport.name} nested-control tooltips follow the mouse target`, async () => {
       const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
       try {
         await opened.page.evaluate(() => {
           const probe = document.createElement('div');
-          probe.title = '父级说明';
+          probe.title = 'Parent note';
           probe.style.cssText = 'position:fixed;left:30px;top:200px;z-index:9999;background:white;display:flex;gap:20px';
-          probe.innerHTML = '<button id="tip-parent">外层</button><button id="tip-child" title="子级说明">内层</button>';
+          probe.innerHTML = '<button id="tip-parent">Outer</button><button id="tip-child" title="Child description">Inner</button>';
           document.body.append(probe);
         });
         await opened.page.locator('#tip-parent').focus();
         await opened.page.locator('#board-control-tooltip').waitFor({ state: 'visible' });
         await opened.page.locator('#tip-child').hover();
-        await opened.page.waitForFunction(() => document.querySelector('#board-control-tooltip')?.textContent === '子级说明');
+        await opened.page.waitForFunction(() => document.querySelector('#board-control-tooltip')?.textContent === 'Child note');
         assert.equal(await opened.page.locator('#tip-parent').getAttribute('aria-label'), null);
       } finally { await opened.close() }
     });
-    it(`${viewport.name} 弹窗中的图标提示跟随可见锚点`, async () => {
+    it(`${viewport.name} dialog icon tooltips follow the visible anchor`, async () => {
       const opened = await openItemPage(browser, '/', viewport, { ready: '[data-catalog-frame]' });
       try {
         await opened.page.evaluate(() => {
           const modal = document.createElement('dialog');
           modal.id = 'tip-modal';
           modal.style.cssText = 'width:300px;height:200px;padding:40px;transform:translateY(20px)';
-          modal.innerHTML = '<span id="tip-contents" title="筛选作品来源" style="display:contents"><button id="tip-icon" aria-label="来源" style="width:40px;height:40px"><svg width="20" height="20"><circle cx="10" cy="10" r="8"/></svg></button></span>';
+          modal.innerHTML = '<span id="tip-contents" title="Filter video sources" style="display:contents"><button id="tip-icon" aria-label="Sources" style="width:40px;height:40px"><svg width="20" height="20"><circle cx="10" cy="10" r="8"/></svg></button></span>';
           document.body.append(modal); modal.showModal();
         });
         await opened.page.locator('#tip-icon').focus();

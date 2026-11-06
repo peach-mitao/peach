@@ -1,12 +1,14 @@
-/* 界面标注工具的构建配置：`build/agentation/peach-agentation.js`。
+/* Build configuration for the UI annotation tool: `build/agentation/peach-agentation.js`.
  *
- * 只由 `npm run build:agentation` 触发，不在 `npm run build` 里：产物不进 Git、不进独立包，
- * 由服务端的 `/dev/agentation.js` 从本机 `build/` 下读取（docs/FRONTEND.md「界面标注」）。
- * React 打进产物里，不借页面那份：主包 `peach-app.js` 不导出 React，也不该为一件开发工具改契约。 */
+ * Triggered only by `npm run build:agentation`, not part of `npm run build`: the output stays out of Git and out of the
+ * standalone bundle, read by the server's `/dev/agentation.js` from the local `build/` directory (docs/FRONTEND.md, "UI
+ * annotation").
+ * React is bundled into the output rather than borrowed from the page: the main bundle `peach-app.js` does not export React,
+ * nor should it change that contract for a dev tool. */
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // 库模式不替换 `process.env.NODE_ENV`，同 `vite.config.ts`。
+  // Library mode does not replace `process.env.NODE_ENV`, same as `vite.config.ts`.
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: '../build/agentation',

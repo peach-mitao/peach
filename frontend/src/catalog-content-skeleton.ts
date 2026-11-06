@@ -12,8 +12,8 @@ export function catalogListSkeletonCellHtml(column: string): string {
   return '<i data-list-skeleton-bar class="skeleton-sheen"></i>';
 }
 
-/* 壳的列表骨架直接套真实表格的外框与 `bui-table` 类：工具栏一行、表头写真实列名、列宽按本机列偏好，
- * 列表岛接管后在真实表格里画同样的骨架行，数据到之前不换结构。 */
+/* The shell's list skeleton reuses the real table's outer frame and `bui-table` class: one toolbar row, real column names in the header, column widths from local column preferences;
+ *  after the list island takes over, the same skeleton rows are drawn inside the real table and the structure does not change before data arrives. */
 function catalogListSkeletonHtml(label: string): string {
   return `<div class="peach-react catalog-skeleton" data-skeleton="catalog/list" role="status" aria-busy="true" aria-label="${esc(label)}">`
     + listTableSkeletonHtml(catalogTableSnapshot(), completionRowRemembered() ? COMPLETION_ROW_SKELETON_HTML : '') + '</div>';
@@ -32,7 +32,7 @@ export function listTableSkeletonHtml(columns: TableSnapshot, between = ''): str
     + `<colgroup>${cols}</colgroup><thead><tr>${head}</tr></thead><tbody>${row.repeat(6)}</tbody></table></div></div></div>`;
 }
 
-/** 馆藏与资料页按当前列表偏好使用同一份作品等待态。 */
+/** Library and profile pages share one video waiting state according to the current list preference. */
 export function catalogContentSkeletonHtml(label: string, cardRatio: number): string {
   if (catalogView() === 'list') return catalogListSkeletonHtml(label);
   return skeletonHtml(label, { variant: 'cards', className: 'catalog-skeleton postercard-skeleton', cardRatio });

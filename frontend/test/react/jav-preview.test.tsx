@@ -10,9 +10,9 @@ vi.mock('../../src/player', () => ({ mountPreviewPlayer: player }));
 notifyManager.setScheduler(notify => notify());
 afterEach(() => { queryClient.clear(); player.mockClear() });
 
-it('官方MP4预告进入现有播放器并在关闭时销毁', async () => {
+it('The official MP4 trailer enters the existing player and is destroyed on close', async () => {
   const src = '/jav-preview/EXM-001/0123456789abcdef';
-  const item: JavDetail = { code: 'EXM-001', title: '示例作品', state: 'ready', summary: '', director: '', publisher: '',
+  const item: JavDetail = { code: 'EXM-001', title: 'Example video', state: 'ready', summary: '', director: '', publisher: '',
     performers: '', performer_refs: [], studio_refs: [], series_refs: [], tags: [], has_cover: false,
     source_image: false, preview_count: 0, comments_count: 0, source_url: '', wanted: false, want_id: null,
     preview_video_url: src };
@@ -24,7 +24,7 @@ it('官方MP4预告进入现有播放器并在关闭时销毁', async () => {
   await settle();
   expect(player).toHaveBeenCalledOnce();
   expect(player.mock.calls[0]?.[1]).toEqual({ src, type: 'video/mp4' });
-  expect(mounted.host.querySelector('video')?.getAttribute('aria-label')).toBe('视频预览');
+  expect(mounted.host.querySelector('video')?.getAttribute('aria-label')).toBe('Video previews');
   const dispose = player.mock.results[0]!.value;
   await mounted.unmount();
   expect(dispose).toHaveBeenCalledOnce();

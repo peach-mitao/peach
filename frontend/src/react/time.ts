@@ -1,8 +1,7 @@
-/* 数据库里一律存 UTC（ISO 带 Z），界面要按看的人所在时区显示。第二个页面要用就搬进
- * 这里，不各写一份：两处各自解释「没有时区标记的算哪一边」的话，同一个时间会在两页上
- * 差出八小时。 */
+/* The database always stores UTC (ISO with Z); the UI must display in the viewer's timezone. If a second page needs it, move it in
+ * here, not a copy each: with each place explaining "which side a timestamp without a timezone marker counts on", the same time would show an eight-hour gap between the two pages. */
 
-/** 本机时间。没有时区标记的按 UTC 解释——存进去的时候就是 UTC。 */
+/** Local time. Ones without a timezone marker are interpreted as UTC — they were stored as UTC. */
 export function localTime(iso: string | null | undefined): string {
   if (!iso) return '';
   const text = /[Zz]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`;

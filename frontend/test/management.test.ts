@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cleanupSkeletonHtml, SCAN_CARD_TEXT } from '../src/management';
 
-describe('数据管理首屏', () => {
+describe('Data management first screen', () => {
   const skeleton = () => {
     const root = document.createElement('div');
     root.innerHTML = cleanupSkeletonHtml();

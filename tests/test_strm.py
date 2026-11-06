@@ -93,12 +93,13 @@ class StrmTextTests(unittest.TestCase):
                                  mounts={'local': (str(media),)}, windows=False)
         scan()
         with closing(sqlite3.connect(db)) as connection, connection:
+            # .iso 命中个人黑名单（NON_ADULT_PATTERNS 里的 ".iso"），所以只登记指针文件。
             self.assertEqual(connection.execute('SELECT name,medium FROM asset ORDER BY name').fetchall(),
-                             [('ABC-123.strm', 'video'), ('ABC-124.iso', 'video')])
+                             [('ABC-123.strm', 'video')])
             connection.execute("UPDATE asset SET medium='other' WHERE name='ABC-123.strm'")
         scan()
         with closing(sqlite3.connect(db)) as connection:
-            self.assertEqual(connection.execute('SELECT COUNT(*) FROM asset').fetchone()[0], 2)
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM asset').fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT medium FROM asset WHERE name='ABC-123.strm'").fetchone()[0], 'video')
 
     def test_hls_resource_map_is_bounded_and_bound_to_the_pointer(self):

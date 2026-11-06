@@ -131,7 +131,7 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
                       str(row["canonical_name"] or "")))
     found.sort(key=lambda item: (-item[0], item[1]))
     return [Followup(key=followup_key(kind, entity_id), task_key=TASK_KEY,
-                     label=f"{TASK_LABEL}：{name}" if name else TASK_LABEL)
+                     label=f"{TASK_LABEL}: {name}" if name else TASK_LABEL)
             for _assets, entity_id, kind, name in found]
 
 
@@ -255,7 +255,7 @@ def stock(connection: sqlite3.Connection, avatar_root, attempts, *, limit: int,
             continue
         name = str(row["canonical_name"] or "")
         found.append(Followup(key=key, task_key=TASK_KEY,
-                              label=f"{TASK_LABEL}：{name}" if name else TASK_LABEL))
+                              label=f"{TASK_LABEL}: {name}" if name else TASK_LABEL))
         if kind == "performer":
             refresh_needed = False
         if len(found) >= limit:
@@ -313,7 +313,7 @@ def _run(contract, key: str, handle) -> dict:
             return {"outcome": "档案已不存在"}
         name = str(row[0] or "")
         if kind == "creator":
-            handle.progress(label=f"{TASK_LABEL}：{name}", throttle=0)
+            handle.progress(label=f"{TASK_LABEL}: {name}", throttle=0)
             return _install_account_face(contract, connection, providers_root, avatar_root,
                                          entity_id, name, cropped_px)
         avatar_picker.index_refresher(contract).ensure()
@@ -322,7 +322,7 @@ def _run(contract, key: str, handle) -> dict:
                                         kind, entity_id, deduplicate=False)
         found = [choice for choice in listing["choices"]
                  if choice["source"] == "gfriends"]
-        handle.progress(label=f"{TASK_LABEL}：{name}", throttle=0)
+        handle.progress(label=f"{TASK_LABEL}: {name}", throttle=0)
         if len(found) == 1:
             installed = _install(contract, connection, providers_root, avatar_root,
                                  kind, entity_id, name, found[0])

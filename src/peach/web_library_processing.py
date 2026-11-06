@@ -109,7 +109,7 @@ def q_library_processing(contract, _args):
     from .library_new_assets import pending
     state['new_asset_count'] = len(pending(contract.db_path))
     if state.get('status') not in ACTIVE and recovery.get('status') == 'blocked':
-        state.update(status='failed', outcome='interrupted', error=f"任务未能自动恢复：{recovery.get('error') or '请重新发起任务'}")
+        state.update(status='failed', outcome='interrupted', error=f"任务未能自动恢复：{recovery.get('error') or 'Please start the task again'}")
     # 上一趟任务的状态文件里没有这个字段，而它那份完整清单还在磁盘上：按 job_id
     # 推出地址补回去，界面才有得可给。
     if state.get('issue_count') and state.get('job_id') and not state.get('issues_log'):
@@ -125,7 +125,7 @@ def _request_skip(control, previous, body):
             or previous.get('status') != 'running'
             or previous.get('current_asset_id') != asset_id
             or previous.get('current_action') not in ('querying_metadata', 'fetching_cover')):
-        raise ValueError('当前影片已变化或不在采集外部资料，请刷新后重试')
+        raise ValueError('The video has changed or is not collecting external details. Refresh and retry.')
     control.skip_current(str(body['job_id']), asset_id)
 
 
@@ -152,7 +152,7 @@ def _cancel_processing(contract, config, control, previous, job_id):
     if not (live and thread is not None and thread.is_alive()) and not _writer_active(config):
         from .job_recovery import finish
         from .library_processing import _save, state_path
-        previous.update(status='cancelled', outcome='cancelled', stage='已停止', error='')
+        previous.update(status='cancelled', outcome='cancelled', stage='Stopped', error='')
         _save(state_path(config), previous)
         finish(contract.db_path, 'library-processing', job_id, 'cancelled')
         if previous.get('run_id') is not None:
@@ -418,8 +418,8 @@ def w_library_processing(contract, body, *, resume=False):
             contract.cache_bust()
     # 起步那行字按这一趟真正要做的事写：点了「只扫描」却看到「读取本地资料」，
     # 人会以为点错了。
-    labels = {ALL_STAGES: '准备处理', SCAN_STAGE: '准备扫描文件', COLLECT_STAGE: '准备采集资料',
-              METADATA_STAGE: '准备采集资料', PREVIEWS_STAGE: '准备生成预览图'}
+    labels = {ALL_STAGES: 'Prepare processing', SCAN_STAGE: 'Prepare to scan files', COLLECT_STAGE: 'Prepare to collect details',
+              METADATA_STAGE: 'Prepare to collect details', PREVIEWS_STAGE: 'Prepare to generate preview images'}
     estimate_ids = asset_ids if asset_ids is not None else retry_ids
     if incremental:
         from .library_new_assets import pending

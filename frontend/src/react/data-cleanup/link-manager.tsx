@@ -1,12 +1,13 @@
-/* 数据管理页上的「链接管理」。
+/* "Link management" on the data management page.
  *
- * 三份真相三个键（见 `links.ts`）：库里链接的现状、那趟联网检查、那趟删除。检查与删除
- * 各是一趟后台任务，都走 `useBackgroundJob`。检查的结论是页面进来就要看的东西（上一趟判出
- * 的失效链接还等着删），所以画的是当前快照；删除只报本次跟完的那一趟。
+ * Three truths, three keys (see `links.ts`): the current state of links in the library, that networked check run, and that
+ * deletion run. Check and deletion are each a background job, both through `useBackgroundJob`. The check's conclusion is what
+ * the page comes in to see (the dead links found last run are still waiting to be deleted), so it renders the current
+ * snapshot; deletion reports only the run it just followed.
  *
- * 结果分两张表不是为了好看：`linktr.ee` 回 403 是挡爬虫、`x.com` 回 500 是临时错误，
- * 链接本身好好的。混成一张会让人顺手把好链接一起删掉，所以「地址已失效」和「本次未
- * 访问成功」各占一张，只有前一张接得上删除。 */
+ * The results are two tables for a reason: `linktr.ee` returning 403 is bot-blocking and `x.com` returning 500 is a temporary
+ * error, while the link itself is fine. Merging the tables would let someone delete good links along with the bad, so
+ * "address is dead" and "not reached this time" each take a table, and only the former connects to deletion. */
 import { useEffect, useState, type ReactNode } from 'react';
 import { RiExternalLinkLine } from '@remixicon/react';
 import { useQuery } from '@tanstack/react-query';
@@ -41,16 +42,16 @@ import {
 
 const RETRY = spriteGlyph('rotate-cw');
 
-const GONE_HINT = '站点返回 404 或 410，确认这个地址不存在。';
-/* 这一组大多是站点拒绝程序访问或一次抖动，换个时间再问一次就通了。 */
-const UNCLEAR_HINT = '站点拒绝程序访问或一次临时故障都会落在这里。链接保留，可勾选后单独重试。';
-const PRUNE_HINT = '删除前会逐条重验一次；此操作不可撤销。';
-const DISCONNECTED = '暂时无法读取进度，正在重新连接…';
+const GONE_HINT = 'The site returned 404 or 410, confirming this address does not exist.';
+/* Most of this group is the site refusing programmatic access or a one-off blip; asking again later succeeds. */
+const UNCLEAR_HINT = 'Sites refusing programmatic access or a one-off glitch land here. Links are kept; select and retry individually.';
+const PRUNE_HINT = 'Each entry is re-verified once before deletion; this cannot be undone.';
+const DISCONNECTED = 'Progress could not be read for the moment; reconnecting…';
 
 const count = (value: number | undefined) => Number(value || 0).toLocaleString();
 
-/** 一格读数：名目、数字、可选的一句注。每一类各占一格：挤成一行时标签和数字之间只剩
- *  间隔点，数字归谁全靠猜。 */
+/** One stat cell: label, number, and an optional note. Each category gets its own cell: crammed into one line, only a separator dot remains between label and number,
+ *  and whose number it is becomes a guess. */
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -70,7 +71,7 @@ function LinkTable(
 ) {
   if (!items.length) return null;
   const columns: DataColumn<LinkRow>[] = [
-    { id: 'entity', label: 'Peach 资料', width: 180, min: 128, value: (item) => item.entity,
+    { id: 'entity', label: 'Peach profile', width: 180, min: 128, value: (item) => item.entity,
       render: (item) => <a className="flex min-w-24 items-center gap-2 text-text-secondary hover:text-text-primary hover:underline"
         href={item.entity_id && item.entity_kind ? entityPath(item.entity_kind, item.entity, item.entity_id) : undefined} data-link-identity="">
         <span data-link-avatar="" className={`relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-background-quaternary-default text-caption-1-medium text-text-primary ${LEGACY_AVATAR_IMG}`}
@@ -81,19 +82,19 @@ function LinkTable(
           }) }} />
         <span className="min-w-0 wrap-anywhere">{item.entity}</span>
       </a> },
-    { id: 'kind', label: '类型', width: 128, value: (item) => LINK_KINDS[item.link_kind] || item.link_kind,
+    { id: 'kind', label: 'Kind', width: 128, value: (item) => LINK_KINDS[item.link_kind] || item.link_kind,
       render: (item) => LINK_KINDS[item.link_kind] || item.link_kind },
-    { id: 'label', label: '链接名称', min: 128, value: (item) => item.label || '',
+    { id: 'label', label: 'Link name', min: 128, value: (item) => item.label || '',
       render: (item) => <span className="flex min-w-24 items-center gap-2" data-link-name="">
         <span className="min-w-0 wrap-anywhere">{item.label || new URL(item.url).hostname}</span></span> },
-    { id: 'note', label: '结果', width: 320, min: 192, value: (item) => item.note,
+    { id: 'note', label: 'Results', width: 320, min: 192, value: (item) => item.note,
       render: (item) => <div className="min-w-0 w-full" data-link-result={confirmed ? 'gone' : 'unclear'}>
         {/^(?:HTTP\s+)?[1-5]\d{2}$/.test(item.note.trim())
           ? <StatusLabel tone={confirmed || /^(?:HTTP\s+)?5\d{2}$/.test(item.note.trim()) ? 'error' : 'warning'} data-link-code="">{item.note.trim()}</StatusLabel>
-          : <div className="flex flex-col items-start gap-1"><StatusLabel tone={confirmed ? 'error' : 'warning'}>{confirmed ? '地址已失效' : '未取得结论'}</StatusLabel>
+          : <div className="flex flex-col items-start gap-1"><StatusLabel tone={confirmed ? 'error' : 'warning'}>{confirmed ? 'The address no longer works' : 'Verdict not fetched'}</StatusLabel>
               <ErrorExcerpt text={item.note} className="tabular-nums text-text-secondary" /></div>}
       </div> },
-    { id: 'url', label: '地址', width: 360, min: 180, value: (item) => item.url,
+    { id: 'url', label: 'Address', width: 360, min: 180, value: (item) => item.url,
       render: (item) => <a href={item.url} target="_blank" rel="noopener noreferrer" title={item.url} data-link-address=""
         className="flex min-w-0 items-center gap-1 text-text-secondary hover:text-text-primary">
         <SiteMark linkId={item.id} />
@@ -104,8 +105,8 @@ function LinkTable(
   return (
     <div className={RESULT_SECTION} data-link-results={confirmed ? 'gone' : 'unclear'}>
       <DataTable label={title} items={items} columns={columns} rowId={(item) => String(item.id)}
-        description={hint} unit="条链接" panel={false} footerActions={footer}
-        rowLabel={(item) => `${item.entity} 的${item.label || item.url}`}
+        description={hint} unit="links" panel={false} footerActions={footer}
+        rowLabel={(item) => `${item.label || item.url} of ${item.entity}`}
         selected={picked.map(String)} onSelected={(ids) => onPick(ids.map(Number))}
         actions={() => children} />
     </div>
@@ -120,7 +121,7 @@ export function LinkManager() {
     queryKey: LINK_PRUNE_KEY,
     queryFn: ({ signal }) => fetchLinkPrune(signal),
     start: startLinkPrune,
-    /* 删完之后库里的链接少了，那两块读数跟着重取。 */
+    /* After deletion the library has fewer links, and those two counts refetch along with it. */
     onFinish: () => {
       void queryClient.invalidateQueries({ queryKey: LINKS_KEY, exact: true });
       void queryClient.invalidateQueries({ queryKey: LINK_CHECK_KEY, exact: true });
@@ -130,7 +131,7 @@ export function LinkManager() {
     queryKey: LINK_CHECK_KEY,
     queryFn: ({ signal }) => fetchLinkCheck(signal),
     start: startLinkCheck,
-    /* 又起了一趟检查：上一趟删除的回执说的是旧清单，勾选的行号也不再指向任何东西。 */
+    /* Another check pass kicks off: the previous pass's deletion receipt refers to the old list, and the checked row numbers no longer point at anything. */
     onStarted: () => { prune.dismiss(); setPicked([]); setGonePicked([]) },
   });
 
@@ -156,59 +157,59 @@ export function LinkManager() {
   const removeGone = (ids?: number[]) => {
     if (removing || !gone.length) return;
     void confirmModal({
-      title: '删除失效链接',
-      body: `将删除 ${ids?.length ?? gone.length} 条失效链接。删除前会再次检查，删除后无法恢复。`,
-      confirmLabel: '删除失效链接',
+      title: 'Delete dead links',
+      body: `This deletes ${ids?.length ?? gone.length} dead link${(ids?.length ?? gone.length) === 1 ? '' : 's'}. ${(ids?.length ?? gone.length) === 1 ? 'It is checked once more before deletion, and deletion cannot be undone.' : 'They are checked once more before deletion, and deletion cannot be undone.'}`,
+      confirmLabel: 'Delete dead links',
       danger: true,
       onConfirm: () => prune.start.mutateAsync({ checkId, ids }),
     });
   };
 
-  /* 删除那一趟跑完，结论就是那一句回执：旧清单里的行已经删掉或者确认保留了。 */
+  /* When the deletion run finishes, the receipt sentence is the verdict: rows from the old list are either deleted or confirmed kept. */
   const pruned = prune.outcome;
   const startError = check.start.error ?? prune.start.error;
   let progress: ReactNode = null;
   let result: ReactNode = null;
   if (pruned?.status === 'failed') {
-    result = <Note tone="error" title="链接清理未完成">{pruned.error || '请查看任务记录，核对已处理的链接。'}</Note>;
+    result = <Note tone="error" title="Link cleanup did not finish">{pruned.error || 'Check the task records to verify the processed links.'}</Note>;
   } else if (pruned && !gone.length && !unclear.length) {
-    result = <Note tone="success" title="完成">{pruneText(pruned)}</Note>;
+    result = <Note tone="success" title="Done">{pruneText(pruned)}</Note>;
   } else if (startError) {
-    result = <Note tone="error" title="检查失败">{errorMessage(startError)}</Note>;
+    result = <Note tone="error" title="Check failed">{errorMessage(startError)}</Note>;
   } else if (check.query.isError && state) {
-    result = <Note tone="neutral" title="任务状态">{DISCONNECTED}</Note>;
+    result = <Note tone="neutral" title="Task state">{DISCONNECTED}</Note>;
   } else if (state?.status === 'failed') {
-    result = <Note tone="error" title="检查失败">{state.error || '检查失败'}</Note>;
+    result = <Note tone="error" title="Check failed">{state.error || 'Check failed'}</Note>;
   } else if (state && state.status !== 'idle') {
     progress = <>
       {state.status === 'running'
         ? <TaskProgress embedded label={checkLine(state)} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
         : null}
       {removing
-        ? <TaskProgress embedded label={prune.job?.message || '正在重验并删除失效链接'}
+        ? <TaskProgress embedded label={prune.job?.message || 'Re-verifying and deleting dead links'}
             value={Math.min(prune.job?.checked || 0, prune.job?.total || 0)} total={prune.job?.total} />
         : null}
     </>;
-    const pickedLabel = `立即重试所选（${selectedRetryable.length}）`;
+    const pickedLabel = `Retry selected now (${selectedRetryable.length})`;
     result = done || gone.length || unclear.length ? (
       <div className={RESULT_PANEL}>
-        {pruned?.status === 'complete' ? <Note tone="success" title="完成">{pruneText(pruned)}</Note> : null}
-        <LinkTable title="地址已失效" items={gone} hint={GONE_HINT} picked={gonePicked} onPick={setGonePicked} confirmed
+        {pruned?.status === 'complete' ? <Note tone="success" title="Done">{pruneText(pruned)}</Note> : null}
+        <LinkTable title="Address expired" items={gone} hint={GONE_HINT} picked={gonePicked} onPick={setGonePicked} confirmed
           footer={done && gone.length ? <>
             <p className="mr-auto min-w-0 text-caption-1-regular text-text-secondary">{PRUNE_HINT}</p>
             <Button variant="danger" {...busyProps(removing)} onClick={() => removeGone()}>
-              {`删除 ${gone.length} 条失效链接`}
+              {`Delete ${gone.length} dead link${gone.length === 1 ? '' : 's'}`}
             </Button>
           </> : null}>
           <Button variant="danger" size="small" disabled={!done || !selectedGone.length}
             {...busyProps(removing)} onClick={() => removeGone(selectedGone)}>
-            {`删除所选（${selectedGone.length}）`}
+            {`Delete selected (${selectedGone.length})`}
           </Button>
         </LinkTable>
-        <LinkTable title="本次未访问成功" items={unclear} hint={UNCLEAR_HINT}
+        <LinkTable title="This visit did not succeed" items={unclear} hint={UNCLEAR_HINT}
           picked={picked} onPick={setPicked} footer={retryable.length
             ? <Button variant="primary" leadingIcon={RETRY} {...busyProps(running)}
-                onClick={() => run(retryable.map((item) => item.id))}>{`立即重试全部（${retryable.length}）`}</Button>
+                onClick={() => run(retryable.map((item) => item.id))}>{`Retry all now (${retryable.length})`}</Button>
             : null}>
           {retryable.length
             ? <>
@@ -218,7 +219,7 @@ export function LinkManager() {
             : null}
         </LinkTable>
         {done && !gone.length && !unclear.length
-          ? <p className={`${RESULT_SECTION} text-body-regular text-notification-success-foreground`}>全部链接均可访问。</p>
+          ? <p className={`${RESULT_SECTION} text-body-regular text-notification-success-foreground`}>Every link is reachable.</p>
           : null}
       </div>
     ) : null;
@@ -228,24 +229,24 @@ export function LinkManager() {
     <section id="link-manager" aria-labelledby="link-manager-title" className="flex scroll-mt-20 flex-col gap-4">
       <Fieldset layout="stack" labelledBy="link-manager-title" footer={
         <Button data-link-check="" leadingIcon={LinkCheckIcon} {...busyProps(running)} onClick={() => run()}>
-          {running ? '检查中' : done ? '重新检查' : '检查死链'}
+          {running ? 'Checking' : done ? 'Check again' : 'Check dead links'}
         </Button>
       }>
-        <FieldsetTitle id="link-manager-title" gap="small">链接管理</FieldsetTitle>
+        <FieldsetTitle id="link-manager-title" gap="small">Link management</FieldsetTitle>
         {stats.isError
-          ? <Note tone="error" title="链接统计读取失败">{errorMessage(stats.error)}</Note>
+          ? <Note tone="error" title="Reading link statistics failed">{errorMessage(stats.error)}</Note>
           : info
             ? <>
                 <div className="link-stat-grid mt-4 gap-x-8 gap-y-3">
-                  <Stat label="链接总数" value={count(info.total)}
-                    note={`分布在 ${count(info.entities)} 个女优、厂牌与系列`} />
+                  <Stat label="Total links" value={count(info.total)}
+                    note={`Spread across ${count(info.entities)} performers, studios, and series`} />
                   {Object.entries(info.by_kind ?? {}).map(([kind, value]) => (
                     <Stat key={kind} label={LINK_KINDS[kind] || kind} value={count(value)} />
                   ))}
                 </div>
                 {hosts.length
                   ? <div className="mt-4 flex min-w-0 flex-col gap-0.5">
-                      <span className="text-caption-1-regular text-text-secondary">主要站点</span>
+                      <span className="text-caption-1-regular text-text-secondary">Main sites</span>
                       <div className="flex min-w-0 flex-wrap gap-x-5 gap-y-2">
                         {hosts.map(([host, n]) => <span key={host} data-top-host="" className="inline-flex min-w-0 max-w-full items-center gap-1.5">
                           <a href={`https://${host}`} target="_blank" rel="noopener noreferrer"

@@ -51,6 +51,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const files = sourceFiles(join(root, 'frontend/src'));
   const findings = files.flatMap(path => scanSource(path, readFileSync(path, 'utf8')));
   for (const item of findings) console.error(`${item.path}:${item.line}: ${item.severity}: ${item.message}`);
-  console.log(`前端文案检查：${files.length} 个源码文件。`);
+  console.log(`前端文案检查: ${files.length} items源码文件.`);
   process.exitCode = Number(findings.some(item => item.severity === 'error'));
 }

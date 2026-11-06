@@ -1,4 +1,4 @@
-/* 没有数据或结果时的空态：图标、标题、说明同处一个组件里（`peach-web-ui`）。
+/* Empty state when there is no data or result: icon, title and description in one component (`peach-web-ui`).
  *
  * 注册表里没有空态条目。标题是真的标题元素，冒烟用例按它认页面主体：一片白和「画出来了、
  * 只是没有内容」在别的断言下长得一模一样。根上的 `data-empty-state` 是给冒烟与外观用例认的
@@ -16,7 +16,7 @@ const SIZE = {
   compact: 'min-h-60 px-4 py-6',
 } as const;
 
-/** 把空态的添加入口接到页面已有表单。 */
+/** Wires the empty state's add entry to the page's existing form. */
 export function EmptyFocusButton({ target, children }: { target: string; children: ReactNode }) {
   return <Button size="small" variant="secondary" onClick={() => document.querySelector<HTMLElement>(target)?.focus()}>{children}</Button>;
 }
@@ -33,8 +33,8 @@ export function EmptyState(
       </span>
       <h3 className="text-body-semibold text-pretty text-text-primary">{title}</h3>
       {children != null ? <p className="max-w-empty-copy text-body-2-regular leading-empty-copy text-text-secondary">{children}</p> : null}
-      {/* 去处属于这一块，不摆到框外面：「还没有内容」和一个不知道属于谁的按钮分开放时，
-          读者要先把两样东西连起来才知道按下去做什么。 */}
+      {/* The destination belongs to this block and does not sit outside the frame: when "No content yet" and a button of unknown ownership sit apart,
+          the reader must first connect the two to know what pressing does. */}
       {actions ? <div className="mt-2 flex flex-wrap justify-center gap-2">{actions}</div> : null}
     </div>
   );

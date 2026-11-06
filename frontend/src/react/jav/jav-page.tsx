@@ -102,11 +102,11 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
   const items = all.filter(item => (!tag || item.tags?.includes(tag)) &&
     (!query || [item.code, item.title, item.performers, item.studio, ...(item.tags || []), ...(item.performer_refs || []).map(ref => ref.name)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())));
   const waiting = discoveries.isPending;
-  return <section ref={section} aria-label="为你推荐" aria-busy={waiting} className="flex min-w-0 flex-col gap-4">
-    <FilterGlassRows label="发现筛选与排序" topLabel="发现范围与标签" attrs={{ 'data-filter-frame': '', 'data-jav-filter': '', 'data-catalog-frame': '' }}
+  return <section ref={section} aria-label="Recommended for you" aria-busy={waiting} className="flex min-w-0 flex-col gap-4">
+    <FilterGlassRows label="Discover filters and sorting" topLabel="Discover scope and tags" attrs={{ 'data-filter-frame': '', 'data-jav-filter': '', 'data-catalog-frame': '' }}
       busy={waiting} topClassName="gap-1.5 overflow-visible" bottomClassName="min-h-12" top={<div data-catalog-scroll="">
       <div data-catalog-views="">
-        {([['external', '库外发现'], ['library', '馆藏探索']] as const).map(([key, label]) =>
+        {([['external', 'Out-of-library discoveries'], ['library', 'Library explore']] as const).map(([key, label]) =>
           <FilterPill key={key} data-entity-tag={key} data-entity-press="" pressed={scope === key} onPress={() => { setScope(key); setTag('') }}>{label}</FilterPill>)}
         <span data-entity-sep="" aria-hidden="true" />
       </div><div data-catalog-tags="" dangerouslySetInnerHTML={waiting ? { __html: javTagSkeleton() } : undefined}>
@@ -114,16 +114,16 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
           {name}<span data-count-badge="">{all.filter(item => item.tags?.includes(name)).length}</span>
         </FilterPill>)}
       </div></div>} bottom={<>
-        <span data-catalog-readout="">{waiting ? <span data-skeleton="count" aria-hidden className="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen" /> : `${items.length} 部`}</span>
+        <span data-catalog-readout="">{waiting ? <span data-skeleton="count" aria-hidden className="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen" /> : `${items.length} videos`}</span>
         <LibraryShortcuts currentHref={() => location.pathname + location.search} />
-        {query || tag ? <GlassPill onPress={() => { setTag(''); clearText() }}>清除筛选</GlassPill> : null}
+        {query || tag ? <GlassPill onPress={() => { setTag(''); clearText() }}>Clear filters</GlassPill> : null}
         <span data-entity-sorts="">
         {scope === 'external' ? <FilterIconButton data-entity-batch="" data-jav-metadata-update=""
-          label={metadata?.status === 'running' ? '停止读取' : '更新资料'}
+          label={metadata?.status === 'running' ? 'Stop reading' : 'Update details'}
           disabled={waiting} data-skeleton-action={waiting ? '' : undefined} busy={!!metadataAction.busy}
           icon={metadata?.status === 'running' ? MetadataStopGlyph : MetadataRefreshGlyph}
           onPress={() => updateMetadata(metadata?.status === 'running' ? 'stop' : 'update')} /> : null}
-        <Segments label="JAV 卡片版式" value={layout} options={JAV_LAYOUTS} onChange={storeJavLayout} />
+        <Segments label="JAV card layout" value={layout} options={JAV_LAYOUTS} onChange={storeJavLayout} />
         <SortKeys sorts={DISCOVERY_SORTS.map(([key, label, ariaLabel]) => ({ key, label, ariaLabel,
           pressed: key === sort, dir: direction }))} onSort={key => {
           if (key === sort) setAscending(!ascending); else { setSort(key as DiscoverySort); setAscending(key === 'code') }
@@ -135,14 +135,13 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
         label={`正在读取作品资料 · ${metadata.completed} / ${metadata.total} 部`} value={metadata.completed} total={metadata.total} /></div> : null}
     {metadata && metadata.status !== 'running' && (metadata.status !== 'complete' || metadata.failed > 0)
       ? <Note tone="neutral" action={<Button variant="secondary" {...busyProps(metadataAction.busy === 'retry')}
-        aria-label="立即重试读取作品资料" onClick={() => updateMetadata('retry')}>立即重试</Button>}>{metadata.message || `作品资料 ${metadata.completed} / ${metadata.total} 部`}</Note> : null}
+        aria-label="Retry reading video details" onClick={() => updateMetadata('retry')}>Retry now</Button>}>{metadata.message || `Video profiles ${metadata.completed} / ${metadata.total} videos`}</Note> : null}
     {metadataAction.error ? <Note tone="error">{metadataAction.error}</Note> : null}
-    {!waiting && !discoveries.error && !items.length ? <EmptyState icon={RiCompassLine} title={query || tag ? '没有符合条件的推荐' : '暂无匹配口味的作品'}
-      actions={<><ButtonLink size="small" href="/taste" variant="secondary">查看口味</ButtonLink>
-        {query || tag ? <Button variant="primary" size="small" onClick={() => { clearText(); changeTag(''); writeJavQuery({ q: '', tag: '' }) }}>清除筛选</Button>
-        : scope === 'library' ? <ButtonLink variant="primary" size="small" href="/">浏览馆藏</ButtonLink>
-        : <Button variant="primary" size="small" onClick={() => resource({})}>查找作品</Button>}</>}>
-      {query || tag ? '清除筛选后查看其他作品。' : scope === 'library' ? '观看或标记作品后，可以探索少看的馆藏。' : '可以查找番号，或更新关注来源。'}
+    {!waiting && !discoveries.error && !items.length ? <EmptyState icon={RiCompassLine} title={query || tag ? 'No matching recommendations' : 'No videos matching your taste yet'}
+      actions={<><ButtonLink size="small" href="/taste" variant="secondary">View taste</ButtonLink>
+        {query || tag ? <Button variant="primary" size="small" onClick={() => { clearText(); changeTag(''); writeJavQuery({ q: '', tag: '' }) }}>Clear filters</Button>
+        : <ButtonLink variant="primary" size="small" href="/">Browse library</ButtonLink>}</>}>
+      {query || tag ? 'Clear filters to see other videos.' : scope === 'library' ? 'After watching or marking videos, you can explore rarely watched parts of the library.' : 'You can search codes, or refresh follow sources.'}
     </EmptyState> : null}
     {action.error ? <Note tone="error">{action.error}</Note> : null}
     <div data-media-grid="" className={JAV_RECOMMENDATION_GRID} style={{ '--card-ratio': ratio } as CSSProperties}>

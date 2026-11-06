@@ -3,7 +3,7 @@
 .peach-react [data-board-data-table][data-resizable-table] td { overflow: hidden; text-overflow: ellipsis; }
 .peach-react [data-board-data-table][data-resizable-table] [data-table-space] { padding: 0; }
 .peach-react [data-board-data-table] td a { width: fit-content; max-width: 100%; align-self: flex-start; }
-/* 中间省略按元素自身宽度重算；链接随文字收缩时拉宽列也不会再展开，所以这类链接铺满单元格。 */
+/* 中间省略按元素自身宽度重算；链接随文字收缩时拉宽列也不会再展开，所以这类链接铺满单元格. */
 .peach-react [data-board-data-table] td a:has(> [data-middle-truncate]) { width: 100%; }
 /* 拖宽手柄骑在两列分界线上、左右各 10px，压在相邻表头之上：贴在格内 12px 时稍偏一点就按到表格本身，
  * 起的是横向拖动。光标用左右箭头；拖动中整页锁成同一个光标且不选字，指针离开手柄也不变。 */

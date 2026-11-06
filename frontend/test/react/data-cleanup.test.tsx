@@ -1,8 +1,10 @@
-/* 数据管理页：顶上那排读数与入口，链接、资源同步和整理三件要在这页上做的事。
+/* Data management page: the top row of readouts and entries, plus the three things to do on this page: links, resource sync
+ * and organize.
  *
- * 会写真实 ledger 或删盘上东西的那几步（删失效链接、资源同步清理、整理的执行
- * 与回滚）都必须先过确认弹层：这里既量「确认了才发」，也量「取消了一个字节都不发」。
- * 外观由 `frontend/e2e/design-*.test.ts` 读 `getComputedStyle` 断言；这里只看结构、文字与请求。 */
+ * Every step that writes a real ledger or deletes things from disk (deleting dead links, resource sync cleanup, organize's
+ * run and rollback) must pass a confirmation dialog first: this measures both "sent only after confirming" and "canceling
+ * sends not one byte". Looks are asserted by `frontend/e2e/design-*.test.ts` reading `getComputedStyle`; this file covers only
+ * structure, text and requests. */
 import { notifyManager, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -34,12 +36,12 @@ afterEach(() => {
 notifyManager.setScheduler((notify) => notify());
 
 const FAIL = Symbol('fail');
-/** 一条端点回非 2xx。 */
+/** An endpoint returned a non-2xx. */
 const failWith = (status: number, body: unknown = {}) => ({ [FAIL]: true, status, body });
 
 type Route = unknown | ((body: unknown, method: string) => unknown);
 
-/** 按路径应答。没造数据的路径回 404 并记下来，用例据此核对页面没去问不该问的端点。 */
+/** Answers by path. Paths with no fabricated data return 404 and get logged, letting the test verify the page never asked endpoints it should not have. */
 function serve(routes: Record<string, Route>) {
   const calls: { path: string; method: string; body: unknown }[] = [];
   const unknown: string[] = [];
@@ -71,7 +73,7 @@ function serve(routes: Record<string, Route>) {
 
 type Confirmation = Parameters<typeof legacyUi.confirmModal>[0];
 
-/** 确认弹层：`answer` 为真时替人点确认。两种情况都记下弹层上写的是什么。 */
+/** The confirm popover: with `answer` true it clicks confirm on the user's behalf. Both cases record what the popover said. */
 function confirmWith(answer: boolean) {
   const seen: Confirmation[] = [];
   vi.spyOn(legacyUi, 'confirmModal').mockImplementation((async (options: Confirmation) => {
@@ -95,12 +97,12 @@ const withoutRoots: MediaSourcesData = {
 const organizeIdle: OrganizeData = {
   status: 'idle', locations: [{ location: 'local', roots: ['R:\\media'] }],
   templates: { local: { file: '{code}', dir: '' } },
-  presets: [{ label: '番号 + 标题', file: '{code}[ {title}]', dir: '{studio}' }],
-  placeholders: [{ key: 'code', label: '番号' }, { key: 'title', label: '标题' }],
+  presets: [{ label: 'Code + title', file: '{code}[ {title}]', dir: '{studio}' }],
+  placeholders: [{ key: 'code', label: 'Code' }, { key: 'title', label: 'Title' }],
   last_batch: '',
 };
 
-/** 整页首屏要的每一条端点。 */
+/** Every endpoint the whole-page first screen needs. */
 const pageRoutes = (sources: MediaSourcesData): Record<string, Route> => ({
   '/api/review?counts=1': { counts: { metadata_fields: 12, performer_avatars: 3, studio_logos: 2, creator_tags: 1 } },
   '/api/quality-goals?limit=200': { total: 7, items: [] },
@@ -156,37 +158,37 @@ describe('读数卡', () => {
     }
   });
 
-  it('复核列前三类、其余合成一项；垃圾分项只列有东西的类别', () => {
+  it('Review keeps its top three kinds and merges the rest into one; junk breakdowns list only categories with content', () => {
     expect(reviewSummary({ counts: { metadata_fields: 12, performer_avatars: 3, studio_logos: 2, creator_tags: 1 } }))
-      .toEqual({ figure: '18 条待复核', meta: '元数据字段 12 · 女优头像 3 · 厂牌 Logo 2 · 其余 1' });
+      .toEqual({ figure: '18 items to review', meta: 'Metadata fields 12 · Performer avatars 3 · Label logo 2 · 1 more' });
     expect(junkBreakdown({ pending_total: 5, dismissed_total: 2, counts: { video: 4, image: 0, url: 1 } }))
-      .toBe('视频 4 · 网址 1 · 已忽略 2');
+      .toBe('Videos 4 · URL 1 · Dismissed 2');
   });
 
-  it('五张卡各读各的；点一张就换到那一页', async () => {
+  it('The five cards read independently; clicking one switches to that page', async () => {
     const { host, open, server } = await openPage();
-    expect(entry(host, 'review')?.textContent).toContain('18 条待复核');
-    expect(entry(host, 'quality')?.textContent).toContain('7 个待升级');
-    expect(entry(host, 'duplicates')?.textContent).toContain('3 组 · 8 个文件');
-    expect(entry(host, 'duplicates')?.textContent).toContain('可回收 2.0 GB');
-    expect(entry(host, 'ads')?.textContent).toContain('5 个待判断');
-    expect(entry(host, 'trash')?.textContent).toContain('9 项在回收站');
-    expect(entry(host, 'trash')?.textContent).toContain('占用 3.0 GB');
+    expect(entry(host, 'review')?.textContent).toContain('18 items to review');
+    expect(entry(host, 'quality')?.textContent).toContain('7 pending upgrade');
+    expect(entry(host, 'duplicates')?.textContent).toContain('3 groups - 8 files');
+    expect(entry(host, 'duplicates')?.textContent).toContain('Reclaimable 2.0 GB');
+    expect(entry(host, 'ads')?.textContent).toContain('5 awaiting review');
+    expect(entry(host, 'trash')?.textContent).toContain('9 items in trash');
+    expect(entry(host, 'trash')?.textContent).toContain('Using 3.0 GB');
     for (const section of ['review', 'quality', 'duplicates', 'ads', 'trash'] as const) await click(entry(host, section));
     expect(open.mock.calls.map(([section]) => section)).toEqual(['review', 'quality', 'duplicates', 'ads', 'trash']);
     expect(server.unknown).toEqual([]);
   });
 
-  it('一张卡取不到只把那一张写成「读取失败」', async () => {
+  it('One unfetchable card marks only itself "Load failed"', async () => {
     const { host } = await openPage(withRoots, { '/api/review?counts=1': failWith(500) });
-    expect(entry(host, 'review')?.textContent).toContain('读取失败');
-    expect(entry(host, 'trash')?.textContent).toContain('9 项在回收站');
+    expect(entry(host, 'review')?.textContent).toContain('Load failed');
+    expect(entry(host, 'trash')?.textContent).toContain('9 items in trash');
   });
 
-  it('回收站计数跟着侧栏选中的媒体库走', async () => {
-    sessionStorage.setItem('peach.library', '网盘');
-    const { server } = await openPage(withRoots, { '/api/items?state=trash&limit=1&library=%E7%BD%91%E7%9B%98': { total: 1, bytes: 0 } });
-    expect(server.calls.map((call) => call.path)).toContain('/api/items?state=trash&limit=1&library=%E7%BD%91%E7%9B%98');
+  it('Trash counts follow the library selected in the sidebar', async () => {
+    sessionStorage.setItem('peach.library', 'Cloud drive');
+    const { server } = await openPage(withRoots, { '/api/items?state=trash&limit=1&library=Cloud%20drive': { total: 1, bytes: 0 } });
+    expect(server.calls.map((call) => call.path)).toContain('/api/items?state=trash&limit=1&library=Cloud%20drive');
     expect(server.calls.map((call) => call.path)).not.toContain('/api/items?state=trash&limit=1');
   });
 });
@@ -217,7 +219,7 @@ describe('资源同步', () => {
     ],
   };
 
-  /** 执行那一条：POST 起任务，之后的 GET 回 `finished`；没起过就是空闲。 */
+  /** The execute row: POST starts the task and later GETs return `finished`; before any start it reads idle. */
   const applyRoute = (finished: object) => {
     let started = false;
     return (_body: unknown, method: string) => {
@@ -229,7 +231,7 @@ describe('资源同步', () => {
     };
   };
 
-  it('扫完来源一行、待删三样一行；清理是危险确认，正文写明永久删除，确认后才发 apply', async () => {
+  it('One row for the scanned sources, one row for the three kinds to delete; cleanup is a danger confirmation whose body states permanent deletion, and apply is sent only after confirming', async () => {
     const seen = confirmWith(true);
     const toast = vi.fn();
     const server = serve({
@@ -242,47 +244,48 @@ describe('资源同步', () => {
     });
     const host = await wrap(<ResourceSyncCard toast={toast} />);
     await settle();
-    expect(host.textContent).toContain('本地磁盘');
-    expect(host.querySelector('[data-connection-tone="warning"]')?.textContent).toBe('离线');
-    expect(host.textContent).toContain('本次已跳过');
-    expect(host.textContent).toContain('馆藏中有 30 项');
-    expect(host.textContent).toContain('空文件夹 3 个');
-    expect(host.textContent).toContain('待永久删除');
-    expect(host.textContent).toContain('保留来源根目录');
+    expect(host.textContent).toContain('Local disk');
+    expect(host.querySelector('[data-connection-tone="warning"]')?.textContent).toBe('Offline');
+    expect(host.textContent).toContain('skipped this run');
+    expect(host.textContent).toContain('30 items in the library');
+    expect(host.textContent).toContain('Empty folders');
+    expect(host.textContent).toContain('3 items');
+    expect(host.textContent).toContain('Pending permanent deletion');
+    expect(host.textContent).toContain('Keep source roots');
     expect(server.posts('/api/resource-sync/apply')).toEqual([]);
-    await click(buttonNamed('清理失效条目', host));
+    await click(buttonNamed('Clean up stale entries', host));
     await settle();
     expect(seen).toHaveLength(1);
-    expect(seen[0]!.title).toBe('清理失效条目');
+    expect(seen[0]!.title).toBe('Clean up stale entries');
     expect(seen[0]!.danger).toBe(true);
     expect(seen[0]!.body).toBe(
-      '将永久删除文件已不在盘上的 4 条记录（含回收站里的）、3 个空文件夹，并清理 2 个闲置缓存。来源根目录保留。这一步不可撤销。');
+      'Will permanently delete 4 records whose files are no longer on disk (including those in trash) and 3 empty folders, Also cleans 2 idle caches. Source root directories are kept. This step cannot be undone.');
     expect(server.posts('/api/resource-sync/apply')).toEqual([
       { confirm: true, clean_cache: true, scan_id: 'scan-7', background: true },
     ]);
     await settle();
-    expect(toast).toHaveBeenCalledWith('已清理失效条目');
-    expect(host.textContent).toContain('已永久删除 4 条失效记录和 3 个空文件夹，清理 2 个缓存，释放 5 MB。');
+    expect(toast).toHaveBeenCalledWith('Cleaned dead entries');
+    expect(host.textContent).toContain('Permanently deleted 4 stale records and 3 empty folders, Cleaned 2 caches, freeing 5 MB.');
   });
 
-  it('其余来源仍在扫描时显示已确认来源，任务失败也保留这些结果', async () => {
+  it('Confirmed sources show while the remaining sources are still scanning, and these results survive a task failure', async () => {
     const state = { status: 'running', scan_id: 'scan-partial', completed_sources: 1, total_sources: 2,
       sources: [scanned.sources![0]!] };
     serve({ '/api/resource-sync/scan': state, '/api/resource-sync/apply': { status: 'idle' } });
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
-    expect(host.textContent).toContain('本地磁盘');
-    expect(host.textContent).toContain('空文件夹 3 个');
-    expect(buttonNamed('清理失效条目', host)).toBeNull();
-    expect(host.textContent).not.toContain('可清理的缓存');
+    expect(host.textContent).toContain('Local disk');
+    expect(host.textContent).toContain('3 empty folders');
+    expect(buttonNamed('Clean up stale entries', host)).toBeNull();
+    expect(host.textContent).not.toContain('Cleanable caches');
     await act(async () => { queryClient.setQueryData(RESOURCE_SCAN_KEY, {
-      ...state, status: 'failed', error: '第二个来源无法读取',
+      ...state, status: 'failed', error: 'Second source unreadable',
     }); });
-    expect(host.textContent).toContain('本地磁盘');
-    expect(host.textContent).toContain('第二个来源无法读取');
+    expect(host.textContent).toContain('Local disk');
+    expect(host.textContent).toContain('Second source unreadable');
   });
 
-  it('带个人记录的单列一档：读数卡与确认框分开报删除和标为已消失的条数，结果单报接回的', async () => {
+  it('Items with personal records get their own tier: the stat card and confirm dialog report deletions and marked-vanished counts separately, and the result only reports reattachments', async () => {
     const seen = confirmWith(true);
     serve({
       '/api/resource-sync/scan': {
@@ -297,68 +300,68 @@ describe('资源同步', () => {
     });
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
-    expect(host.textContent).toContain('将标为已消失');
-    expect(host.textContent).toContain('2 项带个人记录');
-    await click(buttonNamed('清理失效条目', host));
+    expect(host.textContent).toContain('Will be marked as vanished');
+    expect(host.textContent).toContain('2 items carry personal records');
+    await click(buttonNamed('Clean up stale entries', host));
     await settle();
     expect(seen[0]!.body).toBe(
-      '将永久删除文件已不在盘上的 3 条记录（含回收站里的）、3 个空文件夹，并清理 2 个闲置缓存。来源根目录保留。'
-      + '这几样不可撤销。2 条作品记录的文件已丢失，个人记录保留，可在「文件已丢失的记录」中转移个人记录或删除记录。');
+      'Will permanently delete 3 records whose files are no longer on disk (including those in trash) and 3 empty folders, Also cleans 2 idle caches. Source root directories are kept. These cannot be undone.'
+      + ' Files are lost for 2 video records; personal records are kept, and can be transferred or deleted under "Records with lost files".');
     await settle();
     expect(host.textContent).toContain(
-      '1 条作品记录已标为文件丢失，可在「文件已丢失的记录」中处理。1 条的记录已接到库里的另一个版本。');
+      '1 video record was marked as missing files and can be handled under "Records with missing files". Records for 1 item were reattached to another edition in the library.');
   });
 
-  it('复核时发现文件还在、目录删不掉的几样留在原地：报警告档，结果条写部分完成', async () => {
+  it('Items where files remain and the directory cannot be deleted during review stay in place: raise the warning tier, and the result bar says partially complete', async () => {
     confirmWith(true);
     const toast = vi.fn();
     serve({
       '/api/resource-sync/scan': scanned,
       '/api/resource-sync/apply': applyRoute({
-        purged: 3, blocked: [{ id: 9, name: '回来了.mp4', reason: 'present' }], dirs_removed: 2, dir_errors: 1,
+        purged: 3, blocked: [{ id: 9, name: 'Back Again.mp4', reason: 'present' }], dirs_removed: 2, dir_errors: 1,
         cache_removed: 2, bytes_reclaimed: 0, cache_blocked: [],
       }),
       '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
     });
     const host = await wrap(<ResourceSyncCard toast={toast} />);
     await settle();
-    await click(buttonNamed('清理失效条目', host));
+    await click(buttonNamed('Clean up stale entries', host));
     await settle();
     await settle();
-    expect(toast).toHaveBeenCalledWith('已完成 7 项，2 项没有处理', { warning: true });
-    expect(host.textContent).toContain('部分完成');
-    expect(host.textContent).toContain('1 条记录没有删除（「回来了.mp4」），1 个文件夹没有删除，重新检查后可再试。');
+    expect(toast).toHaveBeenCalledWith('Completed 7 items, 2 items not processed', { warning: true });
+    expect(host.textContent).toContain('Partially finished');
+    expect(host.textContent).toContain('1 record was not deleted ("Back Again.mp4"), 1 folder was not deleted; retry after rechecking.');
   });
 
-  it('取消确认就不发 apply', async () => {
+  it('Cancelling the confirm does not send apply', async () => {
     confirmWith(false);
     const server = serve({ '/api/resource-sync/scan': scanned, '/api/resource-sync/apply': { status: 'idle' } });
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
-    await click(buttonNamed('清理失效条目', host));
+    await click(buttonNamed('Clean up stale entries', host));
     await settle();
     expect(server.posts('/api/resource-sync/apply')).toEqual([]);
   });
 
-  it('没有要清的东西时不给清理键，只说一句', async () => {
+  it('With nothing to clean there is no clean key, just a line saying so', async () => {
     serve({
       '/api/resource-sync/scan': { ...scanned, missing: 0, empty: 0, cache: { files: 0, bytes: 0 } },
       '/api/resource-sync/apply': { status: 'idle' },
     });
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
-    expect(buttonNamed('清理失效条目', host)).toBeNull();
-    expect(host.textContent).toContain('已检查可访问的来源，没有待清理的记录、空文件夹或缓存。');
+    expect(buttonNamed('Clean up stale entries', host)).toBeNull();
+    expect(host.textContent).toContain('Reachable sources checked; no records, empty folders, or caches waiting for cleanup.');
   });
 
-  it('只有空文件夹要删时也给清理键', async () => {
+  it('Even when only empty folders need deleting the clean key shows', async () => {
     serve({
       '/api/resource-sync/scan': { ...scanned, missing: 0, empty: 2, cache: { files: 0, bytes: 0 } },
       '/api/resource-sync/apply': { status: 'idle' },
     });
     const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
     await settle();
-    expect(buttonNamed('清理失效条目', host)).not.toBeNull();
+    expect(buttonNamed('Clean up stale entries', host)).not.toBeNull();
   });
 });
 
@@ -380,7 +383,7 @@ describe('链接管理', () => {
     expect(link.href).toBe('https://example.com/');
   });
   const row = (id: number, patch: Partial<LinkCheckState['gone'][number]> = {}) => ({
-    id, entity: `女优 ${id}`, link_kind: 'official', label: '官网', url: `https://example.com/talent/${id}`, note: '404', ...patch,
+    id, entity: `Performer ${id}`, link_kind: 'official', label: 'Official site', url: `https://example.com/talent/${id}`, note: '404', ...patch,
   });
   const checked: LinkCheckState = {
     status: 'complete', check_id: 'check-3', checked: 3, total: 3, scope: 'all',
@@ -392,39 +395,39 @@ describe('链接管理', () => {
     top_host_link_ids: { 'x.com': 1, 'instagram.com': 2, 'linktr.ee': 3, 'tiktok.com': 4 },
   };
 
-  it('结果表用所属头像和链接站标识别对象，链接名称保留可读回退', async () => {
+  it('The results table identifies subjects by their avatar and link site favicon, with a readable fallback for link names', async () => {
     serve({ '/api/links': stats, '/api/links/check': { ...checked,
-      gone: [row(1, { entity_id: 31, entity_kind: 'performer', face: { id: 31, name: '女优 1', has_image: true, image_version: 'v1' } })],
+      gone: [row(1, { entity_id: 31, entity_kind: 'performer', face: { id: 31, name: 'Performer 1', has_image: true, image_version: 'v1' } })],
       unclear: [row(2, { label: '' })],
     }, '/api/links/prune': { status: 'idle' } });
     const host = await wrap(<LinkManager />);
     await settle();
-    const gone = host.querySelector('[aria-label="地址已失效"]')!;
-    expect(gone.textContent).toContain('链接名称');
-    expect(gone.textContent).toContain('Peach 资料');
+    const gone = host.querySelector('[aria-label="Address expired"]')!;
+    expect(gone.textContent).toContain('Link name');
+    expect(gone.textContent).toContain('Peach profile');
     expect(gone.querySelector('[data-link-identity]')?.getAttribute('href')).toBe('/performers/31');
     expect(gone.querySelector('[data-link-identity] img')?.getAttribute('src')).toContain('/entity-image?kind=performer&id=31');
     expect(gone.querySelector('[data-link-address] img')?.getAttribute('src')).toBe('/link-mark?id=1');
     expect(gone.querySelector('[data-link-name] img')).toBeNull();
-    const unclear = host.querySelector('[aria-label="本次未访问成功"]')!;
+    const unclear = host.querySelector('[aria-label="This visit did not succeed"]')!;
     expect(unclear.querySelector('[data-link-name]')?.textContent).toBe('example.com');
-    expect(unclear.querySelector('[data-link-identity]')?.textContent).toContain('女优 2');
+    expect(unclear.querySelector('[data-link-identity]')?.textContent).toContain('Performer 2');
   });
 
-  it('每一类链接各占一格，类型用界面上的名字，主要站点只列前三', async () => {
+  it('Each link kind gets its own cell, types use their UI names, and only the top three main sites are listed', async () => {
     serve({ '/api/links': stats, '/api/links/check': { ...checked, status: 'idle' }, '/api/links/prune': { status: 'idle' } });
     const host = await wrap(<LinkManager />);
     await settle();
     const cells = [...host.querySelectorAll('.link-stat-grid > div')].map((cell) => cell.textContent);
     expect(cells).toEqual([
-      '链接总数719分布在 210 个女优、厂牌与系列', '官网/事务所224', '社交账号373', '作品资料站100', '资料出处22',
+      'Total links719Spread across 210 performers, studios, and series', 'Official site/agency224', 'Social accounts373', 'Video profile sites100', 'Details sources22',
     ]);
     expect([...host.querySelectorAll('#link-manager a')].map((link) => link.textContent))
       .toEqual(['x.com', 'instagram.com', 'linktr.ee']);
     expect(host.textContent).not.toContain('tiktok.com');
   });
 
-  it('失效与未访问成功分两张表；删除是危险确认，确认了才带着这一趟的检查号发', async () => {
+  it('Expired and never-succeeded entries live in two tables; deleting is a guarded confirmation that sends this round\'s check number only after it', async () => {
     const seen = confirmWith(true);
     let started = false;
     const server = serve({
@@ -436,27 +439,27 @@ describe('链接管理', () => {
     });
     const host = await wrap(<LinkManager />);
     await settle();
-    expect(host.querySelector('[aria-label="地址已失效"]')?.textContent).toContain('女优 1');
-    expect(host.querySelector('[aria-label="本次未访问成功"]')?.textContent).toContain('社交账号');
-    await click(buttonNamed('删除 1 条失效链接', host));
+    expect(host.querySelector('[aria-label="Address expired"]')?.textContent).toContain('Performer 1');
+    expect(host.querySelector('[aria-label="This visit did not succeed"]')?.textContent).toContain('Social accounts');
+    await click(buttonNamed('Delete 1 dead link', host));
     await settle();
     expect(seen).toHaveLength(1);
     expect(seen[0]!.danger).toBe(true);
-    expect(seen[0]!.body).toBe('将删除 1 条失效链接。删除前会再次检查，删除后无法恢复。');
+    expect(seen[0]!.body).toBe('This deletes 1 dead link. It is checked once more before deletion, and deletion cannot be undone.');
     expect(server.posts('/api/links/prune')).toEqual([{ confirm: true, check_id: 'check-3', background: true }]);
   });
 
-  it('取消确认就不发删除', async () => {
+  it('Cancelling confirmation sends no delete', async () => {
     confirmWith(false);
     const server = serve({ '/api/links': stats, '/api/links/check': checked, '/api/links/prune': { status: 'idle' } });
     const host = await wrap(<LinkManager />);
     await settle();
-    await click(buttonNamed('删除 1 条失效链接', host));
+    await click(buttonNamed('Delete 1 dead link', host));
     await settle();
     expect(server.posts('/api/links/prune')).toEqual([]);
   });
 
-  it('「立即重试全部」只重验未访问成功的那几条，带上这一趟的检查号', async () => {
+  it('"Retry all now" revalidates only the entries that never verified successfully, carrying the check number of this run', async () => {
     const server = serve({
       '/api/links': stats,
       '/api/links/check': (body: { status_only?: boolean }) => (body.status_only
@@ -466,29 +469,29 @@ describe('链接管理', () => {
     });
     const host = await wrap(<LinkManager />);
     await settle();
-    await click(buttonNamed('立即重试全部（2）', host));
+    await click(buttonNamed('Retry all now (2)', host));
     await settle();
     expect(server.posts('/api/links/check').filter((body) => !(body as { status_only?: boolean }).status_only))
       .toEqual([{ retry: [2, 3], check_id: 'check-3' }]);
   });
 
-  it('服务端拒绝时回 200 加 ok:false，照样当失败说出来', async () => {
+  it('Server rejections return 200 with ok:false and are still reported as failures', async () => {
     serve({
       '/api/links': stats,
       '/api/links/check': (body: { status_only?: boolean }) => (body.status_only
         ? { ...checked, status: 'idle' }
-        : { ok: false, error: '清单已过期，请重新检查' }),
+        : { ok: false, error: 'The list went stale; check again' }),
       '/api/links/prune': { status: 'idle' },
     });
     const host = await wrap(<LinkManager />);
     await settle();
-    await click(buttonNamed('检查死链', host));
+    await click(buttonNamed('Check dead links', host));
     await settle();
-    expect(host.textContent).toContain('清单已过期，请重新检查');
+    expect(host.textContent).toContain('The list went stale; check again');
   });
 });
 
-describe('孤儿记录', () => {
+describe('Orphan records', () => {
   const orphans: OrphanRecordsData = {
     total: 2,
     items: [
@@ -501,7 +504,7 @@ describe('孤儿记录', () => {
         ],
       },
       {
-        id: 12, name: '海边.mp4', code: '', location: 'local', duration: 600, size: 10,
+        id: 12, name: 'seaside.mp4', code: '', location: 'local', duration: 600, size: 10,
         vanished_at: 100, has_thumb: false, records: { watch_queue: 1, last_played: 1 }, candidates: [],
       },
     ],
@@ -514,89 +517,89 @@ describe('孤儿记录', () => {
     expect(server.calls.map((call) => call.path)).toContain('/api/orphan-records');
   });
 
-  it('每条列出个人记录与候选文件；没有候选的只给删除记录', async () => {
+  it('Each row lists personal records and candidate files; rows without candidates offer only delete-record', async () => {
     serve({ '/api/orphan-records': orphans });
     const host = await wrap(<OrphanRecordsCard toast={vi.fn()} />);
     await settle();
-    const rows = [...host.querySelectorAll('[aria-label="文件已消失的作品"] tbody tr')];
+    const rows = [...host.querySelectorAll('[aria-label="Videos whose files disappeared"] tbody tr')];
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.textContent).toContain('喜欢与理由 1 · 观看历史 3 · 评分 4 · 播放 2 次');
-    expect(rows[0]!.textContent).toContain('ABC-123.mkv · 60 分钟');
+    expect(rows[0]!.textContent).toContain('Likes and reasons 1 · Watch history 3 · Rating 4 · Played 2 times');
+    expect(rows[0]!.textContent).toContain('ABC-123.mkv · 60 min');
     expect(rows[0]!.querySelector('img')?.getAttribute('src')).toBe('/thumb?id=7&c=4');
-    expect(rows[1]!.textContent).toContain('稍后看 1 · 播放过');
+    expect(rows[1]!.textContent).toContain('Watch later 1 · Played');
     expect(rows[1]!.querySelector('[role="combobox"]')).toBeNull();
-    expect(buttonNamed('转移记录', rows[1]!)).toBeFalsy();
-    expect(buttonNamed('删除记录', rows[1]!)).toBeTruthy();
+    expect(buttonNamed('Move records', rows[1]!)).toBeFalsy();
+    expect(buttonNamed('Delete records', rows[1]!)).toBeTruthy();
   });
 
-  it('删除记录在最左，转移记录是这一行的主动作、排在最右', async () => {
+  it('Delete-record sits leftmost, and move-records is the row\'s primary action placed rightmost', async () => {
     serve({ '/api/orphan-records': orphans });
     const host = await wrap(<OrphanRecordsCard toast={vi.fn()} />);
     await settle();
-    const row = host.querySelector('[aria-label="文件已消失的作品"] tbody tr')!;
-    const order = actionOrder(buttonNamed('删除记录', row)!.parentElement);
-    expect(order[0]).toBe('删除记录');
-    expect(order.at(-1)).toBe('转移记录');
-    expect(buttonNamed('转移记录', row)!.className).toContain('bg-button-primary');
+    const row = host.querySelector('[aria-label="Videos whose files disappeared"] tbody tr')!;
+    const order = actionOrder(buttonNamed('Delete records', row)!.parentElement);
+    expect(order[0]).toBe('Delete records');
+    expect(order.at(-1)).toBe('Move records');
+    expect(buttonNamed('Move records', row)!.className).toContain('bg-button-primary');
   });
 
-  it('转移记录直接发，目标默认是时长最接近的那个', async () => {
+  it('Transfer records are sent directly; the target defaults to the one with the closest duration', async () => {
     const server = serve({ '/api/orphan-records': orphans, '/api/orphan-records/attach': { ok: true, batch: 'user:reattach@1' } });
     const toast = vi.fn();
     const host = await wrap(<OrphanRecordsCard toast={toast} />);
     await settle();
-    await click(buttonNamed('转移记录', host));
+    await click(buttonNamed('Move records', host));
     await settle();
     expect(server.posts('/api/orphan-records/attach')).toEqual([{ id: 7, target: 9 }]);
-    expect(toast).toHaveBeenCalledWith('已将「ABC-123.mp4」的个人记录转移到「ABC-123.mkv」');
+    expect(toast).toHaveBeenCalledWith('Moved the personal records of "ABC-123.mp4" to "ABC-123.mkv"');
   });
 
-  /** 点第二条的「删除记录」，交回弹层上写的与发出去的批量请求。 */
+  /** Click 'Delete record' on the second entry and hand back what the popover wrote plus the batch request it sent. */
   async function purgeSecond(answer: boolean) {
     const seen = confirmWith(answer);
     const server = serve({ '/api/orphan-records': orphans, '/api/batch': { ok: true, purged: 1, blocked: [] } });
     const host = await wrap(<OrphanRecordsCard toast={vi.fn()} />);
     await settle();
-    await click(buttonNamed('删除记录', host.querySelectorAll('[aria-label="文件已消失的作品"] tbody tr')[1]!));
+    await click(buttonNamed('Delete records', host.querySelectorAll('[aria-label="Videos whose files disappeared"] tbody tr')[1]!));
     await settle();
     return { seen, posts: server.posts('/api/batch') };
   }
 
-  it('删除记录需危险确认，正文写明不可撤销，确认了才发批量删除', async () => {
+  it('Deleting records requires a danger confirmation whose body states it is irreversible; the batch delete fires only after confirming', async () => {
     const { seen, posts } = await purgeSecond(true);
     expect(seen[0]!.danger).toBe(true);
-    expect(seen[0]!.body).toBe('将删除「海边.mp4」的作品记录及其个人记录（稍后看 1 · 播放过）。此操作不可撤销。');
+    expect(seen[0]!.body).toBe('Will delete the video records of "seaside.mp4" and their personal records (Watch later 1 · Played). This cannot be undone.');
     expect(posts).toEqual([{ ids: [12], operation: 'delete' }]);
   });
 
-  it('取消确认就不发删除', async () => {
+  it('Cancelling confirmation sends no delete', async () => {
     expect((await purgeSecond(false)).posts).toEqual([]);
   });
 
-  it('批量删除覆盖跨页选择，取消确认不发请求，文件恢复时显示保留数量', async () => {
-    const items = Array.from({ length: 23 }, (_, index) => ({ ...orphans.items[1]!, id: index + 30, name: `作品 ${index}` }));
+  it('Batch delete covers cross-page selection; canceling the confirmation sends no request, and file restore shows the kept count', async () => {
+    const items = Array.from({ length: 23 }, (_, index) => ({ ...orphans.items[1]!, id: index + 30, name: `Video ${index}` }));
     const server = serve({ '/api/orphan-records': { total: items.length, items },
       '/api/batch': { ok: true, purged: 1, blocked: [50] } });
     const toast = vi.fn();
     const host = await wrap(<OrphanRecordsCard toast={toast} />);
     await settle();
-    await click(host.querySelector('input[aria-label="选择 作品 0"]'));
-    await click(buttonNamed('下一页', host));
-    await click(host.querySelector('input[aria-label="选择 作品 20"]'));
+    await click(host.querySelector('input[aria-label="Select Video 0"]'));
+    await click(buttonNamed('Next page', host));
+    await click(host.querySelector('input[aria-label="Select Video 20"]'));
     confirmWith(false);
-    await click(buttonNamed('删除所选记录（2）', host));
+    await click(buttonNamed('Delete selected records (2)', host));
     expect(server.posts('/api/batch')).toEqual([]);
     const seen = confirmWith(true);
-    await click(buttonNamed('删除所选记录（2）', host));
+    await click(buttonNamed('Delete selected records (2)', host));
     await settle();
-    expect(seen[0]!.items).toEqual(['作品 0', '作品 20']);
+    expect(seen[0]!.items).toEqual(['Video 0', 'Video 20']);
     expect(server.posts('/api/batch')).toEqual([{ ids: [30, 50], operation: 'delete' }]);
-    expect(toast).toHaveBeenCalledWith('已删除 1 条作品记录及其个人记录；1 条文件已恢复，记录未删除');
+    expect(toast).toHaveBeenCalledWith('Deleted 1 video record and its personal records; 1 file was restored, records not deleted');
   });
 });
 
-describe('整理', () => {
-  it('每个参数都能插入模板，默认追加到文件名并把光标留在参数后', async () => {
+describe('Organize', () => {
+  it('Every parameter can be inserted into the template; by default it appends to the filename and leaves the cursor after the parameter', async () => {
     serve({ '/api/organize': organizeIdle });
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
@@ -610,33 +613,33 @@ describe('整理', () => {
     }
   });
 
-  it('参数替换目录模板的选区，连续插入沿用光标，不改变文件名', async () => {
+  it('Parameters replace the folder template\'s selection, consecutive inserts reuse the cursor, and file names stay untouched', async () => {
     serve({ '/api/organize': organizeIdle });
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    const dir = host.querySelector<HTMLInputElement>('input[placeholder="留空表示原地改名"]')!;
-    await type(dir, '厂牌/作品');
-    await act(async () => { dir.focus(); dir.setSelectionRange(3, 5) });
-    await click(host.querySelector('button[aria-label="番号 {code}"]'));
-    expect(dir.value).toBe('厂牌/{code}');
-    await click(host.querySelector('button[aria-label="标题 {title}"]'));
-    expect(dir.value).toBe('厂牌/{code}{title}');
+    const dir = host.querySelector<HTMLInputElement>('input[placeholder="Leave empty to rename in place"]')!;
+    await type(dir, 'Label/video');
+    await act(async () => { dir.focus(); dir.setSelectionRange(6, 11) });
+    await click(host.querySelector('button[aria-label="Code {code}"]'));
+    expect(dir.value).toBe('Label/{code}');
+    await click(host.querySelector('button[aria-label="Title {title}"]'));
+    expect(dir.value).toBe('Label/{code}{title}');
     expect(document.activeElement).toBe(dir);
     expect(host.querySelector<HTMLInputElement>('input[placeholder="{code}[ {title}]"]')!.value).toBe('{code}');
   });
 
-  it('套用模板替换两个输入框，编辑参数后需要重新预览', async () => {
+  it('Applying a template replaces both inputs, and editing params requires previewing again', async () => {
     const server = organizeServer();
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    await click(buttonNamed('预览', host));
+    await click(buttonNamed('Preview', host));
     await settle();
-    expect(buttonNamed('执行整理', host)).not.toBeNull();
-    await click(buttonNamed('番号 + 标题', host));
-    expect(buttonNamed('执行整理', host)).toBeNull();
+    expect(buttonNamed('Run organizing', host)).not.toBeNull();
+    await click(buttonNamed('Code + title', host));
+    expect(buttonNamed('Run organizing', host)).toBeNull();
     expect(host.querySelector<HTMLInputElement>('input[placeholder="{code}[ {title}]"]')!.value).toBe('{code}[ {title}]');
-    expect(host.querySelector<HTMLInputElement>('input[placeholder="留空表示原地改名"]')!.value).toBe('{studio}');
-    await click(host.querySelector('button[aria-label="标题 {title}"]'));
+    expect(host.querySelector<HTMLInputElement>('input[placeholder="Leave empty to rename in place"]')!.value).toBe('{studio}');
+    await click(host.querySelector('button[aria-label="Title {title}"]'));
     expect(host.querySelector<HTMLInputElement>('input[placeholder="{code}[ {title}]"]')!.value).toBe('{code}[ {title}]{title}');
     expect(server.posts('/api/organize/apply')).toEqual([]);
   });
@@ -658,35 +661,35 @@ describe('整理', () => {
     });
   }
 
-  it('模板框跟着存下的模板走；预览发的是这一格的来源与模板，预览不存模板', async () => {
+  it('The template box follows the stored template; preview sends this row\'s source and template, and preview never stores a template', async () => {
     const server = organizeServer();
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
     const file = host.querySelector<HTMLInputElement>('input[placeholder="{code}[ {title}]"]');
     expect(file?.value).toBe('{code}');
     await type(file, ' {code} {title} ');
-    await click(buttonNamed('预览', host));
+    await click(buttonNamed('Preview', host));
     await settle();
     expect(server.posts('/api/organize/preview')).toEqual([
       { location: 'local', path: '', file_template: '{code} {title}', dir_template: '' },
     ]);
     expect(server.posts('/api/settings')).toEqual([]);
-    expect(host.textContent).toContain('2 个文件会改名或移动，5 个已经就是目标名字；跳过 缺番号 1。');
+    expect(host.textContent).toContain('2 files will be renamed or moved, 5 already have the target name; skipped 1 missing code.');
     expect(host.textContent).toContain('ABC-001.mp4');
   });
 
-  it('执行先确认，确认了才发 apply，起跑后存下这次的模板', async () => {
+  it('Run confirms first; only after confirmation does it send apply, and once running it stores the template for this run', async () => {
     const seen = confirmWith(true);
     const server = organizeServer();
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    expect(buttonNamed('执行整理', host)).toBeNull();
-    await click(buttonNamed('预览', host));
+    expect(buttonNamed('Run organizing', host)).toBeNull();
+    await click(buttonNamed('Preview', host));
     await settle();
-    await click(buttonNamed('执行整理', host));
+    await click(buttonNamed('Run organizing', host));
     await settle();
-    expect(seen.map((options) => options.title)).toEqual(['整理文件']);
-    expect(seen[0]!.body).toContain('「本地」上的文件名与目录');
+    expect(seen.map((options) => options.title)).toEqual(['Organize files']);
+    expect(seen[0]!.body).toContain("Local's file names and directories");
     expect(server.posts('/api/organize/apply')).toEqual([
       { location: 'local', path: '', file_template: '{code}', dir_template: '', confirm: true },
     ]);
@@ -695,89 +698,89 @@ describe('整理', () => {
     ]);
   });
 
-  it('路径选择与输入共用预览范围；编辑路径后须重新预览', async () => {
+  it('Path picker and input share the preview range; editing the path requires previewing again', async () => {
     const seen = confirmWith(true);
     const server = serve({
       '/api/organize': { ...organizeIdle, status: 'running' },
       '/api/organize/preview': plan,
       '/api/organize/apply': { status: 'running', job_id: 'scoped-1' },
-      '/api/pick-folder': { path: 'R:\\media\\合集' },
+      '/api/pick-folder': { path: 'R:\\media\\compilations' },
       '/api/settings': { ok: true },
     });
     queryClient.setQueryData(['organize'], organizeIdle);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
     const path = host.querySelector<HTMLInputElement>('input[name="organize-path"]');
-    await click(host.querySelector('[aria-label="选择整理路径"]'));
+    await click(host.querySelector('[aria-label="Choose the organize path"]'));
     await settle();
     expect(server.posts('/api/pick-folder')).toEqual([{ initial: 'R:\\media' }]);
-    expect(path?.value).toBe('R:\\media\\合集');
-    await click(buttonNamed('预览', host));
+    expect(path?.value).toBe('R:\\media\\compilations');
+    await click(buttonNamed('Preview', host));
     await settle();
-    expect(server.posts('/api/organize/preview')[0]).toMatchObject({ path: 'R:\\media\\合集' });
-    await type(path, 'R:\\media\\其他');
-    expect(buttonNamed('执行整理', host)).toBeNull();
-    await click(buttonNamed('预览', host));
+    expect(server.posts('/api/organize/preview')[0]).toMatchObject({ path: 'R:\\media\\compilations' });
+    await type(path, 'R:\\media\\misc');
+    expect(buttonNamed('Run organizing', host)).toBeNull();
+    await click(buttonNamed('Preview', host));
     await settle();
-    await click(buttonNamed('执行整理', host));
+    await click(buttonNamed('Run organizing', host));
     await settle();
-    expect(seen[0]?.body).toContain('R:\\media\\其他');
-    expect(server.posts('/api/organize/apply')[0]).toMatchObject({ path: 'R:\\media\\其他', confirm: true });
+    expect(seen[0]?.body).toContain('R:\\media\\misc');
+    expect(server.posts('/api/organize/apply')[0]).toMatchObject({ path: 'R:\\media\\misc', confirm: true });
   });
 
-  it('取消目录选择保留输入；切换来源清空路径和预览', async () => {
+  it('Canceling directory selection keeps the input; switching sources clears the path and preview', async () => {
     const data = { ...organizeIdle, locations: [...organizeIdle.locations, { location: '115', roots: ['B:\\'] }] };
     serve({ '/api/organize': data, '/api/organize/preview': plan, '/api/pick-folder': { path: null } });
     queryClient.setQueryData(['organize'], data);
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
     const path = host.querySelector<HTMLInputElement>('input[name="organize-path"]');
-    await type(path, 'R:\\media\\合集');
-    await click(host.querySelector('[aria-label="选择整理路径"]'));
+    await type(path, 'R:\\media\\compilations');
+    await click(host.querySelector('[aria-label="Choose the organize path"]'));
     await settle();
-    expect(path?.value).toBe('R:\\media\\合集');
-    await click(buttonNamed('预览', host));
+    expect(path?.value).toBe('R:\\media\\compilations');
+    await click(buttonNamed('Preview', host));
     await settle();
-    await choose(host.querySelector('[aria-label="整理哪个来源"]'), '115');
+    await choose(host.querySelector('[aria-label="Which source to organize"]'), '115');
     expect(path?.value).toBe('');
-    expect(buttonNamed('执行整理', host)).toBeNull();
+    expect(buttonNamed('Run organizing', host)).toBeNull();
   });
 
-  it('底栏回滚在左、预览居中、执行整理在最右；只有执行整理在场时预览才退成次级', async () => {
+  it('In the bottom bar rollback sits left, preview centered, and run organize rightmost; preview demotes to secondary only when run organize is present', async () => {
     organizeServer({ ...organizeIdle, last_batch: 'batch-9' });
     queryClient.setQueryData(['organize'], { ...organizeIdle, last_batch: 'batch-9' });
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
     const footer = () => host.querySelector('[data-cleanup-organize] footer');
-    expect(actionOrder(footer())).toEqual(['回滚上一批', '预览']);
-    expect(buttonNamed('预览', host)!.className).toContain('bg-button-primary');
-    await click(buttonNamed('预览', host));
+    expect(actionOrder(footer())).toEqual(['Roll back last batch', 'Preview']);
+    expect(buttonNamed('Preview', host)!.className).toContain('bg-button-primary');
+    await click(buttonNamed('Preview', host));
     await settle();
-    expect(actionOrder(footer())).toEqual(['回滚上一批', '预览', '执行整理']);
-    expect(buttonNamed('预览', host)!.className).not.toContain('bg-button-primary');
-    expect(buttonNamed('执行整理', host)!.className).toContain('bg-button-primary');
+    expect(actionOrder(footer())).toEqual(['Roll back last batch', 'Preview', 'Run organizing']);
+    expect(buttonNamed('Preview', host)!.className).not.toContain('bg-button-primary');
+    expect(buttonNamed('Run organizing', host)!.className).toContain('bg-button-primary');
   });
 
-  it('有上一批才给回滚；回滚也先确认，取消就不发', async () => {
+  it('Rollback is only offered with a previous batch; rollback also confirms first, and cancel sends nothing', async () => {
     const seen = confirmWith(false);
     const server = organizeServer({ ...organizeIdle, last_batch: 'batch-9' });
     queryClient.setQueryData(['organize'], { ...organizeIdle, last_batch: 'batch-9' });
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    await click(buttonNamed('回滚上一批', host));
+    await click(buttonNamed('Roll back last batch', host));
     await settle();
-    expect(seen.map((options) => options.title)).toEqual(['回滚上一批整理']);
+    expect(seen.map((options) => options.title)).toEqual(['Roll back the previous organize batch']);
     expect(server.posts('/api/organize/rollback')).toEqual([]);
     expect(server.posts('/api/organize/apply')).toEqual([]);
 
     queryClient.clear();
     queryClient.setQueryData(['organize'], organizeIdle);
     const fresh = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    expect(buttonNamed('回滚上一批', fresh)).toBeNull();
+    expect(buttonNamed('Roll back last batch', fresh)).toBeNull();
   });
 
-  it('回滚确认了才发，请求体只有 confirm', async () => {
+  it('The rollback request is sent only after confirmation, and the body is confirm only', async () => {
     confirmWith(true);
     const server = organizeServer({ ...organizeIdle, last_batch: 'batch-9' });
     queryClient.setQueryData(['organize'], { ...organizeIdle, last_batch: 'batch-9' });
     const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
-    await click(buttonNamed('回滚上一批', host));
+    await click(buttonNamed('Roll back last batch', host));
     await settle();
     expect(server.posts('/api/organize/rollback')).toEqual([{ confirm: true }]);
   });

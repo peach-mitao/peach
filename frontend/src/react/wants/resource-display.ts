@@ -8,9 +8,9 @@ export function resourceSize(value: string | null | undefined): string {
   return bytes ? fmtSize(Number(bytes[1].replaceAll(',', ''))) : value || '大小未知';
 }
 
-/** 缓存中的来源限制只表述本次取得范围，不推断账号权限。 */
+/** A cached source limit only describes what this fetch covered and never infers account permissions. */
 export function resourceNotice(value: string): string {
-  return /^更多评论.*(?:VIP|官方 App)/.test(value)
-    ? '来源只返回了部分评论，资源链接可能不完整。'
+  return /^More comments.*(?:VIP|官方 App)/.test(value)
+    ? 'The source returned only part of the comments; resource links may be incomplete.'
     : value;
 }

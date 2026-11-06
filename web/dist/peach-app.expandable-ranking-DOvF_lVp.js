@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "85dcd517-300a-485d-95f1-8f0b87d3c4e2", e._sentryDebugIdIdentifier = "sentry-dbid-85dcd517-300a-485d-95f1-8f0b87d3c4e2");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "3a49932c-b935-42ed-9dfb-dcefd3a4374e", e._sentryDebugIdIdentifier = "sentry-dbid-3a49932c-b935-42ed-9dfb-dcefd3a4374e");
 	} catch {}
 })();
 import { CHART_CARD as e, CategoryTick as t, ChartEmpty as n, ChartHead as r, ChartTip as i, Dot as a, EvilBarChart as o, Layer as s, TIP_SURFACE as c, TIP_SWATCH as l, Text as u, TipRow as d, ZIndexLayer as f, adaptEventsOfChild as p, addAngleAxis as m, categoryAxisWidth as h, combineAxisTicks as g, combineCategoricalDomain as _, combineConfiguredScale as v, combineGraphicalItemTicks as y, createSelector as b, defaultPolarAngleAxisProps as x, degreeToRadian as S, getAxisTypeBasedOnLayout as C, getClassNameFromUnknown as w, noop as T, pickAxisType as E, polarToCartesian as D, rechartsScaleFactory as ee, removeAngleAxis as te, resolveDefaultProps as ne, roundTemplateLiteral as re, selectAngleAxis as O, selectAngleAxisRangeWithReversed as ie, selectChartLayout as k, selectDuplicateDomain as A, selectPolarAppliedValues as ae, selectPolarAxisCheckedDomain as oe, selectPolarNiceTicks as se, selectPolarViewBox as ce, selectRadiusAxis as le, selectRadiusAxisRangeWithReversed as ue, selectRealScaleType as de, selectRenderableAxisSettings as fe, svgPropertiesAndEvents as j, svgPropertiesNoEvents as M, svgPropertiesNoEventsFromUnknown as pe, tone as me, useAppDispatch as he, useAppSelector as N, useIsPanorama as ge, usePolarChartLayout as _e } from "./peach-app.chart-tip-CRxYp6KT.js";
@@ -312,7 +312,7 @@ function Ze(e) {
 		let r = e / t;
 		return `${r.toLocaleString(void 0, { maximumFractionDigits: +(Math.abs(r) < 100) })}${n}`;
 	};
-	return t >= 1e8 ? n(1e8, "亿") : t >= 1e5 ? n(1e4, "万") : e.toLocaleString();
+	return t >= 1e9 ? n(1e9, "B") : t >= 1e6 ? n(1e6, "M") : t >= 1e5 ? n(1e3, "K") : e.toLocaleString();
 }
 var X = (e) => ({
 	position: e,
@@ -385,13 +385,13 @@ function Qe({ title: a, unit: s, series: c, rows: l, color: u, empty: d, layout:
 }
 // src/react/charts/heat.ts
 var $e = [
-	"周一",
-	"周二",
-	"周三",
-	"周四",
-	"周五",
-	"周六",
-	"周日"
+	"Mon",
+	"Tue",
+	"Wed",
+	"Thu",
+	"Fri",
+	"Sat",
+	"Sun"
 ], et = (e, t) => e ? Math.max(.12, e / t) : 0;
 function tt(e) {
 	let t = Array.from({ length: 7 }, () => Array(24).fill(0));
@@ -561,8 +561,11 @@ var ot = /* @__PURE__ */ (0, J.jsxs)(J.Fragment, { children: [$e.map((e, t) => /
 	dominantBaseline: "middle",
 	className: "fill-text-secondary text-caption-1-regular",
 	children: t
-}, t))] });
-function st({ activity: e, title: t, dailyTitle: r, words: i, tone: a, empty: o }) {
+}, t))] }), st = () => {
+	let e = -(/* @__PURE__ */ new Date()).getTimezoneOffset(), t = e < 0 ? "-" : "+", n = Math.abs(e);
+	return `UTC${t}${String(Math.trunc(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+};
+function ct({ activity: e, title: t, dailyTitle: r, words: i, tone: a, empty: o }) {
 	let s = tt(e), c = nt(e);
 	return c.cells.length ? /* @__PURE__ */ (0, J.jsxs)("div", {
 		className: "inline-grid w-full items-start gap-5 lg:grid-cols-2",
@@ -575,7 +578,7 @@ function st({ activity: e, title: t, dailyTitle: r, words: i, tone: a, empty: o 
 			columns: 24,
 			rows: 7,
 			axis: ot,
-			footer: /* @__PURE__ */ (0, J.jsxs)(J.Fragment, { children: [/* @__PURE__ */ (0, J.jsx)("span", { children: "星期 × 小时" }), /* @__PURE__ */ (0, J.jsx)("span", { children: e?.timezone || "UTC+08:00" })] })
+			footer: /* @__PURE__ */ (0, J.jsxs)(J.Fragment, { children: [/* @__PURE__ */ (0, J.jsx)("span", { children: "Weekday × hour" }), /* @__PURE__ */ (0, J.jsx)("span", { children: e?.timezone || st() })] })
 		}), /* @__PURE__ */ (0, J.jsx)($, {
 			title: r,
 			words: i,
@@ -592,7 +595,7 @@ function st({ activity: e, title: t, dailyTitle: r, words: i, tone: a, empty: o 
 	});
 }
 // src/react/components/expandable-ranking.tsx
-function ct({ children: e, className: t = "", previewCount: n = 10 }) {
+function lt({ children: e, className: t = "", previewCount: n = 10 }) {
 	let r = (0, F.useId)(), i = (0, F.useRef)(null), [a, o] = (0, F.useState)(!1), [s, c] = (0, F.useState)(!1), l = F.Children.toArray(e), u = l.length > n;
 	(0, F.useLayoutEffect)(() => {
 		let e = i.current;
@@ -629,7 +632,7 @@ function ct({ children: e, className: t = "", previewCount: n = 10 }) {
 			"data-ranking-toggle": !0,
 			"aria-controls": r,
 			"aria-expanded": a,
-			"aria-label": a ? "收起排名" : "展开更多排名",
+			"aria-label": a ? "Collapse ranking" : "Show more ranking",
 			onClick: () => {
 				c(!0), o((e) => !e);
 			},
@@ -637,6 +640,6 @@ function ct({ children: e, className: t = "", previewCount: n = 10 }) {
 		}) : null]
 	});
 }
-export { st as ActivityHeat, Y as BAR_DOMAIN, Qe as BarCard, ct as ExpandableRanking, Xe as PolarAngleAxis, z as Polygon, X as barLabel, H as selectPolarAxisScale, W as selectPolarAxisTicks, je as selectPolarGraphicalItemAxisTicks };
+export { ct as ActivityHeat, Y as BAR_DOMAIN, Qe as BarCard, lt as ExpandableRanking, Xe as PolarAngleAxis, z as Polygon, X as barLabel, H as selectPolarAxisScale, W as selectPolarAxisTicks, je as selectPolarGraphicalItemAxisTicks };
 
-//# debugId=85dcd517-300a-485d-95f1-8f0b87d3c4e2
+//# debugId=3a49932c-b935-42ed-9dfb-dcefd3a4374e

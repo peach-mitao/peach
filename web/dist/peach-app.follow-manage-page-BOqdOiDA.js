@@ -1,20 +1,20 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "674b25f6-536a-4708-aaf8-bcd20af2a392", e._sentryDebugIdIdentifier = "sentry-dbid-674b25f6-536a-4708-aaf8-bcd20af2a392");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "b192af89-df49-4842-af55-a8b2a8686b05", e._sentryDebugIdIdentifier = "sentry-dbid-b192af89-df49-4842-af55-a8b2a8686b05");
 	} catch {}
 })();
 import { createPaginatedRowModel as e } from "./peach-app.createPaginatedRowModel-ClHnhG_T.js";
 import { createSortedRowModel as t, useTableSelection as n } from "./peach-app.use-table-selection-BSdXI_Nc.js";
-import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as r, $542a13ca2fa5b484$export$5b6b19405a83ff9d as i, $76d00c5a4edb230a$export$76ccd210b9029917 as a, $76d00c5a4edb230a$export$816b5d811295e6bc as o, $76d00c5a4edb230a$export$b59bdbef9ce70de2 as s, $76d00c5a4edb230a$export$f6f0c3fe4ec306ea as c, $76d00c5a4edb230a$export$f850895b287ef28e as l, $b4f18e3395fe64d7$export$3d96ec278d3efce4 as u, $b4f18e3395fe64d7$export$3e41faf802a29e71 as d, $b4f18e3395fe64d7$export$b2539bed5023c21c as f, $ea3928288112382f$export$439d29a4e110a164 as p, $l as m, Button as h, ButtonLink as g, Bx as _, Checkbox as v, ChevronSortDown as ee, Chip as y, DataTableFooter as b, DataTableFrame as te, DataTableSort as x, EmptyFocusButton as S, EmptyState as C, ErrorText as w, ExternalLink as T, FEEDS_KEY as ne, FOLLOW_CREDENTIALS_KEY as re, FOLLOW_MANAGE_KEY as E, FOLLOW_MANAGE_NAV as D, FOLLOW_RESOLVE_KEY as O, FieldLabel as k, Help as A, Input as j, LoadingDots as M, M6 as N, MENU_ITEM as P, MENU_ITEM_INTERACTIVE as F, MENU_POPOVER_SURFACE as I, ModalFrame as L, Note as R, P7 as ie, SORT_DEFAULT_DIR as z, STAT_STRIP_SIX as B, SelectionDock as V, SelectionPopover as H, SiteLabel as ae, Switch as oe, Table as se, TableColumnControls as ce, TableColumnResizer as le, TableSelectionHeader as ue, TagManager as U, TaskProgress as W, Wt as de, Xf as fe, __toESM as pe, addAlias as me, addSource as he, avatarInner as G, busyProps as K, cardClass as ge, checkFeeds as _e, columnVisibilityFeature as ve, composingKey as q, confirmModal as ye, createColumnHelper as be, credentialDone as xe, cx as J, dZ as Y, errorHeadline as Se, errorMessage as X, feedIntervalText as Ce, fetchCredentials as we, fetchFeeds as Te, fetchFollow as Ee, fetchResolveJob as De, fetchSuggestions as Oe, flexRender as ke, followFeedByName as Ae, followFeedEntity as je, followSuggestKey as Me, groupByAuthor as Ne, isBroken as Pe, isLayout as Fe, keepSelected as Ie, localTime as Le, lookupFeedActor as Re, mapLimit as ze, pageSizeOf as Be, pageWindow as Ve, pv as He, queryClient as Ue, reloadFollowManage as We, removeAlias as Ge, removeFeed as Ke, renameAliasGroup as qe, require_jsx_runtime as Je, require_react as Ye, resolveFollowSort as Xe, rowPaginationFeature as Ze, rowSelectionFeature as Qe, rowSortingFeature as $e, setFeedEnabled as et, startCheck as tt, startResolve as nt, tableFeatures as rt, useAction as it, useBackgroundJob as at, useMutation as ot, useQuery as st, useTable as ct, useTablePreferences as lt } from "./peach-app.js";
-import { Page as ut } from "./peach-app.page-QAncjzM1.js";
-import { LEGACY_AVATAR_IMG as dt } from "./peach-app.legacy-avatar-NSITxLRS.js";
-import { PillAriaTabList as ft } from "./peach-app.pill-aria-tab-list-BMY1ZEv1.js";
-import { AuthorAvatar as pt, SourceIcon as mt } from "./peach-app.source-view-DalWfDkm.js";
-import { SourceList as ht } from "./peach-app.source-list-ri5fRK2E.js";
+import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as r, $542a13ca2fa5b484$export$5b6b19405a83ff9d as i, $76d00c5a4edb230a$export$76ccd210b9029917 as a, $76d00c5a4edb230a$export$816b5d811295e6bc as o, $76d00c5a4edb230a$export$b59bdbef9ce70de2 as s, $76d00c5a4edb230a$export$f6f0c3fe4ec306ea as c, $76d00c5a4edb230a$export$f850895b287ef28e as l, $b4f18e3395fe64d7$export$3d96ec278d3efce4 as u, $b4f18e3395fe64d7$export$3e41faf802a29e71 as d, $b4f18e3395fe64d7$export$b2539bed5023c21c as f, $ea3928288112382f$export$439d29a4e110a164 as ee, $l as p, ApiError as m, Button as h, ButtonLink as g, Bx as _, Checkbox as v, ChevronSortDown as te, Chip as y, DataTableFooter as ne, DataTableFrame as b, DataTableSort as re, EmptyFocusButton as x, EmptyState as S, ErrorText as ie, ExternalLink as C, FEEDS_KEY as w, FOLLOW_CREDENTIALS_KEY as T, FOLLOW_MANAGE_KEY as E, FOLLOW_MANAGE_NAV as D, FOLLOW_RESOLVE_KEY as O, FieldLabel as k, Help as A, Input as j, LoadingDots as M, M6 as N, MENU_ITEM as P, MENU_ITEM_INTERACTIVE as F, MENU_POPOVER_SURFACE as I, ModalFrame as L, Note as R, P7 as z, SORT_DEFAULT_DIR as B, STAT_STRIP_SIX as V, SelectionDock as H, SelectionPopover as U, SiteLabel as ae, Switch as oe, Table as se, TableColumnControls as ce, TableColumnResizer as le, TableSelectionHeader as ue, TagManager as W, TaskProgress as de, Wt as fe, Xf as pe, __toESM as me, addAlias as he, addSource as ge, avatarInner as G, busyProps as K, cardClass as _e, checkFeeds as ve, columnVisibilityFeature as ye, composingKey as q, confirmModal as be, createColumnHelper as xe, credentialDone as Se, cx as J, dZ as Y, errorHeadline as Ce, errorMessage as X, feedIntervalText as we, fetchCredentials as Te, fetchFeeds as Ee, fetchFollow as De, fetchResolveJob as Oe, fetchSuggestions as ke, flexRender as Ae, followFeedByName as je, followFeedEntity as Me, followSuggestKey as Ne, groupByAuthor as Pe, isBroken as Fe, isLayout as Ie, keepSelected as Le, localTime as Re, lookupFeedActor as ze, mapLimit as Be, pageSizeOf as Ve, pageWindow as He, pv as Ue, queryClient as We, reloadFollowManage as Ge, removeAlias as Ke, removeFeed as qe, renameAliasGroup as Je, require_jsx_runtime as Ye, require_react as Xe, resolveFollowSort as Ze, rowPaginationFeature as Qe, rowSelectionFeature as $e, rowSortingFeature as et, setFeedEnabled as tt, startCheck as nt, startResolve as rt, tableFeatures as it, useAction as at, useBackgroundJob as ot, useMutation as st, useQuery as ct, useTable as lt, useTablePreferences as ut } from "./peach-app.js";
+import { Page as dt } from "./peach-app.page-QAncjzM1.js";
+import { LEGACY_AVATAR_IMG as ft } from "./peach-app.legacy-avatar-NSITxLRS.js";
+import { PillAriaTabList as pt } from "./peach-app.pill-aria-tab-list-BMY1ZEv1.js";
+import { AuthorAvatar as mt, SourceIcon as ht } from "./peach-app.source-view-Cr-fzNHo.js";
+import { SourceList as gt } from "./peach-app.source-list-BPZPYgyw.js";
 // src/react/follow-manage/add-source.tsx
-var Z = /* @__PURE__ */ pe(Ye(), 1), Q = Je(), gt = J(P, F, "text-body-2-medium"), _t = "粘贴来源链接，或输入创作者名、id…", vt = "添加创作者关注", yt = "查找中（首次按名字查要下载创作者索引，可能几十秒）", bt = "识别中", xt = "站内没有查到来源", St = "/settings/subscriptions", Ct = (e, t) => `${e}:${t.url}`;
-function wt({ field: e, menu: t, options: n, active: r, busy: a, onPick: o, onClose: s }) {
+var Z = /* @__PURE__ */ me(Xe(), 1), Q = Ye(), _t = J(P, F, "text-body-2-medium"), vt = "Paste a source link, or type a creator name or id…", yt = "Add a creator follow", bt = "Searching (the first name lookup downloads the creator index and may take tens of seconds)", xt = "Identifying", St = "The in-site lookup found no source", Ct = "/settings/subscriptions", wt = (e, t) => `${e}:${t.url}`;
+function Tt({ field: e, menu: t, options: n, active: r, busy: a, onPick: o, onClose: s }) {
 	return (0, Z.useEffect)(() => {
 		t.current?.querySelector("[aria-current=\"true\"]")?.scrollIntoView({ block: "nearest" });
 	}, [t, r]), /* @__PURE__ */ (0, Q.jsxs)(i, {
@@ -28,18 +28,18 @@ function wt({ field: e, menu: t, options: n, active: r, busy: a, onPick: o, onCl
 		},
 		placement: "bottom start",
 		offset: 4,
-		"aria-label": "来源建议",
+		"aria-label": "Source suggestions",
 		className: J(I, "flex w-(--trigger-width) flex-col gap-1 overscroll-contain"),
 		children: [a && !n.length ? /* @__PURE__ */ (0, Q.jsx)("div", {
 			className: "px-2 py-1.5",
-			children: /* @__PURE__ */ (0, Q.jsx)(M, { label: "正在查找建议" })
+			children: /* @__PURE__ */ (0, Q.jsx)(M, { label: "Searching suggestions" })
 		}) : null, n.map((e, t) => /* @__PURE__ */ (0, Q.jsxs)(Z.Fragment, { children: [e.group === n[t - 1]?.group ? null : /* @__PURE__ */ (0, Q.jsx)("div", {
 			className: "px-2 pt-1 text-caption-1-regular text-text-tertiary",
 			children: e.group
 		}), /* @__PURE__ */ (0, Q.jsxs)("button", {
 			type: "button",
 			"aria-current": t === r ? "true" : void 0,
-			className: t === r ? J(gt, "bg-background-secondary-default") : gt,
+			className: t === r ? J(_t, "bg-background-secondary-default") : _t,
 			onMouseDown: (e) => e.preventDefault(),
 			onClick: () => o(e.value),
 			children: [
@@ -59,19 +59,19 @@ function wt({ field: e, menu: t, options: n, active: r, busy: a, onPick: o, onCl
 		})] }, `${e.group}-${e.value}`))]
 	});
 }
-function Tt({ credentials: e, hidden: t, onHidden: n }) {
-	let r = (e.providers || []).filter((e) => e.followable), i = r.filter((e) => !t.has(e.provider_label)).length, a = i === r.length ? "全部来源" : `${i}/${r.length} 个来源`;
-	return /* @__PURE__ */ (0, Q.jsx)(H, {
-		label: "来源筛选",
+function Et({ credentials: e, hidden: t, onHidden: n }) {
+	let r = (e.providers || []).filter((e) => e.followable), i = r.filter((e) => !t.has(e.provider_label)).length, a = i === r.length ? "All sources" : `${i}/${r.length} sources`;
+	return /* @__PURE__ */ (0, Q.jsx)(U, {
+		label: "Source filter",
 		triggerLabel: a,
-		leadingIcon: m,
-		empty: "暂无可用来源",
+		leadingIcon: p,
+		empty: "'No sources available yet'",
 		items: r.map((e) => ({
 			id: e.provider_label,
 			selected: !t.has(e.provider_label),
 			label: /* @__PURE__ */ (0, Q.jsxs)("span", {
 				className: "flex min-w-0 items-center gap-1.5",
-				children: [/* @__PURE__ */ (0, Q.jsx)(mt, { provider: e.provider }), e.provider_label]
+				children: [/* @__PURE__ */ (0, Q.jsx)(ht, { provider: e.provider }), e.provider_label]
 			})
 		})),
 		onChange: (e, r) => {
@@ -80,31 +80,31 @@ function Tt({ credentials: e, hidden: t, onHidden: n }) {
 		},
 		actions: [
 			{
-				label: "全选",
+				label: "Select all",
 				disabled: !r.length,
 				onPress: () => n(/* @__PURE__ */ new Set())
 			},
 			{
-				label: "全不选",
+				label: "Deselect all",
 				disabled: !r.length,
 				onPress: () => n(new Set(r.map((e) => e.provider_label)))
 			},
 			{
-				label: "凭据设置",
-				href: St
+				label: "Credential setup",
+				href: Ct
 			}
 		]
 	});
 }
-function Et({ row: e, at: t, hidden: n, unpicked: r, onPick: i }) {
+function Dt({ row: e, at: t, hidden: n, unpicked: r, onPick: i }) {
 	if (e.kind === "error") return /* @__PURE__ */ (0, Q.jsx)(R, {
 		tone: "error",
 		title: e.line,
-		children: e.error || "查找失败"
+		children: e.error || "Lookup failed"
 	});
 	let a = (e.candidates || []).filter((e) => !n.has(e.provider_label || "")), o = Object.entries(e.failures || {});
 	return /* @__PURE__ */ (0, Q.jsxs)("div", {
-		className: ge({
+		className: _e({
 			variant: "outlined",
 			padding: "none",
 			className: "flex flex-col gap-2 p-4"
@@ -115,7 +115,7 @@ function Et({ row: e, at: t, hidden: n, unpicked: r, onPick: i }) {
 				children: e.line
 			}),
 			a.length ? a.map((e) => {
-				let n = Ct(t, e);
+				let n = wt(t, e);
 				return /* @__PURE__ */ (0, Q.jsx)(v, {
 					isSelected: !e.known && !r.has(n),
 					isDisabled: e.known,
@@ -123,7 +123,7 @@ function Et({ row: e, at: t, hidden: n, unpicked: r, onPick: i }) {
 					children: /* @__PURE__ */ (0, Q.jsxs)("span", {
 						className: "flex min-w-0 flex-wrap items-center gap-1.5",
 						children: [
-							/* @__PURE__ */ (0, Q.jsx)(mt, { provider: e.provider }),
+							/* @__PURE__ */ (0, Q.jsx)(ht, { provider: e.provider }),
 							/* @__PURE__ */ (0, Q.jsx)("b", {
 								className: "text-body-medium",
 								children: e.provider_label
@@ -134,28 +134,28 @@ function Et({ row: e, at: t, hidden: n, unpicked: r, onPick: i }) {
 							}),
 							/* @__PURE__ */ (0, Q.jsx)("small", {
 								className: "text-caption-1-regular text-text-secondary",
-								children: e.known ? "已经关注" : e.evidence
+								children: e.known ? "Already followed" : e.evidence
 							})
 						]
 					})
 				}, n);
-			}) : /* @__PURE__ */ (0, Q.jsx)(A, { children: xt }),
+			}) : /* @__PURE__ */ (0, Q.jsx)(A, { children: St }),
 			(e.external_searches || []).map((e) => /* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-2",
 				children: [/* @__PURE__ */ (0, Q.jsx)("small", {
 					className: "text-caption-1-regular text-text-secondary",
 					children: e.evidence
-				}), /* @__PURE__ */ (0, Q.jsx)(T, {
+				}), /* @__PURE__ */ (0, Q.jsx)(C, {
 					href: e.url,
-					children: `${e.label}：${e.query}`
+					children: `${e.label}: ${e.query}`
 				})]
 			}, e.url)),
-			o.length ? /* @__PURE__ */ (0, Q.jsx)(A, { children: o.map(([e, t]) => `${e}：${t}`).join("；") }) : null
+			o.length ? /* @__PURE__ */ (0, Q.jsx)(A, { children: o.map(([e, t]) => `${e}: ${t}`).join("; ") }) : null
 		]
 	});
 }
-function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
-	let [i, a] = (0, Z.useState)(""), [o, s] = (0, Z.useState)(!1), [c, l] = (0, Z.useState)(""), [u, d] = (0, Z.useState)(""), [f, p] = (0, Z.useState)(!1), [m, g] = (0, Z.useState)(null), [_, v] = (0, Z.useState)(-1), ee = (0, Z.useRef)(null), y = (0, Z.useRef)(null), [b, te] = (0, Z.useState)(/* @__PURE__ */ new Set()), [x, S] = (0, Z.useState)(/* @__PURE__ */ new Set()), [C, w] = (0, Z.useState)(""), [T, ne] = (0, Z.useState)(0);
+function Ot({ data: e, credentials: t, readOnly: n, toast: r }) {
+	let [i, a] = (0, Z.useState)(""), [o, s] = (0, Z.useState)(!1), [c, l] = (0, Z.useState)(""), [u, d] = (0, Z.useState)(""), [f, ee] = (0, Z.useState)(!1), [p, m] = (0, Z.useState)(null), [g, _] = (0, Z.useState)(-1), v = (0, Z.useRef)(null), te = (0, Z.useRef)(null), [y, ne] = (0, Z.useState)(/* @__PURE__ */ new Set()), [b, re] = (0, Z.useState)(/* @__PURE__ */ new Set()), [x, S] = (0, Z.useState)(""), [ie, C] = (0, Z.useState)(0);
 	(0, Z.useEffect)(() => {
 		let e = i.trim();
 		if (o || !e || e.includes("/")) {
@@ -165,63 +165,63 @@ function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
 		let t = setTimeout(() => d(e), 250);
 		return () => clearTimeout(t);
 	}, [i, o]);
-	let re = st({
-		queryKey: Me(u),
-		queryFn: ({ signal: e }) => Oe(u, e),
-		enabled: u.length > 0 && f && !o && m !== i
-	}), E = (0, Z.useMemo)(() => (re.data?.groups || []).flatMap((e) => e.items.map((t) => ({
+	let w = ct({
+		queryKey: Ne(u),
+		queryFn: ({ signal: e }) => ke(u, e),
+		enabled: u.length > 0 && f && !o && p !== i
+	}), T = (0, Z.useMemo)(() => (w.data?.groups || []).flatMap((e) => e.items.map((t) => ({
 		value: t.value,
 		matched: t.matched || "",
 		n: t.n || 0,
 		group: e.label
-	}))), [re.data]), { job: D, running: A, outcome: M, start: N, dismiss: P } = at({
+	}))), [w.data]), { job: E, running: D, outcome: A, start: M, dismiss: N } = ot({
 		queryKey: O,
-		queryFn: ({ signal: e }) => De(e),
-		start: (e) => nt([e]),
-		onStarted: () => S(/* @__PURE__ */ new Set()),
-		onError: (e) => w(X(e)),
+		queryFn: ({ signal: e }) => Oe(e),
+		start: (e) => rt([e]),
+		onStarted: () => re(/* @__PURE__ */ new Set()),
+		onError: (e) => S(X(e)),
 		onFinish: (e) => {
-			e.status === "failed" && w(e.error || "查找失败");
+			e.status === "failed" && S(e.error || "Lookup failed");
 		}
-	}), F = (e) => {
+	}), P = (e) => {
 		let t = e.trim();
-		!t || n || o || A || N.isPending || (w(""), v(-1), l(t), a(t), d(""), g(t), N.mutate(t));
-	}, I = re.isFetching, L = f && !o && m !== i && (E.length > 0 || I), ie = () => {
-		v(-1), g(i);
+		!t || n || o || D || M.isPending || (S(""), _(-1), l(t), a(t), d(""), m(t), M.mutate(t));
+	}, F = w.isFetching, I = f && !o && p !== i && (T.length > 0 || F), L = () => {
+		_(-1), m(i);
 	}, z = (e) => {
 		if (!(o || q(e.nativeEvent))) {
-			if (e.key === "Escape" && L) ie();
+			if (e.key === "Escape" && I) L();
 			else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-				if (!E.length) return;
-				if (e.preventDefault(), !L) {
-					g(null);
+				if (!T.length) return;
+				if (e.preventDefault(), !I) {
+					m(null);
 					return;
 				}
 				let t = e.key === "ArrowDown" ? 1 : -1;
-				v((e) => {
+				_((e) => {
 					let n = e + t;
-					return n < 0 ? E.length - 1 : n >= E.length ? 0 : n;
+					return n < 0 ? T.length - 1 : n >= T.length ? 0 : n;
 				});
-			} else e.key === "Enter" && (e.preventDefault(), F(E[_]?.value || i));
+			} else e.key === "Enter" && (e.preventDefault(), P(T[g]?.value || i));
 		}
-	}, B = M?.results || [], V = B.flatMap((e, t) => (e.candidates || []).filter((e) => !e.known && !b.has(e.provider_label || "")).map((e) => ({
+	}, B = A?.results || [], V = B.flatMap((e, t) => (e.candidates || []).filter((e) => !e.known && !y.has(e.provider_label || "")).map((e) => ({
 		candidate: e,
-		key: Ct(t, e)
-	})).filter((e) => !x.has(e.key))), H = ot({
+		key: wt(t, e)
+	})).filter((e) => !b.has(e.key))), H = st({
 		mutationFn: async (e) => {
 			let t = [], n = [];
-			ne(0);
+			C(0);
 			for (let r of e) {
 				try {
-					let e = await he(r.candidate);
+					let e = await ge(r.candidate);
 					n.push(e.source);
 				} catch (e) {
-					t.push(`${r.candidate.label}：${X(e)}`);
+					t.push(`${r.candidate.label}: ${X(e)}`);
 				}
-				ne((e) => e + 1);
+				C((e) => e + 1);
 			}
 			if (n.length) try {
-				await tt(n);
+				await nt(n);
 			} catch (e) {
 				t.push(X(e));
 			}
@@ -231,97 +231,97 @@ function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
 			};
 		},
 		onSuccess: (e) => {
-			We(), e.failures.length ? w(e.failures.join("；")) : (w(""), P(), r(`已添加 ${e.sources.length} 个关注来源`));
+			Ge(), e.failures.length ? S(e.failures.join("; ")) : (S(""), N(), r(`Added ${e.sources.length} follow sources`));
 		},
-		onError: (e) => w(X(e))
-	}), ae = e.suggestions || [], oe = !c.includes("/");
+		onError: (e) => S(X(e))
+	}), U = e.suggestions || [], ae = !c.includes("/");
 	return /* @__PURE__ */ (0, Q.jsxs)("section", {
-		"aria-label": vt,
-		className: ge({
+		"aria-label": yt,
+		className: _e({
 			padding: "none",
 			className: "flex flex-col gap-4 px-6 py-5 max-sm:px-4"
 		}),
 		children: [
 			/* @__PURE__ */ (0, Q.jsx)("h3", {
 				className: "text-title-2-medium text-text-primary",
-				children: vt
+				children: yt
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-wrap items-end gap-2",
 				children: [
 					/* @__PURE__ */ (0, Q.jsxs)("div", {
-						ref: ee,
+						ref: v,
 						className: "min-w-64 grow",
-						onFocus: () => p(!0),
+						onFocus: () => ee(!0),
 						onBlur: (e) => {
 							let t = e.relatedTarget;
-							!e.currentTarget.contains(t) && !y.current?.contains(t) && p(!1);
+							!e.currentTarget.contains(t) && !te.current?.contains(t) && ee(!1);
 						},
 						children: [/* @__PURE__ */ (0, Q.jsx)(j, {
-							"aria-label": "来源链接、名字或 id",
-							placeholder: _t,
+							"aria-label": "Source link, name, or id",
+							placeholder: vt,
 							value: i,
-							leadingIcon: He,
+							leadingIcon: Ue,
 							enterKeyHint: "search",
 							isDisabled: n,
 							onChange: a,
 							onCompositionStart: () => {
-								s(!0), v(-1);
+								s(!0), _(-1);
 							},
 							onCompositionEnd: (e) => {
 								s(!1), a(e.currentTarget.value);
 							},
 							onKeyDown: z
-						}), L ? /* @__PURE__ */ (0, Q.jsx)(wt, {
-							field: ee,
-							menu: y,
-							options: E,
-							active: _,
-							busy: I,
-							onPick: F,
-							onClose: ie
+						}), I ? /* @__PURE__ */ (0, Q.jsx)(Tt, {
+							field: v,
+							menu: te,
+							options: T,
+							active: g,
+							busy: F,
+							onPick: P,
+							onClose: L
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, Q.jsx)(Tt, {
+					/* @__PURE__ */ (0, Q.jsx)(Et, {
 						credentials: t,
-						hidden: b,
-						onHidden: te
+						hidden: y,
+						onHidden: ne
 					}),
 					/* @__PURE__ */ (0, Q.jsx)(h, {
 						variant: "primary",
 						disabled: n || !i.trim(),
-						...K(A || N.isPending),
-						onClick: () => F(i),
-						children: "查找"
+						...K(D || M.isPending),
+						onClick: () => P(i),
+						children: "Find"
 					})
 				]
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("div", {
 				"aria-live": "polite",
 				className: "flex flex-col gap-3 empty:hidden",
-				children: [A || N.isPending ? /* @__PURE__ */ (0, Q.jsx)(W, {
+				children: [D || M.isPending ? /* @__PURE__ */ (0, Q.jsx)(de, {
 					embedded: !0,
-					label: D?.message || (D?.total ? `查找中：${D.checked || 0}/${D.total}` : oe ? yt : bt),
-					value: D?.checked,
-					total: D?.total
-				}) : null, C ? /* @__PURE__ */ (0, Q.jsx)(R, {
+					label: E?.message || (E?.total ? `Searching: ${E.checked || 0}/${E.total}` : ae ? bt : xt),
+					value: E?.checked,
+					total: E?.total
+				}) : null, x ? /* @__PURE__ */ (0, Q.jsx)(R, {
 					tone: "error",
-					title: "这一次没有完成",
-					children: C
+					title: "This run did not finish",
+					children: x
 				}) : null]
 			}),
 			B.length ? /* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-col gap-3",
 				children: [
-					/* @__PURE__ */ (0, Q.jsx)(k, { children: "查找结果" }),
-					B.map((e, t) => /* @__PURE__ */ (0, Q.jsx)(Et, {
+					/* @__PURE__ */ (0, Q.jsx)(k, { children: "Lookup results" }),
+					B.map((e, t) => /* @__PURE__ */ (0, Q.jsx)(Dt, {
 						row: e,
 						at: t,
-						hidden: b,
-						unpicked: x,
+						hidden: y,
+						unpicked: b,
 						onPick: (e, t) => {
-							let n = new Set(x);
-							t ? n.delete(e) : n.add(e), S(n);
+							let n = new Set(b);
+							t ? n.delete(e) : n.add(e), re(n);
 						}
 					}, `${e.line}-${t}`)),
 					/* @__PURE__ */ (0, Q.jsxs)("div", {
@@ -330,8 +330,8 @@ function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
 							/* @__PURE__ */ (0, Q.jsx)(h, {
 								variant: "secondary",
 								size: "small",
-								onClick: () => P(),
-								children: "关闭"
+								onClick: () => N(),
+								children: "Off"
 							}),
 							/* @__PURE__ */ (0, Q.jsx)(h, {
 								variant: "primary",
@@ -339,28 +339,28 @@ function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
 								disabled: n || !V.length,
 								...K(H.isPending),
 								onClick: () => H.mutate(V),
-								children: `添加选中（${V.length}）`
+								children: `Add selected (${V.length})`
 							}),
 							H.isPending ? /* @__PURE__ */ (0, Q.jsx)("span", {
 								role: "status",
 								className: "text-body-2-regular text-text-secondary",
-								children: `添加中… ${T}/${V.length}`
+								children: `Adding… ${ie}/${V.length}`
 							}) : null
 						]
 					})
 				]
 			}) : null,
-			ae.length ? /* @__PURE__ */ (0, Q.jsxs)("div", {
+			U.length ? /* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-2",
 				children: [/* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "text-body-2-regular text-text-secondary",
-					children: "猜你喜欢"
-				}), ae.map((e) => /* @__PURE__ */ (0, Q.jsx)(h, {
+					children: "Guess you like"
+				}), U.map((e) => /* @__PURE__ */ (0, Q.jsx)(h, {
 					variant: "secondary",
 					size: "small",
 					disabled: n,
-					title: `浏览历史里出现 ${e.visits} 次${e.origin ? ` · ${e.origin}` : ""}`,
-					onClick: () => F(e.name),
+					title: `Appeared ${e.visits} times in browsing history${e.origin ? ` · ${e.origin}` : ""}`,
+					onClick: () => P(e.name),
 					children: e.name
 				}, e.name))]
 			}) : null
@@ -368,27 +368,27 @@ function Dt({ data: e, credentials: t, readOnly: n, toast: r }) {
 	});
 }
 // src/react/follow-manage/add-feed.tsx
-var Ot = "输入女优名，到 JavDB 找她的演员页", kt = "添加 JAV 订阅";
-function At(e, t) {
+var kt = "Enter a performer name to find her performer page on JavDB", At = "Add JAV subscription";
+function jt(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	for (let r of e.candidates) t.has(r.id) && r.held_by && n.set(r.held_by.id, r.held_by.name);
 	if (n.size > 1) return {
-		text: `所勾的卡分属数据库里不同的人：${[...n.values()].join("、")}，先去合并再订`,
+		text: `The selected cards belong to different people in the database: ${[...n.values()].join(", ")}. Merge them first, then follow`,
 		blocked: !0
 	};
 	let [r] = n.values();
 	return r ? {
-		text: `会登记到「${r}」名下`,
+		text: `It will file under "${r}"`,
 		blocked: !1
 	} : e.known ? {
-		text: `会登记到数据库里的「${e.known.name}」名下`,
+		text: `It will be filed under "${e.known.name}" in the database`,
 		blocked: !1
 	} : {
-		text: `数据库里还没有「${e.q}」，会新建一位`,
+		text: `"${e.q}" is not in the database yet; a new person will be created`,
 		blocked: !1
 	};
 }
-function jt({ card: e, picked: t, onPick: n }) {
+function Mt({ card: e, picked: t, onPick: n }) {
 	return /* @__PURE__ */ (0, Q.jsxs)("div", {
 		className: "flex flex-wrap items-center gap-2",
 		children: [/* @__PURE__ */ (0, Q.jsx)(v, {
@@ -399,7 +399,7 @@ function jt({ card: e, picked: t, onPick: n }) {
 				children: [
 					/* @__PURE__ */ (0, Q.jsx)("span", {
 						className: "min-w-0 break-words",
-						children: e.names.join("、")
+						children: e.names.join(", ")
 					}),
 					e.record ? /* @__PURE__ */ (0, Q.jsx)(y, {
 						variant: "caption",
@@ -408,56 +408,56 @@ function jt({ card: e, picked: t, onPick: n }) {
 					}) : null,
 					e.held_by ? /* @__PURE__ */ (0, Q.jsx)("small", {
 						className: "text-caption-1-regular text-text-secondary",
-						children: `已在「${e.held_by.name}」名下`
+						children: `Already filed under "${e.held_by.name}"`
 					}) : null
 				]
 			})
-		}), /* @__PURE__ */ (0, Q.jsx)(T, {
+		}), /* @__PURE__ */ (0, Q.jsx)(C, {
 			href: e.url,
 			children: e.id
 		})]
 	});
 }
-function Mt({ readOnly: e, toast: t, onAdded: n }) {
-	let [r, i] = (0, Z.useState)(""), [a, o] = (0, Z.useState)(null), [s, c] = (0, Z.useState)(/* @__PURE__ */ new Set()), l = it(), u = () => {
+function Nt({ readOnly: e, toast: t, onAdded: n }) {
+	let [r, i] = (0, Z.useState)(""), [a, o] = (0, Z.useState)(null), [s, c] = (0, Z.useState)(/* @__PURE__ */ new Set()), l = at(), u = () => {
 		let t = r.trim();
-		t && !e && l.run("lookup", (e) => Re(t, e), (e) => {
+		t && !e && l.run("lookup", (e) => ze(t, e), (e) => {
 			o(e), c(new Set(e.suggested));
 		});
 	}, d = (e) => {
 		e.key === "Enter" && !q(e.nativeEvent) && (e.preventDefault(), u());
 	}, f = () => {
 		o(null), c(/* @__PURE__ */ new Set()), l.setError("");
-	}, p = () => {
-		a && l.run("follow", (e) => Ae(a.q, [...s], e), (e) => {
-			t(e.created ? `已新建「${e.entity_name}」并订阅她的新作` : `已订阅「${e.entity_name}」的新作`), i(""), f(), n();
+	}, ee = () => {
+		a && l.run("follow", (e) => je(a.q, [...s], e), (e) => {
+			t(e.created ? `Created "${e.entity_name}" and subscribed to her new releases` : `Subscribed to new releases of "${e.entity_name}"`), i(""), f(), n();
 		});
-	}, m = () => {
+	}, p = () => {
 		let e = a?.known;
-		e && l.run("known", (t) => je(e.id, t), () => {
+		e && l.run("known", (t) => Me(e.id, t), () => {
 			t(`已订阅「${e.name}」的新作`), i(""), f(), n();
 		});
-	}, g = a ? At(a, s) : null, _ = a && !a.candidates.length && a.known?.subscribable ? a.known : null;
+	}, m = a ? jt(a, s) : null, g = a && !a.candidates.length && a.known?.subscribable ? a.known : null;
 	return /* @__PURE__ */ (0, Q.jsxs)("section", {
-		"aria-label": kt,
-		className: ge({
+		"aria-label": At,
+		className: _e({
 			padding: "none",
 			className: "flex flex-col gap-4 px-6 py-5 max-sm:px-4"
 		}),
 		children: [
 			/* @__PURE__ */ (0, Q.jsx)("h3", {
 				className: "text-title-2-medium text-text-primary",
-				children: kt
+				children: At
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-wrap items-end gap-2",
 				children: [/* @__PURE__ */ (0, Q.jsx)("div", {
 					className: "min-w-64 grow",
 					children: /* @__PURE__ */ (0, Q.jsx)(j, {
-						"aria-label": "女优名",
-						placeholder: Ot,
+						"aria-label": "Performer name",
+						placeholder: kt,
 						value: r,
-						leadingIcon: He,
+						leadingIcon: Ue,
 						enterKeyHint: "search",
 						isDisabled: e,
 						onChange: i,
@@ -468,12 +468,12 @@ function Mt({ readOnly: e, toast: t, onAdded: n }) {
 					disabled: e || !r.trim(),
 					...K(l.busy === "lookup"),
 					onClick: u,
-					children: "查找"
+					children: "Find"
 				})]
 			}),
 			l.error ? /* @__PURE__ */ (0, Q.jsx)(R, {
 				tone: "error",
-				title: "这一次没有完成",
+				title: "This run did not finish",
 				children: l.error
 			}) : null,
 			a ? /* @__PURE__ */ (0, Q.jsxs)("div", {
@@ -485,7 +485,7 @@ function Mt({ readOnly: e, toast: t, onAdded: n }) {
 						children: a.unavailable
 					}) : null,
 					/* @__PURE__ */ (0, Q.jsx)(k, { children: "JavDB 上的演员卡" }),
-					a.candidates.length ? a.candidates.map((e) => /* @__PURE__ */ (0, Q.jsx)(jt, {
+					a.candidates.length ? a.candidates.map((e) => /* @__PURE__ */ (0, Q.jsx)(Mt, {
 						card: e,
 						picked: s.has(e.id),
 						onPick: (t) => c((n) => {
@@ -495,11 +495,11 @@ function Mt({ readOnly: e, toast: t, onAdded: n }) {
 					}, e.id)) : /* @__PURE__ */ (0, Q.jsx)(A, { children: a.unavailable ? "这一次没有拿到演员卡。" : "JavDB 上没有搜到这个名字。" }),
 					a.candidates.length ? /* @__PURE__ */ (0, Q.jsx)(A, {
 						role: "status",
-						children: s.size ? g.text : "勾选她的演员卡；有碼与無碼两条记录都是她的话，两张都勾。"
+						children: s.size ? m.text : "Check her performer card; if both the censored and uncensored records are her, check both."
 					}) : null,
-					_ ? /* @__PURE__ */ (0, Q.jsx)(A, {
+					g ? /* @__PURE__ */ (0, Q.jsx)(A, {
 						role: "status",
-						children: _.following ? `数据库里的「${_.name}」已经在订阅新作。` : `数据库里的「${_.name}」已有 JavDB 或 DMM 编号，可以直接订阅。`
+						children: g.following ? `数据库里的「${g.name}」已经在订阅新作。` : `数据库里的「${g.name}」已有 JavDB 或 DMM 编号，可以直接订阅。`
 					}) : null,
 					/* @__PURE__ */ (0, Q.jsxs)("div", {
 						className: "flex flex-wrap items-center gap-2",
@@ -508,23 +508,23 @@ function Mt({ readOnly: e, toast: t, onAdded: n }) {
 								variant: "secondary",
 								size: "small",
 								onClick: f,
-								children: "关闭"
+								children: "Off"
 							}),
 							a.candidates.length ? /* @__PURE__ */ (0, Q.jsx)(h, {
 								variant: "primary",
 								size: "small",
-								disabled: e || !s.size || g.blocked,
+								disabled: e || !s.size || m.blocked,
 								...K(l.busy === "follow"),
-								onClick: p,
-								children: `添加订阅（${s.size}）`
+								onClick: ee,
+								children: `Add subscriptions (${s.size})`
 							}) : null,
-							_ && !_.following ? /* @__PURE__ */ (0, Q.jsx)(h, {
+							g && !g.following ? /* @__PURE__ */ (0, Q.jsx)(h, {
 								variant: "primary",
 								size: "small",
 								disabled: e,
 								...K(l.busy === "known"),
-								onClick: m,
-								children: `订阅「${_.name}」`
+								onClick: p,
+								children: `订阅「${g.name}」`
 							}) : null
 						]
 					})
@@ -534,27 +534,27 @@ function Mt({ readOnly: e, toast: t, onAdded: n }) {
 	});
 }
 // src/react/follow-manage/alias-rename-dialog.tsx
-function Nt({ group: e, close: t, receipt: n }) {
+function Pt({ group: e, close: t, receipt: n }) {
 	return /* @__PURE__ */ (0, Q.jsx)(L, {
 		isOpen: !!e,
 		onOpenChange: (e) => {
 			e || t();
 		},
 		width: "form",
-		label: "修改统一名称",
-		children: e ? /* @__PURE__ */ (0, Q.jsx)(Pt, {
+		label: "Edit the canonical name",
+		children: e ? /* @__PURE__ */ (0, Q.jsx)(Ft, {
 			group: e,
 			close: t,
 			receipt: n
 		}, e.canonical_key) : null
 	});
 }
-function Pt({ group: e, close: t, receipt: n }) {
-	let [i, a] = (0, Z.useState)(e.canonical_name), o = it();
+function Ft({ group: e, close: t, receipt: n }) {
+	let [i, a] = (0, Z.useState)(e.canonical_name), o = at();
 	return /* @__PURE__ */ (0, Q.jsxs)("form", {
 		onSubmit: (r) => {
-			r.preventDefault(), i.trim() && i.trim() !== e.canonical_name && o.run("rename", (t) => qe(e.canonical_key, i.trim(), t), () => {
-				We(), n(`已把统一名称改为 ${i.trim()}`), t();
+			r.preventDefault(), i.trim() && i.trim() !== e.canonical_name && o.run("rename", (t) => Je(e.canonical_key, i.trim(), t), () => {
+				Ge(), n(`Changed the canonical name to ${i.trim()}`), t();
 			});
 		},
 		className: "flex min-h-0 flex-col gap-4 p-5",
@@ -562,21 +562,21 @@ function Pt({ group: e, close: t, receipt: n }) {
 			/* @__PURE__ */ (0, Q.jsx)(r, {
 				slot: "title",
 				className: "text-title-2-semibold text-text-primary",
-				children: "修改统一名称"
+				children: "Edit the canonical name"
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("p", {
 				className: "text-body-2-regular wrap-anywhere text-text-secondary",
-				children: ["当前名称：", e.canonical_name]
+				children: ["Current name:", e.canonical_name]
 			}),
 			/* @__PURE__ */ (0, Q.jsx)(j, {
-				"aria-label": "统一名称",
+				"aria-label": "Canonical name",
 				autoFocus: !0,
 				value: i,
 				onChange: a
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-col gap-2",
-				children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "选择已有别名" }), /* @__PURE__ */ (0, Q.jsx)("div", {
+				children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "Pick an existing alias" }), /* @__PURE__ */ (0, Q.jsx)("div", {
 					className: "flex flex-wrap gap-2",
 					children: e.aliases.map((e) => /* @__PURE__ */ (0, Q.jsx)(h, {
 						variant: "secondary",
@@ -588,7 +588,7 @@ function Pt({ group: e, close: t, receipt: n }) {
 			}),
 			/* @__PURE__ */ (0, Q.jsx)("p", {
 				className: "text-body-2-regular text-text-secondary",
-				children: "原名称保留为别名，关联档案和作品署名会同步更新。"
+				children: "The original name is kept as an alias; linked profiles and video credits update together."
 			}),
 			o.error ? /* @__PURE__ */ (0, Q.jsx)(R, {
 				tone: "error",
@@ -599,82 +599,82 @@ function Pt({ group: e, close: t, receipt: n }) {
 				children: [/* @__PURE__ */ (0, Q.jsx)(h, {
 					variant: "secondary",
 					onClick: t,
-					children: "取消"
+					children: "Cancel"
 				}), /* @__PURE__ */ (0, Q.jsx)(h, {
 					type: "submit",
 					variant: "primary",
 					disabled: !i.trim() || i.trim() === e.canonical_name,
 					...K(!!o.busy),
-					children: "修改统一名称"
+					children: "Edit the canonical name"
 				})]
 			})
 		]
 	});
 }
 // src/react/follow-manage/alias-manager.tsx
-var Ft = (e) => `将移除别名「${e}」，对应来源恢复为独立创作者组。`, It = rt({
-	rowSelectionFeature: Qe,
-	rowSortingFeature: $e,
-	rowPaginationFeature: Ze,
-	columnVisibilityFeature: ve,
+var It = (e) => `The alias "${e}" will be removed and its source restored to a standalone creator group.`, Lt = it({
+	rowSelectionFeature: $e,
+	rowSortingFeature: et,
+	rowPaginationFeature: Qe,
+	columnVisibilityFeature: ye,
 	sortedRowModel: t(),
 	paginatedRowModel: e()
-}), Lt = It, Rt = {
+}), Rt = Lt, zt = {
 	id: "select",
-	label: "选择",
+	label: "Select",
 	width: 48,
 	min: 48,
 	max: 48,
 	required: !0
-}, zt = {
+}, Bt = {
 	id: "canonical",
-	label: "统一名称",
+	label: "Canonical name",
 	width: 280,
 	min: 240,
 	required: !0,
 	flex: !0
-}, Bt = [
-	Rt,
+}, Vt = [
 	zt,
+	Bt,
 	{
 		id: "alias",
-		label: "平台别名",
+		label: "Platform alias",
 		width: 240
 	},
 	{
 		id: "evidence",
-		label: "依据",
+		label: "Basis",
 		width: 320
 	},
 	{
 		id: "actions",
-		label: "操作",
+		label: "Actions",
 		width: 112
 	}
-], Vt = [
-	Rt,
+], Ht = [
 	zt,
+	Bt,
 	{
 		id: "aliases",
-		label: "平台别名",
+		label: "Platform alias",
 		width: 400
 	},
 	{
 		id: "actions",
-		label: "操作",
+		label: "Actions",
 		width: 184,
 		min: 168
 	}
-], Ht = (e) => e.alias;
-function Ut(e, t, n) {
+], Ut = (e) => e.alias;
+function Wt(e, t, n) {
 	let r = n ? `name:${n}` : "", i = r && e.find((e) => e.author_key === r) || e.find((e) => e.author_name === t || e.entity_name === t);
 	return i ? e.filter((e) => e.author_key === i.author_key) : [];
 }
-function Wt({ sources: e, name: t, canonicalKey: n }) {
+function Gt({ sources: e, name: t, canonicalKey: n }) {
 	return /* @__PURE__ */ (0, Q.jsxs)("span", {
 		className: "flex items-center gap-2",
-		children: [/* @__PURE__ */ (0, Q.jsx)(pt, {
-			group: Ut(e, t, n),
+		children: [/* @__PURE__ */ (0, Q.jsx)(mt, {
+			group: Wt(e, t, n),
 			name: t
 		}), /* @__PURE__ */ (0, Q.jsx)("b", {
 			className: "text-body-medium",
@@ -682,8 +682,8 @@ function Wt({ sources: e, name: t, canonicalKey: n }) {
 		})]
 	});
 }
-function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u }) {
-	let d = lt("alias-suggestions", Bt), f = lt("alias-saved", Vt), [p, m] = (0, Z.useState)(null), [g, _] = (0, Z.useState)({}), [y, T] = (0, Z.useState)({}), ne = n(() => _({})), re = n(() => T({})), [E, D] = (0, Z.useState)([]), [O, A] = (0, Z.useState)([]), [M, N] = (0, Z.useState)({
+function Kt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u }) {
+	let d = ut("alias-suggestions", Vt), f = ut("alias-saved", Ht), [ee, p] = (0, Z.useState)(null), [g, _] = (0, Z.useState)({}), [y, C] = (0, Z.useState)({}), w = n(() => _({})), T = n(() => C({})), [E, D] = (0, Z.useState)([]), [O, A] = (0, Z.useState)([]), [M, N] = (0, Z.useState)({
 		pageIndex: 0,
 		pageSize: 20
 	}), [P, F] = (0, Z.useState)({
@@ -695,14 +695,16 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 	}, L = {
 		...P,
 		pageIndex: Math.min(P.pageIndex, Math.max(0, Math.ceil(e.length / P.pageSize) - 1))
-	}, [R, z] = (0, Z.useState)(""), [B, H] = (0, Z.useState)(""), [ae, oe] = (0, Z.useState)(""), U = ot({
+	}, [R, B] = (0, Z.useState)(""), [V, U] = (0, Z.useState)(""), [ae, oe] = (0, Z.useState)(""), W = st({
 		mutationFn: async (e) => {
 			let t = 0;
 			for (let n of e) {
 				try {
-					await me(n.canonical, n.alias);
+					await he(n.canonical, n.alias);
 				} catch (n) {
-					throw t && We(), Error(`${X(n)}（还有 ${e.length - t} 组没有合并）`);
+					t && Ge();
+					let r = e.length - t;
+					throw new m(`${X(n)} (${r} group${r === 1 ? "" : "s"} left unmerged)`, 200);
 				}
 				t += 1;
 			}
@@ -712,89 +714,89 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 			};
 		},
 		onSuccess: (e) => {
-			z(""), _({}), We(), u(`已合并 ${e.done} 组创作者别名`);
+			B(""), _({}), Ge(), u(`Merged ${e.done} creator alias groups`);
 		},
-		onError: (e) => z(X(e))
-	}), W = ot({
-		mutationFn: (e) => me(e.canonical, e.alias),
+		onError: (e) => B(X(e))
+	}), de = st({
+		mutationFn: (e) => he(e.canonical, e.alias),
 		onSuccess: () => {
-			z(""), H(""), oe(""), We(), u("已保存创作者别名");
+			B(""), U(""), oe(""), Ge(), u("Creator aliases saved");
 		},
-		onError: (e) => z(X(e))
-	}), de = ot({
+		onError: (e) => B(X(e))
+	}), fe = st({
 		mutationFn: async (e) => {
 			let t = typeof e == "string" ? [e] : e, n = 0;
 			try {
-				for (let e of t) await Ge(e), n += 1;
+				for (let e of t) await Ke(e), n += 1;
 			} catch (e) {
-				throw Error(`${X(e)}（已移除 ${n} 个别名，还有 ${t.length - n} 个未移除）`);
+				throw Error(`${X(e)} (removed ${n} aliases, ${t.length - n} left unremoved)`);
 			} finally {
-				We();
+				Ge();
 			}
 		},
 		onSuccess: () => {
-			z(""), T({}), u("已移除创作者别名");
+			B(""), C({}), u("Removed the creator alias");
 		},
-		onError: (e) => z(X(e))
-	}), pe = (e, t) => {
-		e.length && ye({
-			title: t ? "合并全部创作者别名" : "合并所选创作者别名",
-			body: `将合并以下 ${e.length} 组创作者：${e.map((e) => `「${e.alias}」归入「${e.canonical}」`).join("；")}。`,
-			confirmLabel: t ? "合并全部别名" : "合并所选别名",
-			onConfirm: () => U.mutateAsync(e)
+		onError: (e) => B(X(e))
+	}), me = (e, t) => {
+		e.length && be({
+			title: t ? "Merge all creator aliases" : "Merge selected creator aliases",
+			body: `Will merge the following ${e.length} creator groups: ${e.map((e) => `"${e.alias}" into "${e.canonical}"`).join("; ")}.`,
+			confirmLabel: t ? "Merge all aliases" : "Merge selected aliases",
+			onConfirm: () => W.mutateAsync(e)
 		});
-	}, he = (e) => void ye({
-		title: "移除创作者别名",
-		body: Ft(e),
-		confirmLabel: "移除创作者别名",
-		onConfirm: () => de.mutateAsync(e)
+	}, ge = (e) => void be({
+		title: "Remove creator alias",
+		body: It(e),
+		confirmLabel: "Remove creator alias",
+		onConfirm: () => fe.mutateAsync(e)
 	}), G = (0, Z.useRef)({
 		sources: r,
 		readOnly: i,
-		merging: U.isPending,
-		removing: de.isPending,
-		merge: pe,
-		remove: he,
-		rename: m
+		merging: W.isPending,
+		removing: fe.isPending,
+		merge: me,
+		remove: ge,
+		rename: p
 	});
 	G.current = {
 		sources: r,
 		readOnly: i,
-		merging: U.isPending,
-		removing: de.isPending,
-		merge: pe,
-		remove: he,
-		rename: m
+		merging: W.isPending,
+		removing: fe.isPending,
+		merge: me,
+		remove: ge,
+		rename: p
 	};
-	let _e = (0, Z.useMemo)(() => {
-		let e = be();
+	let ve = (0, Z.useMemo)(() => {
+		let e = xe();
 		return e.columns([
 			e.display({
 				id: "select",
 				header: (e) => /* @__PURE__ */ (0, Q.jsx)(ue, {
 					table: e.table,
-					label: "全选待合并别名"
+					label: "Select all pending-merge aliases"
 				}),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(v, {
 					slot: null,
 					isSelected: e.row.getIsSelected(),
-					"aria-label": `选择别名 ${e.row.original.alias}，归入 ${e.row.original.canonical}`,
+					"aria-label": `Choose alias ${e.row.original.alias} to merge into ${e.row.original.canonical}`,
 					onChange: (t) => e.row.toggleSelected(t)
 				})
 			}),
 			e.accessor("canonical", {
-				header: "统一名称",
-				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(Wt, {
+				header: "Canonical name",
+				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(Gt, {
 					sources: G.current.sources,
 					name: e.getValue()
 				})
 			}),
 			e.accessor("alias", {
-				header: "平台别名",
+				header: "Platform alias",
 				cell: (e) => e.getValue()
 			}),
 			e.accessor("evidence", {
-				header: "依据",
+				header: "Basis",
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "text-body-2-regular text-text-secondary",
 					children: e.getValue()
@@ -802,44 +804,44 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 			}),
 			e.display({
 				id: "actions",
-				header: "操作",
+				header: "Actions",
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(h, {
 					variant: "secondary",
 					size: "small",
 					disabled: G.current.readOnly,
 					...K(G.current.merging),
 					onClick: () => G.current.merge([e.row.original], !1),
-					children: "合并"
+					children: "Merge"
 				})
 			})
 		]);
-	}, []), ve = (0, Z.useMemo)(() => {
-		let e = be();
+	}, []), ye = (0, Z.useMemo)(() => {
+		let e = xe();
 		return e.columns([
 			e.display({
 				id: "select",
 				header: ({ table: e }) => /* @__PURE__ */ (0, Q.jsx)(ue, {
 					table: e,
-					label: "全选已保存别名"
+					label: "Select all saved aliases"
 				}),
 				cell: ({ row: e }) => /* @__PURE__ */ (0, Q.jsx)(v, {
 					slot: null,
-					"aria-label": `选择已保存别名 ${e.original.canonical_name}`,
+					"aria-label": `Select saved alias ${e.original.canonical_name}`,
 					isSelected: e.getIsSelected(),
 					onChange: (t) => e.toggleSelected(t)
 				})
 			}),
 			e.accessor("canonical_name", {
 				id: "canonical",
-				header: "统一名称",
-				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(Wt, {
+				header: "Canonical name",
+				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(Gt, {
 					sources: G.current.sources,
 					name: e.getValue(),
 					canonicalKey: e.row.original.canonical_key
 				})
 			}),
 			e.accessor("aliases", {
-				header: "平台别名",
+				header: "Platform alias",
 				sortFn: (e, t) => e.original.aliases.map((e) => e.name).join(" ").localeCompare(t.original.aliases.map((e) => e.name).join(" "), "zh-CN"),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "flex flex-wrap items-center gap-1.5",
@@ -849,8 +851,8 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 							variant: "ghost",
 							size: "xs",
 							iconOnly: !0,
-							leadingIcon: ie,
-							"aria-label": `移除别名 ${e.name}`,
+							leadingIcon: z,
+							"aria-label": `Remove alias ${e.name}`,
 							disabled: G.current.readOnly,
 							...K(G.current.removing),
 							onClick: () => G.current.remove(e.name)
@@ -860,22 +862,22 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 			}),
 			e.display({
 				id: "actions",
-				header: "操作",
+				header: "Actions",
 				cell: ({ row: e }) => /* @__PURE__ */ (0, Q.jsx)(h, {
 					variant: "secondary",
 					size: "small",
 					disabled: G.current.readOnly,
-					"aria-label": `修改 ${e.original.canonical_name} 的统一名称`,
+					"aria-label": `Edit the canonical name of ${e.original.canonical_name}`,
 					onClick: () => G.current.rename(e.original),
-					children: "修改统一名称"
+					children: "Edit the canonical name"
 				})
 			})
 		]);
-	}, []), q = ct({
-		features: It,
+	}, []), q = lt({
+		features: Lt,
 		data: t,
-		columns: _e,
-		getRowId: Ht,
+		columns: ve,
+		getRowId: Ut,
 		state: {
 			rowSelection: g,
 			sorting: E,
@@ -884,7 +886,7 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 		},
 		onColumnVisibilityChange: d.change,
 		onRowSelectionChange: (e) => {
-			ne(), _(e);
+			w(), _(e);
 		},
 		onSortingChange: (e) => {
 			D(e), N((e) => ({
@@ -894,10 +896,10 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 		},
 		onPaginationChange: N,
 		enableRowSelection: !0
-	}), xe = ct({
-		features: Lt,
+	}), Se = lt({
+		features: Rt,
 		data: e,
-		columns: ve,
+		columns: ye,
 		getRowId: (e) => e.canonical_key,
 		state: {
 			rowSelection: y,
@@ -907,7 +909,7 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 		},
 		onColumnVisibilityChange: f.change,
 		onRowSelectionChange: (e) => {
-			re(), T(e);
+			T(), C(e);
 		},
 		enableRowSelection: !0,
 		onSortingChange: (e) => {
@@ -917,33 +919,33 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 			}));
 		},
 		onPaginationChange: F
-	}), J = q.getSelectedRowModel().rows.map((e) => e.original), Y = xe.getSelectedRowModel().rows.flatMap((e) => e.original.aliases.map((e) => e.name)), Se = K(U.isPending);
+	}), J = q.getSelectedRowModel().rows.map((e) => e.original), Y = Se.getSelectedRowModel().rows.flatMap((e) => e.original.aliases.map((e) => e.name)), Ce = K(W.isPending);
 	return /* @__PURE__ */ (0, Q.jsxs)("div", {
-		className: ge({
+		className: _e({
 			padding: "none",
 			className: "flex flex-col gap-4 px-6 py-5 max-sm:px-4"
 		}),
 		children: [
 			/* @__PURE__ */ (0, Q.jsx)("h3", {
 				className: "text-title-2-medium text-text-primary",
-				children: "创作者别名"
+				children: "Creator aliases"
 			}),
 			/* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-col gap-2",
-				children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "手动添加别名" }), /* @__PURE__ */ (0, Q.jsxs)("div", {
+				children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "Add an alias manually" }), /* @__PURE__ */ (0, Q.jsxs)("div", {
 					className: "flex flex-wrap items-end gap-2",
 					children: [
 						/* @__PURE__ */ (0, Q.jsx)(j, {
-							"aria-label": "统一名称",
-							placeholder: "在 Peach 中统一显示的名称",
-							value: B,
-							onChange: H,
+							"aria-label": "Canonical name",
+							placeholder: "The name shown consistently across Peach",
+							value: V,
+							onChange: U,
 							isDisabled: i,
 							className: "w-56"
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(j, {
-							"aria-label": "平台别名",
-							placeholder: "平台别名",
+							"aria-label": "Platform alias",
+							placeholder: "Platform alias",
 							value: ae,
 							onChange: oe,
 							isDisabled: i,
@@ -951,18 +953,18 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "primary",
-							disabled: i || !B.trim() || !ae.trim(),
-							...K(W.isPending),
-							onClick: () => W.mutate({
-								canonical: B.trim(),
+							disabled: i || !V.trim() || !ae.trim(),
+							...K(de.isPending),
+							onClick: () => de.mutate({
+								canonical: V.trim(),
 								alias: ae.trim()
 							}),
-							children: "保存别名"
+							children: "Save alias"
 						})
 					]
 				})]
 			}),
-			R ? /* @__PURE__ */ (0, Q.jsx)(w, { children: R }) : null,
+			R ? /* @__PURE__ */ (0, Q.jsx)(ie, { children: R }) : null,
 			t.length ? /* @__PURE__ */ (0, Q.jsxs)("div", {
 				className: "flex flex-col gap-2",
 				children: [
@@ -970,9 +972,9 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 						"data-responsive-toolbar": "",
 						children: [/* @__PURE__ */ (0, Q.jsxs)("div", {
 							"data-toolbar-heading": "",
-							children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "待合并" }), /* @__PURE__ */ (0, Q.jsx)("span", {
+							children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "Pending merge" }), /* @__PURE__ */ (0, Q.jsx)("span", {
 								className: "text-body-2-regular text-text-secondary",
-								children: `${t.length} 组`
+								children: `${t.length} groups`
 							})]
 						}), /* @__PURE__ */ (0, Q.jsxs)("div", {
 							"data-toolbar-actions": "",
@@ -981,25 +983,25 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 									variant: "primary",
 									size: "small",
 									disabled: i,
-									...Se,
-									onClick: () => pe(t, !0),
-									children: `全部合并（${t.length}）`
+									...Ce,
+									onClick: () => me(t, !0),
+									children: `Merge all (${t.length})`
 								}),
-								/* @__PURE__ */ (0, Q.jsx)(x, {
-									label: "待合并创作者别名",
+								/* @__PURE__ */ (0, Q.jsx)(re, {
+									label: "Creator aliases pending merge",
 									sorting: E,
 									options: [
 										{
 											id: "canonical",
-											label: "统一名称"
+											label: "Canonical name"
 										},
 										{
 											id: "alias",
-											label: "平台别名"
+											label: "Platform alias"
 										},
 										{
 											id: "evidence",
-											label: "依据"
+											label: "Basis"
 										}
 									],
 									onChange: (e) => {
@@ -1011,35 +1013,35 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 								}),
 								/* @__PURE__ */ (0, Q.jsx)(ce, {
 									preferences: d,
-									label: "待合并创作者别名"
+									label: "Creator aliases pending merge"
 								})
 							]
 						})]
 					}),
-					/* @__PURE__ */ (0, Q.jsxs)(V, {
-						label: "待合并别名批量操作",
+					/* @__PURE__ */ (0, Q.jsxs)(H, {
+						label: "Pending-merge alias bulk actions",
 						visible: J.length > 0,
-						count: `已选 ${J.length} 组`,
+						count: `${J.length} groups selected`,
 						children: [/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							disabled: i,
-							...Se,
-							onClick: () => pe(J, !1),
-							children: `合并所选（${J.length}）`
+							...Ce,
+							onClick: () => me(J, !1),
+							children: `Merge selected (${J.length})`
 						}), /* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "ghost",
 							size: "small",
 							onClick: () => _({}),
-							children: "取消选择"
+							children: "Clear selection"
 						})]
 					}),
-					/* @__PURE__ */ (0, Q.jsx)(te, {
+					/* @__PURE__ */ (0, Q.jsx)(b, {
 						follow: !0,
 						preferences: d,
 						onRowClick: (e) => q.getRow(e)?.toggleSelected(),
 						children: /* @__PURE__ */ (0, Q.jsxs)(se, {
-							"aria-label": "待合并创作者别名",
+							"aria-label": "Creator aliases pending merge",
 							size: "sm",
 							sortDescriptor: E[0] ? {
 								column: E[0].id,
@@ -1053,10 +1055,10 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 								...d.columnProps(e.id),
 								children: ({ sortDirection: t }) => /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [/* @__PURE__ */ (0, Q.jsxs)("span", {
 									className: "flex items-center gap-0.5",
-									children: [ke(e.column.columnDef.header, e.getContext()), e.column.getCanSort() ? /* @__PURE__ */ (0, Q.jsx)("span", {
+									children: [Ae(e.column.columnDef.header, e.getContext()), e.column.getCanSort() ? /* @__PURE__ */ (0, Q.jsx)("span", {
 										"data-sort-indicator": !0,
 										"data-direction": t || void 0,
-										children: /* @__PURE__ */ (0, Q.jsx)(ee, {})
+										children: /* @__PURE__ */ (0, Q.jsx)(te, {})
 									}) : null]
 								}), /* @__PURE__ */ (0, Q.jsx)(le, {
 									preferences: d,
@@ -1064,20 +1066,20 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 								})] })
 							}, e.id)), /* @__PURE__ */ (0, Q.jsx)(o, {
 								id: "remaining-space",
-								"aria-label": "行空白区域",
+								"aria-label": "Row empty space",
 								"data-table-space": "",
 								width: d.spaceWidth,
 								minWidth: 0
 							})] }), /* @__PURE__ */ (0, Q.jsx)(a, { children: q.getRowModel().rows.map((e) => /* @__PURE__ */ (0, Q.jsxs)(s, {
 								id: e.id,
 								"data-board-selected": e.getIsSelected() || void 0,
-								children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: ke(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
+								children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: Ae(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
 							}, e.id)) })]
 						})
 					}),
-					/* @__PURE__ */ (0, Q.jsx)(b, {
-						label: "待合并创作者别名",
-						unit: "组",
+					/* @__PURE__ */ (0, Q.jsx)(ne, {
+						label: "Creator aliases pending merge",
+						unit: "groups",
 						total: t.length,
 						pagination: I,
 						onChange: N
@@ -1091,21 +1093,21 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 						"data-responsive-toolbar": "",
 						children: [/* @__PURE__ */ (0, Q.jsxs)("div", {
 							"data-toolbar-heading": "",
-							children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "已保存别名" }), /* @__PURE__ */ (0, Q.jsx)("span", {
+							children: [/* @__PURE__ */ (0, Q.jsx)(k, { children: "Saved aliases" }), /* @__PURE__ */ (0, Q.jsx)("span", {
 								className: "text-body-2-regular text-text-secondary",
-								children: `${e.length} 组`
+								children: `${e.length} groups`
 							})]
 						}), /* @__PURE__ */ (0, Q.jsxs)("div", {
 							"data-toolbar-actions": "",
-							children: [/* @__PURE__ */ (0, Q.jsx)(x, {
-								label: "已保存创作者别名",
+							children: [/* @__PURE__ */ (0, Q.jsx)(re, {
+								label: "Saved creator aliases",
 								sorting: O,
 								options: [{
 									id: "canonical",
-									label: "统一名称"
+									label: "Canonical name"
 								}, {
 									id: "aliases",
-									label: "平台别名"
+									label: "Platform alias"
 								}],
 								onChange: (e) => {
 									A(e), F((e) => ({
@@ -1115,57 +1117,57 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 								}
 							}), /* @__PURE__ */ (0, Q.jsx)(ce, {
 								preferences: f,
-								label: "已保存创作者别名"
+								label: "Saved creator aliases"
 							})]
 						})]
 					}),
-					/* @__PURE__ */ (0, Q.jsxs)(V, {
-						label: "已保存别名批量操作",
+					/* @__PURE__ */ (0, Q.jsxs)(H, {
+						label: "Saved alias bulk actions",
 						visible: Y.length > 0,
-						count: `已选 ${Y.length} 个别名`,
+						count: `Selected ${Y.length} aliases`,
 						children: [/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							disabled: i,
-							...K(de.isPending),
-							onClick: () => void ye({
-								title: "移除所选创作者别名",
-								body: `将移除以下 ${Y.length} 个别名，对应来源恢复为独立创作者组。`,
+							...K(fe.isPending),
+							onClick: () => void be({
+								title: "Remove selected creator aliases",
+								body: `Will remove the following ${Y.length} aliases, restoring their sources as separate creator groups.`,
 								items: Y,
-								confirmLabel: "移除所选别名",
-								onConfirm: () => de.mutateAsync(Y)
+								confirmLabel: "Remove selected aliases",
+								onConfirm: () => fe.mutateAsync(Y)
 							}),
-							children: `移除所选别名（${Y.length}）`
+							children: `Remove selected aliases (${Y.length})`
 						}), /* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "ghost",
 							size: "small",
-							onClick: () => T({}),
-							children: "取消选择"
+							onClick: () => C({}),
+							children: "Clear selection"
 						})]
 					}),
-					e.length ? /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [/* @__PURE__ */ (0, Q.jsx)(te, {
+					e.length ? /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [/* @__PURE__ */ (0, Q.jsx)(b, {
 						follow: !0,
 						preferences: f,
-						onRowClick: (e) => xe.getRow(e)?.toggleSelected(),
+						onRowClick: (e) => Se.getRow(e)?.toggleSelected(),
 						children: /* @__PURE__ */ (0, Q.jsxs)(se, {
-							"aria-label": "已保存创作者别名",
+							"aria-label": "Saved creator aliases",
 							size: "sm",
 							sortDescriptor: O[0] ? {
 								column: O[0].id,
 								direction: O[0].desc ? "descending" : "ascending"
 							} : void 0,
-							onSortChange: (e) => xe.getColumn(String(e.column))?.toggleSorting(e.direction === "descending"),
-							children: [/* @__PURE__ */ (0, Q.jsxs)(l, { children: [xe.getHeaderGroups()[0].headers.map((e) => /* @__PURE__ */ (0, Q.jsx)(o, {
+							onSortChange: (e) => Se.getColumn(String(e.column))?.toggleSorting(e.direction === "descending"),
+							children: [/* @__PURE__ */ (0, Q.jsxs)(l, { children: [Se.getHeaderGroups()[0].headers.map((e) => /* @__PURE__ */ (0, Q.jsx)(o, {
 								id: e.id,
 								isRowHeader: e.column.id === "canonical",
 								allowsSorting: e.column.getCanSort(),
 								...f.columnProps(e.id),
 								children: ({ sortDirection: t }) => /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [/* @__PURE__ */ (0, Q.jsxs)("span", {
 									className: "flex items-center gap-0.5",
-									children: [ke(e.column.columnDef.header, e.getContext()), e.column.getCanSort() ? /* @__PURE__ */ (0, Q.jsx)("span", {
+									children: [Ae(e.column.columnDef.header, e.getContext()), e.column.getCanSort() ? /* @__PURE__ */ (0, Q.jsx)("span", {
 										"data-sort-indicator": !0,
 										"data-direction": t || void 0,
-										children: /* @__PURE__ */ (0, Q.jsx)(ee, {})
+										children: /* @__PURE__ */ (0, Q.jsx)(te, {})
 									}) : null]
 								}), /* @__PURE__ */ (0, Q.jsx)(le, {
 									preferences: f,
@@ -1173,61 +1175,61 @@ function Gt({ groups: e, suggestions: t, sources: r = [], readOnly: i, toast: u 
 								})] })
 							}, e.id)), /* @__PURE__ */ (0, Q.jsx)(o, {
 								id: "remaining-space",
-								"aria-label": "行空白区域",
+								"aria-label": "Row empty space",
 								"data-table-space": "",
 								width: f.spaceWidth,
 								minWidth: 0
-							})] }), /* @__PURE__ */ (0, Q.jsx)(a, { children: xe.getRowModel().rows.map((e) => /* @__PURE__ */ (0, Q.jsxs)(s, {
+							})] }), /* @__PURE__ */ (0, Q.jsx)(a, { children: Se.getRowModel().rows.map((e) => /* @__PURE__ */ (0, Q.jsxs)(s, {
 								id: e.id,
 								"data-board-selected": e.getIsSelected() || void 0,
-								children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: ke(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
+								children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: Ae(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
 							}, e.id)) })]
 						})
-					}), /* @__PURE__ */ (0, Q.jsx)(b, {
-						label: "已保存创作者别名",
-						unit: "组",
+					}), /* @__PURE__ */ (0, Q.jsx)(ne, {
+						label: "Saved creator aliases",
+						unit: "groups",
 						total: e.length,
 						pagination: L,
 						onChange: F
-					})] }) : /* @__PURE__ */ (0, Q.jsx)(C, {
+					})] }) : /* @__PURE__ */ (0, Q.jsx)(S, {
 						size: "compact",
-						icon: fe,
-						title: "还没有保存创作者别名",
-						actions: i ? void 0 : /* @__PURE__ */ (0, Q.jsx)(S, {
-							target: "input[aria-label=\"统一名称\"]",
-							children: "添加别名"
+						icon: pe,
+						title: "No saved creator aliases yet",
+						actions: i ? void 0 : /* @__PURE__ */ (0, Q.jsx)(x, {
+							target: "input[aria-label=\"Canonical name\"]",
+							children: "Add alias"
 						}),
-						children: "填写统一名称，以及该创作者在其他平台使用的名字。"
+						children: "Fill in the unified name plus the names this creator uses on other platforms."
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, Q.jsx)(Nt, {
-				group: p,
-				close: () => m(null),
+			/* @__PURE__ */ (0, Q.jsx)(Pt, {
+				group: ee,
+				close: () => p(null),
 				receipt: u
 			})
 		]
 	});
 }
 // src/react/follow-manage/feed-sources.tsx
-var Kt = rt({
-	rowPaginationFeature: Ze,
-	rowSelectionFeature: Qe,
-	rowSortingFeature: $e,
-	columnVisibilityFeature: ve,
+var qt = it({
+	rowPaginationFeature: Qe,
+	rowSelectionFeature: $e,
+	rowSortingFeature: et,
+	columnVisibilityFeature: ye,
 	sortedRowModel: t(),
 	paginatedRowModel: e()
-}), qt = {
-	select: "选择",
-	name: "名称",
-	kind: "类型",
-	origin: "来源",
-	status: "状态",
-	interval: "频率",
-	fetched: "上次拉取",
-	fresh: "上次新增",
-	actions: "操作"
-}, Jt = /* @__PURE__ */ new Set(["actions"]), Yt = Object.entries(qt).map(([e, t]) => ({
+}), Jt = {
+	select: "Select",
+	name: "Name",
+	kind: "Kind",
+	origin: "Source",
+	status: "State",
+	interval: "Frequency",
+	fetched: "Last fetch",
+	fresh: "Last additions",
+	actions: "Actions"
+}, Yt = /* @__PURE__ */ new Set(["actions"]), Xt = Object.entries(Jt).map(([e, t]) => ({
 	id: e,
 	label: t,
 	width: e === "select" ? 48 : e === "name" ? 300 : e === "actions" ? 208 : e === "fetched" ? 200 : e === "origin" ? 184 : 160,
@@ -1235,37 +1237,37 @@ var Kt = rt({
 	max: e === "select" ? 48 : e === "name" ? 2e3 : 800,
 	flex: e === "name",
 	required: e === "select" || e === "name"
-})), Xt = () => Ue.invalidateQueries({
-	queryKey: ne,
+})), Zt = () => We.invalidateQueries({
+	queryKey: w,
 	exact: !0
 }), $ = (e) => e.name || e.url;
-function Zt(e) {
+function Qt(e) {
 	try {
 		return new URL(e).hostname.replace(/^www\./, "");
 	} catch {
 		return e;
 	}
 }
-function Qt({ source: e }) {
+function $t({ source: e }) {
 	return e.enabled ? e.last_error ? /* @__PURE__ */ (0, Q.jsx)(y, {
 		variant: "caption",
 		color: "rose",
-		children: "拉取失败"
+		children: "Fetch failed"
 	}) : e.last_fetched_at ? /* @__PURE__ */ (0, Q.jsx)(y, {
 		variant: "caption",
 		color: "lime",
-		children: "正常"
+		children: "Normal"
 	}) : /* @__PURE__ */ (0, Q.jsx)(y, {
 		variant: "caption",
 		color: "gray",
-		children: "未检查"
+		children: "Unchecked"
 	}) : /* @__PURE__ */ (0, Q.jsx)(y, {
 		variant: "caption",
 		color: "gray",
-		children: "已暂停"
+		children: "Paused"
 	});
 }
-function $t({ source: e }) {
+function en({ source: e }) {
 	let t = e.entity_id ? {
 		id: e.entity_id,
 		has_image: !!e.has_image,
@@ -1274,43 +1276,43 @@ function $t({ source: e }) {
 	} : null;
 	return /* @__PURE__ */ (0, Q.jsx)("span", {
 		"aria-hidden": !0,
-		className: `relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-background-tertiary-default text-caption-1-semibold text-text-secondary ${dt}`,
+		className: `relative inline-grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-background-tertiary-default text-caption-1-semibold text-text-secondary ${ft}`,
 		dangerouslySetInnerHTML: { __html: G($(e), t, null, "performer") }
 	});
 }
-var en = (e, t) => e.entity_id !== null && t.has(e.entity_id) && e.page_name && e.page_name !== e.name ? e.page_name : "";
-function tn(e) {
+var tn = (e, t) => e.entity_id !== null && t.has(e.entity_id) && e.page_name && e.page_name !== e.name ? e.page_name : "";
+function nn(e) {
 	let t = /* @__PURE__ */ new Set(), n = /* @__PURE__ */ new Set();
 	for (let { entity_id: r } of e) r !== null && (t.has(r) ? n.add(r) : t.add(r));
 	return n;
 }
-function nn(e, t) {
+function rn(e, t) {
 	let n = e.length === 1 ? e[0] : null;
-	return ye({
-		title: n ? "移除订阅源" : `移除 ${e.length} 条订阅源`,
-		body: n ? `将移除订阅源「${$(n)}」，之后不再拉取它的新作；已经拉到的新作保留。` : "将移除所选订阅源，之后不再拉取它们的新作；已经拉到的新作保留。",
-		confirmLabel: n ? "移除订阅源" : "移除所选订阅源",
+	return be({
+		title: n ? "Remove feed" : `Remove ${e.length} follow sources`,
+		body: n ? `Will remove the feed "${$(n)}"; its new releases will no longer be pulled, and new releases already fetched are kept.` : "The selected sources will be removed and their new releases will no longer be fetched; new releases already fetched are kept.",
+		confirmLabel: n ? "Remove feed" : "Remove selected feeds",
 		danger: !0,
 		onConfirm: t
 	});
 }
-function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
-	let i = st({
-		queryKey: ne,
-		queryFn: ({ signal: e }) => Te(e)
-	}), u = it(), d = lt("jav-feeds", Yt), f = i.data, m = (0, Z.useMemo)(() => f?.sources ?? [], [f]), [g, y] = (0, Z.useState)(/* @__PURE__ */ new Set()), S = r?.ids ?? g, T = r?.onChange ?? y, [re, E] = (0, Z.useState)(1), [D, O] = (0, Z.useState)(20), [k, j] = (0, Z.useState)([]), M = Ve(m.length, D, re);
+function an({ readOnly: e, toast: t, onAdd: n, selection: r }) {
+	let i = ct({
+		queryKey: w,
+		queryFn: ({ signal: e }) => Ee(e)
+	}), u = at(), d = ut("jav-feeds", Xt), f = i.data, p = (0, Z.useMemo)(() => f?.sources ?? [], [f]), [m, g] = (0, Z.useState)(/* @__PURE__ */ new Set()), y = r?.ids ?? m, x = r?.onChange ?? g, [C, T] = (0, Z.useState)(1), [E, D] = (0, Z.useState)(20), [O, k] = (0, Z.useState)([]), j = He(p.length, E, C);
 	(0, Z.useEffect)(() => {
-		E((e) => Math.min(e, M.pages));
-	}, [M.pages]), (0, Z.useEffect)(() => {
-		T((e) => {
-			let t = new Set(m.map((e) => e.id)), n = new Set([...e].filter((e) => t.has(e)));
+		T((e) => Math.min(e, j.pages));
+	}, [j.pages]), (0, Z.useEffect)(() => {
+		x((e) => {
+			let t = new Set(p.map((e) => e.id)), n = new Set([...e].filter((e) => t.has(e)));
 			return n.size === e.size ? e : n;
 		});
-	}, [m, T]);
-	let P = ot({
+	}, [p, x]);
+	let M = st({
 		mutationFn: async (e) => {
-			let t = await ze(e.ids, 4, async (t) => {
-				e.action === "remove" ? await Ke(t) : await et(t, e.action === "enabled");
+			let t = await Be(e.ids, 4, async (t) => {
+				e.action === "remove" ? await qe(t) : await tt(t, e.action === "enabled");
 			});
 			return {
 				...e,
@@ -1319,60 +1321,60 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 		},
 		onSuccess: (e) => {
 			let n = e.results.filter((e) => !e.ok), r = e.ids.length - n.length;
-			if (T(/* @__PURE__ */ new Set()), Xt(), e.action === "remove" && r && t(`已移除 ${r} 条订阅源`), n.length) {
+			if (x(/* @__PURE__ */ new Set()), Zt(), e.action === "remove" && r && t(`Removed ${r} follow sources`), n.length) {
 				let e = n[0];
-				u.setError(`${n.length} 条没有写入：${e.ok ? "" : X(e.error)}`);
+				u.setError(`${n.length} not written: ${e.ok ? "" : X(e.error)}`);
 			}
 		},
 		onError: (e) => u.setError(X(e))
-	}), F = (0, Z.useMemo)(() => tn(m), [m]), I = (0, Z.useRef)({
+	}), P = (0, Z.useMemo)(() => nn(p), [p]), F = (0, Z.useRef)({
 		readOnly: e,
-		shared: F,
+		shared: P,
 		busy: null,
 		toggle: () => {},
 		fetch: () => {},
 		remove: () => {}
 	});
-	I.current = {
+	F.current = {
 		readOnly: e,
-		shared: F,
+		shared: P,
 		busy: u.busy,
-		toggle: (e, t) => void u.run(`enabled-${e.id}`, (n) => et(e.id, t, n), () => void Xt()),
-		fetch: (e) => void u.run(`check-${e.id}`, (t) => _e(t, [e.id]), () => void Xt()),
-		remove: (e) => void nn([e], async () => {
-			await Ke(e.id), t(`已移除订阅源「${$(e)}」`), Xt();
+		toggle: (e, t) => void u.run(`enabled-${e.id}`, (n) => tt(e.id, t, n), () => void Zt()),
+		fetch: (e) => void u.run(`check-${e.id}`, (t) => ve(t, [e.id]), () => void Zt()),
+		remove: (e) => void rn([e], async () => {
+			await qe(e.id), t(`Removed the follow source "${$(e)}"`), Zt();
 		})
 	};
-	let L = (0, Z.useMemo)(() => {
-		let e = be(), t = (e) => () => qt[e] || e;
+	let I = (0, Z.useMemo)(() => {
+		let e = xe(), t = (e) => () => Jt[e] || e;
 		return e.columns([
 			e.display({
 				id: "select",
 				header: (e) => /* @__PURE__ */ (0, Q.jsx)(ue, {
 					table: e.table,
-					label: "全选本页订阅源",
+					label: "Select all feeds on this page",
 					page: !0
 				}),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(v, {
 					slot: null,
 					isSelected: e.row.getIsSelected(),
 					onChange: (t) => e.row.toggleSelected(t),
-					"aria-label": `选择 ${$(e.row.original)}`
+					"aria-label": `Select ${$(e.row.original)}`
 				})
 			}),
 			e.accessor($, {
 				id: "name",
 				header: t("name"),
 				cell: (e) => {
-					let t = en(e.row.original, I.current.shared);
+					let t = tn(e.row.original, F.current.shared);
 					return /* @__PURE__ */ (0, Q.jsxs)("span", {
 						className: "flex items-center gap-2 whitespace-nowrap text-body-medium text-text-primary",
 						children: [
-							/* @__PURE__ */ (0, Q.jsx)($t, { source: e.row.original }),
+							/* @__PURE__ */ (0, Q.jsx)(en, { source: e.row.original }),
 							e.getValue(),
 							t ? /* @__PURE__ */ (0, Q.jsx)("span", {
 								className: "text-body-2-regular text-text-secondary",
-								title: `站上这一页挂在「${t}」名下`,
+								title: `On-site this page files under "${t}"`,
 								children: t
 							}) : null
 						]
@@ -1397,25 +1399,25 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 					title: "打开来源页面",
 					className: "max-w-full text-text-primary underline-offset-2 hover:underline",
 					children: [/* @__PURE__ */ (0, Q.jsx)(ae, {
-						site: e.row.original.kind.startsWith("javdb") ? "javdb" : e.row.original.kind.startsWith("dmm") ? "dmm" : Zt(e.getValue()),
-						label: Zt(e.getValue())
-					}), /* @__PURE__ */ (0, Q.jsx)(de, {
+						site: e.row.original.kind.startsWith("javdb") ? "javdb" : e.row.original.kind.startsWith("dmm") ? "dmm" : Qt(e.getValue()),
+						label: Qt(e.getValue())
+					}), /* @__PURE__ */ (0, Q.jsx)(fe, {
 						"aria-hidden": !0,
 						className: "size-(--icon-inline) shrink-0"
 					})]
 				})
 			}),
-			e.accessor((e) => e.last_error ? "拉取失败" : e.enabled ? "已启用" : "已暂停", {
+			e.accessor((e) => e.last_error ? "Fetch failed" : e.enabled ? "Enabled" : "Paused", {
 				id: "status",
 				header: t("status"),
-				cell: (e) => /* @__PURE__ */ (0, Q.jsx)(Qt, { source: e.row.original })
+				cell: (e) => /* @__PURE__ */ (0, Q.jsx)($t, { source: e.row.original })
 			}),
 			e.accessor((e) => e.interval_minutes, {
 				id: "interval",
 				header: t("interval"),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "whitespace-nowrap",
-					children: Ce(e.getValue())
+					children: we(e.getValue())
 				})
 			}),
 			e.accessor((e) => e.last_fetched_at && Date.parse(e.last_fetched_at) || 0, {
@@ -1423,7 +1425,7 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 				header: t("fetched"),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "whitespace-nowrap tabular-nums",
-					children: e.row.original.last_fetched_at ? Le(e.row.original.last_fetched_at) : "还没拉过"
+					children: e.row.original.last_fetched_at ? Re(e.row.original.last_fetched_at) : "Never fetched"
 				})
 			}),
 			e.accessor((e) => e.last_new_count, {
@@ -1431,7 +1433,7 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 				header: t("fresh"),
 				cell: (e) => /* @__PURE__ */ (0, Q.jsx)("span", {
 					className: "whitespace-nowrap tabular-nums",
-					children: `${e.getValue()} 条`
+					children: `${e.getValue()} items`
 				})
 			}),
 			e.display({
@@ -1441,75 +1443,75 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 					className: "flex items-center gap-1",
 					children: [
 						/* @__PURE__ */ (0, Q.jsx)(oe, {
-							"aria-label": `启用 ${$(e.row.original)}`,
+							"aria-label": `Enable ${$(e.row.original)}`,
 							isSelected: e.row.original.enabled,
-							isDisabled: I.current.readOnly,
-							onChange: (t) => I.current.toggle(e.row.original, t)
+							isDisabled: F.current.readOnly,
+							onChange: (t) => F.current.toggle(e.row.original, t)
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							iconOnly: !0,
 							leadingIcon: Y,
-							"aria-label": `拉取 ${$(e.row.original)}`,
-							disabled: I.current.readOnly,
-							...K(I.current.busy === `check-${e.row.original.id}`),
-							onClick: () => I.current.fetch(e.row.original)
+							"aria-label": `Fetch ${$(e.row.original)}`,
+							disabled: F.current.readOnly,
+							...K(F.current.busy === `check-${e.row.original.id}`),
+							onClick: () => F.current.fetch(e.row.original)
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							iconOnly: !0,
 							leadingIcon: N,
-							"aria-label": `移除 ${$(e.row.original)}`,
-							disabled: I.current.readOnly,
-							onClick: () => I.current.remove(e.row.original)
+							"aria-label": `Remove ${$(e.row.original)}`,
+							disabled: F.current.readOnly,
+							onClick: () => F.current.remove(e.row.original)
 						})
 					]
 				})
 			})
 		]);
-	}, []), ie = (0, Z.useMemo)(() => Object.fromEntries([...S].map((e) => [String(e), !0])), [S]), z = ct({
-		features: Kt,
-		data: m,
-		columns: L,
+	}, []), L = (0, Z.useMemo)(() => Object.fromEntries([...y].map((e) => [String(e), !0])), [y]), z = lt({
+		features: qt,
+		data: p,
+		columns: I,
 		getRowId: (e) => String(e.id),
 		state: {
-			rowSelection: ie,
-			sorting: k,
+			rowSelection: L,
+			sorting: O,
 			pagination: {
-				pageIndex: M.page - 1,
-				pageSize: D
+				pageIndex: j.page - 1,
+				pageSize: E
 			},
 			columnVisibility: d.visibility
 		},
 		onColumnVisibilityChange: d.change,
 		onSortingChange: (e) => {
-			j(e), E(1);
+			k(e), T(1);
 		},
 		enableRowSelection: !0,
 		onRowSelectionChange: (e) => {
 			r?.onActivate();
-			let t = typeof e == "function" ? e(ie) : e;
-			T(new Set(Object.entries(t).filter(([, e]) => e).map(([e]) => Number(e))));
+			let t = typeof e == "function" ? e(L) : e;
+			x(new Set(Object.entries(t).filter(([, e]) => e).map(([e]) => Number(e))));
 		}
 	});
 	if (!f) return i.error ? /* @__PURE__ */ (0, Q.jsx)(R, {
 		tone: "error",
-		title: "打不开订阅源",
+		title: "The follow source will not open",
 		children: X(i.error)
-	}) : /* @__PURE__ */ (0, Q.jsx)(A, { children: "正在读订阅源。" });
-	let B = () => void u.run("check", (e) => _e(e), () => void Xt()), H = (e) => {
-		r?.onActivate(), T((t) => {
+	}) : /* @__PURE__ */ (0, Q.jsx)(A, { children: "Reading feed." });
+	let B = () => void u.run("check", (e) => ve(e), () => void Zt()), V = (e) => {
+		r?.onActivate(), x((t) => {
 			let n = new Set(t);
 			return n.has(e) ? n.delete(e) : n.add(e), n;
 		});
-	}, U = m.filter((e) => S.has(e.id)), W = m.filter((e) => e.last_error);
+	}, U = p.filter((e) => y.has(e.id)), W = p.filter((e) => e.last_error);
 	return /* @__PURE__ */ (0, Q.jsx)("div", {
 		className: "flex flex-col gap-3",
 		children: /* @__PURE__ */ (0, Q.jsxs)("section", {
-			"aria-label": "JAV 订阅列表",
-			className: ge({
+			"aria-label": "JAV subscription list",
+			className: _e({
 				padding: "none",
 				className: "flex flex-col gap-4 px-6 py-5 max-sm:px-4"
 			}),
@@ -1520,10 +1522,10 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 						"data-toolbar-heading": "",
 						children: [/* @__PURE__ */ (0, Q.jsx)("h3", {
 							className: "text-title-2-medium text-text-primary",
-							children: "JAV 订阅源"
+							children: "JAV feed"
 						}), /* @__PURE__ */ (0, Q.jsx)("span", {
 							className: "text-body-2-regular text-text-secondary",
-							children: `${m.length.toLocaleString()} 个订阅源 · ${(Number(f.unread) || 0).toLocaleString()} 条未看`
+							children: `${p.length.toLocaleString()} feeds - ${(Number(f.unread) || 0).toLocaleString()} unread`
 						})]
 					}), /* @__PURE__ */ (0, Q.jsxs)("div", {
 						"data-toolbar-actions": "",
@@ -1532,17 +1534,17 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 								onClick: B,
 								disabled: e,
 								...K(u.busy === "check"),
-								children: "立即拉取"
+								children: "Fetch now"
 							}),
 							/* @__PURE__ */ (0, Q.jsx)(ce, {
 								preferences: d,
-								label: "JAV 订阅源"
+								label: "JAV feed"
 							}),
-							/* @__PURE__ */ (0, Q.jsx)(x, {
-								label: "JAV 订阅源",
-								sorting: k,
+							/* @__PURE__ */ (0, Q.jsx)(re, {
+								label: "JAV feed",
+								sorting: O,
 								onChange: (e) => {
-									j(e), E(1);
+									k(e), T(1);
 								},
 								options: [
 									"name",
@@ -1554,7 +1556,7 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 									"fresh"
 								].map((e) => ({
 									id: e,
-									label: qt[e]
+									label: Jt[e]
 								}))
 							})
 						]
@@ -1564,89 +1566,89 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 					className: "flex flex-col gap-3",
 					children: [W.length ? /* @__PURE__ */ (0, Q.jsx)(R, {
 						tone: "error",
-						title: `${W.length.toLocaleString()} 条订阅源拉取失败`,
+						title: `${W.length.toLocaleString()} ${W.length === 1 ? "feed" : "feeds"} failed to fetch`,
 						extra: /* @__PURE__ */ (0, Q.jsx)("ul", {
 							className: "flex flex-col gap-0.5 text-body-2-regular",
 							children: W.map((e) => /* @__PURE__ */ (0, Q.jsx)("li", {
 								className: "min-w-0 truncate",
 								title: e.last_error || "",
-								children: `${$(e)}：${Se(e.last_error || "") || "未说明原因"}`
+								children: `${$(e)}: ${Ce(e.last_error || "") || "reason not stated"}`
 							}, e.id))
 						}),
-						children: "这些订阅源这一轮没有取到新条目。"
-					}) : null, u.error ? /* @__PURE__ */ (0, Q.jsx)(w, { children: u.error }) : null]
+						children: "These feeds fetched no new entries this round."
+					}) : null, u.error ? /* @__PURE__ */ (0, Q.jsx)(ie, { children: u.error }) : null]
 				}) : null,
-				/* @__PURE__ */ (0, Q.jsxs)(V, {
+				/* @__PURE__ */ (0, Q.jsxs)(H, {
 					visible: U.length > 0,
-					label: "订阅源批量操作",
-					count: `已选 ${U.length} 条订阅源`,
+					label: "Feed bulk actions",
+					count: `Selected ${U.length} ${U.length === 1 ? "follow source" : "follow sources"}`,
 					children: [
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							disabled: e,
-							...K(P.isPending),
-							onClick: () => P.mutate({
+							...K(M.isPending),
+							onClick: () => M.mutate({
 								ids: U.map((e) => e.id),
 								action: "enabled"
 							}),
-							children: "启用"
+							children: "Enabled"
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "secondary",
 							size: "small",
 							disabled: e,
-							...K(P.isPending),
-							onClick: () => P.mutate({
+							...K(M.isPending),
+							onClick: () => M.mutate({
 								ids: U.map((e) => e.id),
 								action: "paused"
 							}),
-							children: "暂停"
+							children: "Paused"
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "danger",
 							size: "small",
 							disabled: e,
-							...K(P.isPending),
-							onClick: () => void nn(U, () => P.mutateAsync({
+							...K(M.isPending),
+							onClick: () => void rn(U, () => M.mutateAsync({
 								ids: U.map((e) => e.id),
 								action: "remove"
 							})),
-							children: "移除"
+							children: "Remove"
 						}),
 						/* @__PURE__ */ (0, Q.jsx)(h, {
 							variant: "ghost",
 							size: "small",
-							onClick: () => T(/* @__PURE__ */ new Set()),
-							children: "取消选择"
+							onClick: () => x(/* @__PURE__ */ new Set()),
+							children: "Clear selection"
 						})
 					]
 				}),
-				m.length ? /* @__PURE__ */ (0, Q.jsx)(te, {
+				p.length ? /* @__PURE__ */ (0, Q.jsx)(b, {
 					follow: !0,
 					preferences: d,
-					onRowClick: (e) => H(Number(e)),
+					onRowClick: (e) => V(Number(e)),
 					children: /* @__PURE__ */ (0, Q.jsxs)(se, {
-						"aria-label": "JAV 订阅源",
+						"aria-label": "JAV feed",
 						size: "sm",
-						sortDescriptor: k[0] ? {
-							column: k[0].id,
-							direction: k[0].desc ? "descending" : "ascending"
+						sortDescriptor: O[0] ? {
+							column: O[0].id,
+							direction: O[0].desc ? "descending" : "ascending"
 						} : void 0,
 						onSortChange: (e) => z.getColumn(String(e.column))?.toggleSorting(e.direction === "descending"),
 						children: [/* @__PURE__ */ (0, Q.jsxs)(l, { children: [z.getHeaderGroups()[0].headers.map((e) => {
-							let t = ke(e.column.columnDef.header, e.getContext());
+							let t = Ae(e.column.columnDef.header, e.getContext());
 							return /* @__PURE__ */ (0, Q.jsx)(o, {
 								id: e.id,
 								isRowHeader: e.column.id === "name",
 								allowsSorting: e.column.getCanSort(),
 								...d.columnProps(e.id),
-								children: ({ sortDirection: n }) => /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [Jt.has(e.column.id) ? /* @__PURE__ */ (0, Q.jsx)(p, { children: t }) : /* @__PURE__ */ (0, Q.jsxs)("span", {
+								children: ({ sortDirection: n }) => /* @__PURE__ */ (0, Q.jsxs)(Q.Fragment, { children: [Yt.has(e.column.id) ? /* @__PURE__ */ (0, Q.jsx)(ee, { children: t }) : /* @__PURE__ */ (0, Q.jsxs)("span", {
 									className: "flex items-center gap-0.5",
 									children: [t, e.column.getCanSort() ? /* @__PURE__ */ (0, Q.jsx)("span", {
 										"data-sort-indicator": !0,
 										"data-direction": n || void 0,
-										children: /* @__PURE__ */ (0, Q.jsx)(ee, {})
+										children: /* @__PURE__ */ (0, Q.jsx)(te, {})
 									}) : null]
 								}), /* @__PURE__ */ (0, Q.jsx)(le, {
 									preferences: d,
@@ -1655,37 +1657,37 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 							}, e.id);
 						}), /* @__PURE__ */ (0, Q.jsx)(o, {
 							id: "remaining-space",
-							"aria-label": "行空白区域",
+							"aria-label": "Row empty space",
 							"data-table-space": "",
 							width: d.spaceWidth,
 							minWidth: 0
 						})] }), /* @__PURE__ */ (0, Q.jsx)(a, { children: z.getRowModel().rows.map((e) => /* @__PURE__ */ (0, Q.jsxs)(s, {
 							id: e.id,
 							"data-follow-selected": e.getIsSelected() || void 0,
-							children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: ke(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
+							children: [e.getVisibleCells().map((e) => /* @__PURE__ */ (0, Q.jsx)(c, { children: Ae(e.column.columnDef.cell, e.getContext()) }, e.id)), /* @__PURE__ */ (0, Q.jsx)(c, { "data-table-space": "" })]
 						}, e.id)) })]
 					})
-				}) : /* @__PURE__ */ (0, Q.jsx)(C, {
+				}) : /* @__PURE__ */ (0, Q.jsx)(S, {
 					icon: _,
-					title: "还没有订阅源",
+					title: "No follow sources yet",
 					size: "compact",
 					actions: e ? void 0 : /* @__PURE__ */ (0, Q.jsx)(h, {
 						variant: "secondary",
 						onClick: n,
-						children: "添加订阅"
+						children: "Add subscription"
 					}),
-					children: "在「添加关注」按女优名添加，或在人物页点「订阅新作」。"
+					children: "Add by performer name under Add follow, or click Subscribe to new releases on a person page."
 				}),
-				m.length ? /* @__PURE__ */ (0, Q.jsx)(b, {
-					label: "JAV 订阅",
-					total: M.total,
-					unit: "个订阅源",
+				p.length ? /* @__PURE__ */ (0, Q.jsx)(ne, {
+					label: "JAV subscriptions",
+					total: j.total,
+					unit: "follow sources",
 					pagination: {
-						pageIndex: M.page - 1,
-						pageSize: D
+						pageIndex: j.page - 1,
+						pageSize: E
 					},
 					onChange: (e) => {
-						O(e.pageSize), E(e.pageIndex + 1);
+						D(e.pageSize), T(e.pageIndex + 1);
 					}
 				}) : null,
 				/* @__PURE__ */ (0, Q.jsx)("footer", {
@@ -1693,7 +1695,7 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 					children: /* @__PURE__ */ (0, Q.jsx)("span", {
 						role: "status",
 						className: "mr-auto text-body-2-regular text-text-secondary",
-						children: `未看 ${(Number(f.unread) || 0).toLocaleString()} · 已启用 ${m.filter((e) => e.enabled).length.toLocaleString()} / ${m.length.toLocaleString()}`
+						children: `Unwatched ${(Number(f.unread) || 0).toLocaleString()} · Enabled ${p.filter((e) => e.enabled).length.toLocaleString()} / ${p.length.toLocaleString()}`
 					})
 				})
 			]
@@ -1701,16 +1703,16 @@ function rn({ readOnly: e, toast: t, onAdd: n, selection: r }) {
 	});
 }
 // src/react/follow-manage/follow-manage-page.tsx
-var an = (e) => D.some(([t]) => t === e);
-function on({ term: e, figure: t, unit: n }) {
+var on = (e) => D.some(([t]) => t === e);
+function sn({ term: e, figure: t, unit: n }) {
 	return /* @__PURE__ */ (0, Q.jsxs)("div", {
-		className: ge({
+		className: _e({
 			padding: "none",
 			className: "flex flex-col gap-3 px-6 py-5 max-sm:gap-2 max-sm:p-4"
 		}),
 		children: [/* @__PURE__ */ (0, Q.jsx)("span", {
 			className: "text-body-medium text-text-secondary",
-			children: e
+			children: `${e} `
 		}), /* @__PURE__ */ (0, Q.jsxs)("b", {
 			"data-follow-reading": "",
 			className: `flex min-w-0 flex-wrap items-baseline gap-x-1 tabular-nums text-text-primary ${t >= 1e6 ? "text-headline-medium" : t >= 1e5 ? "text-title-3-medium" : "text-title-1-medium"}`,
@@ -1724,81 +1726,81 @@ function on({ term: e, figure: t, unit: n }) {
 		})]
 	});
 }
-function sn(e) {
-	let { route: t, savePreference: n, toast: r, openFollow: i, readOnly: a, readOnlyMessage: o, writerUrl: s } = e, [c, l] = (0, Z.useState)(an(e.tab) ? e.tab : "list"), [p, m] = (0, Z.useState)(Math.max(1, Math.floor(e.page) || 1)), [h, _] = (0, Z.useState)(() => Xe(e.sort, e.dir).sort), [v, ee] = (0, Z.useState)(() => Xe(e.sort, e.dir).dir), [y, b] = (0, Z.useState)(Fe(e.layout) ? e.layout : "default"), [te, x] = (0, Z.useState)(Be(e.pageSize)), [S, C] = (0, Z.useState)(/* @__PURE__ */ new Set()), [w, O] = (0, Z.useState)(/* @__PURE__ */ new Set()), k = st({
+function cn(e) {
+	let { route: t, savePreference: n, toast: r, openFollow: i, readOnly: a, readOnlyMessage: o, writerUrl: s } = e, [c, l] = (0, Z.useState)(on(e.tab) ? e.tab : "list"), [ee, p] = (0, Z.useState)(Math.max(1, Math.floor(e.page) || 1)), [m, h] = (0, Z.useState)(() => Ze(e.sort, e.dir).sort), [_, v] = (0, Z.useState)(() => Ze(e.sort, e.dir).dir), [te, y] = (0, Z.useState)(Ie(e.layout) ? e.layout : "default"), [ne, b] = (0, Z.useState)(Ve(e.pageSize)), [re, x] = (0, Z.useState)(/* @__PURE__ */ new Set()), [S, ie] = (0, Z.useState)(/* @__PURE__ */ new Set()), O = ct({
 		queryKey: E,
-		queryFn: ({ signal: e }) => Ee(e)
-	}), A = st({
-		queryKey: re,
-		queryFn: ({ signal: e }) => we(e)
-	}), j = st({
-		queryKey: ne,
+		queryFn: ({ signal: e }) => De(e)
+	}), k = ct({
+		queryKey: T,
 		queryFn: ({ signal: e }) => Te(e)
-	}), M = k.data || { sources: [] }, N = A.data || {
+	}), A = ct({
+		queryKey: w,
+		queryFn: ({ signal: e }) => Ee(e)
+	}), j = O.data || { sources: [] }, M = k.data || {
 		root: "",
 		providers: []
-	}, P = M.sources;
+	}, N = j.sources;
 	(0, Z.useEffect)(() => {
-		C((e) => {
-			let t = Ie(e, P);
+		x((e) => {
+			let t = Le(e, N);
 			return t.size === e.size ? e : t;
 		});
-	}, [P]);
-	let F = (e) => {
-		let n = e.sort ?? h, r = e.dir ?? v;
+	}, [N]);
+	let P = (e) => {
+		let n = e.sort ?? m, r = e.dir ?? _;
 		t({
 			tab: e.tab ?? c,
-			page: e.page ?? p,
+			page: e.page ?? ee,
 			sort: n === "checked" ? "" : n,
-			dir: r === z[n] ? "" : r
+			dir: r === B[n] ? "" : r
 		});
-	}, I = Ne(P), L = P.filter(Pe).length, ie = P.filter((e) => e.enabled).length, V = (N.providers || []).filter((e) => e.requirement === "required" && !xe(e)).length, H = new Set((j.data?.sources || []).map((e) => e.entity_id ?? `source-${e.id}`)).size;
-	return /* @__PURE__ */ (0, Q.jsxs)(ut, { children: [
+	}, F = Pe(N), I = N.filter(Fe).length, L = N.filter((e) => e.enabled).length, z = (M.providers || []).filter((e) => e.requirement === "required" && !Se(e)).length, H = new Set((A.data?.sources || []).map((e) => e.entity_id ?? `source-${e.id}`)).size;
+	return /* @__PURE__ */ (0, Q.jsxs)(dt, { children: [
 		a ? /* @__PURE__ */ (0, Q.jsx)(R, {
 			tone: "warning",
-			title: "本机只能浏览",
+			title: "This machine is browse-only",
 			extra: s ? /* @__PURE__ */ (0, Q.jsx)("p", {
 				className: "text-body-2-regular",
-				children: /* @__PURE__ */ (0, Q.jsx)(T, {
+				children: /* @__PURE__ */ (0, Q.jsx)(C, {
 					href: s,
-					children: "前往写入端管理关注"
+					children: "Go to the writer instance to manage follows"
 				})
 			}) : void 0,
 			children: o
 		}) : null,
 		/* @__PURE__ */ (0, Q.jsxs)("div", {
-			className: B,
-			"aria-label": "关注概览",
+			className: V,
+			"aria-label": "Follow overview",
 			children: [
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "关注创作者",
-					figure: I.length,
-					unit: "位"
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "Follow creator",
+					figure: F.length,
+					unit: "people"
 				}),
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "启用来源",
-					figure: ie,
-					unit: `/ ${P.length}`
-				}),
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "检查失败",
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "Enable the source",
 					figure: L,
-					unit: "个来源"
+					unit: `/ ${N.length}`
 				}),
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "未看更新",
-					figure: M.counts?.new || 0,
-					unit: "条"
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "Check failed",
+					figure: I,
+					unit: "sources"
 				}),
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "JAV 订阅",
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "Unwatched updates",
+					figure: j.counts?.new || 0,
+					unit: "items"
+				}),
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "JAV subscriptions",
 					figure: H,
-					unit: "位"
+					unit: "people"
 				}),
-				/* @__PURE__ */ (0, Q.jsx)(on, {
-					term: "未看新作",
-					figure: j.data?.unread || 0,
-					unit: "条"
+				/* @__PURE__ */ (0, Q.jsx)(sn, {
+					term: "Unwatched new releases",
+					figure: A.data?.unread || 0,
+					unit: "items"
 				})
 			]
 		}),
@@ -1806,12 +1808,12 @@ function sn(e) {
 			selectedKey: c,
 			onSelectionChange: (e) => {
 				let t = String(e);
-				an(t) && (C(/* @__PURE__ */ new Set()), O(/* @__PURE__ */ new Set()), l(t), F({ tab: t }));
+				on(t) && (x(/* @__PURE__ */ new Set()), ie(/* @__PURE__ */ new Set()), l(t), P({ tab: t }));
 			},
 			className: "flex flex-col gap-6",
 			children: [
-				/* @__PURE__ */ (0, Q.jsx)(ft, {
-					"aria-label": "关注管理区域",
+				/* @__PURE__ */ (0, Q.jsx)(pt, {
+					"aria-label": "Follow management area",
 					"data-section-nav": !0,
 					"data-section-items": !0,
 					className: "flex max-w-full flex-nowrap overflow-x-auto",
@@ -1826,49 +1828,49 @@ function sn(e) {
 				/* @__PURE__ */ (0, Q.jsxs)(u, {
 					id: "list",
 					className: "flex flex-col gap-4",
-					children: [/* @__PURE__ */ (0, Q.jsx)(rn, {
+					children: [/* @__PURE__ */ (0, Q.jsx)(an, {
 						readOnly: a,
 						toast: r,
 						onAdd: () => {
-							l("add"), F({ tab: "add" });
+							l("add"), P({ tab: "add" });
 						},
 						selection: {
-							ids: w,
-							onChange: O,
-							onActivate: () => C(/* @__PURE__ */ new Set())
+							ids: S,
+							onChange: ie,
+							onActivate: () => x(/* @__PURE__ */ new Set())
 						}
-					}), /* @__PURE__ */ (0, Q.jsx)(ht, {
-						data: M,
-						sort: h,
-						dir: v,
-						page: p,
-						layout: y,
-						pageSize: te,
-						selected: S,
+					}), /* @__PURE__ */ (0, Q.jsx)(gt, {
+						data: j,
+						sort: m,
+						dir: _,
+						page: ee,
+						layout: te,
+						pageSize: ne,
+						selected: re,
 						readOnly: a,
 						toast: r,
 						openFollow: i,
 						onAdd: () => {
-							l("add"), F({ tab: "add" });
+							l("add"), P({ tab: "add" });
 						},
 						onSort: (e, t) => {
-							_(e), ee(t), m(1), F({
+							h(e), v(t), p(1), P({
 								sort: e,
 								dir: t,
 								page: 1
 							});
 						},
 						onPage: (e) => {
-							m(e), F({ page: e });
+							p(e), P({ page: e });
 						},
 						onSelected: (e) => {
-							C(e), O(/* @__PURE__ */ new Set());
+							x(e), ie(/* @__PURE__ */ new Set());
 						},
 						onLayout: (e) => {
-							b(e), m(1), n({ layout: e }), F({ page: 1 });
+							y(e), p(1), n({ layout: e }), P({ page: 1 });
 						},
 						onPageSize: (e) => {
-							x(e), m(1), n({ pageSize: e }), F({ page: 1 });
+							b(e), p(1), n({ pageSize: e }), P({ page: 1 });
 						}
 					})]
 				}),
@@ -1876,42 +1878,42 @@ function sn(e) {
 					id: "add",
 					className: "flex flex-col gap-8",
 					children: [
-						/* @__PURE__ */ (0, Q.jsx)(Dt, {
-							data: M,
-							credentials: N,
+						/* @__PURE__ */ (0, Q.jsx)(Ot, {
+							data: j,
+							credentials: M,
 							readOnly: a,
 							toast: r
 						}),
-						/* @__PURE__ */ (0, Q.jsx)(Mt, {
+						/* @__PURE__ */ (0, Q.jsx)(Nt, {
 							readOnly: a,
 							toast: r,
 							onAdded: () => {
-								j.refetch(), l("list"), F({ tab: "list" });
+								A.refetch(), l("list"), P({ tab: "list" });
 							}
 						}),
-						/* @__PURE__ */ (0, Q.jsx)(Gt, {
-							groups: M.author_aliases || [],
+						/* @__PURE__ */ (0, Q.jsx)(Kt, {
+							groups: j.author_aliases || [],
 							readOnly: a,
 							toast: r,
-							suggestions: M.alias_suggestions || [],
-							sources: M.sources
+							suggestions: j.alias_suggestions || [],
+							sources: j.sources
 						})
 					]
 				}),
 				/* @__PURE__ */ (0, Q.jsx)(u, {
 					id: "tags",
 					className: "flex flex-col gap-4",
-					children: /* @__PURE__ */ (0, Q.jsx)(U, { scope: "online" })
+					children: /* @__PURE__ */ (0, Q.jsx)(W, { scope: "online" })
 				})
 			]
 		}),
 		/* @__PURE__ */ (0, Q.jsx)("div", { children: /* @__PURE__ */ (0, Q.jsxs)(g, {
 			variant: "secondary",
 			href: "/settings/subscriptions",
-			children: ["来源与订阅设置", V ? `（${V}）` : ""]
+			children: ["Sources and subscription settings", z ? ` (${z})` : ""]
 		}) })
 	] });
 }
-export { sn as FollowManagePage };
+export { cn as FollowManagePage };
 
-//# debugId=674b25f6-536a-4708-aaf8-bcd20af2a392
+//# debugId=b192af89-df49-4842-af55-a8b2a8686b05

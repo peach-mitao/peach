@@ -1,13 +1,13 @@
-/* 文字档按内容收宽，选项保持单行。 */
+/* 文字档按内容收宽，选项保持单行. */
 fieldset.iconswitch-text{display:inline-flex;justify-self:start}
 fieldset.iconswitch-text label{width:auto;min-width:52px;padding-inline:10px;white-space:nowrap}
 
-/* 自绘单值拉条（`dialSliderHtml` / `wireDialSlider`）。几何取自 feralui.dev/gradients 的
-   `.dial-slider`，实测记在 docs/reference-snapshots/feralui-studio-boardui-accent-measured.md：
+/* 自绘单值拉条（`dialSliderHtml` / `wireDialSlider`）.几何取自 feralui.dev/gradients 的
+   `.dial-slider`，实测记在 docs/reference-snapshots/feralui-studio-boardui-accent-measured.md: 
    30px 高、20px 轨道、每 10% 一根 1×8px 刻度、3×20px 的圆头抓手，刻度与抓手默认透明，
-   悬停或拖动时才现形——一条静止的拉条上，九根刻度和一枚抓手比那条线本身还抢眼。
-   上游用自己的 ink 色画焦点环，这里仍走站内的 --tungsten：蓝只给焦点环这条是全站的。
-   当前位置只有 --dial-at 一个来源，填充宽度和抓手位置读的是同一个数。 */
+   悬停或拖动时才现形——一条静止的拉条上，九根刻度和一枚抓手比那条线本身还抢眼.
+   上游用自己的 ink 色画焦点环，这里仍走站内的 --tungsten: 蓝只给焦点环这条是全站的.
+   当前位置只有 --dial-at 一个来源，填充宽度和抓手位置读的是同一个数. */
 .ui-dial{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0}
 .ui-dial-slider{position:relative;display:flex;align-items:center;height:30px;min-width:0;
   cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}

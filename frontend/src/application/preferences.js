@@ -1,4 +1,4 @@
-/* preferences 域控制器：本域状态与动作，启动由 Application 的生命周期统一安装。 */
+/* preferences domain controller: this domain's state and actions, installed at startup by Application's lifecycle. */
 import { loadMediaSources } from './../query/media-sources';
 import { buildBars, catalogState, dropOfflineFromDefaultLoc, homePath, loadCatalog, paintCatalogFilter, repaintCatalogGrid } from './catalog.js';
 import { appSettingsStore } from './../appearance/settings';
@@ -57,7 +57,7 @@ export function sidebarDot(loc){
   if(loc==='online')return {kind:'glyph',name:'rss'};
   const mark=MEDIA_SOURCE_ICONS[loc];
   if(mark)return mark.startsWith('data:')?{kind:'image',src:mark}:{kind:'glyph',name:mark};
-  // 已登记的计费来源使用自己的标识。
+  // Registered billing sources use their own identifier.
   return {kind:'cost',cost:'free'};
 }
 
@@ -79,10 +79,11 @@ export async function refreshAll(automatic=false){
   if(automatic&&(document.hidden||!isCatalogPath(decodeURIComponent(location.pathname))||
       mediaState.stageOpen()||mediaState.immerseOpen()||selectMode||selected.size||document.activeElement===$('#q')))return false;
   if(!$('#stats').hidden){
-    /* 管理区的换批行为写在路由元数据的 `refresh` 上：`reopen` 重开自己，
-       `skip` 不参与（追更页重画要联网，只能由它自己的按钮触发），
-       没写的（统计、数据管理、资源同步）落到统计页。播放列表页画着就只重读（`rereadPlaylists`）；别的页原地
-       改写一次不认领的地址，领一个新的页面打开序号，页面元素换一次 key 重开，历史条数不变。 */
+    /* The management area's shuffle behavior is written on the route metadata's `refresh`: `reopen` reopens itself,
+       `skip` does not participate (the updates page's re-render needs the network and can only be triggered by its own
+       button), and unwritten pages (stats, data management, resource sync) fall to the stats page. With the playlists page
+       rendered it only rereads (`rereadPlaylists`); other pages rewrite an unclaimed address in place, take a new page-open
+       epoch, their page element changes key once and reopens, and the history entry count stays the same. */
     const path=decodeURIComponent(location.pathname),refresh=navigationState.routeMeta(path)?.route.refresh;
     if(refresh==='skip')return;
     if(path==='/playlists'){rereadPlaylists();return}
@@ -94,12 +95,12 @@ export async function refreshAll(automatic=false){
   }
   if(!$('#index').hidden){return}
   state.sort='seed';state.dir='';state.seed=receiptsState.rollSeed();notifyShell();
-  // 顶部三层（女优头像、厂牌、标签）有 30 秒会话缓存，而 refreshAll 只重载网格：
-  // 不清掉这两个缓存，「换一批」之后上面还是同一批人。
+  // The top three tiers (performer avatars, studios, tags) have a 30-second session cache, while refreshAll only reloads the grid:
+  // Without clearing these two caches, the same people still show up after "Shuffle".
   dropBars();
-  /* 网格和顶部三层一起换，两边耗时不一样，所以转圈归这一层管：换批键转到这个 Promise
-     落定，网格先到时标签条还在等的那段时间里它不停。顶部三层与标签条不铺骨架——它们此刻
-     有内容在屏幕上，撕成灰条再填回去比直接换掉更晃眼；只铺一层微光，骨架留给从无到有的首屏。 */
+  /* The grid and the top three layers swap together, each taking different time, so the spinner belongs to this layer: it spins until this Promise
+     settles, and keeps going while the grid has arrived but the tag bar is still waiting. The top three layers and the tag bar get no skeleton; they have
+     content on screen right now, and tearing it into gray strips to refill is more jarring than swapping directly; only a shimmer layer is laid, skeletons reserved for the first from-nothing screen. */
   paintCatalogFilter({refreshing:true});
   /* 目录元素在改写地址排下的那个微任务里发起取数；让过这一拍，网格先认领表面、铺好等待态，顶部三层再取。 */
   try{refreshPageNavigation();const loading=replaceCatalogAddress();await null;await Promise.all([loading,buildBars()])}
@@ -153,11 +154,11 @@ export function installPreferences5() {
 preferencesState.sourceOnline = {};
 preferencesState.sourceProblems = {};
 preferencesState.sourceOffline = key=>preferencesState.sourceOnline[key]===false;
-preferencesState.OFFLINE_HINT = '媒体目录无法访问，请检查目录、读取权限和网盘挂载状态';
-preferencesState.OFFLINE_REASON = {local:'无法读取媒体目录，请检查目录是否存在及读取权限。',
-  '115':'无法读取 115 媒体目录，请检查目录权限及网盘挂载工具是否正常运行。',
-  pikpak:'无法读取 PikPak 媒体目录，请检查目录权限及网盘挂载工具是否正常运行。'};
-preferencesState.offlineReason = key=>preferencesState.sourceProblems[key]||preferencesState.OFFLINE_REASON[key]||'无法读取这个来源的媒体目录，请检查目录权限及挂载状态。';
+preferencesState.OFFLINE_HINT = 'The media folder is unreachable; check the folder, read permissions, and cloud drive mount state';
+preferencesState.OFFLINE_REASON = {local:'Could not read the media folder. Check that it exists and is readable.',
+  '115':'Could not read the 115 media folder. Check the folder permissions and that the cloud drive mount tool is running.',
+  pikpak:'Cannot read the PikPak media directory; check the directory permissions and that the cloud drive mount tool is running.'};
+preferencesState.offlineReason = key=>preferencesState.sourceProblems[key]||preferencesState.OFFLINE_REASON[key]||'Could not read this source\'s media folder. Check the folder permissions and mount state.';
 preferencesState.settingsStore = appSettingsStore();
 preferencesState.appSettings = preferencesState.settingsStore.value;
 setNameLanguage(preferencesState.appSettings.performerNameLanguage);
@@ -180,8 +181,8 @@ preferencesState.settingsEffects = {
     catalogState.barsRendered='';buildBars();
   },
   theme:()=>applyTheme(),
-  /* 开这一格时立刻响一声开关音，人才知道它开了。关的那一声由 document 上的 change 监听
-     发出：捕获阶段排在这里前面，那时开关还没关掉，最后一声还能响出来。 */
+  /* Play the toggle sound the instant this cell opens so people know it opened. The closing sound comes from the change listener on document:
+     capture phase puts it ahead of this code, while the switch is not yet off, so that final sound still gets to play. */
   uiSounds:()=>{setUiSoundsEnabled(preferencesState.appSettings.uiSounds);if(preferencesState.appSettings.uiSounds)playUiSound('toggle-on')},
   glowFrame:()=>applyHomeGlow(),
   glow:()=>{applyHomeGlow();applyGlassFaces()},
@@ -203,12 +204,12 @@ preferencesState.settingsEffects = {
     document.documentElement.style.setProperty('--hover-delay',`${preferencesState.appSettings.hoverDelaySeconds}s`);
   },
   seekSeconds:()=>repaintCatalogGrid(),
-  /* 折叠是在渲染时做的，不重取的话已经被跳过的那些卡不会自己冒出来。 */
+  /* Collapsing happens at render time; without a refetch, cards already skipped will not reappear on their own. */
   groupCollapse:()=>reloadCurrentSurface(),
   feedAutoScroll:()=>syncFeedAutoScroll(),
   feedLimit:()=>refreshFeedRows(),
   feedCompilations:()=>refreshFeedRows(),
-  /* 设置说的是「离开详情不再进小窗」，已经开着的那个小窗留着反而像没生效。 */
+  /* The setting says 'leaving the details no longer enters the mini player'; keeping the already-open mini player around would make it look like the setting did nothing. */
   miniplayer:()=>{if(!preferencesState.appSettings.miniplayer)stageApi()?.closeMiniplayer()},
   javImage:()=>{
     syncJavImages(document,preferencesState.appSettings.javImage);repaintCatalogGrid();
@@ -224,7 +225,7 @@ preferencesState.SRCICON = {
     [location,mark.startsWith('data:')?`<img class="source-icon" src="${mark}" alt="">`:icon(mark)])),
   online:icon('rss'),
 };
-preferencesState.srcBadge = (loc,cost,cls)=>{const label=`${LOC[loc]||loc}${cost==='metered'?' · 计费':''}`;
+preferencesState.srcBadge = (loc,cost,cls)=>{const label=`${LOC[loc]||loc}${cost==='metered'?' · metered':''}`;
   return `<span class="${cls||'src'} ${cost==='metered'?'metered':'free'}" title="${esc(label)}" aria-label="${esc(label)}">`
     +(preferencesState.SRCICON[loc]||'')+'</span>'};
 preferencesState.emptyState = emptyStateHtml;

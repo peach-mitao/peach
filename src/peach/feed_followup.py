@@ -483,7 +483,7 @@ def run(contract, key: str, handle) -> dict:
         if code in done:
             continue
         handle.progress(current=index, total=len(codes),
-                        label=f"{TASK_LABEL}：{code}", throttle=0)
+                        label=f"{TASK_LABEL}: {code}", throttle=0)
         with contract.database.read_connection() as connection:
             row = connection.execute(
                 "SELECT id,code,scraped_at,scrape_error FROM feed_discovery WHERE code=?",

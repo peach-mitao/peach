@@ -62,7 +62,7 @@ from .sources.base import challenge_page
 
 #: 这类后继在任务中心的身份，也是活动页上那一行的名字来源。
 TASK_KEY = "performer-alias"
-TASK_LABEL = "补女优别名"
+TASK_LABEL = "Fill in performer aliases"
 
 #: 这条后继写下的别名都以它开头，后面接 `@<任务行 id>`；撤回按它认。
 SOURCE = "auto:performer-alias"
@@ -254,7 +254,7 @@ def fingerprint(connection: sqlite3.Connection, entity_id: int) -> str:
 
 
 def _label(name: str) -> str:
-    return f"{TASK_LABEL}：{name}" if name else TASK_LABEL
+    return f"{TASK_LABEL}: {name}" if name else TASK_LABEL
 
 
 def plan(connection: sqlite3.Connection, *, since_entity_id: int) -> list[Followup]:

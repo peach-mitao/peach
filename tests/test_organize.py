@@ -11,7 +11,7 @@ from unittest import mock
 
 from peach import organize
 from peach.organize_templates import (
-    TemplateError, render, sanitise_component, validate_template, clean_filename,
+    EXAMPLE_VALUES, TemplateError, render, sanitise_component, validate_template, clean_filename,
 )
 from support.ledger import fresh_ledger
 
@@ -71,8 +71,8 @@ class TemplateRenderTests(unittest.TestCase):
     def test_presets_render_the_displayed_example_path(self):
         for preset in organize.PRESETS:
             with self.subTest(preset=preset["label"]):
-                filename, missing = render(preset["file"], VALUES)
-                directory, directory_missing = render(preset["dir"], VALUES, directory=True)
+                filename, missing = render(preset["file"], EXAMPLE_VALUES)
+                directory, directory_missing = render(preset["dir"], EXAMPLE_VALUES, directory=True)
                 self.assertFalse(missing | directory_missing)
                 self.assertEqual("/".join(filter(None, (directory, filename + ".mp4"))), preset["example"])
 
@@ -611,7 +611,7 @@ class EndpointTests(unittest.TestCase):
 
         output = dispatch_api_get(None, "/api/organize/example", {
             "file_template": "自定义_{code}[_{definition}]", "dir_template": "{year}/{studio}"})
-        self.assertEqual(output, {"ok": True, "example": "2024/厂牌/自定义_ABC-123_1080p.mp4"})
+        self.assertEqual(output, {"ok": True, "example": "2024/Studio/自定义_ABC-123_1080p.mp4"})
         invalid = dispatch_api_get(None, "/api/organize/example", {"file_template": "{code"})
         self.assertFalse(invalid["ok"])
         self.assertEqual(invalid["field"], "file")

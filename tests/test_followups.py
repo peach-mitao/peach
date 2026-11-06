@@ -222,7 +222,7 @@ class RunnerTests(LedgerTestCase):
         def busy_until_clear(_contract, key, _handle):
             attempts.append(key)
             if not clear.is_set():
-                raise Blocked("等待扫描与采集完成后继续")
+                raise Blocked("Waiting for the scan-and-scrape pass to finish")
             return {"outcome": key}
 
         parent = self.parent()
@@ -237,7 +237,7 @@ class RunnerTests(LedgerTestCase):
             time.sleep(0.05)
             waiting = self.store.get(child)
             self.assertEqual(waiting.status, "pending")
-            self.assertEqual(waiting.progress_label, "等待扫描与采集完成后继续")
+            self.assertEqual(waiting.progress_label, "Waiting for the scan-and-scrape pass to finish")
             self.assertEqual(attempts, ["ledger-a:1"])
             clear.set()
             self.wait_until_settled(parent.id)
@@ -250,7 +250,7 @@ class RunnerTests(LedgerTestCase):
 
         def busy(_contract, key, _handle):
             attempts.append(key)
-            raise JobDeferred("等待扫描与采集完成后继续")
+            raise JobDeferred("Waiting for the scan-and-scrape pass to finish")
 
         parent = self.parent()
         with registered(echo_type("ledger-a", run=busy)):

@@ -1,4 +1,4 @@
-/** 公开作品资料：发行期每天补齐，满一个月后的成功快照固定保存。 */
+/** Public work profile: the release period is completed daily; after a full month, the successful snapshot is saved permanently. */
 const DAY = 86_400_000;
 const calendarDay = (time: number) => {
   const day = new Date(time);

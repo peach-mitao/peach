@@ -62,7 +62,7 @@ def plan(connection: sqlite3.Connection, *, since_entity_id: int, pack_path: Pat
     key = followup_key(version, seed_validation.digest(pack))
     if landed(connection, key) and not _new_entities(connection, since_entity_id):
         return []
-    return [Followup(key=key, task_key=TASK_KEY, label=f"{TASK_LABEL}：{version}")]
+    return [Followup(key=key, task_key=TASK_KEY, label=f"{TASK_LABEL}: {version}")]
 
 
 def _rows(report: dict) -> list[dict]:
@@ -106,7 +106,7 @@ def run(contract, key: str, handle) -> dict:
     if key != followup_key(pack["version"], seed_validation.digest(pack)):
         raise ValueError("种子内容与排队任务的摘要不一致，请重新派发")
     if handle is not None:
-        handle.progress(label=f"{TASK_LABEL}：{pack['version']}", throttle=0)
+        handle.progress(label=f"{TASK_LABEL}: {pack['version']}", throttle=0)
     with contract.database.read_connection() as connection:
         rename = bool(seed_pack.plan(connection, pack).get("names"))
     if rename:

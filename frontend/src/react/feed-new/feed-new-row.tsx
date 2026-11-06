@@ -1,7 +1,8 @@
-/* 新作那一行的卡片区，首页与资料页共用：画进壳留好的 `section.feednew` 宿主里，卡片是壳拼的
- * 那一份模板（`feedNewCardHtml`）。忽略的那条当场消失，已看过的留在原位只是变淡，想要那颗键
- * 按下去换成填实的星；三样都直接改这一行的节点，不重画整行——重画会把横滚的位置和自动滚动
- * 一起打回起点。一条都没有就整块不出。 */
+/* The new-releases row's card area, shared by home and the profile page: rendered into the shell's reserved
+ * `section.feednew` host, with cards from the shell's template (`feedNewCardHtml`). The ignored entry vanishes on the spot,
+ * the watched one stays in place only dimmed, and the want key swaps to a filled star when pressed; all three mutate this
+ * row's nodes directly instead of re-rendering the row, since a re-render would send the horizontal scroll position and
+ * auto-scroll back to the start. With not one entry the whole block does not appear. */
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ShellActionsContext } from '../router/router';
@@ -31,11 +32,11 @@ async function prioritise(code: string, slot: Element, card: Element): Promise<b
 export function FeedNewRow({ feedNew, host, wire, act, settled }: {
   feedNew: FeedNew | null;
   host: HTMLElement;
-  /** 拖动、滚轮，按设置接自动滚动。 */
+  /** Drag, wheel, and auto-scroll wired up per settings. */
   wire(row: Element | null): void;
-  /** 卡上那三颗键的写操作。 */
+  /** Write operations for the three buttons on the card. */
   act(feedId: number, action: string): Promise<void>;
-  /** 有没有卡：画出来、或最后一张被收起时报一次。 */
+  /** Whether a card exists: reports once when one renders or when the last one is dismissed. */
   settled?(hasItems: boolean): void;
 }) {
   const actions = useContext(ShellActionsContext);
@@ -80,11 +81,11 @@ export function FeedNewRow({ feedNew, host, wire, act, settled }: {
     }
     await act(Number(card.dataset.feedId), action);
     if (action === 'want' || action === 'unwant') {
-      // 想要是开关：同一颗键换成另一头，卡片不收起也不变淡。
+      // Want is a toggle: the same key flips to the other end, and the card neither collapses nor fades.
       const wanted = action === 'want';
       button.dataset.feedAction = wanted ? 'unwant' : 'want';
       button.setAttribute('aria-pressed', String(wanted));
-      button.title = wanted ? '取消想要' : '想要';
+      button.title = wanted ? 'Remove from wants' : 'Want';
       return;
     }
     if (action === 'ignore') card.remove();

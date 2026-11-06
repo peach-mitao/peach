@@ -395,9 +395,9 @@ def availability(config) -> tuple[bool, str]:
                        "在容器里搬走会离开数据卷，重建容器就丢失。请在宿主机上按下面几步迁移")
     if not (distribution.standalone() or os.environ.get("PEACH_TRAY_MANAGED") == "1"
             or os.environ.get("PEACH_HEADLESS_MANAGED") == "1"):
-        return False, ("迁移要由托盘或无桌面服务（python -m peach.server）停止并重新启动 Peach，"
-                       "当前服务是直接启动的。请改用其中一种方式启动后再迁移；也可以退出 Peach，"
-                       "手动移动数据目录，再将 PEACH_DATA_ROOT 设为新位置")
+        return False, ("Migration needs the tray or the headless service (python -m peach.server) to stop and restart Peach; "
+                       "the current service was started directly. Start Peach one of those ways before migrating, or quit Peach, "
+                       "move the data directory manually, and point PEACH_DATA_ROOT at the new location")
     root = config.data_root.resolve()
     for key in settings_file.DIRECTORY_KEYS:
         raw = (config.directories.get(key) or "").strip()

@@ -1,9 +1,9 @@
-/* Docker 访问设置：已经配置过、还没有访问策略的部署，登录页换成这一张卡（ADR-0149）。全新部署走首次设置页。
+/* Docker access setup: for a deployment that is configured but has no access policy yet, the login page swaps to this card (ADR-0149). A fresh deployment goes to the first-run setup page.
  *
- * 和桌面首次设置的访问部分同一套控件：「访问密码」开关、两框密码与一句说明。开着时设访问密码，
- * 关掉就是明确选了免登录，按钮跟着写清楚是哪一种。提交走 `POST /api/configuration/access/first`，
- * 成功后浏览器带着服务端签发的会话（免登录时不需要）去 `next`。字段错误写回各自框下；来源不对、
- * 别人已经设过这类整页的原因放在按钮上方。 */
+ * Same controls as the access part of desktop first-run setup: an "Access password" switch, two password boxes, and a line of explanation. When on, it sets an access password;
+ * when off, it is an explicit choice of no login, and the button says which. Submission goes to `POST /api/configuration/access/first`;
+ * on success the browser carries the session the server issued (not needed without login) to `next`. Field errors are written back under their own box; whole-page reasons such as a wrong
+ * source or someone else already having set it go above the button. */
 import { useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/base/buttons/button';
@@ -51,38 +51,38 @@ export function AccessSetup({ data, navigate = go }: { data: PageData; navigate?
         return;
       }
       if (answer?.errors && Object.keys(answer.errors).length) setErrors(answer.errors);
-      else setFailure(answer?.error || '没能保存访问设置，请重试');
+      else setFailure(answer?.error || 'Could not save the access setup; try again');
     } catch {
-      setFailure('连接不到 Peach，请确认它仍在运行后重试');
+      setFailure('Cannot reach Peach; confirm it is still running, then retry');
     }
     setBusy(false);
   };
 
   return (
-    <AuthCard title="访问设置" lede="这台 Peach 还没有访问设置，先决定打开时要不要登录。">
+    <AuthCard title="Access setup" lede="This Peach has no access setup yet; first decide whether signing in is required on open.">
       <form aria-labelledby="auth-card-title" className="flex flex-col gap-6" onSubmit={onSubmit} noValidate>
         <CardGroup first>
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-0.5">
-              <Label id="access-setup-title" elementType="span">访问密码</Label>
-              <p id="access-setup-description" className="text-body-2-regular text-text-secondary">开启后，访问 Peach 需要先登录。</p>
+              <Label id="access-setup-title" elementType="span">Access password</Label>
+              <p id="access-setup-description" className="text-body-2-regular text-text-secondary">When on, accessing Peach requires signing in first.</p>
             </div>
             <Switch aria-labelledby="access-setup-title" aria-describedby="access-setup-description"
               isSelected={passwordOn} onChange={(on) => { setPasswordOn(on); setErrors({}); }} />
           </div>
-          <Help>局域网访问推荐设置密码。未设置时，同一网络中能连接 Peach 的设备可直接进入。</Help>
+          <Help>A password is recommended for LAN access. Without one, devices on the same network that can reach Peach get in directly.</Help>
           {passwordOn
-            ? <PasswordPair label="访问密码" password={password} confirmation={confirmation}
+            ? <PasswordPair label="Access password" password={password} confirmation={confirmation}
                 onPassword={(value) => { setPassword(value); setErrors({}); }}
                 onConfirmation={(value) => { setConfirmation(value); setErrors({}); }}
                 passwordError={errors.password ? <span role="alert">{errors.password}</span> : undefined}
-                passwordHint="请输入 8–256 个字符。"
+                passwordHint="Enter 8-256 characters."
                 confirmationError={errors.confirmation ? <span role="alert">{errors.confirmation}</span> : undefined} />
             : null}
         </CardGroup>
         {failure ? <Note tone="error">{failure}</Note> : null}
         <Button type="submit" className="w-full" {...busyProps(busy)}>
-          {passwordOn ? '设置密码并进入' : '免登录进入'}
+          {passwordOn ? 'Set password and continue' : 'Continue without login'}
         </Button>
       </form>
     </AuthCard>

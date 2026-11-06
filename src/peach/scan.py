@@ -59,6 +59,35 @@ ARCHIVE = {".zip", ".rar", ".7z", ".tar", ".gz"}
 #: 每攒够这么多行落一次盘，并报一行进度。
 BATCH_SIZE = 2000
 
+#: 个人库的非 JAV 内容黑名单（网课、购物、剧集等标记）：命中的名字不进账本。
+#: 单文件登记（`ingest_path`）与整目录扫描（`_scan_location`）走同一份判据。
+NON_ADULT_PATTERNS = (
+    "@Vid4Med", "Facebook", "_audio",
+    "นพ.", "พญ.", "รศ.", "ผศ.", "ร.อ.", "ร.ท.",
+    "Geriatrics", "Hematology", "Nephrology", "Neurology", "Oncology",
+    "Rheumatology", "Nutrition -", "USMLE", "EM Boot Camp",
+    "Vaginal_Delivery", "GYN_", "IELTS", "Video Playlist",
+    "คลิปเข้ม", "Graphpad", "PDPA", "Shopee", "SCB",
+    "Taekwondo", "หยาดน้้ำ", "Prime Video", "videoplayback",
+    "mp4decrypt_out", "Windows XP", ".iso",
+    "WEBRip", "WEB-DL", "HARDSUBBED", "x264", "AAC5.1",
+    "The.Kingmaker", "VIVANT", "Masterchef", "Official.Secrets",
+    "The Office", "Why Making Fun",
+    # Thai legal / academic / insurance lectures
+    "กฎหมาย", "วชิชา", "ประกัน", "ศ.(",
+    # Zoom / webinar / screen recordings
+    "Video Conferencing", "Webinars", "Screen Sharing",
+    # TV shows / streaming rips
+    "MagicStar", "U-NEXT",
+)
+
+
+def name_filtered(name: str) -> bool:
+    """个人黑名单与通用剧集标记（`EP1.mp4`）：这些不进账本。"""
+    if any(pattern in name for pattern in NON_ADULT_PATTERNS):
+        return True
+    return re.match(r"^EP\d+\.\w+$", name) is not None
+
 #: Kodi／Jellyfin 的影片图片名（单写或挂在片名后面，如 `ABC-123-fanart.jpg`）。
 #: 只在同目录有视频时算附属：没有正片的目录里，`cover.jpg` 是图集自己的封面。
 ARTWORK = frozenset({
@@ -376,6 +405,8 @@ def ingest_path(
     try:
         stat = (directory / name).stat()
     except OSError:
+        return IngestResult(location, str(ledger_path), False)
+    if name_filtered(name):
         return IngestResult(location, str(ledger_path), False)
     library_roots = tuple(chain.from_iterable(declared_roots.values()))
     if _sidecar_on_disk(name, directory, ledger_path=str(ledger_path), library_roots=library_roots):
@@ -760,6 +791,8 @@ def _scan_location(
                                            relocate=partial(relocator.relocate, video_names=partial(_video_names, entries)))
                 except OSError as error:
                     onerror(error)
+                    continue
+                if name_filtered(name):
                     continue
                 mtime = time.strftime("%Y-%m-%d", time.localtime(stat.st_mtime))
                 here[name] = (stat.st_size, mtime)

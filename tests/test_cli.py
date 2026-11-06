@@ -67,7 +67,7 @@ class StatusCommandTests(unittest.TestCase):
             "INSERT INTO asset(location,path,name,medium,size,duration,snapshot_path,"
             "creator,ctx_length) VALUES(?,?,?,?,?,?,?,?,?)",
             [
-                ("local", r"R:\media\a.mp4", "a.mp4", "video", 2 << 30, 1800.0,
+                ("local", r"R:\media\ABC-123.mp4", "ABC-123.mp4", "video", 2 << 30, 1800.0,
                  r"R:\snap\a.jpg", "Someone", "中"),
                 ("local", r"R:\media\b.mp4", "b.mp4", "video", 1 << 30, None, None,
                  None, None),
@@ -263,8 +263,8 @@ class InteractiveInitTests(unittest.TestCase):
         self.home.mkdir()
         self.media = self.root / "media"
         (self.media / "sub").mkdir(parents=True)
-        (self.media / "sub" / "a.mp4").write_bytes(b"0" * 10)
-        (self.media / "b.jpg").write_bytes(b"1")
+        (self.media / "sub" / "ABC-123.mp4").write_bytes(b"0" * 10)
+        (self.media / "ABC-124.jpg").write_bytes(b"1")
         patcher = mock.patch.object(cli.onboarding.certs, "bootstrap_certificates")
         self.certs = patcher.start()
         self.addCleanup(patcher.stop)
@@ -300,7 +300,7 @@ class InteractiveInitTests(unittest.TestCase):
     def test_windows_flow_declares_the_directory_and_scans_it(self):
         second = self.root / "more"
         second.mkdir()
-        (second / "c.mp4").write_bytes(b"2")
+        (second / "ABC-125.mp4").write_bytes(b"2")
         code, output, prompts = self._run(
             ["", str(self.media), str(second), "", "", "", "", ""], windows=True)
         self.assertEqual(code, 0)
@@ -319,8 +319,8 @@ class InteractiveInitTests(unittest.TestCase):
         self.certs.assert_called_once()
         # 账本里的路径就是本机路径，每一行都指向真实文件。
         self.assertEqual(self._ledger_paths(),
-                         sorted([str(self.media / "b.jpg"), str(self.media / "sub" / "a.mp4"),
-                                 str(second / "c.mp4")]))
+                         sorted([str(self.media / "ABC-124.jpg"), str(self.media / "sub" / "ABC-123.mp4"),
+                                 str(second / "ABC-125.mp4")]))
         self.assertIn("✓ local: 2 文件", output)
         self.assertIn("✓ local: 1 文件", output)
         self.assertIn("下一步", output)
@@ -338,7 +338,7 @@ class InteractiveInitTests(unittest.TestCase):
                          ("0.0.0.0", 9443, "peach-two"))
         self.assertIn("媒体目录", output)
         paths = self._ledger_paths()
-        self.assertEqual(paths, [r"R:\media\b.jpg", r"R:\media\sub\a.mp4"])
+        self.assertEqual(paths, [r"R:\media\ABC-124.jpg", r"R:\media\sub\ABC-123.mp4"])
         # 读取文件时，将数据库路径前缀之后的层级拼到本机媒体目录。
         for path in paths:
             tail = PureWindowsPath(path).relative_to(PureWindowsPath(r"R:\media")).parts
@@ -480,8 +480,8 @@ class ScanCommandTests(unittest.TestCase):
         self.db = fresh_ledger(self.root)
         self.media = self.root / "media"
         (self.media / "sub").mkdir(parents=True)
-        (self.media / "sub" / "a.mp4").write_bytes(b"0")
-        (self.media / "b.jpg").write_bytes(b"1")
+        (self.media / "sub" / "ABC-123.mp4").write_bytes(b"0")
+        (self.media / "ABC-124.jpg").write_bytes(b"1")
         config = settings_file.load_config(environ={}, strict=False)
         declared = str(self.media) if NATIVE_WINDOWS else r"R:\media"
         mounts = {} if NATIVE_WINDOWS else {"local": (Path(self.media),)}
@@ -571,7 +571,7 @@ class ProcessCommandTests(unittest.TestCase):
 
     def test_the_followups_a_run_declares_are_queued_under_it(self):
         declared = [{"key": "performer-alias:9378", "task_key": "performer-alias",
-                     "label": "补女优别名：白川麻衣"}]
+                     "label": "Fill in performer aliases: 白川麻衣"}]
         code, output, rows = self._run({"status": "complete", "followups": declared})
         self.assertEqual(code, 0)
         parent, child = rows

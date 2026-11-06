@@ -1,6 +1,6 @@
-/* 卡片图片、人脸取景与悬停预览（@peach/card-art）。
- * Application 与 React 页面引用同一份源码，随 peach-app.js 发出。
- * 代表作表、悬停配置与文档监听全站只有一份。 */
+/* Card images, face framing, and hover preview (@peach/card-art).
+ * The Application and React pages reference the same source, shipped with peach-app.js.
+ * The representative-works table, hover configuration, and document listeners are singletons app-wide. */
 export { faceFrame, faceZoom, hasFaceBox, FACE_CEILING, FACE_TARGET, MIN_FACE_PX } from './face-frame';
 export type { FaceBox, FrameSize } from './face-frame';
 export { advanceImageFallback, imageFallbackAttrs, parseFallbacks, wireImageFallbacks } from './image-fallback';

@@ -1,8 +1,9 @@
-/* 数据管理页上的「整理」（ADR-0039）：选来源、填两份模板、预览、执行，外加整批回滚。
+/* "Organize" on the data management page (ADR-0039): pick a source, fill two templates, preview, run, plus batch rollback.
  *
- * 预览是一次同步请求，结果只活在这张卡上；执行与回滚是同一趟后台任务，快照摊在
- * `/api/organize` 的顶层，所以 `useBackgroundJob` 用 `withJob` 只换任务那几格，来源、模板
- * 与上一批原样留着。执行与回滚动的是真实文件名与数据库路径，都要先过确认弹层。 */
+ * The preview is one synchronous request whose result lives only on this card; run and rollback are one background job with
+ * the snapshot spread over `/api/organize`'s top level, so `useBackgroundJob` uses `withJob` to swap only the job cells,
+ * leaving sources, templates and the last batch untouched. Run and rollback touch real file names and database paths, and
+ * both pass a confirmation dialog first. */
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { confirmModal, MEDIA_SOURCE_ICONS } from '@peach/legacy/ui';
@@ -29,11 +30,11 @@ import {
   type OrganizeCommand, type OrganizeData, type OrganizeJob, type OrganizePlan,
 } from './organize';
 
-const APPLY_BODY = (name: string, path: string) => `将整理「${name}」${path ? `的「${path}」及其子目录` : '上的文件名与目录'}，清理特殊符号与乱码，并按已填模板改名或移动。目标已存在的行会整行跳过。`
-  + '这一批可以从「回滚上一批」整批退回。';
-const ROLLBACK_BODY = '将把上一批整理动过的文件退回整理前的名字与位置，数据库路径跟着退回。'
-  + '退回后这一批不再出现在这里。';
-/** 预览只列前 8 行：这里是给人扫一眼方向对不对，完整计划在 CSV 里。 */
+const APPLY_BODY = (name: string, path: string) => `Organize ${name}${path ? ` in ${path} and its subdirectories` : '\'s file names and directories'}: clean up special symbols and garbled characters, and rename or move per the filled-in template. Rows whose target already exists are skipped whole. `
+  + 'This batch can be reverted whole via "Roll back previous batch".';
+const ROLLBACK_BODY = 'This moves the files the last organize run touched back to their earlier names and locations, and the database paths follow. '
+  + 'After reverting, this batch no longer appears here.';
+/* The Preview only lists the first 8 rows: this is for a person to glance at whether the direction is right; the full plan is in the CSV. */
 const PLAN_ROWS = 8;
 
 function PlanRows({ plan }: { plan: OrganizePlan }) {
@@ -50,7 +51,7 @@ function PlanRows({ plan }: { plan: OrganizePlan }) {
         ))}
       </ol>
       {plan.truncated || plan.rows.length > PLAN_ROWS
-        ? <p className="text-caption-1-regular text-text-secondary">只列出前 8 行，完整计划在计划 CSV 里。</p>
+        ? <p className="text-caption-1-regular text-text-secondary">Only the first 8 rows are listed; the full plan is in the plan CSV.</p>
         : null}
     </>
   );
@@ -65,7 +66,7 @@ export function OrganizeCard(
   const [chosen, setChosen] = useState('');
   const location = locations.some((row) => row.location === chosen) ? chosen : locations[0]?.location ?? '';
   const stored = data?.templates?.[location];
-  /* 两个框在人动过之前跟着存下的模板走：换来源就换成那个来源上次用的那两行。 */
+  /* Before the user touches them, the two boxes follow the stored template: switching sources swaps in the two lines that source used last time. */
   const [draft, setDraft] = useState<{ location: string; file: string; dir: string } | null>(null);
   const fields = draft?.location === location ? draft : { location, file: stored?.file ?? '', dir: stored?.dir ?? '' };
   const edit = (patch: Partial<{ file: string; dir: string }>) => { setDraft({ ...fields, ...patch }); preview.reset() };
@@ -97,9 +98,9 @@ export function OrganizeCard(
   const request = () => ({ location, path: path.trim(), file_template: fields.file.trim(), dir_template: fields.dir.trim() });
   const preview = useMutation({
     mutationFn: previewOrganize,
-    /* 模板不合法时错误就出在两个框里的一个，所以除了说原因还要指出是哪一格。 */
+    /* When a template is invalid the error lives in one of the two boxes, so besides the reason, name which one. */
     onError: (cause) => {
-      const target = /整理路径/.test(errorMessage(cause)) ? 'path'
+      const target = /Organize路径/.test(errorMessage(cause)) ? 'path'
         : DIRECTORY_TEMPLATE_ERROR.test(errorMessage(cause)) ? 'dir' : 'file';
       setInvalid(target);
       (target === 'path' ? pathInput : target === 'dir' ? dirInput : fileInput).current?.focus();
@@ -122,12 +123,12 @@ export function OrganizeCard(
     withJob: withOrganizeJob,
     onStarted: () => preview.reset(),
     onFinish: (finished) => {
-      /* 上一批跟着这一趟变了：执行多出一批，回滚退掉一批。重读一次拿到新的 `last_batch`。 */
+      /* The previous batch changed with this run: execute adds a batch, rollback removes one. Re-read once to pick up the new `last_batch`. */
       void queryClient.invalidateQueries({ queryKey: ORGANIZE_KEY, exact: true });
       if (finished.status !== 'complete') return;
       const { text, failed } = organizeOutcome(finished);
-      if (failed) failure('整理文件', new Error(`${failed} 行未能处理`));
-      else toast(text.replace(/。$/, ''));
+      if (failed) failure('Organize files', new Error(`${failed} rows could not be processed`));
+      else toast(text.replace(/.$/, ''));
     },
   });
 
@@ -159,8 +160,8 @@ export function OrganizeCard(
     const sent = preview.variables;
     if (!sent || !plan || !changes) return;
     void confirmModal({
-      title: '整理文件', body: APPLY_BODY(name, sent.path), confirmLabel: '整理文件',
-      /* 确认执行时保存该来源的模板。 */
+      title: 'Organize files', body: APPLY_BODY(name, sent.path), confirmLabel: 'Organize files',
+      /* Save the template for that source when confirming the run. */
       onConfirm: async () => {
         await job.start.mutateAsync({ kind: 'apply', request: sent });
         void rememberTemplates({
@@ -170,31 +171,31 @@ export function OrganizeCard(
     });
   };
   const runRollback = () => void confirmModal({
-    title: '回滚上一批整理', body: ROLLBACK_BODY, confirmLabel: '回滚整理',
+    title: 'Roll back the previous organize batch', body: ROLLBACK_BODY, confirmLabel: 'Roll back organizing',
     onConfirm: () => job.start.mutateAsync({ kind: 'rollback' }),
   });
 
-  /* 这张卡上的结论只有一句：跑着的那一趟、这次跟完的那一趟、刚出的预览，按新旧取最新。 */
+  /* The conclusion on this card is one line: the running trip, the trip just followed through this time, and the Preview just produced — take the newest by recency. */
   let state = null;
   const applicable = !!changes && !running && !job.outcome;
   const current = job.job;
   const outcome = job.outcome;
   if (current?.status === 'running') {
-    const line = current.message || current.stage || '正在整理文件';
+    const line = current.message || current.stage || 'Organizing files';
     state = <TaskProgress embedded label={line} value={Math.min(current.checked || 0, current.total || 0)} total={current.total} />;
   } else if (outcome?.status === 'failed') {
-    state = <Note tone="error" title="文件整理未完成">{outcome.error || '请查看任务记录，核对已处理的文件。'}</Note>;
+    state = <Note tone="error" title="File organizing did not finish">{outcome.error || 'Check the task records to verify the processed files.'}</Note>;
   } else if (outcome) {
     const { text, failed } = organizeOutcome(outcome);
-    state = <Note tone={failed ? 'warning' : 'success'} title={failed ? '部分完成' : '整理结果'}>{text}</Note>;
+    state = <Note tone={failed ? 'warning' : 'success'} title={failed ? 'Partially finished' : 'Organize results'}>{text}</Note>;
   } else if (job.start.isError) {
-    state = <Note tone="error" title="整理失败">{errorMessage(job.start.error)}</Note>;
+    state = <Note tone="error" title="Organizing failed">{errorMessage(job.start.error)}</Note>;
   } else if (preview.isPending) {
-    state = <TaskProgress embedded label="正在核对整理计划" />;
+    state = <TaskProgress embedded label="Verifying the organize plan" />;
   } else if (preview.isError && previewMatches) {
-    state = <Note tone="error" title="整理预览失败">{errorMessage(preview.error)}</Note>;
+    state = <Note tone="error" title="Organize preview failed">{errorMessage(preview.error)}</Note>;
   } else if (plan) {
-    state = <><Note tone="neutral" title="预览结果">{planSummary(plan)}</Note>{changes ? <PlanRows plan={plan} /> : null}</>;
+    state = <><Note tone="neutral" title="Preview results">{planSummary(plan)}</Note>{changes ? <PlanRows plan={plan} /> : null}</>;
   }
 
   return (
@@ -203,24 +204,24 @@ export function OrganizeCard(
       footer={
         <>
           {data?.last_batch
-            ? <Button variant="secondary" {...busyProps(running)} onClick={runRollback}>回滚上一批</Button>
+            ? <Button variant="secondary" {...busyProps(running)} onClick={runRollback}>Roll back last batch</Button>
             : null}
           <Button variant={applicable ? 'secondary' : 'primary'} disabled={!locations.length || running}
-            {...busyProps(preview.isPending)} onClick={runPreview}>预览</Button>
-          {applicable ? <Button variant="primary" onClick={runApply}>执行整理</Button> : null}
+            {...busyProps(preview.isPending)} onClick={runPreview}>Preview</Button>
+          {applicable ? <Button variant="primary" onClick={runApply}>Run organizing</Button> : null}
         </>
       }>
-      <FieldsetTitle id="cleanup-organize-title" gap="medium">整理</FieldsetTitle>
+      <FieldsetTitle id="cleanup-organize-title" gap="medium">Organize</FieldsetTitle>
       <p className="text-body-regular text-text-secondary">
         {ORGANIZE_TEXT}
       </p>
       {organize.isError
-        ? <div className="mt-3"><Note tone="error" title="整理配置读取失败">{errorMessage(organize.error)}</Note></div>
+        ? <div className="mt-3"><Note tone="error" title="Reading organize configuration failed">{errorMessage(organize.error)}</Note></div>
         : null}
       <div className="mt-3 flex flex-col gap-3">
         <div data-organize-scope className="flex min-w-0 flex-wrap items-start gap-2">
         {locations.length
-          ? <Select aria-label="整理哪个来源" prefix="来源" className="w-fit min-w-25" selectedKey={location || null}
+          ? <Select aria-label="Which source to organize" prefix="Source" className="w-fit min-w-25" selectedKey={location || null}
               onSelectionChange={(key) => {
                 if (key === null) return;
                 setChosen(String(key)); setScope({ location: String(key), path: '' });
@@ -234,11 +235,11 @@ export function OrganizeCard(
             </Select>
           : null}
           <div className="flex min-w-0 basis-64 flex-1 items-start gap-2">
-            <Input aria-label="整理路径" className="min-w-0 flex-1" placeholder="留空整理整个来源"
+            <Input aria-label="Organize path" className="min-w-0 flex-1" placeholder="Leave empty to organize the whole source"
               name="organize-path" autoComplete="off" spellCheck="false" value={path} ref={pathInput}
               isInvalid={invalid === 'path'}
               onChange={(value) => { setScope({ location, path: value }); setInvalid(null); preview.reset(); picker.reset() }} />
-            <IconButton icon={FolderSearchIcon} aria-label="选择整理路径" {...busyProps(picker.isPending)}
+            <IconButton icon={FolderSearchIcon} aria-label="Choose the organize path" {...busyProps(picker.isPending)}
               onClick={() => picker.mutate({ initial: path || locations.find((row) => row.location === location)?.roots[0] || '', location, path })} />
           </div>
         </div>
@@ -248,13 +249,13 @@ export function OrganizeCard(
           spellCheck="false" isInvalid={invalid === 'file'}
           onFocus={() => { setTarget('file'); focused.current = true }}
           onChange={(value) => changeTemplates({ file: value })} />
-        <Input label="目录模板" placeholder="留空表示原地改名" value={fields.dir} ref={dirInput}
+        <Input label="Folder template" placeholder="Leave empty to rename in place" value={fields.dir} ref={dirInput}
           spellCheck="false" isInvalid={invalid === 'dir'}
           onFocus={() => { setTarget('dir'); focused.current = true }}
           onChange={(value) => changeTemplates({ dir: value })} />
         {data?.presets?.length
-          ? <div className="flex flex-col gap-2" role="group" aria-label="套用模板">
-              <p className="text-caption-1-medium text-text-secondary">套用模板</p>
+          ? <div className="flex flex-col gap-2" role="group" aria-label="Apply template">
+              <p className="text-caption-1-medium text-text-secondary">Apply template</p>
               <div className="flex flex-wrap gap-2">
               {data.presets.map((preset) => (
                 <Button key={preset.label} variant="secondary" size="small" title={preset.example || preset.label}
@@ -268,12 +269,12 @@ export function OrganizeCard(
           : null}
         <p aria-live="polite" aria-busy={example.isFetching} data-organize-example=""
           className="text-caption-1-regular text-text-secondary">
-          路径示例：<code className="wrap-anywhere">{example.data?.example || example.data?.error
-            || (example.isError ? errorMessage(example.error) : '正在预览…')}</code>
+          Path example:<code className="wrap-anywhere">{example.data?.example || example.data?.error
+            || (example.isError ? errorMessage(example.error) : 'Previewing…')}</code>
         </p>
-        {data?.placeholders?.length ? <div className="flex flex-col gap-2" role="group" aria-label="插入参数">
+        {data?.placeholders?.length ? <div className="flex flex-col gap-2" role="group" aria-label="Insert parameters">
           <p className="text-caption-1-regular text-text-secondary" aria-live="polite">
-            <strong className="text-caption-1-semibold text-text-primary">插入参数</strong>（到{target === 'file' ? '文件名模板' : '目录模板'}）
+            <strong className="text-caption-1-semibold text-text-primary">Insert parameters</strong> (into {target === 'file' ? 'File name template' : 'Folder template'}）
           </p>
           <div className="flex flex-wrap gap-1">
             {data.placeholders.map((item) => <Button key={item.key} variant="ghost" size="small"

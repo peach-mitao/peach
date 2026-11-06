@@ -28,6 +28,7 @@ from .taste_history import (
     refresh_history,
     remove_history_source,
     store_version,
+    utc_offset_label,
     write_manifest,
 )
 from .web_activity import DEFAULT_PROFILE_ID
@@ -266,9 +267,9 @@ def w_taste_refresh(contract: WebContract, body, *, progress=None, checkpoint=No
             result = w_taste_refresh(contract, {**body, "background": False},
                 progress=lambda **fields: job.update(job_id, **fields),
                 checkpoint=lambda **fields: job.checkpoint(job_id, **fields), resume_state=job.snapshot())
-            job.update(job_id, **result, status="complete", message="部分浏览记录未取得" if result["warnings"] else "口味分析已更新", completed_at=time.time())
+            job.update(job_id, **result, status="complete", message="Completed with warnings" if result["warnings"] else "Refresh complete", completed_at=time.time())
         return job.start(work, restart=True, initial={
-            "stage": "discovering", "message": "正在查找 Peach 主机上的浏览器资料"},
+            "stage": "discovering", "message": "Scanning Peach profiles for browsing history"},
             recovery={'background': True, 'window': body.get('window') or 'all'})
     window = str(body.get("window") or "all")
     sources = enabled_history_sources(contract.taste_history_store)
@@ -303,8 +304,8 @@ def w_taste_refresh(contract: WebContract, body, *, progress=None, checkpoint=No
         write_manifest(contract.taste_history_manifest, results, analysis)
     contract.cache_bust()
     if progress:
-        progress(stage="dashboard", checked=0, total=None, message="正在汇总口味分布、标签与创作者排名")
-    return {"refresh": results, "warnings": [f"{row['browser']} · {row['profile']}：{row['error']}"
+        progress(stage="dashboard", checked=0, total=None, message="Generating dashboard and insights")
+    return {"refresh": results, "warnings": [f"{row['browser']} - {row['profile']} - {row['error']}"
             for row in results if row.get("status") == "failed"], "dashboard": q_taste(contract, {"window": window})}
 
 
@@ -351,10 +352,10 @@ def w_search_history(contract: WebContract, body):
     return {"ok": True, "operation": operation}
 
 _STORAGE_LABELS = {
-    "system": "系统盘",
-    "local": "资源盘",
-    "115": "115 网盘",
-    "pikpak": "PikPak 网盘",
+    "system": "System",
+    "local": "Local",
+    "115": "115 Cloud",
+    "pikpak": "PikPak Cloud",
 }
 
 
@@ -420,11 +421,6 @@ _ONLINE_ONLY = ("(fi.asset_id IS NULL OR NOT EXISTS(SELECT 1 FROM asset a "
                 "WHERE a.id=fi.asset_id AND {}))")
 
 
-def _utc_offset(moment: datetime) -> str:
-    offset = moment.strftime("%z") or "+0000"
-    return f"UTC{offset[:3]}:{offset[3:]}"
-
-
 def _play_activity(c, has_follow: bool) -> dict[str, object]:
     """每个作品最近一次播放落在哪一天、星期几的哪个钟点，按本机时区算。
 
@@ -451,7 +447,7 @@ def _play_activity(c, has_follow: bool) -> dict[str, object]:
         slot = (moment.weekday(), moment.hour)
         hours[slot] = hours.get(slot, 0) + 1
     return {
-        "timezone": _utc_offset(datetime.now().astimezone()),
+        "timezone": utc_offset_label(datetime.now().astimezone()),
         "days": [{"date": day, "count": count} for day, count in sorted(days.items())],
         "hours": [{"weekday": weekday, "hour": hour, "count": count}
                   for (weekday, hour), count in sorted(hours.items())],
@@ -489,7 +485,7 @@ def q_stats(contract: WebContract):
                  for library in media_libraries.libraries(config)]
     out = dict(contract.cached_until_changed(
         "stats-ledger", lambda: _ledger_stats(contract, libraries),
-        repr(libraries), _utc_offset(datetime.now().astimezone()), tables=STATS_TABLES))
+        repr(libraries), utc_offset_label(datetime.now().astimezone()), tables=STATS_TABLES))
     # 判定在线要读一次各挂载根的首条目录项，网盘挂载上不便宜，沿用 TTL 缓存。
     out.update(contract.cached("stats-storage", _storage_stats))
     return out

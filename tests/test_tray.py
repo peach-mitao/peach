@@ -195,13 +195,13 @@ class ServiceStatusTests(unittest.TestCase):
     def test_all_healthy(self):
         self.assertEqual(
             self.manager({"http": (True, ""), "https": (True, "")}).status(),
-            "HTTP 正常 · HTTPS 正常",
+            "HTTP OK · HTTPS OK",
         )
 
     def test_none_healthy(self):
         self.assertEqual(
             self.manager({"http": (False, "无响应"), "https": (False, "无响应")}).status(),
-            "HTTP 异常（无响应） · HTTPS 异常（无响应）",
+            "HTTP Unhealthy (无响应) · HTTPS Unhealthy (无响应)",
         )
 
     def test_mount_failure_names_the_source_without_restarting_the_healthy_service(self):
@@ -212,7 +212,7 @@ class ServiceStatusTests(unittest.TestCase):
         popen = Mock()
         manager = ServiceManager((spec,), popen=popen, health_get=lambda *a, **k: response)
         manager.start_missing()
-        self.assertEqual(manager.status(), "HTTPS 正常（CloudDrive · 115：没有权限读取）")
+        self.assertEqual(manager.status(), "HTTPS OK (CloudDrive · 115：没有权限读取)")
         popen.assert_not_called()
 
     def test_short_summary_deduplicates_mount_warnings_and_recovers(self):
@@ -223,43 +223,43 @@ class ServiceStatusTests(unittest.TestCase):
         manager._health_get = lambda *a, **k: response
         for spec in manager.specs:
             self.assertTrue(manager.healthy(spec))
-        self.assertEqual(manager.status_summary(), "运行中 · 2 项提醒")
-        self.assertEqual(manager.status_details()[:3], ("HTTP 正常", "HTTPS 正常", warnings[0]))
+        self.assertEqual(manager.status_summary(), "Running · 2 warnings")
+        self.assertEqual(manager.status_details()[:3], ("HTTP OK", "HTTPS OK", warnings[0]))
         self.assertTrue(manager.status_details()[-1].endswith("…"))
         self.assertTrue(all(len(line) <= 48 for line in manager.status_details()))
         response.json.return_value = {"ok": True, "media_mounts": {"warnings": []}}
         for spec in manager.specs:
             manager.healthy(spec)
-        self.assertEqual(manager.status_summary(), "运行中")
-        self.assertEqual(manager.status_details(), ("HTTP 正常", "HTTPS 正常"))
+        self.assertEqual(manager.status_summary(), "Running")
+        self.assertEqual(manager.status_details(), ("HTTP OK", "HTTPS OK"))
 
     def test_short_summary_preserves_service_failures(self):
         manager = self.manager({"http": (True, ""), "https": (False, "状态码 503")})
-        self.assertEqual(manager.status_summary(), "部分服务异常")
-        self.assertEqual(manager.status_details(), ("HTTP 正常", "HTTPS 异常（状态码 503）"))
-        self.assertEqual(self.manager({"http": (False, "无响应")}).status_summary(), "服务未运行")
+        self.assertEqual(manager.status_summary(), "Some services unhealthy")
+        self.assertEqual(manager.status_details(), ("HTTP OK", "HTTPS Unhealthy (状态码 503)"))
+        self.assertEqual(self.manager({"http": (False, "无响应")}).status_summary(), "Services not running")
 
     def test_windows_style_menu_keeps_details_out_of_the_root_and_refreshes(self):
         manager = self.manager({"http": (True, "")})
         with patch("peach.tray.pystray.Icon") as icon:
             tray = PeachTray(manager)
         root = icon.call_args.args[3]
-        status = next(item for item in root.items if item.text.startswith("状态："))
-        self.assertEqual(status.text, "状态：运行中")
-        self.assertIn("HTTP 正常", [item.text for item in status.submenu.items])
+        status = next(item for item in root.items if item.text.startswith("Status: "))
+        self.assertEqual(status.text, "Status: Running")
+        self.assertIn("HTTP OK", [item.text for item in status.submenu.items])
         manager._last_health["http"] = (False, "无响应")
-        self.assertEqual(status.text, "状态：服务未运行")
-        self.assertIn("HTTP 异常（无响应）", [item.text for item in status.submenu.items])
+        self.assertEqual(status.text, "Status: Services not running")
+        self.assertIn("HTTP Unhealthy (无响应)", [item.text for item in status.submenu.items])
         self.assertIs(tray.manager, manager)
 
     def test_partial_names_the_broken_one_with_reason(self):
         self.assertEqual(
             self.manager({"http": (True, ""), "https": (False, "状态码 503")}).status(),
-            "HTTP 正常 · HTTPS 异常（状态码 503）",
+            "HTTP OK · HTTPS Unhealthy (状态码 503)",
         )
         self.assertEqual(
             self.manager({"http": (False, "状态码 503"), "https": (True, "")}).status(),
-            "HTTP 异常（状态码 503） · HTTPS 正常",
+            "HTTP Unhealthy (状态码 503) · HTTPS OK",
         )
 
     def test_health_check_never_goes_through_a_proxy(self):
@@ -564,8 +564,8 @@ class SetupGateTests(unittest.TestCase):
         gate = SetupGate(manager, config, waiting=True, load=self._config)
         self.assertTrue(gate.waiting)
         self.assertEqual(gate.open_url(), "http://127.0.0.1:8900/")
-        self.assertEqual(gate.open_label(), "重新打开设置页")
-        self.assertIn("等待完成首次设置", gate.status_line())
+        self.assertEqual(gate.open_label(), "Reopen setup page")
+        self.assertIn("Waiting for initial setup", gate.status_line())
         self.assertFalse(gate.poll(), "设置还没做完，轮询不动任何东西")
         self.assertEqual([spec.name for spec in manager.specs], ["setup"])
 
@@ -610,7 +610,7 @@ class SetupGateTests(unittest.TestCase):
         self.assertTrue(manager.specs, "切换之后必须有正常服务规格")
         self.assertEqual(manager.log_dir, self.data_root / "logs")
         self.assertEqual(manager.child_environment()["PEACH_DATA_ROOT"], str(self.data_root))
-        self.assertEqual(gate.open_label(), "打开 Peach")
+        self.assertEqual(gate.open_label(), "Open Peach")
         self.assertEqual(gate.open_url(), "https://peach-writer.local/")
 
         scan = scan_popen.call_args
@@ -810,10 +810,10 @@ class SourceSyncTests(unittest.TestCase):
 
     def test_windows_tray_lists_source_sync_next_to_ledger(self):
         source = inspect.getsource(PeachTray.__init__)
-        self.assertIn('MenuItem("同步开发进度", self.sync_source,', source)
+        self.assertIn('MenuItem("Sync development progress", self.sync_source,', source)
         self.assertIn('visible=lambda _: not standalone()', source)
-        self.assertLess(source.index("同步开发进度"), source.index("ledger_menu_items"))
-        self.assertLess(source.index("ledger_menu_items"), source.index("重启服务"))
+        self.assertLess(source.index("Sync development progress"), source.index("ledger_menu_items"))
+        self.assertLess(source.index("ledger_menu_items"), source.index("Restart service"))
 
     def test_windows_source_sync_tests_then_restarts_services(self):
         snapshot = VersionSnapshot("0.6.4", "master", "abc12345", False, True, "origin/master")
@@ -1526,15 +1526,15 @@ class ServiceRevivalTests(unittest.TestCase):
                 manager.start_missing()
             manager._popen.assert_called_once()
             self.assertTrue(manager.waiting_for_startup())
-            self.assertEqual(manager.status_summary(), "启动中")
-            self.assertIn("HTTPS 启动中", manager.status_details())
+            self.assertEqual(manager.status_summary(), "Starting up")
+            self.assertIn("HTTPS Starting up", manager.status_details())
             get.side_effect = None
             get.return_value = ReadyResponse(200, {"ok": True})
             self.assertTrue(manager.healthy(self.SPEC))
             get.side_effect = OSError("lost listener")
             self.assertFalse(manager.healthy(self.SPEC))
             self.assertFalse(manager.waiting_for_startup())
-            self.assertIn("异常", manager.status())
+            self.assertIn("Unhealthy", manager.status())
 
     def test_an_exited_child_or_an_error_response_is_not_starting(self):
         process = Mock()

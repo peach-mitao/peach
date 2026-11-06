@@ -1,4 +1,4 @@
-/* 每个页面夹具独立持有字幕记忆，刷新沿用同一份内容。 */
+/* Each page fixture holds its own caption memory; a refresh reuses the same content. */
 import type { Page } from 'playwright-core';
 import type { PlayerMemoryValue } from '../src/player/memory';
 

@@ -1,4 +1,4 @@
-/* 首次设置与配置页共用的选择字段和固定前后缀输入。 */
+/* The selection Fields and fixed prefix/suffix input shared between First-time setup and the config page. */
 import type { ReactNode } from 'react';
 import { Radio } from 'react-aria-components';
 import { Input, type InputProps } from '@/components/base/input/input';

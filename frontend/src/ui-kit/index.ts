@@ -1,6 +1,6 @@
-/* 共享控件导出清单：Application 与 React 页面按 @peach/legacy/ui 或源码路径引用。
- * 别名直接指向本文件，控件随 peach-app.js 发出一份，类型检查也读同一清单。
- * 独立页面包仅将用到的控件直接打进自己的产物。 */
+/* Shared controls export list: Application and React pages reference by @peach/legacy/ui or source path.
+ * The alias points directly at this file; the controls ship out as one copy with peach-app.js, and type-checking reads the same list.
+ * Standalone page bundles only bundle the controls they actually use directly into their own output. */
 export { attachOverlayScrollbar } from './overlay-scrollbar';
 export { growCollapse, setCollapseOpen, setCollapseRegionOpen, wireCollapse } from './collapse';
 export { closeAnchoredMenu, dismissMenu, presentMenu, scrollMovesAnchor, wireAnchoredMenu } from './anchored-menu';

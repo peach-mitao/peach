@@ -1,4 +1,4 @@
-/* 动效仅作用于装饰面；控件的命中范围、内容与焦点均保持原位。 */
+/* 动效仅作用于装饰面；控件的命中范围、内容与焦点均保持原位. */
 .peach-react [data-surface-host] { position: relative; isolation: isolate; }
 .peach-react [data-moving-surface] {
   position: absolute;

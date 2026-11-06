@@ -200,7 +200,7 @@ export function useWallCamera(count: number, finite: boolean, initial: WallCamer
     const target = { scale, x:size.current.width / 2 - (rect.x + rect.width / 2) * scale,
       y:size.current.height / 2 - (rect.y + rect.height / 2) * scale };
     if (!animated || reduced()) { apply(target, true, fit); return }
-    // Folia useWallCameraPan 的 420ms 飞行；世界层每帧变换，磁贴位置由块内弹簧接管。
+    // Folia's useWallCameraPan 420ms flight; the world layer transforms every frame, and tile positions are handed over to in-block springs.
     flight.current = animate(0, 1, { duration:.42, ease:[.22,1,.36,1],
       onUpdate:progress => apply({ x:from.x + (target.x - from.x) * progress,
         y:from.y + (target.y - from.y) * progress, scale:from.scale + (target.scale - from.scale) * progress }, false, fit),

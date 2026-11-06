@@ -1,12 +1,14 @@
-/* 馆藏卡片网格：目录与回收站（由路由树画进 `#grid`）、资料页作品区、详情页的接着看。
+/* The library card grid: catalog and trash (rendered by the route tree into `#grid`), the profile page's video section, and
+ * the details page's Continue watching.
  *
  * 取数、排法与续页都在这里；打开、选择、稍后看与回收站操作是壳递进来的动作。换筛选或壳要求
  * 重读时查询换键；筛选与排序控件常驻，等待新结果时只在网格铺共用骨架。
  * 内容与骨架交叉淡化；数据到达即可呈现，缓存命中时直接落内容。
  *
- * 网格每接一页经 `onCount` 报一次总数与显示的卡数，读数画在首页筛选条（`catalog-filter` 岛）的
- * 下排。无限滚动见下面的 `LoadMore`：哨兵进入视口下方一屏
- * 内自动取下一页，点它等于手动取；失败在哨兵后面留一条可重试的 Note，之后只有手动才重试。 */
+ * Each page the grid takes reports total count and displayed card count once via `onCount`, and the readout renders in the
+ * home filter bar's (`catalog-filter` island) bottom row. Infinite scroll is the `LoadMore` below: when the sentinel enters
+ * one screen below the viewport the next page is fetched automatically, and clicking it fetches manually; on failure a
+ * retryable Note stays behind the sentinel, after which only manual clicks retry. */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useInfiniteQuery, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 import { mixFace as mixArtwork, mixLabel, relayoutCovers, type Artwork } from '@peach/card-art';
@@ -46,7 +48,7 @@ function Icon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>;
 }
 
-/** 元信息按实际网格列数选择固定或自然高度。 */
+/** Meta info picks fixed or natural height based on the actual grid column count. */
 function MediaGrid({ children, selectMode }: { children: ReactNode; selectMode?: boolean }) {
   const grid = useRef<HTMLDivElement>(null);
   const [single, setSingle] = useState(false);
@@ -62,7 +64,7 @@ function MediaGrid({ children, selectMode }: { children: ReactNode; selectMode?:
     data-select-mode={selectMode ? '' : undefined}>{children}</div>;
 }
 
-/** 壳手上已有的一批（详情页的接着看）：不取数，只画卡。`next` 那一排的卡直接排进壳的横排。 */
+/** A batch the shell already holds (the details page's keep watching): no fetching, just draw the cards. The cards in the `next` row slot straight into the shell's horizontal row. */
 function ItemsGrid(props: CatalogGridProps) {
   const { actions } = props;
   const onOpen = useCallback((item: MediaItem, anchor: HTMLElement) => actions.open(item, anchor), [actions]);
@@ -76,13 +78,13 @@ function ItemsGrid(props: CatalogGridProps) {
   return <MediaGrid selectMode={props.selectMode}>{cards}</MediaGrid>;
 }
 
-/** 一次查询的整个生命周期：骨架、首屏、续页、竖屏带与读数。 */
+/** One query's full lifecycle: skeleton, first screen, continuation pages, the portrait strip and the numbers. */
 function GridBody(props: CatalogGridProps) {
   const { helpers, actions, layout } = props;
   const entity = props.mode === 'entity';
   const trash = !entity && props.filters?.state === 'trash';
   const query = entity ? entityQuery(props) : catalogQuery(props);
-  /* 资料页的第一页由壳和页头一起取来：同步落进这一代的缓存，首帧就是卡片，不再发一遍。 */
+  /* The profile page's first page is fetched by the shell and page header together: it lands synchronously into this epoch's cache, the first frame is already cards, and nothing is sent twice. */
   const [retained] = useState(() => props.wall ? latestCatalogPages(query.queryKey) : undefined);
   const queryIdentity = JSON.stringify(query.queryKey);
   const restored = useMemo(() => props.restoreNavigation ? latestCatalogPages(query.queryKey) : undefined,
@@ -123,8 +125,8 @@ function GridBody(props: CatalogGridProps) {
   const body = useRef<HTMLDivElement | null>(null);
   const cuts = useShortsStrips(props, result.isPlaceholderData ? undefined : result.data, tiles, pageStarts, body);
 
-  /* 读数排到微任务里报：壳画读数会顺带重排页头与选中态，那一路可能走到批量条的 `flushSync`，
-     提交阶段里它画不出来。微任务在浏览器绘制前跑完；这一代已卸下就不报。 */
+  /* Readouts are reported in a microtask: the shell rendering readouts also relays out the page header and selection state, a path that may hit the bulk bar's `flushSync`,
+     which cannot render during the commit phase. Microtasks finish before the browser paints; if this generation has unmounted, skip the report. */
   useLayoutEffect(() => {
     if (!result.data || result.isPlaceholderData) return;
     let live = true;
@@ -144,9 +146,9 @@ function GridBody(props: CatalogGridProps) {
     (item: MediaItem, anchor: HTMLElement) => actions.openResource(item, anchor), [actions]);
   const openShort = useCallback((item: MediaItem) => actions.openShort(item), [actions]);
 
-  /* 续页压过后台重读：结果版本一变，壳会作废这份查询，无限查询随即把已接上的每一页按顺序重取
-     一遍。续页若搭这一趟的车，就得等它取完全部 N 页，而且等完也不会多出一页。所以续页先停掉
-     路上的重读、直接取下一页；被停掉的那次刷新等下一次结果版本变化再补。 */
+  /* Continuation pages yield to background refetches: when the result version changes, the shell invalidates this query, and the infinite query refetches every page already appended in order. If a continuation page rides along,
+     it must wait for all N pages to finish, and even then gains no new page. So continuation first stops the in-flight refetch and fetches the next page directly;
+     the stopped refresh waits for the next result version change to make it up. */
   const loadNext = useCallback(async () => {
     const next = await result.fetchNextPage();
     if (next.isFetchNextPageError) throw next.error;
@@ -210,9 +212,9 @@ function GridBody(props: CatalogGridProps) {
   );
 }
 
-/** 续页。目录是一颗滚到附近就自己取的哨兵，资料页是一枚「载入更多」键，两者判据相同。
- *  每接上一页就按新键重挂一次，失败状态不跨页。资料页照片墙与关注页的翻页也用这一枚；关注页那枚键
- *  带字形，`children` 换掉键上的字。 */
+/** Continuation pages. The catalog uses a sentinel that fetches itself when scrolled near; the profile page uses a "Load more" key; same criteria.
+ *  Each appended page remounts once against the new key, and failure state does not cross pages. The profile page's photo wall and the follows page's paging use this key too; the follows page's key
+ *  carries a glyph, with `children` replacing the key's label. */
 export function LoadMore({ entity, load, enabled, children }: {
   entity: boolean; load: () => Promise<void>; enabled: () => boolean; children?: ReactNode;
 }) {
@@ -238,8 +240,8 @@ export function LoadMore({ entity, load, enabled, children }: {
     } finally {
       busy.current = false;
     }
-    /* 这一趟没接上新页（例如被并进别的取数）时哨兵不会重挂，而一直待在视口里的哨兵不会再收到
-       相交通知：重新观察一次，让观察器按当前位置再判一遍。 */
+    /* When this pass did not attach a new page (for example it was merged into another fetch), the sentinel does not remount, and a sentinel that stayed in the viewport receives
+       no further intersection notifications: observe it once more so the observer re-evaluates at the current position. */
     const watching = observer.current;
     if (!failed.current && watching && node.current?.isConnected) {
       watching.unobserve(node.current);
@@ -261,8 +263,8 @@ export function LoadMore({ entity, load, enabled, children }: {
   return (
     <>
       {entity
-        ? <button ref={attach} type="button" data-entity-more="" {...aria} onClick={() => void run(true)}>{children ?? '载入更多'}</button>
-        /* 失败时只留下面那条重试：哨兵收起但不卸下，重试接上之后照旧由它续页。 */
+        ? <button ref={attach} type="button" data-entity-more="" {...aria} onClick={() => void run(true)}>{children ?? 'Load more'}</button>
+        /* On failure only the retry below remains: the sentinel collapses but never unmounts, and once the retry succeeds it keeps paging as before. */
         : <div ref={attach} data-load-more="" {...aria} hidden={Boolean(state.error)} onClick={() => void run(true)}
           dangerouslySetInnerHTML={{ __html: loadingDotsHtml(LOAD_MORE_STATUS) }} />}
       {state.error ? <RetryNote message={state.error} onRetry={() => void run(true)} /> : null}
@@ -270,9 +272,9 @@ export function LoadMore({ entity, load, enabled, children }: {
   );
 }
 
-/** 竖屏带：每接一页请求一条，落点在这一页新增的那几行之间的行边界上随机取一个。
- *  请求跟着主列表的筛选与排序走；一条都没有、或这一页剪不出行边界，偏移量按遗留层归零或不动。
- *  分卷与版本按主网格同一个开关折叠（`collapseGroups`），一组跨几条带也只留第一次出现的那一张。 */
+/** The portrait strip: each page appended requests one strip, and the landing point randomly picks a row boundary among the rows this page added.
+ *  Requests follow the main list's filter and sort; with no strips at all, or when this page yields no row boundary, the offset resets or stays put per the legacy layer.
+ *  Volumes and editions collapse under the same toggle as the main grid (`collapseGroups`); a group spanning several strips keeps only its first appearance. */
 function useShortsStrips(
   props: CatalogGridProps, data: InfiniteData<GridPage, number> | undefined,
   tiles: readonly Tile[], pageStarts: readonly number[], body: RefObject<HTMLElement | null>,
@@ -313,7 +315,7 @@ function useShortsStrips(
         if (!items.length) { own.offset = 0; return }
         setArrived({ stamp, page, total: Number(strip.total || 0), items, more: strip.has_more !== false });
       })
-      /* 竖屏带是穿插进来的附加内容，取不到就不插，主列表照常。 */
+      /* The portrait strip is inserted bonus content: skip it when it cannot be fetched and the main list carries on as usual. */
       .catch(() => {});
   }, [data, own]);
   useLayoutEffect(() => {
@@ -348,9 +350,9 @@ function ShortsStrip({ cut, props, onOpen }: {
   return (
     <section data-shorts-strip="">
       <h2>
-        竖屏 <span data-shorts-count="">{`${cut.total.toLocaleString()} 个`}</span>
+        Portrait <span data-shorts-count="">{`${cut.total.toLocaleString()} items`}</span>
         <button type="button" data-shorts-enter="" onClick={() => props.actions.openShorts()}>
-          <Icon name="gallery-vertical-end" /><span>进入沉浸模式</span>
+          <Icon name="gallery-vertical-end" /><span>Enter immersive mode</span>
         </button>
       </h2>
       <div ref={row} data-shorts-row="">
@@ -364,12 +366,12 @@ function ShortsStrip({ cut, props, onOpen }: {
   );
 }
 
-/** Mix 的一张画面：番号版式开着时番号作品按这一屏的大图／小图取，其余一律按小图。 */
+/** One face of a Mix: with the code layout on, coded videos pick large or small per this screen, everything else always takes small. */
 function mixFace(item: MediaItem, layout: MediaCardLayout, eager: boolean): Artwork {
   return mixArtwork(item, layout.active && item.is_jav ? layout.size : 'small', eager, layout.javImage);
 }
 
-/** 目录每一页第 8 位的那张 Mix：以种子为首的相似作品。整张卡是点击区，悬停逐张翻过那一叠。 */
+/** The Mix at position 8 of every catalog page: similar videos headed by the seeded one. The whole card is the click target, and hovering flips through the stack one by one. */
 function HomeMix({ seed, layout, helpers, actions }: {
   seed: MediaItem; layout: MediaCardLayout; helpers: MediaCardHelpers; actions: CatalogGridProps['actions'];
 }) {
@@ -389,13 +391,13 @@ function HomeMix({ seed, layout, helpers, actions }: {
   const artwork = mixFace(seed, layout, false);
   return (
     <MixCard data-mix-seed={String(seed.id)} name={`Mix · ${label}`}
-      caption={`${helpers.displayName(seed, seed.name || '')}及相似作品`} count={0} badge="Mix" glyph wholeCard
+      caption={`${helpers.displayName(seed, seed.name || '')} and similar videos`} count={0} badge="Mix" glyph wholeCard
       poster={null} artwork={artwork}
       artworkIdentity={size === 'small' ? artwork.html : mixFace(seed, { ...layout, size: 'small' }, false).html}
       relayoutArt={(root) => relayoutCovers(root, size)}
       ratio={cardRatio(seed, 'grid', layout)}
       flipImages={flipImages} faceHtml={(id) => faces.current.get(id) || ''} canFlip={actions.canFlip}
       faces={[]} onOpenEntity={actions.openEntity}
-      onOpen={(anchor) => actions.openMix(seed.id, anchor)} openLabel={`打开 Mix · ${label}`} />
+      onOpen={(anchor) => actions.openMix(seed.id, anchor)} openLabel={`Open Mix · ${label}`} />
   );
 }

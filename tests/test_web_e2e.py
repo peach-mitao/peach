@@ -111,6 +111,38 @@ def e2e_command(node: str, concurrency: int, files: tuple[str, ...]) -> list[str
     return [node, "--test", f"--test-concurrency={concurrency}", "--test-reporter=tap", *files]
 
 
+# e2e 用例是 `.test.ts`，靠 Node 自带的类型剥离直接跑：不带旗标要 Node ≥23.6／24。PATH 上的
+# node（比如旧的 fnm 默认版本）可能太老，此时按序试机器上装着的其它 Node，取第一个版本够的。
+def _node_candidates():
+    path_node = shutil.which("node")
+    if path_node:
+        yield path_node
+    for fixed in (r"C:\Program Files\nodejs\node.exe", r"C:\Program Files (x86)\nodejs\node.exe"):
+        yield fixed
+    fnm = Path.home() / "AppData" / "Roaming" / "fnm" / "node-versions"
+    if fnm.is_dir():
+        for match in sorted(fnm.glob("*/node.exe"), reverse=True):
+            yield str(match)
+
+
+def _select_node() -> str | None:
+    seen = set()
+    for candidate in _node_candidates():
+        if candidate in seen or not Path(candidate).exists():
+            continue
+        seen.add(candidate)
+        try:
+            out = subprocess.run([candidate, "-p", "process.versions.node"],
+                                 capture_output=True, text=True, encoding="utf-8",
+                                 timeout=30).stdout.strip()
+            major, minor = (int(part) for part in out.split(".")[:2])
+        except Exception:
+            continue
+        if (major, minor) >= (23, 6):
+            return candidate
+    return None
+
+
 def expected_seconds(path: Path = E2E_TIMINGS) -> dict[str, float]:
     """`frontend/e2e/x.test.ts` → 实测秒数，键去掉 `frontend/` 前缀；表缺失时为空。"""
     try:
@@ -160,7 +192,7 @@ def e2e_log_name(path: str) -> str:
 @unittest.skipIf(os.name == "nt", "Windows 由完整浏览器入口执行画面比例用例")
 class PlayerFramingE2ETests(unittest.TestCase):
     def test_fullscreen_framing_without_library(self):
-        node, chrome = shutil.which("node"), chrome_executable()
+        node, chrome = _select_node(), chrome_executable()
         if not node or not chrome or not (FRONTEND / "node_modules/playwright-core").is_dir():
             missing_prerequisite("全屏画面测试需要 Node、playwright-core 与测试浏览器")
         environment = dict(os.environ, PEACH_E2E_CHROME=chrome)
@@ -175,9 +207,9 @@ class PlayerFramingE2ETests(unittest.TestCase):
 class WebE2ESmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        node = shutil.which("node")
+        node = _select_node()
         if node is None:
-            missing_prerequisite("跳过 e2e：本机没有 Node。装 Node 24+ 后 `-Scope web` 会带上它")
+            missing_prerequisite("跳过 e2e：本机没有可用的 Node（需要 23.6+／24 才能直接跑 .test.ts）")
         if not (FRONTEND / "node_modules" / "playwright-core").is_dir():
             missing_prerequisite("跳过 e2e：frontend/node_modules 还没装，先 `npm --prefix frontend ci`")
         ffmpeg = FFmpegResolver(FFMPEG_DIR).ffmpeg()
@@ -401,9 +433,9 @@ class SetupE2ETests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        node = shutil.which("node")
+        node = _select_node()
         if node is None:
-            missing_prerequisite("跳过首启 e2e：本机没有 Node")
+            missing_prerequisite("跳过首启 e2e：本机没有可用的 Node（需要 23.6+／24 才能直接跑 .test.ts）")
         if not (FRONTEND / "node_modules" / "playwright-core").is_dir():
             missing_prerequisite("跳过首启 e2e：frontend/node_modules 还没装，先 `npm --prefix frontend ci`")
         chrome = chrome_executable()

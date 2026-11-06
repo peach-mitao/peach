@@ -1,6 +1,7 @@
-/* 目录的路由元素（ADR-0031「目录由路由树按匹配打开」）：页面组匹配到 `CATALOG_PATHS`（首页、三个筛选态、回收站与
- * 垃圾文件）时挂上，按地址重建目录筛选（`@peach/shell` 的 `state`），再交壳收舞台以外的事：搜索框、侧栏与顶栏、
- * 顶部三层和取数（`ShellActions.catalog`）。
+/* The catalog's route element (ADR-0031, "the catalog is opened by the route tree on match"): mounts when the page group matches
+ * `CATALOG_PATHS` (home, the three filter states, trash and junk files), rebuilds the catalog filters from the address
+ * (`state` in `@peach/shell`), and hands the rest to the shell: search box, sidebar and top bar, the three top tiers, and
+ * fetching (`ShellActions.catalog`).
  *
  * 元素按页面挂 key：首页、三个筛选态与回收站画的是同一张网格，共用一个元素；垃圾文件是另一页。没有背景的作品与
  * 队列地址（深链、刷新）也挂这个元素。换筛选、后退前进与壳要求重开都不重挂，元素在每一轮变化之后的微任务里按下面的
@@ -37,8 +38,8 @@ import { removeWallBootSkeleton } from '../../video-wall/wall-boot';
 
 const readOpens = () => pageOpens;
 
-/* 每一次历史变化认没认领、变化之前在哪一条路径上。模块一装载就听，排在路由根之前：路由根同步提交那一次读到的
-   已经是这一次。`initialSeq` 是装载那一刻的序号，挂上时序号还是它，说明路由根是装上那一下挂的这一页。 */
+/* Whether each history change was claimed, and which path it was on before the change. Listening starts at module load, ahead of the route root: what the route root's synchronous commit reads
+   is already this change. `initialSeq` is the sequence number at load; if the mounted sequence number still equals it, the route root mounted this very page on attach. */
 const initialSeq = peachHistory.navigation.seq;
 let epoch = peachHistory.navigation.openEpoch;
 let here = peachHistory.navigation.location.pathname;
@@ -49,11 +50,11 @@ peachHistory.listen((navigation) => {
   here = navigation.location.pathname;
 });
 
-/* 首页上的 `?state=ads` 改写成垃圾文件地址那一下：垃圾文件那一页的元素挂上时取走，整页打开。 */
+/* The moment the home page's `?state=ads` is rewritten into the junk files URL: taken away when the junk files page's element mounts, opening the full page. */
 let junkRedirect = false;
 
-/** 元素上一次处理到哪儿：序号、页面打开序号、重开次数，那一刻有没有详情压着、页面组画的是哪一份地址与哪一套筛选，
- *  这一页开过没有。 */
+/** Where the element last got to: its index, page-open sequence, reopen count, whether details was pressed over it at that moment, which address and which filter set the page group rendered,
+ *  and whether this page had been opened. */
 interface Seen {
   seq: number;
   epoch: number;
@@ -75,7 +76,7 @@ function seen(opened: boolean): Seen {
   };
 }
 
-/** 按地址重建的目录筛选，同壳启动时那一份的写法；回收站只钉死状态、清掉别的筛选。产地与缩略图不随地址重读。 */
+/** Catalog filters rebuilt from the URL, written the same way as the shell's startup copy; the trash pins the status only and clears the other filters. Origin and thumbnails are not refetched from the URL. */
 function filtersAt(pathname: string, search: string, entering: boolean, shell: CatalogShell): CatalogFilters {
   const previous: CatalogFilters = { ...state };
   const restored = restoredPageState<CatalogFilters>('catalog');
@@ -158,7 +159,7 @@ function CatalogOpen() {
     const own = live.current;
     own.mounted = true;
     const now = seen(!isOverlayPath(peachHistory.navigation.location.pathname));
-    /* 挂上这一刻就记下：之后壳在同一轮里要求重开（`pageOpens` 加一），微任务里比得出来。 */
+    /* Record at mount time: if the shell then asks for a reopen in the same round (`pageOpens` incremented), a microtask comparison can tell the two apart. */
     if (!now.covered && now.opens > 0) {
       if (junkRedirect || last.seq === initialSeq) now.opens = -1;
       else if (!last.claimed) now.epoch = -1;
@@ -168,7 +169,7 @@ function CatalogOpen() {
     return () => {
       own.mounted = false;
     };
-    // 每次挂上只登记一次；之后的变化由下面那一格排进微任务。
+    // Registers once per mount; later changes are queued into a microtask by the cell below.
   }, []);
   useEffect(() => {
     const own = live.current;
@@ -182,8 +183,8 @@ function CatalogOpen() {
   return null;
 }
 
-/** 目录六条路径共用的元素：首页、三个筛选态与回收站一个 key，垃圾文件另一个；页面组按背景匹配时取背景那一页。
- *  覆盖地址的参数不是数字（`/assets/abc`）时什么都不挂：那不是一条详情，下面也不补画。 */
+/** The element shared by the catalog's six paths: home, three filtered states, and trash share one key; junk files gets another; when the page group matches by background it takes the background's page.
+ *  When the address-override parameter is not numeric (`/assets/abc`), nothing mounts: that is not a details entry, and nothing is painted beneath either. */
 export function CatalogMatch() {
   const { pathname } = useLocation();
   useLayoutEffect(() => {
