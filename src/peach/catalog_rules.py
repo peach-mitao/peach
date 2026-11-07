@@ -192,40 +192,64 @@ POSITION_TAGS = {
 #: 规范名取馆藏里通行的那个写法，不取词表里先写下的那个：`合集` 有 3699 条、全部来自
 #: 文件名，`混合集` 只有 313 条、全部来自 Stash，其中 270 条的资产两个名字都挂着。
 RETIRED_TAGS = {
-    "OL": "秘书OL",
-    "POV第一视角": "主观视角",
-    "女上位": "骑乘",
-    "内射": "中出内射",
+    "OL": "Secretary / OL",
+    "POV第一视角": "POV",
+    "女上位": "Riding",
+    "内射": "Creampie",
     "马眼尿道": "马眼",
-    "NTR绿帽": "绿帽NTR",
-    "有剧情": "剧情",
-    "剧情演绎": "剧情",
-    "偷窥": "偷拍偷窥",
+    "NTR绿帽": "NTR",
+    "有剧情": "Drama / Story",
+    "剧情演绎": "Drama / Story",
+    "偷窥": "Voyeur",
     "内衣情趣": "情趣内衣",
-    "高跟鞋": "高跟",
+    "高跟鞋": "High Heels",
     "臀部": "美臀",
     "足控": "恋足",
     "足底足指": "恋足",
-    "足部射精": "足交",
+    "足部射精": "Footjob",
     "老师": "家庭教师",
-    "混合集": "合集",
-    "淫语ASMR": "淫语",
+    "混合集": "Collection",
+    "淫语ASMR": "Dirty talk",
     "处女": "处女设定",
     # 胸的大小只留「巨乳」一档：来源之间 F 杯与 H 杯的边界各说各的，同一部片被一家写
     # `Big Tits`、另一家写 `Huge Tits`，两个标签在 70 部片上同时出现。「美巨乳」这类
     # 组合词读着拗口，账本里只挂了两部，一并归到大小那一档。
-    "爆乳": "巨乳",
-    "美巨乳": "巨乳",
-    "美爆乳": "巨乳",
+    "爆乳": "Big Breasts",
+    "美巨乳": "Big Breasts",
+    "美爆乳": "Big Breasts",
     "美贫乳": "贫乳",
+    # The deployment owner runs the library in English: the canonical content-tag
+    # vocabulary is the English names already sitting in `asset_tag` (Creampie,
+    # Big Breasts, Housewife...), and every Chinese canonical below retires to
+    # its English counterpart. `genre_taxonomy` still emits the Chinese form;
+    # the alias layer folds it into the English entity, so future scrapes land
+    # on the same tag instead of growing a second row.
+    "中出内射": "Creampie", "主观视角": "POV", "乳交": "Titfuck", "人妻": "Housewife",
+    "偶像艺人": "Idol", "偷拍偷窥": "Voyeur", "出轨": "Cheating / Affair", "初拍": "Debut",
+    "制服": "Uniform", "制服外套": "Uniform jacket", "剧情": "Drama / Story", "口交": "Oral",
+    "合集": "Collection", "同事上司": "Coworker / Boss", "后入": "Doggy style", "吞精": "Swallowing",
+    "和服浴衣": "Kimono / Yukata", "多人": "Group", "3P多人": "Group", "寡妇角色": "Widow",
+    "巨乳": "Big Breasts", "巨根": "Large Cock", "巨臀": "Big ass", "强制剧情": "Forced storyline",
+    "御姐": "Mature Woman", "性玩具": "Sex Toys", "恶作剧": "Prank", "恶搞": "Parody",
+    "户外": "Outdoor", "户外露出": "Outdoor exhibitionism", "手交": "Handjob", "护士": "Nurse",
+    "按摩": "Massage", "接吻": "Kissing", "教师": "Teacher", "有码": "Censored",
+    "油压": "Oil massage", "泳装": "Swimsuit", "浴室": "Bathroom", "淫语": "Dirty talk",
+    "温泉": "Hot spring", "潮吹": "Squirting", "熟女": "Mature / Milf", "痴女": "Nympho",
+    "痴汉": "Molester", "百合": "Yuri / GL", "直接进入": "No foreplay", "短裙": "Short skirt",
+    "秘书OL": "Secretary / OL", "素人": "Amateur", "纪录片": "Documentary", "绿帽NTR": "NTR",
+    "美乳": "Beautiful Breasts", "美腿": "Beautiful legs", "羞耻": "Humiliation", "自慰": "Masturbation",
+    "苗条": "Slim", "药物": "Drugs", "角色扮演": "Role Play", "调教": "Training",
+    "走光": "Accidental exposure", "足交": "Footjob", "酒会联谊": "Party", "陪酒女郎": "Hostess",
+    "颜射": "Facial", "风俗女郎": "Sex worker", "骑乘": "Riding", "高跟": "High Heels",
+    "高颜值": "Gorgeous", "黑人": "Interracial",
 }
 
-# 界面名称与来源写法指向同一标签身份。
+# 界面名称与来源写法指向同一标签身份。已退役的中文规范名一并指向英文名。
 TAG_NAME_ALIASES = {
     **RETIRED_TAGS,
     '眼镜娘': '眼镜', '性感内衣': '情趣内衣', '口罩': '口罩遮脸',
-    '强制': '强制剧情', '骑乘位': '骑乘', '背后位': '后入',
-    '3P': '3P多人', '双洞齐下': '双洞齐插', '毒龙钻': '毒龙', 'AI解码': 'AI去码',
+    '强制': 'Forced storyline', '骑乘位': 'Riding', '背后位': 'Doggy style',
+    '3P': 'Group', '双洞齐下': '双洞齐插', '毒龙钻': '毒龙', 'AI解码': 'AI去码',
 }
 _TAG_ALIASES = {old.casefold(): new for old, new in TAG_NAME_ALIASES.items()}
 _TAG_SPELLINGS = {tag.casefold(): tag for tag in (
