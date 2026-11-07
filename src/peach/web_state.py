@@ -465,6 +465,15 @@ class WebContract:
         # 指定依赖表的聚合共用一次计算；提交后仍按这些表的代次核验。
         with self.cache_lock:
             lock = self.aggregate_locks.setdefault(key, threading.RLock())
+
+        def compute():
+            # 结果要记在刚读的新版本下：算的时候嵌套读到的缓存也当场核验、不回旧值，
+            # 否则新版本号底下存的是一份旧结果，下一次后台写入之前一直命中。
+            token = _FRESH_AGGREGATES.set(True)
+            try:
+                return fn()
+            finally:
+                _FRESH_AGGREGATES.reset(token)
         with lock:
             revision = self.ledger_revision(tables)
             with self.cache_lock:
@@ -473,7 +482,7 @@ class WebContract:
                 else:
                     self.revision_cache_keys.add(key)
             version = (tuple(tables), revision, *inputs) if tables else (revision, *inputs)
-            return self.cached(key, fn, ttl=CACHE_TTL if revision is None else math.inf, version=version)
+            return self.cached(key, compute, ttl=CACHE_TTL if revision is None else math.inf, version=version)
 
     def stop_background_jobs(self) -> None:
         """服务关停时丢掉后台任务状态并等线程收工。
