@@ -274,6 +274,10 @@ OFFLINE_MESSAGE = '外部资料未取得：连不上外网'
 #: 之后还能看到最后状态；候选 CSV 随处理进度越写越大，每条资产都重写一遍是平方级开销。
 STATE_FLUSH_SECONDS = 0.5
 CANDIDATE_FLUSH_SECONDS = 5.0
+#: 两次写候选 CSV 之间至少隔上一次写入耗时的这么多倍。七十多 MB 的表整份写一次要三四秒，
+#: 只按 5 秒节流的话处理线程一半时间在写文件、占着解释器锁拖慢页面；按耗时放大间隔，
+#: 写文件压在一成上下。没落盘的那几部片不提交进度检查点，中断后照旧重做，不会丢。
+CANDIDATE_FLUSH_COST_RATIO = 10
 
 #: 采集要补的字段，以及它们在 `asset` 表里的列名（没列出的与字段同名或不在表里）。
 COLLECTED_FIELDS = ('title', 'performers', 'studio', 'release_date', 'tags')
@@ -3129,13 +3133,17 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
             local_evidence = _LocalEvidenceCache(config, db_path, cover_root, listing, state, path)
             csv_dirty = False
             csv_written_at = time.monotonic()
+            csv_write_cost = 0.0
 
             def flush_candidates(force=False):
-                nonlocal csv_dirty, csv_written_at
-                if csv_dirty and (force or time.monotonic() - csv_written_at >= CANDIDATE_FLUSH_SECONDS):
+                nonlocal csv_dirty, csv_written_at, csv_write_cost
+                pause = max(CANDIDATE_FLUSH_SECONDS, csv_write_cost * CANDIDATE_FLUSH_COST_RATIO)
+                if csv_dirty and (force or time.monotonic() - csv_written_at >= pause):
+                    started = time.monotonic()
                     write_rows(output, FIELDS, groups.values(), atomic=True)
                     csv_dirty = False
                     csv_written_at = time.monotonic()
+                    csv_write_cost = csv_written_at - started
                 if not csv_dirty:
                     checkpoints.commit_metadata(flush_state)
 
