@@ -152,7 +152,7 @@ class ParallelGenerationTests(unittest.TestCase):
             artifact_rules.remember(target, source=self.snapshot_root / f"{self.LEFT}.jpg")
             yield
 
-        with mock.patch.object(previews, "_generate_lock", lock_that_lands_the_target), \
+        with mock.patch.object(previews, "poster_write_lock", lock_that_lands_the_target), \
                 mock.patch.object(PreviewService, "_run",
                                   staticmethod(lambda command: calls.append(command[-1]))):
             self.assertEqual(self.service.poster(self.LEFT), destination)

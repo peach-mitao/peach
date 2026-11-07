@@ -70,7 +70,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
               "test_web_timeline_thumbnails.py", "test_timeline_sources.py", "test_bif.py",
               "test_interaction.py", "test_media.py", "test_mp4repair.py",
               "test_mp4recover.py", "test_web_media_repair.py",
-              "test_previews.py", "test_preview_transport.py",
+              "test_previews.py", "test_preview_transport.py", "test_representative_previews.py", "test_body_pose.py",
               "test_providers.py", "test_segments.py", "test_streaming.py", "test_stream_lifecycle.py",
               "test_subtitles.py", "test_transcodes.py", "test_hardware_transcode.py", "test_strm.py",
               "test_guangya_sources.py", "test_media_sources.py", "test_smb*.py"),
@@ -176,6 +176,10 @@ SCOPE_TEST_IDS: dict[str, tuple[str, ...]] = {
 # 一个文件可以落到多个域：读它的测试登记在哪个域，改它就得跑到哪个域。
 # `tests/test_test_planning.py` 按测试源码里真实读到的路径反查这两张表，漏一条本地就红。
 AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
+    "src/peach/representative_previews.py": ("media", "metadata", "web"),
+    "src/peach/body_pose.py": ("media",),
+    "src/peach/_vendor/mediapipe_person.py": ("media",),
+    "src/peach/_vendor/mediapipe_pose.py": ("media",),
     "scripts/run_gitlab_runner.py": ("tooling",),
     "scripts/render_star_history.py": ("tooling",),
     "frontend/e2e/jav-userscript-contract.mjs": ("catalog", "web"),
