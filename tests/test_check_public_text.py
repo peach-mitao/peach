@@ -115,6 +115,8 @@ class PublishCommandTests(unittest.TestCase):
         [hook] = matcher["hooks"]
         argv = [hook["command"], *(arg.replace("${CLAUDE_PROJECT_DIR}", str(check_public_text.ROOT))
                                    for arg in hook["args"])]
+        (self.cwd / "pyproject.toml").write_text(
+            '[project]\nname = "hook-fixture"\nversion = "0.0.0"\n', encoding="utf-8")
         venv = (self.cwd / ".venv").exists()
         result = subprocess.run(argv, input=json.dumps({"cwd": str(self.cwd), "tool_input": {"command": "git status"}}),
                                 capture_output=True, text=True, encoding="utf-8", cwd=self.cwd, timeout=120)

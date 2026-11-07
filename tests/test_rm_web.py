@@ -699,8 +699,10 @@ class WebDataTests(unittest.TestCase):
         # 改真配置的这几个字段，不另捏一个只带它们的对象：`active()` 是全模块共用的，
         # 存储卷那一段顺着 `translate_ledger_path` 也要读 `mounts`，缺字段就是
         # AttributeError。Windows 上账本路径不必翻译、走不到那一步，只有 macOS 会红。
+        # 配置来自隔离数据根，不带入运行这份测试的电脑上的媒体库。
         config = replace(
-            web_stats.settings_file.load_config(environ={}, strict=False),
+            web_stats.settings_file.load_config(
+                environ={"PEACH_DATA_ROOT": str(Path(self.db_path).parent / "unconfigured")}, strict=False),
             locations={"local": (r"R:\Media", r"R:\Media-more")},
             library_names={}, library_icons={})
         with mock.patch.object(web_stats.settings_file, "active", return_value=config):

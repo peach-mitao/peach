@@ -2484,7 +2484,7 @@ def _generate_preview(config, row, database, resolver, *, progress):
     if previous:
         previous = translate_ledger_path(previous)
         if previous.is_relative_to(root) and artifact_rules.current(previous) and measure_image_file(previous):
-            return False
+            return _select_representative_preview(config, row, resolver, previous, progress, deadline)
     choice = resolver.ffmpeg()
     if choice is None:
         raise PreviewUnavailable('未找到 FFmpeg，无法生成预览图，请在诊断页检查工具状态')
@@ -2545,7 +2545,20 @@ def _generate_preview(config, row, database, resolver, *, progress):
         result = connection.execute(
             "UPDATE asset SET snapshot_path=? WHERE id=? AND path=? AND location='local' "
             "AND medium='video' AND disposal IS NULL", (str(destination), row['id'], row['path']))
-    return bool(result.rowcount)
+    selected = _select_representative_preview(config, {**row, 'duration': duration}, resolver,
+                                               destination, progress, deadline)
+    return bool(result.rowcount) or selected
+
+
+def _select_representative_preview(config, row, resolver, snapshot, progress, deadline):
+    from .body_pose import BodyModelUnavailable
+    from .face_detect import FaceModelUnavailable
+    from .representative_previews import select_preview
+    from .previews import PreviewUnavailable
+    try:
+        return select_preview(config, row, resolver, snapshot, progress=progress, deadline=deadline)
+    except (ImportError, BodyModelUnavailable, FaceModelUnavailable) as error:
+        raise PreviewUnavailable(f'九宫格已保留，人物选图未取得：{error}') from error
 
 
 def _generate_previews(config, rows, database, *, update, issue, guard,

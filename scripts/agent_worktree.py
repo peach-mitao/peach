@@ -175,15 +175,41 @@ ISSUE_LINK = re.compile(
     re.IGNORECASE)
 
 
-def require_pull_request(worker: Path, branch: str, target_branch: str, head: str) -> dict[str, object]:
+def _validate_pull_request_url(worker: Path, target_branch: str, url: str) -> None:
+    """显式 PR 必须属于目标分支跟踪的仓库；未配置跟踪远端时使用 origin。"""
+    host = r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?"
+    slug = r"[A-Za-z0-9_.-]+"
+    match = re.fullmatch(rf"https://({host})/({slug})/({slug})/pull/[1-9]\d*", url)
+    if match is None:
+        raise WorkspaceError("指定 PR 链接无效；需要完整 HTTPS PR URL")
+    configured = _git(worker, "config", "--get", f"branch.{target_branch}.remote", check=False)
+    remote = configured.stdout.strip() if configured.returncode == 0 else "origin"
+    result = _git(worker, "remote", "get-url", remote, check=False)
+    if result.returncode:
+        raise WorkspaceError("未取得目标仓库远端，无法核对指定 PR")
+    remote_url = result.stdout.strip()
+    repository = re.fullmatch(rf"(?:https://|ssh://git@)({host})/({slug})/({slug})", remote_url)
+    if repository is None:
+        repository = re.fullmatch(rf"git@({host}):({slug})/({slug})", remote_url)
+    if (repository is None or tuple(part.casefold() for part in match.groups()) !=
+            tuple(part.removesuffix('.git').casefold() if index == 2 else part.casefold()
+                  for index, part in enumerate(repository.groups()))):
+        raise WorkspaceError("指定 PR 不属于目标仓库")
+
+
+def require_pull_request(worker: Path, branch: str, target_branch: str, head: str, *,
+                         pr_url: str | None = None) -> dict[str, object]:
     """用工作树的 GitHub 仓库上下文取得当前分支 PR，绑定精确提交与目标分支。
 
     正文里独占一行的 issue 关联行原样带出，写进合并提交；正文中顺带提到的编号不算。
     """
+    if pr_url is not None:
+        _validate_pull_request_url(worker, target_branch, pr_url)
     fields = ("url", "state", "headRefOid", "baseRefName")
     try:
         result = subprocess.run(
-            ["gh", "pr", "view", branch, "--json", ",".join((*fields, "body"))], cwd=worker,
+            ["gh", "pr", "view", pr_url if pr_url is not None else branch,
+             "--json", ",".join((*fields, "body"))], cwd=worker,
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
@@ -198,6 +224,8 @@ def require_pull_request(worker: Path, branch: str, target_branch: str, head: st
         raise WorkspaceError("PR 回执字段无效")
     if not re.fullmatch(r"https://[^/\s]+/[^/\s]+/[^/\s]+/pull/[1-9]\d*", pr["url"]):
         raise WorkspaceError("PR 回执链接无效")
+    if pr_url is not None and pr["url"] != pr_url:
+        raise WorkspaceError("PR 回执链接与指定链接不一致")
     if pr["state"] != "OPEN":
         raise WorkspaceError(f"PR 状态为 {pr['state']}；交付 PR 必须开放待合入")
     if pr["headRefOid"] != head:
@@ -230,7 +258,7 @@ def merge_message(branch: str, pull_request: dict[str, object]) -> str:
 
 
 def integrate(repo: Path, worker_branch: str, target_branch: str = "master", *,
-              lock_timeout: float = 1800) -> dict[str, object]:
+              lock_timeout: float = 1800, pr_url: str | None = None) -> dict[str, object]:
     folder = test_evidence.evidence_dir(repo)
     folder.mkdir(parents=True, exist_ok=True)
     try:
@@ -243,7 +271,8 @@ def integrate(repo: Path, worker_branch: str, target_branch: str = "master", *,
                                     branch=worker_branch, root=str(repo)):
                 if documents and not _documents_only(repo, worker_branch, target_branch):
                     raise WorkspaceError("等待集成期间分支影响面改变；本次未修改分支，请重试")
-                return _integrate_locked(repo, worker_branch, target_branch)
+                options = {} if pr_url is None else {"pr_url": pr_url}
+                return _integrate_locked(repo, worker_branch, target_branch, **options)
     except test_evidence.Timeout as error:
         raise WorkspaceError(
             f"另一任务正在集成或全量验证（{test_evidence.describe_holder(Path(error.lock_file))}）；"
@@ -260,7 +289,7 @@ def _documents_only(repo: Path, worker_branch: str, target_branch: str) -> bool:
 
 
 def _integrate_locked(repo: Path, worker_branch: str,
-                      target_branch: str = "master") -> dict[str, object]:
+                      target_branch: str = "master", *, pr_url: str | None = None) -> dict[str, object]:
     """把工作者分支并进 target。
 
     这台机器既是开发机又是生产机：提交先落本地再推 GitHub，本地永远领先。跑着的是哪一份
@@ -287,7 +316,8 @@ def _integrate_locked(repo: Path, worker_branch: str,
         raise WorkspaceError("工作者必须有唯一、干净且已注册的工作树")
     worker_head = _git(main, "rev-parse", worker_branch).stdout.strip()
     require_verified(workers[0], target_branch, worker_files)
-    pull_request = require_pull_request(workers[0], worker_branch, target_branch, worker_head)
+    options = {} if pr_url is None else {"pr_url": pr_url}
+    pull_request = require_pull_request(workers[0], worker_branch, target_branch, worker_head, **options)
     commits = _git(main, "log", "--format=%h%x00%B%x1e", f"{base}..{worker_head}").stdout
     require_public_text(main, {"PR 正文": str(pull_request.get("body") or ""), **{
         f"提交 {sha}": message for sha, _, message in
@@ -626,6 +656,7 @@ def main() -> int:
     merge = sub.add_parser("integrate")
     merge.add_argument("--branch", required=True)
     merge.add_argument("--target", default="master")
+    merge.add_argument("--pr", "--pull-request", dest="pr_url", help="显式指定目标仓库的完整 HTTPS PR URL")
     sweep = sub.add_parser("prune")
     sweep.add_argument("--target", default="master")
     sweep.add_argument("--apply", action="store_true",
@@ -644,7 +675,7 @@ def main() -> int:
         elif args.command == "processes":
             result = processes(args.repo)
         else:
-            result = integrate(args.repo, args.branch, args.target)
+            result = integrate(args.repo, args.branch, args.target, pr_url=args.pr_url)
     except WorkspaceError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 2

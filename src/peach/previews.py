@@ -4,11 +4,13 @@ import os
 import re
 import subprocess
 import threading
+import time
 from pathlib import Path
 from .smb_media import input_url, SmbResource
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 
 from PIL import Image, ImageOps
+from filelock import FileLock
 
 from . import brand_marks, artifact_rules, upgrade_rules
 from .ffmpeg import FFmpegResolver
@@ -122,6 +124,20 @@ def _generate_lock(destination: Path) -> threading.Lock:
     return _GENERATE_LOCKS[hash(str(destination)) % _LOCK_STRIPES]
 
 
+@contextmanager
+def poster_write_lock(destination: Path, timeout: float = 45):
+    """服务取图与离线选图共用有界线程锁和文件锁。"""
+    deadline = time.monotonic() + timeout
+    lock = _generate_lock(destination)
+    if not lock.acquire(timeout=max(0, timeout)):
+        raise TimeoutError('预览图正在生成，请重试')
+    try:
+        with FileLock(str(destination) + '.lock', timeout=max(0, deadline - time.monotonic())):
+            yield
+    finally:
+        lock.release()
+
+
 class PreviewService:
     def __init__(self, repository: LedgerRepository, resolver: FFmpegResolver,
                  snapshot_root: Path, poster_root: Path, avatar_root: Path, logo_root: Path,
@@ -153,7 +169,10 @@ class PreviewService:
         ffmpeg = self._ffmpeg()
         col, row = cell % 3, cell // 3
         self.poster_root.mkdir(parents=True, exist_ok=True)
-        with _generate_lock(destination):
+        with poster_write_lock(destination):
+            if (artifact_rules.current(destination, upgrade_rules.LOCAL_POSTERS, source_required=True)
+                    and self.repository.media_asset(asset_id) is not None):
+                return destination
             source = self._snapshot(asset_id)
             if artifact_rules.current(destination, source=source):
                 return destination
