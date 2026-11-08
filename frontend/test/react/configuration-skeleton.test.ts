@@ -63,9 +63,9 @@ describe('随配置变化的分区按上次记录的结构画', () => {
 
   it('下载渠道：没有记录时只有浏览器添加，有记录时按网盘画出云下载与 PikPak', () => {
     expect(sections(draw('下载渠道'))).toEqual(['浏览器添加 JAV']);
-    rememberShape('downloads', { cloud: true, has115: true, pikpak: true, pikpakRoots: false, pikpakLoggedIn: false, browserLogin: true });
+    rememberShape('downloads', { cloud: true, has115: true, pikpak: true, pikpakRoots: false, pikpakLoggedIn: false, browserLogin: true, localDownload: true });
     const root = draw('下载渠道');
-    expect(sections(root)).toEqual(['云下载', 'PikPak 账号', '浏览器添加 JAV']);
+    expect(sections(root)).toEqual(['云下载', 'PikPak 账号', '本地下载', '浏览器添加 JAV']);
     expect([...card(root, 'PikPak 账号').querySelectorAll('button')].map(key => key.textContent)).toEqual(['用浏览器登录', '登录']);
   });
 
@@ -106,7 +106,7 @@ describe('整页配置记下的结构', () => {
   } as unknown as ConfigurationData;
 
   it('从配置算出几块、哪种表单，不含任何值', () => {
-    expect(downloadsShape(data)).toEqual({ cloud: true, has115: false, pikpak: true, pikpakRoots: true, pikpakLoggedIn: true, browserLogin: false });
+    expect(downloadsShape(data)).toEqual({ cloud: true, has115: false, pikpak: true, pikpakRoots: true, pikpakLoggedIn: true, browserLogin: false, localDownload: true });
     expect(networkShape(data)).toEqual({ port: false, addresses: 0, networkEditable: false, lan: false,
       proxyAddress: true, access: 'password', tunnelNamed: true, tunnelNamedMode: true, tunnelNote: false });
     expect(maintenanceShape(data)).toMatchObject({ facts: ['版本', 'FFmpeg'], reporting: false, uninstall: false, storageRows: 0 });

@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "9beabf77-aa0a-4b03-bb1d-c2ffc78c2f94", e._sentryDebugIdIdentifier = "sentry-dbid-9beabf77-aa0a-4b03-bb1d-c2ffc78c2f94");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "8f9a136f-2877-45b5-9877-a0c919d35606", e._sentryDebugIdIdentifier = "sentry-dbid-8f9a136f-2877-45b5-9877-a0c919d35606");
 	} catch {}
 })();
 import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as e, $76d00c5a4edb230a$export$76ccd210b9029917 as t, $76d00c5a4edb230a$export$816b5d811295e6bc as n, $76d00c5a4edb230a$export$b59bdbef9ce70de2 as r, $76d00c5a4edb230a$export$f6f0c3fe4ec306ea as i, $76d00c5a4edb230a$export$f850895b287ef28e as a, $fe21c36db05242bb$export$d7b12c4107be0d61 as o, ArtSlot as s, Button as c, ButtonLink as l, Bx as u, COVER_STATE_TITLE as d, CatalogViewToggle as f, Checkbox as p, ChevronSortDown as m, Chip as h, CloudDownloadDialog as g, CoverQueue as _, DISCOVERY_SORTS as v, DOWNLOADS_KEY as y, DOWNLOADS_URL as b, DataTableFooter as x, DataTableFrame as S, E3 as C, EmptyFocusButton as w, EmptyState as T, FilterGlassRows as E, FilterIconButton as ee, FilterPill as D, GlassPill as te, Help as O, IndexSearch as k, Input as A, JAV_LAYOUTS as ne, JAV_RECOMMENDATION_GRID as re, JAV_SELECTION_EVENT as j, JavHeader as M, LibraryShortcuts as ie, M6 as N, ModalFrame as P, Note as F, P7 as I, PHASES as L, RELEASE_COLUMN_VISIBILITY_KEY as R, RELEASE_COLUMN_WIDTHS_KEY as z, RELEASE_PAGE_SIZES as ae, RELEASE_SORTS as oe, RELEASE_SORT_COLUMNS as B, SEGMENT as V, SEGMENTED_TRACK as H, SegmentedRadioGroup as se, Segments as ce, SelectionDock as le, Shuffle as ue, SortKeys as de, SourceAvatar as fe, Table as pe, TableColumnControls as me, TableColumnResizer as he, TaskProgress as ge, WANTS_KEY as _e, WantMagnets as ve, Wt as ye, __toESM as be, addWant as U, apiGet as xe, appSettingsStore as Se, avatarInner as Ce, busyProps as W, cachedMagnetStates as we, cardClass as Te, cardRatio as Ee, catalogListSkeletonCellHtml as De, composingKey as Oe, coverArrived as ke, coverFetching as Ae, coverFetchingHtml as je, coverStateAction as Me, coverUrl as Ne, discoveryArtwork as Pe, discoveryKey as Fe, discoveryScore as Ie, entityDisplayName as G, entityFaceImg as Le, entityPath as Re, errorMessage as K, esc as ze, facePos as Be, fetchCoverNow as Ve, fetchDiscoveries as He, fetchReleases as Ue, fetchWants as We, firstGrapheme as Ge, fmtDur as Ke, gridLayout as qe, invalidateWants as q, javContentSkeleton as Je, javLayout as Ye, javTagSkeleton as Xe, keepPreviousData as Ze, leadingGraphemes as Qe, logoUrl as $e, pageWindow as et, qE as tt, recommendationScore as nt, relayoutCovers as rt, releaseColumns as it, releaseFilters as at, releaseKey as ot, removeWants as st, require_jsx_runtime as ct, require_react as lt, resetWants as ut, searchNote as dt, selectRange as ft, selectionSummary as pt, spriteGlyph as mt, storeJavLayout as ht, suppressShiftTextSelection as gt, textLang as _t, tierPlaceholdersHtml as vt, useAction as J, useCatalogView as yt, useEntityNames as bt, useQuery as Y, useTablePreferences as xt, wantName as X, wireHorizontalScroller as St, writeJavQuery as Z } from "./peach-app.js";
@@ -290,7 +290,7 @@ function At({ readOnly: e, toast: t, query: n = "", clearQuery: r }) {
 			}) : null,
 			v.data && !v.data.available ? /* @__PURE__ */ (0, $.jsx)(F, {
 				tone: "neutral",
-				children: "云下载只在允许修改数据库的设备上可用。"
+				children: "下载只在允许修改数据库的设备上可用。"
 			}) : null,
 			h && !_.length ? /* @__PURE__ */ (0, $.jsx)(T, {
 				size: "compact",
@@ -1708,4 +1708,4 @@ function nn({ readOnly: e, receipt: t, resource: n, query: r, navigate: i, clear
 }
 export { tn as JavPage };
 
-//# debugId=9beabf77-aa0a-4b03-bb1d-c2ffc78c2f94
+//# debugId=8f9a136f-2877-45b5-9877-a0c919d35606
