@@ -1,7 +1,7 @@
 /* 卡片版式、照片墙尺寸、卡片密度与主题写到页面上（`src/appearance/layout.ts`、`density.ts`、`theme.ts`）。 */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { applyDensity, currentDensity, paintPhotoSizeButton, toggleDensity } from '../../src/appearance/density';
+import { applyDensity, currentDensity, paintPhotoSizeButton, setDensity, toggleDensity } from '../../src/appearance/density';
 import {
   cardLayoutFor, cardRatio, COVER_FRONT_RATIO, gridLayout, photoLayout, photoSize, storePhotoLayout, storePhotoSize,
   storeVideoLayout,
@@ -74,6 +74,14 @@ describe('卡片密度与顶栏大小图键', () => {
     expect([currentDensity(), localStorage.getItem('density'), document.documentElement.style.getPropertyValue('--tile'),
       document.body.dataset.density, button.getAttribute('aria-pressed'), button.getAttribute('title')])
       .toEqual(['dense', 'dense', '168px', 'dense', 'true', '当前：密集']);
+  });
+
+  it('卡片版式可以直接同步同一档，重复写入不改变结果', () => {
+    setDensity('dense');
+    setDensity('dense');
+    expect([currentDensity(), localStorage.getItem('density'), document.body.dataset.density]).toEqual(['dense', 'dense', 'dense']);
+    setDensity('big');
+    expect([currentDensity(), localStorage.getItem('density'), document.body.dataset.density]).toEqual(['big', 'big', 'big']);
   });
 
   it('停在照片墙上时同一颗键报照片大小', () => {

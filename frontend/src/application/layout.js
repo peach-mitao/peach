@@ -19,6 +19,7 @@ import { censorOn, preferencesState, setCensored, setHighContrast, setSfwShortcu
 import { playUiSound } from '../ui-kit/sounds';
 import { THEME_OPTIONS } from './../appearance/theme';
 import { JAV_LAYOUTS, cardLayoutFor, storeHomeLayout, storeJavLayout, storeVideoLayout } from './../appearance/layout';
+import { setDensity } from './../appearance/density';
 import { receiptsState } from './receipts.js';
 import { applySyncedSettings } from './../appearance/settings';
 import { loadManageHeader, loadSettingsPanel, loadSidebar, manageHeaderApi, sidebarApi } from '../react/application-residents';
@@ -296,14 +297,20 @@ export function homeLayoutActive(){
 
 export function cardLayout(){return cardLayoutFor(homeLayoutActive())}
 
+function syncCardDensity(value){
+  setDensity(value==='big'?'big':'dense');
+}
+
 export function setHomeLayout(value){
   storeHomeLayout(value);
+  syncCardDensity(cardLayout());
   syncVideoLayoutSetting();
   if(!$('#grid').hidden)repaintCatalogGrid();
 }
 
 export function setJavLayout(value){
   storeJavLayout(value);
+  syncCardDensity(cardLayout());
   syncVideoLayoutSetting();
   // 只重画卡片，不重新请求：版式是纯展示层的事。资料页保留已经载入的分页。
   repaintCatalogGrid();
@@ -316,6 +323,7 @@ export function syncVideoLayoutSetting(){
 
 export function setVideoLayout(value){
   storeVideoLayout(value);
+  syncCardDensity(cardLayout());
   syncVideoLayoutSetting();
   repaintCatalogGrid();
 }

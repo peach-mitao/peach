@@ -7,7 +7,7 @@ export {
 } from './settings';
 export type { AppSettings, SyncedEffect, SyncedSettings } from './settings';
 export { applyTheme, THEME_OPTIONS, watchSystemTheme } from './theme';
-export { applyDensity, currentDensity, paintPhotoSizeButton, TILES, toggleDensity } from './density';
+export { applyDensity, currentDensity, paintPhotoSizeButton, setDensity, TILES, toggleDensity } from './density';
 export type { Density } from './density';
 export {
   cardLayoutFor, cardRatio, COVER_FRONT_RATIO, gridLayout, homeLayout, JAV_LAYOUTS, javLayout, PHOTO_LAYOUTS, PHOTO_SIZES,

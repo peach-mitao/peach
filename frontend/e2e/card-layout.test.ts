@@ -228,7 +228,7 @@ describe('混排作品的画面框',()=>{
     }
    }finally{await context.close()}
   });
-  it('小图固定正封框，大图才按原比例展开，与顶栏密度解耦',async()=>{
+  it('顶栏大小图键在小图与大图之间真实往返，筛选条保持同一状态',async()=>{
    const context=await browser.newContext({viewport:{width:1280,height:900}});
    try{
     const page=await context.newPage();
@@ -240,24 +240,34 @@ describe('混排作品的画面框',()=>{
      const img=node.querySelector('img')!;
      return {ratio:box.width/box.height,fit:getComputedStyle(img).objectFit,
       background:getComputedStyle(node).backgroundColor,density:document.body.dataset.density,
-      layoutSize:node.getAttribute('data-media-layout-size')};
+      layoutSize:node.getAttribute('data-media-layout-size'),
+      fixed:!!node.closest('[data-media-grid]')?.hasAttribute('data-media-grid-fixed'),
+      masonry:!!node.closest('[data-media-grid]')?.hasAttribute('data-masonry-active')};
     });
-    await page.evaluate(()=>{document.body.dataset.density='big'});
     const small=await frameRatio();
     assert.equal(small.fit,'contain');
     assert.equal(small.background,'rgb(0, 0, 0)');
-    assert.equal(small.density,'big');
+    assert.equal(small.density,'dense');
     assert.equal(small.layoutSize,'small');
+    assert.equal(small.fixed,true);
     assert.ok(Math.abs(small.ratio-3/4)<.01,JSON.stringify(small));
-    await page.locator('input[name="home-layout"][value="big"]').check({force:true});
-    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    await page.locator('#density').click();
+    await page.waitForFunction(()=>document.body.dataset.density==='big'
+      && document.querySelector('#grid [data-media-grid][data-masonry-active]'));
     const big=await frameRatio();
     assert.equal(big.layoutSize,'big');
-    assert.ok(Math.abs(big.ratio-16/9)<.01,JSON.stringify(big));
-    await page.locator('input[name="home-layout"][value="small"]').check({force:true});
-    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    assert.equal(big.fixed,false);
+    assert.equal(big.masonry,true);
+    assert.equal(await page.locator('input[name="home-layout"][value="big"]').isChecked(),true);
+    await page.locator('#density').click();
+    await page.waitForFunction(()=>document.body.dataset.density==='dense'
+      && document.querySelector('#grid [data-media-grid][data-media-grid-fixed]'));
     const smallAgain=await frameRatio();
     assert.equal(smallAgain.layoutSize,'small');
+    assert.equal(smallAgain.density,'dense');
+    assert.equal(smallAgain.fixed,true);
+    assert.equal(smallAgain.masonry,false);
+    assert.equal(await page.locator('input[name="home-layout"][value="small"]').isChecked(),true);
     assert.ok(Math.abs(smallAgain.ratio-3/4)<.01,JSON.stringify(smallAgain));
    }finally{await context.close()}
   });

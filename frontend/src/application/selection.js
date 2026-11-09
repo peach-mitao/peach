@@ -16,7 +16,8 @@ import { confirmModal, formModal, setActionBusy } from '../ui-kit';
 import { reloadAfterWrite } from './layout.js';
 import { receiptsState } from './receipts.js';
 import { photoSize } from './../appearance/layout';
-import { applyDensity, toggleDensity } from './../appearance/density';
+import { applyDensity, currentDensity, setDensity, toggleDensity } from './../appearance/density';
+import { cardLayout, homeLayoutActive, javActive, setHomeLayout, setJavLayout } from './layout.js';
 import { installCardArt, refitNativeImages, upgradeCover } from './../card-art/framing';
 export const selectionState = { batchDockProps: undefined, trashCount: undefined, currentSelectSurface: undefined, REGION_CHOICES: undefined, BATCH_RUNNERS: undefined, coverRecheck: undefined };
 
@@ -165,8 +166,12 @@ selectionState.BATCH_RUNNERS = {batch:runCatalogBatch,region:pickBatchRegion,fol
   clear:()=>setSelectMode(false,true)};
 applicationEffects.handler($('#density'), 'onclick', ()=>{if(photoViewActive()){
     setPhotoSize(photoSize()==='big'?'small':'big');return}
-  toggleDensity()});
-applyDensity();
+  toggleDensity();
+  const size=currentDensity()==='big'?'big':'small';
+  if(javActive())setJavLayout(size);
+  else if(homeLayoutActive())setHomeLayout(size)});
+if(javActive()||homeLayoutActive())setDensity(cardLayout()==='big'?'big':'dense');
+else applyDensity();
 configureHoverPreview({
   selecting:()=>selectMode,
   censored:()=>censorOn(),
