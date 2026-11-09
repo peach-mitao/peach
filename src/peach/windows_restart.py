@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import ctypes
 import os
-import shutil
 import subprocess
 import time
 from ctypes import wintypes
@@ -17,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Protocol
 
-from .windows_update import replace_with_retry, swap_tray_binary
+from .windows_update import restore_tray_bundle, swap_tray_binary
 from .tray_detached import launch_detached
 
 
@@ -49,6 +48,26 @@ class RestartResult:
 
 def _normal_path(path: str | Path) -> str:
     return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+
+def service_executable_for_tray(target: Path) -> Path:
+    """返回这个托盘启动子服务所用的入口。
+
+    项目内打包的托盘仍把服务交给项目 venv；独立发行版没有项目根，托盘自身
+    就是 `serve` 子进程的入口。只把带 `pyproject.toml` 的祖先目录认作项目根，
+    避免用户目录里恰好存在的无关 `.venv` 把独立版带错。
+    """
+    for parent in target.resolve().parents:
+        managed = parent / ".venv" / "Scripts" / "peach.exe"
+        if (parent / "pyproject.toml").is_file() and managed.is_file():
+            return managed
+    return target.resolve()
+
+
+def expected_service_count(target: Path) -> int:
+    """目录版独立包只有一个 HTTP 服务，项目托盘提供 HTTP/HTTPS 两个。"""
+    marker = target.resolve().parent / "_internal" / "standalone.txt"
+    return 1 if marker.is_file() else 2
 
 
 def process_alive(process_id: int) -> bool:
@@ -380,6 +399,7 @@ def _stop_old_tray(
     windows: tuple[TrayWindow, ...],
     old_process_id: int,
     service_executable: Path,
+    required_services: int,
     *,
     timeout: float,
     stop_window: Callable[[int], bool],
@@ -398,7 +418,7 @@ def _stop_old_tray(
     当成现成的。
     """
     owned = services(old_process_id, service_executable)
-    if len(owned) < 2:
+    if len(owned) < required_services:
         foreign = strays(old_process_id, service_executable)
         if foreign:
             listed = "、".join(str(pid) for pid in foreign)
@@ -431,10 +451,11 @@ class _Launch:
     exit_code: int | None = None
     tray_pid: int | None = None
     service_pids: tuple[int, ...] = ()
+    required_services: int = 2
 
     @property
     def ready(self) -> bool:
-        return self.exit_code is None and len(self.service_pids) >= 2
+        return self.exit_code is None and len(self.service_pids) >= self.required_services
 
     def failure(self) -> str:
         if self.exit_code is not None:
@@ -442,13 +463,15 @@ class _Launch:
         if self.tray_pid is None:
             return "新托盘窗口未在期限内出现"
         return (f"新托盘（PID {self.tray_pid}）已起，但名下只有 {len(self.service_pids)} 个"
-                "子服务：端口可能被不归它管的进程占着")
+                f"子服务，至少需要 {self.required_services} 个："
+                "端口可能被不归它管的进程占着")
 
 
 def _await_new_tray(
     launched: subprocess.Popen,
     find_windows: Callable[[], tuple[TrayWindow, ...]],
     service_executable: Path,
+    required_services: int = 2,
     *,
     timeout: float,
     services: Callable[[int, Path], tuple[int, ...]],
@@ -456,15 +479,19 @@ def _await_new_tray(
 ) -> _Launch:
     """等新托盘建出唯一窗口并拥有两个子服务；期限到了返回最后看到的样子。"""
     deadline = time.monotonic() + timeout
-    seen = _Launch()
+    seen = _Launch(required_services=required_services)
     while time.monotonic() < deadline:
         if launched.poll() is not None:
-            return _Launch(exit_code=launched.returncode)
+            return _Launch(exit_code=launched.returncode,
+                           required_services=required_services)
         process_ids = {window.process_id for window in find_windows()}
         if len(process_ids) == 1:
             tray_pid = next(iter(process_ids))
-            seen = _Launch(tray_pid=tray_pid,
-                           service_pids=services(tray_pid, service_executable))
+            seen = _Launch(
+                tray_pid=tray_pid,
+                service_pids=services(tray_pid, service_executable),
+                required_services=required_services,
+            )
             if seen.ready:
                 return seen
         sleep(0.2)
@@ -487,17 +514,11 @@ def _rolled_back(
     old_tray_pid: int | None,
     swapped_from: str | None,
 ) -> RestartResult:
-    """新二进制起不来就把备份换回去再开一次，别把机器留在没有托盘的状态。
-
-    备份先复制成临时名再 `os.replace`：直接把备份本身换回去的话，回滚成功了
-    `dist/Peach/` 里那份可回退的副本也没了，下一次失败就无处可退。
-    """
-    restore = target.with_name(".Peach.rollback.exe")
+    """新核心包起不来就把备份放回去再开一次，备份本身继续保留。"""
     try:
-        shutil.copy2(backup, restore)
-        replace_with_retry(restore, target, sleep=sleep)
+        restore_tray_bundle(backup, target, sleep=sleep)
     except OSError as exc:
-        return RestartResult(False, f"{message}；回滚失败，生产入口停在新二进制：{exc}",
+        return RestartResult(False, f"{message}；回滚失败，生产入口停在新版核心包：{exc}",
                              old_tray_pid=old_tray_pid, swapped_from=swapped_from,
                              backup=str(backup))
     started = start(target)
@@ -547,11 +568,10 @@ def restart_tray(
     sleep: Callable[[float], None] = time.sleep,
 ) -> RestartResult:
     target = target.resolve()
-    service_executable = target.parents[2] / ".venv" / "Scripts" / "peach.exe"
     if not target.is_file() or target.name.lower() != "peach.exe":
         return RestartResult(False, f"拒绝重启：入口不存在或不是 Peach.exe：{target}")
-    if not service_executable.is_file():
-        return RestartResult(False, f"拒绝重启：服务入口不存在：{service_executable}")
+    service_executable = service_executable_for_tray(target)
+    required_services = expected_service_count(target)
 
     windows = find_windows(target)
     process_ids = {window.process_id for window in windows}
@@ -562,7 +582,7 @@ def restart_tray(
     if refusal:
         return RestartResult(False, refusal, old_tray_pid=old_process_id)
     stopped = _stop_old_tray(
-        windows, old_process_id, service_executable, timeout=timeout,
+        windows, old_process_id, service_executable, required_services, timeout=timeout,
         stop_window=stop_window, alive=alive, services=services, strays=strays, sleep=sleep)
     if stopped is not None:
         return stopped
@@ -585,11 +605,12 @@ def restart_tray(
     # 停和起各拿一份完整预算：换一份 40 MB 的 EXE 要几秒，那几秒不该从新托盘的
     # 启动窗口里扣掉，否则带 --swap-from 的这条路比不带的更容易假超时。
     launch = _await_new_tray(
-        start(target), lambda: find_windows(target), service_executable,
+        start(target), lambda: find_windows(target), service_executable, required_services,
         timeout=timeout, services=services, sleep=sleep)
     if launch.ready:
+        service_label = "HTTP 服务" if required_services == 1 else "HTTP/HTTPS 子服务"
         return _finished(
-            True, "托盘已正常重启并重新拥有 HTTP/HTTPS 子服务", prepared,
+            True, f"托盘已正常重启并重新拥有 {service_label}", prepared,
             old_tray_pid=old_process_id, new_tray_pid=launch.tray_pid,
             service_pids=launch.service_pids, swapped_from=swapped_from,
             backup=backup_path,
@@ -648,7 +669,7 @@ def restart_source_tray(
     if refusal:
         return RestartResult(False, refusal, old_tray_pid=old_process_id)
     stopped = _stop_old_tray(
-        windows, old_process_id, service_executable, timeout=timeout,
+        windows, old_process_id, service_executable, 2, timeout=timeout,
         stop_window=stop_window, alive=alive, services=services, strays=strays, sleep=sleep)
     if stopped is not None:
         return stopped

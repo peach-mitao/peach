@@ -23,6 +23,7 @@ from .frame_capture import capture_with_retry, tile_frames
 from .fsutil import atomic_path
 from .jobs import DiskSpaceDenied
 from .media import resolve_case_insensitive
+from .repository import LedgerDatabase, media_scope_predicate
 
 #: 两档密度，值就是秒数。名字进接口也进设置页，改这里就是改契约。
 INTERVALS = {"precise": 10, "coarse": 30}
@@ -184,7 +185,8 @@ LOCAL_LOCATIONS = ("local",)
 STOPPED_BY_USER = "已按停"
 
 
-def pending(db_path: Path | str, interval: int, *, limit: int = 0) -> list[tuple]:
+def pending(db_path: Path | str, interval: int, *, limit: int = 0,
+            database: LedgerDatabase | None = None) -> list[tuple]:
     """待办队列：本机磁盘上、时长够两帧的视频，最近看过的排前面。
 
     排序不是装饰。这条链随时可能被磁盘闸门或用户按停，跑到哪算哪，所以先做的必须是
@@ -192,31 +194,42 @@ def pending(db_path: Path | str, interval: int, *, limit: int = 0) -> list[tuple
     """
     placeholders = ",".join("?" for _ in LOCAL_LOCATIONS)
     # 回收站里的不做：那一批等着被删，为它们各抽一百帧是白花的时间和磁盘。
-    sql = ("SELECT id, path, duration FROM asset WHERE medium='video' "
-           f"AND location IN ({placeholders}) AND duration >= ? "
-           "AND disposal IS NULL "
-           "ORDER BY (last_played IS NULL), last_played DESC, id")
     parameters: tuple = (*LOCAL_LOCATIONS, float(interval) * 2)
     if limit:
-        sql += " LIMIT ?"
         parameters += (int(limit),)
+
+    def query(connection):
+        sql = ("SELECT id, path, duration FROM asset WHERE medium='video' "
+               f"AND location IN ({placeholders}) AND duration >= ? "
+               "AND disposal IS NULL "
+               f"AND {media_scope_predicate(connection, 'asset')} "
+               "ORDER BY (last_played IS NULL), last_played DESC, id")
+        if limit:
+            sql += " LIMIT ?"
+        return connection.execute(sql, parameters).fetchall()
+
+    if database is not None:
+        with database.read_connection() as connection:
+            return query(connection)
     connection = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
     try:
-        return connection.execute(sql, parameters).fetchall()
+        return query(connection)
     finally:
         connection.close()
 
 
 def generate_library(db_path: Path | str, root: Path, interval: int, *, ffmpeg: str,
                      report=lambda **fields: None, active=lambda: True,
-                     guard=None, limit: int = 0, resume_state=None, checkpoint=lambda **fields: None) -> dict:
+                     guard=None, limit: int = 0, resume_state=None,
+                     checkpoint=lambda **fields: None,
+                     database: LedgerDatabase | None = None) -> dict:
     """按队列逐部生成，返回这一趟的计数。
 
     失败不中断：一部片子解不出来（源坏了、时长记错、编码器不认）是它自己的事，
     队列后面还有几千部。磁盘触线是另一回事——那说明整台机器写不下了，立刻停手并
     把原因带出去，不能继续跑成「完成」。
     """
-    tasks = pending(db_path, interval, limit=limit)
+    tasks = pending(db_path, interval, limit=limit, database=database)
     state = {"total": len(tasks), "done": 0, "made": 0, "skipped": 0,
              "failed": 0, "stopped": ""}
     completed = set((resume_state or {}).get('completed_assets') or [])

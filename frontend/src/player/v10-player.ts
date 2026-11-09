@@ -185,7 +185,14 @@ export const createV10Player: VideojsFactory = (video, options) => {
       node.id = String(track.id || '');
       if (track.legacyId) node.dataset.subtitleAlias = String(track.legacyId);
       node.kind = String(track.kind || 'subtitles'); node.src = String(track.src || '');
-      node.srclang = String(track.srclang || ''); node.label = String(track.label || ''); video.append(node);
+      node.srclang = String(track.srclang || ''); node.label = String(track.label || '');
+      node.default = track.default === true; video.append(node);
+      const activateDefault = () => {
+        if (!disposed && track.default === true) node.track.mode = 'showing';
+      };
+      node.addEventListener('load', activateDefault, { signal });
+      video.addEventListener('loadedmetadata', activateDefault, { signal });
+      activateDefault();
     },
   } satisfies VjsPlayer;
   return player;

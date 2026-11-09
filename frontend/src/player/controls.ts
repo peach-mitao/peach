@@ -644,15 +644,55 @@ export function mountPlayerSpinner(player: VjsPlayer): void {
 }
 
 /** 本机资产的外挂字幕。服务端已经把 srt/ass/ssa 换成 WebVTT，这里只把它挂成 text track。
- *  一律不设 default：自动打开某一条等于替用户选了语言，而同一部片常有简体、繁体、日语三条。
- *  Peach 字幕菜单只在有轨的时候出现；轨道挂在原生 video 上，随同一枚元素保留。 */
+ *  有字幕时默认打开一条：简体优先，其次繁体、其他中文，最后才用来源里的第一条。
+ *  Peach 字幕菜单仍可随时关闭或换轨；轨道挂在原生 video 上，随同一枚元素保留。 */
 export function mountPlayerSubtitles(player: VjsPlayer, assetId: number): void {
-  (api(`/api/assets/${assetId}/subtitles`) as Promise<{ subtitles?: { id: string; legacy_id?: string | null; playable?: boolean; src: string; language?: string; label: string }[] } | null>)
-    .then((payload) => {
+  const memory = playerMemory(player);
+  Promise.all([
+    api(`/api/assets/${assetId}/subtitles`) as Promise<{ subtitles?: { id: string; legacy_id?: string | null; playable?: boolean; src: string; language?: string; label: string }[] } | null>,
+    memory.load().catch(() => null),
+  ]).then(([payload, saved]) => {
       if (!player || player.isDisposed()) return;
-      (payload?.subtitles || []).filter((track) => track.playable).forEach((track) => {
-        player.addRemoteTextTrack({ id: track.id, kind: 'subtitles', src: track.src, srclang: track.language || '', label: track.label, default: false,
-          ...(track.legacy_id ? { legacyId: track.legacy_id } : {}) }, true);
+      const tracks = (payload?.subtitles || []).filter((track) => track.playable);
+      if (!tracks.length) return;
+      const rank = (track: { language?: string; label: string }) => {
+        const text = `${track.language || ''} ${track.label}`.toLowerCase();
+        if (/zh[-_ ]?(?:hans|cn|sg)|chs|简体|简中|中文简体/.test(text)) return 0;
+        if (/zh[-_ ]?(?:hant|tw|hk)|cht|繁體|繁体|中文繁体/.test(text)) return 1;
+        if (/(?:^|[^a-z])zh(?:$|[^a-z])|\bchi\b|中文|中字|chinese/.test(text)) return 2;
+        return 3;
+      };
+      let preferred = 0;
+      for (let index = 1; index < tracks.length; index++) {
+        if (rank(tracks[index]!) < rank(tracks[preferred]!)) preferred = index;
+      }
+      const hasExplicitChoice = saved?.selected !== undefined;
+      tracks.forEach((track, index) => {
+        player.addRemoteTextTrack({
+          id: track.id,
+          kind: 'subtitles',
+          src: track.src,
+          srclang: track.language || '',
+          label: track.label,
+          default: !hasExplicitChoice && index === preferred,
+          ...(track.legacy_id ? { legacyId: track.legacy_id } : {}),
+        }, true);
       });
+      if (hasExplicitChoice) return;
+      const wanted = tracks[preferred]!;
+      const activatePreferred = () => {
+        if (player.isDisposed()) return;
+        const video = player.el?.().querySelector('video');
+        if (!video) return;
+        const all = [...video.textTracks].filter((track) => ['subtitles', 'captions'].includes(track.kind));
+        const selected = all.find((track) =>
+          track.label === wanted.label && (track.language || '') === (wanted.language || ''));
+        if (!selected) return;
+        all.forEach((track) => { if (track !== selected && track.mode === 'showing') track.mode = 'disabled' });
+        selected.mode = 'showing';
+      };
+      activatePreferred();
+      queueMicrotask(activatePreferred);
+      player.on(['loadstart', 'loadedmetadata', 'canplay'], activatePreferred);
     }).catch(() => {});
 }

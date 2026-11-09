@@ -115,7 +115,11 @@ class OfficialPreviewTests(unittest.TestCase):
                                      (PublicSourceUnavailable('DMM 未取得'), '', mirror)]:
             with self.subTest(dmm=dmm, javdb=javdb), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
-                contract = WebContract(fresh_ledger(root), cover_root=root / 'covers')
+                contract = WebContract(
+                    fresh_ledger(root),
+                    candidate_root=root / 'generated',
+                    cover_root=root / 'covers',
+                )
                 self.addCleanup(contract.stop_background_jobs)
                 api = PublicAPI()
                 api.movie = Mock(return_value={'number': 'RCTD-764', 'id': 'ZN9Ad6', 'preview_video_url': mirror})
@@ -146,7 +150,11 @@ class OfficialPreviewTests(unittest.TestCase):
     def test_official_preview_is_available_when_webui_metadata_is_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            contract = WebContract(fresh_ledger(root), cover_root=root / 'covers')
+            contract = WebContract(
+                fresh_ledger(root),
+                candidate_root=root / 'generated',
+                cover_root=root / 'covers',
+            )
             self.addCleanup(contract.stop_background_jobs)
             api = PublicAPI()
             api.movie = Mock(side_effect=PublicSourceUnavailable('WebUI 未取得'))
@@ -160,7 +168,11 @@ class OfficialPreviewTests(unittest.TestCase):
     def test_dmm_preview_precedes_webui(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            contract = WebContract(fresh_ledger(root), cover_root=root / 'covers')
+            contract = WebContract(
+                fresh_ledger(root),
+                candidate_root=root / 'generated',
+                cover_root=root / 'covers',
+            )
             self.addCleanup(contract.stop_background_jobs)
             api = PublicAPI()
             api.movie = Mock(return_value={'number': 'RCTD-764', 'id': 'ZN9Ad6', 'maker_name': 'ROCKET',
@@ -228,7 +240,11 @@ class OfficialPreviewTests(unittest.TestCase):
     def test_detail_projects_official_mp4_and_preserves_movie_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            contract = WebContract(fresh_ledger(root), cover_root=root / 'covers')
+            contract = WebContract(
+                fresh_ledger(root),
+                candidate_root=root / 'generated',
+                cover_root=root / 'covers',
+            )
             self.addCleanup(contract.stop_background_jobs)
             movie = {'number': 'EXM-001', 'id': 'Exact', 'maker_name': 'PRESTIGE,プレステージ',
                      'release_date': '2020-01-01', 'preview_video_url': None}

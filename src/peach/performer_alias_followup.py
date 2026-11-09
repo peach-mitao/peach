@@ -56,6 +56,7 @@ from .followups import Attempts, Followup, FollowupType, attempts_root, register
 from .kanji import fold_glyphs
 from .metadata_alias_resolve import is_descriptive, is_planning_alias
 from .migrations import sqlite_backup
+from .repository import media_scope_predicate
 from .scripting import HostLimiter
 from .social_links import name_key
 from .sources.base import challenge_page
@@ -218,6 +219,7 @@ def fc2_codes(connection: sqlite3.Connection, entity_id: int) -> list[str]:
     return [str(row[0]) for row in connection.execute(
         "SELECT DISTINCT a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id"
         " WHERE ae.entity_id=? AND ae.role='performer' AND a.code LIKE 'FC2%'"
+        " AND " + media_scope_predicate(connection, "a") +
         " ORDER BY a.code LIMIT ?", (int(entity_id), MAX_WORKS))]
 
 
@@ -291,7 +293,9 @@ def plan(connection: sqlite3.Connection, *, since_entity_id: int) -> list[Follow
     """这一轮新登记、又有路进得去的女优，一人一条，作品多的在前。"""
     rows = connection.execute(
         "SELECT e.id,e.canonical_name,"
-        " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae WHERE ae.entity_id=e.id)"
+        " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+        " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=e.id AND "
+        + media_scope_predicate(connection, "a") + ")"
         " FROM entity e WHERE e.id>? AND e.kind='performer' ORDER BY e.id",
         (int(since_entity_id),)).fetchall()
     found = sorted(((int(row[2] or 0), int(row[0]), str(row[1] or "")) for row in rows
@@ -315,7 +319,9 @@ def stock(connection: sqlite3.Connection, attempts, *, limit: int, skip=(),
     rows = connection.execute(
         "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) AS assets"
         " FROM entity e JOIN asset_entity ae ON ae.entity_id=e.id"
-        " WHERE e.kind='performer' GROUP BY e.id ORDER BY assets DESC, e.id").fetchall()
+        " JOIN asset a ON a.id=ae.asset_id"
+        " WHERE e.kind='performer' AND " + media_scope_predicate(connection, "a") +
+        " GROUP BY e.id ORDER BY assets DESC, e.id").fetchall()
     if avatar_root is not None:
         lacking = [row for row in rows if needs_avatar(avatar_root, "performer", int(row[0]))]
         taken = {int(row[0]) for row in lacking}

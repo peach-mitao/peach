@@ -33,6 +33,13 @@ from support.conditions import windows_ledger_roots
 from support.ledger import fresh_ledger
 
 
+def setUpModule():
+    """Keep host free-space policy from changing temporary-library test outcomes."""
+    capacity = patch.object(library_processing.CapacityGuard, 'check', return_value=None)
+    capacity.start()
+    unittest.addModuleCleanup(capacity.stop)
+
+
 def stub_provider():
     """只关心 r18.dev 那一档的用例用它：DMM 兜底与综合索引那两档按「没有」桩掉。
 
@@ -1009,6 +1016,25 @@ class LibraryNfoTests(unittest.TestCase):
             self.assertEqual(written['catalog_title'], 'Local title')
             # 批准写下的值要答得出是谁写的，否则下一轮自动落库分不清该不该覆盖它。
             self.assertEqual(owner_of(written['field_owners'], 'catalog_title'), owner)
+            description = {
+                **title,
+                'item_key': title['item_key'].rsplit(':', 1)[0] + ':description',
+                'field': 'description',
+                'field_label': '简介',
+                'current_value': '',
+            }
+            description_candidate = {
+                **candidate,
+                'value': '第一段\r\n\r\n第二段',
+                'display_value': '第一段\r\n\r\n第二段',
+            }
+            self.assertEqual(_apply_metadata_candidate(
+                connection, description, description_candidate, '2026-09-06', owner), 1)
+            described = connection.execute(
+                'SELECT description,field_owners FROM asset WHERE medium="video"'
+            ).fetchone()
+            self.assertEqual(described['description'], '第一段\n\n第二段')
+            self.assertEqual(owner_of(described['field_owners'], 'description'), owner)
             title['asset_path'] = 'moved.mp4'
             with self.assertRaises(ValueError):
                 _apply_metadata_candidate(connection, title, candidate, '2026-09-06', owner)

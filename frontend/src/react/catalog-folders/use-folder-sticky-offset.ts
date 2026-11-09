@@ -20,7 +20,9 @@ export function useFolderStickyOffset(active: boolean, target?: HTMLElement) {
         parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topH'));
       const offset = (Number.isFinite(top) ? top : 0) + (filter?.getBoundingClientRect().height ?? 0) + 16;
       document.body.style.setProperty('--folder-sticky-top', `${offset}px`);
-      const treeTop = (target ?? document.getElementById('catalogFoldersTree'))?.getBoundingClientRect().top ?? offset;
+      const treeHost = target ?? document.getElementById('catalogFoldersTree');
+      const tree = treeHost?.querySelector<HTMLElement>('.catalog-folder-navigation') ?? treeHost;
+      const treeTop = tree?.getBoundingClientRect().top ?? offset;
       const viewport = visualViewport;
       const bottom = viewport ? viewport.offsetTop + viewport.height : innerHeight;
       const main = document.getElementById('main');

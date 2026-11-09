@@ -274,6 +274,7 @@
 /* 图片墙：列数同资料页照片墙那一套，小图 5 列、大图 3 列，逐档收窄。 */
 .peach-react [data-follow-wall] {
   --photo-columns: 5;
+  --masonry-row-gap: 14px;
   grid-template-columns: repeat(var(--photo-columns), minmax(0, 1fr));
   gap: 14px 10px;
   align-items: start;
@@ -288,7 +289,7 @@
   .peach-react [data-follow-wall][data-size="big"] { --photo-columns: 1; }
 }
 @media (max-width: 640px) {
-  .peach-react [data-follow-wall] { --photo-columns: 2; gap: 12px 8px; }
+  .peach-react [data-follow-wall] { --photo-columns: 2; --masonry-row-gap: 12px; gap: 12px 8px; }
   .peach-react [data-follow-wall][data-size="big"] { --photo-columns: 1; }
 }
 /* 文字区的最小高度是给等高网格对齐同一行卡片的；瀑布流每列各自往下排，按内容定高，卡片底下不留空。 */

@@ -98,6 +98,8 @@ def attach_artwork_fields(contract: WebContract, item: dict) -> None:
     if is_pointer(item.get('path') or item.get('name') or ''):
         item['size'] = None
         item['is_strm'] = True
+    item['poster_ratio'] = contract.poster_ratio(item['id'])
+    item['has_local_poster'] = item['poster_ratio'] is not None
     key = artwork_key(item['id'], item.get('code'))
     item['has_cover'] = contract.has_cover(key)
     item['cover_key'] = key if item['has_cover'] else ''
@@ -210,12 +212,20 @@ AGENCY_SEARCH_CLAUSE = (
 )
 
 
-#: 普通馆藏展示在库正片，排除附属媒体、回收站和标「已消失」的资源。
-#: （`disposal` 为空，ADR-0087）。列表、搜索和补全
-#: 共用这一份。各写各的后果是补全会补出回收站里的作品——那一条点开是已经删掉的片，
-#: 而列表本身从来不显示它，所以只会在补全这一个表面上露出来。
+def configured_media_scope_sql(alias: str = "a") -> str:
+    """SQL for the display-only boundary supplied by the serving LedgerDatabase."""
+    return f"asset_in_configured_media_scope({alias}.location,{alias}.path)"
+
+
+ASSET_IN_CONFIGURED_MEDIA_SCOPE = configured_media_scope_sql()
+
+#: 「这条资源在普通馆藏里看得见」的判据：是视频，且在库——不在回收站，也没有标「已消失」
+#: （`disposal` 为空，ADR-0087），并位于当前设置声明的媒体根下。旧路径的账本行继续
+#: 保留，重新加回声明根即可恢复显示。
 VISIBLE_CATALOG_ASSET = (
-    "a.medium='video' AND a.disposal IS NULL AND NOT peach_is_local_extra(a.name,a.path)"
+    "a.medium='video' AND a.disposal IS NULL "
+    "AND NOT peach_is_local_extra(a.name,a.path) AND "
+    + ASSET_IN_CONFIGURED_MEDIA_SCOPE
 )
 
 
@@ -300,6 +310,7 @@ def catalog_filter(contract: WebContract, args):
         par.extend(values)
     if trash:
         where.append("a.disposal='trash'")
+        where.append(ASSET_IN_CONFIGURED_MEDIA_SCOPE)
     if args.get("loc"):
         locs = [x for x in args["loc"].split(",") if x]
         where.append("a.location IN (%s)" % ",".join("?" * len(locs))); par += locs
@@ -445,7 +456,7 @@ def _catalog_totals(contract: WebContract, where, parameters, args):
         return read()
     return contract.cached_until_changed(
         repr(('catalog-totals', tuple(where), tuple(parameters))), read,
-        tuple(contract.database.media_roots), *group_inputs(contract),
+        tuple(contract.database.media_roots or ()), *group_inputs(contract),
         tables=CATALOG_TOTAL_TABLES, allow_stale=False)
 
 
@@ -543,7 +554,6 @@ def q_items(contract: WebContract, args):
     for r in rows:
         r["cost"] = cost_for(r['location'], r.get('path'))
         r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
-        r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
         attach_artwork_fields(contract, r)
         # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
         attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()),
@@ -697,6 +707,7 @@ def attach_creator_reference_details(contract: WebContract, refs):
         portraits = [dict(row) for row in connection.execute(
             "SELECT e.id,(SELECT a.id FROM asset_entity ae CROSS JOIN asset a ON a.id=ae.asset_id "
             "WHERE ae.entity_id=e.id AND a.medium='video' AND a.snapshot_path IS NOT NULL "
+            f"AND {configured_media_scope_sql('a')} "
             "ORDER BY a.size DESC LIMIT 1) rep FROM entity e "
             f"WHERE e.id IN ({','.join('?' for _ in ids)})", ids)]
     attach_avatar_availability(contract, portraits)
@@ -776,7 +787,9 @@ def _read_group_rows(contract: WebContract) -> list[dict]:
             "SELECT id,name,path,code,size,duration,width,height,ctx_orient,disposal,catalog_title,field_owners "
             "FROM asset "
             "WHERE medium='video' "
-            "AND COALESCE(disposal,'')<>'vanished' AND NOT peach_is_local_extra(name,path) ORDER BY id",
+            "AND COALESCE(disposal,'')<>'vanished' "
+            "AND NOT peach_is_local_extra(name,path) "
+            f"AND {configured_media_scope_sql('asset')} ORDER BY id",
         )]
         if not rows:
             return []
@@ -865,7 +878,7 @@ def q_editions(contract: WebContract, args):
     with contract.read_connection() as connection:
         seed = connection.execute(
             "SELECT id,code,name FROM asset WHERE id=? AND medium='video' "
-            "AND disposal IS NULL",
+            f"AND disposal IS NULL AND {configured_media_scope_sql('asset')}",
             (asset_id,),
         ).fetchone()
     if not seed:
@@ -974,7 +987,7 @@ def q_parts(contract: WebContract, args):
     with contract.read_connection() as connection:
         seed = connection.execute(
             "SELECT id,code FROM asset WHERE id=? AND medium='video' "
-            "AND disposal IS NULL",
+            f"AND disposal IS NULL AND {configured_media_scope_sql('asset')}",
             (asset_id,),
         ).fetchone()
     if not seed:
@@ -1091,7 +1104,8 @@ def q_item(contract: WebContract, aid):
        既显示错条目，又反复拉计费流量。按 id 取就按 id 取。"""
     with contract.read_connection() as c:
         r = c.execute(
-            "SELECT id,location,path,name,medium,catalog_title,original_title,creator,studio,code,"
+            "SELECT id,location,path,name,catalog_title,original_title,description,creator,studio,code,"
+            "medium,"
             "release_date,size,duration,width,height,field_owners,mutation_revision,"
             "ctx_length,ctx_orient,snapshot_path,play_count,leave_ratio,feedback,disposal,disposal_reason,"
             "rating,o_count,play_seconds,max_reached,seek_count,region,"
@@ -1105,7 +1119,8 @@ def q_item(contract: WebContract, aid):
             "COALESCE((SELECT g.reason FROM asset_quality_goal g WHERE g.asset_id=asset.id "
             f"AND g.profile_id='{DEFAULT_PROFILE_ID}'),'') AS better_version_reason,"
             "EXISTS(SELECT 1 FROM watch_queue w WHERE w.asset_id=asset.id "
-            f"AND w.profile_id='{DEFAULT_PROFILE_ID}') AS watch_later FROM asset WHERE id=?", (aid,)).fetchone()
+            f"AND w.profile_id='{DEFAULT_PROFILE_ID}') AS watch_later FROM asset "
+            f"WHERE id=? AND {configured_media_scope_sql('asset')}", (aid,)).fetchone()
         if not r:
             return {"error": "not found"}
         d = dict(r)
@@ -1186,7 +1201,6 @@ def q_item(contract: WebContract, aid):
         d["studio"] = d["entities"]["studio"][0]
     d["cost"] = cost_for(d['location'], d.get('path'))
     d["has_thumb"] = contract.has_snapshot(d["snapshot_path"])
-    d['has_local_poster'] = (contract.poster_root / f"{d['id']}_4.jpg").is_file()
     attach_artwork_fields(contract, d)
     # 身份格的厂牌位和顶栏小圆片同一条判据：没装标识就不输出 `<img>`。规范厂牌走
     # `entity_refs`，非规范的那条只有扁平 `studio` 字段，两边都要有标志，否则
@@ -1265,7 +1279,8 @@ def q_related(contract: WebContract, aid, limit=24):
 
     with contract.read_connection() as c:
         source_row = c.execute(
-            "SELECT id,code,name,duration,release_date FROM asset WHERE id=?", (aid,),
+            "SELECT id,code,name,duration,release_date FROM asset "
+            f"WHERE id=? AND {configured_media_scope_sql('asset')}", (aid,),
         ).fetchone()
         if not source_row:
             return {"items": []}
@@ -1285,6 +1300,7 @@ def q_related(contract: WebContract, aid, limit=24):
             f"{EFFECTIVE_REGION_SQL} AS effective_region "
             "FROM asset a JOIN asset_entity shared "
             "ON shared.asset_id=a.id WHERE a.medium='video' AND a.id<>? "
+            "AND " + ASSET_IN_CONFIGURED_MEDIA_SCOPE + " "
             "AND (a.feedback IS NULL OR a.feedback<>'dislike') AND a.disposal IS NULL "
             "AND NOT peach_is_local_extra(a.name,a.path) "
             f"AND shared.entity_id IN ({source_marks}) GROUP BY a.id "
@@ -1334,7 +1350,6 @@ def q_related(contract: WebContract, aid, limit=24):
     for d in picked:
         d["cost"] = cost_for(d['location'], d.get('path'))
         d["has_thumb"] = contract.has_snapshot(d["snapshot_path"])
-        d['has_local_poster'] = (contract.poster_root / f"{d['id']}_4.jpg").is_file()
         attach_artwork_fields(contract, d)
         attach_jav_display_fields(
             d, related_tags.get(d["id"], ()), d.pop("_entity_kinds", ()),
@@ -1386,7 +1401,9 @@ JAV_ASSET_PREDICATE = (
 JAV_ASSET_CLAUSE = "AND " + JAV_ASSET_PREDICATE + " "
 #: 筛选项、侧栏读数与顶部三层排掉标「已消失」的行；回收站里的照旧算（`q_facets`、`q_tops`）。
 PRESENT_ASSET_CLAUSE = (
-    "AND COALESCE(a.disposal,'')<>'vanished' AND NOT peach_is_local_extra(a.name,a.path) "
+    "AND COALESCE(a.disposal,'')<>'vanished' "
+    "AND NOT peach_is_local_extra(a.name,a.path) AND "
+    + ASSET_IN_CONFIGURED_MEDIA_SCOPE + " "
 )
 
 
@@ -1447,6 +1464,8 @@ def q_tops(contract: WebContract, n=28, jav=False, seed="", state="", page=0, fi
         "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) n,"
         "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
         " WHERE ae2.entity_id=e.id AND a2.medium='video' AND a2.snapshot_path IS NOT NULL "
+        f" AND {configured_media_scope_sql('a2')} "
+        " AND NOT peach_is_local_extra(a2.name,a2.path) "
         " AND (e.kind<>'performer' OR " + solo_performer_clause("a2.id", "e.id") + ") "
         " ORDER BY (a2.play_count IS NULL),a2.size DESC LIMIT 1) rep "
         "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
@@ -1652,7 +1671,9 @@ def w_item_tag(contract: WebContract, body):
     # 这里不手取那把锁再手动 commit/close：任何 execute 抛出都会漏掉回滚和关闭。
     # 那把锁不可重入，所以外层不能再套一个取同一把锁的 with，否则自死锁。
     with contract.write_transaction() as c:
-        if not c.execute("SELECT 1 FROM asset WHERE id=?", (aid,)).fetchone():
+        if not c.execute(
+                "SELECT 1 FROM asset WHERE id=? AND "
+                + configured_media_scope_sql("asset"), (aid,)).fetchone():
             raise ValueError("asset not found")
         from .entities import _ingest_name_id
         identity = _ingest_name_id(c, 'tag', canonical_tag_name(tag))

@@ -210,7 +210,7 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 /* 取景框自己裁，图在里面挪。时间轴预览取回来的是一张 10×10 的接触印相，要看的那一格
    靠把图放大十倍再往左上推整格数得到；边框和圆角画在框上，图挪动时不跟着走。
    框按片源比例（`--seek-aspect`）取景，宽、高各有上限：横片顶到宽，竖片顶到高，竖片不会长成一整列。 */
-.vjs-peach-seek-frame{--seek-max-w:240px;--seek-max-h:180px;position:relative;
+.vjs-peach-seek-frame{--seek-max-w:168px;--seek-max-h:126px;position:relative;
   width:min(var(--seek-max-w),calc(var(--seek-max-h) * var(--seek-aspect,1.7778)));aspect-ratio:var(--seek-aspect,16/9);display:block;overflow:hidden;
   border:2px solid #fff;border-radius:var(--floating-radius);background:#000;box-shadow:0 8px 24px #0009}
 .vjs-peach-seek-frame[hidden]{display:none}
@@ -234,7 +234,7 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 .vjs-peach-settings [data-player-quality-badge]{position:absolute;z-index:2;right:4px;top:1px;min-width:17px;height:12px;padding:0 2px;
   display:grid;place-items:center;border-radius:var(--badge-radius);background:var(--tungsten);color:var(--ground);font-size:var(--fs-xs);font-weight:600;line-height:1;transform:scale(.67);transform-origin:top right}
 .vjs-peach-settings [data-player-quality-badge][hidden]{display:none}
-.vjs-peach-settings-menu{box-sizing:border-box;position:absolute;z-index:2300;right:-100px;bottom:52px;width:min(274px,calc(100vw - 28px));max-height:min(420px,calc(var(--peach-player-h,480px) - 74px),calc(100vh - 130px));overflow:auto;
+.vjs-peach-settings-menu{box-sizing:border-box;position:absolute;z-index:2300;right:0;bottom:52px;width:min(274px,calc(100vw - 28px));max-height:min(420px,calc(var(--peach-player-h,480px) - 74px),calc(100vh - 130px));overflow:auto;
   padding:0;border:0;border-radius:var(--floating-radius);background:rgba(0,0,0,.6);box-shadow:none;backdrop-filter:blur(16px);
   color:#fff;text-shadow:0 0 1px rgba(0,0,0,.8);font-weight:400;font-size:var(--fs-md);line-height:1.3;font-family:inherit}
 /* 面板的显隐照 YouTube 播放器 9470c977 的 www-player.css：`.ytp-popup` 淡入 .1s
@@ -358,7 +358,7 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
   [data-stage-media] .video-js.vjs-layout-small .vjs-current-time,[data-stage-media] .video-js.vjs-layout-small .vjs-duration,
   [data-stage-media] .video-js.vjs-layout-small .vjs-time-divider{display:flex}
   [data-stage-media] .video-js .vjs-time-control{font-size:var(--fs-xs)}
-  .vjs-peach-seek-frame{--seek-max-w:160px;--seek-max-h:120px}
+  .vjs-peach-seek-frame{--seek-max-w:120px;--seek-max-h:90px}
   .vjs-peach-settings-menu{right:-100px;width:min(274px,calc(100vw - 16px));border-radius:var(--floating-radius)}
 }
 /* 窄屏梯度照搬 YouTube delhi-modern：base.js 9470c977 里 `v.width<528` 打开 ytp-xsmall-width-mode，

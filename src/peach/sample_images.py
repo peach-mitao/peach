@@ -29,6 +29,7 @@ from urllib.parse import quote, urljoin, urlsplit
 from PIL import Image, ImageOps
 
 from .catalog_rules import normalise_code_key
+from .repository import media_scope_predicate
 from .fsutil import atomic_path
 from .scraping_access import SOURCES, source_for
 
@@ -341,7 +342,8 @@ def pending(connection: sqlite3.Connection, has_cover: Callable[[str], bool], mi
     found: list[str] = []
     for row in connection.execute(
             "SELECT code,max(id) AS newest FROM asset WHERE code IS NOT NULL AND code<>''"
-            " AND disposal IS NULL GROUP BY code ORDER BY newest DESC"):
+            " AND disposal IS NULL AND " + media_scope_predicate(connection, "asset") +
+            " GROUP BY code ORDER BY newest DESC"):
         key = code_key(row[0])
         if not key or key in done or key in found or not has_cover(key):
             continue

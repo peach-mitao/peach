@@ -29,6 +29,7 @@ from urllib.parse import urlsplit
 
 from . import studio_icons, studio_sites
 from .followups import Attempts, Followup, FollowupType, attempts_root, register
+from .repository import media_scope_predicate
 
 #: 这类后继在任务中心的身份，也是活动页上那一行的名字来源。
 TASK_KEY = "studio-mark"
@@ -102,7 +103,9 @@ def plan(connection: sqlite3.Connection, logo_root, *, since_entity_id: int) -> 
     rows = connection.execute(
         "SELECT e.id,e.canonical_name,"
         " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
-        "  WHERE ae.entity_id=e.id) AS assets"
+        "  JOIN asset a ON a.id=ae.asset_id"
+        "  WHERE ae.entity_id=e.id AND " + media_scope_predicate(connection, "a") +
+        ") AS assets"
         " FROM entity e WHERE e.id>? AND e.kind='studio' ORDER BY e.id",
         (int(since_entity_id),)).fetchall()
     found = [(int(row[2] or 0), int(row[0]), str(row[1] or "")) for row in rows
@@ -116,7 +119,9 @@ def plan(connection: sqlite3.Connection, logo_root, *, since_entity_id: int) -> 
 def fingerprint(connection: sqlite3.Connection, entity_id: int) -> str:
     """会让这条后继结论变的量：作品数与官网、目录链接数。人补上一条链接就该再试。"""
     assets = connection.execute(
-        "SELECT count(DISTINCT asset_id) FROM asset_entity WHERE entity_id=?",
+        "SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+        " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=? AND "
+        + media_scope_predicate(connection, "a"),
         (int(entity_id),)).fetchone()[0]
     links = connection.execute(
         "SELECT count(*) FROM entity_link WHERE entity_id=? AND link_kind IN (?,?)",
@@ -138,7 +143,9 @@ def stock(connection: sqlite3.Connection, logo_root, attempts, *, limit: int,
     for row in connection.execute(
             "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) AS assets"
             " FROM entity e JOIN asset_entity ae ON ae.entity_id=e.id"
-            " WHERE e.kind='studio' GROUP BY e.id ORDER BY assets DESC, e.id"):
+            " JOIN asset a ON a.id=ae.asset_id"
+            " WHERE e.kind='studio' AND " + media_scope_predicate(connection, "a") +
+            " GROUP BY e.id ORDER BY assets DESC, e.id"):
         entity_id, name = int(row[0]), str(row[1] or "")
         key = followup_key(entity_id)
         if key in skip or has_mark(logo_root, name):

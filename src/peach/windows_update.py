@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,14 +18,17 @@ from .fsutil import atomic_write_text, replace_with_retry
 
 log = logging.getLogger(__name__)
 
-BACKUP_GLOB = "Peach.pre-source-sync-*.exe"
+BACKUP_GLOB = "Peach.pre-source-sync-*"
 STAGING_DIRNAME = "source-sync-build"
 KEEP_BACKUPS = 2
+INTERNAL_DIRNAME = "_internal"
+NEXT_BUNDLE_PREFIX = ".Peach.source-sync-next-"
 
 WINDOWS_TRAY_INPUTS = (
     "src/peach/",
     "scripts/build_app_entry.py",
     "scripts/build_windows.ps1",
+    "scripts/standalone.txt",
     "scripts/replace_windows_tray.py",
     "web/",
     "migrations/",
@@ -92,35 +96,174 @@ def sweep_onefile_extractions(
     return tuple(removed)
 
 
+def _bundle_backup_path(target: Path, moment: datetime) -> Path:
+    base = target.with_name(f"Peach.pre-source-sync-{moment.strftime('%Y%m%d-%H%M%S')}")
+    candidate = base
+    index = 1
+    while candidate.exists():
+        candidate = base.with_name(f"{base.name}-{index}")
+        index += 1
+    return candidate
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
+
+
+def _copy_bundle(executable: Path, destination: Path) -> None:
+    """把一个目录版托盘的核心文件复制到尚不存在的目标目录。"""
+    destination.mkdir(parents=True)
+    shutil.copy2(executable, destination / "Peach.exe")
+    internal = executable.parent / INTERNAL_DIRNAME
+    if internal.is_dir():
+        shutil.copytree(internal, destination / INTERNAL_DIRNAME)
+
+
 def swap_tray_binary(
     staged: Path,
     target: Path,
     *,
+    backup: Path | None = None,
     timeout: float = 45.0,
     now: Callable[[], datetime] = datetime.now,
     sleep: Callable[[float], None] = time.sleep,
 ) -> Path:
-    """换掉生产托盘 EXE，先在原地留一份可回滚的备份，返回备份路径。
+    """换掉目录版生产托盘的核心文件，并返回一份可完整回滚的备份目录。
 
     调用方必须先让旧托盘正常退出：这个函数不发停止消息，也不判断谁还活着。
-    备份名沿用 `BACKUP_GLOB`，托盘下次启动的 `sweep_artifacts` 才认得出它、
-    才会按 `KEEP_BACKUPS` 收口；换个名字就会在 `dist/Peach/` 里越堆越多。
+    暂存入口旁边必须有 `_internal/`；生产入口可以来自旧的单文件版，所以它旁边没有
+    `_internal/` 也允许替换。备份把旧 EXE 与旧的 `_internal/` 一起移走，避免新入口
+    已经换好、运行库却仍是半套。生产目录里的 `tools/`、`cloudflared.exe` 等公共文件
+    不归这条更新链管理，原样留在原处。
     """
     if not staged.is_file():
         raise FileNotFoundError(f"暂存包不存在：{staged}")
+    if not (staged.parent / INTERNAL_DIRNAME).is_dir():
+        raise FileNotFoundError(f"暂存包缺少 {INTERNAL_DIRNAME} 目录：{staged.parent}")
     if target.name.lower() != "peach.exe" or not target.is_file():
         raise ValueError(f"生产入口不存在或不是 Peach.exe：{target}")
     if os.path.normcase(os.path.abspath(staged)) == os.path.normcase(os.path.abspath(target)):
         raise ValueError("暂存包与生产入口是同一个文件")
 
-    backup = target.with_name(f"Peach.pre-source-sync-{now().strftime('%Y%m%d-%H%M%S')}.exe")
-    shutil.copy2(target, backup)
+    moment = now()
+    backup = backup or _bundle_backup_path(target, moment)
+    if backup.exists():
+        raise FileExistsError(f"托盘备份目录已经存在：{backup}")
+    if backup.parent.resolve() != target.parent.resolve():
+        raise ValueError("托盘备份必须与生产入口位于同一目录")
+
+    next_bundle = target.parent / (
+        f"{NEXT_BUNDLE_PREFIX}{moment.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
+    )
+    backup.mkdir(parents=True)
     try:
-        replace_with_retry(staged, target, timeout=timeout, sleep=sleep)
-    except OSError:
-        backup.unlink(missing_ok=True)
+        _copy_bundle(staged, next_bundle)
+    except BaseException:
+        _remove_path(next_bundle)
+        _remove_path(backup)
         raise
+
+    target_internal = target.parent / INTERNAL_DIRNAME
+    backup_internal = backup / INTERNAL_DIRNAME
+    moved_old: list[tuple[Path, Path]] = []
+    new_executable_landed = False
+    new_internal_landed = False
+    try:
+        backup_executable = backup / "Peach.exe"
+        replace_with_retry(target, backup_executable, timeout=timeout, sleep=sleep)
+        moved_old.append((backup_executable, target))
+        if target_internal.is_dir():
+            replace_with_retry(target_internal, backup_internal, timeout=timeout, sleep=sleep)
+            moved_old.append((backup_internal, target_internal))
+
+        replace_with_retry(
+            next_bundle / "Peach.exe", target, timeout=timeout, sleep=sleep)
+        new_executable_landed = True
+        replace_with_retry(
+            next_bundle / INTERNAL_DIRNAME, target_internal, timeout=timeout, sleep=sleep)
+        new_internal_landed = True
+    except BaseException:
+        # 只清掉确实已经落地的半套新文件；旧 `_internal/` 若尚未搬走，必须原样保留。
+        for path, landed in (
+            (target, new_executable_landed),
+            (target_internal, new_internal_landed),
+        ):
+            if not landed:
+                continue
+            try:
+                _remove_path(path)
+            except OSError:
+                pass
+        for source, destination in reversed(moved_old):
+            try:
+                replace_with_retry(
+                    source, destination, timeout=timeout, sleep=sleep)
+            except OSError as restore_error:
+                log.error("托盘更新失败后未能恢复 %s: %s", destination, restore_error)
+        _remove_path(next_bundle)
+        try:
+            _remove_path(backup)
+        except OSError:
+            pass
+        raise
+    finally:
+        if next_bundle.exists():
+            try:
+                _remove_path(next_bundle)
+            except OSError:
+                pass
     return backup
+
+
+def restore_tray_bundle(
+    backup: Path,
+    target: Path,
+    *,
+    timeout: float = 45.0,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    """把备份核心包放回生产目录，同时保留备份本身供下一次再试。
+
+    旧版更新留下的是单个 `.exe`，新版留下的是目录。两种都认，回滚后再启动的仍是
+    更新前那一份入口；当前失败的新版 `_internal/` 会先移走，避免单文件旧版旁边残留
+    一套误导运行库。
+    """
+    if target.name.lower() != "peach.exe" or not target.parent.is_dir():
+        raise ValueError(f"生产入口目录无效：{target}")
+    if backup.is_dir():
+        backup_executable = backup / "Peach.exe"
+        backup_internal = backup / INTERNAL_DIRNAME
+    elif backup.is_file():
+        backup_executable = backup
+        backup_internal = None
+    else:
+        raise FileNotFoundError(f"托盘备份不存在：{backup}")
+    if not backup_executable.is_file():
+        raise FileNotFoundError(f"托盘备份缺少 Peach.exe：{backup}")
+
+    restore = target.parent / f".Peach.rollback-{uuid.uuid4().hex[:12]}"
+    restore.mkdir()
+    try:
+        shutil.copy2(backup_executable, restore / "Peach.exe")
+        if backup_internal is not None and backup_internal.is_dir():
+            shutil.copytree(backup_internal, restore / INTERNAL_DIRNAME)
+        _remove_path(target)
+        _remove_path(target.parent / INTERNAL_DIRNAME)
+        replace_with_retry(
+            restore / "Peach.exe", target, timeout=timeout, sleep=sleep)
+        if (restore / INTERNAL_DIRNAME).is_dir():
+            replace_with_retry(
+                restore / INTERNAL_DIRNAME, target.parent / INTERNAL_DIRNAME,
+                timeout=timeout, sleep=sleep)
+    finally:
+        if restore.exists():
+            try:
+                _remove_path(restore)
+            except OSError:
+                pass
 
 
 class WindowsUpdateInstaller:
@@ -175,19 +318,19 @@ class WindowsUpdateInstaller:
     def sweep_artifacts(self, *, keep_backups: int = KEEP_BACKUPS) -> tuple[Path, ...]:
         """删掉更新流程留下、已经没人会读的产物，托盘每次启动调一次。
 
-        每次更新都会在 EXE 旁边留一份 `Peach.pre-source-sync-<时间>.exe` 备份、在
-        `state/source-sync-build/<commit>/` 留一份暂存构建，两者各约 40 MB。备份只留最新
-        `keep_backups` 份；暂存目录只留待应用记录指着的那个提交——替换助手要等新托盘
-        活过 3 秒才清掉待应用记录，所以刚换上来的那份到下一次启动才会被清。只认更新器
-        自己的命名，`Peach.exe` 本体和手工放进目录的任何文件一律不碰；删不掉的只记日志，
-        不影响启动。
+        每次更新都会在应用目录里留一份 `Peach.pre-source-sync-<时间>/` 核心包备份，
+        在 `state/source-sync-build/<commit>/` 留一份暂存构建。旧版留下的同名 `.exe`
+        备份也一并清退。备份只留最新 `keep_backups` 份；暂存目录只留待应用记录指着的
+        那个提交——替换助手要等新托盘活过 3 秒才清掉待应用记录，所以刚换上来的那份到
+        下一次启动才会被清。只认更新器自己的命名，`Peach.exe` 本体和手工放进目录的
+        任何文件一律不碰；删不掉的只记日志，不影响启动。
         """
         removed: list[Path] = []
         backups = sorted(self.current_executable.parent.glob(BACKUP_GLOB))
         stale_count = max(len(backups) - max(keep_backups, 0), 0)
         for stale in backups[:stale_count]:
             try:
-                stale.unlink()
+                _remove_path(stale)
             except OSError as exc:
                 log.warning("旧托盘备份未能删除 %s: %s", stale, exc)
                 continue
@@ -237,45 +380,61 @@ class WindowsUpdateInstaller:
         return result.returncode
 
     def build_staged_tray(self, commit: str, *, shell: str | None = None) -> Path | None:
-        """把当前检出打成一份托盘 EXE，暂存到 `state/source-sync-build/<commit>/`。
+        """把当前检出打成目录版托盘，暂存到 `state/source-sync-build/<commit>/Peach/`。
 
         不能就地构建 `dist/Peach/`：那份 `Peach.exe` 正被运行中的托盘持有，PyInstaller
-        清理输出目录时会撞上 `WinError 5`。暂存目录的命名是 `sweep_artifacts` 认得的
-        那一种，换名字它就清不掉。构建失败返回 None，原因在 `log_path` 里。
+        清理输出目录时会撞上 `WinError 5`。目录版包与 `_internal/` 必须一起替换，
+        因此这里返回包内入口，调用方按入口所在目录整体处理。暂存目录的命名是
+        `sweep_artifacts` 认得的那一种，换名字它就清不掉。构建失败返回 None，
+        原因在 `log_path` 里。
         """
         shell = shell or self._powershell_executable()
         if shell is None:
             return None
         staging_dir = self.state_dir / STAGING_DIRNAME / commit
-        staging_dir.mkdir(parents=True, exist_ok=True)
-        staged = staging_dir / "Peach.exe"
-        staged.unlink(missing_ok=True)
+        package_dir = staging_dir / "Peach"
+        if package_dir.exists():
+            _remove_path(package_dir)
+        package_dir.mkdir(parents=True, exist_ok=True)
+        staged = package_dir / "Peach.exe"
         build_script = self.root / "scripts" / "build_windows.ps1"
         build_exit = self._run_logged([
             shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(build_script),
-            "-OutputDirectory", str(staging_dir),
+            "-OutputDirectory", str(package_dir),
+            "-PackagedTray",
         ])
-        if build_exit != 0 or not staged.is_file():
+        if (build_exit != 0 or not staged.is_file()
+                or not (package_dir / INTERNAL_DIRNAME).is_dir()):
             return None
         return staged
 
     def packaged_migrations_pass(self, staged: Path) -> bool:
-        """在换上生产入口之前，先让暂存包自己跑一次 `migrate status`。
+        """在换上生产入口之前，先验证暂存包的资源和运行形态。
 
         PyInstaller 漏掉 `migrations/` 的话包能构建、能启动，直到第一次开库才炸；
-        那时旧二进制已经被换走了。这一步用真实的包在真实 Peach 数据目录上验证一遍。
+        那时旧二进制已经被换走了。漏掉独立版标记则会让托盘改找源码 TLS 材料。
+        这两项都必须在真实包上验证，不能只看构建脚本。
         """
         reset_environment = os.environ.copy()
         reset_environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         with self.log_path.open("a", encoding="utf-8", errors="replace") as log:
-            validation = self._run(
-                [str(staged), "migrate", "status"],
-                cwd=str(self.root), stdin=subprocess.DEVNULL, stdout=log,
-                stderr=subprocess.STDOUT, check=False, env=reset_environment,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
-        return validation.returncode == 0
+            for label, command in (
+                ("migrations", [str(staged), "migrate", "status"]),
+                ("distribution", [str(staged), "--verify-standalone"]),
+            ):
+                validation = self._run(
+                    command, cwd=str(self.root), stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+                    env=reset_environment, text=True, encoding="utf-8", errors="replace",
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
+                output = str(validation.stdout or "").rstrip()
+                log.write(f"\n[{label}]\n{output}\n")
+                log.flush()
+                if validation.returncode != 0:
+                    return False
+        return True
 
     def prepare(
         self, commit: str, changed_paths: tuple[str, ...],
@@ -329,10 +488,7 @@ class WindowsUpdateInstaller:
                 "failed", "新托盘未通过打包迁移资源检查；旧托盘和服务保持运行。",
             )
 
-        backup = self.current_executable.with_name(
-            f"Peach.pre-source-sync-{datetime.now().strftime('%Y%m%d-%H%M%S')}.exe"
-        )
-        shutil.copy2(self.current_executable, backup)
+        backup = _bundle_backup_path(self.current_executable, datetime.now())
         helper_python = self.root / ".venv" / "Scripts" / "pythonw.exe"
         helper_script = self.root / "scripts" / "replace_windows_tray.py"
         if not helper_python.is_file() or not helper_script.is_file():

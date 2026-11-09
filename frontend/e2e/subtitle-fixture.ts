@@ -8,7 +8,7 @@ export async function mockSubtitleMemory(page: Page) {
   await page.route(/\/api\/(?:subtitles|player)\/memory/, async route => {
     const request = route.request(), url = new URL(request.url()), video = url.searchParams.get('video')!;
     if (url.pathname.includes('/track/')) return route.fulfill({ contentType: 'text/vtt', body: content.get(`${video}:${url.pathname}`)! });
-    const value = memories.get(video) || { selected: null, tracks: [] };
+    const value = memories.get(video) || { tracks: [] };
     if (request.method() === 'PUT') {
       const body = request.postDataJSON();
       if ('selected' in body) value.selected = body.selected;

@@ -36,6 +36,7 @@ from pathlib import Path
 
 from . import feeds, metadata_routes
 from .catalog_rules import normalise_code_key
+from .repository import media_scope_predicate
 from .followups import Followup, FollowupType, register
 from .metadata import extract_peach_fields
 
@@ -186,7 +187,8 @@ def _candidates(connection, condition: str, values: tuple, order: str):
         f" WHERE d.ignored_at IS NULL AND {condition}"
         " AND NOT EXISTS (SELECT 1 FROM asset a WHERE a.code IS NOT NULL"
         " AND COALESCE(a.disposal,'')<>'vanished'"
-        " AND normalise_code_key(a.code)=normalise_code_key(d.code))"
+        " AND normalise_code_key(a.code)=normalise_code_key(d.code) AND "
+        + media_scope_predicate(connection, "a") + ")"
         f" ORDER BY {order}COALESCE(d.release_date,d.discovered_at) DESC, d.id DESC",
         values).fetchall()
 

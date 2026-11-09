@@ -1209,17 +1209,16 @@ def follow_stream(request: Request, id: int, media: int | None = None,
         key = f"follow:{item.id}:media:{media}:quality:{quality}"
         cache = cache_for(state.web_contract)
         extra = {"content-disposition": _attachment_disposition(item.title, item.media_url or item.url)} if download else None
-        cached = cache.response(key, request, headers=extra)
-        if cached is not None:
-            return cached
-        target = state.follow_media_resolver.resolve(item, media, quality)
-        phase = "upstream"
-        # 跟重定向、逐跳过白名单、非 2xx 一律不转发，都在 follow_stream 里；
-        # 这里只负责把 Peach 的请求接到那个流上。
-        extra = {"content-disposition": _attachment_disposition(item.title, target.url)} if download else None
-        return cache.stream(key, request,
-            lambda: open_upstream(state.http_transport.client, request.method, target, incoming=request.headers),
-            headers=extra)
+        def fetch():
+            nonlocal phase
+            # cache.stream() 会先等正在安装同一范围的响应；缓存命中时这里
+            # 不会被调用，因此来源解析不会和首次落盘发生竞态。
+            target = state.follow_media_resolver.resolve(item, media, quality)
+            phase = "upstream"
+            # 跟重定向、逐跳过白名单、非 2xx 一律不转发，都在 follow_stream 里；
+            # 这里只负责把 Peach 的请求接到那个流上。
+            return open_upstream(state.http_transport.client, request.method, target, incoming=request.headers)
+        return cache.stream(key, request, fetch, headers=extra)
     except FollowMediaUnavailable as error:
         _report_follow_media_failure(item, error, operation="stream", phase=phase, media_index=media)
         return JSONResponse({"error": str(error)}, status_code=404)

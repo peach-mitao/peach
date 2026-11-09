@@ -20,13 +20,10 @@ export interface MediaItem {
   duration?: number | null;
   width?: number | null;
   height?: number | null;
-  rating?: number | null;
-  o_count?: number | null;
-  /** 当前档案点过「喜欢」：列表接口给 1，详情页写回的同一条是 `true`。 */
-  liked?: boolean | number | null;
-  first_seen?: string | null;
-  last_played?: string | number | null;
   release_date?: string | null;
+  first_seen?: string | number | null;
+  last_played?: string | number | null;
+  rating?: number | null;
   play_seconds?: number | null;
   play_count?: number | null;
   leave_ratio?: number | null;
@@ -34,8 +31,13 @@ export interface MediaItem {
   cover_key?: string;
   /** 封面文件的内容版本，拼进封面地址的 `&v=`。 */
   cover_version?: string;
+  /** 封面边车里的原图比例与取景提示；比例用于图片加载前稳定卡片高度。 */
+  cover_frame?: { cx?: number | null; cy?: number | null; layout?: string; ratio?: number | null } | null;
+  poster_box?: { x0?: number; y0?: number; x1?: number; y1?: number; px?: number[]; method?: string } | null;
   has_thumb?: boolean;
   has_local_poster?: boolean;
+  /** 已生成本地预览图的真实宽高比；图片加载前就按它占位。 */
+  poster_ratio?: number | null;
   follow_thumb_url?: string;
   follow_item_id?: number | null;
   follow_tags?: string[];

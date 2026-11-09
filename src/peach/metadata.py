@@ -27,10 +27,11 @@ from .metadata_alias_resolve import is_descriptive, is_planning_alias
 _SAFE_CODE = re.compile(
     r"^(?:FC2-PPV-\d{5,}|\d{3}[A-Z]{2,6}-\d{2,5}|[A-Z]{2,8}-\d{2,5}|\d{6}[-_]\d{2,4})$")
 CATALOG_EVIDENCE_FIELDS = (
-    "title", "original_title", "runtime", "director", "label",
+    "title", "original_title", "description", "runtime", "director", "label",
     "poster_url", "cover_url", "screenshot_urls", "trailer_url",
 )
 MAX_EVIDENCE_URLS = 24
+MAX_DESCRIPTION_CHARS = 50_000
 
 
 class MetadataProviderError(RuntimeError):
@@ -377,11 +378,35 @@ def _normalized_text(raw: object) -> str:
     return " ".join(str(raw or "").split())
 
 
+_DESCRIPTION_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def normalized_description(raw: object) -> str:
+    """Normalize a source synopsis while keeping intentional line breaks."""
+    value = str(raw or "").replace("\r\n", "\n").replace("\r", "\n")
+    value = _DESCRIPTION_CONTROL.sub("", value)
+    value = "\n".join(" ".join(line.split()) for line in value.split("\n"))
+    return re.sub(r"\n{3,}", "\n\n", value).strip()
+
+
 def _text_evidence(raw: object) -> dict | None:
     value = _normalized_text(raw)
     if not value:
         return None
     return {"value": value, "display_value": value, "warnings": []}
+
+
+def _description_evidence(raw: object) -> dict | None:
+    value = normalized_description(raw)
+    if not value:
+        return None
+    warnings = []
+    if len(value) > MAX_DESCRIPTION_CHARS:
+        value = value[:MAX_DESCRIPTION_CHARS].rstrip()
+        warnings.append(
+            f"来源简介超过 {MAX_DESCRIPTION_CHARS} 字，已截断；完整原文仍在来源快照"
+        )
+    return {"value": value, "display_value": value, "warnings": warnings}
 
 
 def _runtime_evidence(raw: object) -> dict | None:
@@ -484,6 +509,15 @@ def extract_catalog_evidence(payload: dict) -> dict[str, dict]:
         evidence = _text_evidence(raw)
         if evidence is not None:
             out[field] = evidence
+    nested = payload.get("extra") if isinstance(payload.get("extra"), dict) else {}
+    combined = payload.get("combined") if isinstance(payload.get("combined"), dict) else {}
+    description = _description_evidence(
+        payload.get("description") or payload.get("plot")
+        or nested.get("description") or nested.get("plot")
+        or combined.get("comment_en")
+    )
+    if description is not None:
+        out["description"] = description
     if (out.get("original_title", {}).get("value")
             == out.get("title", {}).get("value")):
         out.pop("original_title", None)
@@ -509,7 +543,7 @@ def extract_peach_fields(payload: dict, genre_decisions=None) -> dict[str, dict]
     """
     out: dict[str, dict] = {}
     catalog = extract_catalog_evidence(payload)
-    for field in ("title", "original_title"):
+    for field in ("title", "original_title", "description"):
         if field in catalog:
             out[field] = dict(catalog[field])
     performers, warnings = normalized_performers(original_cast(payload))

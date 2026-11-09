@@ -32,6 +32,7 @@ from browserexport.common import BrowserexportError
 import ahocorasick
 
 from .catalog_rules import LENGTH_TAGS, TECH_TAGS
+from .repository import media_scope_predicate
 from .review_csv import read_rows, write_rows
 from .taste_sites import ADULT_DOMAINS, MIXED_DOMAINS, account_key, identity_context, mixed_adult, parse_url
 
@@ -1007,9 +1008,10 @@ def _peach_dashboard_evidence(connection: sqlite3.Connection, since: str | None,
         "SELECT a.id,a.creator,a.studio,a.play_count,a.play_seconds,a.o_count,a.rating,"
         "a.feedback,a.last_played,COALESCE(p.liked,0) liked "
         "FROM asset a LEFT JOIN asset_preference p ON p.asset_id=a.id AND p.profile_id='local-default' "
-        "WHERE COALESCE(a.play_count,0)>0 OR COALESCE(a.play_seconds,0)>0 "
+        "WHERE (COALESCE(a.play_count,0)>0 OR COALESCE(a.play_seconds,0)>0 "
         "OR COALESCE(a.o_count,0)>0 OR COALESCE(a.rating,0)>0 "
-        "OR a.feedback IN ('seen','dislike') OR COALESCE(p.liked,0)>0"
+        "OR a.feedback IN ('seen','dislike') OR COALESCE(p.liked,0)>0) "
+        "AND " + media_scope_predicate(connection, "a")
     ).fetchall()
     assets: dict[int, dict[str, object]] = {}
     total_seconds = 0.0
@@ -1150,6 +1152,8 @@ def _tag_inventory(connection: sqlite3.Connection) -> dict[str, int]:
         clauses.append("a.snapshot_path IS NOT NULL")
     if "ctx_orient" in columns:
         clauses.append("(a.ctx_orient IS NULL OR a.ctx_orient<>'竖屏')")
+    if {"location", "path"} <= columns:
+        clauses.append(media_scope_predicate(connection, "a"))
     query = (
         "SELECT e.canonical_name,count(DISTINCT ae.asset_id) "
         "FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "

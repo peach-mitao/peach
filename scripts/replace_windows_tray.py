@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -15,7 +14,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from peach.windows_update import replace_with_retry
+from peach.windows_update import restore_tray_bundle, swap_tray_binary
 
 
 def process_alive(process_id: int) -> bool:
@@ -44,7 +43,7 @@ def install_and_restart(
     start: Callable[..., subprocess.Popen] = subprocess.Popen,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    for path in (staged, target, backup):
+    for path in (staged, target):
         if not path.is_file():
             append_log(log, f"replacement refused: missing file {path}")
             return 2
@@ -57,8 +56,8 @@ def install_and_restart(
         sleep(0.25)
 
     try:
-        replace_with_retry(staged, target, sleep=sleep)
-    except OSError as exc:
+        swap_tray_binary(staged, target, backup=backup, sleep=sleep)
+    except (OSError, ValueError) as exc:
         append_log(log, f"replacement failed: {exc}")
         if not alive(wait_pid):
             start([str(target)], cwd=str(target.parent), shell=False)
@@ -77,10 +76,8 @@ def install_and_restart(
         return 0
 
     append_log(log, f"new tray exited with code {launched.returncode}; rolling back")
-    restore = target.with_name(".Peach.rollback.exe")
-    shutil.copy2(backup, restore)
     try:
-        replace_with_retry(restore, target, sleep=sleep)
+        restore_tray_bundle(backup, target, sleep=sleep)
     except OSError as exc:
         append_log(log, f"rollback failed: {exc}")
         return 1

@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from peach import followups as followups_module
+from peach import library_processing
 from peach import seed_followup, seed_pack, seed_validation
 from peach import task_runs as task_runs_module
 from peach.avatar_followup import TASK_KEY as AVATAR_TASK_KEY
@@ -22,6 +23,13 @@ from peach.repository import LedgerDatabase
 from peach.task_runs import MAX_FOLLOWUPS, TaskRunStore
 from support.conditions import windows_ledger_roots
 from support.ledger import fresh_ledger
+
+
+def setUpModule():
+    """Keep host free-space policy from changing temporary-followup test outcomes."""
+    capacity = mock.patch.object(library_processing.CapacityGuard, 'check', return_value=None)
+    capacity.start()
+    unittest.addModuleCleanup(capacity.stop)
 
 
 @contextmanager

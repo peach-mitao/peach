@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import time
+import uuid
 from pathlib import Path
 
 from filelock import FileLock, Timeout
@@ -69,7 +70,9 @@ class RemoteMediaCache:
         for slot in dict.fromkeys((self._slot(key), self._slot(key, byte_range))):
             try:
                 metadata = json.loads(slot.with_suffix(".json").read_text(encoding="utf-8"))
-                path = slot.with_suffix(".bin")
+                relative = metadata.get("file")
+                path = (slot.parent / Path(str(relative)).name
+                        if relative else slot.with_suffix(".bin"))
                 if (passive_media_type(metadata['headers'].get('content-type',''))
                         and path.is_file() and path.stat().st_size == metadata["size"]):
                     return path, metadata
@@ -168,23 +171,69 @@ class RemoteMediaCache:
         if not accepted:
             yield from upstream.iter_raw()
             return
-        with atomic_path(slot.with_suffix(".bin")) as temporary:
+        pending = b""
+        for attempt in range(3):
             size = 0
-            with temporary.open("wb") as handle:
-                for chunk in upstream.iter_raw():
-                    self._check_capacity()
-                    handle.write(chunk)
-                    size += len(chunk)
-                    yield chunk
-            expected = int(headers.get("content-length", size))
-            if not size or size != expected or (content_range and
-                    size != int(content_range[2]) - int(content_range[1]) + 1):
-                raise OSError("媒体响应长度不完整")
-        atomic_write_text(slot.with_suffix(".json"), json.dumps({
-            "status": 200 if complete_range else upstream.status_code, "size": size, "headers": {
-                name: value for name, value in headers.items() if name in MEDIA_HEADERS
-                and not (complete_range and name == "content-range")},
-        }), mode=0o600)
+            started = False
+            data = slot.with_name(f"{uuid.uuid4().hex[:16]}.bin")
+            try:
+                slot.parent.mkdir(parents=True, exist_ok=True)
+                with atomic_path(data) as temporary:
+                    # A concurrent cache cleanup can remove the empty folder between
+                    # atomic_path() creating it and opening the temporary file.
+                    slot.parent.mkdir(parents=True, exist_ok=True)
+                    with temporary.open("wb") as handle:
+                        chunks = iter(upstream.iter_raw())
+                        try:
+                            pending = next(chunks)
+                        except StopIteration as error:
+                            raise OSError("媒体响应为空") from error
+                        started = True
+                        for chunk in chunks:
+                            handle.write(pending)
+                            size += len(pending)
+                            yield pending
+                            pending = chunk
+                        handle.write(pending)
+                        size += len(pending)
+                    expected = int(headers.get("content-length", size))
+                    if not size or size != expected or (content_range and
+                            size != int(content_range[2]) - int(content_range[1]) + 1):
+                        raise OSError("媒体响应长度不完整")
+                metadata = json.dumps({
+                    "file": data.name,
+                    "status": 200 if complete_range else upstream.status_code,
+                    "size": size,
+                    "headers": {
+                        name: value for name, value in headers.items()
+                        if name in MEDIA_HEADERS
+                        and not (complete_range and name == "content-range")
+                    },
+                })
+                # The data file has a unique name and the sidecar is installed
+                # last. A reader therefore sees either the previous complete
+                # pair or the new complete pair, never one half of each.
+                for metadata_attempt in range(5):
+                    try:
+                        slot.parent.mkdir(parents=True, exist_ok=True)
+                        atomic_write_text(slot.with_suffix(".json"), metadata, mode=0o600)
+                        break
+                    except FileNotFoundError:
+                        if metadata_attempt == 4:
+                            slot.parent.mkdir(parents=True, exist_ok=True)
+                            slot.with_suffix(".json").write_text(metadata, encoding="utf-8")
+                break
+            except FileNotFoundError:
+                # Before the first byte, retrying cannot duplicate the upstream
+                # response. If cleanup keeps removing the cache root, stream the
+                # response without installing it. Once streaming has started, a
+                # vanished folder is a real failure rather than a partial replay.
+                if started:
+                    raise
+                if attempt == 2:
+                    yield from upstream.iter_raw()
+                    return
+        yield pending
 
     def bytes(self, key: str, fetch, *, ttl: int | None = None) -> bytes:
         """图片与清单复用原子文件及跨进程锁；刷新失败保留可用副本。"""

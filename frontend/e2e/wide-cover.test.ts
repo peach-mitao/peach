@@ -51,12 +51,35 @@ describe('宽封套与来源封面', () => {
         await still.evaluate((img: HTMLImageElement) => img.decode());
         assert.equal(await still.getAttribute('data-frame'), 'still');
         assert.equal(await still.evaluate(img => img.classList.contains('panel')), false);
+        const stillFrame = await still.evaluate((img: HTMLImageElement) => {
+          const pic = img.closest('.pic')!.getBoundingClientRect();
+          return {
+            ratio: pic.width / pic.height,
+            naturalRatio: img.naturalWidth / img.naturalHeight,
+            fit: getComputedStyle(img).objectFit,
+            background: getComputedStyle(img.closest('.pic')!).backgroundColor,
+          };
+        });
+        assert.ok(stillFrame.naturalRatio > 1, JSON.stringify(stillFrame));
+        assert.ok(Math.abs(stillFrame.ratio - 3 / 4) < .01, JSON.stringify(stillFrame));
+        assert.equal(stillFrame.fit, 'contain');
+        assert.equal(stillFrame.background, 'rgb(0, 0, 0)');
         const vr = page.locator('#feedNew [data-feed-id="7"] img.cover');
         await vr.scrollIntoViewIfNeeded();
         await vr.evaluate((img: HTMLImageElement) => img.decode());
         assert.equal(await vr.getAttribute('data-frame'), 'still');
         assert.equal(await vr.evaluate(img => img.classList.contains('panel')), false);
-        assert.equal(await vr.evaluate(img => img.style.getPropertyValue('--cover-x')), '0%');
+        const vrFrame = await vr.evaluate((img: HTMLImageElement) => {
+          const pic = img.closest('.pic')!.getBoundingClientRect();
+          return {
+            ratio: pic.width / pic.height,
+            fit: getComputedStyle(img).objectFit,
+            background: getComputedStyle(img.closest('.pic')!).backgroundColor,
+          };
+        });
+        assert.ok(Math.abs(vrFrame.ratio - 3 / 4) < .01, JSON.stringify(vrFrame));
+        assert.equal(vrFrame.fit, 'contain');
+        assert.equal(vrFrame.background, 'rgb(0, 0, 0)');
       } finally { await context.close() }
     });
   }

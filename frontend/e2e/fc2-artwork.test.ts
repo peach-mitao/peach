@@ -70,7 +70,7 @@ describe('FC2 合集与封面取景', () => {
       { code: 'FC2-PPV-3312576', cx: .22, width: 1548, height: 948, layout: undefined },
       { code: 'SPONE-001', cx: .555, width: 2184, height: 1638, layout: 'still' },
     ]) {
-    it(`${viewport.name}: ${art.code} 缺集归为一张卡，横图人脸 ${art.cx} 尽量居中`, async () => {
+    it(`${viewport.name}: ${art.code} 缺集归为一张卡，横图完整保留原比例`, async () => {
       const opened = await openItemPage(browser, '/', viewport, {
         ready: '[data-media-card]', settings: { javLayout: 'big', homeLayout: 'big', javImage: 'cover' },
       });
@@ -98,40 +98,60 @@ describe('FC2 合集与封面取景', () => {
           document.querySelector<HTMLImageElement>('[data-media-card] img.cover')?.naturalWidth === width, art.width);
         await settle(opened.page);
         assert.equal(await covers.count(), 1);
-        const frame = await covers.first().evaluate((img: HTMLImageElement, faceCenter: number) => {
+        const frame = await covers.first().evaluate((img: HTMLImageElement) => {
           const style = getComputedStyle(img);
-          const rect = img.getBoundingClientRect();
-          const scale = Math.max(rect.width / img.naturalWidth, rect.height / img.naturalHeight);
-          const x = parseFloat(style.objectPosition) / 100;
-          const sourceFaceX = faceCenter * img.naturalWidth * scale;
-          const croppedWidth = img.naturalWidth * scale - rect.width;
-          const faceX = sourceFaceX - croppedWidth * x;
-          // 无空白的可达范围为 [sourceFaceX - croppedWidth, sourceFaceX]。
-          const closestCenter = Math.min(sourceFaceX, Math.max(sourceFaceX - croppedWidth, rect.width / 2));
-          return { kind: img.dataset.frame, faceX, closestCenter, croppedWidth, x };
-        }, cx);
+          const pic = img.closest<HTMLElement>('[data-media-pic],.pic')!;
+          const box = pic.getBoundingClientRect();
+          return {
+            kind: img.dataset.frame,
+            naturalCard: img.hasAttribute('data-natural-card'),
+            fit: style.objectFit,
+            position: style.objectPosition,
+            boxRatio: box.width / box.height,
+            naturalRatio: img.naturalWidth / img.naturalHeight,
+          };
+        });
         assert.equal(frame.kind, 'still');
-        assert.ok(frame.croppedWidth > 0, JSON.stringify(frame));
-        assert.ok(frame.x >= 0 && frame.x <= 1, JSON.stringify(frame));
-        assert.ok(Math.abs(frame.faceX - frame.closestCenter) < 5, JSON.stringify(frame));
-        if (art.layout === 'still') {
-          for (const shape of ['front', 'whole']) {
-            const fill = await covers.first().evaluate((img: HTMLImageElement, mode) => {
-              img.classList.toggle('front', mode === 'front');
-              img.classList.toggle('whole', mode === 'whole');
-              const pic = img.closest<HTMLElement>('[data-media-pic],.pic')!;
-              pic.style.setProperty('--card-ratio', mode === 'whole' ? '16/9' : '.75');
-              img.dispatchEvent(new Event('load'));
-              const box = pic.getBoundingClientRect();
-              const image = img.getBoundingClientRect();
-              return { fit: getComputedStyle(img).objectFit, blur: pic.style.getPropertyValue('--cover-blur'),
-                widthGap: Math.abs(box.width - image.width), heightGap: Math.abs(box.height - image.height) };
-            }, shape);
-            assert.equal(fill.fit, shape === 'front' ? 'cover' : 'contain', JSON.stringify(fill));
-            assert.equal(fill.blur, '', JSON.stringify(fill));
-            assert.ok(fill.widthGap < 1 && fill.heightGap < 1, JSON.stringify(fill));
-          }
+        assert.equal(frame.naturalCard, true, JSON.stringify(frame));
+        assert.equal(frame.fit, 'contain', JSON.stringify(frame));
+        assert.equal(frame.position, '50% 50%', JSON.stringify(frame));
+        assert.ok(Math.abs(frame.boxRatio - frame.naturalRatio) < .01, JSON.stringify(frame));
+        for (const shape of ['front', 'whole']) {
+          const fill = await covers.first().evaluate((img: HTMLImageElement, mode) => {
+            img.classList.toggle('front', mode === 'front');
+            img.classList.toggle('whole', mode === 'whole');
+            const pic = img.closest<HTMLElement>('[data-media-pic],.pic')!;
+            pic.style.setProperty('--card-ratio', '.75');
+            img.dispatchEvent(new Event('load'));
+            const box = pic.getBoundingClientRect();
+            const image = img.getBoundingClientRect();
+            return {
+              fit: getComputedStyle(img).objectFit,
+              naturalCard: img.hasAttribute('data-natural-card'),
+              blur: pic.style.getPropertyValue('--cover-blur'),
+              boxRatio: box.width / box.height,
+              naturalRatio: img.naturalWidth / img.naturalHeight,
+              widthGap: Math.abs(box.width - image.width),
+              heightGap: Math.abs(box.height - image.height),
+            };
+          }, shape);
+          assert.equal(fill.fit, 'contain', JSON.stringify(fill));
+          assert.equal(fill.naturalCard, true, JSON.stringify(fill));
+          assert.equal(fill.blur, '', JSON.stringify(fill));
+          assert.ok(Math.abs(fill.boxRatio - fill.naturalRatio) < .01, JSON.stringify(fill));
+          assert.ok(fill.widthGap < 1 && fill.heightGap < 1, JSON.stringify(fill));
         }
+        await opened.page.evaluate(() => { document.body.dataset.density = 'dense' });
+        await opened.page.evaluate(() => new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+        const dense = await covers.first().evaluate((img: HTMLImageElement) => {
+          const pic = img.closest<HTMLElement>('[data-media-pic],.pic')!;
+          const box = pic.getBoundingClientRect();
+          return { ratio: box.width / box.height, naturalRatio: img.naturalWidth / img.naturalHeight,
+            fit: getComputedStyle(img).objectFit };
+        });
+        assert.ok(Math.abs(dense.ratio - dense.naturalRatio) < .01, JSON.stringify(dense));
+        assert.equal(dense.fit, 'contain', JSON.stringify(dense));
         const bounds = await layout(opened.page);
         assert.ok(bounds.scrollWidth <= bounds.viewportWidth + 1, JSON.stringify(bounds));
         assert.deepEqual(opened.problems, []);

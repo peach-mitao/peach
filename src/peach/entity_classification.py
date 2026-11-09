@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from .entry_links import EXTERNAL_KIND, JAV_DIRECTORIES
+from .repository import media_scope_predicate
 
 VALUES = {
     'identity': {'person':'个人', 'account':'发布账号', 'organization':'机构',
@@ -103,6 +104,8 @@ def classifications(connection, entity_ids):
 def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     """浏览分类分别命中；发行范围与作品类型允许交叉。"""
     providers = ','.join(f"'{provider}'" for provider in sorted(JAV_DIRECTORIES))
+    media_scope = (media_scope_predicate(connection, 'av')
+                   if connection is not None else '1')
     has_claims = connection is None or connection.execute(
         "SELECT 1 FROM sqlite_schema WHERE name='entity_classification'").fetchone()
     def claim(facet, value):
@@ -113,7 +116,8 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     def work(condition):
         return (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
                 f"WHERE ca.entity_id={column} AND ca.role='performer' AND av.medium='video' "
-                f"AND COALESCE(av.disposal,'')<>'vanished' AND ({condition}))")
+                f"AND COALESCE(av.disposal,'')<>'vanished' "
+                f"AND {media_scope} AND ({condition}))")
     jav = (f"EXISTS (SELECT 1 FROM entity_external_ref er WHERE er.entity_id={column} "
            f"AND er.external_kind='{EXTERNAL_KIND}' AND er.external_id<>'' AND er.provider IN ({providers})) "
            f"OR {claim('market', 'japanese_av')}")
@@ -135,7 +139,8 @@ def category_predicates(column='e.id', kind_column='e.kind', connection=None):
     animation = claim('occupation', 'animator')
     creator_video = (f"EXISTS (SELECT 1 FROM asset_entity ca JOIN asset av ON av.id=ca.asset_id "
                      f"WHERE ca.entity_id={column} AND ca.role='creator' AND av.medium='video' "
-                     "AND COALESCE(av.disposal,'')<>'vanished')")
+                     "AND COALESCE(av.disposal,'')<>'vanished' AND "
+                     + media_scope + ")")
     personal_account = (f"{claim('identity','person')} OR {claim('occupation','content_creator')} "
                         f"OR ({claim('identity','account')} AND {claim('account_role','publisher')})")
     nonpersonal = ' OR '.join(claim('identity', value) for value in

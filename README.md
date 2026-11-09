@@ -61,6 +61,8 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 
 Choose your media folders after installation, then scan to start browsing and playing. Desktop test builds are unsigned, and macOS builds are not notarized. See the [Windows](docs/TESTING_DESKTOP.md) and [macOS](docs/OPERATIONS.md#macos-独立测试包) guides.
 
+Peach only displays and acts on content in the currently configured media folders. Records from a folder removed from the configuration stay in the ledger and are hidden.
+
 ## Documentation
 
 [Operations](docs/OPERATIONS.md) · [Sources](docs/SOURCING.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Diagnostics and data sharing](docs/DIAGNOSTICS.md) · [Changelog](CHANGELOG.md)

@@ -75,7 +75,7 @@ describe('页面等待态的结构', () => {
         assert.equal(await root.locator('[aria-label="JAV 卡片版式"]').count() > 0, jav, '卡片版式开关误用了艺人类型');
         const ratio = await root.locator('[style*="--skeleton-card-ratio"]').first().evaluate(node =>
           Number((node as HTMLElement).style.getPropertyValue('--skeleton-card-ratio')));
-        assert.equal(ratio, jav ? .75 : 16 / 9, '等待态封面比例与作品语境不一致');
+        assert.equal(ratio, .75, '等待态封面比例与作品语境不一致');
       } finally { release(); await context.close() }
     });
   }

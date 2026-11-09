@@ -13,6 +13,7 @@ from peach.windows_update import sweep_onefile_extractions
 from peach.windows_update import (
     BACKUP_GLOB,
     WindowsUpdateInstaller,
+    restore_tray_bundle,
     swap_tray_binary,
     windows_tray_rebuild_required,
 )
@@ -42,13 +43,16 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
         target_dir.mkdir(parents=True)
         target = target_dir / "Peach.exe"
         target.write_bytes(b"old")
+        (target_dir / "_internal").mkdir()
+        (target_dir / "_internal" / "old-runtime.dll").write_bytes(b"old-runtime")
         return target, root / "state", root / "logs"
 
     def test_rebuild_scope_includes_every_frozen_input(self):
         self.assertFalse(windows_tray_rebuild_required(("docs/STATUS.md",)))
         for path in (
             "src/peach/web.py", "web/index.html", "migrations/0021.sql",
-            "resources/peach.ico", "scripts/build_windows.ps1", "pyproject.toml",
+            "resources/peach.ico", "scripts/build_windows.ps1", "scripts/standalone.txt",
+            "pyproject.toml",
         ):
             self.assertTrue(windows_tray_rebuild_required((path,)), path)
 
@@ -87,12 +91,16 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             target, state, logs = self.make_tree(root)
+            commands = []
 
             def run(command, **_kwargs):
+                commands.append(command)
                 if "build_windows.ps1" in " ".join(command):
                     output = Path(command[command.index("-OutputDirectory") + 1])
                     output.mkdir(parents=True, exist_ok=True)
                     (output / "Peach.exe").write_bytes(b"new")
+                    (output / "_internal").mkdir(exist_ok=True)
+                    (output / "_internal" / "new-runtime.dll").write_bytes(b"new-runtime")
                 return subprocess.CompletedProcess(command, 0)
 
             popen = Mock(return_value=Mock())
@@ -103,13 +111,40 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
             installer.mark_pending("abc12345", ("src/peach/tray.py",))
             result = installer.prepare("abc12345", ("src/peach/tray.py",))
             self.assertEqual(result.state, "replace")
-            backups = list(target.parent.glob("Peach.pre-source-sync-*.exe"))
-            self.assertEqual(len(backups), 1)
-            self.assertEqual(backups[0].read_bytes(), b"old")
             helper_command = popen.call_args.args[0]
             self.assertIn("replace_windows_tray.py", helper_command[1])
             self.assertIn("--wait-pid", helper_command)
+            backup = Path(helper_command[helper_command.index("--backup") + 1])
+            self.assertFalse(backup.exists(),
+                             "旧进程退出后由替换助手生成完整备份，准备阶段不能先复制正在使用的 EXE")
             self.assertEqual(target.read_bytes(), b"old", "running EXE is replaced only by helper")
+            build_command = next(command for command in commands
+                                 if "build_windows.ps1" in " ".join(command))
+            self.assertIn("-PackagedTray", build_command)
+            self.assertTrue(any(command[-1:] == ["--verify-standalone"]
+                                for command in commands))
+
+    def test_packaged_runtime_must_identify_as_standalone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target, state, logs = self.make_tree(root)
+            staged = root / "staged" / "Peach.exe"
+            staged.parent.mkdir()
+            staged.write_bytes(b"new")
+            (staged.parent / "_internal").mkdir()
+
+            def run(command, **_kwargs):
+                code = 1 if command[-1] == "--verify-standalone" else 0
+                output = "standalone=false\n" if code else ""
+                return subprocess.CompletedProcess(command, code, stdout=output)
+
+            installer = WindowsUpdateInstaller(
+                root, state_dir=state, log_dir=logs, current_executable=target,
+                run=run, powershell="pwsh", frozen=True,
+            )
+
+            self.assertFalse(installer.packaged_migrations_pass(staged))
+            self.assertIn("standalone=false", installer.log_path.read_text(encoding="utf-8"))
 
     def test_failed_formal_suite_never_builds_or_restarts(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -151,13 +186,16 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
             root = Path(directory).resolve()
             target, state, logs = self.make_tree(root)
             for stamp in ("20260901-090000", "20260902-090000", "20260903-090000"):
-                (target.parent / f"Peach.pre-source-sync-{stamp}.exe").write_bytes(b"old")
+                backup = target.parent / f"Peach.pre-source-sync-{stamp}"
+                backup.mkdir()
+                (backup / "Peach.exe").write_bytes(b"old")
             manual = target.parent / "Peach.pre-0.7.4-20260828-160731.exe"
             manual.write_bytes(b"manual")
             staging = state / "source-sync-build"
             for commit in ("aaaa1111", "bbbb2222"):
-                (staging / commit).mkdir(parents=True)
-                (staging / commit / "Peach.exe").write_bytes(b"staged")
+                (staging / commit / "Peach").mkdir(parents=True)
+                (staging / commit / "Peach" / "Peach.exe").write_bytes(b"staged")
+                (staging / commit / "Peach" / "_internal").mkdir()
             (staging / "windows-source-sync.log").write_text("log", encoding="ascii")
             installer = WindowsUpdateInstaller(
                 root, state_dir=state, log_dir=logs,
@@ -169,16 +207,17 @@ class WindowsUpdateInstallerTests(unittest.TestCase):
 
             self.assertEqual(
                 sorted(path.name for path in removed),
-                ["Peach.pre-source-sync-20260901-090000.exe", "aaaa1111"],
+                ["Peach.pre-source-sync-20260901-090000", "aaaa1111"],
             )
             self.assertEqual(
-                sorted(path.name for path in target.parent.glob("Peach.pre-source-sync-*.exe")),
-                ["Peach.pre-source-sync-20260902-090000.exe",
-                 "Peach.pre-source-sync-20260903-090000.exe"],
+                sorted(path.name for path in target.parent.glob(BACKUP_GLOB)),
+                ["Peach.pre-source-sync-20260902-090000",
+                 "Peach.pre-source-sync-20260903-090000"],
             )
             self.assertEqual(target.read_bytes(), b"old", "运行中的 EXE 本体不在清退边界内")
             self.assertTrue(manual.exists(), "只认更新器自己的命名，手工放的文件不碰")
-            self.assertTrue((staging / "bbbb2222" / "Peach.exe").exists(), "待应用的暂存构建保留")
+            self.assertTrue((staging / "bbbb2222" / "Peach" / "Peach.exe").exists(),
+                            "待应用的暂存构建保留")
             self.assertTrue((staging / "windows-source-sync.log").exists(), "只删目录，不删文件")
 
             installer.clear_pending()
@@ -236,7 +275,6 @@ class WindowsBuildScriptTests(unittest.TestCase):
         self.assertIn("--workpath $WorkPath", script)
         self.assertIn("Remove-Item -LiteralPath $WorkPath -Recurse -Force", script)
 
-
 class WindowsTrayReplacerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -244,13 +282,17 @@ class WindowsTrayReplacerTests(unittest.TestCase):
 
     def paths(self, root: Path):
         target = root / "Peach.exe"
-        staged = root / "staged.exe"
+        staged = root / "staged" / "Peach.exe"
+        staged.parent.mkdir()
         backup = root / "Peach.pre-source-sync.exe"
         pending = root / "pending.json"
         log = root / "sync.log"
         target.write_bytes(b"old")
-        backup.write_bytes(b"old")
         staged.write_bytes(b"new")
+        (root / "_internal").mkdir()
+        (root / "_internal" / "old.dll").write_bytes(b"old")
+        (staged.parent / "_internal").mkdir()
+        (staged.parent / "_internal" / "new.dll").write_bytes(b"new")
         pending.write_text("pending", encoding="ascii")
         return target, staged, backup, pending, log
 
@@ -267,6 +309,7 @@ class WindowsTrayReplacerTests(unittest.TestCase):
             )
             self.assertEqual(result, 0)
             self.assertEqual(paths[0].read_bytes(), b"new")
+            self.assertEqual((paths[0].parent / "_internal" / "new.dll").read_bytes(), b"new")
             self.assertFalse(paths[3].exists())
             start.assert_called_once()
 
@@ -284,6 +327,7 @@ class WindowsTrayReplacerTests(unittest.TestCase):
             )
             self.assertEqual(result, 1)
             self.assertEqual(paths[0].read_bytes(), b"old")
+            self.assertEqual((paths[0].parent / "_internal" / "old.dll").read_bytes(), b"old")
             self.assertTrue(paths[3].exists())
             self.assertEqual(start.call_count, 2)
 
@@ -295,6 +339,10 @@ class SwapTrayBinaryTests(unittest.TestCase):
         staged.parent.mkdir()
         target.write_bytes(b"old")
         staged.write_bytes(b"new")
+        (target.parent / "_internal").mkdir()
+        (target.parent / "_internal" / "old.dll").write_bytes(b"old")
+        (staged.parent / "_internal").mkdir()
+        (staged.parent / "_internal" / "new.dll").write_bytes(b"new")
         return staged, target
 
     def test_the_old_binary_is_kept_under_the_name_the_sweeper_recognises(self):
@@ -302,9 +350,10 @@ class SwapTrayBinaryTests(unittest.TestCase):
             staged, target = self.paths(Path(directory).resolve())
             backup = swap_tray_binary(staged, target, sleep=lambda _delay: None)
             self.assertEqual(target.read_bytes(), b"new")
-            self.assertEqual(backup.read_bytes(), b"old")
+            self.assertEqual((backup / "Peach.exe").read_bytes(), b"old")
+            self.assertEqual((target.parent / "_internal" / "new.dll").read_bytes(), b"new")
             self.assertEqual([backup], list(target.parent.glob(BACKUP_GLOB)))
-            self.assertFalse(staged.exists(), "暂存包被原子移到生产入口")
+            self.assertTrue(staged.exists(), "暂存包只复制，不搬走；下一次启动再统一清退")
 
     def test_a_target_that_is_not_the_production_entry_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -328,3 +377,14 @@ class SwapTrayBinaryTests(unittest.TestCase):
             self.assertEqual(target.read_bytes(), b"old")
             self.assertEqual(list(target.parent.glob(BACKUP_GLOB)), [],
                              "换不上就没有可回滚的东西，备份留着只会被当成一次成功的更新")
+
+    def test_rollback_restores_both_the_executable_and_runtime_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            staged, target = self.paths(root)
+            backup = swap_tray_binary(staged, target, sleep=lambda _delay: None)
+            restore_tray_bundle(backup, target, sleep=lambda _delay: None)
+            self.assertEqual(target.read_bytes(), b"old")
+            self.assertEqual((target.parent / "_internal" / "old.dll").read_bytes(), b"old")
+            self.assertEqual((backup / "Peach.exe").read_bytes(), b"old",
+                             "回滚不消耗唯一一份备份")

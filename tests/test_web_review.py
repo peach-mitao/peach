@@ -24,6 +24,7 @@ from peach.entities import upsert_asset_entity
 from peach.genre_taxonomy import map_genres
 from peach.metadata_alias_resolve import stage_name
 from peach.metadata_auto_apply import _fc2_seller_as_label, _refresh_auto_batch, auto_apply_metadata
+from peach.repository import LedgerDatabase
 from peach.field_owners import (
     EXPECTED_REVISION_FIELD,
     USER_MANUAL,
@@ -591,6 +592,36 @@ class ReviewQueueTests(unittest.TestCase):
         finally:
             con.close()
         self.assertEqual(self.queue_keys("metadata_fields"), ["PPT-018:release_date"])
+
+    def test_auto_apply_only_writes_assets_under_the_configured_media_roots(self):
+        """同一番号的旧目录记录仍留在账本里，但不能被当前馆藏的自动补全改到。"""
+        self._asset(150, "PPT-019", "PPT-019.mp4", r"H:\Be_Tvideo\AAA")
+        self._asset(151, "PPT-019", "PPT-019.mp4", r"H:\Other")
+        self.write_metadata_rows([
+            {"item_key": "PPT-019:release_date", "field": "release_date",
+             "current": "", "candidates": ["2015-02-20"], "code": "PPT-019"},
+        ])
+        scoped = rm_web.WebContract(
+            Path(self.db_path),
+            candidate_root=self.candidates,
+            logo_root=self.logo_root,
+            avatar_root=self.avatar_root,
+            database=LedgerDatabase(
+                Path(self.db_path),
+                media_roots={"local": (r"H:\Be_Tvideo\AAA",)},
+            ),
+        )
+        self.assertEqual(
+            auto_apply_metadata(scoped.database, self.candidates)["applied"], 1,
+        )
+        con = sqlite3.connect(self.db_path)
+        try:
+            dates = dict(con.execute(
+                "SELECT id,release_date FROM asset WHERE id IN (150,151)",
+            ))
+        finally:
+            con.close()
+        self.assertEqual(dates, {150: "2015-02-20", 151: None})
 
     def test_a_filename_without_the_hyphen_still_identifies_the_code(self):
         """`MEYD911.mp4` 就是 `MEYD-911`，编目规则读得出来，逐字比对读不出。

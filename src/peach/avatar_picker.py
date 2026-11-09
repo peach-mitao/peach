@@ -43,6 +43,7 @@ from .avatar_provider import (
     install_entity_avatar, provenance_now,
 )
 from .http import HttpRequest, HttpTransport, public_https_url, resolves_publicly
+from .repository import media_scope_predicate
 
 #: 一次最多给页面列这么多张。同名候选最多的人有十几张，再多就不是选图而是翻图册了。
 MAX_CHOICES = 40
@@ -296,7 +297,8 @@ def cast_sizes(connection: sqlite3.Connection, entity_id: int) -> dict[str, int]
             "SELECT a.code,(SELECT count(DISTINCT o.entity_id) FROM asset_entity o"
             " WHERE o.asset_id=a.id AND o.role='performer')"
             " FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id"
-            " WHERE ae.entity_id=? AND ae.role='performer' AND coalesce(a.code,'')<>''",
+            " WHERE ae.entity_id=? AND ae.role='performer' AND coalesce(a.code,'')<>'' "
+            f"AND {media_scope_predicate(connection, 'a')}",
             (int(entity_id),)):
         key = normalise_code_key(code)
         if key:
@@ -455,6 +457,7 @@ def asset_artwork(connection: sqlite3.Connection, cover_root: Path,
         "SELECT a.id,a.code,COALESCE(NULLIF(a.catalog_title,''),a.name),a.snapshot_path "
         "FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
         "WHERE ae.entity_id=? AND a.medium='video' "
+        f"AND {media_scope_predicate(connection, 'a')} "
         "ORDER BY a.size DESC",
         (int(entity_id),),
     ).fetchall()
@@ -819,7 +822,8 @@ def _asset_image(ref: str, connection: sqlite3.Connection, entity_id: int,
         raise PickerError("无法识别这张备选图片") from error
     row = connection.execute(
         "SELECT a.code FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
-        "WHERE ae.entity_id=? AND ae.asset_id=?",
+        "WHERE ae.entity_id=? AND ae.asset_id=? "
+        f"AND {media_scope_predicate(connection, 'a')}",
         (int(entity_id), asset_id)).fetchone()
     if row is None:
         raise PickerError("这部作品不在这个人名下")

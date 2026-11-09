@@ -14,6 +14,8 @@ describe('作品卡片署名信息行', () => {
         performer_total:1,release_date:'2019-09-13',size:6549825126});
     });
     try {
+      await opened.page.locator('input[name="home-layout"][value="small"]').check({ force: true });
+      await opened.page.waitForFunction(() => document.querySelector('[data-media-grid]')?.hasAttribute('data-media-grid-fixed'));
       await opened.page.evaluate(() => {
         document.body.dataset.density = 'dense';
         document.body.style.setProperty('--fs-xs','18px');
@@ -22,11 +24,29 @@ describe('作品卡片署名信息行', () => {
       const card = opened.page.locator('#grid [data-media-card]').first();
       for (const name of ['release','size']) {
         const item = card.locator(`[data-media-${name}]`);
-        assert.equal(await item.isVisible(), true);
+        const visibility = await item.evaluateAll(nodes => ({
+          count: nodes.length,
+          visible: nodes.filter(node => node.getClientRects().length > 0).map(node => ({
+            display: getComputedStyle(node).display,
+            visibility: getComputedStyle(node).visibility,
+            box: node.getBoundingClientRect().toJSON(),
+          })),
+          text: nodes.map(node => node.textContent),
+          metaWidth: document.querySelector('#grid [data-media-card] [data-media-text]')?.getBoundingClientRect().width,
+        }));
+        assert.equal(await item.isVisible(), true, `${name} 应可见：${JSON.stringify(visibility)}`);
         const geometry = await item.evaluate(e => {
           const date=e.getBoundingClientRect(), line=e.closest('[data-media-byline]')!.getBoundingClientRect();
           const meta=e.closest('[data-media-meta]')!.getBoundingClientRect();
-          return {right:date.right,bottom:date.bottom,lineRight:line.right,lineBottom:line.bottom,metaBottom:meta.bottom};
+          const byline=e.closest('[data-media-byline]')!;
+          const style=getComputedStyle(byline);
+          return {right:date.right,bottom:date.bottom,lineRight:line.right,lineBottom:line.bottom,metaBottom:meta.bottom,
+            lineTop:line.top,lineHeight:line.height,minHeight:style.minHeight,height:style.height,flexWrap:style.flexWrap,
+            children:[...byline.children].map(child=>({
+              name:child.hasAttribute('data-media-who')?'who':child.hasAttribute('data-media-facts')?'facts':child.hasAttribute('data-media-why')?'why':'other',
+              top:child.getBoundingClientRect().top,bottom:child.getBoundingClientRect().bottom,
+              left:child.getBoundingClientRect().left,right:child.getBoundingClientRect().right,
+            }))};
         });
         assert(geometry.right<=geometry.lineRight+1 && geometry.bottom<=geometry.lineBottom+1
           && geometry.bottom<=geometry.metaBottom+1, JSON.stringify(geometry));
@@ -40,7 +60,7 @@ describe('作品卡片署名信息行', () => {
     });
     try {
       await opened.page.evaluate(() => { document.body.dataset.density = 'dense' });
-      for (const [tile, date] of [['300px', true], ['168px', false]] as const) {
+      for (const tile of ['300px', '168px']) {
         await opened.page.evaluate(value => document.documentElement.style.setProperty('--tile', value), tile);
         await settle(opened.page);
         const rows = await opened.page.locator('#grid [data-media-card]').first().evaluate(card => {
@@ -54,7 +74,7 @@ describe('作品卡片署名信息行', () => {
         });
         assert.ok(rows.text < 360, `这张卡应当是窄卡：${JSON.stringify(rows)}`);
         assert.equal(rows.outside, 0, `署名行的内容折行或越界：${JSON.stringify(rows)}`);
-        assert.equal(rows.date, date, `${tile} 宽的卡日期${date ? '应保留' : '应让出'}：${JSON.stringify(rows)}`);
+        assert.equal(rows.date, true, `${tile} 宽的固定四列小图应保留完整日期：${JSON.stringify(rows)}`);
         assert.ok(rows.tag >= rows.bottom, `标签压在署名上：${JSON.stringify(rows)}`);
       }
     } finally { await opened.close() }
@@ -67,6 +87,8 @@ describe('作品卡片署名信息行', () => {
       });
       try {
         await opened.page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await opened.page.locator('input[name="home-layout"][value="small"]').check({ force: true });
+        await opened.page.waitForFunction(() => document.querySelector('[data-media-grid]')?.hasAttribute('data-media-grid-fixed'));
         await settle(opened.page);
         const card = opened.page.locator('#grid [data-media-card]').first();
         for (const [field, glyph] of [['who', 'user-round'], ['release', 'calendar'], ['size', 'hard-drive']]) {

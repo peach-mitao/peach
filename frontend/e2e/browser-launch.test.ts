@@ -25,6 +25,12 @@ it('隔离 E2E 浏览器保留 Playwright 的全部默认禁用特性，其中�
   finally { await baseline.close(); }
   assert.ok(expected.has('TcpPortRandomizationWin'), 'Playwright 默认参数必须规避 Chromium 572515601');
   const browser = await launch();
-  try { assert.deepEqual(await disabledFeatures(browser), expected); }
+  try {
+    const actual = await disabledFeatures(browser);
+    for (const feature of expected) {
+      assert.ok(actual.has(feature), `隔离 E2E 浏览器必须保留 Playwright 默认禁用项 ${feature}`);
+    }
+    assert.ok(actual.has('msSmartScreenProtection'), 'Windows E2E 必须关闭 SmartScreen 对夹具页面的异步拦截');
+  }
   finally { await browser.close(); }
 });

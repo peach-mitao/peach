@@ -116,6 +116,8 @@ describe('Video.js 10 播放链', () => {
         await page.locator('#stage .video-js .vjs-peach-bezel').waitFor({ state: 'attached' });
         const media = page.locator('#stage hlsjs-video');
         assert.equal(await media.count(), 1);
+        const previewWidth = await page.locator('#stage .vjs-peach-seek-frame').evaluate(node => parseFloat(getComputedStyle(node).width));
+        assert.equal(previewWidth, viewport.mobile ? 120 : 168);
         if (!viewport.mobile) {
           await page.locator('#stage .vjs-volume-panel').hover();
           assert.match(await page.locator('#stage media-slider-value').textContent() || '', /\d+%/);

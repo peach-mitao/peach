@@ -64,7 +64,9 @@ from .metadata_policy import (
     source_tier,
 )
 from .previews import logo_key
+from .repository import media_scope_predicate
 from .review_csv import CANDIDATE_PREFIX, candidate_root_version, read_candidates
+from .web_catalog import configured_media_scope_sql
 
 
 class ReviewContract(Protocol):
@@ -155,12 +157,14 @@ def _creator_previews(connection, creators: list[str], *, include_unpictured: bo
     if not wanted:
         return {}
     marks = ",".join("?" * len(wanted))
+    scope_column = "AND " + media_scope_predicate(connection, "a") + " "
     rows = connection.execute(
         "SELECT a.id,a.name,a.duration,e.canonical_name,alias.alias,a.creator FROM asset a "
         "LEFT JOIN asset_entity ae ON ae.asset_id=a.id AND ae.role='creator' "
         "LEFT JOIN entity e ON e.id=ae.entity_id AND e.kind='creator' "
         "LEFT JOIN entity_alias alias ON alias.entity_id=e.id "
         "WHERE a.medium='video' AND a.disposal IS NULL "
+        + scope_column
         + ("" if include_unpictured else "AND a.snapshot_path IS NOT NULL ")
         + f"AND (e.canonical_name IN ({marks}) OR alias.alias IN ({marks}) OR a.creator IN ({marks})) "
         "ORDER BY a.id",
@@ -189,7 +193,8 @@ def _attach_review_asset_context(connection, rows: list[dict]) -> None:
         sql = (
             "SELECT id,name,code,snapshot_path,field_owners,mutation_revision "
             "FROM asset WHERE medium='video' "
-            "AND disposal IS NULL AND (code IN (" + marks + ")"
+            "AND disposal IS NULL AND " + configured_media_scope_sql("asset")
+            + " AND (code IN (" + marks + ")"
         )
         params: list[object] = list(codes)
         if any(code.upper().startswith("FC2") for code in codes):
@@ -208,7 +213,7 @@ def _attach_review_asset_context(connection, rows: list[dict]) -> None:
             "SELECT ae.entity_id,a.id,a.name,a.code,a.snapshot_path,a.field_owners,"
             "a.mutation_revision FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
             f"WHERE ae.entity_id IN ({marks}) AND a.medium='video' "
-            "AND a.disposal IS NULL "
+            "AND a.disposal IS NULL AND " + configured_media_scope_sql("a") + " "
             "ORDER BY (a.snapshot_path IS NULL),a.id",
             entity_ids,
         ):
@@ -229,7 +234,7 @@ def _attach_review_asset_context(connection, rows: list[dict]) -> None:
         marks = ",".join("?" * len(requested_ids))
         for asset in connection.execute(
             "SELECT id,name,code,snapshot_path,field_owners,mutation_revision "
-            f"FROM asset WHERE id IN ({marks})",
+            f"FROM asset WHERE id IN ({marks}) AND " + configured_media_scope_sql("asset"),
             sorted(requested_ids),
         ):
             comparison_assets[asset["id"]] = dict(asset)
@@ -1115,7 +1120,8 @@ def w_review_decision(contract: ReviewContract, body):
                     raise ValueError("creator entity not found")
                 assets = connection.execute(
                     "SELECT DISTINCT ae.asset_id FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
-                    "WHERE ae.entity_id=? AND ae.role='creator' AND a.medium='video' AND a.disposal IS NULL",
+                    "WHERE ae.entity_id=? AND ae.role='creator' AND a.medium='video' "
+                    "AND a.disposal IS NULL AND " + configured_media_scope_sql("a"),
                     (entity["id"],),
                 ).fetchall()
                 selected_ids = {int(value) for value in body.get("selected_ids") or []}

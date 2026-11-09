@@ -27,6 +27,10 @@ _FIELD = re.compile(r'<p><span class="header">([^<:：]+)[:：]</span>(.*?)</p>'
 _TITLE = re.compile(r"<h3>([^<]*)</h3>")
 _COVER = re.compile(r'<a class="bigImage" href="([^"]+)"')
 _ACTRESS = re.compile(r'<div class="star-name"><a[^>]*>([^<]+)</a>')
+_GENRES = re.compile(
+    r'<span class="genre"[^>]*>\s*<label[^>]*>.*?<a[^>]*>([^<]+)</a>',
+    re.S,
+)
 
 
 class JavBusSource(SiteSource):
@@ -37,7 +41,14 @@ class JavBusSource(SiteSource):
 
     def fetch(self, code: str, *, session: Session) -> Page:
         try:
-            return session.get(self.work_url(code), config=self.config)
+            # JavBus 对没有 Accept-Language 的客户端返回年龄确认页，即使已经带
+            # PHPSESSID / existmag / age。浏览器总会发送这个头；Peach 的 httpx
+            # 默认不发，所以只对 JavBus 补上。
+            return session.get(
+                self.work_url(code),
+                config=self.config,
+                headers={"Accept-Language": "zh-CN,zh;q=0.9,ja;q=0.8"},
+            )
         except NotFound:
             raise SourceFailure(FailureReason.NOT_FOUND, "JavBus 没有这个番号", status_code=404) from None
 
@@ -60,4 +71,5 @@ class JavBusSource(SiteSource):
             studio=fields.get("製作商", ""), label=fields.get("發行商", ""),
             series=fields.get("系列", ""), director=fields.get("導演", ""),
             release_date=fields.get("發行日期", ""), runtime=int(runtime.group()) if runtime else None,
+            tags=tuple(clean(name) for name in _GENRES.findall(text)),
             cover_urls=(urllib.parse.urljoin(self.config.base_url, cover.group(1)),) if cover else ())

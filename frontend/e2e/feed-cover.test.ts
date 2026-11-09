@@ -38,12 +38,19 @@ describe('新作封面显示时机',()=>{
       const box=pic.getBoundingClientRect(),image=img.getBoundingClientRect();
       const clip=getComputedStyle(img).clipPath.match(/[\d.]+/g)?.map(Number)||[0,0,0,0];
       const left=image.left+image.width*clip[3]!/100,right=image.right-image.width*clip[1]!/100;
-      return {width:box.width,height:box.height,left:left-box.left,right:box.right-right,background:getComputedStyle(pic,'::before').backgroundImage};
+      return {width:box.width,height:box.height,left:left-box.left,right:box.right-right,background:getComputedStyle(pic,'::before').backgroundImage,
+       backgroundColor:getComputedStyle(pic).backgroundColor,objectFit:getComputedStyle(img).objectFit};
      });
-     assert.ok(Math.abs(shape.width/shape.height-.75)<.001,'新作卡片保持固定比例');
-     assert.ok(Math.abs(shape.height-224)<1,'同排封面等高');
-     if(cases[index]!.layout==='still')assert.equal(shape.background,'none','整幅大封不使用模糊');
-     else{
+     if(cases[index]!.layout==='still'){
+      assert.ok(Math.abs(shape.width/shape.height-.75)<.001,'整幅横版大封使用竖版卡片框');
+      assert.ok(Math.abs(shape.height-224)<1,'同排横版大封与正封等高');
+      assert.equal(shape.objectFit,'contain','整幅横版大封完整放入卡片');
+      assert.equal(shape.backgroundColor,'rgb(0, 0, 0)','横版大封上下留黑');
+      assert.equal(shape.background,'none','整幅大封不使用模糊');
+      assert.ok(shape.left>=-1&&shape.right>=-1&&Math.abs(shape.left-shape.right)<1,'整幅横版大封完整居中');
+     }else{
+      assert.ok(Math.abs(shape.width/shape.height-.75)<.001,'正封卡片保持竖版比例');
+      assert.ok(Math.abs(shape.height-224)<1,'同排正封等高');
       assert.notEqual(shape.background,'none','普通正封的留白由封面模糊补底');
       assert.ok(shape.left>=-1&&shape.right>=-1&&Math.abs(shape.left-shape.right)<1,'正封完整居中');
      }
@@ -161,10 +168,11 @@ describe('新作封面显示时机',()=>{
     const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('peach.settings.v1')||'{}'));
     assert.equal(saved.homeLayout,'small');assert.equal(saved.javLayout,'small');
     await page.locator('#settingsClose').click();
-    const ratio=await page.locator('#grid [data-media-pic]').first().evaluate(node=>{
-     const rect=node.getBoundingClientRect();return rect.width/rect.height;
+    const frame=await page.locator('#grid [data-media-pic]').first().evaluate(node=>{
+     const layout=getComputedStyle(node).getPropertyValue('--card-ratio').trim();
+     return {layout:Number(layout)};
     });
-    assert.ok(Math.abs(ratio-16/9)<.01);
+    assert.ok(Math.abs(frame.layout-3/4)<.01);
    }finally{await context.close()}
   });
   it(`${viewport.name} 竖版正封完整放入卡片`,{timeout:60000},async()=>{
@@ -175,7 +183,12 @@ describe('新作封面显示时机',()=>{
     await page.route(/\/api\/feeds\/discoveries\?/,route=>route.fulfill({json:{ok:true,items:[{id:1,code:'EXM-001',title:'示例新作',has_cover:false,cover_url:remote}]}}));
     await page.goto(requiredEnv('PEACH_E2E_ORIGIN')+'/');
     const image=page.locator('#feedNew img.cover[data-frame="front"]');await image.waitFor({state:'visible'});
-    assert.equal(await image.evaluate(img=>getComputedStyle(img).objectFit),'contain');
+    const frame=await image.evaluate(img=>{
+     const picture=img.closest('.pic')!.getBoundingClientRect();
+     return {ratio:picture.width/picture.height,fit:getComputedStyle(img).objectFit};
+    });
+    assert.ok(frame.ratio<1,JSON.stringify(frame));
+    assert.equal(frame.fit,'contain');
    }finally{await context.close()}
   });
  }

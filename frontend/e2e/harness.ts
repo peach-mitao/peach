@@ -45,11 +45,51 @@ export function requiredEnv(name: string): string {
   return value;
 }
 
+/** 等一块画面真的解码完。卡片的横竖比例由图片自己的宽高决定；只等 DOM 出现会在
+ *  `loading="lazy"` 还没取图时量到版式默认值。调用方给出画面框或其中的图片均可。 */
+export async function waitForArtwork(locator: Locator): Promise<void> {
+  await locator.evaluate(async (node) => {
+    node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const image = node instanceof HTMLImageElement
+      ? node
+      : node.querySelector<HTMLImageElement>('img');
+    if (!image) return;
+    if (!image.complete || !image.naturalWidth) {
+      await new Promise<void>((resolve, reject) => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => reject(new Error(`画面加载失败：${image.src}`)), { once: true });
+      });
+    }
+    if (image.naturalWidth && image.decode) await image.decode().catch(() => undefined);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export async function launch(): Promise<Browser> {
   // 界面语言默认跟浏览器语言走（ADR-0156）；用例断言的是中文文案，浏览器语言固定成简体中文，CI 上的 en-US 不影响结果。
-  // Chromium 572515601 的回环随机端口缺陷（WSAENOBUFS 10055）由 Playwright 默认禁用的
-  // `TcpPortRandomizationWin` 规避；这里不另传 --disable-features，否则会整串覆盖默认值。
-  const args: string[] = ['--lang=zh-CN'];
+  // Edge 的 Windows SmartScreen 会在 Playwright 路由之后异步替换 missav.ai 等夹具页面。
+  // Chromium 只保留最后一个 --disable-features，因此这里要连同 Playwright 当前的默认项
+  // 一起传入；漏掉 TcpPortRandomizationWin 会重新触发 Windows 回环随机端口缺陷。
+  const disabledFeatures = [
+    'msSmartScreenProtection',
+    'AvoidUnnecessaryBeforeUnloadCheckSync',
+    'DestroyProfileOnBrowserClose',
+    'HttpsUpgrades',
+    'HttpsFirstBalancedModeAutoEnable',
+    'LensOverlay',
+    'MediaRouter',
+    'PaintHolding',
+    'ThirdPartyStoragePartitioning',
+    'AvoidCorsURLLoaderRestartOnRedirect',
+    'TcpPortRandomizationWin',
+    'OptimizationHints',
+    'NetworkTimeServiceQuerying',
+    'AimEnabled',
+    'PreconnectToSearch',
+    'msForceBrowserSignIn',
+    'msEdgeUpdateLaunchServicesPreferredVersion',
+  ];
+  const args: string[] = ['--lang=zh-CN', `--disable-features=${disabledFeatures.join(',')}`];
   const networkLogs = process.env.PEACH_E2E_NET_LOG_DIR;
   if (networkLogs) {
     mkdirSync(networkLogs, { recursive: true });

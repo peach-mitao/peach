@@ -188,9 +188,9 @@ describe('批量条', () => {
 
   for (const viewport of VIEWPORTS) {
     it(`目录、回收站与垃圾文件两份各自的键和计数（${viewport.name}）`, { timeout: 120_000 }, async () => {
-      const opened = await visit(browser, '/', viewport);
+      const home = await visit(browser, '/', viewport);
       try {
-        const page = opened.page;
+        const page = home.page;
         const cards = page.locator('#grid [data-media-card][data-id]');
         await cards.first().waitFor({ timeout: 15_000 });
         await settle(page);
@@ -198,31 +198,53 @@ describe('批量条', () => {
         await pickTwo(cards);
         assert.deepEqual(await readDock(page),
           { count: '已选 2 项', buttons: ['喜欢', '看过', '稍后看', '判定产地', '移入回收站', '取消'] });
-        await page.locator(`${DOCK} [data-batch-group="clear"]`).click();
+        const clear = page.locator(`${DOCK} [data-batch-group="clear"]`);
+        await page.locator(DOCK).evaluate(async (dock) => {
+          await Promise.all(dock.getAnimations({ subtree: true }).map((animation) =>
+            animation.finished.catch(() => undefined)));
+        });
+        assert.equal(await clear.evaluate((button) => {
+          const rect = button.getBoundingClientRect();
+          return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+            ?.closest('[data-batch-group="clear"]') === button;
+        }), true, '后台提示条盖住了批量条的取消键');
+        await clear.evaluate((button) => button.click());
         await page.locator(DOCK).waitFor({ state: 'detached', timeout: 10_000 });
+        assert.deepEqual(unrelated(home.problems), []);
+      } finally {
+        await home.close();
+      }
 
-        await stubTrash(page);
-        await page.goto(new URL('/trash', page.url()).href, { waitUntil: 'load' });
-        await cards.first().waitFor({ timeout: 15_000 });
+      const trash = await visit(browser, '/trash', viewport, stubTrash);
+      try {
+        const page = trash.page;
+        const cards = page.locator('#grid [data-media-card][data-id]');
+        await cards.nth(1).waitFor({ timeout: 15_000 });
+        await page.locator('[data-manage-lede] [data-empty-trash]').waitFor({ timeout: 15_000 });
         await settle(page);
         // 说明行右端的「清空回收站」：桌面是 Geist 32px 小键，手机回到本项目 44px 命中区。
         const empty = await page.locator('[data-manage-lede] [data-empty-trash]').boundingBox();
         assert.equal(Math.round(empty!.height), viewport.mobile ? 44 : 32, '清空回收站的键高');
         await pickTwo(cards);
         assert.deepEqual(await readDock(page), { count: '已选 2 项', buttons: ['还原', '彻底删除', '取消'] });
+        assert.deepEqual(unrelated(trash.problems), []);
+      } finally {
+        await trash.close();
+      }
 
-        await stubJunk(page);
-        const junk = page.locator('#grid [data-junk-card]');
-        for (const [path, first] of [['/junk-files', '不是垃圾'], ['/junk-files?view=dismissed', '重新判断']] as const) {
-          await page.goto(new URL(path, page.url()).href, { waitUntil: 'load' });
+      for (const [path, first] of [['/junk-files', '不是垃圾'], ['/junk-files?view=dismissed', '重新判断']] as const) {
+        const opened = await visit(browser, path, viewport, stubJunk);
+        try {
+          const page = opened.page;
+          const junk = page.locator('#grid [data-junk-body] [data-junk-card]');
           await junk.first().waitFor({ timeout: 15_000 });
           await settle(page);
           await pickTwo(junk);
           assert.deepEqual(await readDock(page), { count: '已选 2 项', buttons: [first, '移入回收站', '取消'] }, path);
+          assert.deepEqual(opened.problems, [], path);
+        } finally {
+          await opened.close();
         }
-        assert.deepEqual(opened.problems, []);
-      } finally {
-        await opened.close();
       }
     });
 

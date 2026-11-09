@@ -98,9 +98,13 @@ describe('实体页冷启动等待态', () => {
           // 筛选条里的标签取紧凑档 `--control-h-compact`，骨架与真实标签同高。
           assert.equal(await root.locator('[data-entity-tags] .skeleton').first().evaluate(node => node.getBoundingClientRect().height), 32);
           assert.ok(await root.locator('[data-entity-state]').count(), '静态观看筛选尚未显示');
-          const ratio = (scope = root) => scope.locator('[style*="--skeleton-card-ratio"]').first().evaluate(node =>
-            Number((node as HTMLElement).style.getPropertyValue('--skeleton-card-ratio')));
-          if (view === 'cards') assert.equal(await ratio(), jav ? .75 : 16 / 9);
+          const ratio = async (scope = root) => {
+            const card = scope.locator('[style*="--skeleton-card-ratio"]').first();
+            return await card.count()
+              ? Number(await card.evaluate(node => (node as HTMLElement).style.getPropertyValue('--skeleton-card-ratio')))
+              : null;
+          };
+          assert.equal(await ratio(), view === 'cards' ? .75 : null);
           if (process.env.PEACH_COLD_EVIDENCE) await page.screenshot({
             path: join(process.env.PEACH_COLD_EVIDENCE, `${viewport.name}-${jav ? 'jav' : 'ordinary'}-${mode}.png`),
             fullPage: false,
@@ -118,7 +122,7 @@ describe('实体页冷启动等待态', () => {
           await waitingBody.waitFor();
           assert.equal(await body.locator('[data-media-card], [data-catalog-row]').count(), 0,
             '作品响应未放行时不应出现伪造或旧人物作品');
-          if (view === 'cards') assert.equal(await ratio(waitingBody), jav ? .75 : 16 / 9,
+          if (view === 'cards') assert.equal(await ratio(waitingBody), .75,
             '身份先显示时，作品等待区仍应保持已知的卡片比例');
           else await waitingBody.locator('[data-list-skeleton]').waitFor();
           releases.shift()!();

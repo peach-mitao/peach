@@ -47,8 +47,54 @@ describe('首页文件夹浏览', () => {
             });
             const bounds = await page.evaluate(() => {
               const filter = document.querySelector('[data-catalog-frame]')!.getBoundingClientRect();
-              const tree = document.getElementById('catalogFoldersTree')!.getBoundingClientRect();
-              return { filterBottom: filter.bottom, treeTop: tree.top, treeBottom: tree.bottom, viewport: innerHeight };
+              const host = document.getElementById('catalogFoldersTree')!;
+              const navigation = host
+                .querySelector<HTMLElement>('.catalog-folder-navigation')!;
+              const tree = navigation.getBoundingClientRect();
+              const style = getComputedStyle(navigation);
+              const hostStyle = getComputedStyle(host);
+              const hostRect = host.getBoundingClientRect();
+              const main = document.getElementById('main')!;
+              const mainRect = main.getBoundingClientRect();
+              const ancestors = [];
+              for (let node = navigation.parentElement; node; node = node.parentElement) {
+                const computed = getComputedStyle(node);
+                ancestors.push({
+                  id: node.id,
+                  tag: node.tagName,
+                  className: typeof node.className === 'string' ? node.className : '',
+                  overflow: computed.overflow,
+                  overflowX: computed.overflowX,
+                  overflowY: computed.overflowY,
+                  height: node.getBoundingClientRect().height,
+                });
+              }
+              return {
+                filterBottom: filter.bottom,
+                filterTop: filter.top,
+                treeTop: tree.top,
+                treeBottom: tree.bottom,
+                treeHeight: tree.height,
+                hostTop: hostRect.top,
+                hostBottom: hostRect.bottom,
+                hostHeight: hostRect.height,
+                hostPosition: hostStyle.position,
+                hostTopStyle: hostStyle.top,
+                hostGridRow: hostStyle.gridRow,
+                mainTop: mainRect.top,
+                mainBottom: mainRect.bottom,
+                mainHeight: mainRect.height,
+                mainPaddingBottom: getComputedStyle(main).paddingBottom,
+                documentScrollHeight: document.documentElement.scrollHeight,
+                viewport: innerHeight,
+                scrollY,
+                bodyFolderBrowse: document.body.hasAttribute('data-folder-browse'),
+                stickyTop: style.top,
+                position: style.position,
+                folderStickyTop: getComputedStyle(document.body).getPropertyValue('--folder-sticky-top'),
+                folderAvailableHeight: getComputedStyle(document.body).getPropertyValue('--folder-available-height'),
+                ancestors,
+              };
             });
             await page.screenshot({ path: join(screenshots, `desktop-scrolled-${width}.png`), fullPage: false });
             assert.ok(bounds.treeTop >= bounds.filterBottom + 8, JSON.stringify(bounds));

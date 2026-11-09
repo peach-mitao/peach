@@ -29,6 +29,7 @@ from .follow_secrets import CredentialError
 from .feeds import scan_code
 from .fsutil import atomic_write_text
 from .sources.dmm import code_from_cid
+from .repository import media_scope_predicate
 
 LOGGER = logging.getLogger(__name__)
 CREDENTIAL = "jav-browser"
@@ -309,7 +310,8 @@ class JavBrowser:
         with self.contract.database.read_connection() as connection:
             row = connection.execute(
                 "SELECT id FROM asset WHERE normalise_code_key(code)=? AND medium='video' "
-                "AND disposal IS NULL ORDER BY id LIMIT 1", (code,)).fetchone()
+                "AND disposal IS NULL AND " + media_scope_predicate(connection, "asset") +
+                " ORDER BY id LIMIT 1", (code,)).fetchone()
             tasks = connection.execute(
                 "SELECT id,state,postprocess_state FROM download_task WHERE normalise_code_key(code)=? "
                 "ORDER BY id DESC", (code,)).fetchall()

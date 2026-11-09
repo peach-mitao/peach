@@ -5,6 +5,7 @@ import time
 from typing import Protocol
 
 from .personal_records import VANISHED
+from .repository import media_scope_predicate
 
 DEFAULT_PROFILE_ID = "local-default"
 
@@ -12,6 +13,14 @@ DEFAULT_PROFILE_ID = "local-default"
 class ActivityContract(Protocol):
     def cache_bust(self) -> None: ...
     def write_transaction(self, *, notify: bool = True): ...
+
+
+def _require_asset(connection, asset_id: int) -> None:
+    if connection.execute(
+            "SELECT 1 FROM asset WHERE id=? AND "
+            + media_scope_predicate(connection, "asset"),
+            (int(asset_id),)).fetchone() is None:
+        raise ValueError("asset not found")
 
 
 def w_activity(contract: ActivityContract, body):
@@ -25,8 +34,11 @@ def w_activity(contract: ActivityContract, body):
     # 否则看片期间首页、统计与背景网格每十秒整份重算一轮。
     with contract.write_transaction(notify=False) as connection:
         row = connection.execute(
-            "SELECT play_seconds,max_reached,seek_count FROM asset WHERE id=?", (aid,),
+            "SELECT play_seconds,max_reached,seek_count FROM asset WHERE id=? AND "
+            + media_scope_predicate(connection, "asset"), (aid,),
         ).fetchone()
+        if row is None:
+            raise ValueError("asset not found")
         secs = (row["play_seconds"] or 0) + max(add, 0)
         ratio = 1.0 if ended else (min(pos / dur, 1.0) if dur > 0 else None)
         maximum = max(row["max_reached"] or 0, ratio or 0)
@@ -47,6 +59,7 @@ def w_play(contract: ActivityContract, body):
     contract.cache_bust()
     aid = int(body["id"])
     with contract.write_transaction() as connection:
+        _require_asset(connection, aid)
         changed = connection.execute(
             "UPDATE asset SET play_count=COALESCE(play_count,0)+1, last_played=? WHERE id=?",
             (time.time(), aid),
@@ -62,9 +75,11 @@ def w_feedback(contract: ActivityContract, body):
     aid = int(body["id"])
     kind = body.get("kind")
     with contract.write_transaction() as connection:
+        _require_asset(connection, aid)
         if kind in ("dislike", "seen"):
             current = connection.execute(
-                "SELECT feedback FROM asset WHERE id=?", (aid,),
+                "SELECT feedback FROM asset WHERE id=? AND "
+                + media_scope_predicate(connection, "asset"), (aid,),
             ).fetchone()["feedback"]
             connection.execute(
                 "UPDATE asset SET feedback=?, feedback_at=? WHERE id=?",
@@ -72,7 +87,8 @@ def w_feedback(contract: ActivityContract, body):
             )
         elif kind == "dispose":
             current = connection.execute(
-                "SELECT disposal FROM asset WHERE id=?", (aid,),
+                "SELECT disposal FROM asset WHERE id=? AND "
+                + media_scope_predicate(connection, "asset"), (aid,),
             ).fetchone()["disposal"]
             # 已消失的行文件不在盘上：切进回收站再切出来就成了在库（ADR-0087），整行不动。
             if current == VANISHED:
@@ -99,7 +115,8 @@ def w_feedback(contract: ActivityContract, body):
                 "UPDATE asset SET rating=? WHERE id=?", (value or None, aid),
             )
         result = dict(connection.execute(
-            "SELECT feedback,disposal,disposal_reason,rating,o_count FROM asset WHERE id=?", (aid,),
+            "SELECT feedback,disposal,disposal_reason,rating,o_count FROM asset "
+            "WHERE id=? AND " + media_scope_predicate(connection, "asset"), (aid,),
         ).fetchone())
     return {"ok": True, **result}
 
@@ -108,8 +125,7 @@ def w_watch_later(contract: ActivityContract, body):
     contract.cache_bust()
     aid = int(body["id"])
     with contract.write_transaction() as connection:
-        if not connection.execute("SELECT 1 FROM asset WHERE id=?", (aid,)).fetchone():
-            raise ValueError("asset not found")
+        _require_asset(connection, aid)
         exists = connection.execute(
             "SELECT 1 FROM watch_queue WHERE profile_id=? AND asset_id=?",
             (DEFAULT_PROFILE_ID, aid),
@@ -140,8 +156,7 @@ def w_preference(contract: ActivityContract, body):
     if len(reason) > 2000:
         raise ValueError("reason is limited to 2000 characters")
     with contract.write_transaction() as connection:
-        if not connection.execute("SELECT 1 FROM asset WHERE id=?", (aid,)).fetchone():
-            raise ValueError("asset not found")
+        _require_asset(connection, aid)
         if not liked and not reason:
             connection.execute(
                 "DELETE FROM asset_preference WHERE profile_id=? AND asset_id=?",
@@ -176,8 +191,7 @@ def w_quality_goal(contract: ActivityContract, body):
     if len(reason) > 500:
         raise ValueError("reason is limited to 500 characters")
     with contract.write_transaction() as connection:
-        if not connection.execute("SELECT 1 FROM asset WHERE id=?", (aid,)).fetchone():
-            raise ValueError("asset not found")
+        _require_asset(connection, aid)
         if not wanted:
             connection.execute(
                 "DELETE FROM asset_quality_goal WHERE profile_id=? AND asset_id=?",

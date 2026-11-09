@@ -112,6 +112,18 @@ describe('Video.js 10 播放会话', () => {
     video.dispatchEvent(new Event('play')); expect(played).toHaveBeenCalledOnce();
     expect(document.querySelector('.video-js')).toBeNull();
   });
+
+  it('默认字幕轨挂上后立即显示，用户仍可切到其他轨', () => {
+    const { video, player } = mounted();
+    player.addRemoteTextTrack({ kind: 'subtitles', src: '/first.vtt', srclang: 'ja', label: '日语', default: false }, true);
+    player.addRemoteTextTrack({ kind: 'subtitles', src: '/second.vtt', srclang: 'zh-CN', label: '简体', default: true }, true);
+    const tracks = [...video.textTracks];
+    expect(tracks.map(track => track.label)).toEqual(['日语', '简体']);
+    expect(tracks.map(track => track.mode)).toEqual(['disabled', 'showing']);
+    const node = video.querySelectorAll('track')[1]!;
+    expect(node.default).toBe(true);
+    player.dispose();
+  });
 });
 
 function videoMetadata(root: HTMLElement) { root.querySelector('video')!.dispatchEvent(new Event('loadedmetadata')) }

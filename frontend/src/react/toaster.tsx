@@ -42,14 +42,14 @@ export const mountToaster: typeof Bundle.mountToaster = (host, icons) => {
   root.render(
     <Providers><Toaster id="receipts" position="bottom-right" closeButton gap={8}
       style={{ ...FRAME, '--width': 'min(560px, calc(100vw - 48px))' } as CSSProperties}
-      offset={{ right: 24, bottom: `calc(${floor(24)} + var(--processing-toast-space, 0px))` }}
-      mobileOffset={{ right: 16, left: 16, bottom: `calc(${floor(16)} + var(--processing-toast-space, 0px))` }}
+      offset={{ right: 24, bottom: `calc(${floor(24)} + var(--processing-toast-space, 0px) + var(--selection-toast-lift, 0px))` }}
+      mobileOffset={{ right: 16, left: 16, bottom: `calc(${floor(16)} + var(--processing-toast-space, 0px) + var(--selection-toast-lift, 0px))` }}
       toastOptions={{ closeButtonAriaLabel: '关闭提示' }} containerAriaLabel="通知"
       icons={{ success: glyph(icons.success, true), error: glyph(icons.error, false) }} />
       <Toaster id="processing" position="bottom-right" gap={8} expand
         style={{ ...FRAME, '--width': 'min(400px, calc(100vw - 32px))' } as CSSProperties}
-        offset={{ right: 24, bottom: floor(24) }}
-        mobileOffset={{ right: 16, left: 16, bottom: floor(16) }}
+        offset={{ right: 24, bottom: `calc(${floor(24)} + var(--selection-toast-lift, 0px))` }}
+        mobileOffset={{ right: 16, left: 16, bottom: `calc(${floor(16)} + var(--selection-toast-lift, 0px))` }}
         toastOptions={{ closeButtonAriaLabel: '关闭任务提示' }} containerAriaLabel="后台任务" />
     </Providers>,
   );

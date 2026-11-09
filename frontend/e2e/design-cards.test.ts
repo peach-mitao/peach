@@ -41,9 +41,9 @@ describe('设计决定：作品卡、管理页与复核', () => {
   let browser: Browser;
   installDesignBrowser((next) => { browser = next; });
 
-  /* 骨架是列表回来之前那一屏的形状预告：JAV 默认大图，卡片是 3:4 的正封，骨架照 16:9
-     铺的话，内容一到整屏卡片都被拉高一截。把列表请求扣住，只看骨架本身。 */
-  it('作品骨架的封面比例跟当前版式走：JAV 大图 3:4，首页小图 16:9', { timeout: 60_000 }, async () => {
+  /* 骨架是列表回来之前那一屏的形状预告：作品卡统一用 3:4 正封框。把列表请求扣住，
+     只看骨架本身。 */
+  it('作品骨架的封面统一为正封 3:4', { timeout: 60_000 }, async () => {
     const opened = await visit(browser, '/', DESKTOP);
     const { page } = opened;
     await page.route(/\/api\/items\?/, () => {});
@@ -65,7 +65,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
     };
     try {
       assert.ok(Math.abs(await skeletonRatio('/?jav=1') - 0.75) < 0.05, 'JAV 大图下骨架封面不是正封比例');
-      assert.ok(Math.abs(await skeletonRatio('/') - 16 / 9) < 0.05, '首页小图下骨架封面不是 16:9');
+      assert.ok(Math.abs(await skeletonRatio('/') - 0.75) < 0.05, '首页小图下骨架封面不是正封比例');
     } finally {
       await opened.close();
     }
@@ -244,8 +244,8 @@ describe('设计决定：作品卡、管理页与复核', () => {
       assert.equal(catalog.progress?.background, catalog.tungsten.background, '观看进度条不是钨丝蓝');
       assert.deepEqual([catalog.mixGlyph?.background, catalog.mixGlyph?.borderWidth, catalog.mixGlyph?.borderColor],
         [catalog.overlay.background, '1px', catalog.overlay.borderColor], 'Mix 署名位那枚字形不是半透明底加细边');
-      /* 主控保持 58px 配 34px 图标；角落动作取同一档 36px 配 18px 图标。 */
-      assert.deepEqual([catalog.seekGlyph?.width, catalog.laterButton?.width, catalog.laterGlyph?.width], ['34px', '36px', '18px'],
+      /* 固定四列的小图进入窄卡容器：主控图标缩到 20px，角落动作取 30px 配 18px 图标。 */
+      assert.deepEqual([catalog.seekGlyph?.width, catalog.laterButton?.width, catalog.laterGlyph?.width], ['20px', '30px', '18px'],
         '悬停控件的尺寸和图标比例变了');
       const denseShort = await page.evaluate(() => {
         document.body.dataset.density = 'dense';

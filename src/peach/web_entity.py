@@ -21,12 +21,14 @@ from .entities import normalize_entity_name, resolve_entity, resolve_entity_id, 
 from .social_links import ARCHIVE_HOSTS, is_archive
 from .media_sources import cost_for
 from .web_catalog import (
+    ASSET_IN_CONFIGURED_MEDIA_SCOPE,
     JAV_ASSET_PREDICATE,
     VISIBLE_CATALOG_ASSET,
     attach_avatar_availability,
     processing_assets,
     processing_work,
     group_inputs,
+    configured_media_scope_sql,
     seeded_order,
     tag_is_not_a_performer_name,
     tag_not_hidden,
@@ -103,11 +105,17 @@ def _missing_entity_result(connection, kind: str, name: str, entity_id: int | No
     return {"error": "not found"}
 
 
-#: 资料页与索引页数作品的口径：视频，且没有标「已消失」（ADR-0087）。回收站里的照旧算；
-#: 代表作的取图不套这一条。
-COUNTED_VIDEO = (
-    "a.medium='video' AND COALESCE(a.disposal,'')<>'vanished' AND NOT peach_is_local_extra(a.name,a.path)"
-)
+#: 资料页与索引页数作品、取代表图共用这个口径：视频、没有标「已消失」（ADR-0087），
+#: 且位于当前设置声明的媒体根下。
+def counted_video(alias: str = "a") -> str:
+    return (
+        f"{alias}.medium='video' AND COALESCE({alias}.disposal,'')<>'vanished' "
+        f"AND NOT peach_is_local_extra({alias}.name,{alias}.path) AND "
+        + configured_media_scope_sql(alias)
+    )
+
+
+COUNTED_VIDEO = counted_video()
 
 
 def scope_predicate(kind: str, column: str, subject: str = "?") -> str:
@@ -343,7 +351,7 @@ def q_entity(contract: WebContract, args):
             "(SELECT a2.id FROM asset_entity ae2 CROSS JOIN asset a2 ON a2.id=ae2.asset_id "
             " WHERE " + scope_predicate(kind, "ae2.entity_id") +
             _tag_scope_visibility(kind, "ae2.entity_id", "a2.id") +
-            " AND a2.medium='video' AND a2.snapshot_path IS NOT NULL " +
+            " AND " + counted_video("a2") + " AND a2.snapshot_path IS NOT NULL " +
             (" AND " + solo_performer_clause("a2.id", "ae2.entity_id") if kind == "performer" else "") +
             " ORDER BY a2.size DESC LIMIT 1) "
             "FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id "
@@ -377,7 +385,7 @@ def q_entity(contract: WebContract, args):
                 " JOIN asset a ON a.id=ae.asset_id "
                 " WHERE ae.entity_id=person.id AND " + COUNTED_VIDEO + ") n,"
                 "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
-                " WHERE ae2.entity_id=person.id AND a2.medium='video' "
+                " WHERE ae2.entity_id=person.id AND " + counted_video("a2") +
                 " AND a2.snapshot_path IS NOT NULL AND " + solo_performer_clause("a2.id", "person.id") +
                 " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
                 " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
@@ -388,8 +396,8 @@ def q_entity(contract: WebContract, args):
             roster = c.execute(
                 "SELECT person.id,person.canonical_name k,count(DISTINCT " + video_work_key(contract, c) + ") n,"
                 "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
-                " WHERE ae2.entity_id=person.id AND a2.medium='video' "
-                + _tag_scope_visibility(kind, "scope.entity_id", "a2.id") +
+                " WHERE ae2.entity_id=person.id AND " + counted_video("a2") +
+                _tag_scope_visibility(kind, "scope.entity_id", "a2.id") +
                 " AND a2.snapshot_path IS NOT NULL AND " + solo_performer_clause("a2.id", "person.id") +
                 " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
                 " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
@@ -669,7 +677,7 @@ def q_entity_photos(contract: WebContract, args):
                   "WHERE " + scope_predicate(kind, "ae.entity_id") +
                   _tag_scope_visibility(kind, "ae.entity_id", "a.id") +
                   " AND a.medium='image' AND a.name IS NOT NULL "
-                  "AND a.disposal IS NULL ")
+                  "AND a.disposal IS NULL AND " + ASSET_IN_CONFIGURED_MEDIA_SCOPE + " ")
         sets = [{
             "id": item["id"],
             "kind": "dir",
@@ -719,7 +727,8 @@ def q_photo_set(contract: WebContract, args):
     with contract.read_connection() as c:
         anchor = c.execute(
             "SELECT id,location,path,name FROM asset "
-            "WHERE id=? AND medium='image' AND name IS NOT NULL", (set_id,),
+            "WHERE id=? AND medium='image' AND name IS NOT NULL "
+            f"AND {configured_media_scope_sql('asset')}", (set_id,),
         ).fetchone()
         if not anchor:
             return {"error": "not found"}
@@ -728,14 +737,14 @@ def q_photo_set(contract: WebContract, args):
         total = c.execute(
             f"SELECT count(*) FROM asset a WHERE a.medium='image' AND a.name IS NOT NULL "
             f"AND {PHOTO_DIR}=? AND a.location=? "
-            "AND a.disposal IS NULL", par,
+            "AND a.disposal IS NULL AND " + ASSET_IN_CONFIGURED_MEDIA_SCOPE, par,
         ).fetchone()[0]
         items = [{"id": item["id"], "name": item["name"], "size": item["size"] or 0,
                   "location": item["location"]}
                  for item in c.execute(
                      f"SELECT a.id,a.name,a.size,a.location FROM asset a WHERE a.medium='image' "
                      f"AND a.name IS NOT NULL AND {PHOTO_DIR}=? AND a.location=? "
-                     "AND a.disposal IS NULL "
+                     "AND a.disposal IS NULL AND " + ASSET_IN_CONFIGURED_MEDIA_SCOPE + " "
                      f"ORDER BY {order} LIMIT ? OFFSET ?",
                      (*par, limit, offset),
                  )]
@@ -831,7 +840,8 @@ def _index_rows(contract: WebContract, kind, q, limit, offset, category):
                    "(SELECT count(DISTINCT " + video_work_key(contract, c) + ") FROM asset_entity ae"
                    " CROSS JOIN asset a ON a.id=ae.asset_id WHERE " + COUNTED_VIDEO + " AND " + scope + ") n,"
                    "(SELECT a2.id FROM asset_entity ae CROSS JOIN asset a2 ON a2.id=ae.asset_id "
-                   " WHERE " + scope + " AND a2.medium='video' AND a2.snapshot_path IS NOT NULL "
+                   " WHERE " + scope + " AND " + counted_video("a2")
+                   + " AND a2.snapshot_path IS NOT NULL "
                    " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
                    " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
                    "FROM entity e WHERE e.kind='studio' ")
@@ -849,7 +859,8 @@ def _index_rows(contract: WebContract, kind, q, limit, offset, category):
             entity_kind = INDEX_ENTITY_KINDS[kind]
             sql = ("SELECT e.id entity_id,e.kind entity_kind,e.canonical_name k,count(DISTINCT " + video_work_key(contract, c) + ") n,"
                    "(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id "
-                   " WHERE ae2.entity_id=e.id AND a2.medium='video' AND a2.snapshot_path IS NOT NULL " +
+                   " WHERE ae2.entity_id=e.id AND " + counted_video("a2")
+                   + " AND a2.snapshot_path IS NOT NULL " +
                    (" AND (e.kind='creator' OR (" + solo_performer_clause("a2.id", "e.id") + '))' if entity_kind == "performer" else "") +
                    " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
                    " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1) rep "
@@ -1152,6 +1163,7 @@ def _suggest_faces(contract: WebContract, connection, kind: str, items: list[dic
     reps = {row[0]: row[1] for row in connection.execute(
         "SELECT e.id,(SELECT a2.id FROM asset_entity ae2 JOIN asset a2 ON a2.id=ae2.asset_id"
         " WHERE ae2.entity_id=e.id AND a2.medium='video' AND a2.snapshot_path IS NOT NULL"
+        f" AND {configured_media_scope_sql('a2')}"
         + solo_rep +
         " ORDER BY COALESCE(a2.play_count,0) DESC,COALESCE(a2.play_seconds,0) DESC,"
         " COALESCE(a2.width,0)*COALESCE(a2.height,0) DESC,a2.size DESC LIMIT 1)"

@@ -9,8 +9,9 @@ export { rememberRepresentatives, representativeOf } from './representatives';
 export type { RepresentativeRow } from './representatives';
 export {
   avatarInner, cardArtwork, cardIdentity, coverImage, coverUrl, detailPosterUrl, entityAvatar, entityFaceImg,
-  faceBoxAttrs, faceOrigin, facePos, frameArtwork, javArtwork, logoUrl, mixFace, mixLabel, performerLabel,
-  queueAvatarHtml, queueThumbHtml, remoteCoverUrl, withVersion,
+  faceBoxAttrs, faceOrigin, facePos, frameArtwork, javArtwork, logoUrl, mixFace, mixLabel, naturalCoverRatio,
+  naturalThumbRatio, NATURAL_THUMB_RATIO_MIN, performerLabel, queueAvatarHtml, queueThumbHtml, SLEEVE_RATIO_MIN,
+  STILL_COVER_RATIO_MIN, remoteCoverUrl, withVersion,
 } from './markup';
 export type { Artwork, ArtworkKind, CoverItem, FaceFocus, FaceRef, IdentityItem } from './markup';
 export {

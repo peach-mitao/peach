@@ -22,6 +22,7 @@ import { memo, useCallback, useRef, useState, type CSSProperties, type MouseEven
 import { cardRatio as layoutRatio } from '@peach/appearance';
 import {
   cardArtwork, cardIdentity, entityAvatar, frameArtwork, performerLabel, relayoutCovers, releaseHover, wireHover,
+  naturalCoverRatio, naturalThumbRatio,
 } from '@peach/card-art';
 import { esc, fmtDur, fmtSize } from '@peach/legacy/core';
 import { spinnerHtml } from '@peach/legacy/ui';
@@ -211,8 +212,13 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
      不走官方封面，「JAV 默认封面」设置在这里不起作用：那张封面是整部作品的宣传图，多是横图，
      和这一卷竖屏视频不是同一个画面。没有图时写缺的是什么、为什么缺（`./artwork-gap.tsx`）。 */
   const frameOnly = ratio === PORTRAIT_RATIO && !!item.is_jav;
+  /* 画面框认这一屏真正的版式，不认顶栏密度：小图始终是 3:4 正封框，大图才让横图
+     按原比例展开。竖屏带与资料页横排不属于首页大小图开关，保持各自既定比例。 */
+  const frameSize = variant === 'grid' && layout.active ? layout.size : 'small';
   const drawn = frameOnly ? frameArtwork(item, false) : cardArtwork(item, size, false, layout.javImage);
   const identity = frameOnly || size === 'small' ? drawn.html : cardArtwork(item, 'small', false, layout.javImage).html;
+  const naturalRatio = drawn.kind === 'cover' ? naturalCoverRatio(item)
+    : drawn.kind === 'thumb' ? naturalThumbRatio(item) : null;
   /* 取失败记在当时那段片段上：换了图（补到封面、改了「JAV 默认封面」）就不再算失败。重试给地址
      添一个序号，身份跟着变，`ArtSlot` 才会换一个新元素重新取。 */
   const [failure, setFailure] = useState<{ html: string; gap: ArtworkGap | null } | null>(null);
@@ -265,7 +271,10 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
 
   const pic = (
     <div data-media-pic="" data-pic-portrait={ratio === PORTRAIT_RATIO ? '' : undefined}
-      style={{ '--card-ratio': String(ratio) } as CSSProperties}>
+      data-media-layout-size={frameSize} style={{
+      '--card-ratio': String(ratio),
+      '--image-card-ratio': naturalRatio ? String(naturalRatio) : undefined,
+    } as CSSProperties}>
       {gap
         ? <ArtworkGapView gap={gap} item={item} onRetry={retry} />
         : <ArtSlot artwork={artwork} identity={`${identity}#${attempt}`} relayout={(root) => relayoutCovers(root, size)}
@@ -373,7 +382,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
     <article ref={card} data-media-card="" data-id={item.id} data-variant="resource" data-medium={item.medium || 'other'}
       data-pending-delete={item.disposal === 'trash' ? '' : undefined} data-selected={selected ? '' : undefined}
       onClick={click} onMouseDown={suppressShiftTextSelection}>
-      <div data-media-pic="" style={{ '--card-ratio': String(16 / 9) } as CSSProperties}>
+      <div data-media-pic="">
         <span data-media-glyph=""><Icon name={glyph} /><b>{label}</b></span>
         {image
           ? <span data-media-art="thumb" dangerouslySetInnerHTML={{

@@ -115,6 +115,14 @@ def installer_command(argv: list[str]) -> int:
     raise ValueError("安装辅助参数无效")
 
 
+def verify_standalone() -> int:
+    """供 Windows 更新器在替换生产入口前核对打包标记。"""
+    from peach import distribution
+    packaged = distribution.standalone()
+    print(f"standalone={str(packaged).lower()}")
+    return 0 if packaged else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv if argv is None else argv)
     if "--data-root" in argv:
@@ -137,6 +145,9 @@ def main(argv: list[str] | None = None) -> int:
         error_reporting.install(Path(tempfile.gettempdir()) / "Peach" / "logs")
         return relocate_data(Path(argv[2]), int(argv[3]))
     error_reporting.install()
+    if len(argv) == 2 and argv[1] == "--verify-standalone":
+        _prepare_console()
+        return verify_standalone()
     if len(argv) in (2, 3) and argv[1] == "--diagnostic-report":
         from peach.support_bundle import save_bundle
         path = save_bundle(Path(argv[2]) if len(argv) == 3 else None)

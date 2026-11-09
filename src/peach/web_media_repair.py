@@ -27,6 +27,7 @@ from pathlib import Path, PureWindowsPath
 from . import media_libraries, media_probe, mp4recover, mp4repair, settings_file
 from .mp4repair import RepairUnavailable
 from .platform import translate_ledger_path
+from .web_catalog import configured_media_scope_sql
 
 #: 判定结论的落盘位置，放在边车自己的目录里：它们同生同灭，清缓存时一起走。
 SCAN_CACHE_NAME = "mp4-repair-scan.json"
@@ -93,6 +94,7 @@ def _candidates(contract, scope: tuple[str, list]) -> list[tuple[int, str, float
             "SELECT a.id,a.path,a.duration FROM asset a "
             "WHERE a.path IS NOT NULL AND a.disposal IS NULL "
             f"AND {_MP4.format('a.')} AND {condition} "
+            f"AND {configured_media_scope_sql('a')} "
             "ORDER BY a.play_count DESC, COALESCE(a.last_played,0) DESC, a.id",
             parameters).fetchall()
     return [(row["id"], row["path"], row["duration"]) for row in rows]
@@ -172,6 +174,7 @@ def _reference_candidates(contract, asset_id: int, raw: str) -> list[str]:
         rows = connection.execute(
             "SELECT path FROM asset WHERE location=(SELECT location FROM asset WHERE id=?) "
             f"AND duration>0 AND disposal IS NULL AND {_MP4.format('')} "
+            f"AND {configured_media_scope_sql('asset')} "
             "AND substr(path,1,?)=? COLLATE NOCASE",
             (asset_id, len(prefix), prefix)).fetchall()
     return [row["path"] for row in rows]
@@ -197,7 +200,10 @@ def _recover(contract, asset_id: int, raw: str, tools: tuple[Path, Path, Path]) 
     if resolve(raw) is not None:
         return False
     with contract.read_connection() as connection:
-        row = connection.execute("SELECT location FROM asset WHERE id=?", (asset_id,)).fetchone()
+        row = connection.execute(
+            "SELECT location FROM asset WHERE id=? "
+            f"AND {configured_media_scope_sql('asset')}", (asset_id,),
+        ).fetchone()
     if row is None:
         return False
     untrunc, ffmpeg, ffprobe = tools

@@ -745,6 +745,19 @@ class CapacityProtectionTests(unittest.TestCase):
         refresh = patch.object(self.budget, '_refresh_in_background')
         self.background = refresh.start()
         self.addCleanup(refresh.stop)
+        # Capacity tests are deterministic regardless of the machine running them.
+        # Individual tests still override _disks when disk pressure is the subject.
+        free = 100 * self.budget.GIB
+        disks = patch.object(
+            self.budget,
+            '_disks',
+            return_value=[
+                ('system', free, free * 2),
+                ('data', free, free * 2),
+            ],
+        )
+        disks.start()
+        self.addCleanup(disks.stop)
         # 样本文件刚写出来，用例里不按「最近用过」跳过；进程启动延迟也不等。
         for name in ('RECENT_SECONDS', 'DATA_START_DELAY'):
             delay = patch.object(self.budget, name, 0)
@@ -761,10 +774,6 @@ class CapacityProtectionTests(unittest.TestCase):
         for thread in threading.enumerate():
             if thread.name == 'PeachCapacityClean':
                 thread.join(10)
-        free = 100 * self.budget.GIB
-        self.disks = patch.object(self.budget, '_disks', return_value=[('system', free, free * 2), ('data', free, free * 2)])
-        self.disks.start()
-        self.addCleanup(self.disks.stop)
 
     def policy(self, **changes):
         from dataclasses import asdict

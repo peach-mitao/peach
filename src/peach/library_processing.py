@@ -68,8 +68,8 @@ def translate_ledger_path(raw):
 FIELDS = ('item_key', 'code', 'query', 'asset_id', 'asset_path', 'field', 'field_label', 'current_value',
           'candidates_json', 'source_count', 'source_profile', 'policy_version', 'status',
           'size_gb', 'videos', 'fetched_at')
-LABELS = dict(title='标题', original_title='原标题', performers='演员', studio='厂牌',
-              series='系列', release_date='发行日期', tags='内容标签')
+LABELS = dict(title='标题', original_title='原标题', description='简介', performers='演员',
+              studio='厂牌', series='系列', release_date='发行日期', tags='内容标签')
 
 #: 状态里最多保留这么多条问题；完整问题写在任务专属 JSONL 里，接口分页读取。
 ISSUE_PREVIEW_LIMIT = 20
@@ -280,7 +280,7 @@ CANDIDATE_FLUSH_SECONDS = 5.0
 CANDIDATE_FLUSH_COST_RATIO = 10
 
 #: 采集要补的字段，以及它们在 `asset` 表里的列名（没列出的与字段同名或不在表里）。
-COLLECTED_FIELDS = ('title', 'performers', 'studio', 'release_date', 'tags')
+COLLECTED_FIELDS = ('title', 'description', 'performers', 'studio', 'release_date', 'tags')
 COLUMN_OF = {'title': 'catalog_title'}
 
 #: 一趟任务向外部来源要的总量。三条闸门里谁先到谁生效，之后每部片只记「本趟…已用完」。
@@ -3106,7 +3106,8 @@ def process_library(config, db_path, candidate_root, cover_root, *, location='co
                      followups=[], offline_skipped=0,
                      junk_isolated=0, junk_review=0,
                      started_at=time.time(), error='')
-        state.update(initial_estimate(config, db_path, stage, initial_ids, speed_mode))
+        state.update(initial_estimate(
+            config, db_path, stage, scope_ids, speed_mode, database=database))
         if incremental:
             state['incremental_ids'] = initial_ids
             traffic.unknown_files = True

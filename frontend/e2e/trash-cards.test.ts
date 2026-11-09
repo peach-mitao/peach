@@ -8,7 +8,7 @@ describe('回收站卡片', () => {
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
   for (const viewport of VIEWPORTS) {
-    it(`${viewport.name} 混排卡片${viewport.mobile ? '按内容定高' : '等高'}、展示归入原因并可还原视频`, async () => {
+    it(`${viewport.name} 混排卡片图片框统一 3:4、展示归入原因并可还原视频`, async () => {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
       try {
         const page = await context.newPage();
@@ -49,19 +49,23 @@ describe('回收站卡片', () => {
         await cards.first().waitFor();
         assert.equal(await cards.count(), 10);
         const heights: number[] = [];
-        const frames: number[] = [];
+        const frames: Array<{ width: number; height: number }> = [];
         for (let i = 0; i < 10; i++) {
           await cards.nth(i).scrollIntoViewIfNeeded();
           heights.push(await cards.nth(i).evaluate(card => card.getBoundingClientRect().height));
-          frames.push(await cards.nth(i).evaluate(card => card.getBoundingClientRect().height
-            - card.querySelector('[data-media-meta]')!.getBoundingClientRect().height));
+          frames.push(await cards.nth(i).locator('[data-media-pic]').evaluate(pic => {
+            const rect = pic.getBoundingClientRect();
+            return { width: rect.width, height: rect.height };
+          }));
           assert.equal(await cards.nth(i).locator('[data-media-resource-action="restore"]').count(), 1);
         }
         if (viewport.mobile) {
           assert.ok(Math.max(...heights) - Math.min(...heights) > 1, JSON.stringify(heights));
-          assert.ok(Math.max(...frames) - Math.min(...frames) < 1, JSON.stringify(frames));
         } else {
           assert.ok(Math.max(...heights) - Math.min(...heights) < 1, JSON.stringify(heights));
+        }
+        for (const frame of frames) {
+          assert.ok(Math.abs(frame.width / frame.height - 3 / 4) < .01, JSON.stringify(frame));
         }
         assert.deepEqual(await cards.locator('[data-media-disposal-reason]').allTextContents(),
           ['手动', '垃圾', '重复', '文件缺失', '原因未记录', '手动', '垃圾', '重复', '文件缺失', '原因未记录']);

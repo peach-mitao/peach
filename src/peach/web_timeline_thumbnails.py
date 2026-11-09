@@ -16,6 +16,7 @@ from .ffmpeg import FFmpegResolver
 from .fsutil import atomic_path
 from .storage_budget import CapacityGuard
 from .media_processing_policy import metadata_only
+from .repository import media_scope_predicate
 
 MODE_PATH = STATE_DIR / 'timeline-thumbnails.json'
 
@@ -66,6 +67,12 @@ def q_timeline(contract, args):
     asset_id = int((args or {}).get('id') or 0)
     if asset_id <= 0:
         return {}
+    with contract.read_connection() as connection:
+        if connection.execute(
+                "SELECT 1 FROM asset WHERE id=? AND "
+                + media_scope_predicate(connection, "asset"),
+                (asset_id,)).fetchone() is None:
+            return {}
     cached = timeline_sheets.read_meta(contract.timeline_root, asset_id)
     if cached:
         cached = {**cached, 'source': 'peach'}
@@ -118,7 +125,8 @@ def external_timeline(contract, asset_id: int) -> timeline_sources.Timeline | No
     try:
         with contract.read_connection() as connection:
             row = connection.execute(
-                "SELECT path, duration FROM asset WHERE id=? AND medium='video' AND disposal IS NULL",
+                "SELECT path, duration FROM asset WHERE id=? AND medium='video' AND disposal IS NULL AND "
+                + media_scope_predicate(connection, "asset"),
                 (asset_id,)).fetchone()
     except sqlite3.Error:
         return None
@@ -128,10 +136,9 @@ def external_timeline(contract, asset_id: int) -> timeline_sources.Timeline | No
 
     def read():
         try:
-            from .media import normalized_path
-            source = normalized_path(raw)
-            # SMB 来源没有本机目录可列，旁边的预览文件读不到。
-            return timeline_sources.discover(source, duration) if isinstance(source, Path) else None
+            from .media import resolve_case_insensitive
+            source = Path(resolve_case_insensitive(raw))
+            return timeline_sources.discover(source, duration)
         except (OSError, TypeError, ValueError):
             return None
     result = _SIDECARS.get((asset_id, raw, duration), read)
@@ -194,7 +201,8 @@ def w_thumbnail_jobs(contract, body):
                             and not metadata_only(contract.follow_state_root)),
             report=lambda **fields: contract.thumbnail_job.update(job_id, **_with_progress(fields)),
             guard=guard, resume_state=contract.thumbnail_job.snapshot(),
-            checkpoint=lambda **fields: contract.thumbnail_job.checkpoint(job_id, **fields))
+            checkpoint=lambda **fields: contract.thumbnail_job.checkpoint(job_id, **fields),
+            database=contract.database)
         # 磁盘触线停下来的那一轮不能记成完成：队列后面还剩几千部，而页面上「完成」
         # 和「跑完了」是同一个意思。按停是用户自己做的，不算故障。
         stopped = str(result.get('stopped') or '')

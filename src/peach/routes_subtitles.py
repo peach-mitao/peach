@@ -48,11 +48,14 @@ def _memory(request: Request, video: str) -> subtitle_memory.SubtitleMemory:
 
 
 def _memory_payload(video: str, value: dict) -> dict:
-    return {**{key: value[key] for key in subtitle_memory.PREFERENCES if key in value},
-            "selected": value["selected"], "tracks": [
+    payload = {**{key: value[key] for key in subtitle_memory.PREFERENCES if key in value},
+               "tracks": [
         {"key": row["key"], "name": row["name"],
          "src": f"/api/subtitles/memory/track/{row['file']}?video={video}"}
         for row in value["tracks"]]}
+    if "selected" in value:
+        payload["selected"] = value["selected"]
+    return payload
 
 
 @router.get("/api/subtitles/memory")

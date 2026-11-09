@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   avatarInner, cardArtwork, cardIdentity, coverImage, coverUrl, detailPosterUrl, entityAvatar, entityFaceImg,
-  faceBoxAttrs, faceOrigin, facePos, javArtwork, logoUrl, mixFace, mixLabel, performerLabel, queueAvatarHtml,
-  queueThumbHtml,
+  faceBoxAttrs, faceOrigin, facePos, javArtwork, logoUrl, mixFace, mixLabel, naturalCoverRatio,
+  naturalThumbRatio, NATURAL_THUMB_RATIO_MIN, performerLabel, queueAvatarHtml, queueThumbHtml,
+  STILL_COVER_RATIO_MIN,
 } from '../../src/card-art/markup';
 import { rememberRepresentatives, representativeOf } from '../../src/card-art/representatives';
 import { advanceImageFallback } from '../../src/card-art/image-fallback';
@@ -211,6 +212,29 @@ describe('人脸取景的换算', () => {
 });
 
 describe('coverImage：官方封面', () => {
+  it('图片加载前按 sidecar 比例占位，竖版正封与传统宽封套不被误判', () => {
+    expect(naturalCoverRatio({ cover_frame: { ratio: STILL_COVER_RATIO_MIN } })).toBe(STILL_COVER_RATIO_MIN);
+    expect(naturalCoverRatio({ code: 'ABW-001', cover_frame: { ratio: 1.49 } })).toBeNull();
+    expect(naturalCoverRatio({ code: 'ABW-001', cover_frame: { ratio: 1.49, layout: 'still' } })).toBe(1.49);
+    expect(naturalCoverRatio({ code: 'FC2-PPV-123', cover_frame: { ratio: 1.49 } })).toBe(1.49);
+    expect(naturalCoverRatio({
+      code: 'ABW-001', cover_frame: { ratio: 1.49, layout: 'still' },
+      poster_box: { method: 'manual' },
+    })).toBeNull();
+    expect(naturalCoverRatio({ cover_frame: { ratio: 0 } })).toBeNull();
+  });
+
+  it('本地预览格在图片解码前使用横版视频自身的比例', () => {
+    expect(naturalThumbRatio({ width: 1280, height: 720, poster_ratio: 1.5 })).toBe(1.5);
+    expect(naturalThumbRatio({ poster_ratio: 0.667 })).toBe(0.667);
+    expect(naturalThumbRatio({ width: 1920, height: 1080 })).toBe(16 / 9);
+    expect(naturalThumbRatio({ width: 1600, height: 1200 })).toBe(4 / 3);
+    expect(naturalThumbRatio({ width: 1080, height: 1920 })).toBeNull();
+    expect(naturalThumbRatio({ width: 1200, height: 1000 })).toBeNull();
+    expect(naturalThumbRatio({ width: 1201, height: 1000 })).toBeGreaterThan(NATURAL_THUMB_RATIO_MIN);
+    expect(naturalThumbRatio({ width: 0, height: 1080 })).toBeNull();
+  });
+
   it('VR 画面标记来自标题或取景记录，手工框保持其取景', () => {
     expect(parse(coverImage({ code: 'MDVR-276', title: '【VR】作品' }, 'big'))!.dataset.coverLayout).toBe('still');
     expect(parse(coverImage({ code: 'MDVR-276', cover_frame: { layout: 'still' } }, 'big'))!.dataset.coverLayout).toBe('still');

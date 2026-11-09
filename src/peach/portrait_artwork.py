@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .avatar_face import face_px_width
 from .avatar_provider import AvatarCandidateCache, inspect_avatar
+from .repository import media_scope_predicate
 
 
 def _passes_size_bar(width: int, height: int) -> bool:
@@ -42,7 +43,7 @@ def cover_fallback(connection, record: dict, cache: AvatarCandidateCache,
     rows = connection.execute(
         "SELECT DISTINCT a.id,a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
         "WHERE ae.entity_id=? AND ae.role='performer' "
-        "AND a.disposal IS NULL "
+        "AND a.disposal IS NULL AND " + media_scope_predicate(connection, "a") + " "
         "AND NOT EXISTS(SELECT 1 FROM asset_entity other WHERE other.asset_id=a.id "
         "AND other.role='performer' AND other.entity_id<>ae.entity_id)",
         (record["entity_id"],),

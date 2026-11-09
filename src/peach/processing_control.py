@@ -11,6 +11,7 @@ from contextlib import contextmanager, closing, nullcontext
 from contextvars import ContextVar
 
 from .fsutil import atomic_write_text
+from .repository import LedgerDatabase, media_scope_predicate
 
 CURRENT = ContextVar('peach_library_processing_control', default=None)
 _CONTROLS = {}
@@ -373,11 +374,11 @@ def user_cancelled(db_path, job_id):
     return bool(job_id) and data.get('job_id') == job_id and data.get('cancelled') is True
 
 
-def initial_estimate(config, db_path, stage, asset_ids=None, mode=None, *, allow_metered=False):
+def initial_estimate(config, db_path, stage, asset_ids=None, mode=None,
+                     *, allow_metered=False, database: LedgerDatabase | None = None):
     """仅使用账本统计，不在启动 HTTP 请求里遍历媒体目录。预览的范围同 `preview_readable`。"""
     if mode is None:
-        from .repository import LedgerDatabase
-        mode = execution_mode(LedgerDatabase(db_path), control=current_control())
+        mode = execution_mode(database or LedgerDatabase(db_path), control=current_control())
     query = "SELECT COUNT(*), COALESCE(SUM(size),0) FROM asset WHERE medium='video' AND disposal IS NULL"
     parameters = []
     if asset_ids is not None:
@@ -393,7 +394,10 @@ def initial_estimate(config, db_path, stage, asset_ids=None, mode=None, *, allow
     if config.locations:
         query += ' AND location IN (' + ','.join('?' * len(config.locations)) + ')'
         parameters += list(config.locations)
-    with closing(sqlite3.connect(db_path, timeout=30)) as connection:
+    source = (database.read_connection() if isinstance(database, LedgerDatabase)
+              else closing(sqlite3.connect(db_path, timeout=30)))
+    with source as connection:
+        query += " AND " + media_scope_predicate(connection, "asset")
         count, size = connection.execute(query, parameters).fetchone()
     # 抽帧只读取局部数据；文件总大小仅作为编解码复杂度的温和修正，不按全量读取估时。
     size_factor = min(2.0, max(0.8, (size / max(1, count) / 1024**3) ** 0.15))

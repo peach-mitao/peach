@@ -12,14 +12,37 @@
 /* ── 网格 ──
  * 目录列表是一叠：连续的一段视频合成一格网格，竖屏带插进来时从行边界剪开，上下两半各是
  * 一段。列距 16px 是给悬停面留的：卡片悬停时底色往盒外多铺 8px，列距再窄就顶到邻卡。 */
-.peach-react [data-media-sections] { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.peach-react [data-media-sections] {
+  container: media-sections / inline-size;
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
+}
 .peach-react [data-media-grid] {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--tile)), 1fr));
   gap: 24px;
 }
-/* 同一网格行里的卡片共享完整高度。 */
-.peach-react [data-media-grid] > [data-media-card] { align-self: stretch; }
+/* 小图按 DOM 顺序逐行排列，最多四列。列数按网格实际可用宽度决定，不随剩余空间继续
+   自动塞入第五列。大图仍走下面的瀑布流轨道。 */
+.peach-react [data-media-grid][data-media-grid-fixed] { grid-template-columns: minmax(0, 1fr); }
+@container media-sections (min-width: 360px) {
+  .peach-react [data-media-grid][data-media-grid-fixed] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container media-sections (min-width: 552px) {
+  .peach-react [data-media-grid][data-media-grid-fixed] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container media-sections (min-width: 744px) {
+  .peach-react [data-media-grid][data-media-grid-fixed] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* 目录卡片用瀑布流重排；显式行轨道已经带上间距，原生 row-gap 必须归零。 */
+.peach-react [data-media-grid][data-masonry-active] { row-gap: 0; }
+/* 轨道按卡片自然高度拼列；Mix 卡也要贴轨道顶，不能把预留的 24px 间距撑进卡里。 */
+.peach-react [data-media-grid][data-masonry-active] > [data-mix-card] { align-self: start; }
+/* 铺悬停面的卡按自己的内容定高、贴行顶：同一行里横版封面挨着竖版正封时，行高由竖版撑起，
+ * 横版卡跟着拉满的话，悬停面就铺进封面和文字下面那一大块空白。回收站的卡与垃圾卡是有边的面，
+ * 同一行照旧拉齐，垃圾卡的三颗键靠这个贴底。 */
+.peach-react [data-media-grid] > [data-media-card]:not([data-variant="resource"], [data-variant="junk"]) { align-self: start; }
+/* 固定网格同一行取最高的卡，较短的卡也铺满这一行，避免下一行从参差的位置起排。 */
+.peach-react [data-media-grid][data-media-grid-fixed] > [data-media-card] { align-self: stretch; }
 body[data-surface="/trash"] .peach-react [data-media-grid] > [data-media-card] { align-self: stretch; }
 /* 详情页接着看那一排：岛根挂在作品详情的横排 `[data-related-row]` 里，卡片在这一层横着排，卡距同那一排。 */
 .peach-react [data-media-next-row] { display: flex; gap: 16px; }
@@ -204,8 +227,15 @@ body:not([data-surface="/trash"]) .peach-react [data-media-card]:not([data-follo
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  aspect-ratio: var(--card-ratio, 16 / 9);
-  background: var(--color-background-quaternary-default);
+  aspect-ratio: var(--card-ratio, 3 / 4);
+  background: #000;
+}
+/* 下载任务卡的封面框属于灰色占位面，不能继承作品小图的黑边。 */
+.peach-react [data-download-cover][data-media-pic] { background: var(--color-background-quaternary-default); }
+/* 只认卡片自己的版式：小图始终是 3:4 正封框，大图才让横图按原比例展开。
+   顶栏密度只改列宽，不能把已经选了小图的横图重新拉宽。 */
+body:not([data-surface="/trash"]) .peach-react [data-media-pic][data-media-layout-size="big"] {
+  aspect-ratio: var(--image-card-ratio, var(--card-ratio, 3 / 4));
 }
 /* 传统正封的比例留白复用共享封面取景写入的同图补底。 */
 .peach-react [data-media-pic]::before {
@@ -247,6 +277,11 @@ body:not([data-surface="/trash"]) .peach-react [data-media-card]:not([data-follo
   height: 100%;
   object-fit: contain;
   background: #000;
+}
+/* 这一层压过旧样式表里给剧照使用的 cover 取景。横版原图在固定竖框里完整居中。 */
+.peach-react [data-media-pic] > img[data-natural-card] {
+  object-fit: contain;
+  object-position: 50% 50%;
 }
 .peach-react [data-media-pic] > video { opacity: 0; transition: opacity .2s; }
 .peach-react [data-media-pic] > video[data-playing] { opacity: 1; }
@@ -821,12 +856,54 @@ body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-media
 /* 密集一档的署名始终一行，窄卡不像宽松档那样把日期折到下一行：屏外卡的高度靠元信息区的固定估计，
    折不折行取决于文字栏宽，而文字栏宽又随头像叠几个而变，估计跟不上，往回滚时整页会跳。
    放不下时作者名先省略，再依次让出「等 N 人」、体积，最窄时日期也让出。 */
+/* 固定四列的小图不把署名裁成固定一行：名字、日期与体积在同一元信息区内按需换行。
+ * 行高由内容撑开，整行卡片仍由网格统一等高；大图与旧瀑布流不套这份规则。 */
+body[data-density="dense"]:not([data-surface="/trash"]) .peach-react
+  [data-media-grid][data-media-grid-fixed] [data-media-card] [data-media-text] {
+  grid-template-rows: 1.35em auto 30px;
+  height: auto;
+}
+body[data-density="dense"]:not([data-surface="/trash"]) .peach-react
+  [data-media-grid][data-media-grid-fixed] [data-media-card] [data-media-byline] {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: calc(max(20px, 1.35em) * 3 + 6px);
+  line-height: max(20px, 1.35em);
+  overflow: visible;
+  white-space: normal;
+  row-gap: 2px;
+}
+body[data-density="dense"]:not([data-surface="/trash"]) .peach-react
+  [data-media-grid][data-media-grid-fixed] [data-media-card] [data-media-facts] {
+  flex: 0 0 100%;
+  min-width: 0;
+  overflow: visible;
+}
+body[data-density="dense"]:not([data-surface="/trash"]) .peach-react
+  [data-media-grid][data-media-grid-fixed] [data-media-card] [data-media-size] {
+  display: inline-flex;
+}
+body:not([data-density="dense"]) .peach-react
+  [data-media-grid][data-media-grid-fixed]:not([data-single-column]) [data-media-card]:not([data-follow-item]) [data-media-meta] {
+  min-height: calc(var(--card-meta-block) + 34px);
+}
+body[data-density="dense"]:not([data-surface="/trash"]) .peach-react
+  [data-media-grid][data-media-grid-fixed]:not([data-single-column]) [data-media-card]:not([data-follow-item]) [data-media-meta] {
+  height: calc(var(--card-meta-block) + 39.1px + max(20px, 1.35em));
+  min-height: calc(var(--card-meta-block) + 39.1px + max(20px, 1.35em));
+  contain-intrinsic-block-size: auto calc(var(--card-meta-block) + 39.1px + max(20px, 1.35em));
+}
 @container media-meta (width < 360px) {
   body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-media-card]:not([data-variant="next"]) :is([data-media-who-more], [data-media-size]) { display: none; }
   body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-media-card]:not([data-variant="next"]) [data-media-facts] { flex-basis: auto; }
 }
 @container media-meta (width < 160px) {
   body[data-density="dense"]:not([data-surface="/trash"]) .peach-react [data-media-card]:not([data-variant="next"]) [data-media-facts] { display: none; }
+}
+@container media-meta (width < 300px) {
+  .peach-react [data-media-grid]:not([data-media-grid-fixed]) [data-media-card] [data-media-size] {
+    display: none;
+  }
 }
 
 /* ── 回收站里的资源卡 ── */

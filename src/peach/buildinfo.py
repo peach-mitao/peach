@@ -11,6 +11,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from .review_csv import ENCODING as CSV_ENCODING
+
 #: 打进包根（`sys._MEIPASS`）的文件名，由 `scripts/build_windows.ps1` 生成。
 BUILD_INFO_NAME = "build-info.json"
 
@@ -30,7 +32,9 @@ def read_build_info(root: Path) -> BuildInfo | None:
     处理即可，没有任何理由让托盘起不来。
     """
     try:
-        payload = json.loads((root / BUILD_INFO_NAME).read_text(encoding="utf-8"))
+        # Windows PowerShell 5 的 `Set-Content -Encoding utf8` 会写 BOM；构建脚本
+        # 在两种 PowerShell 下都要能产出可用身份，因此读取时接受带 BOM 的 UTF-8。
+        payload = json.loads((root / BUILD_INFO_NAME).read_text(encoding=CSV_ENCODING))
         version = str(payload["version"])
         built_at = str(payload["built_at"])
         commit = payload["commit"]

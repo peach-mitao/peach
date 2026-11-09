@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {after,before,describe,it} from 'node:test';
 import type {Browser,Page} from 'playwright-core';
-import {launch,requiredEnv,settle,VIEWPORTS} from './harness.ts';
+import {launch,requiredEnv,settle,waitForArtwork,VIEWPORTS} from './harness.ts';
 import {ITEM,openItemPage} from './item-fixture.ts';
 
 const FRAMES='#grid [data-media-grid] > [data-media-card] [data-media-pic], #grid [data-mix-cover]';
@@ -58,10 +58,14 @@ describe('混排作品的画面框',()=>{
       grid.hasAttribute('data-single-column')===(getComputedStyle(grid).gridTemplateColumns.split(' ').length===1)));
      const shown=await page.locator('#grid [data-media-grid] > [data-media-card]').evaluateAll(nodes=>nodes.slice(0,6).map(node=>{
       const line=node.querySelector('[data-media-byline]')!,box=line.getBoundingClientRect(),meta=node.querySelector('[data-media-meta]')!;
-      const visible=[...line.children].filter(child=>getComputedStyle(child).display!=='none').map(child=>child.getBoundingClientRect());
+      const visible=[...line.children].filter(child=>getComputedStyle(child).display!=='none').map(child=>({
+        name:child.hasAttribute('data-media-who')?'who':child.hasAttribute('data-media-facts')?'facts':child.hasAttribute('data-media-why')?'why':'other',
+        box:child.getBoundingClientRect(),
+      }));
       return {height:node.getBoundingClientRect().height,meta:meta.getBoundingClientRect().height,single:node.closest('[data-media-grid]')!.hasAttribute('data-single-column'),
-       line:box.height,wrapped:visible.some(child=>child.top<box.top-1||child.bottom>box.bottom+1),
-       spill:visible.some(child=>child.right>box.right+1)};
+       line:box.height,wrapped:visible.some(child=>child.box.top<box.top-1||child.box.bottom>box.bottom+1),
+       spill:visible.some(child=>child.box.right>box.right+1),
+       children:visible.map(child=>({name:child.name,top:child.box.top,bottom:child.box.bottom,left:child.box.left,right:child.box.right}))};
      }));
      assert.ok(shown.length>=2);assert.ok(shown.every(row=>!row.wrapped&&!row.spill),JSON.stringify({density,shown}));
      if(shown[0].single)assert.ok(Math.max(...shown.map(row=>row.meta))-Math.min(...shown.map(row=>row.meta))>8,JSON.stringify(shown));
@@ -157,20 +161,37 @@ describe('混排作品的画面框',()=>{
   }finally{await opened.close()}
  });
  for(const viewport of VIEWPORTS)for(const size of ['big','small']){
-  it(`${viewport.name} ${size} 作品与 Mix 等高并保留横图`,async()=>{
+  it(`${viewport.name} ${size} 作品按当前版式取框并完整显示`,async()=>{
    const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});
    try{
     const page=await context.newPage();
     await openHome(page,size);
+     await page.evaluate(()=>{document.body.dataset.density='dense'});
+    const frameNodes=page.locator(FRAMES);
+    for(let index=0;index<await frameNodes.count();index++)await waitForArtwork(frameNodes.nth(index));
     const frames=await page.locator(FRAMES).evaluateAll(nodes=>nodes.map(node=>{
      const box=node.getBoundingClientRect(),img=node.querySelector('img')!;
-     return {ratio:box.width/box.height,fit:getComputedStyle(img).objectFit,background:getComputedStyle(img).backgroundColor};
+     return {ratio:box.width/box.height,fit:getComputedStyle(img).objectFit,mix:node.hasAttribute('data-mix-cover'),
+      background:getComputedStyle(node).backgroundColor,backdrop:getComputedStyle(node,'::before').backgroundImage};
     }));
     assert.ok(frames.length>=20);
     for(const frame of frames){
-     assert.ok(Math.abs(frame.ratio-(size==='big'?3/4:16/9))<.01,JSON.stringify(frame));
+     const expected=size==='small'||frame.mix?3/4:16/9;
+     assert.ok(Math.abs(frame.ratio-expected)<.01,JSON.stringify({...frame,size,expected}));
      assert.equal(frame.fit,'contain');
      assert.equal(frame.background,'rgb(0, 0, 0)');
+     assert.equal(frame.backdrop,'none');
+    }
+    await page.addStyleTag({content:'#grid [data-media-grid]{--tile:300px!important}'});
+    const firstFrame=page.locator(FRAMES).first();
+    await firstFrame.scrollIntoViewIfNeeded();
+    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    const first=await firstFrame.boundingBox();
+    assert.ok(first);
+    if(size==='small'){
+     const strip={width:20,height:20,x:first.x+first.width/2-10,y:first.y+16};
+     assert.equal(await darkest(page,strip),0,'横图上方不是纯黑留白');
+     assert.equal(await darkest(page,{...strip,y:first.y+first.height-strip.height-16}),0,'横图下方不是纯黑留白');
     }
     if(viewport.mobile)for(const density of ['roomy','dense']){
      await page.evaluate(value=>{document.body.dataset.density=value},density);
@@ -183,28 +204,147 @@ describe('混排作品的画面框',()=>{
     }
     if(size==='small')for(const density of ['roomy','dense']){
      await page.evaluate(value=>{document.body.dataset.density=value},density);
-     const row=await page.locator('#grid [data-mix-card]').evaluate(mix=>{
-      const mixCover=mix.querySelector('[data-mix-cover]')!.getBoundingClientRect();
-      const peer=mix.parentElement!.querySelector(':scope > [data-media-card]')!;
-      const peerCover=peer.querySelector('[data-media-pic]')!.getBoundingClientRect();
-      return {mixBottom:mixCover.bottom-mix.getBoundingClientRect().top,peerBottom:peerCover.bottom-peer.getBoundingClientRect().top,
-       mixTop:mixCover.top-mix.getBoundingClientRect().top,peerTop:peerCover.top-peer.getBoundingClientRect().top};
+     const rowState=await page.locator('#grid').evaluate(root=>{
+      const mixes=[...root.querySelectorAll<HTMLElement>('[data-mix-card]')];
+      const cards=[...root.querySelectorAll<HTMLElement>('[data-media-card]')];
+      const grid=root.querySelector<HTMLElement>('[data-media-grid]');
+      const columns=grid?getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length:1;
+      for(const mix of mixes){
+       const mixBox=mix.getBoundingClientRect();
+       const peer=cards.find(card=>card!==mix&&Math.abs(card.getBoundingClientRect().top-mixBox.top)<1);
+       if(!peer)continue;
+       const mixCover=mix.querySelector<HTMLElement>('[data-mix-cover]')!.getBoundingClientRect();
+       const peerCover=peer.querySelector<HTMLElement>('[data-media-pic]')!.getBoundingClientRect();
+       return {columns,row:{mixBottom:mixCover.bottom-mixBox.top,peerBottom:peerCover.bottom-peer.getBoundingClientRect().top,
+        mixTop:mixCover.top-mixBox.top,peerTop:peerCover.top-peer.getBoundingClientRect().top}};
+      }
+      return {columns,row:null};
      });
-     assert.ok(Math.abs(row.mixBottom-row.peerBottom)<1,JSON.stringify(row));
-     assert.ok(Math.abs(row.mixTop-row.peerTop)<1,JSON.stringify(row));
+     if(rowState.columns>1){
+      assert.ok(rowState.row,`${rowState.columns} 列布局里没有可比较的 Mix 与相邻作品卡`);
+      assert.ok(Math.abs(rowState.row.mixBottom-rowState.row.peerBottom)<1,JSON.stringify(rowState));
+      assert.ok(Math.abs(rowState.row.mixTop-rowState.row.peerTop)<1,JSON.stringify(rowState));
+     }
     }
    }finally{await context.close()}
   });
+  it('顶栏大小图键在小图与大图之间真实往返，筛选条保持同一状态',async()=>{
+   const context=await browser.newContext({viewport:{width:1280,height:900}});
+   try{
+    const page=await context.newPage();
+    await openHome(page,'small');
+    const first=page.locator(FRAMES).first();
+    await waitForArtwork(first);
+    const frameRatio=()=>first.evaluate(node=>{
+     const box=node.getBoundingClientRect();
+     const img=node.querySelector('img')!;
+     return {ratio:box.width/box.height,fit:getComputedStyle(img).objectFit,
+      background:getComputedStyle(node).backgroundColor,density:document.body.dataset.density,
+      layoutSize:node.getAttribute('data-media-layout-size'),
+      fixed:!!node.closest('[data-media-grid]')?.hasAttribute('data-media-grid-fixed'),
+      masonry:!!node.closest('[data-media-grid]')?.hasAttribute('data-masonry-active')};
+    });
+    const small=await frameRatio();
+    assert.equal(small.fit,'contain');
+    assert.equal(small.background,'rgb(0, 0, 0)');
+    assert.equal(small.density,'dense');
+    assert.equal(small.layoutSize,'small');
+    assert.equal(small.fixed,true);
+    assert.ok(Math.abs(small.ratio-3/4)<.01,JSON.stringify(small));
+    await page.locator('#density').click();
+    await page.waitForFunction(()=>document.body.dataset.density==='big'
+      && document.querySelector('#grid [data-media-grid][data-masonry-active]'));
+    const big=await frameRatio();
+    assert.equal(big.layoutSize,'big');
+    assert.equal(big.fixed,false);
+    assert.equal(big.masonry,true);
+    assert.equal(await page.locator('input[name="home-layout"][value="big"]').isChecked(),true);
+    await page.locator('#density').click();
+    await page.waitForFunction(()=>document.body.dataset.density==='dense'
+      && document.querySelector('#grid [data-media-grid][data-media-grid-fixed]'));
+    const smallAgain=await frameRatio();
+    assert.equal(smallAgain.layoutSize,'small');
+    assert.equal(smallAgain.density,'dense');
+    assert.equal(smallAgain.fixed,true);
+    assert.equal(smallAgain.masonry,false);
+    assert.equal(await page.locator('input[name="home-layout"][value="small"]').isChecked(),true);
+    assert.ok(Math.abs(smallAgain.ratio-3/4)<.01,JSON.stringify(smallAgain));
+   }finally{await context.close()}
+  });
  }
- /* 白图铺满 16:9 格子、浅色页面：四角的抗锯齿只该在白图和浅色页面之间过渡。格子里垫的黑若被逐层按圆角
-  * 裁，角上会压出 150–190 的灰黑点。每角只量贴角 6px 见方的一块，圆弧中段在里面，角标都离边更远。 */
+ it('小图横竖卡混排时逐行固定四列，封面统一竖版框',async()=>{
+  const context=await browser.newContext({viewport:{width:2200,height:900}});
+  try{
+   const page=await context.newPage();
+   await openHome(page,'small',i=>i%3===0
+     ?{width:1080,height:1920,poster_ratio:1080/1920}
+     :{width:1600,height:900,poster_ratio:1600/900});
+   await page.evaluate(()=>{document.body.dataset.density='dense'});
+   await page.waitForFunction(()=>[...document.querySelectorAll('#grid [data-media-grid][data-media-grid-fixed]')]
+     .some(grid=>grid.querySelectorAll(':scope > [data-media-card]').length>=8));
+   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+   const layout=await page.locator('#grid [data-media-grid][data-media-grid-fixed]').evaluateAll(grids=>{
+    const grid=[...grids].sort((left,right)=>right.querySelectorAll(':scope > [data-media-card]').length
+      -left.querySelectorAll(':scope > [data-media-card]').length)[0]!;
+    const cards=[...grid.children].filter((node):node is HTMLElement=>
+      node.matches('[data-media-card],[data-mix-card]'));
+    return {
+      masonry:grid.hasAttribute('data-masonry-active'),
+      columns:getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length,
+      cards:cards.map((card,index)=>{
+       const box=card.getBoundingClientRect();
+       const pic=card.querySelector<HTMLElement>('[data-media-pic],[data-mix-cover]');
+       const style=getComputedStyle(card);
+       return {index,left:box.left,top:box.top,width:box.width,bottom:box.bottom,
+        ratio:pic?pic.getBoundingClientRect().width/pic.getBoundingClientRect().height:null,
+        gridRow:card.style.gridRow,alignSelf:style.alignSelf,height:style.height};
+      }),
+    };
+   });
+   assert.equal(layout.masonry,false);
+   assert.equal(layout.columns,4);
+   const rowTops=[...new Set(layout.cards.map(card=>Math.round(card.top)))];
+   assert.ok(rowTops.length>=2,JSON.stringify(layout));
+   for(let row=0;row<Math.ceil(layout.cards.length/layout.columns);row++){
+    const cards=layout.cards.slice(row*layout.columns,(row+1)*layout.columns);
+    assert.ok(cards.every(card=>Math.abs(card.top-cards[0]!.top)<1),
+      `第 ${row+1} 行没有按 DOM 顺序对齐：${JSON.stringify(cards)}`);
+    assert.ok(Math.max(...cards.map(card=>card.width))-Math.min(...cards.map(card=>card.width))<1,
+      `第 ${row+1} 行卡片宽度不一致：${JSON.stringify(cards)}`);
+   }
+   const ratios=layout.cards.flatMap(card=>card.ratio===null?[]:[card.ratio]);
+   assert.ok(ratios.every(ratio=>Math.abs(ratio-3/4)<.02),`封面框没有统一成竖版：${ratios.join(',')}`);
+  }finally{await context.close()}
+ });
+ it('大图继续使用原有瀑布流排列',async()=>{
+  const context=await browser.newContext({viewport:{width:1280,height:900}});
+  try{
+   const page=await context.newPage();
+   await openHome(page,'big',i=>i%3===0
+     ?{width:1080,height:1920,poster_ratio:1080/1920}
+     :{width:1600,height:900,poster_ratio:1600/900});
+   await page.waitForFunction(()=>document.querySelector('#grid [data-media-grid][data-masonry-active]'));
+   const layout=await page.locator('#grid [data-media-grid][data-masonry-active]').first().evaluate(grid=>({
+    fixed:grid.hasAttribute('data-media-grid-fixed'),
+    columns:getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length,
+    positioned:[...grid.children].filter(node=>node instanceof HTMLElement&&node.matches('[data-media-card],[data-mix-card]'))
+      .slice(0,8).every(node=>Number((node as HTMLElement).style.gridColumn)>0),
+   }));
+   assert.equal(layout.fixed,false);
+   assert.ok(layout.columns>=2);
+   assert.equal(layout.positioned,true);
+  }finally{await context.close()}
+ });
+ /* 黑底现在会填满图片上下留白，圆角里的黑是有意显示。圆角裁切仍不能让黑色渗到框外：
+  * 每角只量框外贴边 3px 见方的一块，四角外都应是浅色页面。 */
  for(const scale of [1,2]){
-  it(`浅色页面上白封面的四个圆角不透黑（${scale} 倍像素）`,async()=>{
+  it(`浅色页面上黑框圆角不向外渗黑（${scale} 倍像素）`,async()=>{
    const context=await browser.newContext({viewport:{width:1280,height:800},deviceScaleFactor:scale,colorScheme:'light'});
    try{
     const page=await context.newPage();
     await openHome(page,'small');
     await page.evaluate(()=>{document.documentElement.dataset.theme='light';document.documentElement.classList.remove('dark')});
+    await page.addStyleTag({content:'#grid [data-media-grid]{--tile:300px!important}'});
     const corners=[];
     for(const frame of ['#grid [data-media-grid] > [data-media-card] [data-media-pic]','#grid [data-mix-cover]']){
      // 这一格滚到吸顶的顶栏与排序条下面，等它的图到货；角内侧那一点打到的得是这张卡自己，没被别的东西压着。
@@ -221,13 +361,14 @@ describe('混排作品的画面框',()=>{
      });
      assert.ok(!box.covers.length&&box.bottom<=800,`${frame} 的四角没有露出来：${JSON.stringify(box)}`);
      await page.mouse.move(0,0);
-     for(const [x,y] of [[box.left,box.top],[box.right-6,box.top],[box.left,box.bottom-6],[box.right-6,box.bottom-6]]){
+     for(const [x,y] of [[box.left-4,box.top-4],[box.right+1,box.top-4],
+       [box.left-4,box.bottom+1],[box.right+1,box.bottom+1]]){
       corners.push({frame,x:Math.round(x),y:Math.round(y),min:await darkest(page,{x,y,width:6,height:6})});
      }
     }
-    // 高分屏的像素对齐和抗锯齿允许浅灰边缘；灰黑渗透的 150–190 区间必须失败。
+    // 高分屏的像素对齐和抗锯齿允许浅灰边缘；框外出现灰黑就是圆角裁切失效。
     const dark=corners.filter(corner=>corner.min<230);
-    assert.deepEqual(dark,[],`${corners.length} 个角里有 ${dark.length} 个透出了黑`);
+    assert.deepEqual(dark,[],`${corners.length} 个框外角里有 ${dark.length} 个渗出了黑`);
    }finally{await context.close()}
   });
   /* 竖屏格一律 9:16，九宫格切出来的海报却是 480×850（略宽）或 480×876（略高）。按 contain 放，

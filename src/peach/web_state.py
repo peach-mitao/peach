@@ -41,6 +41,7 @@ from .config import (
 )
 from . import avatar_face
 from . import brand_marks
+from . import images
 from . import jav_poster_crop
 from .jobs import BackgroundJob
 from .media import normalized_path
@@ -568,6 +569,27 @@ class WebContract:
         from .cover_artwork import has_javdb_source
         return path if path.is_file() and not has_javdb_source(path) else None
 
+    def poster_ratio(self, asset_id: int) -> float | None:
+        """已生成的本地预览图宽高比；图片头部按文件版本缓存。
+
+        卡片首帧要先按这个比例占位。视频的 `width/height` 通常和预览图一致，但预览图
+        可能来自比例不同的本地印相；只拿视频比例会在图片滚入后改卡片高度，长列表因此
+        整体跳动。按需生成的预览第一次还不存在，返回 None，由调用方安静回落。
+        """
+        path = self.poster_root / f"{int(asset_id)}_4.jpg"
+        try:
+            stat = path.stat()
+        except OSError:
+            return None
+        version = (str(path), stat.st_mtime_ns, stat.st_size)
+        return self.cached_lru(
+            ("poster-ratio", *version),
+            lambda: (lambda size: size[0] / size[1] if size and size[1] > 0 else None)(
+                images.measure_image_file(path)),
+            maxsize=2048,
+            ttl=3600,
+        )
+
     def cover_index(self) -> dict[str, dict]:
         """封面目录扫一遍的索引：casefold(归一番号) → 两份取景提示加封面版本。
 
@@ -635,10 +657,11 @@ class WebContract:
 
     @staticmethod
     def _cover_focus(sidecar: str) -> dict | None:
-        """sidecar 里的人脸中心与整幅画面标记。缺少坐标时页面退回固定取景。
+        """sidecar 里的原图比例、人脸中心与整幅画面标记。
 
         两个轴都给出去：哪个轴生效由容器和图片的宽高比决定，不由这里判断。
         缺哪个键就不带哪个键，前端各自回落，不要拿另一个轴的值顶替。
+        比例还要在图片加载前供屏外卡片估高，避免滚过一遍后整页高度跳动。
         """
         try:
             with open(sidecar, encoding="utf-8") as handle:
@@ -648,7 +671,13 @@ class WebContract:
                 face = record.get("face")
         except (OSError, ValueError):
             return None
-        focus = {'layout': 'still'} if record.get('layout') == 'still' else {}
+        focus = {}
+        ratio = record.get('ratio')
+        if (isinstance(ratio, (int, float)) and not isinstance(ratio, bool)
+                and math.isfinite(ratio) and ratio > 0):
+            focus['ratio'] = ratio
+        if record.get('layout') == 'still':
+            focus['layout'] = 'still'
         if isinstance(face, dict):
             focus.update({axis: face[axis] for axis in ("cx", "cy") if axis in face})
         return focus or None

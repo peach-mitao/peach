@@ -224,6 +224,17 @@ describe('停在队列哪一条', () => {
 });
 
 describe('身份与标签', () => {
+  it('简介保留段落换行并显示在身份与标签之间', async () => {
+    serve();
+    const { host } = await show(item(1, { description: '第一段\n\n第二段' }));
+    const identity = host.querySelector('[data-item-identity]')!;
+    const description = host.querySelector('[data-item-description]')!;
+    const tags = host.querySelector('#detailTags')!;
+    expect(description.textContent).toBe('第一段\n\n第二段');
+    expect(identity.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(description.compareDocumentPosition(tags) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
   it('同名只出一次；只有扁平厂牌时带上它的标识可用性；厂牌与系列不算归属', () => {
     const groups = identityGroups(item(1, {
       performers: ['A'], studio: 'S', has_studio_logo: true, studio_logo_version: '9a',

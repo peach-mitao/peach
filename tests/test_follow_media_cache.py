@@ -12,6 +12,7 @@ import httpx
 from starlette.applications import Starlette
 from starlette.routing import Route
 
+from peach import remote_media_cache
 from peach.preview_cache import PreviewCache
 from peach.remote_media_cache import AVATAR_REFRESH_SECONDS, FAVICON_REFRESH_SECONDS, RemoteMediaCache
 
@@ -95,6 +96,29 @@ class RemoteMediaCacheTests(unittest.IsolatedAsyncioTestCase):
         head = await self.client.head("/media")
         self.assertEqual(head.content, b"")
         self.assertEqual(self.calls, 1)
+
+    async def test_metadata_write_recovers_after_the_cache_folder_keeps_disappearing(self):
+        real = remote_media_cache.atomic_write_text
+        calls = 0
+        def flaky(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls <= 5:
+                raise FileNotFoundError
+            return real(*args, **kwargs)
+        with mock.patch.object(remote_media_cache, "atomic_write_text", side_effect=flaky):
+            first = await self.client.get("/media")
+            replay = await self.client.get("/media", headers={"Range": "bytes=2-5"})
+        self.assertEqual(first.content, self.payload)
+        self.assertEqual(replay.content, b"2345")
+        self.assertEqual(self.calls, 1)
+
+    async def test_missing_cache_folder_falls_back_to_the_live_response(self):
+        with mock.patch.object(remote_media_cache, "atomic_path", side_effect=FileNotFoundError):
+            response = await self.client.get("/media")
+        self.assertEqual(response.content, self.payload)
+        self.assertEqual(self.calls, 1)
+        self.assertIsNone(self.cache.stored("follow:1:media:0"))
 
     async def test_partial_response_is_reused_only_for_its_range(self):
         self.status, self.payload = 206, b"2345"
@@ -217,6 +241,19 @@ class RemoteMediaCacheTests(unittest.IsolatedAsyncioTestCase):
 
 
 class PreviewCacheTests(unittest.TestCase):
+    def test_saved_sources_keep_reading_from_the_earlier_cache_layout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = RemoteMediaCache(Path(directory).resolve())
+            ref = 'a' * 64
+            legacy = cache.folder('preview:ABP-123') / f'{ref}.source.json'
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text(json.dumps({'url': 'https://cdn.example/root.m3u8', 'playlist': True}))
+
+            self.assertEqual(
+                PreviewCache(cache).source('ABP-123', ref),
+                {'url': 'https://cdn.example/root.m3u8', 'playlist': True},
+            )
+
     def test_nested_playlists_keys_and_init_segments_are_local_and_persistent(self):
         with tempfile.TemporaryDirectory() as directory:
             cache = RemoteMediaCache(Path(directory).resolve())

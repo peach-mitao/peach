@@ -1756,6 +1756,9 @@
       await pollWait(count);
       // 共享进度可用时由快照更新各行，不再逐个查询，也没有一小时上限。
       if (sharedMode()) return;
+      // A long wait can cross the deadline. Check again before opening a request so
+      // the documented one-hour limit also holds when the page was in the background.
+      if (Date.now() - started >= POLL_LIMIT) return;
       for (const item of view.rows.filter(row => row.tracking)) {
         if (!view.root.isConnected || view.trackGeneration !== generation) return;
         try { applyRowStatus(item, await request(config, item.code, source, 'GET')); }
@@ -2986,6 +2989,7 @@
       let shared = false;
       for (let count = 0; tracking(body) && Date.now() < deadline; count++) {
         await pollWait(count);
+        if (Date.now() >= deadline) break;
         if (!alive(view)) return;
         // 共享进度可用时由快照更新，不再逐个查询，也没有一小时上限。
         if ((shared = sharedMode())) break;

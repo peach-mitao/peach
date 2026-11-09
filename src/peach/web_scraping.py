@@ -7,6 +7,7 @@ import httpx
 from PIL import Image
 
 from .scraping_access import SOURCES, SourcePaused, SourceTransport, describe, save
+from .web_catalog import configured_media_scope_sql
 
 from .source_checks import MOBILE_BROADBAND_HINT, check_source
 
@@ -42,7 +43,10 @@ def w_scraping_cover(contract, body):
     if is_korean_mib_code(code):
         raise ValueError(MIB_NOT_JAV)
     with contract.database.read_connection() as connection:
-        if not connection.execute("SELECT 1 FROM asset WHERE code=? LIMIT 1", (code,)).fetchone():
+        if not connection.execute(
+                "SELECT 1 FROM asset WHERE code=? "
+                f"AND {configured_media_scope_sql('asset')} LIMIT 1",
+                (code,)).fetchone():
             raise ValueError("馆藏未找到这个番号")
     return contract.scraping_cover_job.start_result(lambda: _fetch_cover(contract, code), recovery={'code': code})
 

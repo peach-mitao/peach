@@ -42,6 +42,7 @@ import argparse
 import io
 import json
 import re
+import sqlite3
 import time
 import urllib.parse
 from dataclasses import dataclass
@@ -53,7 +54,8 @@ import httpx
 from PIL import Image, UnidentifiedImageError
 
 from peach.review_csv import ENCODING, read_rows, write_rows
-from peach.scripting import USER_AGENT, open_readonly
+from peach.scripting import USER_AGENT
+from peach import settings_file
 from peach.config import COVER_DIR, DATABASE_PATH, GENERATED_DIR, SOURCES_DIR
 from peach.http import HttpRequest, HttpTransport, HttpxTransport
 from peach.scripting import HostLimiter
@@ -73,6 +75,7 @@ from peach.catalog_rules import (
 )
 from peach.metadata_policy import SOURCE_SPECS
 from peach import upgrade_rules
+from peach.repository import LedgerDatabase, media_scope_predicate
 
 AWS_LEGACY_DIGITAL = (
     "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}pl.jpg"
@@ -1099,17 +1102,42 @@ def restore_logged_successes(transport: HttpTransport, log: Path, root: Path,
             "failed": failed}
 
 
+def _cover_queue_connection(database: Path) -> sqlite3.Connection:
+    """Open the queue through the active media roots when the ledger has path data."""
+    connection = LedgerDatabase(database).connect()
+    columns = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(asset)")
+    }
+    if not {"location", "path"} <= columns:
+        return connection
+    connection.close()
+    ledger = LedgerDatabase(database, media_roots=settings_file.active().locations)
+    return ledger.connect()
+
+
+def _cover_queue_scope(connection: sqlite3.Connection, alias: str = "a") -> str:
+    """Media-root predicate, or an unrestricted fallback for reduced test schemas."""
+    columns = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(asset)")
+    }
+    if not {"location", "path"} <= columns:
+        return "1"
+    return media_scope_predicate(connection, alias)
+
+
 def pending(database: Path, root: Path, only_shaped: bool,
             location: str | None = None, *, existing: bool = False,
             max_width: int = 0, fc2_only: bool = False) -> list[str]:
-    connection = open_readonly(database)
+    connection = _cover_queue_connection(database)
     try:
+        scope = _cover_queue_scope(connection)
         location_sql = " AND location=?" if location else ""
         parameters: tuple[object, ...] = (location,) if location else ()
         rows = connection.execute(
-            "SELECT code, COUNT(*) FROM asset WHERE medium='video' "
-            "AND code IS NOT NULL AND code<>''" + location_sql
-            + " GROUP BY code ORDER BY 2 DESC",
+            "SELECT code, COUNT(*) FROM asset a WHERE a.medium='video' "
+            "AND a.code IS NOT NULL AND a.code<>''"
+            f" AND {scope}" + location_sql
+            + " GROUP BY code ORDER BY 2 DESC, 1",
             parameters,
         ).fetchall()
     finally:
@@ -1148,11 +1176,13 @@ def pending(database: Path, root: Path, only_shaped: bool,
 
 def audit_state(database: Path, root: Path, log: Path) -> dict[str, object]:
     """只读盘点当前 JAV 封面；用于批次前后使用同一统计口径。"""
-    connection = open_readonly(database)
+    connection = _cover_queue_connection(database)
     try:
+        scope = _cover_queue_scope(connection)
         raw_codes = [str(row[0]) for row in connection.execute(
-            "SELECT DISTINCT code FROM asset WHERE medium='video' "
-            "AND code IS NOT NULL AND code<>''"
+            "SELECT DISTINCT code FROM asset a WHERE a.medium='video' "
+            "AND a.code IS NOT NULL AND a.code<>'' "
+            f"AND {scope}"
         )]
     finally:
         connection.close()

@@ -78,7 +78,7 @@ BASE_SCHEMA = """
 CREATE TABLE asset(
   id INTEGER PRIMARY KEY, location TEXT NOT NULL, path TEXT NOT NULL, name TEXT,
   medium TEXT, size INTEGER, creator TEXT, studio TEXT, series TEXT, code TEXT, release_date TEXT,
-  catalog_title TEXT, original_title TEXT,
+  catalog_title TEXT, original_title TEXT, description TEXT,
   duration REAL, width INTEGER, height INTEGER, ctx_length TEXT, ctx_orient TEXT,
   ctx_quality TEXT, play_count INTEGER DEFAULT 0, last_played TEXT, rating INTEGER,
   o_count INTEGER, watch_ratio REAL, stash_scene_id INTEGER, snapshot_path TEXT, first_seen TEXT,
@@ -2070,12 +2070,14 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         connection = sqlite3.connect(self.db)
         connection.execute(
             "UPDATE asset SET catalog_title='正式作品标题',original_title='原标题',"
+            "description='第一段'||char(10)||char(10)||'第二段',"
             "studio='Prestige',code='ABW-232' WHERE id=1"
         )
         connection.commit(); connection.close()
         detail = (await self.client.get("/api/item?t=secret&id=1")).json()
         self.assertEqual(detail["catalog_title"], "正式作品标题")
         self.assertEqual(detail["original_title"], "原标题")
+        self.assertEqual(detail["description"], "第一段\n\n第二段")
         self.assertEqual(detail["display_code"], "ABW-232")
         self.assertIn("edition_badges", detail)
         official = next(tag for tag in detail["tags"] if tag["k"] == "官方标签")

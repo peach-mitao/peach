@@ -1,16 +1,19 @@
-body[data-folder-browse] #main{display:grid;grid-template-columns:224px minmax(0,1fr);column-gap:24px;align-items:start}
+body[data-folder-browse] #main{display:grid;grid-template-columns:224px minmax(0,1fr);column-gap:24px;align-items:start;min-height:calc(100dvh + var(--folder-sticky-top,calc(var(--topH,0px) + 16px)) + 16px)}
 body[data-folder-browse] #main>:not(#catalogFoldersTree){grid-column:2;min-width:0}
-body[data-folder-browse] #catalogFoldersTree{grid-column:1;grid-row:1 / span 20;position:sticky;top:var(--folder-sticky-top,calc(var(--topH) + 16px));min-width:0}
-body[data-folder-browse] #catalogFoldersTree .catalog-folder-navigation{max-height:var(--folder-available-height,calc(100dvh - var(--folder-sticky-top,calc(var(--topH) + 16px)) - 16px))}
-body[data-folder-browse] #catalogFoldersTree .folder-tree-scroller{max-height:none}
+body[data-folder-browse] #catalogFoldersTree{grid-column:1;grid-row:1 / span 20;position:sticky;top:var(--folder-sticky-top,calc(var(--topH) + 16px));align-self:start;min-width:0;height:var(--folder-available-height,calc(100dvh - var(--folder-sticky-top,calc(var(--topH) + 16px)) - 16px));max-height:var(--folder-available-height,calc(100dvh - var(--folder-sticky-top,calc(var(--topH) + 16px)) - 16px))}
+body[data-folder-browse] #catalogFoldersTree .catalog-folder-navigation{height:100%;max-height:100%}
+body[data-folder-browse] #catalogFoldersTree .folder-tree-frame{flex:1 1 0;min-height:0}
+body[data-folder-browse] #catalogFoldersTree .folder-tree-scroller{flex:1 1 auto;min-height:0;max-height:100%}
 #catalogFolderHeader{margin-bottom:20px}
 .catalog-folder-heading{display:flex;min-width:0;flex-direction:column;gap:12px}
 .folder-scope-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .folder-children{display:flex;flex-wrap:wrap;gap:4px}
 .folder-children>button{max-width:100%}
 .entity-folder-workspace[data-folder-browse]{display:grid;grid-template-columns:224px minmax(0,1fr);gap:24px;align-items:start}
-.entity-folder-workspace>[data-folder-tree-host]{position:sticky;top:var(--folder-sticky-top);min-width:0}
-.entity-folder-workspace .catalog-folder-navigation{max-height:var(--folder-available-height)}
+.entity-folder-workspace>[data-folder-tree-host]{position:sticky;top:var(--folder-sticky-top);align-self:start;min-width:0;height:var(--folder-available-height);max-height:var(--folder-available-height)}
+.entity-folder-workspace>[data-folder-tree-host]>.catalog-folder-navigation{height:100%;max-height:100%}
+.entity-folder-workspace>[data-folder-tree-host] .folder-tree-frame{flex:1 1 0;min-height:0}
+.entity-folder-workspace>[data-folder-tree-host] .folder-tree-scroller{flex:1 1 auto;min-height:0;max-height:100%}
 [data-folder-header-host]{margin-bottom:20px}
 .folder-crumb-name{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
 .folder-tree-scroller{min-height:0;max-height:calc(100dvh - var(--topH) - 124px);overflow:auto;overscroll-behavior:contain;scroll-padding-block:4px}

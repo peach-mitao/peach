@@ -428,18 +428,20 @@ describe('画中画的快进快退', () => {
 });
 
 describe('外挂字幕', () => {
-  it('能播的轨全挂上，一条都不预先打开', async () => {
+  it('能播的轨全挂上，并默认打开优先的中文轨', async () => {
     stubFetch(() => ({ subtitles: [
-      { id: 'sidecar:1', playable: true, src: '/sub/1.vtt', language: 'zh', label: '简体' },
+      { id: 'sidecar:1', playable: true, src: '/sub/1.vtt', language: 'ja', label: '日语' },
       { id: 'sidecar:2', playable: false, src: '/sub/2.ass', language: 'ja', label: '日语' },
-      { id: 'sidecar:3', playable: true, src: '/sub/3.vtt', label: '繁体' },
+      { id: 'sidecar:3', playable: true, src: '/sub/3.vtt', language: 'zh-TW', label: '繁体' },
+      { id: 'sidecar:4', playable: true, src: '/sub/4.vtt', language: 'zh-CN', label: '简体' },
     ] }));
     const { player, raw } = fakePlayer({ time: 0, duration: 0 });
     mountPlayerSubtitles(player, 21);
     await flush(); await flush();
     expect(raw.addRemoteTextTrack.mock.calls).toEqual([
-      [{ id: 'sidecar:1', kind: 'subtitles', src: '/sub/1.vtt', srclang: 'zh', label: '简体', default: false }, true],
-      [{ id: 'sidecar:3', kind: 'subtitles', src: '/sub/3.vtt', srclang: '', label: '繁体', default: false }, true],
+      [{ id: 'sidecar:1', kind: 'subtitles', src: '/sub/1.vtt', srclang: 'ja', label: '日语', default: false }, true],
+      [{ id: 'sidecar:3', kind: 'subtitles', src: '/sub/3.vtt', srclang: 'zh-TW', label: '繁体', default: false }, true],
+      [{ id: 'sidecar:4', kind: 'subtitles', src: '/sub/4.vtt', srclang: 'zh-CN', label: '简体', default: true }, true],
     ]);
   });
 });

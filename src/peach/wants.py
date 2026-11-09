@@ -28,6 +28,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from .catalog_rules import normalise_code_key, release_code_from_text
 from .record_rehome import code_key as asset_code_key
+from .repository import media_scope_predicate
 
 #: 入库自动对账写下的归属串。
 AUTO_SOURCE = "auto:want-acquired"
@@ -142,7 +143,8 @@ def in_library(connection, key: str) -> bool:
     _register(connection)
     return connection.execute(
         "SELECT 1 FROM asset WHERE code IS NOT NULL AND COALESCE(disposal,'')<>'vanished'"
-        " AND normalise_code_key(code)=? LIMIT 1", (key,)).fetchone() is not None
+        " AND normalise_code_key(code)=? AND " + media_scope_predicate(connection, "asset") +
+        " LIMIT 1", (key,)).fetchone() is not None
 
 
 def _shell(connection, key: str) -> dict | None:
@@ -406,7 +408,8 @@ def pending_targets(connection, *, today: date | None = None) -> list[WantTarget
         " FROM want_item w LEFT JOIN follow_item f ON f.id=w.follow_item_id"
         " WHERE w.state='wanted' AND (w.code_key IS NULL OR NOT EXISTS"
         " (SELECT 1 FROM asset a WHERE a.code IS NOT NULL AND COALESCE(a.disposal,'')<>'vanished'"
-        " AND normalise_code_key(a.code)=w.code_key))"
+        " AND normalise_code_key(a.code)=w.code_key AND "
+        + media_scope_predicate(connection, "a") + "))"
         " ORDER BY w.created_at, w.id")
     targets = [WantTarget(
         id=int(row["id"]), code=row["code"], code_key=row["code_key"], title=row["title"],

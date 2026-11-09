@@ -22,6 +22,7 @@ DETAIL = {"content_id": "118abw358", "dvd_id": "ABW-358", "title": "Remu Style",
           "actresses": [{"name": "Remu Suzumori"}], "categories": [{"name": "Slender"}, {"name": "Variety"}]}
 COMBINED = {"content_id": "118abw358", "title_ja": "涼森れむ流", "series_name_ja": "保健室の先生",
             "label_name_ja": "ABSOLUTELY WONDERFUL", "maker_name_ja": "プレステージ",
+            "comment_en": "A source synopsis.\nSecond line.",
             "actresses": [{"id": 1051912, "image_url": "suzumori_remu.jpg", "name_kanji": "涼森れむ",
                            "name_kana": "すずもりれむ", "name_romaji": "Remu Suzumori"}],
             "directors": [{"name_kanji": "チャーリー中田"}],
@@ -36,6 +37,7 @@ EXPECTED = {
     "series": "保健室の先生", "release_date": "2023-05-26", "director": "Charlie Nakata", "label": "ABSOLUTELY WONDERFUL",
     "runtime": 210, "cover_urls": [JACKET], "cover_url": JACKET, "actresses": [JAPANESE_ACTRESS],
     "genres": ["スレンダー", "企画"], "raw": DETAIL,
+    "description": "A source synopsis.\nSecond line.",
     "translations": [{"language": "ja", "title": "涼森れむ流", "series": "保健室の先生",
                       "label": "ABSOLUTELY WONDERFUL", "director": "チャーリー中田"}],
     "combined": COMBINED}
@@ -101,6 +103,14 @@ class R18DevSourceTests(unittest.TestCase):
         self.assertEqual(japanese.extra["translations"], EXPECTED["translations"])
         self.assertIs(japanese.extra["combined"], COMBINED)
         self.assertEqual((japanese.title, japanese.series), ("涼森れむ流", "保健室の先生"))
+        self.assertEqual(japanese.extra["description"], "A source synopsis.\nSecond line.")
+
+    def test_old_combined_snapshots_expose_the_same_synopsis(self):
+        """旧快照没有顶层 description；目录证据仍应从 combined.comment_en 读出同一段。"""
+        payload = dict(EXPECTED)
+        payload.pop("description")
+        evidence = extract_catalog_evidence(payload)
+        self.assertEqual(evidence["description"]["value"], "A source synopsis.\nSecond line.")
 
     def test_a_combined_page_for_another_work_counts_as_no_japanese_page(self):
         """英文页的标题、系列与罗马字演员不交出去：落了库，系列与演员就成了英文的实体规范名。"""
@@ -148,6 +158,7 @@ class R18DevSourceTests(unittest.TestCase):
 
     def test_without_the_japanese_page_only_the_language_neutral_fields_stand(self):
         english = dict(EXPECTED, title="", series="", actresses=[], genres=["Slender", "Variety"])
+        english.pop("description")
         english.pop("translations")
         english.pop("combined")
         for body in (Unavailable("HTTP 503"), NotFound("HTTP 404"), b"<html>maintenance</html>"):

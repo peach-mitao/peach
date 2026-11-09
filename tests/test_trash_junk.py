@@ -11,6 +11,7 @@ from pathlib import Path
 
 from support.ledger import fresh_ledger
 from peach import web_batch
+from peach.repository import LedgerDatabase
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,6 +41,11 @@ class TrashJunkTests(unittest.TestCase):
         self.db_path = fresh_ledger(self.root)
         self.out = self.root / "junk.csv"
         self.backup = self.root / "ledger.backup.db"
+        original_contract = self.trash_junk.WebContract
+        self.addCleanup(setattr, self.trash_junk, "WebContract", original_contract)
+        self.trash_junk.WebContract = lambda path: original_contract(
+            Path(path), database=LedgerDatabase(Path(path)),
+        )
 
     def add(self, asset_id, location, path, medium, size=1000, duration=None):
         connection = sqlite3.connect(self.db_path)

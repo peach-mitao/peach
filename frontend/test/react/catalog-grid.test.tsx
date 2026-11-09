@@ -394,16 +394,16 @@ describe('比例', () => {
     cardRatio(target, variant, { ...SMALL, ...layout });
 
   it('一个列表里的卡等高：比例只由语境决定，不看单条视频的宽高', () => {
-    expect(ratio(item(2, { width: 1080, height: 1920 }), 'grid', {})).toBeCloseTo(16 / 9);
+    expect(ratio(item(2, { width: 1080, height: 1920 }), 'grid', {})).toBeCloseTo(3 / 4);
     expect(ratio(item(2), 'short', {})).toBeCloseTo(9 / 16);
     expect(ratio(item(2), 'grid', { portrait: true })).toBeCloseTo(9 / 16);
   });
 
-  it('大图统一所有作品的画面框，未启用的视图使用横框', () => {
+  it('大小图与未启用的视图都使用同一个竖框', () => {
     expect(ratio(jav, 'grid', { active: true, size: 'big' })).toBe(0.75);
     expect(ratio(item(2), 'grid', { active: true, size: 'big' })).toBe(0.75);
-    expect(ratio(jav, 'grid', { active: false, size: 'big' })).toBeCloseTo(16 / 9);
-    expect(ratio(jav, 'grid', { active: true, size: 'small' })).toBeCloseTo(16 / 9);
+    expect(ratio(jav, 'grid', { active: false, size: 'big' })).toBe(0.75);
+    expect(ratio(jav, 'grid', { active: true, size: 'small' })).toBe(0.75);
   });
 });
 
@@ -506,11 +506,28 @@ describe('作品卡', () => {
     expect([tag?.textContent, tag?.tagName, tag?.hasAttribute('data-tag')]).toEqual(['#来源', 'SPAN', false]);
   });
 
-  it('看到一半的画一条进度，分卷组不画；比例写进封面格', async () => {
-    const { host } = await render(item(13, { duration: 600, play_seconds: 150 }));
+  it('看到一半的画一条进度，分卷组不画；默认框与横图比例都写进封面格', async () => {
+    const { host } = await render(item(13, { duration: 600, play_seconds: 150, width: 1920, height: 1080 }));
     const bar = host.querySelector('[data-media-progress]');
     expect([bar?.getAttribute('role'), bar?.getAttribute('aria-label'), bar?.getAttribute('aria-valuenow')]).toEqual(['progressbar', '观看进度', '25']);
-    expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe(String(16 / 9));
+    expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe('0.75');
+    expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--image-card-ratio'))
+      .toBe(String(1920 / 1080));
+
+    const wide = await render(item(20, {
+      is_jav: true, code: 'ABC-020', has_cover: true, cover_frame: { ratio: 16 / 9, layout: 'still' },
+    }));
+    expect(wide.host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe('0.75');
+    expect(wide.host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--image-card-ratio'))
+      .toBe(String(16 / 9));
+    const sleeve = await render(item(21, {
+      is_jav: true, code: 'ABC-021', has_cover: true, cover_frame: { ratio: 1.49 },
+    }));
+    expect(sleeve.host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--image-card-ratio'))
+      .toBe('');
+    const portrait = await render(item(22, { width: 1080, height: 1920 }));
+    expect(portrait.host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--image-card-ratio'))
+      .toBe('');
 
     const group = await render(item(14, { duration: 600, play_seconds: 150, part_group: { key: 'P', seed_id: 14, count: 2 } }));
     expect(group.host.querySelector('[data-media-progress]')).toBeNull();
@@ -683,7 +700,7 @@ describe('作品卡', () => {
     expect(host.querySelector('[data-media-art] img')).toBe(cover);
     expect([cover.classList.contains('whole'), cover.classList.contains('front'), cover.dataset.javImageLayout]).toEqual([true, false, 'small']);
     expect(cover.getAttribute('src')).toBe(firstSrc);
-    expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe(String(16 / 9));
+    expect(host.querySelector<HTMLElement>('[data-media-pic]')!.style.getPropertyValue('--card-ratio')).toBe('0.75');
 
     await act(async () => show({ layout: { ...BIG, size: 'small' }, code: 'ABC-002' }));
     expect(host.querySelector('[data-media-art] img')).not.toBe(cover);

@@ -31,7 +31,12 @@ from .taste_history import (
     write_manifest,
 )
 from .web_activity import DEFAULT_PROFILE_ID
-from .web_catalog import attach_avatar_availability, tag_is_not_a_performer_name, tag_not_hidden
+from .web_catalog import (
+    attach_avatar_availability,
+    configured_media_scope_sql,
+    tag_is_not_a_performer_name,
+    tag_not_hidden,
+)
 from .media_sources import cost_for
 from .web_state import CACHE_TTL, WebContract, path_version
 from .taste_browsers import browser_sources, configure_browser, enabled_history_sources, enabled_bookmark_sources
@@ -396,8 +401,14 @@ def _storage_volumes() -> list[dict[str, object]]:
 
 #: 库存一节只数盘上还在的：标「已消失」的行留着只为个人记录（ADR-0087），不算库存。
 #: 回收站里的照旧算进来。播放与消费一节是个人记录本身，不套这一条。
-PRESENT = "COALESCE(disposal,'')<>'vanished' AND NOT peach_is_local_extra(name,path)"
-PRESENT_A = "COALESCE(a.disposal,'')<>'vanished' AND NOT peach_is_local_extra(a.name,a.path)"
+PRESENT = (
+    "COALESCE(disposal,'')<>'vanished' AND NOT peach_is_local_extra(name,path) AND "
+    + configured_media_scope_sql("asset")
+)
+PRESENT_A = (
+    "COALESCE(a.disposal,'')<>'vanished' AND NOT peach_is_local_extra(a.name,a.path) AND "
+    + configured_media_scope_sql("a")
+)
 
 
 #: 视频的时长与画质分档，顺序同 `media_probe.context_fields` 的判据：由短到长、由高到低。
@@ -417,7 +428,8 @@ def _bands(c, column: str, order: tuple[str, ...]) -> list[dict[str, object]]:
 #: 在线追更的一条播放不算进来的条件：它关联的馆藏视频自己已经有这一项。和 `online_played`
 #: 同一个去重，一个作品在两边都播过只算一次。
 _ONLINE_ONLY = ("(fi.asset_id IS NULL OR NOT EXISTS(SELECT 1 FROM asset a "
-                "WHERE a.id=fi.asset_id AND {}))")
+                "WHERE a.id=fi.asset_id AND " + configured_media_scope_sql("a")
+                + " AND {}))")
 
 
 def _utc_offset(moment: datetime) -> str:
@@ -431,7 +443,8 @@ def _play_activity(c, has_follow: bool) -> dict[str, object]:
     形状同口味页的 `activity`（`days`、`hours`、`timezone`），前端两处共用一张热力卡。
     账本每个作品只记最近一次播放的时间，所以一个作品只占一格。"""
     stamps = [row[0] for row in c.execute(
-        "SELECT CAST(last_played AS REAL) FROM asset WHERE last_played IS NOT NULL")]
+        "SELECT CAST(last_played AS REAL) FROM asset WHERE last_played IS NOT NULL "
+        f"AND {configured_media_scope_sql('asset')}")]
     if has_follow:
         stamps += [row[0] for row in c.execute(
             "SELECT CAST(fp.last_played AS REAL) FROM follow_playback fp "
@@ -461,7 +474,9 @@ def _play_activity(c, has_follow: bool) -> dict[str, object]:
 def _replays(c, has_follow: bool) -> list[dict[str, int]]:
     """播放次数的分布：播过 k 次的作品有几个。合计与 `consumption.played` 相同。"""
     counts: dict[int, int] = {}
-    rows = list(c.execute("SELECT play_count,count(*) FROM asset WHERE play_count>0 GROUP BY play_count"))
+    rows = list(c.execute(
+        "SELECT play_count,count(*) FROM asset WHERE play_count>0 "
+        f"AND {configured_media_scope_sql('asset')} GROUP BY play_count"))
     if has_follow:
         rows += c.execute(
             "SELECT fp.play_count,count(*) FROM follow_playback fp JOIN follow_item fi "
@@ -535,8 +550,9 @@ def _ledger_stats(contract: WebContract, libraries) -> dict:
                             "AND duration IS NOT NULL"),
         }
         out["tag_source"] = [dict(r) for r in c.execute(
-            "SELECT source k, count(*) n, count(DISTINCT asset_id) assets "
-            "FROM asset_tag GROUP BY source ORDER BY n DESC")]
+            "SELECT t.source k, count(*) n, count(DISTINCT t.asset_id) assets "
+            "FROM asset_tag t JOIN asset a ON a.id=t.asset_id "
+            f"WHERE {PRESENT_A} GROUP BY t.source ORDER BY n DESC")]
         out["tag_cov"] = one("SELECT count(DISTINCT asset_id) FROM asset_tag "
                              f"WHERE asset_id IN (SELECT id FROM asset WHERE {PRESENT}) "
                              "AND source IN ('name','r18','vision','vision-creator',"
@@ -551,8 +567,10 @@ def _ledger_stats(contract: WebContract, libraries) -> dict:
         tables = {row[0] for row in c.execute(
             "SELECT name FROM sqlite_schema WHERE type='table'"
         )}
-        library_played = one("SELECT count(*) FROM asset WHERE play_count>0")
-        library_seconds = one("SELECT COALESCE(sum(play_seconds),0) FROM asset")
+        library_played = one(
+            f"SELECT count(*) FROM asset WHERE play_count>0 AND {PRESENT}")
+        library_seconds = one(
+            f"SELECT COALESCE(sum(play_seconds),0) FROM asset WHERE {PRESENT}")
         online_played = 0
         online_seconds = 0
         has_follow = "follow_playback" in tables
@@ -572,19 +590,27 @@ def _ledger_stats(contract: WebContract, libraries) -> dict:
             "play_seconds": library_seconds + online_seconds,
             "library_play_seconds": library_seconds,
             "online_play_seconds": online_seconds,
-            "o_total": one("SELECT COALESCE(sum(o_count),0) FROM asset"),
-            "liked": one("SELECT count(*) FROM asset_preference WHERE profile_id=? AND liked=1",
-                         DEFAULT_PROFILE_ID) if "asset_preference" in tables else 0,
-            "dislike": one("SELECT count(*) FROM asset WHERE feedback='dislike'"),
-            "seen": one("SELECT count(*) FROM asset WHERE feedback='seen'"),
-            "trash": one("SELECT count(*) FROM asset WHERE disposal='trash'"),
-            "skimmed": one("SELECT count(*) FROM asset WHERE duration>0 AND play_seconds>0 "
-                           "AND max_reached>0.6 AND play_seconds/duration < max_reached-0.25"),
+            "o_total": one(
+                f"SELECT COALESCE(sum(o_count),0) FROM asset WHERE {PRESENT}"),
+            "liked": one(
+                "SELECT count(*) FROM asset_preference p JOIN asset a ON a.id=p.asset_id "
+                f"WHERE p.profile_id=? AND p.liked=1 AND {PRESENT_A}",
+                DEFAULT_PROFILE_ID) if "asset_preference" in tables else 0,
+            "dislike": one(
+                f"SELECT count(*) FROM asset WHERE feedback='dislike' AND {PRESENT}"),
+            "seen": one(
+                f"SELECT count(*) FROM asset WHERE feedback='seen' AND {PRESENT}"),
+            "trash": one(
+                f"SELECT count(*) FROM asset WHERE disposal='trash' AND {PRESENT}"),
+            "skimmed": one(
+                f"SELECT count(*) FROM asset WHERE duration>0 AND play_seconds>0 "
+                f"AND max_reached>0.6 AND play_seconds/duration < max_reached-0.25 "
+                f"AND {PRESENT}"),
         }
         recent = [dict(r, kind="library") for r in c.execute(
             "SELECT id,name,creator,play_seconds,duration,max_reached,leave_ratio,o_count,"
             "CAST(last_played AS REAL) last_played FROM asset WHERE last_played IS NOT NULL "
-            "ORDER BY CAST(last_played AS REAL) DESC LIMIT 12")]
+            f"AND {PRESENT} ORDER BY CAST(last_played AS REAL) DESC LIMIT 12")]
         if "follow_playback" in tables:
             recent.extend(dict(r, kind="online", leave_ratio=None, o_count=0) for r in c.execute(
                 "SELECT fi.id,fi.title name,fs.label creator,fp.play_seconds,fi.duration,"
@@ -627,14 +653,15 @@ def q_quality_goals(contract: WebContract, args):
     offset = max(int(args.get("offset", "0")), 0)
     with contract.read_connection() as connection:
         total = connection.execute(
-            "SELECT count(*) FROM asset_quality_goal WHERE profile_id=? AND wanted=1",
+            "SELECT count(*) FROM asset_quality_goal g JOIN asset a ON a.id=g.asset_id "
+            f"WHERE g.profile_id=? AND g.wanted=1 AND {PRESENT_A}",
             (DEFAULT_PROFILE_ID,),
         ).fetchone()[0]
         rows = [dict(row) for row in connection.execute(
             "SELECT a.id,a.name,a.code,a.location,a.path,a.size,a.duration,a.snapshot_path,"
             "g.reason,g.updated_at FROM asset_quality_goal g "
             "JOIN asset a ON a.id=g.asset_id "
-            "WHERE g.profile_id=? AND g.wanted=1 "
+            f"WHERE g.profile_id=? AND g.wanted=1 AND {PRESENT_A} "
             "ORDER BY g.updated_at DESC,a.id DESC LIMIT ? OFFSET ?",
             (DEFAULT_PROFILE_ID, limit, offset),
         )]

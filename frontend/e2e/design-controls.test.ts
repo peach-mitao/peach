@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
-import { expectBody, settle } from './harness.ts';
+import { expectBody, settle, waitForArtwork } from './harness.ts';
 import { ITEM, openItemPage } from './item-fixture.ts';
 import {
   DESKTOP, MOBILE, tokenColor, openAccess, settledRun, openActivity, qualityGoal, openQualityGoals,
@@ -636,6 +636,8 @@ describe('设计决定：控件、状态与首页顶部', () => {
       item.performers = names;
       item.performer_total = names.length;
       item.performer_entities = names.map((name, index) => ({ id: 90_000 + index, name, has_image: false }));
+    }, {
+      poster: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#888"/></svg>',
     });
     try {
       await opened.page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -868,29 +870,61 @@ describe('设计决定：控件、状态与首页顶部', () => {
     }
   });
 
-  it('首页版式默认小图，大图统一作品画面框，选择单独记住', { timeout: 60_000 }, async () => {
+  it('首页版式单独记住；小图统一正封框，大图才保留横图原比例', { timeout: 60_000 }, async () => {
     /* 首张卡使用番号封面，第二张使用普通预览图。 */
     const opened = await openCatalogFixture(browser, (payload) => {
-      Object.assign(payload.items[0], { is_jav: true, code: 'ABC-123', display_code: 'ABC-123', has_cover: true });
+      const [portrait, landscape] = payload.items;
+      payload.total = 2;
+      payload.items = [
+        { ...portrait, is_jav: true, code: 'ABC-123', display_code: 'ABC-123', cover_key: '',
+          cover_frame: null, poster_box: null, has_cover: false,
+          has_thumb: true, has_local_poster: true, width: 640, height: 360,
+          part_group: null, edition_group: null },
+        { ...landscape, is_jav: false, code: '', display_code: '', cover_key: '', has_cover: false,
+          has_thumb: true, has_local_poster: true, width: 1600, height: 900,
+          part_group: null, edition_group: null },
+      ];
+    }, {
+      poster: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#888"/></svg>',
     });
     const { page } = opened;
+    const cards = page.locator('#grid [data-media-grid] > [data-media-card][data-id]');
+    const setPicture = async (index: number, width: number, height: number) => {
+      await cards.nth(index).locator('[data-media-pic] img').evaluate(async (image, size) => {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size[0]}" height="${size[1]}">`
+          + `<rect width="${size[0]}" height="${size[1]}" fill="#888"/></svg>`;
+        image.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+        await image.decode();
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }, [width, height]);
+    };
+    await setPicture(0, 632, 900);
+    await setPicture(1, 1600, 900);
     const ratio = (index: number) => page.locator('#grid [data-media-grid] > [data-media-card][data-id]').nth(index).locator('[data-media-pic]')
       .evaluate((element) => element.getBoundingClientRect().width / element.getBoundingClientRect().height);
     const choice = (value: string) => page.locator(`[data-catalog-filter] input[name="home-layout"][value="${value}"]`);
     try {
       assert.equal(await choice('small').isChecked(), true, '首页版式默认不是小图');
-      assert.ok(Math.abs(await ratio(0) - 16 / 9) < 0.05, '小图下番号卡不是 16:9');
+      assert.ok(Math.abs(await ratio(0) - 0.75) < 0.05, '小图下番号卡不是正封比例');
+      assert.ok(Math.abs(await ratio(1) - 0.75) < 0.05, '小图下横版作品没有使用正封框');
       await choice('big').check({ force: true });
+      const pictures = page.locator('#grid [data-media-grid] > [data-media-card][data-id] [data-media-pic]');
+      await waitForArtwork(pictures.nth(0));
+      await waitForArtwork(pictures.nth(1));
       assert.ok(Math.abs(await ratio(0) - 0.75) < 0.05, '大图下番号卡没有拉成正封比例');
-      assert.ok(Math.abs(await ratio(1) - 0.75) < 0.05, '大图下普通作品画面框不是 3:4');
+      assert.ok(Math.abs(await ratio(1) - 16 / 9) < 0.05, '大图下横版作品没有保留原比例');
       const box = (index: number) => page.locator('#grid [data-media-grid] > [data-media-card][data-id]').nth(index).locator('[data-media-pic]')
         .evaluate((element) => ({ top: element.getBoundingClientRect().top, height: element.getBoundingClientRect().height }));
       const [jav, plain] = [await box(0), await box(1)];
       assert.ok(Math.abs(jav.top - plain.top) < 1, '前两张卡不在同一行，量不到撑高');
-      assert.ok(Math.abs(plain.height - jav.height) < 1, '同行作品画面框不等高');
+      assert.ok(plain.height < jav.height, '横版作品被竖版正封撑高');
+      await choice('small').check({ force: true });
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      assert.ok(Math.abs(await ratio(0) - 0.75) < 0.05, '切回小图后番号卡没有使用正封框');
+      assert.ok(Math.abs(await ratio(1) - 0.75) < 0.05, '切回小图后横版作品没有使用正封框');
       // `visit()` 的初始化脚本每次导航都重写设置，刷新验不了；直接读存下来的那份。
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('peach.settings.v1') || '{}'));
-      assert.equal(saved.homeLayout, 'big', '首页版式没有存下来');
+      assert.equal(saved.homeLayout, 'small', '首页版式没有存下来');
     } finally {
       await opened.close();
     }

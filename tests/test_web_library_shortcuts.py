@@ -9,6 +9,7 @@ from unittest import mock
 
 from peach.web_contract import WebContract, dispatch_api_get, dispatch_api_post
 from peach.web_library_shortcuts import clean_href
+from peach.repository import LedgerDatabase
 from peach import web_settings
 
 
@@ -26,10 +27,13 @@ class LibraryShortcutsTests(unittest.TestCase):
                 CREATE TABLE entity_redirect(old_id INTEGER,target_id INTEGER);
                 CREATE TABLE entity_alias(entity_id INTEGER,alias TEXT,normalized_alias TEXT);
                 INSERT INTO entity_alias VALUES(3,'故事','故事');
-                CREATE TABLE asset(id INTEGER PRIMARY KEY,medium TEXT,disposal TEXT,size INTEGER,snapshot_path TEXT,name TEXT,path TEXT);
+                CREATE TABLE asset(id INTEGER PRIMARY KEY,name TEXT,medium TEXT,disposal TEXT,size INTEGER,snapshot_path TEXT,
+                                   location TEXT,path TEXT);
                 CREATE TABLE asset_entity(asset_id INTEGER,entity_id INTEGER,role TEXT);
             """)
-        self.contract = WebContract(self.path)
+        self.contract = WebContract(
+            self.path, database=LedgerDatabase(self.path),
+        )
 
     def read(self):
         return dispatch_api_get(self.contract, "/api/library-shortcuts", {})
@@ -87,8 +91,8 @@ class LibraryShortcutsTests(unittest.TestCase):
 
     def test_favorites_include_entity_art_logos_and_available_representatives(self):
         with closing(sqlite3.connect(self.path)) as c, c:
-            c.execute("INSERT INTO asset(id,medium,disposal,size,snapshot_path) "
-                      "VALUES(10,'video',NULL,100,'sample.jpg')")
+            c.execute("INSERT INTO asset(id,name,medium,disposal,size,snapshot_path,location,path) "
+                      "VALUES(10,'作品.mp4','video',NULL,100,'sample.jpg','local','A:\\作品.mp4')")
             c.execute("INSERT INTO asset_entity VALUES(10,3,'tag')")
         with mock.patch.object(WebContract, 'has_logo', return_value=True), \
                 mock.patch.object(WebContract, 'logo_version', return_value='logo-v'), \

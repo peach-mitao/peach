@@ -1196,6 +1196,38 @@ class RestoreLoggedSuccessTests(unittest.TestCase):
 
 
 class PendingCoverTests(unittest.TestCase):
+    def test_queue_and_audit_follow_the_configured_media_roots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            database = root / "ledger.db"
+            connection = sqlite3.connect(database)
+            connection.execute(
+                "CREATE TABLE asset(code TEXT, medium TEXT, location TEXT, path TEXT)"
+            )
+            connection.executemany(
+                "INSERT INTO asset(code,medium,location,path) VALUES(?,?,?,?)",
+                [
+                    ("ABW-232", "video", "local", r"H:\Be_Tvideo\AAA\ABW-232.mp4"),
+                    ("SSNI-001", "video", "local", r"H:\Other\SSNI-001.mp4"),
+                    ("DASS-468", "video", "local", r"H:\Be_Tvideo\AAA\DASS-468.mp4"),
+                ],
+            )
+            connection.commit()
+            connection.close()
+            config = type("Config", (), {
+                "locations": {"local": (r"H:\Be_Tvideo\AAA",)},
+            })()
+
+            with patch.object(covers.settings_file, "active", return_value=config):
+                self.assertEqual(
+                    covers.pending(database, root / "covers", False),
+                    ["ABW-232", "DASS-468"],
+                )
+                report = covers.audit_state(
+                    database, root / "covers", root / "cover-fetch-log.csv"
+                )
+            self.assertEqual(report["jav_codes"], 2)
+
     def test_fc2_only_queue_excludes_every_other_code_shape(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

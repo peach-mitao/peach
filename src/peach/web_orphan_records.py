@@ -15,6 +15,7 @@ from pathlib import PureWindowsPath
 from .personal_records import VANISHED, record_counts
 from .record_rehome import MANUAL_SOURCE, code_key, move
 from .web_state import WebContract
+from .web_catalog import configured_media_scope_sql
 
 #: 每一条最多给几个候选文件。
 CANDIDATE_LIMIT = 5
@@ -36,7 +37,8 @@ def _candidates(connection, orphans: list[dict]) -> dict[int, list[dict]]:
     by_stem: dict[str, list[dict]] = defaultdict(list)
     for row in connection.execute(
             "SELECT id,location,name,code,duration,size FROM asset "
-            "WHERE disposal IS NULL AND medium='video'"):
+            "WHERE disposal IS NULL AND medium='video' AND "
+            + configured_media_scope_sql("asset")):
         item = dict(row)
         if key := code_key(item):
             by_key[key].append(item)
@@ -56,7 +58,9 @@ def q_orphan_records(contract: WebContract, args=None):
     """全部已消失的行，新标的在前；每条带六张表的记录数与候选文件。"""
     with contract.read_connection() as connection:
         orphans = [dict(row) for row in connection.execute(
-            f"SELECT {_COLUMNS} FROM asset WHERE disposal=? ORDER BY feedback_at DESC,id DESC", (VANISHED,))]
+            f"SELECT {_COLUMNS} FROM asset WHERE disposal=? AND "
+            + configured_media_scope_sql("asset")
+            + " ORDER BY feedback_at DESC,id DESC", (VANISHED,))]
         counts = record_counts(connection, [row["id"] for row in orphans])
         candidates = _candidates(connection, orphans)
     return {"total": len(orphans), "items": [

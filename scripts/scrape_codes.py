@@ -30,10 +30,10 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from peach import __version__ as PEACH_VERSION
-from peach import metadata_routes
+from peach import metadata_routes, settings_file
 from peach.catalog_rules import (RELEASE_EVIDENCE_KINDS, code_query_variants, is_jav_code,
                                  normalise_code_key, same_release_code)
-from peach.scripting import HostLimiter, open_readonly
+from peach.scripting import HostLimiter
 from peach.config import DATABASE_PATH, GENERATED_DIR, LOG_DIR, SECRETS_DIR, SOURCES_DIR, TOOLS_DIR
 from peach.genre_decisions import load_genre_decisions
 from peach.genre_taxonomy import CONTENT_GENRES, map_genres
@@ -52,6 +52,7 @@ from peach.metadata_policy import (PEACH_FIELDS, POLICY_VERSION, SOURCE_SPECS, f
                                    preferred_tag_source, sort_candidates)
 from peach.platform import system_volume
 from peach.review_csv import ENCODING, read_rows, write_rows
+from peach.repository import LedgerDatabase, media_scope_predicate
 from peach.fsutil import atomic_write_text
 from peach.sources import Session
 from peach.sources.seesaa import SEESAA, WIKI_SOURCES as WIKI_SITES, WikiPages
@@ -59,10 +60,11 @@ from peach.sources.seesaa import SEESAA, WIKI_SOURCES as WIKI_SITES, WikiPages
 
 _logf = None
 FIELD_LABELS = {
-    "title": "标题", "original_title": "原标题",
+    "title": "标题", "original_title": "原标题", "description": "简介",
     "performers": "演员", "studio": "厂牌", "series": "系列",
     "release_date": "发行日期", "tags": "内容标签",
 }
+SCRAPE_SCALAR_FIELDS = (*metadata_routes.SCALAR_FIELDS, "description")
 FIELDS = [
     "item_key", "code", "query", "field", "field_label", "current_value",
     "candidates_json", "source_count", "source_profile", "policy_version",
@@ -340,17 +342,48 @@ def _candidate_key(code: str, field: str, source: str, value: object) -> str:
     return f"{code}:{field}:{source}:{digest}"
 
 
+def _asset_scope_predicate(connection: sqlite3.Connection, alias: str = "a") -> str:
+    """The serving media-root boundary, with a plain-schema fallback for tests."""
+    columns = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(asset)")
+    }
+    if not {"location", "path"} <= columns:
+        return "1"
+    return media_scope_predicate(connection, alias)
+
+
+def _open_scrape_connection(database: Path) -> sqlite3.Connection:
+    """Read the active Peach ledger through its configured media roots.
+
+    Explicit alternate ledgers keep their historical ledger-wide behaviour so
+    operational scripts can inspect backups and fixtures.  The live database
+    always follows the same five-root boundary as the serving UI.
+    """
+    is_active_ledger = Path(database).resolve() == Path(DATABASE_PATH).resolve()
+    roots = settings_file.active().locations if is_active_ledger else None
+    return LedgerDatabase(database, media_roots=roots).connect()
+
+
 def _current_values(connection: sqlite3.Connection, code: str, field: str) -> list[str]:
     title_columns = {"title": "catalog_title", "original_title": "original_title"}
     column = title_columns.get(field, field)
-    if field in {"title", "original_title", "studio", "series", "release_date"}:
+    scope = _asset_scope_predicate(connection)
+    if field in {
+        "title",
+        "original_title",
+        "description",
+        "studio",
+        "series",
+        "release_date",
+    }:
         if column not in {
             str(row[1]) for row in connection.execute("PRAGMA table_info(asset)")
         }:
             return []
         rows = connection.execute(
-            f"SELECT DISTINCT trim({column}) FROM asset WHERE medium='video' "
-            f"AND upper(trim(code))=upper(?) AND {column} IS NOT NULL AND trim({column})<>''",
+            f"SELECT DISTINCT trim({column}) FROM asset a WHERE a.medium='video' "
+            f"AND upper(trim(a.code))=upper(?) AND {column} IS NOT NULL "
+            f"AND trim({column})<>'' AND {scope}",
             (code,),
         )
     elif field == "performers":
@@ -358,7 +391,7 @@ def _current_values(connection: sqlite3.Connection, code: str, field: str) -> li
             "SELECT DISTINCT e.canonical_name FROM asset a "
             "JOIN asset_entity ae ON ae.asset_id=a.id AND ae.role='performer' "
             "JOIN entity e ON e.id=ae.entity_id AND e.kind='performer' "
-            "WHERE a.medium='video' AND upper(trim(a.code))=upper(?)",
+            f"WHERE a.medium='video' AND upper(trim(a.code))=upper(?) AND {scope}",
             (code,),
         )
     else:
@@ -366,7 +399,8 @@ def _current_values(connection: sqlite3.Connection, code: str, field: str) -> li
         marks = ",".join("?" * len(allowed))
         rows = connection.execute(
             "SELECT DISTINCT t.tag FROM asset a JOIN asset_tag t ON t.asset_id=a.id "
-            f"WHERE a.medium='video' AND upper(trim(a.code))=upper(?) AND t.tag IN ({marks})",
+            f"WHERE a.medium='video' AND upper(trim(a.code))=upper(?) AND t.tag IN ({marks}) "
+            f"AND {scope}",
             (code, *allowed),
         )
     return sorted({str(row[0]).strip() for row in rows if str(row[0] or "").strip()})
@@ -569,9 +603,10 @@ _LATIN_TEXT_RE = re.compile(r"[A-Za-z]")
 def _select_english_title_codes(connection, codes: list[tuple]) -> list[tuple]:
     """Select codes whose recorded titles are Latin-only and have no Japanese alternative."""
     titles: dict[str, list[str]] = {}
+    scope = _asset_scope_predicate(connection)
     for code, catalog_title, original_title in connection.execute(
-        "SELECT code,catalog_title,original_title FROM asset "
-        "WHERE medium='video' AND code IS NOT NULL AND trim(code)<>''"
+        "SELECT a.code,a.catalog_title,a.original_title FROM asset a "
+        f"WHERE a.medium='video' AND a.code IS NOT NULL AND trim(a.code)<>'' AND {scope}"
     ):
         key = normalise_code_key(str(code))
         titles.setdefault(key, []).extend(
@@ -633,6 +668,7 @@ def _load_codes(connection, args, parser) -> list[tuple]:
     返回别的作品，链上它是空的，`--sources` 点名也不放行。
     """
     kinds = ",".join("?" * len(RELEASE_EVIDENCE_KINDS))
+    scope = _asset_scope_predicate(connection)
     codes, labels = [], set()
     for row in connection.execute(
         "SELECT a.code,COALESCE(sum(a.size),0)/1073741824.0,count(*),max(a.path),max(a.name),"
@@ -640,7 +676,7 @@ def _load_codes(connection, args, parser) -> list[tuple]:
         "OR EXISTS(SELECT 1 FROM asset_entity ae JOIN entity e ON e.id=ae.entity_id "
         f"WHERE ae.asset_id=a.id AND e.kind IN ({kinds}))) "
         "FROM asset a WHERE a.medium='video' AND a.code IS NOT NULL AND trim(a.code)<>'' "
-        "GROUP BY a.code ORDER BY 2 DESC", sorted(RELEASE_EVIDENCE_KINDS)
+        f"AND {scope} GROUP BY a.code ORDER BY 2 DESC", sorted(RELEASE_EVIDENCE_KINDS)
     ):
         code = str(row[0]).strip()
         if not _is_explicit_code(code, release_evidence=bool(row[6])):
@@ -837,8 +873,8 @@ def _build_adapter(args, sources, provider=None):
 
 def _collect_code_fields(*, code, query, variants, chain, profile, sources, adapter, args,
                          health, throttle, genre_decisions, unmapped_genres,
-                         error_writer, error_handle):
-    """一个番号逐档取证并汇总字段；标量齐全后只补优先标签来源，返回候选与失败次数。"""
+                         error_writer, error_handle, required_scalars):
+    """一个番号逐档取证并汇总字段；所缺标量齐全后只补优先标签来源。"""
     by_field: dict[str, list[dict]] = {}
     given: set[str] = set()
     errors = 0
@@ -981,7 +1017,7 @@ def _scrape(parser, args, handle, *, provider=None, resources) -> int:
     adapter = _build_adapter(args, covered, provider)
     resources.callback(adapter.close)
 
-    connection = open_readonly(args.db)
+    connection = _open_scrape_connection(args.db)
     resources.callback(connection.close)
     # 用户在复核页收录过的 genre 这一批就当已知词，不再作为未收录回来问一遍。
     genre_decisions = load_genre_decisions(connection)
@@ -1019,12 +1055,17 @@ def _scrape(parser, args, handle, *, provider=None, resources) -> int:
             # 第一个永远是账本的规范写法，评审键不随回退漂移。
             variants = code_query_variants(code) or (query,)
             chain = _chain_for(row, profile=profile, sources=sources)
+            required_scalars = tuple(
+                field for field in SCRAPE_SCALAR_FIELDS
+                if not _current_values(connection, code, field)
+            )
             fetched_at = datetime.now(timezone.utc).isoformat()
             by_field, errors = _collect_code_fields(
                 code=code, query=query, variants=variants, chain=chain, profile=profile,
                 sources=sources, adapter=adapter, args=args, health=health, throttle=throttle,
                 genre_decisions=genre_decisions, unmapped_genres=unmapped_genres,
-                error_writer=error_writer, error_handle=error_handle)
+                error_writer=error_writer, error_handle=error_handle,
+                required_scalars=required_scalars)
             errors_written += errors
             for field, candidates in by_field.items():
                 if args.english_title_only and field != "title":

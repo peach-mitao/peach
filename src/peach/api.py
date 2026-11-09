@@ -39,7 +39,7 @@ from . import (__version__, browser_transport, distribution, feeds, ledger_backu
                web_feeds, web_follow, web_settings)
 from . import routes_api, routes_auth, routes_configuration, routes_jav_browser, routes_media, routes_pages, routes_subtitles
 from .buildinfo import frozen_build
-from .config import LOCATION_ROOT_DECLARATIONS, MEDIA_ROOT_DECLARATIONS, PeachSettings
+from .config import LOCATION_ROOT_DECLARATIONS, PeachSettings
 from .ffmpeg import FFmpegResolver
 from .follow_scheduler import FEED_JOB_ID, FollowScheduleConfig, FollowUpdateScheduler
 from .follow_covers import FollowCoverService
@@ -396,7 +396,10 @@ def create_app(
     settings = settings or PeachSettings()
     if tunnel_manager is None:
         tunnel_manager = tunnel.TunnelManager(settings.tunnel_state_root, settings.tunnel_log_root)
-    database = LedgerDatabase(settings.db_path, media_roots=MEDIA_ROOT_DECLARATIONS)
+    database = LedgerDatabase(
+        settings.db_path,
+        media_roots=settings.media_scope_roots,
+    )
     contract = web_contract.WebContract(
         settings.db_path, settings.snapshot_root,
         candidate_root=settings.candidate_root,

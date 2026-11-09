@@ -47,7 +47,10 @@ class RestartWindowsTrayTests(unittest.TestCase):
         self.target.parent.mkdir(parents=True)
         self.service.parent.mkdir(parents=True)
         self.target.write_bytes(b"tray")
+        (self.target.parent / "_internal").mkdir()
+        (self.target.parent / "_internal" / "old-runtime.dll").write_bytes(b"old")
         self.service.write_bytes(b"service")
+        (self.root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
 
     def tearDown(self):
         self.temp.cleanup()
@@ -172,6 +175,59 @@ class RestartWindowsTrayTests(unittest.TestCase):
         self.assertEqual(result.new_tray_pid, 30)
         self.assertEqual(result.service_pids, (51, 52))
 
+    def test_a_standalone_tray_is_its_own_service_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            portable = Path(directory).resolve() / "Peach.exe"
+            portable.write_bytes(b"standalone")
+            windows = iter((
+                (windows_restart.TrayWindow(10, 20),),
+                (windows_restart.TrayWindow(30, 40),),
+            ))
+            launched = mock.Mock()
+            launched.poll.return_value = None
+            result = windows_restart.restart_tray(
+                portable,
+                find_windows=lambda _target: next(windows),
+                stop_window=lambda _handle: True,
+                alive=lambda _pid: False,
+                start=lambda _target: launched,
+                services=lambda tray_pid, executable: (51, 52)
+                if tray_pid == 30 and executable == portable else (),
+                sleep=lambda _seconds: None,
+            )
+            self.assertTrue(result.ok, result.message)
+            self.assertEqual(result.service_pids, (51, 52))
+
+    def test_a_standalone_onedir_tray_owns_one_service(self):
+        """目录版只有一个真实子进程；不能拿 onefile 启动器的两个进程当门槛。"""
+        with tempfile.TemporaryDirectory() as directory:
+            portable = Path(directory).resolve() / "Peach.exe"
+            portable.write_bytes(b"standalone")
+            (portable.parent / "_internal").mkdir()
+            (portable.parent / "_internal" / "standalone.txt").write_text(
+                "Peach standalone desktop distribution\n", encoding="utf-8")
+            windows = iter((
+                (windows_restart.TrayWindow(10, 20),),
+                (windows_restart.TrayWindow(30, 40),),
+            ))
+            launched = mock.Mock()
+            launched.poll.return_value = None
+            strays = mock.Mock(return_value=(99,))
+            result = windows_restart.restart_tray(
+                portable,
+                find_windows=lambda _target: next(windows),
+                stop_window=lambda _handle: True,
+                alive=lambda _pid: False,
+                start=lambda _target: launched,
+                services=lambda tray_pid, executable: (51,)
+                if tray_pid in (10, 30) and executable == portable else (),
+                strays=strays,
+                sleep=lambda _seconds: None,
+            )
+            self.assertTrue(result.ok, result.message)
+            self.assertEqual(result.service_pids, (51,))
+            strays.assert_not_called()
+
     def source_restart(self, **overrides):
         pythonw = self.service.parent / "pythonw.exe"
         pythonw.write_bytes(b"shim")
@@ -282,6 +338,8 @@ class RestartWindowsTrayTests(unittest.TestCase):
         staged = self.root / "staging" / "Peach.exe"
         staged.parent.mkdir()
         staged.write_bytes(b"new")
+        (staged.parent / "_internal").mkdir()
+        (staged.parent / "_internal" / "new-runtime.dll").write_bytes(b"new")
         return staged
 
     def test_the_binary_is_swapped_after_the_old_tray_exits_and_before_the_new_starts(self):
@@ -305,7 +363,9 @@ class RestartWindowsTrayTests(unittest.TestCase):
         self.assertTrue(result.ok, result.message)
         self.assertEqual(bytes_at_start, [b"new"], "新托盘启动时读到的已经是新二进制")
         self.assertEqual(self.target.read_bytes(), b"new")
-        self.assertEqual(Path(result.backup).read_bytes(), b"tray")
+        self.assertEqual((Path(result.backup) / "Peach.exe").read_bytes(), b"tray")
+        self.assertEqual(
+            (self.target.parent / "_internal" / "new-runtime.dll").read_bytes(), b"new")
         self.assertEqual(result.swapped_from, str(staged))
 
     def test_a_new_tray_that_never_owns_its_services_is_rolled_back(self):
@@ -325,8 +385,10 @@ class RestartWindowsTrayTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("已回滚到备份并重开旧托盘", result.message)
         self.assertEqual(self.target.read_bytes(), b"tray")
-        self.assertEqual(Path(result.backup).read_bytes(), b"tray",
+        self.assertEqual((Path(result.backup) / "Peach.exe").read_bytes(), b"tray",
                          "备份留在原地，下一次失败还有得退")
+        self.assertEqual(
+            (self.target.parent / "_internal" / "old-runtime.dll").read_bytes(), b"old")
         self.assertEqual(start.call_count, 2)
 
 

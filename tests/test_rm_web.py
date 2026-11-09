@@ -10,9 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
-from peach import catalog_rules, jav_poster_crop, web_batch, web_catalog, web_entity, web_playlists, web_search, web_stats
+from PIL import Image
+
+from peach import catalog_rules, jav_poster_crop, web_activity, web_batch, web_catalog, web_entity, web_playlists, web_search, web_stats
 from peach import web_contract as rm_web
 from peach.previews import entity_image_key, logo_key
+from peach.repository import LedgerDatabase, LedgerRepository
 from peach.web_catalog import q_editions, q_items, q_parts
 from support.ledger import fresh_ledger
 
@@ -280,7 +283,8 @@ class WebDataTests(unittest.TestCase):
         self.avatars = Path(self.tmp.name).resolve() / "avatars"
         self.avatars.mkdir()
         self.contract = rm_web.WebContract(
-            Path(self.db_path), avatar_root=self.avatars, logo_root=self.logos)
+            Path(self.db_path), avatar_root=self.avatars, logo_root=self.logos,
+            database=LedgerDatabase(self.db_path, media_roots=None))
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -498,6 +502,27 @@ class WebDataTests(unittest.TestCase):
             con.execute("UPDATE asset SET name='must-not-write' WHERE id=1")
         con.close()
 
+    def test_generated_poster_ratio_is_sent_before_the_image_loads(self):
+        posters = Path(self.tmp.name).resolve() / "posters"
+        posters.mkdir()
+        Image.new("RGB", (900, 600), "white").save(posters / "1_4.jpg")
+        contract = rm_web.WebContract(
+            Path(self.db_path), avatar_root=self.avatars, logo_root=self.logos,
+            poster_root=posters)
+
+        item = next(row for row in rm_web.q_items(contract, {"limit": "10"})["items"]
+                    if row["id"] == 1)
+        self.assertTrue(item["has_local_poster"])
+        self.assertAlmostEqual(item["poster_ratio"], 1.5)
+        self.assertAlmostEqual(rm_web.q_item(contract, 1)["poster_ratio"], 1.5)
+
+        (posters / "1_4.jpg").write_bytes(b"not an image")
+        contract.cache_bust()
+        item = next(row for row in rm_web.q_items(contract, {"limit": "10"})["items"]
+                    if row["id"] == 1)
+        self.assertFalse(item["has_local_poster"])
+        self.assertIsNone(item["poster_ratio"])
+
     def test_people_index_subscription_uses_enabled_sources_bound_to_entity(self):
         from peach import feeds
         with closing(sqlite3.connect(self.db_path)) as con:
@@ -590,6 +615,77 @@ class WebDataTests(unittest.TestCase):
         self.assertNotIn("Canonical Alice", [tag["k"] for tag in rm_web.q_stats(self.contract)["top_tags"]])
         self.assertNotIn("path", result["items"][0])
         self.assertNotIn("snapshot_path", result["items"][0])
+
+    def test_configured_media_roots_limit_every_catalog_surface(self):
+        with closing(sqlite3.connect(self.db_path)) as connection, connection:
+            connection.execute("UPDATE asset SET snapshot_path='one.jpg' WHERE id=1")
+            connection.execute("UPDATE asset SET snapshot_path='two.jpg' WHERE id=2")
+            connection.execute(
+                "INSERT INTO asset(id,location,path,name,medium,size,snapshot_path,code) "
+                "VALUES(99,'local',?,'outside.mp4','video',100,'outside.jpg','OUTSIDE-001')",
+                (r"R:\\MediaElsewhere\\outside.mp4",),
+            )
+            connection.execute(
+                "UPDATE asset SET play_count=1 WHERE id IN (1,2,99)")
+        contract = rm_web.WebContract(
+            Path(self.db_path),
+            database=LedgerDatabase(
+                Path(self.db_path),
+                media_roots={
+                    "local": (r"R:\Media",),
+                    "115": (r"C:\Not-The-Media-Root",),
+                },
+            ),
+            avatar_root=self.avatars,
+            logo_root=self.logos,
+        )
+
+        items = rm_web.q_items(contract, {"sort": "new", "limit": "10"})
+        self.assertEqual(items["total"], 1)
+        self.assertEqual([item["id"] for item in items["items"]], [1])
+        self.assertEqual(rm_web.q_item(contract, 1)["id"], 1)
+        self.assertEqual(rm_web.q_item(contract, 2), {"error": "not found"})
+        self.assertEqual(
+            {row["k"] for row in rm_web.q_facets(contract)["locations"]},
+            {"local"},
+        )
+        self.assertEqual(
+            [(row["k"], row["n"]) for row in rm_web.q_tops(contract, 30)["studios"]],
+            [("Canonical Studio", 1)],
+        )
+        self.assertEqual(rm_web.q_stats(contract)["by_length"][0]["n"], 1)
+        from peach import feeds, wants
+        from peach.taste_history import _peach_dashboard_evidence
+        with contract.read_connection() as connection:
+            self.assertTrue(wants.in_library(connection, "ABC-001"))
+            self.assertFalse(wants.in_library(connection, "OUTSIDE-001"))
+            self.assertTrue(feeds.in_library(connection, "ABC-001"))
+            self.assertFalse(feeds.in_library(connection, "OUTSIDE-001"))
+            self.assertEqual(_peach_dashboard_evidence(connection, None)["assets"], 1)
+        studio = web_entity.q_entity(
+            contract, {"kind": "studio", "name": "Canonical Studio"},
+        )
+        self.assertEqual(studio["asset_count"], 1)
+        self.assertEqual(studio["representative_asset_id"], 1)
+        self.assertIsNone(LedgerRepository(contract.database).media_asset(2))
+        for write in (
+                lambda: rm_web.w_activity(contract, {"id": 2, "position": 10}),
+                lambda: web_activity.w_play(contract, {"id": 2}),
+                lambda: rm_web.w_feedback(contract, {"id": 2, "kind": "dislike"}),
+                lambda: rm_web.w_watch_later(contract, {"id": 2}),
+                lambda: rm_web.w_preference(contract, {"id": 2, "liked": True}),
+                lambda: rm_web.w_quality_goal(contract, {"id": 2, "wanted": True}),
+                lambda: rm_web.w_item_tag(
+                    contract, {"id": 2, "operation": "add", "tag": "足交"}),
+        ):
+            with self.subTest(write=write), self.assertRaisesRegex(ValueError, "not found"):
+                write()
+        with closing(sqlite3.connect(self.db_path)) as connection, connection:
+            connection.execute("UPDATE asset SET disposal='trash' WHERE id=2")
+        self.assertEqual(
+            rm_web.q_items(contract, {"state": "trash"})["items"],
+            [],
+        )
 
     def test_item_detail_marks_javinizer_and_fc2_official_tags(self):
         con = sqlite3.connect(self.db_path)
@@ -3103,12 +3199,14 @@ class JavModeAndCoverTests(unittest.TestCase):
     def test_jav_dto_exposes_catalog_titles(self):
         con = sqlite3.connect(self.db_path)
         con.execute(
-            "UPDATE asset SET catalog_title='正式作品标题',original_title='原标题' WHERE id=1"
+            "UPDATE asset SET catalog_title='正式作品标题',original_title='原标题',"
+            "description='第一段'||char(10)||'第二段' WHERE id=1"
         )
         con.commit(); con.close()
         row = rm_web.q_item(self.contract, 1)
         self.assertEqual(row["catalog_title"], "正式作品标题")
         self.assertEqual(row["original_title"], "原标题")
+        self.assertEqual(row["description"], "第一段\n第二段")
 
     def test_compact_code_with_release_evidence_gets_canonical_display_fields(self):
         con = sqlite3.connect(self.db_path)
@@ -3389,25 +3487,26 @@ class JavModeAndCoverTests(unittest.TestCase):
         (self.covers / "ABW-232.face.json").write_text(
             '{"ratio":1.49,"face":{"cx":0.82,"cy":0.19}}', encoding="utf-8")
         self.assertEqual(self.contract.cover_frame("ABW-232"),
-                         {"cx": 0.82, "cy": 0.19})
+                         {"ratio": 1.49, "cx": 0.82, "cy": 0.19})
 
     def test_a_sidecar_with_only_one_axis_keeps_just_that_axis(self):
         """缺的那个轴不带键，页面各自回落；不能拿另一个轴的值顶替。"""
         (self.covers / "ABW-232.jpg").write_bytes(b"x")
         (self.covers / "ABW-232.face.json").write_text(
             '{"ratio":1.78,"face":{"cx":0.13}}', encoding="utf-8")
-        self.assertEqual(self.contract.cover_frame("ABW-232"), {"cx": 0.13})
+        self.assertEqual(self.contract.cover_frame("ABW-232"), {"ratio": 1.78, "cx": 0.13})
 
     def test_a_cover_without_a_sidecar_falls_back_silently(self):
         (self.covers / "ABW-232.jpg").write_bytes(b"x")
         self.assertIsNone(self.contract.cover_frame("ABW-232"))
 
-    def test_a_sidecar_reporting_no_face_is_not_a_frame(self):
-        # 954 张实测检出 885 张，没检出是少数但确实存在——必须安静回落。
+    def test_a_sidecar_without_a_face_keeps_the_image_ratio_for_stable_layout(self):
+        # 954 张实测检出 885 张，没检出是少数但确实存在：人脸取景安静回落，
+        # 比例仍要在图片解码前交给屏外卡片，否则长列表滚过一遍会整体变高。
         (self.covers / "ABW-232.jpg").write_bytes(b"x")
         (self.covers / "ABW-232.face.json").write_text(
             '{"ratio":1.49,"face":null}', encoding="utf-8")
-        self.assertIsNone(self.contract.cover_frame("ABW-232"))
+        self.assertEqual(self.contract.cover_frame("ABW-232"), {"ratio": 1.49})
 
     def test_a_corrupt_sidecar_never_breaks_the_card(self):
         (self.covers / "ABW-232.jpg").write_bytes(b"x")
@@ -3458,7 +3557,7 @@ class JavModeAndCoverTests(unittest.TestCase):
             '{"ratio":1.49,"face":{"cx":0.82,"cy":0.19}}', encoding="utf-8")
         self.contract.cache_bust()
         self.assertEqual(self.contract.cover_frame("ABW-232"),
-                         {"cx": 0.82, "cy": 0.19})
+                         {"ratio": 1.49, "cx": 0.82, "cy": 0.19})
         self.assertEqual(self.contract.poster_box("ABW-232")["x0"], 419)
         self.assertTrue(self.contract.has_cover("ABW-232"))
 

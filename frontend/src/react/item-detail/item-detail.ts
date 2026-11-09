@@ -42,6 +42,7 @@ export interface DetailItem extends Omit<CardFields, 'tags'> {
   /** 刚入库还在补资料：扫描与采集或云下载后处理还没走完。 */
   pending_work?: PendingWorkItem[];
   title?: string;
+  description?: string | null;
   width?: number | null;
   height?: number | null;
   release_date?: string | null;

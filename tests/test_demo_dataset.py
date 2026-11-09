@@ -20,12 +20,13 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from peach import catalog_rules
 from peach.ffmpeg import FFmpegResolver
 from peach.field_owners import review_owner
 from peach.library_nfo import local_art, read_nfo, sidecars
+from peach import library_processing
 from peach.library_processing import process_library
 from peach.review_csv import read_rows
 from peach.settings_file import PeachConfig
@@ -35,6 +36,13 @@ from support.ledger import fresh_ledger
 from support.demo import seed_metadata_cache
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def setUpModule():
+    """Keep host free-space policy from changing temporary-demo test outcomes."""
+    capacity = patch.object(library_processing.CapacityGuard, 'check', return_value=None)
+    capacity.start()
+    unittest.addModuleCleanup(capacity.stop)
 
 
 def load_script(name: str = "demo_dataset"):

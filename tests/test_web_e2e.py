@@ -38,7 +38,7 @@ from contextlib import closing
 from pathlib import Path
 from unittest import mock
 
-from peach import follow_assets, link_marks, scraping_access, settings_file, taste_history
+from peach import follow_assets, link_marks, scraping_access, settings_file, storage_budget, taste_history
 from peach import platform as peach_platform
 from peach.config import FFMPEG_DIR
 from peach.ffmpeg import FFmpegResolver
@@ -53,7 +53,7 @@ from scripts import test_history
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
-BROWSER_LOGS = ROOT / "build" / "agent-verification" / "browser"
+BROWSER_LOGS = Path(os.environ.get("PEACH_E2E_LOG_ROOT", ROOT / "build" / "agent-verification" / "browser")).resolve()
 SERVER_START_SECONDS = 60
 E2E_SECONDS = 600
 SETUP_SUITE = "e2e/setup.test.ts"
@@ -229,6 +229,10 @@ class WebE2ESmokeTests(unittest.TestCase):
             server=settings_file.ServerSettings(port=cls.port),
         )
         settings_file.write(config)
+        # 浏览器夹具只生成数秒短片；容量保护在这里会把开发机的系统盘余量
+        # 当成产品行为，导致布局测试因宿主机空间而无法启动。容量策略另有
+        # 独立单元测试覆盖，这里关闭隔离夹具的保护。
+        storage_budget.save_policy(config, {"enabled": False})
         generated = config.directory("generated")
         # 路由冒烟只验页面与站标端点的衔接；取图算法另有 mock 契约，不让这轮布局测试依赖外网。
         # 站标与来源图标两处缓存都预先填上同一张图：缓存为空时 `/site-mark` 与 `/source-icon`

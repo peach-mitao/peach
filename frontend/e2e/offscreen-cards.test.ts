@@ -250,7 +250,9 @@ describe('视口外的卡片', () => {
             deep: deep.getBoundingClientRect().top + scrollY, y: scrollY,
             view: deep.getBoundingClientRect().top,
             skipping: getComputedStyle(deep.querySelector(metaSelector)!).contentVisibility,
-            meta: deep.querySelector(metaSelector)!.getBoundingClientRect().height };
+            meta: deep.querySelector(metaSelector)!.getBoundingClientRect().height,
+            fixed: deep.closest('[data-media-grid]')?.hasAttribute('data-media-grid-fixed'),
+            size: (deep.querySelector('[data-media-pic]') as HTMLElement | null)?.dataset.mediaLayoutSize || null };
         }, [selector, shape.meta] as const);
         /* 首屏之外的卡此刻都没渲染过，高度全按估计值；往返一趟之后每张都记住了自己的实际
            尺寸。两次量到的差就是估计值的误差，一行差一点，累积到深处就是滚动条在跳。 */
@@ -259,7 +261,7 @@ describe('视口外的卡片', () => {
         await roundTrip(page);
         const rendered = await measure();
         assert.ok(Math.abs(rendered.height - fresh.height) <= 1,
-          `整页高度从 ${fresh.height} 变成 ${rendered.height}：元信息区的估计高度与实际不符`);
+          `整页高度从 ${fresh.height} 变成 ${rendered.height}：元信息区的估计高度与实际不符 ${JSON.stringify({fresh,rendered})}`);
         assert.ok(Math.abs(rendered.deep - fresh.deep) <= 1,
           `深处那张卡从 ${fresh.deep} 挪到 ${rendered.deep}`);
 
@@ -296,8 +298,11 @@ describe('视口外的卡片', () => {
       const opened = await open(browser);
       try {
         const { page } = opened;
+        /* 3:4 封面加两行资料比 800px 的桌面视口略高；给整张卡留出固定页头后的可见空间，才量得到
+           卡外 2px 的指针落点。卡片本身的几何仍按桌面列宽计算。 */
+        await page.setViewportSize({ width: DESKTOP.width, height: 900 });
         await page.locator(selector).first().evaluate(async (card) => {
-          card.scrollIntoView({ block: 'center' });
+          card.scrollIntoView({ block: 'start' });
           await new Promise(requestAnimationFrame);
           await new Promise(requestAnimationFrame);
         });
@@ -306,13 +311,17 @@ describe('视口外的卡片', () => {
            同一行里最高的那张卡，内容盒下面到卡片下缘（关注卡是到 `[data-follow-state]`）不留空，卡高
            于是仍是封面、行距与内容三项之和。头像和文字列贴着内容盒。垫出去的那一圈伸出
            卡片盒，指针落在那里不能算进这张卡。 */
-        const frames = await page.evaluate(([cardSelector, parts]) => {
+        const {frames, boxes} = await page.evaluate(([cardSelector, parts]) => {
           const inFlow = (element: Element | null, step: 'previousElementSibling' | 'nextElementSibling') => {
             let node = element?.[step] ?? null;
             while (node && getComputedStyle(node).position === 'absolute') node = node[step];
             return node;
           };
-          return [...document.querySelectorAll(cardSelector)].filter((card) => {
+          const cards = [...document.querySelectorAll(cardSelector)];
+          return {boxes: cards.slice(0, 4).map((card) => {
+            const box = card.getBoundingClientRect();
+            return {top:Math.round(box.top), bottom:Math.round(box.bottom), width:Math.round(box.width), height:Math.round(box.height)};
+          }), frames: cards.filter((card) => {
             const box = card.getBoundingClientRect();
             return card.querySelector(`:scope>${parts.meta}`) && box.top >= 0 && box.bottom <= innerHeight;
           }).map((card) => {
@@ -354,9 +363,9 @@ describe('视口外的卡片', () => {
               background: style.backgroundColor,
               claimed: outside.filter((hit) => hit && card.contains(hit)).length,
             };
-          });
+          })};
         }, [selector, shape] as const);
-        assert.ok(frames.length > 0, `${where}没有整张落在视口里的卡`);
+        assert.ok(frames.length > 0, `${where}没有整张落在视口里的卡：${JSON.stringify(boxes)}`);
         for (const frame of frames) {
           assert.ok(frame.padded.every((value) => value > 0), `${where}的元信息区没有垫裁切余量`);
           assert.ok(frame.offsets.every((value) => Math.abs(value) <= .5),

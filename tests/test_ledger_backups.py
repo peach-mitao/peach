@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from peach import ledger_backups, migrations, settings_file, update_tasks, web_organize
+from peach.repository import LedgerDatabase
 from peach.task_runs import TaskRunStore
 from support.ledger import MIGRATIONS_DIR, fresh_ledger
 
@@ -301,6 +302,7 @@ class OrganizeBackupRetentionTests(unittest.TestCase):
             old = self.aged(folder, [f"ledger.pre-organize-20260801-00000{index}-j{index}.db"
                                      for index in range(6)])
             contract = SimpleNamespace(db_path=live, candidate_root=generated,
+                                       database=LedgerDatabase(live),
                                        cache_bust=lambda: None)
             seen = []
 

@@ -45,6 +45,7 @@ from .avatar_provider import (
     MIN_LONG_SIDE, MIN_SHORT_SIDE, AvatarCandidateCache, InspectedAvatar, acceptable_avatar,
 )
 from .followups import Attempts, Followup, FollowupType, attempts_root, register
+from .repository import media_scope_predicate
 
 #: 这类后继在任务中心的身份，也是活动页上那一行的名字来源。
 TASK_KEY = "entity-avatar"
@@ -105,10 +106,12 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
     可能截得出脸了，头像是从封面截的那些可能换得到更清楚的一张。
     """
     wanted = _candidates(connection)
+    scope = media_scope_predicate(connection, "a")
     rows = connection.execute(
         "SELECT e.id,e.kind,e.canonical_name,"
         " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
-        "  WHERE ae.entity_id=e.id) AS assets"
+        "  JOIN asset a ON a.id=ae.asset_id"
+        f"  WHERE ae.entity_id=e.id AND {scope}) AS assets"
         f" FROM entity e WHERE e.id>? AND {wanted} ORDER BY e.id",
         (int(since_entity_id),)).fetchall()
     covered = [int(asset_id) for asset_id in covered_asset_ids]
@@ -118,9 +121,12 @@ def plan(connection: sqlite3.Connection, avatar_root, *,
         rows += [row for row in connection.execute(
             "SELECT e.id,e.kind,e.canonical_name,"
             " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
-            "  WHERE ae.entity_id=e.id) AS assets"
+            "  JOIN asset a ON a.id=ae.asset_id"
+            f"  WHERE ae.entity_id=e.id AND {scope}) AS assets"
             f" FROM entity e WHERE {wanted} AND e.id IN"
-            f" (SELECT entity_id FROM asset_entity WHERE asset_id IN ({marks}))"
+            f" (SELECT ae2.entity_id FROM asset_entity ae2 JOIN asset a2"
+            f" ON a2.id=ae2.asset_id WHERE ae2.asset_id IN ({marks})"
+            f" AND {media_scope_predicate(connection, 'a2')})"
             " ORDER BY e.id", covered).fetchall() if int(row["id"]) not in known]
     found = []
     for row in rows:
@@ -203,6 +209,7 @@ def _installed_small(avatar_root, kind: str, entity_id: int) -> bool:
 #: 作品只数铺过接触印相的：印相是它唯一的画面来源，后补的印相要让它再派一次。
 _WORK_COUNT = ("(SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
                " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=e.id"
+               " AND {scope}"
                " AND (e.kind<>'creator' OR coalesce(a.snapshot_path,'')<>''))")
 _ALIAS_COUNT = "(SELECT count(*) FROM entity_alias al WHERE al.entity_id=e.id)"
 _OFFSITE_COUNT = ("(SELECT count(*) FROM entity_external_ref x WHERE x.entity_id=e.id"
@@ -226,8 +233,9 @@ def fingerprint(connection: sqlite3.Connection, entity_id: int, providers_root=N
     补上别名后才命中 `美雲そら` 与 `朝霧いのり` 两张）；补女优资料后继绑上 avwikidb 编号，
     馆外单人作品的封面才有路可走；判据换了，同一份证据也可能认得出。
     """
+    work_count = _WORK_COUNT.format(scope=media_scope_predicate(connection, "a"))
     row = connection.execute(
-        f"SELECT {_WORK_COUNT}, {_ALIAS_COUNT}, {_OFFSITE_COUNT} FROM entity e WHERE e.id=?",
+        f"SELECT {work_count}, {_ALIAS_COUNT}, {_OFFSITE_COUNT} FROM entity e WHERE e.id=?",
         (int(entity_id),)).fetchone()
     gallery = gfriends.index_revision(Path(providers_root) / avatar_picker.GFRIENDS_CACHE) if providers_root is not None else ""
     return _fingerprint(*(row if row else (0, 0, 0)), gallery)
@@ -246,11 +254,13 @@ def stock(connection: sqlite3.Connection, avatar_root, attempts, *, limit: int,
     index_dir = attempts.root.parent / "performer-avatars" / avatar_picker.GFRIENDS_CACHE
     gallery = gfriends.index_revision(index_dir)
     refresh_needed = gfriends.index_stale(index_dir)
+    work_count = _WORK_COUNT.format(scope=media_scope_predicate(connection, "a"))
     for row in connection.execute(
-            f"SELECT e.id,e.kind,e.canonical_name,{_WORK_COUNT} AS assets,"
+            f"SELECT e.id,e.kind,e.canonical_name,{work_count} AS assets,"
             f" {_ALIAS_COUNT} AS aliases, {_OFFSITE_COUNT} AS offsite"
             f" FROM entity e WHERE {_candidates(connection)}"
-            " AND EXISTS(SELECT 1 FROM asset_entity ae WHERE ae.entity_id=e.id)"
+            " AND EXISTS(SELECT 1 FROM asset_entity ae JOIN asset a ON a.id=ae.asset_id"
+            f" WHERE ae.entity_id=e.id AND {media_scope_predicate(connection, 'a')})"
             " ORDER BY assets DESC, e.id"):
         entity_id, kind = int(row["id"]), str(row["kind"])
         key = followup_key(kind, entity_id)
@@ -740,7 +750,8 @@ def _install_offsite(contract, connection, providers_root, avatar_root, kind: st
         return fallen
     skip = {normalise_code_key(str(code)) for (code,) in connection.execute(
         "SELECT DISTINCT a.code FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id"
-        " WHERE ae.entity_id=? AND coalesce(a.code,'')<>''", (int(entity_id),))}
+        " WHERE ae.entity_id=? AND coalesce(a.code,'')<>'' "
+        f"AND {media_scope_predicate(connection, 'a')}", (int(entity_id),))}
     matcher = face_match.FaceMatcher()
     pages, transport = avwikidb_pages(contract), HttpxTransport()
     try:

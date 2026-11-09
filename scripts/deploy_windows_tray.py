@@ -31,15 +31,15 @@ if str(SRC_DIR) not in sys.path:
 
 import httpx
 
-from peach import __version__
+from peach import __version__, settings_file
 from peach.config import LOG_DIR, STATE_DIR
 from peach.tray import build_service_specs
 from peach.windows_restart import restart_tray
 from peach.windows_update import WindowsUpdateInstaller
 
 
-#: 换过二进制的那次启动比平常慢：单文件包要先把四十多 MB 解到 `%TEMP%` 才画得出托盘
-#: 图标，再由它拉起两个服务。这里超时就会把一份好的二进制回滚掉，所以给足。
+#: 换过核心包的那次启动比平常慢：Windows 要先释放旧入口与运行库的句柄，再启动新托盘
+#: 和两个服务。这里超时就会把一份好的包回滚掉，所以给足。
 SWAP_RESTART_TIMEOUT = 90.0
 
 
@@ -52,31 +52,70 @@ def digest(path: Path) -> str:
     return digested.hexdigest()
 
 
-def serving_identity(*, timeout: float = 60.0,
-                     sleep: Callable[[float], None] = time.sleep) -> dict:
-    """轮询生产 HTTPS 口的 `/healthz`，返回它报的版本号与构建提交。
+def bundle_digest(executable: Path) -> str:
+    """目录版核心包的指纹：入口与 `_internal/` 的相对路径和内容都参与。"""
+    executable = executable.resolve()
+    root = executable.parent
+    internal = root / "_internal"
+    if not executable.is_file() or not internal.is_dir():
+        raise FileNotFoundError(f"目录版托盘核心包不完整：{root}")
+    digested = hashlib.sha256()
+    for path in sorted(
+        (executable, *(item for item in internal.rglob("*") if item.is_file())),
+        key=lambda item: item.relative_to(root).as_posix(),
+    ):
+        relative = path.relative_to(root).as_posix()
+        digested.update(relative.encode("utf-8"))
+        digested.update(b"\0")
+        digested.update(digest(path).encode("ascii"))
+        digested.update(b"\0")
+    return digested.hexdigest()
 
-    期限内没拿到 200 时返回 `{"error": 最后一次的原始错误}`：证书校验失败、连接被拒、
-    非 200 状态码要原样交给调用方报告，不能只剩一句「没回话」。
-    地址和 CA 都取自 `build_service_specs()`，跟托盘自己探活用的是同一份规格。
-    HTTPS 的结论必须由项目 CA 严格校验得出，明文口的 200 不算数：那条只是跳转进程。
+
+def health_endpoints(config) -> tuple[tuple[str, bool | str], ...]:
+    """返回独立版与源码版生产服务可能使用的健康地址。
+
+    独立版在设置文件的高位端口提供 HTTP；源码版由 `build_service_specs()` 描述，
+    通常还带本机 CA。按这个顺序探测，来源都是托盘实际使用的设置与证书。
     """
-    spec = next(spec for spec in build_service_specs() if spec.name == "https")
+    endpoints: list[tuple[str, bool | str]] = [
+        (f"http://127.0.0.1:{config.server.port}/healthz", True),
+    ]
+    try:
+        spec = next(spec for spec in build_service_specs() if spec.name == "https")
+    except (FileNotFoundError, OSError, RuntimeError, StopIteration):
+        return tuple(endpoints)
+    if all(url != spec.health_url for url, _verify in endpoints):
+        endpoints.append((spec.health_url, spec.verify))
+    return tuple(endpoints)
+
+
+def serving_identity(*, timeout: float = 60.0,
+                     sleep: Callable[[float], None] = time.sleep,
+                     config=None) -> dict:
+    """轮询生产 `/healthz`，返回版本号与构建提交。
+
+    独立版和源码版使用不同协议。HTTPS 候选仍由项目 CA 严格校验，不能拿明文口的
+    200 冒充证书检查通过。期限内没有成功时保留最后一次原始错误，便于部署脚本
+    准确报告是证书、连接还是 HTTP 状态失败。
+    """
+    config = config or settings_file.load_config()
+    endpoints = health_endpoints(config)
     deadline = time.monotonic() + timeout
     last = "没有回话"
     while True:
-        try:
-            response = httpx.get(spec.health_url, timeout=5.0, verify=spec.verify,
-                                 trust_env=False)
-            if response.status_code == 200:
-                payload = response.json()
-                return {"version": str(payload.get("version")),
-                        "build_commit": payload.get("build_commit")}
-            last = f"HTTP {response.status_code}"
-        except (httpx.HTTPError, OSError, ValueError) as error:
-            last = f"{type(error).__name__}: {error}"
+        for url, verify in endpoints:
+            try:
+                response = httpx.get(url, timeout=5.0, verify=verify, trust_env=False)
+                if response.status_code == 200:
+                    payload = response.json()
+                    return {"version": str(payload.get("version")),
+                            "build_commit": payload.get("build_commit")}
+                last = f"{url} HTTP {response.status_code}"
+            except (httpx.HTTPError, OSError, ValueError) as error:
+                last = f"{url} {type(error).__name__}: {error}"
         if time.monotonic() >= deadline:
-            return {"error": f"{spec.health_url} {last}"}
+            return {"error": last}
         sleep(1.0)
 
 
@@ -131,8 +170,8 @@ def deploy(
                             **fields)
         staged = built
     staged = staged.resolve()
-    if not staged.is_file():
-        return _outcome(False, "build", f"暂存包不存在：{staged}", **fields)
+    if not staged.is_file() or not (staged.parent / "_internal").is_dir():
+        return _outcome(False, "build", f"暂存目录版托盘不完整：{staged.parent}", **fields)
     fields["staged"] = str(staged)
 
     if not installer.packaged_migrations_pass(staged):
@@ -141,7 +180,7 @@ def deploy(
                         **fields)
 
     # 指纹只能在这里取：换二进制走的是 `os.replace`，暂存包被搬走，换完就没这个文件了。
-    built = digest(staged)
+    built = bundle_digest(staged)
     fields["built_digest"] = built
 
     result = restart(target, swap_from=staged, timeout=SWAP_RESTART_TIMEOUT)
@@ -178,7 +217,7 @@ def deploy(
                             f"{served['build_commit']}，不是这次打的 {commit[:8]}。",
                             **fields)
     else:
-        landed = digest(target)
+        landed = bundle_digest(target)
         fields["target_digest"] = landed
         if landed != built:
             return _outcome(False, "verify",

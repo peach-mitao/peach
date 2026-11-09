@@ -128,6 +128,9 @@ class PeachSettings:
         "PEACH_REVIEW_WRITER_PROXY", _SETTINGS.server.review_writer_proxy)
     # 本机挂载不到的来源不进授权列表，对应资产按「脱盘」处理而不是报错。
     allowed_media_roots: tuple[Path, ...] = translate_roots(MEDIA_ROOT_DECLARATIONS)
+    #: Serving-only display boundary. `None` keeps ledger utilities and isolated
+    #: tests unrestricted; the CLI passes the active declared roots on startup.
+    media_scope_roots: dict[str, tuple[str, ...]] | None = None
     snapshot_root: Path = GENERATED_DIR / "snapshots"
     poster_root: Path = GENERATED_DIR / "posters"
     # 时间轴预览的接触印相，由采集任务铺，悬停时整张取回来按格子换位置。

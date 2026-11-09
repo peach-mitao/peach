@@ -11,12 +11,14 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path, PureWindowsPath
 from unittest import mock
 
 from peach import web_batch
 from peach import web_contract as rm_web
 from peach import web_resource_sync as rm_sync
+from peach.repository import LedgerDatabase
 
 from support.ledger import fresh_ledger
 
@@ -63,7 +65,10 @@ class PurgeMissingTests(unittest.TestCase):
             "VALUES('default',?,1,'','2026-01-01')", [(2,), (4,)])
         con.commit()
         con.close()
-        self.contract = rm_web.WebContract(Path(self.db_path))
+        self.contract = rm_web.WebContract(
+            Path(self.db_path),
+            database=LedgerDatabase(Path(self.db_path)),
+        )
         # 只有 001 和 a.mp4 还在盘上；002、003 当作已被手动删除。
         for path in (self.mount / "creator/P/001.jpg",
                      self.mount / "creator/V/a.mp4"):
@@ -549,6 +554,34 @@ class PurgeMissingTests(unittest.TestCase):
             rows = rm_sync.vanished_asset_rows(self.contract, "115")
         self.assertEqual([int(row["id"]) for row in rows], [2, 3])
 
+    def test_configured_scope_hides_missing_and_trashed_rows_from_resource_actions(self):
+        contract = rm_web.WebContract(
+            Path(self.db_path),
+            database=LedgerDatabase(
+                Path(self.db_path),
+                media_roots={"115": (self.LEDGER_DIR,)},
+            ),
+        )
+        with mock.patch.object(rm_sync, "translate_ledger_path", self._translate):
+            rows = rm_sync.vanished_asset_rows(contract, "115")
+        self.assertEqual([int(row["id"]) for row in rows], [2, 3])
+
+        with contract.write_transaction() as connection:
+            connection.execute("UPDATE asset SET disposal='trash' WHERE id=4")
+        result = web_batch.w_empty_trash(contract)
+        self.assertEqual(result["purged"], 0)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertEqual(
+                connection.execute("SELECT disposal FROM asset WHERE id=4").fetchone()[0],
+                "trash",
+            )
+        self.assertEqual(
+            rm_sync.w_purge_missing(contract, {"id": 4}),
+            {"error": "not found"},
+        )
+        with self.assertRaisesRegex(ValueError, "assets not found"):
+            web_batch.w_batch(contract, {"ids": [4], "operation": "restore"})
+
 
 class ResourceSyncCleanupTests(unittest.TestCase):
     """一次检查、一次执行：失效记录、空文件夹与孤儿缓存一起清。失效记录带个人记录的标已消失，
@@ -589,7 +622,10 @@ class ResourceSyncCleanupTests(unittest.TestCase):
              for asset_id, location, path, disposal in rows])
         con.commit()
         con.close()
-        self.contract = rm_web.WebContract(Path(self.db_path))
+        self.contract = rm_web.WebContract(
+            Path(self.db_path),
+            database=LedgerDatabase(Path(self.db_path)),
+        )
         posters = self.root / "posters"
         posters.mkdir()
         self.orphan_poster = posters / "2_1.jpg"

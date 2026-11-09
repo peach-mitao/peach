@@ -61,6 +61,8 @@
 
 安装后选择媒体目录，扫描后即可浏览与播放。桌面测试包未签名，macOS 尚未完成公证；详见 [Windows](docs/TESTING_DESKTOP.md) 与 [macOS](docs/OPERATIONS.md#macos-独立测试包) 说明。
 
+Peach 只显示和操作当前配置的媒体文件夹中的内容。从配置中移除文件夹后，它的旧账本记录会保留并隐藏。
+
 ## 文档
 
 [运行与配置](docs/OPERATIONS.md) · [来源支持](docs/SOURCING.md) · [外部播放器](docs/EXTERNAL_PLAYERS.md) · [诊断与数据分享](docs/DIAGNOSTICS.md) · [更新日志](CHANGELOG.md)

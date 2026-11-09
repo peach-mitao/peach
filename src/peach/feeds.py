@@ -21,6 +21,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from .catalog_rules import normalise_code_key, release_code_from_text
 from .entities import normalize_entity_name
+from .repository import media_scope_predicate
 
 #: JavDB 演员页当伪 Feed 抓。它按发行日排在前面，所以「还没发行的作品」会先出现。
 KIND_JAVDB_ACTOR = "javdb-actor"
@@ -501,7 +502,8 @@ def in_library(connection: sqlite3.Connection, code: str) -> bool:
         return False
     row = connection.execute(
         "SELECT 1 FROM asset WHERE code IS NOT NULL AND COALESCE(disposal,'')<>'vanished' "
-        "AND normalise_code_key(code)=? LIMIT 1",
+        "AND normalise_code_key(code)=? AND "
+        + media_scope_predicate(connection, "asset") + " LIMIT 1",
         (key,)).fetchone()
     return row is not None
 

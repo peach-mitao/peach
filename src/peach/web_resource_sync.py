@@ -35,6 +35,7 @@ from .media_sources import SCANNABLE_LOCATIONS
 from .personal_records import VANISHED, mark_vanished, record_holders
 from .platform import is_unmapped, root_online, translate_ledger_path, within_root
 from .record_rehome import reattach_vanished
+from .repository import media_scope_predicate
 
 #: 「同步删除」回执里，记录已接到另一个版本、旧行已删的那一条。
 REATTACHED = "reattached"
@@ -61,9 +62,9 @@ class ResourceSyncContract(Protocol):
     def write_transaction(self): ...
 
 
-def source_is_online(location: str) -> bool:
+def source_is_online(location: str, roots: Sequence[str] | None = None) -> bool:
     """这个来源整体在不在线。对账前的唯一闸门。"""
-    declared = LOCATION_ROOT_DECLARATIONS.get(location)
+    declared = tuple(roots) if roots is not None else LOCATION_ROOT_DECLARATIONS.get(location)
     if not declared:
         return False
     # 几个根都在才算在线：少一块盘就对账，那块盘上的文件会被整批判成丢失。
@@ -179,7 +180,8 @@ def vanished_asset_rows(
     with contract.read_connection() as connection:
         rows = connection.execute(
             "SELECT id,path,snapshot_path,disposal FROM asset "
-            "WHERE path IS NOT NULL AND location=? AND COALESCE(disposal,'')<>? ORDER BY id",
+            "WHERE path IS NOT NULL AND location=? AND COALESCE(disposal,'')<>? "
+            f"AND {media_scope_predicate(connection, 'asset')} ORDER BY id",
             (location, VANISHED),
         ).fetchall()
     missing, _unreadable = _missing_resource_ids(rows, unreadable_dirs)
@@ -220,8 +222,23 @@ def _confirm_vanished(rows: Sequence) -> list:
     return [row for row, here in zip(rows, verdicts) if not here]
 
 
-def _source_roots(location: str) -> list[Path]:
-    return [translate_ledger_path(root) for root in LOCATION_ROOT_DECLARATIONS.get(location, ())]
+def _scoped_source_roots(contract: ResourceSyncContract, location: str) -> tuple[str, ...] | None:
+    database = getattr(contract, "database", None)
+    configured = getattr(database, "media_roots_for", None)
+    return configured(location) if configured is not None else None
+
+
+def _source_roots(contract: ResourceSyncContract, location: str) -> list[Path]:
+    declared = _scoped_source_roots(contract, location)
+    if declared is None:
+        declared = LOCATION_ROOT_DECLARATIONS.get(location, ())
+    return [translate_ledger_path(root) for root in declared]
+
+
+def _source_is_online(contract: ResourceSyncContract, location: str) -> bool:
+    declared = _scoped_source_roots(contract, location)
+    return (source_is_online(location) if declared is None
+            else source_is_online(location, declared))
 
 
 def _hollow_directory(path: Path) -> bool:
@@ -286,7 +303,9 @@ def _scan_sources(
     with contract.read_connection() as connection:
         totals = {row[0]: int(row[1]) for row in connection.execute(
             "SELECT location,count(*) FROM asset WHERE path IS NOT NULL "
-            "AND COALESCE(disposal,'')<>? GROUP BY location", (VANISHED,))}
+            "AND COALESCE(disposal,'')<>? "
+            f"AND {media_scope_predicate(connection, 'asset')} GROUP BY location",
+            (VANISHED,))}
     previous = (resume_state or {}).get('scan_checkpoint') or {}
     parts = dict(previous.get('parts') or {})
     sources = [part['source'] for part in parts.values()]
@@ -294,14 +313,14 @@ def _scan_sources(
     for location in configured_resource_locations():
         if location in completed:
             continue
-        online = source_is_online(location)
+        online = _source_is_online(contract, location)
         source = {"location": location, "online": online, "total": totals.get(location, 0),
                   "missing": 0, "vanish": 0, "empty": 0, "unreadable": 0}
         part = dict(source=source, vanished_ids=[], keep_ids=[], empty_dirs=[])
         if online:
             unreadable: set[str] = set()
             gone = vanished_asset_rows(contract, location, unreadable_dirs=unreadable)
-            empties = _empty_directories(_source_roots(location), unreadable)
+            empties = _empty_directories(_source_roots(contract, location), unreadable)
             part['vanished_ids'] = [int(row['id']) for row in gone]
             keep = _keeps_records(contract, gone)
             part['keep_ids'] = sorted(keep)
@@ -679,7 +698,8 @@ def _rows_by_id(contract: ResourceSyncContract, asset_ids: Sequence[int]) -> lis
             marks = ",".join("?" for _item in batch)
             rows.extend(connection.execute(
                 "SELECT id,location,path,snapshot_path,disposal FROM asset "
-                f"WHERE id IN ({marks}) AND path IS NOT NULL", batch,
+                f"WHERE id IN ({marks}) AND path IS NOT NULL "
+                f"AND {media_scope_predicate(connection, 'asset')}", batch,
             ).fetchall())
     return rows
 
@@ -693,10 +713,10 @@ def _recheck_vanished(contract: ResourceSyncContract, asset_ids: Sequence[int]) 
     if not asset_ids:
         return []
     locations = configured_resource_locations()
-    online = {location for location in locations if source_is_online(location)}
+    online = {location for location in locations if _source_is_online(contract, location)}
     rows = [row for row in _rows_by_id(contract, asset_ids) if row["location"] in online]
     confirmed = _confirm_vanished(rows)
-    still_online = {location for location in online if source_is_online(location)}
+    still_online = {location for location in online if _source_is_online(contract, location)}
     return [row for row in confirmed if row["location"] in still_online]
 
 
@@ -802,10 +822,11 @@ def w_resource_sync_apply(contract: ResourceSyncContract, body, *, progress=None
     report(checked=0, total=None, message="正在删除空文件夹")
     dirs_removed, dir_errors = 0, 0
     for location, paths in state["empty_dirs"].items():
-        if location not in configured_resource_locations() or not source_is_online(location):
+        if (location not in configured_resource_locations()
+                or not _source_is_online(contract, location)):
             continue
         removed, errors = _remove_empty_directories([Path(path) for path in paths],
-                                                    _source_roots(location))
+                                                    _source_roots(contract, location))
         dirs_removed += removed
         dir_errors += errors
     contract.cache_bust()
@@ -852,20 +873,22 @@ def w_purge_missing(contract: ResourceSyncContract, body):
     asset_id = int(body["id"])
     with contract.read_connection() as connection:
         anchor = connection.execute(
-            "SELECT id,location,path,name FROM asset WHERE id=?", (asset_id,),
+            "SELECT id,location,path,name FROM asset WHERE id=? "
+            f"AND {media_scope_predicate(connection, 'asset')}", (asset_id,),
         ).fetchone()
         if not anchor:
             return {"error": "not found"}
         location, path, name = anchor["location"], anchor["path"], anchor["name"]
         if not path or not name:
             return {"error": "asset has no path"}
-        if not source_is_online(location):
+        if not _source_is_online(contract, location):
             # 不是失败，是拒绝：盘不在时无法区分「文件删了」和「盘没挂上」。
             return {"ok": False, "error": "source offline", "location": location}
         directory = path[: len(path) - len(name) - 1]
         rows = connection.execute(
             f"SELECT id,path,name FROM asset WHERE location=? "
-            f"AND {dir_expr('')}=? AND disposal IS NULL",
+            f"AND {dir_expr('')}=? AND disposal IS NULL "
+            f"AND {media_scope_predicate(connection, 'asset')}",
             (location, directory),
         ).fetchall()
 

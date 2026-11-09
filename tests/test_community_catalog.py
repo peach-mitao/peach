@@ -253,7 +253,8 @@ class CommunityCatalogTests(unittest.TestCase):
         expected = {
             "id": "ABW-358", "source_url": JAVBUS_WORK, "title": TITLE, "actresses": [{"japanese_name": "涼森れむ"}],
             "maker": "プレステージ", "label": "ABSOLUTELY WONDERFUL", "series": "", "director": "",
-            "release_date": "2023-05-26", "runtime": 210, "cover_urls": [JAVBUS_COVER], "cover_url": JAVBUS_COVER}
+            "release_date": "2023-05-26", "runtime": 210, "genres": [],
+            "cover_urls": [JAVBUS_COVER], "cover_url": JAVBUS_COVER}
         self.assertEqual(work(JavBusSource(), {JAVBUS_WORK: JAVBUS_PAGE}, "ABW-358"), expected)
         record = JavBusSource().parse(Page(JAVBUS_WORK, JAVBUS_PAGE), "ABW-358")
         self.assertEqual((record.source, record.provenance, record.code), ("javbus", "javbus-page", "ABW-358"))

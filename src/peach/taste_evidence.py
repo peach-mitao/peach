@@ -10,6 +10,7 @@ import ahocorasick
 
 from .catalog_rules import LENGTH_TAGS, TECH_TAGS
 from .entities import male_performer_ids, normalize_entity_name
+from .repository import media_scope_predicate
 from .taste_sites import account_key, host, identity_context, linked_identities, mixed_adult, MIXED_DOMAINS
 
 KINDS = ("performer", "creator", "tag", "studio", "series")
@@ -82,6 +83,8 @@ def collection_evidence(connection, index, counters):
     fields = [name for name in ("id", "creator", "studio", "duration", "release_date", "play_seconds", "play_count",
               "o_count", "rating", "feedback", "last_played") if name in columns]
     condition = "a.disposal IS NULL" if "disposal" in columns else "1=1"
+    if {"location", "path"} <= columns:
+        condition += " AND " + media_scope_predicate(connection, "a")
     rows = {row["id"]: dict(row) for row in connection.execute(
         "SELECT " + ",".join("a." + field for field in fields) + ",COALESCE(p.liked,0) liked "
         "FROM asset a LEFT JOIN asset_preference p ON p.asset_id=a.id AND p.profile_id='local-default' WHERE " + condition)}

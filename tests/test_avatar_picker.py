@@ -16,11 +16,19 @@ from unittest import mock
 
 from PIL import Image, ImageDraw
 
-from peach import avatar_online, avatar_picker, gfriends, http as peach_http, jav_poster_crop
+from peach import (
+    avatar_cover_face,
+    avatar_online,
+    avatar_picker,
+    gfriends,
+    http as peach_http,
+    jav_poster_crop,
+)
 from peach.avatar_face import sidecar_path
 from peach.avatar_provider import AvatarCandidateCache, inspect_avatar, provenance_now
 from peach.http import HttpResponse
 from peach.jav_poster_crop import MANUAL
+from peach.repository import LedgerDatabase
 
 from support.ledger import fresh_ledger
 
@@ -743,6 +751,34 @@ class AssetArtworkTests(PickerFixture):
         frame, _ = avatar_picker.resolve("asset:11:cell4", self.connection,
                                          self.providers, 7792, None, self.artwork)
         self.assertEqual(frame, self.cell.read_bytes())
+
+    def test_artwork_outside_the_configured_roots_is_not_listed_or_resolved(self):
+        self.add_asset(11, "ABW-232")
+        self.add_asset(12, "ABW-233", file="outside.mp4")
+        (self.covers / "ABW-233.jpg").write_bytes(picture(300, 200, "black"))
+        with self.connection:
+            self.connection.execute(
+                "UPDATE asset SET path=? WHERE id=12",
+                ("X:\\hidden\\ABW-233.mp4",),
+            )
+
+        ledger = LedgerDatabase(
+            Path(self.database),
+            media_roots={"R:": ("R:\\media",)},
+        )
+        with ledger.read_connection() as connection:
+            choices = avatar_picker.asset_artwork(connection, self.covers, 7792)
+            self.assertEqual([choice.ref for choice in choices], ["asset:11:cover"])
+            self.assertEqual(
+                [asset_id for asset_id, _code, _snapshot in
+                 avatar_cover_face.single_works(connection, 7792)],
+                [11],
+            )
+            with self.assertRaisesRegex(avatar_picker.PickerError, "不在这个人名下"):
+                avatar_picker.resolve(
+                    "asset:12:cover", connection, self.providers, 7792,
+                    transport_of(b""), artwork=self.artwork,
+                )
 
     def test_a_box_drawn_on_a_cover_that_was_since_replaced_is_refused(self):
         """补高清会原地换掉封面：旧图上框的那组坐标落在新图上是另一块地方。"""

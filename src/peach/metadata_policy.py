@@ -13,7 +13,8 @@ from typing import Iterable, Mapping
 
 POLICY_VERSION = "metadata-source-policy-v6"
 PEACH_FIELDS = (
-    "title", "original_title", "performers", "studio", "series", "release_date", "tags",
+    "title", "original_title", "description", "performers", "studio", "series",
+    "release_date", "tags",
 )
 
 
@@ -199,6 +200,11 @@ FIELD_SOURCE_ORDER = {
         "javbus", "javstash", "jav321", "dlgetchu",
     ),
     "original_title": (
+        *MAKER_SOURCES, "dmm", "libredmm", "r18dev", "mgstage", "aventertainment",
+        "caribbeancom", "1pondo", "tokyohot", "fc2", "javdb", "javlibrary",
+        "javbus", "javstash", "jav321", "dlgetchu",
+    ),
+    "description": (
         *MAKER_SOURCES, "dmm", "libredmm", "r18dev", "mgstage", "aventertainment",
         "caribbeancom", "1pondo", "tokyohot", "fc2", "javdb", "javlibrary",
         "javbus", "javstash", "jav321", "dlgetchu",

@@ -128,7 +128,8 @@ class CapacityHistoryTests(unittest.TestCase):
             network.assert_not_called()
         self.assertEqual(capacity_history.project(self.config)['windows']['7d']['active_days'], 1)
         capacity_history._path(self.config).unlink()
-        web_activity.w_play(contract, {'id': 999})
+        with self.assertRaisesRegex(ValueError, 'asset not found'):
+            web_activity.w_play(contract, {'id': 999})
         self.assertFalse(capacity_history._path(self.config).exists())
         with mock.patch.object(web_follow, '_store', return_value=SimpleNamespace(record_playback=lambda _item: 'seen')):
             self.assertEqual(web_follow.w_follow_play(contract, {'item': 1})['status'], 'seen')

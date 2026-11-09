@@ -58,6 +58,7 @@ from . import avwikidb, entry_links, javdb, minnano_av
 from . import performer_alias_followup as alias
 from .followups import Attempts, Followup, FollowupType, attempts_root, register
 from .performer_profiles import fetched_at as profile_fetched_at, read_profile, write_profile
+from .repository import media_scope_predicate
 from .scripting import HostLimiter
 from .sources import avbase
 
@@ -118,7 +119,8 @@ def work_codes(connection: sqlite3.Connection, entity_id: int) -> list[str]:
         " AND x.role='performer') AS cast_size"
         " FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id"
         " WHERE ae.entity_id=? AND ae.role='performer' AND a.code IS NOT NULL AND a.code<>''"
-        " AND a.code NOT LIKE 'FC2%' GROUP BY a.code ORDER BY cast_size, a.code LIMIT ?",
+        " AND a.code NOT LIKE 'FC2%' AND " + media_scope_predicate(connection, "a") +
+        " GROUP BY a.code ORDER BY cast_size, a.code LIMIT ?",
         (int(entity_id), MAX_WORKS))]
 
 
@@ -149,7 +151,9 @@ def plan(connection: sqlite3.Connection, *, since_entity_id: int) -> list[Follow
     """这一轮新登记、又有路进得去的女优，一人一条，作品多的在前。"""
     rows = connection.execute(
         "SELECT e.id,e.canonical_name,"
-        " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae WHERE ae.entity_id=e.id)"
+        " (SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+        " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=e.id AND "
+        + media_scope_predicate(connection, "a") + ")"
         " FROM entity e WHERE e.id>? AND e.kind='performer' ORDER BY e.id",
         (int(since_entity_id),)).fetchall()
     found = sorted(((int(row[2] or 0), int(row[0]), str(row[1] or "")) for row in rows
@@ -170,7 +174,9 @@ def stock(connection: sqlite3.Connection, attempts, *, limit: int, skip=()) -> l
     for row in connection.execute(
             "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) AS assets"
             " FROM entity e JOIN asset_entity ae ON ae.entity_id=e.id"
-            " WHERE e.kind='performer' GROUP BY e.id ORDER BY assets DESC, e.id"):
+            " JOIN asset a ON a.id=ae.asset_id"
+            " WHERE e.kind='performer' AND " + media_scope_predicate(connection, "a") +
+            " GROUP BY e.id ORDER BY assets DESC, e.id"):
         entity_id, key = int(row[0]), followup_key(int(row[0]))
         if key in skip or not has_entry(connection, entity_id):
             continue

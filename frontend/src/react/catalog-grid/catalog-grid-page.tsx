@@ -23,6 +23,7 @@ import { LOAD_MORE_MARGIN, RetryNote } from '../components/grid-reveal';
 import { SkeletonContent } from '../components/skeleton-content';
 import { cardRatio, MediaCard, type MediaCardVariant } from '../components/media-card';
 import { MIX_FLIP_FACES, MixCard } from '../components/mix-card';
+import { useMasonryGrid } from '../components/use-masonry-grid';
 import {
   SHORTS_BATCH, arrangeTiles, catalogParams, catalogQuery, catalogSummary, collapseGroups, entityQuery, latestCatalogPages, mixHasPicture,
   replaceCatalogItem, shortsBoundaries, shortsParams, splitSections, type GridPage, type ShortsCut, type Tile,
@@ -51,9 +52,11 @@ function Icon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>;
 }
 
-/** 元信息按实际网格列数选择固定或自然高度。 */
-function MediaGrid({ children, selectMode }: { children: ReactNode; selectMode?: boolean }) {
-  const grid = useRef<HTMLDivElement>(null);
+/** 元信息按实际网格列数选择固定或自然高度；大图按卡片高度分列，小图逐行固定排列。 */
+function MediaGrid({ children, enabled = true, fixed = false, revision = '', selectMode }: {
+  children: ReactNode; enabled?: boolean; fixed?: boolean; revision?: string; selectMode?: boolean;
+}) {
+  const grid = useMasonryGrid(enabled, revision);
   const [single, setSingle] = useState(false);
   useLayoutEffect(() => {
     const node = grid.current;
@@ -63,7 +66,8 @@ function MediaGrid({ children, selectMode }: { children: ReactNode; selectMode?:
     observer.observe(node);measure();
     return () => observer.disconnect();
   }, []);
-  return <div ref={grid} data-media-grid="" data-catalog-view-mode="cards" data-single-column={single ? '' : undefined}
+  return <div ref={grid} data-media-grid="" data-media-grid-fixed={fixed ? '' : undefined}
+    data-catalog-view-mode="cards" data-single-column={single ? '' : undefined}
     data-select-mode={selectMode ? '' : undefined}>{children}</div>;
 }
 
@@ -78,7 +82,18 @@ function ItemsGrid(props: CatalogGridProps) {
       helpers={props.helpers} actions={actions} onOpen={onOpen} />
   ));
   if (variant === 'next') return <div data-media-next-row="">{cards}</div>;
-  return <MediaGrid selectMode={props.selectMode}>{cards}</MediaGrid>;
+  const masonry = props.layout.active && props.layout.size === 'big';
+  return <MediaGrid enabled={masonry} fixed={!masonry}
+    revision={(props.items || []).map((item) => item.id).join(',')}
+    selectMode={props.selectMode}>{cards}</MediaGrid>;
+}
+
+/** 大图按原始高度分列；小图与回收站的有边资源卡用逐行固定网格。 */
+function CardGrid({ children, enabled, revision, selectMode }: {
+  children: ReactNode; enabled: boolean; revision: string; selectMode: boolean;
+}) {
+  return <MediaGrid enabled={enabled} fixed={!enabled} revision={revision}
+    selectMode={selectMode}>{children}</MediaGrid>;
 }
 
 const readCovered = () => isOverlayPath(peachHistory.navigation.location.pathname);
@@ -241,7 +256,11 @@ function GridBody(props: CatalogGridProps) {
         <div data-media-sections="" data-select-mode={props.selectMode ? '' : undefined}>
           {splitSections(tiles, cuts).map((section) => (
             <Fragment key={section.start}>
-              <MediaGrid>{section.tiles.map(card)}</MediaGrid>
+              <CardGrid enabled={!trash && layout.active && layout.size === 'big'} selectMode={props.selectMode}
+                revision={section.tiles.map((tile) => tile.kind === 'mix'
+                  ? `m${tile.seed.id}` : `i${tile.item.id}`).join(',')}>
+                {section.tiles.map(card)}
+              </CardGrid>
               {section.strip ? <ShortsStrip cut={section.strip} props={props} onOpen={openShort} /> : null}
             </Fragment>
           ))}

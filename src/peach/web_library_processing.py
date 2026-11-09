@@ -9,6 +9,7 @@ from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
                                 METADATA_STAGE, PREVIEWS_STAGE, _asset_selection,
                                 decorate, issues_path, process_library, snapshot)
 from .processing_control import control_for, initial_estimate, valid_mode, mode_ratio
+from .repository import LedgerDatabase, media_scope_predicate
 
 ACTIVE = ('running', 'pausing', 'paused', 'stopping')
 LOGGER = logging.getLogger(__name__)
@@ -32,6 +33,49 @@ PUBLIC_FIELDS = frozenset({
 def public_state(state):
     """任务状态的页面投影：只留 `PUBLIC_FIELDS`。"""
     return {key: value for key, value in state.items() if key in PUBLIC_FIELDS}
+
+
+def _visible_asset_ids(contract, values) -> set[int]:
+    ids = sorted({int(value) for value in (values or ())
+                  if isinstance(value, int) and value > 0})
+    database = getattr(contract, "database", None)
+    if not isinstance(database, LedgerDatabase):
+        return set(ids)
+    visible: set[int] = set()
+    with database.read_connection() as connection:
+        for offset in range(0, len(ids), 400):
+            batch = ids[offset:offset + 400]
+            marks = ','.join('?' * len(batch))
+            visible.update(int(row[0]) for row in connection.execute(
+                f"SELECT id FROM asset WHERE id IN ({marks}) AND "
+                + media_scope_predicate(connection, "asset"),
+                batch,
+            ))
+    return visible
+
+
+def _scope_issue_rows(contract, rows: list[dict]) -> list[dict]:
+    asset_ids = [row.get('asset_id') for row in rows
+                 if isinstance(row.get('asset_id'), int)]
+    visible = _visible_asset_ids(contract, asset_ids)
+    return [row for row in rows
+            if row.get('asset_id') is None or int(row['asset_id']) in visible]
+
+
+def _scope_processing_state(contract, state):
+    retryable = state.get('retryable_asset_ids') or []
+    visible_retryable = _visible_asset_ids(contract, retryable)
+    if retryable:
+        state['retryable_asset_ids'] = [
+            value for value in retryable if int(value) in visible_retryable]
+    preview = state.get('issue_preview')
+    if preview:
+        state['issue_preview'] = _scope_issue_rows(contract, preview)
+    selected = state.get('asset_ids')
+    if selected:
+        visible_selected = _visible_asset_ids(contract, selected)
+        state['asset_ids'] = [
+            value for value in selected if int(value) in visible_selected]
 
 
 def _current(contract):
@@ -125,6 +169,7 @@ def q_library_processing(contract, _args):
             status = control_state['state']
             state['status'] = 'stopping' if status == 'cancelling' else status
     state = decorate(state)
+    _scope_processing_state(contract, state)
     control = control_for(settings_file.active())
     control.refresh(force=True)
     _project_speed(contract, state, run, control)
@@ -301,6 +346,7 @@ def q_library_processing_issues(contract, args):
     revision = hashlib.sha256(raw.encode()).hexdigest()
     if args.get('revision') and args['revision'] != revision:
         raise ValueError('问题记录已变化，请重新导出')
+    rows = _scope_issue_rows(contract, rows)
     offset = max(0, int(args.get('offset') or 0))
     limit = max(1, min(200, int(args.get('limit') or 50)))
     return {'job_id': job_id, 'revision':revision, 'total': len(rows), 'offset': offset,
@@ -376,6 +422,19 @@ def _processing_request(contract, config, previous, body):
     asset_ids = _asset_selection(contract.db_path, (body or {}).get('asset_ids'))
     if asset_ids is not None and retry_ids is not None:
         raise ValueError('选择项目与失败重试不能同时使用')
+    selected = asset_ids if asset_ids is not None else retry_ids
+    if selected:
+        marks = ','.join('?' * len(selected))
+        with contract.database.read_connection() as connection:
+            visible = {
+                int(row[0]) for row in connection.execute(
+                    f"SELECT id FROM asset WHERE id IN ({marks}) AND "
+                    + media_scope_predicate(connection, "asset"),
+                    selected,
+                )
+            }
+        if visible != set(selected):
+            raise ValueError('所选视频不在当前媒体文件夹中，请刷新后重试')
     stage = str((body or {}).get('stage') or
                 (previous.get('requested_stage') if retry_ids is not None else None) or ALL_STAGES)
     if stage not in STAGES:
@@ -522,7 +581,7 @@ def w_library_processing(contract, body, *, resume=False):
                                     'library_id': library_id, 'library_name': library_name,
                                     **({'allow_metered': True} if allow_metered else {}),
                                     **initial_estimate(config, contract.db_path, stage, estimate_ids, mode,
-                                                       allow_metered=allow_metered)},
+                                                       allow_metered=allow_metered, database=contract.database)},
         recovery={'stage': stage, 'speed_mode': mode, 'incremental': incremental, 'library_id': library_id,
                   **({'allow_metered': True} if allow_metered else {}),
                   **({'asset_ids': asset_ids or retry_ids}

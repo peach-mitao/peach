@@ -154,7 +154,7 @@ AMANE_STAGE = ("fc2club", "freejavbt", "airav", "avsox")
 #: 也出自它，且它的厂牌页只挂最新约 1100 件，不进链，仍可由 `scrape_codes --sources` 点名。
 WIKI_STAGE = ("sougouwiki", "av_neme")
 
-#: 必填标量字段。一档把这几项（在这一行还缺的范围内）都给全了就不问下一档。
+#: 必填标量字段。一档把这一行还缺的这几项都给全了就不问下一档。
 SCALAR_FIELDS = ("title", "performers", "studio", "release_date")
 #: 列表字段：一档给了也不算「够了」，因为多一家就多一批标签与一个图源。
 LIST_FIELDS = ("tags", "cover_url")

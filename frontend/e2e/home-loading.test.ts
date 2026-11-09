@@ -75,8 +75,8 @@ describe('首页加载结构',()=>{
      });
      assert.equal(colors.actual,colors.expected,'骨架圆角底色与占位层一致');
     }
-    assert.equal(await page.evaluate(()=>(window as any).__catalogSkeletons),1,'目录骨架只展示一轮');
-    assert.deepEqual(await page.evaluate(()=>(window as any).__catalogRatios),[hasFeed?3/4:16/9]);
+    assert.equal(await page.evaluate(()=>(window as any).__catalogSkeletons),1,'目录骨架只能创建一次');
+    assert.deepEqual(await page.evaluate(()=>(window as any).__catalogRatios),[3/4]);
     release();
     if(hasFeed)await page.locator('#feedNew [data-feed-id]').first().waitFor({state:'visible'});
     await page.waitForTimeout(1400);

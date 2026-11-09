@@ -32,7 +32,7 @@ from dataclasses import dataclass
 #: 逻辑名就是列名，别处不得另立一套映射——两套名字迟早对不上，而对不上的表现是
 #: 归属写在一个谁也不会去读的键上。
 OWNED_FIELDS: tuple[str, ...] = (
-    "catalog_title", "original_title", "release_date", "studio", "series",
+    "catalog_title", "original_title", "description", "release_date", "studio", "series",
     "creator", "code", "region",
 )
 

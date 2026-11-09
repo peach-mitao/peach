@@ -33,7 +33,7 @@ from .platform import is_unmapped, root_online, translate_ledger_path, within_ro
 from .regions import normalize_region
 from .task_runs import TaskRunHandle
 from .web_activity import DEFAULT_PROFILE_ID
-from .web_catalog import attach_card_performers
+from .web_catalog import attach_card_performers, configured_media_scope_sql
 from .media_sources import cost_for
 from .web_resource_sync import _managed_cache_root, clean_purged_caches
 from .web_state import WebContract
@@ -148,7 +148,8 @@ def q_ads(contract: WebContract, limit=200, offset=0, kind="", status="pending")
 
 def _scored_junk(contract: WebContract) -> tuple[list[dict], frozenset[int]]:
     """领域评分加上页面需要的成本与缩略图状态，路径留在服务内部。"""
-    out, dismissed = junk.scored_candidates(contract)
+    out, dismissed = junk.scored_candidates(
+        contract, roots=contract.database.media_roots)
     for item in out:
         item["cost"] = cost_for(item['location'], item.get('path'))
         item["has_thumb"] = contract.has_snapshot(item.pop("snapshot_path", None))
@@ -263,10 +264,21 @@ def _quarantine_media(original: Path, *, location: str | None = None) -> Path:
         raise
 
 
-def _online_source_roots() -> dict[str, tuple[Path, ...]]:
+def _online_source_roots(contract: WebContract | None = None) -> dict[str, tuple[Path, ...]]:
     """Return only declared physical roots that can be enumerated now, per source."""
     roots: dict[str, tuple[Path, ...]] = {}
-    for location, declarations in LOCATION_ROOT_DECLARATIONS.items():
+    database = getattr(contract, "database", None)
+    scoped = getattr(database, "media_roots", None)
+    configured = getattr(database, "media_roots_for", None)
+    if scoped is None or configured is None:
+        declarations_by_location = LOCATION_ROOT_DECLARATIONS
+    else:
+        declarations_by_location = {
+            location: tuple(root for item_location, root in scoped
+                            if item_location == location)
+            for location in {item_location for item_location, _root in scoped}
+        }
+    for location, declarations in declarations_by_location.items():
         online = []
         for declaration in declarations:
             from .smb_media import resolve
@@ -339,7 +351,6 @@ def _purge_outside_lock(contract: WebContract, rows, *, missing_only: bool = Fal
         raise
     return outcome
 
-
 def _purge_receipt(contract: WebContract, outcome: dict, **fields) -> dict:
     """删完之后的回执：清隔离件、放回复核没过的、只清这几部的派生产物。"""
     purged = outcome.get("_codes", [])
@@ -348,7 +359,7 @@ def _purge_receipt(contract: WebContract, outcome: dict, **fields) -> dict:
     return result
 
 
-def _finish_purge(outcome, contract=None):
+def _finish_purge(outcome, contract: WebContract | None = None):
     """Delete committed quarantine files; report any residue for explicit cleanup.
 
     同时撤下钉着这些资产的资料候选（#486）。撤不成不影响删除结果：复核页按路径改挂或剔掉
@@ -385,7 +396,7 @@ def _finish_purge(outcome, contract=None):
             snapshot.unlink(missing_ok=True)
         except OSError:
             pass
-    source_roots = tuple(root for roots in _online_source_roots().values() for root in roots)
+    source_roots = tuple(root for roots in _online_source_roots(contract).values() for root in roots)
     removed_directories: set[Path] = set()
     for parent in outcome.pop("_parents"):
         removed_directories.update(_remove_empty_ancestors(parent, source_roots))
@@ -565,7 +576,8 @@ def w_empty_trash(contract: WebContract):
     contract.cache_bust()
     with contract.read_connection() as connection:
         rows = connection.execute(
-            "SELECT id,location,path,snapshot_path FROM asset WHERE disposal='trash'",
+            "SELECT id,location,path,snapshot_path FROM asset WHERE disposal='trash' AND "
+            + configured_media_scope_sql("asset"),
         ).fetchall()
     # 这期间被还原出回收站的，事务里复核时留下，文件放回原处。
     outcome = _purge_outside_lock(contract, rows, eligible=lambda row: row["disposal"] == "trash")
@@ -692,7 +704,9 @@ def w_batch(contract: WebContract, body):
                 else:
                     with contract.write_transaction() as connection:
                         found = connection.execute(
-                            f"SELECT id,path,snapshot_path,disposal,disposal_reason,location FROM asset WHERE id IN ({marks})", ids,
+                            "SELECT id,path,snapshot_path,disposal,disposal_reason,location "
+                            f"FROM asset WHERE id IN ({marks}) AND "
+                            + configured_media_scope_sql("asset"), ids,
                         ).fetchall()
                         valid_ids = [row["id"] for row in found]
                         if not valid_ids:
@@ -744,7 +758,9 @@ def _batch_purge(contract: WebContract, ids: list[int]):
     marks = ",".join("?" * len(ids))
     with contract.read_connection() as connection:
         found = connection.execute(
-            f"SELECT id,path,snapshot_path,disposal,disposal_reason,location FROM asset WHERE id IN ({marks})", ids,
+            "SELECT id,path,snapshot_path,disposal,disposal_reason,location "
+            f"FROM asset WHERE id IN ({marks}) AND "
+            + configured_media_scope_sql("asset"), ids,
         ).fetchall()
     valid_ids = [row["id"] for row in found]
     if not valid_ids:
@@ -843,7 +859,8 @@ def _duplicate_listing(contract: WebContract) -> tuple[list[dict], int]:
         rows = connection.execute(
             "SELECT id,code,location,path,name,size,duration,hash,disposal "
             "FROM asset WHERE medium='video' AND code IS NOT NULL AND code<>'' "
-            "AND disposal IS NULL"
+            "AND disposal IS NULL AND "
+            + configured_media_scope_sql("asset")
         ).fetchall()
         kept = {row[0] for row in connection.execute(
             "SELECT item_key FROM review_decision WHERE category=? AND status='rejected'",

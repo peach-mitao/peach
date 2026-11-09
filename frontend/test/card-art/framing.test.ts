@@ -141,6 +141,11 @@ describe('coverAnchor：封面按自己的宽高比分流', () => {
     img.dataset.coverLayout = 'still';
     coverAnchor(img);
     expect(img.dataset.frame).toBe('still');
+    expect(img.hasAttribute('data-natural-card')).toBe(true);
+    expect(img.style.objectFit).toBe('contain');
+    expect(img.style.objectPosition).toBe('50% 50%');
+    expect(img.parentElement!.style.getPropertyValue('--card-ratio')).toBe('');
+    expect(img.parentElement!.style.getPropertyValue('--image-card-ratio')).toBe(String(2184 / 1638));
     expect(img.classList.contains('panel')).toBe(false);
     expect(img.style.getPropertyValue('--panel-clip')).toBe('');
     expect(img.style.getPropertyValue('--cover-x')).toBe('63%');
@@ -156,10 +161,29 @@ describe('coverAnchor：封面按自己的宽高比分流', () => {
     const fc2 = cover('https://covers.example/fc2.jpg', 800, 438, 'data-cover-code="FC2-PPV-1" data-wide-sleeve="1"');
     coverAnchor(fc2);
     expect(fc2.dataset.frame).toBe('still');
+    expect(fc2.hasAttribute('data-natural-card')).toBe(true);
+    expect(fc2.style.objectFit).toBe('contain');
+    expect(fc2.parentElement!.style.getPropertyValue('--card-ratio')).toBe('');
+    expect(fc2.parentElement!.style.getPropertyValue('--image-card-ratio')).toBe(String(800 / 438));
     expect(fc2.classList.contains('panel')).toBe(false);
     const dvd = cover('/cover?code=MIDA-159', 800, 538, 'data-wide-sleeve="1"');
     coverAnchor(dvd);
     expect(dvd.style.getPropertyValue('--panel-height')).toBe('100%');
+  });
+
+  it('横版画面换成竖版后撤掉完整居中', () => {
+    const img = cover('/cover?code=TEST-001', 1600, 900, 'data-cover-layout="still"');
+    coverAnchor(img);
+    expect(img.parentElement!.style.getPropertyValue('--card-ratio')).toBe('');
+    expect(img.parentElement!.style.getPropertyValue('--image-card-ratio')).toBe(String(1600 / 900));
+    sized(img, 700, 1000);
+    img.dataset.coverLayout = 'front';
+    coverAnchor(img);
+    expect(img.dataset.frame).toBe('front');
+    expect(img.hasAttribute('data-natural-card')).toBe(false);
+    expect(img.style.objectFit).toBe('');
+    expect(img.style.objectPosition).toBe('');
+    expect(img.parentElement!.style.getPropertyValue('--image-card-ratio')).toBe('');
   });
 
   it('框描述的是另一张图时一个字都不写；等比缩小的派生档照用', () => {

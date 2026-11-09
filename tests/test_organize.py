@@ -13,6 +13,7 @@ from peach import organize
 from peach.organize_templates import (
     TemplateError, render, sanitise_component, validate_template, clean_filename,
 )
+from peach.repository import LedgerDatabase
 from support.ledger import fresh_ledger
 
 ROOT_DECLARATION = "R:\\media"
@@ -467,6 +468,51 @@ class ApplyTests(unittest.TestCase):
         result = self._apply(plan)
         self.assertEqual(result["failures"][0]["reason"], organize.SKIP_CROSS_VOLUME)
         self.assertTrue((self.media / "旧" / "abc123.mp4").is_file())
+
+    def test_scope_blocks_stale_plan_and_rollback_rows(self):
+        self._file("旧/visible.mp4")
+        self._file("旧/hidden.mp4")
+        _seed(self.db_path, [
+            {"id": 1, "path": "R:\\media\\旧\\visible.mp4", "name": "visible.mp4"},
+            {"id": 2, "path": "F:\\old\\hidden.mp4", "name": "hidden.mp4"},
+        ])
+        database = LedgerDatabase(
+            self.db_path, media_roots={"local": (ROOT_DECLARATION,)})
+        plan = {"rows": [
+            {"asset_id": 1, "action": "rename",
+             "current_path": "R:\\media\\旧\\visible.mp4",
+             "target_path": "R:\\media\\旧\\visible-new.mp4"},
+            {"asset_id": 2, "action": "rename",
+             "current_path": "F:\\old\\hidden.mp4",
+             "target_path": "F:\\old\\hidden-new.mp4"},
+        ]}
+        with closing(database.connect(write=True)) as connection:
+            result = organize.apply_plan(
+                connection, plan["rows"], generated_root=self.holder, stamp="stale")
+        self.assertEqual((result["moved"], result["failed"]), (1, 1))
+        self.assertEqual(
+            result["failures"][0]["reason"], organize.SKIP_OUTSIDE_MEDIA_SCOPE)
+        self.assertTrue((self.media / "旧" / "visible-new.mp4").is_file())
+        self.assertTrue((self.media / "旧" / "hidden.mp4").is_file())
+        self.assertFalse((self.media / "旧" / "hidden-new.mp4").exists())
+
+        log_path = organize.batch_log_dir(self.holder) / "organize-old.json"
+        log_path.write_text(json.dumps({"entries": [
+            {"asset_id": 2, "old_path": "F:\\old\\hidden.mp4",
+             "new_path": "F:\\old\\hidden-new.mp4"},
+            {"asset_id": 1, "old_path": "R:\\media\\旧\\visible.mp4",
+             "new_path": "R:\\media\\旧\\visible-new.mp4"},
+        ]}), encoding="utf-8")
+        (self.media / "旧" / "hidden-new.mp4").write_text("x", encoding="utf-8")
+        (self.media / "旧" / "hidden.mp4").unlink()
+        with closing(database.connect(write=True)) as connection:
+            rolled = organize.rollback_batch(connection, log_path)
+        self.assertEqual((rolled["restored"], rolled["failed"]), (1, 1))
+        self.assertTrue((self.media / "旧" / "visible.mp4").is_file())
+        self.assertTrue((self.media / "旧" / "hidden-new.mp4").is_file())
+        self.assertFalse((self.media / "旧" / "hidden.mp4").exists())
+        remaining = json.loads(log_path.read_text(encoding="utf-8"))["entries"]
+        self.assertEqual([entry["asset_id"] for entry in remaining], [2])
 
     def _pikpak_plan(self):
         self._file("旧/abc123.mp4")

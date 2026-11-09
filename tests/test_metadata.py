@@ -157,9 +157,19 @@ class MetadataProviderTests(unittest.TestCase):
     def test_catalog_titles_become_reviewable_truth_candidates(self):
         fields = extract_peach_fields({
             "title": "日本語タイトル", "original_title": "Original Title",
+            "description": "第一段\r\n\r\n\r\n第二段",
         })
         self.assertEqual(fields["title"]["value"], "日本語タイトル")
         self.assertEqual(fields["original_title"]["value"], "Original Title")
+        self.assertEqual(fields["description"]["value"], "第一段\n\n第二段")
+
+    def test_amane_plot_is_a_description_fallback_without_losing_line_breaks(self):
+        fields = extract_peach_fields({"plot": "  第一行\x00\r\n第二行  "})
+        self.assertEqual(fields["description"], {
+            "value": "第一行\n第二行",
+            "display_value": "第一行\n第二行",
+            "warnings": [],
+        })
 
     def test_an_empty_japanese_side_keeps_the_brand_but_not_the_translated_series(self):
         """厂牌用品牌名，退回顶层；系列顶层是 r18 的英文译文，退回去就成了英文的系列实体。"""
@@ -175,6 +185,7 @@ class MetadataProviderTests(unittest.TestCase):
         evidence = extract_catalog_evidence({
             "title": "English title", "original_title": "原标题", "runtime": "121",
             "director": "Director A", "label": "Label A",
+            "description": "第一段\r\n\r\n\r\n第二段",
             "poster_url": "https://img.example/poster.jpg",
             "cover_url": "https://img.example/cover.jpg",
             "screenshot_urls": [
@@ -191,6 +202,7 @@ class MetadataProviderTests(unittest.TestCase):
         self.assertEqual(evidence["original_title"]["value"], "原标题")
         self.assertEqual(evidence["runtime"]["value"], 121)
         self.assertEqual(evidence["label"]["value"], "日本レーベル")
+        self.assertEqual(evidence["description"]["value"], "第一段\n\n第二段")
         self.assertEqual(evidence["screenshot_urls"]["value"], [
             "https://img.example/1.jpg", "https://img.example/2.jpg",
         ])

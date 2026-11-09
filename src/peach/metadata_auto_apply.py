@@ -48,7 +48,12 @@ from .field_owners import (
 )
 from .genre_decisions import load_genre_decisions
 from .genre_taxonomy import UNMAPPED, genres_in_warning, resolve_genre
-from .metadata import candidate_text_is_valid, identifies_code
+from .metadata import (
+    MAX_DESCRIPTION_CHARS,
+    candidate_text_is_valid,
+    identifies_code,
+    normalized_description,
+)
 from .metadata_alias_resolve import (
     is_planning_alias as _is_planning_alias,
     register_planning_alias,
@@ -60,6 +65,7 @@ from .metadata_policy import (
     blacklisted, chain_rank, preferred_tag_source, source_tier,
 )
 from .metadata_routes import classify
+from .repository import media_scope_predicate
 from .review_csv import read_candidates
 from .javdb_identity import current_candidate as current_javdb_candidate
 from .sources import fc2
@@ -161,6 +167,7 @@ def _codes_matching(connection, codes: list[str], columns: str) -> list:
         for row in connection.execute(
                 f"SELECT {columns} FROM asset WHERE medium='video' "
                 f"AND disposal IS NULL "
+                f"AND {media_scope_predicate(connection, 'asset')} "
                 f"AND (upper(trim(code)) IN ({marks}){likes}) ORDER BY id",
                 [*wanted, *sorted(chunk)]):
             key = normalise_code_key(str(row["code"] or ""))
@@ -345,7 +352,8 @@ def _performer_identity_keys(connection, names: list[str]) -> frozenset:
 #: genre 不再扣住整条候选：认得出的那些先落库，剩下的词记进 `pending_genres` 单独等
 #: 人收录（ADR-0038）。
 AUTO_APPLY_FIELDS = frozenset({
-    "title", "original_title", "performers", "studio", "series", "release_date", "tags",
+    "title", "original_title", "description", "performers", "studio", "series",
+    "release_date", "tags",
 })
 
 
@@ -662,6 +670,8 @@ def _candidate_value_key(connection, field: str, candidate: dict, resolve=None):
     if field == "performers":
         names, _resolved = _stage_names(candidate, resolve)
         return None if names is None else _performer_identity_keys(connection, names)
+    if field == "description":
+        return normalized_description(candidate.get("value")) or None
     value = str(candidate.get("display_value") or "").strip()
     return value or None
 
@@ -1531,7 +1541,7 @@ def _registered_entity_name(connection, kind: str, name: str) -> str:
 #: `asset_tag` / `asset_entity` 的多值行上，不是 `asset` 的一列，归属由那两张表
 #: 自己的 `source` 列承担。
 METADATA_FIELD_COLUMNS = {
-    "title": "catalog_title", "original_title": "original_title",
+    "title": "catalog_title", "original_title": "original_title", "description": "description",
     "release_date": "release_date", "studio": "studio", "series": "series",
 }
 
@@ -1675,7 +1685,11 @@ def _landing_scope(connection, group: dict, candidate: dict,
     query = str(group.get("query") or code).strip()
     if group.get('asset_path'):
         pinned = _pinned_asset_id(connection, group)
-        assets = [] if pinned is None else [{"id": pinned}]
+        assets = connection.execute(
+            "SELECT id FROM asset WHERE id=? AND medium='video' "
+            f"AND disposal IS NULL AND {media_scope_predicate(connection, 'asset')}",
+            (pinned,),
+        ).fetchall()
     else:
         # 写入范围必须和判据、现值刷新看的是同一组资产，三处共用一份番号匹配。
         assets = _codes_matching(connection, [code, query], "id,code")
@@ -1732,7 +1746,8 @@ def _apply_metadata_candidate(
     """
     field = str(group.get("field") or "").strip()
     if field not in {
-        "title", "original_title", "performers", "studio", "series", "release_date", "tags",
+        "title", "original_title", "description", "performers", "studio", "series",
+        "release_date", "tags",
     }:
         raise ValueError("该元数据字段没有 Peach 写入映射")
     code = str(group.get("code") or "").strip()
@@ -1748,6 +1763,14 @@ def _apply_metadata_candidate(
         if (not value or len(value) > 1000
                 or any(ord(char) < 32 for char in raw_value)):
             raise ValueError("标题候选为空、过长或含控制字符")
+        write_owned_fields(
+            connection, asset_ids, {METADATA_FIELD_COLUMNS[field]: value}, owner)
+        return len(asset_ids)
+
+    if field == "description":
+        value = normalized_description(candidate.get("value"))
+        if not value or len(value) > MAX_DESCRIPTION_CHARS:
+            raise ValueError("简介候选为空或过长")
         write_owned_fields(
             connection, asset_ids, {METADATA_FIELD_COLUMNS[field]: value}, owner)
         return len(asset_ids)

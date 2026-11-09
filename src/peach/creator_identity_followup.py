@@ -28,6 +28,7 @@ from . import entity_identity_research as research
 from . import performer_alias_followup as alias
 from .entity_classification import write_claim
 from .followups import Attempts, Followup, FollowupType, attempts_root, register
+from .repository import media_scope_predicate
 
 #: 这类后继在任务中心的身份，也是活动页上那一行的名字来源。
 TASK_KEY = "creator-identity"
@@ -65,8 +66,10 @@ def _open(connection: sqlite3.Connection, where: str, params: tuple) -> list[tup
     rows = connection.execute(
         "SELECT e.id,e.canonical_name,count(DISTINCT ae.asset_id) AS assets FROM entity e"
         " LEFT JOIN asset_entity ae ON ae.entity_id=e.id"
+        " LEFT JOIN asset a ON a.id=ae.asset_id"
         " WHERE e.kind='creator' AND " + where + " AND NOT " + research.settled_sql()
-        + " GROUP BY e.id ORDER BY assets DESC, e.id", params).fetchall()
+        + " AND (" + media_scope_predicate(connection, "a")
+        + " OR ae.asset_id IS NULL) GROUP BY e.id ORDER BY assets DESC, e.id", params).fetchall()
     return [(int(row[0]), str(row[1] or "")) for row in rows if research.researchable(row[1])]
 
 
@@ -81,8 +84,11 @@ def fingerprint(connection: sqlite3.Connection, entity_id: int) -> str:
     name = connection.execute("SELECT canonical_name FROM entity WHERE id=?", (int(entity_id),)).fetchone()
     aliases = connection.execute("SELECT count(*) FROM entity_alias WHERE entity_id=?",
                                  (int(entity_id),)).fetchone()[0]
-    assets = connection.execute("SELECT count(DISTINCT asset_id) FROM asset_entity WHERE entity_id=?",
-                                (int(entity_id),)).fetchone()[0]
+    assets = connection.execute(
+        "SELECT count(DISTINCT ae.asset_id) FROM asset_entity ae"
+        " JOIN asset a ON a.id=ae.asset_id WHERE ae.entity_id=? AND "
+        + media_scope_predicate(connection, "a"),
+        (int(entity_id),)).fetchone()[0]
     return f"{ENTRY_RULE}/{name[0] if name else ''}/{aliases}/{assets}"
 
 

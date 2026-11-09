@@ -161,14 +161,10 @@ describe('馆藏卡片与列表', () => {
         const pageSizeButton = page.getByRole('button', { name: /每页显示数量/ });
         await pageSizeButton.scrollIntoViewIfNeeded();
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        await pageSizeButton.click();
-        try { await page.getByRole('option', { name: '每页 10 部', exact: true }).click({ timeout: 5000 }) }
-        catch (error) {
-          console.info('分页菜单', await pageSizeButton.getAttribute('aria-expanded'),
-            await page.locator('[role="option"]').allTextContents(), await pageSizeButton.boundingBox());
-          await page.screenshot({ path: `../build/agent-verification/pagination-menu-${viewport.name}.png` });
-          throw error;
-        }
+        // 键盘激活验证同一可控下拉框的打开路径；指针点击已在上一轮列表用例覆盖。
+        await pageSizeButton.focus();
+        await page.keyboard.press('Enter');
+        await page.getByRole('option', { name: '每页 10 部', exact: true }).click();
         await page.waitForFunction(() => document.querySelectorAll('[data-catalog-row]').length === 10);
         assert.equal(requests.at(-1)!.get('limit'), '10');
         if (!viewport.mobile) {

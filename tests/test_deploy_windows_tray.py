@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 import subprocess
 import sys
 import tempfile
@@ -10,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from peach import __version__
+from peach.windows_update import swap_tray_binary
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,9 +44,13 @@ class DeployWindowsTrayTests(unittest.TestCase):
         self.target = self.root / "dist" / "Peach" / "Peach.exe"
         self.target.parent.mkdir(parents=True)
         self.target.write_bytes(b"old")
+        (self.target.parent / "_internal").mkdir()
+        (self.target.parent / "_internal" / "old.dll").write_bytes(b"old")
         self.staged = self.root / "staging" / "Peach.exe"
         self.staged.parent.mkdir()
         self.staged.write_bytes(b"new")
+        (self.staged.parent / "_internal").mkdir()
+        (self.staged.parent / "_internal" / "new.dll").write_bytes(b"new")
         self.installer = mock.Mock()
         self.installer.log_path = self.root / "sync.log"
         self.installer.build_staged_tray.return_value = self.staged
@@ -54,7 +58,7 @@ class DeployWindowsTrayTests(unittest.TestCase):
         self.restarted = mock.Mock(return_value=mock.Mock(
             ok=True, message="托盘已正常重启并重新拥有 HTTP/HTTPS 子服务",
             old_tray_pid=10, new_tray_pid=30, service_pids=(51, 52),
-            backup=str(self.target.with_name("Peach.pre-source-sync-20260906-120000.exe")),
+            backup=str(self.target.with_name("Peach.pre-source-sync-20260906-120000")),
         ))
 
     def tearDown(self):
@@ -103,12 +107,12 @@ class DeployWindowsTrayTests(unittest.TestCase):
         self.assertEqual(outcome["backup"], self.restarted.return_value.backup)
 
     def swapping_restart(self):
-        """照真实那步的样子换文件：`os.replace` 是搬走，暂存包换完就不在了。
+        """照真实那步的样子换核心包：暂存入口与 `_internal/` 换完都不在原处。
 
         指纹只能在换之前取，这个替身把「换完再去读暂存包」直接变成 FileNotFoundError。
         """
         def restart(target, *, swap_from, **_kwargs):
-            os.replace(swap_from, target)
+            swap_tray_binary(swap_from, target, sleep=lambda _delay: None)
             return self.restarted.return_value
         return restart
 
@@ -151,9 +155,31 @@ class DeployWindowsTrayTests(unittest.TestCase):
         self.assertEqual(outcome["step"], "verify")
         self.assertIn(error, outcome["message"])
 
+    def test_the_package_fingerprint_includes_the_runtime_directory(self):
+        before = deploy_windows_tray.bundle_digest(self.staged)
+        (self.staged.parent / "_internal" / "new.dll").write_bytes(b"changed")
+        after = deploy_windows_tray.bundle_digest(self.staged)
+        self.assertNotEqual(before, after)
+
 
 class ServingIdentityTests(unittest.TestCase):
-    def test_the_verdict_comes_from_the_https_port_checked_against_the_project_ca(self):
+    def test_the_verdict_comes_from_the_configured_standalone_port(self):
+        config = mock.Mock()
+        config.server.port = 8900
+        response = mock.Mock(status_code=200)
+        response.json.return_value = {"ok": True, "version": "9.9.9", "build_commit": "c0ffee"}
+        with mock.patch.object(deploy_windows_tray.httpx, "get",
+                               return_value=response) as get:
+            self.assertEqual(deploy_windows_tray.serving_identity(config=config),
+                             {"version": "9.9.9", "build_commit": "c0ffee"})
+        self.assertEqual(get.call_args.args[0], "http://127.0.0.1:8900/healthz")
+        self.assertTrue(get.call_args.kwargs["verify"])
+        self.assertFalse(get.call_args.kwargs["trust_env"],
+                         "系统代理会替生产口回话，探测必须直连")
+
+    def test_a_source_deployment_falls_back_to_the_project_ca_https_port(self):
+        config = mock.Mock()
+        config.server.port = 8900
         specs = (
             mock.Mock(name="http", health_url="http://127.0.0.1/healthz", verify=True),
             mock.Mock(health_url="https://192.0.2.10/healthz", verify="/ca/peach.crt"),
@@ -166,11 +192,14 @@ class ServingIdentityTests(unittest.TestCase):
             mock.patch.object(deploy_windows_tray, "build_service_specs",
                               return_value=specs),
             mock.patch.object(deploy_windows_tray.httpx, "get",
-                              return_value=response) as get,
+                              side_effect=[deploy_windows_tray.httpx.ConnectError("offline"),
+                                           response]) as get,
         ):
-            self.assertEqual(deploy_windows_tray.serving_identity(),
+            self.assertEqual(deploy_windows_tray.serving_identity(config=config),
                              {"version": "9.9.9", "build_commit": "c0ffee"})
-        self.assertEqual(get.call_args.args[0], "https://192.0.2.10/healthz")
+        self.assertEqual([call.args[0] for call in get.call_args_list],
+                         ["http://127.0.0.1:8900/healthz",
+                          "https://192.0.2.10/healthz"])
         self.assertEqual(get.call_args.kwargs["verify"], "/ca/peach.crt")
         self.assertFalse(get.call_args.kwargs["trust_env"],
                          "系统代理会替生产口回话，探测必须直连")

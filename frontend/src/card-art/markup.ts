@@ -219,15 +219,61 @@ export function faceBoxAttrs(value: unknown): string {
 export interface CoverItem {
   id?: number;
   code?: string;
+  width?: number | null;
+  height?: number | null;
   cover_key?: string;
   is_jav?: boolean;
   has_cover?: boolean;
   cover_version?: string;
   has_thumb?: boolean;
   has_local_poster?: boolean;
-  cover_frame?: { cx?: number | null; cy?: number | null; layout?: string } | null;
+  poster_ratio?: number | null;
+  cover_frame?: { cx?: number | null; cy?: number | null; layout?: string; ratio?: number | null } | null;
   poster_box?: { x0?: number; y0?: number; x1?: number; y1?: number; px?: number[]; method?: string } | null;
   [field: string]: unknown;
+}
+
+/** 传统封套与整幅横版画面的分界。与 `coverAnchor` 的加载后分流共用这一条界线。 */
+export const SLEEVE_RATIO_MIN = 1.2;
+export const STILL_COVER_RATIO_MIN = 1.65;
+export const NATURAL_THUMB_RATIO_MIN = SLEEVE_RATIO_MIN;
+
+function declaredStill(item: CoverItem): boolean {
+  const frame = item.cover_frame || {};
+  return item.poster_box?.method !== 'manual' && (frame.layout === 'still'
+    || /^(IENEE|IENFE|SDHS)-/i.test(String(item.code || ''))
+    || /(?:【|\[|\(|（)\s*(?:[48]K\s*)?VR\s*(?:】|\]|\)|）)/i.test(
+      String(item.title || item.display_title || item.name || '')));
+}
+
+/** 首帧就能确定是整幅画面的封面，返回 sidecar 记下的原图比例。
+ *
+ * 图片加载后 `coverAnchor` 还会按真实自然尺寸重算；这里只负责让屏外卡片在图片尚未
+ * 解码时也按最终高度占位。传统 DVD／Blu-ray 封套仍走固定卡框和正封取景，不能把
+ * 1.2–1.65 的封套误当成整幅画面。
+ */
+export function naturalCoverRatio(item: CoverItem): number | null {
+  const ratio = Number(item.cover_frame?.ratio);
+  if (!Number.isFinite(ratio) || ratio <= 0) return null;
+  return /^FC2(?:-PPV)?-/i.test(String(item.code || ''))
+    || declaredStill(item) || ratio >= STILL_COVER_RATIO_MIN ? ratio : null;
+}
+
+/** 本地预览格在图片解码前使用视频本身的宽高比。
+ *
+ * `/poster` 是从视频快照切成九宫格中的一格，横竖方向与视频一致；竖屏与正封继续
+ * 使用固定卡框。少一条时安静回落，让加载后的自然尺寸分支接管。
+ */
+export function naturalThumbRatio(item: CoverItem): number | null {
+  /* 已生成的预览图可能来自与视频元数据比例不同的本地印相。服务端把文件头的真实
+     比例随卡片下发时，首帧就直接使用它；没有文件时再退回视频尺寸。 */
+  const poster = Number(item.poster_ratio);
+  if (Number.isFinite(poster) && poster > 0) return poster;
+  const width = Number(item.width);
+  const height = Number(item.height);
+  if (!(width > 0 && height > 0)) return null;
+  const ratio = width / height;
+  return Number.isFinite(ratio) && ratio > NATURAL_THUMB_RATIO_MIN ? ratio : null;
 }
 
 /* 官方封面那张 `<img>`。人脸位置原样交给页面，锚点由 `coverAnchor` 在加载后算：哪个轴被裁、
@@ -237,9 +283,7 @@ export function coverImage(item: CoverItem, layout: 'big' | 'small', eager = fal
   const src = cardCoverUrl(item);
   const wide = /ブルーレイ|blu[\s-]?ray/i.test(String(item.title || item.display_title || item.name || ''));
   const f = item.cover_frame || {};
-  const still = item.poster_box?.method !== 'manual' && (f.layout === 'still'
-    || /^(IENEE|IENFE|SDHS)-/i.test(String(item.code || ''))
-    || /(?:【|\[|\(|（)\s*(?:[48]K\s*)?VR\s*(?:】|\]|\)|）)/i.test(String(item.title || item.display_title || item.name || '')));
+  const still = declaredStill(item);
   const faceY = f.cy == null ? null : still ? Math.min(1, Math.max(0, f.cy)) : Math.min(0.6, Math.max(0.05, f.cy));
   const face = [f.cx != null ? ` data-cx="${f.cx}"` : '',
     faceY != null ? ` data-cy="${faceY}"` : ''].join('');

@@ -97,12 +97,29 @@ describe('播放器字幕', () => {
     });
 
     it(`${viewport.name}：本地字幕、选项持久化、关闭和重新开启`, { timeout: 60_000 }, async () => {
-      const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, viewport);
+      const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, viewport, async page => {
+        await page.route((url) => /^\/api\/assets\/\d+\/subtitles$/.test(url.pathname),
+          route => route.fulfill({ json: { subtitles: [
+            { playable: true, src: '/default-subtitle.vtt', language: 'zh-CN', label: '默认简体' },
+          ] } }));
+        await page.route((url) => url.pathname === '/default-subtitle.vtt',
+          route => route.fulfill({ contentType: 'text/vtt', body: 'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n默认字幕\n' }));
+      });
       const { page, problems } = opened;
       try {
         await page.locator('#stage .vjs-peach-bezel').waitFor({ state: 'attached' });
         assert.equal(await page.locator('#stage .vjs-subtitles-control>button>svg path').count(), 1);
         await page.waitForFunction(() => document.querySelector<HTMLVideoElement>('#stage video.vjs-tech')!.readyState >= 2);
+        await page.waitForFunction(() => [...document.querySelector<HTMLVideoElement>('#stage video.vjs-tech')!.textTracks]
+          .some(track => track.kind === 'subtitles' && track.mode === 'showing')).catch(async error => {
+            const state = await page.locator('#stage video.vjs-tech').evaluate((video: HTMLVideoElement) => ({
+              ready: video.readyState,
+              tracks: [...video.textTracks].map(track => ({ kind: track.kind, label: track.label, language: track.language, mode: track.mode })),
+              elements: [...video.querySelectorAll('track')].map(track => ({ label: track.label, language: track.srclang, default: track.default })),
+            }));
+            throw new Error(`${String(error)} ${JSON.stringify(state)}`);
+          });
+        assert.equal(await page.locator('#stage .vjs-subtitles-control>button').getAttribute('aria-pressed'), 'true');
         await page.locator('#stage video.vjs-tech').evaluate((video: HTMLVideoElement) => { video.currentTime = .25 });
         await menu(page);
         const selected = page.locator('[data-subtitle-track][aria-checked="true"]');

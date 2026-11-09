@@ -29,6 +29,20 @@ class BuildInfoTests(unittest.TestCase):
             self.assertEqual(info.version, "0.7.14")
             self.assertEqual(info.built_at, "2026-09-05T10:00:00+08:00")
 
+    def test_windows_powershell_utf8_with_bom_is_accepted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            payload = {
+                "commit": "1a2b3c4d5e6f7081920a1b2c3d4e5f6071829304",
+                "version": "0.7.14",
+                "built_at": "2026-09-05T10:00:00+08:00",
+            }
+            (root / BUILD_INFO_NAME).write_text(
+                json.dumps(payload), encoding="utf-8-sig")
+            info = read_build_info(root)
+            self.assertIsNotNone(info)
+            self.assertEqual(info.commit, payload["commit"])
+
     def test_a_build_made_without_git_reports_no_commit(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

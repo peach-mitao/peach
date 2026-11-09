@@ -374,10 +374,23 @@ class CoverSleeveThresholdTests(unittest.TestCase):
         source = (root / "src" / "peach" / "jav_poster_crop.py").read_text(encoding="utf-8")
         low = float(re.search(r"^SLEEVE_RATIO_MIN = ([\d.]+)", source, re.M).group(1))
         high = float(re.search(r"^SLEEVE_RATIO_MAX = ([\d.]+)", source, re.M).group(1))
-        page = (root / "frontend" / "src" / "card-art" / "framing.ts").read_text(encoding="utf-8")
-        anchor = re.search(r"r\s*>=\s*([\d.]+)\s*\?\s*'still'\s*:\s*r\s*>\s*([\d.]+)\s*\?\s*'sleeve'", page)
+        frontend = root / "frontend" / "src" / "card-art"
+        page = (frontend / "framing.ts").read_text(encoding="utf-8")
+        constants = (frontend / "markup.ts").read_text(encoding="utf-8")
+        low_source = re.search(r"^export const SLEEVE_RATIO_MIN = ([\d.]+)", constants, re.M)
+        high_source = re.search(r"^export const STILL_COVER_RATIO_MIN = ([\d.]+)", constants, re.M)
+        self.assertIsNotNone(low_source, "页面封套下限常量不见了")
+        self.assertIsNotNone(high_source, "页面横版起点常量不见了")
+        anchor = re.search(
+            r"r\s*>=\s*STILL_COVER_RATIO_MIN\s*\?\s*'still'\s*:\s*"
+            r"r\s*>\s*SLEEVE_RATIO_MIN\s*\?\s*'sleeve'",
+            page,
+        )
         self.assertIsNotNone(anchor, "coverAnchor 的封套判定不见了")
-        self.assertEqual((low, high), (float(anchor.group(2)), float(anchor.group(1))))
+        self.assertEqual(
+            (low, high),
+            (float(low_source.group(1)), float(high_source.group(1))),
+        )
         self.assertLess(low, high)
 
     def test_the_face_script_takes_the_thresholds_from_the_module(self):

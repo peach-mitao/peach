@@ -7,13 +7,22 @@
     [string]$FFmpegPath = '',
     [string]$UntruncPath = '',
     # 发行构建：两项 Sentry DSN 必须齐全且合法，否则不产出安装包。
-    [switch]$RequireReporting
+    [switch]$RequireReporting,
+    # 源码同步会换掉目录版托盘的核心文件；这个包也必须带独立版标记。
+    [switch]$PackagedTray
 )
 
 $ErrorActionPreference = 'Stop'
 if ($Installer) { $Standalone = $true }
+if ($PackagedTray -and $Standalone) {
+    throw '-PackagedTray and -Standalone are mutually exclusive.'
+}
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$Python = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
+$Python = if ($env:PEACH_BUILD_PYTHON) {
+    [System.IO.Path]::GetFullPath($env:PEACH_BUILD_PYTHON)
+} else {
+    Join-Path $ProjectRoot '.venv\Scripts\python.exe'
+}
 if (-not (Test-Path -LiteralPath $Python)) {
     $BuildCommonGit = (& git -C $ProjectRoot rev-parse --path-format=absolute --git-common-dir).Trim()
     $Python = Join-Path (Split-Path -Parent $BuildCommonGit) '.venv\Scripts\python.exe'
@@ -91,7 +100,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Sentry reporting config is missing or invalid.
 
 $BuildMode = @('--onefile')
 $BuildDestination = $OutputPath
-if ($Standalone) {
+if ($PackagedTray) {
+    # 目录版不再在每次启动时解到 %TEMP%，进程退出时也就不会留下 `_MEI...` 清理警告。
+    $BuildMode = @('--onedir', '--add-data', "$(Join-Path $PSScriptRoot 'standalone.txt');.")
+    $BuildDestination = Split-Path -Parent $OutputPath
+} elseif ($Standalone) {
     $BuildMode = @('--onedir', '--add-data', "$(Join-Path $PSScriptRoot 'standalone.txt');.")
     $BuildDestination = Split-Path -Parent $OutputPath
 }
@@ -148,10 +161,27 @@ if ($LASTEXITCODE -ne 0) { throw 'Runtime resource manifest is incomplete.' }
 foreach ($ResourceEntry in $ResourceEntries) {
     $ResourceArguments += @('--add-data', $ResourceEntry)
 }
+
+# Some managed Python runtimes patch the standard-library ssl module to load a
+# policy bundle from the module directory. PyInstaller follows the module code
+# but cannot infer that data dependency, so a frozen app otherwise fails while
+# constructing its first SSLContext. Standard Python installations do not have
+# this file, which keeps the normal build path unchanged.
+$AdditionalDataArgs = @()
+$SslModulePath = (& $Python -c "import ssl; print(ssl.__file__)" | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0 -or -not $SslModulePath) {
+    throw 'Could not locate the build Python ssl module.'
+}
+$SslPolicyPath = Join-Path (Split-Path -Parent "$SslModulePath".Trim()) 'codex-rejected-cas.pem'
+if (Test-Path -LiteralPath $SslPolicyPath -PathType Leaf) {
+    $AdditionalDataArgs = @('--add-data', "${SslPolicyPath};.")
+}
+
 & $Python -m PyInstaller --noconfirm --clean @BuildMode @ResourceArguments --windowed --name Peach `
     --distpath $BuildDestination --workpath $WorkPath --specpath $BuildPath `
     --paths (Join-Path $ProjectRoot 'src') --python-option 'X utf8' `
     --collect-all curl_cffi --collect-all resvg_py `
+    @AdditionalDataArgs `
     --copy-metadata sentry-sdk `
     --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto `
     --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto `

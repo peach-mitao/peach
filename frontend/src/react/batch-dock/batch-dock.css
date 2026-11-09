@@ -9,7 +9,7 @@
 
 [data-batch-dock],[data-batch-scope]{display:contents}
 
-[data-batch-scope] [data-selection-dock]{color:var(--ink);font:var(--board-body)}
+.peach-react[data-batch-scope] [data-selection-dock]{z-index:calc(var(--layer-popover) + 20);color:var(--ink);font:var(--board-body)}
 [data-batch-scope] [data-selection-dock]>[role="status"]{padding:0 8px;color:var(--ink-2);font:inherit;white-space:nowrap}
 [data-batch-scope] [data-selection-dock]>button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);white-space:nowrap;cursor:pointer}
 [data-batch-scope] [data-selection-dock]>button:not([data-danger]){border:1px solid var(--line);background:var(--surface);box-shadow:var(--elevation-xs);color:var(--ink);transition:background-color .15s ease}
@@ -22,10 +22,16 @@
 /* 浮条出来时，作品详情那一层（`<dialog data-stage>`）的底部让出它的高度。开关是岛写在 `<body>` 上的
    属性，不用 `body:has(...)`：那种写法让每批插进页面的节点都把整棵 body 子树的样式重算一遍。 */
 body[data-batch-dock-open] :is(#grid,[data-stage]){padding-bottom:var(--selection-dock-space,180px)}
+/* 回执与后台任务也贴右下角。多选时把通知栈抬到浮条上方，避免透明提示条挡住取消和批量键。 */
+body[data-batch-dock-open]{--selection-toast-lift:84px}
 
 /* 窄屏垃圾文件：三颗键一行等分、计数单占一行居中，横跨整行贴底。浮条的水平居中靠 SelectionDock 自己
    内联的 `translate(-50%)`，所以这里用「宽 = 视口减两边 12px」配 `left: 50%`，落点与贴边写法一样。 */
 @media(max-width:760px){
+  body[data-batch-dock-open]{--selection-toast-lift:124px}
+  body[data-batch-dock-open] [data-batch-scope][data-context="junk"]{
+    --selection-toast-lift:160px
+  }
   [data-batch-scope][data-context="junk"] [data-selection-dock]{bottom:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:calc(100vw - 24px);max-width:none;padding:9px 10px}
   [data-batch-scope][data-context="junk"] [data-selection-dock]>[role="status"]{grid-column:1/-1;padding:0;text-align:center}
   [data-batch-scope][data-context="junk"] [data-selection-dock]>button{min-width:0;min-height:44px;padding:8px 6px;font-size:var(--fs-xs)}

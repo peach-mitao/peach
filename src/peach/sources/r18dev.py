@@ -3,8 +3,8 @@
 `dvd_id=<番号>` 那一页只给英文，标题和系列多是机翻（ABW-358 的 `title_en_is_machine_translation`
 为真），演员只有罗马字。日文在 `combined=<content_id>` 那一页：`title_ja`、`series_name_ja`、
 演员 `name_kanji`，取到后写进 `translations`（形状与 Javinizer-Go 快照一致），标题、系列、演员与
-genre 都换成日文那份。厂牌不取日文——账本的厂牌实体用品牌名（`Prestige`、`MOODYZ`），换成
-`プレステージ` 会另起一个实体。
+genre 都换成日文那份。该页的 `comment_en` 是官方目录剧情，写进 `description`。厂牌不取日文——
+账本的厂牌实体用品牌名（`Prestige`、`MOODYZ`），换成 `プレステージ` 会另起一个实体。
 
 标题、系列和演员只认日文那一侧：日文那一页取不到，或那一侧空着，这几样就留空，不拿英文页的
 写法顶上。英文页的这三样一旦落库，系列与演员就成了实体规范名——ABW-358 的系列实体因此叫了
@@ -78,10 +78,18 @@ def with_japanese(record: SiteRecord, combined: object) -> SiteRecord:
                          director=directors[0] if directors else '')]
     performers = tuple(row for row in actresses(combined.get('actresses')) if row['japanese_name'])
     japanese = [row.get('name_ja') or row.get('name_en') or '' for row in combined.get('categories') or []]
+    extra = {
+        **record.extra,
+        'translations': translations,
+        'combined': combined,
+    }
+    description = str(combined.get('comment_en') or '').strip()
+    if description:
+        extra['description'] = description
     return replace(
         record, title=title, series=series, performers=performers,
         tags=tuple(name for name in japanese if name) if any(japanese) else record.tags,
-        extra={**record.extra, 'translations': translations, 'combined': combined})
+        extra=extra)
 
 
 class R18DevSource(SiteSource):

@@ -136,6 +136,7 @@ def _serve(args: argparse.Namespace) -> int:
         token_file=auth.token_file(args.token, secrets_dir) if token else None,
         access_path=secrets_dir / "access.json",
         configured=CONFIGURED and not args.setup,
+        media_scope_roots=dict(settings_file.active().locations),
         docs_enabled=args.docs,
         mdns_enabled=publish_mdns,
         mdns_name=args.mdns_name,

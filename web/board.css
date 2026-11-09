@@ -614,7 +614,9 @@ body:is([data-surface="/junk-files"],[data-surface="/trash"]) .catalog-skeleton>
 body:is([data-surface="/junk-files"],[data-surface="/trash"]) .catalog-skeleton .skeletoncard{border:1px solid var(--line-soft);border-radius:var(--surface-radius);overflow:hidden;background:var(--ground);padding-bottom:20px}
 /* 回收站卡照 `media-card.css` 里回收站那几条排：面色同真卡，元信息区四周 10px 12px 12px，
    头像列 38px 加左边距 12px，标题两行 2.7em、署名一行 20px，再预留标签和归入原因行。 */
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard{grid-template-columns:50px minmax(0,1fr);gap:3px 10px;padding:0 0 12px;background:var(--color-background-primary-default)}
+/* 真卡的元信息高度由 `--card-meta-block + 22px` 决定；骨架各行加间距只算出其中 12px 的
+   上下内边距。补上剩余 12px，数据落地时首张卡的底边不会向下跳。 */
+body[data-surface="/trash"] .catalog-skeleton .skeletoncard{grid-template-columns:50px minmax(0,1fr);gap:3px 10px;padding:0 0 24px;background:var(--color-background-primary-default)}
 body[data-surface="/trash"] .catalog-skeleton .skeletoncard s{grid-row:2/span 2;margin:9px 0 0 12px}
 body[data-surface="/trash"] .catalog-skeleton .skeletoncard b{width:auto;height:2.7em;margin:7px 12px 0 0}
 body[data-surface="/trash"] .catalog-skeleton .skeletoncard em{height:20px}

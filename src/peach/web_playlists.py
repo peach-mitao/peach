@@ -5,7 +5,7 @@ from typing import Protocol
 
 from .personal_records import VANISHED
 from .web_activity import DEFAULT_PROFILE_ID
-from .web_catalog import con_entities, entity_ref
+from .web_catalog import configured_media_scope_sql, con_entities, entity_ref
 from .media_sources import cost_for
 
 
@@ -64,7 +64,8 @@ def _existing_video_ids(connection, ids: list[int]) -> list[int]:
     found = {
         int(row[0]) for row in connection.execute(
             f"SELECT id FROM asset WHERE id IN ({marks}) AND medium='video' "
-            "AND disposal IS NULL",
+            "AND disposal IS NULL AND "
+            + configured_media_scope_sql("asset"),
             ids,
         )
     }
@@ -103,6 +104,7 @@ def _ordered_members(connection, playlist_ids: list[int]):
     for playlist_id, asset_id, snapshot in connection.execute(
         f"SELECT pi.playlist_id,pi.asset_id,a.snapshot_path FROM playlist_item pi "
         f"JOIN asset a ON a.id=pi.asset_id WHERE pi.playlist_id IN ({marks}) "
+        "AND " + configured_media_scope_sql("a") + " "
         "ORDER BY pi.playlist_id,pi.position", playlist_ids,
     ):
         members.setdefault(int(playlist_id), []).append((int(asset_id), snapshot))
@@ -144,9 +146,17 @@ def q_playlists(contract: PlaylistContract, _args=None):
     with contract.read_connection() as connection:
         rows = [dict(row) for row in connection.execute(
             "SELECT p.id,p.name,p.source_kind,p.source_seed_asset_id,p.current_asset_id,"
-            "p.created_at,p.updated_at,count(pi.asset_id) item_count,"
-            "COALESCE(p.current_asset_id,(SELECT first.asset_id FROM playlist_item first "
-            "WHERE first.playlist_id=p.id ORDER BY first.position LIMIT 1)) preview_asset_id "
+            "p.created_at,p.updated_at,"
+            "(SELECT count(*) FROM playlist_item counted JOIN asset ca ON ca.id=counted.asset_id "
+            "WHERE counted.playlist_id=p.id AND " + configured_media_scope_sql("ca") + ") item_count,"
+            "COALESCE((SELECT current_item.asset_id FROM playlist_item current_item "
+            "JOIN asset current_a ON current_a.id=current_item.asset_id "
+            "WHERE current_item.playlist_id=p.id AND current_item.asset_id=p.current_asset_id "
+            "AND " + configured_media_scope_sql("current_a") + "),"
+            "(SELECT first.asset_id FROM playlist_item first "
+            "JOIN asset first_a ON first_a.id=first.asset_id "
+            "WHERE first.playlist_id=p.id AND " + configured_media_scope_sql("first_a") +
+            " ORDER BY first.position LIMIT 1)) preview_asset_id "
             "FROM playlist p LEFT JOIN playlist_item pi ON pi.playlist_id=p.id "
             "WHERE p.profile_id=? GROUP BY p.id ORDER BY p.updated_at DESC,p.id DESC",
             (DEFAULT_PROFILE_ID,),
@@ -174,7 +184,8 @@ def q_playlist(contract: PlaylistContract, args):
             "a.width,a.height,a.ctx_orient,a.snapshot_path,a.play_count,a.leave_ratio,"
             "a.feedback,a.disposal,a.o_count,pi.position "
             "FROM playlist_item pi JOIN asset a ON a.id=pi.asset_id "
-            "WHERE pi.playlist_id=? ORDER BY pi.position",
+            "WHERE pi.playlist_id=? AND " + configured_media_scope_sql("a") +
+            " ORDER BY pi.position",
             (playlist_id,),
         )]
     for item in items:

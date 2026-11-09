@@ -45,11 +45,16 @@ export function applyDensity(density: Density = currentDensity()): void {
   paintSizeGlyph(button, density === 'big' ? 'big' : 'small');
 }
 
+/** 落盘并当场写上。卡片版式切换也走这里，顶栏按钮与筛选条不再各存一套状态。 */
+export function setDensity(density: Density): void {
+  if (localStorage.getItem(DENSITY_KEY) !== density) localStorage.setItem(DENSITY_KEY, density);
+  applyDensity(density);
+}
+
 /** 换一档密度、落盘、当场写上。 */
 export function toggleDensity(): void {
   const next: Density = currentDensity() === 'big' ? 'dense' : 'big';
-  localStorage.setItem(DENSITY_KEY, next);
-  applyDensity(next);
+  setDensity(next);
 }
 
 /** 停在照片墙上时，同一颗键报的是照片的大小。 */

@@ -27,6 +27,7 @@ from .task_retry import transient_delay
 from .organize_templates import MAX_PATH, TemplateError, clean_filename, render, validate_template
 from .platform import (is_windows_path, location_mounts, location_roots, resolve_root, root_online,
                        translate_ledger_path, within_root)
+from .repository import media_scope_predicate
 from .review_csv import write_rows
 from .fsutil import atomic_write_text
 
@@ -53,6 +54,7 @@ SKIP_OUTSIDE_ROOT = "不在来源根内"
 SKIP_TARGET_EXISTS = "目标已存在"
 SKIP_CROSS_VOLUME = "跨盘"
 SKIP_TOO_LONG = "路径过长"
+SKIP_OUTSIDE_MEDIA_SCOPE = "不在当前媒体文件夹中"
 
 
 #: 挂载上的 `os.rename` 证明不了云端真的改了名的来源：PikPak 挂载对大文件常报 WinError 50，
@@ -156,7 +158,8 @@ def _performers(connection: sqlite3.Connection, location: str) -> dict[int, list
     for asset_id, name in connection.execute(
         "SELECT ae.asset_id,e.canonical_name FROM asset_entity ae "
         "JOIN entity e ON e.id=ae.entity_id JOIN asset a ON a.id=ae.asset_id "
-        "WHERE e.kind='performer' AND a.location=? ORDER BY e.canonical_name",
+        f"WHERE e.kind='performer' AND a.location=? "
+        f"AND {media_scope_predicate(connection, 'a')} ORDER BY e.canonical_name",
         (location,),
     ):
         found.setdefault(int(asset_id), []).append(str(name))
@@ -178,7 +181,8 @@ def _rows(connection: sqlite3.Connection, location: str,
     return connection.execute(
         "SELECT id,location,path,name,code,catalog_title,original_title,studio,series,"
         f"release_date,width,height FROM asset WHERE location=? AND {ACTIVE_ASSET_SQL} "
-        f"AND medium='video' AND path IS NOT NULL AND trim(path)<>''{selected} ORDER BY id",
+        f"AND medium='video' AND path IS NOT NULL AND trim(path)<>'' "
+        f"AND {media_scope_predicate(connection, 'asset')}{selected} ORDER BY id",
         (location, *ids),
     ).fetchall()
 
@@ -400,6 +404,15 @@ def _move_one(connection: sqlite3.Connection, asset_id: int,
         # 来自命令行、来自一份被人编辑过的 CSV；跨盘「改名」在这台机器上会退化成
         # 拷贝加删除，中断就是半个文件。
         return SKIP_CROSS_VOLUME
+    current = connection.execute(
+        "SELECT path FROM asset WHERE id=? AND "
+        + media_scope_predicate(connection, "asset"),
+        (asset_id,),
+    ).fetchone()
+    if current is None:
+        # 恢复出来的旧计划可能来自另一组媒体根。账本行仍在，但当前服务没有把它
+        # 交给用户看，就不能借恢复或回滚顺手移动它的文件。
+        return SKIP_OUTSIDE_MEDIA_SCOPE
     local_source = _media_path(old_path)
     local_target = _media_path(new_path)
     if not local_source.exists():
@@ -452,11 +465,17 @@ def apply_plan(connection: sqlite3.Connection, rows: Sequence[dict], *,
             if int(row['asset_id']) in completed:
                 continue
             old_path, new_path = str(row["current_path"]), str(row["target_path"])
-            current = connection.execute('SELECT path,disposal FROM asset WHERE id=?', (int(row['asset_id']),)).fetchone()
+            current = connection.execute(
+                "SELECT path,disposal FROM asset WHERE id=? AND "
+                + media_scope_predicate(connection, "asset"),
+                (int(row["asset_id"]),),
+            ).fetchone()
             landed = (current is not None and current[0] == new_path
                       and _media_path(new_path).is_file()
                       and (old_path.casefold() == new_path.casefold() or not _media_path(old_path).exists()))
-            if current is None or current[1] is not None:
+            if current is None:
+                outcome = SKIP_OUTSIDE_MEDIA_SCOPE
+            elif current[1] is not None:
                 outcome = '资产已不在馆藏，未执行整理'
             else:
                 outcome = 'ok' if landed else _move_one(connection, int(row["asset_id"]), old_path, new_path)
@@ -488,7 +507,11 @@ def rollback_batch(connection: sqlite3.Connection, log_path: Path | str, *,
     restored: list[dict] = []
     failures: list[dict] = []
     for index, entry in enumerate(reversed(entries), 1):
-        current = connection.execute('SELECT path FROM asset WHERE id=?', (int(entry['asset_id']),)).fetchone()
+        current = connection.execute(
+            "SELECT path FROM asset WHERE id=? AND "
+            + media_scope_predicate(connection, "asset"),
+            (int(entry["asset_id"]),),
+        ).fetchone()
         landed = (current is not None and current[0] == entry['old_path']
                   and _media_path(entry['old_path']).is_file()
                   and (entry['old_path'].casefold() == entry['new_path'].casefold()

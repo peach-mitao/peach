@@ -4021,12 +4021,93 @@ class OperationalScriptTests(unittest.TestCase):
         connection.commit(); connection.close()
         return db
 
+    def test_scrape_queue_and_current_values_follow_the_configured_media_roots(self):
+        from peach.repository import LedgerDatabase
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "ledger.db"
+            sqlite3.connect(db).close()
+            upgrade(db, MIGRATIONS)
+            connection = sqlite3.connect(db)
+            connection.executemany(
+                "INSERT INTO asset(id,location,path,name,medium,code,size,"
+                "catalog_title,description,studio) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                [
+                    (1, "local", r"H:\Be_Tvideo\AAA\ABC-001.mp4", "ABC-001.mp4",
+                     "video", "ABC-001", 2 * 1024**3, "Visible title",
+                     "Visible description", "Visible studio"),
+                    (2, "local", r"H:\Other\ABC-001.mp4", "hidden.mp4",
+                     "video", "ABC-001", 100 * 1024**3, "Hidden title",
+                     "Hidden description", "Hidden studio"),
+                ],
+            )
+            connection.commit()
+            connection.close()
+
+            scoped = LedgerDatabase(
+                db, media_roots={"local": (r"H:\Be_Tvideo\AAA",)}
+            ).connect()
+            try:
+                args = argparse.Namespace(
+                    codes_file=None, english_title_only=False, limit=0
+                )
+                rows = self.scrape_codes._load_codes(
+                    scoped, args, argparse.ArgumentParser()
+                )
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(rows[0][2], 1)
+                self.assertEqual(rows[0][4], "ABC-001.mp4")
+                self.assertEqual(
+                    self.scrape_codes._current_values(scoped, "ABC-001", "title"),
+                    ["Visible title"],
+                )
+                self.assertEqual(
+                    self.scrape_codes._current_values(scoped, "ABC-001", "description"),
+                    ["Visible description"],
+                )
+            finally:
+                scoped.close()
+
+        self.assertNotIn("description", self.scrape_codes.metadata_routes.SCALAR_FIELDS)
+        self.assertIn("description", self.scrape_codes.SCRAPE_SCALAR_FIELDS)
+
     @staticmethod
     def _full_payload(code, source):
         return {**({'javdb_rule': 2, 'source_id': 'VerifiedWork'} if source == 'javdb' else {}),
                 "source": source, "id": code, "title": "Catalog title",
                 "actresses": [{"japanese_name": "木村さん"}], "maker": "Studio A",
                 "release_date": "2020-09-13T00:00:00Z"}
+
+    def test_missing_description_keeps_the_official_chain_open(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = self._chain_ledger(root, ["ABC-001"])
+
+            class Staged:
+                def __init__(self):
+                    self.calls = []
+
+                def query(self, code, source):
+                    self.calls.append((code, source))
+                    payload = OperationalScriptTests._full_payload(code, source)
+                    payload["description"] = "Catalog description"
+                    if source == "makers":
+                        payload.pop("description")
+                    return payload
+
+            provider = Staged()
+            with redirect_stdout(io.StringIO()):
+                result = self.scrape_codes.main([
+                    "--db", str(db), "--out", str(root / "candidates.csv"),
+                    "--raw-dir", str(root / "raw"), "--log-dir", str(root / "logs"),
+                    "--delay", "0", "--min-free", "0",
+                ], provider=provider)
+            self.assertEqual(result, 0)
+            self.assertEqual(provider.calls, [
+                ("ABC-001", "makers"),
+                ("ABC-001", "r18dev"),
+                ("ABC-001", "javdb"),
+            ])
 
     def test_chain_profile_collects_javdb_tags_after_the_scalars_settle(self):
         """默认走正式链：标量齐全后只补 JavDB 类别，标量不足时问完整综合索引档。
@@ -4048,7 +4129,10 @@ class OperationalScriptTests(unittest.TestCase):
                         raise self_error("status 404", kind="not_found", status_code=404)
                     if code == "DEF-002":
                         return {"source": source, "id": code, "maker": "Studio B"}
-                    return OperationalScriptTests._full_payload(code, source)
+                    return {
+                        **OperationalScriptTests._full_payload(code, source),
+                        "description": "Catalog description",
+                    }
 
             provider = Staged()
             output = root / "metadata-field-candidates-chain.csv"

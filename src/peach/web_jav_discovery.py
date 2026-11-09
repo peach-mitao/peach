@@ -86,7 +86,9 @@ def _library(connection):
         "a.release_date,a.duration,a.snapshot_path,a.play_count,a.max_reached,a.region,"
         + web_catalog.EFFECTIVE_REGION_SQL + " AS effective_region FROM asset a WHERE "
         + web_catalog.JAV_ASSET_PREDICATE
-        + " AND a.medium='video' AND a.disposal IS NULL AND COALESCE(a.feedback,'') NOT IN ('dislike','seen')"
+        + " AND a.medium='video' AND a.disposal IS NULL AND "
+        + web_catalog.ASSET_IN_CONFIGURED_MEDIA_SCOPE
+        + " AND COALESCE(a.feedback,'') NOT IN ('dislike','seen')"
         " AND COALESCE(a.play_count,0)<=1 AND (COALESCE(a.duration,0)<=0"
         " OR COALESCE(a.max_reached,0)<a.duration*0.5) ORDER BY a.id")]
     by_id = {row["id"]: row for row in rows}

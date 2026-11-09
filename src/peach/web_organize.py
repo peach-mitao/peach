@@ -8,7 +8,6 @@
 """
 from __future__ import annotations
 
-import sqlite3
 import time
 from pathlib import Path
 
@@ -88,8 +87,7 @@ def _run_write(contract, job_id: str, work) -> dict:
     name = f"ledger.pre-organize-{time.strftime('%Y%m%d-%H%M%S')}-{job_id}.db"
     with ledger_backups.organize_backup(Path(contract.db_path), contract.candidate_root,
                                         name) as backup:
-        connection = sqlite3.connect(str(contract.db_path), timeout=30)
-        connection.row_factory = sqlite3.Row
+        connection = contract.database.connect(write=True)
         try:
             before, _ = verify_after_write(connection)
             if before != 'ok':

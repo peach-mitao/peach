@@ -26,6 +26,7 @@ from pathlib import Path
 from . import images
 from .avatar_face import face_px_width
 from .western_artwork import artwork_cast_size, artwork_key
+from .repository import media_scope_predicate
 
 PROVIDER = "cover-face"
 SOURCE_KIND = "cover_face_crop"
@@ -70,7 +71,7 @@ def single_works(connection, entity_id: int,
             for asset_id, code, snapshot in connection.execute(
         "SELECT a.id,a.code,a.snapshot_path FROM asset a JOIN asset_entity ae ON ae.asset_id=a.id "
         "WHERE ae.entity_id=? AND ae.role=? "
-        "AND a.disposal IS NULL "
+        "AND a.disposal IS NULL AND " + media_scope_predicate(connection, "a") + " "
         "AND NOT EXISTS(SELECT 1 FROM asset_entity other WHERE other.asset_id=a.id "
         "AND other.role=ae.role AND other.entity_id<>ae.entity_id) "
         "ORDER BY a.id", (int(entity_id), role))]

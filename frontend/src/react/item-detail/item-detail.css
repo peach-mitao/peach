@@ -306,6 +306,14 @@
 .peach-react :is([data-item-detail], [data-follow-detail]) [data-id-cell]:is([data-entity-kind], [data-open-unowned]):hover [data-id-face] { box-shadow: 0 0 0 2px var(--ink-2); }
 .peach-react :is([data-item-detail], [data-follow-detail]) [data-id-cell]:is([data-entity-kind], [data-open-unowned]):hover [data-id-name] { color: var(--ink); }
 .peach-react :is([data-item-detail], [data-follow-detail]) [data-id-cell][data-entity-kind]:focus-visible { outline: 2px solid var(--tungsten); outline-offset: 2px; }
+.peach-react [data-item-detail] [data-item-description] {
+  margin: -2px 0 18px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .peach-react [data-item-detail] [data-cast-more] {
   align-self: center;
   margin: 0;

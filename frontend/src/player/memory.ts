@@ -4,7 +4,7 @@ import type { CaptionStyle } from './subtitle-style';
 import type { VjsPlayer } from './types';
 
 export interface PlayerMemoryValue {
-  selected: string | null;
+  selected?: string | null;
   tracks: { key: string; name: string; src: string }[];
   rotation?: number;
   rate?: number;
@@ -42,7 +42,7 @@ class PlayerMemory {
     else void this.load().catch(() => {});
   }
   load() {
-    if (!this.url) return Promise.resolve({ selected: null, tracks: [] } as PlayerMemoryValue);
+    if (!this.url) return Promise.resolve({ tracks: [] } as PlayerMemoryValue);
     return this.reading ||= (async () => {
       await pending.get(this.url)?.catch(() => {});
       const value = await api(this.url, { signal: this.cleanup.signal }) as PlayerMemoryValue;

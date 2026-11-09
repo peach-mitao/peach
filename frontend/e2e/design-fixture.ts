@@ -388,10 +388,13 @@ export interface CatalogFixture {
 export async function openCatalogFixture(
   browser: Browser,
   change: (payload: CatalogFixture, url: URL) => void,
-  { completeFirstPage = false }: { completeFirstPage?: boolean } = {},
+  { completeFirstPage = false, poster }: { completeFirstPage?: boolean; poster?: string } = {},
 ): Promise<Visit> {
   const opened = await visit(browser, '/', DESKTOP);
   const baselines = new Map<string, CatalogFixture>();
+  if (poster) await opened.page.route('**/poster?id=*', route => route.fulfill({
+    status: 200, contentType: 'image/svg+xml', body: poster,
+  }));
   await opened.page.route(/\/api\/items\?/, async (route) => {
     const url = new URL(route.request().url());
     /* `visit()` 返回时，首屏还可能在后台续取下一页。路由接管之后若先撞上 offset>0，
@@ -421,7 +424,11 @@ export async function openCatalogFixture(
   await opened.page.reload({ waitUntil: 'load' });
   await opened.page.locator('[data-catalog-filter] [data-count-readout]').waitFor({ timeout: 15_000 });
   await settle(opened.page);
-  return opened;
+  return { ...opened, close: async () => {
+    // route.fetch() can still be finishing when the last assertion returns.
+    await opened.page.unrouteAll({ behavior: 'ignoreErrors' });
+    await opened.close();
+  } };
 }
 
 /** 一趟跑到一半的扫描与采集。 */

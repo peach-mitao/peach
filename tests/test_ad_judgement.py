@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from peach import junk, web_batch
+from peach.repository import LedgerDatabase
 from peach.web_contract import (
     BUNDLE_DIR_ASSETS,
     CONTENT_BYTES,
@@ -158,7 +159,9 @@ class ResourceJunkQueueTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.db_path = fresh_ledger(Path(self.temporary.name).resolve())
-        self.contract = WebContract(self.db_path)
+        self.contract = WebContract(
+            self.db_path, database=LedgerDatabase(self.db_path),
+        )
 
     def add(self, asset_id, location, path, medium, size=1000, duration=None,
             creator=None, disposal=None, code=None):

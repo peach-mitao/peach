@@ -8,6 +8,7 @@ import { gateSweep, releaseSweep, SKELETON_REVEAL_DELAY } from '@peach/legacy/ui
 
 import { PANEL_ASPECT, WIDE_PANEL_ASPECT, WIDE_SLEEVE_RATIO_MIN, WIDE_SLEEVE_RATIO_MAX, panelFrame, relayoutJavImages, type JavLayout } from '../jav-artwork';
 import { faceFrame } from './face-frame';
+import { NATURAL_THUMB_RATIO_MIN, SLEEVE_RATIO_MIN, STILL_COVER_RATIO_MIN } from './markup';
 import { faceSourceScale, markClamp, nativeImageFit } from './native-image';
 
 const devicePixels = () => window.devicePixelRatio || 1;
@@ -73,6 +74,8 @@ export function avatarFrame(img: HTMLImageElement): void {
    剧照必须自成一档：把 1.78 归进 front 就会按写死的 50% 取横向中段，人偏在一侧
    就整个被切掉，而大图容器比所有封面都竖、纵向锚点在那里根本不生效。 */
 export function coverAnchor(img: HTMLImageElement, ratio?: number): void {
+  const box = img.closest<HTMLElement>('.pic,[data-media-pic]');
+  box?.style.removeProperty('--cover-blur');
   const r = img.naturalWidth / img.naturalHeight;
   /* 容器比例在写任何样式之前读：先写再读，`getComputedStyle` 就得把刚弄脏的样式当场重算。
      调用方手里已经有这个数（播放墙每格自己写 `--card-ratio`）就直接传进来，一次也不读。 */
@@ -84,7 +87,11 @@ export function coverAnchor(img: HTMLImageElement, ratio?: number): void {
     .forEach(name => img.style.removeProperty(name));
   const code = img.dataset.coverCode || new URL(img.currentSrc || img.src, location.href).searchParams.get('code') || '';
   // FC2 封面是整幅画面，横向取景跟随人脸；宽高比不代表有 DVD 正封。
-  img.dataset.frame = img.dataset.coverLayout === 'still' || /^FC2(?:-PPV)?-/i.test(code) ? 'still' : wideSleeve(img) ? 'sleeve' : r >= 1.65 ? 'still' : r > 1.2 ? 'sleeve' : 'front';
+  img.dataset.frame = img.dataset.coverLayout === 'still' || /^FC2(?:-PPV)?-/i.test(code)
+    ? 'still'
+    : wideSleeve(img) ? 'sleeve'
+      : r >= STILL_COVER_RATIO_MIN ? 'still' : r > SLEEVE_RATIO_MIN ? 'sleeve' : 'front';
+  useNaturalCardRatio(img, img.dataset.frame === 'still');
   /* `object-position` 的百分比说的是「图片上这个点对齐可见窗口的同一个百分比位置」，
      不是「这个点落到窗口正中」。所以人脸中心原样当锚点只能保证脸还在画面里：0.81
      那种偏右的脸会贴着窗口右缘，图片右边还剩一截永远露不出来。可见窗口占图片 w 时，
@@ -103,6 +110,35 @@ export function coverAnchor(img: HTMLImageElement, ratio?: number): void {
   // 传统封面的整图与竖版正封保持完整，比例不同处用同图补底；整幅大封保持纯色底。
   if (img.dataset.frame !== 'still' && (img.classList.contains('whole') || img.dataset.frame === 'front')
     && Math.abs(r / car - 1) > .02) coverBackdrop(img);
+}
+
+/* 整幅横版画面在大图密度下按原比例占位；密集档仍由卡片的 `--card-ratio` 给出正封框。 */
+function useNaturalCardRatio(img: HTMLImageElement, enabled: boolean): void {
+  const box = img.closest<HTMLElement>('.pic,[data-media-pic]');
+  if (!box || !img.naturalWidth || !img.naturalHeight) return;
+  if (enabled) img.dataset.naturalCard = '';
+  else delete img.dataset.naturalCard;
+  if (enabled) {
+    box.style.setProperty('--image-card-ratio', String(img.naturalWidth / img.naturalHeight));
+    /* 旧剧照规则按 `front` 写 cover；内联这一档明确表达“整图可见”。 */
+    img.style.objectFit = 'contain';
+    img.style.objectPosition = '50% 50%';
+  } else {
+    box.style.removeProperty('--image-card-ratio');
+    img.style.removeProperty('object-fit');
+    img.style.removeProperty('object-position');
+  }
+}
+
+/* 本地截帧/关注缩略图没有 `coverAnchor` 那套封面分类；横版同样按自己的比例占位，
+ * 竖版继续使用网格版式给的比例。 */
+function anchorCardArtwork(img: HTMLImageElement): void {
+  if (img.classList.contains('cover')) {
+    coverAnchor(img);
+    return;
+  }
+  if (!img.classList.contains('poster') || !img.naturalWidth || !img.naturalHeight) return;
+  useNaturalCardRatio(img, img.naturalWidth / img.naturalHeight > NATURAL_THUMB_RATIO_MIN);
 }
 
 /* 只把折痕右边那块正封摆进卡片，封底一个像素都不露。折痕位置在 `data-posterbox` 里，
@@ -177,8 +213,16 @@ export function upgradeCover(img: HTMLImageElement): void {
    而 `getComputedStyle` 赶上刚插进来的一批卡片会先把整棵样式树重算一遍。框上没写的（比例
    写在更外层的网格上）才读计算样式。 */
 export function coverRatio(img: HTMLImageElement): number {
-  const inline = img.closest<HTMLElement>('.pic,[data-media-pic]')?.style.getPropertyValue('--card-ratio').trim();
-  const parts = (inline || getComputedStyle(img).getPropertyValue('--card-ratio').trim()).split('/').map(Number);
+  const box = img.closest<HTMLElement>('.pic,[data-media-pic]');
+  const inline = box?.style.getPropertyValue('--card-ratio').trim();
+  const style = getComputedStyle(img);
+  const natural = style.getPropertyValue('--image-card-ratio').trim();
+  const bigMedia = document.body.dataset.surface !== '/trash'
+    && box?.dataset.mediaLayoutSize === 'big';
+  const value = bigMedia && natural
+    ? natural
+    : inline || style.getPropertyValue('--card-ratio').trim();
+  const parts = value.split('/').map(Number);
   const r = parts.length === 2 ? Number(parts[0]) / Number(parts[1]) : Number(parts[0]);
   return Number.isFinite(r) && r > 0 ? r : 16 / 9;
 }
@@ -232,12 +276,12 @@ export function settleImage(img: HTMLImageElement): void {
    要么藏着（`09-skeleton.css`），要么是几何居中。观察回调是微任务，赶在绘制之前。
    不限于 `PENDING_IMAGES` 那几种框：带脸框的头像散在各页，哪里的都一样要先取景。 */
 export function frameCachedImages(node: Element): void {
-  const framed = 'img.cover,img[data-facebox]';
+  const framed = 'img.cover,[data-media-pic]>img.poster,[data-facebox]';
   const found = node.matches(framed) ? [node] : node.querySelectorAll(framed);
   for (const el of found) {
     const img = el as HTMLImageElement;
     if (!(img.complete && img.naturalWidth)) continue;
-    if (img.classList.contains('cover')) coverAnchor(img);
+    if (img.classList.contains('cover') || img.classList.contains('poster')) anchorCardArtwork(img);
     else { fitNativeImage(img); avatarFrame(img); }
   }
 }
@@ -304,13 +348,28 @@ export function installCardArt(): void {
     settleImage(img);
     fitNativeImage(img);
     if (img.classList.contains('cover')) { coverAnchor(img); upgradeCover(img); }
+    else if (img.classList.contains('poster')) anchorCardArtwork(img);
     // 头像走同一条路，理由也同一个：倍数要等图和框都落地才算得出来。
     else if (img.dataset.facebox) avatarFrame(img);
   }, true);
   new MutationObserver(records => {
-    for (const record of records) for (const node of record.addedNodes)
-      if (node.nodeType === Node.ELEMENT_NODE) { watchPendingImages(node as Element); frameCachedImages(node as Element); }
-  }).observe(document.body, { childList: true, subtree: true });
+    for (const record of records) {
+      if (record.type === 'attributes') {
+        document.querySelectorAll<HTMLImageElement>('[data-media-pic] img.cover')
+          .forEach(img => { coverAnchor(img); upgradeCover(img); });
+        document.querySelectorAll<HTMLImageElement>('[data-media-pic] img.poster')
+          .forEach(img => anchorCardArtwork(img));
+        continue;
+      }
+      for (const node of record.addedNodes)
+        if (node.nodeType === Node.ELEMENT_NODE) { watchPendingImages(node as Element); frameCachedImages(node as Element); }
+    }
+  }).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-density', 'data-media-layout-size'],
+  });
   // 挂在 document 上，比 body 上那条兜底链先收到：图被摘掉之前框还找得到。兜底链里还有
   // 下一张时微光留着，换上的那张到手才收。
   document.addEventListener('error', event => {
