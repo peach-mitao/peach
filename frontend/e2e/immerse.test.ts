@@ -302,4 +302,64 @@ describe('沉浸模式', () => {
       await opened.close();
     }
   });
+
+  it('手机 390 宽：长按进 3 倍速松手恢复原速；横划拖动时进度条显示目标时间', async () => {
+    const opened = await visit(browser, '/', MOBILE);
+    const { page } = opened;
+    try {
+      const { wide, tall } = await pickClips(page);
+      await pinQueue(page, [tall, wide]);
+      await muteVideos(page);
+      await openImmerse(page, tall.id);
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x = 0, y = 0) =>
+        cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+      const rate = () => page.evaluate(
+        (selector) => document.querySelector<HTMLVideoElement>(selector)!.playbackRate, currentVideo);
+
+      await touch('touchStart', 195, 400);
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      assert.equal(await rate(), 3, '长按没进 3 倍速');
+      assert.equal(await page.locator('[data-immerse-hold][data-on]').count(), 1, '3× 角标没露出来');
+      await touch('touchEnd');
+      assert.equal(await rate(), 1, '松手没恢复原速');
+      assert.equal(await page.locator('[data-immerse-hold][data-on]').count(), 0, '3× 角标没收起');
+
+      await page.evaluate((selector) => {
+        const video = document.querySelector<HTMLVideoElement>(selector)!;
+        video.pause();
+        video.currentTime = 0;
+      }, currentVideo);
+      await touch('touchStart', 100, 400);
+      for (let step = 1; step <= 8; step += 1) await touch('touchMove', 100 + step * 25, 404);
+      assert.equal(await page.locator('[data-immerse-bar][data-scrubbing]').count(), 1, '拖动中进度条没有变粗');
+      const label = await page.locator('[data-immerse-bar-time]').textContent();
+      assert.ok(label && /^\d+:\d\d(:\d\d)?$/.test(label), `进度条没显示目标时间：${label}`);
+      await touch('touchEnd');
+      assert.deepEqual(opened.problems, [], JSON.stringify(opened.problems));
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('字幕键打开字幕菜单：可关闭、加载文件与在线搜索', async () => {
+    const opened = await visit(browser, '/', MOBILE);
+    const { page } = opened;
+    try {
+      const { wide, tall } = await pickClips(page);
+      await pinQueue(page, [tall, wide]);
+      await muteVideos(page);
+      await openImmerse(page, tall.id);
+      await page.locator('[data-immerse-subtitle]').click();
+      const menu = page.locator('[data-immerse-subtitle-menu]');
+      await menu.waitFor();
+      const text = (await menu.textContent()) || '';
+      assert.match(text, /关闭/);
+      assert.match(text, /加载字幕文件/);
+      assert.match(text, /在线搜索字幕/);
+      assert.deepEqual(opened.problems, [], JSON.stringify(opened.problems));
+    } finally {
+      await opened.close();
+    }
+  });
 });

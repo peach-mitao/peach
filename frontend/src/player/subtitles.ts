@@ -7,7 +7,7 @@ import { SubtitleSession } from './subtitle-memory';
 import { playerMemory } from './memory';
 import { t } from '../i18n';
 
-interface Panels {
+export interface Panels {
   render(html: string, direction: number): HTMLElement;
   open(): void;
   close(): void;
@@ -35,9 +35,10 @@ export class SubtitleControls {
   private more = false;
   private searched = false;
 
-  constructor(private player: VjsPlayer, private video: HTMLVideoElement, private panels: Panels) {
+  constructor(private player: VjsPlayer, private video: HTMLVideoElement, private panels: Panels, cc?: HTMLButtonElement) {
     this.styles = mountCaptionStyle(player.el(), video, this.cleanup.signal, playerMemory(player));
-    this.cc = player.el().querySelector<HTMLButtonElement>('.vjs-subtitles-control > button')!;
+    /* 沉浸这类没有控制条的宿主自带按钮传进来；舞台照旧取控制条里那枚 CC。 */
+    this.cc = cc || player.el().querySelector<HTMLButtonElement>('.vjs-subtitles-control > button')!;
     this.cc.innerHTML = subtitleIcon();
     this.cc.onclick = () => {
       const showing = this.tracks().find(track => track.mode === 'showing');
@@ -231,4 +232,26 @@ export class SubtitleControls {
     } catch (error) { if (!signal.aborted) this.status(error instanceof Error ? error.message : t('catalog:subtitles.loadFailed'), true) }
   }
 
+}
+
+/** 沉浸这类没有设置菜单的宿主：一个单层面板容器加打开/关闭/返回，够 `SubtitleControls` 用。
+ *  面板内容复用设置菜单那套类名与样式（`vjs-peach-panel*`），点外面收起。宿主容器由调用方
+ *  提供、随宿主的生命周期走，这里只在容器上摆面板。 */
+export function subtitlePanels(menu: HTMLElement): Panels {
+  const close = () => { menu.hidden = true };
+  document.addEventListener('pointerdown', (event) => {
+    if (!menu.hidden && !menu.contains(event.target as Node)) close();
+  });
+  return {
+    render(html: string): HTMLElement {
+      const panel = document.createElement('div');
+      panel.className = 'vjs-peach-panel';
+      panel.innerHTML = html;
+      menu.replaceChildren(panel);
+      return panel;
+    },
+    open: () => { menu.hidden = false },
+    close,
+    back: close,
+  };
 }
