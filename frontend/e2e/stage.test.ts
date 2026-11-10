@@ -453,6 +453,44 @@ describe('舞台岛', () => {
     }
   });
 
+  it('画面手势：长按进 3 倍速松手恢复，左右滑动调进度并显示目标时间', { timeout: 60_000 }, async () => {
+    const opened = await openItemPage(browser, `/assets/${ITEM.plain}`, DESKTOP);
+    try {
+      const page = opened.page;
+      await page.locator(PLAYER).waitFor({ state: 'attached' });
+      await page.locator('#stage #playerHold').waitFor({ state: 'attached' });
+      const box = await page.locator('#stage .video-js').boundingBox();
+      assert.ok(box);
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const rate = () => page.evaluate(() => (document.querySelector('#stage video') as HTMLVideoElement | null)?.playbackRate);
+
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.waitForTimeout(620);
+      assert.equal(await rate(), 3, '长按没进 3 倍速');
+      assert.equal(await page.locator('#stage #playerHold:not([hidden])').count(), 1, '3× 角标没露出来');
+      await page.mouse.up();
+      assert.equal(await rate(), 1, '松手没恢复原速');
+      assert.equal(await page.locator('#stage #playerHold:not([hidden])').count(), 0, '3× 角标没收起');
+
+      await page.mouse.move(x - 150, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 150, y, { steps: 6 });
+      await page.locator('#stage #playerScrubTime:not([hidden])').waitFor();
+      assert.match(await page.locator('#stage #playerScrubTime').textContent() || '', /\/ 1:00:00$/,
+        '时间胶囊没写上目标时间');
+      const fill = () => page.locator('#stage .vjs-progress-holder').evaluate(
+        (node) => (node as HTMLElement).style.getPropertyValue('--media-slider-fill'));
+      assert.ok(parseFloat(await fill()) > 0, `滑动中进度条没有跟着走：${await fill()}`);
+      await page.mouse.up();
+      assert.equal(await page.locator('#stage #playerScrubTime:not([hidden])').count(), 0, '松手后时间胶囊没收起');
+      assert.equal(await fill(), '', '松手后进度条的拖动态没交还');
+      assert.deepEqual(withoutPlayer(opened.problems), []);
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('手机 390：详情不横向溢出，播放器控件收成窄屏那一套；小窗落在视口里', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/assets/${ITEM.plain}`, MOBILE);
     try {

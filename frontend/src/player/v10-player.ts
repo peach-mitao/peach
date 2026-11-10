@@ -26,15 +26,20 @@ export const createV10Player: VideojsFactory = (video, options) => {
   root.id = video.id || `peach-player-${randomId()}`;
   root.setAttribute('lang', interfaceLanguage);
   const container = document.createElement('media-container');
+  /* 旋转层：横版视频在竖屏视口里进全屏时转它（`data-landscape`）。全屏元素是 media-container，
+     浏览器的全屏样式把全屏元素本身钉死（几何与 transform 都压得过作者样式），只能转它包着的
+     内容层——视频、缓冲、错误与控件条都在这里面，一起转。 */
+  const rotor = document.createElement('div');
+  rotor.className = 'vjs-rotor';
   let media = document.createElement('hlsjs-video') as MediaElement;
   const parent = video.parentNode;
   parent?.replaceChild(root, video);
   video.removeAttribute('id'); video.className = 'vjs-tech'; video.slot = 'media';
   video.controls = false; video.preload = options.preload === 'auto' ? 'auto' : options.preload === 'none' ? 'none' : 'metadata';
   if (options.poster) video.poster = String(options.poster);
-  media.append(video); container.append(media); provider.append(container); root.append(provider);
+  media.append(video); rotor.append(media); container.append(rotor); provider.append(container); root.append(provider);
   if (options.controls !== false) {
-    container.insertAdjacentHTML('beforeend', `<div class="vjs-loading-spinner" aria-label="${t('catalog:playerShell.buffering')}"></div>
+    rotor.insertAdjacentHTML('beforeend', `<div class="vjs-loading-spinner" aria-label="${t('catalog:playerShell.buffering')}"></div>
       <div class="vjs-error-display"><div class="vjs-modal-dialog-content" role="alert"></div></div>
       <div class="vjs-control-bar">
         <media-play-button class="vjs-play-control vjs-control vjs-button" label="${t('catalog:shared.play')}"></media-play-button>

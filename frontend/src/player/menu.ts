@@ -6,6 +6,7 @@
 import { esc, icon } from '@peach/legacy/core';
 import { dismissMenu, presentMenu, scrollMovesAnchor } from '@peach/legacy/ui';
 
+import { holdSpeedOf } from './gestures';
 import { playerHost } from './host';
 import type { VjsPlayer } from './types';
 import { t } from '../i18n';
@@ -152,7 +153,11 @@ export function openPlayerMenu(player: VjsPlayer, x: number, y: number): void {
 export function wirePlayerContextMenu(player: VjsPlayer): void {
   player.el().addEventListener('contextmenu', (event) => {
     if ((event.target as Element).closest('.vjs-peach-settings-menu')) return;
-    event.preventDefault(); openPlayerMenu(player, event.clientX, event.clientY);
+    event.preventDefault();
+    /* 触摸长按引发的 contextmenu（浏览器原生视频菜单）只吞不开：那一下归长按三倍速。
+       鼠标右键（含 macOS 的 Ctrl 点按）照旧开菜单。 */
+    if (holdSpeedOf(player.el())?.touchPressing()) return;
+    openPlayerMenu(player, event.clientX, event.clientY);
   });
   player.on('dispose', closePlayerMenu);
 }
