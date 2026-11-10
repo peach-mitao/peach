@@ -863,6 +863,7 @@ class UpgradeRepairs:
                 self._settle_dangling_candidates()
                 self._settle_javdb_records()
                 self._settle_resolution_tags()
+                self._settle_quality()
                 self._isolate_system_files()
                 return
             self._restore_receipt(None)
@@ -913,6 +914,7 @@ class UpgradeRepairs:
             self._settle_dangling_candidates()
             self._settle_javdb_records()
             self._settle_resolution_tags()
+            self._settle_quality()
             self._isolate_system_files()
 
     def _prepare_display_dimensions(self) -> None:
@@ -1147,6 +1149,21 @@ class UpgradeRepairs:
             LOGGER.exception('来源分辨率标签补修失败')
             return
         LOGGER.info('来源分辨率标签：解除 %s 行', len(result['tags']))
+
+    def _settle_quality(self) -> None:
+        """按已存尺寸修正画质分档，原值与结果在同一事务写入回执。"""
+        from . import quality_repair
+        try:
+            with self.contract.database.write_transaction() as connection:
+                if connection.execute('SELECT 1 FROM ledger_upgrade_repair WHERE id=?', (quality_repair.KEY,)).fetchone():
+                    return
+                result = quality_repair.settle(connection)
+                connection.execute('INSERT INTO ledger_upgrade_repair(id,applied_at,result_json) VALUES(?,?,?)',
+                                   (quality_repair.KEY, str(time.time()), json.dumps(result, ensure_ascii=False)))
+        except Exception:
+            LOGGER.exception('画质分档补修失败')
+            return
+        LOGGER.info('画质分档：修正 %s 行', len(result['assets']))
 
     def _clear_stale_codes(self) -> None:
         """清掉旧版从文件名误认的番号（`stale_filename_codes`），只做一次。"""

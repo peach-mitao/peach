@@ -49,8 +49,8 @@ def context_fields(width: int, height: int, duration: float) -> tuple[str | None
         orientation = "竖屏" if height > width else "横屏"
         longest = max(width, height)
         quality = (
-            "4K" if longest >= 3000 else "2K" if longest >= 1900
-            else "1080P" if longest >= 1300 else "720P" if longest >= 900
+            "4K" if longest >= 3000 else "2K" if longest >= 2000
+            else "1080P" if longest >= 1800 else "720P" if longest >= 1200
             else "低画质"
         )
     if duration and duration > 0:
