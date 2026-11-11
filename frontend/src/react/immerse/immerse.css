@@ -11,16 +11,18 @@
  * 外观的一部分。 */
 
 /* ── 动作键圆钮 ──
-   只共享 48/24 的几何与图标居中；表面色由使用场景决定。 */
-[data-immerse-circle]{box-sizing:border-box;width:48px;height:48px;padding:0;border:0;border-radius:50%;
+   只共享 40/20 的几何与图标居中；表面色由使用场景决定。 */
+[data-immerse-circle]{box-sizing:border-box;width:40px;height:40px;padding:0;border:0;border-radius:50%;
   background:rgba(255,255,255,.1);color:#f1f1f1;display:grid;place-items:center;cursor:pointer}
 [data-immerse-circle]:hover{background:rgba(255,255,255,.18)}
 [data-immerse-circle]:focus-visible{outline:2px solid var(--tungsten);outline-offset:3px}
-[data-immerse-circle] svg{display:block;width:24px;height:24px;flex:none;stroke:currentColor;fill:none;
+[data-immerse-circle] svg{display:block;width:20px;height:20px;flex:none;stroke:currentColor;fill:none;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── 沉浸层 ── */
-[data-immerse]{position:fixed;inset:0;z-index:200;background:#0f0f0f;display:flex;align-items:center;justify-content:center;overflow:hidden}
+/* 整层不给选中也不给长按呼出菜单：长按归三倍速手势，浏览器原生视频菜单和文字选中框都不出现。 */
+[data-immerse]{position:fixed;inset:0;z-index:200;background:#0f0f0f;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 [data-immerse][hidden]{display:none}
 body[data-immerse-open]{overflow:hidden}
 [data-immerse-stage]{position:absolute;left:50%;top:50%;width:min(56.25vh,calc(100vw - 240px));aspect-ratio:9/16;
@@ -53,7 +55,7 @@ body[data-immerse-open]{overflow:hidden}
 /* 进度条预览出来时让开：作者与标题在它正下方，透过时间浮签的半透明底会读成一团。 */
 [data-immerse]:has([data-immerse-bar] [data-player-seek-preview]:not([hidden])) [data-immerse-ui]{visibility:hidden}
 [data-immerse-actions]{position:absolute;left:calc(100% + 12px);bottom:8px;width:72px;
-  display:flex;flex-direction:column;align-items:center;gap:16px}
+  display:flex;flex-direction:column;align-items:center;gap:12px}
 [data-immerse-stage][data-wide] [data-immerse-actions]{left:auto;right:12px;bottom:18px}
 [data-immerse-action]{display:flex;flex-direction:column;align-items:center;gap:6px;color:#f1f1f1}
 [data-immerse-actions] button{position:relative;transition:background .14s}
@@ -71,18 +73,40 @@ body[data-immerse-open]{overflow:hidden}
   transition:height .12s}
 [data-immerse-bar]:hover::before,[data-immerse-bar]:hover>i,
 [data-immerse-bar][data-scrubbing]::before,[data-immerse-bar][data-scrubbing]>i{height:9px}
-[data-immerse-author]{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:var(--fs-md);line-height:1.2}
+/* 滑动所在的时间：拖动进度条或画面横划期间跟着比例走，收起就不画。 */
+[data-immerse-bar-time]{display:none;position:absolute;bottom:calc(100% + 8px);transform:translateX(-50%);
+  padding:4px 9px;border-radius:var(--pill-radius);background:rgba(0,0,0,.62);color:#fff;white-space:nowrap;
+  font:var(--fs-xs)/1.2 "Cascadia Mono",monospace;backdrop-filter:blur(12px);pointer-events:none}
+[data-immerse-bar][data-scrubbing] [data-immerse-bar-time]{display:block}
+/* 长按三倍速的角标：画在舞台中央，只在按住期间出现。 */
+[data-immerse-hold]{display:none;position:absolute;left:50%;top:20px;transform:translateX(-50%);z-index:6;
+  padding:6px 13px;border-radius:var(--pill-radius);background:rgba(0,0,0,.62);color:#fff;
+  font-size:var(--fs-sm);font-weight:600;line-height:1;backdrop-filter:blur(12px);pointer-events:none}
+[data-immerse-hold][data-on]{display:block}
+/* 字幕菜单（动作列第 5 键打开）：挂在字幕键底下、往左展开——动作列在桌面贴着舞台右缘、
+   在手机贴着屏幕右缘，锚在键上两边都跟得上。外观与行样式直接吃设置菜单那套
+   （`.vjs-peach-settings-menu`），这里只管定位与尺寸；属性写两遍压过那套自带的定位。 */
+[data-immerse-subtitle-menu][data-immerse-subtitle-menu]{position:absolute;z-index:30;
+  right:calc(100% + 10px);bottom:0;left:auto;top:auto;
+  box-sizing:border-box;width:274px;max-width:min(274px,calc(100vw - 140px));
+  max-height:min(420px,calc(100vh - 160px));overflow:auto;
+  border:1px solid rgba(255,255,255,.18);border-radius:var(--floating-radius);
+  background:rgba(2,4,8,.86);box-shadow:0 12px 28px #0008}
+[data-immerse-subtitle-menu][hidden]{display:none}
+/* CC 字形是实心图形，不吃圆钮那套描边画法。 */
+[data-immerse-subtitle] svg{width:22px;height:22px;fill:currentColor;stroke:none}
+[data-immerse-author]{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:var(--fs-sm);line-height:1.2}
 /* 作者名单行省略、元信息不折：十几位共演时名字收成一截，「· 时长 · 横屏 · 序号」照旧排在后面。 */
 [data-immerse-author]>a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f1f1f1;font-weight:600;text-decoration:none;pointer-events:auto}
-[data-immerse-author]>a:hover{color:var(--tungsten);text-decoration:none}[data-immerse-author]>span{flex:none;white-space:nowrap;color:#aaa;font-size:var(--fs-sm)}
-[data-immerse-avatar]{position:relative;width:40px;height:40px;flex:none;overflow:hidden;border:0;border-radius:50%;padding:0;
+[data-immerse-author]>a:hover{color:var(--tungsten);text-decoration:none}[data-immerse-author]>span{flex:none;white-space:nowrap;color:#aaa;font-size:var(--fs-xs)}
+[data-immerse-avatar]{position:relative;width:32px;height:32px;flex:none;overflow:hidden;border:0;border-radius:50%;padding:0;
   background:#333;color:#f1f1f1;cursor:pointer;pointer-events:auto}
 [data-immerse-avatar] img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 [data-immerse-avatar] [class~=ini]{position:absolute;inset:0;display:grid;place-items:center;font-weight:600}
 [data-immerse-avatar]:hover{box-shadow:0 0 0 2px #f1f1f1}
 /* 标题是进详情页的入口，所以是按钮；但它在画面上就是一行字，不能长成按钮的样子。 */
 [data-immerse-ui] [data-immerse-title]{display:block;max-width:100%;margin:0;padding:0;border:0;background:none;
-  color:inherit;font:inherit;font-size:var(--fs-xl);font-weight:600;line-height:1.25;text-align:left;cursor:pointer;pointer-events:auto;
+  color:inherit;font:inherit;font-size:var(--fs-lg);font-weight:600;line-height:1.25;text-align:left;cursor:pointer;pointer-events:auto;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 [data-immerse-ui] [data-immerse-title]:hover{color:var(--ink-2)}
 [data-immerse-actions] button[aria-pressed="true"]{background:#f1f1f1;color:#0f0f0f}
@@ -94,11 +118,43 @@ body[data-immerse-open]{overflow:hidden}
 @media (max-width:760px){
   [data-immerse-stage],[data-immerse-stage][data-wide]{inset:0;width:100%;height:100%;aspect-ratio:auto;transform:none}
   [data-immerse-track]{border-radius:0;box-shadow:none}
-  [data-immerse-actions]{left:auto;right:max(8px,env(safe-area-inset-right));bottom:92px;width:56px;gap:14px}
+  [data-immerse-actions]{left:auto;right:max(8px,env(safe-area-inset-right));bottom:92px;width:48px;gap:10px}
   [data-immerse-stage][data-wide] [data-immerse-actions]{left:auto;right:max(8px,env(safe-area-inset-right));bottom:92px}
-  [data-immerse-ui]{left:14px;right:82px;bottom:28px;width:auto;padding:0 0 env(safe-area-inset-bottom)}
+  [data-immerse-ui]{left:14px;right:70px;bottom:28px;width:auto;padding:0 0 env(safe-area-inset-bottom)}
   [data-immerse][data-wide] [data-immerse-ui]{width:auto}
-  [data-immerse-author]{margin-bottom:8px}[data-immerse-author]>span{display:none}[data-immerse-avatar]{width:36px;height:36px}
-  [data-immerse-ui] [data-immerse-title]{font-size:var(--fs-md)}
+  [data-immerse-author]{margin-bottom:6px}[data-immerse-author]>span{display:none}[data-immerse-avatar]{width:28px;height:28px}
+  [data-immerse-ui] [data-immerse-title]{font-size:var(--fs-sm)}
   [data-immerse-close]{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right))}
 }
+
+/* ── 全屏：与窄屏同一套紧凑布局——舞台铺满（不套桌面那张卡片，上下不留大黑边）、动作列贴屏幕
+   右缘、作者标题贴左下并再收小一档。方向锁把屏幕转成横屏后视口变宽，窄屏那一段的媒体查询
+   不再命中；全屏本来就该整屏铺满，所以这套按 `:fullscreen` 单列一份。 ── */
+[data-immerse]:fullscreen [data-immerse-stage],
+[data-immerse]:fullscreen [data-immerse-stage][data-wide]{inset:0;width:100%;height:100%;aspect-ratio:auto;transform:none}
+[data-immerse]:fullscreen [data-immerse-track]{border-radius:0;box-shadow:none}
+[data-immerse]:fullscreen [data-immerse-actions],
+[data-immerse]:fullscreen [data-immerse-stage][data-wide] [data-immerse-actions]{
+  left:auto;right:max(8px,env(safe-area-inset-right));bottom:24px;width:48px;gap:10px}
+[data-immerse]:fullscreen [data-immerse-ui]{left:14px;right:70px;bottom:20px;width:auto;padding:0 0 env(safe-area-inset-bottom)}
+[data-immerse]:fullscreen[data-wide] [data-immerse-ui]{width:auto}
+[data-immerse]:fullscreen [data-immerse-author]{margin-bottom:4px;font-size:var(--fs-xs)}
+[data-immerse]:fullscreen [data-immerse-author]>span{display:none}
+[data-immerse]:fullscreen [data-immerse-avatar]{width:24px;height:24px}
+[data-immerse]:fullscreen [data-immerse-ui] [data-immerse-title]{font-size:var(--fs-sm)}
+[data-immerse]:fullscreen [data-immerse-close]{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right))}
+
+/* ── 横置（全屏 + 横版 + 竖屏视口）：转内层 `[data-immerse-rot]`，手机顺时针横拿铺满观看 ──
+   全屏元素是外框自己，浏览器全屏样式把它钉死（几何与 transform 都压得过作者样式，连行内
+   !important 也无效），转的是它包着的内容层。旋转层平时就是外框的整块画布；`inset` 简写放在
+   left/top 前面，放后面会把它们冲掉。vw/vh 在这里指物理视口，所以下面的规则只用百分比和 px。
+   选择器都压得过窄屏那一段（属性多一枚），放最后只是让它跟着阅读顺序走。 */
+[data-immerse-rot]{position:absolute;inset:0}
+[data-immerse][data-landscape] [data-immerse-rot]{inset:auto;left:50%;top:50%;width:100vh;height:100vw;
+  transform:translate(-50%,-50%) rotate(-90deg)}
+[data-immerse][data-landscape] :is([data-immerse-stage],[data-immerse-stage][data-wide]){inset:0;width:100%;height:100%;aspect-ratio:auto;transform:none}
+[data-immerse][data-landscape] [data-immerse-stage][data-wide] [data-immerse-actions]{right:12px;bottom:20px;width:48px;gap:10px}
+[data-immerse][data-landscape] :is([data-immerse-ui],[data-immerse][data-wide] [data-immerse-ui]){left:16px;right:70px;bottom:18px;width:auto}
+[data-immerse][data-landscape] [data-immerse-author]>span{display:inline}
+[data-immerse][data-landscape] [data-immerse-author]{margin-bottom:6px}
+[data-immerse][data-landscape] [data-immerse-close]{top:12px;right:12px}

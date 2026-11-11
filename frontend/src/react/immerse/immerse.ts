@@ -114,17 +114,12 @@ export function isWide(video: { videoWidth: number; videoHeight: number }, item:
   return !!(item.width && item.height && item.width > 0 && item.height > 0 && item.width >= item.height);
 }
 
-/* ── 手势的几个数 ── */
+/* ── 手势的几个数 ──
+   点按容差、轴锁与合成 click 窗口在 `player/gestures.ts`，和舞台手势同一份定义。 */
 /** 同一半区两下之间不超过这么久算双击。 */
 export const DOUBLE_TAP_MS = 280;
-/** 触屏抬手之后浏览器合成的那一下 click 不再切播放：那一下已经由单击／双击判定接管。 */
-export const SYNTHETIC_CLICK_MS = 700;
-/** 位移超过这么多才定方向；方向一旦定下就不再改，否则斜着划会又切片又跳进度。 */
-export const AXIS_LOCK_PX = 12;
 /** 竖划超过这么多换条。 */
 export const SWIPE_PX = 60;
-/** 两个方向都不超过这么多算一次点击。 */
-export const TAP_SLOP_PX = 14;
 /** 滚轮换条的节流。 */
 export const WHEEL_GAP_MS = 260;
 /** 不喜欢之后停这么久再换下一条：回执先落地。 */
@@ -133,3 +128,7 @@ export const DISLIKE_ADVANCE_MS = 260;
 export const SLIDE_MS = 210;
 /** 等一格可以出画的上限。 */
 export const READY_TIMEOUT_MS = 15_000;
+
+/* ── 横置（整体旋转 90°）后的手势坐标 ──
+   这套换算舞台与沉浸共用，实现在 `player/gestures.ts`（手势坐标是播放器的事），这里转出旧名。 */
+export { scrubRatio, swipeDelta, swipeSpan, tapSide } from '../../player/gestures';

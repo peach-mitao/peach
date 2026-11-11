@@ -5,6 +5,14 @@ export type { PlayerHost, PlayerSettings } from './host';
 export { configurePlayer } from './host';
 export type { PlayerMenuHooks } from './menu';
 export { closePlayerMenu, configurePlayerMenu } from './menu';
+export type { HoldMedia, HoldOptions, HoldSpeed, SwipeMedia, SwipeSeek, SwipeSeekOptions } from './gestures';
+export {
+  AXIS_LOCK_PX, HOLD_RATE, LONG_PRESS_MS, SYNTHETIC_CLICK_MS, TAP_SLOP_PX,
+  holdSpeedOf, mountBarScrub, mountHoldSpeed, mountSwipeSeek, playerGestureOverlayHtml,
+} from './gestures';
+export { lockScreenLandscape } from './orientation';
+export type { Panels } from './subtitles';
+export { SubtitleControls, subtitleIcon, subtitlePanels } from './subtitles';
 export { applyAmbientMode, applyTheaterMode, clickPlayerControl } from './controls';
 export type { DetailPlayerOptions, MountPlayerOptions, PlayerMedia, PlayerResume } from './detail-player';
 export {

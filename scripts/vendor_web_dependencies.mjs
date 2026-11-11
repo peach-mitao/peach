@@ -157,6 +157,8 @@ const lucideIcons = new Map([
   // 小窗播放：右键菜单里「迷你播放器」是缩进角落的小屏，小窗上的「展开」是对角撑开；
   // `maximize` 归 JAV 大图版式，不兼任。「循环播放」与「复制视频网址」照 Lucide 本名。
   ["picture-in-picture-2", "picture-in-picture-2"], ["maximize-2", "maximize-2"],
+  // 沉浸模式的「退出全屏」：和全屏那枚 maximize-2 成对。
+  ["minimize-2", "minimize-2"],
   ["repeat", "repeat"], ["link", "link"],
 ]);
 

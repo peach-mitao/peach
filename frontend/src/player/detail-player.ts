@@ -14,7 +14,9 @@ import {
   mountPlayerSpinner, mountPlayerSubtitles,
 } from './controls';
 import { disposePlayer } from './dispose';
+import { mountBarScrub, mountHoldSpeed, mountSwipeSeek, playerGestureOverlayHtml } from './gestures';
 import { playerHost } from './host';
+import { lockScreenLandscape } from './orientation';
 import { mountImmersePlayer, type ImmersePlayerOptions } from './immerse-player';
 import { wirePlayerContextMenu } from './menu';
 import { detailPlayer, setDetailPlayer } from './registry';
@@ -306,10 +308,82 @@ export function attachPlayerChrome(player: VjsPlayer, frame: HTMLElement): () =>
   }
   const tech = player.el().querySelector('video');
   const stopAmbient = tech ? mountPlayerAmbient(tech) : () => {};
+  /* 长按三倍速与左右滑动调进度只挂舞台这一层：播放器被小窗接走时随 `detach` 一起拆，
+     小窗自己的拖拽与点击不受影响。控件条和设置菜单上的指针不参与这两个手势。 */
+  const onMediaSurface = (event: PointerEvent) =>
+    !(event.target as Element | null)?.closest('.vjs-control-bar, .vjs-peach-settings-menu, .vjs-modal-dialog');
+  /* 手势读数画进旋转层（视频+控件那一层）：横置全屏时跟着内容一起转，全屏里也看得见。 */
+  const shell = player.el();
+  const surface = shell.querySelector<HTMLElement>('.vjs-rotor') ?? shell;
+  if (!surface.querySelector('#playerHold')) surface.insertAdjacentHTML('beforeend', playerGestureOverlayHtml());
+  const holdBadge = surface.querySelector<HTMLElement>('#playerHold');
+  const scrubTime = surface.querySelector<HTMLElement>('#playerScrubTime');
+  const holder = shell.querySelector<HTMLElement>('.vjs-progress-holder');
+  const rotated = () => shell.hasAttribute('data-landscape');
+  const media = () => {
+    const total = realDuration(player.duration()) || realDuration(player.peachItem?.duration) || 0;
+    return {
+      time: () => Number(player.currentTime()) || 0,
+      duration: () => total,
+      seek: (time: number) => { if (!player.isDisposed()) player.currentTime(time) },
+    };
+  };
+  /* 拖动预览：时间胶囊 + 进度条填充与滑点（都读 `--media-slider-fill`，时间线组件播放中会
+     一遍遍回写它，这里带 important 压住，松手摘掉交还）。滑动与进度条拖动共用这一套。 */
+  const paintScrub = (to: number | null, total: number) => {
+    if (!scrubTime) return;
+    if (to == null) {
+      scrubTime.hidden = true;
+      holder?.style.removeProperty('--media-slider-fill');
+      return;
+    }
+    scrubTime.hidden = false;
+    scrubTime.textContent = `${fmtClock(to)} / ${fmtClock(total)}`;
+    holder?.style.setProperty('--media-slider-fill', `${(to / total * 100).toFixed(2)}%`, 'important');
+  };
+  const hold = mountHoldSpeed(shell, () => ({
+    rate: () => Number(player.playbackRate()) || 1,
+    setRate: (rate) => { if (!player.isDisposed()) player.playbackRate(rate) },
+  }), {
+    filter: onMediaSurface,
+    hint: (on) => { if (holdBadge) holdBadge.hidden = !on },
+  });
+  const swipe = mountSwipeSeek(shell, media, {
+    filter: onMediaSurface,
+    rotated,
+    scrub: paintScrub,
+  });
+  /* 横置时进度条本体的拖动由这里接管：组件按外接矩形算落点，条竖起来后只会抖在两端。 */
+  const barDrag = mountBarScrub(shell, () => shell.querySelector<HTMLElement>('.vjs-progress-holder'),
+    media, { rotated, scrub: paintScrub });
+  /* 手机看横版：进全屏先把屏幕锁成横屏（真转屏，退出解锁回原方向）；锁不上时退回界面横置，
+     画面与控件一起转，手机横过来拿就是全屏横屏（与沉浸同一约定）。 */
+  const syncLandscape = () => {
+    const video = shell.querySelector('video');
+    const item = player.peachItem;
+    const wide = video?.videoWidth ? video.videoWidth >= video.videoHeight
+      : !!(item?.width && item?.height && item.width >= item.height);
+    const full = player.isFullscreen();
+    lockScreenLandscape(full && wide);
+    shell.toggleAttribute('data-landscape', full && wide && window.innerHeight > window.innerWidth);
+  };
+  player.on('fullscreenchange', syncLandscape);
+  window.addEventListener('resize', syncLandscape);
+  syncLandscape();
   let attached = true;
   const detach = () => {
     if (!attached) return;
     attached = false;
+    hold.dispose();
+    swipe.dispose();
+    barDrag.dispose();
+    if (holdBadge) holdBadge.hidden = true;
+    if (scrubTime) scrubTime.hidden = true;
+    holder?.style.removeProperty('--media-slider-fill');
+    player.off('fullscreenchange', syncLandscape);
+    window.removeEventListener('resize', syncLandscape);
+    shell.removeAttribute('data-landscape');
+    lockScreenLandscape(false);
     offPanels(); stopAmbient();
     if (session.chrome === chrome) { session.chrome = null; stopPlayerPanels() }
   };

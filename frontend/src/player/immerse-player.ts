@@ -11,9 +11,7 @@ import type { PlayerItem, VjsPlayer } from './types';
 import { ensureVideojs } from './videojs';
 import { mountPlayerSubtitles } from './controls';
 import { playbackKey } from './progress';
-import { SubtitleSession } from './subtitle-memory';
-import { mountCaptionStyle } from './subtitle-style';
-import { mountPlaybackRate, playerMemory } from './memory';
+import { mountPlaybackRate } from './memory';
 import { mountPlayerRotation } from './rotation';
 
 export interface ImmersePlayerOptions {
@@ -25,6 +23,8 @@ export interface ImmersePlayerOptions {
   onEnded?: () => void;
   /** 片源已经交给 video：调用方从这一刻起等它可以出画。拆得比片源解析快时不回调。 */
   onLoaded?: () => void;
+  /** 播放器挂好交出去：字幕菜单这类跟着播放器走的交互由宿主接（字幕按钮在宿主的界面里）。 */
+  onPlayer?: (player: VjsPlayer) => void;
 }
 
 const BARE = {
@@ -46,13 +46,11 @@ export function mountImmersePlayer(video: HTMLVideoElement, options: ImmersePlay
       player = mounted;
       mounted.peachItem = item;
       mounted.peachPlaybackKey = playbackKey('item', item);
-      const captions = new AbortController();
-      mountCaptionStyle(mounted.el(), video, captions.signal, playerMemory(mounted));
       mountPlayerRotation(mounted, video);
       mountPlaybackRate(mounted, video);
-      mounted.on('dispose', () => captions.abort());
-      new SubtitleSession(mounted, video);
+      /* 字幕轨道照挂；样式与记忆由宿主接的 SubtitleControls 管（字幕按钮在宿主的界面里）。 */
       mountPlayerSubtitles(mounted, item.id);
+      options.onPlayer?.(mounted);
       if (segmented) mounted.one('error', () => { if (!released) mounted.src(direct) });
       mounted.src(source);
     }

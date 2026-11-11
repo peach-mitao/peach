@@ -14,7 +14,8 @@ import { seekVideoBy, toggleVideoPlayback } from '../../src/player/playback';
 import type { BatchDockApi, BatchDockHost } from '../../src/react/batch-dock/batch-dock-api';
 import { catalogKey, type GridPage } from '../../src/react/catalog-grid/catalog-grid';
 import {
-  FIT_TOLERANCE, extendList, fitMode, immerseQuery, isWide, ownerOf, playable, type ImmerseItem,
+  FIT_TOLERANCE, extendList, fitMode, immerseQuery, isWide, ownerOf, playable, scrubRatio, swipeDelta, swipeSpan, tapSide,
+  type ImmerseItem,
 } from '../../src/react/immerse/immerse';
 import type { ImmerseApi, ImmerseHost } from '../../src/react/immerse/immerse-api';
 import { itemKey, type DetailItem } from '../../src/react/item-detail/item-detail';
@@ -39,9 +40,9 @@ const player = vi.hoisted(() => ({
   dims: new Map<number, [number, number]>(),
 }));
 
-/** 一条假媒体：可读的时长、可写的播放位置，play／pause 改 `paused`。 */
+/** 一条假媒体：可读的时长、可写的播放位置与倍速，play／pause 改 `paused`。 */
 function fakeMedia(video: HTMLVideoElement, [width, height]: [number, number]) {
-  let time = 0, paused = true;
+  let time = 0, paused = true, rate = 1;
   Object.defineProperties(video, {
     readyState: { configurable: true, get: () => 4 },
     duration: { configurable: true, get: () => 100 },
@@ -49,6 +50,7 @@ function fakeMedia(video: HTMLVideoElement, [width, height]: [number, number]) {
     paused: { configurable: true, get: () => paused },
     videoWidth: { configurable: true, get: () => width },
     videoHeight: { configurable: true, get: () => height },
+    playbackRate: { configurable: true, get: () => rate, set: (value: number) => { rate = value } },
   });
   video.play = vi.fn(async () => { paused = false });
   video.pause = vi.fn(() => { paused = true });
@@ -391,6 +393,19 @@ describe('关闭与流会话', () => {
     expect(host.closed).toHaveBeenCalledTimes(1);
   });
 
+  it('返回动作落到沉浸之外就退出沉浸，回到原页面且不再让宿主导航', async () => {
+    serve({ draws: [[row(1), row(2)]] });
+    await open();
+    // 开沉浸时地址是 /immerse（壳 push 的那一条），换条只 replace；返回键落回开沉浸之前的页面。
+    window.history.replaceState(null, '', '/immerse?id=1');
+    window.history.replaceState(null, '', '/assets/9');
+    await act(async () => { window.dispatchEvent(new PopStateEvent('popstate')) });
+    expect(root().hidden).toBe(true);
+    expect(api.isOpen()).toBe(false);
+    expect(host.closed).not.toHaveBeenCalled();
+    expect(new URL(window.location.href).pathname).toBe('/assets/9');
+  });
+
   it('换条时旧的那一格拆掉；离开页面按会话取消还开着的格', async () => {
     serve({ draws: [[1, 2, 3, 4, 5, 6].map((id) => row(id))] });
     await open();
@@ -672,6 +687,118 @@ describe('手势', () => {
     expect(preview().querySelector('span')!.textContent).toBe('0:10');
     await swipe(['touchend', 600, 405]);
     expect(preview().hidden).toBe(true);
+  });
+
+  it('长按画面进 3 倍速，松手恢复原速；长按那一下不切播放', async () => {
+    await open();
+    const { video } = current();
+    (video.pause as ReturnType<typeof vi.fn>).mockClear();
+    (video.play as ReturnType<typeof vi.fn>).mockClear();
+    const hold = (type: string) => track().dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, button: 0, isPrimary: true, pointerType: 'touch', clientX: 500, clientY: 400,
+    }));
+    await act(async () => {
+      hold('pointerdown');
+      track().dispatchEvent(touch('touchstart', 500, 400));
+    });
+    await wait(560);
+    expect(video.playbackRate).toBe(3);
+    await act(async () => {
+      hold('pointerup');
+      track().dispatchEvent(touch('touchend', 500, 400));
+    });
+    expect(video.playbackRate).toBe(1);
+    await wait(320);
+    expect(video.pause).not.toHaveBeenCalled();
+    expect(video.play).not.toHaveBeenCalled();
+    /* 三倍速只改当场的播放倍速，不写播放记忆：长按前后都不许出现记忆写请求（写入口是
+       `mountPlaybackRate.set()`／`playerMemory.save()`，倍速记忆走 PUT /api/player/memory）。 */
+    const fetcher = globalThis.fetch as ReturnType<typeof vi.fn>;
+    const writes = fetcher.mock.calls.filter(([url, init]) =>
+      init?.method && init.method !== 'GET' && String(url).includes('player/memory'));
+    expect(writes).toEqual([]);
+  });
+
+  it('长按不再弹浏览器原生菜单，也不给选中框', async () => {
+    await open();
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    root().dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(true);
+    const select = new Event('selectstart', { bubbles: true, cancelable: true });
+    root().dispatchEvent(select);
+    expect(select.defaultPrevented).toBe(true);
+  });
+
+  it('滑动和拖动进度条都把目标时间写在进度条上', async () => {
+    await open();
+    const bar = q('[data-immerse-bar]')!;
+    const label = q('[data-immerse-bar-time]')!;
+    await swipe(['touchstart', 500, 400]);
+    const drag = touch('touchmove', 600, 402);
+    await act(async () => { track().dispatchEvent(drag) });
+    expect(bar.hasAttribute('data-scrubbing')).toBe(true);
+    expect(label.textContent).toBe('0:10');
+    expect(label.style.left).toBe('10.00%');
+    await swipe(['touchend', 600, 402]);
+    bar.getBoundingClientRect = () => ({ left: 0, width: 1000, top: 0, height: 20, right: 1000, bottom: 20, x: 0, y: 0, toJSON() {} });
+    bar.setPointerCapture = vi.fn();
+    const pointer = (type: string, clientX: number) => act(async () => {
+      bar.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX, pointerId: 1 }));
+    });
+    await pointer('pointerdown', 250);
+    expect(label.textContent).toBe('0:25');
+    await pointer('pointerup', 250);
+  });
+
+  it('全屏按钮切换浏览器全屏；横版加竖屏视口时整个 UI 横置', async () => {
+    player.dims.set(1, [1920, 1080]);
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1400 });
+    await open();
+    const frame = root();
+    const requests: string[] = [], exits: string[] = [];
+    Object.defineProperty(frame, 'requestFullscreen', { configurable: true, value: async () => {
+      requests.push('in');
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => frame });
+    } });
+    Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: async () => {
+      exits.push('out');
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => null });
+    } });
+    await click(q('[data-immerse-actions] button[aria-label="全屏"]'));
+    await act(async () => { document.dispatchEvent(new Event('fullscreenchange')) });
+    expect(requests).toEqual(['in']);
+    expect(frame.hasAttribute('data-landscape')).toBe(true);
+    await click(q('[data-immerse-actions] button[aria-label="退出全屏"]'));
+    await act(async () => { document.dispatchEvent(new Event('fullscreenchange')) });
+    expect(exits).toEqual(['out']);
+    expect(frame.hasAttribute('data-landscape')).toBe(false);
+    expect(q('[data-immerse-actions] button[aria-label="全屏"]')).toBeTruthy();
+  });
+});
+
+describe('横置坐标', () => {
+  it('位移、画面宽与左右半区按内容坐标系换算', () => {
+    expect(swipeDelta(30, -40, false)).toEqual({ x: 30, y: -40 });
+    expect(swipeDelta(30, -40, true)).toEqual({ x: 40, y: 30 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 2000 });
+    expect(swipeSpan(false)).toBe(1000);
+    expect(swipeSpan(true)).toBe(2000);
+    expect(tapSide(200, 400, false)).toBe(-1);
+    expect(tapSide(800, 400, false)).toBe(1);
+    expect(tapSide(500, 400, true)).toBe(1);
+    expect(tapSide(500, 1600, true)).toBe(-1);
+  });
+
+  it('进度条落点比例：横置后条是竖条，按内容坐标算而不是 AABB', () => {
+    const strip = { left: 490, top: 0, width: 20, height: 2000 };
+    expect(scrubRatio(500, 400, { left: 0, top: 200, width: 1000, height: 18 }, false)).toBe(0.5);
+    expect(scrubRatio(500, 400, { left: 100, top: 200, width: 800, height: 18 }, false)).toBe(0.5);
+    // 横置时条的 AABB 宽只剩 20px（条的厚度），按它量比例只会抖在 0/100% 上。
+    expect(scrubRatio(500, 500, strip, true)).toBe(0.75);
+    expect(scrubRatio(500, 1900, strip, true)).toBe(0.05);
+    expect(scrubRatio(500, 2200, strip, true)).toBe(0);
+    expect(scrubRatio(500, -200, strip, true)).toBe(1);
   });
 });
 
