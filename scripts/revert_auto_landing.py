@@ -124,7 +124,7 @@ def print_plan(planned: dict) -> None:
         row = item["row"]
         print(f" - 分辨率标签 {row['asset_id']:<8} {item['kind']:<4} {row['source']} {item['batch']}")
     for item in planned.get("quality", []):
-        print(f" - 画质分档 {item['asset_id']:<8} {item['quality']} → {item['previous']} {item['batch']}")
+        print(f" - quality band {item['asset_id']:<8} {item['quality']} → {item['previous']} {item['batch']}")
     print(auto_landing_revert.counts(planned))
 
 

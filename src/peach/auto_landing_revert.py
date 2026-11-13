@@ -321,7 +321,7 @@ def counts(planned: dict) -> dict:
             "乱码人物": len(planned["garbled"]),
             "JavDB 类型与订阅": len(planned.get("javdb_records", [])),
             "来源分辨率标签": len(planned.get("resolution_tags", [])),
-            "画质分档": len(planned.get("quality", []))}
+            "quality bands": len(planned.get("quality", []))}
 
 
 def apply(connection, planned: dict) -> dict:
@@ -388,7 +388,7 @@ def apply(connection, planned: dict) -> dict:
             "删除核查并集标签": verified_revert["removed_tags"],
             "删除核查决定": verified_revert["decisions"], "插回乱码人物行": restored_garbled,
             "还原 JavDB 类型与订阅": restored_javdb, "插回来源分辨率标签": restored_resolution,
-            "还原画质分档": restored_quality}
+            "restored quality bands": restored_quality}
 
 
 def remove_files(planned: dict) -> int:
