@@ -2521,7 +2521,7 @@ class OperationalScriptTests(unittest.TestCase):
                 self.assertEqual(self.rehome_unknown._direct_children(target), {})
 
     def test_media_batch_scripts_are_import_safe_and_keep_context_rules(self):
-        self.assertEqual(self.probe.context_fields(1920, 1080, 180), ("速食", "横屏", "2K"))
+        self.assertEqual(self.probe.context_fields(1920, 1080, 180), ("速食", "横屏", "1080P"))
         with tempfile.TemporaryDirectory() as tmp:
             output = self.sheets.output_path(Path(tmp), "local", "R:/media/one.mp4")
             self.assertFalse(output.exists())

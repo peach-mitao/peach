@@ -19,6 +19,7 @@
     revert_auto_landing.py --source upgrade:garbled-performers
     revert_auto_landing.py --source upgrade:javdb-actor-records
     revert_auto_landing.py --source upgrade:source-resolution-tags
+    revert_auto_landing.py --source upgrade:quality-resolution
 
 默认只列计划；`--apply` 必须同时给 `--backup`，删文件在账本行之后、同一次运行里完成。
 """
@@ -122,6 +123,8 @@ def print_plan(planned: dict) -> None:
     for item in planned.get("resolution_tags", []):
         row = item["row"]
         print(f" - 分辨率标签 {row['asset_id']:<8} {item['kind']:<4} {row['source']} {item['batch']}")
+    for item in planned.get("quality", []):
+        print(f" - quality band {item['asset_id']:<8} {item['quality']} → {item['previous']} {item['batch']}")
     print(auto_landing_revert.counts(planned))
 
 

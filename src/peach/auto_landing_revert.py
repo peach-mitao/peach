@@ -286,6 +286,7 @@ def plan(connection, source: str, batch: str = "", *, logo_root: Path, cover_roo
         "garbled": metadata_text_repair.planned_revert(connection, source, batch),
         "javdb_records": _planned_javdb_records(connection, source, batch),
         "resolution_tags": _planned_resolution_tags(connection, source, batch),
+        "quality": _planned_quality(connection, source, batch),
     }
 
 
@@ -298,6 +299,11 @@ def _planned_javdb_records(connection, source: str, batch: str) -> list[dict]:
 def _planned_resolution_tags(connection, source: str, batch: str) -> list[dict]:
     from .upgrade_repairs import planned_resolution_tags_revert
     return planned_resolution_tags_revert(connection, source, batch)
+
+
+def _planned_quality(connection, source: str, batch: str) -> list[dict]:
+    from .quality_repair import planned_revert
+    return planned_revert(connection, source, batch)
 
 
 def counts(planned: dict) -> dict:
@@ -314,7 +320,8 @@ def counts(planned: dict) -> dict:
             "中文名": len(planned["names"]), "核查结算": len(planned["verified"]),
             "乱码人物": len(planned["garbled"]),
             "JavDB 类型与订阅": len(planned.get("javdb_records", [])),
-            "来源分辨率标签": len(planned.get("resolution_tags", []))}
+            "来源分辨率标签": len(planned.get("resolution_tags", [])),
+            "quality bands": len(planned.get("quality", []))}
 
 
 def apply(connection, planned: dict) -> dict:
@@ -369,6 +376,8 @@ def apply(connection, planned: dict) -> dict:
     restored_javdb = revert_javdb_records(connection, planned.get("javdb_records", []))
     from .upgrade_repairs import revert_resolution_tags
     restored_resolution = revert_resolution_tags(connection, planned.get("resolution_tags", []))
+    from .quality_repair import revert as revert_quality
+    restored_quality = revert_quality(connection, planned.get("quality", []))
     return {"删除链接": len(links), "删除别名": len(aliases), "删除资料": len(profiles),
             "删除断言": len(claims), "删除编号": len(refs), "删除归属": len(memberships),
             "删除片商": len(makers), "删除样张": removed_samples, "删除否决": len(rejections),
@@ -378,7 +387,8 @@ def apply(connection, planned: dict) -> dict:
             "还原中文名": restored_names, "还原核查覆盖": verified_revert["restored"],
             "删除核查并集标签": verified_revert["removed_tags"],
             "删除核查决定": verified_revert["decisions"], "插回乱码人物行": restored_garbled,
-            "还原 JavDB 类型与订阅": restored_javdb, "插回来源分辨率标签": restored_resolution}
+            "还原 JavDB 类型与订阅": restored_javdb, "插回来源分辨率标签": restored_resolution,
+            "restored quality bands": restored_quality}
 
 
 def remove_files(planned: dict) -> int:
