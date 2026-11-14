@@ -803,6 +803,7 @@
     "waitingBrowser": "Waiting for you to sign in to PikPak in the browser window"
   },
   "playbackTranscode": {
+    "qualitySaved": "Quality limit saved",
     "saved": "Transcoding mode saved",
     "software": "Software codec"
   },
@@ -1218,6 +1219,10 @@
   "transcoding": {
     "mode": "Transcoding",
     "modeHelp": "Used to transcode videos during playback.",
+    "original": "Original",
+    "quality": "Quality limit",
+    "qualityHeight": "{{height}}p",
+    "qualityHelp": "Applies only to videos that need re-encoding; lower it on slow networks.",
     "title": "Playback"
   },
   "uninstall": {

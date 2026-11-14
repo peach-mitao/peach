@@ -1449,7 +1449,8 @@
     "mediaProcessingPolicy": {
       "previewStateRequired": "Choose whether to generate previews",
       "accelerationModeRequired": "Choose automatic or software-only mode",
-      "choiceRequired": "Choose a media processing mode"
+      "choiceRequired": "Choose a media processing mode",
+      "qualityRequired": "Quality limit only accepts {{choices}}"
     },
     "retentionSettings": {
       "choiceInvalid": "{{key}} only accepts {{choices}}.",

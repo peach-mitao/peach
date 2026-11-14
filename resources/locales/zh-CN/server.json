@@ -1449,7 +1449,8 @@
     "mediaProcessingPolicy": {
       "previewStateRequired": "请选择视频预览生成状态",
       "accelerationModeRequired": "请选择自动或仅软件模式",
-      "choiceRequired": "请选择媒体处理方式"
+      "choiceRequired": "请选择媒体处理方式",
+      "qualityRequired": "画质上限只收 {{choices}}"
     },
     "retentionSettings": {
       "choiceInvalid": "{{key}} 只收 {{choices}}",

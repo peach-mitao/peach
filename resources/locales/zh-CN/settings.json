@@ -790,6 +790,7 @@
     "waitingBrowser": "等你在浏览器窗口里登录 PikPak"
   },
   "playbackTranscode": {
+    "qualitySaved": "已保存画质上限",
     "saved": "已保存转码方式",
     "software": "软件编解码"
   },
@@ -1193,6 +1194,10 @@
   "transcoding": {
     "mode": "转码方式",
     "modeHelp": "用于播放时的视频转码。",
+    "original": "原画",
+    "quality": "画质上限",
+    "qualityHeight": "{{height}}p",
+    "qualityHelp": "只管需要重新编码的片子，网络慢时调低。",
     "title": "视频播放"
   },
   "uninstall": {
