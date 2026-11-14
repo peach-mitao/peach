@@ -26,8 +26,8 @@ from support.ledger import fresh_ledger
 
 
 def read_in_process(case) -> None:
-    """目录读取放回本进程，用例对 `os.scandir` 的 patch 才看得见；读取子进程的期限与回收
-    由 `test_media_io` 覆盖。"""
+    """媒体读取放回本进程，用例对 `os.scandir` 的 patch 才看得见；读取子进程的期限与回收
+    由 `test_media_io` 和本文件里专测期限的用例覆盖。"""
     def read(path):
         return [media_io.DirectoryEntry(item) for item in media_io._local_directory(path, '')]
 
@@ -36,8 +36,22 @@ def read_in_process(case) -> None:
             return media_io._hollow(Path(path))
         except OSError:
             return False
-    for name, value in (('_read_directory', read), ('_hollow_directory', hollow)):
-        patcher = mock.patch.object(rm_sync, name, value)
+
+    def present(paths):
+        answers = []
+        for path in paths:
+            try:
+                os.stat(path)
+                answers.append(True)
+            except (FileNotFoundError, NotADirectoryError):
+                answers.append(False)
+            except OSError:
+                answers.append(None)
+        return answers
+    from peach.platform import root_online
+    for target, name, value in ((rm_sync, '_read_directory', read), (rm_sync, '_hollow_directory', hollow),
+                                (media_io, 'paths_present', present), (media_io, 'root_online', root_online)):
+        patcher = mock.patch.object(target, name, value)
         patcher.start()
         case.addCleanup(patcher.stop)
 
