@@ -57,6 +57,9 @@ export interface SyncedSettings {
   searchHistoryLimit?: number | null;
   /** 番号识别规则，一条一个正则；配置页「媒体库与入库」里编辑。 */
   codePatterns?: string[];
+  /** 「想要」老片多久再查一次（天），以及查几次没找到就暂时放弃（0 表示一直查）。 */
+  wantStaleSearchDays?: number;
+  wantStaleAttemptLimit?: number;
 }
 
 export interface FollowScheduleStatus {

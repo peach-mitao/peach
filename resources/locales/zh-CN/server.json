@@ -793,6 +793,7 @@
       "taskOnOtherHost": "请在执行这轮任务的写入端操作"
     },
     "settings": {
+      "choiceInvalid": "{{key}} 只收 {{choices}}",
       "empty": "没有要写入的设置",
       "interfaceLanguageInvalid": "interfaceLanguage 只收 {{choices}}",
       "libraryOrderInvalid": "媒体库顺序须使用不重复的媒体库 ID",

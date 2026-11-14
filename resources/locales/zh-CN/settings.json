@@ -1245,5 +1245,16 @@
   },
   "videoProcessing": {
     "autoHardwareFirst": "自动（硬件优先）"
+  },
+  "wantSearch": {
+    "attempts": "{{count, number}} 次",
+    "daily": "每天",
+    "everyDays": "每 {{count, number}} 天",
+    "giveUp": "查不到就放弃",
+    "giveUpHelp": "老片连续这么多次没查到就暂时放弃，可在清单上重新查。",
+    "interval": "老片再查间隔",
+    "intervalHelp": "发售超过 90 天、上次没查到的作品隔多久再查。",
+    "never": "一直查",
+    "title": "想要查资源"
   }
 }

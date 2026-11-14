@@ -1269,5 +1269,18 @@
   },
   "videoProcessing": {
     "autoHardwareFirst": "Auto (hardware first)"
+  },
+  "wantSearch": {
+    "attempts_one": "{{count, number}} search",
+    "attempts_other": "{{count, number}} searches",
+    "daily": "Daily",
+    "everyDays_one": "Every {{count, number}} day",
+    "everyDays_other": "Every {{count, number}} days",
+    "giveUp": "Give up after",
+    "giveUpHelp": "Older releases pause after this many empty searches; resume them from the list.",
+    "interval": "Recheck older releases",
+    "intervalHelp": "How often to search again for releases over 90 days old that weren't found.",
+    "never": "Never",
+    "title": "Wants search"
   }
 }

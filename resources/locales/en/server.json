@@ -793,6 +793,7 @@
       "taskOnOtherHost": "Do this on the primary computer running this task."
     },
     "settings": {
+      "choiceInvalid": "{{key}} only accepts {{choices}}.",
       "empty": "No preferences to save.",
       "interfaceLanguageInvalid": "interfaceLanguage only accepts {{choices}}",
       "libraryOrderInvalid": "Library order must use unique library IDs.",
