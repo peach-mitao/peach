@@ -70,4 +70,22 @@ describe('实体名称的只读显示投影', () => {
     expect(nameLanguage()).toBe('ja');
     expect(entityDisplayName('performer', '枫花恋', 1)).toBe('枫花恋');
   });
+
+  it('资料带的罗马字以括号附在人物显示名后，单人刷新不丢已取得的罗马字', () => {
+    registerNameWritings([{ ...writing, en: 'Karen Kaide' }]);
+    expect(entityDisplayName('performer', '枫花恋', 1)).toBe('枫花恋 (Karen Kaide)');
+    expect(entityDisplayName('performer', '楓カレン', 1)).toBe('枫花恋 (Karen Kaide)');
+    setNameLanguage('ja');
+    expect(entityDisplayName('performer', '枫花恋', 1)).toBe('楓カレン (Karen Kaide)');
+    setNameLanguage('zh-CN');
+    // 原名就是罗马字本身时不再重复括注
+    registerNameWriting({ id: 1, kind: 'performer', canonical_name: 'Karen Kaide', zh_cn: '枫花恋', ja: '楓カレン', en: 'Karen Kaide' });
+    expect(entityDisplayName('performer', 'Karen Kaide', 1)).toBe('枫花恋');
+    // 单人资料投影不带罗马字：合并保留形状总表交付过的值
+    registerNameWriting({ id: 1, kind: 'performer', canonical_name: '枫花恋', zh_cn: '枫花恋', ja: '楓カレン' });
+    expect(entityDisplayName('performer', '枫花恋', 1)).toBe('枫花恋 (Karen Kaide)');
+    // 人物与创作者之外的身份不加罗马字
+    registerNameWriting({ id: 5, kind: 'studio', canonical_name: '枫工作室', zh_cn: '枫工作室', ja: '楓スタジオ', en: 'Kaede Studio' });
+    expect(entityDisplayName('studio', '枫工作室', 5)).toBe('枫工作室');
+  });
 });

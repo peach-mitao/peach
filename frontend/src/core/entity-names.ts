@@ -1,7 +1,7 @@
 /** 语言写法只用于标签。查询、路由和写入始终使用调用方持有的原始名称与 ID。 */
 export type NameLanguage = 'zh-CN' | 'ja';
 export interface NameWriting {
-  id: number; kind: string; canonical_name: string; zh_cn: string | null; ja: string | null;
+  id: number; kind: string; canonical_name: string; zh_cn: string | null; ja: string | null; en?: string | null;
 }
 const names = new Map<string, NameWriting>();
 const identities = new Map<string, NameWriting>();
@@ -26,13 +26,17 @@ export function registerNameWritings(rows: NameWriting[], sharedGlyphs: Record<s
   notify();
 }
 function indexNameWriting(row: NameWriting): void {
-  identities.set(`${row.kind}/${row.id}`, row);
-  names.set(`${row.kind}/${row.canonical_name}`, row);
-  for (const name of [row.zh_cn, row.ja]) {
+  // The per-entity details projection (`name_display.current`) carries no romanization of its
+  // own: refreshing one person's writing must not drop the `en` the shapes roster delivered.
+  const previous = identities.get(`${row.kind}/${row.id}`);
+  const merged = previous?.en && !row.en ? { ...row, en: previous.en } : row;
+  identities.set(`${merged.kind}/${merged.id}`, merged);
+  names.set(`${merged.kind}/${merged.canonical_name}`, merged);
+  for (const name of [merged.zh_cn, merged.ja]) {
     if (!name) continue;
-    const key = `${row.kind}/${name}`;
+    const key = `${merged.kind}/${name}`;
     const candidates = spellings.get(key) || new Map<number, NameWriting>();
-    candidates.set(row.id, row);
+    candidates.set(merged.id, merged);
     spellings.set(key, candidates);
   }
 }
@@ -51,11 +55,18 @@ export function entityWriting(kind: string, name: string, id?: number | null): N
 }
 export function entityDisplayName(kind: string, name: string, id?: number | null): string {
   const row = entityWriting(kind, name, id);
-  if (language === 'ja') return row?.ja || name;
-  if (row?.zh_cn) return row.zh_cn;
-  if ((kind !== 'performer' && kind !== 'creator') || !/^[\p{Script=Han}々\s]+$/u.test(name)) return name;
-  const written: string[] = [];
-  // i18n-exempt: 日文人名里的叠字符号，是名字内容
-  for (const char of name) written.push(char === '々' ? written.at(-1) || char : glyphs[char] || char);
-  return written.join('');
+  const base = language === 'ja'
+    ? row?.ja || name
+    : row?.zh_cn || (() => {
+        if ((kind !== 'performer' && kind !== 'creator') || !/^[\p{Script=Han}々\s]+$/u.test(name)) return name;
+        const written: string[] = [];
+        // i18n-exempt: 日文人名里的叠字符号，是名字内容
+        for (const char of name) written.push(char === '々' ? written.at(-1) || char : glyphs[char] || char);
+        return written.join('');
+      })();
+  // The owner reads the library in English: people whose profile carries a
+  // romanized name show it in parentheses after the original writing.
+  if (row?.en && row.en !== base && row.en !== name
+      && (kind === 'performer' || kind === 'creator')) return `${base} (${row.en})`;
+  return base;
 }
