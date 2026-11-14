@@ -19,7 +19,7 @@ from .os_errors import CodedOSError, CodedTimeoutError
 #: 单项读取的期限。目录枚举按「多久没有新条目」计：挂死的挂载一条也不返回，到期判失败；
 #: 网络盘上的大目录逐条返回得慢，只要还在返回就不按总时长判死。
 TIMEOUT_SECONDS = 20.0
-OPERATIONS = ('directory', 'files', 'nfo', 'art', 'online', 'resolve', 'stat', 'browse')
+OPERATIONS = ('directory', 'files', 'nfo', 'art', 'online', 'resolve', 'stat', 'browse', 'hollow', 'present')
 
 
 def _request(operation, path, *, value='', timeout=None):
@@ -171,6 +171,101 @@ def file_stat(path, *, timeout=None):
     return SimpleNamespace(**_request('stat', path, timeout=timeout))
 
 
+def directory_hollow(path):
+    """CloudDrive 上的空目录：`scandir` 报找不到，`listdir` 却说目录在、里面是空的。
+
+    挂载层给空目录列不出 `.` 与 `..`，`FindFirstFileW` 于是回 `ERROR_FILE_NOT_FOUND`；
+    `os.listdir` 把它当成空目录。2026-09-27
+    """
+    return _request('hollow', path)
+
+
+def _hollow(path):
+    return path.is_dir() and not path.is_symlink() and not os.listdir(path)
+
+
+def paths_present(paths):
+    """逐条问这些路径还在不在：True 在，False 不在，None 没答上（读错或超时）。
+
+    本机路径一个子进程问一批；某一条超过期限没有回答，它记 None，剩下的换一个子进程接着问。
+    """
+    from .smb_media import resolve
+    answers = [None] * len(paths)
+    local = []
+    for index, path in enumerate(paths):
+        if resolve(path) is None:
+            local.append(index)
+            continue
+        try:
+            _request('stat', path)
+            answers[index] = True
+        except (FileNotFoundError, NotADirectoryError):
+            answers[index] = False
+        except OSError:
+            pass
+    while local:
+        answered, stalled = _present_stream([paths[index] for index in local])
+        for index, value in zip(local, answered):
+            answers[index] = value
+        # 卡住的是第一条没答上的那条：记 None，跳过它接着问；子进程自己退出了就不再换。
+        local = local[len(answered) + 1:] if stalled else []
+    return answers
+
+
+def _present_stream(paths):
+    """一个子进程依次回答 `paths`，返回答上的那几条，以及是不是卡住了（不是自己退出）。
+
+    名单写进本机临时文件交给子进程：命令行装不下几百条网盘路径。
+    """
+    import tempfile
+    command = ([sys.executable, 'media-read'] if getattr(sys, 'frozen', False)
+               else [sys.executable, '-m', 'peach.media_io'])
+    with tempfile.NamedTemporaryFile('w', encoding='utf-8', suffix='.json', delete=False) as listing:
+        json.dump([os.fspath(path) for path in paths], listing)
+    answers = []
+    stalled = False
+    try:
+        try:
+            process = subprocess.Popen([*command, 'present', listing.name],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        except OSError:
+            return answers, stalled
+        try:
+            for line in _paced(process.stdout, TIMEOUT_SECONDS, paths[0]):
+                answers.append(json.loads(line)['present'])
+                if len(answers) == len(paths):
+                    break
+        except TimeoutError:
+            stalled = True
+        except (OSError, ValueError, KeyError):
+            pass
+        finally:
+            process.kill()
+            process.wait()
+            process.stdout.close()
+    finally:
+        os.unlink(listing.name)
+    return answers, stalled
+
+
+def _stream_present(listing):
+    """名单里每个路径答一行；读不出来的答 None，不当成不在。"""
+    for path in json.loads(Path(listing).read_text(encoding='utf-8')):
+        try:
+            os.stat(path)
+            value = True
+        except (FileNotFoundError, NotADirectoryError):
+            value = False
+        except OSError:
+            value = None
+        try:
+            _emit({'present': value})
+        except OSError:
+            return 0
+    return 0
+
+
 def _attributes(stat):
     return {key: getattr(stat, key) for key in ('st_size', 'st_mtime', 'st_mtime_ns', 'st_mode',
             'st_ino', 'st_dev', 'st_birthtime_ns') if hasattr(stat, key)}
@@ -252,6 +347,8 @@ def _read(operation, path, value):
     if operation == 'resolve':
         from .media import resolve_case_insensitive
         return str(resolve_case_insensitive(str(path)))
+    if operation == 'hollow':
+        return _hollow(path)
     return _attributes(path.stat())
 
 
@@ -263,6 +360,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.operation == 'directory':
         return _stream_directory(args.path, args.value)
+    if args.operation == 'present':
+        return _stream_present(args.path)
     try:
         response = {'value': _read(args.operation, args.path, args.value)}
     except (OSError, ValueError) as error:

@@ -151,6 +151,34 @@ class MediaIoTests(unittest.TestCase):
         self.assertEqual(len(children), 1)
         self.assertIsNotNone(children[0].poll())
 
+    def test_hollow_directory_is_an_empty_directory_only(self):
+        (self.root / 'empty').mkdir()
+        (self.root / 'full').mkdir()
+        (self.root / 'full' / 'a.mp4').write_bytes(b'x')
+        self.assertTrue(media_io.directory_hollow(self.root / 'empty'))
+        self.assertFalse(media_io.directory_hollow(self.root / 'full'))
+        self.assertFalse(media_io.directory_hollow(self.root / 'full' / 'a.mp4'))
+
+    def test_presence_answers_each_path_and_a_stalled_answer_is_unknown_not_gone(self):
+        """复核失效候选：卡住的那一条答 None（照旧保留），换一个读取进程接着问后面的。"""
+        here = self.root / 'here.mp4'
+        here.write_bytes(b'x')
+        children, original_popen = [], subprocess.Popen
+
+        def first_stalls(command, **options):
+            if not children:
+                command = [sys._base_executable, '-c', 'import time; time.sleep(60)']
+            child = original_popen(command, **options)
+            children.append(child)
+            return child
+        paths = [self.root / 'stuck.mp4', here, self.root / 'gone.mp4']
+        with patch.object(media_io, 'TIMEOUT_SECONDS', 1.0), \
+                patch.object(media_io.subprocess, 'Popen', side_effect=first_stalls):
+            answers = media_io.paths_present(paths)
+        self.assertEqual(answers, [None, True, False])
+        self.assertEqual(len(children), 2)
+        self.assertTrue(all(child.poll() is not None for child in children))
+
     @staticmethod
     def _entry_line(name):
         entry = dict(name=name, path=name, directory=False, symlink=False, attributes={'st_size': 1}, error='')
