@@ -2,6 +2,8 @@
 import { randomId } from '../core/random-id';
 import type { PlayerEvents, PlayerSource, QualityLevelList, VideojsFactory, VjsPlayer } from './types';
 import { interfaceLanguage, t } from '../i18n';
+import { mountPlayerFullscreen } from './fullscreen';
+import { mountVolumeMemory } from './volume-memory';
 
 interface HlsEngine {
   bandwidthEstimate: number;
@@ -100,10 +102,8 @@ export const createV10Player: VideojsFactory = (video, options) => {
     if (notify) emit('error');
   };
   media.addEventListener('error', () => showError(media.error || video.error), { signal });
-  document.addEventListener('fullscreenchange', () => {
-    root.classList.toggle('vjs-fullscreen', !!document.fullscreenElement && root.contains(document.fullscreenElement));
-    emit('fullscreenchange');
-  }, { signal });
+  const isFullscreen = mountPlayerFullscreen(root, video, () => emit('fullscreenchange'), signal);
+  mountVolumeMemory(video, signal);
   const levels = [] as unknown as QualityLevelList;
   const boundEngines = new WeakSet<HlsEngine>();
   let enabledLevels: boolean[] = [], selectionQueued = false;
@@ -169,7 +169,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     playbackRate: (value?: number) => value === undefined ? video.playbackRate : (video.playbackRate = value),
     loop: (value?: boolean) => value === undefined ? video.loop : (video.loop = value),
     muted: () => video.muted, volume: () => video.volume,
-    isFullscreen: () => !!document.fullscreenElement && root.contains(document.fullscreenElement),
+    isFullscreen,
     poster: (url: string) => { video.poster = url },
     src: (next: PlayerSource) => {
       source = next; failure = null; root.classList.remove('vjs-error');

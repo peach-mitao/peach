@@ -36,7 +36,7 @@
 .video-js.vjs-error .vjs-error-display{display:flex;align-items:center;justify-content:center}
 .video-js.vjs-user-inactive.vjs-playing .vjs-control-bar{opacity:0;pointer-events:none}
 .video-js.vjs-fullscreen{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;max-height:none!important}
-.video-js media-container:fullscreen{width:100vw;height:100vh;background:#000}
+.video-js media-container:is(:fullscreen,:-webkit-full-screen){width:100vw;height:100vh;height:100dvh;background:#000}
 .video-js .vjs-modal-dialog-content{position:absolute}
 .video-js media-slider-value{position:absolute;visibility:hidden}
 .video-js .vjs-volume-panel:hover media-slider-value,.video-js .vjs-volume-panel:focus-within media-slider-value{visibility:visible}
@@ -404,9 +404,9 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
   display:flex;align-items:center;justify-content:center;text-align:center;overflow-wrap:anywhere;
   transform:translate(-50%,-50%)}
 [data-stage-media] :is([data-stage-media]>.video-js.vjs-fullscreen,.video-js.vjs-fullscreen,.video-js[data-peach-fullscreen],body.vjs-full-window .video-js,.video-js:fullscreen,.video-js:-webkit-full-screen,.video-js:-moz-full-screen,[data-stage-media]:fullscreen>.video-js,[data-stage-media]:-webkit-full-screen>.video-js,[data-stage-media]:-moz-full-screen>.video-js){position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;padding:0!important;
-  max-width:none!important;max-height:none!important;aspect-ratio:auto!important;z-index:10000!important}
+  height:100dvh!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;z-index:10000!important}
 [data-stage-media] :is([data-stage-media]>.video-js.vjs-fullscreen,.video-js.vjs-fullscreen,.video-js[data-peach-fullscreen],body.vjs-full-window .video-js,.video-js:fullscreen,.video-js:-webkit-full-screen,.video-js:-moz-full-screen,[data-stage-media]:fullscreen>.video-js,[data-stage-media]:-webkit-full-screen>.video-js,[data-stage-media]:-moz-full-screen>.video-js) .vjs-tech{
-  position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;object-fit:contain!important}
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important}
 [data-player-stats-button]{position:absolute;left:11px;top:11px;z-index:8;width:40px;height:40px;padding:0;
   display:grid;place-items:center;border:0;border-radius:50%;
   background:rgba(0,0,0,.6);color:#fff;cursor:pointer;box-shadow:none;isolation:isolate;overflow:hidden}
