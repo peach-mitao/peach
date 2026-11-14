@@ -949,6 +949,19 @@
     "queued": "Queued",
     "reclaimable": "{{size}} reclaimable"
   },
+  "retention": {
+    "backups": "Automatic database backups",
+    "backupsHelp": "Keeps this many recent pre-write backups; anything from the last 24 hours stays.",
+    "copies_one": "{{count, number}} copy",
+    "copies_other": "{{count, number}} copies",
+    "days_one": "{{count, number}} day",
+    "days_other": "{{count, number}} days",
+    "halfYear": "6 months",
+    "logs": "Logs",
+    "logsHelp": "Logs not written to for this long are deleted.",
+    "oneYear": "1 year",
+    "title": "Retention"
+  },
   "runtimeInfo": {
     "logDirectory": "Log directory",
     "os": "Operating system",

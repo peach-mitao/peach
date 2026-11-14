@@ -930,6 +930,17 @@
     "queued": "等待执行",
     "reclaimable": "可回收 {{size}}"
   },
+  "retention": {
+    "backups": "账本自动备份",
+    "backupsHelp": "写入前留下的整库备份保留最近几份，24 小时内的都留。",
+    "copies": "{{count, number}} 份",
+    "days": "{{count, number}} 天",
+    "halfYear": "半年",
+    "logs": "日志",
+    "logsHelp": "多久没再写入的日志会被删除。",
+    "oneYear": "1 年",
+    "title": "保留期限"
+  },
   "runtimeInfo": {
     "logDirectory": "日志目录",
     "os": "操作系统",
