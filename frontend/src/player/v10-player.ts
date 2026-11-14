@@ -3,6 +3,7 @@ import { randomId } from '../core/random-id';
 import type { PlayerEvents, PlayerSource, QualityLevelList, VideojsFactory, VjsPlayer } from './types';
 import { interfaceLanguage, t } from '../i18n';
 import { mountPlayerFullscreen } from './fullscreen';
+import { mountVolumeMemory } from './volume-memory';
 
 interface HlsEngine {
   bandwidthEstimate: number;
@@ -102,6 +103,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
   };
   media.addEventListener('error', () => showError(media.error || video.error), { signal });
   const isFullscreen = mountPlayerFullscreen(root, video, () => emit('fullscreenchange'), signal);
+  mountVolumeMemory(video, signal);
   const levels = [] as unknown as QualityLevelList;
   const boundEngines = new WeakSet<HlsEngine>();
   let enabledLevels: boolean[] = [], selectionQueued = false;
