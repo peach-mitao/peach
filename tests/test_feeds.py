@@ -235,6 +235,36 @@ class FeedStoreTest(unittest.TestCase):
             self.assertEqual(connection.execute(
                 "SELECT count(*) FROM feed_item").fetchone()[0], 3)
 
+    def test_more_than_twenty_new_works_all_have_shells_and_keep_backlog(self):
+        # 一页 35 部新作：仅 20 部进入本轮后继，另外 15 部不能只记为已见。
+        from peach import feed_followup
+
+        source_id = self._source()
+        entries = tuple(feeds.FeedEntry(
+            f"/v/test{index}", f"FNS-{index + 100:03d}",
+            f"https://javdb.com/v/test{index}") for index in range(35))
+        parsed = feeds.ParsedFeed("测试演员", entries)
+        with self.database.write_transaction() as connection:
+            source = connection.execute(
+                "SELECT * FROM feed_source WHERE id=?", (source_id,)).fetchone()
+            first = feeds.poll(connection, source, parsed)
+            second = feeds.poll(connection, source, parsed)
+
+        self.assertEqual(first["fresh"], 35)
+        self.assertEqual(len(first["created"]), feeds.MAX_NEW_PER_POLL)
+        self.assertEqual(second["fresh"], 0)
+        self.assertEqual(second["created"], [])
+        with self.database.read_connection() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT count(*) FROM feed_item WHERE source_id=?",
+                (source_id,)).fetchone()[0], 35)
+            self.assertEqual(connection.execute(
+                "SELECT count(*) FROM feed_discovery").fetchone()[0], 35)
+            first_codes = [code for _id, code in first["created"]]
+            backlog = feed_followup.scrape_batch(connection, exclude=first_codes)
+            self.assertEqual(len(backlog), 15)
+            self.assertTrue(set(backlog).isdisjoint(first_codes))
+
     def test_second_poll_of_the_same_document_creates_nothing(self):
         source_id = self._source()
         self._poll(source_id)
