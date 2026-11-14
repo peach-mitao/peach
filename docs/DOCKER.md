@@ -238,6 +238,56 @@ docker compose cp peach:/tmp/peach-support.zip ./peach-support.zip
 
 更新镜像并重建容器时保留 `/data`。新容器启动时，已有数据库有待执行的迁移就先在 `/data/database/` 备份成 `ledger.pre-migrate-<时间>.db`，再执行迁移，完成后才启动服务；手动更新和一键更新都这样处理。迁移最多等 180 秒，失败或超时时容器退出，`restart: unless-stopped` 会反复重启，每次重启都会再备份一份，先用 `docker compose logs peach` 查原因，必要时 `docker compose stop peach` 停下。健康检查使用 `/healthz?ready=1`。
 
+### 手动升级：保留现有配置与完整备份
+
+GitHub Release 与 Docker 镜像分别发布。先确认目标版本的镜像标签和 NAS 架构已经可用；发布页有安装包不代表同版本镜像已经发布。尚未发布时保留当前版本，或选择已有镜像的版本，不用 `master` 源码冒充该版本的发行镜像。
+
+在现有 Compose 项目目录操作，沿用原来的项目名、`.env`、覆盖文件和数据挂载。先下载镜像，再安排停服备份，可以缩短不可用时间。不要用仓库的默认 Compose 整份替换已有配置：媒体目录、只读属性、端口、UID/GID、资源限制和代理都可能是本机专用设置。
+
+1. 保存当前 `compose.yaml`、`.env` 及实际使用的覆盖文件，记录运行中容器的镜像 ID、版本和挂载。需要离线回退时，另用 `docker image save` 导出旧镜像；只记录会移动的 `edge` 或 `latest` 标签不足以找回旧镜像。
+2. 运行 `docker compose stop peach`，确认服务已停止，再用 NAS 的备份工具复制或快照整个 `/data` 对应的宿主机目录或命名卷。备份放在数据卷之外，保留所有者、权限、隐藏文件和符号链接；媒体目录单独挂载，不必随应用数据重复复制。备份失败时先用 `docker compose start peach` 恢复旧服务。
+3. 完整备份包括数据库、`config.toml`、`secrets`、`state`、工具目录及其他数据。自动生成的 `ledger.pre-migrate-*.db` 只备份账本，不能代替配置、凭据与工具的完整备份。备份含凭据，按原数据的访问权限保存。
+4. 仅调整现有 Compose 的镜像引用或对应版本变量，保留其他设置，运行 `docker compose config --quiet` 检查配置，再重建 Peach。镜像已提前下载到本机时可用下方的离线启动命令。
+5. 用 `docker compose ps` 和 `docker compose logs --tail 100 peach` 确认版本、迁移和健康状态，再打开原访问地址核对媒体目录、收藏、人工修正资料及来源连接。迁移成功不等于所有外部资料源可达。
+
+需要先演练时，使用完整备份的独立副本、不同的 Compose 项目名和端口；不要让测试容器写正式数据卷。媒体仍只读挂载，测试实例的后台任务也可能访问外部来源。
+
+### NAS 无法拉取镜像时离线导入
+
+应用内的采集代理不负责 Docker daemon 的镜像拉取。Docker Hub 受限时可先试本文开头的 GHCR 仓库；NAS 仍无法连接时，在能访问官方仓库、已安装 Docker 的电脑下载并导出镜像，再传到 NAS。下载平台按 **NAS** 选择，例如在 Apple Silicon Mac 上给 x86 NAS 准备镜像时指定 `linux/amd64`，不要沿用下载电脑的架构。
+
+以下命令适用于 macOS/Linux shell。把版本占位符换成已发布镜像的版本号；ARM64 NAS 改用 `linux/arm64`，并确认该版本提供此架构：
+
+```sh
+PEACH_VERSION='<已发布的版本号>'
+PEACH_IMAGE="ghcr.io/peach-mitao/peach:${PEACH_VERSION}"
+docker pull --platform linux/amd64 "$PEACH_IMAGE"
+docker image inspect "$PEACH_IMAGE" --format '{{.Os}}/{{.Architecture}} {{.Id}}'
+docker image save --output peach-image.tar "$PEACH_IMAGE"
+```
+
+保存拉取结果中的镜像摘要和 `inspect` 输出。传输 `peach-image.tar` 后，在两端计算文件的 SHA-256 并比对（macOS 可用 `shasum -a 256`，Linux 可用 `sha256sum`）；归档哈希用于核对传输，不是仓库的镜像摘要。然后在 NAS 导入：
+
+```sh
+docker image load --input peach-image.tar
+```
+
+`load` 输出恢复的镜像标签。将现有 Compose 中 Peach 的 `image` 改为这个完整引用，并用 `docker image inspect` 核对导入后的镜像 ID 和架构。若沿用自己的本地标签，先用 `docker image tag` 将导入镜像标记为该名称；`load` 本身不会更新任意自定义标签。导出与导入的区别见 Docker 的 [save](https://docs.docker.com/reference/cli/docker/image/save/) 和 [load](https://docs.docker.com/reference/cli/docker/image/load/) 说明。
+
+完成上一节的停服备份和配置检查后，只重建 Peach，禁止再次拉取或从本地源码构建：
+
+```sh
+docker compose up -d --no-deps --no-build --pull never peach
+```
+
+`--pull never` 只作用于这次命令。长期使用离线镜像时，可在 `services.peach` 保存 `pull_policy: never`；以后仍需导入新镜像并更新引用或本地标签。恢复在线更新时再调整此策略，不能把 `docker compose pull` 当作本地自定义标签的升级方式。
+
+### 手动回退
+
+回退前停止 Peach，另外保留升级后的数据和日志。恢复升级前完整 `/data` 备份及匹配的 Compose、环境配置和旧镜像，再启动服务；不要只换旧镜像而让它继续写迁移后的账本，也不要把新旧数据目录直接叠加。恢复到升级前快照后，这次升级以来的新操作不会出现在恢复的实例中，仍可从另存的升级后数据核对。
+
+只有账本迁移备份时，它只能恢复数据库。确认当前配置与旧版本兼容后，再恢复对应的 `ledger.pre-migrate-*.db`；停服后将现有 `ledger.db` 及可能残留的 `ledger.db-wal`、`ledger.db-shm` 一并移到保留目录，避免旧库混用新版的 SQLite 辅助文件。恢复文件须保持运行用户可读写。配置、凭据或工具也发生变化时，使用完整备份回退。
+
 ### 一键更新（可选 Watchtower）
 
 容器换不掉自己。`compose.yaml` 的 `watchtower` profile 提供一个可选的 [Watchtower](https://github.com/nicholas-fedor/watchtower) 容器（`nickfedor/watchtower`，原 `containrrr/watchtower` 已停止维护）：配置页点「一键更新」后，Peach 请它拉取新镜像并按原配置重建 Peach 容器，`/data` 卷保留。它只管带 `com.centurylinklabs.watchtower.enable=true` 标签的 Peach 容器，只在收到请求时更新，不定时轮询，也不对宿主机发布端口。
@@ -250,7 +300,7 @@ Watchtower 挂着宿主机的 Docker socket，能创建、停止任何容器，�
 
 检查更新发现新镜像后，「一键更新」替代两步命令。点击并确认后，Peach 会断开一会儿；新版本启动后页面提示刷新。15 分钟内没有看到新版本时，用 `docker compose logs watchtower` 和 `docker compose logs peach` 查看原因。已经在宿主机上 `docker compose pull` 过新镜像、还没 `up -d` 时，旧容器的镜像可能已失去标签，Watchtower 日志显示 `Failed to retrieve image info` 并跳过；这时直接运行 `docker compose up -d`。
 
-Watchtower 不在新容器起不来时自动回退。换上新镜像后它删除被替下的旧镜像，免得每次更新在 NAS 上多留一份；指向同一镜像的其他本地标签也一起删除。Docker Hub 保留每个版本号标签，回滚时重新拉取。回滚到旧版本前，先停下 Peach，用升级时生成的 `ledger.pre-migrate-<时间>.db` 替换 `ledger.db`，再把 `.env` 的 `PEACH_VERSION` 设为旧版本号并 `docker compose up -d`；旧版本不会写入它不认识的数据库结构。方案取舍见 [ADR-0140](adr/0140-docker-one-click-update-via-watchtower.md)。
+Watchtower 不在新容器起不来时自动回退。换上新镜像后它删除被替下的旧镜像，免得每次更新在 NAS 上多留一份；指向同一镜像的其他本地标签也一起删除。Docker Hub 保留每个版本号标签，回滚时重新拉取，或载入事先导出的旧镜像。恢复账本、配置与镜像按[手动回退](#手动回退)执行；旧版本不会写入它不认识的数据库结构。方案取舍见 [ADR-0140](adr/0140-docker-one-click-update-via-watchtower.md)。
 
 2026-11-04 在 Windows 的 Docker Desktop（Engine 29.9.2，containerd 镜像库）上，运行中容器的镜像只有 `edge` 一个本机标签，把本地 registry 的 `edge` 换成版本号更高、多一个空表迁移的测试镜像，经配置页触发后通过验收：Watchtower 自己拉取新镜像，按 75 秒停止超时停下旧容器，11 秒内起了新容器；`/data` 里的标记文件保留，启动前生成 `ledger.pre-migrate-*.db` 并执行了新迁移，`/healthz?ready=1` 通过，旧镜像已清理。全新启动时 Watchtower 在 Peach 首次健康的同一秒启动，令牌文件属主为 `peach`、权限 600；两个容器同时重启后令牌仍然一致；改掉卷里的令牌后点「一键更新」得到要求重启 Watchtower 的提示，`docker compose restart watchtower` 后恢复。不带 profile 时 `docker compose up -d` 照常启动。Docker Hub 的真实拉取、ARM NAS 与 Docker Desktop 以外的 Linux 宿主机未取得。
 
