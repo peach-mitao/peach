@@ -1145,5 +1145,13 @@
 <langSet xml:lang="zh-Hans"><tig><term>镜像</term></tig></langSet>
 <langSet xml:lang="en"><tig><term>Mirror</term><note from="translator">只指镜像站；安装镜像、Docker 镜像是另一个词，实施时拆消息 ID。</note></tig></langSet>
 </termEntry>
+<termEntry id="ref.50" weblate-flags="terminology">
+<langSet xml:lang="zh-Hans"><tig><term>快进</term></tig></langSet>
+<langSet xml:lang="en"><tig><term>Fast forward</term></tig></langSet>
+</termEntry>
+<termEntry id="ref.51" weblate-flags="terminology">
+<langSet xml:lang="zh-Hans"><tig><term>快退</term></tig></langSet>
+<langSet xml:lang="en"><tig><term>Rewind</term></tig></langSet>
+</termEntry>
 </body></text>
 </martif>

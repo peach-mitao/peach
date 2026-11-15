@@ -2,6 +2,7 @@
 import { randomId } from '../core/random-id';
 import type { PlayerEvents, PlayerSource, QualityLevelList, VideojsFactory, VjsPlayer } from './types';
 import { interfaceLanguage, t } from '../i18n';
+import { mountVideoTouchGestures } from './touch-gestures';
 
 interface HlsEngine {
   bandwidthEstimate: number;
@@ -72,6 +73,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
   root.addEventListener('focusin', active, { signal });
   video.addEventListener('click', () => { if (video.paused) void video.play().catch(() => {}); else video.pause() }, { signal });
   video.addEventListener('dblclick', () => root.querySelector<HTMLElement>('media-fullscreen-button')?.click(), { signal });
+  const touchGestures = options.controls !== false ? mountVideoTouchGestures(root, video, signal) : null;
   const update = () => {
     root.classList.toggle('vjs-paused', video.paused); root.classList.toggle('vjs-playing', !video.paused);
     root.classList.toggle('vjs-ended', video.ended); root.classList.toggle('vjs-has-started', video.currentTime > 0 || !video.paused);
@@ -172,6 +174,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     isFullscreen: () => !!document.fullscreenElement && root.contains(document.fullscreenElement),
     poster: (url: string) => { video.poster = url },
     src: (next: PlayerSource) => {
+      touchGestures?.cancel();
       source = next; failure = null; root.classList.remove('vjs-error');
       sourceGeneration++; playGeneration++; selectionQueued = false; enabledLevels = []; levels.length = 0;
       const tag = next.type.toLowerCase().includes('dash') ? 'dash-video' : 'hlsjs-video';

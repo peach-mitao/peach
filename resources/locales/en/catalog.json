@@ -667,6 +667,9 @@
     "showRemaining": "Show remaining time",
     "subtitles": "Subtitles",
     "theaterMode": "Theater mode",
+    "touchForward": "Fast forward to {{time}} · Release to seek",
+    "touchRewind": "Rewind to {{time}} · Release to seek",
+    "touchSpeed": "Temporary {{rate}}× speed · Release to restore",
     "unmute": "Unmute",
     "viewControls": "Player view controls"
   },
