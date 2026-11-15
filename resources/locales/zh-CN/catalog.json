@@ -620,6 +620,9 @@
     "showRemaining": "显示剩余时间",
     "subtitles": "字幕",
     "theaterMode": "影院模式",
+    "touchForward": "快进至 {{time}} · 松手跳转",
+    "touchRewind": "快退至 {{time}} · 松手跳转",
+    "touchSpeed": "临时 {{rate}} 倍速 · 松手恢复",
     "unmute": "取消静音",
     "viewControls": "播放器视图控制"
   },

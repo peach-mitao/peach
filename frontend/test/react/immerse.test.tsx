@@ -616,6 +616,59 @@ describe('手势', () => {
     expect(routed()).toEqual([1]);
   });
 
+  it('长片横划使用二十分钟一屏，右侧长按加速后松手不触发点击', async () => {
+    await open();
+    const { video } = current();
+    Object.defineProperty(video, 'duration', { configurable: true, value: 7200 });
+    video.currentTime = 1000;
+    await swipe(['touchstart', 500, 400], ['touchmove', 600, 400], ['touchend', 600, 400]);
+    expect(video.currentTime).toBe(1120);
+    video.playbackRate = 1.5;
+    await swipe(['touchstart', 700, 400]);
+    await wait(550);
+    expect(video.playbackRate).toBe(2);
+    expect(q('[data-player-gesture-feedback]')!.hidden).toBe(false);
+    const end = touch('touchend', 700, 400);
+    await act(async () => { track().dispatchEvent(end) });
+    expect(end.defaultPrevented).toBe(true);
+    expect(video.playbackRate).toBe(1.5);
+    await click(track());
+    expect(video.paused).toBe(false);
+    expect(q('[data-player-gesture-feedback]')!.hidden).toBe(true);
+  });
+
+  it('左侧长按冻结画面并预览回退，松手后定位、恢复播放且不切片', async () => {
+    await open();
+    const { video } = current();
+    video.currentTime = 50;
+    let now = 0;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    try {
+      await swipe(['touchstart', 200, 400]);
+      await wait(550);
+      expect(video.paused).toBe(true);
+      expect(video.currentTime).toBe(50);
+      now = 2000;
+      await swipe(['touchend', 200, 400]);
+      expect(video.currentTime).toBe(46);
+      expect(video.paused).toBe(false);
+      expect(routed()).toEqual([1]);
+      expect(q('[data-player-gesture-feedback]')!.hidden).toBe(true);
+    } finally { clock.mockRestore() }
+  });
+
+  it('长按期间取消触摸或关闭沉浸模式会恢复原倍速', async () => {
+    await open();
+    const { video } = current();
+    video.playbackRate = 1.25;
+    await swipe(['touchstart', 700, 400]); await wait(550);
+    await act(async () => { track().dispatchEvent(new Event('touchcancel', { bubbles: true })) });
+    expect(video.playbackRate).toBe(1.25);
+    await swipe(['touchstart', 700, 400]); await wait(550);
+    await act(async () => { api.close() });
+    expect(video.playbackRate).toBe(1.25);
+  });
+
   it('竖划超过 60px 换条：往上是下一条，往下是上一条', async () => {
     await open();
     await swipe(['touchstart', 500, 600], ['touchmove', 502, 500], ['touchend', 502, 400]);

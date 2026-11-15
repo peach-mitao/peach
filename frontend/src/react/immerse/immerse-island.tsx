@@ -22,7 +22,7 @@ import { flushSync } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { avatarInner, representativeOf } from '@peach/card-art';
-import { fmtDur, realDuration } from '@peach/legacy/core';
+import { fmtClock, fmtDur, realDuration } from '@peach/legacy/core';
 
 import { apiSend } from '../../api';
 import {
@@ -35,13 +35,14 @@ import {
 } from '../item-detail/item-detail';
 import { queryClient } from '../query';
 import {
-  AXIS_LOCK_PX, DISLIKE_ADVANCE_MS, DOUBLE_TAP_MS, READY_TIMEOUT_MS, SLIDE_MS, SWIPE_PX, SYNTHETIC_CLICK_MS,
+  DISLIKE_ADVANCE_MS, DOUBLE_TAP_MS, READY_TIMEOUT_MS, SLIDE_MS, SWIPE_PX, SYNTHETIC_CLICK_MS,
   TAP_SLOP_PX, WHEEL_GAP_MS, ensureDetail, extendList, fetchImmerseList, fitMode, immerseListKey, immerseQuery,
   isWide, ownerOf, type ImmerseItem,
 } from './immerse';
 import type { ImmerseApi, ImmerseHost } from './immerse-api';
 import { t } from '../../i18n';
 import { orientLabel } from '../../core/stored-values';
+import { TOUCH_AXIS_LOCK_PX, TOUCH_HOLD_MS, touchRewindTarget, touchSeekTarget } from '../../player/touch-gesture-policy';
 
 /* ── 状态 ── */
 
@@ -73,7 +74,7 @@ interface Slide {
   leave: () => void;
 }
 
-interface Dom { root: HTMLElement; track: HTMLElement; bar: HTMLElement; progress: HTMLElement }
+interface Dom { root: HTMLElement; track: HTMLElement; bar: HTMLElement; progress: HTMLElement; feedback: HTMLElement }
 
 const CLOSED: View = { open: false, idle: false, wide: false, loading: null, shown: null };
 
@@ -246,7 +247,10 @@ const fetchDraw = (): Promise<ImmerseItem[]> => {
 
 function wireProgress(video: HTMLVideoElement, item: ImmerseItem): void {
   const duration = () => realDuration(video.duration) || realDuration(item.duration);
+  video.addEventListener('pause', () => { if (touch?.video === video && touch.axis === 'speed') cancelTouch() });
+  video.addEventListener('loadstart', () => { if (touch?.video === video) cancelTouch(false, false) });
   video.addEventListener('timeupdate', () => {
+    if (scrubbing || (touch?.video === video && (touch.axis === 'x' || touch.axis === 'rewind'))) return;
     const total = duration();
     if (total && dom) dom.progress.style.width = `${(video.currentTime / total * 100).toFixed(2)}%`;
   });
@@ -313,6 +317,7 @@ async function show(direction = 0): Promise<void> {
 
 async function step(direction: number): Promise<void> {
   if (switching || !view.open) return;
+  cancelTouch(false, false);
   const mine = generation;
   index += direction;
   setLoading(t('catalog:immerse.switching'), list[index] ?? null);
@@ -375,7 +380,7 @@ function teardown(): void {
   clearInterval(ticker);
   ticker = 0;
   clearTap();
-  touch = null;
+  cancelTouch(false, false);
   scrubTarget = null;
   scrubbing = false;
   seekPreview?.dispose();
@@ -396,13 +401,67 @@ function close(): void {
 
 /* ── 单击、双击与触屏手势 ──
    手机上竖划切片、横划拖进度。横划在哪儿起手都行——屏幕最下沿那条进度条在手机上几乎摸不到。
-   位移按屏宽换算成时长的相对量，所以从任何位置起手都是「往右 = 往后」。 */
+   位移按画面宽度换算，完整划过一屏最多跨二十分钟，所以从任何位置起手都是「往右 = 往后」。 */
 
 let tapTimer = 0;
 let lastTap: { side: number; at: number } | null = null;
 let ignoreClickUntil = 0;
-let touch: { x: number; y: number; axis: '' | 'x' | 'y'; from: number; to?: number } | null = null;
+interface TouchGesture {
+  x: number; y: number; axis: '' | 'x' | 'y' | 'held' | 'speed' | 'rewind'; from: number;
+  video: HTMLVideoElement; side: number; to?: number; rate?: number; started?: number; wasPlaying?: boolean;
+}
+let touch: TouchGesture | null = null;
+let holdTimer = 0, rewindTimer = 0;
 let lastWheel = 0;
+
+function touchFeedback(message: string | null): void {
+  if (!dom) return;
+  dom.feedback.textContent = message || '';
+  dom.feedback.hidden = !message;
+}
+
+function clearTouchTimers(): void {
+  clearTimeout(holdTimer); clearInterval(rewindTimer);
+  holdTimer = rewindTimer = 0;
+}
+
+function updateRewind(gesture: TouchGesture): void {
+  gesture.to = touchRewindTarget(gesture.video, gesture.from, performance.now() - gesture.started!) ?? undefined;
+  if (gesture.to !== undefined) {
+    touchFeedback(t('catalog:playerControls.touchRewind', { time: fmtClock(gesture.to) }));
+    paintProgress(gesture.to / gesture.video.duration);
+    showSeekPreview(gesture.to / gesture.video.duration);
+  }
+}
+
+function finishTouch(gesture: TouchGesture, commit: boolean, resume = true): void {
+  clearTouchTimers();
+  if (gesture.axis === 'speed' && gesture.rate !== undefined) gesture.video.playbackRate = gesture.rate;
+  if (gesture.axis === 'rewind') {
+    if (commit) {
+      updateRewind(gesture);
+      if (gesture.to !== undefined) gesture.video.currentTime = gesture.to;
+    }
+    if (resume && gesture.wasPlaying) void gesture.video.play().catch(() => {});
+  }
+  if (current?.video === gesture.video && Number.isFinite(gesture.video.duration) && gesture.video.duration > 0) {
+    paintProgress(gesture.video.currentTime / gesture.video.duration);
+  }
+  touchFeedback(null);
+}
+
+function cancelTouch(commit = false, resume = true): void {
+  const gesture = touch;
+  touch = null;
+  if (gesture) {
+    ignoreClickUntil = Date.now() + SYNTHETIC_CLICK_MS;
+    clearTap();
+    finishTouch(gesture, commit, resume);
+  }
+  else { clearTouchTimers(); touchFeedback(null) }
+  setBarScrubbing(false);
+  seekPreview?.hide();
+}
 
 function clearTap(): void {
   clearTimeout(tapTimer);
@@ -414,7 +473,8 @@ function clearTap(): void {
 function handleTap(clientX: number): void {
   const video = current?.video;
   if (!video) return;
-  const side = clientX < window.innerWidth / 2 ? -1 : 1;
+  const box = dom?.track.getBoundingClientRect();
+  const side = clientX < (box?.width ? box.left + box.width / 2 : window.innerWidth / 2) ? -1 : 1;
   const now = Date.now();
   if (lastTap && lastTap.side === side && now - lastTap.at <= DOUBLE_TAP_MS) {
     clearTap();
@@ -445,26 +505,56 @@ function paintProgress(ratio: number): void {
 
 function onTouchStart(event: TouchEvent): void {
   const target = event.target as Element | null;
-  if (event.touches.length !== 1 || !target?.closest('[data-immerse-track]')) { touch = null; return }
+  if (event.touches.length !== 1 || !target?.closest('[data-immerse-track]')) { cancelTouch(); return }
+  cancelTouch();
   const video = current?.video;
-  touch = { x: event.touches[0]!.clientX, y: event.touches[0]!.clientY, axis: '', from: video ? video.currentTime || 0 : 0 };
+  if (!video) return;
+  const box = dom?.track.getBoundingClientRect();
+  const point = event.touches[0]!;
+  const gesture: TouchGesture = { x: point.clientX, y: point.clientY, axis: '', from: video.currentTime || 0,
+    video, side: point.clientX < (box?.width ? box.left + box.width / 2 : window.innerWidth / 2) ? -1 : 1 };
+  touch = gesture;
+  holdTimer = window.setTimeout(() => {
+    if (touch !== gesture || gesture.axis) return;
+    clearTap();
+    gesture.axis = 'held';
+    if (gesture.side > 0) {
+      if (video.paused) return;
+      gesture.axis = 'speed'; gesture.rate = video.playbackRate;
+      video.playbackRate = Math.max(2, gesture.rate);
+      touchFeedback(t('catalog:playerControls.touchSpeed', { rate: video.playbackRate }));
+    } else {
+      if (touchRewindTarget(video, gesture.from, 0) === null) return;
+      gesture.from = video.currentTime || 0;
+      gesture.axis = 'rewind'; gesture.started = performance.now(); gesture.wasPlaying = !video.paused;
+      if (gesture.wasPlaying) video.pause();
+      updateRewind(gesture);
+      rewindTimer = window.setInterval(() => { if (touch === gesture) updateRewind(gesture) }, 200);
+    }
+  }, TOUCH_HOLD_MS);
 }
 
 function onTouchMove(event: TouchEvent): void {
-  if (!touch || event.touches.length !== 1) return;
+  if (!touch) return;
+  if (event.touches.length !== 1) { cancelTouch(); return }
+  if (touch.axis === 'held' || touch.axis === 'speed' || touch.axis === 'rewind') { event.preventDefault(); return }
   const dx = event.touches[0]!.clientX - touch.x, dy = event.touches[0]!.clientY - touch.y;
   if (!touch.axis) {
-    if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+    if (Math.abs(dx) < TOUCH_AXIS_LOCK_PX && Math.abs(dy) < TOUCH_AXIS_LOCK_PX) return;
+    clearTimeout(holdTimer);
+    clearTap();
     touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     if (touch.axis === 'x') setBarScrubbing(true);
   }
   if (touch.axis !== 'x') return;
-  const video = current?.video, total = video ? video.duration || 0 : 0;
-  if (!total) return;
   event.preventDefault(); // 横划归进度，不交给页面滚动
-  touch.to = Math.min(total, Math.max(0, touch.from + dx / window.innerWidth * total));
+  const total = touch.video.duration || 0;
+  touch.to = touchSeekTarget(touch.video, touch.from, dx, dom?.track.getBoundingClientRect().width || window.innerWidth) ?? undefined;
+  if (touch.to === undefined || !total) return;
   paintProgress(touch.to / total);
   showSeekPreview(touch.to / total);
+  touchFeedback(t(dx >= 0 ? 'catalog:playerControls.touchForward' : 'catalog:playerControls.touchRewind',
+    { time: fmtClock(touch.to) }));
 }
 
 function onTouchEnd(event: TouchEvent): void {
@@ -472,11 +562,16 @@ function onTouchEnd(event: TouchEvent): void {
   const gesture = touch;
   touch = null;
   ignoreClickUntil = Date.now() + SYNTHETIC_CLICK_MS;
+  finishTouch(gesture, true);
   setBarScrubbing(false);
   seekPreview?.hide();
+  if (gesture.axis === 'held' || gesture.axis === 'speed' || gesture.axis === 'rewind') { event.preventDefault(); return }
   if (gesture.axis === 'x') {
-    const video = current?.video;
-    if (video && gesture.to != null) video.currentTime = gesture.to;
+    event.preventDefault();
+    if (gesture.to != null) {
+      gesture.video.currentTime = gesture.to;
+      paintProgress(gesture.to / gesture.video.duration);
+    }
     return;
   }
   const end = event.changedTouches[0]!, dx = end.clientX - gesture.x, dy = gesture.y - end.clientY;
@@ -488,9 +583,11 @@ function onTouchEnd(event: TouchEvent): void {
 }
 
 function onTouchCancel(): void {
-  touch = null;
-  setBarScrubbing(false);
-  seekPreview?.hide();
+  cancelTouch();
+}
+
+function onTouchContextMenu(event: Event): void {
+  if (touch) { event.preventDefault(); event.stopPropagation() }
 }
 
 function onWheel(event: WheelEvent): void {
@@ -672,21 +769,25 @@ function ImmerseView({ view: at }: { view: View }) {
   const track = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const progress = useRef<HTMLElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = frame.current!;
-    dom = { root: el, track: track.current!, bar: bar.current!, progress: progress.current! };
+    dom = { root: el, track: track.current!, bar: bar.current!, progress: progress.current!, feedback: feedback.current! };
     /* 横划要 `preventDefault`，React 的触摸与滚轮事件挂在根上是被动的，拦不住页面滚动：这几条直接挂
        在节点上。 */
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: false });
     el.addEventListener('touchcancel', onTouchCancel, { passive: true });
+    el.addEventListener('contextmenu', onTouchContextMenu);
     el.addEventListener('wheel', onWheel, { passive: true });
     return () => {
+      cancelTouch(false, false);
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchCancel);
+      el.removeEventListener('contextmenu', onTouchContextMenu);
       el.removeEventListener('wheel', onWheel);
       dom = null;
     };
@@ -697,6 +798,7 @@ function ImmerseView({ view: at }: { view: View }) {
     <div ref={frame} data-immerse="" data-idle={flag(at.idle)} data-wide={flag(at.wide)} hidden={!at.open}>
       <div data-immerse-stage="" data-wide={flag(at.wide)}>
         <div ref={track} data-immerse-track="" onClick={clickTrack} />
+        <div ref={feedback} data-player-gesture-feedback="" aria-hidden="true" hidden />
         <div data-immerse-actions="">
           {ACTIONS.map((action) => <ImmerseAction key={action.kind} {...action} id={id} />)}
         </div>
@@ -745,8 +847,10 @@ export function configureImmerse(next: ImmerseHost): ImmerseApi {
   if (first) {
     document.addEventListener('keydown', onKeyDown);
     // 旋转手机或改窗口大小后，同一条视频的铺满／完整显示判定可能翻转。
-    addEventListener('resize', () => { if (view.open) fitAll() });
-    addEventListener('pagehide', () => { slides.forEach((slide) => cancelStreamSession(slide.session)) });
+    addEventListener('resize', () => { cancelTouch(); if (view.open) fitAll() });
+    addEventListener('blur', () => cancelTouch(false, false));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cancelTouch(false, false) });
+    addEventListener('pagehide', () => { cancelTouch(false, false); slides.forEach((slide) => cancelStreamSession(slide.session)) });
   }
   return api;
 }

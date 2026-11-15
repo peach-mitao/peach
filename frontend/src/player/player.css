@@ -18,6 +18,13 @@
 .video-js>video-player>media-container{display:block;width:100%;height:100%;position:absolute;inset:0}
 .video-js :is(hlsjs-video,dash-video){display:contents}
 .video-js .vjs-tech{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+/* 纵向滚动仍归页面；横向拖动由画面手势接管。沉浸轨道自己处理双轴滑动。 */
+.video-js[data-player-touch-gestures]{touch-action:pan-y pinch-zoom}
+[data-player-gesture-feedback]{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);
+  box-sizing:border-box;max-width:min(85%,420px);padding:12px 16px;border-radius:var(--pill-radius);background:rgba(0,0,0,.72);
+  color:#fff;font-size:var(--fs-sm);font-weight:600;line-height:1.4;text-align:center;
+  pointer-events:none;user-select:none}
+[data-player-gesture-feedback][hidden]{display:none}
 .video-js .vjs-control-bar{display:flex;position:absolute;bottom:0;left:0;width:100%;height:3em;z-index:2}
 .video-js .vjs-picture-in-picture-control[data-peach-pip-supported][hidden]{display:block!important}
 .video-js .vjs-picture-in-picture-control[aria-disabled="true"]{color:rgba(255,255,255,.45);cursor:not-allowed}

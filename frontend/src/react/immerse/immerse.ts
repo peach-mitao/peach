@@ -119,8 +119,6 @@ export function isWide(video: { videoWidth: number; videoHeight: number }, item:
 export const DOUBLE_TAP_MS = 280;
 /** 触屏抬手之后浏览器合成的那一下 click 不再切播放：那一下已经由单击／双击判定接管。 */
 export const SYNTHETIC_CLICK_MS = 700;
-/** 位移超过这么多才定方向；方向一旦定下就不再改，否则斜着划会又切片又跳进度。 */
-export const AXIS_LOCK_PX = 12;
 /** 竖划超过这么多换条。 */
 export const SWIPE_PX = 60;
 /** 两个方向都不超过这么多算一次点击。 */
