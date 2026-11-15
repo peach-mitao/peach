@@ -50,6 +50,7 @@ describe('Video.js 10 播放链', () => {
           });
           const video = page.locator('#stage video.vjs-tech');
           await video.waitFor();
+          await page.waitForFunction(() => document.querySelector<HTMLVideoElement>('#stage video.vjs-tech')!.readyState >= 2);
           await page.locator('#stage hlsjs-video').evaluate((node, extension) => {
             (node as unknown as { source: { src: string; type: string } }).source = {
               src: `/gesture-media/gesture.${extension}`, type: extension === 'mp4' ? 'video/mp4' : 'application/vnd.apple.mpegurl',
