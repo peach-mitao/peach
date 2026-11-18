@@ -11,6 +11,56 @@ describe('首页文件夹浏览', () => {
   after(async () => { await browser?.close() });
 
   for (const viewport of VIEWPORTS) {
+    it(`${viewport.name} 实际文件浏览独立于馆藏导航且不改变侧栏`, { timeout: 90_000 }, async () => {
+      const longName = 'a-very-long-media-filename-'.repeat(8) + '.mp4';
+      const roots = [{ id: 'local', name: 'Local library', mount: '/media/local', location: 'local' }];
+      let itemReads = 0;
+      const opened = await visit(browser, '/', viewport, async page => {
+        page.on('request', request => { if (new URL(request.url()).pathname === '/api/items') itemReads++ });
+        await page.route('**/api/media-directory?*', route => {
+          const root = new URL(route.request().url()).searchParams.get('root');
+          return route.fulfill({ json: { roots, root, relative: '', state: root ? 'ready' : 'roots',
+            directories: [], files: root ? [{ name: longName, asset_id: null }] : [],
+            path: root ? '/media/local' : undefined, next_offset: null, read_only: true } });
+        });
+      });
+      const { page } = opened;
+      try {
+        await page.locator('#grid [data-media-card]').first().waitFor();
+        await settle(page);
+        if (await page.locator('#filterBtn').getAttribute('aria-expanded') !== 'true') await page.locator('#filterBtn').click();
+        const toggle = page.locator('[data-sidebar-kind="src"] > [data-sidebar-toggle]');
+        if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+        const before = await page.evaluate(() => ({ url: location.href,
+          sidebar: document.querySelector('#drawer')!.getBoundingClientRect().width,
+          card: document.querySelector('#grid [data-media-card]')!.textContent }));
+        const reads = itemReads;
+        await page.getByRole('button', { name: '浏览文件', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: '浏览文件', exact: true });
+        await dialog.getByRole('button', { name: 'local', exact: true }).click();
+        await dialog.getByText(longName, { exact: true }).waitFor();
+        const geometry = await dialog.evaluate(node => ({
+          width: node.getBoundingClientRect().width, scroll: node.scrollWidth,
+          left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right,
+          top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom,
+          viewport: innerWidth, height: innerHeight,
+        }));
+        assert.ok(geometry.scroll <= geometry.width + 1, JSON.stringify(geometry));
+        assert.ok(geometry.left >= 0 && geometry.right <= geometry.viewport && geometry.top >= 0 && geometry.bottom <= geometry.height, JSON.stringify(geometry));
+        await dialog.getByRole('button', { name: '返回上级目录', exact: true }).click();
+        await dialog.getByRole('button', { name: 'local', exact: true }).waitFor();
+        await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+        await dialog.waitFor({ state: 'hidden' });
+        assert.equal(page.url(), before.url);
+        assert.equal(itemReads, reads, '文件浏览不应重新请求馆藏');
+        assert.equal(await page.locator('#filterBtn').getAttribute('aria-expanded'), 'true');
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('#drawer').evaluate(node => node.getBoundingClientRect().width), before.sidebar);
+        assert.equal(await page.locator('#grid [data-media-card]').first().textContent(), before.card);
+        assert.deepEqual(opened.problems.filter(line => !line.includes('VIDEOJS')), []);
+      } finally { await opened.close() }
+    });
+
     it(`${viewport.name} 目录范围、首页控件、用途预览和返回导航共用馆藏`, { timeout: 90_000 }, async () => {
       const opened = await visit(browser, '/?browse=folders&loc=local', viewport);
       const { page } = opened;

@@ -14,6 +14,15 @@
 
 ## 详情对象
 
+Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关闭不修改当前馆藏路由或筛选。
+`GET /api/media-directory` 沿用站内认证；无参数列出已配置并映射的媒体根，不探测挂载。
+`root` 为持久根 ID，`relative` 为根内相对目录，`offset` 为分页位置；`asset` 可按服务端账本定位父目录及文件，优先于调用方目录。
+回执包含 `roots`、`root`、`relative`、`directories`、`files`（名称与可空 `asset_id`）、`next_offset`、`offset` 和可空 `read_only`。
+`state` 区分 `roots`、`ready`、`unmapped`、`denied`、`missing`、`timeout`、`unreachable`；定位时附 `focus_name`，无映射时保留 `last_path`。
+每页最多枚举 500 个条目，文件夹在本页内排序在前；定位仅枚举当前目录，返回目标所在页。
+目录读取不打开媒体内容、不写账本或文件；绝对路径、父级越界和越界符号链接均拒绝。
+无桌面环境的 `POST /api/reveal` 返回服务端位置与资产 ID，由此弹窗呈现目录状态；桌面环境继续调用本机文件管理器。
+
 | 对象 | 规范地址 | 身份 |
 | --- | --- | --- |
 | 资产 | `/assets/:id` | ledger 中的一条媒体记录；不同文件版本有各自 ID |

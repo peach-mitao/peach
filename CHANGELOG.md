@@ -16,6 +16,7 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Added / 新增
 
+- **Interface**: Browse mapped media directories from Storage and locate a file in the browser on headless servers (#376). / **界面**：可从 Storage 浏览已挂载的媒体目录，无桌面部署可在网页中定位文件（#376）。
 - **Interface**: Right-click cards and table rows for item actions, use the Library action column, or delete from the icon group under a work's title (#773). / **界面**：卡片与表格行可右键操作，馆藏列表新增操作栏，作品详情的删除入口放在标题下方的按钮组（#773）。
 
 ## [0.59.0] - 2026-11-18

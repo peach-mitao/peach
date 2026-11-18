@@ -113,6 +113,7 @@ delivery = [
 # 所以本域也要登记它们：改了 `web/app.js` 却漏跑读它的测试，`test_test_planning.py`
 # 的域映射门槛会在本地就红。
 web = [
+    "test_web_media_directory.py",
     "test_frontend_build.py", "test_frontend_preflight.py", "test_web_ui.py", "test_web_js.py",
     "test_web_e2e.py", "test_tag_management.py", "test_subtitle_search.py", "test_subtitle_memory.py",
     "test_legacy_shell_routes.py", "test_web_perf.py", "test_copy_final_state.py", "test_agency_entity.py",

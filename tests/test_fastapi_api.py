@@ -4087,6 +4087,21 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         reveal.assert_called_once_with(source)
 
+    async def test_headless_reveal_returns_position_without_probing_media(self):
+        self._seed_photo()
+        with patch('peach.nas_directories.available', return_value=False), \
+                patch('peach.media_io.bounded', side_effect=AssertionError('must not probe')):
+            response = await self.client.post('/api/reveal', headers={'X-Token': 'secret'}, json={'id': 9})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['mode'], 'server')
+        self.assertEqual(response.json()['id'], 9)
+
+    async def test_media_directory_requires_authentication(self):
+        with patch('peach.web_media_directory.media_io._request') as reader:
+            response = await self.client.get('/api/media-directory')
+        self.assertEqual(response.status_code, 401)
+        reader.assert_not_called()
+
     async def test_reveal_answers_within_the_deadline_when_the_drive_is_stuck(self):
         """文件所在的盘答不上：回 503 说明盘没响应，不当成文件已删，也不把请求挂住。"""
         source = self._seed_photo()

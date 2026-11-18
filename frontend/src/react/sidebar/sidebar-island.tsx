@@ -30,7 +30,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { growCollapse, popBadges, setCollapseOpen } from '@peach/legacy/ui';
 
 import { useViewGlide } from '../components/use-view-glide';
-import { Icon } from '../settings-panel/icon';
+import { Icon, RemixIcon } from '../settings-panel/icon';
 import type {
   SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
 } from './sidebar-api';
@@ -41,6 +41,7 @@ import { NavigationOrderMenu } from '../components/navigation-order';
 import { t } from '../../i18n';
 import { SidebarWidth } from './sidebar-width';
 import { Duration } from './duration-filter';
+import { openMediaDirectory } from '../catalog-folders/media-directory-navigation';
 
 /* 首页那一项的键是空串；空串写进 dataTransfer 等于没写，给它一个占位。 */
 const HOME = '__home__';
@@ -164,6 +165,7 @@ interface GroupSpec {
   kind: string;
   body: ReactNode;
   active: boolean;
+  action?: ReactNode;
 }
 
 const selectedValues = (filters: SidebarProps['filters'], key: string) =>
@@ -193,7 +195,7 @@ function Groups({ host: at, content, filters, latest }: {
     : followGroups(at, content, filters);
   let index = 0;
   return groups.map((group) => group && (
-    <Group key={group.title} title={group.title} kind={group.kind} active={group.active} index={index++} epoch={key}>
+    <Group key={group.title} title={group.title} kind={group.kind} active={group.active} index={index++} epoch={key} action={group.action}>
       {group.body}
     </Group>
   ));
@@ -221,7 +223,11 @@ function catalogGroups(
     };
   };
   return [
-    spec(t('navigation:sidebarFilters.storage'), 'src', facets.locations, 'loc', true),
+    { title: t('navigation:sidebarFilters.storage'), kind: 'src',
+      active: facets.locations.some(row => selectedValues(filters, 'loc').includes(row.value)),
+      action: <button type="button" data-sidebar-directory="" aria-label={t('shell:mediaDirectory.title')}
+        title={t('shell:mediaDirectory.title')} onClick={() => openMediaDirectory()}><RemixIcon name="ri-folder-3-line" /></button>,
+      body: chips(facets.locations, 'loc', true) },
     facets.duration
       ? { title: t('navigation:sidebarFilters.duration'), kind: 'meta', active: false, body: <Duration host={at} filters={filters} /> }
       : null,
@@ -271,8 +277,8 @@ function wantOpen(title: string, active: boolean): boolean {
   return saved !== null ? saved === 'open' : active;
 }
 
-function Group({ title, kind, active, index, epoch, children }: {
-  title: string; kind: string; active: boolean; index: number; epoch: string; children: ReactNode;
+function Group({ title, kind, active, index, epoch, children, action }: {
+  title: string; kind: string; active: boolean; index: number; epoch: string; children: ReactNode; action?: ReactNode;
 }) {
   const details = useRef<HTMLDetailsElement | null>(null);
   const body = useRef<HTMLDivElement | null>(null);
@@ -300,7 +306,7 @@ function Group({ title, kind, active, index, epoch, children }: {
     try { sessionStorage.setItem(`peach.sidebar.group.${title}`, next ? 'open' : 'closed') } catch { /* 只是不记住 */ }
   };
   const collapseId = `sidebar-collapse-${index}`;
-  return (
+  const group = (
     <details ref={details} data-sidebar-group={title} data-sidebar-kind={kind}>
       <summary role="button" data-sidebar-toggle="" aria-expanded={open} aria-controls={collapseId} onClick={toggle}>
         <Icon name="chevron-right" /><span>{title}</span>
@@ -314,6 +320,7 @@ function Group({ title, kind, active, index, epoch, children }: {
       </div>
     </details>
   );
+  return action ? <div data-sidebar-tool-group="">{group}{action}</div> : group;
 }
 
 /* 名单末尾那枚「收起」收的是整组：组的开合在 `Group` 手里，经这一层递下去。 */

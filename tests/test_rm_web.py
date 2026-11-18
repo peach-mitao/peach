@@ -1931,7 +1931,7 @@ class WebDataTests(unittest.TestCase):
             "/api/post-setup-tutorial",
             "/api/tutorial-progress", "/api/performer/delete-candidates", "/api/performer/delete-plan",
             "/api/entity-batch/plan",
-            "/api/library-shortcuts", "/api/folders",
+            "/api/library-shortcuts", "/api/folders", "/api/media-directory",
             "/api/custom-metadata",
             "/api/follow", "/api/follow/credentials", "/api/follow/schedule",
             "/api/follow/check", "/api/follow/resolve", "/api/follow/suggest",

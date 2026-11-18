@@ -121,6 +121,7 @@ from .web_settings import q_settings, w_settings
 from .web_library_shortcuts import q_library_shortcuts, w_library_shortcuts
 from .web_tutorial import q_tutorial_progress, w_tutorial_progress
 from .web_folders import q_folders, w_folder_preview, w_folder_rule
+from .web_media_directory import q_media_directory
 from .web_scraping import (
     q_scraping, q_scraping_amane_bridge, w_scraping_amane_check, w_scraping_amane_rebuild,
     w_scraping_check, w_scraping_check_all, w_scraping_cover, w_scraping_settings,
@@ -381,6 +382,7 @@ GET_HANDLERS = {
     "/api/tag-management": q_tag_management,
     "/api/media-processing": q_media_processing,
     "/api/folders": q_folders,
+    "/api/media-directory": q_media_directory,
     "/api/tasks": q_tasks,
     "/api/result-updates": q_result_updates,
     "/api/downloads": q_downloads,

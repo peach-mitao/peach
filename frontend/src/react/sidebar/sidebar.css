@@ -285,3 +285,12 @@ body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;bo
 
 [data-sidebar-range] input { z-index: 1; }
 [data-sidebar-range] input[data-active] { z-index: 2; }
+
+/* 分组工具独立于折叠触发器，收起来源列表时仍可浏览文件。 */
+[data-sidebar-tool-group]{position:relative}
+[data-sidebar-tool-group] [data-sidebar-toggle]>span{padding-right:32px}
+[data-sidebar-drawer] button[data-sidebar-directory]{position:absolute;top:2px;right:34px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+[data-sidebar-drawer] button[data-sidebar-directory]:hover{background:var(--hover);color:var(--ink)}
+[data-sidebar-drawer] button[data-sidebar-directory]:focus-visible{outline:2px solid var(--tungsten);outline-offset:1px}
+[data-sidebar-directory] svg{width:var(--icon-inline);height:var(--icon-inline);fill:currentColor;stroke:none}
+@media (min-width:768px){[data-sidebar-drawer]:not([class~=open]) [data-sidebar-tool-group]{display:none}}

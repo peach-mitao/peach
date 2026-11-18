@@ -148,6 +148,11 @@ def reveal(request: Request, body: dict[str, Any] = Body(default_factory=dict), 
     if asset is None or not asset.path:
         return JSONResponse({"error": "not found"}, status_code=404)
     target = translate_ledger_path(asset.path)
+    from .nas_directories import available as desktop_available, file_position
+    if not desktop_available():
+        # 网页目录负责呈现离线、丢失和最后位置，定位入口不先阻塞探测文件。
+        return {"ok": True, **file_position(target, asset.path), "id": asset_id,
+                "location": asset.location}
     if is_unmapped(target):
         return JSONResponse(
             {"error": "source not mapped", "location": asset.location},

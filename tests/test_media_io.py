@@ -90,6 +90,42 @@ class MediaIoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             browse(config, str(self.root), offset=-1)
 
+    def test_file_browser_lists_regular_files_without_following_links(self):
+        from peach.nas_directories import list_directory
+        (self.root / 'folder').mkdir()
+        video = self.root / 'movie.mp4'
+        video.write_bytes(b'not video content')
+        if sys.platform != 'win32':
+            (self.root / 'linked.mp4').symlink_to(video)
+        with patch.object(Path, 'open', side_effect=AssertionError('browsing must not read file contents')):
+            page = list_directory(self.root, [str(self.root)], include_files=True)
+        self.assertEqual(page['files'], [{'name': 'movie.mp4'}])
+        self.assertEqual([row['name'] for row in page['directories']], ['folder'])
+        self.assertEqual(page['offset'], 0)
+        self.assertIsNone(page['next_offset'])
+        picker = list_directory(self.root, [str(self.root)])
+        self.assertNotIn('files', picker)
+
+    def test_file_browser_locates_the_exact_file_beyond_the_first_page(self):
+        from peach.nas_directories import list_directory
+        entries = [SimpleNamespace(name=f'{i}.mp4', is_dir=lambda **kw: False,
+                                   is_file=lambda **kw: True) for i in range(1002)]
+        manager = Mock()
+        manager.__enter__ = Mock(side_effect=lambda: iter(entries))
+        manager.__exit__ = Mock(return_value=False)
+        with patch('peach.nas_directories.os.scandir', return_value=manager):
+            for focus, expected_offset in [('499.mp4', 0), ('500.mp4', 500), ('1001.mp4', 1000)]:
+                with self.subTest(focus=focus):
+                    page = list_directory(self.root, [str(self.root)], include_files=True, focus_name=focus)
+                    self.assertEqual(page['offset'], expected_offset)
+                    self.assertIn({'name': focus}, page['files'])
+                    self.assertLessEqual(len(page['files']), 500)
+                    self.assertEqual(page['next_offset'], expected_offset + 500 if expected_offset < 1000 else None)
+            missing = list_directory(self.root, [str(self.root)], include_files=True, focus_name='gone.mp4')
+        self.assertEqual(missing['offset'], 0)
+        self.assertEqual(len(missing['files']), 500)
+        self.assertEqual(missing['next_offset'], 500)
+
     def test_nas_local_directory_does_not_probe_an_unrelated_offline_mount(self):
         from peach.nas_directories import list_directory
         offline = self.root.parent / 'offline-cloud'
