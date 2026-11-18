@@ -5,7 +5,7 @@
 `MediaOffline`、`MediaUnavailable`）由 `api.py` 的异常处理器统一收口，路由里不要
 再手抄同一组 try/except。
 
-有一条贯穿整层的规矩：**上游地址一律不外露**。`/follow-stream`、`/follow-cover`、
+`/follow-stream`、`/follow-cover`、
 `/link-mark` 都只接受账本里的 id，自己去查地址；接受前端递过来的 URL 就等于开了一个
 任意地址抓取的口子。
 """
@@ -366,6 +366,7 @@ def external_playlist(request: Request, id: int, ticket: str, origin: str = ''):
 
 @router.api_route("/stream", methods=["GET", "HEAD"])
 def stream(request: Request, id: int, session: str = "", decode: str = "", original: bool = False,
+           direct: bool = True,
            args: dict[str, str] = Depends(require_auth)):
     state = request.app.state
     from .error_reporting import local_event
@@ -375,6 +376,16 @@ def stream(request: Request, id: int, session: str = "", decode: str = "", origi
     # 拖一次进度条就是一串 Range 请求，片源在网盘上时每次 stat 都是一趟网络往返：确认存在时
     # 取到的那一次 stat 一路传给头修复查询、画像缓存和文件响应，一个请求只问一次。
     path, source_stat = state.media_engine.filesystem.located(asset)
+    from . import direct_playback
+    target = direct_playback.mapped_url(state.settings.follow_state_root, asset) if direct else None
+    if target and session and state.stream_sessions.is_cancelled(session):
+        return Response(status_code=410)
+    if target:
+        location = direct_playback.resolve(target, request.headers.get('user-agent', ''))
+        if location:
+            return RedirectResponse(location, status_code=302, headers={
+                'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
+            })
     from . import strm, strm_stream
     if strm.is_pointer(path):
         return strm_stream.proxy(request, id, path, session)
@@ -434,6 +445,15 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
     plan = state.media_engine.stream_plan(id, mode=mode or "auto")
     # 只有真的能读出关键帧才宣告 HLS，否则客户端会拿到一个必然 404 的播放列表。
     source_path = state.media_engine.filesystem.file_for(asset, thumbnail=False)
+    from . import direct_playback
+    if direct_playback.mapped_url(state.settings.follow_state_root, asset):
+        mime = {'.mkv': 'video/x-matroska', '.webm': 'video/webm'}.get(source_path.suffix.lower(), 'video/mp4')
+        return _record_stream_plan(state, id, source_path, {
+            'id': id, 'protocol': 'range', 'mime_type': mime, 'duration': asset.duration,
+            'src': f'/stream?id={id}&session={quote(session, safe="")}', 'reason': 'direct-playback',
+            'fallback_src': f'/stream?id={id}&session={quote(session, safe="")}&direct=0',
+            'fallback_mime_type': 'video/mp4',
+        })
     from . import strm, strm_stream
     if strm.is_pointer(source_path):
         try:
