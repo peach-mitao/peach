@@ -80,7 +80,7 @@
   },
   "cloudDownloadDialog": {
     "adopted": "这个磁力已有任务，没有重复提交",
-    "adoptedRemote": "网盘中已有相同的下载任务，Peach 已开始跟踪进度",
+    "adoptedRemote": "下载器里已有相同的任务，Peach 已开始跟踪进度",
     "closePanel": "关闭资源面板",
     "deferred": "网盘暂时没有响应，Peach 会自动重新提交，进度在任务中心",
     "downloadTo": "下载到",
@@ -90,11 +90,11 @@
     "minutes": "{{count, number}} 分钟",
     "noMetadata": "作品资料未取得",
     "optional": "可不填",
-    "primaryOnly": "云下载只在允许修改数据库的设备上可用。",
+    "primaryOnly": "下载只在允许修改数据库的设备上可用。",
     "quotaHint": "每提交一次扣一条离线配额，重新提交也算。",
     "refused": "这个资源被判为违规，不再提交。",
     "submit": "提交下载",
-    "submitted": "已提交离线下载，进度在任务中心",
+    "submitted": "已提交下载，进度在任务中心",
     "targetDirectory": "目标目录",
     "targetPlaceholder": "/云下载"
   },

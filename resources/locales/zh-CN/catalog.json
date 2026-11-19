@@ -1178,7 +1178,7 @@
     "added": "已加入想要：{{name}}",
     "alreadyAdded": "{{name}} 已经在想要里",
     "backToSearching": "{{name}} 回到待找",
-    "cloudPrimaryOnly": "云下载只在写入端可用。",
+    "cloudPrimaryOnly": "下载只在写入端可用。",
     "codePlaceholder": "输入番号，例如 SSIS-950",
     "dockLabel": "所选想要的操作",
     "downloadSettingsFailed": "下载配置未取得",

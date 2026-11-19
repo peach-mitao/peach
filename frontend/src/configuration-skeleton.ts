@@ -30,7 +30,7 @@ export interface IndexersShape { open: boolean[] }
 export interface JavBrowserShape { enabled: boolean; ready: boolean }
 /** 每个网盘账号一项：[数据代理走代理, API 代理走代理]，走代理时多出地址、端口与认证三行。 */
 export interface CloudProxyShape { configured: boolean; accounts: [boolean, boolean][]; unlinked: number }
-export interface DownloadsShape { cloud: boolean; has115: boolean; pikpak: boolean; pikpakRoots: boolean; pikpakLoggedIn: boolean; browserLogin: boolean }
+export interface DownloadsShape { cloud: boolean; has115: boolean; pikpak: boolean; pikpakRoots: boolean; pikpakLoggedIn: boolean; browserLogin: boolean; localDownload: boolean }
 export interface NetworkShape { port: boolean; addresses?: number; networkEditable?: boolean; lan?: boolean; proxyAddress: boolean; access: string; tunnelNamed: boolean; tunnelNamedMode: boolean; tunnelNote: boolean }
 /** 已登录的设备：行数，以及底栏有没有「撤销其他设备」。 */
 export interface DevicesShape { rows: number; manageable: boolean }
@@ -285,7 +285,12 @@ const downloads = () => {
   const loggedIn = on(shape?.pikpakLoggedIn);
   const account = pikpak ? section(t('settings:pikpakAccount.title'), loggedIn ? facts([t('settings:shared.account'), text('4em')]) : stack(inputField(t('settings:shared.account')) + inputField(t('settings:shared.password')) + check(t('settings:pikpakAccount.rememberPassword'))),
     loggedIn ? button(t('settings:shared.signOut'), 'secondary') : (on(shape?.browserLogin) ? button(t('settings:pikpakAccount.browserSignIn'), 'secondary') : '') + button(t('settings:shared.signIn')), { aside: chip(), mark: true }) : '';
-  return cloud + account + javBrowserSkeleton();
+  const local = on(shape?.localDownload) ? section(t('settings:localDownload.title'), stack(
+    help(t('settings:localDownload.help'))
+    + inputField(t('settings:localDownload.address')) + inputField(t('settings:localDownload.username')) + inputField(t('settings:localDownload.password'))
+    + inputField(t('settings:localDownload.savePath')) + selectField(marked(t('settings:localDownload.mediaRoot')))),
+  button(t('settings:cloudDownload.testConnection'), 'secondary') + button(t('settings:shared.saveSettings'))) : '';
+  return cloud + account + local + javBrowserSkeleton();
 };
 
 /* ---------- 网络与访问 ---------- */

@@ -23,7 +23,7 @@ from .coded_text import Said
 from .content_words import BONUS_EDITION, LEGACY_REMOTE_MISSING, TRAILER_NAME
 from .downloads import (
     CLOUDDRIVE_CREDENTIAL, INGESTED, POSTPROCESS_FAILED, POSTPROCESS_PENDING, POSTPROCESS_QUEUED,
-    POSTPROCESS_RUNNING, REMOTE_RUNNING, RESUBMITTABLE_STATES, TRACKED_STATES, iso, state_label,
+    POSTPROCESS_RUNNING, REMOTE_RUNNING, RESUBMITTABLE_STATES, TRACKED_STATES, iso,
     CHANNEL_FAILURES, never_seen, submit_offline_download, parse_magnet,
     parse_iso, storage_full, DownloadError,
 )
@@ -317,7 +317,7 @@ def _failure_projection(task) -> dict:
 def _download_projection(task) -> dict:
     """下载任务的阶段与进度，不带内部字段。"""
     progress = task.progress
-    return {"state": task.state, "label": state_label(task.state),
+    return {"state": task.state, "label": task.state_label,
             "phase": "organize" if task.state == INGESTED else "ingest" if task.remote_done_at
                 or task.state in {"remote_done", "landed"} else "download",
             "progress": min(1.0, max(0.0, progress)) if task.state in {REMOTE_RUNNING, "remote_done", "landed", INGESTED}
