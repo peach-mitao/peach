@@ -845,7 +845,7 @@ body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="nex
 
 /* ── 竖屏带 ──
  * 短片带是这一叠卡里的一张，和上下两段视频平级：同一张面、同一圈发丝边、同一个圆角。
- * 宽屏上整块往左铺过侧栏轨道，面板铺到视口边上，左边两个圆角也就去掉了。
+ * 宽屏默认铺到视口左缘；开启「限制首页横滑范围」时，面板收在右侧内容区。
  * 带子的面是 `--ground`，浅色下与全站悬停面 `--hover` 同为 #F7F7F7：卡片和「进入」键的悬停在这里
  * 铺出去等于没铺。带内的悬停面按次级按钮那一档在带子底色上压一层，两种主题都比底色深一档。 */
 .peach-react [data-shorts-strip] {
@@ -906,12 +906,12 @@ body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="nex
 }
 .peach-react [data-shorts-row]::-webkit-scrollbar { display: none; }
 @media (min-width: 761px) {
-  .peach-react [data-shorts-strip] {
+  :where(:root:not([data-contain-home-scroll])) .peach-react [data-shorts-strip] {
     margin-left: calc(-1 * (var(--railW) + 16px));
     padding-left: calc(var(--railW) + 32px);
     border-radius: 0 var(--floating-radius) var(--floating-radius) 0;
   }
-  .peach-react [data-shorts-row] {
+  :where(:root:not([data-contain-home-scroll])) .peach-react [data-shorts-row] {
     margin-left: calc(-1 * (var(--railW) + 32px + 16px));
     padding-left: calc(var(--railW) + 32px + 16px);
   }

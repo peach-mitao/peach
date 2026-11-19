@@ -871,6 +871,8 @@
     "homePreviewOnly": "Show only videos with a preview image on Home",
     "homeShorts": "Portrait strip on Home",
     "homeTiers": "Show actress and label avatars on Home",
+    "containHomeScroll": "Keep Home rows beside the sidebar",
+    "containHomeScrollDescription": "On desktop, Home cards and avatars scroll to the right of the sidebar.",
     "hoverDelay": "Hover preview delay",
     "hoverDelaySfw": "No previews in SFW mode.",
     "hoverPreview": "Play previews when hovering over cards",

@@ -10,6 +10,18 @@ import {
   farthestShadow, holdApi, openLightbox, installDesignBrowser,
 } from './design-fixture.ts';
 
+const homeDiscoveries = Array.from({ length: 12 }, (_, index) => ({
+  id: index + 1, code: `DEMO-${String(index + 1).padStart(3, '0')}`, title: `演示新作 ${index + 1}`,
+  studio: '演示厂牌', release_date: '2026-09-01', has_cover: false, cover_url: '', link: '', read: false,
+}));
+
+async function showHomeDiscoveries(page: Page): Promise<void> {
+  await page.route((url) => url.pathname === '/api/feeds/discoveries', (route) =>
+    route.fulfill({ json: { items: homeDiscoveries } }));
+  await page.reload({ waitUntil: 'load' });
+  await page.locator('#feedNew .feednewrow').waitFor({ state: 'visible', timeout: 15_000 });
+}
+
 describe('设计决定：设置、口味、统计与筛选玻璃', () => {
   let browser: Browser;
   installDesignBrowser((next) => { browser = next; });
@@ -144,6 +156,61 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
     }
   });
 
+  it('桌面首页的横滑边界由浏览偏好即时切换，刷新后仍按该偏好裁切', { timeout: 60_000 }, async () => {
+    // visit() 每次加载时会重置本机偏好，这里由页面保存和恢复。
+    const page = await browser.newPage({ viewport: DESKTOP, locale: 'zh-CN', reducedMotion: 'reduce' });
+    try {
+      await page.addInitScript(() => {
+        if (!localStorage.getItem('peach.settings.v1')) {
+          localStorage.setItem('peach.settings.v1', JSON.stringify({ detailAutoplay: false }));
+        }
+      });
+      await page.goto(requiredEnv('PEACH_E2E_ORIGIN'));
+      await showHomeDiscoveries(page);
+      await settle(page);
+      const row = page.locator('#feedNew .feednewrow');
+      const edges = () => row.evaluate((element) => ({
+        row: element.getBoundingClientRect().left,
+        sidebar: document.querySelector('#drawer')!.getBoundingClientRect().right,
+        active: document.documentElement.hasAttribute('data-contain-home-scroll'),
+        margin: getComputedStyle(element).marginLeft,
+        path: location.pathname,
+      }));
+      const assertBoundary = async (contained: boolean) => {
+        const geometry = await edges();
+        assert.equal(geometry.row >= geometry.sidebar, contained, JSON.stringify(geometry));
+      };
+      const closeSettings = async () => {
+        await page.locator('#settingsClose').click();
+        await page.waitForURL((url) => url.pathname === '/');
+        await settle(page, '#feedNew');
+      };
+      await assertBoundary(false);
+      await openPanel(page, '浏览与播放');
+      const toggle = page.locator('#containHomeScrollSetting');
+      assert.equal(await toggle.isChecked(), false);
+      await toggle.check();
+      await page.locator('html[data-contain-home-scroll]').waitFor({ state: 'attached', timeout: 5_000 });
+      await closeSettings();
+      await assertBoundary(true);
+      await row.evaluate((element) => { element.scrollLeft = 180; });
+      assert.ok(await row.evaluate((element) => element.scrollLeft > 0), '限制横滑范围后新作行应仍可滚动');
+      await assertBoundary(true);
+
+      await page.reload({ waitUntil: 'load' });
+      await row.waitFor({ state: 'visible', timeout: 15_000 });
+      await assertBoundary(true);
+      await openPanel(page, '浏览与播放');
+      assert.ok(await toggle.isChecked());
+      await toggle.uncheck();
+      await closeSettings();
+      await assertBoundary(false);
+    } finally {
+      await page.unrouteAll({ behavior: 'ignoreErrors' });
+      await page.close();
+    }
+  });
+
   /* 首页「未入库的新作」那一排会自己横着走，每一帧都发一次 scroll。手机上侧栏是抽屉，
      两枚弹层一打开就碰上它；演示库没有订阅，这一排由拦下的 `/api/feeds/discoveries`
      画出来（字段以 `src/peach/web_feeds.py` 为准）。夹具关了动效，自动滚动不起步，
@@ -151,16 +218,8 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
   it('390px 下侧栏两枚弹层不随别处那一排横滚收起，整页滚动才收', { timeout: 60_000 }, async () => {
     const opened = await visit(browser, '/', MOBILE);
     try {
-      const items = Array.from({ length: 12 }, (_, index) => ({
-        id: index + 1, code: `DEMO-${String(index + 1).padStart(3, '0')}`, title: `演示新作 ${index + 1}`,
-        studio: '演示厂牌', release_date: '2026-09-01', has_cover: false, cover_url: '', link: '', read: false,
-      }));
-      await opened.page.route((url) => url.pathname === '/api/feeds/discoveries', (route) => route.fulfill({
-        status: 200, contentType: 'application/json', body: JSON.stringify({ items }),
-      }));
-      await opened.page.reload({ waitUntil: 'load' });
+      await showHomeDiscoveries(opened.page);
       const row = opened.page.locator('#feedNew .feednewrow');
-      await row.waitFor({ state: 'visible', timeout: 15_000 });
       await settle(opened.page);
       assert.ok(await row.evaluate((element) => element.scrollWidth > element.clientWidth + 120),
         '新作那一排在 390px 下没有可横滚的余量，这条用例量不到东西');

@@ -91,6 +91,7 @@ export interface AppSettings {
   homeTiers: boolean;
   /** 首页默认只显示有预览图的作品；首页读数旁的「显示全部」临时看全部。 */
   homePreviewOnly: boolean;
+  containHomeScroll: boolean;
   /** 网格、列表与详情里的缺图补全提示条；条上的关闭钮把它写成 false。 */
   completionPrompt: boolean;
   /** 聚焦空搜索框时的推荐栏、推荐词与轮换的占位字。 */
@@ -168,6 +169,7 @@ export function normalizeAppSettings(raw: unknown): { settings: AppSettings; mig
     : boundedPreference(+(settings.homeShortsLimit as number), HOME_SHORTS_MIN, HOME_SHORTS_MAX, HOME_SHORTS_DEFAULT);
   settings.homeTiers = settings.homeTiers !== false;
   settings.homePreviewOnly = settings.homePreviewOnly === true;
+  settings.containHomeScroll = settings.containHomeScroll === true;
   settings.completionPrompt = settings.completionPrompt !== false;
   settings.searchRecommendations = settings.searchRecommendations !== false;
   settings.ingestNotices = settings.ingestNotices !== false;

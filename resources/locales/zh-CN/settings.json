@@ -860,6 +860,8 @@
     "homePreviewOnly": "首页只显示有预览图的作品",
     "homeShorts": "首页竖屏短片带",
     "homeTiers": "首页显示女优与厂牌头像",
+    "containHomeScroll": "限制首页横滑范围",
+    "containHomeScrollDescription": "桌面端的首页卡片和头像只在侧栏右侧滚动。",
     "hoverDelay": "悬停预览延迟",
     "hoverDelaySfw": "SFW 模式下不预览。",
     "hoverPreview": "卡片悬停时播放视频预览",

@@ -253,9 +253,9 @@ body[data-density="dense"] .card:not(.feednewcard) .meta .size{flex:none;white-s
 /* 往右翻时卡片从侧栏底下穿过去，和首页那几排头像（`catalog-filter.css` 的 `[data-catalog-tier]`）同一个
    理由、同一种写法：让出轨道宽度加 `main` 的 16px 内边距，再原样加回内边距，第一张
    仍站在这一屏的左对齐线上。首页与人物页的这一行都直接住在 `main` 里，所以让出的是
-   同一个数；窄屏的抽屉盖在内容上面，没有这条常驻的边，那一档不让。 */
+   同一个数。窄屏或开启「限制首页横滑范围」的首页新作行使用原有的 8px 悬停留白。 */
 @media(min-width:761px){
-  .feednewrow{margin-left:calc(-1 * (var(--railW) + 16px));padding-left:calc(var(--railW) + 16px)}
+  .feednewrow:not(:where([data-contain-home-scroll] #feedNew *)){margin-left:calc(-1 * (var(--railW) + 16px));padding-left:calc(var(--railW) + 16px)}
 }
 /* 连不上图片主机那条 Note 与下面一行隔 12px：横排自己往上收了 8px，这里先垫回来。 */
 .feednetwork{margin-bottom:20px}

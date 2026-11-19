@@ -518,6 +518,9 @@ function BrowseGroup({ host: current, tab, epoch }: GroupProps) {
         onToggle={(on) => { settings.homeTiers = on; save(); current.changed('homeTiers') }} />
       <ToggleRow id="homePreviewOnlySetting" title={t('settings:preferencesPanel.homePreviewOnly')} checked={settings.homePreviewOnly}
         onToggle={(on) => { settings.homePreviewOnly = on; save(); current.changed('homePreviewOnly') }} />
+      <ToggleRow id="containHomeScrollSetting" title={t('settings:preferencesPanel.containHomeScroll')}
+        description={t('settings:preferencesPanel.containHomeScrollDescription')} checked={settings.containHomeScroll}
+        onToggle={(on) => { settings.containHomeScroll = on; save(); current.changed('containHomeScroll') }} />
       <ToggleRow id="completionPromptSetting" title={t('settings:preferencesPanel.completionPrompt')} checked={settings.completionPrompt}
         onToggle={(on) => { settings.completionPrompt = on; save() }} />
       <h4 data-settings-subheading="">{t('settings:preferencesPanel.playbackHeading')}</h4>

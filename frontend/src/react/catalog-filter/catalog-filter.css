@@ -38,9 +38,9 @@
 
 /* 往右翻的时候这几排从侧栏底下穿过去，不在侧栏那条边上被切平：侧栏是一块玻璃，底下有东西在走
  * 才看得出它是透的。左边界仍停在原处，让出去多少宽度就原样加回内边距。窄屏那一档的抽屉是盖上来的，
- * 没有这条常驻的边，所以只在留了轨道宽度的档位上开。 */
+ * 没有这条常驻的边。桌面开启「限制首页横滑范围」时，两排头像在侧栏右侧裁切。 */
 @media (min-width: 761px) {
-  .peach-react [data-catalog-tier] {
+  :where(:root:not([data-contain-home-scroll])) .peach-react [data-catalog-tier] {
     margin-left: calc(-1 * var(--railW));
     padding-left: calc(var(--railW) + 16px);
   }

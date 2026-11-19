@@ -237,7 +237,9 @@ preferencesState.settingsEffects = {
     state.thumb=preferencesState.appSettings.homePreviewOnly?'1':'0';notifyShell();
     paintCatalogFilter({previewOnly:state.thumb==='1'});replaceCatalogAddress();
   },
+  containHomeScroll:()=>document.documentElement.toggleAttribute('data-contain-home-scroll',preferencesState.appSettings.containHomeScroll),
 };
+preferencesState.settingsEffects.containHomeScroll();
 preferencesState.syncGlassOptics = ()=>{};
 preferencesState.placeSidebarHead = ()=>{};
 preferencesState.SRCICON = {
