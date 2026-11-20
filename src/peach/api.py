@@ -629,7 +629,8 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
                 "mdns_address": mdns.address if mdns is not None else None,
                 "mdns_ipv6_addresses": list(getattr(mdns, "ipv6_addresses", ())),
                 "ledger_writer_origin": settings.review_writer_origin if read_only else None,
-                "attention": browser_transport.attention(),
+                "attention": browser_transport.attention(interface_text.request_language(
+                    request.headers.get("accept-language"))),
             } if details else {}),
             # 健康检查可能被公网探针访问，不能在这里回传随机 Tunnel URL。
             "tunnel": {"enabled": settings.tunnel_enabled, "state": tunnel_state.state},

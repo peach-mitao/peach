@@ -361,6 +361,7 @@ class BrowserTransportTests(unittest.TestCase):
         with self.assertRaises(ChallengeUnsolved) as caught:
             transport(HttpRequest("GET", "https://javten.com/search?kw=1", {}), 10, 4096)
         self.assertIn("javten.com", str(caught.exception))
+        self.assertIs(caught.exception.headless, True)
         self.assertEqual(browser_transport.attention(), [])
         states = [params["bounds"].get("windowState") for method, params in server.calls
                   if method == "Browser.setWindowBounds"]
@@ -466,7 +467,7 @@ class BrowserTransportTests(unittest.TestCase):
                 if passes["through"]:
                     return {"result": {"value": state_reply("JAVten", url="https://javten.com/x")}}
                 if self.clock.now - started >= 20:
-                    seen.append(list(browser_transport.attention()))
+                    seen.append(browser_transport.attention("zh-CN"))
                 return {"result": {"value": state_reply("Just a moment...")}}
             return self.generic(method, params)
 
@@ -474,13 +475,16 @@ class BrowserTransportTests(unittest.TestCase):
         transport, server = self.make(handler, headless=lambda: False, click_seconds=120)
         request = HttpRequest("GET", "https://javten.com/x", {})
         started = self.clock.now
-        with self.assertRaises(ChallengeUnsolved):
+        with patch("peach.browser_transport.platform.system", return_value="Darwin"), \
+                self.assertRaises(ChallengeUnsolved) as caught:
             transport(request, 10, 4096)
+        self.assertIs(caught.exception.headless, False)
         command = self.launches[0]
         self.assertNotIn("--headless=new", command)
         self.assertIn("--window-position=-32000,-32000", command)
         self.assertEqual(self.clock.now - started, 20 + 120, "自动时限之后再等人点两分钟")
         self.assertTrue(any(entries and "javten.com" in entries[0] for entries in seen), "等人点时登记在 attention")
+        self.assertTrue(any(entries and "程序坞" in entries[0] for entries in seen))
         self.assertEqual(browser_transport.attention(), [], "放弃后撤掉登记")
         self.assertFalse(any(method in {"Page.bringToFront", "Browser.setWindowBounds"} for method, _ in server.calls),
                          "窗口留在屏幕外，不上屏、不抢前台")

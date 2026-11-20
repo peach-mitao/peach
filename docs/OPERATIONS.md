@@ -393,7 +393,7 @@ Windows 的 `[media.mounts]` 可以留空，此时直接使用账本前缀；重
 已经在运行、但还没有设置文件的电脑，用 `peach init --from-existing`：
 
 - 它只写设置文件，不建数据库，也不动 `peach-data/` 里已有的任何文件。
-- 它把当前实际生效的配置写进设置文件。推断不出的项（局域网 writer 地址、SMB 主机与账号）会留空并逐条打印出来，请用 `--writer-origin`、`--smb-host`、`--smb-user` 等参数在同一条命令里一次给全，不要事后手改。
+- 它把当前实际生效的配置写进设置文件。需要填写局域网 writer 地址时，用 `--writer-origin`。如果要在 macOS 上让 Peach 自动补挂 SMB 共享，用 `--smb-host` 指定主机，再用 `--smb-user` 填写钥匙串里该主机对应的账号。其他平台先在系统中挂好共享，再用 `--shared-root` 指向共享目录。
 - `--from-existing` 写出的复制开关是 `true`，全新 `init` 写的是 `false`。
 - 用 `init --from-existing --force` 重写一份读不出来的设置文件时，它写的是内置默认值加环境变量，不继承旧文件的内容。命令会先打印这一点；旧文件里自定义过的 mDNS 名、writer 地址和 SMB 信息，要在同一条命令里重新给一遍。
 
@@ -411,7 +411,7 @@ Peach 配置页地址是 `/configuration`。从管理菜单或设置弹窗的「
 - 这台电脑可以用配置的 `.local` 名字、回环地址或服务绑定的 IP 打开配置页。Peach 按连接两端的 IP 判断是不是本机。
 - 「选择文件夹」会在运行 Peach 的这台电脑上弹出系统的文件夹选择框（Windows 资源管理器、macOS Finder），同样只对本机开放。
 - 保存后托盘会重新载入设置，本机服务会重启。
-- 源码部署的托盘服务保持固定的 HTTPS 地址和端口；Windows 测试包可以在配置页修改端口。
+- 源码部署的托盘服务保持固定的 HTTPS 地址和端口。Windows 和 macOS 独立安装版可以在配置页修改端口。
 
 媒体修复在「数据管理」页，订阅源在「关注管理」页的「订阅源」页签（分工见 [ADR-0050](adr/0050-settings-modal-holds-values-pages-hold-work.md)）。
 
@@ -539,7 +539,7 @@ minnano-av 与 javdb 使用实际解析并核对身份后落库的记录，显�
 
 ### 从哪个地址打开
 
-- **Windows 测试包**：选「只有这台电脑」时打开 `http://127.0.0.1:<端口>`；选「同一局域网的设备」时，其他设备打开 `http://<mdns_name>.local:<端口>`。测试包用 HTTP，不加密。
+- **Windows 和 macOS 独立安装版**使用明文 HTTP。选「只有这台电脑」时打开 `http://127.0.0.1:<端口>`。选「同一局域网的设备」时，其他设备打开 `http://<mdns_name>.local:<端口>`。如果 Windows 防火墙弹出提示，在运行 Peach 的 Windows 电脑上允许专用网络访问。
 - **源码部署**：托盘在 80 端口提供 HTTP、在 443 端口提供 HTTPS，浏览器打开 `https://<mdns_name>.local`。发布的局域网 IPv4 地址默认自动选择，也可以用启动参数或 `PEACH_LAN_ADDRESS` 指定。
 
 `<mdns_name>` 是设置文件 `[server].mdns_name` 的值，Peach 会在局域网里广播这个名字。
@@ -626,12 +626,12 @@ Windows 上 TLS 私钥禁用了权限继承，只允许实际运行服务的账�
 - 这只适合临时预览，不是稳定域名，也没有团队账号或 Cloudflare Access 这一层。
 - 随机地址只保存在数据目录的状态文件里。不要把它存进书签、文档或公开配置。
 - cloudflared 需要能出站访问 TCP/UDP `7844` 端口。被防火墙或代理挡住时页面会显示失败；已经显示了随机地址，不代表连接已经成功。
-- Windows 测试包自带经过 SHA-256 校验的 `cloudflared.exe`。源码运行需要自己安装官方 cloudflared，Peach 按设置文件的 `tunnel.binary`、环境变量 `PEACH_CLOUDFLARED`、PATH 的顺序查找。
+- Windows 和 macOS 独立安装版自带经过 SHA-256 校验的 cloudflared。源码运行需要自己安装官方 cloudflared，Peach 按设置文件的 `tunnel.binary`、环境变量 `PEACH_CLOUDFLARED`、PATH 的顺序查找。
 - 源码部署时，Cloudflare 连的是本机实际的 HTTPS 服务，并带上项目 CA 和 mDNS 名字做校验；测试包连的是本机回环的 HTTP 端口。
 
 ### 命名隧道（仅源码部署）
 
-命名隧道的地址固定，重启后不变。Windows 测试包不支持这种方式，配置页也不会显示这一块。
+命名隧道的地址固定，重启后不变。Windows 和 macOS 独立安装版的配置页只提供临时公网入口。
 
 1. 在 Cloudflare Zero Trust 的 Networks → Tunnels 里新建一条 Cloudflared 隧道，复制它的隧道令牌（Token）。
 2. 给这条隧道加一个 Public hostname，主机名用自己的域名。Service 填本机的 HTTPS 地址：源码部署是 `https://<局域网 IP>:443`（macOS 按实际 TLS 端口）。再在 Additional settings 里把 Origin Server Name 填成 `<mdns_name>.local`，并把项目 CA 填进 CA Pool，否则本机自签证书过不了校验。

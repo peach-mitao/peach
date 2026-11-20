@@ -1704,7 +1704,8 @@
       "timeBudgetSpent": "This run's fetch time limit is used up. Run it again to continue; existing images are kept",
       "downloadBudgetSpent": "This run's download limit is used up. Run it again to continue; existing images are kept",
       "coolingDown": "The source is cooling down. Try again later; existing images are kept",
-      "challengeTimedOut": "The source's human verification wasn't passed in time, so requests to it are paused for a while. Next time, open the collection browser from the taskbar and click the verification; existing images are kept",
+      "challengeTimedOut": "The source's verification timed out. Requests are paused and existing images are kept.",
+      "challengeTimedOutWithHelp": "{{message}} {{instruction}}",
       "rateLimited": "The source is rate limiting requests; the cooldown has been recorded. Existing images are kept",
       "coolingDownNamed": "{{label}} is paused. Try again in about {{minutes}} min",
       "rateLimitedNamed": "{{label}} is rate limiting. Try again in about {{minutes}} min",
@@ -4407,7 +4408,12 @@
       "donePending": "{{summary}}. Some metadata will be fetched again when the sources recover: {{pending}}"
     },
     "browserTransport": {
-      "trafficUnobserved": "Browser fetch traffic isn't measured"
+      "trafficUnobserved": "Browser fetch traffic isn't measured",
+      "verificationWaiting": "{{host}} is waiting for manual verification. {{instruction}}",
+      "windowWindows": "For manual verification, open the collection browser window from the taskbar on the computer running Peach.",
+      "windowMacos": "For manual verification, switch to the collection browser from the Dock on the Mac running Peach, then select the collection window from the Window menu.",
+      "windowOther": "For manual verification, use the desktop window switcher on the computer running Peach to open the collection browser window.",
+      "headlessRetry": "This run used no window. For manual verification, select Keep a window and retry after the source is available again."
     },
     "followBackfill": {
       "rule34-details": "Fill in rule34.xxx details",
@@ -4781,7 +4787,8 @@
         "mdnsName": {
           "label": "LAN address",
           "help": "After you choose \"Devices on the same LAN\", other devices can open Peach by entering this address in a browser.",
-          "standaloneHelp": "Other devices need to add the port above when opening this address, for example http://peach.local:8900. On the first connection, allow access on Windows private networks."
+          "standaloneHelp": "Other devices need to add the port above when opening this address, for example http://peach.local:8900.",
+          "standaloneWindowsHelp": "Other devices need to add the port above when opening this address, for example http://peach.local:8900. If Windows Firewall prompts you, allow Peach to communicate on private networks."
         }
       },
       "posixMediaNote": "Enter the directory this device actually reads media from. For Docker deployments, enter the directory inside the container, for example /media.",

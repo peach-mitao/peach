@@ -135,7 +135,7 @@ def _media_dir_values(values: Mapping[str, object], default: str) -> list[str]:
     return [str(raw) if raw else default]
 
 
-def _question_view(question) -> dict[str, object]:
+def _question_view(question, *, windows: bool) -> dict[str, object]:
     """一道题在页面上的题面、说明的 code、控件种类和输入框前后缀，由 `/api/setup/questions` 交给首启页。"""
     name, has_help = _SETUP_COPY[question.key]
     view: dict[str, object] = {"label": f"pages.setup.question.{name}.label",
@@ -150,9 +150,11 @@ def _question_view(question) -> dict[str, object]:
     elif question.key == "port":
         view.update(input="number", prefix="localhost:")
     elif question.key == "mdns_name":
-        view.update(prefix="http://" if distribution.standalone() else "https://", suffix=".local")
-        if distribution.standalone():
-            view["help"] = "pages.setup.question.mdnsName.standaloneHelp"
+        standalone = distribution.standalone()
+        view.update(prefix="http://" if standalone else "https://", suffix=".local")
+        if standalone:
+            help_key = "standaloneWindowsHelp" if windows else "standaloneHelp"
+            view["help"] = f"pages.setup.question.mdnsName.{help_key}"
     return view
 
 
@@ -494,7 +496,7 @@ def setup_questions(request: Request):
     from .media_configuration import SOURCE_OPTIONS
     items = []
     for question in asked:
-        view = _question_view(question)
+        view = _question_view(question, windows=windows)
         note = _POSIX_MEDIA_NOTE if question.key == "media_dir" and not windows else ""
         label = _setup_text(str(view["label"]))
         help_lines = [_setup_text(code) for code in (view["help"], note) if code]

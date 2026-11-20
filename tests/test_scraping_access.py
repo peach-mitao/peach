@@ -7,7 +7,7 @@ import threading
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import httpx
 from PIL import Image
@@ -167,7 +167,10 @@ class ScrapingAccessTests(unittest.TestCase):
         contract = SimpleNamespace(follow_secrets_root=self.root)
         self.assertEqual(w_scraping_settings(contract, {"browser_mode": "window"}),
                          {"ok": True, "browser_mode": "window"})
-        self.assertEqual(q_scraping(contract, {})["browser_mode"], "window")
+        with patch("peach.browser_transport.platform.system", return_value="Darwin"):
+            snapshot = q_scraping(contract, {})
+        self.assertEqual(snapshot["browser_mode"], "window")
+        self.assertIn("程序坞", snapshot["browser_window_help"])
         (self.root / "scraping-browser.json").write_text("{broken", encoding="utf-8")
         self.assertEqual(browser_mode(self.root), "window", "存坏了按默认")
 
@@ -520,16 +523,21 @@ class ScrapingAccessTests(unittest.TestCase):
         cooldown = self.root / "scraping-fc2ppvdb.cooldown.json"
         request = HttpRequest("GET", "https://fc2ppv-db.com/ja/videos/1", {})
 
-        def unsolved(*args):
-            raise browser_transport.ChallengeUnsolved("fc2ppv-db.com 的人机验证在 150 秒内没有通过")
-
         transport = SourceTransport(self.root)
-        transport.transports["fc2ppvdb"] = unsolved
-        with self.assertRaises(SourcePaused) as caught:
-            transport(request, 1, 100)
-        self.assertIn("点一下验证", str(caught.exception))
-        self.assertTrue(cooldown.exists())
-        cooldown.unlink()
+        cases = (("Windows", False, "任务栏"), ("Darwin", False, "程序坞"),
+                 ("Linux", False, "窗口切换功能"), ("Windows", True, "本次使用无窗口模式"))
+        for system, headless, instruction in cases:
+            with self.subTest(system=system, headless=headless), \
+                    patch("peach.browser_transport.platform.system", return_value=system):
+                transport.transports["fc2ppvdb"] = Mock(side_effect=browser_transport.ChallengeUnsolved(
+                    "verification timed out", headless=headless))
+                with self.assertRaises(SourcePaused) as caught:
+                    transport(request, 1, 100)
+                self.assertIn(instruction, str(caught.exception))
+                if headless:
+                    self.assertNotIn("任务栏", str(caught.exception))
+                self.assertTrue(cooldown.exists())
+                cooldown.unlink()
 
         def lost(*args):
             raise browser_transport.BrowserUnavailable("浏览器请求未取得")

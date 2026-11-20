@@ -48,6 +48,8 @@ export type BrowserMode = 'window' | 'headless';
 export interface ScrapingData {
   sources: Source[];
   browser_mode?: BrowserMode;
+  browser_window_help?: string;
+  browser_window_help_code?: string;
 }
 
 /** 一次连接检查的一项结果：来源页面，以及来源取图的那台图片主机。 */

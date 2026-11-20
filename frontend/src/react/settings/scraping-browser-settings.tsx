@@ -1,10 +1,10 @@
-/* 后台采集浏览器的模式：保留屏幕外窗口（自动过不了的验证可以从任务栏点开再点），或不创建窗口
-   （过不了就让来源冷却）。存在这台机器的凭据目录里，读写走 `/api/scraping` 与 `/api/scraping/settings`。 */
+/* 后台采集浏览器的模式存在运行 Peach 的主机上。读写走 `/api/scraping` 与 `/api/scraping/settings`。 */
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { SettingsRow } from '@/components/application/settings/settings-rows';
 import { Select, SelectItem } from '@/components/base/select/select';
 
 import { apiSend, errorMessage } from '../../api';
+import { codedText } from '../../core/server-text';
 import { queryClient } from '../query';
 import { SCRAPING_KEY, SCRAPING_SETTINGS_URL, fetchSources, type BrowserMode, type ScrapingData } from '../scraping/scraping';
 import { ErrorText, Rows, Section, Stack } from './section';
@@ -23,12 +23,15 @@ export function ScrapingBrowserSettings({ receipt }: { receipt(message: string):
     },
   }, queryClient);
   const error = save.error || sources.error;
+  const mode = sources.data?.browser_mode ?? 'window';
+  const help = mode === 'headless' ? t('settings:scrapingBrowser.headlessHelp')
+    : codedText(sources.data, 'browser_window_help') || t('settings:scrapingBrowser.modeHelp');
   return (
     <Section title={t('settings:scrapingBrowser.title')}>
       <Rows>
-        <SettingsRow label={t('settings:scrapingBrowser.mode')} description={t('settings:scrapingBrowser.modeHelp')}>
+        <SettingsRow label={t('settings:scrapingBrowser.mode')} description={help}>
           <div id="scrapingBrowserModeSetting" className="shrink-0">
-            <Select aria-label={t('settings:scrapingBrowser.mode')} selectedKey={sources.data?.browser_mode ?? 'window'}
+            <Select aria-label={t('settings:scrapingBrowser.mode')} selectedKey={mode}
               isDisabled={!sources.data || save.isPending}
               onSelectionChange={(key) => { if (key !== null) save.mutate(String(key) as BrowserMode) }}>
               {MODES.map((mode) => <SelectItem key={mode} id={mode}>{modeLabel(mode)}</SelectItem>)}

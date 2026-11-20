@@ -699,6 +699,8 @@ def _tunnel(args: argparse.Namespace) -> int:
 #: 留空就会改变行为的坐标。进程猜不出来，只能让人在命令行给。
 _BLANK_HINTS = (
     ("server.review_writer_origin", "writerOriginFlag", "writerOriginEffect"),
+)
+_MACOS_BLANK_HINTS = (
     ("replication.smb_host", "smbHostFlag", "noSharedMount"),
     ("replication.smb_user", "smbUserFlag", "noSharedMount"),
 )
@@ -706,7 +708,8 @@ _BLANK_HINTS = (
 
 def _report_blanks(config: settings_file.PeachConfig) -> None:
     blanks = []
-    for dotted, flag, effect in _BLANK_HINTS:
+    hints = _BLANK_HINTS + _MACOS_BLANK_HINTS if sys.platform == "darwin" else _BLANK_HINTS
+    for dotted, flag, effect in hints:
         table, _, name = dotted.partition(".")
         if not getattr(getattr(config, table), name):
             blanks.append(_t("blanks.row", field=dotted, effect=_t(f"blanks.{effect}"), flag=_t(f"blanks.{flag}")))

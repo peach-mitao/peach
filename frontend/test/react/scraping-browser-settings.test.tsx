@@ -9,7 +9,9 @@ notifyManager.setScheduler((notify) => notify());
 afterEach(() => queryClient.clear());
 
 it('后台采集浏览器默认保留窗口，改成无窗口写进采集设置', async () => {
-  const state: Record<string, unknown> = { sources: [], browser_mode: 'window' };
+  const state: Record<string, unknown> = {
+    sources: [], browser_mode: 'window', browser_window_help_code: 'labels.browserTransport.windowMacos',
+  };
   const sent: { url: string; body: unknown }[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'POST') {
@@ -24,9 +26,12 @@ it('后台采集浏览器默认保留窗口，改成无窗口写进采集设置'
   const host = await mount(<QueryClientProvider client={queryClient}><ScrapingBrowserSettings receipt={receipt} /></QueryClientProvider>);
   await settle();
   expect(host.querySelector('#scrapingBrowserModeSetting button')?.textContent).toContain('保留窗口');
+  expect(host.textContent).toContain('程序坞');
   await choose(host.querySelector('#scrapingBrowserModeSetting button'), '无窗口');
   await settle();
   expect(sent).toEqual([{ url: '/api/scraping/settings', body: { browser_mode: 'headless' } }]);
   expect(host.querySelector('#scrapingBrowserModeSetting button')?.textContent).toContain('无窗口');
+  expect(host.textContent).toContain('验证未通过会暂停');
+  expect(host.textContent).not.toContain('程序坞');
   expect(receipt).toHaveBeenCalled();
 });

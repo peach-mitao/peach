@@ -214,6 +214,17 @@ class InitCommandTests(unittest.TestCase):
         self.assertIn("下一步", output)
         self.certs.assert_called_once()
 
+    def test_smb_mount_hints_only_appear_on_the_macos_host(self):
+        config = settings_file.load_config(environ={"PEACH_DATA_ROOT": str(self.root)})
+        for platform in ("darwin", "win32", "linux"):
+            output = io.StringIO()
+            with self.subTest(platform=platform), redirect_stdout(output), \
+                    mock.patch.object(cli.sys, "platform", platform):
+                cli._report_blanks(config)
+                self.assertEqual("--smb-host" in output.getvalue(), platform == "darwin")
+                self.assertEqual("--smb-user" in output.getvalue(), platform == "darwin")
+                self.assertIn("--writer-origin", output.getvalue())
+
     def test_declared_mount_output_is_readable_by_the_settings_layer(self):
         self.root.mkdir()
         (self.root / "config.toml").write_text(

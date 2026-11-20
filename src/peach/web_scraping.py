@@ -192,10 +192,12 @@ def _fetch_cover(contract, code):
 
 
 def q_scraping(contract, _args):
+    from .browser_transport import window_help
     from .scraping_access import browser_mode
     return {"sources": [describe(contract.follow_secrets_root, source) for source in SOURCES
                         if source != "instagram"],
             "browser_mode": browser_mode(contract.follow_secrets_root),
+            **coded("browser_window_help", window_help()),
             "instagram_status": interface_text.text(f"server:{INSTAGRAM_STATUS_CODE}"),
             "instagram_status_code": INSTAGRAM_STATUS_CODE}
 

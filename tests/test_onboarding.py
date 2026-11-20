@@ -920,12 +920,16 @@ class SetupJsonContractTests(_SetupHttpCase):
             "download_label_params": {"name": "WinFsp"}}])
 
     def test_the_standalone_package_gets_its_own_address_form_in_the_questions(self):
-        with mock.patch.object(distribution, "standalone", return_value=True):
-            data = self._send("GET", self.QUESTIONS, base_url="http://127.0.0.1:8900").json()
-        self.assertTrue(data["standalone"])
-        mdns = next(item for item in data["questions"] if item["key"] == "mdns_name")
-        self.assertEqual(mdns["prefix"], "http://")
-        self.assertIn("http://peach.local:8900", mdns["help"][0])
+        for platform in ("posix", "nt"):
+            with self.subTest(platform=platform), mock.patch.object(distribution, "standalone", return_value=True), \
+                    mock.patch("peach.routes_pages.os") as route_os:
+                route_os.name = platform
+                data = self._send("GET", self.QUESTIONS, base_url="http://127.0.0.1:8900").json()
+                self.assertTrue(data["standalone"])
+                mdns = next(item for item in data["questions"] if item["key"] == "mdns_name")
+                self.assertEqual(mdns["prefix"], "http://")
+                self.assertIn("http://peach.local:8900", mdns["help"][0])
+                self.assertEqual(any("Windows" in line for line in mdns["help"]), platform == "nt")
 
     def test_the_questions_are_guarded_like_the_submission_but_ignore_the_origin(self):
         cases = (

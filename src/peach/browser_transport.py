@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
+from . import interface_text
 from .coded_text import Said
 from .content_words import BROWSER_CHALLENGE_MARKS
 from .http import HttpRequest, HttpResponse
@@ -110,6 +111,10 @@ class BrowserLaunchFailed(UserFacingError, BrowserUnavailable):
 
 class ChallengeUnsolved(RuntimeError):
     """验证页在限时内没过，人也没点。"""
+
+    def __init__(self, message: str = "", *, headless: bool | None = None):
+        super().__init__(message)
+        self.headless = headless
 
 
 class PageTimeout(BrowserUnavailable):
@@ -433,17 +438,24 @@ _CLICK_SCRIPT = """(() => {
   return target.textContent.trim();
 })()"""
 
-_ATTENTION: dict[str, str] = {}
+_ATTENTION: dict[str, Said] = {}
 _ATTENTION_LOCK = threading.Lock()
 
 
-def attention() -> list[str]:
+def window_help() -> Said:
+    """从运行采集浏览器的主机上找到窗口的指引。"""
+    key = {"Windows": "windowWindows", "Darwin": "windowMacos"}.get(platform.system(), "windowOther")
+    return Said(f"labels.browserTransport.{key}")
+
+
+def attention(language: str = "en") -> list[str]:
     """眼下哪些站的验证页等着人点（窗口模式）。`/healthz` 带出去供排查；无窗口模式不等人点，总是空。"""
     with _ATTENTION_LOCK:
-        return list(_ATTENTION.values())
+        pending = list(_ATTENTION.values())
+    return [interface_text.text(f"server:{message.code}", message.params, language) for message in pending]
 
 
-def _set_attention(host: str, message: str | None) -> None:
+def _set_attention(host: str, message: Said | None) -> None:
     with _ATTENTION_LOCK:
         if message:
             _ATTENTION[host] = message
@@ -554,7 +566,7 @@ class BrowserTransport:
         placed = False
 
         def wait_for_click(reason: str) -> float:
-            _set_attention(host, f"{host} verification needs a click; open the browser window from the taskbar")
+            _set_attention(host, Said("labels.browserTransport.verificationWaiting", host=host, instruction=window_help()))
             LOGGER.warning("%s verification page %s; waiting for the user to click", host, reason)
             return self._clock()
 
@@ -566,7 +578,7 @@ class BrowserTransport:
                     browser.place(visible=True)
                     placed = True
                     if waiting_since is None:
-                        waiting_since = wait_for_click("restored from the taskbar by the user")
+                        waiting_since = wait_for_click("restored by the user")
                 state = self._state(browser)
                 challenged = any(mark in state["head"] or mark in state["title"] for mark in CHALLENGE_MARKS)
                 # DOM 解析完（`interactive`）就够：验证页的标记在页头里，此时已经看得到；不等外部
@@ -580,7 +592,8 @@ class BrowserTransport:
                 if waiting_since is not None:
                     if now - waiting_since >= self.click_seconds:
                         self._unsolved.add(host)
-                        raise ChallengeUnsolved(f"{host} verification did not pass within {int(elapsed)} s")
+                        raise ChallengeUnsolved(f"{host} verification did not pass within {int(elapsed)} s",
+                                                headless=browser.headless)
                 elif challenged_seen:
                     waited = now - phase_started
                     if not cleared and waited >= reset_limit:
@@ -593,7 +606,7 @@ class BrowserTransport:
                         reason = self._no_click_wait(browser, host)
                         if reason:
                             raise ChallengeUnsolved(f"{host} verification did not pass automatically within "
-                                                    f"{int(elapsed)} s; {reason}")
+                                                    f"{int(elapsed)} s; {reason}", headless=browser.headless)
                         waiting_since = wait_for_click("did not pass automatically")
                 elif elapsed >= timeout:
                     raise PageTimeout(f"{host} page did not open within {int(elapsed)} s")

@@ -593,11 +593,17 @@ class SourceTransport:
             response = self.transports[source](request, timeout, max_bytes)
         except (httpx.HTTPError, browser_transport.BrowserUnavailable):
             raise httpx.TransportError(Said("labels.scrapingAccess.unreachable")) from None
-        except browser_transport.ChallengeUnsolved:
+        except browser_transport.ChallengeUnsolved as error:
             blocks += 1
             _pause(cooldown, time.time() + min(FIRST_BLOCKED_PAUSE * 2 ** (blocks - 1),
                                                SOURCES[source]["blocked_pause"]), blocks, via)
-            raise SourcePaused("errors.scrapingAccess.challengeTimedOut")
+            code = "errors.scrapingAccess.challengeTimedOut"
+            if error.headless is None:
+                raise SourcePaused(code)
+            instruction = (Said("labels.browserTransport.headlessRetry") if error.headless
+                           else browser_transport.window_help())
+            raise SourcePaused("errors.scrapingAccess.challengeTimedOutWithHelp",
+                               {"message": Said(code).phrase, "instruction": instruction.phrase})
         if via == VIA_HTTP and source and SOURCES[source].get("browser_fallback") and _refused(response):
             verified = self._verify_in_browser(source, request, timeout, max_bytes)
             if verified is not None:
