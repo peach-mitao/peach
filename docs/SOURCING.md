@@ -187,6 +187,9 @@ Wiki 与视频作品资料无关。
 
 采集受媒体库的资料和封面选项、断网与请求预算控制。文件名识别、查询候选和身份确认分别处理，参考 [Stash 的资料采集说明](https://docs.stashapp.cc/in-app-manual/scraping/)。
 
+搜索和详情必须返回完整的作品身份字段；缺字段、无效日期或损坏的结果列表报告接口失败，不记录为「没有作品」。
+升级后仅释放旧版 Vixen 来源的缺失缓存，下一次采集可以重新查询；保留已取得的快照、候选、人工资料和其他来源缓存。
+
 候选来源（未接入，等实际缺口出现再接）：sokmil、kingdom.vc、km-produce、fantia（要 Cookie）、jav321、javlibrary，
 出自 2026-10-01 对 Javinizer-Go、mdcz、AMMDS 等元数据引擎的调研（ADR-0092）。
 

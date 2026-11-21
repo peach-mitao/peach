@@ -261,29 +261,57 @@ def collect_scene(http: HttpTransport, identity: WesternScene) -> dict | None:
                            tuple(dict.fromkeys((query, artist_query))), matches)
 
 
+def _validate_scene_node(node):
+    """身份字段不完整是接口失败，不能作为没有作品的证据。"""
+    if (not isinstance(node, dict)
+            or any(not isinstance(node.get(key), str) or not node[key].strip()
+                   for key in ('title', 'slug', 'releaseDate'))
+            or not isinstance(node.get('models'), list)
+            or any(not isinstance(model, dict) or not isinstance(model.get('name'), str)
+                   or not model['name'].strip() for model in node['models'])):
+        raise UserValueError('errors.westernArtwork.officialCoverInvalid')
+    try:
+        date.fromisoformat(node['releaseDate'].split('T')[0])
+    except ValueError as error:
+        raise UserValueError('errors.westernArtwork.officialCoverInvalid') from error
+
+
+def _search_nodes(search):
+    """只有显式的 edges 空列表才说明这一问没有结果。"""
+    connection = search.get('searchVideos')
+    if not isinstance(connection, dict) or not isinstance(connection.get('edges'), list):
+        raise UserValueError('errors.westernArtwork.officialCoverInvalid')
+    nodes = []
+    for edge in connection['edges']:
+        node = edge.get('node') if isinstance(edge, dict) else None
+        _validate_scene_node(node)
+        nodes.append(node)
+    return nodes
+
+
 def _verified_scene(http, site, released, queries, matches):
     hits = set()
     complete_hits = set()
     for query in queries:
         search = _graphql(http, site, SEARCH_QUERY, {'query': query, 'first': SEARCH_LIMIT})
-        edges = (search.get('searchVideos') or {}).get('edges') or []
+        nodes = _search_nodes(search)
         found = set()
-        for edge in edges:
-            node = edge.get('node')
-            if not isinstance(node, dict) or not matches(node):
+        for node in nodes:
+            if not matches(node):
                 continue
             slug = node.get('slug')
             if isinstance(slug, str) and re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]*', slug):
                 found.add(slug)
         hits.update(found)
         # 接口未提供 pageInfo；顶到查询上限的结果不能单独证明唯一性。
-        if len(edges) < SEARCH_LIMIT:
+        if len(nodes) < SEARCH_LIMIT:
             complete_hits.update(found)
     if len(hits) != 1 or hits != complete_hits:
         return None
     slug = next(iter(hits))
     scene = _graphql(http, site, SCENE_QUERY, {'videoSlug': slug}).get('findOneVideo')
-    if not isinstance(scene, dict) or scene.get('slug') != slug or not matches(scene):
+    _validate_scene_node(scene)
+    if scene.get('slug') != slug or not matches(scene):
         return None
     return _public_scene(scene, site, slug, released)
 

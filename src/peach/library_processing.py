@@ -1824,6 +1824,9 @@ class _MissCache:
                 code: stamp for code, stamp in self._entries.get('cover', {}).items()
                 if code.upper().startswith('FC2-PPV-')}
 
+        if loaded.get('western_scene_rules') != upgrade_rules.WESTERN_SCENE_MISSES:
+            self._entries.pop(western_artwork.SCENE_SOURCE, None)
+
     def fresh(self, source, code, lineup=()):
         """`source` 对 `code` 说过「没有」且还在期内。`lineup` 是这条记忆当时应当问过的几站：
         其中有一站是记下之后才接入的，这条就不作数。"""
@@ -1837,6 +1840,7 @@ class _MissCache:
         _save(self._path, {
             'format': MISS_FORMAT, 'sites': self._sites,
             'cover_catalog_rules': upgrade_rules.OFFICIAL_COVER_CATALOG_MISSES,
+            'western_scene_rules': upgrade_rules.WESTERN_SCENE_MISSES,
             'joined': {site: stamp for site, stamp in self._joined.items() if now - stamp < self._ttl},
             'misses': {name: {key: stamp for key, stamp in codes.items() if now - stamp < self._ttl}
                        for name, codes in self._entries.items()}})
