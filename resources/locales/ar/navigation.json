@@ -1,0 +1,43 @@
+{
+  "configurationSections": {
+    "diagnostics": "تشخيص النظام",
+    "downloads": "التحميلات",
+    "feeds": "المصادر والاشتراكات",
+    "library": "المكتبة",
+    "maintenance": "الصيانة",
+    "network": "الشبكة"
+  },
+  "durationFilter": {
+    "invalid": "يرجى إدخال مدة زمنية، القيمة القصوى يجب أن تكون أكبر من 0",
+    "maximum": "أقصى مدة مسموحة (بالدقائق)",
+    "maximumLabel": "الحد الأقصى (بالدقائق)",
+    "minimum": "أقصر مدة مسموحة (بالدقائق)",
+    "minimumLabel": "الحد الأدنى (بالدقائق)",
+    "minutes": "{{count, number}} دقيقة",
+    "noLimit": "بدون حد"
+  },
+  "favoritesTabs": {
+    "creators": "صناع المحتوى",
+    "savedFilters": "التصفية المحفوظة",
+    "series": "المسلسل",
+    "studios": "الاستوديو"
+  },
+  "followTabs": {
+    "follows": "قائمة المتابعين",
+    "manageTags": "إدارة الوسوم",
+    "newFollow": "إضافة متابعة"
+  },
+  "javTabs": {
+    "collection": "المجموعة",
+    "discover": "استكشاف",
+    "newReleases": "إصدارات جديدة",
+    "wanted": "مطلوب"
+  },
+  "manage": {
+    "activity": "مركز المهام",
+    "cleanup": "إدارة البيانات",
+    "configuration": "الإعدادات",
+    "quality": "النسخة عالية الدقة",
+    "review": "المراجعة اليدوية"
+  }
+}
