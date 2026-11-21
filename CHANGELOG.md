@@ -21,6 +21,8 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Fixed / 修复
 
+- **Sourcing**: Retry malformed Vixen responses without waiting for the missing-scene cache to expire (#816). / **采集**：Vixen 接口坏响应不再缓存为没有作品，升级后可重新采集受影响影片（#816）。
+
 - **Library**: Save covers when an optional crop model cannot load, including in Windows folders with non-ASCII names (#820). / **馆藏**：Windows 的非 ASCII 目录可加载封面取景模型，模型不可用时仍保存封面（#820）。
 - **Library**: Resume or cancel a paused scan after restarting Peach, with the original selection and progress preserved (#815). / **馆藏**：重启后可继续或取消已暂停的扫描，继续时保留原来的范围和进度（#815）。
 

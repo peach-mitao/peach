@@ -11,6 +11,8 @@ PROVIDER_EVIDENCE = 2
 #: 5：标题等字段里的乱码不再只认自动写入的那几家来源，无主与复核批准过的也排进重采（#208）。
 PROVIDER_TEXT = 5
 OFFICIAL_COVER_CATALOG_MISSES = 1
+#: 欧美接口的坏响应曾被记成无结果；只释放该来源的旧缺失记录。
+WESTERN_SCENE_MISSES = 1
 #: 文件名番号判据放宽后（如 TMA 的 `T28-612`），账本里还没番号、按现行规则认得出的影片撤掉处理检查点重新处理。
 #: 判据又放宽时加一。2：S Model、キャットウォーク的数字厂牌段（#124）。
 FILENAME_CODES = 2

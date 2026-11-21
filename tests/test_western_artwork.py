@@ -95,6 +95,66 @@ class WesternSourceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '未取得'):
             artwork.official_scene(error, 'tushy', 'Lena Anderson', '2019-08-14')
 
+    def test_malformed_search_and_detail_are_failures_not_missing_scenes(self):
+        identity = artwork.scene_identity({'name': 'Tushy.19.08.14.Lena.Anderson.Cam.To.Me.1080p.mp4'})
+        malformed = ({}, {'searchVideos': None}, {'searchVideos': {}},
+                     {'searchVideos': {'edges': None}}, {'searchVideos': {'edges': [None]}},
+                     {'searchVideos': {'edges': [{'node': {'slug': 'cam-to-me'}}]}},
+                     {'searchVideos': {'edges': [{'node': {**node(), 'models': None}}]}},
+                     {'searchVideos': {'edges': [{'node': {**node(), 'releaseDate': 'invalid'}}]}})
+        for data in malformed:
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                artwork.collect_scene(lambda *args, data=data: HttpResponse(
+                    200, {}, json.dumps({'data': data}).encode()), identity)
+        for detail in ({'slug': 'cam-to-me'}, {**node(), 'models': None}):
+            with self.subTest(detail=detail), self.assertRaises(ValueError):
+                artwork.collect_scene(self.http([node()], detail), identity)
+
+    def test_malformed_response_can_be_retried_without_clearing_absence_cache(self):
+        from peach.library_processing import _MissCache, _RemoteSession, misses_path
+        from peach.settings_file import PeachConfig
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            config = PeachConfig(root, root / 'config.toml', present=True)
+            row = {'id': 1, 'name': 'Tushy.19.08.14.Lena.Anderson.Cam.To.Me.1080p.mp4'}
+            key = artwork.scene_identity(row).cache_key
+            provider = SimpleNamespace(transport=lambda *args: HttpResponse(200, {}, b'{"data":{}}'))
+            misses = _MissCache(misses_path(config))
+            session = _RemoteSession(config, lambda: provider, misses, retrying=False)
+            issue = Mock()
+            options = dict(update=Mock(), issue=issue, fetch_cover=False)
+            self.assertEqual(session.collect(row, '', ['title'], root / 'covers', **options), ([], 0))
+            self.assertFalse(misses.fresh(artwork.SCENE_SOURCE, key))
+            self.assertTrue(issue.call_args.kwargs['retryable'])
+            provider.transport = self.http([node()])
+            entries, covers = session.collect(row, '', ['title'], root / 'covers', **options)
+            self.assertEqual((len(entries), covers), (1, 0))
+            self.assertEqual(entries[0][1]['content_id'], 'tushy:cam-to-me')
+
+    def test_valid_empty_search_remains_a_missing_scene(self):
+        identity = artwork.scene_identity({'name': 'Tushy.19.08.14.Lena.Anderson.Cam.To.Me.1080p.mp4'})
+        self.assertIsNone(artwork.collect_scene(self.http([]), identity))
+
+    def test_upgrade_releases_only_old_western_misses_and_preserves_current_results(self):
+        from peach.library_processing import _MissCache
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory).resolve() / 'misses.json'
+            cache = _MissCache(path)
+            cache.record(artwork.SCENE_SOURCE, 'western-example')
+            cache.record('javdb', 'ABW-001')
+            current = _MissCache(path)
+            self.assertTrue(current.fresh(artwork.SCENE_SOURCE, 'western-example'))
+            old = json.loads(path.read_text(encoding='utf-8'))
+            old.pop('western_scene_rules')
+            path.write_text(json.dumps(old), encoding='utf-8')
+            upgraded = _MissCache(path)
+            self.assertFalse(upgraded.fresh(artwork.SCENE_SOURCE, 'western-example'))
+            self.assertTrue(upgraded.fresh('javdb', 'ABW-001'))
+            upgraded.record(artwork.SCENE_SOURCE, 'western-example')
+            self.assertTrue(_MissCache(path).fresh(artwork.SCENE_SOURCE, 'western-example'))
+
     def test_main_portraits_exclude_related_people_and_user_uploads(self):
         page = b'<h1 id="babename">Melody Marks</h1><div id="profbox2"><a class="img" href="/pics/Melody.jpg"></a><a class="img" href="https://other.com/a.jpg"></a></div><div class="useruploads2"><a class="img" href="/pics/unverified.jpg"></a></div>'
         calls = []
