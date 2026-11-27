@@ -1,0 +1,121 @@
+{
+  "configurationSections": {
+    "diagnostics": "تشخيص النظام",
+    "downloads": "التحميلات",
+    "feeds": "المصادر والاشتراكات",
+    "library": "المكتبة",
+    "maintenance": "الصيانة",
+    "network": "الشبكة",
+    "ai": "الربط مع AI"
+  },
+  "durationFilter": {
+    "invalid": "يرجى إدخال مدة زمنية، القيمة القصوى يجب أن تكون أكبر من 0",
+    "maximum": "أقصى مدة مسموحة (بالدقائق)",
+    "maximumLabel": "الحد الأقصى (بالدقائق)",
+    "minimum": "أقصر مدة مسموحة (بالدقائق)",
+    "minimumLabel": "الحد الأدنى (بالدقائق)",
+    "minutes": "{{count, number}} دقيقة",
+    "noLimit": "بدون حد"
+  },
+  "favoritesTabs": {
+    "creators": "صناع المحتوى",
+    "savedFilters": "التصفية المحفوظة",
+    "series": "المسلسل",
+    "studios": "الاستوديو",
+    "agencies": "الوكلاء"
+  },
+  "followTabs": {
+    "follows": "قائمة المتابعين",
+    "manageTags": "إدارة الوسوم",
+    "newFollow": "إضافة متابعة"
+  },
+  "javTabs": {
+    "collection": "المجموعة",
+    "discover": "استكشاف",
+    "newReleases": "إصدارات جديدة",
+    "wanted": "مطلوب",
+    "online": "كتالوج في الإنترنت"
+  },
+  "manage": {
+    "activity": "مركز المهام",
+    "cleanup": "إدارة البيانات",
+    "configuration": "الإعدادات",
+    "quality": "النسخة عالية الدقة",
+    "review": "المراجعة اليدوية",
+    "stats": "الإحصائيات",
+    "subscriptions": "الإشتراكات",
+    "taste": "الذوق",
+    "trash": "سلة المهملات"
+  },
+  "navigationGroups": {
+    "favorites": "المفضلة",
+    "jav": "قسم JAV",
+    "preferences": "التفضيلات",
+    "review": "تصنيفات المراجعة",
+    "sidebar": "القائمة الجانبية",
+    "tagVocabulary": "مفردات الوسوم"
+  },
+  "pageTitle": {
+    "portrait": "عمودي",
+    "search": "البحث عن {{term}}"
+  },
+  "preferenceSections": {
+    "appearance": "المظهر",
+    "content": "المحتوى",
+    "jav": "جديد الـ JAV",
+    "playback": "تشغيل",
+    "search": "البحث والتوصيات"
+  },
+  "reviewCategories": {
+    "actressAvatars": "صور شخصية للممثلين",
+    "creatorTags": "وسوم صانع المحتوى",
+    "labelLogos": "الشعار الرئيسي",
+    "metadataFields": "حقول البيانات الوصفية",
+    "codeDirectories": "مجلدات ذات أكواد غير مؤكدة",
+    "endCardEvidence": "دليل شارة النهاية",
+    "fc2CommentFlags": "تنبيهات تعليقات FC2",
+    "fc2SimilarCodes": "أكواد FC2 متشابهة",
+    "westernIdentities": "الهويات الغربية"
+  },
+  "shared": {
+    "all": "عرض الكل"
+  },
+  "sidebar": {
+    "flagged": "عليه ملاحظة",
+    "following": "متابعة",
+    "home": "الرئيسية",
+    "jav": "JAV",
+    "manage": "إدارة",
+    "performers": "المؤديين",
+    "playlists": "قوائم التشغيل",
+    "studios": "الاستوديوهات",
+    "tags": "الوسوم",
+    "immerse": "ملء الشاشة"
+  },
+  "sidebarFilters": {
+    "collapseGroup": "عرض عدد أقل من {{title}}",
+    "contentTags": "وسوم المحتوى",
+    "duration": "المدة الزمنية",
+    "expandGroup": "عرض الكل تحت {{title}}",
+    "followingTags": "متابعة الوسوم",
+    "orientation": "الاتجاه",
+    "region": "المنطقة",
+    "releaseYear": "سنة الإصدار",
+    "storage": "التخزين",
+    "videoProperties": "خصائص الفيديو"
+  },
+  "sidebarWidth": {
+    "label": "لتغيير حجم القائمة الجانبية انقر نقرًا مزدوجًا، أو اضغط على مفتاح Enter لإعادة التعيين",
+    "pixels": "{{count}} بكسل",
+    "resetHint": "لإعادة الضبط أنقر مرتين بالفأرة"
+  },
+  "sidebarReorder": {
+    "canceled": "تم إلغاء عملية الفرز",
+    "moved": "تم نقل الـ {{label}} إلى الموضع {{position}}",
+    "unchanged": "يبقى الترتيب دون تغيير"
+  },
+  "tagTabs": {
+    "online": "متصل",
+    "localLabel": "محلي"
+  }
+}
