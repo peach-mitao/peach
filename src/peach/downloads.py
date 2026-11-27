@@ -841,12 +841,31 @@ def normalise_target(raw: str) -> str:
     return text
 
 
-def normalise_local_target(raw: str) -> str:
-    """本地下载器看到的保存目录：POSIX 绝对路径，不接受根目录与 `..`。"""
-    text = normalise_prefix(raw)
-    if not raw or text == "/" or any(part in {".", ".."} for part in text.split("/")):
+def _local_target_path(raw: str) -> PurePosixPath | PureWindowsPath:
+    text = str(raw or "").strip().replace("\\", "/")
+    # 旧版保存过的 Windows 盘符路径可能多了一个前导斜杠。
+    drive_path = re.match(r"^/?([A-Za-z]:)(.*)$", text)
+    if drive_path:
+        drive, tail = drive_path.groups()
+        parts = tuple(part for part in tail.split("/") if part)
+        if (not tail.startswith("/") or not parts
+                or any(part.endswith((".", " ")) or ":" in part or "\0" in part for part in parts)):
+            raise UserValueError("errors.downloads.localTargetInvalid")
+        return PureWindowsPath(drive.upper() + "/", *parts)
+    text = normalise_prefix(text)
+    if text == "/" or "\0" in text or any(part in {".", ".."} for part in text.split("/")):
         raise UserValueError("errors.downloads.localTargetInvalid")
-    return text
+    return PurePosixPath(text)
+
+
+def normalise_local_target(raw: str) -> str:
+    """本地下载器看到的保存目录，接受 POSIX 或 Windows 盘符路径。"""
+    return _local_target_path(raw).as_posix()
+
+
+def local_target_relative(path: str, root: str) -> PurePosixPath | PureWindowsPath:
+    """使用下载器路径的规则比较根目录及其下级路径。"""
+    return _local_target_path(path).relative_to(_local_target_path(root))
 
 
 @dataclass(frozen=True)
@@ -1100,9 +1119,10 @@ class DownloadService:
         raw_target = target or channel["target"]
         if channel.get("kind") == "local":
             folder = normalise_local_target(raw_target)
-            if not (folder == channel["target"]
-                    or folder.startswith(str(channel["target"]).rstrip("/") + "/")):
-                raise UserValueError("errors.downloads.targetOutsideLibrary")
+            try:
+                local_target_relative(folder, channel["target"])
+            except ValueError:
+                raise UserValueError("errors.downloads.targetOutsideLibrary") from None
         else:
             folder = normalise_target(raw_target)
             if provider.startswith("clouddrive:") and not (
@@ -1167,12 +1187,11 @@ class DownloadService:
         channel = _channel_by_key(self.channel_snapshot()["providers"], task.provider)
         if channel is None or channel.get("kind") != "local":
             return None
+        root = str(channel["target"])
         try:
             actual = normalise_local_target(status.target)
+            local_target_relative(actual, root)
         except ValueError:
-            actual = ""
-        root = str(channel["target"]).rstrip("/")
-        if not (actual == root or actual.startswith(root + "/")):
             return DownloadError("mismatch", "errors.downloads.localTargetMismatch",
                                  {"target": status.target, "root": root})
         task.target = actual
@@ -1657,11 +1676,16 @@ class Landing:
         if self.channel_catalog:
             channel = _channel_by_key(self.channel_catalog()["providers"], task.provider)
         if channel and channel.get("kind") == "local":
-            base = PurePosixPath(channel["local_root"])
-            path = PurePosixPath(remote)
-            if not path.is_relative_to(base):
+            try:
+                relative = local_target_relative(remote, channel["local_root"])
+            except ValueError:
                 return None
-            ledger = PureWindowsPath(channel["root"]).joinpath(*path.relative_to(base).parts)
+            if not relative.parts:
+                return None
+            root = PureWindowsPath(channel["root"])
+            ledger = root.joinpath(*relative.parts)
+            if not ledger.is_relative_to(root):
+                return None
             from .platform import resolve_location
             location = resolve_location(str(ledger), self.declared_roots)[0]
             return (location, str(ledger)) if location else None

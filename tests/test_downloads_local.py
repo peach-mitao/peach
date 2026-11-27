@@ -78,11 +78,13 @@ class ConfigTests(unittest.TestCase):
                 }, {"local": (QB_ROOT,)})
 
     def test_local_target_rejects_root_and_parent_segments(self):
-        for value in ("", "/", "/vol1/../media"):
+        for value in ("", "/", "/vol1/../media", "E:/", "E:media", "E:/media/../other",
+                      "E:/media/.. /other"):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 dl.normalise_local_target(value)
         self.assertEqual(dl.normalise_local_target("vol1//media/Peach/"),
                          "/vol1/media/Peach")
+        self.assertEqual(dl.normalise_local_target(r"/e:\media\Peach"), "E:/media/Peach")
 
 
 class LandingTests(unittest.TestCase):
@@ -105,6 +107,19 @@ class LandingTests(unittest.TestCase):
         task = dl.DownloadTask(1, HASH, "qbittorrent", MAGNET, "ABC-123", "/other",
                                dl.REMOTE_DONE, remote_name="ABC-123.mp4")
         self.assertIsNone(self.landing.ledger_path(task, dl.DownloadConfig()))
+
+    def test_windows_paths_map_with_case_insensitive_directory_boundaries(self):
+        channels = self.landing.channel_catalog()
+        channels["providers"][0]["local_root"] = "E:/Media/Peach"
+        self.landing.channel_catalog = lambda: channels
+        task = dl.DownloadTask(1, HASH, "qbittorrent", MAGNET, "ABC-123", r"e:\media\peach\Finished",
+                               dl.REMOTE_DONE, remote_name="Series/ABC-123.mp4")
+        self.assertEqual(self.landing.ledger_path(task, dl.DownloadConfig()),
+                         ("local", r"R:\media\Peach\Finished\Series\ABC-123.mp4"))
+        for target in ("E:/Media/Peach-other", "F:/Media/Peach", "E:/Media/Peach/.."):
+            with self.subTest(target=target):
+                task.target = target
+                self.assertIsNone(self.landing.ledger_path(task, dl.DownloadConfig()))
 
     def test_task_location_is_local(self):
         task = dl.DownloadTask(1, HASH, "qbittorrent", MAGNET, "ABC-123", QB_SAVE, dl.SUBMITTED)
@@ -147,6 +162,22 @@ class SubmitTests(unittest.TestCase):
             dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent",
                                        target="/other/Peach")
         self.assertEqual(self.provider.submitted, [])
+
+    def test_windows_channel_checks_both_requested_and_adopted_directories(self):
+        channels = self.service.channel_catalog()
+        channels["providers"][0]["target"] = "E:/Media/Peach"
+        self.service.channel_catalog = lambda: channels
+        with self.assertRaises(ValueError):
+            dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent",
+                                       target=r"E:\Media\Peach-other")
+        self.assertEqual(self.provider.submitted, [])
+
+        self.provider.adopt_target = r"e:\MEDIA\Peach\Finished"
+        result = dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent",
+                                           target=r"e:\media\peach\New")
+        self.assertEqual(result["outcome"], "adopted_remote")
+        self.assertEqual(self.provider.submitted, [(HASH, "E:/media/peach/New")])
+        self.assertEqual(result["task"]["target"], "E:/MEDIA/Peach/Finished")
 
     def test_an_incomplete_local_task_that_disappears_is_not_imported(self):
         result = dl.submit_offline_download(self.service, magnet=MAGNET, provider="qbittorrent")
