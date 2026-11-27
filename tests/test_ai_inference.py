@@ -116,7 +116,8 @@ class InferenceTests(unittest.TestCase):
         for provider in ("deepseek", "opencode"):
             with self.subTest(provider=provider):
                 response = {"data": [{"id": "different-model"}]}
-                with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))) as client:
+                with httpx.Client(transport=httpx.MockTransport(
+                        lambda _, response=response: httpx.Response(200, json=response))) as client:
                     with self.assertRaises(ai_inference.InferenceError) as error:
                         ai_inference.verify_model(client, provider, "configured-model", KEY)
                 self.assertEqual(error.exception.code, "model_not_found")
