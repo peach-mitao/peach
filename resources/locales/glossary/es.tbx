@@ -792,11 +792,19 @@
             <termEntry id="concept.region.cn" weblate-flags="terminology">
                 <descrip>产地之一（分区码 cn）：华语地区制作的片子，含大陆与港台厂牌。中文资源圈的固定叫法，不是「本国」。</descrip>
                 <langSet xml:lang="zh_Hans"><tig><term>国产</term></tig></langSet>
-                <langSet xml:lang="es"><tig><term></term></tig></langSet>
+                <langSet xml:lang="es"><tig><term/></tig></langSet>
             </termEntry>
             <termEntry id="concept.region.west" weblate-flags="terminology">
                 <descrip>产地之一（分区码 west）：欧美及其他西方地区制作的片子，中文习惯上也含捷克、俄罗斯、拉美、澳洲。</descrip>
                 <langSet xml:lang="zh_Hans"><tig><term>欧美</term></tig></langSet>
+                <langSet xml:lang="es"><tig><term/></tig></langSet>
+            </termEntry>
+            <termEntry id="ref.51" weblate-flags="terminology">
+                <langSet xml:lang="zh_Hans"><tig><term>来源原文</term></tig></langSet>
+                <langSet xml:lang="es"><tig><term></term></tig></langSet>
+            </termEntry>
+            <termEntry id="ref.50" weblate-flags="terminology">
+                <langSet xml:lang="zh_Hans"><tig><term>Peach 优选</term></tig></langSet>
                 <langSet xml:lang="es"><tig><term></term></tig></langSet>
             </termEntry>
         </body>
