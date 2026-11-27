@@ -480,6 +480,17 @@ class AILibraryTests(unittest.TestCase):
         self.assertFalse(next(row for row in web_ai_library.connections(self.state)["providers"]
                               if row["id"] == "deepseek")["configured"])
 
+    def test_opencode_ships_as_a_builtin_preset(self):
+        row = next(row for row in web_ai_library.connections(self.state)["providers"] if row["id"] == "opencode")
+        self.assertEqual(row["label"], "OpenCode")
+        self.assertEqual(row["model"], "grok-build-0.1")
+        self.assertEqual(row["host"], "opencode.ai")
+        self.assertEqual(row["key_url"], "https://opencode.ai/console")
+        self.assertEqual(row["default_base_url"], "https://opencode.ai/inference/openai/v1")
+        self.assertFalse(row["configured"])
+        suggested = web_ai_library.connection_choices("opencode", "grok-build-0.1")["suggested_models"]
+        self.assertEqual(set(suggested), {"translate", "tags", "vision", "search"})
+
     def test_verification_does_not_replace_saved_credentials(self):
         with patch.object(web_ai_library, "verify_model", return_value="verified-model") as request:
             result = web_ai_library.verify_connection(self.state, {

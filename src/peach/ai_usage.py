@@ -44,7 +44,7 @@ def response_usage(provider: str, response: dict) -> TokenUsage | None:
     raw = response.get("usage")
     if not isinstance(raw, dict):
         return None
-    if provider in ("openai", "deepseek"):
+    if provider in ("openai", "deepseek", "opencode"):
         inputs = [raw.get("prompt_tokens")]
         output = raw.get("completion_tokens")
     else:

@@ -433,7 +433,7 @@ const maintenance = () => {
 };
 
 export function aiConnectionsSkeleton(): string {
-  const api = ['Claude', 'OpenAI', 'DeepSeek'].map(label => section(label,
+  const api = ['Claude', 'OpenAI', 'DeepSeek', 'OpenCode'].map(label => section(label,
     (label === 'OpenAI' ? `<div class="mt-3">${block('12em', '36px')}</div>` : '') +
     stack(help(text('12em')) + selectField(t('settings:aiLibrary.endpointMode'))
       + inputField('API Key') + selectField(t('settings:aiLibrary.model'))),

@@ -84,6 +84,7 @@ class InferenceTests(unittest.TestCase):
             ("deepseek", {"prompt_tokens": 100, "prompt_cache_hit_tokens": 20,
                           "completion_tokens": 7}, TokenUsage(100, 7)),
             ("deepseek", {"prompt_tokens": False, "completion_tokens": 7}, None),
+            ("opencode", {"prompt_tokens": 100, "completion_tokens": 7}, TokenUsage(100, 7)),
         )
         for provider, usage, expected in cases:
             with self.subTest(provider=provider, usage=usage):
@@ -95,7 +96,8 @@ class InferenceTests(unittest.TestCase):
 
     def test_verification_looks_up_models_without_sending_metadata(self):
         for provider, path in (("anthropic", "/v1/models/configured-model"),
-                               ("openai", "/v1/models/configured-model"), ("deepseek", "/models")):
+                               ("openai", "/v1/models/configured-model"), ("deepseek", "/models"),
+                               ("opencode", "/inference/openai/v1/models")):
             with self.subTest(provider=provider):
                 def handler(request, path=path, provider=provider):
                     self.assertEqual(request.method, "GET")
@@ -103,7 +105,7 @@ class InferenceTests(unittest.TestCase):
                     self.assertEqual(request.content, b"")
                     self.assertEqual(request.headers["authorization"], "Bearer " + KEY)
                     model = {"id": "configured-model"}
-                    result = {"data": [model]} if provider == "deepseek" else model
+                    result = {"data": [model]} if provider in ("deepseek", "opencode") else model
                     return httpx.Response(200, json=result)
 
                 with httpx.Client(transport=httpx.MockTransport(handler)) as client:
@@ -111,14 +113,17 @@ class InferenceTests(unittest.TestCase):
                                      "configured-model")
 
     def test_verification_distinguishes_missing_model(self):
-        response = {"data": [{"id": "different-model"}]}
-        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))) as client:
-            with self.assertRaises(ai_inference.InferenceError) as error:
-                ai_inference.verify_model(client, "deepseek", "configured-model", KEY)
-        self.assertEqual(error.exception.code, "model_not_found")
+        for provider in ("deepseek", "opencode"):
+            with self.subTest(provider=provider):
+                response = {"data": [{"id": "different-model"}]}
+                with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))) as client:
+                    with self.assertRaises(ai_inference.InferenceError) as error:
+                        ai_inference.verify_model(client, provider, "configured-model", KEY)
+                self.assertEqual(error.exception.code, "model_not_found")
 
     def test_catalog_uses_each_vendor_and_follows_claude_pagination(self):
-        for provider, path in (("anthropic", "/v1/models"), ("openai", "/v1/models"), ("deepseek", "/models")):
+        for provider, path in (("anthropic", "/v1/models"), ("openai", "/v1/models"), ("deepseek", "/models"),
+                               ("opencode", "/inference/openai/v1/models")):
             with self.subTest(provider=provider):
                 cursors = []
 
@@ -153,6 +158,7 @@ class InferenceTests(unittest.TestCase):
             "anthropic": "https://api.anthropic.com/v1/messages",
             "openai": "https://api.openai.com/v1/chat/completions",
             "deepseek": "https://api.deepseek.com/chat/completions",
+            "opencode": "https://opencode.ai/inference/openai/v1/chat/completions",
         }
         for provider, endpoint in endpoints.items():
             with self.subTest(provider=provider):
@@ -174,8 +180,10 @@ class InferenceTests(unittest.TestCase):
                         self.assertEqual(body["messages"][1], {"role": "user", "content": TEXT})
                         if provider == "openai":
                             self.assertIs(body["store"], False)
-                        else:
+                        elif provider == "deepseek":
                             self.assertEqual(body["reasoning_effort"], "none")
+                        else:
+                            self.assertNotIn("reasoning_effort", body)
                     return httpx.Response(200, json=reply(provider, '{"tags":[]}'))
 
                 self.assertEqual(self.infer(provider, handler),

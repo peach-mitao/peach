@@ -7,6 +7,7 @@ export const ACCOUNT_DASHBOARDS: Record<string, string> = {
   'openai-oauth': 'https://chatgpt.com/settings/usage',
   'anthropic': 'https://platform.claude.com/usage',
   'deepseek': 'https://platform.deepseek.com/usage',
+  'opencode': 'https://opencode.ai/console',
 };
 
 type AccountUsage = { kind: 'organization'; tokens: number }

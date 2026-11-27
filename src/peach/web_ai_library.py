@@ -42,6 +42,7 @@ _SUGGESTED_MODELS = {
     "openai": _OPENAI_TASK_MODELS,
     "openai-oauth": _OPENAI_TASK_MODELS,
     "deepseek": {**dict.fromkeys(TASKS, ("deepseek-flash", "deepseek-v4-pro")), "vision": ("deepseek-flash",)},
+    "opencode": dict.fromkeys(TASKS, ("grok-build-0.1",)),
 }
 _EFFORT_ORDER = {
     "translate": ("none", "low", "medium", "high", "xhigh", "max"),

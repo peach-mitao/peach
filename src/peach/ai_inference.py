@@ -40,6 +40,8 @@ PROVIDERS = {
                            "https://api.openai.com/v1/models", "https://platform.openai.com/api-keys"),
     "deepseek": ProviderSpec("DeepSeek", "deepseek-flash", "https://api.deepseek.com/chat/completions",
                              "https://api.deepseek.com/models", "https://platform.deepseek.com/api_keys"),
+    "opencode": ProviderSpec("OpenCode", "grok-build-0.1", "https://opencode.ai/inference/openai/v1/chat/completions",
+                             "https://opencode.ai/inference/openai/v1/models", "https://opencode.ai/console"),
 }
 _MAX_TOKENS = 4096
 _MAX_RESPONSE_BYTES = 1024 * 1024
@@ -290,7 +292,8 @@ def verify_model(client: httpx.Client, provider: str, model: str, api_key: str, 
             raise InferenceError("model_not_found")
         return model
     headers = _headers(provider, api_key)
-    if provider != "deepseek":
+    # DeepSeek and OpenCode catalogs list all models but expose no single-model route.
+    if provider not in ("deepseek", "opencode"):
         result = _request(client, spec.models_endpoint + "/" + quote(model, safe=""), headers)
         model_id = result.get("id")
         if not isinstance(model_id, str) or not valid_model(model_id):

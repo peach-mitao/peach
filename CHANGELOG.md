@@ -16,6 +16,10 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ## [Unreleased]
 
+### Added / 新增
+
+- **Library**: Add OpenCode as a built-in AI connection with its official endpoint, console key page and task suggestions (#898). / **馆藏**：AI 接入新增 OpenCode 官方预设，含官方地址、控制台密钥入口与任务推荐模型（#898）。
+
 ## [0.63.0] - 2026-11-27
 
 ### Added / 新增

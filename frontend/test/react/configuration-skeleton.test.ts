@@ -16,9 +16,9 @@ const card = (root: ParentNode, name: string) => root.querySelector(`section[ari
 
 afterEach(() => localStorage.clear());
 
-it('AI 接入加载时三张服务卡各有一个文字标题和可访问名称', () => {
+it('AI 接入加载时四张服务卡各有一个文字标题和可访问名称', () => {
   const root = draw('AI 接入');
-  const names = ['Claude', 'OpenAI', 'DeepSeek'];
+  const names = ['Claude', 'OpenAI', 'DeepSeek', 'OpenCode'];
   expect(sections(root)).toEqual([...names, '任务与提示词', 'AI 用量']);
   for (const name of names) {
     expect(card(root, name).firstElementChild?.textContent).toBe(name);

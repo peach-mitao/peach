@@ -1,4 +1,4 @@
-import { RiClaudeFill, RiDeepseekFill, RiOpenaiFill, RiServerLine } from '@remixicon/react';
+import { RiClaudeFill, RiDeepseekFill, RiOpenaiFill, RiServerLine, RiTerminalBoxLine } from '@remixicon/react';
 import { cx } from '@/utils/cx';
 
 const LOGOS: Partial<Record<string, typeof RiOpenaiFill>> = {
@@ -6,6 +6,7 @@ const LOGOS: Partial<Record<string, typeof RiOpenaiFill>> = {
   openai: RiOpenaiFill,
   'openai-oauth': RiOpenaiFill,
   deepseek: RiDeepseekFill,
+  opencode: RiTerminalBoxLine,
 };
 
 export function AIProviderLogo({ provider, className }: { provider: string; className?: string }) {
