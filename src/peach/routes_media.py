@@ -266,6 +266,12 @@ def external_playback(request: Request, id: int, args: dict[str, str] = Depends(
     query = f"ticket={ticket}&origin={quote(origin, safe='')}"
     path = f"/external-stream/{id}?{query}"
     playlist = f"/external-playlist/{id}.m3u?{query}"
+    client = getattr(state, "posthog_client", None)
+    if client is not None:
+        try:
+            client.capture(event="external_playback_started")
+        except Exception:
+            LOGGER.debug("PostHog external playback capture failed", exc_info=True)
     return JSONResponse({"url": path, "playlist": playlist, "expires_in": TTL_SECONDS},
                         headers={"Cache-Control": "no-store"})
 

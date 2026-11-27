@@ -49,6 +49,26 @@ router = APIRouter()
 
 LOGGER = logging.getLogger(__name__)
 
+_POSTHOG_ACTION_EVENTS = {
+    "/api/downloads": "download_submitted",
+    "/api/library-processing": "library_processing_requested",
+    "/api/follow/check": "follow_check_requested",
+    "/api/organize/apply": "organization_applied",
+    "/api/review/decision": "review_decision_recorded",
+    "/api/watch-later": "watch_later_updated",
+}
+
+
+def _capture(request: Request, event: str) -> None:
+    """Send a personless event without allowing analytics to affect the response."""
+    client = getattr(request.app.state, "posthog_client", None)
+    if client is None:
+        return
+    try:
+        client.capture(event=event)
+    except Exception:
+        LOGGER.debug("PostHog capture failed for %s", event, exc_info=True)
+
 
 @router.get("/api/providers")
 def provider_health(request: Request, args: dict[str, str] = Depends(require_auth)):
@@ -468,6 +488,7 @@ async def item_cover_set(
     except UserFacingError as exc:
         return JSONResponse(error_fields(exc), status_code=response_status(exc))
     contract.cache_bust()
+    _capture(request, "item_cover_updated")
     return {"ok": True, "receipt": receipt, "item": web_contract.q_item(contract, asset_id)}
 
 
@@ -486,6 +507,7 @@ async def item_cover_restore(
     except UserFacingError as exc:
         return JSONResponse(error_fields(exc), status_code=response_status(exc))
     contract.cache_bust()
+    _capture(request, "item_cover_restored")
     return {"ok": True, "receipt": receipt, "item": web_contract.q_item(contract, asset_id)}
 
 
@@ -540,6 +562,7 @@ async def taste_import(
         )
         write_manifest(contract.taste_history_manifest, results, analysis)
         contract.cache_bust()
+        _capture(request, "history_imported")
         return {
             "refresh": results,
             "dashboard": web_contract.q_taste(contract, {"window": "all"}),
@@ -752,8 +775,11 @@ def api_post(
             status_code=409,
         )
     try:
-        return web_contract.dispatch_api_post(
+        payload = web_contract.dispatch_api_post(
             request.app.state.web_contract, route_path, body)
+        if event := _POSTHOG_ACTION_EVENTS.get(route_path):
+            _capture(request, event)
+        return payload
     except TaskCancelled:
         return JSONResponse(message_fields('api.routes.taskCanceled', key='error'), status_code=409)
     except TaskRunConflict as exc:

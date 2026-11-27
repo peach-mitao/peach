@@ -60,6 +60,8 @@ from .mdns import create_mdns_publisher
 from .mount_reachability import MountReachability
 from .mp4repair import HeaderRepairStore
 from .platform import location_mount_values
+from .posthog_client import create_posthog_client
+from .posthog_logs import POSTHOG_LOGGER, create_posthog_log_exporter
 from .previews import (
     COVER_SMALL_THUMB_EDGE,
     COVER_SMALL_THUMB_QUALITY,
@@ -836,6 +838,8 @@ def create_app(
     follow_backfill = _configure_follow_backfill(contract, upgrade_repairs)
     _configure_capacity_guard(settings, contract,
         (transcode_service, hls_service, entity_thumb_service, cover_thumb_service, cover_small_thumb_service))
+    posthog_client = create_posthog_client()
+    posthog_log_exporter = create_posthog_log_exporter()
 
     async def warm_startup_entries():
         """配置页首屏要的开机启动项状态，先在后台问一遍。
@@ -865,6 +869,7 @@ def create_app(
         activation = _LedgerActivation(_app, settings, contract, services, automatic_updates, sharing)
         _app.state.ledger_activation = activation
         ledger_ready = await activation.start()
+        POSTHOG_LOGGER.info("peach_ledger_activation_finished", extra={"ledger_ready": ledger_ready})
         if settings.configured:
             mount_reachability.start()
             # javdb 的节拍和独立采集脚本共用数据根里的同一个文件，两边同时跑也不超过它的速率上限。
@@ -879,9 +884,11 @@ def create_app(
             except Exception:
                 mdns.status = "unavailable"
                 logging.getLogger(__name__).exception("mDNS publication failed")
+        POSTHOG_LOGGER.info("peach_api_started")
         try:
             yield
         finally:
+            POSTHOG_LOGGER.info("peach_api_stopping")
             # 外部播放器的最后一段观看要赶在账本收尾前落下。
             await asyncio.to_thread(_app.state.playback_trackers.stop)
             await activation.stop()
@@ -916,6 +923,16 @@ def create_app(
             await asyncio.to_thread(tunnel_manager.stop)
             await tunnel_startup
             await asyncio.to_thread(tunnel_manager.stop)
+            if posthog_client is not None:
+                try:
+                    await asyncio.wait_for(asyncio.to_thread(posthog_client.shutdown), timeout=5)
+                except (Exception, TimeoutError):
+                    LOGGER.warning("PostHog shutdown did not finish cleanly", exc_info=True)
+            if posthog_log_exporter is not None:
+                try:
+                    await asyncio.wait_for(asyncio.to_thread(posthog_log_exporter.shutdown), timeout=5)
+                except (Exception, TimeoutError):
+                    LOGGER.warning("PostHog log shutdown did not finish cleanly", exc_info=True)
             http_transport.close()
             follow_media_resolver.close()
             hls_plan_executor.shutdown(wait=False, cancel_futures=True)
@@ -930,6 +947,7 @@ def create_app(
         openapi_url="/openapi.json" if settings.docs_enabled else None,
     )
     app.state.settings = settings
+    app.state.posthog_client = posthog_client
     app.state.database = database
     app.state.ledger_migration = LedgerMigration()
     app.state.web_contract = contract
@@ -1065,6 +1083,9 @@ def create_app(
     app.add_middleware(
         GZipMiddleware, exclude_content_types=COMPRESSION_EXCLUDED_TYPES,
     )
+    if posthog_client is not None:
+        from posthog.integrations.asgi import PosthogASGIMiddleware
+        app.add_middleware(PosthogASGIMiddleware, client=posthog_client)
 
     # 健康检查常被 HEAD 探测（`curl -I`、各种 uptime 工具）。本仓库其他公开端点
     # 都显式声明了 GET+HEAD，只有这个漏了，HEAD 会拿到 405。

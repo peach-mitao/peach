@@ -438,6 +438,12 @@ async def login_submit(request: Request):
             return HTMLResponse(login_html(next_path, mode=mode, error=_page_error(fields, language), language=language),
                                 status_code=503)
         raise HTTPException(503, fields) from None
+    client = getattr(request.app.state, "posthog_client", None)
+    if client is not None:
+        try:
+            client.capture(event="access_granted")
+        except Exception:
+            pass
     return response
 
 
