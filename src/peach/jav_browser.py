@@ -553,7 +553,7 @@ class JavBrowser:
                     error = errors.get("clouddrive")
                 if error is not None:
                     raise error
-        elif provider in {"115", "pikpak"}:
+        elif provider in {"115", "pikpak", "qbittorrent"}:
             state = self.downloads._provider_state(provider)
         else:
             state = {"target": provider.startswith("clouddrive:"), "configured": bool(

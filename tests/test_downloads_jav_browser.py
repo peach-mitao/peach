@@ -1360,6 +1360,36 @@ class BrowserTests(unittest.TestCase):
         self.service.search.assert_not_called()
         self.remote.submit.assert_not_called()
 
+    def test_paired_userscript_can_queue_and_submit_to_qbittorrent(self):
+        target = "D:/Media/Peach"
+        self.downloads.config = dl.DownloadConfig(
+            qbittorrent_address="http://127.0.0.1:8085",
+            qbittorrent_save_path=target,
+            qbittorrent_media_root=r"R:\Media\Peach",
+        )
+        self.downloads.credentials.save(
+            dl.QBITTORRENT_CREDENTIAL, {"username": "test-only", "password": "test-only"})
+        catalog = Mock(return_value={
+            "providers": [{**self.downloads._provider_state("qbittorrent"), "kind": "local"}],
+            "problems": [],
+        })
+        self.downloads.channel_catalog = catalog
+        paired = self.configure("rotate", provider="qbittorrent")
+        self.assertEqual(paired.status_code, 200, paired.text)
+        self.script_headers["Authorization"] = "Bearer " + paired.json()["token"]
+        catalog.reset_mock()
+
+        added = self.add()
+        self.assertEqual(added.status_code, 200, added.text)
+        self.assertEqual(added.json()["state"], "queued")
+        catalog.assert_not_called()
+        self.remote.submit.assert_not_called()
+
+        self.assertTrue(self.service.process_one())
+        task = self.downloads.store.get(self.status().json()["task_id"])
+        self.assertEqual((task.provider, task.target), ("qbittorrent", target))
+        self.remote.submit.assert_called_once_with(dl.parse_magnet(MAGNET), target)
+
     def test_slow_submission_allows_status_and_retains_inflight_task_when_disabled(self):
         self.add()
         started, finish, queried = threading.Event(), threading.Event(), threading.Event()
