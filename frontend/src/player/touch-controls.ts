@@ -60,6 +60,24 @@ export function wirePlayerInteractions(root: HTMLElement, video: HTMLVideoElemen
     try { video.currentTime = target } catch { tell(t('catalog:playerGestures.seekFailed')); return }
     tell(t('catalog:playerGestures.seekTo', { time: clock(target) }));
   };
+  /** 一屏横滑约取片长的 10%，至少两档、最多两分半；短滑用缓增曲线保留精度。 */
+  const previewSeek = (current: NonNullable<typeof gesture>, dx: number) => {
+    if (Math.abs(dx) < 12) { current.to = undefined; feedback.hidden = true; return }
+    const total = duration();
+    if (!Number.isFinite(total) || total <= 0) {
+      current.to = undefined; tell(t('catalog:playerGestures.durationUnknown'), true); return;
+    }
+    const step = gestureSettings().swipeSeconds;
+    const span = Math.min(total, Math.max(step * 2, Math.min(total * .1, 150)));
+    const distance = Math.min(Math.abs(dx) / current.width, 1);
+    const steps = Math.min(Math.max(1, Math.floor(span / step)),
+      Math.max(1, Math.round(span * distance ** 1.5 / step)));
+    current.to = clamp(current.from + Math.sign(dx) * steps * step) ?? undefined;
+    if (current.to === undefined) { tell(t('catalog:playerGestures.durationUnknown'), true); return }
+    const delta = current.to - current.from;
+    tell(t(delta >= 0 ? 'catalog:playerGestures.forward' : 'catalog:playerGestures.backward',
+      { delta: clock(Math.abs(delta)), to: clock(current.to), total: clock(total) }), true);
+  };
   /** 手势取消时恢复临时倍速和音量，不提交定位。 */
   const cancel = () => {
     clearTimeout(hold); clearTimeout(tap); lastTap = null;
@@ -119,12 +137,7 @@ export function wirePlayerInteractions(root: HTMLElement, video: HTMLVideoElemen
     }
     if (current.axis === 'seek') {
       event.preventDefault();
-      if (Math.abs(dx) < 12) { current.to = undefined; feedback.hidden = true; return }
-      current.to = clamp(current.from + Math.sign(dx) * gestureSettings().swipeSeconds) ?? undefined;
-      if (current.to === undefined) { tell(t('catalog:playerGestures.durationUnknown'), true); return }
-      const delta = current.to - current.from;
-      tell(t(delta >= 0 ? 'catalog:playerGestures.forward' : 'catalog:playerGestures.backward',
-        { delta: clock(Math.abs(delta)), to: clock(current.to), total: clock(duration()) }), true);
+      previewSeek(current, dx);
     } else if (current.axis === 'volume') {
       event.preventDefault();
       const volume = Math.max(0, Math.min(1, current.volume - dy / current.height));
@@ -140,6 +153,12 @@ export function wirePlayerInteractions(root: HTMLElement, video: HTMLVideoElemen
     const current = gesture;
     if (event.pointerType !== 'touch' && !current?.mouse) return;
     if (!current || current.id !== event.pointerId) { active(); return }
+    if (current.axis === 'seek') previewSeek(current, event.clientX - current.x);
+    // 极快的一划可能只收到 down/up；仍按松手位置决定方向和距离。
+    else if (!current.axis && Math.abs(event.clientX - current.x) >= 12
+      && Math.abs(event.clientX - current.x) > Math.abs(event.clientY - current.y) * 1.2) {
+      current.axis = 'seek'; previewSeek(current, event.clientX - current.x);
+    }
     clearTimeout(hold); gesture = null;
     // 鼠标没动过的那一下是普通单击，留给画面的点击切换播放；起过手势的吞掉随后的 click。
     if (!current.mouse || current.axis) ignoreClickUntil = Date.now() + 1000;

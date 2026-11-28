@@ -5,7 +5,7 @@ export interface GestureSettings {
   touchGestures: boolean;
   /** 长按画面、按住右方向键时的临时倍速。 */
   holdRate: number;
-  /** 每次横向滑动快进或快退的秒数，距离不改变步长。 */
+  /** 横向滑动的最小步长；距离和视频时长决定跨过多少步。 */
   swipeSeconds: number;
   /** 双击快进、快退的区域各占画面宽度的百分比，中间剩下的是双击暂停。 */
   doubleTapPercent: number;

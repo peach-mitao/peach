@@ -1148,7 +1148,8 @@
     "doubleTapPercentHelp": "Share of the screen on each side. Double-tap left to go back or right to skip ahead.",
     "holdRate": "Hold speed",
     "holdRateHelp": "Used when you hold the video or the right arrow key.",
-    "swipeSeconds": "Each horizontal swipe skips",
+    "swipeSeconds": "Horizontal swipe step",
+    "swipeSecondsHelp": "Defaults to 15 seconds per step. Longer swipes skip more steps; the video length limits the range.",
     "touch": "Picture gestures (hold, drag, double-tap)"
   },
   "playbackTranscode": {

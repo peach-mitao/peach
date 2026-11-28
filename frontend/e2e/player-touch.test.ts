@@ -46,16 +46,16 @@ it(`${viewport.width}×${viewport.height} 触摸：控制条、横滑预览、�
     assert.equal(await page.evaluate('fixture.pauses()'), 0);
     await Promise.all([touch('touchStart', viewport.width * .1), touch('touchMove', viewport.width * .6)]);
     assert.equal(await page.evaluate('fixture.video.currentTime'), 1200);
-    assert.match(await page.locator('.vjs-peach-gesture').innerText(), /20:15/);
-    await touch('touchEnd'); assert.ok(Math.abs(Number(await page.evaluate('fixture.video.currentTime')) - 1215) < .01);
-    await Promise.all([tap(right), tap(right)]); assert.ok(Math.abs(Number(await page.evaluate('fixture.video.currentTime')) - 1225) < .01);
+    assert.match(await page.locator('.vjs-peach-gesture').innerText(), /21:00/);
+    await touch('touchEnd'); assert.ok(Math.abs(Number(await page.evaluate('fixture.video.currentTime')) - 1260) < .01);
+    await Promise.all([tap(right), tap(right)]); assert.ok(Math.abs(Number(await page.evaluate('fixture.video.currentTime')) - 1270) < .01);
     // 长按 500ms 才起倍速；慢的 CI 机器上固定等 550ms 余量不够，等到倍速真的变了为止。
     for (const x of [viewport.width * .1, middle, right]) {
       await touch('touchStart', x);
       await page.waitForFunction('fixture.video.playbackRate === 2', null, { timeout: 2_000 });
       await touch('touchEnd'); assert.equal(await page.evaluate('fixture.video.playbackRate'), 1);
       assert.equal(await page.evaluate('fixture.pauses()'), 0);
-      assert.equal(await page.evaluate('fixture.video.currentTime'), 1225);
+      assert.equal(await page.evaluate('fixture.video.currentTime'), 1270);
     }
     await Promise.all([touch('touchStart', right), touch('touchMove', right, 300 - viewport.height * .2)]);
     assert.ok(Math.abs(Number(await page.evaluate('fixture.video.volume')) - .7) < .01);

@@ -2,7 +2,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "e721f3fe-dfa4-4663-9968-c0923c1fc08e", e._sentryDebugIdIdentifier = "sentry-dbid-e721f3fe-dfa4-4663-9968-c0923c1fc08e");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "a1732058-91b5-41f5-b046-de5376ce763a", e._sentryDebugIdIdentifier = "sentry-dbid-a1732058-91b5-41f5-b046-de5376ce763a");
 	} catch {}
 })();
 var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescriptor, r = Object.getOwnPropertyNames, i = Object.getPrototypeOf, a = Object.prototype.hasOwnProperty, o = (e, t, n) => () => {
@@ -7358,7 +7358,8 @@ var Ue = "peach.settings.v1", We = {
 		doubleTapPercentHelp: "Share of the screen on each side. Double-tap left to go back or right to skip ahead.",
 		holdRate: "Hold speed",
 		holdRateHelp: "Used when you hold the video or the right arrow key.",
-		swipeSeconds: "Each horizontal swipe skips",
+		swipeSeconds: "Horizontal swipe step",
+		swipeSecondsHelp: "Defaults to 15 seconds per step. Longer swipes skip more steps; the video length limits the range.",
 		touch: "Picture gestures (hold, drag, double-tap)"
 	},
 	playbackTranscode: {
@@ -15704,7 +15705,8 @@ var Ue = "peach.settings.v1", We = {
 		doubleTapPercentHelp: "左右两侧各占画面的比例。双击左侧后退，右侧前进。",
 		holdRate: "长按倍速",
 		holdRateHelp: "长按画面或右方向键时使用。",
-		swipeSeconds: "每次横向滑动跳转",
+		swipeSeconds: "横滑跳转步长",
+		swipeSecondsHelp: "默认每档 15 秒；滑得越远，跳过的档数越多，视频时长决定最多能跳多远。",
 		touch: "画面手势（长按、拖动、双击）"
 	},
 	playbackTranscode: {
@@ -60565,4 +60567,4 @@ Lt(), dF();
 var pF = document.getElementById("peach-page"), mF = pF ? fF[pF.dataset.page ?? ""] : void 0;
 pF && mF && (0, Kt.createRoot)(pF).render(/* @__PURE__ */ (0, K.jsx)(_3, { children: /* @__PURE__ */ (0, K.jsx)(mF, { data: { ...pF.dataset } }) }));
 
-//# debugId=e721f3fe-dfa4-4663-9968-c0923c1fc08e
+//# debugId=a1732058-91b5-41f5-b046-de5376ce763a
