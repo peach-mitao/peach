@@ -47,6 +47,33 @@
 :root{--glass-fill:rgba(252,253,255,.32);--glass-rim:rgba(255,255,255,.72);--glass-low:rgba(70,80,100,.1);--glass-text:#1d2129;--glass-shadow:0 1px 2px #1118270f,0 8px 18px #11182714,0 24px 48px #11182710;--glass-lift:0 2px 4px #11182714,0 12px 26px #1118271f,0 30px 60px #11182717;--glass-sheen:rgba(255,255,255,.5);--glass-lume:brightness(1.32) saturate(.5);--glass-pick:brightness(1.1) saturate(1.1);--glass-pick-fill:rgba(255,255,255,.52);--glass-pick-shadow:0 1px 2px #1118270f,0 4px 10px #11182714;--glass-native-a:#ffffff;--glass-native-b:#ffffff;--glass-tint-a:var(--glass-native-a);--glass-tint-b:var(--glass-native-b);--glass-drift-a:radial-gradient(20% 20% at 50% 50%,color-mix(in srgb,var(--glass-tint-a) 10%,transparent),color-mix(in srgb,var(--glass-tint-a) 5%,transparent) 42%,transparent 72%);--glass-drift-b:radial-gradient(26% 26% at 50% 50%,color-mix(in srgb,var(--glass-tint-b) 8%,transparent),color-mix(in srgb,var(--glass-tint-b) 4%,transparent) 44%,transparent 74%)}
 :root[data-theme="dark"]{--glass-fill:rgba(24,27,33,.24);--glass-rim:rgba(255,255,255,.2);--glass-low:rgba(255,255,255,.05);--glass-text:#eceef3;--glass-shadow:0 1px 2px #00000047,0 10px 22px #00000038,0 28px 56px #0000002b;--glass-lift:0 2px 4px #00000052,0 14px 30px #00000047,0 34px 68px #00000038;--glass-sheen:rgba(230,239,255,.1);--glass-lume:brightness(.5) contrast(1.1);--glass-pick:brightness(1.7) saturate(1.15);--glass-pick-fill:rgba(255,255,255,.13);--glass-pick-shadow:0 1px 2px #00000024,0 6px 14px #0000001f}
 @media(prefers-color-scheme:dark){:root:not([data-theme]){--glass-fill:rgba(24,27,33,.24);--glass-rim:rgba(255,255,255,.2);--glass-low:rgba(255,255,255,.05);--glass-text:#eceef3;--glass-shadow:0 1px 2px #00000047,0 10px 22px #00000038,0 28px 56px #0000002b;--glass-lift:0 2px 4px #00000052,0 14px 30px #00000047,0 34px 68px #00000038;--glass-sheen:rgba(230,239,255,.1);--glass-lume:brightness(.5) contrast(1.1);--glass-pick:brightness(1.7) saturate(1.15);--glass-pick-fill:rgba(255,255,255,.13);--glass-pick-shadow:0 1px 2px #00000024,0 6px 14px #0000001f}}
+:root{
+  --glass-control-subtle:light-dark(rgb(29 33 41 / .06),rgb(236 238 243 / .08));
+  --glass-control-hover:light-dark(rgb(29 33 41 / .09),rgb(236 238 243 / .12));
+  --glass-control-selected:light-dark(rgb(29 33 41 / .15),rgb(236 238 243 / .18));
+  --glass-text-secondary:light-dark(#3f4653,#d8dce6);
+  --glass-media-fill:light-dark(rgb(252 253 255 / .74),rgb(24 27 33 / .74));
+  --glass-panel-fill:color-mix(in srgb,var(--glass-fill) 58%,var(--glass-media-fill));
+}
+:root.board-high-contrast{
+  --glass-control-subtle:var(--surface);
+  --glass-control-hover:var(--hover);
+  --glass-control-selected:var(--picked);
+  --glass-text-secondary:var(--ink);
+  --glass-media-fill:var(--ground);
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  :root{
+    --glass-control-subtle:var(--surface);
+    --glass-control-hover:var(--hover);
+    --glass-control-selected:var(--picked);
+    --glass-text-secondary:var(--ink);
+    --glass-media-fill:var(--ground);
+  }
+}
+:is(.board-filter-frame,.entitycollectionhead,.board-library-menu,.board-glow-menu,[data-settings-nav]){
+  --glass-fill:var(--glass-panel-fill);
+}
 /* WebKit 在能显示 HDR 的屏幕上（iPhone、带 XDR 屏的 Mac）按扩展范围合成滤镜，`brightness()`
    大于 1 算出来的像素比 SDR 白还亮，系统把这几块玻璃当 HDR 内容点亮，页面其余部分相对就暗了
    下去。Chromium 会把滤镜结果收回 SDR，所以只在 WebKit 上换写法：提亮改成往上叠白色填充——
@@ -157,8 +184,7 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitycollectionhead,.search,
    就是整条里唯一一块实心的面，读起来像贴上去的另一个控件；字色取的也是 flat 面的
    --muted/--ink，跟旁边同一排的排序键差一档。壳撤掉，滑块换成选中态那块玻璃。 */
 .board-filter-frame.board-filter-frame .iconswitch[data-board-segments]{background:none}
-.board-filter-frame.board-filter-frame .iconswitch>label{
-  color:color-mix(in srgb,var(--glass-text) 62%,transparent)}
+.board-filter-frame.board-filter-frame .iconswitch>label{color:var(--glass-text-secondary)}
 .board-filter-frame.board-filter-frame .iconswitch>label:hover,
 .board-filter-frame.board-filter-frame .iconswitch>label:has(input:checked){color:var(--glass-text)}
 .board-filter-frame.board-is-stuck::before,.board-filter-frame.board-is-stuck::after{display:none}
@@ -166,6 +192,7 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitycollectionhead,.search,
 .board-filter-frame.board-filter-frame .count{border-radius:0 0 16px 16px}
 .board-filter-frame.board-filter-frame .pill{color:var(--glass-text)}
 .board-filter-frame.board-filter-frame .tagbar .pill:is([data-tag],[data-follow-tag],[data-follow-provider]):not([aria-pressed="true"]){border-color:var(--glass-low)}
+.board-filter-frame.board-filter-frame .tagbar .pill:is([data-tag],[data-follow-tag],[data-follow-provider])[aria-pressed="true"]{background:var(--glass-control-selected)}
 /* 四枚视图之间只有一块玻璃在移动，不是四块各自亮灭：Apple 把同一层里的玻璃先合成
    再形变（`GlassEffectContainer` 的 "fluidly morphing Liquid Glass shapes into each
    other"），落到这一排就是先拉长盖住起点和终点、再收拢到新的那一枚。
@@ -509,20 +536,20 @@ button,input,select,textarea{font-family:inherit}
 .board-glow-menu footer{margin-top:10px;padding:0 4px}
 .board-glow-menu footer .geist-button{width:100%}
 /* 外框取默认档，与同排的光晕钮、设置钮同高；两枚内芯取行内档，四周各让 4px。 */
-.board-theme-toggle{position:relative;isolation:isolate;display:flex;gap:4px;padding:4px;border-radius:24px;background:var(--picked)}
-.board-theme-toggle button{display:grid;place-items:center;width:var(--control-h-inline);height:var(--control-h-inline);flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}
-.board-theme-toggle button[aria-pressed=true]{color:var(--ink)}
+.board-theme-toggle{position:relative;isolation:isolate;display:flex;gap:4px;padding:4px;border-radius:24px;background:var(--glass-control-subtle)}
+.board-theme-toggle button{display:grid;place-items:center;width:var(--control-h-inline);height:var(--control-h-inline);flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:var(--glass-text-secondary);cursor:pointer}
+.board-theme-toggle button[aria-pressed=true]{color:var(--glass-text)}
 /* 没被选中的那一枚此前悬停毫无反馈：它坐在 `--picked` 的轨道上、身上什么都没有，鼠标
    压上去和没压一样。抬一层 `--hover` 底加提亮图标色，正是这一对旁边那枚滑板给选中项的
    待遇的弱化版。选中那一枚不跟：它身下已经压着白滑板，再叠一层底就是两块面。 */
-.board-theme-toggle button:not([aria-pressed=true]):hover{background:var(--hover);color:var(--ink)}
+.board-theme-toggle button:not([aria-pressed=true]):hover{background:var(--glass-control-hover);color:var(--glass-text)}
 .board-theme-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
 /* `will-change` 把这一枚提成自己的合成层。换主题要把 `:root` 上整套变量重写一遍，
    五千个节点跟着重算样式，主线程一口气忙掉二十几毫秒；滑块跟着卡在半路，按下去的
    那一下就是「点了没反应，然后突然到位」。提层之后这段位移归合成线程管，主线程忙它
    的，这一枚照样走完——它跟身后那片重算的内容本来就没有关系。
    缓动跟滑板同一条弹簧：这一列上会动的东西只有一种手感。 */
-.board-theme-thumb{position:absolute;z-index:-1;left:4px;top:4px;width:var(--control-h-inline);height:var(--control-h-inline);background:var(--ground);border-radius:50%;box-shadow:0 1px 3px light-dark(#0001,#0008);will-change:transform;transition:transform calc(var(--spring-pane-ms) * 1ms) var(--spring-pane)}
+.board-theme-thumb{position:absolute;z-index:-1;left:4px;top:4px;width:var(--control-h-inline);height:var(--control-h-inline);background:var(--glass-control-selected);border-radius:50%;will-change:transform;transition:transform calc(var(--spring-pane-ms) * 1ms) var(--spring-pane)}
 .board-theme-toggle.is-dark .board-theme-thumb{transform:translateX(calc(var(--control-h-inline) + 4px))}
 /* 侧栏收到 60px 时按 DOM 顺序竖排。配色钮与设置钮都是 36px，左右各留 10px
    内边距后在侧栏里居中，两枚圆心落在同一条竖线上。 */
@@ -685,7 +712,7 @@ html.board-high-contrast [data-notification-menu][data-notification-menu]{backgr
    不透明的底压在玻璃上面，滑动的那块从头到尾被盖住，看到的只有当前项换了个地方亮起来。
    玻璃住在这一列里，所以这一列是它的定位宿主；行要压在它上面，否则滑过去时字被盖住。 */
 .board-library-menu .board-library-rows{position:relative}
-.board-library-menu .board-library-rows button{position:relative;color:color-mix(in srgb,var(--glass-text) 66%,transparent)}
+.board-library-menu .board-library-rows button{position:relative;color:var(--glass-text-secondary)}
 .board-library-menu .board-library-rows button:is(:hover,[aria-pressed=true]){background:none;box-shadow:none;color:var(--glass-text)}
 .board-library-menu .board-library-rows>.viewglide{border-radius:10px}
 .board-library-menu footer{border-color:var(--glass-low)}

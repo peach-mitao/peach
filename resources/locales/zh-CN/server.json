@@ -1698,6 +1698,8 @@
       "holdGone": "这组关注作者已经不在等确认了，刷新后再看"
     },
     "onlineTagManagement": {
+      "blockScopeInvalid": "请选择有效的内容屏蔽范围",
+      "hiddenInvalid": "标签隐藏设置无效",
       "nameInvalid": "标签名须为 1 至 80 个字符，不含逗号或控制字符",
       "nameTaken": "「{{name}}」已属于标签「{{tag}}」，请使用合并标签",
       "selectionInvalid": "请选择有效的在线标签，单次最多 2000 个",

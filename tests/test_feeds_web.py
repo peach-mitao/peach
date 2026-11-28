@@ -2163,6 +2163,46 @@ class PerformerPageFollowTest(FeedFollowByNameFixture):
 
 
 class JavDiscoveryTest(FeedWebFixture):
+    def test_scoped_tags_filter_new_releases_before_limits_and_preserve_discovery(self):
+        from peach import web_jav_discovery
+        from peach.web_tags import w_tag_management, w_tag_preview
+
+        self._add()
+        self._check()
+        with self.contract.database.write_transaction() as connection:
+            connection.execute("UPDATE feed_discovery SET title='示例发行' WHERE code='SSIS-950'")
+            connection.execute("UPDATE feed_discovery SET title='〖VR〗示例发行' WHERE code='HMN-071'")
+            connection.execute("UPDATE feed_discovery SET studio='示例厂牌' WHERE code IN ('SSIS-950','HMN-071')")
+            connection.executemany("INSERT INTO feed_discovery(code,title,release_date,discovered_at) VALUES (?,?,?,?)",
+                                   [('EXM-001', '普通标题提到 VR', '2025-01-01', '2025-01-01'),
+                                    ('EXM-002', '【VR】资料已补齐的示例', '2024-01-01', '2024-01-01')])
+            entity = connection.execute(
+                "INSERT INTO entity(kind,canonical_name,normalized_name,created_at,updated_at)"
+                " VALUES('performer','示例艺人','示例艺人',?,?)", (feeds.stamp(), feeds.stamp())).lastrowid
+            connection.execute("INSERT OR IGNORE INTO feed_discovery_entity(discovery_id,entity_id)"
+                               " SELECT id,? FROM feed_discovery WHERE code IN ('SSIS-950','HMN-071')", (entity,))
+        movies = {'SSIS-950': {'tags': [{'name': 'VR専用'}]}, 'EXM-002': {'tags': [{'name': '剧情'}]}}
+        def cache(code, contract, *, remember=True):
+            return movies.get(code, {})
+        command = dict(scope='online', operation='block', name='Virtual Reality', block_scopes=['jav_releases'])
+        w_tag_management(self.contract, dict(command, token=w_tag_preview(self.contract, command)['token']))
+        profile = self._preference_fixture({'peach_studios': [{'name': '示例厂牌', 'score': 4}]})
+        with patch.object(web_jav_discovery, '_cached_movie', side_effect=cache), \
+                patch.object(web_jav_discovery, 'preference_profile', return_value=profile):
+            listing = web_jav_discovery.q_jav_releases(self.contract, {'size': '1'})
+            self.assertEqual(listing['candidate_total'], 2)
+            self.assertEqual([row['code'] for row in listing['items']], ['EXM-001'])
+            self.assertNotIn('VR', [tag['name'] for tag in listing['facets']['tags']])
+            self.assertEqual([row['code'] for row in web_feeds.q_feed_discoveries(self.contract, {'limit': '1'})['items']], ['EXM-001'])
+            self.assertEqual(web_feeds.q_feed_discoveries(self.contract, {'entity': entity})['items'], [])
+            with self.contract.database.read_connection() as connection:
+                self.assertNotIn(entity, web_feeds.feed_row_entity_ids(self.contract, connection))
+            self.assertIn('SSIS-950', [row['code'] for row in web_jav_discovery.q_jav_discoveries(self.contract, {})['items']])
+            self.assertIn('HMN-071', [row['code'] for row in web_jav_discovery.q_jav_discoveries(self.contract, {})['items']])
+            command = dict(scope='online', operation='unblock', ids=['virtual reality'])
+            w_tag_management(self.contract, dict(command, token=w_tag_preview(self.contract, command)['token']))
+            self.assertEqual(web_jav_discovery.q_jav_releases(self.contract, {})['candidate_total'], 4)
+
     def test_discovery_cast_projects_canonical_names_and_preserves_unknown_names(self):
         self._add()
         self._check()

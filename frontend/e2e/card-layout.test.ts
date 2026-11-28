@@ -137,8 +137,8 @@ describe('混排作品的画面框',()=>{
   try{
    const page=opened.page,reason='同出演者 · 标签接近 · 同厂牌 · 同系列';
    await page.route(url=>url.pathname==='/api/related',route=>route.fulfill({json:{items:[14,15].map((id,index)=>({
-    id,name:index?'PCH-015 沿海旅行摄影记录的完整篇章':'PCH-014 海边',creator:'旅行摄影作者',location:'local',has_thumb:true,
-    size:4096,duration:120,why:reason,tags:[],
+    id,name:index?'PCH-015 沿海旅行摄影记录的完整篇章':'PCH-014 海边',creator:'旅行摄影作者',location:'local',has_thumb:index===0,
+    size:4096,duration:index?6516:120,why:reason,tags:[],
    }))}}));
    await page.reload({waitUntil:'load'});await page.locator('[data-media-next-reason]').first().waitFor();await settle(page);
    const rows=await page.locator('[data-media-next-row] [data-media-card]').evaluateAll(nodes=>nodes.map(node=>({
@@ -146,6 +146,13 @@ describe('混排作品的画面框',()=>{
     byline:node.querySelector('[data-media-byline]')!.getBoundingClientRect().bottom,
    })));
    assert.ok(rows.every(row=>row.why>=row.byline));assert.ok(Math.abs(rows[0].height-rows[1].height)<1);
+   const missingArtwork=page.locator('[data-media-next-row] [data-artwork-gap="pending"]');
+   const durationClear=await missingArtwork.evaluate(node=>{
+    const action=node.querySelector('button')!.getBoundingClientRect();
+    const duration=node.parentElement!.querySelector('[data-media-duration]')!.getBoundingClientRect();
+    return action.bottom<=duration.top;
+   });
+   assert.ok(durationClear,'补图按钮与长时长角标各有独立位置');
    const url=page.url();await page.locator('[data-media-next-reason]').first().click();
    const popup=page.getByRole('dialog',{name:'推荐理由',exact:true});await popup.waitFor();
    assert.equal((await popup.innerText()).trim(),reason);assert.equal(page.url(),url);

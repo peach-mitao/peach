@@ -1,10 +1,10 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "b58f2307-6b37-4e7d-962f-86fd2aeef2a3", e._sentryDebugIdIdentifier = "sentry-dbid-b58f2307-6b37-4e7d-962f-86fd2aeef2a3");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "9299f9d8-8d05-48a9-9488-3497a1d5558e", e._sentryDebugIdIdentifier = "sentry-dbid-9299f9d8-8d05-48a9-9488-3497a1d5558e");
 	} catch {}
 })();
-import { Button as e, CLOUD_LOCATIONS as t, ErrorText as n, Help as r, IconButton as i, Input as a, Label as o, M6 as s, MEDIA_SOURCE_ICONS as c, MEDIA_SOURCE_OPTIONS as l, Select$1 as u, SelectItem as d, SourceMark as f, __toESM as p, busyProps as m, cx as h, require_jsx_runtime as g, require_react as _, t as v } from "./peach-app.js";
+import { Button as e, CLOUD_LOCATIONS as t, ErrorText as n, Help as r, IconButton as i, Input as a, Label as o, M6 as s, MEDIA_SOURCE_ICONS as c, MEDIA_SOURCE_OPTIONS as l, Select$1 as u, SelectItem$1 as d, SourceMark as f, __toESM as p, busyProps as m, cx as h, require_jsx_runtime as g, require_react as _, t as v } from "./peach-app.js";
 // src/react/settings/folder-rows.tsx
 var y = /* @__PURE__ */ p(_(), 1), b = g();
 function x({ className: e }) {
@@ -187,4 +187,4 @@ function j({ index: e, value: t, onChange: n, options: r = S }) {
 }
 export { T as FolderField, E as FolderFieldLine, A as FolderRow, x as FolderSearchIcon, S as MEDIA_SOURCES, D as MediaReadPolicy, O as MediaReadPolicyHelp, j as SourceSelect, w as isCloudSource, C as sourceMark, k as useFolderRows };
 
-//# debugId=b58f2307-6b37-4e7d-962f-86fd2aeef2a3
+//# debugId=9299f9d8-8d05-48a9-9488-3497a1d5558e

@@ -34,6 +34,7 @@ import { normalizeJavImage } from '../../jav-artwork';
 import { boundedPreference } from '../../number-setting';
 import { NAME_LANGUAGES, type NameLanguage } from '../../core/entity-names';
 import { normalizeGestures } from '../../player/gesture-settings';
+import { AFTER_PLAYBACK_ICONS, afterPlaybackLabel } from '../../player/after-playback';
 import { GlowSettings } from './glow-settings';
 import { Icon, RemixIcon } from './icon';
 import { IconSwitch } from './legacy-controls';
@@ -48,6 +49,7 @@ import { queryClient } from '../query';
 import { Note } from '../components/note';
 import { ShortcutSetting } from './shortcut-setting';
 import { SidebarOrder } from './sidebar-order';
+import { TopToolbarOrder } from './top-toolbar-order';
 import { NavigationDropLine, NavigationOrderMenu, NavigationOrderPreferences, useNavigationOrder } from '../components/navigation-order';
 import { useSidebarReorder } from '../sidebar/use-sidebar-reorder';
 import { SettingsDialogClose } from '../components/settings-dialog-close';
@@ -64,15 +66,15 @@ const SECTIONS = [
 ] as const;
 
 const SORT_OPTIONS: readonly Choice[] = [
-  ['seed', t('settings:shared.random')], ['rating', t('settings:shared.rating')], ['o', t('settings:shared.climaxCount')], ['plays', t('settings:shared.plays')],
-  ['dur', t('settings:shared.duration')], ['size', t('settings:shared.fileSize')], ['new', t('settings:shared.dateAdded')], ['played', t('settings:shared.lastWatched')],
+  ['seed', t('settings:shared.random'), 'shuffle'], ['rating', t('settings:shared.rating'), 'star'],
+  ['o', t('settings:shared.climaxCount'), 'sperm'], ['plays', t('settings:shared.plays'), 'play'],
+  ['dur', t('settings:shared.duration'), 'clock'], ['size', t('settings:shared.fileSize'), 'hard-drive'],
+  ['new', t('settings:shared.dateAdded'), 'calendar'], ['played', t('settings:shared.lastWatched'), 'history'],
 ];
-/* 「播完之后」各档的名字，键同 `AFTER_PLAYBACK_CHOICES`。 */
-const afterPlaybackOptions = (): readonly Choice[] => [
-  ['stop', t('settings:playbackEnd.stop')], ['next', t('settings:playbackEnd.next')], ['repeat-all', t('settings:playbackEnd.repeatAll')],
-  ['shuffle', t('settings:playbackEnd.shuffle')], ['repeat-one', t('settings:playbackEnd.repeatOne')],
+const afterPlaybackOptions = () => AFTER_PLAYBACK_CHOICES.map(mode => [mode, afterPlaybackLabel(mode), AFTER_PLAYBACK_ICONS[mode]] as const);
+const DIRECTION_OPTIONS: readonly Choice[] = [
+  ['desc', t('settings:shared.descending'), 'arrow-down'], ['asc', t('settings:shared.ascending'), 'arrow-up'],
 ];
-const DIRECTION_OPTIONS: readonly Choice[] =[['desc', t('settings:shared.descending')], ['asc', t('settings:shared.ascending')]];
 const JAV_IMAGE_OPTIONS: readonly Choice[] = [['cover', t('settings:preferencesPanel.officialCover'), ''], ['thumbnail', t('settings:preferencesPanel.previewImage'), '']];
 /* 新作那一行收不收合集由服务端按数据库里的设置筛，这里的开关只是镜像：真相在 `/api/settings`。 */
 const FEED_COMPILATIONS = [
@@ -310,11 +312,11 @@ function Group({ index, tab, children }: { index: number; tab: number; children:
   );
 }
 
-function SettingsCard({ title, heading: Heading = 'h4', copyKey, children }: {
-  title?: string; heading?: 'h4' | 'h5'; copyKey?: string; children: ReactNode;
+function SettingsCard({ title, heading: Heading = 'h4', copyKey, children, id }: {
+  title?: string; heading?: 'h4' | 'h5'; copyKey?: string; children: ReactNode; id?: string;
 }) {
   const card = <div data-setting-card="">{children}</div>;
-  return title ? <section data-setting-block="" aria-label={title}>
+  return title ? <section data-setting-block="" aria-label={title} id={id}>
     <Heading data-settings-subheading="" data-copy-key={copyKey}>{title}</Heading>
     {card}
   </section> : card;
@@ -479,6 +481,10 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
               </h4>
               <SettingsCard heading="h5" title={t('settings:sidebarOrder.groupLabel')} copyKey="settings.sidebarOrder.groupLabel">
                 <section data-sidebar-setting=""><SidebarOrder host={editor} /></section>
+              </SettingsCard>
+              <SettingsCard id="top-toolbar-settings" heading="h5"
+                title={t('settings:topToolbar.title')} copyKey="settings.topToolbar.title">
+                <section data-sidebar-setting=""><TopToolbarOrder host={editor} /></section>
               </SettingsCard>
               <SettingsCard heading="h5" title={t('settings:preferencesPanel.menuAndTabOrder')} copyKey="settings.preferencesPanel.menuAndTabOrder">
                 <section data-sidebar-setting=""><NavigationOrderPreferences feedback={feedback} /></section>

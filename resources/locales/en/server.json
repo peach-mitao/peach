@@ -1698,6 +1698,8 @@
       "holdGone": "This group of followed creators is no longer waiting for confirmation; refresh and check again"
     },
     "onlineTagManagement": {
+      "blockScopeInvalid": "Select a valid scope for blocking content",
+      "hiddenInvalid": "Invalid tag visibility setting",
       "nameInvalid": "Tag names must be 1 to 80 characters with no commas or control characters",
       "nameTaken": "\"{{name}}\" already belongs to the tag \"{{tag}}\"; use Merge tags instead",
       "selectionInvalid": "Select valid online tags, up to 2000 at a time",

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Select, SelectItem } from './select';
+import type { Glyph } from './sprite-glyph';
 
-type Choice = readonly [value: string, label: string, icon?: string];
+type Choice = readonly [value: string, label: string, icon?: string | Glyph];
 
 /** 有本机标签的选择字段。值、选项变更和浮层行为由 BoardUI Select 管理。 */
 export function SelectField({ id, label, options, value, disabled, busy, hidden, describedBy, epoch, onPick, renderValue }: {
@@ -15,13 +16,12 @@ export function SelectField({ id, label, options, value, disabled, busy, hidden,
         selectedKey={selected} isDisabled={disabled} renderValue={renderValue}
         className="min-w-0" triggerClassName="h-(--control-h)"
         onSelectionChange={(key) => { if (key !== null) onPick(String(key)) }}>
-        {options.map(([key, text, mark]) =>
-          <SelectItem key={key} id={key} textValue={text} data-select-option={key}>
-            {mark?.startsWith('data:image/png;base64,')
-              ? <img className="size-4 shrink-0 object-contain" src={mark} alt="" />
-              : mark ? <svg className="size-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${mark}`} /></svg> : null}
-            {text}
-          </SelectItem>)}
+        {options.map(([key, text, mark]) => {
+          const image = typeof mark === 'string' && mark.startsWith('data:image/png;base64,') ? mark : undefined;
+          return <SelectItem key={key} id={key} textValue={text} data-select-option={key} glyph={image ? undefined : mark}>
+            {image ? <img className="size-4 shrink-0 object-contain" src={image} alt="" /> : null}{text}
+          </SelectItem>;
+        })}
       </Select> : null}
     </div>
   );

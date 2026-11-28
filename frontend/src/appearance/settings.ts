@@ -18,7 +18,9 @@ import { normalizeSortControls, type SortControls } from '../sort-controls';
 import { DEFAULT_ACCENT, DEFAULT_HOME_GLOW, normalizeAccent, normalizeHomeGlow, type HomeGlow } from './home-glow';
 import { NAME_LANGUAGES, type NameLanguage } from '../core/entity-names';
 import { configureGestureSettings, normalizeGestures, type GestureSettings } from '../player/gesture-settings';
+import { AFTER_PLAYBACK_CHOICES, type AfterPlayback } from '../player/after-playback';
 import { instancePreferences, type BrowsePreferences } from './instance-preferences';
+import { normalizeTopToolbar, type TopToolbarPreferences } from './top-toolbar';
 
 export { SETTINGS_KEY };
 /* 主题三档，键名与 <html> 上的 data-theme 同一套写法：web/css/01-base.css 的色板
@@ -38,8 +40,7 @@ export const NOTIFICATION_DEFAULTS = { resume: 3, recommendation: 1, follow: 1, 
 export type NotificationLimits = Record<keyof typeof NOTIFICATION_DEFAULTS, number>;
 export const FEED_COMPILATION_KEYS = ['feedHideGroupCompilations', 'feedHideSoloCompilations', 'feedHideExcerpts'] as const;
 /** 播完一条之后怎么接：停下、顺序、列表循环、随机、单片循环。顺序与循环、随机只在播放列表和 Mix 队列里有下一条可接。 */
-export const AFTER_PLAYBACK_CHOICES = ['stop', 'next', 'repeat-all', 'shuffle', 'repeat-one'] as const;
-export type AfterPlayback = typeof AFTER_PLAYBACK_CHOICES[number];
+export { AFTER_PLAYBACK_CHOICES, type AfterPlayback };
 
 /** 归一化之后一定在的那几项。对象上还有别的字段（壳与各岛按需写入），这里不一一列出。 */
 export interface AppSettings extends BrowsePreferences {
@@ -106,6 +107,7 @@ export interface AppSettings extends BrowsePreferences {
   browserNotices: boolean;
   notificationLimits: NotificationLimits;
   showFeedbackButton: boolean;
+  topToolbar: TopToolbarPreferences;
   feedHideGroupCompilations: boolean;
   feedHideSoloCompilations: boolean;
   feedHideExcerpts: boolean;
@@ -195,6 +197,7 @@ export function normalizeAppSettings(raw: unknown): { settings: AppSettings; mig
   }
   settings.notificationLimits = notificationLimits;
   settings.showFeedbackButton = settings.showFeedbackButton !== false;
+  settings.topToolbar = normalizeTopToolbar(settings.topToolbar);
   settings.feedHideGroupCompilations = settings.feedHideGroupCompilations !== false;
   settings.feedHideSoloCompilations = settings.feedHideSoloCompilations === true;
   settings.feedHideExcerpts = settings.feedHideExcerpts !== false;

@@ -94,11 +94,11 @@ export function islandSelect(
  *  `react/components/filter-glass.tsx` 的 `FilterGlassRows`：上排照给的 HTML 画（不给就不出这一行），
  *  下排读数的名目此刻就有，数字那一格是一条微光，右边是 `controls`（卡片／列表与排序键的等待态）。
  *  「全选」要等条数，骨架里不占位，它排在读数后面、不挤动右边那组。 */
-export function islandGlassRows({ label, top = '', attrs = '', controls = '', className = '' }:
-  { label: string; top?: string; attrs?: string; controls?: string; className?: string }): string {
+export function islandGlassRows({ label, top = '', attrs = '', controls = '', className = '', search = '' }:
+  { label: string; top?: string; attrs?: string; controls?: string; className?: string; search?: string }): string {
   return `<div role="group" data-filter-glass="" data-glass-pane="" data-catalog-frame=""${attrs} class="sticky top-topbar z-10 mb-5.5 flex flex-col${className ? ` ${className}` : ''}">`
     + (top ? `<div data-filter-row="top" class="flex h-12 min-w-0 items-center gap-1.75 overflow-x-auto overscroll-x-contain px-3 py-2">${top}</div>` : '')
     + `<div data-filter-row="bottom" aria-busy="true" class="flex min-w-0 items-center gap-3 px-3 py-2 min-h-12">`
     + `<span data-catalog-summary=""><span data-catalog-readout="">${label} · <span data-skeleton="count" aria-hidden="true"`
-    + ` class="relative inline-block h-3.5 w-12 rounded-md align-middle skeleton-sheen"></span></span></span>${controls}</div></div>`;
+    + ` class="relative inline-block h-3.5 w-12 rounded-md align-middle skeleton-sheen"></span></span>${search}</span>${controls}</div></div>`;
 }

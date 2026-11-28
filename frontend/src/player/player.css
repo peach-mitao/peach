@@ -245,7 +245,8 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 .vjs-peach-settings [data-player-quality-badge]{position:absolute;z-index:2;right:4px;top:1px;min-width:17px;height:12px;padding:0 2px;
   display:grid;place-items:center;border-radius:var(--badge-radius);background:var(--tungsten);color:var(--ground);font-size:var(--fs-xs);font-weight:600;line-height:1;transform:scale(.67);transform-origin:top right}
 .vjs-peach-settings [data-player-quality-badge][hidden]{display:none}
-.vjs-peach-settings-menu{box-sizing:border-box;position:absolute;z-index:2300;right:-100px;bottom:52px;width:min(274px,calc(100vw - 28px));max-height:min(420px,calc(var(--peach-player-h,480px) - 74px),calc(100vh - 130px));overflow:auto;
+.vjs-peach-settings-menu{--peach-settings-panel-limit:min(420px,calc(var(--peach-player-h,480px) - 74px),calc(100vh - 130px));
+  box-sizing:border-box;position:absolute;z-index:2300;right:-100px;bottom:52px;width:min(274px,calc(100vw - 28px));overflow:clip;
   padding:0;border:0;border-radius:var(--floating-radius);background:rgba(0,0,0,.6);box-shadow:none;backdrop-filter:blur(16px);
   color:#fff;text-shadow:0 0 1px rgba(0,0,0,.8);font-weight:400;font-size:var(--fs-md);line-height:1.3;font-family:inherit}
 /* 面板的显隐照 YouTube 播放器 9470c977 的 www-player.css：`.ytp-popup` 淡入 .1s
@@ -255,14 +256,9 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 .vjs-peach-settings-menu{opacity:1;visibility:visible;transition:opacity .1s cubic-bezier(0,0,.2,1)}
 .vjs-peach-settings-menu[aria-hidden="true"]{opacity:0;visibility:hidden;pointer-events:none;
   transition:opacity .1s cubic-bezier(.4,0,1,1),visibility 0s .1s}
-/* 次级菜单同一份来源：`.ytp-popup-animating` 与其面板都是 .25s cubic-bezier(.4,0,.2,1)，
-   `.ytp-panel-animate-back/forward` 是 translateX(∓100%) 加透明度 0。 */
-.vjs-peach-settings-menu.vjs-peach-popup-animating{overflow:hidden;pointer-events:none;transition:height .25s cubic-bezier(.4,0,.2,1)}
 .vjs-peach-panel{position:relative}
-.vjs-peach-popup-animating .vjs-peach-panel{transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s cubic-bezier(.4,0,.2,1)}
+.vjs-peach-settings-menu>.vjs-peach-panel{max-height:var(--peach-settings-panel-limit);overflow:hidden auto;overscroll-behavior:contain}
 .vjs-peach-panel-leaving{position:absolute;left:0;top:0;width:100%}
-.vjs-peach-panel-animate-back{opacity:0;transform:translateX(-100%)}
-.vjs-peach-panel-animate-forward{opacity:0;transform:translateX(100%)}
 .vjs-peach-settings-menu button{box-sizing:border-box;position:relative;isolation:isolate;overflow:hidden;width:100%;min-height:48px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:#fff;font:inherit;cursor:pointer}
 .vjs-peach-settings-menu button:before{content:"";position:absolute;z-index:0;inset:0;border-radius:inherit;background:transparent;pointer-events:none;transition:background .1s cubic-bezier(.05,0,0,1)}
 .vjs-peach-settings-menu button:hover:before,.vjs-peach-settings-menu button:focus-visible:before{background:rgba(255,255,255,.1)}
@@ -285,6 +281,10 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
 .video-js .vjs-peach-menu-option{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;padding:0 20px 0 8px!important;text-align:left;font-size:var(--fs-md)!important;line-height:18.2px}
 .vjs-peach-option-check{width:40px;height:24px;display:grid;place-items:center}.vjs-peach-option-check svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vjs-peach-option-label{min-width:0}
+.video-js .vjs-peach-menu-option[data-player-playback-end-option]{grid-template-columns:20px minmax(0,1fr) 20px;gap:6px;padding:0 8px!important}
+[data-player-playback-end-option] .vjs-peach-option-icon,
+[data-player-playback-end-option] .vjs-peach-option-check svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+[data-player-playback-end-option] .vjs-peach-option-check{width:20px}
 /* 播放速度面板照 YouTube delhi-modern（player 9470c977 的 www-player.css 与 base.js）：
    内容区 24px/16px/16px 内距；读数 18px/900/22px 居中、下留 24px；滑条一行 gap 16px、
    下留 24px，加减键 32px 圆、24px 字，各动 0.05；预设胶囊 53×32、圆角 16、12px 字、gap 8px，
@@ -392,7 +392,7 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
    窄屏照原样偏移会把整个面板推到播放器外面。贴住设置键右缘往左铺，高度按播放器
    自己的高度收顶（`--peach-player-h` 由布局脚本写在播放器元素上）。 */
 .video-js.vjs-peach-xsmall .vjs-peach-settings-menu{right:0;width:min(274px,calc(100vw - 48px));
-  max-height:calc(var(--peach-player-h,420px) - 74px)}
+  --peach-settings-panel-limit:calc(var(--peach-player-h,420px) - 74px)}
 /* 面板底边离播放器底边 66px（离设置键 52px 加控制条那 14px），顶上再留 8px，所以收顶取
    播放器高度减 74px：320px 高的播放器给出 246px。八档播放速度单列要 57+16+8×48=457px，
    排两列、行高 44px 是 57+8+4×44=241px，最挤的那个面板也不用滚。 */
@@ -409,6 +409,8 @@ video.video-js{vertical-align:top;font-size:10px;line-height:1;font-family:Arial
    盖在统计面板上方的卡片，并撤掉 Video.js 那层铺满全画面的渐变——留着它就等于用报错
    把统计面板整个糊掉，而加载失败时正需要看统计里的编码和体积。 */
 [data-stage-media] .video-js.vjs-error .vjs-error-display{background:none}
+[data-stage-media] .video-js.vjs-error .vjs-control-bar:has(.vjs-peach-settings-menu[aria-hidden="false"]){z-index:10}
+[data-stage-media] .video-js.vjs-error .vjs-peach-settings-menu{background:#151515}
 [data-stage-media] .video-js.vjs-error .vjs-error-display .vjs-modal-dialog-content{
   z-index:9;left:50%;top:50%;width:max-content;max-width:min(560px,calc(100% - 48px));height:auto;
   padding:14px 18px;border-radius:var(--surface-radius);background:rgba(2,4,8,.86);

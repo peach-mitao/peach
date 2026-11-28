@@ -105,3 +105,4 @@ LEGACY_REMOTE_MISSING = "远端任务列表里找不到这个任务"
 ONEPONDO_NAME = "一本道"
 #: 115 目标目录留空时，在 115 前缀下建议新建的目录名（建出来就是网盘上的真实路径）。
 SUGGESTED_CLOUD_FOLDER = "云下载"
+VR_RELEASE_MARKER = r"(?:[48]K\s*)?VR(?:専用)?"

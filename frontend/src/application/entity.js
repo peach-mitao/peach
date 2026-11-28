@@ -26,7 +26,7 @@ import { applyDensity, paintPhotoSizeButton } from './../appearance/density';
 import { applicationEffects } from './effects';
 import { entitySkeletonHtml } from './../entity-skeleton';
 import { INDEX_TITLES } from './../index-skeleton';
-import { FILTER_WAITING, filterControlsSkeletonHtml } from './../filter-controls-skeleton';
+import { FILTER_WAITING, filterControlsSkeletonHtml, filterSearchSkeletonHtml } from './../filter-controls-skeleton';
 import { cardRatio, gridLayout } from './../appearance/layout';
 import { islandShortcutsEntry } from './../island-skeleton';
 import { catalogContentSkeletonHtml } from '../catalog-content-skeleton';
@@ -163,7 +163,7 @@ export async function entityAliasForm(mine,write){
 
 export function showEntityLoading(kind,name){
   const jav=['performer','studio'].includes(kind)&&feedState.hasEntityPart(kind,name,'jav');
-  const head=`<div data-filter-row="bottom" class="flex min-w-0 items-center gap-3 px-3 py-2 min-h-12"><h3 data-entity-readout><span data-skeleton="count" class="relative inline-block h-3.5 w-24 rounded-md align-middle skeleton-sheen"></span></h3>${islandShortcutsEntry()}${kind==='agency'?'':filterControlsSkeletonHtml(sortKeys(state.sort,state.dir,jav),jav?{name:'jav-layout',label:t('shell:cardLayout.jav'),value:javLayout(),options:JAV_LAYOUTS}:null)}</div>`;
+  const head=`<div data-filter-row="bottom" aria-busy="true" class="flex min-w-0 items-center gap-3 px-3 py-2 min-h-12"><h3 data-entity-readout><span data-skeleton="count" class="relative inline-block h-3.5 w-24 rounded-md align-middle skeleton-sheen"></span></h3>${islandShortcutsEntry()}${kind==='agency'?'':filterSearchSkeletonHtml()+filterControlsSkeletonHtml(sortKeys(state.sort,state.dir,jav),jav?{name:'jav-layout',label:t('shell:cardLayout.jav'),value:javLayout(),options:JAV_LAYOUTS}:null,{fields:[{key:'tags',id:'entity-tags',label:t('catalog:shared.tags')}]})}</div>`;
   const top=kind==='agency'?'':`<div data-entity-media><button type="button" data-media-view="videos" aria-label="${t('catalog:shared.videos')}" aria-pressed="true" ${FILTER_WAITING}>${icon('play')}</button><button type="button" data-media-view="photos" data-media-icon="image" aria-label="${t('catalog:entityFilter.photos')}" ${FILTER_WAITING}>${icon('pics')}</button></div><span data-entity-sep></span><div data-entity-scroll><div data-entity-states>${catalogState.catalogViews().map(view=>`<button type="button" data-entity-state="${esc(view.k)}" aria-pressed="${state.state===view.k}" ${FILTER_WAITING}>${esc(view.label)}</button>`).join('')}<span data-entity-sep></span></div>`;
   const body=kind==='agency'
     ?indexSkeletonHtml({kind:'performers',layout:indexState.peopleIndexLayout()})

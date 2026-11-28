@@ -599,7 +599,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
             id: `tag-${at}`, k: `tag-${at}`, n: 123456 + at, aliases: [], hidden: false,
           })) } });
         });
-        await page.getByRole('button', { name: '添加屏蔽标签', exact: true }).click();
+        await page.getByRole('button', { name: '添加标签规则', exact: true }).click();
         const input = page.getByRole('combobox', { name: '标签名称' });
         const idle = await input.boundingBox();
         assert.ok(idle);
@@ -716,8 +716,8 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
       const dot = page.locator('#index [data-alpha-tag][data-tag-cat="r34-artist"] [data-tag-dot]');
       await dot.waitFor({ timeout: 5_000 });
       assert.equal(await dot.evaluate((element) => getComputedStyle(element).backgroundColor), 'rgb(227, 108, 108)');
-      // 在线词表进了多选也有自己的浮条（隐藏、屏蔽内容），页底同样按它的实际高度留白。
-      await dock.getByRole('button', { name: '屏蔽内容', exact: true }).waitFor({ timeout: 5_000 });
+      // 在线词表浮条复用标签规则入口，页底按浮条的实际高度留白。
+      await dock.getByRole('button', { name: '设置标签规则', exact: true }).waitFor({ timeout: 5_000 });
       assert.equal(await dock.count(), 1, '在线词表只摆它自己那一条多选坞');
       const online = await dock.evaluate((element) => ({
         padding: parseFloat(getComputedStyle(document.querySelector('#index .peach-react')!).paddingBottom),

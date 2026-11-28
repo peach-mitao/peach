@@ -22,7 +22,7 @@ import { LOC, fmtDur, fmtSize } from '@peach/legacy/core';
 
 import { Button } from '@/components/base/buttons/button';
 
-import { queueContentSkeletonHtml } from '../../queue-skeleton';
+import { qualityGoalsSkeleton } from '../../management-skeletons';
 import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-download-dialog';
 import type { QualityGoalsProps } from '../bundle';
 import { CardTags, Icon } from '../components/card-meta';
@@ -149,9 +149,7 @@ export function QualityGoalsPage({ toast, ...props }: QualityGoalsProps) {
   };
   const rectangle = useRectangleSelection(!goals.isFetching && !goals.isError
     ? (keys, add) => selectRectangle(keys.map(Number), add) : undefined, { selecting });
-  if (goals.isPending) return <Page><div dangerouslySetInnerHTML={{
-    __html: queueContentSkeletonHtml('quality-goals', t('shell:spinner.loading'), ['w-20', 'w-24']),
-  }} /></Page>;
+  if (goals.isPending) return <Page><div inert dangerouslySetInnerHTML={{ __html: qualityGoalsSkeleton(t('shell:spinner.loading')) }} /></Page>;
   if (!data) {
     return (
       <Page>

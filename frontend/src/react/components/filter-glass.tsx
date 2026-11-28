@@ -19,6 +19,7 @@ import { useStuck } from './use-stuck';
 import { useHorizontalScroller } from './use-horizontal-scroller';
 import { useViewGlide } from './use-view-glide';
 import { t } from '../../i18n';
+import { filterTagSkeletonCells } from '../../filter-controls-skeleton';
 import './filter-glass.css';
 
 export const FILTER_TOOLBAR_POPOVER_OFFSET = 12;
@@ -148,7 +149,7 @@ export function FilterGlassRows(
 
 interface FilterScopeChoice<Key extends string> {
   key: Key;
-  label: string;
+  label: ReactNode;
   href?: string;
   attrs?: Record<`data-${string}`, string>;
 }
@@ -161,7 +162,7 @@ export function useFilterScope<Key extends string>(active: Key, rowRef?: RefObje
   const glide = useViewGlide(pane, row, '[data-catalog-view][aria-pressed="true"]', active);
   return {
     pane: <span ref={pane} data-view-glide="" aria-hidden="true" />,
-    choices: (label: string, items: readonly FilterScopeChoice<Key>[], select: (key: Key) => void) =>
+    choices: (label: string, items: readonly FilterScopeChoice<Key>[], select: (key: Key) => void, separator = true) =>
       <div ref={row} role="group" aria-label={label} data-catalog-views="" onPointerLeave={glide.leave}>
         {items.map(({ key, label, href, attrs }) => {
           const common = { ...attrs, 'data-catalog-view': key, 'data-entity-press': '',
@@ -170,7 +171,7 @@ export function useFilterScope<Key extends string>(active: Key, rowRef?: RefObje
             ? <a key={key} href={href} {...common} onClick={event => { event.preventDefault(); select(key) }}>{label}</a>
             : <button key={key} type="button" {...common} onClick={() => select(key)}>{label}</button>;
         })}
-        <span data-entity-sep="" aria-hidden="true" />
+        {separator ? <span data-entity-sep="" aria-hidden="true" /> : null}
       </div>,
   };
 }
@@ -208,17 +209,19 @@ export function FilterPill(
 }
 
 /** 快捷标签与下拉共用同一份选项和选择动作。 */
-export function FilterTagStrip({ choices, onSelect }: {
+export function FilterTagStrip({ choices, onSelect, pending = false }: {
   choices: readonly { id: string; label: string; count?: number | null; selected?: boolean }[];
   onSelect(id: string): void;
+  pending?: boolean;
 }) {
   const scroll = useHorizontalScroller<HTMLDivElement>();
-  if (!choices.length) return null;
+  if (!choices.length) return pending ? <div data-filter-tag-strip="" data-filter-tags-skeleton="" data-loading=""
+    aria-hidden dangerouslySetInnerHTML={{ __html: filterTagSkeletonCells() }} /> : null;
   const shown = [...choices.slice(48).filter(choice => choice.selected), ...choices.slice(0, 48)];
   return <div ref={scroll} data-filter-tag-strip="">
     {shown.map(choice => <FilterPill key={choice.id} data-filter-tag={choice.id} pressed={!!choice.selected}
-      className="aria-pressed:border-solid aria-pressed:bg-(--picked)" onPress={() => onSelect(choice.id)}>
-      {choice.label}{choice.count != null ? <span data-count-badge="" className="text-caption-1-regular tabular-nums text-text-tertiary">{choice.count.toLocaleString()}</span> : null}
+      onPress={() => onSelect(choice.id)}>
+      {choice.label}{choice.count != null ? <span data-count-badge="" className="text-caption-1-regular tabular-nums">{choice.count.toLocaleString()}</span> : null}
     </FilterPill>)}
   </div>;
 }

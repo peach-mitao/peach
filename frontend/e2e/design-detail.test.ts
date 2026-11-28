@@ -561,6 +561,13 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
       assert.deepEqual([box.x, box.y, box.width], [8, 8, MOBILE.width - 16]);
       assert.equal((await styleOf(page, '#stage > [data-stage-scroll]', ['overflow-y']))!['overflow-y'], 'auto');
       assert.deepEqual(await styleOf(page, '#stage [data-stage-media]', ['position', 'top']), { position: 'sticky', top: '0px' });
+      const scroll = page.locator('#stage > [data-stage-scroll][data-scroll-edges]');
+      const initialMask = await scroll.evaluate(node => getComputedStyle(node).maskImage);
+      await scroll.evaluate(node => { node.scrollTop = 32 });
+      const upperEdge = page.locator('#stage > .ui-ov-edges.ui-can-scroll-top > .ui-ov-edge-top');
+      await upperEdge.waitFor({ state: 'attached' });
+      assert.equal(await scroll.evaluate(node => getComputedStyle(node).maskImage), initialMask);
+      assert.equal(await upperEdge.isVisible(), false);
       assert.deepEqual(withoutPlayer(opened.problems), []);
     } finally {
       await opened.close();

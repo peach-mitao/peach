@@ -22,7 +22,7 @@ def _identity(connection, kind, name):
     return int(found["id"]) if found else f"name:{entities.normalize_entity_name(name)}"
 
 
-def _cached_movie(code, contract):
+def _cached_movie(code, contract, *, remember=True):
     from .javdb_public import PUBLIC_API, public_cache_scope, cache_checked_at
     metadata = discovery_metadata(contract)
     stored, _ = metadata.peek(code)
@@ -30,16 +30,16 @@ def _cached_movie(code, contract):
         return stored
     with public_cache_scope(contract.cover_root.parent / 'jav-public'):
         source = PUBLIC_API.peek_movie(code)
-        if source:
+        if source and remember:
             metadata.remember(code, source, checked_at=cache_checked_at('movie:' + code + ':'))
     return source or {}
 
 
-def _external(connection, contract):
-    web_feeds.register_listed(contract, connection)
+def _external(connection, contract, *, new_releases=False):
+    listed = web_feeds.register_listed(contract, connection, filter_tags=new_releases)
     rows = [dict(row) for row in connection.execute(
         "SELECT d.* FROM feed_discovery d WHERE d.ignored_at IS NULL AND "
-        + " AND ".join(web_feeds.LISTED) + " ORDER BY d.id")]
+        + " AND ".join(listed) + " ORDER BY d.id")]
     identities = {}
     excluded = entities.male_performer_ids(connection)
     decisions = load_genre_decisions(connection)
@@ -442,7 +442,7 @@ def w_jav_release_metadata(contract, body):
 def _release_rows(contract, connection, *, taste):
     """新作候选：「发现」那批去重，出演换成解析后的规范名、厂牌换成规范名；按口味筛选或排序时计算口味分。"""
     unique = {}
-    for row in _external(connection, contract):
+    for row in _external(connection, contract, new_releases=True):
         unique.setdefault(web_catalog.normalise_code_key(row["code"]) or row["id"], row)
     rows = list(unique.values())
     if taste:

@@ -340,6 +340,7 @@
 /* 重复文件页那条「批量保留」（`components/filter-glass.tsx`）和复核筛选条是同一块玻璃：
  * 旧版两处都是首页 `.board-filter-frame` 那一副，几何与饱和度都一样。 */
 .peach-react :is([data-review-filter], [data-filter-glass]) {
+  --glass-fill: var(--glass-panel-fill);
   top: calc(var(--topH) + 8px);
   /* 与里面的键同心：键圆角 8px、离浮层上沿 8px，浮层圆角取 8 + 8。 */
   border-radius: 16px;
@@ -551,6 +552,7 @@ html:has([data-selection-dock]) {
 .peach-react [data-tag-cat="r34-unknown"] { --tag-color: var(--muted); }
 /* 浮层上排的药丸没有「未分类」那一档：「全部」不带类型色，选中时退回主文字色。 */
 .peach-react [data-tag-pill][data-tag-cat="all"] { --tag-color: initial; }
+.peach-react [data-tag-name-combobox] > [role="group"] { border: 1px solid var(--color-border-button-default); }
 .peach-react [data-tag-dot] { background: var(--tag-color, var(--muted)); }
 .peach-react [data-tag-pill][data-tag-cat="all"] [data-tag-dot] {
   background: linear-gradient(135deg, #55a7ff, #d783ff);

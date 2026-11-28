@@ -3,7 +3,7 @@ import { cardClass } from './react/components/card';
 import { cardRatio, gridLayout, javLayout, JAV_LAYOUTS } from './appearance';
 import { DISCOVERY_SORTS, discoveryOrder, RELEASE_SORTS } from './react/jav/discovery-sorts';
 import { tierPlaceholdersHtml } from './catalog-filter-skeleton';
-import { FILTER_WAITING, catalogViewSkeletonHtml, facetFilterSkeletonFields, filterControlsSkeletonHtml, sortKeysSkeletonHtml } from './filter-controls-skeleton';
+import { FILTER_WAITING, catalogViewSkeletonHtml, facetFilterSkeletonFields, filterControlsSkeletonHtml, filterSearchSkeletonHtml, sortKeysSkeletonHtml } from './filter-controls-skeleton';
 import { listTableSkeletonHtml } from './catalog-content-skeleton';
 import { catalogView } from './react/catalog-grid/catalog-view';
 import { discoveryTableSnapshot, releaseTableSnapshot } from './react/jav/release-table-columns';
@@ -95,7 +95,7 @@ function onlineCatalogPageSkeleton(): string {
         </div>${javTagStripSkeletonHtml()}</div>
       </div>
       <div data-filter-row="bottom" aria-busy="true" class="flex min-h-12 min-w-0 items-center gap-3 px-3 py-2">
-        <span data-catalog-summary><span data-catalog-readout><span data-skeleton="count" class="skeleton-sheen inline-block h-3.5 w-28 rounded-md"></span></span></span>
+        <span data-catalog-summary><span data-catalog-readout><span data-skeleton="count" class="skeleton-sheen inline-block h-3.5 w-28 rounded-md"></span></span>${filterSearchSkeletonHtml()}</span>
         ${controls}
       </div>
     </div>
@@ -131,6 +131,7 @@ export function releasesFilterSkeleton(): string {
     </div>
     <div data-filter-row="bottom" aria-busy="true" class="flex min-h-12 min-w-0 items-center gap-3 px-3 py-2">
       <span data-catalog-summary><span data-catalog-readout><span data-skeleton="count" class="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen"></span></span></span>
+      ${filterSearchSkeletonHtml()}
       ${filterControlsSkeletonHtml(sorts, { name: 'jav-layout', label: t('catalog:entityFilter.javCardLayout'), value: javLayout(), options: JAV_LAYOUTS }, { folders: false, fields: facetFilterSkeletonFields('jav-release'), group: 'releases' })}
     </div>
   </div>`;
@@ -150,6 +151,7 @@ function javFilterSkeleton(): string {
     <div data-filter-row="bottom" aria-busy="true" class="flex min-h-12 min-w-0 items-center gap-3 px-3 py-2">
       <span data-catalog-summary><span data-catalog-readout><span data-skeleton="count" class="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen"></span></span>
       ${islandShortcutsEntry()}</span>
+      ${filterSearchSkeletonHtml()}
       <span data-entity-sorts>${active === 'external' ? `<button type="button" data-entity-batch data-filter-action data-skeleton-action data-jav-metadata-update title="${t('catalog:javDiscover.updateMetadata')}" aria-label="${t('catalog:javDiscover.updateMetadata')}" disabled>${islandGlyph('refresh-cw', 'size-4')}</button>` : ''}
         ${catalogView() === 'cards' ? `<span data-entity-layout class="inline-flex w-max max-w-full flex-none items-center gap-0.5 rounded-lg">${size('big', 'maximize')}${size('small', 'layout-grid')}</span>` : ''}
         ${catalogViewSkeletonHtml()}

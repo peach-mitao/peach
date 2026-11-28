@@ -167,7 +167,7 @@
 .peach-react button[data-follow-provider][aria-pressed="true"] {
   border-style: solid;
   border-color: var(--field-ring);
-  background: var(--picked);
+  background: var(--glass-control-selected);
 }
 .peach-react [data-follow-provider] > img { width: 18px; height: 18px; margin: 0; border-radius: var(--badge-radius); object-fit: contain; }
 /* 标签药丸按来源的类型着色，没记类型的按 general 那一档蓝。 */
@@ -185,7 +185,7 @@
   color: var(--glass-text, var(--ink));
 }
 .peach-react [data-follow-filter-glass] [data-follow-tag] [data-count-badge] {
-  color: color-mix(in srgb, var(--glass-text) 55%, transparent);
+  color: var(--glass-text-secondary);
   font-family: "Cascadia Mono", Consolas, ui-monospace, "Microsoft YaHei UI", "PingFang SC", monospace;
   font-size: 11px;
 }
@@ -201,7 +201,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: color-mix(in srgb, var(--glass-text) 60%, transparent);
+  color: var(--glass-text-secondary);
   cursor: pointer;
 }
 .peach-react button[data-follow-images-only]:is(:hover, [aria-pressed="true"]) { color: var(--glass-text); }

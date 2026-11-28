@@ -1,10 +1,10 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "efef54f3-9e68-4f77-83bd-b584ff6bb802", e._sentryDebugIdIdentifier = "sentry-dbid-efef54f3-9e68-4f77-83bd-b584ff6bb802");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "926ac1a4-8cc2-47e9-a39a-603a20bbdc63", e._sentryDebugIdIdentifier = "sentry-dbid-926ac1a4-8cc2-47e9-a39a-603a20bbdc63");
 	} catch {}
 })();
-import { Button as e, CardTags as t, CatalogViewToggle as n, CloudDownloadDialog as r, EmptyState as i, FilterGlassRows as a, FilterSearch as o, Gg as s, H7 as c, Icon as l, LOC as u, ListLibrary as d, OA as f, QUALITY_GOALS_KEY as p, QueryErrorNote as m, QueueFilterChips as h, QueueIdentity as g, QueuePicture as _, QueueTable as v, SelectAllButton as y, SelectionDock as b, SortKeys as x, __toESM as S, enterPageSelection as C, exitPageSelection as ee, fetchQualityGoals as te, fmtDur as w, fmtSize as T, hasSelectionModifier as E, joinList as ne, previewUrl as D, providerIcon as re, pv as O, queueContentSkeletonHtml as ie, require_jsx_runtime as k, require_react as A, t as j, useCatalogView as ae, useDense as M, useLibraryTints as N, usePageSelection as oe, useQuery as se, useQueueSort as P, useRectangleSelection as ce, useWorkContextMenu as F } from "./peach-app.js";
+import { Button as e, CardTags as t, CatalogViewToggle as n, CloudDownloadDialog as r, EmptyState as i, FilterGlassRows as a, FilterSearch as o, Gg as s, H7 as c, Icon as l, LOC as u, ListLibrary as d, OA as f, QUALITY_GOALS_KEY as p, QueryErrorNote as m, QueueFilterChips as h, QueueIdentity as g, QueuePicture as _, QueueTable as v, SelectAllButton as y, SelectionDock as b, SortKeys as x, __toESM as S, enterPageSelection as C, exitPageSelection as ee, fetchQualityGoals as te, fmtDur as w, fmtSize as T, hasSelectionModifier as E, joinList as ne, previewUrl as D, providerIcon as re, pv as O, qualityGoalsSkeleton as ie, require_jsx_runtime as k, require_react as A, t as j, useCatalogView as ae, useDense as M, useLibraryTints as N, usePageSelection as oe, useQuery as se, useQueueSort as P, useRectangleSelection as ce, useWorkContextMenu as F } from "./peach-app.js";
 import { Page as I } from "./peach-app.page-QAncjzM1.js";
 import { JavBatchResources as le } from "./peach-app.jav-batch-resources-R5lmdx3J.js";
 // src/react/quality-goals/quality-goals-page.tsx
@@ -163,7 +163,10 @@ function H({ toast: t, ...s }) {
 		let n = new Set(e);
 		E((e) => new Map([...t ? e : [], ...J.filter((e) => n.has(e.id)).map((e) => [e.id, e])]));
 	}, fe = ce(!G.isFetching && !G.isError ? (e, t) => Y(e.map(Number), t) : void 0, { selecting: O });
-	if (G.isPending) return /* @__PURE__ */ (0, R.jsx)(I, { children: /* @__PURE__ */ (0, R.jsx)("div", { dangerouslySetInnerHTML: { __html: ie("quality-goals", j("shell:spinner.loading"), ["w-20", "w-24"]) } }) });
+	if (G.isPending) return /* @__PURE__ */ (0, R.jsx)(I, { children: /* @__PURE__ */ (0, R.jsx)("div", {
+		inert: !0,
+		dangerouslySetInnerHTML: { __html: ie(j("shell:spinner.loading")) }
+	}) });
 	if (!q) return /* @__PURE__ */ (0, R.jsx)(I, { children: /* @__PURE__ */ (0, R.jsx)(m, {
 		titleKey: "manage:hdUpgrades.loadFailed",
 		query: G
@@ -395,4 +398,4 @@ function H({ toast: t, ...s }) {
 }
 export { H as QualityGoalsPage };
 
-//# debugId=efef54f3-9e68-4f77-83bd-b584ff6bb802
+//# debugId=926ac1a4-8cc2-47e9-a39a-603a20bbdc63

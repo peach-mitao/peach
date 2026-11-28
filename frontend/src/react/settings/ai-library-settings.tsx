@@ -625,9 +625,10 @@ function ProviderForm({ value, active, saved, cancel, readOnly = false, connecti
             onSelectionChange={next => {
               if (next === 'openai' || next === 'anthropic') { setProtocolDraft(next); resetTarget(); }
             }}>
-            {(['openai', 'anthropic'] as const).map(id => <SelectItem key={id} id={id}>
-              {t('settings:aiLibrary.protocols.' + id)}
-            </SelectItem>)}
+            {(['openai', 'anthropic'] as const).map(id => {
+              const label = t('settings:aiLibrary.protocols.' + id);
+              return <SelectItem key={id} id={id} textValue={label}><AIProviderLabel provider={id} label={label} /></SelectItem>;
+            })}
           </Select>
         </div>
       </> : <div className="flex min-w-0 flex-col gap-1.5">

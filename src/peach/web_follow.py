@@ -54,7 +54,7 @@ from .source_browser_login import FOLLOW_BROWSER_LOGIN_SOURCES, cancel_source_br
 from .entities import canonicalize_entity_name, normalize_entity_name, prefer_entity_name
 from .taste_history import read_creator_candidates
 from .web_state import path_version
-from .online_tag_management import OnlineTagPolicy, TYPE_RANK, tag_key
+from .online_tag_management import OnlineTagPolicy, TYPE_RANK, block_scopes, tag_key
 from .user_messages import UserInterruptedError, UserValueError, failure_fields, message_fields
 from .coded_text import coded, restored
 
@@ -1417,7 +1417,7 @@ def _follow_tag_index(store, items, tag_policy=None, *, evidence=False) -> list[
                     continue
                 key, name, hidden = policy.identity(tag)
                 row = rows.setdefault(key, {"id": key, "k": name, "n": 0, "cat": tag_type,
-                                           'hidden': hidden, 'blocked': policy.groups.get(key, {}).get('blocked', False),
+                                           'hidden': hidden,
                                            'aliases': set(), 'members': set(), '_releases': set()})
                 row['members'].add(tag_key(tag))
                 row['aliases'].add(tag)
@@ -1437,8 +1437,15 @@ def _follow_tag_index(store, items, tag_policy=None, *, evidence=False) -> list[
     for key, saved in policy.groups.items():
         if key not in rows:
             rows[key] = {'id': key, 'k': saved['name'], 'n': 0, 'cat': saved.get('cat', 'general'),
-                         'hidden': saved['hidden'], 'blocked': saved.get('blocked', False),
+                         'hidden': saved['hidden'],
                          'aliases': set(saved['aliases']), 'members': set(saved['members']), '_releases': set()}
+    for key, row in rows.items():
+        scopes = block_scopes(policy.groups.get(key, {}))
+        row['blocked'] = bool(scopes) if evidence else 'follow' in scopes
+        if evidence:
+            row['block_scopes'] = scopes
+            if policy.groups.get(key, {}).get('named'):
+                row['named'] = True
     return sorted(({key: sorted(value) if isinstance(value, set) else value for key, value in row.items()
                     if evidence or key != '_releases'} for row in rows.values()), key=lambda row: (-row['n'], row['k']))
 
@@ -1861,7 +1868,7 @@ def _enabled_items(contract, source_id) -> tuple:
 
 def _unblocked_items(store, items, policy, by_author=None) -> tuple:
     """任一版本命中屏蔽标签时，整组内容从浏览列表中隐藏。"""
-    if not any(group.get('blocked') for group in policy.groups.values()):
+    if not policy.has_blocks('follow'):
         return items
     blocked_ids = {member.id for group in store.group(items, by_author)
                    if any(policy.blocked(_item_all_tags(member))

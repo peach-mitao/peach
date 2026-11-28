@@ -9,7 +9,7 @@ import { spinnerHtml } from '@peach/legacy/ui';
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 
 import { apiSend, errorMessage } from '../../api';
 import type {
@@ -173,7 +173,7 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
               isDisabled={!state.available} placeholder={t('settings:localDownload.mediaRootPlaceholder')}
               onSelectionChange={(key) => { setMediaRoot(key === null ? '' : String(key)); validation.update('mediaRoot'); }}>
               {localRoots.map((row) => (
-                <SelectItem key={row.root} id={row.root} textValue={t('shell:format.withNote', { text: row.label, note: row.root })}>
+                <SelectItem key={row.root} id={row.root} glyph="folder-open" textValue={t('shell:format.withNote', { text: row.label, note: row.root })}>
                   {row.label} · {row.root}
                 </SelectItem>
               ))}

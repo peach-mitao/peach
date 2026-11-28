@@ -18,7 +18,7 @@ import { Chip } from '@/components/base/badges/chip';
 import { StatusLabel } from '../components/status-label';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 
 import { apiGet, apiSend, errorMessage } from '../../api';
 import type {
@@ -287,7 +287,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
               <Select aria-label={t('settings:cloudDownload.pikpakRootDirectory')} selectedKey={config.pikpak_root || null}
                 isDisabled={!state.available || !pikpakAccount} placeholder={t('settings:cloudDownload.rootPlaceholder')}
                 onSelectionChange={(key) => setConfig({ ...config, pikpak_root: key === null ? '' : String(key) })}>
-                {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
+                {state.pikpak_roots.map((root) => <SelectItem key={root} id={root} glyph="folder-open">{root}</SelectItem>)}
               </Select>
               <Help>{t('settings:cloudDownload.pikpakRootDirectoryHelp')}</Help>
             </>

@@ -317,10 +317,10 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   min-height: 24px;
   padding: 4px;
   border-radius: var(--pic-inner-radius, 8px);
-  background: var(--glass-fill);
+  background: var(--glass-media-fill);
   box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
   backdrop-filter: blur(16px) saturate(145%);
-  color: var(--color-text-secondary);
+  color: var(--glass-text);
   font: var(--board-caption);
   white-space: nowrap;
   transition: opacity .15s ease;
@@ -342,6 +342,20 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   transition: opacity .15s ease;
+}
+/* 缺图动作与时长占各自一行，时长为长格式时也不会压住补图按钮。 */
+.peach-react [data-media-card]:not([data-pending-delete]) [data-media-pic]:has(> [data-artwork-gap]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.peach-react [data-media-pic] > [data-artwork-gap] { grid-row: 1; }
+.peach-react [data-media-card]:not([data-pending-delete]) [data-media-pic]:has(> [data-artwork-gap]) > [data-media-duration] {
+  position: relative;
+  inset: auto;
+  grid-row: 2;
+  justify-self: end;
+  margin: 0 var(--pic-badge-inset) var(--pic-badge-inset);
 }
 /* 悬停或键盘聚焦时封面上的角标淡出，右上角让给悬停工具。分卷／版本计数还要退出命中与 Tab 序：
  * 它压在倒计时圈上面，只透明的话圈接不到指针；visibility 等淡出走完再翻。关注卡的合并计数同一套

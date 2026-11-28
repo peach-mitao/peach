@@ -7,6 +7,7 @@
  */
 import { isPersonEntity } from './core/entity-links';
 import { t } from './i18n';
+import { filterTagsSkeletonHtml } from './filter-controls-skeleton';
 
 export function entitySkeletonHtml(kind: string, head: string, body: string, top = '') {
   const square = !isPersonEntity(kind);
@@ -21,7 +22,7 @@ export function entitySkeletonHtml(kind: string, head: string, body: string, top
       <div class="alias" data-entity-alias><span class="skeleton"></span></div>
       <div class="entitylinks" data-entity-links><span class="skeleton"></span></div></div></div></section>
     <div class="board-filter-frame sticky top-topbar z-10 mb-5.5 flex flex-col" data-filter-frame data-filter-glass data-glass-pane data-entity-filter-glass>
-      <section class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible" data-filter-row="top">${top}<div data-entity-tags data-skeleton-tier="filter-pill"></div>${top ? '</div>' : ''}</section>
+      ${top ? `<section class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible" data-filter-row="top">${top}<div data-entity-tags>${filterTagsSkeletonHtml()}</div></div></section>` : ''}
       ${head}</div></div>
     <div class="entitysection">${content}</div></div></section>`;
 }

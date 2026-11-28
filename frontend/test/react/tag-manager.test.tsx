@@ -50,7 +50,7 @@ function backend(failPreview = false) {
 
 /** 状态药丸带着数量（「已隐藏 3」），按开头的档名找。 */
 const statePill = (host: ParentNode, name: string) =>
-  [...host.querySelectorAll('[data-tag-pill]')].find((pill) => pill.textContent?.trim().startsWith(name));
+  [...host.querySelectorAll('[data-tag-status]')].find((pill) => pill.textContent?.trim().startsWith(name));
 
 async function open() {
   const host = await mount(<QueryClientProvider client={queryClient}><TagManager /></QueryClientProvider>);
@@ -64,7 +64,8 @@ describe('标签管理', () => {
       { id: 'outdoors', k: 'outdoors', aliases: ['户外'], n: 2, hidden: false },
     ] }) }));
     vi.stubGlobal('fetch', fetcher);
-    await mount(<QueryClientProvider client={queryClient}><TagEditor operation="block" scope="online" selected={[]} close={vi.fn()} done={vi.fn()} /></QueryClientProvider>);
+    await mount(<QueryClientProvider client={queryClient}><TagEditor operation="rule" scope="online" selected={[]} close={vi.fn()} done={vi.fn()} /></QueryClientProvider>);
+    await click(document.querySelector('[aria-label="隐藏标签"][type="checkbox"]'));
     const input = document.querySelector<HTMLInputElement>('input[aria-label="标签名称"]')!;
     await act(async () => input.focus());
     await type(input, '户外');
@@ -83,7 +84,8 @@ describe('标签管理', () => {
     vi.useFakeTimers();
     const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({ items: [] }) }));
     vi.stubGlobal('fetch', fetcher);
-    await mount(<QueryClientProvider client={queryClient}><TagEditor operation="block" scope="online" selected={[]} close={vi.fn()} done={vi.fn()} /></QueryClientProvider>);
+    await mount(<QueryClientProvider client={queryClient}><TagEditor operation="rule" scope="online" selected={[]} close={vi.fn()} done={vi.fn()} /></QueryClientProvider>);
+    await click(document.querySelector('[aria-label="隐藏标签"][type="checkbox"]'));
     const input = document.querySelector<HTMLInputElement>('input[aria-label="标签名称"]')!;
     await act(async () => { input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })) });
     await type(input, 'zhong');
@@ -142,9 +144,11 @@ describe('标签管理', () => {
     const host = await mount(<QueryClientProvider client={queryClient}><TagManager scope="online" /></QueryClientProvider>);
     await settle();
     await click(host.querySelector('[data-tag-chip]'));
-    await click(buttonNamed('屏蔽内容', host)); await settle();
-    expect(commands).toEqual([{ operation: 'block', ids: ['outdoors'], scope: 'online' },
-      { operation: 'block', ids: ['outdoors'], scope: 'online', token: 'content-plan' }]);
+    await click(buttonNamed('设置标签规则', host));
+    await click(document.querySelector('[aria-label="屏蔽带此标签的内容"][type="checkbox"]'));
+    await submit(document.querySelector('form')); await settle();
+    const block = { operation: 'block', ids: ['outdoors'], scope: 'online', block_scopes: ['follow'], replace_block_scopes: false };
+    expect(commands).toEqual([block, { ...block, token: 'content-plan' }]);
     expect(host.querySelectorAll('[data-tag-chip]')).toHaveLength(0);
     expect(statePill(host, '已屏蔽内容')?.textContent).toBe('已屏蔽内容 1');
     await click(statePill(host, '已隐藏'));

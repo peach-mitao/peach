@@ -316,7 +316,7 @@ class OnlineTagManagementTests(unittest.TestCase):
             command['token'] = online_tag_management.preview(connection, command, web_follow.online_tag_inventory(connection))['token']
         return w_tag_management(self.contract, command)
 
-    def test_online_management_pages_share_inventory_and_partition_blocked_hidden_active(self):
+    def test_online_management_lists_both_active_rules_for_a_tag(self):
         self.seed()
         self.execute('rename', ['outdoors'], name='户外')
         self.execute('hide', ['outdoors'])
@@ -333,7 +333,7 @@ class OnlineTagManagementTests(unittest.TestCase):
             self.assertEqual((artist['total'], artist['categories']), (1, first['categories']))
             self.assertEqual([row['k'] for row in artist['items']], ['preview_artist'])
             hidden = q_tag_management(self.contract, dict(args, state='hidden'))
-            self.assertEqual((hidden['items'], hidden['total']), ([], 0))
+            self.assertEqual(([row['k'] for row in hidden['items']], hidden['total']), (['户外'], 1))
             blocked = q_tag_management(self.contract, dict(args, state='blocked', q='ＯＵＴＤＯＯＲＳ'))
             self.assertEqual([row['k'] for row in blocked['items']], ['户外'])
             self.assertEqual((blocked['total'], blocked['categories'], blocked['duplicate_groups']), (1, {'general': 1}, []))
@@ -524,6 +524,73 @@ class OnlineTagManagementTests(unittest.TestCase):
                 with self.database.read_connection() as connection:
                     online_tag_management.preview(connection, dict(scope='online', operation='block', name=name),
                                                   web_follow.online_tag_inventory(connection))
+
+    def test_scoped_block_changes_preserve_follow_visibility_and_existing_rules(self):
+        self.seed()
+        self.execute('block', ['outdoors'], block_scopes=['jav_releases'])
+        args = dict(scope='online', state='blocked', limit='10')
+        blocked = q_tag_management(self.contract, args)['items']
+        self.assertEqual([(tag['id'], tag['block_scopes']) for tag in blocked], [('outdoors', ['jav_releases'])])
+        self.assertEqual(len(web_follow.q_follow(self.contract, {'tag': 'outdoors'})['groups']), 2)
+
+        self.execute('block', ['outdoors'], block_scopes=['follow'])
+        self.assertEqual(q_tag_management(self.contract, args)['items'][0]['block_scopes'], ['follow', 'jav_releases'])
+        self.assertEqual(web_follow.q_follow(self.contract, {'tag': 'outdoors'})['groups'], [])
+        self.execute('block', ['outdoors'], block_scopes=['jav_releases'], replace_block_scopes=True)
+        self.assertEqual(len(web_follow.q_follow(self.contract, {'tag': 'outdoors'})['groups']), 2)
+
+        self.c.execute("UPDATE profile SET settings_json=json_remove(settings_json, '$.online_tag_management.outdoors.block_scopes')")
+        self.c.execute("UPDATE profile SET settings_json=json_set(settings_json, '$.online_tag_management.outdoors.blocked', json('true'))")
+        self.c.commit()
+        policy = online_tag_management.OnlineTagPolicy(self.c)
+        self.assertTrue(policy.blocked(['outdoors']))
+        self.assertFalse(policy.has_blocks('jav_releases'))
+
+    def test_block_preview_token_covers_the_selected_scopes(self):
+        self.seed()
+        base = dict(scope='online', operation='block', ids=['outdoors'], block_scopes=['jav_releases'])
+        with self.database.read_connection() as connection:
+            rows = web_follow.online_tag_inventory(connection)
+            plan = online_tag_management.preview(connection, base, rows)
+            with self.assertRaises(ValueError):
+                online_tag_management.preview(connection, dict(base, block_scopes=[]), rows)
+        with self.assertRaises(ValueError):
+            w_tag_management(self.contract, dict(base, token=plan['token'], block_scopes=['follow']))
+
+    def test_named_tag_can_be_hidden_and_blocked_independently(self):
+        self.seed()
+        name = 'future-tag'
+        self.execute('hide', [], name=name)
+        args = dict(scope='online', q=name, limit='1')
+        hidden = q_tag_management(self.contract, dict(args, state='hidden'))['items'][0]
+        self.assertTrue(hidden['hidden'])
+        self.assertTrue(hidden['named'])
+        self.assertEqual(hidden['block_scopes'], [])
+        self.execute('block', [], name=name, block_scopes=['jav_releases'])
+        self.execute('restore', [name])
+        blocked = q_tag_management(self.contract, dict(args, state='blocked'))['items'][0]
+        self.assertFalse(blocked['hidden'])
+        self.assertEqual(blocked['block_scopes'], ['jav_releases'])
+        self.execute('unblock', [name])
+        self.assertEqual(q_tag_management(self.contract, args)['total'], 0)
+
+    def test_combined_rule_updates_and_restores_both_settings(self):
+        self.seed()
+        args = dict(scope='online', q='future-tag', limit='1')
+        command = dict(scope='online', operation='block', name='future-tag', block_scopes=['jav_releases'], tag_hidden=True)
+        with self.database.read_connection() as connection:
+            rows = web_follow.online_tag_inventory(connection)
+            plan = online_tag_management.preview(connection, command, rows)
+        with self.assertRaises(ValueError):
+            w_tag_management(self.contract, dict(command, token=plan['token'], tag_hidden=False))
+        w_tag_management(self.contract, dict(command, token=plan['token']))
+        for state in ('hidden', 'blocked'):
+            row = q_tag_management(self.contract, dict(args, state=state))['items'][0]
+            self.assertTrue(row['hidden'])
+            self.assertEqual(row['block_scopes'], ['jav_releases'])
+        self.execute('unblock', ['future-tag'], tag_hidden=False)
+        for state in ('hidden', 'blocked', 'active'):
+            self.assertEqual(q_tag_management(self.contract, dict(args, state=state))['total'], 0)
 
     def test_online_conflicts_types_and_stale_plans_are_rejected(self):
         self.seed()

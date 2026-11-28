@@ -5,7 +5,7 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { Label } from '@/components/base/input/label';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 import { confirmModal, spinnerHtml } from '@peach/legacy/ui';
 import { pageOpens, writeShell } from '@peach/shell';
 import { apiSend } from '../../api';
@@ -26,6 +26,10 @@ interface Preview {
   conflicts: { id: number; name: string; reason: string; reason_code?: string }[];
   sample: { id: number; name: string }[];
 }
+
+const PURPOSE_GLYPHS = {
+  category: 'folder-open', creator: 'id-card', performer: 'user-round', seller: 'briefcase', studio: 'clapperboard',
+} satisfies Record<FolderPurpose, string>;
 
 export function FolderRuleDialog({ folder, rule, revision, close }: {
   folder: MediaFolder; rule: FolderRule | null; revision: number; close(): void;
@@ -77,7 +81,8 @@ export function FolderRuleDialog({ folder, rule, revision, close }: {
         <div className="flex flex-col gap-1"><Label>{t('catalog:folderRule.usedFor')}</Label>
           <Select aria-label={t('catalog:folderRule.usedFor')} selectedKey={purpose} isDisabled={busy}
             onSelectionChange={key => { setPurpose(key as FolderPurpose); dirty() }}>
-            {Object.entries(PURPOSES).map(([key, label]) => <SelectItem key={key} id={key}>{label}</SelectItem>)}
+            {(Object.keys(PURPOSES) as FolderPurpose[]).map(key =>
+              <SelectItem key={key} id={key} glyph={PURPOSE_GLYPHS[key]}>{PURPOSES[key]}</SelectItem>)}
           </Select>
         </div>
         {purpose !== 'category' ? <Input label={t('catalog:folderRule.linkedName')} value={name} onChange={value => { setName(value); dirty() }}

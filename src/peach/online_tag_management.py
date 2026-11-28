@@ -15,10 +15,20 @@ SETTINGS_KEY = 'online_tag_management'
 ITEM_TAGS_KEY = 'online_item_tags'
 ITEM_HIDDEN_TAGS_KEY = 'online_item_hidden_tags'
 TYPE_RANK = {'general': 0, 'metadata': 1, 'copyright': 2, 'character': 3, 'artist': 4}
+BLOCK_SCOPES = ('follow', 'jav_releases')
 
 
 def tag_key(value: str) -> str:
     return unicodedata.normalize('NFKC', html.unescape(value)).strip().casefold()
+
+
+def block_scopes(group):
+    return group.get('block_scopes', ['follow'] if group.get('blocked') else [])
+
+
+def _set_block_scopes(group, scopes):
+    group['block_scopes'] = [scope for scope in BLOCK_SCOPES if scope in scopes]
+    group['blocked'] = 'follow' in scopes
 
 
 class OnlineTagPolicy:
@@ -50,7 +60,14 @@ class OnlineTagPolicy:
         return replace(item, metadata={**item.metadata, '_user_tags': custom, '_user_hidden_tags': sorted(excluded)})
 
     def blocked(self, tags) -> bool:
-        return any(self.groups.get(self.identity(tag)[0], {}).get('blocked', False) for tag in tags)
+        return any('follow' in block_scopes(self.groups.get(self.identity(tag)[0], {})) for tag in tags)
+
+    def has_blocks(self, scope: str) -> bool:
+        return any(scope in block_scopes(group) for group in self.groups.values())
+
+    def blocked_names(self, scope: str) -> set[str]:
+        return {name for group in self.groups.values() if scope in block_scopes(group)
+                for name in (group['name'], *group['members'], *group['aliases'])}
 
     def identity(self, tag: str) -> tuple[str, str, bool]:
         key = tag_key(tag)
@@ -99,7 +116,7 @@ def preview(connection, body, rows):
     operation = body.get('operation')
     if operation not in {'rename', 'merge', 'hide', 'restore', 'block', 'unblock'}:
         raise ValueError('unknown online tag operation')
-    if operation == 'block' and 'name' in body and not body.get('ids'):
+    if operation in ('hide', 'block') and 'name' in body and not body.get('ids'):
         rows, group_id = _with_named_row(connection, rows, body.get('name'))
         body = {**body, 'ids': [group_id]}
     ids = body.get('ids')
@@ -111,6 +128,7 @@ def preview(connection, body, rows):
         raise UserValueError('errors.onlineTagManagement.tagsChanged')
     name = unicodedata.normalize('NFKC', str(body.get('name', ''))).strip()
     target = body.get('target_id')
+    scopes, replace_scopes, hidden = _preview_rule_options(operation, body)
     if operation == 'rename':
         _validate_rename(connection, rows, ids, name)
     if operation == 'merge':
@@ -120,15 +138,29 @@ def preview(connection, body, rows):
             raise UserValueError('errors.onlineTagManagement.mergeSameType')
     releases = {key for row in selected for key in row['_releases']}
     state = read_settings(connection).get(SETTINGS_KEY, {})
-    token = hashlib.sha256(json.dumps([operation, ids, name, target, selected, state], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    token = hashlib.sha256(json.dumps([operation, ids, name, target, scopes, replace_scopes, hidden, selected, state],
+                                     sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     return {'operation': operation, 'ids': ids, 'name': name, 'target_id': target,
-            'tags': [{key: value for key, value in row.items() if not key.startswith('_')} for row in selected],
+            **({'block_scopes': scopes, 'replace_block_scopes': replace_scopes} if operation == 'block' else {}),
+            'tag_hidden': hidden, 'tags': [{key: value for key, value in row.items() if not key.startswith('_')} for row in selected],
             'assets': len(releases), 'overlap': sum(row['n'] for row in selected) - len(releases), 'token': token}
 
 
+def _preview_rule_options(operation, body):
+    """校验规则选项，并返回用于生成预览令牌的规范值。"""
+    hidden = body.get('tag_hidden')
+    if 'tag_hidden' in body and (operation not in ('block', 'unblock') or not isinstance(hidden, bool)):
+        raise UserValueError('errors.onlineTagManagement.hiddenInvalid')
+    if operation != 'block' or 'block_scopes' not in body:
+        return None, False, hidden
+    scopes = body['block_scopes']
+    if not isinstance(scopes, list) or not scopes or any(scope not in BLOCK_SCOPES for scope in scopes):
+        raise UserValueError('errors.onlineTagManagement.blockScopeInvalid')
+    return [scope for scope in BLOCK_SCOPES if scope in scopes], body.get('replace_block_scopes') is True, hidden
+
+
 def _with_named_row(connection, rows, raw):
-    """按名字屏蔽：词表里已有的就是那一条，没有的（还没抓到过）先记一条空的，以后抓到同名标签
-    就落进这一组。返回补过的词表和要屏蔽的那一条的 id。"""
+    """按名称定位规则对象，词表还未收录时先创建同名的空标签组。"""
     name = unicodedata.normalize('NFKC', str(raw or '')).strip()
     if not 0 < len(name) <= 80 or ',' in name or any(ord(char) < 32 for char in name):
         raise UserValueError('errors.onlineTagManagement.nameInvalid')
@@ -161,17 +193,27 @@ def apply_plan(connection, body, rows):
             source = groups.pop(group_id)
             target['members'] = sorted(set([*target['members'], *source['members']]))
             target['aliases'] = sorted(set([*target['aliases'], source['name'], *source['aliases']]))
-            target['blocked'] = target.get('blocked', False) or source.get('blocked', False)
+            _set_block_scopes(target, set(block_scopes(target)) | set(block_scopes(source)))
     elif plan['operation'] in {'block', 'unblock'}:
         for group_id in plan['ids']:
-            groups[group_id]['blocked'] = plan['operation'] == 'block'
-            # 按名字记下、一条内容都还没抓到的那一组，解除屏蔽后不再留一条空标签。
             group = groups[group_id]
+            scopes = plan.get('block_scopes') or ('follow',)
+            if plan['operation'] == 'unblock':
+                scopes = []
+            elif not plan['replace_block_scopes']:
+                scopes = set(block_scopes(group)) | set(scopes)
+            _set_block_scopes(group, scopes)
+            if plan['tag_hidden'] is not None:
+                group['hidden'] = plan['tag_hidden']
+            # 按名字记下、一条内容都还没抓到的那一组，解除屏蔽后不再留一条空标签。
             if plan['operation'] == 'unblock' and group.get('named') and not group['hidden'] and not rows[group_id]['n']:
                 groups.pop(group_id)
     else:
         for group_id in plan['ids']:
-            groups[group_id]['hidden'] = plan['operation'] == 'hide'
+            group = groups[group_id]
+            group['hidden'] = plan['operation'] == 'hide'
+            if not group['hidden'] and group.get('named') and not block_scopes(group) and not rows[group_id]['n']:
+                groups.pop(group_id)
     _save_settings(connection, settings)
     return {'ok': True, 'operation': plan['operation'], 'assets': plan['assets']}
 

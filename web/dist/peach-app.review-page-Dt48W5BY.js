@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "a5e1ea16-c77a-44f6-9245-0eb01576644e", e._sentryDebugIdIdentifier = "sentry-dbid-a5e1ea16-c77a-44f6-9245-0eb01576644e");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "12ad85d4-1199-4619-9e60-3299721aa57a", e._sentryDebugIdIdentifier = "sentry-dbid-12ad85d4-1199-4619-9e60-3299721aa57a");
 	} catch {}
 })();
 import { $ea3928288112382f$export$439d29a4e110a164 as e, $fe21c36db05242bb$export$d7b12c4107be0d61 as t, Button as n, ButtonLink as r, Checkbox as i, CheckboxGlyph as a, Chip as o, CollapseChevron as s, CollapseRegion as c, DEFAULT_CATEGORY as l, DataTable as u, DataTableFooter as d, ENTITY_REVIEW_KINDS as ee, Ea as te, EmptyState as f, ExternalLink as ne, FIELDSET_FOOT as re, FilterGlassRows as p, FilterSearch as m, Gg as h, InputBase as g, LEGACY_AVATAR_IMG as _, LinkButton as v, Note as y, REVIEW_CATEGORIES as b, REVIEW_DECISION_LABELS as ie, REVIEW_KEY as x, REVIEW_LABELS as S, REVIEW_QUEUES as C, REVIEW_QUEUE_LABELS as w, RadioDot as T, RadioGroup as E, Select as D, SelectItem as O, SelectionActions as k, SelectionDock as A, SortableBoardTabs as ae, TextField as j, Wt as M, Xf as oe, Yt as se, __toESM as N, apiGet as ce, apiSend as P, avatarInner as le, b1 as F, busyProps as I, canApprove as ue, cardClass as L, codedText as de, commonReviewSources as fe, composingKey as pe, currentReviewRow as me, cx as R, decisionPayload as he, decisionReceipt as ge, defaultChoice as _e, enterPageSelection as ve, errorMessage as z, exitPageSelection as B, fetchReview as ye, filterReviewRows as be, gB as xe, groupReviewRows as Se, isReviewCategory as Ce, joinList as we, l7 as Te, localTime as V, m7 as Ee, mirrorText as De, pendingGenres as H, queryClient as Oe, quoted as U, recordGenre as ke, reloadReview as Ae, require_jsx_runtime as je, require_react as Me, reviewGroupingOptions as Ne, reviewQueueData as Pe, reviewQueueOf as Fe, reviewWindow as Ie, rowEvidence as Le, rowFieldName as W, rowSelectionOperation as Re, rowSubject as G, rowTags as ze, rowTitle as Be, s7 as Ve, selectReviewRange as He, serverLabel as Ue, serverLabelList as We, settleReviewRows as Ge, submitDecision as Ke, t as K, useMutation as qe, useNavigationOrder as Je, useOverlayScrollbar as Ye, usePageSelection as Xe, useQuery as Ze, useRectangleSelection as Qe, useViewGlide as $e, useWorkContextMenu as et } from "./peach-app.js";
@@ -288,7 +288,10 @@ function vt(e) {
 					" ",
 					/* @__PURE__ */ (0, $.jsx)("span", {
 						className: "ms-1.5 tabular-nums text-caption-1-medium text-text-secondary",
-						children: _ ? _[e].toLocaleString() : "…"
+						children: _ ? _[e].toLocaleString() : /* @__PURE__ */ (0, $.jsx)("span", {
+							className: "skeleton-sheen inline-block h-3.5 w-4 rounded-md align-middle",
+							"aria-hidden": !0
+						})
 					})
 				]
 			}, e)), /* @__PURE__ */ (0, $.jsx)("span", {
@@ -1602,4 +1605,4 @@ function Ut(e) {
 }
 export { Ut as ReviewPage };
 
-//# debugId=a5e1ea16-c77a-44f6-9245-0eb01576644e
+//# debugId=12ad85d4-1199-4619-9e60-3299721aa57a

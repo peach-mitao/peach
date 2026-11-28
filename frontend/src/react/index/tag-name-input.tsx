@@ -37,7 +37,7 @@ export function TagNameInput({ value, onChange }: { value: string; onChange(valu
   const options = current ? suggestions.data?.items ?? [] : [];
   const busy = current && suggestions.isFetching;
   return <>
-    <ComboBox aria-label={t('catalog:tagOperations.tagName')} className="w-full"
+    <ComboBox aria-label={t('catalog:tagOperations.tagName')} data-tag-name-combobox="" className="w-full"
       allowsCustomValue allowsEmptyCollection={!!value.trim() && !composing && suggestions.isPending}
       inputValue={value} onInputChange={onChange} items={options}>
       <InputBase autoFocus maxLength={80} leadingIcon={busy ? TagLoadingIcon : RiSearchLine}

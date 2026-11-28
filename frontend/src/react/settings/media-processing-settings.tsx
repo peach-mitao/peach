@@ -3,9 +3,10 @@
  *   总开关在前，依赖它的档位次之，少改的解码方式最后。
  * - 「视频播放」：播放时整片与 HLS 转码的编解码方式与画质上限。两张卡都在「媒体库与入库」。 */
 import { useQuery } from '@tanstack/react-query';
+import { RiCodeSSlashLine, RiCpuLine } from '@remixicon/react';
 import { SettingsRow } from '@/components/application/settings/settings-rows';
 import { Switch } from '@/components/base/switch/switch';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 
 import { apiSend, errorMessage } from '../../api';
 import { queryClient } from '../query';
@@ -53,8 +54,8 @@ export function MediaProcessingSettings({ receipt }: { receipt(message: string):
                   receipt(t('settings:videoPreview.decodingSaved'));
                 });
               }}>
-              <SelectItem id="auto">{t('settings:videoProcessing.autoHardwareFirst')}</SelectItem>
-              <SelectItem id="software">{t('settings:videoPreview.softwareDecoding')}</SelectItem>
+              <SelectItem id="auto" glyph={RiCpuLine}>{t('settings:videoProcessing.autoHardwareFirst')}</SelectItem>
+              <SelectItem id="software" glyph={RiCodeSSlashLine}>{t('settings:videoPreview.softwareDecoding')}</SelectItem>
             </Select>
           </div>
         </SettingsRow>
@@ -88,8 +89,8 @@ export function PlaybackTranscodeSettings({ receipt }: { receipt(message: string
                   receipt(t('settings:playbackTranscode.saved'));
                 });
               }}>
-              <SelectItem id="auto">{t('settings:videoProcessing.autoHardwareFirst')}</SelectItem>
-              <SelectItem id="software">{t('settings:playbackTranscode.software')}</SelectItem>
+              <SelectItem id="auto" glyph={RiCpuLine}>{t('settings:videoProcessing.autoHardwareFirst')}</SelectItem>
+              <SelectItem id="software" glyph={RiCodeSSlashLine}>{t('settings:playbackTranscode.software')}</SelectItem>
             </Select>
           </div>
         </SettingsRow>

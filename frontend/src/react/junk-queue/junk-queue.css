@@ -22,7 +22,7 @@
   height: var(--control-h-compact);
   padding: 0 10px;
   border-radius: 8px;
-  color: color-mix(in srgb, var(--glass-text) 60%, transparent);
+  color: var(--glass-text-secondary);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
@@ -50,13 +50,13 @@
 }
 /* 计数徽标同首页标签药丸上那一枚：平时淡一档，悬停与当前项跟着字一起提亮。 */
 .peach-react [data-junk-filters] [data-count-badge] {
-  color: color-mix(in srgb, var(--glass-text) 55%, transparent);
+  color: var(--glass-text-secondary);
   font-family: "Cascadia Mono", Consolas, ui-monospace, "Microsoft YaHei UI", "PingFang SC", monospace;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 .peach-react [data-junk-filters] a:is(:hover, [aria-current="page"]) [data-count-badge] {
-  color: color-mix(in srgb, var(--glass-text) 80%, transparent);
+  color: var(--glass-text);
 }
 /* 分隔线同首页与资料页那一条（`../entity-filter/entity-filter.css` 的 `[data-entity-sep]`）。 */
 .peach-react [data-junk-divider] { flex: none; width: 1px; height: 19px; margin: 0 3px; background: var(--field-ring-hover); }

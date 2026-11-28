@@ -18,6 +18,9 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Added / 新增
 
+- **Interface**: Show, hide, reorder, and reset top toolbar buttons in Appearance settings. / **界面**：外观与导航可设置顶部工具栏按钮的显隐和顺序，并恢复默认。
+- **Playback**: Change what happens when a video ends directly from the player's settings menu. / **播放**：可在播放器设置菜单里直接调整「播完之后」的行为。
+- **Following**: Hide a tag and block its works independently, with scope choices for Following and JAV New Releases. / **关注**：可分别隐藏在线标签和屏蔽作品，屏蔽范围可选关注动态和 JAV 新作。
 - **Settings**: Choose whether to precompute Taste, Review, Junk Review and Following at startup (#912). / **配置**：可选择启动时是否在后台预先计算口味、复核、垃圾复核和关注页面（#912）。
 - **Updates**: Download smaller signed desktop updates when a patch matches your installed version (#911). / **更新**：有适用补丁时，桌面版会下载体积更小的签名增量更新（#911）。
 
@@ -43,6 +46,10 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Fixed / 修复
 
+- **Interface**: Keep text and counts legible over translucent navigation, filter, and cover controls. / **界面**：提高侧栏、筛选栏和封面浮层上文字与计数的对比度，选中底色保留原背景色。
+- **Interface**: Keep the feedback title and close button visible while the form scrolls. / **界面**：滚动反馈表单时，标题和关闭按钮固定在顶部。
+- **Interface**: Keep filter controls in place while tags and counts load. / **界面**：标签和计数加载时，筛选控件留在原位。
+- **Playback**: Keep the top of the video clear on scroll and keep preview repair controls clear of the duration. / **播放**：详情滚动时移除视频上沿的白色渐变，补全预览按钮为时长留出空间。
 - **Library**: Hide items from removed media roots on Home while keeping their records and viewing history. / **馆藏**：从首页隐藏已移除媒体目录中的条目，保留原记录和观看历史。
 - **Playback**: Reuse the playback plan and file status when opening segmented streams (#873). / **播放**：打开分片播放时复用起播计划和文件状态（#873）。
 

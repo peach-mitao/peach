@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { LinkButton } from '@/components/base/buttons/link-button';
 import { apiGet, apiSend } from '../../api';
@@ -36,7 +36,10 @@ const hostError = (raw: string) => !raw.trim() || raw.trim().length > 253 || /[/
   ? serverLabel('errors.clouddriveProxy.hostOnly', '') : '';
 const portError = (raw: string) => !/^\d+$/.test(raw.trim()) || Number(raw) < 1 || Number(raw) > 65535
   ? serverLabel('errors.clouddriveProxy.portRange', '') : '';
-const options = [['direct', t('settings:cloudProxy.direct')], ['system', t('settings:shared.followSystem')], ['http', t('settings:cloudProxy.http')], ['socks5', t('settings:cloudProxy.socks5')]] as const;
+const options = [
+  ['direct', t('settings:cloudProxy.direct'), 'globe'], ['system', t('settings:shared.followSystem'), 'monitor'],
+  ['http', t('settings:cloudProxy.http'), 'network'], ['socks5', t('settings:cloudProxy.socks5'), 'network'],
+] as const;
 
 export function CloudProxySettings({ receipt }: { receipt(message: string): void }) {
   const [state, setState] = useState<ProxyList | null>(null);
@@ -168,8 +171,8 @@ function ProxyEditor({ kind, label, value, port, disabled, validation, onChange,
         validation.update(portField);
         onChange({ ...value, mode: String(key) as Mode });
       }}>
-      {value.mode === 'unknown' ? <SelectItem id="unknown">{t('settings:cloudProxy.unknownType')}</SelectItem> : null}
-      {options.map(([id, name]) => <SelectItem key={id} id={id}>{name}</SelectItem>)}
+      {value.mode === 'unknown' ? <SelectItem id="unknown" glyph="info">{t('settings:cloudProxy.unknownType')}</SelectItem> : null}
+      {options.map(([id, name, glyph]) => <SelectItem key={id} id={id} glyph={glyph}>{name}</SelectItem>)}
     </Select>
     {proxy ? <>
       <div className="flex flex-wrap gap-3">

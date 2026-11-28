@@ -9,6 +9,7 @@ import type { InterfaceLanguage, InterfaceLanguageChoice } from '../../i18n';
 import type { NameLanguage } from '../../core/entity-names';
 import type { AfterPlayback, HomeGlow } from '@peach/appearance';
 import type { NotificationLimits } from '../../appearance/settings';
+import type { TopToolbarPreferences } from '../../appearance/top-toolbar';
 
 import type { SettingsStore } from '../../settings-store';
 import type { Shortcut } from '../../keyboard-shortcut';
@@ -44,6 +45,7 @@ export interface PanelSettings {
   browserNotices: boolean;
   notificationLimits: NotificationLimits;
   showFeedbackButton: boolean;
+  topToolbar: TopToolbarPreferences;
   feedLimit: number;
   feedHideGroupCompilations: boolean;
   feedHideSoloCompilations: boolean;

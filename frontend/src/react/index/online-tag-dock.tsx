@@ -1,10 +1,8 @@
-/* 在线标签的多选浮条：隐藏标签与屏蔽内容，和标签管理里的同一对写入键（`tag-operations.tsx`）。
- *
- * 浏览词表只列没隐藏、没屏蔽的标签，所以这里只有「隐藏」「屏蔽内容」两个方向；恢复在标签管理的
- * 「已隐藏」「已屏蔽内容」里做，回执上也带撤销。 */
+/* 在线标签的多选浮条与标签管理共用规则表单。 */
 import { Button } from '@/components/base/buttons/button';
+import { useState } from 'react';
 import { SelectionDock } from '../components/selection-dock';
-import { tagOperation, toastHost, type TagId } from './tag-operations';
+import { TagEditor } from './tag-operations';
 import type { IndexTag } from './index-data';
 import { t } from '../../i18n';
 
@@ -12,21 +10,22 @@ export function OnlineTagDock({ tags, pageTags, visible, onPick, exit }: {
   tags: readonly IndexTag[]; pageTags: readonly IndexTag[]; visible: boolean;
   onPick(keys: string[]): void; exit(): void;
 }) {
-  const ids: TagId[] = tags.map((tag) => tag.id || tag.k);
   const all = pageTags.length > 0 && tags.length === pageTags.length;
-  /* 每次画都新建：`tagOperation` 把预览到的计划记在闭包里，换了所选就得换一份。 */
-  const actions = [
-    tagOperation({ operation: 'hide', scope: 'online' }, t('catalog:tagManager.hide')),
-    tagOperation({ operation: 'block', scope: 'online' }, t('catalog:tagManager.blockContent')),
-  ];
+  const [editing, setEditing] = useState(false);
   return (
-    <SelectionDock visible={visible} label={t('catalog:tagFilters.selectionActions')}
+    <><SelectionDock visible={visible} label={t('catalog:tagFilters.selectionActions')}
       count={t('catalog:tagFilters.selectedCount', { count: tags.length })}
-      actions={actions.map((action) => ({ action, items: ids, host: toastHost, done: () => onPick([]) }))}
+      actions={[]}
       leading={<Button size="small" variant="secondary" disabled={!pageTags.length}
         onClick={() => onPick(all ? [] : pageTags.map((tag) => tag.k))}>
         {all ? t('catalog:rosterActions.deselectAll') : t('catalog:rosterActions.selectAll')}</Button>}>
+      <Button size="small" variant="secondary" disabled={!tags.length} onClick={() => setEditing(true)}>
+        <span data-copy-key="catalog.tagManager.setRule">{t('catalog:tagManager.setRule')}</span>
+      </Button>
       <Button size="small" variant="ghost" onClick={exit}>{t('catalog:rosterActions.exit')}</Button>
     </SelectionDock>
+    {editing ? <TagEditor operation="rule" scope="online"
+      selected={tags.map(tag => ({ ...tag, id: tag.id || tag.k, hidden: !!tag.hidden, aliases: tag.aliases ?? [] }))}
+      close={() => setEditing(false)} done={() => onPick([])} /> : null}</>
   );
 }

@@ -11,7 +11,7 @@ import { Button } from '@/components/base/buttons/button';
 import { LinkButton } from '@/components/base/buttons/link-button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from '../components/select';
 import { Switch } from '@/components/base/switch/switch';
 import { ConnectionStatus } from '../components/connection-status';
 
@@ -319,8 +319,8 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                             if (key === 'add') edit(index, { root_id: undefined, root: '', change_mode: '' });
                             else edit(index, { change_mode: 'relocate' });
                           }}>
-                          <SelectItem id="relocate">{t('settings:mediaLibraries.relocate')}</SelectItem>
-                          <SelectItem id="add">{t('settings:mediaLibraries.addAnother')}</SelectItem>
+                          <SelectItem id="relocate" glyph="folder-sync">{t('settings:mediaLibraries.relocate')}</SelectItem>
+                          <SelectItem id="add" glyph="plus">{t('settings:mediaLibraries.addAnother')}</SelectItem>
                         </Select>
                       </FolderField> : null}
                       {libraries.length > 1 ? <FolderField label={t('settings:mediaLibraries.moveTo')} className="w-full @lg:w-48">
@@ -372,7 +372,7 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                           edit(index, { path: row.path.replace(/\/$/, '') + '/' + encodeURIComponent(String(key)), smb_clear: false });
                           setSmbResults(current => ({ ...current, [index]: { message: t('settings:smbShare.testSubdirectory'), directories: [] } }));
                         } }}>
-                        {smbResults[index].directories.map(name => <SelectItem key={name} id={name}>{name}</SelectItem>)}
+                        {smbResults[index].directories.map(name => <SelectItem key={name} id={name} glyph="folder-open">{name}</SelectItem>)}
                       </Select> : null}
                       <Help>{t('settings:smbShare.help')}</Help>
                     </div> : null}

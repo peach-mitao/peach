@@ -4,7 +4,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { DropZone } from 'react-aria-components';
 import { Button, ButtonLink } from '@/components/base/buttons/button';
-import { CloseButton } from '@/components/base/buttons/close-button';
+import { IconButton } from '@/components/base/buttons/icon-button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { Radio, RadioGroup } from '@/components/base/radio/radio';
@@ -420,7 +420,7 @@ function FeedbackDialog({ session, open, close, exited, startTab }: {
   }}
   fitVisualViewport>
     <form ref={form} data-peach-feedback=""
-        className="flex flex-col gap-4 p-5 sm:p-6" onSubmit={event => { void submit(event) }}
+        className="flex min-h-0 flex-col" onSubmit={event => { void submit(event) }}
         onPaste={event => {
           if (event.defaultPrevented || sent || sending) return;
           const files = Array.from(event.clipboardData.files).filter(file => IMAGE_TYPES.includes(file.type));
@@ -428,157 +428,160 @@ function FeedbackDialog({ session, open, close, exited, startTab }: {
           event.preventDefault();
           void add(files);
         }}>
-      <header className="flex items-center justify-between gap-3">
+      <header data-feedback-head="" className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
         <h2 className="text-title-2-medium text-text-primary">{copy('title')}</h2>
-        <CloseButton size="sm" aria-label={message('close')} disabled={sending} onClick={closeForm} />
+        <IconButton size="small" icon={RiCloseLine} aria-label={message('close')} disabled={sending} onClick={closeForm} />
       </header>
-      {accessBlocked && !sent ? <Note tone="warning">
-        <span data-copy-key="server.api.feedback.accessRequired">{t('server:api.feedback.accessRequired')}</span>
-      </Note> : null}
-      {sent ? <div className="flex flex-col gap-3">
-        <p role="status" className="text-body-regular text-text-primary">{copy('sent')}</p>
-        {github && github.status !== 'published' && <p role="status" className="text-caption-1-regular text-text-secondary">
-          {copy(github.status === 'unconfirmed' ? 'githubUnconfirmed'
-            : github.status === 'unavailable' ? 'githubUnavailable' : 'githubFailed')}
-        </p>}
-        {github?.status === 'published' && <div className="flex flex-wrap items-center gap-2">
-          <ButtonLink href={`${GITHUB_ISSUES}/${github.number}`} target="_blank" rel="noopener noreferrer"
-            variant="secondary" data-feedback-action="" size="small">{copy('githubView')}</ButtonLink>
-        </div>}
-        {github?.status === 'published' && github.images === 'attached' && <p role="status" className="text-caption-1-regular text-text-secondary">
-          {copy('githubImagesAttached')}
-        </p>}
-        {githubFiles.length > 0 && <div className="flex flex-col gap-2">
-          <p className="text-caption-1-regular text-text-secondary">
-            {copy(github?.status === 'published' && github.images === 'unconfirmed' ? 'githubCheckImages' : 'githubAddImagesManually')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {githubFiles.map((image, index) => <DownloadGithubImage key={index} image={image} number={index + 1} />)}
-          </div>
-        </div>}
-      </div> : <>
-        <RadioGroup aria-label={message('category')} value={category} onChange={value => setCategory(value === 'feature' ? 'feature' : 'bug')}
-          isDisabled={sending} orientation="horizontal">
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {CATEGORIES.map(value => <Radio key={value} value={value} size="sm">{copy(value)}</Radio>)}
-          </div>
-        </RadioGroup>
-        <Input label={copy('issueTitle')} placeholder={message('issueTitlePlaceholder')} maxLength={TITLE_LIMIT}
-          value={title} onChange={setTitle} isDisabled={sending} isRequired />
-        {ISSUE_FIELDS[category].map(([field, limit, required], index) => <Textarea key={field} label={copy(field)}
-          placeholder={message(`${field}Placeholder`)} rows={index === 0 ? 3 : 2}
-          resize="none" maxLength={limit} value={fieldValue(field)}
-          isDisabled={sending} isRequired={required} onChange={value => updateField(field, value)} />)}
-        {category === 'bug' && <>
-          <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-2 text-body-medium text-text-primary">{copy('environment')}</legend>
-            <div data-feedback-environment="" className="min-w-0 gap-2">
-              {ENVIRONMENT_FIELDS.map(([field, limit, required]) => <Input key={field} label={copy(field)}
-                maxLength={limit} value={fieldValue(field)} isDisabled={sending} isRequired={required}
-                onChange={value => updateField(field, value)} />)}
-            </div>
-            {!accessBlocked && environmentStatus !== 'ready' && <p role="status" className="text-caption-1-regular text-text-secondary">
-              {copy(environmentStatus === 'loading' ? 'environmentLoading' : 'environmentUnavailable')}
-            </p>}
-          </fieldset>
-          <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-2 text-body-medium text-text-primary">{copy('diagnostics')}</legend>
-            <Checkbox isSelected={includeDiagnostics} onChange={setIncludeDiagnostics} isDisabled={sending}>
-              {copy('includeDiagnostics')}
-            </Checkbox>
-            <Textarea label={copy('environmentHealth')} rows={2} autoResize maxRows={5} resize="none" maxLength={500}
-              isDisabled={sending} value={fieldValue('environmentHealth')}
-              hint={accessBlocked ? undefined : diagnostics === undefined ? <span role="status">{copy('diagnosticsLoading')}</span> :
-                diagnostics === null ? <span role="status">{copy('diagnosticsUnavailable')}</span> : undefined}
-              onChange={value => updateField('environmentHealth', value)} />
-            <Textarea label={copy('logs')} placeholder={message('logsPlaceholder')} rows={2} autoResize maxRows={3} resize="none" maxLength={550}
-              hint={diagnostics && !diagnostics.logs ? <span role="status">{copy(diagnostics.logs === null
-                ? 'diagnosticsLogsUnavailable' : 'diagnosticsNoErrors')}</span> : undefined}
-              isDisabled={sending} value={fieldValue('logs')} onChange={value => updateField('logs', value)} />
-          </fieldset>
-        </>}
-        <div>
-          <div className="flex flex-col gap-1">
-            <Checkbox isSelected={publishGithub} onChange={setPublishGithub} isDisabled={sending}
-              aria-describedby="feedback-github-public">{copy('githubPublish')}</Checkbox>
-            <p id="feedback-github-public" className="text-caption-1-regular text-text-secondary">{copy('githubPublic')}</p>
-          </div>
-          <CollapseRegion open={publishGithub && category === 'bug' && includeDiagnostics}>
-            <div className="pt-1">
-              <Checkbox isSelected={publishDiagnostics} onChange={setPublishDiagnostics} isDisabled={sending}>
-                {copy('diagnosticsPublic')}
-              </Checkbox>
-            </div>
-          </CollapseRegion>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-body-medium text-text-primary">{copy('images')}</span>
-            <div className="ms-auto flex flex-wrap justify-end gap-2">
-              {offerTabCapture && <Button type="button" variant="secondary" data-feedback-action="" size="small"
-                leadingIcon={capturingTab ? ActionSpinner : RiScreenshot2Line}
-                disabled={!roomForTab || adding || sending} aria-disabled={!!capturingTab} aria-busy={!!capturingTab}
-                onClick={event => { void replaceWithTab(event.currentTarget) }}>{copy('captureTab')}</Button>}
-            </div>
-          </div>
-          {images.length > 0 && <ul className="m-0 flex list-none flex-wrap gap-x-2 gap-y-3 p-0" aria-label={message('images')}>
-            {images.map((item, index) => <AttachmentTile key={item.screenshot ? 'screenshot' : index} item={item}
-              label={labels[index]} disabled={sending} publishGithub={publishGithub}
-              show={button => { void showImage(index, button) }}
-              selectPublic={selected => setImages(current =>
-                current.map(candidate => candidate === item ? { ...item, publicGithub: selected } : candidate)
-              )}
-              remove={() => setImages(current => current.filter(candidate => candidate !== item))} />)}
-          </ul>}
-          {(remaining > 0 || adding) && <DropZone aria-label={message('pasteImages')} isDisabled={sending}
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed border-border-button-default px-3 py-2 data-[drop-target]:border-border-focus-ring data-[focus-visible]:border-border-focus-ring"
-            getDropOperation={(types, allowed) => !processingImages.current && IMAGE_TYPES.some(type => types.has(type))
-              && allowed.includes('copy') ? 'copy' : 'cancel'}
-            onDrop={event => {
-              if (processingImages.current || sending) return;
-              const files = event.items.flatMap(item => item.kind === 'file' && IMAGE_TYPES.includes(item.type) ? [item] : []);
-              if (files.length > 0) void add(Promise.all(files.map(item => item.getFile())));
-            }}>
-            <input ref={picker} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onChange={event => {
-              const files = Array.from(event.currentTarget.files ?? []);
-              event.currentTarget.value = '';
-              if (files.length > 0) void add(files);
-            }} />
-            <Button type="button" variant="secondary" data-feedback-action="" size="small"
-              leadingIcon={adding ? ActionSpinner : RiImageAddLine} disabled={sending}
-              aria-disabled={adding || undefined} aria-busy={adding || undefined}
-              onClick={() => { if (!processingImages.current) picker.current?.click() }}>{copy('addImages')}</Button>
-            <span className="text-caption-1-regular text-text-secondary">{copy('pasteImages')}</span>
-          </DropZone>}
-          {capture !== 'ready' && <div className="flex flex-wrap items-center justify-between gap-1">
-            <p role="status" className="text-caption-1-regular text-text-secondary">
-              {copy(capture === 'pending' ? 'capturing' : 'captureFailed')}
-            </p>
-            {capture === 'pending' && <Button type="button" variant="ghost" size="xs" onClick={() => {
-              captureSkipped.current = true;
-              setCapture('ready');
-            }}>{copy('skipCapture')}</Button>}
-          </div>}
-          {capturingTab && <p role="status" className="flex items-center gap-2 text-caption-1-regular text-text-secondary">
-            {copy(capturingTab === 'permission' ? 'tabWaitingPermission' : 'tabCapturing')}
+      <div data-feedback-body="" className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6 sm:pb-6"
+        onScroll={event => event.currentTarget.toggleAttribute('data-scrolled', event.currentTarget.scrollTop > 0)}>
+        {accessBlocked && !sent ? <Note tone="warning">
+          <span data-copy-key="server.api.feedback.accessRequired">{t('server:api.feedback.accessRequired')}</span>
+        </Note> : null}
+        {sent ? <div className="flex flex-col gap-3">
+          <p role="status" className="text-body-regular text-text-primary">{copy('sent')}</p>
+          {github && github.status !== 'published' && <p role="status" className="text-caption-1-regular text-text-secondary">
+            {copy(github.status === 'unconfirmed' ? 'githubUnconfirmed'
+              : github.status === 'unavailable' ? 'githubUnavailable' : 'githubFailed')}
           </p>}
-          {imageError && <p role="status" className="text-caption-1-regular text-text-secondary">{copy(imageError)}</p>}
-          {images.length > 0 && <div>
-            <p className="text-caption-1-regular text-text-secondary">{copy('imagePrivacy')}</p>
-            <CollapseRegion open={publishGithub && images.some(image => image.publicGithub)}>
-              <p className="pt-2 text-caption-1-regular text-text-secondary">{copy('githubPublicMedia')}</p>
-            </CollapseRegion>
+          {github?.status === 'published' && <div className="flex flex-wrap items-center gap-2">
+            <ButtonLink href={`${GITHUB_ISSUES}/${github.number}`} target="_blank" rel="noopener noreferrer"
+              variant="secondary" data-feedback-action="" size="small">{copy('githubView')}</ButtonLink>
           </div>}
-        </div>
-        {submitError && !accessBlocked ? <Note tone="error">{submitError}</Note> : null}
-        <footer className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="secondary" data-feedback-action="" disabled={sending} onClick={closeForm}>{copy('cancel')}</Button>
-          <Button type="submit" leadingIcon={sending ? ActionSpinner : undefined}
-            disabled={!formReady || adding || !!capturingTab || capture === 'pending'} aria-disabled={sending} aria-busy={sending}>
-            {copy(sending ? 'sending' : 'send')}
-          </Button>
-        </footer>
-      </>}
+          {github?.status === 'published' && github.images === 'attached' && <p role="status" className="text-caption-1-regular text-text-secondary">
+            {copy('githubImagesAttached')}
+          </p>}
+          {githubFiles.length > 0 && <div className="flex flex-col gap-2">
+            <p className="text-caption-1-regular text-text-secondary">
+              {copy(github?.status === 'published' && github.images === 'unconfirmed' ? 'githubCheckImages' : 'githubAddImagesManually')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {githubFiles.map((image, index) => <DownloadGithubImage key={index} image={image} number={index + 1} />)}
+            </div>
+          </div>}
+        </div> : <>
+          <RadioGroup aria-label={message('category')} value={category} onChange={value => setCategory(value === 'feature' ? 'feature' : 'bug')}
+            isDisabled={sending} orientation="horizontal">
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {CATEGORIES.map(value => <Radio key={value} value={value} size="sm">{copy(value)}</Radio>)}
+            </div>
+          </RadioGroup>
+          <Input label={copy('issueTitle')} placeholder={message('issueTitlePlaceholder')} maxLength={TITLE_LIMIT}
+            value={title} onChange={setTitle} isDisabled={sending} isRequired />
+          {ISSUE_FIELDS[category].map(([field, limit, required], index) => <Textarea key={field} label={copy(field)}
+            placeholder={message(`${field}Placeholder`)} rows={index === 0 ? 3 : 2}
+            resize="none" maxLength={limit} value={fieldValue(field)}
+            isDisabled={sending} isRequired={required} onChange={value => updateField(field, value)} />)}
+          {category === 'bug' && <>
+            <fieldset className="flex min-w-0 flex-col gap-2">
+              <legend className="mb-2 text-body-medium text-text-primary">{copy('environment')}</legend>
+              <div data-feedback-environment="" className="min-w-0 gap-2">
+                {ENVIRONMENT_FIELDS.map(([field, limit, required]) => <Input key={field} label={copy(field)}
+                  maxLength={limit} value={fieldValue(field)} isDisabled={sending} isRequired={required}
+                  onChange={value => updateField(field, value)} />)}
+              </div>
+              {!accessBlocked && environmentStatus !== 'ready' && <p role="status" className="text-caption-1-regular text-text-secondary">
+                {copy(environmentStatus === 'loading' ? 'environmentLoading' : 'environmentUnavailable')}
+              </p>}
+            </fieldset>
+            <fieldset className="flex min-w-0 flex-col gap-2">
+              <legend className="mb-2 text-body-medium text-text-primary">{copy('diagnostics')}</legend>
+              <Checkbox isSelected={includeDiagnostics} onChange={setIncludeDiagnostics} isDisabled={sending}>
+                {copy('includeDiagnostics')}
+              </Checkbox>
+              <Textarea label={copy('environmentHealth')} rows={2} autoResize maxRows={5} resize="none" maxLength={500}
+                isDisabled={sending} value={fieldValue('environmentHealth')}
+                hint={accessBlocked ? undefined : diagnostics === undefined ? <span role="status">{copy('diagnosticsLoading')}</span> :
+                  diagnostics === null ? <span role="status">{copy('diagnosticsUnavailable')}</span> : undefined}
+                onChange={value => updateField('environmentHealth', value)} />
+              <Textarea label={copy('logs')} placeholder={message('logsPlaceholder')} rows={2} autoResize maxRows={3} resize="none" maxLength={550}
+                hint={diagnostics && !diagnostics.logs ? <span role="status">{copy(diagnostics.logs === null
+                  ? 'diagnosticsLogsUnavailable' : 'diagnosticsNoErrors')}</span> : undefined}
+                isDisabled={sending} value={fieldValue('logs')} onChange={value => updateField('logs', value)} />
+            </fieldset>
+          </>}
+          <div>
+            <div className="flex flex-col gap-1">
+              <Checkbox isSelected={publishGithub} onChange={setPublishGithub} isDisabled={sending}
+                aria-describedby="feedback-github-public">{copy('githubPublish')}</Checkbox>
+              <p id="feedback-github-public" className="text-caption-1-regular text-text-secondary">{copy('githubPublic')}</p>
+            </div>
+            <CollapseRegion open={publishGithub && category === 'bug' && includeDiagnostics}>
+              <div className="pt-1">
+                <Checkbox isSelected={publishDiagnostics} onChange={setPublishDiagnostics} isDisabled={sending}>
+                  {copy('diagnosticsPublic')}
+                </Checkbox>
+              </div>
+            </CollapseRegion>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-body-medium text-text-primary">{copy('images')}</span>
+              <div className="ms-auto flex flex-wrap justify-end gap-2">
+                {offerTabCapture && <Button type="button" variant="secondary" data-feedback-action="" size="small"
+                  leadingIcon={capturingTab ? ActionSpinner : RiScreenshot2Line}
+                  disabled={!roomForTab || adding || sending} aria-disabled={!!capturingTab} aria-busy={!!capturingTab}
+                  onClick={event => { void replaceWithTab(event.currentTarget) }}>{copy('captureTab')}</Button>}
+              </div>
+            </div>
+            {images.length > 0 && <ul className="m-0 flex list-none flex-wrap gap-x-2 gap-y-3 p-0" aria-label={message('images')}>
+              {images.map((item, index) => <AttachmentTile key={item.screenshot ? 'screenshot' : index} item={item}
+                label={labels[index]} disabled={sending} publishGithub={publishGithub}
+                show={button => { void showImage(index, button) }}
+                selectPublic={selected => setImages(current =>
+                  current.map(candidate => candidate === item ? { ...item, publicGithub: selected } : candidate)
+                )}
+                remove={() => setImages(current => current.filter(candidate => candidate !== item))} />)}
+            </ul>}
+            {(remaining > 0 || adding) && <DropZone aria-label={message('pasteImages')} isDisabled={sending}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed border-border-button-default px-3 py-2 data-[drop-target]:border-border-focus-ring data-[focus-visible]:border-border-focus-ring"
+              getDropOperation={(types, allowed) => !processingImages.current && IMAGE_TYPES.some(type => types.has(type))
+                && allowed.includes('copy') ? 'copy' : 'cancel'}
+              onDrop={event => {
+                if (processingImages.current || sending) return;
+                const files = event.items.flatMap(item => item.kind === 'file' && IMAGE_TYPES.includes(item.type) ? [item] : []);
+                if (files.length > 0) void add(Promise.all(files.map(item => item.getFile())));
+              }}>
+              <input ref={picker} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onChange={event => {
+                const files = Array.from(event.currentTarget.files ?? []);
+                event.currentTarget.value = '';
+                if (files.length > 0) void add(files);
+              }} />
+              <Button type="button" variant="secondary" data-feedback-action="" size="small"
+                leadingIcon={adding ? ActionSpinner : RiImageAddLine} disabled={sending}
+                aria-disabled={adding || undefined} aria-busy={adding || undefined}
+                onClick={() => { if (!processingImages.current) picker.current?.click() }}>{copy('addImages')}</Button>
+              <span className="text-caption-1-regular text-text-secondary">{copy('pasteImages')}</span>
+            </DropZone>}
+            {capture !== 'ready' && <div className="flex flex-wrap items-center justify-between gap-1">
+              <p role="status" className="text-caption-1-regular text-text-secondary">
+                {copy(capture === 'pending' ? 'capturing' : 'captureFailed')}
+              </p>
+              {capture === 'pending' && <Button type="button" variant="ghost" size="xs" onClick={() => {
+                captureSkipped.current = true;
+                setCapture('ready');
+              }}>{copy('skipCapture')}</Button>}
+            </div>}
+            {capturingTab && <p role="status" className="flex items-center gap-2 text-caption-1-regular text-text-secondary">
+              {copy(capturingTab === 'permission' ? 'tabWaitingPermission' : 'tabCapturing')}
+            </p>}
+            {imageError && <p role="status" className="text-caption-1-regular text-text-secondary">{copy(imageError)}</p>}
+            {images.length > 0 && <div>
+              <p className="text-caption-1-regular text-text-secondary">{copy('imagePrivacy')}</p>
+              <CollapseRegion open={publishGithub && images.some(image => image.publicGithub)}>
+                <p className="pt-2 text-caption-1-regular text-text-secondary">{copy('githubPublicMedia')}</p>
+              </CollapseRegion>
+            </div>}
+          </div>
+          {submitError && !accessBlocked ? <Note tone="error">{submitError}</Note> : null}
+          <footer className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="secondary" data-feedback-action="" disabled={sending} onClick={closeForm}>{copy('cancel')}</Button>
+            <Button type="submit" leadingIcon={sending ? ActionSpinner : undefined}
+              disabled={!formReady || adding || !!capturingTab || capture === 'pending'} aria-disabled={sending} aria-busy={sending}>
+              {copy(sending ? 'sending' : 'send')}
+            </Button>
+          </footer>
+        </>}
+      </div>
     </form>
     {preview && <PhotoLightbox slides={preview.slides} index={preview.index} Swiper={preview.Swiper}
       onClose={restoreFocus => {

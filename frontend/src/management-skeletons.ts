@@ -2,6 +2,7 @@ import { islandButton, islandGlassRows, islandSelect } from './island-skeleton';
 import { queueContentSkeletonHtml, queueControlsSkeletonHtml } from './queue-skeleton';
 import { RESULT_PANEL, RESULT_SECTION } from './react/components/fieldset';
 import { t } from './i18n';
+import { filterSearchSkeletonHtml } from './filter-controls-skeleton';
 
 const placeholder = 'relative overflow-hidden skeleton-sheen bg-background-tertiary-default rounded-lg';
 const text = (width = '60%') => `<span class="${placeholder} inline-block max-w-full align-middle" style="width:${width};height:1em"></span>`;
@@ -92,7 +93,7 @@ export function duplicatesSkeleton(): string {
     </div>${row.repeat(2)}</section>`;
   return `<div class="peach-react"><div class="mx-auto w-full max-w-board pb-10.5">
     ${islandGlassRows({ label: t('cleanup:duplicates.summaryLabel'), attrs: ' data-filter-frame="" data-duplicates-frame=""',
-      controls: queueControlsSkeletonHtml('duplicates'),
+      controls: queueControlsSkeletonHtml('duplicates'), search: filterSearchSkeletonHtml(),
       top: [t('cleanup:duplicates.allKeepLargest'), t('cleanup:duplicates.allKeepLongest'), t('cleanup:duplicates.allKeepAll')].map(filterAction).join('')
         + `<span class="ml-auto"></span>${filterAction(text('4.5em'))}` })}
     ${group.repeat(2)}
@@ -100,10 +101,10 @@ export function duplicatesSkeleton(): string {
 }
 
 /** 高清版首屏：筛选浮层（只有下排）加按卡片／列表画的内容，同 `QualityGoalsPage` 落地那一版。 */
-export function qualityGoalsSkeleton(): string {
+export function qualityGoalsSkeleton(label = ''): string {
   return `<div class="peach-react"><div data-quality-goals class="mx-auto w-full max-w-board">
-    ${islandGlassRows({ label: t('manage:hdUpgrades.summaryLabel'), attrs: ' data-filter-frame=""', controls: queueControlsSkeletonHtml('quality-goals') })}
-    ${queueContentSkeletonHtml('quality-goals', '', ['w-20', 'w-20'])}
+    ${islandGlassRows({ label: t('manage:hdUpgrades.summaryLabel'), attrs: ' data-filter-frame=""', controls: queueControlsSkeletonHtml('quality-goals'), search: filterSearchSkeletonHtml() })}
+    ${queueContentSkeletonHtml('quality-goals', label, ['w-20', 'w-24'])}
   </div></div>`;
 }
 

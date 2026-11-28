@@ -2,6 +2,7 @@
 import { loadMediaSources } from './../query/media-sources';
 import { buildBars, catalogState, dropOfflineFromDefaultLoc, homePath, loadCatalog, paintCatalogFilter, repaintCatalogGrid, syncCatalogFilterScreen } from './catalog.js';
 import { appSettingsStore, wireGestureSettings } from './../appearance/settings';
+import { wireTopToolbar } from '../appearance/top-toolbar';
 import { interfaceLanguage, storedInterfaceLanguage, t } from '../i18n';
 import { entityDisplayName, setNameLanguage, setNameLocale } from '../core/entity-names';
 import { orientLabel } from '../core/stored-values';
@@ -168,6 +169,7 @@ preferencesState.offlineReason = key=>preferencesState.sourceProblems[key]||pref
 preferencesState.settingsStore = appSettingsStore();
 preferencesState.appSettings = preferencesState.settingsStore.value;
 wireGestureSettings(preferencesState.settingsStore);
+applicationEffects.own(wireTopToolbar(preferencesState.settingsStore));
 setNameLocale(interfaceLanguage);
 setNameLanguage(preferencesState.appSettings.performerNameLanguage);
 preferencesState.saveSettings = ()=>preferencesState.settingsStore.save();

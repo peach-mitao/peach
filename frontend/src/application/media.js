@@ -192,6 +192,7 @@ mediaState.facets = null;
 mediaState.stageHost = {
   player:{
     settings:()=>preferencesState.appSettings,saveSettings:()=>preferencesState.saveSettings(),
+    subscribeSettings:listener=>preferencesState.settingsStore.subscribe(listener),
     toast:(text,options)=>receiptsState.toast({text},options),
     loadSourceStatus:()=>loadSourceStatus(),offlineReason:key=>preferencesState.offlineReason(key),
   },
