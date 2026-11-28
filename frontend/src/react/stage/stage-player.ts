@@ -96,9 +96,29 @@ export function configureStagePlayer(next: StagePlayerHost, stage: {
     toMiniplayer: () => toggleMiniplayer(),
   });
   // 离开页面时收掉详情这一路的清晰度探测与转码会话，服务端不留孤儿进程。
-  if (!pagehideWired) { pagehideWired = true; addEventListener('pagehide', () => cancelDetailStream()) }
+  if (!pagehideWired) {
+    pagehideWired = true;
+    addEventListener('pagehide', () => cancelDetailStream());
+    for (const event of ['enterpictureinpicture', 'webkitpresentationmodechanged']) {
+      document.addEventListener(event, closeStageForNativePip, true);
+    }
+  }
 }
 let pagehideWired = false;
+
+type PresentationVideo = HTMLVideoElement & { webkitPresentationMode?: string };
+
+function inNativePip(video: PresentationVideo | null): boolean {
+  return !!video && (document.pictureInPictureElement === video || video.webkitPresentationMode === 'picture-in-picture');
+}
+
+function closeStageForNativePip(event: Event): void {
+  const video = stagePlayer()?.el().querySelector('video') ?? null;
+  if (stageOpen() && dom && video === event.target && inNativePip(video)) {
+    requested = true;
+    requestClose?.();
+  }
+}
 
 function stageHost(): StagePlayerHost {
   if (!host) throw new Error(t('catalog:stagePlayer.hostMissing'));
@@ -352,10 +372,24 @@ function enterMiniplayer(slot: Slot, next: StageMeta): void {
   held = entry;
   token++;
   slot.player.el().classList.add('vjs-peach-mini');
-  dom.frame.prepend(slot.player.el());
+  const root = slot.player.el();
+  const video = root.querySelector('video');
+  const native = inNativePip(video);
+  // 保持 video 与文档连接，让浏览器的小窗跨过详情卸载继续使用同一条流。
+  if (native && typeof dom.frame.moveBefore === 'function') dom.frame.moveBefore(root, dom.frame.firstChild);
+  else dom.frame.prepend(root);
   paintMeta(next);
   bindHeld(entry);
-  showMiniplayer();
+  if (native && video && inNativePip(video)) {
+    hideMiniplayer();
+    const onLeave = () => {
+      if (held === entry && !entry.pending && !inNativePip(video)) showMiniplayer();
+    };
+    for (const event of ['leavepictureinpicture', 'webkitpresentationmodechanged']) {
+      video.addEventListener(event, onLeave);
+      entry.off.push(() => video.removeEventListener(event, onLeave));
+    }
+  } else showMiniplayer();
   resizeSoon(slot.player);
 }
 

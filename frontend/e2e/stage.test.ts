@@ -375,6 +375,34 @@ describe('舞台岛', () => {
     }
   });
 
+  it('浏览器画中画收起详情，退出后同一播放器在页面小窗接续', async () => {
+    const opened = await openItemPage(browser, `/assets/${ITEM.plain}`, DESKTOP);
+    try {
+      const { page } = opened;
+      await page.locator(PLAYER).waitFor({ state: 'attached' });
+      await markPlayer(page, '#stage');
+      const video = await page.locator('#stage .video-js video').elementHandle();
+      assert.ok(video);
+      // 无窗口的浏览器只模拟原生画中画状态和事件，详情退场、导航和播放器卸载走真实路径。
+      await video.evaluate(node => {
+        Object.defineProperty(document, 'pictureInPictureElement', { configurable: true, value: node });
+        node.dispatchEvent(new Event('enterpictureinpicture'));
+      });
+      await pathIs(page, '/');
+      await page.locator('#stage[open]').waitFor({ state: 'detached' });
+      assert.equal(await page.locator('#miniplayer').isHidden(), true);
+      assert.equal(await video.evaluate(node => node.isConnected && node === document.pictureInPictureElement
+        && !!node.closest('#miniplayer [data-probe="kept"]')), true);
+      await video.evaluate(node => {
+        Reflect.deleteProperty(document, 'pictureInPictureElement');
+        node.dispatchEvent(new Event('leavepictureinpicture'));
+      });
+      await page.locator('#miniplayer:not([hidden]) [data-probe="kept"]').waitFor();
+    } finally {
+      await opened.close();
+    }
+  });
+
   it('小窗展开回详情不重建播放器；拖到左上象限松手吸附到左上角', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/assets/${ITEM.plain}`, DESKTOP);
     try {
