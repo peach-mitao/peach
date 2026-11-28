@@ -116,7 +116,7 @@ const settings = (): PanelSettings => ({
   theme: 'system', localAppearance: false, uiSounds: true, homeGlow: { ...normalizeHomeGlow(null), on: true, preset: 'ash' }, accent: 'blue',
   sidebarOrder: [''], batchSize: 60, defaultSort: 'seed', defaultSortDirection: '', groupCollapse: true,
   javImage: 'cover', performerNameLanguage: 'zh-CN', interfaceLanguage: 'zh-CN', systemLanguage: null, feedAutoScroll: true, feedLimit: 12, feedHideGroupCompilations: true, feedHideSoloCompilations: false,
-  feedHideExcerpts: true, hoverDelaySeconds: 5, hoverPreview: true, touchGestures: true, holdRate: 2, swipeMinutes: 20, doubleTapPercent: 35, autoFullscreen: false, detailAutoplay: false, autoChineseSubtitles: false, afterPlayback: 'next', resumeRestartPercent: 5, miniplayer: true, seekSeconds: 10,
+  feedHideExcerpts: true, hoverDelaySeconds: 5, hoverPreview: true, touchGestures: true, holdRate: 2, swipeSeconds: 15, doubleTapPercent: 35, autoFullscreen: false, detailAutoplay: false, autoChineseSubtitles: false, afterPlayback: 'next', resumeRestartPercent: 5, miniplayer: true, seekSeconds: 10,
   relatedLimit: 24, searchHistoryLimit: 10, followInitialDays: 30, avatarRefreshDays: 90, faviconRefreshDays: 365,
   feedNewRows: true, homeShortsLimit: 18, homeTiers: true, homePreviewOnly: false, containHomeScroll: false,
   completionPrompt: true, searchRecommendations: true, ingestNotices: true, ingestToasts: true, browserNotices: false, showFeedbackButton: true,
@@ -387,22 +387,22 @@ describe('设置面板与壳的接缝', () => {
     await close(current);
   });
 
-  it('画面手势：长按倍速、拖动幅度与双击区落进偏好；关掉手势后两项数值收起，长按倍速留着', async () => {
+  it('画面手势：长按倍速、每次滑动秒数与双击区落进偏好；关掉手势后两项数值收起，长按倍速留着', async () => {
     const current = await setup();
     const panel = await open(current, '浏览与播放');
     const rate = selectButton(panel, 'holdRateSetting');
     expect(rate?.textContent).toBe('2×');
     await choose(rate, '3×');
-    const swipe = panel.querySelector<HTMLInputElement>('#swipeMinutesSetting input[type=number]')!;
+    const swipe = panel.querySelector<HTMLInputElement>('#swipeSecondsSetting input[type=number]')!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(swipe, '10');
       swipe.dispatchEvent(new Event('input', { bubbles: true }));
       swipe.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    expect([current.value.holdRate, current.value.swipeMinutes]).toEqual([3, 10]);
+    expect([current.value.holdRate, current.value.swipeSeconds]).toEqual([3, 10]);
     await click(panel.querySelector('#touchGesturesSetting'));
     expect(current.value.touchGestures).toBe(false);
-    expect(panel.querySelector('#swipeMinutesSetting')).toBeNull();
+    expect(panel.querySelector('#swipeSecondsSetting')).toBeNull();
     expect(panel.querySelector('#doubleTapPercentSetting')).toBeNull();
     expect(panel.querySelector('#holdRateSetting')).not.toBeNull();
     await click(panel.querySelector('#autoFullscreenSetting'));

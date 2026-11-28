@@ -1175,5 +1175,10 @@
 <langSet xml:lang="zh-Hans"><tig><term>来源原文</term></tig></langSet>
 <langSet xml:lang="en"><tig><term>Source original</term></tig></langSet>
 </termEntry>
+<termEntry id="concept.playback.swipeStep" weblate-flags="terminology">
+<descrip>播放器画面横滑每档对应的时长；滑动距离和视频总时长决定跨越多少档。</descrip>
+<langSet xml:lang="zh-Hans"><tig><term>横滑跳转步长</term></tig></langSet>
+<langSet xml:lang="en"><tig><term>Horizontal swipe step</term></tig></langSet>
+</termEntry>
 </body></text>
 </martif>

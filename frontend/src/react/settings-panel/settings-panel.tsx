@@ -898,10 +898,10 @@ function PlaybackRows({ host: current, epoch }: Omit<GroupProps, 'tab'>) {
         <ToggleRow id="touchGesturesSetting" title={t('settings:playbackGestures.touch')} checked={settings.touchGestures}
           onToggle={(on) => { settings.touchGestures = on; save() }} />
         {settings.touchGestures ? <>
-          <Row title={t('settings:playbackGestures.swipeMinutes')}>
-            <div id="swipeMinutesSetting">
-              <NumberSetting key={epoch} id="swipeMinutesSetting" label={t('settings:playbackGestures.swipeMinutes')} value={settings.swipeMinutes}
-                onApply={(value) => { settings.swipeMinutes = normalizeGestures({ swipeMinutes: value }).swipeMinutes; save() }} />
+          <Row title={t('settings:playbackGestures.swipeSeconds')} description={t('settings:playbackGestures.swipeSecondsHelp')}>
+            <div id="swipeSecondsSetting">
+              <NumberSetting key={epoch} id="swipeSecondsSetting" label={t('settings:playbackGestures.swipeSeconds')} value={settings.swipeSeconds}
+                onApply={(value) => { settings.swipeSeconds = normalizeGestures({ swipeSeconds: value }).swipeSeconds; save() }} />
             </div>
           </Row>
           <Row title={t('settings:playbackGestures.doubleTapPercent')} description={t('settings:playbackGestures.doubleTapPercentHelp')}>

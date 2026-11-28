@@ -5,8 +5,8 @@ export interface GestureSettings {
   touchGestures: boolean;
   /** 长按画面、按住右方向键时的临时倍速。 */
   holdRate: number;
-  /** 横向拖过一整个画面宽度对应多少分钟。 */
-  swipeMinutes: number;
+  /** 横向滑动的最小步长；距离和视频时长决定跨过多少步。 */
+  swipeSeconds: number;
   /** 双击快进、快退的区域各占画面宽度的百分比，中间剩下的是双击暂停。 */
   doubleTapPercent: number;
   /** 双击与短按右方向键跳多少秒，沿用已有的「快进秒数」。 */
@@ -16,7 +16,7 @@ export interface GestureSettings {
 }
 
 export const DEFAULT_GESTURES: GestureSettings = {
-  touchGestures: true, holdRate: 2, swipeMinutes: 20, doubleTapPercent: 35, seekSeconds: 10, autoFullscreen: false,
+  touchGestures: true, holdRate: 2, swipeSeconds: 15, doubleTapPercent: 35, seekSeconds: 10, autoFullscreen: false,
 };
 
 const bounded = (value: unknown, low: number, high: number, fallback: number) =>
@@ -27,7 +27,7 @@ export function normalizeGestures(raw: Partial<GestureSettings> = {}): GestureSe
   return {
     touchGestures: raw.touchGestures !== false,
     holdRate: bounded(raw.holdRate, 1.25, 4, DEFAULT_GESTURES.holdRate),
-    swipeMinutes: bounded(raw.swipeMinutes, 1, 120, DEFAULT_GESTURES.swipeMinutes),
+    swipeSeconds: bounded(raw.swipeSeconds, 1, 60, DEFAULT_GESTURES.swipeSeconds),
     doubleTapPercent: bounded(raw.doubleTapPercent, 15, 45, DEFAULT_GESTURES.doubleTapPercent),
     seekSeconds: bounded(raw.seekSeconds, 1, 300, DEFAULT_GESTURES.seekSeconds),
     autoFullscreen: raw.autoFullscreen === true,

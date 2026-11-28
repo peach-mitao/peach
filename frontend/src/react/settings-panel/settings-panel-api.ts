@@ -52,7 +52,7 @@ export interface PanelSettings {
   hoverPreview: boolean;
   touchGestures: boolean;
   holdRate: number;
-  swipeMinutes: number;
+  swipeSeconds: number;
   doubleTapPercent: number;
   autoFullscreen: boolean;
   detailAutoplay: boolean;

@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CONFIGURATION_URL, PICK_FOLDER_URL } from '../../src/configuration-endpoints';
 import type { ConfigurationData } from '../../src/react/bundle';
@@ -27,7 +27,12 @@ vi.mock('../../src/react/library-processing/library-processing', async (original
   ...await original<Record<string, unknown>>(),
   fetchLibraryProcessing: () => processing.read(),
 }));
-afterEach(() => { processing.read.mockReset(); processing.read.mockResolvedValue({ status: 'idle' }) });
+// 每例明确预览开关，避免空缓存发起额外请求或沿用上一例的禁用状态。
+beforeEach(() => queryClient.setQueryData(MEDIA_PROCESSING_KEY, { metadata_only: false }));
+afterEach(() => {
+  processing.read.mockReset(); processing.read.mockResolvedValue({ status: 'idle' });
+  queryClient.removeQueries({ queryKey: MEDIA_PROCESSING_KEY, exact: true });
+});
 
 const data = (over: Partial<ConfigurationData> = {}): ConfigurationData => ({
   editable: true, notice: '', revision: 'rev-1', media_dirs: ['D:\\Media'], library_count: 1, port: 9123, facts: [], ...over,
