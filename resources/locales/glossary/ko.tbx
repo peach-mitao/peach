@@ -799,6 +799,14 @@
                 <langSet xml:lang="zh_Hans"><tig><term>欧美</term></tig></langSet>
                 <langSet xml:lang="ko"><tig><term/></tig></langSet>
             </termEntry>
+            <termEntry id="ref.51" weblate-flags="terminology">
+                <langSet xml:lang="zh_Hans"><tig><term>来源原文</term></tig></langSet>
+                <langSet xml:lang="ko"><tig><term></term></tig></langSet>
+            </termEntry>
+            <termEntry id="ref.50" weblate-flags="terminology">
+                <langSet xml:lang="zh_Hans"><tig><term>Peach 优选</term></tig></langSet>
+                <langSet xml:lang="ko"><tig><term></term></tig></langSet>
+            </termEntry>
         </body>
     </text>
 </martif>
