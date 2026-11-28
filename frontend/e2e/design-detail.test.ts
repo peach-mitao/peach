@@ -660,11 +660,12 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
     }
   });
 
-  it('播放器的设置面板与右键菜单：同一档黑、浮层圆角、48px 的行；右键菜单悬停抬一层白', { timeout: 60_000 }, async () => {
+  it('播放失败时设置面板用深色实底，右键菜单保留半透明底色和 48px 的行', { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, `/assets/${ITEM.plain}`, DESKTOP);
     try {
       const page = opened.page;
       await page.locator('#stage #playerStatsBtn').waitFor();
+      await page.locator('#stage .video-js.vjs-error').waitFor({ state: 'attached' });
       const menu = '#stage .vjs-peach-settings-menu';
       /* 关闭态不能是 display:none：它没有可过渡的中间态，面板只会瞬间消失。 */
       assert.deepEqual(await styleOf(page, menu, ['display', 'opacity', 'visibility']),
@@ -672,7 +673,7 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
       await page.locator('#stage .vjs-peach-settings-toggle').dispatchEvent('click');
       const floating = await tokenOf(page, menu, '--floating-radius');
       const settings = (await styleOf(page, menu, ['background-color', 'border-top-left-radius', 'width', 'backdrop-filter']))!;
-      assert.equal(settings['background-color'], PLAYER_BLACK);
+      assert.equal(settings['background-color'], 'rgb(21, 21, 21)');
       assert.equal(settings['backdrop-filter'], 'blur(16px)', '设置面板的毛玻璃没生效');
       assert.equal(settings['border-top-left-radius'], floating);
       assert.ok(parseFloat(settings.width!) <= 274, `设置面板宽 ${settings.width}`);
@@ -901,7 +902,7 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
       assert.deepEqual(current.fill, ['rgba(0, 0, 0, 0)', 'none', 'none'], '当前项自己铺了底，静止时就是两层底叠着');
       assert.equal(current.color, await tokenColor(page, '#drawer', '--glass-text'), '当前项的字色不是玻璃上的字色');
       const idle = await read('studios');
-      assert.equal(idle.color, await tokenColor(page, '#drawer', '--color-text-secondary'), '未选中项的字色不是次要文字色');
+      assert.equal(idle.color, await tokenColor(page, '#drawer', '--glass-text-secondary'), '未选中项使用玻璃背景的次要文字色');
 
       await page.locator('#drawer [data-sidebar-nav] [data-nav="studios"]').hover();
       const hovered = await read('studios');

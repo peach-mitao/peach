@@ -305,6 +305,17 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 .peach-react [data-media-stack] [data-media-pic] { z-index: 1; }
 
 /* ── 封面上的角标 ── */
+.peach-react [data-media-badge],
+.peach-react [data-follow-sources] [data-follow-seealso] {
+  min-height: 24px;
+  padding: 4px;
+  border-radius: var(--pic-inner-radius, 8px);
+  background: var(--glass-media-fill);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+  backdrop-filter: blur(16px) saturate(145%);
+  color: var(--glass-text);
+  font: var(--board-caption);
+}
 .peach-react [data-media-badge] {
   position: absolute;
   top: var(--pic-badge-inset, 6px);
@@ -314,14 +325,6 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 24px;
-  padding: 4px;
-  border-radius: var(--pic-inner-radius, 8px);
-  background: var(--glass-media-fill);
-  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
-  backdrop-filter: blur(16px) saturate(145%);
-  color: var(--glass-text);
-  font: var(--board-caption);
   white-space: nowrap;
   transition: opacity .15s ease;
 }
@@ -369,7 +372,8 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .peach-react [data-media-badge] { background: var(--ground); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .peach-react [data-media-badge],
+  .peach-react [data-follow-sources] [data-follow-seealso] { background: var(--ground); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 .peach-react [data-media-group] {
   position: absolute;
