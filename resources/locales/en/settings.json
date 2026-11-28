@@ -1148,7 +1148,7 @@
     "doubleTapPercentHelp": "Share of the screen on each side. Double-tap left to go back or right to skip ahead.",
     "holdRate": "Hold speed",
     "holdRateHelp": "Used when you hold the video or the right arrow key.",
-    "swipeMinutes": "A full-width drag skips",
+    "swipeSeconds": "Each horizontal swipe skips",
     "touch": "Picture gestures (hold, drag, double-tap)"
   },
   "playbackTranscode": {

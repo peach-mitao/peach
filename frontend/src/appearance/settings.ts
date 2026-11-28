@@ -54,7 +54,7 @@ export interface AppSettings extends BrowsePreferences {
   /** 播放器画面手势（触屏与鼠标的长按、拖动、双击）的总开关与数值，播放器经 `wireGestureSettings` 现读。 */
   touchGestures: boolean;
   holdRate: number;
-  swipeMinutes: number;
+  swipeSeconds: number;
   doubleTapPercent: number;
   /** 手机、平板上点播放时横版视频自动全屏（#618）。 */
   autoFullscreen: boolean;
@@ -147,6 +147,7 @@ export function normalizeAppSettings(raw: unknown): { settings: AppSettings; mig
   /* 迁移只碰默认值本身：把界面上已经不存在的键换成当前键，用户主动选过的排序不动。
      不迁移的话白名单会把它静默打回随机。 */
   let migrated = false;
+  if ('swipeMinutes' in settings) { delete settings.swipeMinutes; migrated = true }
   const version = +(settings.sortDefaultsVersion as number) || 0;
   if (version < 2 && settings.defaultSort === 'new') { settings.defaultSort = 'seed'; migrated = true }
   const alias = SORT_ALIASES[settings.defaultSort as string];
@@ -160,7 +161,7 @@ export function normalizeAppSettings(raw: unknown): { settings: AppSettings; mig
   const gestures = normalizeGestures(settings as Partial<GestureSettings>);
   settings.touchGestures = gestures.touchGestures;
   settings.holdRate = gestures.holdRate;
-  settings.swipeMinutes = gestures.swipeMinutes;
+  settings.swipeSeconds = gestures.swipeSeconds;
   settings.doubleTapPercent = gestures.doubleTapPercent;
   settings.autoFullscreen = gestures.autoFullscreen;
   settings.seekSeconds = boundedPreference(+(settings.seekSeconds as number), 1, 300, 10);

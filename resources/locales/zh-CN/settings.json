@@ -1137,7 +1137,7 @@
     "doubleTapPercentHelp": "左右两侧各占画面的比例。双击左侧后退，右侧前进。",
     "holdRate": "长按倍速",
     "holdRateHelp": "长按画面或右方向键时使用。",
-    "swipeMinutes": "横向拖过整个画面跳转",
+    "swipeSeconds": "每次横向滑动跳转",
     "touch": "画面手势（长按、拖动、双击）"
   },
   "playbackTranscode": {

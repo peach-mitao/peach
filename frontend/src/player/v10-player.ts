@@ -165,7 +165,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     isFullscreen,
     poster: (url: string) => { video.poster = url },
     src: (next: PlayerSource) => {
-      cancel(false);
+      cancel();
       resetPlaybackWait();
       source = next; failure = null; root.classList.remove('vjs-error');
       sourceGeneration++; playGeneration++; selectionQueued = false; enabledLevels = []; levels.length = 0;

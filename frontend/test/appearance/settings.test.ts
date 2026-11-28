@@ -18,7 +18,7 @@ describe('启动归一化', () => {
     expect(settings).toMatchObject({
       ...DEFAULT_SETTINGS, sidebarOrder: [...DEFAULT_SIDEBAR_ORDER], homeGlow: DEFAULT_HOME_GLOW, accent: DEFAULT_ACCENT,
       followInitialDays: 30, detailAutoplay: true, autoChineseSubtitles: false, hoverPreview: true,
-      touchGestures: true, holdRate: 2, swipeMinutes: 20, doubleTapPercent: 35, autoFullscreen: false, uiSounds: true, feedAutoScroll: true,
+      touchGestures: true, holdRate: 2, swipeSeconds: 15, doubleTapPercent: 35, autoFullscreen: false, uiSounds: true, feedAutoScroll: true,
       feedHideGroupCompilations: true, feedHideSoloCompilations: false, feedHideExcerpts: true,
       /* JAV 版式与艺人索引默认大图；照片墙一套几十张，先看全貌所以是小图。 */
       homeLayout: 'small', javLayout: 'big', peopleLayout: 'big', photoSize: 'small',
@@ -43,6 +43,12 @@ describe('启动归一化', () => {
     const { settings } = normalizeAppSettings({ rotateMinutes: 5, loginDays: 30, metadataRefreshDays: 7, followImagesOnly: true });
     expect('metadataRefreshDays' in settings).toBe(false);
     expect(['rotateMinutes' in settings, 'loginDays' in settings, settings.followImagesOnly]).toEqual([false, false, true]);
+  });
+  it('旧横滑分钟设置改为十五秒默认值并从存储中清退', () => {
+    const { settings, migrated } = normalizeAppSettings({ swipeMinutes: 20 });
+    expect(migrated).toBe(true);
+    expect(settings.swipeSeconds).toBe(15);
+    expect('swipeMinutes' in settings).toBe(false);
   });
 
   it('旧版本存的默认排序换成现在的键，并报要落一次盘；用户主动选过的不动', () => {
@@ -81,14 +87,14 @@ describe('整页那一份 store', () => {
 });
 
 describe('播放手势读这份偏好', () => {
-  it('接上之后手势现读偏好：改了倍速、拖动幅度、双击区、跳转秒数与开关，下一次手势就是新值；坏值收回范围', () => {
+  it('接上之后手势现读偏好：改了倍速、滑动秒数、双击区、跳转秒数与开关，下一次手势就是新值；坏值收回范围', () => {
     const store = createSettingsStore(SETTINGS_KEY, normalizeAppSettings({}).settings);
     wireGestureSettings(store);
     expect(gestureSettings()).toEqual(DEFAULT_GESTURES);
-    Object.assign(store.value, { holdRate: 3, swipeMinutes: 10, doubleTapPercent: 20, seekSeconds: 30, touchGestures: false, autoFullscreen: true });
-    expect(gestureSettings()).toEqual({ touchGestures: false, holdRate: 3, swipeMinutes: 10, doubleTapPercent: 20, seekSeconds: 30, autoFullscreen: true });
-    expect(normalizeAppSettings({ holdRate: 9, swipeMinutes: 0, doubleTapPercent: 'x' }).settings)
-      .toMatchObject({ holdRate: 4, swipeMinutes: 1, doubleTapPercent: 35 });
+    Object.assign(store.value, { holdRate: 3, swipeSeconds: 25, doubleTapPercent: 20, seekSeconds: 30, touchGestures: false, autoFullscreen: true });
+    expect(gestureSettings()).toEqual({ touchGestures: false, holdRate: 3, swipeSeconds: 25, doubleTapPercent: 20, seekSeconds: 30, autoFullscreen: true });
+    expect(normalizeAppSettings({ holdRate: 9, swipeSeconds: 0, doubleTapPercent: 'x' }).settings)
+      .toMatchObject({ holdRate: 4, swipeSeconds: 1, doubleTapPercent: 35 });
     configureGestureSettings(() => DEFAULT_GESTURES);
   });
 });

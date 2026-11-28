@@ -53,6 +53,7 @@ Entries are written for users to scan: one sentence each, saying where something
 - **Playback**: Reuse file status when preparing the playback plan. / **播放**：制定播放计划时复用片源文件状态，减少重复读盘。
 - **Sourcing**: Retry the source that failed while keeping results from other sources (#905). / **采集**：单独重试失败的来源，保留其他来源已返回的结果（#905）。
 
+- **Playback**: Each horizontal swipe in the video player skips 15 seconds by default, regardless of drag distance; holding anywhere temporarily speeds up playback instead of rewinding on the left (#684). / **播放**：播放器每次横向滑动默认跳转 15 秒，不随拖动距离加速；长按画面任意位置临时倍速，左侧不再回退（#684）。
 - **Sourcing**: Use consistent JAV tags across languages and separate bridal roles, wedding dresses, and studio affiliations (#902). / **采集**：统一 JAV 日英来源的同类标签，区分新娘角色、婚纱服装和厂牌归属（#902）。
 - **Interface**: Show reviewed names in the JAV online catalog and make filter searches easier to see in light mode (#902). / **界面**：JAV 在线目录显示已复核的艺名，亮色下的筛选查找框更清晰（#902）。
 - **Interface**: Align empty file-browser results with the header, match the fullscreen and close buttons, and show one retry notice for a directory read error (#376). / **界面**：浏览文件的空状态与表头对齐，全屏和关闭使用同款按钮，目录读取失败时只显示一条重试提示（#376）。
