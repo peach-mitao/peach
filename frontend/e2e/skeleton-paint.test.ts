@@ -12,17 +12,35 @@ const routes = ['/', '/?browse=folders', '/jav', '/jav?tab=discover', '/jav?tab=
 
 /** 两块骨架条之间至少留 1px，否则圆角贴在一起看着就是压住了；被设了 overflow 的父框纵向截掉的条同样算。
  *  骨架条认两种：挂了 `.skeleton`／`.skeleton-sheen` 的，和骨架容器里没有子元素、没有文字、自己涂了底色的空块
- *  （`skeletoncard` 的 i/b/em、统计页的指标格之类）。横向滚动的那一排条本来就会被截在可视区外，只量纵向。 */
+ *  （`skeletoncard` 的 i/b/em、统计页的指标格之类）。相接只量横向裁切后仍可见的部分，截断检查只量纵向。 */
 function skeletonCollisions(): string[] {
   const painted = (node: Element) => {
     const css = getComputedStyle(node);
     return css.backgroundImage !== 'none' || !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(css.backgroundColor);
   };
+  const horizontalClips = new Map<Element, readonly [number, number] | null>();
+  const visibleBox = (node: Element) => {
+    const rect = node.getBoundingClientRect();
+    let { left, right } = rect;
+    for (let parent = node.parentElement; parent && left < right; parent = parent.parentElement) {
+      if (!horizontalClips.has(parent)) {
+        const visible = getComputedStyle(parent).overflowX === 'visible';
+        const start = parent.getBoundingClientRect().left + parent.clientLeft;
+        horizontalClips.set(parent, visible ? null : [start, start + parent.clientWidth]);
+      }
+      const clip = horizontalClips.get(parent);
+      if (clip) {
+        left = Math.max(left, clip[0]);
+        right = Math.min(right, clip[1]);
+      }
+    }
+    return { left, right, top: rect.top, bottom: rect.bottom };
+  };
   const bars = [...document.querySelectorAll('.skeleton,.skeleton-sheen,:is([data-skeleton],[data-skeleton-tier],[class*="skeleton"]) *')]
     .filter(node => node.matches('.skeleton,.skeleton-sheen') || (!node.children.length && !node.textContent?.trim() && painted(node)))
     // 屏外卡的元信息区由 `content-visibility: auto` 跳过渲染、按估计高度占位，里面被压扁的样子不会画出来。
     .filter(node => node.checkVisibility({ visibilityProperty: true, contentVisibilityAuto: true }))
-    .map(node => ({ node, box: node.getBoundingClientRect() })).filter(({ box }) => box.width > 0 && box.height > 0);
+    .map(node => ({ node, box: visibleBox(node) })).filter(({ box }) => box.left < box.right && box.top < box.bottom);
   const name = (node: Element) => {
     const marks = [...node.attributes].filter(attr => attr.name.startsWith('data-')).map(attr => `[${attr.name}]`).join('');
     const parent = node.parentElement ? [...node.parentElement.attributes].filter(attr => attr.name.startsWith('data-')).map(attr => `[${attr.name}]`).join('') : '';

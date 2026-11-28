@@ -8,7 +8,7 @@
  *
  * 版式偏好由调用方读好交进来：这个模块壳与 React 包各带一份，设置 store 只能有一份。 */
 import { boardTabsHtml, fitSkeleton, iconSwitchHtml, indexSkeletonHtml } from '@peach/legacy/ui';
-import { filterDropdownSkeletonHtml } from './filter-controls-skeleton';
+import { FILTER_WAITING, filterAlphabetSkeletonHtml, filterDropdownSkeletonHtml, filterSearchSkeletonHtml } from './filter-controls-skeleton';
 import { identityFilterSkeletonHtml } from './identity-filter';
 import { islandButton, islandShortcutsEntry, islandSearchInput } from './island-skeleton';
 import { t } from './i18n';
@@ -62,9 +62,15 @@ const tabs = (items: Choices, active: string, label: string) => boardTabsHtml(
   items.map(([value, text, symbol]) => ({ value, label: text, symbol })), { active, label, className: 'indextabs' });
 
 /* 标签页的两排筛选条：上排是状态切换，下排是读数、字母跳转、版式和类型下拉。 */
-const tagFilterSkeletonHtml = (view: string) => `<div class="peach-react contents"><div data-filter-glass data-glass-pane class="sticky top-topbar z-10 mb-5.5 flex flex-col">
-    <div class="flex h-12 min-w-0 items-center gap-1.75 overflow-x-auto overscroll-x-contain px-3 py-2" data-filter-row="top" data-skeleton-tier="filter-pill" aria-label="${t('catalog:tagFilters.tagStatus')}"></div>
-    <div class="flex min-h-11.5 min-w-0 items-center gap-3 px-3 py-2" data-filter-row="bottom"><span class="countskeleton"></span><span data-filter-search aria-hidden="true"></span>
+const tagFilterSkeletonHtml = (view: string, online: boolean, q: string) => `<div class="peach-react contents"><div data-filter-glass data-glass-pane class="sticky top-topbar z-10 mb-5.5 flex flex-col">
+    <div class="flex h-12 min-w-0 items-center gap-1.75 overflow-x-auto overscroll-x-contain px-3 py-2" data-filter-row="top" aria-label="${t('catalog:tagFilters.tagStatus')}">
+      <div data-catalog-views>${(online ? ['inUse', 'hidden', 'blockedContent'] : ['inUse', 'hidden']).map(key =>
+        `<button type="button" data-catalog-view="${key}" aria-pressed="${key === 'inUse'}" ${FILTER_WAITING}>${t('catalog:tagFilters.' + key)}${key === 'inUse' ? ''
+          : '<span class="skeleton-sheen h-3.5 w-4 rounded-md"></span>'}</button>`).join('')}</div>
+    </div>
+    <div class="flex min-h-11.5 min-w-0 items-center gap-3 px-3 py-2" aria-busy="true" data-filter-row="bottom"><span data-index-readout><span class="skeleton-sheen inline-block h-3.5 w-20 rounded-md"></span></span>${filterSearchSkeletonHtml(false, q)}
+      ${online ? islandButton({ label: t('catalog:tagManager.addRule'), size: 'small', variant: 'secondary', attrs: FILTER_WAITING }) : ''}
+      ${view === 'alphabet' ? filterAlphabetSkeletonHtml() : ''}
       <span data-entity-sorts>${iconSwitchHtml('tag-view', t('catalog:tagFilters.tagView'), TAG_VIEWS, view, { className:'tag-skeleton-view' })}
         <span data-entity-sep aria-hidden="true"></span><span data-filter-fields>${filterDropdownSkeletonHtml('index-tag-category', t('catalog:tagFilters.tagType'))}</span>
       </span></div></div></div>`;
@@ -84,7 +90,7 @@ export function indexPlaceholderHtml({ kind, q, scope, view, category }: IndexPa
     ${kind === 'tags' ? tabs(INDEX_SCOPES, scope, t('catalog:peopleIndex.tagScope')) : kind === 'performers' || kind === 'creators'
       ? tabs(PEOPLE_INDEX_TABS, kind === 'performers' && scope === 'online' ? 'online' : kind, t('catalog:peopleIndex.roster'))
       : company ? tabs(MAKER_INDEX_KINDS, kind, t('catalog:peopleIndex.companyType')) : ''}
-    ${kind === 'tags' ? tagFilterSkeletonHtml(view) : ''}
+    ${kind === 'tags' ? tagFilterSkeletonHtml(view, scope === 'online', q) : ''}
     ${kind === 'performers' && scope !== 'online' ? identityFilterSkeletonHtml(category) : ''}
     ${indexSkeletonHtml({ kind, layout, mode: view })}`;
 }

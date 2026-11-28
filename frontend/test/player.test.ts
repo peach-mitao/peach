@@ -614,17 +614,20 @@ describe('播放器清晰度', () => {
 
   it('点进清晰度时菜单按填好档位的面板高度过渡，不先缩成只剩标题栏', async () => {
     const view = menu([{ width: 640, height: 360, enabled: true }, { width: 1920, height: 1080, enabled: true }]);
-    // 原型链上 Element 那一层的 scrollHeight 不动，这里只在 HTMLElement 上遮一层，用完删掉。一行 40px：标题栏一行，再加面板里此刻已有的每一档。
-    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get(this: HTMLElement) {
-      return 40 * (this.querySelectorAll('.vjs-peach-panel-header').length + this.querySelectorAll('[data-player-quality-option]').length);
-    } });
+    const popup = view.bar.querySelector<HTMLElement>('.vjs-peach-settings-menu')!;
+    const animate = vi.spyOn(popup, 'animate');
+    const measure = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const rows = this.querySelectorAll('.vjs-peach-panel-header, [data-player-quality-option]').length;
+      return new DOMRect(0, 0, 240, this === popup ? 240 : rows * 40);
+    });
     try {
       view.open();
-      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await Promise.resolve();
       expect(view.labels()).toEqual(['自动', '360p', '1080p']);
-      expect(view.bar.querySelector<HTMLElement>('.vjs-peach-settings-menu')!.style.height).toBe('160px');
+      expect(animate).toHaveBeenCalledWith([{ height: '240px' }, { height: '160px' }], expect.anything());
     } finally {
-      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+      measure.mockRestore();
+      animate.mockRestore();
       view.close();
     }
   });

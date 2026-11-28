@@ -183,7 +183,7 @@ export function PushDiscoveryForm({ initial, receipt }: {
                       data-settings-field={rootField} validationBehavior="aria" isInvalid={Boolean(rootError)}
                       aria-describedby={rootError ? `${errorId}-${index}` : undefined}
                       onSelectionChange={(key) => { if (key !== null) { edit(index, { root: String(key) }); validation.clear(); } }}>
-                      {roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
+                      {roots.map((root) => <SelectItem key={root} id={root} glyph="folder-open">{root}</SelectItem>)}
                     </Select>
                     {rootError ? <ErrorText id={`${errorId}-${index}`}>{rootError}</ErrorText> : null}
                   </div>

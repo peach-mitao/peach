@@ -16,6 +16,15 @@ const icon = (name: string) => name.startsWith('ri-')
 export const FILTER_WAITING = 'inert aria-disabled="true" tabindex="-1" data-skeleton-control';
 export const filterDropdownSkeletonHtml = (id: string, label: string): string =>
   `<button type="button" data-catalog-view="${esc(id)}" data-table-column-filter="${esc(id)}" data-filter-field="" ${FILTER_WAITING}>${esc(label)}</button>`;
+export const filterTagSkeletonCells = () =>
+  `<span data-catalog-placeholder="tag">${'<span></span>'.repeat(20)}</span>`;
+export const filterTagsSkeletonHtml = () =>
+  `<div data-filter-tag-strip data-filter-tags-skeleton data-loading aria-hidden="true">${filterTagSkeletonCells()}</div>`;
+export const filterAlphabetSkeletonHtml = () => '<span data-alpha-jump aria-hidden="true" class="flex min-w-0 gap-0.5 overflow-hidden">'
+  + '<span class="grid h-8 min-w-8 flex-none place-items-center"><span class="skeleton-sheen size-3 rounded-sm"></span></span>'.repeat(8)
+  + '</span>';
+export const filterSearchSkeletonHtml = (compact = false, value = new URLSearchParams(location.search).get('q') || '') =>
+  `<span data-filter-search${compact ? ' data-compact' : ''}${value ? ' data-filled' : ''} aria-hidden="true">${icon('search')}${!compact || value ? `<input tabindex="-1" inert type="search" value="${esc(value)}" placeholder="${esc(t('shell:shared.find'))}">` : ''}</span>`;
 export const facetFilterSkeletonFields = (prefix: string): FilterSkeletonField[] => [
   { key: 'performer', id: `${prefix}-performers`, label: t('catalog:shared.performers') },
   { key: 'studio', id: `${prefix}-studios`, label: t('catalog:shared.label') },

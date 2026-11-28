@@ -13,6 +13,7 @@ import { createSeekPreview } from './seek-preview';
 import { mountPlayerRotation } from './rotation';
 import { mountPlayerPipControl } from './pip';
 import { mountPlaybackRate, playerMemory, qualityPixels as resolution, setAdaptiveQuality } from './memory';
+import { AFTER_PLAYBACK_CHOICES, AFTER_PLAYBACK_ICONS, afterPlaybackLabel, type AfterPlayback } from './after-playback';
 import { t } from '../i18n';
 
 type TooltipSync = (label?: string, aria?: string) => void;
@@ -130,6 +131,7 @@ export function mountPlayerAmbient(video: HTMLVideoElement): () => void {
  *  `fallbackSize` 是账本记的宽高，视频还没读到尺寸时按它的短边写档位：竖屏 1080×1920 是 1080p。 */
 export function mountPlayerQualityControl(
   player: VjsPlayer, video: HTMLVideoElement, fallbackSize: { width?: unknown; height?: unknown } = {}, initialSourceQualities: SourceQuality[] | null = null,
+  playbackEndControl = false,
 ): ((next: SourceQuality[] | null) => void) | undefined {
   const controlBar = player.el().querySelector<HTMLElement>('.vjs-control-bar');
   if (!controlBar || controlBar.querySelector('[data-player-quality]')) return undefined;
@@ -191,48 +193,62 @@ export function mountPlayerQualityControl(
   const close = () => setOpen(false);
   const closeSettingsForOtherPanel = (event: Event) => { if ((event as CustomEvent<string>).detail !== 'settings') close() };
   document.addEventListener(PLAYER_PANEL_EVENT, closeSettingsForOtherPanel);
-  /* 面板之间的切换照 YouTube 播放器 9470c977 的 www-player.css：popup 自己 .25s
-     cubic-bezier(.4,0,.2,1) 改高度，旧面板往来的方向滑出、新面板从去的方向滑入。
-     旧面板必须先脱离布局再滑，否则两块内容会在动画期间把菜单撑成两倍高；高度也得
-     先钉在旧值、下一帧再写新值，同一帧写两次只会直接跳到新值，看不到过渡。 */
-  const PANEL_MS = 250;
-  let panelTimer: ReturnType<typeof setTimeout> | null = null;
-  let panelRun = 0;
+  const panelTiming = { duration: 180, easing: 'cubic-bezier(.2,0,0,1)' };
+  const activePanel = () => menu.querySelector<HTMLElement>('.vjs-peach-panel:not(.vjs-peach-panel-leaving)');
+  let finishPanelTransition: (() => void) | undefined;
+  let mainPanelScroll = 0;
   const renderPanel = (html: string, direction: number): HTMLElement => {
-    const run = ++panelRun;
-    if (panelTimer) {
-      clearTimeout(panelTimer); panelTimer = null;
-      menu.classList.remove('vjs-peach-popup-animating'); menu.style.height = '';
-    }
-    menu.querySelectorAll('.vjs-peach-panel-leaving').forEach(panel => panel.remove());
-    menu.scrollTop = 0;
-    const current = menu.querySelector<HTMLElement>('.vjs-peach-panel');
+    const current = activePanel();
+    const from = menu.getBoundingClientRect().height;
+    const fromStyle = current && getComputedStyle(current);
+    const leavingFrame = { opacity: fromStyle?.opacity ?? '1', transform: fromStyle?.transform ?? 'none' };
+    const scroll = current?.scrollTop ?? 0;
+    if (direction > 0 && current?.querySelector('[data-player-ambient]')) mainPanelScroll = scroll;
+    finishPanelTransition?.();
     const next = document.createElement('div'); next.className = 'vjs-peach-panel'; next.innerHTML = html;
     if (current?.contains(document.activeElement)) queueMicrotask(() => {
-      if (run !== panelRun || !isOpen() || next.contains(document.activeElement)) return;
+      if (!isOpen() || activePanel() !== next || next.contains(document.activeElement)) return;
       (next.querySelector<HTMLElement>('[aria-checked="true"]') ?? next.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
     });
-    if (!current || !direction || !isOpen() || matchMedia('(prefers-reduced-motion:reduce)').matches) { menu.replaceChildren(next); menu.style.height = ''; return next }
-    const from = menu.getBoundingClientRect().height;
+    if (!current || !direction || !isOpen() || matchMedia('(prefers-reduced-motion:reduce)').matches) {
+      menu.replaceChildren(next);
+      if (!direction && isOpen()) next.scrollTop = scroll;
+      return next;
+    }
+    const animations: Animation[] = [];
+    const finish = () => {
+      if (finishPanelTransition !== finish) return;
+      animations.forEach(animation => animation.cancel());
+      current.remove();
+      menu.classList.remove('vjs-peach-popup-animating');
+      finishPanelTransition = undefined;
+    };
+    finishPanelTransition = finish;
     current.classList.add('vjs-peach-panel-leaving'); current.inert = true; current.setAttribute('aria-hidden', 'true');
-    next.classList.add(direction > 0 ? 'vjs-peach-panel-animate-forward' : 'vjs-peach-panel-animate-back');
-    menu.append(next); menu.style.height = `${from}px`;
-    const to = next.scrollHeight;
-    requestAnimationFrame(() => {
-      if (run !== panelRun) return;
-      menu.classList.add('vjs-peach-popup-animating'); menu.style.height = `${to}px`;
-      next.classList.remove('vjs-peach-panel-animate-forward', 'vjs-peach-panel-animate-back');
-      current.classList.add(direction > 0 ? 'vjs-peach-panel-animate-back' : 'vjs-peach-panel-animate-forward');
-      panelTimer = setTimeout(() => {
-        panelTimer = null; current.remove();
-        menu.classList.remove('vjs-peach-popup-animating'); menu.style.height = '';
-      }, PANEL_MS);
+    menu.append(next);
+    menu.classList.add('vjs-peach-popup-animating');
+    // 倍速读数、字幕状态等在调用方填好后测量。滚动和限高属于各自的面板。
+    queueMicrotask(() => {
+      if (finishPanelTransition !== finish) return;
+      const to = next.getBoundingClientRect().height;
+      const slide = direction * 14;
+      if (from !== to) animations.push(menu.animate([{ height: `${from}px` }, { height: `${to}px` }], panelTiming));
+      animations.push(current.animate([leavingFrame, { opacity: 0, transform: `translateX(${-slide}px)` }], panelTiming));
+      animations.push(next.animate([{ opacity: 0, transform: `translateX(${slide}px)` }, { opacity: 1, transform: 'none' }], panelTiming));
+      void Promise.allSettled(animations.map(animation => animation.finished)).then(finish);
     });
     return next;
   };
   const button = (panel: HTMLElement, selector: string) => panel.querySelector<HTMLElement>(selector)!;
   /** 菜单此刻摆的是哪一面；轨道与尺寸变化只就地改这一面（`refreshPanel`）。 */
-  let view: 'main' | 'speed' | 'quality' | 'subtitles' | 'rotation' = 'main';
+  let view: 'main' | 'speed' | 'quality' | 'subtitles' | 'rotation' | 'playback-end' = 'main';
+  const host = playerHost();
+  let afterPlayback = host.settings().afterPlayback ?? 'next';
+  const applyPlaybackEnd = (mode: AfterPlayback) => {
+    afterPlayback = mode;
+    video.loop = mode === 'repeat-one';
+  };
+  if (playbackEndControl) applyPlaybackEnd(afterPlayback);
   const showMain = (direction = 0) => {
     const previous = view;
     view = 'main';
@@ -240,18 +256,22 @@ export function mountPlayerQualityControl(
     const panel = renderPanel(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${playerHost().settings().ambientMode}">
       ${icon('player-ambient')}<span>${t('catalog:playerQuality.ambientMode')}</span><i class="vjs-peach-switch" aria-hidden="true"></i></button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-speed>${icon('player-speed')}<span>${t('catalog:playerQuality.speed')}</span><b>${speed === 1 ? t('catalog:playerQuality.normalSpeed') : `${speed}×`}</b>${icon('player-menu-next')}</button>
+      ${playbackEndControl ? `<button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-playback-end>
+        ${icon('repeat', 'vjs-peach-menu-line-icon')}<span>${esc(t('settings:playbackEnd.title'))}</span><b>${esc(afterPlaybackLabel(afterPlayback))}</b>${icon('player-menu-next')}</button>` : ''}
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-subtitles><span class="vjs-peach-menu-cc" aria-hidden="true">${subtitleIcon()}</span><span>${t('catalog:playerControls.subtitles')}</span><b>${esc(subtitleControls?.label() || t('catalog:subtitles.off'))}</b>${icon('player-menu-next')}</button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-rotation>${icon('rotate-cw', 'vjs-peach-menu-line-icon')}<span>${t('catalog:playerQuality.rotation')}</span><b>${rotation.angle()}°</b>${icon('player-menu-next')}</button>
       <button type="button" class="vjs-peach-menu-row" role="menuitem" data-player-quality-view>${icon('player-quality')}<span>${t('catalog:playerQuality.quality')}</span><b>${esc(active.label)}</b>${icon('player-menu-next')}</button>
       <div data-player-memory-error hidden><p class="vjs-peach-subtitle-status" role="status"></p><button type="button" class="vjs-peach-menu-row" data-player-memory-retry>${t('catalog:playerQuality.retryMemorySave')}</button></div></div>`, direction);
     button(panel, '[data-player-ambient]').onclick = () => { applyAmbientMode(!playerHost().settings().ambientMode); showMain() };
     button(panel, '[data-player-speed]').onclick = () => showSpeed();
+    if (playbackEndControl) button(panel, '[data-player-playback-end]').onclick = () => showPlaybackEnd();
     button(panel, '[data-player-subtitles]').onclick = () => subtitleControls?.show();
     button(panel, '[data-player-quality-view]').onclick = () => showQuality();
     button(panel, '[data-player-rotation]').onclick = () => showRotation();
     button(panel, '[data-player-memory-retry]').onclick = () => { void memory.retry() };
     syncMemoryError();
     if (direction < 0 && previous !== 'main') {
+      panel.scrollTop = mainPanelScroll;
       const selector = previous === 'quality' ? '[data-player-quality-view]' : `[data-player-${previous}]`;
       button(panel, selector).focus({ preventScroll: true });
     }
@@ -262,6 +282,34 @@ export function mountPlayerQualityControl(
     message.hidden = !memory.error;
     message.querySelector('p')!.textContent = memory.error;
   };
+  const showPlaybackEnd = (direction = 1) => {
+    view = 'playback-end';
+    const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="${esc(t('catalog:playerQuality.backMenu'))}">${icon('player-menu-back')}</button><strong>${esc(t('settings:playbackEnd.title'))}</strong></div>
+      <div class="vjs-peach-panel-menu">${AFTER_PLAYBACK_CHOICES.map(mode =>
+        `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-playback-end-option="${mode}" aria-checked="${mode === afterPlayback}">
+          ${icon(AFTER_PLAYBACK_ICONS[mode], 'vjs-peach-option-icon')}<span class="vjs-peach-option-label">${esc(afterPlaybackLabel(mode))}</span><span class="vjs-peach-option-check">${mode === afterPlayback ? icon('player-option-check') : ''}</span>
+        </button>`).join('')}</div>`, direction);
+    button(panel, '[data-player-menu-back]').onclick = () => showMain(-1);
+    panel.querySelectorAll<HTMLElement>('[data-player-playback-end-option]').forEach((option, index) => {
+      option.onclick = () => {
+        const mode = AFTER_PLAYBACK_CHOICES[index]!;
+        host.settings().afterPlayback = mode;
+        applyPlaybackEnd(mode);
+        host.saveSettings();
+        showMain(-1);
+      };
+    });
+  };
+  const unsubscribeSettings = playbackEndControl ? host.subscribeSettings?.(() => {
+    const mode = host.settings().afterPlayback ?? 'next';
+    if (mode === afterPlayback) return;
+    applyPlaybackEnd(mode);
+    if (isOpen() && view === 'playback-end') showPlaybackEnd(0);
+    if (isOpen() && view === 'main') {
+      const label = menu.querySelector('[data-player-playback-end] b');
+      if (label) label.textContent = afterPlaybackLabel(mode);
+    }
+  }) : undefined;
   const showRotation = () => {
     view = 'rotation';
     const panel = renderPanel(`<div class="vjs-peach-panel-header"><button type="button" class="vjs-peach-menu-back" data-player-menu-back aria-label="${t('catalog:playerQuality.backMenu')}">${icon('player-menu-back')}</button><strong>${t('catalog:playerQuality.rotation')}</strong></div><div class="vjs-peach-panel-menu">${[0, 90, 180, 270].map(angle =>
@@ -310,8 +358,7 @@ export function mountPlayerQualityControl(
     });
     syncSpeed();
   };
-  /** 清晰度那一列的各档。打开面板时随面板一起画好：`renderPanel` 当场量新面板的高度做过渡，
-   *  先画空列表再填，量到的只有标题栏，菜单缩成一条、动画结束又弹回原高。 */
+  /** 清晰度各档随面板一起绘制，轨道变化时也复用这一列。 */
   const qualityOptionsHtml = () => {
     const { options, active } = qualityRows();
     return options.map((option) =>
@@ -383,7 +430,7 @@ export function mountPlayerQualityControl(
   const refreshPanel = () => {
     restoreQuality();
     if (!isOpen()) { qualityRows(); return }
-    const panel = menu.lastElementChild as HTMLElement | null;
+    const panel = activePanel();
     if (view === 'quality' && panel) { fillQualityOptions(button(panel, '.vjs-peach-panel-menu')); return }
     const { active } = qualityRows();
     const label = view === 'main' ? panel?.querySelector('[data-player-quality-view] b') : null;
@@ -434,14 +481,14 @@ export function mountPlayerQualityControl(
     refreshPanel();
   });
   player.on('dispose', () => {
+    unsubscribeSettings?.();
     unsubscribeMemory();
     video.removeEventListener('loadedmetadata', refreshPanel);
     video.removeEventListener('resize', refreshPanel);
     video.removeEventListener('ratechange', refreshPanel);
-    panelRun++;
+    finishPanelTransition?.();
     document.removeEventListener('pointerdown', outside);
     document.removeEventListener(PLAYER_PANEL_EVENT, closeSettingsForOtherPanel);
-    if (panelTimer) clearTimeout(panelTimer);
   });
   subtitleControls = new SubtitleControls(player, video, {
     render: renderPanel, open: () => { view = 'subtitles'; setOpen(true) }, close,

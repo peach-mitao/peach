@@ -956,11 +956,40 @@ LISTED = (
 )
 
 
-def register_listed(contract, connection) -> None:
+def register_listed(contract, connection, *, filter_tags=False) -> tuple[str, ...]:
     """挂上 `LISTED` 用到的两个函数：合集收起按设置，「官方还没出图」按本机封面与取图记录。"""
     feeds.register_functions(connection, web_settings.hidden_compilations(contract.database))
     connection.create_function("is_cover_pending", 2, lambda code, release_date:
         feed_followup.awaiting_official_cover(contract, code, release_date))
+    if filter_tags and _register_release_tag_filter(contract, connection):
+        return (*LISTED, "NOT is_release_tag_blocked(d.code,d.title)")
+    return LISTED
+
+
+def _register_release_tag_filter(contract, connection) -> bool:
+    from functools import lru_cache
+    from .genre_decisions import load_genre_decisions
+    from .genre_taxonomy import resolve_genre
+    from .online_tag_management import OnlineTagPolicy, tag_key
+
+    names = OnlineTagPolicy(connection).blocked_names('jav_releases')
+    if not names:
+        return False
+
+    from .web_jav_detail import source_tags
+    from .web_jav_discovery import _cached_movie
+    decisions = load_genre_decisions(connection)
+    blocked = {tag_key(resolve_genre(name, decisions) or name) for name in names}
+
+    @lru_cache(maxsize=None)
+    def is_blocked(code, title):
+        movie = _cached_movie(code, contract, remember=False) if code else {}
+        if not movie.get('tags'):
+            return 'vr' in blocked and feeds.has_vr_release_prefix(title)
+        return any(tag_key(tag['name']) in blocked for tag in source_tags(movie, decisions)[1])
+
+    connection.create_function("is_release_tag_blocked", 2, is_blocked)
+    return True
 
 
 def _discovery_performers(connection, contract, rows) -> dict[int, list[dict]]:
@@ -1016,7 +1045,7 @@ def q_feed_discoveries(contract, args) -> dict:
         limit = min(int(args.get("limit") or DISCOVERY_LIMIT), 100)
     except (TypeError, ValueError):
         limit = DISCOVERY_LIMIT
-    where = list(LISTED)
+    where = []
     params: list[object] = []
     if state == "ignored":
         where.append("d.ignored_at IS NOT NULL")
@@ -1028,11 +1057,11 @@ def q_feed_discoveries(contract, args) -> dict:
         with contract.database.read_connection() as connection:
             params.append(entities.resolve_entity_id(connection, int(entity_id)) or int(entity_id))
     with contract.database.read_connection() as connection:
-        register_listed(contract, connection)
+        listed = register_listed(contract, connection, filter_tags=True)
         rows = [dict(row) for row in connection.execute(
             "SELECT d.*, s.name AS source_name, s.kind AS source_kind"
             " FROM feed_discovery d LEFT JOIN feed_source s ON s.id=d.source_id"
-            f" WHERE {' AND '.join(where)}"
+            f" WHERE {' AND '.join((*listed, *where))}"
             " ORDER BY COALESCE(d.release_date,d.discovered_at) DESC, d.id DESC"
             " LIMIT ?", (*params, limit + 1)).fetchall()]
         studios = {name: _studio_name(connection, name)
@@ -1074,19 +1103,19 @@ def q_feed_discoveries(contract, args) -> dict:
 
 def home_has_feed(contract, connection) -> bool:
     """首页新作行是否有内容，与新作列表共用 `LISTED` 与未忽略。"""
-    register_listed(contract, connection)
+    listed = register_listed(contract, connection, filter_tags=True)
     return bool(connection.execute(
         "SELECT EXISTS(SELECT 1 FROM feed_discovery d"
-        f" WHERE d.ignored_at IS NULL AND {' AND '.join(LISTED)})").fetchone()[0])
+        f" WHERE d.ignored_at IS NULL AND {' AND '.join(listed)})").fetchone()[0])
 
 
 def feed_row_entity_ids(contract, connection) -> set[int]:
     """资料页上会出现新作那一行的实体：判据和按人取新作的那一份同一套（`LISTED`、未忽略）。"""
-    register_listed(contract, connection)
+    listed = register_listed(contract, connection, filter_tags=True)
     return {int(row[0]) for row in connection.execute(
         "SELECT DISTINCT de.entity_id FROM feed_discovery_entity de"
         " JOIN feed_discovery d ON d.id=de.discovery_id"
-        f" WHERE d.ignored_at IS NULL AND {' AND '.join(LISTED)}")}
+        f" WHERE d.ignored_at IS NULL AND {' AND '.join(listed)}")}
 
 
 def _studio_name(connection, name: str) -> str:

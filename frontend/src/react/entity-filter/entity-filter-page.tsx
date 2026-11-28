@@ -41,10 +41,11 @@ export function EntityFilterPage(props: EntityFilterProps) {
   const filtered = onVideos || !!online;
   const tagChoices = (onVideos ? tags : online?.tags || []).map(tag => ({ id: tag.k, label: tag.label, count: tag.n, selected: tag.selected }));
   const toggleTag = online ? actions.onlineTag : actions.toggleTag;
-  const fields = online?.providers.length || tagChoices.length ? <>
+  const tagsPending = filtered && props.busy && !tagChoices.length;
+  const fields = online?.providers.length || tagChoices.length || tagsPending ? <>
     {online?.providers.length ? <OnlineSourceFilter orderKey="source" label={t('follow:searchResults.source')} head={online} onSelect={actions.onlineProvider} /> : null}
-    {tagChoices.length ? <FilterDropdown id={online ? 'entity-online-tags' : 'entity-tags'} orderKey="tags" label={t('catalog:shared.tags')}
-      choices={tagChoices} onSelect={toggleTag} /> : null}
+    {tagChoices.length || tagsPending ? <FilterDropdown id={online ? 'entity-online-tags' : 'entity-tags'} orderKey="tags" label={t('catalog:shared.tags')}
+      choices={tagChoices} onSelect={toggleTag} pending={tagsPending} /> : null}
   </> : null;
   const stateNow = online ? online.status : state;
   const stateOptions = online ? online.statuses.map(([k, label]) => ({ k, label })) : states;
@@ -114,7 +115,7 @@ export function EntityFilterPage(props: EntityFilterProps) {
             </div>
             {/* 标签只在作品视图出：计数数的是作品，摆到名册或照片上对不上号，点一下还会把视图拨回作品。 */}
             <div ref={tagRow} data-entity-tags="">
-              <FilterTagStrip choices={tagChoices} onSelect={toggleTag} />
+              <FilterTagStrip choices={tagChoices} onSelect={toggleTag} pending={filtered && props.busy} />
             </div>
           </div>
         </>}

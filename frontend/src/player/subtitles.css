@@ -9,8 +9,8 @@
 [data-player-subtitles] b{max-width:90px;overflow:hidden;text-overflow:ellipsis}
 .vjs-peach-settings-menu .vjs-peach-caption-options{display:grid;place-items:center;flex:0 0 48px;width:48px;margin-left:auto;padding:0}
 /* 详情的关闭键位于右上角，长字幕列表在它下方滚动。 */
-#stage .video-js:not(.vjs-peach-xsmall) .vjs-peach-settings-menu:has([data-subtitle-options]){
-  max-height:min(420px,calc(var(--peach-player-h,480px) - 126px),calc(100vh - 130px))
+#stage .video-js:not(.vjs-peach-xsmall) .vjs-peach-settings-menu>.vjs-peach-panel:has([data-subtitle-options]){
+  --peach-settings-panel-limit:min(420px,calc(var(--peach-player-h,480px) - 126px),calc(100vh - 130px))
 }
 .vjs-peach-settings-menu .vjs-peach-caption-action{padding:10px 16px;text-align:left;overflow-wrap:anywhere}
 .vjs-peach-settings-menu [data-subtitle-track]~.vjs-peach-caption-action{padding-left:48px}
@@ -26,7 +26,6 @@
 .vjs-peach-subtitle-result small{color:rgba(255,255,255,.7);font-size:var(--fs-sm)}
 .vjs-peach-settings-menu .vjs-peach-subtitle-result[aria-busy="true"]{background:rgba(255,255,255,.12)}
 .vjs-peach-subtitle-result[data-subtitle-loaded] small{color:#fff}
-.vjs-peach-settings-menu:has([data-subtitle-style]){overscroll-behavior:contain}
 /* 原生 TextTrack 保留时间轴与辅助技术语义，显示层按已选外观绘制。 */
 .video-js[data-peach-captions] video::cue{color:transparent;background:transparent;text-shadow:none}
 .video-js[data-peach-captions] video::-webkit-media-text-track-container{display:none}

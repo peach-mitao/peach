@@ -24,9 +24,7 @@ import { t } from '../../i18n';
 export type ArtworkFix = 'cover' | 'previews' | 'retry' | '';
 
 export interface ArtworkGap {
-  /** 文案键的末段，同时长角标的 `media.duration.<key>`。 */
   key: string;
-  title: string;
   reason: string;
   fix: ArtworkFix;
 }
@@ -36,9 +34,9 @@ type GapItem = Pick<MediaItem, 'is_jav' | 'code' | 'location' | 'duration' | 'na
 /** 卡上一张图都没有。番号作品缺的是官方封面（竖屏格除外，那里只用视频帧），其余缺的是抽帧。
  *  右下角时长角标已经写了「尚未探查」那类状态，这里说的是图为什么没有。 */
 export function missingArtwork(item: GapItem, frameOnly: boolean): ArtworkGap {
-  if (item.is_jav && item.code && !frameOnly) return { key: 'cover-missing', title: t('shell:artworkGap.noCover'), reason: t('shell:artworkGap.coverPending'), fix: 'cover' };
+  if (item.is_jav && item.code && !frameOnly) return { key: 'cover-missing', reason: t('shell:artworkGap.coverPending'), fix: 'cover' };
   const path = String(item.path || item.name || '').toLowerCase();
-  const none = (key: string, reason: string, fix: ArtworkFix = ''): ArtworkGap => ({ key, title: t('shell:artworkGap.noPreview'), reason, fix });
+  const none = (key: string, reason: string, fix: ArtworkFix = ''): ArtworkGap => ({ key, reason, fix });
   if (item.is_strm || path.endsWith('.strm')) return none('strm', t('shell:artworkGap.strmSkipped'));
   if (path.endsWith('.iso')) return none('iso', t('shell:artworkGap.isoSkipped'));
   if (item.location === 'online') return none('online', t('shell:artworkGap.onlineSkipped'));
@@ -57,10 +55,8 @@ const POSTER_REASONS: Record<string, string> = {
 };
 
 /** 有图但取失败了：同源的图再取一次，按状态码和服务端给的原因说话；别人站点上的图读不到原因。 */
-export async function failedArtwork(src: string, kind: string): Promise<ArtworkGap> {
-  const cover = kind === 'cover';
-  const title = cover ? t('shell:artworkGap.coverNotFound') : t('shell:artworkGap.previewNotFound');
-  const gap = (key: string, reason: string, fix: ArtworkFix): ArtworkGap => ({ key, title, reason, fix });
+export async function failedArtwork(src: string): Promise<ArtworkGap> {
+  const gap = (key: string, reason: string, fix: ArtworkFix): ArtworkGap => ({ key, reason, fix });
   const url = new URL(src, location.href);
   if (url.origin !== location.origin) return gap('remote-image', t('shell:artworkGap.siteNoImage'), 'retry');
   try {
@@ -79,7 +75,7 @@ export async function failedArtwork(src: string, kind: string): Promise<ArtworkG
 const PREVIEWS_OFF = t('shell:artworkGap.previewsOff');
 const PREVIEWS_BUSY = t('shell:artworkGap.previewsBusy');
 
-/** 灰底上的标题、原因和按钮。按钮点了不打开详情；补图成功后由目录缓存换上新图，
+/** 灰底上的缺图原因和按钮。按钮点了不打开详情；补图成功后由目录缓存换上新图，
  *  `onRetry` 让失败过的那张图按新地址再取一次。 */
 export function ArtworkGapView({ gap, item, onRetry }: { gap: ArtworkGap; item: MediaItem; onRetry(): void }) {
   const action = useAction();
@@ -96,9 +92,9 @@ export function ArtworkGapView({ gap, item, onRetry }: { gap: ArtworkGap; item: 
   });
   const why = action.error || note || gap.reason;
   return <div data-artwork-gap={gap.key} onClick={stop}
-    className="relative z-10 flex max-w-full flex-col items-center gap-1.5 px-4 text-center">
-    <span data-media-nopic="" data-copy-key={`media.artwork.${gap.key}`}>{gap.title}</span>
-    <span className="line-clamp-2 text-caption-1-regular text-text-secondary" title={why}>{why}</span>
+    className="relative z-10 flex min-w-0 max-w-full flex-col items-center gap-1 px-3 text-center">
+    <span data-artwork-gap-reason="" data-copy-key={why === gap.reason ? `media.artwork.${gap.key}.reason` : undefined}
+      className="max-w-full truncate text-caption-1-regular text-text-secondary" title={why}>{why}</span>
     {fix === 'cover' ? <Button size="small" variant="secondary" className="mt-1" {...busyProps(action.busy === 'cover')}
       onClick={() => { if (!action.busy) void cover() }}>{action.busy === 'cover' ? t('shell:artworkGap.fetching') : t('shell:artworkGap.fetchCover')}</Button> : null}
     {fix === 'previews'

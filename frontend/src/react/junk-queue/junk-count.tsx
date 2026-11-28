@@ -27,7 +27,8 @@ function Icon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><use href={`#i-${name}`} /></svg>;
 }
 
-function Badge({ scope, count }: { scope: string; count: number }) {
+function Badge({ scope, count, pending }: { scope: string; count: number; pending: boolean }) {
+  if (pending) return <span aria-hidden className="skeleton-sheen inline-block h-3.5 w-4 rounded-md" />;
   if (!count) return null;
   return <>{' '}<span data-count-badge={`junk:${scope}`}>{count.toLocaleString()}</span></>;
 }
@@ -68,13 +69,13 @@ export function JunkCount({ route, page, failed, pickAll, sorts, onSort, onNavig
           {JUNK_KIND_OPTIONS.map(([key, label, glyph]) => (
             <a key={key || 'all'} href={junkPath(key, view)} data-junk-kind-link={key}
               aria-current={key === kind ? 'page' : undefined} onPointerEnter={glide.hover}>
-              <Icon name={glyph} />{label}<Badge scope={key} count={page ? junkCount(page, key) : 0} />
+              <Icon name={glyph} />{label}<Badge scope={key} count={page ? junkCount(page, key) : 0} pending={!page && !failed} />
             </a>
           ))}
           <i data-junk-divider="" aria-hidden="true" />
           <a href={other.href} data-junk-view-link={other.view} aria-current={view === 'dismissed' ? 'page' : undefined}
             onPointerEnter={view === 'dismissed' ? undefined : glide.hover}>
-            <Icon name={other.glyph} />{other.label}<Badge scope="dismissed" count={Number(page?.dismissed_total || 0)} />
+            <Icon name={other.glyph} />{other.label}<Badge scope="dismissed" count={Number(page?.dismissed_total || 0)} pending={!page && !failed} />
           </a>
         </nav>
       }

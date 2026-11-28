@@ -3,9 +3,15 @@
  * 前缀经 `renderValue` 放进值区；值区自带 5px（`sm` 4px）间距，前缀再补一段，与值隔开 8px（`sm` 6px）。 */
 import type { ReactNode } from 'react';
 import type { SelectValueRenderProps } from 'react-aria-components';
-import { Select as BoardSelect, type SelectProps as BoardSelectProps } from '@/components/base/select/select';
+import { Select as BoardSelect, SelectItem as BoardSelectItem, type SelectItemProps, type SelectProps as BoardSelectProps } from '@/components/base/select/select';
+import { spriteGlyph, type Glyph } from './sprite-glyph';
 
-export { SelectItem } from '@/components/base/select/select';
+export function SelectItem({ glyph, children, textValue, ...props }: SelectItemProps & { glyph?: string | Glyph | undefined }) {
+  const Icon = typeof glyph === 'string' ? (glyph ? spriteGlyph(glyph) : undefined) : glyph;
+  return <BoardSelectItem {...props} textValue={textValue ?? (typeof children === 'string' ? children : undefined)}>
+    {Icon ? <Icon aria-hidden className={typeof glyph === 'function' ? 'size-4 shrink-0' : undefined} /> : null}{children}
+  </BoardSelectItem>;
+}
 
 export interface SelectProps<T extends object> extends BoardSelectProps<T> {
   /** 框内值前面的浅色名称，只给看的人，不进无障碍名称。 */

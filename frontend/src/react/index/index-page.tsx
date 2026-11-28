@@ -100,7 +100,7 @@ type Item = IndexPerson | IndexTag | OnlineAuthor | OnlineTag;
 
 export function IndexPage(props: IndexProps) {
   const [managing, setManaging] = useState(false);
-  const [addingBlockedTag, setAddingBlockedTag] = useState(false);
+  const [addingTagRule, setAddingTagRule] = useState(false);
   /* 标签页平时那排状态药丸点「已隐藏」「已屏蔽内容」：进标签管理，直接落在那一档。 */
   const [managerState, setManagerState] = useState<'active' | 'hidden' | 'blocked'>('active');
   const [route, setRoute] = useState<IndexRoute>(() => indexRoute(
@@ -168,7 +168,7 @@ export function IndexPage(props: IndexProps) {
   }, [result.data, result.isPending, result.isPlaceholderData, route]);
   useTagPageBounds(kind === 'tags' && !result.isPlaceholderData ? total : undefined, pagination, changePage);
   const readout = kind === 'tags'
-    ? (result.isPending || result.isError ? '' : t('catalog:peopleIndex.tagCount', { count: total ?? items.length }))
+    ? (result.isError ? '' : result.isPending ? undefined : t('catalog:peopleIndex.tagCount', { count: total ?? items.length }))
     : countText(items.length, !!result.hasNextPage);
   /* 分类计数只随名册、词表和过滤词变，与选中哪一类无关。换分类时新一页还没到，沿用同一份
      名册上一次拿到的计数：分类按钮行不先塌成「全部」加当前项、等数据回来再弹开。头一回
@@ -316,7 +316,9 @@ export function IndexPage(props: IndexProps) {
       ) : null}
       {kind === 'tags' ? (
         <TagFilters categories={categories} category={category} online={onlineTags}
-          actions={onlineTags ? <FilterActionButton onPress={() => setAddingBlockedTag(true)}>{t('catalog:tagManager.blockByName')}</FilterActionButton> : undefined}
+          actions={onlineTags ? <FilterActionButton onPress={() => setAddingTagRule(true)}>
+            <span data-copy-key="catalog.tagManager.addRule">{t('catalog:tagManager.addRule')}</span>
+          </FilterActionButton> : undefined}
           readout={result.isPending ? undefined : readout}
           search={{ value: q, onQuery: (next) => { if (next !== q) go({ q: next }, !!next) } }}
           status={{ hidden: false, blocked: false, ...tagCounts, onChange: (hidden) => { if (hidden) openManager('hidden') },
@@ -358,8 +360,8 @@ export function IndexPage(props: IndexProps) {
           onApply={() => { const chosen = [...picked]; setPicked(new Set()); props.showTags(chosen, match) }} />
       ) : null}
       </>}
-      {addingBlockedTag ? <TagEditor operation="block" selected={[]} scope="online"
-        close={() => setAddingBlockedTag(false)} done={() => setPicked(new Set())} /> : null}
+      {addingTagRule ? <TagEditor operation="rule" selected={[]} scope="online"
+        close={() => setAddingTagRule(false)} done={() => setPicked(new Set())} /> : null}
     </div>
   );
 }

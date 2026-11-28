@@ -9,7 +9,7 @@
  * 委托接住点击。头像与标签只画占位，读数是一条宽度定死的微光。 */
 import { rememberedTiers, type CatalogFilterProps, type CatalogView } from './react/catalog-filter/catalog-filter';
 import { islandShortcutsEntry } from './island-skeleton';
-import { facetFilterSkeletonFields, filterControlsSkeletonHtml } from './filter-controls-skeleton';
+import { facetFilterSkeletonFields, filterControlsSkeletonHtml, filterSearchSkeletonHtml, filterTagsSkeletonHtml } from './filter-controls-skeleton';
 import { t } from './i18n';
 
 /** 每排摆多少格，同岛里空馆藏占位的 `EMPTY_SLOTS`，由容器裁到可用宽度。 */
@@ -42,10 +42,10 @@ export function catalogFilterSkeletonHtml(views: readonly CatalogView[], state: 
     + `<div role="group" aria-label="${t('catalog:catalogFilter.viewsAndTags')}" data-filter-row="top"`
     + ` class="flex h-12 min-w-0 items-center overscroll-x-contain px-3 py-2 gap-1.5 overflow-visible">`
     + `<div data-catalog-scroll=""><div role="group" aria-label="${t('catalog:catalogFilter.views')}" data-catalog-views="">${viewHtml}`
-    + `<span data-entity-sep="" aria-hidden="true"></span></div></div></div>`
+    + `<span data-entity-sep="" aria-hidden="true"></span></div>${filterTagsSkeletonHtml()}</div></div>`
     + `<div data-filter-row="bottom" aria-busy="true" class="flex min-w-0 items-center gap-3 px-3 py-2 min-h-12">`
     + `<span data-catalog-summary=""><span data-catalog-readout=""><span data-skeleton="count" aria-hidden="true"`
-    + ` class="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen"></span></span>${islandShortcutsEntry()}</span>`
+    + ` class="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen"></span></span>${islandShortcutsEntry()}${filterSearchSkeletonHtml(true)}</span>`
     + (filterControlsSkeletonHtml(head?.sorts || [], head?.layout || null, { fields }))
     + `</div></div></div></div>`;
 }

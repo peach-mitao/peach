@@ -366,6 +366,11 @@ body[data-detail-open] [class~=glowlayer]::before{animation-play-state:paused,pa
 [data-stage][data-closing]{animation:board-dialog-out var(--board-dialog-motion) both;pointer-events:none}
 [data-stage][data-closing]::backdrop{animation:settings-backdrop-out .35s cubic-bezier(.4,0,.2,1) both}
 [data-stage]>[data-overlay-track="y"]{translate:calc(-1 * var(--badge-radius)) 0}
+/* 详情滚动时视频贴住上沿，渐隐只留在底部。 */
+[data-stage]>[data-stage-scroll][data-scroll-edges]:has([data-stage-media]>:is(video,.video-js,[data-jav-video])){
+  mask-image:linear-gradient(to bottom,#000 0 calc(100% - var(--scroll-edge-bottom)),transparent)
+}
+[data-stage]>[data-stage-scroll]:has([data-stage-media]>:is(video,.video-js,[data-jav-video]))~[class~="ui-ov-edges"]>[class~="ui-ov-edge-top"]{display:none}
 /* 动作键成组，操作按钮保留各自的可访问名称。 */
 [data-stage-side-content] [data-stage-actions]{display:flex;flex-wrap:nowrap;gap:4px;width:max-content;max-width:100%;padding:0;border:0;background:transparent;overflow:visible;margin:0 0 16px}
 [data-stage-side-content] [data-stage-actions] :is(button,[data-stage-action-link]){flex:0 1 36px;width:36px;height:36px;min-width:30px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--control-radius);background:var(--surface)}

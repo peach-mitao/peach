@@ -193,7 +193,7 @@
    文字色走 `--glass-text`：这一列站在玻璃上，跟着卡片的 `--ink` 走会在玻璃的提亮
    之后偏灰。按钮抬到玻璃之上，玻璃自己是 `z-index:0`。 */
 [data-settings-panel] [data-settings-card][data-settings-card]>[data-settings-nav]>:is(button,[data-settings-nav-caption]):where(:not([data-dragging])){position:relative;z-index:1}
-:is([data-settings-panel] [data-settings-card][data-settings-card]>[data-settings-nav] button,.peach-react [data-shortcuts-footer] a){color:color-mix(in srgb,var(--glass-text) 65%,transparent)}
+:is([data-settings-panel] [data-settings-card][data-settings-card]>[data-settings-nav] button,.peach-react [data-shortcuts-footer] a){color:var(--glass-text-secondary)}
 [data-settings-panel] [data-settings-card][data-settings-card]>[data-settings-nav] button[aria-selected=true]{background:none;box-shadow:none;color:var(--glass-text)}
 :is([data-settings-panel] [data-settings-card][data-settings-card]>[data-settings-nav] button,.peach-react [data-shortcuts-footer] a):hover{color:var(--glass-text)}
 /* 这块玻璃扣在一条 10px 圆角的按钮上，跟着它走；下面那条通用形状里的 8px 是筛选条上那排
@@ -392,7 +392,7 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 [data-settings-panel] [data-settings-group-heading]{color:var(--color-text-primary);font:var(--board-body-medium)}
 [data-settings-panel] [data-setting-block]>[data-setting-block]+[data-setting-block]{margin-block-start:8px}
 [data-settings-panel] [data-setting-block]>[data-glow-setting]{margin-block-start:8px}
-[data-settings-panel] :is(#notification-settings,#homeGlowControls){scroll-margin-block-start:16px}
+[data-settings-panel] :is(#notification-settings,#homeGlowControls,#top-toolbar-settings){scroll-margin-block-start:16px}
 [data-settings-panel] [data-settings-scroll] [data-settings-subheading]+[data-setting-row]{border-top:0}
 @media(max-width:760px){[data-settings-panel] [data-settings-service]{margin-top:0;padding:0 0 0 12px;border-top:0;border-left:1px solid var(--line-soft);flex-shrink:0}}
 @keyframes settings-backdrop-in{from{opacity:0}to{opacity:1}}

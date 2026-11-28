@@ -2,7 +2,7 @@ import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactN
 import { Popover, VisuallyHidden } from 'react-aria-components';
 import { MENU_POPOVER_SURFACE } from '@/components/base/dropdown/menu-styles';
 import { Button } from '@/components/base/buttons/button';
-import { Select, SelectItem } from '@/components/base/select/select';
+import { Select, SelectItem } from './select';
 import { appSettingsStore } from '../../appearance/settings';
 import { esc } from '../../core';
 import { errorMessage } from '../../api';
@@ -143,13 +143,19 @@ function ManageOrderPreferences({ feedback }: { feedback?: SettingsSaveFeedback 
     labels={Object.fromEntries(MANAGE_SECTIONS.map(([key, label]) => [key, label]))} />;
 }
 
+const GROUP_GLYPHS = {
+  review: 'square-check-big', configuration: 'folder-cog', favorites: 'bookmark', jav: 'jav',
+  follow: 'rss', tags: 'tags', preferences: 'settings',
+} satisfies Record<NavigationGroup, string>;
+
 export function NavigationOrderPreferences({ feedback }: { feedback?: SettingsSaveFeedback } = {}) {
   const [group, setGroup] = useState<NavigationGroup | 'manage' | 'libraries'>('manage');
   return <div className="peach-react"><div className="flex flex-col gap-3">
     <Select aria-label={t('shell:navigationOrder.group')} selectedKey={group} onSelectionChange={key => setGroup(key as typeof group)}>
-      <SelectItem id="manage">{t('shell:navigationOrder.manageMenu')}</SelectItem>
-      <SelectItem id="libraries">{t('shell:shared.library')}</SelectItem>
-      {(Object.keys(NAVIGATION_GROUPS) as NavigationGroup[]).map(key => <SelectItem key={key} id={key}>{NAVIGATION_GROUPS[key].label}</SelectItem>)}
+      <SelectItem id="manage" glyph="wrench">{t('shell:navigationOrder.manageMenu')}</SelectItem>
+      <SelectItem id="libraries" glyph="database">{t('shell:shared.library')}</SelectItem>
+      {(Object.keys(NAVIGATION_GROUPS) as NavigationGroup[]).map(key =>
+        <SelectItem key={key} id={key} glyph={GROUP_GLYPHS[key]}>{NAVIGATION_GROUPS[key].label}</SelectItem>)}
     </Select>
     {group === 'manage' ? <ManageOrderPreferences feedback={feedback} /> : group === 'libraries'
       ? <LibraryOrderPreferences feedback={feedback} /> : <GroupOrderPreferences key={group} group={group} feedback={feedback} />}

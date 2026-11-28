@@ -1509,6 +1509,16 @@
     "spotColor": "{{label}} color",
     "strength": "Intensity"
   },
+  "topToolbar": {
+    "title": "Top toolbar",
+    "immersive": "Immersive mode",
+    "videoWall": "Video wall",
+    "selectMode": "Select mode",
+    "density": "Card density",
+    "notifications": "Notification center",
+    "tutorial": "Getting started",
+    "showButton": "Show {{label}}"
+  },
   "sidebarOrder": {
     "allShown": "All pages are shown",
     "groupLabel": "Sidebar",

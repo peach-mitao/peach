@@ -99,7 +99,8 @@ describe('实体页冷启动等待态', () => {
           const batch = waitingControls.find(control => control.selector === '[data-entity-batch]')!;
           assert.deepEqual(batch.icon, { width: 16, height: 16, x: 0, y: 0 }, '换一批图标应居中且保持 16px');
           // 筛选条里的标签取紧凑档 `--control-h-compact`，骨架与真实标签同高。
-          assert.equal(await root.locator('[data-entity-tags] .skeleton').first().evaluate(node => node.getBoundingClientRect().height), 32);
+          const firstTag = root.locator('[data-entity-tags] [data-filter-tags-skeleton] [data-catalog-placeholder="tag"] > span').first();
+          assert.equal(await firstTag.evaluate(node => node.getBoundingClientRect().height), 32);
           assert.ok(await root.locator('[data-entity-state]').count(), '静态观看筛选尚未显示');
           const ratio = (scope = root) => scope.locator('[style*="--skeleton-card-ratio"]').first().evaluate(node =>
             Number((node as HTMLElement).style.getPropertyValue('--skeleton-card-ratio')));

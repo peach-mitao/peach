@@ -6,7 +6,7 @@
 .ib{background:none;border:0;border-radius:var(--control-radius);cursor:pointer;width:var(--control-h-large);height:var(--control-h-large);
   flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-2);
   padding:0;line-height:0;transition:background .12s,color .12s}
-.top .ib[hidden]{display:none}
+.top .ib:is([hidden],[data-toolbar-hidden]){display:none}
 .ib svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;display:block}
 #notificationCenter{position:relative}

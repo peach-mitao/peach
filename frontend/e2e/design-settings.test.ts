@@ -673,7 +673,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
     }
   });
 
-  it('导航顺序两张卡片的内容与卡片四边留出同样的内边距', { timeout: 60_000 }, async () => {
+  it('导航顺序三张卡片使用一致的内边距', { timeout: 60_000 }, async () => {
     for (const viewport of [DESKTOP, MOBILE]) {
       const opened = await openHome(browser, viewport);
       const { page } = opened;
@@ -689,9 +689,11 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
           return [inner.top - outer.top, outer.right - inner.right, outer.bottom - inner.bottom, inner.left - outer.left]
             .map(Math.round);
         }));
-        assert.equal(insets.length, 2);
-        assert.deepEqual(insets[1], insets[0], `${viewport.name}：两张卡片的内边距不一致`);
-        for (const side of insets[1]) assert.ok(side >= 8, `${viewport.name}：内容贴着卡片边缘 ${JSON.stringify(insets)}`);
+        assert.equal(insets.length, 3);
+        for (const inset of insets.slice(1)) {
+          assert.deepEqual(inset, insets[0], `${viewport.name}：卡片的内边距不一致`);
+        }
+        for (const side of insets[0]) assert.ok(side >= 8, `${viewport.name}：内容贴着卡片边缘 ${JSON.stringify(insets)}`);
       } finally {
         await opened.close();
       }

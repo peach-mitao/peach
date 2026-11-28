@@ -196,15 +196,10 @@ function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
     if (!node || !started) return;
     const complete = (event: Event) =>
       ended.current(event.target instanceof HTMLVideoElement ? event.target : node.querySelector('video'));
-    /* 单片循环交给 `<video loop>`：播放器菜单里的「循环播放」读写的是同一个属性，两处对得上。 */
-    const loop = (event: Event) => {
-      if (event.target instanceof HTMLVideoElement && appSettingsStore().value.afterPlayback === 'repeat-one') event.target.loop = true;
-    };
     node.addEventListener('ended', complete, true);
-    node.addEventListener('loadedmetadata', loop, true);
     const unmount = actions.mountPlayer(node, mounting.current, null,
       started === 'clicked' || autoplay ? { autoplay: true } : undefined);
-    return () => { node.removeEventListener('ended', complete, true); node.removeEventListener('loadedmetadata', loop, true); unmount() };
+    return () => { node.removeEventListener('ended', complete, true); unmount() };
   }, [actions, started]);
   const badge = helpers.badgeHtml(item.location || '', item.cost || '', 'srcbig');
   return (

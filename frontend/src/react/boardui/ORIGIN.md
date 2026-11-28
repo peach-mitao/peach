@@ -16,6 +16,7 @@
 
 | 条目 | 注册表 JSON 的 SHA-256 | 复制的文件 |
 | --- | --- | --- |
+| `checkbox-card`（2026-11-28） | `aa758ca42fef03e166f3ac91c1e37e7798123c545607a05fda7915e3d1b225df` | `components/base/checkbox/checkbox-card.tsx` |
 | `close-button`（2026-11-28） | `fe3ce18482e68a7a821a02e97a2d2bdfe848f5cb87af7de68f8b48dbc4fbda09` | `components/base/buttons/close-button.tsx` |
 | `segmented-control`（2026-11-28） | `6b783664a645c84aa92bdcb3b73abfe4d1ee57f39f97a6dedb5da1318a6e78c1` | `components/base/segmented-control/segmented-control.tsx` |
 | `agent-thinking`（2026-11-26） | `b75cb4fc1830b64afdd0198ad8a47efb4cb715e5b59096cacc42029d016d4991` | `components/application/agent-thinking/agent-thinking.tsx` |

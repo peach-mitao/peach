@@ -83,6 +83,7 @@ html>body{padding-left:var(--railW)}
 [data-sidebar-chip][data-offline] [data-sidebar-count]{text-decoration:none}
 
 /* ── Board UI：玻璃与面板 ── */
+[data-sidebar-drawer][data-sidebar-drawer]{--glass-fill:var(--glass-panel-fill)}
 /* 换主题时整页先截一张快照，玻璃在快照里画成实底，免得模糊层闪一下。 */
 html[data-theme-snapshot] :is([data-sidebar-drawer],[data-sidebar-glide]){backdrop-filter:none!important;background-color:var(--ground)!important;transition:none!important}
 [data-sidebar-drawer][data-sidebar-drawer],[data-sidebar-drawer][data-sidebar-drawer][class~=open]{background:var(--glass-drift-a),var(--glass-drift-b),linear-gradient(125deg,var(--glass-sheen),transparent 42%,var(--glass-low)),var(--glass-fill);background-size:200% 200%,200% 200%,auto;background-repeat:no-repeat,no-repeat,repeat;background-position:50% 20%,80% 70%,0 0;animation:glassdriftx calc(41s * var(--glow-drift-scale)) linear infinite,glassdrifty calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-idle-play,var(--glow-drift-play));backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume);border:0;box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-shadow)}
@@ -90,16 +91,12 @@ html[data-theme-snapshot] :is([data-sidebar-drawer],[data-sidebar-glide]){backdr
    就是两套光斑叠着走，亮的那一档会把配好的颜色冲淡成灰。「玻璃原色」那一档（根上挂 `data-glow-native`）
    光晕整层算作 0，抽屉把自己那两团拿回来，否则它会是全场唯一一块不反光的玻璃。 */
 :root:not([data-glow-native]) [data-sidebar-drawer][data-sidebar-drawer]{--glass-drift-a:none;--glass-drift-b:none}
-/* 当前项底下那块玻璃：岛把它挂在抽屉上，由 `use-view-glide.ts` 在各项之间滑。当前项跟筛选条上滑动的
-   那一块是同一种东西，一块提亮的玻璃压在侧栏这块玻璃上；导航的当前项不靠颜色说话，靠它比邻居高出一层。
-   它住在滚动层外面、抽屉里面，圆角照按钮自己的 10px。`z-index:-1` 把它压回字底下：抽屉自带
-   `backdrop-filter`，已经是个层叠上下文，负层号只落到抽屉的面之上、那一列的字之下。 */
-[data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide]{position:absolute;left:0;top:0;z-index:0;pointer-events:none;border-radius:8px;will-change:translate,scale;background:linear-gradient(180deg,var(--glass-sheen),transparent 62%),var(--glass-pick-fill);backdrop-filter:var(--glass-pick);box-shadow:inset 0 0 0 1px var(--glass-rim),var(--glass-pick-shadow)}
+/* 滑块在滚动层下、抽屉背景上，跟随当前项和悬停项。 */
+[data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide]{position:absolute;left:0;top:0;z-index:-1;pointer-events:none;border-radius:10px;will-change:translate,scale;background:var(--glass-control-selected)}
 [data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide][hidden]{display:none}
-[data-sidebar-drawer][data-sidebar-drawer]>[data-sidebar-glide]{border-radius:10px;z-index:-1}
 [data-sidebar-nav] :is(button,a[data-nav]){transition:scale calc(var(--spring-press-ms) * 1ms) var(--spring-press)}
 [data-sidebar-nav] :is(button,a[data-nav]):active{scale:.96;transition:scale .06s ease-out}
-[data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]):not(:is([aria-pressed="true"],[aria-current="page"])){color:var(--glass-text)}
+[data-sidebar-drawer][data-sidebar-drawer]{border-radius:26px}
 /* 按钮自己只管字色，填充归那块滑动的玻璃：两边都铺的话，静止态是一块不动的底压在滑过来的玻璃上。悬停也归
    它，指到哪一格滑过去，离开这一列再滑回当前项。`filter:none` 压掉后面那条当前项的 `brightness(1.08)`，
    否则这块玻璃连同身后的内容一起被推亮一档。 */
@@ -193,19 +190,20 @@ body[class~=drawer-open]{--railW:296px}
 [data-sidebar-home-logo]{width:var(--icon-inline);height:var(--icon-inline);object-fit:contain;flex:none}
 [data-sidebar-drawer]:not([class~=open]) [data-sidebar-nav] :is(button,a[data-nav]):has([data-sidebar-home-logo]){padding:6px}
 [data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]):is([aria-pressed=true],[aria-current=page]):hover,[data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]):is([aria-pressed=true],[aria-current=page]):active{background:var(--board-blue);color:white;filter:brightness(1.08)}
-[data-sidebar-toggle]>span{font-size:12px;line-height:20px;font-weight:500;color:var(--muted)}
+[data-sidebar-toggle]>span{font-size:12px;line-height:20px;font-weight:500;color:inherit}
 [data-sidebar-toggle] svg{order:2;margin-left:auto;width:var(--icon-inline);height:var(--icon-inline);flex:none;fill:none;stroke:currentColor;stroke-width:2;transform:rotate(0deg);transition:transform var(--motion-swap)}
 [data-sidebar-toggle][aria-expanded=true] svg{transform:rotate(90deg)}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chips]{display:flex;flex-direction:column;gap:2px;padding-left:8px}
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip]{display:flex;width:100%;min-width:0;min-height:36px;gap:8px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:14px;line-height:20px;text-align:left;font-weight:400}
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip]:hover{background:var(--hover);color:var(--ink)}
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip][aria-pressed=true]{color:var(--ink);background:var(--picked)}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip]{display:flex;width:100%;min-width:0;min-height:36px;gap:8px;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--glass-text-secondary);font-size:14px;line-height:20px;text-align:left;font-weight:400}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip]:hover{background:var(--glass-control-hover);color:var(--glass-text)}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip][aria-pressed=true]{color:var(--glass-text);background:var(--glass-control-selected)}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip-label]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip] [data-sidebar-count]{margin-left:auto;flex:none;padding:1px 4px;border-radius:4px;background:var(--surface);color:var(--muted);font-size:12px;line-height:16px}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip] [data-sidebar-count]{margin-left:auto;flex:none;padding:1px 4px;border-radius:4px;background:var(--glass-control-subtle);color:var(--glass-text-secondary);font-size:12px;line-height:16px}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip][aria-pressed=true] [data-sidebar-count]{background:transparent;color:inherit}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-chip] svg{flex:none;width:var(--icon-inline);height:var(--icon-inline)}
 /* 「展开全部」：分组超过首屏条数时，底部居中一枚小药丸。 */
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]{display:grid;place-items:center;width:40px;height:20px;margin:6px auto 2px;padding:0;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);box-shadow:var(--elevation-xs);transition:background-color .15s ease,color .15s ease}
-[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]:hover{background:var(--hover);color:var(--ink)}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]{display:grid;place-items:center;width:40px;height:20px;margin:6px auto 2px;padding:0;border:1px solid var(--glass-low);border-radius:999px;background:var(--glass-control-subtle);color:var(--glass-text-secondary);transition:background-color .15s ease,color .15s ease}
+[data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more]:hover{background:var(--glass-control-hover);color:var(--glass-text)}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more] svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s cubic-bezier(0,0,.2,1)}
 [data-sidebar-drawer] [data-sidebar-body] [data-sidebar-more][aria-expanded=true] svg{transform:rotate(180deg)}
 @media (prefers-reduced-motion:reduce){
@@ -214,16 +212,16 @@ body[class~=drawer-open]{--railW:296px}
 [data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]){font:var(--board-body)}
 [data-sidebar-head] #brandHome [class~=mark]{color:var(--glass-text)}
 [data-sidebar-drawer]:not([class~=open]) [data-sidebar-nav] :is(button,a[data-nav]):has([data-sidebar-home-logo]){padding:8px}
-[data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]):not(:is([aria-pressed=true],[aria-current=page])),[data-sidebar-head] #brandHome [class~=mark]{color:var(--color-text-secondary)}
+[data-sidebar-drawer][data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]):not(:is([aria-pressed=true],[aria-current=page])),[data-sidebar-head] #brandHome [class~=mark]{color:var(--glass-text-secondary)}
 [data-sidebar-head] #brandHome:hover{background:var(--color-background-primary-hover);border-radius:var(--pill-radius)}
-[data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]>[data-sidebar-toggle]{box-sizing:border-box;display:flex;width:100%;min-height:36px;margin:0 0 4px;padding:8px 10px;gap:8px;border-radius:8px;list-style:none;color:var(--color-text-secondary);font:var(--board-caption)}
+[data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]>[data-sidebar-toggle]{box-sizing:border-box;display:flex;width:100%;min-height:36px;margin:0 0 4px;padding:8px 10px;gap:8px;border-radius:8px;list-style:none;color:var(--glass-text-secondary);font:var(--board-caption)}
 [data-sidebar-toggle]::-webkit-details-marker{display:none}
-[data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]>[data-sidebar-toggle]:hover{background:var(--picked)}
+[data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]>[data-sidebar-toggle]:hover{background:var(--glass-control-hover);color:var(--glass-text)}
 [data-sidebar-toggle]>span{flex:1;min-width:0}
 [data-sidebar-toggle]>svg{order:3;flex:none;margin-left:auto}
 [data-sidebar-drawer] [data-sidebar-group][data-sidebar-kind]>[data-sidebar-collapse]>[data-sidebar-collapse-body]{padding:0 0 0 10px}
 [data-sidebar-range] [data-sidebar-range-base],[data-sidebar-range] [data-sidebar-range-fill]{height:6px;top:11px}
-[data-sidebar-range] [data-sidebar-range-base]{background:var(--color-background-tertiary-default);box-shadow:inset 0 1px 1px #0000000f}
+[data-sidebar-range] [data-sidebar-range-base]{background:var(--glass-control-selected);box-shadow:inset 0 1px 1px #0000000f}
 [data-sidebar-range] [data-sidebar-range-fill]{background:linear-gradient(90deg,var(--color-accent-400),var(--color-accent-600));box-shadow:inset 0 1px 0 #ffffff3d,0 1px 2px #0450e229}
 /* 前面带 `body` 是为了压过上面基础几何里的手柄。抓住的时候手柄涨一圈，松开按同一条弹簧收回去；
    位置不参与任何过渡，手柄要贴着指针走。 */
@@ -237,7 +235,7 @@ body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;bo
 [data-sidebar-drawer] [data-sidebar-nav]{margin-top:12px;gap:4px}
 [data-sidebar-drawer] #brandHome{height:36px;min-height:36px;box-sizing:border-box}
 [data-sidebar-drawer] [data-sidebar-nav] :is(button,a[data-nav]){height:36px;min-height:36px}
-[data-sidebar-drawer] [data-sidebar-head] #filterBtn{border-radius:0;color:var(--color-text-secondary);transition:color .15s ease}
+[data-sidebar-drawer] [data-sidebar-head] #filterBtn{border-radius:0;color:var(--glass-text-secondary);transition:color .15s ease}
 [data-sidebar-drawer] [data-sidebar-head] #filterBtn:hover{background:var(--color-background-primary-hover);color:var(--color-text-primary)}
 @media (min-width:761px){
   [data-sidebar-drawer]:not([class~=open]) [data-sidebar-head]{gap:10px}
@@ -247,7 +245,7 @@ body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;bo
 [data-sidebar-head] #brandHome::before{content:'';position:absolute;inset:-5px -6px;border:2px solid var(--color-border-button-default);border-radius:999px;opacity:0;transition:opacity .15s ease;pointer-events:none}
 [data-sidebar-head] #brandHome:hover,[data-sidebar-head] #brandHome[aria-expanded=true]{background:none;box-shadow:none}
 [data-sidebar-head] #brandHome:hover::before,[data-sidebar-head] #brandHome[aria-expanded=true]::before{opacity:1}
-[data-sidebar-head] #brandHome [class~=mark]{width:32px;height:32px;border-radius:50%;background:var(--color-background-tertiary-default)}
+[data-sidebar-head] #brandHome [class~=mark]{width:32px;height:32px;border-radius:50%;background:var(--glass-control-subtle)}
 [data-sidebar-head] #brandHome [class~=sub]{display:none}
 [data-sidebar-drawer] [data-sidebar-head] #filterBtn{width:20px;height:20px;padding:0;background:none;box-shadow:none}
 [data-sidebar-drawer] [data-sidebar-head] #filterBtn:hover{background:none;color:var(--color-text-primary)}
@@ -290,8 +288,8 @@ body :is([data-sidebar-range] input)::-moz-range-thumb{width:18px;height:18px;bo
 /* 分组工具独立于折叠触发器，收起来源列表时仍可浏览文件。 */
 [data-sidebar-tool-group]{position:relative}
 [data-sidebar-tool-group] [data-sidebar-toggle]>span{padding-right:32px}
-[data-sidebar-drawer] button[data-sidebar-directory]{position:absolute;top:2px;right:34px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
-[data-sidebar-drawer] button[data-sidebar-directory]:hover{background:var(--hover);color:var(--ink)}
+[data-sidebar-drawer] button[data-sidebar-directory]{position:absolute;top:2px;right:34px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--glass-text-secondary);cursor:pointer}
+[data-sidebar-drawer] button[data-sidebar-directory]:hover{background:var(--glass-control-hover);color:var(--glass-text)}
 [data-sidebar-drawer] button[data-sidebar-directory]:focus-visible{outline:2px solid var(--tungsten);outline-offset:1px}
 [data-sidebar-directory] svg{width:var(--icon-inline);height:var(--icon-inline);fill:currentColor;stroke:none}
 @media (min-width:768px){[data-sidebar-drawer]:not([class~=open]) [data-sidebar-tool-group]{display:none}}

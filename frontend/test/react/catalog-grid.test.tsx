@@ -566,31 +566,31 @@ describe('作品卡', () => {
     expect([...oneVersion.host.querySelectorAll('[data-media-group]')].map((node) => node.textContent)).toEqual(['2 卷']);
   });
 
-  it('竖屏格的番号作品只用视频帧图，不用番号封面：没有帧图就是「无预览」；横格照旧按封面设置出图', async () => {
+  it('竖屏格提示缺少视频帧图，横格按封面设置出图', async () => {
     const cover = { is_jav: true, code: 'FC2-PPV-3189161', has_cover: true, has_thumb: false };
     const pictureOf = (host: ParentNode) => {
       const img = host.querySelector('[data-media-art] img');
-      return img ? img.getAttribute('src') : host.querySelector('[data-media-nopic]')?.textContent;
+      return img ? img.getAttribute('src') : host.querySelector('[data-artwork-gap-reason]')?.textContent;
     };
     const portraitGrid = { ...SMALL, portrait: true };
-    expect(pictureOf((await render(item(20, cover), { variant: 'short' })).host)).toBe('无预览');
-    expect(pictureOf((await render(item(21, cover), { layout: portraitGrid })).host), '显式筛竖屏的网格也是竖屏格').toBe('无预览');
+    expect(pictureOf((await render(item(20, cover), { variant: 'short' })).host)).toBe('还没抽帧');
+    expect(pictureOf((await render(item(21, cover), { layout: portraitGrid })).host), '显式筛竖屏的网格也是竖屏格').toBe('还没抽帧');
     expect(pictureOf((await render(item(23, { ...cover, has_thumb: true }), { variant: 'short' })).host),
       '封面设置为官方封面时竖屏格照样用帧图').toBe('/poster?id=23&c=4');
     expect(pictureOf((await render(item(22, cover))).host)).toMatch(/^\/cover\?code=FC2-PPV-3189161/);
   });
 
   it.each([
-    [{ is_jav: true, code: 'ABC-001' }, false, '无封面', '还没取到官方封面', 'cover'],
-    [{ is_jav: true, code: 'ABC-001', location: 'local' }, true, '无预览', '还没抽帧', 'previews'],
-    [{ location: 'local', duration: -1 }, false, '无预览', '探查失败，没能抽帧', 'previews'],
-    [{ location: '115' }, false, '无预览', '还没抽帧', 'previews'],
-    [{ location: 'pikpak', cost: 'metered' }, false, '无预览', '流量保护 · 同步时不抽帧', 'previews'],
-    [{ location: 'online' }, false, '无预览', '在线来源不抽帧', ''],
-    [{ location: 'local', name: 'a.strm' }, false, '无预览', 'STRM 不抽帧', ''],
-    [{ location: 'local', name: 'a.ISO' }, false, '无预览', 'ISO 不抽帧', ''],
-  ] as [Partial<MediaItem>, boolean, string, string, string][])('没有图时按条目写缺什么、为什么缺、能不能补 %j', (fields, frameOnly, title, reason, fix) => {
-    expect(missingArtwork({ name: 'a.mp4', ...fields } as MediaItem, frameOnly)).toMatchObject({ title, reason, fix });
+    [{ is_jav: true, code: 'ABC-001' }, false, '还没取到官方封面', 'cover'],
+    [{ is_jav: true, code: 'ABC-001', location: 'local' }, true, '还没抽帧', 'previews'],
+    [{ location: 'local', duration: -1 }, false, '探查失败，没能抽帧', 'previews'],
+    [{ location: '115' }, false, '还没抽帧', 'previews'],
+    [{ location: 'pikpak', cost: 'metered' }, false, '流量保护 · 同步时不抽帧', 'previews'],
+    [{ location: 'online' }, false, '在线来源不抽帧', ''],
+    [{ location: 'local', name: 'a.strm' }, false, 'STRM 不抽帧', ''],
+    [{ location: 'local', name: 'a.ISO' }, false, 'ISO 不抽帧', ''],
+  ] as [Partial<MediaItem>, boolean, string, string][])('没有图时按条目给出具体原因和补图操作 %j', (fields, frameOnly, reason, fix) => {
+    expect(missingArtwork({ name: 'a.mp4', ...fields } as MediaItem, frameOnly)).toMatchObject({ reason, fix });
   });
 
   it('番号作品没有封面时当场抓取：按钮不打开详情，取到后卡片换上封面', async () => {
@@ -600,8 +600,7 @@ describe('作品卡', () => {
     const key = ['catalog-grid', 'catalog', 'gap-test', 0];
     queryClient.setQueryData(key, { pages: [page([target])], pageParams: [0] });
     const { host, onOpen } = await render(target);
-    expect(host.querySelector('[data-media-nopic]')?.textContent).toBe('无封面');
-    expect(host.querySelector('[data-artwork-gap]')?.textContent).toContain('还没取到官方封面');
+    expect(host.querySelector('[data-artwork-gap-reason]')?.textContent).toBe('还没取到官方封面');
     await click(buttonNamed('抓取封面', host));
     await settle();
     expect(fetcher.mock.calls[0]?.[0]).toBe('/api/jav/cover');
@@ -619,8 +618,7 @@ describe('作品卡', () => {
     await act(async () => { img.dispatchEvent(new Event('error')) });
     await settle();
     expect(host.querySelector('[data-media-art] img')).toBeNull();
-    expect(host.querySelector('[data-media-nopic]')?.textContent).toBe('预览无法显示');
-    expect(host.querySelector('[data-artwork-gap]')?.textContent).toContain('预览帧文件缺失');
+    expect(host.querySelector('[data-artwork-gap]')?.textContent).toBe('预览帧文件缺失补全预览');
     expect(buttonNamed('补全预览', host)).not.toBeNull();
   });
 

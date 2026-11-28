@@ -107,7 +107,7 @@ function Glass(props: CatalogFilterProps) {
       top={props.trash ? null : (
         <div ref={scroll} data-catalog-scroll="">
           {scope.choices(t('catalog:catalogFilter.views'), props.views.map(({ k, ...view }) => ({ ...view, key: k })), actions.setView)}
-          <FilterTagStrip choices={tags} onSelect={actions.toggleTag} />
+          <FilterTagStrip choices={tags} onSelect={actions.toggleTag} pending={props.tiersPending} />
         </div>
       )}
       bottom={props.trash ? <TrashHead {...props} /> : <Head {...props} filters={

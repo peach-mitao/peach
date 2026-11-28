@@ -52,8 +52,13 @@ describe('外部播放器', () => {
         await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '使用外部播放器打开');
 
         await chooser.click();
-        await page.getByRole('option', { name: 'PotPlayer', exact: true }).click();
+        const potplayer = page.getByRole('option', { name: 'PotPlayer', exact: true });
+        const logo = potplayer.locator('img');
+        await logo.evaluate((image: HTMLImageElement) => image.decode());
+        const logoSource = await logo.getAttribute('src');
+        await potplayer.click();
         await waitForChevron(false);
+        assert.equal(await chooser.locator('img').getAttribute('src'), logoSource);
         await page.getByRole('button', { name: '使用外部播放器打开', exact: true }).click();
         await page.waitForFunction(() => document.body.textContent?.includes('已请求打开本地播放器'));
         assert.equal(selected, 'potplayer');

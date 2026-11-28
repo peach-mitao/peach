@@ -1,6 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { VisuallyHidden } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { Switch } from '@/components/base/switch/switch';
 import { t } from '../../i18n';
 import { moveSidebarKey } from '../sidebar/sidebar-order';
 import { useSidebarReorder } from '../sidebar/use-sidebar-reorder';
@@ -19,21 +20,28 @@ interface OrderedItem {
   key: string;
   label: string;
   icon?: ReactNode;
+  copyKey?: string;
 }
 
 export function OrderedPreferenceList({ items, order, onChange, chooseLabel, allShown, empty, scrollable,
-  allowEmpty = false, id, footer }: {
+  allowEmpty = false, id, footer, visibility }: {
   items: readonly OrderedItem[];
   order: readonly string[];
   onChange(next: string[]): void;
-  chooseLabel: string;
-  allShown: string;
   empty?: ReactNode;
   scrollable?: boolean;
   allowEmpty?: boolean;
   id?: string;
   footer?: ReactNode;
-}) {
+} & ({
+  chooseLabel: string;
+  allShown: string;
+  visibility?: never;
+} | {
+  chooseLabel?: never;
+  allShown?: never;
+  visibility: { hidden: readonly string[]; onToggle(key: string, visible: boolean): void };
+})) {
   const list = useRef<HTMLDivElement>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const byKey = new Map(items.map(item => [item.key, item]));
@@ -53,7 +61,7 @@ export function OrderedPreferenceList({ items, order, onChange, chooseLabel, all
     <div data-ordered-preference-scroll={scrollable ? '' : undefined}>
       <div ref={list} data-navigation-order="preferences" data-navigation-axis="y" data-navigation-rows=""
         data-reordering={reorder.picked ? '' : undefined} onClickCapture={reorder.clickCapture}>
-        {visible.map(({ key, label, icon }, index) => {
+        {visible.map(({ key, label, icon, copyKey }, index) => {
           const active = reorder.picked?.key === key;
           const { distance, delay } = reorder.nudge(key);
           return <div key={key} data-sidebar-row={key} data-tab={key} {...reorder.bindings(key)}
@@ -61,7 +69,7 @@ export function OrderedPreferenceList({ items, order, onChange, chooseLabel, all
             data-dragging={active ? '' : undefined}
             style={{ '--navigation-picked-offset': active ? `${reorder.picked?.offset}px` : undefined,
               '--sidebar-nudge': `${distance}px`, '--sidebar-delay': `${delay}ms` } as CSSProperties}>
-            <span data-sidebar-label=""><span data-sidebar-grip=""><Grip /></span>{icon}<span className="font-normal wrap-anywhere">{label}</span></span>
+            <span data-sidebar-label=""><span data-sidebar-grip=""><Grip /></span>{icon}<span className="font-normal wrap-anywhere" data-copy-key={copyKey}>{label}</span></span>
             <span data-sidebar-actions="">
               <Button size="xs" variant="ghost" iconOnly leadingIcon={Up}
                 data-sidebar-key={key} data-sidebar-move="-1" aria-label={t('settings:sidebarOrder.moveItemUp', { label })}
@@ -69,10 +77,13 @@ export function OrderedPreferenceList({ items, order, onChange, chooseLabel, all
               <Button size="xs" variant="ghost" iconOnly leadingIcon={Down}
                 data-sidebar-key={key} data-sidebar-move="1" aria-label={t('settings:sidebarOrder.moveItemDown', { label })}
                 title={t('settings:sidebarOrder.moveDown')} disabled={index === visible.length - 1} onClick={() => move(key, index, 1)} />
+              {visibility ? <Switch className="ml-2" aria-label={t('settings:topToolbar.showButton', { label })}
+                isSelected={!visibility.hidden.includes(key)}
+                onChange={shown => visibility.onToggle(key, shown)} /> :
               <Button size="xs" variant="ghost" iconOnly leadingIcon={Hide}
                 data-sidebar-key={key} data-sidebar-hide="" aria-label={t('settings:sidebarOrder.hideItem', { label })}
                 title={t('settings:sidebarOrder.hide')} disabled={!allowEmpty && visible.length === 1}
-                onClick={() => onChange(order.filter(item => item !== key))} />
+                onClick={() => onChange(order.filter(item => item !== key))} />}
             </span>
           </div>;
         })}
@@ -81,7 +92,7 @@ export function OrderedPreferenceList({ items, order, onChange, chooseLabel, all
     </div>
     {visible.length ? null : empty}
     <VisuallyHidden role="status" aria-live="polite">{reorder.announcement}</VisuallyHidden>
-    <div data-sidebar-add-row="">
+    {visibility ? null : <div data-sidebar-add-row="">
       <Select aria-label={chooseLabel} triggerClassName="h-(--control-h)" className="min-w-0"
         selectedKey={chosen ? optionKey(chosen.key) : null} isDisabled={!chosen}
         renderValue={chosen ? undefined : allShown}
@@ -92,7 +103,7 @@ export function OrderedPreferenceList({ items, order, onChange, chooseLabel, all
       </Select>
       <Button size="small" className="h-(--control-h)" data-sidebar-add="" disabled={!chosen}
         onClick={() => { if (chosen) onChange([...order, chosen.key]); }}>{t('settings:shared.add')}</Button>
-    </div>
+    </div>}
     {footer}
   </div>;
 }

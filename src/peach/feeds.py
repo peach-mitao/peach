@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from .catalog_rules import normalise_code_key, release_code_from_text
 from .coded_text import Said, coded, columns, restored
-from .content_words import COMPILATION_TITLE, DMM_HOURS, DMM_MINUTES, JAVDB_WORK_COUNT
+from .content_words import COMPILATION_TITLE, DMM_HOURS, DMM_MINUTES, JAVDB_WORK_COUNT, VR_RELEASE_MARKER
 from .entities import normalize_entity_name
 from .user_messages import UserValueError
 
@@ -115,6 +116,16 @@ def hidden_compilations(settings: dict) -> frozenset[str]:
     """按设置载荷，新作那一行收起哪几类合集。"""
     switches = compilation_switches(settings)
     return frozenset(kind for key, kind in FEED_COMPILATION_SWITCHES if switches[key])
+
+
+def has_vr_release_prefix(title: str | None) -> bool:
+    """来源原标题开头的独立 VR 发行标记。"""
+    title = unicodedata.normalize('NFKC', title or '').lstrip()
+    closing = {'【': '】', '〖': '〗', '[': ']', '(': ')'}.get(title[:1])
+    if closing is None:
+        return False
+    label, end, _ = title[1:].partition(closing)
+    return bool(end and re.fullmatch(VR_RELEASE_MARKER, label.strip(), re.I))
 
 
 def compilation_kind(title: str | None, performers: str | None,

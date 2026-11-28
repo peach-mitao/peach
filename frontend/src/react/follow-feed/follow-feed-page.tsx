@@ -462,10 +462,10 @@ function Glass({ facets, view, total, busy, props, route }: {
                 {label}
               </button>
             ))}
-            {tagChoices.length ? <Sep /> : null}
+            {tagChoices.length || busy ? <Sep /> : null}
           </div>
           <div ref={tagRow} data-entity-tags="">
-            <FilterTagStrip choices={tagChoices} onSelect={toggleTag} />
+            <FilterTagStrip choices={tagChoices} onSelect={toggleTag} pending={busy} />
           </div>
         </div>
       </>}
@@ -489,15 +489,15 @@ function Glass({ facets, view, total, busy, props, route }: {
               </button>
             </>
           ) : null}
-        </>} fields={providers.length || tagChoices.length ? <>
+        </>} fields={providers.length || tagChoices.length || busy ? <>
           {providers.length ? <FilterDropdown id="follow-source" orderKey="source" label={t('follow:searchResults.source')}
             choices={providers.map(([id, label]) => ({ id, label, selected: facets.provider === id,
               leading: <span aria-hidden className="size-4 shrink-0 [&>img]:size-full"
                 dangerouslySetInnerHTML={{ __html: sourceMark(id, label) }} /> }))}
             onSelect={id => route({ provider: facets.provider === id ? '' : id })}
             onClear={facets.provider ? () => route({ provider: '' }) : undefined} /> : null}
-          {tagChoices.length ? <FilterDropdown id="follow-tags" orderKey="tags" label={t('catalog:shared.tags')}
-            choices={tagChoices} onSelect={toggleTag} onClear={view.tags.length ? () => route({ tags: [] }) : undefined} /> : null}
+          {tagChoices.length || busy ? <FilterDropdown id="follow-tags" orderKey="tags" label={t('catalog:shared.tags')}
+            choices={tagChoices} pending={busy && !tagChoices.length} onSelect={toggleTag} onClear={view.tags.length ? () => route({ tags: [] }) : undefined} /> : null}
         </> : null} sorts={<SortKeys group="follow" follow sorts={FOLLOW_FEED_SORTS.map(([key, label]) => ({
             key, label, pressed: view.sort === key, dir: view.dir, ariaLabel: sortAriaLabel(key, label, view.sort, view.dir),
           }))} onSort={(sort, dir) => route({ sort: sort as FollowView['sort'], dir })} />} />

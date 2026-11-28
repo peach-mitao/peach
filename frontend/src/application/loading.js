@@ -19,6 +19,9 @@ import { routeMetaOf } from './../history/route-meta';
 import { javTab } from '../react/jav/jav-navigation';
 import { paintWallBootSkeleton } from '../react/video-wall/wall-boot';
 import { t } from '../i18n';
+import { FOLLOW_FILTERS, FOLLOW_FEED_SORTS } from '../react/follow-feed/follow-feed';
+import { FILTER_WAITING, filterSearchSkeletonHtml, filterTagsSkeletonHtml, sortKeysSkeletonHtml } from '../filter-controls-skeleton';
+import { islandGlyph, islandShortcutsEntry } from '../island-skeleton';
 export const loadingState = { setGridCards: undefined, gridCards: undefined, managementPlaceholder: undefined, entityShapesReady: undefined, ENTITY_SHAPES_WAIT: undefined, syncPageTitle: undefined };
 
 export function renderCatalogLoading(label=t('shell:skeleton.loadingVideos')){
@@ -144,9 +147,20 @@ followState.followSkeletonHtml = (label=t('shell:skeleton.loadingFollowing'))=>`
   <div data-follow-head><h2 data-follow-title>${t('shell:routeTitle.following')}</h2></div>
   <div class="tier followauthors" data-skeleton-tier="av"></div>
   <div class="tier followworks" data-skeleton-tier="brandpill"></div>
-  <div class="board-filter-frame" data-filter-frame>
-    <div class="tagbar followfilters" data-filter-row="top" data-skeleton-tier="pill"></div>
-    <div class="count followcount" data-filter-row="bottom"><span class="mono"><span class="countskeleton"></span></span></div></div>
+  <div data-filter-glass data-glass-pane data-filter-frame data-follow-filter-glass class="sticky top-topbar z-10 mb-5.5 flex flex-col">
+    <div data-filter-row="top" class="flex h-12 min-w-0 items-center gap-1.5 overflow-visible overscroll-x-contain px-3 py-2">
+      <div data-entity-scroll><div data-entity-states>
+        ${FOLLOW_FILTERS.map(([key,text])=>`<button type="button" data-entity-state="${key}" aria-pressed="${(followState.followFilter||'')===key}" ${FILTER_WAITING}>${text}</button>`).join('')}
+        <span data-entity-sep aria-hidden="true"></span></div><div data-entity-tags>${filterTagsSkeletonHtml()}</div></div>
+    </div>
+    <div data-filter-row="bottom" aria-busy="true" class="flex min-h-11.5 min-w-0 items-center gap-3 px-3 py-2">
+      <h3 data-entity-readout><span class="skeleton-sheen inline-block h-3.5 w-24 rounded-md"></span></h3>
+      ${islandShortcutsEntry()}${filterSearchSkeletonHtml(false,followState.followQuery||'')}
+      <span data-entity-sorts><button type="button" data-filter-action data-entity-batch ${FILTER_WAITING} aria-label="${t('catalog:entityFilter.shuffle')}">${islandGlyph('shuffle','size-4')}</button>
+        <span data-entity-sep aria-hidden="true"></span>${sortKeysSkeletonHtml(FOLLOW_FEED_SORTS.map(([key,label])=>({key,label,pressed:(followState.followSort||'new')===key,dir:followState.followDir||'desc'})),
+          'follow',[{key:'tags',id:'follow-tags',label:t('catalog:shared.tags')}])}</span>
+    </div>
+  </div>
   ${followState.followContentSkeletonHtml(undefined,label)}</div></div>`;
 $('#loadSentinel').innerHTML=activityStatusHtml('linear-dots', LOAD_MORE_STATUS);
 loadingState.setGridCards = html=>revealSkeleton($('#grid'),()=>{$('#grid').innerHTML=`<div class="grid">${html}</div>`});

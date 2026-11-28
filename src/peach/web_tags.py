@@ -58,7 +58,7 @@ def _tag_page(inventory, args):
         offset = 0
     query = _name_key(args.get('q') or '')
     rows = [row for row in inventory['items']
-            if _tag_state(row) == state and (not query or any(
+            if _matches_state(row, state) and (not query or any(
                 query in _name_key(name) for name in [row['k'], *row.get('aliases', [])]))]
     categories: dict[str, int] = {}
     for row in rows:
@@ -75,8 +75,8 @@ def _tag_page(inventory, args):
             'categories': categories, 'duplicate_groups': deepcopy(inventory['duplicate_groups'])}
 
 
-def _tag_state(row):
-    return 'blocked' if row.get('blocked') else 'hidden' if row.get('hidden') else 'active'
+def _matches_state(row, state):
+    return row.get(state) if state != 'active' else not (row.get('blocked') or row.get('hidden'))
 
 
 def w_tag_preview(contract, body):

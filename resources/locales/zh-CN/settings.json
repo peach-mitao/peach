@@ -1487,6 +1487,16 @@
     "spotColor": "{{label}}颜色",
     "strength": "强度"
   },
+  "topToolbar": {
+    "title": "顶部工具栏",
+    "immersive": "沉浸模式",
+    "videoWall": "播放墙",
+    "selectMode": "多选",
+    "density": "卡片密度",
+    "notifications": "通知中心",
+    "tutorial": "新手教程",
+    "showButton": "显示{{label}}"
+  },
   "sidebarOrder": {
     "allShown": "全部页面都已显示",
     "groupLabel": "左侧导航",

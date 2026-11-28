@@ -10,6 +10,7 @@ import { esc } from '@peach/legacy/core';
 
 import { islandGlassRows } from './island-skeleton';
 import { queueControlsSkeletonHtml } from './queue-skeleton';
+import { filterSearchSkeletonHtml } from './filter-controls-skeleton';
 import { t } from './i18n';
 
 export type JunkView = 'pending' | 'dismissed';
@@ -53,16 +54,17 @@ export function junkViewLink(view: JunkView): { view: JunkView; label: string; g
 export const junkSummaryLabel = (view: JunkView) => (view === 'dismissed' ? t('cleanup:junk.excluded') : t('cleanup:junk.undecided'));
 
 const glyph = (name: string) => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+const badgeSkeleton = '<span aria-hidden="true" class="skeleton-sheen inline-block h-3.5 w-4 rounded-md"></span>';
 
-/** 壳在 React 包加载之前铺的筛选浮层：上排分类条，下排读数留空，计数徽标不画。滑动玻璃由 island
+/** 壳在 React 包加载之前铺的筛选浮层：分类和查找原位显示，等数据的计数使用骨架。滑动玻璃由 island
  *  量着放，这一版里没有它，当前那一类自己垫一块同料的玻璃（`junk-queue.css`）。 */
 export function junkCountSkeletonHtml({ kind, view }: JunkRoute): string {
   const links = JUNK_KIND_OPTIONS.map(([key, label, icon]) =>
-    `<a href="${junkPath(key, view)}" data-junk-kind-link="${key}"${key === kind ? ' aria-current="page"' : ''}>${glyph(icon)}${esc(label)}</a>`).join('');
+    `<a href="${junkPath(key, view)}" data-junk-kind-link="${key}"${key === kind ? ' aria-current="page"' : ''}>${glyph(icon)}${esc(label)}${badgeSkeleton}</a>`).join('');
   const other = junkViewLink(view);
   const nav = `<nav data-junk-filters="" aria-label="${esc(t('cleanup:junk.categories'))}">${links}<i data-junk-divider="" aria-hidden="true"></i>`
-    + `<a href="${other.href}" data-junk-view-link="${other.view}"${view === 'dismissed' ? ' aria-current="page"' : ''}>${glyph(other.glyph)}${other.label}</a></nav>`;
+    + `<a href="${other.href}" data-junk-view-link="${other.view}"${view === 'dismissed' ? ' aria-current="page"' : ''}>${glyph(other.glyph)}${other.label}${badgeSkeleton}</a></nav>`;
   return `<div class="peach-react" data-junk-count-skeleton="">`
     + islandGlassRows({ label: junkSummaryLabel(view), top: nav, attrs: ' data-filter-frame="" data-junk-filters-frame=""',
-      controls: queueControlsSkeletonHtml('junk-files'), className: 'mx-auto w-full max-w-board' }) + `</div>`;
+      controls: queueControlsSkeletonHtml('junk-files'), search: filterSearchSkeletonHtml(), className: 'mx-auto w-full max-w-board' }) + `</div>`;
 }

@@ -6,7 +6,7 @@
 [data-navigation-order=preferences]>[data-sidebar-row]:focus-visible{outline:2px solid var(--tungsten);outline-offset:-2px}
 [data-sidebar-order] :is([data-sidebar-label],[data-sidebar-actions]){display:flex;align-items:center;gap:8px}
 [data-sidebar-order] [data-sidebar-label]{min-width:0}
-[data-sidebar-order] :is([data-sidebar-label],[data-sidebar-picker-icon])>svg{width:var(--icon-inline);height:var(--icon-inline);stroke:currentColor;fill:none;flex:none}
+[data-sidebar-order] [data-sidebar-label]>svg,[data-sidebar-picker-icon]>svg{width:var(--icon-inline);height:var(--icon-inline);stroke:currentColor;fill:none;flex:none}
 [data-sidebar-order] [data-sidebar-grip]{flex:none;color:var(--muted);touch-action:none}
 [data-sidebar-order] [data-sidebar-grip]>svg{display:block;width:24px;height:20px}
 [data-sidebar-order] [data-sidebar-actions]{flex:none;gap:2px}

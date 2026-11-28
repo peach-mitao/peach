@@ -33,6 +33,54 @@ describe('播放器皮肤', () => {
     } finally { release(); await opened.close() }
   });
 
+  it('在播放器里切换播完之后的行为，并保存播放偏好', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, VIEWPORTS[0]!);
+    const { page } = opened;
+    try {
+      const video = page.locator('#stage video.vjs-tech');
+      const menu = page.locator('#stage [data-player-playback-end]');
+      await page.locator('#stage .vjs-peach-settings-toggle').click();
+      await menu.click();
+      assert.equal(await page.locator('#stage [data-player-playback-end-option]').count(), 5);
+      await page.locator('#stage [data-player-playback-end-option="repeat-one"]').click();
+      assert.equal(await video.evaluate((node: HTMLVideoElement) => node.loop), true);
+      await menu.click();
+      assert.equal(await page.locator('#stage [data-player-playback-end-option="repeat-one"]').getAttribute('aria-checked'), 'true');
+      await page.locator('#stage [data-player-playback-end-option="stop"]').click();
+      assert.equal(await video.evaluate((node: HTMLVideoElement) => node.loop), false);
+
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('peach.settings.v1') ?? '{}').afterPlayback);
+      assert.equal(saved, 'stop');
+      assert.deepEqual(opened.problems, []);
+    } finally { await opened.close() }
+  });
+
+  it('窄屏从子菜单返回时保留设置的滚动位置和按键焦点', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, VIEWPORTS[1]!, async page => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+    });
+    const { page } = opened;
+    try {
+      const menu = page.locator('#stage .vjs-peach-settings-menu');
+      const active = menu.locator('.vjs-peach-panel:not(.vjs-peach-panel-leaving)');
+      const quality = active.locator('[data-player-quality-view]');
+      await page.locator('#stage .vjs-peach-settings-toggle').click();
+      await quality.scrollIntoViewIfNeeded();
+      const scrollPosition = await quality.evaluate(node => {
+        const list = node.closest<HTMLElement>('.vjs-peach-panel')!;
+        return list.scrollTop || list.parentElement!.scrollTop;
+      });
+      assert.ok(scrollPosition > 0);
+
+      await quality.click();
+      await active.locator('[data-player-menu-back]').click();
+      await page.waitForFunction(() => !document.querySelector('.vjs-peach-popup-animating'));
+      assert.equal(await active.evaluate(node => node.scrollTop), scrollPosition);
+      assert.equal(await quality.evaluate(node => document.activeElement === node), true);
+      assert.deepEqual(opened.problems, []);
+    } finally { await opened.close() }
+  });
+
   for (const viewport of VIEWPORTS) {
     it(`${viewport.name}：刷新后恢复同一视频的旋转、倍速和字幕外观`, { timeout: 60_000 }, async () => {
       const opened = await visit(browser, `/assets/${requiredEnv('PEACH_E2E_ITEM')}`, viewport, async page => {

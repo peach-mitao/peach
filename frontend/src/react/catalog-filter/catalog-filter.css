@@ -182,7 +182,7 @@
   height: var(--control-h-compact);
   padding: 0 10px;
   border-radius: 8px;
-  color: color-mix(in srgb, var(--glass-text) 60%, transparent);
+  color: var(--glass-text-secondary);
   font-size: 13px;
   line-height: 20px;
   text-decoration: none;
@@ -279,6 +279,8 @@
   border-radius: var(--tag-radius);
   background: var(--hover);
 }
+.peach-react [data-catalog-placeholder="tag"] > span:nth-child(3n+1) { width: 90px; }
+.peach-react [data-catalog-placeholder="tag"] > span:nth-child(3n+2) { width: 64px; }
 
 /* 挂上之前壳铺的骨架（`data-loading`）用同一组占位，面上再走一道微光：它说的是「马上就来」，
  * 空馆藏那一份是静止的。 */

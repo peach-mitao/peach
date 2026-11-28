@@ -41,6 +41,7 @@ export interface PlayerResume { time: number; autoplay: boolean }
 export interface DetailPlayerOptions {
   released?: () => boolean;
   guidePreview?: boolean;
+  playbackEndControl?: boolean;
   playbackKey?: string;
   nativeVolumeSignal?: AbortSignal;
   /** 给定片源（关注条目的 `/follow-stream`）；不给就按作品的来源解析。 */
@@ -272,7 +273,7 @@ export async function mountDetailPlayer(
   });
   player.ready(() => {
     enforceDuration();
-    const updateQualities = mountPlayerQualityControl(player, video, item, options.qualities ?? null);
+    const updateQualities = mountPlayerQualityControl(player, video, item, options.qualities ?? null, options.playbackEndControl);
     options.mediaPromise?.then((next) => {
       if (!live()) return;
       updateQualities?.(next?.qualities?.length ? next.qualities : null);
@@ -409,7 +410,7 @@ export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions
   if (frame) preparePlayerFrame(frame, video);
   const key = playbackKey(kind, item, media?.index ?? null);
   const nativeVolume = new AbortController();
-  let detail: DetailPlayerOptions = { guidePreview, playbackKey: key, nativeVolumeSignal: nativeVolume.signal };
+  let detail: DetailPlayerOptions = { guidePreview, playbackEndControl: kind === 'item', playbackKey: key, nativeVolumeSignal: nativeVolume.signal };
   if (kind === 'follow') {
     detail = {
       ...detail,

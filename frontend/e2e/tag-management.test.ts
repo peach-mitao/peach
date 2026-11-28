@@ -8,6 +8,57 @@ describe('标签管理的完整操作', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
+  it('同一在线标签规则入口支持隐藏标签和按范围屏蔽内容', async () => {
+    const opened = await visit(browser, '/tags?scope=online', VIEWPORTS[0]);
+    const { page } = opened;
+    const origin = requiredEnv('PEACH_E2E_ORIGIN');
+    const name = `scope-${randomUUID().slice(0, 8)}`;
+    try {
+      const dialog = page.locator('dialog[open]');
+      const enterName = async () => {
+        await page.getByRole('button', { name: '添加标签规则', exact: true }).click();
+        const tagName = dialog.getByRole('combobox', { name: '标签名称' });
+        await tagName.fill(name);
+        await tagName.press('Tab');
+      };
+      const fetchRules = async (state: 'hidden' | 'blocked') => (await page.request.get(
+        `${origin}/api/tag-management?scope=online&state=${state}&limit=10&q=${name}`)).json();
+      await enterName();
+      await dialog.getByText('隐藏标签', { exact: true }).click();
+      assert.equal(await dialog.getByRole('checkbox', { name: 'JAV 新作' }).count(), 0);
+      await dialog.getByRole('button', { name: '预览影响范围' }).click();
+      await dialog.getByText(new RegExp(`隐藏.*${name}.*相关作品仍会显示`)).waitFor();
+      await dialog.getByRole('button', { name: '隐藏标签', exact: true }).click();
+      await dialog.waitFor({ state: 'detached' });
+      assert.equal((await fetchRules('hidden')).total, 1);
+      assert.equal((await fetchRules('blocked')).total, 0);
+      await page.getByRole('button', { name: '撤销', exact: true }).click();
+      await page.getByText('已撤销', { exact: true }).waitFor();
+      assert.equal((await fetchRules('hidden')).total, 0);
+
+      await enterName();
+      await dialog.getByText('隐藏标签', { exact: true }).click();
+      await dialog.getByText('屏蔽带此标签的内容', { exact: true }).click();
+      await dialog.getByText('关注动态', { exact: true }).click();
+      assert.equal(await dialog.getByRole('button', { name: '预览影响范围' }).isDisabled(), true);
+      await dialog.getByText('JAV 新作', { exact: true }).click();
+      await dialog.getByRole('button', { name: '预览影响范围' }).click();
+      await dialog.getByText(new RegExp(`隐藏.*${name}.*在JAV 新作中屏蔽`)).waitFor();
+      await dialog.getByRole('button', { name: '隐藏标签并屏蔽内容', exact: true }).click();
+      await dialog.waitFor({ state: 'detached' });
+      const beforeUndo = await fetchRules('blocked');
+      assert.deepEqual(beforeUndo.items.map((tag: { block_scopes: string[] }) => tag.block_scopes), [['jav_releases']]);
+      assert.equal((await fetchRules('hidden')).total, 1);
+      const undoResponse = page.waitForResponse(response => response.url() === `${origin}/api/tag-management`
+        && response.request().method() === 'POST' && response.request().postDataJSON()?.operation === 'unblock');
+      await page.getByRole('button', { name: '撤销', exact: true }).click();
+      assert.ok((await undoResponse).ok());
+      assert.equal((await fetchRules('blocked')).total, 0);
+      assert.equal((await fetchRules('hidden')).total, 0);
+    } finally {
+      await opened.close();
+    }
+  });
   for (const viewport of VIEWPORTS) it(viewport.name, async () => {
     const { page } = await visit(browser, '/tags?view=cloud', viewport);
     try {

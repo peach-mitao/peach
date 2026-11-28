@@ -13,7 +13,7 @@ import { SelectionDock } from '../components/selection-dock';
 import { useAction } from '../settings/use-action';
 import { ONLINE_TAG_CATEGORIES, TAG_CATEGORIES, tagGroups, type TagView } from './index-data';
 import { TagAlphabet, TagCloud, TagFilters } from './index-tags';
-import { TagEditor, useTagStatusCounts, confirmTagOperation, managedTagId, previewTagOperation, toastHost, tagOperation, type Command, type EditorOperation, type ManagedTag, type TagId, type TagScope } from './tag-operations';
+import { TagEditor, useTagStatusCounts, confirmTagOperation, managedTagId, previewTagOperation, toastHost, tagBlockScopeLabel, tagOperation, type Command, type EditorOperation, type ManagedTag, type TagId, type TagScope } from './tag-operations';
 import { contentTrashAction } from './roster-actions';
 import { t } from '../../i18n';
 
@@ -53,7 +53,7 @@ export function TagManager({ search, onSearch, category = 'all', view = 'cloud',
   const rows = inventory.data?.items || [];
   const visible = rows;
   const categories = (online ? ONLINE_TAG_CATEGORIES : TAG_CATEGORIES).filter(([key]) => key === 'all' || key === activeCategory || inventory.isPending || Number(inventory.data?.categories[key]) > 0);
-  const tags = visible.map(row => ({ ...row, label: row.k }));
+  const tags = visible.map(row => ({ ...row, label: blocked ? `${row.k} · ${tagBlockScopeLabel(row)}` : row.k }));
   const groups = activeView === 'alphabet' ? tagGroups(tags, key => key) : [];
   const selected = [...selection.values()];
   const run = (command: Command) => { void action.run(command.operation, async signal => {
@@ -80,8 +80,9 @@ export function TagManager({ search, onSearch, category = 'all', view = 'cloud',
         ...(online ? { onBlocked: () => { setBlocked(true); setHidden(false) } } : {}) }}
       search={{ value: query, onQuery: onSearch ?? setLocalSearch }}
       actions={<>
-        {/* 「添加屏蔽标签」在线范围三档都在：还没抓到过的标签不在任何一档里，得有个地方直接填名字。 */}
-        {online ? <FilterActionButton onPress={() => setEditing('block')}>{t('catalog:tagManager.blockByName')}</FilterActionButton> : null}
+        {online ? <FilterActionButton onPress={() => setEditing('rule')}>
+          <span data-copy-key="catalog.tagManager.addRule">{t('catalog:tagManager.addRule')}</span>
+        </FilterActionButton> : null}
         {inventory.data?.duplicate_groups.length ? <FilterActionButton busy={action.busy === 'repair'} onPress={() => run({ operation: 'repair', ids: [] })}>{t('catalog:tagManager.mergeDuplicates')}</FilterActionButton> : null}
         {/* 标签还没到时也摆着（按不动），取到以后这一排不再长出一颗键把旁边的挤开。 */}
         {inventory.isPending || visible.length ? <FilterActionButton busy={!visible.length} onPress={() => setPicked(current => new Map([...current, ...visible.map(row => [row.k, row] as const)]))}>{t('catalog:tagManager.selectPage')}</FilterActionButton> : null}
@@ -96,10 +97,20 @@ export function TagManager({ search, onSearch, category = 'all', view = 'cloud',
     {action.error ? <Note tone="error">{action.error}</Note> : null}
     <SelectionDock label={t('catalog:tagManager.actions')} count={t('catalog:tagFilters.selectedCount', { count: picked.size })} visible={picked.size > 0}
       actions={[
-        { action: tagOperation({ operation: hidden ? 'restore' : 'hide', ...(online ? { scope } : {}) },
-          hidden ? t('catalog:tagManager.unhide') : t('catalog:tagManager.hide')), items: ids, host: toastHost, done: () => setPicked(new Map()) },
-        ...(online ? [{ action: tagOperation({ operation: blocked ? 'unblock' : 'block', scope },
-          blocked ? t('catalog:tagManager.unblockContent') : t('catalog:tagManager.blockContent')), items: ids, host: toastHost, done: () => setPicked(new Map()) }] : []),
+        ...(!online || hidden ? [{
+          action: tagOperation({ operation: hidden ? 'restore' : 'hide', ...(online ? { scope } : {}) },
+            hidden ? t('catalog:tagManager.unhide') : t('catalog:tagManager.hide')), items: ids, host: toastHost, done: () => setPicked(new Map()),
+        }] : []),
+        ...(online && blocked && selected.some(row => row.hidden) ? [{
+          action: tagOperation({ operation: 'restore', scope }, t('catalog:tagOperations.unhideTags')),
+          items: selected.filter(row => row.hidden).map(managedTagId), host: toastHost, done: () => setPicked(new Map()),
+        }] : []),
+        ...(online && blocked && selected.some(row => !row.hidden) ? [{
+          action: tagOperation({ operation: 'hide', scope }, t('catalog:tagOperations.hideTags')),
+          items: selected.filter(row => !row.hidden).map(managedTagId), host: toastHost, done: () => setPicked(new Map()),
+        }] : []),
+        ...(online && blocked ? [{ action: tagOperation({ operation: 'unblock', scope }, t('catalog:tagManager.unblockContent')),
+          items: ids, host: toastHost, done: () => setPicked(new Map()) }] : []),
         /* 本地标签的两种删除分开：删标签本身（关联去掉、作品留着，撤不回），删标签下的作品（进回收站，能撤销）。 */
         ...(online ? [] : [
           { action: { ...tagOperation({ operation: 'delete' }), danger: true }, items: ids, host: toastHost, done: () => setPicked(new Map()) },
@@ -107,6 +118,11 @@ export function TagManager({ search, onSearch, category = 'all', view = 'cloud',
             (count, assets) => t('catalog:rosterActions.tagTrashConfirm', { count, assets })), items: ids, host: toastHost, done: () => setPicked(new Map()) },
         ]),
       ]}>
+      {online ? <Button variant="secondary" size="small" disabled={!selected.length || (blocked && selected.length !== 1)}
+        onClick={() => setEditing(blocked ? 'editBlock' : 'rule')}>
+        <span data-copy-key={blocked ? 'catalog.tagManager.editBlockScopes' : 'catalog.tagManager.setRule'}>
+          {t(blocked ? 'catalog:tagManager.editBlockScopes' : 'catalog:tagManager.setRule')}</span>
+      </Button> : null}
       <Button variant="secondary" size="small" disabled={selected.length !== 1} onClick={() => setEditing('rename')}>{t('catalog:shared.rename')}</Button>
       <Button variant="secondary" size="small" disabled={selected.length < 2 || (online && new Set(selected.map(row => row.cat)).size > 1)} onClick={() => setEditing('merge')}>{t('catalog:shared.merge')}</Button>
     </SelectionDock>

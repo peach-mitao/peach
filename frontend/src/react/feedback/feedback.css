@@ -70,6 +70,23 @@
   z-index: calc(var(--layer-tooltip, 1200) + 1);
 }
 
+[data-feedback-surface] > [role="dialog"]:has(> form[data-peach-feedback]) {
+  overflow: clip;
+}
+
+[data-feedback-head] {
+  clip-path: inset(0 0 -96px);
+  transition: box-shadow .2s ease-out;
+}
+
+[data-feedback-head]:has(+ [data-feedback-body][data-scrolled]) {
+  box-shadow: var(--glass-shadow, var(--shadow-dropdown));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-feedback-head] { transition: none; }
+}
+
 @media (hover: hover) {
   [data-feedback-action]:hover:not(:active, :disabled, [aria-disabled="true"]) {
     background-color: var(--control-hover, var(--color-border-button-default));

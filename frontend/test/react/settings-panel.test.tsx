@@ -121,6 +121,7 @@ const settings = (): PanelSettings => ({
   feedNewRows: true, homeShortsLimit: 18, homeTiers: true, homePreviewOnly: false, containHomeScroll: false,
   completionPrompt: true, searchRecommendations: true, ingestNotices: true, ingestToasts: true, browserNotices: false, showFeedbackButton: true,
   notificationLimits: { ...NOTIFICATION_DEFAULTS },
+  topToolbar: { order: ['immerseBtn', 'wallBtn', 'selectMode', 'density', 'notificationCenter', 'tutorialBtn'], hidden: [] },
 });
 
 /** 壳 `settingsHost()` 交进来的那一份。 */

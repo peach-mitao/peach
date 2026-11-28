@@ -4,6 +4,7 @@
  * `peach.settings.v1` 里），回执归全站那一份 Toast，舞台的氛围光与剧场模式类挂在 `#stage` 上。
  * 挂播放器之前由持有方调一次 `configurePlayer` 接上。 */
 import { t } from '../i18n';
+import type { AfterPlayback } from './after-playback';
 
 /** 播放器读写的那几项设置。对象由持有方给出，播放器改了就地写回再调 `save`。 */
 export interface PlayerSettings {
@@ -12,6 +13,7 @@ export interface PlayerSettings {
   seekSeconds: number;
   miniplayer: boolean;
   detailAutoplay: boolean;
+  afterPlayback?: AfterPlayback;
   /** 没手动选过字幕的影片，打开时自动选同目录的中文字幕（#428），默认关。 */
   autoChineseSubtitles?: boolean;
   /** 离片尾不到这个百分比就从头播（`progress.ts` 的 `playbackPosition`）；没给按 0，只有播完才从头。 */
@@ -23,6 +25,7 @@ export interface PlayerSettings {
 export interface PlayerHost {
   settings(): PlayerSettings;
   saveSettings(): void;
+  subscribeSettings?(listener: () => void): () => void;
   toast(text: string, options: { timeout?: number; warn?: boolean }): void;
   /** 各来源此刻在不在线（`/api/sources` 的快照，`false` 就是脱盘）。 */
   loadSourceStatus(): Promise<Record<string, boolean>>;

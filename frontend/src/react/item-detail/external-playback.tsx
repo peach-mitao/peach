@@ -8,12 +8,26 @@ import { busyProps, useAction } from '../settings/use-action';
 import { t } from '../../i18n';
 import { serverLabel } from '../../core/server-text';
 import { schemePlayers, type SchemePlayer } from '../../player/external-schemes';
+import iinaLogo from '../../../../resources/player-logos/iina.png?inline';
+import infuseLogo from '../../../../resources/player-logos/infuse.png?inline';
+import mpvLogo from '../../../../resources/player-logos/mpv.png?inline';
+import mxPlayerLogo from '../../../../resources/player-logos/mxplayer.png?inline';
+import nPlayerLogo from '../../../../resources/player-logos/nplayer.png?inline';
+import potPlayerLogo from '../../../../resources/player-logos/potplayer.png?inline';
+import vlcLogo from '../../../../resources/player-logos/vlc.png?inline';
 
 const TARGET_KEY = 'peach.playback-target.v1';
 type LocalPlayer = { id: string; label: string; label_code?: string };
-const NETWORK_TARGETS = [['m3u', t('catalog:externalPlayback.m3uPlaylist')], ['url', t('catalog:externalPlayback.streamUrlVr')]] as const;
+const PLAYER_LOGOS = new Map([
+  ['iina', iinaLogo], ['infuse', infuseLogo], ['mpv', mpvLogo], ['mxplayer', mxPlayerLogo],
+  ['nplayer', nPlayerLogo], ['potplayer', potPlayerLogo], ['vlc', vlcLogo],
+]);
+const NETWORK_TARGETS = [
+  ['m3u', t('catalog:externalPlayback.m3uPlaylist'), 'playlist'],
+  ['url', t('catalog:externalPlayback.streamUrlVr'), 'link'],
+] as const;
 const localTarget = (item: LocalPlayer) =>
-  [`local:${item.id}`, serverLabel(item.label_code ?? '', item.label)] as const;
+  [`local:${item.id}`, serverLabel(item.label_code ?? '', item.label), PLAYER_LOGOS.get(item.id) ?? 'monitor'] as const;
 const schemeLabel = (player: SchemePlayer) => player.label || t('catalog:externalPlayback.androidChooser');
 /** 链接调起的播放器按客户端平台给；本机已检测到的同名播放器走服务端打开，不重复列。 */
 const schemeTargets = (players: LocalPlayer[] | null) =>
@@ -82,7 +96,7 @@ export function ExternalPlayback({ id, onOpened }: { id: number; onOpened?(): vo
     <div data-local-playback-row="">
       <SelectField id={`external-player-${id}`} label={t('catalog:externalPlayback.externalPlayer')}
         options={[...(players || []).filter(item => item.id !== 'custom').map(localTarget),
-          ...schemeTargets(players).map(([key, item]) => [key, schemeLabel(item)] as const),
+          ...schemeTargets(players).map(([key, item]) => [key, schemeLabel(item), PLAYER_LOGOS.get(item.id) ?? 'external-link'] as const),
           ...NETWORK_TARGETS, ...(custom ? [localTarget(custom)] : [])]}
         value={player} disabled={players === null || !!action.busy} epoch={epoch * 2 + Number(players !== null)} onPick={value => {
           setPlayer(value);

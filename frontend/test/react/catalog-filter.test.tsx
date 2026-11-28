@@ -165,6 +165,16 @@ describe('读数', () => {
   });
 });
 
+it('首页快捷标签在取数时占位，到货后保留实际标签，空结果时收起', async () => {
+  const { host, rerender } = await mountRoot(<CatalogFilterPage {...props({ tiers: null, tiersPending: true })} />);
+  expect(host.querySelector('[data-filter-tags-skeleton]')).not.toBeNull();
+  await rerender(<CatalogFilterPage {...props({ tiersPending: true, tags: [{ k: 'a', label: 'A', n: 3, selected: false }] })} />);
+  expect(host.querySelector('[data-filter-tags-skeleton]')).toBeNull();
+  expect(host.querySelector('[data-filter-tag="a"]')?.textContent).toContain('A');
+  await rerender(<CatalogFilterPage {...props()} />);
+  expect(host.querySelector('[data-filter-tag-strip]')).toBeNull();
+});
+
 describe('只显示有预览图', () => {
   it('只看有预览图时读数旁给「显示全部」，点下去交给壳；看全部时不出', async () => {
     const showAll = vi.fn();

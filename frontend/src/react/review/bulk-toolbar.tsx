@@ -101,7 +101,8 @@ export function BulkToolbar(props: BulkToolbarProps) {
             onClick={() => { if (key !== queueView) onQueueChange(key) }}>
             <span data-copy-key={`review.queue.${key}`}>{REVIEW_QUEUE_LABELS[key]}</span>{' '}
             <span className="ms-1.5 tabular-nums text-caption-1-medium text-text-secondary">
-              {queueCounts ? queueCounts[key].toLocaleString() : '…'}
+              {queueCounts ? queueCounts[key].toLocaleString()
+                : <span className="skeleton-sheen inline-block h-3.5 w-4 rounded-md align-middle" aria-hidden />}
             </span>
           </button>)}
           <span data-entity-sep="" aria-hidden="true" className={joinedRows ? undefined : 'invisible'} />

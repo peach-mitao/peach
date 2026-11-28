@@ -12,6 +12,21 @@
 .peach-react [data-filter-glass] > [data-filter-row] > :is(button, a, [role="button"], [role="combobox"]) {
   flex-shrink: 0;
 }
+
+.peach-react [data-filter-tag]:hover {
+  background: var(--glass-control-hover);
+}
+
+.peach-react [data-filter-tag][aria-pressed="true"] {
+  background: var(--glass-control-selected);
+  border-color: var(--field-ring);
+  border-style: solid;
+  color: var(--glass-text);
+}
+
+.peach-react [data-filter-tag] [data-count-badge] {
+  color: var(--glass-text-secondary);
+}
 .peach-react [data-filter-tag-strip] {
   display: flex;
   flex: 1 1 auto;
@@ -20,6 +35,7 @@
   overflow: auto hidden;
   scrollbar-width: none;
 }
+.peach-react [data-filter-tags-skeleton] { overflow: hidden; pointer-events: none; }
 @media (max-width: 760px) {
   .peach-react [data-catalog-scroll] > [data-filter-tag-strip],
   .peach-react [data-entity-tags] > [data-filter-tag-strip] { flex: none; overflow: visible; }
@@ -56,7 +72,7 @@
   box-shadow: inset 0 0 0 1px var(--glass-rim), var(--glass-pick-shadow);
 }
 .peach-react [data-filter-search]:focus-within { outline: 2px solid var(--color-border-focus-ring); outline-offset: 1px; }
-.peach-react [data-filter-search] > svg { color: var(--ink-2); }
+.peach-react [data-filter-search] > svg { color: var(--glass-text-secondary); }
 .peach-react [data-filter-search] > input {
   flex: 1;
   min-width: 0;
@@ -79,15 +95,14 @@
   cursor: pointer;
 }
 .peach-react [data-filter-search][data-compact]:not(:focus-within, [data-open], [data-filled]) > input { flex: 0 0 0; width: 0; opacity: 0; }
-.peach-react [data-filter-search] > input::placeholder { color: var(--ink-2); opacity: 1; }
+.peach-react [data-filter-search] > input::placeholder { color: var(--glass-text-secondary); opacity: 1; }
 :root:not(.dark) .peach-react [data-filter-search]:not(:focus-within, [data-filled]) {
-  background: var(--color-background-tertiary-default);
+  background: var(--glass-control-subtle);
   box-shadow: inset 0 0 0 1px var(--field-ring);
 }
 :root:not(.dark) .peach-react [data-filter-search]:not(:focus-within, [data-filled]):hover {
-  background: var(--color-background-secondary-default);
+  background: var(--glass-control-hover);
 }
-:root:not(.dark) .peach-react [data-filter-search] > input::placeholder { color: var(--color-text-secondary); }
 .peach-react [data-filter-search] > input::-webkit-search-cancel-button { display: none; }
 .peach-react [data-filter-search-clear] {
   display: grid;
@@ -99,10 +114,10 @@
   border: 0;
   border-radius: 6px;
   background: none;
-  color: var(--ink-2);
+  color: var(--glass-text-secondary);
   cursor: pointer;
 }
-.peach-react [data-filter-search-clear]:hover { background: var(--hover); color: inherit; }
+.peach-react [data-filter-search-clear]:hover { background: var(--glass-control-hover); color: inherit; }
 @media (width < 761px) {
   /* 小于 16px 的输入框聚焦时手机浏览器会把整页放大。 */
   .peach-react [data-filter-search] { flex-basis: 148px; }

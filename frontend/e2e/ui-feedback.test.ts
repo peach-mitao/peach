@@ -71,6 +71,50 @@ describe('等待反馈与文件夹模式', () => {
     } finally { await opened.close(); }
   });
   for (const viewport of VIEWPORTS) {
+    it(`${viewport.name} 反馈表单滚动时标题和关闭按钮保持在顶部`, async () => {
+      const opened = await visit(browser, '/settings/library', viewport, page => page.addInitScript(() => {
+        navigator.mediaDevices.getDisplayMedia = () => Promise.reject(new DOMException('Cancelled', 'NotAllowedError'));
+      }));
+      try {
+        const { page } = opened;
+        await page.getByRole('button', { name: '反馈', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: '发送反馈' });
+        const title = dialog.getByRole('heading', { name: '发送反馈' });
+        const close = dialog.getByRole('button', { name: '关闭', exact: true });
+        const body = dialog.locator('[data-feedback-body]');
+        await title.waitFor();
+        await settle(page);
+        await dialog.evaluate(async node => {
+          const surface = node.closest('[data-modal-surface]')!;
+          await Promise.allSettled(surface.getAnimations().map(animation => animation.finished));
+        });
+        const titleTop = (await title.boundingBox())!.y;
+        const closeTop = (await close.boundingBox())!.y;
+        const track = dialog.locator('form[data-peach-feedback] > [data-overlay-track="y"]:not([hidden])');
+        await track.waitFor();
+        const trackBox = (await track.boundingBox())!;
+        const bodyBox = (await body.boundingBox())!;
+        assert.ok(trackBox.y >= bodyBox.y && trackBox.y + trackBox.height <= bodyBox.y + bodyBox.height);
+        const outerScroll = await dialog.evaluate(node => {
+          node.scrollTop = node.scrollHeight;
+          return node.scrollTop;
+        });
+        assert.equal(outerScroll, 0);
+        const field = dialog.getByRole('textbox', { name: '标题' });
+        const fieldTop = (await field.boundingBox())!.y;
+        const scrolled = await body.evaluate(node => {
+          node.scrollTop = node.scrollHeight;
+          return node.scrollTop;
+        });
+        assert.ok(scrolled > 0);
+        assert.ok((await field.boundingBox())!.y < fieldTop);
+        assert.equal((await title.boundingBox())!.y, titleTop);
+        assert.equal((await close.boundingBox())!.y, closeTop);
+        await close.click();
+        await dialog.waitFor({ state: 'hidden' });
+      } finally { await opened.close(); }
+    });
+
     for (const [key, name, title] of sections) it(`${viewport.name} ${name} 的首屏骨架保持分区与边界`, async () => {
       let release = () => {};
       const held = new Promise<void>(resolve => { release = resolve });

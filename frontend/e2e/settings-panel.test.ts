@@ -100,6 +100,75 @@ describe('设置面板', () => {
     } finally { await opened.close() }
   });
 
+  it('顶部工具栏即时应用顺序和显隐，刷新后恢复，重置回到默认', { timeout: 60_000 }, async () => {
+    const context = await persistentContext(browser);
+    const page = await context.newPage();
+    const problems: string[] = [];
+    page.on('pageerror', error => problems.push(error.message));
+    const buttons = ['immerseBtn', 'wallBtn', 'selectMode', 'density', 'notificationCenter', 'tutorialBtn'];
+    const toolbar = page.locator('header.top');
+    const getOrder = () => toolbar.locator('button').evaluateAll((nodes, ids) =>
+      nodes.map(node => node.id).filter(id => ids.includes(id)), buttons);
+    const list = page.locator('#topToolbarOrderSetting');
+    const notifications = list.getByRole('switch', { name: '显示通知中心', exact: true });
+    try {
+      await stubServer(page);
+      await page.goto(`${requiredEnv('PEACH_E2E_ORIGIN')}/`, { waitUntil: 'load' });
+      await openPanel(page);
+      assert.deepEqual(await getOrder(), buttons);
+      await list.locator('[data-sidebar-key="notificationCenter"][data-sidebar-move="-1"]').click();
+      const reordered = ['immerseBtn', 'wallBtn', 'selectMode', 'notificationCenter', 'density', 'tutorialBtn'];
+      assert.deepEqual(await getOrder(), reordered);
+      await notifications.press('Space');
+      assert.deepEqual((await stored(page)).topToolbar, { order: reordered, hidden: ['notificationCenter'] });
+      await page.locator('#settingsClose').click();
+      assert.equal(await toolbar.locator('#notificationCenter').isVisible(), false);
+      assert.equal(await toolbar.locator('#q').isVisible(), true);
+      await page.reload();
+      await openPanel(page);
+      assert.deepEqual(await getOrder(), reordered);
+      assert.equal(await notifications.isChecked(), false);
+      await notifications.press('Space');
+      assert.deepEqual(await getOrder(), reordered);
+      await list.getByRole('button', { name: '恢复默认', exact: true }).click();
+      assert.deepEqual(await getOrder(), buttons);
+      assert.deepEqual((await stored(page)).topToolbar, { order: buttons, hidden: [] });
+      await page.locator('#settingsClose').click();
+      await toolbar.locator('#notificationCenter').click();
+      await page.getByRole('dialog', { name: '通知中心' }).waitFor();
+      assert.deepEqual(problems, []);
+    } finally { await context.close(); }
+  });
+
+  it('导航下拉在弹层里显示可见的选项图标', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/', DESKTOP, async page => {
+      const server = await stubServer(page);
+      server.settings.sidebarOrder = ORDER.filter(key => key !== 'follow');
+    });
+    const { page } = opened;
+    try {
+      await openPanel(page);
+      const assertIcons = async (trigger: ReturnType<Page['locator']>) => {
+        await trigger.scrollIntoViewIfNeeded();
+        await trigger.click();
+        const menu = page.getByRole('listbox');
+        await menu.waitFor({ timeout: 5_000 });
+        const shown = await menu.getByRole('option').evaluateAll(nodes => nodes.map(node => {
+          const icon = node.querySelector('svg');
+          if (!icon) return false;
+          const size = icon.getBoundingClientRect();
+          return size.width > 0 && size.height > 0 && getComputedStyle(icon).stroke !== 'none';
+        }));
+        assert.ok(shown.length > 0 && shown.every(Boolean));
+        await page.keyboard.press('Escape');
+        await menu.waitFor({ state: 'hidden' });
+      };
+      await assertIcons(page.locator('#sidebarOrderSetting button[aria-haspopup="listbox"]'));
+      await assertIcons(page.getByRole('button', { name: /导航分组/ }));
+      assert.deepEqual(opened.problems, []);
+    } finally { await opened.close(); }
+  });
+
   it('齿轮打开、关闭键与 Escape 关上；焦点进来落在关闭键、Tab 在面板里转圈、关上后回到齿轮', { timeout: 60_000 }, async () => {
     const opened = await openHome(browser);
     const { page } = opened;

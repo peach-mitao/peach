@@ -397,16 +397,16 @@ describe('过滤框', () => {
 });
 
 describe('标签', () => {
-  it('在线标签浏览页可直接添加屏蔽标签，本地标签不显示该入口', async () => {
+  it('在线标签浏览页可直接添加标签规则，本地标签不显示该入口', async () => {
     seed(indexKey('tags', '', 'all'), [tag('眼镜')]);
     seed(onlineTagsKey('', 'all'), [tag('glasses', 'general')]);
     serve(() => ({ items: [], total: 0, categories: {}, duplicate_groups: [] }));
     const host = await open(props({ kind: 'tags', scope: 'local' }));
     await settle();
-    expect(buttonNamed('添加屏蔽标签', host)).toBeNull();
+    expect(buttonNamed('添加标签规则', host)).toBeNull();
     await click(tab(host, 'online'));
     await settle();
-    expect(buttonNamed('添加屏蔽标签', host)).not.toBeNull();
+    expect(buttonNamed('添加标签规则', host)).not.toBeNull();
     expect(host.querySelector('[data-tag-manager]')).toBeNull();
   });
 
@@ -436,7 +436,7 @@ describe('标签', () => {
     serve(() => ({ items: [tag('痴女')], has_more: false, categories: { role: 1 } }));
     const given = props({ kind: 'tags' });
     const host = await open(given);
-    expect([...host.querySelectorAll('[data-tag-pill]')].map((pill) => pill.textContent)).toEqual(['使用中', '已隐藏']);
+    expect([...host.querySelectorAll('[data-tag-status]')].map((pill) => pill.textContent)).toEqual(['使用中', '已隐藏']);
     await click(host.querySelector('[data-table-column-filter="index-tag-category"]'));
     expect([...document.querySelectorAll('[data-filter-option]')].map(option => option.getAttribute('data-filter-option')))
       .toEqual(['all', 'role', 'scene']);

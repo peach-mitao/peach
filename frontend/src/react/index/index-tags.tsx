@@ -4,7 +4,7 @@
  * 点开回目录按它筛选，选择模式下拼成多标签筛选；在线是关注来源上的 booru 标签，按上游
  * tag_type 着色，点开去「关注 · 这个标签」；选择模式下做隐藏与屏蔽，不拼目录筛选——拿在线标签
  * 去筛目录必然一条不中。 */
-import { Radio, RadioGroup } from 'react-aria-components';
+import { Radio } from 'react-aria-components';
 import type { ReactNode } from 'react';
 import { RiPencilLine, RiSearchLine, RiStarLine } from '@remixicon/react';
 
@@ -14,7 +14,9 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { AsyncText } from '../components/async-text';
 import { TabCount } from '../components/board-tabs';
 import { cardClass } from '../components/card';
-import { FilterGlassRows, FilterPill, FilterSearch, FilterToolbarControls } from '../components/filter-glass';
+import { FilterGlassRows, FilterSearch, FilterToolbarControls, useFilterScope } from '../components/filter-glass';
+import { GlassSegmentGroup } from '../components/glass-segments';
+import { filterAlphabetSkeletonHtml } from '../../filter-controls-skeleton';
 import { SUGGEST_KIND_OF, librarySuggest } from '../search/library-suggest';
 import { FilterDropdown } from '../components/filter-dropdown';
 import { SEGMENTED_GLASS_TRACK, SEGMENT_GLASS } from '../components/segmented';
@@ -126,7 +128,7 @@ export function TagCloud({ tags, actions }: { tags: TagEntry[]; actions: TagActi
         <span key={tag.k} data-tag-token="" data-rectangle-key={tag.k} data-tag-cat={tagColorKey(actions.online, tag.cat)} {...context.events(tag, actions)}
           className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-lg border p-1">
         <button type="button" data-tag-chip="" data-rectangle-trigger="" data-k={tag.k}
-          data-tag-cat={tagColorKey(actions.online, tag.cat)} aria-pressed={actions.picked.has(tag.k)}
+          data-tag-cat={tagColorKey(actions.online, tag.cat)} aria-pressed={actions.picked.has(tag.k)} title={tag.label}
           onClick={() => actions.press(tag.k)}
           className="inline-flex max-w-full min-w-0 cursor-pointer items-center rounded-lg px-2 py-0.5 text-body-2-regular text-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring">
           <span className="min-w-0 truncate">{tag.label + NBSP}</span>
@@ -178,16 +180,18 @@ export function TagFilters(
   },
 ) {
   const alphaScroll = useHorizontalScroller<HTMLElement>();
+  const scope = useFilterScope<'active' | 'hidden' | 'blocked'>(status?.blocked ? 'blocked' : status?.hidden ? 'hidden' : 'active');
+  const pending = readout === undefined;
   return (
-    <FilterGlassRows label={t('catalog:tagFilters.label')} topLabel={t('catalog:tagFilters.tagStatus')}
-      top={status ? <div className="flex flex-none items-center gap-1.75">
-          {([[false, t('catalog:tagFilters.inUse')], [true, statusLabel(t('catalog:tagFilters.hidden'), status.hiddenCount,
-            (count) => t('catalog:tagFilters.hiddenCount', { count }))]] as const).map(([hidden, label]) => <FilterPill key={String(hidden)}
-            data-tag-pill="" data-tag-cat="all" pressed={!status.blocked && status.hidden === hidden} onPress={() => status.onChange(Boolean(hidden))}>{label}</FilterPill>)}
-          {status.onBlocked ? <FilterPill data-tag-pill="" data-tag-cat="all" pressed={!!status.blocked}
-            onPress={status.onBlocked}>{statusLabel(t('catalog:tagFilters.blockedContent'), status.blockedCount,
-              (count) => t('catalog:tagFilters.blockedCount', { count }))}</FilterPill> : null}
-        </div> : null}
+    <FilterGlassRows label={t('catalog:tagFilters.label')} topLabel={t('catalog:tagFilters.tagStatus')} busy={pending}
+      panes={scope.pane}
+      top={status ? scope.choices(t('catalog:tagFilters.tagStatus'), [
+        { key: 'active', label: <span data-copy-key="catalog.tagFilters.inUse">{t('catalog:tagFilters.inUse')}</span>, attrs: { 'data-tag-status': 'active' } },
+        { key: 'hidden', label: statusLabel(t('catalog:tagFilters.hidden'), status.hiddenCount,
+          count => t('catalog:tagFilters.hiddenCount', { count })), attrs: { 'data-tag-status': 'hidden' } },
+        ...(status.onBlocked ? [{ key: 'blocked' as const, label: statusLabel(t('catalog:tagFilters.blockedContent'), status.blockedCount,
+          count => t('catalog:tagFilters.blockedCount', { count })), attrs: { 'data-tag-status': 'blocked' } }] : []),
+      ], key => key === 'blocked' ? status.onBlocked?.() : status.onChange(key === 'hidden'), false) : null}
       bottom={<>
         <span data-index-readout="" className="flex-none text-caption-1-regular leading-5 whitespace-nowrap text-text-secondary tabular-nums">
           <AsyncText text={readout} busy={readout === undefined}
@@ -206,8 +210,8 @@ export function TagFilters(
               </button>
             ))}
           </nav>
-        ) : null}
-        <FilterToolbarControls tools={<RadioGroup aria-label={t('catalog:tagFilters.tagView')} orientation="horizontal" value={view}
+        ) : pending && view === 'alphabet' ? <span className="contents" dangerouslySetInnerHTML={{ __html: filterAlphabetSkeletonHtml() }} /> : null}
+        <FilterToolbarControls tools={<GlassSegmentGroup aria-label={t('catalog:tagFilters.tagView')} orientation="horizontal" value={view}
           onChange={(next) => onView(next as TagView)} className={SEGMENTED_GLASS_TRACK}>
           {VIEWS.map(([value, label, symbol]) => {
             const Glyph = spriteGlyph(symbol);
@@ -217,7 +221,7 @@ export function TagFilters(
               </Radio>
             );
           })}
-        </RadioGroup>} fields={<FilterDropdown id="index-tag-category" label={t('catalog:tagFilters.tagType')}
+        </GlassSegmentGroup>} fields={<FilterDropdown id="index-tag-category" label={t('catalog:tagFilters.tagType')}
           active={category !== 'all'} searchable={false}
           choices={categories.map(([id, label]) => ({ id, label, selected: category === id,
             leading: <span className="flex shrink-0 items-center" data-tag-cat={id === 'all' ? 'all' : tagColorKey(online, id)}><Dot /></span> }))}

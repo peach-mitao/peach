@@ -242,12 +242,12 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
   const onFailed = useCallback((src: string) => {
     const html = drawn.html;
     setFailure({ html, gap: null });
-    void failedArtwork(src.replace(/&r=\d+$/, ''), drawn.kind).then(gap =>
+    void failedArtwork(src.replace(/&r=\d+$/, '')).then(gap =>
       setFailure(current => current?.html === html ? { html, gap } : current));
-  }, [drawn.html, drawn.kind]);
+  }, [drawn.html]);
   const retry = useCallback(() => { setFailure(null); setAttempt(count => count + 1) }, []);
   const gap = !artwork.html ? missingArtwork(item, frameOnly) : failed
-    ? failed.gap || { key: 'checking', title: drawn.kind === 'cover' ? t('shell:artworkGap.coverNotFound') : t('shell:artworkGap.previewNotFound'), reason: t('shell:mediaCard.checkingCause'), fix: '' as const }
+    ? failed.gap || { key: 'checking', reason: t('shell:mediaCard.checkingCause'), fix: '' as const }
     : null;
   const rawName = (parts ? codedText(parts, 'title') : '') || item.name || '';
   const reasons = whyReasons(item);
