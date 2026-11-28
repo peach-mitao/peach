@@ -28,16 +28,19 @@ def _torrent(**patch) -> dict:
 class _Handler:
     """按路径回包，并记下每次请求。"""
 
-    def __init__(self, *, torrents=(), login="Ok.", add="Ok.", delete="Ok."):
+    def __init__(self, *, torrents=(), login="Ok.", add="Ok.", delete="Ok.",
+                 login_status=200, login_cookie="SID=test-only"):
         self.requests: list[httpx.Request] = []
         self.torrents = list(torrents)
         self.login, self.add, self.delete = login, add, delete
+        self.login_status, self.login_cookie = login_status, login_cookie
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         path = request.url.path
         if path == "/api/v2/auth/login":
-            return httpx.Response(200, text=self.login, headers={"set-cookie": "SID=test-only"})
+            headers = {"set-cookie": self.login_cookie} if self.login_cookie else {}
+            return httpx.Response(self.login_status, text=self.login, headers=headers)
         if path == "/api/v2/app/version":
             return httpx.Response(200, text="v4.6.4")
         if path == "/api/v2/app/webapiVersion":
@@ -57,6 +60,23 @@ class _Handler:
 
 
 class CheckTests(unittest.TestCase):
+    def test_check_accepts_a_session_cookie_on_a_no_content_login(self):
+        for cookie, accepted in (
+            ("QBT_SID_8085=test-only; Path=/", True),
+            ("QBT_SID_8085=; Path=/", False),
+            ("", False),
+        ):
+            with self.subTest(cookie=cookie):
+                handler = _Handler(login="", login_status=204, login_cookie=cookie)
+                report = check("192.0.2.10:8085", "admin", "test-only-password",
+                               transport=httpx.MockTransport(handler))
+                self.assertEqual(report["ok"], accepted)
+                version_requests = handler.calls("/api/v2/app/version")
+                if accepted:
+                    self.assertEqual(version_requests[0].headers["cookie"], "QBT_SID_8085=test-only")
+                else:
+                    self.assertFalse(version_requests)
+
     def test_check_reports_version_and_default_save_path_without_echoing_the_password(self):
         handler = _Handler()
         report = check("192.0.2.10:8085", "admin", "test-only-password",
@@ -103,6 +123,19 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(status.state, DONE)
         self.assertEqual(status.target, TARGET)
         self.assertEqual(handler.calls("/api/v2/torrents/add"), [])
+
+    def test_windows_destination_is_submitted_and_completed_content_is_relative_to_it(self):
+        target = r"E:\Media\Peach"
+        handler = _Handler()
+        provider = self.provider(handler)
+        provider.submit(parse_magnet(MAGNET), target)
+        self.assertEqual(_form(handler.calls("/api/v2/torrents/add")[0])["savepath"], ["E:/Media/Peach"])
+        handler.torrents = [_torrent(
+            save_path=target, content_path="e:/media/peach/Series/ABC-123.mp4",
+            state="uploading", progress=1)]
+        task = DownloadTask(1, HASH, "qbittorrent", MAGNET, "ABC-123", target, "remote_running")
+        status = provider.status(task)
+        self.assertEqual((status.state, status.name, status.target), (DONE, "Series/ABC-123.mp4", target))
 
     def test_an_adopted_torrent_reports_the_save_path_it_already_uses(self):
         handler = _Handler(torrents=[_torrent(save_path="/vol1/media/Peach/Other")])

@@ -9,14 +9,12 @@ Peach 与 qBittorrent 可以在不同机器。这里只负责提交与查询，�
 """
 from __future__ import annotations
 
-from pathlib import PurePosixPath
-
 import httpx
 
 from . import interface_text
 from .downloads import (
     DONE, ERROR, MISSING, RUNNING, DownloadError, DownloadTask, Magnet, Problem, RemoteStatus,
-    clean_address, normalise_local_target, problem_codes,
+    clean_address, local_target_relative, normalise_local_target, problem_codes,
 )
 from .user_messages import UserFacingError
 
@@ -51,15 +49,13 @@ def _content_name(item: dict) -> str:
     if not content:
         return str(item.get("name") or "")
     try:
-        root = PurePosixPath(normalise_local_target(target))
-        path = PurePosixPath(normalise_local_target(content))
-        relative = path.relative_to(root)
+        relative = local_target_relative(content, target)
         if not relative.parts:
             raise ValueError("content is the download root")
     except ValueError:
         raise DownloadError("mismatch", "errors.downloads.localTargetMismatch",
                             {"target": content, "root": target}) from None
-    return str(relative)
+    return relative.as_posix()
 
 
 def _status(item: dict | None) -> RemoteStatus:
@@ -160,6 +156,8 @@ class QbittorrentClient:
         response = self._request(
             "POST", "/api/v2/auth/login", action="login",
             data={"username": self.username, "password": self.password})
+        if response.status_code == 204 and any(cookie.value for cookie in response.cookies.jar):
+            return
         if response.text.strip().casefold().rstrip(".") != "ok":
             raise DownloadError("config", "errors.downloadsQbittorrent.loginFailed")
 
